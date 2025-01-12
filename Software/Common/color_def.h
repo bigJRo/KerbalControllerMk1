@@ -1,5 +1,5 @@
-#ifndef _COLOR_DEFINITIONS_H
-#define _COLOR_DEFINITIONS_H
+#ifndef _COLOR_DEF_H
+#define _COLOR_DEF_H
 
 /***************************************************************************************
   Color definitions that can be used during the various drawing functions
@@ -46,4 +46,4 @@
 #define INT_ORANGE 0xFA80   /* 31,   20,   0 */
 #define UPS_BROWN 0x6203    /* 12,   16,   3 */
 
-#endif  // _COLOR_DEFINITIONS_H
+#endif  // _COLOR_DEF_H
