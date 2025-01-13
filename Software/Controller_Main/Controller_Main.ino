@@ -9,6 +9,7 @@
   Final code written by Jason Rostoker for Jeb's Controller Works.
 ********************************************************************************************************************************/
 #include <Wire.h>                      // I2C Wire Library
+#include <Bounce.h>                    // One Button Debounce Library
 #include <KerbalSimpit.h>              // Kerbal Simpit Plugin for game interfaces
 #include <KerbalSimpitMessageTypes.h>  // Kerbal Simpit message types
 #include <PayloadStructs.h>            // Kerbal Simpit payload structures definitions
@@ -17,9 +18,9 @@
 #include <Watchdog_t4.h>               // Inlcude Watchdog Timer library
 extern "C" void usb_init(void);
 
-#include ".\module_register_masks.h"             // Module Register Definitions
-#include "..\..\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
-#include "..\..\Common\keyboard_def.h"           // Keyboard Code Definitions
+#include "module_variables.h"                                                                                     // Module Register Definitions
+#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
+#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
 
 
 /***************************************************************************************
@@ -65,7 +66,7 @@ extern "C" void usb_init(void);
 #define Throttle_INT 32     // Throttle Module Interrupt
 #define Rotation_INT 33     // Rotation Module Interrupt
 #define Switch_INT 34       // Switch Module Interrupt
-#define FuncCtrl_INT 35     // Function Control Panel Interrupt
+#define VehCtrl_INT 35      // Vehicle Control Panel Interrupt
 #define ActCtrl_INT 36      // Action Control Panel Interrupt
 #define Abort_INT 37        // Abort Interrupt
 #define GPWS_INT 38         // GPWS Panel Interrupt
@@ -87,10 +88,12 @@ extern "C" void usb_init(void);
 /***************************************************************************************
    Declare Spercific Library Objects
 ****************************************************************************************/
-KerbalSimpit mySimpit(SerialUSB1);    // Declare a KerbalSimpit object that will communicate using the "Serial" device
-Adafruit_EMC2101 fan;                 // Object to support Adafruit EMC2101 Fan Controller
-Adafruit_INA219 ina219(INA219_ADDR);  // Object to support Voltage/Current Measurements
-WDT_T4<WDT1> wdt;                     // Watchdog timer type 1 object
+KerbalSimpit mySimpit(SerialUSB1);             // Declare a KerbalSimpit object that will communicate using the "Serial" device
+Bounce stageButton = Bounce(Staging_INT, 10);  // 10 ms debounce
+Bounce abortButton = Bounce(Abort_INT, 10);    // 10 ms debounce
+Adafruit_EMC2101 fan;                          // Object to support Adafruit EMC2101 Fan Controller
+Adafruit_INA219 ina219(INA219_ADDR);           // Object to support Voltage/Current Measurements
+WDT_T4<WDT1> wdt;                              // Watchdog timer type 1 object
 
 
 /***************************************************************************************
@@ -142,8 +145,9 @@ uint8_t airbrake;
 /***************************************************************************************
    Global Variable Definitions
 ****************************************************************************************/
-int16_t Encoder1;
-
+String lastAction;  // Storage location for last value in watchdog check
+long runtime_start = millis();
+float alt_surf;
 
 /***************************************************************************************
    Panel Control Boolean Definitions
@@ -151,7 +155,6 @@ int16_t Encoder1;
 bool demo = false;          // use without needing to be connected to simpit or the MST Arduino
 bool debug = false;         // debug sends data to the serial monitor
 bool throttleEn = false;    // Throttle Input is enabled
-bool precisionEn = false;   // Apply the precision factor to the translation and rotation inputs
 bool audioEn = false;       // indicates audio mode enables.
 bool idleMode = false;      // controls whether the idle screen is set
 bool mstrMCActive = false;  //active when mstrMCActive is on
@@ -164,9 +167,50 @@ bool camCtrlSet = false;    //used to activate the camera control mode for the t
 Arduino Setup Function
 ****************************************************************************************/
 void setup() {
-  // put your setup code here, to run once:
+  /********************************************************
+    Start Serial Interface
+  *********************************************************/
+  Serial.begin(115200);
+  SerialUSB1.begin(115200);
+
+  Serial.println("------------------------------------------------------------------");
+  Serial.println("Console initialization...");
+  Serial.println("------------------------------------------------------------------");
+  Serial.println("Serial communucation established");
+
+
+  /********************************************************
+    Set Pin Modes for necessary inputs/outputs
+  *********************************************************/
+  Serial.print("Setup pin functions...");
+  pinMode(Staging_INT, INPUT);
+  pinMode(Abort_INT, INPUT);
+
+
+  Serial.println("COMPLETE");
 }
 
+
+/***************************************************************************************
+Arduino Loop Function
+****************************************************************************************/
 void loop() {
-  // put your main code here, to run repeatedly:
+
+  /********************************************************
+    Process Staging Button
+  *********************************************************/
+  if (stageButton.update()) {
+    if (stageButton.fallingEdge()) {
+      mySimpit.activateAction(STAGE_ACTION);
+    }
+  }
+
+  /********************************************************
+    Process Abort Button
+  *********************************************************/
+  if (abortButton.update()) {
+    if (abortButton.fallingEdge()) {
+      mySimpit.activateAction(ABORT_ACTION);
+    }
+  }
 }

@@ -10,6 +10,7 @@ int16_t enc1_pos = 0;
 int16_t prev_enc1_pos = 0;
 int16_t enc2_pos = 0;
 int16_t prev_enc2_pos = 0;
+uint8_t ctrlGrp = 0;
 const uint8_t pPanelMode = 0b00000011;    //Panel Control Input
 const uint8_t pPanelButt01 = 0b00000100;  //Panel Control Button 01
 const uint8_t pPanelButt02 = 0b00001000;  //Panel Control Button 02
@@ -42,9 +43,12 @@ const uint16_t pDebugWindow = 0b0000100000000000;   //Enter KSP Debug Panel
    Stability Control Module Mask Definitions
     Defining bit masks for button press & LED locations in the registers
 ****************************************************************************************/
-uint16_t ledStabCtrl = 0;
 uint16_t prevButtonStabCtrl;
 uint16_t newButtonStabCtrl;
+bool SAS_on = false;
+uint8_t SAS_mode;
+bool RCS_on = false;
+bool precisionEn = false;                         // Apply the precision factor to the translation and rotation inputs
 const uint16_t pStabAssist = 0b0000000000000001;  //SAS Stability Assist Button
 const uint16_t pManeuver = 0b0000000000000010;    //SAS Maneuver Button
 const uint16_t pPrograde = 0b0000000000000100;    //SAS Prograde Button
@@ -64,7 +68,7 @@ const uint16_t pStabAsstGrp = pStabAssist + pManeuver + pPrograde + pRetrograde 
 
 
 /***************************************************************************************
-   Function Control Module Mask Definitions
+   Vehicle Control Module Mask Definitions
     Defining bit masks for button press & LED locations in the registers
 ****************************************************************************************/
 uint16_t ledFuncCtrl = 0;
@@ -175,9 +179,22 @@ const uint8_t pTrim = 0b00010000;           //Trim Button
    Vehicle Control Module Mask Definitions
     Defining bit masks for button press & LED locations in the registers
 ****************************************************************************************/
-uint16_t ledVehCtrl = 0;
 uint16_t prevButtonVehCtrl;
 uint16_t newButtonVehCtrl;
+bool lights_on = false;
+bool gear_on = false;
+bool brakes_on = false;
+bool ladder_on = false;
+bool solarArray_on = false;
+bool antenna_on = false;
+bool radiator_on = false;
+bool cargoDoor_on = false;
+bool parachute_on = false;
+bool drogue_on = false;
+bool lights_lock = false;
+bool gear_lock = false;
+bool brakes_lock = false;
+bool parachute_auto = false;
 const uint16_t pLights = 0b0000000000000001;      //Lights button
 const uint16_t pGear = 0b0000000000000010;        // Gear button
 const uint16_t pSolarArray = 0b0000000000000100;  // Solar Array button; Custom Action Group 11

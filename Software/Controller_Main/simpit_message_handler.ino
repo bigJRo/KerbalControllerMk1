@@ -43,7 +43,6 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         lights_on = msg[0] & LIGHT_ACTION;
         RCS_on = msg[0] & RCS_ACTION;
         SAS_on = msg[0] & SAS_ACTION;
-        abort_on = msg[0] & ABORT_ACTION;
       }
       break;
     case CAGSTATUS_MESSAGE:
@@ -74,7 +73,6 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         SASInfoMessage sasMode;
         sasMode = parseMessage<SASInfoMessage>(msg);
         SAS_mode = sasMode.currentSASMode;
-        setSASLogic(SAS_mode); // function sets SAS Group per custom function
         break;
       }
     case FLIGHT_STATUS_MESSAGE:
