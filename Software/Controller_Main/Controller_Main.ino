@@ -9,7 +9,7 @@
   Final code written by Jason Rostoker for Jeb's Controller Works.
 ********************************************************************************************************************************/
 #include <Wire.h>                      // I2C Wire Library
-#include <Bounce.h>                    // One Button Debounce Library
+#include <Bounce.h>                    // Button Debounce Library
 #include <KerbalSimpit.h>              // Kerbal Simpit Plugin for game interfaces
 #include <KerbalSimpitMessageTypes.h>  // Kerbal Simpit message types
 #include <PayloadStructs.h>            // Kerbal Simpit payload structures definitions
