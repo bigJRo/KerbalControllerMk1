@@ -87,6 +87,15 @@ void loop() {
     for (uint8_t i = 0; i < 16; i++) {
       x[i] = shift.state(i);  // get state of button i
     }
+
+    // set the inputs bytes that can be used to LED display and transmit
+    for (int i = 0; i < 8; i++) {
+      bitWrite(button_bytes[0], i, x[i]);
+    }
+    for (int i = 0; i < 8; i++) {
+      bitWrite(button_bytes[1], i, x[i + 8]);
+    }
+
     digitalWrite(INT_OUT, LOW);  //Set INT_OUT to indicate to MC there is a change
   }
 }
