@@ -103,11 +103,6 @@ void setup() {
   pinMode(rotaryDT_A, INPUT);   // Setup encoder clock as input
   pinMode(rotaryClk_B, INPUT);  // Setup encoder clock as input
   pinMode(rotaryDT_B, INPUT);   // Setup encoder clock as input
-  pinMode(button01, INPUT);     // Setup buttons as an input
-  pinMode(button02, INPUT);     // Setup buttons as an input
-  pinMode(button03, INPUT);     // Setup buttons as an input
-  pinMode(button04, INPUT);     // Setup buttons as an input
-  pinMode(button05, INPUT);     // Setup buttons as an input
   pinMode(led01, OUTPUT);       // Setup leds as outputs
   pinMode(led02, OUTPUT);       // Setup leds as outputs
   pinMode(led03, OUTPUT);       // Setup leds as outputs
