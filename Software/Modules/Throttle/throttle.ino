@@ -7,8 +7,9 @@
 
   Final code written by Jason Rostoker for Jeb's Controller Works.
 ********************************************************************************************************************************/
-#include <Wire.h>     // i2c libary compatible with ATtiny816
-#include <Bounce2.h>  // Button Debounce Library
+#include <Wire.h>                           // i2c libary compatible with ATtiny816
+#include <Bounce2.h>                        // Button Debounce Library
+#include <KerbalControllerMk1_Functions.h>  // Custom functions library
 
 /***************************************************************************************
    Pin Definitions
@@ -218,6 +219,7 @@ void clearInterrupt() {
   digitalWrite(INT_OUT, HIGH);
 }
 
+
 /***************************************************************************************
    Go To Position
    Function to move the motorized fader into the commanded position
@@ -296,29 +298,4 @@ bool setButtonThrtl() {
   }
 
   return buttonCommand;
-}
-
-/***************************************************************************************
-   RECEIVE 16-BIT INTEGER
-   Read in from wire read 2 bytes to form a single output integer value
-   See following site for explanation of technique:
-    https://medium.com/@sandhan.sarma/sending-floats-over-the-i2c-bus-between-two-arduinos-part-2-486db6dc479f
-   - No inputs
-   - Returns 16-bit integer
-****************************************************************************************/
-int16_t receiveInt16() {
-  int16_t index = 0;
-  union intToBytes {
-
-    char buffer[2];
-    int16_t returnValue;
-
-  } converter;
-
-  while (index < 2) {
-    converter.buffer[index] = Wire.read();
-    index++;
-  }
-
-  return converter.returnValue;
 }
