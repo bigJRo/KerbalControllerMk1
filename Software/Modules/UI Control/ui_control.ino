@@ -12,27 +12,27 @@
 /***************************************************************************************
   Pin Definitions (ATtiny816 w/ megaTinyCore Pin Mapping)
 ****************************************************************************************/
-#define SDA          9   // PB1
-#define SCL          8   // PB0
+#define SDA 9  // PB1
+#define SCL 8  // PB0
 
-#define INT_OUT      4   // PA4
-#define load         7   // PA7
-#define clockEnable  6   // PA6
-#define clockIn      13  // PB5
-#define dataInPin    5   // PA5
-#define neopixCmd    12  // PB4
+#define INT_OUT 4      // PA4
+#define load 7         // PA7
+#define clockEnable 6  // PA6
+#define clockIn 13     // PB5
+#define dataInPin 5    // PA5
+#define neopixCmd 12   // PB4
 
-#define led_13       11  // PB3
-#define led_14       15  // PC2
-#define led_15       10  // PB2
-#define led_16       14  // PC1
+#define led_13 11  // PB3
+#define led_14 15  // PC2
+#define led_15 10  // PB2
+#define led_16 14  // PC1
 
 /***************************************************************************************
   Definitions
 ****************************************************************************************/
-#define panel_addr     0x20
-#define NUM_LEDS       12
-#define NUM_BUTTONS    16
+#define panel_addr 0x20
+#define NUM_LEDS 12
+#define NUM_BUTTONS 16
 
 tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);
 
@@ -44,24 +44,24 @@ struct buttonPixel {
 const buttonPixel pixel_Default = { "Default", 32, 32, 32 };
 
 const buttonPixel pixel_Array[NUM_LEDS] = {
-  { "Map Enable",     0, 255,   0 },
-  { "Map Cycle -",    0, 255,   0 },
-  { "Map Cycle +",    0, 255,   0 },
-  { "Nav Mode",       0, 255,   0 },
-  { "IVA",            0, 255,   0 },
-  { "Cycle Cam",      0, 255,   0 },
-  { "Cycle Ship -",   0, 255,   0 },
-  { "Cycle Ship +",   0, 255,   0 },
-  { "Reset Focus",    0, 255,   0 },
-  { "Screen Shot",    0,   0, 255 },
-  { "UI",          255, 191,   0 },
-  { "DEBUG",       255,   0,   0 }
+  { "Map Enable", 0, 255, 0 },
+  { "Map Cycle -", 0, 255, 0 },
+  { "Map Cycle +", 0, 255, 0 },
+  { "Nav Mode", 0, 255, 0 },
+  { "IVA", 0, 255, 0 },
+  { "Cycle Cam", 0, 255, 0 },
+  { "Cycle Ship -", 0, 255, 0 },
+  { "Cycle Ship +", 0, 255, 0 },
+  { "Reset Focus", 0, 255, 0 },
+  { "Screen Shot", 0, 0, 255 },
+  { "UI", 255, 191, 0 },
+  { "DEBUG", 255, 0, 0 }
 };
 
 const uint8_t discreteLEDs[4] = { led_13, led_14, led_15, led_16 };
 
-uint8_t button_bytes[2] = {0, 0};
-uint8_t x[NUM_BUTTONS] = {0};
+uint8_t button_bytes[2] = { 0, 0 };
+uint8_t x[NUM_BUTTONS] = { 0 };
 ShiftIn<2> shift;
 
 volatile bool updateLED = false;
@@ -143,8 +143,10 @@ void handle_ledUpdate() {
   I2C Events
 ****************************************************************************************/
 void requestEvent() {
-  Wire.write(button_bytes[0]);
-  Wire.write(button_bytes[1]);
+  Wire.write(button_bytes[0]);                    // Button low byte
+  Wire.write(button_bytes[1]);                    // Button high byte
+  Wire.write((uint8_t)(led_bits & 0xFF));         // LED low byte
+  Wire.write((uint8_t)((led_bits >> 8) & 0xFF));  // LED high byte
 }
 
 void receiveEvent(int howMany) {
