@@ -24,10 +24,10 @@
 #define dataInPin 5    // PA5, Shift register data pin
 #define neopixCmd 12   // PB4, NeoPixel data output pin
 
-#define led_13 11  // PB3, Discrete LED 1 (RCS Lock)
-#define led_14 15  // PC2, Discrete LED 2 (SAS Lock)
-#define led_15 10  // PB2, Discrete LED 3 (Pilot Assist)
-#define led_16 14  // PC1, Discrete LED 4 (Reaction Ctrl)
+#define led_13 11  // PB3, Discrete LED 1 (SAS Enable)
+#define led_14 15  // PC2, Discrete LED 2 (RCS Enable)
+#define led_15 10  // PB2, Discrete LED 3 (Unused)
+#define led_16 14  // PC1, Discrete LED 4 (Unused)
 
 /***************************************************************************************
   Constants and Globals
