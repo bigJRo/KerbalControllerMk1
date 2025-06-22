@@ -12,7 +12,7 @@ It handles button input and RGB LED feedback for UI-related actions, communicati
 - **Inputs**: 16 buttons via 2× 74HC165 shift registers
 - **Outputs**:
   - 12 RGB NeoPixel LEDs for button state/status
-  - 4 discrete output pins (Lock LEDs)
+  - Discrete LED pins are defined but unused in this module
 - **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
 
 ---
