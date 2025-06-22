@@ -119,6 +119,6 @@ Original reference from [CodapopKSP/UntitledSpaceCraft](https://github.com/Codap
 
 ## 🛠 Author
 
-Final version authored by **J. Rostoker** for **Jeb's Controller Works**.
-Based on original work from [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) by CodapopKSP.
+Final version authored by **J. Rostoker** for **Jeb's Controller Works**.  
+Based on original work from [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) by CodapopKSP.  
 Adapted and finalized by J. Rostoker for **Jeb's Controller Works**.
