@@ -8,25 +8,24 @@ It handles button input and RGB LED feedback for UI-related actions, communicati
 
 ## 📦 Overview
 
-- **Microcontroller:** ATtiny816 (using megaTinyCore)
-- **Inputs:** 16-button matrix via shift registers
-- **Outputs:**
-  - 12 addressable NeoPixel LEDs
-  - 4 discrete status LEDs
-- **Communication:** I2C slave (address `0x23`)
+- **MCU**: ATtiny816 (via megaTinyCore)
+- **Communication**: I2C (slave address `0x23`)
+- **Inputs**: 16 buttons via 2× 74HC165 shift registers
+- **Outputs**:
+  - 12 RGB NeoPixel LEDs for button state/status
+  - 4 discrete output pins (Lock LEDs)
 - **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
 
 ---
 
-
 ## 🚀 Features
 
-- **Color-coded LED feedback** for up to 12 vehicle control commands
-- **Discrete lock-status LEDs** for secondary functions
-- **Real-time button polling** and change notifications via `INT_OUT`
-- **Overlay logic** for parachute deployment and cut stages
-- **Efficient memory usage** with `PROGMEM`-stored color lookup table
-- **I2C protocol** enables 2-way communication with the host
+- Reads 16 input buttons using shift registers
+- Controls 12 RGB LEDs via NeoPixels
+- Updates 4 discrete LEDs for "lock" or persistent states
+- Communicates with host microcontroller over I2C
+- Uses color-coded feedback based on a shared color table
+- Low memory footprint using `PROGMEM` for color data
 
 ---
 
