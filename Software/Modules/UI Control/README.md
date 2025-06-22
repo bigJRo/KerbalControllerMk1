@@ -1,4 +1,6 @@
-# UI Control Module – Kerbal Controller Mk1
+from pathlib import Path
+
+readme_content = """# UI Control Module – Kerbal Controller Mk1
 
 This is the finalized firmware for the **UI Control Module** in the **Kerbal Controller Mk1** system.  
 It handles button input and RGB LED feedback for UI-related actions, communicating with a host device over I2C.
