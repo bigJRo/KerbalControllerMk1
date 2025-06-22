@@ -8,6 +8,7 @@
 #include <Wire.h>          // I2C communication
 #include <ShiftIn.h>       // Shift register input
 #include <tinyNeoPixel.h>  // NeoPixel support for ATtiny series
+#include <avr/pgmspace.h>  // PROGMEM access for ATtiny
 
 /***************************************************************************************
   Pin Definitions (ATtiny816 w/ megaTinyCore Pin Mapping)
@@ -94,9 +95,12 @@ enum ColorIndex : uint8_t {
 };
 
 // Helper to fetch RGB color struct from PROGMEM
-buttonPixel getColorFromTable(uint8_t index) {
+buttonPixel getColorFromTable(ColorIndex  index) {
   buttonPixel px;
-  memcpy_P(&px, &colorTable[index], sizeof(buttonPixel));
+  const uint8_t* ptr = (const uint8_t*)colorTable + index * sizeof(buttonPixel);
+  px.r = pgm_read_byte(ptr);
+  px.g = pgm_read_byte(ptr + 1);
+  px.b = pgm_read_byte(ptr + 2);
   return px;
 }
 
@@ -106,7 +110,7 @@ buttonPixel getColorFromTable(uint8_t index) {
   First 8 LEDs correspond to direct command buttons
   Last 4 may be overlays, indicators, or reserved for future use
 ****************************************************************************************/
-const uint8_t pixel_Array[NUM_LEDS] = {
+constexpr ColorIndex pixel_Array[NUM_LEDS] = {
   RED,            // 0: Brake
   GOLDEN_YELLOW,  // 1: Lights
   SKY_BLUE,       // 2: Solar
@@ -128,35 +132,44 @@ const uint8_t pixel_Array[NUM_LEDS] = {
   Last four buttons (12–15) have associated discrete output LEDs on the controller
 ****************************************************************************************/
 const char commandNames[NUM_BUTTONS][16] PROGMEM = {
-  "Brake",          // 0
-  "Lights",         // 1
-  "Solar",          // 2
-  "Gear",           // 3
-  "Cargo",          // 4
-  "Antenna",        // 5
-  "Ladder",         // 6
-  "Radiator",       // 7
-  "DrogueDep",      // 8
-  "MainDep",        // 9
-  "DrogueCut",      //10
-  "MainCut",        //11
-  "Brake Lock",     //12 → LED13 (discrete output)
-  "Parachute Lock", //13 → LED14 (discrete output)
-  "Lights Lock",    //14 → LED15 (discrete output)
-  "Gear Lock"       //15 → LED16 (discrete output)
+  "Brake",           // 0
+  "Lights",          // 1
+  "Solar",           // 2
+  "Gear",            // 3
+  "Cargo",           // 4
+  "Antenna",         // 5
+  "Ladder",          // 6
+  "Radiator",        // 7
+  "DrogueDep",       // 8
+  "MainDep",         // 9
+  "DrogueCut",       //10
+  "MainCut",         //11
+  "Brake Lock",      //12 → LED13 (discrete output)
+  "Parachute Lock",  //13 → LED14 (discrete output)
+  "Lights Lock",     //14 → LED15 (discrete output)
+  "Gear Lock"        //15 → LED16 (discrete output)
 };
 
 
 // Discrete output pins mapped to final 4 button functions
 const uint8_t discreteLEDs[4] = { led_13, led_14, led_15, led_16 };
 
-uint8_t button_bytes[2] = { 0, 0 };  // I2C output for button state
-uint16_t button_state_bits = 0;      // Bitfield for all buttons
-ShiftIn<2> shift;                    // 16-bit shift register interface
+uint16_t button_state_bits = 0;  // Bitfield for all buttons
+ShiftIn<2> shift;                // 16-bit shift register interface
 
 volatile bool updateLED = false;  // Flag from I2C input event
 uint16_t led_bits = 0;            // Desired LED state
 uint16_t prev_led_bits = 0;       // Previous LED state (to avoid redundant updates)
+
+/***************************************************************************************
+  Overlay Color Helper: handles logic for LEDs 8–11
+****************************************************************************************/
+buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive, uint8_t colorIndex) {
+  if (!overlayEnabled || !modeActive) return getColorFromTable(BLACK);
+  if (localActive) return getColorFromTable(colorIndex);
+  return getColorFromTable(DIM_GRAY);
+}
+
 
 /***************************************************************************************
   Setup
@@ -176,9 +189,9 @@ void setup() {
   leds.begin();
   delay(10);  // Ensure NeoPixel hardware has time to initialize
 
-  // Set initial colors: dim gray for active slots, black for others
+  // Set initial colors: white for active slots, black for others
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    buttonPixel px = (i < 8) ? getColorFromTable(DIM_GRAY) : getColorFromTable(BLACK);
+    buttonPixel px = (i < 8) ? getColorFromTable(WHITE) : getColorFromTable(BLACK);
     leds.setPixelColor(i, px.r, px.g, px.b);
   }
   leds.show();
@@ -201,15 +214,11 @@ void loop() {
 
   // Check for button state changes
   if (shift.update()) {
+    uint16_t newState = 0;
     for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
-      bitWrite(button_state_bits, i, shift.state(i));
+      newState |= (shift.state(i) ? 1 : 0) << i;
     }
-
-    // Update I2C-readable byte array
-    for (uint8_t i = 0; i < 8; i++) {
-      bitWrite(button_bytes[0], i, bitRead(button_state_bits, i));
-      bitWrite(button_bytes[1], i, bitRead(button_state_bits, i + 8));
-    }
+    button_state_bits = newState;
 
     digitalWrite(INT_OUT, LOW);  // Signal to master that buttons have changed
   }
@@ -219,38 +228,40 @@ void loop() {
   LED Update Handler
 ****************************************************************************************/
 void handle_ledUpdate() {
+  uint16_t bits = led_bits;
+  uint16_t prevBits = prev_led_bits;
+  bool overlayEnabled = bitRead(bits, 13);
+  bool updated = false;
+
   for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
-    bool newState = bitRead(led_bits, i);
-    bool oldState = bitRead(prev_led_bits, i);
+    bool newState = bitRead(bits, i);
+    bool oldState = bitRead(prevBits, i);
     if (newState == oldState) continue;  // Skip unchanged states
 
     if (i < 8) {
       // Top 8 command buttons: set their assigned color or dim gray when off
       buttonPixel px = newState ? getColorFromTable(pixel_Array[i]) : getColorFromTable(DIM_GRAY);
-      uint32_t newColor = leds.Color(px.r, px.g, px.b);
-      if (leds.getPixelColor(i) != newColor) {
-        leds.setPixelColor(i, newColor);
-      }
+      leds.setPixelColor(i, px.r, px.g, px.b);
+      updated = true;
 
     } else if (i < NUM_LEDS) {
-      // Overlay/status LEDs: show if button released
-      uint8_t byteIdx = 1;
-      uint8_t bitIdx = (i == 8 || i == 9) ? 7 : (i - 10);
-      bool bitState = bitRead(button_bytes[byteIdx], bitIdx);
-      buttonPixel px = bitState ? getColorFromTable(DIM_GRAY) : getColorFromTable(BLACK);
-      uint32_t newColor = leds.Color(px.r, px.g, px.b);
-      if (leds.getPixelColor(i) != newColor) {
-        leds.setPixelColor(i, newColor);
-      }
+      // Parachute status LEDs with layered logic depending on Chutes enabled (LED bit 13) and local bit state
+      bool localActive = bitRead(bits, i);
+      bool modeActive = true;
+      if (i == 10) modeActive = bitRead(bits, 8);  // Drogue Cut active only if Drogue deployed
+      if (i == 11) modeActive = bitRead(bits, 9);  // Main Cut active only if Main deployed
+      buttonPixel px = overlayColor(overlayEnabled, modeActive, localActive, pixel_Array[i]);
+      leds.setPixelColor(i, px.r, px.g, px.b);
+      updated = true;
 
-    } else if (i >= NUM_LEDS && i < NUM_BUTTONS) {
+    } else if (i < NUM_BUTTONS) {
       // Discrete LED outputs (lock states)
       digitalWrite(discreteLEDs[i - NUM_LEDS], newState ? HIGH : LOW);
     }
   }
 
-  leds.show();
-  prev_led_bits = led_bits;
+  if (updated) leds.show();
+  prev_led_bits = bits;
 }
 
 /***************************************************************************************
@@ -275,10 +286,10 @@ void handle_ledUpdate() {
 void requestEvent() {
   // Respond to master read request with 4-byte status report
   uint8_t response[4] = {
-    button_bytes[0],                  // Bits 0–7 of button state
-    button_bytes[1],                  // Bits 8–15 of button state
-    (uint8_t)(led_bits & 0xFF),       // LED LSB (control for LEDs 0–7)
-    (uint8_t)(led_bits >> 8)          // LED MSB (control for LEDs 8–15)
+    (uint8_t)(button_state_bits & 0xFF),  // Bits 0–7 of button state
+    (uint8_t)(button_state_bits >> 8),    // Bits 8–15 of button state
+    (uint8_t)(led_bits & 0xFF),           // LED LSB (control for LEDs 0–7)
+    (uint8_t)(led_bits >> 8)              // LED MSB (control for LEDs 8–15)
   };
   Wire.write(response, sizeof(response));  // Send full report
 }
@@ -290,6 +301,6 @@ void receiveEvent(int howMany) {
     uint8_t msb = Wire.read();  // Upper 8 bits of new LED bitfield
     led_bits = (msb << 8) | lsb;
 
-    updateLED = true;           // Set flag to process LED changes in main loop
+    updateLED = true;  // Set flag to process LED changes in main loop
   }
 }
