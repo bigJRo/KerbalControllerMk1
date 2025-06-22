@@ -12,7 +12,7 @@ It handles SAS-related stability commands and LED feedback, communicating with a
 - **Inputs**: 16 buttons via 2× 74HC165 shift registers
 - **Outputs**:
   - 12 RGB NeoPixel LEDs for SAS command status
-  - 4 discrete output pins (SAS Enable, RCS Enable, Pilot Assist, Reaction Ctrl)
+  - 4 discrete output pins (SAS Enable, RCS Enable, 2x unused)
 - **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
 
 ---
@@ -77,8 +77,8 @@ It handles SAS-related stability commands and LED feedback, communicating with a
 |------------------|-----|---------------|------------------|
 | `led_13`         | 11  | PB3           | SAS Enable       |
 | `led_14`         | 15  | PC2           | RCS Enable       |
-| `led_15`         | 10  | PB2           | Pilot Assist     |
-| `led_16`         | 14  | PC1           | Reaction Ctrl    |
+| `led_15`         | 10  | PB2           | Unused/Reserved     |
+| `led_16`         | 14  | PC1           | Unused/Reserved    |
 
 ---
 
