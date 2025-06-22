@@ -13,8 +13,7 @@ It handles button input and RGB LED feedback for UI-related actions, communicati
 - **Outputs**:
   - 12 RGB NeoPixel LEDs for button state/status
   - 4 discrete output pins (Lock LEDs)
-
-This module is part of a modular control surface for Kerbal Space Program.
+- **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
 
 ---
 
