@@ -1,100 +1,77 @@
-# Vehicle Control Module for Kerbal Controller Mk1
 
-This Arduino-based firmware runs on an ATtiny816 and controls a custom Kerbal Space Program controller panel. It supports:
+# Vehicle Control Module – Kerbal Controller Mk1
 
-- Shift register button inputs (16 buttons)
-- NeoPixel LED outputs (12 RGB addressable LEDs)
-- 4 discrete output LEDs
-- I2C communication with a host Arduino using a 4-byte protocol
+This is the firmware for the **Vehicle Control Module** in the *Kerbal Controller Mk1* project, designed by J. Rostoker for Jeb's Controller Works.  
+Inspired by [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) and adapted to run on an ATtiny816 using the Arduino framework.
 
 ## Features
 
-- Efficient use of PROGMEM for RGB color mapping
-- Modular color table and LED overlay logic
-- I2C slave implementation with interrupt output
-- Fully documented in-line for clarity and maintenance
+- 16-button interface using shift registers
+- 12 NeoPixel status LEDs with per-function coloring
+- 4 discrete output lock-state LEDs
+- I2C communication with a host (Kerbal Simpit-compatible)
+- Highly memory-efficient color control using `PROGMEM`
+- Supports overlay LED logic (e.g., parachute deployment stages)
 
-## I2C Protocol
+## Hardware Overview
 
-### Master Reads (4 bytes)
-- Byte 0: Button bits 0–7
-- Byte 1: Button bits 8–15
-- Byte 2: LED control bits 0–7
-- Byte 3: LED control bits 8–15
+### Microcontroller: ATtiny816 (megaTinyCore)
+- All GPIO mapped using megaTinyCore pin notation
 
-### Master Writes (2 bytes)
-- Byte 0: LED control bits 0–7
-- Byte 1: LED control bits 8–15
+### Shift Register Input (16 buttons):
+- Uses `ShiftIn` library to read 2 chained 8-bit registers
 
-## Dependencies
+### NeoPixel LEDs:
+- 12 individually addressable WS2812 LEDs
 
-- `Wire.h` for I2C
-- `ShiftIn.h` for button input
-- `tinyNeoPixel.h` for addressable LED control
-- `avr/pgmspace.h` for PROGMEM access (AVR-based microcontrollers)
+### Discrete Output LEDs:
+- 4 lock-state LEDs connected to digital output pins
 
-## Build Instructions
+## Pin Assignments
 
-1. Use the [Arduino IDE](https://www.arduino.cc/en/software).
-2. Install **megaTinyCore** via the Boards Manager (for ATtiny816 support).
-3. Install the following libraries:
-   - **ShiftIn** (by Paul Stoffregen)
-   - **tinyNeoPixel** (Adafruit fork for ATtiny support)
-4. Select **ATtiny816** under Tools > Board.
-5. Configure fuse bits as appropriate (e.g., 20 MHz internal clock).
-6. Upload the sketch using a UPDI programmer (e.g., Serial UPDI or jtag2updi).
+| Function        | ATtiny Pin | Physical | Description                     |
+|----------------|------------|----------|---------------------------------|
+| `SDA`          | PB1        | 9        | I2C Data                        |
+| `SCL`          | PB0        | 8        | I2C Clock                       |
+| `INT_OUT`      | PA4        | 4        | Interrupt to host (active low) |
+| `load`         | PA7        | 7        | Shift register latch            |
+| `clockEnable`  | PA6        | 6        | Shift register clock enable     |
+| `clockIn`      | PB5        | 13       | Shift register clock            |
+| `dataInPin`    | PA5        | 5        | Shift register data             |
+| `neopixCmd`    | PB4        | 12       | NeoPixel data                   |
+| `led_13`       | PB3        | 11       | Discrete LED 1 (Brake Lock)     |
+| `led_14`       | PC2        | 15       | Discrete LED 2 (Parachute Lock)|
+| `led_15`       | PB2        | 10       | Discrete LED 3 (Lights Lock)    |
+| `led_16`       | PC1        | 14       | Discrete LED 4 (Gear Lock)      |
 
-## Wiring Diagram (Summary)
+## Communication Protocol
 
-| Component       | ATtiny816 Pin | Purpose              |
-|----------------|---------------|----------------------|
-| Shift Register | 5, 6, 7, 13    | Data, Clock, Load    |
-| NeoPixels      | 12            | Data out             |
-| I2C            | 8 (SCL), 9 (SDA) | Communication      |
-| INT_OUT        | 4             | Host notification    |
-| Discrete LEDs  | 10, 11, 14, 15| Output indicators    |
+I2C Slave Address: `0x23`
 
-> Use 100Ω–330Ω resistors where appropriate for LED or signal protection.
+- **Master reads (4 bytes):**
+  - Byte 0: Button bits 0–7
+  - Byte 1: Button bits 8–15
+  - Byte 2: LED bits 0–7
+  - Byte 3: LED bits 8–15
 
-## Example Host-Side Code (Arduino)
+- **Master writes (2 bytes):**
+  - Byte 0: LED bits 0–7
+  - Byte 1: LED bits 8–15
 
-```cpp
-#include <Wire.h>
+## LED Behavior
 
-#define MODULE_ADDR 0x23
+- **LEDs 0–7**: Follow button colors from `pixel_Array`
+- **LEDs 8–11**: Overlay logic using `overlayColor()` depending on bit 13 (enabled), and bits 8/9 (deployed)
+- **LEDs 12–15**: Discrete lock indicator LEDs (digital HIGH/LOW)
 
-void setup() {
-  Wire.begin();
-  Serial.begin(9600);
-}
+## Host Requirements
 
-void loop() {
-  // Request button state
-  Wire.requestFrom(MODULE_ADDR, 4);
-  if (Wire.available() == 4) {
-    uint8_t btn_lsb = Wire.read();
-    uint8_t btn_msb = Wire.read();
-    uint8_t led_lsb = Wire.read();
-    uint8_t led_msb = Wire.read();
-
-    uint16_t buttonState = (btn_msb << 8) | btn_lsb;
-    Serial.print("Buttons: ");
-    Serial.println(buttonState, BIN);
-
-    // Example: turn on first 8 LEDs if first button is pressed
-    uint16_t ledState = (buttonState & 0x0001) ? 0x00FF : 0x0000;
-    Wire.beginTransmission(MODULE_ADDR);
-    Wire.write((uint8_t)(ledState & 0xFF));
-    Wire.write((uint8_t)(ledState >> 8));
-    Wire.endTransmission();
-  }
-
-  delay(100);
-}
-```
+This module should be connected to a host microcontroller (e.g., Arduino) that:
+- Sends LED control signals over I2C
+- Receives button states from the panel
+- Uses the [Kerbal Simpit](https://github.com/digitalcircuit/kerbal-simpit) protocol for game integration
 
 ## License
 
-Licensed under GPL-3.0. Original code references work by [CodapopKSP](https://github.com/CodapopKSP/UntitledSpaceCraft).
-
-Final implementation by J. Rostoker for Jeb's Controller Works.
+This firmware is licensed under the GNU GPLv3.
+Original inspiration and framework courtesy of CodapopKSP.
