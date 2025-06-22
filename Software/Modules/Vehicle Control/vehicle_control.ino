@@ -1,154 +1,295 @@
-
 /********************************************************************************************************************************
   Vehicle Control Module for Kerbal Controller Mk1
 
   References UntitledSpaceCraft module code written by CodapopKSP (https://github.com/CodapopKSP/UntitledSpaceCraft)
-
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
-
-  Final code written by Jason Rostoker for Jeb's Controller Works.
+  Final code written by J. Rostoker for Jeb's Controller Works.
 ********************************************************************************************************************************/
-#include <Wire.h>                  // i2c libary compatible with ATtiny816
-#include <ShiftRegister74HC595.h>  // Output Shift Register Library
-#include <ShiftIn.h>               // Input Shift Register Library
+#include <Wire.h>          // I2C communication
+#include <ShiftIn.h>       // Shift register input
+#include <tinyNeoPixel.h>  // NeoPixel support for ATtiny series
 
 /***************************************************************************************
-   Pin Definitions
+  Pin Definitions (ATtiny816 w/ megaTinyCore Pin Mapping)
 ****************************************************************************************/
-#define SDA PIN_PB1  // SDA
-#define SCL PIN_PB0  // SCL
+#define SDA 9  // I2C data pin
+#define SCL 8  // I2C clock pin
 
-// Final Board Pin Configuration
-#define INT_OUT PIN_PB3      // Output interrupt
-#define load PIN_PC3         // 74HC165 Input Load Pin
-#define clockEnable PIN_PA3  // 74HC165 Input Clock Enable Pin
-#define clockIn PIN_PA1      // 74HC165 Input Clock Input
-#define dataInPin PIN_PA2    // 74HC165 Input Data Input Pin
-#define clockPin PIN_PC0     // 74HC595 Outputs LED Serial Clock (SH_CP)
-#define latchPin PIN_PC1     // 74HC595 Outputs LED Latch (ST_CP)
-#define dataOutPin PIN_PC2   // 74HC595 Outputs LED Data Line (DS)
+#define INT_OUT 4      // Interrupt output to notify host of button state change
+#define load 7         // Shift register load pin
+#define clockEnable 6  // Shift register clock enable (active low)
+#define clockIn 13     // Shift register clock input
+#define dataInPin 5    // Shift register data pin
+#define neopixCmd 12   // NeoPixel data output pin
 
-/*
-// Test Board Pin Configuration
-#define INT_OUT PIN_PB2       // Output interrupt
-#define load PIN_PA6          // 74HC165 Input Load Pin
-#define clockEnable PIN_PC1   // 74HC165 Input Clock Enable Pin
-#define clockIn PIN_PC2       // 74HC165 Input Clock Input
-#define dataInPin PIN_PC0     // 74HC165 Input Data Input Pin
-#define clockPin PIN_PA4      // 74HC595 Outputs LED Serial Clock (SH_CP)
-#define latchPin PIN_PA5      // 74HC595 Outputs LED Latch (ST_CP)
-#define dataOutPin PIN_PA3    // 74HC595 Outputs LED Data Line (DS)
-*/
+#define led_13 11  // Lock LED 1
+#define led_14 15  // Lock LED 2
+#define led_15 10  // Lock LED 3
+#define led_16 14  // Lock LED 4
 
 /***************************************************************************************
-   I2C Address Definitions
+  Constants and Globals
 ****************************************************************************************/
-#define Panel_MOD 0x2A
+constexpr uint8_t panel_addr = 0x23;  // I2C slave address
+constexpr uint8_t NUM_LEDS = 12;      // Number of addressable NeoPixels
+constexpr uint8_t NUM_BUTTONS = 16;   // Number of input buttons
+
+tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);  // LED object
+
+struct buttonPixel {
+  uint8_t r, g, b;  // RGB color values
+};
 
 /***************************************************************************************
-   Global definitions for ouput (display) shift registers (74HC595)
+  Lookup table of RGB color definitions for LED feedback
+  Stored in PROGMEM to save precious SRAM on the ATtiny816
+  Each entry is a custom-named color used to indicate status of individual functions
+  Indexes are mapped via the ColorIndex enum for readability
 ****************************************************************************************/
-uint8_t led_bytes[] = { 0, 0 };
-ShiftRegister74HC595<2> lights(dataOutPin, clockPin, latchPin);  // Object for display output shift registers
+const buttonPixel colorTable[] PROGMEM = {
+  { 128, 0, 0 },      // RED: General warning or critical function
+  { 128, 96, 0 },     // AMBER: Secondary status or transitional state
+  { 128, 50, 0 },     // ORANGE: UI prompt or toggle
+  { 128, 108, 0 },    // GOLDEN_YELLOW: Status indicator (e.g., deployed)
+  { 64, 128, 160 },   // SKY_BLUE: Represents atmosphere or power
+  { 0, 128, 0 },      // GREEN: Safe or confirmed
+  { 64, 128, 96 },    // MINT: Passive/idle
+  { 128, 0, 128 },    // MAGENTA: Communication
+  { 0, 128, 128 },    // CYAN: Cooling or environmental
+  { 64, 128, 0 },     // LIME: Active
+  { 255, 255, 255 },  // WHITE: All-clear or generic
+  { 0, 0, 0 },        // BLACK: Off or disabled
+  { 32, 32, 32 },     // DIM_GRAY: Neutral, inactive but valid
+  { 0, 0, 255 },      // BLUE: Default function
+  { 255, 0, 0 },      // BRIGHT_RED: Emergency
+  { 0, 255, 0 },      // BRIGHT_GREEN: Enabled
+  { 0, 0, 255 },      // BRIGHT_BLUE: Attention
+  { 255, 255, 0 },    // YELLOW: Alert
+  { 0, 255, 255 },    // AQUA: Coolant/temperature
+  { 255, 0, 255 }     // FUCHSIA: Comms or science
+};
+
+// Human-readable color index enum
+enum ColorIndex : uint8_t {
+  RED,
+  AMBER,
+  ORANGE,
+  GOLDEN_YELLOW,
+  SKY_BLUE,
+  GREEN,
+  MINT,
+  MAGENTA,
+  CYAN,
+  LIME,
+  WHITE,
+  BLACK,
+  DIM_GRAY,
+  BLUE,
+  BRIGHT_RED,
+  BRIGHT_GREEN,
+  BRIGHT_BLUE,
+  YELLOW,
+  AQUA,
+  FUCHSIA
+};
+
+// Helper to fetch RGB color struct from PROGMEM
+buttonPixel getColorFromTable(uint8_t index) {
+  buttonPixel px;
+  memcpy_P(&px, &colorTable[index], sizeof(buttonPixel));
+  return px;
+}
 
 /***************************************************************************************
-   Global definitions for input (control)shift registers (74HC165)
+  Maps physical LED index (0–11) to a color index from colorTable[]
+  Used to assign a default visual feedback color per functional button
+  First 8 LEDs correspond to direct command buttons
+  Last 4 may be overlays, indicators, or reserved for future use
 ****************************************************************************************/
-int16_t x[16] = {};
-uint8_t button_bytes[2] = {};
-ShiftIn<2> shift;  // Object for control shift registers
-
+const uint8_t pixel_Array[NUM_LEDS] = {
+  RED,            // 0: Brake
+  GOLDEN_YELLOW,  // 1: Lights
+  SKY_BLUE,       // 2: Solar
+  GREEN,          // 3: Gear
+  MINT,           // 4: Cargo
+  MAGENTA,        // 5: Antenna
+  CYAN,           // 6: Ladder
+  LIME,           // 7: Radiator
+  ORANGE,         // 8: Drogue Deploy (overlay zone)
+  AMBER,          // 9: Main Deploy (overlay zone)
+  RED,            //10: Drogue Cut (overlay zone)
+  RED             //11: Main Cut (overlay zone)
+};
 
 /***************************************************************************************
-  Arduino Setup Function
+  Defines functional label for each button index (0–15)
+  These strings are not used directly in logic, but help map indices to in-game actions
+  Example: button_state_bits bit 0 corresponds to "Brake" command
+  Last four buttons (12–15) have associated discrete output LEDs on the controller
+****************************************************************************************/
+const char commandNames[NUM_BUTTONS][16] PROGMEM = {
+  "Brake",          // 0
+  "Lights",         // 1
+  "Solar",          // 2
+  "Gear",           // 3
+  "Cargo",          // 4
+  "Antenna",        // 5
+  "Ladder",         // 6
+  "Radiator",       // 7
+  "DrogueDep",      // 8
+  "MainDep",        // 9
+  "DrogueCut",      //10
+  "MainCut",        //11
+  "Brake Lock",     //12 → LED13 (discrete output)
+  "Parachute Lock", //13 → LED14 (discrete output)
+  "Lights Lock",    //14 → LED15 (discrete output)
+  "Gear Lock"       //15 → LED16 (discrete output)
+};
+
+
+// Discrete output pins mapped to final 4 button functions
+const uint8_t discreteLEDs[4] = { led_13, led_14, led_15, led_16 };
+
+uint8_t button_bytes[2] = { 0, 0 };  // I2C output for button state
+uint16_t button_state_bits = 0;      // Bitfield for all buttons
+ShiftIn<2> shift;                    // 16-bit shift register interface
+
+volatile bool updateLED = false;  // Flag from I2C input event
+uint16_t led_bits = 0;            // Desired LED state
+uint16_t prev_led_bits = 0;       // Previous LED state (to avoid redundant updates)
+
+/***************************************************************************************
+  Setup
 ****************************************************************************************/
 void setup() {
-  /********************************************************
-    Set Pin Modes for necessary inputs/outputs
-  *********************************************************/
   pinMode(INT_OUT, OUTPUT);
+  digitalWrite(INT_OUT, HIGH);  // Idle high
 
-  /********************************************************
-    Set Output Interrupt Configuration
-  *********************************************************/
-  digitalWrite(INT_OUT, HIGH);  //Set INT_OUT to default state
+  // Initialize discrete output LEDs
+  for (uint8_t i = 0; i < 4; i++) {
+    pinMode(discreteLEDs[i], OUTPUT);
+    digitalWrite(discreteLEDs[i], LOW);
+  }
 
-  /********************************************************
-    LED Setup
-  *********************************************************/
-  lights.setAllLow();  // Ensure all LEDs are off at startup
+  shift.begin(load, clockEnable, dataInPin, clockIn);  // Setup shift register
 
-  /********************************************************
-    Start object for 74HC165 Input Shift register
-  *********************************************************/
-  shift.begin(load, clockEnable, dataInPin, clockIn);
+  leds.begin();
+  delay(10);  // Ensure NeoPixel hardware has time to initialize
 
-  /********************************************************
-    Begin I2C comm and register receive and request events
-  *********************************************************/
-  Wire.begin(SDA, SCL, Panel_MOD);  // new syntax: join i2c bus (address required for slave)
-  Wire.onReceive(receiveEvent);     // register event
-  Wire.onRequest(requestEvent);     // register event
+  // Set initial colors: dim gray for active slots, black for others
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    buttonPixel px = (i < 8) ? getColorFromTable(DIM_GRAY) : getColorFromTable(BLACK);
+    leds.setPixelColor(i, px.r, px.g, px.b);
+  }
+  leds.show();
+
+  // Start I2C and register callbacks
+  Wire.begin(SDA, SCL, panel_addr);
+  Wire.onReceive(receiveEvent);
+  Wire.onRequest(requestEvent);
 }
 
-
 /***************************************************************************************
-  Arduino Loop Function
+  Main Loop
 ****************************************************************************************/
 void loop() {
-  /********************************************************
-    Update the Button configurations
-  *********************************************************/
-  if (shift.update()) {  // updates button input and returns value if pressed
-    for (uint8_t i = 0; i < 16; i++) {
-      x[i] = shift.state(i);  // get state of button i
-    }
-
-    //Set the input bytes that can be used to LED display and transmit
-    for (int i = 0; i < 8; i++) {
-      bitWrite(button_bytes[0], i, x[i]);
-    }
-    for (int i = 0; i < 8; i++) {
-      bitWrite(button_bytes[1], i, x[i + 8]);
-    }
-
-    digitalWrite(INT_OUT, LOW);  //Set INT_OUT to indicate to MC there is a change
+  // Update LEDs if new data has been received over I2C
+  if (updateLED) {
+    handle_ledUpdate();
+    updateLED = false;
   }
 
-  /********************************************************
-    Update LEDs
-  *********************************************************/
-  led_bytes[0] = button_bytes[1];
-  led_bytes[1] = button_bytes[0];
-  lights.setAll(led_bytes);
+  // Check for button state changes
+  if (shift.update()) {
+    for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+      bitWrite(button_state_bits, i, shift.state(i));
+    }
+
+    // Update I2C-readable byte array
+    for (uint8_t i = 0; i < 8; i++) {
+      bitWrite(button_bytes[0], i, bitRead(button_state_bits, i));
+      bitWrite(button_bytes[1], i, bitRead(button_state_bits, i + 8));
+    }
+
+    digitalWrite(INT_OUT, LOW);  // Signal to master that buttons have changed
+  }
 }
 
-
 /***************************************************************************************
-   I2C Receive Event
-   Function that executes whenever data is received from the master
-    this function is registered as an event, see setup()
-   - INPUTS:
-    - {size_t} howMany = how many bits received
-   - No outputs
+  LED Update Handler
 ****************************************************************************************/
-void receiveEvent(size_t howMany) {
-  (void)howMany;
-  while (1 < Wire.available()) {  // loop through all but the last
-    led_bytes[1] = Wire.read();   // receive led instructions
-    led_bytes[0] = Wire.read();   // receive led instructions
+void handle_ledUpdate() {
+  for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
+    bool newState = bitRead(led_bits, i);
+    bool oldState = bitRead(prev_led_bits, i);
+    if (newState == oldState) continue;  // Skip unchanged states
+
+    if (i < 8) {
+      // Top 8 command buttons: set their assigned color or dim gray when off
+      buttonPixel px = newState ? getColorFromTable(pixel_Array[i]) : getColorFromTable(DIM_GRAY);
+      uint32_t newColor = leds.Color(px.r, px.g, px.b);
+      if (leds.getPixelColor(i) != newColor) {
+        leds.setPixelColor(i, newColor);
+      }
+
+    } else if (i < NUM_LEDS) {
+      // Overlay/status LEDs: show if button released
+      uint8_t byteIdx = 1;
+      uint8_t bitIdx = (i == 8 || i == 9) ? 7 : (i - 10);
+      bool bitState = bitRead(button_bytes[byteIdx], bitIdx);
+      buttonPixel px = bitState ? getColorFromTable(DIM_GRAY) : getColorFromTable(BLACK);
+      uint32_t newColor = leds.Color(px.r, px.g, px.b);
+      if (leds.getPixelColor(i) != newColor) {
+        leds.setPixelColor(i, newColor);
+      }
+
+    } else if (i >= NUM_LEDS && i < NUM_BUTTONS) {
+      // Discrete LED outputs (lock states)
+      digitalWrite(discreteLEDs[i - NUM_LEDS], newState ? HIGH : LOW);
+    }
   }
+
+  leds.show();
+  prev_led_bits = led_bits;
 }
 
-
 /***************************************************************************************
-   I2C Request Event
-   function that executes whenever data is requested by the master
-    this function is registered as an event, see setup()
-   - No inputs
-   - No outputs
+  I2C Event Handlers
+
+  ATtiny816 acts as an I2C SLAVE device at address 0x23.
+  The protocol between master and slave uses 4 bytes:
+
+  - Master reads 4 bytes:
+    [0] = button state bits 0–7
+    [1] = button state bits 8–15
+    [2] = LED control bits LSB (LED0–7)
+    [3] = LED control bits MSB (LED8–15)
+
+  - Master writes 2 bytes:
+    [0] = LED control bits LSB
+    [1] = LED control bits MSB
+
+  The LED bits control color changes or status indication depending on the bit state.
+
 ****************************************************************************************/
 void requestEvent() {
-  Wire.write(button_bytes[0]);  // respond with button message high byte
-  Wire.write(button_bytes[1]);  // respond with button message low byte
+  // Respond to master read request with 4-byte status report
+  uint8_t response[4] = {
+    button_bytes[0],                  // Bits 0–7 of button state
+    button_bytes[1],                  // Bits 8–15 of button state
+    (uint8_t)(led_bits & 0xFF),       // LED LSB (control for LEDs 0–7)
+    (uint8_t)(led_bits >> 8)          // LED MSB (control for LEDs 8–15)
+  };
+  Wire.write(response, sizeof(response));  // Send full report
+}
+
+void receiveEvent(int howMany) {
+  // Master has sent LED state change request
+  if (Wire.available() >= 2) {
+    uint8_t lsb = Wire.read();  // Lower 8 bits of new LED bitfield
+    uint8_t msb = Wire.read();  // Upper 8 bits of new LED bitfield
+    led_bits = (msb << 8) | lsb;
+
+    updateLED = true;           // Set flag to process LED changes in main loop
+  }
 }
