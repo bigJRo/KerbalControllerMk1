@@ -240,12 +240,6 @@ void handle_ledUpdate() {
     updated = true;
   }
 
-  // Update discrete lock-state LEDs (LED13–LED16) if present
-  for (uint8_t i = NUM_LEDS; i < NUM_BUTTONS; i++) {
-    bool newState = bitRead(bits, i);
-    digitalWrite(discreteLEDs[i - NUM_LEDS], newState ? HIGH : LOW);
-  }
-
   if (updated) leds.show();
   prev_led_bits = bits;
 }
