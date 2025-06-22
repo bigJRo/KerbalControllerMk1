@@ -148,24 +148,15 @@ const char commandNames[NUM_BUTTONS][16] PROGMEM = {
   ""                 //15 → unused or reserved
 };
 
-// Discrete output pins mapped to final 4 button functions
-const uint8_t discreteLEDs[4] = { led_13, led_14, led_15, led_16 };
-
+/***************************************************************************************
+  Global State Variables
+****************************************************************************************/
 uint16_t button_state_bits = 0;  // Bitfield for all buttons
 ShiftIn<2> shift;                // 16-bit shift register interface
 
 volatile bool updateLED = false;  // Flag from I2C input event
 uint16_t led_bits = 0;            // Desired LED state
 uint16_t prev_led_bits = 0;       // Previous LED state (to avoid redundant updates)
-
-/***************************************************************************************
-  Overlay Color Helper: handles logic for LEDs 8–11
-****************************************************************************************/
-buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive, uint8_t colorIndex) {
-  if (!overlayEnabled || !modeActive) return getColorFromTable(BLACK);
-  if (localActive) return getColorFromTable(colorIndex);
-  return getColorFromTable(DIM_GRAY);
-}
 
 
 /***************************************************************************************
@@ -217,6 +208,9 @@ void loop() {
 
 /***************************************************************************************
   LED Update Handler
+  - Compares new vs. previous LED state
+  - Updates NeoPixels only if changes occurred
+  - Special case: Cancel Warp (index 11) goes BLACK when off
 ****************************************************************************************/
 void handle_ledUpdate() {
   uint16_t bits = led_bits;
@@ -230,6 +224,7 @@ void handle_ledUpdate() {
 
     // Assign defined color if LED bit is set, or dim gray if not
     buttonPixel px = newState ? getColorFromTable(pixel_Array[i]) : getColorFromTable(DIM_GRAY);
+    
     leds.setPixelColor(i, px.r, px.g, px.b);
     updated = true;
   }
