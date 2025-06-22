@@ -175,12 +175,6 @@ void setup() {
   pinMode(INT_OUT, OUTPUT);
   digitalWrite(INT_OUT, HIGH);  // Idle high
 
-  // Initialize discrete output LEDs
-  for (uint8_t i = 0; i < 4; i++) {
-    pinMode(discreteLEDs[i], OUTPUT);
-    digitalWrite(discreteLEDs[i], LOW);
-  }
-
   shift.begin(load, clockEnable, dataInPin, clockIn);  // Setup shift register
 
   leds.begin();
