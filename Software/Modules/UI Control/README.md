@@ -1,6 +1,4 @@
-from pathlib import Path
-
-readme_content = """# UI Control Module – Kerbal Controller Mk1
+# UI Control Module – Kerbal Controller Mk1
 
 This is the finalized firmware for the **UI Control Module** in the **Kerbal Controller Mk1** system.  
 It handles button input and RGB LED feedback for UI-related actions, communicating with a host device over I2C.
@@ -88,3 +86,42 @@ This module acts as an I2C **slave** at address `0x20`.
 Communication format:
 
 ### Host Reads (4 bytes):
+```
+[0] → button state bits 0–7  
+[1] → button state bits 8–15  
+[2] → LED bits LSB (0–7)  
+[3] → LED bits MSB (8–15)
+```
+
+### Host Writes (2 bytes):
+```
+[0] → LED bits LSB  
+[1] → LED bits MSB
+```
+
+- Each bit controls a corresponding LED or function (e.g., lock states).
+- NeoPixels reflect state changes with defined colors or dim gray when inactive.
+
+---
+
+## 🧑‍💻 Development Notes
+
+- Built using the Arduino IDE with [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore).
+- Uses:
+  - `Wire.h` for I2C
+  - `ShiftIn.h` for input
+  - `tinyNeoPixel.h` for RGB LED control
+- Color index logic and names shared across all modules via `colorTable[]`.
+
+---
+
+## 📜 License
+
+Licensed under [GNU GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html).  
+Original reference from [CodapopKSP/UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft).
+
+---
+
+## 🛠 Author
+
+Final version authored by **J. Rostoker** for **Jeb's Controller Works**.
