@@ -84,19 +84,15 @@ It handles button input and RGB LED feedback for UI-related actions, communicati
 This module acts as an I2C **slave** at address `0x20`.  
 Communication format:
 
-### Host Reads (4 bytes):
-```
-[0] → button state bits 0–7  
-[1] → button state bits 8–15  
-[2] → LED bits LSB (0–7)  
-[3] → LED bits MSB (8–15)
-```
+### Master → Module (Write 2 bytes)
+- `[0]`: LED control bits 0–7
+- `[1]`: LED control bits 8–15
 
-### Host Writes (2 bytes):
-```
-[0] → LED bits LSB  
-[1] → LED bits MSB
-```
+### Module → Master (Read 4 bytes)
+- `[0]`: Button bits 0–7
+- `[1]`: Button bits 8–15
+- `[2]`: LED bits 0–7 (echo)
+- `[3]`: LED bits 8–15 (echo)
 
 - Each bit controls a corresponding LED or function (e.g., lock states).
 - NeoPixels reflect state changes with defined colors or dim gray when inactive.
@@ -123,4 +119,4 @@ Original reference from [CodapopKSP/UntitledSpaceCraft](https://github.com/Codap
 
 ## 🛠 Author
 
-Final version authored by **J. Rostoker** for **Jeb's Controller Works**.
+Final version authored by **J. Rostoker** for **Jeb's Controller Works**. Based on original work from [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) by CodapopKSP. Adapted and finalized by J. Rostoker for **Jeb's Controller Works**.
