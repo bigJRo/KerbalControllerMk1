@@ -13,20 +13,20 @@
 /***************************************************************************************
   Pin Definitions (ATtiny816 w/ megaTinyCore Pin Mapping)
 ****************************************************************************************/
-#define SDA 9  // I2C data pin
-#define SCL 8  // I2C clock pin
+#define SDA 9  // PB1, I2C data pin
+#define SCL 8  // PB0, I2C clock pin
 
-#define INT_OUT 4      // Interrupt output to notify host of button state change
-#define load 7         // Shift register load pin
-#define clockEnable 6  // Shift register clock enable (active low)
-#define clockIn 13     // Shift register clock input
-#define dataInPin 5    // Shift register data pin
-#define neopixCmd 12   // NeoPixel data output pin
+#define INT_OUT 4      //  PA4, Interrupt output to notify host of button state change
+#define load 7         // PA7, Shift register load pin
+#define clockEnable 6  // PA6, Shift register clock enable (active low)
+#define clockIn 13     // PB5, Shift register clock input
+#define dataInPin 5    // PA5, Shift register data pin
+#define neopixCmd 12   // PB4, NeoPixel data output pin
 
-#define led_13 11  // Lock LED 1
-#define led_14 15  // Lock LED 2
-#define led_15 10  // Lock LED 3
-#define led_16 14  // Lock LED 4
+#define led_13 11  // PB3, Lock LED 1
+#define led_14 15  // PC2, Lock LED 2
+#define led_15 10  // PB2, Lock LED 3
+#define led_16 14  // PC1, Lock LED 4
 
 /***************************************************************************************
   Constants and Globals
