@@ -1,77 +1,129 @@
+# Vehicle Control Module for Kerbal Controller Mk1
 
-# Vehicle Control Module – Kerbal Controller Mk1
+This is the finalized firmware for the **Vehicle Control Module** in the **Kerbal Controller Mk1** system.  
+It handles button input and RGB LED feedback for UI-related actions, communicating with a host device over I2C.
 
-This is the firmware for the **Vehicle Control Module** in the *Kerbal Controller Mk1* project, designed by J. Rostoker for Jeb's Controller Works.  
-Inspired by [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) and adapted to run on an ATtiny816 using the Arduino framework.
+---
 
-## Features
 
-- 16-button interface using shift registers
-- 12 NeoPixel status LEDs with per-function coloring
-- 4 discrete output lock-state LEDs
-- I2C communication with a host (Kerbal Simpit-compatible)
-- Highly memory-efficient color control using `PROGMEM`
-- Supports overlay LED logic (e.g., parachute deployment stages)
+## 📦 Overview
 
-## Hardware Overview
+- **Microcontroller:** ATtiny816 (using megaTinyCore)
+- **Inputs:** 16-button matrix via shift registers
+- **Outputs:**
+  - 12 addressable NeoPixel LEDs
+  - 4 discrete status LEDs
+- **Communication:** I2C slave (address `0x23`)
+- **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
 
-### Microcontroller: ATtiny816 (megaTinyCore)
-- All GPIO mapped using megaTinyCore pin notation
+---
 
-### Shift Register Input (16 buttons):
-- Uses `ShiftIn` library to read 2 chained 8-bit registers
 
-### NeoPixel LEDs:
-- 12 individually addressable WS2812 LEDs
+## 🚀 Features
 
-### Discrete Output LEDs:
-- 4 lock-state LEDs connected to digital output pins
+- **Color-coded LED feedback** for up to 12 vehicle control commands
+- **Discrete lock-status LEDs** for secondary functions
+- **Real-time button polling** and change notifications via `INT_OUT`
+- **Overlay logic** for parachute deployment and cut stages
+- **Efficient memory usage** with `PROGMEM`-stored color lookup table
+- **I2C protocol** enables 2-way communication with the host
 
-## Pin Assignments
+---
 
-| Function        | ATtiny Pin | Physical | Description                     |
-|----------------|------------|----------|---------------------------------|
-| `SDA`          | PB1        | 9        | I2C Data                        |
-| `SCL`          | PB0        | 8        | I2C Clock                       |
-| `INT_OUT`      | PA4        | 4        | Interrupt to host (active low) |
-| `load`         | PA7        | 7        | Shift register latch            |
-| `clockEnable`  | PA6        | 6        | Shift register clock enable     |
-| `clockIn`      | PB5        | 13       | Shift register clock            |
-| `dataInPin`    | PA5        | 5        | Shift register data             |
-| `neopixCmd`    | PB4        | 12       | NeoPixel data                   |
-| `led_13`       | PB3        | 11       | Discrete LED 1 (Brake Lock)     |
-| `led_14`       | PC2        | 15       | Discrete LED 2 (Parachute Lock)|
-| `led_15`       | PB2        | 10       | Discrete LED 3 (Lights Lock)    |
-| `led_16`       | PC1        | 14       | Discrete LED 4 (Gear Lock)      |
+## 🧠 Button Layout
 
-## Communication Protocol
+| Index | Command          | Default LED Color |
+|-------|------------------|-------------------|
+| 0     | Brake       	   | Red               |
+| 1     | Lights           | Golden Yellow     |
+| 2     | Solar Array      | Sky Blue          |
+| 3     | Gear             | Green             |
+| 4     | Cargo Door       | Mint              |
+| 5     | Antenna          | Magenta           |
+| 6     | Ladder           | Cyan              |
+| 7     | Radiator         | Lime              |
+| 8     | Drouge Deploy    | Orange            |
+| 9     | Main Deploy      | Amber             |
+| 10    | Drouge Cut       | Red               |
+| 11    | Main Cut         | Red               |
+| 12    | Brake Lock       | N/A               |
+| 13    | Parachute Enable | N/A               |
+| 14    | Lights Lock      | N/A               |
+| 15    | Gear Lock        | N/A               |
 
-I2C Slave Address: `0x23`
+---
 
-- **Master reads (4 bytes):**
-  - Byte 0: Button bits 0–7
-  - Byte 1: Button bits 8–15
-  - Byte 2: LED bits 0–7
-  - Byte 3: LED bits 8–15
+## 🧰 Hardware Connections
 
-- **Master writes (2 bytes):**
-  - Byte 0: LED bits 0–7
-  - Byte 1: LED bits 8–15
+### Shift Register Pins
+| Signal        | Pin     | ATtiny816 Pin | Description                 |
+|---------------|---------|---------------|-----------------------------|
+| `load`        | 7       | PA7           | Shift register latch        |
+| `clockEnable` | 6       | PA6           | Enable (active LOW)         |
+| `clockIn`     | 13      | PB5           | Clock input for shift reg   |
+| `dataInPin`   | 5       | PA5           | Serial data from shift reg  |
 
-## LED Behavior
+### NeoPixel
+| Signal      | Pin  | ATtiny816 Pin | Description         |
+|-------------|------|---------------|---------------------|
+| `neopixCmd` | 12   | PB4           | Data to NeoPixel chain |
 
-- **LEDs 0–7**: Follow button colors from `pixel_Array`
-- **LEDs 8–11**: Overlay logic using `overlayColor()` depending on bit 13 (enabled), and bits 8/9 (deployed)
-- **LEDs 12–15**: Discrete lock indicator LEDs (digital HIGH/LOW)
+### I2C Pins
+| Signal | Pin | ATtiny816 Pin | Description     |
+|--------|-----|---------------|-----------------|
+| SDA    | 9   | PB1           | I2C Data        |
+| SCL    | 8   | PB0           | I2C Clock       |
 
-## Host Requirements
+### Lock Indicator LEDs (Discrete)
+| Label        | Pin | ATtiny816 Pin |
+|--------------|-----|---------------|
+| `led_13`     | 11  | PB3           |
+| `led_14`     | 15  | PC2           |
+| `led_15`     | 10  | PB2           |
+| `led_16`     | 14  | PC1           |
 
-This module should be connected to a host microcontroller (e.g., Arduino) that:
-- Sends LED control signals over I2C
-- Receives button states from the panel
-- Uses the [Kerbal Simpit](https://github.com/digitalcircuit/kerbal-simpit) protocol for game integration
+---
 
-## License
+## I2C Protocol
 
-This firmware is licensed under the GNU GPLv3.
-Original inspiration and framework courtesy of CodapopKSP.
+## 🧾 I2C Protocol
+
+This module acts as an I2C **slave** at address `0x23`.  
+Communication format:
+
+### Master → Module (Write 2 bytes)
+- `[0]`: LED control bits 0–7
+- `[1]`: LED control bits 8–15
+
+### Module → Master (Read 4 bytes)
+- `[0]`: Button bits 0–7
+- `[1]`: Button bits 8–15
+- `[2]`: LED bits 0–7 (echo)
+- `[3]`: LED bits 8–15 (echo)
+
+- Each bit controls a corresponding LED or function (e.g., lock states).
+- NeoPixels reflect state changes with defined colors, dim gray when inactive, or black when unavailable
+
+---
+
+## 🧑‍💻 Development Notes
+
+- Built using the Arduino IDE with [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore).
+- Uses:
+  - `Wire.h` for I2C
+  - `ShiftIn.h` for input
+  - `tinyNeoPixel.h` for RGB LED control
+- Color index logic and names shared across all modules via `colorTable[]`.
+
+---
+
+## 📜 License
+
+Licensed under [GNU GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html).  
+Original reference from [CodapopKSP/UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft).
+
+---
+
+## 🛠 Author
+
+Final version authored by **J. Rostoker** for **Jeb's Controller Works**.Based on original work from [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) by CodapopKSP. Adapted and finalized by J. Rostoker for **Jeb's Controller Works**.
