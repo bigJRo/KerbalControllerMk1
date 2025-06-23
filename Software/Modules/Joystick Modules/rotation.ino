@@ -12,18 +12,18 @@
 /***************************************************************************************
   Pin Definitions (ATtiny816 w/ megaTinyCore Pin Mapping)
 ****************************************************************************************/
-#define SDA 9  // PB1, I2C data pin
-#define SCL 8  // PB0, I2C clock pin
+#define SDA PIN_PB1  // I2C data pin
+#define SCL PIN_PB0  // I2C clock pin
 
-#define INT_OUT 4     // PA4, Interrupt output to notify host of button state change
-#define BUTTON_JOY 5  // PA5, Joystick Button Input
-#define A3 PIN_PA6          // PA6, joystick axis 3
-#define A2 PIN_PA7         // PA7, joystick axis 2
-#define A1 PIN_PB5        // PB5, joystick axis 1
-#define BUTTON02 11   // PB3, RGB Button 2
-#define BUTTON01 10   // PC0, RGB Button 1
+#define INT_OUT PIN_PA4     // Interrupt output to notify host of button state change
+#define BUTTON_JOY PIN_A5  // Joystick Button Input
+#define A3 PIN_PA6          // Joystick axis 3
+#define A2 PIN_PA7         // Joystick axis 2
+#define A1 PIN_PB5        // Joystick axis 1
+#define BUTTON02 PIN_PB3   // RGB Button 2
+#define BUTTON01 PIN_PC0   // RGB Button 1
 
-#define neopixCmd 14  // PC1, NeoPixel data output pin
+#define neopixCmd PIN_PC1  // NeoPixel data output pin
 
 /***************************************************************************************
   Constants and Globals
