@@ -1,5 +1,13 @@
 #include "ButtonModuleCore.h"
 
+/********************************************************************************************************************************
+  Button Module Core for Kerbal Controller
+
+  Handles common functions for all Button Modules for us in Kerbal Controller Mk1
+  Licensed under the GNU General Public License v3.0 (GPL-3.0).
+  Final code written by J. Rostoker for Jeb's Controller Works.
+********************************************************************************************************************************/
+
 /***************************************************************************************
   Lookup table of RGB color definitions for LED feedback
   Stored in PROGMEM to save precious SRAM on the ATtiny816
@@ -36,14 +44,14 @@ const buttonPixel colorTable[] PROGMEM = {
 const uint8_t discreteLEDs[4] = { led_13, led_14, led_15, led_16 };  // Discrete output pins mapped to final 4 button functions
 
 volatile bool updateLED = false;  // Flag from I2C input event
-uint16_t button_state_bits = 0;  // Bitfield for all buttons
-uint16_t led_bits = 0;  // Desired LED state
-uint16_t prev_led_bits = 0;  // Previous LED state (to avoid redundant updates)
+uint16_t button_state_bits = 0;   // Bitfield for all buttons
+uint16_t led_bits = 0;            // Desired LED state
+uint16_t prev_led_bits = 0;       // Previous LED state (to avoid redundant updates)
 
 /***************************************************************************************
   Setup for libary objects
 ****************************************************************************************/
-ShiftIn<2> shift;  // 16-bit shift register interface
+ShiftIn<2> shift;                                                // 16-bit shift register interface
 tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);  // Neopixel LED object
 
 /***************************************************************************************
@@ -85,7 +93,7 @@ void readButtonStates() {
       newState |= (shift.state(i) ? 1 : 0) << i;
     }
     button_state_bits = newState;
-    setInterrupt(); // Signal to master that buttons have changed
+    setInterrupt();  // Signal to master that buttons have changed
   }
 }
 
@@ -149,7 +157,7 @@ void handleRequestEvent() {
     (uint8_t)(led_bits >> 8)              // LED MSB (control for LEDs 8–15)
   };
   Wire.write(response, sizeof(response));  // Send full report
-  clearInterrupt();  // Clear interrupt since the master responded
+  clearInterrupt();                        // Clear interrupt since the master responded
 }
 
 void handleReceiveEvent(int16_t howMany) {
