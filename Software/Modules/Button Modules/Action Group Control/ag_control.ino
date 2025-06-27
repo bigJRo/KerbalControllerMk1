@@ -14,20 +14,20 @@
 /***************************************************************************************
   Pin Definitions (ATtiny816 w/ megaTinyCore Pin Mapping)
 ****************************************************************************************/
-#define SDA 9  // PB1, I2C data pin
-#define SCL 8  // PB0, I2C clock pin
+#define SDA PIN_PB1  // I2C data pin
+#define SCL PIN_PB0  // I2C clock pin
 
-#define INT_OUT 4      // PA4, Interrupt output to notify host of button state change
-#define load 7         // PA7, Shift register load pin
-#define clockEnable 6  // PA6, Shift register clock enable (active low)
-#define clockIn 13     // PB5, Shift register clock input
-#define dataInPin 5    // PA5, Shift register data pin
-#define neopixCmd 12   // PB4, NeoPixel data output pin
+#define INT_OUT PIN_PA4      // Interrupt output to notify host of button state change
+#define load PIN_PA7         // Shift register load pin
+#define clockEnable PIN_PA6  // Shift register clock enable (active low)
+#define clockIn PIN_PB5      // Shift register clock input
+#define dataInPin PIN_PA5    // Shift register data pin
+#define neopixCmd PIN_PB4    // NeoPixel data output pin
 
-#define led_13 11  // PB3, Lock LED 1
-#define led_14 15  // PC2, Lock LED 2
-#define led_15 10  // PB2, Lock LED 3
-#define led_16 14  // PC1, Lock LED 4
+#define led_13 PIN_PB3  // Lock LED 1
+#define led_14 PIN_PC2  // Lock LED 2
+#define led_15 PIN_PB2  // Lock LED 3
+#define led_16 PIN_PC1  // Lock LED 4
 
 /***************************************************************************************
   Constants and Globals
@@ -210,7 +210,7 @@ void loop() {
       newState |= (shift.state(i) ? 1 : 0) << i;
     }
     button_state_bits = newState;
-    
+
     digitalWrite(INT_OUT, LOW);  // Notify master
   }
 }
@@ -266,6 +266,8 @@ void requestEvent() {
     (uint8_t)(led_bits >> 8)              // LED MSB (control for LEDs 8–15)
   };
   Wire.write(response, sizeof(response));  // Send full report
+
+  digitalWrite(INT_OUT, HIGH);  // Reset interrupt
 }
 
 void receiveEvent(int howMany) {
