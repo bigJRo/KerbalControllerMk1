@@ -4,7 +4,7 @@
 /********************************************************************************************************************************
   Button Module Core for Kerbal Controller
 
-  Handles common functions for all Button Modules for us in Kerbal Controller Mk1
+  Handles common functions for all Button Modules for use in Kerbal Controller Mk1
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
 ********************************************************************************************************************************/
@@ -82,12 +82,12 @@ extern ShiftIn<2> shift;  // 16-bit shift register interface
 /***************************************************************************************
   Core Function Prototypes
 ****************************************************************************************/
-void beginModule(uint8_t panel_addr);  //  Function for setup in main sketch
-void handleRequestEvent();             //  I2C function, responds to master read request with 4-byte status report
-void handleReceiveEvent();             //  I2C function, reacts to master sent LED state change request
-void readButtonStates();               // Function to check for button state changes
-void setInterrupt();                   // Set interrupt to incidate to I2C master
-void clearInterrupt();                 // Clears interrupt
+void beginModule(uint8_t panel_addr);       //  Function for setup in main sketch
+void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
+void handleReceiveEvent(int16_t howMany));  //  I2C function, reacts to master sent LED state change request
+void readButtonStates();                    // Function to check for button state changes
+void setInterrupt();                        // Set interrupt to incidate to I2C master
+void clearInterrupt();                      // Clears interrupt
 
 buttonPixel getColorFromTable(ColorIndex index);  // Helper to fetch RGB color struct from PROGMEM
 buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive, uint8_t colorIndex);
