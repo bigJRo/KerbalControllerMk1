@@ -1,124 +1,92 @@
 # Action Group Control Module – Kerbal Controller Mk1
 
 This is the finalized firmware for the **Action Group Control Module** in the **Kerbal Controller Mk1** system.  
-It handles button input and RGB LED feedback for Action Group toggles, communicating with a host device over I2C.
+It handles action group toggling, RGB LED feedback, and I2C communication with the host.
 
 ---
 
 ## 📦 Overview
 
 - **MCU**: ATtiny816 (via megaTinyCore)
-- **Communication**: I2C (slave address `0x29`)
+- **Communication**: I2C (slave address `0x23`)
 - **Inputs**: 16 buttons via 2× 74HC165 shift registers
 - **Outputs**:
-  - 12 RGB NeoPixel LEDs for AG state indication
-  - 4 discrete LED pins (unused in this module)
-- **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
+  - 12 RGB NeoPixel LEDs for button state/status
+  - 4 discrete output pins (Lock LEDs)
+- **Host Compatibility**: Works with the Kerbal Simpit host-side Arduino firmware
+- **Core Library**: Uses [ButtonModuleCore](../ButtonModuleCore)
 
 ---
 
 ## 🚀 Features
 
 - Reads 16 input buttons using shift registers
-- Controls 12 RGB LEDs via NeoPixels
-- Responds to host commands to set LED states
+- Controls 12 RGB LEDs via NeoPixels using `tinyNeoPixel`
+- Updates 4 discrete outputs (lock states)
 - Communicates with host microcontroller over I2C
-- Uses color-coded feedback based on a shared color table
-- Low memory footprint using `PROGMEM` for color data
+- Uses a shared color table in `PROGMEM` for low SRAM usage
+- Module-specific LED logic for parachute overlay handling
+- **Built-in Bulb Test** on startup for verifying LED and output function
 
 ---
 
-## 🧠 Button Layout
+## 🎛 Button Mapping
 
-| Index | Command    | Default LED Color |
-|-------|------------|-------------------|
-| 0     | AG1        | Green             |
-| 1     | AG2        | Green             |
-| 2     | AG3        | Green             |
-| 3     | AG4        | Green             |
-| 4     | AG5        | Green             |
-| 5     | AG6        | Green             |
-| 6     | AG7        | Green             |
-| 7     | AG8        | Green             |
-| 8     | AG9        | Green             |
-| 9     | AG10       | Green             |
-| 10    | AG11       | Green             |
-| 11    | AG12       | Green             |
-| 12–15 | Unused     | N/A               |
-
----
-
-## 🧰 Hardware Connections
-
-### Shift Register Pins
-| Signal        | Pin     | ATtiny816 Pin | Description                 |
-|---------------|---------|---------------|-----------------------------|
-| `load`        | 7       | PA7           | Shift register latch        |
-| `clockEnable` | 6       | PA6           | Enable (active LOW)         |
-| `clockIn`     | 13      | PB5           | Clock input for shift reg   |
-| `dataInPin`   | 5       | PA5           | Serial data from shift reg  |
-
-### NeoPixel
-| Signal      | Pin  | ATtiny816 Pin | Description         |
-|-------------|------|---------------|---------------------|
-| `neopixCmd` | 12   | PB4           | Data to NeoPixel chain |
-
-### I2C Pins
-| Signal | Pin | ATtiny816 Pin | Description     |
-|--------|-----|---------------|-----------------|
-| SDA    | 9   | PB1           | I2C Data        |
-| SCL    | 8   | PB0           | I2C Clock       |
-
-### Discrete LEDs (Unused in this module)
-| Label        | Pin | ATtiny816 Pin |
-|--------------|-----|---------------|
-| `led_13`     | 11  | PB3           |
-| `led_14`     | 15  | PC2           |
-| `led_15`     | 10  | PB2           |
-| `led_16`     | 14  | PC1           |
+| Index | Label         | Function            |
+|-------|---------------|---------------------|
+| 0     | AG1           | Action Group #1     |
+| 1     | AG2           | Action Group #2     |
+| 2     | AG3           | Action Group #3     |
+| 3     | AG4           | Action Group #4     |
+| 4     | AG5           | Action Group #5     |
+| 5     | AG6           | Action Group #6     |
+| 6     | AG7           | Action Group #7     |
+| 7     | AG8           | Action Group #8     |
+| 8     | AG9           | Action Group #9     |
+| 9     | AG10          | Action Group #10    |
+| 10    | AG11          | Action Group #11    |
+| 11    | AG12          | Action Group #12    |
+| 12–15 | Unused        | N/A                 |
 
 ---
 
-## 🧾 I2C Protocol
+## 🎨 LED Color Configuration
 
-This module acts as an I2C **slave** at address `0x29`.  
-Communication format:
+| LED Index | Label | Color  |
+|-----------|-------|--------|
+| 0–11      | AG1–12| GREEN  |
 
-### Master → Module (Write 2 bytes)
-- `[0]`: LED control bits 0–7
-- `[1]`: LED control bits 8–15
-
-### Module → Master (Read 4 bytes)
-- `[0]`: Button bits 0–7
-- `[1]`: Button bits 8–15
-- `[2]`: LED bits 0–7 (echo)
-- `[3]`: LED bits 8–15 (echo)
-
-- Each bit corresponds to a specific Action Group LED.
-- NeoPixels reflect state changes with defined colors or dim gray when inactive.
+Inactive LEDs display DIM_GRAY.
 
 ---
 
-## 🧑‍💻 Development Notes
+## 🔧 Setup
 
-- Built using the Arduino IDE with [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore).
-- Uses:
-  - `Wire.h` for I2C
-  - `ShiftIn.h` for input
-  - `tinyNeoPixel.h` for RGB LED control
-- Color index logic and names shared across all modules via `colorTable[]`.
+The firmware calls `beginModule(panel_addr)` in `setup()`, which:
+- Initializes I2C, NeoPixels, shift registers, and discrete outputs
+- Runs a **bulb test** on startup (cycles NeoPixels through R, G, B, W and flashes outputs)
 
 ---
 
-## 📜 License
+## 📂 Files
 
-Licensed under [GNU GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html).  
-Original reference from [CodapopKSP/UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft).
+- `VehicleControlModule.ino` – Main firmware file
+- `ButtonModuleCore` – Shared library (in separate folder)
 
 ---
 
-## 🛠 Author
+## 🛠 Build Environment
 
-Final version authored by **J. Rostoker** for **Jeb's Controller Works**.  
-Based on original work from [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) by CodapopKSP.  
-Adapted and finalized by J. Rostoker for **Jeb's Controller Works**.
+- Arduino IDE or PlatformIO
+- Board: ATtiny816 (megaTinyCore)
+- Libraries:
+  - `tinyNeoPixel`
+  - `ShiftIn`
+  - `Wire`
+
+---
+
+© 2025 Jeb's Controller Works. Licensed under GPLv3.
+
+
+---
