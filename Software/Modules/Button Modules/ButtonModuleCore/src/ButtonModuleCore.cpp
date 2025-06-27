@@ -71,11 +71,7 @@ void beginModule(uint8_t panel_addr) {
   leds.begin();
   delay(10);
 
-  for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    buttonPixel px = (i < 8) ? getColorFromTable(WHITE) : getColorFromTable(BLACK);
-    leds.setPixelColor(i, px.r, px.g, px.b);
-  }
-  leds.show();
+  bulbTest();  // <-- Run bulb test on startup
 
   Wire.begin(SDA, SCL, panel_addr);
   Wire.onReceive(handleReceiveEvent);
@@ -127,6 +123,44 @@ buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive,
   if (!overlayEnabled || !modeActive) return getColorFromTable(BLACK);
   if (localActive) return getColorFromTable(static_cast<ColorIndex>(colorIndex));
   return getColorFromTable(DIM_GRAY);
+}
+
+/***************************************************************************************
+  Bulb test function that cycles through R, G, B, W values
+  and illuminated discrete LEDs  
+****************************************************************************************/
+void bulbTest() {
+  const buttonPixel testColors[] = {
+    {128, 0, 0},     // RED
+    {0, 128, 0},     // GREEN
+    {0, 0, 128},     // BLUE
+    {128, 128, 128}  // WHITE
+  };
+
+  for (uint8_t phase = 0; phase < 4; phase++) {
+    for (uint8_t i = 0; i < NUM_LEDS; i++) {
+      leds.setPixelColor(i, testColors[(i + phase) % 4].r,
+                            testColors[(i + phase) % 4].g,
+                            testColors[(i + phase) % 4].b);
+    }
+
+    for (uint8_t j = 0; j < 4; j++) {
+      digitalWrite(discreteLEDs[j], (j + phase) % 2 ? HIGH : LOW);
+    }
+
+    leds.show();
+    delay(150);
+  }
+
+  // Turn off all LEDs and discrete outputs
+  for (uint8_t i = 0; i < NUM_LEDS; i++) {
+    leds.setPixelColor(i, 0, 0, 0);
+  }
+  for (uint8_t j = 0; j < 4; j++) {
+    digitalWrite(discreteLEDs[j], LOW);
+  }
+  leds.show();
+  delay(50);
 }
 
 /***************************************************************************************
