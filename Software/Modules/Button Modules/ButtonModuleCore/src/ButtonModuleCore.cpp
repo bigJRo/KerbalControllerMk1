@@ -3,7 +3,7 @@
 /********************************************************************************************************************************
   Button Module Core for Kerbal Controller
 
-  Handles common functions for all Button Modules for us in Kerbal Controller Mk1
+  Handles common functions for all Button Modules for use in Kerbal Controller Mk1
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
 ********************************************************************************************************************************/
