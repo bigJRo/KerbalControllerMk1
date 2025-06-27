@@ -88,6 +88,7 @@ void handleReceiveEvent(int16_t howMany));  //  I2C function, reacts to master s
 void readButtonStates();                    // Function to check for button state changes
 void setInterrupt();                        // Set interrupt to incidate to I2C master
 void clearInterrupt();                      // Clears interrupt
+void bulbTest();                            // test function to excercise LEDs as part of start up
 
 buttonPixel getColorFromTable(ColorIndex index);  // Helper to fetch RGB color struct from PROGMEM
 buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive, uint8_t colorIndex);
