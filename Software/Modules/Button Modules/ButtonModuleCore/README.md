@@ -32,6 +32,47 @@ It consolidates shared behavior across all button-based modules, such as I2C com
 
 ---
 
+## 🧰 Hardware Pin Mapping
+
+| Signal        | ATtiny816 Pin | Arduino Macro | Description                         |
+|---------------|---------------|---------------|-------------------------------------|
+| SDA           | PB1           | `SDA`         | I2C data line                       |
+| SCL           | PB0           | `SCL`         | I2C clock line                      |
+| Interrupt     | PA4           | `INT_OUT`     | Output to host to signal activity  |
+| Shift Load    | PA7           | `load`        | Shift register load                 |
+| Clock Enable  | PA6           | `clockEnable` | Shift register clock enable (low)  |
+| Clock In      | PB5           | `clockIn`     | Shift register clock input         |
+| Data In       | PA5           | `dataInPin`   | Shift register data input          |
+| NeoPixels     | PB4           | `neopixCmd`   | NeoPixel LED data out              |
+| Discrete LED1 | PB3           | `led_13`      | Discrete output 1 (Lock LED)       |
+| Discrete LED2 | PC2           | `led_14`      | Discrete output 2 (Lock LED)       |
+| Discrete LED3 | PB2           | `led_15`      | Discrete output 3 (Lock LED)       |
+| Discrete LED4 | PC1           | `led_16`      | Discrete output 4 (Lock LED)       |
+
+---
+
+## 🔧 API Summary
+
+### `beginModule(panel_addr)`
+Initializes pins, I2C, LEDs, and shift registers. Starts the bulb test.
+
+### `readButtonStates()`
+Checks for any changes in the button inputs via shift register.
+
+### `setInterrupt()` / `clearInterrupt()`
+Controls the INT line for host communication.
+
+### `handleRequestEvent()` / `handleReceiveEvent()`
+Handles I2C communication with the host controller.
+
+### `getColorFromTable(ColorIndex index)`
+Retrieves RGB values from the PROGMEM-based color table.
+
+### `overlayColor(...)`
+Applies conditional overlay logic for special LED states.
+
+---
+
 ## 📚 Example Usage
 
 ```cpp
@@ -72,6 +113,15 @@ The following elements must be defined in the module sketch:
 - `pixel_Array[]` – LED color map for the module
 - `commandNames[][]` – Names of commands per button index
 - `handle_ledUpdate()` – Logic to respond to I2C LED state changes
+
+---
+
+## 📂 File Structure
+
+- `ButtonModuleCore.h` – Header file with declarations and macros
+- `ButtonModuleCore.cpp` – Source file with implementation
+- `library.properties` – Arduino library metadata
+- `examples/ExampleUsage/ExampleUsage.ino` – Simple usage demo
 
 ---
 
