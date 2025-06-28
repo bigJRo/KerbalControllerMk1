@@ -1,4 +1,4 @@
-#include "RotaryEncoder.h"
+#include "RotaryEncoderCore.h"
 
 void attachEncoder(RotaryEncoder& encoder, uint8_t pinA, uint8_t pinB, uint8_t buttonPin) {
   encoder.pinA = pinA;
