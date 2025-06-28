@@ -126,41 +126,54 @@ buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive,
 }
 
 /***************************************************************************************
-  Bulb test function that cycles through R, G, B, W values
-  and illuminated discrete LEDs  
+  Bulb Test Function
+  - Cycles through RED, GREEN, BLUE, WHITE on all pixels
+  - Then displays a specific pattern on pixel_Array
+  - Sets odd discrete outputs HIGH and even LOW during the pattern
+  - Holds the pattern for 2 seconds before resetting
 ****************************************************************************************/
 void bulbTest() {
-  const buttonPixel testColors[] = {
-    {128, 0, 0},     // RED
-    {0, 128, 0},     // GREEN
-    {0, 0, 128},     // BLUE
-    {128, 128, 128}  // WHITE
-  };
+  const ColorIndex sequence[] = { RED, GREEN, BLUE, WHITE };
 
-  for (uint8_t phase = 0; phase < 4; phase++) {
+  // Cycle all NeoPixels through the base color sequence
+  for (ColorIndex color : sequence) {
+    buttonPixel px = getColorFromTable(color);
     for (uint8_t i = 0; i < NUM_LEDS; i++) {
-      leds.setPixelColor(i, testColors[(i + phase) % 4].r,
-                            testColors[(i + phase) % 4].g,
-                            testColors[(i + phase) % 4].b);
+      leds.setPixelColor(i, px.r, px.g, px.b);
     }
 
     for (uint8_t j = 0; j < 4; j++) {
-      digitalWrite(discreteLEDs[j], (j + phase) % 2 ? HIGH : LOW);
+      digitalWrite(discreteLEDs[j], (color % 2 == j % 2) ? HIGH : LOW);  // Alternating pattern
     }
 
     leds.show();
     delay(150);
   }
 
-  // Turn off all LEDs and discrete outputs
+  // Custom pixel pattern
+  const ColorIndex finalPattern[NUM_LEDS] = {
+    RED, WHITE, BLUE, GREEN,
+    RED, BLUE, WHITE, RED,
+    GREEN, BLUE, WHITE, GREEN
+  };
+
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    leds.setPixelColor(i, 0, 0, 0);
+    buttonPixel px = getColorFromTable(finalPattern[i]);
+    leds.setPixelColor(i, px.r, px.g, px.b);
   }
+
+  // Set discrete LEDs: odd HIGH, even LOW
   for (uint8_t j = 0; j < 4; j++) {
-    digitalWrite(discreteLEDs[j], LOW);
+    digitalWrite(discreteLEDs[j], (j % 2 == 1) ? HIGH : LOW);
   }
+
   leds.show();
-  delay(50);
+  delay(2000);  // Hold final pattern for 2 seconds
+
+  // Clear everything
+  for (uint8_t i = 0; i < NUM_LEDS; i++) leds.setPixelColor(i, 0, 0, 0);
+  leds.show();
+  for (uint8_t j = 0; j < 4; j++) digitalWrite(discreteLEDs[j], LOW);
 }
 
 /***************************************************************************************
