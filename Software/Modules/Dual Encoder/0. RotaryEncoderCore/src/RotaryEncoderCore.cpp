@@ -1,5 +1,9 @@
 #include "RotaryEncoderCore.h"
 
+inline bool isButtonAvailable(const RotaryEncoder& enc) {
+  return enc.buttonPin != 0xFF;
+}
+
 void attachEncoder(RotaryEncoder& encoder, uint8_t pinA, uint8_t pinB, uint8_t buttonPin) {
   encoder.pinA = pinA;
   encoder.pinB = pinB;
@@ -8,29 +12,34 @@ void attachEncoder(RotaryEncoder& encoder, uint8_t pinA, uint8_t pinB, uint8_t b
 
   pinMode(pinA, INPUT);
   pinMode(pinB, INPUT);
-  if (buttonPin != 0xFF) {
+  if (isButtonAvailable(encoder)) {
     pinMode(buttonPin, INPUT);  // Active-high: no pull-up
   }
 }
 
-void updateEncoder(RotaryEncoder& encoder) {
-  uint8_t state = (digitalRead(encoder.pinA) << 1) | digitalRead(encoder.pinB);
+inline void updateEncoder(RotaryEncoder& encoder) {
+  uint8_t a = digitalRead(encoder.pinA);
+  uint8_t b = digitalRead(encoder.pinB);
+  uint8_t state = (a << 1) | b;
+
   if ((encoder.lastState == 0b00 && state == 0b01) ||
       (encoder.lastState == 0b01 && state == 0b11) ||
       (encoder.lastState == 0b11 && state == 0b10) ||
       (encoder.lastState == 0b10 && state == 0b00)) {
     encoder.position++;
+    if (encoder.onChange) encoder.onChange(encoder.position);
   } else if ((encoder.lastState == 0b00 && state == 0b10) ||
              (encoder.lastState == 0b10 && state == 0b11) ||
              (encoder.lastState == 0b11 && state == 0b01) ||
              (encoder.lastState == 0b01 && state == 0b00)) {
     encoder.position--;
+    if (encoder.onChange) encoder.onChange(encoder.position);
   }
   encoder.lastState = state;
 }
 
 void updateEncoderButton(RotaryEncoder& encoder, unsigned long shortThreshold, unsigned long longThreshold) {
-  if (encoder.buttonPin == 0xFF) return;
+  if (!isButtonAvailable(encoder)) return;
 
   bool pressed = digitalRead(encoder.buttonPin);  // Active-high logic
 
