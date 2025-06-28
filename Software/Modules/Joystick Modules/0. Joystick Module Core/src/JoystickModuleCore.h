@@ -79,8 +79,8 @@ extern int16_t axis1, axis2, axis3;
 /***************************************************************************************
   Core Function Prototypes
 ****************************************************************************************/
-void beginJoystickModule(uint8_t address, uint8_t neopixelPin, const buttonPixel* colorTable, size_t colorCount);
-void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS], uint8_t analogPins[3]);
+void beginModule(uint8_t address);
+void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS]);
 void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
 void handleReceiveEvent(int howMany);  //  I2C function, reacts to master sent LED state change request
 void setInterrupt();                        // Set interrupt to incidate to I2C master
