@@ -25,7 +25,7 @@ It handles function-related inputs (like engine groups, science, control modes),
 - Controls 4 discrete output pins based on last 4 button states
 - Communicates with host microcontroller over I2C
 - Uses a shared color table in PROGMEM for low SRAM usage
-- Built-in **Bulb Test** on startup to verify all LEDs and outputs
+- Built-in **Bulb Test** on startup to verify RGB and digital output operation
 
 ---
 
@@ -45,10 +45,17 @@ It handles function-related inputs (like engine groups, science, control modes),
 | 9     | Ctrl Pt Pri      | Primary control point             |
 | 10    | Lock Ctrl        | Lock control mode                 |
 | 11    | Heat Shield      | Activate heat shield              |
+| 12–15 | Discrete Outputs | See below                         |
+
+### 🔌 Discrete Outputs
+
+| Index | Label        | Pin Function |
+|-------|--------------|--------------|
 | 12    | Throttle Lock    | Discrete LED output (LED13)       |
 | 13    | Precision        | Discrete LED output (LED14)       |
 | 14    | SCE              | Discrete LED output (LED15)       |
 | 15    | Audio            | Discrete LED output (LED16)       |
+
 
 ---
 
@@ -78,7 +85,10 @@ Inactive LEDs display `DIM_GRAY`.
 The firmware calls `beginModule(panel_addr)` in `setup()`, which:
 
 - Initializes I2C, NeoPixels, shift registers, and discrete outputs
-- Runs a **bulb test** on startup (cycles NeoPixels through R, G, B, W and flashes outputs)
+- Runs a **bulb test**:
+  - RGB LEDs cycle through red, green, blue, white  
+  - Final LED pattern held for 2 seconds  
+  - Odd discrete pins set HIGH, even set LOW
 
 ---
 
