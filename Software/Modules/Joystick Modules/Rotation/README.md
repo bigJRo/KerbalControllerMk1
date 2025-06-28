@@ -76,7 +76,7 @@ The firmware calls `beginModule(panel_addr)` in `setup()`, which:
 
 ## 📂 Files
 
-- `RotationControlModule.ino` – Main firmware file
+- `rotation.ino` – Main firmware file
 - `JoystickModuleCore` – Shared library (in separate folder)
 
 ---
