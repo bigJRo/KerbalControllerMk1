@@ -15,11 +15,11 @@
 #define SDA PIN_PB1  // I2C data pin
 #define SCL PIN_PB0  // I2C clock pin
 
-#define INT_OUT PIN_PA4     // Interrupt output to notify host of button state change
+#define INT_OUT PIN_PA4    // Interrupt output to notify host of button state change
 #define BUTTON_JOY PIN_A5  // Joystick Button Input
-#define A3 PIN_PA6          // Joystick axis 3
+#define A3 PIN_PA6         // Joystick axis 3
 #define A2 PIN_PA7         // Joystick axis 2
-#define A1 PIN_PB5        // Joystick axis 1
+#define A1 PIN_PB5         // Joystick axis 1
 #define BUTTON02 PIN_PB3   // RGB Button 2
 #define BUTTON01 PIN_PC0   // RGB Button 1
 
@@ -32,27 +32,29 @@ constexpr uint8_t panel_addr = 0x2C;  // I2C slave address for Rotation Control 
 constexpr uint8_t NUM_LEDS = 2;       // Number of NeoPixels (attached to RGB buttons)
 constexpr uint8_t NUM_BUTTONS = 3;    // Total input buttons (1 joystick + 2 RGB buttons)
 
-unsigned long lastDebounceTime[NUM_BUTTONS] = {0, 0, 0};  // Per-button debounce timing
-const unsigned long debounceDelay = 20;  // Debounce delay threshold in ms
+unsigned long lastDebounceTime[NUM_BUTTONS] = { 0 };  // Per-button debounce timing
+const unsigned long debounceDelay = 20;               // Debounce delay threshold in ms
 
-uint8_t buttonStates[NUM_BUTTONS] = {0, 0, 0};            // Stable debounced states
-uint8_t lastButtonReadings[NUM_BUTTONS] = {0, 0, 0};      // Most recent raw readings
-uint8_t buttonBits = 0;                                   // Packed bitfield for I2C transmission
+uint8_t buttonStates[NUM_BUTTONS] = { 0 };        // Stable debounced states
+uint8_t lastButtonReadings[NUM_BUTTONS] = { 0 };  // Most recent raw readings
+uint8_t buttonBits = 0;                           // Packed bitfield for I2C transmission
 
-int16_t axis1 = 0;  // Joystick X-axis analog reading
-int16_t axis2 = 0;  // Joystick Y-axis analog reading
-int16_t axis3 = 0;  // Joystick Z-axis (twist/throttle) reading
+int16_t axis1 = 0;  // Joystick X-axis analog reading (converted to int16_t)
+int16_t axis2 = 0;  // Joystick Y-axis analog reading (converted to int16_t)
+int16_t axis3 = 0;  // Joystick Z-axis (twist) reading (converted to int16_t)
 
-tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);  // NeoPixel chain object
+constexpr int16_t JOY_DEADZONE = 10;  // Joystick deadzone
+
+volatile bool updateLED = false;  // Flag indicating pending LED update
+uint8_t led_bits = 0;             // RGB LED control bitfield (2 bits)
+uint8_t prev_led_bits = 0;        // Previous LED state to detect changes
 
 // RGB color structure
 struct buttonPixel {
   uint8_t r, g, b;
 };
 
-volatile bool updateLED = false;  // Flag indicating pending LED update
-uint8_t led_bits = 0;             // RGB LED control bitfield (2 bits)
-uint8_t prev_led_bits = 0;        // Previous LED state to detect changes
+tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);  // NeoPixel chain object
 
 /***************************************************************************************
   Lookup table of RGB color definitions for LED feedback
@@ -85,8 +87,26 @@ const buttonPixel colorTable[] PROGMEM = {
 
 // Named index for color lookup
 enum ColorIndex : uint8_t {
-  RED, AMBER, ORANGE, GOLDEN_YELLOW, SKY_BLUE, GREEN, MINT, MAGENTA, CYAN, LIME,
-  WHITE, BLACK, DIM_GRAY, BLUE, BRIGHT_RED, BRIGHT_GREEN, BRIGHT_BLUE, YELLOW, AQUA, FUCHSIA
+  RED,
+  AMBER,
+  ORANGE,
+  GOLDEN_YELLOW,
+  SKY_BLUE,
+  GREEN,
+  MINT,
+  MAGENTA,
+  CYAN,
+  LIME,
+  WHITE,
+  BLACK,
+  DIM_GRAY,
+  BLUE,
+  BRIGHT_RED,
+  BRIGHT_GREEN,
+  BRIGHT_BLUE,
+  YELLOW,
+  AQUA,
+  FUCHSIA
 };
 
 // Fetch RGB triplet from PROGMEM
@@ -176,21 +196,39 @@ void loop() {
     if ((millis() - lastDebounceTime[i]) > debounceDelay) {
       if (rawButtons[i] != buttonStates[i]) {
         buttonStates[i] = rawButtons[i];
-        digitalWrite(INT_OUT, LOW);  // Assert INT to host on valid state change
+        digitalWrite(INT_OUT, LOW);  //  Trigger interrupt to inform master of change
       }
     }
   }
 
-  // Pack debounced button states into bitfield
   buttonBits = 0;
   for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
     if (buttonStates[i]) buttonBits |= (1 << i);
   }
 
   // Read raw analog values from all 3 joystick axes
-  axis1 = analogRead(A1);
-  axis2 = analogRead(A2);
-  axis3 = analogRead(A3);
+  int16_t raw1 = analogRead(A1);
+  int16_t raw2 = analogRead(A2);
+  int16_t raw3 = analogRead(A3);
+
+  if (abs(raw1) > JOY_DEADZONE) {
+    axis1 = map(raw1, 0, 1023, INT16_MIN, INT16_MAX);
+    digitalWrite(INT_OUT, LOW);  //  Trigger interrupt to inform master of change
+  } else {
+    axis1 = 0;
+  }
+  if (abs(raw2) > JOY_DEADZONE) {
+    axis2 = map(raw2, 0, 1023, INT16_MIN, INT16_MAX);
+    digitalWrite(INT_OUT, LOW);  //  Trigger interrupt to inform master of change
+  } else {
+    axis2 = 0;
+  }
+  if (abs(raw3) > JOY_DEADZONE) {
+    axis1 = map(raw3, 0, 1023, INT16_MIN, INT16_MAX);
+    digitalWrite(INT_OUT, LOW);  //  Trigger interrupt to inform master of change
+  } else {
+    axis3 = 0;
+  }
 }
 
 /***************************************************************************************
@@ -232,7 +270,7 @@ void requestEvent() {
   };
   Wire.write(response, sizeof(response));
 
-  digitalWrite(INT_OUT, HIGH);
+  digitalWrite(INT_OUT, HIGH);  // Reset interrupt
 }
 
 void receiveEvent(int howMany) {
