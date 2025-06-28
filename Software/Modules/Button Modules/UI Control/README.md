@@ -25,100 +25,99 @@ It handles button input and RGB LED feedback for UI-related actions, communicati
 - Communicates with host microcontroller over I2C
 - Uses color-coded feedback based on a shared color table
 - Low memory footprint using `PROGMEM` for color data
+- Built-in Bulb Test on startup for verifying LED and output function
 
 ---
 
-## 🧠 Button Layout
+## 🚀 Features
 
-| Index | Command          | Default LED Color |
-|-------|------------------|-------------------|
-| 0     | Map Enable       | Amber             |
-| 1     | Cycle Map -      | Green             |
-| 2     | Cycle Map +      | Green             |
-| 3     | Navball Mode     | Blue              |
-| 4     | IVA              | Amber             |
-| 5     | Cycle Cam        | Sky Blue          |
-| 6     | Cycle Ship -     | Green             |
-| 7     | Cycle Ship +     | Green             |
-| 8     | Reset Focus      | Green             |
-| 9     | Screen Shot      | Magenta           |
-| 10    | UI               | Amber             |
-| 11    | DEBUG            | Red               |
-| 12–15 | Unused / Reserved| N/A               |
+- Reads 16 input buttons using shift registers
+- Controls 12 RGB LEDs via NeoPixels using `tinyNeoPixel`
+- Controls 4 discrete output pins based on last 4 button states
+- Communicates with host microcontroller over I2C
+- Uses a shared color table in PROGMEM for low SRAM usage
+- Built-in **Bulb Test** on startup to verify RGB and digital output operation
 
 ---
 
-## 🧰 Hardware Connections
+## 🎛 Button Mapping
 
-### Shift Register Pins
-| Signal        | Pin     | ATtiny816 Pin | Description                 |
-|---------------|---------|---------------|-----------------------------|
-| `load`        | 7       | PA7           | Shift register latch        |
-| `clockEnable` | 6       | PA6           | Enable (active LOW)         |
-| `clockIn`     | 13      | PB5           | Clock input for shift reg   |
-| `dataInPin`   | 5       | PA5           | Serial data from shift reg  |
+| Index | Label          | Function        |
+|-------|----------------|-----------------|
+| 0     | Map Enable     | Toggle map      |
+| 1     | Cycle Map -    | Previous map view |
+| 2     | Cycle Map +    | Next map view   |
+| 3     | Navball Mode   | Toggle navball mode |
+| 4     | IVA            | Internal view   |
+| 5     | Cycle Cam      | Cycle camera    |
+| 6     | Cycle Ship -   | Previous ship   |
+| 7     | Cycle Ship +   | Next ship       |
+| 8     | Reset Focus    | Reset camera focus |
+| 9     | Screen Shot    | Take screenshot |
+| 10    | UI             | Toggle UI       |
+| 11    | DEBUG          | Debug mode      |
+| 12–15 | Discrete Outputs | See below     |
 
-### NeoPixel
-| Signal      | Pin  | ATtiny816 Pin | Description         |
-|-------------|------|---------------|---------------------|
-| `neopixCmd` | 12   | PB4           | Data to NeoPixel chain |
+### 🔌 Discrete Outputs
 
-### I2C Pins
-| Signal | Pin | ATtiny816 Pin | Description     |
-|--------|-----|---------------|-----------------|
-| SDA    | 9   | PB1           | I2C Data        |
-| SCL    | 8   | PB0           | I2C Clock       |
-
-### Lock Indicator LEDs (Discrete)
-| Label        | Pin | ATtiny816 Pin |
-|--------------|-----|---------------|
-| `led_13`     | 11  | PB3           |
-| `led_14`     | 15  | PC2           |
-| `led_15`     | 10  | PB2           |
-| `led_16`     | 14  | PC1           |
+| Index | Label        | Pin Function |
+|-------|--------------|--------------|
+| 12    | Unused/Reserved  | Discrete LED output (LED13)       |
+| 13    | Unused/Reserved  | Discrete LED output (LED14)       |
+| 14    | Unused/Reserved  | Discrete LED output (LED15)       |
+| 15    | Unused/Reserved  | Discrete LED output (LED16)       |
 
 ---
 
-## 🧾 I2C Protocol
+## 💡 LED Color Mapping
 
-This module acts as an I2C **slave** at address `0x20`.  
-Communication format:
+| LED Index | Color Index  | Function         |
+|-----------|--------------|------------------|
+| 0         | AMBER        | Map Enable       |
+| 1         | GREEN        | Cycle Map -      |
+| 2         | GREEN        | Cycle Map +      |
+| 3         | BLUE         | Navball Mode     |
+| 4         | AMBER        | IVA              |
+| 5         | SKY_BLUE     | Cycle Cam        |
+| 6         | GREEN        | Cycle Ship -     |
+| 7         | GREEN        | Cycle Ship +     |
+| 8         | GREEN        | Reset Focus      |
+| 9         | MAGENTA      | Screen Shot      |
+| 10        | AMBER        | UI               |
+| 11        | RED          | DEBUG            |
 
-### Master → Module (Write 2 bytes)
-- `[0]`: LED control bits 0–7
-- `[1]`: LED control bits 8–15
-
-### Module → Master (Read 4 bytes)
-- `[0]`: Button bits 0–7
-- `[1]`: Button bits 8–15
-- `[2]`: LED bits 0–7 (echo)
-- `[3]`: LED bits 8–15 (echo)
-
-- Each bit controls a corresponding LED or function (e.g., lock states).
-- NeoPixels reflect state changes with defined colors or dim gray when inactive.
-
----
-
-## 🧑‍💻 Development Notes
-
-- Built using the Arduino IDE with [megaTinyCore](https://github.com/SpenceKonde/megaTinyCore).
-- Uses:
-  - `Wire.h` for I2C
-  - `ShiftIn.h` for input
-  - `tinyNeoPixel.h` for RGB LED control
-- Color index logic and names shared across all modules via `colorTable[]`.
+Inactive LEDs display `DIM_GRAY`.
 
 ---
 
-## 📜 License
+## 🔧 Setup
 
-Licensed under [GNU GPL v3](https://www.gnu.org/licenses/gpl-3.0.en.html).  
-Original reference from [CodapopKSP/UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft).
+The firmware calls `beginModule(panel_addr)` in `setup()`, which:
+
+- Initializes I2C, NeoPixels, shift registers, and discrete outputs
+- Runs a **bulb test**:
+  - RGB LEDs cycle through red, green, blue, white  
+  - Final LED pattern held for 2 seconds  
+  - Odd discrete pins set HIGH, even set LOW
 
 ---
 
-## 🛠 Author
+## 📂 Files
 
-Final version authored by **J. Rostoker** for **Jeb's Controller Works**.  
-Based on original work from [UntitledSpaceCraft](https://github.com/CodapopKSP/UntitledSpaceCraft) by CodapopKSP.  
-Adapted and finalized by J. Rostoker for **Jeb's Controller Works**.
+- `FunctionControlModule.ino` – Main firmware file
+- `ButtonModuleCore` – Shared library (in separate folder)
+
+---
+
+## 🛠 Build Environment
+
+- Arduino IDE or PlatformIO
+- Board: ATtiny816 (megaTinyCore)
+- Libraries:
+  - `tinyNeoPixel`
+  - `ShiftIn`
+  - `Wire`
+
+---
+
+© 2025 Jeb's Controller Works. Licensed under GPLv3.
