@@ -49,10 +49,8 @@ static unsigned long lastDebounceTime[NUM_BUTTONS] = { 0 };
 static uint8_t buttonStates[NUM_BUTTONS] = { 0 };
 static uint8_t lastButtonReadings[NUM_BUTTONS] = { 0 };
 
-static const buttonPixel* colorTablePtr = nullptr;
-
 /***************************************************************************************
-  Setup for libary objects
+  Setup for library objects
 ****************************************************************************************/
 tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);  // Neopixel LED object
 
@@ -70,28 +68,26 @@ void beginModule(uint8_t address) {
   pinMode(A1, INPUT);
   pinMode(A2, INPUT);
   pinMode(A3, INPUT);
-  
+
   // Initialize NeoPixels
   leds.begin();
   delay(10);
-  
+
   bulbTest();
-  
+
   // Set up I2C and define handlers
   Wire.begin(address);
   Wire.onReceive(handleReceiveEvent);
   Wire.onRequest(handleRequestEvent);
 }
 
-/***************************************************************************************
-  Function to read button state using shift register if update is detected
+/****************************************************************************************
+  Read debounced button states and scaled joystick analog input
 ****************************************************************************************/
 void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS]) {
-  for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
-    pinMode(buttonPins[i], INPUT);
-  }
 
-  // Read and debounce all 3 button inputs
+  constexpr int16_t JOY_CENTER = 512;
+  
   uint8_t rawButtons[NUM_BUTTONS] = {
     digitalRead(BUTTON01),
     digitalRead(BUTTON02),
@@ -106,6 +102,7 @@ void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS]) {
     if ((millis() - lastDebounceTime[i]) > debounceDelay) {
       if (rawButtons[i] != buttonStates[i]) {
         buttonStates[i] = rawButtons[i];
+        setInterrupt();
       }
     }
   }
@@ -115,28 +112,16 @@ void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS]) {
     if (buttonStates[i]) buttonBits |= (1 << i);
   }
 
-  // Read raw analog values from all 3 joystick axes
   int16_t raw1 = analogRead(A1);
   int16_t raw2 = analogRead(A2);
   int16_t raw3 = analogRead(A3);
 
-  if (abs(raw1) > JOY_DEADZONE) {
-    axis1 = map(raw1, 0, 1023, INT16_MIN, INT16_MAX);
-    setInterrupt();  //  Trigger interrupt to inform master of change
-  } else {
-    axis1 = 0;
-  }
-  if (abs(raw2) > JOY_DEADZONE) {
-    axis2 = map(raw2, 0, 1023, INT16_MIN, INT16_MAX);
-    setInterrupt();  //  Trigger interrupt to inform master of change
-  } else {
-    axis2 = 0;
-  }
-  if (abs(raw3) > JOY_DEADZONE) {
-    axis1 = map(raw3, 0, 1023, INT16_MIN, INT16_MAX);
-    setInterrupt();  //  Trigger interrupt to inform master of change
-  } else {
-    axis3 = 0;
+  axis1 = abs(raw1 - JOY_CENTER) > JOY_DEADZONE ? map(raw1, 0, 1023, INT16_MIN, INT16_MAX) : 0;  // Scale 10-bit analog input [-512, +511] to full 16-bit signed range
+  axis2 = abs(raw2 - JOY_CENTER) > JOY_DEADZONE ? map(raw2, 0, 1023, INT16_MIN, INT16_MAX) : 0;  // Scale 10-bit analog input [-512, +511] to full 16-bit signed range
+  axis3 = abs(raw3 - JOY_CENTER) > JOY_DEADZONE ? map(raw3, 0, 1023, INT16_MIN, INT16_MAX) : 0;  // Scale 10-bit analog input [-512, +511] to full 16-bit signed range
+
+  if (axis1 != 0 || axis2 != 0 || axis3 != 0) {
+    setInterrupt();
   }
 }
 
@@ -188,51 +173,49 @@ void bulbTest() {
     for (uint8_t i = 0; i < NUM_LEDS; i++) {
       leds.setPixelColor(i, px.r, px.g, px.b);
     }
-
     leds.show();
     delay(150);
 
     // Clear everything
-  for (uint8_t i = 0; i < NUM_LEDS; i++) leds.setPixelColor(i, 0, 0, 0);
-  leds.show();
+    for (uint8_t i = 0; i < NUM_LEDS; i++) leds.setPixelColor(i, 0, 0, 0);
+    leds.show();
   }
+  delay(1000);
+}
 
 /***************************************************************************************
   I2C Event Handlers
 
-  ATtiny816 acts as an I2C SLAVE device at address 0x23.
-  The protocol between master and slave uses 4 bytes:
+  ATtiny816 acts as an I2C SLAVE device.
+  The protocol between master and slave uses 7 bytes:
 
-  - Master reads 4 bytes:
+  - Master reads 7 bytes:
     [0] = button state bits 0–7
-    [1] = button state bits 8–15
-    [2] = LED control bits LSB (LED0–7)
-    [3] = LED control bits MSB (LED8–15)
+    [1–2] = axis1 (int16_t, big-endian)
+    [3–4] = axis2 (int16_t, big-endian)
+    [5–6] = axis3 (int16_t, big-endian)
 
-  - Master writes 2 bytes:
-    [0] = LED control bits LSB
-    [1] = LED control bits MSB
-
-  The LED bits control color changes or status indication depending on the bit state.
+  - Master writes 1 byte:
+    [0] = LED control bits (bitmap for module-specific purposes)
 
 ****************************************************************************************/
 void handleRequestEvent() {
   // Respond to master read request with 7-byte status report
-uint8_t response[7] = {
-      buttonBits,
-      (uint8_t)(axis1 >> 8), (uint8_t)(axis1 & 0xFF),
-      (uint8_t)(axis2 >> 8), (uint8_t)(axis2 & 0xFF),
-      (uint8_t)(axis3 >> 8), (uint8_t)(axis3 & 0xFF)
-    };
-    Wire.write(response, sizeof(response));
-  
-    clearInterrupt();                        // Clear interrupt since the master responded
+  uint8_t response[7] = {
+    buttonBits,
+    (uint8_t)(axis1 >> 8), (uint8_t)(axis1 & 0xFF),
+    (uint8_t)(axis2 >> 8), (uint8_t)(axis2 & 0xFF),
+    (uint8_t)(axis3 >> 8), (uint8_t)(axis3 & 0xFF)
+  };
+  Wire.write(response, sizeof(response));
+
+  clearInterrupt();  // Clear interrupt since the master responded
 }
 
-void handleReceiveEvent(int16_t howMany) {
+void handleReceiveEvent(int howMany) {
   // Master has sent LED state change request
   if (Wire.available() >= 1) {
-      led_bits = Wire.read();
-      updateLED = true;  // Set flag to process LED changes in main loop
+    led_bits = Wire.read();
+    updateLED = true;  // Set flag to process LED changes in main loop
   }
 }
