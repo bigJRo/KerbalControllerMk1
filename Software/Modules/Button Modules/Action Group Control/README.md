@@ -46,11 +46,20 @@ It handles action group toggling, RGB LED feedback, and I2C communication with t
 | 9     | AG10          | Action Group #10    |
 | 10    | AG11          | Action Group #11    |
 | 11    | AG12          | Action Group #12    |
-| 12–15 | Unused        | N/A                 |
+| 12–15 | Discrete Outputs | See below        |
+
+### 🔌 Discrete Outputs
+
+| Index | Label        | Pin Function |
+|-------|--------------|--------------|
+| 12    | Unused       | LED13        |
+| 13    | Unused       | LED14        |
+| 14    | Unused       | LED15        |
+| 15    | Unused       | LED16        |
 
 ---
 
-## 🎨 LED Color Configuration
+## 💡 LED Color Configuration
 
 | LED Index | Label | Color  |
 |-----------|-------|--------|
@@ -64,7 +73,10 @@ Inactive LEDs display DIM_GRAY.
 
 The firmware calls `beginModule(panel_addr)` in `setup()`, which:
 - Initializes I2C, NeoPixels, shift registers, and discrete outputs
-- Runs a **bulb test** on startup (cycles NeoPixels through R, G, B, W and flashes outputs)
+- Runs a **bulb test**:
+  - RGB LEDs cycle through red, green, blue, white  
+  - Final LED pattern held for 2 seconds  
+  - Odd discrete pins set HIGH, even set LOW
 
 ---
 
