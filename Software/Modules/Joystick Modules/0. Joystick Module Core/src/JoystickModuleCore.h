@@ -36,7 +36,7 @@ struct buttonPixel {  //  RGB color values
   uint8_t r, g, b;
 };
 
-enum ColorIndex : uint8_t {  //  // Human-readable color index enum
+enum ColorIndex : uint8_t {  //  Human-readable color index enum
   RED,
   AMBER,
   ORANGE,
@@ -81,12 +81,14 @@ extern int16_t axis1, axis2, axis3;
 ****************************************************************************************/
 void beginModule(uint8_t address);
 void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS]);
-void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
-void handleReceiveEvent(int howMany);  //  I2C function, reacts to master sent LED state change request
-void setInterrupt();                        // Set interrupt to incidate to I2C master
+void handleRequestEvent();                  //  I2C function, responds to master read request with 7-byte status report
+void handleReceiveEvent(int howMany);       //  I2C function, reacts to master sent LED state change request
+void setInterrupt();                        // Set interrupt to indicate to I2C master
 void clearInterrupt();                      // Clears interrupt
+
+void bulbTest();                            // LED test sequence
 
 buttonPixel getColorFromTable(ColorIndex index);  // Helper to fetch RGB color struct from PROGMEM
 buttonPixel overlayColor(bool overlayEnabled, bool modeActive, bool localActive, uint8_t colorIndex);
 
-#endif  //  JOYSTICK_MODULE_CORE_H
+#endif  // JOYSTICK_MODULE_CORE_H
