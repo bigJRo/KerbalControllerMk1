@@ -8,6 +8,7 @@ struct RotaryEncoder {
   volatile bool buttonPressed = false;
   volatile unsigned long buttonPressTime = 0;
   volatile bool buttonHandled = true;
+  volatile uint8_t lastState = 0;
 
   uint8_t pinA;
   uint8_t pinB;
