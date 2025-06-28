@@ -57,6 +57,10 @@ It handles two rotary encoders with integrated push buttons and communicates wit
 
 The Dual Rotary Module sends an 8-byte response when polled by the host:
 
+### 📤 Master Read (from module)
+
+When the host performs a read operation, the module responds with:
+
 | Byte | Description                        |
 |------|------------------------------------|
 | [0]  | Encoder 1 position (MSB)           |
