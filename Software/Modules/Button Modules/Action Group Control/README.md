@@ -52,10 +52,10 @@ It handles action group toggling, RGB LED feedback, and I2C communication with t
 
 | Index | Label        | Pin Function |
 |-------|--------------|--------------|
-| 12    | Unused       | LED13        |
-| 13    | Unused       | LED14        |
-| 14    | Unused       | LED15        |
-| 15    | Unused       | LED16        |
+| 12    | Unused       | Discrete LED output (LED13) |
+| 13    | Unused       | Discrete LED output (LED14) |
+| 14    | Unused       | Discrete LED output (LED15) |
+| 15    | Unused       | Discrete LED output (LED16) |
 
 ---
 
