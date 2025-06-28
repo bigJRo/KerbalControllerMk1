@@ -47,6 +47,17 @@ It handles vehicle-related button input and LED feedback, and communicates with 
 | 10    | DrogueCut     | Drogue cut          |
 | 11    | MainCut       | Main cut            |
 | 12–15 | Lock States   | LED13–LED16 outputs |
+| 12–15 | Discrete Outputs | See below                   |
+
+### 🔌 Discrete Outputs
+
+| Index | Label        | Pin Function |
+|-------|--------------|--------------|
+| 12    | Brake Lock   | Discrete LED output (LED13)        |
+| 13    | Parachute Enable   | Discrete LED output (LED14)        |
+| 14    | Lights Lock     | Discrete LED output (LED15)        |
+| 15    | Gear Lock     | Discrete LED output (LED16)        |
+
 
 ---
 
@@ -66,6 +77,8 @@ It handles vehicle-related button input and LED feedback, and communicates with 
 | 9         | AMBER            | Main Deploy         |
 | 10        | RED              | Drogue Cut          |
 | 11        | RED              | Main Cut            |
+
+Unused or not enabled slots default to `BLACK`. Available functions not engaged are 'DIM_GRAY'.
 
 ---
 
