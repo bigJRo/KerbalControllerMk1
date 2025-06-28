@@ -4,6 +4,7 @@ void attachEncoder(RotaryEncoder& encoder, uint8_t pinA, uint8_t pinB, uint8_t b
   encoder.pinA = pinA;
   encoder.pinB = pinB;
   encoder.buttonPin = buttonPin;
+  encoder.lastState = (digitalRead(pinA) << 1) | digitalRead(pinB);  // Initialize lastState
 
   pinMode(pinA, INPUT);
   pinMode(pinB, INPUT);
@@ -13,20 +14,19 @@ void attachEncoder(RotaryEncoder& encoder, uint8_t pinA, uint8_t pinB, uint8_t b
 }
 
 void updateEncoder(RotaryEncoder& encoder) {
-  static uint8_t lastState = 0;
   uint8_t state = (digitalRead(encoder.pinA) << 1) | digitalRead(encoder.pinB);
-  if ((lastState == 0b00 && state == 0b01) ||
-      (lastState == 0b01 && state == 0b11) ||
-      (lastState == 0b11 && state == 0b10) ||
-      (lastState == 0b10 && state == 0b00)) {
+  if ((encoder.lastState == 0b00 && state == 0b01) ||
+      (encoder.lastState == 0b01 && state == 0b11) ||
+      (encoder.lastState == 0b11 && state == 0b10) ||
+      (encoder.lastState == 0b10 && state == 0b00)) {
     encoder.position++;
-  } else if ((lastState == 0b00 && state == 0b10) ||
-             (lastState == 0b10 && state == 0b11) ||
-             (lastState == 0b11 && state == 0b01) ||
-             (lastState == 0b01 && state == 0b00)) {
+  } else if ((encoder.lastState == 0b00 && state == 0b10) ||
+             (encoder.lastState == 0b10 && state == 0b11) ||
+             (encoder.lastState == 0b11 && state == 0b01) ||
+             (encoder.lastState == 0b01 && state == 0b00)) {
     encoder.position--;
   }
-  lastState = state;
+  encoder.lastState = state;
 }
 
 void updateEncoderButton(RotaryEncoder& encoder, unsigned long shortThreshold, unsigned long longThreshold) {
