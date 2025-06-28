@@ -59,14 +59,25 @@ tinyNeoPixel leds = tinyNeoPixel(NUM_LEDS, neopixCmd, NEO_GRB);  // Neopixel LED
 /***************************************************************************************
   Module configuration helper function
 ****************************************************************************************/
-void beginJoystickModule(uint8_t address, uint8_t neopixelPin, const buttonPixel* colorTable, size_t colorCount) {
-  colorTablePtr = colorTable;
-  leds = tinyNeoPixel(NUM_LEDS, neopixelPin, NEO_GRB);
+void beginModule(uint8_t address) {
+  pinMode(INT_OUT, OUTPUT);
+  clearInterrupt();
+
+  // Button and analog inputs
+  pinMode(BUTTON01, INPUT);
+  pinMode(BUTTON02, INPUT);
+  pinMode(BUTTON_JOY, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  
+  // Initialize NeoPixels
   leds.begin();
   delay(10);
   
   bulbTest();
   
+  // Set up I2C and define handlers
   Wire.begin(address);
   Wire.onReceive(handleReceiveEvent);
   Wire.onRequest(handleRequestEvent);
@@ -75,7 +86,7 @@ void beginJoystickModule(uint8_t address, uint8_t neopixelPin, const buttonPixel
 /***************************************************************************************
   Function to read button state using shift register if update is detected
 ****************************************************************************************/
-void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS], uint8_t analogPins[3]) {
+void readJoystickInputs(uint8_t buttonPins[NUM_BUTTONS]) {
   for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
     pinMode(buttonPins[i], INPUT);
   }
