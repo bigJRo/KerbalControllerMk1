@@ -1,5 +1,5 @@
-#ifndef ROTARY_ENCODER_H
-#define ROTARY_ENCODER_H
+#ifndef ROTARY_ENCODER_CORE_H
+#define ROTARY_ENCODER_CORE_H
 
 #include <Arduino.h>
 
