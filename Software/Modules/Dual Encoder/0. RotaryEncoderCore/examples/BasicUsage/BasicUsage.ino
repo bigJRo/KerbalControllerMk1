@@ -1,28 +1,31 @@
-#include <RotaryEncoder.h>
+#include <RotaryEncoderCore.h>
+
+// Pin configuration (adjust based on your hardware)
+constexpr uint8_t encoderA = 2;
+constexpr uint8_t encoderB = 3;
+constexpr uint8_t encoderBtn = 4;
 
 RotaryEncoder encoder;
 
-void onShort() {
-  Serial.println("Short press");
-}
-void onLong() {
-  Serial.println("Long press");
-}
-
 void setup() {
   Serial.begin(9600);
-  attachEncoder(encoder, PIN_PA3, PIN_PA2, PIN_PA1);  // Active-high button
-  encoder.onShortPress = onShort;
-  encoder.onLongPress = onLong;
+  attachEncoder(encoder, encoderA, encoderB, encoderBtn);
+
+  encoder.onChange = [](int32_t pos) {
+    Serial.print("Encoder position: ");
+    Serial.println(pos);
+  };
+
+  encoder.onShortPress = []() {
+    Serial.println("Short press detected");
+  };
+
+  encoder.onLongPress = []() {
+    Serial.println("Long press detected");
+  };
 }
 
 void loop() {
+  updateEncoder(encoder);
   updateEncoderButton(encoder);
-
-  static int32_t lastPos = 0;
-  if (encoder.position != lastPos) {
-    Serial.print("Position: ");
-    Serial.println(encoder.position);
-    lastPos = encoder.position;
-  }
 }
