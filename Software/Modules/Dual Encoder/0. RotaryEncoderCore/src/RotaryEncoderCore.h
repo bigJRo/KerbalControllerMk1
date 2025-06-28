@@ -3,28 +3,35 @@
 
 #include <Arduino.h>
 
+// Rotary encoder data structure
 struct RotaryEncoder {
-  volatile int32_t position = 0;
-  volatile bool buttonPressed = false;
-  volatile unsigned long buttonPressTime = 0;
-  volatile bool buttonHandled = true;
-  volatile uint8_t lastState = 0;
+  volatile int32_t position = 0;                // Encoder count
+  volatile bool buttonPressed = false;          // Button press state
+  volatile unsigned long buttonPressTime = 0;   // Timestamp of press
+  volatile bool buttonHandled = true;           // Has the press been handled
 
-  uint8_t pinA;
-  uint8_t pinB;
-  uint8_t buttonPin;
+  uint8_t pinA;                                  // Encoder A pin
+  uint8_t pinB;                                  // Encoder B pin
+  uint8_t buttonPin;                             // Optional button pin (0xFF if unused)
+  uint8_t lastState = 0;                         // Last encoder state for transition tracking
 
-  void (*onShortPress)() = nullptr;
-  void (*onLongPress)() = nullptr;
+  void (*onShortPress)() = nullptr;              // Callback on short press
+  void (*onLongPress)() = nullptr;               // Callback on long press
+  void (*onChange)(int32_t) = nullptr;           // Callback on position change
 };
 
-// Setup encoder pins
+// Initializes encoder pins and state
 void attachEncoder(RotaryEncoder& encoder, uint8_t pinA, uint8_t pinB, uint8_t buttonPin = 0xFF);
 
-// Interrupt-driven update
-void updateEncoder(RotaryEncoder& encoder);
+// Reads encoder state and updates position (should be called from ISR)
+inline void updateEncoder(RotaryEncoder& encoder);
 
-// Call from loop() to check button logic
+// Polls and debounces button state; triggers callbacks based on press duration
 void updateEncoderButton(RotaryEncoder& encoder, unsigned long shortThreshold = 300, unsigned long longThreshold = 1000);
 
-#endif
+// Inline utility to check if button pin is valid
+inline bool isButtonAvailable(const RotaryEncoder& enc) {
+  return enc.buttonPin != 0xFF;
+}
+
+#endif  // ROTARY_ENCODER_CORE_H
