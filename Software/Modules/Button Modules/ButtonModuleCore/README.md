@@ -1,3 +1,4 @@
+
 # ButtonModuleCore – Kerbal Controller Mk1 Core Library
 
 This is the core firmware library for **Button Modules** used in the **Kerbal Controller Mk1** system.  
@@ -48,6 +49,36 @@ It consolidates shared behavior across all button-based modules, such as I2C com
 | Discrete LED2 | PC2           | `led_14`      | Discrete output 2 (Lock LED)       |
 | Discrete LED3 | PB2           | `led_15`      | Discrete output 3 (Lock LED)       |
 | Discrete LED4 | PC1           | `led_16`      | Discrete output 4 (Lock LED)       |
+
+---
+
+## 📡 I²C Protocol Description
+
+The ButtonModuleCore library communicates over I²C as a **slave** device. It uses a simple 4-byte protocol to communicate button states and receive LED updates.
+
+### 📤 Master Read (from module)
+
+When the host performs a read operation, the module responds with 4 bytes:
+
+| Byte | Description               |
+|------|---------------------------|
+| [0]  | Button bits 0–7           |
+| [1]  | Button bits 8–15          |
+| [2]  | LED state bits 0–7        |
+| [3]  | LED state bits 8–15       |
+
+### 📥 Master Write (to module)
+
+When the host sends data, the module expects 2 bytes:
+
+| Byte | Description               |
+|------|---------------------------|
+| [0]  | New LED state bits 0–7    |
+| [1]  | New LED state bits 8–15   |
+
+- Each bit in the LED state corresponds to an LED or discrete output.
+- The module updates colors or output states based on these bits.
+- When a state change is detected, the flag `updateLED` is set for processing in the main loop.
 
 ---
 
