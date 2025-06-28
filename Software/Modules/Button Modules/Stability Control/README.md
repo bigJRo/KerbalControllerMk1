@@ -51,10 +51,10 @@ It handles SAS-related input and RGB LED feedback, and communicates with a host 
 
 | Index | Label        | Pin Function |
 |-------|--------------|--------------|
-| 12    | SAS Enable   | LED13        |
-| 13    | RCS Enable   | LED14        |
-| 14    | Reserved     | LED15        |
-| 15    | Reserved     | LED16        |
+| 12    | SAS Enable   | Discrete LED output (LED13) |
+| 13    | RCS Enable   | Discrete LED output (LED14) |
+| 14    | Reserved     | Discrete LED output (LED15) |
+| 15    | Reserved     | Discrete LED output (LED16) |
 
 ---
 
