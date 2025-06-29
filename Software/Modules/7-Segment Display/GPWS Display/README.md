@@ -49,7 +49,7 @@ It displays preset time values on a 4-digit display, provides RGB LED feedback, 
 
 ---
 
-## 🌈 LED Color Configuration
+## 💡 LED Color Configuration
 
 | 2-bit Mode | Color Name | RGB Value      | Purpose             |
 |------------|------------|----------------|---------------------|
