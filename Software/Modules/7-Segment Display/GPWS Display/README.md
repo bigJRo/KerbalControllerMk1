@@ -140,7 +140,7 @@ uint8_t buttonEvents = buffer[2];
 Wire.beginTransmission(0x21);
 Wire.write(0b11100110); // LED: 10 01 10 (LED2=GREEN, LED1=DIM, LED0=GREEN)
 Wire.endTransmission();
-
+'''
 ---
 
 ## 🧩 Library Dependencies
