@@ -147,7 +147,7 @@ Wire.endTransmission();
 
 - `Wire`
 - `tinyNeoPixel`
-- 'LedControl'
+- `LedControl`
 - `RotaryEncoderCore` (custom library for encoder input)
 
 ---
@@ -156,7 +156,7 @@ Wire.endTransmission();
 
 - `RotaryEncoderCore.h` – Header file
 - `RotaryEncoderCore.cpp` – Implementation
-- 'library.properties' – Arduino library metadata
+- `library.properties` – Arduino library metadata
 - `examples/DualEncoderExample/DualEncoderExample.ino` – Example
 
 ---
