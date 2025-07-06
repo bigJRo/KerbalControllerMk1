@@ -1,0 +1,14 @@
+# Syntax Highlighting for Arduino IDE
+beginModule	KEYWORD2
+clearInterrupt	KEYWORD2
+setInterrupt	KEYWORD2
+handleRequestEvent	KEYWORD2
+handleReceiveEvent	KEYWORD2
+executeReboot	KEYWORD2
+disconnectUSB	KEYWORD2
+connectUSB	KEYWORD2
+GSLX680_I2C_Write	KEYWORD2
+GSLX680_I2C_Read	KEYWORD2
+GSLX680_read_data	KEYWORD2
+_ts_event	TYPE
+kspResource	TYPE
