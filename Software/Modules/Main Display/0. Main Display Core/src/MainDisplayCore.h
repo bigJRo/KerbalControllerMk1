@@ -40,7 +40,7 @@
   Structs and Enums
 ****************************************************************************************/
 struct kspResource {  // Structure to contain resouce value from KSP
-  char[20] name;
+  char name[20];
   float current;
   float total;
   float stage_curr;
@@ -84,7 +84,6 @@ extern unsigned long tftlastUpdate = 0;
 extern uint16_t tftupdateInt = 100;
 extern unsigned long lastTouch = 0;
 extern uint16_t touchInt = 250;
-extern long runtime_start = millis();
 
 // Capactiive Touchscreen Support
 uint16_t tx, ty;
@@ -104,9 +103,6 @@ struct _ts_event {
 
 struct _ts_event ts_event;
 
-// I2C Interface Supprot
-extern uint8_t packetID;
-
 /***************************************************************************************
   Core Function Prototypes
 ****************************************************************************************/
@@ -114,7 +110,7 @@ void beginModule(uint8_t panel_addr);       //  Function for setup in main sketc
 void clearInterrupt();                      // Clears interrupt
 void setInterrupt();                        // Set interrupt to incidate to I2C master
 void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
-void handleReceiveEvent(int16_t howMany));  //  I2C function, reacts to master sent LED state change request
+void handleReceiveEvent(int16_t howMany);  //  I2C function, reacts to master sent LED state change request
 void executeReboot();                       // Execute Teensy soft reboot
 void disconnectUSB();                       // Disconenct USB interface
 void connectUSB();                          // Conenct USB interface
