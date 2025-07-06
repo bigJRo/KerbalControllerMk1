@@ -1,15 +1,15 @@
-# MainDisplayCore – Kerbal Controller Mk1 Display Library
+# KerbalDisplayCore – Kerbal Controller Mk1 Display Library
 
-This is the core firmware library for **Main Display Modules** used in the **Kerbal Controller Mk1** system.  
+This is the core firmware library for **Display Modules** used in the **Kerbal Controller Mk1** system.  
 It provides foundational support for 5" RA8875-based TFT displays with capacitive touch, USB control, and I2C communication.
 
 ---
 
 ## 📦 Overview
 
-- **Library Name**: MainDisplayCore
+- **Library Name**: KerbalDisplayCore
 - **MCU Target**: Teensy 4.0
-- **Display Driver**: RA8875 (800x480 resolution)
+- **Display Driver**: RA8875_t4 (800x480 resolution)
 - **Touch Controller**: GSLX680 (I2C)
 - **Communication**: I2C (slave device)
 - **Special Functions**:
@@ -99,7 +99,7 @@ Reads and decodes current touch data into `ts_event`.
 
 void setup() {
   if (!beginModule(0x23)) {
-    Serial.println(\"Display failed to initialize\");
+    Serial.println("Display failed to initialize");
     while (1);
   }
 }
@@ -107,7 +107,29 @@ void setup() {
 void loop() {
   // Touch processing and UI updates here
 }
+```
 
 ---
 
 ## 🧩 Dependencies
+
+- [`RA8875_t4`](https://github.com/PaulStoffregen/RA8875)
+- [`Wire`](https://www.arduino.cc/reference/en/language/functions/communication/wire/)
+- [`SPI`](https://www.arduino.cc/reference/en/language/functions/communication/spi/)
+- `touchScreen_fw.h` (GSLX680 firmware blob, included in `src/`)
+
+---
+
+## 📂 File Structure
+
+- `MainDisplayCore.h` – Header file with pin mappings, globals, and function declarations
+- `MainDisplayCore.cpp` – Implementation of display, touch, and communication logic
+- `library.properties` – Arduino library metadata
+- `examples/BasicTest/BasicTest.ino` – Simple usage demo
+
+---
+
+## 📄 License
+
+This project is licensed under the GNU General Public License v3.0  
+Final code written by J. Rostoker for **Jeb's Controller Works**
