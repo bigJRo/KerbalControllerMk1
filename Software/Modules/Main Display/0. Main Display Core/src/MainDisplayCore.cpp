@@ -128,22 +128,14 @@ void setInterrupt() {
 /***************************************************************************************
   I2C Event Handlers
 
-  ATtiny816 acts as an I2C SLAVE device at address 0x23.
-  The protocol between master and slave uses 4 bytes:
+  The Teensy 4.0 acts as an I²C SLAVE device
+  It uses a simple 2-byte command protocol from the I²C master
 
-  - Master reads 4 bytes:
-    [0] = button state bits 0–7
-    [1] = button state bits 8–15
-    [2] = LED control bits LSB (LED0–7)
-    [3] = LED control bits MSB (LED8–15)
+  MASTER WRITES 2 BYTES (Command Packet):
+    [0] = Command ID
+    [1] = Command Signature (magic number for validation)
 
-  - Master writes 2 bytes:
-    [0] = LED control bits LSB
-    [1] = LED control bits MSB
-
-  The LED bits control color changes or status indication depending on the bit state.
-
-****************************************************************************************/
+***************************************************************************************/
 void handleRequestEvent() {  // TO DO: Need to update request event information
   // TO DO: Define function
 }
