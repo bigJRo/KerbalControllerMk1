@@ -4,7 +4,7 @@
   Main Display Core for Kerbal Controller
 
   General support for 5" TFT Display (BuyDisplay ER-TFTM050A2-3-3661-3662). Uses 
-    RA8875 for display control and GSLX680 for capactive touch controls.
+    RA8875 for display control and GSLX680 for capacitive touch controls.
   Handles common functions for all 5" Display  Modules for use in Kerbal Controller Mk1
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
@@ -16,17 +16,14 @@
 
 
 /***************************************************************************************
-  Setup for libary objects
+  Setup for library objects
 ****************************************************************************************/
 RA8875 tft = RA8875(TFT_CS, TFT_RST);  // TFT Display
 
 /***************************************************************************************
   Module configuration helper function
 ****************************************************************************************/
-void beginModule(uint8_t panel_addr) {
-  /********************************************************
-    Start Serial Interface
-  *********************************************************/
+bool beginModule(uint8_t panel_addr) {
   Serial.begin(115200);      // Begin serial interface for debugging
   SerialUSB1.begin(115200);  // Begin USB interface for SimPit connection
 
@@ -35,15 +32,9 @@ void beginModule(uint8_t panel_addr) {
   Serial.println("------------------------------------------------------------------");
   Serial.println("Serial communucation established");
 
-  /********************************************************
-    Set Pin Modes for necessary inputs/outputs
-  *********************************************************/
   pinMode(INT_OUT, OUTPUT);
   clearInterrupt();
 
-  /********************************************************
-    Start i2c interface with Wire library
-  *********************************************************/
   Serial.println("Begin I2C Wire Communication");
   Wire1.setSDA(CTP_SDA);  // I2c for touch screen
   Wire1.setSCL(CTP_SCL);  // I2c for touch screen
@@ -54,17 +45,16 @@ void beginModule(uint8_t panel_addr) {
   Wire.begin(panel_addr);              // join i2c bus (address optional for master)
   Wire.onReceive(handleReceiveEvent);  // register event
 
-  /********************************************************
-    Begin initializations of the RA8875 chips & TFT screens
-  *********************************************************/
-  long unsigned debug_start = millis();
-  tft.begin(RA8875_800x480);
+  elapsedMillis debug_start = 0; //Begin initializations of the RA8875 chips & TFT screens
+  if (!tft.begin(RA8875_800x480)) {
+    Serial.println("RA8875 initialization failed!");
+    return false;
+  }
   tft.setRotation(0);
   width = tft.width();
   height = tft.height();
 
-  while (!Serial && ((millis() - debug_start) <= 5000))
-    ;
+  while (!Serial && debug_start <= 5000) {}
   Serial.print("RA8875 start...");
   nameW = infoW * 3;
   nameW = masterW + 2 * indW;
@@ -76,9 +66,6 @@ void beginModule(uint8_t panel_addr) {
 
   tft.clearScreen(BLACK);
 
-  /********************************************************
-    Initialize GSL1680 Capacitive TouchScreen for TFT
-  *********************************************************/
   Serial.println("Initializing TFT GSL1680...");
   delay(5);
 
@@ -95,6 +82,7 @@ void beginModule(uint8_t panel_addr) {
   delay(100);
 
   Serial.println("TFT GSL1680 initialization complete.");
+  return true;
 }
 
 /***************************************************************************************
@@ -128,15 +116,7 @@ void setInterrupt() {
 
 ****************************************************************************************/
 void handleRequestEvent() {  // TO DO: Need to update request event information
-  // Respond to master read request with 4-byte status report
-  uint8_t response[4] = {
-    (uint8_t)(button_state_bits & 0xFF),  // Bits 0–7 of button state
-    (uint8_t)(button_state_bits >> 8),    // Bits 8–15 of button state
-    (uint8_t)(led_bits & 0xFF),           // LED LSB (control for LEDs 0–7)
-    (uint8_t)(led_bits >> 8)              // LED MSB (control for LEDs 8–15)
-  };
-  Wire.write(response, sizeof(response));  // Send full report
-  clearInterrupt();                        // Clear interrupt since the master responded
+  // TO DO: Define function
 }
 
 void handleReceiveEvent(int16_t howMany) {
@@ -162,9 +142,6 @@ void handleReceiveEvent(int16_t howMany) {
 
 /***************************************************************************************
    EXECUTE REBOOT
-   Function performs a soft reboot on the teensy
-   - No inputs
-   - No outputs
 ****************************************************************************************/
 void executeReboot() {
   // send reboot command -----
@@ -174,9 +151,6 @@ void executeReboot() {
 
 /***************************************************************************************
    DISCONNECT USB
-   Function disconnects the USB connection
-   - No inputs
-   - No outputs
 ****************************************************************************************/
 void disconnectUSB() {
   // turnoff USB controller and reset it.
@@ -188,9 +162,6 @@ void disconnectUSB() {
 
 /***************************************************************************************
    CONNECT USB
-   Function reruns the USB Connection
-   - No inputs
-   - No outputs
 ****************************************************************************************/
 void connectUSB() {
   // turnoff USB controller and reset it.
@@ -335,9 +306,9 @@ static void check_mem_data(void) {
       Serial.println("init failure,Reinitialize");
       Serial.println("CTP initialization failure  Reinitialize.");
     }
-    digitalWrite(TFT_TOUCH_WAKE, LOW);
+    digitalWrite(CTP_WAKE, LOW);
     delay(20);
-    digitalWrite(TFT_TOUCH_WAKE, HIGH);
+    digitalWrite(CTP_WAKE, HIGH);
     delay(20);
     //test_i2c();
     _GSLX680_clr_reg();
@@ -365,27 +336,16 @@ uint8_t GSLX680_read_data(void) {
   uint8_t touch_data[24] = { 0 };
   uint8_t reg = 0x80;
   GSLX680_I2C_Read(reg, touch_data, 24);
-
   ts_event.fingers = touch_data[0];
-
   ts_event.y5 = (uint16_t)(touch_data[23]) << 8 | (uint16_t)touch_data[22];
   ts_event.x5 = (uint16_t)(touch_data[21]) << 8 | (uint16_t)touch_data[20];
-
   ts_event.y4 = (uint16_t)(touch_data[19]) << 8 | (uint16_t)touch_data[18];
   ts_event.x4 = (uint16_t)(touch_data[17]) << 8 | (uint16_t)touch_data[16];
-
-
   ts_event.y3 = (uint16_t)(touch_data[15]) << 8 | (uint16_t)touch_data[14];
   ts_event.x3 = (uint16_t)(touch_data[13]) << 8 | (uint16_t)touch_data[12];
-
-
   ts_event.y2 = (uint16_t)(touch_data[11]) << 8 | (uint16_t)touch_data[10];
   ts_event.x2 = (uint16_t)(touch_data[9]) << 8 | (uint16_t)touch_data[8];
-
-
   ts_event.y1 = (uint16_t)(touch_data[7]) << 8 | (uint16_t)touch_data[6];
   ts_event.x1 = (uint16_t)(touch_data[5]) << 8 | (uint16_t)touch_data[4];
-
-
   return 0;
 }
