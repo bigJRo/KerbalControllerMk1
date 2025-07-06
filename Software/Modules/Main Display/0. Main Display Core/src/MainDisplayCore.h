@@ -111,10 +111,10 @@ extern uint8_t packetID;
   Core Function Prototypes
 ****************************************************************************************/
 void beginModule(uint8_t panel_addr);       //  Function for setup in main sketch
+void clearInterrupt();                      // Clears interrupt
+void setInterrupt();                        // Set interrupt to incidate to I2C master
 void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
 void handleReceiveEvent(int16_t howMany));  //  I2C function, reacts to master sent LED state change request
-void setInterrupt();                        // Set interrupt to incidate to I2C master
-void clearInterrupt();                      // Clears interrupt
 void executeReboot();                       // Execute Teensy soft reboot
 void disconnectUSB();                       // Disconenct USB interface
 void connectUSB();                          // Conenct USB interface
