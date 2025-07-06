@@ -5,7 +5,7 @@
   Main Display Core for Kerbal Controller
 
   General support for 5" TFT Display (BuyDisplay ER-TFTM050A2-3-3661-3662). Uses 
-    RA8875 for display control and GSLX680 for capactive touch controls.
+    RA8875 for display control and GSLX680 for capacitive touch controls.
   Handles common functions for all 5" Display  Modules for use in Kerbal Controller Mk1
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
@@ -17,7 +17,7 @@
 #include <RA8875_t4.h>  // Hardware to support TFT graphics
 
 #include "fonts.h"              // Additional font inclusion
-#include "color_definitions.h"  // TFT dolor definitions 0xXXXX format (RGB 565)
+#include "color_definitions.h"  // TFT color definitions 0xXXXX format (RGB 565)
 #include "touchScreen_fw.h"     // GSLX680 firmware for initialization
 
 /***************************************************************************************
@@ -39,7 +39,7 @@
 /***************************************************************************************
   Structs and Enums
 ****************************************************************************************/
-struct kspResource {  // Structure to contain resouce value from KSP
+struct kspResource {  // Structure to contain resource value from KSP
   char name[20];
   float current;
   float total;
@@ -49,44 +49,44 @@ struct kspResource {  // Structure to contain resouce value from KSP
   uint16_t color;
 };
 
-
 /***************************************************************************************
   Globals
 ****************************************************************************************/
 // PANEL CONTROL BOOLEANS
-extern bool demo = false;            // use without needing to be connected to simpit or the MST Arduino
-extern bool debug = false;           // debug sends data to the serial monitor
-extern bool usb_disconnect = false;  // boolean to support I2C commanded USB disconnects
-extern bool usb_connect = false;     // boolean to support I2C commanded USB reconnects
-extern bool simpit_reset = false;    // boolean to support simpit resets in
+extern bool demo;
+extern bool debug;
+extern bool usb_disconnect;
+extern bool usb_connect;
+extern bool simpit_reset;
 
 // Drawing support variables
-extern uint16_t masterW = 240;
-extern uint16_t masterH = 168;
-extern uint16_t indW = 126;
-extern uint16_t indH = 96;
+extern uint16_t masterW;
+extern uint16_t masterH;
+extern uint16_t indW;
+extern uint16_t indH;
 extern uint16_t nameW;
 extern uint16_t nameH;
-extern uint16_t infoW = 160;
+extern uint16_t infoW;
 extern uint16_t infoH;
-extern uint16_t unitW = 100;
-extern uint16_t buttonW = 80;
-extern uint16_t buttonH = 60;
+extern uint16_t unitW;
+extern uint16_t buttonW;
+extern uint16_t buttonH;
 extern uint16_t width;
 extern uint16_t height;
 
 // Additional Support Variables
 extern uint8_t packetID;
-uint8_t tftDispMode = 0;
+extern uint8_t tftDispMode;
 
 // Time Control Functions
-extern unsigned long tftlastUpdate = 0;
-extern uint16_t tftupdateInt = 100;
-extern unsigned long lastTouch = 0;
-extern uint16_t touchInt = 250;
+extern unsigned long tftlastUpdate;
+extern uint16_t tftupdateInt;
+extern unsigned long lastTouch;
+extern uint16_t touchInt;
 
-// Capactiive Touchscreen Support
-uint16_t tx, ty;
+// Capacitive Touchscreen Support
+extern uint16_t tx, ty;
+
 struct _ts_event {
   uint16_t x1;
   uint16_t y1;
@@ -101,26 +101,25 @@ struct _ts_event {
   uint8_t fingers;
 };
 
-struct _ts_event ts_event;
+extern struct _ts_event ts_event;
 
 /***************************************************************************************
   Core Function Prototypes
 ****************************************************************************************/
-void beginModule(uint8_t panel_addr);       //  Function for setup in main sketch
+bool beginModule(uint8_t panel_addr);       // Function for setup in main sketch
 void clearInterrupt();                      // Clears interrupt
-void setInterrupt();                        // Set interrupt to incidate to I2C master
-void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
-void handleReceiveEvent(int16_t howMany);  //  I2C function, reacts to master sent LED state change request
+void setInterrupt();                        // Set interrupt to indicate to I2C master
+void handleRequestEvent();                  // I2C function, responds to master read request with 4-byte status report
+void handleReceiveEvent(int16_t howMany);   // I2C function, reacts to master sent LED state change request
 void executeReboot();                       // Execute Teensy soft reboot
-void disconnectUSB();                       // Disconenct USB interface
-void connectUSB();                          // Conenct USB interface
+void disconnectUSB();                       // Disconnect USB interface
+void connectUSB();                          // Connect USB interface
 static void GSLX680_I2C_Write(uint8_t regAddr, uint8_t *val, uint16_t cnt);  // GSLX680_I2C_Write
 uint8_t GSLX680_I2C_Read(uint8_t regAddr, uint8_t *pBuf, uint8_t len);       // GSLX680_I2C_Read
 static void _GSLX680_clr_reg(void);                                          // GSLX680 Clear reg
 static void _GSLX680_reset_chip(void);                                       // GSLX680 Reset
 static void _GSLX680_load_fw(void);                                          // GSLX680 Main Down
 static void _GSLX680_startup_chip(void);                                     // GSLX680 Startup chip
-uint8_t GSLX680_read_data(void);                                             // Get the most data about capacitive touchpanel
-
+uint8_t GSLX680_read_data(void);                                             // Get the most data about capacitive touch panel
 
 #endif  // MAIN_DISPLAY_CORE_H
