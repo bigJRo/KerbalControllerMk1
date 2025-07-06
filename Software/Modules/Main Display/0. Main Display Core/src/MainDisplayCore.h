@@ -75,6 +75,10 @@ extern uint16_t buttonH = 60;
 extern uint16_t width;
 extern uint16_t height;
 
+// Additional Support Variables
+extern uint8_t packetID;
+uint8_t tftDispMode = 0;
+
 // Time Control Functions
 extern unsigned long tftlastUpdate = 0;
 extern uint16_t tftupdateInt = 100;
@@ -102,8 +106,6 @@ struct _ts_event ts_event;
 
 // I2C Interface Supprot
 extern uint8_t packetID;
-
-RA8875 tft = RA8875(TFT__CS, TFTRST);  // TFT Display
 
 /***************************************************************************************
   Core Function Prototypes
