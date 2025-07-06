@@ -13,7 +13,36 @@
 /***************************************************************************************
   Global variable setup
 ****************************************************************************************/
+bool demo = false;
+bool debug = false;
+bool usb_disconnect = false;
+bool usb_connect = false;
+bool simpit_reset = false;
 
+uint16_t masterW = 240;
+uint16_t masterH = 168;
+uint16_t indW = 126;
+uint16_t indH = 96;
+uint16_t nameW;
+uint16_t nameH;
+uint16_t infoW = 160;
+uint16_t infoH;
+uint16_t unitW = 100;
+uint16_t buttonW = 80;
+uint16_t buttonH = 60;
+uint16_t width;
+uint16_t height;
+
+uint8_t packetID;
+uint8_t tftDispMode = 0;
+
+unsigned long tftlastUpdate = 0;
+uint16_t tftupdateInt = 100;
+unsigned long lastTouch = 0;
+uint16_t touchInt = 250;
+
+uint16_t tx, ty;
+_ts_event ts_event;
 
 /***************************************************************************************
   Setup for library objects
