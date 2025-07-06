@@ -50,16 +50,7 @@ It provides foundational support for 5" RA8875-based TFT displays with capacitiv
 
 ## 📡 I²C Protocol Description
 
-The display module communicates over I²C as a **slave** device. It supports a 4-byte protocol to exchange status and control messages.
-
-### 📤 Master Read (from display module)
-
-| Byte | Description                |
-|------|----------------------------|
-| [0]  | Button state bits 0–7      |
-| [1]  | Button state bits 8–15     |
-| [2]  | LED/control bits 0–7       |
-| [3]  | LED/control bits 8–15      |
+The display module communicates over I²C as a **slave** device. It supports a 2-byte protocol to exchange control messages.
 
 ### 📥 Master Write (to display module)
 
