@@ -15,6 +15,7 @@
 #include <Wire.h>       // I2C communication
 #include <SPI.h>        // SPI Comm Library used with TFT
 #include <RA8875_t4.h>  // Hardware to support TFT graphics
+extern "C" void usb_init(void);
 
 #include "fonts.h"              // Additional font inclusion
 #include "color_definitions.h"  // TFT color definitions 0xXXXX format (RGB 565)
