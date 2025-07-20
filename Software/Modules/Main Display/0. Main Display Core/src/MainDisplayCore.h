@@ -50,6 +50,32 @@ struct kspResource {  // Structure to contain resource value from KSP
   uint16_t color;
 };
 
+enum TextAlign { // Text alignment options for display
+  ALIGN_LEFT,
+  ALIGN_CENTER,
+  ALIGN_RIGHT
+};
+
+struct DisplayValueConfig { // Structure to hold configuration for displaying a parameter and its value
+  const char* param;
+  const char* prevParam;
+  const char* value;
+  const char* prevValue;
+
+  uint16_t x0, y0, w, h;
+
+  uint16_t paramColor;
+  uint16_t valueColor;
+  uint16_t valueBgColor = BLACK;
+
+  bool useValueBg = false;
+  bool drawBorder = false;
+
+  TextAlign paramAlign = ALIGN_LEFT;
+  TextAlign valueAlign = ALIGN_RIGHT;
+};
+
+
 /***************************************************************************************
   Globals
 ****************************************************************************************/
@@ -122,5 +148,34 @@ static void _GSLX680_reset_chip(void);                                       // 
 static void _GSLX680_load_fw(void);                                          // GSLX680 Main Down
 static void _GSLX680_startup_chip(void);                                     // GSLX680 Startup chip
 uint8_t GSLX680_read_data(void);                                             // Get the most data about capacitive touch panel
+uint16_t color565(uint8_t r, uint8_t g, uint8_t b); // Converts 3 8-bit RGB values into a 5-6-5 color value
+uint8_t decToBcd(uint8_t val) // Converts normal decimal numbers to binary coded decimal
+void drawAlignedText(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                     const char* text, uint16_t foreColor, uint16_t backColor,
+                     TextAlign align, bool drawBg = false); // Draws text aligned within a rectangle
+void drawValueBlock(const DisplayValueConfig& cfg); // Draws a parameter and its value in a block with optional background and border
+void printDispBasic(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                    const char* prevParam, const char* param, uint16_t paramColor,
+                    uint16_t prevVal, uint16_t val, uint16_t valColor, bool border); // Displays a parameter and its value in a block
+void printDispThreshold(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                        const char* prevParam, const char* param, uint16_t paramColor,
+                        uint16_t prevVal, uint16_t val,
+                        uint16_t lowVal, uint16_t lowColor, uint16_t lowBack,
+                        uint16_t midVal, uint16_t midColor, uint16_t midBack,
+                        uint16_t highColor, uint16_t highBack,
+                        bool border); // Displays a parameter and its value with conditional coloring based on thresholds
+void printDispPerc(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                   const char* prevParam, const char* param, uint16_t paramColor,
+                   uint16_t prevVal, uint16_t val,
+                   uint16_t lowVal, uint16_t lowColor, uint16_t lowBack,
+                   uint16_t midVal, uint16_t midColor, uint16_t midBack,
+                   uint16_t highColor, uint16_t highBack,
+                   bool border); // Displays a parameter and its percentage value with conditional coloring based on thresholds
+void printName(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+               const char* prevVal, const char* val, uint16_t valColor, bool border); // Displays a single value without parameter label
+void printTitle(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                const char* prevParam, const char* param,
+                uint16_t paramColor, bool border); // Displays a parameter name and value in a block with optional border
+
 
 #endif  // MAIN_DISPLAY_CORE_H
