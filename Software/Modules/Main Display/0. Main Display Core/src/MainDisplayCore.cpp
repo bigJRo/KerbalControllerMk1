@@ -370,3 +370,331 @@ uint8_t GSLX680_read_data(void) {
   ts_event.x1 = (uint16_t)(touch_data[5]) << 8 | (uint16_t)touch_data[4];
   return 0;
 }
+
+
+/***************************************************************************************
+   COLOR 5-6-5 CONVERTER
+   Converts 3 8-bit RGB balues into a a 5-6-5 color value
+   - INPUTS:
+    - {uint8_t} r = Red value
+    - {uint8_t} g = Green value
+    - {uint8_t} b = Blue value
+   - OUTPUTS:
+    - {uint16_t} resulting 5-6-5 color value
+****************************************************************************************/
+uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+
+/***************************************************************************************
+   DECIMAL TO BCD
+   Convert normal decimal numbers to binary coded decimal
+   - INPUTS:
+    - {byte} val = Decimal value to be converted 
+   - OUTPUTS:
+    - {byte} resulting BCD
+****************************************************************************************/
+byte decToBcd(byte val) {
+  // Convert normal decimal numbers to binary coded decimal
+  return ((val / 10 * 16) + (val % 10));
+}
+
+
+/***************************************************************************************
+   DRAW Aligned Text Block with Optional Background Fill
+
+   Uses RA8875_t4 to draw left, center, or right aligned text within a bounded box.
+   - INPUTS:
+     - {uint16_t} x0:      X origin (top-left of print area)
+     - {uint16_t} y0:      Y origin (top-left of print area)
+     - {uint16_t} w:       Width of print area in pixels
+     - {uint16_t} h:       Height of print area in pixels
+     - {const char*} text: C-style string to print
+     - {uint16_t} foreColor: Foreground/text color
+     - {uint16_t} backColor: Background/text-box color
+     - {TextAlign} align:  Text alignment (left, center, right)
+     - {bool} drawBg:      If true, draws full background rectangle
+
+   - OUTPUT: None
+****************************************************************************************/
+void drawAlignedText(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                     const char* text, uint16_t foreColor, uint16_t backColor,
+                     TextAlign align, bool drawBg = false) {
+  const uint8_t border = 8;
+  int16_t x, y;
+  uint16_t textW, textH;
+
+  // Optional: Fill background area first
+  if (drawBg) {
+    tft.fillRect(x0, y0, w, h, backColor);
+  }
+
+  tft.setTextColor(foreColor, backColor);
+
+  if (align == ALIGN_CENTER) {
+    // Use RA8875 internal center-aligning cursor
+    tft.setCursor(x0 + w / 2, y0 + h / 2, true);
+    tft.print(text);
+  } else {
+    // Get actual text bounds
+    tft.getTextBounds(text, x0, y0 + h, &x, &y, &textW, &textH);
+    uint16_t verticalOffset = (h - 2 * textH) / 2;
+    uint16_t cursorX = (align == ALIGN_LEFT) 
+                       ? x0 + border 
+                       : x0 + w - textW - border;
+    uint16_t cursorY = y0 + verticalOffset + textH / 2;
+    tft.setCursor(cursorX, cursorY);
+    tft.print(text);
+  }
+}
+
+/***************************************************************************************
+   CORE DISPLAY RENDERER – DRAW VALUE BLOCK
+
+   Internal logic engine that renders a labeled display block using alignment and 
+   conditional updates. Draws parameter and value text using the supplied alignment,
+   color, and background settings. Only updates changed content.
+
+   This function is used by all printDisp-style wrapper functions to minimize redundancy.
+
+   - INPUTS (via DisplayValueConfig struct):
+     - param        : Current parameter label (left or center aligned)
+     - prevParam    : Previously displayed parameter label
+     - value        : Current value text (right or left aligned)
+     - prevValue    : Previously displayed value text
+     - x0, y0       : Top-left corner of display block
+     - w, h         : Width and height of the block
+     - paramColor   : Color to render parameter text
+     - valueColor   : Color to render value text
+     - valueBgColor : Optional background color for value (if useValueBg is true)
+     - useValueBg   : Enables background color fill behind value text
+     - drawBorder   : If true, draws a white border around the block
+     - paramAlign   : TextAlign enum for parameter (default: ALIGN_LEFT)
+     - valueAlign   : TextAlign enum for value (default: ALIGN_RIGHT)
+
+   - OUTPUT: None
+****************************************************************************************/
+void drawValueBlock(const DisplayValueConfig& cfg) {
+  if (cfg.drawBorder) {
+    tft.drawRect(cfg.x0, cfg.y0, cfg.w, cfg.h, WHITE);
+  }
+
+  if (strcmp(cfg.prevParam, cfg.param) != 0) {
+    drawAlignedText(cfg.x0, cfg.y0, cfg.w, cfg.h, cfg.prevParam, BLACK, BLACK, cfg.paramAlign);
+    drawAlignedText(cfg.x0, cfg.y0, cfg.w, cfg.h, cfg.param, cfg.paramColor, BLACK, cfg.paramAlign);
+  }
+
+  if (strcmp(cfg.prevValue, cfg.value) != 0) {
+    drawAlignedText(cfg.x0, cfg.y0, cfg.w, cfg.h, cfg.prevValue, BLACK, BLACK, cfg.valueAlign);
+    drawAlignedText(cfg.x0, cfg.y0, cfg.w, cfg.h, cfg.value, cfg.valueColor,
+                    cfg.useValueBg ? cfg.valueBgColor : BLACK, cfg.valueAlign);
+  }
+}
+
+/***************************************************************************************
+   PRINT DISPLAY BLOCK – BASIC VALUE
+
+   Displays a parameter name (left aligned) and a value (right aligned) within a 
+   rectangular area. Only redraws if value or label has changed.
+
+   - INPUTS:
+     - x0, y0       : Top-left corner of block
+     - w, h         : Width and height of block
+     - prevParam    : Previously displayed parameter label
+     - param        : Current parameter label
+     - paramColor   : Text color for parameter label
+     - prevVal      : Previously displayed numeric value
+     - val          : Current numeric value to display
+     - valColor     : Text color for value
+     - border       : Draw border rectangle if true
+****************************************************************************************/
+void printDispBasic(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                    const char* prevParam, const char* param, uint16_t paramColor,
+                    uint16_t prevVal, uint16_t val, uint16_t valColor, bool border) {
+  char prevBuf[12], valBuf[12];
+  snprintf(prevBuf, sizeof(prevBuf), "%u", prevVal);
+  snprintf(valBuf, sizeof(valBuf), "%u", val);
+
+  DisplayValueConfig cfg = {
+    .param = param, .prevParam = prevParam,
+    .value = valBuf, .prevValue = prevBuf,
+    .x0 = x0, .y0 = y0, .w = w, .h = h,
+    .paramColor = paramColor, .valueColor = valColor,
+    .drawBorder = border
+  };
+  drawValueBlock(cfg);
+}
+
+/***************************************************************************************
+   PRINT DISPLAY BLOCK – COLOR BY VALUE THRESHOLD
+
+   Displays a parameter label (left) and a value (right) with conditional coloring
+   based on thresholds (low/mid/high). Only redraws if value or label has changed.
+
+   - INPUTS:
+     - x0, y0       : Top-left corner of block
+     - w, h         : Width and height of block
+     - prevParam    : Previously displayed parameter label
+     - param        : Current parameter label
+     - paramColor   : Text color for parameter label
+     - prevVal      : Previously displayed numeric value
+     - val          : Current numeric value to display
+     - lowVal       : Threshold for low range
+     - lowColor     : Text color for low values
+     - lowBack      : Background color for low values
+     - midVal       : Threshold for mid range
+     - midColor     : Text color for mid values
+     - midBack      : Background color for mid values
+     - highColor    : Text color for high values
+     - highBack     : Background color for high values
+     - border       : Draw border rectangle if true
+****************************************************************************************/
+void printDispThreshold(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                        const char* prevParam, const char* param, uint16_t paramColor,
+                        uint16_t prevVal, uint16_t val,
+                        uint16_t lowVal, uint16_t lowColor, uint16_t lowBack,
+                        uint16_t midVal, uint16_t midColor, uint16_t midBack,
+                        uint16_t highColor, uint16_t highBack,
+                        bool border) {
+  char prevBuf[12], valBuf[12];
+  snprintf(prevBuf, sizeof(prevBuf), "%u", prevVal);
+  snprintf(valBuf, sizeof(valBuf), "%u", val);
+
+  uint16_t fore, back;
+  if (val < lowVal) {
+    fore = lowColor;
+    back = lowBack;
+  } else if (val < midVal) {
+    fore = midColor;
+    back = midBack;
+  } else {
+    fore = highColor;
+    back = highBack;
+  }
+
+  DisplayValueConfig cfg = {
+    .param = param, .prevParam = prevParam,
+    .value = valBuf, .prevValue = prevBuf,
+    .x0 = x0, .y0 = y0, .w = w, .h = h,
+    .paramColor = paramColor,
+    .valueColor = fore, .valueBgColor = back,
+    .useValueBg = true,
+    .drawBorder = border
+  };
+  drawValueBlock(cfg);
+}
+
+/***************************************************************************************
+   PRINT DISPLAY BLOCK – PERCENTAGE WITH COLOR THRESHOLDS
+
+   Similar to printDispThreshold but appends a '%' sign to the numeric value. 
+   Text and background color depend on threshold range.
+
+   - INPUTS:
+     - x0, y0       : Top-left corner of block
+     - w, h         : Width and height of block
+     - prevParam    : Previously displayed parameter label
+     - param        : Current parameter label
+     - paramColor   : Text color for parameter label
+     - prevVal      : Previously displayed percentage value
+     - val          : Current percentage value to display
+     - lowVal       : Threshold for low range
+     - lowColor     : Text color for low values
+     - lowBack      : Background color for low values
+     - midVal       : Threshold for mid range
+     - midColor     : Text color for mid values
+     - midBack      : Background color for mid values
+     - highColor    : Text color for high values
+     - highBack     : Background color for high values
+     - border       : Draw border rectangle if true
+****************************************************************************************/
+void printDispPerc(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                   const char* prevParam, const char* param, uint16_t paramColor,
+                   uint16_t prevVal, uint16_t val,
+                   uint16_t lowVal, uint16_t lowColor, uint16_t lowBack,
+                   uint16_t midVal, uint16_t midColor, uint16_t midBack,
+                   uint16_t highColor, uint16_t highBack,
+                   bool border) {
+  char prevBuf[12], valBuf[12];
+  snprintf(prevBuf, sizeof(prevBuf), "%u%%", prevVal);
+  snprintf(valBuf, sizeof(valBuf), "%u%%", val);
+
+  uint16_t fore, back;
+  if (val < lowVal) {
+    fore = lowColor;
+    back = lowBack;
+  } else if (val < midVal) {
+    fore = midColor;
+    back = midBack;
+  } else {
+    fore = highColor;
+    back = highBack;
+  }
+
+  DisplayValueConfig cfg = {
+    .param = param, .prevParam = prevParam,
+    .value = valBuf, .prevValue = prevBuf,
+    .x0 = x0, .y0 = y0, .w = w, .h = h,
+    .paramColor = paramColor,
+    .valueColor = fore, .valueBgColor = back,
+    .useValueBg = true,
+    .drawBorder = border
+  };
+  drawValueBlock(cfg);
+}
+
+/***************************************************************************************
+   PRINT NAME BLOCK
+
+   Displays a single value (left aligned) without any parameter label. 
+   Used for label-only regions. Only redraws if the value changes.
+
+   - INPUTS:
+     - x0, y0     : Top-left corner of block
+     - w, h       : Width and height of block
+     - prevVal    : Previously displayed string
+     - val        : Current string to display
+     - valColor   : Text color
+     - border     : Draw border rectangle if true
+****************************************************************************************/
+void printName(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+               const char* prevVal, const char* val, uint16_t valColor, bool border) {
+  DisplayValueConfig cfg = {
+    .param = "", .prevParam = "",
+    .value = val, .prevValue = prevVal,
+    .x0 = x0, .y0 = y0, .w = w, .h = h,
+    .paramColor = 0, .valueColor = valColor,
+    .valueAlign = ALIGN_LEFT,
+    .drawBorder = border
+  };
+  drawValueBlock(cfg);
+}
+
+/***************************************************************************************
+   PRINT TITLE BLOCK – CENTERED TEXT
+
+   Displays a single centered string label. Used for section titles or headings.
+   Only redraws if the label has changed.
+
+   - INPUTS:
+     - x0, y0       : Top-left corner of block
+     - w, h         : Width and height of block
+     - prevParam    : Previously displayed title
+     - param        : Current title to display
+     - paramColor   : Text color
+     - border       : Draw border rectangle if true
+****************************************************************************************/
+void printTitle(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                const char* prevParam, const char* param,
+                uint16_t paramColor, bool border) {
+  DisplayValueConfig cfg = {
+    .param = param, .prevParam = prevParam,
+    .value = "", .prevValue = "",
+    .x0 = x0, .y0 = y0, .w = w, .h = h,
+    .paramColor = paramColor,
+    .paramAlign = ALIGN_CENTER,
+    .drawBorder = border
+  };
+  drawValueBlock(cfg);
+}
