@@ -698,3 +698,545 @@ void printTitle(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
   };
   drawValueBlock(cfg);
 }
+
+/***************************************************************************************
+   DRAW BUTTON (Multi-line / Vertical / Centered Text)
+   Draws a button using RA8875_t4 on Teensy 4.0 with optional multi-line or vertical text.
+
+   - INPUTS:
+     - x0, y0     : Top-left corner of button
+     - w, h       : Width and height of the button
+     - text       : Input label text (can be multi-word or "DOCKED"-style)
+     - isVertical : If true, renders each character on a new line (vertical layout)
+     - fillColor  : Button fill color
+     - textColor  : Text color
+
+   - NOTES:
+     - Max 6 lines (text beyond that is truncated)
+     - External logic should determine if redraw is needed
+
+   - EXAMPLE USAGE:
+      // External logic decides when to call drawButton()
+      drawButton(40, 60, 160, 80, "LAUNCH SYSTEM READY", false,
+          RA8875_BLUE, RA8875_WHITE);
+
+      // Vertical "DOCKED" layout
+      drawButton(300, 50, 60, 180, "DOCKED", true,
+          RA8875_RED, RA8875_WHITE);
+
+****************************************************************************************/
+void drawButton(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                const String& text, bool isVertical,
+                uint16_t fillColor, uint16_t textColor) {
+  // Draw button background and border
+  tft.fillRect(x0, y0, w, h, fillColor);
+  tft.drawRect(x0, y0, w, h, WHITE);
+  tft.setTextColor(textColor, fillColor);
+
+  // Estimate line height
+  uint16_t lineHeight = 0;
+  int16_t tx, ty;
+  uint16_t tw, th;
+  tft.getTextBounds("A", x0, y0, &tx, &ty, &tw, &th);
+  lineHeight = th;
+
+  String lines[6];
+  uint8_t lineCount = 0;
+
+  if (isVertical) {
+    for (uint8_t i = 0; i < text.length() && lineCount < 6; ++i) {
+      lines[lineCount++] = String(text[i]);
+    }
+  } else {
+    String word, currentLine;
+    for (uint16_t i = 0; i <= text.length(); ++i) {
+      char c = (i < text.length()) ? text[i] : ' ';
+      if (c == ' ' || i == text.length()) {
+        if (word.length() > 0) {
+          String testLine = currentLine + (currentLine.length() > 0 ? " " : "") + word;
+          int16_t bx, by;
+          uint16_t bw, bh;
+          tft.getTextBounds(testLine, 0, 0, &bx, &by, &bw, &bh);
+          if (bw > w && currentLine.length() > 0) {
+            if (lineCount < 6) lines[lineCount++] = currentLine;
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+          word = "";
+        }
+      } else {
+        word += c;
+      }
+    }
+    if (currentLine.length() > 0 && lineCount < 6) {
+      lines[lineCount++] = currentLine;
+    }
+  }
+
+  // Center the block of text vertically
+  uint16_t totalHeight = lineHeight * lineCount;
+  uint16_t startY = y0 + (h - totalHeight) / 2 + lineHeight / 2;
+
+  for (uint8_t i = 0; i < lineCount; ++i) {
+    tft.getTextBounds(lines[i], 0, 0, &tx, &ty, &tw, &th);
+    uint16_t x = x0 + (w - tw) / 2;
+    uint16_t y = startY + i * lineHeight;
+    tft.setCursor(x, y);
+    tft.print(lines[i]);
+  }
+}
+
+/***************************************************************************************
+   DRAW STYLED BUTTON (Multi-line / Vertical / Centered Text)
+   Draws a button using RA8875_t4 on Teensy 4.0 with optional multi-line or vertical text.
+
+   - INPUTS:
+     - x0, y0     : Top-left corner of button
+     - w, h       : Width and height of the button
+     - text       : Input label text (const char*), space-separated for wrapping
+     - isVertical : If true, renders each character on a new line (vertical layout)
+     - fillColor  : Button fill color
+     - textColor  : Text color
+
+   - NOTES:
+     - Max 6 lines (text beyond that is truncated)
+     - External logic should determine if redraw is needed
+   
+   - EXAMPLE USAGE:
+      #include <Fonts/FreeSans9pt7b.h>
+
+      ButtonStyle alertStyle = {
+        .fillColor = RA8875_RED,
+        .textColor = RA8875_WHITE,
+        .borderColor = RA8875_YELLOW,
+        .font = &FreeSans9pt7b,   // Set your custom font here
+        .verticalText = false
+      };
+
+      ButtonState alertBtn = { .x0 = 20, .y0 = 40, .w = 180, .h = 60 };
+
+      drawStyledButton("System Critical", alertStyle, alertBtn);
+
+      // In loop():
+      if (tftTouched()) {
+        uint16_t tx, ty;
+        tftTouchRead(&tx, &ty);
+        alertBtn.isPressed = isTouchInside(tx, ty, alertBtn);
+      }
+
+****************************************************************************************/
+void drawStyledButton(const char* label, const ButtonStyle& style, const ButtonState& state) {
+  tft.fillRect(state.x0, state.y0, state.w, state.h, style.fillColor);
+  tft.drawRect(state.x0, state.y0, state.w, state.h, style.borderColor);
+  tft.setTextColor(style.textColor, style.fillColor);
+
+  if (style.font) {
+    tft.setFont(style.font);  // Use custom font if provided
+  } else {
+    tft.setFont();  // Revert to built-in default
+  }
+
+  // Estimate line height
+  int16_t tx, ty;
+  uint16_t tw, th;
+  tft.getTextBounds("A", state.x0, state.y0, &tx, &ty, &tw, &th);
+  uint16_t lineHeight = th;
+
+  // Break text into lines (same as before)
+  const uint8_t MAX_LINES = 6;
+  const uint8_t MAX_LINE_LEN = 32;
+  char lines[MAX_LINES][MAX_LINE_LEN] = {0};
+  uint8_t lineCount = 0;
+
+  if (style.verticalText) {
+    for (uint8_t i = 0; label[i] != '\0' && lineCount < MAX_LINES; i++) {
+      lines[lineCount][0] = label[i];
+      lines[lineCount][1] = '\0';
+      lineCount++;
+    }
+  } else {
+    // Word wrapping (same logic as before)
+    char word[MAX_LINE_LEN] = {0};
+    uint8_t wordIdx = 0;
+    char currentLine[MAX_LINE_LEN] = {0};
+
+    for (uint16_t i = 0;; i++) {
+      char c = label[i];
+      bool isBreak = (c == ' ' || c == '\0');
+
+      if (!isBreak && wordIdx < MAX_LINE_LEN - 1) {
+        word[wordIdx++] = c;
+        word[wordIdx] = '\0';
+      }
+
+      if (isBreak) {
+        if (wordIdx > 0) {
+          char testLine[MAX_LINE_LEN];
+          snprintf(testLine, MAX_LINE_LEN, "%s%s%s",
+                   currentLine,
+                   (strlen(currentLine) > 0 ? " " : ""),
+                   word);
+
+          tft.getTextBounds(testLine, 0, 0, &tx, &ty, &tw, &th);
+          if (tw > state.w && strlen(currentLine) > 0) {
+            strncpy(lines[lineCount++], currentLine, MAX_LINE_LEN);
+            strncpy(currentLine, word, MAX_LINE_LEN);
+          } else {
+            if (strlen(currentLine) > 0)
+              strncat(currentLine, " ", MAX_LINE_LEN - strlen(currentLine) - 1);
+            strncat(currentLine, word, MAX_LINE_LEN - strlen(currentLine) - 1);
+          }
+          wordIdx = 0;
+          word[0] = '\0';
+        }
+
+        if (c == '\0' || lineCount >= MAX_LINES)
+          break;
+      }
+    }
+
+    if (strlen(currentLine) > 0 && lineCount < MAX_LINES) {
+      strncpy(lines[lineCount++], currentLine, MAX_LINE_LEN);
+    }
+  }
+
+  // Center text vertically
+  uint16_t totalHeight = lineHeight * lineCount;
+  uint16_t startY = state.y0 + (state.h - totalHeight) / 2 + lineHeight / 2;
+
+  for (uint8_t i = 0; i < lineCount; i++) {
+    tft.getTextBounds(lines[i], 0, 0, &tx, &ty, &tw, &th);
+    uint16_t x = state.x0 + (state.w - tw) / 2;
+    uint16_t y = startY + i * lineHeight;
+    tft.setCursor(x, y);
+    tft.print(lines[i]);
+  }
+}
+
+/***************************************************************************************
+   UPDATE BUTTON STATE
+
+   Checks for touch interaction within a button's bounds and triggers user-defined
+   callbacks for press or toggle events. This function should be called every frame
+   or touch update cycle to maintain correct button state.
+
+   - INPUTS:
+     - ButtonState& state      : Reference to the button's current state and bounds
+     - uint16_t touchX         : X coordinate of the current touch point
+     - uint16_t touchY         : Y coordinate of the current touch point
+     - bool touchActive        : True if screen is being touched this frame
+
+   - FUNCTIONALITY:
+     - Updates `.isPressed` and `.wasPressed` fields
+     - Detects rising edge press (touch began this frame)
+     - If toggle mode is enabled:
+         - Flips `.isOn` boolean
+         - Triggers `onToggle(isOn)` callback if assigned
+     - Triggers `onPress()` callback if assigned
+
+   - NOTES:
+     - Designed for use with RA8875_t4 and Teensy 4.0 touch-enabled systems
+     - Call once per button per touch update
+
+   - EXAMPLE USAGE:
+       updateButtonState(myButton, touchX, touchY, tftTouched());
+
+   - USE IN loop() OR EVENT HANDLER:  
+      // Example callback functions
+      void onLaunchPress() {
+        Serial.println("Launch button pressed!");
+      }
+
+      void onToggleLED(bool state) {
+        digitalWrite(LED_BUILTIN, state ? HIGH : LOW);
+        Serial.print("LED toggled ");
+        Serial.println(state ? "ON" : "OFF");
+      }
+
+      // Setup button
+      ButtonState launchBtn = {
+        .x0 = 40, .y0 = 60, .w = 180, .h = 60,
+        .toggleEnabled = true,
+        .onPress = onLaunchPress,
+        .onToggle = onToggleLED
+      };
+
+      // In your main loop:
+      if (tftTouched()) {
+        uint16_t tx, ty;
+        tftTouchRead(&tx, &ty);
+        updateButtonState(launchBtn, tx, ty, true);
+      } else {
+        updateButtonState(launchBtn, 0, 0, false);
+      }
+
+      // Redraw button only if visual state needs to reflect isOn
+      drawStyledButton("LAUNCH", launchStyle, launchBtn);
+
+****************************************************************************************/
+void updateButtonState(ButtonState& state, uint16_t touchX, uint16_t touchY, bool touchActive) {
+  state.wasPressed = state.isPressed;
+  state.isPressed = touchActive &&
+                    (touchX >= state.x0 && touchX <= state.x0 + state.w) &&
+                    (touchY >= state.y0 && touchY <= state.y0 + state.h);
+
+  // Rising edge: touch began this frame
+  if (state.isPressed && !state.wasPressed) {
+    if (state.toggleEnabled) {
+      state.isOn = !state.isOn;
+      if (state.onToggle) state.onToggle(state.isOn);
+    }
+    if (state.onPress) state.onPress();
+  }
+}
+
+/***************************************************************************************
+   TFT TOUCH UPDATE
+
+   Polls the GSLX680 capacitive touch controller over I2C and updates the internal
+   `ts_event` structure with the number of active fingers and their coordinates.
+
+   - FUNCTIONALITY:
+     - Calls GSLX680_read_data() to refresh touch event data
+     - Must be called once per frame or input cycle before reading touch data
+
+   - NOTES:
+     - Required for all subsequent calls to tftTouched() or tftTouchRead()
+     - Should be called before evaluating touch interaction each frame
+
+****************************************************************************************/
+void tftTouchUpdate() {
+  GSLX680_read_data();  // Polls the controller and updates ts_event
+}
+
+/***************************************************************************************
+   TFT TOUCHED
+
+   Checks if the touchscreen is currently being touched by one or more fingers.
+
+   - RETURNS:
+     - true  : if at least one finger is detected
+     - false : if no fingers are present
+
+   - DEPENDENCY:
+     - Assumes tftTouchUpdate() was called earlier in the frame
+
+   - USAGE:
+     if (tftTouched()) {
+       // Proceed to read touch coordinates
+     }
+
+****************************************************************************************/
+bool tftTouched() {
+  return ts_event.fingers > 0;
+}
+
+/***************************************************************************************
+   TFT TOUCH READ (MULTI-FINGER)
+
+   Retrieves the (x, y) coordinates for a specific finger index reported by the
+   GSLX680 touch controller. Supports up to 5 concurrent fingers (index 0–4).
+
+   - INPUTS:
+     - fingerIndex : 0-based index of the finger to query (0 = first finger)
+     - *x, *y      : Pointers to store the finger’s coordinates
+
+   - RETURNS:
+     - true  : if the finger index is valid and data is available
+     - false : if no finger data exists for the given index
+
+   - NOTES:
+     - Ensure tftTouchUpdate() has been called before using
+     - Use tftTouchCount() to determine how many fingers are active
+
+****************************************************************************************/
+bool tftTouchRead(uint8_t fingerIndex, uint16_t* x, uint16_t* y) {
+  if (ts_event.fingers == 0 || fingerIndex >= ts_event.fingers)
+    return false;
+
+  switch (fingerIndex) {
+    case 0: *x = ts_event.x1; *y = ts_event.y1; break;
+    case 1: *x = ts_event.x2; *y = ts_event.y2; break;
+    case 2: *x = ts_event.x3; *y = ts_event.y3; break;
+    case 3: *x = ts_event.x4; *y = ts_event.y4; break;
+    case 4: *x = ts_event.x5; *y = ts_event.y5; break;
+    default: return false;
+  }
+  return true;
+}
+
+/***************************************************************************************
+   TFT TOUCH COUNT
+
+   Returns the number of active fingers currently detected on the GSLX680
+   capacitive touch controller.
+
+   - RETURNS:
+     - {uint8_t} number of fingers (0–5) currently active
+
+   - USAGE:
+     if (tftTouchCount() > 1) {
+       // Handle multi-touch gesture
+     }
+
+   - DEPENDENCY:
+     - Requires prior call to tftTouchUpdate() in the same frame
+
+****************************************************************************************/
+uint8_t tftTouchCount() {
+  return ts_event.fingers;
+}
+
+/***************************************************************************************
+   FLOAT TO COMMA SEPERATED STRING
+   Configures a float as a comma seperated String for printing
+   - INPUTS:
+    - {float} value = float value to be operated upon
+  - OUTPUTS:
+    - {char} outputs a char array of the resulting value;
+****************************************************************************************/
+char* float2String_sep(float value) {
+  static char output[40];
+  char temp[16];
+  char sign[2] = "";
+
+  if (value < 0) {
+    sign[0] = '-';
+    sign[1] = '\0';
+    value = -value;
+  }
+
+  if (value < 1000) {
+    dtostrf(value, 0, 2, temp);
+    snprintf(output, sizeof(output), "%s%s", sign, temp);
+  } else {
+    long intPart = (long)value;
+    int decimals = (int)((value - intPart) * 100.0 + 0.5);
+    char intBuf[24] = "";
+    int group = 0;
+
+    while (intPart > 0) {
+      int chunk = intPart % 1000;
+      intPart /= 1000;
+      char chunkBuf[8];
+      if (intPart > 0)
+        snprintf(chunkBuf, sizeof(chunkBuf), ",%03d", chunk);
+      else
+        snprintf(chunkBuf, sizeof(chunkBuf), "%d", chunk);
+
+      strcat(chunkBuf, intBuf);
+      strcpy(intBuf, chunkBuf);
+      group++;
+    }
+
+    snprintf(output, sizeof(output), "%s%s.%02d", sign, intBuf, decimals);
+  }
+  return output;
+}
+
+/***************************************************************************************
+   TIME STRING FORMATTER
+   Configures a float as a time formatted string for display
+   - INPUTS:
+    - {float} value = float value to be operated upon
+   - OUTPUTS:
+    - {char} outputs a char array of the resulting value;
+****************************************************************************************/
+char* dispTimeString(float timeVal) {
+  static char timeStr[40];
+  char sign[2] = "";
+
+  if (timeVal < 0) {
+    sign[0] = '-';
+    sign[1] = '\0';
+    timeVal = -timeVal;
+  }
+
+  uint16_t kerbinDay = 6;
+  long millis = timeVal * 1000;
+  long secs = millis / 1000;
+  long mins = secs / 60;
+  long hrs  = mins / 60;
+  long days = hrs / kerbinDay;
+
+  millis %= 1000;
+  secs %= 60;
+  mins %= 60;
+  hrs %= 24;
+
+  if (days)       sprintf(timeStr, "%s%ld d: %02ld h: %02ld m: %02ld s", sign, days, hrs, mins, secs);
+  else if (hrs)   sprintf(timeStr, "%s%ld h: %02ld m: %02ld s", sign, hrs, mins, secs);
+  else if (mins)  sprintf(timeStr, "%s%ld m: %02ld s", sign, mins, secs);
+  else            sprintf(timeStr, "%s%ld.%02ld s", sign, secs, millis / 10);
+
+  return timeStr;
+}
+
+/***************************************************************************************
+   ALTITUDE STRING FORMATTER
+   Configures a float as an altitude formatted string for printing
+   - INPUTS:
+    - {float} value = float value to be operated upon
+   - OUTPUTS:
+    - {char} outputs a char array of the resulting value;
+****************************************************************************************/
+char *altString(float value) {
+  static char altStr[40];
+  char tempSign[2];
+  if (value < 0) {
+    strcpy(tempSign, "-");
+    value *= -1;
+  } else {
+    strcpy(tempSign, "");
+  }
+
+  if (value < 1000000) {
+    //tempAlt = float2String_sep(value);
+    sprintf(altStr, "%s%s m", tempSign, float2String_sep(value));
+  } else if (value >= 1000000 && value < 1000000000) {
+    //tempAlt = float2String_sep(value / 1000.0);
+    sprintf(altStr, "%s%s km", tempSign, float2String_sep(value / 1000.0));
+  } else if (value >= 1000000000 && value < 1000000000000) {
+    //tempAlt = float2String_sep(value / 1000000.0);
+    sprintf(altStr, "%s%s Mm", tempSign, float2String_sep(value / 1000000.0));
+  } else {
+    //tempAlt = float2String_sep(value / 1000000000.0);
+    sprintf(altStr, "%s%s Gm", tempSign, float2String_sep(value / 1000000000.0));
+  }
+
+  return altStr;
+}
+
+/***************************************************************************************
+   DRAW VERTICAL BAR GRAPH
+   Uses RA8875 library to draw a verticle bargraph
+   - INPUTS:
+    - {uint16_t} x0 = starting pixel x position; top left corner
+    - {uint16_t} y0 = starting pixel y position; top left corner
+    - {uint16_t} w = total area to center on
+    - {uint16_t} h = total height
+    - {uint16_t} prevPerc = previous percentage in 0.1% increments
+    - {uint16_t} newPerc = new percentage in 0.1% increments
+    - {uint16_t} color = color of bar to print
+
+   - No outputs
+****************************************************************************************/
+void drawVertBarGraph(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                      uint16_t prevPerc, uint16_t nPerc, uint16_t color, bool border) {
+  nPerc = constrain(nPerc, 0, 1000);
+  prevPerc = constrain(prevPerc, 0, 1000);
+
+  uint16_t barW = (3 * w) / 4;
+  uint16_t xPos = x0 + (w / 2) - (barW / 2);
+  uint16_t prevHeight = map(prevPerc, 0, 1000, h, 0);
+  uint16_t newHeight  = map(nPerc,    0, 1000, h, 0);
+
+  if (nPerc < prevPerc) {
+    tft.fillRect(xPos, y0 + newHeight, barW, prevHeight - newHeight, BLACK);
+  } else {
+    tft.fillRect(xPos, y0 + newHeight, barW, h - newHeight, color);
+  }
+
+  tft.drawRect(xPos - 1, y0 - 1, barW + 2, h + 2, border ? WHITE : BLACK);
+}

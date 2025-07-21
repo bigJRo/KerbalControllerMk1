@@ -41,7 +41,8 @@ extern "C" void usb_init(void);
   Structs and Enums
 ****************************************************************************************/
 struct kspResource {  // Structure to contain resource value from KSP
-  char name[20];
+  char full_name[20];
+  char name[5];
   float current;
   float total;
   float stage_curr;
@@ -74,6 +75,27 @@ struct DisplayValueConfig { // Structure to hold configuration for displaying a 
   TextAlign paramAlign = ALIGN_LEFT;
   TextAlign valueAlign = ALIGN_RIGHT;
 };
+
+struct ButtonStyle { // Structure to hold button style configuration
+  uint16_t fillColor;
+  uint16_t textColor;
+  uint16_t borderColor;
+  const GFXfont* font = nullptr;  // Use nullptr for default built-in font
+  bool verticalText = false;
+};
+
+struct ButtonState { // Structure to hold button state and configuration
+  bool isOn = false;                         // Current toggle state
+  bool wasPressed = false;                   // Previous touch state
+  bool isPressed = false;                    // Current touch state
+  uint16_t x0, y0, w, h;                     // Button bounds
+
+  void (*onPress)() = nullptr;               // Callback: fired on new press
+  void (*onToggle)(bool) = nullptr;          // Callback: fired on toggle state change
+  bool toggleEnabled = false;                // Enable toggle mode behavior
+};
+
+
 
 
 /***************************************************************************************
@@ -176,6 +198,19 @@ void printName(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
 void printTitle(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                 const char* prevParam, const char* param,
                 uint16_t paramColor, bool border); // Displays a parameter name and value in a block with optional border
-
+void drawButton(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                const String& text, bool isVertical,
+                uint16_t fillColor, uint16_t textColor); // Draws a button with optional vertical text layout
+void drawStyledButton(const char* label, const ButtonStyle& style, const ButtonState& state); // Draws a button with specified style and state
+void updateButtonState(ButtonState& state, uint16_t touchX, uint16_t touchY, bool touchActive); // Updates button state based on touch input
+void tftTouchUpdate(); // Updates TFT touch state based on current touch input
+bool tftTouched(); // Checks if the TFT is currently touched
+bool tftTouchRead(uint8_t fingerIndex, uint16_t* x, uint16_t* y); // Reads touch coordinates for a specific finger index
+uint8_t tftTouchCount(); // Returns the number of fingers currently touching the TFT
+char* float2String_sep(float value); // Converts a float to a string with thousands separator
+char* dispTimeString(float timeVal); // Converts a time value to a formatted string
+char *altString(float value); // Converts a float to a string with altitude  formatting
+void drawVertBarGraph(uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                      uint16_t prevPerc, uint16_t nPerc, uint16_t color, bool border); // Draws a vertical bar graph with optional border
 
 #endif  // MAIN_DISPLAY_CORE_H
