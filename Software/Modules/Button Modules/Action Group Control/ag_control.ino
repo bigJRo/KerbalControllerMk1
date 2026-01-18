@@ -17,40 +17,40 @@ constexpr uint8_t panel_addr = 0x29;  // I2C address for this module
   LED Color Mapping (Index-based from ColorIndex enum)
 ****************************************************************************************/
 constexpr ColorIndex pixel_Array[NUM_LEDS] = {
-  GREEN,  //  0: AG1
-  GREEN,  //  1: AG2
-  GREEN,  //  2: AG3
-  GREEN,  //  3: AG4
-  GREEN,  //  4: AG5
-  GREEN,  //  5: AG6
-  GREEN,  //  6: AG7
-  GREEN,  //  7: AG8
-  GREEN,  //  8: AG9
-  GREEN,  //  9: AG10
-  GREEN,  // 10: AG11
-  GREEN   // 11: AG12
+  GREEN,  //  0: AG5
+  GREEN,  //  1: AG11
+  GREEN,  //  2: AG4
+  GREEN,  //  3: AG9
+  GREEN,  //  4: AG3
+  GREEN,  //  5: AG8
+  GREEN,  //  6: AG2
+  GREEN,  //  7: AG7
+  GREEN,  //  8: AG1
+  GREEN,  //  9: AG6
+  MINT,   // 10: CtrlPt_PRI
+  LIME    // 11: CtrlPt_RED
 };
 
 /***************************************************************************************
   Button Command Names (for mapping and reference)
 ****************************************************************************************/
 const char commandNames[NUM_BUTTONS][16] PROGMEM = {
-  "AG1",   //  0: Action Group 1
-  "AG2",   //  1: Action Group 2
-  "AG3",   //  2: Action Group 3
-  "AG4",   //  3: Action Group 4
-  "AG5",   //  4: Action Group 5
-  "AG6",   //  5: Action Group 6
-  "AG7",   //  6: Action Group 7
-  "AG8",   //  7: Action Group 8
-  "AG9",   //  8: Action Group 9
-  "AG10",  //  9: Action Group 10
-  "AG11",  // 10: Action Group 11
-  "AG12",  // 11: Action Group 12
-  "",      // 12 → unused
-  "",      // 13 → unused
-  "SPC_MODE",      // 14: Spacecraft Control Mode
-  "RVR_MODE"       // 15: Rover Control Mode
+  "AG5",         //  0: Action Group 5
+  "AG11",        //  1: Action Group 11
+  "AG4",         //  2: Action Group 4
+  "AG9",         //  3: Action Group 9
+  "AG3",         //  4: Action Group 3
+  "AG8",         //  5: Action Group 8
+  "AG2",         //  6: Action Group 2
+  "AG7",         //  7: Action Group 7
+  "AG1",         //  8: Action Group 1
+  "AG6",         //  9: Action Group 6
+  "CtrlPt_PRI",  // 10: Control Point Primary
+  "CtrlPt_RED",  // 11: Control Point Redundant
+  "",            // 12 → unused
+  "",            // 13 → unused
+  "SPC_MODE",    // 14: Spacecraft Control Mode
+  "RVR_MODE"     // 15: Rover Control Mode
 };
 
 /***************************************************************************************
