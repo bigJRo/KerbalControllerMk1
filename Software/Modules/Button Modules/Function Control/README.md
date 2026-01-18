@@ -1,113 +1,145 @@
-# Function Control Module – Kerbal Controller Mk1
+# Function Control Module – Kerbal Controller Mk1  
+**Version 1.0 (Reference)**
 
 This is the finalized firmware for the **Function Control Module** in the **Kerbal Controller Mk1** system.  
-It handles function-related inputs (like engine groups, science, control modes), RGB LED feedback, and I2C communication with the host.
+It handles spacecraft function buttons, RGB LED feedback, discrete indicator outputs, and I²C communication with the host using the shared **ButtonModuleCore v1.1** library.
 
 ---
 
 ## 📦 Overview
 
-- **MCU**: ATtiny816 (via megaTinyCore)
-- **Communication**: I2C (slave address `0x28`)
-- **Inputs**: 16 buttons via 2× 74HC165 shift registers
+- **MCU**: ATtiny816 (megaTinyCore)
+- **Communication**: I²C (slave address `0x28`)
+- **Inputs**:  
+  - 16 momentary buttons via shift registers (handled by ButtonModuleCore)
 - **Outputs**:
-  - 12 RGB NeoPixel LEDs for button state/status
-  - 4 discrete output pins (Throttle Lock, Precision, SCE, Audio)
-- **Host Compatibility**: Works with the Kerbal Simpit host-side Arduino firmware
-- **Core Library**: Uses `ButtonModuleCore`
+  - 12 RGB NeoPixel LEDs (function indicators)
+  - 4 discrete digital outputs (non-dimmable indicators)
+- **Host Compatibility**: Designed for Kerbal Simpit–based host firmware
+- **Core Library**: `ButtonModuleCore v1.1` (baseline)
 
 ---
 
 ## 🚀 Features
 
-- Reads 16 input buttons using shift registers
-- Controls 12 RGB LEDs via NeoPixels using `tinyNeoPixel`
-- Controls 4 discrete output pins based on last 4 button states
-- Communicates with host microcontroller over I2C
-- Uses a shared color table in PROGMEM for low SRAM usage
-- Built-in **Bulb Test** on startup to verify RGB and digital output operation
+- Reads up to **16 button inputs** via shared core logic
+- Controls **12 RGB NeoPixel LEDs** for function state feedback
+- Controls **4 discrete digital outputs** for non-RGB indicators
+- Clean separation of:
+  - Button state tracking
+  - I²C protocol handling
+  - Module-specific LED/output behavior
+- **Priority-based LED rendering** using ButtonModuleCore v1.1 semantics
+- **Automatic bulb test** executed during startup
+- Optimized output updates (only changed outputs are refreshed)
 
 ---
 
 ## 🎛 Button Mapping
 
-| Index | Label           | Function                          |
-|-------|------------------|-----------------------------------|
-| 0     | Air Intake       | Activate air intake               |
-| 1     | Launch Escape    | Trigger escape tower              |
-| 2     | Sci Collect      | Trigger science collection        |
-| 3     | Engine Alt       | Alternate engine configuration    |
-| 4     | Science Grp 1    | Activate science group 1          |
-| 5     | Engine Grp 1     | Activate engine group 1           |
-| 6     | Science Grp 2    | Activate science group 2          |
-| 7     | Engine Grp 2     | Activate engine group 2           |
-| 8     | Ctrl Pt Alt      | Alternate control point           |
-| 9     | Ctrl Pt Pri      | Primary control point             |
-| 10    | Lock Ctrl        | Lock control mode                 |
-| 11    | Heat Shield      | Activate heat shield              |
-| 12–15 | Discrete Outputs | See below                         |
-
-### 🔌 Discrete Outputs
-
-| Index | Label        | Pin Function |
-|-------|--------------|--------------|
-| 12    | Throttle Lock    | Discrete LED output (LED13)       |
-| 13    | Precision        | Discrete LED output (LED14)       |
-| 14    | SCE              | Discrete LED output (LED15)       |
-| 15    | Audio            | Discrete LED output (LED16)       |
-
+| Index | Label           | Function                |
+|------:|-----------------|-------------------------|
+| 0     | Air Intake      | Toggle air intake       |
+| 1     | Launch Escape   | Launch escape system    |
+| 2     | Sci Collect     | Science collection      |
+| 3     | Engine Alt      | Alternate engine mode   |
+| 4     | Science Grp 1   | Science group 1         |
+| 5     | Engine Grp 1    | Engine group 1          |
+| 6     | Science Grp 2   | Science group 2         |
+| 7     | Engine Grp 2    | Engine group 2          |
+| 8     | Ctrl Pt Alt     | Control point alternate |
+| 9     | Ctrl Pt Pri     | Control point primary   |
+| 10    | Lock Ctrl      | Control lock            |
+| 11    | Heat Shield    | Heat shield             |
+| 12    | Throttle Lock  | Discrete output         |
+| 13    | Precision      | Discrete output         |
+| 14    | SCE            | Discrete output         |
+| 15    | Audio          | Discrete output         |
 
 ---
 
-## 💡 LED Color Mapping
+## 💡 Output Behavior (ButtonModuleCore v1.1)
 
-| LED Index | Color Index   | Function         |
-|-----------|----------------|------------------|
-| 0         | SKY_BLUE       | Air Intake       |
-| 1         | RED            | Launch Escape    |
-| 2         | BLUE           | Sci Collect      |
-| 3         | AMBER          | Engine Alt       |
-| 4         | CYAN           | Science Grp 1    |
-| 5         | GREEN          | Engine Grp 1     |
-| 6         | CYAN           | Science Grp 2    |
-| 7         | GREEN          | Engine Grp 2     |
-| 8         | LIME           | Ctrl Pt Alt      |
-| 9         | LIME           | Ctrl Pt Pri      |
-| 10        | AMBER          | Lock Ctrl        |
-| 11        | MINT           | Heat Shield      |
+### RGB LEDs (Indices 0–11)
 
-Inactive LEDs display `DIM_GRAY`.
+Each RGB LED follows a strict **priority model**:
 
----
+1. **`led_bits` = 1**  
+   → LED displays its **assigned color**
 
-## 🔧 Setup
+2. **Else if `button_active_bits` = 1**  
+   → LED displays **DIM_GRAY**
 
-The firmware calls `beginModule(panel_addr)` in `setup()`, which:
+3. **Else**  
+   → LED is **OFF (BLACK)**
 
-- Initializes I2C, NeoPixels, shift registers, and discrete outputs
-- Runs a **bulb test**:
-  - RGB LEDs cycle through red, green, blue, white  
-  - Final LED pattern held for 2 seconds  
-  - Odd discrete pins set HIGH, even set LOW
+### RGB LED Color Mapping
 
----
-
-## 📂 Files
-
-- `FunctionControlModule.ino` – Main firmware file
-- `ButtonModuleCore` – Shared library (in separate folder)
+| LED Index | Label          | Assigned Color |
+|----------:|----------------|----------------|
+| 0         | Air Intake     | SKY_BLUE       |
+| 1         | Launch Escape  | RED            |
+| 2         | Sci Collect    | BLUE           |
+| 3         | Engine Alt     | AMBER          |
+| 4         | Science Grp 1  | CYAN           |
+| 5         | Engine Grp 1   | GREEN          |
+| 6         | Science Grp 2  | CYAN           |
+| 7         | Engine Grp 2   | GREEN          |
+| 8         | Ctrl Pt Alt    | LIME           |
+| 9         | Ctrl Pt Pri    | LIME           |
+| 10        | Lock Ctrl     | AMBER          |
+| 11        | Heat Shield   | MINT           |
 
 ---
 
-## 🛠 Build Environment
+### Discrete Outputs (Indices 12–15)
 
-- Arduino IDE or PlatformIO
-- Board: ATtiny816 (megaTinyCore)
-- Libraries:
-  - `tinyNeoPixel`
-  - `ShiftIn`
-  - `Wire`
+Discrete outputs are **binary only** and do not support dimming:
+
+- **`led_bits` = 1** → Output **HIGH**
+- **Else** → Output **LOW**
+
+`button_active_bits` does **not** affect discrete outputs.
 
 ---
 
-© 2025 Jeb's Controller Works. Licensed under GPLv3.
+## 🔌 I²C Protocol Summary (v1.1)
+
+### Host → Module
+- Sends 16-bit control words
+- Sets or clears:
+  - `led_bits`
+  - `button_active_bits`
+- May invoke bulb test
+
+### Module → Host
+Returns on request:
+1. `button_state`
+2. `button_pressed` (auto-clears after send)
+3. `button_released` (auto-clears after send)
+
+---
+
+## 🔧 Setup & Initialization
+
+Called from `setup()`:
+
+```cpp
+beginModule(panel_addr);
+```
+
+Initializes hardware, I²C, and runs a stepped bulb test (250 ms per step).
+
+---
+
+## 🔖 Versioning & Freeze Policy
+
+- **Function Control Module**: **v1.0 (FROZEN)**
+- **ButtonModuleCore**: v1.1 (baseline)
+
+No functional changes without version bump.
+
+---
+
+© 2025 Jeb’s Controller Works  
+Licensed under the GNU GPL v3.0
