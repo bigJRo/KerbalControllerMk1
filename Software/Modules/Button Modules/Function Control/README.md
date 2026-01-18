@@ -37,24 +37,24 @@ It handles spacecraft function buttons, RGB LED feedback, discrete indicator out
 
 ## 🎛 Button Mapping
 
-| Index | Label           | Function                |
-|------:|-----------------|-------------------------|
-| 0     | Air Intake      | Toggle air intake       |
-| 1     | Launch Escape   | Launch escape system    |
-| 2     | Sci Collect     | Science collection      |
-| 3     | Engine Alt      | Alternate engine mode   |
-| 4     | Science Grp 1   | Science group 1         |
-| 5     | Engine Grp 1    | Engine group 1          |
-| 6     | Science Grp 2   | Science group 2         |
-| 7     | Engine Grp 2    | Engine group 2          |
-| 8     | Ctrl Pt Alt     | Control point alternate |
-| 9     | Ctrl Pt Pri     | Control point primary   |
-| 10    | Lock Ctrl      | Control lock            |
-| 11    | Heat Shield    | Heat shield             |
-| 12    | Throttle Lock  | Discrete output         |
-| 13    | Precision      | Discrete output         |
-| 14    | SCE            | Discrete output         |
-| 15    | Audio          | Discrete output         |
+| Index | Label | Function |
+|------:|-------|----------|
+| 0 | Air Intake | Toggle air intake |
+| 1 | Launch Escape | Launch escape system |
+| 2 | Sci Collect | Science collection |
+| 3 | Engine Alt | Alternate engine mode |
+| 4 | Science Grp 1 | Science group 1 |
+| 5 | Engine Grp 1 | Engine group 1 |
+| 6 | Science Grp 2 | Science group 2 |
+| 7 | Engine Grp 2 | Engine group 2 |
+| 8 | Ctrl Pt Alt | Control point alternate |
+| 9 | Ctrl Pt Pri | Control point primary |
+| 10 | Lock Ctrl | Control lock |
+| 11 | Heat Shield | Heat shield |
+| 12 | Throttle Lock | Discrete output |
+| 13 | Precision | Discrete output |
+| 14 | SCE | Discrete output |
+| 15 | Audio | Discrete output |
 
 ---
 
@@ -64,42 +64,33 @@ It handles spacecraft function buttons, RGB LED feedback, discrete indicator out
 
 Each RGB LED follows a strict **priority model**:
 
-1. **`led_bits` = 1**  
-   → LED displays its **assigned color**
-
-2. **Else if `button_active_bits` = 1**  
-   → LED displays **DIM_GRAY**
-
-3. **Else**  
-   → LED is **OFF (BLACK)**
+1. **`led_bits` = 1** → Assigned color  
+2. **Else if `button_active_bits` = 1** → DIM_GRAY  
+3. **Else** → OFF (BLACK)
 
 ### RGB LED Color Mapping
 
-| LED Index | Label          | Assigned Color |
-|----------:|----------------|----------------|
-| 0         | Air Intake     | SKY_BLUE       |
-| 1         | Launch Escape  | RED            |
-| 2         | Sci Collect    | BLUE           |
-| 3         | Engine Alt     | AMBER          |
-| 4         | Science Grp 1  | CYAN           |
-| 5         | Engine Grp 1   | GREEN          |
-| 6         | Science Grp 2  | CYAN           |
-| 7         | Engine Grp 2   | GREEN          |
-| 8         | Ctrl Pt Alt    | LIME           |
-| 9         | Ctrl Pt Pri    | LIME           |
-| 10        | Lock Ctrl     | AMBER          |
-| 11        | Heat Shield   | MINT           |
+| LED Index | Label | Assigned Color |
+|----------:|-------|----------------|
+| 0 | Air Intake | SKY_BLUE |
+| 1 | Launch Escape | RED |
+| 2 | Sci Collect | BLUE |
+| 3 | Engine Alt | AMBER |
+| 4 | Science Grp 1 | CYAN |
+| 5 | Engine Grp 1 | GREEN |
+| 6 | Science Grp 2 | CYAN |
+| 7 | Engine Grp 2 | GREEN |
+| 8 | Ctrl Pt Alt | LIME |
+| 9 | Ctrl Pt Pri | LIME |
+| 10 | Lock Ctrl | AMBER |
+| 11 | Heat Shield | MINT |
 
 ---
 
 ### Discrete Outputs (Indices 12–15)
 
-Discrete outputs are **binary only** and do not support dimming:
-
-- **`led_bits` = 1** → Output **HIGH**
-- **Else** → Output **LOW**
-
-`button_active_bits` does **not** affect discrete outputs.
+- **`led_bits` = 1** → Output HIGH  
+- **Else** → Output LOW  
 
 ---
 
@@ -115,14 +106,12 @@ Discrete outputs are **binary only** and do not support dimming:
 ### Module → Host
 Returns on request:
 1. `button_state`
-2. `button_pressed` (auto-clears after send)
-3. `button_released` (auto-clears after send)
+2. `button_pressed`
+3. `button_released`
 
 ---
 
 ## 🔧 Setup & Initialization
-
-Called from `setup()`:
 
 ```cpp
 beginModule(panel_addr);
@@ -136,8 +125,6 @@ Initializes hardware, I²C, and runs a stepped bulb test (250 ms per step).
 
 - **Function Control Module**: **v1.0 (FROZEN)**
 - **ButtonModuleCore**: v1.1 (baseline)
-
-No functional changes without version bump.
 
 ---
 
