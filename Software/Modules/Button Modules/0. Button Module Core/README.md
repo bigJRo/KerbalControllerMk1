@@ -2,6 +2,8 @@
 
 This library provides the shared firmware core for **Kerbal Controller Mk1** button modules built around an **ATtiny816** (megaTinyCore).
 
+---
+
 ## What it provides
 
 - 16-button input scanning via two chained **74HC165** shift registers (`ShiftIn`)
@@ -11,6 +13,8 @@ This library provides the shared firmware core for **Kerbal Controller Mk1** but
   - Master reads: **button state** + **pressed edges** + **released edges** (6 bytes)
   - Master writes: **LED control** bits (16-bit) and optional **button_active_bits** (16-bit)
 - Startup **bulb test** pattern
+
+---
 
 - ## 📦 Overview
 
@@ -39,6 +43,8 @@ This library provides the shared firmware core for **Kerbal Controller Mk1** but
 - 🧠 **Color Tables in PROGMEM**: Saves SRAM by storing LED color definitions in flash memory.
 - 🛠️ **I2C Slave Interface**: Compatible with master polling or direct control
 
+---
+
 ## Pin mapping (ATtiny816 / megaTinyCore)
 
 These are the canonical defines used by the library (see `src/ButtonModuleCore.h`).
@@ -58,6 +64,8 @@ These are the canonical defines used by the library (see `src/ButtonModuleCore.h
 | Discrete LED 3 | `led_15` | `PIN_PC2` |
 | Discrete LED 4 | `led_16` | `PIN_PC1` |
 
+---
+
 ## Usage
 
 In your module firmware:
@@ -69,6 +77,8 @@ In your module firmware:
    - `button_active_bits` (16-bit)
 
 How `led_bits` and `button_active_bits` map onto the 12 NeoPixels and 4 discrete LEDs is **module-specific**. This core library stores the values and sets `updateLED` when they change.
+
+---
 
 ## I2C Protocol Description
 
@@ -107,9 +117,13 @@ Accepted payloads:
 - The module updates colors or output states based on these bits.
 - When a state change is detected, the flag `updateLED` is set for processing in the main loop.
 
+---
+
 ## Bulb test
 
 `beginModule()` runs `bulbTest()` during startup. The current bulb test implementation cycles all NeoPixels through a basic color sequence, then displays a fixed final pattern, and finally clears the outputs.
+
+---
 
 ## 🔧 API Summary
 
