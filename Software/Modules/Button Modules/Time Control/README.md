@@ -1,105 +1,138 @@
-# Time Control Module – Kerbal Controller Mk1
+# Time Control Module – Kerbal Controller Mk1  
+**Version 1.0 (Reference)**
 
 This is the finalized firmware for the **Time Control Module** in the **Kerbal Controller Mk1** system.  
-It handles time-warp and save/load-related button input with RGB LED feedback, communicating with a host device over I2C.
+It handles time-warp control, save/load commands, pause control, RGB LED feedback, and I²C communication with the host using the shared **ButtonModuleCore v1.1** library.
 
 ---
 
 ## 📦 Overview
 
-- **MCU**: ATtiny816 (via megaTinyCore)  
-- **Communication**: I2C (slave address `0x24`)  
-- **Inputs**: 16 buttons via 2× 74HC165 shift registers  
-- **Outputs**:  
-  - 12 RGB NeoPixel LEDs for time control functions  
-  - No discrete outputs used  
-- **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware  
-- **Core Library:** Uses `ButtonModuleCore`
+- **MCU**: ATtiny816 (megaTinyCore)
+- **Communication**: I²C (slave address `0x24`)
+- **Inputs**:
+  - 16 momentary buttons via shift registers (handled by ButtonModuleCore)
+- **Outputs**:
+  - 12 RGB NeoPixel LEDs (time and state indicators)
+- **Host Compatibility**: Designed for Kerbal Simpit–based host firmware
+- **Core Library**: `ButtonModuleCore v1.1` (baseline)
 
 ---
 
 ## 🚀 Features
 
-- Reads 16 input buttons using shift registers
-- Controls 12 RGB LEDs via NeoPixels using `tinyNeoPixel`
-- Controls 4 discrete output pins based on last 4 button states
-- Communicates with host microcontroller over I2C
-- Uses a shared color table in PROGMEM for low SRAM usage
-- Built-in **Bulb Test** on startup to verify RGB and digital output operation
+- Reads up to **16 button inputs** via shared core logic
+- Controls **12 RGB NeoPixel LEDs** for time and state feedback
+- Clean separation of:
+  - Button state tracking
+  - I²C protocol handling
+  - Module-specific LED behavior
+- **Priority-based LED rendering** using ButtonModuleCore v1.1 semantics
+- **Automatic bulb test** executed during startup
+- Optimized LED updates (only changed LEDs are refreshed)
 
 ---
 
 ## 🎛 Button Mapping
 
-| Index | Label           | Function                   |
-|-------|------------------|----------------------------|
-| 0     | Pause            | Pause game time            |
-| 1     | Warp to Morn     | Warp to Morning            |
-| 2     | Warp to SOI      | Warp to Sphere of Influence|
-| 3     | Warp to MNVR     | Warp to Maneuver Node      |
-| 4     | Warp to PeA      | Warp to Periapsis          |
-| 5     | Warp to ApA      | Warp to Apoapsis           |
-| 6     | Save             | Quick Save                 |
-| 7     | Load             | Quick Load                 |
-| 8     | Warp             | Standard Warp              |
-| 9     | Warp +           | Increase Warp              |
-| 10    | Physics Warp     | Physics Warp Mode          |
-| 11    | Cancel Warp      | Cancel Warp (BLACK when off) |
-| 12–15 | Discrete Outputs | See below                         |
+Button labels are defined directly by the firmware via the `commandNames[]` table.
 
-### 🔌 Discrete Outputs
-
-| Index | Label        | Pin Function |
-|-------|--------------|--------------|
-| 12    | Reserved / Unused  | Discrete LED output (LED13)       |
-| 13    | Reserved / Unused  | Discrete LED output (LED14)       |
-| 14    | Reserved / Unused  | Discrete LED output (LED15)       |
-| 15    | Reserved / Unused  | Discrete LED output (LED16)       |
+| Index | Label            | Function                          |
+|------:|------------------|-----------------------------------|
+| 0     | Warp to ApA      | Time-warp to Apoapsis             |
+| 1     | Cancel Warp     | Cancel active time-warp           |
+| 2     | Warp to PeA      | Time-warp to Periapsis            |
+| 3     | Physics Warp    | Toggle physics warp               |
+| 4     | Warp to MNVR    | Time-warp to maneuver node        |
+| 5     | Warp +          | Increase time-warp rate           |
+| 6     | Warp to SOI     | Time-warp to sphere-of-influence  |
+| 7     | Warp -          | Decrease time-warp rate           |
+| 8     | Warp to Morn    | Time-warp to morning              |
+| 9     | Load            | Load game                         |
+| 10    | Pause           | Pause / unpause simulation        |
+| 11    | Save            | Save game                         |
+| 12    | —               | Unused / reserved                 |
+| 13    | —               | Unused / reserved                 |
+| 14    | —               | Unused / reserved                 |
+| 15    | —               | Unused / reserved                 |
 
 ---
 
-## 💡 LED Color Mapping
+## 💡 LED Behavior (ButtonModuleCore v1.1)
 
-| LED Index | Color Index     | Function            |
-|-----------|------------------|---------------------|
-| 0         | AMBER            | Pause               |
-| 1–5       | GOLDEN_YELLOW    | Warp targets        |
-| 6–7       | SKY_BLUE         | Save / Load         |
-| 8–10      | GOLDEN_YELLOW    | Warp/Physics warp   |
-| 11        | RED / BLACK      | Cancel Warp         |
+Each RGB LED follows a strict **priority model**:
 
-- All inactive LEDs show **DIM_GRAY** except LED 11, which shows **BLACK** when off
+1. **`led_bits` = 1**  
+   → LED displays its **assigned color**
 
----
+2. **Else if `button_active_bits` = 1**  
+   → LED displays **DIM_GRAY**
 
-## 🔧 Setup
+3. **Else**  
+   → LED is **OFF (BLACK)**
 
-The firmware calls `beginModule(panel_addr)` in `setup()`, which:
-
-- Initializes I2C, NeoPixels, shift registers, and discrete outputs
-- Runs a **bulb test**:
-  - RGB LEDs cycle through red, green, blue, white  
-  - Final LED pattern held for 2 seconds  
-  - Odd discrete pins set HIGH, even set LOW
+This allows soft backlighting for available controls and full-color indication for active states.
 
 ---
 
-## 📂 Files
+## 🎨 LED Color Mapping
 
-- `FunctionControlModule.ino` – Main firmware file
-- `ButtonModuleCore` – Shared library (in separate folder)
+LED colors are defined directly by the firmware via the `ColorIndex pixel_Array[]` table.
+
+| LED Index | Label           | Assigned Color |
+|----------:|-----------------|----------------|
+| 0         | Warp to ApA     | GOLDEN_YELLOW  |
+| 1         | Cancel Warp    | RED            |
+| 2         | Warp to PeA     | GOLDEN_YELLOW  |
+| 3         | Physics Warp   | GOLDEN_YELLOW  |
+| 4         | Warp to MNVR   | GOLDEN_YELLOW  |
+| 5         | Warp +         | GOLDEN_YELLOW  |
+| 6         | Warp to SOI    | GOLDEN_YELLOW  |
+| 7         | Warp -         | GOLDEN_YELLOW  |
+| 8         | Warp to Morn   | GOLDEN_YELLOW  |
+| 9         | Load           | SKY_BLUE       |
+| 10        | Pause          | AMBER          |
+| 11        | Save           | SKY_BLUE       |
 
 ---
 
-## 🛠 Build Environment
+## 🔌 I²C Protocol Summary (v1.1)
 
-- Arduino IDE or PlatformIO
-- Board: ATtiny816 (megaTinyCore)
-- Libraries:
-  - `tinyNeoPixel`
-  - `ShiftIn`
-  - `Wire`
+### Host → Module
+- Sends 16-bit control words
+- Sets or clears:
+  - `led_bits`
+  - `button_active_bits`
+- May invoke bulb test
+
+### Module → Host
+Returns on request:
+1. **`button_state`** – current debounced button states  
+2. **`button_pressed`** – rising-edge events (auto-cleared after send)  
+3. **`button_released`** – falling-edge events (auto-cleared after send)
 
 ---
 
-© 2025 Jeb's Controller Works. Licensed under GPLv3.
+## 🔧 Setup & Initialization
+
+Called from `setup()`:
+
+```cpp
+beginModule(panel_addr);
+```
+
+This initializes I²C, button inputs, LEDs, and runs a stepped bulb test (250 ms per step).
+
+---
+
+## 🔖 Versioning & Freeze Policy
+
+- **Time Control Module**: **v1.0 (FROZEN)**
+- **ButtonModuleCore**: v1.1 (baseline)
+
+No functional changes should be made without a module version bump.
+
+---
+
+© 2025 Jeb’s Controller Works  
+Licensed under the GNU General Public License v3.0
