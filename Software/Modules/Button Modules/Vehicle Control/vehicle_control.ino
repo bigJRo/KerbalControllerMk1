@@ -24,10 +24,10 @@ constexpr ColorIndex pixel_Array[NUM_LEDS] = {
   MAGENTA,        // 5: Antenna
   CYAN,           // 6: Ladder
   LIME,           // 7: Radiator
-  ORANGE,         // 8: Drogue Deploy
-  AMBER,          // 9: Main Deploy
-  RED,            //10: Drogue Cut
-  RED             //11: Main Cut
+  AMBER,          // 8: Main Deploy
+  ORANGE,         // 9: Drogue Deploy
+  RED,            //10: Main Cut
+  RED             //11: Drogue Cut
 };
 
 /***************************************************************************************
@@ -42,10 +42,10 @@ const char commandNames[NUM_BUTTONS][16] PROGMEM = {
   "Antenna",         // 5
   "Ladder",          // 6
   "Radiator",        // 7
-  "DrogueDep",       // 8
-  "MainDep",         // 9
-  "DrogueCut",       //10
-  "MainCut",         //11
+  "MainDep",         // 8
+  "DrogueDep",       // 9
+  "MainCut",         //10
+  "DrogueCut",       //11
   "Brake Lock",      //12
   "Parachute Lock",  //13
   "Lights Lock",     //14
@@ -53,40 +53,60 @@ const char commandNames[NUM_BUTTONS][16] PROGMEM = {
 };
 
 /***************************************************************************************
-  Module LED Update Logic
+  Module LED Update Logic (ButtonModuleCore v1.1 priority)
 ****************************************************************************************/
 void handle_ledUpdate() {
-  uint16_t bits = led_bits;
-  uint16_t prevBits = prev_led_bits;
-  bool overlayEnabled = bitRead(bits, 13);
-  bool updated = false;
+  // Priority:
+  //  RGB LEDs (0–11):
+  //    1) led_bits == 1           -> assigned color
+  //    2) else button_active_bits -> DIM_GRAY
+  //    3) else                    -> OFF (BLACK)
+  //
+  //  Discrete outputs (12–15): binary only
+  //    led_bits == 1 -> HIGH, else LOW
+
+  const uint16_t ledState        = led_bits;
+  const uint16_t activeState     = button_active_bits;
+  const uint16_t prevLedState    = prev_led_bits;
+  const uint16_t prevActiveState = prev_button_active_bits;
+
+  bool rgbUpdated = false;
 
   for (uint8_t i = 0; i < NUM_BUTTONS; i++) {
-    bool newState = bitRead(bits, i);
-    bool oldState = bitRead(prevBits, i);
-    if (newState == oldState) continue;
+    const bool ledNow    = bitRead(ledState, i);
+    const bool activeNow = bitRead(activeState, i);
+    const bool ledPrev   = bitRead(prevLedState, i);
+    const bool actPrev   = bitRead(prevActiveState, i);
 
-    if (i < 8) {
-      buttonPixel px = newState ? getColorFromTable(pixel_Array[i]) : getColorFromTable(DIM_GRAY);
+    if (i < NUM_LEDS) {
+      // Mode: 0=OFF, 1=DIM_GRAY, 2=ASSIGNED_COLOR
+      const uint8_t modeNow  = ledNow ? 2 : (activeNow ? 1 : 0);
+      const uint8_t modePrev = ledPrev ? 2 : (actPrev   ? 1 : 0);
+      if (modeNow == modePrev) continue;
+
+      buttonPixel px;
+      if (modeNow == 2) {
+        px = getColorFromTable(pixel_Array[i]);
+      } else if (modeNow == 1) {
+        px = getColorFromTable(DIM_GRAY);
+      } else {
+        px = getColorFromTable(BLACK);
+      }
+
       leds.setPixelColor(i, px.r, px.g, px.b);
-      updated = true;
+      rgbUpdated = true;
 
-    } else if (i < NUM_LEDS) {
-      bool localActive = bitRead(bits, i);
-      bool modeActive = true;
-      if (i == 10) modeActive = bitRead(bits, 8);
-      if (i == 11) modeActive = bitRead(bits, 9);
-      buttonPixel px = overlayColor(overlayEnabled, modeActive, localActive, pixel_Array[i]);
-      leds.setPixelColor(i, px.r, px.g, px.b);
-      updated = true;
-
-    } else if (i < NUM_BUTTONS) {
-      digitalWrite(discreteLEDs[i - NUM_LEDS], newState ? HIGH : LOW);
+    } else {
+      // Discrete outputs: led_bits only
+      if (ledNow == ledPrev) continue;
+      digitalWrite(discreteLEDs[i - NUM_LEDS], ledNow ? HIGH : LOW);
     }
   }
 
-  if (updated) leds.show();
-  prev_led_bits = bits;
+  if (rgbUpdated) leds.show();
+
+  prev_led_bits = ledState;
+  prev_button_active_bits = activeState;
 }
 
 /***************************************************************************************
