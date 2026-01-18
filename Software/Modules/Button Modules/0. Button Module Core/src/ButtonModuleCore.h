@@ -21,16 +21,16 @@
 #define SDA PIN_PB1  // I2C data pin
 #define SCL PIN_PB0  // I2C clock pin
 
-#define INT_OUT PIN_PA4      //  Interrupt output to notify host of button state change
+#define INT_OUT PIN_PA1      //  Interrupt output to notify host of button state change
 #define load PIN_PA7         // Shift register load pin
 #define clockEnable PIN_PA6  // Shift register clock enable (active low)
 #define clockIn PIN_PB5      // Shift register clock input
 #define dataInPin PIN_PA5    // Shift register data pin
-#define neopixCmd PIN_PB4    // NeoPixel data output pin
+#define neopixCmd PIN_PA4    // NeoPixel data output pin
 
 #define led_13 PIN_PB3  // Lock LED 1
-#define led_14 PIN_PC2  // Lock LED 2
-#define led_15 PIN_PB2  // Lock LED 3
+#define led_14 PIN_PC0  // Lock LED 2
+#define led_15 PIN_PC2  // Lock LED 3
 #define led_16 PIN_PC1  // Lock LED 4
 
 /***************************************************************************************
@@ -74,8 +74,13 @@ extern const uint8_t discreteLEDs[4];           // Discrete output pins mapped t
 
 extern volatile bool updateLED;     // Flag from I2C input event
 extern uint16_t button_state_bits;  // Bitfield for all buttons
+extern uint16_t button_pressed_bits;   // Bitfield: buttons that transitioned 0->1 since last read
+extern uint16_t button_released_bits;  // Bitfield: buttons that transitioned 1->0 since last read
+
 extern uint16_t led_bits;           // Desired LED state
+extern uint16_t button_active_bits;      // Bitfield: buttons currently active (from master)
 extern uint16_t prev_led_bits;      // Previous LED state (to avoid redundant updates)
+extern uint16_t prev_button_active_bits; // Previous active state (to avoid redundant updates)
 
 extern ShiftIn<2> shift;  // 16-bit shift register interface
 
@@ -83,8 +88,8 @@ extern ShiftIn<2> shift;  // 16-bit shift register interface
   Core Function Prototypes
 ****************************************************************************************/
 void beginModule(uint8_t panel_addr);       //  Function for setup in main sketch
-void handleRequestEvent();                  //  I2C function, responds to master read request with 4-byte status report
-void handleReceiveEvent(int16_t howMany));  //  I2C function, reacts to master sent LED state change request
+void handleRequestEvent();                  //  I2C function, responds to master read request with status report
+void handleReceiveEvent(int16_t howMany);   //  I2C function, reacts to master sent LED state change request
 void readButtonStates();                    // Function to check for button state changes
 void setInterrupt();                        // Set interrupt to incidate to I2C master
 void clearInterrupt();                      // Clears interrupt
