@@ -1,123 +1,113 @@
-# UI Control Module – Kerbal Controller Mk1
+# UI Control Module – Kerbal Controller Mk1  
+**Version 1.0 (Reference)**
 
 This is the finalized firmware for the **UI Control Module** in the **Kerbal Controller Mk1** system.  
-It handles button input and RGB LED feedback for UI-related actions, communicating with a host device over I2C.
+It handles UI-related control buttons, RGB LED feedback, and I²C communication with the host using the shared **ButtonModuleCore v1.1** library.
 
 ---
 
 ## 📦 Overview
 
-- **MCU**: ATtiny816 (via megaTinyCore)
-- **Communication**: I2C (slave address `0x20`)
-- **Inputs**: 16 buttons via 2× 74HC165 shift registers
+- **MCU**: ATtiny816 (megaTinyCore)
+- **Communication**: I²C (slave address `0x20`)
+- **Inputs**:  
+  - 16 momentary buttons via shift registers (handled by ButtonModuleCore)
 - **Outputs**:
-  - 12 RGB NeoPixel LEDs for button state/status
-  - Discrete LED pins are defined but unused in this module
-- **Host Compatibility:** Works with the Kerbal Simpit host-side Arduino firmware
+  - 12 RGB NeoPixel LEDs (UI indicators)
+- **Host Compatibility**: Designed for Kerbal Simpit–based host firmware
+- **Core Library**: `ButtonModuleCore v1.1` (baseline)
 
 ---
 
 ## 🚀 Features
 
-- Reads 16 input buttons using shift registers
-- Controls 12 RGB LEDs via NeoPixels
-- Updates 4 discrete LEDs for "lock" or persistent states
-- Communicates with host microcontroller over I2C
-- Uses color-coded feedback based on a shared color table
-- Low memory footprint using `PROGMEM` for color data
-- Built-in Bulb Test on startup for verifying LED and output function
-
----
-
-## 🚀 Features
-
-- Reads 16 input buttons using shift registers
-- Controls 12 RGB LEDs via NeoPixels using `tinyNeoPixel`
-- Controls 4 discrete output pins based on last 4 button states
-- Communicates with host microcontroller over I2C
-- Uses a shared color table in PROGMEM for low SRAM usage
-- Built-in **Bulb Test** on startup to verify RGB and digital output operation
+- Reads up to **16 UI control buttons**
+- Controls RGB NeoPixel LEDs for UI state feedback
+- Priority-based LED rendering
+- Automatic bulb test on startup
+- Optimized LED updates
 
 ---
 
 ## 🎛 Button Mapping
 
-| Index | Label          | Function        |
-|-------|----------------|-----------------|
-| 0     | Map Enable     | Toggle map      |
-| 1     | Cycle Map -    | Previous map view |
-| 2     | Cycle Map +    | Next map view   |
-| 3     | Navball Mode   | Toggle navball mode |
-| 4     | IVA            | Internal view   |
-| 5     | Cycle Cam      | Cycle camera    |
-| 6     | Cycle Ship -   | Previous ship   |
-| 7     | Cycle Ship +   | Next ship       |
-| 8     | Reset Focus    | Reset camera focus |
-| 9     | Screen Shot    | Take screenshot |
-| 10    | UI             | Toggle UI       |
-| 11    | DEBUG          | Debug mode      |
-| 12–15 | Discrete Outputs | See below     |
-
-### 🔌 Discrete Outputs
-
-| Index | Label        | Pin Function |
-|-------|--------------|--------------|
-| 12    | Unused/Reserved  | Discrete LED output (LED13)       |
-| 13    | Unused/Reserved  | Discrete LED output (LED14)       |
-| 14    | Unused/Reserved  | Discrete LED output (LED15)       |
-| 15    | Unused/Reserved  | Discrete LED output (LED16)       |
+| Index | Label | Function |
+|------:|-------|----------|
+| 0 | Screen Shot | Capture screenshot |
+| 1 | DEBUG | Debug function |
+| 2 | UI | UI mode toggle |
+| 3 | Navball Enable | Enable Navball |
+| 4 | Reset Map | Reset map |
+| 5 | Navball Mode | Change Navball mode |
+| 6 | Cycle Map + | Cycle map forward |
+| 7 | Cycle Ship + | Cycle ship forward |
+| 8 | Cycle Map - | Cycle map backward |
+| 9 | Cycle Ship - | Cycle ship backward |
+| 10 | Map Enable | Enable map |
+| 11 | IVA | Internal view |
+| 12 | — | Unused |
+| 13 | — | Unused |
+| 14 | — | Unused |
+| 15 | — | Unused |
 
 ---
 
-## 💡 LED Color Mapping
+## 💡 LED Behavior (ButtonModuleCore v1.1)
 
-| LED Index | Color Index  | Function         |
-|-----------|--------------|------------------|
-| 0         | AMBER        | Map Enable       |
-| 1         | GREEN        | Cycle Map -      |
-| 2         | GREEN        | Cycle Map +      |
-| 3         | BLUE         | Navball Mode     |
-| 4         | AMBER        | IVA              |
-| 5         | SKY_BLUE     | Cycle Cam        |
-| 6         | GREEN        | Cycle Ship -     |
-| 7         | GREEN        | Cycle Ship +     |
-| 8         | GREEN        | Reset Focus      |
-| 9         | MAGENTA      | Screen Shot      |
-| 10        | AMBER        | UI               |
-| 11        | RED          | DEBUG            |
+1. **`led_bits` = 1** → Assigned color  
+2. **Else if `button_active_bits` = 1** → DIM_GRAY  
+3. **Else** → OFF (BLACK)
 
-Inactive LEDs display `DIM_GRAY`.
+### RGB LED Color Mapping
 
----
-
-## 🔧 Setup
-
-The firmware calls `beginModule(panel_addr)` in `setup()`, which:
-
-- Initializes I2C, NeoPixels, shift registers, and discrete outputs
-- Runs a **bulb test**:
-  - RGB LEDs cycle through red, green, blue, white  
-  - Final LED pattern held for 2 seconds  
-  - Odd discrete pins set HIGH, even set LOW
+| LED Index | Label | Assigned Color |
+|----------:|-------|----------------|
+| 0 | Screen Shot | MAGENTA |
+| 1 | DEBUG | RED |
+| 2 | UI | ORANGE |
+| 3 | Navball Enable | AMBER |
+| 4 | Reset Map | GREEN |
+| 5 | Navball Mode | BLUE |
+| 6 | Cycle Map + | GREEN |
+| 7 | Cycle Ship + | GREEN |
+| 8 | Cycle Map - | GREEN |
+| 9 | Cycle Ship - | GREEN |
+| 10 | Map Enable | AMBER |
+| 11 | IVA | SKY_BLUE |
 
 ---
 
-## 📂 Files
+## 🔌 I²C Protocol Summary (v1.1)
 
-- `FunctionControlModule.ino` – Main firmware file
-- `ButtonModuleCore` – Shared library (in separate folder)
+### Host → Module
+- Sends 16-bit control words
+- Sets or clears:
+  - `led_bits`
+  - `button_active_bits`
+- May invoke bulb test
+
+### Module → Host
+Returns on request:
+1. `button_state`
+2. `button_pressed`
+3. `button_released`
 
 ---
 
-## 🛠 Build Environment
+## 🔧 Setup & Initialization
 
-- Arduino IDE or PlatformIO
-- Board: ATtiny816 (megaTinyCore)
-- Libraries:
-  - `tinyNeoPixel`
-  - `ShiftIn`
-  - `Wire`
+```cpp
+beginModule(panel_addr);
+```
 
 ---
 
-© 2025 Jeb's Controller Works. Licensed under GPLv3.
+## 🔖 Versioning & Freeze Policy
+
+- **UI Control Module**: **v1.0 (FROZEN)**
+- **ButtonModuleCore**: v1.1 (baseline)
+
+---
+
+© 2025 Jeb’s Controller Works  
+Licensed under the GNU GPL v3.0
