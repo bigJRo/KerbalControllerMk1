@@ -96,6 +96,7 @@ The module responds with **6 bytes**:
 
 **Pressed/released are one-shot:** they are cleared after being sent to the master.
 
+
 ### Master Write (master -> module)
 
 Accepted payloads:
