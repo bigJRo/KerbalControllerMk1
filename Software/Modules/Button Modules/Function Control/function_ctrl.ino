@@ -17,40 +17,40 @@ constexpr uint8_t panel_addr = 0x28;  // I2C slave address for Function Control 
   LED Color Mapping (Index-based from ColorIndex enum)
 ****************************************************************************************/
 constexpr ColorIndex pixel_Array[NUM_LEDS] = {
-  SKY_BLUE,     // 0: Air Intake
-  RED,          // 1: Launch Escape
-  BLUE,         // 2: Sci Collect
-  AMBER,        // 3: Engine Alt
-  CYAN,         // 4: Science Grp 1
-  GREEN,        // 5: Engine Grp 1
-  CYAN,         // 6: Science Grp 2
-  GREEN,        // 7: Engine Grp 2
-  LIME,         // 8: Ctrl Pt Alt
-  LIME,         // 9: Ctrl Pt Pri
-  AMBER,        //10: Lock Ctrl
-  MINT          //11: Heat Shield
+  BLUE,         // 0: Sci Collect
+  AMBER,        // 1: Engine Alt
+  CYAN,         // 2: Science Grp 1
+  GREEN,        // 3: Engine Grp 1
+  CYAN,         // 4: Science Grp 2
+  GREEN,        // 5: Engine Grp 2
+  SKY_BLUE,     // 6: Air Intake
+  RED,          // 7: Launch Escape
+  ORANGE,       // 8: Air Brake
+  AMBER,        // 9: Lock Ctrl
+  MINT,         //10: HtShield Rel
+  RED           //11: HtShield Deploy
 };
 
 /***************************************************************************************
   Button Command Names (for mapping and reference)
 ****************************************************************************************/
 const char commandNames[NUM_BUTTONS][16] PROGMEM = {
-  "Air Intake",     // 0
-  "Launch Escape",  // 1
-  "Sci Collect",    // 2
-  "Engine Alt",     // 3
-  "Science Grp 1",  // 4
-  "Engine Grp 1",   // 5
-  "Science Grp 2",  // 6
-  "Engine Grp 2",   // 7
-  "Ctrl Pt Alt",    // 8
-  "Ctrl Pt Pri",    // 9
-  "Lock Ctrl",      //10
-  "Heat Shield",    //11
-  "Throttle Lock",  //12 → discrete output
-  "Precision",      //13 → discrete output
-  "SCE",            //14 → discrete output
-  "Audio"           //15 → discrete output
+  "Sci Collect",            // 0
+  "Engine Alt",             // 1
+  "Science Grp 1",          // 2
+  "Engine Grp 1",           // 3
+  "Science Grp 2",          // 4
+  "Engine Grp 2",           // 5
+  "Air Intake",             // 6
+  "Launch Escape",          // 7
+  "Air Brake",              // 8
+  "Lock Ctrl",              // 9
+  "Heat Shield Release",    //10
+  "Heat Shield Deploy",     //11
+  "Reserved/Unused",        //12 → discrete output
+  "Reserved/Unused",        //13 → discrete output
+  "Reserved/Unused",        //14 → discrete output
+  "Reserved/Unused"         //15 → discrete output
 };
 
 /***************************************************************************************
