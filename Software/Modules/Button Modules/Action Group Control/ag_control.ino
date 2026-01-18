@@ -49,37 +49,61 @@ const char commandNames[NUM_BUTTONS][16] PROGMEM = {
   "AG12",  // 11: Action Group 12
   "",      // 12 → unused
   "",      // 13 → unused
-  "",      // 14 → unused
-  ""       // 15 → unused
+  "SPC_MODE",      // 14: Spacecraft Control Mode
+  "RVR_MODE"       // 15: Rover Control Mode
 };
 
 /***************************************************************************************
   Module LED Update Logic
 ****************************************************************************************/
 void handle_ledUpdate() {
-  uint16_t bits = led_bits;
-  uint16_t prevBits = prev_led_bits;
+  // ButtonModuleCore v1.1 LED priority (per LED):
+  //   1) led_bits bit == 1  -> assigned color
+  //   2) else if button_active_bits bit == 1 -> DIM_GRAY
+  //   3) else -> OFF (BLACK)
+
+  const uint16_t ledState = led_bits;
+  const uint16_t activeState = button_active_bits;
+  const uint16_t prevLedState = prev_led_bits;
+  const uint16_t prevActiveState = prev_button_active_bits;
+
   bool updated = false;
 
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    bool newState = bitRead(bits, i);
-    bool oldState = bitRead(prevBits, i);
-    if (newState == oldState) continue;  // Skip unchanged states
+    const bool ledNow = bitRead(ledState, i);
+    const bool activeNow = bitRead(activeState, i);
+    const bool ledPrev = bitRead(prevLedState, i);
+    const bool activePrev = bitRead(prevActiveState, i);
 
-    // Assign defined color if LED bit is set, or dim gray if not
-    buttonPixel px = newState ? getColorFromTable(pixel_Array[i]) : getColorFromTable(DIM_GRAY);
+    // Determine current and previous output "modes" so we only update changed LEDs.
+    // Mode encoding: 0=OFF, 1=DIM_GRAY, 2=ASSIGNED_COLOR
+    const uint8_t modeNow = ledNow ? 2 : (activeNow ? 1 : 0);
+    const uint8_t modePrev = ledPrev ? 2 : (activePrev ? 1 : 0);
+    if (modeNow == modePrev) continue;
+
+    buttonPixel px;
+    if (modeNow == 2) {
+      px = getColorFromTable(pixel_Array[i]);
+    } else if (modeNow == 1) {
+      px = getColorFromTable(DIM_GRAY);
+    } else {
+      px = getColorFromTable(BLACK);
+    }
+
     leds.setPixelColor(i, px.r, px.g, px.b);
     updated = true;
   }
 
   if (updated) leds.show();
-  prev_led_bits = bits;
+  prev_led_bits = ledState;
+  prev_button_active_bits = activeState;
 }
 
 /***************************************************************************************
   Setup
 ****************************************************************************************/
-beginModule(panel_addr);  // Calls bulbTest internally
+void setup() {
+  beginModule(panel_addr);  // Calls bulbTest internally
 }
 
 /***************************************************************************************
