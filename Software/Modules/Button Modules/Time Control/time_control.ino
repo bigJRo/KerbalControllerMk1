@@ -17,36 +17,36 @@ constexpr uint8_t panel_addr = 0x24;  // I2C slave address for TimeControl modul
   LED Color Mapping (Index-based from ColorIndex enum)
 ****************************************************************************************/
 constexpr ColorIndex pixel_Array[NUM_LEDS] = {
-  AMBER,          // 0: Pause
-  GOLDEN_YELLOW,  // 1: Warp to Morn
-  GOLDEN_YELLOW,  // 2: Warp to SOI
-  GOLDEN_YELLOW,  // 3: Warp to MNVR
-  GOLDEN_YELLOW,  // 4: Warp to PeA
-  GOLDEN_YELLOW,  // 5: Warp to ApA
-  SKY_BLUE,       // 6: Save
-  SKY_BLUE,       // 7: Load
-  GOLDEN_YELLOW,  // 8: Warp
-  GOLDEN_YELLOW,  // 9: Warp +
-  GOLDEN_YELLOW,  //10: Physics Warp
-  RED             //11: Cancel Warp
+  GOLDEN_YELLOW,  // 0: Warp to ApA
+  RED,            // 1: Cancel Warp
+  GOLDEN_YELLOW,  // 2: Warp to PeA
+  GOLDEN_YELLOW,  // 3: Physics Warp
+  GOLDEN_YELLOW,  // 4: Warp to MNVR
+  GOLDEN_YELLOW,  // 5: Warp +
+  GOLDEN_YELLOW,  // 6: Warp to SOI
+  GOLDEN_YELLOW,  // 7: Warp -
+  GOLDEN_YELLOW,  // 8: Warp to Morn
+  SKY_BLUE,       // 9: Load
+  AMBER,          //10: Pause
+  SKY_BLUE        //11: Save
 };
 
 /***************************************************************************************
   Button Command Names (for mapping and reference)
 ****************************************************************************************/
 const char commandNames[NUM_BUTTONS][16] PROGMEM = {
-  "Pause",           // 0
-  "Warp to Morn",    // 1
-  "Warp to SOI",     // 2
-  "Warp to MNVR",    // 3
-  "Warp to PeA",     // 4
-  "Warp to ApA",     // 5
-  "Save",            // 6
-  "Load",            // 7
-  "Warp",            // 8
-  "Warp +",          // 9
-  "Physics Warp",    //10
-  "Cancel Warp",     //11
+  "Warp to ApA",     // 0
+  "Cancel Warp",     // 1
+  "Warp to PeA",     // 2
+  "Physics Warp",    // 3
+  "Warp to MNVR",    // 4
+  "Warp +",          // 5
+  "Warp to SOI",     // 6
+  "Warp -",          // 7
+  "Warp to Morn",    // 8
+  "Load",            // 9
+  "Pause",           //10
+  "Save",            //11
   "",                //12 → unused/reserved
   "",                //13 → unused/reserved
   "",                //14 → unused/reserved
@@ -54,23 +54,39 @@ const char commandNames[NUM_BUTTONS][16] PROGMEM = {
 };
 
 /***************************************************************************************
-  Module LED Update Logic
+  Module LED Update Logic (ButtonModuleCore v1.1 priority)
 ****************************************************************************************/
 void handle_ledUpdate() {
-  uint16_t bits = led_bits;
-  uint16_t prevBits = prev_led_bits;
+  // Priority (per LED):
+  //   1) led_bits bit == 1              -> assigned color
+  //   2) else if button_active_bits == 1 -> DIM_GRAY
+  //   3) else                            -> OFF (BLACK)
+
+  const uint16_t ledState        = led_bits;
+  const uint16_t activeState     = button_active_bits;
+  const uint16_t prevLedState    = prev_led_bits;
+  const uint16_t prevActiveState = prev_button_active_bits;
+
   bool updated = false;
 
   for (uint8_t i = 0; i < NUM_LEDS; i++) {
-    bool newState = bitRead(bits, i);
-    bool oldState = bitRead(prevBits, i);
-    if (newState == oldState) continue;
+    const bool ledNow    = bitRead(ledState, i);
+    const bool activeNow = bitRead(activeState, i);
+    const bool ledPrev   = bitRead(prevLedState, i);
+    const bool actPrev   = bitRead(prevActiveState, i);
+
+    // Mode: 0=OFF, 1=DIM_GRAY, 2=ASSIGNED_COLOR
+    const uint8_t modeNow  = ledNow ? 2 : (activeNow ? 1 : 0);
+    const uint8_t modePrev = ledPrev ? 2 : (actPrev   ? 1 : 0);
+    if (modeNow == modePrev) continue;
 
     buttonPixel px;
-    if (newState) {
+    if (modeNow == 2) {
       px = getColorFromTable(pixel_Array[i]);
+    } else if (modeNow == 1) {
+      px = getColorFromTable(DIM_GRAY);
     } else {
-      px = (i == 11) ? getColorFromTable(BLACK) : getColorFromTable(DIM_GRAY);
+      px = getColorFromTable(BLACK);
     }
 
     leds.setPixelColor(i, px.r, px.g, px.b);
@@ -78,13 +94,16 @@ void handle_ledUpdate() {
   }
 
   if (updated) leds.show();
-  prev_led_bits = bits;
+
+  prev_led_bits = ledState;
+  prev_button_active_bits = activeState;
 }
 
 /***************************************************************************************
   Setup
 ****************************************************************************************/
-beginModule(panel_addr);  // Calls bulbTest internally
+void setup() {
+  beginModule(panel_addr);  // Calls bulbTest internally
 }
 
 /***************************************************************************************
