@@ -70,10 +70,15 @@ constexpr int16_t JOY_DEADZONE = 10;
 
 extern const buttonPixel colorTable[] PROGMEM;  //  Lookup table of RGB color definitions for LED feedback
 
-extern volatile bool updateLED;
-extern uint8_t buttonBits;
-extern uint8_t led_bits;
-extern uint8_t prev_led_bits;
+extern volatile bool updateLED;     // Flag from I2C input event
+extern uint8_t button_state_bits;  // Bitfield for all buttons
+extern uint8_t button_pressed_bits;   // Bitfield: buttons that transitioned 0->1 since last read
+extern uint8_t button_released_bits;  // Bitfield: buttons that transitioned 1->0 since last read
+
+extern uint8_t led_bits;           // Desired LED state
+extern uint8_t button_active_bits;      // Bitfield: buttons currently active (from master)
+extern uint8_t prev_led_bits;      // Previous LED state (to avoid redundant updates)
+extern uint8_t prev_button_active_bits; // Previous active state (to avoid redundant updates)
 extern int16_t axis1, axis2, axis3;
 
 /***************************************************************************************
