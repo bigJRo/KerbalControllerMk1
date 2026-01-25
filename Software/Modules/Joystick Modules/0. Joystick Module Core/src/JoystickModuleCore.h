@@ -19,7 +19,7 @@
 #define SDA PIN_PB1  // I2C data pin
 #define SCL PIN_PB0  // I2C clock pin
 
-#define INT_OUT PIN_PA4    // Interrupt output to notify host of button state change
+#define INT_OUT PIN_PA1    // Interrupt output to notify host of button state change
 #define BUTTON_JOY PIN_A5  // Joystick Button Input
 #define A3 PIN_PA6         // Joystick axis 3
 #define A2 PIN_PA7         // Joystick axis 2
@@ -63,7 +63,7 @@ enum ColorIndex : uint8_t {  //  Human-readable color index enum
   Globals
 ****************************************************************************************/
 constexpr uint8_t NUM_LEDS = 2;
-constexpr uint8_t NUM_BUTTONS = 3;
+constexpr uint8_t NUM_BUTTONS = 2;
 
 constexpr unsigned long debounceDelay = 20;
 constexpr int16_t JOY_DEADZONE = 10;
