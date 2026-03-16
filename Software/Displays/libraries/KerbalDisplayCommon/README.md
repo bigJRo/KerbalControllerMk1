@@ -192,22 +192,46 @@ Font objects are named `Roboto_Black_24`, `TerminalFont_16`, etc. Pass a pointer
 
 ## Color Palette
 
-All colors are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommon.h`. The full palette contains 40+ named colors. A representative selection:
+All colors are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommon.h`.
 
-| Name | Value | Color |
-|------|-------|-------|
+| Name | Value | Description |
+|------|-------|-------------|
 | `TFT_BLACK` | `0x0000` | Black |
 | `TFT_OFF_BLACK` | `0x2104` | Near black |
 | `TFT_DARK_GREY` | `0x39E7` | Dark grey |
 | `TFT_GREY` | `0x8410` | Mid grey |
+| `TFT_LIGHT_GREY` | `0xBDF7` | Light grey |
 | `TFT_WHITE` | `0xFFFF` | White |
-| `TFT_RED` | `0xF800` | Red |
-| `TFT_DARK_GREEN` | `0x03E0` | Dark green |
 | `TFT_GREEN` | `0x07E0` | Green |
+| `TFT_DARK_GREEN` | `0x03E0` | Dark green |
+| `TFT_JUNGLE` | `0x01E0` | Deep jungle green |
+| `TFT_NEON_GREEN` | `0x3FE2` | Neon green |
+| `TFT_SAP_GREEN` | `0x53E5` | Sap green |
+| `TFT_RED` | `0xF800` | Red |
+| `TFT_MAROON` | `0x7800` | Maroon |
+| `TFT_DARK_RED` | `0x6000` | Dark red |
+| `TFT_CORNELL` | `0xB0E3` | Cornell red |
 | `TFT_BLUE` | `0x001F` | Blue |
+| `TFT_NAVY` | `0x000F` | Navy |
+| `TFT_ROYAL` | `0x010C` | Royal blue (deep) |
+| `TFT_SKY` | `0x761F` | Sky blue |
+| `TFT_FRENCH_BLUE` | `0x347C` | French blue |
+| `TFT_AIR_SUP_BLUE` | `0x7517` | Air superiority blue |
+| `TFT_AQUA` | `0x5D1C` | Aqua |
+| `TFT_CYAN` | `0x07FF` | Cyan |
+| `TFT_MAGENTA` | `0xF81F` | Magenta |
+| `TFT_PURPLE` | `0x8010` | Purple |
+| `TFT_VIOLET` | `0x901A` | Violet |
 | `TFT_YELLOW` | `0xFDC2` | Yellow |
+| `TFT_DULL_YELLOW` | `0xEEEB` | Dull yellow |
+| `TFT_DARK_YELLOW` | `0xA500` | Dark yellow |
+| `TFT_OLIVE` | `0x8400` | Olive |
 | `TFT_ORANGE` | `0xFBE0` | Orange |
+| `TFT_INT_ORANGE` | `0xFA80` | International orange |
 | `TFT_GOLD` | `0xD566` | Gold |
+| `TFT_SILVER` | `0xC618` | Silver |
+| `TFT_BROWN` | `0x8200` | Brown |
+| `TFT_UPS_BROWN` | `0x6203` | UPS brown |
 
 ---
 
