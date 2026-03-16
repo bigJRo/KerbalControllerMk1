@@ -41,8 +41,8 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 | 22 | GSL1680F INT | IN |
 
 **Serial ports:**
-- `Serial` (USB COM port 1) — debug output only
-- `SerialUSB1` (USB COM port 2) — KerbalSimpit telemetry traffic
+- `Serial` (USB COM port 4) — debug output only
+- `SerialUSB1` (USB COM port 5) — KerbalSimpit telemetry traffic
 
 **I2C note:** Wire (pins 18/19) is the master bus shared with the Teensy 4.1. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
 
@@ -62,7 +62,7 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 Location: `KSP/GameData/KerbalSimpit/PluginData/Settings.cfg`
 
 ```
-PortName   = COM3       # SerialUSB1 — the second Teensy COM port
+PortName   = COM5       # SerialUSB1 — the second USB COM port (Teensy dual serial)
 BaudRate   = 115200
 RefreshRate = 125
 Verbose    = True
