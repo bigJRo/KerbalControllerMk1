@@ -177,6 +177,7 @@ extern ScreenType   activeScreen;
 extern ScreenType   prevScreen;
 extern uint32_t     lastScreenSwitch;
 extern bool         firstPassOnMain;
+extern bool         alarmSilenced;
 
 // Screen navigation -- always use this instead of setting activeScreen directly.
 // Sets activeScreen, resets prevScreen to screen_COUNT (triggering chrome redraw),

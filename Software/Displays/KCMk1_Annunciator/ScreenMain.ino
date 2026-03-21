@@ -7,9 +7,57 @@
 
 
 /***************************************************************************************
+   MASTER ALARM CONDITION TRACKING
+   Moved here from KerbalDisplayAudio — condition bits and bitmask are application-
+   specific and belong in the sketch, not the library.
+
+   Each bit maps a C&W warning bit to an alarm condition. The mask tracks which
+   conditions are currently active. The library is told to start or stop the alarm
+   tone only when the mask transitions between zero and non-zero.
+
+   alarmSilenced (bool, in AAA_Globals): set when the crew presses the master alarm
+   button while conditions are active. Prevents the alarm restarting for existing
+   conditions. Reset when all conditions clear. A new condition activating while
+   silenced restarts the alarm — the crew cannot inadvertently miss a fresh warning.
+   Declared as a global (not a static) so TouchEvents.ino can set it on button press.
+****************************************************************************************/
+static const uint8_t ALARM_GROUND_PROX = (1 << 0);
+static const uint8_t ALARM_HIGH_G      = (1 << 1);
+static const uint8_t ALARM_BUS_VOLTAGE = (1 << 2);
+static const uint8_t ALARM_HIGH_TEMP   = (1 << 3);
+static const uint8_t ALARM_LOW_DV      = (1 << 4);
+
+static uint8_t alarmActiveMask = 0;
+
+// Call when a WARNING-level C&W bit transitions. condBit is one of the ALARM_*
+// constants above. on=true: condition set; on=false: condition cleared.
+static void updateAlarmMask(uint8_t condBit, bool on) {
+  if (on) {
+    bool wasActive = (alarmActiveMask != 0);
+    alarmActiveMask |= condBit;
+    if (!wasActive && !alarmSilenced) {
+      // First active condition — start alarm
+      audioStartAlarm();
+    } else if (wasActive && alarmSilenced) {
+      // New condition while silenced — restart alarm
+      alarmSilenced = false;
+      audioStartAlarm();
+    } else if (!alarmSilenced && audioGetState() != AUDIO_MASTER_ALARM) {
+      // Re-triggered after all conditions previously cleared naturally
+      audioStartAlarm();
+    }
+  } else {
+    alarmActiveMask &= ~condBit;
+    if (alarmActiveMask == 0) {
+      // All conditions cleared — stop alarm and reset silence latch
+      alarmSilenced = false;
+      audioStopAlarm();
+    }
+  }
+}
+/***************************************************************************************
    LAYOUT CONSTANTS -- MAIN SCREEN
 ****************************************************************************************/
-const uint16_t MASTER_W    = 240;
 const uint16_t MASTER_H    = 168;
 const uint16_t CAUTWARN_W  = 126;
 const uint16_t CAUTWARN_H  = 96;
@@ -199,16 +247,16 @@ void updateScreenMain(RA8875 &tft) {
     uint16_t clrBits = prev.cautionWarningState  & ~state.cautionWarningState;
 
     if (audioEnabled) {
-      if (newBits & (1 << CW_GROUND_PROX)) audioMasterAlarm(AUDIO_ALARM_GROUND_PROX, true);
-      if (clrBits & (1 << CW_GROUND_PROX)) audioMasterAlarm(AUDIO_ALARM_GROUND_PROX, false);
-      if (newBits & (1 << CW_HIGH_G))      audioMasterAlarm(AUDIO_ALARM_HIGH_G,      true);
-      if (clrBits & (1 << CW_HIGH_G))      audioMasterAlarm(AUDIO_ALARM_HIGH_G,      false);
-      if (newBits & (1 << CW_BUS_VOLTAGE)) audioMasterAlarm(AUDIO_ALARM_BUS_VOLTAGE, true);
-      if (clrBits & (1 << CW_BUS_VOLTAGE)) audioMasterAlarm(AUDIO_ALARM_BUS_VOLTAGE, false);
-      if (newBits & (1 << CW_HIGH_TEMP))   audioMasterAlarm(AUDIO_ALARM_HIGH_TEMP,   true);
-      if (clrBits & (1 << CW_HIGH_TEMP))   audioMasterAlarm(AUDIO_ALARM_HIGH_TEMP,   false);
-      if (newBits & (1 << CW_LOW_DV))      audioMasterAlarm(AUDIO_ALARM_LOW_DV,      true);
-      if (clrBits & (1 << CW_LOW_DV))      audioMasterAlarm(AUDIO_ALARM_LOW_DV,      false);
+      if (newBits & (1 << CW_GROUND_PROX)) updateAlarmMask(ALARM_GROUND_PROX, true);
+      if (clrBits & (1 << CW_GROUND_PROX)) updateAlarmMask(ALARM_GROUND_PROX, false);
+      if (newBits & (1 << CW_HIGH_G))      updateAlarmMask(ALARM_HIGH_G,      true);
+      if (clrBits & (1 << CW_HIGH_G))      updateAlarmMask(ALARM_HIGH_G,      false);
+      if (newBits & (1 << CW_BUS_VOLTAGE)) updateAlarmMask(ALARM_BUS_VOLTAGE, true);
+      if (clrBits & (1 << CW_BUS_VOLTAGE)) updateAlarmMask(ALARM_BUS_VOLTAGE, false);
+      if (newBits & (1 << CW_HIGH_TEMP))   updateAlarmMask(ALARM_HIGH_TEMP,   true);
+      if (clrBits & (1 << CW_HIGH_TEMP))   updateAlarmMask(ALARM_HIGH_TEMP,   false);
+      if (newBits & (1 << CW_LOW_DV))      updateAlarmMask(ALARM_LOW_DV,      true);
+      if (clrBits & (1 << CW_LOW_DV))      updateAlarmMask(ALARM_LOW_DV,      false);
       if (newBits & (1 << CW_ALT))         audioCautionTone();
       if (newBits & ((1 << CW_DESCENT) | (1 << CW_ATMO))) audioCautionChirp();
     }

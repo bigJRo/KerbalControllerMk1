@@ -67,7 +67,10 @@ void processTouchEvents() {
     case screen_Main:
       // Master alarm button area -- silence alarm
       if (x < MASTER_W && y < MASTER_H) {
-        if (audioEnabled) audioSilence();
+        if (audioEnabled) {
+          alarmSilenced = true;  // set sketch-side latch before silencing
+          audioSilence();
+        }
       }
       // SOI area -- switch to SOI screen
       if (x < MASTER_W && y >= MASTER_H) {

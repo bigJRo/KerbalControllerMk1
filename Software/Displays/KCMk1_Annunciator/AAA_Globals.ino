@@ -60,6 +60,7 @@ ScreenType activeScreen     = screen_Standby;
 ScreenType prevScreen       = screen_COUNT;
 uint32_t   lastScreenSwitch = 0;
 bool       firstPassOnMain  = false;
+bool       alarmSilenced    = false; // true when crew has silenced active master alarm
 
 
 /***************************************************************************************
