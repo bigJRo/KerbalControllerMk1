@@ -8,10 +8,14 @@
    All timing is millis()-based — no delay() calls.
 
    State machine (priority high → low):
-     AUDIO_MASTER_ALARM  — two-tone alternating loop, runs until condition clears or silenced
+     AUDIO_MASTER_ALARM  — two-tone alternating loop, started/stopped by the sketch
      AUDIO_CAUTION_TONE  — single constant tone, fixed duration
      AUDIO_CHIRP         — two-note ascending or descending sequence, plays once
      AUDIO_IDLE          — silent
+
+   Master alarm condition tracking (which warnings are active, silence latch,
+   re-trigger logic) is the responsibility of the calling sketch, not this library.
+   The library only drives the tone: audioStartAlarm() / audioStopAlarm() / audioSilence().
 
    Dependencies: Arduino.h (tone/noTone)
 
@@ -76,17 +80,6 @@
 #endif
 
 /***************************************************************************************
-   MASTER ALARM CONDITION BITS
-   Pass to audioMasterAlarm() to track individual conditions independently.
-   The alarm tone plays while any bit is set and stops when all clear.
-****************************************************************************************/
-#define AUDIO_ALARM_GROUND_PROX  (1 << 0)
-#define AUDIO_ALARM_HIGH_G       (1 << 1)
-#define AUDIO_ALARM_BUS_VOLTAGE  (1 << 2)
-#define AUDIO_ALARM_HIGH_TEMP    (1 << 3)
-#define AUDIO_ALARM_LOW_DV       (1 << 4)
-
-/***************************************************************************************
    AUDIO STATE ENUM
 ****************************************************************************************/
 enum AudioState : uint8_t {
@@ -107,27 +100,28 @@ void setupAudio();
 // Fast-returns immediately if audio is idle.
 void updateAudio();
 
-// Alert chirp — 2 ascending notes. Suppressed if master alarm is active or silenced.
+// Alert chirp — 2 ascending notes. Suppressed if master alarm is active.
 // Call when a positive threshold is crossed (altitude, velocity, orbital insertion).
 void audioAlertChirp();
 
-// Caution chirp — 2 descending notes (tritone). Suppressed if master alarm is active or silenced.
+// Caution chirp — 2 descending notes (tritone). Suppressed if master alarm is active.
 // Call when a caution condition is newly set (descent, entering atmosphere).
 void audioCautionChirp();
 
-// Caution constant tone — fixed duration. Suppressed if master alarm is active or silenced.
+// Caution constant tone — fixed duration. Suppressed if master alarm is active.
 // Call when ALT caution indicator is newly set.
 void audioCautionTone();
 
-// Notify of a master alarm condition change.
-//   condBit: one of the AUDIO_ALARM_* bits identifying the condition.
-//   on=true:  condition became active — starts alarm if not already silenced.
-//   on=false: condition cleared — stops alarm only when ALL conditions clear.
-// A new condition activating while alarm is silenced will restart the tone.
-void audioMasterAlarm(uint8_t condBit, bool on);
+// Start the master alarm two-tone loop. Has no effect if already running.
+// Call when the sketch's alarm condition mask transitions from 0 to non-zero.
+void audioStartAlarm();
 
-// Silence the master alarm immediately (e.g. master alarm button pressed).
-// The alarm will not restart until all conditions clear and one re-triggers.
+// Stop the master alarm and return to idle. Has no effect if not running.
+// Call when the sketch's alarm condition mask transitions from non-zero to 0.
+void audioStopAlarm();
+
+// Immediately stop the master alarm tone (e.g. crew pressed the master alarm button).
+// The sketch is responsible for managing its own silence latch and re-trigger logic.
 void audioSilence();
 
 // Returns the current audio state.

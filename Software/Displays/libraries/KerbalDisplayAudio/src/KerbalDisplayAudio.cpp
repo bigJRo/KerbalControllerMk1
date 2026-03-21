@@ -6,24 +6,13 @@
    All public API and configuration defines are in KerbalDisplayAudio.h.
 ****************************************************************************************/
 
-// Bitmask of which master alarm conditions are currently active
-static uint8_t    _alarmActiveMask = 0;
 static AudioState _audioState      = AUDIO_IDLE;
 static uint32_t   _audioPhaseStart = 0;
 static bool       _chirpSecondNote = false;
 static bool       _chirpAscending  = true;
 static bool       _alarmHiPhase    = true;
-static bool       _alarmSilenced   = false;
 
-// Internal: start the master alarm tone
-static void _startAlarm() {
-  _alarmHiPhase    = true;
-  _audioPhaseStart = millis();
-  _audioState      = AUDIO_MASTER_ALARM;
-  tone(AUDIO_PIN, AUDIO_ALARM_FREQ_HI);
-}
-
-// Internal: start a chirp sequence
+// Internal: start a chirp sequence (used by audioAlertChirp and audioCautionChirp)
 static void _startChirp(bool ascending) {
   _chirpAscending  = ascending;
   _chirpSecondNote = false;
@@ -77,64 +66,41 @@ void updateAudio() {
 
 void audioAlertChirp() {
   if (_audioState == AUDIO_MASTER_ALARM) return;
-  if (_alarmSilenced) return;
   _startChirp(true);
 }
 
 void audioCautionChirp() {
   if (_audioState == AUDIO_MASTER_ALARM) return;
-  if (_alarmSilenced) return;
   _startChirp(false);
 }
 
 void audioCautionTone() {
   if (_audioState == AUDIO_MASTER_ALARM) return;
-  if (_alarmSilenced) return;
   noTone(AUDIO_PIN);
   _audioPhaseStart = millis();
   _audioState      = AUDIO_CAUTION_TONE;
   tone(AUDIO_PIN, AUDIO_CAUTION_TONE_FREQ);
 }
 
-void audioMasterAlarm(uint8_t condBit, bool on) {
-  if (on) {
-    bool wasActive = (_alarmActiveMask != 0);
-    _alarmActiveMask |= condBit;
-    if (!wasActive && !_alarmSilenced) {
-      // First active condition — start alarm
-      _startAlarm();
-    } else if (wasActive && _alarmSilenced) {
-      // A new condition arrived while the alarm was silenced — restart.
-      // Silencing only covers the condition(s) active at the time; a new
-      // condition re-asserts the alarm so the crew cannot inadvertently
-      // miss a fresh warning.
-      _alarmSilenced = false;
-      _startAlarm();
-    } else if (!_alarmSilenced && _audioState != AUDIO_MASTER_ALARM) {
-      // Condition re-triggered after all conditions previously cleared
-      // (wasActive was false but _alarmSilenced is also false, meaning
-      // the alarm had already stopped naturally). Restart it.
-      _startAlarm();
-    }
-  } else {
-    _alarmActiveMask &= ~condBit;
-    if (_alarmActiveMask == 0) {
-      // All conditions cleared — stop alarm and reset silence latch so
-      // the next condition that fires will start the alarm normally.
-      _alarmSilenced = false;
-      if (_audioState == AUDIO_MASTER_ALARM) {
-        noTone(AUDIO_PIN);
-        _audioState = AUDIO_IDLE;
-      }
-    }
+void audioStartAlarm() {
+  if (_audioState == AUDIO_MASTER_ALARM) return;
+  _alarmHiPhase    = true;
+  _audioPhaseStart = millis();
+  _audioState      = AUDIO_MASTER_ALARM;
+  tone(AUDIO_PIN, AUDIO_ALARM_FREQ_HI);
+}
+
+void audioStopAlarm() {
+  if (_audioState == AUDIO_MASTER_ALARM) {
+    noTone(AUDIO_PIN);
+    _audioState = AUDIO_IDLE;
   }
 }
 
 void audioSilence() {
   if (_audioState == AUDIO_MASTER_ALARM) {
     noTone(AUDIO_PIN);
-    _audioState    = AUDIO_IDLE;
-    _alarmSilenced = true;
+    _audioState = AUDIO_IDLE;
   }
 }
 

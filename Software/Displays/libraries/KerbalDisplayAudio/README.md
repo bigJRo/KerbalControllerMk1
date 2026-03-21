@@ -10,7 +10,7 @@ Part of the KCMk1 controller system.
 
 KerbalDisplayAudio provides audio feedback for KCMk1 display panels via the Arduino `tone()` API. It manages a priority-ordered state machine of four audio modes — master alarm, caution tone, caution chirp, and alert chirp — with all timing driven by `millis()` so that `loop()` never blocks.
 
-The master alarm is modelled on the Space Shuttle Caution & Warning specification: 375 Hz / 1000 Hz alternating at 2.5 Hz. Individual alarm conditions are tracked independently via a bitmask so that silencing and re-triggering behave correctly across multiple simultaneous warnings.
+The master alarm tone is modelled on the Space Shuttle Caution & Warning specification: 375 Hz / 1000 Hz alternating at 2.5 Hz. The library drives the tone on command via `audioStartAlarm()` and `audioStopAlarm()`. Condition tracking — which warnings are active, the silence latch, and re-trigger logic — is the responsibility of the calling sketch, not the library.
 
 ---
 
@@ -74,21 +74,22 @@ The audio state machine runs four modes in priority order (high to low):
 
 Lower-priority sounds are suppressed while a higher-priority state is active. Chirps and caution tones are also suppressed while the alarm is silenced (i.e. while alarm conditions remain active but the crew has acknowledged the alarm).
 
-### Master Alarm Condition Tracking
+### Master Alarm
 
-The master alarm tracks up to 8 independent conditions via a bitmask. Each condition is identified by one of the `AUDIO_ALARM_*` bit constants. The alarm tone plays while any bit is set and stops automatically when all bits clear.
+The library drives the master alarm tone but has no knowledge of which conditions are active or why. Condition tracking, the silence latch, and re-trigger logic all live in the calling sketch (`ScreenMain.ino` in the KCMk1 Annunciator). The sketch calls `audioStartAlarm()` when the first condition becomes active and `audioStopAlarm()` when the last condition clears.
 
-**Silence behaviour:** calling `audioSilence()` stops the tone and sets an internal latch. The alarm will not restart for existing conditions. However, if a *new* condition activates while silenced, the alarm restarts immediately — the crew cannot inadvertently miss a fresh warning. The silence latch is cleared when all conditions clear.
+`audioStartAlarm()` — starts the two-tone alternating loop. Has no effect if the alarm is already running.
 
-**Alarm condition bits:**
+`audioStopAlarm()` — stops the alarm tone and returns to idle. Has no effect if the alarm is not running.
 
-| Constant | Bit | Default use |
-|----------|-----|-------------|
-| `AUDIO_ALARM_GROUND_PROX` | `(1 << 0)` | `CW_GROUND_PROX` |
-| `AUDIO_ALARM_HIGH_G` | `(1 << 1)` | `CW_HIGH_G` |
-| `AUDIO_ALARM_BUS_VOLTAGE` | `(1 << 2)` | `CW_BUS_VOLTAGE` |
-| `AUDIO_ALARM_HIGH_TEMP` | `(1 << 3)` | `CW_HIGH_TEMP` |
-| `AUDIO_ALARM_LOW_DV` | `(1 << 4)` | `CW_LOW_DV` |
+`audioSilence()` — immediately stops the master alarm tone. Unlike `audioStopAlarm()`, this is called by the sketch when the crew presses the master alarm button. The distinction matters because the sketch needs to set its own silence latch *before* stopping the tone, so that its condition tracking logic knows not to restart the alarm for existing conditions.
+
+The sketch is responsible for the following logic (example from `ScreenMain.ino`):
+- Maintaining a bitmask of which alarm conditions are currently active
+- Calling `audioStartAlarm()` when the mask transitions from 0 to non-zero
+- Calling `audioStopAlarm()` when the mask transitions from non-zero to 0
+- Managing a silence latch that prevents restart for existing conditions after `audioSilence()`
+- Restarting the alarm (and clearing the latch) if a *new* condition fires while silenced
 
 ### API
 
@@ -96,15 +97,17 @@ The master alarm tracks up to 8 independent conditions via a bitmask. Each condi
 
 `updateAudio()` — services all audio timing. Call every `loop()` iteration. Returns immediately if audio is idle.
 
-`audioAlertChirp()` — plays a two-note ascending sequence (A5 → C#6). Signals a positive event such as an altitude or velocity threshold crossing, or orbital insertion. Suppressed if master alarm is active or silenced.
+`audioAlertChirp()` — plays a two-note ascending sequence (A5 → C#6). Signals a positive event such as an altitude or velocity threshold crossing, or orbital insertion. Suppressed if master alarm is active.
 
-`audioCautionChirp()` — plays a two-note descending sequence (tritone interval). Signals a newly-set caution condition such as entering atmosphere or beginning descent. Suppressed if master alarm is active or silenced.
+`audioCautionChirp()` — plays a two-note descending sequence (tritone interval). Signals a newly-set caution condition such as entering atmosphere or beginning descent. Suppressed if master alarm is active.
 
-`audioCautionTone()` — plays a constant 1000 Hz tone for 1200 ms. Used for the ALT caution condition. Suppressed if master alarm is active or silenced.
+`audioCautionTone()` — plays a constant 1000 Hz tone for 1200 ms. Used for the ALT caution condition. Suppressed if master alarm is active.
 
-`audioMasterAlarm(condBit, on)` — notifies the library that a master alarm condition has changed state. Pass one of the `AUDIO_ALARM_*` bits and `true` to set or `false` to clear. The alarm tone starts when the first condition is set and stops when the last condition clears.
+`audioStartAlarm()` — starts the two-tone master alarm loop. Has no effect if already running. Call when the sketch's alarm condition mask transitions from 0 to non-zero.
 
-`audioSilence()` — immediately silences the master alarm. Has no effect on chirps or caution tones. The alarm will not restart for currently active conditions, but a new condition activating will restart it.
+`audioStopAlarm()` — stops the master alarm and returns to idle. Has no effect if not running. Call when the sketch's alarm condition mask transitions from non-zero to 0.
+
+`audioSilence()` — immediately stops the master alarm. Call when the crew presses the master alarm button. The sketch must manage its own silence latch separately — this function only stops the tone.
 
 `audioGetState()` — returns the current `AudioState` enum value (`AUDIO_IDLE`, `AUDIO_CHIRP`, `AUDIO_CAUTION_TONE`, or `AUDIO_MASTER_ALARM`).
 
@@ -115,6 +118,25 @@ The master alarm tracks up to 8 independent conditions via a bitmask. Each condi
 ```cpp
 #include <KerbalDisplayAudio.h>
 
+// Sketch-side alarm condition tracking (application-specific)
+static const uint8_t ALARM_HIGH_TEMP = (1 << 0);
+static const uint8_t ALARM_LOW_DV    = (1 << 1);
+static uint8_t alarmMask = 0;
+static bool    alarmSilenced = false;
+
+void setAlarmCondition(uint8_t bit, bool on) {
+  if (on) {
+    bool wasActive = (alarmMask != 0);
+    alarmMask |= bit;
+    if (!wasActive && !alarmSilenced)        audioStartAlarm();
+    else if (wasActive && alarmSilenced) { alarmSilenced = false; audioStartAlarm(); }
+    else if (!alarmSilenced && audioGetState() != AUDIO_MASTER_ALARM) audioStartAlarm();
+  } else {
+    alarmMask &= ~bit;
+    if (alarmMask == 0) { alarmSilenced = false; audioStopAlarm(); }
+  }
+}
+
 void setup() {
   setupAudio();
 }
@@ -122,15 +144,11 @@ void setup() {
 void loop() {
   updateAudio();  // must be called every loop pass
 
-  // Example: trigger alarm when a condition becomes active
-  // audioMasterAlarm(AUDIO_ALARM_HIGH_TEMP, true);   // condition set
-  // audioMasterAlarm(AUDIO_ALARM_HIGH_TEMP, false);  // condition cleared
+  // Set or clear a condition based on telemetry
+  // setAlarmCondition(ALARM_HIGH_TEMP, state.maxTemp > tempAlarm);
 
-  // Example: alert chirp on orbital insertion
-  // audioAlertChirp();
-
-  // Example: silence alarm on button press
-  // if (masterAlarmButtonPressed) audioSilence();
+  // Silence on button press
+  // if (masterAlarmButtonPressed) { alarmSilenced = true; audioSilence(); }
 }
 ```
 
@@ -138,7 +156,8 @@ void loop() {
 
 ## Notes
 
-- **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In KCMk1 sketches this is done in `ScreenMain.ino` before each `audioMasterAlarm()` / `audioCautionTone()` / `audioAlertChirp()` call, and `audioSilence()` is called unconditionally on scene change and vessel switch.
+- **Condition tracking is the sketch's responsibility** — the library only drives the tone. The sketch must maintain the active condition bitmask, the silence latch, and all re-trigger logic. See `ScreenMain.ino` in the KCMk1 Annunciator for the reference implementation.
+- **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In KCMk1 sketches this is done in `ScreenMain.ino` and `audioSilence()` is called unconditionally on scene change and vessel switch.
 - **Single output pin** — all audio is multiplexed through one `tone()` pin. Only one sound plays at a time; the state machine priority order determines which.
 - **No blocking** — `updateAudio()` never calls `delay()`. All timing is `millis()`-based. The function is a no-op when idle.
 - **`tone()` on Teensy 4.0** — `tone()` uses a hardware timer. `AUDIO_PIN` must be a PWM-capable pin.
