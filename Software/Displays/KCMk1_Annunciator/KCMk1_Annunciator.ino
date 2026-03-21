@@ -11,7 +11,7 @@
     ScreenSOI.ino      -- SOI screen static chrome and update pass
     ScreenStandby.ino  -- standby screen static chrome and update pass
     TouchEvents.ino    -- touch debounce and gesture dispatch (processTouchEvents)
-    Audio.ino          -- documentation only: describes where audio triggers live across the sketch
+    Audio.ino          -- master alarm condition tracking (ALARM_* bits, updateAlarmMask) and audio wiring notes
     Demo.ino           -- demo mode animation (stepDemoState, initDemoMode)
     I2CSlave.ino       -- I2C slave interface to KCMk1 master (Teensy 4.1) at address 0x10
 

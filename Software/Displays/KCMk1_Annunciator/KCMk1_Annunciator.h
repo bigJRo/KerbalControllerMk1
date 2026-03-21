@@ -179,6 +179,15 @@ extern uint32_t     lastScreenSwitch;
 extern bool         firstPassOnMain;
 extern bool         alarmSilenced;
 
+// From Audio.ino -- master alarm condition tracking
+extern const uint8_t ALARM_GROUND_PROX;
+extern const uint8_t ALARM_HIGH_G;
+extern const uint8_t ALARM_BUS_VOLTAGE;
+extern const uint8_t ALARM_HIGH_TEMP;
+extern const uint8_t ALARM_LOW_DV;
+extern uint8_t       alarmActiveMask;
+void updateAlarmMask(uint8_t condBit, bool on);
+
 // Screen navigation -- always use this instead of setting activeScreen directly.
 // Sets activeScreen, resets prevScreen to screen_COUNT (triggering chrome redraw),
 // records lastScreenSwitch timestamp, and calls invalidateAllState().
