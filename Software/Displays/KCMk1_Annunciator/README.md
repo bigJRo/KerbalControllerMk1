@@ -27,24 +27,38 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 
 ### Pin Assignments
 
-| Pin | Function | Direction |
-|-----|----------|-----------|
-| 10 | RA8875 CS (SPI chip select) | OUT |
-| 15 | RA8875 RESET | OUT |
-| 5 | SD card CS | OUT |
-| 16 | GSL1680F SCL (Wire1) | — |
-| 17 | GSL1680F SDA (Wire1) | — |
-| 18 | I2C SDA (Wire — master bus) | — |
-| 19 | I2C SCL (Wire — master bus) | — |
-| 2 | I2C interrupt output to master | OUT, active-LOW |
-| 3 | GSL1680F WAKE | OUT |
-| 22 | GSL1680F INT | IN |
+| Pin | Function | Direction | Assigned by |
+|-----|----------|-----------|-------------|
+| 10 | RA8875 SPI chip select | OUT | KerbalDisplayCommon (`RA8875_CS`) |
+| 11 | SPI MOSI | OUT | Teensy hardware SPI (fixed) |
+| 12 | SPI MISO | IN | Teensy hardware SPI (fixed) |
+| 13 | SPI SCK | OUT | Teensy hardware SPI (fixed) |
+| 15 | RA8875 RESET | OUT | KerbalDisplayCommon (`RA8875_RESET`) |
+| 4 | SD card detect (active-LOW) | IN | KerbalDisplayCommon (`SD_DETECT_PIN`) |
+| 5 | SD card SPI chip select | OUT | KerbalDisplayCommon (`SD_CS_PIN`) |
+| 16 | GSL1680F SCL (Wire1) | — | KerbalDisplayCommon (`CTP_SCL_PIN`) |
+| 17 | GSL1680F SDA (Wire1) | — | KerbalDisplayCommon (`CTP_SDA_PIN`) |
+| 3 | GSL1680F WAKE | OUT | KerbalDisplayCommon (`CTP_WAKE_PIN`) |
+| 22 | GSL1680F INT (HIGH when touched) | IN | KerbalDisplayCommon (`CTP_INT_PIN`) |
+| 9 | Audio PWM output (buzzer/speaker) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
+| 18 | I2C SDA (Wire — master bus) | — | Sketch / Wire library |
+| 19 | I2C SCL (Wire — master bus) | — | Sketch / Wire library |
+| 2 | I2C interrupt output to master (active-LOW) | OUT | Sketch (`I2C_INT_PIN`) |
 
 **Serial ports:**
 - `Serial` (USB COM port 4) — debug output only
 - `SerialUSB1` (USB COM port 5) — KerbalSimpit telemetry traffic
 
 **I2C note:** Wire (pins 18/19) is the master bus shared with the Teensy 4.1. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
+
+**Override note:** KerbalDisplayCommon and KerbalDisplayAudio pin assignments can be overridden by defining the constant before the `#include`:
+
+```cpp
+#define RA8875_CS 9
+#define AUDIO_PIN 8
+#include <KerbalDisplayCommon.h>
+#include <KerbalDisplayAudio.h>
+```
 
 ---
 
@@ -190,14 +204,16 @@ Celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. 
 
 | Event | Result |
 |-------|--------|
-| `SCENE_CHANGE` → flight | Switch to Main |
+| `SCENE_CHANGE` → flight | Switch to Main + request Simpit channel refresh |
 | `SCENE_CHANGE` → non-flight | Switch to Standby |
 | I2C `idle_state` asserted + not in flight | Switch to Standby |
 | 3-finger touch on Standby + `flightScene` | Switch to Main |
 | 1-finger touch on SOI button area (Main) | Switch to SOI |
 | 1-finger touch anywhere on SOI | Return to Main |
-| Vessel switch | Full redraw of current screen |
+| Vessel switch | Full redraw of current screen + `updateCautionWarningState()` + request Simpit channel refresh |
 | EVA state change | Full redraw of current screen |
+
+**Simpit channel refresh:** On flight scene entry and vessel switch, `simpit.requestMessageOnChannel(0)` is called to force KSP to resend current values on all subscribed channels. This ensures display fields (altitude, velocity, SOI, vessel name, EC, apsides, temperature, etc.) populate immediately rather than waiting for the next change event on each individual channel.
 
 ### Vessel Situation
 

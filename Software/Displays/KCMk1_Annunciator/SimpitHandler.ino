@@ -207,6 +207,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (debugMode) Serial.println(flightScene ? F("Annunciator: Entering flight scene") : F("Annunciator: Leaving flight scene"));
       if (flightScene) {
         switchToScreen(screen_Main);
+        // Request immediate refresh on all subscribed channels so static values
+        // (full tanks, stable orbit, etc.) populate without waiting for a change event.
+        simpit.requestMessageOnChannel(0);
       } else {
         if (audioEnabled) audioSilence();
         resetDisplays();
@@ -230,6 +233,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // haven't changed on the new vessel -- without this, MECO and other C&W
         // bits stay stale until the next change event triggers a recompute.
         updateCautionWarningState();
+        // Request a full telemetry refresh so all display fields (altitude, velocity,
+        // SOI, vessel name, apsides, temp, etc.) repopulate immediately rather than
+        // waiting for a change event on each channel.
+        simpit.requestMessageOnChannel(0);
       } else if (msg[0] == 2) {
         if (debugMode) Serial.println(F("Annunciator: Docked"));
         docked = true;
