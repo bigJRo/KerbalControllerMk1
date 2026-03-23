@@ -264,6 +264,25 @@ void drawArcDisplay(RA8875 &tft,
                     float prevVal, float curVal,
                     uint16_t color);
 
+// Draw a vertical percentage axis with major/minor ticks and right-justified labels.
+// 0% is at barBottom, 100% is at barTop. axisW px are reserved for labels and ticks.
+// The axis line is drawn at x0 + axisW - 1.
+void drawLabelledAxis(RA8875 &tft,
+                      uint16_t x0, uint16_t axisW,
+                      uint16_t barTop, uint16_t barBottom,
+                      const tFont *font,
+                      uint16_t axisColor, uint16_t backColor);
+
+// Draw a string one character per line within a rectangle — vertical label strip.
+// Text is centred horizontally within w and vertically within h.
+// The strip is filled with backColor before drawing.
+// Use where text rotation is needed but the RA8875 has no native rotation support.
+void drawVerticalText(RA8875 &tft,
+                      uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                      const tFont *font,
+                      const char *text,
+                      uint16_t color, uint16_t backColor);
+
 // setupSD() must be called once in setup() before any drawBMP() calls.
 // Returns true if the SD card was found and initialised successfully.
 // drawBMP() will silently skip and return BMP_ERR_SD_INIT if this was not called
@@ -431,9 +450,17 @@ struct TouchResult {
 // Call once from setup() — no parameters needed.
 void setupTouch();
 
-// Returns true if the GSL1680 INT pin is HIGH (touch event pending).
-// Lightweight — does not perform an I2C read.
+// Returns true if the GSL1680 INT pin is currently HIGH (touch active).
+// Polls GPIO directly — no ISR. The INT pin stays HIGH for the full touch duration.
 bool isTouched();
+
+// No-op — retained for API compatibility with ISR-based callers.
+// Polling has no flag to clear; call sites can be left unchanged.
+void clearTouchISR();
+
+// Returns the raw number of times the INT pin ISR has fired since boot.
+// Use for diagnostics — confirms whether interrupts are reaching the MCU at all.
+uint32_t touchISRCount();
 
 // Reads all active touch points from the GSL1680F.
 // Returns a TouchResult with count and coordinates.

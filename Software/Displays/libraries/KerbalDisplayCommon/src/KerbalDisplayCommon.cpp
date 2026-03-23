@@ -22,7 +22,7 @@ const byte TEXT_BORDER = 8;  // horizontal padding from edge
 void setupDisplay(RA8875 &tft, uint16_t backColor) {
   tft.begin(RA8875_DISPLAY_SIZE);
   tft.fillScreen(backColor);
-  if (_kdcDebugMode) Serial.println(F("Annunciator: setupDisplay: RA8875 ready"));
+  if (_kdcDebugMode) Serial.println(F("KDC: setupDisplay: RA8875 ready"));
 }
 
 /***************************************************************************************
@@ -242,6 +242,98 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
     tft.fillRect(x + 1, drawY, w - 2, charH, bgColor);
     tft.setCursor(drawX, drawY);
     tft.print(lines[i]);
+  }
+}
+
+
+
+
+/***************************************************************************************
+   DRAW LABELLED Y-AXIS
+   Draws a vertical percentage axis with major ticks (every 10%) and minor ticks
+   (every 5%). Major ticks get right-justified percentage labels. 0% is at the bottom,
+   100% at the top. The axis line is drawn at x0 + axisW - 1.
+   - x0, y0      top-left of the axis strip (labels + ticks fit within axisW px)
+   - axisW       total width reserved for the axis strip
+   - barTop      y coordinate of the 100% level
+   - barBottom   y coordinate of the 0% level
+   - font        font for percentage labels (Roboto_Black_12 recommended)
+   - axisColor   colour for the axis line, ticks, and labels
+   - backColor   background colour (used for text background)
+****************************************************************************************/
+void drawLabelledAxis(RA8875 &tft,
+                      uint16_t x0, uint16_t axisW,
+                      uint16_t barTop, uint16_t barBottom,
+                      const tFont *font,
+                      uint16_t axisColor, uint16_t backColor) {
+  const uint16_t AXIS_X      = x0 + axisW - 1;
+  const uint16_t MAJOR_LEN   = 6;
+  const uint16_t MINOR_LEN   = 3;
+  const uint16_t LBL_MARGIN  = 2;
+  const uint16_t barH        = barBottom - barTop;
+
+  tft.drawLine(AXIS_X, barTop, AXIS_X, barBottom, axisColor);
+  tft.setFont(font);
+  tft.setTextColor(axisColor, backColor);
+
+  for (uint8_t pct = 0; pct <= 100; pct += 5) {
+    uint16_t y = barBottom - (uint16_t)((uint32_t)barH * pct / 100);
+    bool     major   = (pct % 10 == 0);
+    uint16_t tickLen = major ? MAJOR_LEN : MINOR_LEN;
+
+    tft.drawLine(AXIS_X - tickLen, y, AXIS_X, y, axisColor);
+
+    if (major) {
+      char lbl[7];
+      snprintf(lbl, sizeof(lbl), "%d%%", pct);
+      int16_t lw = getFontStringWidth(font, lbl);
+      int16_t lh = (int16_t)font->font_height;
+      int16_t lx = (int16_t)AXIS_X - tickLen - LBL_MARGIN - lw;
+      int16_t ly = (int16_t)y - lh / 2;
+      if (lx >= 0 && ly >= 0) {
+        tft.setCursor(lx, ly);
+        tft.print(lbl);
+      }
+    }
+  }
+}
+
+
+/***************************************************************************************
+   DRAW VERTICAL TEXT
+   Draws a string one character per line, vertically centred within a rectangle.
+   Each character is horizontally centred within the strip width.
+   Used for rotated-style section labels where the RA8875 has no native text rotation.
+   - x0, y0      top-left of the strip rectangle
+   - w, h        width and height of the strip (text is centred within both)
+   - font        font to use for each character
+   - text        null-terminated string to draw vertically
+   - color       foreground color
+   - backColor   background color (strip is filled before drawing)
+****************************************************************************************/
+void drawVerticalText(RA8875 &tft,
+                      uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                      const tFont *font,
+                      const char *text,
+                      uint16_t color, uint16_t backColor) {
+  tft.fillRect(x0, y0, w, h, backColor);
+
+  uint8_t  len   = strlen(text);
+  if (len == 0) return;
+
+  uint16_t charH = font->font_height;
+  uint16_t textH = len * charH;
+  uint16_t startY = y0 + (h > textH ? (h - textH) / 2 : 0);
+
+  for (uint8_t i = 0; i < len; i++) {
+    char ch[2] = { text[i], '\0' };
+    int16_t  cw = getFontStringWidth(font, ch);
+    uint16_t cx = x0 + (w > (uint16_t)cw ? (w - (uint16_t)cw) / 2 : 0);
+    uint16_t cy = startY + i * charH;
+    tft.setFont(font);
+    tft.setTextColor(color, backColor);
+    tft.setCursor(cx, cy);
+    tft.print(ch);
   }
 }
 
@@ -550,17 +642,17 @@ bool setupSD() {
   // SD_DETECT_PIN is assumed active-LOW (card inserted = LOW, no card = HIGH).
   // If your connector has an active-HIGH detect pin, invert this check.
   if (digitalRead(SD_DETECT_PIN) == HIGH) {
-    Serial.println(F("Annunciator: setupSD: no SD card detected"));
+    Serial.println(F("KDC: setupSD: no SD card detected"));
     _sdReady = false;
     return false;
   }
   if (!SD.begin(SD_CS_PIN)) {
-    Serial.println(F("Annunciator: setupSD: SD.begin() failed — check wiring and SD_CS_PIN"));
+    Serial.println(F("KDC: setupSD: SD.begin() failed — check wiring and SD_CS_PIN"));
     _sdReady = false;
     return false;
   }
   _sdReady = true;
-  if (_kdcDebugMode) Serial.println(F("Annunciator: setupSD: SD card ready"));
+  if (_kdcDebugMode) Serial.println(F("KDC: setupSD: SD card ready"));
   return true;
 }
 
@@ -609,7 +701,7 @@ static void _bmpConvertRow(const uint8_t *src, uint16_t *dst, int32_t imgW) {
 
 // Internal helper — log a BMPResult error with filename to Serial
 static void _bmpLogError(const char *filename, BMPResult err) {
-  Serial.print(F("Annunciator: drawBMP ["));
+  Serial.print(F("KDC: drawBMP ["));
   Serial.print(filename);
   Serial.print(F("]: "));
   switch (err) {
@@ -761,7 +853,7 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
   // Restore active window and cursor to full-screen origin
   tft.setActiveWindow(0, 799, 0, 479);
   tft.setXY(0, 0);
-  if (_kdcDebugMode) { Serial.print(F("Annunciator: drawBMP OK: ")); Serial.println(filename); }
+  if (_kdcDebugMode) { Serial.print(F("KDC: drawBMP OK: ")); Serial.println(filename); }
   return BMP_OK;
 }
 
@@ -1919,10 +2011,19 @@ static void _gsl_write(uint8_t reg, uint8_t *data, uint16_t len) {
   Wire1.endTransmission();
 }
 
+// Firmware-load variant — uses endTransmission() with a full stop condition,
+// matching the BuyDisplay reference sketch exactly.
+static void _gsl_write_fw(uint8_t reg, uint8_t *data, uint16_t len) {
+  Wire1.beginTransmission(GSL1680_ADDR);
+  Wire1.write(reg);
+  for (uint16_t i = 0; i < len; i++) Wire1.write(data[i]);
+  Wire1.endTransmission();
+}
+
 static void _gsl_read(uint8_t reg, uint8_t *buf, uint8_t len) {
   Wire1.beginTransmission(GSL1680_ADDR);
   Wire1.write(reg);
-  Wire1.endTransmission(false);  // repeated start — no stop condition
+  Wire1.endTransmission();  // full stop, matching BuyDisplay reference
   Wire1.requestFrom((uint8_t)GSL1680_ADDR, len);
   for (uint8_t i = 0; i < len && Wire1.available(); i++) buf[i] = Wire1.read();
 }
@@ -1952,11 +2053,11 @@ static void _gsl_reset_chip() {
 static void _gsl_load_fw() {
   uint8_t buf[4];
   if (_kdcDebugMode) {
-    Serial.print(F("Annunciator: setupTouch: fw entry size="));
+    Serial.print(F("KDC: setupTouch: fw entry size="));
     Serial.print((uint16_t)sizeof(_gsl_fw_entry));
     Serial.print(F(" entries="));
     Serial.println(_GSL_FW_LEN);
-    Serial.print(F("Annunciator: setupTouch: first entry reg=0x"));
+    Serial.print(F("KDC: setupTouch: first entry reg=0x"));
     Serial.print(_GSL_FW[0].offset, HEX);
     Serial.print(F(" val=0x"));
     Serial.println(_GSL_FW[0].val, HEX);
@@ -1969,9 +2070,16 @@ static void _gsl_load_fw() {
     buf[1] = (uint8_t)((val >> 8)  & 0xff);
     buf[2] = (uint8_t)((val >> 16) & 0xff);
     buf[3] = (uint8_t)((val >> 24) & 0xff);
-    _gsl_write(reg, buf, 4);
+    _gsl_write_fw(reg, buf, 4);
     // Page select register needs a short settling time
     if (reg == 0xf0) delay(1);
+    // Progress heartbeat every 500 entries
+    if (_kdcDebugMode && (i % 500 == 0)) {
+      Serial.print(F("KDC: setupTouch: fw load "));
+      Serial.print(i);
+      Serial.print(F("/"));
+      Serial.println(_GSL_FW_LEN);
+    }
   }
 }
 
@@ -1986,13 +2094,20 @@ static void _gsl_startup_chip() {
    Initialises Wire1 and the GSL1680F capacitive touch controller.
    Uploads firmware over I2C on every call (required on every power cycle).
    Call once from setup().
-   Returns true if firmware load confirmed by chip.
 ****************************************************************************************/
-bool setupTouch() {
+// Touch detection uses direct polling of the INT pin (digitalRead) rather than an ISR.
+// The GSL1680 holds INT HIGH for the full duration of a touch, making polling reliable
+// and avoiding ISR flag accumulation that caused phantom button presses on slow redraws.
+static volatile uint32_t _touchISRCount = 0;  // retained for diagnostics only
+
+void setupTouch() {
+
+  // Initialise Wire1 first — must be done before wake sequence and any I2C.
   Wire1.setSDA(CTP_SDA_PIN);
   Wire1.setSCL(CTP_SCL_PIN);
   Wire1.begin();
   Wire1.setClock(100000);  // GSL1680 max I2C clock is 100kHz
+  Wire1.setTimeout(200);   // 200us timeout per transaction — prevents hang on NACK
 
   // Wake sequence from BuyDisplay reference
   pinMode(CTP_WAKE_PIN, OUTPUT);
@@ -2003,80 +2118,114 @@ bool setupTouch() {
 
   // Scan Wire1 bus so we can see what address the chip is responding on
   if (_kdcDebugMode) {
-    Serial.println(F("Annunciator: setupTouch: scanning Wire1 bus..."));
+    Serial.println(F("KDC: setupTouch: scanning Wire1 bus..."));
     bool anyFound = false;
     for (uint8_t addr = 1; addr < 127; addr++) {
       Wire1.beginTransmission(addr);
       uint8_t err = Wire1.endTransmission();
       if (err == 0) {
-        Serial.print(F("Annunciator: setupTouch: I2C device found at 0x"));
+        Serial.print(F("KDC: setupTouch: I2C device found at 0x"));
         if (addr < 16) Serial.print('0');
         Serial.println(addr, HEX);
         anyFound = true;
       }
     }
-    if (!anyFound) Serial.println(F("Annunciator: setupTouch: No I2C devices found on Wire1"));
-    Serial.println(F("Annunciator: setupTouch: GSL1680 clr_reg"));
+    if (!anyFound) Serial.println(F("KDC: setupTouch: No I2C devices found on Wire1"));
+    Serial.println(F("KDC: setupTouch: GSL1680 clr_reg"));
   }
   _gsl_clr_reg();
-  if (_kdcDebugMode) Serial.println(F("Annunciator: setupTouch: GSL1680 reset_chip"));
+  if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: GSL1680 reset_chip"));
   _gsl_reset_chip();
-  if (_kdcDebugMode) Serial.println(F("Annunciator: setupTouch: GSL1680 load_fw"));
+  delay(20);  // let chip settle after reset before loading firmware
+  if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: GSL1680 load_fw"));
   _gsl_load_fw();
-  if (_kdcDebugMode) Serial.println(F("Annunciator: setupTouch: GSL1680 startup_chip"));
+  if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: GSL1680 startup_chip"));
   _gsl_startup_chip();
+  delay(20);
+  _gsl_startup_chip();  // second call — BuyDisplay reference hints this may be needed
   delay(200);  // chip needs time to initialise after firmware load
+  if (_kdcDebugMode) {
+    uint8_t e0chk[1] = {0};
+    _gsl_read(0xe0, e0chk, 1);
+    Serial.print(F("KDC: setupTouch: 0xe0 after startup = 0x"));
+    Serial.println(e0chk[0], HEX);
+    // 0x00 = running, 0x80 = still in sleep/reset (startup failed)
+  }
+
+  // Dummy read of 0x80 to clear any pending interrupt the chip asserts
+  // after firmware load. Without this the INT pin may stay asserted permanently.
+  {
+    uint8_t dummy[24] = {0};
+    _gsl_read(0x80, dummy, 24);
+    delay(10);
+  }
 
   // Read back check_mem result and print raw bytes for diagnosis
   delay(30);
   uint8_t chk[4] = {0};
   _gsl_read(0xb0, chk, 4);
   if (_kdcDebugMode) {
-    Serial.print(F("Annunciator: setupTouch: 0xb0 = "));
+    Serial.print(F("KDC: setupTouch: 0xb0 = "));
     for (uint8_t i = 0; i < 4; i++) { if (chk[i] < 16) Serial.print('0'); Serial.print(chk[i], HEX); Serial.print(' '); }
     Serial.println();
     uint8_t e0[1] = {0};
     _gsl_read(0xe0, e0, 1);
-    Serial.print(F("Annunciator: setupTouch: 0xe0 = 0x")); Serial.println(e0[0], HEX);
+    Serial.print(F("KDC: setupTouch: 0xe0 = 0x")); Serial.println(e0[0], HEX);
   }
 
   bool ok = (chk[3] == 0x5a) || (chk[2] == 0x5a) || (chk[1] == 0x5a) || (chk[0] == 0x5a);
   if (!ok) {
-    if (_kdcDebugMode) Serial.println(F("Annunciator: setupTouch: GSL1680 retry init"));
+    if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: GSL1680 retry init"));
     digitalWrite(CTP_WAKE_PIN, LOW);  delay(20);
     digitalWrite(CTP_WAKE_PIN, HIGH); delay(20);
     _gsl_clr_reg();
     _gsl_reset_chip();
+    delay(20);
     _gsl_load_fw();
     _gsl_startup_chip();
+    delay(20);
+    _gsl_startup_chip();
     delay(200);
+    // Dummy read to clear any pending INT after retry firmware load
+    { uint8_t dummy[24] = {0}; _gsl_read(0x80, dummy, 24); delay(10); }
     delay(30);
     _gsl_read(0xb0, chk, 4);
     if (_kdcDebugMode) {
-      Serial.print(F("Annunciator: setupTouch: 0xb0 retry = "));
+      Serial.print(F("KDC: setupTouch: 0xb0 retry = "));
       for (uint8_t i = 0; i < 4; i++) { if (chk[i] < 16) Serial.print('0'); Serial.print(chk[i], HEX); Serial.print(' '); }
       Serial.println();
       uint8_t e0[1] = {0};
       _gsl_read(0xe0, e0, 1);
-      Serial.print(F("Annunciator: setupTouch: 0xe0 retry = 0x")); Serial.println(e0[0], HEX);
+      Serial.print(F("KDC: setupTouch: 0xe0 retry = 0x")); Serial.println(e0[0], HEX);
     }
     ok = (chk[3] == 0x5a) || (chk[2] == 0x5a) || (chk[1] == 0x5a) || (chk[0] == 0x5a);
   }
 
-  if (ok) Serial.println(F("Annunciator: setupTouch: GSL1680 ready"));
-  else    Serial.println(F("Annunciator: setupTouch: check_mem 0x00 (may be normal — proceeding)"));
+  if (ok) Serial.println(F("KDC: setupTouch: GSL1680 ready"));
+  else    Serial.println(F("KDC: setupTouch: check_mem 0x00 (may be normal — proceeding)"));
   // Proceed regardless — chip is running (0xe0=0x0 confirmed after firmware load).
+  if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: polling mode active (INT pin = GPIO)"));
 }
+
 
 
 /***************************************************************************************
    IS TOUCHED
-   Returns true if the GSL1680 INT pin is HIGH (touch active).
-   Lightweight — no I2C read. Call readTouch() when this returns true.
+   Polls the INT pin directly. The GSL1680 holds INT HIGH for the full duration
+   of a touch, so polling is reliable and avoids ISR flag accumulation issues.
 ****************************************************************************************/
 bool isTouched() {
-  return digitalRead(CTP_INT_PIN) == HIGH;
+  if (digitalRead(CTP_INT_PIN) == HIGH) {
+    _touchISRCount++;  // diagnostic counter retained for compatibility
+    return true;
+  }
+  return false;
 }
+
+// No-op — retained for API compatibility. Polling has no flag to clear.
+void clearTouchISR() {}
+
+uint32_t touchISRCount() { return _touchISRCount; }
 
 
 /***************************************************************************************
