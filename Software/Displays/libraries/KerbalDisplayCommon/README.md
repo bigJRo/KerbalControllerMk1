@@ -92,9 +92,13 @@ To override any of these, define them before including the library:
 
 `setupTouch()` — initialises Wire1 and the GSL1680F touch controller. Uploads the panel firmware over I2C (required on every power cycle) and starts the chip. Call once from `setup()`.
 
-`isTouched()` — returns `true` if the GSL1680F INT pin is HIGH. Lightweight — no I2C read. Use this to gate calls to `readTouch()`.
+`isTouched()` — polls the `CTP_INT_PIN` GPIO directly and returns `true` if the pin is HIGH. The GSL1680F holds INT HIGH for the full duration of a touch, so polling is reliable without an ISR. No I2C read is performed.
 
 `readTouch()` — reads all active touch points from the GSL1680F. Returns a `TouchResult` struct with `count` and `points[]` (each point has `x`, `y`, `id`). Call when `isTouched()` returns `true`.
+
+`clearTouchISR()` — no-op retained for API compatibility. The library previously used a falling-edge ISR; it now uses GPIO polling. Call sites can be left unchanged — the call is safe and costs nothing.
+
+`touchISRCount()` — returns a running count of `isTouched()` calls that returned `true`. Retained for diagnostics.
 
 ### Buttons
 
@@ -165,6 +169,10 @@ Higher-level functions that combine text rendering, background fill, and optiona
 `drawVertBarGraph(tft, x0, y0, w, h, prevVal, newVal, barColor, drawBorder, scale=1000)` — vertical bar graph, bottom-fill, values 0-scale. Erases only the changed segment rather than redrawing the full bar. Call from `updateScreen*()` only when the value changes; update `prevVal` in the caller after each call.
 
 `drawArcDisplay(tft, cx, cy, radius, needleW, minVal, maxVal, prevVal, curVal, color)` — semicircular arc indicator spanning 180 degrees. Erases the previous needle position before drawing the new one. The arc track is redrawn on every call.
+
+`drawLabelledAxis(tft, x0, axisW, barTop, barBottom, font, axisColor, backColor)` — draws a vertical percentage axis with major ticks every 10% and minor ticks every 5%. Labels (0%, 50%, 100%) are right-justified within `axisW` pixels. `0%` is at `barBottom`, `100%` is at `barTop`. The axis line is drawn at `x0 + axisW - 1`. Used by `ScreenMain` bar graph panels.
+
+`drawVerticalText(tft, x0, y0, w, h, font, text, color, backColor)` — draws a string one character per line within a rectangle, creating a vertical label strip. Characters are centred horizontally within `w` and the full strip is centred vertically within `h`. The strip is filled with `backColor` before drawing. Used where text rotation is needed since the RA8875 has no native rotation support.
 
 ### Celestial Bodies
 
