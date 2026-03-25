@@ -242,6 +242,59 @@ The display maintains an in-RAM cache of up to `VESSEL_CACHE_SIZE` (20) per-vess
 
 ---
 
+## I2C Protocol
+
+The ResourceDisp operates as an I2C slave at address **0x11** on the Wire bus. The master (Teensy 4.1) drives the bus. Communication is interrupt-driven: the ResourceDisp asserts pin 2 LOW when new data is ready; the master reads and then sends a command packet in response.
+
+### Outbound Packet — ResourceDisp → Master
+
+Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x11, 4)` after INT asserts.
+
+| Byte | Field | Description |
+|------|-------|-------------|
+| 0 | Sync | `0xAD` — framing validation magic byte |
+| 1 | Flags | Bit 0: `simpitConnected`  Bit 1: `flightScene`  Bit 2: `demoMode`  Bits 3–7: reserved (0) |
+| 2 | `slotCount` | Number of currently active resource slots (0–16) |
+| 3 | Reserved | `0x00` — available for future use |
+
+### Inbound Packet — Master → ResourceDisp
+
+Size: **2 bytes**. Sent by master at any time via `Wire.beginTransmission(0x11)` / `Wire.write()` / `Wire.endTransmission()`.
+
+| Byte | Field | Description |
+|------|-------|-------------|
+| 0 | `controlByte` | See bit map below |
+| 1 | Reserved | `0x00` — available for future use |
+
+**`controlByte` bit map:**
+
+| Bits | Field | Description |
+|------|-------|-------------|
+| 7:4 | `requestType` | Command code — see table below |
+| 3 | `idle_state` | `1` = switch to Standby when not in a flight scene |
+| 1 | `demoMode` | `1` = enable demo mode (disables Simpit) |
+| 0 | `debugMode` | `1` = enable Serial debug output |
+
+**Request type codes (`controlByte` bits 7:4):**
+
+| Code | Name | Action |
+|------|------|--------|
+| `0x0` | NOP | No operation |
+| `0x1` | STATUS | Force immediate status packet — assert INT now |
+| `0x2` | PROCEED | Release boot hold — ResourceDisp clears screen and enters main loop |
+| `0x3` | MCU_RESET | Soft reboot the ResourceDisp (USB disconnect then ARM AIRCR reset) |
+| `0x4` | DISPLAY_RESET | Reset display state and force full redraw of current screen |
+
+**Runtime `demoMode` toggle:** when the master flips `demoMode` on, the ResourceDisp reinitialises sine-wave demo state. When flipped off, it connects Simpit if not already connected, or requests a full channel refresh if it is.
+
+### Expanding the Protocol
+
+- **Outbound:** increment `I2C_PACKET_SIZE` and add fields to `buildI2CPacket()` in `I2CSlave.ino`
+- **Inbound:** increment `I2C_CMD_SIZE` and add fields to `processI2CCommand()` in `I2CSlave.ino`
+- Update the master sketch to match in both cases
+
+---
+
 ## Boot Sequence
 
 The ResourceDisp follows the same deterministic startup handshake as the Annunciator.
