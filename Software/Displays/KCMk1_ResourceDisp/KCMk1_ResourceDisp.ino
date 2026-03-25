@@ -8,23 +8,26 @@
     ScreenMain.ino       -- main bar graph screen with 4-button sidebar
     ScreenSelect.ino     -- resource selection screen (grid + presets + order panel)
     ScreenDetail.ino     -- numerical resource detail screen (craft/stage values per resource)
+    ScreenStandby.ino    -- standby BMP splash screen
     TouchEvents.ino      -- touch debounce and gesture dispatch
-    SimpitHandler.ino    -- KerbalSimpit message handler and channel registration (Phase 2)
+    BootScreen.ino       -- terminal-aesthetic BIOS POST boot simulation sequence
+    SimpitHandler.ino    -- KerbalSimpit message handler and channel registration
+    I2CSlave.ino         -- I2C slave interface to KCMk1 master (Teensy 4.1) at address 0x11
     Demo.ino             -- demo mode animation (sine-wave resource values, no KSP connection)
 
   Libraries:
     KerbalDisplayCommon  -- display primitives, BMP loader, touch driver, fonts, system utils
-    KerbalDisplayAudio   -- non-blocking audio state machine (not used yet, reserved)
+    KerbalDisplayAudio   -- audio library (included as dependency; audio not used on this panel)
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
   Hardware:
     Teensy 4.0, RA8875 800x480 TFT, GSL1680F capacitive touch
-    SerialUSB1 → KSP (Simpit), Serial → debug output
-    I2C slave at 0x11 (not yet implemented — deferred to integration phase)
+    SerialUSB1 -> KSP (Simpit), Serial -> debug output
+    Wire (pins 18/19) -> I2C slave at 0x11 (master Teensy 4.1)
 
   Phase 1: Display framework with demo values and touch-based resource selection. ✓
-  Phase 2: Simpit integration for live resource telemetry. ← current
-  Phase 3 (future): I2C slave interface to KCMk1 master at address 0x11.
+  Phase 2: Simpit integration for live resource telemetry. ✓
+  Phase 3: I2C slave interface + boot handshake with KCMk1 master. <- current
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by Jason Rostoker for Jeb's Controller Works.
@@ -43,6 +46,9 @@ void setup() {
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
   setupSD();
   setupTouch();
+  setupI2CSlave();
+
+  bootSimText(infoDisp);
 
   if (demoMode) {
     if (debugMode) Serial.println(F("ResourceDisp: Demo mode -- Simpit disabled."));
@@ -61,6 +67,18 @@ void setup() {
     initSimpit();
   }
 
+  // Notify the master that initialisation is complete. Build a fresh status
+  // packet (simpitConnected / demoMode state is now valid) and assert INT so
+  // the master can read it. Then spin until the master sends I2C_REQ_PROCEED.
+  // While waiting, keep servicing the I2C receive handler via updateI2CState()
+  // so the PROCEED command is actually processed.
+  buildI2CPacketAndAssert();
+  if (debugMode) Serial.println(F("ResourceDisp: waiting for master PROCEED..."));
+  while (!i2cProceedReceived) {
+    updateI2CState();
+  }
+  if (debugMode) Serial.println(F("ResourceDisp: PROCEED received, entering loop."));
+
   // Always show standby on boot — BMP splash from SD card.
   // In demo mode, a touch on the standby screen transitions to the main screen.
   // In live mode, SCENE_CHANGE_MESSAGE drives the transition.
@@ -72,6 +90,9 @@ void loop() {
 
   // --- Touch input ---
   processTouchEvents();
+
+  // --- I2C slave state update ---
+  updateI2CState();
 
   // --- Screen chrome on transition ---
   // Matches Annunciator pattern: all transition logic lives here, not inside updateScreen*.
@@ -107,6 +128,14 @@ void loop() {
     stepDemoState();
   } else {
     simpit.update();
+    // Handle deferred main screen redraws requested by SimpitHandler.
+    // Checked here, after simpit.update() has fully processed all pending messages,
+    // so the screen is cleared with the final slot state — not mid-message-batch.
+    if (needsMainRedraw && activeScreen == screen_Main) {
+      drawStaticMain(infoDisp);
+      prevScreen      = screen_Main;
+      needsMainRedraw = false;
+    }
   }
 
   // --- Update display ---

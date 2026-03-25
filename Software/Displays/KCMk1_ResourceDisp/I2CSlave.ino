@@ -1,59 +1,57 @@
 /***************************************************************************************
-   I2CSlave.ino -- I2C slave interface for KCMk1 Annunciator
-   Exposes Annunciator state to the KCMk1 master (Teensy 4.1) over I2C.
+   I2CSlave.ino -- I2C slave interface for KCMk1 Resource Display
+   Exposes Resource Display state to the KCMk1 master (Teensy 4.1) over I2C.
 
    Hardware:
      I2C bus    : Wire (pins 18/19 on Teensy 4.0)
-     Slave addr : 0x10
+     Slave addr : 0x11
      INT pin    : pin 2, OUTPUT, active-LOW
-                  Annunciator asserts LOW when a fresh packet is ready.
-                  Master reads via Wire.requestFrom(0x10, I2C_PACKET_SIZE).
+                  ResourceDisp asserts LOW when a fresh packet is ready.
+                  Master reads via Wire.requestFrom(0x11, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
 
-   Outbound packet (Annunciator -> Master), I2C_PACKET_SIZE = 4 bytes:
-     Byte 0  : 0xAC  -- sync/magic byte for framing validation
+   Outbound packet (ResourceDisp -> Master), I2C_PACKET_SIZE = 4 bytes:
+     Byte 0  : 0xAD  -- sync/magic byte for framing validation
      Byte 1  : flags
                  bit 0 = simpitConnected
                  bit 1 = flightScene
-                 bit 2 = masterAlarmOn
+                 bit 2 = demoMode
                  bits 3-7 reserved (0)
-     Byte 2  : cautionWarningState low byte
-     Byte 3  : cautionWarningState high byte
+     Byte 2  : slotCount  -- number of currently active resource slots (0-16)
+     Byte 3  : reserved (0x00)
 
-   Inbound packet (Master -> Annunciator), I2C_CMD_SIZE = 3 bytes:
+   Inbound packet (Master -> ResourceDisp), I2C_CMD_SIZE = 2 bytes:
      Byte 0  : controlByte
                  bits 7:4 = requestType
                    0x0 = NOP           -- no operation
                    0x1 = STATUS        -- request immediate status packet (asserts INT)
                    0x2 = PROCEED       -- proceed to main loop (release boot hold)
-                   0x3 = MCU_RESET     -- soft reboot the Annunciator
-                   0x4 = DISPLAY_RESET -- reset display state and redraw all screens
+                   0x3 = MCU_RESET     -- soft reboot the ResourceDisp
+                   0x4 = DISPLAY_RESET -- reset display state and redraw current screen
                  bit  3   = idle_state  (1 = switch to standby screen when not in flight)
-                 bit  2   = audioOn     (1 = enable audio)
                  bit  1   = demoMode    (1 = enable demo mode)
                  bit  0   = debugMode   (1 = enable Serial debug output)
-     Byte 1  : ctrlModeByte -- CtrlMode enum value (ctrl_Rover=0, ctrl_Plane=1, ctrl_Spacecraft=2)
-     Byte 2  : ctrlGrpByte  -- active control group, 1-based (matches state.ctrlGrp)
+     Byte 1  : reserved (0x00) -- available for future use
 
    Expanding the protocol:
      Outbound: increment I2C_PACKET_SIZE, add fields to buildI2CPacket().
      Inbound:  increment I2C_CMD_SIZE, add fields to processI2CCommand().
      Update master sketch to match in both cases.
 ****************************************************************************************/
-#include "KCMk1_Annunciator.h"
+#include "KCMk1_ResourceDisp.h"
 
-#define I2C_SLAVE_ADDR   0x10
+#define I2C_SLAVE_ADDR   0x11
 #define I2C_INT_PIN      2
-#define I2C_PACKET_SIZE  4      // outbound: Annunciator -> Master
-#define I2C_CMD_SIZE     3      // inbound:  Master -> Annunciator
-#define I2C_SYNC_BYTE    0xAC
+#define I2C_PACKET_SIZE  4      // outbound: ResourceDisp -> Master
+#define I2C_CMD_SIZE     2      // inbound:  Master -> ResourceDisp
+#define I2C_SYNC_BYTE    0xAD
 
 // requestType values (bits 7:4 of controlByte)
 #define I2C_REQ_NOP           0x0   // no operation
 #define I2C_REQ_STATUS        0x1   // request immediate status packet
 #define I2C_REQ_PROCEED       0x2   // proceed to main loop (release boot hold if waiting)
-#define I2C_REQ_MCU_RESET     0x3   // soft reboot the Annunciator MCU
-#define I2C_REQ_DISPLAY_RESET 0x4   // reset display state (redraw all screens)
+#define I2C_REQ_MCU_RESET     0x3   // soft reboot the ResourceDisp MCU
+#define I2C_REQ_DISPLAY_RESET 0x4   // reset display state (redraw current screen)
 
 
 /***************************************************************************************
@@ -76,14 +74,14 @@ volatile bool i2cProceedReceived = false;
 ****************************************************************************************/
 static void buildI2CPacket() {
   uint8_t flags = 0;
-  if (simpitConnected)          flags |= (1 << 0);
-  if (flightScene)              flags |= (1 << 1);
-  if (state.masterAlarmOn)      flags |= (1 << 2);
+  if (simpitConnected) flags |= (1 << 0);
+  if (flightScene)     flags |= (1 << 1);
+  if (demoMode)        flags |= (1 << 2);
 
   i2cPacket[0] = I2C_SYNC_BYTE;
   i2cPacket[1] = flags;
-  i2cPacket[2] = (uint8_t)(state.cautionWarningState & 0xFF);
-  i2cPacket[3] = (uint8_t)(state.cautionWarningState >> 8);
+  i2cPacket[2] = slotCount;
+  i2cPacket[3] = 0x00;
 }
 
 
@@ -96,45 +94,38 @@ static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE];  // volatile: written in ISR, r
 static volatile bool i2cCmdReady = false;
 
 static void processI2CCommand() {
-  uint8_t controlByte  = i2cCmdBuf[0];
-  uint8_t ctrlModeByte = i2cCmdBuf[1];
-  uint8_t ctrlGrpByte  = i2cCmdBuf[2];
+  uint8_t controlByte = i2cCmdBuf[0];
+  // byte 1 reserved for future use
 
   // --- Lower nibble: mode configuration bits ---
-  bool newDebug  = (controlByte >> 0) & 1;
-  bool newDemo   = (controlByte >> 1) & 1;
-  bool newAudio  = (controlByte >> 2) & 1;
-  bool newIdle   = (controlByte >> 3) & 1;
+  bool newDebug = (controlByte >> 0) & 1;
+  bool newDemo  = (controlByte >> 1) & 1;
+  bool newIdle  = (controlByte >> 3) & 1;
 
   if (newDebug != debugMode) {
     debugMode = newDebug;
     setKDCDebugMode(debugMode);
-    if (debugMode) Serial.println(F("Annunciator: I2C -- debugMode on"));
-  }
-  if (newAudio != audioEnabled) {
-    audioEnabled = newAudio;
-    if (!audioEnabled) audioSilence();
-    if (debugMode) Serial.println(F("Annunciator: I2C -- audioEnabled updated"));
+    if (debugMode) Serial.println(F("ResourceDisp: I2C -- debugMode on"));
   }
   if (newDemo != demoMode) {
     demoMode = newDemo;
     if (demoMode) {
-      // Switching into demo mode — reinitialise demo state so display animates
+      // Switching into demo mode — reinitialise demo state so bars animate
       // from sensible values rather than whatever Simpit last sent.
       initDemoMode();
-      if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode on, demo state reinitialised"));
+      if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode on, demo state reinitialised"));
     } else {
       // Switching into live mode — connect Simpit if not already connected.
       // This handles the case where the unit booted in demo mode and the master
       // is now enabling live telemetry without a hardware reset.
       if (!simpitConnected) {
         initSimpit();
-        if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode off, Simpit initialised"));
+        if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, Simpit initialised"));
       } else {
-        // Simpit already connected — request a full channel refresh so all
-        // display fields repopulate immediately without waiting for change events.
+        // Simpit already connected — request a full channel refresh so values
+        // repopulate immediately without waiting for a change event.
         simpit.requestMessageOnChannel(0);
-        if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode off, channel refresh requested"));
+        if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, channel refresh requested"));
       }
     }
   }
@@ -146,19 +137,9 @@ static void processI2CCommand() {
       switchToScreen(screen_Standby);
     }
     if (debugMode) {
-      Serial.print(F("Annunciator: I2C -- idleState="));
+      Serial.print(F("ResourceDisp: I2C -- idleState="));
       Serial.println(idleState);
     }
-  }
-
-  // --- ctrlModeByte: update vehCtrlMode if valid ---
-  if (ctrlModeByte <= ctrl_Spacecraft) {
-    state.vehCtrlMode = (CtrlMode)ctrlModeByte;
-  }
-
-  // --- ctrlGrpByte: update active control group (1-based) ---
-  if (ctrlGrpByte >= 1) {
-    state.ctrlGrp = ctrlGrpByte;
   }
 
   // --- Upper nibble: requestType ---
@@ -173,20 +154,20 @@ static void processI2CCommand() {
       buildI2CPacket();
       i2cPacketReady = true;
       digitalWriteFast(I2C_INT_PIN, LOW);
-      if (debugMode) Serial.println(F("Annunciator: I2C -- status requested"));
+      if (debugMode) Serial.println(F("ResourceDisp: I2C -- status requested"));
       break;
 
     case I2C_REQ_PROCEED:
       // Release the boot hold. setup() spins on i2cProceedReceived after
       // initialisation; setting it here allows setup() to continue.
       i2cProceedReceived = true;
-      if (debugMode) Serial.println(F("Annunciator: I2C -- proceed"));
+      if (debugMode) Serial.println(F("ResourceDisp: I2C -- proceed"));
       break;
 
     case I2C_REQ_MCU_RESET:
       // Soft reboot via ARM AIRCR -- does not return.
       if (debugMode) {
-        Serial.println(F("Annunciator: I2C -- MCU reset requested"));
+        Serial.println(F("ResourceDisp: I2C -- MCU reset requested"));
         Serial.flush();
       }
       disconnectUSB();
@@ -194,28 +175,22 @@ static void processI2CCommand() {
       break;
 
     case I2C_REQ_DISPLAY_RESET:
-      // Reset display state so all screens redraw from scratch on next loop pass.
-      // switchToScreen() sets prevScreen = screen_COUNT internally.
-      if (debugMode) Serial.println(F("Annunciator: I2C -- display reset"));
-      resetDisplays();
+      // Reset display state so the current screen redraws from scratch on next loop pass.
+      if (debugMode) Serial.println(F("ResourceDisp: I2C -- display reset"));
       switchToScreen(activeScreen);
       break;
 
     default:
       if (debugMode) {
-        Serial.print(F("Annunciator: I2C -- unknown reqType 0x"));
+        Serial.print(F("ResourceDisp: I2C -- unknown reqType 0x"));
         Serial.println(reqType, HEX);
       }
       break;
   }
 
   if (debugMode) {
-    Serial.print(F("Annunciator: I2C cmd ctrl=0x"));
-    Serial.print(controlByte, HEX);
-    Serial.print(F(" mode="));
-    Serial.print(ctrlModeByte);
-    Serial.print(F(" grp="));
-    Serial.println(ctrlGrpByte);
+    Serial.print(F("ResourceDisp: I2C cmd ctrl=0x"));
+    Serial.println(controlByte, HEX);
   }
 }
 
@@ -230,7 +205,7 @@ void buildI2CPacketAndAssert() {
   buildI2CPacket();
   i2cPacketReady = true;
   digitalWriteFast(I2C_INT_PIN, LOW);
-  if (debugMode) Serial.println(F("Annunciator: I2C -- init packet ready, asserting INT"));
+  if (debugMode) Serial.println(F("ResourceDisp: I2C -- init packet ready, asserting INT"));
 }
 
 
@@ -255,7 +230,7 @@ static void onI2CReceive(int numBytes) {
 
 /***************************************************************************************
    ON REQUEST HANDLER
-   Called by the Wire library when the master issues a requestFrom(0x10, N).
+   Called by the Wire library when the master issues a requestFrom(0x11, N).
    Writes the packet and deasserts the interrupt pin.
    Must complete quickly -- runs in interrupt context.
 ****************************************************************************************/
@@ -280,7 +255,7 @@ void setupI2CSlave() {
 
   buildI2CPacket();
 
-  if (debugMode) Serial.println(F("Annunciator: I2C slave ready at 0x10"));
+  if (debugMode) Serial.println(F("ResourceDisp: I2C slave ready at 0x11"));
 }
 
 
@@ -289,8 +264,6 @@ void setupI2CSlave() {
    Call from loop(). Two responsibilities:
    1. Apply any pending inbound command from the master (deferred from interrupt).
    2. Detect outbound state changes and assert INT when a fresh packet is ready.
-   Change detection builds a fresh candidate packet and compares it byte-by-byte
-   against the last transmitted packet, keeping all assembly logic in one place.
 ****************************************************************************************/
 void updateI2CState() {
   // --- Apply any pending inbound command ---
@@ -300,17 +273,20 @@ void updateI2CState() {
   }
 
   // --- Detect outbound state changes ---
+  // Only build candidate packet when: not already pending a read, and in live
+  // mode (in demo mode the flags change rarely and slotCount is stable, but we
+  // still check periodically so the master gets accurate state on demand).
   if (!i2cPacketReady) {
     uint8_t flags = 0;
-    if (simpitConnected)     flags |= (1 << 0);
-    if (flightScene)         flags |= (1 << 1);
-    if (state.masterAlarmOn) flags |= (1 << 2);
+    if (simpitConnected) flags |= (1 << 0);
+    if (flightScene)     flags |= (1 << 1);
+    if (demoMode)        flags |= (1 << 2);
 
     uint8_t candidate[I2C_PACKET_SIZE];
     candidate[0] = I2C_SYNC_BYTE;
     candidate[1] = flags;
-    candidate[2] = (uint8_t)(state.cautionWarningState & 0xFF);
-    candidate[3] = (uint8_t)(state.cautionWarningState >> 8);
+    candidate[2] = slotCount;
+    candidate[3] = 0x00;
 
     bool changed = false;
     for (uint8_t i = 0; i < I2C_PACKET_SIZE; i++) {
@@ -321,7 +297,7 @@ void updateI2CState() {
       for (uint8_t i = 0; i < I2C_PACKET_SIZE; i++) i2cPacket[i] = candidate[i];
       i2cPacketReady = true;
       digitalWriteFast(I2C_INT_PIN, LOW);
-      if (debugMode) Serial.println(F("Annunciator: I2C packet ready"));
+      if (debugMode) Serial.println(F("ResourceDisp: I2C packet ready"));
     }
   }
 }

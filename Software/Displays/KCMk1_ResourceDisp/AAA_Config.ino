@@ -15,11 +15,10 @@
                            from KSP telemetry. Set this before deploying with KSP.
                    NOTE: SCENE_CHANGE_MESSAGE from Simpit will clear demoMode at runtime
                    when a flight scene is entered, matching the Annunciator pattern.
-   audioEnabled -- set true to enable audio feedback (reserved for future use).
+                   Can also be toggled at runtime by the I2C master — see I2CSlave.ino.
 ****************************************************************************************/
-bool debugMode    = true;
-bool demoMode     = true;   // set false to connect to KSP via Simpit
-bool audioEnabled = false;
+bool debugMode = false;  // set true to enable Serial debug output during development
+bool demoMode  = false;  // set true for bench testing without KSP; false for production
 
 
 /***************************************************************************************

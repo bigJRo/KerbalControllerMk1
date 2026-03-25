@@ -2,8 +2,7 @@
    Demo.ino -- Demo mode for Kerbal Controller Mk1 Resource Display
    Drives resource levels with slow sinusoidal sweeps so all display features are
    exercised without a live KSP connection. Each slot gets an independent phase offset
-   so bars move independently.
-   Replace stepDemoState() with Simpit data in the integration phase.
+   so bars move independently. Only active when demoMode is true.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 

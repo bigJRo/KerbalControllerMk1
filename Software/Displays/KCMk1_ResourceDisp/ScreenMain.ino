@@ -15,7 +15,7 @@
    Bottom three buttons (DFLT, SEL, DATA) use a navy background.
 
    Each bar:
-     - Always drawn in the resource's fixed color regardless of fill level
+     - Drawn in the resource's fixed color when above LOW_RES_THRESHOLD; red below it
      - Two-fillRect technique: black from top to empty boundary, then color below
      - Resource label centred below the bar in white (font scales with bar width)
      - Percentage centred above the bar in white (font scales with bar width)
@@ -231,7 +231,8 @@ void updateScreenMain(RA8875 &tft) {
     uint16_t fillH = (uint16_t)((BAR_H - 2) * level);
     uint8_t  perc  = (uint8_t)(level * 100.0f);
 
-    drawBar(tft, x, bw, fillH, resColor(slots[i].type));
+    drawBar(tft, x, bw, fillH,
+            (perc < LOW_RES_THRESHOLD) ? TFT_RED : resColor(slots[i].type));
 
     char percStr[6];
     snprintf(percStr, sizeof(percStr), "%d%%", perc);
@@ -240,9 +241,7 @@ void updateScreenMain(RA8875 &tft) {
     //   0-10%   : red text on black background   (critical)
     //  11-30%   : yellow text on black background (caution)
     //  31-100%  : white text on black background  (nominal)
-    // NOTE: LOW_RES_THRESHOLD (AAA_Config) defines the caution threshold for the
-    // bar color in future Simpit integration. These display thresholds are
-    // intentionally independent and tuned for readability.
+    // Bar fill shifts to red below LOW_RES_THRESHOLD (AAA_Config, default 20%).
     uint16_t percFore, percBack;
     thresholdColor(perc,
                    10, TFT_RED,    TFT_BLACK,

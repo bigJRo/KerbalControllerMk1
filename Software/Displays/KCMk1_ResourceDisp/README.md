@@ -2,7 +2,7 @@
 
 **Kerbal Controller Mk1 — Resource Display Panel Sketch**
 Teensy 4.0 firmware for the KSP resource monitoring display module.
-Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master (Phase 3).
+Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
 ---
 
@@ -23,7 +23,7 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 | Touch controller | GSL1680F capacitive | Wire1 (I2C) |
 | SD card | SD (on RA8875 board) | SPI |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
-| I2C slave bus | Master Teensy 4.1 | Wire (I2C) — Phase 3 |
+| I2C slave bus | Master Teensy 4.1 | Wire (I2C) |
 
 ### Pin Assignments
 
@@ -40,16 +40,16 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 | 17 | GSL1680F SDA (Wire1) | — | KerbalDisplayCommon (`CTP_SDA_PIN`) |
 | 3 | GSL1680F WAKE | OUT | KerbalDisplayCommon (`CTP_WAKE_PIN`) |
 | 22 | GSL1680F INT (HIGH when touched) | IN | KerbalDisplayCommon (`CTP_INT_PIN`) |
-| 9 | Audio PWM output (reserved) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
-| 18 | I2C SDA (Wire — master bus) | — | Sketch / Wire library (Phase 3) |
-| 19 | I2C SCL (Wire — master bus) | — | Sketch / Wire library (Phase 3) |
-| 2 | I2C interrupt output to master (active-LOW) | OUT | Sketch (`I2C_INT_PIN`) — Phase 3 |
+| 9 | Audio PWM output (claimed by library, unused) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
+| 18 | I2C SDA (Wire — master bus) | — | Sketch / Wire library |
+| 19 | I2C SCL (Wire — master bus) | — | Sketch / Wire library |
+| 2 | I2C interrupt output to master (active-LOW) | OUT | Sketch (`I2C_INT_PIN`) |
 
 **Serial ports:**
 - `Serial` (USB COM port 4) — debug output only
 - `SerialUSB1` (USB COM port 5) — KerbalSimpit telemetry traffic
 
-**I2C note (Phase 3):** Wire (pins 18/19) will be the master bus shared with the Teensy 4.1 at address 0x11. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
+**I2C note:** Wire (pins 18/19) is the master bus shared with the Teensy 4.1 at address 0x11. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
 
 **Override note:** KerbalDisplayCommon and KerbalDisplayAudio pin assignments can be overridden by defining the constant before the `#include`:
 
@@ -67,7 +67,7 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 | Library | Version | Notes |
 |---------|---------|-------|
 | KerbalDisplayCommon | 1.0.0 | Display primitives, fonts, BMP loader, touch driver, system utils |
-| KerbalDisplayAudio | 1.0.0 | Non-blocking audio state machine (reserved — not yet wired) |
+| KerbalDisplayAudio | 1.0.0 | Audio library (included as dependency; audio not used on this panel) |
 | RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
 | KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
 
@@ -113,9 +113,8 @@ All tunables are in `AAA_Config.ino`.
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `demoMode` | `true` | `true` = sine-wave demo values, no KSP connection. `false` = live Simpit mode. Set `false` before deploying with KSP. |
+| `demoMode` | `false` | `true` = sine-wave demo values, no KSP connection. `false` = live Simpit mode. Can also be toggled at runtime by the I2C master — reinitialises demo state or connects Simpit as appropriate. |
 | `debugMode` | `true` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages) |
-| `audioEnabled` | `false` | Reserved for future audio feedback — not yet wired |
 | `DISPLAY_ROTATION` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting) |
 | `LOW_RES_THRESHOLD` | `20` | Resource % below which the bar fill color shifts to red |
 | `MIN_SLOTS` | `4` | Minimum number of active resource slots (enforced by removeResource) |
@@ -245,26 +244,28 @@ The display maintains an in-RAM cache of up to `VESSEL_CACHE_SIZE` (20) per-vess
 
 ## Boot Sequence
 
-The boot sequence is simpler than the Annunciator since the ResourceDisp currently has no I2C master handshake (Phase 3 will add this).
+The ResourceDisp follows the same deterministic startup handshake as the Annunciator.
 
-1. Hardware init (display, SD, touch)
-2. Slot configuration initialised (default types, zeroed values in live mode)
-3. Simpit handshake runs (live mode) or demo state initialised (demo mode)
-4. Standby screen displayed
-5. `SCENE_CHANGE_MESSAGE` entering flight → Main screen, Simpit channel refresh
+1. Hardware init (display, SD, touch, I2C slave)
+2. Boot simulation screen renders (Jurassic Park-themed terminal sequence)
+3. Slot configuration initialised (default types, zeroed values in live mode)
+4. Simpit handshake runs (live mode) or demo state initialised (demo mode)
+5. ResourceDisp builds a status packet and **asserts pin 2 LOW** (INT)
+6. Master detects INT, calls `Wire.requestFrom(0x11, 4)`, reads the status packet
+7. Master sends a 3-byte command packet with `requestType = 0x2` (PROCEED)
+8. ResourceDisp receives PROCEED, clears the boot screen, shows standby screen, enters `loop()`
 
-**Phase 3 note:** A boot handshake with the Teensy 4.1 master (matching the Annunciator pattern) will be added when the I2C slave interface at 0x11 is implemented.
+In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions from standby to the main screen and requests a Simpit channel refresh.
 
 ---
 
 ## Notes
 
-- **`demoMode`** defaults to `true` for safe bench operation. Set `false` in `AAA_Config.ino` before deploying with KSP. `SCENE_CHANGE_MESSAGE` will also clear `demoMode` at runtime when a flight scene is entered.
-- **`audioEnabled`** is reserved for future use. `KerbalDisplayAudio` is included but no audio calls are currently wired. Pin 9 is claimed by the library but unused until Phase 3 audio is implemented.
+- **`demoMode`** defaults to `false` for production. Set `true` in `AAA_Config.ino` for bench testing without KSP. The I2C master can also toggle `demoMode` at runtime — switching to demo reinitialises sine-wave state; switching to live connects Simpit (or requests a channel refresh if already connected).
 - **Display rotation** — set `DISPLAY_ROTATION = 2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not required; the GSL1680F reports screen-native coordinates.
 - **Touch implementation** — `isTouched()` polls the GSL1680F INT pin directly via `digitalRead()`. The INT pin stays HIGH for the full duration of a touch, making polling reliable without an ISR.
 - **String heap usage** — `currentVesselName` and `VesselSlotRecord::vesselName` use Arduino `String`. Low risk on Teensy 4.0 (512 KB RAM) but worth noting if porting to a memory-constrained target.
-- **Phase 3 (I2C slave at 0x11):** The ResourceDisp will operate as an I2C slave to the Teensy 4.1 master, following the same protocol structure as the Annunciator (address 0x10). The master will be able to set operating mode flags and trigger display resets. A boot handshake matching the Annunciator pattern will gate entry to the main loop.
+- **`KerbalDisplayAudio`** is included as a library dependency and claims pin 9, but audio output is not implemented on this panel.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.

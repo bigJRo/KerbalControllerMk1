@@ -181,7 +181,7 @@ void initDefaultSlots() {
 
 // DEMO ONLY — loads all available resource types into slots for layout testing.
 // Fills up to MAX_SLOTS (16) slots in display order with sine-wave initial values.
-// Called by initDemoMode() in Demo.ino. Not used in Simpit integration (Phase 2).
+// Called by initDemoMode() in Demo.ino. Not used in live Simpit mode.
 void initAllSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
   slotCount = 0;

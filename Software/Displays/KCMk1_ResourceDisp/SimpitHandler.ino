@@ -111,8 +111,12 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     // -------------------------------------------------------------------------
 
     case VESSEL_NAME_MESSAGE: {
-      String newName = "";
-      for (uint8_t i = 0; i < msgSize; i++) newName += (char)msg[i];
+      // Copy to a null-terminated buffer first — Teensy WString does not implement
+      // the String(const char*, length) constructor that standard Arduino does.
+      char nameBuf[msgSize + 1];
+      memcpy(nameBuf, msg, msgSize);
+      nameBuf[msgSize] = '\0';
+      String newName(nameBuf);
       if (newName != currentVesselName) {
         if (debugMode) { Serial.print(F("ResourceDisp: vessel name = ")); Serial.println(newName); }
         currentVesselName = newName;
@@ -120,20 +124,14 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // If not in cache, keep the current slot layout.
         if (recallVesselSlots(currentVesselName)) {
           if (debugMode) Serial.println(F("ResourceDisp: vessel slot config recalled"));
-          // Redraw chrome immediately — slot count/types may have changed
-          if (activeScreen == screen_Main) {
-            drawStaticMain(infoDisp);
-            prevScreen = screen_Main;
-          }
           simpit.requestMessageOnChannel(0);
         } else {
           if (debugMode) Serial.println(F("ResourceDisp: vessel not in cache, keeping current layout"));
-          // Still redraw chrome in case slot count changed since last vessel
-          if (activeScreen == screen_Main) {
-            drawStaticMain(infoDisp);
-            prevScreen = screen_Main;
-          }
         }
+        // Request chrome redraw regardless — slot count/types may have changed.
+        // needsMainRedraw is checked by loop() after simpit.update() returns,
+        // keeping display calls out of the message handler.
+        if (activeScreen == screen_Main) needsMainRedraw = true;
       }
       break;
     }
@@ -381,14 +379,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         for (uint8_t i = 0; i < slotCount; i++) {
           slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
         }
-        // Immediately clear and redraw the main screen so stale bar graphics
-        // don't persist. We call drawStaticMain() directly here rather than
-        // relying on the deferred chrome block in loop(), because simpit.update()
-        // may deliver resource messages for the new vessel in the same call —
-        // those would draw over stale content before the next loop iteration fires.
+        // Request main screen redraw via flag — loop() will call drawStaticMain()
+        // after simpit.update() returns, ensuring the screen is cleared before any
+        // subsequent resource messages for the new vessel are drawn.
         if (activeScreen == screen_Main) {
-          drawStaticMain(infoDisp);
-          prevScreen = screen_Main;  // mark chrome as done so loop() doesn't redraw again
+          needsMainRedraw = true;
         } else {
           switchToScreen(screen_Main);
         }
@@ -411,6 +406,7 @@ void initSimpit() {
     delay(500);
   }
   if (debugMode) Serial.println(F("ResourceDisp: Simpit connected."));
+  simpitConnected = true;
 
   // Native propellants — vessel totals
   simpit.registerChannel(LF_MESSAGE);

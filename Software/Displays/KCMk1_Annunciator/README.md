@@ -145,7 +145,7 @@ All tunables are in `AAA_Config.ino`. The three operating mode flags can also be
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `demoMode` | `false` | Bench testing without KSP. Simpit disabled; all state driven internally |
+| `demoMode` | `false` | Bench testing without KSP. Simpit disabled; all state driven internally. Can also be toggled at runtime by the I2C master — switching to demo reinitialises display state; switching to live connects Simpit (or requests a channel refresh if already connected). |
 | `audioEnabled` | `false` | Enables all audio feedback (alarms, chirps, tones) |
 | `debugMode` | `false` | Enables Serial debug output (touch coords, screen transitions, C&W changes, I2C traffic) |
 | `DISPLAY_ROTATION` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting) |
@@ -273,5 +273,5 @@ The C&W panel is a 16-bit bitmask (`state.cautionWarningState`) recomputed on ev
 - **ARP mod required** for `CW_BUS_VOLTAGE`. Without ARP, KSP1 never sends `ELECTRIC_MESSAGE`.
 - **`DISPLAY_ROTATION`** — set `2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not needed; the GSL1680F reports in screen-native coordinates at rotation 0.
 - **`audioEnabled`** defaults to `false` and must be enabled either in `AAA_Config.ino` or via I2C from the master.
-- **Demo mode** drives all AppState fields at configurable rates, simulating Simpit telemetry. `ctrlMode` and `ctrlGrp` are not cycled in demo — these are owned by the master and preserved as last set via I2C.
+- **Demo mode** drives all AppState fields at configurable rates, simulating Simpit telemetry. `ctrlMode` and `ctrlGrp` are not cycled in demo — these are owned by the master and preserved as last set via I2C. When the master toggles `demoMode` off at runtime, the Annunciator connects Simpit if not already connected, or requests a full channel refresh if it is.
 - **String heap usage** — `state.vesselName` and `state.gameSOI` use Arduino `String`. Low risk on Teensy 4.0 (512 KB RAM) but worth noting if porting to a memory-constrained target.

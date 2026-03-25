@@ -6,8 +6,8 @@
 ****************************************************************************************/
 
 #include <KerbalDisplayCommon.h>
-// KerbalDisplayAudio included for Phase 2 audio feedback — not yet used.
-// Remove this comment when audioEnabled is wired to actual audio calls.
+// KerbalDisplayAudio is included as a dependency of KerbalDisplayCommon but
+// audio output is not implemented on this panel. Pin 9 is claimed by the library.
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 
@@ -90,7 +90,6 @@ enum ScreenType : uint8_t {
 // From AAA_Config.ino
 extern bool     debugMode;
 extern bool     demoMode;
-extern bool     audioEnabled;
 extern const uint8_t  DISPLAY_ROTATION;
 // Slot count limits — constexpr so they can be used as compile-time array sizes
 static constexpr uint8_t MIN_SLOTS          = 4;
@@ -108,6 +107,9 @@ extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
 extern bool         stageMode;      // false = TOTAL (whole craft), true = STAGE (current stage)
 extern bool         flightScene;    // true when KSP is in a flight scene
+extern bool         simpitConnected; // true once Simpit handshake succeeds
+extern bool         idleState;      // true = show standby when not in flight (set by I2C master)
+extern bool         needsMainRedraw; // set by SimpitHandler to request main screen chrome redraw
 
 // Resource type metadata (from Resources.ino)
 const char*    resLabel(ResourceType t);
@@ -129,8 +131,11 @@ void initDefaultSlots();
 void initAllSlots();
 void stepDemoState();
 void initSimpit();
-void drawStaticStandby(RA8875 &tft);
-void updateScreenStandby(RA8875 &tft);
+void bootSimText(RA8875 &tft);
+void setupI2CSlave();
+void updateI2CState();
+void buildI2CPacketAndAssert();
+extern volatile bool i2cProceedReceived;
 void drawStaticMain(RA8875 &tft);
 void updateScreenMain(RA8875 &tft);
 void redrawStageModeButton(RA8875 &tft);

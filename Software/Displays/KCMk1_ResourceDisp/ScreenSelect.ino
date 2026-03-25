@@ -140,12 +140,14 @@ static bool addResource(ResourceType t) {
    HELPER -- remove a resource from slots[], compact the array.
 ****************************************************************************************/
 static void removeResource(ResourceType t) {
+  // Enforce MIN_SLOTS floor — don't remove if already at the minimum.
+  // (CLEAR bypasses this intentionally by zeroing slotCount directly.)
+  if (slotCount <= MIN_SLOTS) return;
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == t) {
       for (uint8_t j = i; j < slotCount - 1; j++) slots[j] = slots[j + 1];
       slots[slotCount - 1] = ResourceSlot();
       slotCount--;
-      if (slotCount < MIN_SLOTS) slotCount = MIN_SLOTS;
       return;
     }
   }
