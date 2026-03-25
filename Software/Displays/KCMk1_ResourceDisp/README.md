@@ -272,6 +272,7 @@ Size: **2 bytes**. Sent by master at any time via `Wire.beginTransmission(0x11)`
 |------|-------|-------------|
 | 7:4 | `requestType` | Command code — see table below |
 | 3 | `idle_state` | `1` = switch to Standby when not in a flight scene |
+| 2 | Reserved | Always `0` — reserved for future common use |
 | 1 | `demoMode` | `1` = enable demo mode (disables Simpit) |
 | 0 | `debugMode` | `1` = enable Serial debug output |
 
