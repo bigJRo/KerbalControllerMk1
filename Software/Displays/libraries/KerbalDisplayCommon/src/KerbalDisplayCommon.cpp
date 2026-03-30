@@ -543,13 +543,41 @@ void printDisp(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                String param, String value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
-               uint16_t backColor, uint16_t borderColor) {
+               uint16_t backColor, uint16_t borderColor,
+               PrintState &ps) {
+  int16_t paramW  = getFontStringWidth(font, param.c_str());
+  int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
+  int16_t regionW = w - TEXT_BORDER - paramW - 2;
+
+  int16_t  newTextW = getFontStringWidth(font, value.c_str());
+  int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
+  if (newTextX < regionX) newTextX = regionX;
+  uint16_t newH = (uint16_t)font->font_height;
+
+  bool bgChanged     = (valBack != ps.prevBg)    && (ps.prevBg     != 0x0001);
+  bool heightChanged = (newH    != ps.prevHeight) && (ps.prevHeight != 0);
+
+  // Always redraw the label area and background on printDisp — caller only
+  // invokes this when content has changed so the full clear is acceptable.
   tft.fillRect(x0 + 1, y0 + 1, w - 2, h - 2, backColor);
   textLeft(tft, font, x0, y0, w, h, param, paramColor, backColor);
+
+  // Value: flicker-free render — draw first, clean trailing strip after
+  if (bgChanged || heightChanged) {
+    tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
+  }
   textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
+  if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth) {
+    tft.fillRect(regionX, y0 + 1, newTextX - regionX, h - 2, backColor);
+  }
+
   if (borderColor != NO_BORDER) {
     tft.drawRect(x0, y0, w, h, borderColor);
   }
+
+  ps.prevWidth  = (uint16_t)newTextW;
+  ps.prevBg     = valBack;
+  ps.prevHeight = newH;
 }
 
 void printDisp(RA8875 &tft, const tFont *font,
@@ -557,8 +585,7 @@ void printDisp(RA8875 &tft, const tFont *font,
                String param, String value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
                uint16_t backColor, uint16_t borderColor,
-               DispCache &cache) {
-  // Skip redraw entirely if nothing has changed since the last draw
+               DispCache &cache, PrintState &ps) {
   if (cache.valid         &&
       cache.x0          == x0           && cache.y0         == y0          &&
       cache.w           == w            && cache.h          == h           &&
@@ -568,15 +595,47 @@ void printDisp(RA8875 &tft, const tFont *font,
       cache.borderColor == borderColor) {
     return;
   }
-  // Content changed — do the full redraw then update cache
   printDisp(tft, font, x0, y0, w, h, param, value,
-            paramColor, valColor, valBack, backColor, borderColor);
+            paramColor, valColor, valBack, backColor, borderColor, ps);
   cache.x0 = x0; cache.y0 = y0; cache.w = w; cache.h = h;
   cache.param = param; cache.value = value;
   cache.paramColor = paramColor; cache.valColor = valColor;
   cache.valBack = valBack; cache.backColor = backColor;
   cache.borderColor = borderColor;
   cache.valid = true;
+}
+
+void printValue(RA8875 &tft, const tFont *font,
+                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                String param, String value,
+                uint16_t valColor, uint16_t valBack,
+                uint16_t backColor,
+                PrintState &ps) {
+  int16_t paramW  = getFontStringWidth(font, param.c_str());
+  int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
+  int16_t regionW = w - TEXT_BORDER - paramW - 2;
+
+  int16_t  newTextW = getFontStringWidth(font, value.c_str());
+  int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
+  if (newTextX < regionX) newTextX = regionX;
+  uint16_t newH = (uint16_t)font->font_height;
+
+  bool bgChanged     = (valBack != ps.prevBg)    && (ps.prevBg     != 0x0001);
+  bool heightChanged = (newH    != ps.prevHeight) && (ps.prevHeight != 0);
+
+  if (bgChanged || heightChanged) {
+    tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
+  }
+
+  textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
+
+  if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth) {
+    tft.fillRect(regionX, y0 + 1, newTextX - regionX, h - 2, backColor);
+  }
+
+  ps.prevWidth  = (uint16_t)newTextW;
+  ps.prevBg     = valBack;
+  ps.prevHeight = newH;
 }
 
 void printDispChrome(RA8875 &tft, const tFont *font,
@@ -591,17 +650,6 @@ void printDispChrome(RA8875 &tft, const tFont *font,
   }
 }
 
-void printValue(RA8875 &tft, const tFont *font,
-                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String param, String value,
-                uint16_t valColor, uint16_t valBack,
-                uint16_t backColor) {
-  int16_t paramW = getFontStringWidth(font, param.c_str());
-  int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
-  int16_t regionW = w - TEXT_BORDER - paramW - 2;
-  tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
-  textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
-}
 
 void printName(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
@@ -2152,12 +2200,16 @@ void setupTouch() {
     // 0x00 = running, 0x80 = still in sleep/reset (startup failed)
   }
 
-  // Dummy read of 0x80 to clear any pending interrupt the chip asserts
-  // after firmware load. Without this the INT pin may stay asserted permanently.
+  // Drain the touch buffer completely after firmware load.
+  // A single read is not enough if the chip has stale events from a previous
+  // session (e.g. after a warm Teensy reset). Read repeatedly until count==0.
   {
     uint8_t dummy[24] = {0};
-    _gsl_read(0x80, dummy, 24);
-    delay(10);
+    for (uint8_t attempt = 0; attempt < 10; attempt++) {
+      _gsl_read(0x80, dummy, 24);
+      delay(10);
+      if (dummy[0] == 0) break;  // no more touch events queued
+    }
   }
 
   // Read back check_mem result and print raw bytes for diagnosis
@@ -2186,8 +2238,15 @@ void setupTouch() {
     delay(20);
     _gsl_startup_chip();
     delay(200);
-    // Dummy read to clear any pending INT after retry firmware load
-    { uint8_t dummy[24] = {0}; _gsl_read(0x80, dummy, 24); delay(10); }
+    // Drain touch buffer after retry firmware load
+    {
+      uint8_t dummy[24] = {0};
+      for (uint8_t attempt = 0; attempt < 10; attempt++) {
+        _gsl_read(0x80, dummy, 24);
+        delay(10);
+        if (dummy[0] == 0) break;
+      }
+    }
     delay(30);
     _gsl_read(0xb0, chk, 4);
     if (_kdcDebugMode) {

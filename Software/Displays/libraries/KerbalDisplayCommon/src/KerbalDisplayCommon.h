@@ -197,22 +197,45 @@ struct DispCache {
   bool      valid      = false;  // false until first draw
 };
 
+/***************************************************************************************
+   PrintState — flicker-free rendering state for printValue and printDisp.
+   Tracks the previous render's pixel width, background colour, and font height so
+   the library can draw text first (no blank frame) then clean up trailing pixels from
+   a previously wider value, and do a full clear only on background/font changes.
+
+   Breaking change from v1.x: printValue and printDisp now require a PrintState &
+   parameter. Callers must declare one PrintState per logical display slot.
+
+   Declare alongside your RowCache or DispCache:
+     PrintState ps[SCREEN_COUNT][ROW_COUNT];
+   or individually:
+     PrintState altState;
+****************************************************************************************/
+struct PrintState {
+  uint16_t prevWidth  = 0;       // pixel width of last rendered value
+  uint16_t prevBg     = 0x0001;  // sentinel: 0x0001 = no previous render
+  uint16_t prevHeight = 0;       // font height of last render (0 = no previous render)
+};
+
 // --- Display block functions ---
 
-// Full block draw — use once at setup to draw label, value, and border.
-void printDisp(RA8875 &tft, const tFont *font,
-               uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String param, String value,
-               uint16_t paramColor, uint16_t valColor, uint16_t valBack,
-               uint16_t backColor, uint16_t borderColor);
-
-// Cached overload — skips redraw entirely if content and colors are unchanged.
+// Full block draw with flicker-free rendering.
+// ps tracks previous render state to avoid blank-frame flicker on rapid updates.
 void printDisp(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                String param, String value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
                uint16_t backColor, uint16_t borderColor,
-               DispCache &cache);
+               PrintState &ps);
+
+// Cached overload — skips redraw entirely if content and colors are unchanged,
+// otherwise calls the PrintState overload for flicker-free rendering.
+void printDisp(RA8875 &tft, const tFont *font,
+               uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+               String param, String value,
+               uint16_t paramColor, uint16_t valColor, uint16_t valBack,
+               uint16_t backColor, uint16_t borderColor,
+               DispCache &cache, PrintState &ps);
 
 // Value-only redraw — use on updates. Clears and redraws only the right-hand
 // value region, leaving the param label and border completely untouched.
@@ -226,7 +249,8 @@ void printValue(RA8875 &tft, const tFont *font,
                 uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                 String param, String value,
                 uint16_t valColor, uint16_t valBack,
-                uint16_t backColor);
+                uint16_t backColor,
+                PrintState &ps);
 
 void printName(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
