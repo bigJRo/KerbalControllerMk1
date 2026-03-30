@@ -12,7 +12,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 1.0.0
+  Version: 2.0.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SPI.h>

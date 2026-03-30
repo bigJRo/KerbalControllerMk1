@@ -1,6 +1,6 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library**
+**Kerbal Controller Mk1 — Shared Display Library** · v2.0.1
 UI toolkit for RA8875-based touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
@@ -240,6 +240,15 @@ All colors are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommon
 | `TFT_SILVER` | `0xC618` | Silver |
 | `TFT_BROWN` | `0x8200` | Brown |
 | `TFT_UPS_BROWN` | `0x6203` | UPS brown |
+
+---
+
+## Version History
+
+| Version | Notes |
+|---------|-------|
+| **2.0.1** | Added `PrintState` struct and updated `printValue` and `printDisp` to require a `PrintState &` parameter. **Breaking change from v1.x** — all callers must declare one `PrintState` per logical display slot. Added `drawVerticalText()` for vertical section label strips. |
+| **1.0.0** | Initial release. `DispCache`-based flicker-free rendering, `drawVertBarGraph()`, `drawArcDisplay()`, `drawLabelledAxis()`, full body table, GSL1680F touch driver, BMP loader. |
 
 ---
 
