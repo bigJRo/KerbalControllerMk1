@@ -29,8 +29,7 @@
 static const uint32_t TOUCH_DEBOUNCE_MS  = 500;   // ms — main debounce window
 static const uint16_t TOUCH_DEAD_ZONE    = 12;    // px — reject y >= SCREEN_H - this
 static const uint16_t TOUCH_JITTER_MAX   = 20;    // px — max movement across reads
-static const uint16_t SCREEN_W           = 800;
-static const uint16_t SCREEN_H           = 480;
+// SCREEN_W and SCREEN_H are defined in ScreenMain.ino (shared across tabs)
 
 static uint32_t _lastTouchTime  = 0;
 static bool     _waitForRelease = false;
