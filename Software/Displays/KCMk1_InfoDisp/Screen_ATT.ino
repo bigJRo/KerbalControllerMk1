@@ -83,7 +83,7 @@ static void drawScreen_ATT(RA8875 &tft) {
   bool orbMode = _attOrbMode();
   if (orbMode != _attPrevOrbMode) {
     _attPrevOrbMode = orbMode;
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[7][r].value = "\x01";
+    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[3][r].value = "\x01";
     switchToScreen(screen_ATT);
     return;
   }
@@ -100,20 +100,20 @@ static void drawScreen_ATT(RA8875 &tft) {
   // Cache-checked draw helper
   auto attVal = [&](uint8_t row, const char *label,
                     const String &val, uint16_t fg, uint16_t bg) {
-    RowCache &cache = rowCache[7][row];
+    RowCache &cache = rowCache[3][row];
     if (cache.value == val && cache.fg == fg && cache.bg == bg) return;
     printValue(tft, F, RX, rowYFor(row, NR), RW, rowHFor(NR),
                label, val, fg, bg, COL_BACK,
-               printState[7][row]);
+               printState[3][row]);
     cache.value = val; cache.fg = fg; cache.bg = bg;
   };
 
   // --- CRAFT group (rows 0-3) ---
 
-  snprintf(buf, sizeof(buf), "%.2f\xB0", state.heading);
+  snprintf(buf, sizeof(buf), "%.1f\xB0", state.heading);
   attVal(0, "Hdg:", buf, COL_VALUE, COL_BACK);
 
-  snprintf(buf, sizeof(buf), "%.2f\xB0", state.pitch);
+  snprintf(buf, sizeof(buf), "%.1f\xB0", state.pitch);
   attVal(1, "Pitch:", buf, COL_VALUE, COL_BACK);
 
   // Roll: warnings only when Plane type AND in atmosphere
@@ -124,7 +124,7 @@ static void drawScreen_ATT(RA8875 &tft) {
     if      (warnRoll && absRoll > ROLL_ALARM_DEG) { rfg = TFT_WHITE;     rbg = TFT_RED;   }
     else if (warnRoll && absRoll > ROLL_WARN_DEG)  { rfg = TFT_YELLOW;    rbg = TFT_BLACK; }
     else                                  { rfg = TFT_DARK_GREEN; rbg = TFT_BLACK; }
-    snprintf(buf, sizeof(buf), "%.2f\xB0", state.roll);
+    snprintf(buf, sizeof(buf), "%.1f\xB0", state.roll);
     attVal(2, "Roll:", buf, rfg, rbg);
   }
 
@@ -139,8 +139,8 @@ static void drawScreen_ATT(RA8875 &tft) {
       case 2:   sasStr = "RETRO";      sasFg = TFT_NEON_GREEN;  sasBg = COL_BACK;   break;  // navball prograde green
       case 3:   sasStr = "NORMAL";     sasFg = TFT_MAGENTA;     sasBg = COL_BACK;   break;  // navball magenta
       case 4:   sasStr = "ANTI-NRM";   sasFg = TFT_MAGENTA;     sasBg = COL_BACK;   break;  // navball magenta
-      case 5:   sasStr = "RAD-IN";     sasFg = TFT_SKY;         sasBg = COL_BACK;   break;  // navball cyan
-      case 6:   sasStr = "RAD-OUT";    sasFg = TFT_SKY;         sasBg = COL_BACK;   break;  // navball cyan
+      case 5:   sasStr = "RAD-OUT";    sasFg = TFT_SKY;         sasBg = COL_BACK;   break;  // navball cyan
+      case 6:   sasStr = "RAD-IN";     sasFg = TFT_SKY;         sasBg = COL_BACK;   break;  // navball cyan
       case 7:   sasStr = "TARGET";     sasFg = TFT_VIOLET;      sasBg = COL_BACK;   break;  // navball purple
       case 8:   sasStr = "ANTI-TGT";   sasFg = TFT_VIOLET;      sasBg = COL_BACK;   break;  // navball purple
       case 9:   sasStr = "MANEUVER";   sasFg = TFT_BLUE;        sasBg = COL_BACK;   break;  // navball blue
@@ -150,39 +150,56 @@ static void drawScreen_ATT(RA8875 &tft) {
   }
 
   // --- Velocity group (rows 4-5): ORB V in orbit, SRF V in atmosphere ---
-  float velHdg   = orbMode ? state.orbVelHeading : state.srfVelHeading;
-  float velPitch = orbMode ? state.orbVelPitch   : state.srfVelPitch;
-
-  snprintf(buf, sizeof(buf), "%.2f\xB0", velHdg);
-  attVal(4, "Hdg:", buf, COL_VALUE, COL_BACK);
-
-  snprintf(buf, sizeof(buf), "%.2f\xB0", velPitch);
-  attVal(5, "Pitch:", buf, COL_VALUE, COL_BACK);
+  // Suppress velocity vector heading/pitch when surface speed is too low to be meaningful.
+  // Below 0.5 m/s the velocity vector is noise; show --- to avoid erratic values.
+  float velHdg, velPitch;
+  bool velValid = (state.surfaceVel >= 0.5f);
+  if (velValid) {
+    velHdg   = orbMode ? state.orbVelHeading : state.srfVelHeading;
+    velPitch = orbMode ? state.orbVelPitch   : state.srfVelPitch;
+    snprintf(buf, sizeof(buf), "%.1f\xB0", velHdg);
+    attVal(4, "Hdg:", buf, COL_VALUE, COL_BACK);
+    snprintf(buf, sizeof(buf), "%.1f\xB0", velPitch);
+    attVal(5, "Pitch:", buf, COL_VALUE, COL_BACK);
+  } else {
+    velHdg   = state.heading;  // use craft heading so error = 0 when shown
+    velPitch = state.pitch;
+    attVal(4, "Hdg:",   "---", TFT_DARK_GREY, COL_BACK);
+    attVal(5, "Pitch:", "---", TFT_DARK_GREY, COL_BACK);
+  }
 
   // --- Error group (rows 6-7): error to active velocity vector ---
-  // P.Err: pitch error (velPitch - craft pitch). Positive = nose below velocity.
-  // H.Err: heading error (velHdg - craft heading), wrapped to ±180°.
+  // Suppress when velocity vector is invalid (low speed) — derived values are meaningless.
   {
-    float pErr = velPitch - state.pitch;
-    float hErr = velHdg  - state.heading;
-    if (hErr >  180.0f) hErr -= 360.0f;
-    if (hErr < -180.0f) hErr += 360.0f;
+    if (!velValid) {
+      attVal(6, "Hdg:",   "---", TFT_DARK_GREY, COL_BACK);
+      attVal(7, "Pitch:", "---", TFT_DARK_GREY, COL_BACK);
+    } else {
+      float pErr = velPitch - state.pitch;
+      float hErr = velHdg  - state.heading;
+      if (hErr >  180.0f) hErr -= 360.0f;
+      if (hErr < -180.0f) hErr += 360.0f;
 
-    auto errColor = [](float e, uint16_t &fg, uint16_t &bg) {
-      float ae = fabsf(e);
-      if      (ae > ATT_ERR_ALARM_DEG) { fg = TFT_WHITE;     bg = TFT_RED;   }
-      else if (ae > ATT_ERR_WARN_DEG)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-      else                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    };
+      // Only colour errors as warnings/alarms when in atmosphere — in space
+      // there is no meaningful connection between attitude and velocity vector,
+      // so alarm colours are operational noise.
+      auto errColor = [](float e, uint16_t &fg, uint16_t &bg) {
+        float ae = fabsf(e);
+        if (!state.inAtmo)               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+        else if (ae > ATT_ERR_ALARM_DEG) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        else if (ae > ATT_ERR_WARN_DEG)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                             { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      };
 
-    uint16_t fg, bg;
-    errColor(hErr, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.2f\xB0", hErr);
-    attVal(6, "Hdg:", buf, fg, bg);
+      uint16_t fg, bg;
+      errColor(hErr, fg, bg);
+      snprintf(buf, sizeof(buf), "%+.1f\xB0", hErr);
+      attVal(6, "Hdg:", buf, fg, bg);
 
-    errColor(pErr, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.2f\xB0", pErr);
-    attVal(7, "Pitch:", buf, fg, bg);
+      errColor(pErr, fg, bg);
+      snprintf(buf, sizeof(buf), "%+.1f\xB0", pErr);
+      attVal(7, "Pitch:", buf, fg, bg);
+    }
   }
 }
 

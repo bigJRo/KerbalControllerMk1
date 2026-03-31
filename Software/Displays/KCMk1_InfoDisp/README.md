@@ -323,9 +323,29 @@ The alarm thresholds are intentionally consistent with the KCMk1 Annunciator C&W
 
 ## Development Phases
 
-- **Phase 1 (current):** Display framework — 10 screens, sidebar navigation, demo mode
-- **Phase 2 (planned):** KerbalSimpit integration — `SimpitHandler.ino` populates `AppState` from live KSP telemetry. All Simpit channel mappings are documented in `AAA_Config.ino`.
+- **Phase 1 (complete):** Display framework — 10 screens, sidebar navigation, demo mode
+- **Phase 2 (in progress):** KerbalSimpit integration — live KSP telemetry via `SimpitHandler.ino`. Core integration complete and in flight testing. See backlog below.
 - **Phase 3 (planned):** I2C slave interface — operates under Teensy 4.1 master at a fixed address
+
+### Phase 2 Backlog
+
+Items to address before Phase 2 is considered complete. Grouped by priority.
+
+#### Pending testing
+- **Maneuver screen** — verify all fields suppress correctly with no node planned; verify T+Ign/T+Mnvr/ΔV colour transitions during an active burn
+- **Docking screen** — verify Brg.Err/Elv.Err approach angle errors match game navball during an approach; verify DOCKED splash triggers and clears correctly on dock/undock
+- **Powered descent screen** — verify T.Grnd, Fwd/Lat horizontal velocity thresholds, Throttle/RCS split, Gear colouring across a full landing sequence
+
+#### Screen design reassessment
+- **Maneuver screen is mostly empty without a node** — consider whether the screen should show useful orbital context (e.g. current Alt.SL, V.Orb, ΔV.Tot as a mission summary) when no node is planned, rather than all `---`. Alternative: repurpose the screen entirely as a combined orbital state + burn planning display.
+- **Apsides and Orbit screens** — consider combining into one screen with a title-bar tap to toggle between the two views (similar to LNCH/LNDG toggle). The current split dedicates two sidebar slots to data that rarely needs to be shown simultaneously.
+- **Rover screen** — `type_Rover` currently falls through to APSI on vessel switch. A dedicated rover screen could show: surface speed, heading, radar alt, slope (from pitch), gear/brakes, and battery (resource). Assess whether rover operations are common enough to justify a dedicated screen vs. a contextual mode on an existing screen.
+- **General UX review** — after extended flight testing, identify any screen transitions, label choices, or colour conventions that feel wrong in practice. Candidates already noted: RNDZ intercept rows (N/A, KSP1 only — consider replacing with closest-approach estimate derived from distance + velocity), ATT velocity reference label when switching orbital/surface mode.
+
+#### Known loose ends
+- **Parachute state static bools** (`_drogueDeployed`, `_drogueCut`, `_mainDeployed`, `_mainCut` in `Screen_LNDG.ino`) persist across `loop()` calls but are not reset on vessel switch. Add reset logic to the `VESSEL_CHANGE_MESSAGE` handler in `SimpitHandler.ino`.
+- **INTERSECTS_MESSAGE (KSP1)** — intercept data is not available in KSP1. The RNDZ INT1/INT2 rows currently show `N/A (KSP1)`. A closest-approach estimate could be computed from current distance and closure rate if Simpit ever provides signed velocity, or left as-is.
+- **`_lndgReentryRow3PeA` reset** — this flag should be reset to `true` on vessel switch (same as parachute bools above).
 
 ---
 
@@ -333,7 +353,7 @@ The alarm thresholds are intentionally consistent with the KCMk1 Annunciator C&W
 
 - **`demoMode`** defaults to `true` in Phase 1. Set `false` in `AAA_Config.ino` once Simpit integration is complete (Phase 2).
 - **Display rotation** — set `DISPLAY_ROTATION = 2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not required; the GSL1680F reports screen-native coordinates.
-- **Parachute state tracking** — the static bools `_drogueDeployed`, `_drogueCut`, `_mainDeployed`, `_mainCut` in `Screen_LNDG.ino` persist across `loop()` calls but will require reset on vessel switch. This is deferred to Phase 2 Simpit integration.
+- **Parachute state tracking** — the static bools `_drogueDeployed`, `_drogueCut`, `_mainDeployed`, `_mainCut` in `Screen_LNDG.ino` persist across `loop()` calls but are not reset on vessel switch. Reset logic is tracked in the Phase 2 backlog above.
 - **`KerbalDisplayAudio`** is included as a library dependency and claims pin 9, but audio output is not implemented on this panel.
 - **`KerbalDisplayCommon` v2.0.1** is required. The `PrintState` struct introduced in v2.0.0 is a breaking change from v1.x — do not downgrade.
 

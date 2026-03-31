@@ -19,8 +19,8 @@ static void chromeScreen_RNDZ(RA8875 &tft) {
     // Section labels: STATE(0-1), TGT(2-3), INT1(4-5), INT2(6-7)
     drawVerticalText(tft, 0, TITLE_TOP,          SECT_W, rowH*2, &Roboto_Black_16, "STATE", TFT_LIGHT_GREY, TFT_BLACK);
     drawVerticalText(tft, 0, TITLE_TOP + rowH*2, SECT_W, rowH*2, &Roboto_Black_16, "TGT",   TFT_LIGHT_GREY, TFT_BLACK);
-    drawVerticalText(tft, 0, TITLE_TOP + rowH*4, SECT_W, rowH*2, &Roboto_Black_16, "INT1",  TFT_LIGHT_GREY, TFT_BLACK);
-    drawVerticalText(tft, 0, TITLE_TOP + rowH*6, SECT_W, rowH*2, &Roboto_Black_16, "INT2",  TFT_LIGHT_GREY, TFT_BLACK);
+    drawVerticalText(tft, 0, TITLE_TOP + rowH*4, SECT_W, rowH*2, &Roboto_Black_16, "INT1",  TFT_DARK_GREY, TFT_BLACK);
+    drawVerticalText(tft, 0, TITLE_TOP + rowH*6, SECT_W, rowH*2, &Roboto_Black_16, "INT2",  TFT_DARK_GREY, TFT_BLACK);
 
     // Row labels (right of section strip)
     printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "Alt.SL:", COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -79,10 +79,10 @@ static void drawScreen_RNDZ(RA8875 &tft) {
   // Cache-checked draw helper using section-label-aware geometry
   auto rndzVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[4][row];
+    RowCache &rc = rowCache[5][row];
     if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
     printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[4][row]);
+               label, val, fgc, bgc, COL_BACK, printState[5][row]);
     rc.value = val; rc.fg = fgc; rc.bg = bgc;
   };
 
@@ -98,65 +98,24 @@ static void drawScreen_RNDZ(RA8875 &tft) {
 
   // ── TGT block (rows 2-3) ──
 
-  // Row 2 — Distance: yellow <5km, red <500m (tightened from 10km/1km)
-  if      (state.tgtDistance < RNDZ_DIST_ALARM_M)  { fg = TFT_WHITE;     bg = TFT_RED;   }
-  else if (state.tgtDistance < RNDZ_DIST_WARN_M)   { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-  else                                   { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+  // Row 2 — Distance to target
+  if      (state.tgtDistance < RNDZ_DIST_ALARM_M) { fg = TFT_WHITE;     bg = TFT_RED;   }
+  else if (state.tgtDistance < RNDZ_DIST_WARN_M)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+  else                                             { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
   rndzVal(2, "Dist:", formatAlt(state.tgtDistance), fg, bg);
 
-  // Row 3 — Closure rate: yellow >5 m/s closing, red >10 m/s within 2km
-  {
-    bool closing     = (state.tgtVelocity < 0);
-    bool fastClosure = closing && (state.tgtDistance < RNDZ_VCLOSURE_ALARM_DIST_M) &&
-                       (fabsf(state.tgtVelocity) > RNDZ_VCLOSURE_ALARM_MS);
-    bool moderateClosure = closing && fabsf(state.tgtVelocity) > RNDZ_VCLOSURE_WARN_MS;
-    if      (fastClosure)      { fg = TFT_WHITE;     bg = TFT_RED;   }
-    else if (moderateClosure)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-    else                       { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    rndzVal(3, "V.Tgt:", fmtMs(state.tgtVelocity), fg, bg);
-  }
+  // Row 3 — Relative velocity magnitude (KSP1 targetMessage.velocity is always positive —
+  // no closure direction available). Show as plain informational green.
+  rndzVal(3, "V.Tgt:", fmtMs(state.tgtVelocity), TFT_DARK_GREEN, TFT_BLACK);
 
-  // ── INT1 block (rows 4-5) ──
+  // ── INT1 block (rows 4-5) — N/A in KSP1 ──
+  // INTERSECTS_MESSAGE is KSP2 only; these rows are reserved for a future
+  // KSP1-compatible closest-approach solution.
+  rndzVal(4, "Time:", "N/A (KSP1)", TFT_DARK_GREY, TFT_BLACK);
+  rndzVal(5, "Dist:", "N/A (KSP1)", TFT_DARK_GREY, TFT_BLACK);
 
-  // Row 4 — Time to first intercept: yellow <120s, red if past
-  if (state.intercept1Time < 0) {
-    rndzVal(4, "Time:", "---", TFT_DARK_GREEN, TFT_BLACK);
-  } else {
-    fg = (state.intercept1Time == 0)                    ? TFT_RED    :
-         (state.intercept1Time < RNDZ_INT_WARN_S) ? TFT_YELLOW  : TFT_DARK_GREEN;
-    rndzVal(4, "Time:", formatTime((float)state.intercept1Time), fg, TFT_BLACK);
-  }
-
-  // Row 5 — Distance at first intercept:
-  //   green <1km (good intercept), yellow <5km (workable), red >=5km (poor — needs correction)
-  if (state.intercept1Dist < 0) {
-    rndzVal(5, "Dist:", "---", TFT_DARK_GREEN, TFT_BLACK);
-  } else {
-    if      (state.intercept1Dist < RNDZ_INTDIST_GOOD_M) { fg = TFT_DARK_GREEN; }
-    else if (state.intercept1Dist < RNDZ_INTDIST_WARN_M) { fg = TFT_YELLOW;     }
-    else                                     { fg = TFT_RED;         }
-    rndzVal(5, "Dist:", formatAlt(state.intercept1Dist), fg, TFT_BLACK);
-  }
-
-  // ── INT2 block (rows 6-7) ──
-
-  // Row 6 — Time to second intercept
-  if (state.intercept2Time < 0) {
-    rndzVal(6, "Time:", "---", TFT_DARK_GREEN, TFT_BLACK);
-  } else {
-    fg = (state.intercept2Time == 0)                    ? TFT_RED    :
-         (state.intercept2Time < RNDZ_INT_WARN_S) ? TFT_YELLOW  : TFT_DARK_GREEN;
-    rndzVal(6, "Time:", formatTime((float)state.intercept2Time), fg, TFT_BLACK);
-  }
-
-  // Row 7 — Distance at second intercept (same logic as INT1)
-  if (state.intercept2Dist < 0) {
-    rndzVal(7, "Dist:", "---", TFT_DARK_GREEN, TFT_BLACK);
-  } else {
-    if      (state.intercept2Dist < RNDZ_INTDIST_GOOD_M) { fg = TFT_DARK_GREEN; }
-    else if (state.intercept2Dist < RNDZ_INTDIST_WARN_M) { fg = TFT_YELLOW;     }
-    else                                     { fg = TFT_RED;         }
-    rndzVal(7, "Dist:", formatAlt(state.intercept2Dist), fg, TFT_BLACK);
-  }
+  // ── INT2 block (rows 6-7) — N/A in KSP1 ──
+  rndzVal(6, "Time:", "N/A (KSP1)", TFT_DARK_GREY, TFT_BLACK);
+  rndzVal(7, "Dist:", "N/A (KSP1)", TFT_DARK_GREY, TFT_BLACK);
 }
 

@@ -128,10 +128,16 @@ static void drawScreen_LNCH(RA8875 &tft) {
     fg = (state.surfaceVel < 0) ? TFT_RED : TFT_DARK_GREEN;
     lnchVal(1, "V.Srf:", fmtMs(state.surfaceVel), fg, TFT_BLACK);
 
-    // Row 2 — Vertical velocity: white-on-red if descending (abort condition)
-    if (state.verticalVel < 0) { fg = TFT_WHITE;     bg = TFT_RED;   }
-    else                       { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    lnchVal(2, "V.Vrt:", fmtMs(state.verticalVel), fg, bg);
+    // Row 2 — Vertical velocity: suppress on ground to avoid spurious alarms.
+    // Use same 0.05 m/s dead-band as T.Grnd computation.
+    if (fabsf(state.verticalVel) < 0.05f ||
+        (state.situation & sit_PreLaunch) || (state.situation & sit_Landed)) {
+      lnchVal(2, "V.Vrt:", "---", TFT_DARK_GREY, TFT_BLACK);
+    } else {
+      if (state.verticalVel < 0) { fg = TFT_WHITE;     bg = TFT_RED;   }
+      else                       { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      lnchVal(2, "V.Vrt:", fmtMs(state.verticalVel), fg, bg);
+    }
 
     // Row 3 — Apoapsis: red if negative, yellow if below safe orbit, green if safe
     {
@@ -142,14 +148,16 @@ static void drawScreen_LNCH(RA8875 &tft) {
       lnchVal(3, "ApA:", formatAlt(state.apoapsis), fg, TFT_BLACK);
     }
 
-    // Row 4 — Time to apoapsis:
-    //   yellow if < 30s (apoapsis approaching during burn — gravity turn check)
-    //   red if negative (past apoapsis)
-    //   green otherwise
-    if      (state.timeToAp < 0)   { fg = TFT_RED;        }
-    else if (state.timeToAp < LNCH_TOAPO_WARN_S)  { fg = TFT_YELLOW;      }
-    else                           { fg = TFT_DARK_GREEN;  }
-    lnchVal(4, "T+Ap:", formatTime(state.timeToAp), fg, TFT_BLACK);
+    // Row 4 — Time to apoapsis: suppress on ground and when no valid apoapsis yet
+    if (state.apoapsis <= 0.0f ||
+        (state.situation & sit_PreLaunch) || (state.situation & sit_Landed)) {
+      lnchVal(4, "T+Ap:", "---", TFT_DARK_GREY, TFT_BLACK);
+    } else {
+      if      (state.timeToAp < 0)              { fg = TFT_RED;       }
+      else if (state.timeToAp < LNCH_TOAPO_WARN_S) { fg = TFT_YELLOW;    }
+      else                                      { fg = TFT_DARK_GREEN; }
+      lnchVal(4, "T+Ap:", formatTime(state.timeToAp), fg, TFT_BLACK);
+    }
 
     // Row 5 — Throttle: white-on-red at 0% (engine out = abort condition during ascent)
     {

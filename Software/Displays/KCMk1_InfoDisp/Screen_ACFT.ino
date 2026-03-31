@@ -17,10 +17,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
   // Cache-checked draw for full-width rows
   auto acftVal = [&](uint8_t slot, uint8_t row, const char *label,
                      const String &val, uint16_t fgc, uint16_t bgc) {
-    RowCache &cache = rowCache[8][slot];
+    RowCache &cache = rowCache[9][slot];
     if (cache.value == val && cache.fg == fgc && cache.bg == bgc) return;
     printValue(tft, F, AX, acftRowY(row), AW, acftRowH(),
-               label, val, fgc, bgc, COL_BACK, printState[8][slot]);
+               label, val, fgc, bgc, COL_BACK, printState[9][slot]);
     cache.value = val; cache.fg = fgc; cache.bg = bgc;
   };
 
@@ -28,10 +28,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
   auto splitVal = [&](uint8_t slot, uint16_t x, uint16_t w, uint8_t row,
                       const char *label, const String &val,
                       uint16_t fgc, uint16_t bgc) {
-    RowCache &cache = rowCache[8][slot];
+    RowCache &cache = rowCache[9][slot];
     if (cache.value == val && cache.fg == fgc && cache.bg == bgc) return;
     printValue(tft, F, x, acftRowY(row), w, acftRowH(),
-               label, val, fgc, bgc, COL_BACK, printState[8][slot]);
+               label, val, fgc, bgc, COL_BACK, printState[9][slot]);
     cache.value = val; cache.fg = fgc; cache.bg = bgc;
   };
 
@@ -79,15 +79,16 @@ static void drawScreen_ACFT(RA8875 &tft) {
 
   // ── AT block (row 4): triple split Hdg | Pitch | Roll ──
   // Cache slots: [4]=Hdg, [9]=Pitch, [10]=Roll
+  // Use 0 decimal places so a 3-digit negative value (e.g. -180°) fits in its cell.
   {
     uint16_t xL = AX,              wL = THIRD_W;
     uint16_t xM = AX + THIRD_W,   wM = THIRD_W;
     uint16_t xR = AX + THIRD_W*2, wR = AW - THIRD_W*2;
 
-    snprintf(buf, sizeof(buf), "%.1f\xB0", state.heading);
+    snprintf(buf, sizeof(buf), "%.0f\xB0", state.heading);
     splitVal(4, xL, wL, 4, "Hdg:", buf, COL_VALUE, COL_BACK);
 
-    snprintf(buf, sizeof(buf), "%.1f\xB0", state.pitch);
+    snprintf(buf, sizeof(buf), "%.0f\xB0", state.pitch);
     splitVal(9, xM, wM, 4, "Pitch:", buf, COL_VALUE, COL_BACK);
 
     float absRoll = fabsf(state.roll);
@@ -95,7 +96,7 @@ static void drawScreen_ACFT(RA8875 &tft) {
     if      (warnRoll && absRoll > ROLL_ALARM_DEG) { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (warnRoll && absRoll > ROLL_WARN_DEG)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else                                  { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    snprintf(buf, sizeof(buf), "%.1f\xB0", state.roll);
+    snprintf(buf, sizeof(buf), "%.0f\xB0", state.roll);
     splitVal(10, xR, wR, 4, "Roll:", buf, fg, bg);
   }
 
@@ -103,30 +104,36 @@ static void drawScreen_ACFT(RA8875 &tft) {
 
   // Row 5: half split AoA | Slip
   // Cache slots: [5]=AoA, [11]=Slip
+  // Suppress when surface velocity is too low — velocity vector is undefined/noisy below 0.5 m/s
   {
-    float aoa  = state.pitch - state.srfVelPitch;
-    float slip = state.heading - state.srfVelHeading;
-    if (slip >  180.0f) slip -= 360.0f;
-    if (slip < -180.0f) slip += 360.0f;
-
-    auto angColor = [](float v, float warn, float alarm,
-                       uint16_t &fg, uint16_t &bg) {
-      float av = fabsf(v);
-      if      (av > alarm) { fg = TFT_WHITE;     bg = TFT_RED;   }
-      else if (av > warn)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-      else                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    };
-
     uint16_t xL = AX,               wL = HALF_W - ROW_PAD;
     uint16_t xR = AX + HALF_W + ROW_PAD, wR = HALF_W - ROW_PAD;
 
-    angColor(aoa,  AOA_WARN_DEG,  AOA_ALARM_DEG,  fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", aoa);
-    splitVal(5, xL, wL, 5, "AoA:", buf, fg, bg);
+    if (state.surfaceVel < 0.5f) {
+      splitVal(5,  xL, wL, 5, "AoA:",  "---", TFT_DARK_GREY, TFT_BLACK);
+      splitVal(11, xR, wR, 5, "Slip:", "---", TFT_DARK_GREY, TFT_BLACK);
+    } else {
+      float aoa  = state.pitch - state.srfVelPitch;
+      float slip = state.heading - state.srfVelHeading;
+      if (slip >  180.0f) slip -= 360.0f;
+      if (slip < -180.0f) slip += 360.0f;
 
-    angColor(slip, SLIP_WARN_DEG, SLIP_ALARM_DEG, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", slip);
-    splitVal(11, xR, wR, 5, "Slip:", buf, fg, bg);
+      auto angColor = [](float v, float warn, float alarm,
+                         uint16_t &fg, uint16_t &bg) {
+        float av = fabsf(v);
+        if      (av > alarm) { fg = TFT_WHITE;     bg = TFT_RED;   }
+        else if (av > warn)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+        else                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      };
+
+      angColor(aoa,  AOA_WARN_DEG,  AOA_ALARM_DEG,  fg, bg);
+      snprintf(buf, sizeof(buf), "%+.1f\xB0", aoa);
+      splitVal(5, xL, wL, 5, "AoA:", buf, fg, bg);
+
+      angColor(slip, SLIP_WARN_DEG, SLIP_ALARM_DEG, fg, bg);
+      snprintf(buf, sizeof(buf), "%+.1f\xB0", slip);
+      splitVal(11, xR, wR, 5, "Slip:", buf, fg, bg);
+    }
   }
 
   // Row 6: half split Mach | G
@@ -180,10 +187,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
       gearFg = TFT_DARK_GREY;
       gearBg = TFT_BLACK;
     }
-    RowCache   &gc = rowCache[8][7];
+    RowCache   &gc = rowCache[9][7];
     if (gc.value != gearStr || gc.fg != gearFg || gc.bg != gearBg) {
       printValue(tft, F, xL, y, wL, h, "Gear:", gearStr, gearFg, gearBg,
-                 COL_BACK, printState[8][7]);
+                 COL_BACK, printState[9][7]);
       gc.value = gearStr; gc.fg = gearFg; gc.bg = gearBg;
     }
 
@@ -195,10 +202,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
                      groundState     ? TFT_WHITE : TFT_DARK_GREY;
     uint16_t brkBg = state.brakes_on ? TFT_BLACK :
                      groundState     ? TFT_RED    : TFT_BLACK;
-    RowCache   &bc = rowCache[8][8];
+    RowCache   &bc = rowCache[9][8];
     if (bc.value != brkStr || bc.fg != brkFg || bc.bg != brkBg) {
       printValue(tft, F, xR, y, wR, h, "Brakes:", brkStr, brkFg, brkBg,
-                 COL_BACK, printState[8][8]);
+                 COL_BACK, printState[9][8]);
       bc.value = brkStr; bc.fg = brkFg; bc.bg = brkBg;
     }
   }

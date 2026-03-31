@@ -110,6 +110,7 @@ inline uint16_t acftRowH()            { return rowHFor(8); }
    VALUE FORMATTERS
 ****************************************************************************************/
 String fmtNum(float v) {
+  if (fabsf(v) < 0.05f) v = 0.0f;  // snap -0.0 and sub-rounding noise to zero
   if (v >= 1000.0f || v <= -1000.0f) return formatSep(v);
   char buf[16]; dtostrf(v, 1, 1, buf); return String(buf);
 }

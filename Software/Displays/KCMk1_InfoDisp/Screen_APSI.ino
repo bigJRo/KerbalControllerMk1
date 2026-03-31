@@ -80,9 +80,16 @@ static void drawScreen_APSI(RA8875 &tft) {
   apsiVal(2, "SOI:", state.gameSOI, COL_VALUE, COL_BACK);
 
   // ── ApA block (rows 3-4): apoapsis + time ──
+  // Show orbit data only when in a flight state where an orbit exists.
+  // orbitalPeriod > 0 fires on the ground too (KSP reports body params pre-launch).
+  bool hasOrbit = (state.situation & sit_SubOrb)  ||
+                  (state.situation & sit_Orbit)    ||
+                  (state.situation & sit_Escaping);
 
   // Row 3 — Apoapsis
-  {
+  if (!hasOrbit) {
+    apsiVal(3, "ApA:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
     bool apaWarn = (warnAlt > 0 && state.apoapsis > 0 && state.apoapsis < warnAlt);
     if      (state.apoapsis < 0) fg = TFT_RED;
     else if (apaWarn)            fg = TFT_YELLOW;
@@ -90,16 +97,22 @@ static void drawScreen_APSI(RA8875 &tft) {
     apsiVal(3, "ApA:", formatAlt(state.apoapsis), fg, TFT_BLACK);
   }
 
-  // Row 4 — Time to apoapsis: yellow <60s, red if past
-  if      (state.timeToAp < 0)  fg = TFT_RED;
-  else if (state.timeToAp < APSI_TIME_WARN_S) fg = TFT_YELLOW;
-  else                          fg = TFT_DARK_GREEN;
-  apsiVal(4, "T+Ap:", formatTime(state.timeToAp), fg, TFT_BLACK);
+  // Row 4 — Time to apoapsis: suppress when no orbit, yellow <60s, red if past
+  if (!hasOrbit) {
+    apsiVal(4, "T+Ap:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
+    if      (state.timeToAp < 0)                fg = TFT_RED;
+    else if (state.timeToAp < APSI_TIME_WARN_S) fg = TFT_YELLOW;
+    else                                        fg = TFT_DARK_GREEN;
+    apsiVal(4, "T+Ap:", formatTime(state.timeToAp), fg, TFT_BLACK);
+  }
 
-  // ── PeA block (rows 5-6): periapsis + time ──
+  // ══ PeA block (rows 5-6): periapsis + time ══
 
   // Row 5 — Periapsis
-  {
+  if (!hasOrbit) {
+    apsiVal(5, "PeA:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
     bool peWarn = (warnAlt > 0 && state.periapsis > 0 && state.periapsis < warnAlt);
     if      (state.periapsis < 0) fg = TFT_RED;
     else if (peWarn)              fg = TFT_YELLOW;
@@ -107,14 +120,19 @@ static void drawScreen_APSI(RA8875 &tft) {
     apsiVal(5, "PeA:", formatAlt(state.periapsis), fg, TFT_BLACK);
   }
 
-  // Row 6 — Time to periapsis: yellow <60s, red if past
-  if      (state.timeToPe < 0)  fg = TFT_RED;
-  else if (state.timeToPe < APSI_TIME_WARN_S) fg = TFT_YELLOW;
-  else                          fg = TFT_DARK_GREEN;
-  apsiVal(6, "T+Pe:", formatTime(state.timeToPe), fg, TFT_BLACK);
+  // Row 6 — Time to periapsis: suppress when no orbit
+  if (!hasOrbit) {
+    apsiVal(6, "T+Pe:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
+    if      (state.timeToPe < 0)                fg = TFT_RED;
+    else if (state.timeToPe < APSI_TIME_WARN_S) fg = TFT_YELLOW;
+    else                                        fg = TFT_DARK_GREEN;
+    apsiVal(6, "T+Pe:", formatTime(state.timeToPe), fg, TFT_BLACK);
+  }
 
-  // ── Period row (row 7): orbit summary ──
+  // ══ Period row (row 7): orbit summary ══
 
-  // Row 7 — Orbital period (always green — no actionable threshold)
-  apsiVal(7, "Period:", formatTime(state.orbitalPeriod), COL_VALUE, COL_BACK);
+  // Row 7 — Orbital period
+  apsiVal(7, "Period:", hasOrbit ? formatTime(state.orbitalPeriod) : "---",
+          hasOrbit ? COL_VALUE : TFT_DARK_GREY, TFT_BLACK);
 }

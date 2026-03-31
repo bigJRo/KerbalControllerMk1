@@ -81,31 +81,44 @@ static void drawScreen_ORB(RA8875 &tft) {
   // Cache-checked draw helper using section-label-aware geometry
   auto orbVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[6][row];
+    RowCache &rc = rowCache[2][row];
     if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
     printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[6][row]);
+               label, val, fgc, bgc, COL_BACK, printState[2][row]);
     rc.value = val; rc.fg = fgc; rc.bg = bgc;
   };
+
+  // Show orbit data only when in a state where an orbit genuinely exists.
+  // orbitalPeriod is non-zero on the ground (KSP reports body orbital data pre-launch).
+  bool hasOrbit = (state.situation & sit_SubOrb)  ||
+                  (state.situation & sit_Orbit)    ||
+                  (state.situation & sit_Escaping);
 
   float warnAlt = max(currentBody.minSafe, currentBody.flyHigh);
 
   // ── SHAPE block (rows 0-1) ──
 
-  // Row 0 — Eccentricity: yellow >0.9 (highly elliptical), red >1.0 (escape)
-  snprintf(buf, sizeof(buf), "%.4f", state.eccentricity);
-  if      (state.eccentricity > ORB_ECC_ALARM) { fg = TFT_WHITE;     bg = TFT_RED;   }
-  else if (state.eccentricity > ORB_ECC_WARN)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-  else                                { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-  orbVal(0, "Ecc:", buf, fg, bg);
+  // Row 0 — Eccentricity
+  if (!hasOrbit) {
+    orbVal(0, "Ecc:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
+    snprintf(buf, sizeof(buf), "%.4f", state.eccentricity);
+    if      (state.eccentricity > ORB_ECC_ALARM) { fg = TFT_WHITE;     bg = TFT_RED;   }
+    else if (state.eccentricity > ORB_ECC_WARN)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+    else                                          { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+    orbVal(0, "Ecc:", buf, fg, bg);
+  }
 
-  // Row 1 — Semi-major axis (always green)
-  orbVal(1, "SMA:", formatAlt(state.semiMajorAxis), TFT_DARK_GREEN, TFT_BLACK);
+  // Row 1 — Semi-major axis
+  orbVal(1, "SMA:", hasOrbit ? formatAlt(state.semiMajorAxis) : "---",
+         hasOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 
   // ── APSE block (rows 2-3) ──
 
   // Row 2 — Apoapsis
-  {
+  if (!hasOrbit) {
+    orbVal(2, "ApA:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
     bool apaWarn = (warnAlt > 0 && state.apoapsis > 0 && state.apoapsis < warnAlt);
     if      (state.apoapsis < 0) fg = TFT_RED;
     else if (apaWarn)            fg = TFT_YELLOW;
@@ -114,7 +127,9 @@ static void drawScreen_ORB(RA8875 &tft) {
   }
 
   // Row 3 — Periapsis
-  {
+  if (!hasOrbit) {
+    orbVal(3, "PeA:", "---", TFT_DARK_GREY, TFT_BLACK);
+  } else {
     bool peWarn = (warnAlt > 0 && state.periapsis > 0 && state.periapsis < warnAlt);
     if      (state.periapsis < 0) fg = TFT_RED;
     else if (peWarn)              fg = TFT_YELLOW;
@@ -124,61 +139,59 @@ static void drawScreen_ORB(RA8875 &tft) {
 
   // ── PLANE block (rows 4-6): Inc|LAN split, Arg.Pe, then AN (T.Anom|M.Anom) ──
 
-  // Row 4 — Split: Inc (left, cache[6][5]) | LAN (right, cache[6][9])
+  // Row 4 — Split: Inc (left) | LAN (right)
   {
     uint16_t y = rowYFor(4, NR), h = rowHFor(NR);
 
-    snprintf(buf, sizeof(buf), "%.2f\xB0", state.inclination);
-    String incStr = buf;
-    RowCache &ic = rowCache[6][11];
-    if (ic.value != incStr || ic.fg != COL_VALUE || ic.bg != COL_BACK) {
+    String incStr = hasOrbit ? (snprintf(buf, sizeof(buf), "%.2f\xB0", state.inclination), String(buf)) : "---";
+    uint16_t incFg = hasOrbit ? COL_VALUE : TFT_DARK_GREY;
+    RowCache &ic = rowCache[2][11];
+    if (ic.value != incStr || ic.fg != incFg || ic.bg != COL_BACK) {
       printValue(tft, F, AX, y, AHW - ROW_PAD, h,
-                 "Inc:", incStr, COL_VALUE, COL_BACK, COL_BACK,
-                 printState[6][11]);
-      ic.value = incStr; ic.fg = COL_VALUE; ic.bg = COL_BACK;
+                 "Inc:", incStr, incFg, COL_BACK, COL_BACK, printState[2][11]);
+      ic.value = incStr; ic.fg = incFg; ic.bg = COL_BACK;
     }
 
-    snprintf(buf, sizeof(buf), "%.2f\xB0", state.LAN);
-    String lanStr = buf;
-    RowCache &lc = rowCache[6][9];
-    if (lc.value != lanStr || lc.fg != COL_VALUE || lc.bg != COL_BACK) {
+    String lanStr = hasOrbit ? (snprintf(buf, sizeof(buf), "%.2f\xB0", state.LAN), String(buf)) : "---";
+    uint16_t lanFg = hasOrbit ? COL_VALUE : TFT_DARK_GREY;
+    RowCache &lc = rowCache[2][9];
+    if (lc.value != lanStr || lc.fg != lanFg || lc.bg != COL_BACK) {
       printValue(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h,
-                 "LAN:", lanStr, COL_VALUE, COL_BACK, COL_BACK,
-                 printState[6][9]);
-      lc.value = lanStr; lc.fg = COL_VALUE; lc.bg = COL_BACK;
+                 "LAN:", lanStr, lanFg, COL_BACK, COL_BACK, printState[2][9]);
+      lc.value = lanStr; lc.fg = lanFg; lc.bg = COL_BACK;
     }
   }
 
   // Row 5 — Argument of periapsis
-  snprintf(buf, sizeof(buf), "%.2f\xB0", state.argOfPe);
-  orbVal(5, "Arg.Pe:", buf, TFT_DARK_GREEN, TFT_BLACK);
+  if (hasOrbit) { snprintf(buf, sizeof(buf), "%.2f\xB0", state.argOfPe); }
+  orbVal(5, "Arg.Pe:", hasOrbit ? buf : "---",
+         hasOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 
-  // Row 6 — Split: T.Anom (left, cache[6][6]) | M.Anom (right, cache[6][10])
+  // Row 6 — Split: T.Anom (left) | M.Anom (right)
   {
     uint16_t y = rowYFor(6, NR), h = rowHFor(NR);
 
-    snprintf(buf, sizeof(buf), "%.2f\xB0", state.trueAnomaly);
-    String taStr = buf;
-    RowCache &tc = rowCache[6][6];
-    if (tc.value != taStr || tc.fg != COL_VALUE || tc.bg != COL_BACK) {
+    String taStr = hasOrbit ? (snprintf(buf, sizeof(buf), "%.2f\xB0", state.trueAnomaly), String(buf)) : "---";
+    uint16_t taFg = hasOrbit ? COL_VALUE : TFT_DARK_GREY;
+    RowCache &tc = rowCache[2][6];
+    if (tc.value != taStr || tc.fg != taFg || tc.bg != COL_BACK) {
       printValue(tft, F, AX, y, AHW - ROW_PAD, h,
-                 "True:", taStr, COL_VALUE, COL_BACK, COL_BACK,
-                 printState[6][6]);
-      tc.value = taStr; tc.fg = COL_VALUE; tc.bg = COL_BACK;
+                 "True:", taStr, taFg, COL_BACK, COL_BACK, printState[2][6]);
+      tc.value = taStr; tc.fg = taFg; tc.bg = COL_BACK;
     }
 
-    snprintf(buf, sizeof(buf), "%.2f\xB0", state.meanAnomaly);
-    String maStr = buf;
-    RowCache &mc = rowCache[6][10];
-    if (mc.value != maStr || mc.fg != COL_VALUE || mc.bg != COL_BACK) {
+    String maStr = hasOrbit ? (snprintf(buf, sizeof(buf), "%.2f\xB0", state.meanAnomaly), String(buf)) : "---";
+    uint16_t maFg = hasOrbit ? COL_VALUE : TFT_DARK_GREY;
+    RowCache &mc = rowCache[2][10];
+    if (mc.value != maStr || mc.fg != maFg || mc.bg != COL_BACK) {
       printValue(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h,
-                 "Mean:", maStr, COL_VALUE, COL_BACK, COL_BACK,
-                 printState[6][10]);
-      mc.value = maStr; mc.fg = COL_VALUE; mc.bg = COL_BACK;
+                 "Mean:", maStr, maFg, COL_BACK, COL_BACK, printState[2][10]);
+      mc.value = maStr; mc.fg = maFg; mc.bg = COL_BACK;
     }
   }
 
-  // Row 7 — Orbital period (PR block, always green)
-  orbVal(7, "Period:", formatTime(state.orbitalPeriod), TFT_DARK_GREEN, TFT_BLACK);
+  // Row 7 — Orbital period
+  orbVal(7, "Period:", hasOrbit ? formatTime(state.orbitalPeriod) : "---",
+         hasOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 }
 

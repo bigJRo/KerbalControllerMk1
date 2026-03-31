@@ -9,7 +9,7 @@
    OPERATING MODE
 ****************************************************************************************/
 bool debugMode = true;
-bool demoMode  = true;   // Phase 1: always demo; set false when Simpit is integrated
+bool demoMode  = false;  // false = live Simpit telemetry; true = demo sine-wave values
 
 
 /***************************************************************************************
@@ -88,19 +88,38 @@ const float LNDG_HVEL_WARN_FINAL_MS  =  1.0f;  const float LNDG_HVEL_ALARM_FINAL
 const float LNDG_REENTRY_VHRZ_ALARM_MS = 50.0f;   // white-on-red
 const float LNDG_REENTRY_VHRZ_WARN_MS  = 10.0f;   // yellow
 
-// Parachute deployment dynamic pressure limits (Pa)
-// Drogue: safe below 1500 Pa, unsafe above 5000 Pa (KSP defaults)
-// Main:   safe below 500 Pa,  unsafe above 3000 Pa
-const float LNDG_DROGUE_SAFE_Q   = 1500.0f;
-const float LNDG_DROGUE_UNSAFE_Q = 5000.0f;
-const float LNDG_MAIN_SAFE_Q     =  500.0f;
-const float LNDG_MAIN_UNSAFE_Q   = 3000.0f;
+// Parachute deployment speed limits (m/s surface velocity)
+// KSP's safe/risky/unsafe indicator is speed-based, not dynamic-pressure-based.
+// Stock values from testing and community data:
+//   Drogue: safe below ~500 m/s, risky 500-600 m/s, unsafe above ~600 m/s
+//   Main:   safe below ~250 m/s, risky 250-300 m/s, unsafe above ~300 m/s
+// Tune LNDG_*_RISKY_MS if the display doesn't match your game's yellow threshold.
+const float LNDG_DROGUE_SAFE_MS  = 500.0f;   // green below this
+const float LNDG_DROGUE_RISKY_MS = 600.0f;   // yellow above safe, red above risky
+const float LNDG_MAIN_SAFE_MS    = 250.0f;   // green below this
+const float LNDG_MAIN_RISKY_MS   = 300.0f;   // yellow above safe, red above risky
+
+// Parachute deployment state thresholds
+// LNDG_CHUTE_SEMI_DENSITY: air density (kg/m³) above which the chute begins to
+//   semi-deploy. Matches KSP's default minAirPressureToOpen = 0.04 atm.
+//   On Kerbin: 0.04 atm × 1.225 kg/m³ (sea-level density) ≈ 0.049 kg/m³.
+//   Chute shows ARMED (cyan) below this; OPEN yellow/green above it.
+const float LNDG_CHUTE_SEMI_DENSITY = 0.049f;
+
+// LNDG_CHUTE_FULL_ALT: radar altitude (m) below which the chute is fully open.
+//   Matches KSP's default deployAltitude = 1000 m AGL.
+//   Chute shows OPEN yellow above this; OPEN green below it.
+const float LNDG_CHUTE_FULL_ALT = 1000.0f;
 
 // T.Grnd band boundaries for Fwd/Lat context-dependent thresholds (seconds)
 const float LNDG_HVEL_T_LOOSE_S = 60.0f;   // above this: loose thresholds
 const float LNDG_HVEL_T_MID_S   = 30.0f;   // above this: mid thresholds
 
-// Stage ΔV thresholds (m/s) — shared with LNCH and VEH
+// Re-entry SAS indicator: below this Mach number aerodynamic forces are strong
+// enough that SAS OFF is acceptable (capsule stabilises ballistically).
+// Above this threshold SAS OFF is alarmed white-on-red.
+// Tune during flight testing — Mach 3.0 is a reasonable starting point.
+const float REENTRY_SAS_AERO_STABLE_MACH = 3.0f;
 const float DV_STG_ALARM_MS = 150.0f;  // white-on-red — nearly empty stage
 const float DV_STG_WARN_MS  = 300.0f;  // yellow
 

@@ -64,10 +64,10 @@ static void drawScreen_VEH(RA8875 &tft) {
   // Cache-checked draw helper using section-label-aware geometry
   auto vehVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[2][row];
+    RowCache &rc = rowCache[7][row];
     if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
     printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[2][row]);
+               label, val, fgc, bgc, COL_BACK, printState[7][row]);
     rc.value = val; rc.fg = fgc; rc.bg = bgc;
   };
 
@@ -154,21 +154,21 @@ static void drawScreen_VEH(RA8875 &tft) {
     snprintf(crewStr, sizeof(crewStr), "%d", state.crewCount);
     snprintf(capStr,  sizeof(capStr),  "%d", state.crewCapacity);
 
-    RowCache &cc = rowCache[2][9];
+    RowCache &cc = rowCache[7][9];
     String crewS = crewStr;
     if (cc.value != crewS || cc.fg != COL_VALUE || cc.bg != COL_BACK) {
       printValue(tft, F, AX, y, AHW - ROW_PAD, h,
                  "Crew:", crewS, COL_VALUE, COL_BACK, COL_BACK,
-                 printState[2][9]);
+                 printState[7][9]);
       cc.value = crewS; cc.fg = COL_VALUE; cc.bg = COL_BACK;
     }
 
-    RowCache &ca = rowCache[2][10];
+    RowCache &ca = rowCache[7][10];
     String capS = capStr;
     if (ca.value != capS || ca.fg != COL_VALUE || ca.bg != COL_BACK) {
       printValue(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h,
                  "Cap:", capS, COL_VALUE, COL_BACK, COL_BACK,
-                 printState[2][10]);
+                 printState[7][10]);
       ca.value = capS; ca.fg = COL_VALUE; ca.bg = COL_BACK;
     }
   }
@@ -182,10 +182,13 @@ static void drawScreen_VEH(RA8875 &tft) {
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
   vehVal(6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
 
-  // Row 7 — Total ΔV: white-on-red if < stage ΔV, yellow <500, green
-  if      (state.totalDeltaV < state.stageDeltaV) { fg = TFT_WHITE;     bg = TFT_RED;   }
-  else if (state.totalDeltaV < DV_TOT_WARN_MS)    { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-  else                                            { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+  // Row 7 — Total ΔV: same threshold bands as stage ΔV but using DV_TOT_WARN_MS.
+  // Cross-comparing to stageDeltaV caused oscillation when both values are noisy;
+  // total ΔV is always ≥ stage ΔV by definition so that alarm was never meaningful.
+  thresholdColor((uint16_t)constrain(state.totalDeltaV, 0, 65535),
+                 DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
+                 DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
+                      TFT_DARK_GREEN, TFT_BLACK, fg, bg);
   vehVal(7, "\xCE\x94V.Tot:", fmtMs(state.totalDeltaV), fg, bg);
 }
 

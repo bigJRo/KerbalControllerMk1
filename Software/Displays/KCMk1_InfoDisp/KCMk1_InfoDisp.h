@@ -6,7 +6,7 @@
 
 #include <KerbalDisplayCommon.h>
 #include <KerbalDisplayAudio.h>
-// KerbalSimpit will be included in Phase 2 (Simpit integration).
+#include <KerbalSimpit.h>
 // I2C slave interface will be added in Phase 3.
 
 
@@ -58,8 +58,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 2.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 0;
-static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 2;
+static const uint8_t SKETCH_VERSION_MINOR = 8;
+static const uint8_t SKETCH_VERSION_PATCH = 9;
 
 
 /***************************************************************************************
@@ -68,7 +68,21 @@ static const uint8_t SKETCH_VERSION_PATCH = 2;
 extern bool  debugMode;
 extern bool  demoMode;
 extern const float STALL_SPEED_MS;
+extern const float REENTRY_SAS_AERO_STABLE_MACH;
+extern const float LNDG_DROGUE_SAFE_MS;
+extern const float LNDG_DROGUE_RISKY_MS;
+extern const float LNDG_MAIN_SAFE_MS;
+extern const float LNDG_MAIN_RISKY_MS;
+extern const float LNDG_CHUTE_SEMI_DENSITY;
+extern const float LNDG_CHUTE_FULL_ALT;
 extern const uint8_t DISPLAY_ROTATION;
+
+// Flight state (populated by SimpitHandler.ino)
+extern bool simpitConnected;  // true after Simpit handshake succeeds
+extern bool flightScene;      // true when KSP is in a flight scene
+
+// Simpit object (defined in SimpitHandler.ino)
+extern KerbalSimpit simpit;
 
 
 /***************************************************************************************
@@ -146,11 +160,12 @@ struct AppState {
   float     tgtVelHeading = 0.0f;    // degrees — heading of relative velocity vector
   float     tgtVelPitch   = 0.0f;    // degrees — pitch of relative velocity vector
 
-  // Orbit intercepts (from intersectsMessage, negative if no intercept)
-  float     intercept1Dist = -1.0f;  // m — distance at first intercept
-  int32_t   intercept1Time = -1;     // s — time to first intercept
-  float     intercept2Dist = -1.0f;  // m — distance at second intercept
-  int32_t   intercept2Time = -1;     // s — time to second intercept
+  // Orbit intercepts — KSP2 only (INTERSECTS_MESSAGE not available in KSP1).
+  // Fields retained as stubs for future KSP2 or closest-approach implementation.
+  float     intercept1Dist = -1.0f;
+  float     intercept1Time = -1.0f;
+  float     intercept2Dist = -1.0f;
+  float     intercept2Time = -1.0f;
 
   // RCS state
   bool      rcs_on        = false;   // from ACTIONSTATUS_MESSAGE & RCS_ACTION
@@ -193,12 +208,21 @@ void drawStaticScreen(RA8875 &tft, ScreenType s);
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(RA8875 &tft, ScreenType s);
 
+// Standby screen (shown when not in a flight scene)
+void drawStandbyScreen(RA8875 &tft);
+
+// Context-dependent screen selection on vessel/scene change
+ScreenType contextScreen();
+
 // TouchEvents.ino
 void processTouchEvents();
 
 // Demo.ino
 void initDemoMode();
 void stepDemoState();
+
+// SimpitHandler.ino
+void initSimpit();
 
 
 /***************************************************************************************
@@ -227,7 +251,9 @@ extern bool _lnchManualOverride;
 
 // LNDG mode state
 extern bool _lndgReentryMode;
+extern bool _lndgReentryRow3PeA;  // true when row 3 shows PeA (radarAlt > 2000m), false = V.Hrz
 
 // RNDZ/DOCK chrome state — defined in Screen_RNDZ/DOCK.ino, used by AAA_Screens.ino dispatch
 extern bool _rndzChromDrawn;
 extern bool _dockChromDrawn;
+extern bool _vesselDocked;   // true after VESSEL_CHANGE dock event, cleared on undock/vessel switch
