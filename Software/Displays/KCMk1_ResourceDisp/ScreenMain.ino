@@ -224,7 +224,7 @@ void updateScreenMain(RA8875 &tft) {
     float level = (max > 0.0f) ? (cur / max) : 0.0f;
     level = constrain(level, 0.0f, 1.0f);
 
-    if (fabsf(level - _prevLevel[i]) < 0.002f) continue;
+    if (fabsf(level - _prevLevel[i]) < BAR_LEVEL_HYSTERESIS) continue;
     _prevLevel[i] = level;
 
     uint16_t x     = barX(i);

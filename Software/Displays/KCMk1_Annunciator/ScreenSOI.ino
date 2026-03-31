@@ -4,6 +4,10 @@
 ****************************************************************************************/
 #include "KCMk1_Annunciator.h"
 
+// PrintState instances for KDC v2 printDisp() — one per row in drawSOIBody()
+static const uint8_t SOI_MAX_ROWS = 8;  // upper bound on body data rows
+PrintState psSOIRows[SOI_MAX_ROWS];
+
 
 
 /***************************************************************************************
@@ -61,7 +65,8 @@ void drawSOIBody(RA8875 &tft) {
     uint16_t y = SOI_ROWS_Y + i * SOI_ROW_H;
     printDisp(tft, &Roboto_Black_36, 0, y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROW_H,
               rows[i].label, rows[i].value,
-              TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, NO_BORDER);
+              TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, NO_BORDER,
+              psSOIRows[i]);
   }
 
   // Right BMP drawn last -- sits on top of any overlapping content

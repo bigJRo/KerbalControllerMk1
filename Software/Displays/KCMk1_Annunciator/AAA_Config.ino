@@ -71,3 +71,21 @@ const uint16_t masterAlarmMask = (1u << CW_GROUND_PROX) |
 ****************************************************************************************/
 const float ALERT_ALT_THRESHOLD = 3500.0f;   // metres sea level
 const float ALERT_VEL_THRESHOLD = 100.0f;    // m/s surface velocity
+
+/***************************************************************************************
+   CAUTION & WARNING NUMERIC THRESHOLDS
+   These mirror the conditions in CautionWarning.ino and are kept here for easy
+   flight-test tuning alongside the other alarm thresholds.
+   The InfoDisp panel uses equivalent constants (aligned by design):
+     CW_GROUND_PROX_S  = InfoDisp LNDG_TGRND_ALARM_S
+     CW_HIGH_G_ALARM   = InfoDisp G_ALARM_POS / G_ALARM_NEG
+     CW_LOW_DV_MS      = InfoDisp DV_STG_ALARM_MS
+     CW_LOW_BURN_S     = InfoDisp LNCH_BURNTIME_ALARM_S
+****************************************************************************************/
+const float CW_ALT_THRESHOLD_M = 500.0f;   // CW_ALT: surface alt below this (m)
+const float CW_GROUND_PROX_S   = 10.0f;    // CW_GROUND_PROX: T.Grnd below this (s)
+const float CW_HIGH_G_ALARM    =  9.0f;    // CW_HIGH_G: positive G alarm (g)
+const float CW_HIGH_G_WARN     = -5.0f;    // CW_HIGH_G: negative G alarm (g)
+const float CW_EC_LOW_FRAC     =  0.10f;   // CW_BUS_VOLTAGE: EC fraction below this
+const float CW_LOW_DV_MS       = 150.0f;   // CW_LOW_DV: stage ΔV below this (m/s)
+const float CW_LOW_BURN_S      =  60.0f;   // CW_LOW_DV: stage burn time below this (s)

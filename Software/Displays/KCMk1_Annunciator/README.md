@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch**
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v1.1.1
 Teensy 4.0 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -66,7 +66,7 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 1.0.0 | Display primitives, fonts, BMP loader, touch driver, system utils |
+| KerbalDisplayCommon | 2.0.1 | Display primitives, fonts, BMP loader, touch driver, system utils |
 | KerbalDisplayAudio | 1.0.0 | Non-blocking audio state machine |
 | RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
 | KerbalSimpit | latest | KSP telemetry plugin interface |
@@ -156,6 +156,13 @@ All tunables are in `AAA_Config.ino`. The three operating mode flags can also be
 | `LOW_DV_MECO_HOLDOFF_MS` | `1500` | Ms after MECO clears before LOW_DV warning can fire (prevents false flash on throttle-up) |
 | `ALERT_ALT_THRESHOLD` | `3500.0` | Altitude (m ASL) upward-crossing that triggers an alert chirp |
 | `ALERT_VEL_THRESHOLD` | `100.0` | Surface velocity (m/s) upward-crossing that triggers an alert chirp |
+| `CW_ALT_THRESHOLD_M` | `500.0` | Surface altitude (m) below which `CW_ALT` fires |
+| `CW_GROUND_PROX_S` | `10.0` | Time to impact (s) below which `CW_GROUND_PROX` fires — matches InfoDisp `LNDG_TGRND_ALARM_S` |
+| `CW_HIGH_G_ALARM` | `9.0` | Positive G alarm threshold (g) — matches InfoDisp `G_ALARM_POS` |
+| `CW_HIGH_G_WARN` | `-5.0` | Negative G alarm threshold (g) — matches InfoDisp `G_ALARM_NEG` |
+| `CW_EC_LOW_FRAC` | `0.10` | EC fraction of total below which `CW_BUS_VOLTAGE` fires |
+| `CW_LOW_DV_MS` | `150.0` | Stage ΔV (m/s) below which `CW_LOW_DV` fires — matches InfoDisp `DV_STG_ALARM_MS` |
+| `CW_LOW_BURN_S` | `60.0` | Stage burn time (s) below which `CW_LOW_DV` fires — matches InfoDisp `LNCH_BURNTIME_ALARM_S` |
 
 **Master alarm mask** — the set of C&W bits that illuminate MASTER ALARM and drive audio. Defined in `AAA_Config.ino` using the `CW_*` constants from `KCMk1_Annunciator.h`. Current mask: `GROUND_PROX`, `HIGH_G`, `BUS_VOLTAGE`, `HIGH_TEMP`, `LOW_DV`.
 
@@ -241,14 +248,14 @@ The C&W panel is a 16-bit bitmask (`state.cautionWarningState`) recomputed on ev
 | 1 | LOW SPACE | Info | Aloft, above atmosphere, below high-space threshold |
 | 2 | FLYING HIGH | Info | Aloft, in atmosphere, above `flyHigh` altitude |
 | 3 | FLYING LOW | Info | Aloft, in atmosphere, below `flyHigh` altitude |
-| 4 | ALT | Caution | Aloft, surface altitude < 500 m |
+| 4 | ALT | Caution | Aloft, surface altitude < `CW_ALT_THRESHOLD_M` (500 m) |
 | 5 | DESCENT | Caution | Aloft and descending (vertical velocity < 0) |
-| 6 | GROUND PROX ⚠ | Warning | Aloft, descending, gear up, < 10 s to impact |
+| 6 | GROUND PROX ⚠ | Warning | Aloft, descending, gear up, T.Grnd < `CW_GROUND_PROX_S` (10 s) |
 | 7 | MECO | Info | Throttle at 0% while in flight (not pre-launch) |
-| 8 | HIGH G ⚠ | Warning | G-forces > 9 g or < −5 g (atmosphere only via `AIRSPEED_MESSAGE`) |
-| 9 | BUS VOLTAGE ⚠ | Warning | EC < 10% of total capacity (requires ARP mod) |
+| 8 | HIGH G ⚠ | Warning | G-forces > `CW_HIGH_G_ALARM` (9 g) or < `CW_HIGH_G_WARN` (−5 g) |
+| 9 | BUS VOLTAGE ⚠ | Warning | EC < `CW_EC_LOW_FRAC` (10%) of total capacity (requires ARP mod) |
 | 10 | HIGH TEMP ⚠ | Warning | `maxTemp` or `skinTemp` > `tempAlarm` threshold |
-| 11 | LOW ΔV ⚠ | Warning | Stage ΔV < 150 m/s or burn time < 60 s (suppressed during MECO + 1500 ms hold-off) |
+| 11 | LOW ΔV ⚠ | Warning | Stage ΔV < `CW_LOW_DV_MS` (150 m/s) or burn time < `CW_LOW_BURN_S` (60 s) — suppressed during MECO + `LOW_DV_MECO_HOLDOFF_MS` hold-off |
 | 12 | WARP | Caution | Time warp index > 0 |
 | 13 | ATMO | Caution | Vessel inside atmosphere |
 | 14 | O2 PRESENT | Info | Atmosphere is breathable (gated on `inAtmo` to prevent stale reads) |
@@ -265,6 +272,16 @@ The C&W panel is a 16-bit bitmask (`state.cautionWarningState`) recomputed on ev
 - Surface velocity crossing `ALERT_VEL_THRESHOLD` (upward) → alert chirp
 - `ORBIT` bit set (entering orbit) → alert chirp
 - Apoapsis crossing body's minimum safe altitude (upward) → alert chirp
+
+---
+
+## Version History
+
+| Version | Notes |
+|---------|-------|
+| **1.1.1** | Removed 3-finger standby→main gesture (dev feature, no longer needed). Count filter now rejects anything other than single-finger touch. |
+| **1.1.0** | Updated to KerbalDisplayCommon v2.0.1 (`PrintState` required for `printDisp`/`printValue`). Ported 6-layer touch phantom defence from InfoDisp (Y dead zone, double-read stability, jitter check, require-release). Extracted all C&W numeric thresholds to `AAA_Config.ino` (`CW_ALT_THRESHOLD_M`, `CW_GROUND_PROX_S`, `CW_HIGH_G_ALARM/WARN`, `CW_EC_LOW_FRAC`, `CW_LOW_DV_MS`, `CW_LOW_BURN_S`). Added sketch version constants to header. |
+| **1.0.0** | Initial release. 3-screen display (Main/SOI/Standby), full C&W panel, KerbalSimpit integration, KerbalDisplayAudio, I2C slave boot handshake with master Teensy 4.1. |
 
 ---
 

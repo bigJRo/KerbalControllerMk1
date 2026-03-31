@@ -5,11 +5,25 @@
    type enum, and extern declarations for all globals.
 ****************************************************************************************/
 
+// Requires KerbalDisplayCommon >= 2.0.1 (PrintState struct introduced in v2.0.0)
 #include <KerbalDisplayCommon.h>
 // KerbalDisplayAudio is included as a dependency of KerbalDisplayCommon but
 // audio output is not implemented on this panel. Pin 9 is claimed by the library.
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
+
+
+/***************************************************************************************
+   SKETCH VERSION
+   Follows semantic versioning: MAJOR.MINOR.PATCH
+     MAJOR — incompatible structural changes
+     MINOR — new features or screens added
+     PATCH — bug fixes, threshold tuning, comment/style changes
+   This sketch requires KerbalDisplayCommon >= 2.0.1
+****************************************************************************************/
+static const uint8_t SKETCH_VERSION_MAJOR = 1;
+static const uint8_t SKETCH_VERSION_MINOR = 3;
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -186,3 +200,10 @@ extern String           currentVesselName;
 // Vessel slot cache helpers (AAA_Globals.ino)
 void saveVesselSlots(const String &name);
 bool recallVesselSlots(const String &name);
+
+// From AAA_Config.ino — bar update hysteresis
+extern const float BAR_LEVEL_HYSTERESIS;  // minimum level change fraction to trigger redraw
+
+// PrintState instances for KDC v2 printValue() rendering (ScreenDetail.ino).
+// One per detail row (max 6 rows: 3 craft + 3 stage).
+extern PrintState psDetailRows[6];

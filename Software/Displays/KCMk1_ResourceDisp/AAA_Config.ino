@@ -44,3 +44,11 @@ const uint8_t DISPLAY_ROTATION = 0;
    Uses the bar's own resource color above the threshold.
 ****************************************************************************************/
 const uint16_t LOW_RES_THRESHOLD = 20;  // percent
+
+/***************************************************************************************
+   BAR UPDATE HYSTERESIS
+   Minimum fractional change in resource level required to trigger a bar redraw.
+   Prevents constant redraws from small Simpit value fluctuations.
+   0.002 = 0.2% — below this change the bar does not redraw.
+****************************************************************************************/
+const float BAR_LEVEL_HYSTERESIS = 0.002f;

@@ -40,7 +40,14 @@ void setup() {
   Serial.begin(115200);
   SerialUSB1.begin(115200);
   setKDCDebugMode(debugMode);
-  if (debugMode) Serial.println(F("ResourceDisp: startup"));
+  if (debugMode) {
+    uint32_t t = millis();
+    while (!Serial && (millis() - t < 2000)) {}
+    Serial.print(F("ResourceDisp: v"));
+    Serial.print(SKETCH_VERSION_MAJOR); Serial.print('.');
+    Serial.print(SKETCH_VERSION_MINOR); Serial.print('.');
+    Serial.println(SKETCH_VERSION_PATCH);
+  }
 
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);

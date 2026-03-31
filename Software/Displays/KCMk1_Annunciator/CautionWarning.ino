@@ -43,7 +43,7 @@ void updateCautionWarningState() {
     bitSet(cw, CW_FLYING_LOW);
 
   // Bit 4 -- ALT: low surface altitude while aloft
-  if (isAloft && state.alt_surf < 500.0f)
+  if (isAloft && state.alt_surf < CW_ALT_THRESHOLD_M)
     bitSet(cw, CW_ALT);
 
   // Bit 5 -- DESCENT: descending while aloft
@@ -52,7 +52,7 @@ void updateCautionWarningState() {
 
   // Bit 6 -- GROUND PROX: descending, gear up, <10s to impact
   if (isAloft && state.vel_vert < 0.0f && !state.gear_on &&
-      state.alt_surf > 0.0f && (state.alt_surf / fabsf(state.vel_vert)) < 10.0f)
+      state.alt_surf > 0.0f && (state.alt_surf / fabsf(state.vel_vert)) < CW_GROUND_PROX_S)
     bitSet(cw, CW_GROUND_PROX);
 
   // Bit 7 -- MECO: throttle at 0% -- only meaningful once airborne or in space,
@@ -68,11 +68,11 @@ void updateCautionWarningState() {
   bool inMecoHoldOff = !mecoNow && (millis() - _mecoClearedAt) < LOW_DV_MECO_HOLDOFF_MS;
 
   // Bit 8 -- HIGH G
-  if (state.gForces > 9.0f || state.gForces < -5.0f)
+  if (state.gForces > CW_HIGH_G_ALARM || state.gForces < CW_HIGH_G_WARN)
     bitSet(cw, CW_HIGH_G);
 
   // Bit 9 -- BUS VOLTAGE: EC below 10%
-  if (state.EC_total > 0.0f && (state.EC / state.EC_total) < 0.10f)
+  if (state.EC_total > 0.0f && (state.EC / state.EC_total) < CW_EC_LOW_FRAC)
     bitSet(cw, CW_BUS_VOLTAGE);
 
   // Bit 10 -- HIGH TEMP
@@ -86,7 +86,7 @@ void updateCautionWarningState() {
   // ~1 second after ignition. stageDV = 0 is a legitimate warning condition
   // (empty stage) so there is no zero-guard here.
   if (inFlight && !isPreLaunch && !mecoNow && !inMecoHoldOff &&
-      (state.stageDV < 150.0f || state.stageBurnTime < 60.0f))
+      (state.stageDV < CW_LOW_DV_MS || state.stageBurnTime < CW_LOW_BURN_S))
     bitSet(cw, CW_LOW_DV);
 
   // Bit 12 -- WARP

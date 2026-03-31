@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch**
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v1.3.0
 Teensy 4.0 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -66,7 +66,7 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 1.0.0 | Display primitives, fonts, BMP loader, touch driver, system utils |
+| KerbalDisplayCommon | 2.0.1 | Display primitives, fonts, BMP loader, touch driver, system utils |
 | KerbalDisplayAudio | 1.0.0 | Audio library (included as dependency; audio not used on this panel) |
 | RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
 | KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
@@ -121,6 +121,7 @@ All tunables are in `AAA_Config.ino`.
 | `MAX_SLOTS` | `16` | Maximum number of active resource slots |
 | `DEFAULT_SLOT_COUNT` | `8` | Number of slots loaded by `initDefaultSlots()` (STD preset) |
 | `VESSEL_CACHE_SIZE` | `20` | Maximum number of per-vessel slot configurations held in session RAM |
+| `BAR_LEVEL_HYSTERESIS` | `0.002` | Minimum fractional resource level change required to trigger a bar redraw (0.2%). Prevents constant SPI traffic from small Simpit fluctuations. |
 
 ---
 
@@ -313,11 +314,22 @@ In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions from standby to
 
 ---
 
+## Version History
+
+| Version | Notes |
+|---------|-------|
+| **1.3.0** | Updated to KerbalDisplayCommon v2.0.1 (`PrintState` required for `printValue`). Ported 6-layer touch phantom defence from InfoDisp (count filter, Y dead zone, double-read stability, jitter check, require-release, 500 ms debounce). Extracted bar update hysteresis to `BAR_LEVEL_HYSTERESIS` config constant. Added sketch version constants to header. |
+| **1.2.0** | I2C slave boot handshake with master Teensy 4.1 (`I2CSlave.ino`), per-vessel slot memory cache (`VESSEL_CACHE_SIZE`). Phase 3 complete. |
+| **1.1.0** | KerbalSimpit integration for live resource telemetry. Phase 2 complete. |
+| **1.0.0** | Initial release. Demo mode bar graph display, touch-based resource selection and ordering, preset configurations, numerical detail screen. Phase 1 complete. |
+
+---
+
 ## Notes
 
 - **`demoMode`** defaults to `false` for production. Set `true` in `AAA_Config.ino` for bench testing without KSP. The I2C master can also toggle `demoMode` at runtime — switching to demo reinitialises sine-wave state; switching to live connects Simpit (or requests a channel refresh if already connected).
 - **Display rotation** — set `DISPLAY_ROTATION = 2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not required; the GSL1680F reports screen-native coordinates.
-- **Touch implementation** — `isTouched()` polls the GSL1680F INT pin directly via `digitalRead()`. The INT pin stays HIGH for the full duration of a touch, making polling reliable without an ISR.
+- **Touch implementation** — `isTouched()` polls the GSL1680F INT pin directly via `digitalRead()`. The INT pin stays HIGH for the full duration of a touch, making polling reliable without an ISR. Touch events pass through a 6-layer phantom defence (count filter, Y dead zone, bounds check, double-read stability, 500 ms debounce, require-release) before being dispatched.
 - **String heap usage** — `currentVesselName` and `VesselSlotRecord::vesselName` use Arduino `String`. Low risk on Teensy 4.0 (512 KB RAM) but worth noting if porting to a memory-constrained target.
 - **`KerbalDisplayAudio`** is included as a library dependency and claims pin 9, but audio output is not implemented on this panel.
 
