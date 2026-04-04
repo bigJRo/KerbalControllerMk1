@@ -11,7 +11,7 @@
                   Pin returns HIGH after the onRequest handler fires.
 
    Outbound packet (InfoDisp -> Master), I2C_PACKET_SIZE = 4 bytes:
-     Byte 0  : 0xAD  -- sync/magic byte for framing validation
+     Byte 0  : 0xAE  -- sync/magic byte for framing validation (was 0xAD; collision fix)
      Byte 1  : flags
                  bit 0 = simpitConnected
                  bit 1 = flightScene
@@ -39,13 +39,12 @@
      Update master sketch to match in both cases.
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
-#include <Wire.h>
 
-#define I2C_SLAVE_ADDR   0x12
-#define I2C_INT_PIN      2
-#define I2C_PACKET_SIZE  4      // outbound: InfoDisp -> Master
-#define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp
-#define I2C_SYNC_BYTE    0xAD
+#define I2C_SLAVE_ADDR   KCM_I2C_ADDR_INFODISP      // #3C from SystemConfig
+#define I2C_INT_PIN      KCM_I2C_INT_PIN             // #3C from SystemConfig
+#define I2C_PACKET_SIZE  4      // outbound: InfoDisp -> Master (panel-specific)
+#define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp (panel-specific)
+#define I2C_SYNC_BYTE    KCM_I2C_SYNC_INFODISP      // #3C from SystemConfig (0xAE, collision fix)
 
 // requestType values (bits 7:4 of controlByte)
 #define I2C_REQ_NOP           0x0
@@ -70,19 +69,27 @@ volatile bool i2cProceedReceived = false;
 
 
 /***************************************************************************************
-   BUILD PACKET
-   Assembles the current state into i2cPacket[]. Call whenever state changes.
+   PACKET FILL HELPER (#21)
+   Writes current state into any 4-byte buffer. Used by both buildI2CPacket()
+   and the change-detection path in updateI2CState() to avoid duplicated assembly.
 ****************************************************************************************/
-static void buildI2CPacket() {
+static void fillI2CPacketBuffer(uint8_t *buf) {
   uint8_t flags = 0;
   if (simpitConnected) flags |= (1 << 0);
   if (flightScene)     flags |= (1 << 1);
   if (demoMode)        flags |= (1 << 2);
+  buf[0] = I2C_SYNC_BYTE;
+  buf[1] = flags;
+  buf[2] = (uint8_t)activeScreen;
+  buf[3] = 0x00;
+}
 
-  i2cPacket[0] = I2C_SYNC_BYTE;
-  i2cPacket[1] = flags;
-  i2cPacket[2] = (uint8_t)activeScreen;
-  i2cPacket[3] = 0x00;
+/***************************************************************************************
+   BUILD PACKET
+   Thin wrapper around fillI2CPacketBuffer() — writes into the live packet buffer.
+****************************************************************************************/
+static void buildI2CPacket() {
+  fillI2CPacketBuffer((uint8_t *)i2cPacket);
 }
 
 
@@ -115,12 +122,21 @@ static void processI2CCommand() {
       if (debugMode) Serial.println(F("InfoDisp: I2C -- demoMode on"));
     } else {
       if (debugMode) Serial.println(F("InfoDisp: I2C -- demoMode off"));
-      // Runtime demo->live: splash will be drawn by loop() _wasDemo transition
+      // #24 runtime demo->live: connect Simpit if not already connected
+      if (!simpitConnected) {
+        initSimpit();
+      } else {
+        simpit.requestMessageOnChannel(0);
+      }
+      // Standby splash drawn by loop() _wasDemo transition block
     }
   }
 
   if (newIdle != idleState) {
     idleState = newIdle;
+    if (idleState && !flightScene) {
+      drawStandbyScreen(infoDisp);   // #4 show standby immediately when idle asserted
+    }
     if (debugMode) {
       Serial.print(F("InfoDisp: I2C -- idleState="));
       Serial.println(idleState);
@@ -156,6 +172,8 @@ static void processI2CCommand() {
       break;
 
     case I2C_REQ_DISPLAY_RESET:
+      // switchToScreen() only — unlike the Annunciator, InfoDisp has no per-flight
+      // boolean flags that need clearing on a display-only reset.
       if (debugMode) Serial.println(F("InfoDisp: I2C -- display reset"));
       switchToScreen(activeScreen);
       break;
@@ -241,25 +259,12 @@ void updateI2CState() {
     processI2CCommand();
   }
 
+  // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {
-    uint8_t flags = 0;
-    if (simpitConnected) flags |= (1 << 0);
-    if (flightScene)     flags |= (1 << 1);
-    if (demoMode)        flags |= (1 << 2);
-
     uint8_t candidate[I2C_PACKET_SIZE];
-    candidate[0] = I2C_SYNC_BYTE;
-    candidate[1] = flags;
-    candidate[2] = (uint8_t)activeScreen;
-    candidate[3] = 0x00;
-
-    bool changed = false;
-    for (uint8_t i = 0; i < I2C_PACKET_SIZE; i++) {
-      if (candidate[i] != i2cPacket[i]) { changed = true; break; }
-    }
-
-    if (changed) {
-      for (uint8_t i = 0; i < I2C_PACKET_SIZE; i++) i2cPacket[i] = candidate[i];
+    fillI2CPacketBuffer(candidate);
+    if (memcmp((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE) != 0) {
+      memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
       i2cPacketReady = true;
       digitalWriteFast(I2C_INT_PIN, LOW);
       if (debugMode) Serial.println(F("InfoDisp: I2C packet ready"));

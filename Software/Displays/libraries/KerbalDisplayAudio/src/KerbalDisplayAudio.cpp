@@ -61,6 +61,9 @@ void updateAudio() {
         tone(AUDIO_PIN, _alarmHiPhase ? AUDIO_ALARM_FREQ_HI : AUDIO_ALARM_FREQ_LO);
       }
       break;
+
+    case AUDIO_IDLE:
+      break;  // handled by early-return above; case listed to silence -Wswitch
   }
 }
 
@@ -90,6 +93,10 @@ void audioStartAlarm() {
   tone(AUDIO_PIN, AUDIO_ALARM_FREQ_HI);
 }
 
+// audioStopAlarm() — call when ALL alarm CONDITIONS have cleared. Transitions
+// AUDIO_MASTER_ALARM -> AUDIO_IDLE and resets the silence latch in the sketch.
+// Distinct from audioSilence(): stopAlarm ends the alarm state; silence only
+// quiets the tone while keeping AUDIO_MASTER_ALARM active.
 void audioStopAlarm() {
   if (_audioState == AUDIO_MASTER_ALARM) {
     noTone(AUDIO_PIN);
@@ -97,11 +104,12 @@ void audioStopAlarm() {
   }
 }
 
+// audioSilence() — immediately stops the tone but does NOT clear AUDIO_MASTER_ALARM.
+// Use when the crew acknowledges an active alarm without conditions clearing.
+// Chirps/tones remain suppressed. Call audioStopAlarm() when conditions actually clear.
 void audioSilence() {
-  if (_audioState == AUDIO_MASTER_ALARM) {
-    noTone(AUDIO_PIN);
-    _audioState = AUDIO_IDLE;
-  }
+  noTone(AUDIO_PIN);
+  _audioState = AUDIO_IDLE;
 }
 
 AudioState audioGetState() {

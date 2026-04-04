@@ -27,8 +27,8 @@
 /***************************************************************************************
    LAYOUT CONSTANTS -- MAIN SCREEN
 ****************************************************************************************/
-static const uint16_t SCREEN_W     = 800;
-static const uint16_t SCREEN_H     = 480;
+static const uint16_t SCREEN_W     = KCM_SCREEN_W;   // #3A from SystemConfig
+static const uint16_t SCREEN_H     = KCM_SCREEN_H;   // #3A from SystemConfig
 static const uint16_t AXIS_W       = 44;   // px reserved on left for Y-axis labels + ticks
 static const uint16_t SIDEBAR_W    = 80;   // px -- width of right-hand nav button column
 static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
@@ -243,10 +243,10 @@ void updateScreenMain(RA8875 &tft) {
     //  31-100%  : white text on black background  (nominal)
     // Bar fill shifts to red below LOW_RES_THRESHOLD (AAA_Config, default 20%).
     uint16_t percFore, percBack;
-    thresholdColor(perc,
-                   10, TFT_RED,    TFT_BLACK,
-                   30, TFT_YELLOW, TFT_BLACK,
-                       TFT_WHITE,  TFT_BLACK,
+    thresholdColor((uint16_t)perc,
+                   (uint16_t)10, TFT_RED,    TFT_BLACK,
+                   (uint16_t)30, TFT_YELLOW, TFT_BLACK,
+                                TFT_WHITE,  TFT_BLACK,
                    percFore, percBack);
 
     const tFont *font = barFont();

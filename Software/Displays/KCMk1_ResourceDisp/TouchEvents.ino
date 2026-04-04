@@ -26,9 +26,9 @@
 #include "KCMk1_ResourceDisp.h"
 
 
-static const uint32_t TOUCH_DEBOUNCE_MS  = 500;   // ms — main debounce window
-static const uint16_t TOUCH_DEAD_ZONE    = 12;    // px — reject y >= SCREEN_H - this
-static const uint16_t TOUCH_JITTER_MAX   = 20;    // px — max movement across reads
+static const uint32_t TOUCH_DEBOUNCE_MS  = KCM_TOUCH_DEBOUNCE_MS;     // #3B from SystemConfig
+static const uint16_t TOUCH_DEAD_ZONE    = KCM_TOUCH_DEAD_ZONE_PX;    // #3B px — reject y >= SCREEN_H - this
+static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px — max movement across reads
 // SCREEN_W and SCREEN_H are defined in ScreenMain.ino (shared across tabs)
 
 static uint32_t _lastTouchTime  = 0;
@@ -46,7 +46,7 @@ void processTouchEvents() {
   if (lastTouch.count == 0) return;
 
   // Count filter — reject multi-finger (this panel has no multi-touch gestures)
-  if (lastTouch.count > 1) {
+  if (lastTouch.count != 1) {
     if (debugMode) {
       Serial.print(F("ResourceDisp: Touch discarded (count="));
       Serial.print(lastTouch.count); Serial.println(F(")"));

@@ -5,6 +5,10 @@
 
 
 bool _dockChromDrawn = false;
+// _vesselDocked is set/cleared by VESSEL_CHANGE_MESSAGE (msg[0]==2 docked, msg[0]==3
+// undocked). It co-exists with state.situation because sit_Docked in FLIGHT_STATUS is
+// not always sent promptly after docking — the VESSEL_CHANGE dock event is more reliable
+// for UI switching. Both are tracked so neither path is missed.
 bool _vesselDocked   = false;
 uint32_t _dockedTimestamp = 0;
 
@@ -151,13 +155,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
   }
 
   // Cache-checked draw helper using section-label-aware geometry
+  // dockVal -> drawValue() split overload with AX/AW section geometry (#6B)
   auto dockVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[5][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[5][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 5, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // Row 0 — Own altitude: simple red/green

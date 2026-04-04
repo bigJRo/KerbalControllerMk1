@@ -40,11 +40,11 @@
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
-#define I2C_SLAVE_ADDR   0x11
-#define I2C_INT_PIN      2
-#define I2C_PACKET_SIZE  4      // outbound: ResourceDisp -> Master
-#define I2C_CMD_SIZE     2      // inbound:  Master -> ResourceDisp
-#define I2C_SYNC_BYTE    0xAD
+#define I2C_SLAVE_ADDR   KCM_I2C_ADDR_RESDISP       // #3C from SystemConfig
+#define I2C_INT_PIN      KCM_I2C_INT_PIN             // #3C from SystemConfig
+#define I2C_PACKET_SIZE  4      // outbound: ResourceDisp -> Master (panel-specific)
+#define I2C_CMD_SIZE     2      // inbound:  Master -> ResourceDisp (panel-specific)
+#define I2C_SYNC_BYTE    KCM_I2C_SYNC_RESDISP       // #3C from SystemConfig
 
 // requestType values (bits 7:4 of controlByte)
 #define I2C_REQ_NOP           0x0   // no operation
@@ -69,19 +69,27 @@ volatile bool i2cProceedReceived = false;
 
 
 /***************************************************************************************
-   BUILD PACKET
-   Assembles the current state into i2cPacket[]. Call whenever state changes.
+   PACKET FILL HELPER (#21)
+   Writes current state into any 4-byte buffer. Used by both buildI2CPacket()
+   and the change-detection path in updateI2CState() to avoid duplicated assembly.
 ****************************************************************************************/
-static void buildI2CPacket() {
+static void fillI2CPacketBuffer(uint8_t *buf) {
   uint8_t flags = 0;
   if (simpitConnected) flags |= (1 << 0);
   if (flightScene)     flags |= (1 << 1);
   if (demoMode)        flags |= (1 << 2);
+  buf[0] = I2C_SYNC_BYTE;
+  buf[1] = flags;
+  buf[2] = slotCount;
+  buf[3] = 0x00;
+}
 
-  i2cPacket[0] = I2C_SYNC_BYTE;
-  i2cPacket[1] = flags;
-  i2cPacket[2] = slotCount;
-  i2cPacket[3] = 0x00;
+/***************************************************************************************
+   BUILD PACKET
+   Thin wrapper around fillI2CPacketBuffer() — writes into the live packet buffer.
+****************************************************************************************/
+static void buildI2CPacket() {
+  fillI2CPacketBuffer((uint8_t *)i2cPacket);
 }
 
 
@@ -176,6 +184,8 @@ static void processI2CCommand() {
 
     case I2C_REQ_DISPLAY_RESET:
       // Reset display state so the current screen redraws from scratch on next loop pass.
+      // switchToScreen() only — unlike the Annunciator, ResourceDisp has no per-flight
+      // boolean flags that need clearing on a display-only reset.
       if (debugMode) Serial.println(F("ResourceDisp: I2C -- display reset"));
       switchToScreen(activeScreen);
       break;
@@ -272,29 +282,12 @@ void updateI2CState() {
     processI2CCommand();
   }
 
-  // --- Detect outbound state changes ---
-  // Only build candidate packet when: not already pending a read, and in live
-  // mode (in demo mode the flags change rarely and slotCount is stable, but we
-  // still check periodically so the master gets accurate state on demand).
+  // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {
-    uint8_t flags = 0;
-    if (simpitConnected) flags |= (1 << 0);
-    if (flightScene)     flags |= (1 << 1);
-    if (demoMode)        flags |= (1 << 2);
-
     uint8_t candidate[I2C_PACKET_SIZE];
-    candidate[0] = I2C_SYNC_BYTE;
-    candidate[1] = flags;
-    candidate[2] = slotCount;
-    candidate[3] = 0x00;
-
-    bool changed = false;
-    for (uint8_t i = 0; i < I2C_PACKET_SIZE; i++) {
-      if (candidate[i] != i2cPacket[i]) { changed = true; break; }
-    }
-
-    if (changed) {
-      for (uint8_t i = 0; i < I2C_PACKET_SIZE; i++) i2cPacket[i] = candidate[i];
+    fillI2CPacketBuffer(candidate);
+    if (memcmp((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE) != 0) {
+      memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
       i2cPacketReady = true;
       digitalWriteFast(I2C_INT_PIN, LOW);
       if (debugMode) Serial.println(F("ResourceDisp: I2C packet ready"));

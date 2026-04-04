@@ -98,14 +98,10 @@ static void drawScreen_ATT(RA8875 &tft) {
   tft.drawLine(0, g2y+1, CONTENT_W, g2y+1, TFT_GREY);
 
   // Cache-checked draw helper
+  // attVal -> drawValue() split overload with RX/RW section geometry (#6B)
   auto attVal = [&](uint8_t row, const char *label,
                     const String &val, uint16_t fg, uint16_t bg) {
-    RowCache &cache = rowCache[2][row];
-    if (cache.value == val && cache.fg == fg && cache.bg == bg) return;
-    printValue(tft, F, RX, rowYFor(row, NR), RW, rowHFor(NR),
-               label, val, fg, bg, COL_BACK,
-               printState[2][row]);
-    cache.value = val; cache.fg = fg; cache.bg = bg;
+    drawValue(tft, 2, row, RX, RW, label, val, fg, bg, F, NR);
   };
 
   // --- CRAFT group (rows 0-3) ---

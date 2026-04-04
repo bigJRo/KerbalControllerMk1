@@ -240,10 +240,10 @@ void stepDemoState() {
    INIT DEMO MODE
    Called from setup() when demoMode is true. Sets the initial state for the demo
    and starts on the main screen with flightScene active.
-   Note: activeScreen is set directly here rather than via switchToScreen() because
-   prevScreen is also being initialised -- calling switchToScreen() at this point
-   would trigger invalidateAllState() before any fields have been populated, which
-   is redundant since invalidateAllState() is called explicitly at the end anyway.
+   Note: activeScreen and prevScreen are set directly here rather than via
+   switchToScreen() because invalidateAllState() is called explicitly at the end,
+   making a switchToScreen() call redundant at this point. switchToScreen() is
+   safe to call after initDemoMode() returns (Phase 2B wires this up).
 ****************************************************************************************/
 void initDemoMode() {
   flightScene = true;
@@ -255,4 +255,8 @@ void initDemoMode() {
   demoVesselIndex  = 0;
   state.vesselName = demoVesselNames[demoVesselIndex];
   invalidateAllState();
+  // #23 call switchToScreen() to record timestamp and make entry explicit;
+  // invalidateAllState() above means the switchToScreen() call is not redundant —
+  // it stamps lastScreenSwitch and matches the pattern of the other panels.
+  switchToScreen(screen_Main);
 }

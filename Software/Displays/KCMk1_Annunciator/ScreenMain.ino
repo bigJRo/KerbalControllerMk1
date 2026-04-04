@@ -265,8 +265,8 @@ void updateScreenMain(RA8875 &tft) {
 
   if (state.maxTemp != prev.maxTemp) {
     uint16_t f, b;
-    thresholdColor(state.maxTemp, tempCaution, TFT_DARK_GREEN, TFT_BLACK,
-                   tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
+    thresholdColor((uint16_t)state.maxTemp, (uint16_t)tempCaution, TFT_DARK_GREEN, TFT_BLACK,
+                   (uint16_t)tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
     printValue(tft, &Roboto_Black_24, 3 * DATA_W, 4 * CAUTWARN_H, DATA_W, DATA_H,
                "Tmax:", formatPerc(state.maxTemp), f, b, TFT_BLACK, psMaxTemp);
     prev.maxTemp = state.maxTemp;
@@ -286,8 +286,8 @@ void updateScreenMain(RA8875 &tft) {
 
   if (state.commNet != prev.commNet) {
     uint16_t f, b;
-    thresholdColor(state.commNet, commAlarm, TFT_RED, TFT_BLACK,
-                   commCaution, TFT_YELLOW, TFT_BLACK, TFT_DARK_GREEN, TFT_BLACK, f, b);
+    thresholdColor((uint16_t)state.commNet, (uint16_t)commAlarm, TFT_RED, TFT_BLACK,
+                   (uint16_t)commCaution, TFT_YELLOW, TFT_BLACK, TFT_DARK_GREEN, TFT_BLACK, f, b);
     printValue(tft, &Roboto_Black_24, DATA_W, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
                "COM:", formatPerc(state.commNet), f, b, TFT_BLACK, psCommNet);
     prev.commNet = state.commNet;
@@ -301,8 +301,8 @@ void updateScreenMain(RA8875 &tft) {
 
   if (state.skinTemp != prev.skinTemp) {
     uint16_t f, b;
-    thresholdColor(state.skinTemp, tempCaution, TFT_DARK_GREEN, TFT_BLACK,
-                   tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
+    thresholdColor((uint16_t)state.skinTemp, (uint16_t)tempCaution, TFT_DARK_GREEN, TFT_BLACK,
+                   (uint16_t)tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
     printValue(tft, &Roboto_Black_24, 3 * DATA_W, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
                "Tskin:", formatPerc(state.skinTemp), f, b, TFT_BLACK, psSkinTemp);
     prev.skinTemp = state.skinTemp;

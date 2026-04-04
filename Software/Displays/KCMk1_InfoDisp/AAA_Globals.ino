@@ -13,10 +13,24 @@ TouchResult lastTouch;
 
 
 /***************************************************************************************
+   SIMPIT OBJECT
+   Moved here from SimpitHandler.ino (#9) — owned in globals alongside other
+   shared objects. SerialUSB1 is the second USB COM port, dedicated to KSP telemetry.
+****************************************************************************************/
+KerbalSimpit simpit(SerialUSB1);
+
+
+/***************************************************************************************
    SCREEN STATE
 ****************************************************************************************/
 ScreenType activeScreen = screen_LNCH;
 ScreenType prevScreen   = screen_COUNT;  // sentinel -- forces chrome on first loop
+
+
+/***************************************************************************************
+   SCREEN TRANSITION TIMESTAMP  (#8)
+****************************************************************************************/
+uint32_t lastScreenSwitch = 0;
 
 
 /***************************************************************************************
@@ -54,8 +68,9 @@ void switchToScreen(ScreenType s) {
   if (s != screen_ORB && _orbAdvancedMode) {
     _orbAdvancedMode = false;
   }
-  activeScreen = s;
-  prevScreen   = screen_COUNT;
+  activeScreen     = s;
+  prevScreen       = screen_COUNT;
+  lastScreenSwitch = millis();   // #8 record timestamp for touch debounce and diagnostics
 }
 
 
@@ -111,6 +126,5 @@ ScreenType contextScreen() {
    Displays the shared splash BMP used by all KCMk1 panels.
 ****************************************************************************************/
 void drawStandbyScreen(RA8875 &tft) {
-  tft.fillScreen(TFT_BLACK);
-  drawBMP(tft, "/StandbySplash_800x480.bmp", 0, 0);
+  drawStandbySplash(tft);   // #5A delegates to KDC library (subsumes #11 setXY fix)
 }

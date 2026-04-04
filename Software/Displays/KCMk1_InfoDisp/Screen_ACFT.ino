@@ -15,6 +15,9 @@ static void drawScreen_ACFT(RA8875 &tft) {
   char buf[16];
 
   // Cache-checked draw for full-width rows
+  // acftVal: kept as local lambda — ACFT uses acftRowY() (+1 offset) which
+  // differs from rowYFor() (+2 ROW_PAD), so drawValue() cannot be used here
+  // without introducing a 1px visual difference. (#6C intentional exception)
   auto acftVal = [&](uint8_t slot, uint8_t row, const char *label,
                      const String &val, uint16_t fgc, uint16_t bgc) {
     RowCache &cache = rowCache[8][slot];
@@ -25,6 +28,7 @@ static void drawScreen_ACFT(RA8875 &tft) {
   };
 
   // Cache-checked draw for split cells
+  // splitVal: same acftRowY() exception as acftVal (#6C)
   auto splitVal = [&](uint8_t slot, uint16_t x, uint16_t w, uint8_t row,
                       const char *label, const String &val,
                       uint16_t fgc, uint16_t bgc) {

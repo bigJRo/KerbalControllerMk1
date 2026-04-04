@@ -1,7 +1,7 @@
 /***************************************************************************************
    Screen_MISC.ino -- Rover screen — chromeScreen_MISC, drawScreen_MISC
    Dedicated display for type_Rover vessels. contextScreen() routes here automatically.
-   rowCache index: [2] (screen_MISC = 2)
+   rowCache index: [9] (screen_MISC = 9)
 
    Layout:
      STATE (rows 0-1): V.Srf, Heading
@@ -107,13 +107,10 @@ static void drawScreen_MISC(RA8875 &tft) {
   uint16_t fg, bg;
   char buf[16];
 
+  // rovVal -> drawValue() split overload with AX/AW section geometry (#6B)
   auto rovVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[9][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[9][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 9, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // Redraw dividers every frame — same pattern as ATT screen.

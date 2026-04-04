@@ -8,7 +8,7 @@
 /***************************************************************************************
    OPERATING MODE
 ****************************************************************************************/
-bool debugMode = true;
+bool debugMode = false;
 bool demoMode  = false;  // false = live Simpit telemetry; true = demo sine-wave values
 
 
@@ -56,9 +56,9 @@ const float SLIP_ALARM_DEG = 15.0f;  // white-on-red
 
 // G-force thresholds (shared with LNDG re-entry and DOCK)
 const float G_WARN_POS  =  4.0f;   // yellow — sustained high-G
-const float G_ALARM_POS =  9.0f;   // white-on-red — structural/physiological limit
+const float G_ALARM_POS = KCM_HIGH_G_ALARM_POS;   // #3D aligned with Annunciator CW_HIGH_G_ALARM
 const float G_WARN_NEG  = -2.0f;   // yellow — negative G
-const float G_ALARM_NEG = -5.0f;   // white-on-red — negative G limit
+const float G_ALARM_NEG = KCM_HIGH_G_ALARM_NEG;   // #3D aligned with Annunciator CW_HIGH_G_WARN
 
 
 /***************************************************************************************
@@ -66,7 +66,7 @@ const float G_ALARM_NEG = -5.0f;   // white-on-red — negative G limit
 ****************************************************************************************/
 
 // T.Grnd / V.Vrt — gear UP (time-based, matches annunciator CW_GROUND_PROX)
-const float LNDG_TGRND_ALARM_S  = 10.0f;   // red — T.Grnd below this with gear UP
+const float LNDG_TGRND_ALARM_S  = KCM_GROUND_PROX_S;   // #3D aligned with Annunciator CW_GROUND_PROX_S
 const float LNDG_TGRND_WARN_S   = 30.0f;   // yellow — T.Grnd below this with gear UP
 
 // T.Grnd / V.Vrt — gear DOWN (speed-based, structural landing limits)
@@ -121,7 +121,7 @@ const float LNDG_HVEL_T_MID_S   = 30.0f;   // above this: mid thresholds
 // Above this threshold SAS OFF is alarmed white-on-red.
 // Tune during flight testing — Mach 3.0 is a reasonable starting point.
 const float REENTRY_SAS_AERO_STABLE_MACH = 3.0f;
-const float DV_STG_ALARM_MS = 150.0f;  // white-on-red — nearly empty stage
+const float DV_STG_ALARM_MS = KCM_LOW_DV_MS;   // #3D aligned with Annunciator CW_LOW_DV_MS
 const float DV_STG_WARN_MS  = 300.0f;  // yellow
 
 // Total ΔV threshold (m/s) — VEH screen
@@ -204,7 +204,7 @@ const float ATT_ERR_ALARM_DEG = 15.0f;   // white-on-red
 const float LNCH_TOAPO_WARN_S  = 30.0f;   // yellow — apoapsis close during burn
 
 // Stage burn time thresholds (seconds)
-const float LNCH_BURNTIME_ALARM_S = 60.0f;   // white-on-red — nearly out of fuel
+const float LNCH_BURNTIME_ALARM_S = KCM_LOW_BURN_S;   // #3D aligned with Annunciator CW_LOW_BURN_S
 const float LNCH_BURNTIME_WARN_S  = 120.0f;  // yellow
 
 
@@ -233,11 +233,6 @@ const float ROVER_BRG_ALARM_DEG   = 30.0f;   // white-on-red — significantly o
 // Electric charge thresholds (%).
 const float ROVER_EC_WARN_PCT     = 50.0f;   // yellow — running low
 const float ROVER_EC_ALARM_PCT    = 25.0f;   // white-on-red — critical
-
-/***************************************************************************************
-   PHASE 2 IMPLEMENTATION NOTES
-   (unchanged — see original for Simpit channel mapping details)
-****************************************************************************************/
 
 /***************************************************************************************
    PHASE 2 IMPLEMENTATION NOTES

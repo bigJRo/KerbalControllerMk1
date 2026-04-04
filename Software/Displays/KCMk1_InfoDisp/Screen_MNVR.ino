@@ -65,13 +65,10 @@ static void drawScreen_MNVR(RA8875 &tft) {
   uint16_t fg, bg;
 
   // Cache-checked draw helper using section-label-aware geometry
+  // mnvrVal -> drawValue() split overload with AX/AW section geometry (#6B)
   auto mnvrVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[3][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[3][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 3, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // hasMnvr: a maneuver node exists only when Simpit reports a non-zero burn.
@@ -109,7 +106,7 @@ static void drawScreen_MNVR(RA8875 &tft) {
     if      (tIgn < 0.0f)             { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (tIgn < MNVR_TIGN_WARN_S) { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else                              { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    mnvrVal(2, "T+Ign:", fmtTime(tIgn), fg, bg);
+    mnvrVal(2, "T+Ign:", formatTime(tIgn), fg, bg);
   }
 
   // Row 3 — Time to maneuver node:
@@ -122,7 +119,7 @@ static void drawScreen_MNVR(RA8875 &tft) {
     if      (state.mnvrTime < 0)        { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (state.mnvrTime < halfBurn) { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else                                { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    mnvrVal(3, "T+Mnvr:", fmtTime(state.mnvrTime), fg, bg);
+    mnvrVal(3, "T+Mnvr:", formatTime(state.mnvrTime), fg, bg);
   }
 
   // ── BURN block (rows 4-6) ──
@@ -132,7 +129,7 @@ static void drawScreen_MNVR(RA8875 &tft) {
           hasMnvr ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 
   // Row 5 — Burn duration
-  mnvrVal(5, "T.Burn:", hasMnvr ? fmtTime(state.mnvrDuration) : "---",
+  mnvrVal(5, "T.Burn:", hasMnvr ? formatTime(state.mnvrDuration) : "---",
           hasMnvr ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 
   // Row 6 — Total ΔV remaining: suppress when no maneuver planned.

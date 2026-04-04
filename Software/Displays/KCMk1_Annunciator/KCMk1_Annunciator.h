@@ -5,10 +5,11 @@
    and extern declarations for all globals defined in AAA_Config.ino and AAA_Globals.ino.
 ****************************************************************************************/
 
-// Requires KerbalDisplayCommon >= 2.0.1 (PrintState struct introduced in v2.0.0)
+// Requires KerbalDisplayCommon >= 2.1.0
 #include <KerbalDisplayCommon.h>
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
+#include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
 
 /***************************************************************************************
@@ -216,6 +217,11 @@ extern const float CW_LOW_BURN_S;
 // Defined in ScreenMain.ino and ScreenSOI.ino.
 extern PrintState psSOILabel;     // ScreenMain SOI label
 extern PrintState psSOIRows[];    // ScreenSOI body data rows
+
+// I2C slave interface (I2CSlave.ino) -- #10 add missing declarations
+void setupI2CSlave();
+void buildI2CPacketAndAssert();
+void updateI2CState();
 
 // Screen navigation -- always use this instead of setting activeScreen directly.
 // Sets activeScreen, resets prevScreen to screen_COUNT (triggering chrome redraw),

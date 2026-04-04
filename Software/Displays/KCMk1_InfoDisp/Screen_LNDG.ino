@@ -159,13 +159,10 @@ static void drawScreen_LNDG(RA8875 &tft) {
   char buf[16];
 
   // Cache-checked draw helper using section-label-aware geometry
+  // lndgVal -> drawValue() split overload with AX/AW section geometry (#6B)
   auto lndgVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[6][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[6][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 6, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // ── STATE block (rows 0-4) ──
@@ -190,7 +187,7 @@ static void drawScreen_LNDG(RA8875 &tft) {
                  tGround < LNDG_TGRND_WARN_S)                       { fg = TFT_YELLOW;    bg = TFT_BLACK; }
         else                                                         { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
       }
-      lndgVal(0, "T.Grnd:", fmtTime(tGround), fg, bg);
+      lndgVal(0, "T.Grnd:", formatTime(tGround), fg, bg);
     } else {
       lndgVal(0, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK);
     }
@@ -244,7 +241,7 @@ static void drawScreen_LNDG(RA8875 &tft) {
         tAtmo = fabsf((state.altitude - atmoAlt) / state.verticalVel);
 
       if (tAtmo >= 0.0f)
-        lndgVal(0, "T+Atm:", fmtTime(tAtmo), TFT_DARK_GREEN, TFT_BLACK);
+        lndgVal(0, "T+Atm:", formatTime(tAtmo), TFT_DARK_GREEN, TFT_BLACK);
       else if (state.verticalVel <= 5.0f)
         lndgVal(0, "T+Atm:", "---", TFT_DARK_GREEN, TFT_BLACK);   // coasting — green
       else
@@ -411,7 +408,7 @@ static void drawScreen_LNDG(RA8875 &tft) {
     // ── POWERED DESCENT ──
 
     // Row 5 — ΔV.Stg (single-row STG block, indicator square in chrome)
-    thresholdColor((uint16_t)constrain(state.stageDeltaV, 0, 65535),
+    thresholdColor(state.stageDeltaV,
                    DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                    DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                         TFT_DARK_GREEN, TFT_BLACK, fg, bg);

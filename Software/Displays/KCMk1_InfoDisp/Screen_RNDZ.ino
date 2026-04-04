@@ -2,7 +2,7 @@
    Screen_RNDZ.ino -- Target screen — chromeScreen_RNDZ, drawScreen_RNDZ
    Shows target bearing, approach alignment, and relative state for rendezvous.
    Complements the DOCK screen: TARGET is used at range, DOCK for final approach.
-   rowCache index: [5] (screen_RNDZ = 5)
+   rowCache index: [4] (screen_RNDZ = 4)
 
    Layout:
      STATE (rows 0-1): Alt.SL, V.Orb
@@ -89,17 +89,13 @@ static void drawScreen_RNDZ(RA8875 &tft) {
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;
   static const uint16_t AX     = ROW_PAD + SECT_W;
-  static const uint16_t AW     = CONTENT_W - AX - ROW_PAD;
   uint16_t fg, bg;
   char buf[16];
 
+  // rndzVal -> drawValue() (#6B)
   auto rndzVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[4][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[4][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 4, row, label, val, fgc, bgc, F, NR);
   };
 
   // ── STATE block (rows 0-1) ──

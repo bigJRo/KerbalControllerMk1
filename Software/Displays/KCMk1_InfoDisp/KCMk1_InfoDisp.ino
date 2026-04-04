@@ -21,8 +21,8 @@
     SerialUSB1 (USB COM port 2) → KSP via KerbalSimpit plugin
 
   Phase 1: Display framework with 10 screen types, sidebar navigation, demo values. ✓
-  Phase 2: Simpit integration for live KSP telemetry. <- current
-  Phase 3: I2C slave interface to KCMk1 master.
+  Phase 2: Simpit integration for live KSP telemetry. ✓
+  Phase 3: I2C slave interface to KCMk1 master. ✓
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by Jason Rostoker for Jeb's Controller Works.
@@ -33,6 +33,7 @@
 void setup() {
   Serial.begin(115200);
   SerialUSB1.begin(115200);
+  setKDCDebugMode(debugMode);   // #2 call immediately after serial init, matches Annunciator/ResourceDisp
   // Wait up to 2 seconds for Serial monitor to connect before printing version.
   // Falls through immediately if not connected (production use without monitor).
   if (debugMode) {
@@ -45,7 +46,6 @@ void setup() {
     Serial.print('.');
     Serial.println(SKETCH_VERSION_PATCH);
   }
-  setKDCDebugMode(debugMode);
 
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
@@ -82,14 +82,16 @@ void setup() {
 void loop() {
   static bool _wasDemo = false;  // tracks previous demoMode to detect runtime switch
 
-  // --- Simpit telemetry (live mode only) ---
-  if (!demoMode) simpit.update();
+  // --- Touch input (active in both modes, ignored when on standby) ---
+  // #6 process touch before Simpit so a tap on a new screen lands on the correct
+  // screen rather than the previous one (matches Annunciator/ResourceDisp order)
+  if (flightScene || demoMode) processTouchEvents();
 
   // --- I2C slave state update ---
   updateI2CState();
 
-  // --- Touch input (active in both modes, ignored when on standby) ---
-  if (flightScene || demoMode) processTouchEvents();
+  // --- Simpit telemetry (live mode only) ---
+  if (!demoMode) simpit.update();
 
   // --- Runtime demo→live transition: draw standby splash if not in flight scene ---
   if (_wasDemo && !demoMode && !flightScene) {

@@ -7,6 +7,7 @@
 #include <KerbalDisplayCommon.h>
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
+#include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 // I2C slave interface will be added in Phase 3.
 
 
@@ -46,6 +47,7 @@ extern TouchResult lastTouch;
 ****************************************************************************************/
 extern ScreenType activeScreen;
 extern ScreenType prevScreen;
+extern uint32_t   lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 void switchToScreen(ScreenType s);
 
 
@@ -207,8 +209,9 @@ extern BodyParams currentBody;
    LAYOUT CONSTANTS
    Defined here so both Screens.ino and TouchEvents.ino can reference them.
 ****************************************************************************************/
-static const uint16_t SCREEN_W  = 800;
-static const uint16_t SCREEN_H  = 480;
+// SCREEN_W and SCREEN_H provided by KCMk1_SystemConfig.h as KCM_SCREEN_W / KCM_SCREEN_H
+static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // #3A alias for local code
+static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // #3A alias for local code
 static const uint16_t SIDEBAR_W = 80;
 static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
 
@@ -257,8 +260,8 @@ struct RowCache {
    Variables defined in Screens.ino, accessed by TouchEvents.ino.
    Declared extern here so TouchEvents doesn't need inline extern declarations.
 ****************************************************************************************/
-extern RowCache    rowCache  [10][17];   // [SCREEN_COUNT][ROW_COUNT]
-extern PrintState  printState[10][17];  // [SCREEN_COUNT][ROW_COUNT]
+extern RowCache    rowCache  [SCREEN_COUNT][ROW_COUNT];   // #32 use named constants
+extern PrintState  printState[SCREEN_COUNT][ROW_COUNT];  // #32 use named constants
 
 // LNCH phase state
 extern bool _lnchOrbitalMode;
@@ -288,3 +291,5 @@ extern uint32_t _dockedTimestamp;
 extern bool _pendingContextSwitch;  // set on vessel change; cleared when FLIGHT_STATUS arrives
 extern bool _pendingDockCheck;      // set after context switch; cleared when TARGETINFO arrives
 extern bool _orbAdvancedMode; // true = ADVANCED ELEMENTS tap-through view, false = APSIDES default
+extern bool _prevShowAp;      // Screen_ORB: which time row was last shown (reset on vessel switch)
+extern bool _attPrevOrbMode;  // Screen_ATT: previous orbital mode (reset on vessel switch)

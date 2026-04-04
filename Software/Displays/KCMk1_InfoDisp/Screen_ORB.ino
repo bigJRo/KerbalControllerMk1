@@ -8,7 +8,7 @@
 #include "KCMk1_InfoDisp.h"
 
 bool _orbAdvancedMode = false;
-static bool _prevShowAp = false;  // file-scope so chrome can read it for row 4 label
+bool _prevShowAp = false;  // non-static so SimpitHandler can reset on vessel switch
 
 // ── APSIDES chrome ────────────────────────────────────────────────────────────────────
 
@@ -165,13 +165,10 @@ static void drawOrb_Apsides(RA8875 &tft) {
     tft.drawLine(0, d5+1, CONTENT_W, d5+1, TFT_GREY);
   }
 
+  // orbVal -> drawValue() split overload with AX/AW section geometry (#6C)
   auto orbVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[1][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[1][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 1, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   float warnAlt = max(currentBody.minSafe, currentBody.flyHigh);
@@ -247,7 +244,7 @@ static void drawOrb_Apsides(RA8875 &tft) {
       if      (tNext < 0)                fg = TFT_RED;
       else if (tNext < APSI_TIME_WARN_S) fg = TFT_YELLOW;
       else                               fg = TFT_DARK_GREEN;
-      orbVal(4, tLabel, fmtTime(tNext), fg, TFT_BLACK);
+      orbVal(4, tLabel, formatTime(tNext), fg, TFT_BLACK);
     }
   }
 
@@ -259,7 +256,7 @@ static void drawOrb_Apsides(RA8875 &tft) {
     if      (tIgn < 0.0f)             { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (tIgn < MNVR_TIGN_WARN_S) { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else                              { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    orbVal(5, "T+Ign:", fmtTime(tIgn), fg, bg);
+    orbVal(5, "T+Ign:", formatTime(tIgn), fg, bg);
   }
 
   // ── PROP (row 6): split ΔV.Stg | ΔV.Tot ──  cache [1][8]=Stg [1][9]=Tot
@@ -269,7 +266,7 @@ static void drawOrb_Apsides(RA8875 &tft) {
     uint16_t xR = AX + AHW + ROW_PAD, wR = AHW - ROW_PAD;
 
     // ΔV.Stg — left
-    thresholdColor((uint16_t)constrain(state.stageDeltaV, 0, 65535),
+    thresholdColor(state.stageDeltaV,
                    DV_STG_ALARM_MS, TFT_WHITE, TFT_RED,
                    DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                         TFT_DARK_GREEN, TFT_BLACK, fg, bg);
@@ -283,7 +280,7 @@ static void drawOrb_Apsides(RA8875 &tft) {
     }
 
     // ΔV.Tot — right (uses DV_STG_WARN_MS to match Stg: so colours are directly comparable)
-    thresholdColor((uint16_t)constrain(state.totalDeltaV, 0, 65535),
+    thresholdColor(state.totalDeltaV,
                    DV_STG_ALARM_MS, TFT_WHITE, TFT_RED,
                    DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                         TFT_DARK_GREEN, TFT_BLACK, fg, bg);
@@ -350,13 +347,10 @@ static void drawOrb_Advanced(RA8875 &tft) {
   char buf[16];
   uint16_t fg, bg;
 
+  // orbVal -> drawValue() split overload with AX/AW section geometry (#6C)
   auto orbVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[1][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[1][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 1, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   bool hasOrbit = (state.situation & sit_SubOrb)  ||
@@ -445,7 +439,7 @@ static void drawOrb_Advanced(RA8875 &tft) {
   }
 
   // Row 7 — Orbital period
-  orbVal(7, "Period:", hasOrbit ? fmtTime(state.orbitalPeriod) : "---",
+  orbVal(7, "Period:", hasOrbit ? formatTime(state.orbitalPeriod) : "---",
          hasOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 }
 

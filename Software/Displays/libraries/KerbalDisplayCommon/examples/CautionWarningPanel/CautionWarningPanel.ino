@@ -48,7 +48,7 @@ void drawCautWarnPanel(uint16_t state) {
     for (int row = 0; row < 4; row++) {
       int16_t x = col * (CAUTWARN_W + GAP_X) + OFFSET_X;
       int16_t y = row * (CAUTWARN_H + GAP_Y) + OFFSET_Y;
-      drawButton(tft, x, y, CAUTWARN_W, CAUTWARN_H,
+      drawButton(infoDisp, x, y, CAUTWARN_W, CAUTWARN_H,
                  cautWarn[col * 4 + row], &Roboto_Black_24,
                  bitRead(state, col * 4 + row));
     }
@@ -56,6 +56,8 @@ void drawCautWarnPanel(uint16_t state) {
 }
 
 void setup() {
+  // Note: setupSD() and setupTouch() omitted for brevity — add before use in production.
+
   setupDisplay(infoDisp, TFT_BLACK);
 
   // State 1: all off

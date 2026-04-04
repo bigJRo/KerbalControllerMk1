@@ -8,24 +8,20 @@
      CAGSTATUS, THROTTLE_CMD, WHEEL_CMD, ELECTRIC,
      SCENE_CHANGE, VESSEL_CHANGE
 
-   Phase 2: Simpit integration for live KSP telemetry.
-   Phase 3: I2C slave interface (not yet implemented).
+   Phase 2: Simpit integration for live KSP telemetry. ✓
+   Phase 3: I2C slave interface. ✓
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
 
-/***************************************************************************************
-   SIMPIT OBJECT
-   SerialUSB1 is the second USB COM port on Teensy 4.0 — dedicated to KSP telemetry.
-   Serial (COM port 1) is used for debug output only.
-****************************************************************************************/
-KerbalSimpit simpit(SerialUSB1);
+// KerbalSimpit simpit object moved to AAA_Globals.ino (#9)
 
 
 /***************************************************************************************
    SIMPIT MESSAGE HANDLER
    Called by simpit.update() on every subscribed message arrival.
-   Populates state fields only — never draws anything or calls switchToScreen().
+   Populates state fields only — never draws directly. May call switchToScreen()
+   on SCENE_CHANGE_MESSAGE and VESSEL_CHANGE_MESSAGE events.
 ****************************************************************************************/
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
@@ -389,6 +385,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _pendingDockCheck = false;  // clear any stale dock check from previous switch
         if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
         // Reset LNDG re-entry row mode and parachute deployment state for new vessel
+        _lndgReentryMode    = false;   // #34 reset re-entry mode on vessel switch
+        _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
+        _prevShowAp         = false;   // #50 reset ORB time-row state on vessel switch
+        _attPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
         _lndgReentryRow3PeA = true;
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;

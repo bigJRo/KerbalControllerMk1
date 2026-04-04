@@ -116,6 +116,7 @@ static void drawScreen_LNCH(RA8875 &tft) {
 
   // ── PRE-LAUNCH board ──
   if (_lnchPrelaunchMode) {
+    // plVal -> drawValue() split overload (slot=cache idx, row=display row) (#6C/#44)
     auto plVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
       RowCache &rc = rowCache[0][slot];
@@ -125,6 +126,7 @@ static void drawScreen_LNCH(RA8875 &tft) {
       rc.value = val; rc.fg = fgc; rc.bg = bgc;
     };
 
+    // plValL -> left-half split, slot=cache idx (#6C/#44)
     auto plValL = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                       uint16_t fgc, uint16_t bgc) {
       uint16_t xL = AX, wL = AHW - ROW_PAD;
@@ -135,6 +137,7 @@ static void drawScreen_LNCH(RA8875 &tft) {
       rc.value = val; rc.fg = fgc; rc.bg = bgc;
     };
 
+    // plValR -> right-half split, slot=cache idx (#6C/#44)
     auto plValR = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                       uint16_t fgc, uint16_t bgc) {
       uint16_t xR = AX + AHW + ROW_PAD, wR = AHW - ROW_PAD;
@@ -228,7 +231,7 @@ static void drawScreen_LNCH(RA8875 &tft) {
 
     // Row 5 — ΔV.Tot (full width) — total mission delta-V at a glance
     {
-      thresholdColor((uint16_t)constrain(state.totalDeltaV, 0, 65535),
+      thresholdColor(state.totalDeltaV,
                      DV_STG_ALARM_MS, TFT_WHITE, TFT_RED,
                      DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                           TFT_DARK_GREEN, TFT_BLACK, fg, bg);
@@ -305,13 +308,10 @@ static void drawScreen_LNCH(RA8875 &tft) {
   }
 
   // Cache-checked draw helper using section-label-aware geometry
+  // lnchVal -> drawValue() split overload with AX/AW geometry (#6C)
   auto lnchVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[0][row];
-    if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-    printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[0][row]);
-    rc.value = val; rc.fg = fgc; rc.bg = bgc;
+    drawValue(tft, 0, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // --- Row 0: Alt.SL — always present ---
@@ -362,7 +362,7 @@ static void drawScreen_LNCH(RA8875 &tft) {
       if      (state.timeToAp < 0)              { fg = TFT_RED;       }
       else if (state.timeToAp < LNCH_TOAPO_WARN_S) { fg = TFT_YELLOW;    }
       else                                      { fg = TFT_DARK_GREEN; }
-      lnchVal(4, "T+Ap:", fmtTime(state.timeToAp), fg, TFT_BLACK);
+      lnchVal(4, "T+Ap:", formatTime(state.timeToAp), fg, TFT_BLACK);
     }
 
     // Row 5 — Throttle: white-on-red at 0% (engine out = abort condition during ascent)
@@ -403,7 +403,7 @@ static void drawScreen_LNCH(RA8875 &tft) {
 
     // Row 4 — Time to apoapsis: red if negative (past burn point)
     fg = (state.timeToAp < 0) ? TFT_RED : TFT_DARK_GREEN;
-    lnchVal(4, "T+Ap:", fmtTime(state.timeToAp), fg, TFT_BLACK);
+    lnchVal(4, "T+Ap:", formatTime(state.timeToAp), fg, TFT_BLACK);
 
     // Row 5 — Throttle: plain green at 0% (coasting to apoapsis is normal)
     {
@@ -417,14 +417,14 @@ static void drawScreen_LNCH(RA8875 &tft) {
   // =========================================================
 
   // Row 6 — Stage burn time: white-on-red <60s, yellow <120s, green
-  thresholdColor((uint16_t)constrain(state.stageBurnTime, 0, 65535),
+  thresholdColor(state.stageBurnTime,
                  LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                  LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-  lnchVal(6, "T.Burn:", fmtTime(state.stageBurnTime), fg, bg);
+  lnchVal(6, "T.Burn:", formatTime(state.stageBurnTime), fg, bg);
 
   // Row 7 — Stage ΔV: white-on-red <150 m/s, yellow <300 m/s, green
-  thresholdColor((uint16_t)constrain(state.stageDeltaV, 0, 65535),
+  thresholdColor(state.stageDeltaV,
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);

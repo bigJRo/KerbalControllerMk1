@@ -27,76 +27,40 @@ static const tFont   *BS_BIG   = &TerminalFont_32;
 
 
 /***************************************************************************************
-   RENDERING HELPERS
+   RENDERING HELPERS (#5E — delegate to KDC library)
+   Signatures unchanged so _boot_B/C/E call sites are unmodified.
 ****************************************************************************************/
 static void _bs_wait(uint16_t ms) { delay(ms); }
 
 static void _bs_print(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
                       const char *text, uint16_t col) {
-  tft.setFont(font);
-  tft.setTextColor(col, TFT_BLACK);
-  tft.setCursor(x, y);
-  tft.print(text);
+  bsPrint(tft, font, x, y, text, col);
 }
 
 static uint16_t _bs_line(RA8875 &tft, uint16_t y, const char *text, uint16_t col) {
-  tft.setFont(BS_FONT);
-  tft.setTextColor(col, TFT_BLACK);
-  tft.setCursor(BS_COL_X, y);
-  tft.print(text);
-  return y + BS_ROW_H;
+  return bsLine(tft, BS_FONT, BS_COL_X, y, BS_ROW_H, text, col);
 }
 
-static uint16_t _bs_blank(uint16_t y) { return y + BS_ROW_H; }
+static uint16_t _bs_blank(uint16_t y) { return bsBlank(y, BS_ROW_H); }
 
 static uint16_t _bs_big(RA8875 &tft, uint16_t y, const char *text, uint16_t col) {
-  tft.setFont(BS_BIG);
-  tft.setTextColor(col, TFT_BLACK);
-  tft.setCursor(BS_COL_X, y);
-  tft.print(text);
-  return y + 38;
+  return bsBig(tft, BS_BIG, BS_COL_X, y, text, col);
 }
 
 static uint16_t _bs_wrap(RA8875 &tft, uint16_t y, const char *text,
                           uint16_t col, uint16_t maxW) {
-  tft.setFont(BS_FONT);
-  tft.setTextColor(col, TFT_BLACK);
-  char word[32], line[128] = "";
-  uint8_t wi = 0;
-  const char *p = text;
-  while (true) {
-    char c = *p++;
-    bool end = (c == '\0'), space = (c == ' ') || end;
-    if (space || end) {
-      word[wi] = '\0'; wi = 0;
-      char test[128];
-      if (line[0]) snprintf(test, sizeof(test), "%s %s", line, word);
-      else         snprintf(test, sizeof(test), "%s", word);
-      if (getFontStringWidth(BS_FONT, test) > maxW) {
-        tft.setCursor(BS_COL_X, y); tft.print(line);
-        y += BS_ROW_H;
-        snprintf(line, sizeof(line), "%s", word);
-      } else {
-        snprintf(line, sizeof(line), "%s", test);
-      }
-      if (end) {
-        if (line[0]) { tft.setCursor(BS_COL_X, y); tft.print(line); y += BS_ROW_H; }
-        break;
-      }
-    } else {
-      if (wi < (uint8_t)(sizeof(word) - 1)) word[wi++] = c;
-    }
-  }
-  return y;
+  return bsWrap(tft, BS_FONT, BS_COL_X, y, BS_ROW_H, text, col, maxW);
 }
 
 // Standard header bar used by all three sequences
 static uint16_t _bs_header(RA8875 &tft, uint16_t y, const char *title) {
   tft.fillRect(0, y, 800, 2, TFT_GREY); y += 4;
-  char buf[96];
+  char buf[128];   // #4B enlarged for full version string
   snprintf(buf, sizeof(buf),
-           "KCMk1-INFODISP  //  Jeb's Controller Works  //  v%d.%d.%d / KDC 2.0.1",
-           SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+           "KCMk1-INFODISP  //  Jeb's Controller Works  //  v%d.%d.%d"
+           " / KDC %d.%d.%d",
+           SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH,
+           KDC_VERSION_MAJOR,    KDC_VERSION_MINOR,    KDC_VERSION_PATCH);
   _bs_print(tft, BS_FONT, BS_COL_X, y, buf, TFT_GREY); y += BS_ROW_H;
   tft.fillRect(0, y, 800, 2, TFT_GREY); y += 4;
   _bs_wait(BS_HOLD);
@@ -105,12 +69,9 @@ static uint16_t _bs_header(RA8875 &tft, uint16_t y, const char *title) {
   return y;
 }
 
-// Fisher-Yates shuffle for a uint8_t index array of length n
+// _bs_shuffle delegates to KDC bsShuffle (#5E)
 static void _bs_shuffle(uint8_t *arr, uint8_t n) {
-  for (uint8_t i = n - 1; i > 0; i--) {
-    uint8_t j = (uint8_t)(random(i + 1));
-    uint8_t tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-  }
+  bsShuffle(arr, n);
 }
 
 

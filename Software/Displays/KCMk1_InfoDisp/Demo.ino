@@ -39,6 +39,7 @@ void initDemoMode() {
 
 
 void stepDemoState() {
+  if (!demoMode) return;   // guard: no-op when called outside demo mode
   uint32_t now = millis();
   if (now - _demoLast < DEMO_UPDATE_MS) return;
   _demoLast = now;

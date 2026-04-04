@@ -18,16 +18,17 @@
 #include "KCMk1_InfoDisp.h"
 
 
-static const uint32_t TOUCH_DEBOUNCE_MS  = 500;
-static const uint16_t TOUCH_DEAD_ZONE    = 12;   // px — reject y >= SCREEN_H - this
-static const uint8_t  MAX_TOUCH_COUNT    = 1;    // reject multi-finger events
-static const uint16_t TOUCH_JITTER_MAX   = 20;   // px — max coordinate movement across reads
+static const uint32_t TOUCH_DEBOUNCE_MS  = KCM_TOUCH_DEBOUNCE_MS;     // #3B from SystemConfig
+static const uint16_t TOUCH_DEAD_ZONE    = KCM_TOUCH_DEAD_ZONE_PX;    // #3B px — reject y >= SCREEN_H - this
+static const uint8_t  MAX_TOUCH_COUNT    = 1;                          // reject multi-finger events
+static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px — max coordinate movement across reads
 
 static uint32_t lastTouchTime      = 0;
 static uint32_t lastTitleTouchTime = 0;
 static bool     _waitForRelease    = false;
 
-static const uint32_t TITLE_DEBOUNCE_MS = 200;  // shorter — title toggles don't need 500ms
+// Title bar uses a shorter debounce — toggles are intentional quick taps
+static const uint32_t TITLE_DEBOUNCE_MS = KCM_TOUCH_TITLE_DEBOUNCE_MS;  // #3B from SystemConfig
 
 
 void processTouchEvents() {
@@ -41,7 +42,7 @@ void processTouchEvents() {
   if (lastTouch.count == 0) return;
 
   // Count filter — real single-button presses are always count=1
-  if (lastTouch.count > MAX_TOUCH_COUNT) {
+  if (lastTouch.count != 1) {
     if (debugMode) {
       Serial.print(F("InfoDisp: Touch discarded (count="));
       Serial.print(lastTouch.count);

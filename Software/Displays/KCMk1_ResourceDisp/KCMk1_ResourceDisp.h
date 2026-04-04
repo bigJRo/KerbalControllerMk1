@@ -5,12 +5,13 @@
    type enum, and extern declarations for all globals.
 ****************************************************************************************/
 
-// Requires KerbalDisplayCommon >= 2.0.1 (PrintState struct introduced in v2.0.0)
+// Requires KerbalDisplayCommon >= 2.1.0
 #include <KerbalDisplayCommon.h>
-// KerbalDisplayAudio is included as a dependency of KerbalDisplayCommon but
-// audio output is not implemented on this panel. Pin 9 is claimed by the library.
+// KerbalDisplayAudio is a direct sketch dependency (not a KDC sub-dependency).
+// Audio output is not used on this panel, but the library claims pin 9.
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
+#include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
 
 /***************************************************************************************
@@ -117,6 +118,7 @@ extern TouchResult  lastTouch;
 extern KerbalSimpit simpit;
 extern ScreenType   activeScreen;
 extern ScreenType   prevScreen;
+extern uint32_t     lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
 extern bool         stageMode;      // false = TOTAL (whole craft), true = STAGE (current stage)

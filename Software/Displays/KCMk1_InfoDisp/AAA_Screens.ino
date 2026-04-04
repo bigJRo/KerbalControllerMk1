@@ -4,15 +4,15 @@
 
    Screen map (mission-phase order):
      0  LNCH  Launch Information
-     1  APSI  Apsides Information
-     2  ORB   Orbit Information
-     3  ATT   Attitude Information
-     4  MNVR  Maneuver Information
-     5  RNDZ  Rendezvous Information
-     6  DOCK  Docking Information
+     1  ORB   Orbit Information
+     2  ATT   Attitude Information
+     3  MNVR  Maneuver Information
+     4  RNDZ  Rendezvous / Target Information
+     5  DOCK  Docking Information
+     6  LNDG  Landing Information
      7  VEH   Vehicle Information
-     8  LNDG  Landing Information
-     9  ACFT  Aircraft Information
+     8  ACFT  Aircraft Information
+     9  ROVR  Rover Information
 
    Layout (800x480):
      Title bar  : 62px (58px text + 4px rule)
@@ -117,27 +117,8 @@ String fmtNum(float v) {
 String fmtUnit(float v, const char *unit) { return fmtNum(v) + " " + unit; }
 String fmtMs(float v)   { return fmtUnit(v, "m/s"); }
 
-// fmtTime wraps the library formatTime() to:
-//   1. Strip decimal places when in pure-seconds mode ("45.23s" → "45 s")
-//   2. Ensure a space between the number and the unit for all modes
-String fmtTime(float v) {
-  String s = formatTime(v);
-  // Strip decimal portion when the string ends with 's' (seconds mode)
-  int dotIdx = s.indexOf('.');
-  if (dotIdx >= 0 && s.endsWith("s")) {
-    s = s.substring(0, dotIdx) + "s";
-  }
-  // Insert a space before the trailing unit character if not already present
-  // Handles: "45s", "3m 20s", "1h 5m" style outputs
-  if (s.length() >= 2) {
-    char lastChar = s.charAt(s.length() - 1);
-    char prevChar = s.charAt(s.length() - 2);
-    if ((lastChar == 's' || lastChar == 'm' || lastChar == 'h') && prevChar != ' ') {
-      s = s.substring(0, s.length() - 1) + " " + lastChar;
-    }
-  }
-  return s;
-}
+// formatTime() removed — formatting improvements merged into library formatTime() (#5C)
+// All call sites now call formatTime() directly.
 
 /***************************************************************************************
    DRAW SIDEBAR
@@ -207,6 +188,7 @@ void drawChrome(RA8875 &tft, uint8_t row, const char *label) {
   drawChrome(tft, row, label, ROW_FONT, 8);
 }
 
+// Full-width row overload (uses rowX()/rowW() geometry)
 void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
                       const char *label, String value,
                       uint16_t fg, uint16_t bg,
@@ -215,6 +197,23 @@ void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
   if (c.value == value && c.fg == fg && c.bg == bg) return;
   printValue(tft, font,
              rowX(), rowYFor(row, nRows), rowW(), rowHFor(nRows),
+             label, value, fg, bg, COL_BACK,
+             printState[screen][row]);
+  c.value = value;
+  c.fg    = fg;
+  c.bg    = bg;
+}
+
+// Split-column overload (#51) — explicit x, w for left/right half-row cells
+void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
+                      uint16_t x, uint16_t w,
+                      const char *label, String value,
+                      uint16_t fg, uint16_t bg,
+                      const tFont *font, uint8_t nRows) {
+  RowCache &c = rowCache[screen][row];
+  if (c.value == value && c.fg == fg && c.bg == bg) return;
+  printValue(tft, font,
+             x, rowYFor(row, nRows), w, rowHFor(nRows),
              label, value, fg, bg, COL_BACK,
              printState[screen][row]);
   c.value = value;

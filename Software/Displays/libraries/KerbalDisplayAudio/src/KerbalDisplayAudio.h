@@ -21,8 +21,16 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.0.0
+   Version: 1.0.1
 ****************************************************************************************/
+
+/***************************************************************************************
+   LIBRARY VERSION
+   Follows the same MAJOR.MINOR.PATCH scheme used by all KCMk1 sketches.
+****************************************************************************************/
+#define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
+#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 0
+#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 1
 
 #include <Arduino.h>
 
