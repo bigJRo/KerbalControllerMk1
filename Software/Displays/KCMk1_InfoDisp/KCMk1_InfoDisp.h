@@ -17,15 +17,15 @@
 ****************************************************************************************/
 enum ScreenType : uint8_t {
   screen_LNCH  = 0,   // Launch
-  screen_APSI  = 1,   // Apsides
-  screen_ORB   = 2,   // Orbit
-  screen_ATT   = 3,   // Attitude
-  screen_MNVR  = 4,   // Maneuver
-  screen_RNDZ  = 5,   // Rendezvous
-  screen_DOCK  = 6,   // Docking
+  screen_ORB   = 1,   // Orbit (Apsides default + Advanced Elements tap-through)
+  screen_ATT   = 2,   // Attitude
+  screen_MNVR  = 3,   // Maneuver
+  screen_RNDZ  = 4,   // Rendezvous / Target
+  screen_DOCK  = 5,   // Docking
+  screen_LNDG  = 6,   // Landing
   screen_VEH   = 7,   // Vehicle
-  screen_LNDG  = 8,   // Landing
-  screen_ACFT  = 9,   // Aircraft
+  screen_ACFT  = 8,   // Aircraft
+  screen_MISC  = 9,   // Rover
   screen_COUNT = 10   // sentinel — not a real screen
 };
 
@@ -58,8 +58,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 2.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 0;
-static const uint8_t SKETCH_VERSION_MINOR = 8;
-static const uint8_t SKETCH_VERSION_PATCH = 9;
+static const uint8_t SKETCH_VERSION_MINOR = 13;
+static const uint8_t SKETCH_VERSION_PATCH = 3;
 
 
 /***************************************************************************************
@@ -74,12 +74,23 @@ extern const float LNDG_DROGUE_RISKY_MS;
 extern const float LNDG_MAIN_SAFE_MS;
 extern const float LNDG_MAIN_RISKY_MS;
 extern const float LNDG_CHUTE_SEMI_DENSITY;
-extern const float LNDG_CHUTE_FULL_ALT;
+extern const float LNDG_DROGUE_FULL_ALT;
+extern const float LNDG_MAIN_FULL_ALT;
 extern const uint8_t DISPLAY_ROTATION;
 
 // Flight state (populated by SimpitHandler.ino)
 extern bool simpitConnected;  // true after Simpit handshake succeeds
 extern bool flightScene;      // true when KSP is in a flight scene
+extern bool idleState;        // true when master wants standby when not in flight
+
+// I2CSlave.ino
+extern volatile bool i2cProceedReceived;
+void setupI2CSlave();
+void updateI2CState();
+void buildI2CPacketAndAssert();
+
+// BootScreen.ino
+void bootSimText(RA8875 &tft);
 
 // Simpit object (defined in SimpitHandler.ino)
 extern KerbalSimpit simpit;
@@ -119,7 +130,8 @@ struct AppState {
   float     stageDeltaV   = 0.0f;    // m/s
   float     totalDeltaV   = 0.0f;    // m/s
   float     stageBurnTime = 0.0f;    // seconds remaining
-  float     throttle      = 0.0f;    // 0.0..1.0 (0-100%)
+  float     throttle      = 0.0f;    // 0.0..1.0 main engine throttle (0-100%)
+  float     wheelThrottle = 0.0f;    // -1.0..1.0 wheel throttle (rovers): +ve=fwd, -ve=rev — WHEEL_CMD_MESSAGE (w.throttle)
 
   // Maneuver node
   float     mnvrTime      = 0.0f;    // seconds to next maneuver node
@@ -170,6 +182,9 @@ struct AppState {
   // RCS state
   bool      rcs_on        = false;   // from ACTIONSTATUS_MESSAGE & RCS_ACTION
 
+  // Resources
+  float     electricChargePercent = 0.0f;  // 0.0..100.0 — from ELECTRIC_CHARGE resource channel
+
   // Vessel info
   String          vesselName    = "---";
   VesselType      vesselType    = type_Unknown;
@@ -195,7 +210,7 @@ extern BodyParams currentBody;
 static const uint16_t SCREEN_W  = 800;
 static const uint16_t SCREEN_H  = 480;
 static const uint16_t SIDEBAR_W = 80;
-static const uint8_t  ROW_COUNT = 14;  // max cache slots per screen (LNDG needs 14 with Fwd/Lat split)
+static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
 
 
 /***************************************************************************************
@@ -242,18 +257,34 @@ struct RowCache {
    Variables defined in Screens.ino, accessed by TouchEvents.ino.
    Declared extern here so TouchEvents doesn't need inline extern declarations.
 ****************************************************************************************/
-extern RowCache    rowCache  [10][14];   // [SCREEN_COUNT][ROW_COUNT]
-extern PrintState  printState[10][14];  // [SCREEN_COUNT][ROW_COUNT]
+extern RowCache    rowCache  [10][17];   // [SCREEN_COUNT][ROW_COUNT]
+extern PrintState  printState[10][17];  // [SCREEN_COUNT][ROW_COUNT]
 
 // LNCH phase state
 extern bool _lnchOrbitalMode;
 extern bool _lnchManualOverride;
+extern bool _lnchPrelaunchMode;
+extern bool _lnchPrelaunchDismissed;
 
 // LNDG mode state
 extern bool _lndgReentryMode;
-extern bool _lndgReentryRow3PeA;  // true when row 3 shows PeA (radarAlt > 2000m), false = V.Hrz
+extern bool _lndgReentryRow3PeA;
+extern bool _lndgReentryRow0TPe;
+extern bool _lndgReentryRow1SL;  // true when row 3 shows PeA (radarAlt > 2000m), false = V.Hrz
+
+// LNDG parachute deployment state — reset on vessel switch
+extern bool _drogueDeployed;
+extern bool _mainDeployed;
+extern bool _drogueCut;
+extern bool _mainCut;
+extern bool _drogueArmedSafe;
+extern bool _mainArmedSafe;
 
 // RNDZ/DOCK chrome state — defined in Screen_RNDZ/DOCK.ino, used by AAA_Screens.ino dispatch
 extern bool _rndzChromDrawn;
 extern bool _dockChromDrawn;
-extern bool _vesselDocked;   // true after VESSEL_CHANGE dock event, cleared on undock/vessel switch
+extern bool _vesselDocked;
+extern uint32_t _dockedTimestamp;
+extern bool _pendingContextSwitch;  // set on vessel change; cleared when FLIGHT_STATUS arrives
+extern bool _pendingDockCheck;      // set after context switch; cleared when TARGETINFO arrives
+extern bool _orbAdvancedMode; // true = ADVANCED ELEMENTS tap-through view, false = APSIDES default

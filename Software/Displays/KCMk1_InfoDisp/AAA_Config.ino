@@ -88,16 +88,17 @@ const float LNDG_HVEL_WARN_FINAL_MS  =  1.0f;  const float LNDG_HVEL_ALARM_FINAL
 const float LNDG_REENTRY_VHRZ_ALARM_MS = 50.0f;   // white-on-red
 const float LNDG_REENTRY_VHRZ_WARN_MS  = 10.0f;   // yellow
 
+
 // Parachute deployment speed limits (m/s surface velocity)
 // KSP's safe/risky/unsafe indicator is speed-based, not dynamic-pressure-based.
 // Stock values from testing and community data:
 //   Drogue: safe below ~500 m/s, risky 500-600 m/s, unsafe above ~600 m/s
 //   Main:   safe below ~250 m/s, risky 250-300 m/s, unsafe above ~300 m/s
 // Tune LNDG_*_RISKY_MS if the display doesn't match your game's yellow threshold.
-const float LNDG_DROGUE_SAFE_MS  = 500.0f;   // green below this
-const float LNDG_DROGUE_RISKY_MS = 600.0f;   // yellow above safe, red above risky
-const float LNDG_MAIN_SAFE_MS    = 250.0f;   // green below this
-const float LNDG_MAIN_RISKY_MS   = 300.0f;   // yellow above safe, red above risky
+const float LNDG_DROGUE_SAFE_MS  = 750.0f;   // green below this
+const float LNDG_DROGUE_RISKY_MS = 850.0f;   // yellow above safe, red above risky
+const float LNDG_MAIN_SAFE_MS    = 475.0f;   // green below this
+const float LNDG_MAIN_RISKY_MS   = 550.0f;   // yellow above safe, red above risky
 
 // Parachute deployment state thresholds
 // LNDG_CHUTE_SEMI_DENSITY: air density (kg/m³) above which the chute begins to
@@ -106,10 +107,10 @@ const float LNDG_MAIN_RISKY_MS   = 300.0f;   // yellow above safe, red above ris
 //   Chute shows ARMED (cyan) below this; OPEN yellow/green above it.
 const float LNDG_CHUTE_SEMI_DENSITY = 0.049f;
 
-// LNDG_CHUTE_FULL_ALT: radar altitude (m) below which the chute is fully open.
-//   Matches KSP's default deployAltitude = 1000 m AGL.
-//   Chute shows OPEN yellow above this; OPEN green below it.
-const float LNDG_CHUTE_FULL_ALT = 1000.0f;
+// Full-deploy radar altitudes — below these the chute transitions from OPEN yellow
+// (semi-deploying) to OPEN green (fully open). Drogues deploy higher than mains.
+const float LNDG_DROGUE_FULL_ALT = 2500.0f;   // drogue fully open below 2500m AGL
+const float LNDG_MAIN_FULL_ALT   = 1000.0f;   // main fully open below 1000m AGL
 
 // T.Grnd band boundaries for Fwd/Lat context-dependent thresholds (seconds)
 const float LNDG_HVEL_T_LOOSE_S = 60.0f;   // above this: loose thresholds
@@ -128,25 +129,11 @@ const float DV_TOT_WARN_MS  = 500.0f;  // yellow — mission nearly out of prope
 
 
 /***************************************************************************************
-   FLIGHT THRESHOLDS — RENDEZVOUS (RNDZ screen)
+   FLIGHT THRESHOLDS — TARGET (RNDZ screen)
 ****************************************************************************************/
 
-// Distance to target (m)
-const float RNDZ_DIST_ALARM_M = 500.0f;    // white-on-red
-const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow
-
-// Closure rate (m/s magnitude)
-const float RNDZ_VCLOSURE_WARN_MS  =  5.0f;   // yellow — closing faster than this
-const float RNDZ_VCLOSURE_ALARM_MS = 10.0f;   // white-on-red — fast closure within 2km
-const float RNDZ_VCLOSURE_ALARM_DIST_M = 2000.0f;  // alarm only within this distance
-
-// Intercept time (seconds)
-const float RNDZ_INT_WARN_S = 120.0f;   // yellow — intercept approaching
-
-// Intercept distance quality (m)
-const float RNDZ_INTDIST_GOOD_M  = 1000.0f;  // green — good intercept
-const float RNDZ_INTDIST_WARN_M  = 5000.0f;  // yellow — workable intercept
-// red if > RNDZ_INTDIST_WARN_M (poor intercept, correction needed)
+// Distance to target (m) — yellow <5km, white-on-green <200m (ready for DOCK)
+const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow — closing
 
 
 /***************************************************************************************
@@ -174,7 +161,13 @@ const float DOCK_BRG_ALARM_DEG = 20.0f;  // red — large angle
    FLIGHT THRESHOLDS — ORBIT (ORB screen)
 ****************************************************************************************/
 
-// Eccentricity
+// Orbit screen: T+Ap/T+Pe near-circular suppression guard.
+// If ApA and PeA are within ORB_CIRCULAR_PCT percent of each other,
+// the orbit is effectively circular and the T+ row shows --- to avoid a
+// rapidly-jumping meaningless value. 1.0 = 1%.
+const float ORB_CIRCULAR_PCT = 1.0f;
+
+// Eccentricity thresholds
 const float ORB_ECC_WARN  = 0.9f;   // yellow — highly elliptical
 const float ORB_ECC_ALARM = 1.0f;   // white-on-red — escape trajectory
 
@@ -214,6 +207,32 @@ const float LNCH_TOAPO_WARN_S  = 30.0f;   // yellow — apoapsis close during bu
 const float LNCH_BURNTIME_ALARM_S = 60.0f;   // white-on-red — nearly out of fuel
 const float LNCH_BURNTIME_WARN_S  = 120.0f;  // yellow
 
+
+/***************************************************************************************
+   FLIGHT THRESHOLDS — ROVER (MISC screen)
+****************************************************************************************/
+
+// Radar altitude thresholds (m) — inverted logic vs aircraft/lander.
+// On a rover, being close to the ground is GOOD (wheels on surface).
+// Green < GOOD, yellow < WARN, red >= WARN (significantly airborne = out of control).
+const float ROVER_ALT_RDR_GOOD_M = 5.0f;    // green — wheels on/near ground
+const float ROVER_ALT_RDR_WARN_M = 10.0f;   // yellow — lightly airborne
+
+// Pitch (slope) thresholds (degrees). Tune per rover — heavier/wider rovers tolerate more.
+const float ROVER_PITCH_WARN_DEG  = 20.0f;   // yellow — getting steep
+const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
+
+// Roll (lateral tilt) thresholds (degrees). Roll is typically the more critical axis.
+const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
+const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
+
+// Target bearing error thresholds (degrees).
+const float ROVER_BRG_WARN_DEG    = 10.0f;   // yellow — off course
+const float ROVER_BRG_ALARM_DEG   = 30.0f;   // white-on-red — significantly off course
+
+// Electric charge thresholds (%).
+const float ROVER_EC_WARN_PCT     = 50.0f;   // yellow — running low
+const float ROVER_EC_ALARM_PCT    = 25.0f;   // white-on-red — critical
 
 /***************************************************************************************
    PHASE 2 IMPLEMENTATION NOTES

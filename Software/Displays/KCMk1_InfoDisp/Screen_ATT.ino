@@ -52,17 +52,17 @@ static void chromeScreen_ATT(RA8875 &tft) {
     printDispChrome(tft, F, RX, rowYFor(r, NR), RW, rowHFor(NR),
                     craftLabels[r], COL_LABEL, COL_BACK, COL_NO_BDR);
 
-  // Velocity group row labels (rows 4-5) — always Hdg/Pitch
+  // Velocity group row labels (rows 4-5) — velocity vector heading and pitch
   printDispChrome(tft, F, RX, rowYFor(4, NR), RW, rowHFor(NR),
-                  "Hdg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+                  "V.Hdg:", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, RX, rowYFor(5, NR), RW, rowHFor(NR),
-                  "Pitch:", COL_LABEL, COL_BACK, COL_NO_BDR);
+                  "V.Pit:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
-  // Error group row labels (rows 6-7) — Hdg/Pitch order matches velocity group
+  // Error group row labels (rows 6-7) — angle between velocity vector and craft nose
   printDispChrome(tft, F, RX, rowYFor(6, NR), RW, rowHFor(NR),
-                  "Hdg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+                  "Hdg.Err:", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, RX, rowYFor(7, NR), RW, rowHFor(NR),
-                  "Pitch:", COL_LABEL, COL_BACK, COL_NO_BDR);
+                  "Pit.Err:", COL_LABEL, COL_BACK, COL_NO_BDR);
 }
 
 /***************************************************************************************
@@ -83,7 +83,7 @@ static void drawScreen_ATT(RA8875 &tft) {
   bool orbMode = _attOrbMode();
   if (orbMode != _attPrevOrbMode) {
     _attPrevOrbMode = orbMode;
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[3][r].value = "\x01";
+    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[2][r].value = "\x01";
     switchToScreen(screen_ATT);
     return;
   }
@@ -100,11 +100,11 @@ static void drawScreen_ATT(RA8875 &tft) {
   // Cache-checked draw helper
   auto attVal = [&](uint8_t row, const char *label,
                     const String &val, uint16_t fg, uint16_t bg) {
-    RowCache &cache = rowCache[3][row];
+    RowCache &cache = rowCache[2][row];
     if (cache.value == val && cache.fg == fg && cache.bg == bg) return;
     printValue(tft, F, RX, rowYFor(row, NR), RW, rowHFor(NR),
                label, val, fg, bg, COL_BACK,
-               printState[3][row]);
+               printState[2][row]);
     cache.value = val; cache.fg = fg; cache.bg = bg;
   };
 
@@ -133,7 +133,7 @@ static void drawScreen_ATT(RA8875 &tft) {
     const char *sasStr;
     uint16_t   sasFg, sasBg;
     switch (state.sasMode) {
-      case 255: sasStr = "OFF";        sasFg = TFT_WHITE;       sasBg = TFT_RED;    break;
+      case 255: sasStr = "OFF";        sasFg = TFT_DARK_GREY;   sasBg = COL_BACK;   break;
       case 0:   sasStr = "STAB";       sasFg = TFT_DARK_GREEN;  sasBg = COL_BACK;   break;
       case 1:   sasStr = "PROGRADE";   sasFg = TFT_NEON_GREEN;  sasBg = COL_BACK;   break;  // navball prograde green
       case 2:   sasStr = "RETRO";      sasFg = TFT_NEON_GREEN;  sasBg = COL_BACK;   break;  // navball prograde green
@@ -158,25 +158,27 @@ static void drawScreen_ATT(RA8875 &tft) {
     velHdg   = orbMode ? state.orbVelHeading : state.srfVelHeading;
     velPitch = orbMode ? state.orbVelPitch   : state.srfVelPitch;
     snprintf(buf, sizeof(buf), "%.1f\xB0", velHdg);
-    attVal(4, "Hdg:", buf, COL_VALUE, COL_BACK);
+    attVal(4, "V.Hdg:", buf, COL_VALUE, COL_BACK);
     snprintf(buf, sizeof(buf), "%.1f\xB0", velPitch);
-    attVal(5, "Pitch:", buf, COL_VALUE, COL_BACK);
+    attVal(5, "V.Pit:", buf, COL_VALUE, COL_BACK);
   } else {
     velHdg   = state.heading;  // use craft heading so error = 0 when shown
     velPitch = state.pitch;
-    attVal(4, "Hdg:",   "---", TFT_DARK_GREY, COL_BACK);
-    attVal(5, "Pitch:", "---", TFT_DARK_GREY, COL_BACK);
+    attVal(4, "V.Hdg:", "---", TFT_DARK_GREY, COL_BACK);
+    attVal(5, "V.Pit:", "---", TFT_DARK_GREY, COL_BACK);
   }
 
   // --- Error group (rows 6-7): error to active velocity vector ---
   // Suppress when velocity vector is invalid (low speed) — derived values are meaningless.
   {
     if (!velValid) {
-      attVal(6, "Hdg:",   "---", TFT_DARK_GREY, COL_BACK);
-      attVal(7, "Pitch:", "---", TFT_DARK_GREY, COL_BACK);
+      attVal(6, "Hdg.Err:", "---", TFT_DARK_GREY, COL_BACK);
+      attVal(7, "Pit.Err:", "---", TFT_DARK_GREY, COL_BACK);
     } else {
-      float pErr = velPitch - state.pitch;
-      float hErr = velHdg  - state.heading;
+      // pErr: positive = nose above velocity vector (conventional AoA sign)
+      // hErr: positive = nose to the right of velocity vector (consistent with pErr convention)
+      float pErr = state.pitch - velPitch;
+      float hErr = state.heading - velHdg;
       if (hErr >  180.0f) hErr -= 360.0f;
       if (hErr < -180.0f) hErr += 360.0f;
 
@@ -194,11 +196,11 @@ static void drawScreen_ATT(RA8875 &tft) {
       uint16_t fg, bg;
       errColor(hErr, fg, bg);
       snprintf(buf, sizeof(buf), "%+.1f\xB0", hErr);
-      attVal(6, "Hdg:", buf, fg, bg);
+      attVal(6, "Hdg.Err:", buf, fg, bg);
 
       errColor(pErr, fg, bg);
       snprintf(buf, sizeof(buf), "%+.1f\xB0", pErr);
-      attVal(7, "Pitch:", buf, fg, bg);
+      attVal(7, "Pit.Err:", buf, fg, bg);
     }
   }
 }

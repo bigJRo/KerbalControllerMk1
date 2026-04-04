@@ -52,19 +52,19 @@ inline uint16_t sbBtnY(uint8_t btn)  { return btn * sbBtnH(); }
 
 const char * const SCREEN_TITLES[SCREEN_COUNT] = {
   "LAUNCH",
-  "APSIDES",
   "ORBIT",
   "ATTITUDE",
   "MANEUVER",
-  "RENDEZVOUS",
+  "TARGET",
   "DOCKING",
-  "VEHICLE INFO",
   "LANDING",
-  "AIRCRAFT"
+  "VEHICLE INFO",
+  "AIRCRAFT",
+  "ROVER"
 };
 
 const char * const SCREEN_IDS[SCREEN_COUNT] = {
-  "LNCH", "APSI", "ORB", "ATT", "MNVR", "RNDZ", "DOCK", "VEH", "LNDG", "ACFT"
+  "LNCH", "ORB", "ATT", "MNVR", "TGT", "DOCK", "LNDG", "VEH", "ACFT", "ROVR"
 };
 
 const ButtonLabel btnScreenOff = {
@@ -117,6 +117,28 @@ String fmtNum(float v) {
 String fmtUnit(float v, const char *unit) { return fmtNum(v) + " " + unit; }
 String fmtMs(float v)   { return fmtUnit(v, "m/s"); }
 
+// fmtTime wraps the library formatTime() to:
+//   1. Strip decimal places when in pure-seconds mode ("45.23s" → "45 s")
+//   2. Ensure a space between the number and the unit for all modes
+String fmtTime(float v) {
+  String s = formatTime(v);
+  // Strip decimal portion when the string ends with 's' (seconds mode)
+  int dotIdx = s.indexOf('.');
+  if (dotIdx >= 0 && s.endsWith("s")) {
+    s = s.substring(0, dotIdx) + "s";
+  }
+  // Insert a space before the trailing unit character if not already present
+  // Handles: "45s", "3m 20s", "1h 5m" style outputs
+  if (s.length() >= 2) {
+    char lastChar = s.charAt(s.length() - 1);
+    char prevChar = s.charAt(s.length() - 2);
+    if ((lastChar == 's' || lastChar == 'm' || lastChar == 'h') && prevChar != ' ') {
+      s = s.substring(0, s.length() - 1) + " " + lastChar;
+    }
+  }
+  return s;
+}
+
 /***************************************************************************************
    DRAW SIDEBAR
 ****************************************************************************************/
@@ -147,6 +169,26 @@ void drawTitleBar(RA8875 &tft, const String &title) {
   textCenter(tft, TITLE_FONT, 0, 0, CONTENT_W, TITLE_H,
              title, TFT_WHITE, TFT_BLACK);
   tft.fillRect(0, TITLE_H, CONTENT_W, TITLE_RULE_H, TFT_GREY);
+}
+
+// Draws a dark-green right-pointing triangle on the left of the title bar.
+// Call after drawTitleBar() on any screen with a title-bar tap action.
+// Triangle: 20px wide × 24px tall, vertically centred in TITLE_H (58px), x=6.
+// Uses ceiling division so every scanline including the tip is at least 1px wide.
+static void drawTitleToggleIndicator(RA8875 &tft) {
+  const uint16_t tx = 6;
+  const uint16_t tw = 20;
+  const uint16_t th = 24;
+  const uint16_t ty = (TITLE_H - th) / 2;
+  const uint16_t half = th / 2;
+  for (uint16_t row = 0; row < th; row++) {
+    // Ceiling division: (tw * row + half - 1) / half gives at least 1px from row 1
+    uint16_t extent = (row <= half)
+                      ? (tw * row + half - 1) / half
+                      : (tw * (th - 1 - row) + half - 1) / half;
+    if (row == 0) extent = 1;  // tip: single pixel
+    tft.drawLine(tx, ty + row, tx + extent, ty + row, TFT_DARK_GREEN);
+  }
 }
 
 /***************************************************************************************
@@ -191,23 +233,35 @@ void drawStaticScreen(RA8875 &tft, ScreenType s) {
 
   // Dynamic titles
   if (s == screen_ORB) {
-    String orbTitle = String("ORBIT - ") + state.gameSOI;
-    drawTitleBar(tft, orbTitle);
+    if (_orbAdvancedMode) {
+      drawTitleBar(tft, "ADVANCED ELEMENTS");
+    } else {
+      String orbTitle = String("ORBIT [ ") + state.gameSOI + " ]";
+      drawTitleBar(tft, orbTitle);
+    }
+    // Small dark-grey dot in title corner indicates screen is tappable
+    drawTitleToggleIndicator(tft);
   } else if (s == screen_LNDG) {
     drawTitleBar(tft, _lndgReentryMode ? "RE-ENTRY" : "POWERED DESCENT");
+    drawTitleToggleIndicator(tft);
   } else if (s == screen_LNCH) {
     drawTitleBar(tft, _lnchOrbitalMode ? "CIRCULARIZATION" : "ASCENT");
-    // Draw override indicator in chrome (redrawn every loop in draw function too)
+    drawTitleToggleIndicator(tft);
+    // Red dot indicates manual override of auto phase switch
     if (_lnchManualOverride)
-      tft.fillCircle(700, 29, 8, TFT_RED);
+      tft.fillCircle(706, 29, 6, TFT_RED);
+  } else if (s == screen_DOCK) {
+    // Vessel name from Simpit reflects the active/combined vessel after docking.
+    String dockTitle = String("DOCKING [ ") + state.vesselName + " ]";
+    drawTitleBar(tft, dockTitle);
   } else {
     drawTitleBar(tft, s);
   }
 
   switch (s) {
     case screen_LNCH: chromeScreen_LNCH(tft); break;
-    case screen_APSI: chromeScreen_APSI(tft); break;
     case screen_ORB:  chromeScreen_ORB(tft);  break;
+    case screen_MISC: chromeScreen_MISC(tft); break;
     case screen_ATT:  chromeScreen_ATT(tft);  break;
     case screen_MNVR: chromeScreen_MNVR(tft); break;
     case screen_RNDZ: _rndzChromDrawn = false; chromeScreen_RNDZ(tft); break;
@@ -305,8 +359,8 @@ void drawStaticScreen(RA8875 &tft, ScreenType s) {
 void updateScreen(RA8875 &tft, ScreenType s) {
   switch (s) {
     case screen_LNCH: drawScreen_LNCH(tft); break;
-    case screen_APSI: drawScreen_APSI(tft); break;
     case screen_ORB:  drawScreen_ORB(tft);  break;
+    case screen_MISC: drawScreen_MISC(tft); break;
     case screen_ATT:  drawScreen_ATT(tft);  break;
     case screen_MNVR: drawScreen_MNVR(tft); break;
     case screen_RNDZ: drawScreen_RNDZ(tft); break;

@@ -6,6 +6,7 @@
 
 bool _dockChromDrawn = false;
 bool _vesselDocked   = false;
+uint32_t _dockedTimestamp = 0;
 
 static void chromeScreen_DOCK(RA8875 &tft) {
   if (_vesselDocked) {
@@ -24,10 +25,10 @@ static void chromeScreen_DOCK(RA8875 &tft) {
     static const uint16_t AHW    = AW / 2;
     uint16_t rowH = rowHFor(NR);
 
-    // Section labels: APCH(0-3), BRG(5-6)
+    // Section labels: APCH(0-3), ERR(5-6)
     // DR(row4) and CT(row7) drawn AFTER their bounding dividers
     drawVerticalText(tft, 0, TITLE_TOP,          SECT_W, rowH*4, &Roboto_Black_16, "APCH", TFT_LIGHT_GREY, TFT_BLACK);
-    drawVerticalText(tft, 0, TITLE_TOP + rowH*5, SECT_W, rowH*2, &Roboto_Black_16, "BRG",  TFT_LIGHT_GREY, TFT_BLACK);
+    drawVerticalText(tft, 0, TITLE_TOP + rowH*5, SECT_W, rowH*2, &Roboto_Black_16, "ERR",  TFT_LIGHT_GREY, TFT_BLACK);
 
     // APCH row labels (rows 0-3)
     printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "Alt.SL:", COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -69,11 +70,11 @@ static void chromeScreen_DOCK(RA8875 &tft) {
         tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(6, NR) - 1, TFT_GREY);
     }
 
-    // Row 6: split Brg | Elev (raw absolute bearing/elevation — reference only)
+    // Row 6: split Nos.Brg | Nos.Elv (angle between craft nose and target — are you pointed at the port?)
     {
       uint16_t y = rowYFor(6, NR), h = rowH;
-      printDispChrome(tft, F, AX,               y, AHW - ROW_PAD, h, "Brg:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-      printDispChrome(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h, "Elev:", COL_LABEL, COL_BACK, COL_NO_BDR);
+      printDispChrome(tft, F, AX,               y, AHW - ROW_PAD, h, "Nos.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+      printDispChrome(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h, "Nos.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
       for (int8_t dx = -1; dx <= 1; dx++)
         tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(7, NR) - 1, TFT_GREY);
     }
@@ -100,7 +101,7 @@ static void chromeScreen_DOCK(RA8875 &tft) {
     // Clear content area — no chrome needed for NO TARGET state
     tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
     textCenter(tft, &Roboto_Black_72, 0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP,
-               "NO TARGET", TFT_WHITE, TFT_RED);
+               "NO TARGET SET", TFT_WHITE, TFT_RED);
   }
 }
 
@@ -152,10 +153,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
   // Cache-checked draw helper using section-label-aware geometry
   auto dockVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[6][row];
+    RowCache &rc = rowCache[5][row];
     if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
     printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[6][row]);
+               label, val, fgc, bgc, COL_BACK, printState[5][row]);
     rc.value = val; rc.fg = fgc; rc.bg = bgc;
   };
 
@@ -214,6 +215,8 @@ static void drawScreen_DOCK(RA8875 &tft) {
     v_yaw     = v_lat[0]*right[0] + v_lat[1]*right[1] + v_lat[2]*right[2];
     v_pitch   = v_lat[0]*up[0]    + v_lat[1]*up[1]    + v_lat[2]*up[2];
     v_lat_mag = sqrtf(v_lat[0]*v_lat[0]+v_lat[1]*v_lat[1]+v_lat[2]*v_lat[2]);
+    if (fabsf(v_yaw)   < 0.005f) v_yaw   = 0.0f;
+    if (fabsf(v_pitch) < 0.005f) v_pitch = 0.0f;
   }
 
   // Drift colour helper: green <0.1, yellow <0.5, white-on-red >=0.5
@@ -237,10 +240,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
     driftColor(v_yaw, fg, bg);
     {
       String s = buf;
-      RowCache &rc = rowCache[6][4];
+      RowCache &rc = rowCache[5][4];
       if (rc.value != s || rc.fg != fg || rc.bg != bg) {
         printValue(tft, F, xL, y4, wL, h4, "Drft.H:", s, fg, bg, COL_BACK,
-                   printState[6][4]);
+                   printState[5][4]);
         rc.value = s; rc.fg = fg; rc.bg = bg;
       }
     }
@@ -249,10 +252,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
     driftColor(v_pitch, fg, bg);
     {
       String s = buf;
-      RowCache &rc = rowCache[6][9];
+      RowCache &rc = rowCache[5][9];
       if (rc.value != s || rc.fg != fg || rc.bg != bg) {
         printValue(tft, F, xR, y4, wR, h4, "Drft.V:", s, fg, bg, COL_BACK,
-                   printState[6][9]);
+                   printState[5][9]);
         rc.value = s; rc.fg = fg; rc.bg = bg;
       }
     }
@@ -268,8 +271,9 @@ static void drawScreen_DOCK(RA8875 &tft) {
     float brgErr = state.tgtHeading - state.tgtVelHeading;
     if (brgErr >  180.0f) brgErr -= 360.0f;
     if (brgErr < -180.0f) brgErr += 360.0f;
-
     float elvErr = state.tgtPitch - state.tgtVelPitch;
+    if (fabsf(brgErr) < 0.05f) brgErr = 0.0f;
+    if (fabsf(elvErr) < 0.05f) elvErr = 0.0f;
 
     auto errColor = [](float e, uint16_t &fg, uint16_t &bg) {
       float ae = fabsf(e);
@@ -282,10 +286,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
     snprintf(buf, sizeof(buf), "%+.1f\xB0", brgErr);
     {
       String s = buf;
-      RowCache &rc = rowCache[6][5];
+      RowCache &rc = rowCache[5][5];
       if (rc.value != s || rc.fg != fg || rc.bg != bg) {
         printValue(tft, F, xL, y5, wL, h5, "Brg.Err:", s, fg, bg, COL_BACK,
-                   printState[6][5]);
+                   printState[5][5]);
         rc.value = s; rc.fg = fg; rc.bg = bg;
       }
     }
@@ -294,39 +298,58 @@ static void drawScreen_DOCK(RA8875 &tft) {
     snprintf(buf, sizeof(buf), "%+.1f\xB0", elvErr);
     {
       String s = buf;
-      RowCache &rc = rowCache[6][10];
+      RowCache &rc = rowCache[5][10];
       if (rc.value != s || rc.fg != fg || rc.bg != bg) {
         printValue(tft, F, xR, y5, wR, h5, "Elv.Err:", s, fg, bg, COL_BACK,
-                   printState[6][10]);
+                   printState[5][10]);
         rc.value = s; rc.fg = fg; rc.bg = bg;
       }
     }
   }
 
-  // Row 6 — Raw bearing/elevation to target: reference only (dark grey, no thresholds).
-  // Slots: Brg = cache[6][6], Elev = cache[6][7]
+  // Row 6 — Nose-to-target errors: angle between craft nose and target direction.
+  // Tells the pilot whether they are pointed at the docking port.
+  // noseBrg: positive = nose right of target. noseElv: positive = nose above target.
+  // Same sign convention as ATT Hdg.Err/Pit.Err (nose relative to reference).
+  // Slots: Nos.Brg = cache[5][6], Nos.Elv = cache[5][7]
   {
     uint16_t y6 = rowYFor(6, NR), h6 = rowHFor(NR);
 
-    snprintf(buf, sizeof(buf), "%.1f\xB0", state.tgtHeading);
+    float noseBrg = state.heading  - state.tgtHeading;
+    if (noseBrg >  180.0f) noseBrg -= 360.0f;
+    if (noseBrg < -180.0f) noseBrg += 360.0f;
+    float noseElv = state.pitch - state.tgtPitch;
+    if (fabsf(noseBrg) < 0.05f) noseBrg = 0.0f;
+    if (fabsf(noseElv) < 0.05f) noseElv = 0.0f;
+
+    auto errColor = [](float e, uint16_t &fg, uint16_t &bg) {
+      float ae = fabsf(e);
+      if      (ae >= DOCK_BRG_ALARM_DEG) { fg = TFT_WHITE;     bg = TFT_RED;   }
+      else if (ae >= DOCK_BRG_WARN_DEG)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+      else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+    };
+
+    errColor(noseBrg, fg, bg);
+    snprintf(buf, sizeof(buf), "%+.1f\xB0", noseBrg);
     {
       String s = buf;
-      RowCache &rc = rowCache[6][6];
-      if (rc.value != s || rc.fg != TFT_DARK_GREY || rc.bg != COL_BACK) {
-        printValue(tft, F, xL, y6, wL, h6, "Brg:", s, TFT_DARK_GREY, COL_BACK, COL_BACK,
-                   printState[6][6]);
-        rc.value = s; rc.fg = TFT_DARK_GREY; rc.bg = COL_BACK;
+      RowCache &rc = rowCache[5][6];
+      if (rc.value != s || rc.fg != fg || rc.bg != bg) {
+        printValue(tft, F, xL, y6, wL, h6, "Nos.Brg:", s, fg, bg, COL_BACK,
+                   printState[5][6]);
+        rc.value = s; rc.fg = fg; rc.bg = bg;
       }
     }
 
-    snprintf(buf, sizeof(buf), "%.1f\xB0", state.tgtPitch);
+    errColor(noseElv, fg, bg);
+    snprintf(buf, sizeof(buf), "%+.1f\xB0", noseElv);
     {
       String s = buf;
-      RowCache &rc = rowCache[6][7];
-      if (rc.value != s || rc.fg != TFT_DARK_GREY || rc.bg != COL_BACK) {
-        printValue(tft, F, xR, y6, wR, h6, "Elev:", s, TFT_DARK_GREY, COL_BACK, COL_BACK,
-                   printState[6][7]);
-        rc.value = s; rc.fg = TFT_DARK_GREY; rc.bg = COL_BACK;
+      RowCache &rc = rowCache[5][7];
+      if (rc.value != s || rc.fg != fg || rc.bg != bg) {
+        printValue(tft, F, xR, y6, wR, h6, "Nos.Elv:", s, fg, bg, COL_BACK,
+                   printState[5][7]);
+        rc.value = s; rc.fg = fg; rc.bg = bg;
       }
     }
   }
@@ -339,10 +362,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
     uint16_t    rcsFg  = state.rcs_on ? TFT_DARK_GREEN : TFT_WHITE;
     uint16_t    rcsBg  = state.rcs_on ? TFT_BLACK      : TFT_RED;
     {
-      RowCache &rc = rowCache[6][8];
+      RowCache &rc = rowCache[5][8];
       if (rc.value != rcsStr || rc.fg != rcsFg || rc.bg != rcsBg) {
         printValue(tft, F, xL, y7, wL, h7, "RCS:", rcsStr, rcsFg, rcsBg, COL_BACK,
-                   printState[6][8]);
+                   printState[5][8]);
         rc.value = rcsStr; rc.fg = rcsFg; rc.bg = rcsBg;
       }
     }
@@ -364,10 +387,10 @@ static void drawScreen_DOCK(RA8875 &tft) {
       default:  sasStr = "---";      sasFg = TFT_DARK_GREY;   sasBg = TFT_BLACK; break;
     }
     {
-      RowCache &rc = rowCache[6][12];
+      RowCache &rc = rowCache[5][12];
       if (rc.value != sasStr || rc.fg != sasFg || rc.bg != sasBg) {
         printValue(tft, F, xR, y7, wR, h7, "SAS:", sasStr, sasFg, sasBg, COL_BACK,
-                   printState[6][12]);
+                   printState[5][12]);
         rc.value = sasStr; rc.fg = sasFg; rc.bg = sasBg;
       }
     }

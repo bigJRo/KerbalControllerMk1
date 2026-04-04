@@ -113,7 +113,16 @@ void processTouchEvents() {
         Serial.println(y2);
       }
 
-      if (activeScreen == screen_LNDG) {
+      if (activeScreen == screen_ORB) {
+        _orbAdvancedMode = !_orbAdvancedMode;
+        for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[1][r].value = "\x01";
+        switchToScreen(screen_ORB);
+        clearTouchISR();
+        if (debugMode) {
+          Serial.print(F("InfoDisp: ORB view -> "));
+          Serial.println(_orbAdvancedMode ? F("ADVANCED ELEMENTS") : F("APSIDES"));
+        }
+      } else if (activeScreen == screen_LNDG) {
         _lndgReentryMode = !_lndgReentryMode;
         for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[3][r].value = "\x01";
         switchToScreen(screen_LNDG);
@@ -153,6 +162,20 @@ void processTouchEvents() {
     Serial.print(x2);
     Serial.print(F(" y="));
     Serial.println(y2);
+  }
+
+  // Pre-launch board: tap anywhere in content area to advance to ascent mode
+  if (activeScreen == screen_LNCH && _lnchPrelaunchMode &&
+      x2 < SCREEN_W - SIDEBAR_W && y2 >= TITLE_TOP) {
+    _lnchPrelaunchMode      = false;
+    _lnchPrelaunchDismissed = true;   // prevent FLIGHT_STATUS from re-entering
+    _lnchOrbitalMode        = false;
+    _lnchManualOverride     = false;
+    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[0][r].value = "\x01";
+    switchToScreen(screen_LNCH);
+    clearTouchISR();
+    if (debugMode) Serial.println(F("InfoDisp: Pre-launch board dismissed by tap"));
+    return;
   }
 
   // Sidebar hit test — right-hand SIDEBAR_W column

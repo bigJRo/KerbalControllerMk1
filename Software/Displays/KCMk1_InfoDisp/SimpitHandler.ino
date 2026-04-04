@@ -5,7 +5,8 @@
      VESSEL_NAME, SOI, FLIGHT_STATUS, ALTITUDE, VELOCITY, AIRSPEED,
      APSIDES, APSIDESTIME, DELTAV, BURNTIME, ORBIT, ROTATION_DATA,
      MANEUVER, TARGETINFO, INTERSECTS, ATMO_CONDITIONS, ACTIONSTATUS,
-     CAGSTATUS, THROTTLE_CMD, SCENE_CHANGE, VESSEL_CHANGE
+     CAGSTATUS, THROTTLE_CMD, WHEEL_CMD, ELECTRIC,
+     SCENE_CHANGE, VESSEL_CHANGE
 
    Phase 2: Simpit integration for live KSP telemetry.
    Phase 3: I2C slave interface (not yet implemented).
@@ -51,6 +52,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case SAS_MODE_INFO_MESSAGE:   n = "SAS_MODE_INFO";   break;
       case CAGSTATUS_MESSAGE:       n = "CAG_STATUS";      break;
       case THROTTLE_CMD_MESSAGE:    n = "THROTTLE_CMD";    break;
+      case WHEEL_CMD_MESSAGE:        n = "WHEEL_CMD";        break;
+      case ELECTRIC_MESSAGE:        n = "ELECTRIC";        break;
       case SCENE_CHANGE_MESSAGE:    n = "SCENE_CHANGE";    break;
       case VESSEL_CHANGE_MESSAGE:   n = "VESSEL_CHANGE";   break;
       default:                      n = "UNKNOWN";         break;
@@ -94,6 +97,42 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.targetAvailable = fs.hasTarget();
         // state.inAtmo populated by ATMO_CONDITIONS_MESSAGE
         // state.sasMode — no field in KerbalSimpit 2.4.0 flightStatusMessage
+
+        // If a vessel switch is pending, now we have the correct vesselType — switch screens
+        if (_pendingContextSwitch) {
+          _pendingContextSwitch = false;
+          if (debugMode) {
+            Serial.print(F("InfoDisp: VesselSwitch FLIGHT_STATUS - type="));
+            Serial.print((int)state.vesselType);
+            Serial.print(F(" tgtAvail="));
+            Serial.print(state.targetAvailable);
+            Serial.print(F(" tgtDist="));
+            Serial.println(state.tgtDistance);
+          }
+          switchToScreen(contextScreen());
+          // TARGETINFO may not have arrived yet — set flag to re-check for docking context
+          // once target distance is known (catches switching to a vessel near a dock target)
+          _pendingDockCheck = true;
+        }
+
+        // Pre-launch board: only for vessel types that would go to LNCH screen.
+        // Planes → ACFT and Rovers → ROVR even on the pad, so skip the board for them.
+        bool planeOrRover = (state.vesselType == type_Plane || state.vesselType == type_Rover);
+        bool isPreLaunch  = (!planeOrRover && (state.situation & sit_PreLaunch) != 0);
+        if (isPreLaunch && !_lnchPrelaunchMode && !_lnchPrelaunchDismissed) {
+          _lnchPrelaunchMode = true;
+          if (activeScreen == screen_LNCH) switchToScreen(screen_LNCH);
+        } else if (!isPreLaunch && _lnchPrelaunchMode) {
+          // Launched — clear everything including dismissed flag
+          _lnchPrelaunchMode      = false;
+          _lnchPrelaunchDismissed = false;
+          _lnchOrbitalMode        = false;
+          _lnchManualOverride     = false;
+          if (activeScreen == screen_LNCH) switchToScreen(screen_LNCH);
+        } else if (!isPreLaunch) {
+          // No longer pre-launch for any reason — clear dismissed flag for next time on pad
+          _lnchPrelaunchDismissed = false;
+        }
       }
       break;
 
@@ -168,6 +207,30 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       }
       break;
 
+    case WHEEL_CMD_MESSAGE:
+      // Outbound telemetry echo of combined wheel input (keyboard + Simpit).
+      // wheelMessage struct: int16_t steering, int16_t throttle, uint8_t mask.
+      // Note: WHEEL_THROTTLE_MASK is not defined in KerbalSimpit 2.4.0 — read directly.
+      // Throttle is signed int16; clamp to 0.0..1.0 (negative = braking/reverse).
+      if (msgSize == sizeof(wheelMessage)) {
+        wheelMessage w = parseMessage<wheelMessage>(msg);
+        // Store signed value: positive = forward, negative = reverse/braking.
+        // Range is -1.0..1.0 (INT16_MIN..INT16_MAX scaled).
+        state.wheelThrottle = (float)w.throttle / (float)INT16_MAX;
+      }
+      break;
+
+    case ELECTRIC_MESSAGE:
+      // resourceMessage struct: float total, float available
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseMessage<resourceMessage>(msg);
+        if (r.total > 0.0f)
+          state.electricChargePercent = (r.available / r.total) * 100.0f;
+        else
+          state.electricChargePercent = 0.0f;
+      }
+      break;
+
     // ── Orbital elements ─────────────────────────────────────────────────────────────
 
     case ORBIT_MESSAGE:
@@ -225,6 +288,27 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.tgtPitch      = t.pitch;
         state.tgtVelHeading = t.velocityHeading;
         state.tgtVelPitch   = t.velocityPitch;
+
+        // After a vessel switch, contextScreen() runs before tgtDistance is known,
+        // so the docking distance check may fail even with a valid nearby target.
+        // Re-run contextScreen() once when the first TARGETINFO arrives post-switch.
+        // This correctly handles all priorities (plane/rover/lander/dock/orb).
+        if (_pendingDockCheck) {
+          _pendingDockCheck = false;
+          if (debugMode) {
+            Serial.print(F("InfoDisp: VesselSwitch TARGETINFO - tgtAvail="));
+            Serial.print(state.targetAvailable);
+            Serial.print(F(" tgtDist="));
+            Serial.println(state.tgtDistance);
+          }
+          // KSP may report targetAvailable=false even while sending TARGETINFO with
+          // a valid distance — use distance alone to confirm a nearby docking target.
+          if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
+            switchToScreen(screen_DOCK);
+          } else {
+            switchToScreen(contextScreen());
+          }
+        }
       }
       break;
 
@@ -257,20 +341,20 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       }
       break;
 
-    case CAGSTATUS_MESSAGE:
-      // Each bit = one CAG (1-based). msg[0] covers CAGs 1-8.
-      // Parachute CAG bindings come from AAA_Config.ino constants.
-      if (msgSize >= 1) {
-        if (DROGUE_DEPLOY_CAG >= 1 && DROGUE_DEPLOY_CAG <= 8)
-          state.drogueDeploy = (msg[0] >> (DROGUE_DEPLOY_CAG - 1)) & 1;
-        if (DROGUE_CUT_CAG   >= 1 && DROGUE_CUT_CAG   <= 8)
-          state.drogueCut    = (msg[0] >> (DROGUE_CUT_CAG   - 1)) & 1;
-        if (MAIN_DEPLOY_CAG  >= 1 && MAIN_DEPLOY_CAG  <= 8)
-          state.mainDeploy   = (msg[0] >> (MAIN_DEPLOY_CAG  - 1)) & 1;
-        if (MAIN_CUT_CAG     >= 1 && MAIN_CUT_CAG     <= 8)
-          state.mainCut      = (msg[0] >> (MAIN_CUT_CAG     - 1)) & 1;
-      }
+    case CAGSTATUS_MESSAGE: {
+      // Cast msg directly to cagStatusMessage and use is_action_activated(n).
+      // parseCAGStatusMessage() is deprecated — use the struct directly.
+      cagStatusMessage *cag = (cagStatusMessage *)msg;
+      if (DROGUE_DEPLOY_CAG >= 1 && DROGUE_DEPLOY_CAG <= 256)
+        state.drogueDeploy = cag->is_action_activated(DROGUE_DEPLOY_CAG);
+      if (DROGUE_CUT_CAG   >= 1 && DROGUE_CUT_CAG   <= 256)
+        state.drogueCut    = cag->is_action_activated(DROGUE_CUT_CAG);
+      if (MAIN_DEPLOY_CAG  >= 1 && MAIN_DEPLOY_CAG  <= 256)
+        state.mainDeploy   = cag->is_action_activated(MAIN_DEPLOY_CAG);
+      if (MAIN_CUT_CAG     >= 1 && MAIN_CUT_CAG     <= 256)
+        state.mainCut      = cag->is_action_activated(MAIN_CUT_CAG);
       break;
+    }
 
     // ── Scene and vessel lifecycle ───────────────────────────────────────────────────
 
@@ -295,10 +379,25 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
     case VESSEL_CHANGE_MESSAGE:
       if (msg[0] == 1) {
-        // Vessel switch (focus changed to another vessel)
+        // Vessel switch (focus changed to another vessel).
+        // Guard: if we just docked (within 2s), KSP sends a vessel switch immediately
+        // as focus transfers to the combined vessel. Don't clear _vesselDocked in that case.
+        bool recentDock = (_vesselDocked && (millis() - _dockedTimestamp < 2000UL));
+        if (!recentDock) {
+          _vesselDocked = false;
+        }
+        _pendingDockCheck = false;  // clear any stale dock check from previous switch
         if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
-        // Clear docked state — new vessel is not docked until proven otherwise
-        _vesselDocked = false;
+        // Reset LNDG re-entry row mode and parachute deployment state for new vessel
+        _lndgReentryRow3PeA = true;
+        _lndgReentryRow0TPe = false;
+        _lndgReentryRow1SL  = false;
+        _drogueDeployed  = false;
+        _mainDeployed    = false;
+        _drogueCut       = false;
+        _mainCut         = false;
+        _drogueArmedSafe = false;
+        _mainArmedSafe   = false;
         // Invalidate all row caches so everything redraws on the new vessel
         for (uint8_t s = 0; s < SCREEN_COUNT; s++) {
           for (uint8_t r = 0; r < ROW_COUNT; r++) {
@@ -307,14 +406,17 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             rowCache[s][r].bg    = 0x0001;
           }
         }
-        // Pick the most relevant screen for the new vessel
-        switchToScreen(contextScreen());
+        // Don't call contextScreen() here — state.vesselType is still the OLD vessel's
+        // type at this point. FLIGHT_STATUS_MESSAGE with the new vessel's type will
+        // arrive shortly; set a flag and do the context switch when it does.
+        _pendingContextSwitch = true;
         // Request a full telemetry refresh so all fields repopulate immediately
         simpit.requestMessageOnChannel(0);
       } else if (msg[0] == 2) {
         // Docked
         if (debugMode) Serial.println(F("InfoDisp: Docked"));
         _vesselDocked = true;
+        _dockedTimestamp = millis();
         // Force DOCK screen chrome to redraw so DOCKED splash appears
         if (activeScreen == screen_DOCK) switchToScreen(screen_DOCK);
       } else if (msg[0] == 3) {
@@ -363,6 +465,8 @@ void initSimpit() {
   simpit.registerChannel(SAS_MODE_INFO_MESSAGE);
   simpit.registerChannel(CAGSTATUS_MESSAGE);
   simpit.registerChannel(THROTTLE_CMD_MESSAGE);
+  simpit.registerChannel(WHEEL_CMD_MESSAGE);
+  simpit.registerChannel(ELECTRIC_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);
 }

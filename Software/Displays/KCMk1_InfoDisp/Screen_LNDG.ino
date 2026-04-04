@@ -5,7 +5,19 @@
 
 
 bool _lndgReentryMode    = false;
-bool _lndgReentryRow3PeA = true;   // true = row 3 shows PeA (alt > 2km); false = V.Hrz
+bool _lndgReentryRow3PeA  = true;   // true = row 3 shows PeA (alt > 20km); false = V.Hrz
+bool _lndgReentryRow0TPe  = false;  // true = row 0 shows T+Atm; false = T.Grnd or ---
+bool _lndgReentryRow1SL   = false;  // true = row 1 shows Alt.SL (above atmo); false = Alt.Rdr
+
+// Parachute deployment state — file-scope so SimpitHandler can reset on vessel switch
+bool _drogueDeployed  = false;
+bool _mainDeployed    = false;
+bool _drogueCut       = false;
+bool _mainCut         = false;
+// armedSafe: set when a chute is fired above atmosphere at safe conditions.
+// While true, skip the in-atmosphere speed check — the chute committed safely.
+bool _drogueArmedSafe = false;
+bool _mainArmedSafe   = false;
 
 static void chromeScreen_LNDG(RA8875 &tft) {
   static const tFont   *F      = &Roboto_Black_40;
@@ -16,26 +28,39 @@ static void chromeScreen_LNDG(RA8875 &tft) {
   static const uint16_t AHW    = AW / 2;
   uint16_t rowH = rowHFor(NR);
 
-  // Title bar shows current mode — tapping it toggles (handled in TouchEvents)
-  drawTitleBar(tft, _lndgReentryMode ? "RE-ENTRY" : "POWERED DESCENT");
+  // Title bar is drawn by drawStaticScreen before calling this function.
+  // Toggle indicator is added there too — do not call drawTitleBar here.
 
   // STATE section label (rows 0-4, both modes)
   drawVerticalText(tft, 0, TITLE_TOP, SECT_W, rowH*5, &Roboto_Black_16, "STATE", TFT_LIGHT_GREY, TFT_BLACK);
 
-  // STATE rows 0-4: mostly shared, row 3 differs by mode
-  printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "T.Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(2,NR), AW, rowH, "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+  // STATE rows 0-4: mostly shared, row 3 differs by mode.
+  // Rows 0 and 1 also change label in re-entry mode based on flight phase.
+  // Labels are drawn here from current state vars; draw function updates the vars
+  // and triggers switchToScreen when they change (same pattern as row 3).
+  const char *row0Label = (!_lndgReentryMode) ? "T.Grnd:"
+                          : (_lndgReentryRow0TPe ? "T+Atm:" : "T.Grnd:");
+  const char *row1Label = (!_lndgReentryMode || !_lndgReentryRow1SL) ? "Alt.Rdr:" : "Alt.SL:";
+  printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, row0Label,  COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, row1Label,  COL_LABEL, COL_BACK, COL_NO_BDR);
 
   if (!_lndgReentryMode) {
-    // Row 3: Fwd | Lat split — heading-relative horizontal velocity components
+    // Powered descent: V.Srf row 2, V.Vrt row 3
+    printDispChrome(tft, F, AX, rowYFor(2,NR), AW, rowH, "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, AX, rowYFor(3,NR), AW, rowH, "V.Vrt:", COL_LABEL, COL_BACK, COL_NO_BDR);
+  } else {
+    // Re-entry: V.Vrt row 2, PeA or V.Hrz row 3 (altitude-dependent)
+    printDispChrome(tft, F, AX, rowYFor(2,NR), AW, rowH, "V.Vrt:", COL_LABEL, COL_BACK, COL_NO_BDR);
+  }
+
+  if (!_lndgReentryMode) {
+    // Row 4: Fwd | Lat split — heading-relative horizontal velocity components
     {
-      uint16_t y = rowYFor(3, NR), h = rowH;
+      uint16_t y = rowYFor(4, NR), h = rowH;
       printDispChrome(tft, F, AX,                 y, AHW - ROW_PAD, h, "Fwd:", COL_LABEL, COL_BACK, COL_NO_BDR);
       printDispChrome(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h, "Lat:", COL_LABEL, COL_BACK, COL_NO_BDR);
       for (int8_t dx = -1; dx <= 1; dx++)
-        tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(4,NR) - 1, TFT_GREY);
+        tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(5,NR) - 1, TFT_GREY);
     }
     // === POWERED DESCENT rows 5-7 ===
 
@@ -54,25 +79,26 @@ static void chromeScreen_LNDG(RA8875 &tft) {
         tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(7,NR) - 1, TFT_GREY);
     }
 
-    // Row 7: Gear | Brakes split
+    // Row 7: Gear | SAS split
     {
       uint16_t y = rowYFor(7, NR), h = rowH;
-      printDispChrome(tft, F, AX,               y, AHW - ROW_PAD, h, "Gear:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-      printDispChrome(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h, "Brakes:", COL_LABEL, COL_BACK, COL_NO_BDR);
+      printDispChrome(tft, F, AX,               y, AHW - ROW_PAD, h, "Gear:", COL_LABEL, COL_BACK, COL_NO_BDR);
+      printDispChrome(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h, "SAS:",  COL_LABEL, COL_BACK, COL_NO_BDR);
       for (int8_t dx = -1; dx <= 1; dx++)
         tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(8,NR) - 1, TFT_GREY);
     }
 
   } else {
-    // Row 3: label is altitude-dependent — PeA above 2km (de-orbit context),
-    // V.Hrz below 2km (landing context). _lndgReentryRow3PeA tracks current mode.
+    // Row 3: label is altitude-dependent — PeA above 20km (de-orbit context),
+    // V.Hrz below 20km (landing context). _lndgReentryRow3PeA tracks current mode.
     printDispChrome(tft, F, AX, rowYFor(3,NR), AW, rowH,
                     _lndgReentryRow3PeA ? "PeA:" : "V.Hrz:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // === RE-ENTRY rows 5-7 ===
 
-    // VEH section label (rows 6-7) drawn first so divider can overwrite its top
-    drawVerticalText(tft, 0, TITLE_TOP + rowH*6, SECT_W, rowH*2, &Roboto_Black_16, "VEH", TFT_LIGHT_GREY, TFT_BLACK);
+    // VEH section label (rows 6-7): start 2px below d2 to avoid overwriting AT label.
+    drawVerticalText(tft, 0, TITLE_TOP + rowH*6 + 2, SECT_W, rowH*2 - 4, &Roboto_Black_16, "VEH", TFT_LIGHT_GREY, TFT_BLACK);
 
     // Row 5: Mach | G split (ATM block — drawn after VEH so divider order is correct)
     {
@@ -132,101 +158,182 @@ static void drawScreen_LNDG(RA8875 &tft) {
   uint16_t fg, bg;
   char buf[16];
 
-  // Parachute state tracking — persists across loop() calls.
-  static bool _drogueDeployed = false;
-  static bool _mainDeployed   = false;
-  static bool _drogueCut      = false;
-  static bool _mainCut        = false;
-
   // Cache-checked draw helper using section-label-aware geometry
   auto lndgVal = [&](uint8_t row, const char *label, const String &val,
                      uint16_t fgc, uint16_t bgc) {
-    RowCache &rc = rowCache[8][row];
+    RowCache &rc = rowCache[6][row];
     if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
     printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-               label, val, fgc, bgc, COL_BACK, printState[8][row]);
+               label, val, fgc, bgc, COL_BACK, printState[6][row]);
     rc.value = val; rc.fg = fgc; rc.bg = bgc;
   };
 
-  // ── STATE block (rows 0-4): shared by both modes ──
-  // Option C order: T.Grnd → Alt.Rdr → V.Vrt → V.Hrz → V.Srf
-  // Most critical first (time to impact), supporting data below.
+  // ── STATE block (rows 0-4) ──
 
   // Precompute T.Grnd and V.Hrz — used by multiple rows
-  // Guard: only compute T.Grnd when descending faster than 0.1 m/s to avoid
-  // a near-zero denominator producing a huge/noisy quotient on the pad.
-  float tGround = (state.verticalVel < -0.05f && state.radarAlt > 0.0f)
+  bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
+  float tGround = (!inOrbitOrEscape && state.verticalVel < -0.05f && state.radarAlt > 0.0f)
                   ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
   float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
   float hSpd = (vSq > 0.0f) ? sqrtf(vSq) : 0.0f;
 
-  // Row 0 — T.Grnd: most critical — how long do I have
-  // Gear-aware colouring:
-  //   Gear UP:   T.Grnd <10s = red (matches annunciator CW_GROUND_PROX), <30s = yellow
-  //   Gear DOWN: V.Vrt < -8 m/s = red (crash landing), < -5 m/s = yellow, else green
-  //              T.Grnd <30s adds yellow caution regardless of speed
-  if (tGround >= 0.0f) {
-    if (!state.gear_on) {
-      // Gear UP — time-based alarm matching annunciator
-      fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
-           (tGround < LNDG_TGRND_WARN_S) ? TFT_YELLOW  : TFT_DARK_GREEN;
-      bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
+  // Helper: draw T.Grnd with standard gear-aware colouring
+  auto drawTGrnd = [&]() {
+    if (tGround >= 0.0f) {
+      if (!state.gear_on) {
+        fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
+             (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
+        bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
+      } else {
+        if      (state.verticalVel < LNDG_VVRT_ALARM_MS)            { fg = TFT_WHITE;     bg = TFT_RED;   }
+        else if (state.verticalVel < LNDG_VVRT_WARN_MS ||
+                 tGround < LNDG_TGRND_WARN_S)                       { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+        else                                                         { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      }
+      lndgVal(0, "T.Grnd:", fmtTime(tGround), fg, bg);
     } else {
-      // Gear DOWN — speed-based with T.Grnd caution floor
-      if      (state.verticalVel < LNDG_VVRT_ALARM_MS)  { fg = TFT_WHITE;     bg = TFT_RED;   }
-      else if (state.verticalVel < LNDG_VVRT_WARN_MS ||
-               tGround < LNDG_TGRND_WARN_S)   { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-      else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      lndgVal(0, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK);
     }
-    lndgVal(0, "T.Grnd:", formatTime(tGround), fg, bg);
+  };
+
+  if (_lndgReentryMode) {
+    // ── RE-ENTRY: 6-state phase logic ──
+    // currentBody.lowSpace is the atmosphere ceiling (70km Kerbin, 50km Duna, etc.).
+    // flyHigh is the science altitude boundary (~18km) — do NOT use for atmo detection.
+    float atmoAlt       = (currentBody.lowSpace > 0.0f) ? currentBody.lowSpace : 70000.0f;
+    bool peaBelowAtmo   = (state.periapsis < atmoAlt);
+
+    // Atmosphere boundary detection.
+    // state.inAtmo (from isVesselInAtmosphere()) is the authoritative source for
+    // whether the vessel is inside the atmosphere. flyHigh is the science altitude
+    // boundary (~18km for Kerbin), NOT the atmosphere ceiling — do not use it here.
+    // For T+Atm calculation we still need a numeric atmosphere ceiling; use the
+    // ATMO_CONDITIONS air density as proxy — but since we don't have atmo height
+    // directly, derive it: if above atmosphere, inAtmo=false and altitude is our alt.
+    // We use inAtmo for the state machine and altitude for T+Atm computation,
+    // with the atmosphere ceiling estimated as the altitude where inAtmo last flipped.
+    // Simplest correct approach: use inAtmo for state, and for T+Atm use a per-body
+    // hardcoded atmosphere height constant stored in AAA_Config.
+    bool aboveAtmo  = !state.inAtmo;
+    bool wantTPe    = (aboveAtmo && peaBelowAtmo);
+    if (wantTPe != _lndgReentryRow0TPe) {
+      _lndgReentryRow0TPe = wantTPe;
+      rowCache[6][0].value = "\x01";
+      switchToScreen(screen_LNDG);
+      return;
+    }
+
+    // Row 1 label: Alt.SL when above atmosphere; Alt.Rdr when in atmosphere
+    bool wantSL = aboveAtmo;
+    if (wantSL != _lndgReentryRow1SL) {
+      _lndgReentryRow1SL = wantSL;
+      rowCache[6][1].value = "\x01";
+      switchToScreen(screen_LNDG);
+      return;
+    }
+
+    // ── Row 0 ──
+    if (wantTPe) {
+      // States 2 & 3: above atmo, Pe inside atmosphere.
+      // Show T+Atm when descending fast enough to be meaningful (V.Vrt < -5 m/s).
+      // Show --- dark green when coasting (near apoapsis) — value is not yet meaningful
+      // but the label stays so the pilot knows the field is active.
+      // Suppress entirely (--- dark grey) only if actively ascending (V.Vrt > +5 m/s).
+      float tAtmo = -1.0f;
+      if (state.verticalVel < -5.0f)
+        tAtmo = fabsf((state.altitude - atmoAlt) / state.verticalVel);
+
+      if (tAtmo >= 0.0f)
+        lndgVal(0, "T+Atm:", fmtTime(tAtmo), TFT_DARK_GREEN, TFT_BLACK);
+      else if (state.verticalVel <= 5.0f)
+        lndgVal(0, "T+Atm:", "---", TFT_DARK_GREEN, TFT_BLACK);   // coasting — green
+      else
+        lndgVal(0, "T+Atm:", "---", TFT_DARK_GREY, TFT_BLACK);    // ascending — grey
+    } else if (!aboveAtmo) {
+      // States 4, 5, 6: in atmosphere — T.Grnd
+      drawTGrnd();
+    } else {
+      // State 1: above atmo, Pe still orbital — nothing useful
+      lndgVal(0, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK);
+    }
+
+    // ── Row 1 ──
+    if (wantSL) {
+      // Above atmosphere — Alt.SL so pilot can watch altitude vs atmosphere boundary
+      lndgVal(1, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
+    } else {
+      // In atmosphere — Alt.Rdr with proximity colouring
+      fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
+           (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
+      bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
+      lndgVal(1, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
+    }
+
   } else {
-    lndgVal(0, "T.Grnd:", "---", TFT_DARK_GREEN, TFT_BLACK);
+    // ── POWERED DESCENT: rows 0 and 1 ──
+    drawTGrnd();
+
+    fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
+         (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
+    bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
+    lndgVal(1, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
   }
 
-  // Row 1 — Alt.Rdr: where am I
-  fg = (state.radarAlt < ALT_RDR_ALARM_M)  ? TFT_WHITE  :
-       (state.radarAlt < ALT_RDR_WARN_M) ? TFT_YELLOW  : TFT_DARK_GREEN;
-  bg = (state.radarAlt < ALT_RDR_ALARM_M)  ? TFT_RED    : TFT_BLACK;
-  lndgVal(1, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
-
-  // Row 2 — V.Vrt: am I slowing the descent
-  // Same gear-aware logic as T.Grnd for consistency with annunciator
-  if (tGround >= 0.0f) {
-    if (!state.gear_on) {
-      fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
-           (tGround < LNDG_TGRND_WARN_S) ? TFT_YELLOW  : TFT_DARK_GREEN;
-      bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
+  // V.Vrt colouring (used by both modes, different row)
+  auto drawVVrt = [&](uint8_t row) {
+    if (tGround >= 0.0f) {
+      if (!state.gear_on) {
+        fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
+             (tGround < LNDG_TGRND_WARN_S) ? TFT_YELLOW  : TFT_DARK_GREEN;
+        bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
+      } else {
+        if      (state.verticalVel < LNDG_VVRT_ALARM_MS)  { fg = TFT_WHITE;     bg = TFT_RED;   }
+        else if (state.verticalVel < LNDG_VVRT_WARN_MS ||
+                 tGround < LNDG_TGRND_WARN_S)   { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+        else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      }
     } else {
-      if      (state.verticalVel < LNDG_VVRT_ALARM_MS)  { fg = TFT_WHITE;     bg = TFT_RED;   }
-      else if (state.verticalVel < LNDG_VVRT_WARN_MS ||
-               tGround < LNDG_TGRND_WARN_S)   { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-      else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+      fg = TFT_DARK_GREEN; bg = TFT_BLACK;
     }
-  } else {
-    fg = TFT_DARK_GREEN; bg = TFT_BLACK;
-  }
-  lndgVal(2, "V.Vrt:", fmtMs(state.verticalVel), fg, bg);
+    lndgVal(row, "V.Vrt:", fmtMs(state.verticalVel), fg, bg);
+  };
 
-  // Row 4 — V.Srf: total speed reference (shared)
-  fg = (state.surfaceVel < 0) ? TFT_RED : TFT_DARK_GREEN;
-  lndgVal(4, "V.Srf:", fmtMs(state.surfaceVel), fg, TFT_BLACK);
-
-  // Row 3 — mode-dependent horizontal velocity display
   if (!_lndgReentryMode) {
-    // Powered descent: decompose into Fwd (heading-aligned) and Lat (perpendicular)
-    // +Fwd = moving in heading direction, -Fwd = moving backward
-    // +Lat = drifting right of heading, -Lat = drifting left
-    float headRad    = state.heading      * 0.017453f;
-    float velHdgRad  = state.srfVelHeading * 0.017453f;
-    float velNorth   = state.surfaceVel * cosf(velHdgRad);
-    float velEast    = state.surfaceVel * sinf(velHdgRad);
-    float fwdNorth   = cosf(headRad);
-    float fwdEast    = sinf(headRad);
-    float vFwd = velNorth * fwdNorth  + velEast * fwdEast;   // along heading
-    float vLat = velNorth * (-fwdEast) + velEast * fwdNorth; // right of heading
+    // Powered descent: V.Srf row 2, V.Vrt row 3
+    fg = (state.surfaceVel < 0) ? TFT_RED : TFT_DARK_GREEN;
+    lndgVal(2, "V.Srf:", fmtMs(state.surfaceVel), fg, TFT_BLACK);
+    drawVVrt(3);
+  } else {
+    // Re-entry: V.Vrt row 2 (row 3 handled below by PeA/V.Hrz branch)
+    drawVVrt(2);
+  }
+
+  // Row 4 — mode-dependent horizontal velocity display
+  if (!_lndgReentryMode) {
+    // Decompose horizontal surface velocity into craft heading-relative axes.
+    // Craft control direction is UP during vertical descent:
+    //   Fwd (W/S): component of horizontal drift along the craft's heading direction
+    //   Lat (A/D): component of horizontal drift perpendicular to heading (right = positive)
+    //
+    // Use hSpd (already computed from surfaceVel/verticalVel via Pythagoras) as the
+    // horizontal speed magnitude, and srfVelHeading as its compass direction.
+    // This avoids srfVelPitch which is unstable near-vertical and introduces noise.
+    float headRad    = (state.heading + state.roll) * 0.017453f;
+    float svelHdgRad = state.srfVelHeading * 0.017453f;
+    float dHeadRad   = svelHdgRad - headRad;  // angle of drift relative to roll-adjusted heading
+
+    // vFwd: positive = drifting toward nose; correct with W (pitch nose toward retrograde)
+    // vLat: positive = drifting right of nose; correct with D (yaw nose toward retrograde)
+    // sin gives the along-heading component (W/S axis) when craft control direction is UP
+    // cos gives the perpendicular component (A/D axis)
+    float vFwd = -hSpd * cosf(dHeadRad);
+    float vLat = -hSpd * sinf(dHeadRad);
+
+    // Snap near-zero to +0.0 to prevent +0.0/-0.0 flicker
+    if (fabsf(vFwd) < 0.05f) vFwd = 0.0f;
+    if (fabsf(vLat) < 0.05f) vLat = 0.0f;
 
     // Context-dependent horizontal thresholds — tighten as ground approaches
-    // tGround: >60s = loose, 30-60s = mid, 10-30s = tight, <10s = final
     auto horzColor = [&](float v, uint16_t &fg, uint16_t &bg) {
       float av = fabsf(v);
       float warnMs, alarmMs;
@@ -241,51 +348,51 @@ static void drawScreen_LNDG(RA8875 &tft) {
 
     uint16_t xL = AX,                wL = AHW - ROW_PAD;
     uint16_t xR = AX + AHW + ROW_PAD, wR = AHW - ROW_PAD;
-    uint16_t y3 = rowYFor(3, NR), h3 = rowHFor(NR);
-    char buf3[12];
+    uint16_t y4 = rowYFor(4, NR), h4 = rowHFor(NR);
+    char buf4[12];
 
-    snprintf(buf3, sizeof(buf3), "%+.1f m/s", vFwd);
+    snprintf(buf4, sizeof(buf4), "%+.1f m/s", vFwd);
     uint16_t ffg, fbg; horzColor(vFwd, ffg, fbg);
     {
-      String s = buf3;
-      RowCache &rc = rowCache[8][12];
+      String s = buf4;
+      RowCache &rc = rowCache[6][12];
       if (rc.value != s || rc.fg != ffg || rc.bg != fbg) {
-        printValue(tft, F, xL, y3, wL, h3, "Fwd:", s, ffg, fbg, COL_BACK, printState[8][12]);
+        printValue(tft, F, xL, y4, wL, h4, "Fwd:", s, ffg, fbg, COL_BACK, printState[6][12]);
         rc.value = s; rc.fg = ffg; rc.bg = fbg;
       }
     }
 
-    snprintf(buf3, sizeof(buf3), "%+.1f m/s", vLat);
+    snprintf(buf4, sizeof(buf4), "%+.1f m/s", vLat);
     uint16_t lfg, lbg; horzColor(vLat, lfg, lbg);
     {
-      String s = buf3;
-      RowCache &rc = rowCache[8][13];
+      String s = buf4;
+      RowCache &rc = rowCache[6][13];
       if (rc.value != s || rc.fg != lfg || rc.bg != lbg) {
-        printValue(tft, F, xR, y3, wR, h3, "Lat:", s, lfg, lbg, COL_BACK, printState[8][13]);
+        printValue(tft, F, xR, y4, wR, h4, "Lat:", s, lfg, lbg, COL_BACK, printState[6][13]);
         rc.value = s; rc.fg = lfg; rc.bg = lbg;
       }
     }
 
   } else {
-    // Re-entry row 3: PeA above 2km (de-orbit context), V.Hrz below 2km (terminal)
-    bool wantPeA = (state.radarAlt > 2000.0f || !state.inAtmo);
+    // Re-entry row 3: PeA above 20km radar alt (or above atmo); V.Hrz below 20km in atmo
+    float atmoAlt3  = (currentBody.lowSpace > 0.0f) ? currentBody.lowSpace : 70000.0f;
+    bool wantPeA = (state.radarAlt > 20000.0f || !state.inAtmo);
     if (wantPeA != _lndgReentryRow3PeA) {
-      // Altitude crossed the 2km boundary — redraw chrome to relabel row 3
       _lndgReentryRow3PeA = wantPeA;
-      rowCache[8][3].value = "\x01";  // invalidate row 3 cache to force redraw
+      rowCache[6][3].value = "\x01";
       switchToScreen(screen_LNDG);
       return;
     }
 
     if (wantPeA) {
-      // PeA with same colour convention as APSI screen
-      float warnAlt = (currentBody.radius > 0.0f)
-                      ? max(currentBody.minSafe, currentBody.flyHigh) : 0.0f;
-      bool peWarn = (warnAlt > 0 && state.periapsis > 0 && state.periapsis < warnAlt);
-      if      (state.periapsis < 0) fg = TFT_RED;
-      else if (peWarn)              fg = TFT_YELLOW;
-      else                          fg = TFT_DARK_GREEN;
-      lndgVal(3, "PeA:", formatAlt(state.periapsis), fg, TFT_BLACK);
+      // 3-state PeA colouring matching the 6-state flight phase model:
+      //   PeA < 0           → white-on-green  (states 3 & 6: landing inevitable)
+      //   0 < PeA < atmoAlt → yellow          (states 2 & 5: committed to atmo, uncertain landing)
+      //   PeA > atmoAlt     → dark green      (states 1 & 4: safely orbital / going back to space)
+      if      (state.periapsis < 0.0f)           { fg = TFT_WHITE;     bg = TFT_DARK_GREEN; }
+      else if (state.periapsis < atmoAlt3)       { fg = TFT_YELLOW;    bg = TFT_BLACK;      }
+      else                                       { fg = TFT_DARK_GREEN; bg = TFT_BLACK;     }
+      lndgVal(3, "PeA:", formatAlt(state.periapsis), fg, bg);
     } else {
       // V.Hrz — total horizontal speed
       if      (hSpd > LNDG_REENTRY_VHRZ_ALARM_MS) { fg = TFT_WHITE;     bg = TFT_RED;   }
@@ -293,6 +400,10 @@ static void drawScreen_LNDG(RA8875 &tft) {
       else                                         { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
       lndgVal(3, "V.Hrz:", fmtMs(hSpd), fg, bg);
     }
+
+    // Row 4 — V.Srf: total surface speed (re-entry)
+    fg = (state.surfaceVel < 0) ? TFT_RED : TFT_DARK_GREEN;
+    lndgVal(4, "V.Srf:", fmtMs(state.surfaceVel), fg, TFT_BLACK);
   }
 
   // ── Mode-specific rows 5-7 ──
@@ -316,20 +427,20 @@ static void drawScreen_LNDG(RA8875 &tft) {
       else             { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
       {
         String ts = formatPerc(thrPct);
-        RowCache &tc = rowCache[8][6];
+        RowCache &tc = rowCache[6][6];
         if (tc.value != ts || tc.fg != fg || tc.bg != bg) {
           printValue(tft, F, AX, y6, AHW - ROW_PAD, h6,
-                     "Throttle:", ts, fg, bg, COL_BACK, printState[8][6]);
+                     "Throttle:", ts, fg, bg, COL_BACK, printState[6][6]);
           tc.value = ts; tc.fg = fg; tc.bg = bg;
         }
       }
 
       const char *rcsStr = state.rcs_on ? "ON" : "OFF";
       uint16_t rcsFg = state.rcs_on ? TFT_DARK_GREEN : TFT_DARK_GREY;
-      RowCache &rc = rowCache[8][9];
+      RowCache &rc = rowCache[6][9];
       if (rc.value != rcsStr || rc.fg != rcsFg || rc.bg != COL_BACK) {
         printValue(tft, F, AX + AHW + ROW_PAD, y6, AHW - ROW_PAD, h6,
-                   "RCS:", rcsStr, rcsFg, COL_BACK, COL_BACK, printState[8][9]);
+                   "RCS:", rcsStr, rcsFg, COL_BACK, COL_BACK, printState[6][9]);
         rc.value = rcsStr; rc.fg = rcsFg; rc.bg = COL_BACK;
       }
     }
@@ -342,28 +453,38 @@ static void drawScreen_LNDG(RA8875 &tft) {
       const char *gearStr = state.gear_on ? "DOWN" : "UP";
       uint16_t    gearFg  = state.gear_on ? TFT_DARK_GREEN : TFT_WHITE;
       uint16_t    gearBg  = state.gear_on ? TFT_BLACK      : TFT_RED;
-      RowCache   &gc = rowCache[8][7];
+      RowCache   &gc = rowCache[6][7];
       if (gc.value != gearStr || gc.fg != gearFg || gc.bg != gearBg) {
         printValue(tft, F, AX, y, AHW - ROW_PAD, h,
                    "Gear:", gearStr, gearFg, gearBg, COL_BACK,
-                   printState[8][7]);
+                   printState[6][7]);
         gc.value = gearStr; gc.fg = gearFg; gc.bg = gearBg;
       }
 
-      const char *brkStr = state.brakes_on ? "ON"  : "OFF";
-      bool groundState = (state.situation == sit_Landed ||
-                          state.situation == sit_Splashed ||
-                          state.situation == sit_PreLaunch);
-      uint16_t brkFg = state.brakes_on ? TFT_DARK_GREEN :
-                       groundState     ? TFT_WHITE : TFT_DARK_GREY;
-      uint16_t brkBg = state.brakes_on ? TFT_BLACK :
-                       groundState     ? TFT_RED    : TFT_BLACK;
-      RowCache   &bc = rowCache[8][8];
-      if (bc.value != brkStr || bc.fg != brkFg || bc.bg != brkBg) {
+      // SAS: RETRO(2) or STAB(0) = green; OFF(255) = dark grey; anything else = red
+      const char *sasStr;
+      uint16_t sasFg, sasBg = TFT_BLACK;
+      if (state.sasMode == 255) {
+        sasStr = "OFF";   sasFg = TFT_DARK_GREY;
+      } else if (state.sasMode == 0) {
+        sasStr = "STAB";  sasFg = TFT_DARK_GREEN;
+      } else if (state.sasMode == 2) {
+        sasStr = "RETRO"; sasFg = TFT_DARK_GREEN;
+      } else {
+        switch (state.sasMode) {
+          case 1: sasStr = "PROGRADE"; break; case 3: sasStr = "NORMAL";   break;
+          case 4: sasStr = "ANTI-NRM"; break; case 5: sasStr = "RAD-OUT";  break;
+          case 6: sasStr = "RAD-IN";   break; case 7: sasStr = "TARGET";   break;
+          case 8: sasStr = "ANTI-TGT"; break; case 9: sasStr = "MANEUVER"; break;
+          default: sasStr = "OTHER";   break;
+        }
+        sasFg = TFT_RED; sasBg = TFT_BLACK;
+      }
+      RowCache &sc = rowCache[6][8];
+      if (sc.value != sasStr || sc.fg != sasFg || sc.bg != sasBg) {
         printValue(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h,
-                   "Brakes:", brkStr, brkFg, brkBg, COL_BACK,
-                   printState[8][8]);
-        bc.value = brkStr; bc.fg = brkFg; bc.bg = brkBg;
+                   "SAS:", sasStr, sasFg, sasBg, COL_BACK, printState[6][8]);
+        sc.value = sasStr; sc.fg = sasFg; sc.bg = sasBg;
       }
     }
 
@@ -385,10 +506,10 @@ static void drawScreen_LNDG(RA8875 &tft) {
       {
         String ms = buf;
         uint16_t mfg = transonic ? TFT_YELLOW : TFT_DARK_GREEN;
-        RowCache &mc = rowCache[8][9];
+        RowCache &mc = rowCache[6][9];
         if (mc.value != ms || mc.fg != mfg || mc.bg != TFT_BLACK) {
           printValue(tft, F, xL, rowYFor(5,NR), wL, rowHFor(NR),
-                     "Mach:", ms, mfg, TFT_BLACK, COL_BACK, printState[8][9]);
+                     "Mach:", ms, mfg, TFT_BLACK, COL_BACK, printState[6][9]);
           mc.value = ms; mc.fg = mfg; mc.bg = TFT_BLACK;
         }
       }
@@ -400,44 +521,60 @@ static void drawScreen_LNDG(RA8875 &tft) {
       else                             { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
       {
         String gs = buf;
-        RowCache &gc = rowCache[8][10];
+        RowCache &gc = rowCache[6][10];
         if (gc.value != gs || gc.fg != fg || gc.bg != bg) {
           printValue(tft, F, xR, rowYFor(5,NR), wR, rowHFor(NR),
-                     "G:", gs, fg, bg, COL_BACK, printState[8][10]);
+                     "G:", gs, fg, bg, COL_BACK, printState[6][10]);
           gc.value = gs; gc.fg = fg; gc.bg = bg;
         }
       }
     }
 
     // Parachute state tracking
-    if (state.drogueDeploy && !_drogueDeployed) _drogueDeployed = true;
-    if (state.drogueCut    && !_drogueCut)      { _drogueCut = true; _drogueDeployed = false; }
-    if (state.mainDeploy   && !_mainDeployed)   _mainDeployed = true;
-    if (state.mainCut      && !_mainCut)        { _mainCut = true;   _mainDeployed = false; }
+    if (state.drogueDeploy && !_drogueDeployed) {
+      _drogueDeployed = true;
+      // Record if armed safely (above atmosphere or at safe speed) — if so, skip
+      // the dangerous-speed check when atmosphere is later entered.
+      _drogueArmedSafe = (!state.inAtmo || spd <= LNDG_DROGUE_RISKY_MS);
+    }
+    if (state.drogueCut && !_drogueCut) {
+      _drogueCut = true; _drogueDeployed = false; _drogueArmedSafe = false;
+    }
+    if (state.mainDeploy && !_mainDeployed) {
+      _mainDeployed = true;
+      _mainArmedSafe = (!state.inAtmo || spd <= LNDG_MAIN_RISKY_MS);
+    }
+    if (state.mainCut && !_mainCut) {
+      _mainCut = true; _mainDeployed = false; _mainArmedSafe = false;
+    }
 
-    // Chute state machine — six states per chute, priority order:
-    //   CUT     — cut CAG fired                           → red on black
-    //   OPEN*   — deploy CAG fired, speed > riskyLimit    → white on red (likely destroyed)
-    //   ARMED   — deploy CAG fired, airDensity too low    → cyan on black (waiting for atmo)
-    //   OPEN    — deploy CAG fired, density ok, alt > fullAlt → yellow on black (semi-deploying)
-    //   OPEN    — deploy CAG fired, density ok, alt ≤ fullAlt → green on black (fully open)
+    // Chute state machine — states per chute, priority order:
+    //   CUT     — cut CAG fired                                  → red on black
+    //   OPEN*   — deploy CAG fired in atmo at unsafe speed       → white on red
+    //             (skipped if armedSafe — chute was committed safely before atmo)
+    //   ARMED   — deploy CAG fired, airDensity too low           → cyan on black
+    //   OPEN    — density ok, alt > fullAlt                      → yellow on black
+    //   OPEN    — density ok, alt ≤ fullAlt                      → green on black
+    //   STOWED  — deploy CAG not fired                           → speed-coloured
     //   STOWED  — deploy CAG not fired                    → speed-coloured: green/yellow/white-on-red
-    auto chuteState = [&](bool deployed, bool cut,
-                          float safeSpeed, float riskySpeed,
+    auto chuteState = [&](bool deployed, bool cut, bool armedSafe,
+                          float safeSpeed, float riskySpeed, float fullAlt,
                           const char *&label, uint16_t &fg, uint16_t &bg) {
       if (cut) {
         label = "CUT";  fg = TFT_RED;   bg = TFT_BLACK;  return;
       }
       if (deployed) {
-        if (spd > riskySpeed) {
-          // Fired at unsafe speed — chute likely destroyed
+        // Unsafe speed check: only if in atmosphere AND chute was not already
+        // armed safely before atmosphere entry. If armedSafe, skip this branch —
+        // the chute was committed at a safe moment and should proceed normally.
+        if (!armedSafe && state.inAtmo && spd > riskySpeed) {
           label = "OPEN"; fg = TFT_WHITE;     bg = TFT_RED;   return;
         }
         if (state.airDensity < LNDG_CHUTE_SEMI_DENSITY) {
-          // Fired but not enough atmosphere yet — armed, waiting
+          // Not enough atmosphere yet — armed, waiting
           label = "ARMED"; fg = TFT_SKY;  bg = TFT_BLACK;  return;
         }
-        if (state.radarAlt > LNDG_CHUTE_FULL_ALT) {
+        if (state.radarAlt > fullAlt) {
           // Atmosphere present, above full-deploy altitude — semi-deploying
           label = "OPEN"; fg = TFT_YELLOW;    bg = TFT_BLACK;  return;
         }
@@ -445,8 +582,6 @@ static void drawScreen_LNDG(RA8875 &tft) {
         label = "OPEN"; fg = TFT_DARK_GREEN;  bg = TFT_BLACK;  return;
       }
       // Not fired — show STOWED.
-      // Above atmosphere: always green (speed is irrelevant, safe to arm any time).
-      // In atmosphere: speed-coloured so pilot knows whether it's safe to fire.
       label = "STOWED";
       if (!state.inAtmo) {
         fg = TFT_DARK_GREEN; bg = TFT_BLACK;
@@ -462,25 +597,29 @@ static void drawScreen_LNDG(RA8875 &tft) {
       uint16_t y6 = rowYFor(6, NR), h6 = rowHFor(NR);
 
       const char *drogueVal; uint16_t dfg, dbg;
-      chuteState(_drogueDeployed, _drogueCut, LNDG_DROGUE_SAFE_MS, LNDG_DROGUE_RISKY_MS, drogueVal, dfg, dbg);
+      chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe,
+                 LNDG_DROGUE_SAFE_MS, LNDG_DROGUE_RISKY_MS, LNDG_DROGUE_FULL_ALT,
+                 drogueVal, dfg, dbg);
       {
         String ds = drogueVal;
-        RowCache &dc = rowCache[8][6];
+        RowCache &dc = rowCache[6][6];
         if (dc.value != ds || dc.fg != dfg || dc.bg != dbg) {
           printValue(tft, F, xL, y6, wL, h6, "Drogue:", ds, dfg, dbg, COL_BACK,
-                     printState[8][6]);
+                     printState[6][6]);
           dc.value = ds; dc.fg = dfg; dc.bg = dbg;
         }
       }
 
       const char *mainVal; uint16_t mfg, mbg;
-      chuteState(_mainDeployed, _mainCut, LNDG_MAIN_SAFE_MS, LNDG_MAIN_RISKY_MS, mainVal, mfg, mbg);
+      chuteState(_mainDeployed, _mainCut, _mainArmedSafe,
+                 LNDG_MAIN_SAFE_MS, LNDG_MAIN_RISKY_MS, LNDG_MAIN_FULL_ALT,
+                 mainVal, mfg, mbg);
       {
         String ms = mainVal;
-        RowCache &mc = rowCache[8][11];
+        RowCache &mc = rowCache[6][11];
         if (mc.value != ms || mc.fg != mfg || mc.bg != mbg) {
           printValue(tft, F, xR, y6, wR, h6, "Main:", ms, mfg, mbg, COL_BACK,
-                     printState[8][11]);
+                     printState[6][11]);
           mc.value = ms; mc.fg = mfg; mc.bg = mbg;
         }
       }
@@ -495,11 +634,11 @@ static void drawScreen_LNDG(RA8875 &tft) {
       const char *gearStr = state.gear_on ? "DOWN" : "UP";
       uint16_t    gearFg  = state.gear_on ? TFT_DARK_GREEN : TFT_DARK_GREY;
       uint16_t    gearBg  = TFT_BLACK;  // never alarm for gear on re-entry
-      RowCache   &gc = rowCache[8][7];
+      RowCache   &gc = rowCache[6][7];
       if (gc.value != gearStr || gc.fg != gearFg || gc.bg != gearBg) {
         printValue(tft, F, AX, y, AHW - ROW_PAD, h,
                    "Gear:", gearStr, gearFg, gearBg, COL_BACK,
-                   printState[8][7]);
+                   printState[6][7]);
         gc.value = gearStr; gc.fg = gearFg; gc.bg = gearBg;
       }
 
@@ -537,11 +676,11 @@ static void drawScreen_LNDG(RA8875 &tft) {
         }
         sasFg = TFT_RED;  sasBg = TFT_BLACK;
       }
-      RowCache &sc = rowCache[8][8];
+      RowCache &sc = rowCache[6][8];
       if (sc.value != sasStr || sc.fg != sasFg || sc.bg != sasBg) {
         printValue(tft, F, AX + AHW + ROW_PAD, y, AHW - ROW_PAD, h,
                    "SAS:", sasStr, sasFg, sasBg, COL_BACK,
-                   printState[8][8]);
+                   printState[6][8]);
         sc.value = sasStr; sc.fg = sasFg; sc.bg = sasBg;
       }
     }

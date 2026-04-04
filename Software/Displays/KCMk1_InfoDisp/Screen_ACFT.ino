@@ -17,10 +17,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
   // Cache-checked draw for full-width rows
   auto acftVal = [&](uint8_t slot, uint8_t row, const char *label,
                      const String &val, uint16_t fgc, uint16_t bgc) {
-    RowCache &cache = rowCache[9][slot];
+    RowCache &cache = rowCache[8][slot];
     if (cache.value == val && cache.fg == fgc && cache.bg == bgc) return;
     printValue(tft, F, AX, acftRowY(row), AW, acftRowH(),
-               label, val, fgc, bgc, COL_BACK, printState[9][slot]);
+               label, val, fgc, bgc, COL_BACK, printState[8][slot]);
     cache.value = val; cache.fg = fgc; cache.bg = bgc;
   };
 
@@ -28,10 +28,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
   auto splitVal = [&](uint8_t slot, uint16_t x, uint16_t w, uint8_t row,
                       const char *label, const String &val,
                       uint16_t fgc, uint16_t bgc) {
-    RowCache &cache = rowCache[9][slot];
+    RowCache &cache = rowCache[8][slot];
     if (cache.value == val && cache.fg == fgc && cache.bg == bgc) return;
     printValue(tft, F, x, acftRowY(row), w, acftRowH(),
-               label, val, fgc, bgc, COL_BACK, printState[9][slot]);
+               label, val, fgc, bgc, COL_BACK, printState[8][slot]);
     cache.value = val; cache.fg = fgc; cache.bg = bgc;
   };
 
@@ -187,10 +187,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
       gearFg = TFT_DARK_GREY;
       gearBg = TFT_BLACK;
     }
-    RowCache   &gc = rowCache[9][7];
+    RowCache   &gc = rowCache[8][7];
     if (gc.value != gearStr || gc.fg != gearFg || gc.bg != gearBg) {
       printValue(tft, F, xL, y, wL, h, "Gear:", gearStr, gearFg, gearBg,
-                 COL_BACK, printState[9][7]);
+                 COL_BACK, printState[8][7]);
       gc.value = gearStr; gc.fg = gearFg; gc.bg = gearBg;
     }
 
@@ -202,10 +202,10 @@ static void drawScreen_ACFT(RA8875 &tft) {
                      groundState     ? TFT_WHITE : TFT_DARK_GREY;
     uint16_t brkBg = state.brakes_on ? TFT_BLACK :
                      groundState     ? TFT_RED    : TFT_BLACK;
-    RowCache   &bc = rowCache[9][8];
+    RowCache   &bc = rowCache[8][8];
     if (bc.value != brkStr || bc.fg != brkFg || bc.bg != brkBg) {
       printValue(tft, F, xR, y, wR, h, "Brakes:", brkStr, brkFg, brkBg,
-                 COL_BACK, printState[9][8]);
+                 COL_BACK, printState[8][8]);
       bc.value = brkStr; bc.fg = brkFg; bc.bg = brkBg;
     }
   }

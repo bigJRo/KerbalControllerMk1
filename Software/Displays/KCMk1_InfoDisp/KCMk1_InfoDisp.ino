@@ -51,12 +51,9 @@ void setup() {
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
   setupSD();
   setupTouch();
+  setupI2CSlave();
 
-  // Drain any stale touch events that survived the GSL1680 firmware load
-  uint32_t drainStart = millis();
-  while (millis() - drainStart < 300) {
-    if (isTouched()) readTouch();
-  }
+  bootSimText(infoDisp);
 
   if (demoMode) {
     // Demo mode: no KSP connection, show live screens immediately
@@ -64,22 +61,42 @@ void setup() {
     initDemoMode();
     switchToScreen(screen_LNCH);
   } else {
-    // Live mode: black screen while Simpit connects.
-    // SCENE_CHANGE_MESSAGE will trigger the standby splash or flight screen.
+    // Live mode: show standby splash while waiting for Simpit to connect.
+    // SCENE_CHANGE_MESSAGE will replace it with the standby or flight screen.
     initSimpit();
+    drawStandbyScreen(infoDisp);
     // Request an immediate telemetry refresh on all channels.
     simpit.requestMessageOnChannel(0);
   }
+
+  // Notify master that initialisation is complete, then wait for PROCEED.
+  buildI2CPacketAndAssert();
+  if (debugMode) Serial.println(F("InfoDisp: waiting for master PROCEED..."));
+  while (!i2cProceedReceived) {
+    updateI2CState();
+  }
+  if (debugMode) Serial.println(F("InfoDisp: PROCEED received, entering loop."));
 }
 
 
 void loop() {
+  static bool _wasDemo = false;  // tracks previous demoMode to detect runtime switch
 
   // --- Simpit telemetry (live mode only) ---
   if (!demoMode) simpit.update();
 
+  // --- I2C slave state update ---
+  updateI2CState();
+
   // --- Touch input (active in both modes, ignored when on standby) ---
   if (flightScene || demoMode) processTouchEvents();
+
+  // --- Runtime demo→live transition: draw standby splash if not in flight scene ---
+  if (_wasDemo && !demoMode && !flightScene) {
+    drawStandbyScreen(infoDisp);
+    simpit.requestMessageOnChannel(0);
+  }
+  _wasDemo = demoMode;
 
   // --- Standby state: no screen chrome or value updates needed ---
   if (!flightScene && !demoMode) return;

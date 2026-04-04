@@ -23,7 +23,10 @@ ScreenType prevScreen   = screen_COUNT;  // sentinel -- forces chrome on first l
    FLIGHT STATE
 ****************************************************************************************/
 bool simpitConnected = false;  // true after Simpit handshake succeeds
+bool _pendingContextSwitch = false;  // set on vessel change; cleared when FLIGHT_STATUS arrives
+bool _pendingDockCheck     = false;  // set after context switch; cleared when TARGETINFO arrives
 bool flightScene     = false;  // true when KSP is in a flight scene
+bool idleState       = false;  // true when master wants standby when not in flight
 
 
 /***************************************************************************************
@@ -47,6 +50,10 @@ AppState state;
    Always use this function — never set activeScreen directly.
 ****************************************************************************************/
 void switchToScreen(ScreenType s) {
+  // Reset ORB advanced mode when navigating away — always return to Apsides default
+  if (s != screen_ORB && _orbAdvancedMode) {
+    _orbAdvancedMode = false;
+  }
   activeScreen = s;
   prevScreen   = screen_COUNT;
 }
@@ -68,6 +75,10 @@ ScreenType contextScreen() {
   if (state.vesselType == type_Plane)
     return screen_ACFT;
 
+  // 1b. Rover always goes to rover screen regardless of situation
+  if (state.vesselType == type_Rover)
+    return screen_MISC;
+
   // 2. Any vessel on the ground → launch screen
   if ((state.situation & sit_PreLaunch) || (state.situation & sit_Landed))
     return screen_LNCH;
@@ -79,7 +90,10 @@ ScreenType contextScreen() {
   }
 
   // 4. Target within docking range → docking screen
-  if (state.targetAvailable && state.tgtDistance <= 200.0f)
+  // 4. Target within docking range → docking screen
+  // Use tgtDistance alone — KSP may report targetAvailable=false even while
+  // actively sending TARGETINFO with a valid distance (observed in KSP1).
+  if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
     return screen_DOCK;
 
   // 5. Recoverable vessel (debris, probe, etc. that can be recovered) → Vehicle Info
@@ -87,7 +101,7 @@ ScreenType contextScreen() {
     return screen_VEH;
 
   // 6. Everything else (orbit, sub-orbital flight, splashed, unknown)
-  return screen_APSI;
+  return screen_ORB;
 }
 
 

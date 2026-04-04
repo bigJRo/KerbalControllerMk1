@@ -175,16 +175,20 @@ static void drawScreen_VEH(RA8875 &tft) {
 
   // ── PROP block (rows 6-7): delta-V ──
 
-  // Row 6 — Stage ΔV: white-on-red <150, yellow <300, green
+  // When stage ΔV equals total ΔV the vessel is on its last stage — use the same
+  // (higher, DV_TOT_WARN_MS) threshold for both so colours are always consistent.
+  bool lastStage = (state.stageDeltaV >= state.totalDeltaV * 0.999f);
+  float stgWarn  = lastStage ? DV_TOT_WARN_MS : DV_STG_WARN_MS;
+
+  // Row 6 — Stage ΔV
   thresholdColor((uint16_t)constrain(state.stageDeltaV, 0, 65535),
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
-                 DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
+                 stgWarn,         TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
   vehVal(6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
 
-  // Row 7 — Total ΔV: same threshold bands as stage ΔV but using DV_TOT_WARN_MS.
-  // Cross-comparing to stageDeltaV caused oscillation when both values are noisy;
-  // total ΔV is always ≥ stage ΔV by definition so that alarm was never meaningful.
+  // Row 7 — Total ΔV: uses DV_TOT_WARN_MS (higher threshold than stage) since this
+  // represents whole-mission reserve. Shown on its own row so different colouring is clear.
   thresholdColor((uint16_t)constrain(state.totalDeltaV, 0, 65535),
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
