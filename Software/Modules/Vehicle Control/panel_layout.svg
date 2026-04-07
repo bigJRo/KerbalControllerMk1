@@ -1,0 +1,104 @@
+<svg viewBox="0 0 320 660" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <rect width="320" height="660" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">VEHICLE CONTROL</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x24 · KBC_TYPE_VEHICLE_CONTROL</text>
+  <text x="82" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 1 (left)</text>
+  <text x="234" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 2 (right)</text>
+  <text x="10" y="96" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,10,96)">R1</text>
+  <text x="10" y="176" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,10,176)">R2</text>
+  <text x="10" y="256" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,10,256)">R3</text>
+  <text x="10" y="336" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,10,336)">R4</text>
+  <text x="10" y="416" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,10,416)">R5</text>
+  <text x="10" y="496" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,10,496)">R6</text>
+
+  <!-- Row 1 -->
+  <!-- B1 Lights YELLOW -->
+  <rect x="20" y="54" width="124" height="66" rx="6" fill="#eab30818" stroke="#eab308" stroke-width="1.5"/>
+  <text x="82" y="74" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">Lights</text>
+  <text x="82" y="87" font-size="8" fill="#eab308" text-anchor="middle">● YELLOW</text>
+  <text x="82" y="113" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
+
+  <!-- B0 Brakes RED -->
+  <rect x="172" y="54" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="234" y="74" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Brakes</text>
+  <text x="234" y="87" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
+  <text x="234" y="113" font-size="7.5" fill="#9ca3af" text-anchor="middle">B0 · BUTTON01</text>
+
+  <!-- Row 2 -->
+  <!-- B3 Gear GREEN -->
+  <rect x="20" y="134" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="82" y="154" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Gear</text>
+  <text x="82" y="167" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="82" y="193" font-size="7.5" fill="#9ca3af" text-anchor="middle">B3 · BUTTON04</text>
+
+  <!-- B2 Solar Array GOLD -->
+  <rect x="172" y="134" width="124" height="66" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
+  <text x="234" y="154" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">Solar Array</text>
+  <text x="234" y="167" font-size="8" fill="#ffc800" text-anchor="middle">● GOLD</text>
+  <text x="234" y="193" font-size="7.5" fill="#9ca3af" text-anchor="middle">B2 · BUTTON03</text>
+
+  <!-- Row 3 -->
+  <!-- B5 Antenna PINK -->
+  <rect x="20" y="214" width="124" height="66" rx="6" fill="#ec489918" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="82" y="234" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">Antenna</text>
+  <text x="82" y="247" font-size="8" fill="#ec4899" text-anchor="middle">● PINK</text>
+  <text x="82" y="273" font-size="7.5" fill="#9ca3af" text-anchor="middle">B5 · BUTTON06</text>
+
+  <!-- B4 Cargo Door TEAL -->
+  <rect x="172" y="214" width="124" height="66" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="234" y="234" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Cargo Door</text>
+  <text x="234" y="247" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <text x="234" y="273" font-size="7.5" fill="#9ca3af" text-anchor="middle">B4 · BUTTON05</text>
+
+  <!-- Row 4 -->
+  <!-- B7 Radiator ORANGE -->
+  <rect x="20" y="294" width="124" height="66" rx="6" fill="#f9731618" stroke="#f97316" stroke-width="1.5"/>
+  <text x="82" y="314" font-size="9" font-weight="500" fill="#9a3412" text-anchor="middle">Radiator</text>
+  <text x="82" y="327" font-size="8" fill="#f97316" text-anchor="middle">● ORANGE</text>
+  <text x="82" y="353" font-size="7.5" fill="#9ca3af" text-anchor="middle">B7 · BUTTON08</text>
+
+  <!-- B6 Ladder LIME -->
+  <rect x="172" y="294" width="124" height="66" rx="6" fill="#84cc1618" stroke="#84cc16" stroke-width="1.5"/>
+  <text x="234" y="314" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Ladder</text>
+  <text x="234" y="327" font-size="8" fill="#84cc16" text-anchor="middle">● LIME</text>
+  <text x="234" y="353" font-size="7.5" fill="#9ca3af" text-anchor="middle">B6 · BUTTON07</text>
+
+  <!-- Row 5 -->
+  <!-- B9 Drogue Deploy GREEN (extended) -->
+  <rect x="20" y="374" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="82" y="394" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Drogue Deploy</text>
+  <text x="82" y="407" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="82" y="420" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <text x="82" y="433" font-size="7.5" fill="#9ca3af" text-anchor="middle">B9 · BUTTON10</text>
+
+  <!-- B8 Main Deploy GREEN (extended) -->
+  <rect x="172" y="374" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="234" y="394" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Main Deploy</text>
+  <text x="234" y="407" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="234" y="420" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <text x="234" y="433" font-size="7.5" fill="#9ca3af" text-anchor="middle">B8 · BUTTON09</text>
+
+  <!-- Row 6 -->
+  <!-- B11 Drogue Cut RED (extended) -->
+  <rect x="20" y="454" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="82" y="474" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Drogue Cut</text>
+  <text x="82" y="487" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
+  <text x="82" y="500" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <text x="82" y="513" font-size="7.5" fill="#9ca3af" text-anchor="middle">B11 · BUTTON12</text>
+
+  <!-- B10 Main Cut RED (extended) -->
+  <rect x="172" y="454" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="234" y="474" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Main Cut</text>
+  <text x="234" y="487" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
+  <text x="234" y="500" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <text x="234" y="513" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
+
+  <!-- Extended state legend -->
+  <rect x="20" y="534" width="276" height="36" rx="4" fill="#6366f108" stroke="#6366f133" stroke-width="1"/>
+  <text x="32" y="548" font-size="7.5" fill="#4338ca" font-weight="500">Extended states (parachute buttons B8-B11)</text>
+  <text x="32" y="562" font-size="7" fill="#6366f1">WARNING = approaching · ALERT = deploy now · ARMED = ready · PARTIAL_DEPLOY = drogue out</text>
+
+  <!-- Footer -->
+  <text x="20" y="614" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · discrete inputs (B12-B15) not shown — input only, no LED</text>
+  <text x="20" y="626" font-size="7.5" fill="#9ca3af">KerbalButtonCore v1.0.0 · KC-01-1822 v1.1 · Jeb's Controller Works</text>
+</svg>
