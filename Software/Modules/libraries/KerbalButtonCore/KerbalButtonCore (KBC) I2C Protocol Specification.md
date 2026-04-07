@@ -1,7 +1,7 @@
 # KerbalButtonCore (KBC) I2C Protocol Specification
 
-**Version:** 1.1  
-**Status:** Draft  
+**Version:** 1.2  
+**Status:** Released  
 **Project:** Kerbal Controller Mk1  
 
 ---
@@ -199,7 +199,7 @@ Controller transmits the full 16-button LED state as an 8-byte nibble-packed pay
 Sets the brightness level of the ENABLED state dim white backlight. Single byte payload, range 0–255. Allows the controller to match brightness across different physical button types or ambient conditions.
 
 **CMD_BULB_TEST (`0x04`)**  
-Triggers a bulb test sequence on the module. Exact behavior TBD per module type. Intended to verify all LEDs are functional.
+Triggers a bulb test sequence on the module. All LEDs (NeoPixel and discrete) illuminate at full white for 2000ms, then the module restores its previous LED state and renders. Intended to verify all LEDs are functional at startup or during maintenance.
 
 **CMD_SLEEP (`0x05`)**  
 Puts the module into low power mode. LEDs turn off and polling may be reduced. Module remains responsive on I2C.
@@ -281,12 +281,18 @@ INT-driven button reads mean the average case is significantly lower than worst 
 
 Type IDs are independent of I2C address. The controller maps each bus address to an expected Type ID at compile time and validates this during startup enumeration.
 
-| ID | Module | Notes |
-|---|---|---|
-| `0x00` | Reserved | — |
-| `0xFF` | Unknown / Uninitialized | Default before identity confirmed |
+| ID | Module | I2C Address | Cap Flags |
+|---|---|---|---|
+| `0x00` | Reserved | — | — |
+| `0x01` | UI Control | `0x20` | `0x00` |
+| `0x02` | Function Control | `0x21` | `0x00` |
+| `0x03` | Action Control | `0x22` | `0x00` |
+| `0x04` | Stability Control | `0x23` | `0x00` |
+| `0x05` | Vehicle Control | `0x24` | `0x01` (KBC_CAP_EXTENDED_STATES) |
+| `0x06` | Time Control | `0x25` | `0x00` |
+| `0xFF` | Unknown / Uninitialized | — | — |
 
-*Module entries to be populated as sketches are defined.*
+All Type ID constants are defined in `KBC_Protocol.h` as `KBC_TYPE_*`.
 
 ---
 
@@ -296,3 +302,4 @@ Type IDs are independent of I2C address. The controller maps each bus address to
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial draft |
 | 1.1 | 2026-04-07 | Extended state behaviors defined; updated to 2021 NXP I2C terminology (Controller/Target); Type ID rationale clarified; flash timing defaults added |
+| 1.2 | 2026-04-07 | Status released; CMD_BULB_TEST behavior defined; Module Type ID registry fully populated with all six modules and assigned addresses |
