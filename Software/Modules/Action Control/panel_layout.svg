@@ -1,0 +1,101 @@
+<svg viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+
+  <!-- Background -->
+  <rect width="620" height="200" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">ACTION CONTROL</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x22 · KBC_TYPE_ACTION_CONTROL</text>
+
+  <!-- Column labels -->
+  <text x="52"  y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 6 (left)</text>
+  <text x="152" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 5</text>
+  <text x="252" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 4</text>
+  <text x="352" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 3</text>
+  <text x="452" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 2</text>
+  <text x="552" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 1 (right)</text>
+
+  <!-- Row labels -->
+  <text x="8" y="100" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,100)">Row 1</text>
+  <text x="8" y="163" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,163)">Row 2</text>
+
+  <!-- ROW 1 -->
+
+  <!-- B10 CP PRI — ROSE -->
+  <rect x="18" y="52" width="88" height="60" rx="6" fill="#ff507818" stroke="#ff5078" stroke-width="1.5"/>
+  <text x="62" y="72" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">CP PRI</text>
+  <text x="62" y="85" font-size="8" fill="#ff5078" text-anchor="middle">● ROSE</text>
+  <text x="62" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
+
+  <!-- B8 AG 1 — GREEN -->
+  <rect x="118" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="162" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 1</text>
+  <text x="162" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="162" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B8 · BUTTON09</text>
+
+  <!-- B6 AG 2 — GREEN -->
+  <rect x="218" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="262" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 2</text>
+  <text x="262" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="262" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B6 · BUTTON07</text>
+
+  <!-- B4 AG 3 — GREEN -->
+  <rect x="318" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="362" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 3</text>
+  <text x="362" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="362" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B4 · BUTTON05</text>
+
+  <!-- B2 AG 4 — GREEN -->
+  <rect x="418" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="462" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 4</text>
+  <text x="462" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="462" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B2 · BUTTON03</text>
+
+  <!-- B0 AG 5 — GREEN -->
+  <rect x="518" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="562" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 5</text>
+  <text x="562" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="562" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B0 · BUTTON01</text>
+
+  <!-- ROW 2 -->
+
+  <!-- B11 CP ALT — ROSE -->
+  <rect x="18" y="118" width="88" height="60" rx="6" fill="#ff507818" stroke="#ff5078" stroke-width="1.5"/>
+  <text x="62" y="138" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">CP ALT</text>
+  <text x="62" y="151" font-size="8" fill="#ff5078" text-anchor="middle">● ROSE</text>
+  <text x="62" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B11 · BUTTON12</text>
+
+  <!-- B9 AG 6 — GREEN -->
+  <rect x="118" y="118" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="162" y="138" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 6</text>
+  <text x="162" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="162" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B9 · BUTTON10</text>
+
+  <!-- B7 AG 7 — GREEN -->
+  <rect x="218" y="118" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="262" y="138" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 7</text>
+  <text x="262" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="262" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B7 · BUTTON08</text>
+
+  <!-- B5 AG 8 — GREEN -->
+  <rect x="318" y="118" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="362" y="138" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 8</text>
+  <text x="362" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="362" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B5 · BUTTON06</text>
+
+  <!-- B3 AG 9 — GREEN -->
+  <rect x="418" y="118" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="462" y="138" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 9</text>
+  <text x="462" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="462" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B3 · BUTTON04</text>
+
+  <!-- B1 AG 10 — GREEN -->
+  <rect x="518" y="118" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="562" y="138" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">AG 10</text>
+  <text x="562" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="562" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
+
+  <!-- Legend -->
+  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED state = dim white backlight · discrete inputs (B12, B14) not shown — input only, no LED · KerbalButtonCore v1.0.0 · Jeb's Controller Works</text>
+
+</svg>
