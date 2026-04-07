@@ -63,6 +63,20 @@ struct RGBColor {
 /** @brief Unlit / not installed. Use to explicitly clear a button. */
 static const RGBColor KBC_OFF            = {   0,   0,   0 };
 
+/**
+ * @brief Discrete indicator ON. Use in the activeColors array for
+ *        discrete LED positions that have no color — only on/off.
+ *
+ *        Any non-zero RGB value drives a discrete LED HIGH. This
+ *        constant uses {1,1,1} to clearly communicate "colorless
+ *        indicator" rather than implying a specific color meaning.
+ *        Do not use this for NeoPixel buttons.
+ *
+ *        The controller drives this position with KBC_LED_ACTIVE
+ *        to turn the indicator on and KBC_LED_OFF to turn it off.
+ */
+static const RGBColor KBC_DISCRETE_ON   = {   1,   1,   1 };
+
 // ============================================================
 //  Semantic — system-wide consistent meaning
 //
