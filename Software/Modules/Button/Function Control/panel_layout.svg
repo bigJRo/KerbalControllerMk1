@@ -1,0 +1,96 @@
+<svg viewBox="0 0 320 580" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+
+  <!-- Background -->
+  <rect width="320" height="580" rx="12" fill="#1a1a1a"/>
+
+  <!-- Title -->
+  <text x="16" y="22" font-size="9" fill="#555" font-weight="500" letter-spacing="1">FUNCTION CONTROL</text>
+  <text x="16" y="38" font-size="9" fill="#444" font-family="monospace">0x21 · KBC_TYPE_FUNCTION_CONTROL</text>
+
+  <!-- Column labels -->
+  <text x="82" y="58" font-size="8" fill="#444" text-anchor="middle">Col 1 (left)</text>
+  <text x="234" y="58" font-size="8" fill="#444" text-anchor="middle">Col 2 (right)</text>
+
+  <!-- Row 1 -->
+  <text x="10" y="96" font-size="8" fill="#444" text-anchor="middle" transform="rotate(-90,10,96)">R1</text>
+  <!-- B1 Engine Alt Mode — ORANGE -->
+  <rect x="20" y="66" width="124" height="66" rx="6" fill="#f9731618" stroke="#f97316" stroke-width="1.5"/>
+  <text x="82" y="88" font-size="9" font-weight="500" fill="#9a3412" text-anchor="middle">Engine Alt Mode</text>
+  <text x="82" y="102" font-size="8" fill="#f97316" text-anchor="middle">● ORANGE</text>
+  <text x="82" y="114" font-size="7.5" fill="#666" text-anchor="middle">B1 · BUTTON02</text>
+  <!-- B0 Science Collect — PURPLE -->
+  <rect x="172" y="66" width="124" height="66" rx="6" fill="#8b5cf618" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="234" y="88" font-size="9" font-weight="500" fill="#5b21b6" text-anchor="middle">Science Collect</text>
+  <text x="234" y="102" font-size="8" fill="#8b5cf6" text-anchor="middle">● PURPLE</text>
+  <text x="234" y="114" font-size="7.5" fill="#666" text-anchor="middle">B0 · BUTTON01</text>
+
+  <!-- Row 2 -->
+  <text x="10" y="178" font-size="8" fill="#444" text-anchor="middle" transform="rotate(-90,10,178)">R2</text>
+  <!-- B3 Engine Group 1 — YELLOW -->
+  <rect x="20" y="146" width="124" height="66" rx="6" fill="#eab30818" stroke="#eab308" stroke-width="1.5"/>
+  <text x="82" y="168" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">Engine Group 1</text>
+  <text x="82" y="182" font-size="8" fill="#eab308" text-anchor="middle">● YELLOW</text>
+  <text x="82" y="194" font-size="7.5" fill="#666" text-anchor="middle">B3 · BUTTON04</text>
+  <!-- B2 Science Group 1 — INDIGO -->
+  <rect x="172" y="146" width="124" height="66" rx="6" fill="#6366f118" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="234" y="168" font-size="9" font-weight="500" fill="#3730a3" text-anchor="middle">Science Group 1</text>
+  <text x="234" y="182" font-size="8" fill="#6366f1" text-anchor="middle">● INDIGO</text>
+  <text x="234" y="194" font-size="7.5" fill="#666" text-anchor="middle">B2 · BUTTON03</text>
+
+  <!-- Row 3 -->
+  <text x="10" y="258" font-size="8" fill="#444" text-anchor="middle" transform="rotate(-90,10,258)">R3</text>
+  <!-- B5 Engine Group 2 — CHARTREUSE -->
+  <rect x="20" y="226" width="124" height="66" rx="6" fill="#a3e63518" stroke="#a3e635" stroke-width="1.5"/>
+  <text x="82" y="248" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Engine Group 2</text>
+  <text x="82" y="262" font-size="8" fill="#a3e635" text-anchor="middle">● CHARTREUSE</text>
+  <text x="82" y="274" font-size="7.5" fill="#666" text-anchor="middle">B5 · BUTTON06</text>
+  <!-- B4 Science Group 2 — BLUE -->
+  <rect x="172" y="226" width="124" height="66" rx="6" fill="#3b82f618" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="234" y="248" font-size="9" font-weight="500" fill="#1e40af" text-anchor="middle">Science Group 2</text>
+  <text x="234" y="262" font-size="8" fill="#3b82f6" text-anchor="middle">● BLUE</text>
+  <text x="234" y="274" font-size="7.5" fill="#666" text-anchor="middle">B4 · BUTTON05</text>
+
+  <!-- Row 4 -->
+  <text x="10" y="338" font-size="8" fill="#444" text-anchor="middle" transform="rotate(-90,10,338)">R4</text>
+  <!-- B7 LES — RED -->
+  <rect x="20" y="306" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="82" y="328" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">LES</text>
+  <text x="82" y="342" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
+  <text x="82" y="354" font-size="7.5" fill="#666" text-anchor="middle">B7 · BUTTON08</text>
+  <!-- B6 Air Intake — TEAL -->
+  <rect x="172" y="306" width="124" height="66" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="234" y="328" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Air Intake</text>
+  <text x="234" y="342" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <text x="234" y="354" font-size="7.5" fill="#666" text-anchor="middle">B6 · BUTTON07</text>
+
+  <!-- Row 5 -->
+  <text x="10" y="418" font-size="8" fill="#444" text-anchor="middle" transform="rotate(-90,10,418)">R5</text>
+  <!-- B9 Lock Surfaces — AMBER -->
+  <rect x="20" y="386" width="124" height="66" rx="6" fill="#f59e0b18" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="82" y="408" font-size="9" font-weight="500" fill="#92400e" text-anchor="middle">Lock Surfaces</text>
+  <text x="82" y="422" font-size="8" fill="#f59e0b" text-anchor="middle">● AMBER</text>
+  <text x="82" y="434" font-size="7.5" fill="#666" text-anchor="middle">B9 · BUTTON10</text>
+  <!-- B8 Air Brake — CYAN -->
+  <rect x="172" y="386" width="124" height="66" rx="6" fill="#06b6d418" stroke="#06b6d4" stroke-width="1.5"/>
+  <text x="234" y="408" font-size="9" font-weight="500" fill="#0e7490" text-anchor="middle">Air Brake</text>
+  <text x="234" y="422" font-size="8" fill="#06b6d4" text-anchor="middle">● CYAN</text>
+  <text x="234" y="434" font-size="7.5" fill="#666" text-anchor="middle">B8 · BUTTON09</text>
+
+  <!-- Row 6 -->
+  <text x="10" y="498" font-size="8" fill="#444" text-anchor="middle" transform="rotate(-90,10,498)">R6</text>
+  <!-- B11 Heat Shield Deploy — GREEN -->
+  <rect x="20" y="466" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="82" y="488" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Heat Shield Deploy</text>
+  <text x="82" y="502" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="82" y="514" font-size="7.5" fill="#666" text-anchor="middle">B11 · BUTTON12</text>
+  <!-- B10 Heat Shield Release — RED -->
+  <rect x="172" y="466" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="234" y="488" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Heat Shield Release</text>
+  <text x="234" y="502" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
+  <text x="234" y="514" font-size="7.5" fill="#666" text-anchor="middle">B10 · BUTTON11</text>
+
+  <!-- Legend -->
+  <text x="20" y="552" font-size="7.5" fill="#444">ACTIVE state colors shown · ENABLED state = dim white backlight · dim white border = not installed</text>
+  <text x="20" y="566" font-size="7.5" fill="#444">KerbalButtonCore v1.0.0 · KC-01-1822 v1.1 · Jeb's Controller Works</text>
+
+</svg>
