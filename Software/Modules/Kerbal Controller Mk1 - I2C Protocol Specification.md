@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 1.4  
+**Version:** 1.5  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 
@@ -191,6 +191,7 @@ All commands are initiated by the controller. The command byte is the first byte
 | `CMD_WAKE` | `0x06` | None | C → T | None |
 | `CMD_RESET` | `0x07` | None | C → T | None |
 | `CMD_ACK_FAULT` | `0x08` | None | C → T | None |
+| `CMD_SET_VALUE` | `0x09` | 2 bytes (uint16 big-endian) | C → T | None |
 
 ### Command Descriptions
 
@@ -217,6 +218,9 @@ Clears all LED and input state. INT is deasserted. Used for controller startup a
 
 **CMD_ACK_FAULT (`0x08`)**  
 Acknowledges a module fault condition. Modules that implement fault tracking clear their fault flag on receipt. Modules that do not track faults accept and ignore this command.
+
+**CMD_SET_VALUE (`0x09`)**  
+Sets the display value on modules that have a numeric display (7-segment display modules). Two-byte big-endian uint16 payload, range 0–9999. The module updates its display and encoder tracking state immediately. Modules that do not have a display accept and ignore this command. Used by the controller to synchronize display state after a game load or external value change.
 
 ---
 
@@ -308,12 +312,15 @@ Type IDs are independent of I2C address. The controller uses the Type ID from th
 | `0x08` | Reserved | `0x27` | — | — |
 | `0x09` | Joystick Rotation | `0x28` | `0x08` | 8 |
 | `0x0A` | Joystick Translation | `0x29` | `0x08` | 8 |
+| `0x0B` | GPWS Input Panel | `0x2A` | `0x10` | 6 |
+| `0x0C` | Pre-Warp Time | `0x2B` | `0x10` | 6 |
 | `0xFF` | Unknown / Uninitialized | — | — | — |
 
 **Capability flag values:**  
 `0x01` = Extended LED states (bit 0)  
 `0x04` = Encoder data in packet (bit 2)  
-`0x08` = Analog joystick axes in packet (bit 3)
+`0x08` = Analog joystick axes in packet (bit 3)  
+`0x10` = 7-segment display and encoder present (bit 4)
 
 ---
 
@@ -368,6 +375,37 @@ Default thresholds (all in raw ADC counts):
 
 **Reference:** `KerbalJoystickCore/src/KJC_Config.h`
 
+### 9.3 Display Modules (Type IDs 0x0B, 0x0C) — 6 bytes
+
+Applies to both the GPWS Input Panel (0x0B, address 0x2A) and the Pre-Warp Time module (0x0C, address 0x2B). Both share identical hardware (KC-01-1881/1882) and packet format.
+
+```
+Byte 0:   Button events  — bit0=BTN01 pressed, bit1=BTN02 pressed,
+                           bit2=BTN03 pressed, bit3=BTN_EN pressed;
+                           bits 7-4 unused
+Byte 1:   Change mask    — same bit layout as byte 0
+Byte 2:   Module state   — bits 0-1 = BTN01 cycle state (0/1/2),
+                           bit 2 = BTN02 active,
+                           bit 3 = BTN03 active;
+                           bits 7-4 unused
+Byte 3:   Reserved       — always 0x00
+Byte 4:   Value HIGH     — display value, big-endian uint16, range 0-9999
+Byte 5:   Value LOW      — display value, big-endian uint16, range 0-9999
+```
+
+Button events (byte 0) report rising edges — a bit is set only in the packet that captures the press, not in subsequent packets while the button is held. Byte 1 carries the change mask for edge detection. Byte 2 carries persistent module state — the controller can read this byte alone to determine current logical state without tracking history.
+
+Button LED states are managed entirely by the module. `CMD_SET_LED_STATE` is accepted and ignored. `CMD_SET_VALUE (0x09)` sets the display value and encoder tracking state:
+```
+[ADDR+W] [0x09] [VALUE_HIGH] [VALUE_LOW]
+```
+
+INT asserts on any button state change or display value change from the encoder.
+
+**Reference:** `Kerbal7SegmentCore/src/K7SC_Config.h`
+
+---
+
 ---
 
 ## 10. Revision History
@@ -379,3 +417,4 @@ Default thresholds (all in raw ADC counts):
 | 1.2 | 2026-04-07 | Status set to Released; CMD_BULB_TEST behavior defined; Module Type ID registry fully populated with six standard modules |
 | 1.3 | 2026-04-08 | Scope broadened to full Kerbal Controller Mk1 system protocol; device-specific packet architecture introduced; EVA Module added to registry; Section 9 added |
 | 1.4 | 2026-04-08 | Full language revision to remove standard-module-centric framing throughout; Section 4 restructured as Standard Module Data Format; INT section updated to cover device-specific strategies; Section 7 bus load updated for current module set; joystick modules (0x09, 0x0A) and reserved entries (0x08) added to registry; Section 9.2 joystick packet format added; capability flags table expanded |
+| 1.5 | 2026-04-08 | CMD_SET_VALUE (0x09) added to command set; display modules (0x0B GPWS Input Panel, 0x0C Pre-Warp Time) added to registry; Section 9.3 display module packet format added; capability flag bit 4 defined |
