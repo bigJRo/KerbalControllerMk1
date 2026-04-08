@@ -67,17 +67,14 @@
 //  Packet sizes
 // ============================================================
 
-/** @brief Standard button state packet size (bytes). */
-#define EVA_BUTTON_PACKET_SIZE  4
-
 /**
- * @brief Extended packet size including encoder deltas (bytes).
- *        Byte 0-1: current button state bitmask
- *        Byte 2-3: change mask
- *        Byte 4:   ENC1 delta (signed int8, clicks since last read)
- *        Byte 5:   ENC2 delta (signed int8, clicks since last read)
+ * @brief EVA module data packet size (bytes).
+ *        Byte 0:  Button state  (bits 0-5 = buttons 0-5, bits 6-7 unused)
+ *        Byte 1:  Change mask   (bits 0-5 = buttons 0-5, bits 6-7 unused)
+ *        Byte 2:  ENC1 delta    (signed int8, clicks since last read)
+ *        Byte 3:  ENC2 delta    (signed int8, clicks since last read)
  */
-#define EVA_FULL_PACKET_SIZE    6
+#define EVA_PACKET_SIZE         4
 
 /** @brief Identity response packet size (bytes). */
 #define EVA_IDENTITY_SIZE       4

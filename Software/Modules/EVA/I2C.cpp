@@ -122,15 +122,15 @@ static void _dispatch() {
 // ============================================================
 
 static void _sendButtonPacket() {
-    uint8_t buf[EVA_FULL_PACKET_SIZE];
+    uint8_t buf[EVA_PACKET_SIZE];
     buttonsGetPacket(buf);
 
-    // Inject encoder deltas into bytes 4 and 5
-    buf[4] = (uint8_t)encodersGetDelta1();
-    buf[5] = (uint8_t)encodersGetDelta2();
+    // Inject encoder deltas into bytes 2 and 3
+    buf[2] = (uint8_t)encodersGetDelta1();
+    buf[3] = (uint8_t)encodersGetDelta2();
     encodersClearDeltas();
 
-    Wire.write(buf, EVA_FULL_PACKET_SIZE);
+    Wire.write(buf, EVA_PACKET_SIZE);
     _clearINT();
 }
 
@@ -170,7 +170,7 @@ static void _onRequest() {
             break;
         default:
             // Unexpected read — send zeros
-            for (uint8_t i = 0; i < EVA_FULL_PACKET_SIZE; i++) {
+            for (uint8_t i = 0; i < EVA_PACKET_SIZE; i++) {
                 Wire.write((uint8_t)0);
             }
             break;

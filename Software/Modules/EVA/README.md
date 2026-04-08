@@ -113,17 +113,15 @@ This module implements the Kerbal Controller Mk1 I2C protocol independently. All
 | CMD_RESET | `0x07` | None | Clear all state, LEDs off |
 | CMD_ACK_FAULT | `0x08` | None | Acknowledged, no fault tracking |
 
-### Button State Response (6 bytes)
+### Button State Response (4 bytes)
 
-This module returns an extended 6-byte packet instead of the standard 4 bytes, indicated by the `EVA_CAP_ENCODERS` capability flag in the identity response:
+This module returns a 4-byte device-specific packet as defined in the Kerbal Controller Mk1 I2C Protocol Specification Section 9.1:
 
 ```
-Byte 0:   Current state HIGH  (always 0x00 — only 6 buttons)
-Byte 1:   Current state LOW   (bit N = button N, 1=pressed)
-Byte 2:   Change mask HIGH    (always 0x00)
-Byte 3:   Change mask LOW     (bit N = changed since last read)
-Byte 4:   ENC1 delta          (signed int8, always 0 — future use)
-Byte 5:   ENC2 delta          (signed int8, always 0 — future use)
+Byte 0:  Button state   (bits 0-5 = buttons 0-5, 1=pressed, bits 6-7 unused)
+Byte 1:  Change mask    (bits 0-5 = buttons 0-5, 1=changed, bits 6-7 unused)
+Byte 2:  ENC1 delta     (signed int8, relative clicks since last read — currently 0)
+Byte 3:  ENC2 delta     (signed int8, relative clicks since last read — currently 0)
 ```
 
 ### Identity Response (4 bytes)

@@ -44,12 +44,12 @@ bool buttonsPoll();
 bool buttonsIsIntPending();
 
 /**
- * @brief Build the 6-byte response packet and clear pending state.
- *        Byte 0-1: current state bitmask (bit N = button N)
- *        Byte 2-3: change mask
- *        Byte 4:   ENC1 delta (always 0 — future use)
- *        Byte 5:   ENC2 delta (always 0 — future use)
- * @param buf  Destination buffer, must be EVA_FULL_PACKET_SIZE bytes.
+ * @brief Build the 4-byte EVA response packet and clear pending state.
+ *        Byte 0:  Button state  (bits 0-5 = buttons 0-5)
+ *        Byte 1:  Change mask   (bits 0-5 = buttons 0-5)
+ *        Byte 2:  ENC1 delta    (signed int8, always 0 — future use)
+ *        Byte 3:  ENC2 delta    (signed int8, always 0 — future use)
+ * @param buf  Destination buffer, must be EVA_PACKET_SIZE bytes.
  */
 void buttonsGetPacket(uint8_t* buf);
 

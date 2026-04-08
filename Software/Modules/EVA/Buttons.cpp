@@ -118,13 +118,11 @@ void buttonsGetPacket(uint8_t* buf) {
     // Snapshot live state into latch
     _latchedState = _liveState;
 
-    // Build 6-byte extended packet
-    buf[0] = 0;                  // current state HIGH byte (always 0 — 6 buttons max)
-    buf[1] = _latchedState;      // current state LOW byte
-    buf[2] = 0;                  // change mask HIGH byte
-    buf[3] = _changeMask;        // change mask LOW byte
-    buf[4] = 0;                  // ENC1 delta — future use
-    buf[5] = 0;                  // ENC2 delta — future use
+    // Build 4-byte EVA packet
+    buf[0] = _latchedState;      // button state (bits 0-5 active)
+    buf[1] = _changeMask;        // change mask  (bits 0-5 active)
+    buf[2] = 0;                  // ENC1 delta — injected by I2C.cpp
+    buf[3] = 0;                  // ENC2 delta — injected by I2C.cpp
 
     // Clear change mask and INT flag
     _changeMask = 0;
