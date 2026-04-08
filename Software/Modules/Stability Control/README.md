@@ -27,8 +27,8 @@ This module uses 11 NeoPixel RGB button positions (KBC indices 0-9 and 11), with
 | Capability Flags | `0x00` (core states only) |
 | Extended States | No |
 | NeoPixel Buttons | 11 (KBC indices 0-9, 11 — index 10 not installed) |
-| Discrete Input Only | 3 (KBC indices 12, 13, 14) |
-| Discrete Input + LED | 1 (KBC index 15 — STG_ENA) |
+| Discrete Input Only | 2 (KBC indices 12, 13) |
+| Not Installed | KBC indices 14, 15 |
 
 ---
 
@@ -67,27 +67,13 @@ Active state colors shown. All installed NeoPixel buttons illuminate dim white i
 |---|---|---|---|---|
 | B12 | BUTTON13 | SAS_ENA | N/A — input only | HIGH = SAS system enabled |
 | B13 | BUTTON14 | RCS_ENA | N/A — input only | HIGH = RCS system enabled |
-| B14 | BUTTON15 | STG | N/A — input only | HIGH = staging trigger active |
-| B15 | BUTTON16 | STG_ENA | Discrete on/off | HIGH = staging interlock engaged |
+| B14 | BUTTON15 | Not installed | N/A | — |
+| B15 | BUTTON16 | Not installed | N/A | — |
 
 ### Color Design Notes
 
 - **SAS modes (GREEN)** — all 10 SAS modes share uniform green. Only one mode can be active at a time in KSP, so the single illuminated green button identifies the current mode without any color distinction between modes.
 - **Invert (AMBER)** — amber signals awareness; control inversion modifies whatever SAS mode is active and warrants a distinct visual.
-- **STG_ENA discrete LED** — colorless on/off indicator. `KBC_DISCRETE_ON` ({1,1,1}) is used in the color array to document this as a colorless indicator rather than implying a named color meaning. The controller drives it with `KBC_LED_ACTIVE` (on) and `KBC_LED_OFF` (off).
-
----
-
-## STG_ENA Discrete LED Behavior
-
-B15 (STG_ENA) is a mixed-signal position with both a button input and a discrete LED output acting as a staging safety interlock indicator.
-
-| Controller Command | LED State | Meaning |
-|---|---|---|
-| `KBC_LED_OFF` (0x0) | Off | Staging locked out |
-| `KBC_LED_ACTIVE` (0x2) | On (full) | Staging enabled |
-
-The system controller owns all state logic. The ENABLED state maps to full ON for discrete outputs since dimming is not available on transistor-switched LEDs.
 
 ---
 
@@ -116,8 +102,8 @@ The system controller owns all state logic. The ENABLED state maps to full ON fo
 |---|---|---|---|---|
 | P5 | BUTTON13 | 12 | SAS_ENA | Not connected |
 | P5 | BUTTON14 | 13 | RCS_ENA | Not connected |
-| P5 | BUTTON15 | 14 | STG | Not connected |
-| P5 | BUTTON16 | 15 | STG_ENA | Connected — discrete indicator |
+| P5 | BUTTON15 | 14 | Not installed | Not connected |
+| P5 | BUTTON16 | 15 | Not installed | Not connected |
 
 ---
 
@@ -148,7 +134,7 @@ The system controller owns all state logic. The ENABLED state maps to full ON fo
 
 ### Verify Operation
 
-After flashing, NeoPixel buttons B0-B9 and B11 should illuminate in dim white ENABLED state. B10 remains off (not installed). Send `KBC_LED_ACTIVE` to B15 via `CMD_SET_LED_STATE` and confirm the STG_ENA discrete LED illuminates. Use the `DiagnosticDump` example sketch for full input verification.
+After flashing, NeoPixel buttons B0-B9 and B11 should illuminate in dim white ENABLED state. B10 remains off (not installed). Activate SAS_ENA and RCS_ENA signals and confirm B12 and B13 state changes are reported via I2C. Use the `DiagnosticDump` example sketch for full verification.
 
 ---
 
@@ -173,12 +159,10 @@ Full I2C protocol specification: `KBC_Protocol_Spec.md` v1.2
 Button state packet bits of note:
 - Bit 12 — SAS_ENA state
 - Bit 13 — RCS_ENA state
-- Bit 14 — STG trigger state
-- Bit 15 — STG_ENA interlock state
 
 LED nibble notes for `CMD_SET_LED_STATE`:
-- B15: `0x0` = indicator off, `0x2` = indicator on
-- B10, B12-B14: any value accepted but ignored (no LED hardware)
+- B10, B14-B15: any value accepted but ignored (not installed)
+- B12-B13: any value accepted but ignored (no LED hardware)
 
 ---
 

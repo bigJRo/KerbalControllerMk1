@@ -33,10 +33,8 @@
  *              Discrete positions (outside NeoPixel grid):
  *                B12 - SAS_ENA  - input only, no LED
  *                B13 - RCS_ENA  - input only, no LED
- *                B14 - STG      - input only, no LED
- *                B15 - STG_ENA  - input + discrete LED (staging interlock)
- *                                 OFF    = staging locked out
- *                                 ACTIVE = staging enabled
+ *                B14 - Not installed
+ *                B15 - Not installed
  *
  *              Button-to-KBC index mapping:
  *                BUTTON01 (PCB) -> KBC index 0  -> Target
@@ -53,8 +51,8 @@
  *                BUTTON12 (PCB) -> KBC index 11 -> Invert
  *                BUTTON13 (PCB) -> KBC index 12 -> SAS_ENA (input only)
  *                BUTTON14 (PCB) -> KBC index 13 -> RCS_ENA (input only)
- *                BUTTON15 (PCB) -> KBC index 14 -> STG     (input only)
- *                BUTTON16 (PCB) -> KBC index 15 -> STG_ENA (input + LED)
+ *                BUTTON15 (PCB) -> KBC index 14 -> Not installed
+ *                BUTTON16 (PCB) -> KBC index 15 -> Not installed
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -94,11 +92,8 @@
 //  B11    : Invert - AMBER (modifier, draws attention)
 //  B12    : SAS_ENA - input only, no LED - KBC_OFF
 //  B13    : RCS_ENA - input only, no LED - KBC_OFF
-//  B14    : STG     - input only, no LED - KBC_OFF
-//  B15    : STG_ENA - discrete LED indicator, no color.
-//           KBC_DISCRETE_ON ({1,1,1}) signals colorless on/off
-//           indicator. Controller sends KBC_LED_ACTIVE to illuminate,
-//           KBC_LED_OFF to extinguish. LED on = staging enabled.
+//  B14    : Not installed - KBC_OFF
+//  B15    : Not installed - KBC_OFF
 // ============================================================
 
 const RGBColor activeColors[KBC_BUTTON_COUNT] = {
@@ -116,8 +111,8 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_AMBER,        // B11 - Invert       (Col 6, Row 2) - modifier
     KBC_OFF,          // B12 - SAS_ENA - input only, no LED
     KBC_OFF,          // B13 - RCS_ENA - input only, no LED
-    KBC_OFF,          // B14 - STG     - input only, no LED
-    KBC_DISCRETE_ON,  // B15 - STG_ENA - discrete indicator, no color
+    KBC_OFF,          // B14 - Not installed
+    KBC_OFF,          // B15 - Not installed
 };
 
 // ============================================================
@@ -151,9 +146,9 @@ void setup() {
 void loop() {
     // update() handles all library tasks each iteration:
     //   - Button polling and debounce (every KBC_POLL_INTERVAL_MS)
-    //     including SAS_ENA (B12), RCS_ENA (B13), STG (B14),
-    //     and STG_ENA (B15) which are all reported to the controller
-    //     via normal button state packets when their signals change
+    //     including SAS_ENA (B12) and RCS_ENA (B13) which are
+    //     reported to the controller via normal button state packets
+    //     when their signals change
     //   - Render pending LED changes from I2C commands
     //   - INT pin synchronisation with button state
     //
