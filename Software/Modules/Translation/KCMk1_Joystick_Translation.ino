@@ -18,14 +18,14 @@
  *              Capability:     0x08 (KJC_CAP_JOYSTICK)
  *
  *              Axes:
- *                AXIS1 (PB4) — X axis
- *                AXIS2 (PB5) — Y axis
- *                AXIS3 (PA7) — Z axis
+ *                AXIS1 (PB5) — X axis
+ *                AXIS2 (PA7) — Y axis
+ *                AXIS3 (PA6) — Z axis
  *
  *              Buttons:
  *                BTN01 (PC0) — Cycle Camera Mode — MAGENTA — NeoPixel
  *                BTN02 (PB3) — Camera Reset      — GREEN   — NeoPixel
- *                BTN_JOY(PA6)— Enable Camera Mode — no LED — GPIO
+ *                BTN_JOY(PA5)— Enable Camera Mode — no LED — GPIO
  *
  *              Do not touch the joystick during the first ~80ms
  *              after power-on. Startup calibration reads the center

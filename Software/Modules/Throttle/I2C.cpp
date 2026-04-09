@@ -28,9 +28,16 @@
 //  Module state
 // ============================================================
 
-static bool _enabled   = false;
-static bool _precision = false;
+static bool _enabled     = false;
+static bool _precision   = false;
 static bool _intAsserted = false;
+
+// Cached button events snapshot — captured in i2cSyncINT() when
+// events are read for motor target logic, consumed in _sendDataPacket()
+// when the controller reads. Prevents buttonsGetEvents() being called
+// twice (once for motor logic, once for the packet) where the second
+// call would always return 0 because the first already cleared the mask.
+static uint8_t _pendingEvents = 0;
 
 static const uint8_t _CMD_BUF_SIZE = 3;  // cmd + up to 2 payload bytes
 static uint8_t _cmdBuf[_CMD_BUF_SIZE];
@@ -100,10 +107,11 @@ static void _sendDataPacket() {
     uint16_t val = wiperGetScaled();
 
     buf[0] = _buildStatusByte();
-    buf[1] = buttonsGetEvents();
+    buf[1] = _pendingEvents;      // events snapshot captured in i2cSyncINT()
     buf[2] = (uint8_t)(val >> 8);
     buf[3] = (uint8_t)(val & 0xFF);
 
+    _pendingEvents = 0;           // consumed — clear after building packet
     wiperClearChanged();
     Wire.write(buf, THR_PACKET_SIZE);
     _clearINT();
@@ -161,6 +169,7 @@ static void _dispatch() {
             buttonsClearAll();
             wiperReset();
             _precision       = false;
+            _pendingEvents   = 0;
             _pendingResponse = RESP_NONE;
             _clearINT();
             break;
@@ -256,11 +265,17 @@ void i2cBegin() {
 // ============================================================
 //  i2cSyncINT()
 //
-//  Called every loop. Handles:
-//    - Touch while enabled: stop motor, follow wiper
-//    - Touch while disabled: resist with motor at 0
-//    - Button events: process and set motor targets
-//    - Value changes: assert INT for controller read
+//  Called every loop. Responsible for:
+//    - Touch while enabled: stop motor immediately
+//    - Touch while disabled: re-assert motor target at 0 to resist
+//    - Button events: translate to motor targets
+//    - INT pin: assert or deassert based on pending state
+//
+//  motorUpdate() is NOT called here. It is called once per loop()
+//  iteration in the main sketch, after i2cSyncINT() returns. This
+//  keeps the motor position controller out of this function and
+//  ensures it runs exactly once per loop regardless of how many
+//  targets are set here.
 // ============================================================
 
 void i2cSyncINT() {
@@ -268,11 +283,14 @@ void i2cSyncINT() {
 
     if (_enabled) {
         if (touched) {
-            // Pilot is touching — stop motor, follow wiper
+            // Pilot is touching — stop motor and let wiper run free
             motorStop();
         } else {
-            // Process any pending button events
+            // Read and cache button events.
+            // OR-accumulate so events aren't lost if i2cSyncINT() runs
+            // multiple times before the controller reads the packet.
             uint8_t events = buttonsGetEvents();
+            _pendingEvents |= events;
 
             if (events & (1 << THR_BIT_100)) {
                 motorSetTarget(THR_ADC_MAX, true);
@@ -294,16 +312,11 @@ void i2cSyncINT() {
                 motorSetTarget(next, false);
             }
         }
-
-        // Update motor with current wiper position
-        motorUpdate(wiperGetRaw());
-
     } else {
-        // Disabled — resist any touch by holding motor at 0
+        // Disabled — re-assert target at 0 on touch to resist pilot input
         if (touched) {
             motorSetTarget(THR_ADC_MIN, true);
         }
-        motorUpdate(wiperGetRaw());
     }
 
     // Assert INT if controller needs to read

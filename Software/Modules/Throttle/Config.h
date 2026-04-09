@@ -22,15 +22,29 @@
 // ============================================================
 
 #define THR_I2C_ADDRESS         0x2C
-#define THR_MODULE_TYPE_ID      0x0D
+#define THR_MODULE_TYPE_ID      KMC_TYPE_THROTTLE
 #define THR_FIRMWARE_MAJOR      1
 #define THR_FIRMWARE_MINOR      0
 
 /** @brief Capability flag — motorized position control. */
-#define THR_CAP_MOTORIZED       (1 << 5)
+#define THR_CAP_MOTORIZED       KMC_CAP_MOTORIZED
 
 // ============================================================
-//  I2C command bytes
+//  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
+// ============================================================
+
+#define CMD_GET_IDENTITY        KMC_CMD_GET_IDENTITY
+#define CMD_SET_LED_STATE       KMC_CMD_SET_LED_STATE
+#define CMD_SET_BRIGHTNESS      KMC_CMD_SET_BRIGHTNESS
+#define CMD_BULB_TEST           KMC_CMD_BULB_TEST
+#define CMD_SLEEP               KMC_CMD_SLEEP
+#define CMD_WAKE                KMC_CMD_WAKE
+#define CMD_RESET               KMC_CMD_RESET
+#define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
+#define CMD_ENABLE              KMC_CMD_ENABLE
+#define CMD_DISABLE             KMC_CMD_DISABLE
+#define CMD_SET_THROTTLE        KMC_CMD_SET_THROTTLE
+#define CMD_SET_PRECISION       KMC_CMD_SET_PRECISION
 // ============================================================
 
 #define CMD_GET_IDENTITY        0x01
@@ -59,7 +73,7 @@
  *   Byte 2-3: Throttle value (uint16, big-endian, 0 to INT16_MAX)
  */
 #define THR_PACKET_SIZE         4
-#define THR_IDENTITY_SIZE       4
+#define THR_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 // ============================================================
 //  Status flag bits

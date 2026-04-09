@@ -32,26 +32,21 @@
 
 #pragma once
 #include "Config.h"
+#include <KerbalModuleCommon.h>
 
 // ============================================================
-//  RGB color struct
+//  System color palette and per-pixel active colors
+//
+//  System colors reference KMC_* canonical names from
+//  KerbalModuleCommon. IND_WHITE_DIM is module-specific —
+//  the ENABLED dim state for RGB hardware (no W channel).
 // ============================================================
 
-struct RGBColor {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
-
-// ============================================================
-//  System color palette — RGB format for SK6812mini-012
-// ============================================================
-
-static const RGBColor IND_OFF           = {  0,   0,   0};
-static const RGBColor IND_WHITE_DIM     = { 32,  32,  32};  // ENABLED state
-static const RGBColor IND_AMBER         = {245, 158,  11};  // WARNING / PARTIAL_DEPLOY
-static const RGBColor IND_RED           = {239,  68,  68};  // ALERT
-static const RGBColor IND_CYAN          = {  6, 182, 212};  // ARMED
+static const RGBColor IND_OFF           = KMC_OFF;
+static const RGBColor IND_WHITE_DIM     = scaleColor(KMC_WHITE_COOL, 32); // ENABLED state
+static const RGBColor IND_AMBER         = KMC_AMBER;   // WARNING / PARTIAL_DEPLOY
+static const RGBColor IND_RED           = KMC_RED;     // ALERT
+static const RGBColor IND_CYAN          = KMC_CYAN;    // ARMED
 
 // ============================================================
 //  Per-pixel active colors (state 0x2 = ACTIVE)
@@ -59,22 +54,22 @@ static const RGBColor IND_CYAN          = {  6, 182, 212};  // ARMED
 // ============================================================
 
 static const RGBColor IND_ACTIVE_COLORS[16] = {
-    { 14, 165, 233},  //  0: COMM ACTIVE    — SKY
-    { 20, 184, 166},  //  1: USB ACTIVE     — TEAL
-    { 34, 197,  94},  //  2: THRTL ENA      — GREEN
-    {163, 230,  53},  //  3: AUTO THRTL     — CHARTREUSE
-    {245, 158,  11},  //  4: PREC INPUT     — AMBER
-    {139,  92, 246},  //  5: AUDIO          — PURPLE
-    {234, 179,   8},  //  6: LIGHT ENA      — YELLOW
-    {239,  68,  68},  //  7: BRAKE LOCK     — RED
-    { 34, 197,  94},  //  8: LNDG GEAR LOCK — GREEN
-    {245, 158,  11},  //  9: CHUTE ARM      — AMBER
-    { 34, 197,  94},  // 10: CTRL           — GREEN
-    {255,   0, 255},  // 11: DEBUG          — MAGENTA
-    { 99, 102, 241},  // 12: DEMO           — INDIGO
-    {239,  68,  68},  // 13: SWITCH ERROR   — RED
-    {150, 255, 216},  // 14: RCS            — MINT
-    { 34, 197,  94},  // 15: SAS            — GREEN
+    KMC_SKY,        //  0: COMM ACTIVE    — SKY
+    KMC_TEAL,       //  1: USB ACTIVE     — TEAL
+    KMC_GREEN,      //  2: THRTL ENA      — GREEN
+    KMC_CHARTREUSE, //  3: AUTO THRTL     — CHARTREUSE
+    KMC_AMBER,      //  4: PREC INPUT     — AMBER
+    KMC_PURPLE,     //  5: AUDIO          — PURPLE
+    KMC_YELLOW,     //  6: LIGHT ENA      — YELLOW
+    KMC_RED,        //  7: BRAKE LOCK     — RED
+    KMC_GREEN,      //  8: LNDG GEAR LOCK — GREEN
+    KMC_AMBER,      //  9: CHUTE ARM      — AMBER
+    KMC_GREEN,      // 10: CTRL           — GREEN
+    KMC_MAGENTA,    // 11: DEBUG          — MAGENTA
+    KMC_INDIGO,     // 12: DEMO           — INDIGO
+    KMC_RED,        // 13: SWITCH ERROR   — RED
+    KMC_MINT,       // 14: RCS            — MINT (was {150,255,216}; corrected to KMC_MINT)
+    KMC_GREEN,      // 15: SAS            — GREEN
 };
 
 // ============================================================

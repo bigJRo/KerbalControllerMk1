@@ -43,8 +43,16 @@
 void i2cBegin();
 
 /**
- * @brief Sync INT pin with pending state.
- *        Asserts INT on button events or throttle value changes.
+ * @brief Sync INT pin and process touch/button events each loop.
+ *
+ *        Handles touch detection, button event processing, and
+ *        motor target-setting in response to inputs. Asserts or
+ *        deasserts the INT pin based on pending state.
+ *
+ *        Does NOT call motorUpdate(). The caller (loop()) is
+ *        responsible for calling motorUpdate(wiperGetRaw()) once
+ *        per iteration after this function returns.
+ *
  *        Call every loop iteration.
  */
 void i2cSyncINT();

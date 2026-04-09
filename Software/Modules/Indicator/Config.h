@@ -15,16 +15,17 @@
 
 #pragma once
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  Module identity
 // ============================================================
 
 #define IND_I2C_ADDRESS         0x2F
-#define IND_MODULE_TYPE_ID      0x10
+#define IND_MODULE_TYPE_ID      KMC_TYPE_INDICATOR
 #define IND_FIRMWARE_MAJOR      1
 #define IND_FIRMWARE_MINOR      0
-#define IND_CAP_FLAGS           0x00
+#define IND_CAP_FLAGS           0x00  // no capabilities
 
 // ============================================================
 //  NeoPixel configuration
@@ -39,7 +40,19 @@
 #define IND_ENABLED_BRIGHTNESS  32   // dim white W channel not used — scale RGB
 
 // ============================================================
-//  I2C command bytes
+//  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
+// ============================================================
+
+#define CMD_GET_IDENTITY        KMC_CMD_GET_IDENTITY
+#define CMD_SET_LED_STATE       KMC_CMD_SET_LED_STATE
+#define CMD_SET_BRIGHTNESS      KMC_CMD_SET_BRIGHTNESS
+#define CMD_BULB_TEST           KMC_CMD_BULB_TEST
+#define CMD_SLEEP               KMC_CMD_SLEEP
+#define CMD_WAKE                KMC_CMD_WAKE
+#define CMD_RESET               KMC_CMD_RESET
+#define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
+#define CMD_ENABLE              KMC_CMD_ENABLE
+#define CMD_DISABLE             KMC_CMD_DISABLE
 // ============================================================
 
 #define CMD_GET_IDENTITY        0x01
@@ -57,20 +70,20 @@
 //  Packet sizes
 // ============================================================
 
-#define IND_IDENTITY_SIZE       4
+#define IND_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 #define IND_LED_PAYLOAD_SIZE    8    // 8 bytes, 16 nibbles, 1 per pixel
 
 // ============================================================
-//  KBC LED state nibble values
+//  KBC LED state nibble values — aliases for KMC_LED_*
 // ============================================================
 
-#define LED_STATE_OFF           0x0
-#define LED_STATE_ENABLED       0x1
-#define LED_STATE_ACTIVE        0x2
-#define LED_STATE_WARNING       0x3
-#define LED_STATE_ALERT         0x4
-#define LED_STATE_ARMED         0x5
-#define LED_STATE_PARTIAL       0x6
+#define LED_STATE_OFF           KMC_LED_OFF
+#define LED_STATE_ENABLED       KMC_LED_ENABLED
+#define LED_STATE_ACTIVE        KMC_LED_ACTIVE
+#define LED_STATE_WARNING       KMC_LED_WARNING
+#define LED_STATE_ALERT         KMC_LED_ALERT
+#define LED_STATE_ARMED         KMC_LED_ARMED
+#define LED_STATE_PARTIAL       KMC_LED_PARTIAL_DEPLOY
 
 // ============================================================
 //  Flash timing (milliseconds)
@@ -86,11 +99,17 @@
 //  Pin assignments — ATtiny816
 // ============================================================
 
-/** @brief NeoPixel data output — PA5, Port A. */
+/** @brief NeoPixel data output — PA5, Port A.
+ *  @note  tinyNeoPixel IDE port setting must be Port A for this module.
+ *         All other NeoPixel modules use Port C. */
 #define IND_PIN_NEOPIX          PIN_PA5
 
-/** @brief Interrupt output — PA1, active low. */
-#define IND_PIN_INT             PIN_PA1
+/** @brief Interrupt output — PC3, active low.
+ *  @note  This module uses PIN_PC3 for INT, not PIN_PA1 as on
+ *         KC-01-1822-based modules. PA1 is not connected on this PCB.
+ *         The master controller INT wiring must account for this
+ *         divergence. Verified against Indicator Module schematic v1.0. */
+#define IND_PIN_INT             PIN_PC3
 
 /** @brief I2C SCL — PB0. */
 #define IND_PIN_SCL             PIN_PB0

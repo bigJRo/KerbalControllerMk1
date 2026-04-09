@@ -131,10 +131,7 @@ void ledsUpdate() {
 
 void ledsSetFromPayload(const uint8_t* payload) {
     for (uint8_t i = 0; i < IND_NEO_COUNT; i++) {
-        uint8_t nibble = (i % 2 == 0)
-                       ? (payload[i / 2] >> 4) & 0x0F
-                       : (payload[i / 2]) & 0x0F;
-        _state[i] = nibble;
+        _state[i] = kmcLedPackGet(payload, i);
     }
     _render();
 }
@@ -155,7 +152,6 @@ void ledsSetState(uint8_t index, uint8_t state) {
 
 void ledsClearAll() {
     memset(_state, LED_STATE_OFF, sizeof(_state));
-    _sleeping = false;
     _render();
 }
 
@@ -180,6 +176,5 @@ void ledsSetEnabled() {
     for (uint8_t i = 0; i < IND_NEO_COUNT; i++) {
         _state[i] = LED_STATE_ENABLED;
     }
-    _sleeping = false;
     _render();
 }

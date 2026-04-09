@@ -21,10 +21,10 @@
 // ============================================================
 
 #define SWP_I2C_ADDRESS         0x2E
-#define SWP_MODULE_TYPE_ID      0x0F
+#define SWP_MODULE_TYPE_ID      KMC_TYPE_SWITCH_PANEL
 #define SWP_FIRMWARE_MAJOR      1
 #define SWP_FIRMWARE_MINOR      0
-#define SWP_CAP_FLAGS           0x00
+#define SWP_CAP_FLAGS           0x00  // no capabilities
 
 // ============================================================
 //  Switch count
@@ -33,7 +33,19 @@
 #define SWP_SWITCH_COUNT        10
 
 // ============================================================
-//  I2C command bytes
+//  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
+// ============================================================
+
+#define CMD_GET_IDENTITY        KMC_CMD_GET_IDENTITY
+#define CMD_SET_LED_STATE       KMC_CMD_SET_LED_STATE
+#define CMD_SET_BRIGHTNESS      KMC_CMD_SET_BRIGHTNESS
+#define CMD_BULB_TEST           KMC_CMD_BULB_TEST
+#define CMD_SLEEP               KMC_CMD_SLEEP
+#define CMD_WAKE                KMC_CMD_WAKE
+#define CMD_RESET               KMC_CMD_RESET
+#define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
+#define CMD_ENABLE              KMC_CMD_ENABLE
+#define CMD_DISABLE             KMC_CMD_DISABLE
 // ============================================================
 
 #define CMD_GET_IDENTITY        0x01
@@ -71,7 +83,7 @@
 // ============================================================
 
 #define SWP_PACKET_SIZE         4
-#define SWP_IDENTITY_SIZE       4
+#define SWP_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 // ============================================================
 //  Pin assignments — ATtiny816
@@ -107,7 +119,26 @@
 /** @brief SW10 — PB3, active high, 10k pull-down. */
 #define SWP_PIN_SW10            PIN_PB3
 
-/** @brief Interrupt output — PB2, active low. */
+// ============================================================
+//  INT output pin
+//
+//  IMPORTANT: This module uses PIN_PB2 for INT, not PIN_PA1
+//  as on all KC-01-1822-based standard modules.
+//
+//  Reason: On the KC-01 Switch Panel PCB, the PA port pins are
+//  consumed by switch inputs (PA7=SW5, PA6=SW7, PA5=SW9) or are
+//  not connected (PA4, PA3, PA2, PA1). PB2 is used for INT as it
+//  is the available output-capable pin on this layout.
+//
+//  The master controller firmware must wire this module's
+//  interrupt input to the PB2 net on the Switch Panel PCB,
+//  not the PA1 net used by all other modules.
+//
+//  Verified against KC-01 Switch Panel schematic v1.0.
+// ============================================================
+
+/** @brief Interrupt output — PB2, active low.
+ *  @note  Uses PB2, not PA1. See comment block above. */
 #define SWP_PIN_INT             PIN_PB2
 
 /** @brief I2C SCL — PB0. */
