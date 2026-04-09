@@ -153,6 +153,21 @@ static void _dispatch() {
             // No fault tracking — acknowledge silently
             break;
 
+        case KJC_CMD_ENABLE:
+            _sleeping = false;
+            buttonsSetLED(0, KJC_LED_ENABLED);
+            buttonsSetLED(1, KJC_LED_ENABLED);
+            _renderPending = true;
+            break;
+
+        case KJC_CMD_DISABLE:
+            _sleeping = true;
+            buttonsSetLED(0, KJC_LED_OFF);
+            buttonsSetLED(1, KJC_LED_OFF);
+            _renderPending = true;
+            _clearINT();
+            break;
+
         default:
             break;
     }

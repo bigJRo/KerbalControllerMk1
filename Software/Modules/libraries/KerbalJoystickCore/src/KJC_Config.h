@@ -231,6 +231,8 @@
 #define KJC_CMD_WAKE            0x06
 #define KJC_CMD_RESET           0x07
 #define KJC_CMD_ACK_FAULT       0x08
+#define KJC_CMD_ENABLE          0x09
+#define KJC_CMD_DISABLE         0x0A
 
 // ============================================================
 //  LED state nibble values
