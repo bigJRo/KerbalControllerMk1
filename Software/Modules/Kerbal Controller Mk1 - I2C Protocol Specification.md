@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 1.5  
+**Version:** 1.6  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 
@@ -186,12 +186,16 @@ All commands are initiated by the controller. The command byte is the first byte
 | `CMD_GET_IDENTITY` | `0x01` | None | C → T | 4-byte identity packet |
 | `CMD_SET_LED_STATE` | `0x02` | 8 bytes | C → T | None |
 | `CMD_SET_BRIGHTNESS` | `0x03` | 1 byte (0–255) | C → T | None |
-| `CMD_BULB_TEST` | `0x04` | None | C → T | None |
+| `CMD_BULB_TEST` | `0x04` | 0–1 bytes | C → T | None |
 | `CMD_SLEEP` | `0x05` | None | C → T | None |
 | `CMD_WAKE` | `0x06` | None | C → T | None |
 | `CMD_RESET` | `0x07` | None | C → T | None |
 | `CMD_ACK_FAULT` | `0x08` | None | C → T | None |
-| `CMD_SET_VALUE` | `0x09` | 2 bytes (uint16 big-endian) | C → T | None |
+| `CMD_ENABLE` | `0x09` | None | C → T | None |
+| `CMD_DISABLE` | `0x0A` | None | C → T | None |
+| `CMD_SET_THROTTLE` | `0x0B` | 2 bytes (uint16 BE) | C → T | None |
+| `CMD_SET_PRECISION` | `0x0C` | 1 byte | C → T | None |
+| `CMD_SET_VALUE` | `0x0D` | 2 bytes (uint16 BE) | C → T | None |
 
 ### Command Descriptions
 
@@ -199,19 +203,19 @@ All commands are initiated by the controller. The command byte is the first byte
 Controller requests module identification. The target responds with the 4-byte identity packet. Used during startup to enumerate connected modules, confirm addresses, verify module types, and read capability flags.
 
 **CMD_SET_LED_STATE (`0x02`)**  
-Controller transmits the LED state as an 8-byte nibble-packed payload. The target updates all LED outputs. Modules with fewer than 16 LED positions accept the full payload and ignore unused nibbles. This is the primary runtime LED control command.
+Controller transmits the LED state as an 8-byte nibble-packed payload. The target updates all LED outputs. Modules with fewer than 16 LED positions accept the full payload and ignore unused nibbles. Modules that manage their own LED state (throttle module, display modules) accept and ignore this command. This is the primary runtime LED control command for standard modules.
 
 **CMD_SET_BRIGHTNESS (`0x03`)**  
-Sets the brightness level of the ENABLED state dim white backlight. Single byte payload, range 0–255. Allows the controller to match brightness across modules or adapt to ambient conditions.
+Sets the brightness level of the ENABLED state dim white backlight. Single byte payload, range 0–255. Allows the controller to match brightness across modules or adapt to ambient conditions. Modules without controllable brightness accept and ignore this command.
 
 **CMD_BULB_TEST (`0x04`)**  
-Triggers a bulb test sequence. All LEDs illuminate at full white for 2000ms, then the module restores its previous LED state. Used to verify LED hardware at startup or during maintenance.
+Triggers a bulb test sequence. With no payload or payload `0x01`: all LEDs illuminate at full brightness. With payload `0x00`: stops the bulb test and restores previous state. With no payload and no explicit stop: LEDs illuminate for 2000ms then restore automatically. Used to verify LED hardware at startup or during maintenance.
 
 **CMD_SLEEP (`0x05`)**  
-Puts the module into low power mode. LEDs turn off and input polling rate may be reduced. The module remains responsive on I2C.
+Puts the module into low power mode. LEDs turn off and input polling rate may be reduced. The module remains responsive on I2C. For the throttle module, equivalent to CMD_DISABLE.
 
 **CMD_WAKE (`0x06`)**  
-Resumes normal operation from sleep. The module restores LEDs to their previous state and returns to full polling rate.
+Resumes normal operation from sleep. The module restores LEDs to their previous state and returns to full polling rate. For the throttle module, equivalent to CMD_ENABLE.
 
 **CMD_RESET (`0x07`)**  
 Clears all LED and input state. INT is deasserted. Used for controller startup and error recovery.
@@ -219,8 +223,20 @@ Clears all LED and input state. INT is deasserted. Used for controller startup a
 **CMD_ACK_FAULT (`0x08`)**  
 Acknowledges a module fault condition. Modules that implement fault tracking clear their fault flag on receipt. Modules that do not track faults accept and ignore this command.
 
-**CMD_SET_VALUE (`0x09`)**  
-Sets the display value on modules that have a numeric display (7-segment display modules). Two-byte big-endian uint16 payload, range 0–9999. The module updates its display and encoder tracking state immediately. Modules that do not have a display accept and ignore this command. Used by the controller to synchronize display state after a game load or external value change.
+**CMD_ENABLE (`0x09`)**  
+Enables the module for active operation. Behavior is module-specific: standard modules restore LED states; joystick modules resume axis reporting; display modules restore display and LEDs; the throttle module activates motor control and illuminates all button LEDs.
+
+**CMD_DISABLE (`0x0A`)**  
+Disables the module. Behavior is module-specific: standard modules extinguish LEDs; joystick modules stop reporting axis data; display modules blank display and LEDs; the throttle module drives the slider motor to 0% and holds it there, extinguishes all button LEDs, and resists pilot touch.
+
+**CMD_SET_THROTTLE (`0x0B`)**  
+Throttle module only. Controller commands a specific throttle position. Two-byte big-endian uint16 payload in INT16_MAX space (0 to 32767). Module converts to ADC space and drives motor to target. Ignored if module is disabled or pilot is touching slider.
+
+**CMD_SET_PRECISION (`0x0C`)**  
+Throttle module only. Toggles precision mode. Payload `0x01` enters precision mode: motor drives slider to physical center, full travel maps to ±10% of INT16_MAX around current position. Payload `0x00` exits precision mode: motor repositions slider to match current throttle output in normal mapping.
+
+**CMD_SET_VALUE (`0x0D`)**  
+Display modules only. Controller sets the displayed value directly. Two-byte big-endian uint16 payload, range 0–9999. Module updates display and encoder tracking state. Modules without a display accept and ignore this command.
 
 ---
 
@@ -314,13 +330,15 @@ Type IDs are independent of I2C address. The controller uses the Type ID from th
 | `0x0A` | Joystick Translation | `0x29` | `0x08` | 8 |
 | `0x0B` | GPWS Input Panel | `0x2A` | `0x10` | 6 |
 | `0x0C` | Pre-Warp Time | `0x2B` | `0x10` | 6 |
+| `0x0D` | Throttle Module | `0x2C` | `0x20` | 4 |
 | `0xFF` | Unknown / Uninitialized | — | — | — |
 
 **Capability flag values:**  
 `0x01` = Extended LED states (bit 0)  
 `0x04` = Encoder data in packet (bit 2)  
 `0x08` = Analog joystick axes in packet (bit 3)  
-`0x10` = 7-segment display and encoder present (bit 4)
+`0x10` = 7-segment display and encoder present (bit 4)  
+`0x20` = Motorized position control (bit 5)
 
 ---
 
@@ -406,9 +424,44 @@ INT asserts on any button state change or display value change from the encoder.
 
 ---
 
+### 9.4 Throttle Module (Type ID 0x0D) — 4 bytes
+
+```
+Byte 0:   Status flags  — bit0=enabled, bit1=precision mode,
+                          bit2=pilot touching slider, bit3=motor moving;
+                          bits 7-4 unused
+Byte 1:   Button events — bit0=THRTL_100 pressed, bit1=THRTL_UP pressed,
+                          bit2=THRTL_DOWN pressed, bit3=THRTL_00 pressed;
+                          bits 7-4 unused
+Byte 2:   Value HIGH    — throttle position, big-endian uint16, 0 to INT16_MAX
+Byte 3:   Value LOW     — throttle position
+```
+
+The throttle value represents current slider position regardless of how it was set (pilot movement, button press, or CMD_SET_THROTTLE). Button events (byte 1) are rising-edge only — cleared after each read.
+
+The module starts disabled. The controller must send `CMD_ENABLE (0x09)` to activate motor control and LED illumination. When disabled, the motor drives to 0% and holds, resisting pilot touch.
+
+INT asserts on any button press or throttle value change exceeding the minimum change threshold (4 ADC counts).
+
+Module-specific commands:
+- `CMD_SET_THROTTLE (0x0B)` — 2-byte big-endian uint16 target in INT16_MAX space
+- `CMD_SET_PRECISION (0x0C)` — `0x01` enter precision mode, `0x00` exit
+
+**Reference:** `KCMk1_Throttle_Module/Config.h`
+
 ---
 
 ## 10. Revision History
+
+| Version | Date | Notes |
+|---|---|---|
+| 1.0 | 2026-04-07 | Initial draft |
+| 1.1 | 2026-04-07 | Extended LED state behaviors defined; updated to 2021 NXP I2C terminology; Type ID rationale clarified; flash timing defaults added |
+| 1.2 | 2026-04-07 | Status set to Released; CMD_BULB_TEST behavior defined; Module Type ID registry fully populated with six standard modules |
+| 1.3 | 2026-04-08 | Scope broadened to full Kerbal Controller Mk1 system protocol; device-specific packet architecture introduced; EVA Module added to registry; Section 9 added |
+| 1.4 | 2026-04-08 | Full language revision to remove standard-module-centric framing throughout; Section 4 restructured as Standard Module Data Format; INT section updated to cover device-specific strategies; Section 7 bus load updated for current module set; joystick modules (0x09, 0x0A) and reserved entries (0x08) added to registry; Section 9.2 joystick packet format added; capability flags table expanded |
+| 1.5 | 2026-04-08 | CMD_SET_VALUE (0x09 at the time) added; display modules (0x0B, 0x0C) added; Section 9.3 added; capability flag bit 4 defined |
+| 1.6 | 2026-04-08 | CMD_ENABLE (0x09) and CMD_DISABLE (0x0A) added as system-wide commands; CMD_SET_THROTTLE (0x0B), CMD_SET_PRECISION (0x0C), CMD_SET_VALUE (0x0D) renumbered accordingly; CMD_BULB_TEST extended with start/stop payload; all command descriptions updated to cover module-type-specific behavior; throttle module (0x0D) added to registry; Section 9.4 throttle packet format added; capability flag bit 5 defined |
 
 | Version | Date | Notes |
 |---|---|---|
