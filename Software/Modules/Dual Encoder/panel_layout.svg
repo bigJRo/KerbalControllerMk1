@@ -1,0 +1,45 @@
+<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <rect width="380" height="220" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- Header -->
+  <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">DUAL ENCODER MODULE</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x2D · Type 0x0E · DEC_CAP_ENCODERS</text>
+
+  <!-- Column labels -->
+  <text x="100" y="50" font-size="8" fill="#9ca3af" text-anchor="middle">ENC1 (generic)</text>
+  <text x="280" y="50" font-size="8" fill="#9ca3af" text-anchor="middle">ENC2 (generic)</text>
+
+  <!-- ENC1 -->
+  <rect x="18" y="58" width="164" height="130" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <!-- Encoder body -->
+  <circle cx="100" cy="118" r="40" fill="#e5e7eb" stroke="#d1d5db" stroke-width="2"/>
+  <circle cx="100" cy="118" r="26" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.5"/>
+  <!-- Knob indicator line -->
+  <line x1="100" y1="92" x2="100" y2="104" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Push button indicator -->
+  <circle cx="100" cy="118" r="10" fill="#9ca3af" stroke="#6b7280" stroke-width="1"/>
+  <text x="100" y="122" font-size="6" fill="#ffffff" text-anchor="middle" font-weight="500">SW</text>
+  <!-- Labels -->
+  <text x="100" y="74" font-size="8" fill="#6b7280" text-anchor="middle">PEC11R-4220F-S0024</text>
+  <text x="100" y="174" font-size="7.5" fill="#9ca3af" text-anchor="middle">A=PC1 · B=PC2 · SW=PC3</text>
+  <text x="100" y="185" font-size="7" fill="#9ca3af" text-anchor="middle">+CW · -CCW · hardware debounced</text>
+
+  <!-- ENC2 -->
+  <rect x="198" y="58" width="164" height="130" rx="8" fill="#f9fafb" stroke="#e5e7eb" stroke-width="1.5"/>
+  <!-- Encoder body -->
+  <circle cx="280" cy="118" r="40" fill="#e5e7eb" stroke="#d1d5db" stroke-width="2"/>
+  <circle cx="280" cy="118" r="26" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.5"/>
+  <!-- Knob indicator line -->
+  <line x1="280" y1="92" x2="280" y2="104" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Push button indicator -->
+  <circle cx="280" cy="118" r="10" fill="#9ca3af" stroke="#6b7280" stroke-width="1"/>
+  <text x="280" y="122" font-size="6" fill="#ffffff" text-anchor="middle" font-weight="500">SW</text>
+  <!-- Labels -->
+  <text x="280" y="74" font-size="8" fill="#6b7280" text-anchor="middle">PEC11R-4220F-S0024</text>
+  <text x="280" y="174" font-size="7.5" fill="#9ca3af" text-anchor="middle">A=PA6 · B=PA5 · SW=PA4</text>
+  <text x="280" y="185" font-size="7" fill="#9ca3af" text-anchor="middle">+CW · -CCW · hardware debounced</text>
+
+  <!-- Legend -->
+  <text x="16" y="203" font-size="7.5" fill="#9ca3af">Encoder functions defined by main controller · deltas accumulate between reads · no LEDs · INT=PA1</text>
+  <text x="16" y="214" font-size="7.5" fill="#9ca3af">KC-01-1871/1872 v1.0 · Jeb's Controller Works</text>
+</svg>

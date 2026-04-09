@@ -1,0 +1,101 @@
+<svg viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+
+  <!-- Background -->
+  <rect width="620" height="200" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">UI CONTROL</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x20 · KBC_TYPE_UI_CONTROL</text>
+
+  <!-- Column labels (right to left = Col6 to Col1) -->
+  <text x="52"  y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 6 (left)</text>
+  <text x="152" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 5</text>
+  <text x="252" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 4</text>
+  <text x="352" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 3</text>
+  <text x="452" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 2</text>
+  <text x="552" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 1 (right)</text>
+
+  <!-- Row labels -->
+  <text x="8" y="100" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,100)">Row 1</text>
+  <text x="8" y="163" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,163)">Row 2</text>
+
+  <!-- ROW 1 -->
+
+  <!-- B10 Map Enable — SKY -->
+  <rect x="18" y="52" width="88" height="60" rx="6" fill="#0ea5e918" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="62" y="72" font-size="9" font-weight="500" fill="#0369a1" text-anchor="middle">Map Enable</text>
+  <text x="62" y="85" font-size="8" fill="#0ea5e9" text-anchor="middle">● SKY</text>
+  <text x="62" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
+
+  <!-- B8 Map Back — SKY -->
+  <rect x="118" y="52" width="88" height="60" rx="6" fill="#0ea5e918" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="162" y="72" font-size="9" font-weight="500" fill="#0369a1" text-anchor="middle">Map Back</text>
+  <text x="162" y="85" font-size="8" fill="#0ea5e9" text-anchor="middle">● SKY</text>
+  <text x="162" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B8 · BUTTON09</text>
+
+  <!-- B6 Map Forward — SKY -->
+  <rect x="218" y="52" width="88" height="60" rx="6" fill="#0ea5e918" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="262" y="72" font-size="9" font-weight="500" fill="#0369a1" text-anchor="middle">Map Forward</text>
+  <text x="262" y="85" font-size="8" fill="#0ea5e9" text-anchor="middle">● SKY</text>
+  <text x="262" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B6 · BUTTON07</text>
+
+  <!-- B4 Map Reset — SKY -->
+  <rect x="318" y="52" width="88" height="60" rx="6" fill="#0ea5e918" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="362" y="72" font-size="9" font-weight="500" fill="#0369a1" text-anchor="middle">Map Reset</text>
+  <text x="362" y="85" font-size="8" fill="#0ea5e9" text-anchor="middle">● SKY</text>
+  <text x="362" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B4 · BUTTON05</text>
+
+  <!-- B2 UI Toggle — GREEN -->
+  <rect x="418" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="462" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">UI Toggle</text>
+  <text x="462" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="462" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B2 · BUTTON03</text>
+
+  <!-- B0 Screenshot — GREEN -->
+  <rect x="518" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="562" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Screenshot</text>
+  <text x="562" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="562" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B0 · BUTTON01</text>
+
+  <!-- ROW 2 -->
+
+  <!-- B11 IVA — CORAL -->
+  <rect x="18" y="118" width="88" height="60" rx="6" fill="#ff643618" stroke="#ff6436" stroke-width="1.5"/>
+  <text x="62" y="138" font-size="9" font-weight="500" fill="#9a3412" text-anchor="middle">IVA</text>
+  <text x="62" y="151" font-size="8" fill="#ff6436" text-anchor="middle">● CORAL</text>
+  <text x="62" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B11 · BUTTON12</text>
+
+  <!-- B9 Ship Back — TEAL -->
+  <rect x="118" y="118" width="88" height="60" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="162" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Ship Back</text>
+  <text x="162" y="151" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <text x="162" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B9 · BUTTON10</text>
+
+  <!-- B7 Ship Forward — TEAL -->
+  <rect x="218" y="118" width="88" height="60" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="262" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Ship Forward</text>
+  <text x="262" y="151" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <text x="262" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B7 · BUTTON08</text>
+
+  <!-- B5 Cycle Nav — GREEN -->
+  <rect x="318" y="118" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="362" y="138" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Cycle Nav</text>
+  <text x="362" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="362" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B5 · BUTTON06</text>
+
+  <!-- B3 Nav Ball — AMBER -->
+  <rect x="418" y="118" width="88" height="60" rx="6" fill="#f59e0b18" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="462" y="138" font-size="9" font-weight="500" fill="#92400e" text-anchor="middle">Nav Ball</text>
+  <text x="462" y="151" font-size="8" fill="#f59e0b" text-anchor="middle">● AMBER</text>
+  <text x="462" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B3 · BUTTON04</text>
+
+  <!-- B1 Debug — RED -->
+  <rect x="518" y="118" width="88" height="60" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="562" y="138" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Debug</text>
+  <text x="562" y="151" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
+  <text x="562" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
+
+  <!-- Legend -->
+  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED state = dim white backlight · KerbalButtonCore v1.0.0 · KC-01-1822 v1.1 · Jeb's Controller Works</text>
+
+</svg>

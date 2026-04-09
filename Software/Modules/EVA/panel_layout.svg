@@ -1,0 +1,57 @@
+<svg viewBox="0 0 380 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <rect width="380" height="200" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+  <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">EVA MODULE</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x26 · EVA_MODULE_TYPE_ID (0x07)</text>
+
+  <!-- Column labels -->
+  <text x="72"  y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 1 (left)</text>
+  <text x="192" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 2 (center)</text>
+  <text x="312" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 3 (right)</text>
+
+  <!-- Row labels -->
+  <text x="8" y="100" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,100)">Row 1</text>
+  <text x="8" y="163" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,163)">Row 2</text>
+
+  <!-- ROW 1 -->
+
+  <!-- B0 EVA Lights MINT -->
+  <rect x="18" y="52" width="108" height="60" rx="6" fill="#96ffca18" stroke="#96ffca" stroke-width="1.5"/>
+  <text x="72" y="72" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">EVA Lights</text>
+  <text x="72" y="85" font-size="8" fill="#059669" text-anchor="middle">● MINT</text>
+  <text x="72" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B0 · BUTTON01</text>
+
+  <!-- B2 Board Craft GREEN -->
+  <rect x="138" y="52" width="108" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="192" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Board Craft</text>
+  <text x="192" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="192" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B2 · BUTTON03</text>
+
+  <!-- B4 Jump / Let Go CHARTREUSE -->
+  <rect x="258" y="52" width="108" height="60" rx="6" fill="#a3e63518" stroke="#a3e635" stroke-width="1.5"/>
+  <text x="312" y="72" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Jump / Let Go</text>
+  <text x="312" y="85" font-size="8" fill="#a3e635" text-anchor="middle">● CHARTREUSE</text>
+  <text x="312" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B4 · BUTTON05</text>
+
+  <!-- ROW 2 -->
+
+  <!-- B1 Jetpack Enable LIME -->
+  <rect x="18" y="118" width="108" height="60" rx="6" fill="#b4ff0018" stroke="#b4ff00" stroke-width="1.5"/>
+  <text x="72" y="138" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Jetpack Enable</text>
+  <text x="72" y="151" font-size="8" fill="#84cc16" text-anchor="middle">● LIME</text>
+  <text x="72" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
+
+  <!-- B3 EVA Construction TEAL -->
+  <rect x="138" y="118" width="108" height="60" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="192" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">EVA Construction</text>
+  <text x="192" y="151" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <text x="192" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B3 · BUTTON04</text>
+
+  <!-- B5 Grab SEAFOAM -->
+  <rect x="258" y="118" width="108" height="60" rx="6" fill="#50c8a018" stroke="#50c8a0" stroke-width="1.5"/>
+  <text x="312" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Grab</text>
+  <text x="312" y="151" font-size="8" fill="#50c8a0" text-anchor="middle">● SEAFOAM</text>
+  <text x="312" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B5 · BUTTON06</text>
+
+  <!-- Legend -->
+  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · green family palette · KC-01-1852 v1.0 · Jeb's Controller Works</text>
+</svg>
