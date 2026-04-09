@@ -265,9 +265,11 @@
 #define K7SC_CMD_WAKE           0x06
 #define K7SC_CMD_RESET          0x07
 #define K7SC_CMD_ACK_FAULT      0x08
+#define K7SC_CMD_ENABLE         0x09
+#define K7SC_CMD_DISABLE        0x0A
 
-/** @brief Set the display value from the controller. */
-#define K7SC_CMD_SET_VALUE      0x09
+/** @brief Set the display value from the controller (display modules only). */
+#define K7SC_CMD_SET_VALUE      0x0D
 
 // ============================================================
 //  Capability flags

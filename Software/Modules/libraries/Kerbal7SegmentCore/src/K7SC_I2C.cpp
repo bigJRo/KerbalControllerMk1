@@ -138,6 +138,19 @@ static void _dispatch() {
             // No fault tracking — acknowledge silently
             break;
 
+        case K7SC_CMD_ENABLE:
+            _sleeping = false;
+            buttonsRestoreLEDs();
+            displayWake();
+            break;
+
+        case K7SC_CMD_DISABLE:
+            _sleeping = true;
+            buttonsClearLEDs();
+            displayShutdown();
+            _clearINT();
+            break;
+
         case K7SC_CMD_SET_VALUE:
             // Controller sets display value directly
             if (_cmdLen >= 3) {
