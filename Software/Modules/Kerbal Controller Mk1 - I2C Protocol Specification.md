@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 1.6  
+**Version:** 1.7  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 
@@ -331,6 +331,7 @@ Type IDs are independent of I2C address. The controller uses the Type ID from th
 | `0x0B` | GPWS Input Panel | `0x2A` | `0x10` | 6 |
 | `0x0C` | Pre-Warp Time | `0x2B` | `0x10` | 6 |
 | `0x0D` | Throttle Module | `0x2C` | `0x20` | 4 |
+| `0x0E` | Dual Encoder | `0x2D` | `0x04` | 4 |
 | `0xFF` | Unknown / Uninitialized | — | — | — |
 
 **Capability flag values:**  
@@ -449,9 +450,25 @@ Module-specific commands:
 
 **Reference:** `KCMk1_Throttle_Module/Config.h`
 
----
+### 9.5 Dual Encoder Module (Type ID 0x0E) — 4 bytes
 
-## 10. Revision History
+```
+Byte 0:  Button events  — bit0=ENC1_SW pressed, bit1=ENC2_SW pressed;
+                          bits 7-2 unused
+Byte 1:  Change mask    — same bit layout; set on both press and release
+Byte 2:  ENC1 delta     — signed int8, clicks since last read (+CW, -CCW)
+Byte 3:  ENC2 delta     — signed int8, clicks since last read (+CW, -CCW)
+```
+
+Encoder functions are defined by the main controller — this module reports deltas without semantic interpretation. Deltas accumulate between reads and are clamped to the int8 range. They are cleared after each packet read. Button events (byte 0) are rising-edge only; the change mask (byte 1) captures both press and release.
+
+INT asserts on any encoder movement or button press. The module is active immediately after power-on — no CMD_ENABLE is required.
+
+`CMD_SET_LED_STATE`, `CMD_SET_BRIGHTNESS`, and `CMD_BULB_TEST` are accepted and ignored (no user LEDs).
+
+**Reference:** `KCMk1_Dual_Encoder/Config.h`
+
+---
 
 | Version | Date | Notes |
 |---|---|---|
@@ -462,6 +479,7 @@ Module-specific commands:
 | 1.4 | 2026-04-08 | Full language revision to remove standard-module-centric framing throughout; Section 4 restructured as Standard Module Data Format; INT section updated to cover device-specific strategies; Section 7 bus load updated for current module set; joystick modules (0x09, 0x0A) and reserved entries (0x08) added to registry; Section 9.2 joystick packet format added; capability flags table expanded |
 | 1.5 | 2026-04-08 | CMD_SET_VALUE (0x09 at the time) added; display modules (0x0B, 0x0C) added; Section 9.3 added; capability flag bit 4 defined |
 | 1.6 | 2026-04-08 | CMD_ENABLE (0x09) and CMD_DISABLE (0x0A) added as system-wide commands; CMD_SET_THROTTLE (0x0B), CMD_SET_PRECISION (0x0C), CMD_SET_VALUE (0x0D) renumbered accordingly; CMD_BULB_TEST extended with start/stop payload; all command descriptions updated to cover module-type-specific behavior; throttle module (0x0D) added to registry; Section 9.4 throttle packet format added; capability flag bit 5 defined |
+| 1.7 | 2026-04-08 | Dual Encoder Module (0x0E) added to registry; Section 9.5 dual encoder packet format added |
 
 | Version | Date | Notes |
 |---|---|---|
