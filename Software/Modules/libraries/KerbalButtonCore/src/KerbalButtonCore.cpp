@@ -58,9 +58,10 @@ void KerbalButtonCore::begin(uint8_t brightness) {
     //    Registers Wire callbacks and configures INT pin.
     _i2c.begin();
 
-    // 5. Seed poll timestamps so first update() fires immediately
-    _lastPollTime      = millis() - KBC_POLL_INTERVAL_MS;
-    _lastSleepPollTime = millis() - KBC_SLEEP_POLL_INTERVAL_MS;
+    // Seed poll timestamps so first update() fires immediately
+    uint32_t now = millis();
+    _lastPollTime      = now - KBC_POLL_INTERVAL_MS;
+    _lastSleepPollTime = now - KBC_SLEEP_POLL_INTERVAL_MS;
 }
 
 // ============================================================

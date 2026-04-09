@@ -73,7 +73,16 @@ static int16_t _processAxis(uint8_t axisIdx) {
     // Step 1: Deadzone — in raw ADC counts
     int16_t delta = (int16_t)raw - (int16_t)center;
     if (abs(delta) <= KJC_DEADZONE) {
-        // Inside deadzone — report zero only if last sent was non-zero
+        // Inside deadzone — report zero only if last sent was non-zero.
+        // _lastSentRaw is set to center (not the actual raw) so that on
+        // the next poll outside the deadzone the change threshold check
+        // is relative to center, not the last real position. This means
+        // the change threshold is intentionally bypassed on the first
+        // sample after deadzone exit, giving an immediate report as soon
+        // as the stick moves outside the dead zone. The alternative —
+        // applying the change threshold from center — would delay the
+        // first report by KJC_DEADZONE + KJC_CHANGE_THRESHOLD counts,
+        // making initial stick movement feel sluggish.
         if (_lastSentRaw[axisIdx] != center) {
             _lastSentRaw[axisIdx]    = center;
             _lastSentScaled[axisIdx] = 0;

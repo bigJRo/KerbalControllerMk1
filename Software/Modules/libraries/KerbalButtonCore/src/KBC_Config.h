@@ -305,6 +305,16 @@
   #define KBC_ALERT_OFF_MS            150
 #endif
 
+/**
+ * @brief Default bulb test duration in milliseconds.
+ *        Applied when CMD_BULB_TEST is received with no payload or
+ *        payload 0x01. The test blocks for this duration then restores
+ *        the previous LED state. Override per module sketch if needed.
+ */
+#ifndef KBC_BULB_TEST_MS
+  #define KBC_BULB_TEST_MS            2000
+#endif
+
 // ============================================================
 //  Firmware version
 //

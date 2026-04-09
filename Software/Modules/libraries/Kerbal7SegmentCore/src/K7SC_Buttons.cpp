@@ -52,8 +52,8 @@ static bool     _intPending        = false;
 static bool     _encoderPressed    = false;
 
 // Debounce
-static uint8_t  _debounceCount[K7SC_BUTTON_COUNT] = {0};
-static uint8_t  _debounceCandidate = 0;
+static uint8_t  _debounceCount[K7SC_BUTTON_COUNT]     = {0};
+static uint8_t  _debounceCandidate[K7SC_BUTTON_COUNT] = {0};
 
 // Per-NeoPixel button logical state
 static uint8_t  _cycleState[K7SC_NEO_COUNT]   = {0, 0, 0}; // for CYCLE mode
@@ -127,7 +127,8 @@ void buttonsBegin(const ButtonConfig* configs) {
     _eventMask      = 0;
     _intPending     = false;
     _encoderPressed = false;
-    _debounceCandidate = 0;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 
     buttonsRender();
 }
@@ -158,20 +159,17 @@ bool buttonsPoll() {
         if (digitalRead(_btnPins[i])) raw |= (1 << i);
     }
 
-    // Reset debounce on candidate change
-    if (raw != _debounceCandidate) {
-        _debounceCandidate = raw;
-        memset(_debounceCount, 0, sizeof(_debounceCount));
-        return false;
-    }
-
+    // Per-button debounce with independent candidate tracking.
     bool anyEvent = false;
 
     for (uint8_t i = 0; i < K7SC_BUTTON_COUNT; i++) {
         bool rawBit  = (raw >> i) & 0x01;
         bool liveBit = (_rawState >> i) & 0x01;
 
-        if (rawBit != liveBit) {
+        if (rawBit != _debounceCandidate[i]) {
+            _debounceCandidate[i] = rawBit;
+            _debounceCount[i]     = 0;
+        } else if (rawBit != liveBit) {
             _debounceCount[i]++;
             if (_debounceCount[i] >= K7SC_BTN_DEBOUNCE_COUNT) {
                 if (rawBit) {
@@ -250,10 +248,21 @@ uint8_t buttonsGetEvents() {
 // ============================================================
 
 uint8_t buttonsGetChangeMask() {
-    uint8_t mask = _changeMask;
-    _changeMask  = 0;
-    _eventMask   = 0;
-    _intPending  = false;
+    uint8_t mask    = _changeMask;
+    uint8_t latch   = _rawState;   // snapshot live state at read time
+
+    _changeMask = 0;
+    _eventMask  = 0;
+    _intPending = false;
+
+    // Re-assert if live state diverged during this read transaction.
+    // Guarantees every state change edge generates at least one INT,
+    // even if a button transitions while the controller is reading.
+    if (_rawState != latch) {
+        _changeMask = _rawState ^ latch;
+        _intPending = true;
+    }
+
     return mask;
 }
 
@@ -296,11 +305,11 @@ void buttonsClearAll() {
     _eventMask      = 0;
     _intPending     = false;
     _encoderPressed = false;
-    _debounceCandidate = 0;
-    memset(_debounceCount, 0, sizeof(_debounceCount));
-    memset(_cycleState,    0, sizeof(_cycleState));
-    memset(_toggleActive,  0, sizeof(_toggleActive));
-    memset(_flashing,      0, sizeof(_flashing));
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
+    memset(_cycleState,        0, sizeof(_cycleState));
+    memset(_toggleActive,      0, sizeof(_toggleActive));
+    memset(_flashing,          0, sizeof(_flashing));
     buttonsRender();
 }
 

@@ -21,6 +21,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  Clock speed assertion
@@ -72,29 +73,33 @@
 //  Pin assignments — ATtiny816 KC-01-1881/1882 v2.0
 // ============================================================
 
-/** @brief MAX7219 SPI clock. */
+/** @brief MAX7219 SPI clock — PA7. */
 #define K7SC_PIN_CLK            PIN_PA7
 
-/** @brief MAX7219 SPI latch / chip select (active high). */
-#define K7SC_PIN_LOAD           PIN_PA6
+/** @brief MAX7219 SPI latch / chip select (active high) — PA5.
+ *         Schematic net name: LOAD_DATA. Driven LOW to begin a
+ *         16-bit transaction, driven HIGH to latch data into MAX7219. */
+#define K7SC_PIN_LOAD           PIN_PA5
 
-/** @brief MAX7219 SPI data. */
-#define K7SC_PIN_DATA           PIN_PA5
+/** @brief MAX7219 SPI serial data — PA6.
+ *         Schematic net name: DATA_IN. Serial bits shifted MSB first
+ *         on rising edge of CLK while LOAD is held LOW. */
+#define K7SC_PIN_DATA           PIN_PA6
 
-/** @brief BUTTON03 — direct GPIO, active high. */
-#define K7SC_PIN_BTN03          PIN_PA4
+/** @brief BUTTON01 — PA1, direct GPIO, active high. */
+#define K7SC_PIN_BTN01          PIN_PA1
 
-/** @brief BUTTON02 — direct GPIO, active high. */
-#define K7SC_PIN_BTN02          PIN_PC0
+/** @brief BUTTON02 — PC2, direct GPIO, active high. */
+#define K7SC_PIN_BTN02          PIN_PC2
 
-/** @brief BUTTON01 — direct GPIO, active high. */
-#define K7SC_PIN_BTN01          PIN_PC1
+/** @brief BUTTON03 — PC1, direct GPIO, active high. */
+#define K7SC_PIN_BTN03          PIN_PC1
 
-/** @brief NeoPixel data output — PC2 (Port C). */
-#define K7SC_PIN_NEOPIX         PIN_PC2
+/** @brief BUTTON_EN — encoder pushbutton, PB3, active high. */
+#define K7SC_PIN_BTN_EN         PIN_PB3
 
-/** @brief BUTTON_EN — encoder pushbutton, active high. */
-#define K7SC_PIN_BTN_EN         PIN_PC3
+/** @brief NeoPixel data output — PC3 (Port C). */
+#define K7SC_PIN_NEOPIX         PIN_PC3
 
 /** @brief Rotary encoder A channel — PB4. */
 #define K7SC_PIN_ENC_A          PIN_PB4
@@ -102,8 +107,12 @@
 /** @brief Rotary encoder B channel — PB5. */
 #define K7SC_PIN_ENC_B          PIN_PB5
 
-/** @brief Interrupt output — PA1, active low. */
-#define K7SC_PIN_INT            PIN_PA1
+/** @brief Interrupt output — PC0, active low.
+ *  @note  This module uses PIN_PC0 for INT, not PIN_PA1 as on
+ *         KC-01-1822-based modules. PA1 is used for BUTTON01 on
+ *         this PCB. The master controller INT wiring must account
+ *         for this divergence. Verified against KC-01-1882 v2.0. */
+#define K7SC_PIN_INT            PIN_PC0
 
 /** @brief I2C SCL — PB0. */
 #define K7SC_PIN_SCL            PIN_PB0
@@ -248,35 +257,47 @@
 #define K7SC_PACKET_SIZE        6
 
 /** @brief Identity response packet size. */
-#define K7SC_IDENTITY_SIZE      4
+#define K7SC_IDENTITY_SIZE      KMC_IDENTITY_SIZE
 
 /** @brief LED state payload size (nibble-packed). */
 #define K7SC_LED_PAYLOAD_SIZE   8
 
 // ============================================================
-//  I2C command bytes
+//  LED state nibble values — aliases for KMC_LED_* from KerbalModuleCommon
 // ============================================================
 
-#define K7SC_CMD_GET_IDENTITY   0x01
-#define K7SC_CMD_SET_LED_STATE  0x02
-#define K7SC_CMD_SET_BRIGHTNESS 0x03
-#define K7SC_CMD_BULB_TEST      0x04
-#define K7SC_CMD_SLEEP          0x05
-#define K7SC_CMD_WAKE           0x06
-#define K7SC_CMD_RESET          0x07
-#define K7SC_CMD_ACK_FAULT      0x08
-#define K7SC_CMD_ENABLE         0x09
-#define K7SC_CMD_DISABLE        0x0A
+#define K7SC_LED_OFF            KMC_LED_OFF
+#define K7SC_LED_ENABLED        KMC_LED_ENABLED
+#define K7SC_LED_ACTIVE         KMC_LED_ACTIVE
+#define K7SC_LED_WARNING        KMC_LED_WARNING
+#define K7SC_LED_ALERT          KMC_LED_ALERT
+#define K7SC_LED_ARMED          KMC_LED_ARMED
+#define K7SC_LED_PARTIAL_DEPLOY KMC_LED_PARTIAL_DEPLOY
+
+// ============================================================
+//  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
+// ============================================================
+
+#define K7SC_CMD_GET_IDENTITY   KMC_CMD_GET_IDENTITY
+#define K7SC_CMD_SET_LED_STATE  KMC_CMD_SET_LED_STATE
+#define K7SC_CMD_SET_BRIGHTNESS KMC_CMD_SET_BRIGHTNESS
+#define K7SC_CMD_BULB_TEST      KMC_CMD_BULB_TEST
+#define K7SC_CMD_SLEEP          KMC_CMD_SLEEP
+#define K7SC_CMD_WAKE           KMC_CMD_WAKE
+#define K7SC_CMD_RESET          KMC_CMD_RESET
+#define K7SC_CMD_ACK_FAULT      KMC_CMD_ACK_FAULT
+#define K7SC_CMD_ENABLE         KMC_CMD_ENABLE
+#define K7SC_CMD_DISABLE        KMC_CMD_DISABLE
 
 /** @brief Set the display value from the controller (display modules only). */
-#define K7SC_CMD_SET_VALUE      0x0D
+#define K7SC_CMD_SET_VALUE      KMC_CMD_SET_VALUE
 
 // ============================================================
 //  Capability flags
 // ============================================================
 
 /** @brief This module has a 7-segment display and encoder. */
-#define K7SC_CAP_DISPLAY        (1 << 4)
+#define K7SC_CAP_DISPLAY        KMC_CAP_DISPLAY
 
 // ============================================================
 //  MAX7219 register addresses

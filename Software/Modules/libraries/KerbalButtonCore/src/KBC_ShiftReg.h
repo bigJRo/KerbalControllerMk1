@@ -181,25 +181,20 @@ private:
     // --------------------------------------------------------
 
     /**
-     * @brief  Raw (non-debounced) state from last ShiftIn read.
-     *         Used to detect when the raw input is stable.
-     */
-    uint16_t _rawState;
-
-    /**
      * @brief  Per-button debounce counter array.
-     *         Incremented when raw state matches candidate,
-     *         reset when raw state differs.
-     *         When any counter reaches KBC_DEBOUNCE_COUNT the
-     *         corresponding button state is committed to _liveState.
+     *         Incremented each poll cycle that the raw bit matches
+     *         the candidate but differs from live state.
+     *         Reset when the raw bit changes or the threshold is reached.
      */
     uint8_t _debounceCount[KBC_BUTTON_COUNT];
 
     /**
-     * @brief  Candidate state being debounced.
-     *         Holds the raw state value being tested for stability.
+     * @brief  Per-button candidate state array.
+     *         Each entry holds the last seen raw bit for that button.
+     *         Tracked independently per button so a transition on one
+     *         button does not reset debounce progress on any other.
      */
-    uint16_t _debounceCandidate;
+    uint8_t _debounceCandidate[KBC_BUTTON_COUNT];
 
     // --------------------------------------------------------
     //  Internal helpers

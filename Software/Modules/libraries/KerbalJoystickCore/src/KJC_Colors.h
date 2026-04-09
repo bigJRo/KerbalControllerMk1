@@ -1,99 +1,99 @@
 /**
  * @file        KJC_Colors.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     2.0.0
+ * @date        2026-04-09
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       RGB color palette and helpers for KerbalJoystickCore.
+ * @brief       Color aliases for the KerbalJoystickCore library.
  *
- *              Colors match the Kerbal Controller Mk1 system palette
- *              defined in KBC_Colors.h. Defined independently here
- *              so joystick module sketches have no KBC library dependency.
+ *              The canonical color palette, RGBColor struct, scaleColor(),
+ *              and LED nibble pack helpers are defined in KerbalModuleCommon.
+ *              This file includes that library and provides KJC_* aliases
+ *              so existing joystick module sketches require no changes.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
+ *
+ * @note        Part of the KerbalJoystickCore (KJC) library.
+ *              Depends on: KerbalModuleCommon
  */
 
 #pragma once
-#include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
-//  RGBColor struct
+//  KJC_* aliases → KMC_* canonical names
+//
+//  These allow all existing KJC library code and module sketches
+//  to continue compiling without modification.
 // ============================================================
 
-struct RGBColor {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
+// --- Utility ---
+static const RGBColor KJC_OFF           = KMC_OFF;
+static const RGBColor KJC_WHITE_COOL    = KMC_WHITE_COOL;
+
+// --- Semantic ---
+static const RGBColor KJC_GREEN         = KMC_GREEN;
+static const RGBColor KJC_RED           = KMC_RED;
+static const RGBColor KJC_AMBER         = KMC_AMBER;
+
+// --- Warm family ---
+static const RGBColor KJC_YELLOW        = KMC_YELLOW;
+static const RGBColor KJC_GOLD          = KMC_GOLD;
+static const RGBColor KJC_ORANGE        = KMC_ORANGE;
+
+// --- Green family ---
+static const RGBColor KJC_CHARTREUSE    = KMC_CHARTREUSE;
+static const RGBColor KJC_LIME          = KMC_LIME;
+static const RGBColor KJC_MINT          = KMC_MINT;
+
+// --- Blue / cyan family ---
+static const RGBColor KJC_BLUE          = KMC_BLUE;
+static const RGBColor KJC_SKY           = KMC_SKY;
+static const RGBColor KJC_TEAL          = KMC_TEAL;
+static const RGBColor KJC_CYAN          = KMC_CYAN;
+
+// --- Purple family ---
+static const RGBColor KJC_PURPLE        = KMC_PURPLE;
+static const RGBColor KJC_INDIGO        = KMC_INDIGO;
+
+// --- Pink / red family ---
+static const RGBColor KJC_CORAL         = KMC_CORAL;
+static const RGBColor KJC_ROSE          = KMC_ROSE;
+static const RGBColor KJC_PINK          = KMC_PINK;
+static const RGBColor KJC_MAGENTA       = KMC_MAGENTA;
+
+// --- Whites ---
+static const RGBColor KJC_WHITE_WARM    = KMC_WHITE_WARM;
+static const RGBColor KJC_WHITE_SOFT    = KMC_WHITE_SOFT;
 
 // ============================================================
-//  Convenience macro
+//  kjcScaleColor() — backward-compatible alias
 // ============================================================
 
-#define KJC_COLOR(r, g, b)  RGBColor{(r), (g), (b)}
-
-// ============================================================
-//  Utility
-// ============================================================
-
-static const RGBColor KJC_OFF           = {   0,   0,   0 };
-static const RGBColor KJC_WHITE_COOL    = { 255, 255, 255 };
-
-// ============================================================
-//  System palette — matches KBC_Colors.h
-// ============================================================
-
-static const RGBColor KJC_GREEN        = {  34, 197,  94 };
-static const RGBColor KJC_RED          = { 239,  68,  68 };
-static const RGBColor KJC_AMBER        = { 245, 158,  11 };
-static const RGBColor KJC_YELLOW       = { 234, 179,   8 };
-static const RGBColor KJC_GOLD         = { 255, 200,   0 };
-static const RGBColor KJC_ORANGE       = { 249, 115,  22 };
-static const RGBColor KJC_CHARTREUSE   = { 163, 230,  53 };
-static const RGBColor KJC_LIME         = { 132, 204,  22 };
-static const RGBColor KJC_MINT         = { 150, 255, 200 };
-static const RGBColor KJC_BLUE         = {  59, 130, 246 };
-static const RGBColor KJC_SKY          = {  14, 165, 233 };
-static const RGBColor KJC_TEAL         = {  20, 184, 166 };
-static const RGBColor KJC_CYAN         = {   6, 182, 212 };
-static const RGBColor KJC_PURPLE       = { 139,  92, 246 };
-static const RGBColor KJC_INDIGO       = {  99, 102, 241 };
-static const RGBColor KJC_VIOLET       = { 180, 106, 255 };
-static const RGBColor KJC_CORAL        = { 255, 100,  54 };
-static const RGBColor KJC_ROSE         = { 255,  80, 120 };
-static const RGBColor KJC_PINK         = { 236,  72, 153 };
-static const RGBColor KJC_MAGENTA      = { 255,   0, 255 };
-static const RGBColor KJC_WHITE_WARM   = { 255, 200, 150 };
-static const RGBColor KJC_WHITE_SOFT   = { 180, 184, 204 };
-
-// ============================================================
-//  Color scaling helper
-// ============================================================
-
+/** @brief Scale an RGBColor by a brightness factor. Alias for scaleColor(). */
 inline RGBColor kjcScaleColor(RGBColor c, uint8_t brightness) {
-    return {
-        (uint8_t)((uint16_t)c.r * brightness / 255),
-        (uint8_t)((uint16_t)c.g * brightness / 255),
-        (uint8_t)((uint16_t)c.b * brightness / 255)
-    };
+    return scaleColor(c, brightness);
 }
 
 // ============================================================
-//  Nibble pack/unpack helpers
+//  kjcPackGet / kjcPackSet — backward-compatible aliases
 // ============================================================
 
+/** @brief Get LED state nibble from payload. Alias for kmcLedPackGet(). */
 inline uint8_t kjcPackGet(const uint8_t* payload, uint8_t btn) {
-    return (btn % 2 == 0)
-        ? (payload[btn / 2] >> 4) & 0x0F
-        : (payload[btn / 2]) & 0x0F;
+    return kmcLedPackGet(payload, btn);
 }
 
+/** @brief Set LED state nibble in payload. Alias for kmcLedPackSet(). */
 inline void kjcPackSet(uint8_t* payload, uint8_t btn, uint8_t state) {
-    if (btn % 2 == 0)
-        payload[btn / 2] = (payload[btn / 2] & 0x0F) | ((state & 0x0F) << 4);
-    else
-        payload[btn / 2] = (payload[btn / 2] & 0xF0) | (state & 0x0F);
+    kmcLedPackSet(payload, btn, state);
 }
+
+// ============================================================
+//  KJC_COLOR() macro — backward-compatible alias
+// ============================================================
+
+#define KJC_COLOR(r, g, b)  (RGBColor{ (r), (g), (b) })

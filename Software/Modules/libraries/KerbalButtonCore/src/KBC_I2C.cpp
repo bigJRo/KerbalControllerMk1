@@ -243,12 +243,26 @@ void KBCi2C::_handleSetBrightness() {
 }
 
 void KBCi2C::_handleBulbTest() {
-    // bulbTest() blocks — call directly from ISR context is not
-    // ideal but acceptable given the short duration and the fact
-    // that this is a maintenance command, not a runtime command.
-    // The main loop render pending flag is not set since
-    // bulbTest() calls render() internally and restores state.
-    _ledControl.bulbTest();
+    // Payload interpretation per protocol spec:
+    //   No payload or 0x01 : start bulb test, block for KBC_BULB_TEST_MS
+    //   0x00               : stop bulb test / no-op (restore previous state)
+    //
+    // The blocking call is acceptable here — CMD_BULB_TEST is a
+    // maintenance command used at startup or during servicing, never
+    // during normal operation. The main loop render pending flag is not
+    // set since bulbTest() calls render() internally and restores state.
+
+    if (_cmdLen >= 2 && _cmdBuf[1] == 0x00) {
+        // Stop payload — restore previous state without running the test.
+        // Since we don't track whether a bulb test is in progress
+        // (the blocking implementation makes that impossible), treat
+        // 0x00 as a safe restore: render the current LED state.
+        _renderPending = true;
+        return;
+    }
+
+    // No payload or 0x01 — run the bulb test
+    _ledControl.bulbTest(KBC_BULB_TEST_MS);
 }
 
 void KBCi2C::_handleSleep() {

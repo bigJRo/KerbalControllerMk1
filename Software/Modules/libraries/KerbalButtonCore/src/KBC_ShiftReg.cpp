@@ -81,10 +81,9 @@ KBCShiftReg::KBCShiftReg()
     , _latchedState(0)
     , _changeMask(0)
     , _intPending(false)
-    , _rawState(0)
-    , _debounceCandidate(0)
 {
-    memset(_debounceCount, 0, sizeof(_debounceCount));
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
 
 // ============================================================
@@ -106,13 +105,12 @@ void KBCShiftReg::begin() {
     _shift.setPulseWidth(KBC_SR_LOAD_PULSE_US);
 
     // Clear all state
-    _liveState        = 0;
-    _latchedState     = 0;
-    _changeMask       = 0;
-    _intPending       = false;
-    _rawState         = 0;
-    _debounceCandidate = 0;
-    memset(_debounceCount, 0, sizeof(_debounceCount));
+    _liveState    = 0;
+    _latchedState = 0;
+    _changeMask   = 0;
+    _intPending   = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
 
 // ============================================================
@@ -123,22 +121,23 @@ bool KBCShiftReg::poll() {
     uint16_t raw = _readRaw();
     bool anyChanged = false;
 
-    // If the raw reading differs from the current candidate,
-    // reset all debounce counters and start tracking the new state.
-    if (raw != _debounceCandidate) {
-        _debounceCandidate = raw;
-        memset(_debounceCount, 0, sizeof(_debounceCount));
-        return false;
-    }
-
-    // Raw state matches candidate — increment per-button counters
-    // for buttons whose debounced state differs from live state.
+    // Per-button debounce with independent candidate tracking.
+    // Each button tracks its own candidate bit independently, so
+    // a transition on one button does not reset the debounce
+    // progress of any other button. Multi-button presses are
+    // handled correctly regardless of their relative timing.
     for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
         bool rawBit  = (raw >> i) & 0x01;
         bool liveBit = (_liveState >> i) & 0x01;
 
-        if (rawBit != liveBit) {
-            // This button is in transition — increment its counter
+        if (rawBit != _debounceCandidate[i]) {
+            // Raw changed from candidate — update candidate and
+            // reset this button's counter. Other buttons unaffected.
+            _debounceCandidate[i] = rawBit;
+            _debounceCount[i]     = 0;
+        } else if (rawBit != liveBit) {
+            // Raw stable at candidate, but candidate differs from live
+            // state — this button is in a confirmed transition.
             _debounceCount[i]++;
 
             if (_debounceCount[i] >= KBC_DEBOUNCE_COUNT) {
@@ -161,7 +160,7 @@ bool KBCShiftReg::poll() {
                 anyChanged  = true;
             }
         } else {
-            // Raw matches live — no transition, reset counter
+            // Raw matches live state — no transition, keep counter clear
             _debounceCount[i] = 0;
         }
     }

@@ -33,6 +33,15 @@ static uint8_t _capFlags = 0;
 static bool _intAsserted   = false;
 static bool _sleeping      = false;
 
+// Atomic event snapshot — captured together in k7scI2CSyncINT() when
+// INT is asserted, consumed atomically in _sendDataPacket(). Prevents
+// buttonsGetEvents() and buttonsGetChangeMask() being called in separate
+// Wire ISR callbacks where a button event between the two calls could
+// produce inconsistent buf[0]/buf[1] values in the data packet.
+static uint8_t _snapshotEvents = 0;
+static uint8_t _snapshotChange = 0;
+static bool    _snapshotValid  = false;
+
 static const uint8_t _CMD_BUF_SIZE = 3;  // cmd + 2 payload bytes max
 static uint8_t _cmdBuf[_CMD_BUF_SIZE];
 static uint8_t _cmdLen = 0;
@@ -66,8 +75,22 @@ static void _sendDataPacket() {
     uint8_t buf[K7SC_PACKET_SIZE];
     uint16_t val = displayGetValue();
 
-    buf[0] = buttonsGetEvents();
-    buf[1] = buttonsGetChangeMask();
+    // Use the atomic snapshot captured in k7scI2CSyncINT().
+    // If for any reason no snapshot is available, fall back to
+    // calling the button functions directly (defensive only —
+    // _onRequest should only fire after INT was asserted which
+    // always sets a valid snapshot first).
+    if (_snapshotValid) {
+        buf[0] = _snapshotEvents;
+        buf[1] = _snapshotChange;
+        _snapshotEvents = 0;
+        _snapshotChange = 0;
+        _snapshotValid  = false;
+    } else {
+        buf[0] = buttonsGetEvents();
+        buf[1] = buttonsGetChangeMask();
+    }
+
     buf[2] = buttonsGetStateByte();
     buf[3] = 0;                           // reserved
     buf[4] = (uint8_t)(val >> 8);         // display value high byte
@@ -129,7 +152,10 @@ static void _dispatch() {
         case K7SC_CMD_RESET:
             buttonsClearAll();
             encoderSetValue(0);
-            _sleeping        = false;
+            _sleeping       = false;
+            _snapshotEvents = 0;
+            _snapshotChange = 0;
+            _snapshotValid  = false;
             _pendingResponse = RESP_NONE;
             _clearINT();
             break;
@@ -219,9 +245,19 @@ void k7scI2CSyncINT() {
         return;
     }
 
-    bool pending = buttonsIsIntPending() || encoderIsValueChanged();
+    bool btnPending = buttonsIsIntPending();
+    bool encPending = encoderIsValueChanged();
 
-    if (pending) {
+    if (btnPending || encPending) {
+        // Capture events and change mask atomically before asserting INT.
+        // Both are read in the same main-loop pass, so no button event
+        // can occur between them here. _sendDataPacket() then consumes
+        // this snapshot without calling button functions a second time.
+        if (!_snapshotValid) {
+            _snapshotEvents = buttonsGetEvents();
+            _snapshotChange = buttonsGetChangeMask();
+            _snapshotValid  = true;
+        }
         _pendingResponse = RESP_DATA;
         if (!_intAsserted) _assertINT();
     } else {
@@ -235,4 +271,15 @@ void k7scI2CSyncINT() {
 
 bool k7scI2CIsSleeping() {
     return _sleeping;
+}
+
+// ============================================================
+//  k7scGetPendingEvents()
+// ============================================================
+
+uint8_t k7scGetPendingEvents() {
+    // Returns the snapshot captured when INT was last asserted.
+    // Does not consume the snapshot — _sendDataPacket() owns that.
+    // Returns 0 if no snapshot is pending (no unread button events).
+    return _snapshotValid ? _snapshotEvents : 0;
 }
