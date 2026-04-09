@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 1.8  
+**Version:** 1.9  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 
@@ -333,6 +333,7 @@ Type IDs are independent of I2C address. The controller uses the Type ID from th
 | `0x0D` | Throttle Module | `0x2C` | `0x20` | 4 |
 | `0x0E` | Dual Encoder | `0x2D` | `0x04` | 4 |
 | `0x0F` | Switch Panel | `0x2E` | `0x00` | 4 |
+| `0x10` | Indicator Module | `0x2F` | `0x00` | 0 |
 | `0xFF` | Unknown / Uninitialized | — | — | — |
 
 **Capability flag values:**  
@@ -490,9 +491,49 @@ Both latching and momentary toggle switches are supported. The dual-buffer strat
 
 **Reference:** `KCMk1_Switch_Panel/Config.h`
 
----
+### 9.7 Indicator Module (Type ID 0x10) — pure output
 
-## 10. Revision History
+The Indicator Module is a pure output device. It has no data packet to send — the module never asserts INT during normal operation and the controller never issues read transactions to it. The only meaningful command is `CMD_SET_LED_STATE`.
+
+`CMD_SET_LED_STATE (0x02)` — standard 8-byte nibble-packed payload, one nibble per pixel:
+
+```
+Byte 0:  Pixel 0  [7:4]  |  Pixel 1  [3:0]
+Byte 1:  Pixel 2  [7:4]  |  Pixel 3  [3:0]
+...
+Byte 7:  Pixel 14 [7:4]  |  Pixel 15 [3:0]
+```
+
+The module maps state nibble values to per-pixel active colors. Colors for ENABLED, WARNING, ALERT, ARMED, and PARTIAL_DEPLOY are system-wide constants. The ACTIVE (0x2) color is defined per pixel in the module sketch. Flash timing for WARNING and ALERT states is managed entirely on the module.
+
+Pixel index to indicator mapping:
+
+| Pixel | Indicator | Active Color |
+|---|---|---|
+| 0 | COMM ACTIVE | SKY |
+| 1 | USB ACTIVE | TEAL |
+| 2 | THRTL ENA | GREEN |
+| 3 | AUTO THRTL | CHARTREUSE |
+| 4 | PREC INPUT | AMBER |
+| 5 | AUDIO | PURPLE |
+| 6 | LIGHT ENA | YELLOW |
+| 7 | BRAKE LOCK | RED |
+| 8 | LNDG GEAR LOCK | GREEN |
+| 9 | CHUTE ARM | AMBER |
+| 10 | CTRL | GREEN |
+| 11 | DEBUG | MAGENTA |
+| 12 | DEMO | INDIGO |
+| 13 | SWITCH ERROR | RED |
+| 14 | RCS | MINT |
+| 15 | SAS | GREEN |
+
+Two rotary encoder headers (H1, H2) are present on the PCB for future expansion. When populated, INT will assert on encoder movement and button presses using the same delta packet format as the Dual Encoder Module.
+
+**NeoPixel note:** Uses SK6812mini-012 RGB format (not GRBW). NEOPIX_CMD is on PA5 (Port A). tinyNeoPixel IDE port setting must be Port A — different from all other NeoPixel modules which use Port C.
+
+**Reference:** `KCMk1_Indicator_Module/Config.h`
+
+---
 
 | Version | Date | Notes |
 |---|---|---|
@@ -505,3 +546,4 @@ Both latching and momentary toggle switches are supported. The dual-buffer strat
 | 1.6 | 2026-04-08 | CMD_ENABLE (0x09) and CMD_DISABLE (0x0A) added as system-wide commands; CMD_SET_THROTTLE (0x0B), CMD_SET_PRECISION (0x0C), CMD_SET_VALUE (0x0D) renumbered accordingly; CMD_BULB_TEST extended with start/stop payload; all command descriptions updated to cover module-type-specific behavior; throttle module (0x0D) added to registry; Section 9.4 throttle packet format added; capability flag bit 5 defined |
 | 1.7 | 2026-04-08 | Dual Encoder Module (0x0E) added to registry; Section 9.5 dual encoder packet format added |
 | 1.8 | 2026-04-08 | Switch Panel (0x0F) added to registry; Section 9.6 added; duplicate revision history block removed |
+| 1.9 | 2026-04-08 | Indicator Module (0x10) added to registry; Section 9.7 added; pure output module pattern documented |
