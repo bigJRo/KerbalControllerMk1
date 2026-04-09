@@ -5,9 +5,11 @@
    and extern declarations for all globals defined in AAA_Config.ino and AAA_Globals.ino.
 ****************************************************************************************/
 
+// Requires KerbalDisplayCommon >= 2.1.0
 #include <KerbalDisplayCommon.h>
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
+#include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
 
 /***************************************************************************************
@@ -119,6 +121,19 @@ static const uint8_t CW_CONTACT     = 15;  // Information -- landed or splashed
 
 
 /***************************************************************************************
+   SKETCH VERSION
+   Follows semantic versioning: MAJOR.MINOR.PATCH
+     MAJOR — incompatible structural changes
+     MINOR — new features or screens added
+     PATCH — bug fixes, threshold tuning, comment/style changes
+   This sketch requires KerbalDisplayCommon >= 2.0.1
+****************************************************************************************/
+static const uint8_t SKETCH_VERSION_MAJOR = 1;
+static const uint8_t SKETCH_VERSION_MINOR = 1;
+static const uint8_t SKETCH_VERSION_PATCH = 1;
+
+
+/***************************************************************************************
    SCREEN TYPE ENUM
    Identifies which screen is currently active.
    screen_COUNT is used as a sentinel value for prevScreen to force a chrome redraw
@@ -187,6 +202,26 @@ extern const uint8_t ALARM_HIGH_TEMP;
 extern const uint8_t ALARM_LOW_DV;
 extern uint8_t       alarmActiveMask;
 void updateAlarmMask(uint8_t condBit, bool on);
+
+// From CautionWarning.ino — C&W numeric thresholds (also in AAA_Config.ino)
+extern const float CW_ALT_THRESHOLD_M;
+extern const float CW_GROUND_PROX_S;
+extern const float CW_HIGH_G_ALARM;
+extern const float CW_HIGH_G_WARN;
+extern const float CW_EC_LOW_FRAC;
+extern const float CW_LOW_DV_MS;
+extern const float CW_LOW_BURN_S;
+
+// PrintState instances for flicker-free printDisp/printValue rendering (KDC v2 API).
+// One per logical display slot that uses printDisp() or printValue().
+// Defined in ScreenMain.ino and ScreenSOI.ino.
+extern PrintState psSOILabel;     // ScreenMain SOI label
+extern PrintState psSOIRows[];    // ScreenSOI body data rows
+
+// I2C slave interface (I2CSlave.ino) -- #10 add missing declarations
+void setupI2CSlave();
+void buildI2CPacketAndAssert();
+void updateI2CState();
 
 // Screen navigation -- always use this instead of setting activeScreen directly.
 // Sets activeScreen, resets prevScreen to screen_COUNT (triggering chrome redraw),

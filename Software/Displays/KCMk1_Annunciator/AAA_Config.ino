@@ -13,7 +13,7 @@
    debugMode    -- set true to enable Serial debug output (touch coords, state changes).
    All three can also be set at runtime via the I2C command packet from the master.
 ****************************************************************************************/
-bool demoMode     = false;
+bool demoMode     = true;
 bool audioEnabled = false;
 bool debugMode    = false;
 
@@ -71,3 +71,23 @@ const uint16_t masterAlarmMask = (1u << CW_GROUND_PROX) |
 ****************************************************************************************/
 const float ALERT_ALT_THRESHOLD = 3500.0f;   // metres sea level
 const float ALERT_VEL_THRESHOLD = 100.0f;    // m/s surface velocity
+
+/***************************************************************************************
+   CAUTION & WARNING NUMERIC THRESHOLDS
+   These mirror the conditions in CautionWarning.ino and are kept here for easy
+   flight-test tuning alongside the other alarm thresholds.
+   The InfoDisp panel uses equivalent constants (aligned by design):
+     CW_GROUND_PROX_S  = InfoDisp LNDG_TGRND_ALARM_S
+     CW_HIGH_G_ALARM   = InfoDisp G_ALARM_POS / G_ALARM_NEG
+     CW_LOW_DV_MS      = InfoDisp DV_STG_ALARM_MS
+     CW_LOW_BURN_S     = InfoDisp LNCH_BURNTIME_ALARM_S
+****************************************************************************************/
+// CW_ALT_THRESHOLD_M is panel-specific (not shared with InfoDisp)
+const float CW_ALT_THRESHOLD_M = 500.0f;   // CW_ALT: surface alt below this (m)
+// The five constants below are cross-panel aligned — values from KCMk1_SystemConfig.h (#3D)
+const float CW_GROUND_PROX_S   = KCM_GROUND_PROX_S;     // CW_GROUND_PROX_S = InfoDisp LNDG_TGRND_ALARM_S
+const float CW_HIGH_G_ALARM    = KCM_HIGH_G_ALARM_POS;   // CW_HIGH_G: positive G alarm (g)
+const float CW_HIGH_G_WARN     = KCM_HIGH_G_ALARM_NEG;   // CW_HIGH_G: negative G alarm (g)
+const float CW_EC_LOW_FRAC     =  0.10f;                 // CW_BUS_VOLTAGE: panel-specific fraction
+const float CW_LOW_DV_MS       = KCM_LOW_DV_MS;          // CW_LOW_DV_MS = InfoDisp DV_STG_ALARM_MS
+const float CW_LOW_BURN_S      = KCM_LOW_BURN_S;         // CW_LOW_BURN_S = InfoDisp LNCH_BURNTIME_ALARM_S

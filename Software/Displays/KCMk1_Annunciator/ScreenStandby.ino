@@ -10,9 +10,7 @@
    STATIC CHROME -- draw once on screen entry
 ****************************************************************************************/
 void drawStaticStandby(RA8875 &tft) {
-  tft.setXY(0, 0);
-  tft.fillScreen(TFT_BLACK);
-  drawBMP(tft, "/StandbySplash_800x480.bmp", 0, 0);
+  drawStandbySplash(tft);   // #5A delegates to KDC library
 }
 
 

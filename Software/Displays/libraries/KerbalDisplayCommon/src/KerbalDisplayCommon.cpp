@@ -170,12 +170,15 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
   }
   // Reset active window to full screen — fillRect/drawRect modify it on RA8875
   // and leave it set to the rect bounds, which clips subsequent print() calls.
+  tft.setActiveWindow(0, KCM_SCREEN_W - 1, 0, KCM_SCREEN_H - 1);   // #62/#68
   tft.setFont(font);
 
   int16_t charH  = (int16_t)font->font_height;
   int16_t availW = w - (PADDING * 2);
 
   // --- Word splitting ---
+  // MAX_WORDS / MAX_WORDCH: labels exceeding these limits are silently truncated. (#67)
+  // Increase if button labels longer than 31 chars or 31 words are ever needed.
   const uint8_t MAX_WORDS = 32, MAX_WORDCH = 32;
   char words[MAX_WORDS][MAX_WORDCH];
   uint8_t wordCount = 0;
@@ -344,7 +347,7 @@ void drawVerticalText(RA8875 &tft,
 ****************************************************************************************/
 
 void textLeft(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-              String value, uint16_t foreColor, uint16_t backColor) {
+              const String &value, uint16_t foreColor, uint16_t backColor) {
   int16_t textH = font->font_height;
   int16_t drawX = x0 + TEXT_BORDER;
   int16_t drawY = y0 + (h - textH) / 2;
@@ -355,7 +358,7 @@ void textLeft(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t
 }
 
 void textRight(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String value, uint16_t foreColor, uint16_t backColor) {
+               const String &value, uint16_t foreColor, uint16_t backColor) {
   int16_t textW = getFontStringWidth(font, value.c_str());
   int16_t textH = font->font_height;
   int16_t drawX = x0 + w - textW - TEXT_BORDER;
@@ -367,7 +370,7 @@ void textRight(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_
 }
 
 void textCenter(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String value, uint16_t foreColor, uint16_t backColor) {
+                const String &value, uint16_t foreColor, uint16_t backColor) {
   int16_t textW = getFontStringWidth(font, value.c_str());
   int16_t textH = font->font_height;
   int16_t drawX = x0 + (w - textW) / 2;
@@ -420,6 +423,9 @@ static String _getSign(float &value) {
   return "";
 }
 
+// formatSep(): for values >= 1000 the decimal part is dropped and a thousands
+// separator is inserted instead (e.g. 1234.5 -> "1,234"). This is intentional —
+// at that scale the decimal is noise on a display. (#64)
 String formatSep(float value) {
   char buf[40]     = "";
   char tempBuf[40] = "";
@@ -445,24 +451,29 @@ String formatSep(float value) {
 String formatTime(float timeVal) {
   String sign = _getSign(timeVal);
   const uint16_t kerbinDay = 6;  // Kerbin day = 6 hours
-  long timeMillis = timeVal * 1000;
-  long calcSecs   = timeMillis / 1000;
-  long calcMins   = calcSecs / 60;
-  long calcHrs    = calcMins / 60;
-  long calcDays   = calcHrs / kerbinDay;
+  // #65 use int64_t to avoid 32-bit overflow beyond ~24.8 Kerbin days
+  int64_t timeMillis = (int64_t)(fabsf(timeVal) * 1000.0f);
+  int64_t calcSecs   = timeMillis / 1000;
+  int64_t calcMins   = calcSecs   / 60;
+  int64_t calcHrs    = calcMins   / 60;
+  int64_t calcDays   = calcHrs    / kerbinDay;
   timeMillis %= 1000;
   calcSecs   %= 60;
   calcMins   %= 60;
   calcHrs    %= kerbinDay;
   char timeStr[40];
   if (calcDays != 0) {
-    sprintf(timeStr, "%ld d: %02ld h: %02ld m: %02ld s", calcDays, calcHrs, calcMins, calcSecs);
+    sprintf(timeStr, "%lld d: %02lld h: %02lld m: %02lld s",
+            (long long)calcDays, (long long)calcHrs, (long long)calcMins, (long long)calcSecs);
   } else if (calcHrs != 0) {
-    sprintf(timeStr, "%ld h: %02ld m: %02ld s", calcHrs, calcMins, calcSecs);
+    sprintf(timeStr, "%lld h: %02lld m: %02lld s",
+            (long long)calcHrs, (long long)calcMins, (long long)calcSecs);
   } else if (calcMins != 0) {
-    sprintf(timeStr, "%ld m: %02ld s", calcMins, calcSecs);
+    sprintf(timeStr, "%lld m: %02lld s",
+            (long long)calcMins, (long long)calcSecs);
   } else {
-    sprintf(timeStr, "%ld.%02ld s", calcSecs, timeMillis / 10);
+    // Pure-seconds: strip decimal, add space before unit (#5C incorporates fmtTime improvements)
+    sprintf(timeStr, "%lld s", (long long)calcSecs);
   }
   return sign + String(timeStr);
 }
@@ -534,6 +545,18 @@ void thresholdColor(uint16_t value,
   }
 }
 
+// Float overload (#42): clamps value to uint16_t range then delegates.
+void thresholdColor(float value,
+                    float lowVal,  uint16_t lowColor,  uint16_t lowBack,
+                    float midVal,  uint16_t midColor,  uint16_t midBack,
+                                   uint16_t highColor, uint16_t highBack,
+                    uint16_t &foreColor, uint16_t &backColor) {
+  thresholdColor((uint16_t)constrain((int32_t)value, 0, 65535),
+                 (uint16_t)constrain((int32_t)lowVal, 0, 65535), lowColor, lowBack,
+                 (uint16_t)constrain((int32_t)midVal, 0, 65535), midColor, midBack,
+                 highColor, highBack, foreColor, backColor);
+}
+
 
 /***************************************************************************************
    DISPLAY BLOCK FUNCTIONS
@@ -541,24 +564,51 @@ void thresholdColor(uint16_t value,
 
 void printDisp(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String param, String value,
+               const String &param, const String &value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
-               uint16_t backColor, uint16_t borderColor) {
+               uint16_t backColor, uint16_t borderColor,
+               PrintState &ps) {
+  int16_t paramW  = getFontStringWidth(font, param.c_str());
+  int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
+  int16_t regionW = w - TEXT_BORDER - paramW - 2;
+
+  int16_t  newTextW = getFontStringWidth(font, value.c_str());
+  int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
+  if (newTextX < regionX) newTextX = regionX;
+  uint16_t newH = (uint16_t)font->font_height;
+
+  bool bgChanged     = (valBack != ps.prevBg)    && (ps.prevBg     != 0x0001);
+  bool heightChanged = (newH    != ps.prevHeight) && (ps.prevHeight != 0);
+
+  // Always redraw the label area and background on printDisp — caller only
+  // invokes this when content has changed so the full clear is acceptable.
   tft.fillRect(x0 + 1, y0 + 1, w - 2, h - 2, backColor);
   textLeft(tft, font, x0, y0, w, h, param, paramColor, backColor);
+
+  // Value: flicker-free render — draw first, clean trailing strip after
+  if (bgChanged || heightChanged) {
+    tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
+  }
   textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
+  if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth) {
+    tft.fillRect(regionX, y0 + 1, newTextX - regionX, h - 2, backColor);
+  }
+
   if (borderColor != NO_BORDER) {
     tft.drawRect(x0, y0, w, h, borderColor);
   }
+
+  ps.prevWidth  = (uint16_t)newTextW;
+  ps.prevBg     = valBack;
+  ps.prevHeight = newH;
 }
 
 void printDisp(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String param, String value,
+               const String &param, const String &value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
                uint16_t backColor, uint16_t borderColor,
-               DispCache &cache) {
-  // Skip redraw entirely if nothing has changed since the last draw
+               DispCache &cache, PrintState &ps) {
   if (cache.valid         &&
       cache.x0          == x0           && cache.y0         == y0          &&
       cache.w           == w            && cache.h          == h           &&
@@ -568,15 +618,47 @@ void printDisp(RA8875 &tft, const tFont *font,
       cache.borderColor == borderColor) {
     return;
   }
-  // Content changed — do the full redraw then update cache
   printDisp(tft, font, x0, y0, w, h, param, value,
-            paramColor, valColor, valBack, backColor, borderColor);
+            paramColor, valColor, valBack, backColor, borderColor, ps);
   cache.x0 = x0; cache.y0 = y0; cache.w = w; cache.h = h;
   cache.param = param; cache.value = value;
   cache.paramColor = paramColor; cache.valColor = valColor;
   cache.valBack = valBack; cache.backColor = backColor;
   cache.borderColor = borderColor;
   cache.valid = true;
+}
+
+void printValue(RA8875 &tft, const tFont *font,
+                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+                const String &param, const String &value,
+                uint16_t valColor, uint16_t valBack,
+                uint16_t backColor,
+                PrintState &ps) {
+  int16_t paramW  = getFontStringWidth(font, param.c_str());
+  int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
+  int16_t regionW = w - TEXT_BORDER - paramW - 2;
+
+  int16_t  newTextW = getFontStringWidth(font, value.c_str());
+  int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
+  if (newTextX < regionX) newTextX = regionX;
+  uint16_t newH = (uint16_t)font->font_height;
+
+  bool bgChanged     = (valBack != ps.prevBg)    && (ps.prevBg     != 0x0001);
+  bool heightChanged = (newH    != ps.prevHeight) && (ps.prevHeight != 0);
+
+  if (bgChanged || heightChanged) {
+    tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
+  }
+
+  textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
+
+  if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth) {
+    tft.fillRect(regionX, y0 + 1, newTextX - regionX, h - 2, backColor);
+  }
+
+  ps.prevWidth  = (uint16_t)newTextW;
+  ps.prevBg     = valBack;
+  ps.prevHeight = newH;
 }
 
 void printDispChrome(RA8875 &tft, const tFont *font,
@@ -591,27 +673,17 @@ void printDispChrome(RA8875 &tft, const tFont *font,
   }
 }
 
-void printValue(RA8875 &tft, const tFont *font,
-                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String param, String value,
-                uint16_t valColor, uint16_t valBack,
-                uint16_t backColor) {
-  int16_t paramW = getFontStringWidth(font, param.c_str());
-  int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
-  int16_t regionW = w - TEXT_BORDER - paramW - 2;
-  tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
-  textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
-}
 
 void printName(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String value, uint16_t color, uint16_t backColor,
+               const String &value, uint16_t color, uint16_t backColor,
                uint16_t borderColor, byte maxLength) {
-  if (value.length() > maxLength) {
-    value = value.substring(0, maxLength);
+  String val = value;   // local copy — const String& cannot be mutated
+  if (val.length() > maxLength) {
+    val = val.substring(0, maxLength);
   }
   tft.fillRect(x0 + 1, y0 + 1, w - 2, h - 2, backColor);
-  textLeft(tft, font, x0, y0, w, h, value, color, backColor);
+  textLeft(tft, font, x0, y0, w, h, val, color, backColor);
   if (borderColor != NO_BORDER) {
     tft.drawRect(x0, y0, w, h, borderColor);
   }
@@ -619,7 +691,7 @@ void printName(RA8875 &tft, const tFont *font,
 
 void printTitle(RA8875 &tft, const tFont *font,
                 uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String value, uint16_t color, uint16_t backColor,
+                const String &value, uint16_t color, uint16_t backColor,
                 uint16_t borderColor) {
   tft.fillRect(x0 + 1, y0 + 1, w - 2, h - 2, backColor);
   textCenter(tft, font, x0, y0, w, h, value, color, backColor);
@@ -716,6 +788,26 @@ static void _bmpLogError(const char *filename, BMPResult err) {
     case BMP_ERR_NOT_24BIT: Serial.println(F("only 24-bit BMPs are supported")); break;
     default:                Serial.println(F("unknown error"));                  break;
   }
+}
+
+// Internal helper: restore display state on mid-draw BMP error (#61)
+static void _bmpAbort(File &f, const char *filename, BMPResult err, RA8875 &tft) {
+  tft.setActiveWindow(0, KCM_SCREEN_W - 1, 0, KCM_SCREEN_H - 1);   // #68
+  tft.setXY(0, 0);
+  f.close();
+  _bmpLogError(filename, err);
+}
+
+/***************************************************************************************
+   STANDBY SPLASH (#14)
+   Draws the shared KCMk1 standby BMP from SD card. Sets cursor origin, clears
+   screen to black, then draws the 800x480 BMP at (0,0). Shared across all panels
+   so the filename and clear sequence are defined in exactly one place.
+****************************************************************************************/
+void drawStandbySplash(RA8875 &tft) {
+  tft.setXY(0, 0);
+  tft.fillScreen(TFT_BLACK);
+  drawBMP(tft, "/StandbySplash_800x480.bmp", 0, 0);
 }
 
 BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
@@ -815,10 +907,10 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
       for (int32_t row = 0; row < imgH; row++) {
         uint32_t rowAddr = dataOffset + (uint32_t)(imgH - 1 - row) * rowBytes;
         if (!file.seek(rowAddr)) {
-          file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ;
+          _bmpAbort(file, filename, BMP_ERR_READ, tft); return BMP_ERR_READ;
         }
         if (file.read(rowBuf, imgW * 3) != (size_t)(imgW * 3)) {
-          file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ;
+          _bmpAbort(file, filename, BMP_ERR_READ, tft); return BMP_ERR_READ;
         }
         _bmpConvertRow(rowBuf, pixBuf, imgW);
         tft.drawPixels(pixBuf, (uint16_t)imgW, x, y + (uint16_t)row);
@@ -828,7 +920,7 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
       for (int32_t row = 0; row < imgH; row++) {
         if (file.read(allRows + (size_t)row * rowBytes, rowBytes) != (size_t)rowBytes) {
           free(allRows);
-          file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ;
+          _bmpAbort(file, filename, BMP_ERR_READ, tft); return BMP_ERR_READ;
         }
       }
       // Draw rows in reverse (BMP bottom-up → screen top-down)
@@ -842,7 +934,7 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
   } else {
     for (int32_t row = 0; row < imgH; row++) {
       if (file.read(rowBuf, imgW * 3) != (size_t)(imgW * 3)) {
-        file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ;
+        _bmpAbort(file, filename, BMP_ERR_READ, tft); return BMP_ERR_READ;
       }
       _bmpConvertRow(rowBuf, pixBuf, imgW);
       tft.drawPixels(pixBuf, (uint16_t)imgW, x, y + (uint16_t)row);
@@ -851,7 +943,7 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
 
   file.close();
   // Restore active window and cursor to full-screen origin
-  tft.setActiveWindow(0, 799, 0, 479);
+  tft.setActiveWindow(0, KCM_SCREEN_W - 1, 0, KCM_SCREEN_H - 1);   // #68
   tft.setXY(0, 0);
   if (_kdcDebugMode) { Serial.print(F("KDC: drawBMP OK: ")); Serial.println(filename); }
   return BMP_OK;
@@ -902,6 +994,81 @@ BodyParams getBodyParams(const String& SOI) {
 
 
 // =============================================================================
+/***************************************************************************************
+   BOOT SCREEN RENDERING HELPERS (#15, #16, #17)
+   Shared terminal-aesthetic primitives for KCMk1 panel boot sequences.
+   All functions stay in RA8875 graphics mode (setFont/setCursor/print).
+****************************************************************************************/
+void bsPrint(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
+             const char *text, uint16_t col) {
+  tft.setFont(font);
+  tft.setTextColor(col, TFT_BLACK);
+  tft.setCursor(x, y);
+  tft.print(text);
+}
+
+uint16_t bsLine(RA8875 &tft, const tFont *font, uint16_t col_x,
+                uint16_t y, uint16_t rowH, const char *text, uint16_t col) {
+  tft.setFont(font);
+  tft.setTextColor(col, TFT_BLACK);
+  tft.setCursor(col_x, y);
+  tft.print(text);
+  return y + rowH;
+}
+
+uint16_t bsBig(RA8875 &tft, const tFont *font, uint16_t col_x,
+               uint16_t y, const char *text, uint16_t col) {
+  tft.setFont(font);
+  tft.setTextColor(col, TFT_BLACK);
+  tft.setCursor(col_x, y);
+  tft.print(text);
+  return y + 38;
+}
+
+uint16_t bsBlank(uint16_t y, uint16_t rowH) {
+  return y + rowH;
+}
+
+uint16_t bsWrap(RA8875 &tft, const tFont *font, uint16_t col_x,
+                uint16_t y, uint16_t rowH,
+                const char *text, uint16_t col, uint16_t maxW) {
+  tft.setFont(font);
+  tft.setTextColor(col, TFT_BLACK);
+  char word[32], line[128] = "";
+  uint8_t wi = 0;
+  const char *p = text;
+  while (true) {
+    char c = *p++;
+    bool end = (c == '\0'), space = (c == ' ') || end;
+    if (space || end) {
+      word[wi] = '\0'; wi = 0;
+      char test[128];
+      if (line[0]) snprintf(test, sizeof(test), "%s %s", line, word);
+      else         snprintf(test, sizeof(test), "%s",    word);
+      if (getFontStringWidth(font, test) > maxW) {
+        tft.setCursor(col_x, y); tft.print(line); y += rowH;
+        snprintf(line, sizeof(line), "%s", word);
+      } else {
+        snprintf(line, sizeof(line), "%s", test);
+      }
+      if (end) {
+        if (line[0]) { tft.setCursor(col_x, y); tft.print(line); y += rowH; }
+        break;
+      }
+    } else {
+      if (wi < (uint8_t)(sizeof(word) - 1)) word[wi++] = c;
+    }
+  }
+  return y;
+}
+
+void bsShuffle(uint8_t *arr, uint8_t n) {
+  for (uint8_t i = n - 1; i > 0; i--) {
+    uint8_t j = (uint8_t)(random(i + 1));
+    uint8_t tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+}
+
 // Capacitive touch — GSL1680F driver
 // I2C address 0x40, Wire1 bus (pins 16/17 on Teensy 4.0).
 // Firmware must be uploaded on every power cycle before the chip will respond.
@@ -2152,12 +2319,16 @@ void setupTouch() {
     // 0x00 = running, 0x80 = still in sleep/reset (startup failed)
   }
 
-  // Dummy read of 0x80 to clear any pending interrupt the chip asserts
-  // after firmware load. Without this the INT pin may stay asserted permanently.
+  // Drain the touch buffer completely after firmware load.
+  // A single read is not enough if the chip has stale events from a previous
+  // session (e.g. after a warm Teensy reset). Read repeatedly until count==0.
   {
     uint8_t dummy[24] = {0};
-    _gsl_read(0x80, dummy, 24);
-    delay(10);
+    for (uint8_t attempt = 0; attempt < 10; attempt++) {
+      _gsl_read(0x80, dummy, 24);
+      delay(10);
+      if (dummy[0] == 0) break;  // no more touch events queued
+    }
   }
 
   // Read back check_mem result and print raw bytes for diagnosis
@@ -2186,8 +2357,15 @@ void setupTouch() {
     delay(20);
     _gsl_startup_chip();
     delay(200);
-    // Dummy read to clear any pending INT after retry firmware load
-    { uint8_t dummy[24] = {0}; _gsl_read(0x80, dummy, 24); delay(10); }
+    // Drain touch buffer after retry firmware load
+    {
+      uint8_t dummy[24] = {0};
+      for (uint8_t attempt = 0; attempt < 10; attempt++) {
+        _gsl_read(0x80, dummy, 24);
+        delay(10);
+        if (dummy[0] == 0) break;
+      }
+    }
     delay(30);
     _gsl_read(0xb0, chk, 4);
     if (_kdcDebugMode) {
@@ -2201,8 +2379,10 @@ void setupTouch() {
     ok = (chk[3] == 0x5a) || (chk[2] == 0x5a) || (chk[1] == 0x5a) || (chk[0] == 0x5a);
   }
 
-  if (ok) Serial.println(F("KDC: setupTouch: GSL1680 ready"));
-  else    Serial.println(F("KDC: setupTouch: check_mem 0x00 (may be normal — proceeding)"));
+  if (_kdcDebugMode) {
+    if (ok) Serial.println(F("KDC: setupTouch: GSL1680 ready"));
+    else    Serial.println(F("KDC: setupTouch: check_mem 0x00 (may be normal — proceeding)"));
+  }
   // Proceed regardless — chip is running (0xe0=0x0 confirmed after firmware load).
   if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: polling mode active (INT pin = GPIO)"));
 }

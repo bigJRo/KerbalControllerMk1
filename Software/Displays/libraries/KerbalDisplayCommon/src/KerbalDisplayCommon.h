@@ -1,6 +1,10 @@
 #ifndef KERBAL_DISPLAY_COMMON_H
 #define KERBAL_DISPLAY_COMMON_H
 
+#define KDC_VERSION_MAJOR 2
+#define KDC_VERSION_MINOR 1
+#define KDC_VERSION_PATCH 0
+
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for RA8875-based touchscreen displays used in Kerbal Controller Mk1.
@@ -12,7 +16,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 1.0.0
+  Version: 2.0.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SPI.h>
@@ -72,6 +76,15 @@
    Ref: https://rgbcolorpicker.com/565
    Ref: https://github.com/newdigate/rgb565_colors
 ****************************************************************************************/
+// Screen dimensions — used internally by drawBMP/drawButton active-window restore.
+// KCMk1_SystemConfig.h defines the same values; these guards prevent redefinition.
+#ifndef KCM_SCREEN_W
+#define KCM_SCREEN_W 800
+#endif
+#ifndef KCM_SCREEN_H
+#define KCM_SCREEN_H 480
+#endif
+
 #define TFT_BLACK        0x0000  /*   0,   0,   0 */
 #define TFT_OFF_BLACK    0x2104  /*   4,   8,   4 */
 #define TFT_DARK_GREY    0x39E7  /*   7,  15,   7 */
@@ -150,11 +163,11 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
 
 // --- Text primitives ---
 void textLeft(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-              String value, uint16_t foreColor, uint16_t backColor);
+              const String &value, uint16_t foreColor, uint16_t backColor);
 void textRight(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String value, uint16_t foreColor, uint16_t backColor);
+               const String &value, uint16_t foreColor, uint16_t backColor);
 void textCenter(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String value, uint16_t foreColor, uint16_t backColor);
+                const String &value, uint16_t foreColor, uint16_t backColor);
 
 // --- Basic formatters ---
 String formatInt(uint16_t value);
@@ -165,6 +178,7 @@ String formatFloatUnits(float value, uint8_t decimals, String units);
 
 // --- Advanced formatters (KSP telemetry) ---
 // Note: formatSep() is a dependency of formatAlt() — keep together
+// Note: formatSep() drops the decimal part for values >= 1000 (#64)
 // Note: formatTime() uses Kerbin day = 6 hours
 String formatSep(float value);
 String formatTime(float timeVal);
@@ -176,6 +190,14 @@ void thresholdColor(uint16_t value,
                     uint16_t lowVal,  uint16_t lowColor,  uint16_t lowBack,
                     uint16_t midVal,  uint16_t midColor,  uint16_t midBack,
                                       uint16_t highColor, uint16_t highBack,
+                    uint16_t &foreColor, uint16_t &backColor);
+
+// Float overload (#42) — eliminates (uint16_t)constrain(x,0,65535) at call sites.
+// Clamps value to [0, 65535] before delegating to the uint16_t overload.
+void thresholdColor(float value,
+                    float lowVal,  uint16_t lowColor,  uint16_t lowBack,
+                    float midVal,  uint16_t midColor,  uint16_t midBack,
+                                   uint16_t highColor, uint16_t highBack,
                     uint16_t &foreColor, uint16_t &backColor);
 
 /***************************************************************************************
@@ -197,22 +219,45 @@ struct DispCache {
   bool      valid      = false;  // false until first draw
 };
 
+/***************************************************************************************
+   PrintState — flicker-free rendering state for printValue and printDisp.
+   Tracks the previous render's pixel width, background colour, and font height so
+   the library can draw text first (no blank frame) then clean up trailing pixels from
+   a previously wider value, and do a full clear only on background/font changes.
+
+   Breaking change from v1.x: printValue and printDisp now require a PrintState &
+   parameter. Callers must declare one PrintState per logical display slot.
+
+   Declare alongside your RowCache or DispCache:
+     PrintState ps[SCREEN_COUNT][ROW_COUNT];
+   or individually:
+     PrintState altState;
+****************************************************************************************/
+struct PrintState {
+  uint16_t prevWidth  = 0;       // pixel width of last rendered value
+  uint16_t prevBg     = 0x0001;  // sentinel: 0x0001 = no previous render
+  uint16_t prevHeight = 0;       // font height of last render (0 = no previous render)
+};
+
 // --- Display block functions ---
 
-// Full block draw — use once at setup to draw label, value, and border.
+// Full block draw with flicker-free rendering.
+// ps tracks previous render state to avoid blank-frame flicker on rapid updates.
 void printDisp(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String param, String value,
-               uint16_t paramColor, uint16_t valColor, uint16_t valBack,
-               uint16_t backColor, uint16_t borderColor);
-
-// Cached overload — skips redraw entirely if content and colors are unchanged.
-void printDisp(RA8875 &tft, const tFont *font,
-               uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String param, String value,
+               const String &param, const String &value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
                uint16_t backColor, uint16_t borderColor,
-               DispCache &cache);
+               PrintState &ps);
+
+// Cached overload — skips redraw entirely if content and colors are unchanged,
+// otherwise calls the PrintState overload for flicker-free rendering.
+void printDisp(RA8875 &tft, const tFont *font,
+               uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+               const String &param, const String &value,
+               uint16_t paramColor, uint16_t valColor, uint16_t valBack,
+               uint16_t backColor, uint16_t borderColor,
+               DispCache &cache, PrintState &ps);
 
 // Value-only redraw — use on updates. Clears and redraws only the right-hand
 // value region, leaving the param label and border completely untouched.
@@ -224,18 +269,19 @@ void printDispChrome(RA8875 &tft, const tFont *font,
 
 void printValue(RA8875 &tft, const tFont *font,
                 uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String param, String value,
+                const String &param, const String &value,
                 uint16_t valColor, uint16_t valBack,
-                uint16_t backColor);
+                uint16_t backColor,
+                PrintState &ps);
 
 void printName(RA8875 &tft, const tFont *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-               String value, uint16_t color, uint16_t backColor,
+               const String &value, uint16_t color, uint16_t backColor,
                uint16_t borderColor, byte maxLength = 30);
 
 void printTitle(RA8875 &tft, const tFont *font,
                 uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                String value, uint16_t color, uint16_t backColor,
+                const String &value, uint16_t color, uint16_t backColor,
                 uint16_t borderColor);
 
 // --- SD card BMP drawing ---
@@ -273,6 +319,35 @@ void drawLabelledAxis(RA8875 &tft,
                       const tFont *font,
                       uint16_t axisColor, uint16_t backColor);
 
+// =============================================================================
+// BOOT SCREEN RENDERING HELPERS (#15, #16, #17)
+// Shared terminal-aesthetic boot sequence primitives used by all KCMk1 panels.
+// All helpers stay in graphics mode (setFont/setCursor/print) — never text mode.
+// =============================================================================
+
+// Print text at explicit (x, y) with given font and colour — no y advance.
+void bsPrint(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
+             const char *text, uint16_t col);
+
+// Print one line at column x, advance y by rowH. Returns new y.
+uint16_t bsLine(RA8875 &tft, const tFont *font, uint16_t col_x,
+                uint16_t y, uint16_t rowH, const char *text, uint16_t col);
+
+// Print with double-height font, advance y by 38px. Returns new y.
+uint16_t bsBig(RA8875 &tft, const tFont *font, uint16_t col_x,
+               uint16_t y, const char *text, uint16_t col);
+
+// Advance y by rowH without drawing (blank line). Returns new y.
+uint16_t bsBlank(uint16_t y, uint16_t rowH);
+
+// Word-wrap text across multiple lines within maxW pixels. Returns new y.
+uint16_t bsWrap(RA8875 &tft, const tFont *font, uint16_t col_x,
+                uint16_t y, uint16_t rowH,
+                const char *text, uint16_t col, uint16_t maxW);
+
+// Fisher-Yates in-place shuffle of a uint8_t index array of length n.
+void bsShuffle(uint8_t *arr, uint8_t n);
+
 // Draw a string one character per line within a rectangle — vertical label strip.
 // Text is centred horizontally within w and vertically within h.
 // The strip is filled with backColor before drawing.
@@ -282,6 +357,11 @@ void drawVerticalText(RA8875 &tft,
                       const tFont *font,
                       const char *text,
                       uint16_t color, uint16_t backColor);
+
+// Draw the shared standby splash BMP from SD card.
+// Equivalent to: setXY(0,0) + fillScreen(BLACK) + drawBMP("/StandbySplash_800x480.bmp", 0, 0).
+// setupSD() must have been called first. Shared across all KCMk1 panels.
+void drawStandbySplash(RA8875 &tft);
 
 // setupSD() must be called once in setup() before any drawBMP() calls.
 // Returns true if the SD card was found and initialised successfully.

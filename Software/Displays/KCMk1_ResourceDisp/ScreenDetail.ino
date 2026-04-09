@@ -16,6 +16,10 @@
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
+// PrintState instances for KDC v2 printValue() — one per detail row (max 6).
+// Defined here, declared extern in KCMk1_ResourceDisp.h.
+PrintState psDetailRows[6];
+
 
 /***************************************************************************************
    LAYOUT CONSTANTS
@@ -148,7 +152,10 @@ static void drawDetailSelector(RA8875 &tft) {
 ****************************************************************************************/
 static void drawDetailChrome(RA8875 &tft) {
   tft.fillRect(DET_PNL_X, 0, DET_PNL_W, 480, TFT_BLACK);
-  for (uint8_t i = 0; i < 6; i++) _detValCache[i] = "";  // invalidate all 6 regardless of row count
+  for (uint8_t i = 0; i < 6; i++) {
+    _detValCache[i] = "";   // invalidate all 6 regardless of row count
+    psDetailRows[i] = PrintState{};  // reset PrintState sentinel — forces full clear on next draw
+  }
 
   if (slotCount == 0 || _detailSlot >= slotCount) {
     tft.setFont(&Roboto_Black_20);
@@ -219,7 +226,7 @@ static void drawDetailValues(RA8875 &tft) {
     printValue(tft, &Roboto_Black_36,
                DET_ROW_X, detRowY(i), DET_ROW_W, DET_ROW_H,
                detRowLabel(i), val,
-               TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK);
+               TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psDetailRows[i]);
   }
 }
 

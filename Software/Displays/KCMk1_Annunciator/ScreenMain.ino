@@ -32,6 +32,22 @@ const uint16_t CTRLMODE_Y0 = 0;
 
 
 /***************************************************************************************
+   PRINT STATE — KDC v2 flicker-free rendering
+   One PrintState per printDisp / printValue call site.
+   Initialised to sentinel values by default constructor.
+****************************************************************************************/
+PrintState psSOILabel;     // SOI label in master area
+PrintState psMaxTemp;      // Tmax data row
+PrintState psCrew;         // Crew data row
+PrintState psTW;           // TW data row
+PrintState psCommNet;      // COM data row
+PrintState psStage;        // STG data row
+PrintState psSkinTemp;     // Tskin data row
+PrintState psCtrlGrp;      // CtrlGrp data row
+PrintState psVesselName;   // vessel name (printName uses internally)
+
+
+/***************************************************************************************
    BUTTON LABEL DEFINITIONS
    Note: - stored at 0x94 in Roboto_Black fonts (non-standard encoding)
 ****************************************************************************************/
@@ -234,7 +250,7 @@ void updateScreenMain(RA8875 &tft) {
   if (state.gameSOI != prev.gameSOI) {
     printDisp(tft, &Roboto_Black_24, 0, MASTER_H, SOI_LABEL_W, SOI_LABEL_H,
               "SOI:", currentBody.dispName, TFT_WHITE, TFT_DARK_GREEN,
-              TFT_BLACK, TFT_BLACK, TFT_GREY);
+              TFT_BLACK, TFT_BLACK, TFT_GREY, psSOILabel);
     tft.fillRect(1, MASTER_H + SOI_LABEL_H + 1, MASTER_W - 2, MASTER_H - 2, TFT_BLACK);
     drawBMP(tft, currentBody.image, 2, MASTER_H + SOI_LABEL_H + 2);
     tft.drawRect(0, MASTER_H + SOI_LABEL_H, MASTER_W, MASTER_H, TFT_GREY);
@@ -249,52 +265,52 @@ void updateScreenMain(RA8875 &tft) {
 
   if (state.maxTemp != prev.maxTemp) {
     uint16_t f, b;
-    thresholdColor(state.maxTemp, tempCaution, TFT_DARK_GREEN, TFT_BLACK,
-                   tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
+    thresholdColor((uint16_t)state.maxTemp, (uint16_t)tempCaution, TFT_DARK_GREEN, TFT_BLACK,
+                   (uint16_t)tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
     printValue(tft, &Roboto_Black_24, 3 * DATA_W, 4 * CAUTWARN_H, DATA_W, DATA_H,
-               "Tmax:", formatPerc(state.maxTemp), f, b, TFT_BLACK);
+               "Tmax:", formatPerc(state.maxTemp), f, b, TFT_BLACK, psMaxTemp);
     prev.maxTemp = state.maxTemp;
   }
 
   if (state.crewCount != prev.crewCount) {
     printValue(tft, &Roboto_Black_24, 4 * DATA_W, 4 * CAUTWARN_H, DATA_W, DATA_H,
-               "Crew:", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK);
+               "Crew:", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
     prev.crewCount = state.crewCount;
   }
 
   if (state.twIndex != prev.twIndex) {
     printValue(tft, &Roboto_Black_24, 0, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
-               "TW:", twString(state.twIndex, physTW), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK);
+               "TW:", twString(state.twIndex, physTW), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psTW);
     prev.twIndex = state.twIndex;
   }
 
   if (state.commNet != prev.commNet) {
     uint16_t f, b;
-    thresholdColor(state.commNet, commAlarm, TFT_RED, TFT_BLACK,
-                   commCaution, TFT_YELLOW, TFT_BLACK, TFT_DARK_GREEN, TFT_BLACK, f, b);
+    thresholdColor((uint16_t)state.commNet, (uint16_t)commAlarm, TFT_RED, TFT_BLACK,
+                   (uint16_t)commCaution, TFT_YELLOW, TFT_BLACK, TFT_DARK_GREEN, TFT_BLACK, f, b);
     printValue(tft, &Roboto_Black_24, DATA_W, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
-               "COM:", formatPerc(state.commNet), f, b, TFT_BLACK);
+               "COM:", formatPerc(state.commNet), f, b, TFT_BLACK, psCommNet);
     prev.commNet = state.commNet;
   }
 
   if (state.stage != prev.stage) {
     printValue(tft, &Roboto_Black_24, 2 * DATA_W, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
-               "STG:", formatInt(state.stage), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK);
+               "STG:", formatInt(state.stage), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psStage);
     prev.stage = state.stage;
   }
 
   if (state.skinTemp != prev.skinTemp) {
     uint16_t f, b;
-    thresholdColor(state.skinTemp, tempCaution, TFT_DARK_GREEN, TFT_BLACK,
-                   tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
+    thresholdColor((uint16_t)state.skinTemp, (uint16_t)tempCaution, TFT_DARK_GREEN, TFT_BLACK,
+                   (uint16_t)tempAlarm, TFT_DARK_GREY, TFT_YELLOW, TFT_WHITE, TFT_RED, f, b);
     printValue(tft, &Roboto_Black_24, 3 * DATA_W, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
-               "Tskin:", formatPerc(state.skinTemp), f, b, TFT_BLACK);
+               "Tskin:", formatPerc(state.skinTemp), f, b, TFT_BLACK, psSkinTemp);
     prev.skinTemp = state.skinTemp;
   }
 
   if (state.ctrlGrp != prev.ctrlGrp) {
     printValue(tft, &Roboto_Black_24, 4 * DATA_W, 4 * CAUTWARN_H + DATA_H, DATA_W, DATA_H,
-               "CtrlGrp:", formatInt(state.ctrlGrp), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK);
+               "CtrlGrp:", formatInt(state.ctrlGrp), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCtrlGrp);
     prev.ctrlGrp = state.ctrlGrp;
   }
 

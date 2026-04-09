@@ -79,8 +79,16 @@ void bootSimText(RA8875 &tft) {
   // - Header -
   tft.fillRect(0, y, 800, 2, TFT_GREY);
   y += 6;
-  _bs_print(tft, BS_FONT, COL1_X, y,
-            "KCMk1-ANNUNC  //  Jeb's Controller Works  //  BIOS v1.0.003", TFT_GREY);
+  {
+    char buf[128];   // #4B version string
+    snprintf(buf, sizeof(buf),
+             "KCMk1-ANNUNC  //  Jeb's Controller Works  //  v%d.%d.%d"
+             " / KDC %d.%d.%d / KDA %d.%d.%d",
+             SKETCH_VERSION_MAJOR,               SKETCH_VERSION_MINOR,               SKETCH_VERSION_PATCH,
+             KDC_VERSION_MAJOR,                  KDC_VERSION_MINOR,                  KDC_VERSION_PATCH,
+             KERBAL_DISPLAY_AUDIO_VERSION_MAJOR, KERBAL_DISPLAY_AUDIO_VERSION_MINOR, KERBAL_DISPLAY_AUDIO_VERSION_PATCH);
+    _bs_print(tft, BS_FONT, COL1_X, y, buf, TFT_GREY);
+  }
   y += ROW_H;
   tft.fillRect(0, y, 800, 2, TFT_GREY);
   y += 10;
