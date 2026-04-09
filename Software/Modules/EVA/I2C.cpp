@@ -112,6 +112,23 @@ static void _dispatch() {
             // No fault tracking on this module — acknowledge silently
             break;
 
+        case CMD_ENABLE:
+            _sleeping = false;
+            for (uint8_t i = 0; i < EVA_BUTTON_COUNT; i++) {
+                ledSetState(i, LED_ENABLED);
+            }
+            _renderPending = true;
+            break;
+
+        case CMD_DISABLE:
+            _sleeping = true;
+            for (uint8_t i = 0; i < EVA_BUTTON_COUNT; i++) {
+                ledSetState(i, LED_OFF);
+            }
+            _renderPending = true;
+            _clearINT();
+            break;
+
         default:
             break;
     }

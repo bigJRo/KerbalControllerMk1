@@ -62,6 +62,8 @@
 #define CMD_WAKE                0x06
 #define CMD_RESET               0x07
 #define CMD_ACK_FAULT           0x08
+#define CMD_ENABLE              0x09
+#define CMD_DISABLE             0x0A
 
 // ============================================================
 //  Packet sizes
