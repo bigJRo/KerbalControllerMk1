@@ -8,10 +8,9 @@
  *
  * @brief       Switch Panel Input Module for the Kerbal Controller Mk1.
  *
- *              Provides 10 toggle switch inputs to the system controller
- *              via I2C. Supports both latching and momentary toggle
- *              switches — the dual-buffer strategy guarantees every
- *              state change edge is reported regardless of switch type.
+ *              Provides 10 toggle switch inputs via I2C. SW1 and SW2
+ *              are mechanically coupled to a single 3-position latching
+ *              MODE switch. All other switches are independent.
  *
  *              I2C Address:    0x2E
  *              Module Type ID: 0x0F
@@ -26,45 +25,27 @@
  *                Switches.h/.cpp— GPIO reading, debounce, dual-buffer
  *                I2C.h/.cpp     — protocol handler, packet build, INT
  *
- *              Switch function assignments:
+ *              Panel layout (5 col x 2 row, left to right):
  *
- *                SW1  (Bit 0) — Live Control Mode
- *                               Toggle: enable/suspend live control link
+ *                +----------+----------+----------+----------+----------+
+ *                | MODE     | MSTR     | SCE      | AUDIO    | ENGINE   |
+ *                | CTRL(up) | OPER(up) | NORM(up) | OFF(up)  | SAFE(up) |
+ *                | SW1+SW2  | SW3      | SW5      | SW7      | SW9      |
+ *                | DEMO(dn) | RESET(dn)| AUX(dn)  | ON(dn)   | ARM(dn)  |
+ *                +----------+----------+----------+----------+----------+
+ *                | (lower)  | DISPLAY  | LTG      | INPUT    | THRTL    |
+ *                |          | OPER(up) | OPER(up) | NORM(up) | STD(up)  |
+ *                |          | SW4      | SW6      | SW8      | SW10     |
+ *                |          | RESET(dn)| TEST(dn) | FINE(dn) | FINE(dn) |
+ *                +----------+----------+----------+----------+----------+
  *
- *                SW2  (Bit 1) — Demo Mode
- *                               Toggle: enter/exit simulated data mode
- *                               → INDICATOR B8 (DEMO) ACTIVE while on
+ *              MODE switch (SW1+SW2) — 3-position latching:
+ *                Up     (CTRL) : SW1=1, SW2=0 → Live Control
+ *                Center (DBG)  : SW1=0, SW2=0 → Debug  [power-on default]
+ *                Down   (DEMO) : SW1=0, SW2=1 → Demo / Simulated
  *
- *                SW3  (Bit 2) — Master Reset
- *                               Rising edge only: CMD_RESET all modules
- *
- *                SW4  (Bit 3) — Display Reset
- *                               Rising edge only: CMD_SET_VALUE 0 to all
- *                               display modules (0x2A, 0x2B)
- *
- *                SW5  (Bit 4) — SCE to Auxiliary
- *                               Toggle: activate/deactivate SCE aux power
- *                               → INDICATOR B12 (SCE AUX) ACTIVE while on
- *
- *                SW6  (Bit 5) — Bulb Test
- *                               Rising edge: CMD_BULB_TEST (start)
- *                               Falling edge: CMD_BULB_TEST 0x00 (stop)
- *
- *                SW7  (Bit 6) — Audio On
- *                               Toggle: enable/disable audio system
- *                               → INDICATOR B9 (AUDIO) ACTIVE while on
- *
- *                SW8  (Bit 7) — Precision Input
- *                               Toggle: enable/disable precision input mode
- *                               → INDICATOR B6 (PREC INPUT) ACTIVE while on
- *
- *                SW9  (Bit 8) — Engine Arm
- *                               Toggle: arm/disarm engine ignition system
- *
- *                SW10 (Bit 9) — Throttle Fine Control
- *                               Rising edge: CMD_SET_PRECISION 0x01 → Throttle
- *                               Falling edge: CMD_SET_PRECISION 0x00 → Throttle
- *                               → INDICATOR B3 (THRTL PREC) ACTIVE while on
+ *              Use SWP_GET_MODE(stateWord) and SWP_MODE_* constants
+ *              to decode mode in controller firmware (see Config.h).
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

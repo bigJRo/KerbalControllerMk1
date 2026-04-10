@@ -148,6 +148,131 @@
 #define SWP_PIN_SDA             PIN_PB1
 
 // ============================================================
+//  Switch function assignments
+//
+//  Panel layout: 5 columns x 2 rows.
+//  SW1 and SW2 are mechanically coupled to a single 3-position
+//  latching switch (MODE). All other switches are independent.
+//
+//  +-----------+-----------+-----------+-----------+-----------+
+//  | MODE      | MSTR      | SCE       | AUDIO     | ENGINE    |
+//  | CTRL      | OPER      | NORM      | OFF       | SAFE      |
+//  | SW1+SW2   | SW3       | SW5       | SW7       | SW9       |
+//  | DEMO      | RESET     | AUX       | ON        | ARM       |
+//  +-----------+-----------+-----------+-----------+-----------+
+//  | (MODE     | DISPLAY   | LTG       | INPUT     | THRTL     |
+//  |  lower)   | OPER      | OPER      | NORM      | STD       |
+//  |           | SW4       | SW6       | SW8       | SW10      |
+//  |           | RESET     | TEST      | FINE      | FINE      |
+//  +-----------+-----------+-----------+-----------+-----------+
+//
+// ============================================================
+//  MODE switch (SW1 + SW2) -- 3-position latching
+//
+//  A single 3-position latching switch drives both SW1 and SW2.
+//  The two bits encode three mutually exclusive operating modes:
+//
+//    Position  SW1(bit0)  SW2(bit1)  Mode
+//    Up        1          0          CTRL -- Live Control
+//    Center    0          0          DBG  -- Debug
+//    Down      0          1          DEMO -- Demo / Simulated
+//
+//  Both bits low = Debug (center). This is the safe power-on
+//  default since all switches open means all bits = 0.
+//
+//  CTRL: enable live telemetry and control link
+//        -> INDICATOR B2 (CTRL) ACTIVE
+//  DBG:  debug mode -- live link suspended, local test data
+//        -> INDICATOR B5 (DEBUG) ACTIVE
+//  DEMO: simulated data mode -- no live link
+//        -> INDICATOR B8 (DEMO) ACTIVE
+// ============================================================
+
+/** @brief Bit 0 -- MODE switch upper contact (CTRL / live control) */
+#define SWP_BIT_MODE_CTRL       0
+
+/** @brief Bit 1 -- MODE switch lower contact (DEMO / simulated) */
+#define SWP_BIT_MODE_DEMO       1
+
+/** @brief MODE decoded values -- use SWP_GET_MODE() to extract */
+#define SWP_MODE_DBG            0   // center: SW1=0, SW2=0
+#define SWP_MODE_CTRL           1   // up:     SW1=1, SW2=0
+#define SWP_MODE_DEMO           2   // down:   SW1=0, SW2=1
+
+/** @brief Extract mode from 16-bit state word (reads bits 1:0) */
+#define SWP_GET_MODE(w)         ((w) & 0x03)
+
+/**
+ * @brief Bit 2 -- MSTR (Master Reset)
+ *        Up=OPER, Down=RESET.
+ *        Rising edge only: CMD_RESET all modules, re-enumerate.
+ *        Falling edge ignored.
+ */
+#define SWP_BIT_MASTER_RESET    2
+
+/**
+ * @brief Bit 3 -- DISPLAY (Display Reset)
+ *        Up=OPER, Down=RESET.
+ *        Rising edge only: CMD_SET_VALUE 0 to GPWS (0x2A)
+ *        and Pre-Warp (0x2B). Falling edge ignored.
+ */
+#define SWP_BIT_DISPLAY_RESET   3
+
+/**
+ * @brief Bit 4 -- SCE (SCE to Auxiliary)
+ *        Up=NORM, Down=AUX.
+ *        Toggle: activate/deactivate SCE auxiliary power routing.
+ *        -> INDICATOR B12 (SCE AUX) ACTIVE while AUX.
+ */
+#define SWP_BIT_SCE_AUX         4
+
+/**
+ * @brief Bit 5 -- LTG (Lighting / Bulb Test)
+ *        Up=OPER, Down=TEST.
+ *        Rising edge: CMD_BULB_TEST (start) to all modules.
+ *        Falling edge: CMD_BULB_TEST 0x00 (stop) to all modules.
+ */
+#define SWP_BIT_BULB_TEST       5
+
+/**
+ * @brief Bit 6 -- AUDIO
+ *        Up=OFF, Down=ON.
+ *        Toggle: enable/disable audio system.
+ *        -> INDICATOR B9 (AUDIO) ACTIVE while ON.
+ */
+#define SWP_BIT_AUDIO           6
+
+/**
+ * @brief Bit 7 -- INPUT (Precision Input)
+ *        Up=NORM, Down=FINE.
+ *        Toggle: enable/disable system-wide precision input mode
+ *        (joystick axis scaling and other input scaling).
+ *        -> INDICATOR B6 (PREC INPUT) ACTIVE while FINE.
+ */
+#define SWP_BIT_PREC_INPUT      7
+
+/**
+ * @brief Bit 8 -- ENGINE (Engine Arm)
+ *        Up=SAFE, Down=ARM.
+ *        Toggle: arm/disarm engine ignition system.
+ *        Controller requires ARM before accepting throttle-up.
+ */
+#define SWP_BIT_ENGINE_ARM      8
+
+/**
+ * @brief Bit 9 -- THRTL (Throttle Fine Control)
+ *        Up=STD, Down=FINE.
+ *        Rising edge: CMD_SET_PRECISION 0x01 -> Throttle (0x2C).
+ *        Falling edge: CMD_SET_PRECISION 0x00 -> Throttle (0x2C).
+ *        -> INDICATOR B3 (THRTL PREC) ACTIVE while FINE.
+ */
+#define SWP_BIT_THRTL_FINE      9
+
+/** @brief Bitmask helper.
+ *  Usage: bool on = (stateWord >> SWP_BIT_xxx) & 0x01; */
+#define SWP_MASK(bit)           (1u << (bit))
+
+// ============================================================
 //  Timing
 // ============================================================
 
