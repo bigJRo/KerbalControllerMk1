@@ -1,13 +1,21 @@
 /**
  * @file        Config.h
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-04-09
  * @project     Kerbal Controller Mk1 — Indicator Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       Pin definitions, constants, and I2C command bytes
  *              for the Indicator Module.
+ *
+ *              v2.0 changes:
+ *                - NeoPixel count expanded from 16 to 18
+ *                - IND_LED_PAYLOAD_SIZE expanded from 8 to 9 bytes
+ *                  (18 nibbles, 1 per pixel — module-local override,
+ *                  does not affect KMC_LED_PAYLOAD_SIZE globally)
+ *                - Pixel map revised: USB ACTIVE removed, SCE AUX,
+ *                  AUTO PILOT, and ABORT added
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -23,9 +31,9 @@
 
 #define IND_I2C_ADDRESS         0x2F
 #define IND_MODULE_TYPE_ID      KMC_TYPE_INDICATOR
-#define IND_FIRMWARE_MAJOR      1
+#define IND_FIRMWARE_MAJOR      2
 #define IND_FIRMWARE_MINOR      0
-#define IND_CAP_FLAGS           0x00  // no capabilities
+#define IND_CAP_FLAGS           KMC_CAP_EXTENDED_STATES
 
 // ============================================================
 //  NeoPixel configuration
@@ -35,9 +43,9 @@
 //  tinyNeoPixel IDE setting must be Port A.
 // ============================================================
 
-#define IND_NEO_COUNT           16
+#define IND_NEO_COUNT           18
 #define IND_NEO_COLOR_ORDER     NEO_RGB
-#define IND_ENABLED_BRIGHTNESS  32   // dim white W channel not used — scale RGB
+#define IND_ENABLED_BRIGHTNESS  32   // dim white — scale RGB
 
 // ============================================================
 //  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
@@ -53,25 +61,18 @@
 #define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
 #define CMD_ENABLE              KMC_CMD_ENABLE
 #define CMD_DISABLE             KMC_CMD_DISABLE
-// ============================================================
-
-#define CMD_GET_IDENTITY        0x01
-#define CMD_SET_LED_STATE       0x02
-#define CMD_SET_BRIGHTNESS      0x03
-#define CMD_BULB_TEST           0x04
-#define CMD_SLEEP               0x05
-#define CMD_WAKE                0x06
-#define CMD_RESET               0x07
-#define CMD_ACK_FAULT           0x08
-#define CMD_ENABLE              0x09
-#define CMD_DISABLE             0x0A
 
 // ============================================================
 //  Packet sizes
+//
+//  IND_LED_PAYLOAD_SIZE is a module-local override — 18 pixels
+//  require 9 bytes (18 nibbles, 2 per byte). This intentionally
+//  differs from KMC_LED_PAYLOAD_SIZE (8 bytes / 16 pixels).
+//  The controller must use 9-byte payloads for this module.
 // ============================================================
 
 #define IND_IDENTITY_SIZE       KMC_IDENTITY_SIZE
-#define IND_LED_PAYLOAD_SIZE    8    // 8 bytes, 16 nibbles, 1 per pixel
+#define IND_LED_PAYLOAD_SIZE    9    // 9 bytes, 18 nibbles, 1 per pixel
 
 // ============================================================
 //  KBC LED state nibble values — aliases for KMC_LED_*
