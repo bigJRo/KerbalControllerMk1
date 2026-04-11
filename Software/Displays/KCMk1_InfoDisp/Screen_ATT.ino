@@ -187,13 +187,12 @@ static bool    _attMarkerDirty = true;  // force initial draw
    FORWARD DECLARATIONS
 ****************************************************************************************/
 static void _attDrawZoneA(RA8875 &tft);
-static void _attDrawZoneB(RA8875 &tft, float pitch);
+static void _attDrawZoneB(RA8875 &tft, float pitch, float sinR, float cosR, int16_t hmx, int16_t hmy);
 static void _attDrawZoneC(RA8875 &tft, float hdg);
 static void _attDrawZoneD(RA8875 &tft, float roll);
 static void _attDrawBezel(RA8875 &tft);
 static bool _attProjectMarker(float markerHdg, float markerPit,
                                int16_t &mx, int16_t &my, bool &clamped);
-static void _attEraseMarker(RA8875 &tft, int16_t mx, int16_t my);
 static void _attDrawMarker_PG(RA8875 &tft, int16_t mx, int16_t my, bool clamped);
 static void _attDrawMarker_RG(RA8875 &tft, int16_t mx, int16_t my, bool clamped);
 static void _attDrawMarker_MNV(RA8875 &tft, int16_t mx, int16_t my, bool clamped);
@@ -245,161 +244,130 @@ static uint16_t _attErrBg(float err) {
 static void _attDrawZoneA(RA8875 &tft) {
     float roll  = state.roll;
     float pitch = state.pitch;
+    float sinR  = sinf(roll * DEG_TO_RAD);
+    float cosR  = cosf(roll * DEG_TO_RAD);
+    float pOff  = pitch * ADI_PS;   // horizon offset from centre (px, + = horizon down)
 
-    // Clip all drawing to sphere bounding box (hardware clip)
+    // Clip to sphere bounding box — all fill stays inside
     tft.setActiveWindow(ADI_WIN_XL, ADI_WIN_XR, ADI_WIN_YT, ADI_WIN_YB);
 
-    // Pitch offset: positive pitch moves horizon DOWN (sky expands upward)
-    int16_t pOff = (int16_t)(pitch * ADI_PS);
+    // Horizon midpoint in screen coords
+    int16_t hmx = ADI_CX + (int16_t)( sinR * pOff);
+    int16_t hmy = ADI_CY + (int16_t)(-cosR * pOff);
 
-    // Roll transform is approximated by rotating the horizon line and
-    // shearing the sky/ground fill. For the RA8875 (no rotation hardware)
-    // we draw rolled fills using a scanline approach: for each screen row
-    // within the sphere, compute the rolled horizon crossover and fill
-    // sky vs ground accordingly.
-    //
-    // Scanline fill — correct for any roll angle
-    float sinR = sinf(roll * DEG_TO_RAD);
-    float cosR = cosf(roll * DEG_TO_RAD);
+    // Horizon half-chord at the bounding box (clamped to ADI_R)
+    float hw_f = sqrtf(fmaxf(0.0f, (float)(ADI_R * ADI_R) - pOff * pOff));
+    int16_t hw = (int16_t)fminf(hw_f, (float)ADI_R);
 
-    for (int16_t dy = -(int16_t)ADI_R; dy <= (int16_t)ADI_R; dy++) {
-        int16_t screenY = ADI_CY + dy;
-        // Half-width of sphere at this row (integer, pre-clipped by active window)
-        int16_t hw = (int16_t)sqrtf((float)(ADI_R * ADI_R - dy * dy));
-        if (hw <= 0) continue;
-        int16_t x0 = ADI_CX - hw;
-        int16_t x1 = ADI_CX + hw;
+    // Horizon endpoints
+    int16_t hx0 = hmx - (int16_t)(cosR * hw);
+    int16_t hy0 = hmy - (int16_t)(sinR * hw);
+    int16_t hx1 = hmx + (int16_t)(cosR * hw);
+    int16_t hy1 = hmy + (int16_t)(sinR * hw);
 
-        // Horizon Y for this screen row in roll-corrected space:
-        // Horizon in sphere coords (pre-roll): y = pOff
-        // After rolling, the horizon is a tilted line through (0, pOff)
-        // at angle `roll`. For screen row dy, the horizon x-crossover is:
-        // (dy - pOff) = -sinR/cosR * (x - ADI_CX)  →  horizon_x = ADI_CX - (dy - pOff) * cosR/sinR
-        // Simpler: for each pixel (dx, dy) in sphere coords,
-        // sky if: dx * sinR + dy * cosR < pOff  (dot with roll-up vector < pOff)
-        // We split the row at the horizon crossover x.
+    // Bounding box corners
+    int16_t bTLx = ADI_WIN_XL, bTLy = ADI_WIN_YT;
+    int16_t bTRx = ADI_WIN_XR, bTRy = ADI_WIN_YT;
+    int16_t bBLx = ADI_WIN_XL, bBLy = ADI_WIN_YB;
+    int16_t bBRx = ADI_WIN_XR, bBRy = ADI_WIN_YB;
 
-        // Horizon crossover dx in sphere coords: dx = (pOff - dy * cosR) / sinR
-        int16_t splitX;
-        bool horizInRow = false;
-        if (fabsf(sinR) > 0.01f) {
-            float splitDx = (pOff - dy * cosR) / sinR;
-            splitX = ADI_CX + (int16_t)splitDx;
-            horizInRow = (splitX > x0 && splitX < x1);
+    // Ground-side test: dot of (corner - horizMid) with sky-normal (-sinR, cosR) < 0
+    // Simplifies to: (cx-hmx)*sinR - (cy-hmy)*cosR > 0
+    auto isGround = [&](int16_t cx, int16_t cy) -> bool {
+        return ((float)(cx - hmx) * sinR - (float)(cy - hmy) * cosR) > 0.0f;
+    };
+
+    bool gTL = isGround(bTLx, bTLy);
+    bool gTR = isGround(bTRx, bTRy);
+    bool gBL = isGround(bBLx, bBLy);
+    bool gBR = isGround(bBRx, bBRy);
+    int  gc  = (int)gTL + (int)gTR + (int)gBL + (int)gBR;
+
+    // Step 1: fill entire bbox with sky
+    tft.fillRect(ADI_WIN_XL, ADI_WIN_YT, ADI_R * 2, ADI_R * 2, TFT_ROYAL);
+
+    // Step 2: fill ground area with triangles
+    if (gc == 4) {
+        tft.fillRect(ADI_WIN_XL, ADI_WIN_YT, ADI_R * 2, ADI_R * 2, TFT_UPS_BROWN);
+    } else if (gc == 3) {
+        // One sky corner — paint all ground then cut out sky triangle
+        tft.fillRect(ADI_WIN_XL, ADI_WIN_YT, ADI_R * 2, ADI_R * 2, TFT_UPS_BROWN);
+        int16_t scx = !gTL ? bTLx : (!gTR ? bTRx : (!gBL ? bBLx : bBRx));
+        int16_t scy = !gTL ? bTLy : (!gTR ? bTRy : (!gBL ? bBLy : bBRy));
+        tft.fillTriangle(scx, scy, hx0, hy0, hx1, hy1, TFT_ROYAL);
+    } else if (gc == 1) {
+        // One ground corner — single ground triangle
+        int16_t gcx = gTL ? bTLx : (gTR ? bTRx : (gBL ? bBLx : bBRx));
+        int16_t gcy = gTL ? bTLy : (gTR ? bTRy : (gBL ? bBLy : bBRy));
+        tft.fillTriangle(gcx, gcy, hx0, hy0, hx1, hy1, TFT_UPS_BROWN);
+    } else if (gc == 2) {
+        // Two ground corners — fill as two triangles
+        int16_t g1x = 0, g1y = 0, g2x = 0, g2y = 0;
+        bool first = true;
+        struct Corner { int16_t x, y; bool g; };
+        Corner corners[4] = {
+            {bTLx,bTLy,gTL},{bTRx,bTRy,gTR},{bBLx,bBLy,gBL},{bBRx,bBRy,gBR}
+        };
+        for (auto &c : corners) {
+            if (c.g) {
+                if (first) { g1x=c.x; g1y=c.y; first=false; }
+                else        { g2x=c.x; g2y=c.y; }
+            }
         }
-
-        if (!horizInRow) {
-            // Entire row is one colour: check centre pixel
-            // Sky if: 0 * sinR + dy * cosR < pOff
-            bool isSky = ((dy * cosR) < pOff);
-            tft.drawLine(x0, screenY, x1, screenY, isSky ? TFT_ROYAL : TFT_UPS_BROWN);
-        } else {
-            // Row crosses the horizon
-            bool leftIsSky = (((x0 - ADI_CX) * sinR + dy * cosR) < pOff);
-            uint16_t leftCol  = leftIsSky ? TFT_ROYAL    : TFT_UPS_BROWN;
-            uint16_t rightCol = leftIsSky ? TFT_UPS_BROWN : TFT_ROYAL;
-            tft.drawLine(x0,      screenY, splitX - 1, screenY, leftCol);
-            tft.drawLine(splitX,  screenY, x1,         screenY, rightCol);
-        }
+        tft.fillTriangle(g1x, g1y, hx0, hy0, hx1, hy1, TFT_UPS_BROWN);
+        tft.fillTriangle(g1x, g1y, g2x, g2y, hx1, hy1, TFT_UPS_BROWN);
     }
+    // gc == 0: all sky, already filled
 
-    // Horizon line (white, 2px thick, rotated)
-    {
-        int16_t hw = (int16_t)sqrtf((float)(ADI_R * ADI_R - pOff * pOff));
-        hw = min(hw, (int16_t)ADI_R);
-        // Endpoints of the horizon line in sphere coords, rotated by roll
-        int16_t hx0 = ADI_CX + (int16_t)(-hw * cosR + pOff * sinR);
-        int16_t hy0 = ADI_CY + (int16_t)(-hw * sinR - pOff * cosR) + pOff;
-        int16_t hx1 = ADI_CX + (int16_t)( hw * cosR + pOff * sinR);
-        int16_t hy1 = ADI_CY + (int16_t)( hw * sinR - pOff * cosR) + pOff;
-        // Recompute without the pOff doubling — standard roll formula:
-        // horizon passes through (0, -pOff) in unrolled sphere coords
-        // In screen coords: each end at ±hw along the horizon direction
-        // horizon direction (in screen): (cosR, sinR)
-        // horizon offset (in screen): (sinR * pOff, -cosR * pOff)
-        int16_t ox = (int16_t)(sinR * pOff);
-        int16_t oy = (int16_t)(-cosR * pOff);
-        hx0 = ADI_CX - (int16_t)(hw * cosR) + ox;
-        hy0 = ADI_CY - (int16_t)(hw * sinR) + oy;
-        hx1 = ADI_CX + (int16_t)(hw * cosR) + ox;
-        hy1 = ADI_CY + (int16_t)(hw * sinR) + oy;
-        tft.drawLine(hx0, hy0, hx1, hy1, TFT_WHITE);
-        // Second pixel offset perpendicular to horizon for 2px thickness
-        int16_t px = (int16_t)(-sinR);
-        int16_t py = (int16_t)( cosR);
-        tft.drawLine(hx0 + px, hy0 + py, hx1 + px, hy1 + py, TFT_WHITE);
-    }
+    // Step 3: horizon line (white, 2px)
+    tft.drawLine(hx0, hy0, hx1, hy1, TFT_WHITE);
+    tft.drawLine(hx0 - (int16_t)sinR, hy0 + (int16_t)cosR,
+                 hx1 - (int16_t)sinR, hy1 + (int16_t)cosR, TFT_WHITE);
 
-    // Pitch ladder
-    _attDrawZoneB(tft, pitch);  // reuses Zone B for the ladder marks (already clipped)
+    // Step 4: pitch ladder
+    _attDrawZoneB(tft, pitch, sinR, cosR, hmx, hmy);
 
-    tft.setActiveWindow();  // restore full screen
+    tft.setActiveWindow();
 }
 
 
 /***************************************************************************************
-   ZONE B: Horizon band repaint (pitch-only change, roll unchanged)
-   Repaints a ±ADI_HORIZON_BAND_H px strip around the current horizon,
-   plus the pitch ladder marks that fall within it.
-   For a pure pitch change (no roll change), this is much cheaper than Zone A.
-   Called on pitch change > ATT_PITCH_THRESH when roll has not changed.
-   Also called from Zone A to draw the pitch ladder after the sphere fill.
+   ZONE B: Pitch ladder (draws over current background — no fill)
+   Called from Zone A after background is laid down.
+   Pre-computed sinR/cosR and horizon midpoint passed in to avoid redundant trig.
 ****************************************************************************************/
-// Half-height of the band repainted for a pure pitch update.
-// Must be large enough to cover the maximum pitch change between frames.
-// At 125Hz simpit rate, 10°/s pitch rate = 0.08°/frame = 0.17px — 40px is very safe.
-static const uint16_t ADI_BAND_H = 40;
-
-static void _attDrawZoneB(RA8875 &tft, float pitch) {
-    // Pitch ladder marks — drawn over whatever background is already there.
-    // The background was just laid down by Zone A's scanline fill (or was already
-    // correct for a pure pitch update after a narrow band repaint).
-    //
-    // Active window is already set to sphere by Zone A caller, or Zone B is always
-    // invoked after a zone redraw that refreshes the background. Ladder is drawn
-    // unconditionally — it is cheap (10 short lines) and idempotent on a fresh background.
-
-    float  roll  = state.roll;
-    float  sinR  = sinf(roll * DEG_TO_RAD);
-    float  cosR  = cosf(roll * DEG_TO_RAD);
-    int16_t pOff = (int16_t)(pitch * ADI_PS);
-
-    // Horizon offset in screen from centre
-    int16_t hox = (int16_t)(sinR * pOff);
-    int16_t hoy = (int16_t)(-cosR * pOff);
-
-    // Draw pitch ladder marks every 10°, ±80°
+static void _attDrawZoneB(RA8875 &tft, float pitch,
+                           float sinR, float cosR,
+                           int16_t hmx, int16_t hmy) {
     for (int16_t deg = -80; deg <= 80; deg += 10) {
-        if (deg == 0) continue;  // horizon line drawn separately
-        // Mark is offset from horizon by (deg - pitch) in pitch direction
-        // In sphere coords: perpendicular to horizon direction = (-sinR, cosR)
-        float   markOff = (deg - pitch) * ADI_PS;
-        int16_t mx  = ADI_CX + hox + (int16_t)(-sinR * markOff);
-        int16_t my  = ADI_CY + hoy + (int16_t)( cosR * markOff);
+        if (deg == 0) continue;
 
-        // Skip if mark centre is outside the sphere
-        int16_t dx = mx - ADI_CX, dy2 = my - ADI_CY;
-        if ((int32_t)dx*dx + (int32_t)dy2*dy2 > (int32_t)ADI_R*ADI_R) continue;
+        // Pixel distance of this mark from the horizon midpoint along the pitch axis
+        // Positive deg = above horizon = moves opposite to +pOff direction = upward
+        float markPxOff = -(deg - pitch) * ADI_PS;
 
-        // Tick length: 30° and 60° marks longer
-        uint16_t tickLen = (abs(deg) % 30 == 0) ? 28 : (abs(deg) % 20 == 0) ? 22 : 14;
-        // Tick colour: white, slightly dimmer for minor marks
-        uint16_t col = (abs(deg) % 30 == 0) ? TFT_WHITE : TFT_LIGHT_GREY;
+        // Mark midpoint: perpendicular to horizon direction is (sinR, -cosR)
+        int16_t mx = hmx + (int16_t)(sinR * markPxOff);
+        int16_t my = hmy + (int16_t)(-cosR * markPxOff);
 
-        // Tick runs along the horizon direction (cosR, sinR)
-        int16_t tx0 = mx - (int16_t)(cosR * tickLen / 2);
-        int16_t ty0 = my - (int16_t)(sinR * tickLen / 2);
-        int16_t tx1 = mx + (int16_t)(cosR * tickLen / 2);
-        int16_t ty1 = my + (int16_t)(sinR * tickLen / 2);
+        // Skip if outside bounding box
+        if (mx < (int16_t)ADI_WIN_XL || mx > (int16_t)ADI_WIN_XR) continue;
+        if (my < (int16_t)ADI_WIN_YT || my > (int16_t)ADI_WIN_YB) continue;
+
+        float tickHalf = (abs(deg) % 30 == 0) ? 28.0f : (abs(deg) % 20 == 0) ? 20.0f : 12.0f;
+        uint16_t col   = (abs(deg) % 30 == 0) ? TFT_WHITE : TFT_LIGHT_GREY;
+
+        // Tick along horizon direction (cosR, sinR)
+        int16_t tx0 = mx - (int16_t)(cosR * tickHalf);
+        int16_t ty0 = my - (int16_t)(sinR * tickHalf);
+        int16_t tx1 = mx + (int16_t)(cosR * tickHalf);
+        int16_t ty1 = my + (int16_t)(sinR * tickHalf);
         tft.drawLine(tx0, ty0, tx1, ty1, col);
 
-        // Degree labels for ±30° and ±60°
         if (abs(deg) == 30 || abs(deg) == 60) {
-            // Place label to the right of the right end of the tick
-            // Using small Roboto_Black_16 for compactness
             char buf[4]; snprintf(buf, sizeof(buf), "%d", abs(deg));
             int16_t lx = tx1 + (int16_t)(cosR * 4);
-            int16_t ly = ty1 + (int16_t)(sinR * 4) - 8;
+            int16_t ly = ty1 + (int16_t)(sinR * 4) - 7;
             tft.setFont(&Roboto_Black_16);
             tft.setTextColor(col, TFT_BLACK);
             tft.setCursor(lx, ly);
@@ -409,11 +377,6 @@ static void _attDrawZoneB(RA8875 &tft, float pitch) {
 }
 
 
-/***************************************************************************************
-   ZONE C: Compass ring repaint
-   Redraws the heading ring annulus (R=130..160) with tick marks and N/E/S/W labels.
-   Called on heading change > ATT_HDG_THRESH.
-****************************************************************************************/
 static void _attDrawZoneC(RA8875 &tft, float hdg) {
     tft.setActiveWindow(ADI_WIN_XL, ADI_WIN_XR, ADI_WIN_YT, ADI_WIN_YB);
 
@@ -716,15 +679,45 @@ static void _attDrawMarker_TGT(RA8875 &tft, int16_t mx, int16_t my, bool clamped
    Draw order: TGT (back), MNV, RG, PG (front, always on top).
 ****************************************************************************************/
 static void _attUpdateMarkers(RA8875 &tft, float velHdg, float velPit) {
-    // Compute new positions for all markers
     int16_t nx, ny;
     bool    clamped, visible;
 
-    // Retrograde: exactly opposite prograde
     float rgHdg = fmodf(velHdg + 180.0f, 360.0f);
     float rgPit = -velPit;
 
-    // Note: pointer (not reference) for ms so the array is copy-constructible in C++11.
+    // Pre-compute horizon geometry for background colour sampling during erase.
+    float roll  = state.roll;
+    float pitch = state.pitch;
+    float sinR  = sinf(roll * DEG_TO_RAD);
+    float cosR  = cosf(roll * DEG_TO_RAD);
+    float pOff  = pitch * ADI_PS;
+    int16_t hmx = ADI_CX + (int16_t)( sinR * pOff);
+    int16_t hmy = ADI_CY + (int16_t)(-cosR * pOff);
+
+    // Returns sky or ground colour for a point (px,py) relative to the horizon.
+    auto bgColor = [&](int16_t px, int16_t py) -> uint16_t {
+        bool ground = ((float)(px - hmx) * sinR - (float)(py - hmy) * cosR) > 0.0f;
+        return ground ? TFT_UPS_BROWN : TFT_ROYAL;
+    };
+
+    // Erase half-size: ADI_MRK_R (10) + arm length (8) + 2px margin = 20
+    static const uint8_t EH = 20;
+
+    // Erase a marker by repainting its bounding box with the background colour.
+    // For the rare case where the box straddles the horizon, check the opposite
+    // corner and repaint the mismatched quadrant.
+    auto eraseAt = [&](int16_t px, int16_t py) {
+        tft.setActiveWindow(ADI_WIN_XL, ADI_WIN_XR, ADI_WIN_YT, ADI_WIN_YB);
+        uint16_t col = bgColor(px, py);
+        tft.fillRect(px - EH, py - EH, EH*2+1, EH*2+1, col);
+        // Horizon-straddle repair: check diagonally opposite corner
+        uint16_t opp = bgColor(px + EH, py + EH);
+        if (opp != col) tft.fillRect(px, py, EH+1, EH+1, opp);
+        opp = bgColor(px - EH, py - EH);
+        if (opp != col) tft.fillRect(px - EH, py - EH, EH+1, EH+1, opp);
+        tft.setActiveWindow();
+    };
+
     struct MarkerDef {
         float        hdg, pit;
         bool         enabled;
@@ -737,31 +730,16 @@ static void _attUpdateMarkers(RA8875 &tft, float velHdg, float velPit) {
         { velHdg,            velPit,          true,                        &_msPG,  _attDrawMarker_PG  },
     };
 
-    // First pass: detect dirtiness
+    // Pass 1: erase all markers at their previous positions.
+    // Erase all before drawing any so a moving foreground marker doesn't erase
+    // a freshly drawn background marker.
     for (auto &m : markers) {
-        if (!m.enabled) {
-            if (m.ms->prevVisible) _attMarkerDirty = true;
-        } else {
-            visible = _attProjectMarker(m.hdg, m.pit, nx, ny, clamped);
-            if (visible != m.ms->prevVisible) {
-                _attMarkerDirty = true;
-            } else if (visible) {
-                int16_t ddx = nx - m.ms->prevX, ddy = ny - m.ms->prevY;
-                if ((int32_t)ddx*ddx + (int32_t)ddy*ddy >
-                    (int32_t)ATT_MARKER_MOVE_PX * ATT_MARKER_MOVE_PX) {
-                    _attMarkerDirty = true;
-                }
-            }
+        if (m.ms->prevVisible) {
+            eraseAt(ADI_CX + m.ms->prevX, ADI_CY + m.ms->prevY);
         }
     }
 
-    // If dirty, the caller has already run a zone redraw — just draw all markers.
-    // If not dirty, draw all markers (they haven't moved, drawing is idempotent on
-    // a stable background). This ensures markers are always visible.
-    // Note: when _attMarkerDirty was handled by the caller running Zone A/B,
-    // the sphere background is fresh. We draw on top now.
-
-    // Draw back-to-front: TGT, MNV, RG, PG
+    // Pass 2: draw all markers at new positions (back-to-front: TGT, MNV, RG, PG)
     for (auto &m : markers) {
         if (!m.enabled) {
             m.ms->prevVisible = false;
@@ -779,12 +757,6 @@ static void _attUpdateMarkers(RA8875 &tft, float velHdg, float velPit) {
 }
 
 
-/***************************************************************************************
-   PITCH ERROR BAR  (vertical strip, left of sphere)
-   x=0..31, y=111..431, centre=(16, 271)
-   Convention: +pErr (nose above vel) → bar fills DOWNWARD (toward vel vector below)
-   Scale: 8 px/deg, ±20° full deflection, ticks at ±5° and ±15°.
-****************************************************************************************/
 static void _attDrawPitchBar(RA8875 &tft, float pErr) {
     // Clear the entire bar strip
     tft.fillRect(PB_X0, ADI_WIN_YT, PB_X1 - PB_X0 + 1, ADI_WIN_YB - ADI_WIN_YT + 1, TFT_BLACK);
@@ -1123,65 +1095,48 @@ static void drawScreen_ATT(RA8875 &tft) {
     float hErr    = velValid ? _attWrapErr(hdg - velHdg) : 0.0f;
     float pErr    = velValid ? (pitch - velPit)           : 0.0f;
 
-    // ── Zone A+D: full sphere + bank scale — roll change ──
+    // ── Zone thresholds ──
+    // Zone A+D fires on roll change — full background + bank scale repaint.
+    // Zone B fires on pitch change only — full background repaint (Zone A is now
+    // fast enough that a separate band-only path is not needed).
+    // Zone C fires on heading change — compass ring only.
+    // Markers self-erase using background colour sampling; no zone redraw is ever
+    // forced because of marker movement.
     bool zoneAD = (fabsf(roll  - _attPrevRoll)  > ATT_ROLL_THRESH);
-    // ── Zone B: horizon band — pitch change (when not doing full redraw) ──
     bool zoneB  = !zoneAD && (fabsf(pitch - _attPrevPitch) > ATT_PITCH_THRESH);
-    // ── Zone C: compass ring — heading change ──
     bool zoneC  = (fabsf(_attWrapErr(hdg - _attPrevHdg)) > ATT_HDG_THRESH);
+    bool anyZone = zoneAD || zoneB || zoneC;
 
-    // If marker dirty flag is set AND no zone redraw is scheduled, at minimum
-    // run Zone B (horizon band) to refresh the sphere interior so we can safely
-    // redraw markers over a clean background. Zone A would be more complete but
-    // Zone B is cheaper and covers most of the sphere interior where markers live.
-    if (_attMarkerDirty && !zoneAD && !zoneB) {
-        zoneB = true;  // force a horizon band refresh as background for marker redraw
-    }
-
-    // Execute zone redraws
+    // ── Background zone redraws ──
     if (zoneAD || zoneB) {
-        // For Zone A, we need the sphere interior fully redrawn
-        if (zoneAD) {
-            _attDrawZoneA(tft);  // includes pitch ladder via Zone B call
-        } else {
-            // Zone B only: repaint horizon band then pitch ladder
-            // For a pure pitch change we repaint a band around the new horizon
-            // by doing a partial Zone A (just the rows near the horizon).
-            // In practice, calling the full Zone A scanline loop but limited
-            // to a ±ADI_BAND_H band around the horizon is the right approach.
-            // However Zone A already clips to the sphere active window, so running
-            // it fully is safe — just more expensive. For now, run full Zone A when
-            // only pitch changed to guarantee correct background for marker redraw.
-            // TODO: implement true Zone B band repaint for pitch-only performance.
-            _attDrawZoneA(tft);
-        }
+        _attDrawZoneA(tft);   // fills sky/ground, horizon line, pitch ladder
     }
-
     if (zoneC) {
         _attDrawZoneC(tft, hdg);
         _attPrevHdg = hdg;
     }
-
     if (zoneAD) {
         _attDrawZoneD(tft, roll);
         _attPrevRoll  = roll;
-        _attPrevPitch = pitch;  // Zone A covers pitch too
+        _attPrevPitch = pitch;
     } else if (zoneB) {
         _attPrevPitch = pitch;
     }
 
-    // Bezel always redrawn after any zone update (cosmetic seal over edges)
-    if (zoneAD || zoneB || zoneC) {
+    // Bezel redrawn after any background update (cosmetic seal)
+    if (anyZone) {
         _attDrawBezel(tft);
     }
 
-    // ── Markers: update (dirty detection + redraw) ──
-    // _attMarkerDirty may have been set by first-pass detection above.
-    // The zone redraws above have already refreshed the background.
-    // Now draw aircraft symbol (always needed over any fresh background) then markers.
-    if (zoneAD || zoneB || zoneC || _attMarkerDirty) {
+    // ── Aircraft symbol: redraw after any background zone repaint ──
+    // Markers self-erase, so aircraft symbol only needs redrawing when the
+    // background was repainted underneath it.
+    if (anyZone) {
         _attDrawAircraftSymbol(tft);
     }
+
+    // ── Markers: erase old position + draw new position every loop ──
+    // Self-erasing via horizon-aware fillRect — no zone redraw dependency.
     _attUpdateMarkers(tft, velHdg, velPit);
 
     // ── Error bars: redraw on threshold change ──
@@ -1197,8 +1152,6 @@ static void drawScreen_ATT(RA8875 &tft) {
     // ── Right column values ──
     _attDrawRC_Values(tft, velHdg, velPit, hErr, pErr, orbMode, velValid);
 }
-
-
 /***************************************************************************************
    PUBLIC INTERFACE
    Called from AAA_Screens.ino dispatch (drawStaticScreen / updateScreen).
