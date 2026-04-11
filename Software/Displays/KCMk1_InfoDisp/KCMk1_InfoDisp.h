@@ -67,8 +67,9 @@ static const uint8_t SKETCH_VERSION_PATCH = 3;
 /***************************************************************************************
    OPERATING MODE FLAGS
 ****************************************************************************************/
-extern bool  debugMode;
-extern bool  demoMode;
+extern bool       debugMode;
+extern bool       demoMode;
+extern const bool STANDALONE_TEST;  // true = skip I2C master handshake (no master connected)
 extern const float STALL_SPEED_MS;
 extern const float REENTRY_SAS_AERO_STABLE_MACH;
 extern const float LNDG_DROGUE_SAFE_MS;
