@@ -160,7 +160,10 @@ static void _sendIdentityPacket() {
     buf[0] = EVA_MODULE_TYPE_ID;
     buf[1] = EVA_FIRMWARE_MAJOR;
     buf[2] = EVA_FIRMWARE_MINOR;
-    buf[3] = EVA_CAP_ENCODERS;
+    // Report 0x00 capability flags while encoders are not yet implemented.
+    // EVA_CAP_ENCODERS (bit 2) must be restored here once encoder ISRs
+    // are active and bytes 2-3 of the data packet carry live delta data.
+    buf[3] = 0x00;
     Wire.write(buf, EVA_IDENTITY_SIZE);
 }
 

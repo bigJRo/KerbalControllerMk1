@@ -136,10 +136,11 @@ void loop() {
     //   - INT pin sync
     k7scUpdate();
 
-    // Handle preset button presses — jump display to preset value
-    // buttonsGetEvents() returns a bitmask of buttons pressed
-    // this cycle. We read it here to catch the press edge.
-    uint8_t events = buttonsGetEvents();
+    // Handle preset button presses — jump display to preset value.
+    // k7scGetPendingEvents() returns the event snapshot captured when
+    // INT was last asserted. Use this instead of buttonsGetEvents()
+    // directly to avoid racing against the internal I2C snapshot capture.
+    uint8_t events = k7scGetPendingEvents();
 
     if (events & (1 << K7SC_BIT_BTN01)) {
         encoderSetValue(PRESET_5MIN);

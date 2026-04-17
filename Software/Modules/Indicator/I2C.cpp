@@ -1,12 +1,17 @@
 /**
  * @file        I2C.cpp
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-04-09
  * @project     Kerbal Controller Mk1 — Indicator Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       I2C target handler implementation for the Indicator Module.
+ *
+ *              CMD_SET_LED_STATE payload is 9 bytes (18 nibbles, 1 per
+ *              pixel) — a module-local override of the standard 8-byte
+ *              payload. The controller must use 9-byte payloads for
+ *              this module.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -23,7 +28,7 @@
 
 static bool _sleeping = false;
 
-static const uint8_t _CMD_BUF_MAX = 9;  // cmd + 8 payload bytes
+static const uint8_t _CMD_BUF_MAX = 10;  // cmd + 9 payload bytes (18-pixel LED state)
 static uint8_t _cmdBuf[_CMD_BUF_MAX];
 static uint8_t _cmdLen = 0;
 
@@ -68,8 +73,9 @@ static void _dispatch() {
             break;
 
         case CMD_SET_LED_STATE:
-            // Primary runtime command — 8-byte nibble-packed payload
-            if (_cmdLen >= 9 && !_sleeping) {
+            // 9-byte nibble-packed payload (18 pixels × 4 bits).
+            // Module-local override — standard KMC payload is 8 bytes (16 pixels).
+            if (_cmdLen >= 10 && !_sleeping) {
                 ledsSetFromPayload(&_cmdBuf[1]);
             }
             break;

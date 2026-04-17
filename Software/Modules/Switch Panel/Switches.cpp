@@ -45,8 +45,8 @@ static bool     _intPending   = false;
 //  Debounce state
 // ============================================================
 
-static uint8_t  _debounceCount[SWP_SWITCH_COUNT] = {0};
-static uint16_t _debounceCandidate = 0;
+static uint8_t  _debounceCount[SWP_SWITCH_COUNT]     = {0};
+static uint16_t _debounceCandidate[SWP_SWITCH_COUNT] = {0};
 
 // ============================================================
 //  switchesBegin()
@@ -57,11 +57,12 @@ void switchesBegin() {
         pinMode(_swPins[i], INPUT);  // active high, hardware pull-downs
         _debounceCount[i] = 0;
     }
-    _liveState         = 0;
-    _latchedState      = 0;
-    _changeMask        = 0;
-    _intPending        = false;
-    _debounceCandidate = 0;
+    _liveState    = 0;
+    _latchedState = 0;
+    _changeMask   = 0;
+    _intPending   = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
 
 // ============================================================
@@ -75,23 +76,18 @@ bool switchesPoll() {
         if (digitalRead(_swPins[i])) raw |= (1u << i);
     }
 
-    // Reset debounce counters on candidate change
-    if (raw != _debounceCandidate) {
-        _debounceCandidate = raw;
-        memset(_debounceCount, 0, sizeof(_debounceCount));
-        return false;
-    }
-
-    // Per-switch debounce
+    // Per-switch debounce with independent candidate tracking.
     bool anyChanged = false;
     for (uint8_t i = 0; i < SWP_SWITCH_COUNT; i++) {
         bool rawBit  = (raw >> i) & 0x01;
         bool liveBit = (_liveState >> i) & 0x01;
 
-        if (rawBit != liveBit) {
+        if (rawBit != _debounceCandidate[i]) {
+            _debounceCandidate[i] = rawBit;
+            _debounceCount[i]     = 0;
+        } else if (rawBit != liveBit) {
             _debounceCount[i]++;
             if (_debounceCount[i] >= SWP_DEBOUNCE_COUNT) {
-                // Commit state change
                 if (rawBit)
                     _liveState |=  (1u << i);
                 else
@@ -160,6 +156,6 @@ void switchesClearAll() {
     _latchedState = 0;
     _changeMask   = 0;
     _intPending   = false;
-    memset(_debounceCount, 0, sizeof(_debounceCount));
-    _debounceCandidate = 0;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }

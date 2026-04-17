@@ -78,9 +78,12 @@ void loop() {
         wiperPoll();
     }
 
-    // Run motor position controller every loop — needs tight timing
-    motorUpdate();
-
-    // Sync INT with pending state
+    // Sync INT, process touch and button events, set motor targets.
+    // motorUpdate() is called separately below — i2cSyncINT() only
+    // sets targets; it does not drive the motor itself.
     i2cSyncINT();
+
+    // Run motor position controller once per loop.
+    // motorUpdate() is a fast no-op when not seeking a target.
+    motorUpdate(wiperGetRaw());
 }

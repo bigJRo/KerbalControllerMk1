@@ -35,8 +35,8 @@ static bool     _intPending     = false;
 //  Debounce state
 // ============================================================
 
-static uint8_t  _debounceCount[EVA_BUTTON_COUNT] = {0};
-static uint8_t  _debounceCandidate = 0;
+static uint8_t  _debounceCount[EVA_BUTTON_COUNT]     = {0};
+static uint8_t  _debounceCandidate[EVA_BUTTON_COUNT] = {0};
 
 // ============================================================
 //  buttonsBegin()
@@ -47,11 +47,12 @@ void buttonsBegin() {
         pinMode(_btnPins[i], INPUT);  // active high, hardware pull-downs fitted
         _debounceCount[i] = 0;
     }
-    _liveState         = 0;
-    _latchedState      = 0;
-    _changeMask        = 0;
-    _intPending        = false;
-    _debounceCandidate = 0;
+    _liveState    = 0;
+    _latchedState = 0;
+    _changeMask   = 0;
+    _intPending   = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
 
 // ============================================================
@@ -67,23 +68,18 @@ bool buttonsPoll() {
         }
     }
 
-    // If raw reading changed from candidate, reset debounce
-    if (raw != _debounceCandidate) {
-        _debounceCandidate = raw;
-        memset(_debounceCount, 0, sizeof(_debounceCount));
-        return false;
-    }
-
-    // Increment per-button counters for transitioning buttons
+    // Per-button debounce with independent candidate tracking.
     bool anyChanged = false;
     for (uint8_t i = 0; i < EVA_BUTTON_COUNT; i++) {
         bool rawBit  = (raw >> i) & 0x01;
         bool liveBit = (_liveState >> i) & 0x01;
 
-        if (rawBit != liveBit) {
+        if (rawBit != _debounceCandidate[i]) {
+            _debounceCandidate[i] = rawBit;
+            _debounceCount[i]     = 0;
+        } else if (rawBit != liveBit) {
             _debounceCount[i]++;
             if (_debounceCount[i] >= EVA_DEBOUNCE_COUNT) {
-                // Commit state change
                 if (rawBit)
                     _liveState |=  (1 << i);
                 else
@@ -153,5 +149,6 @@ void buttonsClearAll() {
     _latchedState = 0;
     _changeMask   = 0;
     _intPending   = false;
-    memset(_debounceCount, 0, sizeof(_debounceCount));
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
