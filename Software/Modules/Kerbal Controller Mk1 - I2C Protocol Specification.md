@@ -392,7 +392,9 @@ Byte 4-5: AXIS2         — signed int16, big-endian, -32768 to +32767
 Byte 6-7: AXIS3         — signed int16, big-endian, -32768 to +32767
 ```
 
-Axis values are centered at zero. Each module performs startup calibration to establish the physical center reference for each axis. A split map is applied to ensure a symmetric INT16 output range regardless of the mechanical center position of the joystick.
+Axis values are centered at zero. Each module performs startup calibration to establish the physical center reference for each axis. A split map is applied to ensure a symmetric INT16 output range regardless of the mechanical center position of the joystick. Do not touch either joystick during the first ~80ms after power-on.
+
+Axis polarity and semantic mapping (which physical direction produces positive vs negative values, and how each axis maps to a KSP function) is the responsibility of the main controller firmware. See the Module UI Reference for per-module axis mapping tables.
 
 INT assertion follows a hybrid filtering strategy:
 - Button changes assert INT immediately with no throttling
@@ -405,6 +407,8 @@ Default thresholds (all in raw ADC counts):
 | Deadzone | ±32 counts | Suppresses output within ~3% of center |
 | Change threshold | ±8 counts | Suppresses noise on a held position |
 | Quiet period | 10 ms | Caps axis-driven INT at 100 reads/second maximum |
+
+All thresholds are overridable per-sketch via `#define` before the library include. See `KerbalJoystickCore/src/KJC_Config.h`.
 
 **LED command:** CMD_SET_LED_STATE with standard 8-byte payload. Only nibbles for BTN01 (index 0) and BTN02 (index 1) are active. BTN_JOY has no LED hardware. Remaining nibbles are accepted and ignored.
 
@@ -603,3 +607,4 @@ Other pixels may also use WARNING (`0x3`) or ALERT (`0x4`) states as appropriate
 | 1.8 | 2026-04-08 | Switch Panel (0x0F) added to registry; Section 9.6 added; duplicate revision history block removed |
 | 1.9 | 2026-04-08 | Indicator Module (0x10) added to registry; Section 9.7 added; pure output module pattern documented |
 | 2.0 | 2026-04-09 | Indicator Module expanded to 18 pixels; CMD_SET_LED_STATE payload for Indicator extended from 8 to 9 bytes; Indicator capability flags corrected to 0x01 (KMC_CAP_EXTENDED_STATES); Indicator pixel map revised (USB ACTIVE removed; SCE AUX, AUTO PILOT, ABORT added; all pixel colors revised for cross-module consistency); ABORT extended state sequence documented; Section 4.2 updated to note Indicator payload exception; Section 5 command table updated; Section 6.3 Indicator example added; Section 7 bus load updated; Section 8 registry corrected; Section 9.3 CMD_SET_VALUE command byte corrected from 0x09 to 0x0D; Section 9.7 fully rewritten |
+| 2.1 | 2026-04-09 | Section 9.2 clarified: axis semantic mapping removed (belongs in UI Reference, not protocol spec); added note that axis polarity and KSP function mapping is the main controller's responsibility; startup calibration note added |

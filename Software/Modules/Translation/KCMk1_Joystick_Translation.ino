@@ -42,6 +42,16 @@
  *                tinyNeoPixel Port: Port C
  */
 
+// ============================================================
+//  Axis invert overrides
+//
+//  AXIS2 (Y) is inverted on this module: joystick forward
+//  (stick pushed away from pilot) maps to Translate Up in KSP.
+//  Without inversion, forward = Translate Down.
+// ============================================================
+
+#define KJC_AXIS2_INVERT  -1
+
 #include <Wire.h>
 #include <KerbalJoystickCore.h>
 
