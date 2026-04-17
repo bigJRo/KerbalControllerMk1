@@ -166,8 +166,35 @@
 #endif
 
 // ============================================================
-//  Polling intervals
+//  Per-axis invert flags
+//
+//  Set to -1 to invert a physical axis, 1 for normal polarity.
+//  Applied as a sign flip after the split map, before the value
+//  is stored and transmitted. Inversion does not affect the
+//  deadzone or change threshold comparisons — those always
+//  operate on the raw ADC value relative to calibrated center.
+//
+//  Override in the sketch before #include <KerbalJoystickCore.h>:
+//    #define KJC_AXIS2_INVERT  -1   // invert Y axis
+//
+//  Default: all axes normal (1).
+//
+//  Translation module uses AXIS2 inverted — joystick forward
+//  (stick pushed away) maps to Translate Up in KSP. Without
+//  inversion, forward = Translate Down, which is unintuitive.
 // ============================================================
+
+#ifndef KJC_AXIS1_INVERT
+  #define KJC_AXIS1_INVERT      1
+#endif
+
+#ifndef KJC_AXIS2_INVERT
+  #define KJC_AXIS2_INVERT      1
+#endif
+
+#ifndef KJC_AXIS3_INVERT
+  #define KJC_AXIS3_INVERT      1
+#endif
 
 /**
  * @brief ADC and button poll interval in milliseconds.
