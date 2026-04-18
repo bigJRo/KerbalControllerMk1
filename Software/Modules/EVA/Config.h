@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     1.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-09
  * @project     Kerbal Controller Mk1 — EVA Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -36,7 +36,7 @@
 #define EVA_I2C_ADDRESS         0x26
 
 /** @brief Module type ID reported in identity response. */
-#define EVA_MODULE_TYPE_ID      0x07
+#define EVA_MODULE_TYPE_ID      KMC_TYPE_EVA_MODULE
 
 /** @brief Firmware version — major. */
 #define EVA_FIRMWARE_MAJOR      1
@@ -44,14 +44,29 @@
 /** @brief Firmware version — minor. */
 #define EVA_FIRMWARE_MINOR      0
 
-/** @brief Capability flags — encoders present (future use). */
-#define EVA_CAP_ENCODERS        (1 << 2)
+/**
+ * @brief Capability flag — encoder delta data present in packet (bit 2).
+ * @note  NOT currently reported in the identity response. Encoders are
+ *        present on the PCB (H1, H2) but not yet wired or implemented.
+ *        Restore this flag in I2C.cpp _sendIdentityPacket() once encoder
+ *        ISRs are active and bytes 2-3 of the data packet carry live data.
+ */
+#define EVA_CAP_ENCODERS        KMC_CAP_ENCODERS
 
 // ============================================================
-//  I2C command bytes
-//
-//  Mirrors the Kerbal Controller Mk1 I2C protocol command set.
-//  Defined independently here — no KBC library dependency.
+//  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
+// ============================================================
+
+#define CMD_GET_IDENTITY        KMC_CMD_GET_IDENTITY
+#define CMD_SET_LED_STATE       KMC_CMD_SET_LED_STATE
+#define CMD_SET_BRIGHTNESS      KMC_CMD_SET_BRIGHTNESS
+#define CMD_BULB_TEST           KMC_CMD_BULB_TEST
+#define CMD_SLEEP               KMC_CMD_SLEEP
+#define CMD_WAKE                KMC_CMD_WAKE
+#define CMD_RESET               KMC_CMD_RESET
+#define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
+#define CMD_ENABLE              KMC_CMD_ENABLE
+#define CMD_DISABLE             KMC_CMD_DISABLE
 // ============================================================
 
 #define CMD_GET_IDENTITY        0x01
@@ -79,7 +94,7 @@
 #define EVA_PACKET_SIZE         4
 
 /** @brief Identity response packet size (bytes). */
-#define EVA_IDENTITY_SIZE       4
+#define EVA_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 /** @brief LED state payload size (bytes, nibble-packed). */
 #define EVA_LED_PAYLOAD_SIZE    8
@@ -90,13 +105,17 @@
 //  Matches the Kerbal Controller Mk1 I2C protocol definition.
 // ============================================================
 
-#define LED_OFF                 0x0
-#define LED_ENABLED             0x1
-#define LED_ACTIVE              0x2
-#define LED_WARNING             0x3
-#define LED_ALERT               0x4
-#define LED_ARMED               0x5
-#define LED_PARTIAL_DEPLOY      0x6
+// ============================================================
+//  LED state nibble values — aliases for KMC_LED_*
+// ============================================================
+
+#define LED_OFF                 KMC_LED_OFF
+#define LED_ENABLED             KMC_LED_ENABLED
+#define LED_ACTIVE              KMC_LED_ACTIVE
+#define LED_WARNING             KMC_LED_WARNING
+#define LED_ALERT               KMC_LED_ALERT
+#define LED_ARMED               KMC_LED_ARMED
+#define LED_PARTIAL_DEPLOY      KMC_LED_PARTIAL_DEPLOY
 
 // ============================================================
 //  Button and LED counts
@@ -152,16 +171,18 @@
 //  KBC index -> PCB label -> ATtiny816 pin
 //    0  BUTTON01  PB3 (pin 11)
 //    1  BUTTON02  PB2 (pin 12)
-//    2  BUTTON03  PB5 (pin  9)
-//    3  BUTTON04  PB4 (pin 10)
+//    2  BUTTON03  PA7 (pin  8)  ← was incorrectly PIN_PB5
+//    3  BUTTON04  PB5 (pin  9)  ← was incorrectly PIN_PB4 (NC)
 //    4  BUTTON05  PA5 (pin  6)
 //    5  BUTTON06  PA6 (pin  7)
+//
+//  Note: PB4 (pin 10) is not connected on the KC-01-1852 PCB.
 // ============================================================
 
 #define EVA_BTN_PIN_0           PIN_PB3   // BUTTON01 — EVA Lights
 #define EVA_BTN_PIN_1           PIN_PB2   // BUTTON02 — Jetpack Enable
-#define EVA_BTN_PIN_2           PIN_PB5   // BUTTON03 — Board Craft
-#define EVA_BTN_PIN_3           PIN_PB4   // BUTTON04 — EVA Construction
+#define EVA_BTN_PIN_2           PIN_PA7   // BUTTON03 — Board Craft
+#define EVA_BTN_PIN_3           PIN_PB5   // BUTTON04 — EVA Construction
 #define EVA_BTN_PIN_4           PIN_PA5   // BUTTON05 — Jump / Let Go
 #define EVA_BTN_PIN_5           PIN_PA6   // BUTTON06 — Grab
 
@@ -190,90 +211,91 @@
 
 // ============================================================
 //  INT output pin
+//
+//  IMPORTANT: This module uses PIN_PA4 for INT, not PIN_PA1
+//  as on all KC-01-1822-based standard modules.
+//
+//  Reason: On the KC-01-1852 PCB, PA1 (pin 20) is routed to
+//  the ENC1_SW net on encoder header H1 (see EVA_ENC1_PIN_SW
+//  below). PA4 (pin 5) is therefore used for the INT output
+//  and is the pin connected to the INT net on the Panel
+//  Control Connector (P1).
+//
+//  The master controller firmware must wire this module's
+//  interrupt input to the PA4 net on the KC-01-1852, not
+//  the PA1 net used by all other modules.
+//
+//  Schematic reference: KC-01-1852 v1.0, sheet 1, U7 pin 5.
 // ============================================================
 
-/** @brief Interrupt output pin — active low. */
+/** @brief Interrupt output — PA4, active low.
+ *  @note  Uses PA4, not PA1. See comment block above. */
 #define EVA_INT_PIN             PIN_PA4
 
 // ============================================================
-//  RGBColor struct and color palette
+//  Color palette
+//
+//  RGBColor struct, system palette, scaleColor(), and nibble
+//  pack helpers are provided by KerbalModuleCommon.
 //
 //  EVA module uses a green family palette to distinguish it
-//  from cockpit modules. Colors are defined independently
-//  of KBC_Colors.h — no library dependency.
+//  from cockpit modules. The two EVA-specific colors (LIME and
+//  SEAFOAM) that are not in the system palette are defined here.
+//  All others reference KMC_* canonical names directly.
 // ============================================================
 
-struct RGBColor {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
+#include <KerbalModuleCommon.h>
 
 // --- Utility ---
-static const RGBColor EVA_OFF          = {   0,   0,   0 };
-static const RGBColor EVA_WHITE        = { 255, 255, 255 };
+static const RGBColor EVA_OFF    = KMC_OFF;
+static const RGBColor EVA_WHITE  = KMC_WHITE_COOL;
 
-// --- Green family — EVA palette ---
+// --- EVA-specific colors not in the system palette ---
 
-/** @brief Mint. Soft cool green. EVA Lights. */
-static const RGBColor EVA_MINT         = { 150, 255, 200 };
+/** @brief Lime. Bright yellow-green. Jetpack Enable.
+ *         Distinct from KMC_LIME — more saturated, no brown tone. */
+static const RGBColor EVA_LIME     = { 180, 255,   0 };
 
-/** @brief Lime. Bright yellow-green. Jetpack Enable. */
-static const RGBColor EVA_LIME         = { 180, 255,   0 };
-
-/** @brief Green. Standard go/positive. Board Craft. */
-static const RGBColor EVA_GREEN        = {  34, 197,  94 };
-
-/** @brief Chartreuse. Warm yellow-green. Jump / Let Go. */
-static const RGBColor EVA_CHARTREUSE   = { 163, 230,  53 };
-
-/** @brief Teal. Blue-green. EVA Construction. */
-static const RGBColor EVA_TEAL         = {  20, 184, 166 };
-
-/** @brief Seafoam. Mid warm green. Grab. */
-static const RGBColor EVA_SEAFOAM      = {  80, 200, 160 };
+/** @brief Seafoam. Mid warm green. Grab.
+ *         Not in system palette — EVA-specific. */
+static const RGBColor EVA_SEAFOAM  = {  80, 200, 160 };
 
 // ============================================================
 //  Per-button active colors
 //
 //  Indexed by button index (0-5).
-//  Controller sends LED_ACTIVE to illuminate in this color.
+//  EVA-specific colors use EVA_* names above.
+//  System palette colors use KMC_* names directly.
 // ============================================================
 
 static const RGBColor EVA_ACTIVE_COLORS[EVA_BUTTON_COUNT] = {
-    EVA_MINT,        // B0 — EVA Lights       (Col 1, Row 1)
-    EVA_LIME,        // B1 — Jetpack Enable   (Col 1, Row 2)
-    EVA_GREEN,       // B2 — Board Craft      (Col 2, Row 1)
-    EVA_TEAL,        // B3 — EVA Construction (Col 2, Row 2)
-    EVA_CHARTREUSE,  // B4 — Jump / Let Go    (Col 3, Row 1)
-    EVA_SEAFOAM,     // B5 — Grab             (Col 3, Row 2)
+    KMC_MINT,        // B0 — EVA Lights       (Col 1, Row 1)
+    EVA_LIME,        // B1 — Jetpack Enable   (Col 1, Row 2) — EVA-specific
+    KMC_GREEN,       // B2 — Board Craft      (Col 2, Row 1)
+    KMC_TEAL,        // B3 — EVA Construction (Col 2, Row 2)
+    KMC_CHARTREUSE,  // B4 — Jump / Let Go    (Col 3, Row 1)
+    EVA_SEAFOAM,     // B5 — Grab             (Col 3, Row 2) — EVA-specific
 };
 
 // ============================================================
-//  Color scaling helper
+//  evaScaleColor() — backward-compatible alias
 // ============================================================
 
+/** @brief Scale an RGBColor by brightness. Alias for scaleColor(). */
 inline RGBColor evaScaleColor(RGBColor c, uint8_t brightness) {
-    return {
-        (uint8_t)((uint16_t)c.r * brightness / 255),
-        (uint8_t)((uint16_t)c.g * brightness / 255),
-        (uint8_t)((uint16_t)c.b * brightness / 255)
-    };
+    return scaleColor(c, brightness);
 }
 
 // ============================================================
-//  Nibble pack/unpack helpers
+//  ledPackGet / ledPackSet — backward-compatible aliases
 // ============================================================
 
+/** @brief Get LED nibble from payload. Alias for kmcLedPackGet(). */
 inline uint8_t ledPackGet(const uint8_t* payload, uint8_t btn) {
-    return (btn % 2 == 0)
-        ? (payload[btn / 2] >> 4) & 0x0F
-        : (payload[btn / 2]) & 0x0F;
+    return kmcLedPackGet(payload, btn);
 }
 
+/** @brief Set LED nibble in payload. Alias for kmcLedPackSet(). */
 inline void ledPackSet(uint8_t* payload, uint8_t btn, uint8_t state) {
-    if (btn % 2 == 0)
-        payload[btn / 2] = (payload[btn / 2] & 0x0F) | ((state & 0x0F) << 4);
-    else
-        payload[btn / 2] = (payload[btn / 2] & 0xF0) | (state & 0x0F);
+    kmcLedPackSet(payload, btn, state);
 }

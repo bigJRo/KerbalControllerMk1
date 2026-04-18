@@ -115,44 +115,28 @@ void KBCLEDControl::clearAll() {
 // ============================================================
 
 bool KBCLEDControl::update() {
-    // Only service flash timing if any button needs it
-    if (!hasExtendedState()) return false;
-
     uint32_t now = millis();
     uint32_t elapsed = now - _flashLastToggle;
 
-    // Determine the interval for the current flash phase
+    // Single scan — determines whether flash timing is needed at all
+    // and which states are active in one pass. Replaces the previous
+    // hasExtendedState() pre-check which scanned the array twice.
+    bool hasWarning = false;
+    bool hasAlert   = false;
+    for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
+        if (_state[i] == KBC_LED_WARNING) hasWarning = true;
+        if (_state[i] == KBC_LED_ALERT)   hasAlert   = true;
+    }
+
+    if (!hasAlert && !hasWarning) return false;
+
+    // Select interval based on active states and current flash phase.
+    // Alert takes priority — its shorter interval is used when both present.
     uint32_t interval;
-    if (_flashOn) {
-        // Check both WARNING and ALERT on times — use the shorter
-        // interval if both are active so neither is starved
-        bool hasWarning = false;
-        bool hasAlert   = false;
-        for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
-            if (_state[i] == KBC_LED_WARNING) hasWarning = true;
-            if (_state[i] == KBC_LED_ALERT)   hasAlert   = true;
-        }
-        if (hasAlert) {
-            interval = KBC_ALERT_ON_MS;
-        } else if (hasWarning) {
-            interval = KBC_WARNING_ON_MS;
-        } else {
-            return false;
-        }
+    if (hasAlert) {
+        interval = _flashOn ? KBC_ALERT_ON_MS : KBC_ALERT_OFF_MS;
     } else {
-        bool hasWarning = false;
-        bool hasAlert   = false;
-        for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
-            if (_state[i] == KBC_LED_WARNING) hasWarning = true;
-            if (_state[i] == KBC_LED_ALERT)   hasAlert   = true;
-        }
-        if (hasAlert) {
-            interval = KBC_ALERT_OFF_MS;
-        } else if (hasWarning) {
-            interval = KBC_WARNING_OFF_MS;
-        } else {
-            return false;
-        }
+        interval = _flashOn ? KBC_WARNING_ON_MS : KBC_WARNING_OFF_MS;
     }
 
     if (elapsed >= interval) {

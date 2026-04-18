@@ -1,7 +1,7 @@
 /**
  * @file        KBC_Protocol.h
- * @version     1.0
- * @date        2026-04-07
+ * @version     1.1.0
+ * @date        2026-04-09
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -32,6 +32,7 @@
 #define KBC_PROTOCOL_H
 
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  I2C addressing
@@ -47,111 +48,36 @@
 #define KBC_I2C_MAX_DEVICES         15
 
 // ============================================================
-//  Command bytes (controller → target)
+//  Command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
 //
-//  All I2C write transactions begin with one of these command
-//  bytes as the first byte after the address. Payload bytes,
-//  if any, follow immediately.
+//  KMC_CMD_* are the canonical names. KBC_CMD_* retained for
+//  backward compatibility with existing library code.
+//  Note: KBC only exposes 0x01-0x08; full command set including
+//  0x09-0x0D is in KerbalModuleCommon.
 // ============================================================
 
-/** @brief Query module identity. No payload. Target responds with 4-byte identity packet. */
-#define KBC_CMD_GET_IDENTITY        0x01
-
-/**
- * @brief Set full LED state for all 16 buttons.
- *        Payload: 8 bytes, nibble-packed (2 buttons per byte, high nibble first).
- *        See KBC_LED_STATE_* constants for nibble values.
- */
-#define KBC_CMD_SET_LED_STATE       0x02
-
-/**
- * @brief Set ENABLED state backlight brightness.
- *        Payload: 1 byte (0-255). Applied via RGB scaling at render time.
- *        Does not affect ACTIVE or extended state brightness.
- */
-#define KBC_CMD_SET_BRIGHTNESS      0x03
-
-/**
- * @brief Trigger bulb test sequence.
- *        No payload. Behavior defined per module sketch.
- *        Intended to verify all LEDs are functional.
- */
-#define KBC_CMD_BULB_TEST           0x04
-
-/**
- * @brief Enter low power sleep mode.
- *        No payload. LEDs off, polling may reduce.
- *        Module remains responsive on I2C.
- */
-#define KBC_CMD_SLEEP               0x05
-
-/**
- * @brief Resume normal operation from sleep.
- *        No payload. Restores previous LED state and full polling rate.
- */
-#define KBC_CMD_WAKE                0x06
-
-/**
- * @brief Reset module to default state.
- *        No payload. All LEDs → OFF, latched button state cleared,
- *        INT line deasserted. Used for controller startup and recovery.
- */
-#define KBC_CMD_RESET               0x07
-
-/**
- * @brief Acknowledge and clear module fault flag.
- *        No payload. Call after handling a fault condition reported
- *        via capability flags in the identity response.
- */
-#define KBC_CMD_ACK_FAULT           0x08
+#define KBC_CMD_GET_IDENTITY        KMC_CMD_GET_IDENTITY
+#define KBC_CMD_SET_LED_STATE       KMC_CMD_SET_LED_STATE
+#define KBC_CMD_SET_BRIGHTNESS      KMC_CMD_SET_BRIGHTNESS
+#define KBC_CMD_BULB_TEST           KMC_CMD_BULB_TEST
+#define KBC_CMD_SLEEP               KMC_CMD_SLEEP
+#define KBC_CMD_WAKE                KMC_CMD_WAKE
+#define KBC_CMD_RESET               KMC_CMD_RESET
+#define KBC_CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
 
 // ============================================================
-//  LED state nibble values
-//
-//  Each button is assigned one nibble (4 bits) in the
-//  CMD_SET_LED_STATE payload. Two buttons per byte, high nibble first.
-//
-//  Core states (all modules):
-//    0x0  OFF             — unlit
-//    0x1  ENABLED         — dim white backlight (scaled by brightness setting)
-//    0x2  ACTIVE          — full brightness, module-defined color
-//
-//  Extended states (capability-flagged modules only):
-//    0x3  WARNING         — flashing amber, 500ms on / 500ms off
-//    0x4  ALERT           — flashing red,   150ms on / 150ms off
-//    0x5  ARMED           — full brightness static cyan
-//    0x6  PARTIAL_DEPLOY  — full brightness static amber
-//
-//  All LED animation and display behavior for extended states is
-//  handled entirely by the target module. The controller only
-//  transmits the state nibble value.
-//
-//  Modules that do not implement extended states treat values
-//  above 0x2 as OFF.
-//
-//  0x7-0xF are reserved for future use.
+//  LED state nibble values — aliases for KMC_LED_*
 // ============================================================
 
-/** @brief LED state: unlit. */
-#define KBC_LED_OFF                 0x0
-
-/** @brief LED state: dim white backlight. Brightness set via CMD_SET_BRIGHTNESS. */
-#define KBC_LED_ENABLED             0x1
-
-/** @brief LED state: full brightness, module-defined active color. */
-#define KBC_LED_ACTIVE              0x2
-
-/** @brief LED state: flashing amber. 500ms on / 500ms off. Extended modules only. */
-#define KBC_LED_WARNING             0x3
-
-/** @brief LED state: flashing red. 150ms on / 150ms off. Extended modules only. */
-#define KBC_LED_ALERT               0x4
-
-/** @brief LED state: full brightness static cyan. Extended modules only. */
-#define KBC_LED_ARMED               0x5
-
-/** @brief LED state: full brightness static amber. Extended modules only. */
-#define KBC_LED_PARTIAL_DEPLOY      0x6
+// LED state nibble values — aliases for KMC_LED_* from KerbalModuleCommon.
+// KMC_LED_* are the canonical names; KBC_LED_* retained for compatibility.
+#define KBC_LED_OFF             KMC_LED_OFF
+#define KBC_LED_ENABLED         KMC_LED_ENABLED
+#define KBC_LED_ACTIVE          KMC_LED_ACTIVE
+#define KBC_LED_WARNING         KMC_LED_WARNING
+#define KBC_LED_ALERT           KMC_LED_ALERT
+#define KBC_LED_ARMED           KMC_LED_ARMED
+#define KBC_LED_PARTIAL_DEPLOY  KMC_LED_PARTIAL_DEPLOY
 
 // ============================================================
 //  Packet sizes
@@ -165,10 +91,10 @@
  *        Does not include the command byte itself.
  *        16 buttons × 4 bits = 64 bits = 8 bytes.
  */
-#define KBC_LED_PAYLOAD_SIZE        8
+#define KBC_LED_PAYLOAD_SIZE        KMC_LED_PAYLOAD_SIZE
 
-/** @brief Identity response packet size in bytes (target → controller). */
-#define KBC_IDENTITY_PACKET_SIZE    4
+/** @brief Identity response packet size in bytes. Alias for KMC_IDENTITY_SIZE. */
+#define KBC_IDENTITY_PACKET_SIZE    KMC_IDENTITY_SIZE
 
 /** @brief Total bytes on wire for a CMD_SET_LED_STATE transaction. */
 #define KBC_LED_WIRE_SIZE           (1 + KBC_LED_PAYLOAD_SIZE)
@@ -187,55 +113,30 @@
 #define KBC_DISCRETE_BUTTON_COUNT   4
 
 // ============================================================
-//  Capability flags (identity response byte 3)
-//
-//  Bitmask reported by the target in the identity response.
-//  The controller reads these at startup to determine module
-//  capabilities without hardcoding per-address knowledge.
+//  Capability flags — aliases for KMC_CAP_* from KerbalModuleCommon
 // ============================================================
 
 /** @brief Module supports extended LED states (0x3-0x6). */
-#define KBC_CAP_EXTENDED_STATES     (1 << 0)
+#define KBC_CAP_EXTENDED_STATES     KMC_CAP_EXTENDED_STATES
 
 /** @brief Module has an active fault condition. Clear with CMD_ACK_FAULT. */
-#define KBC_CAP_FAULT               (1 << 1)
-
-// Bits 2-7 reserved for future use.
+#define KBC_CAP_FAULT               KMC_CAP_FAULT
 
 // ============================================================
-//  Module Type ID registry
+//  Module Type ID registry — aliases for KMC_TYPE_* from KerbalModuleCommon
 //
-//  The Type ID is independent of I2C address. It identifies
-//  what a module IS, not where it is on the bus. The controller
-//  maps each bus address to an expected Type ID at compile time
-//  and validates this during startup enumeration.
-//
-//  Add new module Type IDs here as module sketches are defined.
+//  Full registry (all module types) is in KerbalModuleCommon.h.
+//  KBC_TYPE_* aliases provided here for the six standard KBC modules.
 // ============================================================
 
-/** @brief Reserved. Must not be used as a valid Type ID. */
-#define KBC_TYPE_RESERVED           0x00
-
-/** @brief UI Control module. */
-#define KBC_TYPE_UI_CONTROL         0x01
-
-/** @brief Function Control module. */
-#define KBC_TYPE_FUNCTION_CONTROL   0x02
-
-/** @brief Action Control module. */
-#define KBC_TYPE_ACTION_CONTROL     0x03
-
-/** @brief Stability Control module. */
-#define KBC_TYPE_STABILITY_CONTROL  0x04
-
-/** @brief Vehicle Control module. */
-#define KBC_TYPE_VEHICLE_CONTROL    0x05
-
-/** @brief Time Control module. */
-#define KBC_TYPE_TIME_CONTROL       0x06
-
-/** @brief Unknown or uninitialized. Returned if module has not set its Type ID. */
-#define KBC_TYPE_UNKNOWN            0xFF
+#define KBC_TYPE_RESERVED           KMC_TYPE_RESERVED
+#define KBC_TYPE_UI_CONTROL         KMC_TYPE_UI_CONTROL
+#define KBC_TYPE_FUNCTION_CONTROL   KMC_TYPE_FUNCTION_CONTROL
+#define KBC_TYPE_ACTION_CONTROL     KMC_TYPE_ACTION_CONTROL
+#define KBC_TYPE_STABILITY_CONTROL  KMC_TYPE_STABILITY_CONTROL
+#define KBC_TYPE_VEHICLE_CONTROL    KMC_TYPE_VEHICLE_CONTROL
+#define KBC_TYPE_TIME_CONTROL       KMC_TYPE_TIME_CONTROL
+#define KBC_TYPE_UNKNOWN            KMC_TYPE_UNKNOWN
 
 // ============================================================
 //  Packet structs
@@ -277,42 +178,25 @@ struct KBCIdentityPacket {
 // ============================================================
 //  LED state payload pack / unpack helpers
 //
-//  Pack and unpack the 8-byte nibble-packed LED state payload.
-//  Two buttons per byte, high nibble = even button index,
-//  low nibble = odd button index.
-//
-//  Usage (pack):
-//    uint8_t payload[KBC_LED_PAYLOAD_SIZE] = {0};
-//    KBC_ledPackSet(payload, 3, KBC_LED_ACTIVE);
-//
-//  Usage (unpack):
-//    uint8_t state = KBC_ledPackGet(payload, 3);
+//  Canonical implementations are kmcLedPackGet() / kmcLedPackSet()
+//  in KerbalModuleCommon. The KBC_* names below are inline wrappers
+//  retained for backward compatibility with existing library code.
 // ============================================================
 
 /**
  * @brief  Get the LED state nibble for button N from a packed payload.
- * @param  payload  Pointer to 8-byte payload array
- * @param  button   Button index (0-15)
- * @return LED state nibble value (0x0-0xF)
+ *         Wrapper for kmcLedPackGet() — see KerbalModuleCommon.h.
  */
 inline uint8_t KBC_ledPackGet(const uint8_t* payload, uint8_t button) {
-    return (button % 2 == 0)
-        ? (payload[button / 2] >> 4) & 0x0F   // high nibble
-        : (payload[button / 2]) & 0x0F;        // low nibble
+    return kmcLedPackGet(payload, button);
 }
 
 /**
  * @brief  Set the LED state nibble for button N in a packed payload.
- * @param  payload  Pointer to 8-byte payload array
- * @param  button   Button index (0-15)
- * @param  state    LED state nibble value (KBC_LED_*)
+ *         Wrapper for kmcLedPackSet() — see KerbalModuleCommon.h.
  */
 inline void KBC_ledPackSet(uint8_t* payload, uint8_t button, uint8_t state) {
-    if (button % 2 == 0) {
-        payload[button / 2] = (payload[button / 2] & 0x0F) | ((state & 0x0F) << 4);
-    } else {
-        payload[button / 2] = (payload[button / 2] & 0xF0) | (state & 0x0F);
-    }
+    kmcLedPackSet(payload, button, state);
 }
 
 /**

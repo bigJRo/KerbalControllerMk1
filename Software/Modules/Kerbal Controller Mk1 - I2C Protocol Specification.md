@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 1.9  
+**Version:** 2.0  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 
@@ -107,7 +107,7 @@ Payload Byte 6:  Button 12 [7:4]  |  Button 13 [3:0]
 Payload Byte 7:  Button 14 [7:4]  |  Button 15 [3:0]
 ```
 
-The 8-byte payload is used for all modules that accept LED commands. Device-specific modules with fewer LED positions accept the full payload and ignore nibbles for positions that are not installed.
+The 8-byte payload is used for all modules that accept LED commands, with one exception: the Indicator Module (Type ID 0x10) uses a 9-byte payload to address 18 pixel positions (see Section 9.7). The controller must use the correct payload length for each module type as determined from the Type ID received during startup enumeration.
 
 #### LED State Values
 
@@ -184,7 +184,7 @@ All commands are initiated by the controller. The command byte is the first byte
 | Command | Byte | Payload | Direction | Response |
 |---|---|---|---|---|
 | `CMD_GET_IDENTITY` | `0x01` | None | C → T | 4-byte identity packet |
-| `CMD_SET_LED_STATE` | `0x02` | 8 bytes | C → T | None |
+| `CMD_SET_LED_STATE` | `0x02` | 8 bytes (9 bytes for Indicator) | C → T | None |
 | `CMD_SET_BRIGHTNESS` | `0x03` | 1 byte (0–255) | C → T | None |
 | `CMD_BULB_TEST` | `0x04` | 0–1 bytes | C → T | None |
 | `CMD_SLEEP` | `0x05` | None | C → T | None |
@@ -203,7 +203,7 @@ All commands are initiated by the controller. The command byte is the first byte
 Controller requests module identification. The target responds with the 4-byte identity packet. Used during startup to enumerate connected modules, confirm addresses, verify module types, and read capability flags.
 
 **CMD_SET_LED_STATE (`0x02`)**  
-Controller transmits the LED state as an 8-byte nibble-packed payload. The target updates all LED outputs. Modules with fewer than 16 LED positions accept the full payload and ignore unused nibbles. Modules that manage their own LED state (throttle module, display modules) accept and ignore this command. This is the primary runtime LED control command for standard modules.
+Controller transmits the LED state as a nibble-packed payload. For all modules except the Indicator Module, the payload is 8 bytes (16 positions). For the Indicator Module (Type ID 0x10), the payload is 9 bytes (18 positions). The target updates all LED outputs. Modules with fewer LED positions than the payload length accept the full payload and ignore unused nibbles. Modules that manage their own LED state (throttle module, display modules) accept and ignore this command. This is the primary runtime LED control command for standard modules.
 
 **CMD_SET_BRIGHTNESS (`0x03`)**  
 Sets the brightness level of the ENABLED state dim white backlight. Single byte payload, range 0–255. Allows the controller to match brightness across modules or adapt to ambient conditions. Modules without controllable brightness accept and ignore this command.
@@ -269,11 +269,21 @@ For each address 0x20 – 0x2E:
 
 ### 6.3 LED State Update
 
+Standard modules (all except Indicator):
 ```
 Controller sends:
   [ADDR+W] [0x02] [B0] [B1] [B2] [B3] [B4] [B5] [B6] [B7]
 
 Where B0–B7 are the 8 nibble-packed payload bytes.
+```
+
+Indicator Module (Type ID 0x10) — 9-byte payload:
+```
+Controller sends:
+  [0x2F+W] [0x02] [B0] [B1] [B2] [B3] [B4] [B5] [B6] [B7] [B8]
+
+Where B0–B8 are the 9 nibble-packed payload bytes.
+Byte 8 high nibble = Pixel 16, low nibble = Pixel 17.
 ```
 
 ---
@@ -287,7 +297,8 @@ Where B0–B7 are the 8 nibble-packed payload bytes.
 | Standard module data read | 4 bytes |
 | Joystick module data read | 8 bytes |
 | EVA module data read | 4 bytes |
-| LED state update | 9 bytes (cmd + 8 payload) |
+| LED state update (standard) | 9 bytes (cmd + 8 payload) |
+| LED state update (Indicator) | 10 bytes (cmd + 9 payload) |
 | Identity query + response | 6 bytes total |
 | Single command (no payload) | 2 bytes |
 
@@ -296,15 +307,16 @@ Where B0–B7 are the 8 nibble-packed payload bytes.
 Bus load depends on which modules are active and how frequently they assert INT. Standard modules are completely quiet when no buttons are pressed. Joystick modules apply deadzone and change threshold filtering to minimize traffic when at rest or held steady.
 
 ```
-Worst case — all 9 current modules simultaneously:
+Worst case — all 16 current modules simultaneously:
   6 × standard module reads    = 24 bytes
   1 × EVA module read          =  4 bytes
   2 × joystick module reads    = 16 bytes
-  9 × LED state updates        = 81 bytes
+  9 × LED state updates (8B)   = 81 bytes
+  1 × LED state update (9B)    = 10 bytes  (Indicator)
                                 ─────────
-  Total per full sweep         = 125 bytes
+  Total per full sweep         = 135 bytes
 
-@ 400 kHz fast mode            ≈ 3.1 ms
+@ 400 kHz fast mode            ≈ 3.4 ms
 ```
 
 In normal operation the average case is substantially lower — only modules with actual state changes generate read traffic.
@@ -333,7 +345,7 @@ Type IDs are independent of I2C address. The controller uses the Type ID from th
 | `0x0D` | Throttle Module | `0x2C` | `0x20` | 4 |
 | `0x0E` | Dual Encoder | `0x2D` | `0x04` | 4 |
 | `0x0F` | Switch Panel | `0x2E` | `0x00` | 4 |
-| `0x10` | Indicator Module | `0x2F` | `0x00` | 0 |
+| `0x10` | Indicator Module | `0x2F` | `0x01` | 0 |
 | `0xFF` | Unknown / Uninitialized | — | — | — |
 
 **Capability flag values:**  
@@ -342,6 +354,8 @@ Type IDs are independent of I2C address. The controller uses the Type ID from th
 `0x08` = Analog joystick axes in packet (bit 3)  
 `0x10` = 7-segment display and encoder present (bit 4)  
 `0x20` = Motorized position control (bit 5)
+
+**LED payload length note:** The Indicator Module (0x10) requires a 9-byte `CMD_SET_LED_STATE` payload for its 18 pixel positions. All other modules use the standard 8-byte payload. The controller must select the correct payload length from the Type ID.
 
 ---
 
@@ -378,7 +392,9 @@ Byte 4-5: AXIS2         — signed int16, big-endian, -32768 to +32767
 Byte 6-7: AXIS3         — signed int16, big-endian, -32768 to +32767
 ```
 
-Axis values are centered at zero. Each module performs startup calibration to establish the physical center reference for each axis. A split map is applied to ensure a symmetric INT16 output range regardless of the mechanical center position of the joystick.
+Axis values are centered at zero. Each module performs startup calibration to establish the physical center reference for each axis. A split map is applied to ensure a symmetric INT16 output range regardless of the mechanical center position of the joystick. Do not touch either joystick during the first ~80ms after power-on.
+
+Axis polarity and semantic mapping (which physical direction produces positive vs negative values, and how each axis maps to a KSP function) is the responsibility of the main controller firmware. See the Module UI Reference for per-module axis mapping tables.
 
 INT assertion follows a hybrid filtering strategy:
 - Button changes assert INT immediately with no throttling
@@ -391,6 +407,8 @@ Default thresholds (all in raw ADC counts):
 | Deadzone | ±32 counts | Suppresses output within ~3% of center |
 | Change threshold | ±8 counts | Suppresses noise on a held position |
 | Quiet period | 10 ms | Caps axis-driven INT at 100 reads/second maximum |
+
+All thresholds are overridable per-sketch via `#define` before the library include. See `KerbalJoystickCore/src/KJC_Config.h`.
 
 **LED command:** CMD_SET_LED_STATE with standard 8-byte payload. Only nibbles for BTN01 (index 0) and BTN02 (index 1) are active. BTN_JOY has no LED hardware. Remaining nibbles are accepted and ignored.
 
@@ -416,9 +434,9 @@ Byte 5:   Value LOW      — display value, big-endian uint16, range 0-9999
 
 Button events (byte 0) report rising edges — a bit is set only in the packet that captures the press, not in subsequent packets while the button is held. Byte 1 carries the change mask for edge detection. Byte 2 carries persistent module state — the controller can read this byte alone to determine current logical state without tracking history.
 
-Button LED states are managed entirely by the module. `CMD_SET_LED_STATE` is accepted and ignored. `CMD_SET_VALUE (0x09)` sets the display value and encoder tracking state:
+Button LED states are managed entirely by the module. `CMD_SET_LED_STATE` is accepted and ignored. `CMD_SET_VALUE (0x0D)` sets the display value and encoder tracking state:
 ```
-[ADDR+W] [0x09] [VALUE_HIGH] [VALUE_LOW]
+[ADDR+W] [0x0D] [VALUE_HIGH] [VALUE_LOW]
 ```
 
 INT asserts on any button state change or display value change from the encoder.
@@ -493,43 +511,84 @@ Both latching and momentary toggle switches are supported. The dual-buffer strat
 
 ### 9.7 Indicator Module (Type ID 0x10) — pure output
 
-The Indicator Module is a pure output device. It has no data packet to send — the module never asserts INT during normal operation and the controller never issues read transactions to it. The only meaningful command is `CMD_SET_LED_STATE`.
+The Indicator Module is a pure output device with 18 SK6812mini-012 RGB NeoPixels. It has no data packet to send — the module never asserts INT during normal operation and the controller never issues read transactions to it. The only meaningful command is `CMD_SET_LED_STATE`.
 
-`CMD_SET_LED_STATE (0x02)` — standard 8-byte nibble-packed payload, one nibble per pixel:
+**Firmware version:** 2.0. Expanded from 16 to 18 pixels. Extended LED states now supported (`KMC_CAP_EXTENDED_STATES`, capability flag bit 0 = 1).
+
+#### CMD_SET_LED_STATE — 9-byte payload
+
+The Indicator Module uses a 9-byte nibble-packed payload, one nibble per pixel. This is a module-specific exception to the standard 8-byte payload used by all other modules.
 
 ```
 Byte 0:  Pixel 0  [7:4]  |  Pixel 1  [3:0]
 Byte 1:  Pixel 2  [7:4]  |  Pixel 3  [3:0]
-...
+Byte 2:  Pixel 4  [7:4]  |  Pixel 5  [3:0]
+Byte 3:  Pixel 6  [7:4]  |  Pixel 7  [3:0]
+Byte 4:  Pixel 8  [7:4]  |  Pixel 9  [3:0]
+Byte 5:  Pixel 10 [7:4]  |  Pixel 11 [3:0]
+Byte 6:  Pixel 12 [7:4]  |  Pixel 13 [3:0]
 Byte 7:  Pixel 14 [7:4]  |  Pixel 15 [3:0]
+Byte 8:  Pixel 16 [7:4]  |  Pixel 17 [3:0]
 ```
 
-The module maps state nibble values to per-pixel active colors. Colors for ENABLED, WARNING, ALERT, ARMED, and PARTIAL_DEPLOY are system-wide constants. The ACTIVE (0x2) color is defined per pixel in the module sketch. Flash timing for WARNING and ALERT states is managed entirely on the module.
+Total on wire: 10 bytes (address + command + 9 payload bytes).
 
-Pixel index to indicator mapping:
+The module maps state nibble values to per-pixel active colors. Colors for ENABLED, WARNING, ALERT, ARMED, and PARTIAL_DEPLOY are system-wide constants. The ACTIVE (`0x2`) color is defined per pixel. Flash timing for WARNING and ALERT states is managed entirely on the module. The controller transmits only the state nibble.
 
-| Pixel | Indicator | Active Color |
-|---|---|---|
-| 0 | COMM ACTIVE | SKY |
-| 1 | USB ACTIVE | TEAL |
-| 2 | THRTL ENA | GREEN |
-| 3 | AUTO THRTL | CHARTREUSE |
-| 4 | PREC INPUT | AMBER |
-| 5 | AUDIO | PURPLE |
-| 6 | LIGHT ENA | YELLOW |
-| 7 | BRAKE LOCK | RED |
-| 8 | LNDG GEAR LOCK | GREEN |
-| 9 | CHUTE ARM | AMBER |
-| 10 | CTRL | GREEN |
-| 11 | DEBUG | MAGENTA |
-| 12 | DEMO | INDIGO |
-| 13 | SWITCH ERROR | RED |
-| 14 | RCS | MINT |
-| 15 | SAS | GREEN |
+#### Pixel Layout
 
-Two rotary encoder headers (H1, H2) are present on the PCB for future expansion. When populated, INT will assert on encoder movement and button presses using the same delta packet format as the Dual Encoder Module.
+Pixels are addressed in column-major order: down column 1 (rows 1–3), then column 2, and so on. Physical panel: 6 columns × 3 rows.
 
-**NeoPixel note:** Uses SK6812mini-012 RGB format (not GRBW). NEOPIX_CMD is on PA5 (Port A). tinyNeoPixel IDE port setting must be Port A — different from all other NeoPixel modules which use Port C.
+```
+Col:   1           2           3           4           5           6
+Row 1: Pixel 0     Pixel 3     Pixel 6     Pixel 9     Pixel 12    Pixel 15
+Row 2: Pixel 1     Pixel 4     Pixel 7     Pixel 10    Pixel 13    Pixel 16
+Row 3: Pixel 2     Pixel 5     Pixel 8     Pixel 11    Pixel 14    Pixel 17
+```
+
+#### Pixel Index to Indicator Mapping
+
+| Pixel | Indicator | ACTIVE Color | Notes |
+|---|---|---|---|
+| 0 | THRTL ENA | GREEN | |
+| 1 | LIGHT ENA | YELLOW | Matches Vehicle Control Lights |
+| 2 | CTRL | LIME | Green family |
+| 3 | THRTL PREC | MINT | |
+| 4 | BRAKE LOCK | RED | Matches Vehicle Control Brakes |
+| 5 | DEBUG | ROSE | Red family, distinct from fault RED |
+| 6 | PREC INPUT | CYAN | |
+| 7 | LNDG GEAR LOCK | GREEN | Matches Vehicle Control Gear |
+| 8 | DEMO | SKY | Blue family |
+| 9 | AUDIO | PURPLE | |
+| 10 | CHUTE ARM | AMBER | |
+| 11 | COMM ACTIVE | TEAL | |
+| 12 | SCE AUX | ORANGE | |
+| 13 | RCS | MINT | Matches Stability Control convention |
+| 14 | SWITCH ERROR | RED | |
+| 15 | ABORT | RED | Primary consumer of ALERT extended state — see below |
+| 16 | SAS | GREEN | Matches Stability Control |
+| 17 | AUTO PILOT | BLUE | |
+
+#### ABORT Extended State Sequence
+
+Pixel 15 (ABORT) is the primary consumer of the ALERT extended state on this module. Recommended controller state progression:
+
+| State | Value | Appearance | Meaning |
+|---|---|---|---|
+| ENABLED | `0x1` | Dim white | Nominal — abort available |
+| ARMED | `0x5` | Static cyan | Abort sequence primed |
+| ALERT | `0x4` | Flashing red (150ms) | Abort in progress |
+| ACTIVE | `0x2` | Solid red | Post-abort confirmation |
+| OFF | `0x0` | Dark | Abort system not available |
+
+Other pixels may also use WARNING (`0x3`) or ALERT (`0x4`) states as appropriate — for example, CHUTE ARM (`0x3` WARNING flashing amber) or SWITCH ERROR (`0x4` ALERT flashing red).
+
+#### Hardware Notes
+
+- **NeoPixel type:** SK6812mini-012 RGB (not GRBW). Color order: RGB.
+- **NEOPIX_CMD:** PA5, Port A. tinyNeoPixel IDE port setting must be Port A — all other NeoPixel modules use Port C.
+- **INT pin:** PC3 (not PA1 as on standard modules). Controller wiring must account for this.
+- **Encoder headers:** H1 and H2 present on PCB for future expansion. When populated, INT will assert on encoder movement and button presses using the same delta packet format as the Dual Encoder Module.
 
 **Reference:** `KCMk1_Indicator_Module/Config.h`
 
@@ -547,3 +606,5 @@ Two rotary encoder headers (H1, H2) are present on the PCB for future expansion.
 | 1.7 | 2026-04-08 | Dual Encoder Module (0x0E) added to registry; Section 9.5 dual encoder packet format added |
 | 1.8 | 2026-04-08 | Switch Panel (0x0F) added to registry; Section 9.6 added; duplicate revision history block removed |
 | 1.9 | 2026-04-08 | Indicator Module (0x10) added to registry; Section 9.7 added; pure output module pattern documented |
+| 2.0 | 2026-04-09 | Indicator Module expanded to 18 pixels; CMD_SET_LED_STATE payload for Indicator extended from 8 to 9 bytes; Indicator capability flags corrected to 0x01 (KMC_CAP_EXTENDED_STATES); Indicator pixel map revised (USB ACTIVE removed; SCE AUX, AUTO PILOT, ABORT added; all pixel colors revised for cross-module consistency); ABORT extended state sequence documented; Section 4.2 updated to note Indicator payload exception; Section 5 command table updated; Section 6.3 Indicator example added; Section 7 bus load updated; Section 8 registry corrected; Section 9.3 CMD_SET_VALUE command byte corrected from 0x09 to 0x0D; Section 9.7 fully rewritten |
+| 2.1 | 2026-04-09 | Section 9.2 clarified: axis semantic mapping removed (belongs in UI Reference, not protocol spec); added note that axis polarity and KSP function mapping is the main controller's responsibility; startup calibration note added |

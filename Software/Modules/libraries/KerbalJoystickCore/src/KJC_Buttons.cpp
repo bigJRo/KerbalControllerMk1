@@ -42,8 +42,8 @@ static bool     _intPending     = false;
 // ============================================================
 
 #define BTN_DEBOUNCE_COUNT      4
-static uint8_t  _debounceCount[KJC_BUTTON_COUNT] = {0};
-static uint8_t  _debounceCandidate = 0;
+static uint8_t  _debounceCount[KJC_BUTTON_COUNT]     = {0};
+static uint8_t  _debounceCandidate[KJC_BUTTON_COUNT] = {0};
 
 // ============================================================
 //  NeoPixel LED state
@@ -83,11 +83,12 @@ void buttonsBegin(const RGBColor* activeColors, uint8_t brightness) {
     _ledState[0] = KJC_LED_ENABLED;  // BTN01
     _ledState[1] = KJC_LED_ENABLED;  // BTN02
 
-    _state             = 0;
-    _latchedState      = 0;
-    _changeMask        = 0;
-    _intPending        = false;
-    _debounceCandidate = 0;
+    _state        = 0;
+    _latchedState = 0;
+    _changeMask   = 0;
+    _intPending   = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 
     buttonsRender();
 }
@@ -105,19 +106,16 @@ bool buttonsPoll() {
         }
     }
 
-    // Reset debounce on candidate change
-    if (raw != _debounceCandidate) {
-        _debounceCandidate = raw;
-        memset(_debounceCount, 0, sizeof(_debounceCount));
-        return false;
-    }
-
+    // Per-button debounce with independent candidate tracking.
     bool anyChanged = false;
     for (uint8_t i = 0; i < KJC_BUTTON_COUNT; i++) {
         bool rawBit  = (raw >> i) & 0x01;
         bool liveBit = (_state >> i) & 0x01;
 
-        if (rawBit != liveBit) {
+        if (rawBit != _debounceCandidate[i]) {
+            _debounceCandidate[i] = rawBit;
+            _debounceCount[i]     = 0;
+        } else if (rawBit != liveBit) {
             _debounceCount[i]++;
             if (_debounceCount[i] >= BTN_DEBOUNCE_COUNT) {
                 if (rawBit)
@@ -177,12 +175,12 @@ uint8_t buttonsGetChangeMask() {
 // ============================================================
 
 void buttonsClearAll() {
-    _state             = 0;
-    _latchedState      = 0;
-    _changeMask        = 0;
-    _intPending        = false;
-    _debounceCandidate = 0;
-    memset(_debounceCount, 0, sizeof(_debounceCount));
+    _state        = 0;
+    _latchedState = 0;
+    _changeMask   = 0;
+    _intPending   = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
 
 // ============================================================
@@ -242,9 +240,16 @@ void buttonsRender() {
                 color = _activeColors[i];
                 break;
             case KJC_LED_WARNING:
+                // NOTE: WARNING renders as static amber, not flashing.
+                // KerbalJoystickCore has no flash timing loop — adding one
+                // would require a timer in kjcUpdate() similar to KBC_LEDControl.
+                // Joystick buttons are not expected to use WARNING/ALERT states
+                // in normal operation. If this changes, implement a flash timer
+                // in KerbalJoystickCore.cpp alongside the poll interval timer.
                 color = KJC_AMBER;
                 break;
             case KJC_LED_ALERT:
+                // NOTE: ALERT renders as static red, not flashing. See WARNING note above.
                 color = KJC_RED;
                 break;
             case KJC_LED_ARMED:

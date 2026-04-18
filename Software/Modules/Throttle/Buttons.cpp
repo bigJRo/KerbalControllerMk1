@@ -37,12 +37,12 @@ static const uint8_t _ledPins[4] = {
 //  State
 // ============================================================
 
-static uint8_t _state              = 0;
-static uint8_t _eventMask          = 0;
-static uint8_t _changeMask         = 0;
-static bool    _intPending         = false;
-static uint8_t _debounceCount[4]   = {0};
-static uint8_t _debounceCandidate  = 0;
+static uint8_t _state                  = 0;
+static uint8_t _eventMask              = 0;
+static uint8_t _changeMask             = 0;
+static bool    _intPending             = false;
+static uint8_t _debounceCount[4]       = {0};
+static uint8_t _debounceCandidate[4]   = {0};
 
 // ============================================================
 //  buttonsBegin()
@@ -55,11 +55,12 @@ void buttonsBegin() {
         digitalWrite(_ledPins[i], LOW);
         _debounceCount[i] = 0;
     }
-    _state             = 0;
-    _eventMask         = 0;
-    _changeMask        = 0;
-    _intPending        = false;
-    _debounceCandidate = 0;
+    _state      = 0;
+    _eventMask  = 0;
+    _changeMask = 0;
+    _intPending = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }
 
 // ============================================================
@@ -72,18 +73,16 @@ bool buttonsPoll() {
         if (digitalRead(_btnPins[i])) raw |= (1 << i);
     }
 
-    if (raw != _debounceCandidate) {
-        _debounceCandidate = raw;
-        memset(_debounceCount, 0, sizeof(_debounceCount));
-        return false;
-    }
-
+    // Per-button debounce with independent candidate tracking.
     bool anyEvent = false;
     for (uint8_t i = 0; i < 4; i++) {
         bool rawBit  = (raw >> i) & 0x01;
         bool liveBit = (_state >> i) & 0x01;
 
-        if (rawBit != liveBit) {
+        if (rawBit != _debounceCandidate[i]) {
+            _debounceCandidate[i] = rawBit;
+            _debounceCount[i]     = 0;
+        } else if (rawBit != liveBit) {
             _debounceCount[i]++;
             if (_debounceCount[i] >= THR_DEBOUNCE_COUNT) {
                 if (rawBit) {
@@ -148,10 +147,10 @@ void buttonsLEDsOff() {
 // ============================================================
 
 void buttonsClearAll() {
-    _state             = 0;
-    _eventMask         = 0;
-    _changeMask        = 0;
-    _intPending        = false;
-    _debounceCandidate = 0;
-    memset(_debounceCount, 0, sizeof(_debounceCount));
+    _state      = 0;
+    _eventMask  = 0;
+    _changeMask = 0;
+    _intPending = false;
+    memset(_debounceCount,     0, sizeof(_debounceCount));
+    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
 }

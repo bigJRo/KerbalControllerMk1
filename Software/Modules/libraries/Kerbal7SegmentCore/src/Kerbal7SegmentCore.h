@@ -91,6 +91,27 @@ void k7scBegin(uint8_t typeId, uint8_t capFlags,
  *        Performs on each call:
  *          1. Button polling, debounce, state transitions, flash timing
  *          2. Encoder polling with acceleration
- *          3. INT pin sync
+ *          3. INT pin sync — captures button event snapshot if asserting INT
  */
 void k7scUpdate();
+
+/**
+ * @brief Returns the pending button event bitmask for sketch loop() code.
+ *
+ *        Call this after k7scUpdate() to check for button presses that
+ *        require sketch-level action (e.g. preset value jumps). This is
+ *        the correct replacement for calling buttonsGetEvents() directly
+ *        in loop(), which races against the internal I2C snapshot capture.
+ *
+ *        The returned bitmask is the same snapshot sent to the controller
+ *        in the data packet. It is cleared when the controller reads the
+ *        packet, not by this call — safe to read multiple times per loop.
+ *
+ *        Bit layout: bit0=BTN01, bit1=BTN02, bit2=BTN03, bit3=BTN_EN.
+ *        Returns 0 if no button events are pending.
+ *
+ *        Example (Pre-Warp Time module):
+ *          uint8_t events = k7scGetPendingEvents();
+ *          if (events & (1 << K7SC_BIT_BTN01)) encoderSetValue(PRESET_5MIN);
+ */
+uint8_t k7scGetPendingEvents();

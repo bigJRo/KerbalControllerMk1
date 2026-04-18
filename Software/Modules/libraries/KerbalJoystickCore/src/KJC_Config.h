@@ -25,6 +25,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  Clock speed assertion
@@ -77,17 +78,17 @@
 //  Pin assignments — ATtiny816 KC-01-1831/1832 v1.0
 // ============================================================
 
-/** @brief AXIS1 analog input — PB4, ADC channel AIN9. */
-#define KJC_PIN_AXIS1           PIN_PB4
+/** @brief AXIS1 analog input — PB5, ADC channel AIN8. */
+#define KJC_PIN_AXIS1           PIN_PB5
 
-/** @brief AXIS2 analog input — PB5, ADC channel AIN8. */
-#define KJC_PIN_AXIS2           PIN_PB5
+/** @brief AXIS2 analog input — PA7, ADC channel AIN7. */
+#define KJC_PIN_AXIS2           PIN_PA7
 
-/** @brief AXIS3 analog input — PA7, ADC channel AIN7. */
-#define KJC_PIN_AXIS3           PIN_PA7
+/** @brief AXIS3 analog input — PA6, ADC channel AIN6. */
+#define KJC_PIN_AXIS3           PIN_PA6
 
-/** @brief Joystick pushbutton — PA6, active high, hardware pull-down. */
-#define KJC_PIN_BTN_JOY         PIN_PA6
+/** @brief Joystick pushbutton — PA5, active high, hardware pull-down. */
+#define KJC_PIN_BTN_JOY         PIN_PA5
 
 /** @brief BUTTON01 NeoPixel button — PC0. */
 #define KJC_PIN_BTN01           PIN_PC0
@@ -165,8 +166,35 @@
 #endif
 
 // ============================================================
-//  Polling intervals
+//  Per-axis invert flags
+//
+//  Set to -1 to invert a physical axis, 1 for normal polarity.
+//  Applied as a sign flip after the split map, before the value
+//  is stored and transmitted. Inversion does not affect the
+//  deadzone or change threshold comparisons — those always
+//  operate on the raw ADC value relative to calibrated center.
+//
+//  Override in the sketch before #include <KerbalJoystickCore.h>:
+//    #define KJC_AXIS2_INVERT  -1   // invert Y axis
+//
+//  Default: all axes normal (1).
+//
+//  Translation module uses AXIS2 inverted — joystick forward
+//  (stick pushed away) maps to Translate Up in KSP. Without
+//  inversion, forward = Translate Down, which is unintuitive.
 // ============================================================
+
+#ifndef KJC_AXIS1_INVERT
+  #define KJC_AXIS1_INVERT      1
+#endif
+
+#ifndef KJC_AXIS2_INVERT
+  #define KJC_AXIS2_INVERT      1
+#endif
+
+#ifndef KJC_AXIS3_INVERT
+  #define KJC_AXIS3_INVERT      1
+#endif
 
 /**
  * @brief ADC and button poll interval in milliseconds.
@@ -204,54 +232,51 @@
  * @brief Joystick data packet size in bytes.
  *        Byte 0:   Button state  (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
  *        Byte 1:   Change mask   (same bit layout)
- *        Byte 2-3: AXIS1         (int16, signed, -32768 to +32767)
- *        Byte 4-5: AXIS2         (int16, signed, -32768 to +32767)
- *        Byte 6-7: AXIS3         (int16, signed, -32768 to +32767)
+ *        Byte 2-3: AXIS1/PB5    (int16, signed, -32768 to +32767)
+ *        Byte 4-5: AXIS2/PA7    (int16, signed, -32768 to +32767)
+ *        Byte 6-7: AXIS3/PA6    (int16, signed, -32768 to +32767)
  */
 #define KJC_PACKET_SIZE         8
 
 /** @brief Identity response packet size. */
-#define KJC_IDENTITY_SIZE       4
+#define KJC_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 /** @brief LED state payload size (nibble-packed). */
 #define KJC_LED_PAYLOAD_SIZE    8
 
 // ============================================================
-//  I2C command bytes
-//
-//  Mirrors the Kerbal Controller Mk1 I2C protocol command set.
-//  Defined independently — no KBC library dependency.
+//  I2C command bytes — aliases for KMC_CMD_* from KerbalModuleCommon
 // ============================================================
 
-#define KJC_CMD_GET_IDENTITY    0x01
-#define KJC_CMD_SET_LED_STATE   0x02
-#define KJC_CMD_SET_BRIGHTNESS  0x03
-#define KJC_CMD_BULB_TEST       0x04
-#define KJC_CMD_SLEEP           0x05
-#define KJC_CMD_WAKE            0x06
-#define KJC_CMD_RESET           0x07
-#define KJC_CMD_ACK_FAULT       0x08
-#define KJC_CMD_ENABLE          0x09
-#define KJC_CMD_DISABLE         0x0A
+#define KJC_CMD_GET_IDENTITY   KMC_CMD_GET_IDENTITY
+#define KJC_CMD_SET_LED_STATE  KMC_CMD_SET_LED_STATE
+#define KJC_CMD_SET_BRIGHTNESS KMC_CMD_SET_BRIGHTNESS
+#define KJC_CMD_BULB_TEST      KMC_CMD_BULB_TEST
+#define KJC_CMD_SLEEP          KMC_CMD_SLEEP
+#define KJC_CMD_WAKE           KMC_CMD_WAKE
+#define KJC_CMD_RESET          KMC_CMD_RESET
+#define KJC_CMD_ACK_FAULT      KMC_CMD_ACK_FAULT
+#define KJC_CMD_ENABLE         KMC_CMD_ENABLE
+#define KJC_CMD_DISABLE        KMC_CMD_DISABLE
 
 // ============================================================
-//  LED state nibble values
+//  LED state nibble values — aliases for KMC_LED_* from KerbalModuleCommon
 // ============================================================
 
-#define KJC_LED_OFF             0x0
-#define KJC_LED_ENABLED         0x1
-#define KJC_LED_ACTIVE          0x2
-#define KJC_LED_WARNING         0x3
-#define KJC_LED_ALERT           0x4
-#define KJC_LED_ARMED           0x5
-#define KJC_LED_PARTIAL_DEPLOY  0x6
+#define KJC_LED_OFF             KMC_LED_OFF
+#define KJC_LED_ENABLED         KMC_LED_ENABLED
+#define KJC_LED_ACTIVE          KMC_LED_ACTIVE
+#define KJC_LED_WARNING         KMC_LED_WARNING
+#define KJC_LED_ALERT           KMC_LED_ALERT
+#define KJC_LED_ARMED           KMC_LED_ARMED
+#define KJC_LED_PARTIAL_DEPLOY  KMC_LED_PARTIAL_DEPLOY
 
 // ============================================================
 //  Capability flags
 // ============================================================
 
 /** @brief Joystick module capability flag — analog axes present. */
-#define KJC_CAP_JOYSTICK        (1 << 3)
+#define KJC_CAP_JOYSTICK        KMC_CAP_JOYSTICK
 
 // ============================================================
 //  Sentinel value for axis suppression

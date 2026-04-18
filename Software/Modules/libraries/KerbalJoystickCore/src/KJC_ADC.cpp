@@ -73,7 +73,16 @@ static int16_t _processAxis(uint8_t axisIdx) {
     // Step 1: Deadzone — in raw ADC counts
     int16_t delta = (int16_t)raw - (int16_t)center;
     if (abs(delta) <= KJC_DEADZONE) {
-        // Inside deadzone — report zero only if last sent was non-zero
+        // Inside deadzone — report zero only if last sent was non-zero.
+        // _lastSentRaw is set to center (not the actual raw) so that on
+        // the next poll outside the deadzone the change threshold check
+        // is relative to center, not the last real position. This means
+        // the change threshold is intentionally bypassed on the first
+        // sample after deadzone exit, giving an immediate report as soon
+        // as the stick moves outside the dead zone. The alternative —
+        // applying the change threshold from center — would delay the
+        // first report by KJC_DEADZONE + KJC_CHANGE_THRESHOLD counts,
+        // making initial stick movement feel sluggish.
         if (_lastSentRaw[axisIdx] != center) {
             _lastSentRaw[axisIdx]    = center;
             _lastSentScaled[axisIdx] = 0;
@@ -95,6 +104,19 @@ static int16_t _processAxis(uint8_t axisIdx) {
         scaled = (int16_t)map((long)raw, (long)center, 1023L, 0L, 32767L);
     } else {
         scaled = (int16_t)map((long)raw, 0L, (long)center, -32768L, 0L);
+    }
+
+    // Apply per-axis invert (1 = normal, -1 = inverted).
+    // Configured via KJC_AXIS*_INVERT in Config.h or sketch override.
+    // INT16_MIN (-32768) is clamped to -32767 on inversion to avoid
+    // overflow when negating (negating INT16_MIN is undefined behavior).
+    static const int8_t _invert[KJC_AXIS_COUNT] = {
+        KJC_AXIS1_INVERT,
+        KJC_AXIS2_INVERT,
+        KJC_AXIS3_INVERT
+    };
+    if (_invert[axisIdx] < 0) {
+        scaled = (scaled == INT16_MIN) ? INT16_MAX : -scaled;
     }
 
     // Update last-sent tracking
