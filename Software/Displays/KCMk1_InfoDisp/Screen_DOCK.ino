@@ -64,15 +64,15 @@ static const uint16_t RING_15 = 127;  // 15° × 8.5px (replaces old 20° ring)
 static const uint16_t RING_20 = RET_R;  // 20° = full radius
 
 // Dot display sizes
-static const uint8_t DOT_R_PORT  = 8;    // target port dot radius
-static const uint8_t DOT_R_VEL   = 6;    // velocity vector dot radius
-static const uint8_t DOT_R_ERASE = 12;   // erase rect half-size (covers dot + any overdraw)
+static const uint8_t DOT_R_PORT  = 11;   // target port dot radius (increased)
+static const uint8_t DOT_R_VEL   =  9;   // velocity vector dot radius (increased)
+static const uint8_t DOT_R_ERASE = 16;   // erase rect half-size (covers dot + any overdraw)
 
 // Right panel geometry
 static const uint16_t RP_X   = 385;     // right panel left edge
 static const uint16_t RP_W   = 335;     // right panel width
-static const uint8_t  RP_NR  = 7;       // number of rows
-static const tFont   *RP_F   = &Roboto_Black_32;  // value font (32pt=38px height)
+static const uint8_t  RP_NR  = 8;       // number of rows
+static const tFont   *RP_F   = &Roboto_Black_28;  // value font
 
 // Approach bar geometry (row 7 bottom)
 static const uint16_t BAR_X  = 19;    // 90% bar — (LEFT_W - BAR_W)/2 margin
@@ -151,8 +151,9 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     }
 
     // Ring degree labels (positioned just inside each ring, in the NE quadrant)
+    // Single-arg setTextColor = transparent background.
     tft.setFont(&Roboto_Black_12);
-    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(RET_CX + 3, RET_CY - RING_5  + 3);  tft.print("5");
     tft.setCursor(RET_CX + 3, RET_CY - RING_10 + 3);  tft.print("10");
     tft.setCursor(RET_CX + 3, RET_CY - RING_15 + 3);  tft.print("15");
@@ -177,10 +178,8 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     tft.print("VEL");
 
     // Row 1: PORT — solid magenta diamond
-    tft.fillTriangle(LEG_X+6, LEG_Y0+LEG_DY+1,  LEG_X+12, LEG_Y0+LEG_DY+7,
-                     LEG_X+6, LEG_Y0+LEG_DY+13, TFT_VIOLET);
-    tft.fillTriangle(LEG_X+6, LEG_Y0+LEG_DY+1,  LEG_X,    LEG_Y0+LEG_DY+7,
-                     LEG_X+6, LEG_Y0+LEG_DY+13, TFT_VIOLET);
+    tft.fillTriangle(LEG_X,   LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7, LEG_X+6, LEG_Y0+LEG_DY+1,  TFT_VIOLET);  // top half
+    tft.fillTriangle(LEG_X,   LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7, LEG_X+6, LEG_Y0+LEG_DY+13, TFT_VIOLET);  // bottom half
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("PORT");
@@ -195,10 +194,13 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY * 2);
     tft.print("NOSE");
 
-    // Bottom-left: APPROACH bar (90% width, centred, with label row above)
-    uint16_t barY = RET_CY + RET_R + 20;   // 441 — bar top
-    uint16_t lblY = barY - 16;              // 425 — label row above bar
-    tft.setFont(&Roboto_Black_12);
+    // Bottom-left: APPROACH bar (90% width, centred, with label row above).
+    // Bar label/value font matches LNCH_Circ ΔV Burn bar and MNVR ΔV Burn bar
+    // (Black_20). Bar shifted 8 px down (RET_CY+R+20 → +28) to make room for the
+    // taller 24 px label between the reticle bottom and the bar.
+    uint16_t barY = RET_CY + RET_R + 28;   // 449 — bar top
+    uint16_t lblY = barY - 24;              // 425 — label row above bar
+    tft.setFont(&Roboto_Black_20);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(BAR_X, lblY);
     tft.print("APPROACH");
@@ -208,26 +210,45 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
 
 // ── Draw right-panel chrome (static labels) ───────────────────────────────────────────
 static void _dockDrawRightChrome(RA8875 &tft) {
-    // Rows 0-5: printDispChrome draws the label; printValue draws the value to its right.
+    // Rows 0–1: range and time
     printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "Drift.H:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "Drift.V:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T.Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider before RCS/SAS row
-    uint16_t divY = rowYFor(6, RP_NR) - 1;
-    tft.drawLine(RP_X, divY,   RP_X + RP_W, divY,   TFT_GREY);
-    tft.drawLine(RP_X, divY+1, RP_X + RP_W, divY+1, TFT_GREY);
+    // Divider between T.Dock(1) and V.Close(2)
+    { uint16_t dy = rowYFor(2,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
-    // Row 6: RCS (left half) | SAS (right half)
-    uint16_t halfW = RP_W / 2;
-    printDispChrome(tft, &Roboto_Black_20, RP_X,          rowYFor(6,RP_NR), halfW, rowHFor(RP_NR), "RCS:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X + halfW,  rowYFor(6,RP_NR), halfW, rowHFor(RP_NR), "SAS:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    // Vertical divider between RCS and SAS (2px)
-    tft.drawLine(RP_X + halfW,     rowYFor(6,RP_NR), RP_X + halfW,     SCREEN_H - 1, TFT_GREY);
-    tft.drawLine(RP_X + halfW + 1, rowYFor(6,RP_NR), RP_X + halfW + 1, SCREEN_H - 1, TFT_GREY);
+    // Rows 2–3: speed
+    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+
+    // Divider between V.Lat(3) and Vel.Brg(4)
+    { uint16_t dy = rowYFor(4,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
+
+    // Rows 4–5: approach path alignment (velocity vector vs port)
+    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+
+    // Divider between Vel.Elv(5) and Nos.Off(6)
+    { uint16_t dy = rowYFor(6,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
+
+    // Row 6: nose total angular offset from port (combined bearing + elevation)
+    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Off:", COL_LABEL, COL_BACK, COL_NO_BDR);
+
+    // Divider before RCS/SAS button row (row 7)
+    { uint16_t dy = rowYFor(7, RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X + RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X + RP_W, dy+1, TFT_GREY); }
+
+    // Row 7: RCS | SAS split divider (buttons drawn in update function)
+    uint16_t hw = RP_W / 2;
+    tft.drawLine(RP_X + hw,     TITLE_TOP + 7 * rowHFor(RP_NR), RP_X + hw,     SCREEN_H - 1, TFT_GREY);
+    tft.drawLine(RP_X + hw + 1, TITLE_TOP + 7 * rowHFor(RP_NR), RP_X + hw + 1, SCREEN_H - 1, TFT_GREY);
 }
 
 
@@ -329,8 +350,8 @@ static void _dockUpdateDots(RA8875 &tft, float noseBrg, float noseElv,
         }
         // Solid diamond: 4 filled triangles
         uint8_t ds = DOT_R_PORT + 3;  // diamond half-size
-        tft.fillTriangle(portSX, portSY-ds, portSX+ds, portSY, portSX, portSY+ds, TFT_VIOLET);
-        tft.fillTriangle(portSX, portSY-ds, portSX-ds, portSY, portSX, portSY+ds, TFT_VIOLET);
+        tft.fillTriangle(portSX-ds, portSY, portSX+ds, portSY, portSX, portSY-ds, TFT_VIOLET);  // top half
+        tft.fillTriangle(portSX-ds, portSY, portSX+ds, portSY, portSX, portSY+ds, TFT_VIOLET);  // bottom half
         _dockPrevPortX = portSX; _dockPrevPortY = portSY;
     }
 
@@ -370,9 +391,9 @@ static void _dockUpdateDots(RA8875 &tft, float noseBrg, float noseElv,
 
 
 static void _dockDrawDistBar(RA8875 &tft, float dist) {
-    // barY must match what _dockDrawReticleChrome drew
-    static const uint16_t barY = RET_CY + RET_R + 20;  // 441
-    static const uint16_t lblY = barY - 16;             // 425 — label row above bar
+    // barY must match what _dockDrawReticleChrome drew (Black_20 label).
+    static const uint16_t barY = RET_CY + RET_R + 28;  // 449
+    static const uint16_t lblY = barY - 24;             // 425 — label row above bar
 
     // Threshold gate: only redraw when distance changes by > 1m
     static float prevDist = -999.0f;
@@ -392,17 +413,18 @@ static void _dockDrawDistBar(RA8875 &tft, float dist) {
     if (fillW > 0)
         tft.fillRect(fillX, barY + 1, fillW, BAR_H - 2, barCol);
 
-    // Distance value: right-aligned at right edge of bar, on the label row above bar
+    // Distance value: right-aligned at right edge of bar, on the label row above bar.
+    // Black_20 — matches the "APPROACH" label font for visual unity.
     char buf[12];
     if      (dist >= 1000.0f) snprintf(buf, sizeof(buf), "%.1fkm", dist/1000.0f);
     else if (dist >= 100.0f)  snprintf(buf, sizeof(buf), "%.0fm",  dist);
     else                      snprintf(buf, sizeof(buf), "%.1fm",  dist);
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(&Roboto_Black_20);
     tft.setTextColor(barCol, TFT_BLACK);
-    // Clear right half of label row then right-align distance text
-    tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 14, TFT_BLACK);
-    int16_t tw = getFontStringWidth(&Roboto_Black_12, buf);
+    // Clear right half of label row (24 px tall for Black_20) then right-align distance text
+    tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 24, TFT_BLACK);
+    int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
     tft.setCursor(BAR_X + BAR_W - tw, lblY);
     tft.print(buf);
 }
@@ -447,12 +469,12 @@ static void chromeScreen_DOCK(RA8875 &tft) {
     for (uint8_t r = 0; r < ROW_COUNT; r++) printState[5][r] = PrintState{};  // force full redraw
     // Reset approach bar so it redraws immediately on screen entry
     // (bar uses a static prevDist — reset by passing a sentinel value on next draw)
-    _dockPrevPortX = 9999;  // also resets dots (already done above, belt+suspenders)
 }
 
 
 // ── DRAW (called every loop) ──────────────────────────────────────────────────────────
 static void drawScreen_DOCK(RA8875 &tft) {
+    uint32_t _t0 = micros();
     // Docked: nothing to update
     if (_vesselDocked) return;
 
@@ -473,8 +495,8 @@ static void drawScreen_DOCK(RA8875 &tft) {
     float velBrg  = _dockWrapErr(state.tgtHeading - state.tgtVelHeading);
     float velElv  = state.tgtPitch - state.tgtVelPitch;
 
-    // Lateral drift decomposition (horizontal and vertical components)
-    float v_yaw = 0.0f, v_pitch_drift = 0.0f, v_lat_mag = 0.0f;
+    // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
+    float v_lat_mag = 0.0f;
     {
         auto toUnit = [](float hdg_deg, float pit_deg, float out[3]) {
             float h = hdg_deg * DEG_TO_RAD, p = pit_deg * DEG_TO_RAD;
@@ -488,22 +510,11 @@ static void drawScreen_DOCK(RA8875 &tft) {
         float speed = fabsf(state.tgtVelocity);
         float vel_vec[3] = { vel_unit[0]*speed, vel_unit[1]*speed, vel_unit[2]*speed };
         float v_app = vel_vec[0]*tgt_unit[0] + vel_vec[1]*tgt_unit[1] + vel_vec[2]*tgt_unit[2];
-        float v_lat[3] = { vel_vec[0]-v_app*tgt_unit[0], vel_vec[1]-v_app*tgt_unit[1], vel_vec[2]-v_app*tgt_unit[2] };
-        float world_up[3] = {0,0,1};
-        float right[3] = { tgt_unit[1]*world_up[2]-tgt_unit[2]*world_up[1],
-                            tgt_unit[2]*world_up[0]-tgt_unit[0]*world_up[2],
-                            tgt_unit[0]*world_up[1]-tgt_unit[1]*world_up[0] };
-        float r_mag = sqrtf(right[0]*right[0]+right[1]*right[1]+right[2]*right[2]);
-        if (r_mag > 0.001f) { right[0]/=r_mag; right[1]/=r_mag; right[2]/=r_mag; }
-        else { right[0]=1; right[1]=0; right[2]=0; }
-        float up[3] = { right[1]*tgt_unit[2]-right[2]*tgt_unit[1],
-                         right[2]*tgt_unit[0]-right[0]*tgt_unit[2],
-                         right[0]*tgt_unit[1]-right[1]*tgt_unit[0] };
-        v_yaw         = v_lat[0]*right[0]+v_lat[1]*right[1]+v_lat[2]*right[2];
-        v_pitch_drift = v_lat[0]*up[0]   +v_lat[1]*up[1]   +v_lat[2]*up[2];
-        v_lat_mag     = sqrtf(v_lat[0]*v_lat[0]+v_lat[1]*v_lat[1]+v_lat[2]*v_lat[2]);
-        if (fabsf(v_yaw)         < 0.005f) v_yaw = 0.0f;
-        if (fabsf(v_pitch_drift) < 0.005f) v_pitch_drift = 0.0f;
+        float v_lat[3] = { vel_vec[0]-v_app*tgt_unit[0],
+                           vel_vec[1]-v_app*tgt_unit[1],
+                           vel_vec[2]-v_app*tgt_unit[2] };
+        v_lat_mag = sqrtf(v_lat[0]*v_lat[0] + v_lat[1]*v_lat[1] + v_lat[2]*v_lat[2]);
+        if (v_lat_mag < 0.005f) v_lat_mag = 0.0f;
     }
 
     // ── Update reticle dots ───────────────────────────────────────────────────────────
@@ -513,57 +524,15 @@ static void drawScreen_DOCK(RA8875 &tft) {
     char buf[20];
     uint16_t fg, bg;
 
-    // Helper: cache-checked drawValue for dock screen (index 5)
-    auto dockVal = [&](uint8_t row, const char *label, const String &val,
+    auto dockVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                         uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[5][row];
+        RowCache &rc = rowCache[5][slot];
         if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
         printValue(tft, RP_F, RP_X, rowYFor(row, RP_NR), RP_W, rowHFor(RP_NR),
-                   label, val, fgc, bgc, COL_BACK, printState[5][row]);
+                   label, val, fgc, bgc, COL_BACK, printState[5][slot]);
         rc.value = val; rc.fg = fgc; rc.bg = bgc;
     };
 
-    // Row 0 — Distance
-    if      (state.tgtDistance < DOCK_DIST_ALARM_M) { fg = TFT_WHITE;     bg = TFT_RED;   }
-    else if (state.tgtDistance < DOCK_DIST_WARN_M)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-    else                                              { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    dockVal(0, "Dist:", formatAlt(state.tgtDistance), fg, bg);
-
-    // Row 1 — Closure velocity (negative = approaching = good)
-    {
-        float vc = state.tgtVelocity;
-        bool closing = (vc < 0.0f);
-        if (!closing && fabsf(vc) > DOCK_VCLOSURE_ALARM_MS && state.tgtDistance < DOCK_VCLOSURE_ALARM_DIST_M) {
-            fg = TFT_WHITE; bg = TFT_RED;
-        } else if (closing && fabsf(vc) > DOCK_VCLOSURE_ALARM_MS && state.tgtDistance < DOCK_VCLOSURE_ALARM_DIST_M) {
-            fg = TFT_WHITE; bg = TFT_RED;
-        } else {
-            fg = closing ? TFT_DARK_GREEN : TFT_YELLOW;
-            bg = TFT_BLACK;
-        }
-        snprintf(buf, sizeof(buf), "%+.2f m/s", vc);
-        dockVal(1, "V.Close:", buf, fg, bg);
-    }
-
-    // Drift colour helper
-    auto driftCol = [](float v, uint16_t &fg, uint16_t &bg) {
-        float av = fabsf(v);
-        if      (av >= DOCK_DRIFT_ALARM_MS) { fg = TFT_WHITE;     bg = TFT_RED;   }
-        else if (av >= DOCK_DRIFT_WARN_MS)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-        else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    };
-
-    // Row 2 — Drift H
-    driftCol(v_yaw, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.2f m/s", v_yaw);
-    dockVal(2, "Drift.H:", buf, fg, bg);
-
-    // Row 3 — Drift V
-    driftCol(v_pitch_drift, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.2f m/s", v_pitch_drift);
-    dockVal(3, "Drift.V:", buf, fg, bg);
-
-    // Angle error colour helper
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {
         float ae = fabsf(e);
         if      (ae >= DOCK_BRG_ALARM_DEG) { fg = TFT_WHITE;     bg = TFT_RED;   }
@@ -571,62 +540,113 @@ static void drawScreen_DOCK(RA8875 &tft) {
         else                                { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     };
 
-    // Row 4 — Nose bearing error
-    angCol(noseBrg, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", noseBrg);
-    dockVal(4, "Nos.Brg:", buf, fg, bg);
+    // Row 0 — Distance  (cache slot 0)
+    if      (state.tgtDistance < DOCK_DIST_ALARM_M) { fg = TFT_WHITE;     bg = TFT_RED;   }
+    else if (state.tgtDistance < DOCK_DIST_WARN_M)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+    else                                              { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+    dockVal(0, 0, "Dist:", formatAlt(state.tgtDistance), fg, bg);
 
-    // Row 5 — Nose elevation error
-    angCol(noseElv, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", noseElv);
-    dockVal(5, "Nos.Elv:", buf, fg, bg);
-
-    // Row 6 — RCS | SAS
+    // Row 1 — Time to docking  (cache slot 1)
     {
-        uint16_t halfW = RP_W / 2;
-        uint16_t y6 = rowYFor(6, RP_NR), h6 = rowHFor(RP_NR);
+        float vc = state.tgtVelocity;
+        bool closing = (vc < -0.01f);
+        if (!closing) {
+            dockVal(1, 1, "T.Dock:", "---", TFT_DARK_GREY, TFT_BLACK);
+        } else {
+            float tDock = state.tgtDistance / fabsf(vc);
+            if      (tDock < 10.0f)  { fg = TFT_WHITE;     bg = TFT_RED;   }
+            else if (tDock < 30.0f)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+            else                     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+            dockVal(1, 1, "T.Dock:", formatTime((int64_t)tDock), fg, bg);
+        }
+    }
 
-        const char *rcsStr = state.rcs_on ? "ON"  : "OFF";
-        uint16_t    rcsFg  = state.rcs_on ? TFT_DARK_GREEN : TFT_WHITE;
-        uint16_t    rcsBg  = state.rcs_on ? TFT_BLACK      : TFT_RED;
+    // Row 2 — Closure velocity  (cache slot 2)
+    {
+        float vc = state.tgtVelocity;
+        bool closing = (vc < 0.0f);
+        bool tooFast = fabsf(vc) > DOCK_VCLOSURE_ALARM_MS && state.tgtDistance < DOCK_VCLOSURE_ALARM_DIST_M;
+        if (tooFast) { fg = TFT_WHITE; bg = TFT_RED; }
+        else         { fg = closing ? TFT_DARK_GREEN : TFT_YELLOW; bg = TFT_BLACK; }
+        snprintf(buf, sizeof(buf), "%+.2f m/s", vc);
+        dockVal(2, 2, "V.Close:", buf, fg, bg);
+    }
+
+    // Row 3 — V.Lat total lateral drift magnitude  (cache slot 3)
+    {
+        float av = v_lat_mag;
+        if      (av >= DOCK_DRIFT_ALARM_MS) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        else if (av >= DOCK_DRIFT_WARN_MS)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+        dockVal(3, 3, "V.Lat:", fmtMs(v_lat_mag), fg, bg);
+    }
+
+    // Row 4 — Vel.Brg: bearing error of velocity vector vs port (cache slot 4)
+    // Is your approach path aimed at the port?
+    angCol(velBrg, fg, bg);
+    snprintf(buf, sizeof(buf), "%+.1f\xB0", velBrg);
+    dockVal(4, 4, "Vel.Brg:", buf, fg, bg);
+
+    // Row 5 — Vel.Elv: elevation error of velocity vector vs port (cache slot 5)
+    angCol(velElv, fg, bg);
+    snprintf(buf, sizeof(buf), "%+.1f\xB0", velElv);
+    dockVal(5, 5, "Vel.Elv:", buf, fg, bg);
+
+    // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 6)
+    // Combined bearing + elevation error via Pythagorean approximation (accurate to <0.1°
+    // within the ±20° operating range of the DOCK screen). Always positive — unsigned offset.
+    {
+        float noseOff = sqrtf(noseBrg * noseBrg + noseElv * noseElv);
+        angCol(noseOff, fg, bg);
+        snprintf(buf, sizeof(buf), "%.1f\xB0", noseOff);
+        dockVal(6, 6, "Nos.Off:", buf, fg, bg);
+    }
+
+    // Row 7 — RCS | SAS buttons (full height to screen bottom)
+    {
+        uint16_t ry  = TITLE_TOP + 7 * rowHFor(RP_NR);
+        uint16_t rh  = SCREEN_H - ry;
+        uint16_t hw  = RP_W / 2;
+        uint16_t sasX = RP_X + hw;
+        uint16_t sasW = RP_X + RP_W - sasX;
+
+        // RCS button (slot 8)
         {
-            RowCache &rc = rowCache[5][6];
-            String s = rcsStr;
-            if (rc.value != s || rc.fg != rcsFg || rc.bg != rcsBg) {
-                printValue(tft, RP_F, RP_X, y6, halfW, h6,
-                           "RCS:", s, rcsFg, rcsBg, COL_BACK, printState[5][6]);
-                rc.value = s; rc.fg = rcsFg; rc.bg = rcsBg;
+            bool rcsOn = state.rcs_on;
+            String rcsStr = rcsOn ? "ON" : "OFF";
+            RowCache &rc = rowCache[5][8];
+            if (rc.value != rcsStr) {
+                ButtonLabel btn = rcsOn
+                    ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
+                    : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
+                drawButton(tft, RP_X, ry, hw, rh, btn, &Roboto_Black_20, false);
+                rc.value = rcsStr;
             }
         }
 
-        const char *sasStr;
-        uint16_t    sasFg, sasBg = TFT_BLACK;
-        switch (state.sasMode) {
-            case 255: sasStr = "OFF";   sasFg = TFT_WHITE;      sasBg = TFT_RED;   break; // SAS off — always alarm
-            case 0:   sasStr = "STAB";  sasFg = TFT_SKY;                            break; // Stability — neutral
-            case 1:   sasStr = "PROG";  sasFg = TFT_RED;                            break; // Prograde — wrong for dock
-            case 2:   sasStr = "RETR";  sasFg = TFT_RED;                            break; // Retrograde — wrong
-            case 3:   sasStr = "NORM";  sasFg = TFT_RED;                            break; // Normal — wrong
-            case 4:   sasStr = "ANRM";  sasFg = TFT_RED;                            break; // Anti-normal — wrong
-            case 5:   sasStr = "ROUT";  sasFg = TFT_RED;                            break; // Radial out — wrong
-            case 6:   sasStr = "RINX";  sasFg = TFT_RED;                            break; // Radial in — wrong
-            case 7:   sasStr = "TGT";   sasFg = TFT_DARK_GREEN;                     break; // Target — correct for docking
-            case 8:   sasStr = "ATGT";  sasFg = TFT_RED;                            break; // Anti-target — wrong
-            case 9:   sasStr = "MNV";   sasFg = TFT_RED;                            break; // Maneuver — wrong
-            default:  sasStr = "---";   sasFg = TFT_DARK_GREY;                      break;
-        }
+        // SAS button (slot 9)
         {
-            RowCache &rc = rowCache[5][7];
-            String s = sasStr;
-            if (rc.value != s || rc.fg != sasFg || rc.bg != sasBg) {
-                // Explicitly clear the entire SAS half-row before redrawing.
-                // printValue only clears on background colour change — same-bg
-                // transitions (e.g. ATGT->TGT) leave leftover pixels otherwise.
-                tft.fillRect(RP_X + halfW, y6, halfW, h6, TFT_BLACK);
-                printDispChrome(tft, &Roboto_Black_20, RP_X + halfW, y6, halfW, h6, "SAS:", COL_LABEL, COL_BACK, COL_NO_BDR);
-                printValue(tft, RP_F, RP_X + halfW, y6, halfW, h6,
-                           "SAS:", s, sasFg, sasBg, COL_BACK, printState[5][7]);
-                rc.value = s; rc.fg = sasFg; rc.bg = sasBg;
+            const char *v; uint16_t sasFg, sasBg;
+            switch (state.sasMode) {
+                case 255: v = "SAS";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 0:   v = "STAB"; sasFg = TFT_BLACK;     sasBg = TFT_SKY;        break;
+                case 1:   v = "PRO";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 2:   v = "RETR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 3:   v = "NRM";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 4:   v = "ANRM"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 5:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 6:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 7:   v = "TGT";  sasFg = TFT_WHITE;     sasBg = TFT_DARK_GREEN; break;
+                case 8:   v = "ATGT"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 9:   v = "MNVR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                default:  v = "SAS";  sasFg = TFT_DARK_GREY; sasBg = TFT_OFF_BLACK;  break;
+            }
+            RowCache &rc = rowCache[5][9];
+            String sv = v;
+            if (rc.value != sv || rc.fg != sasFg || rc.bg != sasBg) {
+                ButtonLabel btn = { v, sasFg, sasFg, sasBg, sasBg, TFT_GREY, TFT_GREY };
+                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_20, false);
+                rc.value = sv; rc.fg = sasFg; rc.bg = sasBg;
             }
         }
     }
@@ -634,12 +654,30 @@ static void drawScreen_DOCK(RA8875 &tft) {
     // Approach bar — left panel bottom (threshold-gated internally)
     _dockDrawDistBar(tft, state.tgtDistance);
 
-    // Redraw dividers last so printValue fills never overwrite them
-    uint16_t _divY = rowYFor(6, RP_NR) - 1;
-    tft.drawLine(RP_X, _divY,   RP_X + RP_W, _divY,   TFT_GREY);
-    tft.drawLine(RP_X, _divY+1, RP_X + RP_W, _divY+1, TFT_GREY);
-    tft.drawLine(RP_X + RP_W/2,     rowYFor(6,RP_NR), RP_X + RP_W/2,     SCREEN_H - 1, TFT_GREY);
-    tft.drawLine(RP_X + RP_W/2 + 1, rowYFor(6,RP_NR), RP_X + RP_W/2 + 1, SCREEN_H - 1, TFT_GREY);
+    // Redraw all dividers last — printValue fills can erase them
+    // Between T.Dock(1) and V.Close(2)
+    { uint16_t dy = rowYFor(2,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
+    // Between V.Lat(3) and Vel.Brg(4)
+    { uint16_t dy = rowYFor(4,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
+    // Between Vel.Elv(5) and Nos.Off(6)
+    { uint16_t dy = rowYFor(6,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
+    // Before buttons(7)
+    { uint16_t dy = rowYFor(7,RP_NR) - 1;
+      tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
+      tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
+    // Panel left border
     tft.drawLine(RP_X - 2, TITLE_TOP, RP_X - 2, SCREEN_H, TFT_GREY);
     tft.drawLine(RP_X - 1, TITLE_TOP, RP_X - 1, SCREEN_H, TFT_GREY);
+
+    uint32_t _dt = micros() - _t0;
+    Serial.print("DOCK total=");
+    Serial.print((float)_dt / 1000.0f, 2);
+    Serial.print("ms  dist="); Serial.print(state.tgtDistance, 1);
+    Serial.print("m  vc=");    Serial.println(state.tgtVelocity, 2);
 }

@@ -10,7 +10,6 @@ static void chromeScreen_VEH(RA8875 &tft) {
   static const uint16_t SECT_W = 26;
   static const uint16_t AX     = ROW_PAD + SECT_W;
   static const uint16_t AW     = CONTENT_W - AX - ROW_PAD;
-  static const uint16_t AHW    = AW / 2;
   uint16_t rowH = rowHFor(NR);
 
   // Section labels: INFO(rows0-2), CREW(rows3-5), PROP(rows6-7)
@@ -26,14 +25,7 @@ static void chromeScreen_VEH(RA8875 &tft) {
   printDispChrome(tft, F, AX, rowYFor(3,NR), AW, rowH, "Control:",          COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "Signal:",           COL_LABEL, COL_BACK, COL_NO_BDR);
 
-  // Row 5 — split Crew | Cap (uses AX-based geometry)
-  {
-    uint16_t y = rowYFor(5, NR), h = rowH;
-    printDispChrome(tft, F, AX,                   y, AHW - ROW_PAD, h, "Crew:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, F, AX + AHW + ROW_PAD,   y, AHW - ROW_PAD, h, "Cap:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    for (int8_t dx = -1; dx <= 1; dx++)
-      tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, rowYFor(6,NR) - 1, TFT_GREY);
-  }
+  printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "Crew:", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, AX, rowYFor(6,NR), AW, rowH, "\xCE\x94V.Stg:", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, AX, rowYFor(7,NR), AW, rowH, "\xCE\x94V.Tot:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
@@ -53,7 +45,6 @@ static void drawScreen_VEH(RA8875 &tft) {
   static const uint16_t SECT_W = 26;
   static const uint16_t AX     = ROW_PAD + SECT_W;
   static const uint16_t AW     = CONTENT_W - AX - ROW_PAD;
-  static const uint16_t AHW    = AW / 2;
   uint16_t fg, bg;
 
   // Cache-checked draw helper using section-label-aware geometry
@@ -139,13 +130,11 @@ static void drawScreen_VEH(RA8875 &tft) {
     vehVal(4, "Signal:", sigStr, fg, bg);
   }
 
-  // Row 5 — Split: Crew (left, slot 9) | Cap (right, slot 10) (#45 -> drawValue)
+  // Row 5 — Crew count / capacity
   {
-    char crewStr[8], capStr[8];
-    snprintf(crewStr, sizeof(crewStr), "%d", state.crewCount);
-    snprintf(capStr,  sizeof(capStr),  "%d", state.crewCapacity);
-    drawValue(tft, 7,  9, AX,               AHW - ROW_PAD, "Crew:", crewStr, COL_VALUE, COL_BACK, F, NR);
-    drawValue(tft, 7, 10, AX + AHW + ROW_PAD, AHW - ROW_PAD, "Cap:",  capStr,  COL_VALUE, COL_BACK, F, NR);
+    char crewStr[12];
+    snprintf(crewStr, sizeof(crewStr), "%d / %d", state.crewCount, state.crewCapacity);
+    vehVal(5, "Crew:", crewStr, COL_VALUE, COL_BACK);
   }
 
   // ── PROP block (rows 6-7): delta-V ──
@@ -170,4 +159,3 @@ static void drawScreen_VEH(RA8875 &tft) {
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
   vehVal(7, "\xCE\x94V.Tot:", fmtMs(state.totalDeltaV), fg, bg);
 }
-

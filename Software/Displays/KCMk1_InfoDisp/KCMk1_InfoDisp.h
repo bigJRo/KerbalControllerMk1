@@ -19,14 +19,14 @@
 enum ScreenType : uint8_t {
   screen_LNCH  = 0,   // Launch
   screen_ORB   = 1,   // Orbit (Apsides default + Advanced Elements tap-through)
-  screen_ATT   = 2,   // Attitude
+  screen_SCFT  = 2,   // Spacecraft attitude (EADI)
   screen_MNVR  = 3,   // Maneuver
-  screen_RNDZ  = 4,   // Rendezvous / Target
+  screen_TGT   = 4,   // Target / Rendezvous (RPOD display)
   screen_DOCK  = 5,   // Docking
   screen_LNDG  = 6,   // Landing
   screen_VEH   = 7,   // Vehicle
   screen_ACFT  = 8,   // Aircraft
-  screen_MISC  = 9,   // Rover
+  screen_ROVR  = 9,   // Rover
   screen_COUNT = 10   // sentinel — not a real screen
 };
 
@@ -188,6 +188,10 @@ struct AppState {
   // Resources
   float     electricChargePercent = 0.0f;  // 0.0..100.0 — from ELECTRIC_CHARGE resource channel
 
+  // Thermal (from TEMP_LIMIT_MESSAGE)
+  uint8_t   coreTempPct  = 0;   // hottest part core temp as % of limit (0–100)
+  uint8_t   skinTempPct  = 0;   // hottest part skin temp as % of limit (0–100)
+
   // Vessel info
   String          vesselName    = "---";
   VesselType      vesselType    = type_Unknown;
@@ -235,6 +239,8 @@ ScreenType contextScreen();
 
 // TouchEvents.ino
 void processTouchEvents();
+void touchISR();                  // ISR — attached to CTP_INT_PIN RISING in setup()
+extern volatile bool _touchPending;  // set by touchISR, cleared by processTouchEvents
 
 // Demo.ino
 void initDemoMode();
@@ -285,7 +291,7 @@ extern bool _drogueArmedSafe;
 extern bool _mainArmedSafe;
 
 // RNDZ/DOCK chrome state — defined in Screen_RNDZ/DOCK.ino, used by AAA_Screens.ino dispatch
-extern bool _rndzChromDrawn;
+extern bool _tgtChromDrawn;
 extern bool _dockChromDrawn;
 extern bool _vesselDocked;
 extern uint32_t _dockedTimestamp;
@@ -293,4 +299,4 @@ extern bool _pendingContextSwitch;  // set on vessel change; cleared when FLIGHT
 extern bool _pendingDockCheck;      // set after context switch; cleared when TARGETINFO arrives
 extern bool _orbAdvancedMode; // true = ADVANCED ELEMENTS tap-through view, false = APSIDES default
 extern bool _prevShowAp;      // Screen_ORB: which time row was last shown (reset on vessel switch)
-extern bool _attPrevOrbMode;  // Screen_ATT: previous orbital mode (reset on vessel switch)
+extern bool _scftPrevOrbMode;  // Screen_SCFT: previous orbital mode (reset on vessel switch)

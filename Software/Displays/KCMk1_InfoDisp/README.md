@@ -10,7 +10,7 @@ Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1
 
 The Information Display is an 800×480 touchscreen panel that presents real-time KSP flight telemetry sourced from KerbalSimpit. It runs on a Teensy 4.0 and receives telemetry over USB serial from a running KSP instance.
 
-The panel provides ten screens — Launch, Orbit, Attitude, Maneuver, Target, Docking, Landing, Vehicle Info, Aircraft, and Rover — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar with one button per screen.
+The panel provides ten screens — Launch, Orbit, Spacecraft (PFD), Maneuver, Target, Docking, Landing, Vehicle Info, Aircraft, and Rover — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar with one button per screen.
 
 **Context-switching:** The display automatically selects the most appropriate screen when the scene or vessel changes. Planes route to AIRCRAFT, rovers to ROVER, vessels on the pad or landed to LAUNCH (with the pre-launch board), landers in flight to LANDING (powered descent), vessels near a docking target to DOCKING, and all others to ORBIT.
 
@@ -114,7 +114,7 @@ Cross-panel aligned thresholds (edit in `KCMk1_SystemConfig.h`):
 | `DV_STG_ALARM_MS` | `150.0` m/s | `CW_LOW_DV_MS` |
 | `LNCH_BURNTIME_ALARM_S` | `60.0` s | `CW_LOW_BURN_S` |
 
-For the full threshold listing (aircraft, landing, docking, orbit, attitude thresholds), see `AAA_Config.ino`.
+For the full threshold listing (aircraft, landing, docking, orbit, spacecraft thresholds), see `AAA_Config.ino`.
 
 ---
 
@@ -177,7 +177,7 @@ The panel displays ten screens navigated by the right-hand sidebar. Screen order
 |---|---------|-------|-------------|
 | 0 | LNCH | LAUNCH | Title bar: ASCENT / CIRCULARIZATION. Pre-launch board shown automatically on pad. |
 | 1 | ORB | ORBIT | Title bar: APSIDES / ADVANCED ELEMENTS |
-| 2 | ATT | ATTITUDE | — |
+| 2 | PFD | SPACECRAFT | — |
 | 3 | MNVR | MANEUVER | — |
 | 4 | TGT | TARGET | NO TARGET SET fullscreen when no target |
 | 5 | DOCK | DOCKING | NO TARGET SET / DOCKED fullscreen when applicable |
@@ -190,7 +190,7 @@ The panel displays ten screens navigated by the right-hand sidebar. Screen order
 
 **ORB** — *Apsides (default):* Alt.SL, V.Orb, ApA, PeA, T+Ap or T+Pe, T+Ign, ΔV.Tot, ΔV.Stg, RCS, SAS. *Advanced Elements:* Ecc, SMA, ApA, PeA, Inc, LAN, True/Mean anomaly, Period. Navigating away resets to Apsides.
 
-**ATT** — Hdg, Pitch, Roll, SAS, velocity vector heading/pitch, heading/pitch error (nose-to-velocity). Errors coloured only in atmosphere.
+**PFD** — Primary Flight Display: full EADI ball with pitch ladder, roll indicator, and fixed aircraft symbol. Right panel: Hdg, Pitch, Roll, SAS, velocity vector heading/pitch, heading/pitch error (nose-to-velocity). Errors coloured only in atmosphere.
 
 **MNVR** — Alt.SL, V.Orb, T+Ign, T+Mnvr, ΔV.Mnvr, T.Burn, ΔV.Tot, burn heading/pitch. All fields show `---` when no node planned.
 
@@ -239,23 +239,29 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `AAA_Config.ino` | All tunable constants |
 | `AAA_Globals.ino` | Global state, `AppState`, `switchToScreen()`, `contextScreen()`, `drawStandbyScreen()` |
 | `AAA_Screens.ino` | Shared screen infrastructure, layout constants, `drawValue()` helper, dispatch switches |
-| `Screen_LNCH.ino` | Launch / Circularization + pre-launch board |
-| `Screen_ORB.ino` | Orbit (Apsides default + Advanced Elements tap-through) |
-| `Screen_ATT.ino` | Attitude |
-| `Screen_MNVR.ino` | Maneuver |
-| `Screen_RNDZ.ino` | Target / Rendezvous (screen index 4, sidebar label TGT) |
-| `Screen_DOCK.ino` | Docking |
-| `Screen_LNDG.ino` | Landing (Powered Descent + Re-entry) |
+| `Screen_LNCH.ino` | Launch dispatcher (selects pre-launch / ascent / circularization) |
+| `Screen_LNCH_PreLaunch.ino` | Launch pre-launch checklist board |
+| `Screen_LNCH_Ascent.ino` | Launch ascent (graphical: ladder, V.Vrt/V.Orb bars, FPA dial, atmosphere gauge) |
+| `Screen_LNCH_Circ.ino` | Launch circularization (graphical: orbit diagram, ATT/IGN/Burn-Dur cluster, ΔV bar) |
+| `Screen_ORB.ino` | Orbit (Apsides default — graphical orbit + inclination diagram) |
+| `Screen_OrbAdv.ino` | Orbit Advanced Elements (text-only, tap-through) |
+| `Screen_SCFT.ino` | Spacecraft / PFD — full EADI ball (sidebar PFD, screen index 2) |
+| `Screen_MNVR.ino` | Maneuver — alignment reticle + numeric panel |
+| `Screen_TGT.ino` | Target / Rendezvous — RPOD scope + numeric panel |
+| `Screen_DOCK.ino` | Docking — approach reticle + numeric panel |
+| `Screen_LNDG.ino` | Landing dispatcher (selects powered descent / re-entry) |
+| `Screen_LNDG_Powered.ino` | Landing powered descent (graphical: tape, X-Pointer, ATT, V.Vrt) |
+| `Screen_LNDG_Reentry.ino` | Landing re-entry (text-only readout board) |
 | `Screen_VEH.ino` | Vehicle Info |
-| `Screen_ACFT.ino` | Aircraft |
-| `Screen_MISC.ino` | Rover (screen index 9, sidebar label ROVR) |
+| `Screen_ACFT.ino` | Aircraft — full EADI ball |
+| `Screen_ROVR.ino` | Rover — compass, throttle bar, tilt indicators (screen index 9) |
 | `TouchEvents.ino` | Touch debounce, sidebar and title bar dispatch |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
 | `I2CSlave.ino` | I2C slave at 0x12 — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Randomised KSP-themed boot sequences (B: Mission Log, C: Loading Tips, E: Pre-Flight Checklist) |
 | `Demo.ino` | Demo mode — sine-wave `AppState` animation |
 
-**Tab naming note:** The `AAA_` prefix ensures `AAA_Screens.ino` compiles before all `Screen_*.ino` tabs. `Screen_RNDZ.ino` implements the TARGET screen (screen index 4). `Screen_MISC.ino` implements the ROVER screen (screen index 9). Do not rename these files.
+**Tab naming note:** The `AAA_` prefix ensures `AAA_Screens.ino` compiles before all `Screen_*.ino` tabs. The `Screen_LNCH_*.ino` and `Screen_LNDG_*.ino` files are mode-specific sub-files dispatched by `Screen_LNCH.ino` and `Screen_LNDG.ino` respectively. Filename `Screen_SCFT.ino` corresponds to the SPACECRAFT screen (sidebar label PFD, screen index 2).
 
 ---
 

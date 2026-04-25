@@ -9,7 +9,12 @@
    OPERATING MODE
 ****************************************************************************************/
 bool debugMode = false;
-bool demoMode  = false;  // false = live Simpit telemetry; true = demo sine-wave values
+bool demoMode  = true;   // true = sine-wave demo values, no KSP required
+
+// STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
+// and enter loop() immediately. Safe to leave true for bench/UI testing; set false
+// for production (master will send PROCEED after reading the status packet).
+const bool STANDALONE_TEST = true;
 
 
 /***************************************************************************************
@@ -129,11 +134,20 @@ const float DV_TOT_WARN_MS  = 500.0f;  // yellow — mission nearly out of prope
 
 
 /***************************************************************************************
-   FLIGHT THRESHOLDS — TARGET (RNDZ screen)
+   FLIGHT THRESHOLDS — TARGET (TGT screen)
 ****************************************************************************************/
 
 // Distance to target (m) — yellow <5km, white-on-green <200m (ready for DOCK)
 const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow — closing
+
+// Closure velocity thresholds (m/s, absolute value)
+const float TGT_VCLOSURE_WARN_MS  = 200.0f;  // yellow — fast approach
+const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast
+
+// Approach alignment error thresholds (degrees absolute)
+// Wider than DOCK — long-range ops tolerate larger angles
+const float TGT_BRG_WARN_DEG  =  5.0f;   // yellow — off-axis approach
+const float TGT_BRG_ALARM_DEG = 15.0f;   // white-on-red — significantly misaligned
 
 
 /***************************************************************************************
@@ -180,13 +194,19 @@ const float ORB_ECC_ALARM = 1.0f;   // white-on-red — escape trajectory
 const float APSI_TIME_WARN_S = 60.0f;    // yellow — node approaching
 
 // Time to ignition (MNVR screen, seconds)
-const float MNVR_TIGN_WARN_S = 60.0f;   // yellow — get ready to light
+const float MNVR_TIGN_WARN_S  = 60.0f;   // yellow — get ready to light
+const float MNVR_TIGN_ALARM_S = 10.0f;   // white-on-red — light NOW
 
 // Total ΔV margin over maneuver ΔV — yellow if within this factor (e.g. 1.1 = within 10%)
 const float MNVR_DV_MARGIN = 1.1f;
 
 // CommNet signal (percent)
 const float VEH_SIGNAL_WARN_PCT = 50.0f;   // yellow — weak link
+
+// Thermal limits (percent of part limit, skin temperature)
+const uint8_t VEH_TEMP_SUPPRESS_PCT = 40;   // below this: bar suppressed (nominal)
+const uint8_t VEH_TEMP_WARN_PCT     = 70;   // yellow — getting warm
+const uint8_t VEH_TEMP_ALARM_PCT    = 85;   // white-on-red — critical
 
 
 /***************************************************************************************
@@ -209,7 +229,7 @@ const float LNCH_BURNTIME_WARN_S  = 120.0f;  // yellow
 
 
 /***************************************************************************************
-   FLIGHT THRESHOLDS — ROVER (MISC screen)
+   FLIGHT THRESHOLDS — ROVER (ROVR screen)
 ****************************************************************************************/
 
 // Radar altitude thresholds (m) — inverted logic vs aircraft/lander.
