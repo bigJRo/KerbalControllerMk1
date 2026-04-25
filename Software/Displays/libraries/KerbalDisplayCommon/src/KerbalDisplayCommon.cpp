@@ -11,6 +11,12 @@
 static bool _kdcDebugMode = false;
 void setKDCDebugMode(bool enable) { _kdcDebugMode = enable; }
 
+// Missing-glyph diagnostic counter for getFontCharWidth (#A4). Rate-limited to
+// keep Serial readable during long renders. Counter persists across calls and
+// resets only on reboot.
+static uint8_t _missingGlyphsLogged = 0;
+static const uint8_t _MISSING_GLYPH_LOG_LIMIT = 16;
+
 const byte TEXT_BORDER = 8;  // horizontal padding from edge
 
 
@@ -35,6 +41,18 @@ int16_t getFontCharWidth(const tFont *font, char c) {
   for (uint8_t i = 0; i < font->length; i++) {
     if (font->chars[i].char_code == (uint8_t)c) {
       return (int16_t)font->chars[i].image->image_width;
+    }
+  }
+  // Glyph not in font — width returned as 0, which causes right/center
+  // alignment to drift by the missing glyph's true width. (#A4) Log a
+  // rate-limited warning so the developer can either add the glyph to the
+  // font or pre-filter the input string.
+  if (_kdcDebugMode && _missingGlyphsLogged < _MISSING_GLYPH_LOG_LIMIT) {
+    Serial.print(F("KDC: getFontCharWidth: missing glyph 0x"));
+    Serial.println((uint8_t)c, HEX);
+    _missingGlyphsLogged++;
+    if (_missingGlyphsLogged == _MISSING_GLYPH_LOG_LIMIT) {
+      Serial.println(F("KDC: (further missing-glyph warnings suppressed)"));
     }
   }
   return 0;  // character not found in font
@@ -109,13 +127,25 @@ void drawVertBarGraph(RA8875 &tft,
    - minVal, maxVal  value range mapped to arcMinDeg..arcMaxDeg (±90° from straight up)
    - prevVal, curVal values to erase/draw
    - color       needle and arc colour
+
+   IMPORTANT (#A8): No internal change detection. Caller must gate on value
+   change (see header comment for details).
 ****************************************************************************************/
 static void _drawArcNeedle(RA8875 &tft, int16_t cx, int16_t cy,
                             uint16_t radius, uint16_t needleW,
                             float minVal, float maxVal, float val,
                             uint16_t color) {
-  // Map value to angle: 0° = straight up (12 o'clock), +90° = right, -90° = left
-  float frac   = (val - minVal) / (maxVal - minVal);  // 0.0 – 1.0
+  // Defensive: zero-range arc would divide by zero. Caller error, but
+  // guard so we don't produce NaN coordinates. (#A9)
+  if (maxVal == minVal) {
+    return;
+  }
+  // Map value to angle: 0° = straight up (12 o'clock), +90° = right, -90° = left.
+  // Clamp val to [minVal, maxVal] so out-of-range telemetry doesn't rotate
+  // the needle past the arc track. (#A9)
+  float frac = (val - minVal) / (maxVal - minVal);
+  if (frac < 0.0f) frac = 0.0f;
+  if (frac > 1.0f) frac = 1.0f;
   float angleDeg = -90.0f + frac * 180.0f;            // -90° left … +90° right
   float angleRad = angleDeg * 3.14159f / 180.0f;
   int16_t tipX = cx + (int16_t)(radius * sinf(angleRad));
@@ -154,7 +184,9 @@ void drawArcDisplay(RA8875 &tft,
    DRAW BUTTON
    Draws a filled rectangle with centered, word-wrapped text in on or off state.
    Colors, border, and text are taken from the ButtonLabel struct.
-   Single words wider than the button width will overflow without clipping.
+   (#A10) Lines wider than the button width are skipped rather than overflowing
+   into adjacent UI. A diagnostic is logged on Serial when debug mode is on.
+   To avoid skipped lines, use shorter labels or larger buttons.
 ****************************************************************************************/
 
 void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
@@ -237,6 +269,22 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
   for (uint8_t i = 0; i < lineCount && i < MAX_LINES; i++) {
     if (strlen(lines[i]) == 0) continue;
     int16_t linePixW = getFontStringWidth(font, lines[i]);
+    // (#A10) If a line is wider than the button (single word too long, or
+    // wrapping was forced beyond the column width), skip it rather than
+    // overflowing into adjacent UI. Log a warning so the developer can
+    // shorten the label or enlarge the button.
+    if (linePixW > availW) {
+      if (_kdcDebugMode) {
+        Serial.print(F("KDC: drawButton: line too wide ("));
+        Serial.print(linePixW);
+        Serial.print(F("px > "));
+        Serial.print(availW);
+        Serial.print(F("px), skipping: '"));
+        Serial.print(lines[i]);
+        Serial.println(F("'"));
+      }
+      continue;
+    }
     int16_t drawX    = x + (w - linePixW) / 2;
     int16_t drawY    = startY + (i * LINE_SPACING);
     if (drawX < x + PADDING) drawX = x + PADDING;
@@ -426,26 +474,52 @@ static String _getSign(float &value) {
 // formatSep(): for values >= 1000 the decimal part is dropped and a thousands
 // separator is inserted instead (e.g. 1234.5 -> "1,234"). This is intentional —
 // at that scale the decimal is noise on a display. (#64)
+//
+// (#A5) The float core delegates to a 64-bit integer helper so it no longer
+// overflows for values >= 2^31. For exact formatting of large integer values
+// (where float precision would quantize the digits), call formatSepI64()
+// directly with an int64_t.
+
+// Core implementation — operates on a signed 64-bit integer.
+// Buffer sizing (#A6): int64 max is 19 digits → ~6 separator groups → 24
+// chars of commas + 3-digit leading group = 27 chars worst case. buf[64]
+// gives ample margin. INT64_MIN is unsupported (negation overflows); not
+// reachable from any realistic Kerbal value.
+static String _formatSepInt64(int64_t value) {
+  char buf[64]     = "";
+  char tempBuf[64] = "";
+  String sign;
+  if (value < 0) { value = -value; sign = "-"; }
+  if (value < 1000) {
+    char small[16];
+    sprintf(small, "%lld", (long long)value);
+    return sign + String(small);
+  }
+  while (value >= 1000) {
+    int current = (int)(value % 1000);
+    value /= 1000;
+    sprintf(tempBuf, ",%03d%s", current, buf);
+    strcpy(buf, tempBuf);
+  }
+  char output[64];
+  sprintf(output, "%lld%s", (long long)value, buf);
+  return sign + String(output);
+}
+
 String formatSep(float value) {
-  char buf[40]     = "";
-  char tempBuf[40] = "";
-  char tempStr[8];
   String sign = _getSign(value);
   if (value < 1000) {
+    char tempStr[16];
     dtostrf(value, 2, 2, tempStr);
     return sign + String(tempStr);
-  } else {
-    int tempVal = value;
-    while (tempVal >= 1000) {
-      int current = tempVal % 1000;
-      tempVal /= 1000;
-      sprintf(tempBuf, ",%03d%s", current, buf);
-      strcpy(buf, tempBuf);
-    }
-    char output[40];
-    sprintf(output, "%d%s", tempVal, buf);
-    return sign + String(output);
   }
+  // Delegate to the int64 core. Float precision caps usable integer range
+  // at ~1.6e7; large values are formatted as the nearest representable float.
+  return sign + _formatSepInt64((int64_t)value);
+}
+
+String formatSepI64(int64_t value) {
+  return _formatSepInt64(value);
 }
 
 String formatTime(float timeVal) {
@@ -572,6 +646,29 @@ void printDisp(RA8875 &tft, const tFont *font,
   int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
   int16_t regionW = w - TEXT_BORDER - paramW - 2;
 
+  // (#A11) If the param label is wider than the display block can accommodate
+  // alongside any value text, regionW would go negative — when cast to
+  // uint16_t for fillRect, that produces a giant fill that paints over
+  // adjacent UI. Draw the label and border so the block is visible, then
+  // skip value rendering. Diagnostic logged when debug mode is on.
+  if (regionW < 1) {
+    if (_kdcDebugMode) {
+      Serial.print(F("KDC: printDisp: param '"));
+      Serial.print(param);
+      Serial.print(F("' too wide for block (paramW="));
+      Serial.print(paramW);
+      Serial.print(F("px, w="));
+      Serial.print(w);
+      Serial.println(F("px) — value omitted"));
+    }
+    tft.fillRect(x0 + 1, y0 + 1, w - 2, h - 2, backColor);
+    textLeft(tft, font, x0, y0, w, h, param, paramColor, backColor);
+    if (borderColor != NO_BORDER) {
+      tft.drawRect(x0, y0, w, h, borderColor);
+    }
+    return;
+  }
+
   int16_t  newTextW = getFontStringWidth(font, value.c_str());
   int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
   if (newTextX < regionX) newTextX = regionX;
@@ -638,6 +735,21 @@ void printValue(RA8875 &tft, const tFont *font,
   int16_t regionX = x0 + TEXT_BORDER + paramW + 1;
   int16_t regionW = w - TEXT_BORDER - paramW - 2;
 
+  // (#A11) Same negative-regionW guard as printDisp. printValue does not
+  // redraw the param label or border, so we just skip the value render.
+  if (regionW < 1) {
+    if (_kdcDebugMode) {
+      Serial.print(F("KDC: printValue: param '"));
+      Serial.print(param);
+      Serial.print(F("' too wide for block (paramW="));
+      Serial.print(paramW);
+      Serial.print(F("px, w="));
+      Serial.print(w);
+      Serial.println(F("px) — skipping"));
+    }
+    return;
+  }
+
   int16_t  newTextW = getFontStringWidth(font, value.c_str());
   int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
   if (newTextX < regionX) newTextX = regionX;
@@ -679,6 +791,8 @@ void printName(RA8875 &tft, const tFont *font,
                const String &value, uint16_t color, uint16_t backColor,
                uint16_t borderColor, byte maxLength) {
   String val = value;   // local copy — const String& cannot be mutated
+  // (#A12) maxLength is in BYTES, not Unicode code points. UTF-8 input may
+  // be truncated mid-multibyte-sequence. See encoding caveat in header.
   if (val.length() > maxLength) {
     val = val.substring(0, maxLength);
   }
@@ -831,11 +945,15 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
   bool ok = true;
 
   // --- BMP file header (14 bytes) ---
-  if (_bmpRead16(file, ok) != 0x4D42) {
+  // (#A13) Check ok before evaluating the signature, so a short/unreadable
+  // file is reported as BMP_ERR_READ rather than BMP_ERR_SIGNATURE.
+  uint16_t signature = _bmpRead16(file, ok);
+  if (!ok) { file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ; }
+  if (signature != 0x4D42) {
     file.close(); _bmpLogError(filename, BMP_ERR_SIGNATURE); return BMP_ERR_SIGNATURE;
   }
-  _bmpRead32(file, ok);  // file size (unused)
-  _bmpRead32(file, ok);  // reserved (unused)
+  (void)_bmpRead32(file, ok);  // file size (unused)
+  (void)_bmpRead32(file, ok);  // reserved (unused)
   uint32_t dataOffset = (uint32_t)_bmpRead32(file, ok);
   if (!ok) { file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ; }
 
@@ -846,7 +964,7 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
 
   int32_t  imgW        = _bmpRead32(file, ok);
   int32_t  imgH        = _bmpRead32(file, ok);
-  _bmpRead16(file, ok);                        // colour planes (always 1)
+  (void)_bmpRead16(file, ok);                  // colour planes (always 1)
   uint16_t bitDepth    = _bmpRead16(file, ok);
   int32_t  compression = _bmpRead32(file, ok);
   if (!ok) { file.close(); _bmpLogError(filename, BMP_ERR_READ); return BMP_ERR_READ; }
@@ -866,9 +984,10 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
   if (imgH == 0) {
     file.close(); _bmpLogError(filename, BMP_ERR_DIMENSIONS); return BMP_ERR_DIMENSIONS;
   }
-  // Guard against unreasonably large images before VLA allocation.
-  // Limits stack usage from untrusted file data to ~7KB (800px * 3 + 800px * 2).
-  if (imgW > 800 || imgH > 480) {
+  // Guard against unreasonably large images before buffer allocation.
+  // (#A15) Bounds use KCM_SCREEN_W/H so the check matches the fixed buffer
+  // capacity below — both must move together if a smaller display is targeted.
+  if (imgW > KCM_SCREEN_W || imgH > KCM_SCREEN_H) {
     file.close(); _bmpLogError(filename, BMP_ERR_DIMENSIONS); return BMP_ERR_DIMENSIONS;
   }
 
@@ -888,11 +1007,16 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
   }
 
   // --- Buffers ---
-  // rowBuf: raw BGR bytes from SD (3 bytes per pixel)
-  // pixBuf: converted RGB565 values for drawPixels() burst write (1 per pixel)
-  // Both allocated on stack — ensure sufficient stack depth for large images.
-  uint8_t  rowBuf[imgW * 3];
-  uint16_t pixBuf[imgW];
+  // (#A15) Fixed-size at the panel worst case rather than VLAs sized from
+  // imgW. Eliminates a non-standard C++ feature and makes stack usage
+  // statically knowable. Sizes track KCM_SCREEN_W (800 → 2400 + 1600 = 4 KB).
+  // (#A16) rowBuf includes 3 extra bytes for worst-case BMP row padding
+  // (rows are padded to 4-byte boundaries), so we can read full padded rows
+  // when consuming sequentially.
+  // rowBuf: raw BGR bytes from SD (3 bytes per pixel + up to 3 padding).
+  // pixBuf: converted RGB565 values for drawPixels() burst write.
+  uint8_t  rowBuf[KCM_SCREEN_W * 3 + 3];
+  uint16_t pixBuf[KCM_SCREEN_W];
 
   // Set active window to exact BMP destination rectangle — contains any pixel
   // bleed from drawPixels within the BMP bounds, preventing corruption of
@@ -932,8 +1056,11 @@ BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y) {
       free(allRows);
     }
   } else {
+    // Top-down BMP: read sequentially. (#A16) Use rowBytes (padded) for the
+    // read so padding bytes are consumed and the next row aligns correctly.
+    // _bmpConvertRow() only inspects the first imgW*3 bytes — padding ignored.
     for (int32_t row = 0; row < imgH; row++) {
-      if (file.read(rowBuf, imgW * 3) != (size_t)(imgW * 3)) {
+      if (file.read(rowBuf, rowBytes) != (size_t)rowBytes) {
         _bmpAbort(file, filename, BMP_ERR_READ, tft); return BMP_ERR_READ;
       }
       _bmpConvertRow(rowBuf, pixBuf, imgW);
@@ -982,14 +1109,24 @@ static const BodyParams _bodyUnknown = { "", "", 0, 0, 0, 0, 0.0, 0, "", "" };
    GET BODY PARAMETERS
    Looks up the SOI string in the body table and returns a copy of the matching entry.
    Returns a zeroed/empty BodyParams (_bodyUnknown) if the SOI is not recognised.
+
+   (#A22) Two overloads. The const char* version is the primary — callers
+   parsing Simpit packets into char buffers can pass them directly without
+   allocating a String. The const String& version delegates via .c_str() and
+   exists for backward compatibility with existing callers.
 ****************************************************************************************/
-BodyParams getBodyParams(const String& SOI) {
+BodyParams getBodyParams(const char* SOI) {
+  if (SOI == nullptr) return _bodyUnknown;
   for (uint8_t i = 0; i < _bodyTableLen; i++) {
-    if (SOI == _bodyTable[i].soiName) {
+    if (strcmp(SOI, _bodyTable[i].soiName) == 0) {
       return _bodyTable[i];
     }
   }
   return _bodyUnknown;
+}
+
+BodyParams getBodyParams(const String& SOI) {
+  return getBodyParams(SOI.c_str());
 }
 
 
@@ -1032,24 +1169,54 @@ uint16_t bsBlank(uint16_t y, uint16_t rowH) {
 uint16_t bsWrap(RA8875 &tft, const tFont *font, uint16_t col_x,
                 uint16_t y, uint16_t rowH,
                 const char *text, uint16_t col, uint16_t maxW) {
+  // Word-wraps text within maxW pixels. (#A3)
+  // Input contract:
+  //   - Words separated by ASCII space (' ').
+  //   - '\n' is a forced line break — flushes the current line and continues
+  //     wrapping on the next row (blank '\n' produces a blank line).
+  //   - Words longer than 31 characters are silently truncated to fit word[].
+  //   - Empty tokens (consecutive spaces, leading space) are silently skipped.
   tft.setFont(font);
   tft.setTextColor(col, TFT_BLACK);
-  char word[32], line[128] = "";
-  uint8_t wi = 0;
-  const char *p = text;
+
+  char    word[32];
+  char    line[128] = "";
+  uint8_t wi        = 0;
+  int16_t lineW     = 0;                            // px width of current line
+  int16_t spaceW    = getFontCharWidth(font, ' ');  // width of one space glyph
+  const char *p     = text;
+
   while (true) {
     char c = *p++;
-    bool end = (c == '\0'), space = (c == ' ') || end;
-    if (space || end) {
-      word[wi] = '\0'; wi = 0;
-      char test[128];
-      if (line[0]) snprintf(test, sizeof(test), "%s %s", line, word);
-      else         snprintf(test, sizeof(test), "%s",    word);
-      if (getFontStringWidth(font, test) > maxW) {
+    bool end       = (c == '\0');
+    bool forceWrap = (c == '\n');
+    bool space     = (c == ' ') || end || forceWrap;
+
+    if (space) {
+      word[wi] = '\0';
+      if (wi > 0) {
+        int16_t wordW  = getFontStringWidth(font, word);
+        int16_t needed = (lineW > 0) ? (lineW + spaceW + wordW) : wordW;
+        if (needed > (int16_t)maxW && lineW > 0) {
+          // Commit current line, start fresh with this word
+          tft.setCursor(col_x, y); tft.print(line); y += rowH;
+          strncpy(line, word, sizeof(line) - 1);
+          line[sizeof(line) - 1] = '\0';
+          lineW = wordW;
+        } else {
+          // Append word to current line (with leading space if non-empty)
+          uint8_t ll = strlen(line);
+          if (ll > 0 && ll + 1 < sizeof(line)) { line[ll++] = ' '; line[ll] = '\0'; }
+          strncat(line, word, sizeof(line) - strlen(line) - 1);
+          lineW = needed;
+        }
+      }
+      wi = 0;
+      if (forceWrap) {
+        // Flush current line (or emit a blank line if empty), then continue
         tft.setCursor(col_x, y); tft.print(line); y += rowH;
-        snprintf(line, sizeof(line), "%s", word);
-      } else {
-        snprintf(line, sizeof(line), "%s", test);
+        line[0] = '\0';
+        lineW   = 0;
       }
       if (end) {
         if (line[0]) { tft.setCursor(col_x, y); tft.print(line); y += rowH; }
@@ -1063,6 +1230,7 @@ uint16_t bsWrap(RA8875 &tft, const tFont *font, uint16_t col_x,
 }
 
 void bsShuffle(uint8_t *arr, uint8_t n) {
+  if (n < 2) return;  // nothing to shuffle — guards n==0 underflow (#A2)
   for (uint8_t i = n - 1; i > 0; i--) {
     uint8_t j = (uint8_t)(random(i + 1));
     uint8_t tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
@@ -2171,6 +2339,12 @@ static const uint16_t _GSL_FW_LEN = sizeof(_GSL_FW) / sizeof(_gsl_fw_entry);
 /***************************************************************************************
    GSL1680 I2C HELPERS
 ****************************************************************************************/
+// (#A18) Previously had two identical functions _gsl_write and _gsl_write_fw.
+// The fw variant claimed to use a "full stop condition" but its endTransmission()
+// call was identical to the non-fw version. Consolidated to a single function;
+// firmware load now uses _gsl_write directly. If a future GSL1680 timing issue
+// requires repeated-start behavior for the firmware load, add a properly
+// differentiated variant at that point.
 static void _gsl_write(uint8_t reg, uint8_t *data, uint16_t len) {
   Wire1.beginTransmission(GSL1680_ADDR);
   Wire1.write(reg);
@@ -2178,21 +2352,19 @@ static void _gsl_write(uint8_t reg, uint8_t *data, uint16_t len) {
   Wire1.endTransmission();
 }
 
-// Firmware-load variant — uses endTransmission() with a full stop condition,
-// matching the BuyDisplay reference sketch exactly.
-static void _gsl_write_fw(uint8_t reg, uint8_t *data, uint16_t len) {
-  Wire1.beginTransmission(GSL1680_ADDR);
-  Wire1.write(reg);
-  for (uint16_t i = 0; i < len; i++) Wire1.write(data[i]);
-  Wire1.endTransmission();
-}
-
-static void _gsl_read(uint8_t reg, uint8_t *buf, uint8_t len) {
+// (#A19) Returns the number of bytes actually read. Callers that care about
+// partial-read protection can compare this to len; existing callers that
+// pre-zero their buffers may ignore the return value.
+static uint8_t _gsl_read(uint8_t reg, uint8_t *buf, uint8_t len) {
   Wire1.beginTransmission(GSL1680_ADDR);
   Wire1.write(reg);
   Wire1.endTransmission();  // full stop, matching BuyDisplay reference
   Wire1.requestFrom((uint8_t)GSL1680_ADDR, len);
-  for (uint8_t i = 0; i < len && Wire1.available(); i++) buf[i] = Wire1.read();
+  uint8_t got = 0;
+  while (got < len && Wire1.available()) {
+    buf[got++] = Wire1.read();
+  }
+  return got;
 }
 
 
@@ -2237,7 +2409,7 @@ static void _gsl_load_fw() {
     buf[1] = (uint8_t)((val >> 8)  & 0xff);
     buf[2] = (uint8_t)((val >> 16) & 0xff);
     buf[3] = (uint8_t)((val >> 24) & 0xff);
-    _gsl_write_fw(reg, buf, 4);
+    _gsl_write(reg, buf, 4);  // (#A18) was _gsl_write_fw; consolidated
     // Page select register needs a short settling time
     if (reg == 0xf0) delay(1);
     // Progress heartbeat every 500 entries
@@ -2265,7 +2437,13 @@ static void _gsl_startup_chip() {
 // Touch detection uses direct polling of the INT pin (digitalRead) rather than an ISR.
 // The GSL1680 holds INT HIGH for the full duration of a touch, making polling reliable
 // and avoiding ISR flag accumulation that caused phantom button presses on slow redraws.
-static volatile uint32_t _touchISRCount = 0;  // retained for diagnostics only
+//
+// (#A21) The legacy "ISR count" diagnostic now counts rising edges (one per
+// finger-down event) rather than per-poll INT-high samples. The public API
+// name (touchISRCount) is kept for compatibility — see Group D for the
+// planned rename to touchEventCount().
+static volatile uint32_t _touchEventCount = 0;
+static bool              _prevTouchHigh   = false;
 
 void setupTouch() {
 
@@ -2345,39 +2523,12 @@ void setupTouch() {
   }
 
   bool ok = (chk[3] == 0x5a) || (chk[2] == 0x5a) || (chk[1] == 0x5a) || (chk[0] == 0x5a);
-  if (!ok) {
-    if (_kdcDebugMode) Serial.println(F("KDC: setupTouch: GSL1680 retry init"));
-    digitalWrite(CTP_WAKE_PIN, LOW);  delay(20);
-    digitalWrite(CTP_WAKE_PIN, HIGH); delay(20);
-    _gsl_clr_reg();
-    _gsl_reset_chip();
-    delay(20);
-    _gsl_load_fw();
-    _gsl_startup_chip();
-    delay(20);
-    _gsl_startup_chip();
-    delay(200);
-    // Drain touch buffer after retry firmware load
-    {
-      uint8_t dummy[24] = {0};
-      for (uint8_t attempt = 0; attempt < 10; attempt++) {
-        _gsl_read(0x80, dummy, 24);
-        delay(10);
-        if (dummy[0] == 0) break;
-      }
-    }
-    delay(30);
-    _gsl_read(0xb0, chk, 4);
-    if (_kdcDebugMode) {
-      Serial.print(F("KDC: setupTouch: 0xb0 retry = "));
-      for (uint8_t i = 0; i < 4; i++) { if (chk[i] < 16) Serial.print('0'); Serial.print(chk[i], HEX); Serial.print(' '); }
-      Serial.println();
-      uint8_t e0[1] = {0};
-      _gsl_read(0xe0, e0, 1);
-      Serial.print(F("KDC: setupTouch: 0xe0 retry = 0x")); Serial.println(e0[0], HEX);
-    }
-    ok = (chk[3] == 0x5a) || (chk[2] == 0x5a) || (chk[1] == 0x5a) || (chk[0] == 0x5a);
-  }
+  // (#A20) The check_mem retry path (full firmware reload, ~3.5 sec) was
+  // removed. Empirically the 0x5a test produces false negatives even with
+  // a fully working chip — the function proceeds regardless of the result
+  // (see the "proceed regardless" comment below) so the multi-second retry
+  // was wasted work. The actual fix that resolved cold-boot flakiness is
+  // the longer post-init delay/drain logic above, not the retry.
 
   if (_kdcDebugMode) {
     if (ok) Serial.println(F("KDC: setupTouch: GSL1680 ready"));
@@ -2395,17 +2546,21 @@ void setupTouch() {
    of a touch, so polling is reliable and avoids ISR flag accumulation issues.
 ****************************************************************************************/
 bool isTouched() {
-  if (digitalRead(CTP_INT_PIN) == HIGH) {
-    _touchISRCount++;  // diagnostic counter retained for compatibility
-    return true;
-  }
-  return false;
+  bool now = (digitalRead(CTP_INT_PIN) == HIGH);
+  // (#A21) Increment only on rising edge so the counter reflects touch events,
+  // not poll iterations. A 200ms touch polled in a tight loop produced
+  // hundreds of increments under the previous behaviour.
+  if (now && !_prevTouchHigh) _touchEventCount++;
+  _prevTouchHigh = now;
+  return now;
 }
 
 // No-op — retained for API compatibility. Polling has no flag to clear.
 void clearTouchISR() {}
 
-uint32_t touchISRCount() { return _touchISRCount; }
+// (#A21) Returns the count of touch events (rising INT edges) since boot.
+// Name is legacy from the ISR era; functionally an event counter now.
+uint32_t touchISRCount() { return _touchEventCount; }
 
 
 /***************************************************************************************
@@ -2416,10 +2571,16 @@ uint32_t touchISRCount() { return _touchISRCount; }
 TouchResult readTouch() {
   TouchResult result;
   uint8_t data[24] = {0};
-  _gsl_read(0x80, data, 24);
+  uint8_t got = _gsl_read(0x80, data, 24);
 
   result.count = data[0];
   if (result.count > CTP_MAX_TOUCHES) result.count = CTP_MAX_TOUCHES;
+  // (#A19) Clamp count to whatever the I2C read actually delivered. Each
+  // touch needs 4 bytes starting at offset 4 of the response. If a partial
+  // read left us with fewer bytes than the reported count claims, drop the
+  // unbacked touches rather than emitting phantom (0, 0) coordinates.
+  uint8_t maxTouchesByBytes = (got >= 4) ? (uint8_t)((got - 4) / 4) : 0;
+  if (result.count > maxTouchesByBytes) result.count = maxTouchesByBytes;
 
   for (uint8_t i = 0; i < result.count; i++) {
     uint8_t base = 4 + i * 4;

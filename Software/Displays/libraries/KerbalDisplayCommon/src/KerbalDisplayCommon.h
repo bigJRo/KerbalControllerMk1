@@ -3,7 +3,7 @@
 
 #define KDC_VERSION_MAJOR 2
 #define KDC_VERSION_MINOR 1
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library
@@ -16,7 +16,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 2.0.1
+  Version: 2.1.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SPI.h>
@@ -170,6 +170,24 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
                 const ButtonLabel &label, const tFont *font, bool isOn);
 
 // --- Text primitives ---
+//
+// (#A12) Encoding caveat: the text-rendering family (textLeft, textRight,
+// textCenter, printDisp, printValue, printName, printTitle) operates on
+// single bytes — there is no UTF-8 decoding. Each byte in the input string
+// is looked up directly in the font's character table. This has two
+// implications:
+//   1. UTF-8 multibyte sequences (e.g. 'é' = 0xC3 0xA9) are NOT decoded;
+//      each byte is treated as a separate character lookup. Such inputs
+//      will render as two unrelated glyphs (or zero-width glyphs per #A4)
+//      rather than the intended character.
+//   2. Byte-length truncation in printName() can split a multibyte sequence,
+//      leaving an orphaned UTF-8 continuation byte at the end.
+// Sketches receiving UTF-8 input (e.g. KSP vessel names) should pre-filter
+// non-ASCII bytes or transliterate before passing the string to these
+// functions. The Roboto_Black fonts include a few non-ASCII glyphs at custom
+// single-byte code points (e.g. Δ at 0x94) — those work only when the caller
+// passes the single byte directly, not as the corresponding UTF-8 sequence.
+
 void textLeft(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
               const String &value, uint16_t foreColor, uint16_t backColor);
 void textRight(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
@@ -187,8 +205,13 @@ String formatFloatUnits(float value, uint8_t decimals, String units);
 // --- Advanced formatters (KSP telemetry) ---
 // Note: formatSep() is a dependency of formatAlt() — keep together
 // Note: formatSep() drops the decimal part for values >= 1000 (#64)
+// Note: formatSep() float core uses int64_t internally so it no longer
+//       overflows for values >= 2^31 (#A5). For exact formatting of large
+//       integer values, call formatSepI64() directly — float precision
+//       caps usable integer range at ~1.6e7.
 // Note: formatTime() uses Kerbin day = 6 hours
 String formatSep(float value);
+String formatSepI64(int64_t value);
 String formatTime(float timeVal);
 String formatAlt(float value);
 String twString(uint8_t twIndex, bool physTW);
@@ -310,7 +333,14 @@ void drawVertBarGraph(RA8875 &tft,
 
 // Draw a semicircular arc indicator with an erasable needle.
 // Arc spans ±90° (left to right). prevVal is erased, curVal is drawn.
-// The arc track is redrawn on every call — call from updateScreen*() only on value change.
+//
+// IMPORTANT (#A8): This function performs a full redraw on every call — the
+// arc track (~91 fillCircle calls), both needle phases, and the centre dot.
+// It does NOT change-detect on prevVal/curVal. Gate at the call site:
+//   if (cur != prev) drawArcDisplay(..., prev, cur, ...);
+// A future revision (see C2) will split this into drawArcTrack +
+// drawArcNeedle so the track can be drawn once at init and only the needle
+// updated per value change.
 void drawArcDisplay(RA8875 &tft,
                     int16_t cx, int16_t cy,
                     uint16_t radius, uint16_t needleW,
@@ -471,12 +501,18 @@ struct BodyParams {
 // Returns a copy of the BodyParams for the given Simpit SOI string.
 // Returns a zeroed/empty BodyParams if the SOI is not in the table.
 //
+// (#A22) Two overloads — prefer the const char* version when calling with a
+// raw character buffer (e.g. parsing Simpit packets) to avoid the per-call
+// String allocation. The String& version delegates via .c_str() and is
+// retained for compatibility.
+//
 // NOTE: The const char* fields (soiName, dispName, image, cond) in the returned
 // struct are pointers into string literals in the static _bodyTable array.
 // They remain valid for the lifetime of the program. Do NOT assign these pointers
 // to stack-allocated char arrays or reassign them to point to other strings —
 // treat them as read-only. If you need a mutable copy of a string field, use
 // strcpy() into a local char buffer of sufficient size.
+BodyParams getBodyParams(const char* SOI);
 BodyParams getBodyParams(const String& SOI);
 
 // =============================================================================
@@ -546,8 +582,10 @@ bool isTouched();
 // Polling has no flag to clear; call sites can be left unchanged.
 void clearTouchISR();
 
-// Returns the raw number of times the INT pin ISR has fired since boot.
-// Use for diagnostics — confirms whether interrupts are reaching the MCU at all.
+// Returns the number of touch events (rising INT edges) since boot. (#A21)
+// Name is legacy from the ISR era; the function now counts touch events
+// rather than ISR fires. Use for diagnostics — confirms whether touches
+// are reaching the MCU at all.
 uint32_t touchISRCount();
 
 // Reads all active touch points from the GSL1680F.
