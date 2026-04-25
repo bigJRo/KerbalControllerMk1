@@ -52,6 +52,8 @@
 #include "fonts/Roboto_Black_16.c"
 #include "fonts/Roboto_Black_20.c"
 #include "fonts/Roboto_Black_24.c"
+#include "fonts/Roboto_Black_28.c"
+#include "fonts/Roboto_Black_32.c"
 #include "fonts/Roboto_Black_36.c"
 #include "fonts/Roboto_Black_40.c"
 #include "fonts/Roboto_Black_48.c"
@@ -121,6 +123,12 @@
 #define TFT_SAP_GREEN    0x53E5  /*  10,  31,   5 */
 #define TFT_INT_ORANGE   0xFA80  /*  31,  20,   0 */
 #define TFT_UPS_BROWN    0x6203  /*  12,  16,   3 */
+#define TFT_MINT         0xA6F6  /*  20,  55,  22 */
+#define TFT_MED_GREEN    0x0507  /*   0,  40,   7 */
+#define TFT_TAN          0xB46A  /*  22,  35,  10 */
+#define TFT_ROSE         0xF3CF  /*  30,  30,  15 */
+#define TFT_CRIMSON      0xD8A7  /*  27,   5,   7 */
+#define TFT_OCEAN        0x01F1  /*   0,  15,  17 */
 
 
 /***************************************************************************************
