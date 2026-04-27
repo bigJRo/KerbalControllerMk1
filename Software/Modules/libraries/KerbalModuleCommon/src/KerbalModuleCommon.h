@@ -165,7 +165,7 @@ inline GRBWColor scaleColorGRBW(GRBWColor color, uint8_t brightness) {
 //  System palette — canonical RGB values
 //
 //  These values have been validated on SK6812MINI-EA hardware
-//  (KC-01-1882 v2.0, NEO_GRB 3-byte mode) and adjusted to match
+//  (KC-01-1880 v2.0, NEO_GRB 3-byte mode) and adjusted to match
 //  the intended perceptual colour on the physical LED.
 //
 //  Semantic colors carry fixed meaning across ALL modules:
