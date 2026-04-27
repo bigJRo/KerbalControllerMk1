@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Buttons.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -11,7 +11,7 @@
  *
  *              Three NeoPixel buttons (BTN01, BTN02, BTN03) and one
  *              direct GPIO button (BTN_EN — encoder pushbutton).
- *              All inputs are active high with hardware pull-downs.
+ *              All inputs are active HIGH with hardware pull-downs.
  *
  *              Button behavior is configured per module via the
  *              ButtonConfig struct passed to buttonsBegin(). This
@@ -139,12 +139,37 @@ void buttonsClearLEDs();
 void buttonsRestoreLEDs();
 
 /**
- * @brief Push current LED state to NeoPixel hardware.
+ * @brief Set a single NeoPixel colour directly.
+ *        Bypasses the button state machine — use for application-level
+ *        colour control (e.g. timed animations) when buttons are
+ *        configured as MOMENTARY and have no LED state of their own.
+ *        Call buttonsShow() after setting all pixels.
+ * @param index  Pixel index (0 to K7SC_NEO_COUNT-1).
+ * @param r      Red channel (0-255).
+ * @param g      Green channel (0-255).
+ * @param b      Blue channel (0-255).
  */
-void buttonsRender();
+void buttonsSetPixelColor(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
 
 /**
- * @brief Light all NeoPixels full white for bulb test then restore.
- * @param durationMs  Duration in milliseconds.
+ * @brief Push the current pixel buffer to the NeoPixel hardware.
+ *        Use after buttonsSetPixelColor() calls.
  */
-void buttonsBulbTest(uint16_t durationMs);
+void buttonsShow();
+
+/**
+ * @brief Set NeoPixel brightness (0-255).
+ *        Calls tinyNeoPixel::setBrightness() and re-renders.
+ */
+void buttonsSetBrightness(uint8_t brightness);
+
+/**
+ * @brief Start bulb test — light all NeoPixels full white.
+ *        Non-blocking. Call buttonsBulbTestEnd() to restore LEDs.
+ */
+void buttonsBulbTest();
+
+/**
+ * @brief End bulb test — restore LEDs to current button state.
+ */
+void buttonsBulbTestEnd();

@@ -40,11 +40,16 @@
 static const GRBWColor K7SC_OFF           = { 0, 0, 0, 0 };
 
 /**
- * @brief ENABLED state — white channel only, dim.
+ * @brief ENABLED state — dim neutral white via equal R/G/B.
+ *        W channel is not used (NEO_GRB 3-byte mode on KC-01-1882 v2.0).
  *        Brightness set by K7SC_ENABLED_BRIGHTNESS in K7SC_Config.h.
- *        Clean neutral backlight without any RGB tint.
  */
-static const GRBWColor K7SC_ENABLED_COLOR = KMC_WHITE_ONLY(K7SC_ENABLED_BRIGHTNESS);
+static const GRBWColor K7SC_ENABLED_COLOR = {
+    K7SC_ENABLED_BRIGHTNESS,  // r
+    K7SC_ENABLED_BRIGHTNESS,  // g
+    K7SC_ENABLED_BRIGHTNESS,  // b
+    0                          // w — unused in GRB mode
+};
 
 // ============================================================
 //  System palette — GRBW wire format via toGRBW()

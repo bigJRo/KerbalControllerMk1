@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_I2C.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -30,12 +30,13 @@
 #include "K7SC_Config.h"
 
 /**
- * @brief Initialise I2C callbacks and INT pin.
- *        Call after Wire.begin() in setup().
- * @param typeId    Module Type ID.
- * @param capFlags  Capability flags.
+ * @brief Initialise I2C as target, register callbacks, and configure INT pin.
+ *        Called internally by k7scBegin() — do not call directly.
+ * @param i2cAddress  I2C target address for this module.
+ * @param typeId      Module Type ID.
+ * @param capFlags    Capability flags.
  */
-void k7scI2CBegin(uint8_t typeId, uint8_t capFlags);
+void k7scI2CBegin(uint8_t i2cAddress, uint8_t typeId, uint8_t capFlags);
 
 /**
  * @brief Sync INT pin with pending state.
@@ -43,6 +44,12 @@ void k7scI2CBegin(uint8_t typeId, uint8_t capFlags);
  *        Call every loop iteration.
  */
 void k7scI2CSyncINT();
+
+/**
+ * @brief Poll bulb test timer. Call every loop iteration via k7scUpdate().
+ *        Ends bulb test and restores display/LEDs after BULB_DURATION_MS.
+ */
+void k7scBulbTestPoll();
 
 /**
  * @brief Returns true if the module is in sleep mode.

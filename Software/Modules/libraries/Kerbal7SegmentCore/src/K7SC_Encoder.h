@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Encoder.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works

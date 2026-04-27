@@ -1,7 +1,7 @@
 /**
  * @file        Kerbal7SegmentCore.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -37,8 +37,8 @@
  *                };
  *
  *                void setup() {
- *                    Wire.begin(0x2A);
- *                    k7scBegin(0x0B, K7SC_CAP_DISPLAY, btnConfigs, 200);
+ *                    k7scBegin(0x2A, KMC_TYPE_GPWS_INPUT,
+ *                              KMC_CAP_DISPLAY, btnConfigs, 200);
  *                }
  *
  *                void loop() {
@@ -55,12 +55,13 @@
  * @note        Hardware: KC-01-1881/1882 7-Segment Display Module v2.0
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
- *                Clock:             10 MHz or higher
+ *                Clock:             20 MHz internal
  *                tinyNeoPixel Port: Port C
  */
 
 #pragma once
 
+#include <Wire.h>
 #include "K7SC_Config.h"
 #include "K7SC_Colors.h"
 #include "K7SC_Display.h"
@@ -74,14 +75,17 @@
 
 /**
  * @brief Initialise all Kerbal7SegmentCore subsystems.
- *        Call after Wire.begin() in setup().
+ *        Calls Wire.begin() internally — do NOT call Wire.begin()
+ *        in the sketch.
  *
- * @param typeId        Module Type ID.
- * @param capFlags      Capability flags (use K7SC_CAP_DISPLAY).
+ * @param i2cAddress    I2C target address for this module.
+ * @param typeId        Module Type ID (KMC_TYPE_* from KerbalModuleCommon).
+ * @param capFlags      Capability flags (use KMC_CAP_DISPLAY).
  * @param btnConfigs    Array of K7SC_NEO_COUNT ButtonConfig structs.
- * @param initialValue  Starting display value (0-9999).
+ * @param initialValue  Starting display value (0-9999). Default 0.
  */
-void k7scBegin(uint8_t typeId, uint8_t capFlags,
+void k7scBegin(uint8_t i2cAddress,
+               uint8_t typeId, uint8_t capFlags,
                const ButtonConfig* btnConfigs,
                uint16_t initialValue = 0);
 

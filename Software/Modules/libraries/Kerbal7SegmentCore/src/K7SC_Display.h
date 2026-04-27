@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Display.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -58,11 +58,15 @@ uint16_t displayGetValue();
 void displaySetIntensity(uint8_t intensity);
 
 /**
- * @brief Run display test — all segments on for durationMs.
- *        Restores previous value after test.
- * @param durationMs  Test duration in milliseconds.
+ * @brief Start display test — all segments on.
+ *        Non-blocking. Call displayTestEnd() to restore.
  */
-void displayTest(uint16_t durationMs);
+void displayTest();
+
+/**
+ * @brief End display test — restore previous value.
+ */
+void displayTestEnd();
 
 /**
  * @brief Blank all digits (display test off, all segments off).

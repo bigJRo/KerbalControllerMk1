@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_I2C.cpp
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -32,6 +32,9 @@ static uint8_t _capFlags = 0;
 
 static bool _intAsserted   = false;
 static bool _sleeping      = false;
+static bool _bulbActive    = false;
+static uint32_t _bulbEnd   = 0;
+static const uint16_t BULB_DURATION_MS = 2000;
 
 // Atomic event snapshot — captured together in k7scI2CSyncINT() when
 // INT is asserted, consumed atomically in _sendDataPacket(). Prevents
@@ -75,28 +78,21 @@ static void _sendDataPacket() {
     uint8_t buf[K7SC_PACKET_SIZE];
     uint16_t val = displayGetValue();
 
-    // Use the atomic snapshot captured in k7scI2CSyncINT().
-    // If for any reason no snapshot is available, fall back to
-    // calling the button functions directly (defensive only —
-    // _onRequest should only fire after INT was asserted which
-    // always sets a valid snapshot first).
-    if (_snapshotValid) {
-        buf[0] = _snapshotEvents;
-        buf[1] = _snapshotChange;
-        _snapshotEvents = 0;
-        _snapshotChange = 0;
-        _snapshotValid  = false;
-    } else {
-        buf[0] = buttonsGetEvents();
-        buf[1] = buttonsGetChangeMask();
-    }
-
+    // Read button state directly — no snapshot needed.
+    // buttonsGetChangeMask() clears _intPending as a side effect,
+    // which is correct: once we've read the state into the packet,
+    // the pending flag should be cleared.
+    buf[0] = buttonsGetEvents();
+    buf[1] = buttonsGetChangeMask();  // also clears _intPending
     buf[2] = buttonsGetStateByte();
-    buf[3] = 0;                           // reserved
-    buf[4] = (uint8_t)(val >> 8);         // display value high byte
-    buf[5] = (uint8_t)(val & 0xFF);       // display value low byte
+    buf[3] = 0;
+    buf[4] = (uint8_t)(val >> 8);
+    buf[5] = (uint8_t)(val & 0xFF);
 
     encoderClearChanged();
+    _snapshotEvents = 0;
+    _snapshotChange = 0;
+    _snapshotValid  = false;
     Wire.write(buf, K7SC_PACKET_SIZE);
     _clearINT();
 }
@@ -128,12 +124,20 @@ static void _dispatch() {
             break;
 
         case K7SC_CMD_SET_BRIGHTNESS:
-            // Not applicable — SK6812 brightness managed internally
+            // Top nibble (0-15) maps to MAX7219 display intensity 0-15
+            // Full byte (0-255) maps to NeoPixel brightness 0-255
+            if (_cmdLen >= 2) {
+                uint8_t brightness = _cmdBuf[1];
+                displaySetIntensity(brightness >> 4);  // 0-255 → 0-15
+                buttonsSetBrightness(brightness);       // 0-255 directly
+            }
             break;
 
         case K7SC_CMD_BULB_TEST:
-            buttonsBulbTest(2000);
-            displayTest(2000);
+            buttonsBulbTest();
+            displayTest();
+            _bulbActive = true;
+            _bulbEnd    = millis() + BULB_DURATION_MS;
             break;
 
         case K7SC_CMD_SLEEP:
@@ -178,7 +182,6 @@ static void _dispatch() {
             break;
 
         case K7SC_CMD_SET_VALUE:
-            // Controller sets display value directly
             if (_cmdLen >= 3) {
                 uint16_t val = ((uint16_t)_cmdBuf[1] << 8) | _cmdBuf[2];
                 encoderSetValue(val);
@@ -187,6 +190,16 @@ static void _dispatch() {
 
         default:
             break;
+    }
+
+    // For SET_VALUE/RESET: assert INT immediately so tester doesn't have
+    // to wait for the next k7scUpdate() loop iteration.
+    // Skip GET_IDENTITY — must not overwrite RESP_IDENTITY with RESP_DATA.
+    if (!_sleeping && cmd != K7SC_CMD_GET_IDENTITY) {
+        if (encoderIsValueChanged()) {
+            _pendingResponse = RESP_DATA;
+            _assertINT();
+        }
     }
 }
 
@@ -224,15 +237,16 @@ static void _onRequest() {
 //  k7scI2CBegin()
 // ============================================================
 
-void k7scI2CBegin(uint8_t typeId, uint8_t capFlags) {
+void k7scI2CBegin(uint8_t i2cAddress, uint8_t typeId, uint8_t capFlags) {
     _typeId   = typeId;
     _capFlags = capFlags;
 
-    pinMode(K7SC_PIN_INT, OUTPUT);
-    _clearINT();
-
+    Wire.begin(i2cAddress);
     Wire.onReceive(_onReceive);
     Wire.onRequest(_onRequest);
+
+    pinMode(K7SC_PIN_INT, OUTPUT);
+    _clearINT();
 }
 
 // ============================================================
@@ -249,19 +263,22 @@ void k7scI2CSyncINT() {
     bool encPending = encoderIsValueChanged();
 
     if (btnPending || encPending) {
-        // Capture events and change mask atomically before asserting INT.
-        // Both are read in the same main-loop pass, so no button event
-        // can occur between them here. _sendDataPacket() then consumes
-        // this snapshot without calling button functions a second time.
-        if (!_snapshotValid) {
-            _snapshotEvents = buttonsGetEvents();
-            _snapshotChange = buttonsGetChangeMask();
-            _snapshotValid  = true;
-        }
         _pendingResponse = RESP_DATA;
         if (!_intAsserted) _assertINT();
     } else {
         if (_intAsserted) _clearINT();
+    }
+}
+
+// ============================================================
+//  k7scBulbTestPoll()
+// ============================================================
+
+void k7scBulbTestPoll() {
+    if (_bulbActive && millis() >= _bulbEnd) {
+        _bulbActive = false;
+        buttonsBulbTestEnd();
+        displayTestEnd();
     }
 }
 
@@ -278,8 +295,7 @@ bool k7scI2CIsSleeping() {
 // ============================================================
 
 uint8_t k7scGetPendingEvents() {
-    // Returns the snapshot captured when INT was last asserted.
-    // Does not consume the snapshot — _sendDataPacket() owns that.
-    // Returns 0 if no snapshot is pending (no unread button events).
-    return _snapshotValid ? _snapshotEvents : 0;
+    // Returns pending button events for sketch-level handling.
+    // buttonsGetEvents() is read-only — does not clear _eventMask.
+    return buttonsIsIntPending() ? buttonsGetEvents() : 0;
 }

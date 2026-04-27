@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Display.cpp
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -87,25 +87,44 @@ static void _writeValue(uint16_t value) {
     if (value > K7SC_VALUE_MAX) value = K7SC_VALUE_MAX;
 
     // Decompose into BCD digits without repeated division.
-    // Each digit is extracted by successive subtraction of powers of 10,
-    // which is faster than repeated % and / on the ATtiny816's 8-bit ALU.
     uint8_t d[4] = {0, 0, 0, 0};
     while (value >= 1000) { d[3]++; value -= 1000; }
     while (value >= 100)  { d[2]++; value -= 100;  }
     while (value >= 10)   { d[1]++; value -= 10;   }
     d[0] = (uint8_t)value;
 
-    // Suppress leading zeros — always show at least the units digit
+    // Physical display wiring (from schematic KC-01-1881/1882 v2.0):
+    //   MAX7219 DIG0 (reg 1) -> G4 = leftmost  physical digit = thousands
+    //   MAX7219 DIG1 (reg 2) -> G3             physical digit = hundreds
+    //   MAX7219 DIG2 (reg 3) -> G2             physical digit = tens
+    //   MAX7219 DIG3 (reg 4) -> G1 = rightmost physical digit = units
+    //
+    // Verified by hardware diagnostic on KC-01-1882 v2.0.
+    // Leading zero suppression: blank regs 1-3 from left; reg 4 always shown.
     bool leading = true;
-    for (int8_t i = 3; i >= 1; i--) {
-        if (leading && d[i] == 0) {
-            _spiSend(K7SC_MAX_REG_DIGIT0 + i, K7SC_MAX_BLANK);
-        } else {
-            leading = false;
-            _spiSend(K7SC_MAX_REG_DIGIT0 + i, d[i]);
-        }
+
+    if (leading && d[3] == 0) {
+        _spiSend(K7SC_MAX_REG_DIGIT0,     K7SC_MAX_BLANK);  // reg 1
+    } else {
+        _spiSend(K7SC_MAX_REG_DIGIT0,     d[3]);
+        leading = false;
     }
-    _spiSend(K7SC_MAX_REG_DIGIT0, d[0]);
+
+    if (leading && d[2] == 0) {
+        _spiSend(K7SC_MAX_REG_DIGIT0 + 1, K7SC_MAX_BLANK);  // reg 2
+    } else {
+        _spiSend(K7SC_MAX_REG_DIGIT0 + 1, d[2]);
+        leading = false;
+    }
+
+    if (leading && d[1] == 0) {
+        _spiSend(K7SC_MAX_REG_DIGIT0 + 2, K7SC_MAX_BLANK);  // reg 3
+    } else {
+        _spiSend(K7SC_MAX_REG_DIGIT0 + 2, d[1]);
+        leading = false;
+    }
+
+    _spiSend(K7SC_MAX_REG_DIGIT0 + 3, d[0]);  // reg 4 = units, always shown
 }
 
 // ============================================================
@@ -164,12 +183,16 @@ void displaySetIntensity(uint8_t intensity) {
 }
 
 // ============================================================
-//  displayTest()
+//  displayTest() / displayTestEnd()
+//  Turns on all segments. Call displayTestEnd() to restore.
+//  Non-blocking — does not delay.
 // ============================================================
 
-void displayTest(uint16_t durationMs) {
+void displayTest() {
     _spiSend(K7SC_MAX_REG_DISPLAYTEST, 0x01);
-    delay(durationMs);
+}
+
+void displayTestEnd() {
     _spiSend(K7SC_MAX_REG_DISPLAYTEST, 0x00);
     _writeValue(_currentValue);
 }
@@ -205,6 +228,9 @@ void displayShutdown() {
 // ============================================================
 
 void displayWake() {
-    _spiSend(K7SC_MAX_REG_SHUTDOWN, 0x01);
+    // Write the correct value into digit registers BEFORE exiting shutdown.
+    // This prevents a brief flash of stale register contents when the
+    // MAX7219 comes out of shutdown mode.
     _writeValue(_currentValue);
+    _spiSend(K7SC_MAX_REG_SHUTDOWN, 0x01);
 }

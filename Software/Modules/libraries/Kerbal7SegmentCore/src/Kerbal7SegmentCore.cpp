@@ -1,7 +1,7 @@
 /**
  * @file        Kerbal7SegmentCore.cpp
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -14,6 +14,10 @@
 
 #include <Arduino.h>
 #include "Kerbal7SegmentCore.h"
+#include "K7SC_I2C.h"
+#include "K7SC_Buttons.h"
+#include "K7SC_Display.h"
+#include "K7SC_Encoder.h"
 
 static uint32_t _lastPollTime = 0;
 
@@ -21,12 +25,13 @@ static uint32_t _lastPollTime = 0;
 //  k7scBegin()
 // ============================================================
 
-void k7scBegin(uint8_t typeId, uint8_t capFlags,
+void k7scBegin(uint8_t i2cAddress,
+               uint8_t typeId, uint8_t capFlags,
                const ButtonConfig* btnConfigs,
                uint16_t initialValue) {
 
-    // 1. I2C — register callbacks first
-    k7scI2CBegin(typeId, capFlags);
+    // 1. I2C — Wire.begin() + register callbacks
+    k7scI2CBegin(i2cAddress, typeId, capFlags);
 
     // 2. Display — initialise MAX7219
     displayBegin();
@@ -45,6 +50,9 @@ void k7scBegin(uint8_t typeId, uint8_t capFlags,
 // ============================================================
 
 void k7scUpdate() {
+    // Service bulb test timeout (non-blocking)
+    k7scBulbTestPoll();
+
     if (k7scI2CIsSleeping()) {
         uint32_t now = millis();
         if ((now - _lastPollTime) >= K7SC_SLEEP_POLL_MS) {

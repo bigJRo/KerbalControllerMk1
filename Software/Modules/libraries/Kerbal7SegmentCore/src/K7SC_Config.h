@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Config.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -25,10 +25,13 @@
 
 // ============================================================
 //  Clock speed assertion
+//
+//  tinyNeoPixel (megaTinyCore bundled) supports 20 MHz and other speeds.
+//  Minimum is 2 MHz per tinyNeoPixel documentation.
 // ============================================================
 
-#if F_CPU < 7372800UL
-  #error "K7SC: CPU clock too slow for NeoPixel timing. Minimum 7.37 MHz required."
+#if F_CPU < 2000000UL
+  #error "K7SC: CPU clock too slow for NeoPixel timing. Minimum 2 MHz required."
 #endif
 
 // ============================================================
@@ -95,7 +98,7 @@
 /** @brief BUTTON03 — PC1, direct GPIO, active high. */
 #define K7SC_PIN_BTN03          PIN_PC1
 
-/** @brief BUTTON_EN — encoder pushbutton, PB3, active high. */
+/** @brief BUTTON_EN — encoder pushbutton, PB3, active HIGH (pull-down R6 10k). */
 #define K7SC_PIN_BTN_EN         PIN_PB3
 
 /** @brief NeoPixel data output — PC3 (Port C). */
@@ -123,12 +126,18 @@
 // ============================================================
 //  NeoPixel configuration
 //
-//  SK6812MINI-EA uses GRBW color order (4 bytes per pixel).
-//  White channel is used for ENABLED dim state.
+//  SK6812MINI-EA: although the physical device has a white channel,
+//  tinyNeoPixel_Static with NEO_GRB (3 bytes/pixel) is used here.
+//  NEO_GRBW (4 bytes/pixel) was tested and did not produce correct
+//  colours on this hardware at 20 MHz. NEO_GRB is the proven
+//  working configuration on KC-01-1882 v2.0.
 // ============================================================
 
-/** @brief SK6812MINI-EA color order — GRBW. */
-#define K7SC_NEO_COLOR_ORDER    NEO_GRBW
+/** @brief SK6812MINI-EA color order — GRB (3 bytes/pixel). */
+#define K7SC_NEO_COLOR_ORDER    NEO_GRB
+
+/** @brief Bytes per pixel for K7SC_NEO_COLOR_ORDER. */
+#define K7SC_NEO_BYTES_PER_PIXEL  3
 
 // ============================================================
 //  Display value range
@@ -147,25 +156,47 @@
 //  All thresholds in milliseconds.
 // ============================================================
 
-/**
- * @brief Slow scroll threshold in ms.
- *        Clicks arriving slower than this use step size 1.
- */
-#ifndef K7SC_ENC_SLOW_MS
-  #define K7SC_ENC_SLOW_MS      150
+// ============================================================
+//  Encoder acceleration — click count thresholds
+//
+//  Step size is determined by how many consecutive clicks have
+//  arrived in the same direction. No timing involved — purely
+//  event driven, immune to mechanical jitter.
+//
+//  Progression:
+//    clicks 1  to MEDIUM_COUNT-1  -> STEP_SLOW   (1)
+//    clicks MEDIUM_COUNT to FAST_COUNT-1  -> STEP_MEDIUM (10)
+//    clicks FAST_COUNT   to TURBO_COUNT-1 -> STEP_FAST   (100)
+//    clicks TURBO_COUNT  and above        -> STEP_TURBO  (1000)
+//
+//  Direction reversal resets the count to 1 (always step=1
+//  on the first click of a new direction).
+// ============================================================
+
+/** @brief Clicks before stepping up to STEP_MEDIUM (10). */
+#ifndef K7SC_ENC_MEDIUM_COUNT
+  #define K7SC_ENC_MEDIUM_COUNT   15
 #endif
 
-/**
- * @brief Fast scroll threshold in ms.
- *        Clicks arriving faster than this use step size 100.
- *        Clicks between K7SC_ENC_FAST_MS and K7SC_ENC_SLOW_MS
- *        use step size 10.
- */
-#ifndef K7SC_ENC_FAST_MS
-  #define K7SC_ENC_FAST_MS      50
+/** @brief Clicks before stepping up to STEP_FAST (100). */
+#ifndef K7SC_ENC_FAST_COUNT
+  #define K7SC_ENC_FAST_COUNT     30
 #endif
 
-/** @brief Step size for slow scrolling (>K7SC_ENC_SLOW_MS). */
+/** @brief Clicks before stepping up to STEP_TURBO (1000). */
+#ifndef K7SC_ENC_TURBO_COUNT
+  #define K7SC_ENC_TURBO_COUNT    50
+#endif
+
+// Sanity check — thresholds must be strictly ascending
+#if K7SC_ENC_FAST_COUNT <= K7SC_ENC_MEDIUM_COUNT
+  #error "K7SC_ENC_FAST_COUNT must be greater than K7SC_ENC_MEDIUM_COUNT"
+#endif
+#if K7SC_ENC_TURBO_COUNT <= K7SC_ENC_FAST_COUNT
+  #error "K7SC_ENC_TURBO_COUNT must be greater than K7SC_ENC_FAST_COUNT"
+#endif
+
+/** @brief Step size for slow scrolling (clicks > K7SC_ENC_SLOW_MS). */
 #ifndef K7SC_STEP_SLOW
   #define K7SC_STEP_SLOW        1
 #endif
@@ -175,9 +206,14 @@
   #define K7SC_STEP_MEDIUM      10
 #endif
 
-/** @brief Step size for fast scrolling (<K7SC_ENC_FAST_MS). */
+/** @brief Step size for fast scrolling. */
 #ifndef K7SC_STEP_FAST
   #define K7SC_STEP_FAST        100
+#endif
+
+/** @brief Step size for turbo scrolling (clicks < K7SC_ENC_FAST_MS). */
+#ifndef K7SC_STEP_TURBO
+  #define K7SC_STEP_TURBO       1000
 #endif
 
 // ============================================================
@@ -194,11 +230,16 @@
 
 // ============================================================
 //  Button debounce
+//
+//  Time-based debounce: a button state change is only registered
+//  if the new state has been stable for at least K7SC_BTN_DEBOUNCE_MS.
+//  This is more robust than count-based debounce for the SK6812MINI-EA
+//  integrated switch which can be bouncier than discrete tactiles.
 // ============================================================
 
-/** @brief Consecutive matching reads to register a button change. */
-#ifndef K7SC_BTN_DEBOUNCE_COUNT
-  #define K7SC_BTN_DEBOUNCE_COUNT 4
+/** @brief Minimum stable time in ms before a button state change registers. */
+#ifndef K7SC_BTN_DEBOUNCE_MS
+  #define K7SC_BTN_DEBOUNCE_MS    30
 #endif
 
 // ============================================================
