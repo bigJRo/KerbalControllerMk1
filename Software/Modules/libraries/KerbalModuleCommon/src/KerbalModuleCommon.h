@@ -164,9 +164,9 @@ inline GRBWColor scaleColorGRBW(GRBWColor color, uint8_t brightness) {
 // ============================================================
 //  System palette — canonical RGB values
 //
-//  These are the authoritative color values for the entire
-//  Kerbal Controller Mk1 system. All modules use these constants.
-//  Module-specific active color arrays are built from these values.
+//  These values have been validated on SK6812MINI-EA hardware
+//  (KC-01-1882 v2.0, NEO_GRB 3-byte mode) and adjusted to match
+//  the intended perceptual colour on the physical LED.
 //
 //  Semantic colors carry fixed meaning across ALL modules:
 //    KMC_GREEN  : active / go / nominal state
@@ -194,40 +194,42 @@ static const RGBColor KMC_DISCRETE_ON  = {   1,   1,   1 };
 
 // --- Semantic — fixed meaning across all modules ---
 /** @brief Active / go / nominal. Default active state color. */
-static const RGBColor KMC_GREEN         = {  34, 197,  94 };
+static const RGBColor KMC_GREEN         = {   0, 255,   0 };
 
 /** @brief Irreversible action. Cut, release, jettison. */
-static const RGBColor KMC_RED           = { 239,  68,  68 };
+static const RGBColor KMC_RED           = { 255,   0,   0 };
 
 /**
  * @brief Caution / awareness.
  *        Also the color for WARNING (flashing) and PARTIAL_DEPLOY
  *        (static) extended LED states.
  */
-static const RGBColor KMC_AMBER         = { 245, 158,  11 };
+static const RGBColor KMC_AMBER         = { 255,  80,   0 };
 
 // --- Whites ---
 /** @brief Cool white. Standard ENABLED state backlight for RGB hardware. */
-static const RGBColor KMC_WHITE_COOL    = { 255, 255, 255 };
+static const RGBColor KMC_WHITE_COOL    = { 255, 180, 255 };
 
 /** @brief Neutral white. Slight warmth. Natural daylight feel. */
-static const RGBColor KMC_WHITE_NEUTRAL = { 255, 240, 216 };
+static const RGBColor KMC_WHITE_NEUTRAL = { 255, 160, 180 };
 
 /** @brief Warm white. Amber-tinted incandescent feel. Time warp rate buttons. */
-static const RGBColor KMC_WHITE_WARM    = { 255, 200, 150 };
+static const RGBColor KMC_WHITE_WARM    = { 255, 140, 100 };
 
-/** @brief Soft white. Dimmed blue-tinted. Easy on eyes in dark cockpit. */
-static const RGBColor KMC_WHITE_SOFT    = { 180, 184, 204 };
+/** @brief Soft white. Warm dim amber — night vision safe. Minimises rod
+ *         bleaching for dark cockpit use. Low brightness, warm colour
+ *         temperature preserves scotopic adaptation. */
+static const RGBColor KMC_WHITE_SOFT    = { 120,  70,  20 };
 
 // --- Warm family ---
 /** @brief Orange. Engine Alt Mode, Engine Group 1, Radiator. */
-static const RGBColor KMC_ORANGE        = { 249, 115,  22 };
+static const RGBColor KMC_ORANGE        = { 255,  60,   0 };
 
 /** @brief Yellow. Warp targets, Lights, Engine Group 1. */
 static const RGBColor KMC_YELLOW        = { 234, 179,   8 };
 
 /** @brief Gold. Power generation association. Solar Array. */
-static const RGBColor KMC_GOLD          = { 255, 200,   0 };
+static const RGBColor KMC_GOLD          = { 255, 160,   0 };
 
 // --- Green family ---
 /** @brief Chartreuse. Mechanical variant / physics warp. */
@@ -237,11 +239,11 @@ static const RGBColor KMC_CHARTREUSE    = { 163, 230,  53 };
 static const RGBColor KMC_LIME          = { 132, 204,  22 };
 
 /** @brief Mint. Restoration / recovery. RCS, Quickload. */
-static const RGBColor KMC_MINT          = { 150, 255, 200 };
+static const RGBColor KMC_MINT          = { 100, 255, 160 };
 
 // --- Blue / cyan family ---
 /** @brief Blue. Science data. */
-static const RGBColor KMC_BLUE          = {  59, 130, 246 };
+static const RGBColor KMC_BLUE          = {   0,   0, 255 };
 
 /** @brief Sky blue. Navigation / map. */
 static const RGBColor KMC_SKY           = {  14, 165, 233 };
@@ -257,13 +259,13 @@ static const RGBColor KMC_CYAN          = {   6, 182, 212 };
 
 // --- Purple family ---
 /** @brief Purple. Science / discovery. */
-static const RGBColor KMC_PURPLE        = { 139,  92, 246 };
+static const RGBColor KMC_PURPLE        = { 120,   0, 220 };
 
 /** @brief Indigo. Science group. */
-static const RGBColor KMC_INDIGO        = {  99, 102, 241 };
+static const RGBColor KMC_INDIGO        = {  60,   0, 200 };
 
 /** @brief Violet. Mechanical access. Cargo Door. */
-static const RGBColor KMC_VIOLET        = { 180, 106, 255 };
+static const RGBColor KMC_VIOLET        = { 160,   0, 255 };
 
 // --- Pink / red family ---
 /** @brief Coral. Mode shift. IVA. */
