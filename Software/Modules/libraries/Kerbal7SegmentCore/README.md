@@ -10,7 +10,7 @@
 
 ## Overview
 
-Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment display modules (KC-01-1882). Each module runs on an ATtiny816, acts as an I2C target device, and provides:
+Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment display modules (KC-01-1880). Each module runs on an ATtiny816, acts as an I2C target device, and provides:
 
 - 4-digit 7-segment display via MAX7219 (software SPI, bit-banged)
 - Rotary encoder input with click-count-based acceleration
@@ -263,7 +263,7 @@ All `#ifndef`-guarded in `K7SC_Config.h`:
 - `buttonsBulbTest(ms)` → non-blocking `buttonsBulbTest()` + `buttonsBulbTestEnd()`
 - `displayTest(ms)` → non-blocking `displayTest()` + `displayTestEnd()`
 
-**Hardware corrections (validated on KC-01-1882 v2.0):**
+**Hardware corrections (validated on KC-01-1880 v2.0):**
 - NeoPixel mode: GRBW → NEO_GRB 3-byte (white channel not wired on this board)
 - Display digit mapping corrected: DIG0=thousands, DIG3=units
 - BTN_EN polarity: active LOW → active HIGH with pull-down

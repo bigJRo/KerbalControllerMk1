@@ -114,7 +114,7 @@
  *  @note  This module uses PIN_PC0 for INT, not PIN_PA1 as on
  *         KC-01-1822-based modules. PA1 is used for BUTTON01 on
  *         this PCB. The master controller INT wiring must account
- *         for this divergence. Verified against KC-01-1882 v2.0. */
+ *         for this divergence. Verified against KC-01-1880 v2.0. */
 #define K7SC_PIN_INT            PIN_PC0
 
 /** @brief I2C SCL — PB0. */
@@ -130,7 +130,7 @@
 //  tinyNeoPixel_Static with NEO_GRB (3 bytes/pixel) is used here.
 //  NEO_GRBW (4 bytes/pixel) was tested and did not produce correct
 //  colours on this hardware at 20 MHz. NEO_GRB is the proven
-//  working configuration on KC-01-1882 v2.0.
+//  working configuration on KC-01-1880 v2.0.
 // ============================================================
 
 /** @brief SK6812MINI-EA color order — GRB (3 bytes/pixel). */

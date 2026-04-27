@@ -99,7 +99,7 @@ static void _writeValue(uint16_t value) {
     //   MAX7219 DIG2 (reg 3) -> G2             physical digit = tens
     //   MAX7219 DIG3 (reg 4) -> G1 = rightmost physical digit = units
     //
-    // Verified by hardware diagnostic on KC-01-1882 v2.0.
+    // Verified by hardware diagnostic on KC-01-1880 v2.0.
     // Leading zero suppression: blank regs 1-3 from left; reg 4 always shown.
     bool leading = true;
 
