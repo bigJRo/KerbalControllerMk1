@@ -1,109 +1,93 @@
 /**
  * @file        DiagnosticDump.ino
- * @version     1.1.0
+ * @version     2.0.0
  * @date        2026-04-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Kerbal7SegmentCore serial diagnostic — no I2C master required.
+ * @brief       Kerbal7SegmentCore v2.0 hardware diagnostic.
  *
- *              Outputs to Serial at 115200 baud:
- *                - Display value changes from encoder
- *                - Button press events (BTN01/02/03/BTN_EN)
- *                - Module state byte on any change
- *                - Full state dump every DUMP_INTERVAL_MS
+ *              Prints all inputState and cmdState changes to Serial.
+ *              Useful for verifying hardware, I2C, and library behaviour
+ *              before writing module-specific application logic.
  *
- *              Runs display and NeoPixel bulb test at startup.
- *              Useful for verifying hardware after assembly.
+ *              Connect a USB-UART adapter to the ATtiny816 UPDI/TX pin
+ *              and open a serial monitor at 115200 baud.
  *
- * @note        Hardware: KC-01-1881/1882 v2.0 (ATtiny816)
+ * @note        Hardware:  KC-01-1881/1882 v2.0 (ATtiny816)
+ *              Library:   Kerbal7SegmentCore v2.0.0
  *              IDE settings:
- *                Board:             ATtiny816 (megaTinyCore)
- *                Clock:             20 MHz internal
- *                tinyNeoPixel Port: Port C
- *                Programmer:        serialUPDI
+ *                Board:        ATtiny816 (megaTinyCore)
+ *                Clock:        20 MHz internal
+ *                Programmer:   serialUPDI
  */
 
 #include <KerbalModuleCommon.h>
 #include <Kerbal7SegmentCore.h>
 
-#define I2C_ADDRESS       0x2A
-#define SERIAL_BAUD       115200
-#define DUMP_INTERVAL_MS  2000
-#define DEFAULT_VALUE     0
-
-const ButtonConfig btnConfigs[K7SC_NEO_COUNT] = {
-    { BTN_MODE_CYCLE,  { K7SC_ENABLED_COLOR, toGRBW(KMC_GREEN), toGRBW(KMC_AMBER) }, 3, 0 },
-    { BTN_MODE_TOGGLE, { K7SC_ENABLED_COLOR, toGRBW(KMC_BLUE),  K7SC_OFF          }, 2, 0 },
-    { BTN_MODE_FLASH,  { toGRBW(KMC_RED),   K7SC_OFF,           K7SC_OFF          }, 0, 300 },
-};
-
-static uint16_t _lastValue    = DEFAULT_VALUE;
-static uint8_t  _lastState    = 0;
-static uint32_t _lastDumpTime = 0;
-
-static void dumpState() {
-    uint16_t val   = displayGetValue();
-    uint8_t  state = buttonsGetStateByte();
-    Serial.println(F("\n=== State Dump ==="));
-    Serial.print(F("Display value  : ")); Serial.println(val);
-    Serial.print(F("BTN01 cycle    : ")); Serial.println(state & K7SC_STATE_BTN01_MASK);
-    Serial.print(F("BTN02 active   : ")); Serial.println((state >> K7SC_STATE_BTN02_BIT) & 0x01);
-    Serial.print(F("BTN03 active   : ")); Serial.println((state >> K7SC_STATE_BTN03_BIT) & 0x01);
-}
+#define I2C_ADDRESS  0x2A
 
 void setup() {
-    Serial.begin(SERIAL_BAUD);
-    delay(500);
-
-    Serial.println(F("\nKerbal7SegmentCore Diagnostic"));
-    Serial.println(F("=============================="));
-    Serial.print(F("Firmware: "));
-    Serial.print(K7SC_FIRMWARE_MAJOR); Serial.print(F("."));
-    Serial.println(K7SC_FIRMWARE_MINOR);
-
-    k7scBegin(I2C_ADDRESS, KMC_TYPE_GPWS_INPUT,
-              KMC_CAP_DISPLAY, btnConfigs, DEFAULT_VALUE);
-
-    Serial.println(F("Running bulb test..."));
-    buttonsBulbTest();
-    displayTest();
-    delay(2000);
-    buttonsBulbTestEnd();
-    displayTestEnd();
-    Serial.println(F("Bulb test complete."));
-    Serial.println(F("\nTurn encoder and press buttons."));
-
-    _lastDumpTime = millis();
+    Serial.begin(115200);
+    Serial.println(F("K7SC DiagnosticDump v2.0.0"));
+    k7scBegin(I2C_ADDRESS, KMC_TYPE_GPWS_INPUT, KMC_CAP_DISPLAY);
+    buttonsClearAll();
+    displaySetValue(8888);
+    displayWake();
+    Serial.println(F("Ready — waiting for events"));
 }
 
 void loop() {
     k7scUpdate();
 
-    // Report encoder value changes
-    uint16_t val = displayGetValue();
-    if (val != _lastValue) {
-        Serial.print(F("Value: ")); Serial.println(val);
-        _lastValue = val;
+    // ── cmdState changes ──────────────────────────────────────
+    static K7SCLifecycle _lastLC = K7SC_BOOT_READY;
+    if (cmdState.lifecycle != _lastLC) {
+        Serial.print(F("[CMD] lifecycle → "));
+        switch (cmdState.lifecycle) {
+            case K7SC_ACTIVE:     Serial.println(F("ACTIVE"));     break;
+            case K7SC_DISABLED:   Serial.println(F("DISABLED"));   break;
+            case K7SC_SLEEPING:   Serial.println(F("SLEEPING"));   break;
+            case K7SC_BOOT_READY: Serial.println(F("BOOT_READY")); break;
+        }
+        _lastLC = cmdState.lifecycle;
+    }
+    if (cmdState.isBulbTest) {
+        static bool _lastBulb = false;
+        if (cmdState.isBulbTest != _lastBulb) {
+            Serial.println(F("[CMD] BULB_TEST start"));
+            _lastBulb = true;
+        }
+    }
+    if (cmdState.isReset)    Serial.println(F("[CMD] RESET"));
+    if (cmdState.hasNewValue) {
+        Serial.print(F("[CMD] SET_VALUE → "));
+        Serial.println(cmdState.newValue);
+    }
+    if (cmdState.hasLEDState) {
+        Serial.print(F("[CMD] SET_LED_STATE → 0x"));
+        Serial.println(cmdState.ledState, HEX);
     }
 
-    // Report encoder button
-    if (buttonsGetEncoderPress()) {
-        Serial.println(F("BTN_EN — reset to default"));
-        encoderSetValue(DEFAULT_VALUE);
+    // ── inputState changes ────────────────────────────────────
+    if (inputState.buttonPressed) {
+        Serial.print(F("[HW] buttonPressed  = 0b"));
+        Serial.println(inputState.buttonPressed, BIN);
+    }
+    if (inputState.buttonReleased) {
+        Serial.print(F("[HW] buttonReleased = 0b"));
+        Serial.println(inputState.buttonReleased, BIN);
+    }
+    if (inputState.encoderChanged) {
+        Serial.print(F("[HW] encoderDelta   = "));
+        Serial.println(inputState.encoderDelta);
     }
 
-    // Report state byte changes
-    uint8_t state = buttonsGetStateByte();
-    if (state != _lastState) {
-        Serial.print(F("State: 0x")); Serial.println(state, HEX);
-        _lastState = state;
-    }
-
-    // Periodic full dump
-    if (millis() - _lastDumpTime >= DUMP_INTERVAL_MS) {
-        _lastDumpTime = millis();
-        dumpState();
-    }
+    // ── Clear consumed input ──────────────────────────────────
+    inputState.buttonPressed  = 0;
+    inputState.buttonReleased = 0;
+    inputState.buttonChanged  = 0;
+    inputState.encoderDelta   = 0;
+    inputState.encoderChanged = false;
 }
