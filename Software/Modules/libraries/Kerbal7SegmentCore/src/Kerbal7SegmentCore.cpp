@@ -1,74 +1,37 @@
 /**
  * @file        Kerbal7SegmentCore.cpp
- * @version     1.1.0
- * @date        2026-04-26
+ * @version     2.0.0
+ * @date        2026-04-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Top-level Kerbal7SegmentCore implementation.
- *
- * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
- *              https://www.gnu.org/licenses/gpl-3.0.html
+ * @license     GNU General Public License v3.0
  */
 
 #include <Arduino.h>
 #include "Kerbal7SegmentCore.h"
-#include "K7SC_I2C.h"
-#include "K7SC_Buttons.h"
-#include "K7SC_Display.h"
-#include "K7SC_Encoder.h"
 
 static uint32_t _lastPollTime = 0;
 
-// ============================================================
-//  k7scBegin()
-// ============================================================
-
-void k7scBegin(uint8_t i2cAddress,
-               uint8_t typeId, uint8_t capFlags,
-               const ButtonConfig* btnConfigs,
-               uint16_t initialValue) {
-
-    // 1. I2C — Wire.begin() + register callbacks
-    k7scI2CBegin(i2cAddress, typeId, capFlags);
-
-    // 2. Display — initialise MAX7219
-    displayBegin();
-
-    // 3. Encoder — set initial value and read A/B state
-    encoderBegin(initialValue);
-
-    // 4. Buttons and NeoPixels
-    buttonsBegin(btnConfigs);
-
+void k7scBegin(uint8_t i2cAddress, uint8_t typeId, uint8_t capFlags) {
+    displayBegin();     // MAX7219 init — starts in shutdown (dark)
+    encoderBegin();     // encoder ISR — no display coupling
+    buttonsBegin();     // GPIO + NeoPixel init — all pixels off
+    k7scI2CBegin(i2cAddress, typeId, capFlags);  // I2C + BOOT_READY INT
     _lastPollTime = millis();
 }
 
-// ============================================================
-//  k7scUpdate()
-// ============================================================
-
 void k7scUpdate() {
-    // Service bulb test timeout (non-blocking)
-    k7scBulbTestPoll();
-
-    if (k7scI2CIsSleeping()) {
-        uint32_t now = millis();
-        if ((now - _lastPollTime) >= K7SC_SLEEP_POLL_MS) {
-            _lastPollTime = now;
-            buttonsPoll();
-        }
-        k7scI2CSyncINT();
-        return;
-    }
-
     uint32_t now = millis();
     if ((now - _lastPollTime) >= K7SC_POLL_INTERVAL_MS) {
         _lastPollTime = now;
-        buttonsPoll();
-        encoderPoll();
+        // Only poll hardware when active — prevents spurious INT when
+        // disabled or sleeping. Sketch drains inputState in its early return.
+        if (cmdState.lifecycle == K7SC_ACTIVE) {
+            buttonsPoll();
+            encoderPoll();
+        }
     }
-
-    k7scI2CSyncINT();
+    k7scI2CPoll();
 }
