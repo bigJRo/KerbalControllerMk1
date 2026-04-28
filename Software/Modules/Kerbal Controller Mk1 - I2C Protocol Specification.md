@@ -81,7 +81,7 @@ All commands are initiated by the controller as I2C write transactions. The comm
 | `CMD_GET_IDENTITY` | 0x01 | — | Query module identity. Module replies with 4-byte identity packet (see §6) |
 | `CMD_SET_LED_STATE` | 0x02 | 1 byte | Module-specific LED state byte — sketch interprets |
 | `CMD_SET_BRIGHTNESS` | 0x03 | 1 byte | Top nibble → MAX7219 intensity (0–15) for display modules |
-| `CMD_BULB_TEST` | 0x04 | 1 byte | 0x01 = start, 0x00 = stop. All LEDs full white, all display segments on |
+| `CMD_BULB_TEST` | 0x04 | 1 byte | 0x01 = start, 0x00 = stop. All LEDs full white, all display segments on. **Commandable regardless of lifecycle state** — fires even while SLEEPING or DISABLED |
 | `CMD_SLEEP` | 0x05 | — | Freeze state exactly. No visual change. INT suppressed |
 | `CMD_WAKE` | 0x06 | — | Resume from sleep. Module sends current state packet |
 | `CMD_RESET` | 0x07 | — | Reset to defaults, stay ACTIVE. Module sends confirmation packet |
