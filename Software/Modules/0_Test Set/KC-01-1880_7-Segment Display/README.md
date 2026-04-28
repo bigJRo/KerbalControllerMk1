@@ -13,6 +13,7 @@ Two separate testers serve different purposes:
 |---|---|---|
 | `KC01_1880_Tester` | `KC01_1880_TestFirmware` | Hardware and library validation |
 | `KCMk1_GPWS_Tester` | `KCMk1_GPWS_Input` | GPWS application validation |
+| `KCMk1_PreWarp_Tester` | `KCMk1_PreWarp_Time` | Pre-Warp Time application validation |
 
 Run `KC01_1880_Tester` when validating a new board or a library change. Run `KCMk1_GPWS_Tester` when validating GPWS firmware changes.
 
@@ -107,6 +108,38 @@ Interactive serial menu — open at 115200 baud and follow prompts.
 | S7 | Simpit serial loss (DISABLE) |
 | S8 | Master controller reboot |
 | S9 | Full lifecycle sequence |
+
+---
+
+## KCMk1_PreWarp_Tester
+
+**Pair with:** `KCMk1_PreWarp_Time` on the module  
+**Purpose:** Validates Pre-Warp Time application firmware behaviour and lifecycle scenarios.
+
+Interactive serial menu — open at 115200 baud and follow prompts.
+
+### Hardware tests
+
+| Test | Description |
+|---|---|
+| T01 | GET_IDENTITY |
+| T02 | Data packet read |
+| T03 | CMD_SET_VALUE |
+| T04 | Display intensity |
+| T05 | CMD_BULB_TEST (ACTIVE, DISABLED, SLEEPING) |
+| T06 | CMD_SLEEP / CMD_WAKE |
+| T07 | CMD_RESET |
+| T08 | BTN01/BTN02/BTN03 preset buttons |
+| T09 | BTN_EN reset |
+| T10 | CMD_DISABLE / CMD_ENABLE |
+| T11 | CMD_ACK_FAULT |
+| T12 | INT pin behaviour |
+
+### Lifecycle scenario tests
+
+| Step | Scenario |
+|---|---|
+| N | Full automated lifecycle demo: Boot → Disabled → Enable → Set value → Vessel switch → Sleep → Wake → Disable |
 
 ---
 
