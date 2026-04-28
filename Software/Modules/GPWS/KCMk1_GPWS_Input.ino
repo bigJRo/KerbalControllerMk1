@@ -298,18 +298,7 @@ void loop() {
         _lastLifecycle = cmdState.lifecycle;
     }
 
-    // ── When not active, suppress everything and return ──────
-    if (cmdState.lifecycle != K7SC_ACTIVE) {
-        inputState.buttonPressed  = 0;
-        inputState.buttonReleased = 0;
-        inputState.buttonChanged  = 0;
-        inputState.encoderDelta   = 0;
-        inputState.encoderChanged = false;
-        encoderClearDelta();  // discard ISR-accumulated clicks
-        return;
-    }
-
-    // ── Bulb test ─────────────────────────────────────────────
+    // ── Bulb test — commandable regardless of lifecycle ───────
     static bool _lastBulbTest = false;
     if (cmdState.isBulbTest != _lastBulbTest) {
         if (cmdState.isBulbTest) {
@@ -325,6 +314,17 @@ void loop() {
             if (_gpwsMode == GPWS_OFF) displayOff();
         }
         _lastBulbTest = cmdState.isBulbTest;
+    }
+
+    // ── When not active, suppress everything and return ──────
+    if (cmdState.lifecycle != K7SC_ACTIVE) {
+        inputState.buttonPressed  = 0;
+        inputState.buttonReleased = 0;
+        inputState.buttonChanged  = 0;
+        inputState.encoderDelta   = 0;
+        inputState.encoderChanged = false;
+        encoderClearDelta();  // discard ISR-accumulated clicks
+        return;
     }
 
     // ── CMD_RESET ─────────────────────────────────────────────

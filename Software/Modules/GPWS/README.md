@@ -123,7 +123,7 @@ All standard `KMC_CMD_*` commands are accepted. Module-specific behaviour:
 | `CMD_WAKE` | Resume — sends current state packet |
 | `CMD_RESET` | Clears all state to defaults, buttons go backlit, display blanks. Module stays ACTIVE |
 | `CMD_SET_VALUE` | Sets threshold. Display updates if GPWS is active |
-| `CMD_BULB_TEST 0x01` | All pixels white, all display segments on |
+| `CMD_BULB_TEST 0x01` | All pixels white, all display segments on. **Commandable regardless of lifecycle state** |
 | `CMD_BULB_TEST 0x00` | Restore previous state |
 | `CMD_SET_BRIGHTNESS` | Top nibble sets MAX7219 intensity (0–15) |
 | `CMD_SET_LED_STATE` | Payload byte passed to sketch — this module ignores it |
