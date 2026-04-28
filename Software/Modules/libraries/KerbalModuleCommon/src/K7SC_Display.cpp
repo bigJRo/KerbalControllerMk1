@@ -99,7 +99,7 @@ static void _writeValue(uint16_t value) {
     //   MAX7219 DIG2 (reg 3) -> G2             physical digit = tens
     //   MAX7219 DIG3 (reg 4) -> G1 = rightmost physical digit = units
     //
-    // Verified by hardware diagnostic on KC-01-1880 v2.0.
+    // Verified by hardware diagnostic on KC-01-1882 v2.0.
     // Leading zero suppression: blank regs 1-3 from left; reg 4 always shown.
     bool leading = true;
 
@@ -136,24 +136,22 @@ void displayBegin() {
     pinMode(K7SC_PIN_LOAD, OUTPUT);
     pinMode(K7SC_PIN_DATA, OUTPUT);
 
+    // Set initial pin states via direct register — CLK idle LOW,
+    // LOAD idle HIGH (deasserted), DATA LOW
     _SPI_CLK_LO();
     _SPI_LOAD_HI();
     _SPI_DATA_LO();
 
-    // MAX7219 initialisation sequence.
-    // Start in shutdown (0x00) — config registers can be written
-    // while in shutdown mode. Display stays blank until
-    // displayWake() is called by the master via CMD_ENABLE.
-    _spiSend(K7SC_MAX_REG_SHUTDOWN,    0x00);  // Shutdown first
+    // MAX7219 initialisation sequence
     _spiSend(K7SC_MAX_REG_DISPLAYTEST, 0x00);  // Display test off
+    _spiSend(K7SC_MAX_REG_SHUTDOWN,    0x01);  // Normal operation
     _spiSend(K7SC_MAX_REG_SCANLIMIT,   0x03);  // Scan digits 0-3
     _spiSend(K7SC_MAX_REG_DECODE,      0xFF);  // BCD decode all digits
     _spiSend(K7SC_MAX_REG_INTENSITY,   _intensity);
 
-    // Write initial value while still in shutdown — no visible flash
+    // Show 0 on startup
     _currentValue = 0;
     _writeValue(0);
-    // Remain in shutdown — displayWake() brings it up when master is ready
 }
 
 // ============================================================

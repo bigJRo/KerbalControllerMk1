@@ -1,357 +1,104 @@
 /**
  * @file        K7SC_Buttons.cpp
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     2.0.0
+ * @date        2026-04-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Button input and SK6812MINI-EA NeoPixel LED implementation.
+ * @brief       Button and NeoPixel driver — reports edges to inputState.
+ *              No state machine. Sketch owns all LED and button logic.
  *
- * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
- *              https://www.gnu.org/licenses/gpl-3.0.html
+ * @license     GNU General Public License v3.0
  */
 
 #include <Arduino.h>
-#include <tinyNeoPixel_Static.h>
+#include <tinyNeoPixel.h>
 #include "K7SC_Buttons.h"
+#include "K7SC_State.h"
 
-// ============================================================
-//  Button pin table (BTN01, BTN02, BTN03, BTN_EN)
-// ============================================================
+// ── NeoPixel ──────────────────────────────────────────────────
+static tinyNeoPixel _pixels(K7SC_NEO_COUNT, K7SC_PIN_NEOPIX,
+                             K7SC_NEO_COLOR_ORDER);
 
-static const uint8_t _btnPins[K7SC_BUTTON_COUNT] = {
+// ── Button debounce state ─────────────────────────────────────
+static uint8_t  _rawState   = 0;   // current debounced state
+static uint8_t  _candidate  = 0;   // pending new state (not yet stable)
+static uint32_t _debounceTime[K7SC_BUTTON_COUNT] = {0};
+
+// Button pins in bitmask order
+static const uint8_t _pins[K7SC_BUTTON_COUNT] = {
     K7SC_PIN_BTN01,
     K7SC_PIN_BTN02,
     K7SC_PIN_BTN03,
     K7SC_PIN_BTN_EN
 };
 
-// ============================================================
-//  NeoPixel — SK6812MINI-EA GRBW, 4 bytes per pixel
-// ============================================================
-
-static uint8_t _pixelBuffer[K7SC_NEO_COUNT * 4];
-static tinyNeoPixel _pixels(K7SC_NEO_COUNT, K7SC_PIN_NEOPIX,
-                             K7SC_NEO_COLOR_ORDER, _pixelBuffer);
-
-// ============================================================
-//  Button configuration
-// ============================================================
-
-static ButtonConfig _configs[K7SC_NEO_COUNT];
-
-// ============================================================
-//  Button state
-// ============================================================
-
-static uint8_t  _rawState          = 0;   // current debounced raw state
-static uint8_t  _changeMask        = 0;
-static uint8_t  _eventMask         = 0;   // edges this cycle
-static bool     _intPending        = false;
-static bool     _encoderPressed    = false;
-
-// Debounce
-static uint8_t  _debounceCount[K7SC_BUTTON_COUNT]     = {0};
-static uint8_t  _debounceCandidate[K7SC_BUTTON_COUNT] = {0};
-
-// Per-NeoPixel button logical state
-static uint8_t  _cycleState[K7SC_NEO_COUNT]   = {0, 0, 0}; // for CYCLE mode
-static bool     _toggleActive[K7SC_NEO_COUNT] = {false, false, false};
-
-// Flash timing
-static uint32_t _flashStart[K7SC_NEO_COUNT]   = {0, 0, 0};
-static bool     _flashing[K7SC_NEO_COUNT]     = {false, false, false};
-
-// ============================================================
-//  _renderButton() — set NeoPixel color for button i
-// ============================================================
-
-static void _renderButton(uint8_t i) {
-    GRBWColor color = K7SC_ENABLED_COLOR;
-
-    switch (_configs[i].mode) {
-        case BTN_MODE_CYCLE:
-            if (_cycleState[i] == 0) {
-                color = K7SC_ENABLED_COLOR;
-            } else {
-                color = _configs[i].colors[_cycleState[i]];
-            }
-            break;
-
-        case BTN_MODE_TOGGLE:
-            color = _toggleActive[i]
-                ? _configs[i].colors[1]
-                : K7SC_ENABLED_COLOR;
-            break;
-
-        case BTN_MODE_FLASH:
-            color = _flashing[i]
-                ? _configs[i].colors[0]
-                : K7SC_ENABLED_COLOR;
-            break;
-
-        case BTN_MODE_MOMENTARY:
-            color = K7SC_OFF;
-            break;
-    }
-
-    _pixels.setPixelColor(i, color.g, color.r, color.b, color.w);
-}
-
-// ============================================================
-//  buttonsBegin()
-// ============================================================
-
-void buttonsBegin(const ButtonConfig* configs) {
-    for (uint8_t i = 0; i < K7SC_NEO_COUNT; i++) {
-        _configs[i] = configs[i];
-    }
-
-    // GPIO init — all active high with hardware pull-downs
+// ── buttonsBegin() ────────────────────────────────────────────
+void buttonsBegin() {
     for (uint8_t i = 0; i < K7SC_BUTTON_COUNT; i++) {
-        pinMode(_btnPins[i], INPUT);
-        _debounceCount[i] = 0;
+        pinMode(_pins[i], INPUT);
     }
-
-    // NeoPixel init
-    pinMode(K7SC_PIN_NEOPIX, OUTPUT);
-    memset(_pixelBuffer, 0, sizeof(_pixelBuffer));
-
-    // Reset state
-    memset(_cycleState,   0, sizeof(_cycleState));
-    memset(_toggleActive, 0, sizeof(_toggleActive));
-    memset(_flashing,     0, sizeof(_flashing));
-    _rawState       = 0;
-    _changeMask     = 0;
-    _eventMask      = 0;
-    _intPending     = false;
-    _encoderPressed = false;
-    memset(_debounceCount,     0, sizeof(_debounceCount));
-    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
-
-    buttonsRender();
+    _rawState  = 0;
+    _candidate = 0;
+    _pixels.begin();
+    _pixels.show();
 }
 
-// ============================================================
-//  buttonsPoll()
-// ============================================================
-
-bool buttonsPoll() {
+// ── buttonsPoll() ─────────────────────────────────────────────
+void buttonsPoll() {
     uint32_t now = millis();
+    uint8_t  reading = 0;
 
-    // Service flash timeouts
-    for (uint8_t i = 0; i < K7SC_NEO_COUNT; i++) {
-        if (_flashing[i]) {
-            uint16_t dur = _configs[i].flashMs
-                         ? _configs[i].flashMs
-                         : K7SC_FLASH_DURATION_MS;
-            if ((now - _flashStart[i]) >= dur) {
-                _flashing[i] = false;
-                _renderButton(i);
-            }
+    for (uint8_t i = 0; i < K7SC_BUTTON_COUNT; i++) {
+        if (digitalRead(_pins[i])) reading |= (1 << i);
+    }
+
+    // Debounce — any bit that differs from current state starts a timer
+    uint8_t changed = reading ^ _candidate;
+    if (changed) {
+        _candidate = reading;
+        for (uint8_t i = 0; i < K7SC_BUTTON_COUNT; i++) {
+            if (changed & (1 << i)) _debounceTime[i] = now;
         }
     }
 
-    // Read all button pins
-    uint8_t raw = 0;
+    // Apply any bits that have been stable for the debounce window
     for (uint8_t i = 0; i < K7SC_BUTTON_COUNT; i++) {
-        if (digitalRead(_btnPins[i])) raw |= (1 << i);
-    }
+        if ((now - _debounceTime[i]) >= K7SC_BTN_DEBOUNCE_MS) {
+            uint8_t bit = (1 << i);
+            uint8_t newBit = _candidate & bit;
+            uint8_t oldBit = _rawState  & bit;
 
-    // Per-button debounce with independent candidate tracking.
-    bool anyEvent = false;
-
-    for (uint8_t i = 0; i < K7SC_BUTTON_COUNT; i++) {
-        bool rawBit  = (raw >> i) & 0x01;
-        bool liveBit = (_rawState >> i) & 0x01;
-
-        if (rawBit != _debounceCandidate[i]) {
-            _debounceCandidate[i] = rawBit;
-            _debounceCount[i]     = 0;
-        } else if (rawBit != liveBit) {
-            _debounceCount[i]++;
-            if (_debounceCount[i] >= K7SC_BTN_DEBOUNCE_COUNT) {
-                if (rawBit) {
-                    // Rising edge — button pressed
-                    _rawState |= (1 << i);
-                    _changeMask |= (1 << i);
-                    _eventMask  |= (1 << i);
-                    _intPending  = true;
-                    anyEvent     = true;
-
-                    // Handle NeoPixel button logic
-                    if (i < K7SC_NEO_COUNT) {
-                        switch (_configs[i].mode) {
-                            case BTN_MODE_CYCLE:
-                                _cycleState[i]++;
-                                if (_cycleState[i] >= _configs[i].numStates) {
-                                    _cycleState[i] = 0;
-                                }
-                                _renderButton(i);
-                                break;
-
-                            case BTN_MODE_TOGGLE:
-                                _toggleActive[i] = !_toggleActive[i];
-                                _renderButton(i);
-                                break;
-
-                            case BTN_MODE_FLASH:
-                                _flashing[i]   = true;
-                                _flashStart[i] = now;
-                                _renderButton(i);
-                                break;
-
-                            case BTN_MODE_MOMENTARY:
-                                break;
-                        }
-                    } else {
-                        // BTN_EN — encoder pushbutton
-                        _encoderPressed = true;
-                    }
+            if (newBit != oldBit) {
+                // State changed — record edge
+                if (newBit) {
+                    inputState.buttonPressed  |= bit;
                 } else {
-                    // Falling edge — button released
-                    _rawState &= ~(1 << i);
-                    _changeMask |= (1 << i);
-                    _intPending  = true;
-                    anyEvent     = true;
+                    inputState.buttonReleased |= bit;
                 }
-                _debounceCount[i] = 0;
+                inputState.buttonChanged |= bit;
+                _rawState = (_rawState & ~bit) | newBit;
             }
-        } else {
-            _debounceCount[i] = 0;
         }
     }
-
-    if (anyEvent) _pixels.show();
-    return anyEvent;
 }
 
-// ============================================================
-//  buttonsIsIntPending()
-// ============================================================
-
-bool buttonsIsIntPending() {
-    return _intPending;
+// ── buttonSetPixel() ──────────────────────────────────────────
+void buttonSetPixel(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
+    if (index >= K7SC_NEO_COUNT) return;
+    _pixels.setPixelColor(index, r, g, b);
 }
 
-// ============================================================
-//  buttonsGetEvents()
-// ============================================================
-
-uint8_t buttonsGetEvents() {
-    return _eventMask;
+// ── buttonsShow() ─────────────────────────────────────────────
+void buttonsShow() {
+    _pixels.show();
 }
 
-// ============================================================
-//  buttonsGetChangeMask()
-// ============================================================
-
-uint8_t buttonsGetChangeMask() {
-    uint8_t mask    = _changeMask;
-    uint8_t latch   = _rawState;   // snapshot live state at read time
-
-    _changeMask = 0;
-    _eventMask  = 0;
-    _intPending = false;
-
-    // Re-assert if live state diverged during this read transaction.
-    // Guarantees every state change edge generates at least one INT,
-    // even if a button transitions while the controller is reading.
-    if (_rawState != latch) {
-        _changeMask = _rawState ^ latch;
-        _intPending = true;
-    }
-
-    return mask;
-}
-
-// ============================================================
-//  buttonsGetStateByte()
-// ============================================================
-
-uint8_t buttonsGetStateByte() {
-    uint8_t state = 0;
-
-    // BTN01: bits 0-1 carry cycle state
-    state |= (_cycleState[0] & K7SC_STATE_BTN01_MASK);
-
-    // BTN02: bit 2
-    if (_toggleActive[1]) state |= (1 << K7SC_STATE_BTN02_BIT);
-
-    // BTN03: bit 3
-    if (_toggleActive[2]) state |= (1 << K7SC_STATE_BTN03_BIT);
-
-    return state;
-}
-
-// ============================================================
-//  buttonsGetEncoderPress()
-// ============================================================
-
-bool buttonsGetEncoderPress() {
-    bool val = _encoderPressed;
-    _encoderPressed = false;
-    return val;
-}
-
-// ============================================================
-//  buttonsClearAll()
-// ============================================================
-
+// ── buttonsClearAll() ─────────────────────────────────────────
 void buttonsClearAll() {
-    _rawState       = 0;
-    _changeMask     = 0;
-    _eventMask      = 0;
-    _intPending     = false;
-    _encoderPressed = false;
-    memset(_debounceCount,     0, sizeof(_debounceCount));
-    memset(_debounceCandidate, 0, sizeof(_debounceCandidate));
-    memset(_cycleState,        0, sizeof(_cycleState));
-    memset(_toggleActive,      0, sizeof(_toggleActive));
-    memset(_flashing,          0, sizeof(_flashing));
-    buttonsRender();
-}
-
-// ============================================================
-//  buttonsClearLEDs()
-// ============================================================
-
-void buttonsClearLEDs() {
     for (uint8_t i = 0; i < K7SC_NEO_COUNT; i++) {
-        _pixels.setPixelColor(i, 0, 0, 0, 0);
+        _pixels.setPixelColor(i, 0, 0, 0);
     }
     _pixels.show();
-}
-
-// ============================================================
-//  buttonsRestoreLEDs()
-// ============================================================
-
-void buttonsRestoreLEDs() {
-    buttonsRender();
-}
-
-// ============================================================
-//  buttonsRender()
-// ============================================================
-
-void buttonsRender() {
-    for (uint8_t i = 0; i < K7SC_NEO_COUNT; i++) {
-        _renderButton(i);
-    }
-    _pixels.show();
-}
-
-// ============================================================
-//  buttonsBulbTest()
-// ============================================================
-
-void buttonsBulbTest(uint16_t durationMs) {
-    for (uint8_t i = 0; i < K7SC_NEO_COUNT; i++) {
-        _pixels.setPixelColor(i, 0, 0, 0, 255);  // Full white channel
-    }
-    _pixels.show();
-    delay(durationMs);
-    buttonsRender();
 }

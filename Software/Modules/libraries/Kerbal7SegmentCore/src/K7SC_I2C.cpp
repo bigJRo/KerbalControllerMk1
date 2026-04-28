@@ -1,65 +1,53 @@
 /**
  * @file        K7SC_I2C.cpp
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     2.0.0
+ * @date        2026-04-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       I2C target handler implementation for Kerbal7SegmentCore.
+ * @brief       I2C target handler implementation.
  *
- * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
- *              https://www.gnu.org/licenses/gpl-3.0.html
+ * @license     GNU General Public License v3.0
  */
 
-#include <Wire.h>
 #include <Arduino.h>
+#include <Wire.h>
 #include "K7SC_I2C.h"
-#include "K7SC_Buttons.h"
 #include "K7SC_Display.h"
-#include "K7SC_Encoder.h"
 
-// ============================================================
-//  Module identity
-// ============================================================
+// ── Global state structs ──────────────────────────────────────
+K7SCCommandState cmdState  = {K7SC_BOOT_READY, false, false, false, 0, false, 0};
+K7SCInputState   inputState = {0, 0, 0, 0, false};
 
+// ── Module identity ───────────────────────────────────────────
 static uint8_t _typeId   = 0xFF;
 static uint8_t _capFlags = 0;
 
-// ============================================================
-//  Internal state
-// ============================================================
+// ── Packet state ──────────────────────────────────────────────
+static bool    _fault       = false;
+static uint8_t _txCounter   = 0;
 
-static bool _intAsserted   = false;
-static bool _sleeping      = false;
+// Pending outgoing packet (built by sketch, header prepended on send)
+static uint8_t  _payload[16];   // max payload bytes
+static uint8_t  _payloadLen = 0;
+static bool     _packetPending = false;
 
-// Atomic event snapshot — captured together in k7scI2CSyncINT() when
-// INT is asserted, consumed atomically in _sendDataPacket(). Prevents
-// buttonsGetEvents() and buttonsGetChangeMask() being called in separate
-// Wire ISR callbacks where a button event between the two calls could
-// produce inconsistent buf[0]/buf[1] values in the data packet.
-static uint8_t _snapshotEvents = 0;
-static uint8_t _snapshotChange = 0;
-static bool    _snapshotValid  = false;
+// Pending identity response
+static bool _identityPending = false;
 
-static const uint8_t _CMD_BUF_SIZE = 3;  // cmd + 2 payload bytes max
-static uint8_t _cmdBuf[_CMD_BUF_SIZE];
-static uint8_t _cmdLen = 0;
+// One-shot flag clear tracking (cleared one loop after being set)
+static bool _clearReset    = false;
+static bool _clearNewValue = false;
+static bool _clearLEDState = false;
 
-enum ResponseType : uint8_t {
-    RESP_NONE     = 0,
-    RESP_DATA     = 1,
-    RESP_IDENTITY = 2
-};
-static volatile ResponseType _pendingResponse = RESP_NONE;
-
-// ============================================================
-//  INT helpers
-// ============================================================
+// ── INT pin helpers ───────────────────────────────────────────
+static bool _intAsserted = false;
 
 static void _assertINT() {
     digitalWrite(K7SC_PIN_INT, LOW);
     _intAsserted = true;
+    _txCounter++;
 }
 
 static void _clearINT() {
@@ -67,219 +55,164 @@ static void _clearINT() {
     _intAsserted = false;
 }
 
-// ============================================================
-//  Packet builders
-// ============================================================
+// ── Identity packet ───────────────────────────────────────────
+static void _sendIdentity() {
+    Wire.write(_typeId);
+    Wire.write(K7SC_FIRMWARE_MAJOR);
+    Wire.write(K7SC_FIRMWARE_MINOR);
+    Wire.write(_capFlags);
+}
 
+// ── Data packet ───────────────────────────────────────────────
 static void _sendDataPacket() {
-    uint8_t buf[K7SC_PACKET_SIZE];
-    uint16_t val = displayGetValue();
+    // Build status byte
+    uint8_t status = (uint8_t)cmdState.lifecycle & KMC_STATUS_LIFECYCLE_MASK;
+    if (_fault) status |= KMC_STATUS_FAULT;
+    status |= KMC_STATUS_DATA_CHANGED;  // sketch only calls this when data changed
 
-    // Use the atomic snapshot captured in k7scI2CSyncINT().
-    // If for any reason no snapshot is available, fall back to
-    // calling the button functions directly (defensive only —
-    // _onRequest should only fire after INT was asserted which
-    // always sets a valid snapshot first).
-    if (_snapshotValid) {
-        buf[0] = _snapshotEvents;
-        buf[1] = _snapshotChange;
-        _snapshotEvents = 0;
-        _snapshotChange = 0;
-        _snapshotValid  = false;
-    } else {
-        buf[0] = buttonsGetEvents();
-        buf[1] = buttonsGetChangeMask();
-    }
+    // Header
+    Wire.write(status);
+    Wire.write(_typeId);
+    Wire.write(_txCounter);
 
-    buf[2] = buttonsGetStateByte();
-    buf[3] = 0;                           // reserved
-    buf[4] = (uint8_t)(val >> 8);         // display value high byte
-    buf[5] = (uint8_t)(val & 0xFF);       // display value low byte
+    // Sketch payload
+    Wire.write(_payload, _payloadLen);
 
-    encoderClearChanged();
-    Wire.write(buf, K7SC_PACKET_SIZE);
+    _packetPending = false;
     _clearINT();
 }
 
-static void _sendIdentityPacket() {
-    uint8_t buf[K7SC_IDENTITY_SIZE];
-    buf[0] = _typeId;
-    buf[1] = K7SC_FIRMWARE_MAJOR;
-    buf[2] = K7SC_FIRMWARE_MINOR;
-    buf[3] = _capFlags;
-    Wire.write(buf, K7SC_IDENTITY_SIZE);
-}
+// ── Wire callbacks ────────────────────────────────────────────
+static void _onReceive(int numBytes) {
+    if (numBytes == 0) return;
 
-// ============================================================
-//  Command dispatch
-// ============================================================
+    uint8_t cmd = Wire.read();
+    numBytes--;
 
-static void _dispatch() {
-    if (_cmdLen == 0) return;
-    uint8_t cmd = _cmdBuf[0];
+    // Read remaining bytes into temp buffer
+    uint8_t buf[4] = {0};
+    uint8_t n = 0;
+    while (Wire.available() && n < 4) buf[n++] = Wire.read();
+    while (Wire.available()) Wire.read();
 
     switch (cmd) {
-        case K7SC_CMD_GET_IDENTITY:
-            _pendingResponse = RESP_IDENTITY;
+
+        case KMC_CMD_GET_IDENTITY:
+            _identityPending = true;
             break;
 
-        case K7SC_CMD_SET_LED_STATE:
-            // This module manages its own LED states — ignore
+        case KMC_CMD_SET_LED_STATE:
+            // Pass raw first byte to sketch — sketch interprets
+            if (n >= 1) {
+                cmdState.hasLEDState = true;
+                cmdState.ledState    = buf[0];
+            }
             break;
 
-        case K7SC_CMD_SET_BRIGHTNESS:
-            // Not applicable — SK6812 brightness managed internally
+        case KMC_CMD_SET_BRIGHTNESS:
+            // Apply directly — pure hardware, no sketch logic needed
+            if (n >= 1) displaySetIntensity(buf[0] >> 4);
             break;
 
-        case K7SC_CMD_BULB_TEST:
-            buttonsBulbTest(2000);
-            displayTest(2000);
+        case KMC_CMD_BULB_TEST:
+            // No payload or 0x01 = start, 0x00 = stop
+            if (n == 0 || buf[0] == 0x01) cmdState.isBulbTest = true;
+            else                           cmdState.isBulbTest = false;
             break;
 
-        case K7SC_CMD_SLEEP:
-            _sleeping = true;
-            buttonsClearLEDs();
-            displayShutdown();
-            _clearINT();
+        case KMC_CMD_SLEEP:
+            cmdState.lifecycle = K7SC_SLEEPING;
             break;
 
-        case K7SC_CMD_WAKE:
-            _sleeping = false;
-            buttonsRestoreLEDs();
-            displayWake();
+        case KMC_CMD_WAKE:
+            cmdState.lifecycle = K7SC_ACTIVE;
             break;
 
-        case K7SC_CMD_RESET:
-            buttonsClearAll();
-            encoderSetValue(0);
-            _sleeping       = false;
-            _snapshotEvents = 0;
-            _snapshotChange = 0;
-            _snapshotValid  = false;
-            _pendingResponse = RESP_NONE;
-            _clearINT();
+        case KMC_CMD_RESET:
+            cmdState.isReset = true;
             break;
 
-        case K7SC_CMD_ACK_FAULT:
-            // No fault tracking — acknowledge silently
+        case KMC_CMD_ACK_FAULT:
+            _fault = false;
             break;
 
-        case K7SC_CMD_ENABLE:
-            _sleeping = false;
-            buttonsRestoreLEDs();
-            displayWake();
+        case KMC_CMD_ENABLE:
+            cmdState.lifecycle = K7SC_ACTIVE;
             break;
 
-        case K7SC_CMD_DISABLE:
-            _sleeping = true;
-            buttonsClearLEDs();
-            displayShutdown();
-            _clearINT();
+        case KMC_CMD_DISABLE:
+            cmdState.lifecycle = K7SC_DISABLED;
             break;
 
-        case K7SC_CMD_SET_VALUE:
-            // Controller sets display value directly
-            if (_cmdLen >= 3) {
-                uint16_t val = ((uint16_t)_cmdBuf[1] << 8) | _cmdBuf[2];
-                encoderSetValue(val);
+        case KMC_CMD_SET_VALUE:
+            if (n >= 2) {
+                cmdState.hasNewValue = true;
+                cmdState.newValue    = (int16_t)(((uint16_t)buf[0] << 8) | buf[1]);
             }
             break;
 
         default:
             break;
     }
-}
-
-// ============================================================
-//  Wire callbacks
-// ============================================================
-
-static void _onReceive(int numBytes) {
-    _cmdLen = 0;
-    while (Wire.available() && _cmdLen < _CMD_BUF_SIZE) {
-        _cmdBuf[_cmdLen++] = Wire.read();
-    }
-    while (Wire.available()) Wire.read();
-    _dispatch();
 }
 
 static void _onRequest() {
-    switch (_pendingResponse) {
-        case RESP_DATA:
-            _sendDataPacket();
-            break;
-        case RESP_IDENTITY:
-            _sendIdentityPacket();
-            break;
-        default:
-            for (uint8_t i = 0; i < K7SC_PACKET_SIZE; i++) {
-                Wire.write((uint8_t)0);
-            }
-            break;
+    if (_identityPending) {
+        _sendIdentity();
+        _identityPending = false;
+        // If INT still asserted (e.g. BOOT_READY pending), leave it —
+        // master will read the data packet on the next request.
+        return;
     }
-    _pendingResponse = RESP_NONE;
+    if (_packetPending || _intAsserted) {
+        _sendDataPacket();
+    } else {
+        // Unexpected read with no pending packet — send a zeroed header.
+        // Master should not be reading without a prior INT assertion.
+        for (uint8_t i = 0; i < K7SC_HEADER_SIZE; i++) Wire.write((uint8_t)0);
+    }
 }
 
-// ============================================================
-//  k7scI2CBegin()
-// ============================================================
-
-void k7scI2CBegin(uint8_t typeId, uint8_t capFlags) {
+// ── k7scI2CBegin() ────────────────────────────────────────────
+void k7scI2CBegin(uint8_t i2cAddress, uint8_t typeId, uint8_t capFlags) {
     _typeId   = typeId;
     _capFlags = capFlags;
+
+    Wire.begin(i2cAddress);
+    Wire.onReceive(_onReceive);
+    Wire.onRequest(_onRequest);
 
     pinMode(K7SC_PIN_INT, OUTPUT);
     _clearINT();
 
-    Wire.onReceive(_onReceive);
-    Wire.onRequest(_onRequest);
+    // Assert BOOT_READY — held until master reads packet
+    cmdState.lifecycle = K7SC_BOOT_READY;
+    // Queue an empty payload boot packet
+    _payloadLen    = 0;
+    _packetPending = true;
+    _assertINT();
 }
 
-// ============================================================
-//  k7scI2CSyncINT()
-// ============================================================
-
-void k7scI2CSyncINT() {
-    if (_sleeping) {
-        if (_intAsserted) _clearINT();
-        return;
-    }
-
-    bool btnPending = buttonsIsIntPending();
-    bool encPending = encoderIsValueChanged();
-
-    if (btnPending || encPending) {
-        // Capture events and change mask atomically before asserting INT.
-        // Both are read in the same main-loop pass, so no button event
-        // can occur between them here. _sendDataPacket() then consumes
-        // this snapshot without calling button functions a second time.
-        if (!_snapshotValid) {
-            _snapshotEvents = buttonsGetEvents();
-            _snapshotChange = buttonsGetChangeMask();
-            _snapshotValid  = true;
-        }
-        _pendingResponse = RESP_DATA;
-        if (!_intAsserted) _assertINT();
-    } else {
-        if (_intAsserted) _clearINT();
-    }
+// ── k7scQueuePacket() ─────────────────────────────────────────
+void k7scQueuePacket(const uint8_t* payload, uint8_t length) {
+    if (length > sizeof(_payload)) length = sizeof(_payload);
+    memcpy(_payload, payload, length);
+    _payloadLen    = length;
+    _packetPending = true;
+    if (!_intAsserted) _assertINT();
 }
 
-// ============================================================
-//  k7scI2CIsSleeping()
-// ============================================================
+// ── k7scI2CPoll() ─────────────────────────────────────────────
+// Called each loop — clears one-shot flags that were set last loop
+void k7scI2CPoll() {
+    if (_clearReset)    { cmdState.isReset    = false; _clearReset    = false; }
+    if (_clearNewValue) { cmdState.hasNewValue = false; cmdState.newValue = 0;
+                          _clearNewValue = false; }
+    if (_clearLEDState) { cmdState.hasLEDState = false; cmdState.ledState = 0;
+                          _clearLEDState = false; }
 
-bool k7scI2CIsSleeping() {
-    return _sleeping;
-}
-
-// ============================================================
-//  k7scGetPendingEvents()
-// ============================================================
-
-uint8_t k7scGetPendingEvents() {
-    // Returns the snapshot captured when INT was last asserted.
-    // Does not consume the snapshot — _sendDataPacket() owns that.
-    // Returns 0 if no snapshot is pending (no unread button events).
-    return _snapshotValid ? _snapshotEvents : 0;
+    // Schedule clears for flags set this loop
+    if (cmdState.isReset)    _clearReset    = true;
+    if (cmdState.hasNewValue) _clearNewValue = true;
+    if (cmdState.hasLEDState) _clearLEDState = true;
 }

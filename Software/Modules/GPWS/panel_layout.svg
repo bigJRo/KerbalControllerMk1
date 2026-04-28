@@ -3,12 +3,12 @@
 
   <!-- Header -->
   <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">GPWS INPUT PANEL</text>
-  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x2A · Type 0x0B · K7SC_CAP_DISPLAY</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x2A · Type 0x0B · KMC_CAP_DISPLAY</text>
 
   <!-- 7-segment display -->
   <text x="150" y="58" font-size="8" fill="#9ca3af" text-anchor="middle">4-digit display (MAX7219)</text>
   <rect x="40" y="64" width="220" height="56" rx="6" fill="#111" stroke="#333" stroke-width="1.5"/>
-  <text x="150" y="103" font-size="36" fill="#ff4400" text-anchor="middle" font-family="monospace" letter-spacing="6">200</text>
+  <text x="150" y="103" font-size="36" fill="#00ff41" text-anchor="middle" font-family="monospace" letter-spacing="6">200</text>
   <text x="150" y="132" font-size="7.5" fill="#9ca3af" text-anchor="middle">altitude threshold (m) · 0-9999 · no leading zeros</text>
 
   <!-- Encoder -->
@@ -19,7 +19,7 @@
   <text x="150" y="225" font-size="7.5" fill="#9ca3af" text-anchor="middle">press to reset to 200m default</text>
 
   <!-- Buttons row -->
-  <text x="150" y="248" font-size="8" fill="#9ca3af" text-anchor="middle">NeoPixel buttons (SK6812MINI-EA · GRBW)</text>
+  <text x="150" y="248" font-size="8" fill="#9ca3af" text-anchor="middle">NeoPixel buttons (SK6812MINI-EA · NEO_GRB)</text>
 
   <!-- BTN01 GPWS Enable — cycle GREEN/AMBER -->
   <rect x="18" y="256" width="82" height="82" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3"/>
@@ -28,7 +28,7 @@
   <text x="59" y="301" font-size="7" fill="#22c55e" text-anchor="middle">● GREEN</text>
   <text x="59" y="313" font-size="7" fill="#f59e0b" text-anchor="middle">● AMBER</text>
   <text x="59" y="325" font-size="6.5" fill="#9ca3af" text-anchor="middle">3-state cycle</text>
-  <text x="59" y="332" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN01 · PC1</text>
+  <text x="59" y="332" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN01 · PA1</text>
 
   <!-- BTN02 Proximity Alarm — toggle GREEN -->
   <rect x="109" y="256" width="82" height="82" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
@@ -36,7 +36,7 @@
   <text x="150" y="288" font-size="8" font-weight="500" fill="#166534" text-anchor="middle">Alarm</text>
   <text x="150" y="301" font-size="7" fill="#22c55e" text-anchor="middle">● GREEN</text>
   <text x="150" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">toggle</text>
-  <text x="150" y="327" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN02 · PC0</text>
+  <text x="150" y="327" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN02 · PC2</text>
 
   <!-- BTN03 Rendezvous Radar — toggle GREEN -->
   <rect x="200" y="256" width="82" height="82" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
@@ -44,11 +44,11 @@
   <text x="241" y="288" font-size="8" font-weight="500" fill="#166534" text-anchor="middle">Radar</text>
   <text x="241" y="301" font-size="7" fill="#22c55e" text-anchor="middle">● GREEN</text>
   <text x="241" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">toggle</text>
-  <text x="241" y="327" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN03 · PA4</text>
+  <text x="241" y="327" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN03 · PC1</text>
 
   <!-- Dashed border note on BTN01 -->
   <text x="59" y="348" font-size="6.5" fill="#9ca3af" text-anchor="middle">dashed = multi-state</text>
 
   <!-- Legend -->
-  <text x="16" y="366" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = W channel dim white · Kerbal7SegmentCore v1.0.0 · Jeb's Controller Works</text>
+  <text x="16" y="366" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim warm amber · Kerbal7SegmentCore v2.0.0 · Jeb's Controller Works</text>
 </svg>

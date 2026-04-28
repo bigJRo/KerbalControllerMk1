@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Display.h
- * @version     2.0.0
- * @date        2026-04-27
+ * @version     1.1.0
+ * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -11,12 +11,12 @@
  *
  *              Drives a 4-digit FJ4401AG common-cathode display
  *              via the MAX7219CWG+T controller IC using software
- *              SPI (bit-banged) on PA7 (CLK), PA6 (DATA), PA5 (LOAD).
+ *              SPI (bit-banged) on PA7 (CLK), PA6 (LOAD), PA5 (DATA).
  *
- *              Display behaviour:
+ *              Display behavior:
  *                - BCD decode mode on all digits
  *                - No leading zeros (blank character for unused digits)
- *                - Range: 0–9999, clamped
+ *                - Range: 0-9999, clamped
  *                - Digit 0 = rightmost position (MAX7219 register 1)
  *                - Integer values only, no decimal point
  *
