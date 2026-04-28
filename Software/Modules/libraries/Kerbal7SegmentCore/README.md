@@ -272,7 +272,7 @@ Step size is based on consecutive clicks in the same direction. Direction revers
 | 30–49 | 100 |
 | 50+ | 1000 |
 
-Thresholds and step sizes are `#ifndef`-guarded in `K7SC_Config.h` — override before `#include` in sketch.
+The click count also resets if no encoder event arrives within `K7SC_ENC_ACCEL_TIMEOUT_MS` (default 500ms). This ensures a pause mid-scroll always returns to slow mode on the next click, regardless of direction.
 
 ---
 
@@ -289,7 +289,7 @@ All `#ifndef`-guarded in `K7SC_Config.h`:
 | `K7SC_STEP_MEDIUM` | 10 | Step at medium speed |
 | `K7SC_STEP_FAST` | 100 | Step at fast speed |
 | `K7SC_STEP_TURBO` | 1000 | Step at turbo speed |
-| `K7SC_BTN_DEBOUNCE_MS` | 30 | Button stable-time before edge accepted (ms) |
+| `K7SC_ENC_ACCEL_TIMEOUT_MS` | 500 | Inactivity window after which click count resets (ms). Set to 0 to disable |
 | `K7SC_MAX_INTENSITY` | 8 | MAX7219 startup intensity (0–15) |
 | `K7SC_POLL_INTERVAL_MS` | 5 | Button and encoder poll rate (ms) |
 

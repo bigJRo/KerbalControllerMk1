@@ -155,6 +155,11 @@
 //  Direction reversal resets the count — first click of a new
 //  direction always steps by STEP_SLOW (1).
 //
+//  K7SC_ENC_ACCEL_TIMEOUT_MS: if no encoder event arrives within
+//  this window, the consecutive click count resets to 0 — the
+//  next click always starts at STEP_SLOW regardless of direction.
+//  Set to 0 to disable the timeout.
+//
 //  All thresholds are overridable via #define before include.
 // ============================================================
 
@@ -191,6 +196,10 @@
 
 #ifndef K7SC_STEP_TURBO
   #define K7SC_STEP_TURBO         1000
+#endif
+
+#ifndef K7SC_ENC_ACCEL_TIMEOUT_MS
+  #define K7SC_ENC_ACCEL_TIMEOUT_MS  500
 #endif
 
 // ============================================================
