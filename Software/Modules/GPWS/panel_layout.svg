@@ -8,7 +8,7 @@
   <!-- 7-segment display -->
   <text x="150" y="58" font-size="8" fill="#9ca3af" text-anchor="middle">4-digit display (MAX7219)</text>
   <rect x="40" y="64" width="220" height="56" rx="6" fill="#111" stroke="#333" stroke-width="1.5"/>
-  <text x="150" y="103" font-size="36" fill="#00cc44" text-anchor="middle" font-family="monospace" letter-spacing="6">200</text>
+  <text x="150" y="103" font-size="36" fill="#00ff41" text-anchor="middle" font-family="monospace" letter-spacing="6">200</text>
   <text x="150" y="132" font-size="7.5" fill="#9ca3af" text-anchor="middle">altitude threshold (m) · 0-9999 · no leading zeros</text>
 
   <!-- Encoder -->
@@ -28,7 +28,7 @@
   <text x="59" y="301" font-size="7" fill="#22c55e" text-anchor="middle">● GREEN</text>
   <text x="59" y="313" font-size="7" fill="#f59e0b" text-anchor="middle">● AMBER</text>
   <text x="59" y="325" font-size="6.5" fill="#9ca3af" text-anchor="middle">3-state cycle</text>
-  <text x="59" y="332" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN01 · PC1</text>
+  <text x="59" y="332" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN01 · PA1</text>
 
   <!-- BTN02 Proximity Alarm — toggle GREEN -->
   <rect x="109" y="256" width="82" height="82" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
@@ -50,5 +50,5 @@
   <text x="59" y="348" font-size="6.5" fill="#9ca3af" text-anchor="middle">dashed = multi-state</text>
 
   <!-- Legend -->
-  <text x="16" y="366" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim warm amber · Kerbal7SegmentCore v1.1.0 · Jeb's Controller Works</text>
+  <text x="16" y="366" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim warm amber · Kerbal7SegmentCore v2.0.0 · Jeb's Controller Works</text>
 </svg>
