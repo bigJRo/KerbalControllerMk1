@@ -10,15 +10,15 @@
 
 KerbalModuleCommon is the shared foundation library for all Kerbal Controller Mk1 modules. It is the single source of truth for:
 
-- Colour types (`RGBColor`, `GRBWColor`) and conversion helpers
-- System colour palette (`KMC_*` constants), hardware-validated on SK6812MINI-EA
+- `RGBColor` struct and the `KMC_*` colour palette
 - I2C command byte definitions (`KMC_CMD_*`)
 - Module Type ID registry (`KMC_TYPE_*`)
 - Capability flags (`KMC_CAP_*`)
+- Packet header status constants (`KMC_STATUS_*`)
 - LED state nibble values (`KMC_LED_*`)
 - LED payload nibble pack/unpack helpers
 
-All module libraries (Kerbal7SegmentCore, KerbalButtonCore, KerbalJoystickCore) and standalone module sketches depend on this library. Define colours, commands, and type IDs here — never locally in a module.
+All module libraries (Kerbal7SegmentCore, KerbalButtonCore, KerbalJoystickCore) and standalone module sketches depend on this library.
 
 ---
 
@@ -26,38 +26,17 @@ All module libraries (Kerbal7SegmentCore, KerbalButtonCore, KerbalJoystickCore) 
 
 Sketch → Include Library → Add .ZIP → select `KerbalModuleCommon_v1.1.0.zip`
 
-Supported architectures: `megaavr` (ATtiny816 etc.), `renesas_uno` (Xiao RA4M1 etc.), and all others (`*`). The library is pure header-only C++ with no platform-specific code.
+Supported architectures: `megaavr`, `renesas_uno`, and `*`. Header-only — no platform-specific code.
 
 ---
 
-## Colour Types
+## Colour Type
 
 ```cpp
-struct RGBColor  { uint8_t r, g, b; };
-struct GRBWColor { uint8_t g, r, b, w; };  // wire order: G first
+struct RGBColor { uint8_t r, g, b; };
 ```
 
-**Important:** `GRBWColor` field order matches SK6812MINI-EA wire protocol (G, R, B, W), not human RGB order. Always use `toGRBW()` to construct a `GRBWColor` from RGB values — never initialise the struct with `{r, g, b, w}` literals directly.
-
-### Conversion helpers
-
-```cpp
-// Convert RGBColor to GRBWColor wire format (W=0)
-GRBWColor toGRBW(RGBColor c);
-
-// Produce a GRBWColor using only the white channel
-GRBWColor KMC_WHITE_ONLY(uint8_t w);
-
-// Scale an RGBColor by brightness (0-255)
-RGBColor scaleColor(RGBColor color, uint8_t brightness);
-
-// Scale a GRBWColor by brightness (0-255)
-GRBWColor scaleColorGRBW(GRBWColor color, uint8_t brightness);
-```
-
-### NeoPixel format note
-
-For modules using **NEO_GRB 3-byte** pixels (SK6812MINI-EA on KC-01-1880), pass colour values directly to `setPixelColor(i, r, g, b)` — the NeoPixel library handles the GRB wire reordering internally. `toGRBW()` is used by modules that need a `GRBWColor` struct for the `ButtonConfig` colour arrays.
+All hardware on this system uses NEO_GRB 3-byte pixels. Colours are stored as `RGBColor` and passed directly to `setPixelColor(i, r, g, b)` — the NeoPixel library handles wire-order reordering internally.
 
 ---
 
@@ -65,11 +44,19 @@ For modules using **NEO_GRB 3-byte** pixels (SK6812MINI-EA on KC-01-1880), pass 
 
 All colours hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB mode).
 
-### Semantic colours (fixed meaning across all modules)
+### Utility
 
 | Constant | RGB | Meaning |
 |---|---|---|
 | `KMC_OFF` | 0, 0, 0 | Fully unlit |
+| `KMC_DISCRETE_ON` | 1, 1, 1 | Discrete indicator on — not for NeoPixel positions |
+| `KMC_WHITE` | 255, 255, 255 | Full white — bulb test / diagnostics only. Reads green-tinged on SK6812MINI-EA |
+
+### Semantic — fixed meaning across all modules
+
+| Constant | RGB | Meaning |
+|---|---|---|
+| `KMC_BACKLIT` | 15, 8, 2 | ENABLED backlight — button powered and available |
 | `KMC_GREEN` | 0, 255, 0 | Active / go / nominal |
 | `KMC_RED` | 255, 0, 0 | Irreversible action — cut, release, jettison |
 | `KMC_AMBER` | 255, 80, 0 | Caution / WARNING flash state |
@@ -78,16 +65,14 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB mode).
 
 | Constant | RGB | Character |
 |---|---|---|
-| `KMC_WHITE_COOL` | 255, 180, 255 | Bright cool white — general use |
+| `KMC_WHITE_COOL` | 255, 180, 255 | Bright cool white |
 | `KMC_WHITE_NEUTRAL` | 255, 160, 180 | Neutral daylight |
-| `KMC_WHITE_WARM` | 255, 140, 100 | Warm incandescent feel |
-| `KMC_WHITE_SOFT` | 120, 70, 20 | Dim warm amber — **night vision safe** |
-
-`KMC_WHITE_SOFT` is specifically tuned for dark cockpit use. Warm, dim light causes minimal rod cell bleaching and allows eyes to readapt quickly when the light is turned off.
+| `KMC_WHITE_WARM` | 255, 140, 100 | Warm incandescent |
+| `KMC_WHITE_SOFT` | 120, 70, 20 | Dim warm amber — night vision safe |
 
 ### Extended palette
 
-| Constant | RGB | Use |
+| Constant | RGB | Suggested use |
 |---|---|---|
 | `KMC_ORANGE` | 255, 60, 0 | Engine Alt Mode, Radiator |
 | `KMC_YELLOW` | 234, 179, 8 | Warp targets, Lights |
@@ -111,21 +96,31 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB mode).
 
 ## I2C Commands
 
-All modules implement the full base command set:
-
 | Constant | Value | Payload | Description |
 |---|---|---|---|
 | `KMC_CMD_GET_IDENTITY` | 0x01 | — | Query module identity (4-byte response) |
-| `KMC_CMD_SET_LED_STATE` | 0x02 | 8 bytes nibble-packed | Set full LED state |
-| `KMC_CMD_SET_BRIGHTNESS` | 0x03 | 1 byte | Set ENABLED state brightness |
-| `KMC_CMD_BULB_TEST` | 0x04 | — | Trigger bulb test |
-| `KMC_CMD_SLEEP` | 0x05 | — | Enter low-power sleep |
+| `KMC_CMD_SET_LED_STATE` | 0x02 | 1 byte | Module-specific LED state byte |
+| `KMC_CMD_SET_BRIGHTNESS` | 0x03 | 1 byte | Display intensity — top nibble → MAX7219 (0–15) |
+| `KMC_CMD_BULB_TEST` | 0x04 | 1 byte | 0x01 = start, 0x00 = stop |
+| `KMC_CMD_SLEEP` | 0x05 | — | Freeze state, suppress INT |
 | `KMC_CMD_WAKE` | 0x06 | — | Resume from sleep |
-| `KMC_CMD_RESET` | 0x07 | — | Reset to default state |
+| `KMC_CMD_RESET` | 0x07 | — | Reset to module defaults, stay ACTIVE |
 | `KMC_CMD_ACK_FAULT` | 0x08 | — | Acknowledge and clear fault flag |
-| `KMC_CMD_ENABLE` | 0x09 | — | Enable module |
-| `KMC_CMD_DISABLE` | 0x0A | — | Disable module |
-| `KMC_CMD_SET_VALUE` | 0x0D | 2 bytes BE uint16 | Display modules — set value |
+| `KMC_CMD_ENABLE` | 0x09 | — | Enter ACTIVE lifecycle state |
+| `KMC_CMD_DISABLE` | 0x0A | — | Enter DISABLED lifecycle state |
+| `KMC_CMD_SET_VALUE` | 0x0D | 2 bytes BE int16 | Set display/encoder value |
+
+---
+
+## Packet Header — Status Byte (byte 0)
+
+| Bits | Field | Values |
+|---|---|---|
+| 1:0 | Lifecycle | 0x00=ACTIVE, 0x01=SLEEPING, 0x02=DISABLED, 0x03=BOOT_READY |
+| 2 | Fault | 1 = hardware fault present |
+| 3 | Data changed | 1 = state changed since last read |
+
+Constants: `KMC_STATUS_ACTIVE`, `KMC_STATUS_SLEEPING`, `KMC_STATUS_DISABLED`, `KMC_STATUS_BOOT_READY`, `KMC_STATUS_FAULT`, `KMC_STATUS_DATA_CHANGED`, `KMC_STATUS_LIFECYCLE_MASK`
 
 ---
 
@@ -153,12 +148,10 @@ All modules implement the full base command set:
 
 ## Capability Flags
 
-Reported in identity response byte 3:
-
 | Constant | Bit | Description |
 |---|---|---|
-| `KMC_CAP_EXTENDED_STATES` | 0 | Supports extended LED states (WARNING, ALERT, ARMED, PARTIAL_DEPLOY) |
-| `KMC_CAP_FAULT` | 1 | Active fault condition — clear with CMD_ACK_FAULT |
+| `KMC_CAP_EXTENDED_STATES` | 0 | Supports WARNING/ALERT/ARMED/PARTIAL_DEPLOY states |
+| `KMC_CAP_FAULT` | 1 | Active fault — clear with CMD_ACK_FAULT |
 | `KMC_CAP_ENCODERS` | 2 | Encoder delta in response packet |
 | `KMC_CAP_JOYSTICK` | 3 | Analog joystick axes in response packet |
 | `KMC_CAP_DISPLAY` | 4 | 7-segment display and encoder present |
@@ -168,43 +161,28 @@ Reported in identity response byte 3:
 
 ## LED State Nibble Values
 
-Used with `KMC_CMD_SET_LED_STATE` nibble-packed payload:
+Used with `KMC_CMD_SET_LED_STATE` and `kmcLedPackGet()` / `kmcLedPackSet()` helpers.
 
 | Constant | Value | Description |
 |---|---|---|
 | `KMC_LED_OFF` | 0x0 | Unlit |
-| `KMC_LED_ENABLED` | 0x1 | Dim white backlight |
+| `KMC_LED_ENABLED` | 0x1 | ENABLED backlight (KMC_BACKLIT) |
 | `KMC_LED_ACTIVE` | 0x2 | Full brightness, per-button colour |
-| `KMC_LED_WARNING` | 0x3 | Flashing amber, 500ms on/off |
-| `KMC_LED_ALERT` | 0x4 | Flashing red, 150ms on/off |
+| `KMC_LED_WARNING` | 0x3 | Flashing amber |
+| `KMC_LED_ALERT` | 0x4 | Flashing red |
 | `KMC_LED_ARMED` | 0x5 | Static cyan |
 | `KMC_LED_PARTIAL_DEPLOY` | 0x6 | Static amber |
-
-### Nibble pack/unpack helpers
-
-```cpp
-// Get LED state nibble for button N from packed 8-byte payload
-uint8_t kmcLedPackGet(const uint8_t* payload, uint8_t button);
-
-// Set LED state nibble for button N in packed 8-byte payload
-void kmcLedPackSet(uint8_t* payload, uint8_t button, uint8_t state);
-```
 
 ---
 
 ## Changelog
 
 ### v1.1.0 (2026-04-27)
-
-- Architecture support expanded to `megaavr, renesas_uno, *`
-- Entire colour palette hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB 3-byte mode)
-- Semantic colours corrected to pure primaries: GREEN `{0,255,0}`, RED `{255,0,0}`
-- AMBER adjusted to `{255,80,0}` for unambiguous orange-amber appearance
-- White family rebalanced to compensate for SK6812 green channel sensitivity
-- WHITE_SOFT changed to warm dim amber `{120,70,20}` for night vision preservation
-- Purple/Indigo/Violet zeroed green channel to prevent "cool white" appearance
-- BLUE changed to pure `{0,0,255}`, ORANGE reduced to `{255,60,0}`
-- README added
+- `GRBWColor`, `toGRBW()`, `KMC_WHITE_ONLY()`, `scaleColor()` removed — all hardware uses NEO_GRB 3-byte
+- `KMC_BACKLIT {15, 8, 2}` added — system-wide ENABLED backlight colour
+- `KMC_WHITE {255, 255, 255}` added — bulb test / diagnostics only
+- `KMC_STATUS_*` packet header constants added
+- Entire colour palette hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0)
 
 ---
 
