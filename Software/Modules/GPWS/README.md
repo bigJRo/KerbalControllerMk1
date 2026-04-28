@@ -87,6 +87,8 @@ Step size based on consecutive clicks in same direction. Direction reversal rese
 | 30–49 | ±100 |
 | 50+ | ±1000 |
 
+The click count resets after 500ms of inactivity — a pause mid-scroll always returns to slow mode on the next click.
+
 Value clamps at 0 and 9999.
 
 ---

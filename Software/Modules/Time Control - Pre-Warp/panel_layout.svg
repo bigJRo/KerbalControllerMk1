@@ -3,12 +3,12 @@
 
   <!-- Header -->
   <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">PRE-WARP TIME</text>
-  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x2B · Type 0x0C · K7SC_CAP_DISPLAY</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x2B · Type 0x0C · KMC_CAP_DISPLAY</text>
 
   <!-- 7-segment display -->
   <text x="150" y="58" font-size="8" fill="#9ca3af" text-anchor="middle">4-digit display (MAX7219)</text>
   <rect x="40" y="64" width="220" height="56" rx="6" fill="#111" stroke="#333" stroke-width="1.5"/>
-  <text x="150" y="103" font-size="36" fill="#ff4400" text-anchor="middle" font-family="monospace" letter-spacing="6">0</text>
+  <text x="150" y="103" font-size="36" fill="#00ff41" text-anchor="middle" font-family="monospace" letter-spacing="6">0</text>
   <text x="150" y="132" font-size="7.5" fill="#9ca3af" text-anchor="middle">pre-warp duration (minutes) · 0-9999 · no leading zeros</text>
 
   <!-- Encoder -->
@@ -19,30 +19,30 @@
   <text x="150" y="225" font-size="7.5" fill="#9ca3af" text-anchor="middle">press to reset to 0 minutes</text>
 
   <!-- Buttons row -->
-  <text x="150" y="248" font-size="8" fill="#9ca3af" text-anchor="middle">Preset buttons (SK6812MINI-EA · GRBW · flash on press)</text>
+  <text x="150" y="248" font-size="8" fill="#9ca3af" text-anchor="middle">Preset buttons (SK6812MINI-EA · NEO_GRB · flash on press)</text>
 
   <!-- BTN01 5 min — GOLD flash -->
-  <rect x="18" y="256" width="82" height="82" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
+  <rect x="18" y="256" width="82" height="82" rx="6" fill="#ffa00018" stroke="#ffa000" stroke-width="1.5"/>
   <text x="59" y="284" font-size="10" font-weight="500" fill="#854d0e" text-anchor="middle">5 min</text>
-  <text x="59" y="301" font-size="7" fill="#ffc800" text-anchor="middle">● GOLD flash</text>
+  <text x="59" y="301" font-size="7" fill="#ffa000" text-anchor="middle">● GOLD flash</text>
   <text x="59" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">→ sets value to 5</text>
-  <text x="59" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN01 · PC1</text>
+  <text x="59" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN01 · PA1</text>
 
   <!-- BTN02 1 hour — GOLD flash -->
-  <rect x="109" y="256" width="82" height="82" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
+  <rect x="109" y="256" width="82" height="82" rx="6" fill="#ffa00018" stroke="#ffa000" stroke-width="1.5"/>
   <text x="150" y="284" font-size="10" font-weight="500" fill="#854d0e" text-anchor="middle">1 hour</text>
-  <text x="150" y="301" font-size="7" fill="#ffc800" text-anchor="middle">● GOLD flash</text>
+  <text x="150" y="301" font-size="7" fill="#ffa000" text-anchor="middle">● GOLD flash</text>
   <text x="150" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">→ sets value to 60</text>
-  <text x="150" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN02 · PC0</text>
+  <text x="150" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN02 · PC2</text>
 
   <!-- BTN03 1 day — GOLD flash -->
-  <rect x="200" y="256" width="82" height="82" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
+  <rect x="200" y="256" width="82" height="82" rx="6" fill="#ffa00018" stroke="#ffa000" stroke-width="1.5"/>
   <text x="241" y="284" font-size="10" font-weight="500" fill="#854d0e" text-anchor="middle">1 day</text>
-  <text x="241" y="301" font-size="7" fill="#ffc800" text-anchor="middle">● GOLD flash</text>
+  <text x="241" y="301" font-size="7" fill="#ffa000" text-anchor="middle">● GOLD flash</text>
   <text x="241" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">→ sets value to 1440</text>
-  <text x="241" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN03 · PA4</text>
+  <text x="241" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN03 · PC1</text>
 
   <!-- Legend -->
-  <text x="16" y="356" font-size="7.5" fill="#9ca3af">Flash color shown · ENABLED = W channel dim white · buttons return to backlight after 150ms</text>
-  <text x="16" y="368" font-size="7.5" fill="#9ca3af">Kerbal7SegmentCore v1.0.0 · KC-01-1881/1882 v2.0 · Jeb's Controller Works</text>
+  <text x="16" y="356" font-size="7.5" fill="#9ca3af">GOLD flash shown · ENABLED = dim warm backlit · returns to backlit after 150ms</text>
+  <text x="16" y="368" font-size="7.5" fill="#9ca3af">Kerbal7SegmentCore v2.0.0 · KC-01-1880 v2.0 · Jeb's Controller Works</text>
 </svg>

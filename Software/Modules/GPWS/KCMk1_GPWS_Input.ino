@@ -103,8 +103,9 @@ static uint8_t _pktChange  = 0;
 static bool    _sendPacket = false;
 
 // ── Encoder acceleration state ────────────────────────────────
-static int8_t  _encLastDir   = 0;
-static uint8_t _encRunCount  = 0;
+static int8_t   _encLastDir   = 0;
+static uint8_t  _encRunCount  = 0;
+static uint32_t _encLastMs    = 0;
 
 static uint16_t _stepFromCount(uint8_t count) {
     if      (count >= K7SC_ENC_TURBO_COUNT)  return K7SC_STEP_TURBO;
@@ -116,13 +117,18 @@ static uint16_t _stepFromCount(uint8_t count) {
 static void applyEncoderDelta(int16_t delta) {
     if (delta == 0) return;
 
+    uint32_t now = millis();
     int8_t dir = (delta > 0) ? +1 : -1;
     uint16_t clicks = (delta > 0) ? (uint16_t)delta : (uint16_t)(-delta);
 
-    if (dir != _encLastDir) {
+    // Reset count on direction reversal or inactivity timeout
+    if (dir != _encLastDir ||
+        (K7SC_ENC_ACCEL_TIMEOUT_MS > 0 &&
+         now - _encLastMs > K7SC_ENC_ACCEL_TIMEOUT_MS)) {
         _encRunCount = 0;
         _encLastDir  = dir;
     }
+    _encLastMs = now;
 
     int32_t next = _threshold;
     for (uint16_t i = 0; i < clicks; i++) {
@@ -309,9 +315,20 @@ void loop() {
             buttonsShow();
         } else {
             displayTestEnd();
-            displaySetValue(_threshold);
-            renderLEDs();
-            if (_gpwsMode == GPWS_OFF) displayOff();
+            if (cmdState.lifecycle == K7SC_ACTIVE) {
+                displaySetValue(_threshold);
+                renderLEDs();
+                if (_gpwsMode == GPWS_OFF) displayOff();
+            } else if (cmdState.lifecycle == K7SC_SLEEPING) {
+                // SLEEPING — restore exactly what was frozen
+                displaySetValue(_threshold);
+                renderLEDs();
+                if (_gpwsMode == GPWS_OFF) displayOff();
+            } else {
+                // DISABLED — restore to dark
+                renderAllOff();
+                displayOff();
+            }
         }
         _lastBulbTest = cmdState.isBulbTest;
     }
