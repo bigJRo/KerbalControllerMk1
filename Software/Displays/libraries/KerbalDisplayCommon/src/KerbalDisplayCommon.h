@@ -23,6 +23,7 @@
 #include <SD.h>
 #include <RA8875.h>
 #include <Wire.h>
+#include <cfloat>   // DBL_MAX -- used in BodyParams soiAlt for Kerbol sentinel
 
 
 /***************************************************************************************
@@ -479,23 +480,49 @@ enum VesselSituation : uint8_t {
 //   all string fields are empty — check currentBody.soiName[0] != '\0'
 //   to detect a valid result.
 //
-// All altitude/radius values are in metres.
-// surfGrav is in g (1.0 = Kerbin surface gravity).
-// surfGrav == 0.0 means the body is not landable (e.g. Kerbol, Jool).
-// flyHigh, lowSpace == 0 means the body has no atmosphere.
+// All altitude/radius values are in metres unless noted.
+// All velocity values are in m/s.
+// surfGrav is in m/s² (not g). gravity field replaces the old surfGrav-in-g convention.
+// hasSurface == false for Jool and Kerbol (gas giant / star — no landing).
+// hasAtmo == false means flyHigh and lowSpace are 0 and unused in C&W logic.
+// hasO2 == true means jet engines work and Kerbals can remove helmets.
+// soiAlt is double to preserve precision for large bodies (e.g. Jool ~2.4e12 m).
+// soiAlt == DBL_MAX for Kerbol (root body, no SOI boundary).
+// synchronousOrbit == 0 means no synchronous orbit achievable within SOI.
+// synodicPeriod == 0 for Kerbol (no synodic period relative to itself).
+// highQThreshold == 0 means CW_HIGH_Q is suppressed for this body (airless bodies).
+//   Calibrate empirically per atmospheric body from flight test.
+// reentryAlt == 0 for airless bodies. For atmospheric bodies: Pe below this
+//   altitude triggers committed reentry (red tier). Between reentryAlt and
+//   max(minSafe,lowSpace) is the aerobrake zone (yellow tier).
 
 struct BodyParams {
-  const char* soiName;    // Simpit SOI string — matches what Simpit sends
-  const char* dispName;   // Display name, uppercase, max 6 chars + null
-  float       minSafe;    // Minimum safe altitude (m)
-  float       flyHigh;    // Top of "Fly High" biome / atmosphere boundary (m)
-  float       lowSpace;   // Low space boundary (m)
-  float       highSpace;  // High space boundary (m)
-  float       surfGrav;   // Surface gravity in g; 0.0 if not landable
-  float       radius;     // Mean body radius (m)
-  const char* image;      // SD card BMP path, e.g. "/Kerbin-Display_240x140.bmp"
-  const char* cond;       // Atmosphere condition: "Vacuum", "Atmosphere",
-                          //   "Breathable", or "Plasma" (Kerbol only)
+  const char* soiName;          // Simpit SOI string — matches what Simpit sends
+  const char* dispName;         // Display name, uppercase, max 8 chars + null
+  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_240x168.bmp"
+  const char* cond;             // Atmosphere condition string:
+                                //   "Vacuum", "Atmosphere", "Breathable", "Plasma"
+  // --- Altitude boundaries (metres, from wiki science biome table) ---
+  float       minSafe;          // Highest terrain point (m); for Jool/Kerbol: crush/plasma alt
+  float       flyHigh;          // Low/High atmosphere science biome boundary (m); 0 if no atmo
+  float       lowSpace;         // Atmosphere top / Low space boundary (m); 0 if no atmo
+  float       highSpace;        // Low/High space science biome boundary (m)
+  float       reentryAlt;       // Pe below this = committed reentry, red tier (m); 0 if no atmo
+  double      soiAlt;           // Sphere of influence radius (m); DBL_MAX for Kerbol
+  // --- Physical properties ---
+  float       radius;           // Mean body radius (m)
+  float       gravity;          // Surface gravity (m/s²)
+  float       escapeVelocity;   // Escape velocity from surface (m/s)
+  // --- Orbital properties ---
+  float       synchronousOrbit; // Synchronous orbit altitude (m); 0 if not achievable
+  float       synodicPeriod;    // Synodic period relative to Kerbin (s); 0 for Kerbol
+  float       orbitInclination; // Orbital inclination relative to Kerbin equator (deg)
+  // --- Boolean flags ---
+  bool        hasAtmo;          // Body has an atmosphere
+  bool        hasO2;            // Atmosphere contains oxygen (jets work, helmets off)
+  bool        hasSurface;       // Body has a landable surface
+  // --- C&W tuning ---
+  float       highQThreshold;   // Dynamic pressure threshold for CW_HIGH_Q (Pa); 0 = suppressed
 };
 
 // Returns a copy of the BodyParams for the given Simpit SOI string.
