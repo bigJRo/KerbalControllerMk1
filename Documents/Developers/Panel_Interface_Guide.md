@@ -772,7 +772,6 @@ With the Indicator module removed, the following operator feedback mechanisms no
 | GEAR LOCK / BRAKE LOCK / LIGHT ENA | Low — switch positions are self-evident | — |
 
 Recommendation: Review TFT screen designs to confirm ABORT, mode state, and COMM ACTIVE are surfaced on at least one display before closing this item.
-# Panel Interface Guide
 
 > **PLACEHOLDER** — Replace this file with `KCMk1_Panel_Interface_Guide.md`
 > from `/mnt/user-data/outputs/` in the ATtiny816 module review session
