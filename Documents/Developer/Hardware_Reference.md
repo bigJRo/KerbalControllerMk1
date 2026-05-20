@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** May 2026  
 **Document type:** Developer — Hardware
 
@@ -14,6 +14,7 @@
 |---------|------|-------------|
 | 1.0 | 2026-05-19 | Initial release — system architecture, board topology, power distribution, USB hub, interboard connector pinout, PCB design list |
 | 1.1 | 2026-05-19 | Corrected interrupt architecture (push-pull output + passive voltage divider, not open-drain + pull-up). Corrected I2C device map — removed LTC4311 (not a device), corrected EMC2101 address to 0x4C, removed MCP9808 (not in design). Split device map into fixed silicon and programmable modules. Added complete verified I2C address map for all display carriers and ATtiny816 modules. Updated related documents table. |
+| 1.2 | 2026-05-19 | Added Section 12 — Module Conformance Requirements. Defines hardware (connector, power, interrupt line, I2C) and firmware (identity response, universal header, lifecycle state machine, base command set, INT assertion) requirements for any conformant KCMk1 module. PCB Design List renumbered to Section 13, Related Documents to Section 14. |
 
 ---
 
@@ -30,8 +31,9 @@
 9. [Interboard Connector Pinout](#9-interboard-connector-pinout)
 10. [Module Hub 34-Pin IDC Connector](#10-module-hub-34-pin-idc-connector)
 11. [Module 16-Pin IDC Connector](#11-module-16-pin-idc-connector)
-12. [PCB Design List](#12-pcb-design-list)
-13. [Related Documents](#13-related-documents)
+12. [Module Conformance Requirements](#12-module-conformance-requirements)
+13. [PCB Design List](#13-pcb-design-list)
+14. [Related Documents](#14-related-documents)
 
 ---
 
@@ -454,7 +456,126 @@ Each IO or Display module connects to its panel routing board via a 16-pin 2×8 
 
 ---
 
-## 12. PCB Design List
+## 12. Module Conformance Requirements
+
+This section defines the minimum hardware and firmware requirements for any module board to be a conformant member of the KCMk1 system. A conformant module can be connected to any panel routing board, addressed by the master controller, and commanded via the KCMk1 I2C Protocol Specification without special-casing.
+
+### 12.1 Hardware Requirements
+
+**Connector**
+The module must implement the 16-pin 2×8 IDC connector with the pinout defined in Section 11. All power, ground, I2C, interrupt, and reset signals must be connected as specified. INT_SAFE is only required on modules that support a safe switch input.
+
+**Power**
+The module must accept 12V on V_IN and provide its own local regulation. The standard power architecture is:
+- MPM3610 DC-DC converter: 12V → 5V (module logic and NeoPixel supply)
+- AP2112K LDO: 5V → 3.3V (if 3.3V logic is required locally)
+
+Modules must not draw power from the V_3P3 pin on the IDC connector for primary logic supply — that pin is provided for level shifting support only.
+
+**Interrupt Line**
+The INT signal must be driven by a push-pull digital output on the module microcontroller (ATtiny816 PA1). A passive voltage divider must be fitted on the module board to level-shift the 5V push-pull output to a 3.3V-compatible signal on INT_BUS:
+
+- R5: 10kΩ in series from the microcontroller output to the INT_BUS node
+- R6: 20kΩ from INT_BUS to GND
+- INT_BUS connects to the IDC INT pin
+
+No pull-up resistor is used. The divider produces 3.3V on INT_BUS when the output is HIGH (idle) and 0V when LOW (asserted).
+
+**I2C**
+The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address must be assigned from the range 0x20–0x2E and must not conflict with any address in the device map (Section 8.3). The module must not include its own I2C pull-up resistors — pull-ups are provided by the master side.
+
+### 12.2 Firmware Requirements
+
+All conformant modules must implement the following regardless of module type.
+
+**Identity Response**
+The module must respond to `CMD_GET_IDENTITY` (0x01) with a 4-byte identity packet:
+
+```
+Byte 0:  Module Type ID  — unique value from the KCMk1 module registry
+Byte 1:  Firmware version major
+Byte 2:  Firmware version minor
+Byte 3:  Capability flags  — KMC_CAP_* bitmask (0x00 if no optional capabilities)
+```
+
+**Universal Packet Header**
+Every response packet sent by the module must begin with the 3-byte universal header:
+
+```
+Byte 0:  Status byte  — lifecycle state (bits 1:0), fault flag (bit 2), data changed (bit 3)
+Byte 1:  Module Type ID
+Byte 2:  Transaction counter — uint8, increments on every INT assertion, wraps 255→0
+```
+
+Module-specific payload follows immediately after the header. The controller always reads header + payload as a single transaction.
+
+**Lifecycle State Machine**
+The module must implement the full four-state lifecycle:
+
+| State | Value | Entry Condition | Behavior |
+|-------|-------|----------------|---------|
+| BOOT_READY | 0x03 | Power-on | Assert INT immediately. Hold until master reads and sends CMD_DISABLE |
+| DISABLED | 0x02 | CMD_DISABLE received | All outputs off. Inputs suppressed. State reset to defaults |
+| ACTIVE | 0x00 | CMD_ENABLE received | Normal operation. Inputs processed. Outputs driven |
+| SLEEPING | 0x01 | CMD_SLEEP received | State frozen exactly as-is. No visual change. INT suppressed |
+
+**Base Command Set**
+The module must handle all base commands:
+
+| Command | Value | Required Behavior |
+|---------|-------|------------------|
+| `CMD_GET_IDENTITY` | 0x01 | Return 4-byte identity packet |
+| `CMD_SET_LED_STATE` | 0x02 | Apply nibble-packed LED state to outputs |
+| `CMD_SET_BRIGHTNESS` | 0x03 | Set ENABLED state backlight brightness |
+| `CMD_BULB_TEST` | 0x04 | 0x01: all outputs full white/on. 0x00: stop. Fires in any lifecycle state |
+| `CMD_SLEEP` | 0x05 | Transition to SLEEPING — freeze state, suppress INT |
+| `CMD_WAKE` | 0x06 | Transition to ACTIVE — resume, send current state packet |
+| `CMD_RESET` | 0x07 | Reset outputs and state to defaults, remain ACTIVE |
+| `CMD_ACK_FAULT` | 0x08 | Clear fault flag in status byte |
+| `CMD_ENABLE` | 0x09 | Transition to ACTIVE |
+| `CMD_DISABLE` | 0x0A | Transition to DISABLED |
+
+Unrecognised command bytes must be silently ignored — no error response, no state change.
+
+**INT Assertion**
+The module must assert INT (drive PA1 LOW) when it has a state change ready for the master to read. INT must be deasserted (PA1 HIGH) when the master completes the read transaction. The transaction counter must increment on every INT assertion.
+
+INT must not be asserted while the module is in SLEEPING or DISABLED state, except for the initial BOOT_READY assertion at power-on.
+
+### 12.3 Optional Capabilities
+
+Optional capabilities are declared in the capability flags byte of the identity response. The master uses these flags to determine what additional data is present in the response payload.
+
+| Flag | Value | Capability | Additional Payload |
+|------|-------|------------|-------------------|
+| `KMC_CAP_EXTENDED_STATES` | 0x01 | Supports WARNING/ALERT/ARMED/PARTIAL_DEPLOY LED states | None — affects CMD_SET_LED_STATE interpretation |
+| `KMC_CAP_FAULT` | 0x02 | Can report hardware faults | Fault flag set in status byte; cleared by CMD_ACK_FAULT |
+| `KMC_CAP_ENCODERS` | 0x04 | Encoder delta present in response | Encoder delta bytes in payload |
+| `KMC_CAP_JOYSTICK` | 0x08 | Analog joystick axes present | Axis value bytes in payload |
+| `KMC_CAP_DISPLAY` | 0x10 | 7-segment display and encoder present | Value bytes in payload; accepts CMD_SET_VALUE (0x0D) |
+| `KMC_CAP_MOTORIZED` | 0x20 | Motorized position control | Accepts CMD_SET_THROTTLE (0x0B), CMD_SET_PRECISION (0x0C) |
+
+Capability flags not listed above are reserved and must be set to 0.
+
+### 12.4 Conformance Summary
+
+| Requirement | Mandatory | Reference |
+|-------------|-----------|---------|
+| 16-pin IDC connector per Section 11 pinout | Yes | §11 |
+| 12V input, local MPM3610 + AP2112K regulation | Yes | §6.3 |
+| Push-pull INT with R5/R6 voltage divider | Yes | §8.2 |
+| I2C target at 400kHz, address 0x20–0x2E | Yes | §8.1, §8.3 |
+| CMD_GET_IDENTITY response | Yes | §12.2 |
+| 3-byte universal header on all response packets | Yes | §12.2 |
+| Full lifecycle state machine (BOOT_READY/DISABLED/ACTIVE/SLEEPING) | Yes | §12.2 |
+| All base commands (CMD_ENABLE through CMD_DISABLE) | Yes | §12.2 |
+| Transaction counter increment on INT assertion | Yes | §12.2 |
+| Capability flags declared accurately in identity response | Yes | §12.3 |
+| Optional capability payload per declared flags | If flag set | §12.3 |
+
+---
+
+## 13. PCB Design List
 
 | Board | Designator | Type | Status | Fab | Notes |
 |-------|------------|------|--------|-----|-------|
@@ -476,7 +597,7 @@ Each IO or Display module connects to its panel routing board via a 16-pin 2×8 
 
 ---
 
-## 13. Related Documents
+## 14. Related Documents
 
 | Document | Location | Contents |
 |----------|----------|---------|
