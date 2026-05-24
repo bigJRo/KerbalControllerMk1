@@ -16,7 +16,7 @@
 | 1.1 | 2026-05-19 | Corrected interrupt architecture (push-pull output + passive voltage divider, not open-drain + pull-up). Corrected I2C device map — removed LTC4311 (not a device), corrected EMC2101 address to 0x4C, removed MCP9808 (not in design). Split device map into fixed silicon and programmable modules. Added complete verified I2C address map for all display carriers and ATtiny816 modules. Updated related documents table. |
 | 1.2 | 2026-05-19 | Added Section 12 — Module Conformance Requirements. Defines hardware (connector, power, interrupt line, I2C) and firmware (identity response, universal header, lifecycle state machine, base command set, INT assertion) requirements for any conformant KCMk1 module. PCB Design List renumbered to Section 13, Related Documents to Section 14. |
 | 1.3 | 2026-05-23 | Added Section 9.4 — External Expansion Interface (GX16-10 signal connector + USB-C panel mount). Added §8.4 — External Interface Signal Architecture. Updated §8.1, §8.3, §9.3, §5.1, §13. |
-| 1.4 | 2026-05-23 | Corrected §8.4 signal architecture throughout. LTC4311 relocated from both ends to Ctrl Module only (single LTC4311 on SDA_EXT/SCL_EXT sufficient; placed on main controller side per architecture principle). Pull-ups changed from firmware to physical resistors throughout: 4.7kΩ physical pull-up on EXT_INT_1 at Ctrl Module; 4.7kΩ physical pull-up on EXT_INT_2 at Expansion Routing Board; 10kΩ physical pull-up on RST at Expansion Routing Board. EXT_INT_2 receiving-end clarified — physical pull-up is sufficient, no RC filter needed as spurious interrupt is firmware-recoverable unlike spurious reset. Full signal path documented for each signal including 50-pin IDC → Ctrl Ext Module → terminal block → GX16 segments. Ctrl Ext Module role clarified as passive routing with terminal block for GX16 wiring. §8.3 I2C device map corrected — expansion keypad modules removed (keyboard is direct GPIO matrix, not I2C). §9.4 GX16 notes updated to reflect single LTC4311 placement. §13 PCB design list updated — Ctrl Module, Ctrl Ext Module, and Expansion Routing Board notes corrected. |
+| 1.4 | 2026-05-23 | Corrected §8.4 signal architecture throughout. LTC4311 relocated to Ctrl Module only. Physical pull-up resistors added. EXT_INT_2 receiving-end clarified. Full signal path documented. Ctrl Ext Module role clarified. §8.3 corrected — expansion keypad modules removed (direct GPIO matrix). §9.4 promoted to standalone Section 10 (External Expansion Interface) with new §10.4 Internal Wiring. Sections 10–14 renumbered to 11–15. §13.4 conformance table cross-references updated. |
 
 ---
 
@@ -31,12 +31,12 @@
 7. [USB Architecture](#7-usb-architecture)
 8. [I2C Bus Architecture](#8-i2c-bus-architecture)
 9. [Interboard Connector Pinout](#9-interboard-connector-pinout)
-   - [9.4 External Expansion Interface](#94-external-expansion-interface)
-10. [Module Hub 34-Pin IDC Connector](#10-module-hub-34-pin-idc-connector)
-11. [Module 16-Pin IDC Connector](#11-module-16-pin-idc-connector)
-12. [Module Conformance Requirements](#12-module-conformance-requirements)
-13. [PCB Design List](#13-pcb-design-list)
-14. [Related Documents](#14-related-documents)
+10. [External Expansion Interface](#10-external-expansion-interface)
+11. [Module Hub 34-Pin IDC Connector](#11-module-hub-34-pin-idc-connector)
+12. [Module 16-Pin IDC Connector](#12-module-16-pin-idc-connector)
+13. [Module Conformance Requirements](#13-module-conformance-requirements)
+14. [PCB Design List](#14-pcb-design-list)
+15. [Related Documents](#15-related-documents)
 
 ---
 
@@ -470,29 +470,41 @@ A 50-pin 2×25 IDC connector bridges between the Ctrl Module and Ctrl Ext Module
 | RST | Signal | Global reset — active low, resets all Teensy-driven display modules |
 | B_INT_1 to B_INT_12 | Interrupt | Individual active-low interrupt lines for each B-panel module |
 | B_INT_SAFE / B_INT_SAFE2 | Interrupt | Special safe-switch interrupt lines — separate from general B_INT group |
-| EXT_INT_1 / EXT_INT_2 | Interrupt | External interrupt lines — used by the expansion unit interface (§9.4). Signal protection architecture defined in §8.4 |
+| EXT_INT_1 / EXT_INT_2 | Interrupt | External interrupt lines — used by the expansion unit interface (§10). Signal protection architecture defined in §8.4 |
 | FAN_PWM | PWM | Fan speed control PWM signal — driven by EMC2101 on Ctrl Module |
 
 > **Note:** RST on pin 25 has a dedicated GND return on pin 26 — keep these routed together to minimize noise on the reset line. RST signal protection architecture defined in §8.4.
 
 > **Note:** GND on pin 2 adjacent to FAN_PWM on pin 1 provides a clean local return for the PWM signal.
 
-### 9.4 External Expansion Interface
+---
 
-The expansion unit connects to the main controller via two panel-mounted connectors on each enclosure: a GX16-10 circular aviation connector for power and signals, and a USB-C panel mount connector for USB 2.0 data.
+## 10. External Expansion Interface
 
-#### GX16-10 Signal Connector
+The expansion unit connects to the main controller via two panel-mounted connectors on each enclosure: a GX16-10 circular aviation connector for power and signals, and a USB-C panel mount connector for USB 2.0 data. Signal protection and conditioning architecture for all signals crossing this interface is defined in §8.4.
 
-A GX16-10 (10-pin, 16mm thread) aviation connector carries 12V power, I2C, interrupt, and reset signals between the main controller and expansion unit enclosures. Both enclosure panels mount a **female socket with male pins** (standard panel-mount convention). The interconnecting cable has **female sockets at both ends**.
+### 10.1 Overview
+
+| Connector | Purpose | Cable |
+|-----------|---------|-------|
+| GX16-10 panel socket | 12V power, I2C, interrupts, reset | GX16-10 female-to-female, 3ft (1m) |
+| USB-C panel mount | USB 2.0 High Speed data | USB-C to USB-C, 3ft (1m) |
+
+Both connectors are fitted on each enclosure panel. Internal wiring runs from each connector to a terminal block on the respective routing board inside each enclosure — no signals are soldered directly to panel connectors.
+
+### 10.2 GX16-10 Signal Connector
+
+A GX16-10 (10-pin, 16mm thread) aviation connector carries 12V power, I2C, interrupt, and reset signals between the main controller and expansion unit enclosures.
 
 | Parameter | Value |
 |-----------|-------|
 | Connector | GX16-10 |
-| Panel mount | Female socket, male pins |
+| Panel mount type | Female socket with male pins (standard panel-mount convention) |
 | Cable ends | Female socket at both ends |
 | Rated current | 5A per pin |
 | Rated voltage | 125V |
-| Wire gauge | 20–24 AWG |
+| Wire gauge | 24AWG signal, 20AWG power (V_12, GND) |
+| Internal termination | Terminal block on Ctrl Ext Module (main side); terminal block on Expansion Routing Board (expansion side) |
 
 **Pin Assignment:**
 
@@ -511,9 +523,9 @@ A GX16-10 (10-pin, 16mm thread) aviation connector carries 12V power, I2C, inter
 
 > **Note:** V_12 pins 1 and 2 in parallel provide up to 10A combined capacity — well in excess of the expansion unit's ~1.5A @ 12V typical load.
 
-> **Note:** All signal protection components (series resistors, LTC4311, RC filter) are on the respective board PCBs, not in the cable. The cable carries bare signals between connectors.
+> **Note:** All signal protection components (series resistors, pull-ups, RC filter) are on the respective board PCBs, not in the cable. The cable carries bare signals between connectors.
 
-#### USB-C Panel Mount Connector
+### 10.3 USB-C Panel Mount Connector
 
 A USB-C panel mount bulkhead connector (female-to-female feedthrough) on each enclosure panel carries USB 2.0 High Speed data from Hub 2 Port 4 on the main controller to the expansion unit's internal CH334F hub. A standard USB-C cable connects the two panel mounts.
 
@@ -521,20 +533,31 @@ A USB-C panel mount bulkhead connector (female-to-female feedthrough) on each en
 |-----------|-------|
 | Connector | USB-C panel mount, female bulkhead feedthrough |
 | Cable | Standard USB-C to USB-C, 3ft (1m) maximum |
-| Signal conditioning | TUSB212RWBR on expansion routing board (§8.4) |
+| Signal conditioning | TUSB212RWBR on Expansion Routing Board (§8.4) |
 | VBUS | Not connected at either panel mount — expansion powered via GX16 V_12 |
 
 > **Note:** The USB-C panel mount on the main controller side connects directly to USBC2 (§7.7) with no signal conditioning — the TUSB212 is placed on the expansion unit side only, after the full cable run.
 
+### 10.4 Internal Wiring
+
+Between each panel connector and the respective routing board, point-to-point internal wiring carries all signals. This wiring segment is not on any PCB — it connects the GX16 solder cups or pigtail leads to a terminal block on the board.
+
+| Segment | From | To | Wire spec |
+|---------|------|----|-----------|
+| Main controller side | GX16-10 panel socket (main enclosure) | Terminal block on Ctrl Ext Module | 24AWG signal, 20AWG power |
+| Expansion side | GX16-10 panel socket (expansion enclosure) | Terminal block on Expansion Routing Board | 24AWG signal, 20AWG power |
+| Main USB-C | USB-C panel mount (main enclosure) | USBC2 on Ctrl Module (§7.7) | USB 2.0 rated cable assembly |
+| Expansion USB-C | USB-C panel mount (expansion enclosure) | TUSB212 input on Expansion Routing Board | USB 2.0 rated cable assembly |
+
 ---
 
-## 10. Module Hub 34-Pin IDC Connector
+## 11. Module Hub 34-Pin IDC Connector
 
-### 10.1 Overview
+### 11.1 Overview
 
 A 34-pin 2×17 IDC connector bridges between the Ctrl Module/Ctrl Ext Module and the panel routing boards. It carries 12V power for the individual modules; the internal I2C bus; individual interrupt lines; one special safe-switch interrupt; and a global reset signal.
 
-### 10.2 Pinout Table
+### 11.2 Pinout Table
 
 | Pin (Left) | Signal (Left) | Signal (Right) | Pin (Right) |
 |:----------:|:-------------:|:--------------:|:-----------:|
@@ -556,7 +579,7 @@ A 34-pin 2×17 IDC connector bridges between the Ctrl Module/Ctrl Ext Module and
 | 31 | GND          | GND          | 32 |
 | 33 | GND          | GND          | 34 |
 
-### 10.3 Signal Descriptions
+### 11.3 Signal Descriptions
 
 | Signal | Type | Description |
 |--------|------|-------------|
@@ -569,13 +592,13 @@ A 34-pin 2×17 IDC connector bridges between the Ctrl Module/Ctrl Ext Module and
 
 ---
 
-## 11. Module 16-Pin IDC Connector
+## 12. Module 16-Pin IDC Connector
 
-### 11.1 Overview
+### 12.1 Overview
 
 Each IO or Display module connects to its panel routing board via a 16-pin 2×8 IDC connector. It carries 12V power for the modules; the internal I2C bus; module interrupt; a global reset signal; and a 3.3V input from the hub board to support level shifting (to allow modules to not have a 3.3V line if not otherwise required).
 
-### 11.2 Pinout Table
+### 12.2 Pinout Table
 
 | Pin (Left) | Signal (Left) | Signal (Right) | Pin (Right) |
 |:----------:|:-------------:|:--------------:|:-----------:|
@@ -588,7 +611,7 @@ Each IO or Display module connects to its panel routing board via a 16-pin 2×8 
 | 13 | INT          | RST          | 14 |
 | 15 | GND          | INT_SAFE     | 16 |
 
-### 11.3 Signal Descriptions
+### 12.3 Signal Descriptions
 
 | Signal | Type | Description |
 |--------|------|-------------|
@@ -602,14 +625,14 @@ Each IO or Display module connects to its panel routing board via a 16-pin 2×8 
 
 ---
 
-## 12. Module Conformance Requirements
+## 13. Module Conformance Requirements
 
 This section defines the minimum hardware and firmware requirements for any module board to be a conformant member of the KCMk1 system. A conformant module can be connected to any panel routing board, addressed by the master controller, and commanded via the KCMk1 I2C Protocol Specification without special-casing.
 
-### 12.1 Hardware Requirements
+### 13.1 Hardware Requirements
 
 **Connector**
-The module must implement the 16-pin 2×8 IDC connector with the pinout defined in Section 11. All power, ground, I2C, interrupt, and reset signals must be connected as specified. INT_SAFE is only required on modules that support a safe switch input.
+The module must implement the 16-pin 2×8 IDC connector with the pinout defined in Section 12. All power, ground, I2C, interrupt, and reset signals must be connected as specified. INT_SAFE is only required on modules that support a safe switch input.
 
 **Power**
 The module must accept 12V on V_IN and provide its own local regulation. The standard power architecture is:
@@ -630,7 +653,7 @@ No pull-up resistor is used. The divider produces 3.3V on INT_BUS when the outpu
 **I2C**
 The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address must be assigned from the range 0x20–0x2E and must not conflict with any address in the device map (Section 8.3). The module must not include its own I2C pull-up resistors — pull-ups are provided by the master side.
 
-### 12.2 Firmware Requirements
+### 13.2 Firmware Requirements
 
 All conformant modules must implement the following regardless of module type.
 
@@ -688,7 +711,7 @@ The module must assert INT (drive PA1 LOW) when it has a state change ready for 
 
 INT must not be asserted while the module is in SLEEPING or DISABLED state, except for the initial BOOT_READY assertion at power-on.
 
-### 12.3 Optional Capabilities
+### 13.3 Optional Capabilities
 
 Optional capabilities are declared in the capability flags byte of the identity response. The master uses these flags to determine what additional data is present in the response payload.
 
@@ -703,25 +726,25 @@ Optional capabilities are declared in the capability flags byte of the identity 
 
 Capability flags not listed above are reserved and must be set to 0.
 
-### 12.4 Conformance Summary
+### 13.4 Conformance Summary
 
 | Requirement | Mandatory | Reference |
 |-------------|-----------|---------|
-| 16-pin IDC connector per Section 11 pinout | Yes | §11 |
+| 16-pin IDC connector per Section 12 pinout | Yes | §12 |
 | 12V input, local MPM3610 + AP2112K regulation | Yes | §6.3 |
 | Push-pull INT with R5/R6 voltage divider | Yes | §8.2 |
 | I2C target at 400kHz, address 0x20–0x2E | Yes | §8.1, §8.3 |
-| CMD_GET_IDENTITY response | Yes | §12.2 |
-| 3-byte universal header on all response packets | Yes | §12.2 |
-| Full lifecycle state machine (BOOT_READY/DISABLED/ACTIVE/SLEEPING) | Yes | §12.2 |
-| All base commands (CMD_ENABLE through CMD_DISABLE) | Yes | §12.2 |
-| Transaction counter increment on INT assertion | Yes | §12.2 |
-| Capability flags declared accurately in identity response | Yes | §12.3 |
-| Optional capability payload per declared flags | If flag set | §12.3 |
+| CMD_GET_IDENTITY response | Yes | §13.2 |
+| 3-byte universal header on all response packets | Yes | §13.2 |
+| Full lifecycle state machine (BOOT_READY/DISABLED/ACTIVE/SLEEPING) | Yes | §13.2 |
+| All base commands (CMD_ENABLE through CMD_DISABLE) | Yes | §13.2 |
+| Transaction counter increment on INT assertion | Yes | §13.2 |
+| Capability flags declared accurately in identity response | Yes | §13.3 |
+| Optional capability payload per declared flags | If flag set | §13.3 |
 
 ---
 
-## 13. PCB Design List
+## 14. PCB Design List
 
 | Board | Designator | Type | Status | Fab | Notes |
 |-------|------------|------|--------|-----|-------|
@@ -749,7 +772,7 @@ Capability flags not listed above are reserved and must be set to 0.
 
 ---
 
-## 14. Related Documents
+## 15. Related Documents
 
 | Document | Location | Contents |
 |----------|----------|---------|
