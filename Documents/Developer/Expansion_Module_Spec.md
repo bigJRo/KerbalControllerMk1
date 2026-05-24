@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 0.2 (Draft)  
+**Version:** 0.3 (Draft)  
 **Date:** 2026-05-23  
 **Document type:** Developer — Hardware Design Specification
 
@@ -47,11 +47,11 @@ A GX16-10 (10-pin, 16mm thread) aviation connector carries 12V power, I2C, inter
 | 2 | V_12 | Main → Expansion | Parallel — combined capacity for full expansion load |
 | 3 | GND | — | Power return |
 | 4 | GND | — | Power return parallel |
-| 5 | SDA_EXT | Bidirectional | I2C data — LTC4311 at each end |
-| 6 | SCL_EXT | Bidirectional | I2C clock — LTC4311 at each end |
-| 7 | EXT_INT_1 | Expansion → Main | Active-low — 47Ω series resistor at expansion end |
-| 8 | EXT_INT_2 | Main → Expansion | Active-low — 47Ω series resistor at main controller end |
-| 9 | RST | Main → Expansion | Active-low — 47Ω series at source; 100Ω + 100nF RC filter at expansion end |
+| 5 | SDA_EXT | Bidirectional | I2C data — LTC4311 + pull-ups on Ctrl Module only; passive at expansion end |
+| 6 | SCL_EXT | Bidirectional | I2C clock — LTC4311 + pull-ups on Ctrl Module only; passive at expansion end |
+| 7 | EXT_INT_1 | Expansion → Main | Active-low — 47Ω series at expansion end; 4.7kΩ pull-up at Ctrl Module |
+| 8 | EXT_INT_2 | Main → Expansion | Active-low — 47Ω series at Ctrl Module; 4.7kΩ pull-up at expansion end |
+| 9 | RST | Main → Expansion | Active-low — 47Ω series at Ctrl Module; 10kΩ pull-up + 100Ω + 100nF RC filter at expansion end |
 | 10 | SPARE | — | Reserved for future use |
 
 All signal protection components are on the respective PCBs, not in the cable. See Hardware Reference §8.4 for full signal architecture.
@@ -72,11 +72,11 @@ VBUS is not connected at either panel mount — the expansion unit is powered en
 GX16-10 Connector
   ├── V_12 (×2) ──────────── Expansion Routing Board
   │                              ├── MPM3610 → 5V (hub logic, Teensy VIN)
-  │                              └── AP2112K → 3.3V (TUSB212, LTC4311, logic)
-  ├── SDA_EXT / SCL_EXT ─── LTC4311 ── Teensy 4.1 I2C target port
-  ├── EXT_INT_1 ──────────── 47Ω ────── Teensy 4.1 GPIO output
-  ├── EXT_INT_2 ──────────── Teensy 4.1 GPIO input
-  └── RST ─────────────────── 100Ω + 100nF ── Teensy 4.1 RST pin
+  │                              └── AP2112K → 3.3V (TUSB212, logic)
+  ├── SDA_EXT / SCL_EXT ─── (passive — LTC4311 + pull-ups on Ctrl Module) ── Teensy 4.1 I2C target port
+  ├── EXT_INT_1 ──────────── 47Ω series ── Teensy 4.1 GPIO output
+  ├── EXT_INT_2 ──────────── 4.7kΩ pull-up ── Teensy 4.1 GPIO input
+  └── RST ─────────────────── 10kΩ pull-up → 100Ω → Teensy 4.1 RST pin (100nF to GND at RST)
 
 USB-C Panel Mount
   └── USB 2.0 ── TUSB212 ── CH334F Hub
@@ -119,7 +119,7 @@ The expansion Teensy 4.1 is master on both buses simultaneously, using two separ
 
 | Board | Designator | Description |
 |-------|------------|-------------|
-| Expansion Routing Board | KC-01-EX10 | GX16-10 and USB-C panel connectors; TUSB212 USB conditioner; LTC4311 on SDA_EXT/SCL_EXT; CH334F internal hub; MPM3610 + AP2112K power regulation; distributes power, I2C, INT, RST to internal boards |
+| Expansion Routing Board | KC-01-EX10 | GX16-10 and USB-C panel connectors; TUSB212 USB conditioner; 47Ω series on EXT_INT_1 output; 4.7kΩ pull-up on EXT_INT_2 input; 10kΩ pull-up + 100Ω + 100nF RC filter on RST input; CH334F internal hub; MPM3610 + AP2112K power regulation; terminal blocks for GX16 and USB-C internal wiring. No LTC4311 — I2C bus management on Ctrl Module side only |
 | Expansion Teensy Carrier | KC-01-EX23 | Teensy 4.1 via headers; local I2C master to RP2040s; SDA_EXT I2C target port; EXT_INT_1 output (47Ω series); EXT_INT_2 input; RST input (100Ω + 100nF RC filter); 2×10P headers mating to keyboard matrix PCB; encoder header; NeoPixel data output |
 | Expansion Keyboard Matrix | KC-01-EX21 | 25× Kailh Choc V1 switches (hand solder); 25× SK6812MINI-EA RGB LEDs; 25× 1N4148W matrix diodes; 25× 100nF decoupling caps; 21mm key grid; 147×100mm board; 2×10P HCTL PM254-2-10-Z-8.5 headers top and bottom |
 | Expansion Encoder PCB | KC-01-EX22 | PEC11R-4220F-S0024 rotary encoder (C143797); independently height-adjustable behind panel |
@@ -380,3 +380,4 @@ The expansion keypad is not an I2C device — it is a direct GPIO matrix on the 
 |---------|------|-------------|
 | 0.1 | 2026-05-23 | Initial draft — architecture, connectivity, board topology, open items |
 | 0.2 | 2026-05-23 | Major revision. Architecture changed: display processors changed from Teensy 4.0 to RP2040; display driver changed from RA8875 to SSD1963; keyboard changed from ATtiny816 shift-register modules to direct Teensy 4.1 GPIO matrix; keypad reduced from 28 to 25 keys + 1 encoder; external interface changed from 50-pin IDC to GX16-10 + USB-C panel mount; expansion Teensy 4.1 established as I2C master on SDA_EXT; TUSB212 USB signal conditioner added; LTC4311 on SDA_EXT/SCL_EXT both ends; series resistors and RST RC filter documented. Board designators assigned (KC-01-EX10 through EX31). Keyboard PCB BOM finalized. Display roles confirmed (left = graphical, right = data/program). DSKY keyboard layout finalized with enhanced function row. Open items E-01, E-03, E-04, E-08 closed. |
+| 0.3 | 2026-05-23 | Signal architecture corrections. LTC4311 relocated from both ends to Ctrl Module only — single LTC4311 on SDA_EXT/SCL_EXT is sufficient; placed on main controller side per architecture principle. I2C passive at expansion end — no LTC4311 and no pull-ups on Expansion Routing Board. Physical pull-up resistors added throughout: 4.7kΩ on EXT_INT_1 at Ctrl Module; 4.7kΩ on EXT_INT_2 at Expansion Routing Board; 10kΩ on RST at Expansion Routing Board. Full signal path documented per signal including 47Ω source resistors and pull-up placement. Block diagram, GX16 pin table, and board topology table updated to reflect corrections. |
