@@ -17,7 +17,7 @@
 | 1.2 | 2026-05-19 | Added Section 12 — Module Conformance Requirements. Defines hardware (connector, power, interrupt line, I2C) and firmware (identity response, universal header, lifecycle state machine, base command set, INT assertion) requirements for any conformant KCMk1 module. PCB Design List renumbered to Section 13, Related Documents to Section 14. |
 | 1.3 | 2026-05-23 | Added Section 9.4 — External Expansion Interface (GX16-10 signal connector + USB-C panel mount). Added §8.4 — External Interface Signal Architecture. Updated §8.1, §8.3, §9.3, §5.1, §13. |
 | 1.4 | 2026-05-23 | Corrected §8.4 signal architecture throughout. LTC4311 relocated to Ctrl Module only. Physical pull-up resistors added. EXT_INT_2 receiving-end clarified. Full signal path documented. Ctrl Ext Module role clarified. §8.3 corrected — expansion keypad modules removed (direct GPIO matrix). §9.4 promoted to standalone Section 10 (External Expansion Interface) with new §10.4 Internal Wiring. Sections 10–14 renumbered to 11–15. §13.4 conformance table cross-references updated. |
-| 1.5 | 2026-05-24 | Corrected all board designators throughout to match schematic/board numbering convention (odd = schematic, even = board PCB). §5.1: Ctrl Module KC-01-1702, Ctrl Ext Module KC-01-1712. §5.3: 5" TFT Display Carrier KC-01-1912, 1.9" IPS Display Carrier KC-01-1902. §5.4: Button Module KC-01-1802, Wide Button Module KC-01-1812, Joystick Module KC-01-1832, Dual Encoder KC-01-1862, Throttle Module KC-01-1822, 7-Segment Display Module KC-01-1842. §14 PCB Design List updated with correct designators; Display Hub KC-01-1722, Panel Hub KC-01-1732, and Module Tester KC-01-9002 added. Throttle Module notes updated to reflect MPM3610 9V buck replacing CJ7809 LDO. Panel routing boards consolidated to Display Hub / Panel Hub entries. |
+| 1.5 | 2026-05-24 | Corrected all board designators throughout to match schematic/board numbering convention (odd = schematic, even = board PCB). §5.1: Ctrl Module KC-01-1702, Ctrl Ext Module KC-01-1712. §5.2: Panel Routing Boards consolidated to Display Hub KC-01-1722 and Panel Hub KC-01-1732 (replacing four TBD entries). §5.3: 5" TFT Display Carrier KC-01-1912, 1.9" IPS Display Carrier KC-01-1902. §5.4: Button Module KC-01-1802, Wide Button Module KC-01-1812, Joystick Module KC-01-1832, Dual Encoder KC-01-1862, Throttle Module KC-01-1822, 7-Segment Display Module KC-01-1842. §5.5 renamed to Encoder Carrier Board (KC-01-1852). §5.6 added: Module Tester KC-01-9002 (replacing Universal Test Fixture TBD). §14 PCB Design List updated with all correct designators; Encoder KC-01-1852 and Module Tester KC-01-9002 added; USB Hub Board TBD entry removed (hub is integrated on Ctrl Module KC-01-1702); Expansion board entries removed (covered in Expansion Module Spec). Throttle Module notes updated to reflect MPM3610 9V buck replacing CJ7809 LDO. |
 
 ---
 
@@ -117,10 +117,8 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 
 | Board | Designator | Function |
 |-------|------------|----------|
-| A1 Panel Routing Board | TBD | IDC distribution for Panel A1 modules |
-| A2 Panel Routing Board | TBD | IDC distribution for Panel A2 modules |
-| B1 Panel Routing Board | TBD | IDC distribution for Panel B1 modules |
-| B2 Panel Routing Board | TBD | IDC distribution for Panel B2 modules |
+| Display Hub | KC-01-1722 | IDC distribution for display module panels (A1, B1) |
+| Panel Hub | KC-01-1732 | IDC distribution for input module panels (A2, B2) |
 
 ### 5.3 Display Carrier Boards
 
@@ -140,11 +138,17 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 | Throttle Module | KC-01-1822 | ATtiny816 | N/A | 5 | RSA0N11M9A0J 10k motorized potentiometer + 5× panel switch via screw terminals w/ status LED output |
 | 7-Segment Display Module | KC-01-1842 | ATtiny816 | 3 | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder |
 
-### 5.5 Test & Programming Fixtures
+### 5.5 Encoder Carrier Board
 
 | Board | Designator | Function |
 |-------|------------|---------|
-| Universal Test Fixture | TBD | 16-pin IDC + 12V power for module bring-up & bench testing |
+| Encoder | KC-01-1852 | Passive carrier for PEC11R-4220F-S0024 rotary encoder — 5-pin header to Dual Encoder Module |
+
+### 5.6 Test & Programming Fixtures
+
+| Board | Designator | Function |
+|-------|------------|---------|
+| Module Tester | KC-01-9002 | XIAO RA4M1 master, soft latch power, INA228, 1.9" TFT display, 16-pin module connector for module bring-up & bench testing |
 
 ---
 
@@ -753,15 +757,15 @@ Capability flags not listed above are reserved and must be set to 0.
 | Wide Button Module | KC-01-1812 | ATtiny816 module | Schematic complete | JLCPCB | 12× NeoPixel + 8× panel switch via DB127S-5.08-6P screw terminals (B16–B23); ready for layout |
 | Joystick Module | KC-01-1832 | ATtiny816 module | Planned | JLCPCB | Hall-effect joystick, 2× NeoPixel |
 | Dual Encoder Module | KC-01-1862 | ATtiny816 module | Planned | JLCPCB | 2× rotary encoder inputs, safe switch |
+| Encoder | KC-01-1852 | Passive carrier | Schematic complete | JLCPCB | PEC11R-4220F-S0024 rotary encoder; 5-pin header to Dual Encoder Module |
 | Throttle Module | KC-01-1822 | ATtiny816 module | Schematic complete | JLCPCB | Motorized pot, MPM3610 9V buck + L293D H-bridge |
 | 7-Segment Display Module | KC-01-1842 | ATtiny816 module | Planned | JLCPCB | MAX7219, 4-digit display, rotary encoder |
 | 5" TFT Display Carrier | KC-01-1912 | Teensy 4.0 carrier | Planned | JLCPCB | RA8875, GSL1680F touch |
 | 1.9" IPS Display Carrier | KC-01-1902 | XIAO RA4M1 carrier | Planned | JLCPCB | ST7789, safe switch screw terminal |
-| USB Hub Board | TBD | Custom PCB | Schematic complete, layout complete | JLCPCB | 2× CH334F, 6-layer stackup |
 | Ctrl Module | KC-01-1702 | Master controller | Planned | JLCPCB | Teensy 4.1, soft latch, INA228, EMC2101, LTC4311, USB hub. Carries 47Ω series resistors on EXT_INT_2 and RST before 50-pin IDC |
 | Ctrl Ext Module | KC-01-1712 | Distribution board | Planned | JLCPCB | IDC distribution, extension support |
-| Display Hub | KC-01-1722 | Routing board | Planned | JLCPCB | IDC distribution for display module panels |
-| Panel Hub | KC-01-1732 | Routing board | Planned | JLCPCB | IDC distribution for input module panels |
+| Display Hub | KC-01-1722 | Routing board | Planned | JLCPCB | IDC distribution for display module panels (A1, B1) |
+| Panel Hub | KC-01-1732 | Routing board | Planned | JLCPCB | IDC distribution for input module panels (A2, B2) |
 | Module Tester | KC-01-9002 | Test fixture | Schematic complete | JLCPCB | XIAO RA4M1, soft latch power, INA228, 1.9" TFT display, 16-pin module connector |
 
 ---
