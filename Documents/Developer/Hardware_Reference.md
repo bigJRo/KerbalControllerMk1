@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.4  
+**Version:** 1.5  
 **Date:** May 2026  
 **Document type:** Developer — Hardware
 
@@ -17,6 +17,7 @@
 | 1.2 | 2026-05-19 | Added Section 12 — Module Conformance Requirements. Defines hardware (connector, power, interrupt line, I2C) and firmware (identity response, universal header, lifecycle state machine, base command set, INT assertion) requirements for any conformant KCMk1 module. PCB Design List renumbered to Section 13, Related Documents to Section 14. |
 | 1.3 | 2026-05-23 | Added Section 9.4 — External Expansion Interface (GX16-10 signal connector + USB-C panel mount). Added §8.4 — External Interface Signal Architecture. Updated §8.1, §8.3, §9.3, §5.1, §13. |
 | 1.4 | 2026-05-23 | Corrected §8.4 signal architecture throughout. LTC4311 relocated to Ctrl Module only. Physical pull-up resistors added. EXT_INT_2 receiving-end clarified. Full signal path documented. Ctrl Ext Module role clarified. §8.3 corrected — expansion keypad modules removed (direct GPIO matrix). §9.4 promoted to standalone Section 10 (External Expansion Interface) with new §10.4 Internal Wiring. Sections 10–14 renumbered to 11–15. §13.4 conformance table cross-references updated. |
+| 1.5 | 2026-05-24 | Corrected all board designators throughout to match schematic/board numbering convention (odd = schematic, even = board PCB). §5.1: Ctrl Module KC-01-1702, Ctrl Ext Module KC-01-1712. §5.3: 5" TFT Display Carrier KC-01-1912, 1.9" IPS Display Carrier KC-01-1902. §5.4: Button Module KC-01-1802, Wide Button Module KC-01-1812, Joystick Module KC-01-1832, Dual Encoder KC-01-1862, Throttle Module KC-01-1822, 7-Segment Display Module KC-01-1842. §14 PCB Design List updated with correct designators; Display Hub KC-01-1722, Panel Hub KC-01-1732, and Module Tester KC-01-9002 added. Throttle Module notes updated to reflect MPM3610 9V buck replacing CJ7809 LDO. Panel routing boards consolidated to Display Hub / Panel Hub entries. |
 
 ---
 
@@ -109,8 +110,8 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 
 | Board | Designator | Microcontroller | Function |
 |-------|------------|-----------------|----------|
-| Ctrl Module | KC-01-1800 | Teensy 4.1 | Master controller, soft latch power, INA228, EMC2101, 2× LTC4311 (one for SDA_BUS, one for SDA_EXT each with pull-ups), ST7789 status display, USB Hub [2× CH334F cascaded, single upstream USB-C, 6 downstream Micro-USB + 1 expansion USB-C]. Carries: 47Ω series on EXT_INT_2 output; 47Ω series on RST output; 4.7kΩ pull-up on EXT_INT_1 input — all before/after 50-pin IDC |
-| Ctrl Ext Module | KC-01-1820 | N/A | B1/B2 IDC distribution, extension support. Passive routing of expansion interface signals (SDA_EXT, SCL_EXT, EXT_INT_1, EXT_INT_2, RST, V_12, GND) from 50-pin IDC to terminal block for GX16 internal wiring. No active components for expansion interface |
+| Ctrl Module | KC-01-1702 | Teensy 4.1 | Master controller, soft latch power, INA228, EMC2101, 2× LTC4311 (one for SDA_BUS, one for SDA_EXT each with pull-ups), ST7789 status display, USB Hub [2× CH334F cascaded, single upstream USB-C, 6 downstream Micro-USB + 1 expansion USB-C]. Carries: 47Ω series on EXT_INT_2 output; 47Ω series on RST output; 4.7kΩ pull-up on EXT_INT_1 input — all before/after 50-pin IDC |
+| Ctrl Ext Module | KC-01-1712 | N/A | B1/B2 IDC distribution, extension support. Passive routing of expansion interface signals (SDA_EXT, SCL_EXT, EXT_INT_1, EXT_INT_2, RST, V_12, GND) from 50-pin IDC to terminal block for GX16 internal wiring. No active components for expansion interface |
 
 ### 5.2 Panel Routing Boards
 
@@ -125,19 +126,19 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 
 | Board | Designator | Microcontroller | Display | Role |
 |-------|------------|-----------------|---------|------|
-| 5" TFT Display Carrier | KC-01-1900 | Teensy 4.0 | RA8875 800×480 TFT | Large Format Graphic Touch Display |
-| 1.9" IPS Display Carrier | KC-01-1910 | XIAO RA4M1 | ST7789 320×170 IPS TFT | Small Format Graphic Display — can carry a safe switch via screw terminal |
+| 5" TFT Display Carrier | KC-01-1912 | Teensy 4.0 | RA8875 800×480 TFT | Large Format Graphic Touch Display |
+| 1.9" IPS Display Carrier | KC-01-1902 | XIAO RA4M1 | ST7789 320×170 IPS TFT | Small Format Graphic Display — can carry a safe switch via screw terminal |
 
 ### 5.4 IO Module Boards
 
 | Board | Designator | Microcontroller | Button Inputs | Switch Inputs | Notes |
 |-------|------------|-----------------|---------------|---------------|-------|
-| Button Module | KC-01-1820 | ATtiny816 | 12 | 4 | 12× NeoPixel RGB + 4× panel switch via screw terminals |
-| Joystick Module | KC-01-1830 | ATtiny816 | 2 | N/A | 2× NeoPixel RGB + JH-D202X-R4 inputs via screw terminals |
-| Wide Button Module | KC-01-1840 | ATtiny816 | 12 | 8 | 12× NeoPixel RGB + 8× panel switch via DB127S-5.08-6P screw terminals |
-| Dual Encoder Module | KC-01-1850 | ATtiny816 | N/A | 1* | Inputs for 2× rotary encoder carrier boards + 1× safe switch via screw terminals |
-| Throttle Module | KC-01-1860 | ATtiny816 | N/A | 5 | RSA0N11M9A0J 10k motorized potentiometer + 5× panel switch via screw terminals w/ status LED output |
-| 7-Segment Display Module | KC-01-1880 | ATtiny816 | 3 | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder |
+| Button Module | KC-01-1802 | ATtiny816 | 12 | 4 | 12× NeoPixel RGB + 4× panel switch via screw terminals |
+| Joystick Module | KC-01-1832 | ATtiny816 | 2 | N/A | 2× NeoPixel RGB + JH-D202X-R4 inputs via screw terminals |
+| Wide Button Module | KC-01-1812 | ATtiny816 | 12 | 8 | 12× NeoPixel RGB + 8× panel switch via DB127S-5.08-6P screw terminals |
+| Dual Encoder Module | KC-01-1862 | ATtiny816 | N/A | 1* | Inputs for 2× rotary encoder carrier boards + 1× safe switch via screw terminals |
+| Throttle Module | KC-01-1822 | ATtiny816 | N/A | 5 | RSA0N11M9A0J 10k motorized potentiometer + 5× panel switch via screw terminals w/ status LED output |
+| 7-Segment Display Module | KC-01-1842 | ATtiny816 | 3 | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder |
 
 ### 5.5 Test & Programming Fixtures
 
@@ -748,27 +749,20 @@ Capability flags not listed above are reserved and must be set to 0.
 
 | Board | Designator | Type | Status | Fab | Notes |
 |-------|------------|------|--------|-----|-------|
-| Button Module Base | KC-01-1821 | ATtiny816 module | Schematic complete | JLCPCB | 12-button, 12× NeoPixel + 4× discrete LED; ready for layout |
-| Wide Button Module | KC-01-1842 | ATtiny816 module | Schematic complete | JLCPCB | 12× NeoPixel + 8× panel switch via DB127S-5.08-6P screw terminals (B16–B23); ready for layout |
-| Joystick Module | KC-01-1831 | ATtiny816 module | Planned | JLCPCB | Hall-effect joystick, 2× NeoPixel |
-| Dual Encoder Module | KC-01-1851 | ATtiny816 module | Planned | JLCPCB | 2× rotary encoder inputs, safe switch |
-| Throttle Module | KC-01-1861 | ATtiny816 module | Planned | JLCPCB | Motorized pot, L293D H-bridge |
-| 7-Segment Display Module | KC-01-1881 | ATtiny816 module | Planned | JLCPCB | MAX7219, 4-digit display, rotary encoder |
-| 5" TFT Display Carrier | KC-01-1900 | Teensy 4.0 carrier | Planned | JLCPCB | RA8875, GSL1680F touch |
-| 1.9" IPS Display Carrier | KC-01-1910 | XIAO RA4M1 carrier | Planned | JLCPCB | ST7789, safe switch screw terminal |
+| Button Module Base | KC-01-1802 | ATtiny816 module | Schematic complete | JLCPCB | 12-button, 12× NeoPixel + 4× discrete LED; ready for layout |
+| Wide Button Module | KC-01-1812 | ATtiny816 module | Schematic complete | JLCPCB | 12× NeoPixel + 8× panel switch via DB127S-5.08-6P screw terminals (B16–B23); ready for layout |
+| Joystick Module | KC-01-1832 | ATtiny816 module | Planned | JLCPCB | Hall-effect joystick, 2× NeoPixel |
+| Dual Encoder Module | KC-01-1862 | ATtiny816 module | Planned | JLCPCB | 2× rotary encoder inputs, safe switch |
+| Throttle Module | KC-01-1822 | ATtiny816 module | Schematic complete | JLCPCB | Motorized pot, MPM3610 9V buck + L293D H-bridge |
+| 7-Segment Display Module | KC-01-1842 | ATtiny816 module | Planned | JLCPCB | MAX7219, 4-digit display, rotary encoder |
+| 5" TFT Display Carrier | KC-01-1912 | Teensy 4.0 carrier | Planned | JLCPCB | RA8875, GSL1680F touch |
+| 1.9" IPS Display Carrier | KC-01-1902 | XIAO RA4M1 carrier | Planned | JLCPCB | ST7789, safe switch screw terminal |
 | USB Hub Board | TBD | Custom PCB | Schematic complete, layout complete | JLCPCB | 2× CH334F, 6-layer stackup |
-| Ctrl Module | KC-01-1800 | Master controller | Planned | JLCPCB | Teensy 4.1, soft latch, INA228, EMC2101, LTC4311, USB hub. Carries 47Ω series resistors on EXT_INT_2 and RST before 50-pin IDC |
-| Ctrl Ext Module | KC-01-1820 | Distribution board | Planned | JLCPCB | IDC distribution, extension support |
-| A1 Panel Routing Board | TBD | Routing board | Planned | JLCPCB | IDC distribution |
-| A2 Panel Routing Board | TBD | Routing board | Planned | JLCPCB | IDC distribution |
-| B1 Panel Routing Board | TBD | Routing board | Planned | JLCPCB | IDC distribution |
-| B2 Panel Routing Board | TBD | Routing board | Planned | JLCPCB | IDC distribution |
-| Expansion Routing Board | KC-01-EX10 | Expansion interface | Planned | JLCPCB | GX16-10 panel mount, USB-C panel mount, TUSB212 USB conditioner, 47Ω series on EXT_INT_1 output, 4.7kΩ pull-up on EXT_INT_2 input, 10kΩ pull-up + 100Ω + 100nF RC filter on RST input, terminal blocks for GX16 and USB-C wiring, CH334F internal hub, MPM3610 + AP2112K power regulation |
-| Expansion Keyboard Matrix | KC-01-EX21 | Keyboard PCB | Schematic complete | JLCPCB | 25× Kailh Choc V1 (hand solder), 25× SK6812MINI-EA, 25× 1N4148W, 25× 100nF; 21mm grid, 147×100mm, 2×10P headers top and bottom |
-| Expansion Encoder PCB | KC-01-EX22 | Encoder PCB | Planned | JLCPCB | PEC11R-4220F-S0024 rotary encoder; independently height-adjustable |
-| Expansion Teensy Carrier | KC-01-EX23 | Teensy 4.1 carrier | Planned | JLCPCB | Teensy 4.1, I2C master (local bus to RP2040s), I2C target (SDA_EXT), EXT_INT_1 output, EXT_INT_2 input, matrix scan, NeoPixel data |
-| Expansion Display Carrier A | KC-01-EX30 | RP2040 display carrier | Planned | JLCPCB | RP2040, SSD1963, 5" TFT, capacitive touch controller; I2C target on local bus |
-| Expansion Display Carrier B | KC-01-EX31 | RP2040 display carrier | Planned | JLCPCB | RP2040, SSD1963, 5" TFT, capacitive touch controller; I2C target on local bus |
+| Ctrl Module | KC-01-1702 | Master controller | Planned | JLCPCB | Teensy 4.1, soft latch, INA228, EMC2101, LTC4311, USB hub. Carries 47Ω series resistors on EXT_INT_2 and RST before 50-pin IDC |
+| Ctrl Ext Module | KC-01-1712 | Distribution board | Planned | JLCPCB | IDC distribution, extension support |
+| Display Hub | KC-01-1722 | Routing board | Planned | JLCPCB | IDC distribution for display module panels |
+| Panel Hub | KC-01-1732 | Routing board | Planned | JLCPCB | IDC distribution for input module panels |
+| Module Tester | KC-01-9002 | Test fixture | Schematic complete | JLCPCB | XIAO RA4M1, soft latch power, INA228, 1.9" TFT display, 16-pin module connector |
 
 ---
 
