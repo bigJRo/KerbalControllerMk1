@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.6  
-**Date:** May 2026  
+**Version:** 1.7  
+**Date:** 2026-06-06  
 **Document type:** Developer — Hardware
 
 ---
@@ -19,6 +19,7 @@
 | 1.4 | 2026-05-23 | Corrected §8.4 signal architecture throughout. LTC4311 relocated to Ctrl Module only. Physical pull-up resistors added. EXT_INT_2 receiving-end clarified. Full signal path documented. Ctrl Ext Module role clarified. §8.3 corrected — expansion keypad modules removed (direct GPIO matrix). §9.4 promoted to standalone Section 10 (External Expansion Interface) with new §10.4 Internal Wiring. Sections 10–14 renumbered to 11–15. §13.4 conformance table cross-references updated. |
 | 1.5 | 2026-05-24 | Corrected all board designators throughout to match schematic/board numbering convention (odd = schematic, even = board PCB). §5.1: Ctrl Module KC-01-1702, Ctrl Ext Module KC-01-1712. §5.2: Panel Routing Boards consolidated to Display Hub KC-01-1722 and Panel Hub KC-01-1732 (replacing four TBD entries). §5.3: 5" TFT Display Carrier KC-01-1912, 1.9" IPS Display Carrier KC-01-1902. §5.4: Button Module KC-01-1802, Wide Button Module KC-01-1812, Joystick Module KC-01-1832, Dual Encoder KC-01-1862, Throttle Module KC-01-1822, 7-Segment Display Module KC-01-1842. §5.5 renamed to Encoder Carrier Board (KC-01-1852). §5.6 added: Module Tester KC-01-9002 (replacing Universal Test Fixture TBD). §14 PCB Design List updated with all correct designators; Encoder KC-01-1852 and Module Tester KC-01-9002 added; USB Hub Board TBD entry removed (hub is integrated on Ctrl Module KC-01-1702); Expansion board entries removed (covered in Expansion Module Spec). Throttle Module notes updated to reflect MPM3610 9V buck replacing CJ7809 LDO. |
 | 1.6 | 2026-05-25 | Cleaned up references and reorganized. |
+| 1.7 | 2026-06-06 | Main display carriers (KC-01-1912) changed from Teensy 4.0 + RA8875 800×480 SPI to Teensy 4.1 + LT7683 (RA8876-register-compatible) 1024×600 7" IPS, 8080 16-bit parallel (ER-TFT070A2-6-5633 module). All four carriers (Annunciator, Info 1, Info 2, Resource) standardized on this combo. Display VDD on 5V rail, VDDIO 3.3V (bench-confirmed) — Teensy 4.1 interfaces directly, no level shifters; the former SPI RA8875 MISO buffer (SN74LVC1G125) is not required on the parallel bus. On-module 128 Mbit display RAM (W9812G6JH) enables 1024×600 double-buffering. Per-carrier local MPM3610 confirmed adequate (~760 mA peak vs 1.2 A). §13.1 interrupt conformance generalized to cover 5V (ATtiny816, push-pull + 10k/20k divider) and 3.3V (Teensy carrier, push-pull direct, no divider) module classes; INT remains active-low push-pull, driven low to assert, no pull-up. Updated §3.1, §3.3, §5.3, §6.3, §7.2, §7.5, §7.6, §8.3, §13.1, §13.4, §14. |
 
 ---
 
@@ -63,7 +64,7 @@ This document is the primary hardware reference for developers designing, buildi
 
 ### 3.1 Top-Level Signal Flow
 
-A single USB cable connects the controller to the host PC. Inside the controller, a two-chip USB hub (2× CH334F cascaded) distributes USB to all Teensy-based microcontrollers. A single I2C bus connects the master Teensy 4.1 to all ATtiny816 input/output modules, Teensy 4.0 based display modules, and XIAO RA4M1 based display modules. A 12V main bus provides power throughout, with local DC-DC conversion on each board.
+A single USB cable connects the controller to the host PC. Inside the controller, a two-chip USB hub (2× CH334F cascaded) distributes USB to all Teensy-based microcontrollers. A single I2C bus connects the master Teensy 4.1 to all ATtiny816 input/output modules, Teensy 4.1 based display modules, and XIAO RA4M1 based display modules. A 12V main bus provides power throughout, with local DC-DC conversion on each board.
 
 ### 3.2 Master Controller
 
@@ -78,7 +79,9 @@ The master controller is a Teensy 4.1 mounted on the Ctrl Module PCB. It is resp
 
 ### 3.3 Display Subsystem
 
-Four Teensy 4.0 microcontrollers each drive an RA8875 800×480 TFT display via SPI. Each Teensy 4.0 connects to the host PC via the USB hub as an independent USB device running KerbalSimpit. The four display roles are: Annunciator (Caution & Warning panel), Resource Display, Info Display 1, and Info Display 2.
+Four Teensy 4.1 microcontrollers each drive a 7" 1024×600 IPS TFT display via an 8080 16-bit parallel interface to an LT7683 graphics controller (register-compatible with the RA8876; module ER-TFT070A2-6-5633). Each Teensy 4.1 connects to the host PC via the USB hub as an independent USB device running KerbalSimpit. The four display roles are: Annunciator (Caution & Warning panel), Resource Display, Info Display 1, and Info Display 2.
+
+The LT7683 carries 128 Mbit on-module display RAM (Winbond W9812G6JH) and a hardware geometry/BTE engine, supporting hardware-accelerated fills and full 1024×600 double-buffering — removing the SPI-bound full-frame redraw limit of the previous RA8875/SPI carriers. The display module VDD is supplied from the 5V rail; the LT7683 host-interface logic (VDDIO) operates at 3.3V regardless of VDD (bench-confirmed on this module), so the Teensy 4.1's 3.3V GPIO interfaces directly with no level shifting. The panel must be powered from 5V VDD (≤520 mA) through the carrier's local MPM3610 — never jumpered to 3.3V VDD (730 mA on 3.3V exceeds the carrier AP2112K). Because the interface is 8080 parallel (no MISO line), the SN74LVC1G125 MISO buffer required by the former SPI RA8875 design is not needed.
 
 ### 3.4 System Displays
 
@@ -124,7 +127,7 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 
 | Board | Designator | Microcontroller | Display | Role |
 |-------|------------|-----------------|---------|------|
-| 5" TFT Display Carrier | KC-01-1912 | Teensy 4.0 | RA8875 800×480 TFT | Large Format Graphic Touch Display |
+| 7" TFT Display Carrier | KC-01-1912 | Teensy 4.1 | LT7683 (RA8876-compatible) 1024×600 7" IPS TFT, 8080 16-bit parallel (ER-TFT070A2-6-5633) | Large Format Graphic Touch Display. VDD 5V / VDDIO 3.3V (no level shifters). On-module 128 Mbit display RAM. Local MPM3610 (5V) + AP2112K (3.3V logic). FT5316 capacitive touch via software I2C |
 | 1.9" IPS Display Carrier | KC-01-1902 | XIAO RA4M1 | ST7789 320×170 IPS TFT | Small Format Graphic Display — can carry a safe switch via screw terminal |
 
 ### 5.4 IO Module Boards
@@ -172,8 +175,8 @@ A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A si
 | Rail | Voltage | Source | Consumers |
 |------|---------|--------|-----------|
 | V_12 | 12V | Main input bus | MPM3610 converters on each board, 12V direct loads (fans, motors) |
-| V_5 | 5V | MPM3610 DC-DC (per board) | ATtiny816 modules, Teensy VIN, logic supply |
-| V_3P3 | 3.3V | AP2112K LDO (per board, as required) | Teensy 4.0/4.1 logic, displays, XIAO modules |
+| V_5 | 5V | MPM3610 DC-DC (per board) | ATtiny816 modules, Teensy VIN, display panel VDD, logic supply |
+| V_3P3 | 3.3V | AP2112K LDO (per board, as required) | Teensy 4.1 logic, display VDDIO / touch / glue logic, XIAO modules. Display panel VDD is NOT on this rail — it is supplied from V_5 |
 | VDD33_HUBn | 3.3V | CH334F internal LDO (per hub IC) | CH334F internal logic only — isolated net, not shared |
 
 ### 6.4 Power Monitoring
@@ -205,7 +208,7 @@ A single USB-C cable connects the controller to the host PC. All USB traffic is 
 | USB standard | USB 2.0 High Speed (480Mbps) |
 | TT mode | MTT (Multi-Transaction Translator) |
 | Total downstream ports | 7 (3 on Hub 1 + 4 on Hub 2) |
-| Downstream ports used | 6 (Teensy 4.1 × 1, Teensy 4.0 × 4, expansion × 1) |
+| Downstream ports used | 6 (Teensy 4.1 × 5 [master + 4 displays], expansion × 1) |
 | Power mode | Self-powered (PSELF pin floating, internal pull-up = HIGH) |
 | Crystal | 12MHz, SMD3225-4P, LCSC C9002 (basic part) |
 
@@ -231,18 +234,18 @@ VBUS on the upstream USB-C connector is left completely unconnected at the PCB l
 
 | Hub | IC | Upstream Source | Downstream Ports |
 |-----|----|----------------|-----------------|
-| Hub 1 | CH334F | Upstream USB-C connector | Port 1 → Teensy 4.1 (master), Port 2 → Teensy 4.0 display 1, Port 3 → Teensy 4.0 display 2, Port 4 → Hub 2 upstream |
-| Hub 2 | CH334F | Hub 1 Port 4 (DP4/DM4) | Port 1 → Teensy 4.0 display 3, Port 2 → Teensy 4.0 display 4, Port 3 → Spare micro USB, Port 4 → Expansion USB-C |
+| Hub 1 | CH334F | Upstream USB-C connector | Port 1 → Teensy 4.1 (master), Port 2 → Teensy 4.1 display 1, Port 3 → Teensy 4.1 display 2, Port 4 → Hub 2 upstream |
+| Hub 2 | CH334F | Hub 1 Port 4 (DP4/DM4) | Port 1 → Teensy 4.1 display 3, Port 2 → Teensy 4.1 display 4, Port 3 → Spare micro USB, Port 4 → Expansion USB-C |
 
 ### 7.6 Downstream Connectors
 
 | Connector | Type | Device | VCC Pin |
 |-----------|------|--------|---------|
 | USB1 | Micro-USB-B SMD | Teensy 4.1 (master controller) | No connect |
-| USB2 | Micro-USB-B SMD | Teensy 4.0 — Annunciator display | No connect |
-| USB3 | Micro-USB-B SMD | Teensy 4.0 — Info Display 1 | No connect |
-| USB4 | Micro-USB-B SMD | Teensy 4.0 — Info Display 2 | No connect |
-| USB5 | Micro-USB-B SMD | Teensy 4.0 — Resource display | No connect |
+| USB2 | Micro-USB-B SMD | Teensy 4.1 — Annunciator display | No connect |
+| USB3 | Micro-USB-B SMD | Teensy 4.1 — Info Display 1 | No connect |
+| USB4 | Micro-USB-B SMD | Teensy 4.1 — Info Display 2 | No connect |
+| USB5 | Micro-USB-B SMD | Teensy 4.1 — Resource display | No connect |
 | USB6 | Micro-USB-B SMD | Spare | No connect |
 | USBC2 | USB-C (TYPE-C-31-M-12) | Expansion port — panel USB-C or future extension module | No connect |
 
@@ -291,14 +294,19 @@ The main controller provides two I2C buses:
 
 ### 8.2 Interrupt Architecture
 
-Each ATtiny816 module drives its interrupt line from PA1 as a push-pull digital output — there is no pull-up resistor on the module. A passive voltage divider on each module board performs 5V→3.3V level conversion: R5 (10kΩ) in series from PA1 to the `INT_BUS` node, R6 (20kΩ) from `INT_BUS` to GND. This produces a 3.3V-compatible signal on `INT_BUS` that the master controller reads directly without additional level shifting.
+Each module drives its interrupt line as an active-low push-pull digital output — there is no pull-up resistor at the module or the controller. INT idles HIGH and is driven LOW to assert. Each module's INT line is dedicated to its own controller GPIO; there is no wired-OR bus interrupt. Level handling depends on the module's logic-voltage domain (see §13.1):
 
-| PA1 State | INT_MOD | INT_BUS | Meaning |
-|-----------|---------|---------|---------|
-| HIGH (5V) | 5V | 3.33V | Idle — no interrupt pending |
-| LOW (0V) | 0V | 0V | Asserted — module has data ready |
+- **5V modules (ATtiny816):** drive PA1 push-pull through a passive divider — R5 (10kΩ) in series from PA1 to the `INT_BUS` node, R6 (20kΩ) from `INT_BUS` to GND — producing a 3.3V-compatible signal the master reads directly.
+- **3.3V carriers (Teensy 4.1 display carriers):** drive `INT_BUS` directly at 3.3V push-pull, no divider.
 
-The master detects INT_BUS going low on the dedicated interrupt line for each module and initiates an I2C read transaction. The module deasserts (returns PA1 HIGH) when the master completes the read.
+| Module class | Output state | INT_BUS | Meaning |
+|--------------|--------------|---------|---------|
+| ATtiny816 (5V) | PA1 HIGH (5V) | 3.33V (divider) | Idle — no interrupt pending |
+| ATtiny816 (5V) | PA1 LOW (0V) | 0V | Asserted — module has data ready |
+| Teensy carrier (3.3V) | GPIO HIGH (3.3V) | 3.3V | Idle — no interrupt pending |
+| Teensy carrier (3.3V) | GPIO LOW (0V) | 0V | Asserted — module has data ready |
+
+The master detects INT_BUS going low on the dedicated interrupt line for each module and initiates an I2C read transaction. The module deasserts (returns the output HIGH) when the master completes the read.
 
 ### 8.3 I2C Device Map
 
@@ -313,10 +321,10 @@ The master detects INT_BUS going low on the dedicated interrupt line for each mo
 
 | Address | Device | Type | Panel |
 |---------|--------|------|-------|
-| 0x10 | Annunciator | Teensy 4.0 | A1 |
-| 0x11 | Resource Display | Teensy 4.0 | B1 |
-| 0x12 | Info Display 1 | Teensy 4.0 | A1 |
-| 0x13 | Info Display 2 | Teensy 4.0 | B1 |
+| 0x10 | Annunciator | Teensy 4.1 | A1 |
+| 0x11 | Resource Display | Teensy 4.1 | B1 |
+| 0x12 | Info Display 1 | Teensy 4.1 | A1 |
+| 0x13 | Info Display 2 | Teensy 4.1 | B1 |
 | 0x14 | Sys Info Display | XIAO RA4M1 | A2 |
 | 0x15 | Status Indicator Display | XIAO RA4M1 | B2 |
 | 0x16–0x1F | Reserved — expansion unit | — | — |
@@ -624,7 +632,7 @@ Each IO or Display module connects to its panel routing board via a 16-pin 2×8 
 | GND | Power | Ground return |
 | V_3P3 | Power | 3.3V input from hub board — supports level shifting on modules that require it |
 | SDA_BUS / SCL_BUS | I2C | Main internal I2C bus — connects to Ctrl Module |
-| RST | Signal | Global reset — active low (ATtiny816 modules: no-connect — RST used for displays only) |
+| RST | Signal | Global reset — active low. Used by Teensy display carriers (carrier firmware performs a full reboot on assertion); no-connect on ATtiny816 modules (reset via CMD_RESET over I2C). Optional per module class — see §13.1 |
 | INT | Interrupt | Individual active-low interrupt line for this module |
 | INT_SAFE | Interrupt | Safe-switch interrupt line — only populated on modules that support safe switch connections (Dual Encoder or 1.9" Display) |
 
@@ -637,26 +645,40 @@ This section defines the minimum hardware and firmware requirements for any modu
 ### 13.1 Hardware Requirements
 
 **Connector**
-The module must implement the 16-pin 2×8 IDC connector with the pinout defined in Section 12. All power, ground, I2C, interrupt, and reset signals must be connected as specified. INT_SAFE is only required on modules that support a safe switch input.
+The module must implement the 16-pin 2×8 IDC connector with the pinout defined in Section 12. All power, ground, I2C, interrupt, and reset signals must be connected as specified. INT_SAFE is only required on modules that support a safe switch input. RST is required on Teensy display carriers and no-connect on ATtiny816 modules (see "Hardware Reset" below).
 
 **Power**
 The module must accept 12V on V_IN and provide its own local regulation. The standard power architecture is:
-- MPM3610 DC-DC converter: 12V → 5V (module logic and NeoPixel supply)
+- MPM3610 DC-DC converter: 12V → 5V (module logic and NeoPixel supply; on display carriers, also the display panel VDD)
 - AP2112K LDO: 5V → 3.3V (if 3.3V logic is required locally)
 
 Modules must not draw power from the V_3P3 pin on the IDC connector for primary logic supply — that pin is provided for level shifting support only.
 
+On the 7" display carriers (KC-01-1912), each carrier sources its full 5V load (display panel ~480/520 mA + Teensy 4.1 ~100/120 mA + local 3.3V logic) from one MPM3610 (1.2 A rated), leaving ~37% peak headroom. The display panel VDD is on the 5V rail; VDDIO operates at 3.3V. Do not power the panel from 3.3V.
+
 **Interrupt Line**
-The INT signal must be driven by a push-pull digital output on the module microcontroller (ATtiny816 PA1). A passive voltage divider must be fitted on the module board to level-shift the 5V push-pull output to a 3.3V-compatible signal on INT_BUS:
+The INT signal is an active-low, push-pull digital output driven by the module microcontroller. INT idles HIGH and is driven LOW to assert. Each module's INT line is dedicated to its own controller GPIO — there is no wired-OR bus interrupt. No pull-up resistor is fitted at the controller or the module; the push-pull output defines both levels.
 
-- R5: 10kΩ in series from the microcontroller output to the INT_BUS node
-- R6: 20kΩ from INT_BUS to GND
-- INT_BUS connects to the IDC INT pin
+Level handling depends on the module's logic-voltage domain:
 
-No pull-up resistor is used. The divider produces 3.3V on INT_BUS when the output is HIGH (idle) and 0V when LOW (asserted).
+- **5V modules (ATtiny816, e.g. KC-01-1802 / KC-01-1842):** the 5V push-pull output (PA1) is level-shifted to a 3.3V-compatible signal on INT_BUS by a passive divider on the module board:
+  - R5: 10kΩ in series from the microcontroller output to the INT_BUS node
+  - R6: 20kΩ from INT_BUS to GND
+  - The divider produces ~3.3V on INT_BUS when the output is HIGH (idle) and 0V when LOW (asserted).
+- **3.3V carriers (Teensy 4.1 display carriers, KC-01-1912):** the microcontroller drives INT_BUS directly at 3.3V push-pull. No divider is fitted — the output is already in the 3.3V domain.
+
+In both cases INT_BUS connects to the IDC INT pin (§12, pin 13). The signaling polarity (active-low, driven low to assert) is identical across module classes; only the level-conversion hardware differs.
+
+**Hardware Reset (RST)**
+RST (§12, pin 14; §11, pin 19) is an active-low global reset line, optional and module-class-specific:
+
+- **Teensy display carriers (KC-01-1912):** RST is connected. The master asserts RST low to command a full carrier reboot; the carrier firmware treats the RST input as a reset-command signal and performs a full software-initiated system reset on assertion. This is distinct from the software CMD_RESET (0x07) command, which resets application state only. For carriers fed RST over the external interface, receiving-end protection (10kΩ pull-up + 100Ω series + 100nF to GND) applies per §8.4.
+- **ATtiny816 modules:** RST is no-connect. Reset for these modules is via CMD_RESET over I2C only.
+
+A module is conformant whether or not it implements RST.
 
 **I2C**
-The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address must be assigned from the range 0x20–0x2E and must not conflict with any address in the device map (Section 8.3). The module must not include its own I2C pull-up resistors — pull-ups are provided by the master side.
+The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address must be assigned from the range 0x20–0x2E and must not conflict with any address in the device map (Section 8.3). The module must not include its own I2C pull-up resistors — pull-ups are provided by the master side. (Note: display carriers may carry local pull-ups on a separate software-I2C touch bus to their on-board touch controller; that bus is independent of the KBC SDA_BUS/SCL_BUS and is not subject to this rule.)
 
 ### 13.2 Firmware Requirements
 
@@ -712,7 +734,7 @@ The module must handle all base commands:
 Unrecognised command bytes must be silently ignored — no error response, no state change.
 
 **INT Assertion**
-The module must assert INT (drive PA1 LOW) when it has a state change ready for the master to read. INT must be deasserted (PA1 HIGH) when the master completes the read transaction. The transaction counter must increment on every INT assertion.
+The module must assert INT (drive the output LOW) when it has a state change ready for the master to read. INT must be deasserted (output HIGH) when the master completes the read transaction. The transaction counter must increment on every INT assertion.
 
 INT must not be asserted while the module is in SLEEPING or DISABLED state, except for the initial BOOT_READY assertion at power-on.
 
@@ -737,7 +759,8 @@ Capability flags not listed above are reserved and must be set to 0.
 |-------------|-----------|---------|
 | 16-pin IDC connector per Section 12 pinout | Yes | §12 |
 | 12V input, local MPM3610 + AP2112K regulation | Yes | §6.3 |
-| Push-pull INT with R5/R6 voltage divider | Yes | §8.2 |
+| Active-low push-pull INT; 5V modules add R5/R6 divider, 3.3V carriers drive direct | Yes | §8.2, §13.1 |
+| Hardware RST line (Teensy carriers) / no-connect (ATtiny816) | If carrier | §13.1 |
 | I2C target at 400kHz, address 0x20–0x2E | Yes | §8.1, §8.3 |
 | CMD_GET_IDENTITY response | Yes | §13.2 |
 | 3-byte universal header on all response packets | Yes | §13.2 |
@@ -753,8 +776,9 @@ Capability flags not listed above are reserved and must be set to 0.
 
 | Document | Location | Contents |
 |----------|----------|---------|
-| I2C Protocol Specification | `docs/developer/I2C_Protocol_Specification.md` | v2.2 — packet formats for all module types, addresses, command/response structure, lifecycle state machine |
-| Module UI Reference | `docs/developer/Module_UI_Reference.md` | v5.1 — per-module button assignments, switch wiring, CAG table, axis mappings, firmware implementation detail |
-| Power Budget | `docs/developer/Power_Budget.md` | Per-module and per-panel power consumption, supply headroom analysis |
-| Expansion Module Specification | `docs/developer/Expansion_Module_Spec.md` | v0.3 — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
+| I2C Protocol Specification | `docs/developer/I2C_Protocol_Specification.md` | v2.4 — packet formats for all module types, addresses, command/response structure, lifecycle state machine, interrupt signalling, hardware reset |
+| Module UI Reference | `docs/developer/Module_UI_Reference.md` | v5.2 — per-module button assignments, switch wiring, CAG table, axis mappings, firmware implementation detail |
+| Power Budget | `docs/developer/Power_Budget.md` | v1.1 — per-module and per-panel power consumption, supply headroom analysis |
+| Expansion Module Specification | `docs/developer/Expansion_Module_Spec.md` | Expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
+| KC-01-1912 Pin Assignment | `docs/developer/KC-01-1912_Pin_Assignment.md` | Teensy 4.1 ↔ LT7683 7" display carrier full pin map, library constructor, bring-up checklist |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |
