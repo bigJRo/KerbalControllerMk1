@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.7  
-**Date:** 2026-06-06  
+**Version:** 1.8  
+**Date:** 2026-06-08  
 **Document type:** Developer — Hardware
 
 ---
@@ -19,7 +19,7 @@
 | 1.4 | 2026-05-23 | Corrected §8.4 signal architecture throughout. LTC4311 relocated to Ctrl Module only. Physical pull-up resistors added. EXT_INT_2 receiving-end clarified. Full signal path documented. Ctrl Ext Module role clarified. §8.3 corrected — expansion keypad modules removed (direct GPIO matrix). §9.4 promoted to standalone Section 10 (External Expansion Interface) with new §10.4 Internal Wiring. Sections 10–14 renumbered to 11–15. §13.4 conformance table cross-references updated. |
 | 1.5 | 2026-05-24 | Corrected all board designators throughout to match schematic/board numbering convention (odd = schematic, even = board PCB). §5.1: Ctrl Module KC-01-1702, Ctrl Ext Module KC-01-1712. §5.2: Panel Routing Boards consolidated to Display Hub KC-01-1722 and Panel Hub KC-01-1732 (replacing four TBD entries). §5.3: 5" TFT Display Carrier KC-01-1912, 1.9" IPS Display Carrier KC-01-1902. §5.4: Button Module KC-01-1802, Wide Button Module KC-01-1812, Joystick Module KC-01-1832, Dual Encoder KC-01-1862, Throttle Module KC-01-1822, 7-Segment Display Module KC-01-1842. §5.5 renamed to Encoder Carrier Board (KC-01-1852). §5.6 added: Module Tester KC-01-9002 (replacing Universal Test Fixture TBD). §14 PCB Design List updated with all correct designators; Encoder KC-01-1852 and Module Tester KC-01-9002 added; USB Hub Board TBD entry removed (hub is integrated on Ctrl Module KC-01-1702); Expansion board entries removed (covered in Expansion Module Spec). Throttle Module notes updated to reflect MPM3610 9V buck replacing CJ7809 LDO. |
 | 1.6 | 2026-05-25 | Cleaned up references and reorganized. |
-| 1.7 | 2026-06-06 | Main display carriers (KC-01-1912) changed from Teensy 4.0 + RA8875 800×480 SPI to Teensy 4.1 + LT7683 (RA8876-register-compatible) 1024×600 7" IPS, 8080 16-bit parallel (ER-TFT070A2-6-5633 module). All four carriers (Annunciator, Info 1, Info 2, Resource) standardized on this combo. Display VDD on 5V rail, VDDIO 3.3V (bench-confirmed) — Teensy 4.1 interfaces directly, no level shifters; the former SPI RA8875 MISO buffer (SN74LVC1G125) is not required on the parallel bus. On-module 128 Mbit display RAM (W9812G6JH) enables 1024×600 double-buffering. Per-carrier local MPM3610 confirmed adequate (~760 mA peak vs 1.2 A). §13.1 interrupt conformance generalized to cover 5V (ATtiny816, push-pull + 10k/20k divider) and 3.3V (Teensy carrier, push-pull direct, no divider) module classes; INT remains active-low push-pull, driven low to assert, no pull-up. Updated §3.1, §3.3, §5.3, §6.3, §7.2, §7.5, §7.6, §8.3, §13.1, §13.4, §14. |
+| 1.8 | 2026-06-08 | Small display carrier (KC-01-1902) changed from XIAO RA4M1 + 1.9" ST7789 320×170 to XIAO RP2350 + 2.0" ST7789 240×320 (ER-TFTM020-2), with an added microSD socket on the shared SPI bus (unique CS). XIAO footprint unchanged (drop-in module swap); display CS reassigned for the RP2350 pad map. XIAO powered from carrier 5V via an SS14 Schottky (backfeed protection); display + microSD powered from the carrier AP2112K 3V3. Updated §3.1, §3.4, §5.3, §8.3. Firmware notes: KBC I2C uses Wire1 (D4/D5), avoid INPUT_PULLDOWN per RP2350 Errata E9. New doc: KC-01-1902_Pin_Assignment.md. |
 
 ---
 
@@ -64,7 +64,7 @@ This document is the primary hardware reference for developers designing, buildi
 
 ### 3.1 Top-Level Signal Flow
 
-A single USB cable connects the controller to the host PC. Inside the controller, a two-chip USB hub (2× CH334F cascaded) distributes USB to all Teensy-based microcontrollers. A single I2C bus connects the master Teensy 4.1 to all ATtiny816 input/output modules, Teensy 4.1 based display modules, and XIAO RA4M1 based display modules. A 12V main bus provides power throughout, with local DC-DC conversion on each board.
+A single USB cable connects the controller to the host PC. Inside the controller, a two-chip USB hub (2× CH334F cascaded) distributes USB to all Teensy-based microcontrollers. A single I2C bus connects the master Teensy 4.1 to all ATtiny816 input/output modules, Teensy 4.1 based display modules, and XIAO RP2350 based display modules. A 12V main bus provides power throughout, with local DC-DC conversion on each board.
 
 ### 3.2 Master Controller
 
@@ -85,7 +85,7 @@ The LT7683 carries 128 Mbit on-module display RAM (Winbond W9812G6JH) and a hard
 
 ### 3.4 System Displays
 
-Two XIAO RA4M1 microcontrollers each drive an ST7789 320×170 IPS display via SPI. Each connects only to the master controller and does not have a direct USB connection to Simpit. The two display roles are: System Temperature/Power data and System Status Indicators.
+Two XIAO RP2350 microcontrollers each drive an ST7789 240×320 2.0" IPS display via SPI, with a microSD socket sharing the SPI bus (unique chip-select). Each connects only to the master controller and does not have a direct USB connection to Simpit. The two display roles are: System Temperature/Power data and System Status Indicators.
 
 ### 3.5 IO Module Architecture
 
@@ -128,7 +128,7 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 | Board | Designator | Microcontroller | Display | Role |
 |-------|------------|-----------------|---------|------|
 | 7" TFT Display Carrier | KC-01-1912 | Teensy 4.1 | LT7683 (RA8876-compatible) 1024×600 7" IPS TFT, 8080 16-bit parallel (ER-TFT070A2-6-5633) | Large Format Graphic Touch Display. VDD 5V / VDDIO 3.3V (no level shifters). On-module 128 Mbit display RAM. Local MPM3610 (5V) + AP2112K (3.3V logic). FT5316 capacitive touch via software I2C |
-| 1.9" IPS Display Carrier | KC-01-1902 | XIAO RA4M1 | ST7789 320×170 IPS TFT | Small Format Graphic Display — can carry a safe switch via screw terminal |
+| 2" TFT Display Carrier | KC-01-1902 | XIAO RP2350 | ST7789 240×320 2.0" IPS TFT, 4-wire SPI (ER-TFTM020-2) | Small Format Graphic Display + microSD (shared SPI bus, unique CS). Can carry a safe switch via screw terminal. Display + SD on carrier AP2112K 3V3; XIAO fed from 5V via SS14. Firmware: KBC I2C on Wire1; avoid INPUT_PULLDOWN (Errata E9) |
 
 ### 5.4 IO Module Boards
 
@@ -325,8 +325,8 @@ The master detects INT_BUS going low on the dedicated interrupt line for each mo
 | 0x11 | Resource Display | Teensy 4.1 | B1 |
 | 0x12 | Info Display 1 | Teensy 4.1 | A1 |
 | 0x13 | Info Display 2 | Teensy 4.1 | B1 |
-| 0x14 | Sys Info Display | XIAO RA4M1 | A2 |
-| 0x15 | Status Indicator Display | XIAO RA4M1 | B2 |
+| 0x14 | Sys Info Display | XIAO RP2350 | A2 |
+| 0x15 | Status Indicator Display | XIAO RP2350 | B2 |
 | 0x16–0x1F | Reserved — expansion unit | — | — |
 | 0x18–0x1F | Reserved (expansion growth) | — | — |
 | 0x20 | UI Control | ATtiny816 | A2 |
@@ -781,4 +781,5 @@ Capability flags not listed above are reserved and must be set to 0.
 | Power Budget | `docs/developer/Power_Budget.md` | v1.1 — per-module and per-panel power consumption, supply headroom analysis |
 | Expansion Module Specification | `docs/developer/Expansion_Module_Spec.md` | Expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
 | KC-01-1912 Pin Assignment | `docs/developer/KC-01-1912_Pin_Assignment.md` | Teensy 4.1 ↔ LT7683 7" display carrier full pin map, library constructor, bring-up checklist |
+| KC-01-1902 Pin Assignment | `docs/developer/KC-01-1902_Pin_Assignment.md` | XIAO RP2350 ↔ 2.0" ST7789 + microSD carrier full pin map, shared-SPI wiring, RP2350 firmware notes, bring-up checklist |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |
