@@ -455,12 +455,10 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 ├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
 │ CP       │ Plant    │ Helmet   │ Grab     │ EVA      │ Jetpack  │
 │ Dock Port│ Flag     │ Toggle   │          │ Constr.  │ Enable   │
-│ PINK     │ SEAFOAM★ │ SKY      │ SEAFOAM  │ TEAL     │ LIME     │
+│ PINK     │ SEAFOAM  │ SKY      │ SEAFOAM  │ TEAL     │ LIME     │
 └──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
   Col 6(L)   Col 5      Col 4      Col 3      Col 2      Col 1(R)
 ```
-
-★ Plant Flag uses SEAFOAM flash — brief illuminate on press, returns to ENABLED.
 
 | KBC Index | Function | ACTIVE Color | Base CAG | Active When | Implementation |
 |-----------|----------|-------------|---------|-------------|----------------|
