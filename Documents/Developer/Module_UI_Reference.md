@@ -192,15 +192,15 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┐
-│  MSTR    │  DISPL   │  ENGINE  │ THROTTLE │
-│  OPER ↑  │  OPER ↑  │  SAFE ↑  │  INOP ↑  │
+│  MSTR    │  DISPL   │  SCE     │  UPTLM   │
+│  OPER ↑  │  OPER ↑  │  NORM ↑  │  INHIB ↑ │
 │  B16     │  B17     │  B18     │  B19     │
-│  RESET ↓ │  CLR ↓   │  ARM ↓   │  ACT ↓   │
+│  RESET ↓ │  CLR ↓   │  AUX ↓   │  XMIT ↓  │
 ├──────────┼──────────┼──────────┼──────────┤
-│  SCE     │  UPTLM   │  LTG     │ THRTL    │
-│  NORM ↑  │ INHIB ↑  │  NORM ↑  │  STD ↑   │
+│  LTG     │  ENGINE  │ THROTTLE │ THRTL    │
+│  NORM ↑  │  SAFE ↑  │  INOP ↑  │  STD ↑   │
 │  B20     │  B21     │  B22     │  B23     │
-│  AUX ↓   │  XMIT ↓  │  TEST ↓  │  FINE ↓  │
+│  TEST ↓  │  ARM ↓   │  ACT ↓   │  FINE ↓  │
 └──────────┴──────────┴──────────┴──────────┘
   Col 1      Col 2      Col 3      Col 4
 ```
@@ -209,11 +209,11 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 |-----------|-------------|-----|-----|------|-----------------|
 | B16 | MSTR | OPER | RESET | Momentary (hold) | Rising edge: CMD_RESET all modules |
 | B17 | DISPL | OPER | CLR | Momentary (hold) | Rising edge: CMD_SET_VALUE 0 to 0x2A, 0x2B — reset all screens to default |
-| B18 | ENGINE | SAFE | ARM | Latching | SAFE: throttle input disabled. ARM: throttle module active |
-| B19 | THROTTLE | INOP | ACT | Latching | Rising: CMD_SET_PRECISION 0x01 → Throttle module. Falling: CMD_SET_PRECISION 0x00 |
-| B20 | SCE | NORM | AUX | Latching | AUX: Simpit reset and data fetch |
-| B21 | UPTLM | INHIB | XMIT | Latching | XMIT: enable panel debug telemetry output |
-| B22 | LTG | NORM | TEST | Momentary (hold) | TEST rising: bulb test start (CMD_BULB_TEST 0x01 all modules). Falling: bulb test stop (0x00) |
+| B18 | SCE | NORM | AUX | Latching | AUX: Simpit reset and data fetch |
+| B19 | UPTLM | INHIB | XMIT | Latching | XMIT: enable panel debug telemetry output |
+| B20 | LTG | NORM | TEST | Momentary (hold) | TEST rising: bulb test start (CMD_BULB_TEST 0x01 all modules). Falling: bulb test stop (0x00) |
+| B21 | ENGINE | SAFE | ARM | Latching | SAFE: throttle input disabled. ARM: throttle module active |
+| B22 | THROTTLE | INOP | ACT | Latching | Rising: CMD_SET_PRECISION 0x01 → Throttle module. Falling: CMD_SET_PRECISION 0x00 |
 | B23 | THRTL | STD | FINE | Latching | FINE: system-wide input scaling for joystick precision |
 
 **⚠️ TODO #7:** Firmware sketch needs update to match new layout, and must be updated to handle 3-byte shift register reads for B16–B23 switch inputs.
