@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v5.2 | 2026-05-25
+**Jeb's Controller Works** | v5.3 | 2026-06-27
 
 This document is the definitive developer reference for all user-facing controls and indicators on each KCMk1 module. Arranged by I2C address. For panel location context see the address summary table at the end of this document.
 
@@ -192,15 +192,15 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 
 ```
 ┌──────────┬──────────┬──────────┬──────────┐
-│  MSTR    │  DISPL   │  SCE     │  UPTLM   │
-│  OPER ↑  │  OPER ↑  │  NORM ↑  │  INHIB ↑ │
+│  MSTR    │  DISPL   │  ENGINE  │ THROTTLE │
+│  OPER ↑  │  OPER ↑  │  SAFE ↑  │  INOP ↑  │
 │  B16     │  B17     │  B18     │  B19     │
-│  RESET ↓ │  CLR ↓   │  AUX ↓   │  XMIT ↓  │
+│  RESET ↓ │  CLR ↓   │  ARM ↓   │  ACT ↓   │
 ├──────────┼──────────┼──────────┼──────────┤
-│  LTG     │  ENGINE  │ THROTTLE │ THRTL    │
-│  NORM ↑  │  SAFE ↑  │  INOP ↑  │  STD ↑   │
+│  SCE     │  UPTLM   │  LTG     │ THRTL    │
+│  NORM ↑  │ INHIB ↑  │  NORM ↑  │  STD ↑   │
 │  B20     │  B21     │  B22     │  B23     │
-│  TEST ↓  │  ARM ↓   │  ACT ↓   │  FINE ↓  │
+│  AUX ↓   │  XMIT ↓  │  TEST ↓  │  FINE ↓  │
 └──────────┴──────────┴──────────┴──────────┘
   Col 1      Col 2      Col 3      Col 4
 ```
@@ -209,11 +209,11 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 |-----------|-------------|-----|-----|------|-----------------|
 | B16 | MSTR | OPER | RESET | Momentary (hold) | Rising edge: CMD_RESET all modules |
 | B17 | DISPL | OPER | CLR | Momentary (hold) | Rising edge: CMD_SET_VALUE 0 to 0x2A, 0x2B — reset all screens to default |
-| B18 | SCE | NORM | AUX | Latching | AUX: Simpit reset and data fetch |
-| B19 | UPTLM | INHIB | XMIT | Latching | XMIT: enable panel debug telemetry output |
-| B20 | LTG | NORM | TEST | Momentary (hold) | TEST rising: bulb test start (CMD_BULB_TEST 0x01 all modules). Falling: bulb test stop (0x00) |
-| B21 | ENGINE | SAFE | ARM | Latching | SAFE: throttle input disabled. ARM: throttle module active |
-| B22 | THROTTLE | INOP | ACT | Latching | Rising: CMD_SET_PRECISION 0x01 → Throttle module. Falling: CMD_SET_PRECISION 0x00 |
+| B18 | ENGINE | SAFE | ARM | Latching | SAFE: throttle input disabled. ARM: throttle module active |
+| B19 | THROTTLE | INOP | ACT | Latching | Rising: CMD_SET_PRECISION 0x01 → Throttle module. Falling: CMD_SET_PRECISION 0x00 |
+| B20 | SCE | NORM | AUX | Latching | AUX: Simpit reset and data fetch |
+| B21 | UPTLM | INHIB | XMIT | Latching | XMIT: enable panel debug telemetry output |
+| B22 | LTG | NORM | TEST | Momentary (hold) | TEST rising: bulb test start (CMD_BULB_TEST 0x01 all modules). Falling: bulb test stop (0x00) |
 | B23 | THRTL | STD | FINE | Latching | FINE: system-wide input scaling for joystick precision |
 
 **⚠️ TODO #7:** Firmware sketch needs update to match new layout, and must be updated to handle 3-byte shift register reads for B16–B23 switch inputs.
@@ -455,10 +455,12 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 ├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
 │ CP       │ Plant    │ Helmet   │ Grab     │ EVA      │ Jetpack  │
 │ Dock Port│ Flag     │ Toggle   │          │ Constr.  │ Enable   │
-│ PINK     │ SEAFOAM  │ SKY      │ SEAFOAM  │ TEAL     │ LIME     │
+│ PINK     │ SEAFOAM★ │ SKY      │ SEAFOAM  │ TEAL     │ LIME     │
 └──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
   Col 6(L)   Col 5      Col 4      Col 3      Col 2      Col 1(R)
 ```
+
+★ Plant Flag uses SEAFOAM flash — brief illuminate on press, returns to ENABLED.
 
 | KBC Index | Function | ACTIVE Color | Base CAG | Active When | Implementation |
 |-----------|----------|-------------|---------|-------------|----------------|
@@ -594,7 +596,7 @@ Digital key emulation. W/A/S/D serve double duty — walking on ground, jetpack 
 
 ## 0x2A — GPWS Input Panel
 
-**PCB:** KC-01-1842 | **Type:** 0x0B | **Panel:** A1 | **Library:** Kerbal7SegmentCore | **Capability:** DISPLAY
+**PCB:** KC-01-1842 | **Type:** 0x0B | **Panel:** A2 | **Library:** Kerbal7SegmentCore | **Capability:** DISPLAY
 
 4-digit 7-segment display (MAX7219), rotary encoder, three SK6812MINI-EA NeoPixel buttons.
 
@@ -706,7 +708,7 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 0x27 | Reserved | — | — | — | — |
 | 0x28 | Joystick Rotation | 0x09 | B2 | KerbalJoystickCore | Active |
 | 0x29 | Joystick Translation | 0x0A | A2 | KerbalJoystickCore | Active |
-| 0x2A | GPWS Input Panel | 0x0B | A1 | Kerbal7SegmentCore | Active |
+| 0x2A | GPWS Input Panel | 0x0B | A2 | Kerbal7SegmentCore | Active |
 | 0x2B | Pre-Warp Time | 0x0C | B2 | Kerbal7SegmentCore | Active |
 | 0x2C | Throttle Module | 0x0D | A2 | Standalone | Active |
 | 0x2D | Dual Encoder | 0x0E | B1 | Standalone | Active |
@@ -756,3 +758,4 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 5.0 | 2026-05-10 | Panel Interface Guide — panel-centric reorganization; Function Control redesigned; AUX CTRL (fmr EVA) expanded to 12 buttons; CP buttons moved to AUX CTRL; Switch Panel replaced by Switch Groups 1+2; Indicator Module removed; all discrete inputs removed from Vehicle Control, four from Stability Control |
 | 5.1 | 2026-05-19 | Reconciliation of v4.0 UI Reference and v5.0 Panel Interface Guide into single module-centric developer document. Switch Group 1 (on Function Control B12–B15) and Switch Group 2 (on Vehicle Control B12–B15) fully documented — panel-mounted switches wired to discrete inputs. Address summary table added. Removed-from-design table added. Open items carried forward. |
 | 5.2 | 2026-05-25 | Corrected all PCB designators to match board numbering convention. Button Module 1822→1802; Wide Button Module 1842→1812; Joystick Module 1831/1832→1832; Throttle Module 1861/1862→1822; 7-Segment Display Module 1881/1882→1842; Dual Encoder 1871/1872→1862. |
+| 5.3 | 2026-06-27 | Panel relocation: GPWS Input Panel (0x2A) moved from Panel A1 to Panel A2 per enclosure redesign (A1 reduced to power button + two 7" displays). Module header and Panel Location Summary updated. No address, packet, or functional change. |
