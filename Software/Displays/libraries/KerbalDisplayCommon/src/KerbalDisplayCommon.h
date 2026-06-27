@@ -3,7 +3,7 @@
 
 #define KDC_VERSION_MAJOR 2
 #define KDC_VERSION_MINOR 1
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library
@@ -16,13 +16,14 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 2.0.1
+  Version: 2.1.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
 #include <RA8875.h>
 #include <Wire.h>
+#include <cfloat>   // DBL_MAX -- used in BodyParams soiAlt for Kerbol sentinel
 
 
 /***************************************************************************************
@@ -52,6 +53,8 @@
 #include "fonts/Roboto_Black_16.c"
 #include "fonts/Roboto_Black_20.c"
 #include "fonts/Roboto_Black_24.c"
+#include "fonts/Roboto_Black_28.c"
+#include "fonts/Roboto_Black_32.c"
 #include "fonts/Roboto_Black_36.c"
 #include "fonts/Roboto_Black_40.c"
 #include "fonts/Roboto_Black_48.c"
@@ -121,6 +124,12 @@
 #define TFT_SAP_GREEN    0x53E5  /*  10,  31,   5 */
 #define TFT_INT_ORANGE   0xFA80  /*  31,  20,   0 */
 #define TFT_UPS_BROWN    0x6203  /*  12,  16,   3 */
+#define TFT_MINT         0xA6F6  /*  20,  55,  22 */
+#define TFT_MED_GREEN    0x0507  /*   0,  40,   7 */
+#define TFT_TAN          0xB46A  /*  22,  35,  10 */
+#define TFT_ROSE         0xF3CF  /*  30,  30,  15 */
+#define TFT_CRIMSON      0xD8A7  /*  27,   5,   7 */
+#define TFT_OCEAN        0x01F1  /*   0,  15,  17 */
 
 
 /***************************************************************************************
@@ -162,6 +171,24 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
                 const ButtonLabel &label, const tFont *font, bool isOn);
 
 // --- Text primitives ---
+//
+// (#A12) Encoding caveat: the text-rendering family (textLeft, textRight,
+// textCenter, printDisp, printValue, printName, printTitle) operates on
+// single bytes — there is no UTF-8 decoding. Each byte in the input string
+// is looked up directly in the font's character table. This has two
+// implications:
+//   1. UTF-8 multibyte sequences (e.g. 'é' = 0xC3 0xA9) are NOT decoded;
+//      each byte is treated as a separate character lookup. Such inputs
+//      will render as two unrelated glyphs (or zero-width glyphs per #A4)
+//      rather than the intended character.
+//   2. Byte-length truncation in printName() can split a multibyte sequence,
+//      leaving an orphaned UTF-8 continuation byte at the end.
+// Sketches receiving UTF-8 input (e.g. KSP vessel names) should pre-filter
+// non-ASCII bytes or transliterate before passing the string to these
+// functions. The Roboto_Black fonts include a few non-ASCII glyphs at custom
+// single-byte code points (e.g. Δ at 0x94) — those work only when the caller
+// passes the single byte directly, not as the corresponding UTF-8 sequence.
+
 void textLeft(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
               const String &value, uint16_t foreColor, uint16_t backColor);
 void textRight(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
@@ -179,8 +206,13 @@ String formatFloatUnits(float value, uint8_t decimals, String units);
 // --- Advanced formatters (KSP telemetry) ---
 // Note: formatSep() is a dependency of formatAlt() — keep together
 // Note: formatSep() drops the decimal part for values >= 1000 (#64)
+// Note: formatSep() float core uses int64_t internally so it no longer
+//       overflows for values >= 2^31 (#A5). For exact formatting of large
+//       integer values, call formatSepI64() directly — float precision
+//       caps usable integer range at ~1.6e7.
 // Note: formatTime() uses Kerbin day = 6 hours
 String formatSep(float value);
+String formatSepI64(int64_t value);
 String formatTime(float timeVal);
 String formatAlt(float value);
 String twString(uint8_t twIndex, bool physTW);
@@ -302,7 +334,14 @@ void drawVertBarGraph(RA8875 &tft,
 
 // Draw a semicircular arc indicator with an erasable needle.
 // Arc spans ±90° (left to right). prevVal is erased, curVal is drawn.
-// The arc track is redrawn on every call — call from updateScreen*() only on value change.
+//
+// IMPORTANT (#A8): This function performs a full redraw on every call — the
+// arc track (~91 fillCircle calls), both needle phases, and the centre dot.
+// It does NOT change-detect on prevVal/curVal. Gate at the call site:
+//   if (cur != prev) drawArcDisplay(..., prev, cur, ...);
+// A future revision (see C2) will split this into drawArcTrack +
+// drawArcNeedle so the track can be drawn once at init and only the needle
+// updated per value change.
 void drawArcDisplay(RA8875 &tft,
                     int16_t cx, int16_t cy,
                     uint16_t radius, uint16_t needleW,
@@ -441,27 +480,58 @@ enum VesselSituation : uint8_t {
 //   all string fields are empty — check currentBody.soiName[0] != '\0'
 //   to detect a valid result.
 //
-// All altitude/radius values are in metres.
-// surfGrav is in g (1.0 = Kerbin surface gravity).
-// surfGrav == 0.0 means the body is not landable (e.g. Kerbol, Jool).
-// flyHigh, lowSpace == 0 means the body has no atmosphere.
+// All altitude/radius values are in metres unless noted.
+// All velocity values are in m/s.
+// surfGrav is in m/s² (not g). gravity field replaces the old surfGrav-in-g convention.
+// hasSurface == false for Jool and Kerbol (gas giant / star — no landing).
+// hasAtmo == false means flyHigh and lowSpace are 0 and unused in C&W logic.
+// hasO2 == true means jet engines work and Kerbals can remove helmets.
+// soiAlt is double to preserve precision for large bodies (e.g. Jool ~2.4e12 m).
+// soiAlt == DBL_MAX for Kerbol (root body, no SOI boundary).
+// synchronousOrbit == 0 means no synchronous orbit achievable within SOI.
+// synodicPeriod == 0 for Kerbol (no synodic period relative to itself).
+// highQThreshold == 0 means CW_HIGH_Q is suppressed for this body (airless bodies).
+//   Calibrate empirically per atmospheric body from flight test.
+// reentryAlt == 0 for airless bodies. For atmospheric bodies: Pe below this
+//   altitude triggers committed reentry (red tier). Between reentryAlt and
+//   max(minSafe,lowSpace) is the aerobrake zone (yellow tier).
 
 struct BodyParams {
-  const char* soiName;    // Simpit SOI string — matches what Simpit sends
-  const char* dispName;   // Display name, uppercase, max 6 chars + null
-  float       minSafe;    // Minimum safe altitude (m)
-  float       flyHigh;    // Top of "Fly High" biome / atmosphere boundary (m)
-  float       lowSpace;   // Low space boundary (m)
-  float       highSpace;  // High space boundary (m)
-  float       surfGrav;   // Surface gravity in g; 0.0 if not landable
-  float       radius;     // Mean body radius (m)
-  const char* image;      // SD card BMP path, e.g. "/Kerbin-Display_240x140.bmp"
-  const char* cond;       // Atmosphere condition: "Vacuum", "Atmosphere",
-                          //   "Breathable", or "Plasma" (Kerbol only)
+  const char* soiName;          // Simpit SOI string — matches what Simpit sends
+  const char* dispName;         // Display name, uppercase, max 8 chars + null
+  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_240x168.bmp"
+  const char* cond;             // Atmosphere condition string:
+                                //   "Vacuum", "Atmosphere", "Breathable", "Plasma"
+  // --- Altitude boundaries (metres, from wiki science biome table) ---
+  float       minSafe;          // Highest terrain point (m); for Jool/Kerbol: crush/plasma alt
+  float       flyHigh;          // Low/High atmosphere science biome boundary (m); 0 if no atmo
+  float       lowSpace;         // Atmosphere top / Low space boundary (m); 0 if no atmo
+  float       highSpace;        // Low/High space science biome boundary (m)
+  float       reentryAlt;       // Pe below this = committed reentry, red tier (m); 0 if no atmo
+  double      soiAlt;           // Sphere of influence radius (m); DBL_MAX for Kerbol
+  // --- Physical properties ---
+  float       radius;           // Mean body radius (m)
+  float       gravity;          // Surface gravity (m/s²)
+  float       escapeVelocity;   // Escape velocity from surface (m/s)
+  // --- Orbital properties ---
+  float       synchronousOrbit; // Synchronous orbit altitude (m); 0 if not achievable
+  float       synodicPeriod;    // Synodic period relative to Kerbin (s); 0 for Kerbol
+  float       orbitInclination; // Orbital inclination relative to Kerbin equator (deg)
+  // --- Boolean flags ---
+  bool        hasAtmo;          // Body has an atmosphere
+  bool        hasO2;            // Atmosphere contains oxygen (jets work, helmets off)
+  bool        hasSurface;       // Body has a landable surface
+  // --- C&W tuning ---
+  float       highQThreshold;   // Dynamic pressure threshold for CW_HIGH_Q (Pa); 0 = suppressed
 };
 
 // Returns a copy of the BodyParams for the given Simpit SOI string.
 // Returns a zeroed/empty BodyParams if the SOI is not in the table.
+//
+// (#A22) Two overloads — prefer the const char* version when calling with a
+// raw character buffer (e.g. parsing Simpit packets) to avoid the per-call
+// String allocation. The String& version delegates via .c_str() and is
+// retained for compatibility.
 //
 // NOTE: The const char* fields (soiName, dispName, image, cond) in the returned
 // struct are pointers into string literals in the static _bodyTable array.
@@ -469,6 +539,7 @@ struct BodyParams {
 // to stack-allocated char arrays or reassign them to point to other strings —
 // treat them as read-only. If you need a mutable copy of a string field, use
 // strcpy() into a local char buffer of sufficient size.
+BodyParams getBodyParams(const char* SOI);
 BodyParams getBodyParams(const String& SOI);
 
 // =============================================================================
@@ -538,8 +609,10 @@ bool isTouched();
 // Polling has no flag to clear; call sites can be left unchanged.
 void clearTouchISR();
 
-// Returns the raw number of times the INT pin ISR has fired since boot.
-// Use for diagnostics — confirms whether interrupts are reaching the MCU at all.
+// Returns the number of touch events (rising INT edges) since boot. (#A21)
+// Name is legacy from the ISR era; the function now counts touch events
+// rather than ISR fires. Use for diagnostics — confirms whether touches
+// are reaching the MCU at all.
 uint32_t touchISRCount();
 
 // Reads all active touch points from the GSL1680F.

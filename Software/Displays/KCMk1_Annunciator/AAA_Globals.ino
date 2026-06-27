@@ -33,18 +33,29 @@ AppState prev;
    Derived from Simpit messages. Drive C&W logic and display behaviour.
    Not part of AppState -- not dirty-tracked, not drawn directly.
 ****************************************************************************************/
-bool    inFlight      = false;
-bool    inEVA         = false;
-bool    hasTarget     = false;
-bool    flightScene   = false;
-bool    docked        = false;
-bool    isRecoverable = false;
-bool    hasO2         = false;
-bool    inAtmo        = false;
-bool    physTW        = false;   // true when time warp is physics warp
-bool    simpitConnected = false; // true after Simpit handshake succeeds
-bool    idleState       = false; // true when master wants standby screen when not in flight
-uint8_t rawSituation  = 0;       // raw Simpit vesselSituation bitmask -- preserves sit_Landed
+bool    inFlight        = false;
+bool    inEVA           = false;
+bool    hasTarget       = false;
+bool    flightScene     = false;
+bool    docked          = false;
+bool    isRecoverable   = false;
+bool    hasO2           = false;
+bool    inAtmo          = false;
+bool    physTW          = false;   // true when time warp is physics warp
+bool    simpitConnected = false;   // true after Simpit handshake succeeds
+bool    idleState       = false;   // true when master wants standby screen when not in flight
+uint8_t rawSituation    = 0;       // raw Simpit vesselSituation bitmask -- preserves sit_Landed
+
+
+/***************************************************************************************
+   CHUTE ENVELOPE STATE
+   Evaluated in CautionWarning.ino, read by ScreenMain.ino to choose button colour.
+   Dirty-tracked separately from cautionWarningState because CW_CHUTE_ENV bit alone
+   cannot encode four colour states -- prevChuteEnvState carries the previous colour
+   so ScreenMain can detect changes even when the bit itself does not toggle.
+****************************************************************************************/
+ChuteEnvState chuteEnvState     = chute_Off;
+ChuteEnvState prevChuteEnvState = chute_Off;
 
 
 /***************************************************************************************
@@ -67,6 +78,7 @@ bool       alarmSilenced    = false; // true when crew has silenced active maste
    INVALIDATE ALL STATE
    Resets prev to a sentinel that differs from state on every field,
    forcing a full redraw on the next update pass.
+   Also resets prevChuteEnvState to a sentinel so CHUTE_ENV redraws on first pass.
 ****************************************************************************************/
 void invalidateAllState() {
   prev.masterAlarmOn        = !state.masterAlarmOn;
@@ -94,12 +106,38 @@ void invalidateAllState() {
   prev.vel_surf             = -1.0f;
   prev.vel_vert             = -1.0f;
   prev.apoapsis             = -1.0f;
+  prev.periapsis            = -1.0f;
   prev.stageDV              = -1.0f;
   prev.stageBurnTime        = -1.0f;
   prev.gForces              = -1.0f;
   prev.EC                   = -1.0f;
   prev.EC_total             = -1.0f;
+  prev.LF_stage             = -1.0f;
+  prev.LF_stage_tot         = -1.0f;
+  prev.OX_stage             = -1.0f;
+  prev.OX_stage_tot         = -1.0f;
+  prev.SF_stage             = -1.0f;
+  prev.SF_stage_tot         = -1.0f;
+  prev.mono                 = -1.0f;
+  prev.mono_tot             = -1.0f;
+  prev.tacFood              = -1.0f;
+  prev.tacFood_tot          = -1.0f;
+  prev.tacWater             = -1.0f;
+  prev.tacWater_tot         = -1.0f;
+  prev.tacOxygen            = -1.0f;
+  prev.tacOxygen_tot        = -1.0f;
+  prev.tacCO2               = -1.0f;
+  prev.tacCO2_tot           = -1.0f;
+  prev.tacWaste             = -1.0f;
+  prev.tacWaste_tot         = -1.0f;
+  prev.tacWW                = -1.0f;
+  prev.tacWW_tot            = -1.0f;
+  prev.atmoPressure         = -1.0f;
+  prev.atmoTemp             = -1.0f;
   prev.throttleCmd          = state.throttleCmd + 1;
+
+  // Force CHUTE_ENV redraw on next update pass
+  prevChuteEnvState = (chuteEnvState == chute_Off) ? chute_Red : chute_Off;
 }
 
 
@@ -132,17 +170,21 @@ void switchToScreen(ScreenType s) {
    flightScene is also NOT reset here. The caller (SCENE_CHANGE_MESSAGE handler) sets
    flightScene before calling resetDisplays(), so the value is already correct.
    Resetting it here would undo the caller's work.
+
+   chuteEnvState is reset to chute_Off on scene/vessel change since atmospheric
+   state is not guaranteed to be valid until ATMO_CONDITIONS_MESSAGE arrives.
 ****************************************************************************************/
 void resetDisplays() {
-  rawSituation  = 0;
-  inFlight      = false;
-  inEVA         = false;
-  hasTarget     = false;
-  docked        = false;
-  isRecoverable = false;
-  hasO2         = false;
-  inAtmo        = false;
+  rawSituation    = 0;
+  inFlight        = false;
+  inEVA           = false;
+  hasTarget       = false;
+  docked          = false;
+  isRecoverable   = false;
+  hasO2           = false;
+  inAtmo          = false;
+  chuteEnvState   = chute_Off;
 
   invalidateAllState();
-  prevScreen    = screen_COUNT;
+  prevScreen = screen_COUNT;
 }

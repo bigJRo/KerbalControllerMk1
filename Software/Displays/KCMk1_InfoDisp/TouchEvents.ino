@@ -2,17 +2,21 @@
    TouchEvents.ino -- Touch input for Kerbal Controller Mk1 Information Display
 
    Defence layers:
-   1. Count filter — reject count > MAX_TOUCH_COUNT (1). Multi-finger events on a
+   1. ISR flag — touchISR() attached to CTP_INT_PIN RISING captures touches that land
+      and lift during long draw calls (SCFT, ACFT). _touchPending persists until
+      processTouchEvents() runs, preventing missed touches (Problem A).
+   2. Count filter — reject count > MAX_TOUCH_COUNT (1). Multi-finger events on a
       single-button sidebar are never intentional; count>1 is a strong phantom signal.
-   2. Y dead zone — reject y >= SCREEN_H - TOUCH_DEAD_ZONE (bottom 12px). GSL1680
+   3. Y dead zone — reject y >= SCREEN_H - TOUCH_DEAD_ZONE (bottom 12px). GSL1680
       ghost touches from edge noise accumulate at y≈479 (screen boundary). Real
       sidebar touches are always well above this band.
-   3. X bounds check — reject x >= SCREEN_W.
-   4. Double-read with coordinate stability — re-read after 8ms; reject if count
+   4. X bounds check — reject x >= SCREEN_W.
+   5. Double-read with coordinate stability — re-read after 8ms; reject if count
       dropped to 0 OR if coordinates moved more than TOUCH_JITTER_MAX pixels.
+      Skipped for ISR-latched touches (finger already lifted, coordinates static).
       Phantom noise jumps around between reads; real touches are stable.
-   5. Debounce 500ms — prevents rapid re-fires within a burst.
-   6. Require-release — set on ANY confirmed touch, suppressing the rest of a burst
+   6. Debounce 500ms — prevents rapid re-fires within a burst.
+   7. Require-release — set on ANY confirmed touch, suppressing the rest of a burst
       until INT goes low.
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
@@ -27,17 +31,35 @@ static uint32_t lastTouchTime      = 0;
 static uint32_t lastTitleTouchTime = 0;
 static bool     _waitForRelease    = false;
 
+// ── Touch pending flag ────────────────────────────────────────────────────────────────
+// Set by ISR on CTP_INT_PIN rising edge. Persists across long draw calls so touches
+// that land and lift during a heavy redraw (SCFT, ACFT) are not missed.
+// Cleared in processTouchEvents() once the event has been handled or rejected.
+volatile bool _touchPending = false;
+
+void touchISR() {
+    _touchPending = true;
+}
+
 // Title bar uses a shorter debounce — toggles are intentional quick taps
 static const uint32_t TITLE_DEBOUNCE_MS = KCM_TOUCH_TITLE_DEBOUNCE_MS;  // #3B from SystemConfig
 
 
 void processTouchEvents() {
-  if (!isTouched()) {
+  // Accept touch if GPIO is currently high OR if the ISR caught a rising edge
+  // that may have already ended (finger lifted during a long draw call).
+  bool gpioHigh = isTouched();
+  if (!gpioHigh && !_touchPending) {
     _waitForRelease = false;
     return;
   }
 
-  // First read — quick sanity checks before the 8ms delay
+  // Clear the pending flag now — if we reject below, the touch is consumed anyway.
+  _touchPending = false;
+
+  // First read — use readTouch() directly. When acting on a latched _touchPending
+  // the GPIO may already be low, but the GSL1680 holds the last coordinates in its
+  // register until overwritten by the next touch, so the read is still valid.
   lastTouch = readTouch();
   if (lastTouch.count == 0) return;
 
@@ -59,46 +81,52 @@ void processTouchEvents() {
   uint16_t x1 = lastTouch.points[0].x;
   uint16_t y1 = lastTouch.points[0].y;
 
-  // Bounds check on first read
-  if (x1 >= SCREEN_W || y1 >= SCREEN_H) return;
+  // x2/y2 default to first-read coords — updated to confirmed coords if double-read runs
+  uint16_t x2 = x1;
+  uint16_t y2 = y1;
 
-  // Y dead zone — bottom edge phantom rejection
-  if (y1 >= SCREEN_H - TOUCH_DEAD_ZONE) {
+  // Double-read after 8ms — confirm touch is real and stable.
+  // Skip if GPIO is already low (touch was latched by ISR — finger already lifted,
+  // coordinates are static in the GSL1680 register, no jitter possible).
+  if (gpioHigh) {
+    delay(8);
+    TouchResult confirm = readTouch();
+
+    if (confirm.count == 0) {
+      if (debugMode) Serial.println(F("InfoDisp: Touch discarded (phantom — count=0 on reread)"));
+      return;
+    }
+
+    // Coordinate stability check — real touches don't jump
+    x2 = confirm.points[0].x;
+    y2 = confirm.points[0].y;
+    uint16_t dx = (x2 > x1) ? x2 - x1 : x1 - x2;
+    uint16_t dy = (y2 > y1) ? y2 - y1 : y1 - y2;
+    if (dx > TOUCH_JITTER_MAX || dy > TOUCH_JITTER_MAX) {
+      if (debugMode) {
+        Serial.print(F("InfoDisp: Touch discarded (jitter dx="));
+        Serial.print(dx);
+        Serial.print(F(" dy="));
+        Serial.print(dy);
+        Serial.println(F(")"));
+      }
+      return;
+    }
+
+    // Confirmed — use the more recent coordinate sample
+    lastTouch = confirm;
+  }
+
+  // Bounds and dead zone checks — applied to final coordinates
+  if (x2 >= SCREEN_W || y2 >= SCREEN_H) return;
+  if (y2 >= SCREEN_H - TOUCH_DEAD_ZONE) {
     if (debugMode) {
       Serial.print(F("InfoDisp: Touch discarded (y dead zone y="));
-      Serial.print(y1);
+      Serial.print(y2);
       Serial.println(F(")"));
     }
     return;
   }
-
-  // Double-read after 8ms — confirm touch is real and stable
-  delay(8);
-  TouchResult confirm = readTouch();
-
-  if (confirm.count == 0) {
-    if (debugMode) Serial.println(F("InfoDisp: Touch discarded (phantom — count=0 on reread)"));
-    return;
-  }
-
-  // Coordinate stability check — real touches don't jump
-  uint16_t x2 = confirm.points[0].x;
-  uint16_t y2 = confirm.points[0].y;
-  uint16_t dx = (x2 > x1) ? x2 - x1 : x1 - x2;
-  uint16_t dy = (y2 > y1) ? y2 - y1 : y1 - y2;
-  if (dx > TOUCH_JITTER_MAX || dy > TOUCH_JITTER_MAX) {
-    if (debugMode) {
-      Serial.print(F("InfoDisp: Touch discarded (jitter dx="));
-      Serial.print(dx);
-      Serial.print(F(" dy="));
-      Serial.print(dy);
-      Serial.println(F(")"));
-    }
-    return;
-  }
-
-  // Confirmed — use the more recent coordinate sample
-  lastTouch = confirm;
 
   // Title bar hit — checked BEFORE main debounce with its own shorter timer
   // Title bar = y < TITLE_TOP (62px), x < CONTENT_W
@@ -116,12 +144,14 @@ void processTouchEvents() {
 
       if (activeScreen == screen_ORB) {
         _orbAdvancedMode = !_orbAdvancedMode;
-        for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[1][r].value = "\x01";
+        // Full chrome redraw — basic and advanced have different layouts.
+        // switchToScreen() clears the screen and calls chromeScreen_ORB dispatch
+        // which branches on _orbAdvancedMode to the correct layout.
         switchToScreen(screen_ORB);
         clearTouchISR();
         if (debugMode) {
-          Serial.print(F("InfoDisp: ORB view -> "));
-          Serial.println(_orbAdvancedMode ? F("ADVANCED ELEMENTS") : F("APSIDES"));
+          Serial.print(F("InfoDisp: ORB mode -> "));
+          Serial.println(_orbAdvancedMode ? F("ADVANCED") : F("APSIDES"));
         }
       } else if (activeScreen == screen_LNDG) {
         _lndgReentryMode = !_lndgReentryMode;

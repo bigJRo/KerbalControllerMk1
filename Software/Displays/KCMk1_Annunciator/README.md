@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v1.1.1
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v2.1.0
 Teensy 4.0 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -92,18 +92,19 @@ All tunables are in `AAA_Config.ino`. The three operating mode flags can also be
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `demoMode` | `false` | Bench testing without KSP. Simpit disabled; all state driven internally. Can also be toggled at runtime by the I2C master — switching to demo reinitialises display state; switching to live connects Simpit (or requests a channel refresh if already connected). |
+| `demoMode` | `true` | Bench testing without KSP. Simpit disabled; all state driven internally. Can also be toggled at runtime by the I2C master. |
 | `audioEnabled` | `false` | Enables all audio feedback (alarms, chirps, tones). Can also be set via I2C. |
 | `debugMode` | `false` | Enables Serial debug output (touch coords, screen transitions, C&W changes, I2C traffic). |
+| `standaloneMode` | `false` | Bypasses the I2C master handshake on boot. Use for bench testing without the master controller connected. |
+| `standaloneTest` | `false` | Enters serial-driven test mode after boot. Implies `standaloneMode`. Set `demoMode = false` when using this. |
 | `DISPLAY_ROTATION` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
-| `tempCaution` | `70` | Temperature % of limit at which the C&W panel shows yellow. |
 | `tempAlarm` | `90` | Temperature % of limit at which C&W shows red and MASTER ALARM triggers. |
-| `commCaution` | `75` | CommNet signal % below which comms indicator shows yellow. |
-| `commAlarm` | `25` | CommNet signal % below which comms indicator shows red. |
-| `LOW_DV_MECO_HOLDOFF_MS` | `1500` | Ms after MECO clears before LOW_DV warning can fire (prevents false flash on throttle-up). |
-| `ALERT_ALT_THRESHOLD` | `3500.0` | Altitude (m ASL) upward-crossing that triggers an alert chirp. |
-| `ALERT_VEL_THRESHOLD` | `100.0` | Surface velocity (m/s) upward-crossing that triggers an alert chirp. |
-| `CW_ALT_THRESHOLD_M` | `500.0` | Surface altitude (m) below which `CW_ALT` fires. |
+| `CW_ALT_THRESHOLD_M` | `200.0` | Surface altitude (m) below which `CW_ALT` fires. |
+| `CW_GEAR_UP_THRESHOLD_M` | `200.0` | Surface altitude (m) below which `CW_GEAR_UP` fires when gear is up. |
+| `CW_RCS_LOW_FRAC` | `0.20` | MonoProp fraction below which `CW_RCS_LOW` fires (20%). |
+| `CW_PROP_LOW_WARN_FRAC` | `0.20` | Stage propellant fraction below which PROP_LOW shows yellow (20%). |
+| `CW_PROP_LOW_ALARM_FRAC` | `0.05` | Stage propellant fraction below which PROP_LOW shows red and MASTER ALARM triggers (5%). |
+| `CW_EC_LOW_FRAC` | `0.05` | EC fraction below which `CW_BUS_VOLTAGE` fires (5%). |
 
 The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConfig.h` and must stay in sync with their InfoDisp equivalents. Edit in `KCMk1_SystemConfig.h` only — the local constants here are aliases.
 
@@ -183,14 +184,18 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 **Standby** — full-screen splash BMP (`/StandbySplash_800x480.bmp` from SD). No dynamic content. Displayed when `flightScene` is false and `idle_state` is asserted by the master, or on initial boot before a flight scene is active. A 3-finger touch advances to Main when `flightScene` is true.
 
 **Main** — primary operational view. Contains:
-- MASTER ALARM button (top-left, 240×168 px) — illuminates red when any WARNING-level C&W bit is set. Touch to silence audio.
-- Caution & Warning panel (16 annunciator buttons, 4 rows × 4 columns)
-- Vessel situation column (7 indicators)
-- Control mode indicator (`ROVER` / `PLANE` / `SPCFT`) — turns red if mode mismatches vessel type
+- MASTER ALARM button (top-left, 240×160 px) — illuminates red when any WARNING-level C&W bit is set. Touch to silence audio.
+- Caution & Warning panel (25 annunciator buttons, 5 rows × 5 columns, 98×73 px each)
+- DOCK vertical text indicator (above situation column)
+- Vessel situation column (8 indicators: CNTCT, PRE-LNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, SPLASH, LANDED)
+- Panel condition strip (10 buttons, 5×2): DEMO/CTRL/DEBUG, WARP, AUDIO, THRTL ENA, TRIM SET, SPCFT/PLN/RVR, SWITCH ERR, SIMPIT LOST, THRTL PREC, PREC INPUT
+- Flight condition block (4 buttons, 2×2): FLYING LOW, LOW SPACE, FLYING HIGH, HIGH SPACE
 - SOI label and body thumbnail (bottom-left, links to SOI screen on touch)
-- Data readouts: vessel name, Tmax%, Crew, TW index, CommNet%, Stage, Tskin%, CtrlGrp
+- Data readouts: CtrlGrp, TW index
 
-**SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows: Min. Safe Alt, High/Low Atmosphere Alt (if applicable), High Space Alt, surface condition, surface gravity. Touch anywhere to return to Main.
+**SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (28pt, 36px each): Min Safe Alt, SOI Radius, Reentry Alt (atmo bodies), High Atmo Alt (atmo bodies), Low Space Alt (atmo bodies), High Space Alt, Condition, Surface Gravity. Touch anywhere to return to Main.
+
+**Standby** — full-screen splash BMP when system is idle.
 
 ### Screen Transitions
 
@@ -207,28 +212,37 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 
 ### Caution & Warning
 
-The C&W panel is a 16-bit bitmask (`state.cautionWarningState`) recomputed on every relevant Simpit message and every demo frame by `updateCautionWarningState()` in `CautionWarning.ino`. Bits that are set in `masterAlarmMask` also illuminate MASTER ALARM and drive audio.
+The C&W panel is a 32-bit bitmask (`state.cautionWarningState`) recomputed on every relevant Simpit message and every demo/test frame by `updateCautionWarningState()` in `CautionWarning.ino`. Bits that are set in `masterAlarmMask` also illuminate MASTER ALARM and drive audio.
 
 | Bit | Label | Severity | Condition |
 |-----|-------|----------|-----------|
-| 0 | HIGH SPACE | Info | Aloft, above atmosphere, above body's high-space threshold |
-| 1 | LOW SPACE | Info | Aloft, above atmosphere, below high-space threshold |
-| 2 | FLYING HIGH | Info | Aloft, in atmosphere, above `flyHigh` altitude |
-| 3 | FLYING LOW | Info | Aloft, in atmosphere, below `flyHigh` altitude |
-| 4 | ALT | Caution | Aloft, surface altitude < `CW_ALT_THRESHOLD_M` (500 m) |
-| 5 | DESCENT | Caution | Aloft and descending (vertical velocity < 0) |
-| 6 | GROUND PROX ⚠ | Warning | Aloft, descending, gear up, T.Grnd < `CW_GROUND_PROX_S` (10 s) |
-| 7 | MECO | Info | Throttle at 0% while in flight (not pre-launch) |
-| 8 | HIGH G ⚠ | Warning | G-forces > `CW_HIGH_G_ALARM` (9 g) or < `CW_HIGH_G_WARN` (−5 g) |
-| 9 | BUS VOLTAGE ⚠ | Warning | EC < `CW_EC_LOW_FRAC` (10%) of total capacity (requires ARP mod) |
-| 10 | HIGH TEMP ⚠ | Warning | `maxTemp` or `skinTemp` > `tempAlarm` threshold |
-| 11 | LOW ΔV ⚠ | Warning | Stage ΔV < `CW_LOW_DV_MS` (150 m/s) or burn time < `CW_LOW_BURN_S` (60 s) — suppressed during MECO + `LOW_DV_MECO_HOLDOFF_MS` hold-off |
-| 12 | WARP | Caution | Time warp index > 0 |
-| 13 | ATMO | Caution | Vessel inside atmosphere |
-| 14 | O2 PRESENT | Info | Atmosphere is breathable (gated on `inAtmo` to prevent stale reads) |
-| 15 | CONTACT | Info | Landed or splashed (raw `sit_Landed` or `sit_Splashed` from Simpit) |
+| 0 | LOW ΔV ⚠ | Warning | Stage ΔV < `CW_LOW_DV_MS` or burn time < `CW_LOW_BURN_S` — suppressed during throttle holdoff |
+| 1 | HIGH G ⚠ | Warning | G-forces > `CW_HIGH_G_ALARM` or < `CW_HIGH_G_WARN` |
+| 2 | HIGH TEMP ⚠ | Warning | `maxTemp` or `skinTemp` > `tempAlarm` threshold |
+| 3 | BUS VOLTAGE ⚠ | Warning | EC < `CW_EC_LOW_FRAC` (5%) of total capacity |
+| 4 | ABORT ⚠ | Warning | Abort action group active |
+| 5 | GROUND PROX ⚠ | Warning | Descending, T.Grnd < `CW_GROUND_PROX_S` |
+| 6 | Pe LOW ⚠ | Warning/Yellow | Red: Pe below reentry alt (atmo) or minSafe (airless). Yellow companion: Pe in aerobrake zone |
+| 7 | PROP LOW ⚠ | Warning/Yellow | Red: stage prop < 5%. Yellow companion: stage prop < 20% |
+| 8 | LIFE SUPP ⚠ | Warning/Yellow | Red: TAC-LS resource critical. Yellow companion: resource caution |
+| 9 | O2 PRESENT | Info | Breathable atmosphere present |
+| 10 | IMPACT IMM | Caution | T.Impact < `CW_IMPACT_IMM_S` (60 s) |
+| 11 | ALT | Caution | Surface altitude < `CW_ALT_THRESHOLD_M` (200 m) |
+| 12 | DESCENT | Caution | Descending (vertical velocity < 0) |
+| 13 | GEAR UP | Caution | Gear up, surface altitude < `CW_GEAR_UP_THRESHOLD_M` (200 m), descending |
+| 14 | ATMO | Caution | Inside atmosphere |
+| 15 | RCS LOW | Caution | MonoProp < `CW_RCS_LOW_FRAC` (20%) |
+| 16 | PROP RATIO | Caution | LF/OX ratio deviates from nominal 9:11 |
+| 17 | COMM LOST | Caution | CommNet signal lost |
+| 18 | Ap LOW | Caution | Apoapsis below atmosphere top (or minSafe for airless bodies) |
+| 19 | HIGH Q | Caution | Dynamic pressure above `currentBody.highQThreshold` (0 = suppressed) |
+| 20 | ORBIT STABLE | Positive | Pe and Ap both above atmosphere, Ap below SOI, situation=ORBIT |
+| 21 | ELEC GEN | Positive | EC increasing (charging) |
+| 22 | CHUTE ENV | State | Dynamic: green=safe for mains, yellow=drogue only, red=too fast for any chute |
+| 23 | SRB ACTIVE | State | Solid fuel decreasing (SRB burning) |
+| 24 | EVA ACTIVE | State | Kerbal on EVA |
 
-⚠ = included in `masterAlarmMask` by default
+⚠ = included in `masterAlarmMask` (illuminates MASTER ALARM, drives audio)
 
 **Audio triggers** (when `audioEnabled` is true):
 - WARNING bits newly set → master alarm starts
@@ -263,9 +277,9 @@ Named constants are defined in `KCMk1_Annunciator.h`.
 | File | Description |
 |------|-------------|
 | `KCMk1_Annunciator.ino` | `setup()` and `loop()` only |
-| `AAA_Config.ino` | All tunable constants and operating mode flags |
+| `AAA_Config.ino` | All tunable constants and operating mode flags (including `standaloneMode`, `standaloneTest`) |
 | `AAA_Globals.ino` | Global state, `AppState`, `switchToScreen()`, `invalidateAllState()`, `resetDisplays()` |
-| `ScreenMain.ino` | Main screen chrome and update pass |
+| `ScreenMain.ino` | Main screen layout constants, chrome, C&W panel, situation column, panel condition strip, flight condition block, update pass |
 | `ScreenSOI.ino` | SOI screen chrome and update pass |
 | `ScreenStandby.ino` | Standby screen — delegates to `drawStandbySplash()` |
 | `CautionWarning.ino` | C&W state machine: `updateCautionWarningState()` |
@@ -275,6 +289,7 @@ Named constants are defined in `KCMk1_Annunciator.h`.
 | `I2CSlave.ino` | I2C slave at 0x10 — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Terminal-aesthetic BIOS POST boot sequence |
 | `Demo.ino` | Demo mode — independent field sweep, calls `updateCautionWarningState()` |
+| `TestMode.ino` | Serial-driven test framework: logic tests (66 cases, automated pass/fail) and display walk-through (57 steps). Activated by `standaloneTest = true`. |
 
 ---
 
@@ -298,9 +313,10 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
-| **1.1.1** | Touch count filter now rejects anything other than a single-finger touch (`!= 1`). I2C constants consolidated to `KCMk1_SystemConfig.h` (`KCM_I2C_ADDR_ANNUNCIATOR`, `KCM_I2C_INT_PIN`, `KCM_I2C_SYNC_ANNUNCIATOR`). Cross-panel aligned thresholds now alias `KCM_*` constants — edit in `KCMk1_SystemConfig.h` only. Touch filter constants (`TOUCH_DEBOUNCE_MS`, `TOUCH_DEAD_ZONE`, `TOUCH_JITTER_MAX`) now alias `KCM_TOUCH_*`. Boot screen header now shows live version string (sketch + KDC + KDA) via `snprintf`. `initDemoMode()` now calls `switchToScreen()` at completion to record the screen switch timestamp. `DISPLAY_RESET` I2C command now documented to call `resetDisplays()` before `switchToScreen()` (per-flight flag clearing). Updated to KerbalDisplayCommon 2.1.0 and KerbalDisplayAudio 1.0.1. |
-| **1.1.0** | Updated to KerbalDisplayCommon v2.0.1 (`PrintState` required for `printDisp`/`printValue`). Ported 6-layer touch phantom defence from InfoDisp (Y dead zone, double-read stability, jitter check, require-release). Extracted all C&W numeric thresholds to `AAA_Config.ino`. Added sketch version constants to header. |
-| **1.0.0** | Initial release. 3-screen display (Main / SOI / Standby), full C&W panel, KerbalSimpit integration, KerbalDisplayAudio, I2C slave boot handshake with master Teensy 4.1. |
+| **2.1.0** | Complete C&W panel redesign: 25 indicators (5×5), body-aware Pe LOW / Ap LOW / ORBIT STABLE logic using full BodyParams (reentryAlt, lowSpace, soiAlt). Two-tier yellow/red indicators for PE_LOW, PROP_LOW, LIFE_SUPP. Dynamic CHUTE_ENV (off/green/yellow/red). Positive indicators: ORBIT_STABLE, ELEC_GEN. State indicators: SRB_ACTIVE, EVA_ACTIVE. CNTCT situation button driven by LANDED/SPLASH (not VSIT_DOCKED). DOCK vertical text indicator above situation column. Panel condition strip (10 buttons): DEMO/CTRL/DEBUG and SPCFT/PLN/RVR use black background with coloured text. Zone separation via TFT_SILVER gutters. Layout updated: 98×73 C&W buttons, repositioned DOCK/situation/panel/flight-condition zones. SOI screen adds Reentry Alt and SOI Radius rows, removes Escape Velocity, reduces font to 28pt at 36px row height. `standaloneMode` and `standaloneTest` operating modes added. Serial-driven test framework (`TestMode.ino`): 66 logic tests + 57-step display walk-through. KerbalDisplayCommon body table expanded with full BodyParams (gravity, escapeVelocity, synchronousOrbit, reentryAlt, soiAlt, hasSurface, highQThreshold). |
+| **2.0.0** | Major rewrite. RA8875 KDC v2 flicker-free rendering (PrintState, printDisp, printValue). Full AppState struct. Body-aware SOI screen with KASA meatball and per-body BMP. I2C slave boot handshake with master Teensy 4.1. |
+| **1.1.1** | Touch count filter, I2C constants to KCMk1_SystemConfig.h, cross-panel threshold aliases, boot screen live version string, KerbalDisplayCommon 2.1.0. |
+| **1.0.0** | Initial release. 3-screen display (Main / SOI / Standby), basic C&W panel, KerbalSimpit integration, KerbalDisplayAudio, I2C slave. |
 
 ---
 

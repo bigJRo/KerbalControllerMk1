@@ -21,7 +21,7 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.0.1
+   Version: 1.0.2
 ****************************************************************************************/
 
 /***************************************************************************************
@@ -30,7 +30,7 @@
 ****************************************************************************************/
 #define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
 #define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 0
-#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 1
+#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 2
 
 #include <Arduino.h>
 
@@ -91,10 +91,11 @@
    AUDIO STATE ENUM
 ****************************************************************************************/
 enum AudioState : uint8_t {
-  AUDIO_IDLE         = 0,
-  AUDIO_CHIRP        = 1,  // two-note sequence, plays once
-  AUDIO_CAUTION_TONE = 2,  // constant tone, fixed duration
-  AUDIO_MASTER_ALARM = 3,  // two-tone loop until condition clears or silenced
+  AUDIO_IDLE                  = 0,
+  AUDIO_CHIRP                 = 1,  // two-note sequence, plays once
+  AUDIO_CAUTION_TONE          = 2,  // constant tone, fixed duration
+  AUDIO_MASTER_ALARM          = 3,  // two-tone loop until condition clears or silenced
+  AUDIO_MASTER_ALARM_SILENCED = 4,  // alarm latched, tone off (crew acknowledged)
 };
 
 /***************************************************************************************
@@ -128,8 +129,12 @@ void audioStartAlarm();
 // Call when the sketch's alarm condition mask transitions from non-zero to 0.
 void audioStopAlarm();
 
-// Immediately stop the master alarm tone (e.g. crew pressed the master alarm button).
-// The sketch is responsible for managing its own silence latch and re-trigger logic.
+// Silence the master alarm tone without clearing the latch.
+// Transitions AUDIO_MASTER_ALARM -> AUDIO_MASTER_ALARM_SILENCED. Chirps and
+// caution tones remain suppressed so non-critical audio doesn't play while
+// alarm conditions are still active. Call audioStopAlarm() when conditions
+// actually clear, or audioStartAlarm() to resume the tone.
+// Has no effect unless the master alarm is currently active.
 void audioSilence();
 
 // Returns the current audio state.

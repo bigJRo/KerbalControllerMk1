@@ -231,11 +231,34 @@ Shared terminal-aesthetic rendering primitives used by all KCMk1 panel boot sequ
 
 `getBodyParams(SOI)` — looks up a Simpit SOI string in the built-in body table and returns a `BodyParams` struct. Returns a zeroed/empty struct if the SOI is not recognised — check `soiName[0] != '\0'` to detect a valid result. Call whenever Simpit reports a new SOI.
 
-**`BodyParams` fields:** `soiName`, `dispName`, `minSafe`, `flyHigh`, `lowSpace`, `highSpace`, `surfGrav`, `radius`, `image` (SD card BMP path), `cond` (`"Vacuum"`, `"Atmosphere"`, `"Breathable"`, `"Plasma"`). All altitudes in metres; `surfGrav` in g; `flyHigh`/`lowSpace` = 0 means no atmosphere; `surfGrav` = 0 means not landable.
+**`BodyParams` fields:**
 
-Bodies in the table: Kerbol, Moho, Eve, Gilly, Kerbin, Mun, Minmus, Duna, Ike, Dres, Jool, Laythe, Vall, Tylo, Bop, Pol, Eeloo.
+| Field | Type | Description |
+|-------|------|-------------|
+| `soiName` | `const char *` | Simpit SOI string key |
+| `dispName` | `const char *` | Display name |
+| `image` | `const char *` | SD card BMP path |
+| `cond` | `const char *` | Surface condition: `"Vacuum"`, `"Atmosphere"`, `"Breathable"`, `"Plasma"` |
+| `minSafe` | `float` | Minimum safe orbit altitude (m) |
+| `flyHigh` | `float` | Low/high atmosphere science biome boundary (m); 0 if no atmosphere |
+| `lowSpace` | `float` | Atmosphere top / low-space threshold (m); 0 if no atmosphere |
+| `highSpace` | `float` | High-space threshold (m) |
+| `reentryAlt` | `float` | Committed reentry altitude (m); 0 if no atmosphere |
+| `soiAlt` | `double` | SOI radius (m); `DBL_MAX` for Kerbol |
+| `radius` | `float` | Body radius (m) |
+| `gravity` | `float` | Surface gravity (m/s²) |
+| `escapeVelocity` | `float` | Escape velocity (m/s) |
+| `synchronousOrbit` | `float` | Synchronous orbit altitude (m); 0 if not applicable |
+| `synodicPeriod` | `float` | Synodic period (s); 0 if not applicable |
+| `orbitInclination` | `float` | Orbital inclination (degrees) |
+| `hasAtmo` | `bool` | True if body has atmosphere |
+| `hasO2` | `bool` | True if atmosphere is breathable |
+| `hasSurface` | `bool` | True if body has a landable surface |
+| `highQThreshold` | `float` | Dynamic pressure threshold for HIGH_Q warning (Pa); 0 = suppressed |
 
-The pointer fields `soiName`, `dispName`, `image`, and `cond` point into static string literals and remain valid for the lifetime of the program. Treat as read-only; use `strcpy()` into a local buffer if a mutable copy is needed.
+Bodies in the table: Kerbol, Moho, Eve, Gilly, Kerbin, Mun, Minmus, Duna, Ike, Dres, Jool, Laythe, Vall, Tylo, Bop, Pol, Eeloo (all 17 stock KSP1 bodies with wiki-canonical values).
+
+The pointer fields `soiName`, `dispName`, `image`, and `cond` point into static string literals and remain valid for the lifetime of the program. Treat as read-only.
 
 ### System Utilities
 
@@ -292,7 +315,11 @@ All colours are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommo
 | `TFT_ORANGE` | `0xFBE0` | Orange |
 | `TFT_INT_ORANGE` | `0xFA80` | International orange |
 | `TFT_GOLD` | `0xD566` | Gold |
-| `TFT_SILVER` | `0xC618` | Silver |
+| `TFT_MED_GREEN` | `0x0507` | Medium green |
+| `TFT_MINT` | `0xA6F6` | Mint |
+| `TFT_TAN` | `0xB46A` | Tan |
+| `TFT_ROSE` | `0xF3CF` | Rose |
+| `TFT_SILVER` | `0xC618` | Silver — used for zone border fills in KCMk1 panels |
 | `TFT_BROWN` | `0x8200` | Brown |
 | `TFT_UPS_BROWN` | `0x6203` | UPS brown |
 

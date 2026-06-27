@@ -51,6 +51,7 @@ void setup() {
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
   setupSD();
   setupTouch();
+  attachInterrupt(digitalPinToInterrupt(CTP_INT_PIN), touchISR, RISING);
   setupI2CSlave();
 
   bootSimText(infoDisp);
@@ -70,12 +71,15 @@ void setup() {
   }
 
   // Notify master that initialisation is complete, then wait for PROCEED.
-  buildI2CPacketAndAssert();
-  if (debugMode) Serial.println(F("InfoDisp: waiting for master PROCEED..."));
-  while (!i2cProceedReceived) {
-    updateI2CState();
+  // Skip in standalone test mode — no master present to send PROCEED.
+  if (!STANDALONE_TEST) {
+    buildI2CPacketAndAssert();
+    if (debugMode) Serial.println(F("InfoDisp: waiting for master PROCEED..."));
+    while (!i2cProceedReceived) {
+      updateI2CState();
+    }
+    if (debugMode) Serial.println(F("InfoDisp: PROCEED received, entering loop."));
   }
-  if (debugMode) Serial.println(F("InfoDisp: PROCEED received, entering loop."));
 }
 
 

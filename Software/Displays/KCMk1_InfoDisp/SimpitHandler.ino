@@ -387,8 +387,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // Reset LNDG re-entry row mode and parachute deployment state for new vessel
         _lndgReentryMode    = false;   // #34 reset re-entry mode on vessel switch
         _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
-        _prevShowAp         = false;   // #50 reset ORB time-row state on vessel switch
-        _attPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
+        _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
         _lndgReentryRow3PeA = true;
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;

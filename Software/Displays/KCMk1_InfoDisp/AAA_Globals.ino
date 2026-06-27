@@ -92,7 +92,7 @@ ScreenType contextScreen() {
 
   // 1b. Rover always goes to rover screen regardless of situation
   if (state.vesselType == type_Rover)
-    return screen_MISC;
+    return screen_ROVR;
 
   // 2. Any vessel on the ground → launch screen
   if ((state.situation & sit_PreLaunch) || (state.situation & sit_Landed))

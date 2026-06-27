@@ -108,6 +108,14 @@ static void _boot_B(RA8875 &tft) {
   for (uint8_t i = 0; i < POOL; i++) idx[i] = i;
   _bs_shuffle(idx, POOL);
 
+  // Sort the first SHOW entries so days appear in ascending (chronological) order.
+  // days[] is already ordered by index, so an insertion sort on idx[0..SHOW-1] suffices.
+  for (uint8_t i = 1; i < SHOW; i++) {
+    uint8_t key = idx[i], j = i;
+    while (j > 0 && idx[j-1] > key) { idx[j] = idx[j-1]; j--; }
+    idx[j] = key;
+  }
+
   uint16_t y = 0, wrapW = 792;
   y = _bs_header(tft, y, "MISSION LOG -- KSC FLIGHT 247");
 

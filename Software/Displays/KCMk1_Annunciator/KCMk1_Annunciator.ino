@@ -14,6 +14,7 @@
     TouchEvents.ino    -- touch debounce and gesture dispatch (processTouchEvents)
     Audio.ino          -- master alarm condition tracking (ALARM_* bits, updateAlarmMask) and audio wiring notes
     Demo.ino           -- demo mode animation (stepDemoState, initDemoMode)
+    TestMode.ino       -- serial-driven logic and display test framework
     I2CSlave.ino       -- I2C slave interface to KCMk1 master (Teensy 4.1) at address 0x10
 
   Libraries:
@@ -53,24 +54,30 @@ void setup() {
 
   bootSimText(infoDisp);
 
-  if (demoMode) {
+  if (standaloneTest) {
+    // Test mode implies standalone -- no Simpit, no master handshake.
+    // Serial wait extended to give the monitor time to connect.
+    uint32_t t = millis();
+    while (!Serial && (millis() - t < 3000)) {}
+    initTestMode();
+  } else if (demoMode) {
     if (debugMode) Serial.println(F("Annunciator: Demo mode -- Simpit disabled."));
     initDemoMode();
   } else {
     initSimpit();
   }
 
-  // Notify the master that initialisation is complete. Build a fresh status
-  // packet (simpitConnected / demoMode state is now valid) and assert INT so
-  // the master can read it. Then spin until the master sends I2C_REQ_PROCEED.
-  // While waiting, keep servicing the I2C receive handler via updateI2CState()
-  // so the PROCEED command is actually processed.
-  buildI2CPacketAndAssert();
-  if (debugMode) Serial.println(F("Annunciator: waiting for master PROCEED..."));
-  while (!i2cProceedReceived) {
-    updateI2CState();
+  // Master controller handshake -- skipped in standalone and test modes.
+  if (!standaloneMode && !standaloneTest) {
+    buildI2CPacketAndAssert();
+    if (debugMode) Serial.println(F("Annunciator: waiting for master PROCEED..."));
+    while (!i2cProceedReceived) {
+      updateI2CState();
+    }
+    if (debugMode) Serial.println(F("Annunciator: PROCEED received, entering loop."));
+  } else {
+    if (debugMode) Serial.println(F("Annunciator: standalone -- skipping master handshake."));
   }
-  if (debugMode) Serial.println(F("Annunciator: PROCEED received, entering loop."));
 
   infoDisp.fillScreen(TFT_BLACK);
 }
@@ -130,7 +137,9 @@ void loop() {
   }
 
   // --- Update state ---
-  if (demoMode) {
+  if (standaloneTest) {
+    runTestMode();
+  } else if (demoMode) {
     stepDemoState();
   } else {
     simpit.update();
