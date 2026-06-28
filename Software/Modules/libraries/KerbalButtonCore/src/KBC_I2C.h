@@ -1,7 +1,7 @@
 /**
  * @file        KBC_I2C.h
- * @version     1.0
- * @date        2026-04-07
+ * @version     2.0.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -10,16 +10,25 @@
  *              Manages all I2C communication between the KBC button
  *              module (target) and the system controller.
  *
- *              Implements the full KBC command set defined in
- *              KBC_Protocol_Spec.md v1.1:
+ *              Implements the full shared command set defined in
+ *              I2C_Protocol_Specification.md v2.4:
  *                CMD_GET_IDENTITY    — respond with module identity packet
  *                CMD_SET_LED_STATE   — apply 8-byte nibble-packed LED update
  *                CMD_SET_BRIGHTNESS  — set ENABLED state brightness
  *                CMD_BULB_TEST       — trigger all-white LED test
- *                CMD_SLEEP           — enter low power mode
- *                CMD_WAKE            — resume normal operation
- *                CMD_RESET           — clear all state and LEDs
+ *                CMD_SLEEP           — freeze state (SLEEPING), suppress INT
+ *                CMD_WAKE            — resume from SLEEPING to ACTIVE
+ *                CMD_RESET           — reset to defaults, stay ACTIVE
  *                CMD_ACK_FAULT       — clear module fault flag
+ *                CMD_ENABLE          — enter ACTIVE lifecycle, light buttons
+ *                CMD_DISABLE         — enter DISABLED lifecycle, dark outputs
+ *
+ *              Every data packet leads with the universal 3-byte header
+ *              (status byte carrying lifecycle/fault/data-changed, module
+ *              type ID, transaction counter) followed by the button-event
+ *              payload. The module powers on in BOOT_READY with INT
+ *              asserted, held until the controller reads the boot packet
+ *              and sends CMD_DISABLE.
  *
  *              Wire library callbacks (onReceive, onRequest) are
  *              routed through static trampoline functions to a single
@@ -27,8 +36,8 @@
  *              should exist per sketch.
  *
  *              INT pin (KBC_PIN_INT) is asserted low when button state
- *              changes are pending and cleared when the controller
- *              completes a read transaction.
+ *              changes are pending (in ACTIVE) and cleared when the
+ *              controller completes a read transaction.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -36,7 +45,7 @@
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: Wire library (megaTinyCore)
  *              Hardware: KC-01-1822 v1.1
- *              Protocol: KBC_Protocol_Spec.md v1.1
+ *              Protocol: I2C_Protocol_Specification.md v2.4
  */
 
 #ifndef KBC_I2C_H
@@ -123,9 +132,15 @@ public:
     void syncINT();
 
     /**
-     * @brief  Returns true if the module is currently in sleep mode.
+     * @brief  Returns true if the module is currently in SLEEPING lifecycle.
      */
     bool isSleeping() const;
+
+    /**
+     * @brief  Returns the current lifecycle state (KMC_STATUS_* value:
+     *         ACTIVE / SLEEPING / DISABLED / BOOT_READY).
+     */
+    uint8_t lifecycle() const;
 
     /**
      * @brief  Returns true if a fault condition is active.
@@ -188,10 +203,15 @@ private:
     uint8_t _cmdLen;
 
     // --------------------------------------------------------
-    //  Module state flags
+    //  Lifecycle and packet state
     // --------------------------------------------------------
 
-    bool _sleeping;
+    /** @brief Current lifecycle state (KMC_STATUS_ACTIVE/SLEEPING/DISABLED/BOOT_READY). */
+    uint8_t _lifecycle;
+
+    /** @brief Transaction counter — increments on each INT assertion, wraps 255→0. */
+    uint8_t _txCounter;
+
     bool _fault;
     bool _renderPending;
 
@@ -221,6 +241,8 @@ private:
     void _handleWake();
     void _handleReset();
     void _handleAckFault();
+    void _handleEnable();
+    void _handleDisable();
 
     /**
      * @brief  Build and send the button state packet in response to

@@ -1,6 +1,6 @@
 /**
  * @file        KBC_LEDControl.h
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -36,7 +36,7 @@
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: tinyNeoPixel_Static library (megaTinyCore)
  *              Hardware: KC-01-1822 v1.1
- *              Protocol: KBC_Protocol_Spec.md v1.1
+ *              Protocol: I2C_Protocol_Specification.md v2.4
  */
 
 #ifndef KBC_LEDCONTROL_H

@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -16,6 +16,7 @@
 #pragma once
 #include <stdint.h>
 #include <limits.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  Module identity
@@ -23,7 +24,7 @@
 
 #define THR_I2C_ADDRESS         0x2C
 #define THR_MODULE_TYPE_ID      KMC_TYPE_THROTTLE
-#define THR_FIRMWARE_MAJOR      1
+#define THR_FIRMWARE_MAJOR      2
 #define THR_FIRMWARE_MINOR      0
 
 /** @brief Capability flag — motorized position control. */
@@ -45,34 +46,26 @@
 #define CMD_DISABLE             KMC_CMD_DISABLE
 #define CMD_SET_THROTTLE        KMC_CMD_SET_THROTTLE
 #define CMD_SET_PRECISION       KMC_CMD_SET_PRECISION
-// ============================================================
-
-#define CMD_GET_IDENTITY        0x01
-#define CMD_SET_LED_STATE       0x02
-#define CMD_SET_BRIGHTNESS      0x03
-#define CMD_BULB_TEST           0x04
-#define CMD_SLEEP               0x05
-#define CMD_WAKE                0x06
-#define CMD_RESET               0x07
-#define CMD_ACK_FAULT           0x08
-#define CMD_ENABLE              0x09
-#define CMD_DISABLE             0x0A
-#define CMD_SET_THROTTLE        0x0B
-#define CMD_SET_PRECISION       0x0C
 
 // ============================================================
 //  Packet
 // ============================================================
 
+/** @brief Universal data-packet header size (status, type ID, tx counter). */
+#define THR_HEADER_SIZE         KMC_HEADER_SIZE
+
 /**
- * @brief Data packet size (module → controller), 4 bytes:
- *   Byte 0:   Status flags  (bit0=enabled, bit1=precision,
+ * @brief Data packet size (module → controller), 7 bytes (spec §9.4):
+ *   Byte 0:   Status byte   (lifecycle bits 1:0, fault bit 2, data-changed bit 3)
+ *   Byte 1:   Module Type ID
+ *   Byte 2:   Transaction counter
+ *   Byte 3:   Status flags  (bit0=enabled, bit1=precision,
  *                            bit2=pilot touching, bit3=motor moving)
- *   Byte 1:   Button events (bit0=THRTL_100, bit1=THRTL_UP,
+ *   Byte 4:   Button events (bit0=THRTL_100, bit1=THRTL_UP,
  *                            bit2=THRTL_DOWN, bit3=THRTL_00)
- *   Byte 2-3: Throttle value (uint16, big-endian, 0 to INT16_MAX)
+ *   Byte 5-6: Throttle value (uint16, big-endian, 0 to INT16_MAX)
  */
-#define THR_PACKET_SIZE         4
+#define THR_PACKET_SIZE         7
 #define THR_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 // ============================================================

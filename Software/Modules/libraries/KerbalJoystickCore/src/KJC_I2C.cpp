@@ -1,6 +1,6 @@
 /**
  * @file        KJC_I2C.cpp
- * @version     1.0.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -32,8 +32,13 @@ static uint8_t _capFlags = 0;
 
 static bool     _intAsserted    = false;
 static bool     _renderPending  = false;
-static bool     _sleeping       = false;
 static uint32_t _lastINTTime    = 0;
+
+// Lifecycle (KMC_STATUS_*), transaction counter, and fault flag for
+// I2C Protocol v2.4 conformance.
+static uint8_t  _lifecycle      = KMC_STATUS_BOOT_READY;
+static uint8_t  _txCounter      = 0;
+static bool     _fault          = false;
 
 static const uint8_t _CMD_BUF_SIZE = 1 + KJC_LED_PAYLOAD_SIZE;
 static uint8_t  _cmdBuf[_CMD_BUF_SIZE];
@@ -54,6 +59,8 @@ static void _assertINT() {
     digitalWrite(KJC_PIN_INT, LOW);
     _intAsserted  = true;
     _lastINTTime  = millis();
+    // Transaction counter increments on every INT assertion (wraps 255→0).
+    _txCounter++;
 }
 
 static void _clearINT() {
@@ -68,15 +75,28 @@ static void _clearINT() {
 static void _sendDataPacket() {
     uint8_t buf[KJC_PACKET_SIZE];
 
-    // Bytes 0-1: button state and change mask
-    buf[0] = buttonsGetState();
-    buf[1] = buttonsGetChangeMask();
+    // Byte 0-2: universal 3-byte header
+    uint8_t status = _lifecycle & KMC_STATUS_LIFECYCLE_MASK;
+    if (_fault) status |= KMC_STATUS_FAULT;
+    status |= KMC_STATUS_DATA_CHANGED;
+    buf[0] = status;
+    buf[1] = _typeId;
+    buf[2] = _txCounter;
 
-    // Bytes 2-7: axis data (int16, big-endian)
+    // Byte 3-5: button events (rising edges), change mask, persistent state.
+    // Read state before consuming the change mask so they stay consistent;
+    // events are the inputs that changed and are now pressed.
+    uint8_t state  = buttonsGetState();
+    uint8_t change = buttonsGetChangeMask();
+    buf[3] = (uint8_t)(change & state);   // events — rising edges
+    buf[4] = change;                      // change mask
+    buf[5] = state;                       // persistent state
+
+    // Byte 6-11: axis data (int16, big-endian)
     for (uint8_t i = 0; i < KJC_AXIS_COUNT; i++) {
         int16_t val = adcGetScaled(i);
-        buf[2 + (i * 2)]     = (uint8_t)(val >> 8);    // high byte
-        buf[2 + (i * 2) + 1] = (uint8_t)(val & 0xFF);  // low byte
+        buf[6 + (i * 2)]     = (uint8_t)(val >> 8);    // high byte
+        buf[6 + (i * 2) + 1] = (uint8_t)(val & 0xFF);  // low byte
     }
 
     adcClearPending();
@@ -126,42 +146,46 @@ static void _dispatch() {
             break;
 
         case KJC_CMD_SLEEP:
-            _sleeping = true;
-            buttonsClearLEDs();
-            _renderPending = true;
+            // SLEEPING freezes current state exactly as-is — no visual
+            // change. INT suppressed until CMD_WAKE.
+            _lifecycle = KMC_STATUS_SLEEPING;
             _clearINT();
             break;
 
         case KJC_CMD_WAKE:
-            _sleeping = false;
-            buttonsSetLED(0, KJC_LED_ENABLED);
-            buttonsSetLED(1, KJC_LED_ENABLED);
-            _renderPending = true;
+            // Resume from SLEEPING to ACTIVE; send a fresh state packet.
+            _lifecycle = KMC_STATUS_ACTIVE;
+            _assertINT();
             break;
 
         case KJC_CMD_RESET:
-            buttonsClearLEDs();
+            // Reset to defaults, stay ACTIVE. Buttons return to backlit.
             buttonsClearAll();
             adcClearAll();
-            _renderPending   = false;
-            _sleeping        = false;
+            buttonsSetLED(0, KJC_LED_ENABLED);
+            buttonsSetLED(1, KJC_LED_ENABLED);
+            _lifecycle       = KMC_STATUS_ACTIVE;
+            _renderPending   = true;
             _pendingResponse = RESP_NONE;
             _clearINT();
             break;
 
         case KJC_CMD_ACK_FAULT:
-            // No fault tracking — acknowledge silently
+            _fault = false;
             break;
 
         case KJC_CMD_ENABLE:
-            _sleeping = false;
+            // Enter ACTIVE and light the NeoPixel buttons to ENABLED.
+            _lifecycle = KMC_STATUS_ACTIVE;
             buttonsSetLED(0, KJC_LED_ENABLED);
             buttonsSetLED(1, KJC_LED_ENABLED);
             _renderPending = true;
             break;
 
         case KJC_CMD_DISABLE:
-            _sleeping = true;
+            // Enter DISABLED — outputs dark, inputs suppressed. Also
+            // completes BOOT_READY init (clears the boot INT).
+            _lifecycle = KMC_STATUS_DISABLED;
             buttonsSetLED(0, KJC_LED_OFF);
             buttonsSetLED(1, KJC_LED_OFF);
             _renderPending = true;
@@ -187,19 +211,16 @@ static void _onReceive(int numBytes) {
 }
 
 static void _onRequest() {
-    switch (_pendingResponse) {
-        case RESP_DATA:
-            _sendDataPacket();
-            break;
-        case RESP_IDENTITY:
-            _sendIdentityPacket();
-            break;
-        default:
-            for (uint8_t i = 0; i < KJC_PACKET_SIZE; i++) {
-                Wire.write((uint8_t)0);
-            }
-            break;
+    // An identity read (after CMD_GET_IDENTITY) takes priority and does
+    // not disturb a pending INT. Every other read returns the current
+    // data packet (universal header + button/axis payload).
+    if (_pendingResponse == RESP_IDENTITY) {
+        _sendIdentityPacket();
+        _pendingResponse = RESP_NONE;
+        return;
     }
+
+    _sendDataPacket();
     _pendingResponse = RESP_NONE;
 }
 
@@ -216,6 +237,12 @@ void kjcI2CBegin(uint8_t typeId, uint8_t capFlags) {
 
     Wire.onReceive(_onReceive);
     Wire.onRequest(_onRequest);
+
+    // Power-on lifecycle: BOOT_READY. Assert INT and hold until the
+    // controller reads the boot packet and sends CMD_DISABLE (spec §3).
+    _lifecycle       = KMC_STATUS_BOOT_READY;
+    _pendingResponse = RESP_DATA;
+    _assertINT();
 }
 
 // ============================================================
@@ -227,8 +254,10 @@ void kjcI2CBegin(uint8_t typeId, uint8_t capFlags) {
 // ============================================================
 
 void kjcI2CSyncINT() {
-    if (_sleeping) {
-        if (_intAsserted) _clearINT();
+    // Input-driven INT only applies in ACTIVE. In BOOT_READY the INT is
+    // held from kjcI2CBegin() until the boot packet is read; in SLEEPING
+    // and DISABLED, input changes are suppressed.
+    if (_lifecycle != KMC_STATUS_ACTIVE) {
         return;
     }
 
@@ -269,5 +298,5 @@ void kjcI2CClearRenderPending() {
 }
 
 bool kjcI2CIsSleeping() {
-    return _sleeping;
+    return _lifecycle == KMC_STATUS_SLEEPING;
 }

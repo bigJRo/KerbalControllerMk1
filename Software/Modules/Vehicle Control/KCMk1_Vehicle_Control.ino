@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Vehicle_Control.ino
- * @version     1.0
- * @date        2026-04-07
+ * @version     2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -14,13 +14,16 @@
  *              for Kerbal Space Program. Parachute buttons (B8-B11)
  *              support extended LED states for pre-deployment sequencing.
  *
- *              Four discrete input positions carry auxiliary vehicle
- *              state signals (parking brake, parachutes armed, lights
- *              lock, gear lock). None have LED outputs.
+ *              The eight Switch Group 2 panel switches are read as discrete
+ *              inputs at KBC indices 16-23 via a third shift register (U16).
+ *              (Resolves Module UI Reference Open Item #9/TODO #9: the old
+ *              B12-B15 discrete-input handling is removed and Switch Group 2
+ *              is added via 24-input / 3-byte shift-register reads.)
  *
  *              I2C Address: 0x24
  *              Module Type: KBC_TYPE_VEHICLE_CONTROL (0x05)
  *              Extended States: Yes (KBC_CAP_EXTENDED_STATES)
+ *              Inputs: 24 (KBC_INPUT_COUNT) via 3 shift registers
  *
  *              NeoPixel button layout (6 rows x 2 columns):
  *
@@ -49,11 +52,22 @@
  *                        Drogue Cut        Main Cut
  *                        RED               RED
  *
- *              Discrete positions (outside NeoPixel grid, input only):
- *                B12 - Parking Brake    - input only, no LED
- *                B13 - Parachutes Armed - input only, no LED
- *                B14 - Lights Lock      - input only, no LED
- *                B15 - Gear Lock        - input only, no LED
+ *              B12-B15 are no-connects on the PCB (the former parking
+ *              brake / parachutes-armed / lights-lock / gear-lock discrete
+ *              inputs are removed — those switches are now Switch Group 2).
+ *
+ *              Switch Group 2 — discrete inputs (no LED), reported in the
+ *              button-event payload bytes for inputs 16-23:
+ *                KBC index 16 → CHUTE   (SAFE / ARM) — parachute interlock
+ *                KBC index 17 → GEAR    (UP / DOWN)
+ *                KBC index 18 → BRAKE   (REL / LOCK)
+ *                KBC index 19 → EXT LT  (OFF / ILLUM)
+ *                KBC index 20 → SAS     (OFF / ENAB)
+ *                KBC index 21 → RCS     (OFF / ENAB)
+ *                KBC index 22 → THC/RHC (NORM / PREC)
+ *                KBC index 23 → AUDIO   (MUTE / LIVE)
+ *              Switch semantics and controller actions are resolved on the
+ *              main controller; this module reports raw input state only.
  *
  *              Button-to-KBC index mapping:
  *                BUTTON01 (PCB) -> KBC index 0  -> Brakes
@@ -68,10 +82,8 @@
  *                BUTTON10 (PCB) -> KBC index 9  -> Drogue Deploy
  *                BUTTON11 (PCB) -> KBC index 10 -> Main Cut
  *                BUTTON12 (PCB) -> KBC index 11 -> Drogue Cut
- *                BUTTON13 (PCB) -> KBC index 12 -> Parking Brake (input only)
- *                BUTTON14 (PCB) -> KBC index 13 -> Parachutes Armed (input only)
- *                BUTTON15 (PCB) -> KBC index 14 -> Lights Lock (input only)
- *                BUTTON16 (PCB) -> KBC index 15 -> Gear Lock (input only)
+ *                BUTTON13-16    -> KBC index 12-15 -> No-connect (PCB)
+ *                Switch Group 2 -> KBC index 16-23 -> discrete inputs (U16)
  *
  *              Extended LED state usage (parachute buttons B8-B11):
  *                WARNING        - parachute deployment window approaching
@@ -82,8 +94,8 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware:  KC-01-1822 v1.1 (ATtiny816)
- *              Library:   KerbalButtonCore v1.0.0
+ * @note        Hardware:  KC-01-1812 v1.1 (ATtiny816)
+ *              Library:   KerbalButtonCore v2.0.0
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher
@@ -94,6 +106,19 @@
  */
 
 #include <Wire.h>
+
+// ============================================================
+//  Input width — 24 inputs (Switch Group 2)
+//
+//  Vehicle Control adds a third 74HC165 (U16) for the eight Switch
+//  Group 2 panel switches at KBC indices 16-23. These overrides MUST be
+//  defined before including KerbalButtonCore.h so the library widens its
+//  input path and response packet (9-byte packet). See KBC_Config.h.
+// ============================================================
+
+#define KBC_INPUT_COUNT     24
+#define KBC_SHIFTREG_COUNT  3
+
 #include <KerbalButtonCore.h>
 
 // ============================================================
@@ -123,10 +148,8 @@
 //  B9   Drogue Deploy - GREEN  (parachute deploy — positive action)
 //  B10  Main Cut      - RED    (parachute cut — irreversible)
 //  B11  Drogue Cut    - RED    (parachute cut — irreversible)
-//  B12  Parking Brake - OFF    (input only, no LED hardware)
-//  B13  Para Armed    - OFF    (input only, no LED hardware)
-//  B14  Lights Lock   - OFF    (input only, no LED hardware)
-//  B15  Gear Lock     - OFF    (input only, no LED hardware)
+//  B12-B15            - OFF    (no-connect on the PCB)
+//  16-23 Switch Group 2        (discrete inputs, no LED — not in this array)
 // ============================================================
 
 const RGBColor activeColors[KBC_BUTTON_COUNT] = {
@@ -142,10 +165,13 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_GREEN,   // B9  - Drogue Deploy  (Col 1, Row 5) - parachute deploy
     KBC_RED,     // B10 - Main Cut       (Col 2, Row 6) - irreversible
     KBC_RED,     // B11 - Drogue Cut     (Col 1, Row 6) - irreversible
-    KBC_OFF,     // B12 - Parking Brake  - input only, no LED
-    KBC_OFF,     // B13 - Para Armed     - input only, no LED
-    KBC_OFF,     // B14 - Lights Lock    - input only, no LED
-    KBC_OFF,     // B15 - Gear Lock      - input only, no LED
+    KBC_OFF,     // B12 - No-connect (PCB)
+    KBC_OFF,     // B13 - No-connect (PCB)
+    KBC_OFF,     // B14 - No-connect (PCB)
+    KBC_OFF,     // B15 - No-connect (PCB)
+    // KBC indices 16-23 are Switch Group 2 discrete inputs (U16) with no
+    // LED hardware — they have no entry in this colour array (sized to the
+    // 16 LED positions, KBC_BUTTON_COUNT).
 };
 
 // ============================================================
@@ -167,9 +193,11 @@ void setup() {
     // Wire.begin() must be called before kbc.begin()
     Wire.begin(I2C_ADDRESS);
 
-    // Initialise all library subsystems.
-    // NeoPixel buttons B0-B11 start in ENABLED (dim white) state.
-    // B12-B15 start OFF (input only, no LED hardware).
+    // Initialise all library subsystems. The module powers on dark
+    // (BOOT_READY → DISABLED); NeoPixel buttons B0-B11 light to ENABLED
+    // on CMD_ENABLE. B12-B15 are no-connects. The library reads all 24
+    // inputs (3 shift registers) and reports Switch Group 2 (16-23) in
+    // the button-event payload.
     kbc.begin();
 }
 
@@ -179,12 +207,12 @@ void setup() {
 
 void loop() {
     // update() handles all library tasks each iteration:
-    //   - Button polling and debounce (every KBC_POLL_INTERVAL_MS)
-    //     including discrete inputs B12-B15 which are reported
-    //     to the controller via normal button state packets
+    //   - Button/switch polling and debounce across all 24 inputs,
+    //     including Switch Group 2 (16-23) reported to the controller
+    //     via the button-event payload
     //   - LED flash timing for WARNING and ALERT extended states
     //     on parachute buttons B8-B11
     //   - Render pending LED changes from I2C commands
-    //   - INT pin synchronisation with button state
+    //   - INT pin synchronisation with input state
     kbc.update();
 }

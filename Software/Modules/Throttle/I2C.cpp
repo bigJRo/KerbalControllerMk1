@@ -1,6 +1,6 @@
 /**
  * @file        I2C.cpp
- * @version     1.0
+ * @version     2.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
@@ -32,6 +32,13 @@ static bool _enabled     = false;
 static bool _precision   = false;
 static bool _intAsserted = false;
 
+// Lifecycle (KMC_STATUS_*), transaction counter, and fault flag for
+// I2C Protocol v2.4 conformance. _enabled tracks the motor/LED active
+// state and equals (lifecycle == ACTIVE).
+static uint8_t _lifecycle = KMC_STATUS_BOOT_READY;
+static uint8_t _txCounter = 0;
+static bool    _fault     = false;
+
 // Cached button events snapshot — captured in i2cSyncINT() when
 // events are read for motor target logic, consumed in _sendDataPacket()
 // when the controller reads. Prevents buttonsGetEvents() being called
@@ -57,6 +64,8 @@ static volatile ResponseType _pendingResponse = RESP_NONE;
 static void _assertINT() {
     digitalWrite(THR_PIN_INT, LOW);
     _intAsserted = true;
+    // Transaction counter increments on every INT assertion (wraps 255→0).
+    _txCounter++;
 }
 
 static void _clearINT() {
@@ -86,10 +95,10 @@ static void _disable() {
 }
 
 // ============================================================
-//  _buildStatusByte()
+//  _buildFlagsByte() — module-specific status flags (payload byte 3)
 // ============================================================
 
-static uint8_t _buildStatusByte() {
+static uint8_t _buildFlagsByte() {
     uint8_t flags = 0;
     if (_enabled)            flags |= THR_FLAG_ENABLED;
     if (_precision)          flags |= THR_FLAG_PRECISION;
@@ -106,10 +115,19 @@ static void _sendDataPacket() {
     uint8_t buf[THR_PACKET_SIZE];
     uint16_t val = wiperGetScaled();
 
-    buf[0] = _buildStatusByte();
-    buf[1] = _pendingEvents;      // events snapshot captured in i2cSyncINT()
-    buf[2] = (uint8_t)(val >> 8);
-    buf[3] = (uint8_t)(val & 0xFF);
+    // Byte 0-2: universal 3-byte header
+    uint8_t status = _lifecycle & KMC_STATUS_LIFECYCLE_MASK;
+    if (_fault) status |= KMC_STATUS_FAULT;
+    status |= KMC_STATUS_DATA_CHANGED;
+    buf[0] = status;
+    buf[1] = THR_MODULE_TYPE_ID;
+    buf[2] = _txCounter;
+
+    // Byte 3-6: module flags, button events, throttle value (big-endian)
+    buf[3] = _buildFlagsByte();
+    buf[4] = _pendingEvents;      // events snapshot captured in i2cSyncINT()
+    buf[5] = (uint8_t)(val >> 8);
+    buf[6] = (uint8_t)(val & 0xFF);
 
     _pendingEvents = 0;           // consumed — clear after building packet
     wiperClearChanged();
@@ -154,28 +172,51 @@ static void _dispatch() {
             if (!_enabled) buttonsLEDsOff();
             break;
 
-        case CMD_SLEEP:
         case CMD_DISABLE:
+            // DISABLED — motor driven to 0 and held, LEDs off, inputs
+            // suppressed. Also completes BOOT_READY init (clears boot INT).
+            _lifecycle = KMC_STATUS_DISABLED;
             _disable();
+            _clearINT();
             break;
 
-        case CMD_WAKE:
+        case CMD_SLEEP:
+            // SLEEPING — freeze state exactly as-is. Motor holds its
+            // current position (no seek to 0). INT suppressed.
+            _lifecycle = KMC_STATUS_SLEEPING;
+            motorStop();
+            _clearINT();
+            break;
+
         case CMD_ENABLE:
+            // ACTIVE — motor control and LEDs on.
+            _lifecycle = KMC_STATUS_ACTIVE;
             _enable();
             break;
 
+        case CMD_WAKE:
+            // Resume from SLEEPING to ACTIVE; motor resumes from frozen
+            // position. Send a fresh state packet.
+            _lifecycle = KMC_STATUS_ACTIVE;
+            _enable();
+            _assertINT();
+            break;
+
         case CMD_RESET:
-            _disable();
+            // Reset to defaults and stay ACTIVE. Application state cleared;
+            // motor holds current position (enable does not seek).
             buttonsClearAll();
             wiperReset();
             _precision       = false;
             _pendingEvents   = 0;
+            _lifecycle       = KMC_STATUS_ACTIVE;
+            _enable();
             _pendingResponse = RESP_NONE;
             _clearINT();
             break;
 
         case CMD_ACK_FAULT:
-            // No fault tracking — acknowledged silently
+            _fault = false;
             break;
 
         case CMD_SET_THROTTLE:
@@ -234,19 +275,16 @@ static void _onReceive(int numBytes) {
 }
 
 static void _onRequest() {
-    switch (_pendingResponse) {
-        case RESP_DATA:
-            _sendDataPacket();
-            break;
-        case RESP_IDENTITY:
-            _sendIdentityPacket();
-            break;
-        default:
-            for (uint8_t i = 0; i < THR_PACKET_SIZE; i++) {
-                Wire.write((uint8_t)0);
-            }
-            break;
+    // An identity read (after CMD_GET_IDENTITY) takes priority and does not
+    // disturb a pending INT. Every other read returns the current data
+    // packet (universal header + flags/events/value payload).
+    if (_pendingResponse == RESP_IDENTITY) {
+        _sendIdentityPacket();
+        _pendingResponse = RESP_NONE;
+        return;
     }
+
+    _sendDataPacket();
     _pendingResponse = RESP_NONE;
 }
 
@@ -260,6 +298,13 @@ void i2cBegin() {
 
     Wire.onReceive(_onReceive);
     Wire.onRequest(_onRequest);
+
+    // Power-on lifecycle: BOOT_READY. Assert INT and hold until the
+    // controller reads the boot packet and sends CMD_DISABLE (spec §3).
+    // The module remains disabled (motor/LEDs off) until CMD_ENABLE.
+    _lifecycle       = KMC_STATUS_BOOT_READY;
+    _pendingResponse = RESP_DATA;
+    _assertINT();
 }
 
 // ============================================================
@@ -279,9 +324,15 @@ void i2cBegin() {
 // ============================================================
 
 void i2cSyncINT() {
+    // Frozen while sleeping — hold position and suppress INT.
+    if (_lifecycle == KMC_STATUS_SLEEPING) {
+        if (_intAsserted) _clearINT();
+        return;
+    }
+
     bool touched = wiperIsTouched();
 
-    if (_enabled) {
+    if (_lifecycle == KMC_STATUS_ACTIVE) {
         if (touched) {
             // Pilot is touching — stop motor and let wiper run free
             motorStop();
@@ -313,19 +364,24 @@ void i2cSyncINT() {
             }
         }
     } else {
-        // Disabled — re-assert target at 0 on touch to resist pilot input
+        // DISABLED or BOOT_READY — re-assert target at 0 on touch to
+        // resist pilot input.
         if (touched) {
             motorSetTarget(THR_ADC_MIN, true);
         }
     }
 
-    // Assert INT if controller needs to read
-    bool pending = buttonsIsIntPending() || wiperIsValueChanged();
-    if (pending) {
-        _pendingResponse = RESP_DATA;
-        if (!_intAsserted) _assertINT();
-    } else {
-        if (_intAsserted) _clearINT();
+    // Input-driven INT only asserts in ACTIVE. In BOOT_READY the INT is held
+    // from i2cBegin() until the boot packet is read; in DISABLED inputs are
+    // suppressed.
+    if (_lifecycle == KMC_STATUS_ACTIVE) {
+        bool pending = buttonsIsIntPending() || wiperIsValueChanged();
+        if (pending) {
+            _pendingResponse = RESP_DATA;
+            if (!_intAsserted) _assertINT();
+        } else {
+            if (_intAsserted) _clearINT();
+        }
     }
 }
 

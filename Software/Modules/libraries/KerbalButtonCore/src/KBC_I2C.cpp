@@ -1,6 +1,6 @@
 /**
  * @file        KBC_I2C.cpp
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -15,7 +15,7 @@
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: Wire library (megaTinyCore)
  *              Hardware: KC-01-1822 v1.1
- *              Protocol: KBC_Protocol_Spec.md v1.1
+ *              Protocol: I2C_Protocol_Specification.md v2.4
  */
 
 #include "KBC_I2C.h"
@@ -40,7 +40,8 @@ KBCi2C::KBCi2C(KBCShiftReg&   shiftReg,
     , _capFlags(capFlags)
     , _intAsserted(false)
     , _cmdLen(0)
-    , _sleeping(false)
+    , _lifecycle(KMC_STATUS_BOOT_READY)
+    , _txCounter(0)
     , _fault(false)
     , _renderPending(false)
     , _pendingResponse(RESPONSE_NONE)
@@ -65,6 +66,14 @@ void KBCi2C::begin() {
     // before this method is called.
     Wire.onReceive(_onReceiveTrampoline);
     Wire.onRequest(_onRequestTrampoline);
+
+    // Power-on lifecycle: BOOT_READY. Assert INT and hold it until the
+    // controller reads the boot packet; the next data read returns a
+    // header with lifecycle = BOOT_READY. The controller then sends
+    // CMD_DISABLE to complete initialisation (see protocol spec §3).
+    _lifecycle       = KMC_STATUS_BOOT_READY;
+    _pendingResponse = RESPONSE_BUTTONS;
+    _assertINT();
 }
 
 // ============================================================
@@ -72,9 +81,10 @@ void KBCi2C::begin() {
 // ============================================================
 
 void KBCi2C::syncINT() {
-    if (_sleeping) {
-        // Do not assert INT while sleeping
-        if (_intAsserted) _clearINT();
+    // Input-driven INT only applies in ACTIVE. In BOOT_READY the INT is
+    // held from begin() until the boot packet is read; in SLEEPING and
+    // DISABLED, input changes are suppressed and must not assert INT.
+    if (_lifecycle != KMC_STATUS_ACTIVE) {
         return;
     }
 
@@ -90,7 +100,11 @@ void KBCi2C::syncINT() {
 // ============================================================
 
 bool KBCi2C::isSleeping() const {
-    return _sleeping;
+    return _lifecycle == KMC_STATUS_SLEEPING;
+}
+
+uint8_t KBCi2C::lifecycle() const {
+    return _lifecycle;
 }
 
 bool KBCi2C::hasFault() const {
@@ -119,6 +133,9 @@ void KBCi2C::clearRenderPending() {
 void KBCi2C::_assertINT() {
     digitalWrite(KBC_PIN_INT, LOW);
     _intAsserted = true;
+    // Transaction counter increments on every INT assertion (wraps 255→0)
+    // so the controller can detect missed packets (protocol spec §4).
+    _txCounter++;
 }
 
 void KBCi2C::_clearINT() {
@@ -158,21 +175,16 @@ void KBCi2C::_onReceiveTrampoline(int numBytes) {
 void KBCi2C::_onRequestTrampoline() {
     if (_instance == nullptr) return;
 
-    switch (_instance->_pendingResponse) {
-        case RESPONSE_BUTTONS:
-            _instance->_sendButtonPacket();
-            break;
-        case RESPONSE_IDENTITY:
-            _instance->_sendIdentityPacket();
-            break;
-        default:
-            // Unexpected read — send zeros to satisfy the bus
-            for (uint8_t i = 0; i < KBC_BUTTON_PACKET_SIZE; i++) {
-                Wire.write((uint8_t)0);
-            }
-            break;
+    // An identity read (following CMD_GET_IDENTITY) takes priority and
+    // does not disturb a pending INT. Every other read returns the
+    // current data packet (universal header + button-event payload).
+    if (_instance->_pendingResponse == RESPONSE_IDENTITY) {
+        _instance->_sendIdentityPacket();
+        _instance->_pendingResponse = RESPONSE_NONE;
+        return;
     }
 
+    _instance->_sendButtonPacket();
     _instance->_pendingResponse = RESPONSE_NONE;
 }
 
@@ -209,6 +221,12 @@ void KBCi2C::_dispatch() {
             break;
         case KBC_CMD_ACK_FAULT:
             _handleAckFault();
+            break;
+        case KBC_CMD_ENABLE:
+            _handleEnable();
+            break;
+        case KBC_CMD_DISABLE:
+            _handleDisable();
             break;
         default:
             // Unknown command — ignore silently
@@ -266,39 +284,37 @@ void KBCi2C::_handleBulbTest() {
 }
 
 void KBCi2C::_handleSleep() {
-    _sleeping = true;
-    _ledControl.clearAll();
-    _renderPending = true;
+    // SLEEPING freezes the current state exactly as-is — no visual
+    // change. INT is suppressed until CMD_WAKE.
+    _lifecycle = KMC_STATUS_SLEEPING;
     _clearINT();
 }
 
 void KBCi2C::_handleWake() {
-    _sleeping = false;
-    // Restore all buttons to ENABLED state as a safe default.
-    // The controller should follow CMD_WAKE with CMD_SET_LED_STATE
-    // to restore the correct operating state.
+    // Resume from SLEEPING to ACTIVE. LED state was frozen (untouched),
+    // so no re-render is needed. Send a fresh state packet so the
+    // controller resyncs.
+    _lifecycle = KMC_STATUS_ACTIVE;
+    _assertINT();
+}
+
+void KBCi2C::_handleReset() {
+    // Reset to defaults and stay ACTIVE. Buttons return to backlit
+    // (ENABLED); the controller follows with CMD_SET_LED_STATE to
+    // re-establish ACTIVE buttons.
+    _lifecycle = KMC_STATUS_ACTIVE;
     for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
         _ledControl.setButtonState(i, KBC_LED_ENABLED);
     }
     _renderPending = true;
-}
 
-void KBCi2C::_handleReset() {
-    // Clear all LEDs
-    _ledControl.clearAll();
-    _renderPending = true;
-
-    // Clear sleeping state
-    _sleeping = false;
-
-    // Deassert INT and clear pending response
+    // Deassert INT and clear pending response.
     _clearINT();
     _pendingResponse = RESPONSE_NONE;
 
     // Note: button state in KBCShiftReg is not cleared here since
     // it reflects actual hardware state. The change mask is cleared
-    // via getButtonPacket() on the next read. The controller should
-    // send CMD_SET_LED_STATE after CMD_RESET to establish state.
+    // via buildPayload() on the next read.
 }
 
 void KBCi2C::_handleAckFault() {
@@ -307,24 +323,47 @@ void KBCi2C::_handleAckFault() {
     _capFlags &= ~KBC_CAP_FAULT;
 }
 
+void KBCi2C::_handleEnable() {
+    // Enter ACTIVE lifecycle and light all buttons to ENABLED (backlit).
+    // The controller follows with CMD_SET_LED_STATE to set ACTIVE buttons.
+    _lifecycle = KMC_STATUS_ACTIVE;
+    for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
+        _ledControl.setButtonState(i, KBC_LED_ENABLED);
+    }
+    _renderPending = true;
+}
+
+void KBCi2C::_handleDisable() {
+    // Enter DISABLED lifecycle — all outputs dark, inputs suppressed.
+    // Also completes BOOT_READY initialisation (clears the boot INT).
+    _lifecycle = KMC_STATUS_DISABLED;
+    _ledControl.clearAll();
+    _renderPending = true;
+    _clearINT();
+}
+
 // ============================================================
 //  _sendButtonPacket()
 // ============================================================
 
 void KBCi2C::_sendButtonPacket() {
-    // Get the latched button state packet from shift register
-    KBCButtonPacket pkt;
-    _shiftReg.getButtonPacket(pkt);
+    // Universal 3-byte header: status byte, module type ID, tx counter.
+    uint8_t status = _lifecycle & KMC_STATUS_LIFECYCLE_MASK;
+    if (_fault) status |= KMC_STATUS_FAULT;
+    status |= KMC_STATUS_DATA_CHANGED;
 
-    // Serialize to wire format
-    uint8_t buf[KBC_BUTTON_PACKET_SIZE];
-    KBC_serializeButtonPacket(&pkt, buf);
+    Wire.write(status);
+    Wire.write(_moduleTypeId);
+    Wire.write(_txCounter);
 
-    // Send over I2C
-    Wire.write(buf, KBC_BUTTON_PACKET_SIZE);
+    // Button-event payload (events plane + change plane), built from
+    // the latched shift-register state.
+    uint8_t payload[KBC_BUTTON_PAYLOAD_SIZE];
+    _shiftReg.buildPayload(payload);
+    Wire.write(payload, KBC_BUTTON_PAYLOAD_SIZE);
 
-    // INT clears on read completion — syncINT() in the main loop
-    // will re-assert if live state has already diverged
+    // INT clears on read completion — syncINT() in the main loop will
+    // re-assert (in ACTIVE) if live state has already diverged.
     _clearINT();
 }
 
