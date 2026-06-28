@@ -1,0 +1,101 @@
+<svg viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+
+  <!-- Background -->
+  <rect width="620" height="200" rx="12" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="16" y="18" font-size="9" fill="#6b7280" font-weight="500" letter-spacing="1">AUXILIARY CONTROL</text>
+  <text x="16" y="30" font-size="9" fill="#9ca3af" font-family="monospace">0x26 · KMC_TYPE_AUX_CTRL</text>
+
+  <!-- Column labels (right to left = Col6 to Col1) -->
+  <text x="52"  y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 6 (left)</text>
+  <text x="152" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 5</text>
+  <text x="252" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 4</text>
+  <text x="352" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 3</text>
+  <text x="452" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 2</text>
+  <text x="552" y="46" font-size="8" fill="#9ca3af" text-anchor="middle">Col 1 (right)</text>
+
+  <!-- Row labels -->
+  <text x="8" y="100" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,100)">Row 1</text>
+  <text x="8" y="163" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,163)">Row 2</text>
+
+  <!-- ROW 1 -->
+
+  <!-- B10 CP Toggle — ROSE -->
+  <rect x="18" y="52" width="88" height="60" rx="6" fill="#ff507818" stroke="#ff5078" stroke-width="1.5"/>
+  <text x="62" y="72" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">CP Toggle</text>
+  <text x="62" y="85" font-size="8" fill="#ff5078" text-anchor="middle">● ROSE</text>
+  <text x="62" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
+
+  <!-- B8 Cruise Control — GOLD -->
+  <rect x="118" y="52" width="88" height="60" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
+  <text x="162" y="72" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">Cruise Control</text>
+  <text x="162" y="85" font-size="8" fill="#ffc800" text-anchor="middle">● GOLD</text>
+  <text x="162" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B8 · BUTTON09</text>
+
+  <!-- B6 EVA Chute — AMBER -->
+  <rect x="218" y="52" width="88" height="60" rx="6" fill="#f59e0b18" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="262" y="72" font-size="9" font-weight="500" fill="#92400e" text-anchor="middle">EVA Chute</text>
+  <text x="262" y="85" font-size="8" fill="#f59e0b" text-anchor="middle">● AMBER</text>
+  <text x="262" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B6 · BUTTON07</text>
+
+  <!-- B4 Jump / Let Go — CHARTREUSE -->
+  <rect x="318" y="52" width="88" height="60" rx="6" fill="#a3e63518" stroke="#a3e635" stroke-width="1.5"/>
+  <text x="362" y="72" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Jump / Let Go</text>
+  <text x="362" y="85" font-size="8" fill="#a3e635" text-anchor="middle">● CHARTREUSE</text>
+  <text x="362" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B4 · BUTTON05</text>
+
+  <!-- B2 Board Craft — GREEN -->
+  <rect x="418" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="462" y="72" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Board Craft</text>
+  <text x="462" y="85" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <text x="462" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B2 · BUTTON03</text>
+
+  <!-- B0 EVA Lights — MINT -->
+  <rect x="518" y="52" width="88" height="60" rx="6" fill="#96ffd818" stroke="#96ffd8" stroke-width="1.5"/>
+  <text x="562" y="72" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">EVA Lights</text>
+  <text x="562" y="85" font-size="8" fill="#0f766e" text-anchor="middle">● MINT</text>
+  <text x="562" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B0 · BUTTON01</text>
+
+  <!-- ROW 2 -->
+
+  <!-- B11 CP Docking Port — PINK -->
+  <rect x="18" y="118" width="88" height="60" rx="6" fill="#ec489918" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="62" y="138" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">CP Docking Port</text>
+  <text x="62" y="151" font-size="8" fill="#ec4899" text-anchor="middle">● PINK</text>
+  <text x="62" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B11 · BUTTON12</text>
+
+  <!-- B9 Plant Flag — SEAFOAM -->
+  <rect x="118" y="118" width="88" height="60" rx="6" fill="#50c8a018" stroke="#50c8a0" stroke-width="1.5"/>
+  <text x="162" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Plant Flag</text>
+  <text x="162" y="151" font-size="8" fill="#50c8a0" text-anchor="middle">● SEAFOAM</text>
+  <text x="162" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B9 · BUTTON10</text>
+
+  <!-- B7 Helmet Toggle — SKY -->
+  <rect x="218" y="118" width="88" height="60" rx="6" fill="#0ea5e918" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="262" y="138" font-size="9" font-weight="500" fill="#0369a1" text-anchor="middle">Helmet Toggle</text>
+  <text x="262" y="151" font-size="8" fill="#0ea5e9" text-anchor="middle">● SKY</text>
+  <text x="262" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B7 · BUTTON08</text>
+
+  <!-- B5 Grab — SEAFOAM -->
+  <rect x="318" y="118" width="88" height="60" rx="6" fill="#50c8a018" stroke="#50c8a0" stroke-width="1.5"/>
+  <text x="362" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Grab</text>
+  <text x="362" y="151" font-size="8" fill="#50c8a0" text-anchor="middle">● SEAFOAM</text>
+  <text x="362" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B5 · BUTTON06</text>
+
+  <!-- B3 EVA Construction — TEAL -->
+  <rect x="418" y="118" width="88" height="60" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="462" y="138" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">EVA Construction</text>
+  <text x="462" y="151" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <text x="462" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B3 · BUTTON04</text>
+
+  <!-- B1 Jetpack Enable — LIME -->
+  <rect x="518" y="118" width="88" height="60" rx="6" fill="#84cc1618" stroke="#84cc16" stroke-width="1.5"/>
+  <text x="562" y="138" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Jetpack Enable</text>
+  <text x="562" y="151" font-size="8" fill="#84cc16" text-anchor="middle">● LIME</text>
+  <text x="562" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
+
+  <!-- Legend -->
+  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED state = dim white backlight · B10 ACTIVE = ROSE (Primary); PRI/ALT/Docking-Port logic controller-side · B12–B15 no-connect · KerbalButtonCore v2.1.0 · KC-01-1802 v1.1 · Jeb's Controller Works</text>
+
+</svg>

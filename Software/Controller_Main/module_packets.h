@@ -84,7 +84,7 @@ static inline uint8_t moduleTotalPacketSize(uint8_t typeId) {
         case KMC_TYPE_ACTION_CONTROL:
         case KMC_TYPE_STABILITY_CONTROL:
         case KMC_TYPE_TIME_CONTROL:
-        case KMC_TYPE_EVA_MODULE:
+        case KMC_TYPE_AUX_CTRL:
         case KMC_TYPE_DUAL_ENCODER:
             return KMC_BUTTON_PACKET_SIZE;     // 7
 

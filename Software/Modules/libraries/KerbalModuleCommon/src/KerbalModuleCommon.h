@@ -106,6 +106,9 @@ static const RGBColor KMC_LIME          = { 132, 204,  22 };
 /** @brief Mint. RCS, Quickload. */
 static const RGBColor KMC_MINT          = { 100, 255, 160 };
 
+/** @brief Seafoam. Mid warm green. AUX CTRL Grab / Plant Flag. */
+static const RGBColor KMC_SEAFOAM       = {  80, 200, 160 };
+
 // --- Blue / cyan family ---
 /** @brief Blue. Science data. */
 static const RGBColor KMC_BLUE          = {   0,   0, 255 };
@@ -166,7 +169,7 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_TYPE_STABILITY_CONTROL  0x04
 #define KMC_TYPE_VEHICLE_CONTROL    0x05
 #define KMC_TYPE_TIME_CONTROL       0x06
-#define KMC_TYPE_EVA_MODULE         0x07
+#define KMC_TYPE_AUX_CTRL           0x07   // Auxiliary Control (was EVA Module)
 #define KMC_TYPE_JOYSTICK_ROTATION  0x09
 #define KMC_TYPE_JOYSTICK_TRANS     0x0A
 #define KMC_TYPE_GPWS_INPUT         0x0B
@@ -242,7 +245,7 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 // library's response buffer. Total = KMC_HEADER_SIZE + payload (spec §9).
 
 /** @brief Standard 16-input button module: 4-byte payload (events HI/LO,
- *         change HI/LO). UI/Action/Stability/Time/EVA/Dual Encoder. */
+ *         change HI/LO). UI/Action/Stability/Time/AUX CTRL/Dual Encoder. */
 #define KMC_BUTTON_PAYLOAD_SIZE    4
 #define KMC_BUTTON_PACKET_SIZE     (KMC_HEADER_SIZE + KMC_BUTTON_PAYLOAD_SIZE)   // 7
 

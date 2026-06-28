@@ -98,7 +98,7 @@
 #define TYPE_STABILITY_CONTROL  0x04
 #define TYPE_VEHICLE_CONTROL    0x05
 #define TYPE_TIME_CONTROL       0x06
-#define TYPE_EVA                0x07
+#define TYPE_AUX_CTRL           0x07
 #define TYPE_JOYSTICK_ROTATION  0x09
 #define TYPE_JOYSTICK_TRANS     0x0A
 #define TYPE_GPWS               0x0B
@@ -260,20 +260,25 @@ static const char* const TC_LABELS[] PROGMEM = {
 };
 #define TC_LABEL_COUNT 12
 
-// -- EVA Module (0x07) --
-static const char ev_b00[] PROGMEM = "B0  EVA Lights (U)";
-static const char ev_b01[] PROGMEM = "B1  Jetpack Enable (R)";
-static const char ev_b02[] PROGMEM = "B2  Board Craft (B)";
-static const char ev_b03[] PROGMEM = "B3  EVA Construction (I)";
-static const char ev_b04[] PROGMEM = "B4  Jump / Let Go (Space)";
-static const char ev_b05[] PROGMEM = "B5  Grab (F)";
-static const char ev_b06[] PROGMEM = "B6  EVA Chute (P)";
-static const char ev_b07[] PROGMEM = "B7  Helmet Toggle (O)";
-static const char* const EV_LABELS[] PROGMEM = {
-    ev_b00, ev_b01, ev_b02, ev_b03,
-    ev_b04, ev_b05, ev_b06, ev_b07
+// -- Auxiliary Control (0x07) --
+static const char aux_b00[] PROGMEM = "B0  EVA Lights (U)";
+static const char aux_b01[] PROGMEM = "B1  Jetpack Enable (R)";
+static const char aux_b02[] PROGMEM = "B2  Board Craft (B)";
+static const char aux_b03[] PROGMEM = "B3  EVA Construction (I)";
+static const char aux_b04[] PROGMEM = "B4  Jump / Let Go (Space)";
+static const char aux_b05[] PROGMEM = "B5  Grab (F)";
+static const char aux_b06[] PROGMEM = "B6  EVA Chute (P)";
+static const char aux_b07[] PROGMEM = "B7  Helmet Toggle (O)";
+static const char aux_b08[] PROGMEM = "B8  Cruise Control";
+static const char aux_b09[] PROGMEM = "B9  Plant Flag (G)";
+static const char aux_b10[] PROGMEM = "B10 CP Toggle (PRI/ALT)";
+static const char aux_b11[] PROGMEM = "B11 CP Docking Port";
+static const char* const AUX_LABELS[] PROGMEM = {
+    aux_b00, aux_b01, aux_b02, aux_b03,
+    aux_b04, aux_b05, aux_b06, aux_b07,
+    aux_b08, aux_b09, aux_b10, aux_b11
 };
-#define EV_LABEL_COUNT 8
+#define AUX_LABEL_COUNT 12
 
 // -- Joystick Rotation (0x09) buttons only --
 static const char jr_b00[] PROGMEM = "BTN_JOY  Airbrake Toggle (CAG38)";
@@ -392,7 +397,7 @@ static const char* _typeName(uint8_t typeId) {
         case TYPE_STABILITY_CONTROL: return "Stability Control";
         case TYPE_VEHICLE_CONTROL:   return "Vehicle Control";
         case TYPE_TIME_CONTROL:      return "Time Control";
-        case TYPE_EVA:               return "EVA Module";
+        case TYPE_AUX_CTRL:          return "Auxiliary Control";
         case TYPE_JOYSTICK_ROTATION: return "Joystick Rotation";
         case TYPE_JOYSTICK_TRANS:    return "Joystick Translation";
         case TYPE_GPWS:              return "GPWS Input Panel";
@@ -437,8 +442,8 @@ static void _printButtonLabel(uint8_t typeId, uint8_t idx) {
             _printLabel(VC_LABELS, idx, VC_LABEL_COUNT); break;
         case TYPE_TIME_CONTROL:
             _printLabel(TC_LABELS, idx, TC_LABEL_COUNT); break;
-        case TYPE_EVA:
-            _printLabel(EV_LABELS, idx, EV_LABEL_COUNT); break;
+        case TYPE_AUX_CTRL:
+            _printLabel(AUX_LABELS, idx, AUX_LABEL_COUNT); break;
         case TYPE_JOYSTICK_ROTATION:
             _printLabel(JR_LABELS, idx, JR_LABEL_COUNT); break;
         case TYPE_JOYSTICK_TRANS:

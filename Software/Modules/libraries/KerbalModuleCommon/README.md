@@ -134,7 +134,7 @@ Constants: `KMC_STATUS_ACTIVE`, `KMC_STATUS_SLEEPING`, `KMC_STATUS_DISABLED`, `K
 | `KMC_TYPE_STABILITY_CONTROL` | 0x04 | Stability Control | 0x23 |
 | `KMC_TYPE_VEHICLE_CONTROL` | 0x05 | Vehicle Control | 0x24 |
 | `KMC_TYPE_TIME_CONTROL` | 0x06 | Time Control | 0x25 |
-| `KMC_TYPE_EVA_MODULE` | 0x07 | EVA Module | 0x26 |
+| `KMC_TYPE_AUX_CTRL` | 0x07 | Auxiliary Control | 0x26 |
 | `KMC_TYPE_JOYSTICK_ROTATION` | 0x09 | Joystick Rotation | 0x28 |
 | `KMC_TYPE_JOYSTICK_TRANS` | 0x0A | Joystick Translation | 0x29 |
 | `KMC_TYPE_GPWS_INPUT` | 0x0B | GPWS Input Panel | 0x2A |

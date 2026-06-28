@@ -66,6 +66,7 @@ static const RGBColor KBC_GOLD          = KMC_GOLD;
 static const RGBColor KBC_CHARTREUSE    = KMC_CHARTREUSE;
 static const RGBColor KBC_LIME          = KMC_LIME;
 static const RGBColor KBC_MINT          = KMC_MINT;
+static const RGBColor KBC_SEAFOAM       = KMC_SEAFOAM;
 
 // --- Blue / cyan family ---
 static const RGBColor KBC_BLUE          = KMC_BLUE;

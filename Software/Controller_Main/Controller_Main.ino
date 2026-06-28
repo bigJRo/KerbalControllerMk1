@@ -38,7 +38,7 @@ extern "C" void usb_init(void);
 #define StabCtrl_MOD 0x23     // Stability Control   (KMC_TYPE_STABILITY_CONTROL)
 #define VehCtrl_MOD 0x24      // Vehicle Control     (KMC_TYPE_VEHICLE_CONTROL, 24-input)
 #define Time_MOD 0x25         // Time Control        (KMC_TYPE_TIME_CONTROL)
-#define EVA_MOD 0x26          // AUX CTRL / EVA      (KMC_TYPE_EVA_MODULE)
+#define AUX_MOD 0x26          // Auxiliary Control   (KMC_TYPE_AUX_CTRL)
 // 0x27 reserved
 #define Rotation_MOD 0x28     // Joystick Rotation   (KMC_TYPE_JOYSTICK_ROTATION)
 #define Translation_MOD 0x29  // Joystick Translation(KMC_TYPE_JOYSTICK_TRANS)
