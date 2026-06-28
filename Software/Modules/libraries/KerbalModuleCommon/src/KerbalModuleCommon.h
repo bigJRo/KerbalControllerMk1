@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.2.0
+ * @version     1.3.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -233,6 +233,34 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 
 /** @brief CMD_SET_LED_STATE payload: 16 positions × 4-bit nibble = 8 bytes. */
 #define KMC_LED_PAYLOAD_SIZE     8
+
+// --- Total data-packet sizes (header + device payload) ---
+// Single source of truth for the controller's read lengths and each module
+// library's response buffer. Total = KMC_HEADER_SIZE + payload (spec §9).
+
+/** @brief Standard 16-input button module: 4-byte payload (events HI/LO,
+ *         change HI/LO). UI/Action/Stability/Time/EVA/Dual Encoder/Switch Panel. */
+#define KMC_BUTTON_PAYLOAD_SIZE    4
+#define KMC_BUTTON_PACKET_SIZE     (KMC_HEADER_SIZE + KMC_BUTTON_PAYLOAD_SIZE)   // 7
+
+/** @brief 24-input switch-group button module: 6-byte payload (3 event +
+ *         3 change bytes). Function Control (0x21), Vehicle Control (0x24). */
+#define KMC_BUTTON24_PAYLOAD_SIZE  6
+#define KMC_BUTTON24_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_BUTTON24_PAYLOAD_SIZE) // 9
+
+/** @brief Joystick module: 9-byte payload (events, change, state, 3× int16
+ *         axes). Joystick Rotation (0x09), Joystick Translation (0x0A). */
+#define KMC_JOYSTICK_PAYLOAD_SIZE  9
+#define KMC_JOYSTICK_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_JOYSTICK_PAYLOAD_SIZE) // 12
+
+/** @brief Display module: 5-byte payload (events, change, state, value HI/LO).
+ *         GPWS Input (0x0B), Pre-Warp Time (0x0C). */
+#define KMC_DISPLAY_PAYLOAD_SIZE   5
+#define KMC_DISPLAY_PACKET_SIZE    (KMC_HEADER_SIZE + KMC_DISPLAY_PAYLOAD_SIZE)  // 8
+
+/** @brief Throttle module: 4-byte payload (flags, button events, value HI/LO). */
+#define KMC_THROTTLE_PAYLOAD_SIZE  4
+#define KMC_THROTTLE_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_THROTTLE_PAYLOAD_SIZE) // 7
 
 // ============================================================
 //  LED nibble pack / unpack helpers

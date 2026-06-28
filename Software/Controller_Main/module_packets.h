@@ -66,28 +66,30 @@ static inline uint8_t moduleTotalPacketSize(uint8_t typeId) {
     switch (typeId) {
         case KMC_TYPE_FUNCTION_CONTROL:   // 24-input switch group (Switch Group 1)
         case KMC_TYPE_VEHICLE_CONTROL:    // 24-input switch group (Switch Group 2)
-            return KMC_HEADER_SIZE + 6;   // 9
+            return KMC_BUTTON24_PACKET_SIZE;   // 9
 
         case KMC_TYPE_JOYSTICK_ROTATION:
         case KMC_TYPE_JOYSTICK_TRANS:
-            return KMC_HEADER_SIZE + 9;   // 12
+            return KMC_JOYSTICK_PACKET_SIZE;   // 12
 
         case KMC_TYPE_GPWS_INPUT:
         case KMC_TYPE_PRE_WARP_TIME:
-            return KMC_HEADER_SIZE + 5;   // 8 (display modules)
+            return KMC_DISPLAY_PACKET_SIZE;    // 8 (display modules)
+
+        case KMC_TYPE_THROTTLE:
+            return KMC_THROTTLE_PACKET_SIZE;   // 7
 
         case KMC_TYPE_UI_CONTROL:
         case KMC_TYPE_ACTION_CONTROL:
         case KMC_TYPE_STABILITY_CONTROL:
         case KMC_TYPE_TIME_CONTROL:
         case KMC_TYPE_EVA_MODULE:
-        case KMC_TYPE_THROTTLE:
         case KMC_TYPE_DUAL_ENCODER:
         case KMC_TYPE_SWITCH_PANEL:
-            return KMC_HEADER_SIZE + 4;   // 7
+            return KMC_BUTTON_PACKET_SIZE;     // 7
 
         default:
-            return KMC_HEADER_SIZE + 4;   // safe default (7)
+            return KMC_BUTTON_PACKET_SIZE;     // safe default (7)
     }
 }
 
