@@ -24,13 +24,13 @@
  *              NeoPixel button layout (2 rows × 6 columns), reads
  *              right-to-left (AG1 top-right, AG12 bottom-left):
  *
- *                Col:  6(left)    5        4        3        2        1(right)
- *                Row1: B10        B8       B6       B4       B2       B0
- *                      AG 1       AG 2     AG 3     AG 4     AG 5     AG 6
+ *                Col:  1(left)    2        3        4        5        6(right)
+ *                Row1: B0         B2       B4       B6       B8       B10
+ *                      AG 6       AG 5     AG 4     AG 3     AG 2     AG 1
  *                      GREEN      GREEN    GREEN    GREEN    GREEN    GREEN
  *
- *                Row2: B11        B9       B7       B5       B3       B1
- *                      AG 7       AG 8     AG 9     AG 10    AG 11    AG 12
+ *                Row2: B1         B3       B5       B7       B9       B11
+ *                      AG 12      AG 11    AG 10    AG 9     AG 8     AG 7
  *                      GREEN      GREEN    GREEN    GREEN    GREEN    GREEN
  *
  *                B12–B15 are no-connects on the PCB (not installed).

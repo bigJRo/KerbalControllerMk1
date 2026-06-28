@@ -33,7 +33,7 @@ This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC 
 
 ## Panel Layout
 
-Physical panel orientation: 2 rows × 6 columns. Column 6 is leftmost, Column 1 is rightmost. Button numbering starts top-right (B0) and proceeds left across each row.
+Physical panel orientation: 2 rows × 6 columns. Column 1 is leftmost, Column 6 is rightmost. The panel reads right-to-left: AG1 is at the top-right (B10, Col 6) and AG6 at the top-left (B0, Col 1); AG7 is bottom-right (B11), AG12 bottom-left (B1).
 
 ![Action Control Panel Layout](panel_layout.svg)
 
