@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.6.0
+ * @version     1.7.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -223,6 +223,8 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_CMD_ACK_FAULT        0x08
 #define KMC_CMD_ENABLE           0x09
 #define KMC_CMD_DISABLE          0x0A
+#define KMC_CMD_SET_THROTTLE     0x0B   // throttle: set target position (2-byte BE)
+#define KMC_CMD_SET_PRECISION    0x0C   // throttle: precision mode (1 byte 0/1)
 #define KMC_CMD_SET_VALUE        0x0D
 
 // ============================================================

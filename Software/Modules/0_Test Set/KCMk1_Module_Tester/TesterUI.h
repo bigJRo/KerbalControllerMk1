@@ -30,8 +30,28 @@ enum UIAction : uint8_t {
     UI_RESET,
     UI_BULB,
     UI_LEDCYCLE,
+    UI_TEST,        // enter the per-board construction test
     UI_BACK
 };
+
+// ============================================================
+//  Construction-test screen controls
+// ============================================================
+enum CtButton : uint8_t {
+    CT_NONE = 0,
+    CT_PASS,
+    CT_FAIL,
+    CT_NEXT,
+    CT_RETRY,
+    CT_ABORT
+};
+
+// Button-visibility mask for uiCtRender / uiCtPoll
+#define CTB_PASS    0x01
+#define CTB_FAIL    0x02
+#define CTB_NEXT    0x04
+#define CTB_RETRY   0x08
+#define CTB_ABORT   0x10
 
 // ------------------------------------------------------------
 //  Lifecycle
@@ -81,6 +101,28 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st);
 
 /** @brief Poll the dashboard control buttons. */
 UIAction uiDashboardTouch();
+
+// ------------------------------------------------------------
+//  Shared widgets
+// ------------------------------------------------------------
+
+// ------------------------------------------------------------
+//  Construction-test screen (generic, driven by ConstructionTest)
+// ------------------------------------------------------------
+
+/**
+ * @brief  Render one construction-test step.
+ * @param  header       top line (e.g. "CONSTRUCTION TEST — Vehicle Ctrl  2/5")
+ * @param  instruction  what the operator should do this step
+ * @param  status       array of live status lines (may be nullptr if 0)
+ * @param  statusCount  number of status lines
+ * @param  btnMask      OR of CTB_* selecting which control buttons to show
+ */
+void uiCtRender(const char* header, const char* instruction,
+                const char* const* status, uint8_t statusCount, uint8_t btnMask);
+
+/** @brief Poll the construction-test control buttons (press-edge). */
+CtButton uiCtPoll(uint8_t btnMask);
 
 // ------------------------------------------------------------
 //  Shared widgets

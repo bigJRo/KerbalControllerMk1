@@ -60,7 +60,8 @@ test (`0x20`–`0x2E`); the scan logic skips the on-board addresses.
 | `TesterConfig.h` | Pin map, I2C addresses, INA228 calibration, timing |
 | `ModuleCatalog.h/.cpp` | Per-module metadata (name, kind, input labels) |
 | `TesterHW.h/.cpp` | I2C controller ops, packet parsing, INA228 driver |
-| `TesterUI.h/.cpp` | LovyanGFX + FT6236 touchscreen UI (splash / scan / dashboard) |
+| `TesterUI.h/.cpp` | LovyanGFX + FT6236 touchscreen UI (splash / scan / dashboard / construction test) |
+| `ConstructionTest.h/.cpp` | Per-board-type guided construction-test sequences |
 
 All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED_*`,
 `KMC_STATUS_*`, nibble helpers) come from **KerbalModuleCommon**.
@@ -106,6 +107,28 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
      LED-state cycle, return to scan).
    - **LED** steps every position through the full LED-state set
      (ENABLED → ACTIVE → WARNING → ALERT → ARMED → PARTIAL_DEPLOY → CUT → ACTIVE_ALT).
+   - **Test** launches the guided construction test for the module (below).
+
+---
+
+## Construction test
+
+The **Test** control on the dashboard runs a guided, per-board-type sequence for
+validating a freshly assembled board. Each step drives the board's outputs and/or
+verifies its inputs; some steps auto-pass on detection, others ask the operator to
+confirm PASS / FAIL (with RETRY where useful). ABORT exits at any point; a final
+summary lists each step's result.
+
+| Board kind | Steps |
+|---|---|
+| Button (12 / 24) | Enable → **LED walk** (each NeoPixel/discrete LED lit in turn) → **Button walk** (press every input incl. switch groups) → summary |
+| Joystick | Enable → **Axis sweep** (move full range; captures min/max per axis) → **Button walk** → **LED check** → summary |
+| Display (7-seg) | Enable → **Segment test** (drives 8888/1234) → **Encoder** (turn up/down) → **Button walk** (incl. encoder button) → **LED check** → summary |
+| Throttle | Enable → **Motor sweep** (drives 0/100/50 %) → **Touch + wiper** (grab and slide) → **Bulb test** → **Button walk** → summary |
+| Dual Encoder | **ENC1** (CW/CCW) → **ENC2** (CW/CCW) → **Button walk** → summary |
+
+Drive commands used: `CMD_SET_LED_STATE` (LED walk), `CMD_SET_THROTTLE` (motor sweep),
+`CMD_SET_VALUE` (segment test), `CMD_BULB_TEST` (discrete LEDs).
 
 ---
 

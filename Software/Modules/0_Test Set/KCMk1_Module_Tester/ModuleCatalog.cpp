@@ -101,11 +101,11 @@ static const char* const labels_JoyTranslation[] = {
 };
 
 static const char* const labels_Gpws[] = {
-    "GPWS Enable", "Proximity", "Rndzv Radar"
+    "GPWS Enable", "Proximity", "Rndzv Radar", "Reset (Enc)"
 };
 
 static const char* const labels_PreWarp[] = {
-    "5 min", "1 hour", "1 day"
+    "5 min", "1 hour", "1 day", "Reset (Enc)"
 };
 
 static const char* const labels_Throttle[] = {
@@ -129,8 +129,8 @@ static const ModuleInfo kCatalog[] = {
     { KMC_TYPE_AUX_CTRL,          "Aux Control",     0x26, MK_BUTTON12,     12, labels_Aux },
     { KMC_TYPE_JOYSTICK_ROTATION, "Joy Rotation",    0x28, MK_JOYSTICK,      3, labels_JoyRotation },
     { KMC_TYPE_JOYSTICK_TRANS,    "Joy Translation", 0x29, MK_JOYSTICK,      3, labels_JoyTranslation },
-    { KMC_TYPE_GPWS_INPUT,        "GPWS Input",      0x2A, MK_DISPLAY,       3, labels_Gpws },
-    { KMC_TYPE_PRE_WARP_TIME,     "Pre-Warp Time",   0x2B, MK_DISPLAY,       3, labels_PreWarp },
+    { KMC_TYPE_GPWS_INPUT,        "GPWS Input",      0x2A, MK_DISPLAY,       4, labels_Gpws },
+    { KMC_TYPE_PRE_WARP_TIME,     "Pre-Warp Time",   0x2B, MK_DISPLAY,       4, labels_PreWarp },
     { KMC_TYPE_THROTTLE,          "Throttle",        0x2C, MK_THROTTLE,      4, labels_Throttle },
     { KMC_TYPE_DUAL_ENCODER,      "Dual Encoder",    0x2D, MK_DUAL_ENCODER,  2, labels_DualEncoder }
 };

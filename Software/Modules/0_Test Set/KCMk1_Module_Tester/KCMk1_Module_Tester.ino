@@ -35,11 +35,12 @@
 #include "ModuleCatalog.h"
 #include "TesterHW.h"
 #include "TesterUI.h"
+#include "ConstructionTest.h"
 
 // ============================================================
 //  App state
 // ============================================================
-enum AppState : uint8_t { ST_SPLASH, ST_SCAN, ST_DASHBOARD };
+enum AppState : uint8_t { ST_SPLASH, ST_SCAN, ST_DASHBOARD, ST_CONSTRUCTION };
 static AppState _state = ST_SPLASH;
 
 // Scan results
@@ -117,6 +118,10 @@ static void handleAction(UIAction a) {
             uiToast("LED CYCLE");
             break;
         }
+        case UI_TEST:
+            ctBegin(_sel, _selAddr);
+            _state = ST_CONSTRUCTION;
+            break;
         case UI_BACK:
             _sel = nullptr;
             _state = ST_SCAN;
@@ -181,6 +186,18 @@ void loop() {
             if (now - _tPower >= POWER_POLL_MS) { _tPower = now; uiPowerBar(hwReadPower()); }
 
             handleAction(uiDashboardTouch());
+            break;
+        }
+
+        case ST_CONSTRUCTION: {
+            ctUpdate();
+            if (!ctActive()) {
+                // Test finished or aborted — return to the dashboard.
+                _state = ST_DASHBOARD;
+                uiDashboardBegin(_sel, _selAddr);
+                _tInput = 0;
+                _ledCycleState = 0;
+            }
             break;
         }
     }

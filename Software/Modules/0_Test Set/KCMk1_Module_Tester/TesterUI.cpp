@@ -138,12 +138,22 @@ static constexpr int SCAN_ROW_H = 34;
 static constexpr int SCAN_TOP   = TOPBAR_H + 6;
 static constexpr int SCAN_MAXROWS = 5;         // fits above the Rescan button row
 
-// Dashboard control buttons (bottom row)
-static constexpr int CTRL_COUNT = 8;
-static constexpr int CTRL_H     = 30;
-static constexpr int CTRL_Y     = UI_H - CTRL_H;          // 210
-static constexpr int CTRL_W     = UI_W / CTRL_COUNT;      // 40
-static constexpr int TOAST_Y    = CTRL_Y - 18;            // toast line above buttons
+// Dashboard control buttons.
+// Nine buttons now — laid out as two rows (5 on the top row, 4 on the bottom
+// row) so each chip stays comfortably touchable on a 320px-wide panel.
+static constexpr int CTRL_COUNT  = 9;
+static constexpr int CTRL_PERROW = 5;
+static constexpr int CTRL_ROWS   = 2;
+static constexpr int CTRL_H      = 28;                          // per-button height
+static constexpr int CTRL_AREA_H = CTRL_ROWS * CTRL_H + 2;      // 58
+static constexpr int CTRL_AREA_Y = UI_H - CTRL_AREA_H;          // 182
+static constexpr int CTRL_W      = UI_W / CTRL_PERROW;          // 64
+static constexpr int TOAST_Y     = CTRL_AREA_Y - 16;           // toast line above buttons
+
+// Construction-test screen control buttons (bottom row, up to 5).
+static constexpr int CT_BTN_H    = 36;
+static constexpr int CT_BTN_Y    = UI_H - CT_BTN_H;
+static constexpr int CT_MAXBTNS  = 5;
 
 // ============================================================
 //  Hit-test rectangle
@@ -164,11 +174,18 @@ static Rect _rescanBtn = {0, 0, 0, 0};
 
 static Rect _ctrlBtns[CTRL_COUNT];
 static const char* const _ctrlLabels[CTRL_COUNT] = {
-    "Enbl", "Dsbl", "Slp", "Wake", "Rst", "Bulb", "LED", "Back"
+    "Enbl", "Dsbl", "Slp", "Wake", "Rst", "Bulb", "LED", "Test", "Back"
 };
 static const UIAction _ctrlActions[CTRL_COUNT] = {
-    UI_ENABLE, UI_DISABLE, UI_SLEEP, UI_WAKE, UI_RESET, UI_BULB, UI_LEDCYCLE, UI_BACK
+    UI_ENABLE, UI_DISABLE, UI_SLEEP, UI_WAKE, UI_RESET,
+    UI_BULB, UI_LEDCYCLE, UI_TEST, UI_BACK
 };
+
+// Construction-test screen: shown-button rects + their CtButton id, in the
+// fixed render order. Only entries [0.._ctBtnCount) are valid after a render.
+static Rect     _ctBtnRects[CT_MAXBTNS];
+static CtButton _ctBtnIds[CT_MAXBTNS];
+static uint8_t  _ctBtnCount = 0;
 
 // Press-edge debounce: shared was-touched latch. Each touch poller only
 // fires on a fresh press (transition from not-touched to touched).
@@ -400,10 +417,13 @@ void uiDashboardBegin(const ModuleInfo* info, uint8_t addr) {
     _encTotal[0] = 0;
     _encTotal[1] = 0;
 
-    // Control button row (bottom).
+    // Control button grid (two rows: 5 + 4).
     for (uint8_t i = 0; i < CTRL_COUNT; i++) {
-        int x = i * CTRL_W;
-        Rect r = { (int16_t)x, (int16_t)CTRL_Y, (int16_t)(CTRL_W - 2), (int16_t)CTRL_H };
+        int row = i / CTRL_PERROW;
+        int col = i % CTRL_PERROW;
+        int x = col * CTRL_W;
+        int y = CTRL_AREA_Y + row * CTRL_H;
+        Rect r = { (int16_t)x, (int16_t)y, (int16_t)(CTRL_W - 2), (int16_t)(CTRL_H - 2) };
         _ctrlBtns[i] = r;
         lcd.fillRoundRect(r.x, r.y, r.w, r.h, 3, C_PANEL2);
         lcd.drawRoundRect(r.x, r.y, r.w, r.h, 3, C_DIM);
@@ -485,9 +505,14 @@ static void drawButtonGrid(const ModuleInfo* info, const ModuleState& st) {
     }
 }
 
-/** @brief Draw N button chips in a single row from labels[0..n-1]. */
-static void drawButtonRow(const ModuleInfo* info, const ModuleState& st,
-                          uint8_t n, int y) {
+/**
+ * @brief Draw N button chips in a single row from labels[0..n-1].
+ * @param plane  bitfield giving the on/off state for each chip (bit i = chip i).
+ *               Callers pass st.events for momentary state, or st.flags for
+ *               persistent (held) button state (e.g. joystick buttons).
+ */
+static void drawButtonRowMask(const ModuleInfo* info, uint32_t plane,
+                              uint8_t n, int y) {
     const int chipW = 70;
     const int chipH = 22;
     const int gap = 8;
@@ -495,10 +520,16 @@ static void drawButtonRow(const ModuleInfo* info, const ModuleState& st,
     for (uint8_t i = 0; i < n; i++) {
         const char* lbl = (info->labels && i < info->inputCount && info->labels[i])
                               ? info->labels[i] : "btn";
-        bool on = (st.events >> i) & 1u;
+        bool on = (plane >> i) & 1u;
         drawChip(x, y, chipW, chipH, lbl, on);
         x += chipW + gap;
     }
+}
+
+/** @brief Convenience: draw a button row from the momentary st.events plane. */
+static void drawButtonRow(const ModuleInfo* info, const ModuleState& st,
+                          uint8_t n, int y) {
+    drawButtonRowMask(info, st.events, n, y);
 }
 
 void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
@@ -537,7 +568,9 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
                 by += 22;
             }
             lcd.setTextDatum(textdatum_t::top_left);
-            drawButtonRow(info, st, 3, by + 2);
+            // Joystick buttons use the PERSISTENT state plane (st.flags bits
+            // 0..2) so a held button shows steadily, not just on the edge.
+            drawButtonRowMask(info, (uint32_t)st.flags, 3, by + 2);
             break;
         }
 
@@ -619,6 +652,104 @@ UIAction uiDashboardTouch() {
         if (_ctrlBtns[i].hit(x, y)) return _ctrlActions[i];
     }
     return UI_NONE;
+}
+
+// ============================================================
+//  Construction-test screen (generic, driven by ConstructionTest)
+//
+//  Full-screen step view: header, accent instruction, status body, and a
+//  bottom row of control buttons selected by btnMask. Buttons are laid out
+//  in a fixed order (PASS, FAIL, NEXT, RETRY, ABORT), evenly spread across
+//  whatever subset is shown.
+// ============================================================
+namespace {
+struct CtBtnDef { uint8_t mask; CtButton id; const char* label; uint16_t color; };
+const CtBtnDef CT_DEFS[CT_MAXBTNS] = {
+    { CTB_PASS,  CT_PASS,  "PASS",  C_ON     },
+    { CTB_FAIL,  CT_FAIL,  "FAIL",  C_ALERT  },
+    { CTB_NEXT,  CT_NEXT,  "NEXT",  C_ACCENT },
+    { CTB_RETRY, CT_RETRY, "RETRY", C_WARN   },
+    { CTB_ABORT, CT_ABORT, "ABORT", C_OFF    },
+};
+}
+
+void uiCtRender(const char* header, const char* instruction,
+                const char* const* status, uint8_t statusCount, uint8_t btnMask) {
+    lcd.fillScreen(C_BG);
+
+    // Header line (top).
+    lcd.setTextSize(1);
+    lcd.setTextColor(C_TEXT, C_BG);
+    lcd.setTextDatum(textdatum_t::top_left);
+    lcd.drawString(header ? header : "", 4, 4);
+    lcd.drawFastHLine(0, 18, UI_W, C_PANEL2);
+
+    // Instruction line (accent).
+    if (instruction) {
+        lcd.setTextColor(C_ACCENT, C_BG);
+        lcd.drawString(instruction, 4, 24);
+    }
+
+    // Status body — left-aligned lines.
+    int bodyTop = 42;
+    int lineH   = 16;
+    int maxLines = (CT_BTN_Y - 4 - bodyTop) / lineH;
+    if (maxLines < 0) maxLines = 0;
+    lcd.setTextColor(C_TEXT, C_BG);
+    for (uint8_t i = 0; i < statusCount && status && i < (uint8_t)maxLines; i++) {
+        const char* s = status[i] ? status[i] : "";
+        lcd.drawString(s, 6, bodyTop + i * lineH);
+    }
+
+    // Bottom control buttons — only those whose mask bit is set, laid out
+    // evenly across the full width.
+    _ctBtnCount = 0;
+    for (uint8_t i = 0; i < CT_MAXBTNS; i++) {
+        if (btnMask & CT_DEFS[i].mask) {
+            _ctBtnIds[_ctBtnCount] = CT_DEFS[i].id;
+            // Remember which def index this is for drawing below.
+            _ctBtnRects[_ctBtnCount].x = (int16_t)i;   // temp stash def index
+            _ctBtnCount++;
+        }
+    }
+
+    if (_ctBtnCount > 0) {
+        int gap = 6;
+        int totalGap = gap * (_ctBtnCount + 1);
+        int btnW = (UI_W - totalGap) / _ctBtnCount;
+        int x = gap;
+        for (uint8_t i = 0; i < _ctBtnCount; i++) {
+            uint8_t defIdx = (uint8_t)_ctBtnRects[i].x;   // recover stashed index
+            const CtBtnDef& d = CT_DEFS[defIdx];
+            Rect r = { (int16_t)x, (int16_t)CT_BTN_Y, (int16_t)btnW, (int16_t)(CT_BTN_H - 2) };
+            _ctBtnRects[i] = r;
+            lcd.fillRoundRect(r.x, r.y, r.w, r.h, 4, d.color);
+            lcd.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_TEXT);
+            // Choose readable label colour against the fill.
+            uint16_t txt = (d.color == C_OFF) ? C_TEXT : C_BG;
+            lcd.setTextColor(txt, d.color);
+            lcd.setTextDatum(textdatum_t::middle_center);
+            lcd.drawString(d.label, r.x + r.w / 2, r.y + r.h / 2);
+            x += btnW + gap;
+        }
+    }
+    lcd.setTextDatum(textdatum_t::top_left);
+}
+
+CtButton uiCtPoll(uint8_t btnMask) {
+    int16_t x, y;
+    if (!readPress(x, y)) return CT_NONE;
+
+    for (uint8_t i = 0; i < _ctBtnCount; i++) {
+        // Respect the caller's current mask as well as what was rendered, so
+        // a stale rect for a now-hidden button can't fire.
+        bool maskOk = false;
+        for (uint8_t d = 0; d < CT_MAXBTNS; d++) {
+            if (CT_DEFS[d].id == _ctBtnIds[i]) { maskOk = (btnMask & CT_DEFS[d].mask) != 0; break; }
+        }
+        if (maskOk && _ctBtnRects[i].hit(x, y)) return _ctBtnIds[i];
+    }
+    return CT_NONE;
 }
 
 // ============================================================

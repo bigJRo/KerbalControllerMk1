@@ -108,6 +108,8 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB mode).
 | `KMC_CMD_ACK_FAULT` | 0x08 | — | Acknowledge and clear fault flag |
 | `KMC_CMD_ENABLE` | 0x09 | — | Enter ACTIVE lifecycle state |
 | `KMC_CMD_DISABLE` | 0x0A | — | Enter DISABLED lifecycle state |
+| `KMC_CMD_SET_THROTTLE` | 0x0B | 2 bytes BE uint16 | Throttle: set target position |
+| `KMC_CMD_SET_PRECISION` | 0x0C | 1 byte (0/1) | Throttle: precision mode off/on |
 | `KMC_CMD_SET_VALUE` | 0x0D | 2 bytes BE int16 | Set display/encoder value |
 
 ---
