@@ -221,37 +221,53 @@ bool isBitEnabled(uint8_t registerInput, uint8_t mask) {
    - No outputs
 ****************************************************************************************/
 void setActionGroups() {
-  uint8_t grpMod = ctrlGrp * ctrlGrpAdd;
+  // AGX = base + (controlGroup - 1) * stride, with control group 1..6
+  // (Module UI Reference v5.4). ctrlGrp is clamped to that range.
+  uint8_t grp = (ctrlGrp >= 1 && ctrlGrp <= 6) ? ctrlGrp : 1;
+  uint8_t grpMod = (uint8_t)((grp - 1) * ctrlGrpAdd);
 
-  ag1 = grpMod + ag1_base;
-  ag2 = grpMod + ag2_base;
-  ag3 = grpMod + ag3_base;
-  ag4 = grpMod + ag4_base;
-  ag5 = grpMod + ag5_base;
-  ag6 = grpMod + ag6_base;
-  ag7 = grpMod + ag7_base;
-  ag8 = grpMod + ag8_base;
-  ag9 = grpMod + ag9_base;
+  ag1  = grpMod + ag1_base;
+  ag2  = grpMod + ag2_base;
+  ag3  = grpMod + ag3_base;
+  ag4  = grpMod + ag4_base;
+  ag5  = grpMod + ag5_base;
+  ag6  = grpMod + ag6_base;
+  ag7  = grpMod + ag7_base;
+  ag8  = grpMod + ag8_base;
+  ag9  = grpMod + ag9_base;
   ag10 = grpMod + ag10_base;
-  solar_array = grpMod + solar_array_base;
-  antenna = grpMod + antenna_base;
-  cargo_door = grpMod + cargo_door_base;
-  radiator = grpMod + radiator_base;
-  drogue = grpMod + drogue_base;
-  parachute = grpMod + parachute_base;
-  ladder = grpMod + ladder_base;
-  drogue_cut = grpMod + drogue_cut_base;
-  les = grpMod + les_base;
-  science1 = grpMod + science1_base;
-  science2 = grpMod + science2_base;
-  collectSci = grpMod + collectSci_base;
-  engine1 = grpMod + engine1_base;
-  engine2 = grpMod + engine2_base;
-  engineMode = grpMod + engineMode_base;
-  intake = grpMod + intake_base;
-  ctrlPt1 = grpMod + ctrlPt1_base;
-  ctrlPt2 = grpMod + ctrlPt2_base;
-  airbrake = grpMod + airbrake_base;
+  ag11 = grpMod + ag11_base;
+  ag12 = grpMod + ag12_base;
+
+  antenna             = grpMod + antenna_base;
+  fuel_cell           = grpMod + fuel_cell_base;
+  solar_array         = grpMod + solar_array_base;
+  cargo_door          = grpMod + cargo_door_base;
+  radiator            = grpMod + radiator_base;
+  ladder              = grpMod + ladder_base;
+  heat_shield_deploy  = grpMod + heat_shield_deploy_base;
+  heat_shield_release = grpMod + heat_shield_release_base;
+  parachute           = grpMod + parachute_base;       // main chute deploy
+  main_chute_cut      = grpMod + main_chute_cut_base;
+  drogue              = grpMod + drogue_base;           // drogue deploy
+  drogue_cut          = grpMod + drogue_cut_base;
+
+  les           = grpMod + les_base;
+  fairing       = grpMod + fairing_base;
+  engineMode    = grpMod + engineMode_base;
+  collectSci    = grpMod + collectSci_base;
+  engine1       = grpMod + engine1_base;
+  science1      = grpMod + science1_base;
+  engine2       = grpMod + engine2_base;
+  science2      = grpMod + science2_base;
+  intake        = grpMod + intake_base;
+  lock_surfaces = grpMod + lock_surfaces_base;
+
+  cp_primary   = grpMod + cp_primary_base;
+  cp_alternate = grpMod + cp_alternate_base;
+  cp_docking   = grpMod + cp_docking_base;
+  airbrake     = grpMod + airbrake_base;
+  rw_disable   = grpMod + rw_disable_base;
 }
 
 
@@ -559,10 +575,12 @@ void handleVehCtrlPanel(uint8_t i2c_addr) {
     uint32_t vehInputs = (uint32_t)pkt[KMC_PKT_PAYLOAD_OFFSET]
                        | ((uint32_t)pkt[KMC_PKT_PAYLOAD_OFFSET + 1] << 8)
                        | ((uint32_t)pkt[KMC_PKT_PAYLOAD_OFFSET + 2] << 16);  // bits 16-23 = Switch Group 2
-    // TODO (controller v5.x): newButtonVehCtrl is 16-bit and the
-    // module_variables.h bit layout predates the v5.x Vehicle Control panel
-    // and Switch Group 2 (B16-B23). Widen to 32-bit and remap when the
-    // controller handlers are reworked. For now keep the lower 16 buttons.
+    // Switch Group 2 (KBC 16-23) is exposed via newSwitchGrp2 for edge tests
+    // with the pSG2_* masks (e.g. buttonPressed(prevSwitchGrp2, newSwitchGrp2,
+    // pSG2_CHUTE)). TODO (controller v5.x): newButtonVehCtrl is 16-bit and the
+    // module_variables.h button bit layout predates the v5.x Vehicle Control
+    // panel; remap the B0-B11 actions when the handler is reworked.
+    newSwitchGrp2 = vehInputs;
     newButtonVehCtrl = (uint16_t)(vehInputs & 0xFFFF);
     if (debug) {
       Serial.print("newButtonVehCtrl = ");
@@ -816,6 +834,7 @@ void handleVehCtrlPanel(uint8_t i2c_addr) {
   }
 
   prevButtonVehCtrl = newButtonVehCtrl;
+  prevSwitchGrp2 = newSwitchGrp2;
 }
 
 

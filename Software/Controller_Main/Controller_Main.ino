@@ -18,10 +18,10 @@
 #include <Watchdog_t4.h>               // Inlcude Watchdog Timer library
 extern "C" void usb_init(void);
 
-#include "module_packets.h"                                                                                      // Per-type I2C packet sizing + universal header helpers
-#include "module_variables.h"                                                                                     // Module Register Definitions
-#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
-#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
+#include "module_packets.h"               // Per-type I2C packet sizing + universal header helpers
+#include "module_variables.h"             // Module Register Definitions
+#include "../Common/custom_action_grp_def.h"  // Custom Action Group Definitions
+#include "../Common/keyboard_def.h"           // Keyboard Code Definitions
 
 
 /***************************************************************************************
@@ -31,19 +31,22 @@ extern "C" void usb_init(void);
 #define INFO_MC 0x11
 #define RES_MC 0x12
 
-#define Panel_MOD 0x20
-#define UI_MOD 0x21
-#define StabCtrl_MOD 0x22
-#define Function_MOD 0x23
-#define EVA_MOD 0x24
-#define Translation_MOD 0x25
-#define Throttle_MOD 0x26
-#define ActionCtrl_MOD 0x27
-#define Switch_MOD 0x28
-#define Rotation_MOD 0x29
-#define VehCtrl_MOD 0x2A
-#define Time_MOD 0x2B
-#define GPWS_MOD 0x2C
+// I2C module addresses — Module UI Reference / I2C Protocol Specification v2.6 registry.
+#define UI_MOD 0x20           // UI Control          (KMC_TYPE_UI_CONTROL)
+#define Function_MOD 0x21     // Function Control    (KMC_TYPE_FUNCTION_CONTROL, 24-input)
+#define ActionCtrl_MOD 0x22   // Action Control      (KMC_TYPE_ACTION_CONTROL)
+#define StabCtrl_MOD 0x23     // Stability Control   (KMC_TYPE_STABILITY_CONTROL)
+#define VehCtrl_MOD 0x24      // Vehicle Control     (KMC_TYPE_VEHICLE_CONTROL, 24-input)
+#define Time_MOD 0x25         // Time Control        (KMC_TYPE_TIME_CONTROL)
+#define EVA_MOD 0x26          // AUX CTRL / EVA      (KMC_TYPE_EVA_MODULE)
+// 0x27 reserved
+#define Rotation_MOD 0x28     // Joystick Rotation   (KMC_TYPE_JOYSTICK_ROTATION)
+#define Translation_MOD 0x29  // Joystick Translation(KMC_TYPE_JOYSTICK_TRANS)
+#define GPWS_MOD 0x2A         // GPWS Input Panel    (KMC_TYPE_GPWS_INPUT)
+#define PreWarp_MOD 0x2B      // Pre-Warp Time       (KMC_TYPE_PRE_WARP_TIME)
+#define Throttle_MOD 0x2C     // Throttle Module     (KMC_TYPE_THROTTLE)
+#define DualEnc_MOD 0x2D      // Dual Encoder        (KMC_TYPE_DUAL_ENCODER)
+#define Switch_MOD 0x2E       // Switch Panel        (KMC_TYPE_SWITCH_PANEL)
 
 #define INA219_ADDR 0x44
 #define EMC2101_ADDR 0x4C
@@ -108,39 +111,41 @@ float rpm;
 /***************************************************************************************
    Define custom action group parameters
 ****************************************************************************************/
-// Value added based on the current selected ctrlGrp
-const uint8_t ctrlGrpAdd = 40;
+// Active control group (1..6). Per-group AGX stride is CTRL_GRP_STRIDE (40),
+// defined in custom_action_grp_def.h. ctrlGrpAdd retained as an alias.
+const uint8_t ctrlGrpAdd = CTRL_GRP_STRIDE;
 
-// Final group definitons that will be issued by the commands
-uint8_t ag1;
-uint8_t ag2;
-uint8_t ag3;
-uint8_t ag4;
-uint8_t ag5;
-uint8_t ag6;
-uint8_t ag7;
-uint8_t ag8;
-uint8_t ag9;
-uint8_t ag10;
-uint8_t solar_array;
+// Final (group-offset-applied) CAG numbers issued by the commands. One per
+// base in custom_action_grp_def.h. Recomputed by setActionGroups() whenever
+// the active control group changes.
+uint8_t ag1, ag2, ag3, ag4, ag5, ag6, ag7, ag8, ag9, ag10, ag11, ag12;
 uint8_t antenna;
+uint8_t fuel_cell;
+uint8_t solar_array;
 uint8_t cargo_door;
 uint8_t radiator;
-uint8_t drogue;
-uint8_t parachute;
 uint8_t ladder;
+uint8_t heat_shield_deploy;
+uint8_t heat_shield_release;
+uint8_t parachute;            // main chute deploy
+uint8_t main_chute_cut;
+uint8_t drogue;               // drogue deploy
 uint8_t drogue_cut;
 uint8_t les;
-uint8_t science1;
-uint8_t science2;
+uint8_t fairing;
+uint8_t engineMode;
 uint8_t collectSci;
 uint8_t engine1;
+uint8_t science1;
 uint8_t engine2;
-uint8_t engineMode;
+uint8_t science2;
 uint8_t intake;
-uint8_t ctrlPt1;
-uint8_t ctrlPt2;
+uint8_t lock_surfaces;
+uint8_t cp_primary;
+uint8_t cp_alternate;
+uint8_t cp_docking;
 uint8_t airbrake;
+uint8_t rw_disable;
 
 
 /***************************************************************************************
