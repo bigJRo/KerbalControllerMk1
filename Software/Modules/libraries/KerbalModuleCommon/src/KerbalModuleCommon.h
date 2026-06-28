@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.4.0
+ * @version     1.5.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -173,7 +173,8 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_TYPE_PRE_WARP_TIME      0x0C
 #define KMC_TYPE_THROTTLE           0x0D
 #define KMC_TYPE_DUAL_ENCODER       0x0E
-#define KMC_TYPE_SWITCH_PANEL       0x0F
+// 0x0F retired — was KMC_TYPE_SWITCH_PANEL; the single Switch Panel module
+// design was superseded by Switch Groups 1/2 on Function/Vehicle Control.
 #define KMC_TYPE_INDICATOR          0x10
 
 // ============================================================
@@ -241,7 +242,7 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 // library's response buffer. Total = KMC_HEADER_SIZE + payload (spec §9).
 
 /** @brief Standard 16-input button module: 4-byte payload (events HI/LO,
- *         change HI/LO). UI/Action/Stability/Time/EVA/Dual Encoder/Switch Panel. */
+ *         change HI/LO). UI/Action/Stability/Time/EVA/Dual Encoder. */
 #define KMC_BUTTON_PAYLOAD_SIZE    4
 #define KMC_BUTTON_PACKET_SIZE     (KMC_HEADER_SIZE + KMC_BUTTON_PAYLOAD_SIZE)   // 7
 

@@ -46,7 +46,7 @@ extern "C" void usb_init(void);
 #define PreWarp_MOD 0x2B      // Pre-Warp Time       (KMC_TYPE_PRE_WARP_TIME)
 #define Throttle_MOD 0x2C     // Throttle Module     (KMC_TYPE_THROTTLE)
 #define DualEnc_MOD 0x2D      // Dual Encoder        (KMC_TYPE_DUAL_ENCODER)
-#define Switch_MOD 0x2E       // Switch Panel        (KMC_TYPE_SWITCH_PANEL)
+// 0x2E retired — was Switch Panel (superseded by Switch Groups 1/2)
 
 #define INA219_ADDR 0x44
 #define EMC2101_ADDR 0x4C

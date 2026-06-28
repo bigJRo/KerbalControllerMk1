@@ -105,7 +105,6 @@
 #define TYPE_PREWARP            0x0C
 #define TYPE_THROTTLE           0x0D
 #define TYPE_DUAL_ENCODER       0x0E
-#define TYPE_SWITCH_PANEL       0x0F
 #define TYPE_INDICATOR          0x10
 
 // ============================================================
@@ -332,24 +331,6 @@ static const char* const DE_LABELS[] PROGMEM = {
 };
 #define DE_LABEL_COUNT 2
 
-// -- Switch Panel (0x0F) --
-static const char sw_b00[] PROGMEM = "SW1  Bit0  MODE-CTRL (3-pos latching w/SW2)";
-static const char sw_b01[] PROGMEM = "SW2  Bit1  MODE-DEMO (both low=DBG)";
-static const char sw_b02[] PROGMEM = "SW3  Bit2  MSTR Master Reset (rising edge only)";
-static const char sw_b03[] PROGMEM = "SW4  Bit3  DISPLAY Reset (rising edge only)";
-static const char sw_b04[] PROGMEM = "SW5  Bit4  SCE to Auxiliary";
-static const char sw_b05[] PROGMEM = "SW6  Bit5  LTG Bulb Test (rise=start fall=stop)";
-static const char sw_b06[] PROGMEM = "SW7  Bit6  AUDIO On";
-static const char sw_b07[] PROGMEM = "SW8  Bit7  INPUT Precision";
-static const char sw_b08[] PROGMEM = "SW9  Bit8  ENGINE Arm";
-static const char sw_b09[] PROGMEM = "SW10 Bit9  THRTL Fine Control";
-static const char* const SW_LABELS[] PROGMEM = {
-    sw_b00, sw_b01, sw_b02, sw_b03,
-    sw_b04, sw_b05, sw_b06, sw_b07,
-    sw_b08, sw_b09
-};
-#define SW_LABEL_COUNT 10
-
 // -- Indicator (0x10) --
 static const char in_b00[] PROGMEM = "B0  THRTL ENA    GREEN  SW9+throttle enabled";
 static const char in_b01[] PROGMEM = "B1  LIGHT ENA    YELLOW LIGHTS_ACTION";
@@ -418,7 +399,6 @@ static const char* _typeName(uint8_t typeId) {
         case TYPE_PREWARP:           return "Pre-Warp Time";
         case TYPE_THROTTLE:          return "Throttle Module";
         case TYPE_DUAL_ENCODER:      return "Dual Encoder";
-        case TYPE_SWITCH_PANEL:      return "Switch Panel";
         case TYPE_INDICATOR:         return "Indicator Module";
         default:                     return "Unknown";
     }
@@ -471,8 +451,6 @@ static void _printButtonLabel(uint8_t typeId, uint8_t idx) {
             _printLabel(TH_LABELS, idx, TH_LABEL_COUNT); break;
         case TYPE_DUAL_ENCODER:
             _printLabel(DE_LABELS, idx, DE_LABEL_COUNT); break;
-        case TYPE_SWITCH_PANEL:
-            _printLabel(SW_LABELS, idx, SW_LABEL_COUNT); break;
         case TYPE_INDICATOR:
             _printLabel(IN_LABELS, idx, IN_LABEL_COUNT); break;
         default:
@@ -960,45 +938,6 @@ static void _monitorDualEncoder() {
     Serial.println(F("  Monitor exited."));
 }
 
-// Switch panel 4-byte packet
-static void _monitorSwitchPanel() {
-    Serial.println(F("  Flip switches. Send [X] to exit."));
-    Serial.println(F("  MODE: CTRL=SW1hi, DBG=both lo, DEMO=SW2hi\n"));
-
-    while (true) {
-        if (_checkExit()) break;
-        if (!_intAsserted()) { delay(5); continue; }
-
-        uint8_t pkt[4];
-        if (Wire.requestFrom(_target.address, (uint8_t)4) != 4) {
-            delay(10); continue;
-        }
-        for (uint8_t i = 0; i < 4; i++) pkt[i] = Wire.read();
-
-        uint16_t state  = ((uint16_t)pkt[0] << 8) | pkt[1];
-        uint16_t change = ((uint16_t)pkt[2] << 8) | pkt[3];
-
-        for (uint8_t bit = 0; bit < 10; bit++) {
-            if (!(change & (1u << bit))) continue;
-            bool on = (state >> bit) & 1;
-            Serial.print(on ? F("  [ON]  ") : F("  [OFF] "));
-            _printButtonLabel(TYPE_SWITCH_PANEL, bit);
-            Serial.println();
-        }
-
-        uint8_t mode = state & 0x03;
-        Serial.print(F("  MODE: "));
-        switch (mode) {
-            case 0: Serial.println(F("DBG (center)")); break;
-            case 1: Serial.println(F("CTRL (up)")); break;
-            case 2: Serial.println(F("DEMO (down)")); break;
-            case 3: Serial.println(F("INVALID (both high)")); break;
-        }
-        delay(10);
-    }
-    Serial.println(F("  Monitor exited."));
-}
-
 // Indicator — output only, cycle pixels and print reference
 static void _monitorIndicator() {
     Serial.println(F("  Indicator is output-only. Cycling all pixel states...\n"));
@@ -1037,7 +976,6 @@ static void _startMonitor() {
         case TYPE_PREWARP:           _monitorDisplay();      break;
         case TYPE_THROTTLE:          _monitorThrottle();     break;
         case TYPE_DUAL_ENCODER:      _monitorDualEncoder();  break;
-        case TYPE_SWITCH_PANEL:      _monitorSwitchPanel();  break;
         case TYPE_INDICATOR:         _monitorIndicator();    break;
         default:                     _monitorStandard();     break;
     }

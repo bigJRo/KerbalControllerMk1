@@ -32,7 +32,8 @@
      * I2C address map (Controller_Main.ino) does not match the v5.x registry
        (e.g. UI=0x20, Function=0x21, Action=0x22, Stability=0x23, Vehicle=0x24,
         Time=0x25, EVA=0x26, Joy Rot=0x28, Joy Trans=0x29, GPWS=0x2A,
-        Pre-Warp=0x2B, Throttle=0x2C, Dual Encoder=0x2D, Switch Panel=0x2E).
+        Pre-Warp=0x2B, Throttle=0x2C, Dual Encoder=0x2D). 0x2E is retired
+        (was Switch Panel — superseded by Switch Groups 1/2).
      * Only three read handlers exist; the remaining modules need handlers.
      * Payload bit layouts in module_variables.h predate the v5.x module UI.
 
@@ -85,7 +86,6 @@ static inline uint8_t moduleTotalPacketSize(uint8_t typeId) {
         case KMC_TYPE_TIME_CONTROL:
         case KMC_TYPE_EVA_MODULE:
         case KMC_TYPE_DUAL_ENCODER:
-        case KMC_TYPE_SWITCH_PANEL:
             return KMC_BUTTON_PACKET_SIZE;     // 7
 
         default:

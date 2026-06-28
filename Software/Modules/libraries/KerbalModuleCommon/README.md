@@ -1,6 +1,6 @@
 # KerbalModuleCommon
 
-**Version:** 1.4.0  
+**Version:** 1.5.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 
@@ -141,7 +141,7 @@ Constants: `KMC_STATUS_ACTIVE`, `KMC_STATUS_SLEEPING`, `KMC_STATUS_DISABLED`, `K
 | `KMC_TYPE_PRE_WARP_TIME` | 0x0C | Pre-Warp Time | 0x2B |
 | `KMC_TYPE_THROTTLE` | 0x0D | Throttle Module | 0x2C |
 | `KMC_TYPE_DUAL_ENCODER` | 0x0E | Dual Encoder | 0x2D |
-| `KMC_TYPE_SWITCH_PANEL` | 0x0F | Switch Panel | 0x2E |
+| _0x0F_ | _retired_ | _was Switch Panel — superseded by Switch Groups 1/2_ | _0x2E_ |
 | `KMC_TYPE_INDICATOR` | 0x10 | Indicator Module | 0x2F |
 
 ---

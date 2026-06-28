@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.6  
+**Version:** 2.7  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
@@ -23,7 +23,7 @@ Terminology follows the 2021 NXP I2C specification:
 
 The controller owns all game state and situational logic. Target modules own only their local hardware — LED colours, button state, display values. All application logic belongs in the module sketch; libraries are hardware interface layers.
 
-> **Conformance note:** As of v2.6, **all module firmware is conformant** with this document. The **KerbalButtonCore (v2.0)**, **KerbalJoystickCore (v2.0)** libraries and the standalone **Throttle (v2.0)**, **EVA (v2.0)**, **Dual Encoder (v2.0)**, and **Switch Panel (v2.0)** firmware join the original **Kerbal7SegmentCore** reference implementation — closing issues KBC-001–006, KJC-001–005, and THR-001–004 and the standalone-firmware items. Every module emits the universal 3-byte header, increments the transaction counter on each INT assertion, and implements the full BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING lifecycle with `CMD_ENABLE`/`CMD_DISABLE`.
+> **Conformance note:** As of v2.6, **all module firmware is conformant** with this document. The **KerbalButtonCore (v2.0)**, **KerbalJoystickCore (v2.0)** libraries and the standalone **Throttle (v2.0)**, **EVA (v2.0)**, and **Dual Encoder (v2.0)** firmware join the original **Kerbal7SegmentCore** reference implementation — closing issues KBC-001–006, KJC-001–005, and THR-001–004 and the standalone-firmware items. Every module emits the universal 3-byte header, increments the transaction counter on each INT assertion, and implements the full BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING lifecycle with `CMD_ENABLE`/`CMD_DISABLE`.
 
 ---
 
@@ -197,9 +197,10 @@ Total packet size = 3-byte header + payload size. The controller must read the f
 | 0x0C | `KMC_TYPE_PRE_WARP_TIME` | Pre-Warp Time | 0x2B | 5 bytes | 8 bytes | 0x10 | ✓ K7SC reference |
 | 0x0D | `KMC_TYPE_THROTTLE` | Throttle Module | 0x2C | 4 bytes | 7 bytes | 0x20 | ✓ Throttle fw v2.0 |
 | 0x0E | `KMC_TYPE_DUAL_ENCODER` | Dual Encoder | 0x2D | 4 bytes | 7 bytes | 0x04 | ✓ Dual Encoder fw v2.0 |
-| 0x0F | `KMC_TYPE_SWITCH_PANEL` | Switch Panel | 0x2E | 4 bytes | 7 bytes | 0x00 | ✓ Switch Panel fw v2.0 |
 
-> **Note:** The EVA Module, Dual Encoder, and Switch Panel ship self-contained firmware (their own `I2C.cpp`) rather than the KerbalButtonCore library, but are now equally conformant. EVA reports capability flags 0x00 — its encoder headers are unpopulated, so no encoder delta bytes are sent (see §9.1 EVA note). The Dual Encoder uses the device-specific payload defined in §9.5.
+> **Note:** Type ID 0x0F / address 0x2E (formerly the Switch Panel) is retired — the single-module design was superseded by Switch Groups 1/2 on Function and Vehicle Control. Both the type ID and the address are now unused.
+>
+> **Note:** The EVA Module and Dual Encoder ship self-contained firmware (their own `I2C.cpp`) rather than the KerbalButtonCore library, but are now equally conformant. EVA reports capability flags 0x00 — its encoder headers are unpopulated, so no encoder delta bytes are sent (see §9.1 EVA note). The Dual Encoder uses the device-specific payload defined in §9.5.
 >
 > **Note:** Function Control (0x21) and Vehicle Control (0x24) read 24 inputs (12 NeoPixel buttons + 8 Switch Group inputs at indices 16–23) and therefore use the 6-byte switch-group payload defined in §9.1 (9-byte total packet). All other standard button modules read 16 inputs and use the 4-byte payload (7-byte total).
 >
@@ -213,7 +214,7 @@ All formats below show the complete packet including the 3-byte universal header
 
 ### 9.1 Standard Button Module (4-byte payload, 7 bytes total)
 
-Modules: UI Control, Function Control, Action Control, Stability Control, Vehicle Control, Time Control, EVA Module, Switch Panel. (The Dual Encoder uses a device-specific payload — see §9.5.)
+Modules: UI Control, Function Control, Action Control, Stability Control, Vehicle Control, Time Control, EVA Module. (The Dual Encoder uses a device-specific payload — see §9.5.)
 
 ```
 Byte 0:  Status byte       (see §4)
@@ -226,8 +227,6 @@ Byte 6:  Change mask LO    — change bitmask      (bit0=button8 … bit7=button
 ```
 
 AND the events bytes with the change mask to identify which buttons changed and what state they changed to.
-
-**Switch Panel note:** Bits 10–15 of the change mask and state are always 0x00 — only 10 switch positions are used.
 
 **EVA Module note:** Only bits 0–5 of the events and change bytes are used; bits 6–15 are always 0x00. Encoder delta bytes (bytes 5–6 in v2.1) are removed — encoder hardware is unpopulated and will be addressed in a future module revision.
 
@@ -526,3 +525,4 @@ Vessel switch behaviour is module-specific and determined by each module's contr
 | 2.4 | 2026-06-06 | §3 Interrupt Signalling corrected from "active-low open-drain + controller pull-up" to the actual implementation: active-low push-pull, driven low to assert, no pull-up — aligning the spec with Hardware Reference §13.1 (which adopted push-pull at its revision 1.1). Added 5V (ATtiny816, divider) vs 3.3V (Teensy carrier, direct) level-handling distinction. Added §3.1 Hardware Reset (RST) documenting the optional active-low per-module reset line used by Teensy display carriers (full reboot) and distinct from CMD_RESET (application-state reset). Removed a duplicate stale v2.2 copy of the document that had been appended to the file. |
 | 2.6 | 2026-06-28 | Remaining standalone firmware brought to conformance: EVA Module (v2.0), Dual Encoder (v2.0), and Switch Panel (v2.0) now emit the universal 3-byte header, transaction counter, and full lifecycle state machine. §1 conformance note updated to "all module firmware conformant". §8 registry: EVA/Dual Encoder/Switch Panel marked ✓; EVA capability flags corrected 0x04→0x00 (encoder headers unpopulated, no delta bytes sent). Added §9.5 defining the Dual Encoder device-specific packet (button events + change + two int8 encoder deltas) and removed Dual Encoder from the §9.1 standard-module list. |
 | 2.5 | 2026-06-28 | Conformance reached for the three pending firmware bodies — KerbalButtonCore v2.0 (KBC-001–006), KerbalJoystickCore v2.0 (KJC-001–005), and Throttle v2.0 (THR-001–004); §1 conformance note and §8 registry updated. Added §9.1.1 switch-group variant: Function Control (0x21) and Vehicle Control (0x24) now read 24 inputs (third shift register U16, Switch Group 1/2 at indices 16–23) and emit a 6-byte payload / 9-byte packet; §8 totals and §13 bus timing updated accordingly. Corrected the joystick registry entry (§8) to 9-byte payload / 12-byte total to match the §9.2 byte layout (button events + change + state bytes were added to the payload but the registry total had not been updated). Clarified that the EVA Module, Dual Encoder, and Switch Panel ship standalone firmware not covered by the library updates and remain pending. |
+| 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
