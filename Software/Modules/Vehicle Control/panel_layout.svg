@@ -31,23 +31,23 @@
   <text x="82" y="167" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
   <text x="82" y="193" font-size="7.5" fill="#9ca3af" text-anchor="middle">B3 · BUTTON04</text>
 
-  <!-- B2 Solar Array GOLD -->
-  <rect x="172" y="134" width="124" height="66" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
-  <text x="234" y="154" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">Solar Array</text>
-  <text x="234" y="167" font-size="8" fill="#ffc800" text-anchor="middle">● GOLD</text>
+  <!-- B2 Antenna PINK -->
+  <rect x="172" y="134" width="124" height="66" rx="6" fill="#ec489918" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="234" y="154" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">Antenna</text>
+  <text x="234" y="167" font-size="8" fill="#ec4899" text-anchor="middle">● PINK</text>
   <text x="234" y="193" font-size="7.5" fill="#9ca3af" text-anchor="middle">B2 · BUTTON03</text>
 
   <!-- Row 3 -->
-  <!-- B5 Antenna PINK -->
-  <rect x="20" y="214" width="124" height="66" rx="6" fill="#ec489918" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="82" y="234" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">Antenna</text>
-  <text x="82" y="247" font-size="8" fill="#ec4899" text-anchor="middle">● PINK</text>
+  <!-- B5 Solar Array GOLD -->
+  <rect x="20" y="214" width="124" height="66" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
+  <text x="82" y="234" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">Solar Array</text>
+  <text x="82" y="247" font-size="8" fill="#ffc800" text-anchor="middle">● GOLD</text>
   <text x="82" y="273" font-size="7.5" fill="#9ca3af" text-anchor="middle">B5 · BUTTON06</text>
 
-  <!-- B4 Cargo Door TEAL -->
-  <rect x="172" y="214" width="124" height="66" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
-  <text x="234" y="234" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Cargo Door</text>
-  <text x="234" y="247" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
+  <!-- B4 Fuel Cell CYAN -->
+  <rect x="172" y="214" width="124" height="66" rx="6" fill="#06b6d418" stroke="#06b6d4" stroke-width="1.5"/>
+  <text x="234" y="234" font-size="9" font-weight="500" fill="#0e7490" text-anchor="middle">Fuel Cell</text>
+  <text x="234" y="247" font-size="8" fill="#06b6d4" text-anchor="middle">● CYAN</text>
   <text x="234" y="273" font-size="7.5" fill="#9ca3af" text-anchor="middle">B4 · BUTTON05</text>
 
   <!-- Row 4 -->
@@ -57,46 +57,45 @@
   <text x="82" y="327" font-size="8" fill="#f97316" text-anchor="middle">● ORANGE</text>
   <text x="82" y="353" font-size="7.5" fill="#9ca3af" text-anchor="middle">B7 · BUTTON08</text>
 
-  <!-- B6 Ladder LIME -->
-  <rect x="172" y="294" width="124" height="66" rx="6" fill="#84cc1618" stroke="#84cc16" stroke-width="1.5"/>
-  <text x="234" y="314" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Ladder</text>
-  <text x="234" y="327" font-size="8" fill="#84cc16" text-anchor="middle">● LIME</text>
+  <!-- B6 Cargo Door TEAL -->
+  <rect x="172" y="294" width="124" height="66" rx="6" fill="#14b8a618" stroke="#14b8a6" stroke-width="1.5"/>
+  <text x="234" y="314" font-size="9" font-weight="500" fill="#0f766e" text-anchor="middle">Cargo Door</text>
+  <text x="234" y="327" font-size="8" fill="#14b8a6" text-anchor="middle">● TEAL</text>
   <text x="234" y="353" font-size="7.5" fill="#9ca3af" text-anchor="middle">B6 · BUTTON07</text>
 
   <!-- Row 5 -->
-  <!-- B9 Drogue Deploy GREEN (extended) -->
-  <rect x="20" y="374" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="82" y="394" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Drogue Deploy</text>
-  <text x="82" y="407" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
-  <text x="82" y="420" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <!-- B9 Ladder LIME -->
+  <rect x="20" y="374" width="124" height="66" rx="6" fill="#84cc1618" stroke="#84cc16" stroke-width="1.5"/>
+  <text x="82" y="394" font-size="9" font-weight="500" fill="#3f6212" text-anchor="middle">Ladder</text>
+  <text x="82" y="407" font-size="8" fill="#84cc16" text-anchor="middle">● LIME</text>
   <text x="82" y="433" font-size="7.5" fill="#9ca3af" text-anchor="middle">B9 · BUTTON10</text>
 
-  <!-- B8 Main Deploy GREEN (extended) -->
+  <!-- B8 Heat Shield GREEN/RED (state machine) -->
   <rect x="172" y="374" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="234" y="394" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Main Deploy</text>
-  <text x="234" y="407" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
-  <text x="234" y="420" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <text x="234" y="394" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Heat Shield ★</text>
+  <text x="234" y="407" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN/RED</text>
+  <text x="234" y="420" font-size="7" fill="#6366f1" text-anchor="middle">state machine</text>
   <text x="234" y="433" font-size="7.5" fill="#9ca3af" text-anchor="middle">B8 · BUTTON09</text>
 
   <!-- Row 6 -->
-  <!-- B11 Drogue Cut RED (extended) -->
-  <rect x="20" y="454" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
-  <text x="82" y="474" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Drogue Cut</text>
-  <text x="82" y="487" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
-  <text x="82" y="500" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <!-- B11 Drogue Chute GREEN/RED (state machine) -->
+  <rect x="20" y="454" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="82" y="474" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Drogue Chute ★</text>
+  <text x="82" y="487" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN/RED</text>
+  <text x="82" y="500" font-size="7" fill="#6366f1" text-anchor="middle">state machine</text>
   <text x="82" y="513" font-size="7.5" fill="#9ca3af" text-anchor="middle">B11 · BUTTON12</text>
 
-  <!-- B10 Main Cut RED (extended) -->
-  <rect x="172" y="454" width="124" height="66" rx="6" fill="#ef444418" stroke="#ef4444" stroke-width="1.5"/>
-  <text x="234" y="474" font-size="9" font-weight="500" fill="#991b1b" text-anchor="middle">Main Cut</text>
-  <text x="234" y="487" font-size="8" fill="#ef4444" text-anchor="middle">● RED</text>
-  <text x="234" y="500" font-size="7" fill="#6366f1" text-anchor="middle">extended states</text>
+  <!-- B10 Main Chute GREEN/RED (state machine) -->
+  <rect x="172" y="454" width="124" height="66" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="234" y="474" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">Main Chute ★</text>
+  <text x="234" y="487" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN/RED</text>
+  <text x="234" y="500" font-size="7" fill="#6366f1" text-anchor="middle">state machine</text>
   <text x="234" y="513" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
 
   <!-- Extended state legend -->
   <rect x="20" y="534" width="276" height="36" rx="4" fill="#6366f108" stroke="#6366f133" stroke-width="1"/>
-  <text x="32" y="548" font-size="7.5" fill="#4338ca" font-weight="500">Extended states (parachute buttons B8-B11)</text>
-  <text x="32" y="562" font-size="7" fill="#6366f1">WARNING = approaching · ALERT = deploy now · ARMED = ready · PARTIAL_DEPLOY = drogue out</text>
+  <text x="32" y="548" font-size="7.5" fill="#4338ca" font-weight="500">★ State machine: B8 Heat Shield, B10 Main Chute, B11 Drogue Chute (deploy → cut/release)</text>
+  <text x="32" y="562" font-size="7" fill="#6366f1">ACTIVE = deployed (GREEN) · WARNING = approaching · ALERT = deploy/cut now · cut/release driven controller-side</text>
 
   <!-- Footer -->
   <text x="20" y="614" font-size="7.5" fill="#9ca3af">ACTIVE colors shown · ENABLED = dim white · B12–B15 no-connect · + Switch Group 2 at KBC 16–23 (8 panel switches, not shown)</text>

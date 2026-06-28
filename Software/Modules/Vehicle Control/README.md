@@ -1,7 +1,7 @@
 # KCMk1_Vehicle_Control
 
 **Module:** Vehicle Control  
-**Version:** 2.0  
+**Version:** 2.1  
 **Date:** 2026-06-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
@@ -12,11 +12,11 @@
 
 ## Overview
 
-The Vehicle Control module provides vehicle systems management including brakes, lights, landing gear, solar arrays, antenna, cargo door, ladder, radiators, and parachute deployment for Kerbal Space Program. Parachute buttons (B8-B11) support extended LED states for pre-deployment sequencing.
+The Vehicle Control module provides vehicle systems management including brakes, lights, landing gear, antenna, fuel cell, solar array, cargo door, radiator, ladder, heat shield, and parachutes for Kerbal Space Program. The heat shield (B8) and parachute (B10/B11) buttons are single-button state machines (deploy → cut/release) and support extended LED states; the controller sequences them.
 
 This module reads **24 inputs** via three daisy-chained 74HC165 shift registers: the 12 NeoPixel buttons at KBC indices 0–11, and the eight **Switch Group 2** panel switches at KBC indices 16–23. KBC indices 12–15 are no-connects (the former parking-brake / parachutes-armed / lights-lock / gear-lock discrete inputs were removed — those switches are now Switch Group 2 as of v2.0). The 24-input variant is selected in the sketch via `#define KBC_INPUT_COUNT 24` / `KBC_SHIFTREG_COUNT 3`.
 
-This module declares `KBC_CAP_EXTENDED_STATES` — the system controller uses WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states on the parachute buttons to communicate deployment status.
+This module declares `KBC_CAP_EXTENDED_STATES` — the system controller uses WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states on the state-machine buttons (B8/B10/B11) to communicate deploy / cut-release status. Layout follows Module UI Reference v5.4 (canonical).
 
 ---
 
@@ -27,7 +27,7 @@ This module declares `KBC_CAP_EXTENDED_STATES` — the system controller uses WA
 | I2C Address | `0x24` |
 | Module Type ID | `0x05` (KBC_TYPE_VEHICLE_CONTROL) |
 | Capability Flags | `0x01` (KBC_CAP_EXTENDED_STATES) |
-| Extended States | Yes — parachute buttons B8-B11 |
+| Extended States | Yes — state-machine buttons B8 / B10 / B11 |
 | NeoPixel Buttons | 12 (KBC indices 0-11) |
 | Switch Group 2 inputs | 8 (KBC indices 16–23, discrete, no LED) |
 | Not Installed | KBC indices 12–15 (no-connect) |
@@ -41,7 +41,7 @@ Physical panel orientation: 6 rows x 2 columns. Column 1 is leftmost, Column 2 i
 
 ![Vehicle Control Panel Layout](panel_layout.svg)
 
-Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. Buttons marked with extended states (B8-B11) also support WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states. Switch Group 2 inputs (B16–B23) are outside the NeoPixel grid and not shown.
+Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. The state-machine buttons (B8 Heat Shield, B10 Main Chute, B11 Drogue Chute) also support WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states. Switch Group 2 inputs (B16–B23) are outside the NeoPixel grid and not shown.
 
 ---
 
@@ -51,18 +51,18 @@ Active state colors shown. All NeoPixel buttons illuminate dim white in the ENAB
 
 | KBC Index | PCB Label | Function | Active Color | Extended States | Notes |
 |---|---|---|---|---|---|
-| B0 | BUTTON01 | Brakes | RED | No | Significant — red for attention |
+| B0 | BUTTON01 | Brakes | RED | No | High-consequence — red for attention |
 | B1 | BUTTON02 | Lights | YELLOW | No | Natural light association |
-| B2 | BUTTON03 | Solar Array | GOLD | No | Power / sunlight |
+| B2 | BUTTON03 | Antenna | PINK | No | CAG 13 — comms |
 | B3 | BUTTON04 | Gear | GREEN | No | Terrain family |
-| B4 | BUTTON05 | Cargo Door | TEAL | No | Terrain family |
-| B5 | BUTTON06 | Antenna | PINK | No | Comms family |
-| B6 | BUTTON07 | Ladder | LIME | No | Terrain family |
-| B7 | BUTTON08 | Radiator | ORANGE | No | Thermal management |
-| B8 | BUTTON09 | Main Deploy | GREEN | Yes | Parachute deploy |
-| B9 | BUTTON10 | Drogue Deploy | GREEN | Yes | Parachute deploy |
-| B10 | BUTTON11 | Main Cut | RED | Yes | Irreversible |
-| B11 | BUTTON12 | Drogue Cut | RED | Yes | Irreversible |
+| B4 | BUTTON05 | Fuel Cell | CYAN | No | CAG 14 — power generation |
+| B5 | BUTTON06 | Solar Array | GOLD | No | CAG 15 — power / sunlight |
+| B6 | BUTTON07 | Cargo Door | TEAL | No | CAG 16 — terrain family |
+| B7 | BUTTON08 | Radiator | ORANGE | No | CAG 17 — thermal management |
+| B8 | BUTTON09 | Heat Shield | GREEN (deploy) / RED (release) | Yes | CAG 19/20 — state machine |
+| B9 | BUTTON10 | Ladder | LIME | No | CAG 18 — terrain family |
+| B10 | BUTTON11 | Main Chute | GREEN (deploy) / RED (cut) | Yes | CAG 21/22 — state machine, requires CHUTE ARM |
+| B11 | BUTTON12 | Drogue Chute | GREEN (deploy) / RED (cut) | Yes | CAG 23/24 — state machine, requires CHUTE ARM |
 
 KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 
@@ -85,23 +85,25 @@ Reported in the button-event payload (inputs 16–23). Switch semantics and cont
 
 - **Terrain family (GREEN, TEAL, LIME)** — Gear, Cargo Door, and Ladder share a green-adjacent family. Physical proximity on the vehicle to the ground unifies them.
 - **Brakes (RED)** — not strictly irreversible but high consequence — red draws attention.
-- **Parachute deploy (GREEN) / cut (RED)** — the most consequential paired actions on the panel. GREEN for deploy (positive, controlled), RED for cut (irreversible). Extended states carry the sequencing story.
-- **Solar Array (GOLD)** — distinct warm color for power generation. Not confused with YELLOW (lights) or ORANGE (thermal).
+- **State-machine buttons — deploy (GREEN) / cut-release (RED)** — Heat Shield (B8), Main Chute (B10), and Drogue Chute (B11) are the most consequential actions on the panel. GREEN for deploy (positive, controlled), RED for cut/release (irreversible). The controller sequences deploy → cut via extended states.
+- **Power family (CYAN, GOLD)** — Fuel Cell (CYAN) and Solar Array (GOLD) are the two power-generation controls. Distinct from YELLOW (lights) and ORANGE (thermal).
 
 ---
 
-## Extended LED States — Parachute Buttons
+## Extended LED States — State-Machine Buttons (B8 / B10 / B11)
 
-Buttons B8-B11 support the full extended state set. The system controller uses these to communicate parachute deployment status. All timing and visual behavior is handled by the module.
+The Heat Shield (B8), Main Chute (B10), and Drogue Chute (B11) buttons support the full extended state set. The system controller uses these to communicate deploy / cut-release status. All flash timing and visual behavior is handled by the module.
 
 | State | Color | Behavior | Meaning |
 |---|---|---|---|
-| ENABLED | White (dim) | Static | System nominal, parachutes available |
-| ACTIVE | GREEN / RED | Static | Normal active state |
+| ENABLED | White (dim) | Static | System nominal, function available |
+| ACTIVE | GREEN | Static | Deployed (the button's active color) |
 | WARNING | Amber | 500ms flash | Deployment window approaching |
-| ALERT | Red | 150ms flash | Deploy immediately |
+| ALERT | Red | 150ms flash | Deploy / cut immediately |
 | ARMED | Cyan | Static | Parachute armed and ready |
 | PARTIAL_DEPLOY | Amber | Static | Drogue deployed, main pending |
+
+> **Implementation note.** The canonical state machines show the terminal **cut/release** state as static RED. The current KerbalButtonCore LED palette renders one ACTIVE color per button (here GREEN for deploy) and offers red only via the flashing **ALERT** state — there is no static-red LED state. The deploy → cut/release sequence (and any static-red cut rendering) is therefore driven controller-side. Adding a static-red terminal state to the library is tracked as a follow-up.
 
 ---
 
@@ -113,16 +115,16 @@ Buttons B8-B11 support the full extended state set. The system controller uses t
 |---|---|---|---|
 | P2 | BUTTON01 | 0 | Brakes |
 | P2 | BUTTON02 | 1 | Lights |
-| P2 | BUTTON03 | 2 | Solar Array |
+| P2 | BUTTON03 | 2 | Antenna |
 | P2 | BUTTON04 | 3 | Gear |
-| P3 | BUTTON05 | 4 | Cargo Door |
-| P3 | BUTTON06 | 5 | Antenna |
-| P3 | BUTTON07 | 6 | Ladder |
+| P3 | BUTTON05 | 4 | Fuel Cell |
+| P3 | BUTTON06 | 5 | Solar Array |
+| P3 | BUTTON07 | 6 | Cargo Door |
 | P3 | BUTTON08 | 7 | Radiator |
-| P4 | BUTTON09 | 8 | Main Deploy |
-| P4 | BUTTON10 | 9 | Drogue Deploy |
-| P4 | BUTTON11 | 10 | Main Cut |
-| P4 | BUTTON12 | 11 | Drogue Cut |
+| P4 | BUTTON09 | 8 | Heat Shield |
+| P4 | BUTTON10 | 9 | Ladder |
+| P4 | BUTTON11 | 10 | Main Chute |
+| P4 | BUTTON12 | 11 | Drogue Chute |
 | — | (no-connect) | 12–15 | Not connected |
 | DB127S #1 | SW1–4 | 16–19 | Switch Group 2: CHUTE, GEAR, BRAKE, EXT LT |
 | DB127S #2 | SW5–8 | 20–23 | Switch Group 2: SAS, RCS, THC/RHC, AUDIO |
@@ -184,7 +186,7 @@ Button state packet (9 bytes): 3-byte universal header (status, type ID, transac
 - Bit 16 — CHUTE, 17 — GEAR, 18 — BRAKE, 19 — EXT LT
 - Bit 20 — SAS, 21 — RCS, 22 — THC/RHC, 23 — AUDIO
 
-LED state nibble values for parachute buttons (B8-B11):
+LED state nibble values for the state-machine buttons (B8 / B10 / B11):
 ```
 0x0 = OFF
 0x1 = ENABLED  (dim white)
@@ -202,4 +204,5 @@ LED state nibble values for parachute buttons (B8-B11):
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial release |
-| 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): old B12–B15 discrete inputs removed; Switch Group 2 added at KBC indices 16–23 via the 24-input / 3-byte shift-register variant. Packet is now 9 bytes (3-byte header + 6-byte payload); module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1812. B0–B11 button layout unchanged. |
+| 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): old B12–B15 discrete inputs removed; Switch Group 2 added at KBC indices 16–23 via the 24-input / 3-byte shift-register variant. Packet is now 9 bytes (3-byte header + 6-byte payload); module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1812. |
+| 2.1 | 2026-06-28 | B0–B11 layout reconciled to Module UI Reference v5.4 (canonical): B2 Antenna, B4 Fuel Cell, B5 Solar Array, B6 Cargo Door; B8 is now Heat Shield and B10/B11 are single-button Main/Drogue Chute state machines (deploy → cut/release) replacing the former separate deploy/cut buttons; B9 is Ladder. Heat shield and parachutes use extended LED states sequenced controller-side. |
