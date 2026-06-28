@@ -331,6 +331,12 @@ void handlePanelCtrl(uint8_t i2c_addr) {  //Determin panel control mode via swit
   int16_t interrupt_val = digitalRead(PanelCtrl_INT);
   if (interrupt_val == LOW) {
     if (debug) { Serial.println("Panel Control Interrupt Detected!"); }
+    // TODO (controller v5.x): the standalone "Panel Control" module was
+    // removed in the v5.x design — its encoder/control functions moved to the
+    // Dual Encoder (0x2D) and direct-wired panel controls. This handler reads
+    // a non-conformant 5-byte encoder frame and predates the universal
+    // 3-byte header; rework or remove it during the controller migration.
+    // Conformant size for the replacement module is moduleTotalPacketSize().
     Wire.requestFrom(i2c_addr, 3);   // request 3 bytes from target i2c device
     while (Wire.available()) {       // slave may send less than requested
       newButtonPanel = Wire.read();  // receive first byte
@@ -365,18 +371,26 @@ void handleStabAssistPanel(uint8_t i2c_addr) {
   /***************************************************************
     Receive button/switch inputs
   ****************************************************************/
-  uint8_t StabCtrl_high, StabCtrl_low;
   uint16_t ledStabCtrl = 0;
 
   int16_t interrupt_val = digitalRead(StabCtrl_INT);
   if (interrupt_val == LOW) {
     if (debug) { Serial.println("Stability Control Module Interrupt Detected!"); }
-    Wire.requestFrom(i2c_addr, 2);  // request 3 bytes from target i2c device
-    while (Wire.available()) {      // slave may send less than requested
-      StabCtrl_high = Wire.read();  // receive first byte
-      StabCtrl_low = Wire.read();   // receive Second byte
-    }
-    newButtonStabCtrl = (StabCtrl_high << 8) + StabCtrl_low;
+    // Read the full conformant packet (3-byte universal header + 4-byte
+    // standard button payload = 7 bytes) and parse past the header.
+    uint8_t n = moduleTotalPacketSize(KMC_TYPE_STABILITY_CONTROL);
+    Wire.requestFrom(i2c_addr, n);
+    uint8_t pkt[12];
+    uint8_t got = 0;
+    while (Wire.available() && got < n) pkt[got++] = Wire.read();
+    // pkt[0..2] = status, type ID, transaction counter (universal header).
+    // Payload: byte0 events 0-7, byte1 events 8-15, byte2 change 0-7, byte3 change 8-15.
+    // Events carry current state; bit 0 = button 0.
+    // TODO (controller v5.x): the pStabAssist/pSASEnable bit layout in
+    // module_variables.h predates the v5.x Stability Control panel (RCS at
+    // B10, no SAS/RCS enable inputs) and still needs reconciliation.
+    newButtonStabCtrl = (uint16_t)pkt[KMC_PKT_PAYLOAD_OFFSET]
+                      | ((uint16_t)pkt[KMC_PKT_PAYLOAD_OFFSET + 1] << 8);
     if (debug) {
       Serial.print("newButtonStabCtrl = ");
       Serial.println(newButtonStabCtrl, BIN);
@@ -529,18 +543,27 @@ void handleVehCtrlPanel(uint8_t i2c_addr) {
   /***************************************************************
     Receive button/switch inputs
   ****************************************************************/
-  uint8_t vehCtrl_high, vehCtrl_low;
   uint16_t ledVehCtrl = 0;
 
   int16_t interrupt_val = digitalRead(VehCtrl_INT);
   if (interrupt_val == LOW) {
     if (debug) { Serial.println("Vehicle Control Module Interrupt Detected!"); }
-    Wire.requestFrom(i2c_addr, 2);  // request 3 bytes from target i2c device
-    while (Wire.available()) {      // slave may send less than requested
-      vehCtrl_high = Wire.read();   // receive first byte
-      vehCtrl_low = Wire.read();    // receive Second byte
-    }
-    newButtonVehCtrl = (vehCtrl_high << 8) + vehCtrl_low;
+    // Vehicle Control is a 24-input switch-group module: 3-byte universal
+    // header + 6-byte payload (events 0-7/8-15/16-23, change 0-7/8-15/16-23)
+    // = 9 bytes. Parse past the header and reconstruct the 24-bit input word.
+    uint8_t n = moduleTotalPacketSize(KMC_TYPE_VEHICLE_CONTROL);
+    Wire.requestFrom(i2c_addr, n);
+    uint8_t pkt[12];
+    uint8_t got = 0;
+    while (Wire.available() && got < n) pkt[got++] = Wire.read();
+    uint32_t vehInputs = (uint32_t)pkt[KMC_PKT_PAYLOAD_OFFSET]
+                       | ((uint32_t)pkt[KMC_PKT_PAYLOAD_OFFSET + 1] << 8)
+                       | ((uint32_t)pkt[KMC_PKT_PAYLOAD_OFFSET + 2] << 16);  // bits 16-23 = Switch Group 2
+    // TODO (controller v5.x): newButtonVehCtrl is 16-bit and the
+    // module_variables.h bit layout predates the v5.x Vehicle Control panel
+    // and Switch Group 2 (B16-B23). Widen to 32-bit and remap when the
+    // controller handlers are reworked. For now keep the lower 16 buttons.
+    newButtonVehCtrl = (uint16_t)(vehInputs & 0xFFFF);
     if (debug) {
       Serial.print("newButtonVehCtrl = ");
       Serial.println(newButtonVehCtrl, BIN);

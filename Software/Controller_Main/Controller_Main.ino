@@ -18,6 +18,7 @@
 #include <Watchdog_t4.h>               // Inlcude Watchdog Timer library
 extern "C" void usb_init(void);
 
+#include "module_packets.h"                                                                                      // Per-type I2C packet sizing + universal header helpers
 #include "module_variables.h"                                                                                     // Module Register Definitions
 #include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
 #include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
