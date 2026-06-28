@@ -1,66 +1,56 @@
 #ifndef KERBAL_DISPLAY_COMMON_H
 #define KERBAL_DISPLAY_COMMON_H
 
-#define KDC_VERSION_MAJOR 2
-#define KDC_VERSION_MINOR 1
-#define KDC_VERSION_PATCH 1
+#define KDC_VERSION_MAJOR 3
+#define KDC_VERSION_MINOR 0
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
-   A UI toolkit for RA8875-based touchscreen displays used in Kerbal Controller Mk1.
-   Provides button drawing, text rendering, value formatting, and threshold coloring.
+   A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
+   in Kerbal Controller Mk1. Provides button drawing, text rendering, value
+   formatting, and threshold coloring.
 
-   Dependencies:
-    - RA8875 library by PaulStoffregen
-    - tFont proportional fonts (located in src/fonts/, included automatically)
+   v3.0.0 — hardware rev 2 migration: display type RA8875 -> KCM_TFT (RA8876_t41_p
+   via KCM_Display), fonts sumotoy tFont -> ILI9341_t3 (fonts_ili/), BMP blit via
+   writeRect(), SD via Teensy 4.1 BUILTIN_SDCARD, touch moved out to KCM_Touch.
+
+   Dependencies (install on the build machine — see PORTING_7inch_TFT.md):
+    - wwatson4506/TeensyRA8876-8080 (RA8876_t41_p) + TeensyRA8876-GFX-Common
+    - PaulStoffregen/ILI9341_fonts (ILI9341_t3 font format)
+    - KCM_Display, KCMk1_SystemConfig, KCM_Touch (this repo)
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 2.1.1
+  Version: 3.0.0
 ****************************************************************************************/
 #include <Arduino.h>
-#include <SPI.h>
 #include <SD.h>
-#include <RA8875.h>
 #include <Wire.h>
 #include <cfloat>   // DBL_MAX -- used in BodyParams soiAlt for Kerbol sentinel
-
+#include <KCM_Display.h>                  // KCM_TFT (RA8876_t41_p) + pins/resolution
+#include "fonts_ili/kcm_ili9341_font.h"   // ILI9341_t3_font_t (used in signatures)
 
 /***************************************************************************************
    DEFINES
+   Display pins (CS/RS/RESET), resolution, and the SD chip select (BUILTIN_SDCARD)
+   now come from KCMk1_SystemConfig.h (pulled in via KCM_Display.h). The RA8875_*
+   and SD_CS_PIN defines from the rev-1 SPI stack have been removed.
 ****************************************************************************************/
-// User-overrideable display settings
-#ifndef RA8875_CS
-  #define RA8875_CS 10
-#endif
-#ifndef RA8875_RESET
-  #define RA8875_RESET 15
-#endif
-#ifndef RA8875_DISPLAY_SIZE
-  #define RA8875_DISPLAY_SIZE RA8875_800x480
-#endif
 
-// User-overrideable SD card settings
-#ifndef SD_DETECT_PIN
-  #define SD_DETECT_PIN 4
-#endif
-#ifndef SD_CS_PIN
-  #define SD_CS_PIN 5
-#endif
-
-// Font includes -- all sizes, located in src/fonts/
-#include "fonts/Roboto_Black_12.c"
-#include "fonts/Roboto_Black_16.c"
-#include "fonts/Roboto_Black_20.c"
-#include "fonts/Roboto_Black_24.c"
-#include "fonts/Roboto_Black_28.c"
-#include "fonts/Roboto_Black_32.c"
-#include "fonts/Roboto_Black_36.c"
-#include "fonts/Roboto_Black_40.c"
-#include "fonts/Roboto_Black_48.c"
-#include "fonts/Roboto_Black_72.c"
-#include "fonts/TerminalFont_16.c"  // IBM CP437 VGA 8x16 -- fixed-width terminal aesthetic
-#include "fonts/TerminalFont_32.c"  // IBM CP437 VGA 16x32 -- 2x scaled from TerminalFont_16
+// Font includes -- all sizes, ILI9341_t3 format, located in src/fonts_ili/
+#include "fonts_ili/Roboto_Black_12.c"
+#include "fonts_ili/Roboto_Black_16.c"
+#include "fonts_ili/Roboto_Black_20.c"
+#include "fonts_ili/Roboto_Black_24.c"
+#include "fonts_ili/Roboto_Black_28.c"
+#include "fonts_ili/Roboto_Black_32.c"
+#include "fonts_ili/Roboto_Black_36.c"
+#include "fonts_ili/Roboto_Black_40.c"
+#include "fonts_ili/Roboto_Black_48.c"
+#include "fonts_ili/Roboto_Black_72.c"
+#include "fonts_ili/TerminalFont_16.c"  // IBM CP437 VGA 8x16 -- fixed-width terminal aesthetic
+#include "fonts_ili/TerminalFont_32.c"  // IBM CP437 VGA 16x32 -- 2x scaled from TerminalFont_16
 
 
 /***************************************************************************************
@@ -81,11 +71,13 @@
 ****************************************************************************************/
 // Screen dimensions — used internally by drawBMP/drawButton active-window restore.
 // KCMk1_SystemConfig.h defines the same values; these guards prevent redefinition.
+// Defined in KCMk1_SystemConfig.h (1024x600). Guards kept as a documentation
+// fallback only — the real values arrive via KCM_Display.h above.
 #ifndef KCM_SCREEN_W
-#define KCM_SCREEN_W 800
+#define KCM_SCREEN_W 1024
 #endif
 #ifndef KCM_SCREEN_H
-#define KCM_SCREEN_H 480
+#define KCM_SCREEN_H 600
 #endif
 
 #define TFT_BLACK        0x0000  /*   0,   0,   0 */
@@ -160,15 +152,15 @@ extern const byte TEXT_BORDER;  // horizontal padding from edge, default 8
 ****************************************************************************************/
 
 // --- Setup helper ---
-void setupDisplay(RA8875 &tft, uint16_t backColor);
+void setupDisplay(KCM_TFT &tft, uint16_t backColor);
 
 // --- Font measurement ---
-int16_t getFontCharWidth(const tFont *font, char c);
-int16_t getFontStringWidth(const tFont *font, const char *str);
+int16_t getFontCharWidth(const ILI9341_t3_font_t *font, char c);
+int16_t getFontStringWidth(const ILI9341_t3_font_t *font, const char *str);
 
 // --- Button ---
-void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
-                const ButtonLabel &label, const tFont *font, bool isOn);
+void drawButton(KCM_TFT &tft, int16_t x, int16_t y, int16_t w, int16_t h,
+                const ButtonLabel &label, const ILI9341_t3_font_t *font, bool isOn);
 
 // --- Text primitives ---
 //
@@ -189,11 +181,11 @@ void drawButton(RA8875 &tft, int16_t x, int16_t y, int16_t w, int16_t h,
 // single-byte code points (e.g. Δ at 0x94) — those work only when the caller
 // passes the single byte directly, not as the corresponding UTF-8 sequence.
 
-void textLeft(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+void textLeft(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
               const String &value, uint16_t foreColor, uint16_t backColor);
-void textRight(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+void textRight(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                const String &value, uint16_t foreColor, uint16_t backColor);
-void textCenter(RA8875 &tft, const tFont *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
+void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                 const String &value, uint16_t foreColor, uint16_t backColor);
 
 // --- Basic formatters ---
@@ -275,7 +267,7 @@ struct PrintState {
 
 // Full block draw with flicker-free rendering.
 // ps tracks previous render state to avoid blank-frame flicker on rapid updates.
-void printDisp(RA8875 &tft, const tFont *font,
+void printDisp(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                const String &param, const String &value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
@@ -284,7 +276,7 @@ void printDisp(RA8875 &tft, const tFont *font,
 
 // Cached overload — skips redraw entirely if content and colors are unchanged,
 // otherwise calls the PrintState overload for flicker-free rendering.
-void printDisp(RA8875 &tft, const tFont *font,
+void printDisp(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                const String &param, const String &value,
                uint16_t paramColor, uint16_t valColor, uint16_t valBack,
@@ -293,25 +285,25 @@ void printDisp(RA8875 &tft, const tFont *font,
 
 // Value-only redraw — use on updates. Clears and redraws only the right-hand
 // value region, leaving the param label and border completely untouched.
-void printDispChrome(RA8875 &tft, const tFont *font,
+void printDispChrome(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                      uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                      String label,
                      uint16_t labelColor, uint16_t backColor,
                      uint16_t borderColor);
 
-void printValue(RA8875 &tft, const tFont *font,
+void printValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                 uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                 const String &param, const String &value,
                 uint16_t valColor, uint16_t valBack,
                 uint16_t backColor,
                 PrintState &ps);
 
-void printName(RA8875 &tft, const tFont *font,
+void printName(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                const String &value, uint16_t color, uint16_t backColor,
                uint16_t borderColor, byte maxLength = 30);
 
-void printTitle(RA8875 &tft, const tFont *font,
+void printTitle(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                 uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                 const String &value, uint16_t color, uint16_t backColor,
                 uint16_t borderColor);
@@ -326,7 +318,7 @@ void setKDCDebugMode(bool enable);
 // Draw a vertical bar graph (bottom-fill). prevVal and newVal in range 0..scale.
 // Erases the delta between old and new bar rather than redrawing the full area.
 // drawBorder=true draws a white outline around the bar area.
-void drawVertBarGraph(RA8875 &tft,
+void drawVertBarGraph(KCM_TFT &tft,
                       uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                       int32_t prevVal, int32_t newVal,
                       uint16_t barColor, bool drawBorder,
@@ -342,7 +334,7 @@ void drawVertBarGraph(RA8875 &tft,
 // A future revision (see C2) will split this into drawArcTrack +
 // drawArcNeedle so the track can be drawn once at init and only the needle
 // updated per value change.
-void drawArcDisplay(RA8875 &tft,
+void drawArcDisplay(KCM_TFT &tft,
                     int16_t cx, int16_t cy,
                     uint16_t radius, uint16_t needleW,
                     float minVal, float maxVal,
@@ -352,10 +344,10 @@ void drawArcDisplay(RA8875 &tft,
 // Draw a vertical percentage axis with major/minor ticks and right-justified labels.
 // 0% is at barBottom, 100% is at barTop. axisW px are reserved for labels and ticks.
 // The axis line is drawn at x0 + axisW - 1.
-void drawLabelledAxis(RA8875 &tft,
+void drawLabelledAxis(KCM_TFT &tft,
                       uint16_t x0, uint16_t axisW,
                       uint16_t barTop, uint16_t barBottom,
-                      const tFont *font,
+                      const ILI9341_t3_font_t *font,
                       uint16_t axisColor, uint16_t backColor);
 
 // =============================================================================
@@ -365,22 +357,22 @@ void drawLabelledAxis(RA8875 &tft,
 // =============================================================================
 
 // Print text at explicit (x, y) with given font and colour — no y advance.
-void bsPrint(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
+void bsPrint(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y,
              const char *text, uint16_t col);
 
 // Print one line at column x, advance y by rowH. Returns new y.
-uint16_t bsLine(RA8875 &tft, const tFont *font, uint16_t col_x,
+uint16_t bsLine(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                 uint16_t y, uint16_t rowH, const char *text, uint16_t col);
 
 // Print with double-height font, advance y by 38px. Returns new y.
-uint16_t bsBig(RA8875 &tft, const tFont *font, uint16_t col_x,
+uint16_t bsBig(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                uint16_t y, const char *text, uint16_t col);
 
 // Advance y by rowH without drawing (blank line). Returns new y.
 uint16_t bsBlank(uint16_t y, uint16_t rowH);
 
 // Word-wrap text across multiple lines within maxW pixels. Returns new y.
-uint16_t bsWrap(RA8875 &tft, const tFont *font, uint16_t col_x,
+uint16_t bsWrap(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                 uint16_t y, uint16_t rowH,
                 const char *text, uint16_t col, uint16_t maxW);
 
@@ -391,16 +383,16 @@ void bsShuffle(uint8_t *arr, uint8_t n);
 // Text is centred horizontally within w and vertically within h.
 // The strip is filled with backColor before drawing.
 // Use where text rotation is needed but the RA8875 has no native rotation support.
-void drawVerticalText(RA8875 &tft,
+void drawVerticalText(KCM_TFT &tft,
                       uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
-                      const tFont *font,
+                      const ILI9341_t3_font_t *font,
                       const char *text,
                       uint16_t color, uint16_t backColor);
 
 // Draw the shared standby splash BMP from SD card.
 // Equivalent to: setXY(0,0) + fillScreen(BLACK) + drawBMP("/StandbySplash_800x480.bmp", 0, 0).
 // setupSD() must have been called first. Shared across all KCMk1 panels.
-void drawStandbySplash(RA8875 &tft);
+void drawStandbySplash(KCM_TFT &tft);
 
 // setupSD() must be called once in setup() before any drawBMP() calls.
 // Returns true if the SD card was found and initialised successfully.
@@ -427,7 +419,7 @@ enum BMPResult : uint8_t {
 // Draw a 24-bit uncompressed BMP from the SD card at screen position (x, y).
 // setupSD() must have been called and returned true before calling this.
 // Errors are logged to Serial with the filename and error code.
-BMPResult drawBMP(RA8875 &tft, const char *filename, uint16_t x, uint16_t y);
+BMPResult drawBMP(KCM_TFT &tft, const char *filename, uint16_t x, uint16_t y);
 
 // =============================================================================
 // --- Vessel enums ---
@@ -543,86 +535,17 @@ BodyParams getBodyParams(const char* SOI);
 BodyParams getBodyParams(const String& SOI);
 
 // =============================================================================
-// --- Capacitive touch (GSL1680F via I2C on Wire1) ---
+// --- Capacitive touch ---
 // =============================================================================
-//
-// Usage:
-//   // In setup() — one call handles Wire1 init, firmware upload, and chip start:
-//   setupTouch();
-//
-//   // In loop():
-//   if (isTouched()) {
-//     TouchResult t = readTouch();
-//     // t.count = number of active points (1-5)
-//     // t.points[0].x, t.points[0].y = first touch coordinates
-//   }
-//
-// Pin defaults (override before including this header if needed):
-//   CTP_INT_PIN  22  — GSL1680 interrupt pin (goes HIGH when touched)
-//   CTP_WAKE_PIN  3  — GSL1680 wake pin
-//   CTP_SDA_PIN  17  — Wire1 SDA (Teensy 4.0 native Wire1 pins)
-//   CTP_SCL_PIN  16  — Wire1 SCL (Teensy 4.0 native Wire1 pins)
-//
-// Wire (pins 18/19) is left free for other I2C devices.
-// No external library required — driver is built into KerbalDisplayCommon.
-
-#ifndef CTP_INT_PIN
-  #define CTP_INT_PIN   22
-#endif
-#ifndef CTP_WAKE_PIN
-  #define CTP_WAKE_PIN   3
-#endif
-#ifndef CTP_SDA_PIN
-  #define CTP_SDA_PIN   17
-#endif
-#ifndef CTP_SCL_PIN
-  #define CTP_SCL_PIN   16
-#endif
-#ifndef CTP_MAX_TOUCHES
-  #define CTP_MAX_TOUCHES 5
-#endif
-
-// Single touch point — x, y pixel coordinates
-struct TouchPoint {
-  uint16_t x  = 0;
-  uint16_t y  = 0;
-  uint8_t  id = 0;
-};
-
-// Full touch read result — number of active points and their coordinates
-struct TouchResult {
-  uint8_t    count = 0;
-  TouchPoint points[CTP_MAX_TOUCHES];
-};
-
-
-// Initialise Wire1 and the GSL1680F touch controller.
-// Uploads the panel firmware over I2C and starts the chip.
-// Call once from setup() — no parameters needed.
-void setupTouch();
-
-// Returns true if the GSL1680 INT pin is currently HIGH (touch active).
-// Polls GPIO directly — no ISR. The INT pin stays HIGH for the full touch duration.
-bool isTouched();
-
-// No-op — retained for API compatibility with ISR-based callers.
-// Polling has no flag to clear; call sites can be left unchanged.
-void clearTouchISR();
-
-// Returns the number of touch events (rising INT edges) since boot. (#A21)
-// Name is legacy from the ISR era; the function now counts touch events
-// rather than ISR fires. Use for diagnostics — confirms whether touches
-// are reaching the MCU at all.
-uint32_t touchISRCount();
-
-// Reads all active touch points from the GSL1680F.
-// Returns a TouchResult with count and coordinates.
-// Call when isTouched() returns true.
-TouchResult readTouch();
+// Touch moved to its own library for hardware rev 2: the GSL1680F driver (and
+// its 800x480 firmware blob) is replaced by KCM_Touch (FT5316 on software I2C).
+// Include <KCM_Touch.h> from the sketch; it provides the same surface:
+//   TouchPoint / TouchResult / setupTouch() / isTouched() / readTouch() /
+//   clearTouchISR() / touchISRCount().
 
 
 // =============================================================================
-// SYSTEM UTILITIES — Teensy 4.0 (IMXRT1062) specific
+// SYSTEM UTILITIES — Teensy 4.1 (IMXRT1062) specific
 // Uses hardware registers only — safe to call from library code.
 // Do not call from within an ISR.
 // =============================================================================
