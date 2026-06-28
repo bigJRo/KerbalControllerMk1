@@ -18,14 +18,14 @@
  *              Capability:     0x08 (KJC_CAP_JOYSTICK)
  *
  *              Axes:
- *                AXIS1 (PB5) — X axis
- *                AXIS2 (PA7) — Y axis
- *                AXIS3 (PA6) — Z rotation
+ *                AXIS1 (PA5) — X axis
+ *                AXIS2 (PA6) — Y axis
+ *                AXIS3 (PA7) — Z rotation
  *
  *              Buttons:
  *                BTN01 (PC0) — Reset Trim    — GREEN  — NeoPixel
  *                BTN02 (PB3) — Trim Set      — AMBER  — NeoPixel
- *                BTN_JOY(PA5)— Airbrake toggle / Run hold (EVA) — no LED — GPIO
+ *                BTN_JOY(PB5)— Airbrake toggle / Run hold (EVA) — no LED — GPIO
  *
  *              Do not touch the joystick during the first ~80ms
  *              after power-on. Startup calibration reads the center

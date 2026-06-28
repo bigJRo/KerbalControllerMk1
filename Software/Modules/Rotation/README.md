@@ -51,14 +51,14 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 
 | Button | Pin | Function | LED | Notes |
 |---|---|---|---|---|
-| BTN_JOY | PA6 | Airbrake toggle (spacecraft/airplane/rover) / Run hold (EVA) | None | Active high, hardware pull-down. Intentional duplicate of Function Control B4 (Base CAG 38). Action sequenced controller-side. |
+| BTN_JOY | PB5 | Airbrake toggle (spacecraft/airplane/rover) / Run hold (EVA) | None | Active high, hardware pull-down. Intentional duplicate of Function Control B4 (Base CAG 38). Action sequenced controller-side. |
 
 ### Analog Axes
 
 | Axis | Pin | ADC Channel | Function | Output Range |
 |---|---|---|---|---|
-| AXIS1 | PB4 | AIN9 | X axis | -32768 to +32767 |
-| AXIS2 | PB5 | AIN8 | Y axis | -32768 to +32767 |
+| AXIS1 | PA5 | AIN5 | X axis | -32768 to +32767 |
+| AXIS2 | PA6 | AIN6 | Y axis | -32768 to +32767 |
 | AXIS3 | PA7 | AIN7 | Z rotation | -32768 to +32767 |
 
 All axis values are signed INT16, centered at zero. Center position is calibrated at startup. Do not touch the joystick during the first ~80ms after power-on.
@@ -106,10 +106,10 @@ Default thresholds (all in raw ADC counts):
 
 | Signal | ATtiny816 Pin | Net |
 |---|---|---|
-| AXIS1 | PB4 (pin 10) | Joystick X via extension connector |
-| AXIS2 | PB5 (pin 9) | Joystick Y via extension connector |
+| AXIS1 | PA5 (pin 6) | Joystick X via extension connector |
+| AXIS2 | PA6 (pin 7) | Joystick Y via extension connector |
 | AXIS3 | PA7 (pin 8) | Joystick Z-rotation via extension connector |
-| BTN_JOY | PA6 (pin 7) | Joystick pushbutton via extension connector |
+| BTN_JOY | PB5 (pin 9) | Joystick pushbutton via extension connector |
 | BTN01 | PC0 (pin 15) | NeoPixel button 1 |
 | BTN02 | PB3 (pin 11) | NeoPixel button 2 |
 | NEOPIX_CMD | PC1 (pin 16) | NeoPixel data output |

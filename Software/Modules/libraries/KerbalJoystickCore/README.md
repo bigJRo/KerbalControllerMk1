@@ -40,13 +40,13 @@ This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire pro
 | ATtiny816 Pin | Net Name | Function |
 |---|---|---|
 | PA1 (pin 20) | INT | Interrupt output (active low) |
-| PA6 (pin 7) | BUTTON_JOY | Joystick pushbutton (active high) |
+| PA5 (pin 6) | AXIS1 | Analog input — X axis |
+| PA6 (pin 7) | AXIS2 | Analog input — Y axis |
 | PA7 (pin 8) | AXIS3 | Analog input — Z rotation |
 | PB0 (pin 14) | SCL | I2C clock |
 | PB1 (pin 13) | SDA | I2C data |
 | PB3 (pin 11) | BUTTON02 | NeoPixel button 2 |
-| PB4 (pin 10) | AXIS1 | Analog input — X axis |
-| PB5 (pin 9) | AXIS2 | Analog input — Y axis |
+| PB5 (pin 9) | BUTTON_JOY | Joystick pushbutton (active high) |
 | PC0 (pin 15) | BUTTON01 | NeoPixel button 1 |
 | PC1 (pin 16) | NEOPIX_CMD | NeoPixel data output |
 
