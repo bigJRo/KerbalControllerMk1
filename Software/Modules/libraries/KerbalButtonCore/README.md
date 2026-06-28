@@ -225,6 +225,17 @@ KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors, altColors);
 
 `ACTIVE` uses `activeColors[i]`; `ACTIVE_ALT` uses `altColors[i]` (falling back to `activeColors[i]` if no alt array was supplied). This drives two-colour buttons that are not a red terminal — e.g. Auxiliary Control's CP Toggle: ROSE (Primary) via `ACTIVE`, CORAL (Alternate) via `ACTIVE_ALT`. It is a core rendering feature and does not require `KBC_CAP_EXTENDED_STATES`.
 
+#### Choosing between `CUT` and `ACTIVE_ALT`
+
+Both give a button a second solid colour beyond `ACTIVE`. Pick by intent:
+
+| Use… | When the second state is… | Colour source | Needs alt array? | Needs extended-states cap? |
+|------|---------------------------|---------------|------------------|----------------------------|
+| **`CUT`** | an **irreversible terminal** — cut, release, jettison | Fixed `KMC_RED` (enforces the palette's RED = irreversible rule) | No | Yes (it's an extended state) |
+| **`ACTIVE_ALT`** | an **arbitrary alternate** of equal status (e.g. mode A / mode B) | Per-button `altColors[i]` (any colour) | Yes | No (core state) |
+
+Rule of thumb: if the second colour is red *because the action is irreversible*, use `CUT` — it is self-documenting and needs zero per-button config. If the two states are simply two options and neither is a red "irreversible" terminal, use `ACTIVE_ALT` with an `altColors` entry. Do not use `ACTIVE_ALT` with red to imitate `CUT`, and do not use `CUT` for a non-terminal toggle.
+
 To enable extended states, pass `KBC_CAP_EXTENDED_STATES` as the capability flags argument to the constructor.
 
 ---

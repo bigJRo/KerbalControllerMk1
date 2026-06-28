@@ -391,6 +391,8 @@ States 0x3–0x7 (WARNING, ALERT, ARMED, PARTIAL_DEPLOY, CUT) are **extended sta
 
 State 0x8 (`KMC_LED_ACTIVE_ALT`) is a **core rendering state**, not an extended state: it selects a button's *second* active colour from an optional per-button alternate-colour array (falling back to the primary active colour if none is supplied). It is available to any module regardless of the extended-states capability — used by Auxiliary Control's CP Toggle (ROSE Primary via `ACTIVE`, CORAL Alternate via `ACTIVE_ALT`).
 
+**`CUT` vs `ACTIVE_ALT` (two ways to give a button a second solid colour):** use `CUT` (0x7) when the second state is an **irreversible terminal** (cut / release / jettison) — the colour is a fixed `KMC_RED` that enforces the palette's "RED = irreversible" rule and needs no per-button configuration. Use `ACTIVE_ALT` (0x8) when the second state is an **arbitrary alternate of equal status** (e.g. mode A / mode B) — its colour comes from the sketch's alternate-colour array and may be any colour. Do not imitate `CUT` with `ACTIVE_ALT`+red, and do not use `CUT` for a non-terminal toggle.
+
 ### 10.3 Nibble Pack / Unpack
 
 From `KerbalModuleCommon.h`:
