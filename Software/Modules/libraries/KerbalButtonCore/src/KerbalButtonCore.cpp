@@ -25,11 +25,13 @@
 
 KerbalButtonCore::KerbalButtonCore(uint8_t         moduleTypeId,
                                    uint8_t         capFlags,
-                                   const RGBColor* activeColors)
+                                   const RGBColor* activeColors,
+                                   const RGBColor* altColors)
     : _shiftReg()
     , _ledControl()
     , _i2c(_shiftReg, _ledControl, moduleTypeId, capFlags)
     , _activeColors(activeColors)
+    , _altColors(altColors)
     , _lastPollTime(0)
     , _lastSleepPollTime(0)
 {
@@ -45,7 +47,7 @@ void KerbalButtonCore::begin(uint8_t brightness) {
 
     // 2. Initialise LED control — depends on active color array
     //    and brightness setting. begin() leaves all LEDs OFF.
-    _ledControl.begin(_activeColors, brightness);
+    _ledControl.begin(_activeColors, _altColors, brightness);
 
     // 3. Outputs stay dark at power-on: the module comes up in
     //    BOOT_READY and transitions to DISABLED, then ACTIVE only on

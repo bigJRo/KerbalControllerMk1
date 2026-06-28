@@ -24,7 +24,7 @@ This is a standalone sketch with tab-based organisation.
 | I2C Address | `0x2D` |
 | Module Type ID | `0x0E` |
 | Capability Flags | `0x04` (DEC_CAP_ENCODERS, bit 2) |
-| Data Packet Size | 4 bytes |
+| Data Packet Size | 7 bytes (3-byte header + 4-byte payload) |
 | Encoders | 2 × PEC11R-4220F-S0024 |
 | Pushbuttons | 2 (one per encoder, active high) |
 | LEDs | None |
@@ -54,20 +54,23 @@ Pushbutton switches have 10k pull-down resistors (R10, R11) — active high.
 
 ## I2C Protocol
 
-### Data Packet (module → controller, 4 bytes)
+### Data Packet (module → controller, 7 bytes)
 
 ```
-Byte 0:  Button events  (bit0=ENC1_SW pressed, bit1=ENC2_SW pressed)
-Byte 1:  Change mask    (same bit layout — set on both press and release)
-Byte 2:  ENC1 delta     (signed int8, +CW, -CCW, since last read)
-Byte 3:  ENC2 delta     (signed int8, +CW, -CCW, since last read)
+Byte 0:  Status byte    (lifecycle / fault / data-changed)
+Byte 1:  Module Type ID (0x0E)
+Byte 2:  Transaction counter
+Byte 3:  Button events  (bit0=ENC1_SW pressed, bit1=ENC2_SW pressed)
+Byte 4:  Change mask    (same bit layout — set on both press and release)
+Byte 5:  ENC1 delta     (signed int8, +CW, -CCW, since last read)
+Byte 6:  ENC2 delta     (signed int8, +CW, -CCW, since last read)
 ```
 
 **Delta behavior:** Encoder deltas accumulate between reads. If the module asserts INT and the controller does not read immediately, subsequent clicks continue accumulating — no clicks are lost. Deltas are clamped to the int8 range (-128 to +127) and cleared after each packet read.
 
-**Button events (byte 0):** Rising-edge only — set in the packet that captures the press, cleared after read. Byte 1 (change mask) is set on both press and release edges.
+**Button events (byte 3):** Rising-edge only — set in the packet that captures the press, cleared after read. Byte 4 (change mask) is set on both press and release edges.
 
-INT asserts on any encoder movement or button press. All pending data is delivered in a single 4-byte read.
+INT asserts on any encoder movement or button press. All pending data is delivered in a single 7-byte read.
 
 ### Commands (controller → module)
 
@@ -138,7 +141,7 @@ I2C.h / .cpp             — protocol handler, packet build, INT management
 
 ### Verify Operation
 
-After flashing the module is immediately active — no enable command required (unlike the throttle module). Turn either encoder and confirm INT asserts and delta values change. Press the encoder pushbuttons and confirm button events are reported. Use an I2C analyzer or the system controller to read the 4-byte packet.
+After flashing the module is immediately active — no enable command required (unlike the throttle module). Turn either encoder and confirm INT asserts and delta values change. Press the encoder pushbuttons and confirm button events are reported. Use an I2C analyzer or the system controller to read the 7-byte packet.
 
 ---
 
@@ -163,3 +166,4 @@ After flashing the module is immediately active — no enable command required (
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
+| 2.0 | 2026-06-28 | I2C Protocol v2.0 conformance — 3-byte universal header added (7-byte data packet) |

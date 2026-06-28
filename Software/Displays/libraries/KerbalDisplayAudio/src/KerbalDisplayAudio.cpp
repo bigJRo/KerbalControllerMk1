@@ -12,11 +12,23 @@ static bool       _chirpSecondNote = false;
 static bool       _chirpAscending  = true;
 static bool       _alarmHiPhase    = true;
 
-// Master alarm latch covers both the audible state and the silenced state — in
-// both, lower-priority chirps and tones are suppressed.
-static inline bool _alarmLatched() {
-  return _audioState == AUDIO_MASTER_ALARM ||
-         _audioState == AUDIO_MASTER_ALARM_SILENCED;
+// True while a master-alarm condition is latched but the crew has silenced the
+// tone. Decoupled from _audioState so lower-priority chirps and caution tones
+// may play while silenced, then return to the silenced (tone-off) state rather
+// than IDLE — the latch is preserved without blocking other cues (issue #12).
+static bool       _alarmSilenced   = false;
+
+// Chirps and caution tones are suppressed ONLY while the master alarm is
+// audibly sounding. A silenced master alarm does NOT block them (issue #12):
+// a silenced alarm no longer holds higher priority than other tones.
+static inline bool _alarmAudible() {
+  return _audioState == AUDIO_MASTER_ALARM;
+}
+
+// Where a one-shot cue (chirp / caution tone) returns when it finishes: back to
+// the silenced master-alarm latch if one is held, otherwise idle.
+static inline AudioState _restState() {
+  return _alarmSilenced ? AUDIO_MASTER_ALARM_SILENCED : AUDIO_IDLE;
 }
 
 // Internal: start a chirp sequence (used by audioAlertChirp and audioCautionChirp)
@@ -49,7 +61,7 @@ void updateAudio() {
       } else {
         if (now - _audioPhaseStart >= AUDIO_CHIRP_NOTE_MS) {
           noTone(AUDIO_PIN);
-          _audioState = AUDIO_IDLE;
+          _audioState = _restState();  // back to silenced latch, or idle
         }
       }
       break;
@@ -57,7 +69,7 @@ void updateAudio() {
     case AUDIO_CAUTION_TONE:
       if (now - _audioPhaseStart >= AUDIO_CAUTION_TONE_MS) {
         noTone(AUDIO_PIN);
-        _audioState = AUDIO_IDLE;
+        _audioState = _restState();  // back to silenced latch, or idle
       }
       break;
 
@@ -70,8 +82,9 @@ void updateAudio() {
       break;
 
     case AUDIO_MASTER_ALARM_SILENCED:
-      // Latch held but tone is off — nothing to service. Suppression of
-      // chirps/tones is handled at the call sites via _alarmLatched().
+      // Latch held but tone is off — nothing to service. Lower-priority cues
+      // are NOT suppressed in this state (see _alarmAudible()); when one plays
+      // it returns here via _restState() once it finishes.
       break;
 
     case AUDIO_IDLE:
@@ -80,17 +93,17 @@ void updateAudio() {
 }
 
 void audioAlertChirp() {
-  if (_alarmLatched()) return;
+  if (_alarmAudible()) return;
   _startChirp(true);
 }
 
 void audioCautionChirp() {
-  if (_alarmLatched()) return;
+  if (_alarmAudible()) return;
   _startChirp(false);
 }
 
 void audioCautionTone() {
-  if (_alarmLatched()) return;
+  if (_alarmAudible()) return;
   noTone(AUDIO_PIN);
   _audioPhaseStart = millis();
   _audioState      = AUDIO_CAUTION_TONE;
@@ -100,6 +113,8 @@ void audioCautionTone() {
 void audioStartAlarm() {
   if (_audioState == AUDIO_MASTER_ALARM) return;
   // Resume from silenced state, or start fresh from idle/lower-priority state.
+  // Becoming audible clears any silence latch.
+  _alarmSilenced   = false;
   _alarmHiPhase    = true;
   _audioPhaseStart = millis();
   _audioState      = AUDIO_MASTER_ALARM;
@@ -111,10 +126,15 @@ void audioStartAlarm() {
 // Distinct from audioSilence(): stopAlarm ends the alarm latch entirely; silence
 // only quiets the tone while keeping the latch held.
 void audioStopAlarm() {
-  if (_alarmLatched()) {
+  // Clear the master-alarm latch entirely.
+  _alarmSilenced = false;
+  if (_audioState == AUDIO_MASTER_ALARM ||
+      _audioState == AUDIO_MASTER_ALARM_SILENCED) {
     noTone(AUDIO_PIN);
     _audioState = AUDIO_IDLE;
   }
+  // If a chirp/caution cue is sounding when conditions clear, it keeps playing
+  // and returns to IDLE on completion (the latch is now cleared).
 }
 
 // audioSilence() — immediately stops the tone but keeps the master alarm latch
@@ -126,7 +146,8 @@ void audioStopAlarm() {
 void audioSilence() {
   if (_audioState == AUDIO_MASTER_ALARM) {
     noTone(AUDIO_PIN);
-    _audioState = AUDIO_MASTER_ALARM_SILENCED;
+    _alarmSilenced = true;
+    _audioState    = AUDIO_MASTER_ALARM_SILENCED;
   }
 }
 

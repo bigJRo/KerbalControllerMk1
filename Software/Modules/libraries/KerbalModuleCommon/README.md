@@ -1,6 +1,6 @@
 # KerbalModuleCommon
 
-**Version:** 1.1.0  
+**Version:** 1.6.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 
@@ -108,6 +108,8 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB mode).
 | `KMC_CMD_ACK_FAULT` | 0x08 | — | Acknowledge and clear fault flag |
 | `KMC_CMD_ENABLE` | 0x09 | — | Enter ACTIVE lifecycle state |
 | `KMC_CMD_DISABLE` | 0x0A | — | Enter DISABLED lifecycle state |
+| `KMC_CMD_SET_THROTTLE` | 0x0B | 2 bytes BE uint16 | Throttle: set target position |
+| `KMC_CMD_SET_PRECISION` | 0x0C | 1 byte (0/1) | Throttle: precision mode off/on |
 | `KMC_CMD_SET_VALUE` | 0x0D | 2 bytes BE int16 | Set display/encoder value |
 
 ---
@@ -134,14 +136,14 @@ Constants: `KMC_STATUS_ACTIVE`, `KMC_STATUS_SLEEPING`, `KMC_STATUS_DISABLED`, `K
 | `KMC_TYPE_STABILITY_CONTROL` | 0x04 | Stability Control | 0x23 |
 | `KMC_TYPE_VEHICLE_CONTROL` | 0x05 | Vehicle Control | 0x24 |
 | `KMC_TYPE_TIME_CONTROL` | 0x06 | Time Control | 0x25 |
-| `KMC_TYPE_EVA_MODULE` | 0x07 | EVA Module | 0x26 |
+| `KMC_TYPE_AUX_CTRL` | 0x07 | Auxiliary Control | 0x26 |
 | `KMC_TYPE_JOYSTICK_ROTATION` | 0x09 | Joystick Rotation | 0x28 |
 | `KMC_TYPE_JOYSTICK_TRANS` | 0x0A | Joystick Translation | 0x29 |
 | `KMC_TYPE_GPWS_INPUT` | 0x0B | GPWS Input Panel | 0x2A |
 | `KMC_TYPE_PRE_WARP_TIME` | 0x0C | Pre-Warp Time | 0x2B |
 | `KMC_TYPE_THROTTLE` | 0x0D | Throttle Module | 0x2C |
 | `KMC_TYPE_DUAL_ENCODER` | 0x0E | Dual Encoder | 0x2D |
-| `KMC_TYPE_SWITCH_PANEL` | 0x0F | Switch Panel | 0x2E |
+| _0x0F_ | _retired_ | _was Switch Panel — superseded by Switch Groups 1/2_ | _0x2E_ |
 | `KMC_TYPE_INDICATOR` | 0x10 | Indicator Module | 0x2F |
 
 ---
@@ -172,6 +174,8 @@ Used with `KMC_CMD_SET_LED_STATE` and `kmcLedPackGet()` / `kmcLedPackSet()` help
 | `KMC_LED_ALERT` | 0x4 | Flashing red |
 | `KMC_LED_ARMED` | 0x5 | Static cyan |
 | `KMC_LED_PARTIAL_DEPLOY` | 0x6 | Static amber |
+| `KMC_LED_CUT` | 0x7 | Static red — state-machine terminal (parachute cut / heat-shield release) |
+| `KMC_LED_ACTIVE_ALT` | 0x8 | Second per-button active colour (e.g. CP Toggle Alternate = CORAL); uses the sketch's optional alt-colour array |
 
 ---
 

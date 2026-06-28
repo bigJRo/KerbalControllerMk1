@@ -1,6 +1,6 @@
 # KerbalButtonCore
 
-**Version:** 2.0.0  
+**Version:** 2.2.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1822 Button Module Base v1.1  
@@ -181,6 +181,8 @@ Two buttons per byte, high nibble first. Nibble values:
 | `0x4` | ALERT          | Flashing red, 150ms          |
 | `0x5` | ARMED          | Static cyan                  |
 | `0x6` | PARTIAL_DEPLOY | Static amber                 |
+| `0x7` | CUT            | Static red (state-machine terminal) |
+| `0x8` | ACTIVE_ALT     | Second per-button active color (alt-color array) |
 
 ### Identity Response (4 bytes)
 
@@ -211,6 +213,28 @@ Byte 3: Capability flags
 | ALERT          | Red   | 150ms on / 150ms off  |
 | ARMED          | Cyan  | Static full bright    |
 | PARTIAL_DEPLOY | Amber | Static full bright    |
+| CUT            | Red   | Static full bright    |
+
+`CUT` (nibble `0x7`, added v2.1) is the static-red terminal state for deploy → cut/release state machines (e.g. Vehicle Control Heat Shield, Main/Drogue Chute): the button's `ACTIVE` color is the deploy color (GREEN), and `CUT` renders the irreversible terminal in static red.
+
+`ACTIVE_ALT` (nibble `0x8`, added v2.2) renders a **second per-button active color** from an optional alt-color array. Supply it as the 4th constructor argument:
+
+```cpp
+KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors, altColors);
+```
+
+`ACTIVE` uses `activeColors[i]`; `ACTIVE_ALT` uses `altColors[i]` (falling back to `activeColors[i]` if no alt array was supplied). This drives two-colour buttons that are not a red terminal — e.g. Auxiliary Control's CP Toggle: ROSE (Primary) via `ACTIVE`, CORAL (Alternate) via `ACTIVE_ALT`. It is a core rendering feature and does not require `KBC_CAP_EXTENDED_STATES`.
+
+#### Choosing between `CUT` and `ACTIVE_ALT`
+
+Both give a button a second solid colour beyond `ACTIVE`. Pick by intent:
+
+| Use… | When the second state is… | Colour source | Needs alt array? | Needs extended-states cap? |
+|------|---------------------------|---------------|------------------|----------------------------|
+| **`CUT`** | an **irreversible terminal** — cut, release, jettison | Fixed `KMC_RED` (enforces the palette's RED = irreversible rule) | No | Yes (it's an extended state) |
+| **`ACTIVE_ALT`** | an **arbitrary alternate** of equal status (e.g. mode A / mode B) | Per-button `altColors[i]` (any colour) | Yes | No (core state) |
+
+Rule of thumb: if the second colour is red *because the action is irreversible*, use `CUT` — it is self-documenting and needs zero per-button config. If the two states are simply two options and neither is a red "irreversible" terminal, use `ACTIVE_ALT` with an `altColors` entry. Do not use `ACTIVE_ALT` with red to imitate `CUT`, and do not use `CUT` for a non-terminal toggle.
 
 To enable extended states, pass `KBC_CAP_EXTENDED_STATES` as the capability flags argument to the constructor.
 

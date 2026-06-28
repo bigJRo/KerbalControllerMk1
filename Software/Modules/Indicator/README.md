@@ -192,7 +192,7 @@ After flashing all 16 pixels should be OFF. Send `CMD_BULB_TEST` and confirm all
 | `0x2B` | Pre-Warp Time |
 | `0x2C` | Throttle Module |
 | `0x2D` | Dual Encoder |
-| `0x2E` | Switch Panel |
+| `0x2E` | Reserved (retired — was Switch Panel) |
 | `0x2F` | **Indicator Module** — this module |
 
 ---

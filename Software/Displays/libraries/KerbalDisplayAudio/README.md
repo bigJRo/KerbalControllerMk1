@@ -70,9 +70,10 @@ The audio state machine runs four modes in priority order (high to low):
 | 1 | `AUDIO_MASTER_ALARM` | Two-tone alternating loop — runs until all conditions clear or silenced |
 | 2 | `AUDIO_CAUTION_TONE` | Constant tone for a fixed duration |
 | 3 | `AUDIO_CHIRP` | Two-note sequence (ascending or descending), plays once |
+| – | `AUDIO_MASTER_ALARM_SILENCED` | Alarm latched, tone off — does **not** suppress lower cues |
 | 4 | `AUDIO_IDLE` | Silent |
 
-Lower-priority sounds are suppressed while a higher-priority state is active. Chirps and caution tones are suppressed whenever the state machine is in `AUDIO_MASTER_ALARM` — this includes both the sounding and silenced variants of that state. A silenced alarm still holds `AUDIO_MASTER_ALARM`; `noTone()` has been called but the state has not transitioned to `AUDIO_IDLE`.
+Lower-priority sounds are suppressed only while the master alarm is **audibly sounding** (`AUDIO_MASTER_ALARM`). Once the crew silences the alarm it transitions to `AUDIO_MASTER_ALARM_SILENCED` — the latch is held and `noTone()` has been called, but it **no longer holds higher priority**: chirps and caution tones are allowed to play and then return to the silenced (tone-off) state rather than to `AUDIO_IDLE`, so the latch is preserved without blocking subsequent audio cues. A fresh warning still restarts the audible alarm via the sketch. *(Issue #12.)*
 
 ### Master Alarm
 

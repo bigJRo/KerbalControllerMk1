@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v5.4 | 2026-06-28
+**Jeb's Controller Works** | v5.9 | 2026-06-28
 
 This document is the definitive developer reference for all user-facing controls and indicators on each KCMk1 module. Arranged by I2C address. For panel location context see the address summary table at the end of this document.
 
@@ -28,6 +28,8 @@ All NeoPixel buttons share a common set of LED states. Not all states are used o
 | ALERT | Flashing red 150ms on/off | Immediate action required |
 | ARMED | Static cyan | Primed and ready |
 | PARTIAL_DEPLOY | Static amber | Partially deployed state |
+| CUT | Static red | State-machine terminal — parachute cut / heat-shield release |
+| ACTIVE_ALT | Full color (per-button alternate) | Second active colour for two-colour buttons — e.g. AUX CTRL CP Toggle Alternate (CORAL) |
 
 Discrete LED buttons are ON/OFF only — ENABLED and ACTIVE both produce full brightness. Flash states have no effect on discrete LEDs.
 
@@ -355,7 +357,7 @@ Requires Switch Group 2 CHUTE switch in ARM position (continuous interlock). CHU
 |-------|-----|-----------------|
 | OFF | Dark | Fire base CAG deploy → DEPLOYED |
 | DEPLOYED | GREEN (ACTIVE) | Fire base CAG cut → CUT |
-| CUT | RED (ACTIVE) | Terminal state |
+| CUT | RED (CUT) | Terminal state |
 
 Main Chute: base CAG 21 (deploy) / 22 (cut). Drogue Chute: base CAG 23 (deploy) / 24 (cut).
 
@@ -367,7 +369,7 @@ Independent — no switch interlock.
 |-------|-----|-----------------|
 | OFF | Dark | Fire base CAG 19 (deploy) → DEPLOYED |
 | DEPLOYED | GREEN (ACTIVE) | Fire base CAG 20 (release) → RELEASED |
-| RELEASED | RED (ACTIVE) | Terminal state |
+| RELEASED | RED (CUT) | Terminal state |
 
 ### Switch Group 2 (B16–B23 discrete inputs)
 
@@ -603,13 +605,13 @@ Digital key emulation. W/A/S/D serve double duty — walking on ground, jetpack 
 | Control | Function | Behavior |
 |---------|----------|----------|
 | 4-digit display | Altitude threshold | Shows current value 0–9999m, no leading zeros |
-| Encoder | Adjust threshold | ±1 slow / ±10 medium / ±100 fast |
+| Encoder | Adjust threshold | ±1 / ±10 / ±100 / ±1000 by consecutive-click count |
 | Encoder button | Reset to default | Returns to 200m |
 | BTN01 | GPWS Enable | 3-state cycle: OFF → ACTIVE (green, full GPWS) → AMBER (proximity tone only) |
 | BTN02 | Proximity Alarm | Toggle: OFF ↔ GREEN |
 | BTN03 | Rendezvous Radar | Toggle: OFF ↔ GREEN |
 
-**Encoder acceleration:** Slow (>150ms between detents) = ±1 · Medium (50–150ms) = ±10 · Fast (<50ms) = ±100
+**Encoder acceleration:** consecutive same-direction clicks set the step — 1–14 = ±1 · 15–29 = ±10 · 30–49 = ±100 · 50+ = ±1000. A direction reversal or a 500 ms idle gap resets the count to ±1. (Click-count based, not timing based — immune to mechanical jitter.)
 
 **INT suppression:** When BTN01 is in state 0 (GPWS off), BTN02, BTN03, and encoder events are suppressed — BTN01 always reports.
 
@@ -626,13 +628,13 @@ Digital key emulation. W/A/S/D serve double duty — walking on ground, jetpack 
 | Control | Function | Behavior |
 |---------|----------|----------|
 | 4-digit display | Pre-warp duration | Shows minutes 0–9999, no leading zeros |
-| Encoder | Adjust duration | ±1 slow / ±10 medium / ±100 fast |
+| Encoder | Adjust duration | ±1 / ±10 / ±100 / ±1000 by consecutive-click count |
 | Encoder button | Reset to 0 | Clears to default |
 | BTN01 | 5 min preset | GOLD flash on press, display jumps to 5 |
 | BTN02 | 1 hour preset | GOLD flash on press, display jumps to 60 |
 | BTN03 | 1 day preset | GOLD flash on press, display jumps to 1440 |
 
-**Encoder acceleration:** Slow (>150ms) = ±1 · Medium (50–150ms) = ±10 · Fast (<50ms) = ±100
+**Encoder acceleration:** consecutive same-direction clicks set the step — 1–14 = ±1 · 15–29 = ±10 · 30–49 = ±100 · 50+ = ±1000. A direction reversal or a 500 ms idle gap resets the count to ±1. (Click-count based, not timing based — immune to mechanical jitter.)
 
 Value transmitted to controller continuously as encoder is turned. Time Control buttons (0x25 B0/B2/B4/B6/B8) read this value as the lead-time offset before the warp target event.
 
@@ -686,11 +688,11 @@ ENC2 requires **Hullcam VDS Continued** mod. Verify default keybindings match in
 
 ---
 
-## 0x2E — Switch Panel (Reserved)
+## 0x2E — Retired (was Switch Panel)
 
-**Type:** 0x0F | **Status:** Hardware TBD
+**Status:** Removed
 
-Address 0x2E is reserved for a future consolidated switch panel module. The switch functions previously assigned here have been distributed to discrete inputs on Function Control (0x21) and Vehicle Control (0x24) as Switch Groups 1 and 2.
+Address 0x2E is retired and unused. The single-module Switch Panel design (formerly Type 0x0F) has been removed from the codebase. Its switch functions live on as discrete inputs distributed across Switch Group 1 (on Function Control, 0x21) and Switch Group 2 (on Vehicle Control, 0x24). The address is left documented here so the gap in the address map is accounted for.
 
 ---
 
@@ -712,7 +714,7 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 0x2B | Pre-Warp Time | 0x0C | B2 | Kerbal7SegmentCore | Active |
 | 0x2C | Throttle Module | 0x0D | A2 | Standalone | Active |
 | 0x2D | Dual Encoder | 0x0E | B1 | Standalone | Active |
-| 0x2E | Switch Panel | 0x0F | — | — | Hardware TBD |
+| 0x2E | Retired (was Switch Panel) | — | — | — | Removed |
 | 0x2F | (was Indicator) | — | — | — | **Removed from design** |
 
 ---
@@ -760,3 +762,8 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 5.2 | 2026-05-25 | Corrected all PCB designators to match board numbering convention. Button Module 1822→1802; Wide Button Module 1842→1812; Joystick Module 1831/1832→1832; Throttle Module 1861/1862→1822; 7-Segment Display Module 1881/1882→1842; Dual Encoder 1871/1872→1862. |
 | 5.3 | 2026-06-27 | Panel relocation: GPWS Input Panel (0x2A) moved from Panel A1 to Panel A2 per enclosure redesign (A1 reduced to power button + two 7" displays). Module header and Panel Location Summary updated. No address, packet, or functional change. |
 | 5.4 | 2026-06-28 | Firmware Open Items #7–#10 resolved against KerbalButtonCore v2.0: Function Control (#7) and Vehicle Control (#9) read Switch Group 1/2 at B16–B23 via 24-input / 3-byte shift-register reads; Action Control (#8) B10/B11 are now action-group buttons; Stability Control (#10) gains RCS at B10 and drops the B12/B13 enable inputs. ⚠️ TODO call-outs replaced with ✅ resolved notes; Panel Location Summary and Open Items table updated. #6, #13, #14 (design/in-game validation) remain open. |
+| 5.5 | 2026-06-28 | Module README ↔ reference reconciliation pass. Corrected the GPWS (0x2A) and Pre-Warp (0x2B) encoder-acceleration description to the click-count model actually implemented by Kerbal7SegmentCore (1–14 = ±1, 15–29 = ±10, 30–49 = ±100, 50+ = ±1000; reset on reversal or 500 ms idle), replacing the previous timing-based text. (Vehicle Control firmware was separately reconciled to the v5.4 B0–B11 layout; the 0x26 AUX CTRL spec is unchanged — the in-repo 6-button EVA board is a predecessor to that 12-button design.) |
+| 5.6 | 2026-06-28 | Added the `CUT` LED state (static red) to the LED State Color Key so Vehicle Control's Heat Shield / Main Chute / Drogue Chute state machines render the canonical deploy (GREEN) → cut/release (RED) terminal natively. Backed by the new `KMC_LED_CUT` nibble (0x7) in KerbalModuleCommon v1.4 and KerbalButtonCore v2.1. State-machine tables updated to show the terminal as RED (CUT). |
+| 5.7 | 2026-06-28 | Switch Panel module removed from the codebase (firmware folder and all code references deleted); 0x2E section retired and address-summary row marked Removed. Functions remain distributed across Switch Groups 1/2. |
+| 5.8 | 2026-06-28 | AUX CTRL (0x26) firmware implemented: the standalone 6-button EVA module was removed and replaced by a standard 12-button KerbalButtonCore module (KC-01-1802) matching this document's 0x26 spec. Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); new `Auxiliary Control` module folder (sketch + README + panel SVG). `KMC_SEAFOAM` added to the shared palette (used by AUX CTRL Grab / Plant Flag). No 0x26 panel/layout change — the spec already described the 12-button design. |
+| 5.9 | 2026-06-28 | Added the `ACTIVE_ALT` LED state (second per-button active colour) to the LED State Color Key so AUX CTRL's CP Toggle (B10) renders the canonical ROSE (Primary, `ACTIVE`) / CORAL (Alternate, `ACTIVE_ALT`) distinction natively. Backed by the new `KMC_LED_ACTIVE_ALT` nibble (0x8) in KerbalModuleCommon v1.6 and the optional alt-colour array in KerbalButtonCore v2.2. |

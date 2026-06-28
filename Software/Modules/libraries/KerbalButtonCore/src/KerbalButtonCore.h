@@ -109,7 +109,8 @@ public:
      */
     KerbalButtonCore(uint8_t         moduleTypeId,
                      uint8_t         capFlags,
-                     const RGBColor* activeColors);
+                     const RGBColor* activeColors,
+                     const RGBColor* altColors = nullptr);
 
     // --------------------------------------------------------
     //  Initialisation
@@ -191,6 +192,12 @@ private:
     // --------------------------------------------------------
 
     const RGBColor* _activeColors;
+
+    // --------------------------------------------------------
+    //  Alternate active color array pointer (optional)
+    // --------------------------------------------------------
+
+    const RGBColor* _altColors;
 
     // --------------------------------------------------------
     //  Poll timing

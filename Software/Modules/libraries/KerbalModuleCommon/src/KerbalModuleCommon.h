@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.2.0
+ * @version     1.7.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -106,6 +106,9 @@ static const RGBColor KMC_LIME          = { 132, 204,  22 };
 /** @brief Mint. RCS, Quickload. */
 static const RGBColor KMC_MINT          = { 100, 255, 160 };
 
+/** @brief Seafoam. Mid warm green. AUX CTRL Grab / Plant Flag. */
+static const RGBColor KMC_SEAFOAM       = {  80, 200, 160 };
+
 // --- Blue / cyan family ---
 /** @brief Blue. Science data. */
 static const RGBColor KMC_BLUE          = {   0,   0, 255 };
@@ -148,11 +151,15 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 
 #define KMC_LED_OFF             0x0
 #define KMC_LED_ENABLED         0x1
-#define KMC_LED_ACTIVE          0x2
-#define KMC_LED_WARNING         0x3
-#define KMC_LED_ALERT           0x4
-#define KMC_LED_ARMED           0x5
-#define KMC_LED_PARTIAL_DEPLOY  0x6
+#define KMC_LED_ACTIVE          0x2   // full per-button active color
+#define KMC_LED_WARNING         0x3   // flashing amber (500ms)
+#define KMC_LED_ALERT           0x4   // flashing red (150ms)
+#define KMC_LED_ARMED           0x5   // static cyan
+#define KMC_LED_PARTIAL_DEPLOY  0x6   // static amber
+#define KMC_LED_CUT             0x7   // static red — state-machine terminal
+                                      // (parachute cut / heat-shield release)
+#define KMC_LED_ACTIVE_ALT      0x8   // second per-button active colour
+                                      // (e.g. CP Toggle Alternate = CORAL)
 
 // ============================================================
 //  Module Type IDs
@@ -164,14 +171,15 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_TYPE_STABILITY_CONTROL  0x04
 #define KMC_TYPE_VEHICLE_CONTROL    0x05
 #define KMC_TYPE_TIME_CONTROL       0x06
-#define KMC_TYPE_EVA_MODULE         0x07
+#define KMC_TYPE_AUX_CTRL           0x07   // Auxiliary Control (was EVA Module)
 #define KMC_TYPE_JOYSTICK_ROTATION  0x09
 #define KMC_TYPE_JOYSTICK_TRANS     0x0A
 #define KMC_TYPE_GPWS_INPUT         0x0B
 #define KMC_TYPE_PRE_WARP_TIME      0x0C
 #define KMC_TYPE_THROTTLE           0x0D
 #define KMC_TYPE_DUAL_ENCODER       0x0E
-#define KMC_TYPE_SWITCH_PANEL       0x0F
+// 0x0F retired — was KMC_TYPE_SWITCH_PANEL; the single Switch Panel module
+// design was superseded by Switch Groups 1/2 on Function/Vehicle Control.
 #define KMC_TYPE_INDICATOR          0x10
 
 // ============================================================
@@ -215,6 +223,8 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_CMD_ACK_FAULT        0x08
 #define KMC_CMD_ENABLE           0x09
 #define KMC_CMD_DISABLE          0x0A
+#define KMC_CMD_SET_THROTTLE     0x0B   // throttle: set target position (2-byte BE)
+#define KMC_CMD_SET_PRECISION    0x0C   // throttle: precision mode (1 byte 0/1)
 #define KMC_CMD_SET_VALUE        0x0D
 
 // ============================================================
@@ -233,6 +243,34 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 
 /** @brief CMD_SET_LED_STATE payload: 16 positions × 4-bit nibble = 8 bytes. */
 #define KMC_LED_PAYLOAD_SIZE     8
+
+// --- Total data-packet sizes (header + device payload) ---
+// Single source of truth for the controller's read lengths and each module
+// library's response buffer. Total = KMC_HEADER_SIZE + payload (spec §9).
+
+/** @brief Standard 16-input button module: 4-byte payload (events HI/LO,
+ *         change HI/LO). UI/Action/Stability/Time/AUX CTRL/Dual Encoder. */
+#define KMC_BUTTON_PAYLOAD_SIZE    4
+#define KMC_BUTTON_PACKET_SIZE     (KMC_HEADER_SIZE + KMC_BUTTON_PAYLOAD_SIZE)   // 7
+
+/** @brief 24-input switch-group button module: 6-byte payload (3 event +
+ *         3 change bytes). Function Control (0x21), Vehicle Control (0x24). */
+#define KMC_BUTTON24_PAYLOAD_SIZE  6
+#define KMC_BUTTON24_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_BUTTON24_PAYLOAD_SIZE) // 9
+
+/** @brief Joystick module: 9-byte payload (events, change, state, 3× int16
+ *         axes). Joystick Rotation (0x09), Joystick Translation (0x0A). */
+#define KMC_JOYSTICK_PAYLOAD_SIZE  9
+#define KMC_JOYSTICK_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_JOYSTICK_PAYLOAD_SIZE) // 12
+
+/** @brief Display module: 5-byte payload (events, change, state, value HI/LO).
+ *         GPWS Input (0x0B), Pre-Warp Time (0x0C). */
+#define KMC_DISPLAY_PAYLOAD_SIZE   5
+#define KMC_DISPLAY_PACKET_SIZE    (KMC_HEADER_SIZE + KMC_DISPLAY_PAYLOAD_SIZE)  // 8
+
+/** @brief Throttle module: 4-byte payload (flags, button events, value HI/LO). */
+#define KMC_THROTTLE_PAYLOAD_SIZE  4
+#define KMC_THROTTLE_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_THROTTLE_PAYLOAD_SIZE) // 7
 
 // ============================================================
 //  LED nibble pack / unpack helpers

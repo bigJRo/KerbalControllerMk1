@@ -78,17 +78,17 @@
 //  Pin assignments — ATtiny816 KC-01-1831/1832 v1.0
 // ============================================================
 
-/** @brief AXIS1 analog input — PB5, ADC channel AIN8. */
-#define KJC_PIN_AXIS1           PIN_PB5
+/** @brief AXIS1 analog input — PA5, ADC channel AIN5. */
+#define KJC_PIN_AXIS1           PIN_PA5
 
-/** @brief AXIS2 analog input — PA7, ADC channel AIN7. */
-#define KJC_PIN_AXIS2           PIN_PA7
+/** @brief AXIS2 analog input — PA6, ADC channel AIN6. */
+#define KJC_PIN_AXIS2           PIN_PA6
 
-/** @brief AXIS3 analog input — PA6, ADC channel AIN6. */
-#define KJC_PIN_AXIS3           PIN_PA6
+/** @brief AXIS3 analog input — PA7, ADC channel AIN7. */
+#define KJC_PIN_AXIS3           PIN_PA7
 
-/** @brief Joystick pushbutton — PA5, active high, hardware pull-down. */
-#define KJC_PIN_BTN_JOY         PIN_PA5
+/** @brief Joystick pushbutton — PB5, active high, hardware pull-down. */
+#define KJC_PIN_BTN_JOY         PIN_PB5
 
 /** @brief BUTTON01 NeoPixel button — PC0. */
 #define KJC_PIN_BTN01           PIN_PC0
@@ -239,9 +239,9 @@
  *        Byte 3:    Button events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
  *        Byte 4:    Change mask   (same bit layout)
  *        Byte 5:    Button state  (persistent; same bit layout)
- *        Byte 6-7:  AXIS1/PB5     (int16, signed, big-endian)
- *        Byte 8-9:  AXIS2/PA7     (int16, signed, big-endian)
- *        Byte 10-11:AXIS3/PA6     (int16, signed, big-endian)
+ *        Byte 6-7:  AXIS1/PA5     (int16, signed, big-endian)
+ *        Byte 8-9:  AXIS2/PA6     (int16, signed, big-endian)
+ *        Byte 10-11:AXIS3/PA7     (int16, signed, big-endian)
  */
 #define KJC_PACKET_SIZE         12
 

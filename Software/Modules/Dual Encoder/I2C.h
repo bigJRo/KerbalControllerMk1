@@ -1,18 +1,23 @@
 /**
  * @file        I2C.h
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Dual Encoder Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       I2C target handler for the Dual Encoder Module.
  *
- *              Data packet (module → controller, 4 bytes):
- *                Byte 0:  Button events  (bit0=ENC1_SW, bit1=ENC2_SW)
- *                Byte 1:  Change mask    (same bit layout)
- *                Byte 2:  ENC1 delta     (signed int8, +CW, -CCW)
- *                Byte 3:  ENC2 delta     (signed int8, +CW, -CCW)
+ *              Conformant with I2C Protocol Specification v2.4. Data packet
+ *              (module → controller, 7 bytes, spec §9.5):
+ *                Byte 0:  Status byte    (lifecycle/fault/data-changed)
+ *                Byte 1:  Module Type ID
+ *                Byte 2:  Transaction counter
+ *                Byte 3:  Button events  (bit0=ENC1_SW, bit1=ENC2_SW)
+ *                Byte 4:  Change mask    (same bit layout)
+ *                Byte 5:  ENC1 delta     (signed int8, +CW, -CCW)
+ *                Byte 6:  ENC2 delta     (signed int8, +CW, -CCW)
+ *              Powers on in BOOT_READY (INT held); full lifecycle state machine.
  *
  *              Deltas accumulate between reads — no clicks are lost.
  *              Button events are rising-edge only, cleared after read.

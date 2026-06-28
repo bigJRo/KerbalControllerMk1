@@ -18,14 +18,14 @@
  *              Capability:     0x08 (KJC_CAP_JOYSTICK)
  *
  *              Axes:
- *                AXIS1 (PB5) — X axis
- *                AXIS2 (PA7) — Y axis
- *                AXIS3 (PA6) — Z rotation
+ *                AXIS1 (PA5) — X axis
+ *                AXIS2 (PA6) — Y axis
+ *                AXIS3 (PA7) — Z rotation
  *
  *              Buttons:
  *                BTN01 (PC0) — Reset Trim    — GREEN  — NeoPixel
  *                BTN02 (PB3) — Trim Set      — AMBER  — NeoPixel
- *                BTN_JOY(PA5)— TBD           — no LED — GPIO
+ *                BTN_JOY(PB5)— Airbrake toggle / Run hold (EVA) — no LED — GPIO
  *
  *              Do not touch the joystick during the first ~80ms
  *              after power-on. Startup calibration reads the center
@@ -35,7 +35,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1831/1832 v1.0 (ATtiny816)
- *              Library:   KerbalJoystickCore v1.0.0
+ *              Library:   KerbalJoystickCore v2.0.0
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher

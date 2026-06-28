@@ -89,6 +89,8 @@
 #define KBC_LED_ALERT           KMC_LED_ALERT
 #define KBC_LED_ARMED           KMC_LED_ARMED
 #define KBC_LED_PARTIAL_DEPLOY  KMC_LED_PARTIAL_DEPLOY
+#define KBC_LED_CUT             KMC_LED_CUT
+#define KBC_LED_ACTIVE_ALT      KMC_LED_ACTIVE_ALT
 
 // ============================================================
 //  Packet sizes
@@ -167,7 +169,7 @@
 //  Module Type ID registry — aliases for KMC_TYPE_* from KerbalModuleCommon
 //
 //  Full registry (all module types) is in KerbalModuleCommon.h.
-//  KBC_TYPE_* aliases provided here for the six standard KBC modules.
+//  KBC_TYPE_* aliases provided here for the seven standard KBC modules.
 // ============================================================
 
 #define KBC_TYPE_RESERVED           KMC_TYPE_RESERVED
@@ -177,6 +179,7 @@
 #define KBC_TYPE_STABILITY_CONTROL  KMC_TYPE_STABILITY_CONTROL
 #define KBC_TYPE_VEHICLE_CONTROL    KMC_TYPE_VEHICLE_CONTROL
 #define KBC_TYPE_TIME_CONTROL       KMC_TYPE_TIME_CONTROL
+#define KBC_TYPE_AUX_CTRL           KMC_TYPE_AUX_CTRL
 #define KBC_TYPE_UNKNOWN            KMC_TYPE_UNKNOWN
 
 // ============================================================
