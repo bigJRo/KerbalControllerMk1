@@ -1,7 +1,7 @@
 # KCMk1_Vehicle_Control
 
 **Module:** Vehicle Control  
-**Version:** 2.1  
+**Version:** 2.2  
 **Date:** 2026-06-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
@@ -98,12 +98,13 @@ The Heat Shield (B8), Main Chute (B10), and Drogue Chute (B11) buttons support t
 |---|---|---|---|
 | ENABLED | White (dim) | Static | System nominal, function available |
 | ACTIVE | GREEN | Static | Deployed (the button's active color) |
+| CUT | RED | Static | Cut / released — terminal state |
 | WARNING | Amber | 500ms flash | Deployment window approaching |
 | ALERT | Red | 150ms flash | Deploy / cut immediately |
 | ARMED | Cyan | Static | Parachute armed and ready |
 | PARTIAL_DEPLOY | Amber | Static | Drogue deployed, main pending |
 
-> **Implementation note.** The canonical state machines show the terminal **cut/release** state as static RED. The current KerbalButtonCore LED palette renders one ACTIVE color per button (here GREEN for deploy) and offers red only via the flashing **ALERT** state — there is no static-red LED state. The deploy → cut/release sequence (and any static-red cut rendering) is therefore driven controller-side. Adding a static-red terminal state to the library is tracked as a follow-up.
+The state machines render deploy as static GREEN (`KBC_LED_ACTIVE`) and the terminal cut/release as static RED (`KBC_LED_CUT`, nibble `0x7`, added in KerbalButtonCore v2.1). The controller drives the OFF → DEPLOYED → CUT/RELEASED sequence by sending the corresponding LED state; the module renders each statically per the canonical Module UI Reference.
 
 ---
 
@@ -190,11 +191,12 @@ LED state nibble values for the state-machine buttons (B8 / B10 / B11):
 ```
 0x0 = OFF
 0x1 = ENABLED  (dim white)
-0x2 = ACTIVE   (full GREEN or RED)
+0x2 = ACTIVE   (deployed — static GREEN)
 0x3 = WARNING  (amber flash 500ms)
 0x4 = ALERT    (red flash 150ms)
 0x5 = ARMED    (static cyan)
 0x6 = PARTIAL_DEPLOY (static amber)
+0x7 = CUT      (cut / released — static RED, terminal)
 ```
 
 ---
@@ -206,3 +208,4 @@ LED state nibble values for the state-machine buttons (B8 / B10 / B11):
 | 1.0 | 2026-04-07 | Initial release |
 | 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): old B12–B15 discrete inputs removed; Switch Group 2 added at KBC indices 16–23 via the 24-input / 3-byte shift-register variant. Packet is now 9 bytes (3-byte header + 6-byte payload); module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1812. |
 | 2.1 | 2026-06-28 | B0–B11 layout reconciled to Module UI Reference v5.4 (canonical): B2 Antenna, B4 Fuel Cell, B5 Solar Array, B6 Cargo Door; B8 is now Heat Shield and B10/B11 are single-button Main/Drogue Chute state machines (deploy → cut/release) replacing the former separate deploy/cut buttons; B9 is Ladder. Heat shield and parachutes use extended LED states sequenced controller-side. |
+| 2.2 | 2026-06-28 | State machines now render the canonical static-red cut/release terminal via the new `KBC_LED_CUT` state (nibble 0x7, KerbalButtonCore v2.1 / KerbalModuleCommon v1.4); deploy = static GREEN, cut/release = static RED. Removed the prior controller-side-only rendering limitation. |

@@ -1,6 +1,6 @@
 # KerbalButtonCore
 
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1822 Button Module Base v1.1  
@@ -181,6 +181,7 @@ Two buttons per byte, high nibble first. Nibble values:
 | `0x4` | ALERT          | Flashing red, 150ms          |
 | `0x5` | ARMED          | Static cyan                  |
 | `0x6` | PARTIAL_DEPLOY | Static amber                 |
+| `0x7` | CUT            | Static red (state-machine terminal) |
 
 ### Identity Response (4 bytes)
 
@@ -211,6 +212,9 @@ Byte 3: Capability flags
 | ALERT          | Red   | 150ms on / 150ms off  |
 | ARMED          | Cyan  | Static full bright    |
 | PARTIAL_DEPLOY | Amber | Static full bright    |
+| CUT            | Red   | Static full bright    |
+
+`CUT` (nibble `0x7`, added v2.1) is the static-red terminal state for deploy → cut/release state machines (e.g. Vehicle Control Heat Shield, Main/Drogue Chute): the button's `ACTIVE` color is the deploy color (GREEN), and `CUT` renders the irreversible terminal in static red.
 
 To enable extended states, pass `KBC_CAP_EXTENDED_STATES` as the capability flags argument to the constructor.
 

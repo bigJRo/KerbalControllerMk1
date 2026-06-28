@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.3.0
+ * @version     1.4.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -148,11 +148,13 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 
 #define KMC_LED_OFF             0x0
 #define KMC_LED_ENABLED         0x1
-#define KMC_LED_ACTIVE          0x2
-#define KMC_LED_WARNING         0x3
-#define KMC_LED_ALERT           0x4
-#define KMC_LED_ARMED           0x5
-#define KMC_LED_PARTIAL_DEPLOY  0x6
+#define KMC_LED_ACTIVE          0x2   // full per-button active color
+#define KMC_LED_WARNING         0x3   // flashing amber (500ms)
+#define KMC_LED_ALERT           0x4   // flashing red (150ms)
+#define KMC_LED_ARMED           0x5   // static cyan
+#define KMC_LED_PARTIAL_DEPLOY  0x6   // static amber
+#define KMC_LED_CUT             0x7   // static red — state-machine terminal
+                                      // (parachute cut / heat-shield release)
 
 // ============================================================
 //  Module Type IDs

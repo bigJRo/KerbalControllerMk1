@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Vehicle_Control.ino
- * @version     2.1
+ * @version     2.2
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -94,14 +94,15 @@
  *
  *              Extended LED state usage (state-machine buttons B8/B10/B11):
  *                ACTIVE         - deployed (GREEN, the button's active colour)
+ *                CUT            - cut / released (static RED, terminal state)
  *                WARNING        - deployment window approaching (amber flash)
  *                ALERT          - deploy/cut immediately (red flash)
  *                ARMED          - parachute armed and ready (cyan)
  *                PARTIAL_DEPLOY - drogue deployed, main pending (amber)
  *              Main/Drogue Chute (B10/B11) require the Switch Group 2 CHUTE
- *              switch in ARM before the controller deploys. The static-red
- *              "cut" terminal colour is sequenced controller-side; the
- *              library palette renders red via the flashing ALERT state.
+ *              switch in ARM before the controller deploys. Deploy renders
+ *              GREEN (KBC_LED_ACTIVE); the cut/release terminal state renders
+ *              static red via KBC_LED_CUT (KerbalButtonCore v2.1).
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

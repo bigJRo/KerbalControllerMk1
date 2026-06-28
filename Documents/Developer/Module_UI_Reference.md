@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v5.5 | 2026-06-28
+**Jeb's Controller Works** | v5.6 | 2026-06-28
 
 This document is the definitive developer reference for all user-facing controls and indicators on each KCMk1 module. Arranged by I2C address. For panel location context see the address summary table at the end of this document.
 
@@ -28,6 +28,7 @@ All NeoPixel buttons share a common set of LED states. Not all states are used o
 | ALERT | Flashing red 150ms on/off | Immediate action required |
 | ARMED | Static cyan | Primed and ready |
 | PARTIAL_DEPLOY | Static amber | Partially deployed state |
+| CUT | Static red | State-machine terminal — parachute cut / heat-shield release |
 
 Discrete LED buttons are ON/OFF only — ENABLED and ACTIVE both produce full brightness. Flash states have no effect on discrete LEDs.
 
@@ -355,7 +356,7 @@ Requires Switch Group 2 CHUTE switch in ARM position (continuous interlock). CHU
 |-------|-----|-----------------|
 | OFF | Dark | Fire base CAG deploy → DEPLOYED |
 | DEPLOYED | GREEN (ACTIVE) | Fire base CAG cut → CUT |
-| CUT | RED (ACTIVE) | Terminal state |
+| CUT | RED (CUT) | Terminal state |
 
 Main Chute: base CAG 21 (deploy) / 22 (cut). Drogue Chute: base CAG 23 (deploy) / 24 (cut).
 
@@ -367,7 +368,7 @@ Independent — no switch interlock.
 |-------|-----|-----------------|
 | OFF | Dark | Fire base CAG 19 (deploy) → DEPLOYED |
 | DEPLOYED | GREEN (ACTIVE) | Fire base CAG 20 (release) → RELEASED |
-| RELEASED | RED (ACTIVE) | Terminal state |
+| RELEASED | RED (CUT) | Terminal state |
 
 ### Switch Group 2 (B16–B23 discrete inputs)
 
@@ -761,3 +762,4 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 5.3 | 2026-06-27 | Panel relocation: GPWS Input Panel (0x2A) moved from Panel A1 to Panel A2 per enclosure redesign (A1 reduced to power button + two 7" displays). Module header and Panel Location Summary updated. No address, packet, or functional change. |
 | 5.4 | 2026-06-28 | Firmware Open Items #7–#10 resolved against KerbalButtonCore v2.0: Function Control (#7) and Vehicle Control (#9) read Switch Group 1/2 at B16–B23 via 24-input / 3-byte shift-register reads; Action Control (#8) B10/B11 are now action-group buttons; Stability Control (#10) gains RCS at B10 and drops the B12/B13 enable inputs. ⚠️ TODO call-outs replaced with ✅ resolved notes; Panel Location Summary and Open Items table updated. #6, #13, #14 (design/in-game validation) remain open. |
 | 5.5 | 2026-06-28 | Module README ↔ reference reconciliation pass. Corrected the GPWS (0x2A) and Pre-Warp (0x2B) encoder-acceleration description to the click-count model actually implemented by Kerbal7SegmentCore (1–14 = ±1, 15–29 = ±10, 30–49 = ±100, 50+ = ±1000; reset on reversal or 500 ms idle), replacing the previous timing-based text. (Vehicle Control firmware was separately reconciled to the v5.4 B0–B11 layout; the 0x26 AUX CTRL spec is unchanged — the in-repo 6-button EVA board is a predecessor to that 12-button design.) |
+| 5.6 | 2026-06-28 | Added the `CUT` LED state (static red) to the LED State Color Key so Vehicle Control's Heat Shield / Main Chute / Drogue Chute state machines render the canonical deploy (GREEN) → cut/release (RED) terminal natively. Backed by the new `KMC_LED_CUT` nibble (0x7) in KerbalModuleCommon v1.4 and KerbalButtonCore v2.1. State-machine tables updated to show the terminal as RED (CUT). |

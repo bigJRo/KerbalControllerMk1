@@ -183,7 +183,7 @@ uint8_t KBCLEDControl::getButtonState(uint8_t index) const {
 
 bool KBCLEDControl::hasExtendedState() const {
     for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
-        if (_state[i] >= KBC_LED_WARNING && _state[i] <= KBC_LED_PARTIAL_DEPLOY) {
+        if (_state[i] >= KBC_LED_WARNING && _state[i] <= KBC_LED_CUT) {
             return true;
         }
     }
@@ -258,6 +258,12 @@ RGBColor KBCLEDControl::_resolveColor(uint8_t index, bool flashOn) const {
         case KBC_LED_PARTIAL_DEPLOY:
             // Static amber
             return KBC_AMBER;
+
+        case KBC_LED_CUT:
+            // Static red — state-machine terminal (parachute cut /
+            // heat-shield release). The button's deploy color is GREEN
+            // via KBC_LED_ACTIVE; this is the second, static-red state.
+            return KBC_RED;
 
         default:
             // Reserved or unknown state — treat as off
