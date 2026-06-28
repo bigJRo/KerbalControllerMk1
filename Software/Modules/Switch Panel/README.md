@@ -13,7 +13,9 @@
 
 The Switch Panel Input Module provides 10 toggle switch inputs to the Kerbal Controller Mk1 system controller. Switch functions are TBD — defined by the main controller. Both latching and momentary toggle switches are supported on any position. The dual-buffer latching strategy guarantees every state change edge is reported to the controller regardless of how quickly a momentary switch returns to its default position.
 
-The module uses the standard 4-byte KBC-style packet format, making it straightforward to integrate on the controller side.
+The module uses the standard 7-byte KBC-style packet format (3-byte universal header + 4-byte payload), making it straightforward to integrate on the controller side.
+
+Note: the canonical Module UI Reference lists I2C address `0x2E` (Switch Panel) as reserved / hardware TBD; its functions have been superseded by the Function/Vehicle Control Switch Groups.
 
 This is a standalone sketch with tab-based organisation.
 
@@ -26,8 +28,8 @@ This is a standalone sketch with tab-based organisation.
 | I2C Address | `0x2E` |
 | Module Type ID | `0x0F` |
 | Capability Flags | `0x00` |
-| Packet Format | Standard 4-byte (state HI/LO + change HI/LO) |
-| Data Packet Size | 4 bytes |
+| Packet Format | Standard 7-byte (3-byte header + state HI/LO + change HI/LO) |
+| Data Packet Size | 7 bytes (3-byte header + 4-byte payload) |
 | Switch Inputs | 10 (active high, hardware 10k pull-downs) |
 | LEDs | None |
 
@@ -64,18 +66,21 @@ Bits 10-15 of the state and change mask words are always 0.
 
 ## I2C Protocol
 
-### Data Packet (module → controller, 4 bytes)
+### Data Packet (module → controller, 7 bytes)
 
-Standard KBC-style packet format:
+Standard KBC-style packet format: a 3-byte universal header followed by the 4-byte switch payload.
 
 ```
-Byte 0:  Current state HIGH  — bits 15-8  (bits 10-15 always 0x00)
-Byte 1:  Current state LOW   — bits 7-0   (SW1-SW8, bit N = switch N+1)
-Byte 2:  Change mask HIGH    — bits 15-8  (bits 10-15 always 0x00)
-Byte 3:  Change mask LOW     — bits 7-0
+Byte 0:  Status byte         — lifecycle/fault/data-changed flags
+Byte 1:  Module Type ID      — 0x0F (SWP_MODULE_TYPE_ID)
+Byte 2:  Transaction counter — increments on each INT assertion (wraps 255→0)
+Byte 3:  Current state HIGH  — bits 15-8  (bits 10-15 always 0x00)
+Byte 4:  Current state LOW   — bits 7-0   (SW1-SW8, bit N = switch N+1)
+Byte 5:  Change mask HIGH    — bits 15-8  (bits 10-15 always 0x00)
+Byte 6:  Change mask LOW     — bits 7-0
 ```
 
-**Controller logic:** AND bytes 0-1 with bytes 2-3 to identify which switches changed and what state they changed to.
+**Controller logic:** AND bytes 3-4 with bytes 5-6 to identify which switches changed and what state they changed to.
 
 INT asserts on any debounced switch state change. The dual-buffer strategy guarantees every edge is reported — if a momentary switch flips and returns between reads, both transitions are captured.
 
@@ -177,3 +182,4 @@ After flashing the module is immediately active. Toggle any switch and confirm I
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release — switch functions TBD |
+| 2.0 | 2026-06-28 | Documented 7-byte data packet (3-byte universal header added for protocol conformance) |

@@ -6,15 +6,15 @@
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
-**Library:** KerbalJoystickCore v1.0.0  
+**Library:** KerbalJoystickCore v2.0.0  
 
 ---
 
 ## Overview
 
-The Joystick Rotation module provides three-axis rotational input for Kerbal Space Program vessel control. Axis data is calibrated at startup, filtered through a deadzone and change threshold, and delivered to the system controller as signed INT16 values via I2C. Two NeoPixel RGB buttons provide trim reset and trim set functions. The joystick pushbutton function is TBD.
+The Joystick Rotation module provides three-axis rotational input for Kerbal Space Program vessel control. Axis data is calibrated at startup, filtered through a deadzone and change threshold, and delivered to the system controller as signed INT16 values via I2C. Two NeoPixel RGB buttons provide trim reset and trim set functions. The joystick pushbutton reports the Airbrake toggle (spacecraft/airplane/rover) / Run hold (EVA) function (the actual action is sequenced controller-side; the module only reports the button).
 
-This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoystickCore library and communicates via the Kerbal Controller Mk1 I2C protocol using a device-specific 8-byte data packet.
+This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoystickCore library and communicates via the Kerbal Controller Mk1 I2C protocol using a device-specific 12-byte data packet.
 
 ---
 
@@ -25,7 +25,7 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 | I2C Address | `0x28` |
 | Module Type ID | `0x09` |
 | Capability Flags | `0x08` (KJC_CAP_JOYSTICK) |
-| Data Packet Size | 8 bytes |
+| Data Packet Size | 12 bytes |
 | NeoPixel Buttons | 2 (BTN01, BTN02) |
 | GPIO Buttons | 1 (BTN_JOY — no LED) |
 | Analog Axes | 3 (AXIS1, AXIS2, AXIS3) |
@@ -51,7 +51,7 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 
 | Button | Pin | Function | LED | Notes |
 |---|---|---|---|---|
-| BTN_JOY | PA6 | TBD | None | Active high, hardware pull-down |
+| BTN_JOY | PA6 | Airbrake toggle (spacecraft/airplane/rover) / Run hold (EVA) | None | Active high, hardware pull-down. Intentional duplicate of Function Control B4 (Base CAG 38). Action sequenced controller-side. |
 
 ### Analog Axes
 
@@ -67,14 +67,18 @@ All axis values are signed INT16, centered at zero. Center position is calibrate
 
 ## I2C Protocol
 
-### Data Packet (8 bytes, module → controller)
+### Data Packet (12 bytes, module → controller)
 
 ```
-Byte 0:   Button state  (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
-Byte 1:   Change mask   (same bit layout)
-Byte 2-3: AXIS1         (int16, big-endian, -32768 to +32767)
-Byte 4-5: AXIS2         (int16, big-endian, -32768 to +32767)
-Byte 6-7: AXIS3         (int16, big-endian, -32768 to +32767)
+Byte 0:    Status byte   (lifecycle bits 1:0, fault bit 2, data-changed bit 3)
+Byte 1:    Module Type ID
+Byte 2:    Transaction counter (increments per INT assertion, wraps 255→0)
+Byte 3:    Button events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
+Byte 4:    Change mask   (same bit layout)
+Byte 5:    Button state  (persistent; same bit layout)
+Byte 6-7:  AXIS1         (int16, big-endian, -32768 to +32767)
+Byte 8-9:  AXIS2         (int16, big-endian, -32768 to +32767)
+Byte 10-11:AXIS3         (int16, big-endian, -32768 to +32767)
 ```
 
 ### INT Assertion Strategy

@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v5.4 | 2026-06-28
+**Jeb's Controller Works** | v5.5 | 2026-06-28
 
 This document is the definitive developer reference for all user-facing controls and indicators on each KCMk1 module. Arranged by I2C address. For panel location context see the address summary table at the end of this document.
 
@@ -603,13 +603,13 @@ Digital key emulation. W/A/S/D serve double duty — walking on ground, jetpack 
 | Control | Function | Behavior |
 |---------|----------|----------|
 | 4-digit display | Altitude threshold | Shows current value 0–9999m, no leading zeros |
-| Encoder | Adjust threshold | ±1 slow / ±10 medium / ±100 fast |
+| Encoder | Adjust threshold | ±1 / ±10 / ±100 / ±1000 by consecutive-click count |
 | Encoder button | Reset to default | Returns to 200m |
 | BTN01 | GPWS Enable | 3-state cycle: OFF → ACTIVE (green, full GPWS) → AMBER (proximity tone only) |
 | BTN02 | Proximity Alarm | Toggle: OFF ↔ GREEN |
 | BTN03 | Rendezvous Radar | Toggle: OFF ↔ GREEN |
 
-**Encoder acceleration:** Slow (>150ms between detents) = ±1 · Medium (50–150ms) = ±10 · Fast (<50ms) = ±100
+**Encoder acceleration:** consecutive same-direction clicks set the step — 1–14 = ±1 · 15–29 = ±10 · 30–49 = ±100 · 50+ = ±1000. A direction reversal or a 500 ms idle gap resets the count to ±1. (Click-count based, not timing based — immune to mechanical jitter.)
 
 **INT suppression:** When BTN01 is in state 0 (GPWS off), BTN02, BTN03, and encoder events are suppressed — BTN01 always reports.
 
@@ -626,13 +626,13 @@ Digital key emulation. W/A/S/D serve double duty — walking on ground, jetpack 
 | Control | Function | Behavior |
 |---------|----------|----------|
 | 4-digit display | Pre-warp duration | Shows minutes 0–9999, no leading zeros |
-| Encoder | Adjust duration | ±1 slow / ±10 medium / ±100 fast |
+| Encoder | Adjust duration | ±1 / ±10 / ±100 / ±1000 by consecutive-click count |
 | Encoder button | Reset to 0 | Clears to default |
 | BTN01 | 5 min preset | GOLD flash on press, display jumps to 5 |
 | BTN02 | 1 hour preset | GOLD flash on press, display jumps to 60 |
 | BTN03 | 1 day preset | GOLD flash on press, display jumps to 1440 |
 
-**Encoder acceleration:** Slow (>150ms) = ±1 · Medium (50–150ms) = ±10 · Fast (<50ms) = ±100
+**Encoder acceleration:** consecutive same-direction clicks set the step — 1–14 = ±1 · 15–29 = ±10 · 30–49 = ±100 · 50+ = ±1000. A direction reversal or a 500 ms idle gap resets the count to ±1. (Click-count based, not timing based — immune to mechanical jitter.)
 
 Value transmitted to controller continuously as encoder is turned. Time Control buttons (0x25 B0/B2/B4/B6/B8) read this value as the lead-time offset before the warp target event.
 
@@ -760,3 +760,4 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 5.2 | 2026-05-25 | Corrected all PCB designators to match board numbering convention. Button Module 1822→1802; Wide Button Module 1842→1812; Joystick Module 1831/1832→1832; Throttle Module 1861/1862→1822; 7-Segment Display Module 1881/1882→1842; Dual Encoder 1871/1872→1862. |
 | 5.3 | 2026-06-27 | Panel relocation: GPWS Input Panel (0x2A) moved from Panel A1 to Panel A2 per enclosure redesign (A1 reduced to power button + two 7" displays). Module header and Panel Location Summary updated. No address, packet, or functional change. |
 | 5.4 | 2026-06-28 | Firmware Open Items #7–#10 resolved against KerbalButtonCore v2.0: Function Control (#7) and Vehicle Control (#9) read Switch Group 1/2 at B16–B23 via 24-input / 3-byte shift-register reads; Action Control (#8) B10/B11 are now action-group buttons; Stability Control (#10) gains RCS at B10 and drops the B12/B13 enable inputs. ⚠️ TODO call-outs replaced with ✅ resolved notes; Panel Location Summary and Open Items table updated. #6, #13, #14 (design/in-game validation) remain open. |
+| 5.5 | 2026-06-28 | Module README ↔ reference reconciliation pass. Corrected the GPWS (0x2A) and Pre-Warp (0x2B) encoder-acceleration description to the click-count model actually implemented by Kerbal7SegmentCore (1–14 = ±1, 15–29 = ±10, 30–49 = ±100, 50+ = ±1000; reset on reversal or 500 ms idle), replacing the previous timing-based text. (Vehicle Control firmware was separately reconciled to the v5.4 B0–B11 layout; the 0x26 AUX CTRL spec is unchanged — the in-repo 6-button EVA board is a predecessor to that 12-button design.) |

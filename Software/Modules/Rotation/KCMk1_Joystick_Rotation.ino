@@ -25,7 +25,7 @@
  *              Buttons:
  *                BTN01 (PC0) — Reset Trim    — GREEN  — NeoPixel
  *                BTN02 (PB3) — Trim Set      — AMBER  — NeoPixel
- *                BTN_JOY(PA5)— TBD           — no LED — GPIO
+ *                BTN_JOY(PA5)— Airbrake toggle / Run hold (EVA) — no LED — GPIO
  *
  *              Do not touch the joystick during the first ~80ms
  *              after power-on. Startup calibration reads the center
@@ -35,7 +35,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1831/1832 v1.0 (ATtiny816)
- *              Library:   KerbalJoystickCore v1.0.0
+ *              Library:   KerbalJoystickCore v2.0.0
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher

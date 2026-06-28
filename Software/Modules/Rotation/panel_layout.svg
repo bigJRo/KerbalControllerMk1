@@ -27,5 +27,5 @@
   <text x="190" y="180" font-size="7.5" fill="#d1d5db" text-anchor="middle">BTN_JOY · PA6</text>
 
   <!-- Axes -->
-  <text x="16" y="196" font-size="7.5" fill="#9ca3af">Axes: AXIS1=PB4 (X) · AXIS2=PB5 (Y) · AXIS3=PA7 (Z-rot) · Extension connector U4: AXIS1, AXIS2, AXIS3, BTN_JOY · KerbalJoystickCore v1.0.0</text>
+  <text x="16" y="196" font-size="7.5" fill="#9ca3af">Axes: AXIS1=PB4 (X) · AXIS2=PB5 (Y) · AXIS3=PA7 (Z-rot) · Extension connector U4: AXIS1, AXIS2, AXIS3, BTN_JOY · KerbalJoystickCore v2.0.0</text>
 </svg>

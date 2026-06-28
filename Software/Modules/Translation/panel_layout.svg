@@ -34,5 +34,5 @@
   <!-- Legend -->
   <text x="18" y="218" font-size="7.5" fill="#9ca3af">Axes: AXIS1=PB4 (X) · AXIS2=PB5 (Y) · AXIS3=PA7 (Z)</text>
   <text x="18" y="230" font-size="7.5" fill="#9ca3af">Extension connector U4 exposes: AXIS1, AXIS2, AXIS3, BTN_JOY</text>
-  <text x="18" y="242" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · dashed = no LED · KerbalJoystickCore v1.0.0 · Jeb's Controller Works</text>
+  <text x="18" y="242" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · dashed = no LED · KerbalJoystickCore v2.0.0 · Jeb's Controller Works</text>
 </svg>
