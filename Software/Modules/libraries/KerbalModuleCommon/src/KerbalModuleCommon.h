@@ -1,7 +1,7 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.1.0
- * @date        2026-04-27
+ * @version     1.2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -216,6 +216,23 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_CMD_ENABLE           0x09
 #define KMC_CMD_DISABLE          0x0A
 #define KMC_CMD_SET_VALUE        0x0D
+
+// ============================================================
+//  Canonical packet sizes
+//
+//  Single source of truth for the fixed-size protocol fields shared
+//  by every module library. Device-specific data payload sizes are
+//  defined per library; these are the universal constants.
+// ============================================================
+
+/** @brief Universal data-packet header: status byte, type ID, tx counter. */
+#define KMC_HEADER_SIZE          3
+
+/** @brief Identity response: type ID, fw major, fw minor, capability flags. */
+#define KMC_IDENTITY_SIZE        4
+
+/** @brief CMD_SET_LED_STATE payload: 16 positions × 4-bit nibble = 8 bytes. */
+#define KMC_LED_PAYLOAD_SIZE     8
 
 // ============================================================
 //  LED nibble pack / unpack helpers

@@ -1,10 +1,11 @@
 # KerbalButtonCore
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1822 Button Module Base v1.1  
 **Target MCU:** ATtiny816 (megaTinyCore)  
+**Protocol:** I2C_Protocol_Specification.md v2.4 (conformant)  
 
 ---
 
@@ -15,15 +16,17 @@ KerbalButtonCore is the Arduino library for Kerbal Controller Mk1 button input m
 The library manages:
 
 - 16 button inputs via two daisy-chained SN74HC165PWR shift registers
+  (or 24 inputs via three registers — see *24-input switch-group modules*)
 - 12 RGB NeoPixel buttons (WS2811, tinyNeoPixel_Static)
 - 4 discrete LED outputs (2N3904 NPN switched, on/off only)
-- I2C target communication (full KBC protocol v1.1)
+- I2C target communication, fully conformant with system I2C Protocol v2.4
+  (universal 3-byte header, transaction counter, lifecycle state machine)
 - Dual-buffer button state latching with guaranteed edge detection
 - Per-button LED state machine with core and extended states
 - Non-blocking flash timing for WARNING and ALERT states
-- Sleep/wake power management
+- Full lifecycle: BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING
 
-Full protocol specification: [`KBC_Protocol_Spec.md`](../KBC_Protocol_Spec.md)
+Full protocol specification: [`I2C_Protocol_Specification.md`](../../../../Documents/Developer/I2C_Protocol_Specification.md)
 
 ---
 
@@ -136,18 +139,34 @@ That's the complete sketch. All I2C communication, button debouncing, LED update
 | CMD_GET_IDENTITY     | `0x01` | none            |
 | CMD_SET_LED_STATE    | `0x02` | 8 bytes         |
 | CMD_SET_BRIGHTNESS   | `0x03` | 1 byte (0–255)  |
-| CMD_BULB_TEST        | `0x04` | none            |
+| CMD_BULB_TEST        | `0x04` | 0/1 byte        |
 | CMD_SLEEP            | `0x05` | none            |
 | CMD_WAKE             | `0x06` | none            |
 | CMD_RESET            | `0x07` | none            |
 | CMD_ACK_FAULT        | `0x08` | none            |
+| CMD_ENABLE           | `0x09` | none            |
+| CMD_DISABLE          | `0x0A` | none            |
 
-### Button State Response (module → controller, 4 bytes)
+### Button State Response (module → controller)
+
+Every data packet leads with the universal 3-byte header, followed by the
+button-event payload. 16-input modules send a 7-byte packet; 24-input
+switch-group modules send a 9-byte packet.
 
 ```
-Byte 0-1: Current state bitmask  (bit N = button N, 1=pressed)
-Byte 2-3: Change mask            (bit N = button N changed since last read)
+Byte 0:   Status   — lifecycle (bits 1:0), fault (bit 2), data-changed (bit 3)
+Byte 1:   Module Type ID
+Byte 2:   Transaction counter (increments per INT assertion, wraps 255→0)
+Byte 3:   Events   bits 0-7    (bit N = input N pressed)
+Byte 4:   Events   bits 8-15
+[Byte 5:  Events   bits 16-23] (24-input modules only)
+Byte 5/6: Change   bits 0-7    (bit N = input N changed since last read)
+Byte 6/7: Change   bits 8-15
+[Byte 8:  Change   bits 16-23] (24-input modules only)
 ```
+
+AND the events plane with the change plane to find which inputs changed and
+what they changed to.
 
 ### LED State Payload (8 bytes, nibble-packed)
 
@@ -256,6 +275,30 @@ Any `KBC_Config.h` constant guarded by `#ifndef` can be overridden per sketch by
 #define KBC_WARNING_OFF_MS      300
 #include <KerbalButtonCore.h>
 ```
+
+---
+
+## 24-input switch-group modules
+
+The two switch-group modules — Function Control (0x21) and Vehicle Control
+(0x24) — read 24 inputs from three daisy-chained 74HC165 registers
+(U14, U15, U16). KBC indices 0–11 are the NeoPixel buttons, 12–15 are
+unused (no-connect), and 16–23 are the panel-mounted Switch Group inputs
+(discrete, no LED). Select the 24-input variant in the sketch by defining
+both constants before the include:
+
+```cpp
+#define KBC_INPUT_COUNT     24
+#define KBC_SHIFTREG_COUNT  3
+#include <KerbalButtonCore.h>
+```
+
+This widens the input data path and the response packet to a 6-byte payload
+(9-byte total packet — three event bytes + three change bytes). The LED path
+is unchanged: `activeColors[KBC_BUTTON_COUNT]` is still 16 positions, since
+indices 16–23 have no LED hardware. The U16 bit→index mapping mirrors the
+U14/U15 order and is a hardware assumption to confirm against the schematic
+(see `KBC_SR_BUTTON_MAP` in `KBC_ShiftReg.cpp`).
 
 ---
 

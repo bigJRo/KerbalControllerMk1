@@ -1,6 +1,6 @@
 /**
  * @file        KerbalButtonCore.cpp
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -14,7 +14,7 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Hardware: KC-01-1822 v1.1
- *              Protocol: KBC_Protocol_Spec.md v1.1
+ *              Protocol: I2C_Protocol_Specification.md v2.4
  */
 
 #include "KerbalButtonCore.h"
@@ -44,18 +44,18 @@ void KerbalButtonCore::begin(uint8_t brightness) {
     _shiftReg.begin();
 
     // 2. Initialise LED control — depends on active color array
-    //    and brightness setting
+    //    and brightness setting. begin() leaves all LEDs OFF.
     _ledControl.begin(_activeColors, brightness);
 
-    // 3. Set all buttons to ENABLED state as initial condition
-    for (uint8_t i = 0; i < KBC_BUTTON_COUNT; i++) {
-        _ledControl.setButtonState(i, KBC_LED_ENABLED);
-    }
-    _ledControl.render();
+    // 3. Outputs stay dark at power-on: the module comes up in
+    //    BOOT_READY and transitions to DISABLED, then ACTIVE only on
+    //    CMD_ENABLE, which lights buttons to ENABLED. Do not pre-light
+    //    here — that would violate the BOOT_READY/DISABLED dark state.
 
     // 4. Initialise I2C last — Wire.begin(address) must have
     //    been called in the sketch before this point.
-    //    Registers Wire callbacks and configures INT pin.
+    //    Registers Wire callbacks, configures INT pin, and asserts
+    //    the BOOT_READY interrupt.
     _i2c.begin();
 
     // Seed poll timestamps so first update() fires immediately

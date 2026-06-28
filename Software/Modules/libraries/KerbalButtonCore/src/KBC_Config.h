@@ -1,6 +1,6 @@
 /**
  * @file        KBC_Config.h
- * @version     1.2
+ * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -13,7 +13,10 @@
  *              design (KC-01-1822 v1.1) based on the ATtiny816-MNR
  *              microcontroller with megaTinyCore pin mapping, featuring:
  *                - 16 button inputs via two daisy-chained 74HC165 shift
- *                  registers (U14, U15) read via the ShiftIn<2> library
+ *                  registers (U14, U15) read via the ShiftIn<2> library.
+ *                  Switch-group modules (Function Control, Vehicle Control)
+ *                  add a third register (U16) for 24 inputs — selected per
+ *                  sketch via KBC_INPUT_COUNT / KBC_SHIFTREG_COUNT (see below).
  *                - 12 RGB NeoPixel buttons driven by WS2811 ICs
  *                  (tinyNeoPixel_Static, PIN_PA4, NEO_RGB order)
  *                - 4 discrete LED outputs via 2N3904 NPN transistors
@@ -41,7 +44,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
- *              Protocol defined in KBC_Protocol_Spec.md v1.1
+ *              Protocol defined in I2C_Protocol_Specification.md v2.4
  *              Schematic reference: KC-01-1821 v1.1
  */
 
@@ -132,6 +135,39 @@
 
 /** @brief Shift register serial data output pin (ATtiny816 pin 6). */
 #define KBC_PIN_SR_DATA         PIN_PA5
+
+// ============================================================
+//  Shift register input width (16-input default, 24-input switch groups)
+//
+//  Most modules read 16 inputs from two daisy-chained 74HC165 ICs
+//  (U14, U15). The two switch-group modules — Function Control (0x21)
+//  and Vehicle Control (0x24) — fit a third register (U16) to read
+//  Switch Group 1/2 panel inputs at KBC indices 16-23, for 24 inputs
+//  read as three shift-register bytes.
+//
+//  A sketch selects the 24-input variant by defining both constants
+//  before including KerbalButtonCore.h:
+//
+//    #define KBC_INPUT_COUNT     24
+//    #define KBC_SHIFTREG_COUNT  3
+//    #include <KerbalButtonCore.h>
+//
+//  KBC_INPUT_COUNT widens the input data path (button state, change
+//  mask, debounce, remap table) and the response packet payload.
+//  It does NOT change the LED/colour path — modules still drive at
+//  most 12 NeoPixel + 4 discrete LEDs (KBC_BUTTON_COUNT positions).
+//  KBC indices 16-23 are discrete inputs with no LED hardware.
+// ============================================================
+
+/** @brief Number of button/switch inputs read from the shift chain (16 or 24). */
+#ifndef KBC_INPUT_COUNT
+  #define KBC_INPUT_COUNT       16
+#endif
+
+/** @brief Number of daisy-chained 74HC165 shift registers (2 for 16, 3 for 24). */
+#ifndef KBC_SHIFTREG_COUNT
+  #define KBC_SHIFTREG_COUNT    2
+#endif
 
 // ============================================================
 //  NeoPixel configuration (WS2811-based RGB buttons, U1-U12)
@@ -323,8 +359,8 @@
 //  Increment MAJOR and reset MINOR for breaking protocol changes.
 // ============================================================
 
-/** @brief Library firmware version — major. */
-#define KBC_FIRMWARE_MAJOR          1
+/** @brief Library firmware version — major. Bumped to 2 for protocol v2.4. */
+#define KBC_FIRMWARE_MAJOR          2
 
 /** @brief Library firmware version — minor. */
 #define KBC_FIRMWARE_MINOR          0
@@ -347,6 +383,18 @@
 
 #if KBC_NEO_COUNT > 12
   #error "KBC: KBC_NEO_COUNT exceeds hardware maximum of 12 RGB buttons per module."
+#endif
+
+#if (KBC_INPUT_COUNT != 16) && (KBC_INPUT_COUNT != 24)
+  #error "KBC: KBC_INPUT_COUNT must be 16 (two registers) or 24 (three registers)."
+#endif
+
+#if (KBC_INPUT_COUNT == 16) && (KBC_SHIFTREG_COUNT != 2)
+  #error "KBC: KBC_SHIFTREG_COUNT must be 2 when KBC_INPUT_COUNT is 16."
+#endif
+
+#if (KBC_INPUT_COUNT == 24) && (KBC_SHIFTREG_COUNT != 3)
+  #error "KBC: KBC_SHIFTREG_COUNT must be 3 when KBC_INPUT_COUNT is 24."
 #endif
 
 #endif // KBC_CONFIG_H
