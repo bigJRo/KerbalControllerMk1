@@ -110,21 +110,22 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
 
 ## 6. Status — what's done vs remaining
 
-**Done in this phase (foundation):**
+**Done — foundation:**
 - [x] `KCMk1_SystemConfig.h` — Teensy 4.1, 1024×600, full pin map, Wire2 slave bus, bus speed.
 - [x] `KCM_Display` — `KCM_TFT` typedef + `kcmDisplayBegin()` glue over `RA8876_t41_p`.
-- [x] `KCM_Touch` — FT5316 software-I2C driver, API-compatible with the old touch surface.
+- [x] `KCM_Touch` — FT5316 software-I2C driver, API-compatible with the old touch surface
+      (orientation + protocol confirmed against the vendor demo).
 - [x] `KerbalDisplayAudio` — `AUDIO_PIN` → TONE/pin 2; added `KCM_DFPlayer` (Serial2).
 
-**Remaining (each needs the libraries installed to compile/verify):**
-- [ ] **Convert fonts** (Roboto_Black_*, TerminalFont_*) from sumotoy `tFont` to
-      ILI9341_t3 format (regenerate from TTF via Paul's converter, or convert the
-      existing 1bpp glyph data). Required before the text layer compiles.
-- [ ] **Migrate `KerbalDisplayCommon`**: `RA8875 &tft` → `KCM_TFT &tft`; rewrite the
-      text layer (`textLeft/Right/Center`, `printDisp/printValue/printName/printTitle`,
-      `getFontStringWidth`) onto ILI9341_t3 fonts + the library's text metrics;
-      `drawBMP` to use the GFX `writeRect()` instead of `setActiveWindow/setXY/drawPixels`;
-      `setupSD()` to `BUILTIN_SDCARD`; bump `KCM_SCREEN_W/H` references to 1024×600.
+**Done — fonts + common library:**
+- [x] **Fonts converted** sumotoy `tFont` → ILI9341_t3 (`fonts_ili/`, all 12 fonts),
+      via `tfont_to_ili9341.py` with per-glyph round-trip verification.
+- [x] **`KerbalDisplayCommon` migrated** (v3.0.0): `KCM_TFT` type, ILI9341_t3 fonts,
+      `getFontCharWidth` via fetchbits, `drawBMP` → `writeRect`, `setupSD` →
+      `BUILTIN_SDCARD`, GSL1680 touch removed (now `KCM_Touch`). Not yet compiled —
+      needs the RA8876 libraries installed (see Dependencies).
+
+**Remaining:**
 - [ ] **Port + redesign the Annunciator** for 1024×600 (chosen layout strategy:
       full redesign, not letterbox): `AAA_Globals` (KCM_TFT object), `I2CSlave`
       (Wire2 + INT_BUS pin 0), audio repoint, touch via KCM_Touch, and new screen
