@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Switch_Panel.ino
- * @version     1.1
+ * @version     2.0
  * @date        2026-04-09
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

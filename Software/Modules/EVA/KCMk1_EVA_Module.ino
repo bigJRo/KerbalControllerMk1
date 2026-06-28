@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_EVA_Module.ino
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -76,13 +76,13 @@ void setup() {
     // 3. Encoders — configure pins (future use)
     encodersBegin();
 
-    // 4. LEDs — NeoPixel chain
+    // 4. LEDs — NeoPixel chain (initialised OFF)
     ledsBegin();
 
-    // 5. Set all buttons to ENABLED state and render
-    for (uint8_t i = 0; i < EVA_BUTTON_COUNT; i++) {
-        ledSetState(i, LED_ENABLED);
-    }
+    // 5. Module powers on dark: it comes up in BOOT_READY and transitions
+    //    to DISABLED, then ACTIVE only on CMD_ENABLE, which lights buttons
+    //    to ENABLED. Do not pre-light here — that would violate the
+    //    BOOT_READY/DISABLED dark state.
     ledsRender();
 }
 

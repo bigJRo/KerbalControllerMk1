@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     1.1.0
- * @date        2026-04-09
+ * @version     2.0.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — EVA Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -16,6 +16,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  ATtiny816 clock speed assertion
@@ -38,8 +39,8 @@
 /** @brief Module type ID reported in identity response. */
 #define EVA_MODULE_TYPE_ID      KMC_TYPE_EVA_MODULE
 
-/** @brief Firmware version — major. */
-#define EVA_FIRMWARE_MAJOR      1
+/** @brief Firmware version — major. Bumped to 2 for protocol v2.4. */
+#define EVA_FIRMWARE_MAJOR      2
 
 /** @brief Firmware version — minor. */
 #define EVA_FIRMWARE_MINOR      0
@@ -67,31 +68,27 @@
 #define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
 #define CMD_ENABLE              KMC_CMD_ENABLE
 #define CMD_DISABLE             KMC_CMD_DISABLE
-// ============================================================
-
-#define CMD_GET_IDENTITY        0x01
-#define CMD_SET_LED_STATE       0x02
-#define CMD_SET_BRIGHTNESS      0x03
-#define CMD_BULB_TEST           0x04
-#define CMD_SLEEP               0x05
-#define CMD_WAKE                0x06
-#define CMD_RESET               0x07
-#define CMD_ACK_FAULT           0x08
-#define CMD_ENABLE              0x09
-#define CMD_DISABLE             0x0A
 
 // ============================================================
 //  Packet sizes
 // ============================================================
 
+/** @brief Universal data-packet header size (status, type ID, tx counter). */
+#define EVA_HEADER_SIZE         KMC_HEADER_SIZE
+
 /**
- * @brief EVA module data packet size (bytes).
- *        Byte 0:  Button state  (bits 0-5 = buttons 0-5, bits 6-7 unused)
- *        Byte 1:  Change mask   (bits 0-5 = buttons 0-5, bits 6-7 unused)
- *        Byte 2:  ENC1 delta    (signed int8, clicks since last read)
- *        Byte 3:  ENC2 delta    (signed int8, clicks since last read)
+ * @brief EVA module data packet size (bytes), 7 total (spec §9.1).
+ *        Byte 0:  Status byte   (lifecycle/fault/data-changed)
+ *        Byte 1:  Module Type ID
+ *        Byte 2:  Transaction counter
+ *        Byte 3:  Button events HI (bits 0-5 = buttons 0-5)
+ *        Byte 4:  Button events LO (always 0 — buttons 8-15 unused)
+ *        Byte 5:  Change mask  HI (bits 0-5 = buttons 0-5)
+ *        Byte 6:  Change mask  LO (always 0)
+ *        Encoder delta bytes are removed — encoder hardware is
+ *        unpopulated (see protocol spec §9.1 EVA note; cap flags 0x00).
  */
-#define EVA_PACKET_SIZE         4
+#define EVA_PACKET_SIZE         7
 
 /** @brief Identity response packet size (bytes). */
 #define EVA_IDENTITY_SIZE       KMC_IDENTITY_SIZE

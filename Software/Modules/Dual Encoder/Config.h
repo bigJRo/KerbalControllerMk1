@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Dual Encoder Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -15,6 +15,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  Module identity
@@ -22,7 +23,7 @@
 
 #define DEC_I2C_ADDRESS         0x2D
 #define DEC_MODULE_TYPE_ID      KMC_TYPE_DUAL_ENCODER
-#define DEC_FIRMWARE_MAJOR      1
+#define DEC_FIRMWARE_MAJOR      2
 #define DEC_FIRMWARE_MINOR      0
 
 /** @brief Capability flag — encoder delta data in packet (bit 2). */
@@ -42,30 +43,24 @@
 #define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
 #define CMD_ENABLE              KMC_CMD_ENABLE
 #define CMD_DISABLE             KMC_CMD_DISABLE
-// ============================================================
-
-#define CMD_GET_IDENTITY        0x01
-#define CMD_SET_LED_STATE       0x02
-#define CMD_SET_BRIGHTNESS      0x03
-#define CMD_BULB_TEST           0x04
-#define CMD_SLEEP               0x05
-#define CMD_WAKE                0x06
-#define CMD_RESET               0x07
-#define CMD_ACK_FAULT           0x08
-#define CMD_ENABLE              0x09
-#define CMD_DISABLE             0x0A
 
 // ============================================================
 //  Packet format
 //
-//  4 bytes (module → controller):
-//    Byte 0:  Button events  (bit0=ENC1_SW, bit1=ENC2_SW)
-//    Byte 1:  Change mask    (same bit layout)
-//    Byte 2:  ENC1 delta     (signed int8, +CW, -CCW)
-//    Byte 3:  ENC2 delta     (signed int8, +CW, -CCW)
+//  7 bytes (module → controller), spec §9.5:
+//    Byte 0:  Status byte    (lifecycle/fault/data-changed)
+//    Byte 1:  Module Type ID
+//    Byte 2:  Transaction counter
+//    Byte 3:  Button events  (bit0=ENC1_SW, bit1=ENC2_SW)
+//    Byte 4:  Change mask    (same bit layout)
+//    Byte 5:  ENC1 delta     (signed int8, +CW, -CCW)
+//    Byte 6:  ENC2 delta     (signed int8, +CW, -CCW)
 // ============================================================
 
-#define DEC_PACKET_SIZE         4
+/** @brief Universal data-packet header size (status, type ID, tx counter). */
+#define DEC_HEADER_SIZE         KMC_HEADER_SIZE
+
+#define DEC_PACKET_SIZE         7
 #define DEC_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 // ============================================================

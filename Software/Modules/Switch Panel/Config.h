@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Switch Panel Input Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -15,6 +15,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <KerbalModuleCommon.h>
 
 // ============================================================
 //  Module identity
@@ -22,7 +23,7 @@
 
 #define SWP_I2C_ADDRESS         0x2E
 #define SWP_MODULE_TYPE_ID      KMC_TYPE_SWITCH_PANEL
-#define SWP_FIRMWARE_MAJOR      1
+#define SWP_FIRMWARE_MAJOR      2
 #define SWP_FIRMWARE_MINOR      0
 #define SWP_CAP_FLAGS           0x00  // no capabilities
 
@@ -46,27 +47,18 @@
 #define CMD_ACK_FAULT           KMC_CMD_ACK_FAULT
 #define CMD_ENABLE              KMC_CMD_ENABLE
 #define CMD_DISABLE             KMC_CMD_DISABLE
-// ============================================================
-
-#define CMD_GET_IDENTITY        0x01
-#define CMD_SET_LED_STATE       0x02
-#define CMD_SET_BRIGHTNESS      0x03
-#define CMD_BULB_TEST           0x04
-#define CMD_SLEEP               0x05
-#define CMD_WAKE                0x06
-#define CMD_RESET               0x07
-#define CMD_ACK_FAULT           0x08
-#define CMD_ENABLE              0x09
-#define CMD_DISABLE             0x0A
 
 // ============================================================
 //  Packet format
 //
-//  Standard 4-byte KBC-style packet (module → controller):
-//    Byte 0:  Current state HIGH  — bits 15-8  (bits 10-15 always 0)
-//    Byte 1:  Current state LOW   — bits 7-0   (SW1-SW8)
-//    Byte 2:  Change mask HIGH    — bits 15-8  (bits 10-15 always 0)
-//    Byte 3:  Change mask LOW     — bits 7-0
+//  Standard button packet, 7 bytes (module → controller), spec §9.1:
+//    Byte 0:  Status byte         (lifecycle/fault/data-changed)
+//    Byte 1:  Module Type ID
+//    Byte 2:  Transaction counter
+//    Byte 3:  Current state HIGH  — bits 15-8  (bits 10-15 always 0)
+//    Byte 4:  Current state LOW   — bits 7-0   (SW1-SW8)
+//    Byte 5:  Change mask HIGH    — bits 15-8  (bits 10-15 always 0)
+//    Byte 6:  Change mask LOW     — bits 7-0
 //
 //  Switch-to-bit mapping:
 //    Bit 0  = SW1
@@ -82,7 +74,10 @@
 //    Bits 10-15 = unused (always 0)
 // ============================================================
 
-#define SWP_PACKET_SIZE         4
+/** @brief Universal data-packet header size (status, type ID, tx counter). */
+#define SWP_HEADER_SIZE         KMC_HEADER_SIZE
+
+#define SWP_PACKET_SIZE         7
 #define SWP_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 // ============================================================
