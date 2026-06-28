@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v5.8 | 2026-06-28
+**Jeb's Controller Works** | v5.9 | 2026-06-28
 
 This document is the definitive developer reference for all user-facing controls and indicators on each KCMk1 module. Arranged by I2C address. For panel location context see the address summary table at the end of this document.
 
@@ -29,6 +29,7 @@ All NeoPixel buttons share a common set of LED states. Not all states are used o
 | ARMED | Static cyan | Primed and ready |
 | PARTIAL_DEPLOY | Static amber | Partially deployed state |
 | CUT | Static red | State-machine terminal — parachute cut / heat-shield release |
+| ACTIVE_ALT | Full color (per-button alternate) | Second active colour for two-colour buttons — e.g. AUX CTRL CP Toggle Alternate (CORAL) |
 
 Discrete LED buttons are ON/OFF only — ENABLED and ACTIVE both produce full brightness. Flash states have no effect on discrete LEDs.
 
@@ -765,3 +766,4 @@ Address 0x2E is retired and unused. The single-module Switch Panel design (forme
 | 5.6 | 2026-06-28 | Added the `CUT` LED state (static red) to the LED State Color Key so Vehicle Control's Heat Shield / Main Chute / Drogue Chute state machines render the canonical deploy (GREEN) → cut/release (RED) terminal natively. Backed by the new `KMC_LED_CUT` nibble (0x7) in KerbalModuleCommon v1.4 and KerbalButtonCore v2.1. State-machine tables updated to show the terminal as RED (CUT). |
 | 5.7 | 2026-06-28 | Switch Panel module removed from the codebase (firmware folder and all code references deleted); 0x2E section retired and address-summary row marked Removed. Functions remain distributed across Switch Groups 1/2. |
 | 5.8 | 2026-06-28 | AUX CTRL (0x26) firmware implemented: the standalone 6-button EVA module was removed and replaced by a standard 12-button KerbalButtonCore module (KC-01-1802) matching this document's 0x26 spec. Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); new `Auxiliary Control` module folder (sketch + README + panel SVG). `KMC_SEAFOAM` added to the shared palette (used by AUX CTRL Grab / Plant Flag). No 0x26 panel/layout change — the spec already described the 12-button design. |
+| 5.9 | 2026-06-28 | Added the `ACTIVE_ALT` LED state (second per-button active colour) to the LED State Color Key so AUX CTRL's CP Toggle (B10) renders the canonical ROSE (Primary, `ACTIVE`) / CORAL (Alternate, `ACTIVE_ALT`) distinction natively. Backed by the new `KMC_LED_ACTIVE_ALT` nibble (0x8) in KerbalModuleCommon v1.6 and the optional alt-colour array in KerbalButtonCore v2.2. |

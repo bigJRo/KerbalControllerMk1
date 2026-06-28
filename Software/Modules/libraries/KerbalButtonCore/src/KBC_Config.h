@@ -363,7 +363,7 @@
 #define KBC_FIRMWARE_MAJOR          2
 
 /** @brief Library firmware version — minor. Bumped to 1 for KBC_LED_CUT. */
-#define KBC_FIRMWARE_MINOR          1
+#define KBC_FIRMWARE_MINOR          2
 
 // ============================================================
 //  Compile-time validation

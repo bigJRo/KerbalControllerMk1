@@ -41,6 +41,7 @@ const uint8_t KBCLEDControl::_discretePins[KBC_DISCRETE_COUNT] = {
 KBCLEDControl::KBCLEDControl()
     : _pixels(KBC_NEO_COUNT, KBC_PIN_NEO, KBC_NEO_COLOR_ORDER, _pixelBuffer)
     , _activeColors(nullptr)
+    , _altColors(nullptr)
     , _brightness(KBC_ENABLED_BRIGHTNESS)
     , _flashOn(true)
     , _flashLastToggle(0)
@@ -53,8 +54,11 @@ KBCLEDControl::KBCLEDControl()
 //  begin()
 // ============================================================
 
-void KBCLEDControl::begin(const RGBColor* activeColors, uint8_t brightness) {
+void KBCLEDControl::begin(const RGBColor* activeColors,
+                          const RGBColor* altColors,
+                          uint8_t brightness) {
     _activeColors = activeColors;
+    _altColors    = altColors;
     _brightness   = brightness;
     _flashOn      = true;
     _flashLastToggle = millis();
@@ -264,6 +268,14 @@ RGBColor KBCLEDControl::_resolveColor(uint8_t index, bool flashOn) const {
             // heat-shield release). The button's deploy color is GREEN
             // via KBC_LED_ACTIVE; this is the second, static-red state.
             return KBC_RED;
+
+        case KBC_LED_ACTIVE_ALT:
+            // Second per-button active colour (e.g. CP Toggle Alternate).
+            // Uses the alt-color array if the sketch supplied one; otherwise
+            // falls back to the primary active colour.
+            if (_altColors != nullptr)    return _altColors[index];
+            if (_activeColors != nullptr) return _activeColors[index];
+            return KBC_GREEN;
 
         default:
             // Reserved or unknown state — treat as off

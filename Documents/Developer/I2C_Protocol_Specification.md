@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.8  
+**Version:** 2.9  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
@@ -383,9 +383,13 @@ Defined in `KerbalModuleCommon.h` as `KMC_LED_*`.
 | 0x4 | `KMC_LED_ALERT` | Flashing 150ms on / 150ms off | `KMC_RED` |
 | 0x5 | `KMC_LED_ARMED` | Full brightness static | `KMC_CYAN` |
 | 0x6 | `KMC_LED_PARTIAL_DEPLOY` | Full brightness static | `KMC_AMBER` |
-| 0x7–0xF | — | Reserved | — |
+| 0x7 | `KMC_LED_CUT` | Full brightness static | `KMC_RED` (state-machine terminal — cut / release) |
+| 0x8 | `KMC_LED_ACTIVE_ALT` | Full brightness static | Per-button alternate color (e.g. CP Toggle Alternate = `KMC_CORAL`) |
+| 0x9–0xF | — | Reserved | — |
 
-States 0x3–0x6 are extended states. Modules that do not support extended states treat values above 0x2 as OFF. Extended state support is indicated by `KMC_CAP_EXTENDED_STATES` (bit 0) in the capability flags.
+States 0x3–0x7 (WARNING, ALERT, ARMED, PARTIAL_DEPLOY, CUT) are **extended states** — they require `KMC_CAP_EXTENDED_STATES` (bit 0). Modules that do not support extended states treat these values as OFF.
+
+State 0x8 (`KMC_LED_ACTIVE_ALT`) is a **core rendering state**, not an extended state: it selects a button's *second* active colour from an optional per-button alternate-colour array (falling back to the primary active colour if none is supplied). It is available to any module regardless of the extended-states capability — used by Auxiliary Control's CP Toggle (ROSE Primary via `ACTIVE`, CORAL Alternate via `ACTIVE_ALT`).
 
 ### 10.3 Nibble Pack / Unpack
 
@@ -525,3 +529,4 @@ Vessel switch behaviour is module-specific and determined by each module's contr
 | 2.5 | 2026-06-28 | Conformance reached for the three pending firmware bodies — KerbalButtonCore v2.0 (KBC-001–006), KerbalJoystickCore v2.0 (KJC-001–005), and Throttle v2.0 (THR-001–004); §1 conformance note and §8 registry updated. Added §9.1.1 switch-group variant: Function Control (0x21) and Vehicle Control (0x24) now read 24 inputs (third shift register U16, Switch Group 1/2 at indices 16–23) and emit a 6-byte payload / 9-byte packet; §8 totals and §13 bus timing updated accordingly. Corrected the joystick registry entry (§8) to 9-byte payload / 12-byte total to match the §9.2 byte layout (button events + change + state bytes were added to the payload but the registry total had not been updated). Clarified that the EVA Module, Dual Encoder, and Switch Panel ship standalone firmware not covered by the library updates and remain pending. |
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
+| 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |

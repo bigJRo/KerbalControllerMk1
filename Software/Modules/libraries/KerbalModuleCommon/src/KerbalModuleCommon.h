@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.5.0
+ * @version     1.6.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -158,6 +158,8 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_LED_PARTIAL_DEPLOY  0x6   // static amber
 #define KMC_LED_CUT             0x7   // static red — state-machine terminal
                                       // (parachute cut / heat-shield release)
+#define KMC_LED_ACTIVE_ALT      0x8   // second per-button active colour
+                                      // (e.g. CP Toggle Alternate = CORAL)
 
 // ============================================================
 //  Module Type IDs

@@ -1,6 +1,6 @@
 # KerbalButtonCore
 
-**Version:** 2.1.0  
+**Version:** 2.2.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1822 Button Module Base v1.1  
@@ -182,6 +182,7 @@ Two buttons per byte, high nibble first. Nibble values:
 | `0x5` | ARMED          | Static cyan                  |
 | `0x6` | PARTIAL_DEPLOY | Static amber                 |
 | `0x7` | CUT            | Static red (state-machine terminal) |
+| `0x8` | ACTIVE_ALT     | Second per-button active color (alt-color array) |
 
 ### Identity Response (4 bytes)
 
@@ -215,6 +216,14 @@ Byte 3: Capability flags
 | CUT            | Red   | Static full bright    |
 
 `CUT` (nibble `0x7`, added v2.1) is the static-red terminal state for deploy → cut/release state machines (e.g. Vehicle Control Heat Shield, Main/Drogue Chute): the button's `ACTIVE` color is the deploy color (GREEN), and `CUT` renders the irreversible terminal in static red.
+
+`ACTIVE_ALT` (nibble `0x8`, added v2.2) renders a **second per-button active color** from an optional alt-color array. Supply it as the 4th constructor argument:
+
+```cpp
+KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors, altColors);
+```
+
+`ACTIVE` uses `activeColors[i]`; `ACTIVE_ALT` uses `altColors[i]` (falling back to `activeColors[i]` if no alt array was supplied). This drives two-colour buttons that are not a red terminal — e.g. Auxiliary Control's CP Toggle: ROSE (Primary) via `ACTIVE`, CORAL (Alternate) via `ACTIVE_ALT`. It is a core rendering feature and does not require `KBC_CAP_EXTENDED_STATES`.
 
 To enable extended states, pass `KBC_CAP_EXTENDED_STATES` as the capability flags argument to the constructor.
 

@@ -43,10 +43,11 @@
  *                      Port       Flag     Toggle            Constr.  Enable
  *                      PINK       SEAFOAM  SKY      SEAFOAM  TEAL     LIME
  *
- *                * B10 CP Toggle is ROSE for Primary; the controller shows
- *                  CORAL for the Alternate control point. With no extended
- *                  states the module's ACTIVE colour is the Primary (ROSE);
- *                  see README for the controller-side PRI/ALT handling.
+ *                * B10 CP Toggle: KBC_LED_ACTIVE renders ROSE (Primary);
+ *                  the controller sends KBC_LED_ACTIVE_ALT to render CORAL
+ *                  (Alternate) via the altColors array below. CP Docking
+ *                  Port (B11) is a separate button. See README for the
+ *                  mutually-exclusive PRI/ALT/Docking-Port logic.
  *
  *                B12-B15 are no-connects on the PCB (not installed).
  *
@@ -70,7 +71,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1802 v1.1 (ATtiny816)
- *              Library:   KerbalButtonCore v2.1.0
+ *              Library:   KerbalButtonCore v2.2.0
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher
@@ -134,12 +135,41 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
 };
 
 // ============================================================
-//  Library instantiation
+//  Per-button ALTERNATE active colors (KBC_LED_ACTIVE_ALT)
 //
-//  No extended states on this module — capability flags = 0.
+//  Only B10 (CP Toggle) uses a second active colour: CORAL for the
+//  Alternate control point. ACTIVE renders ROSE (Primary); the
+//  controller sends KBC_LED_ACTIVE_ALT to switch B10 to CORAL. All
+//  other positions are unused here (KBC_OFF).
 // ============================================================
 
-KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors);
+const RGBColor altColors[KBC_BUTTON_COUNT] = {
+    KBC_OFF,         // B0
+    KBC_OFF,         // B1
+    KBC_OFF,         // B2
+    KBC_OFF,         // B3
+    KBC_OFF,         // B4
+    KBC_OFF,         // B5
+    KBC_OFF,         // B6
+    KBC_OFF,         // B7
+    KBC_OFF,         // B8
+    KBC_OFF,         // B9
+    KBC_CORAL,       // B10 - CP Toggle ALTERNATE control point
+    KBC_OFF,         // B11
+    KBC_OFF,         // B12
+    KBC_OFF,         // B13
+    KBC_OFF,         // B14
+    KBC_OFF,         // B15
+};
+
+// ============================================================
+//  Library instantiation
+//
+//  No extended states — capability flags = 0. The altColors array
+//  supplies the CP Toggle Alternate colour (KBC_LED_ACTIVE_ALT, B10).
+// ============================================================
+
+KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors, altColors);
 
 // ============================================================
 //  setup()

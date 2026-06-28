@@ -90,6 +90,7 @@
 #define KBC_LED_ARMED           KMC_LED_ARMED
 #define KBC_LED_PARTIAL_DEPLOY  KMC_LED_PARTIAL_DEPLOY
 #define KBC_LED_CUT             KMC_LED_CUT
+#define KBC_LED_ACTIVE_ALT      KMC_LED_ACTIVE_ALT
 
 // ============================================================
 //  Packet sizes

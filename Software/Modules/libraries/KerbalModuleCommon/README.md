@@ -1,6 +1,6 @@
 # KerbalModuleCommon
 
-**Version:** 1.5.0  
+**Version:** 1.6.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 
@@ -173,6 +173,7 @@ Used with `KMC_CMD_SET_LED_STATE` and `kmcLedPackGet()` / `kmcLedPackSet()` help
 | `KMC_LED_ARMED` | 0x5 | Static cyan |
 | `KMC_LED_PARTIAL_DEPLOY` | 0x6 | Static amber |
 | `KMC_LED_CUT` | 0x7 | Static red — state-machine terminal (parachute cut / heat-shield release) |
+| `KMC_LED_ACTIVE_ALT` | 0x8 | Second per-button active colour (e.g. CP Toggle Alternate = CORAL); uses the sketch's optional alt-colour array |
 
 ---
 

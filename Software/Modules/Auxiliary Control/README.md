@@ -1,12 +1,12 @@
 # KCMk1_Auxiliary_Control
 
 **Module:** Auxiliary Control (AUX CTRL)  
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** 2026-06-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1802 Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.1.0  
+**Library:** KerbalButtonCore v2.2.0  
 
 ---
 
@@ -111,19 +111,20 @@ B10 (CP Toggle) and B11 (CP Docking Port) select the vessel control point. The t
 
 - **B10 CP Toggle** cycles between Primary (CAG 35) and Alternate (CAG 36). Selecting either deactivates the Docking-Port control point.
 - **B11 CP Docking Port** selects CAG 37 and deactivates both Primary and Alternate.
-- Because this module has **no extended states**, B10 has a single ACTIVE colour: **ROSE** (Primary). The Primary (ROSE) / Alternate (CORAL) visual distinction and the mutually-exclusive PRI / ALT / Docking-Port logic are entirely controller-side — the module simply renders ACTIVE in ROSE when commanded.
+- B10 renders **ROSE** (Primary) via `KBC_LED_ACTIVE` and **CORAL** (Alternate) via `KBC_LED_ACTIVE_ALT` — the Alternate colour is supplied by the sketch's `altColors` array (KerbalButtonCore v2.2). The controller drives the mutually-exclusive PRI / ALT / Docking-Port logic by sending the appropriate LED state per button; a deactivated control point returns to ENABLED. (`KBC_LED_ACTIVE_ALT` is a core rendering feature and does not require extended states.)
 
 ---
 
 ## LED States
 
-This module uses core LED states only. There are no extended states.
+This module uses core LED states plus the alternate active colour for the CP Toggle. It has no flash/extended states.
 
 | State | NeoPixel Behavior |
 |---|---|
 | OFF | Unlit |
 | ENABLED | Dim white backlight |
-| ACTIVE | Full brightness, button color |
+| ACTIVE | Full brightness, primary button color (B10 = ROSE) |
+| ACTIVE_ALT | Full brightness, alternate color — B10 only (CORAL) |
 
 The module powers on dark (BOOT_READY → DISABLED). On `CMD_ENABLE` from the controller, all 12 NeoPixel buttons illuminate to the ENABLED (dim white) state. The controller then drives individual buttons to ACTIVE as game context dictates.
 
@@ -236,3 +237,4 @@ Module Type ID 0x07 · firmware major/minor · capability flags 0x00
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-06-28 | Initial release. Replaces the former standalone 6-button EVA module (KC-01-1852) with a standard 12-button KerbalButtonCore module on the KC-01-1802 Button Module Base. Adds Cruise Control (B8) and the control-point cluster (B10 CP Toggle PRI/ALT, B11 CP Docking Port). KerbalButtonCore v2.1.0, I2C protocol v2.6; core LED states only (no extended states). |
+| 1.1 | 2026-06-28 | CP Toggle (B10) now renders the canonical CORAL Alternate colour via the new `KBC_LED_ACTIVE_ALT` state (KerbalButtonCore v2.2 / KerbalModuleCommon v1.6), using the sketch's `altColors` array — ROSE for Primary (`ACTIVE`), CORAL for Alternate (`ACTIVE_ALT`). No longer ROSE-only. |

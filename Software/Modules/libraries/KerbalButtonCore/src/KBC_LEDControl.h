@@ -95,6 +95,7 @@ public:
      *                       Defaults to KBC_ENABLED_BRIGHTNESS.
      */
     void begin(const RGBColor* activeColors,
+               const RGBColor* altColors  = nullptr,
                uint8_t brightness = KBC_ENABLED_BRIGHTNESS);
 
     // --------------------------------------------------------
@@ -225,6 +226,10 @@ private:
 
     /** @brief Pointer to per-button active color array (from sketch). */
     const RGBColor* _activeColors;
+
+    /** @brief Pointer to per-button alternate active color array (optional;
+     *         used by KBC_LED_ACTIVE_ALT). nullptr falls back to _activeColors. */
+    const RGBColor* _altColors;
 
     /** @brief ENABLED state brightness scalar (0-255). */
     uint8_t _brightness;

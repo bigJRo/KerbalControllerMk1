@@ -21,10 +21,10 @@
 
   <!-- ROW 1 -->
 
-  <!-- B10 CP Toggle — ROSE -->
+  <!-- B10 CP Toggle — ROSE (Primary) / CORAL (Alternate) -->
   <rect x="18" y="52" width="88" height="60" rx="6" fill="#ff507818" stroke="#ff5078" stroke-width="1.5"/>
   <text x="62" y="72" font-size="9" font-weight="500" fill="#9d174d" text-anchor="middle">CP Toggle</text>
-  <text x="62" y="85" font-size="8" fill="#ff5078" text-anchor="middle">● ROSE</text>
+  <text x="62" y="85" font-size="8" fill="#ff5078" text-anchor="middle">● ROSE / CORAL</text>
   <text x="62" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
 
   <!-- B8 Cruise Control — GOLD -->
@@ -96,6 +96,6 @@
   <text x="562" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
 
   <!-- Legend -->
-  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED state = dim white backlight · B10 ACTIVE = ROSE (Primary); PRI/ALT/Docking-Port logic controller-side · B12–B15 no-connect · KerbalButtonCore v2.1.0 · KC-01-1802 v1.1 · Jeb's Controller Works</text>
+  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED state = dim white backlight · B10 CP Toggle: ROSE (Primary, ACTIVE) / CORAL (Alternate, ACTIVE_ALT) · B12–B15 no-connect · KerbalButtonCore v2.2.0 · KC-01-1802 v1.1 · Jeb's Controller Works</text>
 
 </svg>
