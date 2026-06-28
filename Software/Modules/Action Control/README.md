@@ -1,20 +1,20 @@
 # KCMk1_Action_Control
 
 **Module:** Action Control  
-**Version:** 1.0  
-**Date:** 2026-04-07  
+**Version:** 2.0  
+**Date:** 2026-06-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1822 Button Module Base v1.1  
-**Library:** KerbalButtonCore v1.0.0  
+**Hardware:** KC-01-1802 Button Module Base v1.1  
+**Library:** KerbalButtonCore v2.0.0  
 
 ---
 
 ## Overview
 
-The Action Control module provides action group toggles (AG1–AG10) and control point selection (CP PRI, CP ALT) for Kerbal Space Program. It also carries two discrete input signals for control mode detection, reported to the system controller alongside the NeoPixel button states.
+The Action Control module provides twelve custom action group toggles (AG1–AG12) for Kerbal Space Program. All twelve positions are uniform GREEN action-group buttons.
 
-This module uses 12 NeoPixel RGB button positions (KBC indices 0–11) and 2 discrete input positions (KBC indices 12 and 14). The discrete inputs have no LED output — they are pure signal inputs wired to panel-level control mode switches outside the button matrix.
+This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC indices 12–15 are no-connects on the PCB. (As of v2.0 the former CP PRI / CP ALT control-point buttons at B10/B11 are action groups — the control-point functions moved to the AUX CTRL module — and the CTRL_MODE discrete inputs moved to the direct-wired Ctrl Mode Toggle on the joystick.)
 
 ---
 
@@ -27,8 +27,7 @@ This module uses 12 NeoPixel RGB button positions (KBC indices 0–11) and 2 dis
 | Capability Flags | `0x00` (core states only) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
-| Discrete Inputs | 2 (KBC indices 12, 14 — input only, no LED) |
-| Not Installed | KBC indices 13, 15 |
+| Not Installed | KBC indices 12–15 (no-connect) |
 
 ---
 
@@ -38,7 +37,7 @@ Physical panel orientation: 2 rows × 6 columns. Column 6 is leftmost, Column 1 
 
 ![Action Control Panel Layout](panel_layout.svg)
 
-Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. Discrete inputs (B12, B14) are not shown — they have no LED output and are not part of the NeoPixel grid.
+Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state.
 
 ---
 
@@ -46,36 +45,28 @@ Active state colors shown. All NeoPixel buttons illuminate dim white in the ENAB
 
 ### NeoPixel Buttons (KBC indices 0–11)
 
+The AG number is resolved controller-side; the module reports button events only.
+
 | KBC Index | PCB Label | Function | Active Color | Notes |
 |---|---|---|---|---|
-| B0 | BUTTON01 | AG 5 | GREEN | Action group — user defined |
-| B1 | BUTTON02 | AG 10 | GREEN | Action group — user defined |
-| B2 | BUTTON03 | AG 4 | GREEN | Action group — user defined |
-| B3 | BUTTON04 | AG 9 | GREEN | Action group — user defined |
-| B4 | BUTTON05 | AG 3 | GREEN | Action group — user defined |
-| B5 | BUTTON06 | AG 8 | GREEN | Action group — user defined |
-| B6 | BUTTON07 | AG 2 | GREEN | Action group — user defined |
-| B7 | BUTTON08 | AG 7 | GREEN | Action group — user defined |
-| B8 | BUTTON09 | AG 1 | GREEN | Action group — user defined |
-| B9 | BUTTON10 | AG 6 | GREEN | Action group — user defined |
-| B10 | BUTTON11 | CP PRI | ROSE | Primary control point |
-| B11 | BUTTON12 | CP ALT | ROSE | Alternate control point |
+| B0 | BUTTON01 | AG 6 | GREEN | Action group — user defined |
+| B1 | BUTTON02 | AG 12 | GREEN | Action group — user defined |
+| B2 | BUTTON03 | AG 5 | GREEN | Action group — user defined |
+| B3 | BUTTON04 | AG 11 | GREEN | Action group — user defined |
+| B4 | BUTTON05 | AG 4 | GREEN | Action group — user defined |
+| B5 | BUTTON06 | AG 10 | GREEN | Action group — user defined |
+| B6 | BUTTON07 | AG 3 | GREEN | Action group — user defined |
+| B7 | BUTTON08 | AG 9 | GREEN | Action group — user defined |
+| B8 | BUTTON09 | AG 2 | GREEN | Action group — user defined |
+| B9 | BUTTON10 | AG 8 | GREEN | Action group — user defined |
+| B10 | BUTTON11 | AG 1 | GREEN | Action group — user defined (was CP PRI) |
+| B11 | BUTTON12 | AG 7 | GREEN | Action group — user defined (was CP ALT) |
 
-### Discrete Inputs (KBC indices 12–15)
-
-| KBC Index | PCB Label | Signal | LED | Notes |
-|---|---|---|---|---|
-| B12 | BUTTON13 | CTRL_MODE_SPC | N/A — input only | HIGH = spacecraft control mode active |
-| B13 | BUTTON14 | Not installed | N/A | — |
-| B14 | BUTTON15 | CTRL_MODE_RVR | N/A — input only | HIGH = rover control mode active |
-| B15 | BUTTON16 | Not installed | N/A | — |
-
-Discrete inputs B12 and B14 are wired to panel-level control mode selector switches outside the NeoPixel button matrix. Their states are reported to the system controller in the standard button state packet alongside the NeoPixel button states. No LED hardware is connected to these positions — any LED state command sent to B12 or B14 is ignored.
+KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 
 ### Color Design Notes
 
-- **Action Groups (GREEN)** — all 10 action groups share uniform green. They are user-configurable per vessel in KSP so no functional color distinction is meaningful between them. A single illuminated green button instantly identifies the active group.
-- **Control Points (ROSE)** — CP PRI and CP ALT share rose, a color unused elsewhere in the system. Control point selection is a vessel-level configuration action distinct from action group toggling and all other module functions.
+- **Action Groups (GREEN)** — all twelve action groups share uniform green. They are user-configurable per vessel in KSP so no functional color distinction is meaningful between them. A single illuminated green button instantly identifies the active group.
 
 ---
 
@@ -97,27 +88,20 @@ This module uses core LED states only for NeoPixel buttons. Discrete inputs have
 
 | PCB Connector | PCB Label | KBC Index | Function |
 |---|---|---|---|
-| P2 | BUTTON01 | 0 | AG 5 |
-| P2 | BUTTON02 | 1 | AG 10 |
-| P2 | BUTTON03 | 2 | AG 4 |
-| P2 | BUTTON04 | 3 | AG 9 |
-| P3 | BUTTON05 | 4 | AG 3 |
-| P3 | BUTTON06 | 5 | AG 8 |
-| P3 | BUTTON07 | 6 | AG 2 |
-| P3 | BUTTON08 | 7 | AG 7 |
-| P4 | BUTTON09 | 8 | AG 1 |
-| P4 | BUTTON10 | 9 | AG 6 |
-| P4 | BUTTON11 | 10 | CP PRI |
-| P4 | BUTTON12 | 11 | CP ALT |
+| P2 | BUTTON01 | 0 | AG 6 |
+| P2 | BUTTON02 | 1 | AG 12 |
+| P2 | BUTTON03 | 2 | AG 5 |
+| P2 | BUTTON04 | 3 | AG 11 |
+| P3 | BUTTON05 | 4 | AG 4 |
+| P3 | BUTTON06 | 5 | AG 10 |
+| P3 | BUTTON07 | 6 | AG 3 |
+| P3 | BUTTON08 | 7 | AG 9 |
+| P4 | BUTTON09 | 8 | AG 2 |
+| P4 | BUTTON10 | 9 | AG 8 |
+| P4 | BUTTON11 | 10 | AG 1 |
+| P4 | BUTTON12 | 11 | AG 7 |
 
-### Discrete Inputs
-
-| PCB Connector | PCB Label | KBC Index | Signal | LED Pin |
-|---|---|---|---|---|
-| P5 | BUTTON13 | 12 | CTRL_MODE_SPC | Not connected |
-| P5 | BUTTON14 | 13 | Not installed | Not connected |
-| P5 | BUTTON15 | 14 | CTRL_MODE_RVR | Not connected |
-| P5 | BUTTON16 | 15 | Not installed | Not connected |
+KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 
 ---
 
@@ -148,7 +132,7 @@ This module uses core LED states only for NeoPixel buttons. Discrete inputs have
 
 ### Verify Operation
 
-After flashing, all 12 NeoPixel buttons should illuminate in a dim white ENABLED state within one second of power-on. Activate CTRL_MODE_SPC and CTRL_MODE_RVR signals and confirm B12 and B14 state changes are reported via I2C. Use the `DiagnosticDump` example sketch from the KerbalButtonCore library for full verification.
+After flashing, the module powers on dark (BOOT_READY → DISABLED). Once the controller sends `CMD_ENABLE`, all 12 NeoPixel buttons illuminate in a dim white ENABLED state. Use the `DiagnosticDump` example sketch from the KerbalButtonCore library for full verification.
 
 ---
 
@@ -170,20 +154,23 @@ This module occupies address `0x22`. The system controller expects `KBC_TYPE_ACT
 
 ## Protocol Reference
 
-Full I2C protocol specification: `KBC_Protocol_Spec.md` v1.2
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6
 
-Button state packet (module → controller, INT-triggered):
+Button state packet (module → controller, INT-triggered, 7 bytes):
 ```
-Byte 0-1: Current state bitmask  (bit N = KBC index N, 1=pressed/active)
-Byte 2-3: Change mask            (bit N = changed since last read)
+Byte 0:   Status byte   (lifecycle bits 1:0, fault bit 2, data-changed bit 3)
+Byte 1:   Module Type ID
+Byte 2:   Transaction counter
+Byte 3:   Button events HI  (bit N = button N, current state)
+Byte 4:   Button events LO  (bit N = button 8+N)
+Byte 5:   Change mask  HI   (bit N = button N changed since last read)
+Byte 6:   Change mask  LO
 ```
-
-Bit 12 reflects CTRL_MODE_SPC state. Bit 14 reflects CTRL_MODE_RVR state. Both are reported in the same packet as NeoPixel button states.
 
 LED state command (controller → module):
 ```
 CMD_SET_LED_STATE (0x02) + 8 bytes nibble-packed
-Values for B12–B15 nibbles are accepted but ignored (no LED hardware)
+Values for the B12–B15 nibbles are accepted but ignored (no LED hardware)
 ```
 
 ---
@@ -193,3 +180,4 @@ Values for B12–B15 nibbles are accepted but ignored (no LED hardware)
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial release |
+| 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): B10/B11 are now AG1/AG7 action groups (GREEN), former CP PRI/ALT moved to AUX CTRL; CTRL_MODE discrete inputs removed (moved to direct-wired Ctrl Mode Toggle); B12–B15 now no-connect. Packet gains the universal 3-byte header; module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1802. |

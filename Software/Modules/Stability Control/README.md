@@ -1,20 +1,20 @@
 # KCMk1_Stability_Control
 
 **Module:** Stability Control  
-**Version:** 1.0  
-**Date:** 2026-04-07  
+**Version:** 2.0  
+**Date:** 2026-06-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1822 Button Module Base v1.1  
-**Library:** KerbalButtonCore v1.0.0  
+**Hardware:** KC-01-1802 Button Module Base v1.1  
+**Library:** KerbalButtonCore v2.0.0  
 
 ---
 
 ## Overview
 
-The Stability Control module provides SAS mode selection and control inversion for Kerbal Space Program. It also carries four discrete signal positions for SAS enable, RCS enable, staging trigger, and staging enable. The staging enable position (B15) includes both a button input and a discrete LED output acting as a safety interlock indicator.
+The Stability Control module provides ten SAS mode buttons, an RCS toggle, and a control-inversion modifier for Kerbal Space Program, plus two discrete staging positions. The staging enable position (B15) includes both a discrete input and a discrete LED output acting as a safety interlock indicator.
 
-This module uses 11 NeoPixel RGB button positions (KBC indices 0-9 and 11), with index 10 unpopulated. Four discrete positions (KBC indices 12-15) carry auxiliary signals outside the NeoPixel grid.
+This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC indices 12–13 are no-connects (the former SAS_ENA / RCS_ENA inputs moved to Switch Group 2 on the Vehicle Control module as of v2.0); KBC indices 14–15 are the discrete staging input and staging-enable input + interlock LED.
 
 ---
 
@@ -26,9 +26,9 @@ This module uses 11 NeoPixel RGB button positions (KBC indices 0-9 and 11), with
 | Module Type ID | `0x04` (KBC_TYPE_STABILITY_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
 | Extended States | No |
-| NeoPixel Buttons | 11 (KBC indices 0-9, 11 — index 10 not installed) |
-| Discrete Input Only | 2 (KBC indices 12, 13) |
-| Not Installed | KBC indices 14, 15 |
+| NeoPixel Buttons | 12 (KBC indices 0–11) |
+| Not Installed | KBC indices 12–13 (no-connect) |
+| Discrete Staging | KBC index 14 (Stage, input), 15 (Stage Enable, input + LED) |
 
 ---
 
@@ -38,7 +38,7 @@ Physical panel orientation: 2 rows x 6 columns. Column 6 is leftmost, Column 1 i
 
 ![Stability Control Panel Layout](panel_layout.svg)
 
-Active state colors shown. All installed NeoPixel buttons illuminate dim white in the ENABLED state. B10 (dashed) is not installed. Discrete positions B12-B15 are outside the NeoPixel grid and not shown.
+Active state colors shown. All NeoPixel buttons (B0–B11) illuminate dim white in the ENABLED state. Discrete positions B14–B15 (staging) are outside the NeoPixel grid and not shown.
 
 ---
 
@@ -58,21 +58,22 @@ Active state colors shown. All installed NeoPixel buttons illuminate dim white i
 | B7 | BUTTON08 | Retrograde | GREEN | SAS mode |
 | B8 | BUTTON09 | Stab Assist | GREEN | SAS mode |
 | B9 | BUTTON10 | Maneuver | GREEN | SAS mode |
-| B10 | BUTTON11 | N/A | — | Not installed |
+| B10 | BUTTON11 | RCS | GREEN | RCS toggle |
 | B11 | BUTTON12 | Invert | AMBER | Control modifier |
 
 ### Discrete Positions (KBC indices 12-15)
 
 | KBC Index | PCB Label | Signal | LED | Notes |
 |---|---|---|---|---|
-| B12 | BUTTON13 | SAS_ENA | N/A — input only | HIGH = SAS system enabled |
-| B13 | BUTTON14 | RCS_ENA | N/A — input only | HIGH = RCS system enabled |
-| B14 | BUTTON15 | Not installed | N/A | — |
-| B15 | BUTTON16 | Not installed | N/A | — |
+| B12 | BUTTON13 | Not installed | N/A | (was SAS_ENA — moved to Switch Group 2) |
+| B13 | BUTTON14 | Not installed | N/A | (was RCS_ENA — moved to Switch Group 2) |
+| B14 | BUTTON15 | Stage | N/A — input only | Latching staging trigger |
+| B15 | BUTTON16 | Stage Enable | Discrete LED | Safety interlock indicator (driven by controller) |
 
 ### Color Design Notes
 
 - **SAS modes (GREEN)** — all 10 SAS modes share uniform green. Only one mode can be active at a time in KSP, so the single illuminated green button identifies the current mode without any color distinction between modes.
+- **RCS (GREEN)** — RCS toggle, nominal/active green consistent with the SAS bank.
 - **Invert (AMBER)** — amber signals awareness; control inversion modifies whatever SAS mode is active and warrants a distinct visual.
 
 ---
@@ -93,17 +94,17 @@ Active state colors shown. All installed NeoPixel buttons illuminate dim white i
 | P3 | BUTTON08 | 7 | Retrograde |
 | P4 | BUTTON09 | 8 | Stab Assist |
 | P4 | BUTTON10 | 9 | Maneuver |
-| P4 | BUTTON11 | 10 | Not installed |
+| P4 | BUTTON11 | 10 | RCS |
 | P4 | BUTTON12 | 11 | Invert |
 
 ### Discrete Positions
 
 | PCB Connector | PCB Label | KBC Index | Signal | LED Pin |
 |---|---|---|---|---|
-| P5 | BUTTON13 | 12 | SAS_ENA | Not connected |
-| P5 | BUTTON14 | 13 | RCS_ENA | Not connected |
-| P5 | BUTTON15 | 14 | Not installed | Not connected |
-| P5 | BUTTON16 | 15 | Not installed | Not connected |
+| P5 | BUTTON13 | 12 | Not installed | Not connected |
+| P5 | BUTTON14 | 13 | Not installed | Not connected |
+| P5 | BUTTON15 | 14 | Stage | Not connected |
+| P5 | BUTTON16 | 15 | Stage Enable | Discrete LED (interlock) |
 
 ---
 
@@ -134,7 +135,7 @@ Active state colors shown. All installed NeoPixel buttons illuminate dim white i
 
 ### Verify Operation
 
-After flashing, NeoPixel buttons B0-B9 and B11 should illuminate in dim white ENABLED state. B10 remains off (not installed). Activate SAS_ENA and RCS_ENA signals and confirm B12 and B13 state changes are reported via I2C. Use the `DiagnosticDump` example sketch for full verification.
+After flashing, the module powers on dark (BOOT_READY → DISABLED). Once the controller sends `CMD_ENABLE`, NeoPixel buttons B0–B11 illuminate in dim white ENABLED state. Toggle the B14/B15 staging inputs and confirm their state changes are reported via I2C. Use the `DiagnosticDump` example sketch for full verification.
 
 ---
 
@@ -154,15 +155,17 @@ After flashing, NeoPixel buttons B0-B9 and B11 should illuminate in dim white EN
 
 ## Protocol Reference
 
-Full I2C protocol specification: `KBC_Protocol_Spec.md` v1.2
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6
 
-Button state packet bits of note:
-- Bit 12 — SAS_ENA state
-- Bit 13 — RCS_ENA state
+Button state packet (7 bytes): 3-byte universal header (status, type ID, transaction counter) followed by events HI/LO and change HI/LO. Bits of note in the events/change planes:
+- Bit 10 — RCS button
+- Bit 14 — Stage input
+- Bit 15 — Stage Enable input
 
 LED nibble notes for `CMD_SET_LED_STATE`:
-- B10, B14-B15: any value accepted but ignored (not installed)
-- B12-B13: any value accepted but ignored (no LED hardware)
+- B12-B13: any value accepted but ignored (no-connect)
+- B14: any value accepted but ignored (no LED hardware)
+- B15: drives the discrete staging-interlock LED
 
 ---
 
@@ -171,3 +174,4 @@ LED nibble notes for `CMD_SET_LED_STATE`:
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial release |
+| 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): RCS added at B10 (GREEN); SAS_ENA/RCS_ENA inputs at B12/B13 removed (moved to Switch Group 2); B14/B15 documented as the discrete staging input and staging-enable input + interlock LED. Packet gains the universal 3-byte header; module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1802. |

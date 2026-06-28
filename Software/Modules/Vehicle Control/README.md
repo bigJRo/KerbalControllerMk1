@@ -1,12 +1,12 @@
 # KCMk1_Vehicle_Control
 
 **Module:** Vehicle Control  
-**Version:** 1.0  
-**Date:** 2026-04-07  
+**Version:** 2.0  
+**Date:** 2026-06-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1822 Button Module Base v1.1  
-**Library:** KerbalButtonCore v1.0.0  
+**Hardware:** KC-01-1812 Wide Button Module Base v1.1  
+**Library:** KerbalButtonCore v2.0.0 (24-input)  
 
 ---
 
@@ -14,9 +14,9 @@
 
 The Vehicle Control module provides vehicle systems management including brakes, lights, landing gear, solar arrays, antenna, cargo door, ladder, radiators, and parachute deployment for Kerbal Space Program. Parachute buttons (B8-B11) support extended LED states for pre-deployment sequencing.
 
-Four discrete input positions carry vehicle state signals (parking brake, parachutes armed, lights lock, gear lock). None have LED outputs.
+This module reads **24 inputs** via three daisy-chained 74HC165 shift registers: the 12 NeoPixel buttons at KBC indices 0–11, and the eight **Switch Group 2** panel switches at KBC indices 16–23. KBC indices 12–15 are no-connects (the former parking-brake / parachutes-armed / lights-lock / gear-lock discrete inputs were removed — those switches are now Switch Group 2 as of v2.0). The 24-input variant is selected in the sketch via `#define KBC_INPUT_COUNT 24` / `KBC_SHIFTREG_COUNT 3`.
 
-This module is the only standard module that declares `KBC_CAP_EXTENDED_STATES` — the system controller uses WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states on the parachute buttons to communicate deployment status.
+This module declares `KBC_CAP_EXTENDED_STATES` — the system controller uses WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states on the parachute buttons to communicate deployment status.
 
 ---
 
@@ -29,7 +29,9 @@ This module is the only standard module that declares `KBC_CAP_EXTENDED_STATES` 
 | Capability Flags | `0x01` (KBC_CAP_EXTENDED_STATES) |
 | Extended States | Yes — parachute buttons B8-B11 |
 | NeoPixel Buttons | 12 (KBC indices 0-11) |
-| Discrete Inputs | 4 (KBC indices 12-15 — input only, no LED) |
+| Switch Group 2 inputs | 8 (KBC indices 16–23, discrete, no LED) |
+| Not Installed | KBC indices 12–15 (no-connect) |
+| Data packet | 9 bytes (3-byte header + 6-byte payload) |
 
 ---
 
@@ -39,7 +41,7 @@ Physical panel orientation: 6 rows x 2 columns. Column 1 is leftmost, Column 2 i
 
 ![Vehicle Control Panel Layout](panel_layout.svg)
 
-Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. Buttons marked with extended states (B8-B11) also support WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states. Discrete inputs (B12-B15) are outside the NeoPixel grid and not shown.
+Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. Buttons marked with extended states (B8-B11) also support WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states. Switch Group 2 inputs (B16–B23) are outside the NeoPixel grid and not shown.
 
 ---
 
@@ -62,14 +64,22 @@ Active state colors shown. All NeoPixel buttons illuminate dim white in the ENAB
 | B10 | BUTTON11 | Main Cut | RED | Yes | Irreversible |
 | B11 | BUTTON12 | Drogue Cut | RED | Yes | Irreversible |
 
-### Discrete Inputs (KBC indices 12-15)
+KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 
-| KBC Index | PCB Label | Signal | LED | Notes |
-|---|---|---|---|---|
-| B12 | BUTTON13 | Parking Brake | N/A — input only | HIGH = parking brake engaged |
-| B13 | BUTTON14 | Parachutes Armed | N/A — input only | HIGH = parachutes armed |
-| B14 | BUTTON15 | Lights Lock | N/A — input only | HIGH = lights locked |
-| B15 | BUTTON16 | Gear Lock | N/A — input only | HIGH = gear locked |
+### Switch Group 2 (KBC indices 16–23, discrete inputs, no LED)
+
+Reported in the button-event payload (inputs 16–23). Switch semantics and controller actions are resolved on the main controller; the module reports raw input state only. The CHUTE switch (B16) is the safety interlock for the parachute state machines.
+
+| KBC Index | Switch | OFF / ON |
+|---|---|---|
+| B16 | CHUTE | SAFE / ARM |
+| B17 | GEAR | UP / DOWN |
+| B18 | BRAKE | REL / LOCK |
+| B19 | EXT LT | OFF / ILLUM |
+| B20 | SAS | OFF / ENAB |
+| B21 | RCS | OFF / ENAB |
+| B22 | THC/RHC | NORM / PREC |
+| B23 | AUDIO | MUTE / LIVE |
 
 ### Color Design Notes
 
@@ -113,15 +123,9 @@ Buttons B8-B11 support the full extended state set. The system controller uses t
 | P4 | BUTTON10 | 9 | Drogue Deploy |
 | P4 | BUTTON11 | 10 | Main Cut |
 | P4 | BUTTON12 | 11 | Drogue Cut |
-
-### Discrete Inputs
-
-| PCB Connector | PCB Label | KBC Index | Signal | LED Pin |
-|---|---|---|---|---|
-| P5 | BUTTON13 | 12 | Parking Brake | Not connected |
-| P5 | BUTTON14 | 13 | Parachutes Armed | Not connected |
-| P5 | BUTTON15 | 14 | Lights Lock | Not connected |
-| P5 | BUTTON16 | 15 | Gear Lock | Not connected |
+| — | (no-connect) | 12–15 | Not connected |
+| DB127S #1 | SW1–4 | 16–19 | Switch Group 2: CHUTE, GEAR, BRAKE, EXT LT |
+| DB127S #2 | SW5–8 | 20–23 | Switch Group 2: SAS, RCS, THC/RHC, AUDIO |
 
 ---
 
@@ -152,7 +156,7 @@ Buttons B8-B11 support the full extended state set. The system controller uses t
 
 ### Verify Operation
 
-After flashing, all 12 NeoPixel buttons should illuminate in dim white ENABLED state. Send `KBC_LED_WARNING` to B8 via `CMD_SET_LED_STATE` and confirm the amber flash. Use the `DiagnosticDump` example sketch for full input and extended state verification.
+After flashing, the module powers on dark (BOOT_READY → DISABLED). Once the controller sends `CMD_ENABLE`, all 12 NeoPixel buttons illuminate in dim white ENABLED state. Send `KBC_LED_WARNING` to B8 via `CMD_SET_LED_STATE` and confirm the amber flash. Verify the Switch Group 2 inputs (KBC indices 16–23) are reported in the data packet. Use the `DiagnosticDump` example sketch for full input and extended state verification.
 
 ---
 
@@ -172,15 +176,13 @@ After flashing, all 12 NeoPixel buttons should illuminate in dim white ENABLED s
 
 ## Protocol Reference
 
-Full I2C protocol specification: `KBC_Protocol_Spec.md` v1.2
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6 (§9.1.1 switch-group variant)
 
 Identity response capability flags: `0x01` (KBC_CAP_EXTENDED_STATES) — the system controller uses this to know extended LED states are valid for this module.
 
-Button state packet bits of note:
-- Bit 12 — Parking Brake state
-- Bit 13 — Parachutes Armed state
-- Bit 14 — Lights Lock state
-- Bit 15 — Gear Lock state
+Button state packet (9 bytes): 3-byte universal header (status, type ID, transaction counter) followed by three event bytes and three change bytes. Switch Group 2 occupies inputs 16–23 (event/change byte index 2):
+- Bit 16 — CHUTE, 17 — GEAR, 18 — BRAKE, 19 — EXT LT
+- Bit 20 — SAS, 21 — RCS, 22 — THC/RHC, 23 — AUDIO
 
 LED state nibble values for parachute buttons (B8-B11):
 ```
@@ -200,3 +202,4 @@ LED state nibble values for parachute buttons (B8-B11):
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial release |
+| 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): old B12–B15 discrete inputs removed; Switch Group 2 added at KBC indices 16–23 via the 24-input / 3-byte shift-register variant. Packet is now 9 bytes (3-byte header + 6-byte payload); module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1812. B0–B11 button layout unchanged. |

@@ -99,6 +99,6 @@
   <text x="32" y="562" font-size="7" fill="#6366f1">WARNING = approaching · ALERT = deploy now · ARMED = ready · PARTIAL_DEPLOY = drogue out</text>
 
   <!-- Footer -->
-  <text x="20" y="614" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · discrete inputs (B12-B15) not shown — input only, no LED</text>
-  <text x="20" y="626" font-size="7.5" fill="#9ca3af">KerbalButtonCore v1.0.0 · KC-01-1822 v1.1 · Jeb's Controller Works</text>
+  <text x="20" y="614" font-size="7.5" fill="#9ca3af">ACTIVE colors shown · ENABLED = dim white · B12–B15 no-connect · + Switch Group 2 at KBC 16–23 (8 panel switches, not shown)</text>
+  <text x="20" y="626" font-size="7.5" fill="#9ca3af">KerbalButtonCore v2.0.0 (24-input) · KC-01-1812 v1.1 · Jeb's Controller Works</text>
 </svg>
