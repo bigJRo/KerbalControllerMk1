@@ -1,21 +1,31 @@
 /**
  * @file        KJC_I2C.h
- * @version     1.0.0
- * @date        2026-04-08
+ * @version     2.0.0
+ * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       I2C target handler for KerbalJoystickCore modules.
  *
- *              Implements the Kerbal Controller Mk1 I2C protocol
- *              command set. Joystick data packet is 8 bytes:
+ *              Conformant with I2C Protocol Specification v2.4. The
+ *              joystick data packet is 12 bytes (3-byte universal header
+ *              + 9-byte payload, spec §9.2):
  *
- *                Byte 0:   Button state  (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
- *                Byte 1:   Change mask   (same bit layout)
- *                Byte 2-3: AXIS1         (int16, signed, -32768 to +32767)
- *                Byte 4-5: AXIS2         (int16, signed, -32768 to +32767)
- *                Byte 6-7: AXIS3         (int16, signed, -32768 to +32767)
+ *                Byte 0:    Status byte   (lifecycle/fault/data-changed)
+ *                Byte 1:    Module Type ID
+ *                Byte 2:    Transaction counter
+ *                Byte 3:    Button events (rising edges; bit0=BTN_JOY, ...)
+ *                Byte 4:    Change mask   (same bit layout)
+ *                Byte 5:    Button state  (persistent; same bit layout)
+ *                Byte 6-7:  AXIS1         (int16, signed, big-endian)
+ *                Byte 8-9:  AXIS2         (int16, signed, big-endian)
+ *                Byte 10-11:AXIS3         (int16, signed, big-endian)
+ *
+ *              The module powers on in BOOT_READY with INT asserted,
+ *              held until the controller reads the boot packet and sends
+ *              CMD_DISABLE. Full lifecycle: BOOT_READY → DISABLED →
+ *              ACTIVE ↔ SLEEPING.
  *
  *              INT assertion follows Option E hybrid strategy:
  *                - Buttons: always immediate, bypass all throttling

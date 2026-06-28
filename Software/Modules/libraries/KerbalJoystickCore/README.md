@@ -1,10 +1,11 @@
 # KerbalJoystickCore
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
 **Target MCU:** ATtiny816 (megaTinyCore)  
+**Protocol:** I2C_Protocol_Specification.md v2.4 (conformant)  
 
 ---
 
@@ -22,9 +23,10 @@ The library manages:
 - Option E hybrid INT assertion strategy
 - 2 NeoPixel RGB buttons (WS2811, tinyNeoPixel_Static) on PC1
 - 1 joystick pushbutton (direct GPIO, no LED)
-- I2C target communication (Kerbal Controller Mk1 I2C protocol)
+- I2C target communication, conformant with I2C Protocol v2.4 (universal
+  3-byte header, transaction counter, lifecycle state machine)
 
-This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire protocol but uses a device-specific 8-byte data packet.
+This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire protocol but uses a device-specific 12-byte data packet (3-byte header + 9-byte joystick payload).
 
 ---
 
@@ -58,17 +60,25 @@ The 6-pin screw terminal exposes AXIS1, AXIS2, AXIS3, BUTTON_JOY, VCC, and GND f
 
 **Address:** Set per sketch (0x28 = Rotation, 0x29 = Translation)  
 **Speed:** 400 kHz recommended  
-**Packet format:** Device-specific, 8 bytes (see Section 9.2 of protocol spec)
+**Packet format:** Device-specific, 12 bytes (see Section 9.2 of protocol spec)
 
-### Data Packet (module → controller, 8 bytes)
+### Data Packet (module → controller, 12 bytes)
 
 ```
-Byte 0:   Button state  (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
-Byte 1:   Change mask   (same bit layout)
-Byte 2-3: AXIS1         (int16, big-endian, -32768 to +32767)
-Byte 4-5: AXIS2         (int16, big-endian, -32768 to +32767)
-Byte 6-7: AXIS3         (int16, big-endian, -32768 to +32767)
+Byte 0:    Status byte   (lifecycle bits 1:0, fault bit 2, data-changed bit 3)
+Byte 1:    Module Type ID
+Byte 2:    Transaction counter (increments per INT assertion, wraps 255→0)
+Byte 3:    Button events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
+Byte 4:    Change mask   (same bit layout)
+Byte 5:    Button state  (persistent; same bit layout)
+Byte 6-7:  AXIS1         (int16, big-endian, -32768 to +32767)
+Byte 8-9:  AXIS2         (int16, big-endian, -32768 to +32767)
+Byte 10-11:AXIS3         (int16, big-endian, -32768 to +32767)
 ```
+
+The module powers on in BOOT_READY (INT asserted, held until the controller
+reads the boot packet and sends CMD_DISABLE). Lifecycle: BOOT_READY →
+DISABLED → ACTIVE ↔ SLEEPING, driven by CMD_ENABLE/DISABLE/SLEEP/WAKE.
 
 ### INT Assertion — Option E Hybrid Strategy
 

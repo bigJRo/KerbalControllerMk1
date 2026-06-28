@@ -1,6 +1,6 @@
 /**
  * @file        KJC_Config.h
- * @version     1.0.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -39,7 +39,7 @@
 //  Firmware version
 // ============================================================
 
-#define KJC_FIRMWARE_MAJOR      1
+#define KJC_FIRMWARE_MAJOR      2
 #define KJC_FIRMWARE_MINOR      0
 
 // ============================================================
@@ -228,15 +228,22 @@
 //  Packet size
 // ============================================================
 
+/** @brief Universal data-packet header size (status, type ID, tx counter). */
+#define KJC_HEADER_SIZE         KMC_HEADER_SIZE
+
 /**
- * @brief Joystick data packet size in bytes.
- *        Byte 0:   Button state  (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
- *        Byte 1:   Change mask   (same bit layout)
- *        Byte 2-3: AXIS1/PB5    (int16, signed, -32768 to +32767)
- *        Byte 4-5: AXIS2/PA7    (int16, signed, -32768 to +32767)
- *        Byte 6-7: AXIS3/PA6    (int16, signed, -32768 to +32767)
+ * @brief Joystick data packet size in bytes (protocol spec §9.2).
+ *        Byte 0:    Status byte   (lifecycle/fault/data-changed)
+ *        Byte 1:    Module Type ID
+ *        Byte 2:    Transaction counter
+ *        Byte 3:    Button events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
+ *        Byte 4:    Change mask   (same bit layout)
+ *        Byte 5:    Button state  (persistent; same bit layout)
+ *        Byte 6-7:  AXIS1/PB5     (int16, signed, big-endian)
+ *        Byte 8-9:  AXIS2/PA7     (int16, signed, big-endian)
+ *        Byte 10-11:AXIS3/PA6     (int16, signed, big-endian)
  */
-#define KJC_PACKET_SIZE         8
+#define KJC_PACKET_SIZE         12
 
 /** @brief Identity response packet size. */
 #define KJC_IDENTITY_SIZE       KMC_IDENTITY_SIZE

@@ -1,6 +1,6 @@
 /**
  * @file        KJC_Buttons.h
- * @version     1.0.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -17,9 +17,11 @@
  *
  *              NeoPixel chain on PC1 (Port C — set in IDE).
  *
- *              Button state is reported in the joystick data packet:
- *                Byte 0: state  (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
- *                Byte 1: change (bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
+ *              Button state is reported in the joystick data packet
+ *              (after the 3-byte universal header):
+ *                Byte 3: events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
+ *                Byte 4: change (same bit layout)
+ *                Byte 5: state  (persistent; same bit layout)
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
