@@ -1,11 +1,11 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.4  
+**Version:** 2.5  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Date:** 2026-06-06
+**Date:** 2026-06-28
 
 ---
 
@@ -23,7 +23,9 @@ Terminology follows the 2021 NXP I2C specification:
 
 The controller owns all game state and situational logic. Target modules own only their local hardware — LED colours, button state, display values. All application logic belongs in the module sketch; libraries are hardware interface layers.
 
-> **Conformance note:** As of v2.2, the Kerbal7SegmentCore library (display modules) is the reference implementation — it fully implements the protocol defined in this document. The KerbalButtonCore, KerbalJoystickCore, and device-specific module firmware are pending firmware updates to reach full conformance. Non-conformant modules are identified in Section 8. Issues are tracked as KBC-001–006, KJC-001–005, and THR-001–004.
+> **Conformance note:** As of v2.5, the **KerbalButtonCore (v2.0)**, **KerbalJoystickCore (v2.0)**, and **Throttle (v2.0)** firmware bodies are fully conformant with this document, alongside the original **Kerbal7SegmentCore** reference implementation — closing issues KBC-001–006, KJC-001–005, and THR-001–004. Every conformant module emits the universal 3-byte header, increments the transaction counter on each INT assertion, and implements the full BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING lifecycle with `CMD_ENABLE`/`CMD_DISABLE`.
+>
+> The EVA Module (0x07), Dual Encoder (0x0E), and Switch Panel (0x0F) ship **standalone** firmware that does not use these libraries and has **not yet** been updated to v2.x; they remain non-conformant (see Section 8).
 
 ---
 
@@ -183,22 +185,26 @@ Total packet size = 3-byte header + payload size. The controller must read the f
 
 | Type ID | Constant | Module | I2C Address | Payload | Total | Cap Flags | Conformant |
 |---------|----------|--------|-------------|---------|-------|-----------|------------|
-| 0x01 | `KMC_TYPE_UI_CONTROL` | UI Control | 0x20 | 4 bytes | 7 bytes | 0x00 | Pending KBC-001–006 |
-| 0x02 | `KMC_TYPE_FUNCTION_CONTROL` | Function Control | 0x21 | 4 bytes | 7 bytes | 0x00 | Pending KBC-001–006 |
-| 0x03 | `KMC_TYPE_ACTION_CONTROL` | Action Control | 0x22 | 4 bytes | 7 bytes | 0x00 | Pending KBC-001–006 |
-| 0x04 | `KMC_TYPE_STABILITY_CONTROL` | Stability Control | 0x23 | 4 bytes | 7 bytes | 0x00 | Pending KBC-001–006 |
-| 0x05 | `KMC_TYPE_VEHICLE_CONTROL` | Vehicle Control | 0x24 | 4 bytes | 7 bytes | 0x01 | Pending KBC-001–006 |
-| 0x06 | `KMC_TYPE_TIME_CONTROL` | Time Control | 0x25 | 4 bytes | 7 bytes | 0x00 | Pending KBC-001–006 |
-| 0x07 | `KMC_TYPE_EVA_MODULE` | EVA Module | 0x26 | 4 bytes | 7 bytes | 0x04 | Pending KBC-001–006 |
+| 0x01 | `KMC_TYPE_UI_CONTROL` | UI Control | 0x20 | 4 bytes | 7 bytes | 0x00 | ✓ KerbalButtonCore v2.0 |
+| 0x02 | `KMC_TYPE_FUNCTION_CONTROL` | Function Control | 0x21 | 6 bytes | 9 bytes | 0x00 | ✓ KerbalButtonCore v2.0 (24-input) |
+| 0x03 | `KMC_TYPE_ACTION_CONTROL` | Action Control | 0x22 | 4 bytes | 7 bytes | 0x00 | ✓ KerbalButtonCore v2.0 |
+| 0x04 | `KMC_TYPE_STABILITY_CONTROL` | Stability Control | 0x23 | 4 bytes | 7 bytes | 0x00 | ✓ KerbalButtonCore v2.0 |
+| 0x05 | `KMC_TYPE_VEHICLE_CONTROL` | Vehicle Control | 0x24 | 6 bytes | 9 bytes | 0x01 | ✓ KerbalButtonCore v2.0 (24-input) |
+| 0x06 | `KMC_TYPE_TIME_CONTROL` | Time Control | 0x25 | 4 bytes | 7 bytes | 0x00 | ✓ KerbalButtonCore v2.0 |
+| 0x07 | `KMC_TYPE_EVA_MODULE` | EVA Module | 0x26 | 4 bytes | 7 bytes | 0x04 | Pending — standalone fw† |
 | 0x08 | — | Reserved | 0x27 | — | — | — | — |
-| 0x09 | `KMC_TYPE_JOYSTICK_ROTATION` | Joystick Rotation | 0x28 | 8 bytes | 11 bytes | 0x08 | Pending KJC-001–005 |
-| 0x0A | `KMC_TYPE_JOYSTICK_TRANS` | Joystick Translation | 0x29 | 8 bytes | 11 bytes | 0x08 | Pending KJC-001–005 |
+| 0x09 | `KMC_TYPE_JOYSTICK_ROTATION` | Joystick Rotation | 0x28 | 9 bytes | 12 bytes | 0x08 | ✓ KerbalJoystickCore v2.0 |
+| 0x0A | `KMC_TYPE_JOYSTICK_TRANS` | Joystick Translation | 0x29 | 9 bytes | 12 bytes | 0x08 | ✓ KerbalJoystickCore v2.0 |
 | 0x0B | `KMC_TYPE_GPWS_INPUT` | GPWS Input Panel | 0x2A | 5 bytes | 8 bytes | 0x10 | ✓ K7SC reference |
 | 0x0C | `KMC_TYPE_PRE_WARP_TIME` | Pre-Warp Time | 0x2B | 5 bytes | 8 bytes | 0x10 | ✓ K7SC reference |
-| 0x0D | `KMC_TYPE_THROTTLE` | Throttle Module | 0x2C | 4 bytes | 7 bytes | 0x20 | Pending THR-001–004 |
-| 0x0E | `KMC_TYPE_DUAL_ENCODER` | Dual Encoder | 0x2D | 4 bytes | 7 bytes | 0x04 | Pending KBC-001–006 |
-| 0x0F | `KMC_TYPE_SWITCH_PANEL` | Switch Panel | 0x2E | 4 bytes | 7 bytes | 0x00 | Pending KBC-001–006 |
+| 0x0D | `KMC_TYPE_THROTTLE` | Throttle Module | 0x2C | 4 bytes | 7 bytes | 0x20 | ✓ Throttle fw v2.0 |
+| 0x0E | `KMC_TYPE_DUAL_ENCODER` | Dual Encoder | 0x2D | 4 bytes | 7 bytes | 0x04 | Pending — standalone fw† |
+| 0x0F | `KMC_TYPE_SWITCH_PANEL` | Switch Panel | 0x2E | 4 bytes | 7 bytes | 0x00 | Pending — standalone fw† |
 
+> **† Standalone firmware pending conformance:** The EVA Module, Dual Encoder, and Switch Panel ship self-contained firmware (their own `I2C.cpp`) rather than KerbalButtonCore, so the KBC-001–006 library work does not cover them. They still implement the v1.x packet (no universal header, no transaction counter, no lifecycle state machine) and are tracked for a follow-up update.
+>
+> **Note:** Function Control (0x21) and Vehicle Control (0x24) read 24 inputs (12 NeoPixel buttons + 8 Switch Group inputs at indices 16–23) and therefore use the 6-byte switch-group payload defined in §9.1 (9-byte total packet). All other standard button modules read 16 inputs and use the 4-byte payload (7-byte total).
+>
 > **Note:** The Indicator Module (previously Type ID 0x10) has been removed from the protocol specification. It is a pure output device requiring no response packet and uses a non-standard 9-byte LED payload. Its behavior is documented in its own module README.
 
 ---
@@ -227,7 +233,25 @@ AND the events bytes with the change mask to identify which buttons changed and 
 
 **EVA Module note:** Only bits 0–5 of the events and change bytes are used; bits 6–15 are always 0x00. Encoder delta bytes (bytes 5–6 in v2.1) are removed — encoder hardware is unpopulated and will be addressed in a future module revision.
 
-### 9.2 Joystick Modules (8-byte payload, 11 bytes total)
+#### 9.1.1 Switch-group variant (24 inputs, 6-byte payload)
+
+Function Control (0x21) and Vehicle Control (0x24) add a third shift register (U16) to read eight panel switches as discrete inputs at indices 16–23 (Switch Group 1 and 2 respectively), in addition to their 12 NeoPixel buttons (indices 0–11; indices 12–15 are no-connects). These modules emit a **6-byte payload (9-byte total packet)** — the events and change planes each extend to three bytes:
+
+```
+Byte 0:  Status byte       (see §4)
+Byte 1:  Module Type ID
+Byte 2:  Transaction counter
+Byte 3:  Button events  0  — rising-state bitmask (bit0=input0 … bit7=input7)
+Byte 4:  Button events  1  — (bit0=input8 … bit7=input15)
+Byte 5:  Button events  2  — (bit0=input16 … bit7=input23)   ← switch group
+Byte 6:  Change mask    0  — (bit0=input0 … bit7=input7)
+Byte 7:  Change mask    1  — (bit0=input8 … bit7=input15)
+Byte 8:  Change mask    2  — (bit0=input16 … bit7=input23)    ← switch group
+```
+
+The events/change semantics are identical to the 4-byte payload — AND the events plane with the change plane to identify which inputs changed and what they changed to. Switch positions at indices 16–23 are reported as raw input state; their logical meaning and controller actions are defined in the Module UI Reference (Switch Group 1/2 tables). The library selects this variant at compile time via `KBC_INPUT_COUNT = 24` / `KBC_SHIFTREG_COUNT = 3`.
+
+### 9.2 Joystick Modules (9-byte payload, 12 bytes total)
 
 Modules: Joystick Rotation (0x09), Joystick Translation (0x0A).
 
@@ -446,12 +470,13 @@ At 400 kHz fast mode, approximate per-transaction times:
 
 | Transaction | Bytes | Time |
 |-------------|-------|------|
-| Read one 7-byte module (standard) | 7 bytes | ~0.18ms |
-| Read one 11-byte module (joystick) | 11 bytes | ~0.28ms |
+| Read one 7-byte module (standard, 16-input) | 7 bytes | ~0.18ms |
+| Read one 9-byte module (switch-group, 24-input) | 9 bytes | ~0.23ms |
+| Read one 12-byte module (joystick) | 12 bytes | ~0.30ms |
 | Read one 8-byte module (display) | 8 bytes | ~0.20ms |
 | Write CMD_SET_LED_STATE | 9 bytes | ~0.23ms |
 | Write single command (no payload) | 2 bytes | ~0.05ms |
-| Sweep all 15 addresses (worst case) | ~160 bytes | ~4ms |
+| Sweep all 15 addresses (worst case) | ~170 bytes | ~4.3ms |
 
 In normal operation average case is substantially lower — only modules with actual state changes generate read traffic.
 
@@ -485,3 +510,4 @@ Vessel switch behaviour is module-specific and determined by each module's contr
 | 2.2 | 2026-05-19 | Universal 3-byte header on all response packets (status byte with lifecycle/fault/data-changed, type ID, transaction counter). Full lifecycle state machine (BOOT_READY/DISABLED/ACTIVE/SLEEPING) defined and documented. SLEEPING vs DISABLED semantics explicitly distinguished. All packet sizes updated (+3 bytes for header). Module registry updated with total packet sizes and conformance status. Indicator Module removed from specification (pure output, non-standard payload — see module README). EVA Module encoder bytes removed (hardware unpopulated). Bus timing updated for new packet sizes. Pending firmware issues identified in conformance column (KBC-001–006, KJC-001–005, THR-001–004). |
 | 2.3 | 2026-05-25 | Corrected PCB designators in §1 terminology definitions and §9.3. Standard module hardware reference 1822→1802; display module hardware reference 1881/1882→1842. |
 | 2.4 | 2026-06-06 | §3 Interrupt Signalling corrected from "active-low open-drain + controller pull-up" to the actual implementation: active-low push-pull, driven low to assert, no pull-up — aligning the spec with Hardware Reference §13.1 (which adopted push-pull at its revision 1.1). Added 5V (ATtiny816, divider) vs 3.3V (Teensy carrier, direct) level-handling distinction. Added §3.1 Hardware Reset (RST) documenting the optional active-low per-module reset line used by Teensy display carriers (full reboot) and distinct from CMD_RESET (application-state reset). Removed a duplicate stale v2.2 copy of the document that had been appended to the file. |
+| 2.5 | 2026-06-28 | Conformance reached for the three pending firmware bodies — KerbalButtonCore v2.0 (KBC-001–006), KerbalJoystickCore v2.0 (KJC-001–005), and Throttle v2.0 (THR-001–004); §1 conformance note and §8 registry updated. Added §9.1.1 switch-group variant: Function Control (0x21) and Vehicle Control (0x24) now read 24 inputs (third shift register U16, Switch Group 1/2 at indices 16–23) and emit a 6-byte payload / 9-byte packet; §8 totals and §13 bus timing updated accordingly. Corrected the joystick registry entry (§8) to 9-byte payload / 12-byte total to match the §9.2 byte layout (button events + change + state bytes were added to the payload but the registry total had not been updated). Clarified that the EVA Module, Dual Encoder, and Switch Panel ship standalone firmware not covered by the library updates and remain pending. |

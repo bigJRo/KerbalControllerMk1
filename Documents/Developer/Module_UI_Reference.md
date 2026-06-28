@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v5.3 | 2026-06-27
+**Jeb's Controller Works** | v5.4 | 2026-06-28
 
 This document is the definitive developer reference for all user-facing controls and indicators on each KCMk1 module. Arranged by I2C address. For panel location context see the address summary table at the end of this document.
 
@@ -216,7 +216,7 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 | B22 | LTG | NORM | TEST | Momentary (hold) | TEST rising: bulb test start (CMD_BULB_TEST 0x01 all modules). Falling: bulb test stop (0x00) |
 | B23 | THRTL | STD | FINE | Latching | FINE: system-wide input scaling for joystick precision |
 
-**⚠️ TODO #7:** Firmware sketch needs update to match new layout, and must be updated to handle 3-byte shift register reads for B16–B23 switch inputs.
+**✅ Resolved (#7):** Firmware sketch updated to this layout and to 24-input / 3-byte shift-register reads for the B16–B23 switch inputs (KerbalButtonCore v2.0, `KBC_INPUT_COUNT = 24`).
 
 ---
 
@@ -255,7 +255,7 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 
 AGX number sent = Base CAG + ((Group − 1) × 40).
 
-**⚠️ TODO #8:** Firmware sketch still has CP PRI/CP ALT at B10/B11. Needs update to AG11/AG12.
+**✅ Resolved (#8):** Firmware sketch updated — B10/B11 are now AG buttons (GREEN), no longer CP PRI/CP ALT. All twelve positions are action groups (KerbalButtonCore v2.0).
 
 ---
 
@@ -296,7 +296,7 @@ AGX number sent = Base CAG + ((Group − 1) × 40).
 | B14 | Stage (latching toggle, discrete) | — | Rising edge → Simpit `AGACTIVATE_MESSAGE` STAGE_ACTION |
 | B15 | Stage Enable (latching toggle + discrete LED) | — | ACTIVE: staging enabled. OFF: staging locked. |
 
-**⚠️ TODO #10:** Firmware sketch still has B12 SAS Enable / B13 RCS Enable. Needs update — remove B12/B13, add RCS at B10.
+**✅ Resolved (#10):** Firmware sketch updated — B12/B13 (SAS Enable / RCS Enable) removed, RCS added at B10 (KerbalButtonCore v2.0).
 
 ---
 
@@ -399,7 +399,7 @@ B16–B23 are discrete (no LED) inputs wired to panel-mounted switches on Panel 
 | B22 | THC/RHC | NORM | PREC | Latching | PREC: system-wide translation/rotation input precision scaling |
 | B23 | AUDIO | MUTE | LIVE | Latching | LIVE: enables controller audio output |
 
-**⚠️ TODO #9:** Firmware sketch still has old B12–B15 discrete input handling. Needs update — remove B12–B15 handling, add Switch Group 2 reading at B16–B23 with 3-byte shift register reads.
+**✅ Resolved (#9):** Firmware sketch updated — old B12–B15 discrete-input handling removed; Switch Group 2 now read at B16–B23 via 24-input / 3-byte shift-register reads (KerbalButtonCore v2.0, `KBC_INPUT_COUNT = 24`).
 
 ---
 
@@ -699,10 +699,10 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | Address | Module | Type ID | Panel | Library | Status |
 |---------|--------|---------|-------|---------|--------|
 | 0x20 | UI Control | 0x01 | A2 | KerbalButtonCore | Active |
-| 0x21 | Function Control | 0x02 | A2 | KerbalButtonCore | Active — TODO #7 |
-| 0x22 | Action Control | 0x03 | A2 | KerbalButtonCore | Active — TODO #8 |
-| 0x23 | Stability Control | 0x04 | B2 | KerbalButtonCore | Active — TODO #10 |
-| 0x24 | Vehicle Control | 0x05 | B2 | KerbalButtonCore | Active — TODO #9 |
+| 0x21 | Function Control | 0x02 | A2 | KerbalButtonCore | Active (24-input) |
+| 0x22 | Action Control | 0x03 | A2 | KerbalButtonCore | Active |
+| 0x23 | Stability Control | 0x04 | B2 | KerbalButtonCore | Active |
+| 0x24 | Vehicle Control | 0x05 | B2 | KerbalButtonCore | Active (24-input) |
 | 0x25 | Time Control | 0x06 | B2 | KerbalButtonCore | Active |
 | 0x26 | AUX CTRL | 0x07 | B2 | KerbalButtonCore | Active — fully allocated |
 | 0x27 | Reserved | — | — | — | — |
@@ -738,15 +738,15 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 
 ## Open Items
 
-| # | Item | Type |
-|---|------|------|
-| 6 | Operator feedback review — ABORT, mode state, COMM ACTIVE, SWITCH ERROR lost with Indicator module | Design |
-| 7 | Function Control sketch — update to new layout + 3-byte shift register reads for B16–B23 | Code |
-| 8 | Action Control sketch — B10/B11 to AG11/AG12 | Code |
-| 9 | Vehicle Control sketch — update to Switch Group 2 at B16–B23 with 3-byte reads | Code |
-| 10 | Stability Control sketch — remove B12/B13, add RCS at B10 | Code |
-| 13 | Verify Hullcam VDS Continued keybindings | Validation |
-| 14 | Ctrl Mode Toggle wiring destination (Ctrl Board or module) | Design |
+| # | Item | Type | Status |
+|---|------|------|--------|
+| 6 | Operator feedback review — ABORT, mode state, COMM ACTIVE, SWITCH ERROR lost with Indicator module | Design | Open |
+| 7 | Function Control sketch — update to new layout + 3-byte shift register reads for B16–B23 | Code | ✅ Resolved (v5.4 / KerbalButtonCore v2.0) |
+| 8 | Action Control sketch — B10/B11 to AG buttons | Code | ✅ Resolved (v5.4 / KerbalButtonCore v2.0) |
+| 9 | Vehicle Control sketch — update to Switch Group 2 at B16–B23 with 3-byte reads | Code | ✅ Resolved (v5.4 / KerbalButtonCore v2.0) |
+| 10 | Stability Control sketch — remove B12/B13, add RCS at B10 | Code | ✅ Resolved (v5.4 / KerbalButtonCore v2.0) |
+| 13 | Verify Hullcam VDS Continued keybindings | Validation | Open (in-game) |
+| 14 | Ctrl Mode Toggle wiring destination (Ctrl Board or module) | Design | Open |
 
 ---
 
@@ -759,3 +759,4 @@ Address 0x2E is reserved for a future consolidated switch panel module. The swit
 | 5.1 | 2026-05-19 | Reconciliation of v4.0 UI Reference and v5.0 Panel Interface Guide into single module-centric developer document. Switch Group 1 (on Function Control B12–B15) and Switch Group 2 (on Vehicle Control B12–B15) fully documented — panel-mounted switches wired to discrete inputs. Address summary table added. Removed-from-design table added. Open items carried forward. |
 | 5.2 | 2026-05-25 | Corrected all PCB designators to match board numbering convention. Button Module 1822→1802; Wide Button Module 1842→1812; Joystick Module 1831/1832→1832; Throttle Module 1861/1862→1822; 7-Segment Display Module 1881/1882→1842; Dual Encoder 1871/1872→1862. |
 | 5.3 | 2026-06-27 | Panel relocation: GPWS Input Panel (0x2A) moved from Panel A1 to Panel A2 per enclosure redesign (A1 reduced to power button + two 7" displays). Module header and Panel Location Summary updated. No address, packet, or functional change. |
+| 5.4 | 2026-06-28 | Firmware Open Items #7–#10 resolved against KerbalButtonCore v2.0: Function Control (#7) and Vehicle Control (#9) read Switch Group 1/2 at B16–B23 via 24-input / 3-byte shift-register reads; Action Control (#8) B10/B11 are now action-group buttons; Stability Control (#10) gains RCS at B10 and drops the B12/B13 enable inputs. ⚠️ TODO call-outs replaced with ✅ resolved notes; Panel Location Summary and Open Items table updated. #6, #13, #14 (design/in-game validation) remain open. |
