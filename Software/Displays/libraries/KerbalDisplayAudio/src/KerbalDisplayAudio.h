@@ -29,17 +29,29 @@
    Follows the same MAJOR.MINOR.PATCH scheme used by all KCMk1 sketches.
 ****************************************************************************************/
 #define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
-#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 0
-#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 2
+#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 1
+#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 0
+// 1.1.0 — hardware rev 2: AUDIO_PIN default moved 9 -> 2 (TONE buzzer); added
+//         KCM_DFPlayer (DFPlayer Mini, Serial2) for sampled audio.
 
 #include <Arduino.h>
 
 /***************************************************************************************
    PIN CONFIGURATION
    Override before including this header if needed.
+
+   Hardware rev 2 (KC-01-1911): the master-alarm buzzer is driven from the TONE
+   net on Teensy pin 2 (-> Q1/S8050 -> 4kHz buzzer). Pin 9 is now BL_CTRL
+   (display backlight), so the default moved from 9 to 2. Sketches should set
+   `#define AUDIO_PIN KCM_AUDIO_TONE_PIN` (from KCMk1_SystemConfig) before
+   including this header to stay in sync with the board definition.
+
+   Richer/sampled audio (voice callouts, etc.) is handled separately by the
+   DFPlayer Mini on Serial2 — see KCM_DFPlayer.h. The tone() state machine here
+   is unchanged and still owns the master alarm / caution / chirp cues.
 ****************************************************************************************/
 #ifndef AUDIO_PIN
-  #define AUDIO_PIN 9
+  #define AUDIO_PIN 2
 #endif
 
 /***************************************************************************************
