@@ -13,6 +13,12 @@
      AUDIO_CHIRP         — two-note ascending or descending sequence, plays once
      AUDIO_IDLE          — silent
 
+   Only an AUDIBLE master alarm suppresses lower-priority cues. Once the crew
+   silences the alarm (AUDIO_MASTER_ALARM_SILENCED) the latch is held but it no
+   longer blocks chirps or caution tones — those cues play and then return to
+   the silenced (tone-off) state, so a fresh warning still restarts the audible
+   alarm via the sketch. (Issue #12.)
+
    Master alarm condition tracking (which warnings are active, silence latch,
    re-trigger logic) is the responsibility of the calling sketch, not this library.
    The library only drives the tone: audioStartAlarm() / audioStopAlarm() / audioSilence().
@@ -21,7 +27,7 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.0.2
+   Version: 1.1.0
 ****************************************************************************************/
 
 /***************************************************************************************
@@ -29,8 +35,8 @@
    Follows the same MAJOR.MINOR.PATCH scheme used by all KCMk1 sketches.
 ****************************************************************************************/
 #define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
-#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 0
-#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 2
+#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 1
+#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 0
 
 #include <Arduino.h>
 
@@ -109,15 +115,18 @@ void setupAudio();
 // Fast-returns immediately if audio is idle.
 void updateAudio();
 
-// Alert chirp — 2 ascending notes. Suppressed if master alarm is active.
+// Alert chirp — 2 ascending notes. Suppressed only while the master alarm is
+// audibly sounding (not when silenced).
 // Call when a positive threshold is crossed (altitude, velocity, orbital insertion).
 void audioAlertChirp();
 
-// Caution chirp — 2 descending notes (tritone). Suppressed if master alarm is active.
+// Caution chirp — 2 descending notes (tritone). Suppressed only while the
+// master alarm is audibly sounding (not when silenced).
 // Call when a caution condition is newly set (descent, entering atmosphere).
 void audioCautionChirp();
 
-// Caution constant tone — fixed duration. Suppressed if master alarm is active.
+// Caution constant tone — fixed duration. Suppressed only while the master
+// alarm is audibly sounding (not when silenced).
 // Call when ALT caution indicator is newly set.
 void audioCautionTone();
 
@@ -130,11 +139,12 @@ void audioStartAlarm();
 void audioStopAlarm();
 
 // Silence the master alarm tone without clearing the latch.
-// Transitions AUDIO_MASTER_ALARM -> AUDIO_MASTER_ALARM_SILENCED. Chirps and
-// caution tones remain suppressed so non-critical audio doesn't play while
-// alarm conditions are still active. Call audioStopAlarm() when conditions
-// actually clear, or audioStartAlarm() to resume the tone.
-// Has no effect unless the master alarm is currently active.
+// Transitions AUDIO_MASTER_ALARM -> AUDIO_MASTER_ALARM_SILENCED. While silenced
+// the alarm no longer holds priority: chirps and caution tones are allowed to
+// play and then return to the silenced (tone-off) state. The sketch still
+// restarts the audible alarm on a fresh condition. Call audioStopAlarm() when
+// conditions actually clear, or audioStartAlarm() to resume the tone.
+// Has no effect unless the master alarm is currently audibly sounding.
 void audioSilence();
 
 // Returns the current audio state.
