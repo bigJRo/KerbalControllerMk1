@@ -24,9 +24,12 @@
      reg 0x06  P1_YL       — Y[7:0]
      ...each further point is +6 bytes; registers auto-increment on read.
 
-   Orientation: raw FT5316 coordinates are mapped to display pixel space via the
-   KCM_CTP_* invert/swap options below. Defaults assume the panel and touch axes
-   already agree; flip these on hardware if touches land mirrored/rotated.
+   Orientation: confirmed against the BuyDisplay ER-TFT070A2-6 vendor demo, which
+   maps raw touch to display pixels as (LCD_W - x, LCD_H - y) — i.e. BOTH axes
+   inverted, no swap. Defaults below reflect that. The vendor demo also confirms
+   no FT5316 init writes are needed (reset pulse only) and that CTP_INT is
+   active-LOW (low while a touch is present) — this driver polls TD_STATUS over
+   I2C instead, so it does not depend on the INT line.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -44,10 +47,10 @@
   #define KCM_CTP_SWAP_XY 0
 #endif
 #ifndef KCM_CTP_INVERT_X
-  #define KCM_CTP_INVERT_X 0
+  #define KCM_CTP_INVERT_X 1   // confirmed from vendor demo (display = LCD_W - rawX)
 #endif
 #ifndef KCM_CTP_INVERT_Y
-  #define KCM_CTP_INVERT_Y 0
+  #define KCM_CTP_INVERT_Y 1   // confirmed from vendor demo (display = LCD_H - rawY)
 #endif
 
 struct TouchPoint {

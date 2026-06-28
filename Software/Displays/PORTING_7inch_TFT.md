@@ -148,4 +148,36 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
 5. **Audio**: `tone()` on pin 2 buzzer; DFPlayer `playTrack(1)` from its microSD.
 6. **Slave I2C**: bring up the Wire2 slave + INT_BUS handshake with the master.
 7. Only then layer the full Annunciator UI back on.
+
+---
+
+## 8. Authoritative RA8876 init (from the BuyDisplay ER-TFT070A2-6 vendor demo)
+
+The `wwatson4506` library owns the init, but if the panel does not sync on first
+power-up, these are the **confirmed** values for this exact module — paste/match
+them into the driver's config:
+
+```
+Crystal (OSC_FREQ)        = 10 MHz
+SCLK (pixel clock)        = 50 MHz     (PLL OD=2, R=5, N=70)
+CCLK (core)               = 100 MHz    (PLL OD=2, R=5, N=100)
+MCLK (SDRAM)              = 100 MHz    (PLL OD=2, R=5, N=100)
+
+1024x600 panel timing:
+  HBPD (h back porch)   = 144      VBPD (v back porch) = 20
+  HFPD (h front porch)  = 160      VFPD (v front porch)= 12
+  HSPW (hsync width)    = 20       VSPW (vsync width)  = 3
+Polarity:
+  PCLK  = falling edge
+  HSYNC = active low
+  VSYNC = active low
+  DE    = active high
+Colour: 16bpp; main image @ SDRAM addr 0; interface = 8080 parallel.
+```
+
+Touch (FT5316), confirmed from the demo:
+- I2C address 0x38; no init register writes needed (reset pulse only).
+- `TD_STATUS` reg 0x02 low nibble = point count; points from reg 0x03, 6 bytes each.
+- INT is active-low. Raw→display mapping inverts both axes: `(LCD_W - x, LCD_H - y)`
+  → `KCM_CTP_INVERT_X = KCM_CTP_INVERT_Y = 1`, no swap (already set in KCM_Touch).
 ```
