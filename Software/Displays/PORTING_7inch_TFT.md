@@ -125,12 +125,24 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
       `BUILTIN_SDCARD`, GSL1680 touch removed (now `KCM_Touch`). Not yet compiled —
       needs the RA8876 libraries installed (see Dependencies).
 
+**Done — Annunciator (v3.0.0):**
+- [x] **Annunciator relayed out** to the approved 1024×600 mockup (full redesign):
+      `ScreenMain` geometry (MASTER 274×176, C&W 5×5 @120×80, two 75px flag
+      columns, new bottom telemetry + 6×2 master mode grid), `AAA_Globals`
+      (KCM_TFT object), `I2CSlave` (Wire2 + INT_BUS pin 0 + extended 6-byte
+      command), `KCM_Touch`, audio on TONE/pin 2, and BootScreen/ScreenSOI/
+      ScreenStandby/TestMode reconciled. C&W logic + ButtonLabels reused.
+      `AppState` gained `capValue` + `modeFlags` (MF_* bits).
+
 **Remaining:**
-- [ ] **Port + redesign the Annunciator** for 1024×600 (chosen layout strategy:
-      full redesign, not letterbox): `AAA_Globals` (KCM_TFT object), `I2CSlave`
-      (Wire2 + INT_BUS pin 0), audio repoint, touch via KCM_Touch, and new screen
-      geometry for `ScreenMain/ScreenSOI/ScreenStandby/BootScreen/CautionWarning/TouchEvents`.
-- [ ] Regenerate BMP assets at 1024×600 (standby splash; SOI globe/KASA images).
+- [ ] Compile pass with the RA8876 libraries installed; fix any integration
+      points (writeRect signature, ILI9341_t3_font_t header, FlexIO init).
+- [ ] Regenerate BMP assets at 1024×600 (standby splash; SOI globe/KASA — globe
+      art currently 240×168 centred in the 274×176 area).
+- [ ] Add the 12 mode-grid flags + Cap readout to the **I2C protocol spec** and
+      the master sketch (extended 6-byte Annunciator command).
+- [ ] Wire DFPlayer clips; drive `modeFlags` from TestMode steps; draw the
+      vessel-type icon on the SPCFT tile; full SOI-detail-screen redesign.
 - [ ] Then repeat the sketch port for InfoDisp and ResourceDisp.
 
 ---
