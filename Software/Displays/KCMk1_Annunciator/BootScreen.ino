@@ -23,8 +23,8 @@ static const uint16_t BS_HOLD  = 300;
 static const uint16_t ROW_H    = 18;   // 16px glyph + 2px leading
 static const uint16_t COL1_X   = 4;
 static const uint16_t COL2_X   = 560;
-static const tFont   *BS_FONT  = &TerminalFont_16;
-static const tFont   *BS_BIG   = &TerminalFont_32;  // 2x scaled for summary lines
+static const ILI9341_t3_font_t *BS_FONT = &TerminalFont_16;
+static const ILI9341_t3_font_t *BS_BIG  = &TerminalFont_32;  // 2x scaled for summary lines
 
 
 /***************************************************************************************
@@ -40,7 +40,7 @@ static void _bs_wait(uint16_t ms) {
    Prints label at COL1_X, waits BS_HOLD, then prints status at COL2_X.
    Uses tft.setFont / setCursor / print directly -- stays in graphics mode throughout.
 ****************************************************************************************/
-static void _bs_check(RA8875 &tft, uint16_t y,
+static void _bs_check(KCM_TFT &tft, uint16_t y,
                        const char *label, uint16_t labelCol,
                        const char *status, uint16_t statusCol) {
   tft.setFont(BS_FONT);
@@ -57,7 +57,7 @@ static void _bs_check(RA8875 &tft, uint16_t y,
 /***************************************************************************************
    INTERNAL HELPER -- print a single line at x,y with given font and color
 ****************************************************************************************/
-static void _bs_print(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
+static void _bs_print(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y,
                        const char *text, uint16_t col) {
   tft.setFont(font);
   tft.setTextColor(col, TFT_BLACK);
@@ -70,14 +70,14 @@ static void _bs_print(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
    BOOT SIM TEXT
    All rendering via _bs_print() / _bs_check() -- stays in RA8875 graphics mode throughout.
 ****************************************************************************************/
-void bootSimText(RA8875 &tft) {
+void bootSimText(KCM_TFT &tft) {
 
   tft.fillScreen(TFT_BLACK);
 
   uint16_t y = 4;
 
   // - Header -
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 6;
   {
     char buf[128];   // #4B version string
@@ -90,7 +90,7 @@ void bootSimText(RA8875 &tft) {
     _bs_print(tft, BS_FONT, COL1_X, y, buf, TFT_GREY);
   }
   y += ROW_H;
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 10;
   _bs_wait(BS_HOLD);
 
@@ -113,17 +113,17 @@ void bootSimText(RA8875 &tft) {
 
   // - Check 6: Display Systems -
   _bs_check(tft, y, "6) Display Systems Online...",   TFT_WHITE, "OK!",   TFT_GREEN);  y += ROW_H;
-  _bs_check(tft, y, "     RA8875 800x480 @ SPI...",   TFT_GREY,  "READY", TFT_WHITE);  y += ROW_H + 4;
+  _bs_check(tft, y, "     RA8876 1024x600 @ PAR...",  TFT_GREY,  "READY", TFT_WHITE);  y += ROW_H + 4;
 
   // - Check 7: Touch Controller -
   _bs_check(tft, y, "7) Touch Controller Online...", TFT_WHITE, "OK!",   TFT_GREEN); y += ROW_H;
-  _bs_check(tft, y, "     GSL1680F Capacitive...",   TFT_GREY,  "READY", TFT_WHITE); y += ROW_H + 4;
+  _bs_check(tft, y, "     FT5316 Capacitive...",     TFT_GREY,  "READY", TFT_WHITE); y += ROW_H + 4;
 
   // - Check 8: KSP Interface -
   _bs_check(tft, y, "8) KSP Simpit Interface...", TFT_WHITE, "STANDBY", TFT_YELLOW); y += ROW_H + 12;
 
   // - Summary -
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 10;
   _bs_print(tft, BS_BIG, COL1_X, y, "All Checks Complete...", TFT_WHITE);
   y += 38;   // 32px font + 6px leading
@@ -132,7 +132,7 @@ void bootSimText(RA8875 &tft) {
   y += 44;   // 32px font + 12px gap before attribution
 
   // - Attribution -
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 8;
   _bs_print(tft, BS_FONT, COL1_X, y,
             "Jeb's Controller Works  //  C-2026", TFT_GREY);

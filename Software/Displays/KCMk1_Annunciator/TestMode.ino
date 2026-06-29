@@ -1007,8 +1007,11 @@ static void runDisplayWalkthrough() {
   updateVesselSitPanel(infoDisp, ~state.vesselSituationState, state.vesselSituationState);
   prev.vesselSituationState = state.vesselSituationState;
   updateDockedIndicator(infoDisp);
-  updateFlightCondBlock(infoDisp);
-  updatePanelStatus(infoDisp);
+  updateRegimeColumn(infoDisp);
+  // rev 2: the bottom mode grid is master-driven (state.modeFlags); the legacy
+  // psForceOn walk-through no longer lights these tiles. TODO: drive modeFlags
+  // from the test steps for a full walk-through.
+  updateModeGrid(infoDisp);
 
   // Serial output
   Serial.println();

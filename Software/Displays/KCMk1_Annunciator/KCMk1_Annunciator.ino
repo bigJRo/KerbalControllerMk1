@@ -22,8 +22,9 @@
     KerbalDisplayAudio   -- non-blocking audio state machine (chirps, caution tone, master alarm)
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
-  Hardware:
-    Teensy 4.0, RA8875 800x480 TFT, GSL1680F capacitive touch, SerialUSB1 -> KSP
+  Hardware (rev 2):
+    Teensy 4.1, RA8876 1024x600 TFT (FlexIO3 16-bit 8080), FT5316 capacitive touch,
+    DFPlayer Mini audio + TONE buzzer, slave I2C on Wire2, SerialUSB1 -> KSP
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by Jason Rostoker for Jeb's Controller Works.
@@ -124,6 +125,8 @@ void loop() {
         prev.commNet    = state.commNet  + 1;
         prev.stage      = state.stage    + 1;
         prev.ctrlGrp    = state.ctrlGrp  + 1;
+        prev.capValue   = state.capValue + 1;
+        // modeFlags + SPCFT tile are drawn by drawStaticMain() (full redraw).
         break;
       case screen_SOI:
         drawStaticSOI(infoDisp);

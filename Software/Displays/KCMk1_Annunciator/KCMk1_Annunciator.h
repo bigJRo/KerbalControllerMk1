@@ -5,9 +5,11 @@
    and extern declarations for all globals defined in AAA_Config.ino and AAA_Globals.ino.
 ****************************************************************************************/
 
-// Requires KerbalDisplayCommon >= 2.1.0
-#include <KerbalDisplayCommon.h>
+// Requires KerbalDisplayCommon >= 3.0.0 (hardware rev 2: RA8876 / Teensy 4.1)
+#include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + ILI9341_t3 fonts
+#include <KCM_Touch.h>             // FT5316 touch: TouchResult/setupTouch/isTouched/readTouch
 #include <KerbalDisplayAudio.h>
+#include <KCM_DFPlayer.h>          // sampled audio (DFPlayer Mini on Serial2)
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
@@ -42,7 +44,14 @@ struct AppState {
   uint8_t    stage      = 0;
   uint8_t    skinTemp   = 100;
   uint8_t    ctrlGrp    = 1;
+  uint8_t    capValue   = 0;                             // "Cap" readout (rev-2 telemetry; source TBD via I2C)
   String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.0
+
+  // Mode/status flags shown in the bottom-right 6x2 grid (rev 2). All 12 bits are
+  // reported by the master controller over I2C; default off until the master
+  // sends them. Bit positions are the MF_* constants below; not all are in the
+  // I2C protocol spec yet (see I2CSlave.ino TODOs).
+  uint16_t   modeFlags  = 0;
 
   // Action groups
   bool gear_on   = false;
@@ -128,6 +137,30 @@ static const uint8_t VSIT_ORBIT     = 4;
 static const uint8_t VSIT_ESCAPE    = 5;
 static const uint8_t VSIT_SPLASH    = 6;
 static const uint8_t VSIT_LANDED    = 7;
+
+
+/***************************************************************************************
+   MODE/STATUS FLAG BIT INDICES (bottom-right 6x2 grid, rev 2)
+   state.modeFlags bit positions, row-major to match the grid draw order:
+     Row 0: DEMO  WARP  AUDIO  THRTL_ENA  TRIM  AUTOPILOT
+     Row 1: DEBUG SWITCH_ERR  SIMPIT_LOST  THRTL_PREC  INPUT_PREC  ENG_ARM
+   All driven by the master over I2C (default off). Labels/colours in ScreenMain.
+   NOTE: the exact label/colour/source for each tile is provisional — confirm
+   against the final master protocol (several are not in the I2C spec yet).
+****************************************************************************************/
+static const uint8_t MF_DEMO        =  0;
+static const uint8_t MF_WARP        =  1;
+static const uint8_t MF_AUDIO       =  2;
+static const uint8_t MF_THRTL_ENA   =  3;
+static const uint8_t MF_TRIM        =  4;
+static const uint8_t MF_AUTOPILOT   =  5;
+static const uint8_t MF_DEBUG       =  6;
+static const uint8_t MF_SWITCH_ERR  =  7;
+static const uint8_t MF_SIMPIT_LOST =  8;
+static const uint8_t MF_THRTL_PREC  =  9;
+static const uint8_t MF_INPUT_PREC  = 10;
+static const uint8_t MF_ENG_ARM     = 11;
+static const uint8_t MF_COUNT       = 12;
 
 
 /***************************************************************************************
@@ -226,9 +259,9 @@ enum ChuteEnvState : uint8_t {
      PATCH -- bug fixes, threshold tuning, comment/style changes
    This sketch requires KerbalDisplayCommon >= 2.1.0
 ****************************************************************************************/
-static const uint8_t SKETCH_VERSION_MAJOR = 2;
-static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_MAJOR = 3;
+static const uint8_t SKETCH_VERSION_MINOR = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // rev 2: RA8876/Teensy 4.1, 1024x600 relayout
 
 
 /***************************************************************************************
@@ -302,7 +335,7 @@ extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
 extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
 // From AAA_Globals.ino
-extern RA8875        infoDisp;
+extern KCM_TFT       infoDisp;
 extern TouchResult   lastTouch;
 extern KerbalSimpit  simpit;
 extern AppState      state;

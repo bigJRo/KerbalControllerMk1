@@ -10,7 +10,9 @@
 /***************************************************************************************
    DISPLAY AND TOUCH
 ****************************************************************************************/
-RA8875       infoDisp  = RA8875(RA8875_CS, RA8875_RESET);
+// RA8876 over FlexIO3 16-bit 8080 parallel. Constructor args are (RS/DC, CS, RESET);
+// the data bus and /WR,/RD are owned by the FlexIO driver (KCMk1_SystemConfig).
+KCM_TFT      infoDisp(KCM_TFT_RS, KCM_TFT_CS, KCM_TFT_RESET);
 TouchResult  lastTouch;
 
 
@@ -94,6 +96,8 @@ void invalidateAllState() {
   prev.stage                = state.stage     + 1;
   prev.skinTemp             = state.skinTemp  + 1;
   prev.ctrlGrp              = state.ctrlGrp   + 1;
+  prev.capValue             = state.capValue  + 1;
+  prev.modeFlags            = ~state.modeFlags;
   prev.gameSOI              = "\x01";
   prev.gear_on              = !state.gear_on;
   prev.brakes_on            = !state.brakes_on;

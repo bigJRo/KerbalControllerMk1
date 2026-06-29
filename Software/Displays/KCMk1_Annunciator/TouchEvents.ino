@@ -112,8 +112,9 @@ void processTouchEvents() {
           alarmSilenced = true;
           audioSilence();
         }
-      } else if (x2 < MASTER_W && y2 >= MASTER_H) {
-        // SOI area — switch to SOI screen
+      } else if (x2 < MASTER_W && y2 >= MASTER_H && y2 < TOP_H) {
+        // SOI strip + globe area (left column, below master alarm) — go to SOI.
+        // Bounded to the top zone so taps on the bottom telemetry block don't fire.
         switchToScreen(screen_SOI);
         clearTouchISR();
       }

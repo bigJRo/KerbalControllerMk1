@@ -9,7 +9,7 @@
 /***************************************************************************************
    STATIC CHROME -- draw once on screen entry
 ****************************************************************************************/
-void drawStaticStandby(RA8875 &tft) {
+void drawStaticStandby(KCM_TFT &tft) {
   drawStandbySplash(tft);   // #5A delegates to KDC library
 }
 
@@ -17,6 +17,6 @@ void drawStaticStandby(RA8875 &tft) {
 /***************************************************************************************
    UPDATE PASS -- nothing to update on standby
 ****************************************************************************************/
-void updateScreenStandby(RA8875 &tft) {
+void updateScreenStandby(KCM_TFT &tft) {
   (void)tft;
 }

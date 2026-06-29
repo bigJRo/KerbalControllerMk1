@@ -16,9 +16,9 @@ PrintState psSOIRows[SOI_MAX_ROWS];
 const uint16_t SOI_IMG_W  = 240;
 const uint16_t SOI_IMG_H  = 168;
 const uint16_t SOI_NAME_X = SOI_IMG_W;
-const uint16_t SOI_NAME_W = 800 - 2 * SOI_IMG_W;  // 320px centre panel
+const uint16_t SOI_NAME_W = KCM_SCREEN_W - 2 * SOI_IMG_W;  // centre panel (rev2: full width)
 const uint16_t SOI_ROWS_Y = SOI_IMG_H;
-const uint16_t SOI_ROWS_H = 480 - SOI_IMG_H;       // 312px for data rows
+const uint16_t SOI_ROWS_H = KCM_SCREEN_H - SOI_IMG_H;      // data rows (rev2: full height)
 const uint16_t SOI_ROW_H  = 36;                    // 36px per row -- fits 8-9 rows
 
 
@@ -27,7 +27,7 @@ const uint16_t SOI_ROW_H  = 36;                    // 36px per row -- fits 8-9 r
    Draws background and left KASA meatball BMP.
    drawSOIBody() is called immediately after to fill body-specific content.
 ****************************************************************************************/
-void drawStaticSOI(RA8875 &tft) {
+void drawStaticSOI(KCM_TFT &tft) {
   tft.setXY(0, 0);
   tft.fillScreen(TFT_BLACK);
   drawBMP(tft, "/KASA_Meatball_240x168.bmp", 2, 2);
@@ -40,7 +40,7 @@ void drawStaticSOI(RA8875 &tft) {
    Left meatball is NOT touched -- drawn once in drawStaticSOI.
    Called whenever currentBody changes while screen_SOI is active.
 ****************************************************************************************/
-void drawSOIBody(RA8875 &tft) {
+void drawSOIBody(KCM_TFT &tft) {
   struct SOIRow { const char *label; String value; };
   SOIRow rows[8];
   uint8_t rowCount = 0;
@@ -78,7 +78,7 @@ void drawSOIBody(RA8875 &tft) {
    UPDATE PASS -- redraws body content only when gameSOI has changed.
    prev.gameSOI is synced at screen entry to suppress a redundant redraw.
 ****************************************************************************************/
-void updateScreenSOI(RA8875 &tft) {
+void updateScreenSOI(KCM_TFT &tft) {
   if (state.gameSOI != prev.gameSOI) {
     drawSOIBody(tft);
     prev.gameSOI = state.gameSOI;
