@@ -68,6 +68,21 @@ static uint8_t _prevCount = 0xFF;   // 0xFF = force first draw
 static uint8_t _prevAddrs[MAX_FOUND];
 static uint8_t _prevTypes[MAX_FOUND];
 
+// Presence cache with hysteresis. A module is identified ONCE when it
+// first appears (identity retried within the scan), then only presence-
+// probed — the ATtiny targets answer I2C from an ISR and an occasional
+// busy/glitched transaction must not drop them from the list. An entry
+// is removed only after MISS_LIMIT consecutive failed probes (real
+// unplug), keeping the list rock-steady through transient bus noise.
+struct SlotCache {
+    bool    used;
+    uint8_t addr;
+    uint8_t typeId;
+    uint8_t misses;
+};
+static SlotCache _cache[MAX_FOUND];
+static const uint8_t MISS_LIMIT = 3;   // consecutive misses before removal
+
 // LED-cycle test state
 static uint8_t _ledCycleState = 0;   // current KMC_LED_* being applied
 
@@ -96,23 +111,59 @@ static void pollPower() {
 //  Scan + identify the bus into the _found* tables.
 //  Redraws the list only when the result set changed.
 // ============================================================
+static bool _cacheHas(uint8_t addr) {
+    for (uint8_t i = 0; i < MAX_FOUND; i++)
+        if (_cache[i].used && _cache[i].addr == addr) return true;
+    return false;
+}
+
 static void doScan() {
     uint8_t rawAddrs[MAX_FOUND];
     uint8_t rawCount = hwScanModules(rawAddrs, MAX_FOUND);
 
-    // Keep only devices with a sane identity reply. A real module always
-    // answers CMD_GET_IDENTITY (in every lifecycle state), so this drops
-    // phantom ACKs (no reply -> t:00, floating-bus reads -> t:FF) without
-    // hiding real hardware. An identified-but-uncatalogued type is kept
-    // and shown as Unknown — that's genuinely attached hardware.
-    _foundCount = 0;
-    for (uint8_t i = 0; i < rawCount; i++) {
-        ModuleIdentity id = hwIdentify(rawAddrs[i]);
+    // 1. Update presence for cached entries: reset the miss counter when
+    //    the probe saw the address; otherwise count a miss and remove the
+    //    entry only after MISS_LIMIT consecutive misses (real unplug).
+    for (uint8_t i = 0; i < MAX_FOUND; i++) {
+        if (!_cache[i].used) continue;
+        bool present = false;
+        for (uint8_t j = 0; j < rawCount; j++)
+            if (rawAddrs[j] == _cache[i].addr) { present = true; break; }
+        if (present) {
+            _cache[i].misses = 0;
+        } else if (++_cache[i].misses >= MISS_LIMIT) {
+            _cache[i].used = false;
+        }
+    }
+
+    // 2. Identify NEW addresses only (identity is cached afterwards — the
+    //    module is not re-interrogated every scan). A real module always
+    //    answers CMD_GET_IDENTITY, so requiring a sane reply here blocks
+    //    phantom ACKs (no reply -> t:00, floating bus -> t:FF) without
+    //    hiding real hardware; the read is retried once within the scan.
+    for (uint8_t j = 0; j < rawCount; j++) {
+        if (_cacheHas(rawAddrs[j])) continue;
+        ModuleIdentity id = hwIdentify(rawAddrs[j]);
+        if (!id.valid) id = hwIdentify(rawAddrs[j]);   // one retry
         if (!id.valid || id.typeId == 0x00 || id.typeId == 0xFF) continue;
-        _foundAddrs[_foundCount] = rawAddrs[i];
-        _foundTypes[_foundCount] = id.typeId;
-        _foundInfos[_foundCount] = catalogByType(id.typeId);
-        _foundCount++;
+        for (uint8_t i = 0; i < MAX_FOUND; i++) {
+            if (_cache[i].used) continue;
+            _cache[i] = { true, rawAddrs[j], id.typeId, 0 };
+            break;
+        }
+    }
+
+    // 3. Build the display list from the cache (ordered by address).
+    _foundCount = 0;
+    for (uint8_t a = I2C_MODULE_ADDR_MIN; a <= I2C_MODULE_ADDR_MAX; a++) {
+        for (uint8_t i = 0; i < MAX_FOUND; i++) {
+            if (!_cache[i].used || _cache[i].addr != a) continue;
+            _foundAddrs[_foundCount] = _cache[i].addr;
+            _foundTypes[_foundCount] = _cache[i].typeId;
+            _foundInfos[_foundCount] = catalogByType(_cache[i].typeId);
+            _foundCount++;
+            break;
+        }
     }
 
     bool changed = (_foundCount != _prevCount);
@@ -128,8 +179,13 @@ static void doScan() {
     uiScanList(_foundInfos, _foundAddrs, _foundTypes, _foundCount);
 }
 
-/** @brief Force the next doScan() to redraw (call after uiScanBegin()). */
-static void scanMarkDirty() { _prevCount = 0xFF; }
+/** @brief Force a fresh scan: clear the presence cache (full re-identify)
+ *         and force the next doScan() to redraw. Call after uiScanBegin()
+ *         and on the Rescan button. */
+static void scanMarkDirty() {
+    _prevCount = 0xFF;
+    for (uint8_t i = 0; i < MAX_FOUND; i++) _cache[i].used = false;
+}
 
 // ============================================================
 //  Build and send a uniform LED-state payload to all positions
@@ -201,7 +257,7 @@ void loop() {
             if (now - _tPower >= POWER_POLL_MS)   { _tPower = now; pollPower(); }
 
             int idx = uiScanTouch(_foundCount);
-            if (idx == -2) { _tScan = 0; }                 // Rescan
+            if (idx == -2) { scanMarkDirty(); _tScan = 0; }   // Rescan: full re-identify
             else if (idx >= 0 && idx < (int)_foundCount) {
                 if (_foundInfos[idx]) {
                     _sel     = _foundInfos[idx];
