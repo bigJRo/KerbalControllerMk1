@@ -12,8 +12,9 @@
  *
  *              Target board: Seeed XIAO RA4M1 (Arduino UNO R4 core), 2.8"
  *              ER-TFT028A3-4 (ILI9341, 240x320 4-wire SPI), FT6236 capacitive
- *              touch (I2C 0x38). The display is driven in landscape (rotation
- *              1 -> 320x240).
+ *              touch (I2C 0x38). The display is used in PORTRAIT — 240 wide x
+ *              320 tall, rotation 0 (ILI9341 native orientation), confirmed
+ *              on hardware.
  *
  * @note        Dependencies: Adafruit_GFX + Adafruit_ILI9341 + Adafruit_FT6206
  *              (+ Adafruit_BusIO). LovyanGFX is NOT used — it does not support
@@ -24,14 +25,15 @@
  *              The ILI9341 uses hardware SPI on the XIAO's fixed SPI pins
  *              (SCK/MISO/MOSI = D8/D9/D10) with CS/DC from TesterConfig.h and
  *              no reset line (software reset). The FT6236 shares Wire (begun
- *              by hwBegin(); do not call Wire.begin() here).
+ *              by hwBegin(); do not call Wire.begin() here). uiBegin() clears
+ *              the full 240x320 GRAM once at boot so no stale noise band can
+ *              show below partially-repainted screens.
  *
- *              TOUCH MAPPING: the FT6236 reports native portrait coordinates
- *              (p.x 0..239, p.y 0..319). rawTouch() maps them to rotation(1)
- *              landscape as sx = p.y, sy = 239 - p.x. FT6236 panels vary in
- *              origin — if taps land mirrored on hardware, flip the mapping
- *              in rawTouch() (try sx = 319 - p.y and/or sy = p.x) and
- *              re-flash. rawTouch() is the single place the mapping lives.
+ *              TOUCH MAPPING: with rotation(0) the FT6236 native portrait
+ *              coordinates map straight through: sx = p.x (0..239),
+ *              sy = p.y (0..319). If taps land mirrored on hardware, try
+ *              sx = 239 - p.x and/or sy = 319 - p.y in rawTouch() — it is
+ *              the single place the mapping lives.
  *
  * @license     GNU General Public License v3.0 (GPL-3.0)
  */
@@ -70,34 +72,46 @@ static constexpr uint16_t C_BAR    = 0x047F;   // bar fill (blue)
 static constexpr uint16_t C_BARBG  = 0x18E3;   // bar track
 
 // ============================================================
-//  Layout constants (landscape 320x240)
+//  Layout constants (portrait 240x320)
+//
+//  Classic font metrics: size 1 glyph cell = 6x8 px (max 40 chars
+//  across 240px); size 2 = 12x16 (max 20 chars). Row pitch >= 12 px
+//  for size 1, >= 20 px for size 2 — no two baselines share a band.
 // ============================================================
-static constexpr int TOPBAR_H   = 22;          // top status bar height
-static constexpr int PWR_X      = 150;         // x where the power readout starts
-static constexpr int HDR_Y      = TOPBAR_H + 2;
-static constexpr int HDR_H      = 20;          // dashboard header line height
+
+// Top area: two stacked 14px bars (title, power) + divider line.
+static constexpr int TITLE_BAR_Y = 0;
+static constexpr int TITLE_BAR_H = 14;
+static constexpr int PWR_BAR_Y   = TITLE_BAR_H;               // 14
+static constexpr int PWR_BAR_H   = 14;
+static constexpr int TOP_H       = TITLE_BAR_H + PWR_BAR_H;   // 28 (divider at y=28)
+static constexpr int CONTENT_Y   = TOP_H + 2;                 // 30
+
+// Dashboard header status line (lifecycle / FAULT / tx).
+static constexpr int HDR_Y = CONTENT_Y;                       // 30
+static constexpr int HDR_H = 12;                              // band 30..41
 
 // Scan list
-static constexpr int SCAN_ROW_H = 34;
-static constexpr int SCAN_TOP   = TOPBAR_H + 6;
-static constexpr int SCAN_MAXROWS = 5;         // fits above the Rescan button row
+static constexpr int SCAN_TOP     = TOP_H + 6;                // 34
+static constexpr int SCAN_ROW_H   = 30;                       // row box height
+static constexpr int SCAN_ROW_GAP = 4;                        // pitch 34
+static constexpr int SCAN_MAXROWS = 7;                        // 34..272, above Rescan
 
-// Dashboard control buttons.
-// Nine buttons — laid out as two rows (5 on the top row, 4 on the bottom
-// row) so each chip stays comfortably touchable on a 320px-wide panel.
+// Dashboard control buttons: NINE as a 3x3 grid at the bottom.
 static constexpr int CTRL_COUNT  = 9;
-static constexpr int CTRL_PERROW = 5;
-static constexpr int CTRL_ROWS   = 2;
-static constexpr int CTRL_H      = 28;                          // per-button height
-static constexpr int CTRL_AREA_H = CTRL_ROWS * CTRL_H + 2;      // 58
-static constexpr int CTRL_AREA_Y = UI_H - CTRL_AREA_H;          // 182
-static constexpr int CTRL_W      = UI_W / CTRL_PERROW;          // 64
-static constexpr int TOAST_Y     = CTRL_AREA_Y - 16;           // toast line above buttons
+static constexpr int CTRL_PERROW = 3;
+static constexpr int CTRL_ROWS   = 3;
+static constexpr int CTRL_H      = 28;                        // per-button pitch
+static constexpr int CTRL_AREA_H = CTRL_ROWS * CTRL_H;        // 84
+static constexpr int CTRL_AREA_Y = UI_H - CTRL_AREA_H;        // 236 (..319)
+static constexpr int CTRL_W      = UI_W / CTRL_PERROW;        // 80
+static constexpr int TOAST_Y     = CTRL_AREA_Y - 18;          // 218 (band 218..233)
 
-// Construction-test screen control buttons (bottom row, up to 5).
-static constexpr int CT_BTN_H    = 36;
-static constexpr int CT_BTN_Y    = UI_H - CT_BTN_H;
-static constexpr int CT_MAXBTNS  = 5;
+// Construction-test screen control buttons: up to 5 as one row of 3
+// over one row of 2, each >= 70x34 for finger targets.
+static constexpr int CT_BTN_H   = 34;
+static constexpr int CT_BTN_GAP = 4;
+static constexpr int CT_MAXBTNS = 5;
 
 // ============================================================
 //  Hit-test rectangle
@@ -138,22 +152,32 @@ static bool _wasTouched = false;
 // Running encoder totals (reset on uiDashboardBegin).
 static long _encTotal[2] = {0, 0};
 
-// Current input area geometry (set by uiDashboardBegin per kind).
-static int _inputAreaY = HDR_Y + HDR_H + 2;
-static int _inputAreaH = TOAST_Y - (HDR_Y + HDR_H + 2);
+// Current input area geometry (set by uiDashboardBegin).
+static int _inputAreaY = HDR_Y + HDR_H + 2;                   // 44
+static int _inputAreaH = TOAST_Y - (HDR_Y + HDR_H + 2);       // 44..218
 
 // ============================================================
 //  Text helpers (Adafruit_GFX classic 5x7 font)
 //
 //  Adafruit_GFX has no drawString/textWidth/datum support, so text is
-//  placed with setCursor + print. Width is approximated as
-//  strlen * 6 * size (each glyph cell is 6 px wide incl. spacing) and
-//  glyph height as 8 * size — exact for the built-in classic font.
+//  placed with setCursor + print. Width = strlen * 6 * size (each glyph
+//  cell is 6 px wide incl. spacing), glyph height = 8 * size — exact for
+//  the built-in classic font. print() wraps at the right edge, so
+//  strings are truncated to their field width before drawing.
 // ============================================================
 
 /** @brief Rendered width of a string at a given text size (classic font). */
 static int txtW(const char* s, uint8_t size) {
     return (int)strlen(s) * 6 * size;
+}
+
+/** @brief Copy s into buf truncated to maxChars (buf holds >= maxChars+1). */
+static void truncStr(char* buf, uint8_t bufLen, const char* s, int maxChars) {
+    if (maxChars > (int)bufLen - 1) maxChars = bufLen - 1;
+    if (maxChars < 0) maxChars = 0;
+    int i = 0;
+    for (; i < maxChars && s && s[i]; i++) buf[i] = s[i];
+    buf[i] = '\0';
 }
 
 /** @brief Draw text with its top-left corner at (x, y). */
@@ -183,26 +207,54 @@ static void drawTextMR(int rx, int cy, const char* s,
     drawTextTL(rx - txtW(s, size), cy - 4 * size, s, fg, bg, size);
 }
 
+/**
+ * @brief  Draw a size-1 string on up to two lines of maxChars each,
+ *         breaking at the last space that fits (hard cut otherwise).
+ *         Anything beyond two lines is dropped.
+ */
+static void drawTextWrapped2(int x, int y, const char* s, int maxChars,
+                             int lineH, uint16_t fg, uint16_t bg) {
+    if (!s) return;
+    int len = (int)strlen(s);
+    char line[41];   // size-1 max 40 chars across 240px
+
+    if (len <= maxChars) {
+        truncStr(line, sizeof(line), s, maxChars);
+        drawTextTL(x, y, line, fg, bg, 1);
+        return;
+    }
+    // Break at the last space at or before maxChars.
+    int brk = maxChars;
+    for (int i = maxChars; i > 0; i--) {
+        if (s[i] == ' ') { brk = i; break; }
+    }
+    truncStr(line, sizeof(line), s, brk);
+    drawTextTL(x, y, line, fg, bg, 1);
+    const char* rest = s + brk;
+    while (*rest == ' ') rest++;
+    truncStr(line, sizeof(line), rest, maxChars);
+    drawTextTL(x, y + lineH, line, fg, bg, 1);
+}
+
 // ============================================================
 //  Touch helpers
 // ============================================================
 
 /**
- * @brief  Raw touch read mapped to landscape (rotation 1) coordinates.
+ * @brief  Raw touch read in portrait rotation(0) coordinates.
  *
- *         The FT6236 reports native portrait coordinates (p.x 0..239,
- *         p.y 0..319). Map portrait -> rotation(1) landscape 320x240:
- *         sx = p.y, sy = 239 - p.x.
+ *         The FT6236 reports native portrait coordinates that map straight
+ *         through: sx = p.x (0..239), sy = p.y (0..319).
  *
  *         NOTE: FT6236 panels vary in origin; if taps are mirrored on
- *         hardware, try sx = 319 - p.y and/or sy = p.x. This is the single
- *         place the mapping lives.
+ *         hardware, try sx = 239 - p.x and/or sy = 319 - p.y. This is the
+ *         single place the mapping lives.
  */
 static bool rawTouch(int16_t& sx, int16_t& sy) {
     if (!ctp.touched()) return false;
     TS_Point p = ctp.getPoint();
-    sx = p.y;            // 0..319
-    sy = 239 - p.x;      // 0..239
+    sx = p.x;            // 0..239
+    sy = p.y;            // 0..319
     return true;
 }
 
@@ -224,12 +276,14 @@ static bool readPress(int16_t& x, int16_t& y) {
 //  Small drawing helpers (file-local)
 // ============================================================
 
-/** @brief Draw a labelled "chip" (button/state indicator). */
+/** @brief Draw a labelled "chip"; the label is truncated to fit the chip. */
 static void drawChip(int x, int y, int w, int h, const char* label, bool on) {
     uint16_t fill = on ? C_ON : C_OFF;
     uint16_t txt  = on ? C_BG : C_DIM;
     tft.fillRoundRect(x, y, w, h, 4, fill);
-    drawTextMC(x + w / 2, y + h / 2, label, txt, fill, 1);
+    char lbl[16];
+    truncStr(lbl, sizeof(lbl), label, (w - 4) / 6);   // size-1 chars that fit
+    drawTextMC(x + w / 2, y + h / 2, lbl, txt, fill, 1);
 }
 
 /** @brief Draw a horizontal bar with a track and value fill (0..1 fraction). */
@@ -274,15 +328,13 @@ static const char* lifecycleText(uint8_t lifecycle) {
     }
 }
 
-// Cached top-bar title so uiPowerBar can leave the left side untouched.
-static char _title[24] = "";
-
-/** @brief Draw the left side (title) of the top bar. */
+/** @brief Draw the title bar (top 14px) and the divider under the top area. */
 static void drawTopBarTitle(const char* title) {
-    strncpy(_title, title, sizeof(_title) - 1);
-    _title[sizeof(_title) - 1] = '\0';
-    tft.fillRect(0, 0, PWR_X, TOPBAR_H, C_PANEL);
-    drawTextML(4, TOPBAR_H / 2, _title, C_TEXT, C_PANEL, 1);
+    char t[41];                       // size-1 max 40 chars across 240px
+    truncStr(t, sizeof(t), title, 39);
+    tft.fillRect(0, TITLE_BAR_Y, UI_W, TITLE_BAR_H, C_PANEL);
+    drawTextML(4, TITLE_BAR_Y + TITLE_BAR_H / 2, t, C_TEXT, C_PANEL, 1);
+    tft.drawFastHLine(0, TOP_H, UI_W, C_PANEL2);
 }
 
 // ============================================================
@@ -293,17 +345,17 @@ void uiBegin() {
     digitalWrite(PIN_BACKLITE, HIGH);   // backlight on
 
     tft.begin();                        // hardware SPI, library default speed
-    tft.setRotation(1);                 // landscape -> 320x240
+    tft.setRotation(0);                 // native portrait -> 240x320
+
+    // Clear the ENTIRE 240x320 GRAM once at boot so no stale noise band
+    // can show even if a later screen doesn't repaint everything.
+    tft.fillScreen(C_BG);
 
     // FT6236 on the shared Wire bus (already begun by hwBegin()).
     ctp.begin(40);                      // touch threshold 40
 
-    // NOTE: confirm on first flash that rawTouch() lands taps where they
-    // were made in landscape (x 0..319, y 0..239). See file-header @note.
-
     tft.setTextSize(1);
     tft.setTextWrap(false);
-    tft.fillScreen(C_BG);
 
     // Calibrate any initial touch state so the first poll is not a stale press.
     _wasTouched = false;
@@ -311,7 +363,8 @@ void uiBegin() {
 
 void uiSplash() {
     tft.fillScreen(C_BG);
-    drawTextMC(UI_W / 2, UI_H / 2 - 24, "KCMk1 Module Tester", C_TEXT, C_BG, 2);
+    // "KCMk1 Module Tester" @ size 2 = 19 chars * 12 = 228px < 240.
+    drawTextMC(UI_W / 2, UI_H / 2 - 30, "KCMk1 Module Tester", C_TEXT, C_BG, 2);
     drawTextMC(UI_W / 2, UI_H / 2 + 4,  "v" TESTER_VERSION_STR, C_ACCENT, C_BG, 1);
     drawTextMC(UI_W / 2, UI_H / 2 + 24, "Jeb's Controller Works", C_DIM, C_BG, 1);
 }
@@ -323,11 +376,11 @@ void uiScanBegin() {
     tft.fillScreen(C_BG);
     drawTopBarTitle("Select Module");
 
-    // Power area placeholder until the first uiPowerBar() call.
-    tft.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
+    // Power bar placeholder until the first uiPowerBar() call.
+    tft.fillRect(0, PWR_BAR_Y, UI_W, PWR_BAR_H, C_PANEL);
 
-    // Rescan button (bottom-right, ~80x32).
-    _rescanBtn = { (int16_t)(UI_W - 84), (int16_t)(UI_H - 36), 80, 32 };
+    // Rescan button: 200x32, centered at the bottom.
+    _rescanBtn = { (int16_t)((UI_W - 200) / 2), (int16_t)(UI_H - 36), 200, 32 };
     tft.fillRoundRect(_rescanBtn.x, _rescanBtn.y, _rescanBtn.w, _rescanBtn.h, 5, C_PANEL2);
     tft.drawRoundRect(_rescanBtn.x, _rescanBtn.y, _rescanBtn.w, _rescanBtn.h, 5, C_ACCENT);
     drawTextMC(_rescanBtn.x + _rescanBtn.w / 2, _rescanBtn.y + _rescanBtn.h / 2,
@@ -344,8 +397,9 @@ void uiScanList(const ModuleInfo* const* infos, const uint8_t* addrs,
 
     if (count == 0) {
         _scanRowCount = 0;
-        drawTextMC(UI_W / 2, SCAN_TOP + 50,
-                   "No modules found -- connect a module", C_DIM, C_BG, 1);
+        // Two short centered lines (one long line would exceed 240px).
+        drawTextMC(UI_W / 2, SCAN_TOP + 60, "No modules found", C_DIM, C_BG, 1);
+        drawTextMC(UI_W / 2, SCAN_TOP + 74, "connect a module", C_DIM, C_BG, 1);
         return;
     }
 
@@ -353,20 +407,24 @@ void uiScanList(const ModuleInfo* const* infos, const uint8_t* addrs,
     if (rows > SCAN_MAXROWS) rows = SCAN_MAXROWS;
     _scanRowCount = rows;
 
-    char buf[40];
+    char buf[16];
+    char name[37];
     for (uint8_t i = 0; i < rows; i++) {
-        int y = SCAN_TOP + i * SCAN_ROW_H;
-        Rect r = { 4, (int16_t)y, (int16_t)(UI_W - 8), (int16_t)(SCAN_ROW_H - 4) };
+        int y = SCAN_TOP + i * (SCAN_ROW_H + SCAN_ROW_GAP);
+        Rect r = { 2, (int16_t)y, (int16_t)(UI_W - 4), (int16_t)SCAN_ROW_H };
         _scanRows[i] = r;
 
         tft.fillRoundRect(r.x, r.y, r.w, r.h, 4, C_PANEL);
         tft.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_PANEL2);
 
-        const char* name = (infos[i] != nullptr) ? infos[i]->name : "Unknown";
-        drawTextML(r.x + 8, r.y + r.h / 2, name, C_TEXT, C_PANEL, 1);
+        // Line 1 (y+4..y+11): module name, truncated to the row width.
+        truncStr(name, sizeof(name),
+                 (infos[i] != nullptr) ? infos[i]->name : "Unknown", 36);
+        drawTextTL(r.x + 8, r.y + 4, name, C_TEXT, C_PANEL, 1);
 
-        snprintf(buf, sizeof(buf), "0x%02X  type 0x%02X", addrs[i], typeIds[i]);
-        drawTextMR(r.x + r.w - 8, r.y + r.h / 2, buf, C_DIM, C_PANEL, 1);
+        // Line 2 (y+17..y+24): address + type, dim.
+        snprintf(buf, sizeof(buf), "0x%02X  t:%02X", addrs[i], typeIds[i]);
+        drawTextTL(r.x + 8, r.y + 17, buf, C_DIM, C_PANEL, 1);
     }
 }
 
@@ -389,51 +447,54 @@ int uiScanTouch(uint8_t count) {
 void uiDashboardBegin(const ModuleInfo* info, uint8_t addr) {
     tft.fillScreen(C_BG);
 
-    // Top bar: module name + address.
-    char t[24];
+    // Title bar: module name + address.
+    char t[41];
     snprintf(t, sizeof(t), "%s 0x%02X",
              (info && info->name) ? info->name : "Module", addr);
     drawTopBarTitle(t);
-    tft.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
+    // Power bar placeholder until the first uiPowerBar() call.
+    tft.fillRect(0, PWR_BAR_Y, UI_W, PWR_BAR_H, C_PANEL);
 
     // Reset encoder running totals.
     _encTotal[0] = 0;
     _encTotal[1] = 0;
 
-    // Control button grid (two rows: 5 + 4).
+    // Control button grid (3 rows x 3 cols) at the bottom: y 236..319.
     for (uint8_t i = 0; i < CTRL_COUNT; i++) {
         int row = i / CTRL_PERROW;
         int col = i % CTRL_PERROW;
         int x = col * CTRL_W;
         int y = CTRL_AREA_Y + row * CTRL_H;
-        Rect r = { (int16_t)x, (int16_t)y, (int16_t)(CTRL_W - 2), (int16_t)(CTRL_H - 2) };
+        Rect r = { (int16_t)(x + 1), (int16_t)(y + 1),
+                   (int16_t)(CTRL_W - 2), (int16_t)(CTRL_H - 2) };   // ~78x26
         _ctrlBtns[i] = r;
         tft.fillRoundRect(r.x, r.y, r.w, r.h, 3, C_PANEL2);
         tft.drawRoundRect(r.x, r.y, r.w, r.h, 3, C_DIM);
         drawTextMC(r.x + r.w / 2, r.y + r.h / 2, _ctrlLabels[i], C_TEXT, C_PANEL2, 1);
     }
 
-    // Static labels for the input area depending on kind.
+    // Static label for the input area depending on kind.
     _inputAreaY = HDR_Y + HDR_H + 2;
     _inputAreaH = TOAST_Y - _inputAreaY;
     clearInputArea();
 
     if (!info) return;
-    switch (info->kind) {
+    switch (info->kind) {                       // all <= 39 chars @ size 1
         case MK_BUTTON12:    drawTextTL(4, _inputAreaY, "Buttons (12)", C_DIM, C_BG); break;
         case MK_BUTTON24:    drawTextTL(4, _inputAreaY, "Buttons + switches (24)", C_DIM, C_BG); break;
         case MK_JOYSTICK:    drawTextTL(4, _inputAreaY, "Axes X / Y / Z + buttons", C_DIM, C_BG); break;
         case MK_DISPLAY:     drawTextTL(4, _inputAreaY, "Buttons + value", C_DIM, C_BG); break;
-        case MK_THROTTLE:    drawTextTL(4, _inputAreaY, "Throttle: buttons + value + flags", C_DIM, C_BG); break;
+        case MK_THROTTLE:    drawTextTL(4, _inputAreaY, "Throttle: value + flags", C_DIM, C_BG); break;
         case MK_DUAL_ENCODER:drawTextTL(4, _inputAreaY, "Encoders + buttons", C_DIM, C_BG); break;
         default: break;
     }
 }
 
 void uiDashboardHeader(const ModuleState& st) {
-    // Repaint the header line under the top bar.
+    // Repaint the header status line under the top bars (band 30..41).
     tft.fillRect(0, HDR_Y, UI_W, HDR_H, C_BG);
 
+    // Worst case "SLEEPING" + "FAULT" + "tx:NN" = ~22 chars in 40 available.
     int x = 4;
     const char* lc = lifecycleText(st.lifecycle);
     drawTextML(x, HDR_Y + HDR_H / 2, lc, C_TEXT, C_BG, 1);
@@ -441,7 +502,6 @@ void uiDashboardHeader(const ModuleState& st) {
 
     if (st.fault) {
         drawTextML(x, HDR_Y + HDR_H / 2, "FAULT", C_ALERT, C_BG, 1);
-        x += txtW("FAULT", 1) + 12;
     }
 
     char buf[16];
@@ -453,13 +513,19 @@ void uiDashboardHeader(const ModuleState& st) {
 //  Per-kind input renderers
 // ------------------------------------------------------------
 
-/** @brief Draw a grid of button chips for indices with non-empty labels. */
+/**
+ * @brief Draw a grid of button chips for indices with non-empty labels.
+ *        4 chips per row (~55x22 each, pitch 26), up to 6 rows for 24
+ *        inputs: grid spans y = 58 .. 58+5*26+22 = 210, just inside the
+ *        toast line at 218.
+ */
 static void drawButtonGrid(const ModuleInfo* info, const ModuleState& st) {
-    const int cols = 6;
-    const int chipW = (UI_W - 8) / cols - 4;
+    const int cols = 4;
+    const int gap = 4;
+    const int gx = 4;
+    const int chipW = (UI_W - 2 * gx - (cols - 1) * gap) / cols;   // 55
     const int chipH = 22;
-    const int gx = 4, gyTop = _inputAreaY + 16;
-    const int gap = 6;
+    const int gyTop = _inputAreaY + 14;
 
     uint8_t n = info->inputCount;
     if (n > 24) n = 24;
@@ -476,17 +542,20 @@ static void drawButtonGrid(const ModuleInfo* info, const ModuleState& st) {
 }
 
 /**
- * @brief Draw N button chips in a single row from labels[0..n-1].
- * @param plane  bitfield giving the on/off state for each chip (bit i = chip i).
- *               Callers pass st.events for momentary state, or st.flags for
- *               persistent (held) button state (e.g. joystick buttons).
+ * @brief Draw N button chips in a single row from labels[0..n-1], sized
+ *        to share the 240px width evenly (2 -> 113px, 3 -> 73, 4 -> 53).
+ * @param plane  bitfield giving the on/off state for each chip (bit i =
+ *               chip i). Callers pass st.events for momentary state, or
+ *               st.flags for persistent (held) state (joystick buttons).
  */
 static void drawButtonRowMask(const ModuleInfo* info, uint32_t plane,
                               uint8_t n, int y) {
-    const int chipW = 70;
+    if (n == 0) return;
+    const int gap = 6;
+    const int x0 = 4;
+    const int chipW = (UI_W - 2 * x0 - (n - 1) * gap) / n;
     const int chipH = 22;
-    const int gap = 8;
-    int x = 4;
+    int x = x0;
     for (uint8_t i = 0; i < n; i++) {
         const char* lbl = (info->labels && i < info->inputCount && info->labels[i])
                               ? info->labels[i] : "btn";
@@ -519,70 +588,72 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
         case MK_JOYSTICK: {
             drawTextTL(4, _inputAreaY, "Axes X / Y / Z", C_DIM, C_BG);
             const char* axn[3] = { "X", "Y", "Z" };
-            int by = _inputAreaY + 18;
+            int by = _inputAreaY + 16;              // bar rows: pitch 26
             for (uint8_t a = 0; a < 3; a++) {
                 drawTextML(4, by + 8, axn[a], C_TEXT, C_BG, 1);
-                // Signed axis: map int16 range to [-1, 1].
+                // Signed axis mapped to [-1, 1]; bar spans between the axis
+                // letter and the numeric readout ("-32768" = 36px + margin).
                 float frac = (float)st.axis[a] / 32767.0f;
-                drawCenterBar(24, by, UI_W - 60, 16, frac, C_BAR);
+                drawCenterBar(16, by, UI_W - 16 - 44, 16, frac, C_BAR);
                 char nb[8];
                 snprintf(nb, sizeof(nb), "%d", (int)st.axis[a]);
-                drawTextMR(UI_W - 4, by + 8, nb, C_DIM, C_BG, 1);
-                by += 22;
+                drawTextMR(UI_W - 2, by + 8, nb, C_DIM, C_BG, 1);
+                by += 26;
             }
             // Joystick buttons use the PERSISTENT state plane (st.flags bits
             // 0..2) so a held button shows steadily, not just on the edge.
-            drawButtonRowMask(info, (uint32_t)st.flags, 3, by + 2);
+            drawButtonRowMask(info, (uint32_t)st.flags, 3, by + 4);
             break;
         }
 
         case MK_DISPLAY: {
             drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
-            drawButtonRow(info, st, 3, _inputAreaY + 16);
-            // Large numeric readout of value.
+            drawButtonRow(info, st, 3, _inputAreaY + 14);
+            // Large numeric readout of value ("65535" @ size 3 = 90px).
             char nb[12];
             snprintf(nb, sizeof(nb), "%u", (unsigned)st.value);
-            drawTextMC(UI_W / 2, _inputAreaY + 78, nb, C_TEXT, C_BG, 3);
+            drawTextMC(UI_W / 2, _inputAreaY + 80, nb, C_TEXT, C_BG, 3);
             // Optional flags bits.
-            char fb[20];
+            char fb[16];
             snprintf(fb, sizeof(fb), "flags 0x%02X", st.flags);
-            drawTextMC(UI_W / 2, _inputAreaY + 108, fb, C_DIM, C_BG, 1);
+            drawTextMC(UI_W / 2, _inputAreaY + 110, fb, C_DIM, C_BG, 1);
             break;
         }
 
         case MK_THROTTLE: {
             drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
-            drawButtonRow(info, st, 4, _inputAreaY + 16);
-            int by = _inputAreaY + 46;
-            // Value bar 0..1000.
+            drawButtonRow(info, st, 4, _inputAreaY + 14);
+            int by = _inputAreaY + 44;
+            // Value bar 0..1000 with the number to its right ("1000" = 24px).
             float frac = (float)st.value / 1000.0f;
-            drawBar(4, by, UI_W - 70, 18, frac, C_BAR);
+            drawBar(4, by, UI_W - 4 - 34, 18, frac, C_BAR);
             char nb[8];
             snprintf(nb, sizeof(nb), "%u", (unsigned)st.value);
-            drawTextMR(UI_W - 4, by + 9, nb, C_TEXT, C_BG, 1);
+            drawTextMR(UI_W - 2, by + 9, nb, C_TEXT, C_BG, 1);
             // Flag tags: bit0 enabled, bit1 precision, bit2 touch, bit3 motor.
             const char* tags[4] = { "EN", "PREC", "TCH", "MOT" };
+            const int tagW = (UI_W - 8 - 3 * 6) / 4;   // 53, 4 across
             int tx = 4, ty = by + 26;
             for (uint8_t b = 0; b < 4; b++) {
                 bool on = (st.flags >> b) & 1u;
-                drawChip(tx, ty, 50, 20, tags[b], on);
-                tx += 56;
+                drawChip(tx, ty, tagW, 20, tags[b], on);
+                tx += tagW + 6;
             }
             break;
         }
 
         case MK_DUAL_ENCODER: {
             drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
-            drawButtonRow(info, st, 2, _inputAreaY + 16);
+            drawButtonRow(info, st, 2, _inputAreaY + 14);
             // Accumulate signed deltas.
             _encTotal[0] += st.enc[0];
             _encTotal[1] += st.enc[1];
-            int by = _inputAreaY + 50;
-            char nb[24];
+            int by = _inputAreaY + 48;
+            char nb[20];                     // <= 19 chars @ size 2 = 228px
             for (uint8_t e = 0; e < 2; e++) {
                 snprintf(nb, sizeof(nb), "Enc %u: %ld", (unsigned)e, _encTotal[e]);
                 drawTextTL(8, by, nb, C_TEXT, C_BG, 2);
-                by += 30;
+                by += 26;                    // size-2 pitch >= 20
             }
             break;
         }
@@ -605,10 +676,11 @@ UIAction uiDashboardTouch() {
 // ============================================================
 //  Construction-test screen (generic, driven by ConstructionTest)
 //
-//  Full-screen step view: header, accent instruction, status body, and a
-//  bottom row of control buttons selected by btnMask. Buttons are laid out
-//  in a fixed order (PASS, FAIL, NEXT, RETRY, ABORT), evenly spread across
-//  whatever subset is shown.
+//  Full-screen step view: header, accent instruction (up to two
+//  lines), status body, and control buttons selected by btnMask at
+//  the bottom — up to 5 laid out as one row of 3 over one row of 2,
+//  each >= 70x34 for finger targets. Fixed order: PASS, FAIL, NEXT,
+//  RETRY, ABORT.
 // ============================================================
 namespace {
 struct CtBtnDef { uint8_t mask; CtButton id; const char* label; uint16_t color; };
@@ -625,53 +697,62 @@ void uiCtRender(const char* header, const char* instruction,
                 const char* const* status, uint8_t statusCount, uint8_t btnMask) {
     tft.fillScreen(C_BG);
 
-    // Header line (top).
-    drawTextTL(4, 4, header ? header : "", C_TEXT, C_BG, 1);
-    tft.drawFastHLine(0, 18, UI_W, C_PANEL2);
+    // Header line (top), truncated to the 40-char screen width.
+    char hdr[41];
+    truncStr(hdr, sizeof(hdr), header ? header : "", 39);
+    drawTextTL(4, 4, hdr, C_TEXT, C_BG, 1);
+    tft.drawFastHLine(0, 16, UI_W, C_PANEL2);
 
-    // Instruction line (accent).
-    if (instruction) {
-        drawTextTL(4, 24, instruction, C_ACCENT, C_BG, 1);
-    }
+    // Instruction (accent) — up to two wrapped lines of 38 chars
+    // (bands 22..29 and 34..41).
+    drawTextWrapped2(4, 22, instruction, 38, 12, C_ACCENT, C_BG);
 
-    // Status body — left-aligned lines.
-    int bodyTop = 42;
-    int lineH   = 16;
-    int maxLines = (CT_BTN_Y - 4 - bodyTop) / lineH;
-    if (maxLines < 0) maxLines = 0;
-    for (uint8_t i = 0; i < statusCount && status && i < (uint8_t)maxLines; i++) {
-        const char* s = status[i] ? status[i] : "";
-        drawTextTL(6, bodyTop + i * lineH, s, C_TEXT, C_BG, 1);
-    }
-
-    // Bottom control buttons — only those whose mask bit is set, laid out
-    // evenly across the full width.
+    // Collect the shown buttons first so the body knows its bottom edge.
+    uint8_t defIdx[CT_MAXBTNS];
     _ctBtnCount = 0;
     for (uint8_t i = 0; i < CT_MAXBTNS; i++) {
         if (btnMask & CT_DEFS[i].mask) {
+            defIdx[_ctBtnCount] = i;
             _ctBtnIds[_ctBtnCount] = CT_DEFS[i].id;
-            // Remember which def index this is for drawing below.
-            _ctBtnRects[_ctBtnCount].x = (int16_t)i;   // temp stash def index
             _ctBtnCount++;
         }
     }
+    uint8_t btnRows = (_ctBtnCount > 3) ? 2 : (_ctBtnCount > 0 ? 1 : 0);
+    int btnAreaTop = UI_H - btnRows * (CT_BTN_H + CT_BTN_GAP) - 2;
 
+    // Status body — left-aligned size-1 lines (39 chars max, pitch 14).
+    int bodyTop = 50;
+    int lineH   = 14;
+    int maxLines = (btnAreaTop - 4 - bodyTop) / lineH;
+    if (maxLines < 0) maxLines = 0;
+    char line[41];
+    for (uint8_t i = 0; i < statusCount && status && i < (uint8_t)maxLines; i++) {
+        truncStr(line, sizeof(line), status[i] ? status[i] : "", 39);
+        drawTextTL(6, bodyTop + i * lineH, line, C_TEXT, C_BG, 1);
+    }
+
+    // Bottom control buttons: first row holds up to 3, second the rest.
     if (_ctBtnCount > 0) {
-        int gap = 6;
-        int totalGap = gap * (_ctBtnCount + 1);
-        int btnW = (UI_W - totalGap) / _ctBtnCount;
-        int x = gap;
-        for (uint8_t i = 0; i < _ctBtnCount; i++) {
-            uint8_t defIdx = (uint8_t)_ctBtnRects[i].x;   // recover stashed index
-            const CtBtnDef& d = CT_DEFS[defIdx];
-            Rect r = { (int16_t)x, (int16_t)CT_BTN_Y, (int16_t)btnW, (int16_t)(CT_BTN_H - 2) };
-            _ctBtnRects[i] = r;
-            tft.fillRoundRect(r.x, r.y, r.w, r.h, 4, d.color);
-            tft.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_TEXT);
-            // Choose readable label colour against the fill.
-            uint16_t txt = (d.color == C_OFF) ? C_TEXT : C_BG;
-            drawTextMC(r.x + r.w / 2, r.y + r.h / 2, d.label, txt, d.color, 1);
-            x += btnW + gap;
+        uint8_t row0n = (_ctBtnCount > 3) ? 3 : _ctBtnCount;
+        uint8_t row1n = _ctBtnCount - row0n;
+        for (uint8_t row = 0; row < btnRows; row++) {
+            uint8_t nIn  = (row == 0) ? row0n : row1n;
+            uint8_t base = (row == 0) ? 0 : row0n;
+            int btnW = (UI_W - CT_BTN_GAP * (nIn + 1)) / nIn;   // 3->74, 2->114
+            int y = btnAreaTop + row * (CT_BTN_H + CT_BTN_GAP);
+            int x = CT_BTN_GAP;
+            for (uint8_t j = 0; j < nIn; j++) {
+                uint8_t bi = base + j;
+                const CtBtnDef& d = CT_DEFS[defIdx[bi]];
+                Rect r = { (int16_t)x, (int16_t)y, (int16_t)btnW, (int16_t)CT_BTN_H };
+                _ctBtnRects[bi] = r;
+                tft.fillRoundRect(r.x, r.y, r.w, r.h, 4, d.color);
+                tft.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_TEXT);
+                // Readable label colour against the fill.
+                uint16_t txt = (d.color == C_OFF) ? C_TEXT : C_BG;
+                drawTextMC(r.x + r.w / 2, r.y + r.h / 2, d.label, txt, d.color, 1);
+                x += btnW + CT_BTN_GAP;
+            }
         }
     }
 }
@@ -696,25 +777,27 @@ CtButton uiCtPoll(uint8_t btnMask) {
 //  Shared widgets
 // ============================================================
 void uiPowerBar(const PowerReading& p) {
-    // Repaint only the right portion of the top bar.
-    tft.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
+    // Repaint only the second top bar (y 14..27).
+    tft.fillRect(0, PWR_BAR_Y, UI_W, PWR_BAR_H, C_PANEL);
 
-    char buf[28];
+    char buf[24];                       // "12.04V 0.25A 3.0W" = 17 chars
     uint16_t fg;
     if (p.ok) {
-        snprintf(buf, sizeof(buf), "%.2fV  %.2fA  %.1fW",
+        snprintf(buf, sizeof(buf), "%.2fV %.2fA %.1fW",
                  (double)p.volts, (double)p.amps, (double)p.watts);
         fg = C_ACCENT;
     } else {
-        snprintf(buf, sizeof(buf), "--V  --A  --W");
+        snprintf(buf, sizeof(buf), "--V --A --W");
         fg = C_DIM;
     }
-    drawTextMR(UI_W - 4, TOPBAR_H / 2, buf, fg, C_PANEL, 1);
+    drawTextMR(UI_W - 4, PWR_BAR_Y + PWR_BAR_H / 2, buf, fg, C_PANEL, 1);
 }
 
 void uiToast(const char* msg) {
-    // Status line just above the control buttons, in accent colour.
+    // Status line just above the dashboard control area (band 218..233).
     tft.fillRect(0, TOAST_Y, UI_W, 16, C_BG);
     if (!msg) return;
-    drawTextML(6, TOAST_Y + 8, msg, C_ACCENT, C_BG, 1);
+    char m[41];
+    truncStr(m, sizeof(m), msg, 39);
+    drawTextML(6, TOAST_Y + 8, m, C_ACCENT, C_BG, 1);
 }
