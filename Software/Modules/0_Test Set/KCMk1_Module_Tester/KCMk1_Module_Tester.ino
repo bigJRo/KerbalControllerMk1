@@ -97,11 +97,22 @@ static void pollPower() {
 //  Redraws the list only when the result set changed.
 // ============================================================
 static void doScan() {
-    _foundCount = hwScanModules(_foundAddrs, MAX_FOUND);
-    for (uint8_t i = 0; i < _foundCount; i++) {
-        ModuleIdentity id = hwIdentify(_foundAddrs[i]);
-        _foundTypes[i] = id.valid ? id.typeId : 0x00;
-        _foundInfos[i] = id.valid ? catalogByType(id.typeId) : nullptr;
+    uint8_t rawAddrs[MAX_FOUND];
+    uint8_t rawCount = hwScanModules(rawAddrs, MAX_FOUND);
+
+    // Keep only devices with a sane identity reply. A real module always
+    // answers CMD_GET_IDENTITY (in every lifecycle state), so this drops
+    // phantom ACKs (no reply -> t:00, floating-bus reads -> t:FF) without
+    // hiding real hardware. An identified-but-uncatalogued type is kept
+    // and shown as Unknown — that's genuinely attached hardware.
+    _foundCount = 0;
+    for (uint8_t i = 0; i < rawCount; i++) {
+        ModuleIdentity id = hwIdentify(rawAddrs[i]);
+        if (!id.valid || id.typeId == 0x00 || id.typeId == 0xFF) continue;
+        _foundAddrs[_foundCount] = rawAddrs[i];
+        _foundTypes[_foundCount] = id.typeId;
+        _foundInfos[_foundCount] = catalogByType(id.typeId);
+        _foundCount++;
     }
 
     bool changed = (_foundCount != _prevCount);

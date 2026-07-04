@@ -99,12 +99,22 @@ bool hwModuleIntAsserted() {
 // ============================================================
 //  hwScanModules()
 // ============================================================
+// A single zero-length probe can return a spurious ACK on the Renesas
+// Wire core (phantom devices flashing into the scan list). Require the
+// address to ACK twice in a row before counting it as present.
+static bool _probeAddr(uint8_t a) {
+    for (uint8_t i = 0; i < 2; i++) {
+        Wire.beginTransmission(a);
+        if (Wire.endTransmission() != 0) return false;
+    }
+    return true;
+}
+
 uint8_t hwScanModules(uint8_t* outAddrs, uint8_t maxAddrs) {
     uint8_t n = 0;
     for (uint8_t a = I2C_MODULE_ADDR_MIN; a <= I2C_MODULE_ADDR_MAX && n < maxAddrs; a++) {
         if (a == I2C_ADDR_FT6236 || a == I2C_ADDR_INA228) continue; // on-board
-        Wire.beginTransmission(a);
-        if (Wire.endTransmission() == 0) outAddrs[n++] = a;
+        if (_probeAddr(a)) outAddrs[n++] = a;
     }
     return n;
 }
