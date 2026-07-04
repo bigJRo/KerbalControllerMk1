@@ -72,9 +72,16 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 
 | Library | Notes |
 |---|---|
-| **LovyanGFX** | ILI9341 display + FT6236 touch driver (Library Manager) |
-| **KerbalModuleCommon** | Shared KCMk1 protocol/palette header (this repo) |
-| Wire | Arduino core I2C |
+| **Adafruit_ILI9341** | Display driver (Library Manager; pulls in Adafruit_GFX + Adafruit_BusIO) |
+| **Adafruit_GFX** | Graphics primitives (dependency of the above) |
+| **Adafruit_FT6206** | Capacitive touch driver — the FT6236 is register-compatible |
+| **KerbalModuleCommon** | Shared KCMk1 protocol/palette header (this repo), v1.7.1+ |
+| Wire / SPI | Arduino core |
+
+> **Why not LovyanGFX?** It has no Renesas RA4M1 (renesas_uno) platform port — its
+> generic fallback fails to compile on the UNO R4 core, and it also defines a global
+> `RGBColor` alias that collides with KerbalModuleCommon's `struct RGBColor`. The
+> Adafruit stack works on the RA4M1 via generic SPI/Wire.
 
 ---
 
@@ -83,12 +90,14 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 | Setting | Value |
 |---|---|
 | Board | Seeed XIAO RA4M1 (Arduino UNO R4 / Renesas RA4M1 core) |
-| Libraries | LovyanGFX, KerbalModuleCommon |
+| Libraries | Adafruit_ILI9341, Adafruit_GFX, Adafruit_FT6206, KerbalModuleCommon |
 | Programmer | USB (UF2 / bootloader) |
 
-1. Install the Renesas Arduino core (Arduino UNO R4 / XIAO RA4M1) and LovyanGFX.
-2. Ensure `KerbalModuleCommon` is on the library path.
-3. Open this folder in the Arduino IDE and upload.
+1. Install the Renesas Arduino core (Arduino UNO R4 / XIAO RA4M1).
+2. Library Manager: install **Adafruit_ILI9341** (accept its Adafruit_GFX/BusIO
+   dependencies) and **Adafruit_FT6206**.
+3. Ensure `KerbalModuleCommon` (v1.7.1+, header-only) is on the library path.
+4. Open this folder in the Arduino IDE and upload.
 
 ---
 
@@ -137,8 +146,10 @@ Drive commands used: `CMD_SET_LED_STATE` (LED walk), `CMD_SET_THROTTLE` (motor s
 This firmware is written against the schematic and the current protocol but **has not
 been compiled or run on hardware here**. On first bring-up, verify:
 
-- The LovyanGFX `LGFX` config for the XIAO RA4M1 (SPI host, panel reset = software,
-  rotation, and FT6236 touch coordinate mapping).
+- The FT6236 **touch coordinate mapping**: the touch controller reports native
+  portrait (240×320) coordinates; the UI maps them to landscape in one place
+  (`rawTouch()` in `TesterUI.cpp`). If taps land mirrored/swapped on hardware,
+  flip the axes there as commented.
 - INA228 address (`0x40`, A0/A1 = GND) and the current/power calibration
   (`INA228_MAX_CURRENT_A`, `INA228_RSHUNT_OHMS` in `TesterConfig.h`) against bench readings.
 - The module reset polarity/pulse on P1.

@@ -5,113 +5,57 @@
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Touchscreen UI implementation (LovyanGFX + FT6236) for the
+ * @brief       Touchscreen UI implementation (Adafruit_GFX + FT6206) for the
  *              Module Tester. Pure rendering + touch hit-testing; all protocol
- *              logic lives in TesterHW. Screens: splash, scan/select, and the
- *              per-module test dashboard.
+ *              logic lives in TesterHW. Screens: splash, scan/select, the
+ *              per-module test dashboard, and the construction-test view.
  *
  *              Target board: Seeed XIAO RA4M1 (Arduino UNO R4 core), 2.8"
  *              ER-TFT028A3-4 (ILI9341, 240x320 4-wire SPI), FT6236 capacitive
  *              touch (I2C 0x38). The display is driven in landscape (rotation
  *              1 -> 320x240).
  *
- * @note        This file CANNOT be compiled in the authoring environment.
- *              The LovyanGFX bus/panel/touch config below (especially the
- *              RA4M1 spi_host default, the SDA/SCL/INT pin assignment for the
- *              integrated Touch_FT5x06, and the touch-to-rotation coordinate
- *              mapping) MUST be confirmed on the first flash. After init the
- *              code calls lcd.setRotation(1); LovyanGFX rotates touch
- *              coordinates with the panel when the touch x/y ranges are set to
- *              the panel's NATIVE (portrait) extents — hence x_max=239,
- *              y_max=319 below. If taps land mirrored/swapped, adjust the
- *              Touch_FT5x06 x_min/x_max/y_min/y_max (and offset_rotation) and
- *              re-flash.
+ * @note        Dependencies: Adafruit_GFX + Adafruit_ILI9341 + Adafruit_FT6206
+ *              (+ Adafruit_BusIO). LovyanGFX is NOT used — it does not support
+ *              the renesas_uno architecture ('HardwareSPI' does not name a
+ *              type) and its global `using RGBColor` alias collides with
+ *              KerbalModuleCommon's struct RGBColor.
+ *
+ *              The ILI9341 uses hardware SPI on the XIAO's fixed SPI pins
+ *              (SCK/MISO/MOSI = D8/D9/D10) with CS/DC from TesterConfig.h and
+ *              no reset line (software reset). The FT6236 shares Wire (begun
+ *              by hwBegin(); do not call Wire.begin() here).
+ *
+ *              TOUCH MAPPING: the FT6236 reports native portrait coordinates
+ *              (p.x 0..239, p.y 0..319). rawTouch() maps them to rotation(1)
+ *              landscape as sx = p.y, sy = 239 - p.x. FT6236 panels vary in
+ *              origin — if taps land mirrored on hardware, flip the mapping
+ *              in rawTouch() (try sx = 319 - p.y and/or sy = p.x) and
+ *              re-flash. rawTouch() is the single place the mapping lives.
  *
  * @license     GNU General Public License v3.0 (GPL-3.0)
  */
 
 #include <Arduino.h>
-#define LGFX_USE_V1
-#include <LovyanGFX.hpp>
 
 #include "TesterConfig.h"
-#include "TesterUI.h"
-#include "ModuleCatalog.h"
-#include "TesterHW.h"
+#include "TesterUI.h"            // pulls in ModuleCatalog.h / TesterHW.h
 #include <KerbalModuleCommon.h>
 
-// ============================================================
-//  LovyanGFX device definition (XIAO RA4M1 / UNO R4 target)
-//
-//  One user SPI peripheral on the RA4M1: we let LovyanGFX pick the
-//  default spi_host for the UNO R4 core rather than hard-coding a
-//  Renesas SCI/SPI channel. Bus is shared (touch is on a separate
-//  I2C port, but bus_shared keeps CS handling well-behaved).
-// ============================================================
-class LGFX : public lgfx::LGFX_Device {
-    lgfx::Panel_ILI9341  _panel;
-    lgfx::Bus_SPI        _bus;
-    lgfx::Touch_FT5x06   _touch;   // FT6236 is FT5x06-protocol compatible
-
-public:
-    LGFX() {
-        {   // --- SPI bus ---
-            auto cfg = _bus.config();
-            cfg.freq_write = 40000000;
-            cfg.freq_read  = 16000000;
-            cfg.pin_sclk   = PIN_TFT_SCK;
-            cfg.pin_mosi   = PIN_TFT_MOSI;
-            cfg.pin_miso   = PIN_TFT_MISO;
-            cfg.pin_dc     = PIN_TFT_DC;
-            cfg.spi_mode   = 0;
-            // RA4M1: rely on the LovyanGFX UNO R4 default SPI host. Leaving
-            // spi_host unset lets the core map the user SPI peripheral.
-            _bus.config(cfg);
-            _panel.setBus(&_bus);
-        }
-        {   // --- ILI9341 panel ---
-            auto cfg = _panel.config();
-            cfg.pin_cs       = PIN_TFT_CS;
-            cfg.pin_rst      = -1;   // RST not broken out — software reset
-            cfg.pin_busy     = -1;
-            cfg.panel_width  = TFT_NATIVE_W;   // 240 (portrait native)
-            cfg.panel_height = TFT_NATIVE_H;   // 320
-            cfg.offset_x     = 0;
-            cfg.offset_y     = 0;
-            cfg.offset_rotation = 0;
-            cfg.readable     = true;
-            cfg.invert       = false;
-            cfg.rgb_order    = false;
-            cfg.bus_shared   = true;
-            _panel.config(cfg);
-        }
-        {   // --- FT6236 capacitive touch (FT5x06 protocol) ---
-            auto cfg = _touch.config();
-            cfg.x_min      = 0;
-            cfg.x_max      = TFT_NATIVE_W - 1;   // 239 — NATIVE extents; LGFX rotates
-            cfg.y_min      = 0;
-            cfg.y_max      = TFT_NATIVE_H - 1;   // 319
-            cfg.pin_int    = PIN_CTP_INT;
-            cfg.bus_shared = true;
-            cfg.offset_rotation = 0;
-            cfg.i2c_port   = 0;          // shared Wire (D4=SDA, D5=SCL)
-            cfg.i2c_addr   = I2C_ADDR_FT6236;   // 0x38
-            cfg.pin_sda    = SDA;        // XIAO RA4M1 default D4
-            cfg.pin_scl    = SCL;        // XIAO RA4M1 default D5
-            cfg.freq       = 400000;
-            _touch.config(cfg);
-            _panel.setTouch(&_touch);
-        }
-        setPanel(&_panel);
-    }
-};
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+#include <Adafruit_FT6206.h>
 
 // ============================================================
-//  Device + colour palette
+//  Devices — ILI9341 on hardware SPI (fixed XIAO SPI pins), no
+//  panel RST (software reset). FT6236 speaks the FT6206 protocol.
 // ============================================================
-static LGFX lcd;
+static Adafruit_ILI9341 tft(PIN_TFT_CS, PIN_TFT_DC);
+static Adafruit_FT6206  ctp;
 
-// 16-bit RGB565 palette — dark, high contrast.
+// ============================================================
+//  Colour palette — 16-bit RGB565, dark, high contrast.
+// ============================================================
 static constexpr uint16_t C_BG     = 0x0000;   // black background
 static constexpr uint16_t C_PANEL  = 0x18E3;   // dark slate panel
 static constexpr uint16_t C_PANEL2 = 0x2104;   // slightly lighter panel
@@ -139,7 +83,7 @@ static constexpr int SCAN_TOP   = TOPBAR_H + 6;
 static constexpr int SCAN_MAXROWS = 5;         // fits above the Rescan button row
 
 // Dashboard control buttons.
-// Nine buttons now — laid out as two rows (5 on the top row, 4 on the bottom
+// Nine buttons — laid out as two rows (5 on the top row, 4 on the bottom
 // row) so each chip stays comfortably touchable on a 320px-wide panel.
 static constexpr int CTRL_COUNT  = 9;
 static constexpr int CTRL_PERROW = 5;
@@ -199,64 +143,124 @@ static int _inputAreaY = HDR_Y + HDR_H + 2;
 static int _inputAreaH = TOAST_Y - (HDR_Y + HDR_H + 2);
 
 // ============================================================
-//  Small drawing helpers (file-local)
+//  Text helpers (Adafruit_GFX classic 5x7 font)
+//
+//  Adafruit_GFX has no drawString/textWidth/datum support, so text is
+//  placed with setCursor + print. Width is approximated as
+//  strlen * 6 * size (each glyph cell is 6 px wide incl. spacing) and
+//  glyph height as 8 * size — exact for the built-in classic font.
 // ============================================================
+
+/** @brief Rendered width of a string at a given text size (classic font). */
+static int txtW(const char* s, uint8_t size) {
+    return (int)strlen(s) * 6 * size;
+}
+
+/** @brief Draw text with its top-left corner at (x, y). */
+static void drawTextTL(int x, int y, const char* s,
+                       uint16_t fg, uint16_t bg, uint8_t size = 1) {
+    tft.setTextSize(size);
+    tft.setTextColor(fg, bg);
+    tft.setCursor(x, y);
+    tft.print(s);
+}
+
+/** @brief Draw text vertically centered on cy, left-aligned at x. */
+static void drawTextML(int x, int cy, const char* s,
+                       uint16_t fg, uint16_t bg, uint8_t size = 1) {
+    drawTextTL(x, cy - 4 * size, s, fg, bg, size);
+}
+
+/** @brief Draw text centered on (cx, cy). */
+static void drawTextMC(int cx, int cy, const char* s,
+                       uint16_t fg, uint16_t bg, uint8_t size = 1) {
+    drawTextTL(cx - txtW(s, size) / 2, cy - 4 * size, s, fg, bg, size);
+}
+
+/** @brief Draw text vertically centered on cy, right-aligned at rx. */
+static void drawTextMR(int rx, int cy, const char* s,
+                       uint16_t fg, uint16_t bg, uint8_t size = 1) {
+    drawTextTL(rx - txtW(s, size), cy - 4 * size, s, fg, bg, size);
+}
+
+// ============================================================
+//  Touch helpers
+// ============================================================
+
+/**
+ * @brief  Raw touch read mapped to landscape (rotation 1) coordinates.
+ *
+ *         The FT6236 reports native portrait coordinates (p.x 0..239,
+ *         p.y 0..319). Map portrait -> rotation(1) landscape 320x240:
+ *         sx = p.y, sy = 239 - p.x.
+ *
+ *         NOTE: FT6236 panels vary in origin; if taps are mirrored on
+ *         hardware, try sx = 319 - p.y and/or sy = p.x. This is the single
+ *         place the mapping lives.
+ */
+static bool rawTouch(int16_t& sx, int16_t& sy) {
+    if (!ctp.touched()) return false;
+    TS_Point p = ctp.getPoint();
+    sx = p.y;            // 0..319
+    sy = 239 - p.x;      // 0..239
+    return true;
+}
 
 /** @brief Read a debounced press-edge touch. Returns true once per press. */
 static bool readPress(int16_t& x, int16_t& y) {
-    int32_t tx, ty;
-    bool down = lcd.getTouch(&tx, &ty);
+    int16_t tx, ty;
+    bool down = rawTouch(tx, ty);
     bool edge = false;
     if (down && !_wasTouched) {
-        x = (int16_t)tx;
-        y = (int16_t)ty;
+        x = tx;
+        y = ty;
         edge = true;
     }
     _wasTouched = down;
     return edge;
 }
 
+// ============================================================
+//  Small drawing helpers (file-local)
+// ============================================================
+
 /** @brief Draw a labelled "chip" (button/state indicator). */
 static void drawChip(int x, int y, int w, int h, const char* label, bool on) {
     uint16_t fill = on ? C_ON : C_OFF;
     uint16_t txt  = on ? C_BG : C_DIM;
-    lcd.fillRoundRect(x, y, w, h, 4, fill);
-    lcd.setTextColor(txt, fill);
-    lcd.setTextDatum(textdatum_t::middle_center);
-    lcd.setTextSize(1);
-    lcd.drawString(label, x + w / 2, y + h / 2);
-    lcd.setTextDatum(textdatum_t::top_left);
+    tft.fillRoundRect(x, y, w, h, 4, fill);
+    drawTextMC(x + w / 2, y + h / 2, label, txt, fill, 1);
 }
 
 /** @brief Draw a horizontal bar with a track and value fill (0..1 fraction). */
 static void drawBar(int x, int y, int w, int h, float frac, uint16_t fill) {
     if (frac < 0) frac = 0;
     if (frac > 1) frac = 1;
-    lcd.fillRect(x, y, w, h, C_BARBG);
-    lcd.drawRect(x, y, w, h, C_DIM);
+    tft.fillRect(x, y, w, h, C_BARBG);
+    tft.drawRect(x, y, w, h, C_DIM);
     int fw = (int)((w - 2) * frac + 0.5f);
-    if (fw > 0) lcd.fillRect(x + 1, y + 1, fw, h - 2, fill);
+    if (fw > 0) tft.fillRect(x + 1, y + 1, fw, h - 2, fill);
 }
 
 /** @brief Draw a centered signed bar (center origin) for joystick axes. */
 static void drawCenterBar(int x, int y, int w, int h, float frac, uint16_t fill) {
     if (frac < -1) frac = -1;
     if (frac > 1) frac = 1;
-    lcd.fillRect(x, y, w, h, C_BARBG);
-    lcd.drawRect(x, y, w, h, C_DIM);
+    tft.fillRect(x, y, w, h, C_BARBG);
+    tft.drawRect(x, y, w, h, C_DIM);
     int mid = x + w / 2;
-    lcd.drawFastVLine(mid, y, h, C_DIM);
+    tft.drawFastVLine(mid, y, h, C_DIM);
     int half = (w / 2) - 2;
     int len  = (int)(half * (frac < 0 ? -frac : frac) + 0.5f);
     if (len > 0) {
-        if (frac >= 0) lcd.fillRect(mid + 1, y + 1, len, h - 2, fill);
-        else           lcd.fillRect(mid - len, y + 1, len, h - 2, fill);
+        if (frac >= 0) tft.fillRect(mid + 1, y + 1, len, h - 2, fill);
+        else           tft.fillRect(mid - len, y + 1, len, h - 2, fill);
     }
 }
 
 /** @brief Clear the live input area to background. */
 static void clearInputArea() {
-    lcd.fillRect(0, _inputAreaY, UI_W, _inputAreaH, C_BG);
+    tft.fillRect(0, _inputAreaY, UI_W, _inputAreaH, C_BG);
 }
 
 /** @brief Decode lifecycle byte to short text. */
@@ -277,12 +281,8 @@ static char _title[24] = "";
 static void drawTopBarTitle(const char* title) {
     strncpy(_title, title, sizeof(_title) - 1);
     _title[sizeof(_title) - 1] = '\0';
-    lcd.fillRect(0, 0, PWR_X, TOPBAR_H, C_PANEL);
-    lcd.setTextColor(C_TEXT, C_PANEL);
-    lcd.setTextDatum(textdatum_t::middle_left);
-    lcd.setTextSize(1);
-    lcd.drawString(_title, 4, TOPBAR_H / 2);
-    lcd.setTextDatum(textdatum_t::top_left);
+    tft.fillRect(0, 0, PWR_X, TOPBAR_H, C_PANEL);
+    drawTextML(4, TOPBAR_H / 2, _title, C_TEXT, C_PANEL, 1);
 }
 
 // ============================================================
@@ -292,56 +292,46 @@ void uiBegin() {
     pinMode(PIN_BACKLITE, OUTPUT);
     digitalWrite(PIN_BACKLITE, HIGH);   // backlight on
 
-    lcd.init();
-    lcd.setRotation(1);                 // landscape -> 320x240
+    tft.begin();                        // hardware SPI, library default speed
+    tft.setRotation(1);                 // landscape -> 320x240
 
-    // NOTE: confirm on first flash that getTouch() returns landscape
-    // coordinates (x in 0..319, y in 0..239). See file-header @note.
+    // FT6236 on the shared Wire bus (already begun by hwBegin()).
+    ctp.begin(40);                      // touch threshold 40
 
-    lcd.setTextSize(1);
-    lcd.setTextWrap(false);
-    lcd.fillScreen(C_BG);
+    // NOTE: confirm on first flash that rawTouch() lands taps where they
+    // were made in landscape (x 0..319, y 0..239). See file-header @note.
+
+    tft.setTextSize(1);
+    tft.setTextWrap(false);
+    tft.fillScreen(C_BG);
 
     // Calibrate any initial touch state so the first poll is not a stale press.
     _wasTouched = false;
 }
 
 void uiSplash() {
-    lcd.fillScreen(C_BG);
-    lcd.setTextDatum(textdatum_t::middle_center);
-
-    lcd.setTextColor(C_TEXT, C_BG);
-    lcd.setTextSize(2);
-    lcd.drawString("KCMk1 Module Tester", UI_W / 2, UI_H / 2 - 24);
-
-    lcd.setTextSize(1);
-    lcd.setTextColor(C_ACCENT, C_BG);
-    lcd.drawString("v" TESTER_VERSION_STR, UI_W / 2, UI_H / 2 + 4);
-
-    lcd.setTextColor(C_DIM, C_BG);
-    lcd.drawString("Jeb's Controller Works", UI_W / 2, UI_H / 2 + 24);
-
-    lcd.setTextDatum(textdatum_t::top_left);
+    tft.fillScreen(C_BG);
+    drawTextMC(UI_W / 2, UI_H / 2 - 24, "KCMk1 Module Tester", C_TEXT, C_BG, 2);
+    drawTextMC(UI_W / 2, UI_H / 2 + 4,  "v" TESTER_VERSION_STR, C_ACCENT, C_BG, 1);
+    drawTextMC(UI_W / 2, UI_H / 2 + 24, "Jeb's Controller Works", C_DIM, C_BG, 1);
 }
 
 // ============================================================
 //  Scan / select screen
 // ============================================================
 void uiScanBegin() {
-    lcd.fillScreen(C_BG);
+    tft.fillScreen(C_BG);
     drawTopBarTitle("Select Module");
 
     // Power area placeholder until the first uiPowerBar() call.
-    lcd.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
+    tft.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
 
     // Rescan button (bottom-right, ~80x32).
     _rescanBtn = { (int16_t)(UI_W - 84), (int16_t)(UI_H - 36), 80, 32 };
-    lcd.fillRoundRect(_rescanBtn.x, _rescanBtn.y, _rescanBtn.w, _rescanBtn.h, 5, C_PANEL2);
-    lcd.drawRoundRect(_rescanBtn.x, _rescanBtn.y, _rescanBtn.w, _rescanBtn.h, 5, C_ACCENT);
-    lcd.setTextColor(C_TEXT, C_PANEL2);
-    lcd.setTextDatum(textdatum_t::middle_center);
-    lcd.drawString("Rescan", _rescanBtn.x + _rescanBtn.w / 2, _rescanBtn.y + _rescanBtn.h / 2);
-    lcd.setTextDatum(textdatum_t::top_left);
+    tft.fillRoundRect(_rescanBtn.x, _rescanBtn.y, _rescanBtn.w, _rescanBtn.h, 5, C_PANEL2);
+    tft.drawRoundRect(_rescanBtn.x, _rescanBtn.y, _rescanBtn.w, _rescanBtn.h, 5, C_ACCENT);
+    drawTextMC(_rescanBtn.x + _rescanBtn.w / 2, _rescanBtn.y + _rescanBtn.h / 2,
+               "Rescan", C_TEXT, C_PANEL2, 1);
 
     _scanRowCount = 0;
 }
@@ -350,14 +340,12 @@ void uiScanList(const ModuleInfo* const* infos, const uint8_t* addrs,
                 const uint8_t* typeIds, uint8_t count) {
     // Clear the list region (above the Rescan button).
     int listBottom = UI_H - 40;
-    lcd.fillRect(0, SCAN_TOP, UI_W, listBottom - SCAN_TOP, C_BG);
+    tft.fillRect(0, SCAN_TOP, UI_W, listBottom - SCAN_TOP, C_BG);
 
     if (count == 0) {
         _scanRowCount = 0;
-        lcd.setTextColor(C_DIM, C_BG);
-        lcd.setTextDatum(textdatum_t::middle_center);
-        lcd.drawString("No modules found -- connect a module", UI_W / 2, SCAN_TOP + 50);
-        lcd.setTextDatum(textdatum_t::top_left);
+        drawTextMC(UI_W / 2, SCAN_TOP + 50,
+                   "No modules found -- connect a module", C_DIM, C_BG, 1);
         return;
     }
 
@@ -371,20 +359,15 @@ void uiScanList(const ModuleInfo* const* infos, const uint8_t* addrs,
         Rect r = { 4, (int16_t)y, (int16_t)(UI_W - 8), (int16_t)(SCAN_ROW_H - 4) };
         _scanRows[i] = r;
 
-        lcd.fillRoundRect(r.x, r.y, r.w, r.h, 4, C_PANEL);
-        lcd.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_PANEL2);
+        tft.fillRoundRect(r.x, r.y, r.w, r.h, 4, C_PANEL);
+        tft.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_PANEL2);
 
         const char* name = (infos[i] != nullptr) ? infos[i]->name : "Unknown";
-        lcd.setTextColor(C_TEXT, C_PANEL);
-        lcd.setTextDatum(textdatum_t::middle_left);
-        lcd.drawString(name, r.x + 8, r.y + r.h / 2);
+        drawTextML(r.x + 8, r.y + r.h / 2, name, C_TEXT, C_PANEL, 1);
 
         snprintf(buf, sizeof(buf), "0x%02X  type 0x%02X", addrs[i], typeIds[i]);
-        lcd.setTextColor(C_DIM, C_PANEL);
-        lcd.setTextDatum(textdatum_t::middle_right);
-        lcd.drawString(buf, r.x + r.w - 8, r.y + r.h / 2);
+        drawTextMR(r.x + r.w - 8, r.y + r.h / 2, buf, C_DIM, C_PANEL, 1);
     }
-    lcd.setTextDatum(textdatum_t::top_left);
 }
 
 int uiScanTouch(uint8_t count) {
@@ -404,14 +387,14 @@ int uiScanTouch(uint8_t count) {
 //  Dashboard screen
 // ============================================================
 void uiDashboardBegin(const ModuleInfo* info, uint8_t addr) {
-    lcd.fillScreen(C_BG);
+    tft.fillScreen(C_BG);
 
     // Top bar: module name + address.
     char t[24];
     snprintf(t, sizeof(t), "%s 0x%02X",
              (info && info->name) ? info->name : "Module", addr);
     drawTopBarTitle(t);
-    lcd.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
+    tft.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
 
     // Reset encoder running totals.
     _encTotal[0] = 0;
@@ -425,13 +408,10 @@ void uiDashboardBegin(const ModuleInfo* info, uint8_t addr) {
         int y = CTRL_AREA_Y + row * CTRL_H;
         Rect r = { (int16_t)x, (int16_t)y, (int16_t)(CTRL_W - 2), (int16_t)(CTRL_H - 2) };
         _ctrlBtns[i] = r;
-        lcd.fillRoundRect(r.x, r.y, r.w, r.h, 3, C_PANEL2);
-        lcd.drawRoundRect(r.x, r.y, r.w, r.h, 3, C_DIM);
-        lcd.setTextColor(C_TEXT, C_PANEL2);
-        lcd.setTextDatum(textdatum_t::middle_center);
-        lcd.drawString(_ctrlLabels[i], r.x + r.w / 2, r.y + r.h / 2);
+        tft.fillRoundRect(r.x, r.y, r.w, r.h, 3, C_PANEL2);
+        tft.drawRoundRect(r.x, r.y, r.w, r.h, 3, C_DIM);
+        drawTextMC(r.x + r.w / 2, r.y + r.h / 2, _ctrlLabels[i], C_TEXT, C_PANEL2, 1);
     }
-    lcd.setTextDatum(textdatum_t::top_left);
 
     // Static labels for the input area depending on kind.
     _inputAreaY = HDR_Y + HDR_H + 2;
@@ -439,44 +419,34 @@ void uiDashboardBegin(const ModuleInfo* info, uint8_t addr) {
     clearInputArea();
 
     if (!info) return;
-    lcd.setTextColor(C_DIM, C_BG);
-    lcd.setTextDatum(textdatum_t::top_left);
     switch (info->kind) {
-        case MK_BUTTON12:    lcd.drawString("Buttons (12)", 4, _inputAreaY); break;
-        case MK_BUTTON24:    lcd.drawString("Buttons + switches (24)", 4, _inputAreaY); break;
-        case MK_JOYSTICK:    lcd.drawString("Axes X / Y / Z + buttons", 4, _inputAreaY); break;
-        case MK_DISPLAY:     lcd.drawString("Buttons + value", 4, _inputAreaY); break;
-        case MK_THROTTLE:    lcd.drawString("Throttle: buttons + value + flags", 4, _inputAreaY); break;
-        case MK_DUAL_ENCODER:lcd.drawString("Encoders + buttons", 4, _inputAreaY); break;
+        case MK_BUTTON12:    drawTextTL(4, _inputAreaY, "Buttons (12)", C_DIM, C_BG); break;
+        case MK_BUTTON24:    drawTextTL(4, _inputAreaY, "Buttons + switches (24)", C_DIM, C_BG); break;
+        case MK_JOYSTICK:    drawTextTL(4, _inputAreaY, "Axes X / Y / Z + buttons", C_DIM, C_BG); break;
+        case MK_DISPLAY:     drawTextTL(4, _inputAreaY, "Buttons + value", C_DIM, C_BG); break;
+        case MK_THROTTLE:    drawTextTL(4, _inputAreaY, "Throttle: buttons + value + flags", C_DIM, C_BG); break;
+        case MK_DUAL_ENCODER:drawTextTL(4, _inputAreaY, "Encoders + buttons", C_DIM, C_BG); break;
         default: break;
     }
 }
 
 void uiDashboardHeader(const ModuleState& st) {
     // Repaint the header line under the top bar.
-    lcd.fillRect(0, HDR_Y, UI_W, HDR_H, C_BG);
-    lcd.setTextDatum(textdatum_t::middle_left);
-    lcd.setTextSize(1);
+    tft.fillRect(0, HDR_Y, UI_W, HDR_H, C_BG);
 
     int x = 4;
-    lcd.setTextColor(C_TEXT, C_BG);
     const char* lc = lifecycleText(st.lifecycle);
-    lcd.drawString(lc, x, HDR_Y + HDR_H / 2);
-    x += (int)lcd.textWidth(lc) + 12;
+    drawTextML(x, HDR_Y + HDR_H / 2, lc, C_TEXT, C_BG, 1);
+    x += txtW(lc, 1) + 12;
 
     if (st.fault) {
-        lcd.setTextColor(C_ALERT, C_BG);
-        lcd.drawString("FAULT", x, HDR_Y + HDR_H / 2);
-        x += (int)lcd.textWidth("FAULT") + 12;
+        drawTextML(x, HDR_Y + HDR_H / 2, "FAULT", C_ALERT, C_BG, 1);
+        x += txtW("FAULT", 1) + 12;
     }
 
     char buf[16];
     snprintf(buf, sizeof(buf), "tx:%02u", (unsigned)st.txCounter);
-    lcd.setTextColor(C_DIM, C_BG);
-    lcd.setTextDatum(textdatum_t::middle_right);
-    lcd.drawString(buf, UI_W - 4, HDR_Y + HDR_H / 2);
-
-    lcd.setTextDatum(textdatum_t::top_left);
+    drawTextMR(UI_W - 4, HDR_Y + HDR_H / 2, buf, C_DIM, C_BG, 1);
 }
 
 // ------------------------------------------------------------
@@ -536,38 +506,30 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
     if (!info) return;
     clearInputArea();
 
-    // Re-draw the static kind label (cleared above).
-    lcd.setTextColor(C_DIM, C_BG);
-    lcd.setTextDatum(textdatum_t::top_left);
-
     switch (info->kind) {
 
         case MK_BUTTON12:
         case MK_BUTTON24:
-            lcd.drawString(info->kind == MK_BUTTON24 ? "Buttons + switches" : "Buttons",
-                           4, _inputAreaY);
+            drawTextTL(4, _inputAreaY,
+                       info->kind == MK_BUTTON24 ? "Buttons + switches" : "Buttons",
+                       C_DIM, C_BG);
             drawButtonGrid(info, st);
             break;
 
         case MK_JOYSTICK: {
-            lcd.drawString("Axes X / Y / Z", 4, _inputAreaY);
+            drawTextTL(4, _inputAreaY, "Axes X / Y / Z", C_DIM, C_BG);
             const char* axn[3] = { "X", "Y", "Z" };
             int by = _inputAreaY + 18;
             for (uint8_t a = 0; a < 3; a++) {
-                lcd.setTextColor(C_TEXT, C_BG);
-                lcd.setTextDatum(textdatum_t::middle_left);
-                lcd.drawString(axn[a], 4, by + 8);
+                drawTextML(4, by + 8, axn[a], C_TEXT, C_BG, 1);
                 // Signed axis: map int16 range to [-1, 1].
                 float frac = (float)st.axis[a] / 32767.0f;
                 drawCenterBar(24, by, UI_W - 60, 16, frac, C_BAR);
                 char nb[8];
                 snprintf(nb, sizeof(nb), "%d", (int)st.axis[a]);
-                lcd.setTextColor(C_DIM, C_BG);
-                lcd.setTextDatum(textdatum_t::middle_right);
-                lcd.drawString(nb, UI_W - 4, by + 8);
+                drawTextMR(UI_W - 4, by + 8, nb, C_DIM, C_BG, 1);
                 by += 22;
             }
-            lcd.setTextDatum(textdatum_t::top_left);
             // Joystick buttons use the PERSISTENT state plane (st.flags bits
             // 0..2) so a held button shows steadily, not just on the edge.
             drawButtonRowMask(info, (uint32_t)st.flags, 3, by + 2);
@@ -575,27 +537,21 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
         }
 
         case MK_DISPLAY: {
-            lcd.drawString("Buttons", 4, _inputAreaY);
+            drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
             drawButtonRow(info, st, 3, _inputAreaY + 16);
             // Large numeric readout of value.
             char nb[12];
             snprintf(nb, sizeof(nb), "%u", (unsigned)st.value);
-            lcd.setTextColor(C_TEXT, C_BG);
-            lcd.setTextDatum(textdatum_t::middle_center);
-            lcd.setTextSize(3);
-            lcd.drawString(nb, UI_W / 2, _inputAreaY + 78);
-            lcd.setTextSize(1);
+            drawTextMC(UI_W / 2, _inputAreaY + 78, nb, C_TEXT, C_BG, 3);
             // Optional flags bits.
             char fb[20];
             snprintf(fb, sizeof(fb), "flags 0x%02X", st.flags);
-            lcd.setTextColor(C_DIM, C_BG);
-            lcd.drawString(fb, UI_W / 2, _inputAreaY + 108);
-            lcd.setTextDatum(textdatum_t::top_left);
+            drawTextMC(UI_W / 2, _inputAreaY + 108, fb, C_DIM, C_BG, 1);
             break;
         }
 
         case MK_THROTTLE: {
-            lcd.drawString("Buttons", 4, _inputAreaY);
+            drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
             drawButtonRow(info, st, 4, _inputAreaY + 16);
             int by = _inputAreaY + 46;
             // Value bar 0..1000.
@@ -603,10 +559,7 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
             drawBar(4, by, UI_W - 70, 18, frac, C_BAR);
             char nb[8];
             snprintf(nb, sizeof(nb), "%u", (unsigned)st.value);
-            lcd.setTextColor(C_TEXT, C_BG);
-            lcd.setTextDatum(textdatum_t::middle_right);
-            lcd.drawString(nb, UI_W - 4, by + 9);
-            lcd.setTextDatum(textdatum_t::top_left);
+            drawTextMR(UI_W - 4, by + 9, nb, C_TEXT, C_BG, 1);
             // Flag tags: bit0 enabled, bit1 precision, bit2 touch, bit3 motor.
             const char* tags[4] = { "EN", "PREC", "TCH", "MOT" };
             int tx = 4, ty = by + 26;
@@ -619,7 +572,7 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
         }
 
         case MK_DUAL_ENCODER: {
-            lcd.drawString("Buttons", 4, _inputAreaY);
+            drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
             drawButtonRow(info, st, 2, _inputAreaY + 16);
             // Accumulate signed deltas.
             _encTotal[0] += st.enc[0];
@@ -628,11 +581,7 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
             char nb[24];
             for (uint8_t e = 0; e < 2; e++) {
                 snprintf(nb, sizeof(nb), "Enc %u: %ld", (unsigned)e, _encTotal[e]);
-                lcd.setTextColor(C_TEXT, C_BG);
-                lcd.setTextDatum(textdatum_t::top_left);
-                lcd.setTextSize(2);
-                lcd.drawString(nb, 8, by);
-                lcd.setTextSize(1);
+                drawTextTL(8, by, nb, C_TEXT, C_BG, 2);
                 by += 30;
             }
             break;
@@ -641,7 +590,6 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
         default:
             break;
     }
-    lcd.setTextDatum(textdatum_t::top_left);
 }
 
 UIAction uiDashboardTouch() {
@@ -675,19 +623,15 @@ const CtBtnDef CT_DEFS[CT_MAXBTNS] = {
 
 void uiCtRender(const char* header, const char* instruction,
                 const char* const* status, uint8_t statusCount, uint8_t btnMask) {
-    lcd.fillScreen(C_BG);
+    tft.fillScreen(C_BG);
 
     // Header line (top).
-    lcd.setTextSize(1);
-    lcd.setTextColor(C_TEXT, C_BG);
-    lcd.setTextDatum(textdatum_t::top_left);
-    lcd.drawString(header ? header : "", 4, 4);
-    lcd.drawFastHLine(0, 18, UI_W, C_PANEL2);
+    drawTextTL(4, 4, header ? header : "", C_TEXT, C_BG, 1);
+    tft.drawFastHLine(0, 18, UI_W, C_PANEL2);
 
     // Instruction line (accent).
     if (instruction) {
-        lcd.setTextColor(C_ACCENT, C_BG);
-        lcd.drawString(instruction, 4, 24);
+        drawTextTL(4, 24, instruction, C_ACCENT, C_BG, 1);
     }
 
     // Status body — left-aligned lines.
@@ -695,10 +639,9 @@ void uiCtRender(const char* header, const char* instruction,
     int lineH   = 16;
     int maxLines = (CT_BTN_Y - 4 - bodyTop) / lineH;
     if (maxLines < 0) maxLines = 0;
-    lcd.setTextColor(C_TEXT, C_BG);
     for (uint8_t i = 0; i < statusCount && status && i < (uint8_t)maxLines; i++) {
         const char* s = status[i] ? status[i] : "";
-        lcd.drawString(s, 6, bodyTop + i * lineH);
+        drawTextTL(6, bodyTop + i * lineH, s, C_TEXT, C_BG, 1);
     }
 
     // Bottom control buttons — only those whose mask bit is set, laid out
@@ -723,17 +666,14 @@ void uiCtRender(const char* header, const char* instruction,
             const CtBtnDef& d = CT_DEFS[defIdx];
             Rect r = { (int16_t)x, (int16_t)CT_BTN_Y, (int16_t)btnW, (int16_t)(CT_BTN_H - 2) };
             _ctBtnRects[i] = r;
-            lcd.fillRoundRect(r.x, r.y, r.w, r.h, 4, d.color);
-            lcd.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_TEXT);
+            tft.fillRoundRect(r.x, r.y, r.w, r.h, 4, d.color);
+            tft.drawRoundRect(r.x, r.y, r.w, r.h, 4, C_TEXT);
             // Choose readable label colour against the fill.
             uint16_t txt = (d.color == C_OFF) ? C_TEXT : C_BG;
-            lcd.setTextColor(txt, d.color);
-            lcd.setTextDatum(textdatum_t::middle_center);
-            lcd.drawString(d.label, r.x + r.w / 2, r.y + r.h / 2);
+            drawTextMC(r.x + r.w / 2, r.y + r.h / 2, d.label, txt, d.color, 1);
             x += btnW + gap;
         }
     }
-    lcd.setTextDatum(textdatum_t::top_left);
 }
 
 CtButton uiCtPoll(uint8_t btnMask) {
@@ -757,30 +697,24 @@ CtButton uiCtPoll(uint8_t btnMask) {
 // ============================================================
 void uiPowerBar(const PowerReading& p) {
     // Repaint only the right portion of the top bar.
-    lcd.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
+    tft.fillRect(PWR_X, 0, UI_W - PWR_X, TOPBAR_H, C_PANEL);
 
     char buf[28];
+    uint16_t fg;
     if (p.ok) {
         snprintf(buf, sizeof(buf), "%.2fV  %.2fA  %.1fW",
                  (double)p.volts, (double)p.amps, (double)p.watts);
-        lcd.setTextColor(C_ACCENT, C_PANEL);
+        fg = C_ACCENT;
     } else {
         snprintf(buf, sizeof(buf), "--V  --A  --W");
-        lcd.setTextColor(C_DIM, C_PANEL);
+        fg = C_DIM;
     }
-    lcd.setTextSize(1);
-    lcd.setTextDatum(textdatum_t::middle_right);
-    lcd.drawString(buf, UI_W - 4, TOPBAR_H / 2);
-    lcd.setTextDatum(textdatum_t::top_left);
+    drawTextMR(UI_W - 4, TOPBAR_H / 2, buf, fg, C_PANEL, 1);
 }
 
 void uiToast(const char* msg) {
     // Status line just above the control buttons, in accent colour.
-    lcd.fillRect(0, TOAST_Y, UI_W, 16, C_BG);
+    tft.fillRect(0, TOAST_Y, UI_W, 16, C_BG);
     if (!msg) return;
-    lcd.setTextColor(C_ACCENT, C_BG);
-    lcd.setTextSize(1);
-    lcd.setTextDatum(textdatum_t::middle_left);
-    lcd.drawString(msg, 6, TOAST_Y + 8);
-    lcd.setTextDatum(textdatum_t::top_left);
+    drawTextML(6, TOAST_Y + 8, msg, C_ACCENT, C_BG, 1);
 }
