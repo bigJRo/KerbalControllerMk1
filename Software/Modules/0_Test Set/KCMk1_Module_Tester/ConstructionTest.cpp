@@ -43,7 +43,13 @@ struct Step { StepType type; uint8_t arg; };
 // Per-kind step sequences -----------------------------------
 static const Step STEPS_BTN[]   = { {ST_ENABLE,0},{ST_LEDWALK,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 static const Step STEPS_JOY[]   = { {ST_ENABLE,0},{ST_AXIS,0},{ST_BTNWALK,0},{ST_LEDWALK,0},{ST_SUMMARY,0} };
-static const Step STEPS_DISP[]  = { {ST_ENABLE,0},{ST_SEG,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_LEDWALK,0},{ST_SUMMARY,0} };
+// Generic display module (e.g. Pre-Warp Time): display is on and CMD_SET_VALUE
+// is honoured as soon as it goes ACTIVE, so the SET_VALUE segment cycle and the
+// live value/button steps all work directly. Like every K7SC display module it
+// drives its own button LEDs (ignores CMD_SET_LED_STATE), so the LED check is a
+// bulb test (lights all segments + LEDs via the module's own handler) rather
+// than an LED walk.
+static const Step STEPS_DISP[]  = { {ST_ENABLE,0},{ST_SEG,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_BULB,0},{ST_SUMMARY,0} };
 // GPWS Input is an autonomous display module: it lights its 7-seg and reports
 // its secondary buttons only when the operator engages GPWS mode (BTN01), and
 // it drives its own button LEDs (ignores CMD_SET_LED_STATE). So it gets its
