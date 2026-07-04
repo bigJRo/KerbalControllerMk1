@@ -72,7 +72,7 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 
 | Library | Notes |
 |---|---|
-| **Adafruit_ILI9341 ≥ 1.6.0** | Display driver (Library Manager; pulls in Adafruit_GFX + Adafruit_BusIO). v1.6.0+ required — earlier versions unconditionally include `wiring_private.h`, which the Renesas core lacks |
+| **Adafruit_ILI9341 ≥ 1.6.0** | Display driver (Library Manager; pulls in Adafruit_GFX + Adafruit_BusIO). See the XIAO RA4M1 note below |
 | **Adafruit_GFX** (latest) | Graphics primitives (dependency of the above) |
 | **Adafruit_FT6206** | Capacitive touch driver — the FT6236 is register-compatible |
 | **KerbalModuleCommon** | Shared KCMk1 protocol/palette header (this repo), v1.7.1+ |
@@ -82,6 +82,17 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 > generic fallback fails to compile on the UNO R4 core, and it also defines a global
 > `RGBColor` alias that collides with KerbalModuleCommon's `struct RGBColor`. The
 > Adafruit stack works on the RA4M1 via generic SPI/Wire.
+
+> **XIAO RA4M1 note — `wiring_private.h` shim required.** Adafruit_ILI9341 guards its
+> `#include "wiring_private.h"` only for the *official* UNO R4 board macros
+> (`ARDUINO_UNOR4_MINIMA`/`_WIFI`). The Seeed XIAO RA4M1 sets a different board macro,
+> so even v1.6.3 fails with `wiring_private.h: No such file or directory`. Fix: create
+> an **empty file** named `wiring_private.h` in the library's root folder (next to
+> `Adafruit_ILI9341.cpp`, e.g. `Documents/Arduino/libraries/Adafruit_ILI9341/`). The
+> quoted include resolves to the shim and the build proceeds. Re-create it after
+> library updates. (Equivalent alternative: add `&& !defined(ARDUINO_ARCH_RENESAS)` to
+> the guard in `Adafruit_ILI9341.cpp`.) If another Adafruit library ever throws the
+> same error, the same empty-file shim in that library's folder fixes it.
 
 ---
 
