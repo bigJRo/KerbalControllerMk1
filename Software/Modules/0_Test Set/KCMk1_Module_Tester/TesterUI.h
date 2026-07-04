@@ -90,8 +90,11 @@ int uiScanTouch(uint8_t count);
 //  Dashboard screen
 // ------------------------------------------------------------
 
-/** @brief Draw the static dashboard chrome for a selected module. */
-void uiDashboardBegin(const ModuleInfo* info, uint8_t addr);
+/** @brief Draw the static dashboard chrome for a selected module.
+ *         fwMajor/fwMinor/caps (from the identity reply) are shown in the
+ *         title bar; pass zeros if unknown. */
+void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
+                      uint8_t fwMajor = 0, uint8_t fwMinor = 0, uint8_t caps = 0);
 
 /** @brief Refresh the dynamic header (lifecycle / fault / tx counter). */
 void uiDashboardHeader(const ModuleState& st);

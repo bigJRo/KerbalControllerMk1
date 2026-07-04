@@ -457,13 +457,21 @@ int uiScanTouch(uint8_t count) {
 // ============================================================
 //  Dashboard screen
 // ============================================================
-void uiDashboardBegin(const ModuleInfo* info, uint8_t addr) {
+void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
+                      uint8_t fwMajor, uint8_t fwMinor, uint8_t caps) {
     tft.fillScreen(C_BG);
 
-    // Title bar: module name + address.
+    // Title bar: module name + address + firmware version + capability
+    // flags from the identity reply (e.g. "GPWS Input 0x2A fw2.0 c:10").
     char t[41];
-    snprintf(t, sizeof(t), "%s 0x%02X",
-             (info && info->name) ? info->name : "Module", addr);
+    if (fwMajor || fwMinor || caps) {
+        snprintf(t, sizeof(t), "%s 0x%02X fw%u.%u c:%02X",
+                 (info && info->name) ? info->name : "Module", addr,
+                 fwMajor, fwMinor, caps);
+    } else {
+        snprintf(t, sizeof(t), "%s 0x%02X",
+                 (info && info->name) ? info->name : "Module", addr);
+    }
     drawTopBarTitle(t);
     // Power bar placeholder until the first uiPowerBar() call.
     tft.fillRect(0, PWR_BAR_Y, UI_W, PWR_BAR_H, C_PANEL);

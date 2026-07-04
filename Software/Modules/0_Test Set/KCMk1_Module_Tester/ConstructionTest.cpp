@@ -115,13 +115,19 @@ static void sendValue(uint16_t v) {
 // Read the module's current state (throttled) into the persistent _st.
 // Returns true if _st was refreshed this call; _st always holds the most
 // recent successful parse so handlers can read it on throttled frames too.
+// Reads ONLY when the module asserts INT — a read with nothing queued
+// returns a zeroed header + 0xFF fill, which would set every event bit and
+// instantly (falsely) pass the button-walk step. The type ID in the header
+// must also match the module under test.
 static bool readState() {
     uint32_t now = millis();
     if (now - _tPoll < INPUT_POLL_MS) return false;
+    if (!hwModuleIntAsserted()) return false;
     _tPoll = now;
     uint8_t pkt[16];
-    uint8_t n = hwReadPacket(_addr, pkt, kindPacketSize(_info->kind));
-    if (n < KMC_HEADER_SIZE) return false;
+    uint8_t expect = kindPacketSize(_info->kind);
+    uint8_t n = hwReadPacket(_addr, pkt, expect);
+    if (n < expect || pkt[1] != _info->typeId) return false;
     hwParsePacket(_info, pkt, n, _st);
     return true;
 }

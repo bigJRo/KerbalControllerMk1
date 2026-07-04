@@ -54,6 +54,8 @@ static uint8_t            _foundCount = 0;
 static const ModuleInfo*  _sel     = nullptr;
 static uint8_t            _selAddr = 0;
 static uint8_t            _selPkt  = 0;   // expected packet size
+static ModuleIdentity     _selId   = {0, 0, 0, 0, false};
+static bool               _bootAcked = false;  // CMD_DISABLE sent for BOOT_READY
 
 // Timers
 static uint32_t _tScan = 0, _tPower = 0, _tInput = 0, _tSplash = 0;
@@ -263,9 +265,12 @@ void loop() {
                     _sel     = _foundInfos[idx];
                     _selAddr = _foundAddrs[idx];
                     _selPkt  = kindPacketSize(_sel->kind);
+                    _selId   = hwIdentify(_selAddr);   // fw version + caps for the header
                     _ledCycleState = 0;
+                    _bootAcked = false;
                     _state   = ST_DASHBOARD;
-                    uiDashboardBegin(_sel, _selAddr);
+                    uiDashboardBegin(_sel, _selAddr,
+                                     _selId.fwMajor, _selId.fwMinor, _selId.caps);
                     _tInput = 0;
                 } else {
                     uiToast("Unknown module type");
@@ -275,16 +280,29 @@ void loop() {
         }
 
         case ST_DASHBOARD: {
-            // Poll the module packet on INT or on the input interval.
-            if (hwModuleIntAsserted() || (now - _tInput >= INPUT_POLL_MS)) {
+            // Read a packet ONLY when the module asserts INT (the protocol
+            // is INT-triggered; a read with nothing queued returns a zeroed
+            // header + 0xFF fill — junk). Rate-limited while INT is held.
+            if (hwModuleIntAsserted() && (now - _tInput >= INPUT_POLL_MS)) {
                 _tInput = now;
                 uint8_t pkt[16];
                 uint8_t got = hwReadPacket(_selAddr, pkt, _selPkt);
-                if (got >= KMC_HEADER_SIZE) {
+                // Validate: full packet and the type ID in the header must
+                // match the selected module — anything else is a bus glitch.
+                if (got >= _selPkt && pkt[1] == _sel->typeId) {
                     ModuleState st;
                     hwParsePacket(_sel, pkt, got, st);
                     uiDashboardHeader(st);
                     uiDashboardInputs(_sel, st);
+
+                    // Spec §3: after reading a BOOT_READY packet the
+                    // controller acknowledges with CMD_DISABLE (module goes
+                    // dark/DISABLED until CMD_ENABLE). Do it once per boot.
+                    if (st.lifecycle == KMC_STATUS_BOOT_READY && !_bootAcked) {
+                        _bootAcked = true;
+                        hwSendCommand(_selAddr, KMC_CMD_DISABLE, nullptr, 0);
+                        uiToast("BOOT acked > DISABLED");
+                    }
                 }
             }
             if (now - _tPower >= POWER_POLL_MS) { _tPower = now; pollPower(); }
@@ -298,7 +316,8 @@ void loop() {
             if (!ctActive()) {
                 // Test finished or aborted — return to the dashboard.
                 _state = ST_DASHBOARD;
-                uiDashboardBegin(_sel, _selAddr);
+                uiDashboardBegin(_sel, _selAddr,
+                                 _selId.fwMajor, _selId.fwMinor, _selId.caps);
                 _tInput = 0;
                 _ledCycleState = 0;
             }
