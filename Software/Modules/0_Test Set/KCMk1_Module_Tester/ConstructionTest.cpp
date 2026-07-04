@@ -44,6 +44,13 @@ struct Step { StepType type; uint8_t arg; };
 static const Step STEPS_BTN[]   = { {ST_ENABLE,0},{ST_LEDWALK,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 static const Step STEPS_JOY[]   = { {ST_ENABLE,0},{ST_AXIS,0},{ST_BTNWALK,0},{ST_LEDWALK,0},{ST_SUMMARY,0} };
 static const Step STEPS_DISP[]  = { {ST_ENABLE,0},{ST_SEG,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_LEDWALK,0},{ST_SUMMARY,0} };
+// GPWS Input is an autonomous display module: it lights its 7-seg and reports
+// its secondary buttons only when the operator engages GPWS mode (BTN01), and
+// it drives its own button LEDs (ignores CMD_SET_LED_STATE). So it gets its
+// own sequence: CMD_BULB_TEST exercises all segments + LEDs at once (works
+// regardless of mode), then value-delta and button-walk verify the live
+// inputs. No LED walk — the module owns its LEDs and the bulb step covers them.
+static const Step STEPS_GPWS[]  = { {ST_ENABLE,0},{ST_BULB,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 static const Step STEPS_THR[]   = { {ST_ENABLE,0},{ST_MOTOR,0},{ST_TOUCH,0},{ST_BULB,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 static const Step STEPS_DENC[]  = { {ST_ENC,0},{ST_ENC,1},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 
@@ -193,7 +200,13 @@ void ctBegin(const ModuleInfo* info, uint8_t addr) {
         case MK_BUTTON12:
         case MK_BUTTON24:     _steps = STEPS_BTN;  _stepCount = sizeof(STEPS_BTN)/sizeof(Step);  break;
         case MK_JOYSTICK:     _steps = STEPS_JOY;  _stepCount = sizeof(STEPS_JOY)/sizeof(Step);  break;
-        case MK_DISPLAY:      _steps = STEPS_DISP; _stepCount = sizeof(STEPS_DISP)/sizeof(Step); break;
+        case MK_DISPLAY:
+            if (info->typeId == KMC_TYPE_GPWS_INPUT) {
+                _steps = STEPS_GPWS; _stepCount = sizeof(STEPS_GPWS)/sizeof(Step);
+            } else {
+                _steps = STEPS_DISP; _stepCount = sizeof(STEPS_DISP)/sizeof(Step);
+            }
+            break;
         case MK_THROTTLE:     _steps = STEPS_THR;  _stepCount = sizeof(STEPS_THR)/sizeof(Step);  break;
         case MK_DUAL_ENCODER: _steps = STEPS_DENC; _stepCount = sizeof(STEPS_DENC)/sizeof(Step); break;
         default:              _active = false; return;
@@ -358,7 +371,12 @@ static void stepValueDelta() {
     snprintf(_line[0], 28, "Value: %u", _st.value);
     snprintf(_line[1], 28, "up:%s  down:%s", _vUp ? "ok" : "--", _vDown ? "ok" : "--");
     _linePtr[0] = _line[0]; _linePtr[1] = _line[1];
-    ctRender(hdr, "Turn encoder up then down", _linePtr, 2, CTB_FAIL | CTB_ABORT);
+    // GPWS reports the encoder only once GPWS mode is engaged (BTN01), so
+    // remind the operator to turn it on before expecting value changes.
+    const char* instr = (_info->typeId == KMC_TYPE_GPWS_INPUT)
+                            ? "Press GPWS Enable, then turn encoder"
+                            : "Turn encoder up then down";
+    ctRender(hdr, instr, _linePtr, 2, CTB_FAIL | CTB_ABORT);
     if (_vUp && _vDown) { finishStep(true); return; }
     CtButton b = ctPoll(CTB_FAIL | CTB_ABORT);
     if (b == CT_FAIL) finishStep(false);
@@ -394,7 +412,12 @@ static void stepBulb() {
     static const uint8_t BULB_ON  = 0x01;
     static const uint8_t BULB_OFF = 0x00;
     if (_sub == 0) { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_ON, 1); _sub = 1; }
-    ctRender(hdr, "All discrete LEDs lit?", nullptr, 0,
+    // Display modules light every 7-seg segment as well as their button LEDs
+    // under bulb test; button/throttle modules light discrete LEDs only.
+    const char* prompt = (_info->kind == MK_DISPLAY)
+                             ? "All segments + LEDs lit?"
+                             : "All discrete LEDs lit?";
+    ctRender(hdr, prompt, nullptr, 0,
                CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
     CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
     if (!_active) {   // aborted from this screen — stop the bulb first
