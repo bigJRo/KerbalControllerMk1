@@ -164,9 +164,10 @@ static void _dispatch() {
             break;
 
         case CMD_BULB_TEST:
-            // Flash the panel indicator LED (LED1) briefly
-            // LED1 is the board-mounted indicator, not a button LED
-            // Use button LEDs as proxy since they are user-visible
+            // Spec: 1-byte payload, 0x01 = start, 0x00 = stop. This module's
+            // bulb test is timed (button LEDs as user-visible proxy), so a
+            // 0x00 "stop" is a no-op — it must NOT retrigger the flash.
+            if (_cmdLen >= 2 && _cmdBuf[1] == 0x00) break;
             buttonsLEDsOn();
             delay(THR_BULB_TEST_MS);
             if (!_enabled) buttonsLEDsOff();

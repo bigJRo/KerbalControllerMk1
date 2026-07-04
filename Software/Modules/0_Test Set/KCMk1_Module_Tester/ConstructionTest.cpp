@@ -158,6 +158,32 @@ static CtButton ctPoll(uint8_t mask) {
     return b;
 }
 
+// Render only when the content actually changed. ctUpdate() runs every
+// loop() pass; unconditionally repainting the full screen flickers badly
+// on hardware. FNV-1a hash over everything that affects the rendering.
+static uint32_t _lastRenderSig = 0;
+
+static uint32_t _sigStr(uint32_t h, const char* s) {
+    if (!s) return h ^ 0x9E3779B9UL;
+    while (*s) { h ^= (uint8_t)*s++; h *= 16777619UL; }
+    h ^= 0xFF; h *= 16777619UL;   // terminator so "ab","c" != "a","bc"
+    return h;
+}
+
+static void ctRender(const char* header, const char* instruction,
+                     const char* const* status, uint8_t statusCount,
+                     uint8_t btnMask) {
+    uint32_t h = 2166136261UL;
+    h = _sigStr(h, header);
+    h = _sigStr(h, instruction);
+    for (uint8_t i = 0; i < statusCount; i++) h = _sigStr(h, status[i]);
+    h ^= btnMask; h *= 16777619UL;
+    h ^= statusCount; h *= 16777619UL;
+    if (h == _lastRenderSig) return;
+    _lastRenderSig = h;
+    uiCtRender(header, instruction, status, statusCount, btnMask);
+}
+
 // ============================================================
 //  ctBegin / ctActive
 // ============================================================
@@ -174,6 +200,7 @@ void ctBegin(const ModuleInfo* info, uint8_t addr) {
     }
     memset(_result, 0, sizeof(_result));
     _stepIdx = 0; _entered = false;
+    _lastRenderSig = 0;   // force the first ctRender paint
 }
 
 bool ctActive() { return _active; }
@@ -197,10 +224,10 @@ static void stepLedWalk() {
         else sendLedSingle(_ledIdx);
         snprintf(_line[0], 28, "Lighting LED %u of %u", (unsigned)(_ledIdx + 1), (unsigned)total);
         _linePtr[0] = _line[0];
-        uiCtRender(hdr, "Watch each LED light in turn", _linePtr, 1, CTB_ABORT);
+        ctRender(hdr, "Watch each LED light in turn", _linePtr, 1, CTB_ABORT);
         ctPoll(CTB_ABORT);
     } else {
-        uiCtRender(hdr, "All LEDs lit in order/colour?", nullptr, 0,
+        ctRender(hdr, "All LEDs lit in order/colour?", nullptr, 0,
                    CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
         CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
         if (b == CT_PASS) finishStep(true);
@@ -231,7 +258,7 @@ static void stepBtnWalk() {
             _linePtr[hintRow] = _line[hintRow]; hintRow++; shown++;
         }
     }
-    uiCtRender(hdr, "Press every input once", _linePtr, hintRow,
+    ctRender(hdr, "Press every input once", _linePtr, hintRow,
                CTB_PASS | CTB_FAIL | CTB_ABORT);
 
     if (need > 0 && got >= need) { finishStep(true); return; }   // auto-pass
@@ -256,7 +283,7 @@ static void stepAxis() {
         _linePtr[i] = _line[i];
         if (span < 16000) rangedAll = false;
     }
-    uiCtRender(hdr, "Move stick full range + twist", _linePtr, 3,
+    ctRender(hdr, "Move stick full range + twist", _linePtr, 3,
                CTB_PASS | CTB_FAIL | CTB_ABORT);
     if (rangedAll) { finishStep(true); return; }
     CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
@@ -275,11 +302,11 @@ static void stepMotor() {
         if (_sub < 3) {
             snprintf(_line[0], 28, "Driving to %s", tnames[_sub]);
             _linePtr[0] = _line[0];
-            uiCtRender(hdr, "Slider should move full range", _linePtr, 1, CTB_ABORT);
+            ctRender(hdr, "Slider should move full range", _linePtr, 1, CTB_ABORT);
             ctPoll(CTB_ABORT);
         }
     } else {
-        uiCtRender(hdr, "Slider moved smoothly 0-100%?", nullptr, 0,
+        ctRender(hdr, "Slider moved smoothly 0-100%?", nullptr, 0,
                    CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
         CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
         if (b == CT_PASS) finishStep(true);
@@ -295,7 +322,7 @@ static void stepTouch() {
     snprintf(_line[0], 28, "Touch: %s", touch ? "YES" : "no");
     snprintf(_line[1], 28, "Wiper value: %u", _st.value);
     _linePtr[0] = _line[0]; _linePtr[1] = _line[1];
-    uiCtRender(hdr, "Grab & slide by hand", _linePtr, 2,
+    ctRender(hdr, "Grab & slide by hand", _linePtr, 2,
                CTB_PASS | CTB_FAIL | CTB_ABORT);
     CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
     if (b == CT_PASS) finishStep(true);
@@ -311,7 +338,7 @@ static void stepEnc(uint8_t idx) {
     snprintf(_line[0], 28, "ENC%u  CW:%s  CCW:%s", (unsigned)(idx + 1),
              _encCW ? "ok" : "--", _encCCW ? "ok" : "--");
     _linePtr[0] = _line[0];
-    uiCtRender(hdr, "Turn the encoder both ways", _linePtr, 1,
+    ctRender(hdr, "Turn the encoder both ways", _linePtr, 1,
                CTB_FAIL | CTB_ABORT);
     if (_encCW && _encCCW) { finishStep(true); return; }
     CtButton b = ctPoll(CTB_FAIL | CTB_ABORT);
@@ -331,7 +358,7 @@ static void stepValueDelta() {
     snprintf(_line[0], 28, "Value: %u", _st.value);
     snprintf(_line[1], 28, "up:%s  down:%s", _vUp ? "ok" : "--", _vDown ? "ok" : "--");
     _linePtr[0] = _line[0]; _linePtr[1] = _line[1];
-    uiCtRender(hdr, "Turn encoder up then down", _linePtr, 2, CTB_FAIL | CTB_ABORT);
+    ctRender(hdr, "Turn encoder up then down", _linePtr, 2, CTB_FAIL | CTB_ABORT);
     if (_vUp && _vDown) { finishStep(true); return; }
     CtButton b = ctPoll(CTB_FAIL | CTB_ABORT);
     if (b == CT_FAIL) finishStep(false);
@@ -344,7 +371,7 @@ static void stepSeg() {
     if (millis() - _t0 >= 1000 || _sub == 0) { _t0 = millis(); _sub = 1; sendValue(v); }
     snprintf(_line[0], 28, "Showing %u", v);
     _linePtr[0] = _line[0];
-    uiCtRender(hdr, "All digits & segments OK?", _linePtr, 1,
+    ctRender(hdr, "All digits & segments OK?", _linePtr, 1,
                CTB_PASS | CTB_FAIL | CTB_ABORT);
     CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
     if (b == CT_PASS) finishStep(true);
@@ -353,12 +380,21 @@ static void stepSeg() {
 
 static void stepBulb() {
     char hdr[40]; buildHeader(hdr, sizeof(hdr));
-    if (_sub == 0) { hwSendCommand(_addr, KMC_CMD_BULB_TEST, nullptr, 0); _sub = 1; }
-    uiCtRender(hdr, "All discrete LEDs lit?", nullptr, 0,
+    // CMD_BULB_TEST is persistent per spec: 0x01 starts, 0x00 stops — the
+    // master controls the duration. Always send the explicit stop on every
+    // exit path or the module stays latched in bulb mode.
+    static const uint8_t BULB_ON  = 0x01;
+    static const uint8_t BULB_OFF = 0x00;
+    if (_sub == 0) { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_ON, 1); _sub = 1; }
+    ctRender(hdr, "All discrete LEDs lit?", nullptr, 0,
                CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
     CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
-    if (b == CT_PASS) finishStep(true);
-    else if (b == CT_FAIL) finishStep(false);
+    if (!_active) {   // aborted from this screen — stop the bulb first
+        hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_OFF, 1);
+        return;
+    }
+    if (b == CT_PASS)  { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_OFF, 1); finishStep(true); }
+    else if (b == CT_FAIL) { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_OFF, 1); finishStep(false); }
     else if (b == CT_RETRY) { _sub = 0; }
 }
 
@@ -371,7 +407,7 @@ static void stepSummary() {
                  _result[i] == 1 ? "PASS" : "FAIL");
         _linePtr[rows] = _line[rows]; rows++;
     }
-    uiCtRender(hdr, "Construction test complete", _linePtr, rows, CTB_NEXT | CTB_ABORT);
+    ctRender(hdr, "Construction test complete", _linePtr, rows, CTB_NEXT | CTB_ABORT);
     CtButton b = ctPoll(CTB_NEXT | CTB_ABORT);
     if (b == CT_NEXT || b == CT_ABORT) _active = false;
 }

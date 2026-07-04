@@ -80,6 +80,16 @@ static constexpr uint16_t C_ALERT  = 0xF800;   // red
 static constexpr uint16_t C_BAR    = 0x047F;   // bar fill (blue)
 static constexpr uint16_t C_BARBG  = 0x18E3;   // bar track
 
+// RGB565 from a canonical KerbalModuleCommon RGB colour (same formula the
+// module catalog uses) for the LED colours the UI references directly.
+static inline uint16_t rgb565k(const RGBColor& c) {
+    return (uint16_t)(((c.r & 0xF8) << 8) | ((c.g & 0xFC) << 3) | (c.b >> 3));
+}
+static const uint16_t C_INFO      = rgb565k(KMC_SKY);    // calm info (toast)
+static const uint16_t C_LED_GREEN = rgb565k(KMC_GREEN);  // GPWS full mode
+static const uint16_t C_LED_AMBER = rgb565k(KMC_AMBER);  // GPWS prox-only mode
+static constexpr uint16_t C_NAV   = 0x435C;              // royal blue (#4169E1) — Back button
+
 // ============================================================
 //  Layout constants (portrait 240x320)
 //
@@ -285,14 +295,33 @@ static bool readPress(int16_t& x, int16_t& y) {
 //  Small drawing helpers (file-local)
 // ============================================================
 
-/** @brief Draw a labelled "chip"; the label is truncated to fit the chip. */
-static void drawChip(int x, int y, int w, int h, const char* label, bool on) {
-    uint16_t fill = on ? C_ON : C_OFF;
-    uint16_t txt  = on ? C_BG : C_DIM;
+/** @brief Pick a readable text colour against an RGB565 fill (BT.601 luma). */
+static uint16_t chipTextColor(uint16_t fill) {
+    uint8_t r = (uint8_t)(((fill >> 11) & 0x1F) << 3);
+    uint8_t g = (uint8_t)(((fill >> 5)  & 0x3F) << 2);
+    uint8_t b = (uint8_t)((fill & 0x1F) << 3);
+    uint16_t luma = (uint16_t)((r * 77 + g * 151 + b * 28) >> 8);   // 0..255
+    return (luma >= 112) ? C_BG : C_TEXT;   // dark text on bright fills
+}
+
+/**
+ * @brief Draw a labelled "chip"; the label is truncated to fit the chip.
+ * @param onFill  RGB565 ACTIVE fill matching the module's NeoPixel colour
+ *                for this input; 0 = no LED / unknown -> neutral C_ON style.
+ */
+static void drawChip(int x, int y, int w, int h, const char* label, bool on,
+                     uint16_t onFill = 0) {
+    uint16_t fill = on ? (onFill ? onFill : C_ON) : C_OFF;
+    uint16_t txt  = on ? chipTextColor(fill) : C_DIM;
     tft.fillRoundRect(x, y, w, h, 4, fill);
     char lbl[16];
     truncStr(lbl, sizeof(lbl), label, (w - 4) / 6);   // size-1 chars that fit
     drawTextMC(x + w / 2, y + h / 2, lbl, txt, fill, 1);
+}
+
+/** @brief Catalog ACTIVE colour for input i (0 if none / no colors table). */
+static uint16_t inputColor(const ModuleInfo* info, uint8_t i) {
+    return (info && info->colors && i < info->inputCount) ? info->colors[i] : 0;
 }
 
 /** @brief Draw a horizontal bar with a track and value fill (0..1 fraction). */
@@ -481,6 +510,8 @@ void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
     _encTotal[1] = 0;
 
     // Control button grid (3 rows x 3 cols) at the bottom: y 236..319.
+    // Back is royal blue so the navigation action stands out from the
+    // module-command buttons.
     for (uint8_t i = 0; i < CTRL_COUNT; i++) {
         int row = i / CTRL_PERROW;
         int col = i % CTRL_PERROW;
@@ -489,9 +520,10 @@ void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
         Rect r = { (int16_t)(x + 1), (int16_t)(y + 1),
                    (int16_t)(CTRL_W - 2), (int16_t)(CTRL_H - 2) };   // ~78x26
         _ctrlBtns[i] = r;
-        tft.fillRoundRect(r.x, r.y, r.w, r.h, 3, C_PANEL2);
+        uint16_t fill = (_ctrlActions[i] == UI_BACK) ? C_NAV : C_PANEL2;
+        tft.fillRoundRect(r.x, r.y, r.w, r.h, 3, fill);
         tft.drawRoundRect(r.x, r.y, r.w, r.h, 3, C_DIM);
-        drawTextMC(r.x + r.w / 2, r.y + r.h / 2, _ctrlLabels[i], C_TEXT, C_PANEL2, 1);
+        drawTextMC(r.x + r.w / 2, r.y + r.h / 2, _ctrlLabels[i], C_TEXT, fill, 1);
     }
 
     // Static label for the input area depending on kind.
@@ -558,7 +590,7 @@ static void drawButtonGrid(const ModuleInfo* info, const ModuleState& st) {
         int x = gx + col * (chipW + gap);
         int y = gyTop + row * (chipH + gap);
         bool on = (st.events >> i) & 1u;
-        drawChip(x, y, chipW, chipH, lbl, on);
+        drawChip(x, y, chipW, chipH, lbl, on, inputColor(info, i));
     }
 }
 
@@ -581,7 +613,7 @@ static void drawButtonRowMask(const ModuleInfo* info, uint32_t plane,
         const char* lbl = (info->labels && i < info->inputCount && info->labels[i])
                               ? info->labels[i] : "btn";
         bool on = (plane >> i) & 1u;
-        drawChip(x, y, chipW, chipH, lbl, on);
+        drawChip(x, y, chipW, chipH, lbl, on, inputColor(info, i));
         x += chipW + gap;
     }
 }
@@ -629,7 +661,34 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
 
         case MK_DISPLAY: {
             drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
-            drawButtonRow(info, st, 3, _inputAreaY + 14);
+            if (info->typeId == KMC_TYPE_GPWS_INPUT) {
+                // GPWS: buttons 0..2 render from PERSISTENT state in st.flags
+                // (bits 1:0 = BTN01 cycle: 0 off, 1 full GPWS -> GREEN,
+                //  2 proximity-only -> AMBER; bit2 = BTN02; bit3 = BTN03),
+                // matching the board's own LEDs. Chip 3 (encoder button)
+                // stays an event blip with no LED colour.
+                const int gap = 6, x0 = 4, n = 4;
+                const int chipW = (UI_W - 2 * x0 - (n - 1) * gap) / n;
+                const int cy = _inputAreaY + 14;
+                uint8_t cyc = st.flags & 0x03;
+                for (uint8_t i = 0; i < n; i++) {
+                    const char* lbl = (info->labels && info->labels[i])
+                                          ? info->labels[i] : "btn";
+                    bool on;
+                    uint16_t fill;
+                    if (i == 0)      { on = (cyc != 0);
+                                       fill = (cyc == 2) ? C_LED_AMBER : C_LED_GREEN; }
+                    else if (i == 1) { on = (st.flags >> 2) & 1u;
+                                       fill = inputColor(info, i); }
+                    else if (i == 2) { on = (st.flags >> 3) & 1u;
+                                       fill = inputColor(info, i); }
+                    else             { on = (st.events >> 3) & 1u;
+                                       fill = 0; }   // encoder btn — no LED
+                    drawChip(x0 + i * (chipW + gap), cy, chipW, 22, lbl, on, fill);
+                }
+            } else {
+                drawButtonRow(info, st, 3, _inputAreaY + 14);
+            }
             // Large numeric readout of value ("65535" @ size 3 = 90px).
             char nb[12];
             snprintf(nb, sizeof(nb), "%u", (unsigned)st.value);
@@ -816,9 +875,11 @@ void uiPowerBar(const PowerReading& p) {
 
 void uiToast(const char* msg) {
     // Status line just above the dashboard control area (band 218..233).
+    // Calm SKY-blue informational colour — red/hot hues are reserved for
+    // actual failures (FAULT text, FAIL button).
     tft.fillRect(0, TOAST_Y, UI_W, 16, C_BG);
     if (!msg) return;
     char m[41];
     truncStr(m, sizeof(m), msg, 39);
-    drawTextML(6, TOAST_Y + 8, m, C_ACCENT, C_BG, 1);
+    drawTextML(6, TOAST_Y + 8, m, C_INFO, C_BG, 1);
 }

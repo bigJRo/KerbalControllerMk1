@@ -43,6 +43,9 @@ struct ModuleInfo {
     ModuleKind   kind;         // dashboard/parse kind
     uint8_t      inputCount;   // number of entries in labels[]
     const char* const* labels; // input labels, length == inputCount
+    const uint16_t* colors;    // RGB565 ACTIVE color per input, parallel to
+                               // labels; 0 = no LED (use neutral pressed
+                               // style); nullptr = default accent
 };
 
 // ============================================================

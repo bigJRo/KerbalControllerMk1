@@ -56,6 +56,7 @@ static uint8_t            _selAddr = 0;
 static uint8_t            _selPkt  = 0;   // expected packet size
 static ModuleIdentity     _selId   = {0, 0, 0, 0, false};
 static bool               _bootAcked = false;  // CMD_DISABLE sent for BOOT_READY
+static bool               _bulbOn    = false;  // dashboard bulb-test toggle state
 
 // Timers
 static uint32_t _tScan = 0, _tPower = 0, _tInput = 0, _tSplash = 0;
@@ -209,7 +210,15 @@ static void handleAction(UIAction a) {
         case UI_SLEEP:    hwSendCommand(_selAddr, KMC_CMD_SLEEP,   nullptr, 0); uiToast("SLEEP");   break;
         case UI_WAKE:     hwSendCommand(_selAddr, KMC_CMD_WAKE,    nullptr, 0); uiToast("WAKE");    break;
         case UI_RESET:    hwSendCommand(_selAddr, KMC_CMD_RESET,   nullptr, 0); uiToast("RESET");   break;
-        case UI_BULB:     hwSendCommand(_selAddr, KMC_CMD_BULB_TEST, nullptr, 0); uiToast("BULB");  break;
+        case UI_BULB: {
+            // CMD_BULB_TEST is persistent (spec: 0x01 start / 0x00 stop, no
+            // timeout — the master controls duration). Toggle it.
+            _bulbOn = !_bulbOn;
+            uint8_t pl = _bulbOn ? 0x01 : 0x00;
+            hwSendCommand(_selAddr, KMC_CMD_BULB_TEST, &pl, 1);
+            uiToast(_bulbOn ? "BULB ON (tap again to stop)" : "BULB OFF");
+            break;
+        }
         case UI_LEDCYCLE: {
             // Step ENABLED -> ACTIVE -> WARNING -> ALERT -> ARMED ->
             // PARTIAL_DEPLOY -> CUT -> ACTIVE_ALT -> (wrap)
@@ -223,10 +232,20 @@ static void handleAction(UIAction a) {
             break;
         }
         case UI_TEST:
+            if (_bulbOn) {   // don't carry a latched bulb test into the CT
+                uint8_t off = 0x00;
+                hwSendCommand(_selAddr, KMC_CMD_BULB_TEST, &off, 1);
+                _bulbOn = false;
+            }
             ctBegin(_sel, _selAddr);
             _state = ST_CONSTRUCTION;
             break;
         case UI_BACK:
+            if (_bulbOn) {   // stop a latched bulb test before leaving
+                uint8_t off = 0x00;
+                hwSendCommand(_selAddr, KMC_CMD_BULB_TEST, &off, 1);
+                _bulbOn = false;
+            }
             _sel = nullptr;
             _state = ST_SCAN;
             uiScanBegin();
@@ -268,6 +287,7 @@ void loop() {
                     _selId   = hwIdentify(_selAddr);   // fw version + caps for the header
                     _ledCycleState = 0;
                     _bootAcked = false;
+                    _bulbOn    = false;
                     _state   = ST_DASHBOARD;
                     uiDashboardBegin(_sel, _selAddr,
                                      _selId.fwMajor, _selId.fwMinor, _selId.caps);
