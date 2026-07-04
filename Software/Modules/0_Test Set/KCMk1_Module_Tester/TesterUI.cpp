@@ -385,9 +385,12 @@ void uiBegin() {
     tft.init(240, 320);                 // ST7789V, full 240x320 glass
     tft.setRotation(0);                 // portrait -> 240x320
     // ST7789 panels differ in inversion polarity; the library enables
-    // inversion for 240x320 by default. If colours look inverted on this
-    // panel, uncomment:
-    // tft.invertDisplay(false);
+    // inversion (INVON) for 240x320 by default. This ER-TFT028A3-4 glass is
+    // normally-black, so that default renders everything colour-complemented
+    // (black bg -> white, green -> magenta, royal blue -> brown). Disable
+    // inversion so the intended dark theme and NeoPixel-matched chip colours
+    // render true.
+    tft.invertDisplay(false);
 
     // Clear the ENTIRE 240x320 GRAM once at boot so no stale noise band
     // can show even if a later screen doesn't repaint everything.

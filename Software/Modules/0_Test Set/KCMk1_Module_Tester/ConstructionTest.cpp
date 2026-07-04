@@ -366,11 +366,19 @@ static void stepValueDelta() {
 
 static void stepSeg() {
     char hdr[40]; buildHeader(hdr, sizeof(hdr));
-    // Alternate 8888 (all segments) and 1234 every second.
-    uint16_t v = ((millis() / 1000) & 1) ? 1234 : 8888;
-    if (millis() - _t0 >= 1000 || _sub == 0) { _t0 = millis(); _sub = 1; sendValue(v); }
-    snprintf(_line[0], 28, "Showing %u", v);
-    _linePtr[0] = _line[0];
+    // Drive the module's display alternately 8888 (all segments) and 1234
+    // every second so the operator can confirm every segment lights. The
+    // on-screen status text is kept STATIC ("Cycling 8888 / 1234"): if it
+    // changed with the value, ctRender's signature would change each second
+    // and repaint the whole screen — the flicker that made the PASS/FAIL
+    // buttons impossible to tap.
+    if (_sub == 0) { _t0 = millis(); _sub = 1; sendValue(8888); }
+    else if (millis() - _t0 >= 1000) {
+        _t0 = millis();
+        _sub = (_sub == 1) ? 2 : 1;          // toggle 8888 <-> 1234
+        sendValue(_sub == 1 ? 8888 : 1234);
+    }
+    _linePtr[0] = "Cycling 8888 / 1234";
     ctRender(hdr, "All digits & segments OK?", _linePtr, 1,
                CTB_PASS | CTB_FAIL | CTB_ABORT);
     CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);

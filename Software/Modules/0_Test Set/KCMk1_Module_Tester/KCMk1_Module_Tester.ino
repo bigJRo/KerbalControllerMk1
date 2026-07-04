@@ -220,6 +220,14 @@ static void handleAction(UIAction a) {
             break;
         }
         case UI_LEDCYCLE: {
+            // Display modules (7-seg / GPWS) drive their own button NeoPixels
+            // from their internal state machine and never read the LED state
+            // set by CMD_SET_LED_STATE, so cycling states here has no visible
+            // effect on them. Say so rather than appear to do nothing.
+            if (_sel && _sel->kind == MK_DISPLAY) {
+                uiToast("LEDs driven by module");
+                break;
+            }
             // Step ENABLED -> ACTIVE -> WARNING -> ALERT -> ARMED ->
             // PARTIAL_DEPLOY -> CUT -> ACTIVE_ALT -> (wrap)
             static const uint8_t seq[] = {
@@ -228,7 +236,9 @@ static void handleAction(UIAction a) {
             };
             _ledCycleState = (_ledCycleState + 1) % (sizeof(seq) / sizeof(seq[0]));
             sendLedAll(seq[_ledCycleState]);
-            uiToast("LED CYCLE");
+            char tb[20];
+            snprintf(tb, sizeof(tb), "LED CYCLE %u/8", (unsigned)(_ledCycleState + 1));
+            uiToast(tb);
             break;
         }
         case UI_TEST:
