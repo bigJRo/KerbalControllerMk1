@@ -39,14 +39,21 @@ static bool _ina228Write16(uint8_t reg, uint16_t val) {
     return Wire.endTransmission() == 0;
 }
 
-static uint32_t _ina228Read(uint8_t reg, uint8_t nbytes) {
+// Read an INA228 register. Returns false on any I2C failure so the caller
+// can distinguish "no data" from a genuine zero reading. Uses a full STOP
+// between the pointer write and the read (the INA228 register pointer
+// persists across STOP) — repeated-start proved flaky on the Renesas Wire
+// core, especially right after a burst of NAKed scan probes.
+static bool _ina228Read(uint8_t reg, uint8_t nbytes, uint32_t& out) {
     Wire.beginTransmission(I2C_ADDR_INA228);
     Wire.write(reg);
-    if (Wire.endTransmission(false) != 0) return 0;
-    uint32_t v = 0;
+    if (Wire.endTransmission() != 0) return false;
     uint8_t got = Wire.requestFrom((int)I2C_ADDR_INA228, (int)nbytes);
-    for (uint8_t i = 0; i < got; i++) v = (v << 8) | (uint8_t)Wire.read();
-    return v;
+    if (got != nbytes) { while (Wire.available()) Wire.read(); return false; }
+    uint32_t v = 0;
+    for (uint8_t i = 0; i < nbytes; i++) v = (v << 8) | (uint8_t)Wire.read();
+    out = v;
+    return true;
 }
 
 static void _ina228Begin() {
@@ -221,19 +228,28 @@ void hwParsePacket(const ModuleInfo* info, const uint8_t* pkt, uint8_t n, Module
 PowerReading hwReadPower() {
     PowerReading r = {0, 0, 0, false};
 
-    // VBUS: 24-bit, bits 23..4 are data, LSB = 195.3125 uV.
-    uint32_t vbusRaw = _ina228Read(INA228_REG_VBUS, 3) >> 4;
-    r.volts = (float)vbusRaw * 195.3125e-6f;
+    // Two attempts: a transient bus glitch (e.g. right after a burst of
+    // NAKed scan probes with no module attached) fails the whole set once,
+    // then succeeds on retry. Persistent failure returns ok=false and the
+    // caller keeps its last good reading.
+    for (uint8_t attempt = 0; attempt < 2 && !r.ok; attempt++) {
+        uint32_t vbusRaw, curRaw, pwrRaw;
+        if (!_ina228Read(INA228_REG_VBUS,    3, vbusRaw)) continue;
+        if (!_ina228Read(INA228_REG_CURRENT, 3, curRaw))  continue;
+        if (!_ina228Read(INA228_REG_POWER,   3, pwrRaw))  continue;
 
-    // CURRENT: 24-bit, bits 23..4 data, signed 20-bit, LSB = _currentLSB.
-    uint32_t curRaw = _ina228Read(INA228_REG_CURRENT, 3) >> 4;
-    int32_t  curS   = (curRaw & 0x80000) ? (int32_t)(curRaw | 0xFFF00000) : (int32_t)curRaw;
-    r.amps = (float)curS * _currentLSB;
+        // VBUS: 24-bit, bits 23..4 are data, LSB = 195.3125 uV.
+        r.volts = (float)(vbusRaw >> 4) * 195.3125e-6f;
 
-    // POWER: 24-bit unsigned, LSB = 3.2 * _currentLSB.
-    uint32_t pwrRaw = _ina228Read(INA228_REG_POWER, 3);
-    r.watts = (float)pwrRaw * 3.2f * _currentLSB;
+        // CURRENT: 24-bit, bits 23..4 data, signed 20-bit, LSB = _currentLSB.
+        uint32_t c = curRaw >> 4;
+        int32_t curS = (c & 0x80000) ? (int32_t)(c | 0xFFF00000) : (int32_t)c;
+        r.amps = (float)curS * _currentLSB;
 
-    r.ok = true;
+        // POWER: 24-bit unsigned, LSB = 3.2 * _currentLSB.
+        r.watts = (float)pwrRaw * 3.2f * _currentLSB;
+
+        r.ok = true;
+    }
     return r;
 }

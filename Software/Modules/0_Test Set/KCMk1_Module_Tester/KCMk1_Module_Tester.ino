@@ -58,6 +58,16 @@ static uint8_t            _selPkt  = 0;   // expected packet size
 // Timers
 static uint32_t _tScan = 0, _tPower = 0, _tInput = 0, _tSplash = 0;
 
+// Last good power reading — a transient INA228 read failure keeps showing
+// the previous values instead of flashing zeros/dashes.
+static PowerReading _lastPower = {0, 0, 0, false};
+
+// Previous scan result signature — the scan list only redraws when the
+// result set changes (stops the empty-state message flashing every rescan).
+static uint8_t _prevCount = 0xFF;   // 0xFF = force first draw
+static uint8_t _prevAddrs[MAX_FOUND];
+static uint8_t _prevTypes[MAX_FOUND];
+
 // LED-cycle test state
 static uint8_t _ledCycleState = 0;   // current KMC_LED_* being applied
 
@@ -73,7 +83,18 @@ void setup() {
 }
 
 // ============================================================
-//  Scan + identify the bus into the _found* tables
+//  Power poll shared by scan + dashboard: keep the last good
+//  reading on transient INA228 failures.
+// ============================================================
+static void pollPower() {
+    PowerReading p = hwReadPower();
+    if (p.ok) _lastPower = p;
+    uiPowerBar(_lastPower.ok ? _lastPower : p);
+}
+
+// ============================================================
+//  Scan + identify the bus into the _found* tables.
+//  Redraws the list only when the result set changed.
 // ============================================================
 static void doScan() {
     _foundCount = hwScanModules(_foundAddrs, MAX_FOUND);
@@ -82,8 +103,22 @@ static void doScan() {
         _foundTypes[i] = id.valid ? id.typeId : 0x00;
         _foundInfos[i] = id.valid ? catalogByType(id.typeId) : nullptr;
     }
+
+    bool changed = (_foundCount != _prevCount);
+    for (uint8_t i = 0; !changed && i < _foundCount; i++) {
+        changed = (_foundAddrs[i] != _prevAddrs[i]) ||
+                  (_foundTypes[i] != _prevTypes[i]);
+    }
+    if (!changed) return;
+
+    _prevCount = _foundCount;
+    memcpy(_prevAddrs, _foundAddrs, _foundCount);
+    memcpy(_prevTypes, _foundTypes, _foundCount);
     uiScanList(_foundInfos, _foundAddrs, _foundTypes, _foundCount);
 }
+
+/** @brief Force the next doScan() to redraw (call after uiScanBegin()). */
+static void scanMarkDirty() { _prevCount = 0xFF; }
 
 // ============================================================
 //  Build and send a uniform LED-state payload to all positions
@@ -126,6 +161,7 @@ static void handleAction(UIAction a) {
             _sel = nullptr;
             _state = ST_SCAN;
             uiScanBegin();
+            scanMarkDirty();
             _tScan = 0;   // force immediate rescan
             break;
         default: break;
@@ -144,13 +180,14 @@ void loop() {
             if (now - _tSplash >= SPLASH_MS) {
                 _state = ST_SCAN;
                 uiScanBegin();
+                scanMarkDirty();
                 _tScan = 0;
             }
             break;
 
         case ST_SCAN: {
             if (now - _tScan >= SCAN_INTERVAL_MS) { _tScan = now; doScan(); }
-            if (now - _tPower >= POWER_POLL_MS)   { _tPower = now; uiPowerBar(hwReadPower()); }
+            if (now - _tPower >= POWER_POLL_MS)   { _tPower = now; pollPower(); }
 
             int idx = uiScanTouch(_foundCount);
             if (idx == -2) { _tScan = 0; }                 // Rescan
@@ -183,7 +220,7 @@ void loop() {
                     uiDashboardInputs(_sel, st);
                 }
             }
-            if (now - _tPower >= POWER_POLL_MS) { _tPower = now; uiPowerBar(hwReadPower()); }
+            if (now - _tPower >= POWER_POLL_MS) { _tPower = now; pollPower(); }
 
             handleAction(uiDashboardTouch());
             break;
