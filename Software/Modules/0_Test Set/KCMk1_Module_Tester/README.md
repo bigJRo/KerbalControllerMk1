@@ -72,8 +72,8 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 
 | Library | Notes |
 |---|---|
-| **Adafruit_ILI9341** | Display driver (Library Manager; pulls in Adafruit_GFX + Adafruit_BusIO) |
-| **Adafruit_GFX** | Graphics primitives (dependency of the above) |
+| **Adafruit_ILI9341 ≥ 1.6.0** | Display driver (Library Manager; pulls in Adafruit_GFX + Adafruit_BusIO). v1.6.0+ required — earlier versions unconditionally include `wiring_private.h`, which the Renesas core lacks |
+| **Adafruit_GFX** (latest) | Graphics primitives (dependency of the above) |
 | **Adafruit_FT6206** | Capacitive touch driver — the FT6236 is register-compatible |
 | **KerbalModuleCommon** | Shared KCMk1 protocol/palette header (this repo), v1.7.1+ |
 | Wire / SPI | Arduino core |
