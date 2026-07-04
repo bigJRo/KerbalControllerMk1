@@ -1,6 +1,6 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.7.0
+ * @version     1.7.1
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
