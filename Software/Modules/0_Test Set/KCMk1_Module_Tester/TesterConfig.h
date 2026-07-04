@@ -73,12 +73,14 @@
 #define INA228_MAX_CURRENT_A  5.0f
 
 // ============================================================
-//  Display geometry (landscape — rotation set in TesterUI)
+//  Display geometry (portrait — rotation set in TesterUI)
+//  Confirmed on hardware: the panel is used portrait, 240 wide
+//  by 320 tall (ILI9341 native orientation, rotation 0).
 // ============================================================
 #define TFT_NATIVE_W   240
 #define TFT_NATIVE_H   320
-#define UI_W           320     // landscape
-#define UI_H           240
+#define UI_W           240     // portrait
+#define UI_H           320
 
 // ============================================================
 //  Timing

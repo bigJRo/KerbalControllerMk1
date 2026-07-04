@@ -157,10 +157,10 @@ Drive commands used: `CMD_SET_LED_STATE` (LED walk), `CMD_SET_THROTTLE` (motor s
 This firmware is written against the schematic and the current protocol but **has not
 been compiled or run on hardware here**. On first bring-up, verify:
 
-- The FT6236 **touch coordinate mapping**: the touch controller reports native
-  portrait (240×320) coordinates; the UI maps them to landscape in one place
-  (`rawTouch()` in `TesterUI.cpp`). If taps land mirrored/swapped on hardware,
-  flip the axes there as commented.
+- The FT6236 **touch coordinate mapping**: the UI runs portrait 240×320
+  (rotation 0), so touch coordinates pass straight through in `rawTouch()`
+  (`TesterUI.cpp`). If taps land mirrored on hardware, flip the axes there
+  as commented.
 - INA228 address (`0x40`, A0/A1 = GND) and the current/power calibration
   (`INA228_MAX_CURRENT_A`, `INA228_RSHUNT_OHMS` in `TesterConfig.h`) against bench readings.
 - The module reset polarity/pulse on P1.
