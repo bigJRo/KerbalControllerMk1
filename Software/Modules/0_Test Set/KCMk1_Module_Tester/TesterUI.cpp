@@ -11,23 +11,32 @@
  *              per-module test dashboard, and the construction-test view.
  *
  *              Target board: Seeed XIAO RA4M1 (Arduino UNO R4 core), 2.8"
- *              ER-TFT028A3-4 (ILI9341, 240x320 4-wire SPI), FT6236 capacitive
+ *              ER-TFT028A3-4 (ST7789V, 240x320 4-wire SPI), FT6236 capacitive
  *              touch (I2C 0x38). The display is used in PORTRAIT — 240 wide x
- *              320 tall, rotation 0 (ILI9341 native orientation), confirmed
- *              on hardware.
+ *              320 tall, rotation 0, confirmed on hardware.
  *
- * @note        Dependencies: Adafruit_GFX + Adafruit_ILI9341 + Adafruit_FT6206
- *              (+ Adafruit_BusIO). LovyanGFX is NOT used — it does not support
- *              the renesas_uno architecture ('HardwareSPI' does not name a
- *              type) and its global `using RGBColor` alias collides with
- *              KerbalModuleCommon's struct RGBColor.
+ *              CONTROLLER NOTE: this panel is an ST7789V, NOT an ILI9341.
+ *              The two share the basic MIPI-DCS command set, so an ILI9341
+ *              driver "mostly works" — but its init programs ILI9341-specific
+ *              display-function / power / VCOM registers that mean something
+ *              different on the ST7789V, leaving the gate/line drive
+ *              misconfigured (garbage band on the panel bottom, odd rotation
+ *              direction). Use Adafruit_ST7789 only.
  *
- *              The ILI9341 uses hardware SPI on the XIAO's fixed SPI pins
+ * @note        Dependencies: Adafruit_GFX + Adafruit ST7735/ST7789 Library +
+ *              Adafruit_FT6206 (+ Adafruit_BusIO). LovyanGFX is NOT used — it
+ *              does not support the renesas_uno architecture ('HardwareSPI'
+ *              does not name a type) and its global `using RGBColor` alias
+ *              collides with KerbalModuleCommon's struct RGBColor.
+ *
+ *              The ST7789V uses hardware SPI on the XIAO's fixed SPI pins
  *              (SCK/MISO/MOSI = D8/D9/D10) with CS/DC from TesterConfig.h and
  *              no reset line (software reset). The FT6236 shares Wire (begun
  *              by hwBegin(); do not call Wire.begin() here). uiBegin() clears
  *              the full 240x320 GRAM once at boot so no stale noise band can
- *              show below partially-repainted screens.
+ *              show below partially-repainted screens. If colours appear
+ *              inverted on hardware, toggle tft.invertDisplay() in uiBegin()
+ *              — ST7789 panels vary.
  *
  *              TOUCH MAPPING: with rotation(0) the FT6236 native portrait
  *              coordinates map straight through: sx = p.x (0..239),
@@ -45,15 +54,15 @@
 #include <KerbalModuleCommon.h>
 
 #include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
+#include <Adafruit_ST7789.h>
 #include <Adafruit_FT6206.h>
 
 // ============================================================
-//  Devices — ILI9341 on hardware SPI (fixed XIAO SPI pins), no
+//  Devices — ST7789V on hardware SPI (fixed XIAO SPI pins), no
 //  panel RST (software reset). FT6236 speaks the FT6206 protocol.
 // ============================================================
-static Adafruit_ILI9341 tft(PIN_TFT_CS, PIN_TFT_DC);
-static Adafruit_FT6206  ctp;
+static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, -1);
+static Adafruit_FT6206 ctp;
 
 // ============================================================
 //  Colour palette — 16-bit RGB565, dark, high contrast.
@@ -344,8 +353,12 @@ void uiBegin() {
     pinMode(PIN_BACKLITE, OUTPUT);
     digitalWrite(PIN_BACKLITE, HIGH);   // backlight on
 
-    tft.begin();                        // hardware SPI, library default speed
-    tft.setRotation(0);                 // native portrait -> 240x320
+    tft.init(240, 320);                 // ST7789V, full 240x320 glass
+    tft.setRotation(0);                 // portrait -> 240x320
+    // ST7789 panels differ in inversion polarity; the library enables
+    // inversion for 240x320 by default. If colours look inverted on this
+    // panel, uncomment:
+    // tft.invertDisplay(false);
 
     // Clear the ENTIRE 240x320 GRAM once at boot so no stale noise band
     // can show even if a later screen doesn't repaint everything.

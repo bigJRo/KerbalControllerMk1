@@ -8,7 +8,7 @@
  *
  * @brief       Touchscreen field-validation tester for all Kerbal Controller
  *              Mk1 I2C target modules. Runs on the KC-01-9001 v2.0 board
- *              (Seeed XIAO RA4M1, 2.8" ILI9341 + FT6236 capacitive touch,
+ *              (Seeed XIAO RA4M1, 2.8" ST7789V + FT6236 capacitive touch,
  *              INA228 power monitor).
  *
  *              Flow:

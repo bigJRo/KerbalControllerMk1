@@ -28,7 +28,7 @@ from the modules the way the old hard-coded tester did.
 | Block | Part |
 |---|---|
 | MCU | Seeed **XIAO RA4M1** (Renesas RA4M1, Arduino UNO R4 core) |
-| Display | **ER-TFT028A3-4** — 2.8" 240×320 ILI9341, 4-wire SPI |
+| Display | **ER-TFT028A3-4** — 2.8" 240×320 **ST7789V**, 4-wire SPI |
 | Touch | **FT6236** capacitive, I2C `0x38` + `CTP_INT` |
 | Power monitor | **INA228** high-side V/I sensor, 15 mΩ shunt, I2C `0x40` |
 | Power | 12 V barrel → MPM3610 (5 V) → AP2112K (3V3), soft-latching switch |
@@ -72,9 +72,17 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 
 | Library | Notes |
 |---|---|
-| **Adafruit_ILI9341 ≥ 1.6.0** | Display driver (Library Manager; pulls in Adafruit_GFX + Adafruit_BusIO). See the XIAO RA4M1 note below |
+| **Adafruit ST7735 and ST7789 Library** | Display driver (`Adafruit_ST7789`). The panel is an **ST7789V** — see the controller note below. Pulls in Adafruit_GFX + Adafruit_BusIO |
 | **Adafruit_GFX** (latest) | Graphics primitives (dependency of the above) |
 | **Adafruit_FT6206** | Capacitive touch driver — the FT6236 is register-compatible |
+
+> **Controller note — this panel is ST7789V, not ILI9341.** The ER-TFT028A3-4 uses an
+> ST7789V. An ILI9341 driver *mostly* works (shared MIPI-DCS commands) but its init
+> programs ILI9341-specific display-function/power/VCOM registers that misconfigure the
+> ST7789V's line drive — symptom: a permanent band of garbage pixels at the bottom of
+> the panel that no drawing clears, plus an unexpected rotation direction. Use
+> `Adafruit_ST7789` with `tft.init(240, 320)`. If colours ever appear inverted, toggle
+> `tft.invertDisplay()` in `uiBegin()`.
 | **KerbalModuleCommon** | Shared KCMk1 protocol/palette header (this repo), v1.7.1+ |
 | Wire / SPI | Arduino core |
 
@@ -83,16 +91,16 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 > `RGBColor` alias that collides with KerbalModuleCommon's `struct RGBColor`. The
 > Adafruit stack works on the RA4M1 via generic SPI/Wire.
 
-> **XIAO RA4M1 note — `wiring_private.h` shim required.** Adafruit_ILI9341 guards its
-> `#include "wiring_private.h"` only for the *official* UNO R4 board macros
-> (`ARDUINO_UNOR4_MINIMA`/`_WIFI`). The Seeed XIAO RA4M1 sets a different board macro,
-> so even v1.6.3 fails with `wiring_private.h: No such file or directory`. Fix: create
-> an **empty file** named `wiring_private.h` in the library's root folder (next to
-> `Adafruit_ILI9341.cpp`, e.g. `Documents/Arduino/libraries/Adafruit_ILI9341/`). The
-> quoted include resolves to the shim and the build proceeds. Re-create it after
-> library updates. (Equivalent alternative: add `&& !defined(ARDUINO_ARCH_RENESAS)` to
-> the guard in `Adafruit_ILI9341.cpp`.) If another Adafruit library ever throws the
-> same error, the same empty-file shim in that library's folder fixes it.
+> **XIAO RA4M1 note — `wiring_private.h` shim may be required.** Some Adafruit display
+> libraries guard their `#include "wiring_private.h"` only for the *official* UNO R4
+> board macros (`ARDUINO_UNOR4_MINIMA`/`_WIFI`). The Seeed XIAO RA4M1 sets a different
+> board macro, so the build can fail with `wiring_private.h: No such file or directory`
+> from inside the library. Fix: create an **empty file** named `wiring_private.h` in
+> that library's source folder (next to the failing `.cpp` — e.g.
+> `Documents/Arduino/libraries/Adafruit_ST7735_and_ST7789_Library/`). The quoted
+> include resolves to the shim and the build proceeds. Re-create it after library
+> updates. This was confirmed needed for Adafruit_ILI9341 and may equally apply to the
+> ST7735/ST7789 library.
 
 ---
 
@@ -101,14 +109,15 @@ All protocol constants (`KMC_TYPE_*`, `KMC_CMD_*`, `KMC_*_PACKET_SIZE`, `KMC_LED
 | Setting | Value |
 |---|---|
 | Board | Seeed XIAO RA4M1 (Arduino UNO R4 / Renesas RA4M1 core) |
-| Libraries | Adafruit_ILI9341, Adafruit_GFX, Adafruit_FT6206, KerbalModuleCommon |
+| Libraries | Adafruit ST7735 and ST7789 Library, Adafruit_GFX, Adafruit_FT6206, KerbalModuleCommon |
 | Programmer | USB (UF2 / bootloader) |
 
 1. Install the Renesas Arduino core (Arduino UNO R4 / XIAO RA4M1).
-2. Library Manager: install **Adafruit_ILI9341** (accept its Adafruit_GFX/BusIO
-   dependencies) and **Adafruit_FT6206**.
+2. Library Manager: install **Adafruit ST7735 and ST7789 Library** (accept its
+   Adafruit_GFX/BusIO dependencies) and **Adafruit_FT6206**.
 3. Ensure `KerbalModuleCommon` (v1.7.1+, header-only) is on the library path.
-4. Open this folder in the Arduino IDE and upload.
+4. Open this folder in the Arduino IDE and upload. If the ST7735/ST7789 library
+   fails on `wiring_private.h`, apply the empty-file shim described above.
 
 ---
 

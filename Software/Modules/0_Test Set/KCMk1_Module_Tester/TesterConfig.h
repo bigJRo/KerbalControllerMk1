@@ -11,7 +11,7 @@
  *
  *              Hardware (per schematic KC-01-9001 V2.0):
  *                MCU      : Seeed XIAO RA4M1 (Renesas RA4M1, Arduino UNO R4 core)
- *                Display  : ER-TFT028A3-4 — 2.8" 240x320 ILI9341, 4-wire SPI
+ *                Display  : ER-TFT028A3-4 — 2.8" 240x320 ST7789V, 4-wire SPI
  *                Touch    : FT6236 capacitive, I2C + CTP_INT
  *                Power    : 12V in -> MPM3610 (5V) -> AP2112K (3V3),
  *                           soft-latching power switch
@@ -47,7 +47,7 @@
 #define PIN_TFT_SCK     D8    // SPI clock
 #define PIN_TFT_MISO    D9    // SPI MISO (touch/SD unused here; TFT read)
 #define PIN_TFT_MOSI    D10   // SPI MOSI
-// The ILI9341 reset pin is not broken out on the panel connector — the
+// The panel reset pin is not broken out on the panel connector — the
 // driver uses software reset (panel rst = -1).
 
 // ============================================================
@@ -75,7 +75,7 @@
 // ============================================================
 //  Display geometry (portrait — rotation set in TesterUI)
 //  Confirmed on hardware: the panel is used portrait, 240 wide
-//  by 320 tall (ILI9341 native orientation, rotation 0).
+//  by 320 tall (ST7789V native orientation, rotation 0).
 // ============================================================
 #define TFT_NATIVE_W   240
 #define TFT_NATIVE_H   320
