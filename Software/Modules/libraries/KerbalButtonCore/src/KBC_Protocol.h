@@ -138,22 +138,19 @@
 // ============================================================
 //  Button / input counts
 //
-//  KBC_BUTTON_COUNT is the number of LED/colour positions (12 RGB +
-//  4 discrete) and sizes the per-button active-colour array in every
-//  sketch — it is always 16. KBC_INPUT_COUNT (KBC_Config.h) is the
-//  number of shift-register inputs read and reported (16 or 24); on
-//  24-input modules, indices 16-23 are discrete switch inputs with no
-//  LED hardware.
+//  KBC_BUTTON_COUNT is the number of LED/colour positions and sizes the
+//  per-button active-colour array in every sketch — always 16 for index
+//  stability, but only the 12 NeoPixels (indices 0-11) are driven; indices
+//  12-15 are switch inputs with no LED. KBC_INPUT_COUNT (KBC_Config.h) is
+//  the number of shift-register inputs read and reported (16 or 24); on
+//  24-input modules, indices 16-23 are switch inputs.
 // ============================================================
 
 /** @brief Number of LED/colour positions per module (sizes activeColors[]). */
 #define KBC_BUTTON_COUNT            16
 
-/** @brief Number of RGB LED buttons per module (NeoPixel chain). */
+/** @brief Number of RGB LED buttons per module (NeoPixel chain, indices 0-11). */
 #define KBC_RGB_BUTTON_COUNT        12
-
-/** @brief Number of discrete LED buttons per module. */
-#define KBC_DISCRETE_BUTTON_COUNT   4
 
 // ============================================================
 //  Capability flags — aliases for KMC_CAP_* from KerbalModuleCommon

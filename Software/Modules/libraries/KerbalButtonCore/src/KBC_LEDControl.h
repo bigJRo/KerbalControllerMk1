@@ -7,24 +7,19 @@
  * @organization Jeb's Controller Works
  *
  * @brief       LED state machine for the KerbalButtonCore library.
- *              Manages all LED output for both NeoPixel RGB buttons
- *              (KBC indices 0-11) and discrete LED buttons (KBC
- *              indices 12-15).
+ *              Manages LED output for the 12 NeoPixel RGB buttons
+ *              (KBC indices 0-11). Indices 12-15 are panel switch inputs
+ *              with no LED hardware on the current boards, so nothing is
+ *              driven for them (their colour-array slots are ignored).
  *
  *              Supports the full KBC LED state set:
  *                OFF            — unlit
- *                ENABLED        — dim white backlight (NeoPixel only)
+ *                ENABLED        — dim white backlight
  *                ACTIVE         — full brightness, per-button color
  *                WARNING        — flashing amber (extended modules)
  *                ALERT          — flashing red   (extended modules)
  *                ARMED          — static cyan    (extended modules)
  *                PARTIAL_DEPLOY — static amber   (extended modules)
- *
- *              Discrete LED buttons (indices 12-15) are driven by
- *              2N3904 NPN transistors and are ON/OFF only. They cannot
- *              express the ENABLED dim state — ENABLED maps to ON for
- *              discrete buttons. Flash states (WARNING, ALERT) are
- *              supported via software timing on discrete outputs.
  *
  *              All brightness scaling for the ENABLED state is performed
  *              in software via KBC_scaleColor(). The tinyNeoPixel
@@ -212,12 +207,6 @@ private:
     tinyNeoPixel _pixels;
 
     // --------------------------------------------------------
-    //  Discrete LED pin table
-    // --------------------------------------------------------
-
-    static const uint8_t _discretePins[KBC_DISCRETE_COUNT];
-
-    // --------------------------------------------------------
     //  Per-button state
     // --------------------------------------------------------
 
@@ -264,14 +253,6 @@ private:
      * @param  color  Color to write.
      */
     void _setNeoPixel(uint8_t index, RGBColor color);
-
-    /**
-     * @brief  Write a resolved color to a discrete LED button (index 12-15).
-     *         Discrete LEDs are ON/OFF only — any non-zero color = ON.
-     * @param  index  KBC button index (12-15).
-     * @param  color  Color to write (only zero vs non-zero is used).
-     */
-    void _setDiscrete(uint8_t index, RGBColor color);
 };
 
 #endif // KBC_LEDCONTROL_H

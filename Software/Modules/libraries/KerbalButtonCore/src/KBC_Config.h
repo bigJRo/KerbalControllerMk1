@@ -19,14 +19,13 @@
  *                  sketch via KBC_INPUT_COUNT / KBC_SHIFTREG_COUNT (see below).
  *                - 12 RGB NeoPixel buttons driven by WS2811 ICs
  *                  (tinyNeoPixel_Static, PIN_PA4, NEO_RGB order)
- *                - 4 discrete LED outputs via 2N3904 NPN transistors
- *                  (buttons 13-16 on PCB, KBC indices 12-15)
+ *                  (KBC indices 12-15 are switch INPUTS, no LED outputs)
  *                - I2C target interface (Wire library, PIN_PB1/PIN_PB0)
  *                - Active-low interrupt output (PIN_PA1)
  *
  *              Button index convention (canonical throughout all library code):
  *                KBC index 0-11  : NeoPixel RGB buttons (BUTTON01-12 on PCB)
- *                KBC index 12-15 : Discrete LED buttons (BUTTON13-16 on PCB)
+ *                KBC index 12-15 : Panel switch inputs (BUTTON13-16 on PCB), no LED
  *              All protocol packets, LED state arrays, and ShiftIn remapping
  *              use this 0-15 index exclusively.
  *
@@ -154,9 +153,10 @@
 //
 //  KBC_INPUT_COUNT widens the input data path (button state, change
 //  mask, debounce, remap table) and the response packet payload.
-//  It does NOT change the LED/colour path — modules still drive at
-//  most 12 NeoPixel + 4 discrete LEDs (KBC_BUTTON_COUNT positions).
-//  KBC indices 16-23 are discrete inputs with no LED hardware.
+//  It does NOT change the LED/colour path — modules drive 12 NeoPixel
+//  LEDs (indices 0-11); the KBC_BUTTON_COUNT colour array stays 16 but
+//  indices 12-15 (and 16-23 on 24-input modules) are switch inputs with
+//  no LED hardware.
 // ============================================================
 
 /** @brief Number of button/switch inputs read from the shift chain (16 or 24). */
@@ -196,56 +196,15 @@
 #define KBC_NEO_COLOR_ORDER     NEO_RGB
 
 // ============================================================
-//  Discrete LED pins (KBC button indices 12-15)
+//  Discrete LEDs — removed
 //
-//  Four single-color LED outputs for buttons 13-16 (PCB labels).
-//  Each LED is driven through a 2N3904 NPN transistor with a
-//  470Ω collector resistor. The ATtiny drives the base through
-//  a 10kΩ resistor.
-//
-//  IMPORTANT: These are transistor-switched, ON/OFF only.
-//  No PWM brightness control is possible through this circuit.
-//  The ENABLED dim state is not available for discrete buttons —
-//  they will be fully ON when ENABLED and fully OFF when OFF.
-//
-//  Logic: ATtiny HIGH → transistor ON → LED ON (active high).
-//
-//  PCB label → KBC index → ATtiny pin mapping:
-//    BUTTON13 / led_13  →  KBC index 12  →  PIN_PB3 (pin 11)
-//    BUTTON14 / led_14  →  KBC index 13  →  PIN_PC0 (pin 15)
-//    BUTTON15 / led_15  →  KBC index 14  →  PIN_PC2 (pin 17)
-//    BUTTON16 / led_16  →  KBC index 15  →  PIN_PC1 (pin 16)
-//
-//  Note: led_15 (PC2, pin 17) and led_16 (PC1, pin 16) are
-//  swapped relative to port pin order. Always use the explicit
-//  KBC_DISCRETE_PINS array — never drive by sequential port loop.
+//  Earlier board revisions carried four transistor-switched single-colour
+//  LEDs on KBC indices 12-15. The current boards (KC-01-1801/1802 and
+//  KC-01-1811/1812) do not populate them — indices 12-15 are panel switch
+//  INPUTS with no LED outputs. The discrete-LED driver has been removed;
+//  only the 12 NeoPixels (indices 0-11) are driven. LED state for indices
+//  12-15 is accepted (KBC_BUTTON_COUNT stays 16) but never rendered.
 // ============================================================
-
-/** @brief Discrete LED pin for KBC button index 12 (PCB: BUTTON13/led_13). */
-#define KBC_PIN_LED_12          PIN_PB3
-
-/** @brief Discrete LED pin for KBC button index 13 (PCB: BUTTON14/led_14). */
-#define KBC_PIN_LED_13          PIN_PC0
-
-/** @brief Discrete LED pin for KBC button index 14 (PCB: BUTTON15/led_15). */
-#define KBC_PIN_LED_14          PIN_PC2
-
-/** @brief Discrete LED pin for KBC button index 15 (PCB: BUTTON16/led_16). */
-#define KBC_PIN_LED_15          PIN_PC1
-
-/**
- * @brief Discrete LED pin array indexed by KBC button index.
- *        Usage: digitalWrite(KBC_DISCRETE_PINS[kbcIndex - 12], state)
- *        Note: PC2/PC1 swap is handled here — do not reorder.
- */
-#define KBC_DISCRETE_PINS       { KBC_PIN_LED_12, KBC_PIN_LED_13, \
-                                  KBC_PIN_LED_14, KBC_PIN_LED_15 }
-
-/** @brief Number of discrete LED buttons. */
-#define KBC_DISCRETE_COUNT      4
-
-/** @brief KBC index of the first discrete LED button. */
-#define KBC_DISCRETE_INDEX_FIRST  12
 
 // ============================================================
 //  Shift register timing
@@ -298,9 +257,8 @@
 // ============================================================
 //  LED brightness defaults
 //
-//  KBC_ENABLED_BRIGHTNESS applies to NeoPixel buttons only.
-//  Discrete LED buttons are ON/OFF only — this value has no
-//  effect on KBC button indices 12-15.
+//  KBC_ENABLED_BRIGHTNESS applies to the NeoPixel buttons (indices 0-11);
+//  indices 12-15 are switch inputs with no LED.
 //
 //  Scaling is performed in software via KBC_scaleColor() in
 //  KBC_LEDControl. The tinyNeoPixel setBrightness() API is
@@ -314,7 +272,6 @@
 /**
  * @brief Default ENABLED state brightness for NeoPixel buttons (0-255).
  *        32 ≈ 12.5% — visible but non-distracting in a dark cockpit.
- *        Has no effect on discrete LED buttons (indices 12-15).
  *        Override: #define KBC_ENABLED_BRIGHTNESS 64
  */
 #ifndef KBC_ENABLED_BRIGHTNESS

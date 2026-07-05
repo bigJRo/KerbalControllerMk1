@@ -21,20 +21,6 @@
 #include "KBC_LEDControl.h"
 
 // ============================================================
-//  Discrete LED pin table (static, matches KBC_DISCRETE_PINS macro)
-//
-//  Indexed by (kbcIndex - KBC_DISCRETE_INDEX_FIRST).
-//  Note PC2/PC1 swap for led_15/led_16 is handled here.
-// ============================================================
-
-const uint8_t KBCLEDControl::_discretePins[KBC_DISCRETE_COUNT] = {
-    KBC_PIN_LED_12,   // KBC index 12 — PCB: led_13, PIN_PB3
-    KBC_PIN_LED_13,   // KBC index 13 — PCB: led_14, PIN_PC0
-    KBC_PIN_LED_14,   // KBC index 14 — PCB: led_15, PIN_PC2
-    KBC_PIN_LED_15    // KBC index 15 — PCB: led_16, PIN_PC1
-};
-
-// ============================================================
 //  Constructor
 // ============================================================
 
@@ -62,12 +48,6 @@ void KBCLEDControl::begin(const RGBColor* activeColors,
     _brightness   = brightness;
     _flashOn      = true;
     _flashLastToggle = millis();
-
-    // Initialise discrete LED pins as outputs, all off
-    for (uint8_t i = 0; i < KBC_DISCRETE_COUNT; i++) {
-        pinMode(_discretePins[i], OUTPUT);
-        digitalWrite(_discretePins[i], LOW);
-    }
 
     // Initialise NeoPixel chain
     // Note: tinyNeoPixel_Static does not call begin() — pixel buffer
@@ -158,18 +138,14 @@ bool KBCLEDControl::update() {
 // ============================================================
 
 void KBCLEDControl::render() {
-    // Render NeoPixel buttons (KBC indices 0-11)
+    // Render NeoPixel buttons (KBC indices 0-11). Indices 12-15 are panel
+    // switch inputs with no LEDs on the KC-01-1801/1811 boards, so there is
+    // nothing to drive for them.
     for (uint8_t i = 0; i < KBC_NEO_COUNT; i++) {
         RGBColor color = _resolveColor(i, _flashOn);
         _setNeoPixel(i, color);
     }
     _pixels.show();
-
-    // Render discrete LED buttons (KBC indices 12-15)
-    for (uint8_t i = KBC_DISCRETE_INDEX_FIRST; i < KBC_BUTTON_COUNT; i++) {
-        RGBColor color = _resolveColor(i, _flashOn);
-        _setDiscrete(i, color);
-    }
 }
 
 // ============================================================
@@ -205,11 +181,6 @@ void KBCLEDControl::bulbTest(uint16_t durationMs) {
     }
     _pixels.show();
 
-    // Set all discrete LEDs on
-    for (uint8_t i = 0; i < KBC_DISCRETE_COUNT; i++) {
-        digitalWrite(_discretePins[i], HIGH);
-    }
-
     delay(durationMs);
 
     // Restore previous state
@@ -232,13 +203,9 @@ RGBColor KBCLEDControl::_resolveColor(uint8_t index, bool flashOn) const {
             return KBC_OFF;
 
         case KBC_LED_ENABLED:
-            // NeoPixel: scale white by brightness setting
-            // Discrete: full ON (no dimming available)
-            if (index < KBC_DISCRETE_INDEX_FIRST) {
-                return KBC_scaleColor(KBC_WHITE_COOL, _brightness);
-            } else {
-                return KBC_WHITE_COOL;  // discrete: full on
-            }
+            // Scale cool white by the brightness setting (all LEDs are
+            // NeoPixels; indices 0-11).
+            return KBC_scaleColor(KBC_WHITE_COOL, _brightness);
 
         case KBC_LED_ACTIVE:
             // Full brightness active color from per-button array
@@ -289,16 +256,4 @@ RGBColor KBCLEDControl::_resolveColor(uint8_t index, bool flashOn) const {
 
 void KBCLEDControl::_setNeoPixel(uint8_t index, RGBColor color) {
     _pixels.setPixelColor(index, color.r, color.g, color.b);
-}
-
-// ============================================================
-//  _setDiscrete() — internal
-// ============================================================
-
-void KBCLEDControl::_setDiscrete(uint8_t index, RGBColor color) {
-    if (index < KBC_DISCRETE_INDEX_FIRST || index >= KBC_BUTTON_COUNT) return;
-
-    uint8_t pinIndex = index - KBC_DISCRETE_INDEX_FIRST;
-    bool on = (color.r > 0 || color.g > 0 || color.b > 0);
-    digitalWrite(_discretePins[pinIndex], on ? HIGH : LOW);
 }

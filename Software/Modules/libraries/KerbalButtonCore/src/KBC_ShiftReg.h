@@ -24,8 +24,8 @@
  *
  *              Button index conventions:
  *                KBC index 0-11  : NeoPixel RGB buttons (BUTTON01-12 on PCB)
- *                KBC index 12-15 : Discrete LED buttons (BUTTON13-16 on PCB)
- *                KBC index 16-23 : Switch-group discrete inputs (U16), no LED
+ *                KBC index 12-15 : Panel switch inputs (BUTTON13-16 on PCB), no LED
+ *                KBC index 16-23 : Switch-group inputs, no LED
  *                                  (24-input modules only)
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
