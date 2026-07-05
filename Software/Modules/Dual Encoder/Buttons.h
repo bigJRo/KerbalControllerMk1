@@ -8,8 +8,8 @@
  *
  * @brief       Encoder pushbutton input for the Dual Encoder Module.
  *
- *              ENC1_SW (PC3) and ENC2_SW (PA4) — both active high
- *              with hardware 10k pull-down resistors (R10, R11).
+ *              ENC1_SW (PC1) and ENC2_SW (PB4) — both active high
+ *              with hardware pull-down resistors on the module.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

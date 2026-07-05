@@ -5,7 +5,7 @@
 **Date:** 2026-04-08  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1871/1872 Dual Encoder Module v1.0  
+**Hardware:** KC-01-1862 Dual Encoder Module v2.0  
 
 ---
 
@@ -43,12 +43,12 @@ Both encoders are identical hardware. Functions are assigned by the main control
 
 | Encoder | Pin A | Pin B | Pin SW | Delta Sign |
 |---|---|---|---|---|
-| ENC1 | PC1 | PC2 | PC3 | +CW / -CCW |
-| ENC2 | PA6 | PA5 | PA4 | +CW / -CCW |
+| ENC1 | PC3 | PC2 | PC1 | +CW / -CCW |
+| ENC2 | PA7 | PB5 | PB4 | +CW / -CCW |
 
-Both encoders use PEC11R-4220F-S0024 with hardware RC debounce (10nF capacitors on A and B channels) and 10k pull-up resistors. Software adds a 2ms guard against any residual glitches.
+Both encoders are PEC11R-4220F-S0024 mounted on KC-01-1852 passive carrier boards (5-pin header per encoder) with hardware RC debounce (10nF capacitors on A and B channels) and 10k pull-up resistors. Software adds a 2ms guard against any residual glitches.
 
-Pushbutton switches have 10k pull-down resistors (R10, R11) — active high.
+Pushbutton switches have hardware pull-down resistors — active high.
 
 ---
 
@@ -91,17 +91,17 @@ All standard commands 0x01–0x0A are supported. Module-specific notes:
 
 | Signal | ATtiny816 Pin | Function |
 |---|---|---|
-| ENC1_A | PC1 (pin 16) | Encoder 1 channel A (hardware debounced) |
+| ENC1_A | PC3 (pin 18) | Encoder 1 channel A (hardware debounced) |
 | ENC1_B | PC2 (pin 17) | Encoder 1 channel B (hardware debounced) |
-| ENC1_SW | PC3 (pin 18) | Encoder 1 pushbutton (active high) |
-| ENC2_A | PA6 (pin 7) | Encoder 2 channel A (hardware debounced) |
-| ENC2_B | PA5 (pin 6) | Encoder 2 channel B (hardware debounced) |
-| ENC2_SW | PA4 (pin 5) | Encoder 2 pushbutton (active high) |
+| ENC1_SW | PC1 (pin 16) | Encoder 1 pushbutton (active high) |
+| ENC2_A | PA7 (pin 8) | Encoder 2 channel A (hardware debounced) |
+| ENC2_B | PB5 (pin 9) | Encoder 2 channel B (hardware debounced) |
+| ENC2_SW | PB4 (pin 10) | Encoder 2 pushbutton (active high) |
 | INT | PA1 (pin 20) | Interrupt output (active low) |
 | SCL | PB0 (pin 14) | I2C clock |
 | SDA | PB1 (pin 13) | I2C data |
 
-Not connected: PB4, PB5, PA7, PA3, PA2, PC0.
+Not connected: PA2, PA3, PA4, PA5, PA6, PC0, PB2, PB3.
 
 ---
 
@@ -167,3 +167,4 @@ After flashing the module is immediately active — no enable command required (
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
 | 2.0 | 2026-06-28 | I2C Protocol v2.0 conformance — 3-byte universal header added (7-byte data packet) |
+| 2.1 | 2026-07-05 | Pin map realigned to KC-01-1862 v2.0 schematic — ENC1 A/SW swapped (A→PC3, SW→PC1); ENC2 moved to PA7/PB5/PB4. Board designator updated from KC-01-1871/1872 to KC-01-1862. |

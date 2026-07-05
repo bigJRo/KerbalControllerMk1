@@ -71,26 +71,26 @@
 #define DEC_BIT_ENC2_SW         1
 
 // ============================================================
-//  Pin assignments — ATtiny816 KC-01-1871/1872 v1.0
+//  Pin assignments — ATtiny816 KC-01-1862 v2.0
 // ============================================================
 
-/** @brief ENC1 channel A — PC1, hardware RC debounced. */
-#define DEC_PIN_ENC1_A          PIN_PC1
+/** @brief ENC1 channel A — PC3, hardware RC debounced. */
+#define DEC_PIN_ENC1_A          PIN_PC3
 
 /** @brief ENC1 channel B — PC2, hardware RC debounced. */
 #define DEC_PIN_ENC1_B          PIN_PC2
 
-/** @brief ENC1 pushbutton — PC3, active high, 10k pull-down. */
-#define DEC_PIN_ENC1_SW         PIN_PC3
+/** @brief ENC1 pushbutton — PC1, active high, hardware pull-down. */
+#define DEC_PIN_ENC1_SW         PIN_PC1
 
-/** @brief ENC2 channel A — PA6, hardware RC debounced. */
-#define DEC_PIN_ENC2_A          PIN_PA6
+/** @brief ENC2 channel A — PA7, hardware RC debounced. */
+#define DEC_PIN_ENC2_A          PIN_PA7
 
-/** @brief ENC2 channel B — PA5, hardware RC debounced. */
-#define DEC_PIN_ENC2_B          PIN_PA5
+/** @brief ENC2 channel B — PB5, hardware RC debounced. */
+#define DEC_PIN_ENC2_B          PIN_PB5
 
-/** @brief ENC2 pushbutton — PA4, active high, 10k pull-down. */
-#define DEC_PIN_ENC2_SW         PIN_PA4
+/** @brief ENC2 pushbutton — PB4, active high, hardware pull-down. */
+#define DEC_PIN_ENC2_SW         PIN_PB4
 
 /** @brief Interrupt output — PA1, active low. */
 #define DEC_PIN_INT             PIN_PA1
