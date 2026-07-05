@@ -76,15 +76,19 @@
 
 // ============================================================
 //  Pin assignments — ATtiny816 KC-01-1831/1832 v1.0
+//
+//  All three axes come from the panel joystick: AXIS1/AXIS2 are the X/Y
+//  gimbal potentiometers and AXIS3 is the joystick's built-in twist pot.
+//  All three ADC channels are populated — no axis input floats.
 // ============================================================
 
-/** @brief AXIS1 analog input — PA5, ADC channel AIN5. */
+/** @brief AXIS1 (X) analog input — PA5, ADC channel AIN5. */
 #define KJC_PIN_AXIS1           PIN_PA5
 
-/** @brief AXIS2 analog input — PA6, ADC channel AIN6. */
+/** @brief AXIS2 (Y) analog input — PA6, ADC channel AIN6. */
 #define KJC_PIN_AXIS2           PIN_PA6
 
-/** @brief AXIS3 analog input — PA7, ADC channel AIN7. */
+/** @brief AXIS3 (Z / twist) analog input — PA7, ADC channel AIN7. */
 #define KJC_PIN_AXIS3           PIN_PA7
 
 /** @brief Joystick pushbutton — PB5, active high, hardware pull-down. */
