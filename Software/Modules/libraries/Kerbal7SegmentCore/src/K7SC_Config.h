@@ -12,7 +12,8 @@
  *              Override any #ifndef-guarded constant by defining it
  *              before including Kerbal7SegmentCore.h in the sketch.
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware: KC-01-1841/1842 7-Segment Display Module v2.0
  *              Target:   ATtiny816-MNR (megaTinyCore)
@@ -250,10 +251,10 @@
 // ============================================================
 
 #define K7SC_MAX_REG_NOOP        0x00
-#define K7SC_MAX_REG_DIGIT0      0x01  // rightmost digit
+#define K7SC_MAX_REG_DIGIT0      0x01  // leftmost digit
 #define K7SC_MAX_REG_DIGIT1      0x02
 #define K7SC_MAX_REG_DIGIT2      0x03
-#define K7SC_MAX_REG_DIGIT3      0x04  // leftmost digit
+#define K7SC_MAX_REG_DIGIT3      0x04  // rightmost digit
 #define K7SC_MAX_REG_DECODE      0x09
 #define K7SC_MAX_REG_INTENSITY   0x0A
 #define K7SC_MAX_REG_SCANLIMIT   0x0B
@@ -266,4 +267,17 @@
 /** @brief Default MAX7219 display intensity (0-15). */
 #ifndef K7SC_MAX_INTENSITY
   #define K7SC_MAX_INTENSITY     8
+#endif
+
+// ============================================================
+//  ENABLED-state backlight brightness
+//
+//  Applied to R=G=B in K7SC_ENABLED_COLOR (K7SC_Colors.h) to
+//  produce a dim neutral white backlight. W channel unused
+//  (NEO_GRB 3-byte mode on KC-01-1841 v2.0).
+// ============================================================
+
+/** @brief ENABLED-state dim white brightness (0-255). */
+#ifndef K7SC_ENABLED_BRIGHTNESS
+  #define K7SC_ENABLED_BRIGHTNESS  32
 #endif

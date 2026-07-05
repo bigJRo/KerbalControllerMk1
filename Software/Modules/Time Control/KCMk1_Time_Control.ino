@@ -20,8 +20,9 @@
  *              and MINT (load).
  *
  *              This module uses 12 NeoPixel RGB button positions
- *              (KBC indices 0-11). The four discrete LED button
- *              positions (KBC indices 12-15) are not populated.
+ *              (KBC indices 0-11). The positions at KBC indices 12-15
+ *              (switch inputs in the library, with no LED) are not
+ *              populated.
  *
  *              I2C Address: 0x25
  *              Module Type: KBC_TYPE_TIME_CONTROL (0x06)

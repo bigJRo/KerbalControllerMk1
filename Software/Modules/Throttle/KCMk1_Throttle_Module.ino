@@ -2,7 +2,7 @@
  * @file        KCMk1_Throttle_Module.ino
  * @version     2.0
  * @date        2026-04-08
- * @project     Kerbal Controller Mk1
+ * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
@@ -19,9 +19,9 @@
  *
  *              Tab structure:
  *                Config.h      — pins, constants, thresholds
- *                Motor.h/.cpp  — L293D H-bridge control, position seek
+ *                Motor.h/.cpp  — L293DD H-bridge control, position seek
  *                Wiper.h/.cpp  — ADC position reading, scaling
- *                Buttons.h/.cpp— button input, LED output
+ *                Buttons.h/.cpp— button input, switch-backlight output
  *                I2C.h/.cpp    — protocol handler, packet build
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)

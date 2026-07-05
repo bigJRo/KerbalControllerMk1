@@ -40,7 +40,6 @@
 
 // --- Utility ---
 static const RGBColor KBC_OFF           = KMC_OFF;
-static const RGBColor KBC_DISCRETE_ON   = KMC_DISCRETE_ON;
 
 // --- Semantic ---
 static const RGBColor KBC_GREEN         = KMC_GREEN;

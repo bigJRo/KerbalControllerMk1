@@ -52,8 +52,9 @@
 //  Index matches KBC button index (0-15).
 //  Use named colors from KBC_Colors.h or KBC_COLOR(r, g, b).
 //
-//  Buttons 12-15 are discrete LEDs — color is used for ON/OFF
-//  only (any non-zero color = ON).
+//  KBC indices 12-15 are panel switch inputs with no LED; their
+//  colour-array slots are unused (kept only so the array is
+//  KBC_BUTTON_COUNT long).
 // ============================================================
 
 const RGBColor activeColors[KBC_BUTTON_COUNT] = {
@@ -69,10 +70,10 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_TEAL,    // B9  — Ship Back
     KBC_SKY,     // B10 — Map Enable
     KBC_CORAL,   // B11 — IVA
-    KBC_GREEN,   // B12 — discrete (unused on UI module)
-    KBC_GREEN,   // B13 — discrete (unused on UI module)
-    KBC_GREEN,   // B14 — discrete (unused on UI module)
-    KBC_GREEN,   // B15 — discrete (unused on UI module)
+    KBC_OFF,     // B12 — switch input, no LED
+    KBC_OFF,     // B13 — switch input, no LED
+    KBC_OFF,     // B14 — switch input, no LED
+    KBC_OFF,     // B15 — switch input, no LED
 };
 
 // ============================================================

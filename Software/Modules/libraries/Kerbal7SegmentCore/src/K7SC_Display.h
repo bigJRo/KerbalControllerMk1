@@ -17,7 +17,7 @@
  *                - BCD decode mode on all digits
  *                - No leading zeros (blank character for unused digits)
  *                - Range: 0–9999, clamped
- *                - Digit 0 = rightmost position (MAX7219 register 1)
+ *                - Digit 0 = leftmost position (MAX7219 register 1)
  *                - Integer values only, no decimal point
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
@@ -33,8 +33,10 @@
 
 /**
  * @brief Initialise MAX7219 and display.
- *        Configures BCD decode mode, scan limit, intensity,
- *        and exits shutdown mode. Shows 0 on startup.
+ *        Configures BCD decode mode, scan limit, and intensity,
+ *        and pre-loads the value 0 into the digit registers.
+ *        Deliberately remains in shutdown mode — the display stays
+ *        dark on startup until displayWake() is called by the master.
  */
 void displayBegin();
 

@@ -141,8 +141,9 @@ void KBCShiftReg::begin() {
         KBC_PIN_SR_CLK
     );
 
-    // Use a slightly longer pulse width than the default 5us for
-    // reliable operation across the full operating temperature range.
+    // Apply the KBC load pulse width (KBC_SR_LOAD_PULSE_US = 5us, equal
+    // to the ShiftIn default) explicitly for reliable operation across
+    // the full operating temperature range.
     _shift.setPulseWidth(KBC_SR_LOAD_PULSE_US);
 
     // Clear all state
@@ -280,11 +281,11 @@ uint32_t KBCShiftReg::_readRaw() {
 // ============================================================
 //  _remap() — internal
 //
-//  Translates a raw ShiftIn<2> uint16_t reading into a uint16_t
-//  where bit N corresponds to KBC button index N.
+//  Translates a raw ShiftIn<KBC_SHIFTREG_COUNT> uint32_t reading into a
+//  uint32_t where bit N corresponds to KBC button index N.
 //
-//  Iterates through all 16 ShiftIn bit positions, looks up the
-//  corresponding KBC index from the PROGMEM remap table, and
+//  Iterates through all KBC_INPUT_COUNT ShiftIn bit positions (16 or 24),
+//  looks up the corresponding KBC index from the PROGMEM remap table, and
 //  builds the remapped result one bit at a time.
 // ============================================================
 

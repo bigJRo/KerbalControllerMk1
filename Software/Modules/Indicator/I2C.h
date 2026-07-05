@@ -15,7 +15,7 @@
  *
  *              Commands:
  *                CMD_SET_LED_STATE (0x02) — primary runtime command.
- *                  8-byte nibble-packed payload, 1 nibble per pixel.
+ *                  9-byte nibble-packed payload (18 pixels, 2 per byte).
  *                  Pixel 0 = high nibble of byte 0, pixel 1 = low nibble, etc.
  *
  *              All other standard commands are supported per spec.

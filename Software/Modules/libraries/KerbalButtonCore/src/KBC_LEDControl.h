@@ -20,6 +20,8 @@
  *                ALERT          — flashing red   (extended modules)
  *                ARMED          — static cyan    (extended modules)
  *                PARTIAL_DEPLOY — static amber   (extended modules)
+ *                CUT            — static red     (extended modules)
+ *                ACTIVE_ALT     — second per-button active color
  *
  *              All brightness scaling for the ENABLED state is performed
  *              in software via KBC_scaleColor(). The tinyNeoPixel
@@ -86,6 +88,10 @@ public:
      *                       values defining the ACTIVE color for each button.
      *                       Array must remain valid for the lifetime of this
      *                       object (declare as const in module sketch).
+     * @param  altColors     Optional pointer to array of KBC_BUTTON_COUNT
+     *                       RGBColor values for the ACTIVE_ALT state. Pass
+     *                       nullptr to fall back to activeColors. Must remain
+     *                       valid for the lifetime of this object.
      * @param  brightness    Initial ENABLED state brightness (0-255).
      *                       Defaults to KBC_ENABLED_BRIGHTNESS.
      */
@@ -121,8 +127,8 @@ public:
 
     /**
      * @brief  Set the ENABLED state brightness for NeoPixel buttons.
-     *         Applied via software RGB scaling — does not affect
-     *         discrete LED buttons (indices 12-15).
+     *         Applied via software RGB scaling to the NeoPixel buttons
+     *         (indices 0-11); indices 12-15 are switch inputs with no LED.
      *
      *         Does not render — call render() after this to push to hardware.
      *
@@ -154,8 +160,9 @@ public:
     /**
      * @brief  Push current LED state to hardware.
      *
-     *         Writes all NeoPixel colors to the tinyNeoPixel buffer
-     *         and calls show(). Updates all discrete LED pin outputs.
+     *         Writes all NeoPixel colors (indices 0-11) to the
+     *         tinyNeoPixel buffer and calls show(). Indices 12-15 are
+     *         switch inputs with no LED, so nothing is driven for them.
      *
      *         Relatively expensive on the ATtiny816 — only call when
      *         state has actually changed. The update() method calls

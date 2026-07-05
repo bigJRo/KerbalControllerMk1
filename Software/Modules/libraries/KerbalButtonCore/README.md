@@ -269,7 +269,6 @@ All named colors are defined in `KBC_Colors.h`.
 | `KBC_WHITE_WARM`  | 255, 200, 150  | Warp rate                      |
 | `KBC_WHITE_SOFT`  | 180, 184, 204  | Low-light environments         |
 | `KBC_OFF`         | 0, 0, 0        | Unlit                          |
-| `KBC_DISCRETE_ON` | 1, 1, 1        | Discrete indicator — on/off only, no color meaning |
 
 Custom colors: `KBC_COLOR(r, g, b)` macro or direct `RGBColor` struct.
 

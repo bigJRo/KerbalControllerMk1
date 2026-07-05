@@ -69,10 +69,10 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_GREEN,   // B9  — Drogue Deploy ← extended states active in flight
     KBC_RED,     // B10 — Main Cut      ← extended states active in flight
     KBC_RED,     // B11 — Drogue Cut    ← extended states active in flight
-    KBC_GREEN,   // B12 — discrete (unused)
-    KBC_GREEN,   // B13 — discrete (unused)
-    KBC_GREEN,   // B14 — discrete (unused)
-    KBC_GREEN,   // B15 — discrete (unused)
+    KBC_OFF,     // B12 — switch input, no LED
+    KBC_OFF,     // B13 — switch input, no LED
+    KBC_OFF,     // B14 — switch input, no LED
+    KBC_OFF,     // B15 — switch input, no LED
 };
 
 // ============================================================

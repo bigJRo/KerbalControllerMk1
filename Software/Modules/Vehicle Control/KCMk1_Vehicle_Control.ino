@@ -102,7 +102,7 @@
  *              Main/Drogue Chute (B10/B11) require the Switch Group 2 CHUTE
  *              switch in ARM before the controller deploys. Deploy renders
  *              GREEN (KBC_LED_ACTIVE); the cut/release terminal state renders
- *              static red via KBC_LED_CUT (KerbalButtonCore v2.1).
+ *              static red via KBC_LED_CUT.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

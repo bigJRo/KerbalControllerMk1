@@ -214,8 +214,8 @@
 //
 //  Minimum pulse widths for reliable 74HC165 operation.
 //  The ShiftIn library uses its own internal pulseWidth (default
-//  5us). These constants are provided for reference and used
-//  only if the ShiftIn pulseWidth is overridden in the sketch.
+//  5us). KBCShiftReg::begin() always applies KBC_SR_LOAD_PULSE_US
+//  via _shift.setPulseWidth().
 // ============================================================
 
 /** @brief Minimum LOAD pulse width in microseconds. */
@@ -322,7 +322,7 @@
 /** @brief Library firmware version — major. Bumped to 2 for protocol v2.4. */
 #define KBC_FIRMWARE_MAJOR          2
 
-/** @brief Library firmware version — minor. Bumped to 1 for KBC_LED_CUT. */
+/** @brief Library firmware version — minor. Bumped to 2 for KBC_LED_CUT. */
 #define KBC_FIRMWARE_MINOR          2
 
 // ============================================================

@@ -1,5 +1,5 @@
 /**
- * @file        KC_UI_Control.ino
+ * @file        KCMk1_UI_Control.ino
  * @version     1.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
@@ -11,8 +11,8 @@
  *              This module provides cinematic, navigation, and UI
  *              control functions for Kerbal Space Program. It occupies
  *              12 NeoPixel RGB button positions (KBC indices 0-11).
- *              The four discrete LED button positions (KBC indices 12-15)
- *              are not populated on this module.
+ *              The positions at KBC indices 12-15 (switch inputs in the
+ *              library, with no LED) are not populated on this module.
  *
  *              I2C Address: 0x20
  *              Module Type: KBC_TYPE_UI_CONTROL (0x01)

@@ -10,7 +10,8 @@
  *              No acceleration, no value tracking, no display coupling.
  *              All application logic belongs in the sketch.
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  */
 
 #include <Arduino.h>

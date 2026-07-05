@@ -10,8 +10,8 @@
  *
  *              18 SK6812mini-012 RGB LEDs driven from NEOPIX_CMD (PA5).
  *              The controller sends CMD_SET_LED_STATE with a 9-byte
- *              nibble-packed payload (1 nibble per pixel, 2 per byte,
- *              last nibble of byte 8 unused/zero). Each nibble is a
+ *              nibble-packed payload (1 nibble per pixel, 2 per byte).
+ *              Each nibble is a
  *              KBC LED state value (0x0-0x6). The module maps each
  *              state to a per-pixel color.
  *

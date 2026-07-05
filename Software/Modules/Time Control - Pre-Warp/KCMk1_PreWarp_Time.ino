@@ -50,7 +50,8 @@
  *                Byte 6: Value HIGH     (int16 minutes, big-endian)
  *                Byte 7: Value LOW
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1880 v2.0 (ATtiny816)
  *              Library:   Kerbal7SegmentCore v2.0.0

@@ -12,7 +12,7 @@
  *
  *              KerbalButtonCore ties together all library subsystems:
  *                KBCShiftReg   — 74HC165 button input with debounce
- *                KBCLEDControl — NeoPixel and discrete LED state machine
+ *                KBCLEDControl — NeoPixel LED state machine
  *                KBCi2C        — I2C target command handler
  *
  *              Module sketch usage pattern:
@@ -106,6 +106,10 @@ public:
      *                       Must remain valid for the lifetime of this object.
      *                       Typically declared as a file-scope const array
      *                       in the module sketch.
+     * @param  altColors     Optional pointer to array of KBC_BUTTON_COUNT
+     *                       RGBColor values for the ACTIVE_ALT state. Pass
+     *                       nullptr (default) to fall back to activeColors.
+     *                       Must remain valid for the lifetime of this object.
      */
     KerbalButtonCore(uint8_t         moduleTypeId,
                      uint8_t         capFlags,

@@ -9,8 +9,9 @@
  * @brief       Button input and switch-backlight output for the Throttle Module.
  *
  *              Four command buttons: THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00.
- *              (A fifth panel switch, THRTL_ENA, exists in hardware on PB5 but
- *              is not read here — see Config.h.)
+ *              (A fifth panel switch, THRTL_ENA, appears in the schematic but
+ *              is NOT wired in the final build — it has no pin. A firmware
+ *              local-enable (_localEnable, held active) replaces it; see Config.h.)
  *
  *              All buttons active high with hardware pull-downs.
  *

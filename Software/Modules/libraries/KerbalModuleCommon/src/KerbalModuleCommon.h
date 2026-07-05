@@ -12,7 +12,8 @@
  *              Single source of truth for the KMC_* color palette.
  *              All module libraries and sketches include this file.
  *
- *              All hardware on this system uses NEO_GRB 3-byte pixels.
+ *              Most modules use NEO_GRB 3-byte pixels; the joystick
+ *              module (WS2811) uses NEO_RGB.
  *              Colors are stored as plain RGBColor and passed directly
  *              to setPixelColor(i, r, g, b) — no format conversion needed.
  *
@@ -254,7 +255,7 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_BUTTON_PACKET_SIZE     (KMC_HEADER_SIZE + KMC_BUTTON_PAYLOAD_SIZE)   // 7
 
 /** @brief 24-input switch-group button module: 6-byte payload (3 event +
- *         3 change bytes). Function Control (0x21), Vehicle Control (0x24). */
+ *         3 change bytes). Function Control (0x02), Vehicle Control (0x05). */
 #define KMC_BUTTON24_PAYLOAD_SIZE  6
 #define KMC_BUTTON24_PACKET_SIZE   (KMC_HEADER_SIZE + KMC_BUTTON24_PAYLOAD_SIZE) // 9
 

@@ -16,7 +16,7 @@
  *
  *              I2C Address:    0x2F
  *              Module Type ID: 0x10
- *              Capability:     0x00
+ *              Capability:     0x01 (extended LED states)
  *
  *              CMD_SET_LED_STATE payload: 9 bytes (18 nibbles).
  *              This differs from the standard 8-byte KMC payload —

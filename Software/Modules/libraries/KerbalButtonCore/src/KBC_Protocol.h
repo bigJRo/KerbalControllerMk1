@@ -26,7 +26,7 @@
  *              modules read 24 inputs (KBC_INPUT_COUNT == 24) and emit a
  *              6-byte payload (9-byte total packet).
  *
- *              Full protocol specification: I2C_Protocol_Specification.md v2.5
+ *              Full protocol specification: I2C_Protocol_Specification.md v2.4
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

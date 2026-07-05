@@ -174,7 +174,7 @@ static void _dispatch() {
 
         case CMD_BULB_TEST:
             // Spec: 1-byte payload, 0x01 = start, 0x00 = stop. This module's
-            // bulb test is timed (button LEDs as user-visible proxy), so a
+            // bulb test is timed (shared switch backlight as user-visible proxy), so a
             // 0x00 "stop" is a no-op — it must NOT retrigger the flash.
             if (_cmdLen >= 2 && _cmdBuf[1] == 0x00) break;
             buttonsLEDsOn();
