@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Joystick_Rotation.ino
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

@@ -5,7 +5,7 @@
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.4 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.9 (conformant)  
 
 ---
 

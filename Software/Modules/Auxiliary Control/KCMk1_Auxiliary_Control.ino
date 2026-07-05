@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Auxiliary_Control.ino
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

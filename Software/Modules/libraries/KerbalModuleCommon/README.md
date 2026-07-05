@@ -144,7 +144,7 @@ Constants: `KMC_STATUS_ACTIVE`, `KMC_STATUS_SLEEPING`, `KMC_STATUS_DISABLED`, `K
 | `KMC_TYPE_THROTTLE` | 0x0D | Throttle Module | 0x2C |
 | `KMC_TYPE_DUAL_ENCODER` | 0x0E | Dual Encoder | 0x2D |
 | _0x0F_ | _retired_ | _was Switch Panel — superseded by Switch Groups 1/2_ | _0x2E_ |
-| `KMC_TYPE_INDICATOR` | 0x10 | Indicator Module | 0x2F |
+| _0x10_ | _retired_ | _was Indicator Module — no longer a physical design_ | _—_ |
 
 ---
 

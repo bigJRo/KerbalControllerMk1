@@ -14,7 +14,7 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Hardware: KC-01-1801/1802 and KC-01-1811/1812
- *              Protocol: I2C_Protocol_Specification.md v2.4
+ *              Protocol: I2C_Protocol_Specification.md v2.9
  */
 
 #include "KerbalButtonCore.h"

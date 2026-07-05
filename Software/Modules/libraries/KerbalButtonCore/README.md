@@ -5,7 +5,7 @@
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.4 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.9 (conformant)  
 
 ---
 

@@ -1,6 +1,6 @@
 /**
  * @file        I2C.cpp
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Dual Encoder Module
  * @author      J. Rostoker

@@ -181,7 +181,8 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_TYPE_DUAL_ENCODER       0x0E
 // 0x0F retired — was KMC_TYPE_SWITCH_PANEL; the single Switch Panel module
 // design was superseded by Switch Groups 1/2 on Function/Vehicle Control.
-#define KMC_TYPE_INDICATOR          0x10
+// 0x10 retired — was KMC_TYPE_INDICATOR; the Indicator module is no longer a
+// physical design and its firmware has been removed.
 
 // ============================================================
 //  Capability flags

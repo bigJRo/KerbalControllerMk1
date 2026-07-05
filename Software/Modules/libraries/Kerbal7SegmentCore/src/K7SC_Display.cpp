@@ -1,6 +1,6 @@
 /**
  * @file        K7SC_Display.cpp
- * @version     1.1.0
+ * @version     2.0.0
  * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

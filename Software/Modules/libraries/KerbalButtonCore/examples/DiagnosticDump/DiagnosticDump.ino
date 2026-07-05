@@ -1,6 +1,6 @@
 /**
  * @file        DiagnosticDump.ino
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
