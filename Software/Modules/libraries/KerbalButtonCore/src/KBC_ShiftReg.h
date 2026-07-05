@@ -10,9 +10,9 @@
  *              Manages reading KBC_INPUT_COUNT button inputs from
  *              KBC_SHIFTREG_COUNT daisy-chained SN74HC165PWR shift
  *              registers using the ShiftIn library
- *              (InfectedBytes/ArduinoShiftIn): two registers (U14, U15)
- *              for the default 16 inputs, or three (U14, U15, U16) for
- *              the 24-input switch-group modules.
+ *              (InfectedBytes/ArduinoShiftIn): two registers for the
+ *              default 16 inputs, or three for the 24-input switch-group
+ *              modules.
  *
  *              Provides dual-buffer latching to guarantee every button
  *              press and release edge is captured and reported to the

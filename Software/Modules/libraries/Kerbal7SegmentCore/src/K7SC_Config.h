@@ -98,7 +98,7 @@
 /** @brief BTN03 — PC1, active high. */
 #define K7SC_PIN_BTN03          PIN_PC1
 
-/** @brief BTN_EN — encoder pushbutton, PB3, active high (10k pull-down R6). */
+/** @brief BTN_EN — encoder pushbutton, PB3, active high (10k pull-down R11). */
 #define K7SC_PIN_BTN_EN         PIN_PB3
 
 /** @brief NeoPixel data out — PC3. */

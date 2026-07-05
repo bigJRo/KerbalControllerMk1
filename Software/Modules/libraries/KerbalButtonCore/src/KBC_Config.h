@@ -13,9 +13,9 @@
  *              design (KC-01-1801/1802 and KC-01-1811/1812) based on the ATtiny816-MNR
  *              microcontroller with megaTinyCore pin mapping, featuring:
  *                - 16 button inputs via two daisy-chained 74HC165 shift
- *                  registers (U14, U15) read via the ShiftIn<2> library.
+ *                  registers read via the ShiftIn<2> library.
  *                  Switch-group modules (Function Control, Vehicle Control)
- *                  add a third register (U16) for 24 inputs — selected per
+ *                  add a third register for 24 inputs — selected per
  *                  sketch via KBC_INPUT_COUNT / KBC_SHIFTREG_COUNT (see below).
  *                - 12 RGB NeoPixel buttons driven by WS2811 ICs
  *                  (tinyNeoPixel_Static, PIN_PA4, NEO_RGB order)
@@ -99,27 +99,31 @@
 #define KBC_PIN_INT             PIN_PA1
 
 // ============================================================
-//  Shift register pins (74HC165, U14 + U15 daisy-chained)
+//  Shift register pins (two/three daisy-chained 74HC165)
 //
-//  Two SN74HC165PWR ICs are daisy-chained to read 16 button
-//  inputs. U15 (BUTTON09-16) feeds into U14's SER input.
-//  U14's QH feeds DATA_IN to the ATtiny.
+//  The register NEAREST the MCU reads BUTTON00-07 and its QH feeds
+//  DATA_IN; the next register (BUTTON08-15) feeds the near register's
+//  SER input. 24-input modules add a third register (BUTTON16-23) at the
+//  far end. (Schematic reference designators differ per board — KC-01-1801
+//  labels them U16/U17 and KC-01-1811 uses U18/U19/U20 — so they are
+//  referred to functionally here.)
 //
-//  Read using ShiftIn<2> library (InfectedBytes/ArduinoShiftIn).
+//  Read using ShiftIn<N> library (InfectedBytes/ArduinoShiftIn).
 //  Constructor: shift.begin(LOAD, CLK_EN, DATA, CLK)
 //
 //  Read sequence:
 //    1. CLK_EN HIGH  — disable clock
-//    2. LOAD LOW     — latch all 16 inputs in parallel
+//    2. LOAD LOW     — latch inputs in parallel
 //    3. LOAD HIGH    — end latch pulse
 //    4. CLK_EN LOW   — enable clock
-//    5. Read 16 bits — ShiftIn library handles clocking
+//    5. Read bits    — ShiftIn library handles clocking
 //
-//  ShiftIn<2> bit-to-KBC-index mapping (see KBC_ShiftReg.cpp):
-//    shift.state(15..8) → U15 (A..H) → KBC index 8..15
-//    shift.state(7..0)  → U14 (A..H) → KBC index 0..7
-//    Note: within each byte, bit order is inverted relative to
-//    input pin label (A=MSB, H=LSB per 74HC165 shift order).
+//  Bit-to-KBC-index mapping, 16-input (see KBC_ShiftReg.cpp). ShiftIn
+//  places the first-clocked bit in the MSB, and the near register clocks
+//  out first, so it occupies the HIGH byte:
+//    shift.state(15..8) → near register BUTTON00-07 → KBC index 7..0
+//    shift.state(7..0)  → far register  BUTTON08-15 → KBC index 15..8
+//    Within each byte, H is first-out (MSB) and A is last (LSB).
 //    Full remap handled by KBC_SR_BUTTON_MAP in KBC_ShiftReg.cpp.
 // ============================================================
 
@@ -138,11 +142,10 @@
 // ============================================================
 //  Shift register input width (16-input default, 24-input switch groups)
 //
-//  Most modules read 16 inputs from two daisy-chained 74HC165 ICs
-//  (U14, U15). The two switch-group modules — Function Control (0x21)
-//  and Vehicle Control (0x24) — fit a third register (U16) to read
-//  Switch Group 1/2 panel inputs at KBC indices 16-23, for 24 inputs
-//  read as three shift-register bytes.
+//  Most modules read 16 inputs from two daisy-chained 74HC165 ICs. The two
+//  switch-group modules — Function Control (0x21) and Vehicle Control
+//  (0x24) — fit a third register to read Switch Group 1/2 panel inputs at
+//  KBC indices 16-23, for 24 inputs read as three shift-register bytes.
 //
 //  A sketch selects the 24-input variant by defining both constants
 //  before including KerbalButtonCore.h:
