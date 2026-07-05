@@ -42,7 +42,7 @@ All hardware on this system uses NEO_GRB 3-byte pixels. Colours are stored as `R
 
 ## System Colour Palette
 
-All colours hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB mode).
+All colours hardware-validated on SK6812MINI-EA (KC-01-1841 v2.0, NEO_GRB mode).
 
 ### Utility
 
@@ -186,7 +186,7 @@ Used with `KMC_CMD_SET_LED_STATE` and `kmcLedPackGet()` / `kmcLedPackSet()` help
 - `KMC_BACKLIT {15, 8, 2}` added — system-wide ENABLED backlight colour
 - `KMC_WHITE {255, 255, 255}` added — bulb test / diagnostics only
 - `KMC_STATUS_*` packet header constants added
-- Entire colour palette hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0)
+- Entire colour palette hardware-validated on SK6812MINI-EA (KC-01-1841 v2.0)
 
 ---
 

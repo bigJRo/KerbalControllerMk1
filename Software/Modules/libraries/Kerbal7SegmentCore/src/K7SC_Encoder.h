@@ -6,7 +6,7 @@
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Rotary encoder input driver for KC-01-1881/1882.
+ * @brief       Rotary encoder input driver for KC-01-1841/1842.
  *
  *              Reports raw signed delta to inputState.encoderDelta.
  *              All value tracking, acceleration, and display updates

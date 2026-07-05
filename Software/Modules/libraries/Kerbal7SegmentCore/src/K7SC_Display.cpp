@@ -93,13 +93,13 @@ static void _writeValue(uint16_t value) {
     while (value >= 10)   { d[1]++; value -= 10;   }
     d[0] = (uint8_t)value;
 
-    // Physical display wiring (from schematic KC-01-1881/1882 v2.0):
+    // Physical display wiring (from schematic KC-01-1841/1842 v2.0):
     //   MAX7219 DIG0 (reg 1) -> G4 = leftmost  physical digit = thousands
     //   MAX7219 DIG1 (reg 2) -> G3             physical digit = hundreds
     //   MAX7219 DIG2 (reg 3) -> G2             physical digit = tens
     //   MAX7219 DIG3 (reg 4) -> G1 = rightmost physical digit = units
     //
-    // Verified by hardware diagnostic on KC-01-1880 v2.0.
+    // Verified by hardware diagnostic on KC-01-1841 v2.0.
     // Leading zero suppression: blank regs 1-3 from left; reg 4 always shown.
     bool leading = true;
 

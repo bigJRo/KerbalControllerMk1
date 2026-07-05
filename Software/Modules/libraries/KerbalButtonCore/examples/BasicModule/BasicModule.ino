@@ -25,7 +25,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Requires: KerbalButtonCore library
- *              Hardware: KC-01-1822 v1.1 (ATtiny816)
+ *              Hardware: KC-01-1801/1802 and KC-01-1811/1812 (ATtiny816)
  *              IDE settings:
  *                Board: ATtiny816 (megaTinyCore)
  *                Clock: 10 MHz or higher

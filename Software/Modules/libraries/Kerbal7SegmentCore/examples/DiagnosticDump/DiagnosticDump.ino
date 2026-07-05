@@ -15,7 +15,7 @@
  *              Connect a USB-UART adapter to the ATtiny816 UPDI/TX pin
  *              and open a serial monitor at 115200 baud.
  *
- * @note        Hardware:  KC-01-1881/1882 v2.0 (ATtiny816)
+ * @note        Hardware:  KC-01-1841/1842 v2.0 (ATtiny816)
  *              Library:   Kerbal7SegmentCore v2.0.0
  *              IDE settings:
  *                Board:        ATtiny816 (megaTinyCore)

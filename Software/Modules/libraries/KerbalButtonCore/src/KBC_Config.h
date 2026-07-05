@@ -10,7 +10,7 @@
  *              configuration values for the KerbalButtonCore library.
  *
  *              All values defined here reflect the common KBC PCB hardware
- *              design (KC-01-1822 v1.1) based on the ATtiny816-MNR
+ *              design (KC-01-1801/1802 and KC-01-1811/1812) based on the ATtiny816-MNR
  *              microcontroller with megaTinyCore pin mapping, featuring:
  *                - 16 button inputs via two daisy-chained 74HC165 shift
  *                  registers (U14, U15) read via the ShiftIn<2> library.
@@ -45,7 +45,7 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Protocol defined in I2C_Protocol_Specification.md v2.4
- *              Schematic reference: KC-01-1821 v1.1
+ *              Schematic reference: KC-01-1801 (Button) / KC-01-1811 (Wide Button)
  */
 
 #ifndef KBC_CONFIG_H

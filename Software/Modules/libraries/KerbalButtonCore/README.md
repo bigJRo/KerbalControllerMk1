@@ -3,7 +3,7 @@
 **Version:** 2.2.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1822 Button Module Base v1.1  
+**Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
 **Target MCU:** ATtiny816 (megaTinyCore)  
 **Protocol:** I2C_Protocol_Specification.md v2.4 (conformant)  
 
@@ -32,7 +32,7 @@ Full protocol specification: [`I2C_Protocol_Specification.md`](../../../../Docum
 
 ## Hardware
 
-All modules share the common PCB design KC-01-1822 v1.1 based on the ATtiny816-MNR.
+All modules share the common PCB design KC-01-1801/1802 and KC-01-1811/1812 based on the ATtiny816-MNR.
 
 ### Pin Assignment
 

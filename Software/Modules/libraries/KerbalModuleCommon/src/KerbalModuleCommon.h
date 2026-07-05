@@ -36,7 +36,7 @@ struct RGBColor {
 // ============================================================
 //  System palette — canonical RGB values
 //
-//  Hardware-validated on SK6812MINI-EA (KC-01-1880 v2.0, NEO_GRB).
+//  Hardware-validated on SK6812MINI-EA (KC-01-1841 v2.0, NEO_GRB).
 //
 //  Semantic colors carry fixed meaning across ALL modules:
 //    KMC_GREEN    : active / go / nominal state

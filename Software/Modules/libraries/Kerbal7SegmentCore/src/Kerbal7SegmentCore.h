@@ -8,7 +8,7 @@
  *
  * @brief       Top-level include for the Kerbal7SegmentCore library.
  *
- *              Manages KC-01-1881/1882 hardware:
+ *              Manages KC-01-1841/1842 hardware:
  *                - MAX7219 4-digit 7-segment display
  *                - PEC11R rotary encoder with pushbutton
  *                - 3× SK6812MINI-EA NeoPixel buttons

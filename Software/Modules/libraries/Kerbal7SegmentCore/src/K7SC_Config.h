@@ -14,7 +14,7 @@
  *
  * @license     GNU General Public License v3.0
  *
- * @note        Hardware: KC-01-1881/1882 7-Segment Display Module v2.0
+ * @note        Hardware: KC-01-1841/1842 7-Segment Display Module v2.0
  *              Target:   ATtiny816-MNR (megaTinyCore)
  */
 
@@ -74,7 +74,7 @@
 #define K7SC_STATE_BTN03_BIT    3     // bit 3:    BTN03 active
 
 // ============================================================
-//  Pin assignments — ATtiny816, KC-01-1881/1882 v2.0
+//  Pin assignments — ATtiny816, KC-01-1841/1842 v2.0
 // ============================================================
 
 /** @brief MAX7219 SPI clock — PA7. */
@@ -113,7 +113,7 @@
 /** @brief INT output to master — PC0, active low.
  *  @note  This module uses PC0 for INT. PA1 is used for BTN01
  *         on this PCB. Master wiring must account for this.
- *         Verified against KC-01-1880 v2.0 schematic. */
+ *         Verified against KC-01-1841 v2.0 schematic. */
 #define K7SC_PIN_INT            PIN_PC0
 
 /** @brief I2C SCL — PB0. */
@@ -126,7 +126,7 @@
 //  NeoPixel configuration
 //
 //  SK6812MINI-EA: GRB 3-byte mode. NEO_GRB is the hardware-
-//  validated configuration on KC-01-1880 v2.0 at 20 MHz.
+//  validated configuration on KC-01-1841 v2.0 at 20 MHz.
 // ============================================================
 
 /** @brief SK6812MINI-EA colour order — GRB (3 bytes/pixel). */

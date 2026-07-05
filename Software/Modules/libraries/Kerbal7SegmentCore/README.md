@@ -3,14 +3,14 @@
 **Version:** 2.0.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1881/1882 7-Segment Display Module v2.0  
+**Hardware:** KC-01-1841/1842 7-Segment Display Module v2.0  
 **Target MCU:** ATtiny816 (megaTinyCore, 20 MHz internal)  
 
 ---
 
 ## Overview
 
-Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment display modules (KC-01-1880). Each module runs on an ATtiny816, acts as an I2C target device, and provides:
+Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment display modules (KC-01-1841). Each module runs on an ATtiny816, acts as an I2C target device, and provides:
 
 - 4-digit 7-segment display via MAX7219 (software SPI, bit-banged)
 - Rotary encoder with click-count-based acceleration (sketch-implemented)
@@ -27,14 +27,14 @@ Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment di
 
 ## Hardware
 
-**PCB:** KC-01-1881 (schematic) / KC-01-1882 (board)  
+**PCB:** KC-01-1841 (schematic) / KC-01-1842 (board)  
 **MCU:** ATtiny816-MNR  
 **Display IC:** MAX7219CWG+T  
 **Display:** FJ4401AG 4-digit 7-segment (common cathode)  
 **LEDs:** SK6812MINI-EA (NEO_GRB 3-byte mode — white channel not connected on this board)  
 **Encoder:** PEC11R-4220F-S0024 with hardware RC debounce (C1/C2 10nF)
 
-### Pin Assignment (verified against KC-01-1881 schematic v2.0)
+### Pin Assignment (verified against KC-01-1841 schematic v2.0)
 
 | ATtiny816 | Net | Signal | Notes |
 |---|---|---|---|
