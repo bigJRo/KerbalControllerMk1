@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.9  
-**Date:** 2026-06-28  
+**Version:** 1.10  
+**Date:** 2026-07-05  
 **Document type:** Developer — Hardware
 
 ---
@@ -22,6 +22,7 @@
 | 1.7 | 2026-06-06 | Main display carriers (KC-01-1912) changed from Teensy 4.0 + RA8875 800×480 SPI to Teensy 4.1 + LT7683 (RA8876-register-compatible) 1024×600 7" IPS, 8080 16-bit parallel (ER-TFT070A2-6-5633 module). All four carriers (Annunciator, Info 1, Info 2, Resource) standardized on this combo. Display VDD on 5V rail, VDDIO 3.3V (bench-confirmed) — Teensy 4.1 interfaces directly, no level shifters; the former SPI RA8875 MISO buffer (SN74LVC1G125) is not required on the parallel bus. On-module 128 Mbit display RAM (W9812G6JH) enables 1024×600 double-buffering. Per-carrier local MPM3610 confirmed adequate (~760 mA peak vs 1.2 A). §13.1 interrupt conformance generalized to cover 5V (ATtiny816, push-pull + 10k/20k divider) and 3.3V (Teensy carrier, push-pull direct, no divider) module classes; INT remains active-low push-pull, driven low to assert, no pull-up. Updated §3.1, §3.3, §5.3, §6.3, §7.2, §7.5, §7.6, §8.3, §13.1, §13.4, §14. |
 | 1.8 | 2026-06-27 | Enclosure panel redesign. A1 reduced to power button + two 7" displays (Annunciator + configurable Info Display); GPWS Input Panel (0x2A) relocated A1→A2; Abort button relocated B1→A2; staging button and control mode select switch confirmed on B2. Small display carrier (KC-01-1902) migrated from XIAO RA4M1 + 1.9" 320×170 to XIAO RP2350 + 2.0" 240×320 (ER-TFTM020-2) with shared-SPI microSD socket; Sys Info Display (0x14) now on this carrier, Panel A2. Status Indicator Display (0x15, XIAO RA4M1, B2) removed from design — 0x15 folded into the expansion reserved block (0x15–0x1F), and the previously overlapping 0x16–0x1F / 0x18–0x1F rows consolidated into a single range. Updated §3.1, §3.4, §4, §5.3, §8.3. |
 | 1.9 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — its single-module design was superseded by Switch Groups 1/2 on Function Control (0x21) and Vehicle Control (0x24). §8.3 I2C device map 0x2E entry marked "Retired (was Switch Panel)". |
+| 1.10 | 2026-07-05 | §5.4: corrected the Throttle Module board designator from KC-01-1822 to KC-01-1872, matching the released drawing set (KC-01-1870 assembly / KC-01-1871 schematic / KC-01-1872 board / KC-01-1873 BOM / KC-01-1874 placement). The 1822 slot from the original sequential numbering was never used for the throttle. Throttle row note updated: the five illuminated panel switches share a single backlight-enable output (not per-switch LEDs). |
 
 ---
 
@@ -138,7 +139,7 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 |-------|------------|-----------------|---------------|---------------|-------|
 | Button Module | KC-01-1802 | ATtiny816 | 12 | 4 | 12× NeoPixel RGB + 4× panel switch via screw terminals |
 | Wide Button Module | KC-01-1812 | ATtiny816 | 12 | 8 | 12× NeoPixel RGB + 8× panel switch via DB127S-5.08-6P screw terminals |
-| Throttle Module | KC-01-1822 | ATtiny816 | N/A | 5 | RSA0N11M9A0J 10k motorized potentiometer + 5× panel switch via screw terminals w/ status LED output |
+| Throttle Module | KC-01-1872 | ATtiny816 | N/A | 5 | RSA0N11M9A0J 10k motorized potentiometer + 5× illuminated panel switch via screw terminals (single shared backlight-enable output) |
 | Joystick Module | KC-01-1832 | ATtiny816 | 2 | N/A | 2× NeoPixel RGB + JH-D202X-R4 inputs via screw terminals |
 | 7-Segment Display Module | KC-01-1842 | ATtiny816 | 3 | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder |
 | Dual Encoder Module | KC-01-1862 | ATtiny816 | N/A | 1* | Inputs for 2× rotary encoder carrier boards + 1× safe switch via screw terminals |
