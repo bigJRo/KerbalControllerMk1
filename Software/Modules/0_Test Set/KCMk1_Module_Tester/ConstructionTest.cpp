@@ -79,7 +79,12 @@ static ModuleState _st;            // last parsed module state (persists across 
 static uint32_t _seen = 0;         // button-walk detected mask
 static int16_t  _amin[3], _amax[3];
 static bool     _encCW = false, _encCCW = false;
-static uint16_t _vLast = 0; static bool _vFirst = true, _vUp = false, _vDown = false;
+static bool     _vFirst = true, _vUp = false, _vDown = false;
+static int32_t  _vMin = 0, _vMax = 0;   // running value extremes this step
+// A value swing must clear this many counts in each direction before it
+// registers, so residual SET_VALUE reports from the segment step and single-
+// count encoder jitter cannot auto-pass the value-delta check.
+static const int32_t V_DELTA = 3;
 
 static uint8_t  _result[8];        // 0=pending,1=pass,2=fail per step
 static const uint8_t LED_ACTIVE_STATE = KMC_LED_ACTIVE;
@@ -159,7 +164,7 @@ static void finishStep(bool pass) {
 static void enterStep() {
     _entered = true;
     _sub = 0; _ledIdx = 0; _seen = 0; _t0 = millis();
-    _encCW = _encCCW = false; _vFirst = true; _vUp = _vDown = false;
+    _encCW = _encCCW = false; _vFirst = true; _vUp = _vDown = false; _vMin = _vMax = 0;
     for (uint8_t i = 0; i < 3; i++) { _amin[i] = 32767; _amax[i] = -32768; }
     memset(&_st, 0, sizeof(_st));
 }
@@ -367,11 +372,18 @@ static void stepEnc(uint8_t idx) {
 static void stepValueDelta() {
     char hdr[40]; buildHeader(hdr, sizeof(hdr));
     if (readState()) {
-        if (_vFirst) { _vLast = _st.value; _vFirst = false; }
+        int32_t v = (int32_t)_st.value;
+        if (_vFirst) { _vMin = _vMax = v; _vFirst = false; }
         else {
-            if (_st.value > _vLast) _vUp = true;
-            if (_st.value < _vLast) _vDown = true;
-            _vLast = _st.value;
+            if (v > _vMax) _vMax = v;
+            if (v < _vMin) _vMin = v;
+            // Require a real swing in each direction: value climbed at least
+            // V_DELTA above its lowest point (an up turn) and dropped at least
+            // V_DELTA below its highest point (a down turn). This ignores the
+            // single residual value carried in from the segment step and any
+            // one-count encoder jitter.
+            if (v >= _vMin + V_DELTA) _vUp = true;
+            if (v <= _vMax - V_DELTA) _vDown = true;
         }
     }
     snprintf(_line[0], 28, "Value: %u", _st.value);
