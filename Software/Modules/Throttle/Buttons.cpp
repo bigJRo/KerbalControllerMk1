@@ -26,12 +26,8 @@ static const uint8_t _btnPins[4] = {
     THR_PIN_THRTL_00
 };
 
-static const uint8_t _ledPins[4] = {
-    THR_PIN_LED_100,
-    THR_PIN_LED_UP,
-    THR_PIN_LED_DOWN,
-    THR_PIN_LED_00
-};
+// All five panel-switch backlights share a single enable line (LED_ENA);
+// they are driven on/off as a group, never individually.
 
 // ============================================================
 //  State
@@ -51,10 +47,10 @@ static uint8_t _debounceCandidate[4]   = {0};
 void buttonsBegin() {
     for (uint8_t i = 0; i < 4; i++) {
         pinMode(_btnPins[i], INPUT);   // active high, hardware pull-downs
-        pinMode(_ledPins[i], OUTPUT);
-        digitalWrite(_ledPins[i], LOW);
         _debounceCount[i] = 0;
     }
+    pinMode(THR_PIN_LED_ENA, OUTPUT);  // shared switch-backlight enable
+    digitalWrite(THR_PIN_LED_ENA, LOW);
     _state      = 0;
     _eventMask  = 0;
     _changeMask = 0;
@@ -131,15 +127,11 @@ uint8_t buttonsGetEvents() {
 // ============================================================
 
 void buttonsLEDsOn() {
-    for (uint8_t i = 0; i < 4; i++) {
-        digitalWrite(_ledPins[i], HIGH);
-    }
+    digitalWrite(THR_PIN_LED_ENA, HIGH);   // all five backlights on together
 }
 
 void buttonsLEDsOff() {
-    for (uint8_t i = 0; i < 4; i++) {
-        digitalWrite(_ledPins[i], LOW);
-    }
+    digitalWrite(THR_PIN_LED_ENA, LOW);
 }
 
 // ============================================================

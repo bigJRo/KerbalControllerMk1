@@ -27,7 +27,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware:  KC-01-1861/1862 Throttle Module v1.1
+ * @note        Hardware:  KC-01-1871/1872 Throttle Module V2.0
  *              Power:     +5V VCC from main board, +12V for motor bus
  *              IDE settings:
  *                Board:   ATtiny816 (megaTinyCore)
