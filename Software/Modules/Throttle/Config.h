@@ -92,9 +92,10 @@
 //  Verified against KC-01-1871_V2.0_Throttle Module_SCH. Note that the
 //  five illuminated panel switches share a SINGLE backlight-enable line
 //  (LED_ENA, PC3) driven through one 2N3904 per switch — there are no
-//  per-button LED outputs. The fifth switch, THRTL_ENA (PB5), is the panel
-//  throttle-enable switch; it is defined here but not yet bound to module
-//  behavior (see note below).
+//  per-button LED outputs. The throttle-enable switch (THRTL_ENA) is a
+//  local-enable input in the schematic but is NOT wired up in the final
+//  build, so it has no pin here; the local enable is held active in
+//  firmware (see _localEnable in I2C.cpp).
 // ============================================================
 
 /** @brief Motor forward direction — binary output to L293DD INPUT1/INPUT3. */
@@ -117,14 +118,6 @@
 
 /** @brief Throttle 0% button — active high. */
 #define THR_PIN_THRTL_00        PIN_PC2
-
-/**
- * @brief Panel throttle-enable switch (5th switch) — active high.
- * @note  Present in hardware on PB5 but not currently read by the firmware.
- *        Its role (drive the enabled flag / lifecycle locally, or report as
- *        state) is a pending design decision — see module README.
- */
-#define THR_PIN_THRTL_ENA       PIN_PB5
 
 /**
  * @brief Shared switch-backlight enable — single discrete output via one

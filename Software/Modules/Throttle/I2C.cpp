@@ -32,6 +32,12 @@ static bool _enabled     = false;
 static bool _precision   = false;
 static bool _intAsserted = false;
 
+// Local throttle-enable state. In the schematic this was a panel switch
+// (THRTL_ENA); in the final build that switch is not wired, so the local
+// enable is held active. The module is only motor/LED-active when the master
+// has commanded ACTIVE *and* the local enable is set.
+static bool _localEnable = true;
+
 // Lifecycle (KMC_STATUS_*), transaction counter, and fault flag for
 // I2C Protocol v2.4 conformance. _enabled tracks the motor/LED active
 // state and equals (lifecycle == ACTIVE).
@@ -78,7 +84,10 @@ static void _clearINT() {
 // ============================================================
 
 static void _enable() {
-    _enabled = true;
+    // Master-commanded ACTIVE gates on the local enable (held active — the
+    // THRTL_ENA switch is not wired in the final build).
+    _enabled = _localEnable;
+    if (!_enabled) return;
     buttonsLEDsOn();
     // Motor resumes normal operation — was seeking 0 while disabled
     // No target set yet — motor stays where it is
