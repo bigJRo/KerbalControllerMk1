@@ -112,8 +112,9 @@
 
 /**
  * @brief Minimum milliseconds between encoder state changes.
- *        Hardware RC debounce (10nF) handles most bounce.
- *        This is a software guard against residual glitches.
+ *        Superseded in v2.0: encoder decoding is now interrupt-driven and
+ *        relies on the hardware RC debounce (10nF) rather than a software
+ *        time guard. Retained for backward compatibility only.
  */
 #ifndef DEC_ENC_DEBOUNCE_MS
   #define DEC_ENC_DEBOUNCE_MS   2

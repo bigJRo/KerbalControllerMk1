@@ -58,7 +58,7 @@ static const Step STEPS_DISP[]  = { {ST_ENABLE,0},{ST_SEG,0},{ST_VALUEDELTA,0},{
 // inputs. No LED walk — the module owns its LEDs and the bulb step covers them.
 static const Step STEPS_GPWS[]  = { {ST_ENABLE,0},{ST_BULB,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 static const Step STEPS_THR[]   = { {ST_ENABLE,0},{ST_MOTOR,0},{ST_TOUCH,0},{ST_BULB,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
-static const Step STEPS_DENC[]  = { {ST_ENC,0},{ST_ENC,1},{ST_BTNWALK,0},{ST_SUMMARY,0} };
+static const Step STEPS_DENC[]  = { {ST_ENABLE,0},{ST_ENC,0},{ST_ENC,1},{ST_BTNWALK,0},{ST_SUMMARY,0} };
 
 // ============================================================
 //  Runtime state

@@ -46,7 +46,7 @@ Both encoders are identical hardware. Functions are assigned by the main control
 | ENC1 | PC3 | PC2 | PC1 | +CW / -CCW |
 | ENC2 | PA7 | PB5 | PB4 | +CW / -CCW |
 
-Both encoders are PEC11R-4220F-S0024 mounted on KC-01-1852 passive carrier boards (5-pin header per encoder) with hardware RC debounce (10nF capacitors on A and B channels) and 10k pull-up resistors. Software adds a 2ms guard against any residual glitches.
+Both encoders are PEC11R-4220F-S0024 mounted on KC-01-1852 passive carrier boards (5-pin header per encoder) with hardware RC debounce (10nF capacitors on A and B channels) and 10k pull-up resistors. Decoding is interrupt-driven — a rising-edge interrupt on each channel A samples channel B for direction — giving exactly ±1 per detent with no aliasing or direction reversal at high turn speed.
 
 Pushbutton switches have hardware pull-down resistors — active high.
 
@@ -168,3 +168,4 @@ After flashing the module is immediately active — no enable command required (
 | 1.0 | 2026-04-08 | Initial release |
 | 2.0 | 2026-06-28 | I2C Protocol v2.0 conformance — 3-byte universal header added (7-byte data packet) |
 | 2.1 | 2026-07-05 | Pin map realigned to KC-01-1862 v2.0 schematic — ENC1 A/SW swapped (A→PC3, SW→PC1); ENC2 moved to PA7/PB5/PB4. Board designator updated from KC-01-1871/1872 to KC-01-1862. |
+| 2.2 | 2026-07-05 | Encoder decode reworked from 5 ms polling to rising-edge pin interrupts on channel A (samples B for direction). Fixes direction reversal seen when spinning quickly; now exactly ±1 per detent. |

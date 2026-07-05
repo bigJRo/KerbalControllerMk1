@@ -1,13 +1,21 @@
 /**
  * @file        Encoders.cpp
- * @version     1.0
- * @date        2026-04-08
+ * @version     2.0
+ * @date        2026-07-05
  * @project     Kerbal Controller Mk1 — Dual Encoder Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       Quadrature encoder decoding implementation.
- *              1 click = ±1 delta, no acceleration.
+ *              1 detent = ±1 delta, no acceleration.
+ *
+ *              Decoding is interrupt-driven: a rising-edge pin interrupt on
+ *              each encoder's channel A samples channel B to determine
+ *              direction (B low = CW/+, B high = CCW/-). A detented
+ *              PEC11R-4220F-S0024 produces exactly one channel-A rising edge
+ *              per detent, so this yields ±1 per click and — unlike a polled
+ *              decoder — cannot alias or reverse direction at high turn speed.
+ *              Hardware RC debounce (10nF on A/B) suppresses contact bounce.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -17,64 +25,52 @@
 #include "Encoders.h"
 
 // ============================================================
-//  Quadrature state transition table
-//  Index: (lastAB << 2) | currentAB
-//  Value: +1=CW, -1=CCW, 0=invalid/no movement
+//  ISR-shared state
+//  _delta accumulates signed clicks between reads; it is read
+//  (clamped to int8) and cleared by the I2C packet builder.
 // ============================================================
 
-static const int8_t _qTable[16] = {
-     0, -1, +1,  0,
-    +1,  0,  0, -1,
-    -1,  0,  0, +1,
-     0, +1, -1,  0
-};
+static volatile int16_t _delta[2]   = {0, 0};
+static volatile bool     _dataPending = false;
 
 // ============================================================
-//  Per-encoder state
+//  Pin-change ISRs — rising edge on each channel A
+//
+//  Pins are fixed by the KC-01-1862 v2.0 schematic (see Config.h):
+//    ENC1_A = PC3, ENC1_B = PC2   -> PORTC vector
+//    ENC2_A = PA7, ENC2_B = PB5   -> PORTA vector
+//  Each ISR clears only its own flag and confirms the sampled edge is
+//  really high before counting, so residual glitches are ignored.
 // ============================================================
 
-struct EncoderState {
-    uint8_t  pin_a;
-    uint8_t  pin_b;
-    uint8_t  lastAB;
-    uint32_t lastClickTime;
-    volatile int8_t delta;
-};
-
-static EncoderState _enc[2];
-static bool _dataPending = false;
-
-// ============================================================
-//  _pollOne() — poll a single encoder
-// ============================================================
-
-static bool _pollOne(EncoderState& enc) {
-    uint8_t a = digitalRead(enc.pin_a) ? 1 : 0;
-    uint8_t b = digitalRead(enc.pin_b) ? 1 : 0;
-    uint8_t currentAB = (a << 1) | b;
-
-    if (currentAB == enc.lastAB) return false;
-
-    // Software debounce guard — hardware RC does most of the work
-    uint32_t now = millis();
-    if ((now - enc.lastClickTime) < DEC_ENC_DEBOUNCE_MS) {
-        return false;
+ISR(PORTC_PORT_vect) {
+    if (PORTC.INTFLAGS & PIN3_bm) {              // ENC1_A (PC3)
+        PORTC.INTFLAGS = PIN3_bm;                // clear the flag
+        if (PORTC.IN & PIN3_bm) {                // confirm real rising edge
+            _delta[0]   += (PORTC.IN & PIN2_bm) ? -1 : +1;   // ENC1_B (PC2)
+            _dataPending = true;
+        }
     }
+}
 
-    // Look up direction
-    int8_t dir = _qTable[(enc.lastAB << 2) | currentAB];
-    enc.lastAB = currentAB;
+ISR(PORTA_PORT_vect) {
+    if (PORTA.INTFLAGS & PIN7_bm) {              // ENC2_A (PA7)
+        PORTA.INTFLAGS = PIN7_bm;                // clear the flag
+        if (PORTA.IN & PIN7_bm) {                // confirm real rising edge
+            _delta[1]   += (PORTB.IN & PIN5_bm) ? -1 : +1;   // ENC2_B (PB5)
+            _dataPending = true;
+        }
+    }
+}
 
-    if (dir == 0) return false;  // invalid transition
+// ============================================================
+//  Helpers
+// ============================================================
 
-    // Accumulate delta — clamp to int8 limits to prevent overflow
-    enc.lastClickTime = now;
-    int16_t next = (int16_t)enc.delta + dir;
-    if (next > INT8_MAX) next = INT8_MAX;
-    if (next < INT8_MIN) next = INT8_MIN;
-    enc.delta = (int8_t)next;
-
-    return true;
+static int8_t _clamp8(int16_t v) {
+    if (v > INT8_MAX) return INT8_MAX;
+    if (v < INT8_MIN) return INT8_MIN;
+    return (int8_t)v;
 }
 
 // ============================================================
@@ -82,45 +78,34 @@ static bool _pollOne(EncoderState& enc) {
 // ============================================================
 
 void encodersBegin() {
-    // ENC1
-    _enc[0].pin_a        = DEC_PIN_ENC1_A;
-    _enc[0].pin_b        = DEC_PIN_ENC1_B;
-    _enc[0].delta        = 0;
-    _enc[0].lastClickTime = 0;
+    pinMode(DEC_PIN_ENC1_A, INPUT);
+    pinMode(DEC_PIN_ENC1_B, INPUT);
+    pinMode(DEC_PIN_ENC2_A, INPUT);
+    pinMode(DEC_PIN_ENC2_B, INPUT);
 
-    // ENC2
-    _enc[1].pin_a        = DEC_PIN_ENC2_A;
-    _enc[1].pin_b        = DEC_PIN_ENC2_B;
-    _enc[1].delta        = 0;
-    _enc[1].lastClickTime = 0;
+    // Enable a rising-edge interrupt on each channel A. pinMode() is called
+    // first because it rewrites PINnCTRL; the interrupt sense is programmed
+    // after so it sticks.
+    PORTC.PIN3CTRL = PORT_ISC_RISING_gc;         // ENC1_A (PC3)
+    PORTA.PIN7CTRL = PORT_ISC_RISING_gc;         // ENC2_A (PA7)
 
-    // Configure pins — hardware pull-ups fitted, no INPUT_PULLUP needed
-    for (uint8_t i = 0; i < 2; i++) {
-        pinMode(_enc[i].pin_a, INPUT);
-        pinMode(_enc[i].pin_b, INPUT);
-
-        // Read initial state
-        uint8_t a = digitalRead(_enc[i].pin_a) ? 1 : 0;
-        uint8_t b = digitalRead(_enc[i].pin_b) ? 1 : 0;
-        _enc[i].lastAB = (a << 1) | b;
-    }
-
+    _delta[0]    = 0;
+    _delta[1]    = 0;
     _dataPending = false;
+
+    sei();
 }
 
 // ============================================================
 //  encodersPoll()
+//
+//  Decoding happens in the ISRs; there is nothing to poll. Kept so the
+//  main loop's call site is unchanged. Returns whether movement has been
+//  accumulated since the last read.
 // ============================================================
 
 bool encodersPoll() {
-    bool moved = false;
-    for (uint8_t i = 0; i < 2; i++) {
-        if (_pollOne(_enc[i])) {
-            moved       = true;
-            _dataPending = true;
-        }
-    }
-    return moved;
+    return _dataPending;
 }
 
 // ============================================================
@@ -133,19 +118,36 @@ bool encodersIsDataPending() {
 
 // ============================================================
 //  encodersGetDelta1() / encodersGetDelta2()
+//  16-bit reads are non-atomic on this 8-bit MCU, so guard against an
+//  encoder ISR updating the value mid-read. SREG is saved and restored
+//  (rather than using sei()) because these run inside the I2C packet
+//  builder, itself an ISR — the guard must never force interrupts back on.
 // ============================================================
 
-int8_t encodersGetDelta1() { return _enc[0].delta; }
-int8_t encodersGetDelta2() { return _enc[1].delta; }
+int8_t encodersGetDelta1() {
+    uint8_t s = SREG; cli();
+    int8_t d = _clamp8(_delta[0]);
+    SREG = s;
+    return d;
+}
+
+int8_t encodersGetDelta2() {
+    uint8_t s = SREG; cli();
+    int8_t d = _clamp8(_delta[1]);
+    SREG = s;
+    return d;
+}
 
 // ============================================================
 //  encodersClearDeltas()
 // ============================================================
 
 void encodersClearDeltas() {
-    _enc[0].delta = 0;
-    _enc[1].delta = 0;
-    _dataPending  = false;
+    uint8_t s = SREG; cli();
+    _delta[0]    = 0;
+    _delta[1]    = 0;
+    _dataPending = false;
+    SREG = s;
 }
 
 // ============================================================

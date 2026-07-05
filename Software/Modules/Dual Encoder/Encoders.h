@@ -11,8 +11,10 @@
  *
  *              Both encoders are PEC11R-4220F-S0024 with hardware
  *              RC debounce (10nF caps on A/B channels) and 10k
- *              pull-ups. Software adds a minimum interval guard
- *              against any residual glitches.
+ *              pull-ups. Decoding is interrupt-driven: a rising-edge
+ *              interrupt on each channel A samples channel B for
+ *              direction, giving exactly ±1 per detent with no
+ *              aliasing or direction reversal at speed.
  *
  *              Deltas accumulate between reads. If the controller
  *              is slow to respond, no clicks are lost — the delta
@@ -35,9 +37,9 @@
 void encodersBegin();
 
 /**
- * @brief Poll both encoders.
- *        Call every DEC_POLL_INTERVAL_MS from the main loop.
- * @return true if either encoder moved.
+ * @brief Service call from the main loop. Decoding is interrupt-driven,
+ *        so this only reports state; call it every DEC_POLL_INTERVAL_MS.
+ * @return true if either encoder has accumulated movement since the last read.
  */
 bool encodersPoll();
 

@@ -209,7 +209,7 @@ static void handleAction(UIAction a) {
         case UI_DISABLE:  hwSendCommand(_selAddr, KMC_CMD_DISABLE, nullptr, 0); uiToast("DISABLE"); break;
         case UI_SLEEP:    hwSendCommand(_selAddr, KMC_CMD_SLEEP,   nullptr, 0); uiToast("SLEEP");   break;
         case UI_WAKE:     hwSendCommand(_selAddr, KMC_CMD_WAKE,    nullptr, 0); uiToast("WAKE");    break;
-        case UI_RESET:    hwSendCommand(_selAddr, KMC_CMD_RESET,   nullptr, 0); uiToast("RESET");   break;
+        case UI_RESET:    hwSendCommand(_selAddr, KMC_CMD_RESET,   nullptr, 0); uiDashboardResetTotals(); uiToast("RESET"); break;
         case UI_BULB: {
             // CMD_BULB_TEST is persistent (spec: 0x01 start / 0x00 stop, no
             // timeout — the master controls duration). Toggle it.

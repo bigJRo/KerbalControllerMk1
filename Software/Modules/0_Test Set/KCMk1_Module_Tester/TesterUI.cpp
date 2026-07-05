@@ -168,8 +168,18 @@ static uint8_t  _ctBtnCount = 0;
 // fires on a fresh press (transition from not-touched to touched).
 static bool _wasTouched = false;
 
-// Running encoder totals (reset on uiDashboardBegin).
+// Running encoder totals (reset on uiDashboardBegin / Reset).
 static long _encTotal[2] = {0, 0};
+
+// Reconstructed persistent dual-encoder button state. The §9.5 packet sends
+// only rising-edge events + a change mask (no state byte), so a held button
+// is latched here from those two planes and rendered steadily. Reset on
+// uiDashboardBegin / Reset.
+static uint8_t _encBtnState = 0;
+
+// Current dashboard module, stashed so a Reset can repaint the live area
+// immediately with a zeroed state.
+static const ModuleInfo* _dashInfo = nullptr;
 
 // Current input area geometry (set by uiDashboardBegin).
 static int _inputAreaY = HDR_Y + HDR_H + 2;                   // 44
@@ -508,9 +518,11 @@ void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
     // Power bar placeholder until the first uiPowerBar() call.
     tft.fillRect(0, PWR_BAR_Y, UI_W, PWR_BAR_H, C_PANEL);
 
-    // Reset encoder running totals.
+    // Reset encoder running totals and latched button state.
+    _dashInfo    = info;
     _encTotal[0] = 0;
     _encTotal[1] = 0;
+    _encBtnState = 0;
 
     // Control button grid (3 rows x 3 cols) at the bottom: y 236..319.
     // Back is royal blue so the navigation action stands out from the
@@ -727,7 +739,15 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
 
         case MK_DUAL_ENCODER: {
             drawTextTL(4, _inputAreaY, "Buttons", C_DIM, C_BG);
-            drawButtonRow(info, st, 2, _inputAreaY + 14);
+            // The module reports button presses as rising-edge events plus a
+            // change mask (no persistent state byte). Reconstruct the held
+            // state: a rising edge sets the bit; a change without a rising
+            // edge is a release and clears it. Rendering the latched state
+            // shows a held button steadily instead of flickering on read
+            // timing, and never drops a press between INT-gated reads.
+            uint8_t releases = (uint8_t)st.change & ~(uint8_t)st.events;
+            _encBtnState = (uint8_t)((_encBtnState | (uint8_t)st.events) & ~releases);
+            drawButtonRowMask(info, (uint32_t)_encBtnState, 2, _inputAreaY + 14);
             // Accumulate signed deltas.
             _encTotal[0] += st.enc[0];
             _encTotal[1] += st.enc[1];
@@ -743,6 +763,25 @@ void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st) {
 
         default:
             break;
+    }
+}
+
+void uiDashboardResetTotals() {
+    // Clear the tester's own running state so a Reset is visible even though
+    // the module's CMD_RESET only clears its (already-consumed) pending
+    // deltas/buttons. Repaint the live area at once with a zeroed state so
+    // the totals drop to 0 immediately rather than on the next INT-gated read.
+    _encTotal[0] = 0;
+    _encTotal[1] = 0;
+    _encBtnState = 0;
+    // Only the dual-encoder view carries sticky tester-side state (running
+    // totals + latched buttons); repaint it at once with a zeroed state so
+    // the reset shows immediately. Other kinds are purely read-driven and
+    // refresh on their next INT packet.
+    if (_dashInfo && _dashInfo->kind == MK_DUAL_ENCODER) {
+        ModuleState z;
+        memset(&z, 0, sizeof(z));
+        uiDashboardInputs(_dashInfo, z);
     }
 }
 

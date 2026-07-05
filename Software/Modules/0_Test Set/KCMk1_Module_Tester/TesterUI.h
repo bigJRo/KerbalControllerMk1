@@ -102,6 +102,10 @@ void uiDashboardHeader(const ModuleState& st);
 /** @brief Refresh the live input area (buttons / axes / encoders / value). */
 void uiDashboardInputs(const ModuleInfo* info, const ModuleState& st);
 
+/** @brief Clear the tester's sticky dashboard state (encoder running totals
+ *         and latched button state) so a Reset is reflected on screen. */
+void uiDashboardResetTotals();
+
 /** @brief Poll the dashboard control buttons. */
 UIAction uiDashboardTouch();
 
