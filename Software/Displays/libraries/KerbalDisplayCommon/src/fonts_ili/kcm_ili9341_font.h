@@ -26,7 +26,12 @@
 // the unused C copy is ABI-identical and harmless).
 #ifdef __cplusplus
   #if defined(__has_include)
-    #if __has_include(<ILI9341_t3.h>)
+    // wwatson4506 TeensyRA8876-GFX-Common provides the struct here (pulled in via
+    // KCM_Display.h -> RA8876_t41_p.h -> RA8876_common.h before this header).
+    #if __has_include(<ILI9341_fonts.h>)
+      #include <ILI9341_fonts.h>
+      #define KCM_ILI9341_FONT_T_PROVIDED 1
+    #elif __has_include(<ILI9341_t3.h>)
       #include <ILI9341_t3.h>
       #define KCM_ILI9341_FONT_T_PROVIDED 1
     #elif __has_include(<ILI9341_t3_font.h>)
