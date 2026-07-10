@@ -94,11 +94,29 @@ static uint8_t demoFlagPhase = 0;
 
 
 /***************************************************************************************
+   LAMP TEST (#7)
+   Graphics check independent of C&W logic: force every state-driven tile ON so all
+   graphics can be verified regardless of whether the telemetry logic would trigger
+   them. Enable with `lampTest = true` (and demoMode = true) in AAA_Config.ino.
+   Note: the inner regime column still shows one tile (driven by flightCondIndex);
+   the C&W grid, situation column, mode grid, DOCK and MASTER ALARM all light.
+****************************************************************************************/
+static void runLampTest() {
+  state.cautionWarningState  = ((uint32_t)1 << CW_COUNT) - 1;   // all C&W bits
+  state.vesselSituationState = 0xFF;                            // all situation flags
+  state.modeFlags            = (uint16_t)(((uint32_t)1 << MF_COUNT) - 1); // all mode tiles
+  chuteEnvState              = chute_Green;                     // CHUTE ENV (green)
+  state.masterAlarmOn        = true;
+}
+
+
+/***************************************************************************************
    STEP DEMO STATE
    Advances each field at its own rate. Calls updateCautionWarningState() at end
    so C&W panel and master alarm reflect the demo values exactly as in production.
 ****************************************************************************************/
 void stepDemoState() {
+  if (lampTest) { runLampTest(); return; }   // graphics-only check (#7)
   uint32_t now = millis();
 
   // Vessel name and type
@@ -253,9 +271,16 @@ void stepDemoState() {
   if (now - demoLast_modeflags >= DEMO_RATE_MODEFLAGS) {
     demoLast_modeflags = now;
     demoModeBit = (demoModeBit + 1) % (MF_COUNT + 2);
-    if (demoModeBit < MF_COUNT)      state.modeFlags = (1u << demoModeBit);   // one at a time
-    else if (demoModeBit == MF_COUNT) state.modeFlags = (1u << MF_COUNT) - 1; // all on
-    else                              state.modeFlags = 0;                    // all off
+    uint16_t walk = (demoModeBit < MF_COUNT)  ? (1u << demoModeBit)      // one at a time
+                  : (demoModeBit == MF_COUNT) ? ((1u << MF_COUNT) - 1)   // all on
+                                              : 0u;                      // all off
+    // DEMO / AUDIO / DEBUG tiles reflect the actual panel mode (#8); the rest
+    // walk so every tile can be inspected.
+    uint16_t base = 0;
+    if (demoMode)     base |= (1u << MF_DEMO);
+    if (audioEnabled) base |= (1u << MF_AUDIO);
+    if (debugMode)    base |= (1u << MF_DEBUG);
+    state.modeFlags = base | walk;
   }
 
   // Exercise the flag/resource-driven C&W tiles so each lights at some point (#9):

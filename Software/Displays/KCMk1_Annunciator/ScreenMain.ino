@@ -184,13 +184,13 @@ static const ButtonLabel cautWarn[CW_COUNT] = {
 ****************************************************************************************/
 static const ButtonLabel vesselSituation[SIT_COUNT] = {
   { "CONTACT",    TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_SKY,    TFT_GREY, TFT_GREY }, // 0 LANDED|SPLASH
-  { "PRE- LAUNCH",TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 1 VSIT_PRELAUNCH
-  { "FLIGHT",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 2 VSIT_FLIGHT
-  { "SUB- ORBIT", TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 3 VSIT_SUBORBIT
-  { "ORBIT",      TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 4 VSIT_ORBIT
-  { "ESCAPE",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 5 VSIT_ESCAPE
+  { "PRE- LAUNCH",TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 1 VSIT_PRELAUNCH
+  { "FLIGHT",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 2 VSIT_FLIGHT
+  { "SUB- ORBIT", TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 3 VSIT_SUBORBIT
+  { "ORBIT",      TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 4 VSIT_ORBIT
+  { "ESCAPE",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 5 VSIT_ESCAPE
   { "SPLASH",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_NAVY,   TFT_GREY, TFT_GREY }, // 6 VSIT_SPLASH
-  { "LANDED",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 7 VSIT_LANDED
+  { "LANDED",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 7 VSIT_LANDED
 };
 
 
@@ -406,10 +406,10 @@ void updateDockedIndicator(KCM_TFT &tft) {
   bool isDocked = bitRead(state.vesselSituationState, VSIT_DOCKED);
   if (isDocked == prevDockedState) return;
   prevDockedState = isDocked;
-  uint16_t bgColor   = isDocked ? TFT_JUNGLE : TFT_OFF_BLACK;
+  uint16_t bgColor   = isDocked ? TFT_DARK_GREEN : TFT_OFF_BLACK;
   uint16_t textColor = isDocked ? TFT_WHITE  : TFT_DARK_GREY;
   drawVerticalText(tft, DOCK_X, DOCK_Y, DOCK_W, DOCK_H,
-                   &Roboto_Black_16, "DOCKED", textColor, bgColor);
+                   &Roboto_Black_20, "DOCK", textColor, bgColor);
   tft.drawRect(DOCK_X, DOCK_Y, DOCK_W, DOCK_H, TFT_GREY);
 }
 
@@ -514,7 +514,7 @@ void drawStaticMain(KCM_TFT &tft) {
   tft.drawRect(NAME_X, BOT_Y, NAME_W, TEL_ROW_H, TFT_GREY);
   // Light perimeter around the whole bottom zone so the bottom/side edges read
   // consistently with the cell grid (#3).
-  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y, TFT_GREY);
+  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y - 1, TFT_GREY);  // -1: keep bottom line off the overscan edge
 
   // Telemetry labels (chrome) — values drawn in the update pass.
   printDispChrome(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
@@ -524,8 +524,7 @@ void drawStaticMain(KCM_TFT &tft) {
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "Crew:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Tskin:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  // "Max Crew:" is a long label — this cell uses a smaller font so label+value fit.
-  printDispChrome(tft, &Roboto_Black_24, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Max Crew:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "SEATS:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CtrlGrp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
 }
 
@@ -647,8 +646,8 @@ void updateScreenMain(KCM_TFT &tft) {
     prev.skinTemp = state.skinTemp;
   }
   if (state.capValue != prev.capValue) {
-    printValue(tft, &Roboto_Black_24, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "Max Crew:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
+    printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
+               "SEATS:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
     prev.capValue = state.capValue;
   }
   if (state.ctrlGrp != prev.ctrlGrp) {

@@ -21,6 +21,9 @@ bool standaloneMode = false;  // true = bypass boot screen / master controller h
 bool standaloneTest = false;  // true = enter serial-driven test mode after boot.
                               // Implies standaloneMode -- master handshake is skipped.
                               // Set demoMode = false when using standaloneTest.
+bool lampTest       = false;  // true = force every C&W / situation / mode-grid tile
+                              // ON (graphics check, independent of C&W logic).
+                              // Requires demoMode = true. See Demo.ino runLampTest().
 
 /***************************************************************************************
    DISPLAY ROTATION

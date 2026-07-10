@@ -19,7 +19,7 @@ const uint16_t SOI_NAME_X = SOI_IMG_W;
 const uint16_t SOI_NAME_W = KCM_SCREEN_W - 2 * SOI_IMG_W;  // centre panel (rev2: full width)
 const uint16_t SOI_ROWS_Y = SOI_IMG_H;
 const uint16_t SOI_ROWS_H = KCM_SCREEN_H - SOI_IMG_H;      // data rows (rev2: full height)
-const uint16_t SOI_ROW_H  = 36;                    // 36px per row -- fits 8-9 rows
+const uint16_t SOI_ROW_H  = 52;                    // 52px per row (rev2: larger text); 8 rows fit in 432px
 
 
 /***************************************************************************************
@@ -62,7 +62,7 @@ void drawSOIBody(KCM_TFT &tft) {
   tft.fillRect(0, SOI_ROWS_Y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROWS_H, TFT_BLACK);
   for (uint8_t i = 0; i < rowCount; i++) {
     uint16_t y = SOI_ROWS_Y + i * SOI_ROW_H;
-    printDisp(tft, &Roboto_Black_28, 0, y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROW_H,
+    printDisp(tft, &Roboto_Black_40, 0, y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROW_H,
               rows[i].label, rows[i].value,
               TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, NO_BORDER,
               psSOIRows[i]);

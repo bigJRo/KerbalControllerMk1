@@ -291,6 +291,7 @@ extern bool           audioEnabled;
 extern bool           debugMode;
 extern bool           standaloneMode;  // bypass boot/master handshake for bench testing
 extern bool           standaloneTest;  // serial-driven test mode
+extern bool           lampTest;        // force all tiles on (graphics check)
 extern const uint8_t  DISPLAY_ROTATION;
 extern const uint16_t LOW_DV_MECO_HOLDOFF_MS;
 extern uint8_t        tempAlarm;
