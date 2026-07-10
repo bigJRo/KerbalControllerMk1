@@ -173,8 +173,8 @@ static const ButtonLabel cautWarn[CW_COUNT] = {
   { "ORBIT STABLE",  TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 20 CW_ORBIT_STABLE
   { "ELEC GEN",      TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 21 CW_ELEC_GEN
   { "CHUTE ENV",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_RED,        TFT_GREY, TFT_GREY }, // 22 CW_CHUTE_ENV
-  { "SRB ACTIVE",    TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_ORANGE,     TFT_GREY, TFT_GREY }, // 23 CW_SRB_ACTIVE
-  { "EVA ACTIVE",    TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_ORANGE,     TFT_GREY, TFT_GREY }, // 24 CW_EVA_ACTIVE
+  { "SRB ACTIVE",    TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_INT_ORANGE, TFT_GREY, TFT_GREY }, // 23 CW_SRB_ACTIVE
+  { "EVA ACTIVE",    TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_INT_ORANGE, TFT_GREY, TFT_GREY }, // 24 CW_EVA_ACTIVE
 };
 
 
@@ -364,13 +364,16 @@ void updateVesselSitPanel(KCM_TFT &tft, uint8_t prevSit, uint8_t newSit) {
 static int8_t prevFlightCondIdx = -2;
 
 void updateRegimeColumn(KCM_TFT &tft) {
-  int8_t idx = flightCondIndex();
+  // Lamp test forces every regime tile ON (graphics check); normal operation
+  // lights only the single active regime (flightCondIndex()).
+  int8_t idx = lampTest ? -3 : flightCondIndex();  // -3 sentinel: force all-on redraw
   if (idx == prevFlightCondIdx) return;
   for (uint8_t r = 0; r < REG_COUNT; r++) {
     uint8_t arr = regRowToArr[r];
     int16_t y   = REG_Y + r * REG_H;
+    bool on = lampTest ? true : (arr == (uint8_t)idx);
     drawButton(tft, REG_X, y, REG_W, REG_H,
-               flightCond[arr], &Roboto_Black_16, (arr == (uint8_t)idx));
+               flightCond[arr], &Roboto_Black_16, on);
   }
   prevFlightCondIdx = idx;
 }
@@ -409,7 +412,7 @@ void updateDockedIndicator(KCM_TFT &tft) {
   uint16_t bgColor   = isDocked ? TFT_DARK_GREEN : TFT_OFF_BLACK;
   uint16_t textColor = isDocked ? TFT_WHITE  : TFT_DARK_GREY;
   drawVerticalText(tft, DOCK_X, DOCK_Y, DOCK_W, DOCK_H,
-                   &Roboto_Black_20, "DOCK", textColor, bgColor);
+                   &Roboto_Black_24, "DOCK", textColor, bgColor);
   tft.drawRect(DOCK_X, DOCK_Y, DOCK_W, DOCK_H, TFT_GREY);
 }
 
@@ -485,7 +488,10 @@ void drawStaticMain(KCM_TFT &tft) {
   resetSitAndPanelState();
   forceContactState(bitRead(state.vesselSituationState, VSIT_LANDED) ||
                     bitRead(state.vesselSituationState, VSIT_SPLASH));
-  updateVesselSitPanel(tft, 0xFF, state.vesselSituationState);
+  // Force a full redraw: prev must be the bitwise-inverse of the new state so
+  // every row's changed-bit is set. Passing 0xFF only flagged the OFF bits, so
+  // currently-lit situations were skipped and never drawn (#3).
+  updateVesselSitPanel(tft, (uint8_t)~state.vesselSituationState, state.vesselSituationState);
   prev.vesselSituationState = state.vesselSituationState;
 
   // Inner regime column + DOCKED
@@ -512,9 +518,6 @@ void drawStaticMain(KCM_TFT &tft) {
   textLeft(tft, &Roboto_Black_28, NAME_X, BOT_Y, NAME_W, TEL_ROW_H,
            state.vesselName, TFT_DARK_GREEN, TFT_BLACK);
   tft.drawRect(NAME_X, BOT_Y, NAME_W, TEL_ROW_H, TFT_GREY);
-  // Light perimeter around the whole bottom zone so the bottom/side edges read
-  // consistently with the cell grid (#3).
-  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y - 1, TFT_GREY);  // -1: keep bottom line off the overscan edge
 
   // Telemetry labels (chrome) — values drawn in the update pass.
   printDispChrome(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
@@ -524,8 +527,13 @@ void drawStaticMain(KCM_TFT &tft) {
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "Crew:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Tskin:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "SEATS:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CtrlGrp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+
+  // Light perimeter around the whole bottom zone, drawn LAST so its bottom edge
+  // sits on top of every tile fill in the zone (CtrlGrp's own box border lands on
+  // the overscan row and is not visible, so it relies on this line) (#2).
+  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y - 1, TFT_GREY);  // -1: keep bottom line off the overscan edge
 }
 
 
@@ -647,7 +655,7 @@ void updateScreenMain(KCM_TFT &tft) {
   }
   if (state.capValue != prev.capValue) {
     printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "SEATS:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
+               "CAP:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
     prev.capValue = state.capValue;
   }
   if (state.ctrlGrp != prev.ctrlGrp) {

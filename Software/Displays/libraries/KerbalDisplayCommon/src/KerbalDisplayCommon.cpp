@@ -392,19 +392,30 @@ void drawVerticalText(KCM_TFT &tft,
   uint8_t len = strlen(text);
   if (len == 0) return;
 
-  // Distribute characters evenly across the strip height: each gets a slot of
-  // h/len, with its glyph centred vertically in that slot. This fills the box
-  // without clipping (long strings) and avoids the loose gaps of fixed-height
-  // stacking (short strings).
-  const float    slotH  = (float)h / (float)len;
-  const int16_t  glyphH = (int16_t)font->cap_height;
+  // Stack the letters at a tight pitch (~0.8x cap height) so a short vertical
+  // label reads as one compact word rather than evenly-spread characters, then
+  // centre the whole stack in the box. cap_height overstates the visible glyph
+  // height for round/flat caps, so a sub-1.0 pitch closes the apparent gaps
+  // without the drawn glyphs actually overlapping. If the stack would overflow
+  // (long string), fall back to even distribution so nothing clips.
+  const int16_t glyphH = (int16_t)font->cap_height;
+  int16_t pitch  = (int16_t)(glyphH * 0.8f + 0.5f);
+  int16_t stackH = pitch * (int16_t)(len - 1) + glyphH;  // first-top .. last-bottom
+  int16_t startY;
+  if (stackH <= (int16_t)h) {
+    startY = y0 + ((int16_t)h - stackH) / 2;
+  } else {
+    pitch  = (len > 1) ? (int16_t)(((int16_t)h - glyphH) / (int16_t)(len - 1)) : 0;
+    if (pitch < 0) pitch = 0;
+    startY = y0;
+  }
   tft.setFont(*font);
   tft.setTextColor(color, backColor);
   for (uint8_t i = 0; i < len; i++) {
     char ch[2] = { text[i], '\0' };
     int16_t  cw = getFontStringWidth(font, ch);
     uint16_t cx = x0 + (w > (uint16_t)cw ? (w - (uint16_t)cw) / 2 : 0);
-    int16_t  cy = y0 + (int16_t)(i * slotH + (slotH - glyphH) / 2.0f + 0.5f);
+    int16_t  cy = startY + (int16_t)i * pitch;
     if (cy < (int16_t)y0) cy = y0;
     tft.setCursor(cx, cy);
     tft.print(ch);
