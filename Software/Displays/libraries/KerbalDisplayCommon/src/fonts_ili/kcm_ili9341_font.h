@@ -19,16 +19,23 @@
 
 #include <stdint.h>
 
-#if defined(__has_include)
-  #if __has_include(<ILI9341_t3.h>)
-    #include <ILI9341_t3.h>
-    #define KCM_ILI9341_FONT_T_PROVIDED 1
-  #elif __has_include(<ILI9341_t3_font.h>)
-    #include <ILI9341_t3_font.h>
-    #define KCM_ILI9341_FONT_T_PROVIDED 1
-  #elif __has_include(<ili9341_t3_font.h>)
-    #include <ili9341_t3_font.h>
-    #define KCM_ILI9341_FONT_T_PROVIDED 1
+// The font .c files in this directory are BOTH #included into the C++ display
+// code AND compiled standalone by Arduino as C translation units. The RA8876/
+// ILI9341_t3 struct headers are C++-only, so only pull them in under C++; a
+// standalone C compile uses the pure-C fallback struct below (same layout, so
+// the unused C copy is ABI-identical and harmless).
+#ifdef __cplusplus
+  #if defined(__has_include)
+    #if __has_include(<ILI9341_t3.h>)
+      #include <ILI9341_t3.h>
+      #define KCM_ILI9341_FONT_T_PROVIDED 1
+    #elif __has_include(<ILI9341_t3_font.h>)
+      #include <ILI9341_t3_font.h>
+      #define KCM_ILI9341_FONT_T_PROVIDED 1
+    #elif __has_include(<ili9341_t3_font.h>)
+      #include <ili9341_t3_font.h>
+      #define KCM_ILI9341_FONT_T_PROVIDED 1
+    #endif
   #endif
 #endif
 
