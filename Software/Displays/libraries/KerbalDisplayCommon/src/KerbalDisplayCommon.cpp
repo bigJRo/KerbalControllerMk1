@@ -1113,7 +1113,7 @@ static const BodyParams _bodyTable[] = {
   { "Kerbol", "KERBOL", "/Kerbol-Display_240x168.bmp", "Plasma",
     1000000,  18000,   600000,   1000000000, 600000,   DBL_MAX,
     261600000, 17.1f,   94672.01f,
-    1508045286, 0,          0.0f,
+    1508045286.0f, 0,       0.0f,
     true,  false, false, 0.0f },
 
   { "Moho",   "MOHO",   "/Moho-Display_240x168.bmp",   "Vacuum",
@@ -1155,7 +1155,7 @@ static const BodyParams _bodyTable[] = {
   { "Duna",   "DUNA",   "/Duna-Display_240x168.bmp",   "Atmosphere",
     8300,     12000,   50000,    140000,     20000,    47921949.0,
     320000,    2.94f,   1372.41f,
-    2879999,    19645697,   0.06f,
+    2879999.0f, 19645697.0f, 0.06f,
     true,  false, true,  0.0f },
 
   { "Ike",    "IKE",    "/Ike-Display_240x168.bmp",    "Vacuum",
@@ -1325,7 +1325,7 @@ uint16_t bsWrap(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
         } else {
           // Append word to current line (with leading space if non-empty)
           uint8_t ll = strlen(line);
-          if (ll > 0 && ll + 1 < sizeof(line)) { line[ll++] = ' '; line[ll] = '\0'; }
+          if (ll > 0 && ll + 1 < (int)sizeof(line)) { line[ll++] = ' '; line[ll] = '\0'; }
           strncat(line, word, sizeof(line) - strlen(line) - 1);
           lineW = needed;
         }
