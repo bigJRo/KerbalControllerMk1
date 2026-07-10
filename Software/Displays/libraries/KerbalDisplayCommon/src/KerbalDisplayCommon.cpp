@@ -389,20 +389,23 @@ void drawVerticalText(KCM_TFT &tft,
                       uint16_t color, uint16_t backColor) {
   tft.fillRect(x0, y0, w, h, backColor);
 
-  uint8_t  len   = strlen(text);
+  uint8_t len = strlen(text);
   if (len == 0) return;
 
-  uint16_t charH = font->cap_height;
-  uint16_t textH = len * charH;
-  uint16_t startY = y0 + (h > textH ? (h - textH) / 2 : 0);
-
+  // Distribute characters evenly across the strip height: each gets a slot of
+  // h/len, with its glyph centred vertically in that slot. This fills the box
+  // without clipping (long strings) and avoids the loose gaps of fixed-height
+  // stacking (short strings).
+  const float    slotH  = (float)h / (float)len;
+  const int16_t  glyphH = (int16_t)font->cap_height;
+  tft.setFont(*font);
+  tft.setTextColor(color, backColor);
   for (uint8_t i = 0; i < len; i++) {
     char ch[2] = { text[i], '\0' };
     int16_t  cw = getFontStringWidth(font, ch);
     uint16_t cx = x0 + (w > (uint16_t)cw ? (w - (uint16_t)cw) / 2 : 0);
-    uint16_t cy = startY + i * charH;
-    tft.setFont(*font);
-    tft.setTextColor(color, backColor);
+    int16_t  cy = y0 + (int16_t)(i * slotH + (slotH - glyphH) / 2.0f + 0.5f);
+    if (cy < (int16_t)y0) cy = y0;
     tft.setCursor(cx, cy);
     tft.print(ch);
   }

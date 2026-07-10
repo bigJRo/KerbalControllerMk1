@@ -424,12 +424,14 @@ void updateSpcftTile(KCM_TFT &tft) {
   if (state.vehCtrlMode == prevSpcftMode && state.vesselType == prevSpcftType) return;
   prevSpcftMode = state.vehCtrlMode;
   prevSpcftType = state.vesselType;
-  // Black background, coloured text (green = mode matches vessel type, red = mismatch).
-  // TODO(rev2): draw the vessel-type icon to the right of the text (mockup shows one).
-  ButtonLabel b = { ctrlModeText(state.vehCtrlMode),
-                    ctrlModeColor(state.vehCtrlMode, state.vesselType), TFT_WHITE,
-                    TFT_BLACK, TFT_BLACK, TFT_GREY, TFT_GREY };
-  drawButton(tft, SPCFT_X, R3_Y, SPCFT_W, R3_H, b, &Roboto_Black_28, false);
+  // Left-aligned mode text on black (green = mode matches vessel type, red = not),
+  // with the right ~R3_H px reserved for the vessel-type icon added in a later
+  // step. Border matches the rest of the bottom grid.
+  uint16_t txtColor = ctrlModeColor(state.vehCtrlMode, state.vesselType);
+  tft.fillRect(SPCFT_X + 1, R3_Y + 1, SPCFT_W - 2, R3_H - 2, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_28, SPCFT_X, R3_Y, SPCFT_W - R3_H, R3_H,
+           ctrlModeText(state.vehCtrlMode), txtColor, TFT_BLACK);
+  tft.drawRect(SPCFT_X, R3_Y, SPCFT_W, R3_H, TFT_GREY);
 }
 
 
@@ -505,10 +507,14 @@ void drawStaticMain(KCM_TFT &tft) {
                   SOI_LABEL_W, SOI_LABEL_H, "SOI:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   tft.drawRect(SOI_GLOBE_X, SOI_GLOBE_Y, SOI_GLOBE_W, SOI_GLOBE_H, TFT_GREY);
 
-  // Vessel name (left telemetry, row 1) — green, left-aligned
+  // Vessel name (left telemetry, row 1) — green, left-aligned, bordered (#2).
   tft.fillRect(NAME_X, BOT_Y, NAME_W, TEL_ROW_H, TFT_BLACK);
   textLeft(tft, &Roboto_Black_28, NAME_X, BOT_Y, NAME_W, TEL_ROW_H,
            state.vesselName, TFT_DARK_GREEN, TFT_BLACK);
+  tft.drawRect(NAME_X, BOT_Y, NAME_W, TEL_ROW_H, TFT_GREY);
+  // Light perimeter around the whole bottom zone so the bottom/side edges read
+  // consistently with the cell grid (#3).
+  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y, TFT_GREY);
 
   // Telemetry labels (chrome) — values drawn in the update pass.
   printDispChrome(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
@@ -516,9 +522,10 @@ void drawStaticMain(KCM_TFT &tft) {
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG:",   TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "Tmax:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "Crew:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COM:",   TFT_WHITE, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Tskin:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Cap:",   TFT_WHITE, TFT_BLACK, TFT_GREY);
+  // "Max Crew:" is a long label — this cell uses a smaller font so label+value fit.
+  printDispChrome(tft, &Roboto_Black_24, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Max Crew:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CtrlGrp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
 }
 
@@ -599,7 +606,7 @@ void updateScreenMain(KCM_TFT &tft) {
 
   // --- VESSEL NAME ---
   if (state.vesselName != prev.vesselName) {
-    tft.fillRect(NAME_X, BOT_Y, NAME_W, TEL_ROW_H, TFT_BLACK);
+    tft.fillRect(NAME_X + 1, BOT_Y + 1, NAME_W - 2, TEL_ROW_H - 2, TFT_BLACK);  // keep border (#2)
     textLeft(tft, &Roboto_Black_28, NAME_X, BOT_Y, NAME_W, TEL_ROW_H,
              state.vesselName, TFT_DARK_GREEN, TFT_BLACK);
     prev.vesselName = state.vesselName;
@@ -630,7 +637,7 @@ void updateScreenMain(KCM_TFT &tft) {
   if (state.commNet != prev.commNet) {
     uint16_t fc, bc; commTierColor(state.commNet, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "COM:", formatPerc(state.commNet), fc, bc, TFT_BLACK, psCOM);
+               "COMM:", formatPerc(state.commNet), fc, bc, TFT_BLACK, psCOM);
     prev.commNet = state.commNet;
   }
   if (state.skinTemp != prev.skinTemp) {
@@ -640,8 +647,8 @@ void updateScreenMain(KCM_TFT &tft) {
     prev.skinTemp = state.skinTemp;
   }
   if (state.capValue != prev.capValue) {
-    printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "Cap:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
+    printValue(tft, &Roboto_Black_24, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
+               "Max Crew:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
     prev.capValue = state.capValue;
   }
   if (state.ctrlGrp != prev.ctrlGrp) {
