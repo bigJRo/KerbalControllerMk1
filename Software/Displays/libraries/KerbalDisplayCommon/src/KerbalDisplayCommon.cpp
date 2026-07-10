@@ -223,7 +223,7 @@ void drawButton(KCM_TFT &tft, int16_t x, int16_t y, int16_t w, int16_t h,
   }
   // (rev 2) The RA8876 GFX library does not leave a clipping window after
   // fillRect/drawRect the way the RA8875 library did, so no reset is needed here.
-  tft.setFont(font);
+  tft.setFont(*font);
 
   int16_t charH  = (int16_t)font->cap_height;
   int16_t availW = w - (PADDING * 2);
@@ -344,7 +344,7 @@ void drawLabelledAxis(KCM_TFT &tft,
   const uint16_t barH        = barBottom - barTop;
 
   tft.drawLine(AXIS_X, barTop, AXIS_X, barBottom, axisColor);
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(axisColor, backColor);
 
   for (uint8_t pct = 0; pct <= 100; pct += 5) {
@@ -401,7 +401,7 @@ void drawVerticalText(KCM_TFT &tft,
     int16_t  cw = getFontStringWidth(font, ch);
     uint16_t cx = x0 + (w > (uint16_t)cw ? (w - (uint16_t)cw) / 2 : 0);
     uint16_t cy = startY + i * charH;
-    tft.setFont(font);
+    tft.setFont(*font);
     tft.setTextColor(color, backColor);
     tft.setCursor(cx, cy);
     tft.print(ch);
@@ -419,7 +419,7 @@ void textLeft(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t
   int16_t textH = font->cap_height;
   int16_t drawX = x0 + TEXT_BORDER;
   int16_t drawY = y0 + (h - textH) / 2;
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(foreColor, backColor);
   tft.setCursor(drawX, drawY);
   tft.print(value);
@@ -431,7 +431,7 @@ void textRight(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_
   int16_t textH = font->cap_height;
   int16_t drawX = x0 + w - textW - TEXT_BORDER;
   int16_t drawY = y0 + (h - textH) / 2;
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(foreColor, backColor);
   tft.setCursor(drawX, drawY);
   tft.print(value);
@@ -443,7 +443,7 @@ void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16
   int16_t textH = font->cap_height;
   int16_t drawX = x0 + (w - textW) / 2;
   int16_t drawY = y0 + (h - textH) / 2;
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(foreColor, backColor);
   tft.setCursor(drawX, drawY);
   tft.print(value);
@@ -1257,7 +1257,7 @@ BodyParams getBodyParams(const String& SOI) {
 ****************************************************************************************/
 void bsPrint(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y,
              const char *text, uint16_t col) {
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(col, TFT_BLACK);
   tft.setCursor(x, y);
   tft.print(text);
@@ -1265,7 +1265,7 @@ void bsPrint(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y
 
 uint16_t bsLine(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                 uint16_t y, uint16_t rowH, const char *text, uint16_t col) {
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(col, TFT_BLACK);
   tft.setCursor(col_x, y);
   tft.print(text);
@@ -1274,7 +1274,7 @@ uint16_t bsLine(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
 
 uint16_t bsBig(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                uint16_t y, const char *text, uint16_t col) {
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(col, TFT_BLACK);
   tft.setCursor(col_x, y);
   tft.print(text);
@@ -1295,7 +1295,7 @@ uint16_t bsWrap(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
   //     wrapping on the next row (blank '\n' produces a blank line).
   //   - Words longer than 31 characters are silently truncated to fit word[].
   //   - Empty tokens (consecutive spaces, leading space) are silently skipped.
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(col, TFT_BLACK);
 
   char    word[32];
