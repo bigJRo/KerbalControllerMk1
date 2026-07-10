@@ -28,7 +28,6 @@ const uint16_t SOI_ROW_H  = 36;                    // 36px per row -- fits 8-9 r
    drawSOIBody() is called immediately after to fill body-specific content.
 ****************************************************************************************/
 void drawStaticSOI(KCM_TFT &tft) {
-  tft.setXY(0, 0);
   tft.fillScreen(TFT_BLACK);
   drawBMP(tft, "/KASA_Meatball_240x168.bmp", 2, 2);
 }

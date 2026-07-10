@@ -43,7 +43,7 @@ static void _bs_wait(uint16_t ms) {
 static void _bs_check(KCM_TFT &tft, uint16_t y,
                        const char *label, uint16_t labelCol,
                        const char *status, uint16_t statusCol) {
-  tft.setFont(BS_FONT);
+  tft.setFont(*BS_FONT);
   tft.setTextColor(labelCol, TFT_BLACK);
   tft.setCursor(COL1_X, y);
   tft.print(label);
@@ -59,7 +59,7 @@ static void _bs_check(KCM_TFT &tft, uint16_t y,
 ****************************************************************************************/
 static void _bs_print(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y,
                        const char *text, uint16_t col) {
-  tft.setFont(font);
+  tft.setFont(*font);
   tft.setTextColor(col, TFT_BLACK);
   tft.setCursor(x, y);
   tft.print(text);
