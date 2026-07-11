@@ -107,10 +107,11 @@ void loop() {
   // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;
 
-  // --- Screen transition: request a telemetry refresh so the new screen's
-  //     values populate immediately. Chrome itself is now redrawn every frame
-  //     (Model A), so this no longer gates the chrome draw. ---
-  if (prevScreen != activeScreen) {
+  // --- Screen transition: a screen change forces a one-time full paint (chrome +
+  //     values) of the new screen and a telemetry refresh so its values populate
+  //     immediately. Steady-state frames redraw only what changed. ---
+  bool screenChanged = (prevScreen != activeScreen);
+  if (screenChanged) {
     if (debugMode) {
       Serial.print(F("InfoDisp: screen -> "));
       Serial.println(activeScreen);
@@ -121,39 +122,42 @@ void loop() {
 
   if (demoMode) stepDemoState();
 
-  // --- Model A double buffering: redraw the ENTIRE active screen to the hidden
-  //     back page, then flip. drawStaticScreen fillScreens + redraws all chrome
-  //     and invalidates the value caches, so updateScreen then repaints every
-  //     value. A complete frame each flip → tear-free and free of the
-  //     single-buffer overdraw artifacts (ticks through labels, etc.). ---
-  uint32_t _renderStart = 0, _chromeUs = 0, _updateUs = 0, _flipUs = 0, _t = 0;
-  infoDB.beginFrame(infoDisp);          // includes the frame-period spin-wait (idle time)
-  if (fpsDiag) { _renderStart = micros(); _t = _renderStart; } // time only the real work, not the spin
-  drawStaticScreen(infoDisp, activeScreen);
-  if (fpsDiag) { _chromeUs = micros() - _t; _t = micros(); }
-  updateScreen(infoDisp, activeScreen);
-  if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
-  infoDB.flip(infoDisp);                // blocks until the GPU finishes, then presents
-  if (fpsDiag) { _flipUs = micros() - _t; } // async geometry completes here (wait-for-GPU)
+  // --- Incremental double buffering ---
+  //  Screen entry (rare): paint full chrome + all values onto the back page, then
+  //  flip. This is the expensive frame (fillScreen + every label re-rasterized).
+  //  Steady state (every other frame): BTE-copy the live front page into the back
+  //  page so it exactly mirrors what's on screen, then run only the change-detected
+  //  updateScreen (a handful of moved gauges / changed values + their erase/repair)
+  //  and flip. Text that didn't change is never re-rasterized — it rides along in
+  //  the hardware copy. Tear-free (page flip) and artifact-free from tearing (all
+  //  drawing happens on the hidden page).
+  uint32_t _copyUs = 0, _updateUs = 0, _flipUs = 0, _t = 0;
+  if (screenChanged) {
+    infoDB.beginFrame(infoDisp);            // canvas -> back page (no copy; we fully paint it)
+    drawStaticScreen(infoDisp, activeScreen);
+    updateScreen(infoDisp, activeScreen);
+    infoDB.flip(infoDisp);
+  } else {
+    infoDB.beginFrameCopy(infoDisp);        // BTE copy front -> back, canvas -> back
+    if (fpsDiag) { _copyUs = infoDB.lastCopyUs; _t = micros(); }
+    updateScreen(infoDisp, activeScreen);
+    if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
+    infoDB.flip(infoDisp);
+    if (fpsDiag) { _flipUs = micros() - _t; } // async geometry completes here (wait-for-GPU)
+  }
 
-  // --- Frame-rate / render-time diagnostic (~1 Hz on Serial). ---
-  //   FPS         = end-to-end frames/sec (all loop work included). Capped near
-  //                 1e6/KCM_FRAME_PERIOD_US (≈50) unless the render itself is slower.
-  //   render ms   = drawStatic + updateScreen + flip's wait-for-GPU, i.e. the true
-  //                 per-frame cost. Compare against the ~20 ms frame period: if avg
-  //                 < 20 we're period-capped (headroom); if > 20 we're render-bound
-  //                 and FPS ≈ 1000/render.
-  if (fpsDiag) {
+  // --- Frame-rate / render-time diagnostic (~1 Hz on Serial). Steady-state frames
+  //     only (screen-entry full paints are excluded so the average reflects the
+  //     incremental cost). copy = BTE front→back; update = change-detected redraw;
+  //     flipwait = block until queued geometry finishes. ---
+  if (fpsDiag && !screenChanged) {
     static uint32_t _fpsWinStart  = 0;
     static uint16_t _fpsFrames    = 0;
-    static uint32_t _fpsRenderSum = 0;
-    static uint32_t _fpsChromeSum = 0;
+    static uint32_t _fpsCopySum   = 0;
     static uint32_t _fpsUpdateSum = 0;
     static uint32_t _fpsFlipSum   = 0;
-    uint32_t r = _chromeUs + _updateUs + _flipUs;
     _fpsFrames++;
-    _fpsRenderSum += r;
-    _fpsChromeSum += _chromeUs;
+    _fpsCopySum   += _copyUs;
     _fpsUpdateSum += _updateUs;
     _fpsFlipSum   += _flipUs;
 
@@ -162,13 +166,14 @@ void loop() {
     if (now - _fpsWinStart >= 1000) {
       float fps = _fpsFrames * 1000.0f / (float)(now - _fpsWinStart);
       Serial.print(F("InfoDisp FPS "));      Serial.print(fps, 1);
-      Serial.print(F(" | render ms "));      Serial.print(_fpsRenderSum / _fpsFrames / 1000.0f, 1);
-      Serial.print(F(" (chrome "));          Serial.print(_fpsChromeSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" | work ms "));
+      Serial.print((_fpsCopySum + _fpsUpdateSum + _fpsFlipSum) / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" (copy "));            Serial.print(_fpsCopySum / _fpsFrames / 1000.0f, 1);
       Serial.print(F(" + update "));         Serial.print(_fpsUpdateSum / _fpsFrames / 1000.0f, 1);
       Serial.print(F(" + flipwait "));       Serial.print(_fpsFlipSum / _fpsFrames / 1000.0f, 1);
       Serial.print(F(") | screen "));        Serial.println(activeScreen);
-      _fpsWinStart = now; _fpsFrames = 0; _fpsRenderSum = 0;
-      _fpsChromeSum = 0; _fpsUpdateSum = 0; _fpsFlipSum = 0;
+      _fpsWinStart = now; _fpsFrames = 0;
+      _fpsCopySum = 0; _fpsUpdateSum = 0; _fpsFlipSum = 0;
     }
   }
 }

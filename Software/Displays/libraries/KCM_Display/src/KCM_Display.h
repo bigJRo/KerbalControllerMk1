@@ -113,6 +113,27 @@ public:
     canvasTo(tft, _back);
   }
 
+  // Incremental-frame begin: duplicate the currently-displayed (front) page into
+  // the hidden (back) page with a hardware BTE block copy, then aim the canvas at
+  // the back page. The back page then holds an EXACT copy of the live frame, so an
+  // incremental redraw (change-detected against the last presented frame, plus its
+  // erase/repair steps) lands on a correct base and the flip presents a complete,
+  // tear-free frame — without re-rasterizing the unchanged chrome/text every frame.
+  //
+  // Same frame-boundary caveat as beginFrame(): wait out one frame period since the
+  // last flip so the BTE isn't writing the page that's still scanning out.
+  // lastCopyUs records the measured BTE copy time (spin excluded) for diagnostics.
+  void beginFrameCopy(KCM_TFT &tft) {
+    while ((uint32_t)(micros() - _lastFlipUs) < KCM_FRAME_PERIOD_US) { /* spin */ }
+    uint32_t c0 = micros();
+    tft.bteMemoryCopy(_front, KCM_SCREEN_W, 0, 0,
+                      _back,  KCM_SCREEN_W, 0, 0,
+                      KCM_SCREEN_W, KCM_SCREEN_H);
+    tft.check2dBusy();          // BTE runs on the 2D engine — wait for the copy
+    lastCopyUs = micros() - c0;
+    canvasTo(tft, _back);
+  }
+
   // Block until all drawing queued for the back page has actually finished. The
   // RA8876 draw ops (fillRect/drawSquareFill, writeRect) are ASYNC and return
   // before the engine completes, so without this a flip would present a
@@ -141,6 +162,8 @@ public:
 
   uint32_t frontAddr() const { return _front; }
   uint32_t backAddr()  const { return _back;  }
+
+  uint32_t lastCopyUs = 0;   // µs spent in the last beginFrameCopy() BTE copy (diagnostic)
 
 private:
   uint32_t _front      = KCM_FB_PAGE0_ADDR;
