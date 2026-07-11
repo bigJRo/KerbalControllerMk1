@@ -144,6 +144,29 @@ static const int16_t LNCH_AS_FPA_SHAFT_W   = 6;     // shaft width
 static const int16_t LNCH_AS_FPA_HEAD_W    = 16;    // arrowhead base width
 static const int16_t LNCH_AS_FPA_PIVOT_R   = 7;     // pivot circle radius
 
+// ── Heading tape (fills the whitespace below the FPA dial) ─────────────────────────────
+// Horizontal scrolling compass centered on the current vessel heading, with a
+// bug at 90° (due-east launch azimuth) and the surface velocity-vector heading
+// marker. Modeled on the Spacecraft screen's heading tape. Centered vertically
+// between the FPA readout and the band bottom.
+static const int16_t LNCH_AS_FPA_READOUT_BOT = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 74;  // FPA readout box bottom
+static const int16_t LNCH_AS_HDG_CX      = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2;   // under the dial
+static const int16_t LNCH_AS_HDG_W       = 170;
+static const int16_t LNCH_AS_HDG_X       = LNCH_AS_HDG_CX - LNCH_AS_HDG_W / 2;
+static const float   LNCH_AS_HDG_SCALE   = 2.6f;                                 // px per degree (±~33° visible)
+static const int16_t LNCH_AS_HDG_TAPE_H  = 28;
+static const int16_t LNCH_AS_HDG_MIDY    = (LNCH_AS_FPA_READOUT_BOT + LNCH_AS_BAND_BOT) / 2;
+static const int16_t LNCH_AS_HDG_TAPE_Y  = LNCH_AS_HDG_MIDY - LNCH_AS_HDG_TAPE_H / 2;
+static const int16_t LNCH_AS_HDG_NAME_Y  = LNCH_AS_HDG_TAPE_Y - 26;
+static const int16_t LNCH_AS_HDG_BOX_W   = 60;
+static const int16_t LNCH_AS_HDG_BOX_H   = 34;
+static const int16_t LNCH_AS_HDG_BOX_X   = LNCH_AS_HDG_CX - LNCH_AS_HDG_BOX_W / 2;
+static const int16_t LNCH_AS_HDG_BOX_Y   = LNCH_AS_HDG_TAPE_Y;
+static const int16_t LNCH_AS_HDG_SUPP_LO = LNCH_AS_HDG_BOX_X - 16;
+static const int16_t LNCH_AS_HDG_SUPP_HI = LNCH_AS_HDG_BOX_X + LNCH_AS_HDG_BOX_W + 16;
+static const float   LNCH_AS_HDG_LAUNCH_AZ  = 90.0f;   // due-east launch-azimuth bug
+static const float   LNCH_AS_HDG_VEL_MIN_MS = 20.0f;   // hide velocity marker below this surface speed
+
 // Zone boundaries as fractions of the atmospheric portion (0 = vacuum end/bottom,
 // 1 = sea level/top). Bottom 10% is the OFF_BLACK "no atmosphere" parking segment.
 static const float   LNCH_AS_ATMO_ZONE1_FRAC   = 0.35f;  // NAVY ↔ FRENCH_BLUE
@@ -208,6 +231,11 @@ static int16_t _lnchAsPrevFpaTarget    = -9999;  // last target FPA marker posit
 // position alone encodes whether we're in a no-atmosphere or atmospheric
 // state — no separate NoAtm flag is needed.
 static int16_t _lnchAsPrevAtmoTriY   = -1;
+
+// Heading tape state.
+static float   _lnchAsPrevHdg    = -9999.0f;   // last tape-center heading
+static int16_t _lnchAsPrevHdgBox = -9999;      // last integer heading in the box
+static float   _lnchAsPrevVelHdg = -9999.0f;   // last velocity-vector heading
 
 // ── Ascent phase helpers ──────────────────────────────────────────────────────────────
 //
@@ -1045,6 +1073,111 @@ static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
     _lnchAsPrevFpaTarget  = iTarget;
 }
 
+// ── Heading tape ──────────────────────────────────────────────────────────────────────
+
+// Heading number box (cached) — current vessel heading, "NNN°".
+static void _lnchAsUpdateHdgBox(KCM_TFT &tft, float hdg) {
+    int16_t iHdg = (int16_t)roundf(hdg) % 360;
+    if (iHdg < 0) iHdg += 360;
+    if (iHdg == _lnchAsPrevHdgBox) return;
+
+    char buf[8];
+    if (_lnchAsPrevHdgBox >= 0) {           // erase previous value (black-on-black)
+        snprintf(buf, sizeof(buf), "%03d\xB0", _lnchAsPrevHdgBox);
+        textCenter(tft, &Roboto_Black_20, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+                   LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_BLACK, TFT_BLACK);
+    }
+    snprintf(buf, sizeof(buf), "%03d\xB0", iHdg);
+    textCenter(tft, &Roboto_Black_20, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+               LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_DARK_GREEN, TFT_BLACK);
+    _lnchAsPrevHdgBox = iHdg;
+}
+
+// Redraw the heading tape strip: ticks, N/E/S/W + degree labels, and markers
+// (90° launch bug + velocity-vector heading). Tape center = current vessel heading.
+static void _lnchAsDrawHdgTape(KCM_TFT &tft, float hdg) {
+    while (hdg <   0.0f) hdg += 360.0f;
+    while (hdg >= 360.0f) hdg -= 360.0f;
+
+    tft.fillRect(LNCH_AS_HDG_X, LNCH_AS_HDG_TAPE_Y, LNCH_AS_HDG_W, LNCH_AS_HDG_TAPE_H, TFT_BLACK);
+    tft.drawRect(LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y, LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H, TFT_LIGHT_GREY);
+    _lnchAsPrevHdgBox = -1;   // fill blackened the box interior — force number redraw
+
+    int16_t halfDeg = (int16_t)(LNCH_AS_HDG_W / (2.0f * LNCH_AS_HDG_SCALE)) + 1;
+    tft.setFont(Roboto_Black_12);
+    for (int16_t d = -halfDeg; d <= halfDeg; d++) {
+        float deg = hdg + (float)d;
+        while (deg <   0.0f) deg += 360.0f;
+        while (deg >= 360.0f) deg -= 360.0f;
+        int16_t px = LNCH_AS_HDG_CX + (int16_t)roundf((float)d * LNCH_AS_HDG_SCALE);
+        if (px <= LNCH_AS_HDG_X || px >= LNCH_AS_HDG_X + LNCH_AS_HDG_W) continue;
+        if (px >= LNCH_AS_HDG_SUPP_LO && px <= LNCH_AS_HDG_SUPP_HI) continue;
+        int16_t ideg = (int16_t)roundf(deg); if (ideg == 360) ideg = 0;
+
+        if (ideg % 10 == 0) {
+            tft.drawLine(px, LNCH_AS_HDG_TAPE_Y, px, LNCH_AS_HDG_TAPE_Y + 9, TFT_LIGHT_GREY);
+            const char *lbl; uint16_t col; char nb[8];
+            if      (ideg ==   0) { lbl = "N"; col = TFT_YELLOW; }
+            else if (ideg ==  90) { lbl = "E"; col = TFT_WHITE;  }
+            else if (ideg == 180) { lbl = "S"; col = TFT_WHITE;  }
+            else if (ideg == 270) { lbl = "W"; col = TFT_WHITE;  }
+            else { snprintf(nb, sizeof(nb), "%d", ideg); lbl = nb; col = TFT_LIGHT_GREY; }
+            tft.setTextColor(col, TFT_BLACK);
+            uint8_t lw = strlen(lbl) * 8;
+            int16_t cx = px - (int16_t)(lw / 2);
+            if (cx < LNCH_AS_HDG_X + 1) cx = LNCH_AS_HDG_X + 1;
+            if (cx + lw > LNCH_AS_HDG_X + LNCH_AS_HDG_W - 1) cx = LNCH_AS_HDG_X + LNCH_AS_HDG_W - 1 - lw;
+            tft.setCursor(cx, LNCH_AS_HDG_TAPE_Y + 11);
+            tft.print(lbl);
+        } else if (ideg % 2 == 0) {
+            tft.drawLine(px, LNCH_AS_HDG_TAPE_Y, px, LNCH_AS_HDG_TAPE_Y + 5, TFT_DARK_GREY);
+        }
+    }
+
+    // Markers — downward triangles inside the tape (pegged to the edges, hidden
+    // behind the center box's suppress zone).
+    auto drawMarker = [&](float mHdg, uint16_t col) {
+        float diff = mHdg - hdg;
+        while (diff >  180.0f) diff -= 360.0f;
+        while (diff < -180.0f) diff += 360.0f;
+        int16_t px = LNCH_AS_HDG_CX + (int16_t)roundf(diff * LNCH_AS_HDG_SCALE);
+        int16_t pxMin = LNCH_AS_HDG_X + 7, pxMax = LNCH_AS_HDG_X + LNCH_AS_HDG_W - 7;
+        if (px < pxMin) px = pxMin;
+        if (px > pxMax) px = pxMax;
+        if (px >= LNCH_AS_HDG_SUPP_LO && px <= LNCH_AS_HDG_SUPP_HI) return;
+        tft.fillTriangle(px,     LNCH_AS_HDG_TAPE_Y + 18,
+                         px - 6, LNCH_AS_HDG_TAPE_Y + 2,
+                         px + 6, LNCH_AS_HDG_TAPE_Y + 2, col);
+    };
+    // Velocity-vector heading (green), only when actually moving.
+    if (state.surfaceVel >= LNCH_AS_HDG_VEL_MIN_MS)
+        drawMarker(state.srfVelHeading, TFT_NEON_GREEN);
+    // 90° launch-azimuth bug (amber) drawn last so it sits on top.
+    drawMarker(LNCH_AS_HDG_LAUNCH_AZ, TFT_YELLOW);
+}
+
+// Static chrome: "HDG" label + initial tape/box. Resets change-detection state.
+static void _lnchAsDrawHdgTapeChrome(KCM_TFT &tft) {
+    _lnchAsPrevHdg = -9999.0f; _lnchAsPrevHdgBox = -9999; _lnchAsPrevVelHdg = -9999.0f;
+    textCenter(tft, &Roboto_Black_16, LNCH_AS_HDG_X, LNCH_AS_HDG_NAME_Y,
+               LNCH_AS_HDG_W, 20, "HDG", TFT_LIGHT_GREY, TFT_BLACK);
+    _lnchAsDrawHdgTape(tft, state.heading);
+    _lnchAsUpdateHdgBox(tft, state.heading);
+}
+
+// Per-frame update — redraw the strip when heading or velocity heading changes.
+static void _lnchAsUpdateHdgTape(KCM_TFT &tft) {
+    float hdg = state.heading;
+    bool dirty = fabsf(hdg - _lnchAsPrevHdg) >= 0.3f
+              || fabsf(state.srfVelHeading - _lnchAsPrevVelHdg) >= 0.3f;
+    if (dirty) {
+        _lnchAsDrawHdgTape(tft, hdg);
+        _lnchAsPrevHdg    = hdg;
+        _lnchAsPrevVelHdg = state.srfVelHeading;
+    }
+    _lnchAsUpdateHdgBox(tft, hdg);
+}
+
 // ── Atmosphere gauge ──────────────────────────────────────────────────────────────────
 //
 // Vertical bar showing current atmospheric density as a fraction of the body's
@@ -1223,18 +1356,20 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
     _lnchAsDrawVVrtChrome(tft);
     _lnchAsDrawVOrbChrome(tft);
     _lnchAsDrawDialChrome(tft);
+    _lnchAsDrawHdgTapeChrome(tft);
     _lnchAsDrawAtmoChrome(tft);
     // Record scale that was just drawn, so UpdateLadderMarkers doesn't trigger
     // an immediate spurious redraw on the first frame after chrome.
     _lnchAsLastDrawnScaleTop = _lnchAsLadderScaleTop();
 }
 
-// Called every frame: update the ladder markers, bars, dial, and atmo gauge.
+// Called every frame: update the ladder markers, bars, dial, heading tape, atmo.
 static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateLadderMarkers(tft);
     _lnchAsUpdateVVrtBar(tft);
     _lnchAsUpdateVOrbBar(tft);
     _lnchAsUpdateFpaDial(tft);
+    _lnchAsUpdateHdgTape(tft);
     _lnchAsUpdateAtmoGauge(tft);
 }
 
