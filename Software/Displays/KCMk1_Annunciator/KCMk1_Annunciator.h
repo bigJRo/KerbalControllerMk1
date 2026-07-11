@@ -129,6 +129,15 @@ struct AppState {
    Bit 0 (DOCKED) is set/cleared by VESSEL_CHANGE_MESSAGE, not FLIGHT_STATUS.
    Bit 7 (LANDED) is set from sit_Landed in rawSituation.
 ****************************************************************************************/
+/***************************************************************************************
+   CELESTIAL-BODY / MEATBALL IMAGE SIZE
+   The SOI globe and KASA meatball BMPs are 236x164 (named *_236x164.bmp). Shared
+   here so ScreenMain and ScreenSOI centre them identically in their render areas.
+****************************************************************************************/
+static const uint16_t BODY_IMG_W = 236;
+static const uint16_t BODY_IMG_H = 164;
+
+
 static const uint8_t VSIT_DOCKED    = 0;
 static const uint8_t VSIT_PRELAUNCH = 1;
 static const uint8_t VSIT_FLIGHT    = 2;

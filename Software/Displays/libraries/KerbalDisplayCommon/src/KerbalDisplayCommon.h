@@ -491,7 +491,7 @@ enum VesselSituation : uint8_t {
 struct BodyParams {
   const char* soiName;          // Simpit SOI string — matches what Simpit sends
   const char* dispName;         // Display name, uppercase, max 8 chars + null
-  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_240x168.bmp"
+  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_236x164.bmp"
   const char* cond;             // Atmosphere condition string:
                                 //   "Vacuum", "Atmosphere", "Breathable", "Plasma"
   // --- Altitude boundaries (metres, from wiki science biome table) ---

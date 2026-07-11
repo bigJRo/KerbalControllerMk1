@@ -29,7 +29,9 @@ const uint16_t SOI_ROW_H  = 52;                    // 52px per row (rev2: larger
 ****************************************************************************************/
 void drawStaticSOI(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
-  drawBMP(tft, "/KASA_Meatball_240x168.bmp", 2, 2);
+  // KASA meatball (236x164) centred in the left image slot (SOI_IMG_W x SOI_IMG_H).
+  drawBMP(tft, "/KASA_Meatball_236x164.bmp",
+          (SOI_IMG_W - BODY_IMG_W) / 2, (SOI_IMG_H - BODY_IMG_H) / 2);
 }
 
 
@@ -68,8 +70,11 @@ void drawSOIBody(KCM_TFT &tft) {
               psSOIRows[i]);
   }
 
-  // Right BMP drawn last -- sits on top of any overlapping content
-  drawBMP(tft, currentBody.image, SOI_NAME_X + SOI_NAME_W + 2, 2);
+  // Right body BMP drawn last -- sits on top of any overlapping content.
+  // Centred (236x164) in the right image slot (SOI_IMG_W wide).
+  drawBMP(tft, currentBody.image,
+          SOI_NAME_X + SOI_NAME_W + (SOI_IMG_W - BODY_IMG_W) / 2,
+          (SOI_IMG_H - BODY_IMG_H) / 2);
 }
 
 

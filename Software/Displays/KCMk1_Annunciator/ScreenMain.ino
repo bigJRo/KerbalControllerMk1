@@ -626,10 +626,9 @@ void updateScreenMain(KCM_TFT &tft) {
               SOI_LABEL_W, SOI_LABEL_H, "SOI:", currentBody.dispName,
               TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, TFT_GREY, psSOILabel);
     tft.fillRect(SOI_GLOBE_X + 1, SOI_GLOBE_Y + 1, SOI_GLOBE_W - 2, SOI_GLOBE_H - 2, TFT_BLACK);
-    // Body BMP is 240x168; centre it in the 274x176 globe area until assets are
-    // regenerated to fill it. (rev2 TODO: 1024x600 body art.)
-    drawBMP(tft, currentBody.image, SOI_GLOBE_X + (SOI_GLOBE_W - 240) / 2,
-            SOI_GLOBE_Y + (SOI_GLOBE_H - 168) / 2);
+    // Body BMP is 236x164; centre it in the 274x176 globe frame.
+    drawBMP(tft, currentBody.image, SOI_GLOBE_X + (SOI_GLOBE_W - BODY_IMG_W) / 2,
+            SOI_GLOBE_Y + (SOI_GLOBE_H - BODY_IMG_H) / 2);
     tft.drawRect(SOI_GLOBE_X, SOI_GLOBE_Y, SOI_GLOBE_W, SOI_GLOBE_H, TFT_GREY);
     prev.gameSOI = state.gameSOI;
   }

@@ -19,29 +19,26 @@ format first: re-export as "24-bit BMP" from any editor.
 Copy these to the card root with **exact** filenames (referenced verbatim in the
 sketches):
 
-Annunciator SOI + Main body globes (240×168 each):
+Annunciator SOI + Main body globes (236×164 each):
 ```
-Kerbol-Display_240x168.bmp   Moho-Display_240x168.bmp    Eve-Display_240x168.bmp
-Gilly-Display_240x168.bmp    Kerbin-Display_240x168.bmp  Mun-Display_240x168.bmp
-Minmus-Display_240x168.bmp   Duna-Display_240x168.bmp    Ike-Display_240x168.bmp
-Dres-Display_240x168.bmp     Jool-Display_240x168.bmp    Laythe-Display_240x168.bmp
-Vall-Display_240x168.bmp     Tylo-Display_240x168.bmp    Bop-Display_240x168.bmp
-Pol-Display_240x168.bmp      Eeloo-Display_240x168.bmp
+Kerbol-Display_236x164.bmp   Moho-Display_236x164.bmp    Eve-Display_236x164.bmp
+Gilly-Display_236x164.bmp    Kerbin-Display_236x164.bmp  Mun-Display_236x164.bmp
+Minmus-Display_236x164.bmp   Duna-Display_236x164.bmp    Ike-Display_236x164.bmp
+Dres-Display_236x164.bmp     Jool-Display_236x164.bmp    Laythe-Display_236x164.bmp
+Vall-Display_236x164.bmp     Tylo-Display_236x164.bmp    Bop-Display_236x164.bmp
+Pol-Display_236x164.bmp      Eeloo-Display_236x164.bmp
 ```
 Other:
 ```
-KASA_Meatball_240x168.bmp     (SOI screen, top-left)
+KASA_Meatball_236x164.bmp     (SOI screen, top-left)
 StandbySplash_1024x600.bmp    (standby screen, full panel)
 VIcon_00.bmp .. VIcon_16.bmp  (vessel-type icons — see section below)
 ```
 
-Note on size: the files named `*_240x168.bmp` are actually **236×164** pixels
-(the content is 4 px smaller than the name). This renders fine — `drawBMP` uses
-the real header dimensions — but the body globe sits ~2 px off-centre in its
-274×176 frame. Filenames are kept as-is because the sketches reference them
-verbatim. To centre perfectly, either re-export at exactly 240×168 or ask for the
-Main/SOI draw offsets to be adjusted to 236×164. (To fill the frame edge-to-edge
-instead, supply 274×176 art and ask for the draw calls to be updated.)
+Sizing: the body/meatball art is **236×164** (filenames match the actual pixels).
+The sketches centre it via `BODY_IMG_W`/`BODY_IMG_H` (KCMk1_Annunciator.h): in the
+274×176 Main globe frame and in the 240×168 SOI image slots. To fill the Main
+globe edge-to-edge instead, supply 274×176 art and bump those constants.
 
 ## Also included (alternates / spares — not wired to code)
 
@@ -90,7 +87,7 @@ Dependency-free (no PIL) 24-bit BMP writer. Regenerate a verification test
 pattern any time to re-check the blit path:
 
 ```
-python3 ../tools/kcm_bmp.py testpattern /tmp/pattern_240x168.bmp 240 168
+python3 ../tools/kcm_bmp.py testpattern /tmp/pattern.bmp 236 164
 ```
 
 The test pattern is corner-coded (TL red, TR green, BL blue, BR yellow), a white
