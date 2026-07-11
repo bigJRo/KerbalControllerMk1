@@ -428,15 +428,94 @@ void drawVerticalText(KCM_TFT &tft,
    Core rendering functions — all other display functions build on these.
 ****************************************************************************************/
 
+// ── Fast 1-bit glyph blitter ──────────────────────────────────────────────────
+// The KCM fonts (converted by tfont_to_ili9341.py) are 1bpp, version 1, non-RLE,
+// top-aligned (glyph origin_y = cursor_y), xoffset/yoffset = 0, delta = glyph
+// width, and byte-aligned in data[]. tft.print()'s built-in renderer pushes glyph
+// pixels the slow way (~0.8 ms/glyph on this bus); instead we decode the bitmap
+// ourselves and push each row with writeRect — the same fast windowed transfer the
+// BMP loader uses (~11 Mpx/s). fg for set bits, bg for clear bits (opaque, matching
+// setTextColor(fg,bg)). Layout is identical to getFontCharWidth so alignment done
+// by the callers (which measure with getFontStringWidth) is unchanged.
+//
+// Any non-version-1 font falls back to the library renderer, so this is safe if an
+// anti-aliased font is ever added.
+#define KCM_TEXT_ROWBUF_MAX 1024
+static uint16_t _kcmRowBuf[KCM_TEXT_ROWBUF_MAX];
+
+static void kcmDrawString(KCM_TFT &tft, const ILI9341_t3_font_t *font,
+                          int16_t x, int16_t y, const char *str,
+                          uint16_t fg, uint16_t bg) {
+  if (!str || !*str) return;
+  if (font->version != 1) {                 // safety fallback for other formats
+    tft.setFont(*font);
+    tft.setTextColor(fg, bg);
+    tft.setCursor(x, y);
+    tft.print(str);
+    return;
+  }
+
+  const uint8_t bw = font->bits_width, bh = font->bits_height;
+  const uint8_t bxo = font->bits_xoffset, byo = font->bits_yoffset, bd = font->bits_delta;
+  const uint8_t bidx = font->bits_index;
+  const uint8_t fh = font->cap_height;      // all glyphs are full height
+
+  // Pre-decode each glyph once: data ptr, width, height, bitmap bit-offset, and
+  // its left pen position relative to x (advance = delta).
+  struct GlyphRef { const uint8_t *d; uint16_t w, h; uint32_t bmp; int16_t px; };
+  static GlyphRef g[64];
+  int n = 0; int16_t pen = 0;
+  for (const char *s = str; *s && n < 64; ++s) {
+    uint8_t code = (uint8_t)*s;
+    uint32_t ip;
+    if (code >= font->index1_first && code <= font->index1_last) {
+      ip = (uint32_t)(code - font->index1_first);
+    } else if (font->index2_last >= font->index2_first &&
+               code >= font->index2_first && code <= font->index2_last) {
+      ip = (uint32_t)(font->index1_last - font->index1_first + 1) + (code - font->index2_first);
+    } else {
+      continue;                             // missing glyph → no width (matches width fn)
+    }
+    uint32_t byteOff = _fetchbits_unsigned(font->index, ip * bidx, bidx);
+    const uint8_t *d = font->data + byteOff;
+    uint32_t bo = 3;                        // skip encoding field
+    uint16_t w = (uint16_t)_fetchbits_unsigned(d, bo, bw); bo += bw;
+    uint16_t h = (uint16_t)_fetchbits_unsigned(d, bo, bh); bo += bh;
+    bo += bxo + byo;                        // xoffset/yoffset (0 for these fonts)
+    uint16_t delta = (uint16_t)_fetchbits_unsigned(d, bo, bd); bo += bd;
+    g[n].d = d; g[n].w = w; g[n].h = h; g[n].bmp = bo; g[n].px = pen;
+    pen += (int16_t)delta;
+    n++;
+  }
+  if (n == 0 || pen <= 0) return;
+  int16_t totalW = pen;
+  if (totalW > KCM_TEXT_ROWBUF_MAX) totalW = KCM_TEXT_ROWBUF_MAX;
+
+  // Rasterize row by row into the shared row buffer, then blit each row in one
+  // windowed writeRect.
+  for (uint8_t r = 0; r < fh; ++r) {
+    for (int16_t i = 0; i < totalW; ++i) _kcmRowBuf[i] = bg;
+    for (int k = 0; k < n; ++k) {
+      const GlyphRef &gr = g[k];
+      if (r >= gr.h || gr.w == 0) continue;
+      uint32_t rowBit = gr.bmp + (uint32_t)r * (1u + gr.w) + 1u;   // skip per-row flag bit
+      for (uint16_t c = 0; c < gr.w; ++c) {
+        int16_t px = gr.px + (int16_t)c;
+        if (px < 0 || px >= totalW) continue;
+        uint32_t bi = rowBit + c;
+        if ((gr.d[bi >> 3] >> (7 - (bi & 7))) & 1u) _kcmRowBuf[px] = fg;
+      }
+    }
+    tft.writeRect(x, y + r, (uint16_t)totalW, 1, _kcmRowBuf);
+  }
+}
+
 void textLeft(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
               const String &value, uint16_t foreColor, uint16_t backColor) {
   int16_t textH = font->cap_height;
   int16_t drawX = x0 + TEXT_BORDER;
   int16_t drawY = y0 + (h - textH) / 2;
-  tft.setFont(*font);
-  tft.setTextColor(foreColor, backColor);
-  tft.setCursor(drawX, drawY);
-  tft.print(value);
+  kcmDrawString(tft, font, drawX, drawY, value.c_str(), foreColor, backColor);
 }
 
 void textRight(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
@@ -445,10 +524,7 @@ void textRight(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_
   int16_t textH = font->cap_height;
   int16_t drawX = x0 + w - textW - TEXT_BORDER;
   int16_t drawY = y0 + (h - textH) / 2;
-  tft.setFont(*font);
-  tft.setTextColor(foreColor, backColor);
-  tft.setCursor(drawX, drawY);
-  tft.print(value);
+  kcmDrawString(tft, font, drawX, drawY, value.c_str(), foreColor, backColor);
 }
 
 void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
@@ -457,10 +533,7 @@ void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16
   int16_t textH = font->cap_height;
   int16_t drawX = x0 + (w - textW) / 2;
   int16_t drawY = y0 + (h - textH) / 2;
-  tft.setFont(*font);
-  tft.setTextColor(foreColor, backColor);
-  tft.setCursor(drawX, drawY);
-  tft.print(value);
+  kcmDrawString(tft, font, drawX, drawY, value.c_str(), foreColor, backColor);
 }
 
 
