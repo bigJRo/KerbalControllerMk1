@@ -759,10 +759,10 @@ static void _lnchAsUpdateVVrtBar(KCM_TFT &tft) {
 // Circular orbit velocity at target altitude (m/s).
 // v_circ = sqrt(μ / r) where μ = g_surf × radius² (classic two-body).
 static float _lnchAsCircularOrbitVelocity() {
-    if (currentBody.radius <= 0.0f || currentBody.surfGrav <= 0.0f) return 1.0f;
+    if (currentBody.radius <= 0.0f || currentBody.gravity <= 0.0f) return 1.0f;
     float targetOrbit = max(currentBody.minSafe, currentBody.lowSpace + 20000.0f);
     float r    = currentBody.radius + targetOrbit;
-    float g    = currentBody.surfGrav * 9.81f;   // surfGrav is in Earth-g
+    float g    = currentBody.gravity;            // rev-2: gravity is m/s² (was surfGrav in g)
     float mu   = g * currentBody.radius * currentBody.radius;
     return sqrtf(mu / r);
 }

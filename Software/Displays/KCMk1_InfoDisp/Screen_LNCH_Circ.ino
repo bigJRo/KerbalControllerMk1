@@ -713,7 +713,7 @@ static void _lnchOrUpdateProgressBar(KCM_TFT &tft) {
         dv_rounded = -9999;
 
         float bodyR = currentBody.radius;
-        float g     = currentBody.surfGrav;
+        float g     = currentBody.gravity;   // rev-2: m/s² (mu = g*bodyR^2)
         if (bodyR > 0.0f && g > 0.0f && state.apoapsis > 0.0f) {
             float mu   = g * bodyR * bodyR;
             float rAp  = state.apoapsis  + bodyR;
