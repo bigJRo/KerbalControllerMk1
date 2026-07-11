@@ -155,11 +155,11 @@ static const OrbBody ORB_BODIES[] = {
     { "Eeloo",   210000.0f,     0.0f,  119082942.0f },  // 16
 };
 
-// ── Compatibility stub ────────────────────────────────────────────────────────────────
-// _orbAdvancedMode is still referenced by AAA_Globals.ino (resets on screen
-// exit) and SimpitHandler.ino (resets on vessel switch) even though ORB no
-// longer toggles modes via title-bar tap. Kept as a no-op placeholder so those
-// files continue to link. Can be removed when those call sites are cleaned up.
+// ── Advanced-mode flag ────────────────────────────────────────────────────────────────
+// rev-2: ORBADV (Advanced Elements) is a dedicated sidebar screen. _orbAdvancedMode
+// is derived from the active screen by drawStaticScreen() (true on screen_ORBADV) so
+// the OrbAdv chrome/draw path is selected; SimpitHandler still resets it on vessel
+// switch. Definition lives here because Screen_OrbAdv.ino documents it as owned by ORB.
 bool          _orbAdvancedMode = false;
 
 // ── Tuning constants ──────────────────────────────────────────────────────────────────

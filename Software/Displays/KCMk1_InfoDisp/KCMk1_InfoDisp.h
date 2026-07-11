@@ -17,21 +17,26 @@ typedef ILI9341_t3_font_t tFont;
 
 /***************************************************************************************
    SCREEN TYPE ENUM
-   Eight information screens navigated by the right-hand sidebar.
+   Twelve information screens navigated by the right-hand sidebar.
+   ORBADV (Advanced Orbital Elements) and LNDGRE (Re-entry) were formerly title-tap
+   sub-modes of ORB/LNDG; rev-2 promotes them to dedicated sidebar buttons appended
+   at the bottom. Both are manual-select only (contextScreen() never auto-picks them).
    screen_COUNT is a sentinel — not a real screen.
 ****************************************************************************************/
 enum ScreenType : uint8_t {
-  screen_LNCH  = 0,   // Launch
-  screen_ORB   = 1,   // Orbit (Apsides default + Advanced Elements tap-through)
-  screen_SCFT  = 2,   // Spacecraft attitude (EADI)
-  screen_MNVR  = 3,   // Maneuver
-  screen_TGT   = 4,   // Target / Rendezvous (RPOD display)
-  screen_DOCK  = 5,   // Docking
-  screen_LNDG  = 6,   // Landing
-  screen_VEH   = 7,   // Vehicle
-  screen_ACFT  = 8,   // Aircraft
-  screen_ROVR  = 9,   // Rover
-  screen_COUNT = 10   // sentinel — not a real screen
+  screen_LNCH   = 0,   // Launch
+  screen_ORB    = 1,   // Orbit (Apsides graphic)
+  screen_SCFT   = 2,   // Spacecraft attitude (EADI)
+  screen_MNVR   = 3,   // Maneuver
+  screen_TGT    = 4,   // Target / Rendezvous (RPOD display)
+  screen_DOCK   = 5,   // Docking
+  screen_LNDG   = 6,   // Landing (powered descent)
+  screen_VEH    = 7,   // Vehicle
+  screen_ACFT   = 8,   // Aircraft
+  screen_ROVR   = 9,   // Rover
+  screen_ORBADV = 10,  // Orbit — Advanced Elements (text readout)
+  screen_LNDGRE = 11,  // Landing — Re-entry
+  screen_COUNT  = 12   // sentinel — not a real screen
 };
 
 static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
@@ -218,13 +223,14 @@ extern BodyParams currentBody;
    LAYOUT CONSTANTS
    Defined here so both Screens.ino and TouchEvents.ino can reference them.
 ****************************************************************************************/
-// PHASE 1 (rev-2 mechanical port): the rev-1 screens are hardcoded for 800x480, so
-// pin SCREEN_W/H at 800x480 and letterbox the whole UI into the top-left of the
-// 1024x600 panel (rest black). Touches in the black margins fall outside these
-// bounds and are ignored. Phase 2 re-expands per-screen to KCM_SCREEN_W/H.
-static const uint16_t SCREEN_W  = 800;
-static const uint16_t SCREEN_H  = 480;
-static const uint16_t SIDEBAR_W = 80;
+// PHASE 2 (rev-2 redesign): the shared framework now spans the full 1024x600 panel.
+// The navigation chrome (sidebar, title bar) and text-row screens derive their
+// geometry from these constants and expand automatically. Graphical screens still
+// carry absolute 800x480 coordinates and render top-left-anchored until each is
+// redesigned in its own step.
+static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // 1024
+static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
+static const uint16_t SIDEBAR_W = 104;
 static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
 
 

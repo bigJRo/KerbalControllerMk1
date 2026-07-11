@@ -119,27 +119,9 @@ void processTouchEvents() {
         Serial.println(y2);
       }
 
-      if (activeScreen == screen_ORB) {
-        _orbAdvancedMode = !_orbAdvancedMode;
-        // Full chrome redraw — basic and advanced have different layouts.
-        // switchToScreen() clears the screen and calls chromeScreen_ORB dispatch
-        // which branches on _orbAdvancedMode to the correct layout.
-        switchToScreen(screen_ORB);
-        clearTouchISR();
-        if (debugMode) {
-          Serial.print(F("InfoDisp: ORB mode -> "));
-          Serial.println(_orbAdvancedMode ? F("ADVANCED") : F("APSIDES"));
-        }
-      } else if (activeScreen == screen_LNDG) {
-        _lndgReentryMode = !_lndgReentryMode;
-        for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[3][r].value = "\x01";
-        switchToScreen(screen_LNDG);
-        clearTouchISR();
-        if (debugMode) {
-          Serial.print(F("InfoDisp: LNDG mode -> "));
-          Serial.println(_lndgReentryMode ? F("RE-ENTRY") : F("POWERED DESCENT"));
-        }
-      } else if (activeScreen == screen_LNCH) {
+      // ORB↔ORB+ and LNDG↔REEN are now separate sidebar screens (rev-2), not
+      // title-tap sub-modes. Only LNCH keeps a title toggle (ASCENT↔CIRC phase).
+      if (activeScreen == screen_LNCH) {
         if (_lnchManualOverride) {
           _lnchManualOverride = false;
         } else {

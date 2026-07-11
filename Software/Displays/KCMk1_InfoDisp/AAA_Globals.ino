@@ -64,10 +64,9 @@ AppState state;
    Always use this function — never set activeScreen directly.
 ****************************************************************************************/
 void switchToScreen(ScreenType s) {
-  // Reset ORB advanced mode when navigating away — always return to Apsides default
-  if (s != screen_ORB && _orbAdvancedMode) {
-    _orbAdvancedMode = false;
-  }
+  // ORB (Apsides) and ORBADV (Advanced Elements) are now separate sidebar screens;
+  // _orbAdvancedMode is derived from the target screen in drawStaticScreen(), so no
+  // navigation-time reset is needed here.
   activeScreen     = s;
   prevScreen       = screen_COUNT;
   lastScreenSwitch = millis();   // #8 record timestamp for touch debounce and diagnostics

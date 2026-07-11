@@ -2,22 +2,25 @@
    AAA_Screens.ino -- Shared screen infrastructure for Kerbal Controller Mk1 Information Display
    Must compile before Screen_*.ino tabs (AAA_ prefix ensures correct sort order).
 
-   Screen map (mission-phase order):
+   Screen map (sidebar order):
      0  LNCH  Launch Information (3 modes: Pre-launch, Ascent, Circularization)
-     1  ORB   Orbit Information (Apsides + Advanced Elements modes)
+     1  ORB   Orbit Information (Apsides graphic)
      2  PFD   Spacecraft / Primary Flight Display (EADI ball)
      3  MNVR  Maneuver Information
      4  TGT   Target / Rendezvous Information
      5  DOCK  Docking Information
-     6  LNDG  Landing Information (2 modes: Powered Descent, Re-entry)
+     6  LNDG  Landing Information (Powered Descent)
      7  VEH   Vehicle Information
      8  ACFT  Aircraft Information
      9  ROVR  Rover Information
+     10 ORB+  Orbit — Advanced Elements (text readout)
+     11 REEN  Landing — Re-entry
+   ORB+/REEN were formerly title-tap sub-modes; rev-2 promotes them to buttons.
 
-   Layout (800x480):
+   Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
-     Data rows  : 8 rows x 52px each = 416px
-     Sidebar    : 80px right-hand column, 10 labelled buttons
+     Data rows  : text screens fill the content height evenly
+     Sidebar    : 104px right-hand column, 12 labelled buttons
 
    Update pattern (mirrors Annunciator):
      Chrome (labels)  : printDispChrome() — called once per screen transition.
@@ -61,14 +64,17 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "MANEUVER",
   "TARGET",
   "DOCKING",
-  "LANDING",
+  "POWERED DESCENT",
   "VEHICLE INFO",
   "AIRCRAFT",
-  "ROVER"
+  "ROVER",
+  "ORBIT ADVANCED",
+  "RE-ENTRY"
 };
 
 const char *const SCREEN_IDS[SCREEN_COUNT] = {
-  "LNCH", "ORB", "PFD", "MNVR", "TGT", "DOCK", "LNDG", "VEH", "ACFT", "ROVR"
+  "LNCH", "ORB", "PFD", "MNVR", "TGT", "DOCK", "LNDG", "VEH", "ACFT", "ROVR",
+  "ORB+", "REEN"
 };
 
 const ButtonLabel btnScreenOff = {
@@ -295,19 +301,28 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
 
-  // Dynamic titles
+  // Dynamic titles.
+  // ORB/ORBADV and LNDG/LNDGRE are now sibling sidebar screens (no title toggle).
+  // Their mode flags are derived from the active screen so the shared chrome/draw
+  // dispatchers (chromeScreen_ORB/OrbAdv, chromeScreen_LNDG) select the right layout.
   if (s == screen_ORB) {
-    drawTitleBar(tft, _orbAdvancedMode ? "ORBIT ADVANCED" : "ORBIT");
-    drawTitleToggleIndicator(tft);
+    _orbAdvancedMode = false;
+    drawTitleBar(tft, "ORBIT");
+  } else if (s == screen_ORBADV) {
+    _orbAdvancedMode = true;
+    drawTitleBar(tft, "ORBIT ADVANCED");
   } else if (s == screen_LNDG) {
-    drawTitleBar(tft, _lndgReentryMode ? "RE-ENTRY" : "POWERED DESCENT");
-    drawTitleToggleIndicator(tft);
+    _lndgReentryMode = false;
+    drawTitleBar(tft, "POWERED DESCENT");
+  } else if (s == screen_LNDGRE) {
+    _lndgReentryMode = true;
+    drawTitleBar(tft, "RE-ENTRY");
   } else if (s == screen_LNCH) {
     drawTitleBar(tft, _lnchOrbitalMode ? "CIRCULARIZATION" : "ASCENT");
     drawTitleToggleIndicator(tft);
     // Red dot indicates manual override of auto phase switch
     if (_lnchManualOverride)
-      tft.fillCircle(706, 29, 6, TFT_RED);
+      tft.fillCircle(CONTENT_W - 14, 29, 6, TFT_RED);
   } else if (s == screen_DOCK) {
     // Vessel name from Simpit reflects the active/combined vessel after docking.
     String dockTitle = String("DOCKING [ ") + state.vesselName + " ]";
@@ -317,14 +332,12 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
   }
 
   switch (s) {
-    case screen_LNCH: chromeScreen_LNCH(tft); break;
-    case screen_ORB:
-      if (_orbAdvancedMode) chromeScreen_OrbAdv(tft);
-      else                  chromeScreen_ORB(tft);
-      break;
-    case screen_ROVR: chromeScreen_ROVR(tft); break;
-    case screen_SCFT: chromeScreen_SCFT(tft); break;
-    case screen_MNVR: chromeScreen_MNVR(tft); break;
+    case screen_LNCH:   chromeScreen_LNCH(tft); break;
+    case screen_ORB:    chromeScreen_ORB(tft); break;
+    case screen_ORBADV: chromeScreen_OrbAdv(tft); break;
+    case screen_ROVR:   chromeScreen_ROVR(tft); break;
+    case screen_SCFT:   chromeScreen_SCFT(tft); break;
+    case screen_MNVR:   chromeScreen_MNVR(tft); break;
     case screen_TGT:
       _tgtChromDrawn = false;
       chromeScreen_TGT(tft);
@@ -333,9 +346,10 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
       _dockChromDrawn = false;
       chromeScreen_DOCK(tft);
       break;
-    case screen_VEH: chromeScreen_VEH(tft); break;
-    case screen_LNDG: chromeScreen_LNDG(tft); break;
-    case screen_ACFT: chromeScreen_ACFT(tft); break;
+    case screen_VEH:    chromeScreen_VEH(tft); break;
+    case screen_LNDG:   chromeScreen_LNDG(tft); break;   // _lndgReentryMode set false above
+    case screen_LNDGRE: chromeScreen_LNDG(tft); break;   // _lndgReentryMode set true above
+    case screen_ACFT:   chromeScreen_ACFT(tft); break;
     default: break;
   }
 
@@ -349,19 +363,20 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
 
 void updateScreen(KCM_TFT &tft, ScreenType s) {
   switch (s) {
-    case screen_LNCH: drawScreen_LNCH(tft); break;
-    case screen_ORB:
-      if (_orbAdvancedMode) drawScreen_OrbAdv(tft);
-      else                  drawScreen_ORB(tft);
-      break;
-    case screen_ROVR: drawScreen_ROVR(tft); break;
-    case screen_SCFT: drawScreen_SCFT(tft); break;
-    case screen_MNVR: drawScreen_MNVR(tft); break;
-    case screen_TGT: drawScreen_TGT(tft); break;
-    case screen_DOCK: drawScreen_DOCK(tft); break;
-    case screen_VEH: drawScreen_VEH(tft); break;
-    case screen_LNDG: drawScreen_LNDG(tft); break;
-    case screen_ACFT: drawScreen_ACFT(tft); break;
+    case screen_LNCH:   drawScreen_LNCH(tft); break;
+    case screen_ORB:    drawScreen_ORB(tft); break;
+    case screen_ORBADV: drawScreen_OrbAdv(tft); break;
+    case screen_ROVR:   drawScreen_ROVR(tft); break;
+    case screen_SCFT:   drawScreen_SCFT(tft); break;
+    case screen_MNVR:   drawScreen_MNVR(tft); break;
+    case screen_TGT:    drawScreen_TGT(tft); break;
+    case screen_DOCK:   drawScreen_DOCK(tft); break;
+    case screen_VEH:    drawScreen_VEH(tft); break;
+    // Re-assert the LNDG mode flag every frame — a vessel switch can reset it
+    // (SimpitHandler) while this screen stays active; keep chrome and draw in sync.
+    case screen_LNDG:   _lndgReentryMode = false; drawScreen_LNDG(tft); break;
+    case screen_LNDGRE: _lndgReentryMode = true;  drawScreen_LNDG(tft); break;
+    case screen_ACFT:   drawScreen_ACFT(tft); break;
     default: break;
   }
 }
