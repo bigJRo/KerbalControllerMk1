@@ -51,6 +51,7 @@ void setup() {
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
   setupSD();
   setupTouch();   // FT5316 polling driver (KCM_Touch) — no ISR attach in rev-2
+  if (debugMode) setTouchDebug(true);   // TEMP diag: print raw->mapped touch coords
   setupI2CSlave();
 
   bootSimText(infoDisp);

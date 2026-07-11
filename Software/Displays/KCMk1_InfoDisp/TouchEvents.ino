@@ -162,6 +162,17 @@ void processTouchEvents() {
   // Sidebar hit test — right-hand SIDEBAR_W column
   if (x2 >= SCREEN_W - SIDEBAR_W) {
     uint8_t btn = (uint8_t)(y2 / (SCREEN_H / SCREEN_COUNT));
+    if (debugMode) {
+      Serial.print(F("InfoDisp: Sidebar hit x="));
+      Serial.print(x2);
+      Serial.print(F(" y="));
+      Serial.print(y2);
+      Serial.print(F(" -> btn "));
+      Serial.print(btn);
+      Serial.print(F(" ("));
+      Serial.print(btn < SCREEN_COUNT ? SCREEN_IDS[btn] : "?");
+      Serial.println(F(")"));
+    }
     if (btn < SCREEN_COUNT) {
       ScreenType target = (ScreenType)btn;
       if (target != activeScreen) {
