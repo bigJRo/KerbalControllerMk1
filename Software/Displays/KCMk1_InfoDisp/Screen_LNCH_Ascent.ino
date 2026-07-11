@@ -71,8 +71,8 @@ static const int16_t LNCH_AS_GAUGE_BODY_MIDY= (LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_
 
 // Horizontal spacing: COL_GAP = whitespace between element bounding boxes;
 // LBL_OVERHANG = how far each bar's endpoint-label box extends beyond the bar.
-static const int16_t LNCH_AS_COL_GAP      = 16;
-static const int16_t LNCH_AS_LBL_OVERHANG = 12;
+static const int16_t LNCH_AS_COL_GAP      = 12;   // compact whitespace to free room for the FPA
+static const int16_t LNCH_AS_LBL_OVERHANG = 14;
 
 // Left panel — altitude ladder.
 // Vertical strip showing altitude scale with tick labels, reference lines
@@ -93,7 +93,7 @@ static const int16_t LNCH_AS_LADDER_H        = LNCH_AS_LADDER_Y_BOT - LNCH_AS_LA
 // V.Vrt bar — vertical bar showing vertical velocity. Zero at middle, fills
 // upward (green) for positive V.Vrt, downward (red) for negative. Fixed scale
 // ±500 m/s. Positioned one column-gap right of the ladder; body fills the band.
-static const int16_t LNCH_AS_VVRT_W          = 52;   // widened to fit "±500 m/s" labels
+static const int16_t LNCH_AS_VVRT_W          = 44;   // narrow bar; label box overhangs for "±500 m/s"
 static const int16_t LNCH_AS_VVRT_X_LEFT     = LNCH_AS_LADDER_ERASE_X2 + LNCH_AS_COL_GAP + LNCH_AS_LBL_OVERHANG;  // 184
 static const int16_t LNCH_AS_VVRT_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;
 static const int16_t LNCH_AS_VVRT_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
@@ -102,7 +102,7 @@ static const float   LNCH_AS_VVRT_SCALE_MS   = 500.0f;
 
 // V.Orb bar — orbital velocity progress toward the circular-orbit target
 // (0..v_circ, body-aware), one column-gap right of V.Vrt.
-static const int16_t LNCH_AS_VORB_W          = 52;
+static const int16_t LNCH_AS_VORB_W          = 44;
 static const int16_t LNCH_AS_VORB_X_LEFT     = LNCH_AS_VVRT_X_LEFT + LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP;  // 276
 static const int16_t LNCH_AS_VORB_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;
 static const int16_t LNCH_AS_VORB_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
@@ -113,22 +113,22 @@ static const int16_t LNCH_AS_VORB_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
 // width, total height 2R) and vertically centered in the gauge body — it is
 // intentionally shorter than the full band.
 static const int16_t LNCH_AS_FPA_LBL_MARGIN = 20;   // +90/-90 labels extend this far left of CX
-static const int16_t LNCH_AS_FPA_R  = 66;           // radius (= width; height = 2R)
-static const int16_t LNCH_AS_FPA_CX = LNCH_AS_VORB_X_LEFT + LNCH_AS_VORB_W + LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP + LNCH_AS_FPA_LBL_MARGIN;  // 376 (flat left side)
+static const int16_t LNCH_AS_FPA_R  = 96;           // radius (= width; height = 2R) — ~45% larger
+static const int16_t LNCH_AS_FPA_CX = LNCH_AS_VORB_X_LEFT + LNCH_AS_VORB_W + LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP + LNCH_AS_FPA_LBL_MARGIN;  // flat left side
 static const int16_t LNCH_AS_FPA_CY = LNCH_AS_GAUGE_BODY_MIDY;   // vertical center
-static const int16_t LNCH_AS_FPA_ARROW_R = 58;      // needle tip distance from center
+static const int16_t LNCH_AS_FPA_ARROW_R = 84;      // needle tip distance from center
 
 // Radial tick extents (px inside / outside the radius).
-static const int16_t LNCH_AS_FPA_MAJ_OUT = 7;
-static const int16_t LNCH_AS_FPA_MAJ_IN  = 7;
-static const int16_t LNCH_AS_FPA_MIN_OUT = 3;
-static const int16_t LNCH_AS_FPA_MIN_IN  = 3;
+static const int16_t LNCH_AS_FPA_MAJ_OUT = 8;
+static const int16_t LNCH_AS_FPA_MAJ_IN  = 8;
+static const int16_t LNCH_AS_FPA_MIN_OUT = 4;
+static const int16_t LNCH_AS_FPA_MIN_IN  = 4;
 
 // Needle geometry (rotated rectangle shaft + triangle head).
-static const int16_t LNCH_AS_FPA_SHAFT_LEN = 48;    // shaft length from center
-static const int16_t LNCH_AS_FPA_SHAFT_W   = 5;     // shaft width
-static const int16_t LNCH_AS_FPA_HEAD_W    = 13;    // arrowhead base width
-static const int16_t LNCH_AS_FPA_PIVOT_R   = 6;     // pivot circle radius
+static const int16_t LNCH_AS_FPA_SHAFT_LEN = 70;    // shaft length from center
+static const int16_t LNCH_AS_FPA_SHAFT_W   = 6;     // shaft width
+static const int16_t LNCH_AS_FPA_HEAD_W    = 16;    // arrowhead base width
+static const int16_t LNCH_AS_FPA_PIVOT_R   = 7;     // pivot circle radius
 
 // Atmosphere gauge — VERTICAL bar showing current atmospheric density as a
 // fraction of the body's sea-level density (KSP stock-gauge style). Highest
@@ -148,7 +148,7 @@ static const int16_t LNCH_AS_FPA_PIVOT_R   = 6;     // pivot circle radius
 //     Non-atmosphere body: parks centered in the OFF_BLACK segment. Because it
 //     sits entirely left of the bar on the black background, erasing it is a
 //     plain black fill — no zone/tick reconstruction needed.
-static const int16_t LNCH_AS_ATMO_W        = 40;
+static const int16_t LNCH_AS_ATMO_W        = 44;   // same width as the velocity bars
 // Triangle indicators — one on each side of the bar, pointing toward it.
 static const int16_t LNCH_AS_ATMO_TRI_HALF_H = 7;    // half height
 static const int16_t LNCH_AS_ATMO_TRI_W      = 12;   // base-to-tip depth
