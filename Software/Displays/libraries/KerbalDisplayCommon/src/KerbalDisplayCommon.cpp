@@ -470,7 +470,9 @@ void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16
 ****************************************************************************************/
 
 String formatInt(uint16_t value) {
-  return String(value);
+  // Route through the thousands-separator helper so any field that grows into
+  // the thousands is delimited (e.g. "1,234"). Values < 1000 render unchanged.
+  return formatSepI64((int64_t)value);
 }
 
 String formatFloat(float value, uint8_t decimals) {
@@ -623,9 +625,9 @@ String twString(uint8_t twIndex, bool physTW) {
       case 2: return "10x";
       case 3: return "50x";
       case 4: return "100x";
-      case 5: return "1000x";
-      case 6: return "10000x";
-      case 7: return "100000x";
+      case 5: return "1,000x";
+      case 6: return "10,000x";
+      case 7: return "100,000x";
       default: return "N/A";
     }
   }
