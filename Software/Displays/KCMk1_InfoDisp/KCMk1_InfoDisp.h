@@ -39,6 +39,15 @@ enum ScreenType : uint8_t {
   screen_COUNT  = 12   // sentinel — not a real screen
 };
 
+// Manual-only screens: reachable only from the sidebar, never auto-selected by
+// contextScreen(). Automatic context switches (vessel change, dock proximity,
+// scene entry) leave these alone so a deliberate selection sticks — e.g. a
+// re-entry lander shedding debris (heat shield / chutes) emits VESSEL_CHANGE,
+// which would otherwise yank REEN back to LNDG.
+inline bool isManualLockScreen(ScreenType s) {
+  return s == screen_LNDGRE || s == screen_ORBADV;
+}
+
 static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 
 

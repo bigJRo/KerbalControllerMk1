@@ -105,7 +105,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             Serial.print(F(" tgtDist="));
             Serial.println(state.tgtDistance);
           }
-          switchToScreen(contextScreen());
+          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
+          if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
           // TARGETINFO may not have arrived yet — set flag to re-check for docking context
           // once target distance is known (catches switching to a vessel near a dock target)
           _pendingDockCheck = true;
@@ -299,10 +300,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           }
           // KSP may report targetAvailable=false even while sending TARGETINFO with
           // a valid distance — use distance alone to confirm a nearby docking target.
-          if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
-            switchToScreen(screen_DOCK);
-          } else {
-            switchToScreen(contextScreen());
+          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
+          if (!isManualLockScreen(activeScreen)) {
+            if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
+              switchToScreen(screen_DOCK);
+            } else {
+              switchToScreen(contextScreen());
+            }
           }
         }
       }
@@ -362,7 +366,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
                                    : F("InfoDisp: Leaving flight scene"));
       if (flightScene) {
         demoMode = false;
-        switchToScreen(contextScreen());
+        // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
+        if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
         simpit.requestMessageOnChannel(0);
       } else {
         // Non-flight (menus, tracking station, etc.) — show standby splash
