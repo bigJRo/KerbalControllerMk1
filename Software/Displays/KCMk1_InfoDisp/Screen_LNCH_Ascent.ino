@@ -26,9 +26,11 @@
    Top-level dispatcher Screen_LNCH.ino selects which of these to draw.
 
    Shared with the rest of the LNCH screen (defined in Screen_LNCH.ino):
-     - LNCH_AS_LPANEL_X/W, LNCH_AS_RPANEL_X/W, LNCH_AS_PANEL_Y/H, LNCH_AS_ROW_H
-     - _lnchAsRowY()
+     - LNCH_AS_LPANEL_X/W, LNCH_AS_PANEL_Y/H  (left graphics panel geometry)
      The ascent-specific code below references these freely (single Arduino TU).
+     The rev-2 right (numeric readout) panel uses its own LNCH_AS2_* geometry and
+     _lnchAs2RowY() — right-aligned to the content edge, 400 px wide, full height,
+     larger fonts. Circularization still uses the shared LNCH_AS_RPANEL_* / ROW_H.
 
    Public-to-the-sketch entry points (called by the LNCH dispatcher):
      - _lnchAsResetState()              — clear all change-detection state
@@ -1640,19 +1642,36 @@ static const char *_lnchAsLabels[8] = {
 // SCFT screen layout. Because it's outside the RPANEL_X..RPANEL_X+W-1 rect
 // painted by printDispChrome's row borders, it isn't overwritten and can be
 // drawn in any order.
+// ── rev-2 Ascent right-panel geometry ──────────────────────────────────────
+// Phase 2 redesign: the numeric readout column is right-aligned to the content
+// edge (flush against the sidebar), widened to 400 px, and stretched to fill the
+// full height below the title bar, with larger fonts than the letterboxed
+// original. Ascent-only — the Circularization right panel keeps the shared
+// LNCH_AS_* geometry until its own redesign pass.
+static const int16_t LNCH_AS2_RPANEL_W = 400;
+static const int16_t LNCH_AS2_RPANEL_X = SCREEN_W - SIDEBAR_W - LNCH_AS2_RPANEL_W;  // 540
+static const int16_t LNCH_AS2_RPANEL_Y = LNCH_AS_PANEL_Y;                            // 63
+static const int16_t LNCH_AS2_ROW_H    = (SCREEN_H - LNCH_AS_PANEL_Y) / 8;           // 67
+static const int16_t LNCH_AS2_RPANEL_H = LNCH_AS2_ROW_H * 8;                         // 536
+static const tFont  *LNCH_AS2_LBL_FONT = &Roboto_Black_28;
+static const tFont  *LNCH_AS2_VAL_FONT = &Roboto_Black_36;
+static inline int16_t _lnchAs2RowY(uint8_t row) {
+    return LNCH_AS2_RPANEL_Y + row * LNCH_AS2_ROW_H;
+}
+
 static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
     // Vertical divider in the 2-px gap before the right panel
-    tft.drawLine(LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y,
-                 LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
+    tft.drawLine(LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y,
+                 LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
-    tft.drawLine(LNCH_AS_RPANEL_X - 1, LNCH_AS_PANEL_Y,
-                 LNCH_AS_RPANEL_X - 1, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
+    tft.drawLine(LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y,
+                 LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
 
     for (uint8_t i = 0; i < 8; i++) {
-        printDispChrome(tft, &Roboto_Black_20,
-                        LNCH_AS_RPANEL_X, _lnchAsRowY(i),
-                        LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
+        printDispChrome(tft, LNCH_AS2_LBL_FONT,
+                        LNCH_AS2_RPANEL_X, _lnchAs2RowY(i),
+                        LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
                         _lnchAsLabels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
     }
 
@@ -1667,12 +1686,12 @@ static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
     // value cell changes background colour (e.g. alarm state toggle).
     static const uint8_t divRows[] = { 3, 5 };
     for (uint8_t i = 0; i < sizeof(divRows); i++) {
-        int16_t dy = _lnchAsRowY(divRows[i]);
-        tft.drawLine(LNCH_AS_RPANEL_X, dy - 1,
-                     LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy - 1,
+        int16_t dy = _lnchAs2RowY(divRows[i]);
+        tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
+                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
                      TFT_GREY);
-        tft.drawLine(LNCH_AS_RPANEL_X, dy,
-                     LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy,
+        tft.drawLine(LNCH_AS2_RPANEL_X, dy,
+                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
                      TFT_GREY);
     }
 }
@@ -1682,9 +1701,9 @@ static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
 // only for paramW calculation so the value region doesn't overlap the label.
 static void _lnchAsDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
                                  uint16_t fg, uint16_t bg) {
-    printValue(tft, &Roboto_Black_24,
-               LNCH_AS_RPANEL_X, _lnchAsRowY(row),
-               LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
+    printValue(tft, LNCH_AS2_VAL_FONT,
+               LNCH_AS2_RPANEL_X, _lnchAs2RowY(row),
+               LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
                _lnchAsLabels[row], val,
                fg, bg, TFT_BLACK,
                _lnchAsPs[row]);
@@ -1774,9 +1793,9 @@ static bool _lnchAsShowOrbitalVelocity() {
 // it with the new label. The value is redrawn on the next update cycle.
 static void _lnchAsUpdateRow3Label(KCM_TFT &tft, bool showOrb) {
     const char *label = showOrb ? "V.Orb:" : "V.Srf:";
-    printDispChrome(tft, &Roboto_Black_20,
-                    LNCH_AS_RPANEL_X, _lnchAsRowY(3),
-                    LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
+    printDispChrome(tft, LNCH_AS2_LBL_FONT,
+                    LNCH_AS2_RPANEL_X, _lnchAs2RowY(3),
+                    LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
                     label, COL_LABEL, TFT_BLACK, COL_NO_BDR);
     // Redraw the group divider above row 3 (re-painted at y=dy-1 and y=dy,
     // matching the chrome's updated divider placement). Before the position
@@ -1788,12 +1807,12 @@ static void _lnchAsUpdateRow3Label(KCM_TFT &tft, bool showOrb) {
     //
     // The vertical divider at x=RPANEL_X-2..-1 sits OUTSIDE the row rect so
     // doesn't need repair.
-    int16_t dy = _lnchAsRowY(3);
-    tft.drawLine(LNCH_AS_RPANEL_X, dy - 1,
-                 LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy - 1,
+    int16_t dy = _lnchAs2RowY(3);
+    tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
+                 LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
                  TFT_GREY);
-    tft.drawLine(LNCH_AS_RPANEL_X, dy,
-                 LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy,
+    tft.drawLine(LNCH_AS2_RPANEL_X, dy,
+                 LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
                  TFT_GREY);
     // Reset printState for row 3 so the next value redraws cleanly
     _lnchAsPs[3].prevWidth  = 0;

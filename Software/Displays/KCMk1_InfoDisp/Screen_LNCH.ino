@@ -116,10 +116,11 @@ static void drawScreen_LNCH(KCM_TFT &tft) {
 
   // Manual override indicator — red dot on right of title bar.
   // Drawn every loop: red when overridden, black (erase) when auto.
-  // Position matches drawStaticScreen: x=706, y=29, r=6.
+  // Position matches drawStaticScreen (CONTENT_W - 14, y=29, r=6) so the chrome
+  // dot and this per-frame dot coincide — a single indicator, not two.
   {
     uint16_t indCol = _lnchManualOverride ? TFT_RED : TFT_BLACK;
-    tft.fillCircle(706, 29, 6, indCol);
+    tft.fillCircle(CONTENT_W - 14, 29, 6, indCol);
   }
 
   if (!_lnchOrbitalMode) {
