@@ -7,9 +7,9 @@
       processTouchEvents() runs, preventing missed touches (Problem A).
    2. Count filter — reject count > MAX_TOUCH_COUNT (1). Multi-finger events on a
       single-button sidebar are never intentional; count>1 is a strong phantom signal.
-   3. Y dead zone — reject y >= SCREEN_H - TOUCH_DEAD_ZONE (bottom 12px). GSL1680
-      ghost touches from edge noise accumulate at y≈479 (screen boundary). Real
-      sidebar touches are always well above this band.
+   3. (removed rev-2) The bottom Y dead zone was a GSL1680 edge-noise workaround.
+      The FT5316 does not ghost at the panel boundary, and the bottom sidebar
+      button (REEN) extends to the last row, so the band is gone.
    4. X bounds check — reject x >= SCREEN_W.
    5. Double-read with coordinate stability — re-read after 8ms; reject if count
       dropped to 0 OR if coordinates moved more than TOUCH_JITTER_MAX pixels.
@@ -23,7 +23,6 @@
 
 
 static const uint32_t TOUCH_DEBOUNCE_MS  = KCM_TOUCH_DEBOUNCE_MS;     // #3B from SystemConfig
-static const uint16_t TOUCH_DEAD_ZONE    = KCM_TOUCH_DEAD_ZONE_PX;    // #3B px — reject y >= SCREEN_H - this
 static const uint8_t  MAX_TOUCH_COUNT    = 1;                          // reject multi-finger events
 static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px — max coordinate movement across reads
 
@@ -94,16 +93,8 @@ void processTouchEvents() {
   }
   lastTouch = confirm;
 
-  // Bounds and dead zone checks — applied to final coordinates
+  // Bounds check — applied to final coordinates
   if (x2 >= SCREEN_W || y2 >= SCREEN_H) return;
-  if (y2 >= SCREEN_H - TOUCH_DEAD_ZONE) {
-    if (debugMode) {
-      Serial.print(F("InfoDisp: Touch discarded (y dead zone y="));
-      Serial.print(y2);
-      Serial.println(F(")"));
-    }
-    return;
-  }
 
   // Title bar hit — checked BEFORE main debounce with its own shorter timer
   // Title bar = y < TITLE_TOP (62px), x < CONTENT_W

@@ -195,14 +195,21 @@ uint16_t kspAtmoColor(const char *name) {
    DRAW SIDEBAR
 ****************************************************************************************/
 void drawSidebar(KCM_TFT &tft) {
-  tft.drawLine(SCREEN_W - SIDEBAR_W, 0, SCREEN_W - SIDEBAR_W, SCREEN_H, TFT_GREY);
-  uint16_t bx = SCREEN_W - SIDEBAR_W + 1;
+  const uint16_t divX = SCREEN_W - SIDEBAR_W;
+  tft.drawLine(divX, 0, divX, SCREEN_H - 1, TFT_GREY);
+  uint16_t bx = divX + 1;
   uint16_t bw = SIDEBAR_W - 1;
   uint16_t bh = sbBtnH();
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++) {
     ButtonLabel btn = (i == (uint8_t)activeScreen) ? btnScreenOn : btnScreenOff;
     btn.text = SCREEN_IDS[i];
-    drawButton(tft, bx, sbBtnY(i), bw, bh, btn, &Roboto_Black_20, true);
+    uint16_t by = sbBtnY(i);
+    uint16_t h  = bh;
+    // Last button tiles to row 599 (the panel's final scanline), where its bottom
+    // border is hidden by the bezel. Clamp its height so the border lands on
+    // SCREEN_H-2 and stays visible.
+    if (i == SB_BTN_COUNT - 1) h = (SCREEN_H - 1) - by;
+    drawButton(tft, bx, by, bw, h, btn, &Roboto_Black_20, true);
   }
 }
 

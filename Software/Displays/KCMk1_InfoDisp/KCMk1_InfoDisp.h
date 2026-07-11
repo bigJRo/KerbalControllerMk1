@@ -230,7 +230,7 @@ extern BodyParams currentBody;
 // redesigned in its own step.
 static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // 1024
 static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
-static const uint16_t SIDEBAR_W = 104;
+static const uint16_t SIDEBAR_W = 84;
 static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
 
 
