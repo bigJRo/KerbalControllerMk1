@@ -194,3 +194,40 @@ Touch (FT5316), confirmed from the demo:
 - INT is active-low. Raw→display mapping inverts both axes: `(LCD_W - x, LCD_H - y)`
   → `KCM_CTP_INVERT_X = KCM_CTP_INVERT_Y = 1`, no swap (already set in KCM_Touch).
 ```
+
+## Double buffering (RA8876 page flip) — validated
+
+`KCM_Display.h` provides `KCMDoubleBuffer`, an opt-in hardware page-flip layer.
+Two 1024x600 RGB565 pages live in the RA8876's SDRAM (16MB): page 0 @ addr 0,
+page 1 @ 0x12C000 (1.2MB each, ~13x headroom). It uses the `RA8876_common` methods
+inherited by `KCM_TFT`: `canvasImageStartAddress()` (redirect drawing to a page),
+`displayImageStartAddress()` (the flip), plus `check2dBusy()`/`checkWriteFifoEmpty()`.
+
+API: `begin()`, `beginFrame()` (canvas -> hidden back page), `flip()` (present it,
+swap), `waitDrawComplete()`, `canvasTo()`, `front/backAddr()`.
+
+Two hardware gotchas (both handled inside the class — do not remove):
+1. RA8876 draw ops (`fillRect`/`drawSquareFill`, `writeRect`) are ASYNC and return
+   before the engine finishes. `flip()` calls `waitDrawComplete()` first, or it
+   would present a half-rendered page.
+2. The scan-out base latches at the frame boundary, so after a flip the freed page
+   stays on screen for the rest of the frame. `beginFrame()` waits out
+   `KCM_FRAME_PERIOD_US` (SystemConfig, 20000us > the ~58Hz panel) since the last
+   flip before drawing that page — otherwise you draw onto the live image (flicker).
+   The gate only caps the max flip rate; screens that flip at telemetry rates
+   (10-30Hz) never stall on it.
+
+Benchmarks @ 20MHz bus (examples/DoubleBufferTest): `flip()` ~5us; hardware
+`fillScreen` ~9ms; per-pixel `writeRect` ~11 Mpx/s (full-screen push ~55ms).
+So: the flip is free; do NOT `fillScreen` every frame (clear per-widget-region);
+keep BMP blits static (drawn once). Continuous-animation ceiling ~50fps (gate) or
+~58fps if the gate is lowered to the true panel period; telemetry-driven UI is
+nowhere near this.
+
+Intended use — Model A for intensive screens (InfoDisp): draw the static
+background (chrome + BMPs) into BOTH pages once at screen entry, then each frame
+redraw the full dynamic layer (erase per-widget-region + draw) to the back page and
+`flip()`. No dirty-tracking, no per-frame full copy, no staleness. Sparse/BMP-heavy
+screens (Annunciator, SOI, standby) stay single-buffered — they don't flicker.
+Future option: triple buffering (3rd page @ +1.2MB) removes the frame-gate stall
+for sustained high-fps animation.
