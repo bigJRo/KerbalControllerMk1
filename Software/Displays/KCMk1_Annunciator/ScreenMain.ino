@@ -442,7 +442,7 @@ void updateSpcftTile(KCM_TFT &tft) {
   if (state.vesselType <= type_GndPart) {
     char iconPath[20];
     snprintf(iconPath, sizeof(iconPath), "/VIcon_%02u.bmp", (unsigned)state.vesselType);
-    uint16_t ix = SPCFT_X + SPCFT_W - R3_H + (R3_H - 72) / 2;
+    uint16_t ix = SPCFT_X + SPCFT_W - R3_H + (R3_H - 72) / 2 - 10;  // -10: nudged left
     uint16_t iy = R3_Y + (R3_H - 72) / 2;
     drawBMP(tft, iconPath, ix, iy);
   }

@@ -58,7 +58,7 @@ void drawSOIBody(KCM_TFT &tft) {
   rows[rowCount++] = { "Surf. Gravity:",  String(currentBody.gravity, 2) + " m/s\xb2"     };
 
   tft.fillRect(SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H, TFT_BLACK);
-  printTitle(tft, &Roboto_Black_48, SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H,
+  printTitle(tft, &Roboto_Black_72, SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H,
              currentBody.dispName, TFT_WHITE, TFT_BLACK, NO_BORDER);
 
   tft.fillRect(0, SOI_ROWS_Y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROWS_H, TFT_BLACK);

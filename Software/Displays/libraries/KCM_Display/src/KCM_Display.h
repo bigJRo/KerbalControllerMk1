@@ -56,7 +56,8 @@ inline void kcmDisplayBegin(KCM_TFT &tft, uint16_t backColor,
   tft.begin(KCM_TFT_BUS_SPEED_MHZ);
   tft.setRotation(rotation);
   tft.fillScreen(backColor);
-  digitalWrite(KCM_TFT_BL, HIGH);            // backlight on once the panel is up
+  // Backlight on at the configured PWM duty (dimmed from full-on to save power).
+  analogWrite(KCM_TFT_BL, (KCM_BL_BRIGHTNESS_PCT * 255) / 100);
 }
 
 #endif // KCM_DISPLAY_H

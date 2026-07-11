@@ -68,6 +68,10 @@
 #define KCM_TFT_INT     31   // INT   interrupt from RA8876 (unused for now)
 #define KCM_TFT_BL      9    // BL_CTRL backlight enable / PWM
 
+// Backlight brightness as a PWM duty cycle (0-100%). Driven via analogWrite() on
+// KCM_TFT_BL. Lowered from full-on to save power / reduce heat.
+#define KCM_BL_BRIGHTNESS_PCT  70
+
 // FlexIO 8080 bus speed (MHz). Must be one of the driver's allowed steps:
 // 2,4,8,12,20,24,30,40,60,120. Start conservative and raise once stable.
 #define KCM_TFT_BUS_SPEED_MHZ  20
