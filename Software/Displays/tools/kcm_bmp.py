@@ -107,14 +107,15 @@ def testpattern(w, h):
     img.fill_rect(w - s, 0, s, s, (40, 200, 40))        # top-right green
     img.fill_rect(0, h - s, s, s, (40, 80, 230))        # bot-left  blue
     img.fill_rect(w - s, h - s, s, s, (230, 210, 40))   # bot-right yellow
-    # centre up-arrow (white triangle) -- points to true top
+    # centre up-arrow (white triangle) -- tip at top, widening downward, so it
+    # points to true top of the image.
     ah = h // 3
     cx = w // 2
     ay0 = (h - ah) // 2
     for i in range(ah):
         half = int((i / ah) * (ah * 0.6))
         for x in range(cx - half, cx + half + 1):
-            img.set(x, ay0 + ah - i, (255, 255, 255))
+            img.set(x, ay0 + i, (255, 255, 255))
     img.border(3, (255, 255, 255))
     return img
 
