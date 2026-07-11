@@ -180,6 +180,18 @@ static const int16_t LNCH_AS_HDG_SUPP_HI = LNCH_AS_HDG_BOX_X + LNCH_AS_HDG_BOX_W
 static const float   LNCH_AS_HDG_LAUNCH_AZ  = 90.0f;   // due-east launch-azimuth bug
 static const float   LNCH_AS_HDG_VEL_MIN_MS = 20.0f;   // hide velocity marker below this surface speed
 
+// ── STAGE indicator button (in the gap between the FPA readout and the HDG tape) ─
+// Off = standard indicator look (dark-grey text on off-black, grey border); when
+// the current stage's ΔV is spent it lights red with white text — "time to stage".
+// Centered on the dial/HDG column, vertically midway between the FPA value box
+// bottom and the HDG name row.
+static const int16_t LNCH_AS_STAGE_W = 96;
+static const int16_t LNCH_AS_STAGE_H = 36;
+static const int16_t LNCH_AS_STAGE_X = LNCH_AS_HDG_CX - LNCH_AS_STAGE_W / 2;
+static const int16_t LNCH_AS_STAGE_Y = (LNCH_AS_FPA_VAL_Y + LNCH_AS_FPA_VAL_H + LNCH_AS_HDG_NAME_Y) / 2
+                                       - LNCH_AS_STAGE_H / 2;
+static const float   LNCH_AS_STAGE_EMPTY_MS = 0.5f;    // stage ΔV at/below this reads as spent
+
 // Zone boundaries as fractions of the atmospheric portion (0 = vacuum end/bottom,
 // 1 = sea level/top). Bottom 10% is the OFF_BLACK "no atmosphere" parking segment.
 static const float   LNCH_AS_ATMO_ZONE1_FRAC   = 0.35f;  // NAVY ↔ FRENCH_BLUE
@@ -249,6 +261,9 @@ static int16_t _lnchAsPrevAtmoTriY   = -1;
 static float   _lnchAsPrevHdg    = -9999.0f;   // last tape-center heading
 static int16_t _lnchAsPrevHdgBox = -9999;      // last integer heading in the box
 static float   _lnchAsPrevVelHdg = -9999.0f;   // last velocity-vector heading
+
+// STAGE indicator button state (-1 = not yet drawn).
+static int8_t  _lnchAsPrevStageActive = -1;
 
 // ── Ascent phase helpers ──────────────────────────────────────────────────────────────
 //
@@ -1364,14 +1379,17 @@ static void _lnchAsDrawAtmoTriangle(KCM_TFT &tft, int16_t centerY, uint16_t colo
 // chrome; only the triangle moves.
 static void _lnchAsUpdateAtmoGauge(KCM_TFT &tft) {
     float frac = _lnchAsAtmoFraction();
-    bool  noAtm = (frac < 0.0f);
+    // In vacuum (airDensity 0, frac == 0) or on a non-atmosphere body (frac < 0),
+    // park the indicators centered in the dark OFF_BLACK segment at the bottom
+    // rather than pegging them at the frac=0 line at the top of that segment.
+    bool  vacuum = (frac <= 0.0f);
 
     int16_t innerY1 = LNCH_AS_ATMO_Y_BOT - 1;
     int16_t atmYBot, atmH;
     _lnchAsAtmoScaleGeom(atmYBot, atmH);
 
-    int16_t triY = noAtm ? (int16_t)((atmYBot + 1 + innerY1) / 2)
-                         : _lnchAsAtmoFracToY(frac);
+    int16_t triY = vacuum ? (int16_t)((atmYBot + 1 + innerY1) / 2)
+                          : _lnchAsAtmoFracToY(frac);
     if (triY == _lnchAsPrevAtmoTriY) return;
 
     if (_lnchAsPrevAtmoTriY >= 0) {
@@ -1379,6 +1397,30 @@ static void _lnchAsUpdateAtmoGauge(KCM_TFT &tft) {
     }
     _lnchAsDrawAtmoTriangle(tft, triY, TFT_WHITE);
     _lnchAsPrevAtmoTriY = triY;
+}
+
+// ── STAGE indicator button ────────────────────────────────────────────────────
+// Sits in the whitespace between the FPA readout and the HDG tape. Lights red
+// (white text) when the current stage's ΔV is spent — a "time to stage" cue —
+// and otherwise shows the standard off-look. Change-detected: redraws only when
+// the active state flips.
+static void _lnchAsUpdateStageButton(KCM_TFT &tft) {
+    int8_t active = (state.stageDeltaV <= LNCH_AS_STAGE_EMPTY_MS) ? 1 : 0;
+    if (active == _lnchAsPrevStageActive) return;
+
+    static const ButtonLabel STAGE_LBL = {
+        "STAGE",
+        TFT_DARK_GREY,    // fontColorOff
+        TFT_WHITE,        // fontColorOn
+        TFT_OFF_BLACK,    // backgroundColorOff
+        TFT_RED,          // backgroundColorOn
+        TFT_GREY,         // borderColorOff
+        TFT_GREY,         // borderColorOn
+    };
+    drawButton(tft, LNCH_AS_STAGE_X, LNCH_AS_STAGE_Y,
+               LNCH_AS_STAGE_W, LNCH_AS_STAGE_H,
+               STAGE_LBL, &Roboto_Black_20, active != 0);
+    _lnchAsPrevStageActive = active;
 }
 
 // Left panel chrome — draw ladder (dynamic, dependent on current state),
@@ -1403,6 +1445,7 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateFpaDial(tft);
     _lnchAsUpdateHdgTape(tft);
     _lnchAsUpdateAtmoGauge(tft);
+    _lnchAsUpdateStageButton(tft);
 }
 
 
@@ -1462,6 +1505,7 @@ static void _lnchAsResetState() {
     _lnchAsPrevFpaReadout     = -9999;
     _lnchAsPrevFpaTarget      = -9999;
     _lnchAsPrevAtmoTriY       = -1;
+    _lnchAsPrevStageActive    = -1;
 }
 
 
