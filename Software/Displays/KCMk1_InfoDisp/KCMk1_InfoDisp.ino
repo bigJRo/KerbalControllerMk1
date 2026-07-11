@@ -126,12 +126,15 @@ void loop() {
   //     and invalidates the value caches, so updateScreen then repaints every
   //     value. A complete frame each flip → tear-free and free of the
   //     single-buffer overdraw artifacts (ticks through labels, etc.). ---
-  uint32_t _renderStart = 0;
+  uint32_t _renderStart = 0, _chromeUs = 0, _updateUs = 0, _flipUs = 0, _t = 0;
   infoDB.beginFrame(infoDisp);          // includes the frame-period spin-wait (idle time)
-  if (fpsDiag) _renderStart = micros(); // time only the real work, not the spin
+  if (fpsDiag) { _renderStart = micros(); _t = _renderStart; } // time only the real work, not the spin
   drawStaticScreen(infoDisp, activeScreen);
+  if (fpsDiag) { _chromeUs = micros() - _t; _t = micros(); }
   updateScreen(infoDisp, activeScreen);
+  if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
   infoDB.flip(infoDisp);                // blocks until the GPU finishes, then presents
+  if (fpsDiag) { _flipUs = micros() - _t; } // async geometry completes here (wait-for-GPU)
 
   // --- Frame-rate / render-time diagnostic (~1 Hz on Serial). ---
   //   FPS         = end-to-end frames/sec (all loop work included). Capped near
@@ -144,26 +147,28 @@ void loop() {
     static uint32_t _fpsWinStart  = 0;
     static uint16_t _fpsFrames    = 0;
     static uint32_t _fpsRenderSum = 0;
-    static uint32_t _fpsRenderMax = 0;
-    static uint32_t _fpsRenderMin = 0xFFFFFFFF;
-    uint32_t r = micros() - _renderStart;
+    static uint32_t _fpsChromeSum = 0;
+    static uint32_t _fpsUpdateSum = 0;
+    static uint32_t _fpsFlipSum   = 0;
+    uint32_t r = _chromeUs + _updateUs + _flipUs;
     _fpsFrames++;
     _fpsRenderSum += r;
-    if (r > _fpsRenderMax) _fpsRenderMax = r;
-    if (r < _fpsRenderMin) _fpsRenderMin = r;
+    _fpsChromeSum += _chromeUs;
+    _fpsUpdateSum += _updateUs;
+    _fpsFlipSum   += _flipUs;
 
     uint32_t now = millis();
     if (_fpsWinStart == 0) _fpsWinStart = now;
     if (now - _fpsWinStart >= 1000) {
       float fps = _fpsFrames * 1000.0f / (float)(now - _fpsWinStart);
       Serial.print(F("InfoDisp FPS "));      Serial.print(fps, 1);
-      Serial.print(F(" | render ms avg/min/max "));
-      Serial.print(_fpsRenderSum / _fpsFrames / 1000.0f, 2); Serial.print('/');
-      Serial.print(_fpsRenderMin / 1000.0f, 2);              Serial.print('/');
-      Serial.print(_fpsRenderMax / 1000.0f, 2);
-      Serial.print(F(" | screen "));         Serial.println(activeScreen);
+      Serial.print(F(" | render ms "));      Serial.print(_fpsRenderSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" (chrome "));          Serial.print(_fpsChromeSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" + update "));         Serial.print(_fpsUpdateSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" + flipwait "));       Serial.print(_fpsFlipSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(") | screen "));        Serial.println(activeScreen);
       _fpsWinStart = now; _fpsFrames = 0; _fpsRenderSum = 0;
-      _fpsRenderMax = 0; _fpsRenderMin = 0xFFFFFFFF;
+      _fpsChromeSum = 0; _fpsUpdateSum = 0; _fpsFlipSum = 0;
     }
   }
 }
