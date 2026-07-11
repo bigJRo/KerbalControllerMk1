@@ -516,9 +516,10 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
         tft.drawLine(LNCH_AS_LADDER_LINE_X + 1, y,
                      LNCH_AS_LADDER_REF_X2 - 2, y,
                      TFT_WHITE);
-        // Label ABOVE the ground line (below would push off-screen past y=479)
+        // Label vertically centered on the ground line (matches ATM/ORB). There
+        // is room below now that the ladder bottom sits ~18px above the screen edge.
         textLeft(tft, &Roboto_Black_16,
-                 LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                 LNCH_AS_LADDER_REF_X2 - 40, y - 8,
                  44, 16,
                  "GND", TFT_LIGHT_GREY, TFT_BLACK);
     }
@@ -1066,8 +1067,8 @@ static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
         snprintf(buf, sizeof(buf), "%+d\xB0", iFpa);
         int16_t rx0 = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2 - 48;
         int16_t ry  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 42;   // below the -90 label
-        tft.fillRect(rx0, ry, 96, 32, TFT_BLACK);
-        textCenter(tft, &Roboto_Black_28, rx0, ry, 96, 32, buf, TFT_DARK_GREEN, TFT_BLACK);
+        tft.fillRect(rx0, ry, 96, 28, TFT_BLACK);
+        textCenter(tft, &Roboto_Black_20, rx0, ry, 96, 28, buf, TFT_DARK_GREEN, TFT_BLACK);
     }
     _lnchAsPrevFpaReadout = iFpa;
     _lnchAsPrevFpaTarget  = iTarget;
@@ -1125,11 +1126,13 @@ static void _lnchAsDrawHdgTape(KCM_TFT &tft, float hdg) {
             tft.setTextColor(col, TFT_BLACK);
             uint8_t lw = strlen(lbl) * 8;
             int16_t cx = px - (int16_t)(lw / 2);
-            if (cx < LNCH_AS_HDG_X + 1) cx = LNCH_AS_HDG_X + 1;
-            if (cx + lw > LNCH_AS_HDG_X + LNCH_AS_HDG_W - 1) cx = LNCH_AS_HDG_X + LNCH_AS_HDG_W - 1 - lw;
-            tft.setCursor(cx, LNCH_AS_HDG_TAPE_Y + 11);
-            tft.print(lbl);
-        } else if (ideg % 2 == 0) {
+            // Skip the label entirely if it would run off either edge — clamping it
+            // to the edge makes labels stall and bunch up as the tape scrolls.
+            if (cx >= LNCH_AS_HDG_X + 1 && cx + lw <= LNCH_AS_HDG_X + LNCH_AS_HDG_W - 1) {
+                tft.setCursor(cx, LNCH_AS_HDG_TAPE_Y + 11);
+                tft.print(lbl);
+            }
+        } else if (ideg % 5 == 0) {
             tft.drawLine(px, LNCH_AS_HDG_TAPE_Y, px, LNCH_AS_HDG_TAPE_Y + 5, TFT_DARK_GREY);
         }
     }
@@ -1159,8 +1162,8 @@ static void _lnchAsDrawHdgTape(KCM_TFT &tft, float hdg) {
 // Static chrome: "HDG" label + initial tape/box. Resets change-detection state.
 static void _lnchAsDrawHdgTapeChrome(KCM_TFT &tft) {
     _lnchAsPrevHdg = -9999.0f; _lnchAsPrevHdgBox = -9999; _lnchAsPrevVelHdg = -9999.0f;
-    textCenter(tft, &Roboto_Black_16, LNCH_AS_HDG_X, LNCH_AS_HDG_NAME_Y,
-               LNCH_AS_HDG_W, 20, "HDG", TFT_LIGHT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_20, LNCH_AS_HDG_X, LNCH_AS_HDG_NAME_Y,
+               LNCH_AS_HDG_W, 24, "HDG", TFT_LIGHT_GREY, TFT_BLACK);
     _lnchAsDrawHdgTape(tft, state.heading);
     _lnchAsUpdateHdgBox(tft, state.heading);
 }
