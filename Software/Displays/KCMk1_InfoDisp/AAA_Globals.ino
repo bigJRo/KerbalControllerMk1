@@ -10,6 +10,7 @@
 ****************************************************************************************/
 KCM_TFT     infoDisp  = KCM_TFT(KCM_TFT_RS, KCM_TFT_CS, KCM_TFT_RESET);
 TouchResult lastTouch;
+KCMDoubleBuffer infoDB;
 
 
 /***************************************************************************************
@@ -125,5 +126,10 @@ ScreenType contextScreen() {
    Displays the shared splash BMP used by all KCMk1 panels.
 ****************************************************************************************/
 void drawStandbyScreen(KCM_TFT &tft) {
+  // Present the full-screen splash through the double buffer: draw it to the
+  // hidden page, then flip. During standby the loop returns early (no further
+  // flips), so this held image stays on screen.
+  infoDB.beginFrame(tft);
   drawStandbySplash(tft);   // #5A delegates to KDC library (subsumes #11 setXY fix)
+  infoDB.flip(tft);
 }

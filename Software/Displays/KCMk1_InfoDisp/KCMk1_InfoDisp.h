@@ -57,6 +57,11 @@ static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 extern KCM_TFT     infoDisp;
 extern TouchResult lastTouch;
 
+// Hardware double buffer (RA8876 page flip). The loop redraws the whole active
+// screen to the hidden page each frame (Model A) and flips — tear-free and free
+// of single-buffer overdraw artifacts.
+extern KCMDoubleBuffer infoDB;
+
 
 /***************************************************************************************
    SCREEN STATE

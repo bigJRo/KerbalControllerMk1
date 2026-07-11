@@ -49,6 +49,7 @@ void setup() {
 
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
+  infoDB.begin(infoDisp);   // page 0 = visible, canvas = page 0 (boot screen lands here)
   setupSD();
   setupTouch();   // FT5316 polling driver (KCM_Touch) — no ISR attach in rev-2
   setupI2CSlave();
@@ -103,24 +104,30 @@ void loop() {
   }
   _wasDemo = demoMode;
 
-  // --- Standby state: no screen chrome or value updates needed ---
+  // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;
 
-  // --- Screen chrome on transition ---
-  if (prevScreen == screen_COUNT) {
+  // --- Screen transition: request a telemetry refresh so the new screen's
+  //     values populate immediately. Chrome itself is now redrawn every frame
+  //     (Model A), so this no longer gates the chrome draw. ---
+  if (prevScreen != activeScreen) {
     if (debugMode) {
       Serial.print(F("InfoDisp: screen -> "));
       Serial.println(activeScreen);
     }
-    drawStaticScreen(infoDisp, activeScreen);
     prevScreen = activeScreen;
-    // Request a full telemetry refresh so the new screen's values populate
-    // immediately rather than waiting for the next natural Simpit update.
     if (!demoMode) simpit.requestMessageOnChannel(0);
   }
 
-  // --- Update display values ---
   if (demoMode) stepDemoState();
 
+  // --- Model A double buffering: redraw the ENTIRE active screen to the hidden
+  //     back page, then flip. drawStaticScreen fillScreens + redraws all chrome
+  //     and invalidates the value caches, so updateScreen then repaints every
+  //     value. A complete frame each flip → tear-free and free of the
+  //     single-buffer overdraw artifacts (ticks through labels, etc.). ---
+  infoDB.beginFrame(infoDisp);
+  drawStaticScreen(infoDisp, activeScreen);
   updateScreen(infoDisp, activeScreen);
+  infoDB.flip(infoDisp);
 }
