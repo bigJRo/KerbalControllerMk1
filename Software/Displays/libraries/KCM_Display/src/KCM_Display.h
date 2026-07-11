@@ -60,4 +60,72 @@ inline void kcmDisplayBegin(KCM_TFT &tft, uint16_t backColor,
   analogWrite(KCM_TFT_BL, (KCM_BL_BRIGHTNESS_PCT * 255) / 100);
 }
 
+
+/***************************************************************************************
+   DOUBLE BUFFERING — RA8876 hardware page flip
+   The RA8876 has up to 16MB SDRAM; a 1024x600 RGB565 frame is 1,228,800 bytes, so
+   two full pages fit with ~13x room to spare. Two independent pointers control it:
+     - canvasImageStartAddress()  : where 2D drawing writes ("the canvas")
+     - displayImageStartAddress() : which page the panel scans out ("the display")
+   Flipping = pointing the display at the page you just finished drawing. The RA8876
+   latches the new scan-out base at the next vertical sync, so the flip is tear-free.
+   All three calls below are RA8876_common methods inherited by KCM_TFT — no raw
+   register access needed.
+
+   Usage (Model A — full redraw per frame):
+     KCMDoubleBuffer db;
+     kcmDisplayBegin(tft, TFT_BLACK);
+     db.begin(tft);
+     ... // one-time: draw static background into BOTH pages if desired
+     // per frame:
+     db.beginFrame(tft);     // draw target -> hidden back page
+     drawWholeFrame(tft);    // fillScreen + all widgets (fully define the frame)
+     db.flip(tft);           // present it; back/front swap
+
+   NOTE: assumes a landscape rotation (0 or 2). At 90/270 the canvas width and the
+   page-size factors would use the swapped dimensions.
+****************************************************************************************/
+static const uint32_t KCM_FB_PAGE_BYTES = (uint32_t)KCM_SCREEN_W * (uint32_t)KCM_SCREEN_H * 2UL;
+static const uint32_t KCM_FB_PAGE0_ADDR = 0UL;
+static const uint32_t KCM_FB_PAGE1_ADDR = KCM_FB_PAGE_BYTES;   // 1,228,800 = 0x12C000
+
+class KCMDoubleBuffer {
+public:
+  // Call once, after kcmDisplayBegin(). Scans out page 0 and leaves the draw canvas
+  // on page 0 too, so any pre-flip static setup lands on the visible page.
+  void begin(KCM_TFT &tft) {
+    _front = KCM_FB_PAGE0_ADDR;
+    _back  = KCM_FB_PAGE1_ADDR;
+    tft.displayImageWidth(KCM_SCREEN_W);
+    tft.displayWindowStartXY(0, 0);
+    tft.displayImageStartAddress(_front);
+    canvasTo(tft, _front);
+  }
+
+  // Point the draw canvas at the hidden (back) page. Draw the frame, then flip().
+  void beginFrame(KCM_TFT &tft) { canvasTo(tft, _back); }
+
+  // Present the back page: it becomes the visible front, and the old front becomes
+  // the new back. Tear-free (latched at the next vertical sync by the RA8876).
+  void flip(KCM_TFT &tft) {
+    tft.displayImageStartAddress(_back);
+    uint32_t tmp = _front; _front = _back; _back = tmp;
+  }
+
+  // Redirect all subsequent drawing to `addr`, full-screen canvas + active window.
+  void canvasTo(KCM_TFT &tft, uint32_t addr) {
+    tft.canvasImageStartAddress(addr);
+    tft.canvasImageWidth(KCM_SCREEN_W);
+    tft.activeWindowXY(0, 0);
+    tft.activeWindowWH(KCM_SCREEN_W, KCM_SCREEN_H);
+  }
+
+  uint32_t frontAddr() const { return _front; }
+  uint32_t backAddr()  const { return _back;  }
+
+private:
+  uint32_t _front = KCM_FB_PAGE0_ADDR;
+  uint32_t _back  = KCM_FB_PAGE1_ADDR;
+};
+
 #endif // KCM_DISPLAY_H
