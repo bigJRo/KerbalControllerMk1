@@ -979,6 +979,22 @@ static void _lnchAsDrawDialTicks(KCM_TFT &tft) {
         _lnchAsDrawDialTick(tft, (float)minorDegs[i], LNCH_AS_FPA_MIN_OUT, LNCH_AS_FPA_MIN_IN, TFT_LIGHT_GREY);
 }
 
+// Angle labels (Black_16, matching the V.Vrt "±500 m/s" endpoint labels), placed
+// clear of the tick marks: +90 above the top tick, -90 below the bottom tick, 0 to
+// the right of the arc edge. Split out so the target-marker erase can repair the
+// label it sits on (the +90 marker overlaps the "+90°" text).
+static void _lnchAsDrawDialLabels(KCM_TFT &tft) {
+    textCenter(tft, &Roboto_Black_16,
+               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_P90_Y,
+               64, LNCH_AS_FPA_LBL_H, "+90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_16,
+               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_M90_Y,
+               64, LNCH_AS_FPA_LBL_H, "-90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    textLeft(tft, &Roboto_Black_16,
+             LNCH_AS_FPA_CX + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4, LNCH_AS_FPA_CY - 10,
+             30, LNCH_AS_FPA_LBL_H, "0\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+}
+
 // Dial chrome: arc, horizon, ticks, pivot, "FPA" name, angle labels.
 static void _lnchAsDrawDialChrome(KCM_TFT &tft) {
     _lnchAsDrawDialArc(tft, TFT_LIGHT_GREY);
@@ -993,18 +1009,7 @@ static void _lnchAsDrawDialChrome(KCM_TFT &tft) {
                100, LNCH_AS_GAUGE_NAME_H,
                "FPA", TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Angle labels (Black_16, matching the V.Vrt "±500 m/s" endpoint labels),
-    // placed clear of the tick marks: +90 above the top tick, -90 below the
-    // bottom tick, 0 to the right of the arc edge.
-    textCenter(tft, &Roboto_Black_16,
-               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_P90_Y,
-               64, LNCH_AS_FPA_LBL_H, "+90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-    textCenter(tft, &Roboto_Black_16,
-               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_M90_Y,
-               64, LNCH_AS_FPA_LBL_H, "-90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-    textLeft(tft, &Roboto_Black_16,
-             LNCH_AS_FPA_CX + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4, LNCH_AS_FPA_CY - 10,
-             30, LNCH_AS_FPA_LBL_H, "0\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    _lnchAsDrawDialLabels(tft);
 
     // Numeric readout box border (matches the HDG number box aesthetic). The
     // value itself is painted inside it by _lnchAsUpdateFpaDial.
@@ -1067,8 +1072,12 @@ static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
     bool targetChanged = (iTarget != _lnchAsPrevFpaTarget);
     if (!arrowChanged && !targetChanged) return;
 
-    if (targetChanged && _lnchAsPrevFpaTarget != -9999)
+    if (targetChanged && _lnchAsPrevFpaTarget != -9999) {
         _lnchAsDrawDialTargetMarker(tft, (float)_lnchAsPrevFpaTarget, TFT_BLACK);
+        // The marker sits just outside the arc where the +90/0/-90 labels live, so
+        // its black erase can nibble a label — repair them (cheap, target moves rarely).
+        _lnchAsDrawDialLabels(tft);
+    }
     if (arrowChanged && _lnchAsPrevFpaReadout != -9999) {
         _lnchAsDrawDialArrow(tft, (float)_lnchAsPrevFpaReadout, TFT_BLACK);
         _lnchAsRepairDialChrome(tft);
@@ -1086,9 +1095,9 @@ static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
         snprintf(buf, sizeof(buf), "%+d\xB0", iFpa);
         tft.fillRect(LNCH_AS_FPA_VAL_X + 1, LNCH_AS_FPA_VAL_Y + 1,
                      LNCH_AS_FPA_VAL_W - 2, LNCH_AS_FPA_VAL_H - 2, TFT_BLACK);
-        textCenter(tft, &Roboto_Black_20,
-                   LNCH_AS_FPA_VAL_X, LNCH_AS_FPA_VAL_Y + 3,
-                   LNCH_AS_FPA_VAL_W, LNCH_AS_FPA_VAL_H - 6, buf, TFT_DARK_GREEN, TFT_BLACK);
+        textCenter(tft, &Roboto_Black_24,
+                   LNCH_AS_FPA_VAL_X, LNCH_AS_FPA_VAL_Y + 1,
+                   LNCH_AS_FPA_VAL_W, LNCH_AS_FPA_VAL_H - 2, buf, TFT_DARK_GREEN, TFT_BLACK);
     }
     _lnchAsPrevFpaReadout = iFpa;
     _lnchAsPrevFpaTarget  = iTarget;
@@ -1105,11 +1114,11 @@ static void _lnchAsUpdateHdgBox(KCM_TFT &tft, float hdg) {
     char buf[8];
     if (_lnchAsPrevHdgBox >= 0) {           // erase previous value (black-on-black)
         snprintf(buf, sizeof(buf), "%03d\xB0", _lnchAsPrevHdgBox);
-        textCenter(tft, &Roboto_Black_20, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+        textCenter(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
                    LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_BLACK, TFT_BLACK);
     }
     snprintf(buf, sizeof(buf), "%03d\xB0", iHdg);
-    textCenter(tft, &Roboto_Black_20, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+    textCenter(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
                LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_DARK_GREEN, TFT_BLACK);
     _lnchAsPrevHdgBox = iHdg;
 }
