@@ -184,13 +184,13 @@ static const ButtonLabel cautWarn[CW_COUNT] = {
 ****************************************************************************************/
 static const ButtonLabel vesselSituation[SIT_COUNT] = {
   { "CONTACT",    TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_SKY,    TFT_GREY, TFT_GREY }, // 0 LANDED|SPLASH
-  { "PRE- LAUNCH",TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 1 VSIT_PRELAUNCH
-  { "FLIGHT",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 2 VSIT_FLIGHT
-  { "SUB- ORBIT", TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 3 VSIT_SUBORBIT
-  { "ORBIT",      TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 4 VSIT_ORBIT
-  { "ESCAPE",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 5 VSIT_ESCAPE
+  { "PRE- LAUNCH",TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 1 VSIT_PRELAUNCH
+  { "FLIGHT",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 2 VSIT_FLIGHT
+  { "SUB- ORBIT", TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 3 VSIT_SUBORBIT
+  { "ORBIT",      TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 4 VSIT_ORBIT
+  { "ESCAPE",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 5 VSIT_ESCAPE
   { "SPLASH",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_NAVY,   TFT_GREY, TFT_GREY }, // 6 VSIT_SPLASH
-  { "LANDED",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // 7 VSIT_LANDED
+  { "LANDED",     TFT_DARK_GREY, TFT_WHITE, TFT_OFF_BLACK, TFT_JUNGLE, TFT_GREY, TFT_GREY }, // 7 VSIT_LANDED
 };
 
 
@@ -217,7 +217,7 @@ static const ButtonLabel modeGrid[MF_COUNT] = {
   { "AUDIO",      TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_AUDIO
   { "THRTL ENA",  TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_THRTL_ENA
   { "TRIM",       TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_AQUA,       TFT_GREY, TFT_GREY }, // MF_TRIM
-  { "AUTOPILOT",  TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_AUTOPILOT
+  { "AUTO PILOT", TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_AUTOPILOT (spaced so it wraps at _16)
   // Row 1
   { "DEBUG",      TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_PURPLE,     TFT_GREY, TFT_GREY }, // MF_DEBUG
   { "SWITCH ERR", TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_RED,        TFT_GREY, TFT_GREY }, // MF_SWITCH_ERR
@@ -394,7 +394,7 @@ void updateModeGrid(KCM_TFT &tft) {
     int16_t x   = MODE_X0 + col * MODE_BTN_W;
     int16_t y   = MODE_Y0 + row * MODE_BTN_H;
     drawButton(tft, x, y, MODE_BTN_W, MODE_BTN_H,
-               modeGrid[i], &Roboto_Black_12, bitRead(state.modeFlags, i));
+               modeGrid[i], &Roboto_Black_16, bitRead(state.modeFlags, i));
   }
   prevModeFlags = state.modeFlags;
 }
@@ -412,7 +412,7 @@ void updateDockedIndicator(KCM_TFT &tft) {
   uint16_t bgColor   = isDocked ? TFT_DARK_GREEN : TFT_OFF_BLACK;
   uint16_t textColor = isDocked ? TFT_WHITE  : TFT_DARK_GREY;
   drawVerticalText(tft, DOCK_X, DOCK_Y, DOCK_W, DOCK_H,
-                   &Roboto_Black_24, "DOCK", textColor, bgColor);
+                   &Roboto_Black_16, "DOCK", textColor, bgColor);
   tft.drawRect(DOCK_X, DOCK_Y, DOCK_W, DOCK_H, TFT_GREY);
 }
 
@@ -466,6 +466,18 @@ static void commTierColor(uint8_t pct, uint16_t &fc, uint16_t &bc) {
   thresholdColor((uint16_t)pct, 25, TFT_RED,        TFT_BLACK,
                                  75, TFT_YELLOW,     TFT_BLACK,
                                      TFT_DARK_GREEN, TFT_BLACK, fc, bc);
+}
+
+
+/***************************************************************************************
+   BOTTOM-ZONE PERIMETER — light border around the whole bottom zone.
+   Redrawn every update pass: bottom-row tiles (SPCFT, mode grid) fill down to the
+   overscan row when they redraw, erasing this line, and their own tile borders land
+   on the invisible last row. Reasserting it here keeps a consistent bottom/side
+   edge under every tile (not just the rarely-redrawn CtrlGrp).
+****************************************************************************************/
+void drawBottomZonePerimeter(KCM_TFT &tft) {
+  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y - 1, TFT_GREY);  // -1: keep bottom line off the overscan edge
 }
 
 
@@ -524,16 +536,16 @@ void drawStaticMain(KCM_TFT &tft) {
                   "TimeWarp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG:",   TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "Tmax:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "Crew:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "CREW:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Tskin:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP:", TFT_WHITE, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CtrlGrp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
 
   // Light perimeter around the whole bottom zone, drawn LAST so its bottom edge
-  // sits on top of every tile fill in the zone (CtrlGrp's own box border lands on
-  // the overscan row and is not visible, so it relies on this line) (#2).
-  tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y - 1, TFT_GREY);  // -1: keep bottom line off the overscan edge
+  // sits on top of every tile fill in the zone (#2). Reasserted each update pass
+  // by drawBottomZonePerimeter() so tile redraws don't strip it (#5).
+  drawBottomZonePerimeter(tft);
 }
 
 
@@ -633,7 +645,7 @@ void updateScreenMain(KCM_TFT &tft) {
   }
   if (state.crewCount != prev.crewCount) {
     printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H,
-               "Crew:", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
+               "CREW:", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
     prev.crewCount = state.crewCount;
   }
   if (state.twIndex != prev.twIndex) {
@@ -678,4 +690,7 @@ void updateScreenMain(KCM_TFT &tft) {
   prev.vel_surf = state.vel_surf;
   prev.apoapsis = state.apoapsis;
   firstPassOnMain = false;
+
+  // Reassert the bottom-zone border — bottom-row tile redraws above strip it (#5).
+  drawBottomZonePerimeter(tft);
 }
