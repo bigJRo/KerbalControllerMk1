@@ -16,7 +16,6 @@
    CONSTANTS
    BS_HOLD  -- pause between printing a check label and its status word (faster pacing)
    BIG_ROW  -- pixel pitch per big (check/summary) row
-   SM_ROW   -- pixel pitch per small (metadata) row
    COL1_X   -- x position for check label
    COL2_X   -- x position for status word, computed at runtime from a fixed-width slot
    BS_FONT  -- fine-print metadata font (version / attribution)
@@ -28,7 +27,6 @@
 static const bool     BS_TUNE_PAUSE = true;
 static const uint16_t BS_HOLD  = BS_TUNE_PAUSE ? 400 : 110;  // per-line reveal pause
 static const uint16_t BIG_ROW  = 40;   // 32px glyph + 8px leading
-static const uint16_t SM_ROW   = 20;   // 16px glyph + 4px leading
 static const uint16_t COL1_X   = 10;
 static const ILI9341_t3_font_t *BS_FONT = &TerminalFont_16;
 static const ILI9341_t3_font_t *BS_BIG  = &TerminalFont_32;
@@ -55,6 +53,28 @@ static void _bs_holdForTouch() {
   while (isTouched())  { delay(10); }   // clear any lingering / boot-phantom touch
   while (!isTouched()) { delay(10); }   // wait for a deliberate press
   while (isTouched())  { delay(10); }   // wait for release
+}
+
+
+/***************************************************************************************
+   INTERNAL HELPERS -- live diagnostic readouts (real hardware values)
+****************************************************************************************/
+static uint32_t _bs_freeRAM() {
+#if defined(__IMXRT1062__)
+  extern unsigned long _heap_end;
+  extern char *__brkval;
+  return (uint32_t)((char *)&_heap_end - __brkval);   // Teensy 4.x RAM2 heap free
+#else
+  return 0;
+#endif
+}
+
+static float _bs_coreTemp() {
+#if defined(__IMXRT1062__)
+  return tempmonGetTemp();                             // Teensy 4.x on-die temp sensor
+#else
+  return 0.0f;
+#endif
 }
 
 
@@ -100,23 +120,21 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   // Status column origin: fixed 19-char label slot in the big monospace font.
   _bs_col2 = COL1_X + getFontStringWidth(BS_BIG, "0000000000000000000") + 20;
 
-  uint16_t y = 8;
+  uint16_t y = 4;
+  char buf[64];
 
-  // - Title -
+  // - Title + version (both big) -
   _bs_print(tft, BS_BIG, COL1_X, y, "KCMk1 ANNUNCIATOR", TFT_WHITE);
   y += BIG_ROW;
-  {
-    char buf[128];
-    snprintf(buf, sizeof(buf),
-             "Jeb's Controller Works   v%d.%d.%d   KDC %d.%d.%d   KDA %d.%d.%d",
-             SKETCH_VERSION_MAJOR,               SKETCH_VERSION_MINOR,               SKETCH_VERSION_PATCH,
-             KDC_VERSION_MAJOR,                  KDC_VERSION_MINOR,                  KDC_VERSION_PATCH,
-             KERBAL_DISPLAY_AUDIO_VERSION_MAJOR, KERBAL_DISPLAY_AUDIO_VERSION_MINOR, KERBAL_DISPLAY_AUDIO_VERSION_PATCH);
-    _bs_print(tft, BS_FONT, COL1_X, y, buf, TFT_GREY);
-  }
-  y += SM_ROW + 2;
+  snprintf(buf, sizeof(buf),
+           "FW %d.%d.%d   KDC %d.%d.%d   KDA %d.%d.%d",
+           SKETCH_VERSION_MAJOR,               SKETCH_VERSION_MINOR,               SKETCH_VERSION_PATCH,
+           KDC_VERSION_MAJOR,                  KDC_VERSION_MINOR,                  KDC_VERSION_PATCH,
+           KERBAL_DISPLAY_AUDIO_VERSION_MAJOR, KERBAL_DISPLAY_AUDIO_VERSION_MINOR, KERBAL_DISPLAY_AUDIO_VERSION_PATCH);
+  _bs_print(tft, BS_BIG, COL1_X, y, buf, TFT_AQUA);
+  y += BIG_ROW - 2;
   tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
-  y += 10;
+  y += 8;
   _bs_wait(BS_HOLD);
 
   // - Real subsystem checks -
@@ -127,30 +145,45 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   _bs_check(tft, y, "5) I2C SLAVE  0x10",  "OK",                        TFT_GREEN);   y += BIG_ROW;
   _bs_check(tft, y, "6) KSP LINK  SIMPIT",
             demoMode ? "DEMO" : (standaloneMode ? "LOCAL" : "STANDBY"),
-            demoMode ? TFT_BLUE : (standaloneMode ? TFT_AQUA : TFT_YELLOW));          y += BIG_ROW + 4;
+            demoMode ? TFT_BLUE : (standaloneMode ? TFT_AQUA : TFT_YELLOW));          y += BIG_ROW;
 
-  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
+  tft.fillRect(0, y + 2, KCM_SCREEN_W, 2, TFT_GREY);
+  y += 12;
+
+  // - Live diagnostics (real hardware values) -
+  snprintf(buf, sizeof(buf), "%lu MHz",
+#ifdef F_CPU_ACTUAL
+           (unsigned long)(F_CPU_ACTUAL / 1000000UL));
+#else
+           (unsigned long)(F_CPU / 1000000UL));
+#endif
+  _bs_check(tft, y, "CPU  CLOCK", buf, TFT_WHITE); y += BIG_ROW;
+
+  snprintf(buf, sizeof(buf), "%lu KB", (unsigned long)(_bs_freeRAM() / 1024UL));
+  _bs_check(tft, y, "RAM  FREE",  buf, TFT_WHITE); y += BIG_ROW;
+
+  {
+    float tc = _bs_coreTemp();
+    int   ti = (int)tc;
+    snprintf(buf, sizeof(buf), "%d.%d C", ti, (int)((tc - ti) * 10.0f));
+    _bs_check(tft, y, "CORE TEMP", buf, TFT_WHITE); y += BIG_ROW;
+  }
+
+  _bs_check(tft, y, "FW  BUILD", __DATE__, TFT_WHITE); y += BIG_ROW;
+
+  tft.fillRect(0, y + 2, KCM_SCREEN_W, 2, TFT_GREY);
   y += 12;
 
   // - Summary - (touch is the only hard failure; a missing SD card is non-fatal)
   if (touchOK) _bs_print(tft, BS_BIG, COL1_X, y, "SYSTEMS NOMINAL", TFT_GREEN);
   else         _bs_print(tft, BS_BIG, COL1_X, y, "TOUCH FAULT",     TFT_RED);
   y += BIG_ROW;
-  _bs_wait(BS_HOLD);
-  _bs_print(tft, BS_BIG, COL1_X, y, "Initializing...", TFT_BLUE);
-  y += BIG_ROW + 6;
-
-  // - Attribution -
-  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
-  y += 8;
-  _bs_print(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
 
   if (BS_TUNE_PAUSE) {
-    // Tuning: add a "TAP TO CONTINUE" prompt and hold until touched.
-    y += SM_ROW + 6;
     _bs_print(tft, BS_BIG, COL1_X, y, "TAP TO CONTINUE", TFT_YELLOW);
     _bs_holdForTouch();
   } else {
+    _bs_print(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
     _bs_wait(700);   // production: fast hand-off to the app
   }
 }
