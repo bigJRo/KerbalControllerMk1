@@ -24,7 +24,7 @@
 // Tuning aid: when true, the sequence runs slowly and then FREEZES on the finished
 // screen until the operator taps, so the layout can be inspected at leisure. Set
 // false for the fast production auto-advance.
-static const bool     BS_TUNE_PAUSE = true;
+static const bool     BS_TUNE_PAUSE = false;
 static const uint16_t BS_HOLD  = BS_TUNE_PAUSE ? 400 : 110;  // per-line reveal pause
 static const uint16_t BIG_ROW  = 40;   // 32px glyph + 8px leading (checks/title/summary)
 static const uint16_t DIAG_ROW = 22;   // 16px glyph + 6px leading (diagnostics)
