@@ -126,10 +126,9 @@ static const int16_t LNCH_AS_VORB_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
 // circle), flat side on the left at x=CX, a needle rotating from the center.
 // -90°=diving (bottom), 0°=horizon (right), +90°=climbing (top).
 //
-// The rightmost column stacks three elements top→bottom: the HDG tape (name row
-// aligned with the other gauge names), the FPA dial vertically centered, and the
-// AoA gauge in the bottom whitespace. FPA_CY is derived further down from the HDG
-// and AoA block extents so the three reflow together on resize.
+// The rightmost column stacks two elements: the FPA dial at the top (name on the
+// shared gauge name row, arc top-aligned with the bars) and the HDG tape at the
+// bottom (its number box bottom flush with the ATMO bar bottom).
 static const int16_t LNCH_AS_FPA_LBL_MARGIN = 28;   // +90/-90 labels extend this far left of CX
 static const int16_t LNCH_AS_FPA_R  = 96;           // radius (= width; height = 2R)
 static const int16_t LNCH_AS_FPA_CX = LNCH_AS_VORB_X_LEFT + LNCH_AS_VORB_W + LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP + LNCH_AS_FPA_LBL_MARGIN;  // flat left side
@@ -147,59 +146,39 @@ static const int16_t LNCH_AS_FPA_SHAFT_W   = 6;     // shaft width
 static const int16_t LNCH_AS_FPA_HEAD_W    = 16;    // arrowhead base width
 static const int16_t LNCH_AS_FPA_PIVOT_R   = 7;     // pivot circle radius
 
-// ── Heading tape (top of the rightmost column) ────────────────────────────────
-// Horizontal scrolling compass centered on the current vessel heading, with a
-// bug at 90° (due-east launch azimuth) and the surface velocity-vector heading
-// marker. Its name row is top-aligned with the other gauge name labels; the tape
-// sits directly beneath it, mirroring the V.Vrt/V.Orb name-over-body layout.
-static const int16_t LNCH_AS_HDG_CX      = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2;   // centered on the dial
-static const int16_t LNCH_AS_HDG_W       = 170;
-static const int16_t LNCH_AS_HDG_X       = LNCH_AS_HDG_CX - LNCH_AS_HDG_W / 2;
-static const float   LNCH_AS_HDG_SCALE   = 2.6f;                                 // px per degree (±~33° visible)
-static const int16_t LNCH_AS_HDG_TAPE_H  = 28;
-static const int16_t LNCH_AS_HDG_NAME_Y  = LNCH_AS_GAUGE_NAME_Y;                 // top-aligned with V.Vrt name
-static const int16_t LNCH_AS_HDG_TAPE_Y  = LNCH_AS_HDG_NAME_Y + LNCH_AS_GAUGE_NAME_H + 4;
-static const int16_t LNCH_AS_HDG_BOX_W   = 60;
-static const int16_t LNCH_AS_HDG_BOX_H   = 34;
-static const int16_t LNCH_AS_HDG_BOX_X   = LNCH_AS_HDG_CX - LNCH_AS_HDG_BOX_W / 2;
-static const int16_t LNCH_AS_HDG_BOX_Y   = LNCH_AS_HDG_TAPE_Y;
-static const int16_t LNCH_AS_HDG_BLOCK_BOT = LNCH_AS_HDG_BOX_Y + LNCH_AS_HDG_BOX_H;  // lowest pixel of the HDG block
-static const int16_t LNCH_AS_HDG_SUPP_LO = LNCH_AS_HDG_BOX_X - 16;
-static const int16_t LNCH_AS_HDG_SUPP_HI = LNCH_AS_HDG_BOX_X + LNCH_AS_HDG_BOX_W + 16;
-static const float   LNCH_AS_HDG_LAUNCH_AZ  = 90.0f;   // due-east launch-azimuth bug
-static const float   LNCH_AS_HDG_VEL_MIN_MS = 20.0f;   // hide velocity marker below this surface speed
-
-// ── Angle of Attack gauge (bottom of the rightmost column) ────────────────────
-// Compact horizontal scale centered at 0°, ±LNCH_AS_AOA_RANGE full-scale. A
-// colored triangle marks the current AoA (green ≤5° / orange ≤10° / red beyond)
-// so the pilot can keep the nose near prograde through the gravity turn. AoA is
-// pitch minus velocity-vector pitch (state.pitch - state.srfVelPitch), matching
-// the ACFT screen.
-static const int16_t LNCH_AS_AOA_BLOCK_H   = 66;                                      // reserved bottom band
-static const int16_t LNCH_AS_AOA_BLOCK_TOP = LNCH_AS_BAND_BOT - LNCH_AS_AOA_BLOCK_H;
-static const int16_t LNCH_AS_AOA_CX        = LNCH_AS_HDG_CX;                           // same center as dial/HDG
-static const int16_t LNCH_AS_AOA_W         = 170;                                      // scale width (matches HDG)
-static const int16_t LNCH_AS_AOA_X         = LNCH_AS_AOA_CX - LNCH_AS_AOA_W / 2;
-static const float   LNCH_AS_AOA_RANGE      = 15.0f;                                   // ± degrees full-scale
-static const float   LNCH_AS_AOA_SCALE      = (float)(LNCH_AS_AOA_W / 2) / LNCH_AS_AOA_RANGE;  // px per degree
-static const int16_t LNCH_AS_AOA_BAR_H     = 12;                                       // scale bar thickness
-static const int16_t LNCH_AS_AOA_NAME_Y    = LNCH_AS_AOA_BLOCK_TOP + 2;                // "AoA" + value row
-static const int16_t LNCH_AS_AOA_BAR_Y     = LNCH_AS_AOA_NAME_Y + 30;                  // scale bar top
-static const float   LNCH_AS_AOA_WARN_DEG   = 5.0f;    // green → orange
-static const float   LNCH_AS_AOA_ALARM_DEG  = 10.0f;   // orange → red
-static const float   LNCH_AS_AOA_VEL_MIN_MS = 5.0f;    // hide marker below this surface speed
-
-// ── FPA dial vertical placement — centered between the HDG and AoA blocks ──────
-static const int16_t LNCH_AS_FPA_CY     = (LNCH_AS_HDG_BLOCK_BOT + LNCH_AS_AOA_BLOCK_TOP) / 2;
+// FPA dial vertical placement — top-aligned with the bars. "FPA" name sits on the
+// shared gauge name row (aligned with V.Vrt/V.Orb); the arc top sits just below it.
+static const int16_t LNCH_AS_FPA_CY     = LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_FPA_R + 16;   // arc top ≈ body top
 static const int16_t LNCH_AS_FPA_LBL_H  = 20;   // Black_16 angle-label box height
 static const int16_t LNCH_AS_FPA_P90_Y  = LNCH_AS_FPA_CY - LNCH_AS_FPA_R - LNCH_AS_FPA_MAJ_OUT - LNCH_AS_FPA_LBL_H - 2;  // +90 label top
 static const int16_t LNCH_AS_FPA_M90_Y  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4;                       // -90 label top
-static const int16_t LNCH_AS_FPA_NAME_Y = LNCH_AS_FPA_P90_Y - 26;                                                          // "FPA" title above +90
+static const int16_t LNCH_AS_FPA_NAME_Y = LNCH_AS_GAUGE_NAME_Y;   // "FPA" on the shared name row (aligned with V.Orb)
 // Numeric readout box below the dial (bordered like the HDG number box).
 static const int16_t LNCH_AS_FPA_VAL_W  = 96;
 static const int16_t LNCH_AS_FPA_VAL_H  = 34;
 static const int16_t LNCH_AS_FPA_VAL_X  = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2 - LNCH_AS_FPA_VAL_W / 2;
 static const int16_t LNCH_AS_FPA_VAL_Y  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 42;
+
+// ── Heading tape (bottom of the rightmost column) ─────────────────────────────
+// Horizontal scrolling compass centered on the current vessel heading, with a
+// bug at 90° (due-east launch azimuth) and the surface velocity-vector heading
+// marker. The number box bottom is flush with the ATMO bar bottom
+// (GAUGE_BODY_BOT); the tape and name stack upward from there.
+static const int16_t LNCH_AS_HDG_CX      = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2;   // centered on the dial
+static const int16_t LNCH_AS_HDG_W       = 170;
+static const int16_t LNCH_AS_HDG_X       = LNCH_AS_HDG_CX - LNCH_AS_HDG_W / 2;
+static const float   LNCH_AS_HDG_SCALE   = 2.6f;                                 // px per degree (±~33° visible)
+static const int16_t LNCH_AS_HDG_TAPE_H  = 28;
+static const int16_t LNCH_AS_HDG_BOX_W   = 60;
+static const int16_t LNCH_AS_HDG_BOX_H   = 34;
+static const int16_t LNCH_AS_HDG_BOX_X   = LNCH_AS_HDG_CX - LNCH_AS_HDG_BOX_W / 2;
+static const int16_t LNCH_AS_HDG_BOX_Y   = LNCH_AS_GAUGE_BODY_BOT - LNCH_AS_HDG_BOX_H;   // box bottom = ATMO bar bottom
+static const int16_t LNCH_AS_HDG_TAPE_Y  = LNCH_AS_HDG_BOX_Y;                            // box top = tape top (box overhangs below)
+static const int16_t LNCH_AS_HDG_NAME_Y  = LNCH_AS_HDG_TAPE_Y - 26;                      // name row above the tape
+static const int16_t LNCH_AS_HDG_SUPP_LO = LNCH_AS_HDG_BOX_X - 16;
+static const int16_t LNCH_AS_HDG_SUPP_HI = LNCH_AS_HDG_BOX_X + LNCH_AS_HDG_BOX_W + 16;
+static const float   LNCH_AS_HDG_LAUNCH_AZ  = 90.0f;   // due-east launch-azimuth bug
+static const float   LNCH_AS_HDG_VEL_MIN_MS = 20.0f;   // hide velocity marker below this surface speed
 
 // Zone boundaries as fractions of the atmospheric portion (0 = vacuum end/bottom,
 // 1 = sea level/top). Bottom 10% is the OFF_BLACK "no atmosphere" parking segment.
@@ -270,10 +249,6 @@ static int16_t _lnchAsPrevAtmoTriY   = -1;
 static float   _lnchAsPrevHdg    = -9999.0f;   // last tape-center heading
 static int16_t _lnchAsPrevHdgBox = -9999;      // last integer heading in the box
 static float   _lnchAsPrevVelHdg = -9999.0f;   // last velocity-vector heading
-
-// Angle-of-attack gauge state.
-static int16_t _lnchAsPrevAoAX   = -9999;      // last marker x-pixel
-static int16_t _lnchAsPrevAoAVal = -9999;      // last integer AoA shown in the readout
 
 // ── Ascent phase helpers ──────────────────────────────────────────────────────────────
 //
@@ -1177,7 +1152,7 @@ static void _lnchAsDrawHdgTape(KCM_TFT &tft, float hdg) {
                 tft.setCursor(cx, LNCH_AS_HDG_TAPE_Y + 11);
                 tft.print(lbl);
             }
-        } else if (ideg % 5 == 0) {
+        } else if (ideg % 2 == 0) {
             tft.drawLine(px, LNCH_AS_HDG_TAPE_Y, px, LNCH_AS_HDG_TAPE_Y + 5, TFT_DARK_GREY);
         }
     }
@@ -1397,89 +1372,8 @@ static void _lnchAsUpdateAtmoGauge(KCM_TFT &tft) {
     _lnchAsPrevAtmoTriY = triY;
 }
 
-// ── Angle of Attack gauge ─────────────────────────────────────────────────────
-//
-// Horizontal scale centered at 0°, ±LNCH_AS_AOA_RANGE full-scale, with a
-// downward triangle marking the current AoA. AoA = vessel pitch − velocity-vector
-// pitch (same as the ACFT screen); it is meaningful only while actually moving,
-// so it reads 0 below LNCH_AS_AOA_VEL_MIN_MS. Marker color escalates green →
-// orange → red as |AoA| grows, flagging aerodynamic stress during the turn.
-static float _lnchAsComputeAoA() {
-    if (state.surfaceVel < LNCH_AS_AOA_VEL_MIN_MS) return 0.0f;
-    return state.pitch - state.srfVelPitch;
-}
-
-static uint16_t _lnchAsAoAColor(float a) {
-    float m = fabsf(a);
-    if (m >= LNCH_AS_AOA_ALARM_DEG) return TFT_RED;
-    if (m >= LNCH_AS_AOA_WARN_DEG)  return TFT_ORANGE;
-    return TFT_NEON_GREEN;
-}
-
-// Map an AoA in degrees to an x-pixel on the scale (clamped to the ends).
-static int16_t _lnchAsAoADegToX(float a) {
-    if (a >  LNCH_AS_AOA_RANGE) a =  LNCH_AS_AOA_RANGE;
-    if (a < -LNCH_AS_AOA_RANGE) a = -LNCH_AS_AOA_RANGE;
-    return LNCH_AS_AOA_CX + (int16_t)roundf(a * LNCH_AS_AOA_SCALE);
-}
-
-// Downward triangle marker, tip touching the top of the scale bar.
-static void _lnchAsDrawAoAMarker(KCM_TFT &tft, int16_t x, uint16_t col) {
-    int16_t yTip  = LNCH_AS_AOA_BAR_Y - 1;
-    int16_t yBase = yTip - 9;
-    tft.fillTriangle(x, yTip, x - 6, yBase, x + 6, yBase, col);
-}
-
-// Chrome: "AoA" name, scale bar, center + range ticks. Resets marker state.
-static void _lnchAsDrawAoAChrome(KCM_TFT &tft) {
-    _lnchAsPrevAoAX = -9999; _lnchAsPrevAoAVal = -9999;
-
-    textLeft(tft, &Roboto_Black_16, LNCH_AS_AOA_X, LNCH_AS_AOA_NAME_Y,
-             60, 18, "AoA", TFT_LIGHT_GREY, TFT_BLACK);
-
-    tft.drawRect(LNCH_AS_AOA_X, LNCH_AS_AOA_BAR_Y, LNCH_AS_AOA_W, LNCH_AS_AOA_BAR_H, TFT_LIGHT_GREY);
-
-    // Ticks every 5° below the bar; the 0° center tick is longer and brighter.
-    for (int16_t d = -15; d <= 15; d += 5) {
-        int16_t x = _lnchAsAoADegToX((float)d);
-        int16_t len = (d == 0) ? 7 : 4;
-        uint16_t c = (d == 0) ? TFT_LIGHT_GREY : TFT_DARK_GREY;
-        tft.drawLine(x, LNCH_AS_AOA_BAR_Y + LNCH_AS_AOA_BAR_H,
-                     x, LNCH_AS_AOA_BAR_Y + LNCH_AS_AOA_BAR_H + len, c);
-    }
-}
-
-// Update: numeric value (right of the name) + marker at the current AoA.
-static void _lnchAsUpdateAoAGauge(KCM_TFT &tft) {
-    float a  = _lnchAsComputeAoA();
-    int16_t iA = (int16_t)roundf(a);
-    if (iA >  99) iA =  99;
-    if (iA < -99) iA = -99;
-    uint16_t col = _lnchAsAoAColor(a);
-    int16_t x = _lnchAsAoADegToX((float)iA);
-
-    if (iA != _lnchAsPrevAoAVal) {
-        char buf[8];
-        snprintf(buf, sizeof(buf), "%+d\xB0", iA);
-        int16_t vx = LNCH_AS_AOA_X + LNCH_AS_AOA_W - 66;
-        tft.fillRect(vx, LNCH_AS_AOA_NAME_Y, 66, 18, TFT_BLACK);
-        textRight(tft, &Roboto_Black_16, vx, LNCH_AS_AOA_NAME_Y, 66, 18, buf, col, TFT_BLACK);
-        _lnchAsPrevAoAVal = iA;
-    }
-
-    if (x != _lnchAsPrevAoAX) {
-        if (_lnchAsPrevAoAX != -9999)
-            _lnchAsDrawAoAMarker(tft, _lnchAsPrevAoAX, TFT_BLACK);
-        _lnchAsDrawAoAMarker(tft, x, col);
-        _lnchAsPrevAoAX = x;
-    } else {
-        // Position unchanged but threshold color may have — repaint in place.
-        _lnchAsDrawAoAMarker(tft, x, col);
-    }
-}
-
 // Left panel chrome — draw ladder (dynamic, dependent on current state),
-// V.Vrt / V.Orb bars, FPA dial, heading tape, atmosphere, and AoA (static chrome).
+// V.Vrt / V.Orb bars, FPA dial, heading tape, and atmosphere (static chrome).
 static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
     _lnchAsDrawLadderChrome(tft);
     _lnchAsDrawVVrtChrome(tft);
@@ -1487,7 +1381,6 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
     _lnchAsDrawDialChrome(tft);
     _lnchAsDrawHdgTapeChrome(tft);
     _lnchAsDrawAtmoChrome(tft);
-    _lnchAsDrawAoAChrome(tft);
     // Record scale that was just drawn, so UpdateLadderMarkers doesn't trigger
     // an immediate spurious redraw on the first frame after chrome.
     _lnchAsLastDrawnScaleTop = _lnchAsLadderScaleTop();
@@ -1501,7 +1394,6 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateFpaDial(tft);
     _lnchAsUpdateHdgTape(tft);
     _lnchAsUpdateAtmoGauge(tft);
-    _lnchAsUpdateAoAGauge(tft);
 }
 
 
@@ -1561,8 +1453,6 @@ static void _lnchAsResetState() {
     _lnchAsPrevFpaReadout     = -9999;
     _lnchAsPrevFpaTarget      = -9999;
     _lnchAsPrevAtmoTriY       = -1;
-    _lnchAsPrevAoAX           = -9999;
-    _lnchAsPrevAoAVal         = -9999;
 }
 
 
