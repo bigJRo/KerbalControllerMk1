@@ -30,13 +30,23 @@ static const uint16_t SCREEN_H           = KCM_SCREEN_H;   // #3A from SystemCon
 
 static uint32_t _lastTouchTime   = 0;
 static bool     _waitForRelease  = false;
+// Boot phantom guard: the FT5316 can report a spurious/settling touch for a short
+// window after its reset. Require at least one confirmed "not touched" reading
+// before accepting ANY tap, so a touch already present at boot cannot fire a
+// gesture (which was knocking the panel onto the SOI screen at startup). Cleared
+// to true the first time the screen is observed untouched.
+static bool     _bootReleaseSeen = false;
 
 
 void processTouchEvents() {
   if (!isTouched()) {
-    _waitForRelease = false;
+    _waitForRelease  = false;
+    _bootReleaseSeen = true;   // screen observed untouched — real taps now allowed
     return;
   }
+
+  // Ignore everything until we've seen the panel released at least once (boot phantom).
+  if (!_bootReleaseSeen) return;
 
   // First read
   lastTouch = readTouch();

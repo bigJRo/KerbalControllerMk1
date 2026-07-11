@@ -399,7 +399,7 @@ void drawVerticalText(KCM_TFT &tft,
   // without the drawn glyphs actually overlapping. If the stack would overflow
   // (long string), fall back to even distribution so nothing clips.
   const int16_t glyphH = (int16_t)font->cap_height;
-  int16_t pitch  = (int16_t)(glyphH * 0.8f + 0.5f);
+  int16_t pitch  = (int16_t)(glyphH * 0.9f + 0.5f);
   int16_t stackH = pitch * (int16_t)(len - 1) + glyphH;  // first-top .. last-bottom
   int16_t startY;
   if (stackH <= (int16_t)h) {
