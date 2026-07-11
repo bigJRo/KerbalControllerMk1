@@ -181,7 +181,7 @@ Size: **3 bytes**. Sent by master at any time via `Wire.beginTransmission(0x10)`
 
 Three screens are available. Transitions are managed by `switchToScreen()` in `AAA_Globals.ino`; all screen state, dirty tracking, and chrome invalidation flow through this single function.
 
-**Standby** — full-screen splash BMP (`/StandbySplash_800x480.bmp` from SD). No dynamic content. Displayed when `flightScene` is false and `idle_state` is asserted by the master, or on initial boot before a flight scene is active. A 3-finger touch advances to Main when `flightScene` is true.
+**Standby** — full-screen splash BMP (`/StandbySplash_1024x600.bmp` from SD). No dynamic content. Displayed when `flightScene` is false and `idle_state` is asserted by the master, or on initial boot before a flight scene is active. A 3-finger touch advances to Main when `flightScene` is true.
 
 **Main** — primary operational view. Contains:
 - MASTER ALARM button (top-left, 240×160 px) — illuminates red when any WARNING-level C&W bit is set. Touch to silence audio.

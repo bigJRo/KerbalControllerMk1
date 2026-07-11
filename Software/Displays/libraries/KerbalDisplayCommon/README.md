@@ -88,7 +88,7 @@ To override any of these, define them before including the library:
 
 **BMPResult codes:** `BMP_OK`, `BMP_ERR_NO_CARD`, `BMP_ERR_SD_INIT`, `BMP_ERR_FILE`, `BMP_ERR_SIGNATURE`, `BMP_ERR_DIB`, `BMP_ERR_COMPRESSED`, `BMP_ERR_DIMENSIONS`, `BMP_ERR_READ`, `BMP_ERR_NOT_24BIT`.
 
-`drawStandbySplash(tft)` — convenience wrapper: calls `setXY(0,0)`, `fillScreen(BLACK)`, then `drawBMP("/StandbySplash_800x480.bmp", 0, 0)`. Used by all KCMk1 panels for their shared standby screen. `setupSD()` must have been called first.
+`drawStandbySplash(tft)` — convenience wrapper: calls `fillScreen(BLACK)`, then `drawBMP("/StandbySplash_1024x600.bmp", 0, 0)`. Used by all KCMk1 panels for their shared standby screen. `setupSD()` must have been called first.
 
 ### Capacitive Touch
 

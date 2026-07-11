@@ -883,7 +883,7 @@ bool setupSD() {
    Both bottom-up BMPs (standard) and top-down BMPs (negative height) are supported.
    When malloc succeeds, all rows are read sequentially then drawn in one pass for
    maximum SD throughput. On malloc failure, rows are sought and read individually.
-   Image dimensions are clamped to 800×480 before VLA stack allocation.
+   Image dimensions are clamped to 1024×600 (KCM_SCREEN_W/H) before drawing.
 ****************************************************************************************/
 
 // Internal helper — read a little-endian 16-bit value from an open file.

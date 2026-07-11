@@ -390,7 +390,7 @@ void drawVerticalText(KCM_TFT &tft,
                       uint16_t color, uint16_t backColor);
 
 // Draw the shared standby splash BMP from SD card.
-// Equivalent to: setXY(0,0) + fillScreen(BLACK) + drawBMP("/StandbySplash_800x480.bmp", 0, 0).
+// Equivalent to: fillScreen(BLACK) + drawBMP("/StandbySplash_1024x600.bmp", 0, 0).
 // setupSD() must have been called first. Shared across all KCMk1 panels.
 void drawStandbySplash(KCM_TFT &tft);
 

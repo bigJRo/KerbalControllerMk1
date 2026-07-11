@@ -171,7 +171,7 @@ Size: **2 bytes**. Sent by master at any time via `Wire.beginTransmission(0x11)`
 
 ### Screens
 
-**Standby** — full-screen BMP splash (`/StandbySplash_800x480.bmp` from SD card). Displayed on boot and whenever the panel is not in an active KSP flight scene. In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions to Main automatically. In demo mode, any touch advances to Main.
+**Standby** — full-screen BMP splash (`/StandbySplash_1024x600.bmp` from SD card). Displayed on boot and whenever the panel is not in an active KSP flight scene. In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions to Main automatically. In demo mode, any touch advances to Main.
 
 **Main** — primary operational view. Displays resource bars for all active slots in a left-to-right bar graph with a right-hand sidebar. Bar height represents the fraction of maximum capacity. Bar fill colour shifts to red when the resource falls below `LOW_RES_THRESHOLD`. A percentage label appears above each bar. A vertical percentage axis (0–100%) is drawn on the left edge.
 
