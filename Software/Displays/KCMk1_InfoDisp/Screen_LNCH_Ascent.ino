@@ -71,10 +71,10 @@ static const int16_t LNCH_AS_GAUGE_BODY_MIDY= (LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_
 
 // Horizontal spacing: COL_GAP = whitespace between element bounding boxes;
 // LBL_OVERHANG = how far each bar's endpoint-label box extends beyond the bar.
-static const int16_t LNCH_AS_COL_GAP      = 12;   // compact whitespace to free room for the FPA
+static const int16_t LNCH_AS_COL_GAP      = 10;   // compact whitespace to fit the larger FPA
 static const int16_t LNCH_AS_LBL_OVERHANG = 14;
 
-// Left panel — altitude ladder.
+// Left panel — altitude ladder (first column).
 // Vertical strip showing altitude scale with tick labels, reference lines
 // (ground/atmo/orbit), vessel marker, and apoapsis marker. Anchored at the left
 // edge of the graphics panel; fills the full shared band vertically.
@@ -90,32 +90,46 @@ static const int16_t LNCH_AS_LADDER_Y_BOT    = LNCH_AS_BAND_BOT;       // bottom
 static const int16_t LNCH_AS_LADDER_ERASE_X2 = LNCH_AS_LP_LEFT + 156;  // right edge for scale-change erase
 static const int16_t LNCH_AS_LADDER_H        = LNCH_AS_LADDER_Y_BOT - LNCH_AS_LADDER_Y_TOP;
 
-// V.Vrt bar — vertical bar showing vertical velocity. Zero at middle, fills
-// upward (green) for positive V.Vrt, downward (red) for negative. Fixed scale
-// ±500 m/s. Positioned one column-gap right of the ladder; body fills the band.
+// Column order, left → right:  ladder | ATMO | V.Vrt | V.Orb | FPA
+
+// Atmosphere gauge geometry (second column, left-anchored after the ladder).
+// VERTICAL bar: sea level (dense) at TOP, vacuum at BOTTOM, with a white triangle
+// indicator on EACH side. Body width matches the velocity bars. Zone/tick
+// parameters are defined further down.
+static const int16_t LNCH_AS_ATMO_W          = 44;
+static const int16_t LNCH_AS_ATMO_TRI_HALF_H = 7;    // triangle half height
+static const int16_t LNCH_AS_ATMO_TRI_W      = 12;   // triangle base-to-tip depth
+static const int16_t LNCH_AS_ATMO_TRI_GAP    = 2;    // gap between a tip and the bar edge
+static const int16_t LNCH_AS_ATMO_X_LEFT     = LNCH_AS_LADDER_ERASE_X2 + LNCH_AS_COL_GAP
+                                               + LNCH_AS_ATMO_TRI_GAP + LNCH_AS_ATMO_TRI_W;  // room for the left triangle
+static const int16_t LNCH_AS_ATMO_X_RIGHT    = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W;
+static const int16_t LNCH_AS_ATMO_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;   // sea level (dense)
+static const int16_t LNCH_AS_ATMO_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;   // vacuum / no-atmosphere
+// Right extent (right-triangle base) — the next column starts a COL_GAP after this.
+static const int16_t LNCH_AS_ATMO_RIGHT_EXT  = LNCH_AS_ATMO_X_RIGHT + LNCH_AS_ATMO_TRI_GAP + LNCH_AS_ATMO_TRI_W;
+
+// V.Vrt bar (third column) — vertical velocity, fixed ±500 m/s.
 static const int16_t LNCH_AS_VVRT_W          = 44;   // narrow bar; label box overhangs for "±500 m/s"
-static const int16_t LNCH_AS_VVRT_X_LEFT     = LNCH_AS_LADDER_ERASE_X2 + LNCH_AS_COL_GAP + LNCH_AS_LBL_OVERHANG;  // 184
+static const int16_t LNCH_AS_VVRT_X_LEFT     = LNCH_AS_ATMO_RIGHT_EXT + LNCH_AS_COL_GAP + LNCH_AS_LBL_OVERHANG;
 static const int16_t LNCH_AS_VVRT_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;
 static const int16_t LNCH_AS_VVRT_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
 static const int16_t LNCH_AS_VVRT_Y_MID      = (LNCH_AS_VVRT_Y_TOP + LNCH_AS_VVRT_Y_BOT) / 2;
 static const float   LNCH_AS_VVRT_SCALE_MS   = 500.0f;
 
-// V.Orb bar — orbital velocity progress toward the circular-orbit target
-// (0..v_circ, body-aware), one column-gap right of V.Vrt.
+// V.Orb bar (fourth column) — orbital velocity toward v_circ (body-aware).
 static const int16_t LNCH_AS_VORB_W          = 44;
-static const int16_t LNCH_AS_VORB_X_LEFT     = LNCH_AS_VVRT_X_LEFT + LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP;  // 276
+static const int16_t LNCH_AS_VORB_X_LEFT     = LNCH_AS_VVRT_X_LEFT + LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP;
 static const int16_t LNCH_AS_VORB_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;
 static const int16_t LNCH_AS_VORB_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
 
-// Flight Path Angle dial — semicircle (right half of a circle), flat side on the
-// left at x=CX, a needle rotating from the center. -90°=diving (bottom), 0°=
-// horizon (right), +90°=climbing (top). Sized to the column width (radius R =
-// width, total height 2R) and vertically centered in the gauge body — it is
-// intentionally shorter than the full band.
-static const int16_t LNCH_AS_FPA_LBL_MARGIN = 20;   // +90/-90 labels extend this far left of CX
-static const int16_t LNCH_AS_FPA_R  = 96;           // radius (= width; height = 2R) — ~45% larger
+// Flight Path Angle dial (fifth column, rightmost) — semicircle (right half of a
+// circle), flat side on the left at x=CX, a needle rotating from the center.
+// -90°=diving (bottom), 0°=horizon (right), +90°=climbing (top). Top-aligned with
+// the bars: the arc top sits near the gauge body top rather than centered.
+static const int16_t LNCH_AS_FPA_LBL_MARGIN = 28;   // +90/-90 labels extend this far left of CX
+static const int16_t LNCH_AS_FPA_R  = 96;           // radius (= width; height = 2R)
 static const int16_t LNCH_AS_FPA_CX = LNCH_AS_VORB_X_LEFT + LNCH_AS_VORB_W + LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP + LNCH_AS_FPA_LBL_MARGIN;  // flat left side
-static const int16_t LNCH_AS_FPA_CY = LNCH_AS_GAUGE_BODY_MIDY;   // vertical center
+static const int16_t LNCH_AS_FPA_CY = LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_FPA_R + 16;   // top-aligned (arc top ≈ body top)
 static const int16_t LNCH_AS_FPA_ARROW_R = 84;      // needle tip distance from center
 
 // Radial tick extents (px inside / outside the radius).
@@ -129,39 +143,6 @@ static const int16_t LNCH_AS_FPA_SHAFT_LEN = 70;    // shaft length from center
 static const int16_t LNCH_AS_FPA_SHAFT_W   = 6;     // shaft width
 static const int16_t LNCH_AS_FPA_HEAD_W    = 16;    // arrowhead base width
 static const int16_t LNCH_AS_FPA_PIVOT_R   = 7;     // pivot circle radius
-
-// Atmosphere gauge — VERTICAL bar showing current atmospheric density as a
-// fraction of the body's sea-level density (KSP stock-gauge style). Highest
-// pressure (sea level) at the TOP, vacuum at the BOTTOM. Anchored toward the
-// right end of the graphics panel; body fills the shared gauge band.
-//
-// Design (top → bottom):
-//   - Atmospheric scale (top 90% of the body):
-//       * SKY         (brightest, "dense atmosphere") — top
-//       * FRENCH_BLUE (medium)
-//       * NAVY        (darkest, "approaching vacuum")  — just above parking zone
-//   - OFF_BLACK "no atmosphere" parking segment (bottom 10%)
-//   - Horizontal tick marks at every 10% step of the atmospheric portion,
-//     spanning the LEFT 40% of the bar width (notched-gauge look)
-//   - WHITE TRIANGLE INDICATOR to the LEFT of the bar, pointing right, sliding
-//     vertically. Atmospheric body: maps density fraction along the scale.
-//     Non-atmosphere body: parks centered in the OFF_BLACK segment. Because it
-//     sits entirely left of the bar on the black background, erasing it is a
-//     plain black fill — no zone/tick reconstruction needed.
-static const int16_t LNCH_AS_ATMO_W        = 44;   // same width as the velocity bars
-// Triangle indicators — one on each side of the bar, pointing toward it.
-static const int16_t LNCH_AS_ATMO_TRI_HALF_H = 7;    // half height
-static const int16_t LNCH_AS_ATMO_TRI_W      = 12;   // base-to-tip depth
-static const int16_t LNCH_AS_ATMO_TRI_GAP    = 2;    // gap between a tip and the bar edge
-// Right-anchored, nudged left so the RIGHT indicator clears the readout column
-// by the standard whitespace.
-static const int16_t LNCH_AS_ATMO_RIGHT_GAP = 18;
-static const int16_t LNCH_AS_ATMO_X_LEFT   = LNCH_AS_READOUT_X - LNCH_AS_ATMO_RIGHT_GAP
-                                             - LNCH_AS_ATMO_TRI_GAP - LNCH_AS_ATMO_TRI_W
-                                             - LNCH_AS_ATMO_W;   // 508
-static const int16_t LNCH_AS_ATMO_X_RIGHT  = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W;
-static const int16_t LNCH_AS_ATMO_Y_TOP    = LNCH_AS_GAUGE_BODY_TOP;   // sea level (dense)
-static const int16_t LNCH_AS_ATMO_Y_BOT    = LNCH_AS_GAUGE_BODY_BOT;   // vacuum / no-atmosphere
 
 // Zone boundaries as fractions of the atmospheric portion (0 = vacuum end/bottom,
 // 1 = sea level/top). Bottom 10% is the OFF_BLACK "no atmosphere" parking segment.
@@ -970,16 +951,17 @@ static void _lnchAsDrawDialChrome(KCM_TFT &tft) {
                LNCH_AS_FPA_R + LNCH_AS_FPA_LBL_MARGIN + 20, LNCH_AS_GAUGE_NAME_H,
                "FPA", TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Angle labels: +90 (top), -90 (bottom), 0 (right of arc edge).
-    textCenter(tft, &Roboto_Black_12,
-               LNCH_AS_FPA_CX - 20, LNCH_AS_FPA_CY - LNCH_AS_FPA_R - 18,
-               40, 14, "+90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-    textCenter(tft, &Roboto_Black_12,
-               LNCH_AS_FPA_CX - 20, LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 4,
-               40, 14, "-90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-    textLeft(tft, &Roboto_Black_12,
-             LNCH_AS_FPA_CX + LNCH_AS_FPA_R + 8, LNCH_AS_FPA_CY - 7,
-             28, 14, "0\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    // Angle labels (Black_20), placed clear of the tick marks: +90 above the top
+    // tick, -90 below the bottom tick, 0 to the right of the arc edge.
+    textCenter(tft, &Roboto_Black_20,
+               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_CY - LNCH_AS_FPA_R - LNCH_AS_FPA_MAJ_OUT - 28,
+               64, 24, "+90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_20,
+               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_CY + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4,
+               64, 24, "-90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    textLeft(tft, &Roboto_Black_20,
+             LNCH_AS_FPA_CX + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4, LNCH_AS_FPA_CY - 12,
+             30, 24, "0\xB0", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 // Repair chrome the needle erase may have crossed (horizon + ticks + pivot).
@@ -1017,7 +999,7 @@ static void _lnchAsDrawDialTargetMarker(KCM_TFT &tft, float fpaDeg, uint16_t col
     float rad = fpaDeg * DEG_TO_RAD;
     float cs = cosf(rad), sn = sinf(rad);
     float alongX = cs, alongY = -sn, perpX = sn, perpY = cs;
-    const float OUT = 10.0f, DEPTH = 6.0f, HALF = 4.0f;
+    const float OUT = 11.0f, DEPTH = 11.0f, HALF = 7.0f;   // enlarged target marker
     float CX = (float)LNCH_AS_FPA_CX, CY = (float)LNCH_AS_FPA_CY;
     float rTip = (float)LNCH_AS_FPA_R + OUT, rBase = rTip + DEPTH;
     int16_t tipX = (int16_t)roundf(CX + alongX * rTip),  tipY = (int16_t)roundf(CY + alongY * rTip);
@@ -1055,7 +1037,7 @@ static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
         char buf[8];
         snprintf(buf, sizeof(buf), "%+d\xB0", iFpa);
         int16_t rx0 = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2 - 48;
-        int16_t ry  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 22;
+        int16_t ry  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 42;   // below the -90 label
         tft.fillRect(rx0, ry, 96, 32, TFT_BLACK);
         textCenter(tft, &Roboto_Black_28, rx0, ry, 96, 32, buf, TFT_DARK_GREEN, TFT_BLACK);
     }
