@@ -95,19 +95,8 @@ static const float   LNCH_OR_ATT_SCALE = (float)LNCH_OR_ATT_R / 15.0f;  // ~3.47
 static const float   LNCH_OR_ALIGN_GREEN_DEG  =  5.0f;   // < 5° = aligned (dot green)
 static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot yellow)
 
-// IGN button: replaces the previous "burn-active bar border colour change"
-// as the visible cue that the engine is firing. Sits below the ATT disc.
-// Width matches the ATT disc diameter (2×R=104 px) for visual unity within
-// the cluster. Height (83 px) preserves the prior 84:67 aspect ratio for a
-// vertically-prominent shape. OFF state = light grey label on off-black;
-// ON state = black label on International Orange.
-static const int16_t LNCH_OR_IGN_W     = 104;          // button width (matches ATT disc diameter)
-static const int16_t LNCH_OR_IGN_H     =  83;          // button height (preserves 84:67 aspect ratio)
-static const int16_t LNCH_OR_IGN_X     = LNCH_OR_ATT_CX - LNCH_OR_IGN_W / 2;  // centered under ATT CX (=8)
-static const int16_t LNCH_OR_IGN_Y     = 228;                                  // centered between ATT bottom (202) and Burn Dur top (336)
-
-// Burn-duration readout: a centered label+value block placed below the IGN
-// button. Both label and value horizontally-centered around LNCH_OR_ATT_CX.
+// Burn-duration readout: a centered label+value block placed below the ATT
+// disc. Both label and value horizontally-centered around LNCH_OR_ATT_CX.
 //   Label: "Burn Dur:" in Black_20 light grey
 //   Value: formatTime(mnvrDuration) in Black_24 dark green
 //          ("---" in dark grey when no maneuver node)
@@ -215,10 +204,6 @@ static int32_t   _lnchOrPrevTignSec = -9999;
 static uint16_t  _lnchOrPrevTignFg  = 0;
 static uint16_t  _lnchOrPrevTignBg  = 0;
 static PrintState _lnchOrTignPs;
-// Burn-active indicator: the ΔV Burn bar's border turns TFT_ORANGE while the
-// engine is firing (state.throttle > 0). -1 = not yet evaluated, triggers a
-// first-frame draw.
-static int8_t    _lnchOrPrevBurnActive = -1;
 // ATT indicator prev-frame state (dot position + colour). The chrome (rings,
 // crosshairs) is drawn once and not retracked — touch-up on dot move
 // repairs any damage. 9999 = not drawn yet / needs first-frame init.
@@ -287,7 +272,6 @@ static void _lnchOrResetState() {
     _lnchOrTignPs.prevWidth  = 0;
     _lnchOrTignPs.prevBg     = 0x0001;
     _lnchOrTignPs.prevHeight = 0;
-    _lnchOrPrevBurnActive = -1;
     _lnchOrPrevAttDotX    = 9999;
     _lnchOrPrevAttDotY    = 9999;
     _lnchOrPrevAttDotCol  = 0;
@@ -883,42 +867,8 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     _lnchOrPrevTignBg  = valBg;
 }
 
-// Update the IGN button: a rectangular button below the ATT indicator that
-// shows whether the engine is actively firing. Replaces the older approach
-// of flipping the ΔV Burn bar's border colour — a dedicated button is more
-// visually distinct and keeps the bar's chrome stable.
-//   OFF (throttle == 0): "IGN" in light-grey on TFT_OFF_BLACK with a grey
-//                        border — visually quiet, matches other inactive
-//                        chrome.
-//   ON  (throttle  > 0): "IGN" in TFT_BLACK on TFT_ORANGE with a grey
-//                        border — high-contrast, catches the eye during a
-//                        burn.
-// Uses the library drawButton helper so styling is consistent with any
-// future buttons and word-wrap/truncation behaviour matches the rest of
-// the app.
-//
-// Only redraws when burn state changes.
-static void _lnchOrUpdateIgnButton(KCM_TFT &tft) {
-    int8_t active = (state.throttle > 0.0f) ? 1 : 0;
-    if (active == _lnchOrPrevBurnActive) return;
-
-    static const ButtonLabel IGN_LBL = {
-        "IGN",
-        TFT_LIGHT_GREY,   // fontColorOff
-        TFT_BLACK,        // fontColorOn
-        TFT_OFF_BLACK,    // backgroundColorOff
-        TFT_INT_ORANGE,   // backgroundColorOn (International Orange — classic "lit" signal)
-        TFT_GREY,         // borderColorOff
-        TFT_GREY,         // borderColorOn
-    };
-    drawButton(tft, LNCH_OR_IGN_X, LNCH_OR_IGN_Y,
-               LNCH_OR_IGN_W, LNCH_OR_IGN_H,
-               IGN_LBL, &Roboto_Black_28, active != 0);
-    _lnchOrPrevBurnActive = active;
-}
-
 // Update the Burn Duration readout — a centered label+value block below the
-// IGN button. Shows the planned burn length (state.mnvrDuration). Helps the
+// ATT disc. Shows the planned burn length (state.mnvrDuration). Helps the
 // pilot mentally prepare before ignition and gauge progress during the burn.
 //
 // Label "Burn dur" stays light-grey on black (chrome — drawn once on first
@@ -1196,7 +1146,6 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrTignPs.prevWidth  = 0;
         _lnchOrTignPs.prevBg     = 0x0001;
         _lnchOrTignPs.prevHeight = 0;
-        _lnchOrPrevBurnActive = -1;
         _lnchOrPrevAttDotX    = 9999;
         _lnchOrPrevAttDotY    = 9999;
         _lnchOrPrevAttDotCol  = 0;
@@ -1493,7 +1442,6 @@ static void _lnchOrDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchOrDrawOrbitGraphic(tft);
     _lnchOrUpdateProgressBar(tft);
     _lnchOrUpdateTignRow(tft);
-    _lnchOrUpdateIgnButton(tft);
     _lnchOrUpdateAttIndicator(tft);
     _lnchOrUpdateBurnDurReadout(tft);
 }
