@@ -8,7 +8,7 @@
 /***************************************************************************************
    OPERATING MODE
 ****************************************************************************************/
-bool debugMode = false;
+bool debugMode = true;   // TEMP: on for touch-mapping diagnostics (revert to false)
 bool demoMode  = true;   // true = sine-wave demo values, no KSP required
 
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
