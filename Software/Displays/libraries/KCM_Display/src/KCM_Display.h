@@ -105,9 +105,19 @@ public:
   // Point the draw canvas at the hidden (back) page. Draw the frame, then flip().
   void beginFrame(KCM_TFT &tft) { canvasTo(tft, _back); }
 
+  // Block until all drawing queued for the back page has actually finished. The
+  // RA8876 draw ops (fillRect/drawSquareFill, writeRect) are ASYNC and return
+  // before the engine completes, so without this a flip would present a
+  // half-rendered page ("incomplete draws"). Call is also safe to use directly.
+  void waitDrawComplete(KCM_TFT &tft) {
+    tft.checkWriteFifoEmpty();   // memory-write FIFO drained (pixel blits done)
+    tft.check2dBusy();           // 2D geometry engine idle (fills/lines done)
+  }
+
   // Present the back page: it becomes the visible front, and the old front becomes
-  // the new back. Tear-free (latched at the next vertical sync by the RA8876).
+  // the new back. Waits for drawing to complete first so a complete frame is shown.
   void flip(KCM_TFT &tft) {
+    waitDrawComplete(tft);
     tft.displayImageStartAddress(_back);
     uint32_t tmp = _front; _front = _back; _back = tmp;
   }
