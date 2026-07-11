@@ -63,9 +63,10 @@ static const int16_t LNCH_AS_LADDER_TICK_W   = 10;    // major tick mark length 
 static const int16_t LNCH_AS_LADDER_MARKER_X = 82;    // tip x for markers
 static const int16_t LNCH_AS_LADDER_MARKER_W = 14;    // marker base width
 static const int16_t LNCH_AS_LADDER_REF_X2   = 150;   // right edge of reference lines
-static const int16_t LNCH_AS_LADDER_Y_TOP    = 83;    // top of ladder strip
-                                                      //   (below title bar and V.Vrt label)
-static const int16_t LNCH_AS_LADDER_Y_BOT    = 467;   // bottom of ladder strip (= ground line)
+static const int16_t LNCH_AS_LADDER_Y_TOP    = 80;    // top of ladder strip
+                                                      //   (~18 px whitespace below the title bar)
+static const int16_t LNCH_AS_LADDER_Y_BOT    = 582;   // bottom of ladder strip (= ground line)
+                                                      //   (~18 px whitespace above the screen bottom)
 static const int16_t LNCH_AS_LADDER_ERASE_X2 = 156;   // right edge for scale-change erase
                                                       //   (slightly past REF_X2 to cover any label
                                                       //    glyph overhang)
@@ -520,8 +521,9 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
             for (int16_t x = LNCH_AS_LADDER_LINE_X + 1; x < LNCH_AS_LADDER_REF_X2; x += 6) {
                 tft.drawLine(x, y, x + 3, y, TFT_SKY);
             }
+            // Label vertically centered on the reference line
             textLeft(tft, &Roboto_Black_16,
-                     LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                     LNCH_AS_LADDER_REF_X2 - 40, y - 8,
                      44, 16,
                      "ATM", TFT_SKY, TFT_BLACK);
         }
@@ -537,23 +539,23 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
             for (int16_t x = LNCH_AS_LADDER_LINE_X + 1; x < LNCH_AS_LADDER_REF_X2; x += 6) {
                 tft.drawLine(x, y, x + 3, y, TFT_DARK_GREEN);
             }
-            // Two-line label: "TGT" / "ORB" stacked above the ref line.
-            // Use stacked layout when there's room above (y > Y_TOP + 34 gives
-            // 34 px of clearance for two 16-tall labels with slight spacing).
-            // Otherwise fall back to single-line "ORB" to avoid clipping.
-            if (y > LNCH_AS_LADDER_Y_TOP + 34) {
+            // Two-line label "TGT" / "ORB" vertically centered on the ref line:
+            // TGT sits just above the line, ORB just below, so the line runs in
+            // the 2-px gap between the two words. Needs ~18 px clearance on each
+            // side; otherwise fall back to a single-line "ORB" centered on it.
+            if (y > LNCH_AS_LADDER_Y_TOP + 18 && y < LNCH_AS_LADDER_Y_BOT - 18) {
                 textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 34,
+                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
                          44, 16,
                          "TGT", TFT_DARK_GREEN, TFT_BLACK);
                 textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                         LNCH_AS_LADDER_REF_X2 - 40, y + 1,
                          44, 16,
                          "ORB", TFT_DARK_GREEN, TFT_BLACK);
             } else {
-                // Insufficient room above — single-line fallback
+                // Insufficient room — single-line "ORB" centered on the line
                 textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                         LNCH_AS_LADDER_REF_X2 - 40, y - 8,
                          44, 16,
                          "ORB", TFT_DARK_GREEN, TFT_BLACK);
             }
@@ -574,7 +576,7 @@ static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
         // Erase full ladder region (wider than any single label/mark).
         int16_t eraseTop = max((int16_t)(LNCH_AS_LADDER_Y_TOP - 12), (int16_t)LNCH_AS_PANEL_Y);
         int16_t eraseBot = min((int16_t)(LNCH_AS_LADDER_Y_BOT + 2),
-                               (int16_t)(LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1));
+                               (int16_t)(SCREEN_H - 1));
         // Erase from x=0 to LADDER_ERASE_X2, covering tick labels, ticks, line,
         // markers, and reference-line labels.
         tft.fillRect(LNCH_AS_LADDER_LBL_X, eraseTop,
@@ -1648,8 +1650,8 @@ static const char *_lnchAsLabels[8] = {
 // full height below the title bar, with larger fonts than the letterboxed
 // original. Ascent-only — the Circularization right panel keeps the shared
 // LNCH_AS_* geometry until its own redesign pass.
-static const int16_t LNCH_AS2_RPANEL_W = 400;
-static const int16_t LNCH_AS2_RPANEL_X = SCREEN_W - SIDEBAR_W - LNCH_AS2_RPANEL_W;  // 540
+static const int16_t LNCH_AS2_RPANEL_W = 360;
+static const int16_t LNCH_AS2_RPANEL_X = SCREEN_W - SIDEBAR_W - LNCH_AS2_RPANEL_W;  // 580
 static const int16_t LNCH_AS2_RPANEL_Y = LNCH_AS_PANEL_Y;                            // 63
 static const int16_t LNCH_AS2_ROW_H    = (SCREEN_H - LNCH_AS_PANEL_Y) / 8;           // 67
 static const int16_t LNCH_AS2_RPANEL_H = LNCH_AS2_ROW_H * 8;                         // 536
