@@ -106,7 +106,7 @@ static void _mnvrClampMrk(int16_t &sx, int16_t &sy) {
 
 
 // ── Draw reticle chrome ───────────────────────────────────────────────────────────────
-static void _mnvrDrawReticleChrome(RA8875 &tft) {
+static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
     // Black disc + inner good-zone fill
     tft.fillCircle(MNVR_CX, MNVR_CY, MNVR_R,     TFT_BLACK);
     tft.fillCircle(MNVR_CX, MNVR_CY, MNVR_RING_5, TFT_OFF_BLACK);
@@ -145,7 +145,7 @@ static void _mnvrDrawReticleChrome(RA8875 &tft) {
     // Ring degree labels (NE quadrant)
     // Ring degree labels (NE quadrant, just inside each ring)
     // Single-arg setTextColor = transparent background.
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_5  + 3);  tft.print("5");
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_10 + 3);  tft.print("10");
@@ -159,7 +159,7 @@ static void _mnvrDrawReticleChrome(RA8875 &tft) {
     // Legend — top-left corner
     static const uint16_t LEG_X  = 6;
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     // MANEUVER — solid blue diamond (horizontal split, no fill gaps)
     tft.fillTriangle(LEG_X,   LEG_Y0+6, LEG_X+12, LEG_Y0+6, LEG_X+6, LEG_Y0,    TFT_BLUE);  // top half
@@ -183,7 +183,7 @@ static void _mnvrDrawReticleChrome(RA8875 &tft) {
     // 24 px label between the reticle bottom and the bar.
     uint16_t barY = MNVR_CY + MNVR_R + 28;
     uint16_t lblY = barY - 24;
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(MNVR_BAR_X, lblY);
     tft.print("\xCE\x94V Burn");
@@ -192,7 +192,7 @@ static void _mnvrDrawReticleChrome(RA8875 &tft) {
 
 
 // ── Draw right-panel chrome ───────────────────────────────────────────────────────────
-static void _mnvrDrawRightChrome(RA8875 &tft) {
+static void _mnvrDrawRightChrome(KCM_TFT &tft) {
     uint8_t  NR = MNVR_RP_NR;
     uint16_t X  = MNVR_RP_X;
     uint16_t W  = MNVR_RP_W;
@@ -241,7 +241,7 @@ static void _mnvrDrawRightChrome(RA8875 &tft) {
 
 
 // ── Repair chrome after marker erase ─────────────────────────────────────────────────
-static void _mnvrRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
+static void _mnvrRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
     int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
 
     float cx = (float)constrain((int)MNVR_CX, (int)boxX0, (int)boxX1);
@@ -292,7 +292,7 @@ static void _mnvrRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
 
 // ── Update burn vector marker ─────────────────────────────────────────────────────────
 // Diamond always TFT_BLUE. Neon-green alignment box appears when error < 5°.
-static void _mnvrUpdateMarker(RA8875 &tft, float brgErr, float elvErr) {
+static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
     float errMag  = sqrtf(brgErr*brgErr + elvErr*elvErr);
     bool  aligned = (errMag < ATT_ERR_WARN_DEG);
 
@@ -338,7 +338,7 @@ static void _mnvrUpdateMarker(RA8875 &tft, float brgErr, float elvErr) {
 
 
 // ── ΔV remaining bar ──────────────────────────────────────────────────────────────────
-static void _mnvrDrawDVBar(RA8875 &tft, float dvNode, float dvStage) {
+static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
     // Layout matches chrome: barY = CY+R+28, lblY = barY-24 (Black_20 label).
     static const uint16_t barY = MNVR_CY + MNVR_R + 28;
     static const uint16_t lblY = barY - 24;
@@ -360,7 +360,7 @@ static void _mnvrDrawDVBar(RA8875 &tft, float dvNode, float dvStage) {
     // Right-aligned value text in Black_20 (matches "ΔV Burn" label font).
     char buf[14];
     snprintf(buf, sizeof(buf), "%.0fm/s", dvNode);
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(barCol, TFT_BLACK);
     // Clear the value-text region: right half of bar width, 24 px tall (Black_20).
     tft.fillRect(MNVR_BAR_X + MNVR_BAR_W/2, lblY, MNVR_BAR_W/2, 24, TFT_BLACK);
@@ -371,7 +371,7 @@ static void _mnvrDrawDVBar(RA8875 &tft, float dvNode, float dvStage) {
 
 
 // ── CHROME ────────────────────────────────────────────────────────────────────────────
-void chromeScreen_MNVR(RA8875 &tft) {
+void chromeScreen_MNVR(KCM_TFT &tft) {
     bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
 
     if (!hasMnvr) {
@@ -396,7 +396,7 @@ void chromeScreen_MNVR(RA8875 &tft) {
 
 
 // ── DRAW (called every loop) ──────────────────────────────────────────────────────────
-void drawScreen_MNVR(RA8875 &tft) {
+void drawScreen_MNVR(KCM_TFT &tft) {
     uint32_t _t0 = micros();
 
     bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);

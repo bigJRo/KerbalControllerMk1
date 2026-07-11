@@ -272,7 +272,7 @@ static inline void _rovrPolar(float screenDeg, int16_t r, int16_t &x, int16_t &y
 // Erase the compass bounding box before redrawing. fillRect is hardware-accelerated
 // on the RA8875 so this is cheap. Bounds cover outer ring, tick marks, labels,
 // nose triangle, and the heading readout box above the triangle.
-static void _rovrEraseCompass(RA8875 &tft) {
+static void _rovrEraseCompass(KCM_TFT &tft) {
     int16_t x0 = ROVR_CX - ROVR_R - 8;
     int16_t y0 = ROVR_HDG_BOX_Y - 4;               // reach above heading box
     int16_t x1 = ROVR_CX + ROVR_R + 8;
@@ -284,7 +284,7 @@ static void _rovrEraseCompass(RA8875 &tft) {
 // drawn in LIGHT_GREY (same as majors) for visibility, but are shorter. When
 // `erase` is true, all ticks are drawn in black to wipe the previous frame's
 // ticks before drawing the new frame's ticks at the new heading.
-static void _rovrDrawTicks(RA8875 &tft, float headingDeg, bool erase) {
+static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
     for (int16_t worldDeg = 0; worldDeg < 360; worldDeg += 5) {
         float screenDeg = (float)worldDeg - headingDeg;
         int16_t x0, y0, x1, y1;
@@ -308,8 +308,8 @@ static void _rovrDrawTicks(RA8875 &tft, float headingDeg, bool erase) {
 //
 // When `erase` is true, all labels are drawn in black with a black background —
 // this wipes any glyph pixels from the previous draw at this angle.
-static void _rovrDrawLabels(RA8875 &tft, float headingDeg, bool erase) {
-    tft.setFont(&Roboto_Black_24);
+static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
+    tft.setFont(Roboto_Black_24);
 
     struct LabelSpec { int16_t worldDeg; const char *text; uint16_t color; int16_t r; };
     static const LabelSpec labels[] = {
@@ -349,7 +349,7 @@ static void _rovrDrawLabels(RA8875 &tft, float headingDeg, bool erase) {
 // Vessel heading indicator — white triangle above the ring, pointing INWARD
 // toward the compass centre. Marks the 12 o'clock position which always
 // corresponds to vessel heading (ring rotates around it).
-static void _rovrDrawNose(RA8875 &tft) {
+static void _rovrDrawNose(KCM_TFT &tft) {
     int16_t tipX, tipY, blX, blY, brX, brY;
     _rovrPolar(0.0f, ROVR_NOSE_R_TIP, tipX, tipY);
     float angOffset = (float)ROVR_NOSE_HALF_W / (float)ROVR_NOSE_R_BASE * (180.0f / (float)PI);
@@ -372,7 +372,7 @@ static void _rovrDrawNose(RA8875 &tft) {
 // triangle sits well inside the annular band with 25+ px clearance from both
 // the rover icon and the compass labels, so over-painting with a bounding
 // rect is safe.
-static void _rovrDrawTargetAt(RA8875 &tft, float screenDeg, bool erase) {
+static void _rovrDrawTargetAt(KCM_TFT &tft, float screenDeg, bool erase) {
     int16_t tipX, tipY, blX, blY, brX, brY;
     _rovrPolar(screenDeg, ROVR_TGT_R_TIP, tipX, tipY);
     float angOffset = (float)ROVR_TGT_HALF_W / (float)ROVR_TGT_R_BASE * (180.0f / (float)PI);
@@ -413,7 +413,7 @@ static void _rovrDrawTargetAt(RA8875 &tft, float screenDeg, bool erase) {
 // Triggers:
 //   - target availability toggled — erase old if was visible, draw new if now
 //   - target screen-bearing changed ≥ ROVR_TGT_THRESH_DEG — erase old, draw new
-static void _rovrUpdateTarget(RA8875 &tft) {
+static void _rovrUpdateTarget(KCM_TFT &tft) {
     if (!state.targetAvailable) {
         // Target is not available. If one was previously drawn, erase it.
         if (_rovrPrevTgtAvail) {
@@ -452,7 +452,7 @@ static void _rovrUpdateTarget(RA8875 &tft) {
 // Uses formatAlt() from the shared library for auto-scaled units (m/km/Mm/Gm)
 // and thousands separators. Value is rendered in TFT_VIOLET to match the target
 // triangle and the convention used on SCFT/ACFT target markers.
-static void _rovrUpdateTgtDist(RA8875 &tft) {
+static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     if (!state.targetAvailable) {
         // Target is not available. Erase the label/value if they were drawn.
         if (_rovrPrevTgtDistAvail) {
@@ -506,7 +506,7 @@ static void _rovrUpdateTgtDist(RA8875 &tft) {
 //
 // Drawing order: chassis first, then wheels on top (wheels overhang the chassis
 // sides slightly), then nose notch at the front.
-static void _rovrDrawIcon(RA8875 &tft) {
+static void _rovrDrawIcon(KCM_TFT &tft) {
     // Chassis — centred rectangle
     int16_t chX = ROVR_CX - ROVR_ICON_CHASS_W / 2;
     int16_t chY = ROVR_CY - ROVR_ICON_CHASS_H / 2;
@@ -549,7 +549,7 @@ static void _rovrDrawIcon(RA8875 &tft) {
 // chrome (outer border + centre line). The fill region (dark green upward for
 // forward, yellow downward for reverse) is updated separately via
 // _rovrUpdateThrottle to avoid redrawing the frame every time throttle changes.
-static void _rovrDrawThrottleFrame(RA8875 &tft) {
+static void _rovrDrawThrottleFrame(KCM_TFT &tft) {
     // Outer border
     tft.drawRect(ROVR_THR_X, ROVR_THR_Y_TOP,
                  ROVR_THR_W, ROVR_THR_Y_BOT - ROVR_THR_Y_TOP + 1,
@@ -574,7 +574,7 @@ static void _rovrDrawThrottleFrame(RA8875 &tft) {
 //
 // Only redraws on state transitions (throttle state changes). State code:
 //   +1 = forward, 0 = neutral, -1 = reverse
-static void _rovrUpdateThrottle(RA8875 &tft) {
+static void _rovrUpdateThrottle(KCM_TFT &tft) {
     float wt = state.wheelThrottle;
     int16_t newState;
     if      (wt >  ROVR_THR_THRESH) newState = +1;
@@ -622,7 +622,7 @@ static inline int16_t _rovrVSrfValueY() {
 // Draw the stationary V.Srf chrome: bounding box border and label. Called once
 // in chromeScreen_ROVR. The box border is drawn in light grey (matches the
 // heading readout box on the compass).
-static void _rovrDrawVSrfChrome(RA8875 &tft) {
+static void _rovrDrawVSrfChrome(KCM_TFT &tft) {
     // Bounding box around the full V.Srf block
     tft.drawRect(ROVR_LCOL_X, ROVR_VSRF_Y,
                  ROVR_LCOL_W, ROVR_VSRF_H,
@@ -635,7 +635,7 @@ static void _rovrDrawVSrfChrome(RA8875 &tft) {
                "V.Srf:", TFT_WHITE, TFT_BLACK);
 }
 
-static void _rovrUpdateVSrf(RA8875 &tft) {
+static void _rovrUpdateVSrf(KCM_TFT &tft) {
     // Magnitude (may be signed from demo mode; treat as unsigned magnitude)
     float mag = fabsf(state.surfaceVel);
     float speed;
@@ -699,7 +699,7 @@ static inline int16_t _rovrEcValueY() {
 }
 
 // Draw the stationary EC% chrome: bounding box border and label.
-static void _rovrDrawEcChrome(RA8875 &tft) {
+static void _rovrDrawEcChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_LCOL_X, ROVR_EC_Y,
                  ROVR_LCOL_W, ROVR_EC_H,
                  TFT_LIGHT_GREY);
@@ -710,7 +710,7 @@ static void _rovrDrawEcChrome(RA8875 &tft) {
                "EC%:", TFT_WHITE, TFT_BLACK);
 }
 
-static void _rovrUpdateEc(RA8875 &tft) {
+static void _rovrUpdateEc(KCM_TFT &tft) {
     float ec = state.electricChargePercent;
     if (ec < 0.0f) ec = 0.0f; else if (ec > 100.0f) ec = 100.0f;
     int16_t iEc = (int16_t)roundf(ec);
@@ -755,7 +755,7 @@ static void _rovrUpdateEc(RA8875 &tft) {
 // abbreviated short-form convention shared with SCFT and ACFT (STAB / PRO / RETR /
 // NRM / ANRM / RAD+ / RAD- / TGT / ATGT / MNVR / SAS).
 
-static void _rovrUpdateBrake(RA8875 &tft) {
+static void _rovrUpdateBrake(KCM_TFT &tft) {
     int8_t newState = state.brakes_on ? 1 : 0;
     if (newState == _rovrPrevBrake) return;
 
@@ -770,7 +770,7 @@ static void _rovrUpdateBrake(RA8875 &tft) {
     _rovrPrevBrake = newState;
 }
 
-static void _rovrUpdateGear(RA8875 &tft) {
+static void _rovrUpdateGear(KCM_TFT &tft) {
     int8_t newState = state.gear_on ? 1 : 0;
     if (newState == _rovrPrevGear) return;
 
@@ -799,7 +799,7 @@ static void _rovrUpdateGear(RA8875 &tft) {
 //   TGT (7)    — white on violet
 //   ATGT (8)   — white on violet
 //   MNVR (9)   — white on blue
-static void _rovrUpdateSas(RA8875 &tft) {
+static void _rovrUpdateSas(KCM_TFT &tft) {
     int16_t newMode = (int16_t)state.sasMode;
     if (newMode == _rovrPrevSasMode) return;
 
@@ -845,7 +845,7 @@ static inline int16_t _rovrElevValueY() {
     return _rovrElevLabelY() + ROVR_LBL_H + ROVR_LBL_VAL_GAP;
 }
 
-static void _rovrDrawElevChrome(RA8875 &tft) {
+static void _rovrDrawElevChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_ELEV_Y,
                  ROVR_RCOL_W, ROVR_ELEV_H,
                  TFT_LIGHT_GREY);
@@ -855,7 +855,7 @@ static void _rovrDrawElevChrome(RA8875 &tft) {
                "Elev:", TFT_WHITE, TFT_BLACK);
 }
 
-static void _rovrUpdateElev(RA8875 &tft) {
+static void _rovrUpdateElev(KCM_TFT &tft) {
     // Elevation = surface altitude above sea level = altitude (ASL) - radarAlt (AGL).
     // formatAlt() handles the sign and auto-scales units (m/km/Mm/Gm) for large values.
     float elev = state.altitude - state.radarAlt;
@@ -909,7 +909,7 @@ static void _rovrUpdateElev(RA8875 &tft) {
 // Sign convention: positive angle rotates silhouette counter-clockwise on
 // screen (y-down coords: CCW = right-side-up). Caller passes -pitch for the
 // conventional "nose up = right side up" orientation.
-static void _rovrDrawPitchSilhouette(RA8875 &tft, int16_t cx, int16_t cy,
+static void _rovrDrawPitchSilhouette(KCM_TFT &tft, int16_t cx, int16_t cy,
                                      float angleDeg) {
     float a = angleDeg * (float)DEG_TO_RAD;
     float ca = cosf(a);
@@ -965,7 +965,7 @@ static void _rovrDrawPitchSilhouette(RA8875 &tft, int16_t cx, int16_t cy,
 //
 // Sign convention: positive angle = bank right = right side goes down on screen.
 // Caller passes +roll directly.
-static void _rovrDrawRollSilhouette(RA8875 &tft, int16_t cx, int16_t cy,
+static void _rovrDrawRollSilhouette(KCM_TFT &tft, int16_t cx, int16_t cy,
                                     float angleDeg) {
     float a = angleDeg * (float)DEG_TO_RAD;
     float ca = cosf(a);
@@ -1020,7 +1020,7 @@ static void _rovrDrawRollSilhouette(RA8875 &tft, int16_t cx, int16_t cy,
 // Erase a previously-drawn silhouette by fillRect over a conservative bounding
 // square. The pitch and roll silhouettes have different extents, but using the
 // larger of the two guarantees coverage for either.
-static void _rovrEraseSilhouette(RA8875 &tft, int16_t cx, int16_t cy) {
+static void _rovrEraseSilhouette(KCM_TFT &tft, int16_t cx, int16_t cy) {
     // Pitch silhouette extent: wheel extreme at sqrt(WHEEL_DX² + (WHEEL_DY+WHEEL_R)²)
     float pHalfW  = (float)ROVR_SIL_BODY_W / 2.0f;
     float pHalfH  = (float)ROVR_SIL_BODY_H / 2.0f;
@@ -1081,7 +1081,7 @@ static const int16_t ROVR_ROLL_VAL_Y   = ROVR_ROLL_Y + ROVR_ROLL_H -
 static const int16_t ROVR_TILT_REF_MARGIN = 4;    // inset from box inner edge
 static const int16_t ROVR_TILT_REF_LEN    = 20;   // length of each reference line
 
-static void _rovrDrawPitchChrome(RA8875 &tft) {
+static void _rovrDrawPitchChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_PITCH_Y,
                  ROVR_RCOL_W, ROVR_PITCH_H,
                  TFT_LIGHT_GREY);
@@ -1100,7 +1100,7 @@ static void _rovrDrawPitchChrome(RA8875 &tft) {
     tft.drawLine(rxL, refY, rxR, refY, TFT_LIGHT_GREY);
 }
 
-static void _rovrDrawRollChrome(RA8875 &tft) {
+static void _rovrDrawRollChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_ROLL_Y,
                  ROVR_RCOL_W, ROVR_ROLL_H,
                  TFT_LIGHT_GREY);
@@ -1131,7 +1131,7 @@ static inline float _rovrClampTilt(float a) {
 // and the numeric value on integer-degree change. The silhouette itself is
 // always drawn in chrome colors; only the numeric value takes the threshold
 // color (green normal / yellow warn / red alarm).
-static void _rovrUpdatePitch(RA8875 &tft) {
+static void _rovrUpdatePitch(KCM_TFT &tft) {
     float pitch = state.pitch;
     float pitchClamped = _rovrClampTilt(pitch);
 
@@ -1177,7 +1177,7 @@ static void _rovrUpdatePitch(RA8875 &tft) {
 
 // Roll update — rear-view silhouette. Positive roll (bank right) → right side
 // of silhouette down on screen (rotation angle = +roll directly).
-static void _rovrUpdateRoll(RA8875 &tft) {
+static void _rovrUpdateRoll(KCM_TFT &tft) {
     float roll = state.roll;
     float rollClamped = _rovrClampTilt(roll);
 
@@ -1221,7 +1221,7 @@ static void _rovrUpdateRoll(RA8875 &tft) {
 // black before the new value is drawn to handle digit-width changes cleanly.
 //
 // Format: zero-padded 3-digit unsigned heading with ° symbol (e.g. "045°").
-static void _rovrUpdateHdgReadout(RA8875 &tft, float hdg) {
+static void _rovrUpdateHdgReadout(KCM_TFT &tft, float hdg) {
     int16_t iHdg = (int16_t)roundf(hdg) % 360;
     if (iHdg < 0) iHdg += 360;
     if (iHdg == _rovrPrevHdgVal) return;
@@ -1253,7 +1253,7 @@ static void _rovrUpdateHdgReadout(RA8875 &tft, float hdg) {
 // includes the heading readout box region) and draws all stationary elements:
 // outer ring, nose indicator, heading box border, rover silhouette. Then does the
 // initial dynamic pass (ticks, labels, heading value, target triangle).
-static void _rovrChromeCompass(RA8875 &tft) {
+static void _rovrChromeCompass(KCM_TFT &tft) {
     _rovrEraseCompass(tft);
 
     // Stationary: outer ring
@@ -1296,7 +1296,7 @@ static void _rovrChromeCompass(RA8875 &tft) {
 //
 // This avoids the large fillRect on every heading change that would otherwise
 // cause visible flicker during continuous yaw.
-static void _rovrUpdateCompass(RA8875 &tft) {
+static void _rovrUpdateCompass(KCM_TFT &tft) {
     // Erase old ticks and labels at previous heading
     _rovrDrawTicks(tft, _rovrPrevHeading, true);
     _rovrDrawLabels(tft, _rovrPrevHeading, true);
@@ -1317,7 +1317,7 @@ static void _rovrUpdateCompass(RA8875 &tft) {
 
 
 // ── Screen entry points ───────────────────────────────────────────────────────────────
-static void chromeScreen_ROVR(RA8875 &tft) {
+static void chromeScreen_ROVR(KCM_TFT &tft) {
     // Reset all change-detection state.
     _rovrPrevHeading      = -9999.0f;
     _rovrPrevTgtAvail     = false;
@@ -1370,7 +1370,7 @@ static void chromeScreen_ROVR(RA8875 &tft) {
     _rovrUpdateTgtDist(tft);
 }
 
-static void drawScreen_ROVR(RA8875 &tft) {
+static void drawScreen_ROVR(KCM_TFT &tft) {
     // Heading readout updates whenever the integer degree value changes — may fire
     // at sub-threshold heading movements. Its own cache check is near-free.
     _rovrUpdateHdgReadout(tft, state.heading);

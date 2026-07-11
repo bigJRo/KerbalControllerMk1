@@ -320,7 +320,7 @@ static const char *_lnchOrLabels[8] = {
 // chrome style exactly — same fonts (Black_20 labels / Black_24 values via
 // update functions), same 2-px dividers, same RPANEL geometry — just with
 // orbital row labels.
-static void _lnchOrDrawRightPanelChrome(RA8875 &tft) {
+static void _lnchOrDrawRightPanelChrome(KCM_TFT &tft) {
     // Vertical divider in the 2-px gap before the right panel
     tft.drawLine(LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y,
                  LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
@@ -361,7 +361,7 @@ static void _lnchOrDrawRightPanelChrome(RA8875 &tft) {
 
 // Helper: draw a value in an orbital-phase row using printValue. The label was
 // drawn by chrome; value is right-aligned in the cell.
-static void _lnchOrDrawRowValue(RA8875 &tft, uint8_t row, const String &val,
+static void _lnchOrDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
                                  uint16_t fg, uint16_t bg) {
     printValue(tft, &Roboto_Black_24,
                LNCH_AS_RPANEL_X, _lnchAsRowY(row),
@@ -375,7 +375,7 @@ static void _lnchOrDrawRowValue(RA8875 &tft, uint8_t row, const String &val,
 // Each checks its own change detection and returns early if unchanged.
 // Order: Alt, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg.
 
-static void _lnchOrUpdateAlt(RA8875 &tft) {
+static void _lnchOrUpdateAlt(KCM_TFT &tft) {
     float alt = state.altitude;
     int32_t iAlt = (int32_t)roundf(alt);
 
@@ -393,7 +393,7 @@ static void _lnchOrUpdateAlt(RA8875 &tft) {
     _lnchOrPrevAltFg = fg;
 }
 
-static void _lnchOrUpdateVOrb(RA8875 &tft) {
+static void _lnchOrUpdateVOrb(KCM_TFT &tft) {
     float v = state.orbitalVel;
     int16_t iV = (int16_t)roundf(v * 10.0f);  // tenths m/s
 
@@ -410,7 +410,7 @@ static void _lnchOrUpdateVOrb(RA8875 &tft) {
 // impact trajectory), yellow if positive but below safe orbital altitude,
 // green otherwise. warnAlt uses lowSpace (atmosphere top) not flyHigh —
 // flyHigh is a biome boundary (~18km Kerbin), not an orbital threshold.
-static void _lnchOrUpdateApA(RA8875 &tft) {
+static void _lnchOrUpdateApA(KCM_TFT &tft) {
     float apa = state.apoapsis;
     int32_t iApA = (int32_t)roundf(apa);
 
@@ -427,7 +427,7 @@ static void _lnchOrUpdateApA(RA8875 &tft) {
     _lnchOrPrevApAFg = fg;
 }
 
-static void _lnchOrUpdatePeA(RA8875 &tft) {
+static void _lnchOrUpdatePeA(KCM_TFT &tft) {
     float pea = state.periapsis;
     int32_t iPeA = (int32_t)roundf(pea);
 
@@ -444,7 +444,7 @@ static void _lnchOrUpdatePeA(RA8875 &tft) {
     _lnchOrPrevPeAFg = fg;
 }
 
-static void _lnchOrUpdateTimeToAp(RA8875 &tft) {
+static void _lnchOrUpdateTimeToAp(KCM_TFT &tft) {
     float ttAp = state.timeToAp;
     int32_t iTtAp = (int32_t)roundf(ttAp);
 
@@ -474,7 +474,7 @@ static void _lnchOrUpdateTimeToAp(RA8875 &tft) {
     _lnchOrPrevTimeToApFg = fg;
 }
 
-static void _lnchOrUpdateThrottle(RA8875 &tft) {
+static void _lnchOrUpdateThrottle(KCM_TFT &tft) {
     uint8_t thrPct = (uint8_t)constrain(state.throttle * 100.0f, 0.0f, 100.0f);
 
     // Coasting (throttle=0) is normal during orbital phase, so no warning;
@@ -490,7 +490,7 @@ static void _lnchOrUpdateThrottle(RA8875 &tft) {
     _lnchOrPrevThrFg = fg; _lnchOrPrevThrBg = bg;
 }
 
-static void _lnchOrUpdateTBurn(RA8875 &tft) {
+static void _lnchOrUpdateTBurn(KCM_TFT &tft) {
     float tb = state.stageBurnTime;
     int32_t iTb = (int32_t)roundf(tb);
 
@@ -508,7 +508,7 @@ static void _lnchOrUpdateTBurn(RA8875 &tft) {
     _lnchOrPrevTBurnFg = fg; _lnchOrPrevTBurnBg = bg;
 }
 
-static void _lnchOrUpdateDVStg(RA8875 &tft) {
+static void _lnchOrUpdateDVStg(KCM_TFT &tft) {
     float dv = state.stageDeltaV;
     int32_t iDv = (int32_t)roundf(dv);
 
@@ -526,7 +526,7 @@ static void _lnchOrUpdateDVStg(RA8875 &tft) {
     _lnchOrPrevDVStgFg = fg; _lnchOrPrevDVStgBg = bg;
 }
 
-static void _lnchOrDrawRightPanelValues(RA8875 &tft) {
+static void _lnchOrDrawRightPanelValues(KCM_TFT &tft) {
     _lnchOrUpdateAlt(tft);
     _lnchOrUpdateVOrb(tft);
     _lnchOrUpdateApA(tft);
@@ -581,7 +581,7 @@ static void _lnchOrDrawRightPanelValues(RA8875 &tft) {
 // Note: the drawing ORDER is atmosphere → target-circle → body so the body
 // disc overlaps (hides) any atmosphere ring pixels that fall inside it (they
 // shouldn't — atmo_px > body_px — but belt-and-braces).
-static void _lnchOrDrawStaticLayer(RA8875 &tft,
+static void _lnchOrDrawStaticLayer(KCM_TFT &tft,
                                    int16_t CX, int16_t CY,
                                    int16_t body_px, int16_t atmo_px, int16_t target_px,
                                    uint16_t bodyCol, uint16_t atmoCol) {
@@ -621,7 +621,7 @@ static bool _lnchOrSoiChanged() {
 // curve at ν=90° that shows which way the vessel travels.
 // dx, dy = unit vector in direction of travel (screen coordinates, y grows down).
 // Triangle is 12 px long × 10 px wide base, pointing forward.
-static void _lnchOrDrawChevron(RA8875 &tft, int16_t cx, int16_t cy,
+static void _lnchOrDrawChevron(KCM_TFT &tft, int16_t cx, int16_t cy,
                                 float dx, float dy, uint16_t col) {
     // Perpendicular (rotated 90° CW in screen coords: px=+dy, py=-dx)
     float px = dy;
@@ -647,11 +647,11 @@ static void _lnchOrDrawChevron(RA8875 &tft, int16_t cx, int16_t cy,
 // T+Ign row label ("T+Ign:") via printDispChrome. Bar fill, bar ΔV value,
 // and T+Ign time value are all handled by per-frame update functions with
 // change detection.
-static void _lnchOrDrawProgressBarChrome(RA8875 &tft) {
+static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
     // "ΔV Burn" label above the bar, left-aligned with the bar's left edge.
     // Black_20 (24 px) — matches the "ATT" and "Burn Dur:" labels in the
     // left cluster for cluster/screen-wide label-hierarchy consistency.
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(LNCH_OR_BAR_X, LNCH_OR_BAR_LBL_Y);
     tft.print("\xCE\x94V Burn");  // UTF-8 for "ΔV Burn"
@@ -689,7 +689,7 @@ static void _lnchOrDrawProgressBarChrome(RA8875 &tft) {
 //
 // Change detection on fill width, colour, and rounded value — skips redraws
 // when nothing visually changed.
-static void _lnchOrUpdateProgressBar(RA8875 &tft) {
+static void _lnchOrUpdateProgressBar(KCM_TFT &tft) {
     bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
 
     // Compute target fill width, colour, and value-text state.
@@ -809,7 +809,7 @@ static void _lnchOrUpdateProgressBar(RA8875 &tft) {
                 snprintf(buf, sizeof(buf), "%dm/s", dv_rounded);
             }
             // Black_20 — matches the "ΔV Burn" label font for visual unity.
-            tft.setFont(&Roboto_Black_20);
+            tft.setFont(Roboto_Black_20);
             tft.setTextColor(text_col, TFT_BLACK);
             int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
             tft.setCursor(LNCH_OR_BAR_X + LNCH_OR_BAR_W - tw, LNCH_OR_BAR_LBL_Y);
@@ -840,7 +840,7 @@ static void _lnchOrUpdateProgressBar(RA8875 &tft) {
 // A rounded-seconds cache + colour-pair cache skip the printValue call when
 // nothing visibly changed. printValue's own PrintState still handles the
 // bg-change repaint when the alarm red turns on/off.
-static void _lnchOrUpdateTignRow(RA8875 &tft) {
+static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
 
     int32_t  newSec;       // rounded seconds value, or sentinel
@@ -895,7 +895,7 @@ static void _lnchOrUpdateTignRow(RA8875 &tft) {
 // the app.
 //
 // Only redraws when burn state changes.
-static void _lnchOrUpdateIgnButton(RA8875 &tft) {
+static void _lnchOrUpdateIgnButton(KCM_TFT &tft) {
     int8_t active = (state.throttle > 0.0f) ? 1 : 0;
     if (active == _lnchOrPrevBurnActive) return;
 
@@ -926,7 +926,7 @@ static void _lnchOrUpdateIgnButton(RA8875 &tft) {
 // Centered horizontally on LNCH_OR_ATT_CX. Width budget ~80 px (matches
 // IGN button); typical formatTime values like "1m 23s" fit easily at
 // Roboto_Black_24.
-static void _lnchOrUpdateBurnDurReadout(RA8875 &tft) {
+static void _lnchOrUpdateBurnDurReadout(KCM_TFT &tft) {
     bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f) &&
                    state.mnvrDuration > 0.0f;
 
@@ -949,7 +949,7 @@ static void _lnchOrUpdateBurnDurReadout(RA8875 &tft) {
     // Draw the label "Burn Dur:" once on first frame — its colour and text
     // never change, so subsequent updates skip it. Black_20 (24 px).
     if (first_draw) {
-        tft.setFont(&Roboto_Black_20);
+        tft.setFont(Roboto_Black_20);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         int16_t lblW = getFontStringWidth(&Roboto_Black_20, "Burn Dur:");
         tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, LNCH_OR_BDUR_LBL_Y);
@@ -964,7 +964,7 @@ static void _lnchOrUpdateBurnDurReadout(RA8875 &tft) {
 
     // Draw the value, horizontally centered. Black_24 (29 px) — matches
     // the T+Ign value font for visual consistency across time displays.
-    tft.setFont(&Roboto_Black_24);
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(valFg, TFT_BLACK);
     int16_t valW = getFontStringWidth(&Roboto_Black_24, val.c_str());
     tft.setCursor(LNCH_OR_ATT_CX - valW / 2, LNCH_OR_BDUR_VAL_Y);
@@ -985,7 +985,7 @@ static inline float _lnchOrWrapBrgErr(float e) {
 // centre crosshairs. Drawn once on first-draw / SOI change; the dot is
 // updated dynamically by _lnchOrUpdateAttIndicator. Also called to "repair"
 // the chrome when a moving dot passes over it (same approach as LNDG).
-static void _lnchOrDrawAttChrome(RA8875 &tft) {
+static void _lnchOrDrawAttChrome(KCM_TFT &tft) {
     const int16_t CX = LNCH_OR_ATT_CX;
     const int16_t CY = LNCH_OR_ATT_CY;
     const int16_t R  = LNCH_OR_ATT_R;
@@ -1016,7 +1016,7 @@ static void _lnchOrDrawAttChrome(RA8875 &tft) {
     // Black_20 (24 px tall) — matches the "Burn Dur:" label below for
     // cluster-internal label-hierarchy consistency. Offset of 28 px above
     // disc keeps a 4 px gap between label bottom and disc top.
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     int16_t lblW = getFontStringWidth(&Roboto_Black_20, "ATT");
     tft.setCursor(CX - lblW / 2, CY - R - 28);
@@ -1035,7 +1035,7 @@ static void _lnchOrDrawAttChrome(RA8875 &tft) {
 //   no maneuver   → inactive — dot erased (or drawn in dark grey at centre)
 //
 // Uses erase-prev-then-redraw with chrome touch-up (same pattern as LNDG).
-static void _lnchOrUpdateAttIndicator(RA8875 &tft) {
+static void _lnchOrUpdateAttIndicator(KCM_TFT &tft) {
     bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
 
     int16_t newX, newY;
@@ -1108,7 +1108,7 @@ static void _lnchOrUpdateAttIndicator(RA8875 &tft) {
 //      by redrawing them in black at their saved pixel positions.
 //   4. Touch up the static layer over regions the erase may have blackened.
 //   5. Draw new dynamic elements, saving pixel positions for next frame's erase.
-static void _lnchOrDrawOrbitGraphic(RA8875 &tft) {
+static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     const int16_t CX = LNCH_OR_DIAG_CX;
     const int16_t CY = LNCH_OR_DIAG_CY;
     const int16_t MAX_R = LNCH_OR_DIAG_MAX_R;
@@ -1449,7 +1449,7 @@ static void _lnchOrDrawOrbitGraphic(RA8875 &tft) {
         tft.fillCircle(pe_x, pe_y, 3, TFT_MAGENTA);
         // Label centered at outboard anchor. setCursor sets top-left of text;
         // "Pe" at Black_12 is ~14 px wide × 14 px tall → offset (-7, -7).
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         tft.setCursor(pe_lbl_cx - 7, pe_lbl_cy - 7);
         tft.print("Pe");
@@ -1459,7 +1459,7 @@ static void _lnchOrDrawOrbitGraphic(RA8875 &tft) {
     }
     if (ap_changed) {
         tft.fillCircle(ap_x, ap_y, 3, TFT_CYAN);
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(ap_lbl_cx - 7, ap_lbl_cy - 7);
         tft.print("Ap");
@@ -1483,7 +1483,7 @@ static void _lnchOrDrawOrbitGraphic(RA8875 &tft) {
 
 // Dispatcher: call this each frame during orbital phase. Throttled redraw of
 // the orbit graphic and progress bar.
-static void _lnchOrDrawLeftPanelValues(RA8875 &tft) {
+static void _lnchOrDrawLeftPanelValues(KCM_TFT &tft) {
     uint32_t now = millis();
     if (now - _lnchOrLastDiagDraw < 200) return;  // ~5 Hz cap
     _lnchOrLastDiagDraw = now;

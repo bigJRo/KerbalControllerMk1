@@ -25,7 +25,7 @@
 
 bool _rndzChromDrawn = false;
 
-static void chromeScreen_RNDZ(RA8875 &tft) {
+static void chromeScreen_RNDZ(KCM_TFT &tft) {
   if (state.targetAvailable) {
     _rndzChromDrawn = true;
     static const tFont   *F      = &Roboto_Black_40;
@@ -70,7 +70,7 @@ static void chromeScreen_RNDZ(RA8875 &tft) {
 }
 
 
-static void drawScreen_RNDZ(RA8875 &tft) {
+static void drawScreen_RNDZ(KCM_TFT &tft) {
 
   if (!state.targetAvailable) {
     if (_rndzChromDrawn) {

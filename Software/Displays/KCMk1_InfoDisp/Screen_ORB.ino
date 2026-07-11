@@ -239,15 +239,15 @@ struct OrbScene {
 // suppresses the auto-generation. Do not remove.
 static void        _orbComputeScene(OrbScene &sc);
 static OrbSceneSig _orbSceneSig(const OrbScene &sc);
-static void        _orbDrawSOIView(RA8875 &tft, const OrbScene &sc);
-static void        _orbDrawMarkers(RA8875 &tft, const OrbScene &sc);
-static void        _orbDrawMarkerDotsOnly(RA8875 &tft, const OrbScene &sc);
-static void        _orbDrawIncl(RA8875 &tft, const OrbScene &sc);
+static void        _orbDrawSOIView(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbDrawMarkers(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbDrawMarkerDotsOnly(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbDrawIncl(KCM_TFT &tft, const OrbScene &sc);
 static bool        _orbVesselPxPlan(const OrbScene &sc, float nu_rad,
                                     int16_t &out_x, int16_t &out_y);
-static void        _orbPatchArcPlan(RA8875 &tft, const OrbScene &sc, float nu_rad);
-static void        _orbRepaintPlan(RA8875 &tft, const OrbScene &sc);
-static void        _orbRepaintIncl(RA8875 &tft, const OrbScene &sc);
+static void        _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad);
+static void        _orbRepaintPlan(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbRepaintIncl(KCM_TFT &tft, const OrbScene &sc);
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────────────
 static void _orbEllipseShape(float PeA_m, float ApA_m, float bodyR_m,
@@ -409,7 +409,7 @@ static OrbSceneSig _orbSceneSig(const OrbScene &sc) {
 }
 
 // ── PLAN panel draw — ellipse or hyperbola, focus-centred ─────────────────────────────
-static void _orbDrawHyperbola(RA8875 &tft,
+static void _orbDrawHyperbola(KCM_TFT &tft,
                                int16_t focusX, int16_t focusY,
                                float ecc, float argOfPe_rad,
                                float r_pe_px, uint16_t col) {
@@ -481,7 +481,7 @@ static void _orbDrawHyperbola(RA8875 &tft,
 // 120 steps = ~8 px chords at 150 px radius. Visually smooth without being
 // wasteful. 90 steps showed visible waviness on the curvy side; 180 was
 // smooth but added ~15 ms per repaint.
-static void _orbDrawEllipse(RA8875 &tft, float ecc, float argOfPe_rad, uint16_t col) {
+static void _orbDrawEllipse(KCM_TFT &tft, float ecc, float argOfPe_rad, uint16_t col) {
     float a_px = (float)ORB_MAX_R;
     float b_px = a_px * sqrtf(fmaxf(0.0f, 1.0f - ecc*ecc));
     float cosA = cosf(argOfPe_rad), sinA = sinf(argOfPe_rad);
@@ -506,7 +506,7 @@ static void _orbDrawEllipse(RA8875 &tft, float ecc, float argOfPe_rad, uint16_t 
 
 // Draw SOI view — body at panel centre, SOI ring dashed, orbit arc, Pe marker.
 // No vessel dot here — Layer 3 handles that uniformly.
-static void _orbDrawSOIView(RA8875 &tft, const OrbScene &sc) {
+static void _orbDrawSOIView(KCM_TFT &tft, const OrbScene &sc) {
     const float SOI_PX = 155.0f;
     const int16_t FX = ORB_PCX, FY = ORB_CY;
 
@@ -546,7 +546,7 @@ static void _orbDrawSOIView(RA8875 &tft, const OrbScene &sc) {
                                         (int)PLAN_X0, (int)(PLAN_X1 - 8));
         int16_t ly = (int16_t)constrain((int)(pe_y - 10.0f * sinA),
                                         (int)PLAN_CLIP_Y0, (int)(PLAN_CLIP_Y1 - 4));
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         tft.setCursor(lx - 8, ly - 6); tft.print("Pe");
     }
@@ -560,7 +560,7 @@ static void _orbDrawSOIView(RA8875 &tft, const OrbScene &sc) {
 // (e.g. Pe at argOfPe=90° lives at y=83 which is above PLAN_CLIP_Y0=94 but
 // within the panel drawing area because PLAN extends up into the header strip
 // y=62..92 for graphic content — only chrome text is excluded there).
-static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
+static void _orbDrawMarkers(KCM_TFT &tft, const OrbScene &sc) {
     const int8_t  DOT_R   = 3;
     // Dot visibility bounds — loose (panel interior plus header strip for top).
     const int16_t DOT_Y_MIN = HDR_Y0;       // 62 — dots can be at very top
@@ -599,7 +599,7 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                 !nearMarker(an_x, an_y, ap_sx, ap_sy)) {
                 int16_t lx = (int16_t)constrain(an_x + 6,  (int)LX_MIN, (int)LX_MAX);
                 int16_t ly = (int16_t)constrain(an_y - 14, (int)LY_MIN, (int)LY_MAX);
-                tft.setFont(&Roboto_Black_12);
+                tft.setFont(Roboto_Black_12);
                 tft.setTextColor(TFT_CYAN, TFT_BLACK);
                 tft.setCursor(lx, ly); tft.print("AN");
             }
@@ -617,7 +617,7 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                     !nearMarker(dn_x, dn_y, ap_sx, ap_sy)) {
                     int16_t lx = (int16_t)constrain(dn_x - 22, (int)LX_MIN, (int)LX_MAX);
                     int16_t ly = (int16_t)constrain(dn_y - 14, (int)LY_MIN, (int)LY_MAX);
-                    tft.setFont(&Roboto_Black_12);
+                    tft.setFont(Roboto_Black_12);
                     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
                     tft.setCursor(lx, ly); tft.print("DN");
                 }
@@ -647,7 +647,7 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                                         (int)LX_MIN, (int)LX_MAX);
         int16_t ly = (int16_t)constrain((int)(pe_y - OFFSET * sinA),
                                         (int)LY_MIN, (int)LY_MAX);
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         tft.setCursor(lx - 8, ly - 6); tft.print("Pe");
     }
@@ -663,7 +663,7 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                                             (int)LX_MIN, (int)LX_MAX);
             int16_t ly = (int16_t)constrain((int)(ap_y + OFFSET * sinA),
                                             (int)LY_MIN, (int)LY_MAX);
-            tft.setFont(&Roboto_Black_12);
+            tft.setFont(Roboto_Black_12);
             tft.setTextColor(TFT_BLUE, TFT_BLACK);
             tft.setCursor(lx - 8, ly - 6); tft.print("Ap");
         }
@@ -677,7 +677,7 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
 // can't reach them (labels are 14 px offset from dots, patch extends ~7 px
 // from old dot) and we want to avoid the black-background-rectangle of text
 // drawing stomping orbit-line pixels.
-static void _orbDrawMarkerDotsOnly(RA8875 &tft, const OrbScene &sc) {
+static void _orbDrawMarkerDotsOnly(KCM_TFT &tft, const OrbScene &sc) {
     const int8_t DOT_R = 3;
     // Match the loose bounds used by _orbDrawMarkers for the dots — the tight
     // PLAN_CLIP_Y0 was for labels, not dots. Using it here suppressed Pe/Ap
@@ -733,7 +733,7 @@ static void _orbDrawMarkerDotsOnly(RA8875 &tft, const OrbScene &sc) {
 
 // ── INCL panel draw — tilted orbit line, body, Pe/Ap markers ─────────────────────────
 // No vessel dot here — Layer 3 handles that uniformly.
-static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
+static void _orbDrawIncl(KCM_TFT &tft, const OrbScene &sc) {
     int16_t n_x = (int16_t)(INC_CX + sc.dx), n_y = (int16_t)(sc.bodyCY - sc.dy);
     int16_t s_x = (int16_t)(INC_CX - sc.dx), s_y = (int16_t)(sc.bodyCY + sc.dy);
 
@@ -749,14 +749,14 @@ static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
     tft.fillCircle(INC_CX, sc.bodyCY, INC_BR, sc.bodyCol);
 
     // N / S labels
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(INC_CX - 4, sc.bodyCY - INC_BR - 14); tft.print("N");
     tft.setCursor(INC_CX - 4, sc.bodyCY + INC_BR + 2);  tft.print("S");
 
     // AN label on WEST side of body disc (only when inclined)
     if (sc.incl_deg > 0.5f) {
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(INC_CX - INC_BR - 18, sc.bodyCY - 6); tft.print("AN");
     }
@@ -774,7 +774,7 @@ static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
     if (pe_dist2 > (float)((INC_BR+4)*(INC_BR+4)) &&
         pe_x >= INCL_X0 && pe_x <= INCL_X1 && pe_y >= INCL_CLIP_Y0 && pe_y <= INCL_CLIP_Y1) {
         tft.fillCircle(pe_x, pe_y, 3, TFT_MAGENTA);
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         int16_t lx = (pe_x >= INC_CX)
             ? (int16_t)constrain(pe_x + 6,  INCL_X0+2, INCL_X1-22)
@@ -792,7 +792,7 @@ static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
         if (ap_dist2 > (float)((INC_BR+4)*(INC_BR+4)) &&
             ap_x >= INCL_X0 && ap_x <= INCL_X1 && ap_y >= INCL_CLIP_Y0 && ap_y <= INCL_CLIP_Y1) {
             tft.fillCircle(ap_x, ap_y, 3, TFT_BLUE);
-            tft.setFont(&Roboto_Black_12);
+            tft.setFont(Roboto_Black_12);
             tft.setTextColor(TFT_BLUE, TFT_BLACK);
             int16_t lx = (ap_x >= INC_CX)
                 ? (int16_t)constrain(ap_x + 6,  INCL_X0+2, INCL_X1-22)
@@ -847,7 +847,7 @@ static bool _orbVesselPxPlan(const OrbScene &sc, float nu_rad,
 // For hyperbolic/SOI cases, there's no such periodic step structure — the
 // hyperbola/SOI drawings are small and any mismatch is tolerable. Fall back
 // to the focal-polar form for those.
-static void _orbPatchArcPlan(RA8875 &tft, const OrbScene &sc, float nu_rad) {
+static void _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad) {
     // ── Ellipse case: retrace ellipse's exact parametric vertices ────────────────────
     if (!sc.useSoiView && !sc.isEscape) {
         const uint16_t STEPS = 120;  // MUST match _orbDrawEllipse
@@ -1029,7 +1029,7 @@ static uint32_t    _vesselUpdateCount = 0;
 // bodyIdx changes. Position: right-justified in a box over the INCL panel
 // header area. Uses textRight which clears its own background — this gives
 // a clean redraw when the body actually changes.
-static void _orbDrawBodyName(RA8875 &tft, uint8_t bodyIdx) {
+static void _orbDrawBodyName(KCM_TFT &tft, uint8_t bodyIdx) {
     textRight(tft, &Roboto_Black_20,
               362, ORB_TITLE_TOP + 5, 360, 24,
               String(ORB_BODIES[bodyIdx].name),
@@ -1038,7 +1038,7 @@ static void _orbDrawBodyName(RA8875 &tft, uint8_t bodyIdx) {
 }
 
 // ── Scene redraw — full panel clear + redraw from scratch ─────────────────────────────
-static void _orbRepaintPlan(RA8875 &tft, const OrbScene &sc) {
+static void _orbRepaintPlan(KCM_TFT &tft, const OrbScene &sc) {
     uint32_t t0 = micros();
     // Erase bound extends up into the header strip (y=62..92) so atmo/body
     // pixels that naturally draw above y=92 (e.g. argOfPe near 90°) get
@@ -1087,7 +1087,7 @@ static void _orbRepaintPlan(RA8875 &tft, const OrbScene &sc) {
     _planDotValid = false;
 }
 
-static void _orbRepaintIncl(RA8875 &tft, const OrbScene &sc) {
+static void _orbRepaintIncl(KCM_TFT &tft, const OrbScene &sc) {
     uint32_t t0 = micros();
     // INCL fillRect covers only the graphics area (y=92..374). The body name
     // in the header strip above is drawn in chrome and refreshed only when
@@ -1114,7 +1114,7 @@ static void _orbRepaintIncl(RA8875 &tft, const OrbScene &sc) {
 }
 
 // ── Public entry points ───────────────────────────────────────────────────────────────
-static void chromeScreen_ORB(RA8875 &tft) {
+static void chromeScreen_ORB(KCM_TFT &tft) {
     // Invalidate all caches on screen entry — force scene repaint and dot redraw
     // on the first updateScreen call.
     _sceneValid        = false;
@@ -1145,7 +1145,7 @@ static void chromeScreen_ORB(RA8875 &tft) {
     // moved here from the graphic). All use Roboto_Black_20 except where noted.
     // Alt.SL / PRD / Arg.Pe / T+Pe-T+Ap labels are white; Pe and Ap use their
     // dot colours (magenta / blue) as mnemonic colour coding; Inc is also white.
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
@@ -1161,7 +1161,7 @@ static void chromeScreen_ORB(RA8875 &tft) {
     // T+Pe / T+Ap label is drawn on demand from drawScreen_ORB via _lastTLabel cache
 }
 
-static void drawScreen_ORB(RA8875 &tft) {
+static void drawScreen_ORB(KCM_TFT &tft) {
     uint32_t frameStart = debugMode ? micros() : 0;
 
     // ── Compute current scene + signature ────────────────────────────────────────────
@@ -1476,7 +1476,7 @@ static void drawScreen_ORB(RA8875 &tft) {
             // Label flipped — redraw label. fillRect only fires on the flip,
             // not every frame, so no flicker.
             tft.fillRect(INC_LABEL_X, INC_RDY3, 80, RH, TFT_BLACK);
-            tft.setFont(F);
+            tft.setFont(*F);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);
             tft.setCursor(INC_LABEL_X, INC_RDY3);
             tft.print(showPe ? "T+Pe" : "T+Ap");

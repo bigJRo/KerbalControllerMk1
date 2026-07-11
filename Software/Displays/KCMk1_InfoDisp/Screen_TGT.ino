@@ -132,7 +132,7 @@ static void _tgtClampDot(int16_t &sx, int16_t &sy) {
 
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
-static void _tgtDrawScopeChrome(RA8875 &tft) {
+static void _tgtDrawScopeChrome(KCM_TFT &tft) {
     // Black disc background
     tft.fillCircle(TGT_SCX, TGT_SCY, TGT_R, TFT_BLACK);
 
@@ -176,7 +176,7 @@ static void _tgtDrawScopeChrome(RA8875 &tft) {
 
     // Ring degree labels — NE quadrant, just inside each ring.
     // Single-arg setTextColor = transparent background (no black rectangle under text).
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(TGT_SCX + 3, TGT_SCY - TGT_RING_15 + 3);  tft.print("15");
     tft.setCursor(TGT_SCX + 3, TGT_SCY - TGT_RING_30 + 3);  tft.print("30");
@@ -188,7 +188,7 @@ static void _tgtDrawScopeChrome(RA8875 &tft) {
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;
     static const uint16_t LEG_DY = 20;
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     // VEL — hollow green circle
     tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
@@ -220,7 +220,7 @@ static void _tgtDrawScopeChrome(RA8875 &tft) {
 // ── Repair scope chrome after dot erase ───────────────────────────────────────────────
 // After a fillRect erase, any rings or crosshair lines that intersected the
 // erase box must be redrawn. Logic mirrors Screen_DOCK._dockRepairChrome().
-static void _tgtRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
+static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
     int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
 
     float cx = (float)constrain((int)TGT_SCX, (int)boxX0, (int)boxX1);
@@ -282,7 +282,7 @@ static void _tgtRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
         }
     }
     if (needLabel) {
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY);
         for (uint8_t i = 0; i < 4; i++) {
             tft.setCursor(TGT_SCX + 3, TGT_SCY - lblR[i] + 3);
@@ -299,7 +299,7 @@ static void _tgtRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
 // Angular convention (matches DOCK):
 //   tgtSX = SCX + (-bearingErr × SCALE)   — positive bearing → dot left of centre
 //   tgtSY = SCY + (  elevErr   × SCALE)   — positive elevation → dot above centre
-static void _tgtUpdateDots(RA8875 &tft, float tgtBrg, float tgtElv,
+static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
                                         float velBrg, float velElv) {
     // TGT dot: where is the target relative to your nose?
     int16_t tSX = TGT_SCX + (int16_t)(-tgtBrg * TGT_SCALE);
@@ -359,7 +359,7 @@ static void _tgtUpdateDots(RA8875 &tft, float tgtBrg, float tgtElv,
 
 
 // ── CHROME ────────────────────────────────────────────────────────────────────────────
-static void chromeScreen_TGT(RA8875 &tft) {
+static void chromeScreen_TGT(KCM_TFT &tft) {
     if (!state.targetAvailable) {
         _tgtChromDrawn = false;
         tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -440,7 +440,7 @@ static void chromeScreen_TGT(RA8875 &tft) {
 
 
 // ── DRAW (called every loop) ──────────────────────────────────────────────────────────
-static void drawScreen_TGT(RA8875 &tft) {
+static void drawScreen_TGT(KCM_TFT &tft) {
 
     // State transitions
     if (!state.targetAvailable) {

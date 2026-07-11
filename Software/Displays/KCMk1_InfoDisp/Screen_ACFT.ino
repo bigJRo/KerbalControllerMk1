@@ -115,7 +115,7 @@ static inline float _acftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
 
 
 // ── Draw one scanline ─────────────────────────────────────────────────────────────────
-static void _acftDrawScanline(RA8875 &tft,
+static void _acftDrawScanline(KCM_TFT &tft,
                               int16_t y, int16_t x0, int16_t x1,
                               int16_t bx, bool groundLeft) {
     if (bx == ACFT_BX_ALLSKY) {
@@ -137,7 +137,7 @@ static void _acftDrawScanline(RA8875 &tft,
 // Wings: inner gap WI=14 (7px clear of dot edge), outer WO=50, height WH=3 (7px total).
 // Fin: 7px wide, 20px tall, starting 7px below dot edge (gap=7px).
 // Drawn as the very last element so it is always on top of fill, horizon, and ladder.
-static void _acftDrawAircraftSymbol(RA8875 &tft) {
+static void _acftDrawAircraftSymbol(KCM_TFT &tft) {
     static const int16_t DOT_R  = 7;    // dot radius → 15px diameter
     static const int16_t WI     = 14;   // wing inner edge (DOT_R + 7px gap)
     static const int16_t WO     = 50;   // wing outer edge
@@ -179,7 +179,7 @@ static void _acftClipToDisk(float px, float py, float qx, float qy,
 
 // ── Pitch ladder ──────────────────────────────────────────────────────────────────────
 // Marks each scanline it touches in _acftLadderDirty[] so delta fill can erase old pixels.
-static void _acftDrawLadder(RA8875 &tft,
+static void _acftDrawLadder(KCM_TFT &tft,
                             float BCX, float BCY,
                             float sinR, float cosR) {
     static const int16_t HL_MAJ  = 36;
@@ -188,7 +188,7 @@ static void _acftDrawLadder(RA8875 &tft,
     static const uint8_t FONT_W  = 8;
     static const uint8_t FONT_H  = 14;
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(ACFT_LADDER);
 
     auto rnd = [](float v) -> int16_t {
@@ -296,7 +296,7 @@ static void _acftDrawLadder(RA8875 &tft,
 
 
 // ── Full ball draw ────────────────────────────────────────────────────────────────────
-static void _acftFullDraw(RA8875 &tft, float sinR, float cosR, float K) {
+static void _acftFullDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
     tft.fillCircle(ACFT_CX, ACFT_CY, ACFT_R, ACFT_SKY);
 
     // Incremental bx: bx(y) = (K + cosR*y)/sinR
@@ -337,7 +337,7 @@ static void _acftFullDraw(RA8875 &tft, float sinR, float cosR, float K) {
 
 
 // ── Delta update ──────────────────────────────────────────────────────────────────────
-static void _acftDeltaDraw(RA8875 &tft, float sinR, float cosR, float K) {
+static void _acftDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
     bool  newGL      = (sinR > 0.0f);
     bool  near_horiz = (fabsf(sinR) < 0.01f);
     float bx_f       = near_horiz ? 0.0f : (K + cosR * (float)ACFT_BALL_Y0) / sinR;
@@ -471,7 +471,7 @@ static inline float _acftHdgDelta(float a, float b) {
 // Marks occupied scanlines in _acftLadderDirty (same mechanism ladder uses) so that
 // the next frame's delta fill repaints those rows — prevents trails when the marker
 // moves but the horizon doesn't.
-static void _acftDrawAdiMarker(RA8875 &tft, float markerHdg, float markerPitch,
+static void _acftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
                                uint16_t fillCol) {
     // Delta from current vessel attitude
     float dh = _acftHdgDelta(markerHdg, state.heading);
@@ -528,7 +528,7 @@ static void _acftDrawAdiMarker(RA8875 &tft, float markerHdg, float markerPitch,
 
 
 // ── Master ball update ────────────────────────────────────────────────────────────────
-static void _acftDrawBall(RA8875 &tft, bool fullRedraw) {
+static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     _acftBuildChordTable();   // no-op after first call
 
     float pitch = state.pitch;
@@ -637,7 +637,7 @@ static const int16_t  ACFT_ROLL_VALUE_H   = 26;   // value line height (Roboto_B
 static const int16_t  ACFT_ROLL_GAP       = 3;    // gap between lines
 
 // Update the roll numeric readout.
-static void _acftUpdateRollReadout(RA8875 &tft, float roll) {
+static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
     int16_t  iRoll   = (int16_t)roundf(roll);
     float    absRoll = fabsf(roll);
     // Aircraft: roll warn/alarm active (unlike spacecraft)
@@ -710,7 +710,7 @@ static int16_t _acftPrevPitchBox    = -9999;
 static float   _acftPrevVelPitch    = -9999.0f;
 
 // Draw/update the pitch value box — cached on integer change.
-static void _acftUpdatePitchBox(RA8875 &tft, float pitch) {
+static void _acftUpdatePitchBox(KCM_TFT &tft, float pitch) {
     int16_t iPitch = (int16_t)roundf(pitch);
     if (iPitch == _acftPrevPitchBox) return;
 
@@ -734,7 +734,7 @@ static void _acftUpdatePitchBox(RA8875 &tft, float pitch) {
 }
 
 // Draw the full pitch tape for the given pitch.
-static void _acftDrawPitchTape(RA8875 &tft, float pitch) {
+static void _acftDrawPitchTape(KCM_TFT &tft, float pitch) {
     // Clear tape in two passes, skipping the box area and staying 1px inside borders
     int16_t fillW  = ACFT_PTAPE_W - 1;  // stop 1px short of right border
     int16_t aboveH = ACFT_PTAPE_BOX_Y - ACFT_PTAPE_Y;
@@ -747,7 +747,7 @@ static void _acftDrawPitchTape(RA8875 &tft, float pitch) {
     tft.drawRect(ACFT_PTAPE_BOX_X, ACFT_PTAPE_BOX_Y, ACFT_PTAPE_BOX_W, ACFT_PTAPE_BOX_H, TFT_LIGHT_GREY);
     // Box interior not erased — no need to reset _acftPrevPitchBox
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     // Draw ticks from pitch-32 to pitch+32 (slightly beyond ±30° visible range)
     for (int16_t dp = -32; dp <= 32; dp++) {
@@ -814,7 +814,7 @@ static void _acftDrawPitchTape(RA8875 &tft, float pitch) {
 }
 
 // Update pitch tape — redraws when pitch or velocity pitch changes.
-static void _acftUpdatePitchTape(RA8875 &tft, float pitch) {
+static void _acftUpdatePitchTape(KCM_TFT &tft, float pitch) {
     bool dirty = fabsf(pitch - _acftPrevPitch2)                        >= 0.2f
               || fabsf(state.srfVelPitch - _acftPrevVelPitch)          >= 0.2f;
 
@@ -858,7 +858,7 @@ static const int16_t  ACFT_HDG_MRK_HW     = 6;                     // half-width
 
 // Draw/update the heading number box — cached, only redraws when integer heading changes.
 // Uses textCenter for flicker-free rendering: erase old value with black-on-black first.
-static void _acftUpdateHdgBox(RA8875 &tft, float hdg) {
+static void _acftUpdateHdgBox(KCM_TFT &tft, float hdg) {
     int16_t iHdg = (int16_t)roundf(hdg) % 360;
     if (iHdg < 0) iHdg += 360;
     if (iHdg == _acftPrevHdgBox) return;
@@ -885,7 +885,7 @@ static void _acftUpdateHdgBox(RA8875 &tft, float hdg) {
 }
 
 // Draw the full heading tape. Only the tape strip — box is handled separately.
-static void _acftDrawHeadingTape(RA8875 &tft, float hdg) {
+static void _acftDrawHeadingTape(KCM_TFT &tft, float hdg) {
     while (hdg <   0.0f) hdg += 360.0f;
     while (hdg >= 360.0f) hdg -= 360.0f;
 
@@ -897,7 +897,7 @@ static void _acftDrawHeadingTape(RA8875 &tft, float hdg) {
     // Force box number to redraw — fill blackened the interior
     _acftPrevHdgBox = -1;
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     for (int16_t d = -32; d <= 32; d++) {
         float deg = hdg + (float)d;
@@ -970,7 +970,7 @@ static void _acftDrawHeadingTape(RA8875 &tft, float hdg) {
 }
 
 // Update heading — tape redraws when heading or velocity heading changes.
-static void _acftUpdateHeadingTape(RA8875 &tft, float hdg) {
+static void _acftUpdateHeadingTape(KCM_TFT &tft, float hdg) {
     bool dirty = fabsf(hdg - _acftPrevHeading)                     >= 0.5f
               || fabsf(state.srfVelHeading - _acftPrevVelHdg)      >= 0.5f;
 
@@ -984,7 +984,7 @@ static void _acftUpdateHeadingTape(RA8875 &tft, float hdg) {
 
 
 // Draw the roll pointer triangle for a given roll angle.
-static void _acftDrawRollPointer(RA8875 &tft, float roll, uint16_t colour) {
+static void _acftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
     int16_t tx  = (int16_t)(ACFT_CX + ACFT_PTR_TIP_R  * cosA);
@@ -1000,7 +1000,7 @@ static void _acftDrawRollPointer(RA8875 &tft, float roll, uint16_t colour) {
 
 // Erase the roll pointer — uses a 2px expanded triangle to catch any stray pixels
 // left by integer rounding in the draw pass.
-static void _acftEraseRollPointer(RA8875 &tft, float roll) {
+static void _acftEraseRollPointer(KCM_TFT &tft, float roll) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
     // Expand tip inward by 1px along radial, base outward by 1px, width +2px
@@ -1016,7 +1016,7 @@ static void _acftEraseRollPointer(RA8875 &tft, float roll) {
 }
 
 // Draw a single bank scale tick at the given bank angle.
-static void _acftDrawBankTick(RA8875 &tft, int16_t bankDeg) {
+static void _acftDrawBankTick(KCM_TFT &tft, int16_t bankDeg) {
     bool isMajor = (bankDeg == 0 || bankDeg == 30 || bankDeg == -30 ||
                                      bankDeg == 60 || bankDeg == -60);
     int16_t tOuter = ACFT_R + 16;
@@ -1034,7 +1034,7 @@ static void _acftDrawBankTick(RA8875 &tft, int16_t bankDeg) {
 }
 
 // Update the roll pointer: erase old, redraw any tick it covered, draw new.
-static void _acftUpdateRollIndicator(RA8875 &tft, float roll) {
+static void _acftUpdateRollIndicator(KCM_TFT &tft, float roll) {
     if (fabsf(roll - _acftPrevRollIndicator) < 0.2f) return;
 
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
@@ -1077,11 +1077,11 @@ static float   _acftPrevVSI      = -9999.0f;
 
 static const int16_t VSI_LABEL_H  = 62;   // height reserved at bottom for "VSI" label (Roboto_Black_16 rotated)
 
-static void _acftDrawVSIChrome(RA8875 &tft) {
+static void _acftDrawVSIChrome(KCM_TFT &tft) {
     tft.drawLine(VSI_TICK_X0 + 1, TITLE_TOP, VSI_TICK_X0 + 1, SCREEN_H - 1, TFT_GREY);
     tft.drawLine(VSI_X, VSI_ZERO_Y,     VSI_TICK_X0 + 10, VSI_ZERO_Y,     TFT_LIGHT_GREY);
     tft.drawLine(VSI_X, VSI_ZERO_Y + 1, VSI_TICK_X0 + 10, VSI_ZERO_Y + 1, TFT_LIGHT_GREY);
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     for (int16_t v = -30; v <= 30; v += 5) {
         if (v == 0) continue;
         int16_t ty = VSI_ZERO_Y - (int16_t)(v * ACFT_SCALE);
@@ -1101,7 +1101,7 @@ static void _acftDrawVSIChrome(RA8875 &tft) {
                      &Roboto_Black_16, "VSI", TFT_WHITE, TFT_BLACK);
 }
 
-static void _acftUpdateVSI(RA8875 &tft, float vVrt) {
+static void _acftUpdateVSI(KCM_TFT &tft, float vVrt) {
     if (fabsf(vVrt - _acftPrevVSI) < 0.1f) return;
     _acftPrevVSI = vVrt;
     float clamped = constrain(vVrt, -30.0f, 30.0f);
@@ -1135,7 +1135,7 @@ static const int16_t SLIP_CY     = SLIP_Y + SLIP_H / 2;
 static const float   SLIP_SCALE  = (float)(SLIP_W / 2 - SLIP_BALL_R - 4) / 20.0f;
 static int16_t _acftPrevSlipX    = 9999;
 
-static void _acftDrawSlipChrome(RA8875 &tft) {
+static void _acftDrawSlipChrome(KCM_TFT &tft) {
     tft.drawRect(SLIP_X, SLIP_Y, SLIP_W, SLIP_H, TFT_GREY);
 
     // ±5° reference ticks — drawn on border only (top+bottom 2px) to stay clear of ball
@@ -1151,7 +1151,7 @@ static void _acftDrawSlipChrome(RA8875 &tft) {
                "Slip:", TFT_WHITE, TFT_BLACK);
 }
 
-static void _acftUpdateSlipBall(RA8875 &tft, float slip) {
+static void _acftUpdateSlipBall(KCM_TFT &tft, float slip) {
     float sc = constrain(slip, -20.0f, 20.0f);
     int16_t ballX = ACFT_CX + (int16_t)(sc * SLIP_SCALE);
     ballX = constrain(ballX, SLIP_X + SLIP_BALL_R + 2, SLIP_X + SLIP_W - SLIP_BALL_R - 2);
@@ -1207,7 +1207,7 @@ static void _aoaBuildTable() {
 
 // Fill a solid arc segment [degLo..degHi] with colour col.
 // Uses fillTriangle pairs on precomputed integer-degree vertices — no gaps, no drift.
-static void _aoaFillSegment(RA8875 &tft, int16_t degLo, int16_t degHi, uint16_t col) {
+static void _aoaFillSegment(KCM_TFT &tft, int16_t degLo, int16_t degHi, uint16_t col) {
     for (int16_t d = degLo; d < degHi; d++) {
         uint8_t i = (uint8_t)(d - AOA_ANG_LO);
         tft.fillTriangle(_aoaIX[i], _aoaIY[i], _aoaOX[i], _aoaOY[i],
@@ -1222,7 +1222,7 @@ static void _aoaFillSegment(RA8875 &tft, int16_t degLo, int16_t degHi, uint16_t 
 //              180° = exact left  (9 o'clock) = zero AoA
 //              205° = upper arc (11 o'clock)  = HIGH POSITIVE AoA
 // So warn/alarm zones must be at the HIGH end of the angle range.
-static void _acftDrawAoAChrome(RA8875 &tft) {
+static void _acftDrawAoAChrome(KCM_TFT &tft) {
     _aoaBuildTable();
     // Zone boundaries derived from config thresholds — stays in sync with text field colours
     int16_t warnAng  = (int16_t)(AOA_ZERO_DEG + AOA_WARN_DEG);   // 180+10 = 190
@@ -1240,7 +1240,7 @@ static void _acftDrawAoAChrome(RA8875 &tft) {
 static int16_t _acftPrevAoADeg = INT16_MIN;
 
 // Restore background colour at a ±1° band around arcDeg
-static void _aoaErasePointer(RA8875 &tft, int16_t arcDeg) {
+static void _aoaErasePointer(KCM_TFT &tft, int16_t arcDeg) {
     int16_t lo = max((int16_t)AOA_ANG_LO, (int16_t)(arcDeg - 1));
     int16_t hi = min((int16_t)(AOA_ANG_HI - 1), (int16_t)(arcDeg + 1));
     for (int16_t d = lo; d < hi; d++) {
@@ -1258,13 +1258,13 @@ static void _aoaErasePointer(RA8875 &tft, int16_t arcDeg) {
 }
 
 // Draw pointer — 1° wide (≈3px at outer edge), bold white fill
-static void _aoaDrawPointer(RA8875 &tft, int16_t arcDeg) {
+static void _aoaDrawPointer(KCM_TFT &tft, int16_t arcDeg) {
     int16_t lo = max((int16_t)AOA_ANG_LO,       arcDeg);
     int16_t hi = min((int16_t)(AOA_ANG_HI - 1), (int16_t)(arcDeg + 1));
     _aoaFillSegment(tft, lo, hi, TFT_WHITE);
 }
 
-static void _acftUpdateAoAArc(RA8875 &tft, float aoa) {
+static void _acftUpdateAoAArc(KCM_TFT &tft, float aoa) {
     _aoaBuildTable();
     // Positive AoA → higher screen angle (toward 205° = 11 o'clock = upper arc)
     float arcF = AOA_ZERO_DEG + constrain(aoa, (float)(AOA_ANG_LO - 180), (float)(AOA_ANG_HI - 180));
@@ -1287,7 +1287,7 @@ static void _acftUpdateAoAArc(RA8875 &tft, float aoa) {
 
 // ── Screen update ─────────────────────────────────────────────────────────────────────
 
-static void chromeScreen_ACFT(RA8875 &tft) {
+static void chromeScreen_ACFT(KCM_TFT &tft) {
     _acftBuildChordTable();
     _acftFullRedrawNeeded      = true;
     _acftPrevHorizLo           = INT16_MAX;
@@ -1331,7 +1331,7 @@ static void chromeScreen_ACFT(RA8875 &tft) {
     for (uint8_t i = 0; i < 11; i++) _acftDrawBankTick(tft, ticks[i]);
 
     // Labels at ±30° and ±60° — drawn at R+28 along the tick radial
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     static const int16_t labelTicks[] = {-60, -30, 30, 60};
     static const char *  labelText[]  = {"60", "30", "30", "60"};
@@ -1445,7 +1445,7 @@ static void chromeScreen_ACFT(RA8875 &tft) {
 // Row order: Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear|Airbrk(6), Brakes|SAS(7)
 // Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
 //              8=Gear, 9=Airbrk, 10=Brakes, 11=SAS
-static void _acftUpdatePanel(RA8875 &tft) {
+static void _acftUpdatePanel(KCM_TFT &tft) {
     static const tFont  *VF = &Roboto_Black_24;
     static const uint8_t SC = (uint8_t)screen_ACFT;
     uint16_t fw = ACFT_PANEL_W;
@@ -1685,7 +1685,7 @@ static void _acftUpdatePanel(RA8875 &tft) {
 
 
 
-static void drawScreen_ACFT(RA8875 &tft) {
+static void drawScreen_ACFT(KCM_TFT &tft) {
     uint32_t _t0 = micros();
 
     bool mnvrActive = (state.mnvrTime > 0.0f);

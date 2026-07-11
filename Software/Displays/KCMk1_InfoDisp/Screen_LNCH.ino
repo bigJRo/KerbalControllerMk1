@@ -60,7 +60,7 @@ static inline int16_t _lnchAsRowY(uint8_t row) {
 // The phase-mode flags _lnchPrelaunchMode and _lnchOrbitalMode are set by SimpitHandler
 // (pre-launch transitions) and by drawScreen_LNCH itself (altitude hysteresis).
 
-static void chromeScreen_LNCH(RA8875 &tft) {
+static void chromeScreen_LNCH(KCM_TFT &tft) {
   // _lnchOrbitalMode is set by drawScreen_LNCH via hysteresis before chrome is called.
   if (_lnchPrelaunchMode) {
     // ── PRE-LAUNCH board (see Screen_LNCH_PreLaunch.ino) ──
@@ -90,7 +90,7 @@ static void chromeScreen_LNCH(RA8875 &tft) {
 }
 
 
-static void drawScreen_LNCH(RA8875 &tft) {
+static void drawScreen_LNCH(KCM_TFT &tft) {
   static const uint8_t NR = 8;
 
   // ── PRE-LAUNCH board (see Screen_LNCH_PreLaunch.ino) ──

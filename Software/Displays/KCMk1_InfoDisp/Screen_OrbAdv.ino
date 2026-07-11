@@ -80,7 +80,7 @@ static PrintState _advPS[ADV_SLOT_COUNT];
 static String     _advLastValue[ADV_SLOT_COUNT];
 
 // ── Public entry points ──────────────────────────────────────────────────────────────
-void chromeScreen_OrbAdv(RA8875 &tft) {
+void chromeScreen_OrbAdv(KCM_TFT &tft) {
     // Invalidate caches so every value prints on first draw.
     for (uint8_t i = 0; i < ADV_SLOT_COUNT; i++) {
         _advPS[i] = PrintState{};
@@ -93,7 +93,7 @@ void chromeScreen_OrbAdv(RA8875 &tft) {
 
     // Draw all labels once. All labels are white on black; values are drawn
     // by drawScreen_OrbAdv on each update (dark green).
-    tft.setFont(&Roboto_Black_28);
+    tft.setFont(Roboto_Black_28);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
     // Left column labels
@@ -115,7 +115,7 @@ void chromeScreen_OrbAdv(RA8875 &tft) {
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("T+Ap:");
 }
 
-void drawScreen_OrbAdv(RA8875 &tft) {
+void drawScreen_OrbAdv(KCM_TFT &tft) {
     const tFont *F = &Roboto_Black_28;
 
     // Escape detection — matches basic ORB logic. An escape (open) trajectory

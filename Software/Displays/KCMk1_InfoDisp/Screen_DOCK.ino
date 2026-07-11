@@ -109,7 +109,7 @@ static void _dockClampDot(int16_t &sx, int16_t &sy) {
 
 
 // ── Draw the static reticle chrome ───────────────────────────────────────────────────
-static void _dockDrawReticleChrome(RA8875 &tft) {
+static void _dockDrawReticleChrome(KCM_TFT &tft) {
     // Black disc background
     tft.fillCircle(RET_CX, RET_CY, RET_R, TFT_BLACK);
 
@@ -152,7 +152,7 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
 
     // Ring degree labels (positioned just inside each ring, in the NE quadrant)
     // Single-arg setTextColor = transparent background.
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(RET_CX + 3, RET_CY - RING_5  + 3);  tft.print("5");
     tft.setCursor(RET_CX + 3, RET_CY - RING_10 + 3);  tft.print("10");
@@ -169,7 +169,7 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;  // 68
     static const uint16_t LEG_DY = 20;              // row spacing
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     // Row 0: VEL — hollow green circle
     tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
@@ -200,7 +200,7 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     // taller 24 px label between the reticle bottom and the bar.
     uint16_t barY = RET_CY + RET_R + 28;   // 449 — bar top
     uint16_t lblY = barY - 24;              // 425 — label row above bar
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(BAR_X, lblY);
     tft.print("APPROACH");
@@ -209,7 +209,7 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
 
 
 // ── Draw right-panel chrome (static labels) ───────────────────────────────────────────
-static void _dockDrawRightChrome(RA8875 &tft) {
+static void _dockDrawRightChrome(KCM_TFT &tft) {
     // Rows 0–1: range and time
     printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T.Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -259,7 +259,7 @@ static void _dockDrawRightChrome(RA8875 &tft) {
 //   closest point on ring to box centre is within the box,
 //   AND farthest corner of box from centre is beyond the ring radius.
 // Simplified: check if box overlaps the annulus [r-1, r+1].
-static void _dockRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
+static void _dockRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
     // bx,by = erase box top-left, bh = erase box half-size (so w=h=2*bh+1)
     // Box bounds: bx..bx+2*bh, by..by+2*bh
     int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
@@ -325,7 +325,7 @@ static void _dockRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
 // ── Update dots: erase old, repair chrome, draw new ──────────────────────────────────
 // Port dot:  solid filled diamond (magenta)
 // Vel dot:   hollow circle outline only (green) — shows through if port is inside
-static void _dockUpdateDots(RA8875 &tft, float noseBrg, float noseElv,
+static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
                               float velBrg, float velElv) {
     // Port dot screen position
     int16_t portSX = RET_CX + (int16_t)(-noseBrg * RET_SCALE);
@@ -390,7 +390,7 @@ static void _dockUpdateDots(RA8875 &tft, float noseBrg, float noseElv,
 }
 
 
-static void _dockDrawDistBar(RA8875 &tft, float dist) {
+static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
     // barY must match what _dockDrawReticleChrome drew (Black_20 label).
     static const uint16_t barY = RET_CY + RET_R + 28;  // 449
     static const uint16_t lblY = barY - 24;             // 425 — label row above bar
@@ -420,7 +420,7 @@ static void _dockDrawDistBar(RA8875 &tft, float dist) {
     else if (dist >= 100.0f)  snprintf(buf, sizeof(buf), "%.0fm",  dist);
     else                      snprintf(buf, sizeof(buf), "%.1fm",  dist);
 
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(barCol, TFT_BLACK);
     // Clear right half of label row (24 px tall for Black_20) then right-align distance text
     tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 24, TFT_BLACK);
@@ -430,7 +430,7 @@ static void _dockDrawDistBar(RA8875 &tft, float dist) {
 }
 
 // ── CHROME ────────────────────────────────────────────────────────────────────────────
-static void chromeScreen_DOCK(RA8875 &tft) {
+static void chromeScreen_DOCK(KCM_TFT &tft) {
     if (_vesselDocked) {
         _dockChromDrawn = false;
         tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -473,7 +473,7 @@ static void chromeScreen_DOCK(RA8875 &tft) {
 
 
 // ── DRAW (called every loop) ──────────────────────────────────────────────────────────
-static void drawScreen_DOCK(RA8875 &tft) {
+static void drawScreen_DOCK(KCM_TFT &tft) {
     uint32_t _t0 = micros();
     // Docked: nothing to update
     if (_vesselDocked) return;

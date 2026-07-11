@@ -340,7 +340,7 @@ static float _lnchAsLadderTickInterval(float scaleTop) {
 static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of label letter (past base)
 static const int16_t LNCH_AS_MARKER_LBL_W    = 16;    // width reserved for label letter
 
-static void _lnchAsDrawAltMarker(RA8875 &tft, int16_t y, uint16_t color,
+static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
                                  bool filled, const char *label) {
     int16_t tipX  = LNCH_AS_LADDER_LINE_X + 3;
     int16_t baseX = LNCH_AS_LADDER_MARKER_X + LNCH_AS_LADDER_MARKER_W;
@@ -363,7 +363,7 @@ static void _lnchAsDrawAltMarker(RA8875 &tft, int16_t y, uint16_t color,
 }
 
 // Erase a previously-drawn marker (triangle bounding box + label area).
-static void _lnchAsEraseAltMarker(RA8875 &tft, int16_t y) {
+static void _lnchAsEraseAltMarker(KCM_TFT &tft, int16_t y) {
     int16_t tipX  = LNCH_AS_LADDER_LINE_X + 3;
     int16_t rightX = LNCH_AS_MARKER_LBL_X + LNCH_AS_MARKER_LBL_W;
     tft.fillRect(tipX, y - 9, rightX - tipX + 1, 19, TFT_BLACK);
@@ -373,7 +373,7 @@ static void _lnchAsEraseAltMarker(RA8875 &tft, int16_t y) {
 // that were passing through the erased region. Called from marker update logic.
 // markerY is the y-center of the erased bounding box (height 19, so the box
 // spans y-9 to y+9).
-static void _lnchAsRepairRefLines(RA8875 &tft, int16_t markerY) {
+static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
     int16_t tipX   = LNCH_AS_LADDER_LINE_X + 3;
     int16_t rightX = LNCH_AS_MARKER_LBL_X + LNCH_AS_MARKER_LBL_W;
     int16_t top    = markerY - 9;
@@ -440,7 +440,7 @@ static void _lnchAsRepairRefLines(RA8875 &tft, int16_t markerY) {
 // Draw static chrome for the altitude ladder: main vertical line, tick marks,
 // tick labels, and reference lines (ground, atmo, orbit) with their labels.
 // Fixed scale — called once per chrome cycle.
-static void _lnchAsDrawLadderChrome(RA8875 &tft) {
+static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
     float scaleTop = _lnchAsLadderScaleTop();
     float tickInt  = _lnchAsLadderTickInterval(scaleTop);
 
@@ -562,7 +562,7 @@ static void _lnchAsDrawLadderChrome(RA8875 &tft) {
 // Dynamic update: check for scale change first (redraw entire ladder if so),
 // then update vessel and apoapsis markers. On each marker erase, repair any
 // reference line segments that were crossing the erased region.
-static void _lnchAsUpdateLadderMarkers(RA8875 &tft) {
+static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
     float scaleTop = _lnchAsLadderScaleTop();
 
     // Scale-change detection: redraw entire ladder strip if the scale differs
@@ -641,7 +641,7 @@ static void _lnchAsUpdateLadderMarkers(RA8875 &tft) {
 // Vertical bar with zero at middle. Positive V.Vrt fills upward (green),
 // negative fills downward (red). Scale is fixed at ±LNCH_AS_VVRT_SCALE_MS m/s,
 // saturates at the ends.
-static void _lnchAsDrawVVrtChrome(RA8875 &tft) {
+static void _lnchAsDrawVVrtChrome(KCM_TFT &tft) {
     // Outer border
     tft.drawRect(LNCH_AS_VVRT_X_LEFT, LNCH_AS_VVRT_Y_TOP,
                  LNCH_AS_VVRT_W,
@@ -685,7 +685,7 @@ static void _lnchAsDrawVVrtChrome(RA8875 &tft) {
 // Positive fill: green, grows upward from the zero line (y=MID-1, MID-2, ...).
 // Negative fill: red, grows downward from the zero line (y=MID+1, MID+2, ...).
 // fillPx encodes both magnitude and direction as a signed pixel count.
-static void _lnchAsUpdateVVrtBar(RA8875 &tft) {
+static void _lnchAsUpdateVVrtBar(KCM_TFT &tft) {
     float vv = state.verticalVel;
     if (vv > LNCH_AS_VVRT_SCALE_MS)  vv = LNCH_AS_VVRT_SCALE_MS;
     if (vv < -LNCH_AS_VVRT_SCALE_MS) vv = -LNCH_AS_VVRT_SCALE_MS;
@@ -768,7 +768,7 @@ static float _lnchAsCircularOrbitVelocity() {
 }
 
 // V.Orb bar chrome — border + label. Fill is dynamic.
-static void _lnchAsDrawVOrbChrome(RA8875 &tft) {
+static void _lnchAsDrawVOrbChrome(KCM_TFT &tft) {
     // Outer border
     tft.drawRect(LNCH_AS_VORB_X_LEFT, LNCH_AS_VORB_Y_TOP,
                  LNCH_AS_VORB_W,
@@ -803,7 +803,7 @@ static void _lnchAsDrawVOrbChrome(RA8875 &tft) {
 // V.Orb bar update — incremental fill update (no full-clear + redraw, so no
 // flicker). Fill grows upward from the bottom; we only modify the pixels that
 // change between frames.
-static void _lnchAsUpdateVOrbBar(RA8875 &tft) {
+static void _lnchAsUpdateVOrbBar(KCM_TFT &tft) {
     float vo = state.orbitalVel;
     float vCirc = _lnchAsCircularOrbitVelocity();
 
@@ -904,7 +904,7 @@ static float _lnchAsComputeTargetFPA() {
 
 // Draw a radial tick from the center at angle fpaDeg.
 // tickOut = pixels outside the radius, tickIn = pixels inside the radius.
-static void _lnchAsDrawDialTick(RA8875 &tft, float fpaDeg,
+static void _lnchAsDrawDialTick(KCM_TFT &tft, float fpaDeg,
                                 int16_t tickOut, int16_t tickIn,
                                 uint16_t color) {
     float rad = fpaDeg * DEG_TO_RAD;
@@ -919,7 +919,7 @@ static void _lnchAsDrawDialTick(RA8875 &tft, float fpaDeg,
 
 // Draw the half-circle arc outline (right half only, -90° to +90°).
 // Uses line segments between sampled points for smooth appearance.
-static void _lnchAsDrawDialArc(RA8875 &tft, uint16_t color) {
+static void _lnchAsDrawDialArc(KCM_TFT &tft, uint16_t color) {
     // Sample at 2° increments from -90 to +90 (91 points, 90 segments).
     const int16_t STEP = 2;
     int16_t prevX = LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R;   // 0° point
@@ -945,7 +945,7 @@ static void _lnchAsDrawDialArc(RA8875 &tft, uint16_t color) {
 }
 
 // Dial chrome: arc outline, horizon line, tick marks, center dot, labels, "FPA" title.
-static void _lnchAsDrawDialChrome(RA8875 &tft) {
+static void _lnchAsDrawDialChrome(KCM_TFT &tft) {
     // Arc outline (right half, -90° to +90°)
     _lnchAsDrawDialArc(tft, TFT_LIGHT_GREY);
 
@@ -1026,7 +1026,7 @@ static void _lnchAsDrawDialChrome(RA8875 &tft) {
 // Repair dial chrome elements that might have been crossed by an arrow erase.
 // Called after erasing an old arrow. Redraws the horizon line, tick marks,
 // and center dot in the vicinity of the old arrow path.
-static void _lnchAsRepairDialChrome(RA8875 &tft) {
+static void _lnchAsRepairDialChrome(KCM_TFT &tft) {
     // Horizon line
     tft.drawLine(LNCH_AS_DIAL_CX, LNCH_AS_DIAL_CY,
                  LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R, LNCH_AS_DIAL_CY,
@@ -1071,7 +1071,7 @@ static void _lnchAsRepairDialChrome(RA8875 &tft) {
 //     drawn as two fillTriangle calls
 //   - Arrowhead: triangle, base at end of shaft, tip at ARROW_R
 // All rotated to the given angle around the dial center.
-static void _lnchAsDrawDialArrow(RA8875 &tft, float fpaDeg, uint16_t color) {
+static void _lnchAsDrawDialArrow(KCM_TFT &tft, float fpaDeg, uint16_t color) {
     float rad = fpaDeg * DEG_TO_RAD;
     float cs = cosf(rad);
     float sn = sinf(rad);
@@ -1118,7 +1118,7 @@ static void _lnchAsDrawDialArrow(RA8875 &tft, float fpaDeg, uint16_t color) {
 //
 // Triangle size: 8 px base, 6 px depth, base tangent to the arc outer edge,
 // tip pointing inward to a point ~6 px outside the arc.
-static void _lnchAsDrawDialTargetMarker(RA8875 &tft, float fpaDeg, uint16_t color) {
+static void _lnchAsDrawDialTargetMarker(KCM_TFT &tft, float fpaDeg, uint16_t color) {
     float rad = fpaDeg * DEG_TO_RAD;
     float cs = cosf(rad);
     float sn = sinf(rad);
@@ -1155,7 +1155,7 @@ static void _lnchAsDrawDialTargetMarker(RA8875 &tft, float fpaDeg, uint16_t colo
 // Arrow is erased by drawing in BLACK, then chrome is repaired (horizon + ticks
 // + center), then new arrow drawn in GREEN. This avoids flicker on the horizon
 // line and tick marks.
-static void _lnchAsUpdateFpaDial(RA8875 &tft) {
+static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
     float fpa = _lnchAsComputeFPA();
     if (fpa >  90.0f) fpa =  90.0f;
     if (fpa < -90.0f) fpa = -90.0f;
@@ -1339,7 +1339,7 @@ static uint16_t _lnchAsAtmoBgColor(int16_t x) {
 
 // Draw the bar's four-zone stable background fill + tick marks. Called from
 // chrome and when restoring the bar after a transition.
-static void _lnchAsDrawAtmoBackground(RA8875 &tft) {
+static void _lnchAsDrawAtmoBackground(KCM_TFT &tft) {
     int16_t innerX0 = LNCH_AS_ATMO_X_LEFT + 1;
     int16_t innerY  = LNCH_AS_ATMO_Y_TOP + 1;
     int16_t innerW  = (LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1) - 2;
@@ -1388,7 +1388,7 @@ static void _lnchAsDrawAtmoBackground(RA8875 &tft) {
 
 // Chrome: name label above bar + bar border + stable 3-zone interior fill.
 // The bar background never changes; only the triangle indicator moves.
-static void _lnchAsDrawAtmoChrome(RA8875 &tft) {
+static void _lnchAsDrawAtmoChrome(KCM_TFT &tft) {
     int16_t w = LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1;
     int16_t h = LNCH_AS_ATMO_Y_BOT - LNCH_AS_ATMO_Y_TOP + 1;
 
@@ -1409,7 +1409,7 @@ static void _lnchAsDrawAtmoChrome(RA8875 &tft) {
 
 // Draw the white triangle indicator at a given center x-coordinate. Tip points
 // up, protruding into the bar by TRI_UP px; base sits below the bar by TRI_DOWN px.
-static void _lnchAsDrawAtmoTriangle(RA8875 &tft, int16_t centerX) {
+static void _lnchAsDrawAtmoTriangle(KCM_TFT &tft, int16_t centerX) {
     int16_t tipY  = LNCH_AS_ATMO_Y_BOT - LNCH_AS_ATMO_TRI_UP;
     int16_t baseY = LNCH_AS_ATMO_Y_BOT + LNCH_AS_ATMO_TRI_DOWN;
     tft.fillTriangle(centerX, tipY,
@@ -1470,7 +1470,7 @@ static uint16_t _lnchAsAtmoPixelColor(int16_t x, int16_t y) {
 //
 // To handle all cases cleanly we repaint the triangle's bounding box row-by-row,
 // using run-length coalescing within each row to minimize draw calls.
-static void _lnchAsEraseAtmoTriangle(RA8875 &tft, int16_t centerX) {
+static void _lnchAsEraseAtmoTriangle(KCM_TFT &tft, int16_t centerX) {
     int16_t halfW = LNCH_AS_ATMO_TRI_HALF_W;
     int16_t x0    = centerX - halfW;
     int16_t x1    = centerX + halfW;
@@ -1502,7 +1502,7 @@ static void _lnchAsEraseAtmoTriangle(RA8875 &tft, int16_t centerX) {
 //
 // The bar background itself is stable chrome — never changes. Only the
 // triangle moves.
-static void _lnchAsUpdateAtmoGauge(RA8875 &tft) {
+static void _lnchAsUpdateAtmoGauge(KCM_TFT &tft) {
     float frac = _lnchAsAtmoFraction();
     bool noAtm = (frac < 0.0f);
 
@@ -1537,7 +1537,7 @@ static void _lnchAsUpdateAtmoGauge(RA8875 &tft) {
 
 // Left panel chrome — draw ladder (dynamic, dependent on current state),
 // V.Vrt / V.Orb bars, FPA dial, and atmosphere gauge (static chrome).
-static void _lnchAsDrawLeftPanelChrome(RA8875 &tft) {
+static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
     _lnchAsDrawLadderChrome(tft);
     _lnchAsDrawVVrtChrome(tft);
     _lnchAsDrawVOrbChrome(tft);
@@ -1549,7 +1549,7 @@ static void _lnchAsDrawLeftPanelChrome(RA8875 &tft) {
 }
 
 // Called every frame: update the ladder markers, bars, dial, and atmo gauge.
-static void _lnchAsDrawLeftPanelValues(RA8875 &tft) {
+static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateLadderMarkers(tft);
     _lnchAsUpdateVVrtBar(tft);
     _lnchAsUpdateVOrbBar(tft);
@@ -1640,7 +1640,7 @@ static const char *_lnchAsLabels[8] = {
 // SCFT screen layout. Because it's outside the RPANEL_X..RPANEL_X+W-1 rect
 // painted by printDispChrome's row borders, it isn't overwritten and can be
 // drawn in any order.
-static void _lnchAsDrawRightPanelChrome(RA8875 &tft) {
+static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
     // Vertical divider in the 2-px gap before the right panel
     tft.drawLine(LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y,
                  LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
@@ -1680,7 +1680,7 @@ static void _lnchAsDrawRightPanelChrome(RA8875 &tft) {
 // Helper: draw a value in a row using library printValue. The value is
 // right-aligned in the cell; the label (already drawn by chrome) is used
 // only for paramW calculation so the value region doesn't overlap the label.
-static void _lnchAsDrawRowValue(RA8875 &tft, uint8_t row, const String &val,
+static void _lnchAsDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
                                  uint16_t fg, uint16_t bg) {
     printValue(tft, &Roboto_Black_24,
                LNCH_AS_RPANEL_X, _lnchAsRowY(row),
@@ -1693,7 +1693,7 @@ static void _lnchAsDrawRowValue(RA8875 &tft, uint8_t row, const String &val,
 // Update each row. Each checks its own change detection and returns early if
 // unchanged. Order: Alt, ApA, T+Ap, V.Srf, V.Vrt, Throttle, T.Burn, ΔV.Stg.
 
-static void _lnchAsUpdateAlt(RA8875 &tft) {
+static void _lnchAsUpdateAlt(KCM_TFT &tft) {
     float alt = state.altitude;
     int32_t iAlt = (int32_t)roundf(alt);
 
@@ -1711,7 +1711,7 @@ static void _lnchAsUpdateAlt(RA8875 &tft) {
     _lnchAsPrevAltFg = fg;
 }
 
-static void _lnchAsUpdateApA(RA8875 &tft) {
+static void _lnchAsUpdateApA(KCM_TFT &tft) {
     float apa = state.apoapsis;
     int32_t iApA = (int32_t)roundf(apa);
 
@@ -1728,7 +1728,7 @@ static void _lnchAsUpdateApA(RA8875 &tft) {
     _lnchAsPrevApAFg = fg;
 }
 
-static void _lnchAsUpdateTimeToAp(RA8875 &tft) {
+static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
     float ttAp = state.timeToAp;
     int32_t iTtAp = (int32_t)roundf(ttAp);
 
@@ -1772,7 +1772,7 @@ static bool _lnchAsShowOrbitalVelocity() {
 // Row 3 dynamic label redraw. Called when the label needs to change from
 // "V.Srf:" to "V.Orb:" (or vice versa). Clears the row cell and re-chromes
 // it with the new label. The value is redrawn on the next update cycle.
-static void _lnchAsUpdateRow3Label(RA8875 &tft, bool showOrb) {
+static void _lnchAsUpdateRow3Label(KCM_TFT &tft, bool showOrb) {
     const char *label = showOrb ? "V.Orb:" : "V.Srf:";
     printDispChrome(tft, &Roboto_Black_20,
                     LNCH_AS_RPANEL_X, _lnchAsRowY(3),
@@ -1801,7 +1801,7 @@ static void _lnchAsUpdateRow3Label(RA8875 &tft, bool showOrb) {
     _lnchAsPs[3].prevHeight = 0;
 }
 
-static void _lnchAsUpdateVSrf(RA8875 &tft) {
+static void _lnchAsUpdateVSrf(KCM_TFT &tft) {
     bool showOrb = _lnchAsShowOrbitalVelocity();
     float v = showOrb ? state.orbitalVel : state.surfaceVel;
     int16_t iV = (int16_t)roundf(v * 10.0f);  // tenths m/s
@@ -1822,7 +1822,7 @@ static void _lnchAsUpdateVSrf(RA8875 &tft) {
     _lnchAsPrevVSrfFg = fg;
 }
 
-static void _lnchAsUpdateVVrt(RA8875 &tft) {
+static void _lnchAsUpdateVVrt(KCM_TFT &tft) {
     float vv = state.verticalVel;
     int16_t iVv = (int16_t)roundf(vv * 10.0f);  // tenths m/s
 
@@ -1849,7 +1849,7 @@ static void _lnchAsUpdateVVrt(RA8875 &tft) {
     _lnchAsPrevVVrtFg = fg; _lnchAsPrevVVrtBg = bg;
 }
 
-static void _lnchAsUpdateThrottle(RA8875 &tft) {
+static void _lnchAsUpdateThrottle(KCM_TFT &tft) {
     uint8_t thrPct = (uint8_t)constrain(state.throttle * 100.0f, 0.0f, 100.0f);
 
     uint16_t fg, bg;
@@ -1864,7 +1864,7 @@ static void _lnchAsUpdateThrottle(RA8875 &tft) {
     _lnchAsPrevThrFg = fg; _lnchAsPrevThrBg = bg;
 }
 
-static void _lnchAsUpdateTBurn(RA8875 &tft) {
+static void _lnchAsUpdateTBurn(KCM_TFT &tft) {
     float tb = state.stageBurnTime;
     int32_t iTb = (int32_t)roundf(tb);
 
@@ -1881,7 +1881,7 @@ static void _lnchAsUpdateTBurn(RA8875 &tft) {
     _lnchAsPrevTBurnFg = fg; _lnchAsPrevTBurnBg = bg;
 }
 
-static void _lnchAsUpdateDVStg(RA8875 &tft) {
+static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
     float dv = state.stageDeltaV;
     int32_t iDv = (int32_t)roundf(dv * 10.0f);  // tenths m/s
 
@@ -1898,7 +1898,7 @@ static void _lnchAsUpdateDVStg(RA8875 &tft) {
     _lnchAsPrevDVStgFg = fg; _lnchAsPrevDVStgBg = bg;
 }
 
-static void _lnchAsDrawRightPanelValues(RA8875 &tft) {
+static void _lnchAsDrawRightPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateAlt(tft);
     _lnchAsUpdateApA(tft);
     _lnchAsUpdateTimeToAp(tft);

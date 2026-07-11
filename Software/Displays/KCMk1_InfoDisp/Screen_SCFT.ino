@@ -128,7 +128,7 @@ static inline float _scftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
 
 
 // ── Draw one scanline ─────────────────────────────────────────────────────────────────
-static void _scftDrawScanline(RA8875 &tft,
+static void _scftDrawScanline(KCM_TFT &tft,
                               int16_t y, int16_t x0, int16_t x1,
                               int16_t bx, bool groundLeft) {
     if (bx == SCFT_BX_ALLSKY) {
@@ -150,7 +150,7 @@ static void _scftDrawScanline(RA8875 &tft,
 // Wings: inner gap WI=14 (7px clear of dot edge), outer WO=50, height WH=3 (7px total).
 // Fin: 7px wide, 20px tall, starting 7px below dot edge (gap=7px).
 // Drawn as the very last element so it is always on top of fill, horizon, and ladder.
-static void _scftDrawAircraftSymbol(RA8875 &tft) {
+static void _scftDrawAircraftSymbol(KCM_TFT &tft) {
     static const int16_t DOT_R  = 7;    // dot radius → 15px diameter
     static const int16_t WI     = 14;   // wing inner edge (DOT_R + 7px gap)
     static const int16_t WO     = 50;   // wing outer edge
@@ -192,7 +192,7 @@ static void _scftClipToDisk(float px, float py, float qx, float qy,
 
 // ── Pitch ladder ──────────────────────────────────────────────────────────────────────
 // Marks each scanline it touches in _scftLadderDirty[] so delta fill can erase old pixels.
-static void _scftDrawLadder(RA8875 &tft,
+static void _scftDrawLadder(KCM_TFT &tft,
                             float BCX, float BCY,
                             float sinR, float cosR) {
     static const int16_t HL_MAJ  = 36;
@@ -201,7 +201,7 @@ static void _scftDrawLadder(RA8875 &tft,
     static const uint8_t FONT_W  = 8;
     static const uint8_t FONT_H  = 14;
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(SCFT_LADDER);
 
     auto rnd = [](float v) -> int16_t {
@@ -309,7 +309,7 @@ static void _scftDrawLadder(RA8875 &tft,
 
 
 // ── Full ball draw ────────────────────────────────────────────────────────────────────
-static void _scftFullDraw(RA8875 &tft, float sinR, float cosR, float K) {
+static void _scftFullDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
     tft.fillCircle(SCFT_CX, SCFT_CY, SCFT_R, SCFT_SKY);
 
     // Incremental bx: bx(y) = (K + cosR*y)/sinR
@@ -350,7 +350,7 @@ static void _scftFullDraw(RA8875 &tft, float sinR, float cosR, float K) {
 
 
 // ── Delta update ──────────────────────────────────────────────────────────────────────
-static void _scftDeltaDraw(RA8875 &tft, float sinR, float cosR, float K) {
+static void _scftDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
     bool  newGL      = (sinR > 0.0f);
     bool  near_horiz = (fabsf(sinR) < 0.01f);
     float bx_f       = near_horiz ? 0.0f : (K + cosR * (float)SCFT_BALL_Y0) / sinR;
@@ -484,7 +484,7 @@ static inline float _scftHdgDelta(float a, float b) {
 // Marks occupied scanlines in _scftLadderDirty (same mechanism ladder uses) so that
 // the next frame's delta fill repaints those rows — prevents trails when the marker
 // moves but the horizon doesn't.
-static void _scftDrawAdiMarker(RA8875 &tft, float markerHdg, float markerPitch,
+static void _scftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
                                uint16_t fillCol) {
     // Delta from current vessel attitude
     float dh = _scftHdgDelta(markerHdg, state.heading);
@@ -541,7 +541,7 @@ static void _scftDrawAdiMarker(RA8875 &tft, float markerHdg, float markerPitch,
 
 
 // ── Master ball update ────────────────────────────────────────────────────────────────
-static void _scftDrawBall(RA8875 &tft, bool fullRedraw) {
+static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     _scftBuildChordTable();   // no-op after first call
 
     float pitch = state.pitch;
@@ -652,7 +652,7 @@ static const int16_t  SCFT_ROLL_VALUE_H   = 26;   // value line height (Roboto_B
 static const int16_t  SCFT_ROLL_GAP       = 3;    // gap between lines
 
 // Update the roll numeric readout.
-static void _scftUpdateRollReadout(RA8875 &tft, float roll) {
+static void _scftUpdateRollReadout(KCM_TFT &tft, float roll) {
     int16_t  iRoll = (int16_t)roundf(roll);
     uint16_t fg    = TFT_DARK_GREEN;  // spacecraft — no roll warnings
     uint16_t bg    = TFT_BLACK;
@@ -726,7 +726,7 @@ static float   _scftPrevTgtPitch    = -9999.0f;
 static float   _scftPrevMnvrPitch   = -9999.0f;
 
 // Draw/update the pitch value box — cached on integer change.
-static void _scftUpdatePitchBox(RA8875 &tft, float pitch) {
+static void _scftUpdatePitchBox(KCM_TFT &tft, float pitch) {
     int16_t iPitch = (int16_t)roundf(pitch);
     if (iPitch == _scftPrevPitchBox) return;
 
@@ -750,7 +750,7 @@ static void _scftUpdatePitchBox(RA8875 &tft, float pitch) {
 }
 
 // Draw the full pitch tape for the given pitch.
-static void _scftDrawPitchTape(RA8875 &tft, float pitch) {
+static void _scftDrawPitchTape(KCM_TFT &tft, float pitch) {
     // Clear tape in two passes, skipping the box area and staying 1px inside borders
     int16_t fillW  = SCFT_PTAPE_W - 1;  // stop 1px short of right border
     int16_t aboveH = SCFT_PTAPE_BOX_Y - SCFT_PTAPE_Y;
@@ -763,7 +763,7 @@ static void _scftDrawPitchTape(RA8875 &tft, float pitch) {
     tft.drawRect(SCFT_PTAPE_BOX_X, SCFT_PTAPE_BOX_Y, SCFT_PTAPE_BOX_W, SCFT_PTAPE_BOX_H, TFT_LIGHT_GREY);
     // Box interior not erased — no need to reset _scftPrevPitchBox
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     // Draw ticks from pitch-32 to pitch+32 (slightly beyond ±30° visible range)
     for (int16_t dp = -32; dp <= 32; dp++) {
@@ -833,7 +833,7 @@ static void _scftDrawPitchTape(RA8875 &tft, float pitch) {
 }
 
 // Update pitch tape — redraws when pitch or any marker pitch changes.
-static void _scftUpdatePitchTape(RA8875 &tft, float pitch) {
+static void _scftUpdatePitchTape(KCM_TFT &tft, float pitch) {
     bool mnvrActive = (state.mnvrTime > 0.0f);
     bool dirty = fabsf(pitch - _scftPrevPitch2)                   >= 0.2f
               || fabsf(_scftVelPitch         - _scftPrevVelPitch)  >= 0.2f
@@ -887,7 +887,7 @@ static const int16_t  SCFT_HDG_MRK_HW     = 6;                     // half-width
 
 // Draw/update the heading number box — cached, only redraws when integer heading changes.
 // Uses textCenter for flicker-free rendering: erase old value with black-on-black first.
-static void _scftUpdateHdgBox(RA8875 &tft, float hdg) {
+static void _scftUpdateHdgBox(KCM_TFT &tft, float hdg) {
     int16_t iHdg = (int16_t)roundf(hdg) % 360;
     if (iHdg < 0) iHdg += 360;
     if (iHdg == _scftPrevHdgBox) return;
@@ -914,7 +914,7 @@ static void _scftUpdateHdgBox(RA8875 &tft, float hdg) {
 }
 
 // Draw the full heading tape. Only the tape strip — box is handled separately.
-static void _scftDrawHeadingTape(RA8875 &tft, float hdg) {
+static void _scftDrawHeadingTape(KCM_TFT &tft, float hdg) {
     while (hdg <   0.0f) hdg += 360.0f;
     while (hdg >= 360.0f) hdg -= 360.0f;
 
@@ -926,7 +926,7 @@ static void _scftDrawHeadingTape(RA8875 &tft, float hdg) {
     // Force box number to redraw — fill blackened the interior
     _scftPrevHdgBox = -1;
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     for (int16_t d = -32; d <= 32; d++) {
         float deg = hdg + (float)d;
@@ -1007,7 +1007,7 @@ static void _scftDrawHeadingTape(RA8875 &tft, float hdg) {
 }
 
 // Update heading — tape redraws when heading or any marker heading changes.
-static void _scftUpdateHeadingTape(RA8875 &tft, float hdg) {
+static void _scftUpdateHeadingTape(KCM_TFT &tft, float hdg) {
     bool mnvrActive = (state.mnvrTime > 0.0f);
     bool dirty = fabsf(hdg - _scftPrevHeading)             >= 0.5f
               || fabsf(_scftVelHdg - _scftPrevVelHdg)       >= 0.5f
@@ -1030,7 +1030,7 @@ static void _scftUpdateHeadingTape(RA8875 &tft, float hdg) {
 
 
 // Draw the roll pointer triangle for a given roll angle.
-static void _scftDrawRollPointer(RA8875 &tft, float roll, uint16_t colour) {
+static void _scftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
     int16_t tx  = (int16_t)(SCFT_CX + SCFT_PTR_TIP_R  * cosA);
@@ -1046,7 +1046,7 @@ static void _scftDrawRollPointer(RA8875 &tft, float roll, uint16_t colour) {
 
 // Erase the roll pointer — uses a 2px expanded triangle to catch any stray pixels
 // left by integer rounding in the draw pass.
-static void _scftEraseRollPointer(RA8875 &tft, float roll) {
+static void _scftEraseRollPointer(KCM_TFT &tft, float roll) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
     // Expand tip inward by 1px along radial, base outward by 1px, width +2px
@@ -1062,7 +1062,7 @@ static void _scftEraseRollPointer(RA8875 &tft, float roll) {
 }
 
 // Draw a single bank scale tick at the given bank angle.
-static void _scftDrawBankTick(RA8875 &tft, int16_t bankDeg) {
+static void _scftDrawBankTick(KCM_TFT &tft, int16_t bankDeg) {
     bool isMajor = (bankDeg == 0 || bankDeg == 30 || bankDeg == -30 ||
                                      bankDeg == 60 || bankDeg == -60);
     int16_t tOuter = SCFT_R + 16;
@@ -1080,7 +1080,7 @@ static void _scftDrawBankTick(RA8875 &tft, int16_t bankDeg) {
 }
 
 // Update the roll pointer: erase old, redraw any tick it covered, draw new.
-static void _scftUpdateRollIndicator(RA8875 &tft, float roll) {
+static void _scftUpdateRollIndicator(KCM_TFT &tft, float roll) {
     if (fabsf(roll - _scftPrevRollIndicator) < 0.2f) return;
 
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
@@ -1111,7 +1111,7 @@ static void _scftUpdateRollIndicator(RA8875 &tft, float roll) {
 
 
 // ── Screen chrome ─────────────────────────────────────────────────────────────────────
-static void chromeScreen_SCFT(RA8875 &tft) {
+static void chromeScreen_SCFT(KCM_TFT &tft) {
     _scftBuildChordTable();
     _scftFullRedrawNeeded      = true;
     _scftPrevHorizLo           = INT16_MAX;
@@ -1159,7 +1159,7 @@ static void chromeScreen_SCFT(RA8875 &tft) {
     for (uint8_t i = 0; i < 11; i++) _scftDrawBankTick(tft, ticks[i]);
 
     // Labels at ±30° and ±60° — drawn at R+28 along the tick radial
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     static const int16_t labelTicks[] = {-60, -30, 30, 60};
     static const char *  labelText[]  = {"60", "30", "30", "60"};
@@ -1239,7 +1239,7 @@ static void chromeScreen_SCFT(RA8875 &tft) {
 // ── Right panel update ─────────────────────────────────────────────────────────────────
 // Uses printValue + rowCache[screen_SCFT] exactly as LNDG/ORB screens do.
 // Cache slots 0-9: Alt.SL, V.Orb, ApA, PeA, T+Ap/Pe, T+Ign, ΔV.Stg, RCS, SAS label, SAS value
-static void _scftUpdatePanel(RA8875 &tft, bool orbMode) {
+static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
     static const tFont *VF  = &Roboto_Black_24;   // value font
     static const uint8_t SC = (uint8_t)screen_SCFT;
 
@@ -1379,7 +1379,7 @@ static void _scftUpdatePanel(RA8875 &tft, bool orbMode) {
 
 
 // ── Screen update ─────────────────────────────────────────────────────────────────────
-static void drawScreen_SCFT(RA8875 &tft) {
+static void drawScreen_SCFT(KCM_TFT &tft) {
     bool orbMode = _scftOrbMode();
     if (orbMode != _scftPrevOrbMode) {
         _scftPrevOrbMode      = orbMode;

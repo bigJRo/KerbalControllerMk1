@@ -40,13 +40,13 @@ bool _mainArmedSafe   = false;
 //   - Screen_LNDG_Powered.ino (when _lndgReentryMode is false)
 //   - Screen_LNDG_Reentry.ino (when _lndgReentryMode is true)
 
-static void chromeScreen_LNDG(RA8875 &tft) {
+static void chromeScreen_LNDG(KCM_TFT &tft) {
     if (!_lndgReentryMode) _lndgChromePowered(tft);
     else                   _lndgChromeReentry(tft);
 }
 
 
-static void drawScreen_LNDG(RA8875 &tft) {
+static void drawScreen_LNDG(KCM_TFT &tft) {
     if (!_lndgReentryMode) _lndgDrawPowered(tft);
     else                   _lndgDrawReentry(tft);
 }

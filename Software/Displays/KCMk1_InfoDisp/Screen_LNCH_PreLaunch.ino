@@ -31,7 +31,7 @@ static const uint16_t _lnchPlAHW    = _lnchPlAW / 2;                           /
 // ── Chrome ─────────────────────────────────────────────────────────────────────────────
 // Draws labels, dividers, and title bar. Called once per screen-entry. Values are
 // updated separately by _lnchPrelaunchDrawValues each frame.
-static void _lnchPrelaunchDrawChrome(RA8875 &tft) {
+static void _lnchPrelaunchDrawChrome(KCM_TFT &tft) {
     const uint8_t  NR   = _lnchPlNumRows;
     const tFont   *F    = _lnchPlFont;
     const uint16_t AX   = _lnchPlAX;
@@ -74,7 +74,7 @@ static void _lnchPrelaunchDrawChrome(RA8875 &tft) {
 // Updates the eight rows of values with change detection. Horizontal dividers are
 // repainted every frame because printValue's fillRect sometimes nibbles them (same
 // pattern as ATT and ROVR screens).
-static void _lnchPrelaunchDrawValues(RA8875 &tft) {
+static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     const uint8_t  NR   = _lnchPlNumRows;
     const tFont   *F    = _lnchPlFont;
     const uint16_t AX   = _lnchPlAX;

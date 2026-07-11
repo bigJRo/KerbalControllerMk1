@@ -78,7 +78,7 @@ static void _lndgHorzColor(float v, float tGround, uint16_t &fg, uint16_t &bg) {
    X-POINTER CHROME ELEMENTS
    Drawn at chrome time and re-applied after needle erase.
 ****************************************************************************************/
-static void _lndgDrawXpChrome(RA8875 &tft) {
+static void _lndgDrawXpChrome(KCM_TFT &tft) {
     uint16_t g5  = (uint16_t)(5.0f  * LNDG_XP_SCALE);
     uint16_t g10 = (uint16_t)(10.0f * LNDG_XP_SCALE);
     uint16_t g2  = (uint16_t)(2.0f  * LNDG_XP_SCALE);
@@ -121,7 +121,7 @@ static void _lndgDrawXpChrome(RA8875 &tft) {
 // Low-altitude tape: covers 0-50m, same geometry as normal tape
 static const float LNDG_TAPE_PPM_LOW = (float)LNDG_TAPE_H / 50.0f;
 
-static void _lndgDrawTapeChrome(RA8875 &tft, bool lowAlt) {
+static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
     float ppm = lowAlt ? LNDG_TAPE_PPM_LOW : LNDG_TAPE_PPM;
 
     // Clear only the numeric label area (x=14..TAPE_X-1), preserving the ALTITUDE strip (x=0..13)
@@ -170,7 +170,7 @@ static void _lndgDrawTapeChrome(RA8875 &tft, bool lowAlt) {
     // Scale labels — right-aligned to x = LNDG_TAPE_X - 2
     // Normal: every 50m, range 50..450 (skip 0m=off-screen, 500m=clips top)
     // Low-alt: every 5m,  range 5..45  (skip 0m=off-screen, 50m=clips top)
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     uint16_t labelStep  = lowAlt ? 5  : 50;
     uint16_t labelStart = lowAlt ? 0  : 0;    // include 0m (clamped to bottom)
@@ -209,7 +209,7 @@ static int16_t _lndgPrevAttX = -999;
 static int16_t _lndgPrevAttY = -999;
 
 
-static void _lndgDrawAttChrome(RA8875 &tft) {
+static void _lndgDrawAttChrome(KCM_TFT &tft) {
     // Black disc background (no bounding square)
     tft.fillCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R + 2, TFT_BLACK);
 
@@ -246,7 +246,7 @@ static void _lndgDrawAttChrome(RA8875 &tft) {
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R + 1, TFT_DARK_GREY);
 
     // Range label "15°" outside outer ring, lower-right — 68px from centre (ring edge at 53px)
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(207, 461);
     tft.print("15\xb0");
@@ -257,7 +257,7 @@ static void _lndgDrawAttChrome(RA8875 &tft) {
 }
 
 
-static void _lndgDrawAtt(RA8875 &tft) {
+static void _lndgDrawAtt(KCM_TFT &tft) {
     // Deviation of nose from vertical in body frame.
     // tilt = total angular distance from vertical (0 = pointing straight up).
     // Decomposed by roll into screen axes:
@@ -321,7 +321,7 @@ static const uint16_t LNDG_VV_LBRT = 281;  // numeric labels right-align to this
 static float _lndgPrevVV = -9999.0f;
 
 
-static void _lndgDrawVvChrome(RA8875 &tft) {
+static void _lndgDrawVvChrome(KCM_TFT &tft) {
     // Dim zone backgrounds
     tft.fillRect(LNDG_VV_X, LNDG_VV_Y,  LNDG_VV_W, LNDG_VV_Y8 - LNDG_VV_Y,  TFT_DARK_RED);
     tft.fillRect(LNDG_VV_X, LNDG_VV_Y8, LNDG_VV_W, LNDG_VV_Y5 - LNDG_VV_Y8, TFT_OLIVE);
@@ -343,7 +343,7 @@ static void _lndgDrawVvChrome(RA8875 &tft) {
     tft.drawRect(LNDG_VV_X, LNDG_VV_Y, LNDG_VV_W, LNDG_VV_H, TFT_GREY);
 
     // Numeric labels every 5 m/s, right-aligned
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     for (uint16_t v = 0; v <= 15; v += 5) {
         char buf[4]; snprintf(buf, sizeof(buf), "%u", v);
@@ -360,7 +360,7 @@ static void _lndgDrawVvChrome(RA8875 &tft) {
 }
 
 
-static void _lndgDrawVv(RA8875 &tft) {
+static void _lndgDrawVv(KCM_TFT &tft) {
     float vv     = constrain(-state.verticalVel, 0.0f, LNDG_VV_MAX);
     uint16_t fillH = (uint16_t)(vv * LNDG_VV_PPM);
     uint16_t fillY = LNDG_VV_BOT - fillH;
@@ -412,7 +412,7 @@ static void _lndgDrawVv(RA8875 &tft) {
 /***************************************************************************************
    CHROME: POWERED DESCENT
 ****************************************************************************************/
-static void _lndgChromePowered(RA8875 &tft) {
+static void _lndgChromePowered(KCM_TFT &tft) {
 
 
 
@@ -447,7 +447,7 @@ static void _lndgChromePowered(RA8875 &tft) {
         // L: left-aligned with XP left edge
         // LATERAL: centred on XP
         // R: right-aligned with XP right edge
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(LNDG_XP_X, botY + 24);                            tft.print("L");
         tft.setCursor(LNDG_XP_CX - 24, botY + 24);                      tft.print("LATERAL");
@@ -482,7 +482,7 @@ static void _lndgChromePowered(RA8875 &tft) {
                 // Left axis: right-aligned, leaving room for vertical axis label strip
                 uint16_t lx = LNDG_XP_X - 8 - lw;
                 uint16_t ly = (uint16_t)max((int16_t)LNDG_XP_Y, (int16_t)(ty - 7));
-                tft.setFont(&Roboto_Black_12);
+                tft.setFont(Roboto_Black_12);
                 tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
                 tft.setCursor(lx, ly);
                 tft.print(buf);
@@ -497,7 +497,7 @@ static void _lndgChromePowered(RA8875 &tft) {
         // Zero tick + label on left axis
         tft.drawLine(LNDG_XP_X - 1, LNDG_XP_CY,
                      LNDG_XP_X - 1 - MAJ, LNDG_XP_CY, COL);
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(LNDG_XP_X - 8 - 7, LNDG_XP_CY - 7);
         tft.print("0");
@@ -511,7 +511,7 @@ static void _lndgChromePowered(RA8875 &tft) {
 
     // ── Instrument title labels ──
     // "SURF DRIFT" — horizontal, centred above the XP field
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(200, 70);
     tft.print("SURF DRIFT");
@@ -577,7 +577,7 @@ static void _lndgChromePowered(RA8875 &tft) {
     // Redraw LATERAL row labels — bullseye fillCircle may overdraw them
     {
         uint16_t botY = LNDG_XP_Y + LNDG_XP_SIDE;
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(LNDG_XP_X,                           botY + 24); tft.print("L");
         tft.setCursor(LNDG_XP_CX - 24,                     botY + 24); tft.print("LATERAL");
@@ -602,7 +602,7 @@ static void _lndgChromePowered(RA8875 &tft) {
 /***************************************************************************************
    DRAW: POWERED DESCENT
 ****************************************************************************************/
-static void _lndgDrawPowered(RA8875 &tft) {
+static void _lndgDrawPowered(KCM_TFT &tft) {
 
     // Shared precompute
     bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);

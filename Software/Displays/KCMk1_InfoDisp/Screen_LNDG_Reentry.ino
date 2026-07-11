@@ -24,7 +24,7 @@
 /***************************************************************************************
    CHROME: RE-ENTRY (text-only, unchanged from original)
 ****************************************************************************************/
-static void _lndgChromeReentry(RA8875 &tft) {
+static void _lndgChromeReentry(KCM_TFT &tft) {
     static const tFont   *F      = &Roboto_Black_40;
     static const uint8_t  NR     = 8;
     static const uint16_t SECT_W = 26;
@@ -78,7 +78,7 @@ static void _lndgChromeReentry(RA8875 &tft) {
 /***************************************************************************************
    DRAW: RE-ENTRY (unchanged from original)
 ****************************************************************************************/
-static void _lndgDrawReentry(RA8875 &tft) {
+static void _lndgDrawReentry(KCM_TFT &tft) {
     static const tFont   *F      = &Roboto_Black_40;
     static const uint8_t  NR     = 8;
     static const uint16_t SECT_W = 26;

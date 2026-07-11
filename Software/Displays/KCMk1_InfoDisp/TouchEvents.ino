@@ -31,35 +31,24 @@ static uint32_t lastTouchTime      = 0;
 static uint32_t lastTitleTouchTime = 0;
 static bool     _waitForRelease    = false;
 
-// ── Touch pending flag ────────────────────────────────────────────────────────────────
-// Set by ISR on CTP_INT_PIN rising edge. Persists across long draw calls so touches
-// that land and lift during a heavy redraw (SCFT, ACFT) are not missed.
-// Cleared in processTouchEvents() once the event has been handled or rejected.
-volatile bool _touchPending = false;
-
-void touchISR() {
-    _touchPending = true;
-}
+// Boot phantom guard: require the panel to be seen untouched once before accepting
+// any tap, so a settling touch from the FT5316 right after reset cannot fire a
+// gesture. Cleared to true the first time the screen is observed untouched.
+static bool _bootReleaseSeen = false;
 
 // Title bar uses a shorter debounce — toggles are intentional quick taps
 static const uint32_t TITLE_DEBOUNCE_MS = KCM_TOUCH_TITLE_DEBOUNCE_MS;  // #3B from SystemConfig
 
 
 void processTouchEvents() {
-  // Accept touch if GPIO is currently high OR if the ISR caught a rising edge
-  // that may have already ended (finger lifted during a long draw call).
-  bool gpioHigh = isTouched();
-  if (!gpioHigh && !_touchPending) {
-    _waitForRelease = false;
+  if (!isTouched()) {
+    _waitForRelease  = false;
+    _bootReleaseSeen = true;   // panel seen untouched — real taps now allowed
     return;
   }
+  if (!_bootReleaseSeen) return;   // ignore boot/settling phantom until first release
 
-  // Clear the pending flag now — if we reject below, the touch is consumed anyway.
-  _touchPending = false;
-
-  // First read — use readTouch() directly. When acting on a latched _touchPending
-  // the GPIO may already be low, but the GSL1680 holds the last coordinates in its
-  // register until overwritten by the next touch, so the read is still valid.
+  // First read
   lastTouch = readTouch();
   if (lastTouch.count == 0) return;
 
@@ -81,41 +70,29 @@ void processTouchEvents() {
   uint16_t x1 = lastTouch.points[0].x;
   uint16_t y1 = lastTouch.points[0].y;
 
-  // x2/y2 default to first-read coords — updated to confirmed coords if double-read runs
-  uint16_t x2 = x1;
-  uint16_t y2 = y1;
-
-  // Double-read after 8ms — confirm touch is real and stable.
-  // Skip if GPIO is already low (touch was latched by ISR — finger already lifted,
-  // coordinates are static in the GSL1680 register, no jitter possible).
-  if (gpioHigh) {
-    delay(8);
-    TouchResult confirm = readTouch();
-
-    if (confirm.count == 0) {
-      if (debugMode) Serial.println(F("InfoDisp: Touch discarded (phantom — count=0 on reread)"));
-      return;
-    }
-
-    // Coordinate stability check — real touches don't jump
-    x2 = confirm.points[0].x;
-    y2 = confirm.points[0].y;
-    uint16_t dx = (x2 > x1) ? x2 - x1 : x1 - x2;
-    uint16_t dy = (y2 > y1) ? y2 - y1 : y1 - y2;
-    if (dx > TOUCH_JITTER_MAX || dy > TOUCH_JITTER_MAX) {
-      if (debugMode) {
-        Serial.print(F("InfoDisp: Touch discarded (jitter dx="));
-        Serial.print(dx);
-        Serial.print(F(" dy="));
-        Serial.print(dy);
-        Serial.println(F(")"));
-      }
-      return;
-    }
-
-    // Confirmed — use the more recent coordinate sample
-    lastTouch = confirm;
+  // Double-read after 8ms — confirm the touch is real and stable (phantom noise
+  // jumps between reads; real touches hold position).
+  delay(8);
+  TouchResult confirm = readTouch();
+  if (confirm.count == 0) {
+    if (debugMode) Serial.println(F("InfoDisp: Touch discarded (phantom — count=0 on reread)"));
+    return;
   }
+  uint16_t x2 = confirm.points[0].x;
+  uint16_t y2 = confirm.points[0].y;
+  uint16_t dx = (x2 > x1) ? x2 - x1 : x1 - x2;
+  uint16_t dy = (y2 > y1) ? y2 - y1 : y1 - y2;
+  if (dx > TOUCH_JITTER_MAX || dy > TOUCH_JITTER_MAX) {
+    if (debugMode) {
+      Serial.print(F("InfoDisp: Touch discarded (jitter dx="));
+      Serial.print(dx);
+      Serial.print(F(" dy="));
+      Serial.print(dy);
+      Serial.println(F(")"));
+    }
+    return;
+  }
+  lastTouch = confirm;
 
   // Bounds and dead zone checks — applied to final coordinates
   if (x2 >= SCREEN_W || y2 >= SCREEN_H) return;

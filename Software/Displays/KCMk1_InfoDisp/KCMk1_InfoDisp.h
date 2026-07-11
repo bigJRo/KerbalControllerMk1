@@ -4,11 +4,15 @@
    Included by every .ino tab. Defines types, enums, structs, and extern declarations.
 ****************************************************************************************/
 
-#include <KerbalDisplayCommon.h>
+#include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + ILI9341_t3 fonts
+#include <KCM_Touch.h>             // FT5316 touch: TouchResult/setupTouch/isTouched/readTouch
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
-// I2C slave interface will be added in Phase 3.
+
+// rev-2 compat: the screens declare font pointers as `tFont` (the old sumotoy type
+// name). Fonts are now ILI9341_t3 — alias so the existing declarations compile.
+typedef ILI9341_t3_font_t tFont;
 
 
 /***************************************************************************************
@@ -36,7 +40,7 @@ static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 /***************************************************************************************
    DISPLAY OBJECT AND TOUCH
 ****************************************************************************************/
-extern RA8875      infoDisp;
+extern KCM_TFT     infoDisp;
 extern TouchResult lastTouch;
 
 
@@ -93,7 +97,7 @@ void updateI2CState();
 void buildI2CPacketAndAssert();
 
 // BootScreen.ino
-void bootSimText(RA8875 &tft);
+void bootSimText(KCM_TFT &tft);
 
 // Simpit object (defined in SimpitHandler.ino)
 extern KerbalSimpit simpit;
@@ -214,9 +218,12 @@ extern BodyParams currentBody;
    LAYOUT CONSTANTS
    Defined here so both Screens.ino and TouchEvents.ino can reference them.
 ****************************************************************************************/
-// SCREEN_W and SCREEN_H provided by KCMk1_SystemConfig.h as KCM_SCREEN_W / KCM_SCREEN_H
-static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // #3A alias for local code
-static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // #3A alias for local code
+// PHASE 1 (rev-2 mechanical port): the rev-1 screens are hardcoded for 800x480, so
+// pin SCREEN_W/H at 800x480 and letterbox the whole UI into the top-left of the
+// 1024x600 panel (rest black). Touches in the black margins fall outside these
+// bounds and are ignored. Phase 2 re-expands per-screen to KCM_SCREEN_W/H.
+static const uint16_t SCREEN_W  = 800;
+static const uint16_t SCREEN_H  = 480;
 static const uint16_t SIDEBAR_W = 80;
 static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
 
@@ -226,21 +233,19 @@ static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-l
 ****************************************************************************************/
 
 // Screen*.ino — chrome (static elements drawn once on transition)
-void drawStaticScreen(RA8875 &tft, ScreenType s);
+void drawStaticScreen(KCM_TFT &tft, ScreenType s);
 
 // Screen*.ino — update (dynamic values redrawn each loop)
-void updateScreen(RA8875 &tft, ScreenType s);
+void updateScreen(KCM_TFT &tft, ScreenType s);
 
 // Standby screen (shown when not in a flight scene)
-void drawStandbyScreen(RA8875 &tft);
+void drawStandbyScreen(KCM_TFT &tft);
 
 // Context-dependent screen selection on vessel/scene change
 ScreenType contextScreen();
 
-// TouchEvents.ino
+// TouchEvents.ino  (rev-2: FT5316 polling driver — no ISR)
 void processTouchEvents();
-void touchISR();                  // ISR — attached to CTP_INT_PIN RISING in setup()
-extern volatile bool _touchPending;  // set by touchISR, cleared by processTouchEvents
 
 // Demo.ino
 void initDemoMode();

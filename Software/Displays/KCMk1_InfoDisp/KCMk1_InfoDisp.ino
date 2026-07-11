@@ -50,8 +50,7 @@ void setup() {
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
   setupSD();
-  setupTouch();
-  attachInterrupt(digitalPinToInterrupt(CTP_INT_PIN), touchISR, RISING);
+  setupTouch();   // FT5316 polling driver (KCM_Touch) — no ISR attach in rev-2
   setupI2CSlave();
 
   bootSimText(infoDisp);

@@ -12,7 +12,7 @@ bool _attOrbMode() {
 }
 bool _attPrevOrbMode = false;
 
-static void chromeScreen_ATT(RA8875 &tft) {
+static void chromeScreen_ATT(KCM_TFT &tft) {
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;
   static const uint16_t RX     = ROW_PAD + SECT_W;
@@ -71,7 +71,7 @@ static void chromeScreen_ATT(RA8875 &tft) {
 
 
 
-static void drawScreen_ATT(RA8875 &tft) {
+static void drawScreen_ATT(KCM_TFT &tft) {
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;
   static const uint16_t RX     = ROW_PAD + SECT_W;

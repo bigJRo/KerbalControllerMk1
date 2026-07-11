@@ -8,7 +8,7 @@
 /***************************************************************************************
    DISPLAY AND TOUCH
 ****************************************************************************************/
-RA8875      infoDisp  = RA8875(RA8875_CS, RA8875_RESET);
+KCM_TFT     infoDisp  = KCM_TFT(KCM_TFT_RS, KCM_TFT_CS, KCM_TFT_RESET);
 TouchResult lastTouch;
 
 
@@ -125,6 +125,6 @@ ScreenType contextScreen() {
    Shown when not in a flight scene (menus, tracking station, etc.).
    Displays the shared splash BMP used by all KCMk1 panels.
 ****************************************************************************************/
-void drawStandbyScreen(RA8875 &tft) {
+void drawStandbyScreen(KCM_TFT &tft) {
   drawStandbySplash(tft);   // #5A delegates to KDC library (subsumes #11 setXY fix)
 }

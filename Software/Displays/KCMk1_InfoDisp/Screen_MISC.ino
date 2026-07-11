@@ -20,7 +20,7 @@
 #include "KCMk1_InfoDisp.h"
 
 
-static void chromeScreen_MISC(RA8875 &tft) {
+static void chromeScreen_MISC(KCM_TFT &tft) {
   static const tFont   *F      = &Roboto_Black_40;
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;
@@ -97,7 +97,7 @@ static void chromeScreen_MISC(RA8875 &tft) {
 }
 
 
-static void drawScreen_MISC(RA8875 &tft) {
+static void drawScreen_MISC(KCM_TFT &tft) {
   static const tFont   *F      = &Roboto_Black_40;
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;

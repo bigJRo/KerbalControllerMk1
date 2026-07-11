@@ -188,7 +188,7 @@ uint16_t kspAtmoColor(const char *name) {
 /***************************************************************************************
    DRAW SIDEBAR
 ****************************************************************************************/
-void drawSidebar(RA8875 &tft) {
+void drawSidebar(KCM_TFT &tft) {
   tft.drawLine(SCREEN_W - SIDEBAR_W, 0, SCREEN_W - SIDEBAR_W, SCREEN_H, TFT_GREY);
   uint16_t bx = SCREEN_W - SIDEBAR_W + 1;
   uint16_t bw = SIDEBAR_W - 1;
@@ -203,14 +203,14 @@ void drawSidebar(RA8875 &tft) {
 /***************************************************************************************
    DRAW TITLE BAR (chrome — once per transition)
 ****************************************************************************************/
-void drawTitleBar(RA8875 &tft, ScreenType s) {
+void drawTitleBar(KCM_TFT &tft, ScreenType s) {
   tft.fillRect(0, 0, CONTENT_W, TITLE_TOP, TFT_BLACK);
   textCenter(tft, TITLE_FONT, 0, 0, CONTENT_W, TITLE_H,
              SCREEN_TITLES[(uint8_t)s], TFT_WHITE, TFT_BLACK);
   tft.fillRect(0, TITLE_H, CONTENT_W, TITLE_RULE_H, TFT_GREY);
 }
 
-void drawTitleBar(RA8875 &tft, const String &title) {
+void drawTitleBar(KCM_TFT &tft, const String &title) {
   tft.fillRect(0, 0, CONTENT_W, TITLE_TOP, TFT_BLACK);
   textCenter(tft, TITLE_FONT, 0, 0, CONTENT_W, TITLE_H,
              title, TFT_WHITE, TFT_BLACK);
@@ -221,7 +221,7 @@ void drawTitleBar(RA8875 &tft, const String &title) {
 // Call after drawTitleBar() on any screen with a title-bar tap action.
 // Triangle: 20px wide × 24px tall, vertically centred in TITLE_H (58px), x=6.
 // Uses ceiling division so every scanline including the tip is at least 1px wide.
-static void drawTitleToggleIndicator(RA8875 &tft) {
+static void drawTitleToggleIndicator(KCM_TFT &tft) {
   const uint16_t tx = 6;
   const uint16_t tw = 20;
   const uint16_t th = 24;
@@ -242,19 +242,19 @@ static void drawTitleToggleIndicator(RA8875 &tft) {
    Core versions accept explicit font and nRows for screens with non-standard layout.
    Convenience wrappers use ROW_FONT. All screens use NR=8 rows.
 ****************************************************************************************/
-void drawChrome(RA8875 &tft, uint8_t row, const char *label,
+void drawChrome(KCM_TFT &tft, uint8_t row, const char *label,
                 const tFont *font, uint8_t nRows) {
   printDispChrome(tft, font,
                   rowX(), rowYFor(row, nRows), rowW(), rowHFor(nRows),
                   label, COL_LABEL, COL_BACK, COL_NO_BDR);
 }
 
-void drawChrome(RA8875 &tft, uint8_t row, const char *label) {
+void drawChrome(KCM_TFT &tft, uint8_t row, const char *label) {
   drawChrome(tft, row, label, ROW_FONT, 8);
 }
 
 // Full-width row overload (uses rowX()/rowW() geometry)
-void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
+void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
                const char *label, String value,
                uint16_t fg, uint16_t bg,
                const tFont *font, uint8_t nRows) {
@@ -270,7 +270,7 @@ void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
 }
 
 // Split-column overload (#51) — explicit x, w for left/right half-row cells
-void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
+void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
                uint16_t x, uint16_t w,
                const char *label, String value,
                uint16_t fg, uint16_t bg,
@@ -291,7 +291,7 @@ void drawValue(RA8875 &tft, uint8_t screen, uint8_t row,
 ****************************************************************************************/
 
 
-void drawStaticScreen(RA8875 &tft, ScreenType s) {
+void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
 
@@ -347,7 +347,7 @@ void drawStaticScreen(RA8875 &tft, ScreenType s) {
   }
 }
 
-void updateScreen(RA8875 &tft, ScreenType s) {
+void updateScreen(KCM_TFT &tft, ScreenType s) {
   switch (s) {
     case screen_LNCH: drawScreen_LNCH(tft); break;
     case screen_ORB:
