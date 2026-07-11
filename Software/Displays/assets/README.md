@@ -41,6 +41,31 @@ Note: on the Main screen the globe *frame* is 274×176 and the 240×168 image is
 centered inside it. To fill the frame edge-to-edge, supply 274×176 body art and
 ask for the draw calls to be updated.
 
+## Vessel-type icons (72×72)
+
+The Annunciator Main screen draws a vessel-type icon in the right square of the
+SPCFT tile, selected by `state.vesselType` (KSP `VesselType`, 0–16). Files are
+indexed by that value:
+
+```
+VIcon_00.bmp Debris        VIcon_06.bmp Lander     VIcon_12.bmp Flag
+VIcon_01.bmp SpaceObject   VIcon_07.bmp Ship       VIcon_13.bmp ScienceController
+VIcon_02.bmp Unknown       VIcon_08.bmp Plane      VIcon_14.bmp SciencePart
+VIcon_03.bmp Probe         VIcon_09.bmp Station    VIcon_15.bmp Part
+VIcon_04.bmp Relay         VIcon_10.bmp Base       VIcon_16.bmp GroundPart
+VIcon_05.bmp Rover         VIcon_11.bmp EVA
+```
+
+They are 72×72, pre-composited over **black** (the tile background) since BMP has
+no alpha — so any PNG transparency is baked against black at conversion time.
+Convert a source PNG set (named `NN_Name.png`) with:
+
+```
+python3 ../tools/kcm_bmp.py vesselicons <png_dir> .           # -> VIcon_NN.bmp
+python3 ../tools/kcm_bmp.py png2bmp icon.png VIcon_07.bmp      # single, over black
+python3 ../tools/kcm_bmp.py png2bmp icon.png out.bmp 202020    # composite over #202020
+```
+
 ## Tooling — `../tools/kcm_bmp.py`
 
 Dependency-free (no PIL) 24-bit BMP writer. Regenerate a verification test

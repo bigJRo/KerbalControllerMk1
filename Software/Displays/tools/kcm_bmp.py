@@ -17,7 +17,7 @@ Usage:
   python3 kcm_bmp.py testpattern OUT.bmp [W H]
   python3 kcm_bmp.py all OUTDIR          # generate the full asset set
 """
-import struct, sys, os, math
+import struct, sys, os, math, zlib, glob
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +120,112 @@ def testpattern(w, h):
     return img
 
 
+# ---------------------------------------------------------------------------
+# Minimal PNG decoder (stdlib zlib only -- no PIL). Handles 8-bit
+# grayscale/RGB/palette/gray+alpha/RGBA, non-interlaced. Returns RGBA bytes.
+# ---------------------------------------------------------------------------
+def _paeth(a, b, c):
+    p = a + b - c
+    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    return b if pb <= pc else c
+
+
+def decode_png(path):
+    """Return (w, h, rgba bytearray) for an 8-bit, non-interlaced PNG."""
+    d = open(path, "rb").read()
+    if d[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"{path}: not a PNG")
+    i = 8
+    w = h = bit = ct = 0
+    idat = bytearray()
+    plte = None
+    trns = None
+    while i < len(d):
+        (ln,) = struct.unpack(">I", d[i:i + 4])
+        typ = d[i + 4:i + 8]
+        chunk = d[i + 8:i + 8 + ln]
+        i += 12 + ln
+        if typ == b"IHDR":
+            w, h, bit, ct, comp, filt, interlace = struct.unpack(">IIBBBBB", chunk)
+            if bit != 8:
+                raise ValueError(f"{path}: only 8-bit channels supported (got {bit})")
+            if interlace != 0:
+                raise ValueError(f"{path}: interlaced PNG not supported")
+        elif typ == b"PLTE":
+            plte = chunk
+        elif typ == b"tRNS":
+            trns = chunk
+        elif typ == b"IDAT":
+            idat += chunk
+        elif typ == b"IEND":
+            break
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[ct]
+    stride = w * channels
+    raw = zlib.decompress(bytes(idat))
+    # unfilter
+    recon = bytearray()
+    prev = bytearray(stride)
+    pos = 0
+    for _ in range(h):
+        ft = raw[pos]; pos += 1
+        line = bytearray(raw[pos:pos + stride]); pos += stride
+        for x in range(stride):
+            a = line[x - channels] if x >= channels else 0
+            b = prev[x]
+            c = prev[x - channels] if x >= channels else 0
+            v = line[x]
+            if   ft == 1: v = (v + a) & 0xFF
+            elif ft == 2: v = (v + b) & 0xFF
+            elif ft == 3: v = (v + ((a + b) >> 1)) & 0xFF
+            elif ft == 4: v = (v + _paeth(a, b, c)) & 0xFF
+            line[x] = v
+        recon += line
+        prev = line
+    # expand to RGBA
+    rgba = bytearray(w * h * 4)
+    for p in range(w * h):
+        s = p * channels
+        if ct == 6:                                   # RGBA
+            rgba[p*4:p*4+4] = recon[s:s+4]
+        elif ct == 2:                                 # RGB
+            rgba[p*4:p*4+3] = recon[s:s+3]; rgba[p*4+3] = 255
+        elif ct == 0:                                 # gray
+            g = recon[s]; rgba[p*4:p*4+3] = bytes((g, g, g)); rgba[p*4+3] = 255
+        elif ct == 4:                                 # gray+alpha
+            g = recon[s]; rgba[p*4:p*4+3] = bytes((g, g, g)); rgba[p*4+3] = recon[s+1]
+        elif ct == 3:                                 # palette
+            idx = recon[s]
+            rgba[p*4:p*4+3] = plte[idx*3:idx*3+3]
+            rgba[p*4+3] = trns[idx] if (trns and idx < len(trns)) else 255
+    return w, h, rgba
+
+
+def png_to_image(path, bg=(0, 0, 0)):
+    """Decode a PNG and composite its alpha over `bg` into an opaque Image."""
+    w, h, rgba = decode_png(path)
+    img = Image(w, h, bg)
+    for p in range(w * h):
+        r, g, b, a = rgba[p*4], rgba[p*4+1], rgba[p*4+2], rgba[p*4+3]
+        if a == 0:
+            continue
+        if a == 255:
+            out = (r, g, b)
+        else:
+            t = a / 255.0
+            out = (int(r*t + bg[0]*(1-t)),
+                   int(g*t + bg[1]*(1-t)),
+                   int(b*t + bg[2]*(1-t)))
+        img.set(p % w, p // w, out)
+    return img
+
+
+def _hex_rgb(s):
+    s = s.lstrip("#")
+    return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(__doc__); sys.exit(1)
@@ -130,6 +236,30 @@ if __name__ == "__main__":
         h = int(sys.argv[4]) if len(sys.argv) > 4 else 168
         testpattern(w, h).write_bmp(out)
         print(f"wrote {out} ({w}x{h}, 24-bit BMP)")
+    elif cmd == "png2bmp":
+        # png2bmp IN.png OUT.bmp [bgHex]
+        inp, out = sys.argv[2], sys.argv[3]
+        bg = _hex_rgb(sys.argv[4]) if len(sys.argv) > 4 else (0, 0, 0)
+        img = png_to_image(inp, bg)
+        img.write_bmp(out)
+        print(f"wrote {out} ({img.w}x{img.h}, 24-bit BMP, alpha over #{bg[0]:02x}{bg[1]:02x}{bg[2]:02x})")
+    elif cmd == "vesselicons":
+        # vesselicons INDIR OUTDIR [bgHex]
+        # Converts NN_Name.png -> VIcon_NN.bmp (composited over bg, default black).
+        indir, outdir = sys.argv[2], sys.argv[3]
+        bg = _hex_rgb(sys.argv[4]) if len(sys.argv) > 4 else (0, 0, 0)
+        os.makedirs(outdir, exist_ok=True)
+        n = 0
+        for src in sorted(glob.glob(os.path.join(indir, "*.png"))):
+            base = os.path.basename(src)
+            idx = base.split("_", 1)[0]
+            if not idx.isdigit():
+                print(f"  skip (no leading index): {base}"); continue
+            out = os.path.join(outdir, f"VIcon_{int(idx):02d}.bmp")
+            png_to_image(src, bg).write_bmp(out)
+            print(f"  {base:28s} -> {os.path.basename(out)}")
+            n += 1
+        print(f"converted {n} vessel-type icons into {outdir}")
     else:
         print(f"unknown command: {cmd}")
         print(__doc__); sys.exit(1)

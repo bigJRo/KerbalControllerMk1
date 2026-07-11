@@ -428,13 +428,24 @@ void updateSpcftTile(KCM_TFT &tft) {
   prevSpcftMode = state.vehCtrlMode;
   prevSpcftType = state.vesselType;
   // Left-aligned mode text on black (green = mode matches vessel type, red = not),
-  // with the right ~R3_H px reserved for the vessel-type icon added in a later
-  // step. Border matches the rest of the bottom grid.
+  // with the right R3_H px reserved for the vessel-type icon. Border matches the
+  // rest of the bottom grid.
   uint16_t txtColor = ctrlModeColor(state.vehCtrlMode, state.vesselType);
   tft.fillRect(SPCFT_X + 1, R3_Y + 1, SPCFT_W - 2, R3_H - 2, TFT_BLACK);
   textLeft(tft, &Roboto_Black_28, SPCFT_X, R3_Y, SPCFT_W - R3_H, R3_H,
            ctrlModeText(state.vehCtrlMode), txtColor, TFT_BLACK);
   tft.drawRect(SPCFT_X, R3_Y, SPCFT_W, R3_H, TFT_GREY);
+
+  // Vessel-type icon (72x72) centred in the reserved right square. The BMP is
+  // pre-composited over black, so it blends with the tile background; a missing
+  // file just leaves the (already-cleared) square black (drawBMP logs the miss).
+  if (state.vesselType <= type_GndPart) {
+    char iconPath[20];
+    snprintf(iconPath, sizeof(iconPath), "/VIcon_%02u.bmp", (unsigned)state.vesselType);
+    uint16_t ix = SPCFT_X + SPCFT_W - R3_H + (R3_H - 72) / 2;
+    uint16_t iy = R3_Y + (R3_H - 72) / 2;
+    drawBMP(tft, iconPath, ix, iy);
+  }
 }
 
 
