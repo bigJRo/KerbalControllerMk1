@@ -81,10 +81,21 @@ static const int16_t LNCH_AS_LADDER_H        = LNCH_AS_LADDER_Y_BOT - LNCH_AS_LA
 //   y=83..95:  "+500"       — top endpoint label (Black_12)
 //   y=98..449: bar body     — 352 px tall
 //   y=451..463:"-500"       — bottom endpoint label (Black_12)
+// ── Shared vertical band for the tall left-panel gauges ────────────────────────────────
+// V.Vrt, V.Orb, the FPA arc and the atmosphere bar all share one vertical band so
+// they line up. Body fills ~130..556 (matches the taller ladder's whitespace above
+// and below). Name label sits on top (Black_20); endpoint labels flank the body
+// (Black_16).
+static const int16_t LNCH_AS_GAUGE_NAME_Y   = 82;    // element name label row (Black_20)
+static const int16_t LNCH_AS_GAUGE_NAME_H   = 24;
+static const int16_t LNCH_AS_GAUGE_BODY_TOP = 130;   // top of gauge body
+static const int16_t LNCH_AS_GAUGE_BODY_BOT = 556;   // bottom of gauge body
+static const int16_t LNCH_AS_GAUGE_ENDLBL_H = 18;    // endpoint label box height (Black_16)
+
 static const int16_t LNCH_AS_VVRT_X_LEFT     = 180;   // clear of ladder ERASE_X2 (156)
 static const int16_t LNCH_AS_VVRT_W          = 40;
-static const int16_t LNCH_AS_VVRT_Y_TOP      = 98;    // bar top (below "+500" label)
-static const int16_t LNCH_AS_VVRT_Y_BOT      = 449;   // bar bottom (above "-500" label)
+static const int16_t LNCH_AS_VVRT_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;  // bar top
+static const int16_t LNCH_AS_VVRT_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;  // bar bottom
 static const int16_t LNCH_AS_VVRT_Y_MID      = (LNCH_AS_VVRT_Y_TOP + LNCH_AS_VVRT_Y_BOT) / 2;
 static const float   LNCH_AS_VVRT_SCALE_MS   = 500.0f;
 
@@ -657,29 +668,29 @@ static void _lnchAsDrawVVrtChrome(KCM_TFT &tft) {
                  LNCH_AS_VVRT_X_LEFT + LNCH_AS_VVRT_W - 2, LNCH_AS_VVRT_Y_MID,
                  TFT_LIGHT_GREY);
 
-    // Label box is wider than the bar itself so longer strings like "+500 m/s"
-    // (50 px at Black_12) fit. Box spans 16 px beyond each edge of the bar;
-    // V.Vrt neighbors (ladder at 156, V.Orb at 240) have room for this.
+    // Label box spans 8 px beyond each bar edge. Units are dropped from the
+    // endpoint labels (implied m/s) so the larger Black_16 text fits the box
+    // without colliding with the neighboring bar.
     const int16_t LBL_X0 = LNCH_AS_VVRT_X_LEFT - 8;
     const int16_t LBL_W  = LNCH_AS_VVRT_W + 16;
 
-    // Bar name "V.Vrt" above everything (Black_16)
-    textCenter(tft, &Roboto_Black_16,
-               LBL_X0, LNCH_AS_PANEL_Y + 1,
-               LBL_W, 16,
+    // Bar name "V.Vrt" (Black_20)
+    textCenter(tft, &Roboto_Black_20,
+               LBL_X0, LNCH_AS_GAUGE_NAME_Y,
+               LBL_W, LNCH_AS_GAUGE_NAME_H,
                "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Top endpoint label (Black_12)
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VVRT_Y_TOP - 15,
-               LBL_W, 14,
-               "+500 m/s", TFT_LIGHT_GREY, TFT_BLACK);
+    // Top endpoint label (Black_16)
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VVRT_Y_TOP - LNCH_AS_GAUGE_ENDLBL_H - 2,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               "+500", TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Bottom endpoint label (Black_12)
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VVRT_Y_BOT + 2,
-               LBL_W, 14,
-               "-500 m/s", TFT_LIGHT_GREY, TFT_BLACK);
+    // Bottom endpoint label (Black_16)
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VVRT_Y_BOT + 3,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               "-500", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 // Update V.Vrt bar fill using incremental drawing (no full-clear + redraw, so
@@ -782,26 +793,26 @@ static void _lnchAsDrawVOrbChrome(KCM_TFT &tft) {
     const int16_t LBL_X0 = LNCH_AS_VORB_X_LEFT - 8;
     const int16_t LBL_W  = LNCH_AS_VORB_W + 16;
 
-    // Bar name "V.Orb" above everything (Black_16)
-    textCenter(tft, &Roboto_Black_16,
-               LBL_X0, LNCH_AS_PANEL_Y + 1,
-               LBL_W, 16,
+    // Bar name "V.Orb" (Black_20)
+    textCenter(tft, &Roboto_Black_20,
+               LBL_X0, LNCH_AS_GAUGE_NAME_Y,
+               LBL_W, LNCH_AS_GAUGE_NAME_H,
                "V.Orb", TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Top endpoint label — v_circ at target orbit (body-aware).
+    // Top endpoint label — v_circ at target orbit (body-aware), unit implied.
     float vCirc = _lnchAsCircularOrbitVelocity();
     char topBuf[16];
-    snprintf(topBuf, sizeof(topBuf), "%d m/s", (int)roundf(vCirc));
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VORB_Y_TOP - 15,
-               LBL_W, 14,
+    snprintf(topBuf, sizeof(topBuf), "%d", (int)roundf(vCirc));
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VORB_Y_TOP - LNCH_AS_GAUGE_ENDLBL_H - 2,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
                topBuf, TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Bottom endpoint label "0 m/s"
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VORB_Y_BOT + 2,
-               LBL_W, 14,
-               "0 m/s", TFT_LIGHT_GREY, TFT_BLACK);
+    // Bottom endpoint label "0"
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VORB_Y_BOT + 3,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               "0", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 // V.Orb bar update — incremental fill update (no full-clear + redraw, so no

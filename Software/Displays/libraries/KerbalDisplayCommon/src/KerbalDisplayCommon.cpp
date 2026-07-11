@@ -573,8 +573,10 @@ String formatTime(float timeVal) {
   calcHrs    %= kerbinDay;
   char timeStr[40];
   if (calcDays != 0) {
-    sprintf(timeStr, "%lld d: %02lld h: %02lld m: %02lld s",
-            (long long)calcDays, (long long)calcHrs, (long long)calcMins, (long long)calcSecs);
+    // Past 1 day, switch to a compact "Dd HH:MM" form so the string stays narrow
+    // enough for tight value cells (the verbose "D d: HH h: MM m: SS s" overflows).
+    sprintf(timeStr, "%lldd %02lld:%02lld",
+            (long long)calcDays, (long long)calcHrs, (long long)calcMins);
   } else if (calcHrs != 0) {
     sprintf(timeStr, "%lld h: %02lld m: %02lld s",
             (long long)calcHrs, (long long)calcMins, (long long)calcSecs);
