@@ -119,6 +119,11 @@ bool isTouched() {
   return (status & 0x0F) > 0;
 }
 
+bool probeTouch() {
+  uint8_t id = 0;
+  return ftReadRegs(0xA8, &id, 1);   // FT5x06 vendor/chip-id register — ACK == present
+}
+
 static inline uint16_t mapX(uint16_t x, uint16_t y) {
   uint16_t v = KCM_CTP_SWAP_XY ? y : x;
   if (KCM_CTP_INVERT_X) v = (KCM_SCREEN_W - 1) - v;

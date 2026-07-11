@@ -67,6 +67,10 @@ struct TouchResult {
 // Initialise the bit-banged I2C bus and reset the FT5316. Call once in setup().
 void setupTouch();
 
+// One-shot presence probe: reads the FT5316 chip-id register and returns true if
+// the controller ACKed. Use for a boot self-test. Call after setupTouch().
+bool probeTouch();
+
 // True if at least one touch point is currently active. Polls FT5316 TD_STATUS
 // over I2C (does not rely on the INT pin polarity/mode being configured).
 bool isTouched();

@@ -14,17 +14,24 @@
 
 /***************************************************************************************
    CONSTANTS
-   ROW_H  -- pixel height per text row (font height + leading)
-   COL1_X -- x position for check number + label
-   COL2_X -- x position for status word (right-aligned area)
-   BS_HOLD -- pause between printing a check label and its status word
+   BS_HOLD  -- pause between printing a check label and its status word (faster pacing)
+   BIG_ROW  -- pixel pitch per big (check/summary) row
+   SM_ROW   -- pixel pitch per small (metadata) row
+   COL1_X   -- x position for check label
+   COL2_X   -- x position for status word, computed at runtime from a fixed-width slot
+   BS_FONT  -- fine-print metadata font (version / attribution)
+   BS_BIG   -- title / check / summary font
 ****************************************************************************************/
-static const uint16_t BS_HOLD  = 300;
-static const uint16_t ROW_H    = 18;   // 16px glyph + 2px leading
-static const uint16_t COL1_X   = 4;
-static const uint16_t COL2_X   = 560;
+static const uint16_t BS_HOLD  = 110;  // was 300 -- snappier run-through
+static const uint16_t BIG_ROW  = 40;   // 32px glyph + 8px leading
+static const uint16_t SM_ROW   = 20;   // 16px glyph + 4px leading
+static const uint16_t COL1_X   = 10;
 static const ILI9341_t3_font_t *BS_FONT = &TerminalFont_16;
-static const ILI9341_t3_font_t *BS_BIG  = &TerminalFont_32;  // 2x scaled for summary lines
+static const ILI9341_t3_font_t *BS_BIG  = &TerminalFont_32;
+
+// Status column: start of the widest label slot (19 monospace chars) + a gap.
+// Computed once in bootSimText() since it depends on the font's glyph advance.
+static uint16_t _bs_col2 = 720;
 
 
 /***************************************************************************************
@@ -32,25 +39,6 @@ static const ILI9341_t3_font_t *BS_BIG  = &TerminalFont_32;  // 2x scaled for su
 ****************************************************************************************/
 static void _bs_wait(uint16_t ms) {
   delay(ms);
-}
-
-
-/***************************************************************************************
-   INTERNAL HELPER -- print a boot check row
-   Prints label at COL1_X, waits BS_HOLD, then prints status at COL2_X.
-   Uses tft.setFont / setCursor / print directly -- stays in graphics mode throughout.
-****************************************************************************************/
-static void _bs_check(KCM_TFT &tft, uint16_t y,
-                       const char *label, uint16_t labelCol,
-                       const char *status, uint16_t statusCol) {
-  tft.setFont(*BS_FONT);
-  tft.setTextColor(labelCol, TFT_BLACK);
-  tft.setCursor(COL1_X, y);
-  tft.print(label);
-  _bs_wait(BS_HOLD);
-  tft.setTextColor(statusCol, TFT_BLACK);
-  tft.setCursor(COL2_X, y);
-  tft.print(status);
 }
 
 
@@ -67,75 +55,79 @@ static void _bs_print(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, u
 
 
 /***************************************************************************************
-   BOOT SIM TEXT
-   All rendering via _bs_print() / _bs_check() -- stays in RA8875 graphics mode throughout.
+   INTERNAL HELPER -- big check row: label at COL1_X, staged pause, status at _bs_col2.
+   Status colour conveys the result (green OK / red FAIL / yellow non-fatal).
 ****************************************************************************************/
-void bootSimText(KCM_TFT &tft) {
+static void _bs_check(KCM_TFT &tft, uint16_t y,
+                       const char *label, const char *status, uint16_t statusCol) {
+  tft.setFont(*BS_BIG);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setCursor(COL1_X, y);
+  tft.print(label);
+  _bs_wait(BS_HOLD);
+  tft.setTextColor(statusCol, TFT_BLACK);
+  tft.setCursor(_bs_col2, y);
+  tft.print(status);
+}
+
+
+/***************************************************************************************
+   BOOT SIM TEXT
+   Terminal-aesthetic POST sequence, enlarged for 1024x600, with real subsystem
+   status. sdOK / touchOK come from the actual init calls in setup(). All rendering
+   via graphics-mode calls (setFont / setCursor / print).
+****************************************************************************************/
+void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
 
   tft.fillScreen(TFT_BLACK);
 
-  uint16_t y = 4;
+  // Status column origin: fixed 19-char label slot in the big monospace font.
+  _bs_col2 = COL1_X + getFontStringWidth(BS_BIG, "0000000000000000000") + 20;
 
-  // - Header -
-  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
-  y += 6;
+  uint16_t y = 8;
+
+  // - Title -
+  _bs_print(tft, BS_BIG, COL1_X, y, "KCMk1 ANNUNCIATOR", TFT_WHITE);
+  y += BIG_ROW;
   {
-    char buf[128];   // #4B version string
+    char buf[128];
     snprintf(buf, sizeof(buf),
-             "KCMk1-ANNUNC  //  Jeb's Controller Works  //  v%d.%d.%d"
-             " / KDC %d.%d.%d / KDA %d.%d.%d",
+             "Jeb's Controller Works   v%d.%d.%d   KDC %d.%d.%d   KDA %d.%d.%d",
              SKETCH_VERSION_MAJOR,               SKETCH_VERSION_MINOR,               SKETCH_VERSION_PATCH,
              KDC_VERSION_MAJOR,                  KDC_VERSION_MINOR,                  KDC_VERSION_PATCH,
              KERBAL_DISPLAY_AUDIO_VERSION_MAJOR, KERBAL_DISPLAY_AUDIO_VERSION_MINOR, KERBAL_DISPLAY_AUDIO_VERSION_PATCH);
     _bs_print(tft, BS_FONT, COL1_X, y, buf, TFT_GREY);
   }
-  y += ROW_H;
+  y += SM_ROW + 2;
   tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 10;
   _bs_wait(BS_HOLD);
 
-  // - Check 1: Boot Loader -
-  _bs_check(tft, y, "1) Boot Loader Complete...",  TFT_WHITE, "OK!",   TFT_GREEN);  y += ROW_H;
-  _bs_check(tft, y, "     EEPROM Bank...",         TFT_GREY,  "1 of 4", TFT_WHITE); y += ROW_H + 4;
+  // - Real subsystem checks -
+  _bs_check(tft, y, "1) DISPLAY  RA8876",  "OK",                        TFT_GREEN);   y += BIG_ROW;
+  _bs_check(tft, y, "2) TOUCH  FT5316",     touchOK ? "OK"   : "FAIL",  touchOK ? TFT_GREEN : TFT_RED);    y += BIG_ROW;
+  _bs_check(tft, y, "3) SD CARD  eMMC",     sdOK    ? "OK"   : "NONE",  sdOK    ? TFT_GREEN : TFT_YELLOW); y += BIG_ROW;
+  _bs_check(tft, y, "4) AUDIO  TONE/DFP",  "OK",                        TFT_GREEN);   y += BIG_ROW;
+  _bs_check(tft, y, "5) I2C SLAVE  0x10",  "OK",                        TFT_GREEN);   y += BIG_ROW;
+  _bs_check(tft, y, "6) KSP LINK  SIMPIT",
+            demoMode ? "DEMO" : (standaloneMode ? "LOCAL" : "STANDBY"),
+            demoMode ? TFT_BLUE : (standaloneMode ? TFT_AQUA : TFT_YELLOW));          y += BIG_ROW + 4;
 
-  // - Check 2: OS Initialisation -
-  _bs_check(tft, y, "2) OS Initialization Complete...", TFT_WHITE, "OK!",   TFT_GREEN);  y += ROW_H;
-  _bs_check(tft, y, "     Application Copy...",         TFT_GREY,  "1 of 4", TFT_WHITE); y += ROW_H + 4;
-
-  // - Check 3: Memory -
-  _bs_check(tft, y, "3) Memory Check Complete...", TFT_WHITE, "OK!", TFT_GREEN); y += ROW_H + 4;
-
-  // - Check 4: Memory Scrub -
-  _bs_check(tft, y, "4) Memory Scrub Enabled...", TFT_WHITE, "OK!", TFT_GREEN); y += ROW_H + 4;
-
-  // - Check 5: BIST -
-  _bs_check(tft, y, "5) BIST Complete...", TFT_WHITE, "OK!", TFT_GREEN); y += ROW_H + 4;
-
-  // - Check 6: Display Systems -
-  _bs_check(tft, y, "6) Display Systems Online...",   TFT_WHITE, "OK!",   TFT_GREEN);  y += ROW_H;
-  _bs_check(tft, y, "     RA8876 1024x600 @ PAR...",  TFT_GREY,  "READY", TFT_WHITE);  y += ROW_H + 4;
-
-  // - Check 7: Touch Controller -
-  _bs_check(tft, y, "7) Touch Controller Online...", TFT_WHITE, "OK!",   TFT_GREEN); y += ROW_H;
-  _bs_check(tft, y, "     FT5316 Capacitive...",     TFT_GREY,  "READY", TFT_WHITE); y += ROW_H + 4;
-
-  // - Check 8: KSP Interface -
-  _bs_check(tft, y, "8) KSP Simpit Interface...", TFT_WHITE, "STANDBY", TFT_YELLOW); y += ROW_H + 12;
-
-  // - Summary -
   tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
-  y += 10;
-  _bs_print(tft, BS_BIG, COL1_X, y, "All Checks Complete...", TFT_WHITE);
-  y += 38;   // 32px font + 6px leading
+  y += 12;
+
+  // - Summary - (touch is the only hard failure; a missing SD card is non-fatal)
+  if (touchOK) _bs_print(tft, BS_BIG, COL1_X, y, "SYSTEMS NOMINAL", TFT_GREEN);
+  else         _bs_print(tft, BS_BIG, COL1_X, y, "TOUCH FAULT",     TFT_RED);
+  y += BIG_ROW;
   _bs_wait(BS_HOLD);
   _bs_print(tft, BS_BIG, COL1_X, y, "Initializing...", TFT_BLUE);
-  y += 44;   // 32px font + 12px gap before attribution
+  y += BIG_ROW + 6;
 
   // - Attribution -
   tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 8;
-  _bs_print(tft, BS_FONT, COL1_X, y,
-            "Jeb's Controller Works  //  C-2026", TFT_GREY);
+  _bs_print(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
 
-  _bs_wait(2000);
+  _bs_wait(700);   // was 2000 -- faster hand-off to the app
 }

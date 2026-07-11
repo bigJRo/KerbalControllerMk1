@@ -48,12 +48,13 @@ void setup() {
 
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
-  setupSD();
+  bool sdOK    = setupSD();     // real status surfaced on the boot screen
   setupTouch();
+  bool touchOK = probeTouch();  // FT5316 I2C ACK probe
   setupAudio();
   setupI2CSlave();
 
-  bootSimText(infoDisp);
+  bootSimText(infoDisp, sdOK, touchOK);
 
   if (standaloneTest) {
     // Test mode implies standalone -- no Simpit, no master handshake.
