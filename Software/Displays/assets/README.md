@@ -32,14 +32,32 @@ Other:
 ```
 KASA_Meatball_240x168.bmp     (SOI screen, top-left)
 StandbySplash_1024x600.bmp    (standby screen, full panel)
+VIcon_00.bmp .. VIcon_16.bmp  (vessel-type icons — see section below)
 ```
 
-The 240×168 body/meatball images are unchanged from rev-1 — copy your existing
-set across. Only `StandbySplash_1024x600.bmp` is new (rev-1 was 800×480).
+Note on size: the files named `*_240x168.bmp` are actually **236×164** pixels
+(the content is 4 px smaller than the name). This renders fine — `drawBMP` uses
+the real header dimensions — but the body globe sits ~2 px off-centre in its
+274×176 frame. Filenames are kept as-is because the sketches reference them
+verbatim. To centre perfectly, either re-export at exactly 240×168 or ask for the
+Main/SOI draw offsets to be adjusted to 236×164. (To fill the frame edge-to-edge
+instead, supply 274×176 art and ask for the draw calls to be updated.)
 
-Note: on the Main screen the globe *frame* is 274×176 and the 240×168 image is
-centered inside it. To fill the frame edge-to-edge, supply 274×176 body art and
-ask for the draw calls to be updated.
+## Also included (alternates / spares — not wired to code)
+
+These ship on the card for convenience but no sketch loads them yet:
+```
+CompanyLogo_1024x600.bmp   CompanyLogo_800x480.bmp
+KASA_Meatball_1024x600.bmp KASA_Meatball_800x480.bmp
+KASA_Retro_1024x600.bmp    KASA_Retro_800x480.bmp
+KASA_Worm_1024x600.bmp     KASA_Worm_800x480.bmp
+StandbySplash_800x480.bmp
+```
+The `*_1024x600` variants are candidates for the standby splash / a logo screen on
+the rev-2 panels; the `*_800x480` variants are the rev-1 (RA8875) sizes, kept for
+the still-unported InfoDisp / ResourceDisp. Say which KASA logo you want as the
+standby splash and I'll point `drawStandbySplash()` at it (or copy your pick to
+`StandbySplash_1024x600.bmp`).
 
 ## Vessel-type icons (72×72)
 
@@ -72,7 +90,7 @@ Dependency-free (no PIL) 24-bit BMP writer. Regenerate a verification test
 pattern any time to re-check the blit path:
 
 ```
-python3 ../tools/kcm_bmp.py testpattern KASA_Meatball_240x168.bmp 240 168
+python3 ../tools/kcm_bmp.py testpattern /tmp/pattern_240x168.bmp 240 168
 ```
 
 The test pattern is corner-coded (TL red, TR green, BL blue, BR yellow), a white
