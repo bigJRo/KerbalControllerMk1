@@ -22,7 +22,11 @@
    BS_FONT  -- fine-print metadata font (version / attribution)
    BS_BIG   -- title / check / summary font
 ****************************************************************************************/
-static const uint16_t BS_HOLD  = 110;  // was 300 -- snappier run-through
+// Tuning aid: when true, the sequence runs slowly and then FREEZES on the finished
+// screen until the operator taps, so the layout can be inspected at leisure. Set
+// false for the fast production auto-advance.
+static const bool     BS_TUNE_PAUSE = true;
+static const uint16_t BS_HOLD  = BS_TUNE_PAUSE ? 400 : 110;  // per-line reveal pause
 static const uint16_t BIG_ROW  = 40;   // 32px glyph + 8px leading
 static const uint16_t SM_ROW   = 20;   // 16px glyph + 4px leading
 static const uint16_t COL1_X   = 10;
@@ -39,6 +43,18 @@ static uint16_t _bs_col2 = 720;
 ****************************************************************************************/
 static void _bs_wait(uint16_t ms) {
   delay(ms);
+}
+
+
+/***************************************************************************************
+   INTERNAL HELPER -- freeze on the finished screen until a deliberate tap (tuning).
+   Releases any held/boot-phantom touch first, waits for a fresh press, then waits
+   for its release so the same tap isn't consumed as a gesture on the Main screen.
+****************************************************************************************/
+static void _bs_holdForTouch() {
+  while (isTouched())  { delay(10); }   // clear any lingering / boot-phantom touch
+  while (!isTouched()) { delay(10); }   // wait for a deliberate press
+  while (isTouched())  { delay(10); }   // wait for release
 }
 
 
@@ -129,5 +145,12 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   y += 8;
   _bs_print(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
 
-  _bs_wait(700);   // was 2000 -- faster hand-off to the app
+  if (BS_TUNE_PAUSE) {
+    // Tuning: add a "TAP TO CONTINUE" prompt and hold until touched.
+    y += SM_ROW + 6;
+    _bs_print(tft, BS_BIG, COL1_X, y, "TAP TO CONTINUE", TFT_YELLOW);
+    _bs_holdForTouch();
+  } else {
+    _bs_wait(700);   // production: fast hand-off to the app
+  }
 }
