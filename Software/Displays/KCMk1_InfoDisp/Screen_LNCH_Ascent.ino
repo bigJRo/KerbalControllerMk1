@@ -1494,14 +1494,39 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
 }
 
 // Called every frame: update the ladder markers, bars, dial, heading tape, atmo.
+// When fpsDiag is on, each sub-update is timed and the per-section averages are
+// printed ~every 120 frames so we can see where the update budget goes.
 static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
-    _lnchAsUpdateLadderMarkers(tft);
-    _lnchAsUpdateVVrtBar(tft);
-    _lnchAsUpdateVOrbBar(tft);
-    _lnchAsUpdateFpaDial(tft);
-    _lnchAsUpdateHdgTape(tft);
-    _lnchAsUpdateAtmoGauge(tft);
-    _lnchAsUpdateAoAGauge(tft);
+    if (!fpsDiag) {
+        _lnchAsUpdateLadderMarkers(tft);
+        _lnchAsUpdateVVrtBar(tft);
+        _lnchAsUpdateVOrbBar(tft);
+        _lnchAsUpdateFpaDial(tft);
+        _lnchAsUpdateHdgTape(tft);
+        _lnchAsUpdateAtmoGauge(tft);
+        _lnchAsUpdateAoAGauge(tft);
+        return;
+    }
+    static uint32_t sLad=0, sVv=0, sVo=0, sFpa=0, sHdg=0, sAtmo=0, sAoa=0;
+    static uint16_t n=0;
+    uint32_t t;
+    t=micros(); _lnchAsUpdateLadderMarkers(tft); sLad  += micros()-t;
+    t=micros(); _lnchAsUpdateVVrtBar(tft);       sVv   += micros()-t;
+    t=micros(); _lnchAsUpdateVOrbBar(tft);       sVo   += micros()-t;
+    t=micros(); _lnchAsUpdateFpaDial(tft);       sFpa  += micros()-t;
+    t=micros(); _lnchAsUpdateHdgTape(tft);       sHdg  += micros()-t;
+    t=micros(); _lnchAsUpdateAtmoGauge(tft);     sAtmo += micros()-t;
+    t=micros(); _lnchAsUpdateAoAGauge(tft);      sAoa  += micros()-t;
+    if (++n >= 120) {
+        Serial.print(F("  LNCH-left us/frame: ladder ")); Serial.print(sLad/n);
+        Serial.print(F(" vvrt ")); Serial.print(sVv/n);
+        Serial.print(F(" vorb ")); Serial.print(sVo/n);
+        Serial.print(F(" fpa "));  Serial.print(sFpa/n);
+        Serial.print(F(" hdg "));  Serial.print(sHdg/n);
+        Serial.print(F(" atmo ")); Serial.print(sAtmo/n);
+        Serial.print(F(" aoa "));  Serial.println(sAoa/n);
+        sLad=sVv=sVo=sFpa=sHdg=sAtmo=sAoa=0; n=0;
+    }
 }
 
 
@@ -1865,6 +1890,7 @@ static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
 }
 
 static void _lnchAsDrawRightPanelValues(KCM_TFT &tft) {
+    uint32_t t = fpsDiag ? micros() : 0;
     _lnchAsUpdateAlt(tft);
     _lnchAsUpdateApA(tft);
     _lnchAsUpdateTimeToAp(tft);
@@ -1873,5 +1899,10 @@ static void _lnchAsDrawRightPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateThrottle(tft);
     _lnchAsUpdateTBurn(tft);
     _lnchAsUpdateDVStg(tft);
+    if (fpsDiag) {
+        static uint32_t sum=0; static uint16_t n=0;
+        sum += micros()-t;
+        if (++n >= 120) { Serial.print(F("  LNCH-right us/frame: ")); Serial.println(sum/n); sum=0; n=0; }
+    }
 }
 
