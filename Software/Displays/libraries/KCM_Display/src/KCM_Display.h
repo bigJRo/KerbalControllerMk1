@@ -153,9 +153,17 @@ public:
   }
 
   // Redirect all subsequent drawing to `addr`, full-screen canvas + active window.
+  //
+  // NOTE: the RA8876 driver's writeRect()/text-blit path writes to its own public
+  // `currentPage` base address (via the BTE MPU-write), NOT to canvasImageStartAddress
+  // — that page is normally maintained only by selectScreen(), which we bypass. So we
+  // must point currentPage at the same page here, or writeRect-based text would land on
+  // a stale page while fillRect/drawLine geometry goes to `addr`, desyncing the two
+  // buffers (symptom: text flickers every frame while geometry is stable).
   void canvasTo(KCM_TFT &tft, uint32_t addr) {
     tft.canvasImageStartAddress(addr);
     tft.canvasImageWidth(KCM_SCREEN_W);
+    tft.currentPage = addr;   // keep writeRect()/text blits on the same page as geometry
     tft.activeWindowXY(0, 0);
     tft.activeWindowWH(KCM_SCREEN_W, KCM_SCREEN_H);
   }
