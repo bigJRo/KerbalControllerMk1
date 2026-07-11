@@ -1,15 +1,15 @@
 /***************************************************************************************
    Screen_LNDG_Reentry.ino -- Re-entry mode (one of two modes of the LNDG screen).
 
-   Active when _lndgReentryMode is TRUE. Pilot toggles via tap (handled in
-   TouchEvents.ino). Text-only readout-board layout, similar in style to the
-   PRE-LAUNCH board.
+   rev-2: RE-ENTRY is its own sidebar screen (screen_LNDGRE). Text-only
+   readout-board layout, similar in style to the PRE-LAUNCH board.
 
-   Phase membership (LNDG screen has two modes):
-     - POWERED DESCENT (Screen_LNDG_Powered.ino) — default
-     - RE-ENTRY (this file)                       — pilot toggle
+   Rendered when _lndgReentryMode is TRUE, which drawStaticScreen()/updateScreen()
+   set whenever screen_LNDGRE is active (POWERED DESCENT, screen_LNDG, sets it
+   false). The row caches and self-redraw calls in this file therefore use
+   screen_LNDGRE so drawStaticScreen(screen_LNDGRE)'s cache invalidation matches.
 
-   Top-level dispatcher Screen_LNDG.ino selects which to draw based on
+   Top-level dispatcher Screen_LNDG.ino selects powered vs re-entry based on
    _lndgReentryMode.
 
    Public-to-the-sketch entry points (called by the LNDG dispatcher):
@@ -90,7 +90,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
 
     auto lndgVal = [&](uint8_t row, const char *label, const String &val,
                        uint16_t fgc, uint16_t bgc) {
-        drawValue(tft, 6, row, AX, AW, label, val, fgc, bgc, F, NR);
+        drawValue(tft, screen_LNDGRE, row, AX, AW, label, val, fgc, bgc, F, NR);
     };
 
     bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
@@ -103,13 +103,13 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     bool aboveAtmo    = !state.inAtmo;
     bool wantTPe      = (aboveAtmo && peaBelowAtmo);
     if (wantTPe != _lndgReentryRow0TPe) {
-        _lndgReentryRow0TPe = wantTPe; rowCache[6][0].value = "\x01";
-        switchToScreen(screen_LNDG); return;
+        _lndgReentryRow0TPe = wantTPe; rowCache[screen_LNDGRE][0].value = "\x01";
+        switchToScreen(screen_LNDGRE); return;
     }
     bool wantSL = aboveAtmo;
     if (wantSL != _lndgReentryRow1SL) {
-        _lndgReentryRow1SL = wantSL; rowCache[6][1].value = "\x01";
-        switchToScreen(screen_LNDG); return;
+        _lndgReentryRow1SL = wantSL; rowCache[screen_LNDGRE][1].value = "\x01";
+        switchToScreen(screen_LNDGRE); return;
     }
 
     if (wantTPe) {
@@ -148,8 +148,8 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     {
         bool wantPeA = (state.radarAlt > 20000.0f || !state.inAtmo);
         if (wantPeA != _lndgReentryRow3PeA) {
-            _lndgReentryRow3PeA = wantPeA; rowCache[6][3].value = "\x01";
-            switchToScreen(screen_LNDG); return;
+            _lndgReentryRow3PeA = wantPeA; rowCache[screen_LNDGRE][3].value = "\x01";
+            switchToScreen(screen_LNDGRE); return;
         }
         if (wantPeA) {
             if      (state.periapsis < 0.0f)     { fg = TFT_WHITE;     bg = TFT_DARK_GREEN; }
@@ -174,16 +174,16 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         snprintf(buf, sizeof(buf), "%.2f", m);
         bool transonic = (m >= 0.85f && m <= 1.2f);
         { String ms=buf; uint16_t mfg = transonic ? TFT_YELLOW : TFT_DARK_GREEN;
-          RowCache &mc=rowCache[6][9];
+          RowCache &mc=rowCache[screen_LNDGRE][9];
           if (mc.value!=ms||mc.fg!=mfg||mc.bg!=TFT_BLACK) {
-              printValue(tft,F,xL,rowYFor(5,NR),wL,rowHFor(NR),"Mach:",ms,mfg,TFT_BLACK,COL_BACK,printState[6][9]);
+              printValue(tft,F,xL,rowYFor(5,NR),wL,rowHFor(NR),"Mach:",ms,mfg,TFT_BLACK,COL_BACK,printState[screen_LNDGRE][9]);
               mc.value=ms;mc.fg=mfg;mc.bg=TFT_BLACK; } }
         float g=state.gForce; snprintf(buf,sizeof(buf),"%.2f",g);
         fg=(g>G_ALARM_POS||g<G_ALARM_NEG)?TFT_WHITE:(g>G_WARN_POS||g<G_WARN_NEG)?TFT_YELLOW:TFT_DARK_GREEN;
         bg=(g>G_ALARM_POS||g<G_ALARM_NEG)?TFT_RED:TFT_BLACK;
-        { String gs=buf; RowCache &gc=rowCache[6][10];
+        { String gs=buf; RowCache &gc=rowCache[screen_LNDGRE][10];
           if (gc.value!=gs||gc.fg!=fg||gc.bg!=bg) {
-              printValue(tft,F,xR,rowYFor(5,NR),wR,rowHFor(NR),"G:",gs,fg,bg,COL_BACK,printState[6][10]);
+              printValue(tft,F,xR,rowYFor(5,NR),wR,rowHFor(NR),"G:",gs,fg,bg,COL_BACK,printState[screen_LNDGRE][10]);
               gc.value=gs;gc.fg=fg;gc.bg=bg; } }
     }
 
@@ -212,12 +212,12 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         uint16_t y6=rowYFor(6,NR),h6=rowHFor(NR);
         const char*dv;uint16_t dfg,dbg;
         chuteState(_drogueDeployed,_drogueCut,_drogueArmedSafe,LNDG_DROGUE_SAFE_MS,LNDG_DROGUE_RISKY_MS,LNDG_DROGUE_FULL_ALT,dv,dfg,dbg);
-        {String ds=dv;RowCache&dc=rowCache[6][6];
-         if(dc.value!=ds||dc.fg!=dfg||dc.bg!=dbg){printValue(tft,F,xL,y6,wL,h6,"Drogue:",ds,dfg,dbg,COL_BACK,printState[6][6]);dc.value=ds;dc.fg=dfg;dc.bg=dbg;}}
+        {String ds=dv;RowCache&dc=rowCache[screen_LNDGRE][6];
+         if(dc.value!=ds||dc.fg!=dfg||dc.bg!=dbg){printValue(tft,F,xL,y6,wL,h6,"Drogue:",ds,dfg,dbg,COL_BACK,printState[screen_LNDGRE][6]);dc.value=ds;dc.fg=dfg;dc.bg=dbg;}}
         const char*mv;uint16_t mfg,mbg;
         chuteState(_mainDeployed,_mainCut,_mainArmedSafe,LNDG_MAIN_SAFE_MS,LNDG_MAIN_RISKY_MS,LNDG_MAIN_FULL_ALT,mv,mfg,mbg);
-        {String ms=mv;RowCache&mc=rowCache[6][11];
-         if(mc.value!=ms||mc.fg!=mfg||mc.bg!=mbg){printValue(tft,F,xR,y6,wR,h6,"Main:",ms,mfg,mbg,COL_BACK,printState[6][11]);mc.value=ms;mc.fg=mfg;mc.bg=mbg;}}
+        {String ms=mv;RowCache&mc=rowCache[screen_LNDGRE][11];
+         if(mc.value!=ms||mc.fg!=mfg||mc.bg!=mbg){printValue(tft,F,xR,y6,wR,h6,"Main:",ms,mfg,mbg,COL_BACK,printState[screen_LNDGRE][11]);mc.value=ms;mc.fg=mfg;mc.bg=mbg;}}
     }
     {
         uint16_t y  = rowYFor(7,NR);
@@ -231,7 +231,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         {
             bool gearDown = state.gear_on;
             String gv = gearDown ? "DOWN" : "UP";
-            RowCache &gc = rowCache[6][13];
+            RowCache &gc = rowCache[screen_LNDGRE][13];
             if (gc.value != gv) {
                 ButtonLabel btn = gearDown
                     ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
@@ -264,7 +264,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
                     default: ss = "SAS OFF";    sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK; break;
                 }
             }
-            RowCache &sc = rowCache[6][14];
+            RowCache &sc = rowCache[screen_LNDGRE][14];
             String ssv = ss;
             if (sc.value != ssv || sc.fg != sfg || sc.bg != sbg) {
                 ButtonLabel btn = { ss, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
