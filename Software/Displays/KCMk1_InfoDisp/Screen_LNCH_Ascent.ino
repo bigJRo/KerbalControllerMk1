@@ -185,9 +185,11 @@ static const float   LNCH_AS_HDG_VEL_MIN_MS = 20.0f;   // hide velocity marker b
 // the current stage's ΔV is spent it lights red with white text — "time to stage".
 // Centered on the dial/HDG column, vertically midway between the FPA value box
 // bottom and the HDG name row.
-static const int16_t LNCH_AS_STAGE_W = 96;
-static const int16_t LNCH_AS_STAGE_H = 36;
+static const int16_t LNCH_AS_STAGE_W = 134;   // 40% wider than the original 96
+static const int16_t LNCH_AS_STAGE_H = 43;    // 20% taller than the original 36
 static const int16_t LNCH_AS_STAGE_X = LNCH_AS_HDG_CX - LNCH_AS_STAGE_W / 2;
+// Vertically centered in the whitespace between the FPA value box bottom and the
+// HDG name row top (recomputes if either moves or the button height changes).
 static const int16_t LNCH_AS_STAGE_Y = (LNCH_AS_FPA_VAL_Y + LNCH_AS_FPA_VAL_H + LNCH_AS_HDG_NAME_Y) / 2
                                        - LNCH_AS_STAGE_H / 2;
 static const float   LNCH_AS_STAGE_EMPTY_MS = 0.5f;    // stage ΔV at/below this reads as spent
@@ -1419,7 +1421,7 @@ static void _lnchAsUpdateStageButton(KCM_TFT &tft) {
     };
     drawButton(tft, LNCH_AS_STAGE_X, LNCH_AS_STAGE_Y,
                LNCH_AS_STAGE_W, LNCH_AS_STAGE_H,
-               STAGE_LBL, &Roboto_Black_20, active != 0);
+               STAGE_LBL, &Roboto_Black_28, active != 0);
     _lnchAsPrevStageActive = active;
 }
 
