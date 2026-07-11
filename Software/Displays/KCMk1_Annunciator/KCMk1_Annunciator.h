@@ -376,6 +376,7 @@ extern const uint16_t ALARM_PROP_LOW;
 extern const uint16_t ALARM_LIFE_SUPPORT;
 extern uint16_t        alarmActiveMask;
 void updateAlarmMask(uint16_t condBit, bool on);
+void syncMasterAlarmAudio();
 
 // PrintState instances for flicker-free printDisp/printValue rendering (KDC v2 API).
 // One per logical display slot that uses printDisp() or printValue().

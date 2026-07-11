@@ -97,3 +97,26 @@ void updateAlarmMask(uint16_t condBit, bool on) {
     }
   }
 }
+
+
+/***************************************************************************************
+   SYNC MASTER ALARM AUDIO WITH CURRENT C&W STATE
+   Reconciles the alarm-condition mask against the C&W bits that are active RIGHT NOW,
+   rather than waiting for a bit to transition. Call on entry to the main screen so an
+   alarm condition that is already active (e.g. after a screen change, or the forced
+   lamp-test state) sounds immediately instead of staying silent until the next
+   transition. Each condition is pushed through updateAlarmMask(), so the silence latch
+   and start/stop logic behave exactly as they do for a live transition.
+****************************************************************************************/
+void syncMasterAlarmAudio() {
+  uint32_t cw = state.cautionWarningState;
+  updateAlarmMask(ALARM_LOW_DV,       bitRead(cw, CW_LOW_DV));
+  updateAlarmMask(ALARM_HIGH_G,       bitRead(cw, CW_HIGH_G));
+  updateAlarmMask(ALARM_HIGH_TEMP,    bitRead(cw, CW_HIGH_TEMP));
+  updateAlarmMask(ALARM_BUS_VOLTAGE,  bitRead(cw, CW_BUS_VOLTAGE));
+  updateAlarmMask(ALARM_ABORT,        bitRead(cw, CW_ABORT));
+  updateAlarmMask(ALARM_GROUND_PROX,  bitRead(cw, CW_GROUND_PROX));
+  updateAlarmMask(ALARM_PE_LOW,       bitRead(cw, CW_PE_LOW));
+  updateAlarmMask(ALARM_PROP_LOW,     bitRead(cw, CW_PROP_LOW));
+  updateAlarmMask(ALARM_LIFE_SUPPORT, bitRead(cw, CW_LIFE_SUPPORT));
+}

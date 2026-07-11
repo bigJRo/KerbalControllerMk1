@@ -217,7 +217,7 @@ static const ButtonLabel modeGrid[MF_COUNT] = {
   { "AUDIO",      TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_AUDIO
   { "THRTL ENA",  TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_THRTL_ENA
   { "TRIM",       TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_AQUA,       TFT_GREY, TFT_GREY }, // MF_TRIM
-  { "AUTO PILOT", TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_AUTOPILOT (spaced so it wraps at _16)
+  { "AUTOPILOT",  TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }, // MF_AUTOPILOT
   // Row 1
   { "DEBUG",      TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_PURPLE,     TFT_GREY, TFT_GREY }, // MF_DEBUG
   { "SWITCH ERR", TFT_DARK_GREY, TFT_WHITE,     TFT_OFF_BLACK, TFT_RED,        TFT_GREY, TFT_GREY }, // MF_SWITCH_ERR
@@ -394,7 +394,7 @@ void updateModeGrid(KCM_TFT &tft) {
     int16_t x   = MODE_X0 + col * MODE_BTN_W;
     int16_t y   = MODE_Y0 + row * MODE_BTN_H;
     drawButton(tft, x, y, MODE_BTN_W, MODE_BTN_H,
-               modeGrid[i], &Roboto_Black_16, bitRead(state.modeFlags, i));
+               modeGrid[i], &Roboto_Black_12, bitRead(state.modeFlags, i));
   }
   prevModeFlags = state.modeFlags;
 }
