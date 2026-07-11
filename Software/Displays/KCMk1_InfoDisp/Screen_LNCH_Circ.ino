@@ -298,9 +298,9 @@ static void _lnchOrResetState() {
 
 // ── Orbital (circularization) phase — right panel ─────────────────────────────────────
 //
-// Mirrors the ascent right panel structure: 8 rows, Roboto_Black_24, label on
-// the left and value right-aligned, dividers between rows. Uses a separate
-// row-label set and different change-detection state.
+// Mirrors the ascent right panel exactly (LNCH_AS2_* geometry/fonts): 8 rows,
+// Black_28 labels / Black_36 values, label on the left and value right-aligned,
+// dividers between rows. Uses a separate row-label set and change-detection state.
 //
 // Row order / labels:
 //   0: Alt.SL  (same as ascent)
@@ -317,22 +317,25 @@ static const char *_lnchOrLabels[8] = {
 };
 
 // Draw static chrome for the orbital-phase right panel. Matches the ascent
-// chrome style exactly — same fonts (Black_20 labels / Black_24 values via
-// update functions), same 2-px dividers, same RPANEL geometry — just with
-// orbital row labels.
+// chrome exactly — same LNCH_AS2_* geometry (360 px @ x=580, 8×67 px rows),
+// same fonts (Black_28 labels / Black_36 values), same 2-px dividers — just
+// with orbital row labels.
 static void _lnchOrDrawRightPanelChrome(KCM_TFT &tft) {
+    // Right panel geometry/fonts match the ascent phase's readout exactly
+    // (LNCH_AS2_* — 360 px wide at x=580, 8 rows of 67 px, Black_28 labels /
+    // Black_36 values), so the two LNCH phases present an identical text region.
     // Vertical divider in the 2-px gap before the right panel
-    tft.drawLine(LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y,
-                 LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
+    tft.drawLine(LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y,
+                 LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
-    tft.drawLine(LNCH_AS_RPANEL_X - 1, LNCH_AS_PANEL_Y,
-                 LNCH_AS_RPANEL_X - 1, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
+    tft.drawLine(LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y,
+                 LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
 
     for (uint8_t i = 0; i < 8; i++) {
-        printDispChrome(tft, &Roboto_Black_20,
-                        LNCH_AS_RPANEL_X, _lnchAsRowY(i),
-                        LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
+        printDispChrome(tft, &Roboto_Black_28,
+                        LNCH_AS2_RPANEL_X, _lnchAs2RowY(i),
+                        LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
                         _lnchOrLabels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
     }
 
@@ -349,12 +352,12 @@ static void _lnchOrDrawRightPanelChrome(KCM_TFT &tft) {
     // clear regions so bg-colour changes (alarms) don't nibble them.
     static const uint8_t divRows[] = { 2, 4, 5, 6 };
     for (uint8_t i = 0; i < sizeof(divRows); i++) {
-        int16_t dy = _lnchAsRowY(divRows[i]);
-        tft.drawLine(LNCH_AS_RPANEL_X, dy - 1,
-                     LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy - 1,
+        int16_t dy = _lnchAs2RowY(divRows[i]);
+        tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
+                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
                      TFT_GREY);
-        tft.drawLine(LNCH_AS_RPANEL_X, dy,
-                     LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy,
+        tft.drawLine(LNCH_AS2_RPANEL_X, dy,
+                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
                      TFT_GREY);
     }
 }
@@ -363,9 +366,9 @@ static void _lnchOrDrawRightPanelChrome(KCM_TFT &tft) {
 // drawn by chrome; value is right-aligned in the cell.
 static void _lnchOrDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
                                  uint16_t fg, uint16_t bg) {
-    printValue(tft, &Roboto_Black_24,
-               LNCH_AS_RPANEL_X, _lnchAsRowY(row),
-               LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
+    printValue(tft, &Roboto_Black_36,
+               LNCH_AS2_RPANEL_X, _lnchAs2RowY(row),
+               LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
                _lnchOrLabels[row], val,
                fg, bg, TFT_BLACK,
                _lnchOrPs[row]);
