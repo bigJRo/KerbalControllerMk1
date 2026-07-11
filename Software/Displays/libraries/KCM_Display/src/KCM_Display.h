@@ -87,69 +87,80 @@ inline void kcmDisplayBegin(KCM_TFT &tft, uint16_t backColor,
 ****************************************************************************************/
 static const uint32_t KCM_FB_PAGE_BYTES = (uint32_t)KCM_SCREEN_W * (uint32_t)KCM_SCREEN_H * 2UL;
 static const uint32_t KCM_FB_PAGE0_ADDR = 0UL;
-static const uint32_t KCM_FB_PAGE1_ADDR = KCM_FB_PAGE_BYTES;   // 1,228,800 = 0x12C000
+static const uint32_t KCM_FB_PAGE1_ADDR = KCM_FB_PAGE_BYTES;         // 1,228,800 = 0x12C000
+static const uint32_t KCM_FB_PAGE2_ADDR = KCM_FB_PAGE_BYTES * 2UL;   // 2,457,600 = 0x258000
 
+// TRIPLE-BUFFERED. Three framebuffer pages (3.5 MB of the 16 MB SDRAM). Each frame
+// draws to the page that was displayed TWO flips ago — which, because our frame time
+// (~30+ ms: BTE copy + redraw) is well over one panel refresh period, has certainly
+// finished scanning out. That lets us drop the fixed "wait one refresh period after a
+// flip" spin that a two-page flip needs (to avoid drawing the page still being scanned):
+// with a third page there is always an idle page ready, so no wait is required and the
+// achievable rate is bounded by the actual redraw cost, not the refresh period.
+//
+// Kept the class name KCMDoubleBuffer and the begin/beginFrame/beginFrameCopy/flip API
+// unchanged so callers don't change.
 class KCMDoubleBuffer {
 public:
-  // Call once, after kcmDisplayBegin(). Scans out page 0 and leaves the draw canvas
-  // on page 0 too, so any pre-flip static setup lands on the visible page.
+  // Call once, after kcmDisplayBegin(). Displays page 0 and draws to it too, so any
+  // pre-flip static setup (boot text) lands on the visible page.
   void begin(KCM_TFT &tft) {
-    _front = KCM_FB_PAGE0_ADDR;
-    _back  = KCM_FB_PAGE1_ADDR;
+    _page[0] = KCM_FB_PAGE0_ADDR;
+    _page[1] = KCM_FB_PAGE1_ADDR;
+    _page[2] = KCM_FB_PAGE2_ADDR;
+    _dispIdx = 0;
+    _drawIdx = 0;
     tft.displayImageWidth(KCM_SCREEN_W);
     tft.displayWindowStartXY(0, 0);
-    tft.displayImageStartAddress(_front);
-    canvasTo(tft, _front);
+    tft.displayImageStartAddress(_page[_dispIdx]);
+    canvasTo(tft, _page[_dispIdx]);
   }
 
-  // Point the draw canvas at the hidden (back) page, then draw the frame and flip().
-  // The RA8876 latches the scan-out base at the frame boundary, so after a flip the
-  // just-freed page is still on screen until the next boundary. Wait out one frame
-  // period since the last flip before drawing that page, or we'd be drawing onto the
-  // live image (the cause of the continuous flicker). If the app naturally spends a
-  // frame period between flips this never stalls.
+  // The next draw page: the one displayed two flips ago (idle). Never the currently
+  // displayed page and never the one from the previous flip.
+  uint8_t nextDrawIdx() const { return (uint8_t)((_dispIdx + 1) % 3); }
+
+  // Full-paint frame begin (used on screen entry): aim the canvas at an idle page.
+  // The caller then paints the entire screen (fillScreen + chrome + values) and flips.
+  // No copy — the whole page is overwritten. No spin — the page is already idle.
   void beginFrame(KCM_TFT &tft) {
-    while ((uint32_t)(micros() - _lastFlipUs) < KCM_FRAME_PERIOD_US) { /* spin */ }
-    canvasTo(tft, _back);
+    _drawIdx = nextDrawIdx();
+    canvasTo(tft, _page[_drawIdx]);
   }
 
-  // Incremental-frame begin: duplicate the currently-displayed (front) page into
-  // the hidden (back) page with a hardware BTE block copy, then aim the canvas at
-  // the back page. The back page then holds an EXACT copy of the live frame, so an
-  // incremental redraw (change-detected against the last presented frame, plus its
-  // erase/repair steps) lands on a correct base and the flip presents a complete,
-  // tear-free frame — without re-rasterizing the unchanged chrome/text every frame.
-  //
-  // Same frame-boundary caveat as beginFrame(): wait out one frame period since the
-  // last flip so the BTE isn't writing the page that's still scanning out.
-  // lastCopyUs records the measured BTE copy time (spin excluded) for diagnostics.
+  // Incremental frame begin: BTE-copy the currently displayed page into an idle page,
+  // then aim the canvas there. That page then holds an exact copy of the live frame, so
+  // a change-detected incremental redraw (plus its erase/repair) lands on a correct base
+  // and the flip presents a complete, tear-free frame — without re-rasterizing unchanged
+  // chrome/text. No spin: the destination page finished scanning out two flips ago.
+  // lastCopyUs records the measured BTE copy time for diagnostics.
   void beginFrameCopy(KCM_TFT &tft) {
-    while ((uint32_t)(micros() - _lastFlipUs) < KCM_FRAME_PERIOD_US) { /* spin */ }
+    _drawIdx = nextDrawIdx();
     uint32_t c0 = micros();
-    tft.bteMemoryCopy(_front, KCM_SCREEN_W, 0, 0,
-                      _back,  KCM_SCREEN_W, 0, 0,
+    tft.bteMemoryCopy(_page[_dispIdx], KCM_SCREEN_W, 0, 0,
+                      _page[_drawIdx], KCM_SCREEN_W, 0, 0,
                       KCM_SCREEN_W, KCM_SCREEN_H);
     tft.check2dBusy();          // BTE runs on the 2D engine — wait for the copy
     lastCopyUs = micros() - c0;
-    canvasTo(tft, _back);
+    canvasTo(tft, _page[_drawIdx]);
   }
 
-  // Block until all drawing queued for the back page has actually finished. The
-  // RA8876 draw ops (fillRect/drawSquareFill, writeRect) are ASYNC and return
-  // before the engine completes, so without this a flip would present a
-  // half-rendered page ("incomplete draws"). Call is also safe to use directly.
+  // Block until all drawing queued for the draw page has actually finished. The RA8876
+  // draw ops (fillRect/drawSquareFill, writeRect) are ASYNC and return before the engine
+  // completes, so without this a flip would present a half-rendered page.
   void waitDrawComplete(KCM_TFT &tft) {
     tft.checkWriteFifoEmpty();   // memory-write FIFO drained (pixel blits done)
     tft.check2dBusy();           // 2D geometry engine idle (fills/lines done)
   }
 
-  // Present the back page: it becomes the visible front, and the old front becomes
-  // the new back. Waits for drawing to complete first so a complete frame is shown.
+  // Present the freshly-drawn page. Waits for drawing to complete first so a complete
+  // frame is shown. The RA8876 latches the new scan-out base at the next vsync (tear-
+  // free); we don't wait for that latch because the next frame draws a different (idle)
+  // page.
   void flip(KCM_TFT &tft) {
     waitDrawComplete(tft);
-    tft.displayImageStartAddress(_back);
-    _lastFlipUs = micros();
-    uint32_t tmp = _front; _front = _back; _back = tmp;
+    tft.displayImageStartAddress(_page[_drawIdx]);
+    _dispIdx = _drawIdx;
   }
 
   // Redirect all subsequent drawing to `addr`, full-screen canvas + active window.
@@ -158,8 +169,8 @@ public:
   // `currentPage` base address (via the BTE MPU-write), NOT to canvasImageStartAddress
   // — that page is normally maintained only by selectScreen(), which we bypass. So we
   // must point currentPage at the same page here, or writeRect-based text would land on
-  // a stale page while fillRect/drawLine geometry goes to `addr`, desyncing the two
-  // buffers (symptom: text flickers every frame while geometry is stable).
+  // a stale page while fillRect/drawLine geometry goes to `addr`, desyncing the buffers
+  // (symptom: text flickers every frame while geometry is stable).
   void canvasTo(KCM_TFT &tft, uint32_t addr) {
     tft.canvasImageStartAddress(addr);
     tft.canvasImageWidth(KCM_SCREEN_W);
@@ -168,15 +179,15 @@ public:
     tft.activeWindowWH(KCM_SCREEN_W, KCM_SCREEN_H);
   }
 
-  uint32_t frontAddr() const { return _front; }
-  uint32_t backAddr()  const { return _back;  }
+  uint32_t frontAddr() const { return _page[_dispIdx]; }
+  uint32_t backAddr()  const { return _page[_drawIdx]; }
 
   uint32_t lastCopyUs = 0;   // µs spent in the last beginFrameCopy() BTE copy (diagnostic)
 
 private:
-  uint32_t _front      = KCM_FB_PAGE0_ADDR;
-  uint32_t _back       = KCM_FB_PAGE1_ADDR;
-  uint32_t _lastFlipUs = 0;
+  uint32_t _page[3] = { KCM_FB_PAGE0_ADDR, KCM_FB_PAGE1_ADDR, KCM_FB_PAGE2_ADDR };
+  uint8_t  _dispIdx = 0;    // page currently latched for scan-out
+  uint8_t  _drawIdx = 0;    // page being drawn this frame
 };
 
 #endif // KCM_DISPLAY_H
