@@ -72,6 +72,13 @@
 // KCM_TFT_BL. Lowered from full-on to save power / reduce heat.
 #define KCM_BL_BRIGHTNESS_PCT  70
 
+// One display frame period in microseconds, used by the double-buffer layer to let
+// a page flip take effect (the RA8876 latches the scan-out base at the frame
+// boundary) before the just-freed page is drawn again. Panel runs ~58Hz
+// (PCLK/(Htotal*Vtotal) ~= 50e6/(1348*635)); 20000us (>=50Hz) gives safe margin.
+// Raise if any flicker remains; lower toward ~17000 to allow a higher flip rate.
+#define KCM_FRAME_PERIOD_US  20000
+
 // FlexIO 8080 bus speed (MHz). Must be one of the driver's allowed steps:
 // 2,4,8,12,20,24,30,40,60,120. Start conservative and raise once stable.
 #define KCM_TFT_BUS_SPEED_MHZ  20

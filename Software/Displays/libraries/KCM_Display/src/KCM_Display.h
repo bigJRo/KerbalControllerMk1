@@ -102,8 +102,16 @@ public:
     canvasTo(tft, _front);
   }
 
-  // Point the draw canvas at the hidden (back) page. Draw the frame, then flip().
-  void beginFrame(KCM_TFT &tft) { canvasTo(tft, _back); }
+  // Point the draw canvas at the hidden (back) page, then draw the frame and flip().
+  // The RA8876 latches the scan-out base at the frame boundary, so after a flip the
+  // just-freed page is still on screen until the next boundary. Wait out one frame
+  // period since the last flip before drawing that page, or we'd be drawing onto the
+  // live image (the cause of the continuous flicker). If the app naturally spends a
+  // frame period between flips this never stalls.
+  void beginFrame(KCM_TFT &tft) {
+    while ((uint32_t)(micros() - _lastFlipUs) < KCM_FRAME_PERIOD_US) { /* spin */ }
+    canvasTo(tft, _back);
+  }
 
   // Block until all drawing queued for the back page has actually finished. The
   // RA8876 draw ops (fillRect/drawSquareFill, writeRect) are ASYNC and return
@@ -119,6 +127,7 @@ public:
   void flip(KCM_TFT &tft) {
     waitDrawComplete(tft);
     tft.displayImageStartAddress(_back);
+    _lastFlipUs = micros();
     uint32_t tmp = _front; _front = _back; _back = tmp;
   }
 
@@ -134,8 +143,9 @@ public:
   uint32_t backAddr()  const { return _back;  }
 
 private:
-  uint32_t _front = KCM_FB_PAGE0_ADDR;
-  uint32_t _back  = KCM_FB_PAGE1_ADDR;
+  uint32_t _front      = KCM_FB_PAGE0_ADDR;
+  uint32_t _back       = KCM_FB_PAGE1_ADDR;
+  uint32_t _lastFlipUs = 0;
 };
 
 #endif // KCM_DISPLAY_H
