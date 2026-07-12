@@ -39,7 +39,7 @@ static const uint16_t LNDG_TEXT_X    = 580;              // right text panel lef
 static const uint16_t LNDG_DIV_X     = LNDG_TEXT_X - 2;  // 578 — graphical/text divider x
 
 static const uint16_t LNDG_TAPE_X    = 40;
-static const uint16_t LNDG_TAPE_W    = 30;
+static const uint16_t LNDG_TAPE_W    = 44;   // matches the ascent-screen vertical bars
 static const uint16_t LNDG_TAPE_Y    = TITLE_TOP + 8;
 static const uint16_t LNDG_TAPE_H    = SCREEN_H - LNDG_TAPE_Y;
 static const float    LNDG_TAPE_PPM  = (float)LNDG_TAPE_H / 500.0f;
@@ -47,9 +47,10 @@ static const float    LNDG_TAPE_PPM  = (float)LNDG_TAPE_H / 500.0f;
 // X-Pointer (surface-drift cross-pointer) — the featured instrument. Left/bottom
 // margins carry the FWD/AFT and LATERAL axis ticks + labels, so it is inset from the
 // altitude tape and leaves room below for the axis row and the attitude bullseye.
-static const uint16_t LNDG_XP_X     = 128;
+static const uint16_t LNDG_XP_X     = 136;
 static const uint16_t LNDG_XP_Y     = TITLE_TOP + 26;               // 88 — below the SURF DRIFT title
-static const uint16_t LNDG_XP_SIDE  = 360;                          // 2.9x the old 230 (now the centrepiece)
+static const uint16_t LNDG_XP_SIDE  = 350;                          // centrepiece; trimmed slightly so the
+                                                                   //   wider 44px flanking bars clear it
 static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 308
 static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 268
 static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
@@ -321,8 +322,8 @@ static void _lndgDrawAtt(KCM_TFT &tft) {
 ****************************************************************************************/
 // Full-height descent-rate bar on the far right of the graphics zone, mirroring the
 // altitude tape on the left and flanking the X-Pointer.
-static const uint16_t LNDG_VV_W    = 30;
-static const uint16_t LNDG_VV_X    = 544;                         // bar x=[544,574]; divider at 578
+static const uint16_t LNDG_VV_W    = 44;                          // matches the ascent-screen vertical bars
+static const uint16_t LNDG_VV_X    = 530;                         // bar x=[530,574]; divider at 578
 static const uint16_t LNDG_VV_Y    = TITLE_TOP + 8;              // 70 — top, matching the altitude tape
 static const uint16_t LNDG_VV_H    = SCREEN_H - LNDG_VV_Y - 3;   // bottom border on row 596 (clear of overscan)
 static const float    LNDG_VV_MAX  = 15.0f;
