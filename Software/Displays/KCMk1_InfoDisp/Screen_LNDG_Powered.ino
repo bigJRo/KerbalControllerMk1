@@ -9,7 +9,7 @@
      - X-Pointer square (x=120..350)   — horizontal velocity indicator (lat/fwd)
      - ATT indicator (x=111..227)      — attitude alignment dot in concentric rings
      - V.Vrt bar (x=283..313)          — vertical velocity 0-15 m/s gauge
-     - Right panel (x=458..720)        — 15 numeric readouts
+     - Right panel (x=LNDG_TEXT_X..CONTENT_W) — numeric readouts
 
    Phase membership (LNDG screen has two modes):
      - POWERED DESCENT (this file)             — default

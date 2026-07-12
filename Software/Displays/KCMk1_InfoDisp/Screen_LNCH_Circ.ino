@@ -8,7 +8,7 @@
    LEFT GRAPHICS PANEL (x=0..576):
      - Left rail (x≈0..145) — ATT indicator (alignment disc, R=58) with the Burn
        Dur readout beneath it
-     - Orbit diagram (hero, CX=348 CY=272 R=186) — body, atmosphere ring, dashed
+     - Orbit diagram (hero, CX=348 CY=272 MAX_R=175) — body, atmosphere ring, dashed
        target circle, current orbit curve, Pe/Ap markers, vessel dot, chevron
      - Bottom band (full width) — ΔV Burn bar + value text, then a prominent
        T+Ign countdown row (Black_36)
@@ -39,8 +39,8 @@
 // bar sits below the diagram to give an at-a-glance countdown to the
 // circularization burn point.
 //
-// Layout summary (panel is x=0..452, y=63..479):
-//   y=131..411: orbit diagram (MAX_R=140 centered on CY=271)
+// Layout summary (left graphics panel x=0..576, y=TITLE_TOP..SCREEN_H):
+//   orbit diagram: LNCH_OR_DIAG_MAX_R=175 centered on (LNCH_OR_DIAG_CX=348, CY=272)
 //   y=440..459: T+Ap progress bar (20 px tall, labeled on the left)
 //
 // The vessel chevron points along the tangent of the drawn orbit curve at the
