@@ -14,11 +14,14 @@
      in _orbAdvancedMode (defined in Screen_ORB.ino). Chrome + draw dispatch
      happens in AAA_Screens.ino based on that flag.
 
-   Layout (720x480 content, header strip y=62..92, readout area y=92..456):
-     Two columns of 7 rows each, Roboto_Black_28, 40 px row pitch starting at
-     y=100. Left column is shape/size quantities; right column is orientation/
-     position quantities. Labels white, values dark-green — matches the basic
-     ORB screen's conventions.
+   Layout (rev-2, 940x600 content):
+     Two columns of 7 rows each, Roboto_Black_36, 73 px row pitch starting at
+     y=90 so the 7 rows fill the full height (last row bottom ~y=571). The
+     panel divider sits at x=470 (matching the basic ORB screen); the left
+     column fills x=[0,470], the right column x=[470,940]. Left column is
+     shape/size quantities; right column is orientation/position quantities.
+     Labels white, values dark-green, right-justified to an 8 px inset from
+     each half's edge — matches the basic ORB screen's conventions.
 
    Flicker management:
      Each value uses its own PrintState + cached String so printValue only
@@ -48,25 +51,25 @@
 // reliably for cross-file references).
 
 // ── Layout constants ─────────────────────────────────────────────────────────────────
-// Font: Roboto_Black_28. Row pitch 40 px gives ~12 px between rows — readable
-// at 28-pt glyph height of ~22 px. 7 rows × 40 = 280 px, fits between y=100
-// (below header strip) and y=380 (well above the readout strip bottom y=456).
-// Value column x-offsets pushed right to clear the wider 28-pt labels:
-// "ArgPe:" at 28-pt is ~85 px wide, so value-start at x=130 / x=486 leaves
-// ~35 px breathing room after the labels at x=10 / x=366.
+// Font: Roboto_Black_36 (cap 43, line_space 48). Row pitch 73 px gives ~25 px
+// between rows; 7 rows from y=90 span to a last-row bottom of ~571, filling the
+// full 600 px height. Value columns are right-justified to an 8 px inset from
+// each half's edge (left → x=462 at the divider, right → x=930 at the content
+// edge). Widest labels: "SMA:" 91 px (left), "ArgPe:" 114 px (right) — both
+// clear their value columns.
 static const int16_t ADV_TITLE_TOP  = 62;
-static const int16_t ADV_ROW_PITCH  = 40;
-static const int16_t ADV_ROW_H      = 32;   // printValue clear height (matches font)
-static const int16_t ADV_ROW_Y0     = 100;  // first row top
+static const int16_t ADV_ROW_PITCH  = 73;
+static const int16_t ADV_ROW_H      = 48;   // printValue clear height (matches font)
+static const int16_t ADV_ROW_Y0     = 90;   // first row top
 
-// Column layout
-static const int16_t ADV_L_LABEL_X  = 10;
-static const int16_t ADV_L_VALUE_X  = 130;
-static const int16_t ADV_L_VALUE_W  = 220;
+// Column layout — divider at x=470 (matches basic ORB)
+static const int16_t ADV_L_LABEL_X  = 14;
+static const int16_t ADV_L_VALUE_X  = 150;
+static const int16_t ADV_L_VALUE_W  = 320;  // right edge 150+320-8 = 462
 
-static const int16_t ADV_R_LABEL_X  = 366;
-static const int16_t ADV_R_VALUE_X  = 486;
-static const int16_t ADV_R_VALUE_W  = 230;
+static const int16_t ADV_R_LABEL_X  = 480;
+static const int16_t ADV_R_VALUE_X  = 628;
+static const int16_t ADV_R_VALUE_W  = 310;  // right edge 628+310-8 = 930
 
 // Row slot indices (left column 0..6, right column 7..13)
 enum {
@@ -87,13 +90,13 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
         _advLastValue[i] = String("\x01");
     }
 
-    // Panel divider — matches basic ORB for visual continuity
-    tft.drawLine(360, ADV_TITLE_TOP, 360, 480, TFT_GREY);
-    tft.drawLine(361, ADV_TITLE_TOP, 361, 480, TFT_GREY);
+    // Panel divider — matches basic ORB for visual continuity (x=470, full height)
+    tft.drawLine(470, ADV_TITLE_TOP, 470, 600, TFT_GREY);
+    tft.drawLine(471, ADV_TITLE_TOP, 471, 600, TFT_GREY);
 
     // Draw all labels once. All labels are white on black; values are drawn
     // by drawScreen_OrbAdv on each update (dark green).
-    tft.setFont(Roboto_Black_28);
+    tft.setFont(Roboto_Black_36);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
     // Left column labels
@@ -116,7 +119,7 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
 }
 
 void drawScreen_OrbAdv(KCM_TFT &tft) {
-    const tFont *F = &Roboto_Black_28;
+    const tFont *F = &Roboto_Black_36;
 
     // Escape detection — matches basic ORB logic. An escape (open) trajectory
     // has no Ap and no period.
