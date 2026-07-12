@@ -170,12 +170,12 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         else             { fg = TFT_WHITE;       bg = TFT_RED;   }
         plValL(3, 4, "Throttle:", thrStr, fg, bg);
 
-        // EC%: green≥90%, yellow=75-89%, red=<75%
+        // EC%: pre-launch readiness — green when topped off, red when not ready.
         uint8_t ecPct = (uint8_t)constrain(state.electricChargePercent, 0.0f, 100.0f);
         String ecStr = formatPerc(ecPct);
-        if      (ecPct >= 90) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        else if (ecPct >= 75) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
-        else                  { fg = TFT_WHITE;       bg = TFT_RED;   }
+        if      (ecPct >= EC_PRELAUNCH_READY_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+        else if (ecPct >= EC_PRELAUNCH_LOW_PCT)   { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                                       { fg = TFT_WHITE;       bg = TFT_RED;   }
         plValR(3, 5, "EC%:", ecStr, fg, bg);
     }
 

@@ -217,6 +217,12 @@ const uint8_t TEMP_ALARM_PCT = KCM_TEMP_ALARM_PCT;  // white-on-red — critical
 const float EC_LOW_WARN_FRAC  = KCM_RES_LOW_WARN_FRAC;   // yellow — 20%
 const float EC_LOW_ALARM_FRAC = KCM_EC_LOW_ALARM_FRAC;   // white-on-red — 5%
 
+// Pre-launch EC readiness check — deliberately stricter than the in-flight low-EC
+// alarm above (you want the battery topped off before launch, not merely above the
+// 5% bus-voltage floor). Display-only; no C&W analog.
+const uint8_t EC_PRELAUNCH_READY_PCT = 90;   // green — good to go
+const uint8_t EC_PRELAUNCH_LOW_PCT   = 75;   // yellow — below this: white-on-red
+
 // VEH screen thermal bar — reuses the shared thresholds above; SUPPRESS is
 // VEH-only (hides the bar while nominal — a display feature with no C&W analog).
 const uint8_t VEH_TEMP_SUPPRESS_PCT = 40;   // below this: bar suppressed (nominal)
@@ -273,9 +279,10 @@ const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover immine
 const float ROVER_BRG_WARN_DEG    = 10.0f;   // yellow — off course
 const float ROVER_BRG_ALARM_DEG   = 30.0f;   // white-on-red — significantly off course
 
-// Electric charge thresholds (%).
-const float ROVER_EC_WARN_PCT     = 50.0f;   // yellow — running low
-const float ROVER_EC_ALARM_PCT    = 25.0f;   // white-on-red — critical
+// Electric charge thresholds (%) — aligned to the shared low-EC thresholds so the
+// rover matches every other screen and the Annunciator CW_BUS_VOLTAGE alarm.
+const float ROVER_EC_WARN_PCT     = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
+const float ROVER_EC_ALARM_PCT    = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
 
 /***************************************************************************************
    PHASE 2 IMPLEMENTATION NOTES
