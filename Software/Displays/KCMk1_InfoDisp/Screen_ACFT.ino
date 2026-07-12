@@ -140,13 +140,14 @@ static void _acftDrawScanline(KCM_TFT &tft,
 // Fin: 7px wide, 20px tall, starting 7px below dot edge (gap=7px).
 // Drawn as the very last element so it is always on top of fill, horizon, and ladder.
 static void _acftDrawAircraftSymbol(KCM_TFT &tft) {
-    static const int16_t DOT_R  = 11;   // dot radius → 23px diameter (+50%)
-    static const int16_t WI     = 21;   // wing inner edge (DOT_R + gap)
-    static const int16_t WO     = 75;   // wing outer edge (+50%)
-    static const int16_t WH     = 3;    // wing half-height → 7px total
-    static const int16_t FIN_GAP = 11;  // gap between dot bottom and fin top
-    static const int16_t FIN_H  = 30;   // fin height (+50%)
-    static const int16_t FIN_W  = 3;    // fin half-width → 7px total
+    // All dims scaled to ~80% of the previous symbol per HW feedback.
+    static const int16_t DOT_R  = 9;    // dot radius → 19px diameter
+    static const int16_t WI     = 17;   // wing inner edge (DOT_R + gap)
+    static const int16_t WO     = 60;   // wing outer edge
+    static const int16_t WH     = 2;    // wing half-height → 5px total
+    static const int16_t FIN_GAP = 9;   // gap between dot bottom and fin top
+    static const int16_t FIN_H  = 24;   // fin height
+    static const int16_t FIN_W  = 2;    // fin half-width → 5px total
 
     // Left wing
     tft.fillRect(ACFT_CX - WO,    ACFT_CY - WH, WO - WI,    WH*2+1, ACFT_WINGS);
@@ -184,8 +185,8 @@ static void _acftClipToDisk(float px, float py, float qx, float qy,
 static void _acftDrawLadder(KCM_TFT &tft,
                             float BCX, float BCY,
                             float sinR, float cosR) {
-    static const int16_t HL_MAJ  = 36;
-    static const int16_t HL_MIN  = 22;
+    static const int16_t HL_MAJ  = 47;   // major rung half-length (+30% per HW feedback)
+    static const int16_t HL_MIN  = 29;   // minor rung half-length (+30%)
     static const int16_t LBL_GAP = 8;
     static const uint8_t FONT_W  = 9;    // Roboto_Black_16 digit advance
     static const uint8_t FONT_H  = 19;   // Roboto_Black_16 cap height
@@ -806,6 +807,11 @@ static void _acftDrawPitchTape(KCM_TFT &tft, float pitch) {
         }
     }
 
+    // Redraw the tape's bottom border — the lowest number labels' opaque black
+    // background can paint over it, and it is otherwise only drawn once in chrome.
+    tft.drawLine(ACFT_PTAPE_X - 1,                ACFT_PTAPE_Y + ACFT_PTAPE_H - 1,
+                 ACFT_PTAPE_X + ACFT_PTAPE_W - 1, ACFT_PTAPE_Y + ACFT_PTAPE_H - 1, TFT_LIGHT_GREY);
+
     // Draw pitch markers (left-pointing triangles on right edge)
     auto drawPitchMarker = [&](float markerPitch, uint16_t col) {
         float diff = markerPitch - pitch;
@@ -1166,35 +1172,52 @@ static void _acftUpdateVSI(KCM_TFT &tft, float vVrt) {
     tft.drawLine(VSI_X, VSI_ZERO_Y + 1, VSI_TICK_X0 + 10, VSI_ZERO_Y + 1, TFT_LIGHT_GREY);
 }
 
-// Slip ball — strip below heading tape, same x/width as heading tape
-// Starts below heading BOX bottom (box extends 8px below tape) to avoid overlap with hdg number
-static const int16_t SLIP_X      = ACFT_HDG_TAPE_X;
-static const int16_t SLIP_W      = ACFT_HDG_TAPE_W;
-static const int16_t SLIP_Y      = ACFT_HDG_TAPE_Y + ACFT_HDG_BOX_H;    // 1px higher than before
-static const int16_t SLIP_H      = SCREEN_H - SLIP_Y;
-static const int16_t SLIP_BALL_R = SLIP_H / 2 - 2;
-static const int16_t SLIP_CY     = SLIP_Y + SLIP_H / 2;
-static const float   SLIP_SCALE  = (float)(SLIP_W / 2 - SLIP_BALL_R - 4) / 20.0f;
-static int16_t _acftPrevSlipX    = 9999;
+// Slip ball — short strip pinned to the bottom of the screen, same x/width as the
+// heading tape and the same HEIGHT as the heading tape. Centred on ACFT_CX.
+static const int16_t SLIP_X       = ACFT_HDG_TAPE_X;
+static const int16_t SLIP_W       = ACFT_HDG_TAPE_W;
+static const int16_t SLIP_H       = ACFT_HDG_TAPE_H;                     // 32 — matches HDG tape
+static const int16_t SLIP_BOT_INSET = 3;                                 // clear panel overscan
+static const int16_t SLIP_Y       = SCREEN_H - SLIP_BOT_INSET - SLIP_H;  // 565 — bottom-aligned
+static const int16_t SLIP_BALL_R  = SLIP_H * 2 / 5;                      // 12 → 25px dia ≈ 80% of height
+static const int16_t SLIP_CY      = SLIP_Y + SLIP_H / 2;
+static const float   SLIP_SCALE   = (float)(SLIP_W / 2 - SLIP_BALL_R - 4) / 20.0f;
+static int16_t _acftPrevSlipX     = 9999;
 
 static void _acftDrawSlipChrome(KCM_TFT &tft) {
     tft.drawRect(SLIP_X, SLIP_Y, SLIP_W, SLIP_H, TFT_GREY);
 
-    // Range reference ticks on the top+bottom borders (kept short to stay clear of
-    // the ball): ±SLIP_WARN_DEG in green marks the edge of the centred zone, and
-    // ±SLIP_ALARM_DEG in red marks where the slip enters the alarm range.
     int16_t m5  = (int16_t)(SLIP_WARN_DEG  * SLIP_SCALE);
     int16_t m15 = (int16_t)(SLIP_ALARM_DEG * SLIP_SCALE);
-    tft.drawLine(ACFT_CX - m5,  SLIP_Y,          ACFT_CX - m5,  SLIP_Y + 3,        TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX + m5,  SLIP_Y,          ACFT_CX + m5,  SLIP_Y + 3,        TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX - m5,  SLIP_Y+SLIP_H-4, ACFT_CX - m5,  SLIP_Y+SLIP_H-1,   TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX + m5,  SLIP_Y+SLIP_H-4, ACFT_CX + m5,  SLIP_Y+SLIP_H-1,   TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX - m15, SLIP_Y,          ACFT_CX - m15, SLIP_Y + 3,        TFT_RED);
-    tft.drawLine(ACFT_CX + m15, SLIP_Y,          ACFT_CX + m15, SLIP_Y + 3,        TFT_RED);
-    tft.drawLine(ACFT_CX - m15, SLIP_Y+SLIP_H-4, ACFT_CX - m15, SLIP_Y+SLIP_H-1,   TFT_RED);
-    tft.drawLine(ACFT_CX + m15, SLIP_Y+SLIP_H-4, ACFT_CX + m15, SLIP_Y+SLIP_H-1,   TFT_RED);
 
-    // "Slip:" label — centred in the space left of the tube, matching Pitch/Hdg label style
+    // Range reference ticks — inset 1px from the top/bottom borders (they no longer
+    // overlap the border) and lengthened. Green = ±SLIP_WARN_DEG (edge of centred
+    // zone), red = ±SLIP_ALARM_DEG (entry to the alarm range).
+    const int16_t TLEN = 9;
+    int16_t topY0 = SLIP_Y + 1,              topY1 = SLIP_Y + 1 + TLEN;
+    int16_t botY1 = SLIP_Y + SLIP_H - 2,     botY0 = botY1 - TLEN;
+    const int16_t markDx[]  = { -m15, -m5, m5, m15 };
+    const uint16_t markCol[] = { TFT_RED, TFT_NEON_GREEN, TFT_NEON_GREEN, TFT_RED };
+    for (uint8_t i = 0; i < 4; i++) {
+        int16_t mx = ACFT_CX + markDx[i];
+        tft.drawLine(mx, topY0, mx, topY1, markCol[i]);
+        tft.drawLine(mx, botY0, mx, botY1, markCol[i]);
+    }
+
+    // Numeric labels centred above each tick, in the clear space above the strip.
+    tft.setFont(Roboto_Black_12);
+    const char *markTxt[] = { "15", "5", "5", "15" };
+    int16_t lblY = SLIP_Y - 16;
+    for (uint8_t i = 0; i < 4; i++) {
+        int16_t mx = ACFT_CX + markDx[i];
+        int16_t w  = getFontStringWidth(&Roboto_Black_12, markTxt[i]);
+        tft.setTextColor(markCol[i], TFT_BLACK);
+        tft.setCursor(mx - w / 2, lblY);
+        tft.print(markTxt[i]);
+    }
+
+    // "Slip:" label — right-justified in the space left of the strip, matching the
+    // Pitch/Hdg label style
     textRight(tft, &Roboto_Black_24,
                VSI_TICK_X0 + 2, SLIP_Y, SLIP_X - VSI_TICK_X0 - 2, SLIP_H,
                "Slip:", TFT_WHITE, TFT_BLACK);
@@ -1439,7 +1462,7 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     tft.drawLine(ACFT_PANEL_X - 2, TITLE_TOP, ACFT_PANEL_X - 2, SCREEN_H - 1, TFT_GREY);
     tft.drawLine(ACFT_PANEL_X - 1, TITLE_TOP, ACFT_PANEL_X - 1, SCREEN_H - 1, TFT_GREY);
 
-    static const tFont *PF = &Roboto_Black_24;
+    static const tFont *PF = &Roboto_Black_28;   // label font — matches reticle/launch panels
 
     // Rows 0-3: single-width labels
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -1494,7 +1517,7 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 // Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
 //              8=Gear, 9=Airbrk, 10=Brakes, 11=SAS
 static void _acftUpdatePanel(KCM_TFT &tft) {
-    static const tFont  *VF = &Roboto_Black_28;
+    static const tFont  *VF = &Roboto_Black_36;   // value font — matches reticle/launch panels
     static const uint8_t SC = (uint8_t)screen_ACFT;
     uint16_t fw = ACFT_PANEL_W;
     uint16_t hw = ACFT_PANEL_W / 2;

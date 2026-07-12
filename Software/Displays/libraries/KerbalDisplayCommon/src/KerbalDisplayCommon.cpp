@@ -614,6 +614,15 @@ float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
       tft.drawCircle(cx, cy, rings[i], rcols[i]);
   }
 
+  // Good-zone refill FIRST — when the erase box is near centre the inner disc is
+  // repainted OFF_BLACK. This must happen before the cardinal lines and crosshair
+  // are restored, otherwise the refill wipes the target lines back out (they pass
+  // straight through the inner circle) and they vanish while a marker crosses it.
+  if (distToCentre <= (r / 4) - 1) {
+    tft.fillCircle(cx, cy, (r / 4) - 1, TFT_OFF_BLACK);
+    tft.drawCircle(cx, cy, (r / 4),     TFT_DARK_GREEN);
+  }
+
   int16_t carm = r - 1;
   if (boxY0 <= cy && cy <= boxY1) {
     if (boxX0 < (int16_t)(cx - gap))
@@ -637,11 +646,6 @@ float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
   }
   if (boxX0 <= cx && cx <= boxX1 && boxY0 <= cy && cy <= boxY1)
     tft.fillCircle(cx, cy, 2, TFT_GREY);
-
-  if (distToCentre <= (r / 4) - 1) {
-    tft.fillCircle(cx, cy, (r / 4) - 1, TFT_OFF_BLACK);
-    tft.drawCircle(cx, cy, (r / 4),     TFT_DARK_GREEN);
-  }
 
   // Report the box's nearest distance to centre so callers can decide whether the
   // good-zone refill just painted over the innermost ring label (radius ≈ r/4).

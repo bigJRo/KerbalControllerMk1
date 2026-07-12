@@ -65,14 +65,15 @@ static const int16_t ROVR_NOSE_R_BASE    = 219;   // outward base
 static const int16_t ROVR_NOSE_HALF_W    = 12;
 
 // Target bearing indicator — triangle INSIDE the ring, positioned just inside
-// the compass labels. Tip R=113 leaves ~4 px visual gap to the label inward
-// glyph edge (~R=117 for Roboto_Black_28), with enough margin that the 6-px
-// erase dilation doesn't overlap the labels when the target bearing aligns
-// with a label position. Tip points OUTWARD (toward the ring); when target is
-// at same heading as vessel, triangle sits at 12 o'clock with tip pointing up.
-// Uses TFT_VIOLET to match target markers on SCFT/ACFT screens.
-static const int16_t ROVR_TGT_R_TIP      = 135;   // outward tip
-static const int16_t ROVR_TGT_R_BASE     = 117;    // inward base (18 px tall triangle)
+// the compass labels. Labels (Roboto_Black_28) are centred at R=157; their
+// opaque glyph boxes reach inward to R≈136. The tip is held at R=128 so that
+// even with the 3-px erase-rect dilation (R≈131) the triangle never reaches the
+// label boxes — previously the tip at R=135 let a label (e.g. "15") clip the
+// triangle when the target bearing lined up with it. Tip points OUTWARD (toward
+// the ring); when target heading == vessel heading the triangle sits at 12
+// o'clock with its tip pointing up. TFT_VIOLET matches SCFT/ACFT target markers.
+static const int16_t ROVR_TGT_R_TIP      = 128;   // outward tip (clears label boxes at R≈136)
+static const int16_t ROVR_TGT_R_BASE     = 110;   // inward base (18 px tall triangle)
 static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 
 // Target distance readout — shown only when a target is selected (targetAvailable).
@@ -306,7 +307,7 @@ static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
 // instead of re-rendering the glyph black-on-black. Text rasterization is the most
 // expensive software primitive in this driver; the fillRect covers the same box
 // (cursorX..cursorX+width, cursorY..cursorY+cap_height) at a fraction of the cost.
-// The box reaches inward to R≈136, still clear of the target triangle (R≤135), and
+// The box reaches inward to R≈136, still clear of the target triangle (R≤128), and
 // outward to R≈169, clear of the ring (R=200) and ticks (R≥178).
 static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
     tft.setFont(Roboto_Black_28);
