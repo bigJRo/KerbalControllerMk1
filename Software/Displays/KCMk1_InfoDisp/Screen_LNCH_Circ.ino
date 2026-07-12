@@ -50,7 +50,7 @@
 // left "burn aids" rail (ATT + Burn Dur) and above the bottom ΔV/T+Ign band.
 static const int16_t LNCH_OR_DIAG_CX    = 348;   // diagram center X (center-right of the widened panel)
 static const int16_t LNCH_OR_DIAG_CY    = 272;   // diagram center Y (upper-center, above the bottom band)
-static const int16_t LNCH_OR_DIAG_MAX_R = 180;   // max orbit half-extent (px) — was 140
+static const int16_t LNCH_OR_DIAG_MAX_R = 175;   // max orbit half-extent (px) — was 140; leaves room for outboard Pe/Ap labels
 
 // Maneuver ΔV bar layout. Matches the visual format of the MNVR screen's
 // "ΔV Burn" bar: label "ΔV Burn" above-left, right-aligned ΔV value in m/s
@@ -1225,7 +1225,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     // major axis by LNCH_OR_LABEL_OFFSET_PX pixels so it sits beyond the
     // curve rather than overlapping the dot or the curve itself. This
     // matches the ORB screen's label-placement convention.
-    const float LABEL_OFFSET_PX = 15.0f;   // outboard label gap (clears the larger Pe/Ap dots)
+    const float LABEL_OFFSET_PX = 20.0f;   // outboard label gap (clears the larger Pe/Ap dots with margin)
     float rPe_px = r_to_px(rPe);                       // dot radius (on curve)
     float rAp_px = r_to_px(rAp);                       // dot radius (on curve)
     float rPe_lbl_px = rPe_px + LABEL_OFFSET_PX;       // label radius (outboard)
