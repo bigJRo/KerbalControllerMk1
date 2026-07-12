@@ -50,7 +50,7 @@
 // left "burn aids" rail (ATT + Burn Dur) and above the bottom ΔV/T+Ign band.
 static const int16_t LNCH_OR_DIAG_CX    = 348;   // diagram center X (center-right of the widened panel)
 static const int16_t LNCH_OR_DIAG_CY    = 272;   // diagram center Y (upper-center, above the bottom band)
-static const int16_t LNCH_OR_DIAG_MAX_R = 186;   // max orbit half-extent (px) — was 140
+static const int16_t LNCH_OR_DIAG_MAX_R = 180;   // max orbit half-extent (px) — was 140
 
 // Maneuver ΔV bar layout. Matches the visual format of the MNVR screen's
 // "ΔV Burn" bar: label "ΔV Burn" above-left, right-aligned ΔV value in m/s
@@ -59,18 +59,18 @@ static const int16_t LNCH_OR_DIAG_MAX_R = 186;   // max orbit half-extent (px) �
 // from the cached arm-time max as the burn consumes ΔV.
 //
 // Full-width "burn timing" band across the bottom of the widened panel:
-//   y = 486..510: bar label row ("ΔV Burn" left, ΔV value right — Black_20)
-//   y = 512..538: ΔV bar (26 px incl. border)
-//   y = 544..592: T+Ign countdown row (prominent — Black_36, 48 px tall) — the
-//                 "burn now" cue, sized to match the right-panel value font
+//   y = 483..512: bar label row ("ΔV Burn" left, ΔV value right — Black_24)
+//   y = 518..544: ΔV bar (26 px incl. border) — 6 px below the label so the
+//                 value's glyph rows don't clip the bar top
+//   y = 551..591: T+Ign countdown row (Black_28, 40 px tall) — the "burn now" cue
 // Horizontal: bar spans most of the 576-wide panel.
 static const int16_t LNCH_OR_BAR_X      =  40;   // bar left edge
 static const int16_t LNCH_OR_BAR_W      = 496;   // bar width (40..536)
 static const int16_t LNCH_OR_BAR_H      =  26;   // bar height
-static const int16_t LNCH_OR_BAR_Y      = 512;   // bar top
-static const int16_t LNCH_OR_BAR_LBL_Y  = 486;   // bar label row top (barY - 26 to fit Black_20)
-static const int16_t LNCH_OR_TIGN_Y     = 544;   // T+Ign row top (barY + barH + 6)
-static const int16_t LNCH_OR_TIGN_H     =  48;   // T+Ign row height (Black_36=43 + margin)
+static const int16_t LNCH_OR_BAR_Y      = 518;   // bar top
+static const int16_t LNCH_OR_BAR_LBL_Y  = 483;   // bar label row top (Black_24 label; barY-35)
+static const int16_t LNCH_OR_TIGN_Y     = 551;   // T+Ign row top (barY + barH + 7)
+static const int16_t LNCH_OR_TIGN_H     =  40;   // T+Ign row height (Black_28=33 + margin)
 
 // Attitude (ATT) indicator: a maneuver-alignment disc positioned to the
 // right of the orbit diagram. Shows the vessel's current attitude error vs
@@ -615,14 +615,14 @@ static void _lnchOrDrawChevron(KCM_TFT &tft, int16_t cx, int16_t cy,
     // Perpendicular (rotated 90° CW in screen coords: px=+dy, py=-dx)
     float px = dy;
     float py = -dx;
-    // Tip: 7 px forward from (cx, cy)
-    int16_t tip_x  = cx + (int16_t)roundf(7.0f * dx);
-    int16_t tip_y  = cy + (int16_t)roundf(7.0f * dy);
-    // Base corners: 5 px backward, ±5 px perpendicular
-    int16_t bl_x   = cx - (int16_t)roundf(5.0f * dx + 5.0f * px);
-    int16_t bl_y   = cy - (int16_t)roundf(5.0f * dy + 5.0f * py);
-    int16_t br_x   = cx - (int16_t)roundf(5.0f * dx - 5.0f * px);
-    int16_t br_y   = cy - (int16_t)roundf(5.0f * dy - 5.0f * py);
+    // Tip: 10 px forward from (cx, cy)
+    int16_t tip_x  = cx + (int16_t)roundf(10.0f * dx);
+    int16_t tip_y  = cy + (int16_t)roundf(10.0f * dy);
+    // Base corners: 7 px backward, ±7 px perpendicular
+    int16_t bl_x   = cx - (int16_t)roundf(7.0f * dx + 7.0f * px);
+    int16_t bl_y   = cy - (int16_t)roundf(7.0f * dy + 7.0f * py);
+    int16_t br_x   = cx - (int16_t)roundf(7.0f * dx - 7.0f * px);
+    int16_t br_y   = cy - (int16_t)roundf(7.0f * dy - 7.0f * py);
     tft.fillTriangle(tip_x, tip_y, bl_x, bl_y, br_x, br_y, col);
     // Dark outline for contrast against any background color. Drawn as three
     // drawLine calls rather than drawTriangle for library portability.
@@ -640,7 +640,7 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
     // "ΔV Burn" label above the bar, left-aligned with the bar's left edge.
     // Black_20 (24 px) — matches the "ATT" and "Burn Dur:" labels in the
     // left cluster for cluster/screen-wide label-hierarchy consistency.
-    tft.setFont(Roboto_Black_20);
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(LNCH_OR_BAR_X, LNCH_OR_BAR_LBL_Y);
     tft.print("\xCE\x94V Burn");  // UTF-8 for "ΔV Burn"
@@ -654,7 +654,7 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
     // padding match the rest of the right-panel label convention. No border
     // (COL_NO_BDR). Background is black — the value's alarm background is
     // applied only to the value region by printValue.
-    printDispChrome(tft, &Roboto_Black_36,
+    printDispChrome(tft, &Roboto_Black_28,
                     LNCH_OR_BAR_X, LNCH_OR_TIGN_Y,
                     LNCH_OR_BAR_W, LNCH_OR_TIGN_H,
                     "T+Ign:", TFT_LIGHT_GREY, TFT_BLACK, COL_NO_BDR);
@@ -786,10 +786,10 @@ static void _lnchOrUpdateProgressBar(KCM_TFT &tft) {
     // No value:      blank (e.g. no mnvr and no valid orbital data).
     if (value_changed) {
         // Clear the value-text region: right half of the bar width, same
-        // row as the label. Height 24 px to fit Black_20 glyphs.
+        // row as the label. Height 31 px to fit Black_24 glyphs.
         int16_t valRegionX = LNCH_OR_BAR_X + LNCH_OR_BAR_W / 2;
         int16_t valRegionW = LNCH_OR_BAR_W / 2;
-        tft.fillRect(valRegionX, LNCH_OR_BAR_LBL_Y, valRegionW, 24, TFT_BLACK);
+        tft.fillRect(valRegionX, LNCH_OR_BAR_LBL_Y, valRegionW, 31, TFT_BLACK);
         if (dv_rounded != -9999) {
             char buf[18];
             if (estimate_mode) {
@@ -797,10 +797,10 @@ static void _lnchOrUpdateProgressBar(KCM_TFT &tft) {
             } else {
                 snprintf(buf, sizeof(buf), "%dm/s", dv_rounded);
             }
-            // Black_20 — matches the "ΔV Burn" label font for visual unity.
-            tft.setFont(Roboto_Black_20);
+            // Black_24 — matches the "ΔV Burn" label font for visual unity.
+            tft.setFont(Roboto_Black_24);
             tft.setTextColor(text_col, TFT_BLACK);
-            int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
+            int16_t tw = getFontStringWidth(&Roboto_Black_24, buf);
             tft.setCursor(LNCH_OR_BAR_X + LNCH_OR_BAR_W - tw, LNCH_OR_BAR_LBL_Y);
             tft.print(buf);
         }
@@ -857,7 +857,7 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     // (using valBg for the value area, without touching the label on the
     // left), right-aligns the value within the cell, and tracks shrink
     // via PrintState so old wider strings get cleaned up.
-    printValue(tft, &Roboto_Black_36,
+    printValue(tft, &Roboto_Black_28,
                LNCH_OR_BAR_X, LNCH_OR_TIGN_Y,
                LNCH_OR_BAR_W, LNCH_OR_TIGN_H,
                "T+Ign:", val,
@@ -1180,7 +1180,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     // major axis by LNCH_OR_LABEL_OFFSET_PX pixels so it sits beyond the
     // curve rather than overlapping the dot or the curve itself. This
     // matches the ORB screen's label-placement convention.
-    const float LABEL_OFFSET_PX = 12.0f;
+    const float LABEL_OFFSET_PX = 15.0f;   // outboard label gap (clears the larger Pe/Ap dots)
     float rPe_px = r_to_px(rPe);                       // dot radius (on curve)
     float rAp_px = r_to_px(rAp);                       // dot radius (on curve)
     float rPe_lbl_px = rPe_px + LABEL_OFFSET_PX;       // label radius (outboard)
@@ -1298,27 +1298,27 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         }
     }
     if (pe_changed && _lnchOrPrevPeValid) {
-        // Erase prev dot
-        tft.fillCircle(_lnchOrPrevPeX, _lnchOrPrevPeY, 4, TFT_BLACK);
-        // Erase prev label — centered at _lnchOrPrevPeLbl{X,Y}, extents
-        // ~10×8 from center (Black_12 is 14 px tall, "Pe" is ~14 px wide).
-        tft.fillRect(_lnchOrPrevPeLblX - 10, _lnchOrPrevPeLblY - 9,
-                     20, 18, TFT_BLACK);
+        // Erase prev dot (r=5 → 6 for safety)
+        tft.fillCircle(_lnchOrPrevPeX, _lnchOrPrevPeY, 6, TFT_BLACK);
+        // Erase prev label — centered at _lnchOrPrevPeLbl{X,Y}, ~12×11 from center
+        // (Black_16 is 19 px tall, "Pe" ~19 px wide).
+        tft.fillRect(_lnchOrPrevPeLblX - 12, _lnchOrPrevPeLblY - 11,
+                     24, 22, TFT_BLACK);
     }
     if (ap_changed && _lnchOrPrevApValid) {
-        tft.fillCircle(_lnchOrPrevApX, _lnchOrPrevApY, 4, TFT_BLACK);
-        tft.fillRect(_lnchOrPrevApLblX - 10, _lnchOrPrevApLblY - 9,
-                     20, 18, TFT_BLACK);
+        tft.fillCircle(_lnchOrPrevApX, _lnchOrPrevApY, 6, TFT_BLACK);
+        tft.fillRect(_lnchOrPrevApLblX - 12, _lnchOrPrevApLblY - 11,
+                     24, 22, TFT_BLACK);
     }
     if (vsl_changed && _lnchOrPrevVslValid) {
-        // Erase prev vessel dot (r=4 filled, outline r=4 → extent 5 for safety).
-        tft.fillCircle(_lnchOrPrevVslX, _lnchOrPrevVslY, 5, TFT_BLACK);
+        // Erase prev vessel dot (r=6 filled + outline → extent 8 for safety).
+        tft.fillCircle(_lnchOrPrevVslX, _lnchOrPrevVslY, 8, TFT_BLACK);
     }
     if (dir_changed && _lnchOrPrevDirValid) {
-        // Erase prev direction chevron. Triangle tip 7 px forward, base ±5 px
-        // perpendicular 5 back → max extent from center ≈ 7.1 px. Use 9 px
+        // Erase prev direction chevron. Triangle tip 10 px forward, base ±7 px
+        // perpendicular 7 back → max extent from center ≈ 10 px. Use 13 px
         // radius for safety incl. 1-px outline.
-        tft.fillCircle(_lnchOrPrevDirX, _lnchOrPrevDirY, 9, TFT_BLACK);
+        tft.fillCircle(_lnchOrPrevDirX, _lnchOrPrevDirY, 13, TFT_BLACK);
     }
 
     // ── Touch-up static layer (only if erase happened) ─────────────────────────
@@ -1400,22 +1400,22 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
 
     if (pe_changed) {
         // Dot ON the orbit curve
-        tft.fillCircle(pe_x, pe_y, 3, TFT_MAGENTA);
+        tft.fillCircle(pe_x, pe_y, 5, TFT_MAGENTA);
         // Label centered at outboard anchor. setCursor sets top-left of text;
-        // "Pe" at Black_12 is ~14 px wide × 14 px tall → offset (-7, -7).
-        tft.setFont(Roboto_Black_12);
+        // "Pe" at Black_16 is ~19 px wide × 19 px tall → offset (-10, -10).
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-        tft.setCursor(pe_lbl_cx - 7, pe_lbl_cy - 7);
+        tft.setCursor(pe_lbl_cx - 10, pe_lbl_cy - 10);
         tft.print("Pe");
         _lnchOrPrevPeX = pe_x; _lnchOrPrevPeY = pe_y;
         _lnchOrPrevPeLblX = pe_lbl_cx; _lnchOrPrevPeLblY = pe_lbl_cy;
         _lnchOrPrevPeValid = true;
     }
     if (ap_changed) {
-        tft.fillCircle(ap_x, ap_y, 3, TFT_CYAN);
-        tft.setFont(Roboto_Black_12);
+        tft.fillCircle(ap_x, ap_y, 5, TFT_CYAN);
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
-        tft.setCursor(ap_lbl_cx - 7, ap_lbl_cy - 7);
+        tft.setCursor(ap_lbl_cx - 10, ap_lbl_cy - 10);
         tft.print("Ap");
         _lnchOrPrevApX = ap_x; _lnchOrPrevApY = ap_y;
         _lnchOrPrevApLblX = ap_lbl_cx; _lnchOrPrevApLblY = ap_lbl_cy;
@@ -1424,8 +1424,8 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     // Vessel: filled neon-green dot with black outline for contrast.
     if (vsl_changed) {
         if (vessel_valid) {
-            tft.fillCircle(vsl_x, vsl_y, 4, TFT_NEON_GREEN);
-            tft.drawCircle(vsl_x, vsl_y, 4, TFT_BLACK);
+            tft.fillCircle(vsl_x, vsl_y, 6, TFT_NEON_GREEN);
+            tft.drawCircle(vsl_x, vsl_y, 6, TFT_BLACK);
             _lnchOrPrevVslX = vsl_x;
             _lnchOrPrevVslY = vsl_y;
             _lnchOrPrevVslValid = true;
