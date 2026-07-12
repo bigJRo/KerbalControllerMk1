@@ -1443,8 +1443,14 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrPrevDirValid = true;
     }
 
-    if (pe_changed) {
-        // Dot ON the orbit curve
+    // The Pe/Ap/vessel dots sit ON the orbit curve (and Pe can sit on the body
+    // edge). Whenever the curve or the static layer was repainted this frame,
+    // repaint the dots on TOP even if they didn't move — otherwise the freshly
+    // drawn curve/body clips the dot that was left in place.
+    bool markers_dirty = any_erase || static_geom_changed;
+
+    if (pe_changed || markers_dirty) {
+        // Dot ON the orbit curve (drawn last so it sits on top of the line/body)
         tft.fillCircle(pe_x, pe_y, 5, TFT_MAGENTA);
         // Label centered at outboard anchor. setCursor sets top-left of text;
         // "Pe" at Black_16 is ~19 px wide × 19 px tall → offset (-10, -10).
@@ -1456,7 +1462,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrPrevPeLblX = pe_lbl_cx; _lnchOrPrevPeLblY = pe_lbl_cy;
         _lnchOrPrevPeValid = true;
     }
-    if (ap_changed) {
+    if (ap_changed || markers_dirty) {
         tft.fillCircle(ap_x, ap_y, 5, TFT_CYAN);
         tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
@@ -1466,8 +1472,9 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrPrevApLblX = ap_lbl_cx; _lnchOrPrevApLblY = ap_lbl_cy;
         _lnchOrPrevApValid = true;
     }
-    // Vessel: filled neon-green dot with black outline for contrast.
-    if (vsl_changed) {
+    // Vessel: filled neon-green dot with black outline for contrast. Drawn last
+    // so it sits on top of the curve and the Pe/Ap dots.
+    if (vsl_changed || markers_dirty) {
         if (vessel_valid) {
             tft.fillCircle(vsl_x, vsl_y, 6, TFT_NEON_GREEN);
             tft.drawCircle(vsl_x, vsl_y, 6, TFT_BLACK);
