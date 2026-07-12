@@ -31,19 +31,22 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-static const int16_t  SCFT_CX        = 260;
-static const int16_t  SCFT_CY        = 260;
-static const int16_t  SCFT_R         = 164;
-static const float    SCFT_SCALE     = (float)SCFT_R / 30.0f;   // 5.467 px/deg
+// Geometry mirrors the ACFT (aircraft) screen exactly — same ball centre, radius,
+// and readout panel — so the two attitude screens are visually identical. SCFT
+// omits the VSI, slip, and AoA indicators.
+static const int16_t  SCFT_CX        = 345;
+static const int16_t  SCFT_CY        = 300;
+static const int16_t  SCFT_R         = 206;
+static const float    SCFT_SCALE     = (float)SCFT_R / 30.0f;   // 6.867 px/deg
 
-static const int16_t  SCFT_BALL_Y0   = SCFT_CY - SCFT_R;         // 107
-static const int16_t  SCFT_BALL_Y1   = SCFT_CY + SCFT_R;         // 435
-static const uint16_t SCFT_SCANLINES = (uint16_t)(SCFT_R * 2 + 1); // 329
+static const int16_t  SCFT_BALL_Y0   = SCFT_CY - SCFT_R;         // 94
+static const int16_t  SCFT_BALL_Y1   = SCFT_CY + SCFT_R;         // 506
+static const uint16_t SCFT_SCANLINES = (uint16_t)(SCFT_R * 2 + 1); // 413
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
-static const int16_t  SCFT_PANEL_X       = SCFT_CX - (SCFT_R*2+54)/2 + (SCFT_R*2+54) + 2; // 453 — flush with HDG tape right edge
-static const int16_t  SCFT_PANEL_RIGHT   = 720;
-static const int16_t  SCFT_PANEL_W       = SCFT_PANEL_RIGHT - SCFT_PANEL_X;
+static const int16_t  SCFT_PANEL_X       = SCFT_CX - (SCFT_R*2+54)/2 + (SCFT_R*2+54) + 2; // 580
+static const int16_t  SCFT_PANEL_RIGHT   = CONTENT_W;   // 940 — abuts the sidebar divider
+static const int16_t  SCFT_PANEL_W       = SCFT_PANEL_RIGHT - SCFT_PANEL_X;  // 360 (= reticle panel)
 static const uint8_t  SCFT_PANEL_NR      = 8;
 
 // ── Right panel state ──────────────────────────────────────────────────────────────────
@@ -151,12 +154,12 @@ static void _scftDrawScanline(KCM_TFT &tft,
 // Fin: 7px wide, 20px tall, starting 7px below dot edge (gap=7px).
 // Drawn as the very last element so it is always on top of fill, horizon, and ladder.
 static void _scftDrawAircraftSymbol(KCM_TFT &tft) {
-    static const int16_t DOT_R  = 7;    // dot radius → 15px diameter
-    static const int16_t WI     = 14;   // wing inner edge (DOT_R + 7px gap)
-    static const int16_t WO     = 50;   // wing outer edge
+    static const int16_t DOT_R  = 9;    // dot radius → 19px diameter (matches ACFT)
+    static const int16_t WI     = 17;   // wing inner edge (DOT_R + gap)
+    static const int16_t WO     = 60;   // wing outer edge
     static const int16_t WH     = 2;    // wing half-height → 5px total
-    static const int16_t FIN_GAP = 7;   // gap between dot bottom and fin top
-    static const int16_t FIN_H  = 20;   // fin height
+    static const int16_t FIN_GAP = 9;   // gap between dot bottom and fin top
+    static const int16_t FIN_H  = 24;   // fin height
     static const int16_t FIN_W  = 2;    // fin half-width → 5px total
 
     // Left wing
@@ -195,13 +198,13 @@ static void _scftClipToDisk(float px, float py, float qx, float qy,
 static void _scftDrawLadder(KCM_TFT &tft,
                             float BCX, float BCY,
                             float sinR, float cosR) {
-    static const int16_t HL_MAJ  = 36;
-    static const int16_t HL_MIN  = 22;
+    static const int16_t HL_MAJ  = 47;   // major rung half-length (matches ACFT)
+    static const int16_t HL_MIN  = 29;   // minor rung half-length
     static const int16_t LBL_GAP = 8;
-    static const uint8_t FONT_W  = 8;
-    static const uint8_t FONT_H  = 14;
+    static const uint8_t FONT_W  = 9;    // Roboto_Black_16 digit advance
+    static const uint8_t FONT_H  = 19;   // Roboto_Black_16 cap height
 
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(SCFT_LADDER);
 
     auto rnd = [](float v) -> int16_t {
@@ -467,7 +470,7 @@ static bool  _scftPrevMnvrActiveBall = false;
 static bool  _scftPrevTgtAvailBall   = false;
 
 // Marker size — half-diagonal in pixels. Diamond is 2*ADI_MRK+1 pixels tip-to-tip.
-static const int16_t SCFT_ADI_MRK_HD = 8;   // 17 px total diagonal
+static const int16_t SCFT_ADI_MRK_HD = 16;   // 33 px total diagonal (matches ACFT)
 
 // Shortest-arc delta between two headings, result in [-180, 180].
 static inline float _scftHdgDelta(float a, float b) {
@@ -563,8 +566,8 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     if (fullRedraw) _scftFullDraw(tft, sinR, cosR, K);
     else            _scftDeltaDraw(tft, sinR, cosR, K);
     _t1 = micros();
-    Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
-    Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    if (debugMode) { Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
+                     Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
     // ── 2. Horizon line ───────────────────────────────────────────────────────────────
     _t0 = micros();
@@ -587,7 +590,7 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     _scftPrevHorizLo = new_horiz_lo;
     _scftPrevHorizHi = new_horiz_hi;
     _t1 = micros();
-    Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    if (debugMode) { Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
     // ── 3. Pitch ladder ───────────────────────────────────────────────────────────────
     // Swap bitmaps: prev = last frame's dirty set (used by delta fill above),
@@ -597,7 +600,7 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     memset(_scftLadderDirty, 0, sizeof(_scftLadderDirty));
     _scftDrawLadder(tft, BCX, BCY, sinR, cosR);
     _t1 = micros();
-    Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
     // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
     //    Prograde always drawn; target if available; maneuver if active.
@@ -639,16 +642,17 @@ static uint16_t _scftPrevPitchReadoutFg = 0;
 
 // ── Roll indicator geometry ───────────────────────────────────────────────────────────
 static const int16_t  SCFT_PTR_TIP_R  = SCFT_R + 3;   // tip clear of bezel (bezel outer = R+2)
-static const int16_t  SCFT_PTR_BASE_R = SCFT_R + 20;  // base beyond tick outer edge (R+16)
-static const int16_t  SCFT_PTR_W      = 8;            // half-width of pointer base
+static const int16_t  SCFT_PTR_BASE_R = SCFT_R + 22;  // base beyond tick outer (R+16), below labels
+static const int16_t  SCFT_PTR_W      = 12;           // half-width of pointer base (matches ACFT)
 
-// Roll readout — two lines centred in fixed-width block
-// Label: Roboto_Black_20 (smaller), Value: Roboto_Black_24 (larger)
-static const int16_t  SCFT_ROLL_ANCHOR_X  = SCFT_CX + SCFT_R - 56; // moves with CX
-static const int16_t  SCFT_ROLL_ANCHOR_Y  = SCFT_CY - SCFT_R - 24; // aligned with Pitch: label top
-static const int16_t  SCFT_ROLL_W         = 80;   // block width (unchanged)
-static const int16_t  SCFT_ROLL_LABEL_H   = 20;   // label line height (Roboto_Black_20)
-static const int16_t  SCFT_ROLL_VALUE_H   = 26;   // value line height (Roboto_Black_24)
+// Roll readout — two lines, right-justified toward the panel divider (matches ACFT).
+// Label: Roboto_Black_24, Value: Roboto_Black_28.
+static const int16_t  SCFT_ROLL_ANCHOR_X  = SCFT_CX + SCFT_R - 54; // right edge tucked by the divider
+static const int16_t  SCFT_ROLL_ANCHOR_Y  = TITLE_TOP;             // pinned just below the title rule
+static const int16_t  SCFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
+static const int16_t  SCFT_ROLL_TXT_W     = SCFT_ROLL_W + 6;   // text-justify reference (matches ACFT)
+static const int16_t  SCFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
+static const int16_t  SCFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
 static const int16_t  SCFT_ROLL_GAP       = 3;    // gap between lines
 
 // Update the roll numeric readout.
@@ -659,29 +663,31 @@ static void _scftUpdateRollReadout(KCM_TFT &tft, float roll) {
 
     if (iRoll == _scftPrevRollReadout && fg == _scftPrevRollReadoutFg) return;
 
-    // Erase previous value in black-on-black using the same font/box
+    // Erase previous value — right-justified glyph box (matches textRight below).
     if (_scftPrevRollReadout > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _scftPrevRollReadout);
-        eraseCenteredValue(tft, &Roboto_Black_24,
-                   SCFT_ROLL_ANCHOR_X, SCFT_ROLL_ANCHOR_Y + SCFT_ROLL_LABEL_H + SCFT_ROLL_GAP,
-                   SCFT_ROLL_W, SCFT_ROLL_VALUE_H,
-                   oldBuf, TFT_BLACK);
+        int16_t ow   = getFontStringWidth(&Roboto_Black_28, oldBuf);
+        int16_t capH = (int16_t)Roboto_Black_28.cap_height;
+        int16_t ex   = SCFT_ROLL_ANCHOR_X + SCFT_ROLL_TXT_W - ow - TEXT_BORDER;
+        int16_t ey   = (SCFT_ROLL_ANCHOR_Y + SCFT_ROLL_LABEL_H + SCFT_ROLL_GAP)
+                       + (SCFT_ROLL_VALUE_H - capH) / 2;
+        tft.fillRect(ex - 1, ey, ow + 2, capH, TFT_BLACK);
     }
 
-    // Line 1: "Roll:" — small font, centred in label row
-    textCenter(tft, &Roboto_Black_20,
-               SCFT_ROLL_ANCHOR_X, SCFT_ROLL_ANCHOR_Y,
-               SCFT_ROLL_W, SCFT_ROLL_LABEL_H,
-               "Roll:", TFT_WHITE, TFT_BLACK);
+    // Line 1: "Roll:" — label row, right-justified toward the panel divider
+    textRight(tft, &Roboto_Black_24,
+              SCFT_ROLL_ANCHOR_X, SCFT_ROLL_ANCHOR_Y,
+              SCFT_ROLL_TXT_W, SCFT_ROLL_LABEL_H,
+              "Roll:", TFT_WHITE, TFT_BLACK);
 
-    // Line 2: signed value — larger font, centred in value row
+    // Line 2: signed value — larger font, right-justified in value row
     char buf[8];
     snprintf(buf, sizeof(buf), "%+d\xB0", iRoll);
-    textCenter(tft, &Roboto_Black_24,
-               SCFT_ROLL_ANCHOR_X, SCFT_ROLL_ANCHOR_Y + SCFT_ROLL_LABEL_H + SCFT_ROLL_GAP,
-               SCFT_ROLL_W, SCFT_ROLL_VALUE_H,
-               buf, fg, bg);
+    textRight(tft, &Roboto_Black_28,
+              SCFT_ROLL_ANCHOR_X, SCFT_ROLL_ANCHOR_Y + SCFT_ROLL_LABEL_H + SCFT_ROLL_GAP,
+              SCFT_ROLL_TXT_W, SCFT_ROLL_VALUE_H,
+              buf, fg, bg);
 
     _scftPrevRollReadout   = iRoll;
     _scftPrevRollReadoutFg = fg;
@@ -715,8 +721,8 @@ static const int16_t  SCFT_PTAPE_SUPP_HI = SCFT_PTAPE_BOX_Y + SCFT_PTAPE_BOX_H +
 
 // Markers — left-pointing triangles on right edge of tape
 static const int16_t  SCFT_PTAPE_MRK_BASE_X = SCFT_PTAPE_X + SCFT_PTAPE_W - 2;
-static const int16_t  SCFT_PTAPE_MRK_TIP_X  = SCFT_PTAPE_X + SCFT_PTAPE_W - 20; // 18px — matches HDG tape
-static const int16_t  SCFT_PTAPE_MRK_HW     = 6;
+static const int16_t  SCFT_PTAPE_MRK_TIP_X  = SCFT_PTAPE_X + SCFT_PTAPE_W - 22; // 20px (matches ACFT)
+static const int16_t  SCFT_PTAPE_MRK_HW     = 9;
 
 // State
 static float   _scftPrevPitch2      = -9999.0f;   // pitch tape (distinct from ball state)
@@ -736,12 +742,12 @@ static void _scftUpdatePitchBox(KCM_TFT &tft, float pitch) {
     if (_scftPrevPitchBox > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _scftPrevPitchBox);
-        eraseCenteredValue(tft, &Roboto_Black_24,
+        eraseCenteredValue(tft, &Roboto_Black_28,
                    SCFT_PTAPE_BOX_X, SCFT_PTAPE_BOX_Y + 1,
                    SCFT_PTAPE_BOX_W, SCFT_PTAPE_BOX_H - 2,
                    oldBuf, TFT_BLACK);
     }
-    textCenter(tft, &Roboto_Black_24,
+    textCenter(tft, &Roboto_Black_28,
                SCFT_PTAPE_BOX_X, SCFT_PTAPE_BOX_Y + 1,
                SCFT_PTAPE_BOX_W, SCFT_PTAPE_BOX_H - 2,
                newBuf, TFT_DARK_GREEN, TFT_BLACK);
@@ -808,6 +814,11 @@ static void _scftDrawPitchTape(KCM_TFT &tft, float pitch) {
             tft.drawLine(tx0, py, tx1, py, TFT_DARK_GREY);
         }
     }
+
+    // Redraw the tape's bottom border — the lowest number labels' opaque black
+    // background can paint over it, and it is otherwise only drawn once in chrome.
+    tft.drawLine(SCFT_PTAPE_X - 1,                SCFT_PTAPE_Y + SCFT_PTAPE_H - 1,
+                 SCFT_PTAPE_X + SCFT_PTAPE_W - 1, SCFT_PTAPE_Y + SCFT_PTAPE_H - 1, TFT_LIGHT_GREY);
 
     // Draw pitch markers (left-pointing triangles on right edge)
     auto drawPitchMarker = [&](float markerPitch, uint16_t col) {
@@ -882,8 +893,8 @@ static const int16_t  SCFT_HDG_SUPP_HI   = SCFT_HDG_BOX_X + SCFT_HDG_BOX_W + 18;
 
 // Heading markers — long thin downward triangles fully inside the tape
 static const int16_t  SCFT_HDG_MRK_BASE_Y = SCFT_HDG_TAPE_Y + 2;   // 2px below tape top
-static const int16_t  SCFT_HDG_MRK_TIP_Y  = SCFT_HDG_TAPE_Y + 20;  // 18px tall
-static const int16_t  SCFT_HDG_MRK_HW     = 6;                     // half-width → 13px wide
+static const int16_t  SCFT_HDG_MRK_TIP_Y  = SCFT_HDG_TAPE_Y + 24;  // 22px tall (matches ACFT)
+static const int16_t  SCFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide
 
 // Draw/update the heading number box — cached, only redraws when integer heading changes.
 // Uses textCenter for flicker-free rendering: erase old value with black-on-black first.
@@ -898,14 +909,14 @@ static void _scftUpdateHdgBox(KCM_TFT &tft, float hdg) {
     // Erase previous value with black-on-black
     if (_scftPrevHdgBox >= 0) {
         snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _scftPrevHdgBox);
-        eraseCenteredValue(tft, &Roboto_Black_24,
+        eraseCenteredValue(tft, &Roboto_Black_28,
                    SCFT_HDG_BOX_X, SCFT_HDG_BOX_Y + 1,
                    SCFT_HDG_BOX_W, SCFT_HDG_BOX_H - 2,
                    oldBuf, TFT_BLACK);
     }
 
     // Draw new value
-    textCenter(tft, &Roboto_Black_24,
+    textCenter(tft, &Roboto_Black_28,
                SCFT_HDG_BOX_X, SCFT_HDG_BOX_Y + 1,
                SCFT_HDG_BOX_W, SCFT_HDG_BOX_H - 2,
                newBuf, TFT_DARK_GREEN, TFT_BLACK);
@@ -1049,16 +1060,32 @@ static void _scftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
 static void _scftEraseRollPointer(KCM_TFT &tft, float roll) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
-    // Expand tip inward by 1px along radial, base outward by 1px, width +2px
+    // Expand tip inward 1px, base outward 3px, width +9px each side — the width
+    // margin kills the lateral ghost trail. The wider erase reaches into the R+28
+    // bank labels, so _scftUpdateRollIndicator redraws any label within the sweep.
     int16_t tx  = (int16_t)(SCFT_CX + (SCFT_PTR_TIP_R  - 1) * cosA);
     int16_t ty  = (int16_t)(SCFT_CY + (SCFT_PTR_TIP_R  - 1) * sinA);
-    int16_t bcx = (int16_t)(SCFT_CX + (SCFT_PTR_BASE_R + 1) * cosA);
-    int16_t bcy = (int16_t)(SCFT_CY + (SCFT_PTR_BASE_R + 1) * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * (SCFT_PTR_W + 2));
-    int16_t b1y = bcy + (int16_t)( cosA * (SCFT_PTR_W + 2));
-    int16_t b2x = bcx - (int16_t)(-sinA * (SCFT_PTR_W + 2));
-    int16_t b2y = bcy - (int16_t)( cosA * (SCFT_PTR_W + 2));
+    int16_t bcx = (int16_t)(SCFT_CX + (SCFT_PTR_BASE_R + 3) * cosA);
+    int16_t bcy = (int16_t)(SCFT_CY + (SCFT_PTR_BASE_R + 3) * sinA);
+    int16_t b1x = bcx + (int16_t)(-sinA * (SCFT_PTR_W + 9));
+    int16_t b1y = bcy + (int16_t)( cosA * (SCFT_PTR_W + 9));
+    int16_t b2x = bcx - (int16_t)(-sinA * (SCFT_PTR_W + 9));
+    int16_t b2y = bcy - (int16_t)( cosA * (SCFT_PTR_W + 9));
     tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, TFT_BLACK);
+}
+
+// Draw a single bank-scale angle label ("30" / "60") at R+28 along the bank
+// radial (Roboto_Black_16). Shared by the chrome pass and the roll-pointer repair.
+static void _scftDrawBankLabel(KCM_TFT &tft, int16_t bankDeg) {
+    const char *txt = (bankDeg == 60 || bankDeg == -60) ? "60" : "30";
+    float   a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
+    int16_t lc_x = (int16_t)(SCFT_CX + (SCFT_R + 28) * cosf(a));
+    int16_t lc_y = (int16_t)(SCFT_CY + (SCFT_R + 28) * sinf(a));
+    int16_t lw   = getFontStringWidth(&Roboto_Black_16, txt);
+    tft.setFont(Roboto_Black_16);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    tft.setCursor(lc_x - lw / 2, lc_y - 9);   // 9 ≈ cap-height/2 for Roboto_Black_16
+    tft.print(txt);
 }
 
 // Draw a single bank scale tick at the given bank angle.
@@ -1091,12 +1118,19 @@ static void _scftUpdateRollIndicator(KCM_TFT &tft, float roll) {
         if      (prevClamped >  60.0f) prevClamped =  60.0f;
         else if (prevClamped < -60.0f) prevClamped = -60.0f;
         _scftEraseRollPointer(tft, prevClamped);
-        // Redraw any tick the erase region may have covered (within 4° — slightly
-        // wider than before to account for the expanded erase)
+        // Redraw any bank label the (wider) erase reached into (±30/±60, within a
+        // 12° window) BEFORE the ticks, so a label's opaque box can't clip a tick.
+        static const int16_t labelBanks[] = {-60, -30, 30, 60};
+        for (uint8_t i = 0; i < 4; i++) {
+            if (fabsf(_scftPrevRollIndicator - labelBanks[i]) < 12.0f) {
+                _scftDrawBankLabel(tft, labelBanks[i]);
+            }
+        }
+        // Redraw every tick the (wider) erase region may have covered (within 7° —
+        // do NOT break, the enlarged erase can span two adjacent ticks).
         for (uint8_t i = 0; i < 11; i++) {
-            if (fabsf(_scftPrevRollIndicator - ticks[i]) < 4.0f) {
+            if (fabsf(_scftPrevRollIndicator - ticks[i]) < 7.0f) {
                 _scftDrawBankTick(tft, ticks[i]);
-                break;
             }
         }
     }
@@ -1158,21 +1192,9 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
     for (uint8_t i = 0; i < 11; i++) _scftDrawBankTick(tft, ticks[i]);
 
-    // Labels at ±30° and ±60° — drawn at R+28 along the tick radial
-    tft.setFont(Roboto_Black_12);
-    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    // Labels at ±30° and ±60° — drawn at R+28 along the tick radial (Roboto_Black_16)
     static const int16_t labelTicks[] = {-60, -30, 30, 60};
-    static const char *  labelText[]  = {"60", "30", "30", "60"};
-    static const uint8_t FONT_W = 8, FONT_H = 14;
-    for (uint8_t i = 0; i < 4; i++) {
-        int16_t bank = labelTicks[i];
-        float   a    = (bank - 90.0f) * (float)DEG_TO_RAD;
-        int16_t lc_x = (int16_t)(SCFT_CX + (SCFT_R + 28) * cosf(a));
-        int16_t lc_y = (int16_t)(SCFT_CY + (SCFT_R + 28) * sinf(a));
-        uint8_t lw   = strlen(labelText[i]) * FONT_W;
-        tft.setCursor(lc_x - lw / 2, lc_y - FONT_H / 2);
-        tft.print(labelText[i]);
-    }
+    for (uint8_t i = 0; i < 4; i++) _scftDrawBankLabel(tft, labelTicks[i]);
 
     // Heading box border
     tft.drawRect(SCFT_HDG_BOX_X, SCFT_HDG_BOX_Y, SCFT_HDG_BOX_W, SCFT_HDG_BOX_H, TFT_LIGHT_GREY);
@@ -1187,10 +1209,11 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     tft.drawLine(SCFT_PTAPE_X - 1,                  SCFT_PTAPE_Y + SCFT_PTAPE_H - 1,
                  SCFT_PTAPE_X + SCFT_PTAPE_W - 1,    SCFT_PTAPE_Y + SCFT_PTAPE_H - 1, TFT_LIGHT_GREY);
 
-    // "Pitch:" right-justified to right edge of pitch value box
-    textRight(tft, &Roboto_Black_20,
-              SCFT_PTAPE_BOX_X, SCFT_PTAPE_Y - 24,
-              SCFT_PTAPE_BOX_W, 24,
+    // "Pitch:" right-justified to right edge of pitch value box (box widened left
+    // so the larger _24 label — 75px — fits without clipping the pitch value box)
+    textRight(tft, &Roboto_Black_24,
+              SCFT_PTAPE_BOX_X - 24, SCFT_PTAPE_Y - 32,
+              SCFT_PTAPE_BOX_W + 24, 30,
               "Pitch:", TFT_WHITE, TFT_BLACK);
 
     // Heading tape border — top (light grey) and two sides (darker), open at bottom
@@ -1202,9 +1225,9 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
                  SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W, SCFT_HDG_TAPE_Y + SCFT_HDG_TAPE_H, TFT_GREY);
 
     // "Hdg:" right-justified to same right edge as "Pitch:" label
-    textRight(tft, &Roboto_Black_20,
-              SCFT_PTAPE_BOX_X, SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H / 2 - 10,
-              SCFT_PTAPE_BOX_W, 24,
+    textRight(tft, &Roboto_Black_24,
+              SCFT_PTAPE_BOX_X, SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H / 2 - 15,
+              SCFT_PTAPE_BOX_W, 30,
               "Hdg:", TFT_WHITE, TFT_BLACK);
 
     // ── Right panel chrome ─────────────────────────────────────────────────────────────
@@ -1212,7 +1235,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     tft.drawLine(SCFT_PANEL_X - 2, TITLE_TOP, SCFT_PANEL_X - 2, SCREEN_H - 1, TFT_GREY);
     tft.drawLine(SCFT_PANEL_X - 1, TITLE_TOP, SCFT_PANEL_X - 1, SCREEN_H - 1, TFT_GREY);
 
-    static const tFont *PF = &Roboto_Black_20;
+    static const tFont *PF = &Roboto_Black_28;   // label font — matches reticle/launch panels
 
     // Rows 0-6: single-width rows with label (row 1 label depends on orbMode)
     static const char *panelLabels[] = {
@@ -1240,7 +1263,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
 // Uses printValue + rowCache[screen_SCFT] exactly as LNDG/ORB screens do.
 // Cache slots 0-9: Alt.SL, V.Orb, ApA, PeA, T+Ap/Pe, T+Ign, ΔV.Stg, RCS, SAS label, SAS value
 static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
-    static const tFont *VF  = &Roboto_Black_24;   // value font
+    static const tFont *VF  = &Roboto_Black_36;   // value font — matches reticle/launch panels
     static const uint8_t SC = (uint8_t)screen_SCFT;
 
     bool hasMnvr  = (state.mnvrTime > 0.0f);
@@ -1323,7 +1346,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
     // Row 7 split — RCS button (left half) | SAS button (right half)
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(SCFT_PANEL_NR);  // full row top (no ROW_PAD)
-        uint16_t rh  = SCREEN_H - ry;                           // extend to screen bottom (was 480 - ry: underflowed)
+        uint16_t rh  = SCREEN_H - ry - 1;                        // bottom border on row 598 (599 overscanned)
         uint16_t sasX = SCFT_PANEL_X + hw;
         uint16_t sasW = SCFT_PANEL_RIGHT - sasX;                 // fills remainder exactly
 
@@ -1336,7 +1359,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                 ButtonLabel btn = rcsOn
                     ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                     : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                drawButton(tft, SCFT_PANEL_X, ry, hw, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, SCFT_PANEL_X, ry, hw, rh, btn, &Roboto_Black_24, false);
                 rc.value = rcsStr;
             }
         }
@@ -1361,7 +1384,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
             RowCache &rc = rowCache[SC][8];
             if (rc.value != v || rc.fg != fg || rc.bg != bg) {
                 ButtonLabel btn = { v, fg, fg, bg, bg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_24, false);
                 rc.value = v; rc.fg = fg; rc.bg = bg;
             }
         }
@@ -1426,10 +1449,12 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
         _scftDrawBall(tft, full);
         _scftFullRedrawNeeded = false;
         uint32_t dt = micros() - t0;
-        Serial.print(full ? "SCFT_FULL total=" : "SCFT_DELTA total=");
-        Serial.print((float)dt / 1000.0f, 2);
-        Serial.print("ms  pitch="); Serial.print(state.pitch, 1);
-        Serial.print("  roll=");    Serial.println(state.roll, 1);
+        if (debugMode) {
+            Serial.print(full ? "SCFT_FULL total=" : "SCFT_DELTA total=");
+            Serial.print((float)dt / 1000.0f, 2);
+            Serial.print("ms  pitch="); Serial.print(state.pitch, 1);
+            Serial.print("  roll=");    Serial.println(state.roll, 1);
+        }
     }
 
     // Roll indicator — update whenever roll changes, independent of ball redraw
