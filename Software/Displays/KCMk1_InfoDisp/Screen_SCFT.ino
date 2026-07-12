@@ -1163,13 +1163,19 @@ static void _scftDrawThrottleChrome(KCM_TFT &tft) {
     // Right border of the strip
     tft.drawLine(THR_TICK_X0 + 1, TITLE_TOP, THR_TICK_X0 + 1, SCREEN_H - 1, TFT_GREY);
     tft.setFont(Roboto_Black_12);
-    for (int16_t p = 0; p <= 100; p += 20) {
-        int16_t ty = THR_BOT_Y - (int16_t)((float)p / 100.0f * THR_TRACK_H);
-        tft.drawLine(THR_TICK_X0, ty, THR_TICK_X0 + 10, ty, TFT_LIGHT_GREY);
-        tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-        tft.setCursor(THR_TICK_X0 + 12, ty - 6);
-        char lbl[4]; snprintf(lbl, sizeof(lbl), "%d", p);
-        tft.print(lbl);
+    for (int16_t p = 0; p <= 100; p += 5) {
+        int16_t ty    = THR_BOT_Y - (int16_t)((float)p / 100.0f * THR_TRACK_H);
+        bool    major = (p % 20 == 0);
+        // Major ticks (every 20%) — long, light grey, labelled. Minor ticks
+        // (every 5%) — short, dark grey, no label. Matches the VSI/pitch-tape style.
+        tft.drawLine(THR_TICK_X0, ty, THR_TICK_X0 + (major ? 10 : 6), ty,
+                     major ? TFT_LIGHT_GREY : TFT_GREY);
+        if (major) {
+            tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+            tft.setCursor(THR_TICK_X0 + 12, ty - 6);
+            char lbl[4]; snprintf(lbl, sizeof(lbl), "%d", p);
+            tft.print(lbl);
+        }
     }
     // "THR" label — vertical, at the bottom, matching the Pitch/Hdg label style
     drawVerticalText(tft, THR_X, SCREEN_H - THR_LABEL_H, THR_BAR_W, THR_LABEL_H,
