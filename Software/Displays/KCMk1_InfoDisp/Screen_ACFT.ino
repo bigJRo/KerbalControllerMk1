@@ -634,9 +634,15 @@ static const int16_t  ACFT_PTR_W      = 12;           // half-width of pointer b
 // Roll readout — two lines centred in fixed-width block
 // Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
 static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 54; // right edge (571) tucked
-                                                                   //   against the panel divider (572)
-static const int16_t  ACFT_ROLL_ANCHOR_Y  = ACFT_CY - ACFT_R - 34; // top (66) near the title rule
+                                                                   //   against the panel divider (571)
+static const int16_t  ACFT_ROLL_ANCHOR_Y  = ACFT_CY - ACFT_R - 38; // top (62) = TITLE_TOP,
+                                                                   //   just clear of the title rule (y58–61)
 static const int16_t  ACFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
+// Label/value are right-justified toward the panel divider. textRight() insets by
+// TEXT_BORDER(8) from the box's right edge, so extend the justify reference 6px
+// past ACFT_ROLL_W: text right edge lands at x=569, 2px clear of the divider (571),
+// ~10px right of the old centred position for typical narrow roll values.
+static const int16_t  ACFT_ROLL_TXT_W     = ACFT_ROLL_W + 6;   // 86 — text-justify reference
 static const int16_t  ACFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
 static const int16_t  ACFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
 static const int16_t  ACFT_ROLL_GAP       = 3;    // gap between lines
@@ -652,29 +658,31 @@ static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
 
     if (iRoll == _acftPrevRollReadout && fg == _acftPrevRollReadoutFg) return;
 
-    // Erase previous value in black-on-black using the same font/box
+    // Erase previous value — right-justified glyph box (matches textRight below).
     if (_acftPrevRollReadout > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _acftPrevRollReadout);
-        eraseCenteredValue(tft, &Roboto_Black_28,
-                   ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP,
-                   ACFT_ROLL_W, ACFT_ROLL_VALUE_H,
-                   oldBuf, TFT_BLACK);
+        int16_t ow   = getFontStringWidth(&Roboto_Black_28, oldBuf);
+        int16_t capH = (int16_t)Roboto_Black_28.cap_height;
+        int16_t ex   = ACFT_ROLL_ANCHOR_X + ACFT_ROLL_TXT_W - ow - TEXT_BORDER;
+        int16_t ey   = (ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP)
+                       + (ACFT_ROLL_VALUE_H - capH) / 2;
+        tft.fillRect(ex - 1, ey, ow + 2, capH, TFT_BLACK);
     }
 
-    // Line 1: "Roll:" — label row
-    textCenter(tft, &Roboto_Black_24,
-               ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y,
-               ACFT_ROLL_W, ACFT_ROLL_LABEL_H,
-               "Roll:", TFT_WHITE, TFT_BLACK);
+    // Line 1: "Roll:" — label row, right-justified toward the panel divider
+    textRight(tft, &Roboto_Black_24,
+              ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y,
+              ACFT_ROLL_TXT_W, ACFT_ROLL_LABEL_H,
+              "Roll:", TFT_WHITE, TFT_BLACK);
 
-    // Line 2: signed value — larger font, centred in value row
+    // Line 2: signed value — larger font, right-justified in value row
     char buf[8];
     snprintf(buf, sizeof(buf), "%+d\xB0", iRoll);
-    textCenter(tft, &Roboto_Black_28,
-               ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP,
-               ACFT_ROLL_W, ACFT_ROLL_VALUE_H,
-               buf, fg, bg);
+    textRight(tft, &Roboto_Black_28,
+              ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP,
+              ACFT_ROLL_TXT_W, ACFT_ROLL_VALUE_H,
+              buf, fg, bg);
 
     _acftPrevRollReadout   = iRoll;
     _acftPrevRollReadoutFg = fg;
@@ -1010,18 +1018,34 @@ static void _acftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
 static void _acftEraseRollPointer(KCM_TFT &tft, float roll) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
-    // Expand tip inward 1px (stay off the bezel), base outward 2px (stay below the
-    // R+28 bank labels), and width +5px each side — the width margin is what kills
-    // the lateral ghost trail as the rotated pointer sweeps.
+    // Expand tip inward 1px (stay off the bezel), base outward 3px, and width +9px
+    // each side — the width margin is what kills the lateral ghost trail as the
+    // rotated pointer sweeps. The wider erase now reaches into the R+28 bank labels,
+    // so _acftUpdateRollIndicator redraws any label within the sweep window.
     int16_t tx  = (int16_t)(ACFT_CX + (ACFT_PTR_TIP_R  - 1) * cosA);
     int16_t ty  = (int16_t)(ACFT_CY + (ACFT_PTR_TIP_R  - 1) * sinA);
-    int16_t bcx = (int16_t)(ACFT_CX + (ACFT_PTR_BASE_R + 2) * cosA);
-    int16_t bcy = (int16_t)(ACFT_CY + (ACFT_PTR_BASE_R + 2) * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * (ACFT_PTR_W + 5));
-    int16_t b1y = bcy + (int16_t)( cosA * (ACFT_PTR_W + 5));
-    int16_t b2x = bcx - (int16_t)(-sinA * (ACFT_PTR_W + 5));
-    int16_t b2y = bcy - (int16_t)( cosA * (ACFT_PTR_W + 5));
+    int16_t bcx = (int16_t)(ACFT_CX + (ACFT_PTR_BASE_R + 3) * cosA);
+    int16_t bcy = (int16_t)(ACFT_CY + (ACFT_PTR_BASE_R + 3) * sinA);
+    int16_t b1x = bcx + (int16_t)(-sinA * (ACFT_PTR_W + 9));
+    int16_t b1y = bcy + (int16_t)( cosA * (ACFT_PTR_W + 9));
+    int16_t b2x = bcx - (int16_t)(-sinA * (ACFT_PTR_W + 9));
+    int16_t b2y = bcy - (int16_t)( cosA * (ACFT_PTR_W + 9));
     tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, TFT_BLACK);
+}
+
+// Draw a single bank-scale angle label ("30" / "60") at R+28 along the bank
+// radial. Roboto_Black_16, centred on the radial point. Shared by the chrome
+// pass and the roll-pointer repair so the two never disagree on font or position.
+static void _acftDrawBankLabel(KCM_TFT &tft, int16_t bankDeg) {
+    const char *txt = (bankDeg == 60 || bankDeg == -60) ? "60" : "30";
+    float   a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
+    int16_t lc_x = (int16_t)(ACFT_CX + (ACFT_R + 28) * cosf(a));
+    int16_t lc_y = (int16_t)(ACFT_CY + (ACFT_R + 28) * sinf(a));
+    int16_t lw   = getFontStringWidth(&Roboto_Black_16, txt);
+    tft.setFont(Roboto_Black_16);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    tft.setCursor(lc_x - lw / 2, lc_y - 9);   // 9 ≈ cap-height/2 for Roboto_Black_16
+    tft.print(txt);
 }
 
 // Draw a single bank scale tick at the given bank angle.
@@ -1054,6 +1078,16 @@ static void _acftUpdateRollIndicator(KCM_TFT &tft, float roll) {
         if      (prevClamped >  60.0f) prevClamped =  60.0f;
         else if (prevClamped < -60.0f) prevClamped = -60.0f;
         _acftEraseRollPointer(tft, prevClamped);
+        // Redraw any bank label the (wider) erase region reached into. Labels live
+        // at ±30/±60 and sit at R+28 — the enlarged erase now clips their inner
+        // glyph rows, so restore any within a 12° window. Draw labels BEFORE the
+        // ticks so a label's opaque background box can't clip an adjacent tick.
+        static const int16_t labelBanks[] = {-60, -30, 30, 60};
+        for (uint8_t i = 0; i < 4; i++) {
+            if (fabsf(_acftPrevRollIndicator - labelBanks[i]) < 12.0f) {
+                _acftDrawBankLabel(tft, labelBanks[i]);
+            }
+        }
         // Redraw every tick the (wider) erase region may have covered. Search a 7°
         // window and do NOT break — the enlarged erase can span two adjacent ticks.
         for (uint8_t i = 0; i < 11; i++) {
@@ -1353,21 +1387,9 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
     for (uint8_t i = 0; i < 11; i++) _acftDrawBankTick(tft, ticks[i]);
 
-    // Labels at ±30° and ±60° — drawn at R+28 along the tick radial
-    tft.setFont(Roboto_Black_12);
-    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    // Labels at ±30° and ±60° — drawn at R+28 along the tick radial (Roboto_Black_16)
     static const int16_t labelTicks[] = {-60, -30, 30, 60};
-    static const char *  labelText[]  = {"60", "30", "30", "60"};
-    static const uint8_t FONT_W = 8, FONT_H = 14;
-    for (uint8_t i = 0; i < 4; i++) {
-        int16_t bank = labelTicks[i];
-        float   a    = (bank - 90.0f) * (float)DEG_TO_RAD;
-        int16_t lc_x = (int16_t)(ACFT_CX + (ACFT_R + 28) * cosf(a));
-        int16_t lc_y = (int16_t)(ACFT_CY + (ACFT_R + 28) * sinf(a));
-        uint8_t lw   = strlen(labelText[i]) * FONT_W;
-        tft.setCursor(lc_x - lw / 2, lc_y - FONT_H / 2);
-        tft.print(labelText[i]);
-    }
+    for (uint8_t i = 0; i < 4; i++) _acftDrawBankLabel(tft, labelTicks[i]);
 
     // Heading box border
     tft.drawRect(ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y, ACFT_HDG_BOX_W, ACFT_HDG_BOX_H, TFT_LIGHT_GREY);
@@ -1642,7 +1664,10 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // Row 7 — Brakes | SAS buttons
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR);
-        uint16_t rh  = SCREEN_H - ry;
+        // Inset the bottom 3px: the panel overscans the last few scanlines, so a
+        // border drawn at SCREEN_H-1 (599) is clipped off. Ending at 596 keeps the
+        // BRAKES/SAS bottom border clearly on-screen.
+        uint16_t rh  = SCREEN_H - ry - 3;
         uint16_t sasX = ACFT_PANEL_X + hw;
         uint16_t sasW = ACFT_PANEL_RIGHT - sasX;
 

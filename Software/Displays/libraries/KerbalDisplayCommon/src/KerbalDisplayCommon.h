@@ -216,8 +216,10 @@ void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
 // marker at that location was erased to black. Redraws only the rings / cardinals /
 // crosshair / good-zone that the box overlaps. `gap` matches the value passed to
 // reticleDrawBase for the same screen.
-void reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
-                   int16_t gap, int16_t bx, int16_t by, uint8_t bh);
+// Returns the erase box's nearest distance to (cx,cy) so the caller can tell when
+// the good-zone refill covered the innermost ring label (radius ≈ r/4).
+float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
+                    int16_t gap, int16_t bx, int16_t by, uint8_t bh);
 
 // --- Basic formatters ---
 String formatInt(uint16_t value);

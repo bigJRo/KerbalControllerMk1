@@ -594,8 +594,8 @@ void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
   tft.drawCircle(cx, cy, r + 1, TFT_DARK_GREY);
 }
 
-void reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
-                   int16_t gap, int16_t bx, int16_t by, uint8_t bh) {
+float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
+                    int16_t gap, int16_t bx, int16_t by, uint8_t bh) {
   int16_t boxX0 = bx, boxX1 = bx + 2 * bh, boxY0 = by, boxY1 = by + 2 * bh;
 
   float px = (float)constrain((int)cx, (int)boxX0, (int)boxX1);
@@ -642,6 +642,10 @@ void reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
     tft.fillCircle(cx, cy, (r / 4) - 1, TFT_OFF_BLACK);
     tft.drawCircle(cx, cy, (r / 4),     TFT_DARK_GREEN);
   }
+
+  // Report the box's nearest distance to centre so callers can decide whether the
+  // good-zone refill just painted over the innermost ring label (radius ≈ r/4).
+  return distToCentre;
 }
 
 

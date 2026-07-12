@@ -209,7 +209,24 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 
 // ── Repair chrome after marker erase ─────────────────────────────────────────────────
 static void _mnvrRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
-    reticleRepair(tft, MNVR_CX, MNVR_CY, MNVR_R, 18, bx, by, bh);
+    int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
+    float d = reticleRepair(tft, MNVR_CX, MNVR_CY, MNVR_R, 18, bx, by, bh);
+
+    // Redraw the ring label(s) the erase box overlapped, plus the innermost one if
+    // the good-zone refill (radius R/4) just painted over it (marker inside it).
+    static const uint16_t lblR[]   = {MNVR_RING_5, MNVR_RING_10, MNVR_RING_15, MNVR_RING_20};
+    static const char    *lblTxt[] = {"5", "10", "15", "20"};
+    bool fontSet = false;
+    for (uint8_t i = 0; i < 4; i++) {
+        int16_t lx = MNVR_CX + 3, ly = MNVR_CY - lblR[i] + 3;
+        bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
+        bool goodZoneHit = (i == 0 && d <= (float)(MNVR_R / 4));
+        if (boxHit || goodZoneHit) {
+            if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
+            tft.setCursor(lx, ly);
+            tft.print(lblTxt[i]);
+        }
+    }
 }
 
 

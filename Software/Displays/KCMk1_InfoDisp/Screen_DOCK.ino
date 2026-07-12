@@ -227,19 +227,20 @@ static void _dockRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) 
     int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
 
     // Shared reticle restore: rings / cardinals / crosshair / centre-dot / good-zone.
-    reticleRepair(tft, RET_CX, RET_CY, RET_R, 18, bx, by, bh);
+    float d = reticleRepair(tft, RET_CX, RET_CY, RET_R, 18, bx, by, bh);
 
     // Ring degree labels — the erase fillRect wipes them (drawn transparent), so
-    // redraw only the label(s) whose bbox overlaps the erase box (redrawing all
-    // could paint a label over a different, stationary dot). Without this, an
-    // inner-ring label vanishes whenever a dot passes over it. Bbox for _16.
+    // redraw the label(s) whose bbox overlaps the erase box, PLUS the innermost one
+    // when the good-zone refill (radius R/4) painted over it (dot inside that ring).
     {
         static const uint16_t lblR[]   = {RING_5, RING_10, RING_15, RING_20};
         static const char    *lblTxt[] = {"5", "10", "15", "20"};
         bool fontSet = false;
         for (uint8_t i = 0; i < 4; i++) {
             int16_t lx = RET_CX + 3, ly = RET_CY - lblR[i] + 3;
-            if (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20) {
+            bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
+            bool goodZoneHit = (i == 0 && d <= (float)(RET_R / 4));
+            if (boxHit || goodZoneHit) {
                 if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
                 tft.setCursor(lx, ly);
                 tft.print(lblTxt[i]);

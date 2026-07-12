@@ -145,8 +145,9 @@ static void _tgtClampDot(int16_t &sx, int16_t &sy) {
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
 static void _tgtDrawScopeChrome(KCM_TFT &tft) {
-    // Shared disc + rings + cardinals + crosshair + ticks + bezel (TGT gap 16, tick 10)
-    reticleDrawBase(tft, TGT_SCX, TGT_SCY, TGT_R, 16, 10);
+    // Shared disc + rings + cardinals + crosshair + ticks + bezel (TGT gap 16, tick 14
+    // — same 14px tick length as MNVR/DOCK for a consistent reticle family look).
+    reticleDrawBase(tft, TGT_SCX, TGT_SCY, TGT_R, 16, 14);
 
     // Ring degree labels — NE quadrant, just inside each ring.
     // Single-arg setTextColor = transparent background (no black rectangle under text).
@@ -238,18 +239,25 @@ static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
     int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
 
     // Shared reticle restore: rings / cardinals / crosshair / centre-dot / good-zone.
-    reticleRepair(tft, TGT_SCX, TGT_SCY, TGT_R, 16, bx, by, bh);
+    // Returns the marker's distance from centre so we can detect a good-zone hit.
+    float d = reticleRepair(tft, TGT_SCX, TGT_SCY, TGT_R, 16, bx, by, bh);
 
-    // Redraw only the ring label(s) whose bbox overlaps the erase box (each sits
-    // at (SCX+3, SCY - RING_r + 3); bbox sized for Roboto_Black_16). Redrawing
-    // only the overlapping one avoids painting a label over a different dot.
+    // Redraw the ring label(s) whose bbox overlaps the erase box (each sits at
+    // (SCX+3, SCY - RING_r + 3); bbox sized for Roboto_Black_16). Redrawing only
+    // the overlapping one avoids painting a label over a different dot. The
+    // innermost ("15") label sits at radius ~49, inside the good-zone fill
+    // (radius R/4-1) — so when a marker enters the inner circle the good-zone
+    // repaint erases it even though the erase box may not overlap its bbox. Force
+    // its redraw whenever the marker is inside the good zone (goodZoneHit).
     {
         static const uint16_t lblR[]  = {TGT_RING_15, TGT_RING_30, TGT_RING_45, TGT_RING_60};
         static const char    *lblTxt[]= {"15", "30", "45", "60"};
         bool fontSet = false;
         for (uint8_t i = 0; i < 4; i++) {
             int16_t lx = TGT_SCX + 3, ly = TGT_SCY - lblR[i] + 3;
-            if (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20) {
+            bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
+            bool goodZoneHit = (i == 0 && d <= (float)(TGT_R / 4));
+            if (boxHit || goodZoneHit) {
                 if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
                 tft.setCursor(lx, ly);
                 tft.print(lblTxt[i]);
