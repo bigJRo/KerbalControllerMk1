@@ -1195,19 +1195,16 @@ static void _acftDrawSlipChrome(KCM_TFT &tft) {
     int16_t m10 = (int16_t)(10.0f          * SLIP_SCALE);
     int16_t m15 = (int16_t)(SLIP_ALARM_DEG * SLIP_SCALE);
 
-    // Range reference ticks — inset 1px from the top/bottom borders (they no longer
-    // overlap the borders). Marks at ±5 (green, edge of centred zone), ±10 (yellow,
-    // mid warn), ±15 (red, entry to the alarm range).
+    // Range reference ticks at ±5, ±10, ±15 — drawn in the light-grey label colour
+    // (matching the numeric labels), inset 1px from the top/bottom borders.
     const int16_t TLEN = 7;   // 80% of the previous 9px height
     int16_t topY0 = SLIP_Y + 1,              topY1 = SLIP_Y + 1 + TLEN;
     int16_t botY1 = SLIP_Y + SLIP_H - 2,     botY0 = botY1 - TLEN;
-    const int      markDx[]  = { -m15, -m10, -m5, m5, m10, m15 };  // int: unary minus promotes
-    const uint16_t markCol[] = { TFT_RED, TFT_YELLOW, TFT_NEON_GREEN,
-                                 TFT_NEON_GREEN, TFT_YELLOW, TFT_RED };
+    const int markDx[] = { -m15, -m10, -m5, m5, m10, m15 };  // int: unary minus promotes
     for (uint8_t i = 0; i < 6; i++) {
         int16_t mx = ACFT_CX + markDx[i];
-        tft.drawLine(mx, topY0, mx, topY1, markCol[i]);
-        tft.drawLine(mx, botY0, mx, botY1, markCol[i]);
+        tft.drawLine(mx, topY0, mx, topY1, TFT_LIGHT_GREY);
+        tft.drawLine(mx, botY0, mx, botY1, TFT_LIGHT_GREY);
     }
 
     // Signed numeric labels centred above each tick, in the clear space above the
