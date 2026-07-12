@@ -25,12 +25,13 @@
                           Centre → you are flying directly toward target
    Perfect intercept    = both dots converging toward centre simultaneously
 
-   SCOPE GEOMETRY
+   SCOPE GEOMETRY (rev-2, 1024×600)
    ──────────────
-   Centre: (175, 271)   Radius: 130px   Scale: 130/60 = 2.167 px/deg
+   Centre: (289, 331)   Radius: 245px   Scale: 4.08 px/deg (±60° full scale)
    Field of view: ±60° (wider than DOCK ±20° — long-range ops need more range)
-   Rings: 15°=r54, 30°=r65, 45°=r98, 60°=r130
-   Left panel: x=0..349   Right panel: x=352..719   Divider: x=350..351
+   Rings: 15°=r61, 30°=r122, 45°=r183, 60°=r245. Centred in the left region
+   x=[0,578] (no bottom bar → uses the full height).
+   Right panel: 360 px at x=580 (matches MNVR/DOCK), labels 28 / values 36
 
    RIGHT PANEL — 7 rows, rowHFor(7) = 59px each
    Row 0  Alt.SL   full-width
@@ -79,29 +80,33 @@
 bool _tgtChromDrawn = false;
 
 
-// ── Scope geometry constants — matched to DOCK screen reticle ─────────────────────────
-static const int16_t  TGT_SCX    = 192;          // scope centre x  (= DOCK RET_CX)
-static const int16_t  TGT_SCY    = 251;          // scope centre y  (= DOCK RET_CY)
-static const int16_t  TGT_R      = 170;          // scope radius px (= DOCK RET_R)
-static const float    TGT_SCALE  = (float)TGT_R / 60.0f;  // 2.833 px/deg — ±60° full scale
+// ── Scope geometry — centred and stretched to fill the left region (matches MNVR) ─────
+// The readout panel now sits on the far right (x=580), leaving x=[0,578] for the
+// scope. TGT has no bottom bar, so the scope is centred in the full left region
+// and enlarged to fill it.
+static const int16_t  TGT_SCX    = 289;          // centre of the left region x=[0,578]
+static const int16_t  TGT_SCY    = 331;          // centre of the content band (62..600)
+static const int16_t  TGT_R      = 245;          // scope radius px
+static const float    TGT_SCALE  = (float)TGT_R / 60.0f;  // 4.08 px/deg — ±60° full scale
 
-// Ring radii at ±15°, ±30°, ±45°, ±60° — recalculated for R=170, scale=2.833
-static const uint16_t TGT_RING_15 =  43;   // 15° × 2.833 = 42.5 → 43
-static const uint16_t TGT_RING_30 =  85;   // 30° × 2.833 = 85
-static const uint16_t TGT_RING_45 = 128;   // 45° × 2.833 = 127.5 → 128
-static const uint16_t TGT_RING_60 = TGT_R; // 60° = full radius
+// Ring radii at ±15°, ±30°, ±45°, ±60°
+static const uint16_t TGT_RING_15 = TGT_R / 4;        // 61
+static const uint16_t TGT_RING_30 = TGT_R / 2;        // 122
+static const uint16_t TGT_RING_45 = (TGT_R * 3) / 4;  // 183
+static const uint16_t TGT_RING_60 = TGT_R;            // 245 — ±60° boundary
 
-// Dot display sizes — matched to DOCK
-static const uint8_t TGT_DOT_R_TGT   = 11;  // target diamond half-size (= DOCK DOT_R_PORT)
-static const uint8_t TGT_DOT_R_VEL   =  9;  // velocity circle radius   (= DOCK DOT_R_VEL)
-static const uint8_t TGT_DOT_R_ERASE = 16;  // erase rect half-size     (= DOCK DOT_R_ERASE)
+// Dot display sizes — scaled up with the larger scope
+static const uint8_t TGT_DOT_R_TGT   = 14;  // target diamond half-size
+static const uint8_t TGT_DOT_R_VEL   = 12;  // velocity circle radius
+static const uint8_t TGT_DOT_R_ERASE = 20;  // erase rect half-size
 
-// Right panel geometry — matched to DOCK screen
-static const uint16_t TGT_RP_X  = 385;   // right panel left edge (= DOCK RP_X)
-static const uint16_t TGT_RP_W  = 335;   // right panel width     (= DOCK RP_W)
-static const uint8_t  TGT_RP_NR = 7;     // 7 rows × 59px ≈ CONTENT_H
-static const tFont   *TGT_RP_LF = &Roboto_Black_20;  // label font (printDispChrome)
-static const tFont   *TGT_RP_F  = &Roboto_Black_28;  // value font (printValue)
+// Right panel geometry — matches the ascent/circ readout panel (360 px wide,
+// right-aligned to the content edge, labels Black_28, values Black_36).
+static const uint16_t TGT_RP_W  = 360;
+static const uint16_t TGT_RP_X  = SCREEN_W - SIDEBAR_W - TGT_RP_W;   // 580
+static const uint8_t  TGT_RP_NR = 7;
+static const tFont   *TGT_RP_LF = &Roboto_Black_28;  // label font (printDispChrome)
+static const tFont   *TGT_RP_F  = &Roboto_Black_36;  // value font (printValue)
 
 
 // ── Previous dot positions (for erase-before-redraw) ─────────────────────────────────
@@ -176,7 +181,7 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
 
     // Ring degree labels — NE quadrant, just inside each ring.
     // Single-arg setTextColor = transparent background (no black rectangle under text).
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(TGT_SCX + 3, TGT_SCY - TGT_RING_15 + 3);  tft.print("15");
     tft.setCursor(TGT_SCX + 3, TGT_SCY - TGT_RING_30 + 3);  tft.print("30");
@@ -188,7 +193,7 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;
     static const uint16_t LEG_DY = 20;
 
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
 
     // VEL — hollow green circle
     tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
@@ -282,7 +287,7 @@ static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
         }
     }
     if (needLabel) {
-        tft.setFont(Roboto_Black_12);
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_LIGHT_GREY);
         for (uint8_t i = 0; i < 4; i++) {
             tft.setCursor(TGT_SCX + 3, TGT_SCY - lblR[i] + 3);

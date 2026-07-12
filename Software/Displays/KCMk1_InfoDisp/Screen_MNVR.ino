@@ -485,26 +485,26 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         uint16_t y6 = rowYFor(6, NR), h6 = rowHFor(NR), hw = W / 2;
 
         angCol(brgErr, fg, bg);
-        // Brg/Elv values use Black_28 (not the panel's Black_36) so the 1-decimal
-        // form fits the half-cell even at the worst case (±180.0°).
-        snprintf(buf, sizeof(buf), "%+.1f\xB0", brgErr);
+        // Integer degrees so the value fits the half-cell at the panel's Black_36
+        // (a decimal would overflow at large angles).
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", brgErr);
         {
             RowCache &rc = rowCache[MNVR_SC][6];
             String sv = buf;
             if (rc.value != sv || rc.fg != fg || rc.bg != bg) {
-                printValue(tft, &Roboto_Black_28, X,      y6, hw - ROW_PAD, h6,
+                printValue(tft, MNVR_RP_F, X,      y6, hw - ROW_PAD, h6,
                            "Brg:", sv, fg, bg, COL_BACK, printState[MNVR_SC][6]);
                 rc.value = sv; rc.fg = fg; rc.bg = bg;
             }
         }
 
         angCol(elvErr, fg, bg);
-        snprintf(buf, sizeof(buf), "%+.1f\xB0", elvErr);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", elvErr);
         {
             RowCache &rc = rowCache[MNVR_SC][7];
             String sv = buf;
             if (rc.value != sv || rc.fg != fg || rc.bg != bg) {
-                printValue(tft, &Roboto_Black_28, X + hw, y6, hw - ROW_PAD, h6,
+                printValue(tft, MNVR_RP_F, X + hw, y6, hw - ROW_PAD, h6,
                            "Elv:", sv, fg, bg, COL_BACK, printState[MNVR_SC][7]);
                 rc.value = sv; rc.fg = fg; rc.bg = bg;
             }

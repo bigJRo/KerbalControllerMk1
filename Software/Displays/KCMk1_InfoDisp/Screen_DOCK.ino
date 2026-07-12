@@ -22,11 +22,12 @@
                       At centre → your nose is pointing at the port (aligned)
    Perfect approach = both dots at centre simultaneously
 
-   RETICLE GEOMETRY (screen coords)
+   RETICLE GEOMETRY (rev-2, 1024×600)
    ──────────────────────────────────
-   Centre: (192, 271)  Radius: 170px  Scale: 170/30 = 5.67 px/deg
-   Rings: ±5° r=28, ±10° r=57, ±20° r=113, ±30° r=170
-   Left panel: x=0..384  Right panel: x=385..719
+   Centre: (289, 300)  Radius: 210px  Scale: 10.5 px/deg (±20° full scale)
+   Rings: ±5° r=52, ±10° r=105, ±15° r=157, ±20° r=210. Centred in the left
+   region x=[0,578]; approach bar centred under it.
+   Right panel: 360 px at x=580 (matches ascent/MNVR), labels 28 / values 36
 
    DOT UPDATE STRATEGY
    ────────────────────
@@ -51,33 +52,37 @@ bool     _vesselDocked    = false;
 uint32_t _dockedTimestamp = 0;
 
 
-// ── Reticle geometry constants ────────────────────────────────────────────────────────
-static const uint16_t RET_CX   = 192;   // reticle centre x (screen)
-static const uint16_t RET_CY   = 251;   // reticle centre y — raised vs screen centre to give legend room
-static const uint16_t RET_R    = 170;   // reticle radius (px)
-static const float    RET_SCALE = (float)RET_R / 20.0f;  // px per degree (8.5) — ±20° full scale
+// ── Reticle geometry — centred and stretched to fill the left region (matches MNVR) ──
+// The readout panel now sits on the far right (x=580), leaving x=[0,578] for the
+// reticle. It is centred there, enlarged, and the approach bar is centred below.
+static const uint16_t RET_CX   = 289;   // centre of the left region x=[0,578]
+static const uint16_t RET_CY   = 300;
+static const uint16_t RET_R    = 210;   // reticle radius (px)
+static const float    RET_SCALE = (float)RET_R / 20.0f;  // 10.5 px/deg — ±20° full scale
 
-// Ring radii for ±5°, ±10°, ±20°, ±30°
-static const uint16_t RING_5  = 42;   // 5° × 8.5px
-static const uint16_t RING_10 = 85;   // 10° × 8.5px
-static const uint16_t RING_15 = 127;  // 15° × 8.5px (replaces old 20° ring)
-static const uint16_t RING_20 = RET_R;  // 20° = full radius
+// Ring radii for ±5°, ±10°, ±15°, ±20°
+static const uint16_t RING_5  = RET_R / 4;         // 52
+static const uint16_t RING_10 = RET_R / 2;         // 105
+static const uint16_t RING_15 = (RET_R * 3) / 4;   // 157
+static const uint16_t RING_20 = RET_R;             // 210 — ±20° boundary
 
-// Dot display sizes
-static const uint8_t DOT_R_PORT  = 11;   // target port dot radius (increased)
-static const uint8_t DOT_R_VEL   =  9;   // velocity vector dot radius (increased)
-static const uint8_t DOT_R_ERASE = 16;   // erase rect half-size (covers dot + any overdraw)
+// Dot display sizes — scaled up with the larger reticle
+static const uint8_t DOT_R_PORT  = 14;   // target port dot radius
+static const uint8_t DOT_R_VEL   = 12;   // velocity vector dot radius
+static const uint8_t DOT_R_ERASE = 20;   // erase rect half-size (covers dot + overdraw)
 
-// Right panel geometry
-static const uint16_t RP_X   = 385;     // right panel left edge
-static const uint16_t RP_W   = 335;     // right panel width
+// Right panel geometry — matches the ascent/circ readout panel (360 px wide,
+// right-aligned to the content edge, labels Black_28, values Black_36).
+static const uint16_t RP_W   = 360;
+static const uint16_t RP_X   = SCREEN_W - SIDEBAR_W - RP_W;   // 580
 static const uint8_t  RP_NR  = 8;       // number of rows
-static const tFont   *RP_F   = &Roboto_Black_28;  // value font
+static const tFont   *RP_LBL = &Roboto_Black_28;  // label font (chrome)
+static const tFont   *RP_F   = &Roboto_Black_36;  // value font
 
-// Approach bar geometry (row 7 bottom)
-static const uint16_t BAR_X  = 19;    // 90% bar — (LEFT_W - BAR_W)/2 margin
-static const uint16_t BAR_W  = 346;   // 90% of 385px left panel
-static const uint16_t BAR_H  = 22;   // taller bar, visible at docking distance
+// Approach bar geometry — centred under the reticle
+static const uint16_t BAR_W  = 450;
+static const uint16_t BAR_X  = RET_CX - BAR_W / 2;   // 64
+static const uint16_t BAR_H  = 26;
 static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking approach range)
 
 
@@ -152,7 +157,7 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
 
     // Ring degree labels (positioned just inside each ring, in the NE quadrant)
     // Single-arg setTextColor = transparent background.
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(RET_CX + 3, RET_CY - RING_5  + 3);  tft.print("5");
     tft.setCursor(RET_CX + 3, RET_CY - RING_10 + 3);  tft.print("10");
@@ -169,7 +174,7 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;  // 68
     static const uint16_t LEG_DY = 20;              // row spacing
 
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
 
     // Row 0: VEL — hollow green circle
     tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
@@ -198,9 +203,9 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
     // Bar label/value font matches LNCH_Circ ΔV Burn bar and MNVR ΔV Burn bar
     // (Black_20). Bar shifted 8 px down (RET_CY+R+20 → +28) to make room for the
     // taller 24 px label between the reticle bottom and the bar.
-    uint16_t barY = RET_CY + RET_R + 28;   // 449 — bar top
-    uint16_t lblY = barY - 24;              // 425 — label row above bar
-    tft.setFont(Roboto_Black_20);
+    uint16_t barY = RET_CY + RET_R + 42;   // 552 — bar top
+    uint16_t lblY = barY - 34;              // 518 — label row above bar
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(BAR_X, lblY);
     tft.print("APPROACH");
@@ -211,8 +216,8 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
 // ── Draw right-panel chrome (static labels) ───────────────────────────────────────────
 static void _dockDrawRightChrome(KCM_TFT &tft) {
     // Rows 0–1: range and time
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T.Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T.Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between T.Dock(1) and V.Close(2)
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
@@ -220,8 +225,8 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Rows 2–3: speed
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between V.Lat(3) and Vel.Brg(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
@@ -229,8 +234,8 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Rows 4–5: approach path alignment (velocity vector vs port)
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between Vel.Elv(5) and Nos.Off(6)
     { uint16_t dy = rowYFor(6,RP_NR) - 1;
@@ -238,7 +243,7 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Row 6: nose total angular offset from port (combined bearing + elevation)
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Off:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Off:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider before RCS/SAS button row (row 7)
     { uint16_t dy = rowYFor(7, RP_NR) - 1;
@@ -392,8 +397,8 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
 
 static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
     // barY must match what _dockDrawReticleChrome drew (Black_20 label).
-    static const uint16_t barY = RET_CY + RET_R + 28;  // 449
-    static const uint16_t lblY = barY - 24;             // 425 — label row above bar
+    static const uint16_t barY = RET_CY + RET_R + 42;  // 552
+    static const uint16_t lblY = barY - 34;             // 518 — label row above bar
 
     // Threshold gate: only redraw when distance changes by > 1m
     static float prevDist = -999.0f;
@@ -420,11 +425,11 @@ static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
     else if (dist >= 100.0f)  snprintf(buf, sizeof(buf), "%.0fm",  dist);
     else                      snprintf(buf, sizeof(buf), "%.1fm",  dist);
 
-    tft.setFont(Roboto_Black_20);
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(barCol, TFT_BLACK);
     // Clear right half of label row (24 px tall for Black_20) then right-align distance text
-    tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 24, TFT_BLACK);
-    int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
+    tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 30, TFT_BLACK);
+    int16_t tw = getFontStringWidth(RP_LBL, buf);
     tft.setCursor(BAR_X + BAR_W - tw, lblY);
     tft.print(buf);
 }
@@ -619,7 +624,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
                 ButtonLabel btn = rcsOn
                     ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                     : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                drawButton(tft, RP_X, ry, hw, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, RP_X, ry, hw, rh, btn, RP_LBL, false);
                 rc.value = rcsStr;
             }
         }
@@ -645,7 +650,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
             String sv = v;
             if (rc.value != sv || rc.fg != sasFg || rc.bg != sasBg) {
                 ButtonLabel btn = { v, sasFg, sasFg, sasBg, sasBg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, RP_LBL, false);
                 rc.value = sv; rc.fg = sasFg; rc.bg = sasBg;
             }
         }
@@ -675,9 +680,11 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     tft.drawLine(RP_X - 2, TITLE_TOP, RP_X - 2, SCREEN_H, TFT_GREY);
     tft.drawLine(RP_X - 1, TITLE_TOP, RP_X - 1, SCREEN_H, TFT_GREY);
 
-    uint32_t _dt = micros() - _t0;
-    Serial.print("DOCK total=");
-    Serial.print((float)_dt / 1000.0f, 2);
-    Serial.print("ms  dist="); Serial.print(state.tgtDistance, 1);
-    Serial.print("m  vc=");    Serial.println(state.tgtVelocity, 2);
+    if (debugMode) {
+        uint32_t _dt = micros() - _t0;
+        Serial.print("DOCK total=");
+        Serial.print((float)_dt / 1000.0f, 2);
+        Serial.print("ms  dist="); Serial.print(state.tgtDistance, 1);
+        Serial.print("m  vc=");    Serial.println(state.tgtVelocity, 2);
+    }
 }
