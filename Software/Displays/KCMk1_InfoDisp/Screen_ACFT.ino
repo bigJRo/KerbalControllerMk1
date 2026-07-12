@@ -550,8 +550,10 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     if (fullRedraw) _acftFullDraw(tft, sinR, cosR, K);
     else            _acftDeltaDraw(tft, sinR, cosR, K);
     _t1 = micros();
-    Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
-    Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    if (debugMode) {
+        Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
+        Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    }
 
     // ── 2. Horizon line ───────────────────────────────────────────────────────────────
     _t0 = micros();
@@ -574,7 +576,7 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     _acftPrevHorizLo = new_horiz_lo;
     _acftPrevHorizHi = new_horiz_hi;
     _t1 = micros();
-    Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    if (debugMode) { Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
     // ── 3. Pitch ladder ───────────────────────────────────────────────────────────────
     // Swap bitmaps: prev = last frame's dirty set (used by delta fill above),
@@ -584,7 +586,7 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     memset(_acftLadderDirty, 0, sizeof(_acftLadderDirty));
     _acftDrawLadder(tft, BCX, BCY, sinR, cosR);
     _t1 = micros();
-    Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms");
+    if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
     // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
     //    Prograde (surface velocity) always drawn; target if available; maneuver if
@@ -1720,11 +1722,13 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
         uint32_t t0 = micros();
         _acftDrawBall(tft, full);
         _acftFullRedrawNeeded = false;
-        uint32_t dt = micros() - t0;
-        Serial.print(full ? "ACFT_FULL total=" : "ACFT_DELTA total=");
-        Serial.print((float)dt / 1000.0f, 2);
-        Serial.print("ms  pitch="); Serial.print(state.pitch, 1);
-        Serial.print("  roll=");    Serial.println(state.roll, 1);
+        if (debugMode) {
+            uint32_t dt = micros() - t0;
+            Serial.print(full ? "ACFT_FULL total=" : "ACFT_DELTA total=");
+            Serial.print((float)dt / 1000.0f, 2);
+            Serial.print("ms  pitch="); Serial.print(state.pitch, 1);
+            Serial.print("  roll=");    Serial.println(state.roll, 1);
+        }
     }
 
     // Compute AoA and slip — suppress below 0.5 m/s
@@ -1745,11 +1749,13 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
     _acftUpdateAoAArc(tft, aoa);
     _acftUpdatePanel(tft);
 
-    uint32_t _dt = micros() - _t0;
-    Serial.print("ACFT frame=");
-    Serial.print((float)_dt / 1000.0f, 2);
-    Serial.print("ms  hdg=");  Serial.print(state.heading, 1);
-    Serial.print("  vvrt=");   Serial.print(state.verticalVel, 1);
-    Serial.print("  slip=");   Serial.print(slip, 2);
-    Serial.print("  aoa=");    Serial.println(aoa, 2);
+    if (debugMode) {
+        uint32_t _dt = micros() - _t0;
+        Serial.print("ACFT frame=");
+        Serial.print((float)_dt / 1000.0f, 2);
+        Serial.print("ms  hdg=");  Serial.print(state.heading, 1);
+        Serial.print("  vvrt=");   Serial.print(state.verticalVel, 1);
+        Serial.print("  slip=");   Serial.print(slip, 2);
+        Serial.print("  aoa=");    Serial.println(aoa, 2);
+    }
 }
