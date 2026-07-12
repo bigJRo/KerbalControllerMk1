@@ -107,12 +107,6 @@ void loop() {
   // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;
 
-  // --- Demo state step: run BEFORE the screen-transition check so a demo-driven
-  //     screen change (e.g. the pre-launch board cycling in) is seen and fully
-  //     re-chromed this same frame — matching how simpit.update() drives
-  //     real-flight transitions above. ---
-  if (demoMode) stepDemoState();
-
   // --- Screen transition: a screen change forces a one-time full paint (chrome +
   //     values) of the new screen and a telemetry refresh so its values populate
   //     immediately. Steady-state frames redraw only what changed. ---
@@ -125,6 +119,8 @@ void loop() {
     prevScreen = activeScreen;
     if (!demoMode) simpit.requestMessageOnChannel(0);
   }
+
+  if (demoMode) stepDemoState();
 
   // --- Incremental double buffering ---
   //  Screen entry (rare): paint full chrome + all values onto the back page, then
