@@ -848,7 +848,7 @@ static const int16_t  ACFT_HDG_LABEL_HI  = ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - 8
 // Box — top aligned with tape top, extends 8px BELOW tape bottom so its
 // bottom border is outside the fillRect zone and never flickers
 static const int16_t  ACFT_HDG_BOX_W     = 72;
-static const int16_t  ACFT_HDG_BOX_H     = 40;                     // TAPE_H + 8 = 40
+static const int16_t  ACFT_HDG_BOX_H     = ACFT_HDG_TAPE_H + 8;    // = 40
 static const int16_t  ACFT_HDG_BOX_X     = ACFT_CX - (ACFT_HDG_BOX_W / 2);
 static const int16_t  ACFT_HDG_BOX_Y     = ACFT_HDG_TAPE_Y;
 

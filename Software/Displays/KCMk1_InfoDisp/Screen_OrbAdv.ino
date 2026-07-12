@@ -57,7 +57,7 @@
 // each half's edge (left → x=462 at the divider, right → x=930 at the content
 // edge). Widest labels: "SMA:" 91 px (left), "ArgPe:" 114 px (right) — both
 // clear their value columns.
-static const int16_t ADV_TITLE_TOP  = 62;
+static const int16_t ADV_TITLE_TOP  = TITLE_TOP;
 static const int16_t ADV_ROW_PITCH  = 73;
 static const int16_t ADV_ROW_H      = 48;   // printValue clear height (matches font)
 static const int16_t ADV_ROW_Y0     = 90;   // first row top
@@ -94,8 +94,8 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
     }
 
     // Panel divider — matches basic ORB for visual continuity (x=470, full height)
-    tft.drawLine(470, ADV_TITLE_TOP, 470, 600, TFT_GREY);
-    tft.drawLine(471, ADV_TITLE_TOP, 471, 600, TFT_GREY);
+    tft.drawLine(CONTENT_W / 2,     ADV_TITLE_TOP, CONTENT_W / 2,     SCREEN_H, TFT_GREY);
+    tft.drawLine(CONTENT_W / 2 + 1, ADV_TITLE_TOP, CONTENT_W / 2 + 1, SCREEN_H, TFT_GREY);
 
     // Draw all labels once. All labels are white on black; values are drawn
     // by drawScreen_OrbAdv on each update (dark green).

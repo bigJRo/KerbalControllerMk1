@@ -47,7 +47,7 @@
 // CY at 344 places the ring erase floor at y=551, just above the Tgt status strip
 // to maintain roughly equal margins above the heading box (12 px) and below the
 // ring (13 px).
-static const int16_t ROVR_CX             = 470;   // centred on the title (CONTENT_W/2)
+static const int16_t ROVR_CX             = CONTENT_W / 2;  // centred on the title
 static const int16_t ROVR_CY             = 344;
 static const int16_t ROVR_R              = 200;   // outer ring radius
 static const int16_t ROVR_R_TICK_OUTER   = 196;   // tick outer end (4 px inside outer ring)
@@ -132,7 +132,7 @@ static const int16_t ROVR_ICON_NOSE_H    = 12;   // nose notch height (extends a
 // the box bottom at y=139.
 static const int16_t ROVR_THRBLK_W       = 168;   // block width (20% larger than 140)
 static const int16_t ROVR_THRBLK_H        = 77;   // block height (20% larger than 64)
-static const int16_t ROVR_THRBLK_Y        = 62;   // top edge (flush with title-bar rule)
+static const int16_t ROVR_THRBLK_Y        = TITLE_TOP;  // top edge (flush with title-bar rule)
 static const int16_t ROVR_FWD_BLK_X       = 190;  // left edge flush with left column
 static const int16_t ROVR_REV_BLK_X       = 582;  // right edge flush with right column (582+168 = 750)
 static const float   ROVR_THR_THRESH     = 0.01f; // deadband — |wt| under this reads as neutral
@@ -144,7 +144,7 @@ static const float   ROVR_THR_THRESH     = 0.01f; // deadband — |wt| under thi
 // matching the right column width so the compass centres cleanly between them.
 static const int16_t ROVR_LCOL_X         = 0;
 static const int16_t ROVR_LCOL_W         = 190;
-static const int16_t ROVR_LCOL_Y_TOP     = 62;    // flush with the title-bar rule
+static const int16_t ROVR_LCOL_Y_TOP     = TITLE_TOP;  // flush with the title-bar rule
 
 static const int16_t ROVR_VSRF_H         = 108;
 static const int16_t ROVR_EC_H           = 108;
@@ -176,11 +176,11 @@ static const int16_t ROVR_LBL_VAL_GAP    = 2;     // gap between label and value
 // available height from the title-bar rule (y=62) down to the screen bottom (y=600).
 static const int16_t ROVR_RCOL_X         = 750;
 static const int16_t ROVR_RCOL_W         = 190;
-static const int16_t ROVR_ELEV_Y         = 62;    // flush with the title-bar rule
+static const int16_t ROVR_ELEV_Y         = TITLE_TOP;  // flush with the title-bar rule
 static const int16_t ROVR_ELEV_H         = 108;   // matches left-column block height
-static const int16_t ROVR_PITCH_Y        = 170;   // adjacent to Elev bottom
+static const int16_t ROVR_PITCH_Y        = ROVR_ELEV_Y + ROVR_ELEV_H;   // adjacent to Elev bottom
 static const int16_t ROVR_PITCH_H        = 215;
-static const int16_t ROVR_ROLL_Y         = 385;   // adjacent to Pitch bottom
+static const int16_t ROVR_ROLL_Y         = ROVR_PITCH_Y + ROVR_PITCH_H;  // adjacent to Pitch bottom
 static const int16_t ROVR_ROLL_H         = 215;   // ends at y=600 (screen bottom)
 
 // Within each indicator box:

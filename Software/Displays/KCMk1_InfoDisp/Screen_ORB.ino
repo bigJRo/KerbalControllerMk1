@@ -57,8 +57,8 @@
 #include "KCMk1_InfoDisp.h"
 
 // ── Layout ────────────────────────────────────────────────────────────────────────────
-static const uint16_t ORB_TITLE_TOP  = 62;
-static const uint16_t ORB_SCREEN_H   = 600;   // full panel height (rev-2 1024x600)
+static const uint16_t ORB_TITLE_TOP  = TITLE_TOP;
+static const uint16_t ORB_SCREEN_H   = SCREEN_H;  // full panel height (rev-2 1024x600)
 static const uint16_t ORB_MAX_R      = 170;   // orbit half-extent (pixels)
 
 // rev-2: the two graphical elements each fill half of the 940px-wide content
@@ -75,7 +75,7 @@ static const int16_t  ORB_CY  = 265;
 // the SOI body name. Scene repaints fillRect below this; chrome and the
 // Header strip — contains the ORBIT / INCL panel-title labels and the SOI
 // body name. Laid at y=62..92.
-static const int16_t  HDR_Y0   = 62;   // top of header strip (ORB_TITLE_TOP)
+static const int16_t  HDR_Y0   = TITLE_TOP;   // top of header strip
 static const int16_t  HDR_Y1   = 92;   // bottom of header strip
 
 // PLAN panel drawing bounds vs. erase bounds:
