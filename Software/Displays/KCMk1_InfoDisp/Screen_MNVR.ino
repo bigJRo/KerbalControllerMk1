@@ -55,9 +55,9 @@ static bool _mnvrChromDrawn  = false;
 // panel), leaving x=[0,578] for the reticle. The reticle is centred in that band
 // and enlarged; the ΔV bar is centred under it.
 static const uint16_t MNVR_CX    = 289;   // centre of the left region x=[0,578]
-static const uint16_t MNVR_CY    = 295;
-static const uint16_t MNVR_R     = 225;
-static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 11.25 px/deg, ±20° full scale
+static const uint16_t MNVR_CY    = 300;   // nudged down for more whitespace above
+static const uint16_t MNVR_R     = 210;   // slightly reduced so top gap grows to ~28 px
+static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 10.5 px/deg, ±20° full scale
 
 static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 56
 static const uint16_t MNVR_RING_10 = MNVR_R / 2;         // 112
@@ -185,9 +185,10 @@ static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
     tft.setCursor(LEG_X + 16, LEG_Y0 + 20);
     tft.print("NOSE");
 
-    // ΔV bar chrome — label/value in Black_24, centred under the reticle.
-    uint16_t barY = MNVR_CY + MNVR_R + 34;
-    uint16_t lblY = barY - 30;
+    // ΔV bar chrome — label/value in Black_24, centred under the reticle. lblY
+    // gives the Black_24 text (cap 29) ~5 px of clearance above the bar border.
+    uint16_t barY = MNVR_CY + MNVR_R + 42;
+    uint16_t lblY = barY - 34;
     tft.setFont(Roboto_Black_24);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(MNVR_BAR_X, lblY);
@@ -344,9 +345,9 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
 
 // ── ΔV remaining bar ──────────────────────────────────────────────────────────────────
 static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
-    // Layout matches chrome: barY = CY+R+34, lblY = barY-30 (Black_24 label).
-    static const uint16_t barY = MNVR_CY + MNVR_R + 34;
-    static const uint16_t lblY = barY - 30;
+    // Layout matches chrome: barY = CY+R+42, lblY = barY-34 (Black_24 label).
+    static const uint16_t barY = MNVR_CY + MNVR_R + 42;
+    static const uint16_t lblY = barY - 34;
 
     static float prevDV = -999.0f;
     if (fabsf(dvNode - prevDV) < 1.0f) return;
@@ -484,24 +485,26 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         uint16_t y6 = rowYFor(6, NR), h6 = rowHFor(NR), hw = W / 2;
 
         angCol(brgErr, fg, bg);
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", brgErr);
+        // Brg/Elv values use Black_28 (not the panel's Black_36) so the 1-decimal
+        // form fits the half-cell even at the worst case (±180.0°).
+        snprintf(buf, sizeof(buf), "%+.1f\xB0", brgErr);
         {
             RowCache &rc = rowCache[MNVR_SC][6];
             String sv = buf;
             if (rc.value != sv || rc.fg != fg || rc.bg != bg) {
-                printValue(tft, MNVR_RP_F, X,      y6, hw - ROW_PAD, h6,
+                printValue(tft, &Roboto_Black_28, X,      y6, hw - ROW_PAD, h6,
                            "Brg:", sv, fg, bg, COL_BACK, printState[MNVR_SC][6]);
                 rc.value = sv; rc.fg = fg; rc.bg = bg;
             }
         }
 
         angCol(elvErr, fg, bg);
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", elvErr);
+        snprintf(buf, sizeof(buf), "%+.1f\xB0", elvErr);
         {
             RowCache &rc = rowCache[MNVR_SC][7];
             String sv = buf;
             if (rc.value != sv || rc.fg != fg || rc.bg != bg) {
-                printValue(tft, MNVR_RP_F, X + hw, y6, hw - ROW_PAD, h6,
+                printValue(tft, &Roboto_Black_28, X + hw, y6, hw - ROW_PAD, h6,
                            "Elv:", sv, fg, bg, COL_BACK, printState[MNVR_SC][7]);
                 rc.value = sv; rc.fg = fg; rc.bg = bg;
             }
