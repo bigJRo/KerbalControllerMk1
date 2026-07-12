@@ -22,12 +22,14 @@
    Alignment box    = neon-green square drawn around diamond when
                       error magnitude < ATT_ERR_WARN_DEG (5°).
 
-   RETICLE GEOMETRY
+   RETICLE GEOMETRY (rev-2, 1024×600)
    ─────────────────
-   Centre: (192, 251)  Radius: 170px  Scale: 8.5 px/deg (±20° full scale)
-   Rings: 5°=42px  10°=85px  15°=127px  20°=170px
+   Centre: (289, 295)  Radius: 225px  Scale: 11.25 px/deg (±20° full scale)
+   Rings: 5°=56px  10°=112px  15°=168px  20°=225px. Centred in the left region
+   x=[0,578]; ΔV bar centred under it.
 
-   PANEL: NR=8 rows (rowH=52px, btn_h=54px — matches DOCK)
+   PANEL: 360 px wide at x=580 (matches ascent/circ), NR=8 rows of 67 px,
+   labels Black_28, values Black_36
    Row 0: ΔV.Mnvr        Row 1: ΔV.Plan
    Row 2: ΔV.Stg         Row 3: T+Ign
    Row 4: T+Mnvr         Row 5: Burn dur
@@ -48,32 +50,37 @@
 static bool _mnvrChromDrawn  = false;
 
 
-// ── Reticle geometry ─────────────────────────────────────────────────────────────────
-static const uint16_t MNVR_CX    = 192;
-static const uint16_t MNVR_CY    = 251;
-static const uint16_t MNVR_R     = 170;
-static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 8.5 px/deg, ±20° full scale
+// ── Reticle geometry — centred and stretched to fill the left region ─────────────────
+// The readout panel now sits on the far right (x=580, matching the ascent/circ
+// panel), leaving x=[0,578] for the reticle. The reticle is centred in that band
+// and enlarged; the ΔV bar is centred under it.
+static const uint16_t MNVR_CX    = 289;   // centre of the left region x=[0,578]
+static const uint16_t MNVR_CY    = 295;
+static const uint16_t MNVR_R     = 225;
+static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 11.25 px/deg, ±20° full scale
 
-static const uint16_t MNVR_RING_5  =  42;
-static const uint16_t MNVR_RING_10 =  85;
-static const uint16_t MNVR_RING_15 = 127;
-static const uint16_t MNVR_RING_20 = MNVR_R;
+static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 56
+static const uint16_t MNVR_RING_10 = MNVR_R / 2;         // 112
+static const uint16_t MNVR_RING_15 = (MNVR_R * 3) / 4;   // 168
+static const uint16_t MNVR_RING_20 = MNVR_R;             // 225
 
-// Marker sizing — diamond and box larger than DOCK for better visibility
-static const uint8_t MNVR_MRK_DS  = 13;   // diamond half-size (was 9 on DOCK)
-static const uint8_t MNVR_BOX_R   = 19;   // alignment box half-size (DS + 6px clearance)
-static const uint8_t MNVR_ERASE_R = 22;   // erase rect half-size (covers box + 2px margin)
+// Marker sizing — diamond and box scaled up with the larger reticle
+static const uint8_t MNVR_MRK_DS  = 16;   // diamond half-size
+static const uint8_t MNVR_BOX_R   = 23;   // alignment box half-size (DS + ~7px clearance)
+static const uint8_t MNVR_ERASE_R = 27;   // erase rect half-size (covers box + margin)
 
-// Right panel geometry
-static const uint16_t MNVR_RP_X  = 385;
-static const uint16_t MNVR_RP_W  = 335;
-static const uint8_t  MNVR_RP_NR = 8;     // 8 rows: rowH=52px, btn_h=54px — matches DOCK
-static const tFont   *MNVR_RP_F  = &Roboto_Black_28;
+// Right panel geometry — matches the ascent/circ readout panel: 360 px wide,
+// right-aligned to the content edge, labels Black_28, values Black_36.
+static const uint16_t MNVR_RP_W   = 360;
+static const uint16_t MNVR_RP_X   = SCREEN_W - SIDEBAR_W - MNVR_RP_W;   // 580
+static const uint8_t  MNVR_RP_NR  = 8;
+static const tFont   *MNVR_RP_LBL = &Roboto_Black_28;   // row labels (chrome)
+static const tFont   *MNVR_RP_F   = &Roboto_Black_36;   // row values
 
-// ΔV bar geometry
-static const uint16_t MNVR_BAR_X = 19;
-static const uint16_t MNVR_BAR_W = 346;
-static const uint16_t MNVR_BAR_H = 22;
+// ΔV bar geometry — centred under the reticle
+static const uint16_t MNVR_BAR_W = 450;
+static const uint16_t MNVR_BAR_X = MNVR_CX - MNVR_BAR_W / 2;   // 64
+static const uint16_t MNVR_BAR_H = 26;
 
 // Screen cache index
 static const uint8_t MNVR_SC = (uint8_t)screen_MNVR;   // 3
@@ -145,7 +152,7 @@ static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
     // Ring degree labels (NE quadrant)
     // Ring degree labels (NE quadrant, just inside each ring)
     // Single-arg setTextColor = transparent background.
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_5  + 3);  tft.print("5");
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_10 + 3);  tft.print("10");
@@ -159,7 +166,7 @@ static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
     // Legend — top-left corner
     static const uint16_t LEG_X  = 6;
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
 
     // MANEUVER — solid blue diamond (horizontal split, no fill gaps)
     tft.fillTriangle(LEG_X,   LEG_Y0+6, LEG_X+12, LEG_Y0+6, LEG_X+6, LEG_Y0,    TFT_BLUE);  // top half
@@ -178,12 +185,10 @@ static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
     tft.setCursor(LEG_X + 16, LEG_Y0 + 20);
     tft.print("NOSE");
 
-    // ΔV bar chrome — bar label/value font matches LNCH_Circ ΔV Burn bar (Black_20).
-    // Bar shifted 8 px down (barY: CY+R+20 → CY+R+28) to accommodate the taller
-    // 24 px label between the reticle bottom and the bar.
-    uint16_t barY = MNVR_CY + MNVR_R + 28;
-    uint16_t lblY = barY - 24;
-    tft.setFont(Roboto_Black_20);
+    // ΔV bar chrome — label/value in Black_24, centred under the reticle.
+    uint16_t barY = MNVR_CY + MNVR_R + 34;
+    uint16_t lblY = barY - 30;
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(MNVR_BAR_X, lblY);
     tft.print("\xCE\x94V Burn");
@@ -197,18 +202,18 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
     uint16_t X  = MNVR_RP_X;
     uint16_t W  = MNVR_RP_W;
 
-    printDispChrome(tft, &Roboto_Black_20, X, rowYFor(0,NR), W, rowHFor(NR), "\xCE\x94V.Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, X, rowYFor(1,NR), W, rowHFor(NR), "\xCE\x94V.Plan:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, X, rowYFor(2,NR), W, rowHFor(NR), "\xCE\x94V.Stg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(0,NR), W, rowHFor(NR), "\xCE\x94V.Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(1,NR), W, rowHFor(NR), "\xCE\x94V.Plan:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(2,NR), W, rowHFor(NR), "\xCE\x94V.Stg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider: ΔV block / timing block
     { uint16_t dy = rowYFor(3,NR) - 1;
       tft.drawLine(X, dy,   X+W, dy,   TFT_GREY);
       tft.drawLine(X, dy+1, X+W, dy+1, TFT_GREY); }
 
-    printDispChrome(tft, &Roboto_Black_20, X, rowYFor(3,NR), W, rowHFor(NR), "T+Ign:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, X, rowYFor(4,NR), W, rowHFor(NR), "T+Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, X, rowYFor(5,NR), W, rowHFor(NR), "Burn dur:",COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(3,NR), W, rowHFor(NR), "T+Ign:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(4,NR), W, rowHFor(NR), "T+Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(5,NR), W, rowHFor(NR), "Burn dur:",COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider: timing block / alignment block
     { uint16_t dy = rowYFor(6,NR) - 1;
@@ -218,8 +223,8 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
     // Row 6: Nos.Brg | Nos.Elv split
     {
         uint16_t y = rowYFor(6,NR), h = rowHFor(NR), hw = W / 2;
-        printDispChrome(tft, &Roboto_Black_20, X,      y, hw - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, &Roboto_Black_20, X + hw, y, hw - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, MNVR_RP_LBL, X,      y, hw - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, MNVR_RP_LBL, X + hw, y, hw - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
         tft.drawLine(X + hw,     y, X + hw,     y + h - 1, TFT_GREY);
         tft.drawLine(X + hw + 1, y, X + hw + 1, y + h - 1, TFT_GREY);
     }
@@ -339,9 +344,9 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
 
 // ── ΔV remaining bar ──────────────────────────────────────────────────────────────────
 static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
-    // Layout matches chrome: barY = CY+R+28, lblY = barY-24 (Black_20 label).
-    static const uint16_t barY = MNVR_CY + MNVR_R + 28;
-    static const uint16_t lblY = barY - 24;
+    // Layout matches chrome: barY = CY+R+34, lblY = barY-30 (Black_24 label).
+    static const uint16_t barY = MNVR_CY + MNVR_R + 34;
+    static const uint16_t lblY = barY - 30;
 
     static float prevDV = -999.0f;
     if (fabsf(dvNode - prevDV) < 1.0f) return;
@@ -357,14 +362,14 @@ static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
     if (fillW > 0)
         tft.fillRect(MNVR_BAR_X + 1, barY + 1, fillW, MNVR_BAR_H - 2, barCol);
 
-    // Right-aligned value text in Black_20 (matches "ΔV Burn" label font).
+    // Right-aligned value text in Black_24 (matches "ΔV Burn" label font).
     char buf[14];
     snprintf(buf, sizeof(buf), "%.0fm/s", dvNode);
-    tft.setFont(Roboto_Black_20);
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(barCol, TFT_BLACK);
-    // Clear the value-text region: right half of bar width, 24 px tall (Black_20).
-    tft.fillRect(MNVR_BAR_X + MNVR_BAR_W/2, lblY, MNVR_BAR_W/2, 24, TFT_BLACK);
-    int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
+    // Clear the value-text region: right half of bar width, 30 px tall (Black_24).
+    tft.fillRect(MNVR_BAR_X + MNVR_BAR_W/2, lblY, MNVR_BAR_W/2, 30, TFT_BLACK);
+    int16_t tw = getFontStringWidth(&Roboto_Black_24, buf);
     tft.setCursor(MNVR_BAR_X + MNVR_BAR_W - tw, lblY);
     tft.print(buf);
 }
@@ -520,7 +525,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
                 ButtonLabel btn = rcsOn
                     ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                     : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                drawButton(tft, X, ry, hw, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, X, ry, hw, rh, btn, MNVR_RP_LBL, false);
                 rc.value = rcsStr;
             }
         }
@@ -546,7 +551,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
             String sv = v;
             if (rc.value != sv || rc.fg != sasFg || rc.bg != sasBg) {
                 ButtonLabel btn = { v, sasFg, sasFg, sasBg, sasBg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, MNVR_RP_LBL, false);
                 rc.value = sv; rc.fg = sasFg; rc.bg = sasBg;
             }
         }
@@ -573,9 +578,11 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     tft.drawLine(X - 2, TITLE_TOP, X - 2, SCREEN_H, TFT_GREY);
     tft.drawLine(X - 1, TITLE_TOP, X - 1, SCREEN_H, TFT_GREY);
 
-    uint32_t dt = micros() - _t0;
-    Serial.print("MNVR total="); Serial.print((float)dt/1000.0f, 2);
-    Serial.print("ms  brg=");    Serial.print(brgErr, 1);
-    Serial.print("  elv=");      Serial.print(elvErr, 1);
-    Serial.print("  tIgn=");     Serial.println(tIgn, 0);
+    if (debugMode) {
+        uint32_t dt = micros() - _t0;
+        Serial.print("MNVR total="); Serial.print((float)dt/1000.0f, 2);
+        Serial.print("ms  brg=");    Serial.print(brgErr, 1);
+        Serial.print("  elv=");      Serial.print(elvErr, 1);
+        Serial.print("  tIgn=");     Serial.println(tIgn, 0);
+    }
 }
