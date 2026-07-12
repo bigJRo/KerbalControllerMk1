@@ -4,12 +4,12 @@
    Active when _lndgReentryMode is FALSE (default). Pilot can toggle to re-entry
    mode via tap (handled in TouchEvents.ino).
 
-   LAYOUT:
-     - Altitude tape (x=4..34)         — vertical 0-500m / 0-50m altitude scale
-     - X-Pointer square (x=120..350)   — horizontal velocity indicator (lat/fwd)
-     - ATT indicator (x=111..227)      — attitude alignment dot in concentric rings
-     - V.Vrt bar (x=283..313)          — vertical velocity 0-15 m/s gauge
-     - Right panel (x=LNDG_TEXT_X..CONTENT_W) — numeric readouts
+   LAYOUT (rev-2 rebalance — graphics fill x=0..578, text panel x=580..940):
+     - Altitude tape (x=0..70, full height)     — vertical 0-500m / 0-50m altitude scale
+     - X-Pointer square (x=128..488, side 360)  — surface-drift centrepiece (lat/fwd velocity)
+     - ATT bullseye (centred under XP, R=50)    — attitude alignment dot in concentric rings
+     - V.Vrt bar (x=544..574, full height)      — vertical velocity 0-15 m/s gauge (far right)
+     - Right panel (x=580..940, 360px)          — numeric readouts
 
    Phase membership (LNDG screen has two modes):
      - POWERED DESCENT (this file)             — default
@@ -25,13 +25,18 @@
 
 /***************************************************************************************
    LAYOUT CONSTANTS
-   Altitude tape: x=4..34, y=TITLE_TOP..SCREEN_H  (full content height = 418px = 0-500m)
-   X-Pointer square: 410×410, x=48..458, y=TITLE_TOP..TITLE_TOP+410
-   Right panel: x=48..CONTENT_W — reserved for later
+   Altitude tape:  x=40..70,  y=TITLE_TOP+8..SCREEN_H  (full height = 0-500m / 0-50m)
+   X-Pointer:      360×360,   x=128..488, y=88..448    (surface-drift centrepiece)
+   ATT bullseye:   R=50,      centred under the X-Pointer
+   V.Vrt bar:      x=544..574, full height             (descent rate 0-15 m/s)
+   Right panel:    x=580..940 (360px, standardized)
 ****************************************************************************************/
-// Right text section starts at LNDG_TEXT_X; the graphical|text divider sits 4px left.
-static const uint16_t LNDG_TEXT_X    = 364;
-static const uint16_t LNDG_DIV_X     = LNDG_TEXT_X - 4;   // 360 — graphical/text divider x
+// rev-2 rebalance: the text panel is standardized to the 360px right-panel used by
+// every other screen (x=580..940), freeing the left ~578px for the graphical descent
+// instruments. The X-Pointer (surface-drift) is the featured centrepiece, flanked by
+// full-height altitude and vertical-speed tapes, with the attitude bullseye below it.
+static const uint16_t LNDG_TEXT_X    = 580;              // right text panel left edge (360px wide)
+static const uint16_t LNDG_DIV_X     = LNDG_TEXT_X - 2;  // 578 — graphical/text divider x
 
 static const uint16_t LNDG_TAPE_X    = 40;
 static const uint16_t LNDG_TAPE_W    = 30;
@@ -39,12 +44,15 @@ static const uint16_t LNDG_TAPE_Y    = TITLE_TOP + 8;
 static const uint16_t LNDG_TAPE_H    = SCREEN_H - LNDG_TAPE_Y;
 static const float    LNDG_TAPE_PPM  = (float)LNDG_TAPE_H / 500.0f;
 
-static const uint16_t LNDG_XP_X     = 120;
-static const uint16_t LNDG_XP_Y     = LNDG_TAPE_Y + 20;
-static const uint16_t LNDG_XP_SIDE  = 230;
-static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 235
-static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 205
-static const float    LNDG_XP_SCALE = 7.000f;
+// X-Pointer (surface-drift cross-pointer) — the featured instrument. Left/bottom
+// margins carry the FWD/AFT and LATERAL axis ticks + labels, so it is inset from the
+// altitude tape and leaves room below for the axis row and the attitude bullseye.
+static const uint16_t LNDG_XP_X     = 128;
+static const uint16_t LNDG_XP_Y     = TITLE_TOP + 26;               // 88 — below the SURF DRIFT title
+static const uint16_t LNDG_XP_SIDE  = 360;                          // 2.9x the old 230 (now the centrepiece)
+static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 308
+static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 268
+static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
 
 // X-Pointer field colours
 static const uint16_t LNDG_XP_BG    = TFT_DARK_GREY;
@@ -201,12 +209,13 @@ static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
    Field: 120×120px, centred horizontally under X-Pointer
    Scale: ±15° full deflection, 3 reference rings at 5°/10°/15°
 ****************************************************************************************/
-static const uint16_t LNDG_ATT_X     = 111;   // field left edge
-static const uint16_t LNDG_ATT_Y     = 362;   // field top edge (below XP tick/label rows)
-static const uint16_t LNDG_ATT_SIDE  = 116;
-static const uint16_t LNDG_ATT_CX    = LNDG_ATT_X + LNDG_ATT_SIDE / 2;  // 169
-static const uint16_t LNDG_ATT_CY    = LNDG_ATT_Y + LNDG_ATT_SIDE / 2;  // 420
-static const uint8_t  LNDG_ATT_R     = 52;    // outer ring radius (= ±15°)
+// Centred under the X-Pointer, in the band below its lateral axis row.
+static const uint16_t LNDG_ATT_CX    = LNDG_XP_CX;   // 308 — centred under the X-Pointer
+static const uint16_t LNDG_ATT_CY    = 544;          // below the X-Pointer's lateral axis row
+static const uint8_t  LNDG_ATT_R     = 50;           // outer ring radius (= ±15°)
+static const uint16_t LNDG_ATT_SIDE  = LNDG_ATT_R * 2 + 4;
+static const uint16_t LNDG_ATT_X     = LNDG_ATT_CX - LNDG_ATT_SIDE / 2;  // field left edge
+static const uint16_t LNDG_ATT_Y     = LNDG_ATT_CY - LNDG_ATT_SIDE / 2;  // field top edge
 static const float    LNDG_ATT_SCALE = (float)LNDG_ATT_R / 15.0f;
 
 static int16_t _lndgPrevAttX = -999;
@@ -249,14 +258,14 @@ static void _lndgDrawAttChrome(KCM_TFT &tft) {
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R,     TFT_GREY);
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R + 1, TFT_DARK_GREY);
 
-    // Range label "15°" outside outer ring, lower-right — 68px from centre (ring edge at 53px)
+    // Range label "15°" just outside the outer ring, lower-right
     tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(207, 461);
+    tft.setCursor(LNDG_ATT_CX + (LNDG_ATT_R * 4) / 5, LNDG_ATT_CY + (LNDG_ATT_R * 3) / 5);
     tft.print("15\xb0");
 
-    // "ATT" vertical label to the left of the circle, centred on bar height
-    drawVerticalText(tft, 97, 363 + (116 - 42) / 2, 14, 42,
+    // "ATT" vertical label to the left of the circle, centred on ring height
+    drawVerticalText(tft, LNDG_ATT_CX - LNDG_ATT_R - 20, LNDG_ATT_CY - 21, 14, 42,
                      &Roboto_Black_12, "ATT", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
@@ -310,17 +319,19 @@ static void _lndgDrawAtt(KCM_TFT &tft) {
    x=304..334 bar, numeric labels right-align to x=293, "V.Vrt" strip x=250..264
    Colours: green <5, yellow 5-8, red >8 m/s (matches text panel thresholds)
 ****************************************************************************************/
-static const uint16_t LNDG_VV_X    = 283;
-static const uint16_t LNDG_VV_Y    = 363;
+// Full-height descent-rate bar on the far right of the graphics zone, mirroring the
+// altitude tape on the left and flanking the X-Pointer.
 static const uint16_t LNDG_VV_W    = 30;
-static const uint16_t LNDG_VV_H    = 116;
+static const uint16_t LNDG_VV_X    = 544;                         // bar x=[544,574]; divider at 578
+static const uint16_t LNDG_VV_Y    = TITLE_TOP + 8;              // 70 — top, matching the altitude tape
+static const uint16_t LNDG_VV_H    = SCREEN_H - LNDG_VV_Y - 3;   // bottom border on row 596 (clear of overscan)
 static const float    LNDG_VV_MAX  = 15.0f;
-static const float    LNDG_VV_PPM  = (float)LNDG_VV_H / LNDG_VV_MAX;  // 7.73 px/m/s
-static const uint16_t LNDG_VV_BOT  = LNDG_VV_Y + LNDG_VV_H;           // 479
+static const float    LNDG_VV_PPM  = (float)LNDG_VV_H / LNDG_VV_MAX;
+static const uint16_t LNDG_VV_BOT  = LNDG_VV_Y + LNDG_VV_H;      // 0 m/s baseline
 
 static const uint16_t LNDG_VV_Y5   = LNDG_VV_BOT - (uint16_t)(5.0f  * LNDG_VV_PPM);
 static const uint16_t LNDG_VV_Y8   = LNDG_VV_BOT - (uint16_t)(8.0f  * LNDG_VV_PPM);
-static const uint16_t LNDG_VV_LBRT = 281;  // numeric labels right-align to this x
+static const uint16_t LNDG_VV_LBRT = LNDG_VV_X - 3;  // numeric labels right-align just left of the bar
 
 static float _lndgPrevVV = -9999.0f;
 
@@ -358,8 +369,8 @@ static void _lndgDrawVvChrome(KCM_TFT &tft) {
         tft.print(buf);
     }
 
-    // "V.Vrt" vertical label — centred on bar height, 15px gap left of numeric labels
-    drawVerticalText(tft, 250, LNDG_VV_Y + (LNDG_VV_H - 70) / 2, 14, 70,
+    // "V.Vrt" vertical label — centred on bar height, left of the numeric labels
+    drawVerticalText(tft, LNDG_VV_X - 34, LNDG_VV_Y + (LNDG_VV_H - 70) / 2, 14, 70,
                      &Roboto_Black_12, "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
@@ -442,9 +453,9 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         // x=80..94: 10px gap from tape right (70), 4px gap to numeric labels (x=98)
         // FWD: top-aligned with XP top edge
         // AFT: bottom-aligned with XP bottom edge
-        drawVerticalText(tft, 80, LNDG_XP_Y,      14, 42,
+        drawVerticalText(tft, LNDG_XP_X - 48, LNDG_XP_Y,   14, 42,
                          &Roboto_Black_12, "FWD", TFT_LIGHT_GREY, TFT_BLACK);
-        drawVerticalText(tft, 80, botY - 42,        14, 42,
+        drawVerticalText(tft, LNDG_XP_X - 48, botY - 42,   14, 42,
                          &Roboto_Black_12, "AFT", TFT_LIGHT_GREY, TFT_BLACK);
 
         // ── LATERAL axis label + L/R — all on the same row below bottom axis ──
@@ -517,7 +528,7 @@ static void _lndgChromePowered(KCM_TFT &tft) {
     // "SURF DRIFT" — horizontal, centred above the XP field
     tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(200, 70);
+    tft.setCursor(LNDG_XP_CX - 35, LNDG_XP_Y - 18);
     tft.print("SURF DRIFT");
 
     // ── Right panel chrome ──
@@ -553,9 +564,9 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         tft.drawLine(LNDG_DIV_X, divY+1, CONTENT_W, divY+1, TFT_GREY);
 
         // ── All 2px borders ──
-        // VERTICAL: graphical | text section divider (x=360..361, full height)
-        tft.drawLine(LNDG_DIV_X, TITLE_TOP, 360, SCREEN_H - 1, TFT_GREY);
-        tft.drawLine(LNDG_DIV_X + 1, TITLE_TOP, 361, SCREEN_H - 1, TFT_GREY);
+        // VERTICAL: graphical | text section divider (full height)
+        tft.drawLine(LNDG_DIV_X,     TITLE_TOP, LNDG_DIV_X,     SCREEN_H - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X + 1, TITLE_TOP, LNDG_DIV_X + 1, SCREEN_H - 1, TFT_GREY);
 
         // Horizontal borders drawn in draw function (after value updates) to avoid being overwritten
 
