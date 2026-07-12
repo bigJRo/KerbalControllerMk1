@@ -679,7 +679,7 @@ String formatTimeCompact(float timeVal) {
   int64_t days = hrsT / kerbinDay;
   int64_t hr   = hrsT % kerbinDay;
   int64_t mn   = (secs % 3600) / 60;
-  char buf[16];
+  char buf[28];   // room for the full int64 day count ("%lldd") without truncation
   if      (days >= 10000) snprintf(buf, sizeof(buf), "%lldd", (long long)days);
   else if (days > 0)      snprintf(buf, sizeof(buf), "%lldd %02lldh", (long long)days, (long long)hr);
   else                    snprintf(buf, sizeof(buf), "%lldh %02lldm", (long long)hrsT, (long long)mn);
