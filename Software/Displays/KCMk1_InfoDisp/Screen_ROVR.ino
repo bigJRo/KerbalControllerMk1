@@ -123,16 +123,16 @@ static const int16_t ROVR_ICON_NOSE_H    = 12;   // nose notch height (extends a
 //   FWD block — dark-green fill + white text when wheelThrottle > deadband
 //   REV block — yellow fill + dark-grey text when wheelThrottle < -deadband
 //   both muted (off-black fill) when neutral.
-// Both sit at the top of the compass region (y=67), justified to its edges: FWD
-// flush-left against the left column (x=195), REV flush-right against the right
-// column (right edge x=745). The heading box sits between them. Boxes clear the
-// ring top: at their x-positions the ring peaks near y=196, well below the box
-// bottom at y=131.
-static const int16_t ROVR_THRBLK_W       = 140;   // block width (enlarged)
-static const int16_t ROVR_THRBLK_H        = 64;   // block height (enlarged)
+// Both sit at the top of the compass region (y=67). FWD's left edge is flush with
+// the left column's right edge (x=190); REV's right edge is flush with the right
+// column's left edge (x=750, so REV_X = 750-168 = 582). The heading box sits
+// between them. Boxes clear the ring: at their inner x-edges the ring peaks near
+// y=178, below the box bottom at y=144.
+static const int16_t ROVR_THRBLK_W       = 168;   // block width (20% larger than 140)
+static const int16_t ROVR_THRBLK_H        = 77;   // block height (20% larger than 64)
 static const int16_t ROVR_THRBLK_Y        = 67;   // top edge (aligned with heading box)
-static const int16_t ROVR_FWD_BLK_X       = 195;  // left-justified in the compass region
-static const int16_t ROVR_REV_BLK_X       = 605;  // right-justified (605+140 = 745)
+static const int16_t ROVR_FWD_BLK_X       = 190;  // left edge flush with left column
+static const int16_t ROVR_REV_BLK_X       = 582;  // right edge flush with right column (582+168 = 750)
 static const float   ROVR_THR_THRESH     = 0.01f; // deadband — |wt| under this reads as neutral
 
 // ── Left column: V.Srf / EC% / BRAKE / GEAR / SAS ─────────────────────────────────────
