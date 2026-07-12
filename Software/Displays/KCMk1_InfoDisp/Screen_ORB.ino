@@ -1163,17 +1163,17 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     // dot colours (magenta / blue) as mnemonic colour coding; Inc is also white.
     tft.setFont(Roboto_Black_28);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL");
+    tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL:");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY2); tft.print("Pe");
+    tft.setCursor(6,   ORB_RDY2); tft.print("Pe:");
     tft.setTextColor(TFT_BLUE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY3); tft.print("Ap");
+    tft.setCursor(6,   ORB_RDY3); tft.print("Ap:");
 
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("Inc:");
-    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PRD");
-    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("Arg.Pe");
+    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PRD:");
+    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("Arg.Pe:");
     // T+Pe / T+Ap label is drawn on demand from drawScreen_ORB via _lastTLabel cache
 }
 
@@ -1473,7 +1473,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             tft.setFont(*F);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);
             tft.setCursor(INC_LABEL_X, INC_RDY3);
-            tft.print(showPe ? "T+Pe" : "T+Ap");
+            tft.print(showPe ? "T+Pe:" : "T+Ap:");
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;
