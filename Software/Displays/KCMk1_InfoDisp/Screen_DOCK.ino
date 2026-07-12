@@ -183,8 +183,7 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
     tft.print("VEL");
 
     // Row 1: PORT — solid magenta diamond
-    tft.fillTriangle(LEG_X,   LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7, LEG_X+6, LEG_Y0+LEG_DY+1,  TFT_VIOLET);  // top half
-    tft.fillTriangle(LEG_X,   LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7, LEG_X+6, LEG_Y0+LEG_DY+13, TFT_VIOLET);  // bottom half
+    drawDiamondMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("PORT");
@@ -371,10 +370,9 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
             tft.fillRect(_dockPrevPortX-EH, _dockPrevPortY-EH, EH*2+1, EH*2+1, TFT_BLACK);
             _dockRepairChrome(tft, _dockPrevPortX-EH, _dockPrevPortY-EH, EH);
         }
-        // Solid diamond: 4 filled triangles
+        // Solid diamond
         uint8_t ds = DOT_R_PORT + 3;  // diamond half-size
-        tft.fillTriangle(portSX-ds, portSY, portSX+ds, portSY, portSX, portSY-ds, TFT_VIOLET);  // top half
-        tft.fillTriangle(portSX-ds, portSY, portSX+ds, portSY, portSX, portSY+ds, TFT_VIOLET);  // bottom half
+        drawDiamondMarker(tft, portSX, portSY, ds, TFT_VIOLET);
         _dockPrevPortX = portSX; _dockPrevPortY = portSY;
     }
 

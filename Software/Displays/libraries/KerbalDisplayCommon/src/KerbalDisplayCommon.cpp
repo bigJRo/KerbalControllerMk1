@@ -546,6 +546,11 @@ void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
   tft.fillRect(bx - 1, by, tw + 2, capH, bg);
 }
 
+void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint16_t color) {
+  tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy - half, color);  // top half
+  tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy + half, color);  // bottom half
+}
+
 
 /***************************************************************************************
    FORMATTING HELPERS - BASIC

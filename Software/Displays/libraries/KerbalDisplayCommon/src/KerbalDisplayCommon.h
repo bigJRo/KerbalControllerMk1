@@ -197,6 +197,11 @@ void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                         int16_t x0, int16_t y0, int16_t w, int16_t h,
                         const char *oldStr, uint16_t bg);
 
+// Solid diamond marker, centred at (cx,cy), `half` px from centre to each tip.
+// Drawn as two triangles that share the horizontal waist scanline, so the seam has
+// no raster gaps. Used for the maneuver/target/port markers on the reticle screens.
+void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint16_t color);
+
 // --- Basic formatters ---
 String formatInt(uint16_t value);
 String formatFloat(float value, uint8_t decimals);

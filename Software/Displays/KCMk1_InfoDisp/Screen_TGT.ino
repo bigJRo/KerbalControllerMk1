@@ -209,10 +209,7 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
     tft.print("VEL");
 
     // TGT — solid violet diamond (same symbol as DOCK PORT dot)
-    tft.fillTriangle(LEG_X,      LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7,
-                     LEG_X+6,    LEG_Y0+LEG_DY+1,  TFT_VIOLET);
-    tft.fillTriangle(LEG_X,      LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7,
-                     LEG_X+6,    LEG_Y0+LEG_DY+13, TFT_VIOLET);
+    drawDiamondMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("TGT");
@@ -373,8 +370,7 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
             _tgtRepairChrome(tft, _tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH);
         }
         uint8_t ds = TGT_DOT_R_TGT + 3;
-        tft.fillTriangle(tSX-ds, tSY, tSX+ds, tSY, tSX, tSY-ds, TFT_VIOLET);
-        tft.fillTriangle(tSX-ds, tSY, tSX+ds, tSY, tSX, tSY+ds, TFT_VIOLET);
+        drawDiamondMarker(tft, tSX, tSY, ds, TFT_VIOLET);
         _tgtPrevTgtX = tSX; _tgtPrevTgtY = tSY;
     }
 
