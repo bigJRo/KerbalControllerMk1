@@ -123,14 +123,15 @@ static const int16_t ROVR_ICON_NOSE_H    = 12;   // nose notch height (extends a
 //   FWD block — dark-green fill + white text when wheelThrottle > deadband
 //   REV block — yellow fill + dark-grey text when wheelThrottle < -deadband
 //   both muted (off-black fill) when neutral.
-// Both sit at the top of the compass region (y=67). FWD's left edge is flush with
-// the left column's right edge (x=190); REV's right edge is flush with the right
-// column's left edge (x=750, so REV_X = 750-168 = 582). The heading box sits
-// between them. Boxes clear the ring: at their inner x-edges the ring peaks near
-// y=178, below the box bottom at y=144.
+// Both sit at the top corners of the compass region, top-aligned with the title-bar
+// rule (y=62, same as the side columns). FWD's left edge is flush with the left
+// column's right edge (x=190); REV's right edge is flush with the right column's
+// left edge (x=750, so REV_X = 750-168 = 582). The heading box sits between them.
+// Boxes clear the ring: at their inner x-edges the ring peaks near y=178, below
+// the box bottom at y=139.
 static const int16_t ROVR_THRBLK_W       = 168;   // block width (20% larger than 140)
 static const int16_t ROVR_THRBLK_H        = 77;   // block height (20% larger than 64)
-static const int16_t ROVR_THRBLK_Y        = 67;   // top edge (aligned with heading box)
+static const int16_t ROVR_THRBLK_Y        = 62;   // top edge (flush with title-bar rule)
 static const int16_t ROVR_FWD_BLK_X       = 190;  // left edge flush with left column
 static const int16_t ROVR_REV_BLK_X       = 582;  // right edge flush with right column (582+168 = 750)
 static const float   ROVR_THR_THRESH     = 0.01f; // deadband — |wt| under this reads as neutral
@@ -559,14 +560,14 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
     if (newState == _rovrPrevThrFill) return;
 
     ButtonLabel fwd = (newState == +1)
-        ? ButtonLabel{ "FWD", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_LIGHT_GREY, TFT_LIGHT_GREY }
-        : ButtonLabel{ "FWD", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+        ? ButtonLabel{ "FWD", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
+        : ButtonLabel{ "FWD", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
     drawButton(tft, ROVR_FWD_BLK_X, ROVR_THRBLK_Y,
                ROVR_THRBLK_W, ROVR_THRBLK_H, fwd, &Roboto_Black_36, false);
 
     ButtonLabel rev = (newState == -1)
-        ? ButtonLabel{ "REV", TFT_DARK_GREY, TFT_DARK_GREY, TFT_YELLOW,    TFT_YELLOW,    TFT_LIGHT_GREY, TFT_LIGHT_GREY }
-        : ButtonLabel{ "REV", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK, TFT_OFF_BLACK, TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+        ? ButtonLabel{ "REV", TFT_DARK_GREY, TFT_DARK_GREY, TFT_YELLOW,    TFT_YELLOW,    TFT_GREY, TFT_GREY }
+        : ButtonLabel{ "REV", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK, TFT_OFF_BLACK, TFT_GREY, TFT_GREY };
     drawButton(tft, ROVR_REV_BLK_X, ROVR_THRBLK_Y,
                ROVR_THRBLK_W, ROVR_THRBLK_H, rev, &Roboto_Black_36, false);
 
@@ -594,7 +595,7 @@ static void _rovrDrawVSrfChrome(KCM_TFT &tft) {
     // Bounding box around the full V.Srf block
     tft.drawRect(ROVR_LCOL_X, ROVR_VSRF_Y,
                  ROVR_LCOL_W, ROVR_VSRF_H,
-                 TFT_LIGHT_GREY);
+                 TFT_GREY);
 
     // Label centered in its strip
     textCenter(tft, &Roboto_Black_24,
@@ -670,7 +671,7 @@ static inline int16_t _rovrEcValueY() {
 static void _rovrDrawEcChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_LCOL_X, ROVR_EC_Y,
                  ROVR_LCOL_W, ROVR_EC_H,
-                 TFT_LIGHT_GREY);
+                 TFT_GREY);
 
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
@@ -728,8 +729,8 @@ static void _rovrUpdateBrake(KCM_TFT &tft) {
     if (newState == _rovrPrevBrake) return;
 
     ButtonLabel btn = state.brakes_on
-        ? ButtonLabel{ "BRAKES", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_LIGHT_GREY, TFT_LIGHT_GREY }
-        : ButtonLabel{ "BRAKES", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+        ? ButtonLabel{ "BRAKES", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
+        : ButtonLabel{ "BRAKES", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
     drawButton(tft,
                ROVR_LCOL_X, ROVR_BRAKE_Y,
                ROVR_LCOL_W, ROVR_BRAKE_H,
@@ -745,8 +746,8 @@ static void _rovrUpdateGear(KCM_TFT &tft) {
     // Rover wheels are deployed (gear_on) for normal driving — so "GEAR DOWN"
     // is the safe/active state (green bg), "GEAR UP" is unusual (muted).
     ButtonLabel btn = state.gear_on
-        ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_LIGHT_GREY, TFT_LIGHT_GREY }
-        : ButtonLabel{ "GEAR", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+        ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
+        : ButtonLabel{ "GEAR", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
     drawButton(tft,
                ROVR_LCOL_X, ROVR_GEAR_Y,
                ROVR_LCOL_W, ROVR_GEAR_H,
@@ -787,7 +788,7 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
         default:  v = "SAS";  fg = TFT_DARK_GREY; bg = TFT_OFF_BLACK;  break;
     }
 
-    ButtonLabel btn = { v, fg, fg, bg, bg, TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+    ButtonLabel btn = { v, fg, fg, bg, bg, TFT_GREY, TFT_GREY };
     drawButton(tft,
                ROVR_LCOL_X, ROVR_SAS_Y,
                ROVR_LCOL_W, ROVR_SAS_H,
@@ -816,7 +817,7 @@ static inline int16_t _rovrElevValueY() {
 static void _rovrDrawElevChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_ELEV_Y,
                  ROVR_RCOL_W, ROVR_ELEV_H,
-                 TFT_LIGHT_GREY);
+                 TFT_GREY);
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, _rovrElevLabelY(),
                ROVR_RCOL_W, ROVR_LBL_H,
@@ -1052,7 +1053,7 @@ static const int16_t ROVR_TILT_REF_LEN    = 20;   // length of each reference li
 static void _rovrDrawPitchChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_PITCH_Y,
                  ROVR_RCOL_W, ROVR_PITCH_H,
-                 TFT_LIGHT_GREY);
+                 TFT_GREY);
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_PITCH_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
@@ -1071,7 +1072,7 @@ static void _rovrDrawPitchChrome(KCM_TFT &tft) {
 static void _rovrDrawRollChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_ROLL_Y,
                  ROVR_RCOL_W, ROVR_ROLL_H,
-                 TFT_LIGHT_GREY);
+                 TFT_GREY);
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_ROLL_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
@@ -1234,7 +1235,7 @@ static void _rovrChromeCompass(KCM_TFT &tft) {
     // The border is drawn here ONCE — _rovrUpdateHdgReadout only writes the value
     // text inside the box, never the border, so the border doesn't flicker.
     tft.drawRect(ROVR_HDG_BOX_X, ROVR_HDG_BOX_Y,
-                 ROVR_HDG_BOX_W, ROVR_HDG_BOX_H, TFT_LIGHT_GREY);
+                 ROVR_HDG_BOX_W, ROVR_HDG_BOX_H, TFT_GREY);
 
     // Stationary: rover silhouette at compass centre
     _rovrDrawIcon(tft);
