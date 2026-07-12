@@ -663,10 +663,10 @@ static void _scftUpdateRollReadout(KCM_TFT &tft, float roll) {
     if (_scftPrevRollReadout > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _scftPrevRollReadout);
-        textCenter(tft, &Roboto_Black_24,
+        eraseCenteredValue(tft, &Roboto_Black_24,
                    SCFT_ROLL_ANCHOR_X, SCFT_ROLL_ANCHOR_Y + SCFT_ROLL_LABEL_H + SCFT_ROLL_GAP,
                    SCFT_ROLL_W, SCFT_ROLL_VALUE_H,
-                   oldBuf, TFT_BLACK, TFT_BLACK);
+                   oldBuf, TFT_BLACK);
     }
 
     // Line 1: "Roll:" — small font, centred in label row
@@ -736,10 +736,10 @@ static void _scftUpdatePitchBox(KCM_TFT &tft, float pitch) {
     if (_scftPrevPitchBox > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _scftPrevPitchBox);
-        textCenter(tft, &Roboto_Black_24,
+        eraseCenteredValue(tft, &Roboto_Black_24,
                    SCFT_PTAPE_BOX_X, SCFT_PTAPE_BOX_Y + 1,
                    SCFT_PTAPE_BOX_W, SCFT_PTAPE_BOX_H - 2,
-                   oldBuf, TFT_BLACK, TFT_BLACK);
+                   oldBuf, TFT_BLACK);
     }
     textCenter(tft, &Roboto_Black_24,
                SCFT_PTAPE_BOX_X, SCFT_PTAPE_BOX_Y + 1,
@@ -898,10 +898,10 @@ static void _scftUpdateHdgBox(KCM_TFT &tft, float hdg) {
     // Erase previous value with black-on-black
     if (_scftPrevHdgBox >= 0) {
         snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _scftPrevHdgBox);
-        textCenter(tft, &Roboto_Black_24,
+        eraseCenteredValue(tft, &Roboto_Black_24,
                    SCFT_HDG_BOX_X, SCFT_HDG_BOX_Y + 1,
                    SCFT_HDG_BOX_W, SCFT_HDG_BOX_H - 2,
-                   oldBuf, TFT_BLACK, TFT_BLACK);
+                   oldBuf, TFT_BLACK);
     }
 
     // Draw new value

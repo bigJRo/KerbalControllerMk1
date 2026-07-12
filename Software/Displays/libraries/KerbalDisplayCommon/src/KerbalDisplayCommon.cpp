@@ -536,6 +536,16 @@ void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16
   kcmDrawString(tft, font, drawX, drawY, value.c_str(), foreColor, backColor);
 }
 
+void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
+                        int16_t x0, int16_t y0, int16_t w, int16_t h,
+                        const char *oldStr, uint16_t bg) {
+  int16_t tw   = getFontStringWidth(font, oldStr);
+  int16_t capH = (int16_t)font->cap_height;
+  int16_t bx   = x0 + (w - tw) / 2;
+  int16_t by   = y0 + (h - capH) / 2;
+  tft.fillRect(bx - 1, by, tw + 2, capH, bg);
+}
+
 
 /***************************************************************************************
    FORMATTING HELPERS - BASIC

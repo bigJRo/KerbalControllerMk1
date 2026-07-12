@@ -188,6 +188,15 @@ void textRight(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_
 void textCenter(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                 const String &value, uint16_t foreColor, uint16_t backColor);
 
+// Erase a previously-drawn textCenter value with a hardware fillRect over exactly
+// the box textCenter would have drawn into (same centring math). Behaviourally
+// identical to re-rendering the old string black-on-black, but avoids an expensive
+// software glyph raster each change. `bg` is the fill colour (usually TFT_BLACK,
+// or the previous background for threshold cells).
+void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
+                        int16_t x0, int16_t y0, int16_t w, int16_t h,
+                        const char *oldStr, uint16_t bg);
+
 // --- Basic formatters ---
 String formatInt(uint16_t value);
 String formatFloat(float value, uint8_t decimals);

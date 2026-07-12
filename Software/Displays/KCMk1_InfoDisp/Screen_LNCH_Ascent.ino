@@ -1131,8 +1131,8 @@ static void _lnchAsUpdateHdgBox(KCM_TFT &tft, float hdg) {
     char buf[8];
     if (_lnchAsPrevHdgBox >= 0) {           // erase previous value (black-on-black)
         snprintf(buf, sizeof(buf), "%03d\xB0", _lnchAsPrevHdgBox);
-        textCenter(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
-                   LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_BLACK, TFT_BLACK);
+        eraseCenteredValue(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+                   LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_BLACK);
     }
     snprintf(buf, sizeof(buf), "%03d\xB0", iHdg);
     textCenter(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,

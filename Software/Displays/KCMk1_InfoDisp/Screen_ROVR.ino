@@ -593,20 +593,7 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
 //
 // The label and value are centered within the V.Srf block (y=ROVR_VSRF_Y, height
 // ROVR_VSRF_H). Both strip rects are exactly `ROVR_LBL_H` and `ROVR_VAL_H` tall.
-// Erase a previously-drawn centered value with a hardware fillRect instead of
-// re-rendering the old string black-on-black. Covers exactly the box textCenter
-// would have drawn into (same centering math), so it is behaviourally identical
-// but avoids an expensive software glyph rasterization each frame. `bg` is the
-// fill color (TFT_BLACK normally, or the previous background for threshold cells).
-static inline void _rovrEraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
-                                           int16_t x0, int16_t y0, int16_t w, int16_t h,
-                                           const char *oldStr, uint16_t bg) {
-    int16_t tw   = getFontStringWidth(font, oldStr);
-    int16_t capH = (int16_t)font->cap_height;
-    int16_t bx   = x0 + (w - tw) / 2;
-    int16_t by   = y0 + (h - capH) / 2;
-    tft.fillRect(bx - 1, by, tw + 2, capH, bg);
-}
+// (value-erase now uses the shared eraseCenteredValue() from KerbalDisplayCommon)
 
 static inline int16_t _rovrVSrfLabelY() {
     int16_t totalContent = ROVR_LBL_H + ROVR_LBL_VAL_GAP + ROVR_VAL_H;
@@ -659,7 +646,7 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
     if (_rovrPrevVSrf > -9000) {
         char oldBuf[16];
         snprintf(oldBuf, sizeof(oldBuf), "%+.1f m/s", (float)_rovrPrevVSrf / 10.0f);
-        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+        eraseCenteredValue(tft, &Roboto_Black_36,
                                 ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
                                 oldBuf, TFT_BLACK);
     }
@@ -726,7 +713,7 @@ static void _rovrUpdateEc(KCM_TFT &tft) {
     if (_rovrPrevEcPct > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%d%%", _rovrPrevEcPct);
-        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+        eraseCenteredValue(tft, &Roboto_Black_36,
                                 ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
                                 oldBuf, _rovrPrevEcBg);
     }
@@ -864,7 +851,7 @@ static void _rovrUpdateElev(KCM_TFT &tft) {
     // and drawing it black-on-black.
     if (_rovrPrevElev > -90000) {
         String oldStr = formatAlt((float)_rovrPrevElev);
-        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+        eraseCenteredValue(tft, &Roboto_Black_36,
                                 ROVR_RCOL_X, valueY, ROVR_RCOL_W, ROVR_VAL_H,
                                 oldStr.c_str(), TFT_BLACK);
     }
@@ -1153,7 +1140,7 @@ static void _rovrUpdatePitch(KCM_TFT &tft) {
         if (_rovrPrevPitchVal > -9000) {
             char oldBuf[12];
             snprintf(oldBuf, sizeof(oldBuf), "%+.1f\xB0", (float)_rovrPrevPitchVal / 10.0f);
-            _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+            eraseCenteredValue(tft, &Roboto_Black_36,
                                     ROVR_RCOL_X, ROVR_PITCH_VAL_Y, ROVR_RCOL_W, ROVR_TILT_VAL_H,
                                     oldBuf, TFT_BLACK);
         }
@@ -1192,7 +1179,7 @@ static void _rovrUpdateRoll(KCM_TFT &tft) {
         if (_rovrPrevRollVal > -9000) {
             char oldBuf[12];
             snprintf(oldBuf, sizeof(oldBuf), "%+.1f\xB0", (float)_rovrPrevRollVal / 10.0f);
-            _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+            eraseCenteredValue(tft, &Roboto_Black_36,
                                     ROVR_RCOL_X, ROVR_ROLL_VAL_Y, ROVR_RCOL_W, ROVR_TILT_VAL_H,
                                     oldBuf, TFT_BLACK);
         }
@@ -1224,7 +1211,7 @@ static void _rovrUpdateHdgReadout(KCM_TFT &tft, float hdg) {
     if (_rovrPrevHdgVal > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _rovrPrevHdgVal);
-        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+        eraseCenteredValue(tft, &Roboto_Black_36,
                                 ROVR_HDG_BOX_X, ROVR_HDG_BOX_Y + 2,
                                 ROVR_HDG_BOX_W, ROVR_HDG_BOX_H - 4,
                                 oldBuf, TFT_BLACK);
