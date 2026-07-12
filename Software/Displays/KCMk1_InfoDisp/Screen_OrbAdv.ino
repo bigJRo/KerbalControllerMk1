@@ -32,13 +32,13 @@
    Formatting:
      - Distances (SMA, Pe, Ap, Alt): formatAlt() — auto-switches m/km/Mm.
      - Velocity: integer m/s, "m/s" suffix.
-     - Angles (Inc, LAN, ArgPe, TA, MA): 1 decimal, "°" suffix.
+     - Angles (Inc, LAN, ArgPe, True Anom, Mean Anom): 1 decimal, "°" suffix.
      - Eccentricity: 4 decimal places.
-     - Times (T+Pe, T+Ap, PRD): formatTime() — HH:MM:SS with Kerbin 6-hr day.
+     - Times (T+Pe, T+Ap, Period): formatTime() — HH:MM:SS with Kerbin 6-hr day.
 
    Hidden cases:
-     - Escape orbit: Ap, PRD, T+Ap show "\x80" (infinity glyph); T+Pe still
-       valid and MA still defined.
+     - Escape orbit: Ap, Period, T+Ap show "\x80" (infinity glyph); T+Pe still
+       valid and Mean Anom still defined.
      - Pe below surface: Pe shows "---".
      - T+Pe or T+Ap negative / unavailable: shows "---".
 
@@ -68,8 +68,11 @@ static const int16_t ADV_L_VALUE_X  = 150;
 static const int16_t ADV_L_VALUE_W  = 320;  // right edge 150+320-8 = 462
 
 static const int16_t ADV_R_LABEL_X  = 480;
-static const int16_t ADV_R_VALUE_X  = 628;
-static const int16_t ADV_R_VALUE_W  = 310;  // right edge 628+310-8 = 930
+// Value column shifted right so the widest labels ("True Anom:" / "Mean Anom:",
+// ~207px, ending ~x=687) clear the value region (regionX = 690+9 = 699). The
+// wide time values (T+Pe/T+Ap) belong to short labels, so they still fit.
+static const int16_t ADV_R_VALUE_X  = 690;
+static const int16_t ADV_R_VALUE_W  = 248;  // right edge 690+248-8 = 930
 
 // Row slot indices (left column 0..6, right column 7..13)
 enum {
@@ -106,14 +109,14 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("Ap:");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("Alt:");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("Vel:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("PRD:");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("Period:");
 
     // Right column labels
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("Inc:");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("LAN:");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("ArgPe:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("TA:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("MA:");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("True Anom:");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("Mean Anom:");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("T+Pe:");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("T+Ap:");
 }
