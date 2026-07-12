@@ -105,6 +105,13 @@ static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot 
 static const int16_t LNCH_OR_BDUR_LBL_Y = 258;                                  // below the ATT disc (disc bottom 230 + margin)
 static const int16_t LNCH_OR_BDUR_VAL_Y = LNCH_OR_BDUR_LBL_Y + 27;             // 24 px label + 3 px gap
 
+// ΔV-to-circularize readout: fills the left-rail whitespace below Burn Dur.
+// Standalone vis-viva estimate of the ΔV needed to circularize at apoapsis (the
+// key pre-burn planning number). Label + prominent value, centered on the ATT
+// column. Vertically centered in the gap between Burn Dur and the bottom band.
+static const int16_t LNCH_OR_CIRCDV_LBL_Y = 372;   // label row ("ΔV Circ:", Black_20)
+static const int16_t LNCH_OR_CIRCDV_VAL_Y = 400;   // value row (Black_28)
+
 
 
 // ── Orbital (circularization) phase change-detection state ────────────────────────────
@@ -130,9 +137,6 @@ static uint16_t _lnchOrPrevDVStgFg   = 0xFFFF; static uint16_t _lnchOrPrevDVStgB
 
 static PrintState _lnchOrPs[8];   // PrintState tracking for each orbital row
 
-// Throttle state for the orbital graphic — full-redraw is expensive so we
-// limit to ~5 Hz (200 ms between redraws).
-static uint32_t _lnchOrLastDiagDraw = 0;
 
 // ── Orbit graphic prev-frame state (for erase-then-redraw, no full wipe) ─────────────
 // The static layer (body, atmosphere ring, dashed target circle) is drawn once
@@ -215,6 +219,8 @@ static uint16_t  _lnchOrPrevAttDotCol = 0;
 // Burn-duration readout prev state: rounded seconds (-9999 = not drawn,
 // -9998 = "---" placeholder). Skip redraw when value rounds the same.
 static int32_t   _lnchOrPrevBurnDurSec = -9999;
+// ΔV-to-circularize readout prev state (-9999 = not drawn, -9998 = "---").
+static int32_t   _lnchOrPrevCircDvRounded = -9999;
 // SOI name we last drew the static layer for. If SOI changes mid-session, we
 // need to redraw the static layer.
 static char _lnchOrPrevSoi[24] = {0};
@@ -249,8 +255,6 @@ static void _lnchOrResetState() {
         printState[screen_LNCH][i].prevBg     = 0x0001;
         printState[screen_LNCH][i].prevHeight = 0;
     }
-    // Force immediate first-frame redraw of the orbit graphic
-    _lnchOrLastDiagDraw = 0;
     // Invalidate orbit-graphic prev-frame cache so the first frame does a
     // full draw (static layer + all dynamic elements) without trying to
     // erase stale previous pixels.
@@ -278,6 +282,7 @@ static void _lnchOrResetState() {
     _lnchOrPrevAttDotY    = 9999;
     _lnchOrPrevAttDotCol  = 0;
     _lnchOrPrevBurnDurSec = -9999;
+    _lnchOrPrevCircDvRounded = -9999;
     _lnchOrMnvrMaxDV      = 0.0f;
     _lnchOrPrevSoi[0]     = '\0';
 }
@@ -560,8 +565,6 @@ static void _lnchOrDrawRightPanelValues(KCM_TFT &tft) {
 // each radius remapped through the compression function. Markers and vessel
 // use the same compression so they stay on the curve.
 //
-// For simplicity this does a full-redraw on each call rather than incremental
-// updates. The caller throttles update rate via _lnchOrLastDiagDraw.
 // Draw the static layer of the orbit graphic: body, atmosphere ring, dashed
 // target circle. These do NOT change frame-to-frame (they depend only on the
 // SOI) and don't need to be erased/redrawn every frame. Called once at entry
@@ -660,6 +663,31 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
                     "T+Ign:", TFT_LIGHT_GREY, TFT_BLACK, COL_NO_BDR);
 }
 
+// Estimated ΔV (m/s) to circularize at apoapsis (vis-viva). Returns -1 if the
+// orbit data isn't usable (sub-orbital, no apoapsis, negative result, etc.).
+//   μ       = surfGrav × bodyR²        (standard gravitational parameter)
+//   rAp     = apoapsis + bodyR
+//   sma     = (rAp + (periapsis + bodyR)) / 2
+//   v_circ  = sqrt(μ / rAp)            (target circular v at Ap)
+//   v_curr  = sqrt(μ × (2/rAp − 1/sma))(current v at Ap, vis-viva)
+//   ΔV_circ = v_circ − v_curr
+static float _lnchOrCircDvEstimate() {
+    float bodyR = currentBody.radius;
+    float g     = currentBody.gravity;   // rev-2: m/s²
+    if (bodyR <= 0.0f || g <= 0.0f || state.apoapsis <= 0.0f) return -1.0f;
+    float mu   = g * bodyR * bodyR;
+    float rAp  = state.apoapsis + bodyR;
+    float rPe  = fmaxf(state.periapsis + bodyR, bodyR);   // clamp to surface
+    float sma  = (rAp + rPe) * 0.5f;
+    if (sma <= 0.0f || rAp <= 0.0f) return -1.0f;
+    float v_circ_sq = mu / rAp;
+    float v_curr_sq = mu * (2.0f / rAp - 1.0f / sma);
+    if (v_circ_sq <= 0.0f || v_curr_sq <= 0.0f) return -1.0f;
+    float dvEst = sqrtf(v_circ_sq) - sqrtf(v_curr_sq);
+    if (dvEst <= 0.0f || dvEst >= 100000.0f) return -1.0f;   // guard sub-orbital / nonsense
+    return dvEst;
+}
+
 // Update the maneuver-bar fill. Called each frame during orbital phase.
 //
 // Visual format matches the MNVR screen's "ΔV Burn" bar: grey border, off-
@@ -688,38 +716,17 @@ static void _lnchOrUpdateProgressBar(KCM_TFT &tft) {
     bool     estimate_mode = false;  // true → prefix "est " and use dim colour
     if (!hasMnvr) {
         // No maneuver planned. Reset the drain cache, show an empty inactive
-        // bar, but compute an ESTIMATE of the ΔV needed to circularize at
-        // apoapsis — useful as a pre-planning hint. Formula (vis-viva):
-        //   μ       = surfGrav × bodyR²  (standard gravitational parameter)
-        //   rAp     = apoapsis + bodyR
-        //   sma     = (rAp + (periapsis + bodyR)) / 2
-        //   v_circ  = sqrt(μ / rAp)                 (target circular v at Ap)
-        //   v_curr  = sqrt(μ × (2/rAp - 1/sma))     (current v at Ap, vis-viva)
-        //   ΔV_circ = v_circ - v_curr
+        // bar, but display the estimated ΔV to circularize at apoapsis as a
+        // pre-planning hint (same value the standalone ΔV Circ readout shows).
         _lnchOrMnvrMaxDV = 0.0f;
         fill_px    = 0;
         fill_col   = TFT_DARK_GREY;
         dv_rounded = -9999;
 
-        float bodyR = currentBody.radius;
-        float g     = currentBody.gravity;   // rev-2: m/s² (mu = g*bodyR^2)
-        if (bodyR > 0.0f && g > 0.0f && state.apoapsis > 0.0f) {
-            float mu   = g * bodyR * bodyR;
-            float rAp  = state.apoapsis  + bodyR;
-            float rPe  = fmaxf(state.periapsis + bodyR, bodyR);  // clamp to surface
-            float sma  = (rAp + rPe) * 0.5f;
-            if (sma > 0.0f && rAp > 0.0f) {
-                float v_circ_sq = mu / rAp;
-                float v_curr_sq = mu * (2.0f / rAp - 1.0f / sma);
-                if (v_circ_sq > 0.0f && v_curr_sq > 0.0f) {
-                    float dvEst = sqrtf(v_circ_sq) - sqrtf(v_curr_sq);
-                    // Guard against nonsense (e.g. sub-orbital, negative values).
-                    if (dvEst > 0.0f && dvEst < 100000.0f) {
-                        dv_rounded = (int16_t)roundf(dvEst);
-                        estimate_mode = true;
-                    }
-                }
-            }
+        float dvEst = _lnchOrCircDvEstimate();
+        if (dvEst > 0.0f) {
+            dv_rounded    = (int16_t)roundf(dvEst);
+            estimate_mode = true;
         }
     } else {
         // Maneuver node active. Update cached max if this is the first time
@@ -926,6 +933,43 @@ static void _lnchOrUpdateBurnDurReadout(KCM_TFT &tft) {
     tft.print(val.c_str());
 
     _lnchOrPrevBurnDurSec = newSec;
+}
+
+// ΔV-to-circularize readout — a centered label+value block in the left rail
+// below Burn Dur. Shows the vis-viva estimate of the ΔV needed to circularize at
+// apoapsis (the standalone, always-on version of the ΔV Burn bar's estimate).
+// Label is drawn once (never changes); value change-detected on rounded m/s.
+static void _lnchOrUpdateCircDvReadout(KCM_TFT &tft) {
+    float dvEst = _lnchOrCircDvEstimate();
+    int32_t newVal = (dvEst > 0.0f) ? (int32_t)roundf(dvEst) : -9998;  // -9998 = "---"
+
+    bool first_draw = (_lnchOrPrevCircDvRounded == -9999);
+    if (newVal == _lnchOrPrevCircDvRounded && !first_draw) return;
+
+    // Label once on first frame — colour/text never change. Black_20, centered.
+    if (first_draw) {
+        tft.setFont(Roboto_Black_20);
+        tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+        int16_t lblW = getFontStringWidth(&Roboto_Black_20, "\xCE\x94V Circ:");
+        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, LNCH_OR_CIRCDV_LBL_Y);
+        tft.print("\xCE\x94V Circ:");
+    }
+
+    // Clear + draw the value, horizontally centered on the ATT column. Black_28
+    // (prominent — this is the key pre-burn planning number).
+    const int16_t valRegionW = 130;
+    tft.fillRect(LNCH_OR_ATT_CX - valRegionW / 2, LNCH_OR_CIRCDV_VAL_Y, valRegionW, 36, TFT_BLACK);
+    char buf[16];
+    uint16_t fg;
+    if (newVal <= -9998) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
+    else { snprintf(buf, sizeof(buf), "%dm/s", (int)newVal); fg = TFT_DARK_GREEN; }
+    tft.setFont(Roboto_Black_28);
+    tft.setTextColor(fg, TFT_BLACK);
+    int16_t vw = getFontStringWidth(&Roboto_Black_28, buf);
+    tft.setCursor(LNCH_OR_ATT_CX - vw / 2, LNCH_OR_CIRCDV_VAL_Y);
+    tft.print(buf);
+
+    _lnchOrPrevCircDvRounded = newVal;
 }
 
 // Wrap a heading error into ±180° (for bearing differences on a 0..360°
@@ -1152,6 +1196,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrPrevAttDotY    = 9999;
         _lnchOrPrevAttDotCol  = 0;
         _lnchOrPrevBurnDurSec = -9999;
+        _lnchOrPrevCircDvRounded = -9999;
         // Record the static-layer geometry we just drew so that on future
         // frames we can detect radius drift (due to compressed-scaling
         // recomputation as orbit elements change) and cleanly erase before
@@ -1435,15 +1480,15 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     }
 }
 
-// Dispatcher: call this each frame during orbital phase. Throttled redraw of
-// the orbit graphic and progress bar.
+// Dispatcher: call this each frame during orbital phase. Runs every frame now —
+// the former ~5 Hz cap existed to hide single-buffer redraw flicker, which the
+// double buffer (draw to the hidden page, then flip) now handles. Each element
+// is change-detected, so idle frames stay cheap.
 static void _lnchOrDrawLeftPanelValues(KCM_TFT &tft) {
-    uint32_t now = millis();
-    if (now - _lnchOrLastDiagDraw < 200) return;  // ~5 Hz cap
-    _lnchOrLastDiagDraw = now;
     _lnchOrDrawOrbitGraphic(tft);
     _lnchOrUpdateProgressBar(tft);
     _lnchOrUpdateTignRow(tft);
     _lnchOrUpdateAttIndicator(tft);
     _lnchOrUpdateBurnDurReadout(tft);
+    _lnchOrUpdateCircDvReadout(tft);
 }
