@@ -44,21 +44,21 @@
 // readout box (needed for Roboto_Black_28, font_height=33). CY moved down to 302
 // to maintain roughly equal margins above the heading box (12 px) and below the
 // ring (13 px).
-static const int16_t ROVR_CX             = 360;
-static const int16_t ROVR_CY             = 302;
-static const int16_t ROVR_R              = 165;   // outer ring radius
-static const int16_t ROVR_R_TICK_OUTER   = 164;   // tick outer end (1 px inside outer ring)
+static const int16_t ROVR_CX             = 495;
+static const int16_t ROVR_CY             = 345;
+static const int16_t ROVR_R              = 205;   // outer ring radius
+static const int16_t ROVR_R_TICK_OUTER   = 204;   // tick outer end (1 px inside outer ring)
                                                   //   so erase-in-black doesn't nibble ring
-static const int16_t ROVR_R_TICK_INNER   = 147;   // major tick inner end  (scaled from 150)
-static const int16_t ROVR_R_MINOR_INNER  = 153;   // minor tick inner end  (scaled from 156)
-static const int16_t ROVR_R_LETTER       = 130;   // cardinal letter centre (scaled from 132)
-static const int16_t ROVR_R_NUMLABEL     = 130;   // numeric label centre — same
+static const int16_t ROVR_R_TICK_INNER   = 183;   // major tick inner end  (scaled from 150)
+static const int16_t ROVR_R_MINOR_INNER  = 190;   // minor tick inner end  (scaled from 156)
+static const int16_t ROVR_R_LETTER       = 162;   // cardinal letter centre (scaled from 132)
+static const int16_t ROVR_R_NUMLABEL     = 162;   // numeric label centre — same
 
 // Vessel heading indicator — triangle ABOVE the ring at 12 o'clock, pointing INWARD
 // (toward the compass center). Tip closer to centre, base farther out.
-static const int16_t ROVR_NOSE_R_TIP     = 169;   // inward tip (4 px outside ring)
-static const int16_t ROVR_NOSE_R_BASE    = 184;   // outward base
-static const int16_t ROVR_NOSE_HALF_W    = 10;
+static const int16_t ROVR_NOSE_R_TIP     = 209;   // inward tip (4 px outside ring)
+static const int16_t ROVR_NOSE_R_BASE    = 224;   // outward base
+static const int16_t ROVR_NOSE_HALF_W    = 12;
 
 // Target bearing indicator — triangle INSIDE the ring, positioned just inside
 // the compass labels. Tip R=113 leaves ~4 px visual gap to the label inward
@@ -67,9 +67,9 @@ static const int16_t ROVR_NOSE_HALF_W    = 10;
 // with a label position. Tip points OUTWARD (toward the ring); when target is
 // at same heading as vessel, triangle sits at 12 o'clock with tip pointing up.
 // Uses TFT_VIOLET to match target markers on SCFT/ACFT screens.
-static const int16_t ROVR_TGT_R_TIP      = 113;   // outward tip
-static const int16_t ROVR_TGT_R_BASE     = 98;    // inward base (15 px tall triangle)
-static const int16_t ROVR_TGT_HALF_W     = 10;   // same half-width as nose
+static const int16_t ROVR_TGT_R_TIP      = 140;   // outward tip
+static const int16_t ROVR_TGT_R_BASE     = 122;    // inward base (15 px tall triangle)
+static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 
 // Target distance readout — shown only when a target is selected (targetAvailable).
 // Label "Tgt:" is flush to the bottom-left of the compass area (left-aligned,
@@ -78,20 +78,20 @@ static const int16_t ROVR_TGT_HALF_W     = 10;   // same half-width as nose
 // column). Both sit at the screen bottom edge, outside the compass ring.
 // At y=451 the ring left edge is at x≈285 and right edge at x≈435, leaving
 // room on each side for the text without encroaching on the ring.
-static const int16_t ROVR_TGTD_LBL_X     = 185;
-static const int16_t ROVR_TGTD_LBL_W     = 100;
-static const int16_t ROVR_TGTD_VAL_X     = 440;
-static const int16_t ROVR_TGTD_VAL_W     = 100;
-static const int16_t ROVR_TGTD_Y         = 451;
-static const int16_t ROVR_TGTD_H         = 28;    // hugs screen bottom (y=479)
+static const int16_t ROVR_TGTD_LBL_X     = 290;
+static const int16_t ROVR_TGTD_LBL_W     = 120;
+static const int16_t ROVR_TGTD_VAL_X     = 580;
+static const int16_t ROVR_TGTD_VAL_W     = 120;
+static const int16_t ROVR_TGTD_Y         = 560;
+static const int16_t ROVR_TGTD_H         = 32;    // hugs screen bottom (y=479)
 
 // Heading readout — single-line boxed value above the nose triangle. The box
 // border is stationary chrome; only the numeric value is redrawn on changes.
 // Format: zero-padded 3-digit heading with ° symbol (e.g. "045°").
 // Box is 38 tall to give the 28pt Roboto Black font (33 px font_height) room
 // to render without the glyph cell's black background overwriting the border.
-static const int16_t ROVR_HDG_BOX_W      = 80;   // widened slightly for the larger font
-static const int16_t ROVR_HDG_BOX_H      = 38;
+static const int16_t ROVR_HDG_BOX_W      = 90;   // widened slightly for the larger font
+static const int16_t ROVR_HDG_BOX_H      = 40;
 static const int16_t ROVR_HDG_BOX_X      = ROVR_CX - (ROVR_HDG_BOX_W / 2);
 static const int16_t ROVR_HDG_BOX_Y      = ROVR_CY - ROVR_NOSE_R_BASE - 6 - ROVR_HDG_BOX_H;
 
@@ -106,14 +106,14 @@ static const int16_t ROVR_HDG_BOX_Y      = ROVR_CY - ROVR_NOSE_R_BASE - 6 - ROVR
 //    └─────────┘
 //
 // All coordinates are offsets from (ROVR_CX, ROVR_CY).
-static const int16_t ROVR_ICON_CHASS_W   = 44;   // chassis rect width
-static const int16_t ROVR_ICON_CHASS_H   = 72;   // chassis rect height
-static const int16_t ROVR_ICON_WHEEL_W   = 10;   // single wheel rect width
-static const int16_t ROVR_ICON_WHEEL_H   = 20;   // single wheel rect height
-static const int16_t ROVR_ICON_WHEEL_GAP = 10;   // wheel outer edge extends this far beyond chassis
-static const int16_t ROVR_ICON_WHEEL_INSET = 6;  // wheel vertical inset from chassis top/bottom
-static const int16_t ROVR_ICON_NOSE_W    = 16;   // nose notch base width (across chassis front)
-static const int16_t ROVR_ICON_NOSE_H    = 10;   // nose notch height (extends above chassis)
+static const int16_t ROVR_ICON_CHASS_W   = 54;   // chassis rect width
+static const int16_t ROVR_ICON_CHASS_H   = 90;   // chassis rect height
+static const int16_t ROVR_ICON_WHEEL_W   = 12;   // single wheel rect width
+static const int16_t ROVR_ICON_WHEEL_H   = 24;   // single wheel rect height
+static const int16_t ROVR_ICON_WHEEL_GAP = 12;   // wheel outer edge extends this far beyond chassis
+static const int16_t ROVR_ICON_WHEEL_INSET = 8;  // wheel vertical inset from chassis top/bottom
+static const int16_t ROVR_ICON_NOSE_W    = 20;   // nose notch base width (across chassis front)
+static const int16_t ROVR_ICON_NOSE_H    = 12;   // nose notch height (extends above chassis)
 
 // ── Throttle bar ──────────────────────────────────────────────────────────────────────
 // Vertical bar positioned just left of the compass. Binary on/off fill:
@@ -126,10 +126,10 @@ static const int16_t ROVR_ICON_NOSE_H    = 10;   // nose notch height (extends a
 // leftmost pixel at x=195, and 2 px clearance to the 9-o'clock major tick
 // which extends to x=213 only when the ring rotates — the ring itself never
 // crosses x=195.
-static const int16_t ROVR_THR_W          = 36;    // bar width
-static const int16_t ROVR_THR_X          = 149;   // bar left edge (directly against left column right edge at x=148)
+static const int16_t ROVR_THR_W          = 42;    // bar width
+static const int16_t ROVR_THR_X          = 193;   // bar left edge (directly against left column right edge at x=148)
 static const int16_t ROVR_THR_Y_TOP      = 63;    // bar top edge (just below header)
-static const int16_t ROVR_THR_Y_BOT      = 479;   // bar bottom edge (screen bottom)
+static const int16_t ROVR_THR_Y_BOT      = 600;   // bar bottom edge (screen bottom)
 static const int16_t ROVR_THR_Y_MID      = (ROVR_THR_Y_TOP + ROVR_THR_Y_BOT) / 2;
                                                   // centre line (neutral position, y=271)
 static const int16_t ROVR_THR_HALF_H     = (ROVR_THR_Y_BOT - ROVR_THR_Y_TOP) / 2;
@@ -148,14 +148,14 @@ static const float   ROVR_THR_THRESH     = 0.01f; // deadband — |wt| under thi
 // throttle bar's left edge at x=149 is directly adjacent to the column's right
 // edge at x=148, so their borders touch without overlap.
 static const int16_t ROVR_LCOL_X         = 0;
-static const int16_t ROVR_LCOL_W         = 149;
+static const int16_t ROVR_LCOL_W         = 190;
 static const int16_t ROVR_LCOL_Y_TOP     = 63;    // just below header
 
-static const int16_t ROVR_VSRF_H         = 85;
-static const int16_t ROVR_EC_H           = 83;
-static const int16_t ROVR_BRAKE_H        = 83;
-static const int16_t ROVR_GEAR_H         = 83;
-static const int16_t ROVR_SAS_H          = 83;
+static const int16_t ROVR_VSRF_H         = 109;
+static const int16_t ROVR_EC_H           = 107;
+static const int16_t ROVR_BRAKE_H        = 107;
+static const int16_t ROVR_GEAR_H         = 107;
+static const int16_t ROVR_SAS_H          = 107;
 
 static const int16_t ROVR_VSRF_Y         = ROVR_LCOL_Y_TOP;                   // 63
 static const int16_t ROVR_EC_Y           = ROVR_VSRF_Y  + ROVR_VSRF_H;        // 148
@@ -178,14 +178,14 @@ static const int16_t ROVR_LBL_VAL_GAP    = 2;     // gap between label and value
 //   Roll      — rear-view tilt silhouette + numeric
 //
 // Column x=540..719 (width 180), flush with the sidebar's left edge at x=720.
-static const int16_t ROVR_RCOL_X         = 540;
-static const int16_t ROVR_RCOL_W         = 180;
+static const int16_t ROVR_RCOL_X         = 755;
+static const int16_t ROVR_RCOL_W         = 185;
 static const int16_t ROVR_ELEV_Y         = 63;
-static const int16_t ROVR_ELEV_H         = 85;    // matches V.Srf block height
-static const int16_t ROVR_PITCH_Y        = 148;   // adjacent to Elev bottom
-static const int16_t ROVR_PITCH_H        = 166;
-static const int16_t ROVR_ROLL_Y         = 314;   // adjacent to Pitch bottom
-static const int16_t ROVR_ROLL_H         = 166;   // reaches screen bottom (y=479)
+static const int16_t ROVR_ELEV_H         = 110;    // matches V.Srf block height
+static const int16_t ROVR_PITCH_Y        = 173;   // adjacent to Elev bottom
+static const int16_t ROVR_PITCH_H        = 214;
+static const int16_t ROVR_ROLL_Y         = 387;   // adjacent to Pitch bottom
+static const int16_t ROVR_ROLL_H         = 213;   // reaches screen bottom (y=479)
 
 // Within each indicator box:
 //   label at top (Roboto_Black_20, height 26)
@@ -198,11 +198,11 @@ static const int16_t ROVR_TILT_GAP       = 2;
 
 // Side-view silhouette dimensions (used for Pitch indicator) — base, unrotated.
 // Wide low body with two round wheels beneath, like the side profile of a rover.
-static const int16_t ROVR_SIL_BODY_W     = 80;    // pitch-view body width
-static const int16_t ROVR_SIL_BODY_H     = 28;    // pitch-view body height
-static const int16_t ROVR_SIL_WHEEL_R    = 10;    // pitch-view wheel radius (circle)
-static const int16_t ROVR_SIL_WHEEL_DX   = 28;    // horiz offset of wheel centre from body centre
-static const int16_t ROVR_SIL_WHEEL_DY   = 20;    // vert offset (below body centre)
+static const int16_t ROVR_SIL_BODY_W     = 100;    // pitch-view body width
+static const int16_t ROVR_SIL_BODY_H     = 36;    // pitch-view body height
+static const int16_t ROVR_SIL_WHEEL_R    = 13;    // pitch-view wheel radius (circle)
+static const int16_t ROVR_SIL_WHEEL_DX   = 35;    // horiz offset of wheel centre from body centre
+static const int16_t ROVR_SIL_WHEEL_DY   = 26;    // vert offset (below body centre)
 
 // Rear-view silhouette dimensions (used for Roll indicator) — base, unrotated.
 // Body height matches pitch silhouette body height (28) so the vehicle feels
@@ -210,10 +210,10 @@ static const int16_t ROVR_SIL_WHEEL_DY   = 20;    // vert offset (below body cen
 // to convey rear-view perspective. Tires appear as rectangles on the SIDES of
 // the body (visible tread face), with about half the tire height extending
 // below the body.
-static const int16_t ROVR_REAR_BODY_W    = 50;    // rear-view body width
-static const int16_t ROVR_REAR_BODY_H    = 28;    // rear-view body height (matches pitch body)
-static const int16_t ROVR_REAR_TIRE_W    = 10;    // each tire rect width (extends OUTWARD)
-static const int16_t ROVR_REAR_TIRE_H    = 20;    // each tire rect height (≈pitch wheel dia)
+static const int16_t ROVR_REAR_BODY_W    = 64;    // rear-view body width
+static const int16_t ROVR_REAR_BODY_H    = 36;    // rear-view body height (matches pitch body)
+static const int16_t ROVR_REAR_TIRE_W    = 13;    // each tire rect width (extends OUTWARD)
+static const int16_t ROVR_REAR_TIRE_H    = 26;    // each tire rect height (≈pitch wheel dia)
 
 // Dirty thresholds
 static const float   ROVR_HDG_THRESH_DEG = 0.5f;  // compass rotates
