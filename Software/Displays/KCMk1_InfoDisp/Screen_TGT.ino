@@ -13,7 +13,7 @@
    │                                 │ V.TGT:          124.0 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
    │   ○ velocity vector (NEON_GREEN)│ B.ERR:  +14.0° │ E.ERR:  -9.0°      │
-   │   + nose crosshair (fixed)      │ T.INT:          6m 30s               │
+   │   + nose crosshair (fixed)      │ T+INT:          6m 30s               │
    └─────────────────────────────────┴──────────────────────────────────────┘
 
    SCOPE SEMANTICS
@@ -27,10 +27,10 @@
 
    SCOPE GEOMETRY (rev-2, 1024×600)
    ──────────────
-   Centre: (289, 331)   Radius: 245px   Scale: 4.08 px/deg (±60° full scale)
+   Centre: (289, 300)   Radius: 210px   Scale: 3.5 px/deg (±60° full scale)
    Field of view: ±60° (wider than DOCK ±20° — long-range ops need more range)
-   Rings: 15°=r61, 30°=r122, 45°=r183, 60°=r245. Centred in the left region
-   x=[0,578] (no bottom bar → uses the full height).
+   Rings: 15°=r52, 30°=r105, 45°=r157, 60°=r210. Centre/radius match the
+   MNVR and DOCK reticles.
    Right panel: 360 px at x=580 (matches MNVR/DOCK), labels 28 / values 36
 
    RIGHT PANEL — 7 rows, rowHFor(7) = 59px each
@@ -40,7 +40,7 @@
    Row 3  V.Tgt    full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
    Row 4  Brg|Elv  split — raw bearing and elevation to target, informational
    Row 5  Err|Err   split — approach alignment errors (bearing/elevation), colour-coded
-   Row 6  T.Int    full-width — estimated intercept time (dist / |vtgt|), closing only
+   Row 6  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
 
    DOT UPDATE STRATEGY  (same as DOCK)
    ────────────────────
@@ -80,20 +80,19 @@
 bool _tgtChromDrawn = false;
 
 
-// ── Scope geometry — centred and stretched to fill the left region (matches MNVR) ─────
-// The readout panel now sits on the far right (x=580), leaving x=[0,578] for the
-// scope. TGT has no bottom bar, so the scope is centred in the full left region
-// and enlarged to fill it.
+// ── Scope geometry — same centre/radius as the MNVR and DOCK reticles ─────────────────
+// The readout panel sits on the far right (x=580), leaving x=[0,578] for the
+// scope. Centre and radius match MNVR/DOCK exactly for a consistent family look.
 static const int16_t  TGT_SCX    = 289;          // centre of the left region x=[0,578]
-static const int16_t  TGT_SCY    = 331;          // centre of the content band (62..600)
-static const int16_t  TGT_R      = 245;          // scope radius px
-static const float    TGT_SCALE  = (float)TGT_R / 60.0f;  // 4.08 px/deg — ±60° full scale
+static const int16_t  TGT_SCY    = 300;          // = MNVR/DOCK reticle centre y
+static const int16_t  TGT_R      = 210;          // = MNVR/DOCK reticle radius
+static const float    TGT_SCALE  = (float)TGT_R / 60.0f;  // 3.5 px/deg — ±60° full scale
 
 // Ring radii at ±15°, ±30°, ±45°, ±60°
-static const uint16_t TGT_RING_15 = TGT_R / 4;        // 61
-static const uint16_t TGT_RING_30 = TGT_R / 2;        // 122
-static const uint16_t TGT_RING_45 = (TGT_R * 3) / 4;  // 183
-static const uint16_t TGT_RING_60 = TGT_R;            // 245 — ±60° boundary
+static const uint16_t TGT_RING_15 = TGT_R / 4;        // 52
+static const uint16_t TGT_RING_30 = TGT_R / 2;        // 105
+static const uint16_t TGT_RING_45 = (TGT_R * 3) / 4;  // 157
+static const uint16_t TGT_RING_60 = TGT_R;            // 210 — ±60° boundary
 
 // Dot display sizes — scaled up with the larger scope
 static const uint8_t TGT_DOT_R_TGT   = 14;  // target diamond half-size
@@ -425,8 +424,8 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
 
-    // Row 6: T.Int full-width
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(6,NR), TGT_RP_W, rowH, "T.Int:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    // Row 6: T+Int full-width
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(6,NR), TGT_RP_W, rowH, "T+Int:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Horizontal dividers between rows 3/4, 5/6
     {
@@ -564,7 +563,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         tgtValH(5, 7, TGT_RP_X + HW, "Err:", String(buf), fg, bg);
     }
 
-    // Row 6 — T.Int  (cache slot 8)
+    // Row 6 — T+Int  (cache slot 8)
     // Estimated intercept time = distance / |closure rate|.
     // Only meaningful when closing; shows "---" otherwise.
     {
@@ -578,7 +577,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
             tIntStr = "---";
             fg = TFT_DARK_GREY; bg = TFT_BLACK;
         }
-        tgtVal(6, 8, "T.Int:", tIntStr, fg, bg);
+        tgtVal(6, 8, "T+Int:", tIntStr, fg, bg);
     }
 
     // ── Redraw dividers — printValue fillRect can overwrite them ─────────────────────

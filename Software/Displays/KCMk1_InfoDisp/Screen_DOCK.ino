@@ -217,9 +217,9 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
 static void _dockDrawRightChrome(KCM_TFT &tft) {
     // Rows 0–1: range and time
     printDispChrome(tft, RP_LBL, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T.Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T+Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider between T.Dock(1) and V.Close(2)
+    // Divider between T+Dock(1) and V.Close(2)
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
@@ -556,13 +556,13 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         float vc = state.tgtVelocity;
         bool closing = (vc < -0.01f);
         if (!closing) {
-            dockVal(1, 1, "T.Dock:", "---", TFT_DARK_GREY, TFT_BLACK);
+            dockVal(1, 1, "T+Dock:", "---", TFT_DARK_GREY, TFT_BLACK);
         } else {
             float tDock = state.tgtDistance / fabsf(vc);
             if      (tDock < 10.0f)  { fg = TFT_WHITE;     bg = TFT_RED;   }
             else if (tDock < 30.0f)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
             else                     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-            dockVal(1, 1, "T.Dock:", formatTime((int64_t)tDock), fg, bg);
+            dockVal(1, 1, "T+Dock:", formatTime((int64_t)tDock), fg, bg);
         }
     }
 
@@ -660,7 +660,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     _dockDrawDistBar(tft, state.tgtDistance);
 
     // Redraw all dividers last — printValue fills can erase them
-    // Between T.Dock(1) and V.Close(2)
+    // Between T+Dock(1) and V.Close(2)
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
