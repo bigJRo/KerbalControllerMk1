@@ -20,7 +20,7 @@
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
      Data rows  : text screens fill the content height evenly
-     Sidebar    : 104px right-hand column, 12 labelled buttons
+     Sidebar    : 84px right-hand column, 12 labelled buttons
 
    Update pattern (mirrors Annunciator):
      Chrome (labels)  : printDispChrome() — called once per screen transition.
@@ -99,7 +99,7 @@ PrintState printState[SCREEN_COUNT][ROW_COUNT];
    ROW GEOMETRY
    rowH/rowY computed from per-screen row count so rows fill the content area evenly.
 ****************************************************************************************/
-const uint16_t CONTENT_H = SCREEN_H - TITLE_TOP;  // 420px
+const uint16_t CONTENT_H = SCREEN_H - TITLE_TOP;  // 538px (600 - 62)
 
 inline uint16_t rowHFor(uint8_t nRows) {
   return CONTENT_H / nRows;
@@ -119,8 +119,8 @@ inline uint16_t rowW() {
 
 // All screens use NR=8; call rowYFor(row, NR) and rowHFor(NR) explicitly.
 
-// ACFT geometry: 8 rows, Roboto_Black_40 (48px font in 52px cells — 4px clearance).
-// ACFT row geometry: uses rowHFor(8) with a +1 Y offset to match printValue trim behaviour.
+// ACFT row geometry: 8 rows, uses rowHFor(8) (=67px cells at 1024x600) with a +1 Y
+// offset to match printValue trim behaviour.
 inline uint16_t acftRowY(uint8_t row) {
   return TITLE_TOP + row * rowHFor(8) + 1;
 }

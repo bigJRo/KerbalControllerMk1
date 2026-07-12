@@ -5,7 +5,7 @@
    screen_RNDZ / chromeScreen_RNDZ / drawScreen_RNDZ to the TGT equivalents
    (see header changes below).
 
-   LAYOUT (800×480, content area 720×418 below title bar)
+   LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌─────────────────────────────────┬──────────────────────────────────────┐
    │                                 │ ALT.SL:         142.8 km             │
    │   RPOD Scope                    │ V.ORB:         2247.3 m/s            │

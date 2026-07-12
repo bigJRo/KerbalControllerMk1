@@ -1209,8 +1209,8 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
 
     // ── Right panel chrome ─────────────────────────────────────────────────────────────
     // Vertical divider (2px) between ADI and panel
-    tft.drawLine(SCFT_PANEL_X - 2, TITLE_TOP, SCFT_PANEL_X - 2, 479, TFT_GREY);
-    tft.drawLine(SCFT_PANEL_X - 1, TITLE_TOP, SCFT_PANEL_X - 1, 479, TFT_GREY);
+    tft.drawLine(SCFT_PANEL_X - 2, TITLE_TOP, SCFT_PANEL_X - 2, SCREEN_H - 1, TFT_GREY);
+    tft.drawLine(SCFT_PANEL_X - 1, TITLE_TOP, SCFT_PANEL_X - 1, SCREEN_H - 1, TFT_GREY);
 
     static const tFont *PF = &Roboto_Black_20;
 
@@ -1229,9 +1229,9 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     {
         uint16_t hw = SCFT_PANEL_W / 2;
         tft.drawLine(SCFT_PANEL_X + hw,     TITLE_TOP + 7 * rowHFor(SCFT_PANEL_NR),
-                     SCFT_PANEL_X + hw,     479, TFT_GREY);
+                     SCFT_PANEL_X + hw,     SCREEN_H - 1, TFT_GREY);
         tft.drawLine(SCFT_PANEL_X + hw + 1, TITLE_TOP + 7 * rowHFor(SCFT_PANEL_NR),
-                     SCFT_PANEL_X + hw + 1, 479, TFT_GREY);
+                     SCFT_PANEL_X + hw + 1, SCREEN_H - 1, TFT_GREY);
     }
 }
 
@@ -1323,7 +1323,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
     // Row 7 split — RCS button (left half) | SAS button (right half)
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(SCFT_PANEL_NR);  // full row top (no ROW_PAD)
-        uint16_t rh  = 480 - ry;                                // extend to screen bottom
+        uint16_t rh  = SCREEN_H - ry;                           // extend to screen bottom (was 480 - ry: underflowed)
         uint16_t sasX = SCFT_PANEL_X + hw;
         uint16_t sasW = SCFT_PANEL_RIGHT - sasX;                 // fills remainder exactly
 

@@ -1,7 +1,7 @@
 /***************************************************************************************
    Screen_DOCK.ino  —  Docking screen: graphical approach reticle + critical numbers
 
-   LAYOUT (800×480, content area 720×418 below title bar)
+   LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌────────────────────────────────┬──────────────────────────────────────┐
    │                                │ DIST:         247 m                  │
    │   Approach Reticle             │ V.CLOSE:    -1.4 m/s                 │
@@ -447,7 +447,7 @@ static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
     tft.setTextColor(barCol, TFT_BLACK);
     // Clear right half of label row (24 px tall for Black_20) then right-align distance text
     tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 30, TFT_BLACK);
-    int16_t tw = getFontStringWidth(RP_LBL, buf);
+    int16_t tw = getFontStringWidth(&Roboto_Black_24, buf);   // measure in the draw font, not RP_LBL (Black_28)
     tft.setCursor(BAR_X + BAR_W - tw, lblY);
     tft.print(buf);
 }

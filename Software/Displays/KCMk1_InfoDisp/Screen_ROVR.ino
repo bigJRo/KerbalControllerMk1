@@ -3,8 +3,8 @@
    Dedicated display for type_Rover vessels. contextScreen() routes here automatically.
    rowCache index: [9] (screen_ROVR = 9)
 
-   Layout (800 × 480 content area, sidebar at x=720..799):
-     LEFT COLUMN (x=0..148, 5 stacked boxes):
+   Layout (1024 × 600, content area x=0..939, sidebar at x=940..1023):
+     LEFT COLUMN (x=0..190, 5 stacked boxes):
        V.Srf    — signed surface speed (m/s), 1 decimal, direction-colored
        EC%      — electric charge %, threshold-colored (green/yellow/red)
        BRAKES   — button: white on dark green when on, muted when off

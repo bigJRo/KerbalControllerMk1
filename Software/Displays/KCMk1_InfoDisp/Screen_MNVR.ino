@@ -1,7 +1,7 @@
 /***************************************************************************************
    Screen_MNVR.ino  —  Maneuver screen: burn alignment reticle + node data
 
-   LAYOUT (800×480, content area 720×418 below title bar)
+   LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌────────────────────────────────┬──────────────────────────────────────┐
    │                                │ ΔV.Mnvr:      847 m/s                │
    │   Alignment Reticle            │ ΔV.Plan:     1204 m/s               │
