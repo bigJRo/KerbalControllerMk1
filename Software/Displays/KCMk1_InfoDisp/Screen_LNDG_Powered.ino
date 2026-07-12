@@ -199,8 +199,9 @@ static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
         tft.setCursor(lx, ly);
         tft.print(buf);
     }
-    // Redraw ALTITUDE vertical label — must come after label area clear
-    drawVerticalText(tft, 0, 219, 14, 112,
+    // Redraw ALTITUDE vertical label — must come after label area clear.
+    // Full-height box so the label is vertically centred on the tape.
+    drawVerticalText(tft, 0, LNDG_TAPE_Y, 14, LNDG_TAPE_H,
                      &Roboto_Black_12, "ALTITUDE", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
@@ -370,9 +371,10 @@ static void _lndgDrawVvChrome(KCM_TFT &tft) {
         tft.print(buf);
     }
 
-    // "V.Vrt" vertical label — centred on bar height, left of the numeric labels
-    drawVerticalText(tft, LNDG_VV_X - 34, LNDG_VV_Y + (LNDG_VV_H - 70) / 2, 14, 70,
-                     &Roboto_Black_12, "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
+    // "VERTICAL VELOCITY" vertical label — full-height box so it is vertically
+    // centred on the bar, left of the numeric labels.
+    drawVerticalText(tft, LNDG_VV_X - 34, LNDG_VV_Y, 14, LNDG_VV_H,
+                     &Roboto_Black_12, "VERTICAL VELOCITY", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
