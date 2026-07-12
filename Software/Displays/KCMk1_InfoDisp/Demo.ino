@@ -192,6 +192,8 @@ void stepDemoState() {
   state.ctrlLevel     = tick2s % 4;
   // CommNet signal cycles through strong, weak, and lost
   state.commNetSignal = (uint8_t)constrain((int)(70.0f + 70.0f * sinf(_demoPhase * 0.2f)), 0, 100);
+  // Electric charge % — sweeps through the pre-launch board's red/yellow/green bands
+  state.electricChargePercent = constrain(70.0f + 45.0f * sinf(_demoPhase * 0.22f), 0.0f, 100.0f);
 
   // All 17 vessel types, one per 2s (~34s full cycle)
   static const VesselType typeCycle[] = {
@@ -385,12 +387,19 @@ void stepDemoState() {
       state.eccentricity  = ecc;
     }
 
-    // Ensure situation isn't PreLaunch/Landed during ascent so V.Vrt isn't
-    // suppressed by the "dead-band" logic in the draw functions.
-    if (t > 1.0f) {
-      state.situation = sit_Flying;
-    } else {
-      state.situation = sit_PreLaunch;
+    // Pre-launch board: hold the first ~8 s of the 180 s cycle on the pad so the
+    // checklist is visible in demo. Simpit normally drives _lnchPrelaunchMode from
+    // FLIGHT_STATUS; with no Simpit in demo we toggle it here (and switchToScreen
+    // on the transition, exactly as SimpitHandler does, to force a clean re-chrome
+    // — stepDemoState runs before the loop's screen-change check). After the window
+    // it's sit_Flying for the ascent sweep (also keeps V.Vrt out of the "dead-band"
+    // suppression during ascent).
+    bool demoPreLaunch = (t < 8.0f);
+    state.situation = demoPreLaunch ? sit_PreLaunch : sit_Flying;
+    if (demoPreLaunch != _lnchPrelaunchMode) {
+      _lnchPrelaunchMode      = demoPreLaunch;
+      _lnchPrelaunchDismissed = false;
+      switchToScreen(screen_LNCH);
     }
   }
 }
