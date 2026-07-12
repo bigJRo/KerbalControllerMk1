@@ -31,20 +31,21 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-static const int16_t  ACFT_CX        = 295;
-static const int16_t  ACFT_CY        = 248;   // raised 12px vs SCFT to make room for slip ball
-static const int16_t  ACFT_R         = 150;   // smaller than SCFT (164) for same reason
-static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // 5.0 px/deg exactly
+static const int16_t  ACFT_CX        = 345;   // 1024x600: PFD sits left, data panel right
+static const int16_t  ACFT_CY        = 300;   // ball centred so bank ticks clear the title rule
+                                              //   (top ~84) and the slip strip reaches the bottom
+static const int16_t  ACFT_R         = 200;   // enlarged from 150 to fill the 1024x600 content
+static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // 6.667 px/deg
 
 static const int16_t  ACFT_BALL_Y0   = ACFT_CY - ACFT_R;         // 98
 static const int16_t  ACFT_BALL_Y1   = ACFT_CY + ACFT_R;         // 398
 static const uint16_t ACFT_SCANLINES = (uint16_t)(ACFT_R * 2 + 1); // 301
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
-// Panel left = HDG tape right + 2. HDG tape: x = CX - (R*2+54)/2 = 260-177 = 83, w = 354
-static const int16_t  ACFT_PANEL_X       = ACFT_CX - (ACFT_R*2+54)/2 + (ACFT_R*2+54) + 2; // 439
-static const int16_t  ACFT_PANEL_RIGHT   = 720;
-static const int16_t  ACFT_PANEL_W       = ACFT_PANEL_RIGHT - ACFT_PANEL_X;  // 281
+// Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+227 = 572.
+static const int16_t  ACFT_PANEL_X       = ACFT_CX - (ACFT_R*2+54)/2 + (ACFT_R*2+54) + 2; // 574
+static const int16_t  ACFT_PANEL_RIGHT   = CONTENT_W - 2;   // 938 — flush to the sidebar divider
+static const int16_t  ACFT_PANEL_W       = ACFT_PANEL_RIGHT - ACFT_PANEL_X;  // 364
 static const uint8_t  ACFT_PANEL_NR      = 8;
 
 // ── Right panel state ──────────────────────────────────────────────────────────────────
@@ -1392,8 +1393,8 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 
     // ── Right panel chrome ─────────────────────────────────────────────────────────────
     // Vertical divider (2px) between ADI and panel
-    tft.drawLine(ACFT_PANEL_X - 2, TITLE_TOP, ACFT_PANEL_X - 2, 479, TFT_GREY);
-    tft.drawLine(ACFT_PANEL_X - 1, TITLE_TOP, ACFT_PANEL_X - 1, 479, TFT_GREY);
+    tft.drawLine(ACFT_PANEL_X - 2, TITLE_TOP, ACFT_PANEL_X - 2, SCREEN_H - 1, TFT_GREY);
+    tft.drawLine(ACFT_PANEL_X - 1, TITLE_TOP, ACFT_PANEL_X - 1, SCREEN_H - 1, TFT_GREY);
 
     static const tFont *PF = &Roboto_Black_20;
 
@@ -1435,9 +1436,9 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         tft.drawLine(ACFT_PANEL_X + hw,     TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR),
-                     ACFT_PANEL_X + hw,     479, TFT_GREY);
+                     ACFT_PANEL_X + hw,     SCREEN_H - 1, TFT_GREY);
         tft.drawLine(ACFT_PANEL_X + hw + 1, TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR),
-                     ACFT_PANEL_X + hw + 1, 479, TFT_GREY);
+                     ACFT_PANEL_X + hw + 1, SCREEN_H - 1, TFT_GREY);
     }
 }
 
@@ -1615,7 +1616,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // Row 7 — Brakes | SAS buttons
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR);
-        uint16_t rh  = 480 - ry;
+        uint16_t rh  = SCREEN_H - ry;
         uint16_t sasX = ACFT_PANEL_X + hw;
         uint16_t sasW = ACFT_PANEL_RIGHT - sasX;
 
