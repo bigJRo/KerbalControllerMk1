@@ -1177,7 +1177,8 @@ static void _acftUpdateVSI(KCM_TFT &tft, float vVrt) {
 static const int16_t SLIP_X       = ACFT_HDG_TAPE_X;
 static const int16_t SLIP_W       = ACFT_HDG_TAPE_W;
 static const int16_t SLIP_H       = ACFT_HDG_TAPE_H;                     // 32 — matches HDG tape
-static const int16_t SLIP_Y       = SCREEN_H - SLIP_H;                   // 568 — flush to bottom edge
+static const int16_t SLIP_Y       = SCREEN_H - 1 - SLIP_H;               // 567 — bottom border on row 598
+                                                                         //   (row 599 is lost to overscan)
 static const int16_t SLIP_BALL_R  = SLIP_H * 2 / 5;                      // 12 → 25px dia ≈ 80% of height
 static const int16_t SLIP_CY      = SLIP_Y + SLIP_H / 2;
 static const float   SLIP_SCALE   = (float)(SLIP_W / 2 - SLIP_BALL_R - 4) / 20.0f;
@@ -1689,7 +1690,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // Row 7 — Brakes | SAS buttons
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR);
-        uint16_t rh  = SCREEN_H - ry;   // flush to the bottom edge (border on row 599)
+        uint16_t rh  = SCREEN_H - ry - 1;   // bottom border on row 598 (599 is lost to overscan)
         uint16_t sasX = ACFT_PANEL_X + hw;
         uint16_t sasW = ACFT_PANEL_RIGHT - sasX;
 
