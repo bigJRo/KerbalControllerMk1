@@ -50,8 +50,9 @@
 static const int16_t ROVR_CX             = 470;   // centred on the title (CONTENT_W/2)
 static const int16_t ROVR_CY             = 344;
 static const int16_t ROVR_R              = 200;   // outer ring radius
-static const int16_t ROVR_R_TICK_OUTER   = 199;   // tick outer end (1 px inside outer ring)
-                                                  //   so erase-in-black doesn't nibble ring
+static const int16_t ROVR_R_TICK_OUTER   = 196;   // tick outer end (4 px inside outer ring)
+                                                  //   so tick-erase can't reach the ring — lets
+                                                  //   us skip re-stamping the ring every frame
 static const int16_t ROVR_R_TICK_INNER   = 178;   // major tick inner end
 static const int16_t ROVR_R_MINOR_INNER  = 185;   // minor tick inner end
 static const int16_t ROVR_R_LETTER       = 157;   // cardinal letter centre
@@ -275,12 +276,13 @@ static void _rovrEraseCompass(KCM_TFT &tft) {
     tft.fillRect(x0, y0, x1 - x0, y1 - y0, TFT_BLACK);
 }
 
-// Tick marks every 5°; majors every 30°. Minors (all non-major positions) are
-// drawn in LIGHT_GREY (same as majors) for visibility, but are shorter. When
-// `erase` is true, all ticks are drawn in black to wipe the previous frame's
-// ticks before drawing the new frame's ticks at the new heading.
+// Tick marks every 15° (24 ticks): majors every 30° (long, light grey), one
+// minor at each 15° midpoint (shorter, dim grey). The coarser spacing keeps the
+// per-frame rose redraw cheap — every tick is re-rendered in software on each
+// heading change. When `erase` is true, all ticks are drawn in black to wipe the
+// previous frame's ticks before drawing the new frame's ticks at the new heading.
 static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
-    for (int16_t worldDeg = 0; worldDeg < 360; worldDeg += 5) {
+    for (int16_t worldDeg = 0; worldDeg < 360; worldDeg += 15) {
         float screenDeg = (float)worldDeg - headingDeg;
         int16_t x0, y0, x1, y1;
         if (worldDeg % 30 == 0) {
@@ -1258,8 +1260,8 @@ static void _rovrChromeCompass(KCM_TFT &tft) {
 // Incremental compass update — erases ticks and labels at the *previous* heading
 // (by drawing them in black), then redraws them at the new heading. Stationary
 // elements (outer ring, nose, rover icon, heading box border) are not touched by
-// the erase, and the ring is re-stamped at the end as a cleanup against any
-// tick-erase nibbles. Heading readout updates via its own integer-change
+// the erase — the tick ends sit 4 px inside the ring so it is never nibbled and
+// needs no re-stamp. Heading readout updates via its own integer-change
 // detection. Target triangle is handled separately by _rovrUpdateTarget because
 // it sits in an annular band that doesn't overlap with ticks or labels.
 //
@@ -1274,9 +1276,9 @@ static void _rovrUpdateCompass(KCM_TFT &tft) {
     _rovrDrawTicks(tft, state.heading, false);
     _rovrDrawLabels(tft, state.heading, false);
 
-    // Redraw outer ring. Tick-erase can nibble a pixel or two of the ring on some
-    // diagonal angles, so re-stamping the ring here keeps it clean.
-    tft.drawCircle(ROVR_CX, ROVR_CY, ROVR_R, TFT_LIGHT_GREY);
+    // (The outer ring is NOT re-stamped here: the tick ends sit 4 px inside it
+    // (R_TICK_OUTER=196 vs R=200), so the tick-erase can't reach the ring. Skipping
+    // the full software drawCircle every heading change saves ~1100 pixel writes.)
 
     // Update heading readout
     _rovrUpdateHdgReadout(tft, state.heading);
