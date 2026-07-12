@@ -1196,7 +1196,7 @@ static void _acftDrawSlipChrome(KCM_TFT &tft) {
     const int16_t TLEN = 9;
     int16_t topY0 = SLIP_Y + 1,              topY1 = SLIP_Y + 1 + TLEN;
     int16_t botY1 = SLIP_Y + SLIP_H - 2,     botY0 = botY1 - TLEN;
-    const int16_t markDx[]  = { -m15, -m5, m5, m15 };
+    const int      markDx[]  = { -m15, -m5, m5, m15 };   // int: unary minus promotes to int
     const uint16_t markCol[] = { TFT_RED, TFT_NEON_GREEN, TFT_NEON_GREEN, TFT_RED };
     for (uint8_t i = 0; i < 4; i++) {
         int16_t mx = ACFT_CX + markDx[i];
