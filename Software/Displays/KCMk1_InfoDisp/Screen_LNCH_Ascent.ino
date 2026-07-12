@@ -1609,7 +1609,7 @@ static void _lnchAsUpdateAlt(KCM_TFT &tft) {
     int32_t iAlt = (int32_t)roundf(alt);
 
     // Threshold: red if negative, yellow near ground, green otherwise
-    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     float altYellow = bodyRad * 0.0015f;
     uint16_t fg = (alt < 0)         ? TFT_RED
                 : (alt < altYellow)  ? TFT_YELLOW
@@ -1672,11 +1672,11 @@ static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
 // label swap happens slightly earlier so the pilot sees orbital velocity as
 // soon as it becomes the more meaningful number).
 static bool _lnchAsShowOrbitalVelocity() {
-    float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+    float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     // Same as the circularization phase-switch threshold with hysteresis so
     // the label doesn't flicker near the boundary.
     bool ascending = (state.verticalVel >= 0.0f);
-    float switchAlt = ascending ? (bodyRad * 0.06f) : (bodyRad * 0.055f);
+    float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
     return (state.altitude > switchAlt);
 }
 

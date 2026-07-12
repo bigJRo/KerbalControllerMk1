@@ -115,9 +115,9 @@ static void _scftBuildChordTable() {
 
 // ── Orbital mode helper ───────────────────────────────────────────────────────────────
 static bool _scftOrbMode() {
-    float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+    float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     bool  ascending = (state.verticalVel >= 0.0f);
-    float switchAlt = ascending ? (bodyRad * 0.06f) : (bodyRad * 0.055f);
+    float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
     return state.altitude > switchAlt;
 }
 

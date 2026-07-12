@@ -101,9 +101,9 @@ static void drawScreen_LNCH(KCM_TFT &tft) {
 
   // Phase detection with hysteresis — ascending uses higher threshold to prevent
   // rapid switching near the boundary.
-  float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+  float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
   bool  ascending = (state.verticalVel >= 0.0f);
-  float switchAlt = ascending ? (bodyRad * 0.06f) : (bodyRad * 0.055f);
+  float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
   bool  orbMode   = (state.altitude > switchAlt);
 
   // Phase switch — auto only if not manually overridden

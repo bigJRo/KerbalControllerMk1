@@ -373,7 +373,7 @@ static void _lnchOrUpdateAlt(KCM_TFT &tft) {
     float alt = state.altitude;
     int32_t iAlt = (int32_t)roundf(alt);
 
-    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     float altYellow = bodyRad * 0.0015f;  // ~900m Kerbin
 
     uint16_t fg = (alt < 0)         ? TFT_RED
@@ -1113,7 +1113,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     const int16_t MAX_R = LNCH_OR_DIAG_MAX_R;
 
     // ── Body parameters ─────────────────────────────────────────────────────────
-    float bodyR    = (currentBody.radius   > 0.0f) ? currentBody.radius   : 600000.0f;
+    float bodyR    = (currentBody.radius   > 0.0f) ? currentBody.radius   : DEFAULT_BODY_RADIUS_M;
     float atmoTop  = (currentBody.lowSpace > 0.0f) ? currentBody.lowSpace : 0.0f;
     float targetAlt = max(currentBody.minSafe, currentBody.lowSpace + 20000.0f);
     float rTarget  = targetAlt + bodyR;

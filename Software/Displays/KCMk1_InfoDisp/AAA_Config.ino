@@ -228,6 +228,14 @@ const float LNCH_TOAPO_WARN_S  = 30.0f;   // yellow — apoapsis close during bu
 const float LNCH_BURNTIME_ALARM_S = KCM_LOW_BURN_S;   // #3D aligned with Annunciator CW_LOW_BURN_S
 const float LNCH_BURNTIME_WARN_S  = 120.0f;  // yellow
 
+// Fallback body radius when currentBody.radius is unavailable (Kerbin, metres).
+const float DEFAULT_BODY_RADIUS_M = 600000.0f;
+
+// Altitude (as a fraction of body radius) at which the ascent/circularization mode
+// switch flips, with a small hysteresis band so it doesn't chatter near the boundary.
+const float ORB_SWITCH_ALT_FRAC_ASC  = 0.06f;   // switch up to orbital view above this
+const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
+
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — ROVER (ROVR screen)
