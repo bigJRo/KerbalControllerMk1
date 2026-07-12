@@ -187,10 +187,10 @@ static void _acftDrawLadder(KCM_TFT &tft,
     static const int16_t HL_MAJ  = 36;
     static const int16_t HL_MIN  = 22;
     static const int16_t LBL_GAP = 8;
-    static const uint8_t FONT_W  = 8;
-    static const uint8_t FONT_H  = 14;
+    static const uint8_t FONT_W  = 9;    // Roboto_Black_16 digit advance
+    static const uint8_t FONT_H  = 19;   // Roboto_Black_16 cap height
 
-    tft.setFont(Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(ACFT_LADDER);
 
     auto rnd = [](float v) -> int16_t {
@@ -628,13 +628,14 @@ static uint16_t _acftPrevRollReadoutFg = 0;          // last drawn foreground co
 
 // ── Roll indicator geometry ───────────────────────────────────────────────────────────
 static const int16_t  ACFT_PTR_TIP_R  = ACFT_R + 3;   // tip clear of bezel (bezel outer = R+2)
-static const int16_t  ACFT_PTR_BASE_R = ACFT_R + 20;  // base beyond tick outer edge (R+16)
-static const int16_t  ACFT_PTR_W      = 8;            // half-width of pointer base
+static const int16_t  ACFT_PTR_BASE_R = ACFT_R + 22;  // base beyond tick outer (R+16), below labels (R+28)
+static const int16_t  ACFT_PTR_W      = 12;           // half-width of pointer base (enlarged from 8)
 
 // Roll readout — two lines centred in fixed-width block
 // Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
-static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 56; // moves with CX
-static const int16_t  ACFT_ROLL_ANCHOR_Y  = ACFT_CY - ACFT_R - 24; // aligned with Pitch: label top
+static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 54; // right edge (571) tucked
+                                                                   //   against the panel divider (572)
+static const int16_t  ACFT_ROLL_ANCHOR_Y  = ACFT_CY - ACFT_R - 34; // top (66) near the title rule
 static const int16_t  ACFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
 static const int16_t  ACFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
 static const int16_t  ACFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
@@ -705,8 +706,8 @@ static const int16_t  ACFT_PTAPE_SUPP_HI = ACFT_PTAPE_BOX_Y + ACFT_PTAPE_BOX_H +
 
 // Markers — left-pointing triangles on right edge of tape
 static const int16_t  ACFT_PTAPE_MRK_BASE_X = ACFT_PTAPE_X + ACFT_PTAPE_W - 2;
-static const int16_t  ACFT_PTAPE_MRK_TIP_X  = ACFT_PTAPE_X + ACFT_PTAPE_W - 20; // 18px — matches HDG tape
-static const int16_t  ACFT_PTAPE_MRK_HW     = 6;
+static const int16_t  ACFT_PTAPE_MRK_TIP_X  = ACFT_PTAPE_X + ACFT_PTAPE_W - 22; // 20px — enlarged
+static const int16_t  ACFT_PTAPE_MRK_HW     = 9;                                // enlarged from 6
 
 // State
 static float   _acftPrevPitch2      = -9999.0f;   // pitch tape (distinct from ball state)
@@ -857,8 +858,8 @@ static const int16_t  ACFT_HDG_SUPP_HI   = ACFT_HDG_BOX_X + ACFT_HDG_BOX_W + 18;
 
 // Heading markers — long thin downward triangles fully inside the tape
 static const int16_t  ACFT_HDG_MRK_BASE_Y = ACFT_HDG_TAPE_Y + 2;   // 2px below tape top
-static const int16_t  ACFT_HDG_MRK_TIP_Y  = ACFT_HDG_TAPE_Y + 20;  // 18px tall
-static const int16_t  ACFT_HDG_MRK_HW     = 6;                     // half-width → 13px wide
+static const int16_t  ACFT_HDG_MRK_TIP_Y  = ACFT_HDG_TAPE_Y + 24;  // 22px tall (enlarged)
+static const int16_t  ACFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide (enlarged)
 
 // Draw/update the heading number box — cached, only redraws when integer heading changes.
 // Uses textCenter for flicker-free rendering: erase old value with black-on-black first.
@@ -1002,20 +1003,24 @@ static void _acftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
     tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, colour);
 }
 
-// Erase the roll pointer — uses a 2px expanded triangle to catch any stray pixels
-// left by integer rounding in the draw pass.
+// Erase the roll pointer — uses a generously expanded triangle to catch any stray
+// pixels left by integer rounding in the draw pass (the pointer is drawn at a
+// rotated angle, so its rasterized edges shift by 1-2px between frames). The
+// margins here are wider than the pointer so no orange trail survives.
 static void _acftEraseRollPointer(KCM_TFT &tft, float roll) {
     float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
     float cosA = cosf(a), sinA = sinf(a);
-    // Expand tip inward by 1px along radial, base outward by 1px, width +2px
+    // Expand tip inward 1px (stay off the bezel), base outward 2px (stay below the
+    // R+28 bank labels), and width +5px each side — the width margin is what kills
+    // the lateral ghost trail as the rotated pointer sweeps.
     int16_t tx  = (int16_t)(ACFT_CX + (ACFT_PTR_TIP_R  - 1) * cosA);
     int16_t ty  = (int16_t)(ACFT_CY + (ACFT_PTR_TIP_R  - 1) * sinA);
-    int16_t bcx = (int16_t)(ACFT_CX + (ACFT_PTR_BASE_R + 1) * cosA);
-    int16_t bcy = (int16_t)(ACFT_CY + (ACFT_PTR_BASE_R + 1) * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * (ACFT_PTR_W + 2));
-    int16_t b1y = bcy + (int16_t)( cosA * (ACFT_PTR_W + 2));
-    int16_t b2x = bcx - (int16_t)(-sinA * (ACFT_PTR_W + 2));
-    int16_t b2y = bcy - (int16_t)( cosA * (ACFT_PTR_W + 2));
+    int16_t bcx = (int16_t)(ACFT_CX + (ACFT_PTR_BASE_R + 2) * cosA);
+    int16_t bcy = (int16_t)(ACFT_CY + (ACFT_PTR_BASE_R + 2) * sinA);
+    int16_t b1x = bcx + (int16_t)(-sinA * (ACFT_PTR_W + 5));
+    int16_t b1y = bcy + (int16_t)( cosA * (ACFT_PTR_W + 5));
+    int16_t b2x = bcx - (int16_t)(-sinA * (ACFT_PTR_W + 5));
+    int16_t b2y = bcy - (int16_t)( cosA * (ACFT_PTR_W + 5));
     tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, TFT_BLACK);
 }
 
@@ -1049,12 +1054,11 @@ static void _acftUpdateRollIndicator(KCM_TFT &tft, float roll) {
         if      (prevClamped >  60.0f) prevClamped =  60.0f;
         else if (prevClamped < -60.0f) prevClamped = -60.0f;
         _acftEraseRollPointer(tft, prevClamped);
-        // Redraw any tick the erase region may have covered (within 4° — slightly
-        // wider than before to account for the expanded erase)
+        // Redraw every tick the (wider) erase region may have covered. Search a 7°
+        // window and do NOT break — the enlarged erase can span two adjacent ticks.
         for (uint8_t i = 0; i < 11; i++) {
-            if (fabsf(_acftPrevRollIndicator - ticks[i]) < 4.0f) {
+            if (fabsf(_acftPrevRollIndicator - ticks[i]) < 7.0f) {
                 _acftDrawBankTick(tft, ticks[i]);
-                break;
             }
         }
     }
@@ -1142,12 +1146,19 @@ static int16_t _acftPrevSlipX    = 9999;
 static void _acftDrawSlipChrome(KCM_TFT &tft) {
     tft.drawRect(SLIP_X, SLIP_Y, SLIP_W, SLIP_H, TFT_GREY);
 
-    // ±5° reference ticks — drawn on border only (top+bottom 2px) to stay clear of ball
-    int16_t m5 = (int16_t)(5.0f * SLIP_SCALE);
-    tft.drawLine(ACFT_CX - m5, SLIP_Y,          ACFT_CX - m5, SLIP_Y + 2,          TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX + m5, SLIP_Y,          ACFT_CX + m5, SLIP_Y + 2,          TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX - m5, SLIP_Y+SLIP_H-3, ACFT_CX - m5, SLIP_Y+SLIP_H-1,    TFT_NEON_GREEN);
-    tft.drawLine(ACFT_CX + m5, SLIP_Y+SLIP_H-3, ACFT_CX + m5, SLIP_Y+SLIP_H-1,    TFT_NEON_GREEN);
+    // Range reference ticks on the top+bottom borders (kept short to stay clear of
+    // the ball): ±SLIP_WARN_DEG in green marks the edge of the centred zone, and
+    // ±SLIP_ALARM_DEG in red marks where the slip enters the alarm range.
+    int16_t m5  = (int16_t)(SLIP_WARN_DEG  * SLIP_SCALE);
+    int16_t m15 = (int16_t)(SLIP_ALARM_DEG * SLIP_SCALE);
+    tft.drawLine(ACFT_CX - m5,  SLIP_Y,          ACFT_CX - m5,  SLIP_Y + 3,        TFT_NEON_GREEN);
+    tft.drawLine(ACFT_CX + m5,  SLIP_Y,          ACFT_CX + m5,  SLIP_Y + 3,        TFT_NEON_GREEN);
+    tft.drawLine(ACFT_CX - m5,  SLIP_Y+SLIP_H-4, ACFT_CX - m5,  SLIP_Y+SLIP_H-1,   TFT_NEON_GREEN);
+    tft.drawLine(ACFT_CX + m5,  SLIP_Y+SLIP_H-4, ACFT_CX + m5,  SLIP_Y+SLIP_H-1,   TFT_NEON_GREEN);
+    tft.drawLine(ACFT_CX - m15, SLIP_Y,          ACFT_CX - m15, SLIP_Y + 3,        TFT_RED);
+    tft.drawLine(ACFT_CX + m15, SLIP_Y,          ACFT_CX + m15, SLIP_Y + 3,        TFT_RED);
+    tft.drawLine(ACFT_CX - m15, SLIP_Y+SLIP_H-4, ACFT_CX - m15, SLIP_Y+SLIP_H-1,   TFT_RED);
+    tft.drawLine(ACFT_CX + m15, SLIP_Y+SLIP_H-4, ACFT_CX + m15, SLIP_Y+SLIP_H-1,   TFT_RED);
 
     // "Slip:" label — centred in the space left of the tube, matching Pitch/Hdg label style
     textRight(tft, &Roboto_Black_24,
@@ -1434,10 +1445,12 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
 
-    // Row 6: Gear | Airbrk — buttons draw own labels, just draw split divider
+    // Row 6: Gear | Airbrk — buttons draw own labels, just draw split divider.
+    // Raw row grid (matches the button geometry in _acftUpdatePanel).
     {
         uint16_t hw = ACFT_PANEL_W / 2;
-        uint16_t y6 = rowYFor(6, ACFT_PANEL_NR), y7 = rowYFor(7, ACFT_PANEL_NR);
+        uint16_t y6 = TITLE_TOP + 6 * rowHFor(ACFT_PANEL_NR);
+        uint16_t y7 = TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR);
         tft.drawLine(ACFT_PANEL_X + hw,     y6, ACFT_PANEL_X + hw,     y7 - 1, TFT_GREY);
         tft.drawLine(ACFT_PANEL_X + hw + 1, y6, ACFT_PANEL_X + hw + 1, y7 - 1, TFT_GREY);
     }
@@ -1587,9 +1600,12 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         }
     }
 
-    // Row 6 — Gear | Airbrk split buttons
+    // Row 6 — Gear | Airbrk split buttons.
+    // Buttons tile on the raw row grid (no ROW_PAD) so they abut row 7 seamlessly:
+    // row 6 spans [6*rowH .. 7*rowH] and row 7 spans [7*rowH .. SCREEN_H].
     {
-        uint16_t y6 = rowYFor(6, ACFT_PANEL_NR), h6 = rowHFor(ACFT_PANEL_NR);
+        uint16_t y6 = TITLE_TOP + 6 * rowHFor(ACFT_PANEL_NR);
+        uint16_t h6 = (TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR)) - y6 + 1;  // shares bottom border with row 7 top
         bool gearGroundState = (state.situation == sit_Landed  ||
                                 state.situation == sit_Splashed ||
                                 state.situation == sit_PreLaunch);
