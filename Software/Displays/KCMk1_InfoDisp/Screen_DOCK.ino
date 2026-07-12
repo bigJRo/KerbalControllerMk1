@@ -580,6 +580,10 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
             if      (tDock < 10.0f)  { fg = TFT_WHITE;     bg = TFT_RED;   }
             else if (tDock < 30.0f)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
             else                     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+            // Clamp the display at 59 m: 59 s. In hours the time-to-dock is not
+            // actionable (you're creeping in), and the hours-form string is wider
+            // than the cell — it would overflow into the "T+Dock:" label.
+            if (tDock > 3599.0f) tDock = 3599.0f;
             dockVal(1, 1, "T+Dock:", formatTime((int64_t)tDock), fg, bg);
         }
     }
