@@ -44,7 +44,8 @@ static const uint16_t ACFT_SCANLINES = (uint16_t)(ACFT_R * 2 + 1); // 301
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 // Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+227 = 572.
 static const int16_t  ACFT_PANEL_X       = ACFT_CX - (ACFT_R*2+54)/2 + (ACFT_R*2+54) + 2; // 574
-static const int16_t  ACFT_PANEL_RIGHT   = CONTENT_W - 2;   // 938 — flush to the sidebar divider
+static const int16_t  ACFT_PANEL_RIGHT   = CONTENT_W;   // 940 — dividers/buttons reach x=939,
+                                                        //   abutting the sidebar divider at x=940
 static const int16_t  ACFT_PANEL_W       = ACFT_PANEL_RIGHT - ACFT_PANEL_X;  // 364
 static const uint8_t  ACFT_PANEL_NR      = 8;
 
@@ -139,13 +140,13 @@ static void _acftDrawScanline(KCM_TFT &tft,
 // Fin: 7px wide, 20px tall, starting 7px below dot edge (gap=7px).
 // Drawn as the very last element so it is always on top of fill, horizon, and ladder.
 static void _acftDrawAircraftSymbol(KCM_TFT &tft) {
-    static const int16_t DOT_R  = 7;    // dot radius → 15px diameter
-    static const int16_t WI     = 14;   // wing inner edge (DOT_R + 7px gap)
-    static const int16_t WO     = 50;   // wing outer edge
-    static const int16_t WH     = 2;    // wing half-height → 5px total
-    static const int16_t FIN_GAP = 7;   // gap between dot bottom and fin top
-    static const int16_t FIN_H  = 20;   // fin height
-    static const int16_t FIN_W  = 2;    // fin half-width → 5px total
+    static const int16_t DOT_R  = 11;   // dot radius → 23px diameter (+50%)
+    static const int16_t WI     = 21;   // wing inner edge (DOT_R + gap)
+    static const int16_t WO     = 75;   // wing outer edge (+50%)
+    static const int16_t WH     = 3;    // wing half-height → 7px total
+    static const int16_t FIN_GAP = 11;  // gap between dot bottom and fin top
+    static const int16_t FIN_H  = 30;   // fin height (+50%)
+    static const int16_t FIN_W  = 3;    // fin half-width → 7px total
 
     // Left wing
     tft.fillRect(ACFT_CX - WO,    ACFT_CY - WH, WO - WI,    WH*2+1, ACFT_WINGS);
@@ -455,7 +456,7 @@ static bool  _acftPrevMnvrActiveBall = false;
 static bool  _acftPrevTgtAvailBall   = false;
 
 // Marker size — half-diagonal in pixels. Diamond is 2*ADI_MRK+1 pixels tip-to-tip.
-static const int16_t ACFT_ADI_MRK_HD = 8;   // 17 px total diagonal
+static const int16_t ACFT_ADI_MRK_HD = 16;  // 33 px total diagonal (doubled)
 
 // Shortest-arc delta between two headings, result in [-180, 180].
 static inline float _acftHdgDelta(float a, float b) {
@@ -631,12 +632,12 @@ static const int16_t  ACFT_PTR_BASE_R = ACFT_R + 20;  // base beyond tick outer 
 static const int16_t  ACFT_PTR_W      = 8;            // half-width of pointer base
 
 // Roll readout — two lines centred in fixed-width block
-// Label: Roboto_Black_20 (smaller), Value: Roboto_Black_24 (larger)
+// Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
 static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 56; // moves with CX
 static const int16_t  ACFT_ROLL_ANCHOR_Y  = ACFT_CY - ACFT_R - 24; // aligned with Pitch: label top
-static const int16_t  ACFT_ROLL_W         = 80;   // block width (unchanged)
-static const int16_t  ACFT_ROLL_LABEL_H   = 20;   // label line height (Roboto_Black_20)
-static const int16_t  ACFT_ROLL_VALUE_H   = 26;   // value line height (Roboto_Black_24)
+static const int16_t  ACFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
+static const int16_t  ACFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
+static const int16_t  ACFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
 static const int16_t  ACFT_ROLL_GAP       = 3;    // gap between lines
 
 // Update the roll numeric readout.
@@ -654,14 +655,14 @@ static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
     if (_acftPrevRollReadout > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _acftPrevRollReadout);
-        textCenter(tft, &Roboto_Black_24,
+        textCenter(tft, &Roboto_Black_28,
                    ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP,
                    ACFT_ROLL_W, ACFT_ROLL_VALUE_H,
                    oldBuf, TFT_BLACK, TFT_BLACK);
     }
 
-    // Line 1: "Roll:" — small font, centred in label row
-    textCenter(tft, &Roboto_Black_20,
+    // Line 1: "Roll:" — label row
+    textCenter(tft, &Roboto_Black_24,
                ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y,
                ACFT_ROLL_W, ACFT_ROLL_LABEL_H,
                "Roll:", TFT_WHITE, TFT_BLACK);
@@ -669,7 +670,7 @@ static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
     // Line 2: signed value — larger font, centred in value row
     char buf[8];
     snprintf(buf, sizeof(buf), "%+d\xB0", iRoll);
-    textCenter(tft, &Roboto_Black_24,
+    textCenter(tft, &Roboto_Black_28,
                ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP,
                ACFT_ROLL_W, ACFT_ROLL_VALUE_H,
                buf, fg, bg);
@@ -723,12 +724,12 @@ static void _acftUpdatePitchBox(KCM_TFT &tft, float pitch) {
     if (_acftPrevPitchBox > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _acftPrevPitchBox);
-        textCenter(tft, &Roboto_Black_24,
+        textCenter(tft, &Roboto_Black_28,
                    ACFT_PTAPE_BOX_X, ACFT_PTAPE_BOX_Y + 1,
                    ACFT_PTAPE_BOX_W, ACFT_PTAPE_BOX_H - 2,
                    oldBuf, TFT_BLACK, TFT_BLACK);
     }
-    textCenter(tft, &Roboto_Black_24,
+    textCenter(tft, &Roboto_Black_28,
                ACFT_PTAPE_BOX_X, ACFT_PTAPE_BOX_Y + 1,
                ACFT_PTAPE_BOX_W, ACFT_PTAPE_BOX_H - 2,
                newBuf, TFT_DARK_GREEN, TFT_BLACK);
@@ -872,14 +873,14 @@ static void _acftUpdateHdgBox(KCM_TFT &tft, float hdg) {
     // Erase previous value with black-on-black
     if (_acftPrevHdgBox >= 0) {
         snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _acftPrevHdgBox);
-        textCenter(tft, &Roboto_Black_24,
+        textCenter(tft, &Roboto_Black_28,
                    ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y + 1,
                    ACFT_HDG_BOX_W, ACFT_HDG_BOX_H - 2,
                    oldBuf, TFT_BLACK, TFT_BLACK);
     }
 
     // Draw new value
-    textCenter(tft, &Roboto_Black_24,
+    textCenter(tft, &Roboto_Black_28,
                ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y + 1,
                ACFT_HDG_BOX_W, ACFT_HDG_BOX_H - 2,
                newBuf, TFT_DARK_GREEN, TFT_BLACK);
@@ -1148,8 +1149,8 @@ static void _acftDrawSlipChrome(KCM_TFT &tft) {
     tft.drawLine(ACFT_CX - m5, SLIP_Y+SLIP_H-3, ACFT_CX - m5, SLIP_Y+SLIP_H-1,    TFT_NEON_GREEN);
     tft.drawLine(ACFT_CX + m5, SLIP_Y+SLIP_H-3, ACFT_CX + m5, SLIP_Y+SLIP_H-1,    TFT_NEON_GREEN);
 
-    // "SLIP" label — centred in the space left of the tube, matching Pitch/Hdg label style
-    textRight(tft, &Roboto_Black_20,
+    // "Slip:" label — centred in the space left of the tube, matching Pitch/Hdg label style
+    textRight(tft, &Roboto_Black_24,
                VSI_TICK_X0 + 2, SLIP_Y, SLIP_X - VSI_TICK_X0 - 2, SLIP_H,
                "Slip:", TFT_WHITE, TFT_BLACK);
 }
@@ -1237,6 +1238,14 @@ static void _acftDrawAoAChrome(KCM_TFT &tft) {
     // Zero tick — white radial at 180°, drawn last
     uint8_t zi = (uint8_t)(180 - AOA_ANG_LO);
     tft.drawLine(_aoaIX[zi], _aoaIY[zi], _aoaOX[zi], _aoaOY[zi], TFT_WHITE);
+
+    // "AoA" label centred just below the arc's lower end. The arc spans 155..205°
+    // at radius R+18, so its lowest point is at y = CY + (R+18)*sin(25°) ≈ CY+92.
+    // Place the label ~4px below that, in the clear slot between the pitch tape
+    // (right edge 118) and the ball's left rim.
+    textCenter(tft, &Roboto_Black_20,
+               ACFT_CX - ACFT_R - 25, ACFT_CY + 100, 50, 26,
+               "AoA", TFT_WHITE, TFT_BLACK);
 }
 
 // Pointer state — tracked in integer degrees to avoid float drift
@@ -1362,10 +1371,11 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     tft.drawLine(ACFT_PTAPE_X - 1,                  ACFT_PTAPE_Y + ACFT_PTAPE_H - 1,
                  ACFT_PTAPE_X + ACFT_PTAPE_W - 1,    ACFT_PTAPE_Y + ACFT_PTAPE_H - 1, TFT_LIGHT_GREY);
 
-    // "Pitch:" right-justified to right edge of pitch value box
-    textRight(tft, &Roboto_Black_20,
-              ACFT_PTAPE_BOX_X, ACFT_PTAPE_Y - 24,
-              ACFT_PTAPE_BOX_W, 24,
+    // "Pitch:" right-justified to right edge of pitch value box (box widened left
+    // so the larger _24 label — 75px — fits without clipping the pitch value box)
+    textRight(tft, &Roboto_Black_24,
+              ACFT_PTAPE_BOX_X - 24, ACFT_PTAPE_Y - 32,
+              ACFT_PTAPE_BOX_W + 24, 30,
               "Pitch:", TFT_WHITE, TFT_BLACK);
 
     // Heading tape border — top (light grey) and two sides (darker), open at bottom
@@ -1377,9 +1387,9 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
                  ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W, ACFT_HDG_TAPE_Y + ACFT_HDG_TAPE_H, TFT_GREY);
 
     // "Hdg:" right-justified to same right edge as "Pitch:" label
-    textRight(tft, &Roboto_Black_20,
-              ACFT_PTAPE_BOX_X, ACFT_HDG_BOX_Y + ACFT_HDG_BOX_H / 2 - 10,
-              ACFT_PTAPE_BOX_W, 24,
+    textRight(tft, &Roboto_Black_24,
+              ACFT_PTAPE_BOX_X, ACFT_HDG_BOX_Y + ACFT_HDG_BOX_H / 2 - 15,
+              ACFT_PTAPE_BOX_W, 30,
               "Hdg:", TFT_WHITE, TFT_BLACK);
 
     // ── VSI tape chrome ───────────────────────────────────────────────────────────────
@@ -1396,7 +1406,7 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     tft.drawLine(ACFT_PANEL_X - 2, TITLE_TOP, ACFT_PANEL_X - 2, SCREEN_H - 1, TFT_GREY);
     tft.drawLine(ACFT_PANEL_X - 1, TITLE_TOP, ACFT_PANEL_X - 1, SCREEN_H - 1, TFT_GREY);
 
-    static const tFont *PF = &Roboto_Black_20;
+    static const tFont *PF = &Roboto_Black_24;
 
     // Rows 0-3: single-width labels
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -1449,7 +1459,7 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 // Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
 //              8=Gear, 9=Airbrk, 10=Brakes, 11=SAS
 static void _acftUpdatePanel(KCM_TFT &tft) {
-    static const tFont  *VF = &Roboto_Black_24;
+    static const tFont  *VF = &Roboto_Black_28;
     static const uint8_t SC = (uint8_t)screen_ACFT;
     uint16_t fw = ACFT_PANEL_W;
     uint16_t hw = ACFT_PANEL_W / 2;
@@ -1597,7 +1607,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &gc = rowCache[SC][8]; String gs = gv;
             if (gc.value != gs || gc.fg != gfg || gc.bg != gbg) {
                 ButtonLabel btn = { "GEAR", gfg, gfg, gbg, gbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X - 2, y6, hw + 2, h6, btn, &Roboto_Black_20, false);
+                drawButton(tft, ACFT_PANEL_X - 2, y6, hw + 2, h6, btn, &Roboto_Black_24, false);
                 gc.value = gs; gc.fg = gfg; gc.bg = gbg;
             }
         }
@@ -1607,7 +1617,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &ac = rowCache[SC][9]; String as = "---";
             if (ac.value != as) {
                 ButtonLabel btn = { "AIRBRK", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK, TFT_OFF_BLACK, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X + hw, y6, hw, h6, btn, &Roboto_Black_20, false);
+                drawButton(tft, ACFT_PANEL_X + hw, y6, hw, h6, btn, &Roboto_Black_24, false);
                 ac.value = as;
             }
         }
@@ -1633,7 +1643,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &bc = rowCache[SC][10]; String bs = bv;
             if (bc.value != bs || bc.fg != bfg || bc.bg != bbg) {
                 ButtonLabel btn = { "BRAKES", bfg, bfg, bbg, bbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X - 2, ry, hw + 2, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, ACFT_PANEL_X - 2, ry, hw + 2, rh, btn, &Roboto_Black_24, false);
                 bc.value = bs; bc.fg = bfg; bc.bg = bbg;
             }
         }
@@ -1658,7 +1668,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &rc = rowCache[SC][11];
             if (rc.value != v || rc.fg != sfg || rc.bg != sbg) {
                 ButtonLabel btn = { v, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_24, false);
                 rc.value = v; rc.fg = sfg; rc.bg = sbg;
             }
         }
