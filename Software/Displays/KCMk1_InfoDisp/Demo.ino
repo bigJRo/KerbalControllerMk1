@@ -228,7 +228,14 @@ void stepDemoState() {
   //          coast to apoapsis → circularization burn.
   // ─────────────────────────────────────────────────────────────────────────
   if (activeScreen == screen_LNCH) {
-    float t = (float)(millis() % 180000UL) / 1000.0f;  // 0..180 s cycle
+    // Cycle = a pad HOLD (pre-launch board visible) then the 180 s ascent profile.
+    // Freezing t at 0 during the hold means no ascent time is skipped — the full
+    // launch still plays once the board clears. Bump DEMO_PL_HOLD_MS to linger
+    // longer on the pre-launch board.
+    static const uint32_t DEMO_PL_HOLD_MS = 30000UL;   // pad-hold (pre-launch board)
+    uint32_t _lnchCyc = millis() % (DEMO_PL_HOLD_MS + 180000UL);
+    bool demoPreLaunch = (_lnchCyc < DEMO_PL_HOLD_MS);
+    float t = demoPreLaunch ? 0.0f : (float)(_lnchCyc - DEMO_PL_HOLD_MS) / 1000.0f;  // 0..180 s
 
     float alt, vSrf, vVrt, apa, tToAp, thr, stgBrn, stgDV;
 
@@ -387,14 +394,12 @@ void stepDemoState() {
       state.eccentricity  = ecc;
     }
 
-    // Pre-launch board: hold the first ~8 s of the 180 s cycle on the pad so the
-    // checklist is visible in demo. Simpit normally drives _lnchPrelaunchMode from
-    // FLIGHT_STATUS; with no Simpit in demo we toggle it here (and switchToScreen
-    // on the transition, exactly as SimpitHandler does, to force a clean re-chrome
-    // — stepDemoState runs before the loop's screen-change check). After the window
-    // it's sit_Flying for the ascent sweep (also keeps V.Vrt out of the "dead-band"
-    // suppression during ascent).
-    bool demoPreLaunch = (t < 8.0f);
+    // Pre-launch board: shown for the pad-HOLD portion of the cycle (demoPreLaunch,
+    // computed with the cycle timer above). Simpit normally drives _lnchPrelaunchMode
+    // from FLIGHT_STATUS; with no Simpit in demo we toggle it here (and switchToScreen
+    // on the transition, exactly as SimpitHandler does, to force a clean re-chrome —
+    // stepDemoState runs before the loop's screen-change check). Otherwise sit_Flying
+    // for the ascent sweep (also keeps V.Vrt out of the "dead-band" suppression).
     state.situation = demoPreLaunch ? sit_PreLaunch : sit_Flying;
     if (demoPreLaunch != _lnchPrelaunchMode) {
       _lnchPrelaunchMode      = demoPreLaunch;
