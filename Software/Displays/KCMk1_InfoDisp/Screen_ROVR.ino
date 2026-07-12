@@ -11,19 +11,21 @@
        GEAR     — button: white on dark green when deployed, muted when up
        SAS      — button: navball-palette mode colors (STAB/PRO/RETR/...)
 
-     THROTTLE BAR (x=149..184, full screen height):
-       Binary on/off: FWD half green, REV half yellow, both black when neutral
-       "FWD" in white and "REV" in dark grey stacked vertically in each half
+     FWD / REV BLOCKS (top corners of the compass area, flanking the heading box):
+       Binary on/off: FWD block green when forward, REV block yellow when reverse,
+       both muted (off-black) when neutral
 
-     COMPASS (centered at 495, 348, R=205):
+     COMPASS (centered at 470, 344, R=200 — centred on the ROVER title):
        Rotating ring with cardinal letters (N/E/S/W) and numeric labels (03/06/...)
        Fixed nose triangle at top, rover icon at centre
        Heading readout box above (boxed "XXX°" in Roboto_Black_36)
        Target bearing triangle inside ring when state.targetAvailable
-       "Tgt:" label and formatted distance value in bottom corners outside
-       the ring, shown only when state.targetAvailable
 
-     RIGHT COLUMN (x=540..719, 3 stacked boxes):
+     TGT STATUS STRIP (full-width, along the screen bottom, y=552..600):
+       "Tgt:" label flush-left, formatted distance value flush-right, shown only
+       when state.targetAvailable
+
+     RIGHT COLUMN (x=750..940, 3 stacked boxes):
        Elev     — elevation (altitude ASL - radarAlt AGL), formatted via
                   formatAlt (auto-scales m/km/Mm/Gm with thousands separator)
        Pitch    — side-view tilting silhouette + 1-decimal signed angle
@@ -32,32 +34,33 @@
                   take threshold color (green/yellow/red per AAA_Config).
 
    Anti-flicker: each sub-element has its own dirty threshold and incremental
-   update. Stationary chrome (borders, labels, ring, nose, rover icon, centre
-   line) is drawn once in chromeScreen_ROVR and never redrawn.
+   update. Stationary chrome (borders, labels, ring, nose, rover icon) is drawn
+   once in chromeScreen_ROVR and never redrawn.
 
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-// Compass ring sized to R=205 for the 1024x600 content area, with a taller heading
-// readout box (needed for Roboto_Black_36, cap_height=43). CY at 348
+// Compass ring sized to R=200 and centred at CX=470 (the ROVER title centre,
+// CONTENT_W/2) with a taller heading readout box (Roboto_Black_36, cap_height=43).
+// CY at 344 places the ring erase floor at y=551, just above the Tgt status strip
 // to maintain roughly equal margins above the heading box (12 px) and below the
 // ring (13 px).
-static const int16_t ROVR_CX             = 495;
-static const int16_t ROVR_CY             = 348;
-static const int16_t ROVR_R              = 205;   // outer ring radius
-static const int16_t ROVR_R_TICK_OUTER   = 204;   // tick outer end (1 px inside outer ring)
+static const int16_t ROVR_CX             = 470;   // centred on the title (CONTENT_W/2)
+static const int16_t ROVR_CY             = 344;
+static const int16_t ROVR_R              = 200;   // outer ring radius
+static const int16_t ROVR_R_TICK_OUTER   = 199;   // tick outer end (1 px inside outer ring)
                                                   //   so erase-in-black doesn't nibble ring
-static const int16_t ROVR_R_TICK_INNER   = 183;   // major tick inner end  (scaled from 150)
-static const int16_t ROVR_R_MINOR_INNER  = 190;   // minor tick inner end  (scaled from 156)
-static const int16_t ROVR_R_LETTER       = 162;   // cardinal letter centre (scaled from 132)
-static const int16_t ROVR_R_NUMLABEL     = 162;   // numeric label centre — same
+static const int16_t ROVR_R_TICK_INNER   = 178;   // major tick inner end
+static const int16_t ROVR_R_MINOR_INNER  = 185;   // minor tick inner end
+static const int16_t ROVR_R_LETTER       = 157;   // cardinal letter centre
+static const int16_t ROVR_R_NUMLABEL     = 157;   // numeric label centre — same
 
 // Vessel heading indicator — triangle ABOVE the ring at 12 o'clock, pointing INWARD
 // (toward the compass center). Tip closer to centre, base farther out.
-static const int16_t ROVR_NOSE_R_TIP     = 209;   // inward tip (4 px outside ring)
-static const int16_t ROVR_NOSE_R_BASE    = 224;   // outward base
+static const int16_t ROVR_NOSE_R_TIP     = 204;   // inward tip (4 px outside ring)
+static const int16_t ROVR_NOSE_R_BASE    = 219;   // outward base
 static const int16_t ROVR_NOSE_HALF_W    = 12;
 
 // Target bearing indicator — triangle INSIDE the ring, positioned just inside
@@ -67,23 +70,23 @@ static const int16_t ROVR_NOSE_HALF_W    = 12;
 // with a label position. Tip points OUTWARD (toward the ring); when target is
 // at same heading as vessel, triangle sits at 12 o'clock with tip pointing up.
 // Uses TFT_VIOLET to match target markers on SCFT/ACFT screens.
-static const int16_t ROVR_TGT_R_TIP      = 140;   // outward tip
-static const int16_t ROVR_TGT_R_BASE     = 122;    // inward base (15 px tall triangle)
+static const int16_t ROVR_TGT_R_TIP      = 135;   // outward tip
+static const int16_t ROVR_TGT_R_BASE     = 117;    // inward base (18 px tall triangle)
 static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 
 // Target distance readout — shown only when a target is selected (targetAvailable).
-// Label "Tgt:" is flush to the bottom-left of the compass area (left-aligned,
-// between the throttle bar and the ring), and the formatted distance value is
-// flush to the bottom-right (right-aligned, between the ring and the right
-// column). Both sit at the screen bottom edge, outside the compass ring.
-// At y=451 the ring left edge is at x≈285 and right edge at x≈435, leaving
-// room on each side for the text without encroaching on the ring.
-static const int16_t ROVR_TGTD_LBL_X     = 290;
-static const int16_t ROVR_TGTD_LBL_W     = 120;
-static const int16_t ROVR_TGTD_VAL_X     = 580;
-static const int16_t ROVR_TGTD_VAL_W     = 120;
-static const int16_t ROVR_TGTD_Y         = 563;
-static const int16_t ROVR_TGTD_H         = 32;    // hugs screen bottom (y=479)
+// Full-width status strip along the very bottom of the screen, below both side
+// columns and the compass. Label "Tgt:" is flush-left (its left edge aligned with
+// the left column's left edge at x=0) and the formatted distance value is
+// flush-right (its right edge aligned with the right column's right edge at
+// x=940). The strip sits entirely below the compass erase region (which ends at
+// y=551), so the two never collide.
+static const int16_t ROVR_TGTD_LBL_X     = 0;
+static const int16_t ROVR_TGTD_LBL_W     = 300;
+static const int16_t ROVR_TGTD_VAL_X     = 640;
+static const int16_t ROVR_TGTD_VAL_W     = 300;  // right edge = 640+300 = 940
+static const int16_t ROVR_TGTD_Y         = 552;
+static const int16_t ROVR_TGTD_H         = 48;   // Roboto_Black_36 cap 43 + padding
 
 // Heading readout — single-line boxed value above the nose triangle. The box
 // border is stationary chrome; only the numeric value is redrawn on changes.
@@ -115,54 +118,43 @@ static const int16_t ROVR_ICON_WHEEL_INSET = 8;  // wheel vertical inset from ch
 static const int16_t ROVR_ICON_NOSE_W    = 20;   // nose notch base width (across chassis front)
 static const int16_t ROVR_ICON_NOSE_H    = 12;   // nose notch height (extends above chassis)
 
-// ── Throttle bar ──────────────────────────────────────────────────────────────────────
-// Vertical bar positioned just left of the compass. Binary on/off fill:
-// dark-green upper half when forward, yellow lower half when reverse, both
-// black when neutral. "FWD" in white stacked vertically in the upper half,
-// "REV" in dark grey in the lower half — both re-rendered with the matching
-// background color on each state transition.
-//
-// Bar right edge is at x=193, giving 1 px clearance to the compass ring
-// leftmost pixel at x=195, and 2 px clearance to the 9-o'clock major tick
-// which extends to x=213 only when the ring rotates — the ring itself never
-// crosses x=195.
-static const int16_t ROVR_THR_W          = 42;    // bar width
-static const int16_t ROVR_THR_X          = 193;   // bar left edge (directly against left column right edge at x=148)
-static const int16_t ROVR_THR_Y_TOP      = 63;    // bar top edge (just below header)
-static const int16_t ROVR_THR_Y_BOT      = 600;   // bar bottom edge (screen bottom)
-static const int16_t ROVR_THR_Y_MID      = (ROVR_THR_Y_TOP + ROVR_THR_Y_BOT) / 2;
-                                                  // centre line (neutral position, y=271)
-static const int16_t ROVR_THR_HALF_H     = (ROVR_THR_Y_BOT - ROVR_THR_Y_TOP) / 2;
-                                                  // half-height
+// ── FWD / REV drive-state blocks ──────────────────────────────────────────────────────
+// Two button-style blocks in the top-left and top-right corners of the compass
+// area, flanking the heading readout box. Binary drive-state indicators:
+//   FWD block — dark-green fill + white text when wheelThrottle > deadband
+//   REV block — yellow fill + dark-grey text when wheelThrottle < -deadband
+//   both muted (off-black fill) when neutral.
+// They share the heading box's y-band (y=67..119) so the three form a tidy top
+// row: [FWD] [HDG] [REV]. Placed clear of the left column (x<190), the right
+// column (x>750), and the ring top (y=119 < ring top at CY-R=144).
+static const int16_t ROVR_THRBLK_W       = 100;   // block width
+static const int16_t ROVR_THRBLK_H        = 52;   // block height (matches heading box)
+static const int16_t ROVR_THRBLK_Y        = 67;   // top edge (aligned with heading box)
+static const int16_t ROVR_FWD_BLK_X       = 205;  // left block, clear of left column (x<=190)
+static const int16_t ROVR_REV_BLK_X       = 635;  // right block, clear of right column (x>=750)
 static const float   ROVR_THR_THRESH     = 0.01f; // deadband — |wt| under this reads as neutral
 
 // ── Left column: V.Srf / EC% / BRAKE / GEAR / SAS ─────────────────────────────────────
-// Five stacked blocks filling the entire left column from just below the header
-// (y=63) to the bottom of the screen (y=480). Total height 417 px, divided as:
-//   V.Srf  85 px (slightly taller — gets the 2 leftover px after 5-way split)
-//   EC%    83 px
-//   BRAKE  83 px
-//   GEAR   83 px
-//   SAS    83 px
-// Column x=0..148 (width 149) flush with the left edge of the screen. The
-// throttle bar's left edge at x=149 is directly adjacent to the column's right
-// edge at x=148, so their borders touch without overlap.
+// Five stacked blocks filling the left column from the title-bar rule (y=62) down
+// to the top of the Tgt status strip (y=552). Total height 490 px, split evenly
+// into five 98 px blocks. Column x=0..190 (width 190), matching the right column
+// width so the compass centres cleanly between them.
 static const int16_t ROVR_LCOL_X         = 0;
 static const int16_t ROVR_LCOL_W         = 190;
-static const int16_t ROVR_LCOL_Y_TOP     = 63;    // just below header
+static const int16_t ROVR_LCOL_Y_TOP     = 62;    // flush with the title-bar rule
 
-static const int16_t ROVR_VSRF_H         = 109;
-static const int16_t ROVR_EC_H           = 107;
-static const int16_t ROVR_BRAKE_H        = 107;
-static const int16_t ROVR_GEAR_H         = 107;
-static const int16_t ROVR_SAS_H          = 107;
+static const int16_t ROVR_VSRF_H         = 98;
+static const int16_t ROVR_EC_H           = 98;
+static const int16_t ROVR_BRAKE_H        = 98;
+static const int16_t ROVR_GEAR_H         = 98;
+static const int16_t ROVR_SAS_H          = 98;
 
-static const int16_t ROVR_VSRF_Y         = ROVR_LCOL_Y_TOP;                   // 63
-static const int16_t ROVR_EC_Y           = ROVR_VSRF_Y  + ROVR_VSRF_H;        // 148
-static const int16_t ROVR_BRAKE_Y        = ROVR_EC_Y    + ROVR_EC_H;          // 231
-static const int16_t ROVR_GEAR_Y         = ROVR_BRAKE_Y + ROVR_BRAKE_H;       // 314
-static const int16_t ROVR_SAS_Y          = ROVR_GEAR_Y  + ROVR_GEAR_H;        // 397
-                                                                               //   end = 480
+static const int16_t ROVR_VSRF_Y         = ROVR_LCOL_Y_TOP;                   // 62
+static const int16_t ROVR_EC_Y           = ROVR_VSRF_Y  + ROVR_VSRF_H;        // 160
+static const int16_t ROVR_BRAKE_Y        = ROVR_EC_Y    + ROVR_EC_H;          // 258
+static const int16_t ROVR_GEAR_Y         = ROVR_BRAKE_Y + ROVR_BRAKE_H;       // 356
+static const int16_t ROVR_SAS_Y          = ROVR_GEAR_Y  + ROVR_GEAR_H;        // 454
+                                                                               //   end = 552
 
 // Within V.Srf and EC% blocks: label on top, numeric value below. Both use the
 // same internal layout metrics. textCenter is called with the block slot (x, y,
@@ -177,15 +169,16 @@ static const int16_t ROVR_LBL_VAL_GAP    = 2;     // gap between label and value
 //   Pitch     — side-view tilt silhouette + numeric
 //   Roll      — rear-view tilt silhouette + numeric
 //
-// Column x=540..719 (width 180), flush with the sidebar's left edge at x=720.
-static const int16_t ROVR_RCOL_X         = 755;
-static const int16_t ROVR_RCOL_W         = 185;
-static const int16_t ROVR_ELEV_Y         = 63;
-static const int16_t ROVR_ELEV_H         = 110;    // matches V.Srf block height
-static const int16_t ROVR_PITCH_Y        = 173;   // adjacent to Elev bottom
-static const int16_t ROVR_PITCH_H        = 214;
-static const int16_t ROVR_ROLL_Y         = 387;   // adjacent to Pitch bottom
-static const int16_t ROVR_ROLL_H         = 213;   // reaches screen bottom (y=600)
+// Column x=750..940 (width 190), matching the left column width. Runs from the
+// title-bar rule (y=62) down to the top of the Tgt status strip (y=552).
+static const int16_t ROVR_RCOL_X         = 750;
+static const int16_t ROVR_RCOL_W         = 190;
+static const int16_t ROVR_ELEV_Y         = 62;    // flush with the title-bar rule
+static const int16_t ROVR_ELEV_H         = 98;    // matches left-column block height
+static const int16_t ROVR_PITCH_Y        = 160;   // adjacent to Elev bottom
+static const int16_t ROVR_PITCH_H        = 196;
+static const int16_t ROVR_ROLL_Y         = 356;   // adjacent to Pitch bottom
+static const int16_t ROVR_ROLL_H         = 196;   // ends at y=552 (top of Tgt strip)
 
 // Within each indicator box:
 //   label at top (Roboto_Black_24, height 32)
@@ -445,9 +438,10 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
     _rovrPrevTgtScreenDeg = screenDeg;
 }
 
-// Target-distance readout — "Tgt:" label on bottom-left of the compass area,
-// formatted distance value on bottom-right. Both are visible only when a target
-// is selected; when no target, both strips are erased to black.
+// Target-distance readout — full-width bottom status strip. "Tgt:" label flush to
+// the far left (aligned with the left column), formatted distance value flush to
+// the far right (aligned with the right column). Both are visible only when a
+// target is selected; when no target, both strips are erased to black.
 //
 // Uses formatAlt() from the shared library for auto-scaled units (m/km/Mm/Gm)
 // and thousands separators. Value is rendered in TFT_VIOLET to match the target
@@ -470,7 +464,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     // appeared (the label is static, so we only draw it once per availability
     // transition).
     if (!_rovrPrevTgtDistAvail) {
-        textLeft(tft, &Roboto_Black_24,
+        textLeft(tft, &Roboto_Black_36,
                  ROVR_TGTD_LBL_X, ROVR_TGTD_Y,
                  ROVR_TGTD_LBL_W, ROVR_TGTD_H,
                  "Tgt:", TFT_WHITE, TFT_BLACK);
@@ -492,7 +486,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     }
 
     String newStr = formatAlt((float)iDist);
-    textRight(tft, &Roboto_Black_24,
+    textRight(tft, &Roboto_Black_36,
               ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
               ROVR_TGTD_VAL_W, ROVR_TGTD_H,
               newStr, TFT_VIOLET, TFT_BLACK);
@@ -545,35 +539,15 @@ static void _rovrDrawIcon(KCM_TFT &tft) {
     tft.fillTriangle(noseTipX, noseTipY, noseBLX, noseBLY, noseBRX, noseBRY, TFT_LIGHT_GREY);
 }
 
-// Throttle bar — vertical bar on the far left. Stationary frame drawn once in
-// chrome (outer border + centre line). The fill region (dark green upward for
-// forward, yellow downward for reverse) is updated separately via
-// _rovrUpdateThrottle to avoid redrawing the frame every time throttle changes.
-static void _rovrDrawThrottleFrame(KCM_TFT &tft) {
-    // Outer border
-    tft.drawRect(ROVR_THR_X, ROVR_THR_Y_TOP,
-                 ROVR_THR_W, ROVR_THR_Y_BOT - ROVR_THR_Y_TOP + 1,
-                 TFT_LIGHT_GREY);
-
-    // Centre (neutral) line — a thin light-grey horizontal line at 0% throttle
-    // position. Drawn 1 px inside the border to avoid touching it.
-    tft.drawLine(ROVR_THR_X + 1, ROVR_THR_Y_MID,
-                 ROVR_THR_X + ROVR_THR_W - 2, ROVR_THR_Y_MID,
-                 TFT_LIGHT_GREY);
-}
-
-// Throttle fill update — binary on/off. Shows one of three states:
-//   FWD (throttle > deadband)     — upper half dark-green, "FWD" white-on-green
-//   REV (throttle < -deadband)    — lower half yellow,     "REV" dark-grey-on-yellow
-//   NEUTRAL (|throttle| < deadband) — both halves black,   "FWD" / "REV" dim-on-black
+// FWD / REV drive-state blocks — two button-style boxes in the top corners of the
+// compass area, flanking the heading readout. Binary on/off, one of three states:
+//   FWD (throttle > deadband)       — FWD block dark-green + white text, REV muted
+//   REV (throttle < -deadband)      — REV block yellow + dark-grey text, FWD muted
+//   NEUTRAL (|throttle| < deadband) — both blocks muted (off-black fill)
 //
-// drawVerticalText fills its strip with backColor before drawing the text, so
-// passing the same backColor as the half's fill color in a single call handles
-// both the fill and the text in one operation per half. "FWD" stays white and
-// "REV" stays dark grey regardless of throttle state (fg colors are constant).
-//
-// Only redraws on state transitions (throttle state changes). State code:
-//   +1 = forward, 0 = neutral, -1 = reverse
+// Both blocks are redrawn together on every state transition (a change in one
+// implies the other returns to muted). drawButton fills, borders, and centre-
+// labels each block in a single call. State code: +1 forward, 0 neutral, -1 rev.
 static void _rovrUpdateThrottle(KCM_TFT &tft) {
     float wt = state.wheelThrottle;
     int16_t newState;
@@ -583,24 +557,17 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
 
     if (newState == _rovrPrevThrFill) return;
 
-    // Interior region of the bar (inside the outer border, excluding the centre line)
-    int16_t xL = ROVR_THR_X + 1;
-    int16_t xW = ROVR_THR_W - 2;
-    int16_t upperY = ROVR_THR_Y_TOP + 1;
-    int16_t lowerY = ROVR_THR_Y_MID + 1;
-    int16_t halfH  = ROVR_THR_HALF_H - 1;
+    ButtonLabel fwd = (newState == +1)
+        ? ButtonLabel{ "FWD", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_LIGHT_GREY, TFT_LIGHT_GREY }
+        : ButtonLabel{ "FWD", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+    drawButton(tft, ROVR_FWD_BLK_X, ROVR_THRBLK_Y,
+               ROVR_THRBLK_W, ROVR_THRBLK_H, fwd, &Roboto_Black_28, false);
 
-    // Upper half ("FWD" in white) — backColor is dark green if forward, else black.
-    uint16_t upperBg = (newState == +1) ? TFT_DARK_GREEN : TFT_BLACK;
-    drawVerticalText(tft, xL, upperY, xW, halfH,
-                     &Roboto_Black_24, "FWD",
-                     TFT_WHITE, upperBg);
-
-    // Lower half ("REV" in dark grey) — backColor is yellow if reverse, else black.
-    uint16_t lowerBg = (newState == -1) ? TFT_YELLOW : TFT_BLACK;
-    drawVerticalText(tft, xL, lowerY, xW, halfH,
-                     &Roboto_Black_24, "REV",
-                     TFT_DARK_GREY, lowerBg);
+    ButtonLabel rev = (newState == -1)
+        ? ButtonLabel{ "REV", TFT_DARK_GREY, TFT_DARK_GREY, TFT_YELLOW,    TFT_YELLOW,    TFT_LIGHT_GREY, TFT_LIGHT_GREY }
+        : ButtonLabel{ "REV", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK, TFT_OFF_BLACK, TFT_LIGHT_GREY, TFT_LIGHT_GREY };
+    drawButton(tft, ROVR_REV_BLK_X, ROVR_THRBLK_Y,
+               ROVR_THRBLK_W, ROVR_THRBLK_H, rev, &Roboto_Black_28, false);
 
     _rovrPrevThrFill = newState;
 }
@@ -1344,9 +1311,8 @@ static void chromeScreen_ROVR(KCM_TFT &tft) {
     // elements, do first tick/label/heading/target pass).
     _rovrChromeCompass(tft);
 
-    // Throttle bar — draw stationary frame + initial fill+text. (The throttle bar
-    // region is outside the compass erase area, so we need our own chrome.)
-    _rovrDrawThrottleFrame(tft);
+    // FWD / REV drive-state blocks — drawn from scratch (both blocks) on the first
+    // update since _rovrPrevThrFill was reset to a sentinel above.
     _rovrUpdateThrottle(tft);
 
     // Left column labels (stationary, drawn once) + initial value passes.
