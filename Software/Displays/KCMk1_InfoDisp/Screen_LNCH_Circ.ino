@@ -5,14 +5,15 @@
    vessel has reached its apoapsis-stretching phase and the pilot is preparing to
    circularize. Layout summary:
 
-   LEFT PANEL (x=0..452):
-     - Cluster (x≈0..117) — ATT indicator (alignment disc), IGN button (burn-active
-       lamp), Burn Dur readout
-     - Orbit diagram (x≈120..440) — body, atmosphere ring, dashed target circle,
-       current orbit curve, Pe/Ap markers, vessel dot, direction chevron
-     - Below diagram: ΔV Burn bar + value text, T+Ign countdown row
+   LEFT GRAPHICS PANEL (x=0..576):
+     - Left rail (x≈0..145) — ATT indicator (alignment disc, R=58) with the Burn
+       Dur readout beneath it
+     - Orbit diagram (hero, CX=348 CY=272 R=186) — body, atmosphere ring, dashed
+       target circle, current orbit curve, Pe/Ap markers, vessel dot, chevron
+     - Bottom band (full width) — ΔV Burn bar + value text, then a prominent
+       T+Ign countdown row (Black_36)
 
-   RIGHT PANEL (x=453..720):
+   RIGHT READOUT PANEL (x=580..940, LNCH_AS2_* — matches the ascent phase):
      - 8 numeric readouts: Alt.SL, V.Orb, ApA, PeA, T+Ap, Thrtl, T.Brn, ΔV.Stg
      - Grouped horizontal dividers between logical row groups
 
@@ -45,9 +46,11 @@
 // The vessel chevron points along the tangent of the drawn orbit curve at the
 // vessel's true-anomaly position. Direction of travel (CCW vs CW) is inferred
 // from `state.inclination` (< 90° = prograde/CCW, > 90° = retrograde/CW).
-static const int16_t LNCH_OR_DIAG_CX    = 280;   // diagram center X (right side; ATT/IGN/Burn-Dur cluster on left)
-static const int16_t LNCH_OR_DIAG_CY    = 234;   // diagram center Y (centered between content top and bar label row)
-static const int16_t LNCH_OR_DIAG_MAX_R = 140;   // max orbit half-extent (px)
+// Hero element: enlarged and centered in the graphics area to the right of the
+// left "burn aids" rail (ATT + Burn Dur) and above the bottom ΔV/T+Ign band.
+static const int16_t LNCH_OR_DIAG_CX    = 348;   // diagram center X (center-right of the widened panel)
+static const int16_t LNCH_OR_DIAG_CY    = 272;   // diagram center Y (upper-center, above the bottom band)
+static const int16_t LNCH_OR_DIAG_MAX_R = 186;   // max orbit half-extent (px) — was 140
 
 // Maneuver ΔV bar layout. Matches the visual format of the MNVR screen's
 // "ΔV Burn" bar: label "ΔV Burn" above-left, right-aligned ΔV value in m/s
@@ -55,20 +58,19 @@ static const int16_t LNCH_OR_DIAG_MAX_R = 140;   // max orbit half-extent (px)
 // stage ΔV is tight). Bar fills proportionally to mnvrDeltaV and drains
 // from the cached arm-time max as the burn consumes ΔV.
 //
-// Vertical layout:
-//   y = 397..420: bar label row (24 px tall, Black_20 — was Black_12 at y=407)
-//   y = 423..444: bar (22 px tall including border)
-//   y = 448..478: T+Ign row (31 px tall — Black_24 is 29 px, +1 px margin
-//                             above/below so printValue's h-2 fillRect fully
-//                             covers the font's glyph rows)
-// Horizontal: bar centered in the 453-wide left panel, ~same width as MNVR.
-static const int16_t LNCH_OR_BAR_X      =  53;   // bar left edge
-static const int16_t LNCH_OR_BAR_W      = 346;   // bar width (matches MNVR)
-static const int16_t LNCH_OR_BAR_H      =  22;   // bar height (matches MNVR)
-static const int16_t LNCH_OR_BAR_Y      = 423;   // bar top
-static const int16_t LNCH_OR_BAR_LBL_Y  = 397;   // bar label row top (barY - 26 to fit Black_20)
-static const int16_t LNCH_OR_TIGN_Y     = 448;   // T+Ign row top (barY + barH + 3)
-static const int16_t LNCH_OR_TIGN_H     =  31;   // T+Ign row height (Black_24=29 + 2 margin)
+// Full-width "burn timing" band across the bottom of the widened panel:
+//   y = 486..510: bar label row ("ΔV Burn" left, ΔV value right — Black_20)
+//   y = 512..538: ΔV bar (26 px incl. border)
+//   y = 544..592: T+Ign countdown row (prominent — Black_36, 48 px tall) — the
+//                 "burn now" cue, sized to match the right-panel value font
+// Horizontal: bar spans most of the 576-wide panel.
+static const int16_t LNCH_OR_BAR_X      =  40;   // bar left edge
+static const int16_t LNCH_OR_BAR_W      = 496;   // bar width (40..536)
+static const int16_t LNCH_OR_BAR_H      =  26;   // bar height
+static const int16_t LNCH_OR_BAR_Y      = 512;   // bar top
+static const int16_t LNCH_OR_BAR_LBL_Y  = 486;   // bar label row top (barY - 26 to fit Black_20)
+static const int16_t LNCH_OR_TIGN_Y     = 544;   // T+Ign row top (barY + barH + 6)
+static const int16_t LNCH_OR_TIGN_H     =  48;   // T+Ign row height (Black_36=43 + margin)
 
 // Attitude (ATT) indicator: a maneuver-alignment disc positioned to the
 // right of the orbit diagram. Shows the vessel's current attitude error vs
@@ -88,9 +90,9 @@ static const int16_t LNCH_OR_TIGN_H     =  31;   // T+Ign row height (Black_24=2
 // ATT outer-ring radius matches the LNDG_Powered ATT indicator (R=52) for
 // cross-screen visual consistency. CY=150 places the disc with a 7 px top
 // margin below the panel, giving room for the Black_20 "ATT" label above.
-static const int16_t LNCH_OR_ATT_CX    = 60;                     // indicator center X (left side)
-static const int16_t LNCH_OR_ATT_CY    = 150;                    // indicator center Y (was 140; shifted to fit R=52)
-static const int16_t LNCH_OR_ATT_R     = 52;                     // outer ring radius (= ±15°, matches LNDG_Powered)
+static const int16_t LNCH_OR_ATT_CX    = 74;                     // indicator center X (left rail)
+static const int16_t LNCH_OR_ATT_CY    = 172;                    // indicator center Y (top of the left rail)
+static const int16_t LNCH_OR_ATT_R     = 58;                     // outer ring radius (= ±15°)
 static const float   LNCH_OR_ATT_SCALE = (float)LNCH_OR_ATT_R / 15.0f;  // ~3.47 px/deg
 static const float   LNCH_OR_ALIGN_GREEN_DEG  =  5.0f;   // < 5° = aligned (dot green)
 static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot yellow)
@@ -100,7 +102,7 @@ static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot 
 //   Label: "Burn Dur:" in Black_20 light grey
 //   Value: formatTime(mnvrDuration) in Black_24 dark green
 //          ("---" in dark grey when no maneuver node)
-static const int16_t LNCH_OR_BDUR_LBL_Y = 336;                                  // fixed position (shifted from 311 for R=52 cluster)
+static const int16_t LNCH_OR_BDUR_LBL_Y = 258;                                  // below the ATT disc (disc bottom 230 + margin)
 static const int16_t LNCH_OR_BDUR_VAL_Y = LNCH_OR_BDUR_LBL_Y + 27;             // 24 px label + 3 px gap
 
 
@@ -652,7 +654,7 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
     // padding match the rest of the right-panel label convention. No border
     // (COL_NO_BDR). Background is black — the value's alarm background is
     // applied only to the value region by printValue.
-    printDispChrome(tft, &Roboto_Black_24,
+    printDispChrome(tft, &Roboto_Black_36,
                     LNCH_OR_BAR_X, LNCH_OR_TIGN_Y,
                     LNCH_OR_BAR_W, LNCH_OR_TIGN_H,
                     "T+Ign:", TFT_LIGHT_GREY, TFT_BLACK, COL_NO_BDR);
@@ -855,7 +857,7 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     // (using valBg for the value area, without touching the label on the
     // left), right-aligns the value within the cell, and tracks shrink
     // via PrintState so old wider strings get cleaned up.
-    printValue(tft, &Roboto_Black_24,
+    printValue(tft, &Roboto_Black_36,
                LNCH_OR_BAR_X, LNCH_OR_TIGN_Y,
                LNCH_OR_BAR_W, LNCH_OR_TIGN_H,
                "T+Ign:", val,
@@ -1118,7 +1120,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         // so it doesn't touch the vertical divider at x=RPANEL_X-2..-1
         // (451..452). Vertical span covers the bar label row, the bar itself,
         // and the T+Ign row below the bar.
-        tft.fillRect(0, LNCH_OR_BAR_LBL_Y - 2, LNCH_AS_RPANEL_X - 2,
+        tft.fillRect(0, LNCH_OR_BAR_LBL_Y - 2, LNCH_AS2_RPANEL_X - 2,
                      (LNCH_OR_TIGN_Y + LNCH_OR_TIGN_H + 1) - (LNCH_OR_BAR_LBL_Y - 2),
                      TFT_BLACK);
         _lnchOrDrawStaticLayer(tft, CX, CY, body_px, atmo_px, target_px,
