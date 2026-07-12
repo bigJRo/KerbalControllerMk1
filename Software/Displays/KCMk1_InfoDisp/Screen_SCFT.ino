@@ -1298,7 +1298,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         else if (tAp >= 0.0f && tPe >= 0.0f) { tNext = min(tAp,tPe); lbl = (tAp < tPe) ? "T+Ap:" : "T+Pe:"; }
         else if (tAp >= 0.0f)                 { tNext = tAp; lbl = "T+Ap:"; }
         else                                  { tNext = tPe; lbl = "T+Pe:"; }
-        String val = (tNext >= 0.0f) ? formatTime((int64_t)tNext) : "---";
+        String val = (tNext >= 0.0f) ? formatTimeCompact((int64_t)tNext) : "---";
         attPanelVal(4, 4, lbl, val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
@@ -1308,9 +1308,9 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         uint16_t fg, bg = TFT_BLACK;
         String val;
         if (!hasMnvr)        { fg = TFT_DARK_GREY; val = "---"; }
-        else if (tIgn < 0.0f){ fg = TFT_WHITE; bg = TFT_RED; val = formatTime((int64_t)tIgn); }
-        else if (tIgn < 60.0f){ fg = TFT_YELLOW; val = formatTime((int64_t)tIgn); }
-        else                  { fg = TFT_DARK_GREEN; val = formatTime((int64_t)tIgn); }
+        else if (tIgn < 0.0f){ fg = TFT_WHITE; bg = TFT_RED; val = formatTimeCompact((int64_t)tIgn); }
+        else if (tIgn < 60.0f){ fg = TFT_YELLOW; val = formatTimeCompact((int64_t)tIgn); }
+        else                  { fg = TFT_DARK_GREEN; val = formatTimeCompact((int64_t)tIgn); }
         attPanelVal(5, 5, "T+Ign:", val, fg, bg);
     }
 

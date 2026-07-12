@@ -1657,7 +1657,7 @@ static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
         if      (ttAp < 0)                   fg = TFT_RED;
         else if (ttAp < LNCH_TOAPO_WARN_S)   fg = TFT_YELLOW;
         else                                 fg = TFT_DARK_GREEN;
-        val = formatTime(ttAp);
+        val = formatTimeCompact(ttAp);
     }
 
     if (iTtAp == _lnchAsPrevTimeToAp && fg == _lnchAsPrevTimeToApFg) return;
@@ -1787,7 +1787,7 @@ static void _lnchAsUpdateTBurn(KCM_TFT &tft) {
 
     if (iTb == _lnchAsPrevTBurn && fg == _lnchAsPrevTBurnFg && bg == _lnchAsPrevTBurnBg) return;
 
-    _lnchAsDrawRowValue(tft, 6, formatTime(tb), fg, bg);
+    _lnchAsDrawRowValue(tft, 6, formatTimeCompact(tb), fg, bg);
     _lnchAsPrevTBurn = iTb;
     _lnchAsPrevTBurnFg = fg; _lnchAsPrevTBurnBg = bg;
 }

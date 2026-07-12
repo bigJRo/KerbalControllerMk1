@@ -663,6 +663,29 @@ String formatTime(float timeVal) {
   return sign + String(timeStr);
 }
 
+// Compact time — for value cells too tight for formatTime()'s hours form
+// ("H h: MM m: SS s" ≈ 241px at 36pt). Below 1 hour it is IDENTICAL to
+// formatTime() (keeps seconds — the actionable range), so common readouts look
+// unchanged. At/above 1 hour it drops to a 2-unit form ("Hh MMm" / "Dd HHh")
+// that stays narrow (≤ ~175px). Use it wherever a time value can legitimately
+// grow into the hours/days range and must still fit its cell.
+String formatTimeCompact(float timeVal) {
+  int64_t secs = (int64_t)fabsf(timeVal);
+  if (secs < 3600) return formatTime(timeVal);   // < 1 h: unchanged
+
+  String sign = _getSign(timeVal);
+  const int64_t kerbinDay = 6;                    // Kerbin day = 6 hours
+  int64_t hrsT = secs / 3600;
+  int64_t days = hrsT / kerbinDay;
+  int64_t hr   = hrsT % kerbinDay;
+  int64_t mn   = (secs % 3600) / 60;
+  char buf[16];
+  if      (days >= 10000) snprintf(buf, sizeof(buf), "%lldd", (long long)days);
+  else if (days > 0)      snprintf(buf, sizeof(buf), "%lldd %02lldh", (long long)days, (long long)hr);
+  else                    snprintf(buf, sizeof(buf), "%lldh %02lldm", (long long)hrsT, (long long)mn);
+  return sign + String(buf);
+}
+
 String formatAlt(float value) {
   String sign = _getSign(value);
   if (value < 1000000) {

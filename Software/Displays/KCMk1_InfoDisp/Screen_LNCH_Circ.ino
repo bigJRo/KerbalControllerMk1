@@ -100,7 +100,7 @@ static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot 
 // Burn-duration readout: a centered label+value block placed below the ATT
 // disc. Both label and value horizontally-centered around LNCH_OR_ATT_CX.
 //   Label: "Burn Dur:" in Black_20 light grey
-//   Value: formatTime(mnvrDuration) in Black_24 dark green
+//   Value: formatTimeCompact(mnvrDuration) in Black_24 dark green
 //          ("---" in dark grey when no maneuver node)
 static const int16_t LNCH_OR_BDUR_LBL_Y = 258;                                  // below the ATT disc (disc bottom 230 + margin)
 static const int16_t LNCH_OR_BDUR_VAL_Y = LNCH_OR_BDUR_LBL_Y + 27;             // 24 px label + 3 px gap
@@ -458,7 +458,7 @@ static void _lnchOrUpdateTimeToAp(KCM_TFT &tft) {
         if      (ttAp < 0)                   fg = TFT_RED;
         else if (ttAp < LNCH_TOAPO_WARN_S)   fg = TFT_YELLOW;
         else                                 fg = TFT_DARK_GREEN;
-        val = formatTime(ttAp);
+        val = formatTimeCompact(ttAp);
     }
 
     if (iTtAp == _lnchOrPrevTimeToAp && fg == _lnchOrPrevTimeToApFg) return;
@@ -497,7 +497,7 @@ static void _lnchOrUpdateTBurn(KCM_TFT &tft) {
     if (iTb == _lnchOrPrevTBurn &&
         fg == _lnchOrPrevTBurnFg && bg == _lnchOrPrevTBurnBg) return;
 
-    _lnchOrDrawRowValue(tft, 6, formatTime(tb), fg, bg);
+    _lnchOrDrawRowValue(tft, 6, formatTimeCompact(tb), fg, bg);
     _lnchOrPrevTBurn = iTb;
     _lnchOrPrevTBurnFg = fg; _lnchOrPrevTBurnBg = bg;
 }
@@ -853,7 +853,7 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
         if      (tIgn < MNVR_TIGN_ALARM_S) { valFg = TFT_WHITE;      valBg = TFT_RED;   }
         else if (tIgn < MNVR_TIGN_WARN_S)  { valFg = TFT_YELLOW;     valBg = TFT_BLACK; }
         else                               { valFg = TFT_DARK_GREEN; valBg = TFT_BLACK; }
-        val = formatTime((int64_t)tIgn);
+        val = formatTimeCompact((int64_t)tIgn);
     }
 
     if (newSec == _lnchOrPrevTignSec &&
@@ -881,7 +881,7 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
 // pilot mentally prepare before ignition and gauge progress during the burn.
 //
 // Label "Burn dur" stays light-grey on black (chrome — drawn once on first
-// frame). Value formatTime(mnvrDuration) in dark green (or "---" / dark
+// frame). Value formatTimeCompact(mnvrDuration) in dark green (or "---" / dark
 // grey when no maneuver). Change detection on rounded seconds skips the
 // redraw when nothing visible changed.
 //
@@ -902,7 +902,7 @@ static void _lnchOrUpdateBurnDurReadout(KCM_TFT &tft) {
     } else {
         newSec = (int32_t)roundf(state.mnvrDuration);
         valFg  = TFT_DARK_GREEN;
-        val    = formatTime((int64_t)state.mnvrDuration);
+        val    = formatTimeCompact((int64_t)state.mnvrDuration);
     }
 
     bool first_draw = (_lnchOrPrevBurnDurSec == -9999);

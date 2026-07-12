@@ -34,7 +34,7 @@
      - Velocity: integer m/s, "m/s" suffix.
      - Angles (Inc, LAN, ArgPe, True Anom, Mean Anom): 1 decimal, "°" suffix.
      - Eccentricity: 4 decimal places.
-     - Times (T+Pe, T+Ap, Period): formatTime() — HH:MM:SS with Kerbin 6-hr day.
+     - Times (T+Pe, T+Ap, Period): formatTimeCompact() — MM:SS under 1h, compact Hh/Dd above.
 
    Hidden cases:
      - Escape orbit: Ap, Period, T+Ap show "\x80" (infinity glyph); T+Pe still
@@ -202,7 +202,7 @@ void drawScreen_OrbAdv(KCM_TFT &tft) {
 
     // Orbital period — formatTime, infinity on escape (no closed orbit)
     {
-        String v = isEscape ? String("\x80") : formatTime(state.orbitalPeriod);
+        String v = isEscape ? String("\x80") : formatTimeCompact(state.orbitalPeriod);
         if (v != _advLastValue[ADV_PRD]) {
             printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH,
                        ADV_L_VALUE_W, ADV_ROW_H, "",
@@ -275,7 +275,7 @@ void drawScreen_OrbAdv(KCM_TFT &tft) {
 
     // T+Pe — time until next periapsis (show "---" if Simpit value is ≤ 0)
     {
-        String v = (state.timeToPe > 0.0f) ? formatTime(state.timeToPe) : String("---");
+        String v = (state.timeToPe > 0.0f) ? formatTimeCompact(state.timeToPe) : String("---");
         if (v != _advLastValue[ADV_TPE]) {
             printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH,
                        ADV_R_VALUE_W, ADV_ROW_H, "",
@@ -288,7 +288,7 @@ void drawScreen_OrbAdv(KCM_TFT &tft) {
     {
         String v;
         if (isEscape)                   v = String("\x80");
-        else if (state.timeToAp > 0.0f) v = formatTime(state.timeToAp);
+        else if (state.timeToAp > 0.0f) v = formatTimeCompact(state.timeToAp);
         else                            v = String("---");
         if (v != _advLastValue[ADV_TAP]) {
             printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH,

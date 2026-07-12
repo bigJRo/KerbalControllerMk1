@@ -461,7 +461,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         else if (tIgn < MNVR_TIGN_ALARM_S) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (tIgn < MNVR_TIGN_WARN_S)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        String val = (state.mnvrDeltaV > 0.0f) ? formatTime((int64_t)tIgn) : "---";
+        String val = (state.mnvrDeltaV > 0.0f) ? formatTimeCompact((int64_t)tIgn) : "---";
         mnvrVal(3, 3, "T+Ign:", val, fg, bg);
     }
 
@@ -470,13 +470,13 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         if      (state.mnvrTime < 0.0f)                      { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (state.mnvrTime < state.mnvrDuration * 0.5f) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                                   { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        String val = (state.mnvrDeltaV > 0.0f) ? formatTime((int64_t)state.mnvrTime) : "---";
+        String val = (state.mnvrDeltaV > 0.0f) ? formatTimeCompact((int64_t)state.mnvrTime) : "---";
         mnvrVal(4, 4, "T+Mnvr:", val, fg, bg);
     }
 
     // Row 5 — Burn dur
     {
-        String val = (state.mnvrDuration > 0.0f) ? formatTime((int64_t)state.mnvrDuration) : "---";
+        String val = (state.mnvrDuration > 0.0f) ? formatTimeCompact((int64_t)state.mnvrDuration) : "---";
         mnvrVal(5, 5, "Burn dur:", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 

@@ -618,7 +618,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         String tIntStr;
         if (closing) {
             float t = state.tgtDistance / fabsf(state.tgtVelocity);
-            tIntStr = formatTime((int64_t)t);
+            tIntStr = formatTimeCompact((int64_t)t);
             fg = TFT_DARK_GREEN; bg = TFT_BLACK;
         } else {
             tIntStr = "---";

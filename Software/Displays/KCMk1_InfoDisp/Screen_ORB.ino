@@ -1423,7 +1423,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // Row 3 — PRD (orbital period)
     {
         String v = drawSc.isEscape ? String("\x80")
-                                   : (state.orbitalPeriod > 0.0f ? formatTime(state.orbitalPeriod)
+                                   : (state.orbitalPeriod > 0.0f ? formatTimeCompact(state.orbitalPeriod)
                                                                  : String("---"));
         if (v != _lastReadout[3]) {
             printValue(tft, F, INC_VALUE_X, INC_RDY1, 348, RH, "",
@@ -1477,7 +1477,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;
-        String v = (t > 0.0f) ? formatTime(t) : String("---");
+        String v = (t > 0.0f) ? formatTimeCompact(t) : String("---");
         if (v != _lastReadout[5]) {
             printValue(tft, F, INC_VALUE_X, INC_RDY3, 348, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[5]);

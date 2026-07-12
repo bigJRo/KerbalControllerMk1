@@ -843,7 +843,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                 fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
                      (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
                 bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
-                rpVal(1, "T.Grnd:", formatTime(tGround), fg, bg, 1);
+                rpVal(1, "T.Grnd:", formatTimeCompact(tGround), fg, bg, 1);
             } else {
                 rpVal(1, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK, 1);
             }

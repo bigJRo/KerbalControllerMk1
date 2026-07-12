@@ -206,6 +206,7 @@ String formatFloatUnits(float value, uint8_t decimals, String units);
 String formatSep(float value);
 String formatSepI64(int64_t value);
 String formatTime(float timeVal);
+String formatTimeCompact(float timeVal);  // like formatTime() but compresses hours/days to fit tight cells
 String formatAlt(float value);
 String twString(uint8_t twIndex, bool physTW);
 
