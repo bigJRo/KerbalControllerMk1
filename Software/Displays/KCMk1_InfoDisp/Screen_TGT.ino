@@ -107,6 +107,14 @@ static const uint8_t  TGT_RP_NR = 7;
 static const tFont   *TGT_RP_LF = &Roboto_Black_28;  // label font (printDispChrome)
 static const tFont   *TGT_RP_F  = &Roboto_Black_36;  // value font (printValue)
 
+// Closure-velocity bar — centred under the scope (mirrors DOCK's approach bar so
+// all three reticle screens share the reticle + bottom-bar layout).
+static const uint16_t TGT_BAR_W      = 450;
+static const uint16_t TGT_BAR_X      = TGT_SCX - TGT_BAR_W / 2;   // 64
+static const uint16_t TGT_BAR_H      = 26;
+static const float    TGT_BAR_MAX_MS = 250.0f;   // full bar = 250 m/s closure
+static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on entry)
+
 
 // ── Previous dot positions (for erase-before-redraw) ─────────────────────────────────
 // 9999 = not yet drawn (skip erase on first frame after chrome)
@@ -218,6 +226,49 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY * 2);
     tft.print("NOSE");
+
+    // Closure bar chrome — label + empty bar, centred under the scope (Black_24,
+    // same geometry math as the DOCK/MNVR bottom bars).
+    uint16_t barY = TGT_SCY + TGT_R + 42;
+    uint16_t lblY = barY - 34;
+    tft.setFont(Roboto_Black_24);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    tft.setCursor(TGT_BAR_X, lblY);
+    tft.print("CLOSURE");
+    tft.drawRect(TGT_BAR_X, barY, TGT_BAR_W, TGT_BAR_H, TFT_GREY);
+}
+
+
+// ── Closure-velocity bar (threshold-gated) ────────────────────────────────────────────
+// Fill proportional to |closure| (full = TGT_BAR_MAX_MS); colour matches the V.Tgt row:
+// green closing, yellow opening, white-on-red when closing too fast at short range.
+static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
+    static const uint16_t barY = TGT_SCY + TGT_R + 42;
+    static const uint16_t lblY = barY - 34;
+
+    if (fabsf(vc - _tgtPrevBarVC) < 0.5f) return;
+    _tgtPrevBarVC = vc;
+
+    float    av      = fabsf(vc);
+    bool     closing = (vc < 0.0f);
+    bool     tooFast = (av > TGT_VCLOSURE_ALARM_MS && dist < RNDZ_DIST_WARN_M);
+    uint16_t barCol  = tooFast ? TFT_RED : (!closing ? TFT_YELLOW : TFT_DARK_GREEN);
+
+    float    fraction = fminf(av / TGT_BAR_MAX_MS, 1.0f);
+    uint16_t fillW    = (uint16_t)(fraction * (TGT_BAR_W - 2));
+    tft.fillRect(TGT_BAR_X + 1, barY + 1, TGT_BAR_W - 2, TGT_BAR_H - 2, TFT_OFF_BLACK);
+    if (fillW > 0)
+        tft.fillRect(TGT_BAR_X + 1, barY + 1, fillW, TGT_BAR_H - 2, barCol);
+
+    // Signed closure value, right-aligned on the label row.
+    char buf[14];
+    snprintf(buf, sizeof(buf), "%+.0fm/s", vc);
+    tft.setFont(Roboto_Black_24);
+    tft.setTextColor(barCol, TFT_BLACK);
+    tft.fillRect(TGT_BAR_X + TGT_BAR_W / 2, lblY, TGT_BAR_W / 2, 30, TFT_BLACK);
+    int16_t tw = getFontStringWidth(&Roboto_Black_24, buf);
+    tft.setCursor(TGT_BAR_X + TGT_BAR_W - tw, lblY);
+    tft.print(buf);
 }
 
 
@@ -272,25 +323,20 @@ static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
         tft.drawCircle(TGT_SCX, TGT_SCY, TGT_RING_15, TFT_DARK_GREEN);
     }
 
-    // Redraw ring labels if the erase box overlaps their NE quadrant positions.
-    // Each label sits at (SCX+3, SCY - RING_r + 3) and is ~14px wide × 12px tall.
-    // Use a generous bounding check: any ring whose label box intersects the erase rect.
-    static const uint16_t lblR[]  = {TGT_RING_15, TGT_RING_30, TGT_RING_45, TGT_RING_60};
-    static const char    *lblTxt[]= {"15", "30", "45", "60"};
-    bool needLabel = false;
-    for (uint8_t i = 0; i < 4; i++) {
-        int16_t lx = TGT_SCX + 3, ly = TGT_SCY - lblR[i] + 3;
-        // Label box: lx..lx+18, ly..ly+12
-        if (boxX1 >= lx && boxX0 <= lx + 18 && boxY1 >= ly && boxY0 <= ly + 12) {
-            needLabel = true; break;
-        }
-    }
-    if (needLabel) {
-        tft.setFont(Roboto_Black_16);
-        tft.setTextColor(TFT_LIGHT_GREY);
+    // Redraw only the ring label(s) whose bbox overlaps the erase box (each sits
+    // at (SCX+3, SCY - RING_r + 3); bbox sized for Roboto_Black_16). Redrawing
+    // only the overlapping one avoids painting a label over a different dot.
+    {
+        static const uint16_t lblR[]  = {TGT_RING_15, TGT_RING_30, TGT_RING_45, TGT_RING_60};
+        static const char    *lblTxt[]= {"15", "30", "45", "60"};
+        bool fontSet = false;
         for (uint8_t i = 0; i < 4; i++) {
-            tft.setCursor(TGT_SCX + 3, TGT_SCY - lblR[i] + 3);
-            tft.print(lblTxt[i]);
+            int16_t lx = TGT_SCX + 3, ly = TGT_SCY - lblR[i] + 3;
+            if (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20) {
+                if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
+                tft.setCursor(lx, ly);
+                tft.print(lblTxt[i]);
+            }
         }
     }
 }
@@ -377,6 +423,7 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     // Reset dot positions — first draw must not try to erase stale coordinates
     _tgtPrevTgtX = 9999; _tgtPrevTgtY = 9999;
     _tgtPrevVelX = 9999; _tgtPrevVelY = 9999;
+    _tgtPrevBarVC = -9999.0f;   // force the closure bar to redraw on entry
 
     // Left panel: clear and draw scope chrome
     tft.fillRect(0, TITLE_TOP, TGT_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -579,6 +626,9 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         }
         tgtVal(6, 8, "T+Int:", tIntStr, fg, bg);
     }
+
+    // ── Closure-velocity bar (left panel, under the scope) ───────────────────────────
+    _tgtDrawClosureBar(tft, state.tgtVelocity, state.tgtDistance);
 
     // ── Redraw dividers — printValue fillRect can overwrite them ─────────────────────
     {

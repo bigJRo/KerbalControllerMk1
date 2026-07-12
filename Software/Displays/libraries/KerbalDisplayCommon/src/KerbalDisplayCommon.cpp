@@ -869,14 +869,30 @@ void printValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
   bool bgChanged     = (valBack != ps.prevBg)    && (ps.prevBg     != 0x0001);
   bool heightChanged = (newH    != ps.prevHeight) && (ps.prevHeight != 0);
 
+  // Left clear bound. textRight right-aligns the value at x0+w-textW-TEXT_BORDER
+  // WITHOUT clamping, so a value wider than the cell (regionW) is drawn spilling
+  // left of regionX — into the gap between a (usually smaller-font) label and the
+  // value region. When a narrower value later replaces it, a clear that starts at
+  // regionX leaves that overflow behind as a ghost (e.g. the leading digit of a
+  // former hours-form time). Extend the clear left to the previous value's real
+  // left edge. Clamp so we never reach more than a label-gap's worth to the left
+  // (protects a same-font label) nor past the cell's left border.
+  int16_t clearX = regionX;
+  if (ps.prevWidth != 0) {
+    int16_t prevDrawX = x0 + w - (int16_t)ps.prevWidth - TEXT_BORDER;
+    if (prevDrawX < clearX) clearX = prevDrawX;
+    if (clearX < regionX - 56) clearX = regionX - 56;
+    if (clearX < (int16_t)(x0 + TEXT_BORDER)) clearX = x0 + TEXT_BORDER;
+  }
+
   if (bgChanged || heightChanged) {
-    tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
+    tft.fillRect(clearX, y0 + 1, (regionX + regionW) - clearX, h - 2, backColor);
   }
 
   textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
 
   if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth) {
-    tft.fillRect(regionX, y0 + 1, newTextX - regionX, h - 2, backColor);
+    tft.fillRect(clearX, y0 + 1, newTextX - clearX, h - 2, backColor);
   }
 
   ps.prevWidth  = (uint16_t)newTextW;
