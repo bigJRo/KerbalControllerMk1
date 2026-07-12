@@ -58,12 +58,16 @@
 
 // ── Layout ────────────────────────────────────────────────────────────────────────────
 static const uint16_t ORB_TITLE_TOP  = 62;
-static const uint16_t ORB_SCREEN_H   = 480;
-static const uint16_t ORB_MAX_R      = 150;   // orbit half-extent (pixels)
+static const uint16_t ORB_SCREEN_H   = 600;   // full panel height (rev-2 1024x600)
+static const uint16_t ORB_MAX_R      = 190;   // orbit half-extent (pixels)
 
-static const int16_t  ORB_PCX = 180;
-static const int16_t  ORB_ICX = 540;
-static const int16_t  ORB_CY  = 233;
+// rev-2: the two graphical elements each fill half of the 940px-wide content
+// area. Divider at x=470. PLAN occupies x=[0,470] (centre 235); INCL occupies
+// x=[470,940] (centre 705). Shared vertical centre at y=287, below the header
+// strip (y=62..92) and above the bottom readout strip (y=488..).
+static const int16_t  ORB_PCX = 235;
+static const int16_t  ORB_ICX = 705;
+static const int16_t  ORB_CY  = 287;
 
 // Header strip — protected from scene repaints. Holds ORBIT/INCL labels and
 // the SOI body name. Scene repaints fillRect below this; chrome and the
@@ -81,35 +85,34 @@ static const int16_t  HDR_Y1   = 92;   // bottom of header strip
 //                          inside the repaint function after the fillRect.
 //   PLAN_CLIP_Y0/Y1      — inset for marker LABEL placement so labels don't
 //                          drift above the drawing area.
-static const int16_t  PLAN_X0  = 6,   PLAN_X1 = 354;
+static const int16_t  PLAN_X0  = 6,   PLAN_X1 = 468;
 static const int16_t  PLAN_Y0  = HDR_Y1;       // 92 — drawing bound
-static const int16_t  PLAN_Y1  = 400;
+static const int16_t  PLAN_Y1  = 508;
 static const int16_t  PLAN_FILL_Y0 = HDR_Y0;   // 62 — wide erase bound
 static const int16_t  PLAN_CLIP_Y0 = HDR_Y1 + 2;   // 94
-static const int16_t  PLAN_CLIP_Y1 = PLAN_Y1 - 2;  // 398
+static const int16_t  PLAN_CLIP_Y1 = PLAN_Y1 - 2;  // 506
 
 // Readout strip (bottom-left of PLAN panel, Roboto_Black_20)
-static const uint16_t ORB_RDY1 = 404;  // Alt.SL row
-static const uint16_t ORB_RDY2 = 430;  // Pe row
-static const uint16_t ORB_RDY3 = 456;  // Ap row
+static const uint16_t ORB_RDY1 = 515;  // Alt.SL row
+static const uint16_t ORB_RDY2 = 542;  // Pe row
+static const uint16_t ORB_RDY3 = 569;  // Ap row
 
-// ── INCL panel layout (right half, x=[362,719]) ───────────────────────────────────────
-static const int16_t  INC_CX   = 540;  // panel centre x
-static const int16_t  INC_CY   = 233;  // panel centre y (shared with ORB_CY)
-// Orbit line half-length. Reduced from 150 to 130 to clear the 4-row readout
-// strip below (top row = Inc at y=378). At 90° inclination, line extends
-// bodyCY ± INC_L = 233 ± 130 = 103..363, giving ~13px clearance above the
-// readout strip.
-static const uint16_t INC_L    = 130;
-static const uint16_t INC_BR   =  20;  // body disc radius (px)
+// ── INCL panel layout (right half, x=[470,940]) ───────────────────────────────────────
+static const int16_t  INC_CX   = 705;  // panel centre x
+static const int16_t  INC_CY   = 287;  // panel centre y (shared with ORB_CY)
+// Orbit line half-length. At 90° inclination the line extends bodyCY ± INC_L =
+// 287 ± 185 = 102..472, clearing both the header strip (bottom y=92) and the
+// 4-row readout strip below (top row = Inc at y=488).
+static const uint16_t INC_L    = 185;
+static const uint16_t INC_BR   =  26;  // body disc radius (px)
 
-static const int16_t  INCL_X0 = 362, INCL_X1 = 719;
+static const int16_t  INCL_X0 = 476, INCL_X1 = 938;
 static const int16_t  INCL_Y0 = HDR_Y1;
-// INCL panel extends down only to y=374 to leave space for the 4th readout
-// row at y=378. PLAN panel remains 3 rows (y=404..456 strip).
-static const int16_t  INCL_Y1 = 374;
-// INCL graphics never reach above y=92 (body at y=233, INC_L=130 means top is
-// y=103), so the fillRect matches the drawing bound exactly — no need to
+// INCL panel extends down only to y=482 to leave space for the 4-row readout
+// strip below (top row = Inc at y=488). PLAN panel has 3 rows (y=515..569).
+static const int16_t  INCL_Y1 = 482;
+// INCL graphics never reach above y=92 (body at y=287, INC_L=185 means top is
+// y=102), so the fillRect matches the drawing bound exactly — no need to
 // erase into the header strip, which would force a body-name redraw.
 static const int16_t  INCL_FILL_Y0 = INCL_Y0;
 static const int16_t  INCL_CLIP_Y0 = HDR_Y1 + 2;
@@ -117,12 +120,12 @@ static const int16_t  INCL_CLIP_Y1 = INCL_Y1 - 2;
 
 // Readout strip (bottom-right)
 // Order: Inc (4th row, top) / PRD / Arg.Pe / T+Pe or T+Ap
-static const uint16_t INC_RDY0 = 378;  // Inc (inclination) row — NEW, top
-static const uint16_t INC_RDY1 = 404;  // PRD (period) row
-static const uint16_t INC_RDY2 = 430;  // Arg.Pe row
-static const uint16_t INC_RDY3 = 456;  // T+Pe or T+Ap row
-static const uint16_t INC_LABEL_X = 366;
-static const uint16_t INC_VALUE_X = 452;
+static const uint16_t INC_RDY0 = 488;  // Inc (inclination) row — top
+static const uint16_t INC_RDY1 = 515;  // PRD (period) row
+static const uint16_t INC_RDY2 = 542;  // Arg.Pe row
+static const uint16_t INC_RDY3 = 569;  // T+Pe or T+Ap row
+static const uint16_t INC_LABEL_X = 480;
+static const uint16_t INC_VALUE_X = 580;
 
 // ── Body parameters ───────────────────────────────────────────────────────────────────
 // Body colors are NOT stored here — see kspBodyColor() / kspAtmoColor() in
@@ -306,7 +309,7 @@ static void _orbComputeScene(OrbScene &sc) {
     sc.rPe_m       = fmaxf(PeA_m + sc.bodyR_m, 1.0f);
     sc.incl_deg    = state.inclination;
 
-    const float PRE_SCALE_PX = 167.0f;
+    const float PRE_SCALE_PX = 210.0f;
     sc.r_pe_px = isEsc
                  ? (sc.rPe_m / (3.0f * sc.bodyR_m)) * PRE_SCALE_PX
                  : (float)ORB_MAX_R;
@@ -507,7 +510,7 @@ static void _orbDrawEllipse(KCM_TFT &tft, float ecc, float argOfPe_rad, uint16_t
 // Draw SOI view — body at panel centre, SOI ring dashed, orbit arc, Pe marker.
 // No vessel dot here — Layer 3 handles that uniformly.
 static void _orbDrawSOIView(KCM_TFT &tft, const OrbScene &sc) {
-    const float SOI_PX = 155.0f;
+    const float SOI_PX = 190.0f;
     const int16_t FX = ORB_PCX, FY = ORB_CY;
 
     float scale   = SOI_PX / sc.soi_m;
@@ -923,7 +926,7 @@ static void _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad) {
     float scale_m_to_px = 0.0f;
     int16_t fx, fy;
     if (sc.useSoiView) {
-        const float SOI_PX = 155.0f;
+        const float SOI_PX = 190.0f;
         scale_m_to_px = SOI_PX / sc.soi_m;
         fx = ORB_PCX; fy = ORB_CY;
     } else {
@@ -1031,7 +1034,7 @@ static uint32_t    _vesselUpdateCount = 0;
 // a clean redraw when the body actually changes.
 static void _orbDrawBodyName(KCM_TFT &tft, uint8_t bodyIdx) {
     textRight(tft, &Roboto_Black_20,
-              362, ORB_TITLE_TOP + 5, 360, 24,
+              476, ORB_TITLE_TOP + 5, 460, 24,
               String(ORB_BODIES[bodyIdx].name),
               TFT_LIGHT_GREY, TFT_BLACK);
     _lastBodyIdxDrawn = (int16_t)bodyIdx;
@@ -1127,9 +1130,9 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     _lastTLabel        = -1;
     for (uint8_t i = 0; i < 7; i++) { _orbPS[i] = PrintState{}; _lastReadout[i] = String("\x01"); }
 
-    // Panel divider
-    tft.drawLine(360, ORB_TITLE_TOP, 360, ORB_SCREEN_H, TFT_GREY);
-    tft.drawLine(361, ORB_TITLE_TOP, 361, ORB_SCREEN_H, TFT_GREY);
+    // Panel divider — centred at x=470 (half of the 940px content area)
+    tft.drawLine(470, ORB_TITLE_TOP, 470, ORB_SCREEN_H, TFT_GREY);
+    tft.drawLine(471, ORB_TITLE_TOP, 471, ORB_SCREEN_H, TFT_GREY);
 
     // Panel labels "ORBIT" and "INCL" are intentionally absent — the screen
     // title already says "ORBIT" and the left/right functional split is clear
@@ -1138,7 +1141,8 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
 
     // Body name — right-justified over INCL panel, in the header strip.
     // Drawn once in chrome, refreshed only when bodyIdx changes. The body
-    // graphic is at x=520..560 so this name at x=640..719 is never overlapped.
+    // graphic is at x=679..731 (INC_CX ± INC_BR) and never rises above y=102,
+    // so this name in the header strip (y=67..91) is never overlapped.
     _orbDrawBodyName(tft, _orbBodyIdx());
 
     // Readout strip labels. PLAN side is 3 rows; INCL side is 4 rows (Inc
@@ -1398,7 +1402,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     {
         String v = (altSL_m >= 0.0f) ? formatAlt(altSL_m) : String("---");
         if (v != _lastReadout[0]) {
-            printValue(tft, F, 110, ORB_RDY1, 246, RH, "",
+            printValue(tft, F, 110, ORB_RDY1, 340, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[0]);
             _lastReadout[0] = v;
         }
@@ -1412,7 +1416,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
         bool  peHid  = !drawSc.isEscape && (drawSc.rPe_m <= drawSc.bodyR_m);
         String v = peHid ? String("---") : formatAlt(PeA_m);
         if (v != _lastReadout[1]) {
-            printValue(tft, F, 110, ORB_RDY2, 246, RH, "",
+            printValue(tft, F, 110, ORB_RDY2, 340, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[1]);
             _lastReadout[1] = v;
         }
@@ -1421,7 +1425,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     {
         String v = drawSc.isEscape ? String("\x80") : formatAlt(ApA_m);
         if (v != _lastReadout[2]) {
-            printValue(tft, F, 110, ORB_RDY3, 246, RH, "",
+            printValue(tft, F, 110, ORB_RDY3, 340, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[2]);
             _lastReadout[2] = v;
         }
@@ -1432,7 +1436,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
                                    : (state.orbitalPeriod > 0.0f ? formatTime(state.orbitalPeriod)
                                                                  : String("---"));
         if (v != _lastReadout[3]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY1, 267, RH, "",
+            printValue(tft, F, INC_VALUE_X, INC_RDY1, 350, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[3]);
             _lastReadout[3] = v;
         }
@@ -1442,7 +1446,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
         char buf[10]; dtostrf(state.argOfPe, 1, 1, buf);
         String v = String(buf) + String("\xb0");
         if (v != _lastReadout[4]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY2, 267, RH, "",
+            printValue(tft, F, INC_VALUE_X, INC_RDY2, 350, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[4]);
             _lastReadout[4] = v;
         }
@@ -1485,7 +1489,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
         float t = showPe ? rawPe : rawAp;
         String v = (t > 0.0f) ? formatTime(t) : String("---");
         if (v != _lastReadout[5]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY3, 267, RH, "",
+            printValue(tft, F, INC_VALUE_X, INC_RDY3, 350, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[5]);
             _lastReadout[5] = v;
         }
@@ -1499,7 +1503,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
         char buf[10]; dtostrf(drawSc.incl_deg, 1, 1, buf);
         String v = String(buf) + String("\xb0");
         if (v != _lastReadout[6]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY0, 267, RH, "",
+            printValue(tft, F, INC_VALUE_X, INC_RDY0, 350, RH, "",
                        v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[6]);
             _lastReadout[6] = v;
         }
