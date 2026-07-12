@@ -204,10 +204,24 @@ const float MNVR_DV_MARGIN = 1.1f;
 // CommNet signal (percent)
 const float VEH_SIGNAL_WARN_PCT = 50.0f;   // yellow — weak link
 
-// Thermal limits (percent of part limit, skin temperature)
+// ── Thermal & electrical (annunciator-aligned) ───────────────────────────────
+// Thermal limits (percent of part limit; core or skin temperature). Alarm aligned
+// to the Annunciator CW_HIGH_TEMP (KCM_TEMP_ALARM_PCT); the warn tier is a
+// display-only yellow pre-alarm (the C&W panel has no temperature warning tier).
+const uint8_t TEMP_WARN_PCT  = 75;                  // yellow — getting hot
+const uint8_t TEMP_ALARM_PCT = KCM_TEMP_ALARM_PCT;  // white-on-red — critical (= 90)
+
+// Electric charge (fraction 0..1). Alarm aligned to Annunciator CW_BUS_VOLTAGE
+// (KCM_EC_LOW_ALARM_FRAC = 5%); warn aligned to the resource-low convention
+// (KCM_RES_LOW_WARN_FRAC = 20%, same tier as CW_PROP_LOW / CW_RCS_LOW).
+const float EC_LOW_WARN_FRAC  = KCM_RES_LOW_WARN_FRAC;   // yellow — 20%
+const float EC_LOW_ALARM_FRAC = KCM_EC_LOW_ALARM_FRAC;   // white-on-red — 5%
+
+// VEH screen thermal bar — reuses the shared thresholds above; SUPPRESS is
+// VEH-only (hides the bar while nominal — a display feature with no C&W analog).
 const uint8_t VEH_TEMP_SUPPRESS_PCT = 40;   // below this: bar suppressed (nominal)
-const uint8_t VEH_TEMP_WARN_PCT     = 70;   // yellow — getting warm
-const uint8_t VEH_TEMP_ALARM_PCT    = 85;   // white-on-red — critical
+const uint8_t VEH_TEMP_WARN_PCT     = TEMP_WARN_PCT;
+const uint8_t VEH_TEMP_ALARM_PCT    = TEMP_ALARM_PCT;
 
 
 /***************************************************************************************

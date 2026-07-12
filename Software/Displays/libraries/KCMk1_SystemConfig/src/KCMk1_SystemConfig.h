@@ -154,3 +154,6 @@
 #define KCM_HIGH_G_ALARM_NEG      -5.0f   // CW_HIGH_G_WARN    / G_ALARM_NEG
 #define KCM_LOW_DV_MS            150.0f   // CW_LOW_DV_MS      / DV_STG_ALARM_MS
 #define KCM_LOW_BURN_S            60.0f   // CW_LOW_BURN_S     / LNCH_BURNTIME_ALARM_S
+#define KCM_TEMP_ALARM_PCT          90    // CW_HIGH_TEMP (tempAlarm) — core/skin temp % of limit
+#define KCM_EC_LOW_ALARM_FRAC     0.05f   // CW_BUS_VOLTAGE (CW_EC_LOW_FRAC) — electric charge fraction
+#define KCM_RES_LOW_WARN_FRAC     0.20f   // CW_PROP_LOW / CW_RCS_LOW yellow tier — generic "resource low" warn

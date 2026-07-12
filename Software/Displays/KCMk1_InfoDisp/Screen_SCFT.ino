@@ -1151,26 +1151,25 @@ static const int16_t THR_X       = 2;
 static const int16_t THR_BAR_W   = 18;
 static const int16_t THR_TICK_X0 = THR_X + THR_BAR_W;      // 20
 static const int16_t THR_LABEL_H = 62;                     // rotated "THR" label at bottom
-static const int16_t THR_TOP_Y   = TITLE_TOP + 10;         // 72 — 100% mark (clears the title rule)
-static const int16_t THR_BOT_Y   = SCREEN_H - THR_LABEL_H - 4;  // 534 — 0% mark
-static const int16_t THR_TRACK_H = THR_BOT_Y - THR_TOP_Y;       // 462
+static const int16_t THR_TOP_Y   = SCFT_PTAPE_Y + 6;       // 100 — 100% mark sits below the
+                                                           //   "Pitch:" label (bottom y=92)
+static const int16_t THR_BOT_Y   = SCREEN_H - THR_LABEL_H - 14; // 524 — 0% mark; range chosen so the
+                                                           //   20% ticks bracket (not overlap) the
+                                                           //   pitch value box (y 281..319)
+static const int16_t THR_TRACK_H = THR_BOT_Y - THR_TOP_Y;       // 424
 static float _scftPrevThrottle   = -9999.0f;
 
 static void _scftDrawThrottleChrome(KCM_TFT &tft) {
     // Right border of the strip
     tft.drawLine(THR_TICK_X0 + 1, TITLE_TOP, THR_TICK_X0 + 1, SCREEN_H - 1, TFT_GREY);
     tft.setFont(Roboto_Black_12);
-    for (int16_t p = 0; p <= 100; p += 25) {
-        int16_t ty   = THR_BOT_Y - (int16_t)((float)p / 100.0f * THR_TRACK_H);
-        bool    major = (p % 50 == 0);
-        tft.drawLine(THR_TICK_X0, ty, THR_TICK_X0 + (major ? 10 : 6), ty,
-                     major ? TFT_LIGHT_GREY : TFT_GREY);
-        if (major) {
-            tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-            tft.setCursor(THR_TICK_X0 + 12, ty - 6);
-            char lbl[4]; snprintf(lbl, sizeof(lbl), "%d", p);
-            tft.print(lbl);
-        }
+    for (int16_t p = 0; p <= 100; p += 20) {
+        int16_t ty = THR_BOT_Y - (int16_t)((float)p / 100.0f * THR_TRACK_H);
+        tft.drawLine(THR_TICK_X0, ty, THR_TICK_X0 + 10, ty, TFT_LIGHT_GREY);
+        tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+        tft.setCursor(THR_TICK_X0 + 12, ty - 6);
+        char lbl[4]; snprintf(lbl, sizeof(lbl), "%d", p);
+        tft.print(lbl);
     }
     // "THR" label — vertical, at the bottom, matching the Pitch/Hdg label style
     drawVerticalText(tft, THR_X, SCREEN_H - THR_LABEL_H, THR_BAR_W, THR_LABEL_H,
@@ -1191,19 +1190,21 @@ static void _scftUpdateThrottle(KCM_TFT &tft, float throttle) {
 // ── Vitals strip (bottom — occupies the ACFT slip slot) ───────────────────────────────
 // Three horizontal bars: Electric Charge %, hottest core temp %, hottest skin temp %.
 // EC is green when high (low = bad); temps are green when low (high = bad).
-static const int16_t VIT_X      = SCFT_HDG_TAPE_X;                    // 112
-static const int16_t VIT_W      = SCFT_HDG_TAPE_W;                    // 466
-static const int16_t VIT_Y      = SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H + 2; // just below the HDG box
-static const int16_t VIT_ROW_H  = 14;
-static const int16_t VIT_LBL_W  = 54;   // label column ("SKIN")
-static const int16_t VIT_VAL_W  = 46;   // value column ("100%")
-static const int16_t VIT_BAR_H  = 10;
+static const int16_t VIT_Y         = SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H + 2; // just below the HDG box
+static const int16_t VIT_ROW_H     = 14;
+static const int16_t VIT_BAR_H     = 10;
+static const int16_t VIT_LBL_RIGHT = SCFT_PTAPE_X + SCFT_PTAPE_W;      // 112 — labels right-align here
+                                                                      //   (= pitch tape right edge)
+static const int16_t VIT_BAR_X     = VIT_LBL_RIGHT + 4;               // 116 — bars start just right of it
+static const int16_t VIT_RIGHT     = SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W; // 578 — strip right edge (divider)
+static const int16_t VIT_VAL_W     = 46;                              // value column ("100%")
+static const int16_t VIT_BAR_RIGHT = VIT_RIGHT - VIT_VAL_W;           // 532 — bar track right edge
 static int16_t _scftPrevEC   = -9999;
 static int16_t _scftPrevCore = -9999;
 static int16_t _scftPrevSkin = -9999;
 
-static inline int16_t _scftVitBarX() { return VIT_X + VIT_LBL_W; }
-static inline int16_t _scftVitBarW() { return VIT_W - VIT_LBL_W - VIT_VAL_W; }
+static inline int16_t _scftVitBarX() { return VIT_BAR_X; }
+static inline int16_t _scftVitBarW() { return VIT_BAR_RIGHT - VIT_BAR_X; }
 static inline int16_t _scftVitBarY(uint8_t row) {
     return VIT_Y + row * VIT_ROW_H + (VIT_ROW_H - VIT_BAR_H) / 2;
 }
@@ -1213,30 +1214,37 @@ static void _scftVitalsChrome(KCM_TFT &tft) {
     static const char *labels[] = {"EC", "CORE", "SKIN"};
     for (uint8_t i = 0; i < 3; i++) {
         int16_t ry = VIT_Y + i * VIT_ROW_H;
+        int16_t lw = getFontStringWidth(&Roboto_Black_12, labels[i]);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-        tft.setCursor(VIT_X, ry);
+        tft.setCursor(VIT_LBL_RIGHT - lw, ry);   // right-aligned to the pitch tape edge
         tft.print(labels[i]);
         tft.drawRect(_scftVitBarX(), _scftVitBarY(i), _scftVitBarW(), VIT_BAR_H, TFT_GREY);
     }
 }
 
 // Draw one vitals bar fill + value. lowIsBad=true → low % is the alarm (EC).
+// Thresholds are the shared annunciator-aligned values (EC: 20%/5%, temp: 75/90).
 static void _scftDrawVitalBar(KCM_TFT &tft, uint8_t row, int16_t pct, bool lowIsBad) {
     pct = constrain(pct, (int16_t)0, (int16_t)100);
-    uint16_t col = lowIsBad ? ((pct < 20) ? TFT_RED : (pct < 50) ? TFT_YELLOW : TFT_DARK_GREEN)
-                            : ((pct > 90) ? TFT_RED : (pct > 75) ? TFT_YELLOW : TFT_DARK_GREEN);
+    uint16_t col;
+    if (lowIsBad)   // electric charge — low charge is the alarm
+        col = (pct < (int16_t)(EC_LOW_ALARM_FRAC * 100.0f)) ? TFT_RED :
+              (pct < (int16_t)(EC_LOW_WARN_FRAC  * 100.0f)) ? TFT_YELLOW : TFT_DARK_GREEN;
+    else            // temperature — high temp is the alarm
+        col = (pct > TEMP_ALARM_PCT) ? TFT_RED :
+              (pct > TEMP_WARN_PCT)  ? TFT_YELLOW : TFT_DARK_GREEN;
     int16_t bx = _scftVitBarX(), bw = _scftVitBarW(), by = _scftVitBarY(row);
     int16_t fillW = (int16_t)((float)pct / 100.0f * (bw - 2));
     tft.fillRect(bx + 1, by + 1, bw - 2, VIT_BAR_H - 2, TFT_OFF_BLACK);
     if (fillW > 0) tft.fillRect(bx + 1, by + 1, fillW, VIT_BAR_H - 2, col);
-    // Value text — right-aligned in the value column
+    // Value text — right-aligned in the value column (right of the bar track)
     int16_t ry = VIT_Y + row * VIT_ROW_H;
     char buf[6]; snprintf(buf, sizeof(buf), "%d%%", pct);
     int16_t vw = getFontStringWidth(&Roboto_Black_12, buf);
-    tft.fillRect(VIT_X + VIT_W - VIT_VAL_W, ry, VIT_VAL_W, VIT_ROW_H, TFT_BLACK);
+    tft.fillRect(VIT_BAR_RIGHT, ry, VIT_VAL_W, VIT_ROW_H, TFT_BLACK);
     tft.setFont(Roboto_Black_12);
     tft.setTextColor(col, TFT_BLACK);
-    tft.setCursor(VIT_X + VIT_W - vw - 2, ry);
+    tft.setCursor(VIT_RIGHT - vw - 2, ry);
     tft.print(buf);
 }
 
