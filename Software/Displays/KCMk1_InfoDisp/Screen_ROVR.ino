@@ -303,10 +303,15 @@ static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
 // Text drawn with top-left cursor; glyph metrics estimated empirically (RA8875 has
 // no text-metric API in this library). See inside the loop for per-font numbers.
 //
-// When `erase` is true, all labels are drawn in black with a black background —
-// this wipes any glyph pixels from the previous draw at this angle.
+// When `erase` is true, each label's glyph box is wiped with a hardware fillRect
+// instead of re-rendering the glyph black-on-black. Text rasterization is the most
+// expensive software primitive in this driver; the fillRect covers the same box
+// (cursorX..cursorX+width, cursorY..cursorY+cap_height) at a fraction of the cost.
+// The box reaches inward to R≈136, still clear of the target triangle (R≤135), and
+// outward to R≈169, clear of the ring (R=200) and ticks (R≥178).
 static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
     tft.setFont(Roboto_Black_28);
+    const int16_t capH = (int16_t)Roboto_Black_28.cap_height;
 
     struct LabelSpec { int16_t worldDeg; const char *text; uint16_t color; int16_t r; };
     static const LabelSpec labels[] = {
@@ -336,10 +341,17 @@ static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
         int16_t cursorX = x - textW / 2;
         int16_t cursorY = y - textH / 2;
 
-        uint16_t fg = erase ? TFT_BLACK : labels[i].color;
-        tft.setTextColor(fg, TFT_BLACK);
-        tft.setCursor(cursorX, cursorY);
-        tft.print(labels[i].text);
+        if (erase) {
+            // Hardware fillRect over the glyph box — much cheaper than a black
+            // text render. Use the true glyph width (+2 px slack) so no stray
+            // pixels survive.
+            int16_t realW = getFontStringWidth(&Roboto_Black_28, labels[i].text);
+            tft.fillRect(cursorX - 1, cursorY, realW + 2, capH, TFT_BLACK);
+        } else {
+            tft.setTextColor(labels[i].color, TFT_BLACK);
+            tft.setCursor(cursorX, cursorY);
+            tft.print(labels[i].text);
+        }
     }
 }
 
@@ -582,6 +594,21 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
 //
 // The label and value are centered within the V.Srf block (y=ROVR_VSRF_Y, height
 // ROVR_VSRF_H). Both strip rects are exactly `ROVR_LBL_H` and `ROVR_VAL_H` tall.
+// Erase a previously-drawn centered value with a hardware fillRect instead of
+// re-rendering the old string black-on-black. Covers exactly the box textCenter
+// would have drawn into (same centering math), so it is behaviourally identical
+// but avoids an expensive software glyph rasterization each frame. `bg` is the
+// fill color (TFT_BLACK normally, or the previous background for threshold cells).
+static inline void _rovrEraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
+                                           int16_t x0, int16_t y0, int16_t w, int16_t h,
+                                           const char *oldStr, uint16_t bg) {
+    int16_t tw   = getFontStringWidth(font, oldStr);
+    int16_t capH = (int16_t)font->cap_height;
+    int16_t bx   = x0 + (w - tw) / 2;
+    int16_t by   = y0 + (h - capH) / 2;
+    tft.fillRect(bx - 1, by, tw + 2, capH, bg);
+}
+
 static inline int16_t _rovrVSrfLabelY() {
     int16_t totalContent = ROVR_LBL_H + ROVR_LBL_VAL_GAP + ROVR_VAL_H;
     return ROVR_VSRF_Y + (ROVR_VSRF_H - totalContent) / 2;
@@ -633,10 +660,9 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
     if (_rovrPrevVSrf > -9000) {
         char oldBuf[16];
         snprintf(oldBuf, sizeof(oldBuf), "%+.1f m/s", (float)_rovrPrevVSrf / 10.0f);
-        textCenter(tft, &Roboto_Black_36,
-                   ROVR_LCOL_X, valueY,
-                   ROVR_LCOL_W, ROVR_VAL_H,
-                   oldBuf, TFT_BLACK, TFT_BLACK);
+        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+                                ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
+                                oldBuf, TFT_BLACK);
     }
 
     // Color: green forward, yellow reverse, grey neutral
@@ -701,10 +727,9 @@ static void _rovrUpdateEc(KCM_TFT &tft) {
     if (_rovrPrevEcPct > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%d%%", _rovrPrevEcPct);
-        textCenter(tft, &Roboto_Black_36,
-                   ROVR_LCOL_X, valueY,
-                   ROVR_LCOL_W, ROVR_VAL_H,
-                   oldBuf, _rovrPrevEcBg, _rovrPrevEcBg);
+        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+                                ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
+                                oldBuf, _rovrPrevEcBg);
     }
 
     char buf[8];
@@ -840,10 +865,9 @@ static void _rovrUpdateElev(KCM_TFT &tft) {
     // and drawing it black-on-black.
     if (_rovrPrevElev > -90000) {
         String oldStr = formatAlt((float)_rovrPrevElev);
-        textCenter(tft, &Roboto_Black_36,
-                   ROVR_RCOL_X, valueY,
-                   ROVR_RCOL_W, ROVR_VAL_H,
-                   oldStr, TFT_BLACK, TFT_BLACK);
+        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+                                ROVR_RCOL_X, valueY, ROVR_RCOL_W, ROVR_VAL_H,
+                                oldStr.c_str(), TFT_BLACK);
     }
 
     String newStr = formatAlt((float)iElev);
@@ -1130,10 +1154,9 @@ static void _rovrUpdatePitch(KCM_TFT &tft) {
         if (_rovrPrevPitchVal > -9000) {
             char oldBuf[12];
             snprintf(oldBuf, sizeof(oldBuf), "%+.1f\xB0", (float)_rovrPrevPitchVal / 10.0f);
-            textCenter(tft, &Roboto_Black_36,
-                       ROVR_RCOL_X, ROVR_PITCH_VAL_Y,
-                       ROVR_RCOL_W, ROVR_TILT_VAL_H,
-                       oldBuf, TFT_BLACK, TFT_BLACK);
+            _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+                                    ROVR_RCOL_X, ROVR_PITCH_VAL_Y, ROVR_RCOL_W, ROVR_TILT_VAL_H,
+                                    oldBuf, TFT_BLACK);
         }
         char buf[12];
         snprintf(buf, sizeof(buf), "%+.1f\xB0", pitch);
@@ -1170,10 +1193,9 @@ static void _rovrUpdateRoll(KCM_TFT &tft) {
         if (_rovrPrevRollVal > -9000) {
             char oldBuf[12];
             snprintf(oldBuf, sizeof(oldBuf), "%+.1f\xB0", (float)_rovrPrevRollVal / 10.0f);
-            textCenter(tft, &Roboto_Black_36,
-                       ROVR_RCOL_X, ROVR_ROLL_VAL_Y,
-                       ROVR_RCOL_W, ROVR_TILT_VAL_H,
-                       oldBuf, TFT_BLACK, TFT_BLACK);
+            _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+                                    ROVR_RCOL_X, ROVR_ROLL_VAL_Y, ROVR_RCOL_W, ROVR_TILT_VAL_H,
+                                    oldBuf, TFT_BLACK);
         }
         char buf[12];
         snprintf(buf, sizeof(buf), "%+.1f\xB0", roll);
@@ -1188,8 +1210,8 @@ static void _rovrUpdateRoll(KCM_TFT &tft) {
 
 // Heading readout — single-line value inside a bordered box above the nose
 // triangle. Box border is drawn once in chrome; this function only touches
-// the value text when the integer heading changes. Value is erased black-on-
-// black before the new value is drawn to handle digit-width changes cleanly.
+// the value text when the integer heading changes. The old value is erased with
+// a hardware fillRect before the new value is drawn to handle digit-width changes.
 //
 // Format: zero-padded 3-digit unsigned heading with ° symbol (e.g. "045°").
 static void _rovrUpdateHdgReadout(KCM_TFT &tft, float hdg) {
@@ -1203,10 +1225,10 @@ static void _rovrUpdateHdgReadout(KCM_TFT &tft, float hdg) {
     if (_rovrPrevHdgVal > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _rovrPrevHdgVal);
-        textCenter(tft, &Roboto_Black_36,
-                   ROVR_HDG_BOX_X, ROVR_HDG_BOX_Y + 2,
-                   ROVR_HDG_BOX_W, ROVR_HDG_BOX_H - 4,
-                   oldBuf, TFT_BLACK, TFT_BLACK);
+        _rovrEraseCenteredValue(tft, &Roboto_Black_36,
+                                ROVR_HDG_BOX_X, ROVR_HDG_BOX_Y + 2,
+                                ROVR_HDG_BOX_W, ROVR_HDG_BOX_H - 4,
+                                oldBuf, TFT_BLACK);
     }
 
     // Draw new value, zero-padded to 3 digits
