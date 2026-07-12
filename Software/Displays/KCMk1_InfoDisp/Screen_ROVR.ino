@@ -15,10 +15,10 @@
        Binary on/off: FWD half green, REV half yellow, both black when neutral
        "FWD" in white and "REV" in dark grey stacked vertically in each half
 
-     COMPASS (centered at 360, 302, R=165):
+     COMPASS (centered at 495, 348, R=205):
        Rotating ring with cardinal letters (N/E/S/W) and numeric labels (03/06/...)
        Fixed nose triangle at top, rover icon at centre
-       Heading readout box above (boxed "XXX°" in Roboto_Black_28)
+       Heading readout box above (boxed "XXX°" in Roboto_Black_36)
        Target bearing triangle inside ring when state.targetAvailable
        "Tgt:" label and formatted distance value in bottom corners outside
        the ring, shown only when state.targetAvailable
@@ -40,12 +40,12 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-// Compass ring shrunk slightly from R=168 to R=165 to accommodate a taller heading
-// readout box (needed for Roboto_Black_28, font_height=33). CY moved down to 302
+// Compass ring sized to R=205 for the 1024x600 content area, with a taller heading
+// readout box (needed for Roboto_Black_36, cap_height=43). CY at 348
 // to maintain roughly equal margins above the heading box (12 px) and below the
 // ring (13 px).
 static const int16_t ROVR_CX             = 495;
-static const int16_t ROVR_CY             = 345;
+static const int16_t ROVR_CY             = 348;
 static const int16_t ROVR_R              = 205;   // outer ring radius
 static const int16_t ROVR_R_TICK_OUTER   = 204;   // tick outer end (1 px inside outer ring)
                                                   //   so erase-in-black doesn't nibble ring
@@ -62,7 +62,7 @@ static const int16_t ROVR_NOSE_HALF_W    = 12;
 
 // Target bearing indicator — triangle INSIDE the ring, positioned just inside
 // the compass labels. Tip R=113 leaves ~4 px visual gap to the label inward
-// glyph edge (~R=117 for Roboto_Black_24), with enough margin that the 6-px
+// glyph edge (~R=117 for Roboto_Black_28), with enough margin that the 6-px
 // erase dilation doesn't overlap the labels when the target bearing aligns
 // with a label position. Tip points OUTWARD (toward the ring); when target is
 // at same heading as vessel, triangle sits at 12 o'clock with tip pointing up.
@@ -82,7 +82,7 @@ static const int16_t ROVR_TGTD_LBL_X     = 290;
 static const int16_t ROVR_TGTD_LBL_W     = 120;
 static const int16_t ROVR_TGTD_VAL_X     = 580;
 static const int16_t ROVR_TGTD_VAL_W     = 120;
-static const int16_t ROVR_TGTD_Y         = 560;
+static const int16_t ROVR_TGTD_Y         = 563;
 static const int16_t ROVR_TGTD_H         = 32;    // hugs screen bottom (y=479)
 
 // Heading readout — single-line boxed value above the nose triangle. The box
@@ -90,8 +90,8 @@ static const int16_t ROVR_TGTD_H         = 32;    // hugs screen bottom (y=479)
 // Format: zero-padded 3-digit heading with ° symbol (e.g. "045°").
 // Box is 38 tall to give the 28pt Roboto Black font (33 px font_height) room
 // to render without the glyph cell's black background overwriting the border.
-static const int16_t ROVR_HDG_BOX_W      = 90;   // widened slightly for the larger font
-static const int16_t ROVR_HDG_BOX_H      = 40;
+static const int16_t ROVR_HDG_BOX_W      = 110;  // widened slightly for the larger font
+static const int16_t ROVR_HDG_BOX_H      = 52;   // Roboto_Black_36 cap 43 + padding
 static const int16_t ROVR_HDG_BOX_X      = ROVR_CX - (ROVR_HDG_BOX_W / 2);
 static const int16_t ROVR_HDG_BOX_Y      = ROVR_CY - ROVR_NOSE_R_BASE - 6 - ROVR_HDG_BOX_H;
 
@@ -167,8 +167,8 @@ static const int16_t ROVR_SAS_Y          = ROVR_GEAR_Y  + ROVR_GEAR_H;        //
 // Within V.Srf and EC% blocks: label on top, numeric value below. Both use the
 // same internal layout metrics. textCenter is called with the block slot (x, y,
 // w, h) so the two lines are centered within each block vertically.
-static const int16_t ROVR_LBL_H          = 26;    // label strip height (Roboto_Black_20 fh=24)
-static const int16_t ROVR_VAL_H          = 38;    // value strip height (Roboto_Black_28 fh=33)
+static const int16_t ROVR_LBL_H          = 32;    // label strip height (Roboto_Black_24 cap=29)
+static const int16_t ROVR_VAL_H          = 48;    // value strip height (Roboto_Black_36 cap=43)
 static const int16_t ROVR_LBL_VAL_GAP    = 2;     // gap between label and value
 
 // ── Right column: elevation / pitch / roll ───────────────────────────────────────────
@@ -185,14 +185,14 @@ static const int16_t ROVR_ELEV_H         = 110;    // matches V.Srf block height
 static const int16_t ROVR_PITCH_Y        = 173;   // adjacent to Elev bottom
 static const int16_t ROVR_PITCH_H        = 214;
 static const int16_t ROVR_ROLL_Y         = 387;   // adjacent to Pitch bottom
-static const int16_t ROVR_ROLL_H         = 213;   // reaches screen bottom (y=479)
+static const int16_t ROVR_ROLL_H         = 213;   // reaches screen bottom (y=600)
 
 // Within each indicator box:
-//   label at top (Roboto_Black_20, height 26)
+//   label at top (Roboto_Black_24, height 32)
 //   silhouette area in middle (approx 130 px tall)
-//   numeric value at bottom (Roboto_Black_28, height 38)
-static const int16_t ROVR_TILT_LBL_H     = 26;
-static const int16_t ROVR_TILT_VAL_H     = 38;
+//   numeric value at bottom (Roboto_Black_36, height 48)
+static const int16_t ROVR_TILT_LBL_H     = 32;
+static const int16_t ROVR_TILT_VAL_H     = 48;
 static const int16_t ROVR_TILT_TOP_PAD   = 4;
 static const int16_t ROVR_TILT_GAP       = 2;
 
@@ -309,7 +309,7 @@ static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
 // When `erase` is true, all labels are drawn in black with a black background —
 // this wipes any glyph pixels from the previous draw at this angle.
 static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
-    tft.setFont(Roboto_Black_24);
+    tft.setFont(Roboto_Black_28);
 
     struct LabelSpec { int16_t worldDeg; const char *text; uint16_t color; int16_t r; };
     static const LabelSpec labels[] = {
@@ -332,10 +332,10 @@ static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
         int16_t x, y;
         _rovrPolar(screenDeg, labels[i].r, x, y);
 
-        // Roboto_Black_24 metrics (empirical): glyph ~14 px wide, ~20 px tall
+        // Roboto_Black_28 metrics (empirical): glyph ~16 px wide, ~24 px tall
         uint8_t textLen = strlen(labels[i].text);
-        int16_t textW = (int16_t)(textLen * 14);
-        int16_t textH = 20;
+        int16_t textW = (int16_t)(textLen * 16);
+        int16_t textH = 24;
         int16_t cursorX = x - textW / 2;
         int16_t cursorY = y - textH / 2;
 
@@ -470,7 +470,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     // appeared (the label is static, so we only draw it once per availability
     // transition).
     if (!_rovrPrevTgtDistAvail) {
-        textLeft(tft, &Roboto_Black_20,
+        textLeft(tft, &Roboto_Black_24,
                  ROVR_TGTD_LBL_X, ROVR_TGTD_Y,
                  ROVR_TGTD_LBL_W, ROVR_TGTD_H,
                  "Tgt:", TFT_WHITE, TFT_BLACK);
@@ -492,7 +492,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     }
 
     String newStr = formatAlt((float)iDist);
-    textRight(tft, &Roboto_Black_20,
+    textRight(tft, &Roboto_Black_24,
               ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
               ROVR_TGTD_VAL_W, ROVR_TGTD_H,
               newStr, TFT_VIOLET, TFT_BLACK);
@@ -593,13 +593,13 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
     // Upper half ("FWD" in white) — backColor is dark green if forward, else black.
     uint16_t upperBg = (newState == +1) ? TFT_DARK_GREEN : TFT_BLACK;
     drawVerticalText(tft, xL, upperY, xW, halfH,
-                     &Roboto_Black_20, "FWD",
+                     &Roboto_Black_24, "FWD",
                      TFT_WHITE, upperBg);
 
     // Lower half ("REV" in dark grey) — backColor is yellow if reverse, else black.
     uint16_t lowerBg = (newState == -1) ? TFT_YELLOW : TFT_BLACK;
     drawVerticalText(tft, xL, lowerY, xW, halfH,
-                     &Roboto_Black_20, "REV",
+                     &Roboto_Black_24, "REV",
                      TFT_DARK_GREY, lowerBg);
 
     _rovrPrevThrFill = newState;
@@ -629,7 +629,7 @@ static void _rovrDrawVSrfChrome(KCM_TFT &tft) {
                  TFT_LIGHT_GREY);
 
     // Label centered in its strip
-    textCenter(tft, &Roboto_Black_20,
+    textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrVSrfLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
                "V.Srf:", TFT_WHITE, TFT_BLACK);
@@ -662,7 +662,7 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
     if (_rovrPrevVSrf > -9000) {
         char oldBuf[16];
         snprintf(oldBuf, sizeof(oldBuf), "%+.1f m/s", (float)_rovrPrevVSrf / 10.0f);
-        textCenter(tft, &Roboto_Black_28,
+        textCenter(tft, &Roboto_Black_36,
                    ROVR_LCOL_X, valueY,
                    ROVR_LCOL_W, ROVR_VAL_H,
                    oldBuf, TFT_BLACK, TFT_BLACK);
@@ -676,7 +676,7 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
 
     char buf[16];
     snprintf(buf, sizeof(buf), "%+.1f m/s", speed);
-    textCenter(tft, &Roboto_Black_28,
+    textCenter(tft, &Roboto_Black_36,
                ROVR_LCOL_X, valueY,
                ROVR_LCOL_W, ROVR_VAL_H,
                buf, fg, TFT_BLACK);
@@ -704,7 +704,7 @@ static void _rovrDrawEcChrome(KCM_TFT &tft) {
                  ROVR_LCOL_W, ROVR_EC_H,
                  TFT_LIGHT_GREY);
 
-    textCenter(tft, &Roboto_Black_20,
+    textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
                "EC%:", TFT_WHITE, TFT_BLACK);
@@ -730,7 +730,7 @@ static void _rovrUpdateEc(KCM_TFT &tft) {
     if (_rovrPrevEcPct > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%d%%", _rovrPrevEcPct);
-        textCenter(tft, &Roboto_Black_28,
+        textCenter(tft, &Roboto_Black_36,
                    ROVR_LCOL_X, valueY,
                    ROVR_LCOL_W, ROVR_VAL_H,
                    oldBuf, _rovrPrevEcBg, _rovrPrevEcBg);
@@ -738,7 +738,7 @@ static void _rovrUpdateEc(KCM_TFT &tft) {
 
     char buf[8];
     snprintf(buf, sizeof(buf), "%d%%", iEc);
-    textCenter(tft, &Roboto_Black_28,
+    textCenter(tft, &Roboto_Black_36,
                ROVR_LCOL_X, valueY,
                ROVR_LCOL_W, ROVR_VAL_H,
                buf, fg, bg);
@@ -765,7 +765,7 @@ static void _rovrUpdateBrake(KCM_TFT &tft) {
     drawButton(tft,
                ROVR_LCOL_X, ROVR_BRAKE_Y,
                ROVR_LCOL_W, ROVR_BRAKE_H,
-               btn, &Roboto_Black_24, false);
+               btn, &Roboto_Black_28, false);
 
     _rovrPrevBrake = newState;
 }
@@ -782,7 +782,7 @@ static void _rovrUpdateGear(KCM_TFT &tft) {
     drawButton(tft,
                ROVR_LCOL_X, ROVR_GEAR_Y,
                ROVR_LCOL_W, ROVR_GEAR_H,
-               btn, &Roboto_Black_24, false);
+               btn, &Roboto_Black_28, false);
 
     _rovrPrevGear = newState;
 }
@@ -823,7 +823,7 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
     drawButton(tft,
                ROVR_LCOL_X, ROVR_SAS_Y,
                ROVR_LCOL_W, ROVR_SAS_H,
-               btn, &Roboto_Black_24, false);
+               btn, &Roboto_Black_28, false);
 
     _rovrPrevSasMode = newMode;
 }
@@ -849,7 +849,7 @@ static void _rovrDrawElevChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_ELEV_Y,
                  ROVR_RCOL_W, ROVR_ELEV_H,
                  TFT_LIGHT_GREY);
-    textCenter(tft, &Roboto_Black_20,
+    textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, _rovrElevLabelY(),
                ROVR_RCOL_W, ROVR_LBL_H,
                "Elev:", TFT_WHITE, TFT_BLACK);
@@ -869,14 +869,14 @@ static void _rovrUpdateElev(KCM_TFT &tft) {
     // and drawing it black-on-black.
     if (_rovrPrevElev > -90000) {
         String oldStr = formatAlt((float)_rovrPrevElev);
-        textCenter(tft, &Roboto_Black_28,
+        textCenter(tft, &Roboto_Black_36,
                    ROVR_RCOL_X, valueY,
                    ROVR_RCOL_W, ROVR_VAL_H,
                    oldStr, TFT_BLACK, TFT_BLACK);
     }
 
     String newStr = formatAlt((float)iElev);
-    textCenter(tft, &Roboto_Black_28,
+    textCenter(tft, &Roboto_Black_36,
                ROVR_RCOL_X, valueY,
                ROVR_RCOL_W, ROVR_VAL_H,
                newStr, TFT_DARK_GREEN, TFT_BLACK);
@@ -1053,8 +1053,8 @@ static uint16_t _rovrTiltValueColor(float angleDeg, float warnDeg, float alarmDe
 }
 
 // Silhouette layout within each tilt box:
-//   top_pad(4) + label(26) + gap(2) + silhouette_area + value(38) + bot_pad(4) = box_H
-// Silhouette area height is (box_H - 74); silhouette centre is in the middle of that.
+//   top_pad(4) + label(32) + gap(2) + silhouette_area + value(48) + bot_pad(4) = box_H
+// Silhouette area height is (box_H - 90); silhouette centre is in the middle of that.
 static const int16_t ROVR_PITCH_SIL_AREA_TOP = ROVR_PITCH_Y + ROVR_TILT_TOP_PAD +
                                                ROVR_TILT_LBL_H + ROVR_TILT_GAP;
 static const int16_t ROVR_PITCH_SIL_AREA_H   = ROVR_PITCH_H - 2 * ROVR_TILT_TOP_PAD -
@@ -1085,7 +1085,7 @@ static void _rovrDrawPitchChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_PITCH_Y,
                  ROVR_RCOL_W, ROVR_PITCH_H,
                  TFT_LIGHT_GREY);
-    textCenter(tft, &Roboto_Black_20,
+    textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_PITCH_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
                "Pitch:", TFT_WHITE, TFT_BLACK);
@@ -1104,7 +1104,7 @@ static void _rovrDrawRollChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_RCOL_X, ROVR_ROLL_Y,
                  ROVR_RCOL_W, ROVR_ROLL_H,
                  TFT_LIGHT_GREY);
-    textCenter(tft, &Roboto_Black_20,
+    textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_ROLL_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
                "Roll:", TFT_WHITE, TFT_BLACK);
@@ -1159,14 +1159,14 @@ static void _rovrUpdatePitch(KCM_TFT &tft) {
         if (_rovrPrevPitchVal > -9000) {
             char oldBuf[12];
             snprintf(oldBuf, sizeof(oldBuf), "%+.1f\xB0", (float)_rovrPrevPitchVal / 10.0f);
-            textCenter(tft, &Roboto_Black_28,
+            textCenter(tft, &Roboto_Black_36,
                        ROVR_RCOL_X, ROVR_PITCH_VAL_Y,
                        ROVR_RCOL_W, ROVR_TILT_VAL_H,
                        oldBuf, TFT_BLACK, TFT_BLACK);
         }
         char buf[12];
         snprintf(buf, sizeof(buf), "%+.1f\xB0", pitch);
-        textCenter(tft, &Roboto_Black_28,
+        textCenter(tft, &Roboto_Black_36,
                    ROVR_RCOL_X, ROVR_PITCH_VAL_Y,
                    ROVR_RCOL_W, ROVR_TILT_VAL_H,
                    buf, valueColor, TFT_BLACK);
@@ -1199,14 +1199,14 @@ static void _rovrUpdateRoll(KCM_TFT &tft) {
         if (_rovrPrevRollVal > -9000) {
             char oldBuf[12];
             snprintf(oldBuf, sizeof(oldBuf), "%+.1f\xB0", (float)_rovrPrevRollVal / 10.0f);
-            textCenter(tft, &Roboto_Black_28,
+            textCenter(tft, &Roboto_Black_36,
                        ROVR_RCOL_X, ROVR_ROLL_VAL_Y,
                        ROVR_RCOL_W, ROVR_TILT_VAL_H,
                        oldBuf, TFT_BLACK, TFT_BLACK);
         }
         char buf[12];
         snprintf(buf, sizeof(buf), "%+.1f\xB0", roll);
-        textCenter(tft, &Roboto_Black_28,
+        textCenter(tft, &Roboto_Black_36,
                    ROVR_RCOL_X, ROVR_ROLL_VAL_Y,
                    ROVR_RCOL_W, ROVR_TILT_VAL_H,
                    buf, valueColor, TFT_BLACK);
@@ -1232,7 +1232,7 @@ static void _rovrUpdateHdgReadout(KCM_TFT &tft, float hdg) {
     if (_rovrPrevHdgVal > -9000) {
         char oldBuf[8];
         snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _rovrPrevHdgVal);
-        textCenter(tft, &Roboto_Black_28,
+        textCenter(tft, &Roboto_Black_36,
                    ROVR_HDG_BOX_X, ROVR_HDG_BOX_Y + 2,
                    ROVR_HDG_BOX_W, ROVR_HDG_BOX_H - 4,
                    oldBuf, TFT_BLACK, TFT_BLACK);
@@ -1241,7 +1241,7 @@ static void _rovrUpdateHdgReadout(KCM_TFT &tft, float hdg) {
     // Draw new value, zero-padded to 3 digits
     char buf[8];
     snprintf(buf, sizeof(buf), "%03d\xB0", iHdg);
-    textCenter(tft, &Roboto_Black_28,
+    textCenter(tft, &Roboto_Black_36,
                ROVR_HDG_BOX_X, ROVR_HDG_BOX_Y + 2,
                ROVR_HDG_BOX_W, ROVR_HDG_BOX_H - 4,
                buf, TFT_DARK_GREEN, TFT_BLACK);
