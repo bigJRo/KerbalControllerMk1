@@ -128,6 +128,17 @@ inline uint16_t acftRowH() {
   return rowHFor(8);
 }
 
+// ── Shared reticle geometry (MNVR / DOCK / TGT) ──────────────────────────────────────
+// The three attitude-reticle screens share an identical black disc + readout panel +
+// bottom bar. Only the angular scale (±20° vs ±60°) and the ring labels differ per
+// screen. Define the common geometry once so a re-layout touches a single place.
+const uint16_t RETICLE_RP_W  = 360;                              // right readout panel width
+const uint16_t RETICLE_RP_X  = SCREEN_W - SIDEBAR_W - RETICLE_RP_W;  // 580 — panel left edge
+const uint16_t RETICLE_CX    = (RETICLE_RP_X - 2) / 2;          // 289 — disc centre in left region
+const uint16_t RETICLE_CY    = 300;                             // disc centre y
+const uint16_t RETICLE_R     = 210;                             // disc radius
+const uint16_t RETICLE_BAR_W = 450;                             // bottom bar width (centred under disc)
+
 /***************************************************************************************
    VALUE FORMATTERS
 ****************************************************************************************/

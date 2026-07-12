@@ -202,6 +202,23 @@ void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
 // no raster gaps. Used for the maneuver/target/port markers on the reticle screens.
 void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint16_t color);
 
+// Shared attitude-reticle chrome for the MNVR / DOCK / TGT screens. All three draw
+// an identical black disc with four concentric rings (r/4, r/2, 3r/4, r coloured
+// dark-green / dark-grey / dark-grey / grey), cardinal cross with a centre gap, a
+// small nose crosshair, 30° minor ticks, and a two-px bezel. They differ only in
+// the cardinal `gap` (18 for MNVR/DOCK, 16 for TGT) and the minor-tick length
+// `tickLen` (14 for MNVR/DOCK, 10 for TGT). Ring degree LABELS, the legend, and the
+// bottom bar remain per-screen (drawn by the caller after this base).
+void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
+                     int16_t gap, int16_t tickLen);
+
+// Repair the reticle chrome inside the box [bx,by]..[bx+2*bh, by+2*bh] after a
+// marker at that location was erased to black. Redraws only the rings / cardinals /
+// crosshair / good-zone that the box overlaps. `gap` matches the value passed to
+// reticleDrawBase for the same screen.
+void reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
+                   int16_t gap, int16_t bx, int16_t by, uint8_t bh);
+
 // --- Basic formatters ---
 String formatInt(uint16_t value);
 String formatFloat(float value, uint8_t decimals);

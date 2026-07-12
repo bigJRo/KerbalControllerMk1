@@ -83,9 +83,9 @@ bool _tgtChromDrawn = false;
 // ── Scope geometry — same centre/radius as the MNVR and DOCK reticles ─────────────────
 // The readout panel sits on the far right (x=580), leaving x=[0,578] for the
 // scope. Centre and radius match MNVR/DOCK exactly for a consistent family look.
-static const int16_t  TGT_SCX    = 289;          // centre of the left region x=[0,578]
-static const int16_t  TGT_SCY    = 300;          // = MNVR/DOCK reticle centre y
-static const int16_t  TGT_R      = 210;          // = MNVR/DOCK reticle radius
+static const int16_t  TGT_SCX    = RETICLE_CX;   // centre of the left region x=[0,578]
+static const int16_t  TGT_SCY    = RETICLE_CY;   // = MNVR/DOCK reticle centre y
+static const int16_t  TGT_R      = RETICLE_R;    // = MNVR/DOCK reticle radius
 static const float    TGT_SCALE  = (float)TGT_R / 60.0f;  // 3.5 px/deg — ±60° full scale
 
 // Ring radii at ±15°, ±30°, ±45°, ±60°
@@ -101,7 +101,7 @@ static const uint8_t TGT_DOT_R_ERASE = 20;  // erase rect half-size
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
-static const uint16_t TGT_RP_W  = 360;
+static const uint16_t TGT_RP_W  = RETICLE_RP_W;
 static const uint16_t TGT_RP_X  = SCREEN_W - SIDEBAR_W - TGT_RP_W;   // 580
 static const uint8_t  TGT_RP_NR = 7;
 static const tFont   *TGT_RP_LF = &Roboto_Black_28;  // label font (printDispChrome)
@@ -109,7 +109,7 @@ static const tFont   *TGT_RP_F  = &Roboto_Black_36;  // value font (printValue)
 
 // Closure-velocity bar — centred under the scope (mirrors DOCK's approach bar so
 // all three reticle screens share the reticle + bottom-bar layout).
-static const uint16_t TGT_BAR_W      = 450;
+static const uint16_t TGT_BAR_W      = RETICLE_BAR_W;
 static const uint16_t TGT_BAR_X      = TGT_SCX - TGT_BAR_W / 2;   // 64
 static const uint16_t TGT_BAR_H      = 26;
 static const float    TGT_BAR_MAX_MS = 250.0f;   // full bar = 250 m/s closure
@@ -145,46 +145,8 @@ static void _tgtClampDot(int16_t &sx, int16_t &sy) {
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
 static void _tgtDrawScopeChrome(KCM_TFT &tft) {
-    // Black disc background
-    tft.fillCircle(TGT_SCX, TGT_SCY, TGT_R, TFT_BLACK);
-
-    // Inner good-zone fill — subtle dark green inside ±15° ring
-    tft.fillCircle(TGT_SCX, TGT_SCY, TGT_RING_15, TFT_OFF_BLACK);
-
-    // Concentric range rings — colours match DOCK/MNVR convention
-    tft.drawCircle(TGT_SCX, TGT_SCY, TGT_RING_15, TFT_DARK_GREEN);  // ±15° — good zone
-    tft.drawCircle(TGT_SCX, TGT_SCY, TGT_RING_30, TFT_DARK_GREY);   // ±30°
-    tft.drawCircle(TGT_SCX, TGT_SCY, TGT_RING_45, TFT_DARK_GREY);   // ±45°
-    tft.drawCircle(TGT_SCX, TGT_SCY, TGT_RING_60, TFT_GREY);        // ±60° boundary
-
-    // Cardinal lines: full-diameter, split by gap at centre for crosshair
-    uint16_t gap = 16, arm = TGT_R - 1;
-    tft.drawLine(TGT_SCX, TGT_SCY - arm, TGT_SCX, TGT_SCY - gap, TFT_DARK_GREY);
-    tft.drawLine(TGT_SCX, TGT_SCY + gap, TGT_SCX, TGT_SCY + arm, TFT_DARK_GREY);
-    tft.drawLine(TGT_SCX - arm, TGT_SCY, TGT_SCX - gap, TGT_SCY, TFT_DARK_GREY);
-    tft.drawLine(TGT_SCX + gap, TGT_SCY, TGT_SCX + arm, TGT_SCY, TFT_DARK_GREY);
-
-    // Nose crosshair symbol at centre
-    tft.drawLine(TGT_SCX - gap + 2, TGT_SCY, TGT_SCX - 4, TGT_SCY, TFT_GREY);
-    tft.drawLine(TGT_SCX + 4,       TGT_SCY, TGT_SCX + gap - 2, TGT_SCY, TFT_GREY);
-    tft.drawLine(TGT_SCX, TGT_SCY - gap + 2, TGT_SCX, TGT_SCY - 4, TFT_GREY);
-    tft.drawLine(TGT_SCX, TGT_SCY + 4,       TGT_SCX, TGT_SCY + gap - 2, TFT_GREY);
-    tft.fillCircle(TGT_SCX, TGT_SCY, 2, TFT_GREY);
-
-    // Minor ticks at 30° increments on outer ring, skipping cardinals
-    for (uint16_t deg = 30; deg < 360; deg += 30) {
-        if (deg % 90 == 0) continue;
-        float rad = (deg - 90) * DEG_TO_RAD;
-        int16_t ox = TGT_SCX + (int16_t)(TGT_R * cosf(rad));
-        int16_t oy = TGT_SCY + (int16_t)(TGT_R * sinf(rad));
-        int16_t ix = TGT_SCX + (int16_t)((TGT_R - 10) * cosf(rad));
-        int16_t iy = TGT_SCY + (int16_t)((TGT_R - 10) * sinf(rad));
-        tft.drawLine(ox, oy, ix, iy, TFT_DARK_GREY);
-    }
-
-    // Bezel ring
-    tft.drawCircle(TGT_SCX, TGT_SCY, TGT_R,     TFT_GREY);
-    tft.drawCircle(TGT_SCX, TGT_SCY, TGT_R + 1, TFT_DARK_GREY);
+    // Shared disc + rings + cardinals + crosshair + ticks + bezel (TGT gap 16, tick 10)
+    reticleDrawBase(tft, TGT_SCX, TGT_SCY, TGT_R, 16, 10);
 
     // Ring degree labels — NE quadrant, just inside each ring.
     // Single-arg setTextColor = transparent background (no black rectangle under text).
@@ -275,50 +237,8 @@ static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
 static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
     int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
 
-    float cx = (float)constrain((int)TGT_SCX, (int)boxX0, (int)boxX1);
-    float cy = (float)constrain((int)TGT_SCY, (int)boxY0, (int)boxY1);
-    float distToCentre = sqrtf((cx-TGT_SCX)*(cx-TGT_SCX) + (cy-TGT_SCY)*(cy-TGT_SCY));
-    float dx = fmaxf(fabsf(boxX0-TGT_SCX), fabsf(boxX1-TGT_SCX));
-    float dy = fmaxf(fabsf(boxY0-TGT_SCY), fabsf(boxY1-TGT_SCY));
-    float distFar = sqrtf(dx*dx + dy*dy);
-
-    static const uint16_t rings[] = {TGT_RING_15, TGT_RING_30, TGT_RING_45, TGT_RING_60};
-    static const uint16_t rcols[] = {TFT_DARK_GREEN, TFT_DARK_GREY, TFT_DARK_GREY, TFT_GREY};
-    for (uint8_t i = 0; i < 4; i++) {
-        float r = (float)rings[i];
-        if (distToCentre <= r + 1.5f && distFar >= r - 1.5f)
-            tft.drawCircle(TGT_SCX, TGT_SCY, rings[i], rcols[i]);
-    }
-
-    static const uint16_t cgap = 16, carm = TGT_R - 1;
-    if (boxY0 <= TGT_SCY && TGT_SCY <= boxY1) {
-        if (boxX0 < (int16_t)(TGT_SCX - cgap))
-            tft.drawLine(TGT_SCX - carm, TGT_SCY, TGT_SCX - cgap, TGT_SCY, TFT_DARK_GREY);
-        if (boxX1 > (int16_t)(TGT_SCX + cgap))
-            tft.drawLine(TGT_SCX + cgap, TGT_SCY, TGT_SCX + carm, TGT_SCY, TFT_DARK_GREY);
-        if (boxX0 <= TGT_SCX || boxX1 >= TGT_SCX) {
-            tft.drawLine(TGT_SCX - cgap + 2, TGT_SCY, TGT_SCX - 4, TGT_SCY, TFT_GREY);
-            tft.drawLine(TGT_SCX + 4, TGT_SCY, TGT_SCX + cgap - 2, TGT_SCY, TFT_GREY);
-        }
-    }
-    if (boxX0 <= TGT_SCX && TGT_SCX <= boxX1) {
-        if (boxY0 < (int16_t)(TGT_SCY - cgap))
-            tft.drawLine(TGT_SCX, TGT_SCY - carm, TGT_SCX, TGT_SCY - cgap, TFT_DARK_GREY);
-        if (boxY1 > (int16_t)(TGT_SCY + cgap))
-            tft.drawLine(TGT_SCX, TGT_SCY + cgap, TGT_SCX, TGT_SCY + carm, TFT_DARK_GREY);
-        if (boxY0 <= TGT_SCY || boxY1 >= TGT_SCY) {
-            tft.drawLine(TGT_SCX, TGT_SCY - cgap + 2, TGT_SCX, TGT_SCY - 4, TFT_GREY);
-            tft.drawLine(TGT_SCX, TGT_SCY + 4, TGT_SCX, TGT_SCY + cgap - 2, TFT_GREY);
-        }
-    }
-    if (boxX0 <= TGT_SCX && TGT_SCX <= boxX1 && boxY0 <= TGT_SCY && TGT_SCY <= boxY1)
-        tft.fillCircle(TGT_SCX, TGT_SCY, 2, TFT_GREY);
-
-    // Restore inner good-zone fill if erased
-    if (distToCentre <= TGT_RING_15 - 1) {
-        tft.fillCircle(TGT_SCX, TGT_SCY, TGT_RING_15 - 1, TFT_OFF_BLACK);
-        tft.drawCircle(TGT_SCX, TGT_SCY, TGT_RING_15, TFT_DARK_GREEN);
-    }
+    // Shared reticle restore: rings / cardinals / crosshair / centre-dot / good-zone.
+    reticleRepair(tft, TGT_SCX, TGT_SCY, TGT_R, 16, bx, by, bh);
 
     // Redraw only the ring label(s) whose bbox overlaps the erase box (each sits
     // at (SCX+3, SCY - RING_r + 3); bbox sized for Roboto_Black_16). Redrawing

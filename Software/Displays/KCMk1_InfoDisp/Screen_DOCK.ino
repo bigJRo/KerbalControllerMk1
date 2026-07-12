@@ -55,9 +55,9 @@ uint32_t _dockedTimestamp = 0;
 // ── Reticle geometry — centred and stretched to fill the left region (matches MNVR) ──
 // The readout panel now sits on the far right (x=580), leaving x=[0,578] for the
 // reticle. It is centred there, enlarged, and the approach bar is centred below.
-static const uint16_t RET_CX   = 289;   // centre of the left region x=[0,578]
-static const uint16_t RET_CY   = 300;
-static const uint16_t RET_R    = 210;   // reticle radius (px)
+static const uint16_t RET_CX   = RETICLE_CX;   // centre of the left region x=[0,578]
+static const uint16_t RET_CY   = RETICLE_CY;
+static const uint16_t RET_R    = RETICLE_R;    // reticle radius (px)
 static const float    RET_SCALE = (float)RET_R / 20.0f;  // 10.5 px/deg — ±20° full scale
 
 // Ring radii for ±5°, ±10°, ±15°, ±20°
@@ -73,14 +73,14 @@ static const uint8_t DOT_R_ERASE = 20;   // erase rect half-size (covers dot + o
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
-static const uint16_t RP_W   = 360;
+static const uint16_t RP_W   = RETICLE_RP_W;
 static const uint16_t RP_X   = SCREEN_W - SIDEBAR_W - RP_W;   // 580
 static const uint8_t  RP_NR  = 8;       // number of rows
 static const tFont   *RP_LBL = &Roboto_Black_28;  // label font (chrome)
 static const tFont   *RP_F   = &Roboto_Black_36;  // value font
 
 // Approach bar geometry — centred under the reticle
-static const uint16_t BAR_W  = 450;
+static const uint16_t BAR_W  = RETICLE_BAR_W;
 static const uint16_t BAR_X  = RET_CX - BAR_W / 2;   // 64
 static const uint16_t BAR_H  = 26;
 static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking approach range)
@@ -115,47 +115,10 @@ static void _dockClampDot(int16_t &sx, int16_t &sy) {
 
 // ── Draw the static reticle chrome ───────────────────────────────────────────────────
 static void _dockDrawReticleChrome(KCM_TFT &tft) {
-    // Black disc background
-    tft.fillCircle(RET_CX, RET_CY, RET_R, TFT_BLACK);
+    // Shared disc + rings + cardinals + crosshair + ticks + bezel (MNVR/DOCK gap 18, tick 14)
+    reticleDrawBase(tft, RET_CX, RET_CY, RET_R, 18, 14);
 
-    // Inner good-zone fill (subtle dark green inside ±5°)
-    tft.fillCircle(RET_CX, RET_CY, RING_5, TFT_OFF_BLACK);
-
-    // Concentric rings at 5° increments
-    tft.drawCircle(RET_CX, RET_CY, RING_5,  TFT_DARK_GREEN);   // ±5° — good zone
-    tft.drawCircle(RET_CX, RET_CY, RING_10, TFT_DARK_GREY);    // ±10°
-    tft.drawCircle(RET_CX, RET_CY, RING_15, TFT_DARK_GREY);    // ±15°
-    tft.drawCircle(RET_CX, RET_CY, RING_20, TFT_GREY);         // ±20° boundary
-
-    // Cardinal lines: full-diameter lines at 0°/90°/180°/270°, dim grey
-    // These extend across the full circle, split by a small gap at centre for the crosshair symbol
-    uint16_t gap = 18, arm = RET_R - 1;
-    // Vertical (0°/180°): top to bottom
-    tft.drawLine(RET_CX, RET_CY - arm, RET_CX, RET_CY - gap, TFT_DARK_GREY);
-    tft.drawLine(RET_CX, RET_CY + gap, RET_CX, RET_CY + arm, TFT_DARK_GREY);
-    // Horizontal (90°/270°): left to right
-    tft.drawLine(RET_CX - arm, RET_CY, RET_CX - gap, RET_CY, TFT_DARK_GREY);
-    tft.drawLine(RET_CX + gap, RET_CY, RET_CX + arm, RET_CY, TFT_DARK_GREY);
-
-    // Crosshair symbol at centre (your nose — always fixed)
-    tft.drawLine(RET_CX - gap + 2, RET_CY, RET_CX - 4, RET_CY, TFT_GREY);
-    tft.drawLine(RET_CX + 4,       RET_CY, RET_CX + gap - 2, RET_CY, TFT_GREY);
-    tft.drawLine(RET_CX, RET_CY - gap + 2, RET_CX, RET_CY - 4, TFT_GREY);
-    tft.drawLine(RET_CX, RET_CY + 4,       RET_CX, RET_CY + gap - 2, TFT_GREY);
-    tft.fillCircle(RET_CX, RET_CY, 2, TFT_GREY);
-
-    // Minor ticks at 30° increments on the outer ring (skipping cardinals at 0/90/180/270)
-    for (uint16_t deg = 30; deg < 360; deg += 30) {
-        if (deg % 90 == 0) continue;  // cardinals already drawn as full lines
-        float rad = (deg - 90) * DEG_TO_RAD;  // -90 converts to 0=top convention
-        int16_t ox = RET_CX + (int16_t)(RET_R * cosf(rad));
-        int16_t oy = RET_CY + (int16_t)(RET_R * sinf(rad));
-        int16_t ix = RET_CX + (int16_t)((RET_R - 14) * cosf(rad));
-        int16_t iy = RET_CY + (int16_t)((RET_R - 14) * sinf(rad));
-        tft.drawLine(ox, oy, ix, iy, TFT_DARK_GREY);
-    }
-
-    // Ring degree labels (positioned just inside each ring, in the NE quadrant)
+    // Ring degree labels (positioned just inside each ring, in the NE quadrant).
     // Single-arg setTextColor = transparent background.
     tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY);
@@ -163,10 +126,6 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
     tft.setCursor(RET_CX + 3, RET_CY - RING_10 + 3);  tft.print("10");
     tft.setCursor(RET_CX + 3, RET_CY - RING_15 + 3);  tft.print("15");
     tft.setCursor(RET_CX + 3, RET_CY - RING_20 + 3);  tft.print("20");
-
-    // Bezel ring
-    tft.drawCircle(RET_CX, RET_CY, RET_R,     TFT_GREY);
-    tft.drawCircle(RET_CX, RET_CY, RET_R + 1, TFT_DARK_GREY);
 
     // Legend: 3 rows stacked in top-left corner, above/beside the circle top
     // y=68,88,108 — all safely left of circle edge at those y positions
@@ -265,64 +224,10 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
 // Simplified: check if box overlaps the annulus [r-1, r+1].
 static void _dockRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
     // bx,by = erase box top-left, bh = erase box half-size (so w=h=2*bh+1)
-    // Box bounds: bx..bx+2*bh, by..by+2*bh
     int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
 
-    // For each ring: check if the ring circle intersects the box
-    // Closest point on box to ring centre (RET_CX, RET_CY):
-    float cx = (float)constrain((int)RET_CX, (int)boxX0, (int)boxX1);
-    float cy = (float)constrain((int)RET_CY, (int)boxY0, (int)boxY1);
-    float distToCentre = sqrtf((cx-RET_CX)*(cx-RET_CX) + (cy-RET_CY)*(cy-RET_CY));
-    // Farthest corner from ring centre:
-    float dx = fmaxf(fabsf(boxX0-RET_CX), fabsf(boxX1-RET_CX));
-    float dy = fmaxf(fabsf(boxY0-RET_CY), fabsf(boxY1-RET_CY));
-    float distFar = sqrtf(dx*dx + dy*dy);
-
-    static const uint16_t rings[]  = {RING_5, RING_10, RING_15, RING_20};
-    static const uint16_t rcols[]  = {TFT_DARK_GREEN, TFT_DARK_GREY, TFT_DARK_GREY, TFT_GREY};
-    for (uint8_t i = 0; i < 4; i++) {
-        float r = (float)rings[i];
-        if (distToCentre <= r + 1.5f && distFar >= r - 1.5f) {
-            tft.drawCircle(RET_CX, RET_CY, rings[i], rcols[i]);
-        }
-    }
-
-    // Crosshair / cardinal lines: redraw anything in the erase box
-    // Cardinal lines span full radius; crosshair symbol is the inner gap region
-    static const uint16_t cgap = 18, carm = RET_R - 1;
-    // Horizontal cardinal segments
-    if (boxY0 <= RET_CY && RET_CY <= boxY1) {
-        if (boxX0 < (int16_t)(RET_CX - cgap))
-            tft.drawLine(RET_CX - carm, RET_CY, RET_CX - cgap, RET_CY, TFT_DARK_GREY);
-        if (boxX1 > (int16_t)(RET_CX + cgap))
-            tft.drawLine(RET_CX + cgap, RET_CY, RET_CX + carm, RET_CY, TFT_DARK_GREY);
-        // Crosshair symbol inner segments
-        if (boxX0 <= RET_CX || boxX1 >= RET_CX) {
-            tft.drawLine(RET_CX - cgap + 2, RET_CY, RET_CX - 4, RET_CY, TFT_GREY);
-            tft.drawLine(RET_CX + 4, RET_CY, RET_CX + cgap - 2, RET_CY, TFT_GREY);
-        }
-    }
-    // Vertical cardinal segments
-    if (boxX0 <= RET_CX && RET_CX <= boxX1) {
-        if (boxY0 < (int16_t)(RET_CY - cgap))
-            tft.drawLine(RET_CX, RET_CY - carm, RET_CX, RET_CY - cgap, TFT_DARK_GREY);
-        if (boxY1 > (int16_t)(RET_CY + cgap))
-            tft.drawLine(RET_CX, RET_CY + cgap, RET_CX, RET_CY + carm, TFT_DARK_GREY);
-        // Crosshair symbol inner segments
-        if (boxY0 <= RET_CY || boxY1 >= RET_CY) {
-            tft.drawLine(RET_CX, RET_CY - cgap + 2, RET_CX, RET_CY - 4, TFT_GREY);
-            tft.drawLine(RET_CX, RET_CY + 4, RET_CX, RET_CY + cgap - 2, TFT_GREY);
-        }
-    }
-    // Centre dot
-    if (boxX0 <= RET_CX && RET_CX <= boxX1 && boxY0 <= RET_CY && RET_CY <= boxY1)
-        tft.fillCircle(RET_CX, RET_CY, 2, TFT_GREY);
-
-    // Inner good-zone fill (if erase hit the ±5° ring interior)
-    if (distToCentre <= RING_5 - 1) {
-        tft.fillCircle(RET_CX, RET_CY, RING_5 - 1, TFT_OFF_BLACK);
-        tft.drawCircle(RET_CX, RET_CY, RING_5, TFT_DARK_GREEN);
-    }
+    // Shared reticle restore: rings / cardinals / crosshair / centre-dot / good-zone.
+    reticleRepair(tft, RET_CX, RET_CY, RET_R, 18, bx, by, bh);
 
     // Ring degree labels — the erase fillRect wipes them (drawn transparent), so
     // redraw only the label(s) whose bbox overlaps the erase box (redrawing all

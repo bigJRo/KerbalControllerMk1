@@ -551,6 +551,99 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
   tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy + half, color);  // bottom half
 }
 
+void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
+                     int16_t gap, int16_t tickLen) {
+  int16_t r4 = r / 4, r2 = r / 2, r34 = (r * 3) / 4, arm = r - 1;
+
+  // Black disc + inner good-zone fill
+  tft.fillCircle(cx, cy, r,  TFT_BLACK);
+  tft.fillCircle(cx, cy, r4, TFT_OFF_BLACK);
+
+  // Concentric rings (r/4 good-zone green, then grey ..., outer grey boundary)
+  tft.drawCircle(cx, cy, r4,  TFT_DARK_GREEN);
+  tft.drawCircle(cx, cy, r2,  TFT_DARK_GREY);
+  tft.drawCircle(cx, cy, r34, TFT_DARK_GREY);
+  tft.drawCircle(cx, cy, r,   TFT_GREY);
+
+  // Cardinal lines with a centre gap for the crosshair
+  tft.drawLine(cx,       cy - arm, cx,       cy - gap, TFT_DARK_GREY);
+  tft.drawLine(cx,       cy + gap, cx,       cy + arm, TFT_DARK_GREY);
+  tft.drawLine(cx - arm, cy,       cx - gap, cy,       TFT_DARK_GREY);
+  tft.drawLine(cx + gap, cy,       cx + arm, cy,       TFT_DARK_GREY);
+
+  // Nose crosshair symbol at centre
+  tft.drawLine(cx - gap + 2, cy,           cx - 4,       cy,           TFT_GREY);
+  tft.drawLine(cx + 4,       cy,           cx + gap - 2, cy,           TFT_GREY);
+  tft.drawLine(cx,           cy - gap + 2, cx,           cy - 4,       TFT_GREY);
+  tft.drawLine(cx,           cy + 4,       cx,           cy + gap - 2, TFT_GREY);
+  tft.fillCircle(cx, cy, 2, TFT_GREY);
+
+  // Minor ticks at 30° increments on the outer ring (skip cardinals)
+  for (int16_t deg = 30; deg < 360; deg += 30) {
+    if (deg % 90 == 0) continue;
+    float rad = (deg - 90) * DEG_TO_RAD;
+    int16_t ox = cx + (int16_t)(r * cosf(rad));
+    int16_t oy = cy + (int16_t)(r * sinf(rad));
+    int16_t ix = cx + (int16_t)((r - tickLen) * cosf(rad));
+    int16_t iy = cy + (int16_t)((r - tickLen) * sinf(rad));
+    tft.drawLine(ox, oy, ix, iy, TFT_DARK_GREY);
+  }
+
+  // Bezel ring
+  tft.drawCircle(cx, cy, r,     TFT_GREY);
+  tft.drawCircle(cx, cy, r + 1, TFT_DARK_GREY);
+}
+
+void reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
+                   int16_t gap, int16_t bx, int16_t by, uint8_t bh) {
+  int16_t boxX0 = bx, boxX1 = bx + 2 * bh, boxY0 = by, boxY1 = by + 2 * bh;
+
+  float px = (float)constrain((int)cx, (int)boxX0, (int)boxX1);
+  float py = (float)constrain((int)cy, (int)boxY0, (int)boxY1);
+  float distToCentre = sqrtf((px - cx) * (px - cx) + (py - cy) * (py - cy));
+  float ddx = fmaxf(fabsf((float)(boxX0 - cx)), fabsf((float)(boxX1 - cx)));
+  float ddy = fmaxf(fabsf((float)(boxY0 - cy)), fabsf((float)(boxY1 - cy)));
+  float distFar = sqrtf(ddx * ddx + ddy * ddy);
+
+  const uint16_t rings[] = { (uint16_t)(r / 4), (uint16_t)(r / 2),
+                             (uint16_t)((r * 3) / 4), (uint16_t)r };
+  const uint16_t rcols[] = { TFT_DARK_GREEN, TFT_DARK_GREY, TFT_DARK_GREY, TFT_GREY };
+  for (uint8_t i = 0; i < 4; i++) {
+    float rr = (float)rings[i];
+    if (distToCentre <= rr + 1.5f && distFar >= rr - 1.5f)
+      tft.drawCircle(cx, cy, rings[i], rcols[i]);
+  }
+
+  int16_t carm = r - 1;
+  if (boxY0 <= cy && cy <= boxY1) {
+    if (boxX0 < (int16_t)(cx - gap))
+      tft.drawLine(cx - carm, cy, cx - gap, cy, TFT_DARK_GREY);
+    if (boxX1 > (int16_t)(cx + gap))
+      tft.drawLine(cx + gap, cy, cx + carm, cy, TFT_DARK_GREY);
+    if (boxX0 <= cx || boxX1 >= cx) {
+      tft.drawLine(cx - gap + 2, cy, cx - 4,       cy, TFT_GREY);
+      tft.drawLine(cx + 4,       cy, cx + gap - 2, cy, TFT_GREY);
+    }
+  }
+  if (boxX0 <= cx && cx <= boxX1) {
+    if (boxY0 < (int16_t)(cy - gap))
+      tft.drawLine(cx, cy - carm, cx, cy - gap, TFT_DARK_GREY);
+    if (boxY1 > (int16_t)(cy + gap))
+      tft.drawLine(cx, cy + gap, cx, cy + carm, TFT_DARK_GREY);
+    if (boxY0 <= cy || boxY1 >= cy) {
+      tft.drawLine(cx, cy - gap + 2, cx, cy - 4,       TFT_GREY);
+      tft.drawLine(cx, cy + 4,       cx, cy + gap - 2, TFT_GREY);
+    }
+  }
+  if (boxX0 <= cx && cx <= boxX1 && boxY0 <= cy && cy <= boxY1)
+    tft.fillCircle(cx, cy, 2, TFT_GREY);
+
+  if (distToCentre <= (r / 4) - 1) {
+    tft.fillCircle(cx, cy, (r / 4) - 1, TFT_OFF_BLACK);
+    tft.drawCircle(cx, cy, (r / 4),     TFT_DARK_GREEN);
+  }
+}
+
 
 /***************************************************************************************
    FORMATTING HELPERS - BASIC

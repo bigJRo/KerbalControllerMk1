@@ -54,9 +54,9 @@ static bool _mnvrChromDrawn  = false;
 // The readout panel now sits on the far right (x=580, matching the ascent/circ
 // panel), leaving x=[0,578] for the reticle. The reticle is centred in that band
 // and enlarged; the ΔV bar is centred under it.
-static const uint16_t MNVR_CX    = 289;   // centre of the left region x=[0,578]
-static const uint16_t MNVR_CY    = 300;   // nudged down for more whitespace above
-static const uint16_t MNVR_R     = 210;   // slightly reduced so top gap grows to ~28 px
+static const uint16_t MNVR_CX    = RETICLE_CX;   // centre of the left region x=[0,578]
+static const uint16_t MNVR_CY    = RETICLE_CY;   // nudged down for more whitespace above
+static const uint16_t MNVR_R     = RETICLE_R;    // slightly reduced so top gap grows to ~28 px
 static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 10.5 px/deg, ±20° full scale
 
 static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 56
@@ -71,14 +71,14 @@ static const uint8_t MNVR_ERASE_R = 27;   // erase rect half-size (covers box + 
 
 // Right panel geometry — matches the ascent/circ readout panel: 360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36.
-static const uint16_t MNVR_RP_W   = 360;
+static const uint16_t MNVR_RP_W   = RETICLE_RP_W;
 static const uint16_t MNVR_RP_X   = SCREEN_W - SIDEBAR_W - MNVR_RP_W;   // 580
 static const uint8_t  MNVR_RP_NR  = 8;
 static const tFont   *MNVR_RP_LBL = &Roboto_Black_28;   // row labels (chrome)
 static const tFont   *MNVR_RP_F   = &Roboto_Black_36;   // row values
 
 // ΔV bar geometry — centred under the reticle
-static const uint16_t MNVR_BAR_W = 450;
+static const uint16_t MNVR_BAR_W = RETICLE_BAR_W;
 static const uint16_t MNVR_BAR_X = MNVR_CX - MNVR_BAR_W / 2;   // 64
 static const uint16_t MNVR_BAR_H = 26;
 
@@ -114,54 +114,16 @@ static void _mnvrClampMrk(int16_t &sx, int16_t &sy) {
 
 // ── Draw reticle chrome ───────────────────────────────────────────────────────────────
 static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
-    // Black disc + inner good-zone fill
-    tft.fillCircle(MNVR_CX, MNVR_CY, MNVR_R,     TFT_BLACK);
-    tft.fillCircle(MNVR_CX, MNVR_CY, MNVR_RING_5, TFT_OFF_BLACK);
+    // Shared disc + rings + cardinals + crosshair + ticks + bezel (MNVR/DOCK gap 18, tick 14)
+    reticleDrawBase(tft, MNVR_CX, MNVR_CY, MNVR_R, 18, 14);
 
-    // Concentric rings
-    tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_RING_5,  TFT_DARK_GREEN);
-    tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_RING_10, TFT_DARK_GREY);
-    tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_RING_15, TFT_DARK_GREY);
-    tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_RING_20, TFT_GREY);
-
-    // Cardinal lines with gap for crosshair
-    uint16_t gap = 18, arm = MNVR_R - 1;
-    tft.drawLine(MNVR_CX,       MNVR_CY - arm, MNVR_CX,       MNVR_CY - gap, TFT_DARK_GREY);
-    tft.drawLine(MNVR_CX,       MNVR_CY + gap, MNVR_CX,       MNVR_CY + arm, TFT_DARK_GREY);
-    tft.drawLine(MNVR_CX - arm, MNVR_CY,       MNVR_CX - gap, MNVR_CY,       TFT_DARK_GREY);
-    tft.drawLine(MNVR_CX + gap, MNVR_CY,       MNVR_CX + arm, MNVR_CY,       TFT_DARK_GREY);
-
-    // Crosshair symbol at centre
-    tft.drawLine(MNVR_CX - gap + 2, MNVR_CY,       MNVR_CX - 4,       MNVR_CY,       TFT_GREY);
-    tft.drawLine(MNVR_CX + 4,       MNVR_CY,       MNVR_CX + gap - 2, MNVR_CY,       TFT_GREY);
-    tft.drawLine(MNVR_CX,       MNVR_CY - gap + 2, MNVR_CX,       MNVR_CY - 4,       TFT_GREY);
-    tft.drawLine(MNVR_CX,       MNVR_CY + 4,       MNVR_CX,       MNVR_CY + gap - 2, TFT_GREY);
-    tft.fillCircle(MNVR_CX, MNVR_CY, 2, TFT_GREY);
-
-    // Minor ticks at 30° increments on outer ring (skip cardinals)
-    for (uint16_t deg = 30; deg < 360; deg += 30) {
-        if (deg % 90 == 0) continue;
-        float rad = (deg - 90) * DEG_TO_RAD;
-        int16_t ox = MNVR_CX + (int16_t)(MNVR_R * cosf(rad));
-        int16_t oy = MNVR_CY + (int16_t)(MNVR_R * sinf(rad));
-        int16_t ix = MNVR_CX + (int16_t)((MNVR_R - 14) * cosf(rad));
-        int16_t iy = MNVR_CY + (int16_t)((MNVR_R - 14) * sinf(rad));
-        tft.drawLine(ox, oy, ix, iy, TFT_DARK_GREY);
-    }
-
-    // Ring degree labels (NE quadrant)
-    // Ring degree labels (NE quadrant, just inside each ring)
-    // Single-arg setTextColor = transparent background.
+    // Ring degree labels (NE quadrant, just inside each ring). Transparent bg.
     tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_5  + 3);  tft.print("5");
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_10 + 3);  tft.print("10");
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_15 + 3);  tft.print("15");
     tft.setCursor(MNVR_CX + 3, MNVR_CY - MNVR_RING_20 + 3);  tft.print("20");
-
-    // Bezel ring
-    tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_R,     TFT_GREY);
-    tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_R + 1, TFT_DARK_GREY);
 
     // Legend — top-left corner
     static const uint16_t LEG_X  = 6;
@@ -247,51 +209,7 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 
 // ── Repair chrome after marker erase ─────────────────────────────────────────────────
 static void _mnvrRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
-    int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
-
-    float cx = (float)constrain((int)MNVR_CX, (int)boxX0, (int)boxX1);
-    float cy = (float)constrain((int)MNVR_CY, (int)boxY0, (int)boxY1);
-    float distToCentre = sqrtf((cx-MNVR_CX)*(cx-MNVR_CX) + (cy-MNVR_CY)*(cy-MNVR_CY));
-    float ddx = fmaxf(fabsf(boxX0-MNVR_CX), fabsf(boxX1-MNVR_CX));
-    float ddy = fmaxf(fabsf(boxY0-MNVR_CY), fabsf(boxY1-MNVR_CY));
-    float distFar = sqrtf(ddx*ddx + ddy*ddy);
-
-    static const uint16_t rings[] = {MNVR_RING_5, MNVR_RING_10, MNVR_RING_15, MNVR_RING_20};
-    static const uint16_t rcols[] = {TFT_DARK_GREEN, TFT_DARK_GREY, TFT_DARK_GREY, TFT_GREY};
-    for (uint8_t i = 0; i < 4; i++) {
-        float r = (float)rings[i];
-        if (distToCentre <= r + 1.5f && distFar >= r - 1.5f)
-            tft.drawCircle(MNVR_CX, MNVR_CY, rings[i], rcols[i]);
-    }
-
-    static const uint16_t cgap = 18, carm = MNVR_R - 1;
-    if (boxY0 <= MNVR_CY && MNVR_CY <= boxY1) {
-        if (boxX0 < (int16_t)(MNVR_CX - cgap))
-            tft.drawLine(MNVR_CX - carm, MNVR_CY, MNVR_CX - cgap, MNVR_CY, TFT_DARK_GREY);
-        if (boxX1 > (int16_t)(MNVR_CX + cgap))
-            tft.drawLine(MNVR_CX + cgap, MNVR_CY, MNVR_CX + carm, MNVR_CY, TFT_DARK_GREY);
-        if (boxX0 <= MNVR_CX || boxX1 >= MNVR_CX) {
-            tft.drawLine(MNVR_CX - cgap + 2, MNVR_CY, MNVR_CX - 4,       MNVR_CY, TFT_GREY);
-            tft.drawLine(MNVR_CX + 4,       MNVR_CY, MNVR_CX + cgap - 2, MNVR_CY, TFT_GREY);
-        }
-    }
-    if (boxX0 <= MNVR_CX && MNVR_CX <= boxX1) {
-        if (boxY0 < (int16_t)(MNVR_CY - cgap))
-            tft.drawLine(MNVR_CX, MNVR_CY - carm, MNVR_CX, MNVR_CY - cgap, TFT_DARK_GREY);
-        if (boxY1 > (int16_t)(MNVR_CY + cgap))
-            tft.drawLine(MNVR_CX, MNVR_CY + cgap, MNVR_CX, MNVR_CY + carm, TFT_DARK_GREY);
-        if (boxY0 <= MNVR_CY || boxY1 >= MNVR_CY) {
-            tft.drawLine(MNVR_CX, MNVR_CY - cgap + 2, MNVR_CX, MNVR_CY - 4,        TFT_GREY);
-            tft.drawLine(MNVR_CX, MNVR_CY + 4,        MNVR_CX, MNVR_CY + cgap - 2, TFT_GREY);
-        }
-    }
-    if (boxX0 <= MNVR_CX && MNVR_CX <= boxX1 && boxY0 <= MNVR_CY && MNVR_CY <= boxY1)
-        tft.fillCircle(MNVR_CX, MNVR_CY, 2, TFT_GREY);
-
-    if (distToCentre <= MNVR_RING_5 - 1) {
-        tft.fillCircle(MNVR_CX, MNVR_CY, MNVR_RING_5 - 1, TFT_OFF_BLACK);
-        tft.drawCircle(MNVR_CX, MNVR_CY, MNVR_RING_5,     TFT_DARK_GREEN);
-    }
+    reticleRepair(tft, MNVR_CX, MNVR_CY, MNVR_R, 18, bx, by, bh);
 }
 
 
