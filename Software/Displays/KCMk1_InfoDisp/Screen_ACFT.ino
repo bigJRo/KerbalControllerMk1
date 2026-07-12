@@ -1177,8 +1177,7 @@ static void _acftUpdateVSI(KCM_TFT &tft, float vVrt) {
 static const int16_t SLIP_X       = ACFT_HDG_TAPE_X;
 static const int16_t SLIP_W       = ACFT_HDG_TAPE_W;
 static const int16_t SLIP_H       = ACFT_HDG_TAPE_H;                     // 32 — matches HDG tape
-static const int16_t SLIP_BOT_INSET = 3;                                 // clear panel overscan
-static const int16_t SLIP_Y       = SCREEN_H - SLIP_BOT_INSET - SLIP_H;  // 565 — bottom-aligned
+static const int16_t SLIP_Y       = SCREEN_H - SLIP_H;                   // 568 — flush to bottom edge
 static const int16_t SLIP_BALL_R  = SLIP_H * 2 / 5;                      // 12 → 25px dia ≈ 80% of height
 static const int16_t SLIP_CY      = SLIP_Y + SLIP_H / 2;
 static const float   SLIP_SCALE   = (float)(SLIP_W / 2 - SLIP_BALL_R - 4) / 20.0f;
@@ -1188,30 +1187,33 @@ static void _acftDrawSlipChrome(KCM_TFT &tft) {
     tft.drawRect(SLIP_X, SLIP_Y, SLIP_W, SLIP_H, TFT_GREY);
 
     int16_t m5  = (int16_t)(SLIP_WARN_DEG  * SLIP_SCALE);
+    int16_t m10 = (int16_t)(10.0f          * SLIP_SCALE);
     int16_t m15 = (int16_t)(SLIP_ALARM_DEG * SLIP_SCALE);
 
     // Range reference ticks — inset 1px from the top/bottom borders (they no longer
-    // overlap the border) and lengthened. Green = ±SLIP_WARN_DEG (edge of centred
-    // zone), red = ±SLIP_ALARM_DEG (entry to the alarm range).
-    const int16_t TLEN = 9;
+    // overlap the borders). Marks at ±5 (green, edge of centred zone), ±10 (yellow,
+    // mid warn), ±15 (red, entry to the alarm range).
+    const int16_t TLEN = 7;   // 80% of the previous 9px height
     int16_t topY0 = SLIP_Y + 1,              topY1 = SLIP_Y + 1 + TLEN;
     int16_t botY1 = SLIP_Y + SLIP_H - 2,     botY0 = botY1 - TLEN;
-    const int      markDx[]  = { -m15, -m5, m5, m15 };   // int: unary minus promotes to int
-    const uint16_t markCol[] = { TFT_RED, TFT_NEON_GREEN, TFT_NEON_GREEN, TFT_RED };
-    for (uint8_t i = 0; i < 4; i++) {
+    const int      markDx[]  = { -m15, -m10, -m5, m5, m10, m15 };  // int: unary minus promotes
+    const uint16_t markCol[] = { TFT_RED, TFT_YELLOW, TFT_NEON_GREEN,
+                                 TFT_NEON_GREEN, TFT_YELLOW, TFT_RED };
+    for (uint8_t i = 0; i < 6; i++) {
         int16_t mx = ACFT_CX + markDx[i];
         tft.drawLine(mx, topY0, mx, topY1, markCol[i]);
         tft.drawLine(mx, botY0, mx, botY1, markCol[i]);
     }
 
-    // Numeric labels centred above each tick, in the clear space above the strip.
+    // Signed numeric labels centred above each tick, in the clear space above the
+    // strip. All drawn in the standard light-grey label colour (not the tick colour).
     tft.setFont(Roboto_Black_12);
-    const char *markTxt[] = { "15", "5", "5", "15" };
+    const char *markTxt[] = { "-15", "-10", "-5", "+5", "+10", "+15" };
     int16_t lblY = SLIP_Y - 16;
-    for (uint8_t i = 0; i < 4; i++) {
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    for (uint8_t i = 0; i < 6; i++) {
         int16_t mx = ACFT_CX + markDx[i];
         int16_t w  = getFontStringWidth(&Roboto_Black_12, markTxt[i]);
-        tft.setTextColor(markCol[i], TFT_BLACK);
         tft.setCursor(mx - w / 2, lblY);
         tft.print(markTxt[i]);
     }
@@ -1687,10 +1689,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // Row 7 — Brakes | SAS buttons
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR);
-        // Inset the bottom 3px: the panel overscans the last few scanlines, so a
-        // border drawn at SCREEN_H-1 (599) is clipped off. Ending at 596 keeps the
-        // BRAKES/SAS bottom border clearly on-screen.
-        uint16_t rh  = SCREEN_H - ry - 3;
+        uint16_t rh  = SCREEN_H - ry;   // flush to the bottom edge (border on row 599)
         uint16_t sasX = ACFT_PANEL_X + hw;
         uint16_t sasW = ACFT_PANEL_RIGHT - sasX;
 

@@ -621,6 +621,21 @@ float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
   if (distToCentre <= (r / 4) - 1) {
     tft.fillCircle(cx, cy, (r / 4) - 1, TFT_OFF_BLACK);
     tft.drawCircle(cx, cy, (r / 4),     TFT_DARK_GREEN);
+    // The refill just wiped the inner cross. Restore it UNCONDITIONALLY here: the
+    // erase box can sit in a diagonal quadrant that straddles neither axis, in
+    // which case the conditional cardinal/crosshair redraws below are both skipped
+    // and the cross would stay erased. Redraw the inner cardinal stubs (gap..r/4),
+    // the grey crosshair, and the centre dot.
+    int16_t r4i = r / 4;
+    tft.drawLine(cx - r4i, cy, cx - gap, cy, TFT_DARK_GREY);
+    tft.drawLine(cx + gap, cy, cx + r4i, cy, TFT_DARK_GREY);
+    tft.drawLine(cx, cy - r4i, cx, cy - gap, TFT_DARK_GREY);
+    tft.drawLine(cx, cy + gap, cx, cy + r4i, TFT_DARK_GREY);
+    tft.drawLine(cx - gap + 2, cy, cx - 4,       cy, TFT_GREY);
+    tft.drawLine(cx + 4,       cy, cx + gap - 2, cy, TFT_GREY);
+    tft.drawLine(cx, cy - gap + 2, cx, cy - 4,       TFT_GREY);
+    tft.drawLine(cx, cy + 4,       cx, cy + gap - 2, TFT_GREY);
+    tft.fillCircle(cx, cy, 2, TFT_GREY);
   }
 
   int16_t carm = r - 1;

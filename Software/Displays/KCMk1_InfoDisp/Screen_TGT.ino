@@ -145,9 +145,10 @@ static void _tgtClampDot(int16_t &sx, int16_t &sy) {
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
 static void _tgtDrawScopeChrome(KCM_TFT &tft) {
-    // Shared disc + rings + cardinals + crosshair + ticks + bezel (TGT gap 16, tick 14
-    // — same 14px tick length as MNVR/DOCK for a consistent reticle family look).
-    reticleDrawBase(tft, TGT_SCX, TGT_SCY, TGT_R, 16, 14);
+    // Shared disc + rings + cardinals + crosshair + ticks + bezel (gap 18, tick 14
+    // — same gap and tick length as MNVR/DOCK so the centre nose crosshair and
+    // ticks are identical across all three reticle screens).
+    reticleDrawBase(tft, TGT_SCX, TGT_SCY, TGT_R, 18, 14);
 
     // Ring degree labels — NE quadrant, just inside each ring.
     // Single-arg setTextColor = transparent background (no black rectangle under text).
@@ -240,7 +241,7 @@ static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
 
     // Shared reticle restore: rings / cardinals / crosshair / centre-dot / good-zone.
     // Returns the marker's distance from centre so we can detect a good-zone hit.
-    float d = reticleRepair(tft, TGT_SCX, TGT_SCY, TGT_R, 16, bx, by, bh);
+    float d = reticleRepair(tft, TGT_SCX, TGT_SCY, TGT_R, 18, bx, by, bh);
 
     // Redraw the ring label(s) whose bbox overlaps the erase box (each sits at
     // (SCX+3, SCY - RING_r + 3); bbox sized for Roboto_Black_16). Redrawing only
@@ -322,7 +323,7 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
 
     // Redraw crosshair inner segments — VEL circle can clip them near centre
     {
-        static const uint16_t g = 16;
+        static const uint16_t g = 18;   // matches reticleDrawBase gap
         tft.drawLine(TGT_SCX - g + 2, TGT_SCY, TGT_SCX - 4, TGT_SCY, TFT_GREY);
         tft.drawLine(TGT_SCX + 4,     TGT_SCY, TGT_SCX + g - 2, TGT_SCY, TFT_GREY);
         tft.drawLine(TGT_SCX, TGT_SCY - g + 2, TGT_SCX, TGT_SCY - 4, TFT_GREY);
