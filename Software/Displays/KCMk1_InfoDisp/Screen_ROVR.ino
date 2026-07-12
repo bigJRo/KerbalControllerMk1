@@ -276,13 +276,13 @@ static void _rovrEraseCompass(KCM_TFT &tft) {
     tft.fillRect(x0, y0, x1 - x0, y1 - y0, TFT_BLACK);
 }
 
-// Tick marks every 15° (24 ticks): majors every 30° (long, light grey), one
-// minor at each 15° midpoint (shorter, dim grey). The coarser spacing keeps the
-// per-frame rose redraw cheap — every tick is re-rendered in software on each
-// heading change. When `erase` is true, all ticks are drawn in black to wipe the
-// previous frame's ticks before drawing the new frame's ticks at the new heading.
+// Tick marks every 10° (36 ticks): majors every 30° (long, light grey), two
+// minors between each pair of majors (shorter, dim grey). The coarser spacing
+// keeps the per-frame rose redraw cheap — every tick is re-rendered in software
+// on each heading change. When `erase` is true, all ticks are drawn in black to
+// wipe the previous frame's ticks before drawing them at the new heading.
 static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
-    for (int16_t worldDeg = 0; worldDeg < 360; worldDeg += 15) {
+    for (int16_t worldDeg = 0; worldDeg < 360; worldDeg += 10) {
         float screenDeg = (float)worldDeg - headingDeg;
         int16_t x0, y0, x1, y1;
         if (worldDeg % 30 == 0) {
