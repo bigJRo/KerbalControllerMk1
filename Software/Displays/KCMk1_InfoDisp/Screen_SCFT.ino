@@ -1144,6 +1144,112 @@ static void _scftUpdateRollIndicator(KCM_TFT &tft, float roll) {
 }
 
 
+// ── Throttle bar (left strip — occupies the ACFT VSI slot) ────────────────────────────
+// Vertical 0–100% gauge: 0% at the bottom, 100% at the top, filled bottom-up. No
+// danger thresholds — throttle is a control input, so it uses a single amber fill.
+static const int16_t THR_X       = 2;
+static const int16_t THR_BAR_W   = 18;
+static const int16_t THR_TICK_X0 = THR_X + THR_BAR_W;      // 20
+static const int16_t THR_LABEL_H = 62;                     // rotated "THR" label at bottom
+static const int16_t THR_TOP_Y   = TITLE_TOP + 10;         // 72 — 100% mark (clears the title rule)
+static const int16_t THR_BOT_Y   = SCREEN_H - THR_LABEL_H - 4;  // 534 — 0% mark
+static const int16_t THR_TRACK_H = THR_BOT_Y - THR_TOP_Y;       // 462
+static float _scftPrevThrottle   = -9999.0f;
+
+static void _scftDrawThrottleChrome(KCM_TFT &tft) {
+    // Right border of the strip
+    tft.drawLine(THR_TICK_X0 + 1, TITLE_TOP, THR_TICK_X0 + 1, SCREEN_H - 1, TFT_GREY);
+    tft.setFont(Roboto_Black_12);
+    for (int16_t p = 0; p <= 100; p += 25) {
+        int16_t ty   = THR_BOT_Y - (int16_t)((float)p / 100.0f * THR_TRACK_H);
+        bool    major = (p % 50 == 0);
+        tft.drawLine(THR_TICK_X0, ty, THR_TICK_X0 + (major ? 10 : 6), ty,
+                     major ? TFT_LIGHT_GREY : TFT_GREY);
+        if (major) {
+            tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+            tft.setCursor(THR_TICK_X0 + 12, ty - 6);
+            char lbl[4]; snprintf(lbl, sizeof(lbl), "%d", p);
+            tft.print(lbl);
+        }
+    }
+    // "THR" label — vertical, at the bottom, matching the Pitch/Hdg label style
+    drawVerticalText(tft, THR_X, SCREEN_H - THR_LABEL_H, THR_BAR_W, THR_LABEL_H,
+                     &Roboto_Black_16, "THR", TFT_WHITE, TFT_BLACK);
+}
+
+static void _scftUpdateThrottle(KCM_TFT &tft, float throttle) {
+    if (fabsf(throttle - _scftPrevThrottle) < 0.005f) return;
+    _scftPrevThrottle = throttle;
+    float   clamped = constrain(throttle, 0.0f, 1.0f);
+    int16_t fillH   = (int16_t)(clamped * THR_TRACK_H);
+    tft.fillRect(THR_X, THR_TOP_Y, THR_BAR_W, THR_TRACK_H, TFT_BLACK);
+    if (fillH > 0)
+        tft.fillRect(THR_X, THR_BOT_Y - fillH, THR_BAR_W, fillH, TFT_ORANGE);
+}
+
+
+// ── Vitals strip (bottom — occupies the ACFT slip slot) ───────────────────────────────
+// Three horizontal bars: Electric Charge %, hottest core temp %, hottest skin temp %.
+// EC is green when high (low = bad); temps are green when low (high = bad).
+static const int16_t VIT_X      = SCFT_HDG_TAPE_X;                    // 112
+static const int16_t VIT_W      = SCFT_HDG_TAPE_W;                    // 466
+static const int16_t VIT_Y      = SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H + 2; // just below the HDG box
+static const int16_t VIT_ROW_H  = 14;
+static const int16_t VIT_LBL_W  = 54;   // label column ("SKIN")
+static const int16_t VIT_VAL_W  = 46;   // value column ("100%")
+static const int16_t VIT_BAR_H  = 10;
+static int16_t _scftPrevEC   = -9999;
+static int16_t _scftPrevCore = -9999;
+static int16_t _scftPrevSkin = -9999;
+
+static inline int16_t _scftVitBarX() { return VIT_X + VIT_LBL_W; }
+static inline int16_t _scftVitBarW() { return VIT_W - VIT_LBL_W - VIT_VAL_W; }
+static inline int16_t _scftVitBarY(uint8_t row) {
+    return VIT_Y + row * VIT_ROW_H + (VIT_ROW_H - VIT_BAR_H) / 2;
+}
+
+static void _scftVitalsChrome(KCM_TFT &tft) {
+    tft.setFont(Roboto_Black_12);
+    static const char *labels[] = {"EC", "CORE", "SKIN"};
+    for (uint8_t i = 0; i < 3; i++) {
+        int16_t ry = VIT_Y + i * VIT_ROW_H;
+        tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+        tft.setCursor(VIT_X, ry);
+        tft.print(labels[i]);
+        tft.drawRect(_scftVitBarX(), _scftVitBarY(i), _scftVitBarW(), VIT_BAR_H, TFT_GREY);
+    }
+}
+
+// Draw one vitals bar fill + value. lowIsBad=true → low % is the alarm (EC).
+static void _scftDrawVitalBar(KCM_TFT &tft, uint8_t row, int16_t pct, bool lowIsBad) {
+    pct = constrain(pct, (int16_t)0, (int16_t)100);
+    uint16_t col = lowIsBad ? ((pct < 20) ? TFT_RED : (pct < 50) ? TFT_YELLOW : TFT_DARK_GREEN)
+                            : ((pct > 90) ? TFT_RED : (pct > 75) ? TFT_YELLOW : TFT_DARK_GREEN);
+    int16_t bx = _scftVitBarX(), bw = _scftVitBarW(), by = _scftVitBarY(row);
+    int16_t fillW = (int16_t)((float)pct / 100.0f * (bw - 2));
+    tft.fillRect(bx + 1, by + 1, bw - 2, VIT_BAR_H - 2, TFT_OFF_BLACK);
+    if (fillW > 0) tft.fillRect(bx + 1, by + 1, fillW, VIT_BAR_H - 2, col);
+    // Value text — right-aligned in the value column
+    int16_t ry = VIT_Y + row * VIT_ROW_H;
+    char buf[6]; snprintf(buf, sizeof(buf), "%d%%", pct);
+    int16_t vw = getFontStringWidth(&Roboto_Black_12, buf);
+    tft.fillRect(VIT_X + VIT_W - VIT_VAL_W, ry, VIT_VAL_W, VIT_ROW_H, TFT_BLACK);
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(col, TFT_BLACK);
+    tft.setCursor(VIT_X + VIT_W - vw - 2, ry);
+    tft.print(buf);
+}
+
+static void _scftUpdateVitals(KCM_TFT &tft) {
+    int16_t ec   = (int16_t)roundf(state.electricChargePercent);
+    int16_t core = (int16_t)state.coreTempPct;
+    int16_t skin = (int16_t)state.skinTempPct;
+    if (ec   != _scftPrevEC)   { _scftDrawVitalBar(tft, 0, ec,   true);  _scftPrevEC   = ec; }
+    if (core != _scftPrevCore) { _scftDrawVitalBar(tft, 1, core, false); _scftPrevCore = core; }
+    if (skin != _scftPrevSkin) { _scftDrawVitalBar(tft, 2, skin, false); _scftPrevSkin = skin; }
+}
+
+
 // ── Screen chrome ─────────────────────────────────────────────────────────────────────
 static void chromeScreen_SCFT(KCM_TFT &tft) {
     _scftBuildChordTable();
@@ -1182,6 +1288,10 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     memset(_scftLadderDirtyPrev, 0, sizeof(_scftLadderDirtyPrev));
     _scftPrevPitch        = -9999.0f;
     _scftPrevRoll         = -9999.0f;
+    _scftPrevThrottle     = -9999.0f;
+    _scftPrevEC           = -9999;
+    _scftPrevCore         = -9999;
+    _scftPrevSkin         = -9999;
 
     // Bezel ring
     tft.drawCircle(SCFT_CX, SCFT_CY, SCFT_R,     TFT_LIGHT_GREY);
@@ -1229,6 +1339,10 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
               SCFT_PTAPE_BOX_X, SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H / 2 - 15,
               SCFT_PTAPE_BOX_W, 30,
               "Hdg:", TFT_WHITE, TFT_BLACK);
+
+    // ── Throttle bar (left) + vitals strip (bottom) — fill the ACFT VSI/slip slots ─────
+    _scftDrawThrottleChrome(tft);
+    _scftVitalsChrome(tft);
 
     // ── Right panel chrome ─────────────────────────────────────────────────────────────
     // Vertical divider (2px) between ADI and panel
@@ -1462,6 +1576,8 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     _scftUpdateRollReadout(tft, state.roll);
     _scftUpdatePitchTape(tft, state.pitch);
     _scftUpdateHeadingTape(tft, state.heading);
+    _scftUpdateThrottle(tft, state.throttle);
+    _scftUpdateVitals(tft);
     _scftUpdatePanel(tft, orbMode);
 }
 
