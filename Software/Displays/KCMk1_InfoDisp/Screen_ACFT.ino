@@ -34,7 +34,9 @@
 static const int16_t  ACFT_CX        = 345;   // 1024x600: PFD sits left, data panel right
 static const int16_t  ACFT_CY        = 300;   // ball centred so bank ticks clear the title rule
                                               //   (top ~84) and the slip strip reaches the bottom
-static const int16_t  ACFT_R         = 200;   // enlarged from 150 to fill the 1024x600 content
+static const int16_t  ACFT_R         = 206;   // sized so the derived panel (PANEL_X = CX+R+29)
+                                              //   lands at x=580, giving a 360px readout panel
+                                              //   matching the reticle/launch screens
 static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // 6.667 px/deg
 
 static const int16_t  ACFT_BALL_Y0   = ACFT_CY - ACFT_R;         // 98
@@ -42,11 +44,11 @@ static const int16_t  ACFT_BALL_Y1   = ACFT_CY + ACFT_R;         // 398
 static const uint16_t ACFT_SCANLINES = (uint16_t)(ACFT_R * 2 + 1); // 301
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
-// Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+227 = 572.
-static const int16_t  ACFT_PANEL_X       = ACFT_CX - (ACFT_R*2+54)/2 + (ACFT_R*2+54) + 2; // 574
+// Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+233 = 578.
+static const int16_t  ACFT_PANEL_X       = ACFT_CX - (ACFT_R*2+54)/2 + (ACFT_R*2+54) + 2; // 580
 static const int16_t  ACFT_PANEL_RIGHT   = CONTENT_W;   // 940 — dividers/buttons reach x=939,
                                                         //   abutting the sidebar divider at x=940
-static const int16_t  ACFT_PANEL_W       = ACFT_PANEL_RIGHT - ACFT_PANEL_X;  // 364
+static const int16_t  ACFT_PANEL_W       = ACFT_PANEL_RIGHT - ACFT_PANEL_X;  // 360 (= reticle panel)
 static const uint8_t  ACFT_PANEL_NR      = 8;
 
 // ── Right panel state ──────────────────────────────────────────────────────────────────
@@ -634,10 +636,12 @@ static const int16_t  ACFT_PTR_W      = 12;           // half-width of pointer b
 
 // Roll readout — two lines centred in fixed-width block
 // Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
-static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 54; // right edge (571) tucked
-                                                                   //   against the panel divider (571)
-static const int16_t  ACFT_ROLL_ANCHOR_Y  = ACFT_CY - ACFT_R - 38; // top (62) = TITLE_TOP,
-                                                                   //   just clear of the title rule (y58–61)
+static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 54; // right edge tucked against
+                                                                   //   the panel divider
+static const int16_t  ACFT_ROLL_ANCHOR_Y  = TITLE_TOP;             // pinned just below the title
+                                                                   //   rule (y58–61); independent of
+                                                                   //   R so a bigger ball can't push
+                                                                   //   the readout into the title bar
 static const int16_t  ACFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
 // Label/value are right-justified toward the panel divider. textRight() insets by
 // TEXT_BORDER(8) from the box's right edge, so extend the justify reference 6px
