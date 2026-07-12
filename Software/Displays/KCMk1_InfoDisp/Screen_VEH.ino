@@ -3,9 +3,15 @@
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
+// Vessel-type icon (Type row) — cached so the 60x60 BMP is only re-read from SD
+// when the type actually changes (SD reads are slow). Reset on screen entry by
+// chromeScreen_VEH so the icon repaints when the screen is re-shown.
+static VesselType _vehPrevIconType = (VesselType)0xFF;
+
 
 static void chromeScreen_VEH(KCM_TFT &tft) {
-  static const tFont   *F      = &Roboto_Black_40;
+  _vehPrevIconType = (VesselType)0xFF;   // force the type icon to redraw on entry
+  static const tFont   *F      = &Roboto_Black_48;
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;
   static const uint16_t AX     = ROW_PAD + SECT_W;
@@ -40,7 +46,7 @@ static void chromeScreen_VEH(KCM_TFT &tft) {
 
 
 static void drawScreen_VEH(KCM_TFT &tft) {
-  static const tFont   *F      = &Roboto_Black_40;
+  static const tFont   *F      = &Roboto_Black_48;
   static const uint8_t  NR     = 8;
   static const uint16_t SECT_W = 26;
   static const uint16_t AX     = ROW_PAD + SECT_W;
@@ -82,7 +88,27 @@ static void drawScreen_VEH(KCM_TFT &tft) {
     case type_GndPart:  typeName = "Gnd Part";  typeColor = TFT_CORNELL;    break;
     default:            typeName = "---";       typeColor = TFT_DARK_GREY;  break;
   }
-  vehVal(1, "Type:", typeName, typeColor, TFT_BLACK);
+  // Draw the type name in a narrowed cell and the 60x60 vessel-type icon at the
+  // row's right edge — the same icons the Annunciator uses, downscaled to
+  // VIcon60_NN.bmp (NN = vesselType).
+  static const uint16_t TICON_W   = 60;
+  static const uint16_t TICON_GAP = 14;
+  const uint16_t TICON_X = AX + AW - TICON_W - 8;                 // right edge = value text margin
+  const uint16_t TICON_Y = rowYFor(1, NR) + (rowHFor(NR) - TICON_W) / 2;
+  const uint16_t AW_TYPE = (uint16_t)(TICON_X - TICON_GAP - AX + 8);  // cell stops short of the icon
+  drawValue(tft, 7, 1, AX, AW_TYPE, "Type:", typeName, typeColor, TFT_BLACK, F, NR);
+
+  // The icon is re-read from SD only when the type changes (SD reads are slow);
+  // between changes it rides along in the double-buffer's page copy.
+  if (state.vesselType != _vehPrevIconType) {
+    _vehPrevIconType = state.vesselType;
+    tft.fillRect(TICON_X, TICON_Y, TICON_W, TICON_W, TFT_BLACK);
+    if (state.vesselType <= type_GndPart) {
+      char iconPath[24];
+      snprintf(iconPath, sizeof(iconPath), "/VIcon60_%02u.bmp", (unsigned)state.vesselType);
+      drawBMP(tft, iconPath, TICON_X, TICON_Y);
+    }
+  }
 
   // Row 2 — Flight status / situation
   const char *condName;
