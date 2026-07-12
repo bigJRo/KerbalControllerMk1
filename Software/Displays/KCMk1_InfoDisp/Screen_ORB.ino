@@ -1143,7 +1143,7 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     for (uint8_t i = 0; i < 7; i++) { _orbPS[i] = PrintState{}; _lastReadout[i] = String("\x01"); }
 
     // Panel divider — centred at x=470 (half of the 940px content area)
-    tft.drawLine(470, ORB_TITLE_TOP, 470, ORB_SCREEN_H, TFT_GREY);
+    tft.drawLine(CONTENT_W / 2, ORB_TITLE_TOP, CONTENT_W / 2, ORB_SCREEN_H, TFT_GREY);
     tft.drawLine(471, ORB_TITLE_TOP, 471, ORB_SCREEN_H, TFT_GREY);
 
     // Panel labels "ORBIT" and "INCL" are intentionally absent — the screen

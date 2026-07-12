@@ -29,6 +29,10 @@
    X-Pointer square: 410×410, x=48..458, y=TITLE_TOP..TITLE_TOP+410
    Right panel: x=48..CONTENT_W — reserved for later
 ****************************************************************************************/
+// Right text section starts at LNDG_TEXT_X; the graphical|text divider sits 4px left.
+static const uint16_t LNDG_TEXT_X    = 364;
+static const uint16_t LNDG_DIV_X     = LNDG_TEXT_X - 4;   // 360 — graphical/text divider x
+
 static const uint16_t LNDG_TAPE_X    = 40;
 static const uint16_t LNDG_TAPE_W    = 30;
 static const uint16_t LNDG_TAPE_Y    = TITLE_TOP + 8;
@@ -521,7 +525,7 @@ static void _lndgChromePowered(KCM_TFT &tft) {
     // x=360..720, y=TITLE_TOP..SCREEN_H
     {
         static const tFont   *RCF = &Roboto_Black_20;
-        static const uint16_t RX  = 364;
+        static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;           // 360px
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;                   // 180px — half width for split rows
@@ -545,13 +549,13 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         // Divider before VEH section
         uint16_t divY = rowYFor(6, RNR) - 1;
         // (VEH section horizontal divider kept, label omitted — sits in graphical area)
-        tft.drawLine(360, divY,   CONTENT_W, divY,   TFT_GREY);
-        tft.drawLine(360, divY+1, CONTENT_W, divY+1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, divY,   CONTENT_W, divY,   TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, divY+1, CONTENT_W, divY+1, TFT_GREY);
 
         // ── All 2px borders ──
         // VERTICAL: graphical | text section divider (x=360..361, full height)
-        tft.drawLine(360, TITLE_TOP, 360, SCREEN_H - 1, TFT_GREY);
-        tft.drawLine(361, TITLE_TOP, 361, SCREEN_H - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, TITLE_TOP, 360, SCREEN_H - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X + 1, TITLE_TOP, 361, SCREEN_H - 1, TFT_GREY);
 
         // Horizontal borders drawn in draw function (after value updates) to avoid being overwritten
 
@@ -611,8 +615,8 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
     float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
     float hSpd = (vSq > 0.0f) ? sqrtf(vSq) : 0.0f;
 
-    float headRad    = (state.heading + state.roll) * 0.017453f;
-    float svelHdgRad = state.srfVelHeading * 0.017453f;
+    float headRad    = (state.heading + state.roll) * DEG_TO_RAD;
+    float svelHdgRad = state.srfVelHeading * DEG_TO_RAD;
     float dHeadRad   = svelHdgRad - headRad;
     float vFwd = -hSpd * cosf(dHeadRad);
     float vLat = -hSpd * sinf(dHeadRad);
@@ -797,7 +801,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
     // ── Right panel values ──
     {
         static const tFont   *RF  = &Roboto_Black_28;
-        static const uint16_t RX  = 364;
+        static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;
@@ -808,8 +812,8 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                           ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
         float  vSq2     = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
         float  hSpd2    = (vSq2 > 0.0f) ? sqrtf(vSq2) : 0.0f;
-        float  headRad2 = (state.heading + state.roll) * 0.017453f;
-        float  svelRad2 = state.srfVelHeading * 0.017453f;
+        float  headRad2 = (state.heading + state.roll) * DEG_TO_RAD;
+        float  svelRad2 = state.srfVelHeading * DEG_TO_RAD;
         float  dHR2     = svelRad2 - headRad2;
         float  vFwd2    = -hSpd2 * cosf(dHR2);
         float  vLat2    = -hSpd2 * sinf(dHR2);
@@ -961,14 +965,14 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
 
         // Horizontal borders redrawn last — after all value updates so they're never overwritten
         // Alt.Rdr | V.Srf (rows 2→3)
-        tft.drawLine(360, rowYFor(3,RNR) - 2, CONTENT_W, rowYFor(3,RNR) - 2, TFT_GREY);
-        tft.drawLine(360, rowYFor(3,RNR) - 1, CONTENT_W, rowYFor(3,RNR) - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(3,RNR) - 2, CONTENT_W, rowYFor(3,RNR) - 2, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(3,RNR) - 1, CONTENT_W, rowYFor(3,RNR) - 1, TFT_GREY);
         // Fwd/Lat | ΔV.Stg (rows 4→5)
-        tft.drawLine(360, rowYFor(5,RNR) - 2, CONTENT_W, rowYFor(5,RNR) - 2, TFT_GREY);
-        tft.drawLine(360, rowYFor(5,RNR) - 1, CONTENT_W, rowYFor(5,RNR) - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(5,RNR) - 2, CONTENT_W, rowYFor(5,RNR) - 2, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(5,RNR) - 1, CONTENT_W, rowYFor(5,RNR) - 1, TFT_GREY);
         // ΔV.Stg | Thrtl/RCS (rows 5→6)
-        tft.drawLine(360, rowYFor(6,RNR) - 2, CONTENT_W, rowYFor(6,RNR) - 2, TFT_GREY);
-        tft.drawLine(360, rowYFor(6,RNR) - 1, CONTENT_W, rowYFor(6,RNR) - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(6,RNR) - 2, CONTENT_W, rowYFor(6,RNR) - 2, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(6,RNR) - 1, CONTENT_W, rowYFor(6,RNR) - 1, TFT_GREY);
     }
 }
 
