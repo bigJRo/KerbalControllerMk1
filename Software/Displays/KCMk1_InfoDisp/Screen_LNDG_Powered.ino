@@ -260,10 +260,10 @@ static void _lndgDrawAttChrome(KCM_TFT &tft) {
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R,     TFT_GREY);
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R + 1, TFT_DARK_GREY);
 
-    // Range label "15°" just outside the outer ring, lower-right
+    // Range label "15°" outboard of the outer ring, lower-right (clear of the border)
     tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(LNDG_ATT_CX + (LNDG_ATT_R * 4) / 5, LNDG_ATT_CY + (LNDG_ATT_R * 3) / 5);
+    tft.setCursor(LNDG_ATT_CX + LNDG_ATT_R + 6, LNDG_ATT_CY + LNDG_ATT_R / 2);
     tft.print("15\xb0");
 
     // "ATT" vertical label to the left of the circle, centred on ring height
