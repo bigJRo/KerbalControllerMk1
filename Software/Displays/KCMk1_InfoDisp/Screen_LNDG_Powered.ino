@@ -49,8 +49,8 @@ static const float    LNDG_TAPE_PPM  = (float)LNDG_TAPE_H / 500.0f;
 // altitude tape and leaves room below for the axis row and the attitude bullseye.
 static const uint16_t LNDG_XP_X     = 136;
 static const uint16_t LNDG_XP_Y     = TITLE_TOP + 26;               // 88 — below the SURF DRIFT title
-static const uint16_t LNDG_XP_SIDE  = 342;                          // centrepiece; trimmed for whitespace and
-                                                                   //   so the wider 44px flanking bars clear it
+static const uint16_t LNDG_XP_SIDE  = 332;                          // trimmed to give the ATT + ground-track
+                                                                   //   compasses below more room
 static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 308
 static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 268
 static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
@@ -215,8 +215,8 @@ static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
 // X-Pointer centre (307) so the ground-track compass sits to its right, the pair
 // balanced about the centre.
 static const uint16_t LNDG_ATT_CX    = 216;          // left of the X-Pointer centre
-static const uint16_t LNDG_ATT_CY    = 544;          // below the X-Pointer's lateral axis row
-static const uint8_t  LNDG_ATT_R     = 50;           // outer ring radius (= ±15°)
+static const uint16_t LNDG_ATT_CY    = 534;          // below the X-Pointer's lateral axis row
+static const uint8_t  LNDG_ATT_R     = 58;           // outer ring radius (= ±15°)
 static const uint16_t LNDG_ATT_SIDE  = LNDG_ATT_R * 2 + 4;
 static const uint16_t LNDG_ATT_X     = LNDG_ATT_CX - LNDG_ATT_SIDE / 2;  // field left edge
 static const uint16_t LNDG_ATT_Y     = LNDG_ATT_CY - LNDG_ATT_SIDE / 2;  // field top edge
@@ -320,9 +320,9 @@ static void _lndgDrawAtt(KCM_TFT &tft) {
    GROUND-TRACK COMPASS — heading-up rose with a surface-velocity track marker.
    Right of the ATT bullseye, the pair balanced about the X-Pointer centre.
 ****************************************************************************************/
-static const uint16_t LNDG_TRK_CX = 398;
+static const uint16_t LNDG_TRK_CX = 388;
 static const uint16_t LNDG_TRK_CY = LNDG_ATT_CY;   // same row as the ATT bullseye
-static const uint8_t  LNDG_TRK_R  = 50;
+static const uint8_t  LNDG_TRK_R  = 58;
 static float _lndgPrevTrkHdg = -9999.0f;
 static float _lndgPrevTrkVel = -9999.0f;
 
@@ -331,11 +331,9 @@ static void _lndgDrawTrkChrome(KCM_TFT &tft) {
     tft.drawCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R,     TFT_GREY);
     tft.drawCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R + 1, TFT_DARK_GREY);
 
-    tft.setFont(Roboto_Black_12);
-    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    int16_t w = getFontStringWidth(&Roboto_Black_12, "GND TRK");
-    tft.setCursor(LNDG_TRK_CX - w / 2, LNDG_TRK_CY - LNDG_TRK_R - 20);
-    tft.print("GND TRK");
+    // "GND TRK" vertical label to the RIGHT of the rose — mirrors the ATT label
+    drawVerticalText(tft, LNDG_TRK_CX + LNDG_TRK_R + 6, LNDG_TRK_CY - 50, 14, 100,
+                     &Roboto_Black_12, "GND TRK", TFT_LIGHT_GREY, TFT_BLACK);
 
     _lndgPrevTrkHdg = -9999.0f;   // force the rose to redraw on the next update
     _lndgPrevTrkVel = -9999.0f;
@@ -358,14 +356,26 @@ static void _lndgDrawTrk(KCM_TFT &tft) {
     // Clear the rose interior (inside the bezel)
     tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R - 1, TFT_BLACK);
 
+    // Compass ticks every 30° — longer/white at the cardinals, short/grey between.
+    for (int16_t d = 0; d < 360; d += 30) {
+        float   a    = (d - hdg - 90.0f) * (float)DEG_TO_RAD;
+        bool    maj  = (d % 90 == 0);
+        int16_t r0   = LNDG_TRK_R - 1;
+        int16_t r1   = LNDG_TRK_R - (maj ? 9 : 5);
+        float   ca = cosf(a), sa = sinf(a);
+        tft.drawLine(LNDG_TRK_CX + (int16_t)(r0 * ca), LNDG_TRK_CY + (int16_t)(r0 * sa),
+                     LNDG_TRK_CX + (int16_t)(r1 * ca), LNDG_TRK_CY + (int16_t)(r1 * sa),
+                     maj ? TFT_LIGHT_GREY : TFT_DARK_GREY);
+    }
+
     // Rotating cardinals
     tft.setFont(Roboto_Black_12);
     static const int16_t cwd[] = {0, 90, 180, 270};
     static const char *  ctx[] = {"N", "E", "S", "W"};
     for (uint8_t i = 0; i < 4; i++) {
         float   a  = (cwd[i] - hdg - 90.0f) * (float)DEG_TO_RAD;
-        int16_t lx = LNDG_TRK_CX + (int16_t)((LNDG_TRK_R - 14) * cosf(a));
-        int16_t ly = LNDG_TRK_CY + (int16_t)((LNDG_TRK_R - 14) * sinf(a));
+        int16_t lx = LNDG_TRK_CX + (int16_t)((LNDG_TRK_R - 19) * cosf(a));
+        int16_t ly = LNDG_TRK_CY + (int16_t)((LNDG_TRK_R - 19) * sinf(a));
         int16_t cw = getFontStringWidth(&Roboto_Black_12, ctx[i]);
         tft.setTextColor(cwd[i] == 0 ? TFT_YELLOW : TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(lx - cw / 2, ly - 7);
