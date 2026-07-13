@@ -158,14 +158,23 @@ static float _ttgAccel = 0.0f;
 void ttgAdvanceAccel() {
   static float    prevVv = 0.0f;
   static uint32_t prevMs = 0;
-  uint32_t now = millis();
-  if (prevMs != 0) {
-    float dt = (float)(now - prevMs) / 1000.0f;
-    if (dt > 0.01f && dt < 1.0f)
-      _ttgAccel += 0.30f * ((state.verticalVel - prevVv) / dt - _ttgAccel);  // ~3-sample smoothing
+  static bool     have   = false;
+  // Only take a new derivative sample when the velocity telemetry actually changed.
+  // KSP updates verticalVel slower than our frame rate; sampling on every frame
+  // injected dv/dt = 0 on the stale frames, which made the filter ring (decay then
+  // spike) and the kinematic time-to-ground jitter. Sampling on change gives a clean
+  // dv/dt over the real inter-sample interval.
+  if (state.verticalVel != prevVv) {
+    uint32_t now = millis();
+    if (have) {
+      float dt = (float)(now - prevMs) / 1000.0f;
+      if (dt > 0.01f && dt < 2.0f)
+        _ttgAccel += 0.15f * ((state.verticalVel - prevVv) / dt - _ttgAccel);  // heavy smoothing
+    }
+    prevVv = state.verticalVel;
+    prevMs = now;
+    have   = true;
   }
-  prevVv = state.verticalVel;
-  prevMs = now;
 }
 
 // Smallest positive root of  0.5*a*t^2 + v*t + h = 0  (h>0 AGL, v<0 descending).
@@ -200,15 +209,26 @@ static float _ttgKeplerianToRadius(float r_target) {
   return (t > 0.0f) ? t : -1.0f;
 }
 
+// Sticky display value: hold the previously shown value until the smoothed input
+// has moved by at least ~1 s, so a residual sub-second wobble can't make the
+// 1-second-resolution readout dither between adjacent values. `shown` is the
+// caller's retained state (seeded to <0 for "no value yet").
+static float _ttgSticky(float value, float &shown) {
+  if (shown < 0.0f || fabsf(value - shown) >= 1.0f) shown = value;
+  return shown;
+}
+
 // Seconds to the ground, or -1 when not applicable.
 // Reads the shared vertical-accel filter; call ttgAdvanceAccel() once per frame first.
 float estimateTimeToGround() {
   float aVert = _ttgAccel;
   static float ema = -1.0f;   // smoothed output; <0 means "no valid sample yet"
 
+  static float shown = -1.0f;   // sticky display value (deadbanded)
+
   bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
   if (inOrbitOrEscape || state.radarAlt <= 0.0f || state.verticalVel >= -0.05f) {
-    ema = -1.0f;
+    ema = -1.0f; shown = -1.0f;
     return -1.0f;
   }
 
@@ -225,7 +245,7 @@ float estimateTimeToGround() {
   // flickering frame-to-frame. Call ttgAdvanceAccel() once per frame so this
   // advances at the frame rate.
   ema = (ema < 0.0f) ? raw : ema + 0.25f * (raw - ema);
-  return ema;
+  return _ttgSticky(ema, shown);
 }
 
 // Seconds until the vessel descends into the atmosphere (crosses the atmosphere
@@ -234,12 +254,13 @@ float estimateTimeToGround() {
 // estimateTimeToGround, minus the drag branch (we are above the atmosphere here).
 float estimateTimeToAtmosphere() {
   float atmoAlt = currentBody.lowSpace;                    // atmosphere top (0 = airless)
-  static float ema = -1.0f;
+  static float ema   = -1.0f;
+  static float shown = -1.0f;
   if (atmoAlt <= 0.0f || state.inAtmo ||
       state.verticalVel >= -0.05f ||                       // not descending
       state.altitude <= atmoAlt ||                         // already at/below the boundary
       state.periapsis > atmoAlt) {                         // periapsis above atmo -> won't enter
-    ema = -1.0f;
+    ema = -1.0f; shown = -1.0f;
     return -1.0f;
   }
 
@@ -251,7 +272,7 @@ float estimateTimeToAtmosphere() {
   if (raw < 0.0f) raw = fabsf((state.altitude - atmoAlt) / state.verticalVel);   // naive fallback
 
   ema = (ema < 0.0f) ? raw : ema + 0.25f * (raw - ema);
-  return ema;
+  return _ttgSticky(ema, shown);
 }
 
 // Map a time-to-ground (s) to T+Grnd foreground/background colours with hysteresis.
