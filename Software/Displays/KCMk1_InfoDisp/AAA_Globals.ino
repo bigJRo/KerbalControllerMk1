@@ -204,18 +204,28 @@ static float _ttgKeplerianToRadius(float r_target) {
 // Reads the shared vertical-accel filter; call ttgAdvanceAccel() once per frame first.
 float estimateTimeToGround() {
   float aVert = _ttgAccel;
+  static float ema = -1.0f;   // smoothed output; <0 means "no valid sample yet"
 
   bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
-  if (inOrbitOrEscape || state.radarAlt <= 0.0f || state.verticalVel >= -0.05f)
+  if (inOrbitOrEscape || state.radarAlt <= 0.0f || state.verticalVel >= -0.05f) {
+    ema = -1.0f;
     return -1.0f;
+  }
 
   bool powered = (state.throttle > 0.02f);
   bool draggy  = (state.inAtmo && state.airDensity > 0.05f);
-  float t = (powered || draggy)
-              ? _ttgKinematic(state.radarAlt, state.verticalVel, aVert)
-              : _ttgKeplerianToRadius(currentBody.radius + (state.altitude - state.radarAlt));
-  if (t >= 0.0f) return t;
-  return fabsf(state.radarAlt / state.verticalVel);   // naive fallback
+  float raw = (powered || draggy)
+                ? _ttgKinematic(state.radarAlt, state.verticalVel, aVert)
+                : _ttgKeplerianToRadius(currentBody.radius + (state.altitude - state.radarAlt));
+  if (raw < 0.0f) raw = fabsf(state.radarAlt / state.verticalVel);   // naive fallback
+
+  // Low-pass the final estimate. The kinematic term is sensitive to the (noisy)
+  // acceleration, and it can jump ~2x when the arrest boundary flips it to the
+  // naive fallback; smoothing keeps the displayed value and its colour band from
+  // flickering frame-to-frame. Call ttgAdvanceAccel() once per frame so this
+  // advances at the frame rate.
+  ema = (ema < 0.0f) ? raw : ema + 0.25f * (raw - ema);
+  return ema;
 }
 
 // Seconds until the vessel descends into the atmosphere (crosses the atmosphere
@@ -224,16 +234,51 @@ float estimateTimeToGround() {
 // estimateTimeToGround, minus the drag branch (we are above the atmosphere here).
 float estimateTimeToAtmosphere() {
   float atmoAlt = currentBody.lowSpace;                    // atmosphere top (0 = airless)
-  if (atmoAlt <= 0.0f || state.inAtmo) return -1.0f;
-  if (state.verticalVel >= -0.05f) return -1.0f;           // not descending
-  if (state.altitude <= atmoAlt)    return -1.0f;          // already at/below the boundary
-  if (state.periapsis > atmoAlt)    return -1.0f;          // periapsis above atmo -> won't enter
+  static float ema = -1.0f;
+  if (atmoAlt <= 0.0f || state.inAtmo ||
+      state.verticalVel >= -0.05f ||                       // not descending
+      state.altitude <= atmoAlt ||                         // already at/below the boundary
+      state.periapsis > atmoAlt) {                         // periapsis above atmo -> won't enter
+    ema = -1.0f;
+    return -1.0f;
+  }
 
   float aVert = _ttgAccel;
   bool  powered = (state.throttle > 0.02f);
-  float t = powered
-              ? _ttgKinematic(state.altitude - atmoAlt, state.verticalVel, aVert)
-              : _ttgKeplerianToRadius(currentBody.radius + atmoAlt);
-  if (t >= 0.0f) return t;
-  return fabsf((state.altitude - atmoAlt) / state.verticalVel);   // naive fallback
+  float raw = powered
+                ? _ttgKinematic(state.altitude - atmoAlt, state.verticalVel, aVert)
+                : _ttgKeplerianToRadius(currentBody.radius + atmoAlt);
+  if (raw < 0.0f) raw = fabsf((state.altitude - atmoAlt) / state.verticalVel);   // naive fallback
+
+  ema = (ema < 0.0f) ? raw : ema + 0.25f * (raw - ema);
+  return ema;
+}
+
+// Map a time-to-ground (s) to T+Grnd foreground/background colours with hysteresis.
+// Escalates to a more urgent band immediately, but relaxes to a calmer band only
+// once the estimate clears the threshold by LNDG_TGRND_HYST_S — so an estimate that
+// hovers on a boundary can't flip-flop the colour (e.g. green<->yellow) every frame.
+// t < 0 => not applicable: returns grey and resets the retained band.
+//   band 0 = alarm (white on red), 1 = warn (yellow), 2 = safe (dark green)
+void lndgTGroundColors(float t, uint16_t &fg, uint16_t &bg) {
+  static uint8_t band = 2;
+  const float A = LNDG_TGRND_ALARM_S, W = LNDG_TGRND_WARN_S, H = LNDG_TGRND_HYST_S;
+
+  if (t < 0.0f) { band = 2; fg = TFT_DARK_GREY; bg = TFT_BLACK; return; }
+
+  if (band == 0) {                                  // alarm -> relax needs +H
+    band = (t >= A + H) ? ((t >= W + H) ? 2 : 1) : 0;
+  } else if (band == 1) {                           // warn
+    if      (t < A)      band = 0;                  // escalate immediately
+    else if (t >= W + H) band = 2;                  // relax to green needs +H
+  } else {                                          // safe / green
+    if      (t < A) band = 0;
+    else if (t < W) band = 1;                       // escalate immediately
+  }
+
+  switch (band) {
+    case 0:  fg = TFT_WHITE;      bg = TFT_RED;   break;
+    case 1:  fg = TFT_YELLOW;     bg = TFT_BLACK; break;
+    default: fg = TFT_DARK_GREEN; bg = TFT_BLACK; break;
+  }
 }

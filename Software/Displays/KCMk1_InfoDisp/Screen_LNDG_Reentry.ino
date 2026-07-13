@@ -120,13 +120,13 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         else if (state.verticalVel <= 5.0f) lndgVal(0, "T+Atm:", "---", TFT_DARK_GREEN, TFT_BLACK);
         else                                lndgVal(0, "T+Atm:", "---", TFT_DARK_GREY,  TFT_BLACK);
     } else if (!aboveAtmo) {
-        if (tGround >= 0.0f) {
-            fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
-                 (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
-            bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
-            lndgVal(0, "T+Grnd:", formatTimeCompact(tGround), fg, bg);
-        } else { lndgVal(0, "T+Grnd:", "---", TFT_DARK_GREY, TFT_BLACK); }
-    } else { lndgVal(0, "T+Grnd:", "---", TFT_DARK_GREY, TFT_BLACK); }
+        lndgTGroundColors(tGround, fg, bg);
+        if (tGround >= 0.0f) lndgVal(0, "T+Grnd:", formatTimeCompact(tGround), fg, bg);
+        else                 lndgVal(0, "T+Grnd:", "---", fg, bg);
+    } else {
+        lndgTGroundColors(-1.0f, fg, bg);   // reset band while above atmo
+        lndgVal(0, "T+Grnd:", "---", fg, bg);
+    }
 
     if (wantSL) {
         lndgVal(1, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);

@@ -74,6 +74,9 @@ const float G_ALARM_NEG = KCM_HIGH_G_ALARM_NEG;   // #3D aligned with Annunciato
 // T.Grnd / V.Vrt — gear UP (time-based, matches annunciator CW_GROUND_PROX)
 const float LNDG_TGRND_ALARM_S  = KCM_GROUND_PROX_S;   // #3D aligned with Annunciator CW_GROUND_PROX_S
 const float LNDG_TGRND_WARN_S   = 30.0f;   // yellow — T.Grnd below this with gear UP
+const float LNDG_TGRND_HYST_S   = 3.0f;    // colour-band hysteresis: relax only after clearing a
+                                           // threshold by this margin, so a jittery estimate sitting
+                                           // near a boundary can't flip-flop green<->yellow each frame
 
 // T.Grnd / V.Vrt — gear DOWN (speed-based, structural landing limits)
 const float LNDG_VVRT_ALARM_MS  = -8.0f;   // red — crash landing speed (m/s, negative)

@@ -959,16 +959,11 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             rpVal(0, "V.Vrt:", fmtMs(state.verticalVel), fg, bg, 0);
         }
 
-        // Row 1: T.Grnd
+        // Row 1: T.Grnd — colours via the shared hysteresis helper (anti-flicker)
         {
-            if (tGround >= 0.0f) {
-                fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
-                     (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
-                bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
-                rpVal(1, "T+Grnd:", formatTimeCompact(tGround), fg, bg, 1);
-            } else {
-                rpVal(1, "T+Grnd:", "---", TFT_DARK_GREY, TFT_BLACK, 1);
-            }
+            lndgTGroundColors(tGround, fg, bg);
+            if (tGround >= 0.0f) rpVal(1, "T+Grnd:", formatTimeCompact(tGround), fg, bg, 1);
+            else                 rpVal(1, "T+Grnd:", "---", fg, bg, 1);
         }
 
         // Row 2: Alt.Rdr
