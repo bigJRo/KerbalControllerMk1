@@ -176,29 +176,26 @@ static float _ttgKinematic(float h, float v, float a) {
   return t;
 }
 
-// Keplerian time from the current (descending) point to the ground radius, from
-// the received orbit elements. Valid for elliptical coasting arcs (0 <= e < 1).
-// Returns -1 if periapsis is above the ground (won't impact) or elements unusable.
-static float _ttgKeplerian() {
+// Keplerian time from the current (descending) point to a target orbital radius,
+// from the received orbit elements. Valid for elliptical coasting arcs (0 <= e < 1).
+// Returns -1 if periapsis is above the target (won't reach it) or elements unusable.
+static float _ttgKeplerianToRadius(float r_target) {
   float e = state.eccentricity, a = state.semiMajorAxis, period = state.orbitalPeriod;
-  float Rb = currentBody.radius;
-  if (a <= 0.0f || period <= 0.0f || Rb <= 0.0f || e < 0.0f || e >= 1.0f) return -1.0f;
-
-  float r_g    = Rb + (state.altitude - state.radarAlt);   // ground radius beneath us
-  float r_peri = a * (1.0f - e);
-  if (r_peri > r_g) return -1.0f;                          // periapsis above ground
+  if (a <= 0.0f || period <= 0.0f || e < 0.0f || e >= 1.0f) return -1.0f;
+  if (a * (1.0f - e) > r_target) return -1.0f;             // periapsis above target
 
   float p      = a * (1.0f - e * e);
-  float cosNu  = constrain((p / r_g - 1.0f) / e, -1.0f, 1.0f);
+  float cosNu  = constrain((p / r_target - 1.0f) / e, -1.0f, 1.0f);
   float nu     = acosf(cosNu);                             // [0, PI]
   float Ecc    = 2.0f * atan2f(sqrtf(1.0f - e) * sinf(nu * 0.5f),
                                sqrtf(1.0f + e) * cosf(nu * 0.5f));
   float M      = Ecc - e * sinf(Ecc);                      // mean anomaly from periapsis
-  float dtToPe = M / (TWO_PI / period);                    // r_g crossing -> periapsis
-  float ttg    = state.timeToPe - dtToPe;                  // now -> r_g crossing
-  return (ttg > 0.0f) ? ttg : -1.0f;
+  float dtToPe = M / (TWO_PI / period);                    // target crossing -> periapsis
+  float t      = state.timeToPe - dtToPe;                  // now -> target crossing
+  return (t > 0.0f) ? t : -1.0f;
 }
 
+// Seconds to the ground, or -1 when not applicable.
 float estimateTimeToGround() {
   float aVert = _ttgUpdateAccel();   // advance the accel tracker every frame
 
@@ -208,8 +205,29 @@ float estimateTimeToGround() {
 
   bool powered = (state.throttle > 0.02f);
   bool draggy  = (state.inAtmo && state.airDensity > 0.05f);
-  float t = (powered || draggy) ? _ttgKinematic(state.radarAlt, state.verticalVel, aVert)
-                                : _ttgKeplerian();
+  float t = (powered || draggy)
+              ? _ttgKinematic(state.radarAlt, state.verticalVel, aVert)
+              : _ttgKeplerianToRadius(currentBody.radius + (state.altitude - state.radarAlt));
   if (t >= 0.0f) return t;
   return fabsf(state.radarAlt / state.verticalVel);   // naive fallback
+}
+
+// Seconds until the vessel descends into the atmosphere (crosses the atmosphere
+// top), or -1 when not applicable (airless body, already in atmo, not descending,
+// or periapsis above the atmosphere so it won't enter). Same regime split as
+// estimateTimeToGround, minus the drag branch (we are above the atmosphere here).
+float estimateTimeToAtmosphere() {
+  float atmoAlt = currentBody.lowSpace;                    // atmosphere top (0 = airless)
+  if (atmoAlt <= 0.0f || state.inAtmo) return -1.0f;
+  if (state.verticalVel >= -0.05f) return -1.0f;           // not descending
+  if (state.altitude <= atmoAlt)    return -1.0f;          // already at/below the boundary
+  if (state.periapsis > atmoAlt)    return -1.0f;          // periapsis above atmo -> won't enter
+
+  float aVert = _ttgUpdateAccel();
+  bool  powered = (state.throttle > 0.02f);
+  float t = powered
+              ? _ttgKinematic(state.altitude - atmoAlt, state.verticalVel, aVert)
+              : _ttgKeplerianToRadius(currentBody.radius + atmoAlt);
+  if (t >= 0.0f) return t;
+  return fabsf((state.altitude - atmoAlt) / state.verticalVel);   // naive fallback
 }

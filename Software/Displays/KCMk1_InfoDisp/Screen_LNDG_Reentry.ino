@@ -111,8 +111,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     }
 
     if (wantTPe) {
-        float tAtmo = (state.verticalVel < -5.0f)
-                      ? fabsf((state.altitude - atmoAlt) / state.verticalVel) : -1.0f;
+        float tAtmo = estimateTimeToAtmosphere();
         if      (tAtmo >= 0.0f)             lndgVal(0, "T+Atm:", formatTimeCompact(tAtmo), TFT_DARK_GREEN, TFT_BLACK);
         else if (state.verticalVel <= 5.0f) lndgVal(0, "T+Atm:", "---", TFT_DARK_GREEN, TFT_BLACK);
         else                                lndgVal(0, "T+Atm:", "---", TFT_DARK_GREY,  TFT_BLACK);

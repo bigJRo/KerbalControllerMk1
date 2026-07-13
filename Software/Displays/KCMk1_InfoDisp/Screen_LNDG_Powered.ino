@@ -356,17 +356,19 @@ static void _lndgDrawTrk(KCM_TFT &tft) {
     // Clear the rose interior (inside the bezel)
     tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R - 1, TFT_BLACK);
 
-    // Compass ticks every 30° — longer at the cardinals, shorter between; both in
-    // visible grey so the 30° cadence reads clearly.
-    for (int16_t d = 0; d < 360; d += 30) {
+    // Compass ticks every 15° — long/bright at the cardinals, medium at the 30°
+    // marks, short/dim at the intermediate 15° marks, so the finer cadence reads
+    // clearly without crowding the rose.
+    for (int16_t d = 0; d < 360; d += 15) {
         float   a    = (d - hdg - 90.0f) * (float)DEG_TO_RAD;
         bool    maj  = (d % 90 == 0);
+        bool    med  = (d % 30 == 0);
         int16_t r0   = LNDG_TRK_R - 1;
-        int16_t r1   = LNDG_TRK_R - (maj ? 9 : 6);
+        int16_t r1   = LNDG_TRK_R - (maj ? 9 : (med ? 6 : 4));
         float   ca = cosf(a), sa = sinf(a);
         tft.drawLine(LNDG_TRK_CX + (int16_t)(r0 * ca), LNDG_TRK_CY + (int16_t)(r0 * sa),
                      LNDG_TRK_CX + (int16_t)(r1 * ca), LNDG_TRK_CY + (int16_t)(r1 * sa),
-                     maj ? TFT_LIGHT_GREY : TFT_GREY);
+                     (maj || med) ? TFT_LIGHT_GREY : TFT_GREY);
     }
 
     // Rotating cardinals
@@ -393,10 +395,12 @@ static void _lndgDrawTrk(KCM_TFT &tft) {
         tft.fillCircle(tx, ty, 4, TFT_NEON_GREEN);
     }
 
-    // Centre dot (vessel) + fixed nose lubber line at the top
+    // Centre dot (vessel) + fixed nose marker at the top — a filled white triangle
+    // pointing inward from the top rim, far more obvious than a thin lubber line.
     tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, 3, TFT_DARK_GREY);
-    tft.drawLine(LNDG_TRK_CX, LNDG_TRK_CY - LNDG_TRK_R + 1,
-                 LNDG_TRK_CX, LNDG_TRK_CY - LNDG_TRK_R + 10, TFT_WHITE);
+    tft.fillTriangle(LNDG_TRK_CX,     LNDG_TRK_CY - LNDG_TRK_R + 12,
+                     LNDG_TRK_CX - 6, LNDG_TRK_CY - LNDG_TRK_R + 1,
+                     LNDG_TRK_CX + 6, LNDG_TRK_CY - LNDG_TRK_R + 1, TFT_WHITE);
 }
 
 
