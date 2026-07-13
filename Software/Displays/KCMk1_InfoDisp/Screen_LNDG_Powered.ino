@@ -719,6 +719,10 @@ static void _lndgChromePowered(KCM_TFT &tft) {
 ****************************************************************************************/
 static void _lndgDrawPowered(KCM_TFT &tft) {
 
+    // Advance the shared vertical-accel filter exactly once per frame, before any
+    // estimate*() read below (both the X-Pointer colour and the panel use tGround).
+    ttgAdvanceAccel();
+
     // Regime-aware time-to-ground (Keplerian coast / thrust+drag kinematic / naive)
     float tGround = estimateTimeToGround();
     float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
@@ -921,8 +925,9 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;
 
-        // Regime-aware time-to-ground (shared helper)
-        float  tGround  = estimateTimeToGround();
+        // Reuse the frame's time-to-ground (computed once at the top of this
+        // function) so the panel value and the X-Pointer colour stay consistent
+        // and the shared accel filter is advanced only once per frame.
         float  vSq2     = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
         float  hSpd2    = (vSq2 > 0.0f) ? sqrtf(vSq2) : 0.0f;
         float  headRad2 = (state.heading + state.roll) * DEG_TO_RAD;

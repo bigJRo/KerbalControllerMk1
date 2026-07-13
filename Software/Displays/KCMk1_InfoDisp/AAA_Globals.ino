@@ -146,21 +146,26 @@ void drawStandbyScreen(KCM_TFT &tft) {
    Returns seconds to ground, or -1.0 when not applicable (caller shows "---").
 ****************************************************************************************/
 
-// Low-pass-filtered vertical acceleration (m/s^2). Advanced once per frame; call
-// only from estimateTimeToGround() so the sample interval stays ~one frame.
-static float _ttgUpdateAccel() {
+// Low-pass-filtered vertical acceleration (m/s^2), owned at module scope so the
+// estimate functions can READ it without advancing it.
+static float _ttgAccel = 0.0f;
+
+// Advance the vertical-acceleration filter by one sample. MUST be called exactly
+// once per frame, before any estimate*() call that reads _ttgAccel. Advancing it
+// more than once per frame corrupts the estimate: the extra call sees an unchanged
+// verticalVel over a real dt, computes dv/dt = 0, and decays the filter toward
+// zero — which made T+Grnd oscillate and its colour flicker green<->yellow.
+void ttgAdvanceAccel() {
   static float    prevVv = 0.0f;
   static uint32_t prevMs = 0;
-  static float    accel  = 0.0f;
   uint32_t now = millis();
   if (prevMs != 0) {
     float dt = (float)(now - prevMs) / 1000.0f;
     if (dt > 0.01f && dt < 1.0f)
-      accel += 0.30f * ((state.verticalVel - prevVv) / dt - accel);   // ~3-sample smoothing
+      _ttgAccel += 0.30f * ((state.verticalVel - prevVv) / dt - _ttgAccel);  // ~3-sample smoothing
   }
   prevVv = state.verticalVel;
   prevMs = now;
-  return accel;
 }
 
 // Smallest positive root of  0.5*a*t^2 + v*t + h = 0  (h>0 AGL, v<0 descending).
@@ -196,8 +201,9 @@ static float _ttgKeplerianToRadius(float r_target) {
 }
 
 // Seconds to the ground, or -1 when not applicable.
+// Reads the shared vertical-accel filter; call ttgAdvanceAccel() once per frame first.
 float estimateTimeToGround() {
-  float aVert = _ttgUpdateAccel();   // advance the accel tracker every frame
+  float aVert = _ttgAccel;
 
   bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
   if (inOrbitOrEscape || state.radarAlt <= 0.0f || state.verticalVel >= -0.05f)
@@ -223,7 +229,7 @@ float estimateTimeToAtmosphere() {
   if (state.altitude <= atmoAlt)    return -1.0f;          // already at/below the boundary
   if (state.periapsis > atmoAlt)    return -1.0f;          // periapsis above atmo -> won't enter
 
-  float aVert = _ttgUpdateAccel();
+  float aVert = _ttgAccel;
   bool  powered = (state.throttle > 0.02f);
   float t = powered
               ? _ttgKinematic(state.altitude - atmoAlt, state.verticalVel, aVert)

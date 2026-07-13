@@ -93,6 +93,10 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         drawValue(tft, screen_LNDGRE, row, AX, AW, label, val, fgc, bgc, F, NR);
     };
 
+    // Advance the shared vertical-accel filter exactly once per frame, before the
+    // estimateTimeToGround()/estimateTimeToAtmosphere() reads below.
+    ttgAdvanceAccel();
+
     float tGround = estimateTimeToGround();
     float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
     float hSpd = (vSq > 0.0f) ? sqrtf(vSq) : 0.0f;
