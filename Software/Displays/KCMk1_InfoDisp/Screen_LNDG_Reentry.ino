@@ -36,7 +36,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
     drawVerticalText(tft, 0, TITLE_TOP, SECT_W, rowH*5,
                      &Roboto_Black_16, "STATE", TFT_LIGHT_GREY, TFT_BLACK);
 
-    const char *row0Label = _lndgReentryRow0TPe ? "T+Atm:" : "T.Grnd:";
+    const char *row0Label = _lndgReentryRow0TPe ? "T+Atm:" : "T+Grnd:";
     const char *row1Label = _lndgReentryRow1SL  ? "Alt.SL:" : "Alt.Rdr:";
     printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, row0Label,  COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, row1Label,  COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -123,9 +123,9 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
             fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
                  (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
             bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
-            lndgVal(0, "T.Grnd:", formatTimeCompact(tGround), fg, bg);
-        } else { lndgVal(0, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK); }
-    } else { lndgVal(0, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK); }
+            lndgVal(0, "T+Grnd:", formatTimeCompact(tGround), fg, bg);
+        } else { lndgVal(0, "T+Grnd:", "---", TFT_DARK_GREY, TFT_BLACK); }
+    } else { lndgVal(0, "T+Grnd:", "---", TFT_DARK_GREY, TFT_BLACK); }
 
     if (wantSL) {
         lndgVal(1, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);

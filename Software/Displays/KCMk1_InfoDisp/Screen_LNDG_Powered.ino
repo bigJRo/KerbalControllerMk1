@@ -356,16 +356,17 @@ static void _lndgDrawTrk(KCM_TFT &tft) {
     // Clear the rose interior (inside the bezel)
     tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R - 1, TFT_BLACK);
 
-    // Compass ticks every 30° — longer/white at the cardinals, short/grey between.
+    // Compass ticks every 30° — longer at the cardinals, shorter between; both in
+    // visible grey so the 30° cadence reads clearly.
     for (int16_t d = 0; d < 360; d += 30) {
         float   a    = (d - hdg - 90.0f) * (float)DEG_TO_RAD;
         bool    maj  = (d % 90 == 0);
         int16_t r0   = LNDG_TRK_R - 1;
-        int16_t r1   = LNDG_TRK_R - (maj ? 9 : 5);
+        int16_t r1   = LNDG_TRK_R - (maj ? 9 : 6);
         float   ca = cosf(a), sa = sinf(a);
         tft.drawLine(LNDG_TRK_CX + (int16_t)(r0 * ca), LNDG_TRK_CY + (int16_t)(r0 * sa),
                      LNDG_TRK_CX + (int16_t)(r1 * ca), LNDG_TRK_CY + (int16_t)(r1 * sa),
-                     maj ? TFT_LIGHT_GREY : TFT_DARK_GREY);
+                     maj ? TFT_LIGHT_GREY : TFT_GREY);
     }
 
     // Rotating cardinals
@@ -629,7 +630,7 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         static const uint16_t RHW = RW / 2;                   // 180px — half width for split rows
 
         printDispChrome(tft, RCF, RX, rowYFor(0,RNR), RW,  rowHFor(RNR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T.Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T+Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, RCF, RX, rowYFor(2,RNR), RW,  rowHFor(RNR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, RCF, RX, rowYFor(3,RNR), RW,  rowHFor(RNR), "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
@@ -954,9 +955,9 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                 fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
                      (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
                 bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
-                rpVal(1, "T.Grnd:", formatTimeCompact(tGround), fg, bg, 1);
+                rpVal(1, "T+Grnd:", formatTimeCompact(tGround), fg, bg, 1);
             } else {
-                rpVal(1, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK, 1);
+                rpVal(1, "T+Grnd:", "---", TFT_DARK_GREY, TFT_BLACK, 1);
             }
         }
 
