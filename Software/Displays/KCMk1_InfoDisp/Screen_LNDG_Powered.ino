@@ -1010,7 +1010,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         // Row 5: ΔV.Stg
         {
             snprintf(buf, sizeof(buf), "%.0f", state.stageDeltaV);
-            rpVal(5, "\xCE\x94V.Stg:", String(buf) + "m/s", TFT_DARK_GREEN, TFT_BLACK, 6);
+            rpVal(5, "\xCE\x94V.Stg:", String(buf) + " m/s", TFT_DARK_GREEN, TFT_BLACK, 6);
         }
 
         // Row 6: Throttle | RCS (split)
