@@ -521,7 +521,11 @@ static void _lndgDrawVv(KCM_TFT &tft) {
 ****************************************************************************************/
 static void _lndgChromePowered(KCM_TFT &tft) {
 
-
+    // Select the tape regime from the current altitude BEFORE painting the tape
+    // chrome, otherwise the background is drawn with the stale mode left over from
+    // the previous screen visit while the per-frame strip update uses the correct
+    // one — producing a mixed normal/low-alt colour scheme on the tape.
+    _lndgLowAltMode = (state.radarAlt < 50.0f);
 
     // ── Altitude tape chrome ──
     _lndgDrawTapeChrome(tft, _lndgLowAltMode);
@@ -704,7 +708,8 @@ static void _lndgChromePowered(KCM_TFT &tft) {
     _lndgPrevAttX   = -999;
     _lndgPrevAttY   = -999;
     _lndgPrevVV     = -9999.0f;
-    _lndgLowAltMode = (state.radarAlt < 50.0f);
+    // _lndgLowAltMode is set at the top of this function (before the tape chrome
+    // is painted) so the initial background matches the per-frame strip regime.
     // Clear right panel row caches so values redraw on first update
     for (uint8_t r = 0; r <= 14; r++) rowCache[6][r].value = "\x01";
 }
