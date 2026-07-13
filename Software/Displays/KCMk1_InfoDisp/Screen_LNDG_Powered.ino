@@ -49,8 +49,8 @@ static const float    LNDG_TAPE_PPM  = (float)LNDG_TAPE_H / 500.0f;
 // altitude tape and leaves room below for the axis row and the attitude bullseye.
 static const uint16_t LNDG_XP_X     = 136;
 static const uint16_t LNDG_XP_Y     = TITLE_TOP + 26;               // 88 — below the SURF DRIFT title
-static const uint16_t LNDG_XP_SIDE  = 350;                          // centrepiece; trimmed slightly so the
-                                                                   //   wider 44px flanking bars clear it
+static const uint16_t LNDG_XP_SIDE  = 342;                          // centrepiece; trimmed for whitespace and
+                                                                   //   so the wider 44px flanking bars clear it
 static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 308
 static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 268
 static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
@@ -374,7 +374,7 @@ static void _lndgDrawVvChrome(KCM_TFT &tft) {
     // "VERTICAL VELOCITY" vertical label — full-height box so it is vertically
     // centred on the bar, left of the numeric labels.
     drawVerticalText(tft, LNDG_VV_X - 34, LNDG_VV_Y, 14, LNDG_VV_H,
-                     &Roboto_Black_12, "VERTICAL VELOCITY", TFT_LIGHT_GREY, TFT_BLACK);
+                     &Roboto_Black_12, "VERT VELOCITY", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
@@ -642,6 +642,10 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
     float fwdClamped = constrain(vFwd, -15.0f, 15.0f);
     int16_t latX = (int16_t)(LNDG_XP_CX + latClamped * LNDG_XP_SCALE);
     int16_t fwdY = (int16_t)(LNDG_XP_CY - fwdClamped * LNDG_XP_SCALE);
+    // Keep the needle intersection at least 8px inside the field so the connecting
+    // bars still draw, and the arrowhead/erase boxes (±7px) never spill past the edge.
+    latX = constrain(latX, (int16_t)(LNDG_XP_X + 8), (int16_t)(LNDG_XP_X + LNDG_XP_SIDE - 8));
+    fwdY = constrain(fwdY, (int16_t)(LNDG_XP_Y + 8), (int16_t)(LNDG_XP_Y + LNDG_XP_SIDE - 8));
 
     // Needle colour: dark green=safe, yellow=warn, red=alarm
     float driftMag = sqrtf(vLat * vLat + vFwd * vFwd) / 1.414f;
@@ -689,6 +693,10 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                 tft.drawLine(nx1, fy, nx2, fy, needleCol);
         }
 
+        // Redraw the border FIRST (cleans up where the bars touched it) so the
+        // arrowheads and intersection circle below always render on top of it.
+        tft.drawRect(LNDG_XP_X, LNDG_XP_Y, LNDG_XP_SIDE, LNDG_XP_SIDE, TFT_GREY);
+
         // Arrowheads — lateral needle (top + bottom)
         tft.fillTriangle(latX,     LNDG_XP_Y + 4,
                          latX - 6, LNDG_XP_Y + 16,
@@ -707,9 +715,6 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         // Intersection circle at needle crossing — solid fill, white centre dot
         tft.fillCircle(latX, fwdY, 7, needleCol);
         tft.fillCircle(latX, fwdY, 3, TFT_WHITE);
-
-        // Redraw border on top — needles and arrowheads may touch it
-        tft.drawRect(LNDG_XP_X, LNDG_XP_Y, LNDG_XP_SIDE, LNDG_XP_SIDE, TFT_GREY);
 
         // Centre reference dot always on top
         tft.fillCircle(LNDG_XP_CX, LNDG_XP_CY, 5, TFT_BLACK);
