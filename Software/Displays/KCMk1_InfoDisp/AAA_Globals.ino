@@ -83,11 +83,11 @@ void switchToScreen(ScreenType s) {
      1. Plane in atmosphere                    → ACFT (PFD)
      2. Rover                                  → ROVR (PFD)
      3. Pre-launch                             → LNCH (pre-launch board)
-     4. Target within docking range            → DOCK
-     5. Recoverable vessel                     → VEH
-     6. Anything else                          → SCFT (Spacecraft PFD — default)
-   Landing (powered descent) and Orbit are no longer auto-selected — reach them from
-   the sidebar.
+     4. Sub-orbital lander                     → LNDG (powered descent)
+     5. Target within docking range            → DOCK
+     6. Recoverable vessel                     → VEH
+     7. Anything else                          → SCFT (Spacecraft PFD — default)
+   Orbit is no longer auto-selected — reach it from the sidebar.
 ****************************************************************************************/
 ScreenType contextScreen() {
   // 1. Plane in the atmosphere → aircraft PFD. Out of the atmosphere a plane is a
@@ -104,18 +104,22 @@ ScreenType contextScreen() {
   if (state.situation & sit_PreLaunch)
     return screen_LNCH;
 
-  // 4. Target within docking range → docking screen.
+  // 4. Sub-orbital lander → powered descent.
+  if (state.vesselType == type_Lander && (state.situation & sit_SubOrb))
+    return screen_LNDG;
+
+  // 5. Target within docking range → docking screen.
   // Use tgtDistance alone — KSP may report targetAvailable=false even while
   // actively sending TARGETINFO with a valid distance (observed in KSP1).
   if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
     return screen_DOCK;
 
-  // 5. Recoverable vessel (debris, probe, etc. that can be recovered) → Vehicle Info
+  // 6. Recoverable vessel (debris, probe, etc. that can be recovered) → Vehicle Info
   if (state.isRecoverable)
     return screen_VEH;
 
-  // 6. Everything else (orbit, sub-orbital, landing, splashed, unknown) → Spacecraft
-  //    PFD. Orbit and powered descent are manual-select from the sidebar.
+  // 7. Everything else (orbit, atmospheric flight, splashed, unknown) → Spacecraft
+  //    PFD. Orbit is manual-select from the sidebar.
   return screen_SCFT;
 }
 
