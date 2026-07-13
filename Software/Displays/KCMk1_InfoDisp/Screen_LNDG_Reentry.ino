@@ -93,9 +93,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         drawValue(tft, screen_LNDGRE, row, AX, AW, label, val, fgc, bgc, F, NR);
     };
 
-    bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
-    float tGround = (!inOrbitOrEscape && state.verticalVel < -0.05f && state.radarAlt > 0.0f)
-                    ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
+    float tGround = estimateTimeToGround();
     float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
     float hSpd = (vSq > 0.0f) ? sqrtf(vSq) : 0.0f;
     float atmoAlt = (currentBody.lowSpace > 0.0f) ? currentBody.lowSpace : 70000.0f;

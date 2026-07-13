@@ -710,10 +710,8 @@ static void _lndgChromePowered(KCM_TFT &tft) {
 ****************************************************************************************/
 static void _lndgDrawPowered(KCM_TFT &tft) {
 
-    // Shared precompute
-    bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
-    float tGround = (!inOrbitOrEscape && state.verticalVel < -0.05f && state.radarAlt > 0.0f)
-                    ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
+    // Regime-aware time-to-ground (Keplerian coast / thrust+drag kinematic / naive)
+    float tGround = estimateTimeToGround();
     float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
     float hSpd = (vSq > 0.0f) ? sqrtf(vSq) : 0.0f;
 
@@ -914,10 +912,8 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;
 
-        // Shared precompute (some already done above for XP — recompute cleanly here)
-        bool   inOrb    = (state.situation == sit_Orbit || state.situation == sit_Escaping);
-        float  tGround  = (!inOrb && state.verticalVel < -0.05f && state.radarAlt > 0.0f)
-                          ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
+        // Regime-aware time-to-ground (shared helper)
+        float  tGround  = estimateTimeToGround();
         float  vSq2     = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
         float  hSpd2    = (vSq2 > 0.0f) ? sqrtf(vSq2) : 0.0f;
         float  headRad2 = (state.heading + state.roll) * DEG_TO_RAD;

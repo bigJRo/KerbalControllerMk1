@@ -133,3 +133,83 @@ void drawStandbyScreen(KCM_TFT &tft) {
   drawStandbySplash(tft);   // #5A delegates to KDC library (subsumes #11 setXY fix)
   infoDB.flip(tft);
 }
+
+
+/***************************************************************************************
+   TIME-TO-GROUND ESTIMATION
+   Shared by the powered-descent and re-entry landing screens. Replaces the naive
+   radarAlt/|verticalVel| estimate with a regime-aware calculation:
+     - coasting in vacuum / thin atmosphere -> Keplerian time to the ground radius
+     - under thrust or in dense atmosphere  -> kinematic projection using the
+       measured vertical acceleration (captures thrust braking and drag)
+     - degenerate / near-surface            -> naive constant-velocity fallback
+   Returns seconds to ground, or -1.0 when not applicable (caller shows "---").
+****************************************************************************************/
+
+// Low-pass-filtered vertical acceleration (m/s^2). Advanced once per frame; call
+// only from estimateTimeToGround() so the sample interval stays ~one frame.
+static float _ttgUpdateAccel() {
+  static float    prevVv = 0.0f;
+  static uint32_t prevMs = 0;
+  static float    accel  = 0.0f;
+  uint32_t now = millis();
+  if (prevMs != 0) {
+    float dt = (float)(now - prevMs) / 1000.0f;
+    if (dt > 0.01f && dt < 1.0f)
+      accel += 0.30f * ((state.verticalVel - prevVv) / dt - accel);   // ~3-sample smoothing
+  }
+  prevVv = state.verticalVel;
+  prevMs = now;
+  return accel;
+}
+
+// Smallest positive root of  0.5*a*t^2 + v*t + h = 0  (h>0 AGL, v<0 descending).
+// Returns -1 if the vessel would arrest its descent before reaching the ground.
+static float _ttgKinematic(float h, float v, float a) {
+  if (fabsf(a) < 0.05f) return (v < 0.0f) ? (h / -v) : -1.0f;   // ~constant velocity
+  float disc = v * v - 2.0f * a * h;
+  if (disc < 0.0f) return -1.0f;
+  float sq = sqrtf(disc);
+  float t1 = (-v - sq) / a, t2 = (-v + sq) / a, t = -1.0f;
+  if (t1 > 0.0f)                          t = t1;
+  if (t2 > 0.0f && (t < 0.0f || t2 < t))  t = t2;
+  return t;
+}
+
+// Keplerian time from the current (descending) point to the ground radius, from
+// the received orbit elements. Valid for elliptical coasting arcs (0 <= e < 1).
+// Returns -1 if periapsis is above the ground (won't impact) or elements unusable.
+static float _ttgKeplerian() {
+  float e = state.eccentricity, a = state.semiMajorAxis, period = state.orbitalPeriod;
+  float Rb = currentBody.radius;
+  if (a <= 0.0f || period <= 0.0f || Rb <= 0.0f || e < 0.0f || e >= 1.0f) return -1.0f;
+
+  float r_g    = Rb + (state.altitude - state.radarAlt);   // ground radius beneath us
+  float r_peri = a * (1.0f - e);
+  if (r_peri > r_g) return -1.0f;                          // periapsis above ground
+
+  float p      = a * (1.0f - e * e);
+  float cosNu  = constrain((p / r_g - 1.0f) / e, -1.0f, 1.0f);
+  float nu     = acosf(cosNu);                             // [0, PI]
+  float Ecc    = 2.0f * atan2f(sqrtf(1.0f - e) * sinf(nu * 0.5f),
+                               sqrtf(1.0f + e) * cosf(nu * 0.5f));
+  float M      = Ecc - e * sinf(Ecc);                      // mean anomaly from periapsis
+  float dtToPe = M / (TWO_PI / period);                    // r_g crossing -> periapsis
+  float ttg    = state.timeToPe - dtToPe;                  // now -> r_g crossing
+  return (ttg > 0.0f) ? ttg : -1.0f;
+}
+
+float estimateTimeToGround() {
+  float aVert = _ttgUpdateAccel();   // advance the accel tracker every frame
+
+  bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
+  if (inOrbitOrEscape || state.radarAlt <= 0.0f || state.verticalVel >= -0.05f)
+    return -1.0f;
+
+  bool powered = (state.throttle > 0.02f);
+  bool draggy  = (state.inAtmo && state.airDensity > 0.05f);
+  float t = (powered || draggy) ? _ttgKinematic(state.radarAlt, state.verticalVel, aVert)
+                                : _ttgKeplerian();
+  if (t >= 0.0f) return t;
+  return fabsf(state.radarAlt / state.verticalVel);   // naive fallback
+}
