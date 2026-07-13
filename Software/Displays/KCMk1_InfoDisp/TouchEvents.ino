@@ -111,7 +111,8 @@ void processTouchEvents() {
       }
 
       // ORB↔ORB+ and LNDG↔REEN are now separate sidebar screens (rev-2), not
-      // title-tap sub-modes. Only LNCH keeps a title toggle (ASCENT↔CIRC phase).
+      // title-tap sub-modes. LNCH keeps a title toggle (ASCENT↔CIRC phase); the PFD
+      // family (SPACECRAFT/AIRCRAFT/ROVER) cycles its three screens on title touch.
       if (activeScreen == screen_LNCH) {
         if (_lnchManualOverride) {
           _lnchManualOverride = false;
@@ -126,6 +127,21 @@ void processTouchEvents() {
           Serial.print(F("InfoDisp: LNCH phase -> "));
           Serial.print(_lnchOrbitalMode ? F("CIRCULARIZATION") : F("ASCENT"));
           Serial.println(_lnchManualOverride ? F(" [MANUAL]") : F(" [AUTO]"));
+        }
+      } else if (activeScreen == screen_SCFT || activeScreen == screen_ACFT ||
+                 activeScreen == screen_ROVR) {
+        // Cycle SPACECRAFT → AIRCRAFT → ROVER → SPACECRAFT from whatever is shown,
+        // latching a manual override so context no longer moves it.
+        uint8_t cur = (activeScreen == screen_ROVR) ? 2 :
+                      (activeScreen == screen_ACFT) ? 1 : 0;
+        _pfdManualSel      = (cur + 1) % 3;
+        _pfdManualOverride = true;
+        switchToScreen(pfdScreenForSel(_pfdManualSel));
+        clearTouchISR();
+        if (debugMode) {
+          Serial.print(F("InfoDisp: PFD -> "));
+          Serial.println(_pfdManualSel == 2 ? F("ROVER") :
+                         _pfdManualSel == 1 ? F("AIRCRAFT") : F("SPACECRAFT"));
         }
       }
     }
@@ -159,11 +175,12 @@ void processTouchEvents() {
     return;
   }
 
-  // Sidebar hit test — right-hand SIDEBAR_W column
+  // Sidebar hit test — right-hand SIDEBAR_W column. 10 buttons, mapped to screens
+  // via SB_BTN_SCREEN; the PFD button resolves to its context/manual screen.
   if (x2 >= SCREEN_W - SIDEBAR_W) {
-    uint8_t btn = (uint8_t)(y2 / (SCREEN_H / SCREEN_COUNT));
-    if (btn < SCREEN_COUNT) {
-      ScreenType target = (ScreenType)btn;
+    uint8_t btn = (uint8_t)(y2 / sbBtnH());
+    if (btn < SB_BTN_COUNT) {
+      ScreenType target = (btn == SB_PFD_BTN) ? pfdSelectedScreen() : SB_BTN_SCREEN[btn];
       if (target != activeScreen) {
         switchToScreen(target);
         clearTouchISR();

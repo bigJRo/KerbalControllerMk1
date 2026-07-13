@@ -17,10 +17,11 @@ typedef ILI9341_t3_font_t tFont;
 
 /***************************************************************************************
    SCREEN TYPE ENUM
-   Twelve information screens navigated by the right-hand sidebar.
-   ORBADV (Advanced Orbital Elements) and LNDGRE (Re-entry) were formerly title-tap
-   sub-modes of ORB/LNDG; rev-2 promotes them to dedicated sidebar buttons appended
-   at the bottom. Both are manual-select only (contextScreen() never auto-picks them).
+   Twelve information screens reached via ten right-hand sidebar buttons: SCFT/ACFT/
+   ROVR share one "PFD" button (context- or title-selected, see SB_BTN_SCREEN in
+   AAA_Screens.ino), the rest map 1:1. ORBADV (Advanced Orbital Elements) and LNDGRE
+   (Re-entry) were formerly title-tap sub-modes of ORB/LNDG; rev-2 gives them their
+   own buttons. Both are manual-select only (contextScreen() never auto-picks them).
    screen_COUNT is a sentinel — not a real screen.
 ****************************************************************************************/
 enum ScreenType : uint8_t {
@@ -265,6 +266,12 @@ void drawStandbyScreen(KCM_TFT &tft);
 // Context-dependent screen selection on vessel/scene change
 ScreenType contextScreen();
 
+// Sidebar button ↔ screen mapping (10 buttons; PFD covers SCFT/ACFT/ROVR)
+uint8_t    screenToButton(ScreenType s);
+ScreenType pfdContextScreen();
+ScreenType pfdScreenForSel(uint8_t sel);
+ScreenType pfdSelectedScreen();
+
 // TouchEvents.ino  (rev-2: FT5316 polling driver — no ISR)
 void processTouchEvents();
 
@@ -301,6 +308,10 @@ extern bool _lnchOrbitalMode;
 extern bool _lnchManualOverride;
 extern bool _lnchPrelaunchMode;
 extern bool _lnchPrelaunchDismissed;
+
+// PFD button state (SPACECRAFT/AIRCRAFT/ROVER — title-touch cycle)
+extern bool    _pfdManualOverride;
+extern uint8_t _pfdManualSel;
 
 // LNDG mode state
 extern bool _lndgReentryMode;

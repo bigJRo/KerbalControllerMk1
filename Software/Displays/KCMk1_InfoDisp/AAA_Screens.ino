@@ -2,25 +2,25 @@
    AAA_Screens.ino -- Shared screen infrastructure for Kerbal Controller Mk1 Information Display
    Must compile before Screen_*.ino tabs (AAA_ prefix ensures correct sort order).
 
-   Screen map (sidebar order):
-     0  LNCH  Launch Information (3 modes: Pre-launch, Ascent, Circularization)
-     1  ORB   Orbit Information (Apsides graphic)
-     2  PFD   Spacecraft / Primary Flight Display (EADI ball)
-     3  MNVR  Maneuver Information
-     4  TGT   Target / Rendezvous Information
-     5  DOCK  Docking Information
-     6  LNDG  Landing Information (Powered Descent)
-     7  VEH   Vehicle Information
-     8  ACFT  Aircraft Information
-     9  ROVR  Rover Information
-     10 ORB+  Orbit — Advanced Elements (text readout)
-     11 REEN  Landing — Re-entry
-   ORB+/REEN were formerly title-tap sub-modes; rev-2 promotes them to buttons.
+   Sidebar buttons (10, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
+   Most buttons map 1:1 to a screen; the PFD button covers three screens selected by
+   context or title-touch (see pfdContextScreen / pfdSelectedScreen):
+     0  LNCH  Launch (Pre-launch / Ascent / Circularization — context + title toggle)
+     1  PFD   Primary Flight Display: SPACECRAFT (default) / AIRCRAFT (plane in atmo) /
+              ROVER (rover). Context-selected; title-touch cycles the three.
+     2  ORB   Orbit Information (Apsides graphic)
+     3  ORB+  Orbit — Advanced Elements (text readout)
+     4  VEH   Vehicle Information
+     5  MNVR  Maneuver Information
+     6  TGT   Target / Rendezvous Information
+     7  DOCK  Docking Information
+     8  LNDG  Landing Information (Powered Descent)
+     9  REEN  Landing — Re-entry
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
      Data rows  : text screens fill the content height evenly
-     Sidebar    : 84px right-hand column, 12 labelled buttons
+     Sidebar    : 84px right-hand column, 10 labelled buttons
 
    Update pattern (mirrors Annunciator):
      Chrome (labels)  : printDispChrome() — called once per screen transition.
@@ -49,12 +49,42 @@ const uint16_t COL_VALUE = TFT_DARK_GREEN;
 const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;
 
-const uint8_t SB_BTN_COUNT = SCREEN_COUNT;
+const uint8_t SB_BTN_COUNT = 10;
+const uint8_t SB_PFD_BTN   = 1;   // PFD button index (covers SCFT / ACFT / ROVR)
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
 inline uint16_t sbBtnY(uint8_t btn) {
   return btn * sbBtnH();
+}
+
+// Sidebar button -> canonical screen (physical top-to-bottom order). The PFD button
+// (index SB_PFD_BTN) has three screens; SB_BTN_SCREEN holds its default (SCFT), while
+// pfdSelectedScreen() picks the context/manual one at tap time.
+const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
+  screen_LNCH,     // 0 LNCH
+  screen_SCFT,     // 1 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
+  screen_ORB,      // 2 ORB
+  screen_ORBADV,   // 3 ORB+
+  screen_VEH,      // 4 VEH
+  screen_MNVR,     // 5 MNVR
+  screen_TGT,      // 6 TGT
+  screen_DOCK,     // 7 DOCK
+  screen_LNDG,     // 8 LNDG
+  screen_LNDGRE    // 9 REEN
+};
+
+const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
+  "LNCH", "PFD", "ORB", "ORB+", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "REEN"
+};
+
+// Which sidebar button should highlight for the active screen. SCFT/ACFT/ROVR all
+// map to the PFD button; every other screen maps 1:1.
+uint8_t screenToButton(ScreenType s) {
+  if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) return SB_PFD_BTN;
+  for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
+    if (SB_BTN_SCREEN[i] == s) return i;
+  return 0xFF;   // no button (shouldn't happen — every screen maps)
 }
 
 const char *const SCREEN_TITLES[SCREEN_COUNT] = {
@@ -211,9 +241,10 @@ void drawSidebar(KCM_TFT &tft) {
   uint16_t bx = divX + 1;
   uint16_t bw = SIDEBAR_W - 1;
   uint16_t bh = sbBtnH();
+  uint8_t  activeBtn = screenToButton(activeScreen);
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++) {
-    ButtonLabel btn = (i == (uint8_t)activeScreen) ? btnScreenOn : btnScreenOff;
-    btn.text = SCREEN_IDS[i];
+    ButtonLabel btn = (i == activeBtn) ? btnScreenOn : btnScreenOff;
+    btn.text = SB_BTN_IDS[i];
     uint16_t by = sbBtnY(i);
     uint16_t h  = bh;
     // Last button tiles to row 599 (the panel's final scanline), where its bottom
@@ -345,6 +376,10 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     // Vessel name from Simpit reflects the active/combined vessel after docking.
     String dockTitle = String("DOCKING [ ") + state.vesselName + " ]";
     drawTitleBar(tft, dockTitle);
+  } else if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) {
+    // PFD family — one sidebar button, title-touch cycles SPACECRAFT/AIRCRAFT/ROVER.
+    drawTitleBar(tft, s);
+    drawTitleToggleIndicator(tft);
   } else {
     drawTitleBar(tft, s);
   }

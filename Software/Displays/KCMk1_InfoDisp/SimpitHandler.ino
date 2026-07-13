@@ -393,6 +393,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _lndgReentryMode    = false;   // #34 reset re-entry mode on vessel switch
         _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
         _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
+        _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
         _lndgReentryRow3PeA = true;
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;

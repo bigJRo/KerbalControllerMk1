@@ -86,8 +86,9 @@ void switchToScreen(ScreenType s) {
      4. Anything else (orbit, flight…)         → APSI
 ****************************************************************************************/
 ScreenType contextScreen() {
-  // 1. Plane always goes to aircraft screen regardless of situation
-  if (state.vesselType == type_Plane)
+  // 1. Plane in the atmosphere → aircraft PFD. Out of the atmosphere a plane is a
+  //    spacecraft, so it falls through to the spacecraft/default routing below.
+  if (state.vesselType == type_Plane && state.inAtmo)
     return screen_ACFT;
 
   // 1b. Rover always goes to rover screen regardless of situation
@@ -117,6 +118,35 @@ ScreenType contextScreen() {
 
   // 6. Everything else (orbit, sub-orbital flight, splashed, unknown)
   return screen_ORB;
+}
+
+
+/***************************************************************************************
+   PFD BUTTON (SPACECRAFT / AIRCRAFT / ROVER)
+   The single PFD sidebar button shows one of three screens. By default the choice is
+   made from vessel context; a title-touch cycles the three and latches a manual
+   override (mirrors the LNCH ASCENT/CIRC title toggle).
+****************************************************************************************/
+bool    _pfdManualOverride = false;   // true once the pilot cycles PFD via title touch
+uint8_t _pfdManualSel      = 0;       // 0 = SCFT, 1 = ACFT, 2 = ROVR
+
+// Context-appropriate PFD screen: rover → ROVR, plane in atmosphere → ACFT,
+// everything else → SCFT (spacecraft — the default).
+ScreenType pfdContextScreen() {
+  if (state.vesselType == type_Rover) return screen_ROVR;
+  if (state.vesselType == type_Plane && state.inAtmo) return screen_ACFT;
+  return screen_SCFT;
+}
+
+// Map a PFD sub-selection index to its screen.
+ScreenType pfdScreenForSel(uint8_t sel) {
+  return (sel == 2) ? screen_ROVR : (sel == 1) ? screen_ACFT : screen_SCFT;
+}
+
+// The PFD screen to show when the PFD button is tapped: the manual selection if the
+// pilot has cycled it via title touch, otherwise the context screen.
+ScreenType pfdSelectedScreen() {
+  return _pfdManualOverride ? pfdScreenForSel(_pfdManualSel) : pfdContextScreen();
 }
 
 
