@@ -40,13 +40,13 @@ enum ScreenType : uint8_t {
   screen_COUNT  = 12   // sentinel — not a real screen
 };
 
-// Manual-only screens: reachable only from the sidebar, never auto-selected by
-// contextScreen(). Automatic context switches (vessel change, dock proximity,
-// scene entry) leave these alone so a deliberate selection sticks — e.g. a
-// re-entry lander shedding debris (heat shield / chutes) emits VESSEL_CHANGE,
-// which would otherwise yank REEN back to LNDG.
+// Manual-lock screen: automatic context switches (vessel change, dock re-check,
+// scene entry) leave RE-ENTRY alone so a deliberate selection sticks — e.g. a
+// re-entry lander shedding debris (heat shield / chutes) emits VESSEL_CHANGE, which
+// would otherwise yank REEN away. ADVANCED ORBIT is no longer locked: a context
+// event may switch away from it like any other ordinary screen.
 inline bool isManualLockScreen(ScreenType s) {
-  return s == screen_LNDGRE || s == screen_ORBADV;
+  return s == screen_LNDGRE;
 }
 
 static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;

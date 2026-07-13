@@ -80,10 +80,14 @@ void switchToScreen(ScreenType s) {
    Called on VESSEL_CHANGE_MESSAGE and on entering a flight scene.
 
    Priority (highest to lowest):
-     1. Plane type                             → ACFT
-     2. Pre-launch or Landed situation         → LNCH  (any vessel type on the ground)
-     3. Lander type (airborne or sub-orbital)  → LNDG (powered descent)
-     4. Anything else (orbit, flight…)         → APSI
+     1. Plane in atmosphere                    → ACFT (PFD)
+     2. Rover                                  → ROVR (PFD)
+     3. Pre-launch                             → LNCH (pre-launch board)
+     4. Target within docking range            → DOCK
+     5. Recoverable vessel                     → VEH
+     6. Anything else                          → SCFT (Spacecraft PFD — default)
+   Landing (powered descent) and Orbit are no longer auto-selected — reach them from
+   the sidebar.
 ****************************************************************************************/
 ScreenType contextScreen() {
   // 1. Plane in the atmosphere → aircraft PFD. Out of the atmosphere a plane is a
@@ -91,22 +95,16 @@ ScreenType contextScreen() {
   if (state.vesselType == type_Plane && state.inAtmo)
     return screen_ACFT;
 
-  // 1b. Rover always goes to rover screen regardless of situation
+  // 2. Rover always goes to rover screen regardless of situation
   if (state.vesselType == type_Rover)
     return screen_ROVR;
 
-  // 2. Any vessel on the ground → launch screen
-  if ((state.situation & sit_PreLaunch) || (state.situation & sit_Landed))
+  // 3. Pre-launch → launch screen (shows the pre-launch board). Landed vessels are
+  //    not auto-routed here anymore.
+  if (state.situation & sit_PreLaunch)
     return screen_LNCH;
 
-  // 3. Lander type in flight → powered descent
-  if (state.vesselType == type_Lander) {
-    _lndgReentryMode = false;
-    return screen_LNDG;
-  }
-
-  // 4. Target within docking range → docking screen
-  // 4. Target within docking range → docking screen
+  // 4. Target within docking range → docking screen.
   // Use tgtDistance alone — KSP may report targetAvailable=false even while
   // actively sending TARGETINFO with a valid distance (observed in KSP1).
   if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
@@ -116,8 +114,9 @@ ScreenType contextScreen() {
   if (state.isRecoverable)
     return screen_VEH;
 
-  // 6. Everything else (orbit, sub-orbital flight, splashed, unknown)
-  return screen_ORB;
+  // 6. Everything else (orbit, sub-orbital, landing, splashed, unknown) → Spacecraft
+  //    PFD. Orbit and powered descent are manual-select from the sidebar.
+  return screen_SCFT;
 }
 
 
