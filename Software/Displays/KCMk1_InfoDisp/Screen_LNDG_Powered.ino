@@ -211,8 +211,10 @@ static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
    Field: 120×120px, centred horizontally under X-Pointer
    Scale: ±15° full deflection, 3 reference rings at 5°/10°/15°
 ****************************************************************************************/
-// Centred under the X-Pointer, in the band below its lateral axis row.
-static const uint16_t LNDG_ATT_CX    = LNDG_XP_CX;   // 308 — centred under the X-Pointer
+// In the band below the X-Pointer's lateral axis row. Shifted left of the
+// X-Pointer centre (307) so the ground-track compass sits to its right, the pair
+// balanced about the centre.
+static const uint16_t LNDG_ATT_CX    = 216;          // left of the X-Pointer centre
 static const uint16_t LNDG_ATT_CY    = 544;          // below the X-Pointer's lateral axis row
 static const uint8_t  LNDG_ATT_R     = 50;           // outer ring radius (= ±15°)
 static const uint16_t LNDG_ATT_SIDE  = LNDG_ATT_R * 2 + 4;
@@ -313,6 +315,78 @@ static void _lndgDrawAtt(KCM_TFT &tft) {
     }
 }
 
+
+/***************************************************************************************
+   GROUND-TRACK COMPASS — heading-up rose with a surface-velocity track marker.
+   Right of the ATT bullseye, the pair balanced about the X-Pointer centre.
+****************************************************************************************/
+static const uint16_t LNDG_TRK_CX = 398;
+static const uint16_t LNDG_TRK_CY = LNDG_ATT_CY;   // same row as the ATT bullseye
+static const uint8_t  LNDG_TRK_R  = 50;
+static float _lndgPrevTrkHdg = -9999.0f;
+static float _lndgPrevTrkVel = -9999.0f;
+
+static void _lndgDrawTrkChrome(KCM_TFT &tft) {
+    tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R + 1, TFT_BLACK);
+    tft.drawCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R,     TFT_GREY);
+    tft.drawCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R + 1, TFT_DARK_GREY);
+
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    int16_t w = getFontStringWidth(&Roboto_Black_12, "GND TRK");
+    tft.setCursor(LNDG_TRK_CX - w / 2, LNDG_TRK_CY - LNDG_TRK_R - 20);
+    tft.print("GND TRK");
+
+    _lndgPrevTrkHdg = -9999.0f;   // force the rose to redraw on the next update
+    _lndgPrevTrkVel = -9999.0f;
+}
+
+// Redraw the rotating rose + track marker when heading or the surface-velocity
+// track moves. Heading-up: the vessel nose is fixed at the top (12 o'clock); a
+// world direction wd appears at screen angle (wd - heading - 90)°.
+static void _lndgDrawTrk(KCM_TFT &tft) {
+    float hdg    = state.heading;
+    float trk    = state.srfVelHeading;
+    bool  moving = (state.surfaceVel > 1.0f);   // track meaningful only when moving
+
+    if (_lndgPrevTrkHdg > -9000.0f &&
+        fabsf(hdg - _lndgPrevTrkHdg) < 0.5f &&
+        (!moving || fabsf(trk - _lndgPrevTrkVel) < 0.5f)) return;
+    _lndgPrevTrkHdg = hdg;
+    _lndgPrevTrkVel = trk;
+
+    // Clear the rose interior (inside the bezel)
+    tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R - 1, TFT_BLACK);
+
+    // Rotating cardinals
+    tft.setFont(Roboto_Black_12);
+    static const int16_t cwd[] = {0, 90, 180, 270};
+    static const char *  ctx[] = {"N", "E", "S", "W"};
+    for (uint8_t i = 0; i < 4; i++) {
+        float   a  = (cwd[i] - hdg - 90.0f) * (float)DEG_TO_RAD;
+        int16_t lx = LNDG_TRK_CX + (int16_t)((LNDG_TRK_R - 14) * cosf(a));
+        int16_t ly = LNDG_TRK_CY + (int16_t)((LNDG_TRK_R - 14) * sinf(a));
+        int16_t cw = getFontStringWidth(&Roboto_Black_12, ctx[i]);
+        tft.setTextColor(cwd[i] == 0 ? TFT_YELLOW : TFT_LIGHT_GREY, TFT_BLACK);
+        tft.setCursor(lx - cw / 2, ly - 7);
+        tft.print(ctx[i]);
+    }
+
+    // Track marker — surface-velocity direction relative to the nose (green arrow
+    // from centre to the rim). Suppressed when nearly stationary.
+    if (moving) {
+        float   ta = (trk - hdg - 90.0f) * (float)DEG_TO_RAD;
+        int16_t tx = LNDG_TRK_CX + (int16_t)((LNDG_TRK_R - 6) * cosf(ta));
+        int16_t ty = LNDG_TRK_CY + (int16_t)((LNDG_TRK_R - 6) * sinf(ta));
+        tft.drawLine(LNDG_TRK_CX, LNDG_TRK_CY, tx, ty, TFT_NEON_GREEN);
+        tft.fillCircle(tx, ty, 4, TFT_NEON_GREEN);
+    }
+
+    // Centre dot (vessel) + fixed nose lubber line at the top
+    tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, 3, TFT_DARK_GREY);
+    tft.drawLine(LNDG_TRK_CX, LNDG_TRK_CY - LNDG_TRK_R + 1,
+                 LNDG_TRK_CX, LNDG_TRK_CY - LNDG_TRK_R + 10, TFT_WHITE);
+}
 
 
 /***************************************************************************************
@@ -592,6 +666,9 @@ static void _lndgChromePowered(KCM_TFT &tft) {
     // Attitude bullseye
     _lndgDrawAttChrome(tft);
 
+    // Ground-track compass
+    _lndgDrawTrkChrome(tft);
+
     // Redraw LATERAL row labels — bullseye fillCircle may overdraw them
     {
         uint16_t botY = LNDG_XP_Y + LNDG_XP_SIDE;
@@ -813,8 +890,9 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         _lndgPrevAlt = (float)newFillY;
     }
 
-    // Attitude bullseye + V.Vrt bar
+    // Attitude bullseye + ground-track compass + V.Vrt bar
     _lndgDrawAtt(tft);
+    _lndgDrawTrk(tft);
     _lndgDrawVv(tft);
 
     // ── Right panel values ──
