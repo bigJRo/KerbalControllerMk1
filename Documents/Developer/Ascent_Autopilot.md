@@ -86,33 +86,22 @@ With `autoBodyProfile` enabled (default), the guidance adapts to the current SoI
   bodies not in the table below. On airless bodies the AoA limit and max-Q limiter are skipped and the
   craft pitches over freely to build horizontal velocity.
 - **Turn-end altitude** (where the pitch program reaches `finalPitch`) is computed body-relative:
-  `turnEndAtmoFraction × atmosphereTop` on atmospheric bodies, or `turnEndAirlessFraction × targetApoapsis`
-  on airless / unknown-atmosphere bodies.
-- **Parking-orbit default** is adopted from the body profile on each SoI change — unless the pilot has
-  set an explicit target (via `apSetTargets()` or the console `ALT` command), which is preserved.
-- **Minimum-safe-altitude** clamps the target up on arm for terrain clearance (`enforceMinSafeAltitude`).
+  `turnEndAtmoFraction × lowSpace` (atmosphere top) on atmospheric bodies, or
+  `turnEndAirlessFraction × targetApoapsis` on airless / unknown-atmosphere bodies.
+- **Parking-orbit default** is adopted on each SoI change — unless the pilot has set an explicit target
+  (via `apSetTargets()` or the console `ALT` command), which is preserved. Derived as `lowSpace + 10 km`
+  (atmospheric) or `minSafe + max(8 km, minSafe/2)` (airless).
+- **Minimum-safe-altitude** clamps the target up on arm for terrain clearance (`enforceMinSafeAltitude`):
+  `lowSpace + 1 km` (atmospheric) or `minSafe + 5 km` (airless).
 
-Stock KSP1 body profiles (`AP_BODIES[]` in `ascent_autopilot.ino`). `atmosphereTop` values are exact
-stock figures; `defaultOrbit` / `minSafeAltitude` are convenience/terrain values — **approximate, verify
-per mission**. Bodies not listed (including Jool and the Sun) fall back to telemetry-driven behaviour.
+### Single source of truth
 
-| Body | Atmosphere top | Default orbit | Min safe |
-|------|---:|---:|---:|
-| Kerbin | 70 km | 80 km | 71 km |
-| Mun | — | 25 km | 12 km |
-| Minmus | — | 15 km | 7 km |
-| Duna | 50 km | 60 km | 51 km |
-| Ike | — | 20 km | 13 km |
-| Eve | 90 km | 100 km | 91 km |
-| Gilly | — | 12 km | 7 km |
-| Moho | — | 25 km | 12 km |
-| Dres | — | 15 km | 6 km |
-| Laythe | 50 km | 60 km | 51 km |
-| Vall | — | 20 km | 8 km |
-| Tylo | — | 20 km | 13 km |
-| Bop | — | 30 km | 22 km |
-| Pol | — | 12 km | 6 km |
-| Eeloo | — | 15 km | 5 km |
+Body parameters come from the **shared celestial-body table** — `getBodyParams()` /
+`BodyParams` in **`Software/Common/body_params.h`**, the same table the display firmware uses (it was
+relocated there from the KerbalDisplayCommon library so there is one canonical copy). The autopilot reads
+`lowSpace` (atmosphere top), `minSafe` (highest terrain), and `hasAtmo`, and derives its parking-orbit and
+safe-altitude figures from them — it adds **no** body data of its own. Bodies not in the table (including
+Jool and the Sun) fall back to telemetry-driven behaviour with whatever target you set.
 
 ---
 
@@ -233,10 +222,11 @@ primary Serial port: `ARM`, `DISARM`, `STATUS`, `ALT <m>`, `INC <deg>`, `LOFT <x
   exact inclination.
 - Circularization is a simple burn-to-target-periapsis, not an optimal minimum-ΔV node burn; it may
   raise apoapsis slightly above target.
-- Body profiles cover the stock KSP1 system; `atmosphereTop` is exact but `defaultOrbit` /
-  `minSafeAltitude` are approximate terrain-clearance values — verify before flying, especially on
-  mountainous airless bodies. Unknown/modded bodies fall back to telemetry (atmosphere flag) with the
-  target apoapsis you set. `launchLatitude` is not available from telemetry — set it for non-KSC sites.
+- Body data comes from the shared `Software/Common/body_params.h` table (stock KSP1). `lowSpace`
+  (atmosphere top) and `minSafe` (highest terrain) are canonical; the autopilot's derived parking-orbit
+  and safe-altitude figures are engineering margins — verify before flying, especially on mountainous
+  airless bodies. Unknown/modded bodies fall back to telemetry (atmosphere flag) with the target apoapsis
+  you set. `launchLatitude` is not available from telemetry — set it for non-KSC sites.
 - PID gains are conservative starting values and will want tuning per craft / control authority.
 - The master `Controller_Main` sketch is still mid-integration; this module is self-contained and
   compiles independently, but a full sketch build depends on that ongoing work.

@@ -73,47 +73,31 @@ struct ApTelemetry {
 static ApTelemetry g_tel;
 
 /***************************************************************************************
-   Body profiles — sensible per-body defaults for the stock KSP1 system, keyed on the
-   SOI_MESSAGE body name. atmosphereTop is 0 for airless bodies. defaultOrbit and
-   minSafeAltitude are convenience/terrain-clearance values — approximate; verify per
-   mission. Unknown bodies fall back to telemetry-driven behaviour (see apLookupBody).
-   Jool / the Sun are intentionally omitted (no launchable surface).
+   Current-body parameters come from the shared celestial-body table (single source of
+   truth in Software/Common/body_params.h, included by Controller_Main.ino). getBodyParams()
+   is keyed on the SOI_MESSAGE name; an unrecognised body returns an empty entry
+   (soiName[0] == '\0') and guidance falls back to telemetry-driven behaviour.
 ****************************************************************************************/
-struct BodyProfile {
-  const char *name;
-  float atmosphereTop;    // m (0 = airless)
-  float defaultOrbit;     // m — suggested parking orbit
-  float minSafeAltitude;  // m — keep orbits above this for terrain clearance
-};
-static const BodyProfile AP_BODIES[] = {
-  //  name          atmoTop   default   minSafe
-  { "Kerbin",       70000.0f,  80000.0f,  71000.0f },
-  { "Mun",              0.0f,  25000.0f,  12000.0f },
-  { "Minmus",           0.0f,  15000.0f,   7000.0f },
-  { "Duna",         50000.0f,  60000.0f,  51000.0f },
-  { "Ike",              0.0f,  20000.0f,  13000.0f },
-  { "Eve",          90000.0f, 100000.0f,  91000.0f },
-  { "Gilly",            0.0f,  12000.0f,   7000.0f },
-  { "Moho",             0.0f,  25000.0f,  12000.0f },
-  { "Dres",             0.0f,  15000.0f,   6000.0f },
-  { "Laythe",       50000.0f,  60000.0f,  51000.0f },
-  { "Vall",             0.0f,  20000.0f,   8000.0f },
-  { "Tylo",             0.0f,  20000.0f,  13000.0f },
-  { "Bop",              0.0f,  30000.0f,  22000.0f },
-  { "Pol",              0.0f,  12000.0f,   6000.0f },
-  { "Eeloo",            0.0f,  15000.0f,   5000.0f },
-};
-static BodyProfile g_curBody = { "", 0.0f, 0.0f, 0.0f };  // resolved current-body profile
-static bool        g_targetLocked = false;                // pilot has set an explicit target apoapsis
+static BodyParams g_curBody = { "", "", "", "", 0, 0, 0, 0, 0, 0.0,
+                                0, 0.0f, 0.0f, 0, 0, 0.0f, false, false, false, 0.0f };
+static bool       g_targetLocked = false;   // pilot has set an explicit target apoapsis
 
-// Case-insensitive lookup; returns a fallback profile (atmoTop/defaultOrbit/minSafe = 0)
-// for unknown bodies so guidance degrades to telemetry-driven behaviour.
-static BodyProfile apLookupBody(const char *name) {
-  for (uint8_t i = 0; i < (sizeof(AP_BODIES) / sizeof(AP_BODIES[0])); i++) {
-    if (strcasecmp(name, AP_BODIES[i].name) == 0) return AP_BODIES[i];
-  }
-  BodyProfile unknown = { "", 0.0f, 0.0f, 0.0f };
-  return unknown;
+static inline bool apBodyKnown() { return g_curBody.soiName != nullptr && g_curBody.soiName[0] != '\0'; }
+
+// Suggested parking-orbit altitude for the current body, derived from the shared table:
+// just above the atmosphere on atmospheric bodies, or terrain (minSafe) plus margin on
+// airless bodies. Returns 0 for an unknown body (caller keeps the existing target).
+static float apBodyDefaultOrbit() {
+  if (!apBodyKnown()) return 0.0f;
+  if (g_curBody.hasAtmo && g_curBody.lowSpace > 0.0f) return g_curBody.lowSpace + 10000.0f;
+  return g_curBody.minSafe + max(8000.0f, g_curBody.minSafe * 0.5f);
+}
+
+// Minimum safe orbit altitude (terrain / atmosphere clearance) for the current body.
+static float apBodyMinSafeOrbit() {
+  if (!apBodyKnown()) return 0.0f;
+  if (g_curBody.hasAtmo && g_curBody.lowSpace > 0.0f) return g_curBody.lowSpace + 1000.0f;
+  return g_curBody.minSafe + 5000.0f;
 }
 
 /***************************************************************************************
@@ -164,8 +148,8 @@ static float apLaunchAzimuth() {
 // Falls back to the manual turnEndAltitude when body-profile mode is off.
 static float apEffectiveTurnEnd() {
   if (!g_cfg.autoBodyProfile) return g_cfg.turnEndAltitude;
-  if (g_tel.hasAtmo && g_curBody.atmosphereTop > 0.0f)
-    return g_cfg.turnEndAtmoFraction * g_curBody.atmosphereTop;
+  if (g_tel.hasAtmo && g_curBody.lowSpace > 0.0f)
+    return g_cfg.turnEndAtmoFraction * g_curBody.lowSpace;
   return g_cfg.turnEndAirlessFraction * g_cfg.targetApoapsis;
 }
 
@@ -410,9 +394,9 @@ void apArm() {
   g_lastStageMs    = millis();
   g_lastUpdateMs = millis();
   // Terrain-clearance guard: never target below the body's minimum safe altitude.
-  if (g_cfg.enforceMinSafeAltitude && g_curBody.minSafeAltitude > 0.0f &&
-      g_cfg.targetApoapsis < g_curBody.minSafeAltitude) {
-    g_cfg.targetApoapsis = g_curBody.minSafeAltitude;
+  float minSafe = apBodyMinSafeOrbit();
+  if (g_cfg.enforceMinSafeAltitude && minSafe > 0.0f && g_cfg.targetApoapsis < minSafe) {
+    g_cfg.targetApoapsis = minSafe;
     mySimpit.printToKSP("Ascent AP: target raised to min safe altitude", PRINT_TO_SCREEN);
   }
   if (g_cfg.autoLaunch) {
@@ -614,9 +598,10 @@ void apIngestSOI(const char *bodyName) {
   if (strncmp(bodyName, g_tel.bodyName, sizeof(g_tel.bodyName)) == 0) return;
   strncpy(g_tel.bodyName, bodyName, sizeof(g_tel.bodyName) - 1);
   g_tel.bodyName[sizeof(g_tel.bodyName) - 1] = '\0';
-  g_curBody = apLookupBody(g_tel.bodyName);
+  g_curBody = getBodyParams(g_tel.bodyName);   // shared celestial-body table
   // Adopt the body's default parking orbit unless the pilot has set an explicit target.
-  if (g_cfg.autoBodyProfile && !g_targetLocked && g_curBody.defaultOrbit > 0.0f) {
-    g_cfg.targetApoapsis = g_curBody.defaultOrbit;
+  if (g_cfg.autoBodyProfile && !g_targetLocked) {
+    float def = apBodyDefaultOrbit();
+    if (def > 0.0f) g_cfg.targetApoapsis = def;
   }
 }

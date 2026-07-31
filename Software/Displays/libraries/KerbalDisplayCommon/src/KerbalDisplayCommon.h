@@ -471,76 +471,14 @@ enum VesselSituation : uint8_t {
 // --- Celestial body parameters ---
 // =============================================================================
 //
-// Usage:
-//   BodyParams currentBody = getBodyParams("Kerbin");
-//   // then access: currentBody.radius, currentBody.surfGrav, etc.
+// The BodyParams struct, the _bodyTable[] data, and the getBodyParams() lookups
+// have moved to a shared, header-only single source of truth so that both the
+// display firmware and the master controller's ascent autopilot use one table:
 //
-//   Call getBodyParams() again whenever Simpit reports a new SOI.
-//   If the SOI string is not recognised, all numeric fields are 0 and
-//   all string fields are empty — check currentBody.soiName[0] != '\0'
-//   to detect a valid result.
+//   Software/Common/body_params.h
 //
-// All altitude/radius values are in metres unless noted.
-// All velocity values are in m/s.
-// surfGrav is in m/s² (not g). gravity field replaces the old surfGrav-in-g convention.
-// hasSurface == false for Jool and Kerbol (gas giant / star — no landing).
-// hasAtmo == false means flyHigh and lowSpace are 0 and unused in C&W logic.
-// hasO2 == true means jet engines work and Kerbals can remove helmets.
-// soiAlt is double to preserve precision for large bodies (e.g. Jool ~2.4e12 m).
-// soiAlt == DBL_MAX for Kerbol (root body, no SOI boundary).
-// synchronousOrbit == 0 means no synchronous orbit achievable within SOI.
-// synodicPeriod == 0 for Kerbol (no synodic period relative to itself).
-// highQThreshold == 0 means CW_HIGH_Q is suppressed for this body (airless bodies).
-//   Calibrate empirically per atmospheric body from flight test.
-// reentryAlt == 0 for airless bodies. For atmospheric bodies: Pe below this
-//   altitude triggers committed reentry (red tier). Between reentryAlt and
-//   max(minSafe,lowSpace) is the aerobrake zone (yellow tier).
-
-struct BodyParams {
-  const char* soiName;          // Simpit SOI string — matches what Simpit sends
-  const char* dispName;         // Display name, uppercase, max 8 chars + null
-  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_240x168.bmp"
-  const char* cond;             // Atmosphere condition string:
-                                //   "Vacuum", "Atmosphere", "Breathable", "Plasma"
-  // --- Altitude boundaries (metres, from wiki science biome table) ---
-  float       minSafe;          // Highest terrain point (m); for Jool/Kerbol: crush/plasma alt
-  float       flyHigh;          // Low/High atmosphere science biome boundary (m); 0 if no atmo
-  float       lowSpace;         // Atmosphere top / Low space boundary (m); 0 if no atmo
-  float       highSpace;        // Low/High space science biome boundary (m)
-  float       reentryAlt;       // Pe below this = committed reentry, red tier (m); 0 if no atmo
-  double      soiAlt;           // Sphere of influence radius (m); DBL_MAX for Kerbol
-  // --- Physical properties ---
-  float       radius;           // Mean body radius (m)
-  float       gravity;          // Surface gravity (m/s²)
-  float       escapeVelocity;   // Escape velocity from surface (m/s)
-  // --- Orbital properties ---
-  float       synchronousOrbit; // Synchronous orbit altitude (m); 0 if not achievable
-  float       synodicPeriod;    // Synodic period relative to Kerbin (s); 0 for Kerbol
-  float       orbitInclination; // Orbital inclination relative to Kerbin equator (deg)
-  // --- Boolean flags ---
-  bool        hasAtmo;          // Body has an atmosphere
-  bool        hasO2;            // Atmosphere contains oxygen (jets work, helmets off)
-  bool        hasSurface;       // Body has a landable surface
-  // --- C&W tuning ---
-  float       highQThreshold;   // Dynamic pressure threshold for CW_HIGH_Q (Pa); 0 = suppressed
-};
-
-// Returns a copy of the BodyParams for the given Simpit SOI string.
-// Returns a zeroed/empty BodyParams if the SOI is not in the table.
-//
-// (#A22) Two overloads — prefer the const char* version when calling with a
-// raw character buffer (e.g. parsing Simpit packets) to avoid the per-call
-// String allocation. The String& version delegates via .c_str() and is
-// retained for compatibility.
-//
-// NOTE: The const char* fields (soiName, dispName, image, cond) in the returned
-// struct are pointers into string literals in the static _bodyTable array.
-// They remain valid for the lifetime of the program. Do NOT assign these pointers
-// to stack-allocated char arrays or reassign them to point to other strings —
-// treat them as read-only. If you need a mutable copy of a string field, use
-// strcpy() into a local char buffer of sufficient size.
-BodyParams getBodyParams(const char* SOI);
-BodyParams getBodyParams(const String& SOI);
+// Usage is unchanged: BodyParams b = getBodyParams("Kerbin");  (see that header).
+#include "../../../../Common/body_params.h"
 
 // =============================================================================
 // --- Capacitive touch (GSL1680F via I2C on Wire1) ---
