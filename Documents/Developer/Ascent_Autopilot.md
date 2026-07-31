@@ -15,6 +15,10 @@ link: **vertical climb → gravity turn (targeting a commanded inclination) → 
 circularization burn**. It closes the loop entirely on the master Teensy — telemetry in, steering and
 throttle commands out — so no other board is involved.
 
+It is **sphere-of-influence aware**: the profile adapts to whatever body the craft is in, atmospheric
+or airless. Airless bodies (Mun, Minmus, Ike, …) automatically drop the aerodynamic guards (AoA limit,
+max-Q) and pitch over aggressively; atmospheric bodies fly a gravity turn scaled to the atmosphere.
+
 Files:
 
 | File | Role |
@@ -41,9 +45,10 @@ Registered by `registerInputChannels()` and dispatched in `messageHandler()`:
 | `APSIDESTIME_MESSAGE`     | time-to-apoapsis → circularization burn timing |
 | `ORBIT_MESSAGE`           | inclination (readback) |
 | `ROTATION_DATA_MESSAGE`   | current attitude + surface/orbital prograde → steering & AoA |
-| `ATMO_CONDITIONS_MESSAGE` | air density → dynamic pressure (max-Q) |
+| `ATMO_CONDITIONS_MESSAGE` | air density → max-Q; **has-atmosphere → airless/atmospheric branch** |
 | `TEMP_LIMIT_MESSAGE`      | skin-temperature fraction → heat limiter |
 | `DELTAV_MESSAGE`          | stage ΔV → auto-staging |
+| `SOI_MESSAGE`             | current body name → body profile / SoI adaptation |
 
 Outgoing: `ROTATION_MESSAGE` (pitch/yaw/roll), `THROTTLE_MESSAGE`, `STAGE_ACTION`, `SAS_ACTION`,
 `setSASMode(AP_PROGRADE)`.
@@ -73,7 +78,45 @@ coast/circularization the module hands attitude to stock SAS prograde hold.
 
 ---
 
-## 4. Steering
+## 4. Body / sphere-of-influence adaptation
+
+With `autoBodyProfile` enabled (default), the guidance adapts to the current SoI:
+
+- **Airless vs. atmospheric** is decided from the `hasAtmosphere` telemetry flag — robust even for
+  bodies not in the table below. On airless bodies the AoA limit and max-Q limiter are skipped and the
+  craft pitches over freely to build horizontal velocity.
+- **Turn-end altitude** (where the pitch program reaches `finalPitch`) is computed body-relative:
+  `turnEndAtmoFraction × atmosphereTop` on atmospheric bodies, or `turnEndAirlessFraction × targetApoapsis`
+  on airless / unknown-atmosphere bodies.
+- **Parking-orbit default** is adopted from the body profile on each SoI change — unless the pilot has
+  set an explicit target (via `apSetTargets()` or the console `ALT` command), which is preserved.
+- **Minimum-safe-altitude** clamps the target up on arm for terrain clearance (`enforceMinSafeAltitude`).
+
+Stock KSP1 body profiles (`AP_BODIES[]` in `ascent_autopilot.ino`). `atmosphereTop` values are exact
+stock figures; `defaultOrbit` / `minSafeAltitude` are convenience/terrain values — **approximate, verify
+per mission**. Bodies not listed (including Jool and the Sun) fall back to telemetry-driven behaviour.
+
+| Body | Atmosphere top | Default orbit | Min safe |
+|------|---:|---:|---:|
+| Kerbin | 70 km | 80 km | 71 km |
+| Mun | — | 25 km | 12 km |
+| Minmus | — | 15 km | 7 km |
+| Duna | 50 km | 60 km | 51 km |
+| Ike | — | 20 km | 13 km |
+| Eve | 90 km | 100 km | 91 km |
+| Gilly | — | 12 km | 7 km |
+| Moho | — | 25 km | 12 km |
+| Dres | — | 15 km | 6 km |
+| Laythe | 50 km | 60 km | 51 km |
+| Vall | — | 20 km | 8 km |
+| Tylo | — | 20 km | 13 km |
+| Bop | — | 30 km | 22 km |
+| Pol | — | 12 km | 6 km |
+| Eeloo | — | 15 km | 5 km |
+
+---
+
+## 5. Steering
 
 Attitude error is computed in the navball frame (pitch above horizon, heading), then rotated into the
 body frame by the current roll angle so pitch/yaw commands stay correct regardless of roll. Each axis
@@ -89,26 +132,35 @@ approximate.
 
 ---
 
-## 5. Configuration & tuning
+## 6. Configuration & tuning
 
 Fetch a mutable `AscentConfig` with `apGetConfig()` (or the `apSetTargets()` helper) before `apArm()`.
-`apDefaultConfig()` is an 80 km circular equatorial orbit from KSC.
+`apDefaultConfig()` starts at 80 km equatorial; with `autoBodyProfile` on, the target adopts the current
+body's default orbit on each SoI change unless you set an explicit target.
 
 ### Mission targets
 | Field | Default | Notes |
 |-------|---------|-------|
-| `targetApoapsis` | 80000 m | Orbit altitude (also target Pe when circularizing) |
+| `targetApoapsis` | 80000 m | Orbit altitude (also target Pe when circularizing). Auto-set per body unless locked |
 | `targetInclination` | 0° | 0–180 |
 | `launchLatitude` | 0° | Site latitude for the azimuth math (KSC ≈ 0) |
 | `launchSoutherly` | false | Southerly / descending-node azimuth branch |
 | `headingBias` | 0° | Manual azimuth trim |
 
+### Body / SoI handling
+| Field | Default | Notes |
+|-------|---------|-------|
+| `autoBodyProfile` | true | Adapt to the current SoI (atmospheric vs airless, per-body defaults) |
+| `turnEndAtmoFraction` | 0.80 | Atmospheric: level off by this fraction of atmosphere top |
+| `turnEndAirlessFraction` | 0.25 | Airless: pitch over within this fraction of target apoapsis |
+| `enforceMinSafeAltitude` | true | Raise target to the body's minimum safe altitude on arm |
+
 ### Ascent shape
 | Field | Default | Notes |
 |-------|---------|-------|
-| `turnStartAltitude` | 500 m | Begin pitch-over |
+| `turnStartAltitude` | 500 m | Begin pitch-over (surface/AGL) |
 | `turnStartVelocity` | 60 m/s | OR speed trigger, whichever first (0 disables) |
-| `turnEndAltitude` | 55000 m | Pitch reaches `finalPitch` here |
+| `turnEndAltitude` | 55000 m | Manual turn-end — used **only** when `autoBodyProfile` is off |
 | **`loft`** | 1.0 | **Turn aggressiveness exponent.** <1 pitches over fast (high-TWR craft); >1 stays steep longer (low-TWR / draggy craft) |
 | `initialPitchKick` | 3° | Immediate pitch-over at turn start to commit the turn |
 | `finalPitch` | 0° | Pitch above horizon held to cutoff (0–15) |
@@ -147,7 +199,7 @@ Fetch a mutable `AscentConfig` with `apGetConfig()` (or the `apSetTargets()` hel
 
 ---
 
-## 6. Usage
+## 7. Usage
 
 ```cpp
 // In setup(): apInit() loads apDefaultConfig().
@@ -173,7 +225,7 @@ primary Serial port: `ARM`, `DISARM`, `STATUS`, `ALT <m>`, `INC <deg>`, `LOFT <x
 
 ---
 
-## 7. Assumptions & limitations
+## 8. Assumptions & limitations
 
 - **KSP1 + KerbalSimpit.** Control-axis full-scale is ±`INT16_MAX`; throttle is `0…INT16_MAX`
   (adjust `AP_AXIS_FULL` in `ascent_autopilot.ino` if a Simpit build differs).
@@ -181,6 +233,10 @@ primary Serial port: `ARM`, `DISARM`, `STATUS`, `ALT <m>`, `INC <deg>`, `LOFT <x
   exact inclination.
 - Circularization is a simple burn-to-target-periapsis, not an optimal minimum-ΔV node burn; it may
   raise apoapsis slightly above target.
+- Body profiles cover the stock KSP1 system; `atmosphereTop` is exact but `defaultOrbit` /
+  `minSafeAltitude` are approximate terrain-clearance values — verify before flying, especially on
+  mountainous airless bodies. Unknown/modded bodies fall back to telemetry (atmosphere flag) with the
+  target apoapsis you set. `launchLatitude` is not available from telemetry — set it for non-KSC sites.
 - PID gains are conservative starting values and will want tuning per craft / control authority.
 - The master `Controller_Main` sketch is still mid-integration; this module is self-contained and
   compiles independently, but a full sketch build depends on that ongoing work.

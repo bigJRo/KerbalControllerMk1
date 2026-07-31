@@ -63,11 +63,58 @@ struct ApTelemetry {
   float    orbVelHeading = 0.0f;   // deg (orbital prograde heading — used for coast / circularization)
   float    orbVelPitch   = 0.0f;   // deg (orbital prograde pitch)
   float    airDensity    = 0.0f;   // kg/m^3
+  bool     hasAtmo       = true;   // current body has an atmosphere (from ATMO_CONDITIONS)
+  bool     inAtmo        = true;   // vessel is currently within the atmosphere
   float    skinTempFrac  = 0.0f;   // 0..1
   float    stageDV       = 1.0e6f; // m/s (start high so we do not stage before data arrives)
+  char     bodyName[24]  = {0};    // current sphere-of-influence body (from SOI_MESSAGE)
   uint32_t lastTelemMs   = 0;      // freshness stamp
 };
 static ApTelemetry g_tel;
+
+/***************************************************************************************
+   Body profiles — sensible per-body defaults for the stock KSP1 system, keyed on the
+   SOI_MESSAGE body name. atmosphereTop is 0 for airless bodies. defaultOrbit and
+   minSafeAltitude are convenience/terrain-clearance values — approximate; verify per
+   mission. Unknown bodies fall back to telemetry-driven behaviour (see apLookupBody).
+   Jool / the Sun are intentionally omitted (no launchable surface).
+****************************************************************************************/
+struct BodyProfile {
+  const char *name;
+  float atmosphereTop;    // m (0 = airless)
+  float defaultOrbit;     // m — suggested parking orbit
+  float minSafeAltitude;  // m — keep orbits above this for terrain clearance
+};
+static const BodyProfile AP_BODIES[] = {
+  //  name          atmoTop   default   minSafe
+  { "Kerbin",       70000.0f,  80000.0f,  71000.0f },
+  { "Mun",              0.0f,  25000.0f,  12000.0f },
+  { "Minmus",           0.0f,  15000.0f,   7000.0f },
+  { "Duna",         50000.0f,  60000.0f,  51000.0f },
+  { "Ike",              0.0f,  20000.0f,  13000.0f },
+  { "Eve",          90000.0f, 100000.0f,  91000.0f },
+  { "Gilly",            0.0f,  12000.0f,   7000.0f },
+  { "Moho",             0.0f,  25000.0f,  12000.0f },
+  { "Dres",             0.0f,  15000.0f,   6000.0f },
+  { "Laythe",       50000.0f,  60000.0f,  51000.0f },
+  { "Vall",             0.0f,  20000.0f,   8000.0f },
+  { "Tylo",             0.0f,  20000.0f,  13000.0f },
+  { "Bop",              0.0f,  30000.0f,  22000.0f },
+  { "Pol",              0.0f,  12000.0f,   6000.0f },
+  { "Eeloo",            0.0f,  15000.0f,   5000.0f },
+};
+static BodyProfile g_curBody = { "", 0.0f, 0.0f, 0.0f };  // resolved current-body profile
+static bool        g_targetLocked = false;                // pilot has set an explicit target apoapsis
+
+// Case-insensitive lookup; returns a fallback profile (atmoTop/defaultOrbit/minSafe = 0)
+// for unknown bodies so guidance degrades to telemetry-driven behaviour.
+static BodyProfile apLookupBody(const char *name) {
+  for (uint8_t i = 0; i < (sizeof(AP_BODIES) / sizeof(AP_BODIES[0])); i++) {
+    if (strcasecmp(name, AP_BODIES[i].name) == 0) return AP_BODIES[i];
+  }
+  BodyProfile unknown = { "", 0.0f, 0.0f, 0.0f };
+  return unknown;
+}
 
 /***************************************************************************************
    Small math helpers
@@ -112,8 +159,18 @@ static float apLaunchAzimuth() {
    turnEndAltitude. `loft` shapes the curve — exponent < 1 pitches over aggressively,
    > 1 stays steeper longer. An initial kick lowers the starting pitch to commit the turn.
 ****************************************************************************************/
+// Body-relative turn-end altitude: a fraction of the atmosphere top on atmospheric
+// bodies, or a fraction of the target apoapsis on airless / unknown-atmosphere bodies.
+// Falls back to the manual turnEndAltitude when body-profile mode is off.
+static float apEffectiveTurnEnd() {
+  if (!g_cfg.autoBodyProfile) return g_cfg.turnEndAltitude;
+  if (g_tel.hasAtmo && g_curBody.atmosphereTop > 0.0f)
+    return g_cfg.turnEndAtmoFraction * g_curBody.atmosphereTop;
+  return g_cfg.turnEndAirlessFraction * g_cfg.targetApoapsis;
+}
+
 static float apScheduledPitch() {
-  float span = g_cfg.turnEndAltitude - g_cfg.turnStartAltitude;
+  float span = apEffectiveTurnEnd() - g_cfg.turnStartAltitude;
   if (span < 1.0f) span = 1.0f;
   float frac = (g_tel.altSurface - g_cfg.turnStartAltitude) / span;
   frac = apClampf(frac, 0.0f, 1.0f);
@@ -129,9 +186,9 @@ static float apScheduledPitch() {
 static float apManagedThrottle() {
   float thr = g_cfg.launchThrottle;
 
-  // Max-Q limiting: q = 1/2 * rho * v^2
+  // Max-Q limiting: q = 1/2 * rho * v^2 (atmospheric bodies only)
   g_dynPressure = 0.5f * g_tel.airDensity * g_tel.velSurface * g_tel.velSurface;
-  if (g_cfg.maxQ > 0.0f && g_dynPressure > g_cfg.maxQ) {
+  if (g_tel.hasAtmo && g_cfg.maxQ > 0.0f && g_dynPressure > g_cfg.maxQ) {
     float scale = g_cfg.maxQ / g_dynPressure;                   // proportional back-off
     thr = min(thr, max(g_cfg.maxQThrottleFloor, g_cfg.launchThrottle * scale));
   }
@@ -277,10 +334,16 @@ AscentConfig apDefaultConfig() {
   c.launchLatitude     = 0.0f;      // KSC is ~0.1 deg; 0 is a fine approximation
   c.headingBias        = 0.0f;
 
+  // Body / sphere-of-influence handling
+  c.autoBodyProfile       = true;   // adapt to whatever SoI the craft is in (atmospheric or airless)
+  c.turnEndAtmoFraction   = 0.80f;  // atmospheric: level off by ~80% of atmosphere top
+  c.turnEndAirlessFraction = 0.25f; // airless: pitch over within ~25% of target apoapsis
+  c.enforceMinSafeAltitude = true;  // clamp target up to the body's minimum safe altitude on arm
+
   // Ascent shape
   c.turnStartAltitude  = 500.0f;
   c.turnStartVelocity  = 60.0f;
-  c.turnEndAltitude    = 55000.0f;
+  c.turnEndAltitude    = 55000.0f;  // manual fallback (used only when autoBodyProfile is false)
   c.loft               = 1.0f;      // 1.0 = balanced; lower = aggressive, higher = lofted
   c.initialPitchKick   = 3.0f;
   c.finalPitch         = 0.0f;
@@ -333,7 +396,10 @@ void apSetTargets(float apoapsisM, float inclinationDeg, float loft) {
   g_cfg.targetApoapsis    = apoapsisM;
   g_cfg.targetInclination = inclinationDeg;
   g_cfg.loft              = loft;
+  g_targetLocked          = true;   // an explicit target survives auto body-profile changes
 }
+
+const char *apCurrentBody() { return g_tel.bodyName; }
 
 void apArm() {
   g_armed          = true;
@@ -343,6 +409,12 @@ void apArm() {
   g_sasProgradeSet = false;
   g_lastStageMs    = millis();
   g_lastUpdateMs = millis();
+  // Terrain-clearance guard: never target below the body's minimum safe altitude.
+  if (g_cfg.enforceMinSafeAltitude && g_curBody.minSafeAltitude > 0.0f &&
+      g_cfg.targetApoapsis < g_curBody.minSafeAltitude) {
+    g_cfg.targetApoapsis = g_curBody.minSafeAltitude;
+    mySimpit.printToKSP("Ascent AP: target raised to min safe altitude", PRINT_TO_SCREEN);
+  }
   if (g_cfg.autoLaunch) {
     mySimpit.activateAction(STAGE_ACTION);   // ignite first stage
     g_lastStageMs = millis();
@@ -415,8 +487,10 @@ void apUpdate() {
 
     case AP_PHASE_GRAVITY_TURN: {
       float pitch = apScheduledPitch();
-      // Angle-of-attack limit: keep the commanded pitch within aoaLimit of surface prograde.
-      if (g_cfg.aoaLimit > 0.0f && g_tel.velSurface > 30.0f) {
+      // Angle-of-attack limit: keep the commanded pitch within aoaLimit of surface
+      // prograde. Aerodynamic guard only — skipped on airless bodies so the craft can
+      // pitch over freely to build horizontal velocity.
+      if (g_tel.hasAtmo && g_cfg.aoaLimit > 0.0f && g_tel.velSurface > 30.0f) {
         pitch = apClampf(pitch, g_tel.srfVelPitch - g_cfg.aoaLimit, g_tel.srfVelPitch + g_cfg.aoaLimit);
       }
       apSteer(pitch, azimuth, dt);
@@ -487,11 +561,14 @@ void apSerialConsole() {
       len = 0;
       if      (strncasecmp(buf, "ARM", 3) == 0)    apArm();
       else if (strncasecmp(buf, "DISARM", 6) == 0) apDisarm();
-      else if (strncasecmp(buf, "ALT ", 4) == 0)   g_cfg.targetApoapsis    = atof(buf + 4);
+      else if (strncasecmp(buf, "ALT ", 4) == 0) { g_cfg.targetApoapsis = atof(buf + 4); g_targetLocked = true; }
       else if (strncasecmp(buf, "INC ", 4) == 0)   g_cfg.targetInclination = atof(buf + 4);
       else if (strncasecmp(buf, "LOFT ", 5) == 0)  g_cfg.loft              = atof(buf + 5);
       else if (strncasecmp(buf, "STATUS", 6) == 0) {
         Serial.print(F("AP armed=")); Serial.print(g_armed);
+        Serial.print(F(" body="));    Serial.print(g_tel.bodyName[0] ? g_tel.bodyName : "?");
+        Serial.print(F(" atmo="));    Serial.print(g_tel.hasAtmo);
+        Serial.print(F(" tgtAp="));   Serial.print(g_cfg.targetApoapsis, 0);
         Serial.print(F(" phase="));   Serial.print((int)g_phase);
         Serial.print(F(" pitch="));   Serial.print(g_cmdPitch, 1);
         Serial.print(F(" hdg="));     Serial.print(g_cmdHeading, 1);
@@ -525,6 +602,21 @@ void apIngestAttitude(float heading, float pitch, float roll,
   g_tel.srfVelHeading = srfVelHeading; g_tel.srfVelPitch = srfVelPitch;
   g_tel.orbVelHeading = orbVelHeading; g_tel.orbVelPitch = orbVelPitch; apStamp();
 }
-void apIngestAtmo(float airDensity)                     { g_tel.airDensity = airDensity; apStamp(); }
+void apIngestAtmo(float airDensity, bool hasAtmosphere, bool inAtmosphere) {
+  g_tel.airDensity = airDensity; g_tel.hasAtmo = hasAtmosphere; g_tel.inAtmo = inAtmosphere; apStamp();
+}
 void apIngestSkinTemp(float skinTempFraction)           { g_tel.skinTempFrac = skinTempFraction; apStamp(); }
 void apIngestStageDeltaV(float stageDeltaV)             { g_tel.stageDV = stageDeltaV; apStamp(); }
+
+void apIngestSOI(const char *bodyName) {
+  if (!bodyName) return;
+  // Only react on an actual body change so we do not repeatedly overwrite the config.
+  if (strncmp(bodyName, g_tel.bodyName, sizeof(g_tel.bodyName)) == 0) return;
+  strncpy(g_tel.bodyName, bodyName, sizeof(g_tel.bodyName) - 1);
+  g_tel.bodyName[sizeof(g_tel.bodyName) - 1] = '\0';
+  g_curBody = apLookupBody(g_tel.bodyName);
+  // Adopt the body's default parking orbit unless the pilot has set an explicit target.
+  if (g_cfg.autoBodyProfile && !g_targetLocked && g_curBody.defaultOrbit > 0.0f) {
+    g_cfg.targetApoapsis = g_curBody.defaultOrbit;
+  }
+}

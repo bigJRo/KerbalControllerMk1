@@ -48,10 +48,16 @@ struct AscentConfig {
   float    launchLatitude;      // deg  Launch-site latitude for the azimuth calculation (KSC ~= 0)
   float    headingBias;         // deg  Manual trim added to the computed launch azimuth
 
+  // --- Body / sphere-of-influence handling ---
+  bool     autoBodyProfile;        // On entering a new SoI, adopt that body's defaults and adapt to its atmosphere
+  float    turnEndAtmoFraction;    // Atmospheric body: pitch reaches finalPitch at this fraction of atmosphere top
+  float    turnEndAirlessFraction; // Airless body: pitch reaches finalPitch at this fraction of target apoapsis
+  bool     enforceMinSafeAltitude; // Raise the target apoapsis to the body's minimum safe altitude on arm
+
   // --- Ascent / gravity-turn shape ---
-  float    turnStartAltitude;   // m    Surface altitude at which the pitch-over begins
+  float    turnStartAltitude;   // m    Surface (AGL) altitude at which the pitch-over begins
   float    turnStartVelocity;   // m/s  OR surface speed to begin the turn, whichever comes first (0 disables)
-  float    turnEndAltitude;     // m    Surface altitude at which the pitch program reaches finalPitch
+  float    turnEndAltitude;     // m    Manual turn-end altitude — used only when autoBodyProfile is false
   float    loft;                // -    Pitch-schedule exponent (turn aggressiveness): <1 aggressive, >1 lofted/gentle
   float    initialPitchKick;    // deg  Immediate pitch-over applied at turn start to commit the turn
   float    finalPitch;          // deg  Pitch above horizon held until engine cutoff (0..15)
@@ -111,7 +117,8 @@ void         apInit();                     // Initialise module state (call in s
 AscentConfig &apGetConfig();               // Mutable reference to the active config
 void         apSetConfig(const AscentConfig &cfg);
 
-void         apSetTargets(float apoapsisM, float inclinationDeg, float loft);  // Quick mission set
+void         apSetTargets(float apoapsisM, float inclinationDeg, float loft);  // Quick mission set (locks target)
+const char  *apCurrentBody();              // Name of the current SoI body (from SOI_MESSAGE)
 
 void         apArm();                      // Engage the autopilot from the current state
 void         apDisarm();                   // Hand control back to the pilot (zeroes commands)
@@ -138,8 +145,9 @@ void apIngestOrbit(float inclinationDeg);
 void apIngestAttitude(float heading, float pitch, float roll,
                       float srfVelHeading, float srfVelPitch,
                       float orbVelHeading, float orbVelPitch);
-void apIngestAtmo(float airDensity);
+void apIngestAtmo(float airDensity, bool hasAtmosphere, bool inAtmosphere);
 void apIngestSkinTemp(float skinTempFraction);   // 0..1 (skinTempLimitPercentage / 100)
 void apIngestStageDeltaV(float stageDeltaV);
+void apIngestSOI(const char *bodyName);          // Current sphere-of-influence body name (SOI_MESSAGE)
 
 #endif  // ASCENT_AUTOPILOT_H

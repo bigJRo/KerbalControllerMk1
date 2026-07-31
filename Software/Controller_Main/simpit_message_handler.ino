@@ -220,12 +220,18 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         apIngestSkinTemp(myTemp.skinTempLimitPercentage / 100.0f);  // feed ascent autopilot heat limiter
       }
       break;
-    case SOI_MESSAGE:
+    case SOI_MESSAGE: {
       strSOI = "";
+      char bodyBuf[24];
+      uint8_t n = 0;
       for (uint8_t i = 0; i < msgSize; i++) {
         strSOI += char(msg[i]);
+        if (n < sizeof(bodyBuf) - 1) bodyBuf[n++] = char(msg[i]);
       }
+      bodyBuf[n] = '\0';
+      apIngestSOI(bodyBuf);  // feed ascent autopilot body-profile / SoI adaptation
       break;
+    }
     case ATMO_CONDITIONS_MESSAGE:
       if (msgSize == sizeof(atmoConditionsMessage)) {
         atmoConditionsMessage myAtmoConditions;
@@ -236,7 +242,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         hasAtmo = myAtmoConditions.hasAtmosphere();
         hasO2 = myAtmoConditions.hasOxygen();
         inAtmo = myAtmoConditions.isVesselInAtmosphere();
-        apIngestAtmo(myAtmoConditions.airDensity);  // feed ascent autopilot max-Q limiter
+        apIngestAtmo(myAtmoConditions.airDensity, myAtmoConditions.hasAtmosphere(),
+                     myAtmoConditions.isVesselInAtmosphere());  // feed ascent autopilot (max-Q + airless/atmospheric branch)
       }
       break;
     case VESSEL_NAME_MESSAGE:
