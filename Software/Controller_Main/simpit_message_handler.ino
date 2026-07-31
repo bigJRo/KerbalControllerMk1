@@ -14,6 +14,9 @@ void registerInputChannels() {  //Game message that registers the necessary mess
   mySimpit.registerChannel(VELOCITY_MESSAGE);
   mySimpit.registerChannel(AIRSPEED_MESSAGE);
   mySimpit.registerChannel(APSIDES_MESSAGE);
+  mySimpit.registerChannel(APSIDESTIME_MESSAGE);  // Time-to-apoapsis for circularization timing (ascent autopilot)
+  mySimpit.registerChannel(ORBIT_MESSAGE);        // Inclination for the ascent autopilot azimuth target
+  mySimpit.registerChannel(ROTATION_DATA_MESSAGE);// Attitude + surface prograde for the ascent autopilot steering loop
   mySimpit.registerChannel(DELTAV_MESSAGE);
   mySimpit.registerChannel(BURNTIME_MESSAGE);
   mySimpit.registerChannel(TEMP_LIMIT_MESSAGE);
@@ -80,6 +83,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         flightStatusMessage myFlightStatus;
         myFlightStatus = parseMessage<flightStatusMessage>(msg);
         inFlight = myFlightStatus.isInFlight();
+        apIngestFlightStatus(myFlightStatus.isInFlight());  // feed ascent autopilot
         inEVA = myFlightStatus.isInEVA();
         physTW = myFlightStatus.isInAtmoTW();
         hasTarget = myFlightStatus.hasTarget();
@@ -138,6 +142,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myAltitude = parseMessage<altitudeMessage>(msg);
         alt_sl = myAltitude.sealevel;
         alt_surf = myAltitude.surface;
+        apIngestAltitude(myAltitude.sealevel, myAltitude.surface);  // feed ascent autopilot
       }
       break;
     case VELOCITY_MESSAGE:
@@ -147,6 +152,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         vel_orb = myVelocity.orbital;
         vel_surf = myVelocity.surface;
         vel_vert = myVelocity.vertical;
+        apIngestVelocity(myVelocity.orbital, myVelocity.surface, myVelocity.vertical);  // feed ascent autopilot
       }
       break;
     case AIRSPEED_MESSAGE:
@@ -162,6 +168,30 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myApsides = parseMessage<apsidesMessage>(msg);
         periapsis = myApsides.periapsis;
         apoapsis = myApsides.apoapsis;
+        apIngestApsides(myApsides.apoapsis, myApsides.periapsis);  // feed ascent autopilot
+      }
+      break;
+    case APSIDESTIME_MESSAGE:
+      if (msgSize == sizeof(apsidesTimeMessage)) {
+        apsidesTimeMessage myApsidesTime;
+        myApsidesTime = parseMessage<apsidesTimeMessage>(msg);
+        apIngestApsidesTime((float)myApsidesTime.apoapsis, (float)myApsidesTime.periapsis);  // feed ascent autopilot
+      }
+      break;
+    case ORBIT_MESSAGE:
+      if (msgSize == sizeof(orbitInfoMessage)) {
+        orbitInfoMessage myOrbit;
+        myOrbit = parseMessage<orbitInfoMessage>(msg);
+        apIngestOrbit(myOrbit.inclination);  // feed ascent autopilot azimuth target
+      }
+      break;
+    case ROTATION_DATA_MESSAGE:
+      if (msgSize == sizeof(vesselPointingMessage)) {
+        vesselPointingMessage myPointing;
+        myPointing = parseMessage<vesselPointingMessage>(msg);
+        apIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
+                         myPointing.surfaceVelocityHeading, myPointing.surfaceVelocityPitch,
+                         myPointing.orbitalVelocityHeading, myPointing.orbitalVelocityPitch);  // feed ascent autopilot steering
       }
       break;
     case DELTAV_MESSAGE:
@@ -170,6 +200,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myDV = parseMessage<deltaVMessage>(msg);
         stageDV = myDV.stageDeltaV;
         totalDV = myDV.totalDeltaV;
+        apIngestStageDeltaV(myDV.stageDeltaV);  // feed ascent autopilot auto-staging
       }
       break;
     case BURNTIME_MESSAGE:
@@ -186,6 +217,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myTemp = parseMessage<tempLimitMessage>(msg);
         maxTemp = myTemp.tempLimitPercentage;
         skinTemp = myTemp.skinTempLimitPercentage;
+        apIngestSkinTemp(myTemp.skinTempLimitPercentage / 100.0f);  // feed ascent autopilot heat limiter
       }
       break;
     case SOI_MESSAGE:
@@ -204,6 +236,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         hasAtmo = myAtmoConditions.hasAtmosphere();
         hasO2 = myAtmoConditions.hasOxygen();
         inAtmo = myAtmoConditions.isVesselInAtmosphere();
+        apIngestAtmo(myAtmoConditions.airDensity);  // feed ascent autopilot max-Q limiter
       }
       break;
     case VESSEL_NAME_MESSAGE:
