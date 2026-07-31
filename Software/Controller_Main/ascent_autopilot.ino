@@ -457,9 +457,9 @@ void apUpdate() {
 
     case AP_PHASE_COMPLETE: {
       apSendThrottle(0.0f);
-      // Leave the vessel pointed prograde under stock SAS and hand back to the pilot.
+      // Hand back to the pilot with stock SAS enabled in stability-hold (attitude hold).
       mySimpit.activateAction(SAS_ACTION);
-      mySimpit.setSASMode(AP_PROGRADE);
+      mySimpit.setSASMode(AP_STABILITYASSIST);
       g_armed = false;
       break;
     }

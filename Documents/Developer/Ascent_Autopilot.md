@@ -65,7 +65,7 @@ IDLE ──apArm()──▶ VERTICAL ──alt/vel trigger──▶ GRAVITY_TURN
 - **COAST** — engines off; prograde held by stock SAS (or actively). Relights if drag pulls the
   apoapsis back down inside the atmosphere.
 - **CIRCULARIZE** — prograde burn near apoapsis until periapsis reaches the target.
-- **COMPLETE** — throttle 0, stock SAS set prograde, control handed back to the pilot.
+- **COMPLETE** — throttle 0; stock SAS enabled in **stability-hold** (attitude hold), control handed back to the pilot.
 - **ABORT** — failsafe throttle cut on telemetry loss.
 
 While actively steering, stock SAS is switched **off** (raw rotation commands fight SAS); during
