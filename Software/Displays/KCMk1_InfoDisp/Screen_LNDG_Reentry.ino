@@ -174,9 +174,12 @@ static void _reDrawTape(KCM_TFT &tft) {
     tft.setCursor(RE_TAPE_X - 3 - lw, ly);
     tft.print(buf);
   }
-  // Minor ticks at half-step
-  for (float m = step * 0.5f; m <= scaleTop + 1.0f; m += step) {
-    int16_t ty = altToY(m);
+  // Minor ticks — 3 per major division (quarter-steps), skipping the major lines.
+  float minor = step * 0.25f;
+  int   nTicks = (int)(scaleTop / minor + 0.5f);
+  for (int i = 1; i <= nTicks; i++) {
+    if (i % 4 == 0) continue;            // coincides with a major tick
+    int16_t ty = altToY(i * minor);
     tft.drawLine(RE_TAPE_X + 1, ty, RE_TAPE_X + 4, ty, TFT_GREY);
     tft.drawLine(barR - 5,      ty, barR - 2,      ty, TFT_GREY);
   }
