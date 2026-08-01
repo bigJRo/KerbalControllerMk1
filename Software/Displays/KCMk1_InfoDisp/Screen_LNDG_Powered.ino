@@ -463,7 +463,7 @@ static void _lndgDrawVvChrome(KCM_TFT &tft) {
     // "VERTICAL VELOCITY" vertical label — full-height box so it is vertically
     // centred on the bar, left of the numeric labels.
     drawVerticalText(tft, LNDG_VV_X - 34, LNDG_VV_Y, 14, LNDG_VV_H,
-                     &Roboto_Black_12, "VERT VELOCITY", TFT_LIGHT_GREY, TFT_BLACK);
+                     &Roboto_Black_12, "VERTICAL VELOCITY", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
