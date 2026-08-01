@@ -56,12 +56,19 @@ static const int16_t  RE_ATT_R  = 104;
 static const float    RE_ATT_FS = (float)RE_ATT_R / 40.0f;  // px per degree (outer ring = 40°)
 
 // ── Parachute deploy envelope (centre-bottom) ──
-static const uint16_t RE_ENV_X    = 190;
+static const uint16_t RE_ENV_X    = 190;   // widget footprint (erased each frame)
 static const uint16_t RE_ENV_Y    = 350;
 static const uint16_t RE_ENV_W    = 248;
 static const uint16_t RE_ENV_H    = 248;
-static const float    RE_ENV_VMAX = 1000.0f;   // x-axis: surface speed (m/s)
-static const float    RE_ENV_AMAX = 10000.0f;  // y-axis: altitude AGL (m)
+// Chute-deploy SPEED TAPE (vertical). The green/yellow/red zone boundaries are the
+// altitude-corrected safe-deploy speeds derived from live dynamic pressure, so they
+// slide down as you descend into denser air. Airspeed axis 0 (bottom) .. VMAX (top).
+static const uint16_t RE_CT_X    = RE_ENV_X + 60;    // 250 — tape left edge
+static const uint16_t RE_CT_W    = 60;               // tape width
+static const uint16_t RE_CT_Y    = RE_ENV_Y + 8;     // 358 — tape top
+static const uint16_t RE_CT_H    = RE_ENV_H - 16;    // 232
+static const uint16_t RE_CT_BOT  = RE_CT_Y + RE_CT_H;// 590
+static const float    RE_CT_VMAX = 1000.0f;          // airspeed axis top (m/s)
 
 // ── Vertical bar gauges (right of the graphics zone) ──
 static const uint16_t RE_GA_Y  = TITLE_TOP + 20;                 // 82 — gauge top
@@ -76,6 +83,22 @@ static const uint16_t RE_TC_X  = 560;   static const uint16_t RE_TC_W  = 14;  //
    HELPERS
 ****************************************************************************************/
 static inline float _reWrap180(float a) { while (a > 180.0f) a -= 360.0f; while (a < -180.0f) a += 360.0f; return a; }
+
+// ── Chute deployment (dynamic pressure) ──────────────────────────────────────────────
+// Current dynamic pressure q = 0.5*rho*v^2 (Pa); 0 outside the atmosphere.
+static inline float _reDynPressure() { return 0.5f * state.airDensity * state.surfaceVel * state.surfaceVel; }
+// Altitude-corrected safe-deploy airspeed (m/s) for a chute with the given max q, at
+// the current air density. Huge (effectively "any speed") in near-vacuum.
+static inline float _reChuteSafeSpeed(float maxQ) {
+  return (state.airDensity > 1e-6f) ? sqrtf(2.0f * maxQ / state.airDensity) : 1.0e6f;
+}
+// Deploy-safety tier for a chute: 0 = safe (green), 1 = caution (yellow), 2 = rip (red).
+static inline uint8_t _reChuteTier(float maxQ) {
+  float q = _reDynPressure();
+  if (q >= maxQ)         return 2;
+  if (q >= 0.85f * maxQ) return 1;
+  return 0;
+}
 
 // Re-entry corridor boundaries (metres, ASL), velocity-adjusted. ReCorridor is
 // declared in KCMk1_InfoDisp.h so the auto-prototype for this helper sees the type.
@@ -304,46 +327,78 @@ static void _reDrawBall(KCM_TFT &tft) {
 }
 
 /***************************************************************************************
-   WIDGET: PARACHUTE DEPLOY ENVELOPE (speed vs altitude)
+   WIDGET: CHUTE DEPLOY SPEED TAPE (airspeed vs live safe-deploy limits)
+   Vertical airspeed tape. The green/yellow/red boundaries are the altitude-corrected
+   safe-deploy speeds (from live dynamic pressure), so they slide down as the air
+   thickens. The white marker is the current airspeed.
+     green  : q < main limit        (main + drogue safe)
+     yellow : main <= q < drogue     (drogue only)
+     red    : q >= drogue limit      (nothing safe)
 ****************************************************************************************/
 static void _reDrawEnvelope(KCM_TFT &tft) {
-  const uint16_t x0 = RE_ENV_X, y0 = RE_ENV_Y, w = RE_ENV_W, h = RE_ENV_H;
-  auto spdToX = [&](float v) -> int16_t {
-    float f = v / RE_ENV_VMAX; if (f < 0) f = 0; if (f > 1) f = 1; return (int16_t)(x0 + f * w);
-  };
-  auto altToY = [&](float alt) -> int16_t {
-    float f = alt / RE_ENV_AMAX; if (f < 0) f = 0; if (f > 1) f = 1; return (int16_t)(y0 + h - f * h);
+  const uint16_t ix = RE_CT_X + 1, iw = RE_CT_W - 2;
+  auto spdToY = [&](float v) -> int16_t {
+    float f = v / RE_CT_VMAX; if (f < 0) f = 0; if (f > 1) f = 1;
+    return (int16_t)(RE_CT_BOT - f * RE_CT_H);
   };
 
-  // Speed bands (vertical). main safe/risky < drogue safe/risky.
-  int16_t xMs = spdToX(LNDG_MAIN_SAFE_MS),   xMr = spdToX(LNDG_MAIN_RISKY_MS);
-  int16_t xDs = spdToX(LNDG_DROGUE_SAFE_MS), xDr = spdToX(LNDG_DROGUE_RISKY_MS);
-  tft.fillRect(x0,  y0, xMs - x0,          h, TFT_JUNGLE);    // both safe
-  tft.fillRect(xMs, y0, xMr - xMs,         h, TFT_OLIVE);     // main caution
-  tft.fillRect(xMr, y0, xDs - xMr,         h, TFT_AQUA);      // drogue-only
-  tft.fillRect(xDs, y0, xDr - xDs,         h, TFT_OLIVE);     // drogue caution
-  tft.fillRect(xDr, y0, (x0 + w) - xDr,    h, TFT_DARK_RED);  // both rip
+  // Erase the widget footprint each frame (labels + tape + tags) to prevent streaks.
+  tft.fillRect(RE_ENV_X, RE_ENV_Y - 16, RE_ENV_W, RE_ENV_H + 16, TFT_BLACK);
 
-  // Main full-open altitude reference line (below it a main chute fully blooms)
-  int16_t yFull = altToY(LNDG_MAIN_FULL_ALT);
-  for (int16_t x = x0; x < x0 + w; x += 8) tft.drawLine(x, yFull, x + 3, yFull, TFT_LIGHT_GREY);
+  // Live altitude-corrected safe-deploy speeds
+  float vMain   = _reChuteSafeSpeed(LNDG_CHUTE_MAIN_MAX_Q);
+  float vDrogue = _reChuteSafeSpeed(LNDG_CHUTE_DROGUE_MAX_Q);
+  int16_t yMain   = spdToY(vMain);
+  int16_t yDrogue = spdToY(vDrogue);
 
-  tft.drawRect(x0, y0, w, h, TFT_GREY);
+  // Zone fills (dim): green 0..vMain, yellow vMain..vDrogue, red vDrogue..VMAX
+  tft.fillRect(ix, yMain,    iw, RE_CT_BOT - yMain,   TFT_JUNGLE);
+  tft.fillRect(ix, yDrogue,  iw, yMain - yDrogue,     TFT_DARK_YELLOW);
+  tft.fillRect(ix, RE_CT_Y,  iw, yDrogue - RE_CT_Y,   TFT_DARK_RED);
 
-  // Vessel marker (speed, AGL altitude), coloured by main-chute safety
-  float spd = state.surfaceVel;
-  uint16_t vc = (spd < LNDG_MAIN_SAFE_MS) ? TFT_NEON_GREEN :
-                (spd < LNDG_DROGUE_RISKY_MS) ? TFT_YELLOW : TFT_RED;
-  int16_t vx = spdToX(spd), vy = altToY(state.radarAlt);
-  tft.drawLine(vx - 7, vy, vx + 7, vy, vc);
-  tft.drawLine(vx, vy - 7, vx, vy + 7, vc);
-  tft.fillCircle(vx, vy, 3, vc);
+  // Boundary lines + tags (bright)
+  if (yMain > RE_CT_Y && yMain < RE_CT_BOT) {
+    tft.drawLine(ix, yMain, ix + iw - 1, yMain, TFT_NEON_GREEN);
+    tft.setFont(Roboto_Black_12); tft.setTextColor(TFT_NEON_GREEN, TFT_BLACK);
+    tft.setCursor(RE_CT_X + RE_CT_W + 18, yMain - 6); tft.print("MAIN");
+  }
+  if (yDrogue > RE_CT_Y && yDrogue < RE_CT_BOT) {
+    tft.drawLine(ix, yDrogue, ix + iw - 1, yDrogue, TFT_YELLOW);
+    tft.setFont(Roboto_Black_12); tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setCursor(RE_CT_X + RE_CT_W + 18, yDrogue - 6); tft.print("DROG");
+  }
 
-  // Caption
+  // Speed axis labels + ticks (every 200 m/s), left of the tape
   tft.setFont(Roboto_Black_12);
   tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-  tft.setCursor(x0, y0 - 15);
-  tft.print("CHUTE DEPLOY  (spd / alt)");
+  for (int v = 0; v <= (int)RE_CT_VMAX + 1; v += 200) {
+    int16_t ty = spdToY((float)v);
+    tft.drawLine(RE_CT_X + 1, ty, RE_CT_X + 7, ty, TFT_LIGHT_GREY);
+    char b[6]; snprintf(b, sizeof(b), "%d", v);
+    int16_t lw = getFontStringWidth(&Roboto_Black_12, b);
+    int16_t ly = (int16_t)max((int)RE_CT_Y, min((int)(RE_CT_BOT - 14), (int)ty - 7));
+    tft.setCursor(RE_CT_X - 3 - lw, ly); tft.print(b);
+  }
+  for (int v = 100; v <= (int)RE_CT_VMAX; v += 200) {   // minor ticks
+    int16_t ty = spdToY((float)v);
+    tft.drawLine(RE_CT_X + 1, ty, RE_CT_X + 4, ty, TFT_GREY);
+  }
+
+  tft.drawRect(RE_CT_X, RE_CT_Y, RE_CT_W, RE_CT_H, TFT_GREY);
+
+  // Current-airspeed marker (white line + right-side triangle), tier-coloured triangle
+  float q = _reDynPressure();
+  uint16_t vc = (q < LNDG_CHUTE_MAIN_MAX_Q) ? TFT_NEON_GREEN :
+                (q < LNDG_CHUTE_DROGUE_MAX_Q) ? TFT_YELLOW : TFT_RED;
+  int16_t ym = constrain(spdToY(state.surfaceVel), (int16_t)(RE_CT_Y + 8), (int16_t)(RE_CT_BOT - 8));
+  tft.fillRect(ix, ym - 1, iw, 3, TFT_WHITE);
+  tft.fillTriangle(RE_CT_X + RE_CT_W + 1, ym, RE_CT_X + RE_CT_W + 13, ym - 8, RE_CT_X + RE_CT_W + 13, ym + 8, vc);
+
+  // Title
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+  tft.setCursor(RE_ENV_X, RE_ENV_Y - 15);
+  tft.print("CHUTE DEPLOY  (airspeed m/s)");
 }
 
 /***************************************************************************************
@@ -529,26 +584,27 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     reVal(5, "G:", String(buf), fg, bg);
   }
 
-  // ── Chute latch bookkeeping (unchanged logic) ──
-  float spd = state.surfaceVel;
-  if (state.drogueDeploy && !_drogueDeployed) { _drogueDeployed = true; _drogueArmedSafe = (!state.inAtmo || spd <= LNDG_DROGUE_RISKY_MS); }
+  // ── Chute latch bookkeeping — armed-safe when deployed below the rip q ──
+  if (state.drogueDeploy && !_drogueDeployed) { _drogueDeployed = true; _drogueArmedSafe = (!state.inAtmo || _reDynPressure() < LNDG_CHUTE_DROGUE_MAX_Q); }
   if (state.drogueCut    && !_drogueCut)      { _drogueCut = true; _drogueDeployed = false; _drogueArmedSafe = false; }
-  if (state.mainDeploy   && !_mainDeployed)   { _mainDeployed = true; _mainArmedSafe = (!state.inAtmo || spd <= LNDG_MAIN_RISKY_MS); }
+  if (state.mainDeploy   && !_mainDeployed)   { _mainDeployed = true; _mainArmedSafe = (!state.inAtmo || _reDynPressure() < LNDG_CHUTE_MAIN_MAX_Q); }
   if (state.mainCut      && !_mainCut)        { _mainCut = true; _mainDeployed = false; _mainArmedSafe = false; }
 
-  auto chuteState = [&](bool dep, bool cut, bool safe, float safeSpd, float riskySpd, float fullAlt,
+  // Chute status by dynamic-pressure tier vs the chute's rip limit (maxQ).
+  auto chuteState = [&](bool dep, bool cut, bool safe, float maxQ, float fullAlt,
                         const char *&lbl, uint16_t &cfg, uint16_t &cbg) {
+    uint8_t tier = _reChuteTier(maxQ);   // 0 safe, 1 caution, 2 rip
     if (cut) { lbl = "CUT"; cfg = TFT_RED; cbg = TFT_BLACK; return; }
     if (dep) {
-      if (!safe && state.inAtmo && spd > riskySpd) { lbl = "OPEN"; cfg = TFT_WHITE; cbg = TFT_RED; return; }
+      if (!safe && state.inAtmo && tier == 2) { lbl = "OPEN"; cfg = TFT_WHITE; cbg = TFT_RED; return; }
       if (state.airDensity < LNDG_CHUTE_SEMI_DENSITY) { lbl = "ARMED"; cfg = TFT_SKY; cbg = TFT_BLACK; return; }
       lbl = "OPEN"; cfg = (state.radarAlt > fullAlt) ? TFT_YELLOW : TFT_DARK_GREEN; cbg = TFT_BLACK; return;
     }
     lbl = "STOWED";
-    if (!state.inAtmo)          { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
-    else if (spd > riskySpd)    { cfg = TFT_WHITE;      cbg = TFT_RED; }
-    else if (spd > safeSpd)     { cfg = TFT_YELLOW;     cbg = TFT_BLACK; }
-    else                        { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
+    if (!state.inAtmo)      { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
+    else if (tier == 2)     { cfg = TFT_WHITE;      cbg = TFT_RED; }
+    else if (tier == 1)     { cfg = TFT_YELLOW;     cbg = TFT_BLACK; }
+    else                    { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
   };
 
   // Row 6: Drogue | Main (split values, cached)
@@ -556,13 +612,13 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     uint16_t xL = RE_TXT_X, wL = RHW - ROW_PAD, xR = RE_TXT_X + RHW + ROW_PAD, wR = RHW - ROW_PAD;
     uint16_t y6 = rowYFor(6, RE_NR), h6 = rowHFor(RE_NR);
     const char *dv; uint16_t dfg, dbg;
-    chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_DROGUE_SAFE_MS, LNDG_DROGUE_RISKY_MS, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);
+    chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_CHUTE_DROGUE_MAX_Q, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);
     { String ds = dv; RowCache &dc = rowCache[screen_LNDGRE][6];
       if (dc.value != ds || dc.fg != dfg || dc.bg != dbg) {
         printValue(tft, RE_PF, xL, y6, wL, h6, "Drogue:", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
         dc.value = ds; dc.fg = dfg; dc.bg = dbg; } }
     const char *mv; uint16_t mfg, mbg;
-    chuteState(_mainDeployed, _mainCut, _mainArmedSafe, LNDG_MAIN_SAFE_MS, LNDG_MAIN_RISKY_MS, LNDG_MAIN_FULL_ALT, mv, mfg, mbg);
+    chuteState(_mainDeployed, _mainCut, _mainArmedSafe, LNDG_CHUTE_MAIN_MAX_Q, LNDG_MAIN_FULL_ALT, mv, mfg, mbg);
     { String ms = mv; RowCache &mc = rowCache[screen_LNDGRE][11];
       if (mc.value != ms || mc.fg != mfg || mc.bg != mbg) {
         printValue(tft, RE_PF, xR, y6, wR, h6, "Main:", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);

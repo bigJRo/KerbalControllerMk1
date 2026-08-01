@@ -659,8 +659,9 @@ static void runLogicTests() {
   // CW_CHUTE_ENV -- red (too fast for drogue)
   {
     resetTestState();
-    inAtmo         = true;
-    state.vel_surf = CW_CHUTE_DROGUE_MAX_SPEED + 100.0f;
+    inAtmo           = true;
+    state.airDensity = 1.225f;                  // Kerbin sea-level density (q calibration)
+    state.vel_surf   = 600.0f;                  // q > drogue limit
     updateCautionWarningState();
     bool pass = bitRead(state.cautionWarningState, CW_CHUTE_ENV) &&
                 chuteEnvState == chute_Red;
@@ -668,7 +669,7 @@ static void runLogicTests() {
     if (pass) _logicPassed++; else _logicFailed++;
 
     // yellow (safe for drogue, not main)
-    state.vel_surf = CW_CHUTE_MAIN_MAX_SPEED + 10.0f;
+    state.vel_surf = 350.0f;                     // main limit < q < drogue limit
     updateCautionWarningState();
     pass = bitRead(state.cautionWarningState, CW_CHUTE_ENV) &&
            chuteEnvState == chute_Yellow;
@@ -676,7 +677,7 @@ static void runLogicTests() {
     if (pass) _logicPassed++; else _logicFailed++;
 
     // green (safe for mains)
-    state.vel_surf = CW_CHUTE_MAIN_MAX_SPEED - 10.0f;
+    state.vel_surf = 200.0f;                     // q < main limit
     updateCautionWarningState();
     pass = bitRead(state.cautionWarningState, CW_CHUTE_ENV) &&
            chuteEnvState == chute_Green;

@@ -98,16 +98,13 @@ const float LNDG_REENTRY_VHRZ_ALARM_MS = 50.0f;   // white-on-red
 const float LNDG_REENTRY_VHRZ_WARN_MS  = 10.0f;   // yellow
 
 
-// Parachute deployment speed limits (m/s surface velocity)
-// KSP's safe/risky/unsafe indicator is speed-based, not dynamic-pressure-based.
-// Stock values from testing and community data:
-//   Drogue: safe below ~500 m/s, risky 500-600 m/s, unsafe above ~600 m/s
-//   Main:   safe below ~250 m/s, risky 250-300 m/s, unsafe above ~300 m/s
-// Tune LNDG_*_RISKY_MS if the display doesn't match your game's yellow threshold.
-const float LNDG_DROGUE_SAFE_MS  = 750.0f;   // green below this
-const float LNDG_DROGUE_RISKY_MS = 850.0f;   // yellow above safe, red above risky
-const float LNDG_MAIN_SAFE_MS    = 475.0f;   // green below this
-const float LNDG_MAIN_RISKY_MS   = 550.0f;   // yellow above safe, red above risky
+// Parachute deployment limits as dynamic pressure q = 0.5*airDensity*v^2 (Pa).
+// KSP destroys a chute deployed above a structural q (force) limit, which is
+// body-independent; expressing the limit as q makes the safe-deploy SPEED
+// altitude-correct (higher up in thin air, lower near the ground). Cross-panel
+// aligned with the Annunciator CW_CHUTE_ENV via KCMk1_SystemConfig.h.
+const float LNDG_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rips above this q (Pa)
+const float LNDG_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rips above this q (Pa)
 
 // Parachute deployment state thresholds
 // LNDG_CHUTE_SEMI_DENSITY: air density (kg/m³) above which the chute begins to

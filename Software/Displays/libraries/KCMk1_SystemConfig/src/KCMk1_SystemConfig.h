@@ -157,3 +157,12 @@
 #define KCM_TEMP_ALARM_PCT          90    // CW_HIGH_TEMP (tempAlarm) — core/skin temp % of limit
 #define KCM_EC_LOW_ALARM_FRAC     0.05f   // CW_BUS_VOLTAGE (CW_EC_LOW_FRAC) — electric charge fraction
 #define KCM_RES_LOW_WARN_FRAC     0.20f   // CW_PROP_LOW / CW_RCS_LOW yellow tier — generic "resource low" warn
+
+// Chute deployment limits as dynamic pressure q = 0.5*airDensity*v^2 (Pa). A chute's
+// structural limit is a q (force) limit and is body-independent; expressing it as q
+// makes the safe-deploy SPEED automatically altitude-correct (higher up, lower near
+// the ground). Calibrated to KSP's Kerbin sea-level safe speeds (~250 m/s main,
+// ~500 m/s drogue) at rho0 ~= 1.225 kg/m^3.  Shared by Annunciator CW_CHUTE_ENV and
+// InfoDisp re-entry chute status + deploy-envelope tape.
+#define KCM_CHUTE_MAIN_MAX_Q     38300.0f  // main rips above this q (Pa)   ~250 m/s @ Kerbin SL
+#define KCM_CHUTE_DROGUE_MAX_Q  153000.0f  // drogue rips above this q (Pa) ~500 m/s @ Kerbin SL

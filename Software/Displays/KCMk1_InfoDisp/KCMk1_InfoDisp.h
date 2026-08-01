@@ -97,10 +97,8 @@ extern bool       fpsDiag;   // true = print frame-rate / render-time diagnostic
 extern const bool STANDALONE_TEST;  // true = skip I2C master handshake (no master connected)
 extern const float STALL_SPEED_MS;
 extern const float REENTRY_SAS_AERO_STABLE_MACH;
-extern const float LNDG_DROGUE_SAFE_MS;
-extern const float LNDG_DROGUE_RISKY_MS;
-extern const float LNDG_MAIN_SAFE_MS;
-extern const float LNDG_MAIN_RISKY_MS;
+extern const float LNDG_CHUTE_MAIN_MAX_Q;    // main chute rip dynamic pressure (Pa)
+extern const float LNDG_CHUTE_DROGUE_MAX_Q;  // drogue rip dynamic pressure (Pa)
 extern const float LNDG_CHUTE_SEMI_DENSITY;
 extern const float LNDG_DROGUE_FULL_ALT;
 extern const float LNDG_MAIN_FULL_ALT;

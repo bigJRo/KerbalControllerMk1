@@ -113,7 +113,8 @@ struct AppState {
   float tacWW_tot    = 0.0f;
 
   // Atmosphere
-  float atmoPressure = 0.0f;  // kPa -- for CHUTE ENV and HIGH Q
+  float atmoPressure = 0.0f;  // kPa   -- for HIGH Q proxy
+  float airDensity   = 0.0f;  // kg/m3 -- for CHUTE ENV (true dynamic pressure q)
   float atmoTemp     = 0.0f;  // K   -- available for future use
 
   // Throttle
@@ -323,8 +324,8 @@ extern const float  CW_PROP_LOW_WARN_FRAC;   // CW_PROP_LOW: yellow tier fractio
 extern const float  CW_PROP_LOW_ALARM_FRAC;  // CW_PROP_LOW: red tier fraction (0.05)
 extern const float  CW_PROP_IMBAL_TOL;       // CW_PROP_IMBAL: ratio deviation tolerance (0.10)
 extern const float  CW_PROP_NOMINAL_RATIO;   // CW_PROP_IMBAL: expected LF/OX ratio (0.818)
-extern const float  CW_CHUTE_MAIN_MAX_SPEED; // CHUTE_ENV: max speed for main chute deploy (m/s)
-extern const float  CW_CHUTE_DROGUE_MAX_SPEED; // CHUTE_ENV: max speed for drogue deploy (m/s)
+extern const float  CW_CHUTE_MAIN_MAX_Q;     // CHUTE_ENV: main chute rip dynamic pressure (Pa)
+extern const float  CW_CHUTE_DROGUE_MAX_Q;   // CHUTE_ENV: drogue rip dynamic pressure (Pa)
 
 // From AAA_Config.ino -- TAC-LS consumption rates (Earth seconds per Kerbal)
 extern const double TACLS_FOOD_RATE;
