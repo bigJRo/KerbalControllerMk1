@@ -47,7 +47,7 @@ static const uint16_t RE_TAPE_W   = 44;
 static const uint16_t RE_TAPE_Y   = TITLE_TOP + 8;                  // 70
 static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
-static const uint16_t RE_TAPE_GUT = 44;   // right-side marker gutter (erased each frame)
+static const uint16_t RE_TAPE_GUT = 58;   // right-side marker gutter (erased each frame)
 
 // ── Alignment ball (centre-top) ──
 static const int16_t  RE_ATT_CX = 300;
@@ -133,7 +133,7 @@ static float _reNiceStep(float span) {
 static void _reDrawTape(KCM_TFT &tft) {
   ReCorridor c = _reCorridor();
   float atmoTop  = (c.valid ? c.atmoTop : (currentBody.lowSpace > 0 ? currentBody.lowSpace : 70000.0f));
-  float scaleTop = atmoTop * 1.5f;
+  float scaleTop = atmoTop * 1.3f;
   if (scaleTop < 1.0f) scaleTop = 70000.0f;
 
   auto altToY = [&](float alt) -> int16_t {
@@ -191,12 +191,17 @@ static void _reDrawTape(KCM_TFT &tft) {
     tft.fillRect(ix, y - 1, iw, 3, TFT_WHITE);
     tft.fillTriangle(barR + 1,  yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
   }
-  // Periapsis — magenta: 5px across-bar line + longer, outboard triangle.
+  // Periapsis — magenta: 5px across-bar line + outboard triangle (same size as the
+  // altitude marker) with a "Pe" label to its right.
   if (currentBody.hasAtmo) {
     int16_t y  = altToY(state.periapsis);
-    int16_t yt = constrain(y, (int16_t)(RE_TAPE_Y + 14), (int16_t)(RE_TAPE_BOT - 14));
+    int16_t yt = constrain(y, (int16_t)(RE_TAPE_Y + 12), (int16_t)(RE_TAPE_BOT - 12));
     tft.fillRect(ix, y - 2, iw, 5, TFT_MAGENTA);
-    tft.fillTriangle(barR + 19, yt, barR + 43, yt - 14, barR + 43, yt + 14, TFT_MAGENTA);
+    tft.fillTriangle(barR + 19, yt, barR + 35, yt - 11, barR + 35, yt + 11, TFT_MAGENTA);
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
+    tft.setCursor(barR + 38, yt - 6);
+    tft.print("Pe");
   }
 }
 
