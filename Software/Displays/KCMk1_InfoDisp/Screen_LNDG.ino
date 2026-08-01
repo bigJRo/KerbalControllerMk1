@@ -4,7 +4,8 @@
    Two modes:
      - POWERED DESCENT (Screen_LNDG_Powered.ino) — graphical altitude tape + X-Pointer +
        ATT + V.Vrt bar (default)
-     - RE-ENTRY (Screen_LNDG_Reentry.ino)        — text-only readout board (pilot toggle)
+     - RE-ENTRY (Screen_LNDG_Reentry.ino)        — graphical: corridor tape, heat-shield/
+       retrograde alignment ball, chute deploy envelope, VSI/G/thermal gauges + text panel
 
    Mode toggle is via screen-tap, handled in TouchEvents.ino:
      _lndgReentryMode is flipped on tap.
