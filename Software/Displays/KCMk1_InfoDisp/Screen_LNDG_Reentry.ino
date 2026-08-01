@@ -187,23 +187,23 @@ static void _reDrawTape(KCM_TFT &tft) {
   tft.drawRect(RE_TAPE_X, RE_TAPE_Y, RE_TAPE_W, RE_TAPE_H, TFT_GREY);
 
   // ── Markers on the right ──
-  // Current altitude — white: 3px across-bar line + inboard triangle (tip at bar).
+  // A single clamped y drives both the across-bar line and the triangle so they stay
+  // aligned even at the very top/bottom of the scale (margin = triangle half-height).
+  // Current altitude — white, triangle flush against the bar.
   {
-    int16_t y  = altToY(state.altitude);
-    int16_t yt = constrain(y, (int16_t)(RE_TAPE_Y + 12), (int16_t)(RE_TAPE_BOT - 12));
-    tft.fillRect(ix, y - 1, iw, 3, TFT_WHITE);
-    tft.fillTriangle(barR + 1,  yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
+    int16_t yt = constrain(altToY(state.altitude), (int16_t)(RE_TAPE_Y + 11), (int16_t)(RE_TAPE_BOT - 11));
+    tft.fillRect(ix, yt - 1, iw, 3, TFT_WHITE);
+    tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
   }
-  // Periapsis — magenta: 5px across-bar line + outboard triangle (same size as the
-  // altitude marker) with a "Pe" label to its right.
+  // Periapsis — magenta, triangle flush against the bar (like the alt marker), with a
+  // "Pe" label to its right that travels with it.
   if (currentBody.hasAtmo) {
-    int16_t y  = altToY(state.periapsis);
-    int16_t yt = constrain(y, (int16_t)(RE_TAPE_Y + 12), (int16_t)(RE_TAPE_BOT - 12));
-    tft.fillRect(ix, y - 2, iw, 5, TFT_MAGENTA);
-    tft.fillTriangle(barR + 19, yt, barR + 35, yt - 11, barR + 35, yt + 11, TFT_MAGENTA);
-    tft.setFont(Roboto_Black_12);
+    int16_t yt = constrain(altToY(state.periapsis), (int16_t)(RE_TAPE_Y + 11), (int16_t)(RE_TAPE_BOT - 11));
+    tft.fillRect(ix, yt - 2, iw, 5, TFT_MAGENTA);
+    tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_MAGENTA);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(barR + 38, yt - 6);
+    tft.setCursor(barR + 20, yt - 12);
     tft.print("Pe");
   }
 }
