@@ -252,6 +252,26 @@ static void _reDrawBall(KCM_TFT &tft) {
   tft.setCursor(cx - cw / 2, cy - R - 16);
   tft.print(cap);
 
+  // Bank (roll) indicator — fixed scale at 0/±30/±60 + a moving sky-pointer, drawn
+  // inside the top of the reticle (the disc fill erases it each frame, so it needs no
+  // extra space). The pointer sits at the current bank angle on the fixed scale.
+  {
+    static const int16_t bankMarks[] = { 0, -30, 30, -60, 60 };
+    for (uint8_t i = 0; i < 5; i++) {
+      float ma = (-90.0f + bankMarks[i]) * (float)DEG_TO_RAD;
+      int16_t r0 = R - 2, r1 = R - (bankMarks[i] == 0 ? 13 : 9);
+      tft.drawLine(cx + (int16_t)(r0 * cosf(ma)), cy + (int16_t)(r0 * sinf(ma)),
+                   cx + (int16_t)(r1 * cosf(ma)), cy + (int16_t)(r1 * sinf(ma)), TFT_LIGHT_GREY);
+    }
+    float ra = (-90.0f - state.roll) * (float)DEG_TO_RAD;
+    int16_t px = cx + (int16_t)((R - 4)  * cosf(ra)), py = cy + (int16_t)((R - 4)  * sinf(ra));
+    int16_t bx = cx + (int16_t)((R - 14) * cosf(ra)), by = cy + (int16_t)((R - 14) * sinf(ra));
+    float pp = ra + 1.5708f;
+    tft.fillTriangle(px, py,
+                     bx + (int16_t)(6 * cosf(pp)), by + (int16_t)(6 * sinf(pp)),
+                     bx - (int16_t)(6 * cosf(pp)), by - (int16_t)(6 * sinf(pp)), TFT_YELLOW);
+  }
+
   // Retrograde marker — where the surface-retrograde vector sits relative to the nose
   // (boresight = reticle centre). Roll-rotated into the cockpit frame.
   bool  moving = (state.surfaceVel > 1.0f);
@@ -273,7 +293,7 @@ static void _reDrawBall(KCM_TFT &tft) {
 
   // AoA (nose-to-airflow angle) readout below the reticle
   char buf[8];
-  if (moving) snprintf(buf, sizeof(buf), "%d", (int)(aoa + 0.5f));
+  if (moving) snprintf(buf, sizeof(buf), "%d\xB0", (int)(aoa + 0.5f));
   else        snprintf(buf, sizeof(buf), "---");
   tft.setFont(Roboto_Black_20);
   tft.setTextColor(moving ? mc : TFT_DARK_GREY, TFT_BLACK);
