@@ -47,6 +47,7 @@ static const uint16_t RE_TAPE_W   = 44;
 static const uint16_t RE_TAPE_Y   = TITLE_TOP + 8;                  // 70
 static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
+static const uint16_t RE_TAPE_GUT = 44;   // right-side marker gutter (erased each frame)
 
 // ── Alignment ball (centre-top) ──
 static const int16_t  RE_ATT_CX = 300;
@@ -114,50 +115,88 @@ static uint16_t _reRegimeColor(int8_t r) {
   }
 }
 
+// "Nice" label step (metres) for the tape scale — aims for ~5 labelled divisions.
+static float _reNiceStep(float span) {
+  float raw = span / 5.0f;
+  static const float steps[] = { 5000, 10000, 20000, 25000, 50000, 100000, 200000, 500000 };
+  for (uint8_t i = 0; i < 8; i++) if (steps[i] >= raw) return steps[i];
+  return 500000.0f;
+}
+
 /***************************************************************************************
    WIDGET: CORRIDOR TAPE (altitude ladder + periapsis regime)
+   Powered-descent tape style: km scale labels + ticks on the left, corridor zone
+   fills in the bar, and the current-altitude (white) + periapsis (magenta) markers
+   on the right. The whole footprint is repainted every frame so moving markers can't
+   leave streaks.
 ****************************************************************************************/
 static void _reDrawTape(KCM_TFT &tft) {
   ReCorridor c = _reCorridor();
-  float scaleTop = (c.valid ? c.atmoTop : (currentBody.lowSpace > 0 ? currentBody.lowSpace : 70000.0f)) * 1.15f;
+  float atmoTop  = (c.valid ? c.atmoTop : (currentBody.lowSpace > 0 ? currentBody.lowSpace : 70000.0f));
+  float scaleTop = atmoTop * 1.5f;
   if (scaleTop < 1.0f) scaleTop = 70000.0f;
 
   auto altToY = [&](float alt) -> int16_t {
     float f = alt / scaleTop; if (f < 0) f = 0; if (f > 1) f = 1;
     return (int16_t)(RE_TAPE_BOT - f * RE_TAPE_H);
   };
-  const uint16_t ix = RE_TAPE_X + 1, iw = RE_TAPE_W - 2;
+  const uint16_t ix   = RE_TAPE_X + 1, iw = RE_TAPE_W - 2;
+  const uint16_t barR = RE_TAPE_X + RE_TAPE_W;      // bar right edge (88)
 
+  // Full-footprint erase (label gutter + bar + marker gutter) — kills streaks.
+  tft.fillRect(14, RE_TAPE_Y, (barR + RE_TAPE_GUT) - 14, RE_TAPE_H, TFT_BLACK);
+
+  // Corridor zone fills (dim) inside the bar
   if (c.valid) {
     int16_t yDanger = altToY(c.dangerLine);
     int16_t ySafe   = altToY(c.safeTop);
     int16_t yAtmo   = altToY(c.atmoTop);
-    // DANGER (bottom) -> SAFE -> AEROBRAKE -> NO RE-ENTRY (top). Dim zone fills.
     tft.fillRect(ix, yDanger, iw, RE_TAPE_BOT - yDanger, TFT_DARK_RED);
     tft.fillRect(ix, ySafe,   iw, yDanger - ySafe,       TFT_JUNGLE);
     tft.fillRect(ix, yAtmo,   iw, ySafe   - yAtmo,       TFT_AQUA);
     tft.fillRect(ix, RE_TAPE_Y, iw, yAtmo - RE_TAPE_Y,   TFT_OFF_BLACK);
-    // Boundary rules
     tft.drawLine(ix, yAtmo, ix + iw - 1, yAtmo, TFT_LIGHT_GREY);
   } else {
     tft.fillRect(ix, RE_TAPE_Y, iw, RE_TAPE_H, TFT_OFF_BLACK);
   }
+
+  // Scale: km labels (left, right-aligned to the bar) + major ticks both edges
+  float step = _reNiceStep(scaleTop);
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+  for (float m = 0.0f; m <= scaleTop + 1.0f; m += step) {
+    int16_t ty = altToY(m);
+    tft.drawLine(RE_TAPE_X + 1, ty, RE_TAPE_X + 8, ty, TFT_LIGHT_GREY);
+    tft.drawLine(barR - 9,      ty, barR - 2,      ty, TFT_LIGHT_GREY);
+    char buf[6]; snprintf(buf, sizeof(buf), "%d", (int)(m / 1000.0f + 0.5f));
+    int16_t lw = getFontStringWidth(&Roboto_Black_12, buf);
+    int16_t ly = (int16_t)max((int)RE_TAPE_Y, min((int)(RE_TAPE_BOT - 14), (int)ty - 7));
+    tft.setCursor(RE_TAPE_X - 3 - lw, ly);
+    tft.print(buf);
+  }
+  // Minor ticks at half-step
+  for (float m = step * 0.5f; m <= scaleTop + 1.0f; m += step) {
+    int16_t ty = altToY(m);
+    tft.drawLine(RE_TAPE_X + 1, ty, RE_TAPE_X + 4, ty, TFT_GREY);
+    tft.drawLine(barR - 5,      ty, barR - 2,      ty, TFT_GREY);
+  }
+
   tft.drawRect(RE_TAPE_X, RE_TAPE_Y, RE_TAPE_W, RE_TAPE_H, TFT_GREY);
 
-  // Current altitude marker — white bar + left-edge triangle
-  int16_t yAlt = altToY(state.altitude);
-  tft.fillRect(ix, yAlt - 1, iw, 3, TFT_WHITE);
-  tft.fillTriangle(RE_TAPE_X - 8, yAlt - 5, RE_TAPE_X - 8, yAlt + 5, RE_TAPE_X - 1, yAlt, TFT_WHITE);
-
-  // Periapsis marker — magenta, right-edge triangle (clamped into the tape)
+  // ── Markers on the right ──
+  // Current altitude — white: 3px across-bar line + inboard triangle (tip at bar).
+  {
+    int16_t y  = altToY(state.altitude);
+    int16_t yt = constrain(y, (int16_t)(RE_TAPE_Y + 12), (int16_t)(RE_TAPE_BOT - 12));
+    tft.fillRect(ix, y - 1, iw, 3, TFT_WHITE);
+    tft.fillTriangle(barR + 1,  yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
+  }
+  // Periapsis — magenta: 5px across-bar line + longer, outboard triangle.
   if (currentBody.hasAtmo) {
-    float pe = state.periapsis;
-    int16_t yPe = altToY(pe);
-    uint16_t pc = TFT_MAGENTA;
-    tft.fillTriangle(RE_TAPE_X + RE_TAPE_W + 8, yPe - 5,
-                     RE_TAPE_X + RE_TAPE_W + 8, yPe + 5,
-                     RE_TAPE_X + RE_TAPE_W + 1, yPe, pc);
-    tft.drawLine(ix, yPe, ix + iw - 1, yPe, pc);
+    int16_t y  = altToY(state.periapsis);
+    int16_t yt = constrain(y, (int16_t)(RE_TAPE_Y + 14), (int16_t)(RE_TAPE_BOT - 14));
+    tft.fillRect(ix, y - 2, iw, 5, TFT_MAGENTA);
+    tft.fillTriangle(barR + 19, yt, barR + 43, yt - 14, barR + 43, yt + 14, TFT_MAGENTA);
   }
 }
 
