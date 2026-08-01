@@ -136,28 +136,35 @@ static void _reDrawTape(KCM_TFT &tft) {
   float scaleTop = atmoTop * 1.3f;
   if (scaleTop < 1.0f) scaleTop = 70000.0f;
 
+  // The drawn bar is inset from the full footprint by the marker half-height so the
+  // markers can reach the true 0 / scaleTop ends without their triangles overhanging
+  // (no clamping — clamping would misreport the value at the extremes).
+  const int16_t RE_TAPE_M = 12;                       // marker half-height inset
+  const int16_t yTop = RE_TAPE_Y + RE_TAPE_M;
+  const int16_t yBot = RE_TAPE_BOT - RE_TAPE_M;
+  const int16_t usableH = yBot - yTop;
   auto altToY = [&](float alt) -> int16_t {
     float f = alt / scaleTop; if (f < 0) f = 0; if (f > 1) f = 1;
-    return (int16_t)(RE_TAPE_BOT - f * RE_TAPE_H);
+    return (int16_t)(yBot - f * usableH);
   };
   const uint16_t ix   = RE_TAPE_X + 1, iw = RE_TAPE_W - 2;
   const uint16_t barR = RE_TAPE_X + RE_TAPE_W;      // bar right edge (88)
 
   // Full-footprint erase (label gutter + bar + marker gutter) — kills streaks.
-  tft.fillRect(14, RE_TAPE_Y, (barR + RE_TAPE_GUT) - 14, RE_TAPE_H, TFT_BLACK);
+  tft.fillRect(14, RE_TAPE_Y, (barR + RE_TAPE_GUT) - 14, RE_TAPE_H + 2, TFT_BLACK);
 
   // Corridor zone fills (dim) inside the bar
   if (c.valid) {
     int16_t yDanger = altToY(c.dangerLine);
     int16_t ySafe   = altToY(c.safeTop);
     int16_t yAtmo   = altToY(c.atmoTop);
-    tft.fillRect(ix, yDanger, iw, RE_TAPE_BOT - yDanger, TFT_DARK_RED);
-    tft.fillRect(ix, ySafe,   iw, yDanger - ySafe,       TFT_JUNGLE);
-    tft.fillRect(ix, yAtmo,   iw, ySafe   - yAtmo,       TFT_AQUA);
-    tft.fillRect(ix, RE_TAPE_Y, iw, yAtmo - RE_TAPE_Y,   TFT_OFF_BLACK);
+    tft.fillRect(ix, yDanger, iw, yBot - yDanger, TFT_DARK_RED);
+    tft.fillRect(ix, ySafe,   iw, yDanger - ySafe, TFT_JUNGLE);
+    tft.fillRect(ix, yAtmo,   iw, ySafe   - yAtmo, TFT_AQUA);
+    tft.fillRect(ix, yTop,    iw, yAtmo   - yTop,  TFT_OFF_BLACK);
     tft.drawLine(ix, yAtmo, ix + iw - 1, yAtmo, TFT_LIGHT_GREY);
   } else {
-    tft.fillRect(ix, RE_TAPE_Y, iw, RE_TAPE_H, TFT_OFF_BLACK);
+    tft.fillRect(ix, yTop, iw, usableH, TFT_OFF_BLACK);
   }
 
   // Scale: km labels (left, right-aligned to the bar) + major ticks both edges
@@ -184,27 +191,25 @@ static void _reDrawTape(KCM_TFT &tft) {
     tft.drawLine(barR - 5,      ty, barR - 2,      ty, TFT_GREY);
   }
 
-  tft.drawRect(RE_TAPE_X, RE_TAPE_Y, RE_TAPE_W, RE_TAPE_H, TFT_GREY);
+  tft.drawRect(RE_TAPE_X, yTop, RE_TAPE_W, usableH, TFT_GREY);
 
   // ── Markers on the right ──
-  // A single clamped y drives both the across-bar line and the triangle so they stay
-  // aligned even at the very top/bottom of the scale (margin = triangle half-height).
-  // Current altitude — white, triangle flush against the bar.
-  {
-    int16_t yt = constrain(altToY(state.altitude), (int16_t)(RE_TAPE_Y + 11), (int16_t)(RE_TAPE_BOT - 11));
-    tft.fillRect(ix, yt - 1, iw, 3, TFT_WHITE);
-    tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
-  }
-  // Periapsis — magenta, triangle flush against the bar (like the alt marker), with a
-  // "Pe" label to its right that travels with it.
+  // Markers use altToY directly (no clamp) so they read the true value at the ends;
+  // the inset mapping keeps their triangles within the erased footprint. Periapsis is
+  // drawn first so the current-altitude marker always sits on top of it.
   if (currentBody.hasAtmo) {
-    int16_t yt = constrain(altToY(state.periapsis), (int16_t)(RE_TAPE_Y + 11), (int16_t)(RE_TAPE_BOT - 11));
+    int16_t yt = altToY(state.periapsis);
     tft.fillRect(ix, yt - 2, iw, 5, TFT_MAGENTA);
     tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_MAGENTA);
     tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
     tft.setCursor(barR + 20, yt - 12);
     tft.print("Pe");
+  }
+  {
+    int16_t yt = altToY(state.altitude);
+    tft.fillRect(ix, yt - 1, iw, 3, TFT_WHITE);
+    tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
   }
 }
 
