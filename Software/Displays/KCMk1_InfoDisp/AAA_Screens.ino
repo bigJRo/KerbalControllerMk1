@@ -75,7 +75,7 @@ const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
 };
 
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "ORB+", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "REEN"
+  "LNCH", "PFD", "ORB", "ORB+", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR"
 };
 
 // Which sidebar button should highlight for the active screen. SCFT/ACFT/ROVR all
