@@ -53,7 +53,7 @@ static const uint16_t RE_TAPE_GUT = 58;   // right-side marker gutter (erased ea
 static const int16_t  RE_ATT_CX = 300;
 static const int16_t  RE_ATT_CY = 194;
 static const int16_t  RE_ATT_R  = 104;
-static const float    RE_ATT_FS = (float)RE_ATT_R / 45.0f;  // px per degree (ring = 45°)
+static const float    RE_ATT_FS = (float)RE_ATT_R / 40.0f;  // px per degree (outer ring = 40°)
 
 // ── Parachute deploy envelope (centre-bottom) ──
 static const uint16_t RE_ENV_X    = 190;
@@ -216,45 +216,49 @@ static void _reDrawTape(KCM_TFT &tft) {
 /***************************************************************************************
    WIDGET: HEAT-SHIELD / RETROGRADE ALIGNMENT BALL
 ****************************************************************************************/
+// Navball-style retrograde symbol: a ringed circle with an internal X and three
+// short spokes radiating out at 12 / 4 / 8 o'clock.
+static void _reRetroSymbol(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t col) {
+  tft.drawCircle(cx, cy, r,     col);
+  tft.drawCircle(cx, cy, r - 1, col);
+  int16_t d = (int16_t)(r * 0.7071f);
+  tft.drawLine(cx - d, cy - d, cx + d, cy + d, col);
+  tft.drawLine(cx - d, cy + d, cx + d, cy - d, col);
+  static const int16_t spoke[3] = { -90, 30, 150 };   // screen degrees: up, lower-right, lower-left
+  for (uint8_t i = 0; i < 3; i++) {
+    float a = spoke[i] * (float)DEG_TO_RAD;
+    tft.drawLine(cx + (int16_t)(r * cosf(a)),       cy + (int16_t)(r * sinf(a)),
+                 cx + (int16_t)((r + 5) * cosf(a)), cy + (int16_t)((r + 5) * sinf(a)), col);
+  }
+}
+
 static void _reDrawBall(KCM_TFT &tft) {
-  // Background disc + rings (15/30/45°) + boresight
-  tft.fillCircle(RE_ATT_CX, RE_ATT_CY, RE_ATT_R, TFT_BLACK);
-  tft.drawCircle(RE_ATT_CX, RE_ATT_CY, RE_ATT_R, TFT_GREY);
-  tft.drawCircle(RE_ATT_CX, RE_ATT_CY, (int16_t)(RE_ATT_R * 2 / 3), TFT_DARK_GREY);
-  tft.drawCircle(RE_ATT_CX, RE_ATT_CY, (int16_t)(RE_ATT_R / 3),     TFT_DARK_GREY);
+  const int16_t cx = RE_ATT_CX, cy = RE_ATT_CY, R = RE_ATT_R;
 
-  // Roll scale ticks at 0, ±30, ±60 on the upper arc + moving roll pointer
-  const int16_t rollMarks[] = { 0, -30, 30, -60, 60 };
-  for (uint8_t i = 0; i < 5; i++) {
-    float ma = (-90.0f + rollMarks[i]) * (float)DEG_TO_RAD;
-    int16_t r0 = RE_ATT_R, r1 = RE_ATT_R - (rollMarks[i] == 0 ? 10 : 6);
-    tft.drawLine(RE_ATT_CX + (int16_t)(r0 * cosf(ma)), RE_ATT_CY + (int16_t)(r0 * sinf(ma)),
-                 RE_ATT_CX + (int16_t)(r1 * cosf(ma)), RE_ATT_CY + (int16_t)(r1 * sinf(ma)), TFT_LIGHT_GREY);
-  }
-  { // roll pointer (points to sky reference, rotates opposite roll)
-    float ra = (-90.0f - state.roll) * (float)DEG_TO_RAD;
-    int16_t px = RE_ATT_CX + (int16_t)((RE_ATT_R - 3) * cosf(ra));
-    int16_t py = RE_ATT_CY + (int16_t)((RE_ATT_R - 3) * sinf(ra));
-    int16_t bx = RE_ATT_CX + (int16_t)((RE_ATT_R - 12) * cosf(ra));
-    int16_t by = RE_ATT_CY + (int16_t)((RE_ATT_R - 12) * sinf(ra));
-    float pa = ra + 1.5708f;
-    tft.fillTriangle(px, py,
-                     bx + (int16_t)(5 * cosf(pa)), by + (int16_t)(5 * sinf(pa)),
-                     bx - (int16_t)(5 * cosf(pa)), by - (int16_t)(5 * sinf(pa)), TFT_YELLOW);
-  }
+  // Shared reticle chrome (disc, good-zone ring, rings, cardinals, nose crosshair,
+  // 30° ticks, bezel) — identical style to the MNVR / TGT / DOCK reticles.
+  reticleDrawBase(tft, cx, cy, R, 12, 9);
 
-  // Boresight (nose / heat-shield axis) — fixed cross at centre
-  tft.drawLine(RE_ATT_CX - 14, RE_ATT_CY, RE_ATT_CX - 4, RE_ATT_CY, TFT_WHITE);
-  tft.drawLine(RE_ATT_CX + 4,  RE_ATT_CY, RE_ATT_CX + 14, RE_ATT_CY, TFT_WHITE);
-  tft.drawLine(RE_ATT_CX, RE_ATT_CY - 14, RE_ATT_CX, RE_ATT_CY - 4,  TFT_WHITE);
-  tft.drawLine(RE_ATT_CX, RE_ATT_CY + 4,  RE_ATT_CX, RE_ATT_CY + 14, TFT_WHITE);
+  // Ring degree labels (NE quadrant, just inside each ring) — 10/20/30/40° scale.
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+  static const char *ringL[4] = { "10", "20", "30", "40" };
+  const int16_t ringR[4] = { R / 4, R / 2, (R * 3) / 4, R };
+  for (uint8_t i = 0; i < 4; i++) { tft.setCursor(cx + 3, cy - ringR[i] + 2); tft.print(ringL[i]); }
 
-  // Retrograde marker (where the airflow comes from, relative to the nose)
-  bool moving = (state.surfaceVel > 1.0f);
+  // Title
+  const char *cap = "RETRO ALIGNMENT";
+  int16_t cw = getFontStringWidth(&Roboto_Black_12, cap);
+  tft.setCursor(cx - cw / 2, cy - R - 16);
+  tft.print(cap);
+
+  // Retrograde marker — where the surface-retrograde vector sits relative to the nose
+  // (boresight = reticle centre). Roll-rotated into the cockpit frame.
+  bool  moving = (state.surfaceVel > 1.0f);
   float yawErr = _reWrap180((state.srfVelHeading + 180.0f) - state.heading);
   float pitErr = (-state.srfVelPitch) - state.pitch;
   float aoa    = sqrtf(yawErr * yawErr + pitErr * pitErr);
-  uint16_t mc  = (aoa < 10.0f) ? TFT_NEON_GREEN : (aoa < 25.0f) ? TFT_YELLOW : TFT_RED;
+  uint16_t mc  = (aoa < 10.0f) ? TFT_NEON_GREEN : (aoa < 30.0f) ? TFT_YELLOW : TFT_RED;
 
   if (moving) {
     float a  = state.roll * (float)DEG_TO_RAD;
@@ -262,30 +266,21 @@ static void _reDrawBall(KCM_TFT &tft) {
     float rx = dx * cosf(a) - dy * sinf(a);
     float ry = dx * sinf(a) + dy * cosf(a);
     float mag = sqrtf(rx * rx + ry * ry);
-    float lim = RE_ATT_R - 6;
+    float lim = R - 15;                          // keep the whole symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }
-    int16_t mx = RE_ATT_CX + (int16_t)rx, my = RE_ATT_CY + (int16_t)ry;
-    // retrograde symbol: filled circle with a small centre dot
-    tft.fillCircle(mx, my, 7, mc);
-    tft.fillCircle(mx, my, 2, TFT_BLACK);
+    _reRetroSymbol(tft, cx + (int16_t)rx, cy + (int16_t)ry, 9, mc);
   }
 
-  // AoA (nose-to-airflow angle) readout below the ball
-  char buf[12];
+  // AoA (nose-to-airflow angle) readout below the reticle
+  char buf[8];
   if (moving) snprintf(buf, sizeof(buf), "%d", (int)(aoa + 0.5f));
   else        snprintf(buf, sizeof(buf), "---");
   tft.setFont(Roboto_Black_20);
   tft.setTextColor(moving ? mc : TFT_DARK_GREY, TFT_BLACK);
   int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
-  tft.fillRect(RE_ATT_CX - 60, RE_ATT_CY + RE_ATT_R + 2, 120, 24, TFT_BLACK);
-  tft.setCursor(RE_ATT_CX - tw / 2, RE_ATT_CY + RE_ATT_R + 4);
+  tft.fillRect(cx - 40, cy + R + 4, 80, 24, TFT_BLACK);
+  tft.setCursor(cx - tw / 2, cy + R + 6);
   tft.print(buf);
-  tft.setFont(Roboto_Black_12);
-  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-  const char *cap = "SHIELD / RETRO  (AoA)";
-  int16_t cw = getFontStringWidth(&Roboto_Black_12, cap);
-  tft.setCursor(RE_ATT_CX - cw / 2, RE_ATT_CY - RE_ATT_R - 16);
-  tft.print(cap);
 }
 
 /***************************************************************************************
