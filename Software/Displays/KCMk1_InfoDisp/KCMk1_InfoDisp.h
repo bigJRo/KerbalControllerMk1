@@ -234,6 +234,11 @@ struct AppState {
 extern AppState state;
 extern BodyParams currentBody;
 
+// Re-entry corridor boundaries (metres ASL), used by the RE-ENTRY screen. Declared
+// here (not in the .ino) so Arduino's auto-generated prototypes for the helpers that
+// return it see the type. See Screen_LNDG_Reentry.ino for how the bands are derived.
+struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
+
 
 /***************************************************************************************
    LAYOUT CONSTANTS

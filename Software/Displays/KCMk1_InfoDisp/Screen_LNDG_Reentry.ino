@@ -76,8 +76,8 @@ static const uint16_t RE_TC_X  = 560;   static const uint16_t RE_TC_W  = 14;  //
 ****************************************************************************************/
 static inline float _reWrap180(float a) { while (a > 180.0f) a -= 360.0f; while (a < -180.0f) a += 360.0f; return a; }
 
-// Re-entry corridor boundaries (metres, ASL), velocity-adjusted. See file header.
-struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
+// Re-entry corridor boundaries (metres, ASL), velocity-adjusted. ReCorridor is
+// declared in KCMk1_InfoDisp.h so the auto-prototype for this helper sees the type.
 static ReCorridor _reCorridor() {
   ReCorridor c; c.valid = false; c.dangerLine = c.safeTop = c.atmoTop = 0.0f;
   float atmoTop = currentBody.lowSpace;
