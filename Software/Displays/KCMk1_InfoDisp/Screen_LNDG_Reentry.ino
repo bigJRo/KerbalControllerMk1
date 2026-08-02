@@ -6,17 +6,20 @@
    fills the right ~360px panel.
 
    Widgets (left/centre graphics zone, x < RE_DIV_X):
+     Left cluster (three vertical bars):
      - Corridor tape      : full-height altitude tape whose coloured zones are the
                             re-entry corridor (NO RE-ENTRY / AEROBRAKE / SAFE / DANGER)
                             with the current altitude and periapsis markers. Zone
                             boundaries are anchored on the body table (flyHigh /
                             reentryAlt / lowSpace) and shift up with entry velocity.
+     - ATMOSPHERE bar     : atmospheric density fraction (matches the ascent screen).
+     - G meter            : zone-background load gauge with a numbered axis.
+     Right cluster (centred, sized as large as the space allows):
      - Alignment ball     : heat-shield / retrograde alignment. Plots the surface
                             retrograde vector relative to the nose (boresight); when
                             centred the shield is square into the airflow. AoA readout.
-     - Parachute envelope : speed-vs-altitude safe-deploy chart with coloured speed
-                            bands for drogue/main and a live vessel marker.
-     - VSI / G / Thermal   : vertical bar gauges (descent rate, load, skin+core temp).
+     - CHUTE DEPLOY       : horizontal airspeed bar with live safe-deploy limits.
+     - Skin / core temp   : two horizontal bars beneath the chute bar.
 
    Text panel (right, x >= RE_TXT_X): T+Grnd/T+Atm, Alt, V.Srf, PeA, Mach, G, and the
    chute / gear / SAS status board.
@@ -60,38 +63,44 @@ static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 82 — sa
 static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 585 — same bottom as the tape's border
 static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
 
-// ── Alignment ball (centre-top) — shifted right to clear the ATMO bar ──
-static const int16_t  RE_ATT_CX = 330;
-static const int16_t  RE_ATT_CY = 194;
-static const int16_t  RE_ATT_R  = 104;
+// ── G METER (left cluster — a third vertical bar just right of the ATMOSPHERE bar) ──
+static const uint16_t RE_GA_Y   = RE_ATMO_Y;                // 82 — match the ATMO/altitude top
+static const uint16_t RE_GA_H   = RE_ATMO_BOT - RE_GA_Y;    // 503 — match the ATMO height
+static const uint16_t RE_GA_BOT = RE_GA_Y + RE_GA_H;        // 585
+static const uint16_t RE_GF_X   = 218;  static const uint16_t RE_GF_W = 34;  // bar (left gutter carries axis numbers)
+static const uint16_t RE_GLBL_X = RE_GF_X - 36;             // 182 — "G METER" vertical label column
+
+// ── Right graphical cluster: alignment reticle (top) + CHUTE DEPLOY (mid) + TEMP
+//    (bottom), all centred on RE_RCX and sized as large as the space allows. ──
+static const int16_t  RE_RCX    = 435;                      // shared horizontal centre
+
+// Alignment ball
+static const int16_t  RE_ATT_CX = RE_RCX;
+static const int16_t  RE_ATT_CY = 212;
+static const int16_t  RE_ATT_R  = 128;
 static const float    RE_ATT_FS = (float)RE_ATT_R / 40.0f;  // px per degree (outer ring = 40°)
 
-// ── Parachute deploy envelope (centre-bottom) — centred under the (shifted) ball ──
-static const uint16_t RE_ENV_X    = 210;   // widget footprint (erased each frame)
-static const uint16_t RE_ENV_Y    = 350;
-static const uint16_t RE_ENV_W    = 248;
-static const uint16_t RE_ENV_H    = 248;
-// Chute-deploy SPEED BAR (horizontal). The green/yellow/red zone boundaries are the
+// Parachute deploy SPEED BAR (horizontal). The green/yellow/red zone boundaries are the
 // altitude-corrected safe-deploy speeds derived from live dynamic pressure, so they
 // slide left as you descend into denser air. Airspeed axis 0 (left) .. VMAX (right).
-static const uint16_t RE_CT_X     = RE_ENV_X + 18;      // 208 — bar left edge
-static const uint16_t RE_CT_W     = 204;               // bar width (airspeed axis)
-static const uint16_t RE_CT_Y     = RE_ENV_Y + 96;     // 446 — bar top
-static const uint16_t RE_CT_H     = 60;               // bar height
-static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W; // 412 — bar right edge
-static const float    RE_CT_VMAX  = 1000.0f;          // airspeed axis max (m/s)
+static const uint16_t RE_ENV_X    = 285;   // widget footprint (erased each frame)
+static const uint16_t RE_ENV_Y    = 390;
+static const uint16_t RE_ENV_W    = 307;
+static const uint16_t RE_ENV_H    = 140;
+static const uint16_t RE_CT_X     = 300;                // bar left edge
+static const uint16_t RE_CT_W     = 270;                // bar width (airspeed axis)
+static const uint16_t RE_CT_Y     = 436;                // bar top
+static const uint16_t RE_CT_H     = 54;                 // bar height
+static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W;  // 570 — bar right edge
+static const float    RE_CT_VMAX  = 1000.0f;            // airspeed axis max (m/s)
 
-// ── Vertical bar gauges (right of the graphics zone) ──
-static const uint16_t RE_GA_Y  = TITLE_TOP + 20;                 // 82 — gauge top
-static const uint16_t RE_GA_H  = SCREEN_H - RE_GA_Y - 34;       // leave a label row
-static const uint16_t RE_GA_BOT= RE_GA_Y + RE_GA_H;
-static const uint16_t RE_GF_X  = 496;   static const uint16_t RE_GF_W  = 34;  // G meter (left gutter carries axis numbers)
-static const uint16_t RE_TS_X  = 562;   static const uint16_t RE_TS_W  = 14;  // skin
-static const uint16_t RE_TC_X  = 577;   static const uint16_t RE_TC_W  = 14;  // core
-// Vertical (stacked-char) label columns to the left of each gauge group — same style
-// as the ALTITUDE / ATMOSPHERE tape labels.
-static const uint16_t RE_GLBL_X = RE_GF_X - 36;   // 460 — "G METER" column (left of the axis numbers)
-static const uint16_t RE_TLBL_X = RE_TS_X - 16;   // 546 — "TEMP" column (left of the temp bars)
+// Skin / core temperature — two horizontal bars beneath the chute bar.
+static const uint16_t RE_TMP_LX = 288;                  // SKIN/CORE label column (right-aligned)
+static const uint16_t RE_TMP_X  = 336;                  // bar left edge
+static const uint16_t RE_TMP_W  = 234;                  // bar width -> right edge 570 (aligned with chute)
+static const uint16_t RE_TMP_Y  = 552;                  // first (skin) bar top
+static const uint16_t RE_TMP_BH = 18;                   // bar height
+static const uint16_t RE_TMP_VS = 22;                   // row pitch (skin -> core)
 
 /***************************************************************************************
    HELPERS
@@ -505,67 +514,81 @@ static void _reDrawEnvelope(KCM_TFT &tft) {
 }
 
 /***************************************************************************************
-   WIDGET: VERTICAL BAR GAUGES (VSI / G / Thermal)
+   WIDGET: G METER (left cluster) — zone-background gauge with a numbered axis
+   Green/yellow/red bands come from this controller's G thresholds (aligned to the
+   annunciator, G_WARN/G_ALARM, ±); a neutral dark-grey band marks the -1..+2 g nominal
+   range. Live white marker + numbered axis in the left gutter.
 ****************************************************************************************/
-// One coloured vertical fill bar with a border. `frac` 0..1 fills from the bottom.
-static void _reBar(KCM_TFT &tft, uint16_t x, uint16_t w, float frac, uint16_t col, uint16_t dim) {
-  if (frac < 0) frac = 0; if (frac > 1) frac = 1;
-  uint16_t fh = (uint16_t)(frac * RE_GA_H);
-  tft.fillRect(x + 1, RE_GA_Y, w - 2, RE_GA_H - fh, dim);         // empty (top)
-  tft.fillRect(x + 1, RE_GA_BOT - fh, w - 2, fh, col);            // filled (bottom)
-  tft.drawRect(x, RE_GA_Y, w, RE_GA_H, TFT_GREY);
-}
 static void _reDrawGauges(KCM_TFT &tft) {
-  // G-load — zone-background gauge (green/yellow/red bands, like the tapes) with a
-  // live marker. Zone boundaries come from this controller's G thresholds, which are
-  // aligned to the annunciator (G_WARN/G_ALARM, ±).
-  {
-    const uint16_t gx = RE_GF_X, gw = RE_GF_W;
-    const uint16_t gix = gx + 1, giw = gw - 2;
-    const float gMin = -6.0f, gMax = 12.0f;
-    auto gToY = [&](float g) -> int16_t {
-      float f = (g - gMin) / (gMax - gMin); if (f < 0) f = 0; if (f > 1) f = 1;
-      return (int16_t)(RE_GA_BOT - f * RE_GA_H);
-    };
-    tft.fillRect(gx - 20, RE_GA_Y, gw + 34, RE_GA_H + 1, TFT_BLACK); // erase axis numbers + bar + marker gutter
-    int16_t yAN = gToY(G_ALARM_NEG), yWN = gToY(G_WARN_NEG), yWP = gToY(G_WARN_POS), yAP = gToY(G_ALARM_POS);
-    tft.fillRect(gix, yAN,     giw, RE_GA_BOT - yAN, TFT_DARK_RED);     // g < alarm-neg
-    tft.fillRect(gix, yWN,     giw, yAN - yWN,       TFT_DARK_YELLOW);  // warn-neg .. alarm-neg
-    tft.fillRect(gix, yWP,     giw, yWN - yWP,       TFT_JUNGLE);       // safe band
-    tft.fillRect(gix, yAP,     giw, yWP - yAP,       TFT_DARK_YELLOW);  // warn-pos .. alarm-pos
-    tft.fillRect(gix, RE_GA_Y, giw, yAP - RE_GA_Y,   TFT_DARK_RED);     // g > alarm-pos
-    int16_t y0 = gToY(0.0f);
-    tft.drawLine(gix, y0, gix + giw - 1, y0, TFT_LIGHT_GREY);          // 0-g reference
-    // Numbered vertical axis: major tick + right-aligned value every 3 g in the left gutter.
-    tft.setFont(Roboto_Black_12);
-    for (int gv = (int)gMin; gv <= (int)gMax; gv += 3) {
-      int16_t ty = gToY((float)gv);
-      tft.drawLine(gx + 1, ty, gx + 5, ty, TFT_LIGHT_GREY);
-      char nb[6]; snprintf(nb, sizeof(nb), "%d", gv);
-      int16_t nw = getFontStringWidth(&Roboto_Black_12, nb);
-      tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-      tft.setCursor(gx - 4 - nw, ty - 7);
-      tft.print(nb);
-    }
-    for (int gv = (int)gMin + 1; gv < (int)gMax; gv++) {               // minor integer ticks
-      if (((gv - (int)gMin) % 3) == 0) continue;
-      int16_t ty = gToY((float)gv);
-      tft.drawLine(gx + 1, ty, gx + 3, ty, TFT_GREY);
-    }
-    tft.drawRect(gx, RE_GA_Y, gw, RE_GA_H, TFT_GREY);
-    float g = state.gForce;
-    int16_t ym = constrain(gToY(g), (int16_t)(RE_GA_Y + 7), (int16_t)(RE_GA_BOT - 7));
-    tft.fillRect(gix, ym - 1, giw, 3, TFT_WHITE);                      // white index line
-    tft.fillTriangle(gx + gw + 1, ym, gx + gw + 12, ym - 7, gx + gw + 12, ym + 7, TFT_WHITE);
+  const uint16_t gx = RE_GF_X, gw = RE_GF_W;
+  const uint16_t gix = gx + 1, giw = gw - 2;
+  const float gMin = -6.0f, gMax = 12.0f;
+  auto gToY = [&](float g) -> int16_t {
+    float f = (g - gMin) / (gMax - gMin); if (f < 0) f = 0; if (f > 1) f = 1;
+    return (int16_t)(RE_GA_BOT - f * RE_GA_H);
+  };
+  tft.fillRect(gx - 20, RE_GA_Y, gw + 34, RE_GA_H + 1, TFT_BLACK); // erase axis numbers + bar + marker gutter
+  int16_t yAN = gToY(G_ALARM_NEG), yWN = gToY(G_WARN_NEG), yWP = gToY(G_WARN_POS), yAP = gToY(G_ALARM_POS);
+  tft.fillRect(gix, yAN,     giw, RE_GA_BOT - yAN, TFT_DARK_RED);     // g < alarm-neg
+  tft.fillRect(gix, yWN,     giw, yAN - yWN,       TFT_DARK_YELLOW);  // warn-neg .. alarm-neg
+  tft.fillRect(gix, yWP,     giw, yWN - yWP,       TFT_JUNGLE);       // caution-safe band
+  tft.fillRect(gix, yAP,     giw, yWP - yAP,       TFT_DARK_YELLOW);  // warn-pos .. alarm-pos
+  tft.fillRect(gix, RE_GA_Y, giw, yAP - RE_GA_Y,   TFT_DARK_RED);     // g > alarm-pos
+  // Nominal band (-1 .. +2 g) — neutral dark-grey background over the green safe band.
+  int16_t yP2 = gToY(2.0f), yN1 = gToY(-1.0f);
+  tft.fillRect(gix, yP2, giw, yN1 - yP2, TFT_DARK_GREY);
+  int16_t y0 = gToY(0.0f);
+  tft.drawLine(gix, y0, gix + giw - 1, y0, TFT_LIGHT_GREY);          // 0-g reference
+  // Numbered vertical axis: major tick + right-aligned value every 3 g in the left gutter.
+  tft.setFont(Roboto_Black_12);
+  for (int gv = (int)gMin; gv <= (int)gMax; gv += 3) {
+    int16_t ty = gToY((float)gv);
+    tft.drawLine(gx + 1, ty, gx + 5, ty, TFT_LIGHT_GREY);
+    char nb[6]; snprintf(nb, sizeof(nb), "%d", gv);
+    int16_t nw = getFontStringWidth(&Roboto_Black_12, nb);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    tft.setCursor(gx - 4 - nw, ty - 7);
+    tft.print(nb);
   }
-  // Thermal — skin + core temp, % of limit.
-  {
-    auto tcol = [&](uint8_t pct) -> uint16_t {
-      return (pct >= TEMP_ALARM_PCT) ? TFT_RED : (pct >= TEMP_WARN_PCT) ? TFT_YELLOW : TFT_NEON_GREEN;
-    };
-    _reBar(tft, RE_TS_X, RE_TS_W, state.skinTempPct / 100.0f, tcol(state.skinTempPct), TFT_OFF_BLACK);
-    _reBar(tft, RE_TC_X, RE_TC_W, state.coreTempPct / 100.0f, tcol(state.coreTempPct), TFT_OFF_BLACK);
+  for (int gv = (int)gMin + 1; gv < (int)gMax; gv++) {               // minor integer ticks
+    if (((gv - (int)gMin) % 3) == 0) continue;
+    int16_t ty = gToY((float)gv);
+    tft.drawLine(gx + 1, ty, gx + 3, ty, TFT_GREY);
   }
+  tft.drawRect(gx, RE_GA_Y, gw, RE_GA_H, TFT_GREY);
+  float g = state.gForce;
+  int16_t ym = constrain(gToY(g), (int16_t)(RE_GA_Y + 7), (int16_t)(RE_GA_BOT - 7));
+  tft.fillRect(gix, ym - 1, giw, 3, TFT_WHITE);                      // white index line
+  tft.fillTriangle(gx + gw + 1, ym, gx + gw + 12, ym - 7, gx + gw + 12, ym + 7, TFT_WHITE);
+}
+
+/***************************************************************************************
+   WIDGET: SKIN / CORE TEMPERATURE (horizontal bars beneath the chute deploy bar)
+****************************************************************************************/
+// One horizontal temp bar: left tag, dim background, coloured fill, warn/alarm ticks.
+static void _reHTempBar(KCM_TFT &tft, uint16_t y, const char *tag, uint8_t pct) {
+  uint16_t col = (pct >= TEMP_ALARM_PCT) ? TFT_RED :
+                 (pct >= TEMP_WARN_PCT)  ? TFT_YELLOW : TFT_NEON_GREEN;
+  const uint16_t ix = RE_TMP_X + 1, iw = RE_TMP_W - 2;
+  float f = pct / 100.0f; if (f < 0) f = 0; if (f > 1) f = 1;
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+  int16_t lw = getFontStringWidth(&Roboto_Black_12, tag);
+  tft.setCursor(RE_TMP_X - 8 - lw, y + (RE_TMP_BH - 14) / 2);
+  tft.print(tag);
+  tft.fillRect(ix, y + 1, iw, RE_TMP_BH - 2, TFT_OFF_BLACK);           // empty
+  tft.fillRect(ix, y + 1, (uint16_t)(f * iw), RE_TMP_BH - 2, col);     // fill from the left
+  int16_t xw = ix + (int16_t)(TEMP_WARN_PCT  / 100.0f * iw);
+  int16_t xa = ix + (int16_t)(TEMP_ALARM_PCT / 100.0f * iw);
+  tft.drawLine(xw, y + 1, xw, y + RE_TMP_BH - 2, TFT_YELLOW);          // warn threshold
+  tft.drawLine(xa, y + 1, xa, y + RE_TMP_BH - 2, TFT_RED);             // alarm threshold
+  tft.drawRect(RE_TMP_X, y, RE_TMP_W, RE_TMP_BH, TFT_GREY);
+}
+static void _reDrawTemp(KCM_TFT &tft) {
+  tft.fillRect(RE_TMP_LX, RE_TMP_Y - 2, (RE_TMP_X + RE_TMP_W) - RE_TMP_LX + 2,
+               RE_TMP_VS + RE_TMP_BH + 4, TFT_BLACK);
+  _reHTempBar(tft, RE_TMP_Y,             "SKIN", state.skinTempPct);
+  _reHTempBar(tft, RE_TMP_Y + RE_TMP_VS, "CORE", state.coreTempPct);
 }
 
 /***************************************************************************************
@@ -584,11 +607,9 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   drawVerticalText(tft, RE_ATMO_LBL_X, RE_ATMO_Y, 14, RE_ATMO_H, &Roboto_Black_12,
                    "ATMOSPHERE", TFT_LIGHT_GREY, TFT_BLACK);
 
-  // Same treatment for the two right-hand bar gauges.
+  // G METER vertical label (left cluster, just right of the ATMOSPHERE bar).
   drawVerticalText(tft, RE_GLBL_X, RE_GA_Y, 14, RE_GA_H, &Roboto_Black_12,
                    "G METER", TFT_LIGHT_GREY, TFT_BLACK);
-  drawVerticalText(tft, RE_TLBL_X, RE_GA_Y, 14, RE_GA_H, &Roboto_Black_12,
-                   "TEMP", TFT_LIGHT_GREY, TFT_BLACK);
 
   const uint16_t RHW = RE_TXT_W / 2;
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
@@ -639,11 +660,14 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   bool  wantTPe     = (aboveAtmo && peaBelowAtm);
 
   // ── Graphics widgets (full repaint each frame) ──
+  // Left cluster: altitude tape, ATMOSPHERE bar, G meter.
   _reDrawTape(tft);
+  _reDrawAtmo(tft);
+  _reDrawGauges(tft);          // G meter, beside the ATMOSPHERE bar
+  // Right cluster (top -> bottom): reticle, chute deploy, skin/core temp.
   _reDrawBall(tft);
   _reDrawEnvelope(tft);
-  _reDrawAtmo(tft);            // after the chute: its footprint overlaps the ATMO column
-  _reDrawGauges(tft);
+  _reDrawTemp(tft);
 
   // ── Text panel row-label swaps (force a chrome redraw when a label changes) ──
   if (wantTPe != _lndgReentryRow0TPe) {
