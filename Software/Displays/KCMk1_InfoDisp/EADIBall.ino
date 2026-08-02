@@ -8,9 +8,9 @@
    one translation unit, non-static functions here are callable from both screens, and the
    EADI_* constants below are visible throughout the sketch.
 
-   Geometry MUST stay identical to the per-screen SCFT_*/ACFT_* constants (all == the
-   values below). The screens keep their own SCFT_*/ACFT_* copies for their tapes/panels;
-   these EADI_* values are the single source of truth for the shared ball code.
+   Geometry MUST stay identical to the per-screen SCFT_ / ACFT_ constants (all == the
+   values below). The screens keep their own SCFT_ / ACFT_ copies for their tapes/panels;
+   these EADI_ values are the single source of truth for the shared ball code.
 
    Extraction is staged (each stage compiles on its own). Stage 1 (this file, initial):
    the pure, stateless leaf primitives — scanline fill, disc clip, fixed aircraft symbol.
