@@ -130,67 +130,8 @@ static inline float _scftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
 
 
 
-// ── Draw one scanline ─────────────────────────────────────────────────────────────────
-static void _scftDrawScanline(KCM_TFT &tft,
-                              int16_t y, int16_t x0, int16_t x1,
-                              int16_t bx, bool groundLeft) {
-    if (bx == SCFT_BX_ALLSKY) {
-        tft.drawLine(x0, y, x1, y, SCFT_SKY);
-    } else if (bx == SCFT_BX_ALLGND) {
-        tft.drawLine(x0, y, x1, y, SCFT_GND);
-    } else if (groundLeft) {
-        tft.drawLine(x0,   y, bx,   y, SCFT_GND);
-        tft.drawLine(bx+1, y, x1,   y, SCFT_SKY);
-    } else {
-        tft.drawLine(x0,   y, bx-1, y, SCFT_SKY);
-        tft.drawLine(bx,   y, x1,   y, SCFT_GND);
-    }
-}
-
-
-// ── Aircraft symbol (fixed, horizontal) ──────────────────────────────────────────────
-// Centre dot: radius 7 (15px total diameter).
-// Wings: inner gap WI=14 (7px clear of dot edge), outer WO=50, height WH=3 (7px total).
-// Fin: 7px wide, 20px tall, starting 7px below dot edge (gap=7px).
-// Drawn as the very last element so it is always on top of fill, horizon, and ladder.
-static void _scftDrawAircraftSymbol(KCM_TFT &tft) {
-    static const int16_t DOT_R  = 9;    // dot radius → 19px diameter (matches ACFT)
-    static const int16_t WI     = 17;   // wing inner edge (DOT_R + gap)
-    static const int16_t WO     = 60;   // wing outer edge
-    static const int16_t WH     = 2;    // wing half-height → 5px total
-    static const int16_t FIN_GAP = 9;   // gap between dot bottom and fin top
-    static const int16_t FIN_H  = 24;   // fin height
-    static const int16_t FIN_W  = 2;    // fin half-width → 5px total
-
-    // Left wing
-    tft.fillRect(SCFT_CX - WO,    SCFT_CY - WH, WO - WI,    WH*2+1, SCFT_WINGS);
-    // Right wing
-    tft.fillRect(SCFT_CX + WI,    SCFT_CY - WH, WO - WI,    WH*2+1, SCFT_WINGS);
-    // Fin
-    tft.fillRect(SCFT_CX - FIN_W, SCFT_CY + DOT_R + FIN_GAP, FIN_W*2+1, FIN_H, SCFT_WINGS);
-    // Centre dot — drawn last so it sits on top of wings/fin overlap at centre
-    tft.fillCircle(SCFT_CX, SCFT_CY, DOT_R, SCFT_WINGS);
-}
-
-
-// ── Clip endpoint to disc ─────────────────────────────────────────────────────────────
-static void _scftClipToDisk(float px, float py, float qx, float qy,
-                            float &ox, float &oy) {
-    float cx = qx - SCFT_CX, cy = qy - SCFT_CY;
-    if (cx*cx + cy*cy <= (float)SCFT_R * SCFT_R) { ox = qx; oy = qy; return; }
-    float dx = qx-px, dy = qy-py;
-    float ax = px-SCFT_CX, ay = py-SCFT_CY;
-    float a = dx*dx + dy*dy;
-    float b = 2.0f*(ax*dx + ay*dy);
-    float c = ax*ax + ay*ay - (float)SCFT_R*(float)SCFT_R;
-    float disc = b*b - 4.0f*a*c;
-    if (disc < 0.0f || a < 0.001f) { ox = qx; oy = qy; return; }
-    float sq = sqrtf(disc);
-    float t  = (-b - sq) / (2.0f*a);
-    if (t < 0.0f || t > 1.0f) t = (-b + sq) / (2.0f*a);
-    t = max(0.0f, min(1.0f, t));
-    ox = px + t*dx; oy = py + t*dy;
-}
+// Scanline fill, aircraft symbol, and disc clip are shared with ACFT — see EADIBall.ino
+// (eadiDrawScanline / eadiDrawAircraftSymbol / eadiClipToDisk).
 
 
 // ── Pitch ladder ──────────────────────────────────────────────────────────────────────
@@ -257,8 +198,8 @@ static void _scftDrawLadder(KCM_TFT &tft,
         float rx2 = rfx + hl*cosR, ry2 = rfy + hl*sinR;
 
         float cx1, cy1, cx2, cy2;
-        _scftClipToDisk(rfx, rfy, rx1, ry1, cx1, cy1);
-        _scftClipToDisk(rfx, rfy, rx2, ry2, cx2, cy2);
+        eadiClipToDisk(rfx, rfy, rx1, ry1, cx1, cy1);
+        eadiClipToDisk(rfx, rfy, rx2, ry2, cx2, cy2);
 
         int16_t lx1 = (int16_t)cx1, ly1 = (int16_t)cy1;
         int16_t lx2 = (int16_t)cx2, ly2 = (int16_t)cy2;
@@ -345,7 +286,7 @@ static void _scftFullDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
             }
         }
         _scftPrevBx[i] = bx;
-        _scftDrawScanline(tft, y, x0, x1, bx, gl);
+        eadiDrawScanline(tft, y, x0, x1, bx, gl);
         bx_f += bx_step;
     }
     _scftPrevGroundLeft = gl0;
@@ -415,7 +356,7 @@ static void _scftDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
             int16_t x0 = SCFT_CX - chw, x1 = SCFT_CX + chw;
             bool gl = (bx_new_s == SCFT_BX_ALLGND) ? newGL :
                       (bx_new_s == SCFT_BX_ALLSKY)  ? false : newGL;
-            _scftDrawScanline(tft, y, x0, x1, bx_new_s, gl);
+            eadiDrawScanline(tft, y, x0, x1, bx_new_s, gl);
             _scftPrevBx[i] = bx_new_s;
             continue;
         }
@@ -448,7 +389,7 @@ static void _scftDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
 
         if (!bx_changed && !in_prev_horiz && !in_prev_ladder) continue;
 
-        _scftDrawScanline(tft, y, x0, x1, bx_new, gl);
+        eadiDrawScanline(tft, y, x0, x1, bx_new, gl);
         _scftPrevBx[i] = bx_new;
     }
     _scftPrevGroundLeft = newGL;
@@ -599,7 +540,7 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
         _scftDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
 
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
-    _scftDrawAircraftSymbol(tft);
+    eadiDrawAircraftSymbol(tft);
 
     _scftPrevPitch = state.pitch;
     _scftPrevRoll  = state.roll;
