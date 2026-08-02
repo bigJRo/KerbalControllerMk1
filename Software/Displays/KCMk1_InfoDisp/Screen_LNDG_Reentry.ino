@@ -47,14 +47,14 @@ static const uint16_t RE_TAPE_W   = 44;
 static const uint16_t RE_TAPE_Y   = TITLE_TOP + 8;                  // 70
 static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
-static const uint16_t RE_TAPE_GUT = 48;   // right-side marker gutter (erased each frame)
-static const int16_t  RE_TAPE_M   = 12;   // marker half-height inset — the tape's VISIBLE
-                                          // rectangle is RE_TAPE_Y+M .. RE_TAPE_BOT-M
+static const uint16_t RE_TAPE_GUT = 42;   // right-side marker gutter (erased each frame)
+static const int16_t  RE_TAPE_M   = 8;    // marker half-height inset (= triangle half-height + 1);
+                                          // the tape's VISIBLE rectangle is RE_TAPE_Y+M .. RE_TAPE_BOT-M
 
 // ── ATMO density bar — matches the altitude tape's VISIBLE rectangle (same width and
 //    same inset top/bottom) and sits just right of it, with a matching vertical label. ──
-static const uint16_t RE_ATMO_LBL_X = 138;                          // vertical label column
-static const uint16_t RE_ATMO_X   = 154;
+static const uint16_t RE_ATMO_LBL_X = 131;                          // vertical label column
+static const uint16_t RE_ATMO_X   = 147;
 static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape (44)
 static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 82 — same top as the tape's border
 static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 585 — same bottom as the tape's border
@@ -232,16 +232,16 @@ static void _reDrawTape(KCM_TFT &tft) {
   if (currentBody.hasAtmo) {
     int16_t yt = altToY(state.periapsis);
     tft.fillRect(ix, yt - 2, iw, 5, TFT_MAGENTA);
-    tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_MAGENTA);
+    tft.fillTriangle(barR + 1, yt, barR + 13, yt - 7, barR + 13, yt + 7, TFT_MAGENTA);
     tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(barR + 20, yt - 12);
+    tft.setCursor(barR + 16, yt - 12);
     tft.print("Pe");
   }
   {
     int16_t yt = altToY(state.altitude);
     tft.fillRect(ix, yt - 1, iw, 3, TFT_WHITE);
-    tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
+    tft.fillTriangle(barR + 1, yt, barR + 13, yt - 7, barR + 13, yt + 7, TFT_WHITE);
   }
 }
 
