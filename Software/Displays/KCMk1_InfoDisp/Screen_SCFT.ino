@@ -1479,7 +1479,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                 ButtonLabel btn = rcsOn
                     ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                     : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                drawButton(tft, SCFT_PANEL_X, ry, hw, rh, btn, &Roboto_Black_24, false);
+                drawButton(tft, SCFT_PANEL_X, ry, hw, rh, btn, &Roboto_Black_28, false);
                 rc.value = rcsStr;
             }
         }
@@ -1504,7 +1504,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
             RowCache &rc = rowCache[SC][8];
             if (rc.value != v || rc.fg != fg || rc.bg != bg) {
                 ButtonLabel btn = { v, fg, fg, bg, bg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_24, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_28, false);
                 rc.value = v; rc.fg = fg; rc.bg = bg;
             }
         }

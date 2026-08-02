@@ -1039,7 +1039,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                     ButtonLabel btn = rcsOn
                         ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                         : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                    drawButton(tft, RX + RHW, y, RHW, h, btn, &Roboto_Black_20, false);
+                    drawButton(tft, RX + RHW, y, RHW, h, btn, &Roboto_Black_28, false);
                     rc2.value = rv;
                 }
             }
@@ -1058,7 +1058,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                     ButtonLabel btn = gearDown
                         ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                         : ButtonLabel{ "GEAR", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                    drawButton(tft, RX - 2, y, RHW + 2, rh, btn, &Roboto_Black_20, false);
+                    drawButton(tft, RX - 2, y, RHW + 2, rh, btn, &Roboto_Black_28, false);
                     gc.value = gv;
                 }
             }
@@ -1075,7 +1075,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                 String ssv = sv;
                 if (sc.value != ssv || sc.fg != sfg || sc.bg != sbg) {
                     ButtonLabel btn = { sv, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
-                    drawButton(tft, RX + RHW, y, RHW, rh, btn, &Roboto_Black_20, false);
+                    drawButton(tft, RX + RHW, y, RHW, rh, btn, &Roboto_Black_28, false);
                     sc.value = ssv; sc.fg = sfg; sc.bg = sbg;
                 }
             }

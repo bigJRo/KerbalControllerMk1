@@ -1658,7 +1658,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &gc = rowCache[SC][8]; String gs = gv;
             if (gc.value != gs || gc.fg != gfg || gc.bg != gbg) {
                 ButtonLabel btn = { "GEAR", gfg, gfg, gbg, gbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X - 2, y6, hw + 2, h6, btn, &Roboto_Black_24, false);
+                drawButton(tft, ACFT_PANEL_X - 2, y6, hw + 2, h6, btn, &Roboto_Black_28, false);
                 gc.value = gs; gc.fg = gfg; gc.bg = gbg;
             }
         }
@@ -1668,7 +1668,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &ac = rowCache[SC][9]; String as = "---";
             if (ac.value != as) {
                 ButtonLabel btn = { "AIRBRK", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK, TFT_OFF_BLACK, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X + hw, y6, hw, h6, btn, &Roboto_Black_24, false);
+                drawButton(tft, ACFT_PANEL_X + hw, y6, hw, h6, btn, &Roboto_Black_28, false);
                 ac.value = as;
             }
         }
@@ -1694,7 +1694,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &bc = rowCache[SC][10]; String bs = bv;
             if (bc.value != bs || bc.fg != bfg || bc.bg != bbg) {
                 ButtonLabel btn = { "BRAKES", bfg, bfg, bbg, bbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X - 2, ry, hw + 2, rh, btn, &Roboto_Black_24, false);
+                drawButton(tft, ACFT_PANEL_X - 2, ry, hw + 2, rh, btn, &Roboto_Black_28, false);
                 bc.value = bs; bc.fg = bfg; bc.bg = bbg;
             }
         }
@@ -1719,7 +1719,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &rc = rowCache[SC][11];
             if (rc.value != v || rc.fg != sfg || rc.bg != sbg) {
                 ButtonLabel btn = { v, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_24, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_28, false);
                 rc.value = v; rc.fg = sfg; rc.bg = sbg;
             }
         }

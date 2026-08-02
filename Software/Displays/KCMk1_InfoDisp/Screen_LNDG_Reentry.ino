@@ -594,7 +594,8 @@ static void _reDrawTemp(KCM_TFT &tft) {
 /***************************************************************************************
    CHROME: RE-ENTRY  (divider + static text-panel labels)
 ****************************************************************************************/
-static const tFont   *RE_LF  = &Roboto_Black_20;   // panel label / button font (kept small so the SAS labels fit)
+static const tFont   *RE_LF  = &Roboto_Black_20;   // panel label font (LNDG 20pt tier)
+static const tFont   *RE_BTN = &Roboto_Black_28;   // SAS/Gear button font — matches the 28pt button labels on the other screens
 static const tFont   *RE_VF  = &Roboto_Black_32;   // panel value font — enlarged; fits the 360px standard panel
 static const uint8_t  RE_NR  = 8;
 
@@ -803,7 +804,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         ButtonLabel btn = gearDown
             ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
             : ButtonLabel{ "GEAR", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-        drawButton(tft, xL, y, wL, rh, btn, RE_LF, false);
+        drawButton(tft, xL, y, wL, rh, btn, RE_BTN, false);
         gc.value = gv;
       }
     }
@@ -811,30 +812,30 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     {
       const char *ss; uint16_t sfg, sbg;
       if (state.sasMode == 255) {
-        ss = "SAS OFF";
+        ss = "SAS";
         bool aeroUnstable = (state.machNumber > REENTRY_SAS_AERO_STABLE_MACH);
         sfg = aeroUnstable ? TFT_WHITE : TFT_DARK_GREY;
         sbg = aeroUnstable ? TFT_RED   : TFT_OFF_BLACK;
       } else {
         switch (state.sasMode) {
-          case 0:  ss = "STABILITY";  sfg = TFT_WHITE; sbg = TFT_DARK_GREEN; break;
-          case 2:  ss = "RETROGRADE"; sfg = TFT_WHITE; sbg = TFT_DARK_GREEN; break;
-          case 1:  ss = "PROGRADE";   sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 3:  ss = "NORMAL";     sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 4:  ss = "ANTI-NRM";   sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 5:  ss = "RADIAL+";    sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 6:  ss = "RADIAL-";    sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 7:  ss = "TARGET";     sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 8:  ss = "ANTI-TGT";   sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 9:  ss = "MANEUVER";   sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          default: ss = "SAS OFF";    sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK; break;
+          case 0:  ss = "STAB"; sfg = TFT_WHITE; sbg = TFT_DARK_GREEN; break;
+          case 2:  ss = "RETR"; sfg = TFT_WHITE; sbg = TFT_DARK_GREEN; break;
+          case 1:  ss = "PRO";  sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 3:  ss = "NRM";  sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 4:  ss = "ANRM"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 5:  ss = "RAD+"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 6:  ss = "RAD-"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 7:  ss = "TGT";  sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 8:  ss = "ATGT"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 9:  ss = "MNVR"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          default: ss = "SAS";  sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK; break;
         }
       }
       RowCache &sc = rowCache[screen_LNDGRE][14];
       String ssv = ss;
       if (sc.value != ssv || sc.fg != sfg || sc.bg != sbg) {
         ButtonLabel btn = { ss, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
-        drawButton(tft, xR, y, wR, rh, btn, RE_LF, false);
+        drawButton(tft, xR, y, wR, rh, btn, RE_BTN, false);
         sc.value = ssv; sc.fg = sfg; sc.bg = sbg;
       }
     }
