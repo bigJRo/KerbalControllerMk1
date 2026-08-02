@@ -267,8 +267,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.mnvrTime     = m.timeToNextManeuver;
         state.mnvrDeltaV   = m.deltaVNextManeuver;
         state.mnvrDuration = m.durationNextManeuver;
-        // m.deltaVTotal is the dV remaining in the maneuver plan, NOT the vessel's
-        // total propellant dV. Leave state.totalDeltaV owned by DELTAV_MESSAGE only.
+        // m.deltaVTotal is the dV remaining in the maneuver PLAN (all nodes),
+        // distinct from the vessel's total propellant dV (owned by DELTAV_MESSAGE).
+        state.mnvrTotalDeltaV = m.deltaVTotal;
         state.mnvrHeading  = m.headingNextManeuver;
         state.mnvrPitch    = m.pitchNextManeuver;
       }

@@ -379,7 +379,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     mnvrVal(0, 0, "\xCE\x94V.Mnvr:", fmtMs(state.mnvrDeltaV), TFT_DARK_GREEN, TFT_BLACK);
 
     // Row 1 — ΔV.Plan (total ΔV across all planned nodes; distinct from vessel total)
-    mnvrVal(1, 1, "\xCE\x94V.Plan:", fmtMs(state.totalDeltaV), TFT_DARK_GREEN, TFT_BLACK);
+    mnvrVal(1, 1, "\xCE\x94V.Plan:", fmtMs(state.mnvrTotalDeltaV), TFT_DARK_GREEN, TFT_BLACK);
 
     // Row 2 — ΔV.Stg (yellow if stage ΔV is tight relative to node)
     {

@@ -148,6 +148,7 @@ void stepDemoState() {
   // MNVR — mnvrTime goes negative (past node), totalDeltaV crosses below mnvrDeltaV
   state.mnvrTime     = 400.0f  * sinf(_demoPhase * 0.7f);           // -400..+400s
   state.mnvrDeltaV   = 300.0f  + 250.0f * sinf(_demoPhase * 0.5f);  // 50..550 m/s
+  state.mnvrTotalDeltaV = state.mnvrDeltaV + 200.0f + 150.0f * sinf(_demoPhase * 0.3f);  // plan total >= next node
   state.mnvrDuration = 45.0f   + 40.0f  * sinf(_demoPhase * 0.6f);
   state.totalDeltaV  = 300.0f  + 250.0f * sinf(_demoPhase * 0.4f);  // different phase crosses mnvrDeltaV
   state.mnvrHeading  = 180.0f  + 175.0f * sinf(_demoPhase * 0.22f); // 0-360 burn heading

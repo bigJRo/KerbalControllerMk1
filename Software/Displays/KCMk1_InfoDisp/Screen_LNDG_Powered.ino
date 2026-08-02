@@ -1007,9 +1007,14 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             }
         }
 
-        // Row 5: ΔV.Stg
+        // Row 5: ΔV.Stg (low-stage-fuel warning, matches VEH/LNCH)
         {
-            rpVal(5, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), TFT_DARK_GREEN, TFT_BLACK, 6);
+            uint16_t sfg, sbg;
+            thresholdColor(state.stageDeltaV,
+                           DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
+                           DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
+                           TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            rpVal(5, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), sfg, sbg, 6);
         }
 
         // Row 6: Throttle | RCS (split)

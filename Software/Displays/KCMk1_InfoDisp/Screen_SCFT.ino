@@ -1429,16 +1429,17 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 
     // Row 2 — ApA
     {
-        uint16_t fg = (state.apoapsis < 0.0f) ? TFT_YELLOW : TFT_DARK_GREEN;
-        String val = hasOrbit ? formatAlt(state.apoapsis) : "---";
-        attPanelVal(2, 2, "ApA:", val, fg, TFT_BLACK);
+        // Escape trajectory: apoapsis undefined (KSP reports it negative) -> infinity
+        bool escape = hasOrbit && (state.apoapsis < 0.0f);
+        String val  = !hasOrbit ? String("---") : (escape ? String("\x80") : formatAlt(state.apoapsis));
+        attPanelVal(2, 2, "ApA:", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 3 — PeA
     {
-        uint16_t fg = (state.periapsis < 0.0f) ? TFT_YELLOW : TFT_DARK_GREEN;
+        // Suborbital periapsis is informational here (not a launch/descent screen) -> neutral
         String val = hasOrbit ? formatAlt(state.periapsis) : "---";
-        attPanelVal(3, 3, "PeA:", val, fg, TFT_BLACK);
+        attPanelVal(3, 3, "PeA:", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 4 — T+Ap or T+Pe (whichever is sooner and positive)
@@ -1465,10 +1466,14 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         attPanelVal(5, 5, "T+Ign:", val, fg, bg);
     }
 
-    // Row 6 — ΔV.Stg
+    // Row 6 — ΔV.Stg (low-stage-fuel warning, matches VEH/LNCH)
     {
-        String val = fmtMs(state.stageDeltaV);
-        attPanelVal(6, 6, "\xCE\x94V.Stg:", val, TFT_DARK_GREEN, TFT_BLACK);
+        uint16_t fg, bg;
+        thresholdColor(state.stageDeltaV,
+                       DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
+                       DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
+                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+        attPanelVal(6, 6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
     }
 
     // Row 7 split — RCS button (left half) | SAS button (right half)

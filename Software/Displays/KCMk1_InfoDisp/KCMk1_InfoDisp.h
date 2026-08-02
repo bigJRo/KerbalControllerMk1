@@ -162,6 +162,7 @@ struct AppState {
   // Maneuver node
   float     mnvrTime      = 0.0f;    // seconds to next maneuver node
   float     mnvrDeltaV    = 0.0f;    // m/s of next maneuver
+  float     mnvrTotalDeltaV = 0.0f;  // m/s — dV remaining across all planned maneuver nodes (Simpit maneuver deltaVTotal)
   float     mnvrDuration  = 0.0f;    // seconds burn for next maneuver
   float     mnvrHeading   = 0.0f;    // degrees — heading to point for burn (KSP1 only)
   float     mnvrPitch     = 0.0f;    // degrees — pitch to point for burn (KSP1 only)

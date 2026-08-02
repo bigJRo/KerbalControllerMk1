@@ -1623,13 +1623,17 @@ static void _lnchAsUpdateApA(KCM_TFT &tft) {
 
     float warnAlt = max(currentBody.minSafe, currentBody.lowSpace);
     uint16_t fg;
-    if      (apa < 0)                                       fg = TFT_RED;
-    else if (warnAlt > 0 && apa > 0 && apa < warnAlt)       fg = TFT_YELLOW;
-    else                                                    fg = TFT_DARK_GREEN;
+    String   val;
+    if (apa < 0) {                                          // escape: apoapsis undefined -> infinity
+        fg = TFT_DARK_GREEN; val = String("\x80");
+    } else {
+        fg  = (warnAlt > 0 && apa > 0 && apa < warnAlt) ? TFT_YELLOW : TFT_DARK_GREEN;
+        val = formatAlt((float)iApA);
+    }
 
     if (iApA == _lnchAsPrevApA && fg == _lnchAsPrevApAFg) return;
 
-    _lnchAsDrawRowValue(tft, 1, formatAlt((float)iApA), fg, TFT_BLACK);
+    _lnchAsDrawRowValue(tft, 1, val, fg, TFT_BLACK);
     _lnchAsPrevApA = iApA;
     _lnchAsPrevApAFg = fg;
 }
