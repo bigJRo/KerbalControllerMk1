@@ -311,12 +311,7 @@ static void _scftDrawPitchTape(KCM_TFT &tft, float pitch) {
         int16_t pyMax = SCFT_PTAPE_Y + SCFT_PTAPE_H - SCFT_PTAPE_MRK_HW - 2;
         if (py < pyMin) py = pyMin;
         if (py > pyMax) py = pyMax;
-        // If the marker lands in the value-box band, park it just outside the box (top or
-        // bottom edge, whichever is nearer) instead of hiding it — keeps it visible and
-        // consistent with the ball while never painting over the pitch number.
-        if (py >= SCFT_PTAPE_SUPP_LO && py <= SCFT_PTAPE_SUPP_HI)
-            py = (py < (SCFT_PTAPE_SUPP_LO + SCFT_PTAPE_SUPP_HI) / 2) ? SCFT_PTAPE_SUPP_LO
-                                                                      : SCFT_PTAPE_SUPP_HI;
+        if (py >= SCFT_PTAPE_SUPP_LO && py <= SCFT_PTAPE_SUPP_HI) return;
         tft.fillTriangle(SCFT_PTAPE_MRK_TIP_X,  py,
                          SCFT_PTAPE_MRK_BASE_X,  py - SCFT_PTAPE_MRK_HW,
                          SCFT_PTAPE_MRK_BASE_X,  py + SCFT_PTAPE_MRK_HW,
@@ -484,10 +479,8 @@ static void _scftDrawHeadingTape(KCM_TFT &tft, float hdg) {
         int16_t pxMax = SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W - SCFT_HDG_MRK_HW - 1;
         if (px < pxMin) px = pxMin;
         if (px > pxMax) px = pxMax;
-        // Park in the value-box band at the nearer edge instead of hiding (see pitch tape).
-        if (px >= SCFT_HDG_SUPP_LO && px <= SCFT_HDG_SUPP_HI)
-            px = (px < (SCFT_HDG_SUPP_LO + SCFT_HDG_SUPP_HI) / 2) ? SCFT_HDG_SUPP_LO
-                                                                  : SCFT_HDG_SUPP_HI;
+        // Skip if in suppress zone
+        if (px >= SCFT_HDG_SUPP_LO && px <= SCFT_HDG_SUPP_HI) return;
         tft.fillTriangle(px,                    SCFT_HDG_MRK_TIP_Y,
                          px - SCFT_HDG_MRK_HW,  SCFT_HDG_MRK_BASE_Y,
                          px + SCFT_HDG_MRK_HW,  SCFT_HDG_MRK_BASE_Y,

@@ -305,10 +305,7 @@ static void _acftDrawPitchTape(KCM_TFT &tft, float pitch) {
         int16_t pyMax = ACFT_PTAPE_Y + ACFT_PTAPE_H - ACFT_PTAPE_MRK_HW - 2;
         if (py < pyMin) py = pyMin;
         if (py > pyMax) py = pyMax;
-        // Park in the value-box band at the nearer edge instead of hiding (see SCFT tape).
-        if (py >= ACFT_PTAPE_SUPP_LO && py <= ACFT_PTAPE_SUPP_HI)
-            py = (py < (ACFT_PTAPE_SUPP_LO + ACFT_PTAPE_SUPP_HI) / 2) ? ACFT_PTAPE_SUPP_LO
-                                                                      : ACFT_PTAPE_SUPP_HI;
+        if (py >= ACFT_PTAPE_SUPP_LO && py <= ACFT_PTAPE_SUPP_HI) return;
         tft.fillTriangle(ACFT_PTAPE_MRK_TIP_X,  py,
                          ACFT_PTAPE_MRK_BASE_X,  py - ACFT_PTAPE_MRK_HW,
                          ACFT_PTAPE_MRK_BASE_X,  py + ACFT_PTAPE_MRK_HW,
@@ -463,10 +460,8 @@ static void _acftDrawHeadingTape(KCM_TFT &tft, float hdg) {
         int16_t pxMax = ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - ACFT_HDG_MRK_HW - 1;
         if (px < pxMin) px = pxMin;
         if (px > pxMax) px = pxMax;
-        // Park in the value-box band at the nearer edge instead of hiding (see SCFT tape).
-        if (px >= ACFT_HDG_SUPP_LO && px <= ACFT_HDG_SUPP_HI)
-            px = (px < (ACFT_HDG_SUPP_LO + ACFT_HDG_SUPP_HI) / 2) ? ACFT_HDG_SUPP_LO
-                                                                  : ACFT_HDG_SUPP_HI;
+        // Skip if in suppress zone
+        if (px >= ACFT_HDG_SUPP_LO && px <= ACFT_HDG_SUPP_HI) return;
         tft.fillTriangle(px,                    ACFT_HDG_MRK_TIP_Y,
                          px - ACFT_HDG_MRK_HW,  ACFT_HDG_MRK_BASE_Y,
                          px + ACFT_HDG_MRK_HW,  ACFT_HDG_MRK_BASE_Y,
