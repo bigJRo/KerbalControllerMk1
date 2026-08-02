@@ -180,6 +180,22 @@ static void apPut(KCM_TFT &tft, uint8_t slot, const String &val, uint16_t fg) {
   rc.value = val; rc.fg = fg; rc.bg = TFT_BLACK;
 }
 
+// Format the live keypad entry with thousands separators in the integer part,
+// preserving a leading sign and any decimal portion being typed.
+static String apCommaEntry(const char *buf) {
+  String work(buf), sign;
+  if (work.length() && work[0] == '-') { sign = "-"; work = work.substring(1); }
+  int dot = work.indexOf('.');
+  String ip = (dot >= 0) ? work.substring(0, dot) : work;
+  String fp = (dot >= 0) ? work.substring(dot)    : String("");
+  String out; int len = ip.length();
+  for (int i = 0; i < len; i++) {
+    if (i > 0 && (len - i) % 3 == 0) out += ",";
+    out += ip[i];
+  }
+  return sign + out + fp;
+}
+
 // ── KEYPAD draw ─────────────────────────────────────────────────────────────────────
 static void apDrawKeypad(KCM_TFT &tft) {
   const ApEdit &e = AP_EDITS[apKpEdit];
@@ -192,7 +208,7 @@ static void apDrawKeypad(KCM_TFT &tft) {
     if (e.mx >= 100000.0f) snprintf(r, sizeof(r), "enter in %s (min %g)", e.units, e.mn);
     else                   snprintf(r, sizeof(r), "range %g to %g %s", e.mn, e.mx, e.units);
     textLeft(tft, &Roboto_Black_16, KP_X + 10, KP_Y + 34, KP_W - 90, 20, r, TFT_LIGHT_GREY, TFT_OFF_BLACK); }
-  { String ent = (apKpLen ? String(apKpBuf) : String("_")) + " " + e.units;
+  { String ent = (apKpLen ? apCommaEntry(apKpBuf) : String("_")) + " " + e.units;
     textRight(tft, &Roboto_Black_28, KP_X + 6, KP_Y + 50, KP_W - 12, 28, ent, TFT_SKY, TFT_OFF_BLACK); }
   // CANCEL
   tft.fillRect(KP_CX, KP_CY, KP_CW, KP_CH, TFT_OFF_BLACK);
