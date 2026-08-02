@@ -365,6 +365,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.mainDeploy   = cag->is_action_activated(MAIN_DEPLOY_CAG);
       if (MAIN_CUT_CAG     >= 1)
         state.mainCut      = cag->is_action_activated(MAIN_CUT_CAG);
+      if (AIRBRAKE_CAG     >= 1)
+        state.airbrake_on  = cag->is_action_activated(AIRBRAKE_CAG);
       break;
     }
 

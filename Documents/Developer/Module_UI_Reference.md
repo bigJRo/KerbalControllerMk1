@@ -98,6 +98,7 @@ All custom action groups use AGX numbers. ENC1 on the Dual Encoder module select
 **Notes:**
 - State machine pairs (Heat Shield, Main Chute, Drogue Chute) use sequential base CAGs — deploy is always the lower number, cut/release always the higher.
 - Airbrake at base 38 is intentionally assigned to both Function Control B4 (primary) and Rotation Module BTN_JOY (ergonomic duplicate during atmospheric flight).
+- The Info Display AIRCRAFT screen shows a live **AIRBRK** indicator (row 6, beside GEAR) driven by this CAG's status over Simpit `CAGSTATUS_MESSAGE` — cyan when deployed, grey when stowed. The base CAG is set by `AIRBRAKE_CAG` in the InfoDisp `AAA_Config.ino` (default 38); set it to 0 to disable the indicator.
 - Maximum AGX number used: 239 (within AGX 250 limit).
 - The 1-slot gap between groups provides headroom for future additions without renumbering.
 

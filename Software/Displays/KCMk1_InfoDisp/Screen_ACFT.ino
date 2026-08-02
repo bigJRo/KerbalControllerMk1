@@ -863,7 +863,14 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
 
-    // Row 6: Gear (full width) — button draws its own label and border in _acftUpdatePanel.
+    // Row 6: Gear | Airbrk — buttons draw own labels, just draw the split divider.
+    {
+        uint16_t hw = ACFT_PANEL_W / 2;
+        uint16_t y6 = TITLE_TOP + 6 * rowHFor(ACFT_PANEL_NR);
+        uint16_t y7 = TITLE_TOP + 7 * rowHFor(ACFT_PANEL_NR);
+        tft.drawLine(ACFT_PANEL_X + hw,     y6, ACFT_PANEL_X + hw,     y7 - 1, TFT_GREY);
+        tft.drawLine(ACFT_PANEL_X + hw + 1, y6, ACFT_PANEL_X + hw + 1, y7 - 1, TFT_GREY);
+    }
 
     // Row 7: Brakes | SAS split divider (buttons drawn in update)
     {
@@ -878,9 +885,9 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 
 
 // ── Right panel update ─────────────────────────────────────────────────────────────────
-// Row order: Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear(6), Brakes|SAS(7)
+// Row order: Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear|Airbrk(6), Brakes|SAS(7)
 // Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
-//              8=Gear, 9=(unused), 10=Brakes, 11=SAS
+//              8=Gear, 9=Airbrk, 10=Brakes, 11=SAS
 static void _acftUpdatePanel(KCM_TFT &tft) {
     static const tFont  *VF = &Roboto_Black_36;   // value font — matches reticle/launch panels
     static const uint8_t SC = (uint8_t)screen_ACFT;
@@ -1003,8 +1010,8 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         }
     }
 
-    // Row 6 — Gear (full width).
-    // Button tiles on the raw row grid (no ROW_PAD) so it abuts row 7 seamlessly:
+    // Row 6 — Gear | Airbrk split buttons.
+    // Buttons tile on the raw row grid (no ROW_PAD) so they abut row 7 seamlessly:
     // row 6 spans [6*rowH .. 7*rowH] and row 7 spans [7*rowH .. SCREEN_H].
     {
         uint16_t y6 = TITLE_TOP + 6 * rowHFor(ACFT_PANEL_NR);
@@ -1026,8 +1033,21 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &gc = rowCache[SC][8]; String gs = gv;
             if (gc.value != gs || gc.fg != gfg || gc.bg != gbg) {
                 ButtonLabel btn = { "GEAR", gfg, gfg, gbg, gbg, TFT_GREY, TFT_GREY };
-                drawButton(tft, ACFT_PANEL_X - 2, y6, ACFT_PANEL_W + 2, h6, btn, &Roboto_Black_28, false);
+                drawButton(tft, ACFT_PANEL_X - 2, y6, hw + 2, h6, btn, &Roboto_Black_28, false);
                 gc.value = gs; gc.fg = gfg; gc.bg = gbg;
+            }
+        }
+        // Airbrake (slot 9) — Custom Action Group AIRBRAKE_CAG (base 38, Function Control B4;
+        // see Documents/Developer/Module_UI_Reference.md). Cyan when deployed, grey when stowed.
+        {
+            uint16_t afg, abg;
+            if (state.airbrake_on) { afg = TFT_BLACK;     abg = TFT_CYAN; }
+            else                   { afg = TFT_DARK_GREY; abg = TFT_OFF_BLACK; }
+            RowCache &ac = rowCache[SC][9]; String as = state.airbrake_on ? "OUT" : "IN";  // cache key
+            if (ac.value != as || ac.fg != afg || ac.bg != abg) {
+                ButtonLabel btn = { "AIRBRK", afg, afg, abg, abg, TFT_GREY, TFT_GREY };
+                drawButton(tft, ACFT_PANEL_X + hw, y6, hw, h6, btn, &Roboto_Black_28, false);
+                ac.value = as; ac.fg = afg; ac.bg = abg;
             }
         }
     }

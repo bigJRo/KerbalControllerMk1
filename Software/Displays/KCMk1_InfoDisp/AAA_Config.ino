@@ -34,6 +34,11 @@ const uint8_t DROGUE_CUT_CAG    = 2;
 const uint8_t MAIN_DEPLOY_CAG   = 3;
 const uint8_t MAIN_CUT_CAG      = 4;
 
+// Airbrake — base Custom Action Group 38 (Function Control B4); see
+// Documents/Developer/Module_UI_Reference.md. Read for the AIRCRAFT screen's
+// AIRBRK indicator. Set to 0 to disable (button always shows stowed).
+const uint8_t AIRBRAKE_CAG      = 38;
+
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — AIRCRAFT (ACFT screen)
