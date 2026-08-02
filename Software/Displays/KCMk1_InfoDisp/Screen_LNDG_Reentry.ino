@@ -49,21 +49,23 @@ static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
 static const uint16_t RE_TAPE_GUT = 58;   // right-side marker gutter (erased each frame)
 
-// ── ATMO density bar (ascent-screen style, sits just right of the altitude tape) ──
-static const uint16_t RE_ATMO_X   = 144;
-static const uint16_t RE_ATMO_W   = 36;
-static const uint16_t RE_ATMO_Y   = TITLE_TOP + 26;                 // 88 — leave room above for label
-static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT;                    // 597 — bottom-aligned with the tape
+// ── ATMO density bar — matches the altitude tape (same width/height + vertical label)
+//    and sits just right of it. Its own vertical "ATMO" label is at RE_ATMO_LBL_X. ──
+static const uint16_t RE_ATMO_LBL_X = 150;                          // vertical label column
+static const uint16_t RE_ATMO_X   = 166;
+static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape (44)
+static const uint16_t RE_ATMO_Y   = RE_TAPE_Y;                      // same top as the tape (70)
+static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT;                    // same bottom (597)
 static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
 
-// ── Alignment ball (centre-top) ──
-static const int16_t  RE_ATT_CX = 300;
+// ── Alignment ball (centre-top) — shifted right to clear the ATMO bar ──
+static const int16_t  RE_ATT_CX = 330;
 static const int16_t  RE_ATT_CY = 194;
 static const int16_t  RE_ATT_R  = 104;
 static const float    RE_ATT_FS = (float)RE_ATT_R / 40.0f;  // px per degree (outer ring = 40°)
 
-// ── Parachute deploy envelope (centre-bottom) ──
-static const uint16_t RE_ENV_X    = 190;   // widget footprint (erased each frame)
+// ── Parachute deploy envelope (centre-bottom) — centred under the (shifted) ball ──
+static const uint16_t RE_ENV_X    = 210;   // widget footprint (erased each frame)
 static const uint16_t RE_ENV_Y    = 350;
 static const uint16_t RE_ENV_W    = 248;
 static const uint16_t RE_ENV_H    = 248;
@@ -282,8 +284,9 @@ static void _reDrawAtmo(KCM_TFT &tft) {
     return atmYBot - (int16_t)roundf(f * (float)(atmH - 1));
   };
 
-  // Erase footprint (label + bar + right-side marker) each frame — no streaks.
-  tft.fillRect(x0, RE_ATMO_Y - 20, (x0 + w + 16) - x0, RE_ATMO_H + 22, TFT_BLACK);
+  // Erase the bar + right-side marker gutter each frame (the vertical "ATMO" label
+  // lives left of the bar and is chrome, so it is not touched here).
+  tft.fillRect(x0, RE_ATMO_Y, RE_ATMO_W + 14, RE_ATMO_H + 2, TFT_BLACK);
 
   int16_t y75 = fracToY(0.75f), y35 = fracToY(0.35f);
   tft.fillRect(innerX0, innerY0, innerW, y75 - innerY0,     TFT_SKY);          // dense (top)
@@ -304,7 +307,6 @@ static void _reDrawAtmo(KCM_TFT &tft) {
   }
 
   tft.drawRect(x0, RE_ATMO_Y, w, RE_ATMO_BOT - RE_ATMO_Y, TFT_LIGHT_GREY);
-  textCenter(tft, &Roboto_Black_12, x0 - 6, RE_ATMO_Y - 18, w + 12, 14, "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
 
   // Marker — right-side triangle pointing left at the current density fraction; parks
   // in the OFF_BLACK segment in vacuum / on airless bodies.
@@ -547,9 +549,11 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   // Divider between graphics zone and text panel
   tft.drawLine(RE_DIV_X, TITLE_TOP, RE_DIV_X, SCREEN_H - 1, TFT_GREY);
 
-  // Vertical "ALTITUDE" label alongside the corridor tape
+  // Vertical labels for the two side-by-side bars — same format for both.
   drawVerticalText(tft, 0, RE_TAPE_Y, 14, RE_TAPE_H, &Roboto_Black_12,
                    "ALTITUDE", TFT_LIGHT_GREY, TFT_BLACK);
+  drawVerticalText(tft, RE_ATMO_LBL_X, RE_ATMO_Y, 14, RE_ATMO_H, &Roboto_Black_12,
+                   "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
 
   const uint16_t RHW = RE_TXT_W / 2;
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
@@ -601,9 +605,9 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
 
   // ── Graphics widgets (full repaint each frame) ──
   _reDrawTape(tft);
-  _reDrawAtmo(tft);
   _reDrawBall(tft);
   _reDrawEnvelope(tft);
+  _reDrawAtmo(tft);            // after the chute: its footprint overlaps the ATMO column
   _reDrawGauges(tft);
 
   // ── Text panel row-label swaps (force a chrome redraw when a label changes) ──
