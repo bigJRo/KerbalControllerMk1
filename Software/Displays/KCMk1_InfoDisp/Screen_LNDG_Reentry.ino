@@ -413,15 +413,9 @@ static void _reDrawEnvelope(KCM_TFT &tft) {
   tft.fillRect(xm - 1, iy, 3, ih, TFT_WHITE);
   tft.fillTriangle(xm, RE_CT_Y - 1, xm - 8, RE_CT_Y - 11, xm + 8, RE_CT_Y - 11, vc);
 
-  // Title + axis label, both centred on the bar.
-  const int16_t barCx = RE_CT_X + RE_CT_W / 2;
-  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-  const char *title = "CHUTE DEPLOY";
-  int16_t titW = getFontStringWidth(&Roboto_Black_12, title);
-  tft.setCursor(barCx - titW / 2, RE_CT_Y - 44); tft.print(title);
-  const char *axis = "AIRSPEED (m/s)";
-  int16_t axW = getFontStringWidth(&Roboto_Black_12, axis);
-  tft.setCursor(barCx - axW / 2, barBot + 22); tft.print(axis);
+  // Title + axis label, both centred on the bar (textCenter centres within the box).
+  textCenter(tft, &Roboto_Black_12, RE_CT_X, RE_CT_Y - 44, RE_CT_W, 16, "CHUTE DEPLOY",   TFT_LIGHT_GREY, TFT_BLACK);
+  textCenter(tft, &Roboto_Black_12, RE_CT_X, barBot + 22,   RE_CT_W, 16, "AIRSPEED (m/s)", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 /***************************************************************************************
