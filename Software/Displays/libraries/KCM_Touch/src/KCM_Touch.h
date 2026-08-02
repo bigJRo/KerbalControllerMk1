@@ -24,7 +24,7 @@
      reg 0x06  P1_YL       — Y[7:0]
      ...each further point is +6 bytes; registers auto-increment on read.
 
-   Orientation: confirmed against the BuyDisplay ER-TFT070A2-6 vendor demo, which
+   Orientation: confirmed against the BuyDisplay ER-TFT070A2-6-5633 vendor demo, which
    maps raw touch to display pixels as (LCD_W - x, LCD_H - y) — i.e. BOTH axes
    inverted, no swap. Defaults below reflect that. The vendor demo also confirms
    no FT5316 init writes are needed (reset pulse only) and that CTP_INT is

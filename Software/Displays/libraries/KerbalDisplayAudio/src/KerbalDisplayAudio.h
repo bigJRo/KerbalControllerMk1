@@ -8,10 +8,11 @@
    All timing is millis()-based — no delay() calls.
 
    State machine (priority high → low):
-     AUDIO_MASTER_ALARM  — two-tone alternating loop, started/stopped by the sketch
-     AUDIO_CAUTION_TONE  — single constant tone, fixed duration
-     AUDIO_CHIRP         — two-note ascending or descending sequence, plays once
-     AUDIO_IDLE          — silent
+     AUDIO_MASTER_ALARM          — two-tone alternating loop, started/stopped by the sketch
+     AUDIO_MASTER_ALARM_SILENCED — alarm latched but muted (tone off, crew acknowledged)
+     AUDIO_CAUTION_TONE          — single constant tone, fixed duration
+     AUDIO_CHIRP                 — two-note ascending or descending sequence, plays once
+     AUDIO_IDLE                  — silent
 
    Master alarm condition tracking (which warnings are active, silence latch,
    re-trigger logic) is the responsibility of the calling sketch, not this library.
@@ -21,7 +22,7 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.0.2
+   Version: 1.1.0
 ****************************************************************************************/
 
 /***************************************************************************************

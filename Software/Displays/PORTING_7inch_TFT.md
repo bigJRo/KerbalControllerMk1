@@ -13,7 +13,7 @@ Resource panels from the rev-1 display stack to the new 7" TFT carrier board.
 | Subsystem | rev 1 (old) | rev 2 (this board) |
 |---|---|---|
 | MCU | Teensy 4.0 | **Teensy 4.1** |
-| Display controller | RA8875, SPI, 800×480 | **RA8876**, 16-bit 8080 **parallel**, **1024×600** (BuyDisplay ER-TFTM070-6) |
+| Display controller | RA8875, SPI, 800×480 | **RA8876**, 16-bit 8080 **parallel**, **1024×600** (BuyDisplay ER-TFT070A2-6-5633) |
 | Display library | sumotoy `RA8875` | **`wwatson4506/TeensyRA8876-8080`** (`RA8876_t41_p`, FlexIO3) + `TeensyRA8876-GFX-Common` |
 | Fonts | sumotoy `tFont` (proportional 1bpp) | **ILI9341_t3** (`PaulStoffregen/ILI9341_fonts`) |
 | Touch | GSL1680F on Wire1 (16/17) | **FT5316** (FT5x06 family) on **software I2C** (pins 4/5) |
@@ -154,7 +154,7 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
 1. **Display**: minimal sketch — `kcmDisplayBegin()` + `fillScreen()` color cycle +
    a few `drawRect`/`print`. Confirm the panel syncs (no tearing/offset). If it
    doesn't sync, the suspect is the FlexIO bus speed or the module's PLL/timing —
-   compare against the BuyDisplay ER-TFTM070-6 demo's init.
+   compare against the BuyDisplay ER-TFT070A2-6-5633 demo's init.
 2. **Backlight**: confirm BL_CTRL (pin 9) turns the panel on/off.
 3. **Touch**: `setTouchDebug(true)`; confirm the FT5316 ACKs and prints raw
    coordinates. Set `KCM_CTP_SWAP_XY / INVERT_X / INVERT_Y` so a touch lands under
@@ -166,7 +166,7 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
 
 ---
 
-## 8. Authoritative RA8876 init (from the BuyDisplay ER-TFT070A2-6 vendor demo)
+## 8. Authoritative RA8876 init (from the BuyDisplay ER-TFT070A2-6-5633 vendor demo)
 
 The `wwatson4506` library owns the init, but if the panel does not sync on first
 power-up, these are the **confirmed** values for this exact module — paste/match

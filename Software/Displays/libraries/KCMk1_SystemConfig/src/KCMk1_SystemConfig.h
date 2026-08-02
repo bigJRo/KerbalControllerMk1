@@ -10,7 +10,7 @@
   ─────────────────────────────────────────────────────────────────────────────
   The Annunciator, Info, and Resource panels now share a single carrier board
   built around a Teensy 4.1 driving a 7" 1024x600 IPS TFT (BuyDisplay
-  ER-TFTM070-6) over the RA8876 controller's 16-bit 8080 parallel bus.
+  ER-TFT070A2-6-5633) over the RA8876 controller's 16-bit 8080 parallel bus.
 
     Old stack (rev 1)            New stack (rev 2, this file)
     ----------------------       ------------------------------------------

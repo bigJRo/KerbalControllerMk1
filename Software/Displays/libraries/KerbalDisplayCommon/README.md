@@ -19,7 +19,7 @@ The library is designed to be used alongside KerbalDisplayAudio and KerbalSimpit
 | Component | Part | Interface |
 |-----------|------|-----------|
 | Microcontroller | Teensy 4.1 | — |
-| Display | RA8876 (LT7683-compatible) 1024×600 IPS TFT — BuyDisplay ER-TFTM070-6 | 16-bit 8080 parallel (FlexIO3) |
+| Display | RA8876 (LT7683-compatible) 1024×600 IPS TFT — BuyDisplay ER-TFT070A2-6-5633 | 16-bit 8080 parallel (FlexIO3) |
 | Touch controller | FT5316 5-point capacitive (via KCM_Touch) | Software I2C (bit-banged) |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 
