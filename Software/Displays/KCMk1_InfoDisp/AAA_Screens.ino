@@ -65,7 +65,7 @@ const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
   screen_LNCH,     // 0 LNCH
   screen_SCFT,     // 1 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
   screen_ORB,      // 2 ORB
-  screen_ORBADV,   // 3 ORB+
+  screen_LNCHAP,   // 3 ASC — Ascent Autopilot (ORB+ moved to ORB title tap)
   screen_VEH,      // 4 VEH
   screen_MNVR,     // 5 MNVR
   screen_TGT,      // 6 TGT
@@ -75,13 +75,14 @@ const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
 };
 
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "ORB+", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR"
+  "LNCH", "PFD", "ORB", "ASC", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR"
 };
 
 // Which sidebar button should highlight for the active screen. SCFT/ACFT/ROVR all
 // map to the PFD button; every other screen maps 1:1.
 uint8_t screenToButton(ScreenType s) {
   if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) return SB_PFD_BTN;
+  if (s == screen_ORBADV) return 2;   // ORB+ reached via ORB title tap — highlight the ORB button
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
     if (SB_BTN_SCREEN[i] == s) return i;
   return 0xFF;   // no button (shouldn't happen — every screen maps)
@@ -99,7 +100,8 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "AIRCRAFT",
   "ROVER",
   "ORBIT ADVANCED",
-  "RE-ENTRY"
+  "RE-ENTRY",
+  "ASCENT AUTOPILOT"
 };
 
 const char *const SCREEN_IDS[SCREEN_COUNT] = {
@@ -403,6 +405,7 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     case screen_LNDG:   chromeScreen_LNDG(tft); break;   // _lndgReentryMode set false above
     case screen_LNDGRE: chromeScreen_LNDG(tft); break;   // _lndgReentryMode set true above
     case screen_ACFT:   chromeScreen_ACFT(tft); break;
+    case screen_LNCHAP: chromeScreen_LNCHAP(tft); break;
     default: break;
   }
 
@@ -430,6 +433,7 @@ void updateScreen(KCM_TFT &tft, ScreenType s) {
     case screen_LNDG:   _lndgReentryMode = false; drawScreen_LNDG(tft); break;
     case screen_LNDGRE: _lndgReentryMode = true;  drawScreen_LNDG(tft); break;
     case screen_ACFT:   drawScreen_ACFT(tft); break;
+    case screen_LNCHAP: drawScreen_LNCHAP(tft); break;
     default: break;
   }
 }

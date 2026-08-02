@@ -37,7 +37,8 @@ enum ScreenType : uint8_t {
   screen_ROVR   = 9,   // Rover
   screen_ORBADV = 10,  // Orbit — Advanced Elements (text readout)
   screen_LNDGRE = 11,  // Landing — Re-entry
-  screen_COUNT  = 12   // sentinel — not a real screen
+  screen_LNCHAP = 12,  // Ascent Autopilot (replaces ORB+ sidebar slot; ORB+ via ORB title tap)
+  screen_COUNT  = 13   // sentinel — not a real screen
 };
 
 // Manual-lock screen: automatic context switches (vessel change, dock re-check,
@@ -228,6 +229,25 @@ struct AppState {
   uint8_t         commNetSignal = 0;    // CommNet signal strength 0-100%; 0 when CommNet unused
   bool            inAtmo        = false;   // true when vessel is in atmosphere
   uint8_t         sasMode       = 255;     // AutopilotMode enum; 255 = SAS disabled
+
+  // Ascent autopilot — status echoed from Controller_Main (AscentStatus over I2C).
+  // The parameter fields carry the autopilot's currently-confirmed values; the
+  // InfoDisp stages touch/keypad edits locally and sends them back via the outbound
+  // command channel. Actual Ap/Pe, g-force and SoI body reuse the existing fields
+  // (apoapsis / periapsis / gForce / gameSOI).
+  bool      apArmed        = false;   // autopilot engaged
+  uint8_t   apPhase        = 0;       // 0 IDLE,1 VERTICAL,2 GRAVITY TURN,3 COAST,4 CIRCULARIZE,5 COMPLETE,6 ABORT
+  float     apTargetAlt    = 0.0f;    // m   — commanded target apoapsis
+  float     apInclination  = 0.0f;    // deg 0-180 (0 equatorial, 90 polar, >90 retrograde)
+  bool      apSoutherly    = false;   // launch direction: false = N (ascending), true = S (descending)
+  float     apLoft         = 1.0f;    // exponent ~0.5-2.0 (<1 aggressive, 1 balanced, >1 lofted)
+  bool      apRollEnable   = false;   // roll hold enabled
+  float     apRollDeg      = 0.0f;    // deg -180..180 (roll hold target)
+  float     apMaxG         = 0.0f;    // g cap (0 = off)
+  float     apCmdPitch     = 0.0f;    // deg above horizon (commanded)
+  float     apCmdHeading   = 0.0f;    // deg azimuth (commanded)
+  float     apCmdThrottle  = 0.0f;    // 0..1 (commanded)
+  float     apDynPressure  = 0.0f;    // Pa (dynamic pressure)
 };
 
 extern AppState state;
@@ -251,7 +271,7 @@ struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
 static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // 1024
 static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
 static const uint16_t SIDEBAR_W = 84;
-static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
+static const uint8_t  ROW_COUNT = 24;  // max cache slots per screen (Ascent Autopilot uses the most)
 
 
 /***************************************************************************************

@@ -143,6 +143,15 @@ void processTouchEvents() {
           Serial.println(_pfdManualSel == 2 ? F("ROVER") :
                          _pfdManualSel == 1 ? F("AIRCRAFT") : F("SPACECRAFT"));
         }
+      } else if (activeScreen == screen_ORB) {
+        // ORB+ (advanced elements) is now reached by tapping the ORBIT title.
+        switchToScreen(screen_ORBADV);
+        clearTouchISR();
+        if (debugMode) Serial.println(F("InfoDisp: ORB -> ORB+ (advanced elements)"));
+      } else if (activeScreen == screen_ORBADV) {
+        switchToScreen(screen_ORB);
+        clearTouchISR();
+        if (debugMode) Serial.println(F("InfoDisp: ORB+ -> ORB"));
       }
     }
     return;

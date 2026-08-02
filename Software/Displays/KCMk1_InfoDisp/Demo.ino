@@ -173,6 +173,32 @@ void stepDemoState() {
   state.airDensity = (state.inAtmo) ? (0.6f + 0.6f * sinf(_demoPhase * 0.25f)) : 0.0f;
 
   // -----------------------------------------------------------------------
+  // ASCENT AUTOPILOT — cycles the phase through a launch so the panel animates
+  // -----------------------------------------------------------------------
+  {
+    float t = fmodf(_demoPhase, 8.0f);              // 0..8 loop
+    uint8_t ph = (t < 0.6f) ? 0 : (t < 1.4f) ? 1 : (t < 4.0f) ? 2 :
+                 (t < 5.5f) ? 3 : (t < 7.0f) ? 4 : 5;
+    state.apPhase       = ph;
+    state.apArmed       = (ph != 0);
+    state.apTargetAlt   = 80000.0f;
+    state.apInclination = 6.0f;
+    state.apSoutherly   = false;
+    state.apLoft        = 1.0f;
+    state.apRollEnable  = false;
+    state.apRollDeg     = 0.0f;
+    state.apMaxG        = 4.0f;
+    float prog = (t - 1.0f) / 3.0f;                 // 0..1 across the gravity turn
+    if (prog < 0.0f) prog = 0.0f;
+    if (prog > 1.0f) prog = 1.0f;
+    state.apCmdPitch    = 90.0f - 65.0f * prog;
+    state.apCmdHeading  = 90.0f;
+    state.apCmdThrottle = (ph == 3) ? 0.0f : (ph == 4) ? 0.6f : 1.0f;
+    state.apDynPressure = 18000.0f * sinf(t * 0.5f);
+    if (state.apDynPressure < 0.0f) state.apDynPressure = 0.0f;
+  }
+
+  // -----------------------------------------------------------------------
   // TGT — toggles targetAvailable periodically
   // -----------------------------------------------------------------------
   state.tgtDistance   = 5000.0f + 4000.0f * sinf(_demoPhase * 0.3f);
