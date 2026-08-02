@@ -50,6 +50,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case THROTTLE_CMD_MESSAGE:    n = "THROTTLE_CMD";    break;
       case WHEEL_CMD_MESSAGE:        n = "WHEEL_CMD";        break;
       case ELECTRIC_MESSAGE:        n = "ELECTRIC";        break;
+      case TEMP_LIMIT_MESSAGE:      n = "TEMP_LIMIT";      break;
       case SCENE_CHANGE_MESSAGE:    n = "SCENE_CHANGE";    break;
       case VESSEL_CHANGE_MESSAGE:   n = "VESSEL_CHANGE";   break;
       default:                      n = "UNKNOWN";         break;
@@ -225,6 +226,16 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           state.electricChargePercent = (r.available / r.total) * 100.0f;
         else
           state.electricChargePercent = 0.0f;
+      }
+      break;
+
+    case TEMP_LIMIT_MESSAGE:
+      // tempLimitMessage: byte tempLimitPercentage (internal/core), byte skinTempLimitPercentage.
+      // Both are the vessel's hottest part as a % of its temperature limit (0-100).
+      if (msgSize == sizeof(tempLimitMessage)) {
+        tempLimitMessage t = parseMessage<tempLimitMessage>(msg);
+        state.coreTempPct = t.tempLimitPercentage;
+        state.skinTempPct = t.skinTempLimitPercentage;
       }
       break;
 
@@ -473,6 +484,7 @@ void initSimpit() {
   simpit.registerChannel(THROTTLE_CMD_MESSAGE);
   simpit.registerChannel(WHEEL_CMD_MESSAGE);
   simpit.registerChannel(ELECTRIC_MESSAGE);
+  simpit.registerChannel(TEMP_LIMIT_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);
 }

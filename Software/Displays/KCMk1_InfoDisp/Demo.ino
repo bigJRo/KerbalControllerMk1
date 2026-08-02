@@ -217,6 +217,8 @@ void stepDemoState() {
   state.commNetSignal = (uint8_t)constrain((int)(70.0f + 70.0f * sinf(_demoPhase * 0.2f)), 0, 100);
   // Electric charge % — sweeps through the pre-launch board's red/yellow/green bands
   state.electricChargePercent = constrain(70.0f + 45.0f * sinf(_demoPhase * 0.22f), 0.0f, 100.0f);
+  state.coreTempPct = (uint8_t)constrain(55.0f + 45.0f * sinf(_demoPhase * 0.18f),        0.0f, 100.0f);
+  state.skinTempPct = (uint8_t)constrain(60.0f + 40.0f * sinf(_demoPhase * 0.18f + 0.6f), 0.0f, 100.0f);
 
   // All 17 vessel types, one per 2s (~34s full cycle)
   static const VesselType typeCycle[] = {
