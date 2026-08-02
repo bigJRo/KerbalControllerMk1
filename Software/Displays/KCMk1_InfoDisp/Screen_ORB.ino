@@ -994,7 +994,8 @@ static void _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad) {
 }
 
 // ── Per-frame state ───────────────────────────────────────────────────────────────────
-static PrintState _orbPS[7];  // readout strip PrintStates (slot 6 = Inc on INCL)
+// Readout strip caching uses the shared rowCache[screen_ORB]/printState[screen_ORB]
+// (slots 0..6; slot 6 = Inc on INCL) — see the orbPut helper in drawScreen_ORB.
 
 // Vessel dot cache (both panels).
 static bool    _planDotValid = false;
@@ -1018,12 +1019,6 @@ static bool        _pendingSig = false;
 // scene repaint region), so scene repaints don't disturb it.
 static int16_t     _lastBodyIdxDrawn = -1;
 
-// Readout string cache — tracks last-drawn value strings so printValue is only
-// called when the text actually changes. printValue with PrintState is
-// flicker-free only when the string is unchanged and the call is skipped; when
-// called every frame on a changing string, the character-cell erase phase is
-// visible.
-static String      _lastReadout[7];
 // Last-drawn T+Pe/T+Ap label: 0=Pe, 1=Ap, -1=never drawn.
 static int8_t      _lastTLabel = -1;
 
@@ -1140,7 +1135,7 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     _vesselUpdateCount = 0;
     _lastBodyIdxDrawn  = -1;
     _lastTLabel        = -1;
-    for (uint8_t i = 0; i < 7; i++) { _orbPS[i] = PrintState{}; _lastReadout[i] = String("\x01"); }
+    for (uint8_t i = 0; i < 7; i++) { printState[screen_ORB][i] = PrintState{}; rowCache[screen_ORB][i].value = String("\x01"); }
 
     // Panel divider — centred at x=470 (half of the 940px content area)
     tft.drawLine(CONTENT_W / 2, ORB_TITLE_TOP, CONTENT_W / 2, ORB_SCREEN_H, TFT_GREY);
@@ -1369,6 +1364,16 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     const tFont *F = &Roboto_Black_28;
     const uint16_t RH = 37;
 
+    // Cache-checked readout draw backed by the shared rowCache[screen_ORB] (value-only
+    // compare; dark green on black). Geometry is explicit per readout.
+    auto orbPut = [&](uint8_t slot, int16_t x, int16_t y, int16_t w, const String &v) {
+        RowCache &rc = rowCache[screen_ORB][slot];
+        if (rc.value == v) return;
+        printValue(tft, F, x, y, w, RH, "", v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK,
+                   printState[screen_ORB][slot]);
+        rc.value = v;
+    };
+
     // Compute altSL_m from current true anomaly for display
     float altSL_m = -1.0f;
     if (drawSc.isEscape) {
@@ -1389,14 +1394,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // needs to be distinguishable from a small positive value.
 
     // Row 0 — Alt.SL
-    {
-        String v = (altSL_m >= 0.0f) ? formatAlt(altSL_m) : String("---");
-        if (v != _lastReadout[0]) {
-            printValue(tft, F, 110, ORB_RDY1, 360, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[0]);
-            _lastReadout[0] = v;
-        }
-    }
+    orbPut(0, 110, ORB_RDY1, 360, (altSL_m >= 0.0f) ? formatAlt(altSL_m) : String("---"));
     // Row 1 — Pe
     // Hide when Pe is inside the body (impact trajectory, periapsis below
     // surface). Uses the same physical-altitude rule as the marker visibility
@@ -1404,42 +1402,19 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // > 0 (the value here PeA_m is already state.periapsis clamped to ≥ 0).
     {
         bool  peHid  = !drawSc.isEscape && (drawSc.rPe_m <= drawSc.bodyR_m);
-        String v = peHid ? String("---") : formatAlt(PeA_m);
-        if (v != _lastReadout[1]) {
-            printValue(tft, F, 110, ORB_RDY2, 360, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[1]);
-            _lastReadout[1] = v;
-        }
+        orbPut(1, 110, ORB_RDY2, 360, peHid ? String("---") : formatAlt(PeA_m));
     }
     // Row 2 — Ap
-    {
-        String v = drawSc.isEscape ? String("\x80") : formatAlt(ApA_m);
-        if (v != _lastReadout[2]) {
-            printValue(tft, F, 110, ORB_RDY3, 360, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[2]);
-            _lastReadout[2] = v;
-        }
-    }
+    orbPut(2, 110, ORB_RDY3, 360, drawSc.isEscape ? String("\x80") : formatAlt(ApA_m));
     // Row 3 — PRD (orbital period)
-    {
-        String v = drawSc.isEscape ? String("\x80")
-                                   : (state.orbitalPeriod > 0.0f ? formatTimeCompact(state.orbitalPeriod)
-                                                                 : String("---"));
-        if (v != _lastReadout[3]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY1, 348, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[3]);
-            _lastReadout[3] = v;
-        }
-    }
+    orbPut(3, INC_VALUE_X, INC_RDY1, 348,
+           drawSc.isEscape ? String("\x80")
+                           : (state.orbitalPeriod > 0.0f ? formatTimeCompact(state.orbitalPeriod)
+                                                         : String("---")));
     // Row 4 — Arg.Pe
     {
         char buf[10]; dtostrf(state.argOfPe, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _lastReadout[4]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY2, 348, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[4]);
-            _lastReadout[4] = v;
-        }
+        orbPut(4, INC_VALUE_X, INC_RDY2, 348, String(buf) + String("\xb0"));
     }
     // Row 5 — T+Pe / T+Ap (dynamic label + value)
     // Pick whichever is next in time, i.e. whichever positive value is smaller.
@@ -1477,12 +1452,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;
-        String v = (t > 0.0f) ? formatTimeCompact(t) : String("---");
-        if (v != _lastReadout[5]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY3, 348, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[5]);
-            _lastReadout[5] = v;
-        }
+        orbPut(5, INC_VALUE_X, INC_RDY3, 348, (t > 0.0f) ? formatTimeCompact(t) : String("---"));
     }
 
     // Row 6 (INCL top) — Inc (inclination, degrees)
@@ -1491,12 +1461,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // readouts.
     {
         char buf[10]; dtostrf(drawSc.incl_deg, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _lastReadout[6]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY0, 348, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[6]);
-            _lastReadout[6] = v;
-        }
+        orbPut(6, INC_VALUE_X, INC_RDY0, 348, String(buf) + String("\xb0"));
     }
 
     // Optional: total frame timing (very lightweight — only prints on scene repaint)
