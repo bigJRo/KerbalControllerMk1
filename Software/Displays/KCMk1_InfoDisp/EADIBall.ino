@@ -555,3 +555,76 @@ void eadiBallResetState() {
     _eadiPrevHorizLo = INT16_MAX;
     _eadiPrevHorizHi = INT16_MIN;
 }
+
+
+// ═══ Master ball update ══════════════════════════════════════════════════════════════
+// Renders one attitude-ball frame: sky/ground fill (full or delta), horizon line, pitch
+// ladder, ADI markers, aircraft symbol. Vessel attitude and target/maneuver come from
+// `state`; the prograde source differs per screen (SCFT orbital vs ACFT surface velocity)
+// so it is passed in. The caller snapshots its ball-dirty trackers after this returns.
+void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progradePitch) {
+    eadiBuildChordTable();   // no-op after first call
+
+    float pitch = state.pitch;
+    float roll  = -state.roll;   // negate: KerbalSimpit sign convention
+
+    float cosR    = cosf(roll * (float)DEG_TO_RAD);
+    float sinR    = sinf(roll * (float)DEG_TO_RAD);
+    float pitchPx = pitch * EADI_SCALE;
+
+    float K   = sinR * (float)EADI_CX - cosR * (float)EADI_CY - pitchPx;
+    float BCX = (float)EADI_CX - pitchPx * sinR;
+    float BCY = (float)EADI_CY + pitchPx * cosR;
+    float hc2 = (float)EADI_R * EADI_R - pitchPx * pitchPx;
+
+    uint32_t _t0, _t1;
+
+    // ── 1. Sky/ground fill ────────────────────────────────────────────────────────────
+    _t0 = micros();
+    if (fullRedraw) eadiFullDraw(tft, sinR, cosR, K);
+    else            eadiDeltaDraw(tft, sinR, cosR, K);
+    _t1 = micros();
+    if (debugMode) { Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
+                     Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
+
+    // ── 2. Horizon line ───────────────────────────────────────────────────────────────
+    _t0 = micros();
+    int16_t new_horiz_lo = INT16_MAX, new_horiz_hi = INT16_MIN;
+    if (hc2 >= 0.0f) {
+        float hc  = max(0.0f, sqrtf(hc2) - 3.0f);
+        int16_t lx1 = (int16_t)(BCX - hc * cosR);
+        int16_t ly1 = (int16_t)(BCY - hc * sinR);
+        int16_t lx2 = (int16_t)(BCX + hc * cosR);
+        int16_t ly2 = (int16_t)(BCY + hc * sinR);
+        tft.drawLine(lx1, ly1, lx2, ly2, EADI_HORIZON);
+        auto rnd = [](float v) -> int16_t {
+            return (int16_t)(v + (v > 0.0f ? 0.5f : -0.5f));
+        };
+        int16_t px = rnd(sinR), py = rnd(-cosR);
+        tft.drawLine(lx1+px, ly1+py, lx2+px, ly2+py, EADI_HORIZON);
+        new_horiz_lo = min(min(ly1, ly2), min((int16_t)(ly1+py), (int16_t)(ly2+py)));
+        new_horiz_hi = max(max(ly1, ly2), max((int16_t)(ly1+py), (int16_t)(ly2+py)));
+    }
+    eadiBallSetPrevHoriz(new_horiz_lo, new_horiz_hi);
+    _t1 = micros();
+    if (debugMode) { Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
+
+    // ── 3. Pitch ladder ───────────────────────────────────────────────────────────────
+    // Swap bitmaps: prev = last frame's dirty set (used by delta fill above),
+    // current = cleared for this frame's ladder draw.
+    _t0 = micros();
+    eadiBallSwapDirty();
+    eadiDrawLadder(tft, BCX, BCY, sinR, cosR);
+    _t1 = micros();
+    if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
+
+    // ── 4. ADI markers — prograde always; target if available; maneuver if active ──────
+    eadiDrawAdiMarker(tft, progradeHdg, progradePitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
+    if (state.targetAvailable)
+        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
+    if (state.mnvrTime > 0.0f)
+        eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
+
+    // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
+    eadiDrawAircraftSymbol(tft);
+}

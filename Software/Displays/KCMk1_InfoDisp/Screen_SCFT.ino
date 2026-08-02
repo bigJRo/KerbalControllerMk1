@@ -86,8 +86,6 @@ static bool _scftOrbMode() {
     return state.altitude > switchAlt;
 }
 
-static inline float _scftSin(float deg) { return sinf(deg * DEG_TO_RAD); }
-static inline float _scftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
 
 
 
@@ -118,90 +116,6 @@ static bool  _scftPrevTgtAvailBall   = false;
 
 
 
-// ── Master ball update ────────────────────────────────────────────────────────────────
-static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
-    eadiBuildChordTable();   // no-op after first call
-
-    float pitch = state.pitch;
-    float roll  = -state.roll;   // negate: KerbalSimpit sign convention
-
-    float cosR    = _scftCos(roll);
-    float sinR    = _scftSin(roll);
-    float pitchPx = pitch * SCFT_SCALE;
-
-    float K   = sinR * (float)SCFT_CX - cosR * (float)SCFT_CY - pitchPx;
-    float BCX = (float)SCFT_CX - pitchPx * sinR;
-    float BCY = (float)SCFT_CY + pitchPx * cosR;
-    float hc2 = (float)SCFT_R * SCFT_R - pitchPx * pitchPx;
-
-    uint32_t _t0, _t1;
-
-    // ── 1. Sky/ground fill ────────────────────────────────────────────────────────────
-    _t0 = micros();
-    if (fullRedraw) eadiFullDraw(tft, sinR, cosR, K);
-    else            eadiDeltaDraw(tft, sinR, cosR, K);
-    _t1 = micros();
-    if (debugMode) { Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
-                     Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
-
-    // ── 2. Horizon line ───────────────────────────────────────────────────────────────
-    _t0 = micros();
-    int16_t new_horiz_lo = INT16_MAX, new_horiz_hi = INT16_MIN;
-    if (hc2 >= 0.0f) {
-        float hc  = max(0.0f, sqrtf(hc2) - 3.0f);
-        int16_t lx1 = (int16_t)(BCX - hc * cosR);
-        int16_t ly1 = (int16_t)(BCY - hc * sinR);
-        int16_t lx2 = (int16_t)(BCX + hc * cosR);
-        int16_t ly2 = (int16_t)(BCY + hc * sinR);
-        tft.drawLine(lx1, ly1, lx2, ly2, SCFT_HORIZON);
-        auto rnd = [](float v) -> int16_t {
-            return (int16_t)(v + (v > 0.0f ? 0.5f : -0.5f));
-        };
-        int16_t px = rnd(sinR), py = rnd(-cosR);
-        tft.drawLine(lx1+px, ly1+py, lx2+px, ly2+py, SCFT_HORIZON);
-        new_horiz_lo = min(min(ly1, ly2), min((int16_t)(ly1+py), (int16_t)(ly2+py)));
-        new_horiz_hi = max(max(ly1, ly2), max((int16_t)(ly1+py), (int16_t)(ly2+py)));
-    }
-    eadiBallSetPrevHoriz(new_horiz_lo, new_horiz_hi);
-    _t1 = micros();
-    if (debugMode) { Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
-
-    // ── 3. Pitch ladder ───────────────────────────────────────────────────────────────
-    // Swap bitmaps: prev = last frame's dirty set (used by delta fill above),
-    // current = cleared for this frame's ladder draw.
-    _t0 = micros();
-    eadiBallSwapDirty();
-    eadiDrawLadder(tft, BCX, BCY, sinR, cosR);
-    _t1 = micros();
-    if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
-
-    // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
-    //    Prograde always drawn; target if available; maneuver if active.
-    //    Each call self-clips to the ball's visible cone.
-    eadiDrawAdiMarker(tft, _scftVelHdg, _scftVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
-    if (state.targetAvailable)
-        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
-    if (state.mnvrTime > 0.0f)
-        eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
-
-    // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
-    eadiDrawAircraftSymbol(tft);
-
-    _scftPrevPitch = state.pitch;
-    _scftPrevRoll  = state.roll;
-
-    // Ball-side marker trackers — snapshot current values so the next frame's
-    // dirty check sees no change unless something actually moved.
-    _scftPrevHeadingBall    = state.heading;
-    _scftPrevVelHdgBall     = _scftVelHdg;
-    _scftPrevVelPitchBall   = _scftVelPitch;
-    _scftPrevMnvrHdgBall    = state.mnvrHeading;
-    _scftPrevMnvrPitchBall  = state.mnvrPitch;
-    _scftPrevTgtHdgBall     = state.tgtHeading;
-    _scftPrevTgtPitchBall   = state.tgtPitch;
-    _scftPrevMnvrActiveBall = (state.mnvrTime > 0.0f);
-    _scftPrevTgtAvailBall   = state.targetAvailable;
-}
 
 
 // ── Roll indicator state ──────────────────────────────────────────────────────────────
@@ -1035,7 +949,19 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     if (ballDirty) {
         bool full = _scftFullRedrawNeeded;
         uint32_t t0 = micros();
-        _scftDrawBall(tft, full);
+        eadiDrawBall(tft, full, _scftVelHdg, _scftVelPitch);
+        // Snapshot ball-dirty trackers for next frame's dirty check.
+        _scftPrevPitch = state.pitch;
+        _scftPrevRoll  = state.roll;
+        _scftPrevHeadingBall    = state.heading;
+        _scftPrevVelHdgBall     = _scftVelHdg;
+        _scftPrevVelPitchBall   = _scftVelPitch;
+        _scftPrevMnvrHdgBall    = state.mnvrHeading;
+        _scftPrevMnvrPitchBall  = state.mnvrPitch;
+        _scftPrevTgtHdgBall     = state.tgtHeading;
+        _scftPrevTgtPitchBall   = state.tgtPitch;
+        _scftPrevMnvrActiveBall = (state.mnvrTime > 0.0f);
+        _scftPrevTgtAvailBall   = state.targetAvailable;
         _scftFullRedrawNeeded = false;
         uint32_t dt = micros() - t0;
         if (debugMode) {
