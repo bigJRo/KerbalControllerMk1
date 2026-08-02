@@ -83,7 +83,7 @@ static inline int16_t apValY(uint8_t slot) { return apRowY(AP_CELLS[slot].row) +
 // N/S, 2 numeric+OFF (roll hold), 3 numeric+OFF (max-G, 0=off).
 struct ApEdit { uint8_t slot, kind; const char *name, *units; float mn, mx; };
 static const ApEdit AP_EDITS[6] = {
-  { AP_TGTALT, 0, "TARGET APOAPSIS",  "km",   0.0f, 2000000.0f },
+  { AP_TGTALT, 0, "TARGET APOAPSIS",  "m",    0.0f, 2000000000.0f },
   { AP_INCL,   0, "INCLINATION",      "\xB0", 0.0f, 180.0f },
   { AP_DIR,    1, "LAUNCH DIRECTION", "",     0.0f, 0.0f },
   { AP_LOFT,   0, "LOFT EXPONENT",    "",     0.5f, 2.0f },
@@ -129,10 +129,10 @@ static const int16_t KP_CX = KP_X + KP_W - 74, KP_CY = KP_Y + 8, KP_CW = 66, KP_
 
 // Key labels (row-major). "" = disabled slot.
 static const char *const KP_KEYS[4][4] = {
-  { "7", "8", "9", "DEL" },
-  { "4", "5", "6", "CLR" },
-  { "1", "2", "3", "+/-" },
-  { "0", ".", "OFF", "ENT" },
+  { "7",   "8", "9", "DEL" },
+  { "4",   "5", "6", "CLR" },
+  { "1",   "2", "3", "OFF" },
+  { "+/-", "0", ".", "ENT" },
 };
 
 // ── Phase name / colour ─────────────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ static void apCommitKeypad() {
   float v = (apKpLen ? atof(apKpBuf) : 0.0f);
   if (v < e.mn) v = e.mn; if (v > e.mx) v = e.mx;
   switch (e.slot) {
-    case AP_TGTALT: apTgt = v * 1000.0f; apDTgt = true; break;   // km -> m
+    case AP_TGTALT: apTgt = v; apDTgt = true; break;   // entered in metres
     case AP_INCL:   apInc = v; apDInc = true; break;
     case AP_LOFT:   apLof = v; apDLof = true; break;
     case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = true; break;
