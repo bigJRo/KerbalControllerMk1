@@ -196,3 +196,126 @@ void eadiUpdateRollIndicator(KCM_TFT &tft, float roll) {
     eadiDrawRollPointer(tft, clampedRoll, TFT_YELLOW);
     _eadiPrevRollIndicator = roll;
 }
+
+
+// ═══ Pitch ladder ════════════════════════════════════════════════════════════════════
+static const int16_t  EADI_BALL_Y0   = EADI_CY - EADI_R;             // 94 (top scanline of ball)
+static const uint16_t EADI_SCANLINES = (uint16_t)(EADI_R * 2 + 1);   // 413
+static const float    EADI_SCALE     = (float)EADI_R / 30.0f;        // px per degree
+
+// Mark scanline y occupied in the caller's per-scanline dirty bitmap (so the delta fill
+// erases the rung/label next frame). `dirty` is the caller-owned array (>= 26 words).
+void eadiLadderDirtySet(uint16_t *dirty, int16_t y) {
+    int16_t i = y - EADI_BALL_Y0;
+    if (i < 0 || i >= (int16_t)EADI_SCANLINES) return;
+    dirty[i >> 4] |= (uint16_t)(1u << (i & 15));
+}
+
+// Draw the pitch ladder. Rungs are marked into `dirty` for next frame's delta erase.
+void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR,
+                    uint16_t *dirty) {
+    static const int16_t HL_MAJ  = 47;   // major rung half-length
+    static const int16_t HL_MIN  = 29;   // minor rung half-length
+    static const int16_t LBL_GAP = 8;
+    static const uint8_t FONT_W  = 9;    // Roboto_Black_16 digit advance
+    static const uint8_t FONT_H  = 19;   // Roboto_Black_16 cap height
+
+    tft.setFont(Roboto_Black_16);
+    tft.setTextColor(EADI_LADDER);
+
+    auto rnd = [](float v) -> int16_t {
+        return (int16_t)(v + (v > 0.0f ? 0.5f : -0.5f));
+    };
+    int16_t spx = rnd(sinR), spy = rnd(-cosR);
+
+    auto clampToDisc = [](int16_t &px, int16_t &py) {
+        float dx = (float)px - EADI_CX, dy = (float)py - EADI_CY;
+        float d2 = dx*dx + dy*dy;
+        if (d2 > (float)(EADI_R-1) * (float)(EADI_R-1)) {
+            float s = (float)(EADI_R-1) / sqrtf(d2);
+            px = EADI_CX + (int16_t)(dx*s);
+            py = EADI_CY + (int16_t)(dy*s);
+        }
+    };
+
+    auto boxInDisc = [](int16_t lx, int16_t ly, uint8_t lw, uint8_t lh) -> bool {
+        for (int8_t cx = 0; cx <= 1; cx++)
+            for (int8_t cy = 0; cy <= 1; cy++) {
+                float dx = (float)(lx + cx*(int16_t)lw) - EADI_CX;
+                float dy = (float)(ly + cy*(int16_t)lh) - EADI_CY;
+                if (dx*dx + dy*dy >= (float)EADI_R * EADI_R) return false;
+            }
+        return true;
+    };
+
+    float R2 = (float)EADI_R * (float)EADI_R;
+
+    // Pitch clamped +/-90deg in KSP. Step in 5deg increments.
+    for (int16_t lad_p_x2 = -180; lad_p_x2 <= 180; lad_p_x2 += 10) {
+        if (lad_p_x2 == 0) continue;   // skip horizon (drawn separately)
+        float  lad_p = (float)lad_p_x2 * 0.5f;
+        float  delta = lad_p * EADI_SCALE;
+
+        // Rung foot = ball centre + lad_p offset along sky-ward (sinR,-cosR)
+        float rfx = BCX + delta * sinR;
+        float rfy = BCY - delta * cosR;
+
+        float fd2 = (rfx-EADI_CX)*(rfx-EADI_CX) + (rfy-EADI_CY)*(rfy-EADI_CY);
+        if (fd2 >= R2) continue;
+
+        bool is_major = (lad_p_x2 % 20 == 0);   // divisible by 10deg
+        float hl = is_major ? (float)HL_MAJ : (float)HL_MIN;
+
+        // Rung line along horizon direction (cosR, sinR)
+        float rx1 = rfx - hl*cosR, ry1 = rfy - hl*sinR;
+        float rx2 = rfx + hl*cosR, ry2 = rfy + hl*sinR;
+
+        float cx1, cy1, cx2, cy2;
+        eadiClipToDisk(rfx, rfy, rx1, ry1, cx1, cy1);
+        eadiClipToDisk(rfx, rfy, rx2, ry2, cx2, cy2);
+
+        int16_t lx1 = (int16_t)cx1, ly1 = (int16_t)cy1;
+        int16_t lx2 = (int16_t)cx2, ly2 = (int16_t)cy2;
+        int16_t lx1b = lx1+spx, ly1b = ly1+spy;
+        int16_t lx2b = lx2+spx, ly2b = ly2+spy;
+        clampToDisc(lx1b, ly1b);
+        clampToDisc(lx2b, ly2b);
+
+        // Mark every scanline the rung touches as dirty for next frame's delta erase.
+        {
+            int16_t y_lo = min(min(ly1, ly2), min(ly1b, ly2b));
+            int16_t y_hi = max(max(ly1, ly2), max(ly1b, ly2b));
+            for (int16_t yd = y_lo; yd <= y_hi; yd++) eadiLadderDirtySet(dirty, yd);
+        }
+
+        tft.drawLine(lx1,  ly1,  lx2,  ly2,  EADI_LADDER);
+        tft.drawLine(lx1b, ly1b, lx2b, ly2b, EADI_LADDER);
+
+        if (!is_major) continue;   // only label 10deg multiples
+
+        int16_t abs_p   = lad_p_x2 < 0 ? -lad_p_x2 : lad_p_x2;
+        abs_p /= 2;   // back to degrees
+        char    lbl[4];
+        lbl[0] = '0' + (int8_t)(abs_p / 10);
+        lbl[1] = '0' + (int8_t)(abs_p % 10);
+        lbl[2] = '\0';
+        uint8_t lw = (uint8_t)(strlen(lbl) * FONT_W);
+
+        // Push each label away from the rung foot along the rung direction.
+        float rung_cx = (cx1 + cx2) * 0.5f;  // rung foot screen x (midpoint of clipped ends)
+        auto placeLabel = [&](float ex, float ey) {
+            float dx = ex - rung_cx;
+            float sign = (dx >= 0.0f) ? 1.0f : -1.0f;
+            int16_t lx = (int16_t)(ex + (float)LBL_GAP * sign);
+            if (sign > 0.0f && lx < (int16_t)ex)  lx = (int16_t)ex + LBL_GAP;
+            if (sign < 0.0f && lx + lw > (int16_t)ex) lx = (int16_t)ex - LBL_GAP - lw;
+            int16_t ly = (int16_t)(ey) - FONT_H/2;
+            if (boxInDisc(lx, ly, lw, FONT_H)) {
+                for (int16_t yd = ly; yd < ly + FONT_H; yd++) eadiLadderDirtySet(dirty, yd);
+                tft.setCursor(lx, ly); tft.print(lbl);
+            }
+        };
+        placeLabel(cx1, cy1);
+        placeLabel(cx2, cy2);
+    }
+}

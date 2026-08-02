@@ -134,122 +134,6 @@ static inline float _scftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
 // (eadiDrawScanline / eadiDrawAircraftSymbol / eadiClipToDisk).
 
 
-// ── Pitch ladder ──────────────────────────────────────────────────────────────────────
-// Marks each scanline it touches in _scftLadderDirty[] so delta fill can erase old pixels.
-static void _scftDrawLadder(KCM_TFT &tft,
-                            float BCX, float BCY,
-                            float sinR, float cosR) {
-    static const int16_t HL_MAJ  = 47;   // major rung half-length (matches ACFT)
-    static const int16_t HL_MIN  = 29;   // minor rung half-length
-    static const int16_t LBL_GAP = 8;
-    static const uint8_t FONT_W  = 9;    // Roboto_Black_16 digit advance
-    static const uint8_t FONT_H  = 19;   // Roboto_Black_16 cap height
-
-    tft.setFont(Roboto_Black_16);
-    tft.setTextColor(SCFT_LADDER);
-
-    auto rnd = [](float v) -> int16_t {
-        return (int16_t)(v + (v > 0.0f ? 0.5f : -0.5f));
-    };
-    int16_t spx = rnd(sinR), spy = rnd(-cosR);
-
-    auto clampToDisc = [](int16_t &px, int16_t &py) {
-        float dx = (float)px - SCFT_CX, dy = (float)py - SCFT_CY;
-        float d2 = dx*dx + dy*dy;
-        if (d2 > (float)(SCFT_R-1) * (float)(SCFT_R-1)) {
-            float s = (float)(SCFT_R-1) / sqrtf(d2);
-            px = SCFT_CX + (int16_t)(dx*s);
-            py = SCFT_CY + (int16_t)(dy*s);
-        }
-    };
-
-    auto boxInDisc = [](int16_t lx, int16_t ly, uint8_t lw, uint8_t lh) -> bool {
-        for (int8_t cx = 0; cx <= 1; cx++)
-            for (int8_t cy = 0; cy <= 1; cy++) {
-                float dx = (float)(lx + cx*(int16_t)lw) - SCFT_CX;
-                float dy = (float)(ly + cy*(int16_t)lh) - SCFT_CY;
-                if (dx*dx + dy*dy >= (float)SCFT_R * SCFT_R) return false;
-            }
-        return true;
-    };
-
-    float R2 = (float)SCFT_R * (float)SCFT_R;
-
-    // Pitch clamped ±90° in KSP. Step in 5° increments.
-    for (int16_t lad_p_x2 = -180; lad_p_x2 <= 180; lad_p_x2 += 10) {
-        if (lad_p_x2 == 0) continue;   // skip horizon (drawn separately)
-        float  lad_p = (float)lad_p_x2 * 0.5f;
-        float  delta = lad_p * SCFT_SCALE;
-
-        // Rung foot = ball centre + lad_p offset along sky-ward (sinR,-cosR)
-        // Equivalently: (BCX + delta*sinR, BCY - delta*cosR)
-        float rfx = BCX + delta * sinR;
-        float rfy = BCY - delta * cosR;
-
-        float fd2 = (rfx-SCFT_CX)*(rfx-SCFT_CX) + (rfy-SCFT_CY)*(rfy-SCFT_CY);
-        if (fd2 >= R2) continue;
-
-        bool is_major = (lad_p_x2 % 20 == 0);   // divisible by 10°
-        // else minor (5°)
-        float hl = is_major ? (float)HL_MAJ : (float)HL_MIN;
-
-        // Rung line along horizon direction (cosR, sinR)
-        float rx1 = rfx - hl*cosR, ry1 = rfy - hl*sinR;
-        float rx2 = rfx + hl*cosR, ry2 = rfy + hl*sinR;
-
-        float cx1, cy1, cx2, cy2;
-        eadiClipToDisk(rfx, rfy, rx1, ry1, cx1, cy1);
-        eadiClipToDisk(rfx, rfy, rx2, ry2, cx2, cy2);
-
-        int16_t lx1 = (int16_t)cx1, ly1 = (int16_t)cy1;
-        int16_t lx2 = (int16_t)cx2, ly2 = (int16_t)cy2;
-        int16_t lx1b = lx1+spx, ly1b = ly1+spy;
-        int16_t lx2b = lx2+spx, ly2b = ly2+spy;
-        clampToDisc(lx1b, ly1b);
-        clampToDisc(lx2b, ly2b);
-
-        // Mark every scanline the rung touches as dirty for next frame's delta erase.
-        // drawLine touches all y values between its endpoints — mark that range.
-        {
-            int16_t y_lo = min(min(ly1, ly2), min(ly1b, ly2b));
-            int16_t y_hi = max(max(ly1, ly2), max(ly1b, ly2b));
-            for (int16_t yd = y_lo; yd <= y_hi; yd++) _scftLadderDirtySet(yd);
-        }
-
-        tft.drawLine(lx1,  ly1,  lx2,  ly2,  SCFT_LADDER);
-        tft.drawLine(lx1b, ly1b, lx2b, ly2b, SCFT_LADDER);
-
-        if (!is_major) continue;   // only label 10° multiples
-
-        int16_t abs_p   = lad_p_x2 < 0 ? -lad_p_x2 : lad_p_x2;
-        abs_p /= 2;   // back to degrees
-        char    lbl[4];
-        lbl[0] = '0' + (int8_t)(abs_p / 10);
-        lbl[1] = '0' + (int8_t)(abs_p % 10);
-        lbl[2] = '\0';
-        uint8_t lw = (uint8_t)(strlen(lbl) * FONT_W);
-
-        // Push each label away from the rung foot along the rung direction.
-        // Then clamp lx so the label box edge never crosses back into the rung x range.
-        float rung_cx = (cx1 + cx2) * 0.5f;  // rung foot screen x (midpoint of clipped ends)
-        auto placeLabel = [&](float ex, float ey) {
-            // Direction from rung midpoint to this endpoint
-            float dx = ex - rung_cx;
-            float sign = (dx >= 0.0f) ? 1.0f : -1.0f;
-            int16_t lx = (int16_t)(ex + (float)LBL_GAP * sign);
-            if (sign > 0.0f && lx < (int16_t)ex)  lx = (int16_t)ex + LBL_GAP;
-            if (sign < 0.0f && lx + lw > (int16_t)ex) lx = (int16_t)ex - LBL_GAP - lw;
-            int16_t ly = (int16_t)(ey) - FONT_H/2;
-            if (boxInDisc(lx, ly, lw, FONT_H)) {
-                // Mark all label rows dirty
-                for (int16_t yd = ly; yd < ly + FONT_H; yd++) _scftLadderDirtySet(yd);
-                tft.setCursor(lx, ly); tft.print(lbl);
-            }
-        };
-        placeLabel(cx1, cy1);
-        placeLabel(cx2, cy2);
-    }
-}
 
 
 // ── Full ball draw ────────────────────────────────────────────────────────────────────
@@ -526,7 +410,7 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     _t0 = micros();
     memcpy(_scftLadderDirtyPrev, _scftLadderDirty, sizeof(_scftLadderDirty));
     memset(_scftLadderDirty, 0, sizeof(_scftLadderDirty));
-    _scftDrawLadder(tft, BCX, BCY, sinR, cosR);
+    eadiDrawLadder(tft, BCX, BCY, sinR, cosR, _scftLadderDirty);
     _t1 = micros();
     if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
