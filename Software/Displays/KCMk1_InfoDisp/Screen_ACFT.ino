@@ -1132,16 +1132,16 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
 // while trim is enabled; erased once when it clears.
 static void _acftDrawTrim(KCM_TFT &tft) {
     static bool prev = false;
-    int16_t tw = getFontStringWidth(&Roboto_Black_16, "TRIM");
-    int16_t x  = (ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W) - tw;
-    int16_t y  = ACFT_HDG_TAPE_Y - (int16_t)Roboto_Black_16.cap_height - 2;
+    int16_t tw = getFontStringWidth(&Roboto_Black_20, "TRIM");
+    int16_t x  = (ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W) - tw - 8;
+    int16_t y  = ACFT_HDG_TAPE_Y - (int16_t)Roboto_Black_20.cap_height - 2 - 8;
     if (state.trimEnabled) {
-        tft.setFont(Roboto_Black_16);
+        tft.setFont(Roboto_Black_20);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(x, y);
         tft.print("TRIM");
     } else if (prev) {
-        tft.fillRect(x - 2, y - 2, tw + 4, (int16_t)Roboto_Black_16.cap_height + 6, TFT_BLACK);
+        tft.fillRect(x - 2, y - 2, tw + 4, (int16_t)Roboto_Black_20.cap_height + 6, TFT_BLACK);
     }
     prev = state.trimEnabled;
 }
