@@ -61,9 +61,9 @@ const float SLIP_WARN_DEG  = 5.0f;   // yellow
 const float SLIP_ALARM_DEG = 15.0f;  // white-on-red
 
 // G-force thresholds (shared with LNDG re-entry and DOCK)
-const float G_WARN_POS  =  4.0f;   // yellow — sustained high-G
+const float G_WARN_POS  = KCM_HIGH_G_WARN_POS;    // #3D yellow — sustained high-G   (cross-panel aligned)
 const float G_ALARM_POS = KCM_HIGH_G_ALARM_POS;   // #3D aligned with Annunciator CW_HIGH_G_ALARM
-const float G_WARN_NEG  = -2.0f;   // yellow — negative G
+const float G_WARN_NEG  = KCM_HIGH_G_WARN_NEG;    // #3D yellow — negative G          (cross-panel aligned)
 const float G_ALARM_NEG = KCM_HIGH_G_ALARM_NEG;   // #3D aligned with Annunciator CW_HIGH_G_WARN
 
 

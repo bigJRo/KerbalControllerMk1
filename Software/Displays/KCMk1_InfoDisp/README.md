@@ -111,6 +111,8 @@ Cross-panel aligned thresholds (edit in `KCMk1_SystemConfig.h`):
 | `LNDG_TGRND_ALARM_S` | `10.0` s | `CW_GROUND_PROX_S` |
 | `G_ALARM_POS` | `9.0` g | `CW_HIGH_G_ALARM` |
 | `G_ALARM_NEG` | `−5.0` g | `CW_HIGH_G_WARN` |
+| `G_WARN_POS` | `4.0` g | `KCM_HIGH_G_WARN_POS` (caution tier) |
+| `G_WARN_NEG` | `−2.0` g | `KCM_HIGH_G_WARN_NEG` (caution tier) |
 | `DV_STG_ALARM_MS` | `150.0` m/s | `CW_LOW_DV_MS` |
 | `LNCH_BURNTIME_ALARM_S` | `60.0` s | `CW_LOW_BURN_S` |
 

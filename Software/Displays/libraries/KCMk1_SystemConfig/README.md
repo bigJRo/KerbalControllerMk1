@@ -34,9 +34,9 @@ Place the `KCMk1_SystemConfig` folder in your Arduino `libraries/` directory alo
 | Serial | `KCM_SERIAL_BAUD` (115200) |
 | Touch filter | `KCM_TOUCH_DEBOUNCE_MS`, `KCM_TOUCH_DEAD_ZONE_PX`, `KCM_TOUCH_JITTER_MAX_PX`, `KCM_TOUCH_TITLE_DEBOUNCE_MS` |
 | Default modes | `KCM_DEFAULT_DEBUG_MODE`, `KCM_DEFAULT_DEMO_MODE`, `KCM_DEFAULT_DISPLAY_ROTATION` |
-| Cross-panel thresholds | `KCM_GROUND_PROX_S`, `KCM_HIGH_G_ALARM_POS`, `KCM_HIGH_G_ALARM_NEG`, `KCM_LOW_DV_MS`, `KCM_LOW_BURN_S` |
+| Cross-panel thresholds | `KCM_GROUND_PROX_S`, `KCM_HIGH_G_ALARM_POS`, `KCM_HIGH_G_ALARM_NEG`, `KCM_HIGH_G_WARN_POS`, `KCM_HIGH_G_WARN_NEG`, `KCM_LOW_DV_MS`, `KCM_LOW_BURN_S` |
 
-The five cross-panel thresholds must stay identical between the Annunciator C&W logic and the InfoDisp display thresholds. Edit here only — the local constants in each sketch are aliases to these values.
+The cross-panel thresholds must stay identical between the Annunciator C&W logic and the InfoDisp display thresholds. Edit here only — the local constants in each sketch are aliases to these values. (The G **alarm** limits are the Annunciator's single HIGH-G warning trip points; the G **warn** limits add InfoDisp's yellow caution tier on the two-tier G gauges.)
 
 ---
 

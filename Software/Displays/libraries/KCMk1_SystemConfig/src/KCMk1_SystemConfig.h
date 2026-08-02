@@ -150,8 +150,10 @@
 // display thresholds. Edit here only — local constants in each sketch alias these.
 // =============================================================================
 #define KCM_GROUND_PROX_S         10.0f   // CW_GROUND_PROX_S / LNDG_TGRND_ALARM_S
-#define KCM_HIGH_G_ALARM_POS       9.0f   // CW_HIGH_G_ALARM   / G_ALARM_POS
-#define KCM_HIGH_G_ALARM_NEG      -5.0f   // CW_HIGH_G_WARN    / G_ALARM_NEG
+#define KCM_HIGH_G_ALARM_POS       9.0f   // CW_HIGH_G_ALARM   / G_ALARM_POS  — red (Annunciator warning limit)
+#define KCM_HIGH_G_ALARM_NEG      -5.0f   // CW_HIGH_G_WARN    / G_ALARM_NEG  — red (Annunciator warning limit)
+#define KCM_HIGH_G_WARN_POS        4.0f   //                    G_WARN_POS   — yellow caution tier (InfoDisp two-tier gauges)
+#define KCM_HIGH_G_WARN_NEG       -2.0f   //                    G_WARN_NEG   — yellow caution tier (InfoDisp two-tier gauges)
 #define KCM_LOW_DV_MS            150.0f   // CW_LOW_DV_MS      / DV_STG_ALARM_MS
 #define KCM_LOW_BURN_S            60.0f   // CW_LOW_BURN_S     / LNCH_BURNTIME_ALARM_S
 #define KCM_TEMP_ALARM_PCT          90    // CW_HIGH_TEMP (tempAlarm) — core/skin temp % of limit
