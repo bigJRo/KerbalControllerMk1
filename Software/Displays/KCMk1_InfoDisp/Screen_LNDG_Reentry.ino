@@ -21,8 +21,8 @@
      - CHUTE DEPLOY       : horizontal airspeed bar with live safe-deploy limits.
      - Skin / core temp   : two horizontal bars beneath the chute bar.
 
-   Text panel (right, x >= RE_TXT_X): T+Grnd/T+Atm, Alt, V.Srf, PeA, Mach, G, and the
-   chute / gear / SAS status board.
+   Text panel (right, x >= RE_TXT_X): T+Grnd/T+Atm, Alt, V.Srf, PeA, Mach, V.Vrt, and the
+   chute / gear / SAS status board. (G load is shown by the graphical G meter.)
 
    The graphics widgets are fully repainted every frame (the hardware double buffer
    BTE-copies the front page to the back each frame, so a full widget repaint simply
@@ -621,7 +621,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA:",   COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "Mach:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "G:",     COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Vrt:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
   // Rows 6 (Drogue|Main) and 7 (Gear|SAS) — split, with dividers
   auto splitLabels = [&](uint8_t row, const char *lbl, const char *rbl) {
@@ -723,13 +723,19 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     reVal(4, "Mach:", String(buf), transonic ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
   }
 
-  // Row 5: G
+  // Row 5: V.Vrt (vertical descent rate). The G load now lives in the graphical G meter.
+  // Hazard-coloured (landing thresholds) only near the ground; at altitude a high descent
+  // rate is normal, so it reads neutral there.
   {
-    float g = state.gForce; snprintf(buf, sizeof(buf), "%.2f", g);
-    fg = (g > G_ALARM_POS || g < G_ALARM_NEG) ? TFT_WHITE  :
-         (g > G_WARN_POS  || g < G_WARN_NEG)  ? TFT_YELLOW : TFT_DARK_GREEN;
-    bg = (g > G_ALARM_POS || g < G_ALARM_NEG) ? TFT_RED    : TFT_BLACK;
-    reVal(5, "G:", String(buf), fg, bg);
+    float vv = state.verticalVel;
+    if (state.inAtmo && state.radarAlt < ALT_RDR_WARN_M) {
+      fg = (vv < LNDG_VVRT_ALARM_MS) ? TFT_WHITE  :
+           (vv < LNDG_VVRT_WARN_MS)  ? TFT_YELLOW : TFT_DARK_GREEN;
+      bg = (vv < LNDG_VVRT_ALARM_MS) ? TFT_RED    : TFT_BLACK;
+    } else {
+      fg = TFT_DARK_GREEN; bg = TFT_BLACK;
+    }
+    reVal(5, "V.Vrt:", fmtMs(vv), fg, bg);
   }
 
   // ── Chute latch bookkeeping — armed-safe when deployed below the rip q ──
