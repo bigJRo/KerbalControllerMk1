@@ -47,15 +47,17 @@ static const uint16_t RE_TAPE_W   = 44;
 static const uint16_t RE_TAPE_Y   = TITLE_TOP + 8;                  // 70
 static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
-static const uint16_t RE_TAPE_GUT = 58;   // right-side marker gutter (erased each frame)
+static const uint16_t RE_TAPE_GUT = 48;   // right-side marker gutter (erased each frame)
+static const int16_t  RE_TAPE_M   = 12;   // marker half-height inset — the tape's VISIBLE
+                                          // rectangle is RE_TAPE_Y+M .. RE_TAPE_BOT-M
 
-// ── ATMO density bar — matches the altitude tape (same width/height + vertical label)
-//    and sits just right of it. Its own vertical "ATMO" label is at RE_ATMO_LBL_X. ──
-static const uint16_t RE_ATMO_LBL_X = 150;                          // vertical label column
-static const uint16_t RE_ATMO_X   = 166;
+// ── ATMO density bar — matches the altitude tape's VISIBLE rectangle (same width and
+//    same inset top/bottom) and sits just right of it, with a matching vertical label. ──
+static const uint16_t RE_ATMO_LBL_X = 138;                          // vertical label column
+static const uint16_t RE_ATMO_X   = 154;
 static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape (44)
-static const uint16_t RE_ATMO_Y   = RE_TAPE_Y;                      // same top as the tape (70)
-static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT;                    // same bottom (597)
+static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 82 — same top as the tape's border
+static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 585 — same bottom as the tape's border
 static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
 
 // ── Alignment ball (centre-top) — shifted right to clear the ATMO bar ──
@@ -170,7 +172,6 @@ static void _reDrawTape(KCM_TFT &tft) {
   // The drawn bar is inset from the full footprint by the marker half-height so the
   // markers can reach the true 0 / scaleTop ends without their triangles overhanging
   // (no clamping — clamping would misreport the value at the extremes).
-  const int16_t RE_TAPE_M = 12;                       // marker half-height inset
   const int16_t yTop = RE_TAPE_Y + RE_TAPE_M;
   const int16_t yBot = RE_TAPE_BOT - RE_TAPE_M;
   const int16_t usableH = yBot - yTop;
@@ -553,7 +554,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   drawVerticalText(tft, 0, RE_TAPE_Y, 14, RE_TAPE_H, &Roboto_Black_12,
                    "ALTITUDE", TFT_LIGHT_GREY, TFT_BLACK);
   drawVerticalText(tft, RE_ATMO_LBL_X, RE_ATMO_Y, 14, RE_ATMO_H, &Roboto_Black_12,
-                   "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
+                   "ATMOSPHERE", TFT_LIGHT_GREY, TFT_BLACK);
 
   const uint16_t RHW = RE_TXT_W / 2;
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
