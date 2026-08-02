@@ -43,19 +43,19 @@ static const uint16_t RE_TXT_W   = CONTENT_W - RE_TXT_X;// 360
 
 // ── Corridor tape (far left) ──
 static const uint16_t RE_TAPE_X   = 44;
-static const uint16_t RE_TAPE_W   = 44;
+static const uint16_t RE_TAPE_W   = 35;   // ~80% of the original 44 to free horizontal room
 static const uint16_t RE_TAPE_Y   = TITLE_TOP + 8;                  // 70
 static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
-static const uint16_t RE_TAPE_GUT = 42;   // right-side marker gutter (erased each frame)
+static const uint16_t RE_TAPE_GUT = 34;   // right-side marker gutter (erased each frame)
 static const int16_t  RE_TAPE_M   = 8;    // marker half-height inset (= triangle half-height + 1);
                                           // the tape's VISIBLE rectangle is RE_TAPE_Y+M .. RE_TAPE_BOT-M
 
 // ── ATMO density bar — matches the altitude tape's VISIBLE rectangle (same width and
 //    same inset top/bottom) and sits just right of it, with a matching vertical label. ──
-static const uint16_t RE_ATMO_LBL_X = 131;                          // vertical label column
-static const uint16_t RE_ATMO_X   = 147;
-static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape (44)
+static const uint16_t RE_ATMO_LBL_X = 114;                          // vertical label column
+static const uint16_t RE_ATMO_X   = 130;
+static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape
 static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 82 — same top as the tape's border
 static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 585 — same bottom as the tape's border
 static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
@@ -233,9 +233,9 @@ static void _reDrawTape(KCM_TFT &tft) {
     int16_t yt = altToY(state.periapsis);
     tft.fillRect(ix, yt - 2, iw, 5, TFT_MAGENTA);
     tft.fillTriangle(barR + 1, yt, barR + 13, yt - 7, barR + 13, yt + 7, TFT_MAGENTA);
-    tft.setFont(Roboto_Black_20);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(barR + 16, yt - 12);
+    tft.setCursor(barR + 16, yt - 7);
     tft.print("Pe");
   }
   {
@@ -520,14 +520,38 @@ static void _reLabelUnder(KCM_TFT &tft, uint16_t xc, const char *s, uint16_t col
 }
 
 static void _reDrawGauges(KCM_TFT &tft) {
-  // G-load — 0..8 g, warn/alarm zones.
+  // G-load — zone-background gauge (green/yellow/red bands, like the tapes) with a
+  // live marker. Zone boundaries come from this controller's G thresholds, which are
+  // aligned to the annunciator (G_WARN/G_ALARM, ±).
   {
-    float g = fabsf(state.gForce);
-    float frac = g / 8.0f;
-    uint16_t col = (state.gForce > G_ALARM_POS || state.gForce < G_ALARM_NEG) ? TFT_RED :
-                   (state.gForce > G_WARN_POS  || state.gForce < G_WARN_NEG)  ? TFT_YELLOW : TFT_NEON_GREEN;
-    _reBar(tft, RE_GF_X, RE_GF_W, frac, col, TFT_OFF_BLACK);
-    _reLabelUnder(tft, RE_GF_X + RE_GF_W / 2, "G", TFT_LIGHT_GREY);
+    const uint16_t gx = RE_GF_X, gw = RE_GF_W;
+    const uint16_t gix = gx + 1, giw = gw - 2;
+    const float gMin = -6.0f, gMax = 12.0f;
+    auto gToY = [&](float g) -> int16_t {
+      float f = (g - gMin) / (gMax - gMin); if (f < 0) f = 0; if (f > 1) f = 1;
+      return (int16_t)(RE_GA_BOT - f * RE_GA_H);
+    };
+    tft.fillRect(gx, RE_GA_Y, gw + 14, RE_GA_H + 1, TFT_BLACK);   // erase bar + marker gutter
+    int16_t yAN = gToY(G_ALARM_NEG), yWN = gToY(G_WARN_NEG), yWP = gToY(G_WARN_POS), yAP = gToY(G_ALARM_POS);
+    tft.fillRect(gix, yAN,     giw, RE_GA_BOT - yAN, TFT_DARK_RED);     // g < alarm-neg
+    tft.fillRect(gix, yWN,     giw, yAN - yWN,       TFT_DARK_YELLOW);  // warn-neg .. alarm-neg
+    tft.fillRect(gix, yWP,     giw, yWN - yWP,       TFT_JUNGLE);       // safe band
+    tft.fillRect(gix, yAP,     giw, yWP - yAP,       TFT_DARK_YELLOW);  // warn-pos .. alarm-pos
+    tft.fillRect(gix, RE_GA_Y, giw, yAP - RE_GA_Y,   TFT_DARK_RED);     // g > alarm-pos
+    int16_t y0 = gToY(0.0f);
+    tft.drawLine(gix, y0, gix + giw - 1, y0, TFT_LIGHT_GREY);          // 0-g reference
+    for (int g = (int)gMin + 1; g < (int)gMax; g++) {                  // integer ticks
+      int16_t ty = gToY((float)g);
+      tft.drawLine(gx + 1, ty, gx + 4, ty, TFT_GREY);
+    }
+    tft.drawRect(gx, RE_GA_Y, gw, RE_GA_H, TFT_GREY);
+    float g = state.gForce;
+    uint16_t mc = (g > G_ALARM_POS || g < G_ALARM_NEG) ? TFT_RED :
+                  (g > G_WARN_POS  || g < G_WARN_NEG)  ? TFT_YELLOW : TFT_NEON_GREEN;
+    int16_t ym = constrain(gToY(g), (int16_t)(RE_GA_Y + 7), (int16_t)(RE_GA_BOT - 7));
+    tft.fillRect(gix, ym - 1, giw, 3, TFT_WHITE);
+    tft.fillTriangle(gx + gw + 1, ym, gx + gw + 12, ym - 7, gx + gw + 12, ym + 7, mc);
+    _reLabelUnder(tft, gx + gw / 2, "G", TFT_LIGHT_GREY);
   }
   // Thermal — skin + core temp, % of limit.
   {
