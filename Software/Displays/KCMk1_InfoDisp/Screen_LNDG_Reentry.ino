@@ -578,9 +578,13 @@ static void _reDrawTemp(KCM_TFT &tft) {
 /***************************************************************************************
    CHROME: RE-ENTRY  (divider + static text-panel labels)
 ****************************************************************************************/
-static const tFont   *RE_LF  = &Roboto_Black_20;   // panel label font (LNDG 20pt tier)
+static const tFont   *RE_LF  = &Roboto_Black_28;   // panel label font (rows 0-5) — matches the reticle screens' 28pt labels
 static const tFont   *RE_BTN = &Roboto_Black_28;   // SAS/Gear button font — matches the 28pt button labels on the other screens
-static const tFont   *RE_VF  = &Roboto_Black_32;   // panel value font — enlarged; fits the 360px standard panel
+static const tFont   *RE_VF  = &Roboto_Black_36;   // panel value font (rows 0-5) — matches the reticle screens' 36pt values
+// Row 6 (Drog:/Main: split status) stays one tier smaller: the tight half-width value
+// sub-cells cannot hold STOW/OPEN at 36pt, so this row keeps the original 20/32 fonts.
+static const tFont   *RE_LF6 = &Roboto_Black_20;   // row-6 split label font
+static const tFont   *RE_VF6 = &Roboto_Black_32;   // row-6 split value font
 static const uint8_t  RE_NR  = 8;
 
 static void _lndgChromeReentry(KCM_TFT &tft) {
@@ -614,8 +618,8 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   // Rows 6 (Drogue|Main) and 7 (Gear|SAS) — split, with dividers
   auto splitLabels = [&](uint8_t row, const char *lbl, const char *rbl) {
     uint16_t y = rowYFor(row, RE_NR), h = rowHFor(RE_NR);
-    printDispChrome(tft, RE_LF, RE_TXT_X,            y, RHW - ROW_PAD, h, lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RE_LF, RE_TXT_X + RHW + ROW_PAD, y, RHW - ROW_PAD, h, rbl, COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RE_LF6, RE_TXT_X,            y, RHW - ROW_PAD, h, lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RE_LF6, RE_TXT_X + RHW + ROW_PAD, y, RHW - ROW_PAD, h, rbl, COL_LABEL, COL_BACK, COL_NO_BDR);
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
@@ -752,24 +756,25 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
 
   // Row 6: Drogue | Main (split values, cached). The "Drog:"/"Main:" labels are chrome;
   // the status right-aligns in a value sub-cell to the right of the label (empty param —
-  // no redundant reservation), so the short states fit at the full value font.
+  // no redundant reservation). This row stays at the RE_VF6 (32pt) tier — the tight
+  // half-width sub-cells cannot hold STOW/OPEN at the rows-0-5 36pt value font.
   {
     uint16_t xL = RE_TXT_X, xR = RE_TXT_X + RHW + ROW_PAD;
     uint16_t wL = RHW - ROW_PAD, wR = RHW - ROW_PAD;
-    uint16_t xDV = xL + 70, wDV = wL - 70;   // drogue value sub-cell (widened so STOW/OPEN fit the RE_VF font — no left-spill ghost)
+    uint16_t xDV = xL + 70, wDV = wL - 70;   // drogue value sub-cell (widened so STOW/OPEN fit the RE_VF6 font — no left-spill ghost)
     uint16_t xMV = xR + 70, wMV = wR - 70;   // main value sub-cell (right of "Main:")
     uint16_t y6 = rowYFor(6, RE_NR), h6 = rowHFor(RE_NR);
     const char *dv; uint16_t dfg, dbg;
     chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_CHUTE_DROGUE_MAX_Q, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);
     { String ds = dv; RowCache &dc = rowCache[screen_LNDGRE][6];
       if (dc.value != ds || dc.fg != dfg || dc.bg != dbg) {
-        printValue(tft, RE_VF, xDV, y6, wDV, h6, "", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
+        printValue(tft, RE_VF6, xDV, y6, wDV, h6, "", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
         dc.value = ds; dc.fg = dfg; dc.bg = dbg; } }
     const char *mv; uint16_t mfg, mbg;
     chuteState(_mainDeployed, _mainCut, _mainArmedSafe, LNDG_CHUTE_MAIN_MAX_Q, LNDG_MAIN_FULL_ALT, mv, mfg, mbg);
     { String ms = mv; RowCache &mc = rowCache[screen_LNDGRE][11];
       if (mc.value != ms || mc.fg != mfg || mc.bg != mbg) {
-        printValue(tft, RE_VF, xMV, y6, wMV, h6, "", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);
+        printValue(tft, RE_VF6, xMV, y6, wMV, h6, "", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);
         mc.value = ms; mc.fg = mfg; mc.bg = mbg; } }
   }
 
