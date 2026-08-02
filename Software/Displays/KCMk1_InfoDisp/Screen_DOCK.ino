@@ -67,9 +67,9 @@ static const uint16_t RING_15 = (RET_R * 3) / 4;   // 157
 static const uint16_t RING_20 = RET_R;             // 210 — ±20° boundary
 
 // Dot display sizes — scaled up with the larger reticle
-static const uint8_t DOT_R_PORT  = 6;    // target port marker radius
-static const uint8_t DOT_R_VEL   = 5;    // velocity vector marker radius
-static const uint8_t DOT_R_ERASE = 11;   // erase rect half-size (covers prograde ring 5 + spoke 4)
+static const uint8_t DOT_R_PORT  = 22;   // target port marker radius
+static const uint8_t DOT_R_VEL   = 19;   // velocity vector marker radius
+static const uint8_t DOT_R_ERASE = 30;   // erase rect half-size (covers prograde ring 19 + spoke 9)
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
