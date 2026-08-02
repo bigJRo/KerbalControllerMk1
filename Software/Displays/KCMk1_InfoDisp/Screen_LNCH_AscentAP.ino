@@ -110,6 +110,86 @@ static float apGMxg(){ return apDMxg ? apMxg    : state.apMaxG; }
 static bool  apGArmed(){ return apArmOvr >= 0 ? (apArmOvr == 1) : state.apArmed; }
 static uint16_t apEditColor(bool dirty){ return dirty ? AP_EDT : AP_VAL; }
 
+// ── M3: outbound command channel (InfoDisp -> Controller_Main) ────────────────────────
+// Pilot edits and ARM/DISARM taps queue here as (opcode, float-payload) commands. The
+// I2C master (Controller_Main) reads the head command from the outbound packet, applies
+// it to the autopilot, then acknowledges it by echoing the command's sequence number in
+// its next inbound packet, which pops the queue. Pending (cyan) values clear separately,
+// in apReconcilePending(), once Controller_Main echoes the accepted value back in the
+// AscentStatus frame — so the UI confirms the round-trip, not merely command delivery.
+enum {
+  AP_CMD_NOP             = 0x00,
+  AP_CMD_SET_TARGET_ALT  = 0x01,   // payload = metres
+  AP_CMD_SET_INCLINATION = 0x02,   // payload = degrees
+  AP_CMD_SET_LAUNCH_DIR  = 0x03,   // payload = 0 north / 1 south
+  AP_CMD_SET_LOFT        = 0x04,   // payload = exponent
+  AP_CMD_SET_ROLL        = 0x05,   // payload = degrees, or AP_ROLL_OFF to disable hold
+  AP_CMD_SET_MAXG        = 0x06,   // payload = g (0 = off)
+  AP_CMD_ARM             = 0x10,   // payload = 0
+  AP_CMD_DISARM          = 0x11,   // payload = 0
+};
+static const float AP_ROLL_OFF = 1.0e9f;   // roll-hold disable sentinel (outside +/-180)
+
+struct ApCmd { uint8_t op; float payload; };
+static const uint8_t AP_CMDQ_LEN = 16;
+static ApCmd   apCmdQ[AP_CMDQ_LEN];
+static uint8_t apCmdHead = 0, apCmdTail = 0;   // ring-buffer indices (empty when equal)
+static uint8_t apCmdCurSeq = 0;                // seq of head command in flight (0 = none)
+static uint8_t apCmdSeqCtr = 0;                // monotonic seq generator, wraps 1..255
+
+static void apEnqueueCmd(uint8_t op, float payload) {
+  uint8_t next = (uint8_t)((apCmdTail + 1) % AP_CMDQ_LEN);
+  if (next == apCmdHead) return;               // full — drop (queue holds 15, never happens)
+  apCmdQ[apCmdTail].op = op;
+  apCmdQ[apCmdTail].payload = payload;
+  apCmdTail = next;
+}
+
+// Assign a sequence number to a newly-exposed head command. Main-thread only; called
+// from updateI2CState() before outbound change-detection.
+void apPumpCommandQueue() {
+  if (apCmdCurSeq == 0 && apCmdHead != apCmdTail) {
+    if (++apCmdSeqCtr == 0) apCmdSeqCtr = 1;   // seq is 1..255; 0 means "no command"
+    apCmdCurSeq = apCmdSeqCtr;
+  }
+}
+
+// Write the head command into a 6-byte field: [seq][op][payload float, little-endian].
+// Pure read — safe to call for both the live and candidate packet buffers.
+void apFillOutboundCmd(uint8_t *out6) {
+  if (apCmdCurSeq != 0) {
+    out6[0] = apCmdCurSeq;
+    out6[1] = apCmdQ[apCmdHead].op;
+    memcpy(&out6[2], &apCmdQ[apCmdHead].payload, 4);
+  } else {
+    out6[0] = 0;
+    out6[1] = AP_CMD_NOP;
+    memset(&out6[2], 0, 4);
+  }
+}
+
+// Master acknowledged sequence `ackSeq` (0 = no ack); pop the head if it matches the
+// in-flight command so the next queued command is exposed on the following pump.
+void apAckCommand(uint8_t ackSeq) {
+  if (ackSeq != 0 && ackSeq == apCmdCurSeq) {
+    apCmdHead = (uint8_t)((apCmdHead + 1) % AP_CMDQ_LEN);
+    apCmdCurSeq = 0;
+  }
+}
+
+// Clear pending (cyan) flags once Controller_Main echoes the accepted value back in the
+// AscentStatus frame. Called each loop from updateI2CState().
+void apReconcilePending() {
+  if (apDTgt && fabsf(state.apTargetAlt   - apTgt)    < 1.0f)    apDTgt = false;
+  if (apDInc && fabsf(state.apInclination - apInc)    < 0.05f)   apDInc = false;
+  if (apDDir && state.apSoutherly == apDir)                      apDDir = false;
+  if (apDLof && fabsf(state.apLoft        - apLof)    < 0.005f)  apDLof = false;
+  if (apDRol && state.apRollEnable == apRolEn &&
+      (!apRolEn || fabsf(state.apRollDeg  - apRolDeg) < 0.5f))   apDRol = false;
+  if (apDMxg && fabsf(state.apMaxG        - apMxg)    < 0.05f)   apDMxg = false;
+  if (apArmOvr >= 0 && state.apArmed == (apArmOvr == 1))         apArmOvr = -1;
+}
+
 // ── Keypad state ────────────────────────────────────────────────────────────────────
 static bool    apKpOpen = false;
 static bool    apKpRedraw = false;
@@ -350,13 +430,12 @@ static void apCommitKeypad() {
   float v = (apKpLen ? atof(apKpBuf) : 0.0f);
   if (v < e.mn) v = e.mn; if (v > e.mx) v = e.mx;
   switch (e.slot) {
-    case AP_TGTALT: apTgt = v; apDTgt = true; break;   // entered in metres
-    case AP_INCL:   apInc = v; apDInc = true; break;
-    case AP_LOFT:   apLof = v; apDLof = true; break;
-    case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = true; break;
-    case AP_MAXG:   apMxg = v; apDMxg = true; break;
+    case AP_TGTALT: apTgt = v; apDTgt = true; apEnqueueCmd(AP_CMD_SET_TARGET_ALT, v);  break;  // metres
+    case AP_INCL:   apInc = v; apDInc = true; apEnqueueCmd(AP_CMD_SET_INCLINATION, v); break;
+    case AP_LOFT:   apLof = v; apDLof = true; apEnqueueCmd(AP_CMD_SET_LOFT, v);        break;
+    case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = true; apEnqueueCmd(AP_CMD_SET_ROLL, v); break;
+    case AP_MAXG:   apMxg = v; apDMxg = true; apEnqueueCmd(AP_CMD_SET_MAXG, v);        break;
   }
-  // TODO (M3): stage this parameter on the outbound command channel.
   apCloseKeypad();
 }
 
@@ -374,8 +453,8 @@ static void apKeypadTouch(uint16_t x, uint16_t y) {
   if (strcmp(k, "CLR") == 0) { apKpLen = 0; apKpBuf[0] = '\0'; apKpRedraw = true; return; }
   if (strcmp(k, "DEL") == 0) { if (apKpLen) { apKpBuf[--apKpLen] = '\0'; apKpRedraw = true; } return; }
   if (strcmp(k, "OFF") == 0) {
-    if (e.kind == 2) { apRolEn = false; apDRol = true; apCloseKeypad(); }
-    else if (e.kind == 3) { apMxg = 0.0f; apDMxg = true; apCloseKeypad(); }
+    if (e.kind == 2)      { apRolEn = false; apDRol = true; apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); apCloseKeypad(); }
+    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = true; apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f);        apCloseKeypad(); }
     return;
   }
   if (strcmp(k, "+/-") == 0) {                      // sign toggle
@@ -396,10 +475,11 @@ void apScreenTouch(uint16_t x, uint16_t y) {
 
   // ARM / DISARM
   if (x >= AP_ARM_X && x < AP_ARM_X + AP_ARM_W && y >= AP_ARM_Y && y < AP_ARM_Y + AP_ARM_H) {
-    apArmOvr = apGArmed() ? 0 : 1;
+    bool wantArm = !apGArmed();
+    apArmOvr = wantArm ? 1 : 0;
     rowCache[screen_LNCHAP][AP_ARM_SLOT].value = "\x01";   // force ARM + banner redraw
     rowCache[screen_LNCHAP][AP_BODY_SLOT].value = "\x01";
-    // TODO (M3): stage arm/disarm on the outbound command channel.
+    apEnqueueCmd(wantArm ? AP_CMD_ARM : AP_CMD_DISARM, 0.0f);
     return;
   }
   // Editable fields
@@ -410,7 +490,7 @@ void apScreenTouch(uint16_t x, uint16_t y) {
       if (e.kind == 1) {                             // Launch N/S toggle
         apDir = !apGDir(); apDDir = true;
         rowCache[screen_LNCHAP][e.slot].value = "\x01";
-        // TODO (M3): stage launch-direction command.
+        apEnqueueCmd(AP_CMD_SET_LAUNCH_DIR, apDir ? 1.0f : 0.0f);
       } else {
         apOpenKeypad(i);
       }

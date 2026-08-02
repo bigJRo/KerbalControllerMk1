@@ -10,7 +10,7 @@
                   Master reads via KCM_I2C_BUS.requestFrom(0x12, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
 
-   Outbound packet (InfoDisp -> Master), I2C_PACKET_SIZE = 4 bytes:
+   Outbound packet (InfoDisp -> Master), I2C_PACKET_SIZE = 10 bytes:
      Byte 0  : 0xAE  -- sync/magic byte for framing validation (was 0xAD; collision fix)
      Byte 1  : flags
                  bit 0 = simpitConnected
@@ -18,9 +18,15 @@
                  bit 2 = demoMode
                  bits 3-7 reserved (0)
      Byte 2  : activeScreen  -- current ScreenType enum value
-     Byte 3  : reserved (0x00)
+     Byte 3  : apCmdSeq   -- Ascent-AP command sequence (0 = no command pending;
+                            otherwise 1..255, unique per queued command). The master
+                            executes the command in bytes 4-8 exactly once, then echoes
+                            this value back in the inbound ackSeq byte to pop the queue.
+     Byte 4  : apCmdOp    -- Ascent-AP command opcode (see AP_CMD_* in Screen_LNCH_AscentAP)
+     Bytes 5-8 : apCmdPayload -- IEEE-754 float32, little-endian (command argument)
+     Byte 9  : xsum       -- XOR of bytes 3..8 (command-frame integrity)
 
-   Inbound packet (Master -> InfoDisp), I2C_CMD_SIZE = 2 bytes:
+   Inbound command (Master -> InfoDisp), I2C_CMD_SIZE = 2 bytes:
      Byte 0  : controlByte
                  bits 7:4 = requestType
                    0x0 = NOP           -- no operation
@@ -31,19 +37,34 @@
                  bit  3   = idle_state  (1 = switch to standby when not in flight)
                  bit  1   = demoMode    (1 = enable demo mode)
                  bit  0   = debugMode   (1 = enable Serial debug output)
-     Byte 1  : reserved (0x00) -- available for future use
+     Byte 1  : ackSeq (0x00 = none) -- Ascent-AP command acknowledgement. The master sets
+                                       this to the apCmdSeq it just executed; InfoDisp pops
+                                       that command from its queue. 0 leaves the queue as-is.
+
+   Inbound Ascent-AP status (Master -> InfoDisp), I2C_AP_STATUS_SIZE = 40 bytes:
+     Master pushes the autopilot's AscentStatus so InfoDisp can render live guidance and
+     confirm accepted parameters (clearing the pilot's pending "cyan" edits). Dispatched
+     by write length in onI2CReceive(); see processApStatus() for the field layout.
+     Byte 0  : 0xA5 sync
+     Byte 1  : flags (bit0 armed, bit1 southerly, bit2 rollEnable)
+     Byte 2  : phase (0 IDLE .. 6 ABORT)
+     Byte 3  : reserved (0x00)
+     Bytes 4-39 : 9 IEEE-754 float32 LE — targetAlt, inclination, loft, rollDeg, maxG,
+                  cmdPitch, cmdHeading, cmdThrottle, dynPressure
 
    Expanding the protocol:
-     Outbound: increment I2C_PACKET_SIZE, add fields to buildI2CPacket().
-     Inbound:  increment I2C_CMD_SIZE, add fields to processI2CCommand().
+     Outbound: increment I2C_PACKET_SIZE, add fields to fillI2CPacketBuffer().
+     Inbound:  add a new packet length + branch in onI2CReceive(), process in loop.
      Update master sketch to match in both cases.
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
 #define I2C_SLAVE_ADDR   KCM_I2C_ADDR_INFODISP      // #3C from SystemConfig
 #define I2C_INT_PIN      KCM_I2C_INT_PIN             // #3C from SystemConfig
-#define I2C_PACKET_SIZE  4      // outbound: InfoDisp -> Master (panel-specific)
-#define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp (panel-specific)
+#define I2C_PACKET_SIZE  10     // outbound: InfoDisp -> Master (panel-specific; 3 status + AP cmd frame)
+#define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp control/ack (panel-specific)
+#define I2C_AP_STATUS_SIZE 40   // inbound:  Master -> InfoDisp Ascent-AP status push
+#define I2C_AP_STATUS_SYNC 0xA5 // framing byte for the AP status push
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_INFODISP      // #3C from SystemConfig (0xAE, collision fix)
 
 // requestType values (bits 7:4 of controlByte)
@@ -81,7 +102,10 @@ static void fillI2CPacketBuffer(uint8_t *buf) {
   buf[0] = I2C_SYNC_BYTE;
   buf[1] = flags;
   buf[2] = (uint8_t)activeScreen;
-  buf[3] = 0x00;
+  apFillOutboundCmd(&buf[3]);            // bytes 3..8 : [seq][op][payload float LE]
+  uint8_t xsum = 0;
+  for (uint8_t i = 3; i < 9; i++) xsum ^= buf[i];
+  buf[9] = xsum;                         // command-frame integrity check
 }
 
 /***************************************************************************************
@@ -101,8 +125,17 @@ static void buildI2CPacket() {
 static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE];
 static volatile bool i2cCmdReady = false;
 
+// Inbound Ascent-AP status push (Master -> InfoDisp). Filled in the Wire ISR,
+// applied on the main thread by processApStatus().
+static volatile uint8_t apStatusBuf[I2C_AP_STATUS_SIZE];
+static volatile bool     apStatusReady = false;
+
 static void processI2CCommand() {
   uint8_t controlByte = i2cCmdBuf[0];
+
+  // --- Ascent-AP command acknowledgement (byte 1) ---
+  // Master echoes the apCmdSeq it just executed; pop that command from the AP queue.
+  apAckCommand(i2cCmdBuf[1]);
 
   // --- Lower nibble: mode configuration bits ---
   bool newDebug = (controlByte >> 0) & 1;
@@ -214,9 +247,43 @@ static void onI2CReceive(int numBytes) {
       i2cCmdBuf[i] = KCM_I2C_BUS.read();
     }
     i2cCmdReady = true;
+  } else if (numBytes == I2C_AP_STATUS_SIZE) {
+    for (int i = 0; i < I2C_AP_STATUS_SIZE; i++) {
+      apStatusBuf[i] = KCM_I2C_BUS.read();
+    }
+    apStatusReady = true;
   } else {
     while (KCM_I2C_BUS.available()) KCM_I2C_BUS.read();
   }
+}
+
+
+/***************************************************************************************
+   PROCESS ASCENT-AP STATUS
+   Applies a received AscentStatus push into the shared `state` struct so the Ascent
+   Autopilot screen renders live guidance and confirms accepted parameters. Runs on the
+   main thread. Skipped in demo mode (demo drives state.ap* locally).
+****************************************************************************************/
+static void processApStatus() {
+  if (apStatusBuf[0] != I2C_AP_STATUS_SYNC) return;   // framing guard
+
+  uint8_t fl = apStatusBuf[1];
+  state.apArmed      = (fl & 0x01) != 0;
+  state.apSoutherly  = (fl & 0x02) != 0;
+  state.apRollEnable = (fl & 0x04) != 0;
+  state.apPhase      = apStatusBuf[2];
+
+  float f[9];
+  memcpy(f, (const void *)&apStatusBuf[4], sizeof(f));   // 9 floats, bytes 4..39
+  state.apTargetAlt   = f[0];
+  state.apInclination = f[1];
+  state.apLoft        = f[2];
+  state.apRollDeg     = f[3];
+  state.apMaxG        = f[4];
+  state.apCmdPitch    = f[5];
+  state.apCmdHeading  = f[6];
+  state.apCmdThrottle = f[7];
+  state.apDynPressure = f[8];
 }
 
 
@@ -258,6 +325,16 @@ void updateI2CState() {
     i2cCmdReady = false;
     processI2CCommand();
   }
+
+  // --- Apply inbound Ascent-AP status push (live mode only) ---
+  if (apStatusReady) {
+    apStatusReady = false;
+    if (!demoMode) processApStatus();
+  }
+
+  // --- Ascent-AP outbound command queue: expose next command, retire confirmed edits ---
+  apPumpCommandQueue();
+  apReconcilePending();
 
   // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {
