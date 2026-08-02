@@ -351,9 +351,11 @@ static void _reDrawEnvelope(KCM_TFT &tft) {
   float axisMax = RE_CT_VMAX;
   while (axisMax < need && axisMax < 3000.0f) axisMax += 500.0f;
 
+  // Map speed to the bar INTERIOR [RE_CT_X+1 .. RE_CT_RIGHT-2] so ticks, boundaries
+  // and the marker never draw on/over the border rectangle.
   auto spdToX = [&](float v) -> int16_t {
     float f = v / axisMax; if (f < 0) f = 0; if (f > 1) f = 1;
-    return (int16_t)(RE_CT_X + f * RE_CT_W);
+    return (int16_t)((RE_CT_X + 1) + f * (RE_CT_W - 3));
   };
 
   // Erase the widget footprint each frame (title + tags + bar + labels) — no streaks.
@@ -391,7 +393,8 @@ static void _reDrawEnvelope(KCM_TFT &tft) {
     tft.drawLine(tx, barBot - 1 - 7, tx, barBot - 1,    TFT_LIGHT_GREY);   // bottom edge, inward
     char b[6]; snprintf(b, sizeof(b), "%d", v);
     int16_t lw = getFontStringWidth(&Roboto_Black_12, b);
-    tft.setCursor(tx - lw / 2, barBot + 6); tft.print(b);
+    int16_t lx = (int16_t)constrain((int)(tx - lw / 2), (int)RE_ENV_X, (int)(RE_ENV_X + RE_ENV_W - lw));
+    tft.setCursor(lx, barBot + 6); tft.print(b);
   }
   for (int v = step / 2; v <= (int)axisMax; v += step) {   // minor ticks (both edges)
     int16_t tx = spdToX((float)v);
@@ -410,10 +413,15 @@ static void _reDrawEnvelope(KCM_TFT &tft) {
   tft.fillRect(xm - 1, iy, 3, ih, TFT_WHITE);
   tft.fillTriangle(xm, RE_CT_Y - 1, xm - 8, RE_CT_Y - 11, xm + 8, RE_CT_Y - 11, vc);
 
-  // Title — connected to the instrument, just above the boundary tags
+  // Title + axis label, both centred on the bar.
+  const int16_t barCx = RE_CT_X + RE_CT_W / 2;
   tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-  tft.setCursor(RE_CT_X - 6, RE_CT_Y - 44);
-  tft.print("CHUTE DEPLOY  (airspeed m/s)");
+  const char *title = "CHUTE DEPLOY";
+  int16_t titW = getFontStringWidth(&Roboto_Black_12, title);
+  tft.setCursor(barCx - titW / 2, RE_CT_Y - 44); tft.print(title);
+  const char *axis = "AIRSPEED (m/s)";
+  int16_t axW = getFontStringWidth(&Roboto_Black_12, axis);
+  tft.setCursor(barCx - axW / 2, barBot + 22); tft.print(axis);
 }
 
 /***************************************************************************************
