@@ -405,9 +405,9 @@ static void _reDrawBall(KCM_TFT &tft) {
     float rx = dx * cosf(a) - dy * sinf(a);
     float ry = dx * sinf(a) + dy * cosf(a);
     float mag = sqrtf(rx * rx + ry * ry);
-    float lim = R - 28;                          // keep the whole (r=18) symbol inside the disc
+    float lim = R - 11;                          // keep the whole (r=4) symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }
-    _reRetroSymbol(tft, cx + (int16_t)rx, cy + (int16_t)ry, 18, mc);
+    _reRetroSymbol(tft, cx + (int16_t)rx, cy + (int16_t)ry, 4, mc);
   }
 
   // AoA (nose-to-airflow angle) readout below the reticle

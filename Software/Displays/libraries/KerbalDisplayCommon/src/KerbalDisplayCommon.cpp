@@ -551,19 +551,26 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
   tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy + half, color);  // bottom half
 }
 
-// Straight line of stroke width `w`, thickened symmetrically about the ideal line.
+// Straight line of stroke width `w`, drawn as a filled quad (two triangles) about the
+// ideal line with round end-caps. The quad is gap-free at every angle (unlike parallel
+// offset draws, which collapse or gap at diagonals), and the caps close the joints where
+// segments meet — so multi-segment shapes (arcs, prongs, X's) have no seams.
 void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                    int16_t w, uint16_t color) {
   if (w <= 1) { tft.drawLine(x0, y0, x1, y1, color); return; }
   float dx = (float)(x1 - x0), dy = (float)(y1 - y0);
   float len = sqrtf(dx * dx + dy * dy);
-  if (len < 0.5f) { tft.fillCircle(x0, y0, w / 2, color); return; }
-  float px = -dy / len, py = dx / len;                  // unit perpendicular
-  for (int16_t i = 0; i < w; i++) {
-    float off = (float)i - (float)(w - 1) * 0.5f;
-    int16_t ox = (int16_t)lroundf(px * off), oy = (int16_t)lroundf(py * off);
-    tft.drawLine(x0 + ox, y0 + oy, x1 + ox, y1 + oy, color);
-  }
+  float hw  = w * 0.5f;
+  int16_t cap = (int16_t)(hw + 0.5f);
+  if (len < 0.5f) { tft.fillCircle(x0, y0, cap, color); return; }
+  float px = -dy / len * hw, py = dx / len * hw;        // half-width perpendicular
+  int16_t ax = (int16_t)lroundf(x0 + px), ay = (int16_t)lroundf(y0 + py);
+  int16_t bx = (int16_t)lroundf(x0 - px), by = (int16_t)lroundf(y0 - py);
+  int16_t ex = (int16_t)lroundf(x1 - px), ey = (int16_t)lroundf(y1 - py);
+  int16_t fx = (int16_t)lroundf(x1 + px), fy = (int16_t)lroundf(y1 + py);
+  tft.fillTriangle(ax, ay, bx, by, ex, ey, color);
+  tft.fillTriangle(ax, ay, ex, ey, fx, fy, color);
+  if (cap >= 1) { tft.fillCircle(x0, y0, cap, color); tft.fillCircle(x1, y1, cap, color); }
 }
 
 // Sub-element sizing shared by the KSP markers: stroke width, centre-dot radius and
@@ -597,20 +604,19 @@ void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t 
   int16_t w = _mkStroke(r);
   tft.fillCircle(cx, cy, _mkDot(r), color);    // centre dot (matches the other markers)
   const float GAP  = 12.0f;                    // half-gap at each "+" arm, degrees
-  const float STEP = 7.0f * 0.01745329252f;    // arc plot step, radians
+  const float STEP = 6.0f * 0.01745329252f;    // arc plot step, radians
   for (uint8_t q = 0; q < 4; q++) {
     float a0 = ((float)(q * 90) + GAP)         * 0.01745329252f;
     float a1 = ((float)(q * 90) + 90.0f - GAP) * 0.01745329252f;
-    for (int16_t rr = 0; rr < w; rr++) {       // draw at r..r-(w-1) for a w px arc
-      int16_t rad = r - rr;
-      int16_t px = cx + (int16_t)(rad * cosf(a0)), py = cy + (int16_t)(rad * sinf(a0));
-      for (float a = a0 + STEP; a < a1; a += STEP) {
-        int16_t x = cx + (int16_t)(rad * cosf(a)), y = cy + (int16_t)(rad * sinf(a));
-        tft.drawLine(px, py, x, y, color); px = x; py = y;
-      }
-      int16_t x = cx + (int16_t)(rad * cosf(a1)), y = cy + (int16_t)(rad * sinf(a1));
-      tft.drawLine(px, py, x, y, color);
+    // Draw the arc as connected thick segments (round-capped) — a solid w-px band with
+    // no radial or joint gaps, even at the diagonal / bottom portions of the ring.
+    int16_t px = cx + (int16_t)(r * cosf(a0)), py = cy + (int16_t)(r * sinf(a0));
+    for (float a = a0 + STEP; a < a1; a += STEP) {
+      int16_t x = cx + (int16_t)(r * cosf(a)), y = cy + (int16_t)(r * sinf(a));
+      drawThickLine(tft, px, py, x, y, w, color); px = x; py = y;
     }
+    int16_t x = cx + (int16_t)(r * cosf(a1)), y = cy + (int16_t)(r * sinf(a1));
+    drawThickLine(tft, px, py, x, y, w, color);
   }
 }
 
