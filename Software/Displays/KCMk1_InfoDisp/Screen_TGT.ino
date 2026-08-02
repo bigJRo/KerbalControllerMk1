@@ -280,21 +280,28 @@ static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
 // Draw a reticle "opposite" marker only while it is inside the scope FOV; erase it (and
 // repair chrome) when it moves or leaves view. prevX/prevY cache its last position
 // (9999 = not shown). In-view markers are redrawn every frame (robust against overdraw).
-static bool _tgtOppMarker(KCM_TFT &tft, int16_t sx, int16_t sy, int16_t &prevX, int16_t &prevY,
-                          void (*drawFn)(KCM_TFT&, int16_t, int16_t, int16_t, uint16_t),
-                          int16_t r, uint16_t color) {
+// Erase-phase for one reticle marker: if it should be hidden, or has moved >1px, erase its
+// cached position and repair chrome, then advance the cache to the current position. The draw
+// phase runs after ALL erases, so a moving marker's erase never clips a neighbouring one, and
+// redrawing at the cache (not the live position) avoids sub-pixel smear.
+static void _tgtErase(KCM_TFT &tft, int16_t curX, int16_t curY,
+                      int16_t &prevX, int16_t &prevY, bool visible) {
     const uint8_t EH = TGT_DOT_R_ERASE;
-    float dx = sx - TGT_SCX, dy = sy - TGT_SCY;
-    float maxR = (float)(TGT_R - TGT_DOT_R_VEL * 3 / 2 - 2);
-    bool inView = (dx*dx + dy*dy) <= (maxR * maxR);
-    bool moved  = (prevX != sx || prevY != sy);
-    if ((moved || !inView) && prevX != 9999) {
-        tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-        _tgtRepairChrome(tft, prevX - EH, prevY - EH, EH);
-        prevX = prevY = 9999;
+    if (!visible) {
+        if (prevX != 9999) {
+            tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+            _tgtRepairChrome(tft, prevX - EH, prevY - EH, EH);
+            prevX = prevY = 9999;
+        }
+        return;
     }
-    if (inView) { drawFn(tft, sx, sy, r, color); prevX = sx; prevY = sy; }
-    return inView;
+    if (prevX == 9999 || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
+        if (prevX != 9999) {
+            tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+            _tgtRepairChrome(tft, prevX - EH, prevY - EH, EH);
+        }
+        prevX = curX; prevY = curY;
+    }
 }
 
 static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv, float velBrg, float velElv,
@@ -309,55 +316,26 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv, float velBr
     int16_t vSY = TGT_SCY + (int16_t)( velElv * TGT_SCALE);
     _tgtClampDot(vSX, vSY);
 
-    const uint8_t EH = TGT_DOT_R_ERASE;
+    // Opposite (antipodal) marker positions + in-view test. Anti-target/retrograde show only
+    // inside the FOV; their primaries (target/velocity) are suppressed while the opposite is
+    // shown (the primary would otherwise sit clamped on the rim, pointing away).
+    const float maxR = (float)(TGT_R - TGT_DOT_R_VEL * 3 / 2 - 2);
+    int16_t aSX = TGT_SCX + (int16_t)(-antiBrg  * TGT_SCALE), aSY = TGT_SCY + (int16_t)(antiElv  * TGT_SCALE);
+    int16_t rSX = TGT_SCX + (int16_t)(-retroBrg * TGT_SCALE), rSY = TGT_SCY + (int16_t)(retroElv * TGT_SCALE);
+    bool antiInView  = ((float)(aSX-TGT_SCX)*(aSX-TGT_SCX) + (float)(aSY-TGT_SCY)*(aSY-TGT_SCY)) <= maxR*maxR;
+    bool retroInView = ((float)(rSX-TGT_SCX)*(rSX-TGT_SCX) + (float)(rSY-TGT_SCY)*(rSY-TGT_SCY)) <= maxR*maxR;
 
-    // ── Opposite markers (anti-target, retrograde): shown only inside the FOV. When one is
-    //    in view, its primary is clamped to the rim (pointing away), so we suppress it. ──
-    bool antiInView  = _tgtOppMarker(tft, TGT_SCX + (int16_t)(-antiBrg  * TGT_SCALE), TGT_SCY + (int16_t)(antiElv  * TGT_SCALE),
-                                     _tgtPrevAntiX, _tgtPrevAntiY, drawAntiTargetMarker, TGT_DOT_R_TGT, TFT_VIOLET);
-    bool retroInView = _tgtOppMarker(tft, TGT_SCX + (int16_t)(-retroBrg * TGT_SCALE), TGT_SCY + (int16_t)(retroElv * TGT_SCALE),
-                                     _tgtPrevRetX,  _tgtPrevRetY,  drawRetrogradeMarker, TGT_DOT_R_VEL, TFT_NEON_GREEN);
+    // Erase phase (all markers) then draw phase, so a moving marker's erase never clips a
+    // neighbour. Draw order is bottom-to-top: opposites, target, velocity on top.
+    _tgtErase(tft, aSX, aSY, _tgtPrevAntiX, _tgtPrevAntiY, antiInView);
+    _tgtErase(tft, rSX, rSY, _tgtPrevRetX,  _tgtPrevRetY,  retroInView);
+    _tgtErase(tft, tSX, tSY, _tgtPrevTgtX,  _tgtPrevTgtY,  !antiInView);
+    _tgtErase(tft, vSX, vSY, _tgtPrevVelX,  _tgtPrevVelY,  !retroInView);
 
-    // ── TGT dot (violet) — suppressed while the anti-target is in view ────────────────
-    if (antiInView) {
-        if (_tgtPrevTgtX != 9999) {
-            tft.fillRect(_tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _tgtRepairChrome(tft, _tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH);
-            _tgtPrevTgtX = _tgtPrevTgtY = 9999;
-        }
-    } else {
-        bool tgtMoved = (_tgtPrevTgtX == 9999 || abs(tSX - _tgtPrevTgtX) > 1 || abs(tSY - _tgtPrevTgtY) > 1);
-        if (tgtMoved) {
-            if (_tgtPrevTgtX != 9999) {
-                tft.fillRect(_tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-                _tgtRepairChrome(tft, _tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH);
-            }
-            drawTargetMarker(tft, tSX, tSY, TGT_DOT_R_TGT, TFT_VIOLET);
-            _tgtPrevTgtX = tSX; _tgtPrevTgtY = tSY;
-        }
-    }
-
-    // ── VEL dot (neon-green) — suppressed while the retrograde is in view ─────────────
-    if (retroInView) {
-        if (_tgtPrevVelX != 9999) {
-            tft.fillRect(_tgtPrevVelX - EH, _tgtPrevVelY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _tgtRepairChrome(tft, _tgtPrevVelX - EH, _tgtPrevVelY - EH, EH);
-            _tgtPrevVelX = _tgtPrevVelY = 9999;
-        }
-    } else {
-        bool velMoved = (_tgtPrevVelX == 9999 || abs(vSX - _tgtPrevVelX) > 1 || abs(vSY - _tgtPrevVelY) > 1);
-        if (velMoved) {
-            if (_tgtPrevVelX != 9999) {
-                tft.fillRect(_tgtPrevVelX - EH, _tgtPrevVelY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-                _tgtRepairChrome(tft, _tgtPrevVelX - EH, _tgtPrevVelY - EH, EH);
-            }
-            drawProgradeMarker(tft, vSX, vSY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
-            _tgtPrevVelX = vSX; _tgtPrevVelY = vSY;
-        }
-        // Always redraw on top at the cached position (never buried; no sub-pixel smear).
-        if (_tgtPrevVelX != 9999)
-            drawProgradeMarker(tft, _tgtPrevVelX, _tgtPrevVelY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
-    }
+    if (_tgtPrevAntiX != 9999) drawAntiTargetMarker(tft, _tgtPrevAntiX, _tgtPrevAntiY, TGT_DOT_R_TGT, TFT_VIOLET);
+    if (_tgtPrevRetX  != 9999) drawRetrogradeMarker(tft, _tgtPrevRetX,  _tgtPrevRetY,  TGT_DOT_R_VEL, TFT_NEON_GREEN);
+    if (_tgtPrevTgtX  != 9999) drawTargetMarker(tft, _tgtPrevTgtX, _tgtPrevTgtY, TGT_DOT_R_TGT, TFT_VIOLET);
+    if (_tgtPrevVelX  != 9999) drawProgradeMarker(tft, _tgtPrevVelX, _tgtPrevVelY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
 
     // Redraw crosshair inner segments — VEL circle can clip them near centre
     {

@@ -756,8 +756,8 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   {
     uint16_t xL = RE_TXT_X, xR = RE_TXT_X + RHW + ROW_PAD;
     uint16_t wL = RHW - ROW_PAD, wR = RHW - ROW_PAD;
-    uint16_t xDV = xL + 80, wDV = wL - 80;   // drogue value sub-cell (right of "Drog:")
-    uint16_t xMV = xR + 76, wMV = wR - 76;   // main value sub-cell (right of "Main:")
+    uint16_t xDV = xL + 70, wDV = wL - 70;   // drogue value sub-cell (widened so STOW/OPEN fit the RE_VF font — no left-spill ghost)
+    uint16_t xMV = xR + 70, wMV = wR - 70;   // main value sub-cell (right of "Main:")
     uint16_t y6 = rowYFor(6, RE_NR), h6 = rowHFor(RE_NR);
     const char *dv; uint16_t dfg, dbg;
     chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_CHUTE_DROGUE_MAX_Q, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);
