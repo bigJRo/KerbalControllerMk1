@@ -40,9 +40,9 @@
 /***************************************************************************************
    LAYOUT
 ****************************************************************************************/
-static const uint16_t RE_DIV_X   = 596;                 // graphics | panel divider (nudged right for the G/TEMP vertical labels)
-static const uint16_t RE_TXT_X   = 598;                 // text panel left edge
-static const uint16_t RE_TXT_W   = CONTENT_W - RE_TXT_X;// 342
+static const uint16_t RE_DIV_X   = 578;                 // graphics | panel divider (standard 360px panel)
+static const uint16_t RE_TXT_X   = 580;                 // text panel left edge (matches the other screens)
+static const uint16_t RE_TXT_W   = CONTENT_W - RE_TXT_X;// 360
 
 // ── Corridor tape (far left) ──
 static const uint16_t RE_TAPE_X   = 44;
@@ -72,32 +72,32 @@ static const uint16_t RE_GLBL_X = RE_GF_X - 36;             // 182 — "G METER"
 
 // ── Right graphical cluster: alignment reticle (top) + CHUTE DEPLOY (mid) + TEMP
 //    (bottom), all centred on RE_RCX and sized as large as the space allows. ──
-static const int16_t  RE_RCX    = 435;                      // shared horizontal centre
+static const int16_t  RE_RCX    = 428;                      // shared horizontal centre (nudged left for the 360px panel)
 
 // Alignment ball
 static const int16_t  RE_ATT_CX = RE_RCX;
 static const int16_t  RE_ATT_CY = 212;
-static const int16_t  RE_ATT_R  = 128;
+static const int16_t  RE_ATT_R  = 122;
 static const float    RE_ATT_FS = (float)RE_ATT_R / 40.0f;  // px per degree (outer ring = 40°)
 
 // Parachute deploy SPEED BAR (horizontal). The green/yellow/red zone boundaries are the
 // altitude-corrected safe-deploy speeds derived from live dynamic pressure, so they
 // slide left as you descend into denser air. Airspeed axis 0 (left) .. VMAX (right).
-static const uint16_t RE_ENV_X    = 285;   // widget footprint (erased each frame)
+static const uint16_t RE_ENV_X    = 280;   // widget footprint (erased each frame)
 static const uint16_t RE_ENV_Y    = 390;
-static const uint16_t RE_ENV_W    = 307;
+static const uint16_t RE_ENV_W    = 296;
 static const uint16_t RE_ENV_H    = 140;
-static const uint16_t RE_CT_X     = 300;                // bar left edge
-static const uint16_t RE_CT_W     = 270;                // bar width (airspeed axis)
+static const uint16_t RE_CT_X     = 297;                // bar left edge
+static const uint16_t RE_CT_W     = 262;                // bar width (airspeed axis)
 static const uint16_t RE_CT_Y     = 436;                // bar top
 static const uint16_t RE_CT_H     = 54;                 // bar height
 static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W;  // 570 — bar right edge
 static const float    RE_CT_VMAX  = 1000.0f;            // airspeed axis max (m/s)
 
 // Skin / core temperature — two horizontal bars beneath the chute bar.
-static const uint16_t RE_TMP_LX = 288;                  // SKIN/CORE label column (right-aligned)
-static const uint16_t RE_TMP_X  = 336;                  // bar left edge
-static const uint16_t RE_TMP_W  = 234;                  // bar width -> right edge 570 (aligned with chute)
+static const uint16_t RE_TMP_LX = 282;                  // SKIN/CORE label column (right-aligned)
+static const uint16_t RE_TMP_X  = 330;                  // bar left edge
+static const uint16_t RE_TMP_W  = 229;                  // bar width -> right edge 559 (aligned with chute)
 static const uint16_t RE_TMP_Y  = 552;                  // first (skin) bar top
 static const uint16_t RE_TMP_BH = 18;                   // bar height
 static const uint16_t RE_TMP_VS = 22;                   // row pitch (skin -> core)
@@ -594,8 +594,8 @@ static void _reDrawTemp(KCM_TFT &tft) {
 /***************************************************************************************
    CHROME: RE-ENTRY  (divider + static text-panel labels)
 ****************************************************************************************/
-static const tFont   *RE_LF  = &Roboto_Black_20;   // panel label font  — matches the powered-descent panel
-static const tFont   *RE_VF  = &Roboto_Black_28;   // panel value font  — matches the powered-descent panel
+static const tFont   *RE_LF  = &Roboto_Black_20;   // panel label / button font (kept small so the SAS labels fit)
+static const tFont   *RE_VF  = &Roboto_Black_32;   // panel value font — enlarged; fits the 360px standard panel
 static const uint8_t  RE_NR  = 8;
 
 static void _lndgChromeReentry(KCM_TFT &tft) {
