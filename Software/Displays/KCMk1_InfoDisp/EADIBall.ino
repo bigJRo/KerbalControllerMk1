@@ -78,24 +78,10 @@ void eadiDrawScanline(KCM_TFT &tft, int16_t y, int16_t x0, int16_t x1,
 }
 
 // ── Aircraft symbol (fixed, horizontal) ──────────────────────────────────────────────
-// Centre dot on top of yellow wings + fin. Drawn last so it sits above fill/horizon/ladder.
+// The KSP "level indicator": gold wings with a centre dip and a nose dot at the ball
+// centre. Drawn last so it sits above fill/horizon/ladder.
 void eadiDrawAircraftSymbol(KCM_TFT &tft) {
-    static const int16_t DOT_R   = 9;    // dot radius → 19px diameter
-    static const int16_t WI      = 17;   // wing inner edge (DOT_R + gap)
-    static const int16_t WO      = 60;   // wing outer edge
-    static const int16_t WH      = 2;    // wing half-height → 5px total
-    static const int16_t FIN_GAP = 9;    // gap between dot bottom and fin top
-    static const int16_t FIN_H   = 24;   // fin height
-    static const int16_t FIN_W   = 2;    // fin half-width → 5px total
-
-    // Left wing
-    tft.fillRect(EADI_CX - WO,    EADI_CY - WH, WO - WI,    WH*2+1, EADI_WINGS);
-    // Right wing
-    tft.fillRect(EADI_CX + WI,    EADI_CY - WH, WO - WI,    WH*2+1, EADI_WINGS);
-    // Fin
-    tft.fillRect(EADI_CX - FIN_W, EADI_CY + DOT_R + FIN_GAP, FIN_W*2+1, FIN_H, EADI_WINGS);
-    // Centre dot — drawn last so it sits on top of wings/fin overlap at centre
-    tft.fillCircle(EADI_CX, EADI_CY, DOT_R, EADI_WINGS);
+    drawLevelIndicator(tft, EADI_CX, EADI_CY, 40, TFT_GOLD);
 }
 
 // ── Clip endpoint to disc ─────────────────────────────────────────────────────────────
@@ -630,8 +616,10 @@ void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progra
     //       when the nose is prograde-side, like the KSP navball.) ─────────────────────
     eadiDrawAdiMarker(tft, progradeHdg,          progradePitch,  TFT_NEON_GREEN, KSP_MK_PROGRADE);
     eadiDrawAdiMarker(tft, progradeHdg + 180.0f, -progradePitch, TFT_NEON_GREEN, KSP_MK_RETROGRADE);
-    if (state.targetAvailable)
-        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
+    if (state.targetAvailable) {
+        eadiDrawAdiMarker(tft, state.tgtHeading,          state.tgtPitch,  TFT_VIOLET, KSP_MK_TARGET);
+        eadiDrawAdiMarker(tft, state.tgtHeading + 180.0f, -state.tgtPitch, TFT_VIOLET, KSP_MK_ANTITARGET);
+    }
     if (state.mnvrTime > 0.0f)
         eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
 

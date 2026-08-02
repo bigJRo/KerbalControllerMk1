@@ -737,16 +737,17 @@ void drawAntiTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint1
 // centre dip, and a dot on the wing line marking the exact nose direction. `r` sets the
 // overall size. Drawn in yellow-gold.
 void drawLevelIndicator(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
-  int16_t w    = _mkStroke(r);
-  int16_t wtx  = (r * 3) / 2;          // wing-tip half-span
-  int16_t inx  = (r * 11) / 20;        // inner x (start of the dip)
-  int16_t wy   = -(r / 5);             // wing-line y (above centre)
-  int16_t dipY = (r * 9) / 20;         // dip apex (below centre)
-  drawThickLine(tft, cx - wtx, cy + wy,   cx - inx, cy + wy,   w, color);  // left wing
-  drawThickLine(tft, cx - inx, cy + wy,   cx,       cy + dipY, w, color);  // left dip
-  drawThickLine(tft, cx,       cy + dipY, cx + inx, cy + wy,   w, color);  // right dip
-  drawThickLine(tft, cx + inx, cy + wy,   cx + wtx, cy + wy,   w, color);  // right wing
-  tft.fillCircle(cx, cy + wy, _mkDot(r), color);                           // nose dot on the wing line
+  // (cx,cy) is the nose dot itself — the wings run horizontally through it and the dip
+  // hangs below, so the marker points at exactly (cx,cy).
+  int16_t w   = _mkStroke(r);
+  int16_t wtx = (r * 3) / 2;           // wing-tip half-span
+  int16_t inx = (r * 11) / 20;         // inner x (start of the dip)
+  int16_t dip = (r * 3) / 5;           // dip depth below the wing line
+  drawThickLine(tft, cx - wtx, cy,       cx - inx, cy,       w, color);  // left wing
+  drawThickLine(tft, cx - inx, cy,       cx,       cy + dip, w, color);  // left dip
+  drawThickLine(tft, cx,       cy + dip, cx + inx, cy,       w, color);  // right dip
+  drawThickLine(tft, cx + inx, cy,       cx + wtx, cy,       w, color);  // right wing
+  tft.fillCircle(cx, cy, _mkDot(r), color);                              // nose dot on the wing line
 }
 
 void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
