@@ -160,6 +160,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         airspeedMessage myAirspeed;
         myAirspeed = parseMessage<airspeedMessage>(msg);
         gForces = myAirspeed.gForces;
+        apIngestGForce(myAirspeed.gForces);  // feed ascent autopilot max-G limiter
       }
       break;
     case APSIDES_MESSAGE:

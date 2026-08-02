@@ -67,6 +67,8 @@ struct AscentConfig {
   bool     autoLaunch;          // Fire STAGE_ACTION once on arm to ignite the first stage
   float    maxQ;                // Pa   Dynamic-pressure limit; throttle backs off above it (0 = disabled)
   float    maxQThrottleFloor;   // 0..1 Lowest throttle the max-Q limiter will command
+  float    maxG;                // g    Acceleration limit; throttle backs off above it (0 = disabled)
+  float    maxGThrottleFloor;   // 0..1 Lowest throttle the max-G limiter will command
   float    skinTempLimit;       // 0..1 Throttle back above this skin-temperature fraction (0 = disabled)
   float    apoTaperStart;       // 0..1 Begin throttle taper when apoapsis >= this fraction of target
   float    apoTaperFloor;       // 0..1 Minimum throttle during the apoapsis taper before cutoff
@@ -146,6 +148,7 @@ void apIngestAttitude(float heading, float pitch, float roll,
                       float srfVelHeading, float srfVelPitch,
                       float orbVelHeading, float orbVelPitch);
 void apIngestAtmo(float airDensity, bool hasAtmosphere, bool inAtmosphere);
+void apIngestGForce(float gForce);               // felt acceleration in g (AIRSPEED_MESSAGE)
 void apIngestSkinTemp(float skinTempFraction);   // 0..1 (skinTempLimitPercentage / 100)
 void apIngestStageDeltaV(float stageDeltaV);
 void apIngestSOI(const char *bodyName);          // Current sphere-of-influence body name (SOI_MESSAGE)

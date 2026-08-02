@@ -63,6 +63,7 @@ struct ApTelemetry {
   float    orbVelHeading = 0.0f;   // deg (orbital prograde heading — used for coast / circularization)
   float    orbVelPitch   = 0.0f;   // deg (orbital prograde pitch)
   float    airDensity    = 0.0f;   // kg/m^3
+  float    gForce        = 0.0f;   // felt acceleration in g (from AIRSPEED_MESSAGE)
   bool     hasAtmo       = true;   // current body has an atmosphere (from ATMO_CONDITIONS)
   bool     inAtmo        = true;   // vessel is currently within the atmosphere
   float    skinTempFrac  = 0.0f;   // 0..1
@@ -164,8 +165,22 @@ static float apScheduledPitch() {
 }
 
 /***************************************************************************************
+   Acceleration (g-force) limiter: throttle back to hold the felt acceleration below
+   maxG (analogous to MechJeb's "limit acceleration"). Uses the gForces telemetry, so it
+   needs no mass/thrust knowledge. Applied to every powered phase, not just the turn.
+****************************************************************************************/
+static float apLimitG(float thr) {
+  if (g_cfg.maxG > 0.0f && g_tel.gForce > g_cfg.maxG) {
+    float scale = g_cfg.maxG / g_tel.gForce;                     // proportional back-off
+    thr = min(thr, max(g_cfg.maxGThrottleFloor, thr * scale));
+  }
+  return apClampf(thr, 0.0f, 1.0f);
+}
+
+/***************************************************************************************
    Throttle manager for powered flight: starts from launchThrottle and applies the
-   max-Q, skin-temperature, and apoapsis-approach limits, taking the most restrictive.
+   max-Q, skin-temperature, apoapsis-approach, and max-G limits, taking the most
+   restrictive.
 ****************************************************************************************/
 static float apManagedThrottle() {
   float thr = g_cfg.launchThrottle;
@@ -192,7 +207,7 @@ static float apManagedThrottle() {
     thr = min(thr, max(g_cfg.apoTaperFloor, t));
   }
 
-  return apClampf(thr, 0.0f, 1.0f);
+  return apLimitG(thr);   // acceleration limit (also clamps to [0,1])
 }
 
 /***************************************************************************************
@@ -337,6 +352,8 @@ AscentConfig apDefaultConfig() {
   c.autoLaunch         = false;
   c.maxQ               = 0.0f;      // 0 = off by default; a typical KSP value is ~18000-25000 Pa
   c.maxQThrottleFloor  = 0.5f;
+  c.maxG               = 0.0f;      // 0 = off by default; e.g. 4.0 to cap felt acceleration at 4 g
+  c.maxGThrottleFloor  = 0.30f;
   c.skinTempLimit      = 0.0f;      // 0 = off; e.g. 0.85 to ease off at 85% skin temp
   c.apoTaperStart      = 0.92f;
   c.apoTaperFloor      = 0.10f;
@@ -460,7 +477,7 @@ void apUpdate() {
   switch (g_phase) {
 
     case AP_PHASE_VERTICAL: {
-      apSendThrottle(g_cfg.launchThrottle);
+      apSendThrottle(apLimitG(g_cfg.launchThrottle));
       apSteer(90.0f, azimuth, dt);
       apMaybeStage();
       bool altTrig = g_tel.altSurface >= g_cfg.turnStartAltitude;
@@ -508,7 +525,7 @@ void apUpdate() {
         apSendThrottle(0.0f);
         g_phase = AP_PHASE_COMPLETE;
       } else {
-        apSendThrottle(g_cfg.launchThrottle);
+        apSendThrottle(apLimitG(g_cfg.launchThrottle));
       }
       break;
     }
@@ -557,6 +574,7 @@ void apSerialConsole() {
         Serial.print(F(" pitch="));   Serial.print(g_cmdPitch, 1);
         Serial.print(F(" hdg="));     Serial.print(g_cmdHeading, 1);
         Serial.print(F(" thr="));     Serial.print(g_cmdThrottle, 2);
+        Serial.print(F(" g="));       Serial.print(g_tel.gForce, 1);
         Serial.print(F(" Ap="));      Serial.print(g_tel.apoapsis, 0);
         Serial.print(F(" Pe="));      Serial.println(g_tel.periapsis, 0);
       }
@@ -589,6 +607,7 @@ void apIngestAttitude(float heading, float pitch, float roll,
 void apIngestAtmo(float airDensity, bool hasAtmosphere, bool inAtmosphere) {
   g_tel.airDensity = airDensity; g_tel.hasAtmo = hasAtmosphere; g_tel.inAtmo = inAtmosphere; apStamp();
 }
+void apIngestGForce(float gForce)                       { g_tel.gForce = gForce; apStamp(); }
 void apIngestSkinTemp(float skinTempFraction)           { g_tel.skinTempFrac = skinTempFraction; apStamp(); }
 void apIngestStageDeltaV(float stageDeltaV)             { g_tel.stageDV = stageDeltaV; apStamp(); }
 

@@ -41,6 +41,7 @@ Registered by `registerInputChannels()` and dispatched in `messageHandler()`:
 |---------|-------|
 | `ALTITUDE_MESSAGE`        | surface altitude → pitch schedule / turn trigger |
 | `VELOCITY_MESSAGE`        | surface speed → turn trigger, max-Q |
+| `AIRSPEED_MESSAGE`        | g-force → max-G (acceleration) limiter |
 | `APSIDES_MESSAGE`         | apoapsis → cutoff; periapsis → circularization stop |
 | `APSIDESTIME_MESSAGE`     | time-to-apoapsis → circularization burn timing |
 | `ORBIT_MESSAGE`           | inclination (readback) |
@@ -66,7 +67,7 @@ IDLE ──apArm()──▶ VERTICAL ──alt/vel trigger──▶ GRAVITY_TURN
 
 - **VERTICAL** — full throttle, hold 90° at the launch azimuth until the turn trigger.
 - **GRAVITY_TURN** — pitch program clamped by the AoA limit to surface prograde; managed throttle
-  (max-Q / skin-temp / apoapsis taper); auto-staging.
+  (max-Q / max-G / skin-temp / apoapsis taper); auto-staging.
 - **COAST** — engines off; prograde held by stock SAS (or actively). Relights if drag pulls the
   apoapsis back down inside the atmosphere.
 - **CIRCULARIZE** — prograde burn near apoapsis until periapsis reaches the target.
@@ -161,6 +162,8 @@ body's default orbit on each SoI change unless you set an explicit target.
 | `autoLaunch` | false | Fire staging once on arm to ignite stage 1 |
 | `maxQ` | 0 (off) | Dynamic-pressure limit in Pa; typical KSP ~18 000–25 000 |
 | `maxQThrottleFloor` | 0.5 | Lowest throttle the max-Q limiter commands |
+| `maxG` | 0 (off) | Acceleration limit in g (uses `gForces` telemetry; ≈ MechJeb "limit acceleration"). e.g. 4.0 |
+| `maxGThrottleFloor` | 0.30 | Lowest throttle the max-G limiter commands |
 | `skinTempLimit` | 0 (off) | Ease off above this skin-temp fraction (e.g. 0.85) |
 | `apoTaperStart` | 0.92 | Begin throttle taper at this fraction of target Ap |
 | `apoTaperFloor` | 0.10 | Minimum throttle during the taper |
