@@ -37,9 +37,9 @@
 /***************************************************************************************
    LAYOUT
 ****************************************************************************************/
-static const uint16_t RE_DIV_X   = 578;                 // graphics | panel divider
-static const uint16_t RE_TXT_X   = 580;                 // text panel left edge
-static const uint16_t RE_TXT_W   = CONTENT_W - RE_TXT_X;// 360
+static const uint16_t RE_DIV_X   = 596;                 // graphics | panel divider (nudged right for the G/TEMP vertical labels)
+static const uint16_t RE_TXT_X   = 598;                 // text panel left edge
+static const uint16_t RE_TXT_W   = CONTENT_W - RE_TXT_X;// 342
 
 // ── Corridor tape (far left) ──
 static const uint16_t RE_TAPE_X   = 44;
@@ -85,9 +85,13 @@ static const float    RE_CT_VMAX  = 1000.0f;          // airspeed axis max (m/s)
 static const uint16_t RE_GA_Y  = TITLE_TOP + 20;                 // 82 — gauge top
 static const uint16_t RE_GA_H  = SCREEN_H - RE_GA_Y - 34;       // leave a label row
 static const uint16_t RE_GA_BOT= RE_GA_Y + RE_GA_H;
-static const uint16_t RE_GF_X  = 486;   static const uint16_t RE_GF_W  = 34;  // G meter (left gutter carries axis numbers)
-static const uint16_t RE_TS_X  = 540;   static const uint16_t RE_TS_W  = 14;  // skin
-static const uint16_t RE_TC_X  = 556;   static const uint16_t RE_TC_W  = 14;  // core
+static const uint16_t RE_GF_X  = 496;   static const uint16_t RE_GF_W  = 34;  // G meter (left gutter carries axis numbers)
+static const uint16_t RE_TS_X  = 562;   static const uint16_t RE_TS_W  = 14;  // skin
+static const uint16_t RE_TC_X  = 577;   static const uint16_t RE_TC_W  = 14;  // core
+// Vertical (stacked-char) label columns to the left of each gauge group — same style
+// as the ALTITUDE / ATMOSPHERE tape labels.
+static const uint16_t RE_GLBL_X = RE_GF_X - 36;   // 460 — "G METER" column (left of the axis numbers)
+static const uint16_t RE_TLBL_X = RE_TS_X - 16;   // 546 — "TEMP" column (left of the temp bars)
 
 /***************************************************************************************
    HELPERS
@@ -511,14 +515,6 @@ static void _reBar(KCM_TFT &tft, uint16_t x, uint16_t w, float frac, uint16_t co
   tft.fillRect(x + 1, RE_GA_BOT - fh, w - 2, fh, col);            // filled (bottom)
   tft.drawRect(x, RE_GA_Y, w, RE_GA_H, TFT_GREY);
 }
-static void _reLabelUnder(KCM_TFT &tft, uint16_t xc, const char *s, uint16_t col) {
-  tft.setFont(Roboto_Black_12);
-  tft.setTextColor(col, TFT_BLACK);
-  int16_t tw = getFontStringWidth(&Roboto_Black_12, s);
-  tft.setCursor(xc - tw / 2, RE_GA_BOT + 4);
-  tft.print(s);
-}
-
 static void _reDrawGauges(KCM_TFT &tft) {
   // G-load — zone-background gauge (green/yellow/red bands, like the tapes) with a
   // live marker. Zone boundaries come from this controller's G thresholds, which are
@@ -561,7 +557,6 @@ static void _reDrawGauges(KCM_TFT &tft) {
     int16_t ym = constrain(gToY(g), (int16_t)(RE_GA_Y + 7), (int16_t)(RE_GA_BOT - 7));
     tft.fillRect(gix, ym - 1, giw, 3, TFT_WHITE);                      // white index line
     tft.fillTriangle(gx + gw + 1, ym, gx + gw + 12, ym - 7, gx + gw + 12, ym + 7, TFT_WHITE);
-    _reLabelUnder(tft, gx + gw / 2, "G METER", TFT_LIGHT_GREY);
   }
   // Thermal — skin + core temp, % of limit.
   {
@@ -570,7 +565,6 @@ static void _reDrawGauges(KCM_TFT &tft) {
     };
     _reBar(tft, RE_TS_X, RE_TS_W, state.skinTempPct / 100.0f, tcol(state.skinTempPct), TFT_OFF_BLACK);
     _reBar(tft, RE_TC_X, RE_TC_W, state.coreTempPct / 100.0f, tcol(state.coreTempPct), TFT_OFF_BLACK);
-    _reLabelUnder(tft, (RE_TS_X + RE_TC_X + RE_TC_W) / 2, "TEMP", TFT_LIGHT_GREY);
   }
 }
 
@@ -589,6 +583,12 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
                    "ALTITUDE", TFT_LIGHT_GREY, TFT_BLACK);
   drawVerticalText(tft, RE_ATMO_LBL_X, RE_ATMO_Y, 14, RE_ATMO_H, &Roboto_Black_12,
                    "ATMOSPHERE", TFT_LIGHT_GREY, TFT_BLACK);
+
+  // Same treatment for the two right-hand bar gauges.
+  drawVerticalText(tft, RE_GLBL_X, RE_GA_Y, 14, RE_GA_H, &Roboto_Black_12,
+                   "G METER", TFT_LIGHT_GREY, TFT_BLACK);
+  drawVerticalText(tft, RE_TLBL_X, RE_GA_Y, 14, RE_GA_H, &Roboto_Black_12,
+                   "TEMP", TFT_LIGHT_GREY, TFT_BLACK);
 
   const uint16_t RHW = RE_TXT_W / 2;
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
