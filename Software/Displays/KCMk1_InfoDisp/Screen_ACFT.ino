@@ -1041,7 +1041,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         // see Documents/Developer/Module_UI_Reference.md). Cyan when deployed, grey when stowed.
         {
             uint16_t afg, abg;
-            if (state.airbrake_on) { afg = TFT_BLACK;     abg = TFT_CYAN; }
+            if (state.airbrake_on) { afg = TFT_DARK_GREY; abg = TFT_CYAN; }
             else                   { afg = TFT_DARK_GREY; abg = TFT_OFF_BLACK; }
             RowCache &ac = rowCache[SC][9]; String as = state.airbrake_on ? "OUT" : "IN";  // cache key
             if (ac.value != as || ac.fg != afg || ac.bg != abg) {
