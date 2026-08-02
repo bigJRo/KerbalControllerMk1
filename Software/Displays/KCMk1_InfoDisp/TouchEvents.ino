@@ -184,6 +184,14 @@ void processTouchEvents() {
     return;
   }
 
+  // Ascent Autopilot: content-area taps drive its on-screen keypad / editable
+  // fields / ARM button. Sidebar taps (x past the content area) fall through.
+  if (activeScreen == screen_LNCHAP && x2 < SCREEN_W - SIDEBAR_W && y2 >= TITLE_TOP) {
+    apScreenTouch(x2, y2);
+    clearTouchISR();
+    return;
+  }
+
   // Sidebar hit test — right-hand SIDEBAR_W column. 10 buttons, mapped to screens
   // via SB_BTN_SCREEN; the PFD button resolves to its context/manual screen.
   if (x2 >= SCREEN_W - SIDEBAR_W) {

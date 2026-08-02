@@ -50,7 +50,7 @@ const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;
 
 const uint8_t SB_BTN_COUNT = 10;
-const uint8_t SB_PFD_BTN   = 1;   // PFD button index (covers SCFT / ACFT / ROVR)
+const uint8_t SB_PFD_BTN   = 2;   // PFD button index (covers SCFT / ACFT / ROVR)
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -63,9 +63,9 @@ inline uint16_t sbBtnY(uint8_t btn) {
 // pfdSelectedScreen() picks the context/manual one at tap time.
 const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
   screen_LNCH,     // 0 LNCH
-  screen_SCFT,     // 1 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
-  screen_ORB,      // 2 ORB
-  screen_LNCHAP,   // 3 ASC — Ascent Autopilot (ORB+ moved to ORB title tap)
+  screen_LNCHAP,   // 1 ASC — Ascent Autopilot (ORB+ moved to ORB title tap)
+  screen_SCFT,     // 2 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
+  screen_ORB,      // 3 ORB
   screen_VEH,      // 4 VEH
   screen_MNVR,     // 5 MNVR
   screen_TGT,      // 6 TGT
@@ -75,14 +75,14 @@ const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
 };
 
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "ASC", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR"
+  "LNCH", "ASC", "PFD", "ORB", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR"
 };
 
 // Which sidebar button should highlight for the active screen. SCFT/ACFT/ROVR all
 // map to the PFD button; every other screen maps 1:1.
 uint8_t screenToButton(ScreenType s) {
   if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) return SB_PFD_BTN;
-  if (s == screen_ORBADV) return 2;   // ORB+ reached via ORB title tap — highlight the ORB button
+  if (s == screen_ORBADV) return 3;   // ORB+ reached via ORB title tap — highlight the ORB button
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
     if (SB_BTN_SCREEN[i] == s) return i;
   return 0xFF;   // no button (shouldn't happen — every screen maps)
