@@ -708,7 +708,8 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   }
 
   // Row 2: V.Srf
-  reVal(2, "V.Srf:", fmtMs(state.surfaceVel), (state.surfaceVel < 0) ? TFT_RED : TFT_DARK_GREEN, TFT_BLACK);
+  // surfaceVel is a magnitude, always >= 0
+  reVal(2, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
 
   // Row 3: V.Vrt (vertical descent rate). The G load now lives in the graphical G meter.
   // Hazard-coloured (landing thresholds) only near the ground; at altitude a high descent

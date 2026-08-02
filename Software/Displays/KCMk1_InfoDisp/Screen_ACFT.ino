@@ -1547,10 +1547,9 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         acftVal(0, 0, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
     }
 
-    // Row 1 — V.Srf
+    // Row 1 — V.Srf (surfaceVel is a magnitude, always >= 0)
     {
-        fg = (state.surfaceVel < 0.0f) ? TFT_RED : TFT_DARK_GREEN;
-        acftVal(1, 1, "V.Srf:", fmtMs(state.surfaceVel), fg, TFT_BLACK);
+        acftVal(1, 1, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 2 — IAS with stall warning
