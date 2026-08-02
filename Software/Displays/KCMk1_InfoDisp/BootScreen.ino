@@ -54,7 +54,7 @@ static uint16_t _bs_wrap(KCM_TFT &tft, uint16_t y, const char *text,
 
 // Standard header bar used by all three sequences
 static uint16_t _bs_header(KCM_TFT &tft, uint16_t y, const char *title) {
-  tft.fillRect(0, y, 800, 2, TFT_GREY); y += 4;
+  tft.fillRect(0, y, SCREEN_W, 2, TFT_GREY); y += 4;
   char buf[128];   // #4B enlarged for full version string
   snprintf(buf, sizeof(buf),
            "KCMk1-INFODISP  //  Jeb's Controller Works  //  v%d.%d.%d"
@@ -62,7 +62,7 @@ static uint16_t _bs_header(KCM_TFT &tft, uint16_t y, const char *title) {
            SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH,
            KDC_VERSION_MAJOR,    KDC_VERSION_MINOR,    KDC_VERSION_PATCH);
   _bs_print(tft, BS_FONT, BS_COL_X, y, buf, TFT_GREY); y += BS_ROW_H;
-  tft.fillRect(0, y, 800, 2, TFT_GREY); y += 4;
+  tft.fillRect(0, y, SCREEN_W, 2, TFT_GREY); y += 4;
   _bs_wait(BS_HOLD);
   y = _bs_big(tft, y, title, TFT_WHITE);
   _bs_wait(BS_HOLD);
@@ -116,7 +116,7 @@ static void _boot_B(KCM_TFT &tft) {
     idx[j] = key;
   }
 
-  uint16_t y = 0, wrapW = 792;
+  uint16_t y = 0, wrapW = SCREEN_W - 8;   // full-width text wrap (was hardcoded 792)
   y = _bs_header(tft, y, "MISSION LOG -- KSC FLIGHT 247");
 
   for (uint8_t i = 0; i < SHOW; i++) {
@@ -185,7 +185,7 @@ static void _boot_C(KCM_TFT &tft) {
   for (uint8_t i = 0; i < POOL; i++) idx[i] = i;
   _bs_shuffle(idx, POOL);
 
-  uint16_t y = 0, wrapW = 792;
+  uint16_t y = 0, wrapW = SCREEN_W - 8;   // full-width text wrap (was hardcoded 792)
   y = _bs_header(tft, y, "LOADING KERBAL FLIGHT SYSTEMS...");
 
   for (uint8_t i = 0; i < SHOW; i++) {
