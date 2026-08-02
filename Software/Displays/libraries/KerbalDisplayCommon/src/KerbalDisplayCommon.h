@@ -3,7 +3,7 @@
 
 #define KDC_VERSION_MAJOR 3
 #define KDC_VERSION_MINOR 1
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library
@@ -26,7 +26,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.1.0
+  Version: 3.1.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -211,7 +211,7 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
 // symmetrically about the ideal line via a unit-perpendicular offset, so it thickens
 // cleanly at any angle. Used by the KSP navball markers for their spokes/prongs/X.
 void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                   int16_t w, uint16_t color);
+                   int16_t w, uint16_t color, bool caps = true);
 
 // KSP prograde marker: ring + centre dot + three spokes pointing up/right/left. Used
 // for the velocity/prograde marker (green) and the maneuver marker (blue). `r` is the

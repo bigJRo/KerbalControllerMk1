@@ -343,8 +343,10 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv, float velBr
         _tgtPrevVelX = vSX; _tgtPrevVelY = vSY;
     }
 
-    // Always redraw the velocity marker on top — never buried under the target marker
-    drawProgradeMarker(tft, vSX, vSY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
+    // Always redraw the velocity marker on top — never buried under the target marker. Use
+    // the cached (last-erased-to) position so sub-pixel drift never smears/ghosts the marker.
+    if (_tgtPrevVelX != 9999)
+        drawProgradeMarker(tft, _tgtPrevVelX, _tgtPrevVelY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
 
     // Redraw crosshair inner segments — VEL circle can clip them near centre
     {

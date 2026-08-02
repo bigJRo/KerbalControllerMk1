@@ -324,7 +324,9 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv, float ve
     }
 
     // Always redraw the velocity marker on top so it is never buried under the target marker.
-    drawProgradeMarker(tft, velSX, velSY, DOT_R_VEL, TFT_NEON_GREEN);
+    // Use the cached (last-erased-to) position so sub-pixel drift never smears/ghosts it.
+    if (_dockPrevVelX != 9999)
+        drawProgradeMarker(tft, _dockPrevVelX, _dockPrevVelY, DOT_R_VEL, TFT_NEON_GREEN);
 
     // Redraw inner crosshair gap lines — vel circle (r=6,7) overlaps the inner gap
     // region when vel dot is near centre, erasing those segments.
