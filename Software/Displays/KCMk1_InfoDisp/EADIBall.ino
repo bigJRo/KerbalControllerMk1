@@ -30,6 +30,35 @@ static const uint16_t EADI_LADDER    = TFT_WHITE;
 static const int16_t  EADI_BX_ALLSKY = INT16_MIN;   // scanline is entirely sky
 static const int16_t  EADI_BX_ALLGND = INT16_MAX;   // scanline is entirely ground
 
+// ── Shared attitude-ball geometry + delta-fill state ─────────────────────────────────
+// SCFT and ACFT never run simultaneously (mutually-exclusive screens) and share identical
+// geometry, so one set of buffers serves both; each screen resets them in its chrome via
+// eadiBallResetState(). ~1.8 KB total.
+static const int16_t  EADI_BALL_Y0     = EADI_CY - EADI_R;            // 94 (top scanline of ball)
+static const uint16_t EADI_SCANLINES   = (uint16_t)(EADI_R * 2 + 1);  // 413
+static const float    EADI_SCALE       = (float)EADI_R / 30.0f;       // px per degree
+static const uint16_t EADI_DIRTY_WORDS = (EADI_SCANLINES + 15) / 16;  // 26
+
+static int16_t  _eadiChordTable[EADI_SCANLINES];   // chord half-widths (built once)
+static bool     _eadiChordTableReady = false;
+static int16_t  _eadiPrevBx[EADI_SCANLINES];       // prev-frame per-scanline sky/gnd split
+static bool     _eadiPrevGroundLeft  = false;
+static uint16_t _eadiLadderDirty[EADI_DIRTY_WORDS];      // current-frame occupied scanlines
+static uint16_t _eadiLadderDirtyPrev[EADI_DIRTY_WORDS];  // previous frame (delta erase mask)
+static int16_t  _eadiPrevHorizLo = INT16_MAX;      // prev horizon-line dirty band
+static int16_t  _eadiPrevHorizHi = INT16_MIN;
+
+// Mark scanline y occupied in the current-frame dirty bitmap (ladder/markers call this).
+void eadiLadderDirtySet(int16_t y) {
+    int16_t i = y - EADI_BALL_Y0;
+    if (i < 0 || i >= (int16_t)EADI_SCANLINES) return;
+    _eadiLadderDirty[i >> 4] |= (uint16_t)(1u << (i & 15));
+}
+// Was scanline index i occupied last frame? (delta fill uses this to erase old pixels.)
+static inline bool eadiLadderDirtyTest(uint16_t i) {
+    return (_eadiLadderDirtyPrev[i >> 4] >> (i & 15)) & 1u;
+}
+
 // ── Draw one horizon scanline ────────────────────────────────────────────────────────
 // bx is the sky/ground split x for row y (or the ALLSKY/ALLGND sentinel). groundLeft
 // selects which side of bx is ground.
@@ -199,21 +228,8 @@ void eadiUpdateRollIndicator(KCM_TFT &tft, float roll) {
 
 
 // ═══ Pitch ladder ════════════════════════════════════════════════════════════════════
-static const int16_t  EADI_BALL_Y0   = EADI_CY - EADI_R;             // 94 (top scanline of ball)
-static const uint16_t EADI_SCANLINES = (uint16_t)(EADI_R * 2 + 1);   // 413
-static const float    EADI_SCALE     = (float)EADI_R / 30.0f;        // px per degree
-
-// Mark scanline y occupied in the caller's per-scanline dirty bitmap (so the delta fill
-// erases the rung/label next frame). `dirty` is the caller-owned array (>= 26 words).
-void eadiLadderDirtySet(uint16_t *dirty, int16_t y) {
-    int16_t i = y - EADI_BALL_Y0;
-    if (i < 0 || i >= (int16_t)EADI_SCANLINES) return;
-    dirty[i >> 4] |= (uint16_t)(1u << (i & 15));
-}
-
-// Draw the pitch ladder. Rungs are marked into `dirty` for next frame's delta erase.
-void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR,
-                    uint16_t *dirty) {
+// Draw the pitch ladder. Rungs/labels are marked dirty for next frame's delta erase.
+void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) {
     static const int16_t HL_MAJ  = 47;   // major rung half-length
     static const int16_t HL_MIN  = 29;   // minor rung half-length
     static const int16_t LBL_GAP = 8;
@@ -285,7 +301,7 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR,
         {
             int16_t y_lo = min(min(ly1, ly2), min(ly1b, ly2b));
             int16_t y_hi = max(max(ly1, ly2), max(ly1b, ly2b));
-            for (int16_t yd = y_lo; yd <= y_hi; yd++) eadiLadderDirtySet(dirty, yd);
+            for (int16_t yd = y_lo; yd <= y_hi; yd++) eadiLadderDirtySet(yd);
         }
 
         tft.drawLine(lx1,  ly1,  lx2,  ly2,  EADI_LADDER);
@@ -311,7 +327,7 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR,
             if (sign < 0.0f && lx + lw > (int16_t)ex) lx = (int16_t)ex - LBL_GAP - lw;
             int16_t ly = (int16_t)(ey) - FONT_H/2;
             if (boxInDisc(lx, ly, lw, FONT_H)) {
-                for (int16_t yd = ly; yd < ly + FONT_H; yd++) eadiLadderDirtySet(dirty, yd);
+                for (int16_t yd = ly; yd < ly + FONT_H; yd++) eadiLadderDirtySet(yd);
                 tft.setCursor(lx, ly); tft.print(lbl);
             }
         };
@@ -337,7 +353,7 @@ float eadiHdgDelta(float a, float b) {
 // would fall outside the visible cone. Marks the marker's scanlines into the caller's
 // `dirty` bitmap so the next delta fill repaints them (prevents trails).
 void eadiDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
-                       uint16_t fillCol, uint8_t kind, uint16_t *dirty) {
+                       uint16_t fillCol, uint8_t kind) {
     // Delta from current vessel attitude
     float dh = eadiHdgDelta(markerHdg, state.heading);
     float dp = markerPitch - state.pitch;
@@ -368,6 +384,174 @@ void eadiDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
 
     // Tell next frame's delta fill to repaint these scanlines.
     for (int16_t y = sy - EADI_ADI_MRK_HD; y <= sy + EADI_ADI_MRK_HD; y++) {
-        eadiLadderDirtySet(dirty, y);
+        eadiLadderDirtySet(y);
     }
+}
+
+
+// ═══ Horizon fill: chord table, full draw, per-scanline delta fill ═══════════════════
+// Build the chord half-width lookup (integer sqrt, 4 Newton iters). Idempotent.
+void eadiBuildChordTable() {
+    if (_eadiChordTableReady) return;
+    for (uint16_t i = 0; i < EADI_SCANLINES; i++) {
+        int16_t dy  = (int16_t)i - EADI_R;
+        int32_t rem = (int32_t)EADI_R*EADI_R - (int32_t)dy*dy;
+        if (rem <= 0) { _eadiChordTable[i] = 0; continue; }
+        int32_t x = EADI_R;
+        x = (x + rem/x) >> 1; x = (x + rem/x) >> 1;
+        x = (x + rem/x) >> 1; x = (x + rem/x) >> 1;
+        _eadiChordTable[i] = (int16_t)x;
+    }
+    _eadiChordTableReady = true;
+}
+
+// Full ball sky/ground fill. Records each row's split into _eadiPrevBx for the delta fill.
+void eadiFullDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
+    tft.fillCircle(EADI_CX, EADI_CY, EADI_R, EADI_SKY);
+    bool near_horiz = (fabsf(sinR) < 0.01f);
+    float bx_f    = near_horiz ? 0.0f : (K + cosR * (float)EADI_BALL_Y0) / sinR;
+    float bx_step = near_horiz ? 0.0f : cosR / sinR;
+    bool  gl0     = (sinR > 0.0f);
+    for (uint16_t i = 0; i < EADI_SCANLINES; i++) {
+        int16_t chw = _eadiChordTable[i];
+        if (chw <= 0) { _eadiPrevBx[i] = EADI_BX_ALLSKY; bx_f += bx_step; continue; }
+        int16_t y  = EADI_BALL_Y0 + (int16_t)i;
+        int16_t x0 = EADI_CX - chw, x1 = EADI_CX + chw;
+        bool    gl;
+        int16_t bx;
+        if (near_horiz) {
+            bool sky = (-cosR * (float)y > K);
+            bx = sky ? EADI_BX_ALLSKY : EADI_BX_ALLGND;
+            gl = !sky;
+        } else {
+            bx = (int16_t)bx_f;
+            gl = gl0;
+            if (sinR > 0.0f) {
+                if (bx <= x0) { bx = EADI_BX_ALLSKY;  gl = false; }
+                else if (bx >= x1) { bx = EADI_BX_ALLGND; }
+            } else {
+                if (bx >= x1) { bx = EADI_BX_ALLSKY;  gl = false; }
+                else if (bx <= x0) { bx = EADI_BX_ALLGND; }
+            }
+        }
+        _eadiPrevBx[i] = bx;
+        eadiDrawScanline(tft, y, x0, x1, bx, gl);
+        bx_f += bx_step;
+    }
+    _eadiPrevGroundLeft = gl0;
+}
+
+// Per-scanline delta fill. Repaints only rows whose split changed or that fall in the
+// previous horizon-line / ladder dirty bands. Reads/writes _eadiPrevBx/_eadiPrevGroundLeft
+// and _eadiPrevHoriz*/dirty-prev.
+void eadiDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
+    bool  newGL      = (sinR > 0.0f);
+    bool  near_horiz = (fabsf(sinR) < 0.01f);
+    float bx_f       = near_horiz ? 0.0f : (K + cosR * (float)EADI_BALL_Y0) / sinR;
+    float bx_step    = near_horiz ? 0.0f : cosR / sinR;
+
+    int16_t split_lo = 0, split_hi = (int16_t)(EADI_SCANLINES - 1);
+    if (!near_horiz) {
+        float pitchPx = -(K - sinR * (float)EADI_CX + cosR * (float)EADI_CY);
+        float hc2 = (float)EADI_R * EADI_R - pitchPx * pitchPx;
+        if (hc2 >= 0.0f) {
+            float BCY = (float)EADI_CY + pitchPx * cosR;
+            float hc  = sqrtf(hc2);
+            float ly1 = BCY - hc * sinR, ly2 = BCY + hc * sinR;
+            float ylo = (ly1 < ly2 ? ly1 : ly2) - 2.0f;
+            float yhi = (ly1 > ly2 ? ly1 : ly2) + 1.0f;
+            split_lo = (int16_t)(ylo - (float)EADI_BALL_Y0);
+            split_hi = (int16_t)(yhi - (float)EADI_BALL_Y0);
+            if (split_lo < 0) split_lo = 0;
+            if (split_hi >= (int16_t)EADI_SCANLINES) split_hi = (int16_t)(EADI_SCANLINES - 1);
+        }
+    }
+
+    for (uint16_t i = 0; i < EADI_SCANLINES; i++) {
+        bool in_split   = ((int16_t)i >= split_lo && (int16_t)i <= split_hi);
+        bool in_prev_horiz  = ((int16_t)(EADI_BALL_Y0 + i) >= _eadiPrevHorizLo &&
+                                (int16_t)(EADI_BALL_Y0 + i) <= _eadiPrevHorizHi);
+        bool in_prev_ladder = eadiLadderDirtyTest(i);
+
+        int16_t chw = _eadiChordTable[i];
+
+        if (!in_split && !in_prev_horiz && !in_prev_ladder) {
+            if (chw <= 0) { bx_f += bx_step; continue; }
+            int16_t bx_new_s;
+            if (near_horiz) {
+                int16_t y = EADI_BALL_Y0 + (int16_t)i;
+                bx_new_s = (-cosR * (float)y > K) ? EADI_BX_ALLSKY : EADI_BX_ALLGND;
+            } else {
+                int16_t x0 = EADI_CX - chw, x1 = EADI_CX + chw;
+                int16_t bx = (int16_t)bx_f;
+                if (sinR > 0.0f)
+                    bx_new_s = (bx <= x0) ? EADI_BX_ALLSKY : (bx >= x1) ? EADI_BX_ALLGND : bx;
+                else
+                    bx_new_s = (bx >= x1) ? EADI_BX_ALLSKY : (bx <= x0) ? EADI_BX_ALLGND : bx;
+            }
+            bx_f += bx_step;
+            if (bx_new_s == _eadiPrevBx[i] && newGL == _eadiPrevGroundLeft) continue;
+            int16_t y  = EADI_BALL_Y0 + (int16_t)i;
+            int16_t x0 = EADI_CX - chw, x1 = EADI_CX + chw;
+            bool gl = (bx_new_s == EADI_BX_ALLGND) ? newGL :
+                      (bx_new_s == EADI_BX_ALLSKY)  ? false : newGL;
+            eadiDrawScanline(tft, y, x0, x1, bx_new_s, gl);
+            _eadiPrevBx[i] = bx_new_s;
+            continue;
+        }
+
+        if (chw <= 0) { _eadiPrevBx[i] = EADI_BX_ALLSKY; bx_f += bx_step; continue; }
+
+        int16_t y  = EADI_BALL_Y0 + (int16_t)i;
+        int16_t x0 = EADI_CX - chw, x1 = EADI_CX + chw;
+        bool    gl;
+        int16_t bx_new;
+
+        if (near_horiz) {
+            bool sky = (-cosR * (float)y > K);
+            bx_new = sky ? EADI_BX_ALLSKY : EADI_BX_ALLGND;
+            gl = !sky;
+        } else {
+            bx_new = (int16_t)bx_f;
+            gl = newGL;
+            if (sinR > 0.0f) {
+                if (bx_new <= x0) { bx_new = EADI_BX_ALLSKY;  gl = false; }
+                else if (bx_new >= x1) { bx_new = EADI_BX_ALLGND; }
+            } else {
+                if (bx_new >= x1) { bx_new = EADI_BX_ALLSKY;  gl = false; }
+                else if (bx_new <= x0) { bx_new = EADI_BX_ALLGND; }
+            }
+        }
+        bx_f += bx_step;
+
+        bool bx_changed = (bx_new != _eadiPrevBx[i] || newGL != _eadiPrevGroundLeft);
+
+        if (!bx_changed && !in_prev_horiz && !in_prev_ladder) continue;
+
+        eadiDrawScanline(tft, y, x0, x1, bx_new, gl);
+        _eadiPrevBx[i] = bx_new;
+    }
+    _eadiPrevGroundLeft = newGL;
+}
+
+// Swap the ladder dirty bitmaps: prev = last frame's set (for the delta fill), current
+// cleared for this frame's ladder/marker marks. Call once per frame before drawing them.
+void eadiBallSwapDirty() {
+    memcpy(_eadiLadderDirtyPrev, _eadiLadderDirty, sizeof(_eadiLadderDirty));
+    memset(_eadiLadderDirty, 0, sizeof(_eadiLadderDirty));
+}
+
+// Record this frame's horizon-line dirty band (read by next frame's delta fill).
+void eadiBallSetPrevHoriz(int16_t lo, int16_t hi) {
+    _eadiPrevHorizLo = lo;
+    _eadiPrevHorizHi = hi;
+}
+
+// Reset all shared ball delta-fill state. Each screen calls this in its chrome on entry.
+void eadiBallResetState() {
+    eadiBuildChordTable();
+    memset(_eadiLadderDirty,     0, sizeof(_eadiLadderDirty));
+    memset(_eadiLadderDirtyPrev, 0, sizeof(_eadiLadderDirtyPrev));
+    _eadiPrevHorizLo = INT16_MAX;
+    _eadiPrevHorizHi = INT16_MIN;
 }

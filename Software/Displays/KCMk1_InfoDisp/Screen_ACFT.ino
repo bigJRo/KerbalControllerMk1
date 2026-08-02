@@ -67,8 +67,6 @@ static const int16_t  ACFT_BX_ALLGND = INT16_MAX;
 
 
 // ── Per-frame state ───────────────────────────────────────────────────────────────────
-static int16_t  _acftPrevBx[ACFT_SCANLINES];
-static bool     _acftPrevGroundLeft;
 
 static float    _acftPrevPitch   = -9999.0f;
 static float    _acftPrevRoll    = -9999.0f;
@@ -76,41 +74,6 @@ static float    _acftPrevRoll    = -9999.0f;
 // Aircraft always uses surface velocity — no orbital mode switching
 static bool     _acftFullRedrawNeeded = true;
 
-// Horizon line dirty band (small — just 1-2px tall after clipping)
-static int16_t  _acftPrevHorizLo  = INT16_MAX;
-static int16_t  _acftPrevHorizHi  = INT16_MIN;
-
-// Per-scanline ladder dirty bitmap — 1 bit per scanline.
-static const uint16_t ACFT_DIRTY_WORDS = (ACFT_SCANLINES + 15) / 16;
-static uint16_t _acftLadderDirty[ACFT_DIRTY_WORDS];
-static uint16_t _acftLadderDirtyPrev[ACFT_DIRTY_WORDS];
-
-static inline void _acftLadderDirtySet(int16_t y) {
-    int16_t i = y - ACFT_BALL_Y0;
-    if (i < 0 || i >= (int16_t)ACFT_SCANLINES) return;
-    _acftLadderDirty[i >> 4] |= (uint16_t)(1u << (i & 15));
-}
-static inline bool _acftLadderDirtyTest(uint16_t i) {
-    return (_acftLadderDirtyPrev[i >> 4] >> (i & 15)) & 1u;
-}
-
-// Chord half-width lookup table — precomputed once.
-static int16_t _acftChordTable[ACFT_SCANLINES];
-static bool    _acftChordTableReady = false;
-
-static void _acftBuildChordTable() {
-    if (_acftChordTableReady) return;
-    for (uint16_t i = 0; i < ACFT_SCANLINES; i++) {
-        int16_t dy  = (int16_t)i - ACFT_R;
-        int32_t rem = (int32_t)ACFT_R*ACFT_R - (int32_t)dy*dy;
-        if (rem <= 0) { _acftChordTable[i] = 0; continue; }
-        int32_t x = ACFT_R;
-        x = (x + rem/x) >> 1; x = (x + rem/x) >> 1;
-        x = (x + rem/x) >> 1; x = (x + rem/x) >> 1;
-        _acftChordTable[i] = (int16_t)x;
-    }
-    _acftChordTableReady = true;
-}
 
 static inline float _acftSin(float deg) { return sinf(deg * DEG_TO_RAD); }
 static inline float _acftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
@@ -124,148 +87,8 @@ static inline float _acftCos(float deg) { return cosf(deg * DEG_TO_RAD); }
 
 
 
-// ── Full ball draw ────────────────────────────────────────────────────────────────────
-static void _acftFullDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
-    tft.fillCircle(ACFT_CX, ACFT_CY, ACFT_R, ACFT_SKY);
-
-    // Incremental bx: bx(y) = (K + cosR*y)/sinR
-    // bx(y+1) = bx(y) + cosR/sinR  → one float add per row instead of multiply+divide
-    bool near_horiz = (fabsf(sinR) < 0.01f);
-    float bx_f    = near_horiz ? 0.0f : (K + cosR * (float)ACFT_BALL_Y0) / sinR;
-    float bx_step = near_horiz ? 0.0f : cosR / sinR;
-    bool  gl0     = (sinR > 0.0f);
-
-    for (uint16_t i = 0; i < ACFT_SCANLINES; i++) {
-        int16_t chw = _acftChordTable[i];
-        if (chw <= 0) { _acftPrevBx[i] = ACFT_BX_ALLSKY; bx_f += bx_step; continue; }
-        int16_t y  = ACFT_BALL_Y0 + (int16_t)i;
-        int16_t x0 = ACFT_CX - chw, x1 = ACFT_CX + chw;
-        bool    gl;
-        int16_t bx;
-        if (near_horiz) {
-            bool sky = (-cosR * (float)y > K);
-            bx = sky ? ACFT_BX_ALLSKY : ACFT_BX_ALLGND;
-            gl = !sky;
-        } else {
-            bx = (int16_t)bx_f;
-            gl = gl0;
-            if (sinR > 0.0f) {
-                if (bx <= x0) { bx = ACFT_BX_ALLSKY;  gl = false; }
-                else if (bx >= x1) { bx = ACFT_BX_ALLGND; }
-            } else {
-                if (bx >= x1) { bx = ACFT_BX_ALLSKY;  gl = false; }
-                else if (bx <= x0) { bx = ACFT_BX_ALLGND; }
-            }
-        }
-        _acftPrevBx[i] = bx;
-        eadiDrawScanline(tft, y, x0, x1, bx, gl);
-        bx_f += bx_step;
-    }
-    _acftPrevGroundLeft = gl0;
-}
 
 
-// ── Delta update ──────────────────────────────────────────────────────────────────────
-static void _acftDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
-    bool  newGL      = (sinR > 0.0f);
-    bool  near_horiz = (fabsf(sinR) < 0.01f);
-    float bx_f       = near_horiz ? 0.0f : (K + cosR * (float)ACFT_BALL_Y0) / sinR;
-    float bx_step    = near_horiz ? 0.0f : cosR / sinR;
-
-    // Analytically bound the split-row band using horizon chord endpoints.
-    // Outside this band every row is all-sky or all-gnd; we only need to repaint
-    // them if they transition (bx_changed) or are in the horizon/ladder dirty bands.
-    // The chord y-range in scanline index space is ly_lo_i..ly_hi_i.
-    // We also track the previous and current horizon bands here.
-    int16_t split_lo = 0, split_hi = (int16_t)(ACFT_SCANLINES - 1);
-    if (!near_horiz) {
-        float pitchPx = -(K - sinR * (float)ACFT_CX + cosR * (float)ACFT_CY);
-        float hc2 = (float)ACFT_R * ACFT_R - pitchPx * pitchPx;
-        if (hc2 >= 0.0f) {
-            float BCY = (float)ACFT_CY + pitchPx * cosR;
-            float hc  = sqrtf(hc2);
-            float ly1 = BCY - hc * sinR, ly2 = BCY + hc * sinR;
-            float ylo = (ly1 < ly2 ? ly1 : ly2) - 2.0f;
-            float yhi = (ly1 > ly2 ? ly1 : ly2) + 1.0f;
-            split_lo = (int16_t)(ylo - (float)ACFT_BALL_Y0);
-            split_hi = (int16_t)(yhi - (float)ACFT_BALL_Y0);
-            if (split_lo < 0) split_lo = 0;
-            if (split_hi >= (int16_t)ACFT_SCANLINES) split_hi = (int16_t)(ACFT_SCANLINES - 1);
-        }
-    }
-
-    for (uint16_t i = 0; i < ACFT_SCANLINES; i++) {
-        bool in_split   = ((int16_t)i >= split_lo && (int16_t)i <= split_hi);
-        bool in_prev_horiz  = ((int16_t)(ACFT_BALL_Y0 + i) >= _acftPrevHorizLo &&
-                                (int16_t)(ACFT_BALL_Y0 + i) <= _acftPrevHorizHi);
-        bool in_prev_ladder = _acftLadderDirtyTest(i);
-
-        int16_t chw = _acftChordTable[i];
-
-        // For rows outside the split band: compute the sentinel bx quickly
-        // and only skip if it hasn't changed. This catches the case where
-        // the horizon sweeps into a previously all-sky/all-gnd row.
-        if (!in_split && !in_prev_horiz && !in_prev_ladder) {
-            if (chw <= 0) { bx_f += bx_step; continue; }
-            // Compute sentinel for this row
-            int16_t bx_new_s;
-            if (near_horiz) {
-                int16_t y = ACFT_BALL_Y0 + (int16_t)i;
-                bx_new_s = (-cosR * (float)y > K) ? ACFT_BX_ALLSKY : ACFT_BX_ALLGND;
-            } else {
-                int16_t x0 = ACFT_CX - chw, x1 = ACFT_CX + chw;
-                int16_t bx = (int16_t)bx_f;
-                if (sinR > 0.0f)
-                    bx_new_s = (bx <= x0) ? ACFT_BX_ALLSKY : (bx >= x1) ? ACFT_BX_ALLGND : bx;
-                else
-                    bx_new_s = (bx >= x1) ? ACFT_BX_ALLSKY : (bx <= x0) ? ACFT_BX_ALLGND : bx;
-            }
-            bx_f += bx_step;
-            if (bx_new_s == _acftPrevBx[i] && newGL == _acftPrevGroundLeft) continue;
-            // Sentinel changed — fall through to full repaint below by re-entering loop
-            // We already advanced bx_f, so use bx_new_s directly
-            int16_t y  = ACFT_BALL_Y0 + (int16_t)i;
-            int16_t x0 = ACFT_CX - chw, x1 = ACFT_CX + chw;
-            bool gl = (bx_new_s == ACFT_BX_ALLGND) ? newGL :
-                      (bx_new_s == ACFT_BX_ALLSKY)  ? false : newGL;
-            eadiDrawScanline(tft, y, x0, x1, bx_new_s, gl);
-            _acftPrevBx[i] = bx_new_s;
-            continue;
-        }
-
-        if (chw <= 0) { _acftPrevBx[i] = ACFT_BX_ALLSKY; bx_f += bx_step; continue; }
-
-        int16_t y  = ACFT_BALL_Y0 + (int16_t)i;
-        int16_t x0 = ACFT_CX - chw, x1 = ACFT_CX + chw;
-        bool    gl;
-        int16_t bx_new;
-
-        if (near_horiz) {
-            bool sky = (-cosR * (float)y > K);
-            bx_new = sky ? ACFT_BX_ALLSKY : ACFT_BX_ALLGND;
-            gl = !sky;
-        } else {
-            bx_new = (int16_t)bx_f;
-            gl = newGL;
-            if (sinR > 0.0f) {
-                if (bx_new <= x0) { bx_new = ACFT_BX_ALLSKY;  gl = false; }
-                else if (bx_new >= x1) { bx_new = ACFT_BX_ALLGND; }
-            } else {
-                if (bx_new >= x1) { bx_new = ACFT_BX_ALLSKY;  gl = false; }
-                else if (bx_new <= x0) { bx_new = ACFT_BX_ALLGND; }
-            }
-        }
-        bx_f += bx_step;
-
-        bool bx_changed = (bx_new != _acftPrevBx[i] || newGL != _acftPrevGroundLeft);
-
-        if (!bx_changed && !in_prev_horiz && !in_prev_ladder) continue;
-
-        eadiDrawScanline(tft, y, x0, x1, bx_new, gl);
-        _acftPrevBx[i] = bx_new;
-    }
-    _acftPrevGroundLeft = newGL;
-}
 
 
 // ── ADI marker state (ball-side tracking — separate from tape-side state) ─────────────
@@ -286,7 +109,7 @@ static bool  _acftPrevTgtAvailBall   = false;
 
 // ── Master ball update ────────────────────────────────────────────────────────────────
 static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
-    _acftBuildChordTable();   // no-op after first call
+    eadiBuildChordTable();   // no-op after first call
 
     float pitch = state.pitch;
     float roll  = -state.roll;   // negate: KerbalSimpit sign convention
@@ -304,8 +127,8 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
 
     // ── 1. Sky/ground fill ────────────────────────────────────────────────────────────
     _t0 = micros();
-    if (fullRedraw) _acftFullDraw(tft, sinR, cosR, K);
-    else            _acftDeltaDraw(tft, sinR, cosR, K);
+    if (fullRedraw) eadiFullDraw(tft, sinR, cosR, K);
+    else            eadiDeltaDraw(tft, sinR, cosR, K);
     _t1 = micros();
     if (debugMode) {
         Serial.print(fullRedraw ? "  fill(FULL)=" : "  fill(DELTA)=");
@@ -330,8 +153,7 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
         new_horiz_lo = min(min(ly1, ly2), min((int16_t)(ly1+py), (int16_t)(ly2+py)));
         new_horiz_hi = max(max(ly1, ly2), max((int16_t)(ly1+py), (int16_t)(ly2+py)));
     }
-    _acftPrevHorizLo = new_horiz_lo;
-    _acftPrevHorizHi = new_horiz_hi;
+    eadiBallSetPrevHoriz(new_horiz_lo, new_horiz_hi);
     _t1 = micros();
     if (debugMode) { Serial.print("  horiz="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
@@ -339,20 +161,19 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     // Swap bitmaps: prev = last frame's dirty set (used by delta fill above),
     // current = cleared for this frame's ladder draw.
     _t0 = micros();
-    memcpy(_acftLadderDirtyPrev, _acftLadderDirty, sizeof(_acftLadderDirty));
-    memset(_acftLadderDirty, 0, sizeof(_acftLadderDirty));
-    eadiDrawLadder(tft, BCX, BCY, sinR, cosR, _acftLadderDirty);
+    eadiBallSwapDirty();
+    eadiDrawLadder(tft, BCX, BCY, sinR, cosR);
     _t1 = micros();
     if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
     // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
     //    Prograde (surface velocity) always drawn; target if available; maneuver if
     //    active. Each call self-clips to the ball's visible cone.
-    eadiDrawAdiMarker(tft, state.srfVelHeading, state.srfVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE, _acftLadderDirty);
+    eadiDrawAdiMarker(tft, state.srfVelHeading, state.srfVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
     if (state.targetAvailable)
-        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET, _acftLadderDirty);
+        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
     if (state.mnvrTime > 0.0f)
-        eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER, _acftLadderDirty);
+        eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
 
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
     eadiDrawAircraftSymbol(tft);
@@ -1011,10 +832,8 @@ static void _acftUpdateAoAArc(KCM_TFT &tft, float aoa) {
 // ── Screen update ─────────────────────────────────────────────────────────────────────
 
 static void chromeScreen_ACFT(KCM_TFT &tft) {
-    _acftBuildChordTable();
+    eadiBallResetState();
     _acftFullRedrawNeeded      = true;
-    _acftPrevHorizLo           = INT16_MAX;
-    _acftPrevHorizHi           = INT16_MIN;
     eadiResetRollIndicator();
     _acftPrevRollReadout       = -9999;
     _acftPrevRollReadoutFg     = 0;
@@ -1025,8 +844,7 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     _acftPrevHdgBox            = -9999;
     _acftPrevVelHdg            = -9999.0f;
     // Panel values reset via rowCache invalidation (row cache cleared on screen switch)
-    memset(_acftLadderDirty,     0, sizeof(_acftLadderDirty));
-    memset(_acftLadderDirtyPrev, 0, sizeof(_acftLadderDirtyPrev));
+    // Ball delta-fill state (chord table, dirty bitmaps, prev horizon) reset above.
     _acftPrevPitch        = -9999.0f;
     _acftPrevRoll         = -9999.0f;
     _acftPrevVSI          = -9999.0f;
