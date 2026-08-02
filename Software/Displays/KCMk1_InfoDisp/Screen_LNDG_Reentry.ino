@@ -49,6 +49,13 @@ static const uint16_t RE_TAPE_H   = SCREEN_H - RE_TAPE_Y - 3;       // 527
 static const uint16_t RE_TAPE_BOT = RE_TAPE_Y + RE_TAPE_H;         // 597
 static const uint16_t RE_TAPE_GUT = 58;   // right-side marker gutter (erased each frame)
 
+// ── ATMO density bar (ascent-screen style, sits just right of the altitude tape) ──
+static const uint16_t RE_ATMO_X   = 144;
+static const uint16_t RE_ATMO_W   = 36;
+static const uint16_t RE_ATMO_Y   = TITLE_TOP + 26;                 // 88 — leave room above for label
+static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT;                    // 597 — bottom-aligned with the tape
+static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
+
 // ── Alignment ball (centre-top) ──
 static const int16_t  RE_ATT_CX = 300;
 static const int16_t  RE_ATT_CY = 194;
@@ -74,10 +81,9 @@ static const float    RE_CT_VMAX  = 1000.0f;          // airspeed axis max (m/s)
 static const uint16_t RE_GA_Y  = TITLE_TOP + 20;                 // 82 — gauge top
 static const uint16_t RE_GA_H  = SCREEN_H - RE_GA_Y - 34;       // leave a label row
 static const uint16_t RE_GA_BOT= RE_GA_Y + RE_GA_H;
-static const uint16_t RE_VSI_X = 452;   static const uint16_t RE_VSI_W = 34;
-static const uint16_t RE_GF_X  = 498;   static const uint16_t RE_GF_W  = 34;
-static const uint16_t RE_TS_X  = 544;   static const uint16_t RE_TS_W  = 14;  // skin
-static const uint16_t RE_TC_X  = 560;   static const uint16_t RE_TC_W  = 14;  // core
+static const uint16_t RE_GF_X  = 470;   static const uint16_t RE_GF_W  = 34;
+static const uint16_t RE_TS_X  = 524;   static const uint16_t RE_TS_W  = 14;  // skin
+static const uint16_t RE_TC_X  = 540;   static const uint16_t RE_TC_W  = 14;  // core
 
 /***************************************************************************************
    HELPERS
@@ -234,6 +240,79 @@ static void _reDrawTape(KCM_TFT &tft) {
     tft.fillRect(ix, yt - 1, iw, 3, TFT_WHITE);
     tft.fillTriangle(barR + 1, yt, barR + 17, yt - 11, barR + 17, yt + 11, TFT_WHITE);
   }
+}
+
+/***************************************************************************************
+   WIDGET: ATMO DENSITY BAR (same as the ascent screen — density fraction with SKY/
+   FRENCH_BLUE/NAVY zones, a no-atmosphere parking segment, 10% ticks, and a marker).
+****************************************************************************************/
+// Body sea-level density (kg/m^3); 0 = airless. Mirrors the ascent-screen table.
+static float _reBodySurfaceDensity() {
+  if (currentBody.cond && strcmp(currentBody.cond, "Vacuum") == 0) return 0.0f;
+  const char *n = currentBody.soiName;
+  if (!n || n[0] == '\0') return 0.0f;
+  if (!strcmp(n, "Kerbin")) return 1.225f;
+  if (!strcmp(n, "Eve"))    return 6.150f;
+  if (!strcmp(n, "Duna"))   return 0.0678f;
+  if (!strcmp(n, "Jool"))   return 14.00f;
+  if (!strcmp(n, "Laythe")) return 1.700f;
+  return 0.0f;
+}
+// Atmospheric depth fraction (0 = vacuum, 1 = sea level); -1 if airless. ratio^0.25
+// so the thin upper atmosphere still reads on the scale (matches ascent).
+static float _reAtmoFraction() {
+  float maxD = _reBodySurfaceDensity();
+  if (maxD <= 0.0f) return -1.0f;
+  float r = state.airDensity / maxD;
+  if (r <= 0.0f) return 0.0f;
+  if (r >= 1.0f) return 1.0f;
+  return sqrtf(sqrtf(r));
+}
+
+static void _reDrawAtmo(KCM_TFT &tft) {
+  const int16_t x0 = RE_ATMO_X, w = RE_ATMO_W;
+  const int16_t innerX0 = x0 + 1, innerW = w - 2;
+  const int16_t innerY0 = RE_ATMO_Y + 1, innerY1 = RE_ATMO_BOT - 1;
+  const int16_t innerH  = innerY1 - innerY0 + 1;
+  const int16_t noAtmH  = (int16_t)roundf(0.10f * innerH);   // bottom 10% = parking
+  const int16_t atmYBot = innerY1 - noAtmH;
+  const int16_t atmH    = atmYBot - innerY0 + 1;
+  auto fracToY = [&](float f) -> int16_t {
+    if (f < 0) f = 0; if (f > 1) f = 1;
+    return atmYBot - (int16_t)roundf(f * (float)(atmH - 1));
+  };
+
+  // Erase footprint (label + bar + right-side marker) each frame — no streaks.
+  tft.fillRect(x0, RE_ATMO_Y - 20, (x0 + w + 16) - x0, RE_ATMO_H + 22, TFT_BLACK);
+
+  int16_t y75 = fracToY(0.75f), y35 = fracToY(0.35f);
+  tft.fillRect(innerX0, innerY0, innerW, y75 - innerY0,     TFT_SKY);          // dense (top)
+  tft.fillRect(innerX0, y75,     innerW, y35 - y75,         TFT_FRENCH_BLUE);  // medium
+  tft.fillRect(innerX0, y35,     innerW, atmYBot - y35 + 1, TFT_NAVY);         // near vacuum
+  if (atmYBot + 1 <= innerY1)
+    tft.fillRect(innerX0, atmYBot + 1, innerW, innerY1 - atmYBot, TFT_OFF_BLACK);  // parking
+
+  int16_t tMaj = (int16_t)roundf(0.40f * innerW), tMin = (int16_t)roundf(0.20f * innerW);
+  if (tMaj < 1) tMaj = 1; if (tMin < 1) tMin = 1;
+  for (int16_t i = 0; i < 10; i++) {
+    int16_t ty = fracToY((float)i / 10.0f);
+    tft.drawLine(innerX0, ty, innerX0 + tMaj - 1, ty, (ty < y75) ? TFT_DARK_GREY : TFT_LIGHT_GREY);
+  }
+  for (int16_t i = 0; i < 10; i++) {
+    int16_t ty = fracToY(((float)i + 0.5f) / 10.0f);
+    tft.drawLine(innerX0, ty, innerX0 + tMin - 1, ty, (ty < y75) ? TFT_DARK_GREY : TFT_LIGHT_GREY);
+  }
+
+  tft.drawRect(x0, RE_ATMO_Y, w, RE_ATMO_BOT - RE_ATMO_Y, TFT_LIGHT_GREY);
+  textCenter(tft, &Roboto_Black_12, x0 - 6, RE_ATMO_Y - 18, w + 12, 14, "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
+
+  // Marker — right-side triangle pointing left at the current density fraction; parks
+  // in the OFF_BLACK segment in vacuum / on airless bodies.
+  float frac = _reAtmoFraction();
+  bool  vac  = (frac <= 0.0f);
+  int16_t triY = vac ? (int16_t)((atmYBot + 1 + innerY1) / 2) : fracToY(frac);
+  int16_t tipX = x0 + w + 1, baseX = tipX + 12;
+  tft.fillTriangle(tipX, triY, baseX, triY - 7, baseX, triY + 7, TFT_WHITE);
 }
 
 /***************************************************************************************
@@ -438,19 +517,6 @@ static void _reLabelUnder(KCM_TFT &tft, uint16_t xc, const char *s, uint16_t col
 }
 
 static void _reDrawGauges(KCM_TFT &tft) {
-  // VSI — descent rate, 0..150 m/s (clamped). Green normally; near ground use the
-  // landing rate thresholds (yellow < -5, red < -8 m/s).
-  {
-    float dr = -state.verticalVel;                 // positive = descending
-    float frac = dr / 150.0f;
-    uint16_t col = TFT_NEON_GREEN;
-    if (state.radarAlt < 3000.0f) {
-      if (state.verticalVel < LNDG_VVRT_ALARM_MS)      col = TFT_RED;
-      else if (state.verticalVel < LNDG_VVRT_WARN_MS)  col = TFT_YELLOW;
-    }
-    _reBar(tft, RE_VSI_X, RE_VSI_W, frac, col, TFT_OFF_BLACK);
-    _reLabelUnder(tft, RE_VSI_X + RE_VSI_W / 2, "VSI", TFT_LIGHT_GREY);
-  }
   // G-load — 0..8 g, warn/alarm zones.
   {
     float g = fabsf(state.gForce);
@@ -535,6 +601,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
 
   // ── Graphics widgets (full repaint each frame) ──
   _reDrawTape(tft);
+  _reDrawAtmo(tft);
   _reDrawBall(tft);
   _reDrawEnvelope(tft);
   _reDrawGauges(tft);
