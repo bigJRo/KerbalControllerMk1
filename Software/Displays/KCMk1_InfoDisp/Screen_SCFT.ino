@@ -623,6 +623,13 @@ static void _scftDrawVitalBar(KCM_TFT &tft, uint8_t row, int16_t pct, bool lowIs
     int16_t fillW = (int16_t)((float)pct / 100.0f * (bw - 2));
     tft.fillRect(bx + 1, by + 1, bw - 2, VIT_BAR_H - 2, TFT_OFF_BLACK);
     if (fillW > 0) tft.fillRect(bx + 1, by + 1, fillW, VIT_BAR_H - 2, col);
+    // Warn/alarm threshold ticks — same treatment as the re-entry temp bars.
+    float warnFrac  = lowIsBad ? EC_LOW_WARN_FRAC  : TEMP_WARN_PCT  / 100.0f;
+    float alarmFrac = lowIsBad ? EC_LOW_ALARM_FRAC : TEMP_ALARM_PCT / 100.0f;
+    int16_t xw = bx + 1 + (int16_t)(warnFrac  * (bw - 2));
+    int16_t xa = bx + 1 + (int16_t)(alarmFrac * (bw - 2));
+    tft.drawLine(xw, by + 1, xw, by + VIT_BAR_H - 2, TFT_YELLOW);
+    tft.drawLine(xa, by + 1, xa, by + VIT_BAR_H - 2, TFT_RED);
     // Value text — right-aligned in the value column (right of the bar track)
     int16_t ry = VIT_Y + row * VIT_ROW_H;
     char buf[6]; snprintf(buf, sizeof(buf), "%d%%", pct);
