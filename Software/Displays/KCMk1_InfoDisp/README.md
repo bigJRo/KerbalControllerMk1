@@ -1,16 +1,16 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v0.13.3
-Teensy 4.0 firmware for the KSP flight information display module.
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v0.14.0
+Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
 ---
 
 ## Overview
 
-The Information Display is an 800×480 touchscreen panel that presents real-time KSP flight telemetry sourced from KerbalSimpit. It runs on a Teensy 4.0 and receives telemetry over USB serial from a running KSP instance.
+The Information Display is a 1024×600 touchscreen panel that presents real-time KSP flight telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance.
 
-The panel provides ten screens — Launch, Orbit, Spacecraft (PFD), Maneuver, Target, Docking, Landing, Vehicle Info, Aircraft, and Rover — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar with one button per screen.
+The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Aircraft/Rover (PFD), Orbit (+ Advanced Elements), Vehicle Info, Maneuver, Target, Docking, Landing (Powered Descent + Re-entry) — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar of ten buttons: most map 1:1 to a screen, the PFD button covers the three vehicle-type screens (context- or title-selected), and Orbit Advanced Elements is reached by tapping the ORBIT title bar.
 
 **Context-switching:** The display automatically selects the most appropriate screen when the scene or vessel changes. Planes route to AIRCRAFT, rovers to ROVER, vessels on the pad or landed to LAUNCH (with the pre-launch board), landers in flight to LANDING (powered descent), vessels near a docking target to DOCKING, and all others to ORBIT.
 
@@ -22,14 +22,21 @@ The panel provides ten screens — Launch, Orbit, Spacecraft (PFD), Maneuver, Ta
 
 | Component | Part | Interface |
 |-----------|------|-----------|
-| Microcontroller | Teensy 4.0 | — |
-| Display | RA8875 800×480 TFT | SPI |
-| Touch controller | GSL1680F capacitive | Wire1 (pins 16/17) |
-| SD card | SD (on RA8875 board) | SPI |
+| Microcontroller | Teensy 4.1 | — |
+| Display | LT7683 (RA8876-compatible) 1024×600 7" IPS TFT | 8080 16-bit parallel |
+| Touch controller | FT5316 capacitive | software I2C |
+| SD card | microSD | SPI |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (USB COM port 2) |
 | I2C slave bus | Master Teensy 4.1 at 0x12 | Wire (pins 18/19) |
 
+See `Documents/Developer/Hardware_Reference.md` (§8.3, KC-01-1912 carrier) for the display-carrier hardware detail.
+
 ### Pin Assignments
+
+> **Note:** The pin table below reflects the legacy SPI carrier (RA8875 / GSL1680F).
+> The current carrier (KC-01-1912) uses the LT7683 on an 8080 16-bit parallel bus with
+> FT5316 touch; only the I2C slave-bus and INT rows below are carrier-independent and
+> current. The parallel-bus pinout is pending a revision of this table.
 
 | Pin | Function | Direction | Assigned by |
 |-----|----------|-----------|-------------|
@@ -47,7 +54,7 @@ The panel provides ten screens — Launch, Orbit, Spacecraft (PFD), Maneuver, Ta
 | 9 | Audio PWM (claimed by library, not used) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
 | 18 | I2C SDA (Wire — master bus) | — | Wire library |
 | 19 | I2C SCL (Wire — master bus) | — | Wire library |
-| 2 | I2C INT (active-LOW, output to master) | OUT | Sketch (`KCM_I2C_INT_PIN`) |
+| 0 | I2C INT (active-LOW, output to master) | OUT | Sketch (`KCM_I2C_INT_PIN`) |
 
 **Serial ports:**
 - `Serial` (USB COM port 1) — debug output when `debugMode = true`
@@ -126,25 +133,34 @@ The InfoDisp operates as an I2C slave at address **0x12** (`KCM_I2C_ADDR_INFODIS
 
 ### Outbound Packet — InfoDisp → Master
 
-Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x12, 4)` after INT asserts.
+Size: **10 bytes** (`I2C_PACKET_SIZE`). Sent in response to `Wire.requestFrom(0x12, 10)` after INT asserts. Bytes 0–2 are the status header; bytes 3–9 are the Ascent Autopilot command frame (see `Documents/Developer/Ascent_Autopilot_Interface.md`).
 
 | Byte | Field | Description |
 |------|-------|-------------|
 | 0 | Sync | `0xAE` (`KCM_I2C_SYNC_INFODISP`) — framing validation |
 | 1 | Flags | Bit 0: `simpitConnected`  Bit 1: `flightScene`  Bit 2: `demoMode`  Bits 3–7: reserved (0) |
-| 2 | `activeScreen` | Current `ScreenType` enum value (0–9) |
-| 3 | Reserved | `0x00` |
+| 2 | `activeScreen` | Current `ScreenType` enum value (0–12) |
+| 3 | `cmdSeq` | Ascent-AP command sequence (0 = none; else 1–255, unique per queued command) |
+| 4 | `cmdOp` | Ascent-AP command opcode (`AP_CMD_*`) |
+| 5–8 | `cmdPayload` | IEEE-754 float32, little-endian (command argument) |
+| 9 | `xsum` | XOR of bytes 3–8 (command-frame integrity) |
+
+The master executes the command in bytes 4–8 once, then echoes `cmdSeq` back in the inbound `ackSeq` byte to pop it. Bytes 0–2 are unchanged from earlier revisions, so a master that reads only the first 4 bytes still gets valid status.
 
 **Note:** The sync byte is `0xAE`, not `0xAD`. The value `0xAD` is used by the ResourceDisp — using it here would cause framing collisions if the master dispatches based on sync byte. Master sketches written before v0.13.3 should update their InfoDisp sync byte expectation accordingly.
 
-### Inbound Packet — Master → InfoDisp
+### Inbound Command Packet — Master → InfoDisp
 
 Size: **2 bytes**. Sent by master at any time.
 
 | Byte | Field | Description |
 |------|-------|-------------|
 | 0 | `controlByte` | See bit map below |
-| 1 | Reserved | `0x00` — available for future use |
+| 1 | `ackSeq` | Ascent-AP command acknowledgement — the `cmdSeq` just executed (0 = none) |
+
+### Inbound Ascent-AP Status Push — Master → InfoDisp
+
+Size: **40 bytes** (`I2C_AP_STATUS_SIZE`), dispatched by write length, sync `0xA5`. The master pushes the autopilot's `AscentStatus` so the Ascent Autopilot screen can render live guidance and confirm accepted parameters. Byte 1 = flags (bit0 armed, bit1 southerly, bit2 rollEnable), byte 2 = phase, bytes 4–39 = nine float32 (targetAlt, inclination, loft, rollDeg, maxG, cmdPitch, cmdHeading, cmdThrottle, dynPressure). Full layout in `Documents/Developer/Ascent_Autopilot_Interface.md` §5.
 
 **`controlByte` bit map:**
 
@@ -173,22 +189,24 @@ After initialisation, the InfoDisp asserts INT and spins on `PROCEED` (0x2) befo
 
 ## Screens
 
-The panel displays ten screens navigated by the right-hand sidebar. Screen order follows mission phase progression.
+The panel displays thirteen screens navigated by ten right-hand sidebar buttons. Screen order follows mission phase progression. The PFD button covers SPACECRAFT / AIRCRAFT / ROVER (context- or title-selected); ORBIT's Advanced Elements view is a tap-through of the ORBIT title bar (no dedicated button).
 
-| # | Sidebar | Title | Tap-through |
-|---|---------|-------|-------------|
+| Btn | Sidebar | Screen(s) | Tap-through |
+|-----|---------|-----------|-------------|
 | 0 | LNCH | LAUNCH | Title bar: ASCENT / CIRCULARIZATION. Pre-launch board shown automatically on pad. |
-| 1 | ORB | ORBIT | Title bar: APSIDES / ADVANCED ELEMENTS |
-| 2 | PFD | SPACECRAFT | — |
-| 3 | MNVR | MANEUVER | — |
-| 4 | TGT | TARGET | NO TARGET SET fullscreen when no target |
-| 5 | DOCK | DOCKING | NO TARGET SET / DOCKED fullscreen when applicable |
-| 6 | LNDG | LANDING | Title bar: POWERED DESCENT / RE-ENTRY |
-| 7 | VEH | VEHICLE INFO | — |
-| 8 | ACFT | AIRCRAFT | — |
-| 9 | ROVR | ROVER | — |
+| 1 | ASC | ASCENT AUTOPILOT | On-screen keypad for parameter entry; touch ARM/DISARM |
+| 2 | PFD | SPACECRAFT / AIRCRAFT / ROVER | Context-selected; title-touch cycles the three |
+| 3 | ORB | ORBIT | Title bar: APSIDES / ADVANCED ELEMENTS |
+| 4 | VEH | VEHICLE INFO | — |
+| 5 | MNVR | MANEUVER | — |
+| 6 | TGT | TARGET | NO TARGET SET fullscreen when no target |
+| 7 | DOCK | DOCKING | NO TARGET SET / DOCKED fullscreen when applicable |
+| 8 | LNDG | LANDING | Powered descent |
+| 9 | ENTR | RE-ENTRY | — |
 
 **LNCH** — *Pre-launch board* (automatic when `sit_PreLaunch`, bypassed for planes and rovers): vessel name, type, SAS, RCS, throttle, EC%, crew count, CommNet signal, ΔV.Tot, and parachute CAG states. Tap content area or launch to advance to ascent. *Ascent:* Alt.SL, V.Srf, V.Vrt, ApA, T+Ap, Throttle, T.Burn, ΔV.Stg. *Circularization:* Alt.SL, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg. Auto-switches at ~6% body radius with hysteresis.
+
+**ASC** — Ascent Autopilot touch console for the Simpit ascent autopilot (which runs on Controller_Main). Three columns: MISSION inputs (target apoapsis, inclination, launch N/S), VEH PROFILE inputs (loft, roll hold, max-G) + the ARM/DISARM button, and GUIDANCE outputs (commanded pitch/heading/throttle, G, dynamic pressure, ApA, PeA). Boxed input fields open an on-screen numeric keypad (or toggle) and can be edited at any time; a pilot edit shows in cyan until the autopilot echoes the accepted value back. The phase banner and ARM button colour reflect the autopilot phase (IDLE / VERTICAL / GRAVITY TURN / COAST / CIRCULARIZE / COMPLETE / ABORT). Edits and ARM/DISARM are sent over I2C — see `Documents/Developer/Ascent_Autopilot_Interface.md`.
 
 **ORB** — *Apsides (default):* Alt.SL, V.Orb, ApA, PeA, T+Ap or T+Pe, T+Ign, ΔV.Tot, ΔV.Stg, RCS, SAS. *Advanced Elements:* Ecc, SMA, ApA, PeA, Inc, LAN, True/Mean anomaly, Period. Navigating away resets to Apsides.
 
@@ -200,7 +218,9 @@ The panel displays ten screens navigated by the right-hand sidebar. Screen order
 
 **DOCK** — Alt.SL, Dist, V.Tgt, total lateral drift magnitude, horizontal/vertical drift components, velocity-to-target bearing/elevation errors, nose-to-target pointing errors, RCS, SAS. SAS: TARGET = green, OFF = white-on-red, all others = red. DOCKED / NO TARGET SET fullscreen when applicable.
 
-**LNDG** — *Powered descent:* T.Grnd, Alt.Rdr, V.Srf, V.Vrt, Fwd/Lat horizontal drift (roll-corrected, craft heading frame), ΔV.Stg, Throttle/RCS, Gear/SAS. Fwd/Lat thresholds tighten as T.Grnd decreases. *Re-entry:* T.Grnd/T+Atm, Alt.SL/Alt.Rdr, V.Vrt (switches to V.Hrz below 20 km radar), PeA, V.Srf, Mach/G, drogue/main parachute states, Gear/SAS. 6-state phase logic drives row labels. SAS white-on-red above Mach 3 if OFF.
+**LNDG** — *Powered descent:* T.Grnd, Alt.Rdr, V.Srf, V.Vrt, Fwd/Lat horizontal drift (roll-corrected, craft heading frame), ΔV.Stg, Throttle/RCS, Gear/SAS. Fwd/Lat thresholds tighten as T.Grnd decreases.
+
+**ENTR** — *Re-entry* (separate sidebar screen): T.Grnd/T+Atm, Alt.SL/Alt.Rdr, V.Vrt (switches to V.Hrz below 20 km radar), PeA, V.Srf, Mach/G, drogue/main parachute states, Gear/SAS, plus a heat-shield / retrograde alignment ball. 6-state phase logic drives row labels. SAS white-on-red above Mach 3 if OFF.
 
 **VEH** — Vessel name, type, situation, control level, CommNet signal, crew/capacity, ΔV.Stg, ΔV.Tot.
 
@@ -245,6 +265,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_LNCH_PreLaunch.ino` | Launch pre-launch checklist board |
 | `Screen_LNCH_Ascent.ino` | Launch ascent (graphical: ladder, V.Vrt/V.Orb bars, FPA dial, atmosphere gauge) |
 | `Screen_LNCH_Circ.ino` | Launch circularization (graphical: orbit diagram, ATT/IGN/Burn-Dur cluster, ΔV bar) |
+| `Screen_LNCH_AscentAP.ino` | Ascent Autopilot touch console (keypad, editable params, ARM/DISARM, I2C command channel) |
 | `Screen_ORB.ino` | Orbit (Apsides default — graphical orbit + inclination diagram) |
 | `Screen_OrbAdv.ino` | Orbit Advanced Elements (text-only, tap-through) |
 | `Screen_SCFT.ino` | Spacecraft / PFD — full EADI ball (sidebar PFD, screen index 2) |
@@ -272,8 +293,8 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 1. Hardware init (display, SD, touch, I2C slave)
 2. Boot screen renders (one of three KSP-themed sequences chosen at random; header shows live version string via `snprintf`)
 3. Simpit connects (or demo mode initialises)
-4. InfoDisp builds a status packet and **asserts pin 2 LOW** (INT)
-5. Master reads the 4-byte status packet
+4. InfoDisp builds a status packet and **asserts pin 0 LOW** (INT)
+5. Master reads the 10-byte status packet
 6. Master sends a 2-byte command packet with `requestType = 0x2` (PROCEED)
 7. InfoDisp receives PROCEED, enters `loop()`
 
@@ -285,6 +306,7 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 
 | Version | Notes |
 |---------|-------|
+| **0.14.0** | Ascent Autopilot screen added (sidebar button **ASC**, screen index 12) — touch console for the Simpit ascent autopilot with an on-screen numeric keypad, editable mission/vehicle parameters, and touch ARM/DISARM. Outbound I2C packet extended 4→10 bytes with an Ascent-AP command frame (`cmdSeq`/`cmdOp`/float payload/XOR); inbound control byte 1 now carries the command `ackSeq`; new 40-byte Master→InfoDisp `AscentStatus` push (sync `0xA5`, dispatched by length). New `Documents/Developer/Ascent_Autopilot_Interface.md` byte-level contract. ORB+ (Advanced Elements) moved from its own button to an ORBIT title tap; Re-entry is now its own **ENTR** sidebar screen. KSP navball markers (prograde/retrograde/target/maneuver) doubled in size and thickened. Reticle markers now sourced from the shared `KerbalDisplayCommon` library (`drawThickLine` added). Hardware baseline updated to Teensy 4.1 + LT7683 1024×600 parallel carrier (KC-01-1912). Dead code removed (`SCREEN_IDS`, unused row-geometry helpers, `_prevShowAp`); stale comments corrected (INT pin 0, 10-byte packet). Bug fixes: keypad modal reset on screen leave/return, relative reconcile tolerance for high target apoapsis, demo-mode command-queue guard. |
 | **0.13.3** | Phase 3 complete: I2C slave interface and boot handshake. I2C sync byte corrected from `0xAD` to `0xAE` (collision with ResourceDisp). I2C constants consolidated to `KCMk1_SystemConfig.h`. `idleState` change now immediately calls `drawStandbyScreen()`. Demo→live I2C transition now calls `initSimpit()`. Loop order corrected: touch processed before Simpit (matches Annunciator/ResourceDisp). `setKDCDebugMode()` moved to immediately after `SerialUSB1.begin()`. `simpit` object moved to `AAA_Globals.ino`. `switchToScreen()` now records `lastScreenSwitch` timestamp. `_lndgReentryMode`, `_orbAdvancedMode`, `_prevShowAp`, `_attPrevOrbMode` now reset on vessel switch. `stepDemoState()` now returns immediately if `!demoMode`. `stgWarn` float cast added in `Screen_VEH`. Touch count filter changed to `!= 1`. Boot screen header shows live version string. Phase markers in comments updated. Updated to KerbalDisplayCommon 2.1.0 (thresholdColor float overload, formatTime int64_t, drawValue split-column overload, drawStandbySplash, fmtTime removed — call sites now call formatTime() directly). |
 | **0.13.2** | Phase 2 complete: KerbalSimpit integration verified for all 10 screens. Hover screen name corrected (TARGET/TGT). Parachute state machine (STOWED→ARMED→OPEN) implemented. Re-entry 6-state phase logic. DOCK drift decomposition. ATT heading/pitch error colouring gated on atmosphere. Maneuver screen `---` suppression when no node planned. |
 | **0.13.0** | Phase 1 complete: display framework with all 10 screens, sidebar navigation, demo mode. |

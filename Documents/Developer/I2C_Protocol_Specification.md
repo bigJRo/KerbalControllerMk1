@@ -27,6 +27,8 @@ The controller owns all game state and situational logic. Target modules own onl
 >
 > The EVA Module (0x07), Dual Encoder (0x0E), and Switch Panel (0x0F) ship **standalone** firmware that does not use these libraries and has **not yet** been updated to v2.x; they remain non-conformant (see Section 8).
 
+> **Display carriers (0x12–0x14):** The Teensy 4.1 display carriers (Annunciator, Info Display 1/2, Resource/Sys Info) sit outside the 0x20–0x2E module range and use **panel-specific** point-to-point protocols rather than the universal packet format defined here. The Information Display's outbound status + Ascent Autopilot command frame, its inbound control/ack packet, and the Master→InfoDisp `AscentStatus` push are documented in **`Ascent_Autopilot_Interface.md`** (and the InfoDisp sketch `README.md`).
+
 ---
 
 ## 2. Bus Configuration

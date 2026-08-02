@@ -21,7 +21,8 @@
 1. Screen navigation
 2. Orbital screen (ORB)
 3. Launch / Ascent screen (LNCH)
-4. Landing screen (LNDG)
+4. Ascent Autopilot screen (ASC)
+5. Landing screen (LNDG)
 5. Maneuver screen (MNVR)
 6. Atmospheric / Aircraft screen (ACFT)
 7. Vehicle screen (VEH)

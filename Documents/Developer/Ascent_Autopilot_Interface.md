@@ -18,7 +18,7 @@ Controller_Main. This interface carries two things:
    parameters were accepted.
 
 All multi-byte numeric fields are **IEEE-754 float32, little-endian** unless stated
-otherwise (the InfoDisp is a Teensy 4.0, little-endian, and copies the four payload bytes
+otherwise (the InfoDisp is a Teensy 4.1, little-endian, and copies the four payload bytes
 straight into a `float`).
 
 ---
