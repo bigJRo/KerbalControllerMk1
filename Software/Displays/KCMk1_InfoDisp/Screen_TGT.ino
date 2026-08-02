@@ -97,7 +97,7 @@ static const uint16_t TGT_RING_60 = TGT_R;            // 210 — ±60° boundary
 // Dot display sizes — scaled up with the larger scope
 static const uint8_t TGT_DOT_R_TGT   = 22;  // target marker radius
 static const uint8_t TGT_DOT_R_VEL   = 19;  // velocity marker radius
-static const uint8_t TGT_DOT_R_ERASE = 30;  // erase rect half-size (covers prograde ring 19 + spoke 9)
+static const uint8_t TGT_DOT_R_ERASE = 33;  // erase rect half-size (covers prograde ring 19 + spoke 12)
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
@@ -120,6 +120,8 @@ static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on e
 // 9999 = not yet drawn (skip erase on first frame after chrome)
 static int16_t _tgtPrevTgtX = 9999, _tgtPrevTgtY = 9999;
 static int16_t _tgtPrevVelX = 9999, _tgtPrevVelY = 9999;
+static int16_t _tgtPrevAntiX = 9999, _tgtPrevAntiY = 9999;   // anti-target (opposite of tgt)
+static int16_t _tgtPrevRetX  = 9999, _tgtPrevRetY  = 9999;   // retrograde (opposite of vel)
 
 
 // ── Heading error wrap to ±180° ───────────────────────────────────────────────────────
@@ -275,8 +277,27 @@ static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
 // Angular convention (matches DOCK):
 //   tgtSX = SCX + (-bearingErr × SCALE)   — positive bearing → dot left of centre
 //   tgtSY = SCY + (  elevErr   × SCALE)   — positive elevation → dot above centre
-static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
-                                        float velBrg, float velElv) {
+// Draw a reticle "opposite" marker only while it is inside the scope FOV; erase it (and
+// repair chrome) when it moves or leaves view. prevX/prevY cache its last position
+// (9999 = not shown). In-view markers are redrawn every frame (robust against overdraw).
+static void _tgtOppMarker(KCM_TFT &tft, int16_t sx, int16_t sy, int16_t &prevX, int16_t &prevY,
+                          void (*drawFn)(KCM_TFT&, int16_t, int16_t, int16_t, uint16_t),
+                          int16_t r, uint16_t color) {
+    const uint8_t EH = TGT_DOT_R_ERASE;
+    float dx = sx - TGT_SCX, dy = sy - TGT_SCY;
+    float maxR = (float)(TGT_R - TGT_DOT_R_VEL * 3 / 2 - 2);
+    bool inView = (dx*dx + dy*dy) <= (maxR * maxR);
+    bool moved  = (prevX != sx || prevY != sy);
+    if ((moved || !inView) && prevX != 9999) {
+        tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+        _tgtRepairChrome(tft, prevX - EH, prevY - EH, EH);
+        prevX = prevY = 9999;
+    }
+    if (inView) { drawFn(tft, sx, sy, r, color); prevX = sx; prevY = sy; }
+}
+
+static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv, float velBrg, float velElv,
+                           float antiBrg, float antiElv, float retroBrg, float retroElv) {
     // TGT dot: where is the target relative to your nose?
     int16_t tSX = TGT_SCX + (int16_t)(-tgtBrg * TGT_SCALE);
     int16_t tSY = TGT_SCY + (int16_t)( tgtElv * TGT_SCALE);
@@ -288,6 +309,13 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
     _tgtClampDot(vSX, vSY);
 
     const uint8_t EH = TGT_DOT_R_ERASE;
+
+    // ── Opposite markers (drawn first, so the primaries sit on top): anti-target and
+    //    retrograde, shown only while inside the scope FOV ─────────────────────────────
+    _tgtOppMarker(tft, TGT_SCX + (int16_t)(-antiBrg  * TGT_SCALE), TGT_SCY + (int16_t)(antiElv  * TGT_SCALE),
+                  _tgtPrevAntiX, _tgtPrevAntiY, drawAntiTargetMarker, TGT_DOT_R_TGT, TFT_VIOLET);
+    _tgtOppMarker(tft, TGT_SCX + (int16_t)(-retroBrg * TGT_SCALE), TGT_SCY + (int16_t)(retroElv * TGT_SCALE),
+                  _tgtPrevRetX,  _tgtPrevRetY,  drawRetrogradeMarker, TGT_DOT_R_VEL, TFT_NEON_GREEN);
 
     // ── TGT dot (solid violet diamond) ───────────────────────────────────────────────
     bool tgtMoved = (_tgtPrevTgtX == 9999 ||
@@ -345,6 +373,8 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     // Reset dot positions — first draw must not try to erase stale coordinates
     _tgtPrevTgtX = 9999; _tgtPrevTgtY = 9999;
     _tgtPrevVelX = 9999; _tgtPrevVelY = 9999;
+    _tgtPrevAntiX = 9999; _tgtPrevAntiY = 9999;
+    _tgtPrevRetX  = 9999; _tgtPrevRetY  = 9999;
     _tgtPrevBarVC = -9999.0f;   // force the closure bar to redraw on entry
 
     // Left panel: clear and draw scope chrome
@@ -432,8 +462,14 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     float velBrg = _tgtWrapErr(state.tgtHeading - state.tgtVelHeading);
     float velElv = state.tgtPitch - state.tgtVelPitch;
 
+    // Opposites (antipodal direction): anti-target and retrograde, in the same convention.
+    float antiBrg  = _tgtWrapErr(state.heading    - (state.tgtHeading    + 180.0f));
+    float antiElv  = state.pitch    + state.tgtPitch;
+    float retroBrg = _tgtWrapErr(state.tgtHeading - (state.tgtVelHeading + 180.0f));
+    float retroElv = state.tgtPitch + state.tgtVelPitch;
+
     // ── Update scope dots ─────────────────────────────────────────────────────────────
-    _tgtUpdateDots(tft, tgtBrg, tgtElv, velBrg, velElv);
+    _tgtUpdateDots(tft, tgtBrg, tgtElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     const uint8_t NR = TGT_RP_NR;

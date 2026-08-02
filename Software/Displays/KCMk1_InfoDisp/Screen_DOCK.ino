@@ -69,7 +69,7 @@ static const uint16_t RING_20 = RET_R;             // 210 — ±20° boundary
 // Dot display sizes — scaled up with the larger reticle
 static const uint8_t DOT_R_PORT  = 22;   // target port marker radius
 static const uint8_t DOT_R_VEL   = 19;   // velocity vector marker radius
-static const uint8_t DOT_R_ERASE = 30;   // erase rect half-size (covers prograde ring 19 + spoke 9)
+static const uint8_t DOT_R_ERASE = 33;   // erase rect half-size (covers prograde ring 19 + spoke 12)
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
@@ -90,6 +90,8 @@ static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking appro
 // Stored as screen coordinates. 9999 = not yet drawn (skip erase on first frame).
 static int16_t _dockPrevPortX = 9999, _dockPrevPortY = 9999;
 static int16_t _dockPrevVelX  = 9999, _dockPrevVelY  = 9999;
+static int16_t _dockPrevAntiX = 9999, _dockPrevAntiY = 9999;   // anti-target (opposite of port)
+static int16_t _dockPrevRetX  = 9999, _dockPrevRetY  = 9999;   // retrograde (opposite of vel)
 
 
 // ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
@@ -253,8 +255,27 @@ static void _dockRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) 
 // ── Update dots: erase old, repair chrome, draw new ──────────────────────────────────
 // Port dot:  solid filled diamond (magenta)
 // Vel dot:   hollow circle outline only (green) — shows through if port is inside
-static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
-                              float velBrg, float velElv) {
+// Draw a reticle "opposite" marker only while it is inside the scope FOV; erase it (and
+// repair chrome) when it moves or leaves view. prevX/prevY cache its last position
+// (9999 = not shown). In-view markers are redrawn every frame (robust against overdraw).
+static void _dockOppMarker(KCM_TFT &tft, int16_t sx, int16_t sy, int16_t &prevX, int16_t &prevY,
+                           void (*drawFn)(KCM_TFT&, int16_t, int16_t, int16_t, uint16_t),
+                           int16_t r, uint16_t color) {
+    const uint8_t EH = DOT_R_ERASE;
+    float dx = sx - RET_CX, dy = sy - RET_CY;
+    float maxR = (float)(RET_R - DOT_R_VEL * 3 / 2 - 2);
+    bool inView = (dx*dx + dy*dy) <= (maxR * maxR);
+    bool moved  = (prevX != sx || prevY != sy);
+    if ((moved || !inView) && prevX != 9999) {
+        tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+        _dockRepairChrome(tft, prevX - EH, prevY - EH, EH);
+        prevX = prevY = 9999;
+    }
+    if (inView) { drawFn(tft, sx, sy, r, color); prevX = sx; prevY = sy; }
+}
+
+static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv, float velBrg, float velElv,
+                            float antiBrg, float antiElv, float retroBrg, float retroElv) {
     // Port dot screen position
     int16_t portSX = RET_CX + (int16_t)(-noseBrg * RET_SCALE);
     int16_t portSY = RET_CY + (int16_t)( noseElv * RET_SCALE);
@@ -266,6 +287,13 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
     _dockClampDot(velSX, velSY);
 
     static const uint8_t EH = DOT_R_ERASE;
+
+    // ── Opposite markers (drawn first, so the primaries sit on top): anti-target and
+    //    retrograde, shown only while inside the scope FOV ─────────────────────────────
+    _dockOppMarker(tft, RET_CX + (int16_t)(-antiBrg  * RET_SCALE), RET_CY + (int16_t)(antiElv  * RET_SCALE),
+                   _dockPrevAntiX, _dockPrevAntiY, drawAntiTargetMarker, DOT_R_PORT, TFT_VIOLET);
+    _dockOppMarker(tft, RET_CX + (int16_t)(-retroBrg * RET_SCALE), RET_CY + (int16_t)(retroElv * RET_SCALE),
+                   _dockPrevRetX,  _dockPrevRetY,  drawRetrogradeMarker, DOT_R_VEL, TFT_NEON_GREEN);
 
     // Erase and redraw port dot (solid diamond)
     bool portMoved = (_dockPrevPortX == 9999 ||
@@ -375,6 +403,8 @@ static void chromeScreen_DOCK(KCM_TFT &tft) {
     // Reset dot positions so first draw doesn't try to erase stale coords
     _dockPrevPortX = 9999; _dockPrevPortY = 9999;
     _dockPrevVelX  = 9999; _dockPrevVelY  = 9999;
+    _dockPrevAntiX = 9999; _dockPrevAntiY = 9999;
+    _dockPrevRetX  = 9999; _dockPrevRetY  = 9999;
 
     // Left panel: clear + reticle chrome
     tft.fillRect(0, TITLE_TOP, RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -418,6 +448,12 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     float velBrg  = _dockWrapErr(state.tgtHeading - state.tgtVelHeading);
     float velElv  = state.tgtPitch - state.tgtVelPitch;
 
+    // Opposites (antipodal direction): anti-target and retrograde, in the same convention.
+    float antiBrg  = _dockWrapErr(state.heading    - (state.tgtHeading    + 180.0f));
+    float antiElv  = state.pitch    + state.tgtPitch;
+    float retroBrg = _dockWrapErr(state.tgtHeading - (state.tgtVelHeading + 180.0f));
+    float retroElv = state.tgtPitch + state.tgtVelPitch;
+
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
     float v_lat_mag = 0.0f;
     {
@@ -441,7 +477,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     }
 
     // ── Update reticle dots ───────────────────────────────────────────────────────────
-    _dockUpdateDots(tft, noseBrg, noseElv, velBrg, velElv);
+    _dockUpdateDots(tft, noseBrg, noseElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     char buf[20];
