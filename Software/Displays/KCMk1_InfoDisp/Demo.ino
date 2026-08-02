@@ -116,6 +116,7 @@ void stepDemoState() {
   state.gear_on     = ((millis() / 10000) % 2 == 0);
   state.brakes_on   = ((millis() / 15000) % 2 == 0);
   state.airbrake_on = ((millis() / 12000) % 2 == 0);
+  state.trimEnabled = ((millis() / 8000)  % 2 == 0);
 
   // Intercept data — sweeps through valid and invalid states
   state.intercept1Time = (int32_t)(300.0f * sinf(_demoPhase * 0.18f));  // -300..+300s

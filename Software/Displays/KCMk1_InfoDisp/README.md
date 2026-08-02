@@ -172,6 +172,7 @@ Size: **40 bytes** (`I2C_AP_STATUS_SIZE`), dispatched by write length, sync `0xA
 |------|-------|-------------|
 | 7:4 | `requestType` | Command code — see table below |
 | 3 | `idle_state` | `1` = switch to Standby when not in a flight scene |
+| 2 | `trimEnabled` | `1` = trim hold engaged — shows the cyan `TRIM` annunciation on the SPACECRAFT / AIRCRAFT screens |
 | 1 | `demoMode` | `1` = enable demo mode |
 | 0 | `debugMode` | `1` = enable Serial debug output |
 

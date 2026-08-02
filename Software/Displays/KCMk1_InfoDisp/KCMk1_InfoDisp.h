@@ -185,6 +185,7 @@ struct AppState {
   // Action groups
   bool      gear_on       = false;
   bool      airbrake_on   = false;   // airbrake CAG (AIRBRAKE_CAG) is ON — AIRCRAFT screen
+  bool      trimEnabled   = false;   // trim-hold enabled (from master, I2C controlByte bit 2) — SCFT/ACFT
   bool      brakes_on     = false;
   bool      drogueDeploy  = false;   // drogue deploy CAG is ON
   bool      drogueCut     = false;   // drogue cut CAG is ON (terminal state)

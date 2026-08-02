@@ -35,6 +35,7 @@
                    0x3 = MCU_RESET     -- soft reboot the InfoDisp
                    0x4 = DISPLAY_RESET -- reset display state and redraw current screen
                  bit  3   = idle_state  (1 = switch to standby when not in flight)
+                 bit  2   = trimEnabled (1 = trim hold engaged; shows "TRIM" on SCFT/ACFT)
                  bit  1   = demoMode    (1 = enable demo mode)
                  bit  0   = debugMode   (1 = enable Serial debug output)
      Byte 1  : ackSeq (0x00 = none) -- Ascent-AP command acknowledgement. The master sets
@@ -140,7 +141,9 @@ static void processI2CCommand() {
   // --- Lower nibble: mode configuration bits ---
   bool newDebug = (controlByte >> 0) & 1;
   bool newDemo  = (controlByte >> 1) & 1;
+  bool newTrim  = (controlByte >> 2) & 1;   // trim-hold enabled (SCFT/ACFT "TRIM" annunciation)
   bool newIdle  = (controlByte >> 3) & 1;
+  state.trimEnabled = newTrim;
 
   if (newDebug != debugMode) {
     debugMode = newDebug;

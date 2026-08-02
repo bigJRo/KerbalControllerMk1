@@ -912,6 +912,25 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 
 
 // ── Screen update ─────────────────────────────────────────────────────────────────────
+// "TRIM" annunciation (cyan) in the graphical area's bottom-right corner: right-aligned to
+// the heading-tape right edge, bottom just above the heading-tape top. Redrawn each frame
+// while trim is enabled; erased once when it clears.
+static void _scftDrawTrim(KCM_TFT &tft) {
+    static bool prev = false;
+    int16_t tw = getFontStringWidth(&Roboto_Black_16, "TRIM");
+    int16_t x  = (SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W) - tw;
+    int16_t y  = SCFT_HDG_TAPE_Y - (int16_t)Roboto_Black_16.cap_height - 2;
+    if (state.trimEnabled) {
+        tft.setFont(Roboto_Black_16);
+        tft.setTextColor(TFT_CYAN, TFT_BLACK);
+        tft.setCursor(x, y);
+        tft.print("TRIM");
+    } else if (prev) {
+        tft.fillRect(x - 2, y - 2, tw + 4, (int16_t)Roboto_Black_16.cap_height + 6, TFT_BLACK);
+    }
+    prev = state.trimEnabled;
+}
+
 static void drawScreen_SCFT(KCM_TFT &tft) {
     bool orbMode = _scftOrbMode();
     if (orbMode != _scftPrevOrbMode) {
@@ -987,5 +1006,6 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     _scftUpdateThrottle(tft, state.throttle);
     _scftUpdateVitals(tft);
     _scftUpdatePanel(tft, orbMode);
+    _scftDrawTrim(tft);
 }
 
