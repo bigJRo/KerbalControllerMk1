@@ -631,7 +631,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
-  splitLabels(6, "Drogue:", "Main:");
+  splitLabels(6, "Drog:", "Main:");
   // Row 7 buttons are drawn in the update pass; only draw the divider here.
   {
     uint16_t y = rowYFor(7, RE_NR);
@@ -745,31 +745,36 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     if (cut) { lbl = "CUT"; cfg = TFT_RED; cbg = TFT_BLACK; return; }
     if (dep) {
       if (!safe && state.inAtmo && tier == 2) { lbl = "OPEN"; cfg = TFT_WHITE; cbg = TFT_RED; return; }
-      if (state.airDensity < LNDG_CHUTE_SEMI_DENSITY) { lbl = "ARMED"; cfg = TFT_SKY; cbg = TFT_BLACK; return; }
+      if (state.airDensity < LNDG_CHUTE_SEMI_DENSITY) { lbl = "ARM"; cfg = TFT_SKY; cbg = TFT_BLACK; return; }
       lbl = "OPEN"; cfg = (state.radarAlt > fullAlt) ? TFT_YELLOW : TFT_DARK_GREEN; cbg = TFT_BLACK; return;
     }
-    lbl = "STOWED";
+    lbl = "STOW";
     if (!state.inAtmo)      { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
     else if (tier == 2)     { cfg = TFT_WHITE;      cbg = TFT_RED; }
     else if (tier == 1)     { cfg = TFT_YELLOW;     cbg = TFT_BLACK; }
     else                    { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
   };
 
-  // Row 6: Drogue | Main (split values, cached)
+  // Row 6: Drogue | Main (split values, cached). The "Drog:"/"Main:" labels are chrome;
+  // the status right-aligns in a value sub-cell to the right of the label (empty param —
+  // no redundant reservation), so the short states fit at the full value font.
   {
-    uint16_t xL = RE_TXT_X, wL = RHW - ROW_PAD, xR = RE_TXT_X + RHW + ROW_PAD, wR = RHW - ROW_PAD;
+    uint16_t xL = RE_TXT_X, xR = RE_TXT_X + RHW + ROW_PAD;
+    uint16_t wL = RHW - ROW_PAD, wR = RHW - ROW_PAD;
+    uint16_t xDV = xL + 80, wDV = wL - 80;   // drogue value sub-cell (right of "Drog:")
+    uint16_t xMV = xR + 76, wMV = wR - 76;   // main value sub-cell (right of "Main:")
     uint16_t y6 = rowYFor(6, RE_NR), h6 = rowHFor(RE_NR);
     const char *dv; uint16_t dfg, dbg;
     chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_CHUTE_DROGUE_MAX_Q, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);
     { String ds = dv; RowCache &dc = rowCache[screen_LNDGRE][6];
       if (dc.value != ds || dc.fg != dfg || dc.bg != dbg) {
-        printValue(tft, RE_VF, xL, y6, wL, h6, "Drogue:", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
+        printValue(tft, RE_VF, xDV, y6, wDV, h6, "", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
         dc.value = ds; dc.fg = dfg; dc.bg = dbg; } }
     const char *mv; uint16_t mfg, mbg;
     chuteState(_mainDeployed, _mainCut, _mainArmedSafe, LNDG_CHUTE_MAIN_MAX_Q, LNDG_MAIN_FULL_ALT, mv, mfg, mbg);
     { String ms = mv; RowCache &mc = rowCache[screen_LNDGRE][11];
       if (mc.value != ms || mc.fg != mfg || mc.bg != mbg) {
-        printValue(tft, RE_VF, xR, y6, wR, h6, "Main:", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);
+        printValue(tft, RE_VF, xMV, y6, wMV, h6, "", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);
         mc.value = ms; mc.fg = mfg; mc.bg = mbg; } }
   }
 
