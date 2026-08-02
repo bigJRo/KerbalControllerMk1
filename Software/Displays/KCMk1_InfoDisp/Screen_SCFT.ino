@@ -1460,7 +1460,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         String val;
         if (!hasMnvr)        { fg = TFT_DARK_GREY; val = "---"; }
         else if (tIgn < 0.0f){ fg = TFT_WHITE; bg = TFT_RED; val = formatTimeCompact((int64_t)tIgn); }
-        else if (tIgn < 60.0f){ fg = TFT_YELLOW; val = formatTimeCompact((int64_t)tIgn); }
+        else if (tIgn < MNVR_TIGN_WARN_S){ fg = TFT_YELLOW; val = formatTimeCompact((int64_t)tIgn); }
         else                  { fg = TFT_DARK_GREEN; val = formatTimeCompact((int64_t)tIgn); }
         attPanelVal(5, 5, "T+Ign:", val, fg, bg);
     }

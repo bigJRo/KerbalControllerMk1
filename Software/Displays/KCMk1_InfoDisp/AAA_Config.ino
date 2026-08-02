@@ -85,6 +85,7 @@ const float LNDG_VVRT_WARN_MS   = -5.0f;   // yellow — fast landing (m/s, nega
 // Alt.Rdr thresholds (m)
 const float ALT_RDR_ALARM_M      = 50.0f;   // white-on-red — very low (LNDG + ACFT)
 const float ALT_RDR_WARN_M       = 500.0f;  // yellow — low altitude (LNDG + ACFT)
+const float LNDG_ALT_RDR_WARN_M  = 200.0f;  // yellow — powered-descent-specific tighter low-alt warning
 
 // Horizontal velocity thresholds (Fwd/Lat) — tighten contextually with T.Grnd
 // T.Grnd > 60s: loose  |  30-60s: mid  |  10-30s: tight  |  <10s: final

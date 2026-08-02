@@ -24,12 +24,12 @@ static void chromeScreen_VEH(KCM_TFT &tft) {
   drawVerticalText(tft, 0, TITLE_TOP + rowH*6, SECT_W, rowH*2, &Roboto_Black_16, "PROP", TFT_LIGHT_GREY, TFT_BLACK);
 
   // Row labels (right of section strip)
-  printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "Name:",    COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "Vessel:",    COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, "Type:",    COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, AX, rowYFor(2,NR), AW, rowH, "Status:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
   printDispChrome(tft, F, AX, rowYFor(3,NR), AW, rowH, "Control:",          COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "Signal:",           COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "Comm:",           COL_LABEL, COL_BACK, COL_NO_BDR);
 
   printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "Crew:", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, F, AX, rowYFor(6,NR), AW, rowH, "\xCE\x94V.Stg:", COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -63,7 +63,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   // ── INFO block (rows 0-2): identity ──
 
   // Row 0 — Vessel name
-  vehVal(0, "Name:", state.vesselName, COL_VALUE, COL_BACK);
+  vehVal(0, "Vessel:", state.vesselName, COL_VALUE, COL_BACK);
 
   // Row 1 — Vessel type with colour coding
   const char *typeName;
@@ -153,7 +153,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
     if      (sig == 0) { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (sig < VEH_SIGNAL_WARN_PCT) { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    vehVal(4, "Signal:", sigStr, fg, bg);
+    vehVal(4, "Comm:", sigStr, fg, bg);
   }
 
   // Row 5 — Crew count / capacity

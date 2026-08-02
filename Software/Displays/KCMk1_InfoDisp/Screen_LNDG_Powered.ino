@@ -969,7 +969,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         // Row 2: Alt.Rdr
         {
             fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
-                 (state.radarAlt < 200.0f)          ? TFT_YELLOW : TFT_DARK_GREEN;
+                 (state.radarAlt < LNDG_ALT_RDR_WARN_M) ? TFT_YELLOW : TFT_DARK_GREEN;
             bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
             rpVal(2, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg, 2);
         }

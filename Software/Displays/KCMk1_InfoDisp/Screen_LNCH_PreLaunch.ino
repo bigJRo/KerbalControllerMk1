@@ -189,7 +189,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         // CommNet: green=>50%, yellow=10-50%, red=<10%
         uint8_t sig = (uint8_t)constrain(state.commNetSignal, 0, 100);
         String sigStr = formatPerc(sig);
-        if      (sig >= 50) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+        if      (sig >= VEH_SIGNAL_WARN_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (sig >= 10) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                { fg = TFT_WHITE;       bg = TFT_RED;   }
         plValR(4, 7, "CommNet:", sigStr, fg, bg);
