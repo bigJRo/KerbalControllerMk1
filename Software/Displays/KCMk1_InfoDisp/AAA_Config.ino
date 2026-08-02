@@ -94,11 +94,6 @@ const float LNDG_HVEL_WARN_MID_MS    =  5.0f;  const float LNDG_HVEL_ALARM_MID_M
 const float LNDG_HVEL_WARN_TIGHT_MS  =  2.0f;  const float LNDG_HVEL_ALARM_TIGHT_MS  =   8.0f;
 const float LNDG_HVEL_WARN_FINAL_MS  =  1.0f;  const float LNDG_HVEL_ALARM_FINAL_MS  =   2.0f;
 
-// Re-entry horizontal velocity thresholds (m/s) — V.Hrz on re-entry mode
-const float LNDG_REENTRY_VHRZ_ALARM_MS = 50.0f;   // white-on-red
-const float LNDG_REENTRY_VHRZ_WARN_MS  = 10.0f;   // yellow
-
-
 // Parachute deployment limits as dynamic pressure q = 0.5*airDensity*v^2 (Pa).
 // KSP destroys a chute deployed above a structural q (force) limit, which is
 // body-independent; expressing the limit as q makes the safe-deploy SPEED
@@ -183,10 +178,6 @@ const float DOCK_BRG_ALARM_DEG = 20.0f;  // red — large angle
 // rapidly-jumping meaningless value. 1.0 = 1%.
 const float ORB_CIRCULAR_PCT = 1.0f;
 
-// Eccentricity thresholds
-const float ORB_ECC_WARN  = 0.9f;   // yellow — highly elliptical
-const float ORB_ECC_ALARM = 1.0f;   // white-on-red — escape trajectory
-
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — APSIDES (APSI screen) & time thresholds
@@ -226,7 +217,6 @@ const uint8_t EC_PRELAUNCH_LOW_PCT   = 75;   // yellow — below this: white-on-
    FLIGHT THRESHOLDS — ATT screen (heading/pitch error)
 ****************************************************************************************/
 const float ATT_ERR_WARN_DEG  =  5.0f;   // yellow
-const float ATT_ERR_ALARM_DEG = 15.0f;   // white-on-red
 
 
 /***************************************************************************************
@@ -253,12 +243,6 @@ const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
    FLIGHT THRESHOLDS — ROVER (ROVR screen)
 ****************************************************************************************/
 
-// Radar altitude thresholds (m) — inverted logic vs aircraft/lander.
-// On a rover, being close to the ground is GOOD (wheels on surface).
-// Green < GOOD, yellow < WARN, red >= WARN (significantly airborne = out of control).
-const float ROVER_ALT_RDR_GOOD_M = 5.0f;    // green — wheels on/near ground
-const float ROVER_ALT_RDR_WARN_M = 10.0f;   // yellow — lightly airborne
-
 // Pitch (slope) thresholds (degrees). Tune per rover — heavier/wider rovers tolerate more.
 const float ROVER_PITCH_WARN_DEG  = 20.0f;   // yellow — getting steep
 const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
@@ -266,10 +250,6 @@ const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
 // Roll (lateral tilt) thresholds (degrees). Roll is typically the more critical axis.
 const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
 const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
-
-// Target bearing error thresholds (degrees).
-const float ROVER_BRG_WARN_DEG    = 10.0f;   // yellow — off course
-const float ROVER_BRG_ALARM_DEG   = 30.0f;   // white-on-red — significantly off course
 
 // Electric charge thresholds (%) — aligned to the shared low-EC thresholds so the
 // rover matches every other screen and the Annunciator CW_BUS_VOLTAGE alarm.
