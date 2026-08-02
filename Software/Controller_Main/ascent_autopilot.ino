@@ -394,10 +394,10 @@ AscentConfig &apGetConfig() { return g_cfg; }
 void apSetConfig(const AscentConfig &cfg) { g_cfg = cfg; }
 
 void apSetTargets(float apoapsisM, float inclinationDeg, float loft) {
-  g_cfg.targetApoapsis    = apoapsisM;
-  g_cfg.targetInclination = inclinationDeg;
-  g_cfg.loft              = loft;
-  g_targetLocked          = true;   // an explicit target survives auto body-profile changes
+  // Convenience mission set; respects the same disarmed-only guard as the field setters.
+  apSetTargetAltitude(apoapsisM);
+  apSetTargetInclination(inclinationDeg);
+  apSetLoft(loft);
 }
 
 const char *apCurrentBody() { return g_tel.bodyName; }
@@ -435,17 +435,70 @@ void apDisarm() {
 bool        apIsArmed()  { return g_armed; }
 AscentPhase apGetPhase() { return g_phase; }
 
+const char *apPhaseName(AscentPhase phase) {
+  switch (phase) {
+    case AP_PHASE_IDLE:         return "IDLE";
+    case AP_PHASE_VERTICAL:     return "VERTICAL";
+    case AP_PHASE_GRAVITY_TURN: return "GRAVITY TURN";
+    case AP_PHASE_COAST:        return "COAST";
+    case AP_PHASE_CIRCULARIZE:  return "CIRCULARIZE";
+    case AP_PHASE_COMPLETE:     return "COMPLETE";
+    case AP_PHASE_ABORT:        return "ABORT";
+    default:                    return "?";
+  }
+}
+
 AscentStatus apGetStatus() {
   AscentStatus s;
-  s.armed       = g_armed;
-  s.phase       = g_phase;
-  s.cmdPitch    = g_cmdPitch;
-  s.cmdHeading  = g_cmdHeading;
-  s.cmdThrottle = g_cmdThrottle;
-  s.dynPressure = g_dynPressure;
-  s.apoapsis    = g_tel.apoapsis;
-  s.periapsis   = g_tel.periapsis;
+  s.armed          = g_armed;
+  s.phase          = g_phase;
+  s.phaseName      = apPhaseName(g_phase);
+  s.body           = g_tel.bodyName;
+  s.targetApoapsis = g_cfg.targetApoapsis;
+  s.apoapsis       = g_tel.apoapsis;
+  s.periapsis      = g_tel.periapsis;
+  s.cmdPitch       = g_cmdPitch;
+  s.cmdHeading     = g_cmdHeading;
+  s.cmdThrottle    = g_cmdThrottle;
+  s.gForce         = g_tel.gForce;
+  s.dynPressure    = g_dynPressure;
   return s;
+}
+
+/***************************************************************************************
+   Console-facing setters — apply only while DISARMED (return false, no change, if armed).
+****************************************************************************************/
+bool apSetTargetAltitude(float meters) {
+  if (g_armed || meters < 0.0f) return false;
+  g_cfg.targetApoapsis = meters;
+  g_targetLocked = true;
+  return true;
+}
+bool apSetTargetInclination(float deg) {
+  if (g_armed || deg < 0.0f || deg > 180.0f) return false;
+  g_cfg.targetInclination = deg;
+  return true;
+}
+bool apSetLaunchSoutherly(bool southerly) {
+  if (g_armed) return false;
+  g_cfg.launchSoutherly = southerly;
+  return true;
+}
+bool apSetLoft(float exponent) {
+  if (g_armed || exponent <= 0.0f) return false;
+  g_cfg.loft = exponent;
+  return true;
+}
+bool apSetRoll(bool enabled, float deg) {
+  if (g_armed) return false;
+  g_cfg.rollControlEnabled = enabled;
+  g_cfg.targetRoll = apClampf(deg, -180.0f, 180.0f);
+  return true;
+}
+bool apSetMaxG(float g) {
+  if (g_armed || g < 0.0f) return false;
+  g_cfg.maxG = g;
+  return true;
 }
 
 /***************************************************************************************
@@ -547,9 +600,12 @@ void apUpdate() {
 }
 
 /***************************************************************************************
-   Optional bench-test console (primary Serial). Line-oriented, whitespace-separated:
+   Optional bench-test console (primary Serial). Line-oriented, whitespace-separated.
+   Mirrors the console-facing setters so a bench session exercises the same guarded path
+   a panel would use:
      ARM | DISARM | STATUS
-     ALT <meters> | INC <deg> | LOFT <x>
+     ALT <meters> | INC <deg> | LOFT <x> | ROLL <deg> | ROLLOFF | MAXG <g> | SOUTH <0|1>
+   Setters apply only while DISARMED and print "(armed - ignored)" otherwise.
 ****************************************************************************************/
 void apSerialConsole() {
   static char buf[48];
@@ -560,24 +616,29 @@ void apSerialConsole() {
     if (ch == '\n' || len >= sizeof(buf) - 1) {
       buf[len] = '\0';
       len = 0;
-      if      (strncasecmp(buf, "ARM", 3) == 0)    apArm();
-      else if (strncasecmp(buf, "DISARM", 6) == 0) apDisarm();
-      else if (strncasecmp(buf, "ALT ", 4) == 0) { g_cfg.targetApoapsis = atof(buf + 4); g_targetLocked = true; }
-      else if (strncasecmp(buf, "INC ", 4) == 0)   g_cfg.targetInclination = atof(buf + 4);
-      else if (strncasecmp(buf, "LOFT ", 5) == 0)  g_cfg.loft              = atof(buf + 5);
+      bool ok = true;
+      if      (strncasecmp(buf, "ARM", 3) == 0)     apArm();
+      else if (strncasecmp(buf, "DISARM", 6) == 0)  apDisarm();
+      else if (strncasecmp(buf, "ALT ", 4) == 0)    ok = apSetTargetAltitude(atof(buf + 4));
+      else if (strncasecmp(buf, "INC ", 4) == 0)    ok = apSetTargetInclination(atof(buf + 4));
+      else if (strncasecmp(buf, "LOFT ", 5) == 0)   ok = apSetLoft(atof(buf + 5));
+      else if (strncasecmp(buf, "ROLL ", 5) == 0)   ok = apSetRoll(true, atof(buf + 5));
+      else if (strncasecmp(buf, "ROLLOFF", 7) == 0) ok = apSetRoll(false, g_cfg.targetRoll);
+      else if (strncasecmp(buf, "MAXG ", 5) == 0)   ok = apSetMaxG(atof(buf + 5));
+      else if (strncasecmp(buf, "SOUTH ", 6) == 0)  ok = apSetLaunchSoutherly(atoi(buf + 6) != 0);
       else if (strncasecmp(buf, "STATUS", 6) == 0) {
         Serial.print(F("AP armed=")); Serial.print(g_armed);
+        Serial.print(F(" phase="));   Serial.print(apPhaseName(g_phase));
         Serial.print(F(" body="));    Serial.print(g_tel.bodyName[0] ? g_tel.bodyName : "?");
-        Serial.print(F(" atmo="));    Serial.print(g_tel.hasAtmo);
         Serial.print(F(" tgtAp="));   Serial.print(g_cfg.targetApoapsis, 0);
-        Serial.print(F(" phase="));   Serial.print((int)g_phase);
+        Serial.print(F(" Ap="));      Serial.print(g_tel.apoapsis, 0);
+        Serial.print(F(" Pe="));      Serial.print(g_tel.periapsis, 0);
         Serial.print(F(" pitch="));   Serial.print(g_cmdPitch, 1);
         Serial.print(F(" hdg="));     Serial.print(g_cmdHeading, 1);
         Serial.print(F(" thr="));     Serial.print(g_cmdThrottle, 2);
-        Serial.print(F(" g="));       Serial.print(g_tel.gForce, 1);
-        Serial.print(F(" Ap="));      Serial.print(g_tel.apoapsis, 0);
-        Serial.print(F(" Pe="));      Serial.println(g_tel.periapsis, 0);
+        Serial.print(F(" g="));       Serial.println(g_tel.gForce, 1);
       }
+      if (!ok) Serial.println(F("(armed - ignored)"));
     } else {
       buf[len++] = ch;
     }

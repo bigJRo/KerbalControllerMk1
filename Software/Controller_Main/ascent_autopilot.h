@@ -98,17 +98,21 @@ struct AscentConfig {
 };
 
 /***************************************************************************************
-   Live status readout (for displays / logging)
+   Live status readout — everything a console panel needs to render the autopilot.
 ****************************************************************************************/
 struct AscentStatus {
-  bool        armed;
-  AscentPhase phase;
-  float       cmdPitch;      // deg  Commanded pitch (above horizon)
-  float       cmdHeading;    // deg  Commanded heading / launch azimuth
-  float       cmdThrottle;   // 0..1 Commanded throttle
-  float       dynPressure;   // Pa   Current dynamic pressure estimate
-  float       apoapsis;      // m
-  float       periapsis;     // m
+  bool         armed;
+  AscentPhase  phase;
+  const char  *phaseName;     // Human-readable phase ("GRAVITY TURN", ...) — never null
+  const char  *body;          // Current SoI body name ("" if unknown)
+  float        targetApoapsis;// m    Commanded target orbit altitude
+  float        apoapsis;      // m    Actual apoapsis
+  float        periapsis;     // m    Actual periapsis
+  float        cmdPitch;      // deg  Commanded pitch (above horizon)
+  float        cmdHeading;    // deg  Commanded heading / launch azimuth
+  float        cmdThrottle;   // 0..1 Commanded throttle
+  float        gForce;        // g    Current felt acceleration
+  float        dynPressure;   // Pa   Current dynamic pressure estimate
 };
 
 /***************************************************************************************
@@ -122,16 +126,32 @@ void         apSetConfig(const AscentConfig &cfg);
 void         apSetTargets(float apoapsisM, float inclinationDeg, float loft);  // Quick mission set (locks target)
 const char  *apCurrentBody();              // Name of the current SoI body (from SOI_MESSAGE)
 
+/***************************************************************************************
+   Console-facing setters — the parameters a panel exposes to the pilot.
+   Each applies ONLY while the autopilot is DISARMED and returns true if applied
+   (false, no change, if armed) so mission parameters can't be edited mid-ascent.
+   Setting altitude or inclination locks the target against auto body-profile changes.
+****************************************************************************************/
+bool         apSetTargetAltitude(float meters);        // >= 0 (raised to body min-safe on arm)
+bool         apSetTargetInclination(float deg);        // 0..180
+bool         apSetLaunchSoutherly(bool southerly);     // descending-node / southerly azimuth
+bool         apSetLoft(float exponent);                // ~0.5..2.0 (<1 aggressive, >1 lofted)
+bool         apSetRoll(bool enabled, float deg);       // hold roll at deg (-180..180) when enabled
+bool         apSetMaxG(float g);                       // acceleration cap in g (0 = off)
+
+const char  *apPhaseName(AscentPhase phase);           // Human-readable phase label
+
 void         apArm();                      // Engage the autopilot from the current state
 void         apDisarm();                   // Hand control back to the pilot (zeroes commands)
 bool         apIsArmed();
 AscentPhase  apGetPhase();
-AscentStatus apGetStatus();
+AscentStatus apGetStatus();                // Full readout for a console/display panel
 
 void         apUpdate();                    // Run guidance + emit commands — call every loop()
 
 // Optional bench-test console: parses simple commands on the primary Serial port
-// (ARM, DISARM, ALT <m>, INC <deg>, LOFT <x>, STATUS). Call from loop() if desired.
+// (ARM, DISARM, STATUS, ALT <m>, INC <deg>, LOFT <x>, ROLL <deg>, ROLLOFF, MAXG <g>,
+// SOUTH <0|1>). Exercises the same guarded setters a panel uses. Call from loop().
 void         apSerialConsole();
 
 /***************************************************************************************

@@ -210,10 +210,27 @@ apArm();
 ```
 
 **Bench testing:** `apSerialConsole()` (already called in `loop()`) accepts line commands on the
-primary Serial port: `ARM`, `DISARM`, `STATUS`, `ALT <m>`, `INC <deg>`, `LOFT <x>`.
+primary Serial port: `ARM`, `DISARM`, `STATUS`, `ALT <m>`, `INC <deg>`, `LOFT <x>`, `ROLL <deg>`,
+`ROLLOFF`, `MAXG <g>`, `SOUTH <0|1>`.
 
-**Wiring to a panel:** call `apArm()` / `apDisarm()` from a physical arm switch, and read
-`apGetStatus()` for a phase/throttle/attitude readout to drive a display.
+### Console-facing panel API
+
+These are the parameters a console panel should expose. Each **applies only while DISARMED** and returns
+`true` if applied (`false`, no change, if armed) so mission parameters can't be edited mid-ascent. Setting
+altitude or inclination locks the target against auto body-profile changes.
+
+| Setter | Type | Range | Notes |
+|--------|------|-------|-------|
+| `apSetTargetAltitude(float m)` | float, metres | ≥ 0 | Raised to body min-safe on arm |
+| `apSetTargetInclination(float deg)` | float, degrees | 0–180 | 0 = equatorial, 90 = polar |
+| `apSetLaunchSoutherly(bool)` | bool | — | Descending-node / southerly azimuth |
+| `apSetLoft(float exp)` | float, exponent | ~0.5–2.0 | <1 aggressive, >1 lofted |
+| `apSetRoll(bool en, float deg)` | bool + float | deg −180…180 | Hold roll at `deg` when enabled |
+| `apSetMaxG(float g)` | float, g | ≥ 0 (0 = off) | Acceleration cap |
+
+Controls: `apArm()`, `apDisarm()`, `apIsArmed()`. Readout for the display: `apGetStatus()` returns an
+`AscentStatus` — `phaseName`, `body`, `targetApoapsis`, `apoapsis`, `periapsis`, `cmdPitch`,
+`cmdHeading`, `cmdThrottle`, `gForce`, `dynPressure`. `apPhaseName(phase)` gives the label.
 
 ---
 
