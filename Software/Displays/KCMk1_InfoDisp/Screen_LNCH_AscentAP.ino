@@ -204,7 +204,7 @@ static const int16_t KP_Y = TITLE_TOP + (SCREEN_H - TITLE_TOP - KP_H) / 2;   // 
 static const int16_t KP_HDR_H = 80;
 static const int16_t KAX = KP_X + 6, KAY = KP_Y + KP_HDR_H;
 static const int16_t KAW = KP_W - 12, KAH = KP_H - KP_HDR_H - 6;
-static const int16_t KEY_W = KAW / 4, KEY_H = KAH / 4;
+static const int16_t AP_KEY_W = KAW / 4, AP_KEY_H = KAH / 4;
 static const int16_t KP_CX = KP_X + KP_W - 74, KP_CY = KP_Y + 8, KP_CW = 66, KP_CH = 40;  // CANCEL
 
 // Key labels (row-major). "" = disabled slot.
@@ -300,12 +300,12 @@ static void apDrawKeypad(KCM_TFT &tft) {
     for (uint8_t c = 0; c < 4; c++) {
       const char *k = KP_KEYS[r][c];
       bool dis = (strcmp(k, "OFF") == 0 && !offOk);
-      int16_t kx = KAX + c * KEY_W, ky = KAY + r * KEY_H;
+      int16_t kx = KAX + c * AP_KEY_W, ky = KAY + r * AP_KEY_H;
       uint16_t kb = dis ? TFT_OFF_BLACK : TFT_GREY;
       uint16_t kf = dis ? TFT_DARK_GREY : (strcmp(k, "ENT") == 0 ? TFT_NEON_GREEN :
                     strcmp(k, "OFF") == 0 ? TFT_ORANGE : TFT_WHITE);
-      tft.drawRect(kx, ky, KEY_W - 4, KEY_H - 4, kb);
-      textCenter(tft, &Roboto_Black_28, kx, ky, KEY_W - 4, KEY_H - 4, k, kf, TFT_OFF_BLACK);
+      tft.drawRect(kx, ky, AP_KEY_W - 4, AP_KEY_H - 4, kb);
+      textCenter(tft, &Roboto_Black_28, kx, ky, AP_KEY_W - 4, AP_KEY_H - 4, k, kf, TFT_OFF_BLACK);
     }
 }
 
@@ -445,7 +445,7 @@ static void apKeypadTouch(uint16_t x, uint16_t y) {
   if (x >= KP_CX && x < KP_CX + KP_CW && y >= KP_CY && y < KP_CY + KP_CH) { apCloseKeypad(); return; }
   // Key grid
   if (x < KAX || y < KAY) return;
-  int16_t c = (x - KAX) / KEY_W, r = (y - KAY) / KEY_H;
+  int16_t c = (x - KAX) / AP_KEY_W, r = (y - KAY) / AP_KEY_H;
   if (c < 0 || c > 3 || r < 0 || r > 3) return;
   const char *k = KP_KEYS[r][c];
   const ApEdit &e = AP_EDITS[apKpEdit];
