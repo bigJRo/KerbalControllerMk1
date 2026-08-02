@@ -2,7 +2,7 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 0
+#define KDC_VERSION_MINOR 1
 #define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
@@ -10,6 +10,10 @@
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.1.0 — added the full KSP navball marker set: retrograde, normal, anti-normal,
+   radial-in, radial-out, anti-target and the level indicator draw functions (joining
+   prograde/target/maneuver), all selectable via the extended KspMarkerKind enum.
 
    v3.0.0 — hardware rev 2 migration: display type RA8875 -> KCM_TFT (RA8876_t41_p
    via KCM_Display), fonts sumotoy tFont -> ILI9341_t3 (fonts_ili/), BMP blit via
@@ -22,7 +26,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.0.0
+  Version: 3.1.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -225,8 +229,39 @@ void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t 
 // marker (blue). `r` is the prong length; stroke/dot/crossbar scale from `r`.
 void drawManeuverMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
-// Which KSP navball symbol an ADI-ball marker should draw.
-enum KspMarkerKind { KSP_MK_PROGRADE, KSP_MK_TARGET, KSP_MK_MANEUVER };
+// KSP retrograde marker: ring + X + three spokes (up, lower-right, lower-left); no dot.
+// Same green as prograde. `r` is the ring radius.
+void drawRetrogradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP normal marker: hollow upward triangle + centre dot (magenta). `r` scales it.
+void drawNormalMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP anti-normal marker: hollow downward triangle + centre dot + a spoke off the
+// midpoint of each face (magenta). `r` scales it.
+void drawAntiNormalMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP radial-in marker: ring + four diagonal spokes pointing inward; no dot (cyan).
+void drawRadialInMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP radial-out marker: ring + centre dot + four short diagonal spokes pointing
+// outward (cyan).
+void drawRadialOutMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP anti-target marker: centre dot + three spokes (upper-left, upper-right, down),
+// each gapped from the dot; no ring (magenta).
+void drawAntiTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP level indicator (nose/waterline reticle): two horizontal wings with a centre dip
+// and a dot on the wing line (yellow-gold). `r` sets the overall size.
+void drawLevelIndicator(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// Which KSP navball symbol an ADI-ball marker should draw. Existing values keep their
+// ordinals (0/1/2); new kinds are appended.
+enum KspMarkerKind {
+  KSP_MK_PROGRADE, KSP_MK_TARGET, KSP_MK_MANEUVER,
+  KSP_MK_RETROGRADE, KSP_MK_NORMAL, KSP_MK_ANTINORMAL,
+  KSP_MK_RADIAL_IN, KSP_MK_RADIAL_OUT, KSP_MK_ANTITARGET, KSP_MK_LEVEL
+};
 
 // Shared attitude-reticle chrome for the MNVR / DOCK / TGT screens. All three draw
 // an identical black disc with four concentric rings (r/4, r/2, 3r/4, r coloured

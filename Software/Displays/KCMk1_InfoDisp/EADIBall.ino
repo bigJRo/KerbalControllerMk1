@@ -338,7 +338,7 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) 
 
 
 // ═══ ADI ball markers (prograde / target / maneuver) ═════════════════════════════════
-static const int16_t EADI_ADI_MRK_HD = 28;   // marker extent (prograde ring 18 + spoke 9)
+static const int16_t EADI_ADI_MRK_HD = 32;   // marker extent (prograde ring 18 + spoke 12)
 
 // Shortest-arc delta between two headings, result in [-180, 180].
 float eadiHdgDelta(float a, float b) {
@@ -375,11 +375,18 @@ void eadiDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
     int32_t rInner = (int32_t)EADI_R - EADI_ADI_MRK_HD;
     if ((int32_t)dx*dx + (int32_t)dy*dy > rInner * rInner) return;
 
-    // KSP navball symbol — prograde (velocity) / target / maneuver
+    // KSP navball symbol — dispatch to the shared KDC glyph for this kind.
     switch (kind) {
-      case KSP_MK_TARGET:   drawTargetMarker(tft, sx, sy, 22, fillCol);   break;
-      case KSP_MK_MANEUVER: drawManeuverMarker(tft, sx, sy, 19, fillCol); break;
-      default:              drawProgradeMarker(tft, sx, sy, 18, fillCol); break;
+      case KSP_MK_TARGET:      drawTargetMarker(tft, sx, sy, 22, fillCol);     break;
+      case KSP_MK_ANTITARGET:  drawAntiTargetMarker(tft, sx, sy, 20, fillCol); break;
+      case KSP_MK_MANEUVER:    drawManeuverMarker(tft, sx, sy, 19, fillCol);   break;
+      case KSP_MK_RETROGRADE:  drawRetrogradeMarker(tft, sx, sy, 18, fillCol); break;
+      case KSP_MK_NORMAL:      drawNormalMarker(tft, sx, sy, 18, fillCol);     break;
+      case KSP_MK_ANTINORMAL:  drawAntiNormalMarker(tft, sx, sy, 18, fillCol); break;
+      case KSP_MK_RADIAL_IN:   drawRadialInMarker(tft, sx, sy, 20, fillCol);   break;
+      case KSP_MK_RADIAL_OUT:  drawRadialOutMarker(tft, sx, sy, 20, fillCol);  break;
+      case KSP_MK_LEVEL:       drawLevelIndicator(tft, sx, sy, 18, fillCol);   break;
+      default:                 drawProgradeMarker(tft, sx, sy, 18, fillCol);   break;
     }
 
     // Tell next frame's delta fill to repaint these scanlines.
@@ -618,8 +625,11 @@ void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progra
     _t1 = micros();
     if (debugMode) { Serial.print("  ladder="); Serial.print((_t1-_t0)/1000.0f, 2); Serial.print("ms"); }
 
-    // ── 4. ADI markers — prograde always; target if available; maneuver if active ──────
-    eadiDrawAdiMarker(tft, progradeHdg, progradePitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
+    // ── 4. ADI markers — prograde + retrograde always; target if available; maneuver if
+    //       active. (Retrograde is antipodal to prograde; it clips out of the visible cone
+    //       when the nose is prograde-side, like the KSP navball.) ─────────────────────
+    eadiDrawAdiMarker(tft, progradeHdg,          progradePitch,  TFT_NEON_GREEN, KSP_MK_PROGRADE);
+    eadiDrawAdiMarker(tft, progradeHdg + 180.0f, -progradePitch, TFT_NEON_GREEN, KSP_MK_RETROGRADE);
     if (state.targetAvailable)
         eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
     if (state.mnvrTime > 0.0f)

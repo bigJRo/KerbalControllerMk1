@@ -579,7 +579,8 @@ void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 // navball marker.
 static inline int16_t _mkStroke(int16_t r) { return (r >= 16) ? 3 : 2; }
 static inline int16_t _mkDot(int16_t r)    { return (r / 4 > 2) ? r / 4 : 2; }
-static inline int16_t _mkSpoke(int16_t r)  { return (r / 2 > 4) ? r / 2 : 4; }
+static inline int16_t _mkSpoke(int16_t r)  { return ((2 * r) / 3 > 4) ? (2 * r) / 3 : 4; }
+static const float _MK_D2R = 0.01745329252f;   // degrees -> radians
 
 // KSP prograde marker: a ring with a filled centre dot and three spokes pointing up,
 // right and left (the vertical-top + two-horizontal-sides shape KSP uses). Used for
@@ -603,7 +604,7 @@ void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_
 void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
   int16_t w = _mkStroke(r);
   tft.fillCircle(cx, cy, _mkDot(r), color);    // centre dot (matches the other markers)
-  const float GAP  = 12.0f;                    // half-gap at each "+" arm, degrees
+  const float GAP  = 15.0f;                    // half-gap at each "+" arm, degrees
   const float STEP = 6.0f * 0.01745329252f;    // arc plot step, radians
   for (uint8_t q = 0; q < 4; q++) {
     float a0 = ((float)(q * 90) + GAP)         * 0.01745329252f;
@@ -626,16 +627,126 @@ void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t 
 void drawManeuverMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
   int16_t w = _mkStroke(r);
   int16_t cap = (r / 3 > 4) ? r / 3 : 4;                // half-length of the end crossbar
+  int16_t ri  = r / 2;                                  // prong start (gap from the centre dot)
   tft.fillCircle(cx, cy, _mkDot(r), color);             // centre dot
   static const int16_t prong[3] = { -90, 30, 150 };     // screen degrees: up, lower-right, lower-left
   for (uint8_t i = 0; i < 3; i++) {
-    float a  = (float)prong[i] * 0.01745329252f;
-    int16_t tx = cx + (int16_t)(r * cosf(a)), ty = cy + (int16_t)(r * sinf(a));
-    drawThickLine(tft, cx, cy, tx, ty, w, color);       // prong from centre to tip
+    float a  = (float)prong[i] * _MK_D2R;
+    int16_t ix = cx + (int16_t)(ri * cosf(a)), iy = cy + (int16_t)(ri * sinf(a));
+    int16_t tx = cx + (int16_t)(r  * cosf(a)), ty = cy + (int16_t)(r  * sinf(a));
+    drawThickLine(tft, ix, iy, tx, ty, w, color);       // prong (gap between dot and prong)
     float pa = a + 1.57079633f;                         // perpendicular to the prong
     drawThickLine(tft, tx - (int16_t)(cap * cosf(pa)), ty - (int16_t)(cap * sinf(pa)),
                        tx + (int16_t)(cap * cosf(pa)), ty + (int16_t)(cap * sinf(pa)), w, color);
   }
+}
+
+// KSP retrograde marker: a ring with an X through the centre and three spokes at up,
+// lower-right and lower-left (120 deg apart), same length as the prograde spokes. No
+// centre dot (the X fills the centre). Used for the retrograde marker (green).
+void drawRetrogradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w = _mkStroke(r), ext = _mkSpoke(r);
+  for (int16_t i = 0; i < w; i++) tft.drawCircle(cx, cy, r - i, color);
+  int16_t d = (r * 7) / 10;                             // X half-extent inside the ring
+  drawThickLine(tft, cx - d, cy - d, cx + d, cy + d, w, color);
+  drawThickLine(tft, cx - d, cy + d, cx + d, cy - d, w, color);
+  static const int16_t spoke[3] = { -90, 30, 150 };     // up, lower-right, lower-left
+  for (uint8_t i = 0; i < 3; i++) {
+    float a = (float)spoke[i] * _MK_D2R;
+    drawThickLine(tft, cx + (int16_t)(r         * cosf(a)), cy + (int16_t)(r         * sinf(a)),
+                       cx + (int16_t)((r + ext) * cosf(a)), cy + (int16_t)((r + ext) * sinf(a)), w, color);
+  }
+}
+
+// KSP normal marker: a hollow upward-pointing triangle with a centre dot (magenta).
+void drawNormalMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w = _mkStroke(r);
+  int16_t ax = cx,                        ay = cy - (int16_t)(r * 1.20f);   // apex (top)
+  int16_t bx = cx - (int16_t)(r * 1.10f), by = cy + (int16_t)(r * 0.72f);   // base-left
+  int16_t ex = cx + (int16_t)(r * 1.10f), ey = by;                          // base-right
+  drawThickLine(tft, ax, ay, bx, by, w, color);
+  drawThickLine(tft, bx, by, ex, ey, w, color);
+  drawThickLine(tft, ex, ey, ax, ay, w, color);
+  tft.fillCircle(cx, (ay + by + ey) / 3, _mkDot(r), color);                 // centroid dot
+}
+
+// KSP anti-normal marker: a hollow downward-pointing triangle with a centre dot and a
+// spoke projecting outward from the midpoint of each of the three faces (magenta).
+void drawAntiNormalMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w = _mkStroke(r);
+  int16_t ax = cx,                        ay = cy + (int16_t)(r * 1.20f);   // apex (bottom)
+  int16_t bx = cx - (int16_t)(r * 1.10f), by = cy - (int16_t)(r * 0.72f);   // top-left
+  int16_t ex = cx + (int16_t)(r * 1.10f), ey = by;                          // top-right
+  drawThickLine(tft, ax, ay, bx, by, w, color);
+  drawThickLine(tft, bx, by, ex, ey, w, color);
+  drawThickLine(tft, ex, ey, ax, ay, w, color);
+  tft.fillCircle(cx, (ay + by + ey) / 3, _mkDot(r), color);                 // centroid dot
+  int16_t L  = (r * 3) / 5;                                                 // face-spoke length
+  float   a2 = 150.0f * _MK_D2R, a3 = 30.0f * _MK_D2R;                      // outward normals
+  drawThickLine(tft, cx, by, cx, by - L, w, color);                        // top face -> up
+  int16_t m2x = (ax + bx) / 2, m2y = (ay + by) / 2;                         // lower-left mid
+  int16_t m3x = (ax + ex) / 2, m3y = (ay + ey) / 2;                         // lower-right mid
+  drawThickLine(tft, m2x, m2y, m2x + (int16_t)(L * cosf(a2)), m2y + (int16_t)(L * sinf(a2)), w, color);
+  drawThickLine(tft, m3x, m3y, m3x + (int16_t)(L * cosf(a3)), m3y + (int16_t)(L * sinf(a3)), w, color);
+}
+
+// KSP radial-in marker: a ring with four short spokes at the diagonals pointing inward
+// toward the centre; no centre dot (cyan).
+void drawRadialInMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w = _mkStroke(r);
+  for (int16_t i = 0; i < w; i++) tft.drawCircle(cx, cy, r - i, color);
+  int16_t ri = r / 2, ro = r - w;                       // inner (toward centre), outer (at ring)
+  static const int16_t diag[4] = { 45, 135, 225, 315 };
+  for (uint8_t i = 0; i < 4; i++) {
+    float a = (float)diag[i] * _MK_D2R;
+    drawThickLine(tft, cx + (int16_t)(ri * cosf(a)), cy + (int16_t)(ri * sinf(a)),
+                       cx + (int16_t)(ro * cosf(a)), cy + (int16_t)(ro * sinf(a)), w, color);
+  }
+}
+
+// KSP radial-out marker: a ring with a centre dot and four short spokes at the diagonals
+// pointing outward from the ring (cyan).
+void drawRadialOutMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w = _mkStroke(r);
+  for (int16_t i = 0; i < w; i++) tft.drawCircle(cx, cy, r - i, color);
+  tft.fillCircle(cx, cy, _mkDot(r), color);
+  int16_t ext = r / 3;
+  static const int16_t diag[4] = { 45, 135, 225, 315 };
+  for (uint8_t i = 0; i < 4; i++) {
+    float a = (float)diag[i] * _MK_D2R;
+    drawThickLine(tft, cx + (int16_t)(r         * cosf(a)), cy + (int16_t)(r         * sinf(a)),
+                       cx + (int16_t)((r + ext) * cosf(a)), cy + (int16_t)((r + ext) * sinf(a)), w, color);
+  }
+}
+
+// KSP anti-target marker: a centre dot with three spokes (upper-left, upper-right and
+// straight down), each separated from the dot by a gap; no ring (magenta).
+void drawAntiTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w = _mkStroke(r);
+  tft.fillCircle(cx, cy, _mkDot(r), color);
+  int16_t ri = r / 2;                                   // spoke start (gap from the dot)
+  static const int16_t spoke[3] = { -30, 90, 210 };     // upper-right, down, upper-left
+  for (uint8_t i = 0; i < 3; i++) {
+    float a = (float)spoke[i] * _MK_D2R;
+    drawThickLine(tft, cx + (int16_t)(ri * cosf(a)), cy + (int16_t)(ri * sinf(a)),
+                       cx + (int16_t)(r  * cosf(a)), cy + (int16_t)(r  * sinf(a)), w, color);
+  }
+}
+
+// KSP level indicator (nose/waterline reticle): two horizontal wings with a downward
+// centre dip, and a dot on the wing line marking the exact nose direction. `r` sets the
+// overall size. Drawn in yellow-gold.
+void drawLevelIndicator(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  int16_t w    = _mkStroke(r);
+  int16_t wtx  = (r * 3) / 2;          // wing-tip half-span
+  int16_t inx  = (r * 11) / 20;        // inner x (start of the dip)
+  int16_t wy   = -(r / 5);             // wing-line y (above centre)
+  int16_t dipY = (r * 9) / 20;         // dip apex (below centre)
+  drawThickLine(tft, cx - wtx, cy + wy,   cx - inx, cy + wy,   w, color);  // left wing
+  drawThickLine(tft, cx - inx, cy + wy,   cx,       cy + dipY, w, color);  // left dip
+  drawThickLine(tft, cx,       cy + dipY, cx + inx, cy + wy,   w, color);  // right dip
+  drawThickLine(tft, cx + inx, cy + wy,   cx + wtx, cy + wy,   w, color);  // right wing
+  tft.fillCircle(cx, cy + wy, _mkDot(r), color);                           // nose dot on the wing line
 }
 
 void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
