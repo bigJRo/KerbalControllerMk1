@@ -173,7 +173,7 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
     tft.print("VEL");
 
     // TGT — magenta target marker (same symbol as DOCK PORT dot)
-    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 5, TFT_VIOLET);
+    drawTargetMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("TGT");
@@ -298,7 +298,7 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
             tft.fillRect(_tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH*2+1, EH*2+1, TFT_BLACK);
             _tgtRepairChrome(tft, _tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH);
         }
-        drawProgradeMarker(tft, tSX, tSY, TGT_DOT_R_TGT, TFT_VIOLET);
+        drawTargetMarker(tft, tSX, tSY, TGT_DOT_R_TGT, TFT_VIOLET);
         _tgtPrevTgtX = tSX; _tgtPrevTgtY = tSY;
     }
 

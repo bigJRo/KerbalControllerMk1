@@ -551,19 +551,41 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
   tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy + half, color);  // bottom half
 }
 
-// Navball-style prograde/target/maneuver marker: a 2 px ring with a filled centre
-// dot and three short spokes radiating out at 12 / 4 / 8 o'clock — the shape KSP
-// uses for the velocity (green), target (magenta) and maneuver (blue) markers.
-// `r` is the ring radius; the spokes extend to r + 5.
+// KSP prograde marker: a 2 px ring with a filled centre dot and three short spokes
+// pointing up, right and left (the vertical-top + two-horizontal-sides shape KSP
+// uses). Used for the velocity/prograde marker (green) and the maneuver-node marker
+// (blue). `r` is the ring radius; the spokes extend to r + 5.
 void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
   tft.drawCircle(cx, cy, r,     color);
   tft.drawCircle(cx, cy, r - 1, color);
   tft.fillCircle(cx, cy, 2, color);                    // centre dot
-  static const int16_t spoke[3] = { -90, 30, 150 };    // screen degrees: up, lower-right, lower-left
+  static const int16_t spoke[3] = { -90, 0, 180 };     // screen degrees: up, right, left
   for (uint8_t i = 0; i < 3; i++) {
     float a = (float)spoke[i] * 0.01745329252f;        // deg -> rad
     tft.drawLine(cx + (int16_t)(r       * cosf(a)), cy + (int16_t)(r       * sinf(a)),
                  cx + (int16_t)((r + 5) * cosf(a)), cy + (int16_t)((r + 5) * sinf(a)), color);
+  }
+}
+
+// KSP target marker: a ring drawn as four ~66-degree arc segments with gaps at top,
+// bottom, left and right — as if a "+" were cut through the circle. No centre dot
+// and no spokes. Used for the target / docking-port marker (magenta).
+void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  const float GAP  = 12.0f;                    // half-gap at each "+" arm, degrees
+  const float STEP = 7.0f * 0.01745329252f;    // arc plot step, radians
+  for (uint8_t q = 0; q < 4; q++) {
+    float a0 = ((float)(q * 90) + GAP)         * 0.01745329252f;
+    float a1 = ((float)(q * 90) + 90.0f - GAP) * 0.01745329252f;
+    for (int8_t rr = 0; rr < 2; rr++) {        // draw at r and r-1 for a 2 px arc
+      int16_t rad = r - rr;
+      int16_t px = cx + (int16_t)(rad * cosf(a0)), py = cy + (int16_t)(rad * sinf(a0));
+      for (float a = a0 + STEP; a < a1; a += STEP) {
+        int16_t x = cx + (int16_t)(rad * cosf(a)), y = cy + (int16_t)(rad * sinf(a));
+        tft.drawLine(px, py, x, y, color); px = x; py = y;
+      }
+      int16_t x = cx + (int16_t)(rad * cosf(a1)), y = cy + (int16_t)(rad * sinf(a1));
+      tft.drawLine(px, py, x, y, color);
+    }
   }
 }
 

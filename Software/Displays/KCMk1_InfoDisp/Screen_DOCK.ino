@@ -142,7 +142,7 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
     tft.print("VEL");
 
     // Row 1: PORT — magenta target marker
-    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 5, TFT_VIOLET);
+    drawTargetMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("PORT");
@@ -276,8 +276,8 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
             tft.fillRect(_dockPrevPortX-EH, _dockPrevPortY-EH, EH*2+1, EH*2+1, TFT_BLACK);
             _dockRepairChrome(tft, _dockPrevPortX-EH, _dockPrevPortY-EH, EH);
         }
-        // KSP target marker: magenta ring + centre dot + spokes
-        drawProgradeMarker(tft, portSX, portSY, DOT_R_PORT, TFT_VIOLET);
+        // KSP target marker: magenta segmented ring (+-gaps)
+        drawTargetMarker(tft, portSX, portSY, DOT_R_PORT, TFT_VIOLET);
         _dockPrevPortX = portSX; _dockPrevPortY = portSY;
     }
 
