@@ -560,7 +560,6 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
 
 
 // ── Roll indicator state ──────────────────────────────────────────────────────────────
-static float    _scftPrevRollIndicator = -9999.0f;   // last drawn pointer angle
 static int16_t  _scftPrevRollReadout   = -9999;      // last drawn roll readout (integer degrees)
 static uint16_t _scftPrevRollReadoutFg = 0;          // last drawn foreground colour
 
@@ -568,10 +567,6 @@ static uint16_t _scftPrevRollReadoutFg = 0;          // last drawn foreground co
 static int16_t  _scftPrevPitchReadout   = -9999;
 static uint16_t _scftPrevPitchReadoutFg = 0;
 
-// ── Roll indicator geometry ───────────────────────────────────────────────────────────
-static const int16_t  SCFT_PTR_TIP_R  = SCFT_R + 3;   // tip clear of bezel (bezel outer = R+2)
-static const int16_t  SCFT_PTR_BASE_R = SCFT_R + 22;  // base beyond tick outer (R+16), below labels
-static const int16_t  SCFT_PTR_W      = 12;           // half-width of pointer base (matches ACFT)
 
 // Roll readout — two lines, right-justified toward the panel divider (matches ACFT).
 // Label: Roboto_Black_24, Value: Roboto_Black_28.
@@ -968,108 +963,6 @@ static void _scftUpdateHeadingTape(KCM_TFT &tft, float hdg) {
 }
 
 
-// Draw the roll pointer triangle for a given roll angle.
-static void _scftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
-    float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
-    float cosA = cosf(a), sinA = sinf(a);
-    int16_t tx  = (int16_t)(SCFT_CX + SCFT_PTR_TIP_R  * cosA);
-    int16_t ty  = (int16_t)(SCFT_CY + SCFT_PTR_TIP_R  * sinA);
-    int16_t bcx = (int16_t)(SCFT_CX + SCFT_PTR_BASE_R * cosA);
-    int16_t bcy = (int16_t)(SCFT_CY + SCFT_PTR_BASE_R * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * SCFT_PTR_W);
-    int16_t b1y = bcy + (int16_t)( cosA * SCFT_PTR_W);
-    int16_t b2x = bcx - (int16_t)(-sinA * SCFT_PTR_W);
-    int16_t b2y = bcy - (int16_t)( cosA * SCFT_PTR_W);
-    tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, colour);
-}
-
-// Erase the roll pointer — uses a 2px expanded triangle to catch any stray pixels
-// left by integer rounding in the draw pass.
-static void _scftEraseRollPointer(KCM_TFT &tft, float roll) {
-    float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
-    float cosA = cosf(a), sinA = sinf(a);
-    // Expand tip inward 1px, base outward 3px, width +9px each side — the width
-    // margin kills the lateral ghost trail. The wider erase reaches into the R+28
-    // bank labels, so _scftUpdateRollIndicator redraws any label within the sweep.
-    int16_t tx  = (int16_t)(SCFT_CX + (SCFT_PTR_TIP_R  - 1) * cosA);
-    int16_t ty  = (int16_t)(SCFT_CY + (SCFT_PTR_TIP_R  - 1) * sinA);
-    int16_t bcx = (int16_t)(SCFT_CX + (SCFT_PTR_BASE_R + 3) * cosA);
-    int16_t bcy = (int16_t)(SCFT_CY + (SCFT_PTR_BASE_R + 3) * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * (SCFT_PTR_W + 9));
-    int16_t b1y = bcy + (int16_t)( cosA * (SCFT_PTR_W + 9));
-    int16_t b2x = bcx - (int16_t)(-sinA * (SCFT_PTR_W + 9));
-    int16_t b2y = bcy - (int16_t)( cosA * (SCFT_PTR_W + 9));
-    tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, TFT_BLACK);
-}
-
-// Draw a single bank-scale angle label ("30" / "60") at R+28 along the bank
-// radial (Roboto_Black_16). Shared by the chrome pass and the roll-pointer repair.
-static void _scftDrawBankLabel(KCM_TFT &tft, int16_t bankDeg) {
-    const char *txt = (bankDeg == 60 || bankDeg == -60) ? "60" : "30";
-    float   a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
-    int16_t lc_x = (int16_t)(SCFT_CX + (SCFT_R + 28) * cosf(a));
-    int16_t lc_y = (int16_t)(SCFT_CY + (SCFT_R + 28) * sinf(a));
-    int16_t lw   = getFontStringWidth(&Roboto_Black_16, txt);
-    tft.setFont(Roboto_Black_16);
-    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(lc_x - lw / 2, lc_y - 9);   // 9 ≈ cap-height/2 for Roboto_Black_16
-    tft.print(txt);
-}
-
-// Draw a single bank scale tick at the given bank angle.
-static void _scftDrawBankTick(KCM_TFT &tft, int16_t bankDeg) {
-    bool isMajor = (bankDeg == 0 || bankDeg == 30 || bankDeg == -30 ||
-                                     bankDeg == 60 || bankDeg == -60);
-    int16_t tOuter = SCFT_R + 16;
-    int16_t tInner = SCFT_R + (isMajor ? 2 : 6);
-    // 0° and ±60° white, all others light grey
-    uint16_t col = (bankDeg == 0 || bankDeg == 60 || bankDeg == -60)
-                   ? TFT_WHITE : TFT_LIGHT_GREY;
-    float a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
-    float cosA = cosf(a), sinA = sinf(a);
-    int16_t ox = (int16_t)(SCFT_CX + tOuter * cosA);
-    int16_t oy = (int16_t)(SCFT_CY + tOuter * sinA);
-    int16_t ix = (int16_t)(SCFT_CX + tInner * cosA);
-    int16_t iy = (int16_t)(SCFT_CY + tInner * sinA);
-    tft.drawLine(ox, oy, ix, iy, col);
-}
-
-// Update the roll pointer: erase old, redraw any tick it covered, draw new.
-static void _scftUpdateRollIndicator(KCM_TFT &tft, float roll) {
-    if (fabsf(roll - _scftPrevRollIndicator) < 0.2f) return;
-
-    static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
-
-    // Erase old pointer with expanded triangle to catch stray pixels
-    if (_scftPrevRollIndicator > -9000.0f) {
-        float prevClamped = _scftPrevRollIndicator;
-        if      (prevClamped >  60.0f) prevClamped =  60.0f;
-        else if (prevClamped < -60.0f) prevClamped = -60.0f;
-        _scftEraseRollPointer(tft, prevClamped);
-        // Redraw any bank label the (wider) erase reached into (±30/±60, within a
-        // 12° window) BEFORE the ticks, so a label's opaque box can't clip a tick.
-        static const int16_t labelBanks[] = {-60, -30, 30, 60};
-        for (uint8_t i = 0; i < 4; i++) {
-            if (fabsf(_scftPrevRollIndicator - labelBanks[i]) < 12.0f) {
-                _scftDrawBankLabel(tft, labelBanks[i]);
-            }
-        }
-        // Redraw every tick the (wider) erase region may have covered (within 7° —
-        // do NOT break, the enlarged erase can span two adjacent ticks).
-        for (uint8_t i = 0; i < 11; i++) {
-            if (fabsf(_scftPrevRollIndicator - ticks[i]) < 7.0f) {
-                _scftDrawBankTick(tft, ticks[i]);
-            }
-        }
-    }
-
-    // Draw new pointer — clamped to ±60° so it stays within the scale marks
-    float clampedRoll = roll;
-    if      (clampedRoll >  60.0f) clampedRoll =  60.0f;
-    else if (clampedRoll < -60.0f) clampedRoll = -60.0f;
-    _scftDrawRollPointer(tft, clampedRoll, TFT_YELLOW);
-    _scftPrevRollIndicator = roll;
-}
 
 
 // ── Throttle bar (left strip — occupies the ACFT VSI slot) ────────────────────────────
@@ -1198,7 +1091,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     _scftFullRedrawNeeded      = true;
     _scftPrevHorizLo           = INT16_MAX;
     _scftPrevHorizHi           = INT16_MIN;
-    _scftPrevRollIndicator     = -9999.0f;
+    eadiResetRollIndicator();
     _scftPrevRollReadout       = -9999;
     _scftPrevRollReadoutFg     = 0;
     _scftPrevPitchReadout      = -9999;
@@ -1242,11 +1135,11 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
 
     // Bank scale tick marks outside the disc circumference (upper arc)
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
-    for (uint8_t i = 0; i < 11; i++) _scftDrawBankTick(tft, ticks[i]);
+    for (uint8_t i = 0; i < 11; i++) eadiDrawBankTick(tft, ticks[i]);
 
     // Labels at ±30° and ±60° — drawn at R+28 along the tick radial (Roboto_Black_16)
     static const int16_t labelTicks[] = {-60, -30, 30, 60};
-    for (uint8_t i = 0; i < 4; i++) _scftDrawBankLabel(tft, labelTicks[i]);
+    for (uint8_t i = 0; i < 4; i++) eadiDrawBankLabel(tft, labelTicks[i]);
 
     // Heading box border
     tft.drawRect(SCFT_HDG_BOX_X, SCFT_HDG_BOX_Y, SCFT_HDG_BOX_W, SCFT_HDG_BOX_H, TFT_LIGHT_GREY);
@@ -1512,7 +1405,7 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     }
 
     // Roll indicator — update whenever roll changes, independent of ball redraw
-    _scftUpdateRollIndicator(tft, state.roll);
+    eadiUpdateRollIndicator(tft, state.roll);
     _scftUpdateRollReadout(tft, state.roll);
     _scftUpdatePitchTape(tft, state.pitch);
     _scftUpdateHeadingTape(tft, state.heading);

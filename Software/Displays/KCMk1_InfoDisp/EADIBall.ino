@@ -88,3 +88,111 @@ void eadiClipToDisk(float px, float py, float qx, float qy,
     t = max(0.0f, min(1.0f, t));
     ox = px + t*dx; oy = py + t*dy;
 }
+
+
+// ═══ Bank / roll arc ═════════════════════════════════════════════════════════════════
+// The bank pointer + scale ticks/labels sit just outside the bezel. Shared by SCFT/ACFT.
+static const int16_t EADI_PTR_TIP_R  = EADI_R + 3;    // tip clear of bezel (bezel outer = R+2)
+static const int16_t EADI_PTR_BASE_R = EADI_R + 22;   // base beyond tick outer (R+16), below labels
+static const int16_t EADI_PTR_W      = 12;            // half-width of pointer base
+
+static float _eadiPrevRollIndicator = -9999.0f;       // last drawn pointer angle
+void eadiResetRollIndicator() { _eadiPrevRollIndicator = -9999.0f; }
+
+// Draw the roll pointer triangle for a given roll angle.
+void eadiDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
+    float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
+    float cosA = cosf(a), sinA = sinf(a);
+    int16_t tx  = (int16_t)(EADI_CX + EADI_PTR_TIP_R  * cosA);
+    int16_t ty  = (int16_t)(EADI_CY + EADI_PTR_TIP_R  * sinA);
+    int16_t bcx = (int16_t)(EADI_CX + EADI_PTR_BASE_R * cosA);
+    int16_t bcy = (int16_t)(EADI_CY + EADI_PTR_BASE_R * sinA);
+    int16_t b1x = bcx + (int16_t)(-sinA * EADI_PTR_W);
+    int16_t b1y = bcy + (int16_t)( cosA * EADI_PTR_W);
+    int16_t b2x = bcx - (int16_t)(-sinA * EADI_PTR_W);
+    int16_t b2y = bcy - (int16_t)( cosA * EADI_PTR_W);
+    tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, colour);
+}
+
+// Erase the roll pointer — a generously expanded triangle to catch stray rotated-edge
+// pixels. The wider erase reaches the R+28 bank labels, so the caller redraws any within.
+void eadiEraseRollPointer(KCM_TFT &tft, float roll) {
+    float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
+    float cosA = cosf(a), sinA = sinf(a);
+    int16_t tx  = (int16_t)(EADI_CX + (EADI_PTR_TIP_R  - 1) * cosA);
+    int16_t ty  = (int16_t)(EADI_CY + (EADI_PTR_TIP_R  - 1) * sinA);
+    int16_t bcx = (int16_t)(EADI_CX + (EADI_PTR_BASE_R + 3) * cosA);
+    int16_t bcy = (int16_t)(EADI_CY + (EADI_PTR_BASE_R + 3) * sinA);
+    int16_t b1x = bcx + (int16_t)(-sinA * (EADI_PTR_W + 9));
+    int16_t b1y = bcy + (int16_t)( cosA * (EADI_PTR_W + 9));
+    int16_t b2x = bcx - (int16_t)(-sinA * (EADI_PTR_W + 9));
+    int16_t b2y = bcy - (int16_t)( cosA * (EADI_PTR_W + 9));
+    tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, TFT_BLACK);
+}
+
+// Draw a single bank-scale angle label ("30" / "60") at R+28 along the bank radial.
+void eadiDrawBankLabel(KCM_TFT &tft, int16_t bankDeg) {
+    const char *txt = (bankDeg == 60 || bankDeg == -60) ? "60" : "30";
+    float   a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
+    int16_t lc_x = (int16_t)(EADI_CX + (EADI_R + 28) * cosf(a));
+    int16_t lc_y = (int16_t)(EADI_CY + (EADI_R + 28) * sinf(a));
+    int16_t lw   = getFontStringWidth(&Roboto_Black_16, txt);
+    tft.setFont(Roboto_Black_16);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    tft.setCursor(lc_x - lw / 2, lc_y - 9);   // 9 ~ cap-height/2 for Roboto_Black_16
+    tft.print(txt);
+}
+
+// Draw a single bank scale tick at the given bank angle.
+void eadiDrawBankTick(KCM_TFT &tft, int16_t bankDeg) {
+    bool isMajor = (bankDeg == 0 || bankDeg == 30 || bankDeg == -30 ||
+                                     bankDeg == 60 || bankDeg == -60);
+    int16_t tOuter = EADI_R + 16;
+    int16_t tInner = EADI_R + (isMajor ? 2 : 6);
+    uint16_t col = (bankDeg == 0 || bankDeg == 60 || bankDeg == -60)
+                   ? TFT_WHITE : TFT_LIGHT_GREY;   // 0 and +/-60 white, rest light grey
+    float a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
+    float cosA = cosf(a), sinA = sinf(a);
+    int16_t ox = (int16_t)(EADI_CX + tOuter * cosA);
+    int16_t oy = (int16_t)(EADI_CY + tOuter * sinA);
+    int16_t ix = (int16_t)(EADI_CX + tInner * cosA);
+    int16_t iy = (int16_t)(EADI_CY + tInner * sinA);
+    tft.drawLine(ox, oy, ix, iy, col);
+}
+
+// Update the roll pointer: erase old, redraw any tick/label it covered, draw new.
+void eadiUpdateRollIndicator(KCM_TFT &tft, float roll) {
+    if (fabsf(roll - _eadiPrevRollIndicator) < 0.2f) return;
+
+    static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
+
+    // Erase old pointer with expanded triangle to catch stray pixels
+    if (_eadiPrevRollIndicator > -9000.0f) {
+        float prevClamped = _eadiPrevRollIndicator;
+        if      (prevClamped >  60.0f) prevClamped =  60.0f;
+        else if (prevClamped < -60.0f) prevClamped = -60.0f;
+        eadiEraseRollPointer(tft, prevClamped);
+        // Redraw any bank label the (wider) erase reached into (+/-30/+/-60, within a
+        // 12deg window) BEFORE the ticks, so a label's opaque box can't clip a tick.
+        static const int16_t labelBanks[] = {-60, -30, 30, 60};
+        for (uint8_t i = 0; i < 4; i++) {
+            if (fabsf(_eadiPrevRollIndicator - labelBanks[i]) < 12.0f) {
+                eadiDrawBankLabel(tft, labelBanks[i]);
+            }
+        }
+        // Redraw every tick the (wider) erase region may have covered (within 7deg —
+        // do NOT break, the enlarged erase can span two adjacent ticks).
+        for (uint8_t i = 0; i < 11; i++) {
+            if (fabsf(_eadiPrevRollIndicator - ticks[i]) < 7.0f) {
+                eadiDrawBankTick(tft, ticks[i]);
+            }
+        }
+    }
+
+    // Draw new pointer — clamped to +/-60deg so it stays within the scale marks
+    float clampedRoll = roll;
+    if      (clampedRoll >  60.0f) clampedRoll =  60.0f;
+    else if (clampedRoll < -60.0f) clampedRoll = -60.0f;
+    eadiDrawRollPointer(tft, clampedRoll, TFT_YELLOW);
+    _eadiPrevRollIndicator = roll;
+}

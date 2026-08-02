@@ -550,16 +550,11 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
 
 
 // ── Roll indicator state ──────────────────────────────────────────────────────────────
-static float    _acftPrevRollIndicator = -9999.0f;   // last drawn pointer angle
 static int16_t  _acftPrevRollReadout   = -9999;      // last drawn roll readout (integer degrees)
 static uint16_t _acftPrevRollReadoutFg = 0;          // last drawn foreground colour
 
 // ── Pitch readout state ───────────────────────────────────────────────────────────────
 
-// ── Roll indicator geometry ───────────────────────────────────────────────────────────
-static const int16_t  ACFT_PTR_TIP_R  = ACFT_R + 3;   // tip clear of bezel (bezel outer = R+2)
-static const int16_t  ACFT_PTR_BASE_R = ACFT_R + 22;  // base beyond tick outer (R+16), below labels (R+28)
-static const int16_t  ACFT_PTR_W      = 12;           // half-width of pointer base (enlarged from 8)
 
 // Roll readout — two lines centred in fixed-width block
 // Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
@@ -933,114 +928,6 @@ static void _acftUpdateHeadingTape(KCM_TFT &tft, float hdg) {
 }
 
 
-// Draw the roll pointer triangle for a given roll angle.
-static void _acftDrawRollPointer(KCM_TFT &tft, float roll, uint16_t colour) {
-    float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
-    float cosA = cosf(a), sinA = sinf(a);
-    int16_t tx  = (int16_t)(ACFT_CX + ACFT_PTR_TIP_R  * cosA);
-    int16_t ty  = (int16_t)(ACFT_CY + ACFT_PTR_TIP_R  * sinA);
-    int16_t bcx = (int16_t)(ACFT_CX + ACFT_PTR_BASE_R * cosA);
-    int16_t bcy = (int16_t)(ACFT_CY + ACFT_PTR_BASE_R * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * ACFT_PTR_W);
-    int16_t b1y = bcy + (int16_t)( cosA * ACFT_PTR_W);
-    int16_t b2x = bcx - (int16_t)(-sinA * ACFT_PTR_W);
-    int16_t b2y = bcy - (int16_t)( cosA * ACFT_PTR_W);
-    tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, colour);
-}
-
-// Erase the roll pointer — uses a generously expanded triangle to catch any stray
-// pixels left by integer rounding in the draw pass (the pointer is drawn at a
-// rotated angle, so its rasterized edges shift by 1-2px between frames). The
-// margins here are wider than the pointer so no orange trail survives.
-static void _acftEraseRollPointer(KCM_TFT &tft, float roll) {
-    float a    = (roll - 90.0f) * (float)DEG_TO_RAD;
-    float cosA = cosf(a), sinA = sinf(a);
-    // Expand tip inward 1px (stay off the bezel), base outward 3px, and width +9px
-    // each side — the width margin is what kills the lateral ghost trail as the
-    // rotated pointer sweeps. The wider erase now reaches into the R+28 bank labels,
-    // so _acftUpdateRollIndicator redraws any label within the sweep window.
-    int16_t tx  = (int16_t)(ACFT_CX + (ACFT_PTR_TIP_R  - 1) * cosA);
-    int16_t ty  = (int16_t)(ACFT_CY + (ACFT_PTR_TIP_R  - 1) * sinA);
-    int16_t bcx = (int16_t)(ACFT_CX + (ACFT_PTR_BASE_R + 3) * cosA);
-    int16_t bcy = (int16_t)(ACFT_CY + (ACFT_PTR_BASE_R + 3) * sinA);
-    int16_t b1x = bcx + (int16_t)(-sinA * (ACFT_PTR_W + 9));
-    int16_t b1y = bcy + (int16_t)( cosA * (ACFT_PTR_W + 9));
-    int16_t b2x = bcx - (int16_t)(-sinA * (ACFT_PTR_W + 9));
-    int16_t b2y = bcy - (int16_t)( cosA * (ACFT_PTR_W + 9));
-    tft.fillTriangle(tx, ty, b1x, b1y, b2x, b2y, TFT_BLACK);
-}
-
-// Draw a single bank-scale angle label ("30" / "60") at R+28 along the bank
-// radial. Roboto_Black_16, centred on the radial point. Shared by the chrome
-// pass and the roll-pointer repair so the two never disagree on font or position.
-static void _acftDrawBankLabel(KCM_TFT &tft, int16_t bankDeg) {
-    const char *txt = (bankDeg == 60 || bankDeg == -60) ? "60" : "30";
-    float   a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
-    int16_t lc_x = (int16_t)(ACFT_CX + (ACFT_R + 28) * cosf(a));
-    int16_t lc_y = (int16_t)(ACFT_CY + (ACFT_R + 28) * sinf(a));
-    int16_t lw   = getFontStringWidth(&Roboto_Black_16, txt);
-    tft.setFont(Roboto_Black_16);
-    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(lc_x - lw / 2, lc_y - 9);   // 9 ≈ cap-height/2 for Roboto_Black_16
-    tft.print(txt);
-}
-
-// Draw a single bank scale tick at the given bank angle.
-static void _acftDrawBankTick(KCM_TFT &tft, int16_t bankDeg) {
-    bool isMajor = (bankDeg == 0 || bankDeg == 30 || bankDeg == -30 ||
-                                     bankDeg == 60 || bankDeg == -60);
-    int16_t tOuter = ACFT_R + 16;
-    int16_t tInner = ACFT_R + (isMajor ? 2 : 6);
-    // 0° and ±60° white, all others light grey
-    uint16_t col = (bankDeg == 0 || bankDeg == 60 || bankDeg == -60)
-                   ? TFT_WHITE : TFT_LIGHT_GREY;
-    float a    = (bankDeg - 90.0f) * (float)DEG_TO_RAD;
-    float cosA = cosf(a), sinA = sinf(a);
-    int16_t ox = (int16_t)(ACFT_CX + tOuter * cosA);
-    int16_t oy = (int16_t)(ACFT_CY + tOuter * sinA);
-    int16_t ix = (int16_t)(ACFT_CX + tInner * cosA);
-    int16_t iy = (int16_t)(ACFT_CY + tInner * sinA);
-    tft.drawLine(ox, oy, ix, iy, col);
-}
-
-// Update the roll pointer: erase old, redraw any tick it covered, draw new.
-static void _acftUpdateRollIndicator(KCM_TFT &tft, float roll) {
-    if (fabsf(roll - _acftPrevRollIndicator) < 0.2f) return;
-
-    static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
-
-    // Erase old pointer with expanded triangle to catch stray pixels
-    if (_acftPrevRollIndicator > -9000.0f) {
-        float prevClamped = _acftPrevRollIndicator;
-        if      (prevClamped >  60.0f) prevClamped =  60.0f;
-        else if (prevClamped < -60.0f) prevClamped = -60.0f;
-        _acftEraseRollPointer(tft, prevClamped);
-        // Redraw any bank label the (wider) erase region reached into. Labels live
-        // at ±30/±60 and sit at R+28 — the enlarged erase now clips their inner
-        // glyph rows, so restore any within a 12° window. Draw labels BEFORE the
-        // ticks so a label's opaque background box can't clip an adjacent tick.
-        static const int16_t labelBanks[] = {-60, -30, 30, 60};
-        for (uint8_t i = 0; i < 4; i++) {
-            if (fabsf(_acftPrevRollIndicator - labelBanks[i]) < 12.0f) {
-                _acftDrawBankLabel(tft, labelBanks[i]);
-            }
-        }
-        // Redraw every tick the (wider) erase region may have covered. Search a 7°
-        // window and do NOT break — the enlarged erase can span two adjacent ticks.
-        for (uint8_t i = 0; i < 11; i++) {
-            if (fabsf(_acftPrevRollIndicator - ticks[i]) < 7.0f) {
-                _acftDrawBankTick(tft, ticks[i]);
-            }
-        }
-    }
-
-    // Draw new pointer — clamped to ±60° so it stays within the scale marks
-    float clampedRoll = roll;
-    if      (clampedRoll >  60.0f) clampedRoll =  60.0f;
-    else if (clampedRoll < -60.0f) clampedRoll = -60.0f;
-    _acftDrawRollPointer(tft, clampedRoll, TFT_YELLOW);
-    _acftPrevRollIndicator = roll;
-}
 
 
 // ── Screen chrome ─────────────────────────────────────────────────────────────────────
@@ -1303,7 +1190,7 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     _acftFullRedrawNeeded      = true;
     _acftPrevHorizLo           = INT16_MAX;
     _acftPrevHorizHi           = INT16_MIN;
-    _acftPrevRollIndicator     = -9999.0f;
+    eadiResetRollIndicator();
     _acftPrevRollReadout       = -9999;
     _acftPrevRollReadoutFg     = 0;
     _acftPrevPitch2            = -9999.0f;
@@ -1339,11 +1226,11 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 
     // Bank scale tick marks outside the disc circumference (upper arc)
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};
-    for (uint8_t i = 0; i < 11; i++) _acftDrawBankTick(tft, ticks[i]);
+    for (uint8_t i = 0; i < 11; i++) eadiDrawBankTick(tft, ticks[i]);
 
     // Labels at ±30° and ±60° — drawn at R+28 along the tick radial (Roboto_Black_16)
     static const int16_t labelTicks[] = {-60, -30, 30, 60};
-    for (uint8_t i = 0; i < 4; i++) _acftDrawBankLabel(tft, labelTicks[i]);
+    for (uint8_t i = 0; i < 4; i++) eadiDrawBankLabel(tft, labelTicks[i]);
 
     // Heading box border
     tft.drawRect(ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y, ACFT_HDG_BOX_W, ACFT_HDG_BOX_H, TFT_LIGHT_GREY);
@@ -1736,7 +1623,7 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
         while (slip < -180.0f) slip += 360.0f;
     }
 
-    _acftUpdateRollIndicator(tft, state.roll);
+    eadiUpdateRollIndicator(tft, state.roll);
     _acftUpdateRollReadout(tft, state.roll);
     _acftUpdatePitchTape(tft, state.pitch);
     _acftUpdateHeadingTape(tft, state.heading);
