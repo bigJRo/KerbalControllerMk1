@@ -36,7 +36,7 @@ struct AppState {
   uint8_t    vesselSituationState = 0x00;         // display bitmask: bit0=DOCKED..bit7=LANDED
   CtrlMode   vehCtrlMode          = ctrl_Spacecraft;
   VesselType vesselType           = type_Ship;
-  String     vesselName           = "TEST CRAFT NAME";  // note: String heap -- low risk on Teensy 4.0
+  String     vesselName           = "TEST CRAFT NAME";  // note: String heap -- low risk on Teensy 4.1
   uint8_t    maxTemp    = 0;
   uint8_t    crewCount  = 0;
   uint8_t    twIndex    = 0;
@@ -45,7 +45,7 @@ struct AppState {
   uint8_t    skinTemp   = 100;
   uint8_t    ctrlGrp    = 1;
   uint8_t    capValue   = 0;                             // "Cap" readout (rev-2 telemetry; source TBD via I2C)
-  String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.0
+  String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.1
 
   // Mode/status flags shown in the bottom-right 6x2 grid (rev 2). All 12 bits are
   // reported by the master controller over I2C; default off until the master
@@ -267,7 +267,7 @@ enum ChuteEnvState : uint8_t {
      MAJOR -- incompatible structural changes
      MINOR -- new features or screens added
      PATCH -- bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 2.1.0
+   This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 0;

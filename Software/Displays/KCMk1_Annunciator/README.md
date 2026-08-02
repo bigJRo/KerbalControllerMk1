@@ -1,14 +1,14 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v2.1.0
-Teensy 4.0 firmware for the KSP annunciator display module.
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.0.0
+Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
 ---
 
 ## Overview
 
-The Annunciator is an 800×480 touchscreen display panel that presents real-time KSP telemetry sourced from KerbalSimpit. It runs on a Teensy 4.0 and receives telemetry over USB serial from a running KSP instance. A Teensy 4.1 master controller coordinates the Annunciator via I2C, configuring its operating mode at boot and receiving status updates as flight conditions change.
+The Annunciator is a 1024×600 touchscreen display panel that presents real-time KSP telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance. A Teensy 4.1 master controller coordinates the Annunciator via I2C, configuring its operating mode at boot and receiving status updates as flight conditions change.
 
 The panel provides three screens — Main, SOI, and Standby — navigated by touch. The Main screen is the primary operational view, presenting the Caution & Warning panel, vessel situation indicators, SOI thumbnail, and key telemetry readouts. The SOI screen provides detailed celestial body data. The Standby screen displays a full-screen splash image when the system is idle.
 
@@ -18,47 +18,46 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 
 | Component | Part | Interface |
 |-----------|------|-----------|
-| Microcontroller | Teensy 4.0 | — |
-| Display | RA8875 800×480 TFT | SPI |
-| Touch controller | GSL1680F capacitive | Wire1 (I2C) |
-| SD card | SD (on RA8875 board) | SPI |
+| Microcontroller | Teensy 4.1 | — |
+| Display | RA8876 1024×600 IPS TFT (BuyDisplay ER-TFTM070-6) | 16-bit 8080 parallel (FlexIO3) |
+| Touch controller | FT5316 5-point capacitive | Software I2C (pins 4/5) |
+| SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
+| Audio | Buzzer (`tone()`) + DFPlayer Mini | Pin 2 / Serial2 |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
-| I2C slave bus | Master Teensy 4.1 | Wire (I2C) |
+| I2C slave bus | Master Teensy 4.1 | Wire2 (I2C) |
 
 ### Pin Assignments
 
 | Pin | Function | Direction | Assigned by |
 |-----|----------|-----------|-------------|
-| 10 | RA8875 SPI chip select | OUT | KerbalDisplayCommon (`RA8875_CS`) |
-| 11 | SPI MOSI | OUT | Teensy hardware SPI (fixed) |
-| 12 | SPI MISO | IN | Teensy hardware SPI (fixed) |
-| 13 | SPI SCK | OUT | Teensy hardware SPI (fixed) |
-| 15 | RA8875 RESET | OUT | KerbalDisplayCommon (`RA8875_RESET`) |
-| 4 | SD card detect (active-LOW) | IN | KerbalDisplayCommon (`SD_DETECT_PIN`) |
-| 5 | SD card SPI chip select | OUT | KerbalDisplayCommon (`SD_CS_PIN`) |
-| 16 | GSL1680F SCL (Wire1) | — | KerbalDisplayCommon (`CTP_SCL_PIN`) |
-| 17 | GSL1680F SDA (Wire1) | — | KerbalDisplayCommon (`CTP_SDA_PIN`) |
-| 3 | GSL1680F WAKE | OUT | KerbalDisplayCommon (`CTP_WAKE_PIN`) |
-| 22 | GSL1680F INT (HIGH when touched) | IN | KerbalDisplayCommon (`CTP_INT_PIN`) |
-| 9 | Audio PWM output (buzzer/speaker) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
-| 18 | I2C SDA (Wire — master bus) | — | Sketch / Wire library |
-| 19 | I2C SCL (Wire — master bus) | — | Sketch / Wire library |
-| 2 | I2C interrupt output to master (active-LOW) | OUT | Sketch (`KCM_I2C_INT_PIN`) |
+| 34 | RA8876 /CS chip select | OUT | KCMk1_SystemConfig (`KCM_TFT_CS`) |
+| 33 | RA8876 RS register/data select | OUT | KCMk1_SystemConfig (`KCM_TFT_RS`) |
+| 35 | RA8876 /RESET | OUT | KCMk1_SystemConfig (`KCM_TFT_RESET`) |
+| 36 | RA8876 /WR write strobe | OUT | KCMk1_SystemConfig (`KCM_TFT_WR`) — FlexIO3 driver-owned |
+| 37 | RA8876 /RD read strobe | OUT | KCMk1_SystemConfig (`KCM_TFT_RD`) — FlexIO3 driver-owned |
+| 32 | RA8876 WAIT (busy flow control) | IN | KCMk1_SystemConfig (`KCM_TFT_WAIT`) |
+| 31 | RA8876 INT (unused for now) | IN | KCMk1_SystemConfig (`KCM_TFT_INT`) |
+| 9 | Backlight enable / PWM | OUT | KCMk1_SystemConfig (`KCM_TFT_BL`) |
+| 19, 18, 14, 15, 40, 41, 17, 16, 22, 23, 20, 21, 38, 39, 26, 27 | RA8876 16-bit data bus DB0..DB15 | — | KCMk1_SystemConfig (`KCM_TFT_DB0`..`DB15`) — FlexIO3 driver-owned |
+| 4 | FT5316 SCL (software I2C) | — | KCMk1_SystemConfig (`KCM_CTP_SCL`) |
+| 5 | FT5316 SDA (software I2C) | — | KCMk1_SystemConfig (`KCM_CTP_SDA`) |
+| 3 | FT5316 /RESET | OUT | KCMk1_SystemConfig (`KCM_CTP_RST`) |
+| 6 | FT5316 INT (data ready) | IN | KCMk1_SystemConfig (`KCM_CTP_INT`) |
+| 2 | Buzzer tone output (master alarm) | OUT | KCMk1_SystemConfig (`KCM_AUDIO_TONE_PIN`) |
+| 7 | DFPlayer Mini RX2 (Serial2) | IN | Teensy hardware Serial2 (fixed) |
+| 8 | DFPlayer Mini TX2 (Serial2) | OUT | Teensy hardware Serial2 (fixed) |
+| 24 | I2C SCL2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |
+| 25 | I2C SDA2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |
+| 0 | I2C interrupt output to master (active-LOW) | OUT | KCMk1_SystemConfig (`KCM_I2C_INT_PIN`) |
+| 1 | Shared reset line from master | IN | KCMk1_SystemConfig (`KCM_I2C_RST_PIN`) |
 
 **Serial ports:**
 - `Serial` (USB COM port 4) — debug output only
 - `SerialUSB1` (USB COM port 5) — KerbalSimpit telemetry traffic
 
-**I2C note:** Wire (pins 18/19) is the master bus shared with the Teensy 4.1. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
+**I2C note:** Wire2 (pins 24/25 = SCL2/SDA2) is the master bus shared with the Teensy 4.1. The FT5316 touch controller runs on a separate software (bit-banged) I2C bus on pins 4/5 — pins 18/19/16/17 are consumed by the display data bus. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
 
-**Override note:** KerbalDisplayCommon and KerbalDisplayAudio pin assignments can be overridden by defining the constant before the `#include`:
-
-```cpp
-#define RA8875_CS 9
-#define AUDIO_PIN 8
-#include <KerbalDisplayCommon.h>
-#include <KerbalDisplayAudio.h>
-```
+**Pin configuration:** All hardware pins are defined centrally in `KCMk1_SystemConfig.h`, the shared header used by the Annunciator, ResourceDisp, and InfoDisp panels. To remap a pin, edit the `KCM_*` define there rather than overriding per-sketch. The RA8876 data bus, /WR, and /RD lines are owned by the FlexIO3 driver (`wwatson4506/TeensyRA8876-8080`); only /CS, RS, and /RESET are passed to it as plain GPIO.
 
 ---
 
@@ -66,9 +65,11 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 2.1.0 | Display primitives, fonts, BMP loader, touch driver, system utils |
+| KerbalDisplayCommon | 3.0.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (RA8876 / Teensy 4.1) requires ≥ 3.0.0 |
 | KerbalDisplayAudio | 1.0.1 | Non-blocking audio state machine |
-| RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
+| TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
+| TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
+| ILI9341_fonts (ILI9341_t3) | latest | Anti-aliased fonts (PaulStoffregen) |
 | KerbalSimpit | latest | KSP telemetry plugin interface |
 
 ### KerbalSimpit Plugin Settings
@@ -124,7 +125,7 @@ The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConf
 
 ## I2C Protocol
 
-The Annunciator operates as an I2C slave at address **0x10** (`KCM_I2C_ADDR_ANNUNCIATOR`) on the Wire bus. The master (Teensy 4.1) drives the bus. Communication is interrupt-driven: the Annunciator asserts pin 2 LOW when new data is ready; the master reads and then sends a command packet in response.
+The Annunciator operates as an I2C slave at address **0x10** (`KCM_I2C_ADDR_ANNUNCIATOR`) on the Wire2 bus. The master (Teensy 4.1) drives the bus. Communication is interrupt-driven: the Annunciator asserts pin 0 LOW when new data is ready; the master reads and then sends a command packet in response.
 
 ### Outbound Packet — Annunciator → Master
 
@@ -300,7 +301,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 1. Hardware init (display, SD, touch, audio, I2C slave)
 2. Boot screen renders (terminal-aesthetic BIOS POST; header shows live version string via `snprintf`)
 3. Simpit handshake runs (or demo mode initialises) — `simpitConnected` set accordingly
-4. Annunciator builds a status packet and **asserts pin 2 LOW** (INT)
+4. Annunciator builds a status packet and **asserts pin 0 LOW** (INT)
 5. Master detects INT, calls `Wire.requestFrom(0x10, 4)`, reads the 4-byte status packet
 6. Master inspects state, sends a 3-byte command packet with `requestType = 0x2` (PROCEED) — configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`) can be included in the same packet
 7. Annunciator receives PROCEED, clears the boot screen, enters `loop()`
@@ -313,6 +314,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / RA8876 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFTM070-6), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. |
 | **2.1.0** | Complete C&W panel redesign: 25 indicators (5×5), body-aware Pe LOW / Ap LOW / ORBIT STABLE logic using full BodyParams (reentryAlt, lowSpace, soiAlt). Two-tier yellow/red indicators for PE_LOW, PROP_LOW, LIFE_SUPP. Dynamic CHUTE_ENV (off/green/yellow/red). Positive indicators: ORBIT_STABLE, ELEC_GEN. State indicators: SRB_ACTIVE, EVA_ACTIVE. CNTCT situation button driven by LANDED/SPLASH (not VSIT_DOCKED). DOCK vertical text indicator above situation column. Panel condition strip (10 buttons): DEMO/CTRL/DEBUG and SPCFT/PLN/RVR use black background with coloured text. Zone separation via TFT_SILVER gutters. Layout updated: 98×73 C&W buttons, repositioned DOCK/situation/panel/flight-condition zones. SOI screen adds Reentry Alt and SOI Radius rows, removes Escape Velocity, reduces font to 28pt at 36px row height. `standaloneMode` and `standaloneTest` operating modes added. Serial-driven test framework (`TestMode.ino`): 66 logic tests + 57-step display walk-through. KerbalDisplayCommon body table expanded with full BodyParams (gravity, escapeVelocity, synchronousOrbit, reentryAlt, soiAlt, hasSurface, highQThreshold). |
 | **2.0.0** | Major rewrite. RA8875 KDC v2 flicker-free rendering (PrintState, printDisp, printValue). Full AppState struct. Body-aware SOI screen with KASA meatball and per-body BMP. I2C slave boot handshake with master Teensy 4.1. |
 | **1.1.1** | Touch count filter, I2C constants to KCMk1_SystemConfig.h, cross-panel threshold aliases, boot screen live version string, KerbalDisplayCommon 2.1.0. |
@@ -324,9 +326,9 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 - **ARP mod required** for `CW_BUS_VOLTAGE`. Without ARP, KSP1 never sends `ELECTRIC_MESSAGE`.
 - **`audioEnabled`** defaults to `false` — must be enabled in `AAA_Config.ino` or via I2C from the master.
-- **`DISPLAY_ROTATION`** — set `2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not needed; the GSL1680F reports in screen-native coordinates at rotation 0.
+- **`DISPLAY_ROTATION`** — set `2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not needed; the FT5316 reports in screen-native coordinates at rotation 0.
 - **Demo mode** drives all `AppState` fields at configurable rates. `ctrlMode` and `ctrlGrp` are not cycled — they are owned by the master and preserved as last set via I2C. Switching demo off at runtime connects Simpit if not already connected, or requests a full channel refresh if it is.
-- **String heap usage** — `state.vesselName` and `state.gameSOI` use Arduino `String`. Low risk on Teensy 4.0 (512 KB RAM) but worth noting if porting to a memory-constrained target.
+- **String heap usage** — `state.vesselName` and `state.gameSOI` use Arduino `String`. Low risk on Teensy 4.1 (1 MB RAM) but worth noting if porting to a memory-constrained target.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.
