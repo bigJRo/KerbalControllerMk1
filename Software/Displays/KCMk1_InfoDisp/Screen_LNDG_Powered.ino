@@ -919,7 +919,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
 
     // ── Right panel values ──
     {
-        static const tFont   *RF  = &Roboto_Black_28;
+        static const tFont   *RF  = &Roboto_Black_32;   // value font — matches the re-entry panel (both LNDG modes)
         static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;
         static const uint8_t  RNR = 8;
@@ -1021,7 +1021,8 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                 String ts = buf;
                 RowCache &tc = rowCache[6][7];
                 if (tc.value != ts) {
-                    printValue(tft, RF, RX, y, RHW-ROW_PAD, h, "Thrtl:", ts, TFT_DARK_GREEN, TFT_BLACK, COL_BACK, printState[6][7]);
+                    // Thrtl stays at 28 — it shares a half-cell with the RCS button, too tight for 32.
+                    printValue(tft, &Roboto_Black_28, RX, y, RHW-ROW_PAD, h, "Thrtl:", ts, TFT_DARK_GREEN, TFT_BLACK, COL_BACK, printState[6][7]);
                     tc.value = ts; tc.fg = TFT_DARK_GREEN; tc.bg = TFT_BLACK;
                 }
             }

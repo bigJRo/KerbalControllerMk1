@@ -105,9 +105,9 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
     // Left column labels
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("SMA:");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("Ecc:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("Pe:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("Ap:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("Alt:");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("PeA:");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("ApA:");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("Alt.SL:");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("Vel:");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("Period:");
 

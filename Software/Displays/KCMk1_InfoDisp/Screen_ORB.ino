@@ -1165,9 +1165,9 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL:");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY2); tft.print("Pe:");
+    tft.setCursor(6,   ORB_RDY2); tft.print("PeA:");
     tft.setTextColor(TFT_BLUE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY3); tft.print("Ap:");
+    tft.setCursor(6,   ORB_RDY3); tft.print("ApA:");
 
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
