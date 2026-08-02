@@ -551,33 +551,57 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
   tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy + half, color);  // bottom half
 }
 
-// KSP prograde marker: a 2 px ring with a filled centre dot and three short spokes
-// pointing up, right and left (the vertical-top + two-horizontal-sides shape KSP
-// uses). Used for the velocity/prograde marker (green) and the maneuver-node marker
-// (blue). `r` is the ring radius; the spokes extend to r + 5.
+// Straight line of stroke width `w`, thickened symmetrically about the ideal line.
+void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                   int16_t w, uint16_t color) {
+  if (w <= 1) { tft.drawLine(x0, y0, x1, y1, color); return; }
+  float dx = (float)(x1 - x0), dy = (float)(y1 - y0);
+  float len = sqrtf(dx * dx + dy * dy);
+  if (len < 0.5f) { tft.fillCircle(x0, y0, w / 2, color); return; }
+  float px = -dy / len, py = dx / len;                  // unit perpendicular
+  for (int16_t i = 0; i < w; i++) {
+    float off = (float)i - (float)(w - 1) * 0.5f;
+    int16_t ox = (int16_t)lroundf(px * off), oy = (int16_t)lroundf(py * off);
+    tft.drawLine(x0 + ox, y0 + oy, x1 + ox, y1 + oy, color);
+  }
+}
+
+// Sub-element sizing shared by the KSP markers: stroke width, centre-dot radius and
+// spoke overshoot all scale from the ring/prong radius `r` so the marker stays
+// proportional (and legibly thick) whether it is a tiny legend key or a full-size
+// navball marker.
+static inline int16_t _mkStroke(int16_t r) { return (r >= 16) ? 3 : 2; }
+static inline int16_t _mkDot(int16_t r)    { return (r / 4 > 2) ? r / 4 : 2; }
+static inline int16_t _mkSpoke(int16_t r)  { return (r / 2 > 4) ? r / 2 : 4; }
+
+// KSP prograde marker: a ring with a filled centre dot and three spokes pointing up,
+// right and left (the vertical-top + two-horizontal-sides shape KSP uses). Used for
+// the velocity/prograde marker (green) and the maneuver-node marker (blue). `r` is the
+// ring radius; the spokes extend to r + _mkSpoke(r).
 void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
-  tft.drawCircle(cx, cy, r,     color);
-  tft.drawCircle(cx, cy, r - 1, color);
-  tft.fillCircle(cx, cy, 2, color);                    // centre dot
+  int16_t w = _mkStroke(r), ext = _mkSpoke(r);
+  for (int16_t i = 0; i < w; i++) tft.drawCircle(cx, cy, r - i, color);
+  tft.fillCircle(cx, cy, _mkDot(r), color);            // centre dot
   static const int16_t spoke[3] = { -90, 0, 180 };     // screen degrees: up, right, left
   for (uint8_t i = 0; i < 3; i++) {
     float a = (float)spoke[i] * 0.01745329252f;        // deg -> rad
-    tft.drawLine(cx + (int16_t)(r       * cosf(a)), cy + (int16_t)(r       * sinf(a)),
-                 cx + (int16_t)((r + 5) * cosf(a)), cy + (int16_t)((r + 5) * sinf(a)), color);
+    drawThickLine(tft, cx + (int16_t)(r         * cosf(a)), cy + (int16_t)(r         * sinf(a)),
+                       cx + (int16_t)((r + ext) * cosf(a)), cy + (int16_t)((r + ext) * sinf(a)), w, color);
   }
 }
 
 // KSP target marker: a ring drawn as four ~66-degree arc segments with gaps at top,
-// bottom, left and right — as if a "+" were cut through the circle. No centre dot
-// and no spokes. Used for the target / docking-port marker (magenta).
+// bottom, left and right — as if a "+" were cut through the circle — plus a centre dot.
+// Used for the target / docking-port marker (magenta).
 void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
-  tft.fillCircle(cx, cy, 2, color);            // centre dot (matches the other markers)
+  int16_t w = _mkStroke(r);
+  tft.fillCircle(cx, cy, _mkDot(r), color);    // centre dot (matches the other markers)
   const float GAP  = 12.0f;                    // half-gap at each "+" arm, degrees
   const float STEP = 7.0f * 0.01745329252f;    // arc plot step, radians
   for (uint8_t q = 0; q < 4; q++) {
     float a0 = ((float)(q * 90) + GAP)         * 0.01745329252f;
     float a1 = ((float)(q * 90) + 90.0f - GAP) * 0.01745329252f;
-    for (int8_t rr = 0; rr < 2; rr++) {        // draw at r and r-1 for a 2 px arc
+    for (int16_t rr = 0; rr < w; rr++) {       // draw at r..r-(w-1) for a w px arc
       int16_t rad = r - rr;
       int16_t px = cx + (int16_t)(rad * cosf(a0)), py = cy + (int16_t)(rad * sinf(a0));
       for (float a = a0 + STEP; a < a1; a += STEP) {
@@ -594,16 +618,17 @@ void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t 
 // and lower-right, each ending in a short perpendicular crossbar. No ring. Used for
 // the maneuver marker (blue). `r` is the prong length from centre to crossbar.
 void drawManeuverMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
-  tft.fillCircle(cx, cy, 2, color);                     // centre dot
+  int16_t w = _mkStroke(r);
+  int16_t cap = (r / 3 > 4) ? r / 3 : 4;                // half-length of the end crossbar
+  tft.fillCircle(cx, cy, _mkDot(r), color);             // centre dot
   static const int16_t prong[3] = { -90, 30, 150 };     // screen degrees: up, lower-right, lower-left
-  const float cap = 5.0f;                               // half-length of the end crossbar
   for (uint8_t i = 0; i < 3; i++) {
     float a  = (float)prong[i] * 0.01745329252f;
     int16_t tx = cx + (int16_t)(r * cosf(a)), ty = cy + (int16_t)(r * sinf(a));
-    tft.drawLine(cx, cy, tx, ty, color);                // prong from centre to tip
+    drawThickLine(tft, cx, cy, tx, ty, w, color);       // prong from centre to tip
     float pa = a + 1.57079633f;                         // perpendicular to the prong
-    tft.drawLine(tx - (int16_t)(cap * cosf(pa)), ty - (int16_t)(cap * sinf(pa)),
-                 tx + (int16_t)(cap * cosf(pa)), ty + (int16_t)(cap * sinf(pa)), color);
+    drawThickLine(tft, tx - (int16_t)(cap * cosf(pa)), ty - (int16_t)(cap * sinf(pa)),
+                       tx + (int16_t)(cap * cosf(pa)), ty + (int16_t)(cap * sinf(pa)), w, color);
   }
 }
 

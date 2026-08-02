@@ -65,9 +65,9 @@ static const uint16_t MNVR_RING_15 = (MNVR_R * 3) / 4;   // 168
 static const uint16_t MNVR_RING_20 = MNVR_R;             // 225
 
 // Marker sizing — diamond and box scaled up with the larger reticle
-static const uint8_t MNVR_MRK_DS  = 16;   // diamond half-size
+static const uint8_t MNVR_MRK_DS  = 32;   // maneuver marker prong length (doubled for visibility)
 static const uint8_t MNVR_BOX_R   = 23;   // alignment box half-size (DS + ~7px clearance)
-static const uint8_t MNVR_ERASE_R = 27;   // erase rect half-size (covers box + margin)
+static const uint8_t MNVR_ERASE_R = 36;   // erase rect half-size (covers doubled prong 32 + cap)
 
 // Right panel geometry — matches the ascent/circ readout panel: 360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36.

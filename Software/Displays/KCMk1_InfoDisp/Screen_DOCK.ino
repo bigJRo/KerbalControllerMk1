@@ -67,9 +67,9 @@ static const uint16_t RING_15 = (RET_R * 3) / 4;   // 157
 static const uint16_t RING_20 = RET_R;             // 210 — ±20° boundary
 
 // Dot display sizes — scaled up with the larger reticle
-static const uint8_t DOT_R_PORT  = 14;   // target port dot radius
-static const uint8_t DOT_R_VEL   = 12;   // velocity vector dot radius
-static const uint8_t DOT_R_ERASE = 20;   // erase rect half-size (covers dot + overdraw)
+static const uint8_t DOT_R_PORT  = 28;   // target port marker radius (doubled for visibility)
+static const uint8_t DOT_R_VEL   = 24;   // velocity vector marker radius (doubled for visibility)
+static const uint8_t DOT_R_ERASE = 38;   // erase rect half-size (covers prograde ring 24 + spoke 12)
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
@@ -104,7 +104,7 @@ static inline float _dockWrapErr(float e) {
 static void _dockClampDot(int16_t &sx, int16_t &sy) {
     float dx = sx - RET_CX, dy = sy - RET_CY;
     float dist = sqrtf(dx*dx + dy*dy);
-    float maxR = (float)(RET_R - DOT_R_PORT - 2);
+    float maxR = (float)(RET_R - DOT_R_VEL * 3 / 2 - 2);  // widest marker = prograde ring + spoke
     if (dist > maxR && dist > 0.5f) {
         float scale = maxR / dist;
         sx = RET_CX + (int16_t)(dx * scale);

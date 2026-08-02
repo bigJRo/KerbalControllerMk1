@@ -95,9 +95,9 @@ static const uint16_t TGT_RING_45 = (TGT_R * 3) / 4;  // 157
 static const uint16_t TGT_RING_60 = TGT_R;            // 210 — ±60° boundary
 
 // Dot display sizes — scaled up with the larger scope
-static const uint8_t TGT_DOT_R_TGT   = 14;  // target diamond half-size
-static const uint8_t TGT_DOT_R_VEL   = 12;  // velocity circle radius
-static const uint8_t TGT_DOT_R_ERASE = 20;  // erase rect half-size
+static const uint8_t TGT_DOT_R_TGT   = 28;  // target marker radius (doubled for visibility)
+static const uint8_t TGT_DOT_R_VEL   = 24;  // velocity marker radius (doubled for visibility)
+static const uint8_t TGT_DOT_R_ERASE = 38;  // erase rect half-size (covers prograde ring 24 + spoke 12)
 
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
@@ -134,7 +134,7 @@ static inline float _tgtWrapErr(float e) {
 static void _tgtClampDot(int16_t &sx, int16_t &sy) {
     float dx = sx - TGT_SCX, dy = sy - TGT_SCY;
     float dist = sqrtf(dx*dx + dy*dy);
-    float maxR = (float)(TGT_R - TGT_DOT_R_TGT - 2);
+    float maxR = (float)(TGT_R - TGT_DOT_R_VEL * 3 / 2 - 2);  // widest marker = prograde ring + spoke
     if (dist > maxR && dist > 0.5f) {
         float scale = maxR / dist;
         sx = TGT_SCX + (int16_t)(dx * scale);

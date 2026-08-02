@@ -203,19 +203,26 @@ void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
 // (velocity/maneuver) and drawTargetMarker() (target) for the KSP-style markers.
 void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint16_t color);
 
-// KSP prograde marker: 2 px ring + centre dot + three spokes pointing up/right/left.
-// Used for the velocity/prograde marker (green) and the maneuver marker (blue).
-// `r` is the ring radius; spokes extend to r + 5.
+// Straight line of stroke width `w` px (w<=1 falls back to drawLine). Width is applied
+// symmetrically about the ideal line via a unit-perpendicular offset, so it thickens
+// cleanly at any angle. Used by the KSP navball markers for their spokes/prongs/X.
+void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                   int16_t w, uint16_t color);
+
+// KSP prograde marker: ring + centre dot + three spokes pointing up/right/left. Used
+// for the velocity/prograde marker (green) and the maneuver marker (blue). `r` is the
+// ring radius; all sub-elements (stroke width, dot radius, spoke length) scale from `r`
+// so the marker stays proportional at any size.
 void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
 // KSP target marker: ring drawn as four arc segments with gaps at top/bottom/left/
 // right (a "+" cut through the circle) plus a centre dot. Used for the target /
-// docking-port marker (magenta). `r` is the ring radius.
+// docking-port marker (magenta). `r` is the ring radius; stroke/dot scale from `r`.
 void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
 // KSP maneuver-node marker: centre dot + three prongs (up, lower-left, lower-right)
 // each ending in a short perpendicular crossbar, no ring. Used for the maneuver
-// marker (blue). `r` is the prong length from centre to the crossbar.
+// marker (blue). `r` is the prong length; stroke/dot/crossbar scale from `r`.
 void drawManeuverMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
 // Which KSP navball symbol an ADI-ball marker should draw.

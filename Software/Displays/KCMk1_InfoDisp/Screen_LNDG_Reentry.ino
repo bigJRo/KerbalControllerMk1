@@ -335,18 +335,19 @@ static void _reDrawAtmo(KCM_TFT &tft) {
    WIDGET: HEAT-SHIELD / RETROGRADE ALIGNMENT BALL
 ****************************************************************************************/
 // KSP retrograde symbol: a ringed circle with an internal X and three short spokes
-// pointing up, left and right.
+// pointing up, left and right. Stroke width and spoke overshoot scale from `r`.
 static void _reRetroSymbol(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t col) {
-  tft.drawCircle(cx, cy, r,     col);
-  tft.drawCircle(cx, cy, r - 1, col);
+  int16_t w   = (r >= 16) ? 3 : 2;
+  int16_t ext = (r / 2 > 4) ? r / 2 : 4;
+  for (int16_t i = 0; i < w; i++) tft.drawCircle(cx, cy, r - i, col);
   int16_t d = (int16_t)(r * 0.7071f);
-  tft.drawLine(cx - d, cy - d, cx + d, cy + d, col);
-  tft.drawLine(cx - d, cy + d, cx + d, cy - d, col);
+  drawThickLine(tft, cx - d, cy - d, cx + d, cy + d, w, col);
+  drawThickLine(tft, cx - d, cy + d, cx + d, cy - d, w, col);
   static const int16_t spoke[3] = { -90, 0, 180 };    // screen degrees: up, right, left
   for (uint8_t i = 0; i < 3; i++) {
     float a = spoke[i] * (float)DEG_TO_RAD;
-    tft.drawLine(cx + (int16_t)(r * cosf(a)),       cy + (int16_t)(r * sinf(a)),
-                 cx + (int16_t)((r + 5) * cosf(a)), cy + (int16_t)((r + 5) * sinf(a)), col);
+    drawThickLine(tft, cx + (int16_t)(r         * cosf(a)), cy + (int16_t)(r         * sinf(a)),
+                       cx + (int16_t)((r + ext) * cosf(a)), cy + (int16_t)((r + ext) * sinf(a)), w, col);
   }
 }
 
@@ -404,9 +405,9 @@ static void _reDrawBall(KCM_TFT &tft) {
     float rx = dx * cosf(a) - dy * sinf(a);
     float ry = dx * sinf(a) + dy * cosf(a);
     float mag = sqrtf(rx * rx + ry * ry);
-    float lim = R - 15;                          // keep the whole symbol inside the disc
+    float lim = R - 28;                          // keep the whole (r=18) symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }
-    _reRetroSymbol(tft, cx + (int16_t)rx, cy + (int16_t)ry, 9, mc);
+    _reRetroSymbol(tft, cx + (int16_t)rx, cy + (int16_t)ry, 18, mc);
   }
 
   // AoA (nose-to-airflow angle) readout below the reticle

@@ -459,7 +459,7 @@ static bool  _acftPrevMnvrActiveBall = false;
 static bool  _acftPrevTgtAvailBall   = false;
 
 // Marker size — half-diagonal in pixels. Diamond is 2*ADI_MRK+1 pixels tip-to-tip.
-static const int16_t ACFT_ADI_MRK_HD = 16;  // 33 px total diagonal (doubled)
+static const int16_t ACFT_ADI_MRK_HD = 34;  // covers the doubled marker's extent (prograde ring 22 + spoke 11)
 
 // Shortest-arc delta between two headings, result in [-180, 180].
 static inline float _acftHdgDelta(float a, float b) {
@@ -506,9 +506,9 @@ static void _acftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
 
     // KSP navball symbol — prograde (velocity) / target / maneuver
     switch (kind) {
-      case KSP_MK_TARGET:   drawTargetMarker(tft, sx, sy, 14, fillCol);   break;
-      case KSP_MK_MANEUVER: drawManeuverMarker(tft, sx, sy, 12, fillCol); break;
-      default:              drawProgradeMarker(tft, sx, sy, 11, fillCol); break;
+      case KSP_MK_TARGET:   drawTargetMarker(tft, sx, sy, 28, fillCol);   break;
+      case KSP_MK_MANEUVER: drawManeuverMarker(tft, sx, sy, 24, fillCol); break;
+      default:              drawProgradeMarker(tft, sx, sy, 22, fillCol); break;
     }
 
     // Tell next frame's delta fill to repaint these scanlines. Prevents trails when
