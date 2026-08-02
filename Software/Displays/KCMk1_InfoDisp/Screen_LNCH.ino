@@ -73,9 +73,8 @@ static void chromeScreen_LNCH(KCM_TFT &tft) {
 
   } else {
     // ── Orbital (circularization) phase ──
-    // Left panel: BLANK (placeholder for Stage 6 — orbit diagram with Ap/Pe).
-    //   drawStaticScreen already did fillScreen(TFT_BLACK) before calling this,
-    //   so nothing to draw for now.
+    // Left panel: orbit diagram (Ap/Pe) — drawn per-frame by _lnchOrDrawLeftPanelValues,
+    //   so it needs no static chrome here (drawStaticScreen already cleared to black).
     // Right panel: 8 numeric readouts — same layout style as ascent but with
     //   orbital-specific row set (Alt.SL / V.Orb / ApA / PeA / T+Ap / Thrtl /
     //   T.Brn / ΔV.Stg) and orbital change-detection state.

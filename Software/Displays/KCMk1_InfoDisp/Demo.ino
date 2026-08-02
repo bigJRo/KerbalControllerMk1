@@ -95,10 +95,6 @@ void stepDemoState() {
 
   state.pitch         = 30.0f  * sinf(_demoPhase * 0.5f);
   state.roll          = 45.0f  * sinf(_demoPhase * 0.4f);
-  
-  /*
-  ATT_staticTest_update();
-  */
 
   state.orbVelHeading = 180.0f + 170.0f * sinf(_demoPhase * 0.28f);
   state.orbVelPitch   = 10.0f  * sinf(_demoPhase * 0.45f);

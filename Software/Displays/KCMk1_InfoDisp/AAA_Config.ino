@@ -192,9 +192,6 @@ const float ORB_ECC_ALARM = 1.0f;   // white-on-red — escape trajectory
    FLIGHT THRESHOLDS — APSIDES (APSI screen) & time thresholds
 ****************************************************************************************/
 
-// Time to apoapsis/periapsis (seconds)
-const float APSI_TIME_WARN_S = 60.0f;    // yellow — node approaching
-
 // Time to ignition (MNVR screen, seconds)
 const float MNVR_TIGN_WARN_S  = 60.0f;   // yellow — get ready to light
 const float MNVR_TIGN_ALARM_S = 10.0f;   // white-on-red — light NOW
@@ -223,12 +220,6 @@ const float EC_LOW_ALARM_FRAC = KCM_EC_LOW_ALARM_FRAC;   // white-on-red — 5%
 // 5% bus-voltage floor). Display-only; no C&W analog.
 const uint8_t EC_PRELAUNCH_READY_PCT = 90;   // green — good to go
 const uint8_t EC_PRELAUNCH_LOW_PCT   = 75;   // yellow — below this: white-on-red
-
-// VEH screen thermal bar — reuses the shared thresholds above; SUPPRESS is
-// VEH-only (hides the bar while nominal — a display feature with no C&W analog).
-const uint8_t VEH_TEMP_SUPPRESS_PCT = 40;   // below this: bar suppressed (nominal)
-const uint8_t VEH_TEMP_WARN_PCT     = TEMP_WARN_PCT;
-const uint8_t VEH_TEMP_ALARM_PCT    = TEMP_ALARM_PCT;
 
 
 /***************************************************************************************

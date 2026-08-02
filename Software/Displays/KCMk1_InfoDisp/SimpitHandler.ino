@@ -346,13 +346,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       // Cast msg directly to cagStatusMessage and use is_action_activated(n).
       // parseCAGStatusMessage() is deprecated — use the struct directly.
       cagStatusMessage *cag = (cagStatusMessage *)msg;
-      if (DROGUE_DEPLOY_CAG >= 1 && DROGUE_DEPLOY_CAG <= 256)
+      if (DROGUE_DEPLOY_CAG >= 1)
         state.drogueDeploy = cag->is_action_activated(DROGUE_DEPLOY_CAG);
-      if (DROGUE_CUT_CAG   >= 1 && DROGUE_CUT_CAG   <= 256)
+      if (DROGUE_CUT_CAG   >= 1)
         state.drogueCut    = cag->is_action_activated(DROGUE_CUT_CAG);
-      if (MAIN_DEPLOY_CAG  >= 1 && MAIN_DEPLOY_CAG  <= 256)
+      if (MAIN_DEPLOY_CAG  >= 1)
         state.mainDeploy   = cag->is_action_activated(MAIN_DEPLOY_CAG);
-      if (MAIN_CUT_CAG     >= 1 && MAIN_CUT_CAG     <= 256)
+      if (MAIN_CUT_CAG     >= 1)
         state.mainCut      = cag->is_action_activated(MAIN_CUT_CAG);
       break;
     }
