@@ -81,7 +81,7 @@ void eadiDrawScanline(KCM_TFT &tft, int16_t y, int16_t x0, int16_t x1,
 // The KSP "level indicator": gold wings with a centre dip and a nose dot at the ball
 // centre. Drawn last so it sits above fill/horizon/ladder.
 void eadiDrawAircraftSymbol(KCM_TFT &tft) {
-    drawLevelIndicator(tft, EADI_CX, EADI_CY, 40, TFT_GOLD);
+    drawLevelIndicator(tft, EADI_CX, EADI_CY, 48, TFT_GOLD);
 }
 
 // ── Clip endpoint to disc ─────────────────────────────────────────────────────────────

@@ -740,15 +740,20 @@ void drawAntiTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint1
 // overall size. Drawn in yellow-gold.
 void drawLevelIndicator(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
   // (cx,cy) is the nose dot itself — the wings run horizontally through it and the dip
-  // hangs below, so the marker points at exactly (cx,cy).
-  int16_t w   = _mkStroke(r);
+  // hangs below, so the marker points at exactly (cx,cy). Lines are capless (no blobs on
+  // the free wing tips); the interior joints get a small fill so they stay closed.
+  int16_t w   = (r / 9 > 3) ? r / 9 : 3;   // thicker stroke than the ADI markers
   int16_t wtx = (r * 3) / 2;           // wing-tip half-span
   int16_t inx = (r * 11) / 20;         // inner x (start of the dip)
   int16_t dip = (r * 3) / 5;           // dip depth below the wing line
-  drawThickLine(tft, cx - wtx, cy,       cx - inx, cy,       w, color);  // left wing
-  drawThickLine(tft, cx - inx, cy,       cx,       cy + dip, w, color);  // left dip
-  drawThickLine(tft, cx,       cy + dip, cx + inx, cy,       w, color);  // right dip
-  drawThickLine(tft, cx + inx, cy,       cx + wtx, cy,       w, color);  // right wing
+  int16_t jc  = w / 2;                 // joint fill radius
+  drawThickLine(tft, cx - wtx, cy,       cx - inx, cy,       w, color, false);  // left wing
+  drawThickLine(tft, cx - inx, cy,       cx,       cy + dip, w, color, false);  // left dip
+  drawThickLine(tft, cx,       cy + dip, cx + inx, cy,       w, color, false);  // right dip
+  drawThickLine(tft, cx + inx, cy,       cx + wtx, cy,       w, color, false);  // right wing
+  tft.fillCircle(cx - inx, cy,       jc, color);                         // left  wing/dip joint
+  tft.fillCircle(cx + inx, cy,       jc, color);                         // right wing/dip joint
+  tft.fillCircle(cx,       cy + dip, jc, color);                         // dip apex joint
   tft.fillCircle(cx, cy, (r / 7 > 2) ? r / 7 : 2, color);               // small nose dot on the wing line
 }
 

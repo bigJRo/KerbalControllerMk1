@@ -334,23 +334,6 @@ static void _reDrawAtmo(KCM_TFT &tft) {
 /***************************************************************************************
    WIDGET: HEAT-SHIELD / RETROGRADE ALIGNMENT BALL
 ****************************************************************************************/
-// KSP retrograde symbol: a ringed circle with an internal X and three short spokes
-// pointing up, left and right. Stroke width and spoke overshoot scale from `r`.
-static void _reRetroSymbol(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t col) {
-  int16_t w   = (r >= 16) ? 3 : 2;
-  int16_t ext = (r / 2 > 4) ? r / 2 : 4;
-  for (int16_t i = 0; i < w; i++) tft.drawCircle(cx, cy, r - i, col);
-  int16_t d = (int16_t)(r * 0.7071f);
-  drawThickLine(tft, cx - d, cy - d, cx + d, cy + d, w, col);
-  drawThickLine(tft, cx - d, cy + d, cx + d, cy - d, w, col);
-  static const int16_t spoke[3] = { -90, 0, 180 };    // screen degrees: up, right, left
-  for (uint8_t i = 0; i < 3; i++) {
-    float a = spoke[i] * (float)DEG_TO_RAD;
-    drawThickLine(tft, cx + (int16_t)(r         * cosf(a)), cy + (int16_t)(r         * sinf(a)),
-                       cx + (int16_t)((r + ext) * cosf(a)), cy + (int16_t)((r + ext) * sinf(a)), w, col);
-  }
-}
-
 static void _reDrawBall(KCM_TFT &tft) {
   const int16_t cx = RE_ATT_CX, cy = RE_ATT_CY, R = RE_ATT_R;
 
@@ -407,7 +390,7 @@ static void _reDrawBall(KCM_TFT &tft) {
     float mag = sqrtf(rx * rx + ry * ry);
     float lim = R - 23;                          // keep the whole (r=14) symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }
-    _reRetroSymbol(tft, cx + (int16_t)rx, cy + (int16_t)ry, 14, mc);
+    drawRetrogradeMarker(tft, cx + (int16_t)rx, cy + (int16_t)ry, 14, mc);
   }
 
   // AoA (nose-to-airflow angle) readout below the reticle
