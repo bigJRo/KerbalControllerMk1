@@ -594,7 +594,8 @@ static void _reDrawTemp(KCM_TFT &tft) {
 /***************************************************************************************
    CHROME: RE-ENTRY  (divider + static text-panel labels)
 ****************************************************************************************/
-static const tFont   *RE_PF  = &Roboto_Black_24;   // panel label/value font
+static const tFont   *RE_LF  = &Roboto_Black_20;   // panel label font  — matches the powered-descent panel
+static const tFont   *RE_VF  = &Roboto_Black_28;   // panel value font  — matches the powered-descent panel
 static const uint8_t  RE_NR  = 8;
 
 static void _lndgChromeReentry(KCM_TFT &tft) {
@@ -615,18 +616,18 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
   const char *r0 = _lndgReentryRow0TPe ? "T+Atm:" : "T+Grnd:";
   const char *r1 = _lndgReentryRow1SL  ? "Alt.SL:" : "Alt.Rdr:";
-  printDispChrome(tft, RE_PF, RE_TXT_X, rowYFor(0, RE_NR), RE_TXT_W, rowHFor(RE_NR), r0, COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_PF, RE_TXT_X, rowYFor(1, RE_NR), RE_TXT_W, rowHFor(RE_NR), r1, COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_PF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_PF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_PF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "Mach:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_PF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "G:",     COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(0, RE_NR), RE_TXT_W, rowHFor(RE_NR), r0, COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(1, RE_NR), RE_TXT_W, rowHFor(RE_NR), r1, COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "Mach:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "G:",     COL_LABEL, COL_BACK, COL_NO_BDR);
 
   // Rows 6 (Drogue|Main) and 7 (Gear|SAS) — split, with dividers
   auto splitLabels = [&](uint8_t row, const char *lbl, const char *rbl) {
     uint16_t y = rowYFor(row, RE_NR), h = rowHFor(RE_NR);
-    printDispChrome(tft, RE_PF, RE_TXT_X,            y, RHW - ROW_PAD, h, lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RE_PF, RE_TXT_X + RHW + ROW_PAD, y, RHW - ROW_PAD, h, rbl, COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RE_LF, RE_TXT_X,            y, RHW - ROW_PAD, h, lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RE_LF, RE_TXT_X + RHW + ROW_PAD, y, RHW - ROW_PAD, h, rbl, COL_LABEL, COL_BACK, COL_NO_BDR);
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
@@ -648,7 +649,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   char buf[16];
 
   auto reVal = [&](uint8_t row, const char *label, const String &val, uint16_t fgc, uint16_t bgc) {
-    drawValue(tft, screen_LNDGRE, row, RE_TXT_X, RE_TXT_W, label, val, fgc, bgc, RE_PF, RE_NR);
+    drawValue(tft, screen_LNDGRE, row, RE_TXT_X, RE_TXT_W, label, val, fgc, bgc, RE_VF, RE_NR);
   };
 
   // Advance the shared vertical-accel filter once per frame before the estimates.
@@ -762,13 +763,13 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_CHUTE_DROGUE_MAX_Q, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);
     { String ds = dv; RowCache &dc = rowCache[screen_LNDGRE][6];
       if (dc.value != ds || dc.fg != dfg || dc.bg != dbg) {
-        printValue(tft, RE_PF, xL, y6, wL, h6, "Drogue:", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
+        printValue(tft, RE_VF, xL, y6, wL, h6, "Drogue:", ds, dfg, dbg, COL_BACK, printState[screen_LNDGRE][6]);
         dc.value = ds; dc.fg = dfg; dc.bg = dbg; } }
     const char *mv; uint16_t mfg, mbg;
     chuteState(_mainDeployed, _mainCut, _mainArmedSafe, LNDG_CHUTE_MAIN_MAX_Q, LNDG_MAIN_FULL_ALT, mv, mfg, mbg);
     { String ms = mv; RowCache &mc = rowCache[screen_LNDGRE][11];
       if (mc.value != ms || mc.fg != mfg || mc.bg != mbg) {
-        printValue(tft, RE_PF, xR, y6, wR, h6, "Main:", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);
+        printValue(tft, RE_VF, xR, y6, wR, h6, "Main:", ms, mfg, mbg, COL_BACK, printState[screen_LNDGRE][11]);
         mc.value = ms; mc.fg = mfg; mc.bg = mbg; } }
   }
 
@@ -787,7 +788,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
         ButtonLabel btn = gearDown
             ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
             : ButtonLabel{ "GEAR", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-        drawButton(tft, xL, y, wL, rh, btn, RE_PF, false);
+        drawButton(tft, xL, y, wL, rh, btn, RE_LF, false);
         gc.value = gv;
       }
     }
@@ -818,7 +819,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
       String ssv = ss;
       if (sc.value != ssv || sc.fg != sfg || sc.bg != sbg) {
         ButtonLabel btn = { ss, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
-        drawButton(tft, xR, y, wR, rh, btn, RE_PF, false);
+        drawButton(tft, xR, y, wR, rh, btn, RE_LF, false);
         sc.value = ssv; sc.fg = sfg; sc.bg = sbg;
       }
     }
