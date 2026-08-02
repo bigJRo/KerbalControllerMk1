@@ -7,8 +7,8 @@
    touch, at any time.
 
    Pilot edits go to a local "pending" buffer that is shown in preference to the
-   autopilot-confirmed value and staged for the outbound command channel (M3);
-   when the autopilot echoes the new value back, the pending flag is cleared.
+   autopilot-confirmed value and staged on the outbound command channel; when the
+   autopilot echoes the new value back, the pending flag is cleared.
 
    LAYOUT (1024x600, content 0..CONTENT_W, y from TITLE_TOP):
      banner: <PHASE, coloured>            body   <ARMED/DISARMED>
@@ -110,7 +110,7 @@ static float apGMxg(){ return apDMxg ? apMxg    : state.apMaxG; }
 static bool  apGArmed(){ return apArmOvr >= 0 ? (apArmOvr == 1) : state.apArmed; }
 static uint16_t apEditColor(bool dirty){ return dirty ? AP_EDT : AP_VAL; }
 
-// ── M3: outbound command channel (InfoDisp -> Controller_Main) ────────────────────────
+// ── Outbound command channel (InfoDisp -> Controller_Main) ────────────────────────────
 // Pilot edits and ARM/DISARM taps queue here as (opcode, float-payload) commands. The
 // I2C master (Controller_Main) reads the head command from the outbound packet, applies
 // it to the autopilot, then acknowledges it by echoing the command's sequence number in
@@ -138,6 +138,7 @@ static uint8_t apCmdCurSeq = 0;                // seq of head command in flight 
 static uint8_t apCmdSeqCtr = 0;                // monotonic seq generator, wraps 1..255
 
 static void apEnqueueCmd(uint8_t op, float payload) {
+  if (demoMode) return;                        // no master to drain the queue in demo
   uint8_t next = (uint8_t)((apCmdTail + 1) % AP_CMDQ_LEN);
   if (next == apCmdHead) return;               // full — drop (queue holds 15, never happens)
   apCmdQ[apCmdTail].op = op;
@@ -180,7 +181,10 @@ void apAckCommand(uint8_t ackSeq) {
 // Clear pending (cyan) flags once Controller_Main echoes the accepted value back in the
 // AscentStatus frame. Called each loop from updateI2CState().
 void apReconcilePending() {
-  if (apDTgt && fabsf(state.apTargetAlt   - apTgt)    < 1.0f)    apDTgt = false;
+  // Target uses a relative tolerance: a float32 ULP already exceeds 1 m above ~8.4e6 m,
+  // so a fixed 1 m window would never close for high (interplanetary) target apoapses.
+  float tgtTol = fmaxf(1.0f, fabsf(apTgt) * 5.0e-4f);
+  if (apDTgt && fabsf(state.apTargetAlt   - apTgt)    < tgtTol)  apDTgt = false;
   if (apDInc && fabsf(state.apInclination - apInc)    < 0.05f)   apDInc = false;
   if (apDDir && state.apSoutherly == apDir)                      apDDir = false;
   if (apDLof && fabsf(state.apLoft        - apLof)    < 0.005f)  apDLof = false;
@@ -235,6 +239,10 @@ static uint16_t apPhaseColor(uint8_t p) {
 
 // ── CHROME (static) ─────────────────────────────────────────────────────────────────
 static void chromeScreen_LNCHAP(KCM_TFT &tft) {
+  // Any full repaint (screen entry, display reset) starts with the keypad closed — the
+  // modal is transient and must never persist across a leave/return, or the panel would
+  // come back frozen with taps misrouted into a stale keypad.
+  apKpOpen = false; apKpRedraw = false; apKpLen = 0; apKpEdit = -1;
   tft.fillRect(0, AP_BANNER_Y + AP_BANNER_H, CONTENT_W, 2, TFT_GREY);
   tft.drawLine(AP_DIV1_X, AP_COL_Y, AP_DIV1_X, AP_COL_BOT, TFT_GREY);
   tft.drawLine(AP_DIV2_X, AP_COL_Y, AP_DIV2_X, AP_COL_BOT, TFT_GREY);

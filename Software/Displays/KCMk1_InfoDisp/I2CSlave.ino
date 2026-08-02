@@ -3,9 +3,9 @@
    Exposes Info Display state to the KCMk1 master (Teensy 4.1) over I2C.
 
    Hardware:
-     I2C bus    : Wire (pins 18/19 on Teensy 4.0)
+     I2C bus    : Wire (pins 18/19 on Teensy 4.1)
      Slave addr : 0x12
-     INT pin    : pin 2, OUTPUT, active-LOW
+     INT pin    : pin 0 (KCM_I2C_INT_PIN), OUTPUT, active-LOW
                   InfoDisp asserts LOW when a fresh packet is ready.
                   Master reads via KCM_I2C_BUS.requestFrom(0x12, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
@@ -91,7 +91,7 @@ volatile bool i2cProceedReceived = false;
 
 /***************************************************************************************
    PACKET FILL HELPER (#21)
-   Writes current state into any 4-byte buffer. Used by both buildI2CPacket()
+   Writes current state into any I2C_PACKET_SIZE (10-byte) buffer. Used by both buildI2CPacket()
    and the change-detection path in updateI2CState() to avoid duplicated assembly.
 ****************************************************************************************/
 static void fillI2CPacketBuffer(uint8_t *buf) {

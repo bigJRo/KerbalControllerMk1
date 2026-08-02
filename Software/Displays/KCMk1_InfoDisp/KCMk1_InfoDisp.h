@@ -17,12 +17,12 @@ typedef ILI9341_t3_font_t tFont;
 
 /***************************************************************************************
    SCREEN TYPE ENUM
-   Twelve information screens reached via ten right-hand sidebar buttons: SCFT/ACFT/
+   Thirteen information screens reached via ten right-hand sidebar buttons: SCFT/ACFT/
    ROVR share one "PFD" button (context- or title-selected, see SB_BTN_SCREEN in
-   AAA_Screens.ino), the rest map 1:1. ORBADV (Advanced Orbital Elements) and LNDGRE
-   (Re-entry) were formerly title-tap sub-modes of ORB/LNDG; rev-2 gives them their
-   own buttons. Both are manual-select only (contextScreen() never auto-picks them).
-   screen_COUNT is a sentinel — not a real screen.
+   AAA_Screens.ino), most of the rest map 1:1. LNCHAP (Ascent Autopilot) has its own
+   "ASC" button. ORBADV (Advanced Orbital Elements) has no button — it is a title-tap
+   sub-mode of ORB. LNDGRE (Re-entry) has its own button. ORBADV is manual-select only
+   (contextScreen() never auto-picks it). screen_COUNT is a sentinel — not a real screen.
 ****************************************************************************************/
 enum ScreenType : uint8_t {
   screen_LNCH   = 0,   // Launch
@@ -359,5 +359,4 @@ extern uint32_t _dockedTimestamp;
 extern bool _pendingContextSwitch;  // set on vessel change; cleared when FLIGHT_STATUS arrives
 extern bool _pendingDockCheck;      // set after context switch; cleared when TARGETINFO arrives
 extern bool _orbAdvancedMode; // true = ADVANCED ELEMENTS tap-through view, false = APSIDES default
-extern bool _prevShowAp;      // Screen_ORB: which time row was last shown (reset on vessel switch)
 extern bool _scftPrevOrbMode;  // Screen_SCFT: previous orbital mode (reset on vessel switch)

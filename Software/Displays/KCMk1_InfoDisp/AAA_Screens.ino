@@ -4,18 +4,19 @@
 
    Sidebar buttons (10, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
    Most buttons map 1:1 to a screen; the PFD button covers three screens selected by
-   context or title-touch (see pfdContextScreen / pfdSelectedScreen):
+   context or title-touch (see pfdContextScreen / pfdSelectedScreen). ORB+ (Advanced
+   Orbital Elements) has no button — it is reached by tapping the ORBIT title bar.
      0  LNCH  Launch (Pre-launch / Ascent / Circularization — context + title toggle)
-     1  PFD   Primary Flight Display: SPACECRAFT (default) / AIRCRAFT (plane in atmo) /
+     1  ASC   Ascent Autopilot (touch console for the Simpit ascent autopilot)
+     2  PFD   Primary Flight Display: SPACECRAFT (default) / AIRCRAFT (plane in atmo) /
               ROVER (rover). Context-selected; title-touch cycles the three.
-     2  ORB   Orbit Information (Apsides graphic)
-     3  ORB+  Orbit — Advanced Elements (text readout)
+     3  ORB   Orbit Information (Apsides graphic; ORB+ via title tap)
      4  VEH   Vehicle Information
      5  MNVR  Maneuver Information
      6  TGT   Target / Rendezvous Information
      7  DOCK  Docking Information
      8  LNDG  Landing Information (Powered Descent)
-     9  REEN  Landing — Re-entry
+     9  ENTR  Landing — Re-entry
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
@@ -104,11 +105,6 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ASCENT AUTOPILOT"
 };
 
-const char *const SCREEN_IDS[SCREEN_COUNT] = {
-  "LNCH", "ORB", "PFD", "MNVR", "TGT", "DOCK", "LNDG", "VEH", "ACFT", "ROVR",
-  "ORB+", "REEN"
-};
-
 const ButtonLabel btnScreenOff = {
   "", TFT_WHITE, TFT_WHITE, TFT_OFF_BLACK, TFT_NAVY, TFT_GREY, TFT_GREY
 };
@@ -139,9 +135,6 @@ inline uint16_t rowHFor(uint8_t nRows) {
 inline uint16_t rowYFor(uint8_t row, uint8_t nRows) {
   return TITLE_TOP + row * rowHFor(nRows) + ROW_PAD;
 }
-inline uint16_t rowHInner(uint8_t nRows) {
-  return rowHFor(nRows) - ROW_PAD * 2;
-}
 inline uint16_t rowX() {
   return ROW_PAD;
 }
@@ -150,15 +143,6 @@ inline uint16_t rowW() {
 }
 
 // All screens use NR=8; call rowYFor(row, NR) and rowHFor(NR) explicitly.
-
-// ACFT row geometry: 8 rows, uses rowHFor(8) (=67px cells at 1024x600) with a +1 Y
-// offset to match printValue trim behaviour.
-inline uint16_t acftRowY(uint8_t row) {
-  return TITLE_TOP + row * rowHFor(8) + 1;
-}
-inline uint16_t acftRowH() {
-  return rowHFor(8);
-}
 
 // ── Shared reticle geometry (MNVR / DOCK / TGT) ──────────────────────────────────────
 // The three attitude-reticle screens share an identical black disc + readout panel +

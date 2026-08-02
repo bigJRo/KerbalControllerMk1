@@ -45,11 +45,6 @@ static const int16_t LNCH_AS_PANEL_H     = 417;  // content below title, to bott
 // launch values like "+3,234" fit within the value region after label+padding.
 static const int16_t LNCH_AS_ROW_H       = 52;
 
-// Row Y positions
-static inline int16_t _lnchAsRowY(uint8_t row) {
-    return LNCH_AS_PANEL_Y + row * LNCH_AS_ROW_H;
-}
-
 
 // ── Top-level dispatchers ──────────────────────────────────────────────────────────────
 // chromeScreen_LNCH is called once on screen entry / SOI change, drawScreen_LNCH on
