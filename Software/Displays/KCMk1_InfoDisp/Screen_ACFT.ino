@@ -1140,7 +1140,7 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
     if (ballDirty) {
         bool full = _acftFullRedrawNeeded;
         uint32_t t0 = micros();
-        eadiDrawBall(tft, full, state.srfVelHeading, state.srfVelPitch);
+        eadiDrawBall(tft, full, state.srfVelHeading, state.srfVelPitch, false);  // atmospheric: no orbital markers
         // Snapshot ball-dirty trackers for next frame's dirty check.
         _acftPrevPitch = state.pitch;
         _acftPrevRoll  = state.roll;

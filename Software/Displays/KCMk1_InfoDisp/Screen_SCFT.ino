@@ -956,7 +956,7 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     if (ballDirty) {
         bool full = _scftFullRedrawNeeded;
         uint32_t t0 = micros();
-        eadiDrawBall(tft, full, _scftVelHdg, _scftVelPitch);
+        eadiDrawBall(tft, full, _scftVelHdg, _scftVelPitch, true);   // orbital-frame markers on
         // Snapshot ball-dirty trackers for next frame's dirty check.
         _scftPrevPitch = state.pitch;
         _scftPrevRoll  = state.roll;

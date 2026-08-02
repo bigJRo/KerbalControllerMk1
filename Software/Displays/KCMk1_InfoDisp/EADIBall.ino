@@ -555,7 +555,25 @@ void eadiBallResetState() {
 // ladder, ADI markers, aircraft symbol. Vessel attitude and target/maneuver come from
 // `state`; the prograde source differs per screen (SCFT orbital vs ACFT surface velocity)
 // so it is passed in. The caller snapshots its ball-dirty trackers after this returns.
-void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progradePitch) {
+// Compute the orbital normal and radial-out marker directions (compass heading + pitch)
+// from the velocity direction, using the local vertical as the radial reference:
+//   normal    = up x velocity  (horizontal, perpendicular to the ground track)
+//   radial-out= up orthogonalised to velocity  (points away from the body)
+// Anti-normal / radial-in are the antipodes. Only meaningful for an orbital velocity.
+static void eadiOrbitalDirs(float velHdg, float velPitch,
+                            float &normHdg, float &normPitch, float &radHdg, float &radPitch) {
+    float th = velHdg * (float)DEG_TO_RAD, ph = velPitch * (float)DEG_TO_RAD, cph = cosf(ph);
+    float vE = cph * sinf(th), vN = cph * cosf(th), vU = sinf(ph);   // velocity in East/North/Up
+    normHdg   = atan2f(-vN, vE) * (float)RAD_TO_DEG;                 // up x v (horizontal)
+    normPitch = 0.0f;                                               // normal is always on the horizon
+    float rE = -vU * vE, rN = -vU * vN, rU = 1.0f - vU * vU;         // up - (up.v) v
+    float rlen = sqrtf(rE*rE + rN*rN + rU*rU); if (rlen < 1e-4f) rlen = 1e-4f;
+    rU /= rlen; if (rU > 1.0f) rU = 1.0f; else if (rU < -1.0f) rU = -1.0f;
+    radHdg   = atan2f(rE, rN) * (float)RAD_TO_DEG;
+    radPitch = asinf(rU) * (float)RAD_TO_DEG;
+}
+
+void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progradePitch, bool orbital) {
     eadiBuildChordTable();   // no-op after first call
 
     float pitch = state.pitch;
@@ -622,6 +640,17 @@ void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progra
     }
     if (state.mnvrTime > 0.0f)
         eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
+
+    // Orbital-frame markers (SCFT only): normal/anti-normal (magenta) and radial-out/in
+    // (cyan), computed from the orbital velocity. Each clips to the visible cone.
+    if (orbital) {
+        float nH, nP, rH, rP;
+        eadiOrbitalDirs(progradeHdg, progradePitch, nH, nP, rH, rP);
+        eadiDrawAdiMarker(tft, nH,          nP,  TFT_MAGENTA, KSP_MK_NORMAL);
+        eadiDrawAdiMarker(tft, nH + 180.0f, -nP, TFT_MAGENTA, KSP_MK_ANTINORMAL);
+        eadiDrawAdiMarker(tft, rH,          rP,  TFT_CYAN,    KSP_MK_RADIAL_OUT);
+        eadiDrawAdiMarker(tft, rH + 180.0f, -rP, TFT_CYAN,    KSP_MK_RADIAL_IN);
+    }
 
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
     eadiDrawAircraftSymbol(tft);
