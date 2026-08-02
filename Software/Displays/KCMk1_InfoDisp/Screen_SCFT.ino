@@ -294,65 +294,6 @@ static float _scftPrevTgtPitchBall   = -9999.0f;
 static bool  _scftPrevMnvrActiveBall = false;
 static bool  _scftPrevTgtAvailBall   = false;
 
-// Marker size — half-diagonal in pixels. Diamond is 2*ADI_MRK+1 pixels tip-to-tip.
-static const int16_t SCFT_ADI_MRK_HD = 28;   // covers the marker extent (matches ACFT)
-
-// Shortest-arc delta between two headings, result in [-180, 180].
-static inline float _scftHdgDelta(float a, float b) {
-    float d = a - b;
-    while (d >  180.0f) d -= 360.0f;
-    while (d < -180.0f) d += 360.0f;
-    return d;
-}
-
-// Draw a single diamond marker on the ADI ball at the given world-space heading/pitch.
-// Skips the draw if the computed position falls outside the ball's visible cone.
-// Uses the horizontal-split two-triangle diamond pattern (matching MNVR/DOCK).
-//
-// Marks occupied scanlines in _scftLadderDirty (same mechanism ladder uses) so that
-// the next frame's delta fill repaints those rows — prevents trails when the marker
-// moves but the horizon doesn't.
-static void _scftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
-                               uint16_t fillCol, uint8_t kind) {
-    // Delta from current vessel attitude
-    float dh = _scftHdgDelta(markerHdg, state.heading);
-    float dp = markerPitch - state.pitch;
-
-    // Ball uses negated roll (matches KerbalSimpit convention)
-    float cosR = _scftCos(-state.roll);
-    float sinR = _scftSin(-state.roll);
-
-    // Unrolled-frame offset: +dh degrees rightward, +dp degrees upward (so -y)
-    float ux = dh * SCFT_SCALE;
-    float uy = -dp * SCFT_SCALE;
-
-    // Apply roll rotation (angle = -state.roll, so using cosR/sinR from above).
-    // Marker is treated as a 2D point on the pitch/roll-rolled ball — both dh
-    // and dp combine to determine its screen position after roll rotation.
-    // Horizontal marker x will not match the heading tape's x when roll != 0;
-    // the ball shows the combined attitude-error in its own rolled frame, while
-    // the tape shows only the heading axis.
-    int16_t sx = (int16_t)(SCFT_CX + ux * cosR - uy * sinR);
-    int16_t sy = (int16_t)(SCFT_CY + ux * sinR + uy * cosR);
-
-    // Clip: entire marker must fit inside ball. Use (R - HD) so outline doesn't cross rim.
-    int16_t dx = sx - SCFT_CX, dy = sy - SCFT_CY;
-    int32_t rInner = (int32_t)SCFT_R - SCFT_ADI_MRK_HD;
-    if ((int32_t)dx*dx + (int32_t)dy*dy > rInner * rInner) return;
-
-    // KSP navball symbol — prograde (velocity) / target / maneuver
-    switch (kind) {
-      case KSP_MK_TARGET:   drawTargetMarker(tft, sx, sy, 22, fillCol);   break;
-      case KSP_MK_MANEUVER: drawManeuverMarker(tft, sx, sy, 19, fillCol); break;
-      default:              drawProgradeMarker(tft, sx, sy, 18, fillCol); break;
-    }
-
-    // Tell next frame's delta fill to repaint these scanlines. Prevents trails when
-    // the marker moves without the horizon line or ladder touching the same rows.
-    for (int16_t y = sy - SCFT_ADI_MRK_HD; y <= sy + SCFT_ADI_MRK_HD; y++) {
-        _scftLadderDirtySet(y);
-    }
-}
 
 
 // ── Master ball update ────────────────────────────────────────────────────────────────
@@ -417,11 +358,11 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
     //    Prograde always drawn; target if available; maneuver if active.
     //    Each call self-clips to the ball's visible cone.
-    _scftDrawAdiMarker(tft, _scftVelHdg, _scftVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
+    eadiDrawAdiMarker(tft, _scftVelHdg, _scftVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE, _scftLadderDirty);
     if (state.targetAvailable)
-        _scftDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
+        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET, _scftLadderDirty);
     if (state.mnvrTime > 0.0f)
-        _scftDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
+        eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER, _scftLadderDirty);
 
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
     eadiDrawAircraftSymbol(tft);
@@ -1255,22 +1196,22 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     bool ballDirty = _scftFullRedrawNeeded                                        ||
                      fabsf(state.pitch - _scftPrevPitch)                  >= 0.2f ||
                      fabsf(state.roll  - _scftPrevRoll)                   >= 0.2f ||
-                     fabsf(_scftHdgDelta(state.heading, _scftPrevHeadingBall)) >= 0.5f;
+                     fabsf(eadiHdgDelta(state.heading, _scftPrevHeadingBall)) >= 0.5f;
 
     // Marker dirty — any visible marker's world position changed, or a marker's
     // availability toggled (target acquired/lost, maneuver set/cleared).
     if (!ballDirty) {
-        ballDirty = fabsf(_scftHdgDelta(_scftVelHdg, _scftPrevVelHdgBall)) >= 0.5f ||
+        ballDirty = fabsf(eadiHdgDelta(_scftVelHdg, _scftPrevVelHdgBall)) >= 0.5f ||
                     fabsf(_scftVelPitch - _scftPrevVelPitchBall)           >= 0.5f ||
                     mnvrActive != _scftPrevMnvrActiveBall                         ||
                     tgtAvail   != _scftPrevTgtAvailBall;
     }
     if (!ballDirty && mnvrActive) {
-        ballDirty = fabsf(_scftHdgDelta(state.mnvrHeading, _scftPrevMnvrHdgBall)) >= 0.5f ||
+        ballDirty = fabsf(eadiHdgDelta(state.mnvrHeading, _scftPrevMnvrHdgBall)) >= 0.5f ||
                     fabsf(state.mnvrPitch - _scftPrevMnvrPitchBall)               >= 0.5f;
     }
     if (!ballDirty && tgtAvail) {
-        ballDirty = fabsf(_scftHdgDelta(state.tgtHeading, _scftPrevTgtHdgBall)) >= 0.5f ||
+        ballDirty = fabsf(eadiHdgDelta(state.tgtHeading, _scftPrevTgtHdgBall)) >= 0.5f ||
                     fabsf(state.tgtPitch - _scftPrevTgtPitchBall)               >= 0.5f;
     }
 

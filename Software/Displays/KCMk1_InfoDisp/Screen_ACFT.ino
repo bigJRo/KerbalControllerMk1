@@ -282,65 +282,6 @@ static float _acftPrevTgtPitchBall   = -9999.0f;
 static bool  _acftPrevMnvrActiveBall = false;
 static bool  _acftPrevTgtAvailBall   = false;
 
-// Marker size — half-diagonal in pixels. Diamond is 2*ADI_MRK+1 pixels tip-to-tip.
-static const int16_t ACFT_ADI_MRK_HD = 28;  // covers the marker extent (prograde ring 18 + spoke 9)
-
-// Shortest-arc delta between two headings, result in [-180, 180].
-static inline float _acftHdgDelta(float a, float b) {
-    float d = a - b;
-    while (d >  180.0f) d -= 360.0f;
-    while (d < -180.0f) d += 360.0f;
-    return d;
-}
-
-// Draw a single diamond marker on the ADI ball at the given world-space heading/pitch.
-// Skips the draw if the computed position falls outside the ball's visible cone.
-// Uses the horizontal-split two-triangle diamond pattern (matching MNVR/DOCK).
-//
-// Marks occupied scanlines in _acftLadderDirty (same mechanism ladder uses) so that
-// the next frame's delta fill repaints those rows — prevents trails when the marker
-// moves but the horizon doesn't.
-static void _acftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
-                               uint16_t fillCol, uint8_t kind) {
-    // Delta from current vessel attitude
-    float dh = _acftHdgDelta(markerHdg, state.heading);
-    float dp = markerPitch - state.pitch;
-
-    // Ball uses negated roll (matches KerbalSimpit convention)
-    float cosR = _acftCos(-state.roll);
-    float sinR = _acftSin(-state.roll);
-
-    // Unrolled-frame offset: +dh degrees rightward, +dp degrees upward (so -y)
-    float ux = dh * ACFT_SCALE;
-    float uy = -dp * ACFT_SCALE;
-
-    // Apply roll rotation (angle = -state.roll, so using cosR/sinR from above).
-    // Marker is treated as a 2D point on the pitch/roll-rolled ball — both dh
-    // and dp combine to determine its screen position after roll rotation.
-    // Horizontal marker x will not match the heading tape's x when roll != 0;
-    // the ball shows the combined attitude-error in its own rolled frame, while
-    // the tape shows only the heading axis.
-    int16_t sx = (int16_t)(ACFT_CX + ux * cosR - uy * sinR);
-    int16_t sy = (int16_t)(ACFT_CY + ux * sinR + uy * cosR);
-
-    // Clip: entire marker must fit inside ball. Use (R - HD) so outline doesn't cross rim.
-    int16_t dx = sx - ACFT_CX, dy = sy - ACFT_CY;
-    int32_t rInner = (int32_t)ACFT_R - ACFT_ADI_MRK_HD;
-    if ((int32_t)dx*dx + (int32_t)dy*dy > rInner * rInner) return;
-
-    // KSP navball symbol — prograde (velocity) / target / maneuver
-    switch (kind) {
-      case KSP_MK_TARGET:   drawTargetMarker(tft, sx, sy, 22, fillCol);   break;
-      case KSP_MK_MANEUVER: drawManeuverMarker(tft, sx, sy, 19, fillCol); break;
-      default:              drawProgradeMarker(tft, sx, sy, 18, fillCol); break;
-    }
-
-    // Tell next frame's delta fill to repaint these scanlines. Prevents trails when
-    // the marker moves without the horizon line or ladder touching the same rows.
-    for (int16_t y = sy - ACFT_ADI_MRK_HD; y <= sy + ACFT_ADI_MRK_HD; y++) {
-        _acftLadderDirtySet(y);
-    }
-}
 
 
 // ── Master ball update ────────────────────────────────────────────────────────────────
@@ -407,11 +348,11 @@ static void _acftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
     //    Prograde (surface velocity) always drawn; target if available; maneuver if
     //    active. Each call self-clips to the ball's visible cone.
-    _acftDrawAdiMarker(tft, state.srfVelHeading, state.srfVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
+    eadiDrawAdiMarker(tft, state.srfVelHeading, state.srfVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE, _acftLadderDirty);
     if (state.targetAvailable)
-        _acftDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
+        eadiDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET, _acftLadderDirty);
     if (state.mnvrTime > 0.0f)
-        _acftDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
+        eadiDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER, _acftLadderDirty);
 
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
     eadiDrawAircraftSymbol(tft);
@@ -1465,22 +1406,22 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
     bool ballDirty = _acftFullRedrawNeeded                                         ||
                      fabsf(state.pitch - _acftPrevPitch)                   >= 0.2f ||
                      fabsf(state.roll  - _acftPrevRoll)                    >= 0.2f ||
-                     fabsf(_acftHdgDelta(state.heading, _acftPrevHeadingBall)) >= 0.5f;
+                     fabsf(eadiHdgDelta(state.heading, _acftPrevHeadingBall)) >= 0.5f;
 
     // Marker dirty — any visible marker's world position changed, or a marker's
     // availability toggled (target acquired/lost, maneuver set/cleared).
     if (!ballDirty) {
-        ballDirty = fabsf(_acftHdgDelta(state.srfVelHeading, _acftPrevVelHdgBall)) >= 0.5f ||
+        ballDirty = fabsf(eadiHdgDelta(state.srfVelHeading, _acftPrevVelHdgBall)) >= 0.5f ||
                     fabsf(state.srfVelPitch - _acftPrevVelPitchBall)               >= 0.5f ||
                     mnvrActive != _acftPrevMnvrActiveBall                                  ||
                     tgtAvail   != _acftPrevTgtAvailBall;
     }
     if (!ballDirty && mnvrActive) {
-        ballDirty = fabsf(_acftHdgDelta(state.mnvrHeading, _acftPrevMnvrHdgBall)) >= 0.5f ||
+        ballDirty = fabsf(eadiHdgDelta(state.mnvrHeading, _acftPrevMnvrHdgBall)) >= 0.5f ||
                     fabsf(state.mnvrPitch - _acftPrevMnvrPitchBall)               >= 0.5f;
     }
     if (!ballDirty && tgtAvail) {
-        ballDirty = fabsf(_acftHdgDelta(state.tgtHeading, _acftPrevTgtHdgBall)) >= 0.5f ||
+        ballDirty = fabsf(eadiHdgDelta(state.tgtHeading, _acftPrevTgtHdgBall)) >= 0.5f ||
                     fabsf(state.tgtPitch - _acftPrevTgtPitchBall)               >= 0.5f;
     }
 
