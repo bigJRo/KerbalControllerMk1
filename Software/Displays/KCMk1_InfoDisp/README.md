@@ -25,42 +25,42 @@ The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Air
 | Microcontroller | Teensy 4.1 | — |
 | Display | LT7683 (RA8876-compatible) 1024×600 7" IPS TFT | 8080 16-bit parallel |
 | Touch controller | FT5316 capacitive | software I2C |
-| SD card | microSD | SPI |
+| SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (USB COM port 2) |
-| I2C slave bus | Master Teensy 4.1 at 0x12 | Wire (pins 18/19) |
+| I2C slave bus | Master Teensy 4.1 at 0x12 | Wire2 (pins 24/25) |
 
 See `Documents/Developer/Hardware_Reference.md` (§8.3, KC-01-1912 carrier) for the display-carrier hardware detail.
 
 ### Pin Assignments
 
-> **Note:** The pin table below reflects the legacy SPI carrier (RA8875 / GSL1680F).
-> The current carrier (KC-01-1912) uses the LT7683 on an 8080 16-bit parallel bus with
-> FT5316 touch; only the I2C slave-bus and INT rows below are carrier-independent and
-> current. The parallel-bus pinout is pending a revision of this table.
+All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + RA8876 8080-parallel carrier, KC-01-1912). The 16 display data lines are driven by the Teensy 4.1 FlexIO3 hardware via the `wwatson4506/TeensyRA8876-8080` driver — the defines below are documentation; the driver owns the data/WR/RD lines.
 
-| Pin | Function | Direction | Assigned by |
-|-----|----------|-----------|-------------|
-| 10 | RA8875 SPI chip select | OUT | KerbalDisplayCommon (`RA8875_CS`) |
-| 11 | SPI MOSI | OUT | Teensy hardware SPI (fixed) |
-| 12 | SPI MISO | IN | Teensy hardware SPI (fixed) |
-| 13 | SPI SCK | OUT | Teensy hardware SPI (fixed) |
-| 15 | RA8875 RESET | OUT | KerbalDisplayCommon (`RA8875_RESET`) |
-| 4 | SD card detect (active-LOW) | IN | KerbalDisplayCommon (`SD_DETECT_PIN`) |
-| 5 | SD card SPI chip select | OUT | KerbalDisplayCommon (`SD_CS_PIN`) |
-| 16 | GSL1680F SCL (Wire1) | — | KerbalDisplayCommon (`CTP_SCL_PIN`) |
-| 17 | GSL1680F SDA (Wire1) | — | KerbalDisplayCommon (`CTP_SDA_PIN`) |
-| 3 | GSL1680F WAKE | OUT | KerbalDisplayCommon (`CTP_WAKE_PIN`) |
-| 22 | GSL1680F INT (HIGH when touched) | IN | KerbalDisplayCommon (`CTP_INT_PIN`) |
-| 9 | Audio PWM (claimed by library, not used) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
-| 18 | I2C SDA (Wire — master bus) | — | Wire library |
-| 19 | I2C SCL (Wire — master bus) | — | Wire library |
-| 0 | I2C INT (active-LOW, output to master) | OUT | Sketch (`KCM_I2C_INT_PIN`) |
+| Pin(s) | Function | Direction | Define |
+|--------|----------|-----------|--------|
+| 19,18,14,15,40,41,17,16,22,23,20,21,38,39,26,27 | Display data bus DB0..DB15 (FlexIO3) | — | `KCM_TFT_DB0..DB15` |
+| 34 | Display /CS chip select | OUT | `KCM_TFT_CS` |
+| 33 | Display RS register/data select | OUT | `KCM_TFT_RS` |
+| 35 | Display /RESET | OUT | `KCM_TFT_RESET` |
+| 36 | Display /WR write strobe | OUT | `KCM_TFT_WR` |
+| 37 | Display /RD read strobe | OUT | `KCM_TFT_RD` |
+| 32 | Display WAIT (busy from RA8876) | IN | `KCM_TFT_WAIT` |
+| 31 | Display INT (from RA8876, unused) | IN | `KCM_TFT_INT` |
+| 9 | Backlight enable / PWM | OUT | `KCM_TFT_BL` |
+| 4 | Touch software-I2C SCL | — | `KCM_CTP_SCL` |
+| 5 | Touch software-I2C SDA | — | `KCM_CTP_SDA` |
+| 3 | Touch /RESET (active-LOW) | OUT | `KCM_CTP_RST` |
+| 6 | Touch INT (data-ready) | IN | `KCM_CTP_INT` |
+| 2 | Master-alarm buzzer (`tone()`) | OUT | `KCM_AUDIO_TONE_PIN` |
+| 7,8 | DFPlayer Mini serial (Serial2 RX2/TX2) | — | `KCM_DFPLAYER_SERIAL` |
+| 24,25 | I2C slave bus to master (Wire2 SCL2/SDA2) | — | `KCM_I2C_BUS` |
+| 0 | I2C INT (active-LOW, output to master) | OUT | `KCM_I2C_INT_PIN` |
+| 1 | I2C RST (shared reset line from master) | IN | `KCM_I2C_RST_PIN` |
 
 **Serial ports:**
 - `Serial` (USB COM port 1) — debug output when `debugMode = true`
 - `SerialUSB1` (USB COM port 2) — KerbalSimpit telemetry
 
-**I2C note:** Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Wire (pins 18/19) is used for the I2C slave interface to the Teensy 4.1 master.
+**I2C note:** The slave interface to the Teensy 4.1 master is on **Wire2 (pins 24/25)**. Pins 18/19 (Wire) and 16/17 (Wire1) are consumed by the display data bus, so FT5316 touch runs on a bit-banged software-I2C bus (pins 4/5).
 
 ---
 
@@ -68,9 +68,13 @@ See `Documents/Developer/Hardware_Reference.md` (§8.3, KC-01-1912 carrier) for 
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 2.1.0 | Display primitives, fonts, touch driver, system utils |
-| KerbalDisplayAudio | 1.0.1 | Direct sketch dependency — audio output not used on this panel |
-| RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
+| KerbalDisplayCommon | ≥ 3.0.0 | Display primitives, fonts, value formatting, threshold colouring (pulls in KCM_Display) |
+| KCM_Display | — | `KCM_TFT` display type = `RA8876_t41_p` + shared resolution/pins (this repo) |
+| KCM_Touch | — | FT5316 5-point capacitive touch driver (this repo) |
+| KCMk1_SystemConfig | — | Shared hardware pin map + cross-panel threshold constants (this repo) |
+| TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 8080-parallel display driver (wwatson4506) |
+| ILI9341_fonts (PaulStoffregen) | — | ILI9341_t3 font format used by KerbalDisplayCommon |
+| KerbalDisplayAudio | — | Master-alarm buzzer (`tone()`, pin 2) + DFPlayer audio support |
 | KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
 
 ### KerbalSimpit Plugin Settings
@@ -95,7 +99,7 @@ All tunables are in `AAA_Config.ino`. Cross-panel aligned thresholds are sourced
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `debugMode` | `false` | Serial debug output. Set `false` for production. |
-| `demoMode` | `false` | `true` = sine-wave demo, no KSP. `false` = live Simpit. |
+| `demoMode` | `true` | `true` = sine-wave demo, no KSP. `false` = live Simpit. |
 | `DISPLAY_ROTATION` | `0` | `0` = normal, `2` = 180° inverted. |
 
 ### Parachute CAG Assignments
@@ -316,10 +320,10 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 ## Notes
 
 - **`debugMode`** defaults to `false`. Set `true` only during development.
-- **`demoMode`** defaults to `false` (live Simpit). Set `true` for bench testing without KSP.
+- **`demoMode`** defaults to `true` (sine-wave demo, no KSP). Set `false` for live Simpit telemetry.
 - **Display rotation** — `DISPLAY_ROTATION = 2` for inverted mounting, `0` for production.
-- **KerbalDisplayAudio** is a required dependency but audio output is not used on this panel (pin 9 is claimed by the library via `setupAudio()`).
-- **KerbalDisplayCommon v2.1.0** is required. Do not downgrade — `PrintState`, `thresholdColor` float overload, and `drawStandbySplash` are all used by this sketch.
+- **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm buzzer (`tone()`) is on pin 2 and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
+- **KerbalDisplayCommon ≥ 3.0.0** is required (hardware rev 2 / `KCM_TFT`, `RA8876_t41_p`). Do not downgrade.
 - **`INTERSECTS_MESSAGE`** — intercept data not available in KSP1; TARGET screen INT rows not implemented.
 - **V.Tgt** — always a positive magnitude in KSP1. Signed closure velocity is not available.
 - **EC%** on the pre-launch board and Rover screen may require the Alternate Resource Panel (ARP) mod in KSP1.

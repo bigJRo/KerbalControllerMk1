@@ -3,7 +3,7 @@
    Exposes Info Display state to the KCMk1 master (Teensy 4.1) over I2C.
 
    Hardware:
-     I2C bus    : Wire (pins 18/19 on Teensy 4.1)
+     I2C bus    : Wire2 (pins 24/25 on Teensy 4.1) — KCM_I2C_BUS
      Slave addr : 0x12
      INT pin    : pin 0 (KCM_I2C_INT_PIN), OUTPUT, active-LOW
                   InfoDisp asserts LOW when a fresh packet is ready.

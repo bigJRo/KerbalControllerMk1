@@ -374,7 +374,7 @@ void drawLabelledAxis(KCM_TFT &tft,
    DRAW VERTICAL TEXT
    Draws a string one character per line, vertically centred within a rectangle.
    Each character is horizontally centred within the strip width.
-   Used for rotated-style section labels where the RA8875 has no native text rotation.
+   Used for rotated-style section labels where the RA8876 has no native text rotation.
    - x0, y0      top-left of the strip rectangle
    - w, h        width and height of the strip (text is centred within both)
    - font        font to use for each character
@@ -1199,7 +1199,7 @@ bool setupSD() {
 
 /***************************************************************************************
    BMP DRAWING
-   Reads a 24-bit uncompressed BMP from the SD card and draws it to the RA8875 display.
+   Reads a 24-bit uncompressed BMP from the SD card and draws it to the RA8876 display.
    Only 24-bit BI_RGB (uncompressed) BMPs are supported.
    setupSD() must have been called and returned true before calling this function.
    Both bottom-up BMPs (standard) and top-down BMPs (negative height) are supported.
@@ -1591,7 +1591,7 @@ BodyParams getBodyParams(const String& SOI) {
 /***************************************************************************************
    BOOT SCREEN RENDERING HELPERS (#15, #16, #17)
    Shared terminal-aesthetic primitives for KCMk1 panel boot sequences.
-   All functions stay in RA8875 graphics mode (setFont/setCursor/print).
+   All functions stay in RA8876 graphics mode (setFont/setCursor/print).
 ****************************************************************************************/
 void bsPrint(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y,
              const char *text, uint16_t col) {

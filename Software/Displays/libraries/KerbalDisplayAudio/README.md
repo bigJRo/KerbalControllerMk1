@@ -1,7 +1,7 @@
 # KerbalDisplayAudio
 
-**Kerbal Controller Mk1 — Audio Feedback Library** · v1.0.1
-Non-blocking audio state machine for RA8875-based KSP controller display panels.
+**Kerbal Controller Mk1 — Audio Feedback Library** · v1.0.2
+Non-blocking audio state machine for KCMk1 rev-2 KSP controller display panels (Teensy 4.1).
 Part of the KCMk1 controller system.
 
 ---
@@ -18,14 +18,16 @@ The master alarm tone is modelled on the Space Shuttle Caution & Warning specifi
 
 | Pin | Define | Default | Function |
 |-----|--------|---------|----------|
-| 9 | `AUDIO_PIN` | `9` | Piezo buzzer or speaker output |
+| 2 | `AUDIO_PIN` | `2` | Master-alarm buzzer via `tone()` — KCMk1 rev-2 TONE net (pin 2 → Q1/S8050 → 4 kHz buzzer) |
 
-To override the pin, define it before including the library:
+On KCMk1 rev-2 hardware the buzzer moved from pin 9 (now the display backlight) to pin 2, matching `KCM_AUDIO_TONE_PIN` in `KCMk1_SystemConfig.h`. Sketches should keep the two in sync:
 
 ```cpp
-#define AUDIO_PIN 8
+#define AUDIO_PIN KCM_AUDIO_TONE_PIN   // = 2
 #include <KerbalDisplayAudio.h>
 ```
+
+Sampled audio (voice callouts, stingers) is handled separately by the bundled `KCM_DFPlayer` driver — a DFPlayer Mini on `Serial2` (RX2 = 7 / TX2 = 8, 9600 baud). It is independent of the `tone()` state machine documented here; see `KCM_DFPlayer.h`.
 
 ---
 
@@ -45,7 +47,7 @@ All frequency and timing constants are overrideable. Define them before the `#in
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `AUDIO_PIN` | `9` | Output pin for `tone()` |
+| `AUDIO_PIN` | `2` | Output pin for `tone()` |
 | `AUDIO_CHIRP_ALERT_LO` | `880` Hz | Alert chirp first note (A5) |
 | `AUDIO_CHIRP_ALERT_HI` | `1109` Hz | Alert chirp second note (C#6) |
 | `AUDIO_CHIRP_CAUTION_HI` | `1200` Hz | Caution chirp first note (tritone) |
@@ -171,7 +173,7 @@ void loop() {
 - **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In KCMk1 sketches this is done in `ScreenMain.ino`; `audioSilence()` is called unconditionally on scene change and vessel switch regardless of the flag.
 - **Single output pin** — all audio is multiplexed through one `tone()` pin. Only one sound plays at a time; the state machine priority order determines which.
 - **No blocking** — `updateAudio()` never calls `delay()`. All timing is `millis()`-based. The function is a no-op when idle.
-- **`tone()` on Teensy 4.0** — `tone()` uses a hardware timer. `AUDIO_PIN` must be a PWM-capable pin.
+- **`tone()` on Teensy 4.1** — `tone()` uses a hardware timer. `AUDIO_PIN` must be a PWM-capable pin.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.

@@ -17,16 +17,18 @@
 2. SOI screen — celestial body detail
 3. Standby screen
 
-### Info Display (Panel A1)
-1. Screen navigation
-2. Orbital screen (ORB)
-3. Launch / Ascent screen (LNCH)
-4. Ascent Autopilot screen (ASC)
-5. Landing screen (LNDG)
-5. Maneuver screen (MNVR)
-6. Atmospheric / Aircraft screen (ACFT)
-7. Vehicle screen (VEH)
-8. Orbital advanced screen (OrbAdv)
+### Info Display
+1. Screen navigation (right-hand sidebar)
+2. Launch screen (LNCH — pre-launch / ascent / circularization)
+3. Ascent Autopilot screen (ASC)
+4. Primary Flight Display — Spacecraft / Aircraft / Rover (SCFT / ACFT / ROVR)
+5. Orbital screen (ORB) + Advanced Elements (OrbAdv)
+6. Vehicle screen (VEH)
+7. Maneuver screen (MNVR)
+8. Target screen (TGT)
+9. Docking screen (DOCK)
+10. Landing screen (LNDG — powered descent)
+11. Re-entry screen (ENTR)
 
 ### Resource Display (Panel B1)
 1. Main resource screen

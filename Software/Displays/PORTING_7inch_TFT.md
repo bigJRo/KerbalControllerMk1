@@ -79,7 +79,7 @@ sketch (Annunciator / InfoDisp / ResourceDisp)
   │     └── (dep) TeensyRA8876-8080 + TeensyRA8876-GFX-Common + ILI9341_fonts
   ├── KCM_Touch            FT5316 software-I2C driver (TouchResult API)  [new]
   ├── KerbalDisplayAudio   tone() state machine (AUDIO_PIN=2) + KCM_DFPlayer  [updated]
-  └── KerbalDisplayCommon  UI toolkit — buttons/text/formatters/BMP/bodies  [pending migration]
+  └── KerbalDisplayCommon  UI toolkit — buttons/text/formatters/BMP/bodies  [migrated v3.0.0]
 ```
 
 - **`KCM_TFT`** is a controller-agnostic typedef (`= RA8876_t41_p`). The rest of
@@ -143,7 +143,9 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
       the master sketch (extended 6-byte Annunciator command).
 - [ ] Wire DFPlayer clips; drive `modeFlags` from TestMode steps; draw the
       vessel-type icon on the SPCFT tile; full SOI-detail-screen redesign.
-- [ ] Then repeat the sketch port for InfoDisp and ResourceDisp.
+- [x] **InfoDisp sketch ported** — full `Screen_*.ino` set relaid to 1024×600 on
+      `KCM_TFT`; `SCREEN_W/H = KCM_SCREEN_W/H`.
+- [ ] Then repeat the sketch port for ResourceDisp (still rev-1: `RA8875 infoDisp`).
 
 ---
 
