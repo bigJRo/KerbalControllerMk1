@@ -60,15 +60,15 @@ static const uint16_t RE_ENV_X    = 190;   // widget footprint (erased each fram
 static const uint16_t RE_ENV_Y    = 350;
 static const uint16_t RE_ENV_W    = 248;
 static const uint16_t RE_ENV_H    = 248;
-// Chute-deploy SPEED TAPE (vertical). The green/yellow/red zone boundaries are the
+// Chute-deploy SPEED BAR (horizontal). The green/yellow/red zone boundaries are the
 // altitude-corrected safe-deploy speeds derived from live dynamic pressure, so they
-// slide down as you descend into denser air. Airspeed axis 0 (bottom) .. VMAX (top).
-static const uint16_t RE_CT_X    = RE_ENV_X + 60;    // 250 — tape left edge
-static const uint16_t RE_CT_W    = 60;               // tape width
-static const uint16_t RE_CT_Y    = RE_ENV_Y + 8;     // 358 — tape top
-static const uint16_t RE_CT_H    = RE_ENV_H - 16;    // 232
-static const uint16_t RE_CT_BOT  = RE_CT_Y + RE_CT_H;// 590
-static const float    RE_CT_VMAX = 1000.0f;          // airspeed axis top (m/s)
+// slide left as you descend into denser air. Airspeed axis 0 (left) .. VMAX (right).
+static const uint16_t RE_CT_X     = RE_ENV_X + 18;      // 208 — bar left edge
+static const uint16_t RE_CT_W     = 204;               // bar width (airspeed axis)
+static const uint16_t RE_CT_Y     = RE_ENV_Y + 96;     // 446 — bar top
+static const uint16_t RE_CT_H     = 60;               // bar height
+static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W; // 412 — bar right edge
+static const float    RE_CT_VMAX  = 1000.0f;          // airspeed axis max (m/s)
 
 // ── Vertical bar gauges (right of the graphics zone) ──
 static const uint16_t RE_GA_Y  = TITLE_TOP + 20;                 // 82 — gauge top
@@ -328,74 +328,76 @@ static void _reDrawBall(KCM_TFT &tft) {
 
 /***************************************************************************************
    WIDGET: CHUTE DEPLOY SPEED TAPE (airspeed vs live safe-deploy limits)
-   Vertical airspeed tape. The green/yellow/red boundaries are the altitude-corrected
-   safe-deploy speeds (from live dynamic pressure), so they slide down as the air
+   Horizontal airspeed bar. The green/yellow/red boundaries are the altitude-corrected
+   safe-deploy speeds (from live dynamic pressure), so they slide left as the air
    thickens. The white marker is the current airspeed.
      green  : q < main limit        (main + drogue safe)
      yellow : main <= q < drogue     (drogue only)
      red    : q >= drogue limit      (nothing safe)
 ****************************************************************************************/
 static void _reDrawEnvelope(KCM_TFT &tft) {
-  const uint16_t ix = RE_CT_X + 1, iw = RE_CT_W - 2;
-  auto spdToY = [&](float v) -> int16_t {
+  const uint16_t iy = RE_CT_Y + 1, ih = RE_CT_H - 2;
+  const uint16_t barBot = RE_CT_Y + RE_CT_H;
+  auto spdToX = [&](float v) -> int16_t {
     float f = v / RE_CT_VMAX; if (f < 0) f = 0; if (f > 1) f = 1;
-    return (int16_t)(RE_CT_BOT - f * RE_CT_H);
+    return (int16_t)(RE_CT_X + f * RE_CT_W);
   };
 
-  // Erase the widget footprint each frame (labels + tape + tags) to prevent streaks.
+  // Erase the widget footprint each frame (title + tags + bar + labels) — no streaks.
   tft.fillRect(RE_ENV_X, RE_ENV_Y - 16, RE_ENV_W, RE_ENV_H + 16, TFT_BLACK);
 
   // Live altitude-corrected safe-deploy speeds
   float vMain   = _reChuteSafeSpeed(LNDG_CHUTE_MAIN_MAX_Q);
   float vDrogue = _reChuteSafeSpeed(LNDG_CHUTE_DROGUE_MAX_Q);
-  int16_t yMain   = spdToY(vMain);
-  int16_t yDrogue = spdToY(vDrogue);
+  int16_t xMain   = spdToX(vMain);
+  int16_t xDrogue = spdToX(vDrogue);
 
-  // Zone fills (dim): green 0..vMain, yellow vMain..vDrogue, red vDrogue..VMAX
-  tft.fillRect(ix, yMain,    iw, RE_CT_BOT - yMain,   TFT_JUNGLE);
-  tft.fillRect(ix, yDrogue,  iw, yMain - yDrogue,     TFT_DARK_YELLOW);
-  tft.fillRect(ix, RE_CT_Y,  iw, yDrogue - RE_CT_Y,   TFT_DARK_RED);
+  // Zone fills (dim): green 0..vMain (left), yellow vMain..vDrogue, red vDrogue..VMAX
+  int16_t gx0 = RE_CT_X + 1, rEnd = RE_CT_RIGHT - 1;
+  if (xMain   > gx0)     tft.fillRect(gx0,     iy, xMain - gx0,     ih, TFT_JUNGLE);
+  if (xDrogue > xMain)   tft.fillRect(xMain,   iy, xDrogue - xMain, ih, TFT_DARK_YELLOW);
+  if (rEnd    > xDrogue) tft.fillRect(xDrogue, iy, rEnd - xDrogue,  ih, TFT_DARK_RED);
 
-  // Boundary lines + tags (bright)
-  if (yMain > RE_CT_Y && yMain < RE_CT_BOT) {
-    tft.drawLine(ix, yMain, ix + iw - 1, yMain, TFT_NEON_GREEN);
-    tft.setFont(Roboto_Black_12); tft.setTextColor(TFT_NEON_GREEN, TFT_BLACK);
-    tft.setCursor(RE_CT_X + RE_CT_W + 18, yMain - 6); tft.print("MAIN");
-  }
-  if (yDrogue > RE_CT_Y && yDrogue < RE_CT_BOT) {
-    tft.drawLine(ix, yDrogue, ix + iw - 1, yDrogue, TFT_YELLOW);
-    tft.setFont(Roboto_Black_12); tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.setCursor(RE_CT_X + RE_CT_W + 18, yDrogue - 6); tft.print("DROG");
-  }
-
-  // Speed axis labels + ticks (every 200 m/s), left of the tape
+  // Boundary lines + tags above the bar
   tft.setFont(Roboto_Black_12);
+  if (xMain > RE_CT_X && xMain < RE_CT_RIGHT) {
+    tft.drawLine(xMain, iy, xMain, iy + ih - 1, TFT_NEON_GREEN);
+    tft.setTextColor(TFT_NEON_GREEN, TFT_BLACK);
+    tft.setCursor(xMain - 14, RE_CT_Y - 28); tft.print("MAIN");
+  }
+  if (xDrogue > RE_CT_X && xDrogue < RE_CT_RIGHT) {
+    tft.drawLine(xDrogue, iy, xDrogue, iy + ih - 1, TFT_YELLOW);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setCursor(xDrogue - 12, RE_CT_Y - 28); tft.print("DROG");
+  }
+
+  // Speed axis labels + ticks (every 200 m/s) below the bar
   tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
   for (int v = 0; v <= (int)RE_CT_VMAX + 1; v += 200) {
-    int16_t ty = spdToY((float)v);
-    tft.drawLine(RE_CT_X + 1, ty, RE_CT_X + 7, ty, TFT_LIGHT_GREY);
+    int16_t tx = spdToX((float)v);
+    tft.drawLine(tx, barBot + 1, tx, barBot + 6, TFT_LIGHT_GREY);
     char b[6]; snprintf(b, sizeof(b), "%d", v);
     int16_t lw = getFontStringWidth(&Roboto_Black_12, b);
-    int16_t ly = (int16_t)max((int)RE_CT_Y, min((int)(RE_CT_BOT - 14), (int)ty - 7));
-    tft.setCursor(RE_CT_X - 3 - lw, ly); tft.print(b);
+    int16_t lx = (int16_t)constrain((int)(tx - lw / 2), (int)RE_CT_X, (int)(RE_CT_RIGHT - lw));
+    tft.setCursor(lx, barBot + 8); tft.print(b);
   }
   for (int v = 100; v <= (int)RE_CT_VMAX; v += 200) {   // minor ticks
-    int16_t ty = spdToY((float)v);
-    tft.drawLine(RE_CT_X + 1, ty, RE_CT_X + 4, ty, TFT_GREY);
+    int16_t tx = spdToX((float)v);
+    tft.drawLine(tx, barBot + 1, tx, barBot + 4, TFT_GREY);
   }
 
   tft.drawRect(RE_CT_X, RE_CT_Y, RE_CT_W, RE_CT_H, TFT_GREY);
 
-  // Current-airspeed marker (white line + right-side triangle), tier-coloured triangle
+  // Current-airspeed marker: white vertical line through the bar + a tier-coloured
+  // triangle above it pointing down.
   float q = _reDynPressure();
   uint16_t vc = (q < LNDG_CHUTE_MAIN_MAX_Q) ? TFT_NEON_GREEN :
                 (q < LNDG_CHUTE_DROGUE_MAX_Q) ? TFT_YELLOW : TFT_RED;
-  int16_t ym = constrain(spdToY(state.surfaceVel), (int16_t)(RE_CT_Y + 8), (int16_t)(RE_CT_BOT - 8));
-  tft.fillRect(ix, ym - 1, iw, 3, TFT_WHITE);
-  tft.fillTriangle(RE_CT_X + RE_CT_W + 1, ym, RE_CT_X + RE_CT_W + 13, ym - 8, RE_CT_X + RE_CT_W + 13, ym + 8, vc);
+  int16_t xm = constrain(spdToX(state.surfaceVel), (int16_t)(RE_CT_X + 8), (int16_t)(RE_CT_RIGHT - 8));
+  tft.fillRect(xm - 1, iy, 3, ih, TFT_WHITE);
+  tft.fillTriangle(xm, RE_CT_Y - 1, xm - 8, RE_CT_Y - 11, xm + 8, RE_CT_Y - 11, vc);
 
   // Title
-  tft.setFont(Roboto_Black_12);
   tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
   tft.setCursor(RE_ENV_X, RE_ENV_Y - 15);
   tft.print("CHUTE DEPLOY  (airspeed m/s)");
