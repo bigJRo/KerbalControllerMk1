@@ -488,7 +488,7 @@ static inline float _scftHdgDelta(float a, float b) {
 // the next frame's delta fill repaints those rows — prevents trails when the marker
 // moves but the horizon doesn't.
 static void _scftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
-                               uint16_t fillCol) {
+                               uint16_t fillCol, uint8_t kind) {
     // Delta from current vessel attitude
     float dh = _scftHdgDelta(markerHdg, state.heading);
     float dp = markerPitch - state.pitch;
@@ -515,25 +515,12 @@ static void _scftDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
     int32_t rInner = (int32_t)SCFT_R - SCFT_ADI_MRK_HD;
     if ((int32_t)dx*dx + (int32_t)dy*dy > rInner * rInner) return;
 
-    // Filled diamond (horizontal split — two triangles sharing the waist row)
-    tft.fillTriangle(sx - SCFT_ADI_MRK_HD, sy,
-                     sx + SCFT_ADI_MRK_HD, sy,
-                     sx,                   sy - SCFT_ADI_MRK_HD,
-                     fillCol);
-    tft.fillTriangle(sx - SCFT_ADI_MRK_HD, sy,
-                     sx + SCFT_ADI_MRK_HD, sy,
-                     sx,                   sy + SCFT_ADI_MRK_HD,
-                     fillCol);
-
-    // White 1-px outline for contrast against both sky and ground fills
-    tft.drawLine(sx,                   sy - SCFT_ADI_MRK_HD,
-                 sx + SCFT_ADI_MRK_HD, sy,                   TFT_WHITE);
-    tft.drawLine(sx + SCFT_ADI_MRK_HD, sy,
-                 sx,                   sy + SCFT_ADI_MRK_HD, TFT_WHITE);
-    tft.drawLine(sx,                   sy + SCFT_ADI_MRK_HD,
-                 sx - SCFT_ADI_MRK_HD, sy,                   TFT_WHITE);
-    tft.drawLine(sx - SCFT_ADI_MRK_HD, sy,
-                 sx,                   sy - SCFT_ADI_MRK_HD, TFT_WHITE);
+    // KSP navball symbol — prograde (velocity) / target / maneuver
+    switch (kind) {
+      case KSP_MK_TARGET:   drawTargetMarker(tft, sx, sy, 14, fillCol);   break;
+      case KSP_MK_MANEUVER: drawManeuverMarker(tft, sx, sy, 12, fillCol); break;
+      default:              drawProgradeMarker(tft, sx, sy, 11, fillCol); break;
+    }
 
     // Tell next frame's delta fill to repaint these scanlines. Prevents trails when
     // the marker moves without the horizon line or ladder touching the same rows.
@@ -605,11 +592,11 @@ static void _scftDrawBall(KCM_TFT &tft, bool fullRedraw) {
     // ── 4. ADI markers — drawn on top of ball, under the aircraft reference ───────────
     //    Prograde always drawn; target if available; maneuver if active.
     //    Each call self-clips to the ball's visible cone.
-    _scftDrawAdiMarker(tft, _scftVelHdg, _scftVelPitch, TFT_NEON_GREEN);
+    _scftDrawAdiMarker(tft, _scftVelHdg, _scftVelPitch, TFT_NEON_GREEN, KSP_MK_PROGRADE);
     if (state.targetAvailable)
-        _scftDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET);
+        _scftDrawAdiMarker(tft, state.tgtHeading, state.tgtPitch, TFT_VIOLET, KSP_MK_TARGET);
     if (state.mnvrTime > 0.0f)
-        _scftDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE);
+        _scftDrawAdiMarker(tft, state.mnvrHeading, state.mnvrPitch, TFT_BLUE, KSP_MK_MANEUVER);
 
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
     _scftDrawAircraftSymbol(tft);

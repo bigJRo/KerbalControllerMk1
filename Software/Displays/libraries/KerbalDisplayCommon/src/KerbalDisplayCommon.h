@@ -209,9 +209,17 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
 void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
 // KSP target marker: ring drawn as four arc segments with gaps at top/bottom/left/
-// right (a "+" cut through the circle), no centre dot or spokes. Used for the
-// target / docking-port marker (magenta). `r` is the ring radius.
+// right (a "+" cut through the circle) plus a centre dot. Used for the target /
+// docking-port marker (magenta). `r` is the ring radius.
 void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// KSP maneuver-node marker: centre dot + three prongs (up, lower-left, lower-right)
+// each ending in a short perpendicular crossbar, no ring. Used for the maneuver
+// marker (blue). `r` is the prong length from centre to the crossbar.
+void drawManeuverMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// Which KSP navball symbol an ADI-ball marker should draw.
+enum KspMarkerKind { KSP_MK_PROGRADE, KSP_MK_TARGET, KSP_MK_MANEUVER };
 
 // Shared attitude-reticle chrome for the MNVR / DOCK / TGT screens. All three draw
 // an identical black disc with four concentric rings (r/4, r/2, 3r/4, r coloured

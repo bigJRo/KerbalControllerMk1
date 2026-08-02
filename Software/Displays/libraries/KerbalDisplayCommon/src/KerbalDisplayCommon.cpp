@@ -571,6 +571,7 @@ void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_
 // bottom, left and right — as if a "+" were cut through the circle. No centre dot
 // and no spokes. Used for the target / docking-port marker (magenta).
 void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  tft.fillCircle(cx, cy, 2, color);            // centre dot (matches the other markers)
   const float GAP  = 12.0f;                    // half-gap at each "+" arm, degrees
   const float STEP = 7.0f * 0.01745329252f;    // arc plot step, radians
   for (uint8_t q = 0; q < 4; q++) {
@@ -586,6 +587,23 @@ void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t 
       int16_t x = cx + (int16_t)(rad * cosf(a1)), y = cy + (int16_t)(rad * sinf(a1));
       tft.drawLine(px, py, x, y, color);
     }
+  }
+}
+
+// KSP maneuver-node marker: a centre dot with three prongs pointing up, lower-left
+// and lower-right, each ending in a short perpendicular crossbar. No ring. Used for
+// the maneuver marker (blue). `r` is the prong length from centre to crossbar.
+void drawManeuverMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  tft.fillCircle(cx, cy, 2, color);                     // centre dot
+  static const int16_t prong[3] = { -90, 30, 150 };     // screen degrees: up, lower-right, lower-left
+  const float cap = 5.0f;                               // half-length of the end crossbar
+  for (uint8_t i = 0; i < 3; i++) {
+    float a  = (float)prong[i] * 0.01745329252f;
+    int16_t tx = cx + (int16_t)(r * cosf(a)), ty = cy + (int16_t)(r * sinf(a));
+    tft.drawLine(cx, cy, tx, ty, color);                // prong from centre to tip
+    float pa = a + 1.57079633f;                         // perpendicular to the prong
+    tft.drawLine(tx - (int16_t)(cap * cosf(pa)), ty - (int16_t)(cap * sinf(pa)),
+                 tx + (int16_t)(cap * cosf(pa)), ty + (int16_t)(cap * sinf(pa)), color);
   }
 }
 

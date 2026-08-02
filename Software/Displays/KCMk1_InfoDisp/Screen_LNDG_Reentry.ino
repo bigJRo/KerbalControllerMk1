@@ -334,15 +334,15 @@ static void _reDrawAtmo(KCM_TFT &tft) {
 /***************************************************************************************
    WIDGET: HEAT-SHIELD / RETROGRADE ALIGNMENT BALL
 ****************************************************************************************/
-// Navball-style retrograde symbol: a ringed circle with an internal X and three
-// short spokes radiating out at 12 / 4 / 8 o'clock.
+// KSP retrograde symbol: a ringed circle with an internal X and three short spokes
+// pointing up, left and right.
 static void _reRetroSymbol(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t col) {
   tft.drawCircle(cx, cy, r,     col);
   tft.drawCircle(cx, cy, r - 1, col);
   int16_t d = (int16_t)(r * 0.7071f);
   tft.drawLine(cx - d, cy - d, cx + d, cy + d, col);
   tft.drawLine(cx - d, cy + d, cx + d, cy - d, col);
-  static const int16_t spoke[3] = { -90, 30, 150 };   // screen degrees: up, lower-right, lower-left
+  static const int16_t spoke[3] = { -90, 0, 180 };    // screen degrees: up, right, left
   for (uint8_t i = 0; i < 3; i++) {
     float a = spoke[i] * (float)DEG_TO_RAD;
     tft.drawLine(cx + (int16_t)(r * cosf(a)),       cy + (int16_t)(r * sinf(a)),
