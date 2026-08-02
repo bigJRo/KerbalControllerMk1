@@ -619,9 +619,12 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(0, RE_NR), RE_TXT_W, rowHFor(RE_NR), r0, COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(1, RE_NR), RE_TXT_W, rowHFor(RE_NR), r1, COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "Mach:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Vrt:", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Vrt:", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "Mach:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+
+  // Horizontal separator above the Drogue/Main status board.
+  tft.drawLine(RE_DIV_X, rowYFor(6, RE_NR) - ROW_PAD, CONTENT_W - 1, rowYFor(6, RE_NR) - ROW_PAD, TFT_GREY);
 
   // Rows 6 (Drogue|Main) and 7 (Gear|SAS) — split, with dividers
   auto splitLabels = [&](uint8_t row, const char *lbl, const char *rbl) {
@@ -707,23 +710,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   // Row 2: V.Srf
   reVal(2, "V.Srf:", fmtMs(state.surfaceVel), (state.surfaceVel < 0) ? TFT_RED : TFT_DARK_GREEN, TFT_BLACK);
 
-  // Row 3: PeA — coloured by re-entry corridor regime
-  {
-    ReCorridor c = _reCorridor();
-    int8_t reg = _rePeRegime(c, state.periapsis);
-    uint16_t pfg = _reRegimeColor(reg);
-    if (reg == 0) { pfg = TFT_WHITE; bg = TFT_RED; } else bg = TFT_BLACK;
-    reVal(3, "PeA:", formatAlt(state.periapsis), pfg, bg);
-  }
-
-  // Row 4: Mach (transonic band highlighted)
-  {
-    float m = state.machNumber; snprintf(buf, sizeof(buf), "%.2f", m);
-    bool transonic = (m >= 0.85f && m <= 1.2f);
-    reVal(4, "Mach:", String(buf), transonic ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
-  }
-
-  // Row 5: V.Vrt (vertical descent rate). The G load now lives in the graphical G meter.
+  // Row 3: V.Vrt (vertical descent rate). The G load now lives in the graphical G meter.
   // Hazard-coloured (landing thresholds) only near the ground; at altitude a high descent
   // rate is normal, so it reads neutral there.
   {
@@ -735,7 +722,23 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     } else {
       fg = TFT_DARK_GREEN; bg = TFT_BLACK;
     }
-    reVal(5, "V.Vrt:", fmtMs(vv), fg, bg);
+    reVal(3, "V.Vrt:", fmtMs(vv), fg, bg);
+  }
+
+  // Row 4: PeA — coloured by re-entry corridor regime
+  {
+    ReCorridor c = _reCorridor();
+    int8_t reg = _rePeRegime(c, state.periapsis);
+    uint16_t pfg = _reRegimeColor(reg);
+    if (reg == 0) { pfg = TFT_WHITE; bg = TFT_RED; } else bg = TFT_BLACK;
+    reVal(4, "PeA:", formatAlt(state.periapsis), pfg, bg);
+  }
+
+  // Row 5: Mach (transonic band highlighted)
+  {
+    float m = state.machNumber; snprintf(buf, sizeof(buf), "%.2f", m);
+    bool transonic = (m >= 0.85f && m <= 1.2f);
+    reVal(5, "Mach:", String(buf), transonic ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
   }
 
   // ── Chute latch bookkeeping — armed-safe when deployed below the rip q ──
