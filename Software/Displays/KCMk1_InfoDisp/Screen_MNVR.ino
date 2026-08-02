@@ -175,7 +175,7 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 
     printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(3,NR), W, rowHFor(NR), "T+Ign:",   COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(4,NR), W, rowHFor(NR), "T+Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(5,NR), W, rowHFor(NR), "Burn dur:",COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(5,NR), W, rowHFor(NR), "Burn Dur:",COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider: timing block / alignment block
     { uint16_t dy = rowYFor(6,NR) - 1;
@@ -410,7 +410,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     // Row 5 — Burn dur
     {
         String val = (state.mnvrDuration > 0.0f) ? formatTimeCompact((int64_t)state.mnvrDuration) : "---";
-        mnvrVal(5, 5, "Burn dur:", val, TFT_DARK_GREEN, TFT_BLACK);
+        mnvrVal(5, 5, "Burn Dur:", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 6 — Nos.Brg | Nos.Elv split

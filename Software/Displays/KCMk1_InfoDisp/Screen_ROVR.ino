@@ -22,7 +22,7 @@
        Target bearing triangle inside ring when state.targetAvailable
 
      TGT STATUS STRIP (within the compass region, along its bottom, y=552..600):
-       "Tgt:" label flush-left against the left column, formatted distance value
+       "Dist:" label flush-left against the left column, formatted distance value
        flush-right against the right column, shown only when state.targetAvailable
 
      RIGHT COLUMN (x=750..940, 3 stacked boxes):
@@ -78,7 +78,7 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 
 // Target distance readout — shown only when a target is selected (targetAvailable).
 // Status strip along the bottom of the compass region, between the two side
-// columns and below the ring. Label "Tgt:" is flush-left against the left column
+// columns and below the ring. Label "Dist:" is flush-left against the left column
 // (region left edge x=190) and the formatted distance value is flush-right against
 // the right column (region right edge x=750). The strip sits just below the
 // compass erase region (which ends at y=551), so the two never collide.
@@ -455,7 +455,7 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
 }
 
 // Target-distance readout — status strip along the bottom of the compass region.
-// "Tgt:" label flush-left against the left column, formatted distance value flush-
+// "Dist:" label flush-left against the left column, formatted distance value flush-
 // right against the right column. Both are visible only when a target is selected;
 // when no target, both strips are erased to black.
 //
@@ -483,7 +483,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
         textLeft(tft, &Roboto_Black_36,
                  ROVR_TGTD_LBL_X, ROVR_TGTD_Y,
                  ROVR_TGTD_LBL_W, ROVR_TGTD_H,
-                 "Tgt:", TFT_WHITE, TFT_BLACK);
+                 "Dist:", TFT_WHITE, TFT_BLACK);
         _rovrPrevTgtDistAvail = true;
         _rovrPrevTgtDistVal   = -1;   // force value redraw below
     }

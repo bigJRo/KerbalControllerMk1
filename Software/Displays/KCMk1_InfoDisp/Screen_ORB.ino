@@ -1172,7 +1172,7 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("Inc:");
-    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PRD:");
+    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("Period:");
     tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("Arg.Pe:");
     // T+Pe / T+Ap label is drawn on demand from drawScreen_ORB via _lastTLabel cache
 }

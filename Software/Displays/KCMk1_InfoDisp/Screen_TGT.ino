@@ -376,7 +376,7 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     }
 
     printDispChrome(tft, F, TGT_RP_X, rowYFor(2,NR), TGT_RP_W, rowH, "Dist:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(3,NR), TGT_RP_W, rowH, "V.Tgt:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(3,NR), TGT_RP_W, rowH, "V.Close:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Row 4: Brg | Elv split
     {
@@ -497,7 +497,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         if (tooFast)       { fg = TFT_WHITE;  bg = TFT_RED;   }
         else if (!closing) { fg = TFT_YELLOW; bg = TFT_BLACK; }
         else               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        tgtVal(3, 3, "V.Tgt:", fmtMs(vc), fg, bg);
+        tgtVal(3, 3, "V.Close:", fmtMs(vc), fg, bg);
     }
 
     // Row 4 — Brg | Elv  (cache slots 4, 5)

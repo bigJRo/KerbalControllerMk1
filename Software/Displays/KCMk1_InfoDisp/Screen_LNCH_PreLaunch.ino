@@ -55,7 +55,7 @@ static void _lnchPrelaunchDrawChrome(KCM_TFT &tft) {
             tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, nextY - 1, TFT_GREY);
     };
     plSplit(2, "SAS:",      "RCS:");
-    plSplit(3, "Throttle:", "EC%:");
+    plSplit(3, "Thrtl:", "EC%:");
     plSplit(4, "Crew:",     "Comm:");
     printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "\xCE\x94V.Tot:", COL_LABEL, COL_BACK, COL_NO_BDR);
     plSplit(6, "Drogue:",   "Main:");
@@ -168,7 +168,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         String thrStr = formatPerc(thrPct);
         if (thrPct == 0) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else             { fg = TFT_WHITE;       bg = TFT_RED;   }
-        plValL(3, 4, "Throttle:", thrStr, fg, bg);
+        plValL(3, 4, "Thrtl:", thrStr, fg, bg);
 
         // EC%: pre-launch readiness — green when topped off, red when not ready.
         uint8_t ecPct = (uint8_t)constrain(state.electricChargePercent, 0.0f, 100.0f);
