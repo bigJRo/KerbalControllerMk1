@@ -395,7 +395,7 @@ static void _lnchOrUpdateVOrb(KCM_TFT &tft) {
 
     if (iV == _lnchOrPrevVOrb && fg == _lnchOrPrevVOrbFg) return;
 
-    _lnchOrDrawRowValue(tft, 1, _lnchAsFmtMs1(v), fg, TFT_BLACK);
+    _lnchOrDrawRowValue(tft, 1, fmtMs(v), fg, TFT_BLACK);
     _lnchOrPrevVOrb = iV;
     _lnchOrPrevVOrbFg = fg;
 }

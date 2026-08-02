@@ -1451,15 +1451,10 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
 }
 
 
-// Format a velocity in m/s with 1 decimal place and "m/s" unit, no thousands
-// separator. At Roboto_Black_24, worst case "-3234.5 m/s" = 135 px, well under
-// the ~140 px value-region limit for the widest label ("ΔV.Stg:").
-static String _lnchAsFmtMs1(float v) {
-    if (fabsf(v) < 0.05f) v = 0.0f;  // snap sub-rounding noise and -0.0 to zero
-    char buf[16];
-    dtostrf(v, 1, 1, buf);
-    return String(buf) + " m/s";
-}
+// Ascent/Circ velocity readouts use the shared fmtMs() (thousands-separated at
+// >=1000, 1 decimal below) for cross-screen consistency. fmtMs is never wider
+// than the old 1-decimal form here (it drops the decimal and adds a comma at
+// >=1000), so it stays within the tight ~140 px value region for "ΔV.Stg:".
 
 // Reset all ascent-phase change-detection state + PrintState. Called at chrome
 // time to force a full redraw.
@@ -1728,7 +1723,7 @@ static void _lnchAsUpdateVSrf(KCM_TFT &tft) {
 
     if (iV == _lnchAsPrevVSrf && fg == _lnchAsPrevVSrfFg) return;
 
-    _lnchAsDrawRowValue(tft, 3, _lnchAsFmtMs1(v), fg, TFT_BLACK);
+    _lnchAsDrawRowValue(tft, 3, fmtMs(v), fg, TFT_BLACK);
     _lnchAsPrevVSrf = iV;
     _lnchAsPrevVSrfFg = fg;
 }
@@ -1750,7 +1745,7 @@ static void _lnchAsUpdateVVrt(KCM_TFT &tft) {
     } else {
         if (vv < 0) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else        { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        val = _lnchAsFmtMs1(vv);
+        val = fmtMs(vv);
     }
 
     if (iVv == _lnchAsPrevVVrt && fg == _lnchAsPrevVVrtFg && bg == _lnchAsPrevVVrtBg) return;
@@ -1804,7 +1799,7 @@ static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
 
     if (iDv == _lnchAsPrevDVStg && fg == _lnchAsPrevDVStgFg && bg == _lnchAsPrevDVStgBg) return;
 
-    _lnchAsDrawRowValue(tft, 7, _lnchAsFmtMs1(dv), fg, bg);
+    _lnchAsDrawRowValue(tft, 7, fmtMs(dv), fg, bg);
     _lnchAsPrevDVStg = iDv;
     _lnchAsPrevDVStgFg = fg; _lnchAsPrevDVStgBg = bg;
 }

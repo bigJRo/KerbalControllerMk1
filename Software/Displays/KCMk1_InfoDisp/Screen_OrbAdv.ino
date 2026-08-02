@@ -187,11 +187,9 @@ void drawScreen_OrbAdv(KCM_TFT &tft) {
         }
     }
 
-    // Orbital velocity — integer m/s
+    // Orbital velocity
     {
-        char buf[16];
-        snprintf(buf, sizeof(buf), "%d m/s", (int)roundf(state.orbitalVel));
-        String v = String(buf);
+        String v = fmtMs(state.orbitalVel);
         if (v != _advLastValue[ADV_VEL]) {
             printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH,
                        ADV_L_VALUE_W, ADV_ROW_H, "",
