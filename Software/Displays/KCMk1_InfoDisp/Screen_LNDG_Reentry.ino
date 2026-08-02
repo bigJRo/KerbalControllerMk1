@@ -85,9 +85,9 @@ static const float    RE_CT_VMAX  = 1000.0f;          // airspeed axis max (m/s)
 static const uint16_t RE_GA_Y  = TITLE_TOP + 20;                 // 82 — gauge top
 static const uint16_t RE_GA_H  = SCREEN_H - RE_GA_Y - 34;       // leave a label row
 static const uint16_t RE_GA_BOT= RE_GA_Y + RE_GA_H;
-static const uint16_t RE_GF_X  = 470;   static const uint16_t RE_GF_W  = 34;
-static const uint16_t RE_TS_X  = 524;   static const uint16_t RE_TS_W  = 14;  // skin
-static const uint16_t RE_TC_X  = 540;   static const uint16_t RE_TC_W  = 14;  // core
+static const uint16_t RE_GF_X  = 486;   static const uint16_t RE_GF_W  = 34;  // G meter (left gutter carries axis numbers)
+static const uint16_t RE_TS_X  = 540;   static const uint16_t RE_TS_W  = 14;  // skin
+static const uint16_t RE_TC_X  = 556;   static const uint16_t RE_TC_W  = 14;  // core
 
 /***************************************************************************************
    HELPERS
@@ -531,7 +531,7 @@ static void _reDrawGauges(KCM_TFT &tft) {
       float f = (g - gMin) / (gMax - gMin); if (f < 0) f = 0; if (f > 1) f = 1;
       return (int16_t)(RE_GA_BOT - f * RE_GA_H);
     };
-    tft.fillRect(gx, RE_GA_Y, gw + 14, RE_GA_H + 1, TFT_BLACK);   // erase bar + marker gutter
+    tft.fillRect(gx - 20, RE_GA_Y, gw + 34, RE_GA_H + 1, TFT_BLACK); // erase axis numbers + bar + marker gutter
     int16_t yAN = gToY(G_ALARM_NEG), yWN = gToY(G_WARN_NEG), yWP = gToY(G_WARN_POS), yAP = gToY(G_ALARM_POS);
     tft.fillRect(gix, yAN,     giw, RE_GA_BOT - yAN, TFT_DARK_RED);     // g < alarm-neg
     tft.fillRect(gix, yWN,     giw, yAN - yWN,       TFT_DARK_YELLOW);  // warn-neg .. alarm-neg
@@ -540,18 +540,28 @@ static void _reDrawGauges(KCM_TFT &tft) {
     tft.fillRect(gix, RE_GA_Y, giw, yAP - RE_GA_Y,   TFT_DARK_RED);     // g > alarm-pos
     int16_t y0 = gToY(0.0f);
     tft.drawLine(gix, y0, gix + giw - 1, y0, TFT_LIGHT_GREY);          // 0-g reference
-    for (int g = (int)gMin + 1; g < (int)gMax; g++) {                  // integer ticks
-      int16_t ty = gToY((float)g);
-      tft.drawLine(gx + 1, ty, gx + 4, ty, TFT_GREY);
+    // Numbered vertical axis: major tick + right-aligned value every 3 g in the left gutter.
+    tft.setFont(Roboto_Black_12);
+    for (int gv = (int)gMin; gv <= (int)gMax; gv += 3) {
+      int16_t ty = gToY((float)gv);
+      tft.drawLine(gx + 1, ty, gx + 5, ty, TFT_LIGHT_GREY);
+      char nb[6]; snprintf(nb, sizeof(nb), "%d", gv);
+      int16_t nw = getFontStringWidth(&Roboto_Black_12, nb);
+      tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+      tft.setCursor(gx - 4 - nw, ty - 7);
+      tft.print(nb);
+    }
+    for (int gv = (int)gMin + 1; gv < (int)gMax; gv++) {               // minor integer ticks
+      if (((gv - (int)gMin) % 3) == 0) continue;
+      int16_t ty = gToY((float)gv);
+      tft.drawLine(gx + 1, ty, gx + 3, ty, TFT_GREY);
     }
     tft.drawRect(gx, RE_GA_Y, gw, RE_GA_H, TFT_GREY);
     float g = state.gForce;
-    uint16_t mc = (g > G_ALARM_POS || g < G_ALARM_NEG) ? TFT_RED :
-                  (g > G_WARN_POS  || g < G_WARN_NEG)  ? TFT_YELLOW : TFT_NEON_GREEN;
     int16_t ym = constrain(gToY(g), (int16_t)(RE_GA_Y + 7), (int16_t)(RE_GA_BOT - 7));
-    tft.fillRect(gix, ym - 1, giw, 3, TFT_WHITE);
-    tft.fillTriangle(gx + gw + 1, ym, gx + gw + 12, ym - 7, gx + gw + 12, ym + 7, mc);
-    _reLabelUnder(tft, gx + gw / 2, "G", TFT_LIGHT_GREY);
+    tft.fillRect(gix, ym - 1, giw, 3, TFT_WHITE);                      // white index line
+    tft.fillTriangle(gx + gw + 1, ym, gx + gw + 12, ym - 7, gx + gw + 12, ym + 7, TFT_WHITE);
+    _reLabelUnder(tft, gx + gw / 2, "G METER", TFT_LIGHT_GREY);
   }
   // Thermal — skin + core temp, % of limit.
   {
