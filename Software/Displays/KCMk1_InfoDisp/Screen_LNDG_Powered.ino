@@ -944,11 +944,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         // Helper: draw a right-panel value with row-cache
         auto rpVal = [&](uint8_t row, const char *label, const String &val,
                          uint16_t fgc, uint16_t bgc, uint8_t cacheIdx) {
-            RowCache &rc = rowCache[6][cacheIdx];
-            if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-            printValue(tft, RF, RX, rowYFor(row,RNR), RW, rowHFor(RNR),
-                       label, val, fgc, bgc, COL_BACK, printState[6][cacheIdx]);
-            rc.value = val; rc.fg = fgc; rc.bg = bgc;
+            drawPanelValue(tft, 6, cacheIdx, row, RX, RW, label, val, fgc, bgc, RF, RNR, false);
         };
 
         // Row 0: V.Vrt

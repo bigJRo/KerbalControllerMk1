@@ -363,11 +363,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
 
     auto mnvrVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                        uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[MNVR_SC][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-        printValue(tft, MNVR_RP_F, X, rowYFor(row, NR), W, rowHFor(NR),
-                   label, val, fgc, bgc, COL_BACK, printState[MNVR_SC][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+        drawPanelValue(tft, MNVR_SC, slot, row, X, W, label, val, fgc, bgc, MNVR_RP_F, NR, false);
     };
 
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {

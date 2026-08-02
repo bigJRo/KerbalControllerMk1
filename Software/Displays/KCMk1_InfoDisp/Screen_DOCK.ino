@@ -449,11 +449,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
 
     auto dockVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                         uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[5][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-        printValue(tft, RP_F, RP_X, rowYFor(row, RP_NR), RP_W, rowHFor(RP_NR),
-                   label, val, fgc, bgc, COL_BACK, printState[5][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+        drawPanelValue(tft, 5, slot, row, RP_X, RP_W, label, val, fgc, bgc, RP_F, RP_NR, false);
     };
 
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {

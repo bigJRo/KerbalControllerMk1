@@ -444,26 +444,14 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // Cache-checked draw helper — full-width right panel rows
     auto tgtVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                       uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[screen_TGT][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-        printValue(tft, TGT_RP_F,
-                   TGT_RP_X, rowYFor(row, NR), TGT_RP_W, rowHFor(NR),
-                   label, val, fgc, bgc, COL_BACK,
-                   printState[screen_TGT][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+        drawPanelValue(tft, screen_TGT, slot, row, TGT_RP_X, TGT_RP_W, label, val, fgc, bgc, TGT_RP_F, NR, false);
     };
 
     // Cache-checked draw helper — half-width split rows, independent cache slots
     auto tgtValH = [&](uint8_t row, uint8_t slot, uint16_t x,
                        const char *label, const String &val,
                        uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[screen_TGT][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-        printValue(tft, TGT_RP_F,
-                   x, rowYFor(row, NR), HW - ROW_PAD, rowHFor(NR),
-                   label, val, fgc, bgc, COL_BACK,
-                   printState[screen_TGT][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+        drawPanelValue(tft, screen_TGT, slot, row, x, HW - ROW_PAD, label, val, fgc, bgc, TGT_RP_F, NR, false);
     };
 
     // Row 0 — Alt.SL  (cache slot 0)

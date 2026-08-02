@@ -327,6 +327,28 @@ void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
   c.bg = bg;
 }
 
+// Right-panel cache-checked draw with an explicit cache `slot` distinct from the
+// geometry `row` (needed by screens whose half-width cells share a Y row but need two
+// cache slots) and an explicit column x/w. Y/H derive from rowYFor/rowHFor(nRows).
+// greyDashes: render a "---" no-data value in dark grey regardless of `fg`. This backs
+// the per-screen mnvr/tgt/dock/rp/acft/att value helpers (previously duplicated inline).
+void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
+                    uint16_t x, uint16_t w,
+                    const char *label, String value,
+                    uint16_t fg, uint16_t bg,
+                    const tFont *font, uint8_t nRows, bool greyDashes) {
+  uint16_t drawFg = (greyDashes && value == "---") ? TFT_DARK_GREY : fg;
+  RowCache &c = rowCache[screen][slot];
+  if (c.value == value && c.fg == drawFg && c.bg == bg) return;
+  printValue(tft, font,
+             x, rowYFor(row, nRows), w, rowHFor(nRows),
+             label, value, drawFg, bg, COL_BACK,
+             printState[screen][slot]);
+  c.value = value;
+  c.fg = drawFg;
+  c.bg = bg;
+}
+
 /***************************************************************************************
    SCREEN CHROME FUNCTIONS — labels drawn once on transition
 ****************************************************************************************/

@@ -1517,13 +1517,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
 
     auto acftVal = [&](uint8_t row, uint8_t slot, const char *label,
                        const String &val, uint16_t fgc, uint16_t bgc) {
-        uint16_t drawFg = (val == "---") ? TFT_DARK_GREY : fgc;
-        printValue(tft, VF,
-                   ACFT_PANEL_X, rowYFor(row, ACFT_PANEL_NR),
-                   fw, rowHFor(ACFT_PANEL_NR),
-                   label, val, drawFg, bgc, COL_BACK, printState[SC][slot]);
-        RowCache &rc = rowCache[SC][slot];
-        rc.value = val; rc.fg = drawFg; rc.bg = bgc;
+        drawPanelValue(tft, SC, slot, row, ACFT_PANEL_X, fw, label, val, fgc, bgc, VF, ACFT_PANEL_NR, true);
     };
 
     // Row 0 — Alt.Rdr

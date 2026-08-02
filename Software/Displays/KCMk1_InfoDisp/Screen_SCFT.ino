@@ -1388,14 +1388,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 
     auto attPanelVal = [&](uint8_t row, uint8_t slot, const char *label,
                            const String &val, uint16_t fg, uint16_t bg) {
-        // Suppress no-data indicator to dark grey regardless of requested colour
-        uint16_t drawFg = (val == "---") ? TFT_DARK_GREY : fg;
-        printValue(tft, VF,
-                   SCFT_PANEL_X, rowYFor(row, SCFT_PANEL_NR),
-                   fw,          rowHFor(SCFT_PANEL_NR),
-                   label, val, drawFg, bg, COL_BACK, printState[SC][slot]);
-        RowCache &rc = rowCache[SC][slot];
-        rc.value = val; rc.fg = drawFg; rc.bg = bg;
+        drawPanelValue(tft, SC, slot, row, SCFT_PANEL_X, fw, label, val, fg, bg, VF, SCFT_PANEL_NR, true);
     };
 
     // Row 0 — Alt.SL
