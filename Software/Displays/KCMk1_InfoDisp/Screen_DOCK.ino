@@ -135,14 +135,14 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
 
     tft.setFont(Roboto_Black_16);
 
-    // Row 0: VEL — hollow green circle
-    tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
+    // Row 0: VEL — green prograde marker
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
     tft.setTextColor(TFT_SAP_GREEN, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0);
     tft.print("VEL");
 
-    // Row 1: PORT — solid magenta diamond
-    drawDiamondMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
+    // Row 1: PORT — magenta target marker
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 5, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("PORT");
@@ -276,9 +276,8 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
             tft.fillRect(_dockPrevPortX-EH, _dockPrevPortY-EH, EH*2+1, EH*2+1, TFT_BLACK);
             _dockRepairChrome(tft, _dockPrevPortX-EH, _dockPrevPortY-EH, EH);
         }
-        // Solid diamond
-        uint8_t ds = DOT_R_PORT + 3;  // diamond half-size
-        drawDiamondMarker(tft, portSX, portSY, ds, TFT_VIOLET);
+        // KSP target marker: magenta ring + centre dot + spokes
+        drawProgradeMarker(tft, portSX, portSY, DOT_R_PORT, TFT_VIOLET);
         _dockPrevPortX = portSX; _dockPrevPortY = portSY;
     }
 
@@ -291,16 +290,13 @@ static void _dockUpdateDots(KCM_TFT &tft, float noseBrg, float noseElv,
             tft.fillRect(_dockPrevVelX-EH, _dockPrevVelY-EH, EH*2+1, EH*2+1, TFT_BLACK);
             _dockRepairChrome(tft, _dockPrevVelX-EH, _dockPrevVelY-EH, EH);
         }
-        // Hollow circle: just outlines (so port diamond shows through if overlapping)
-        tft.drawCircle(velSX, velSY, DOT_R_VEL,     TFT_NEON_GREEN);
-        tft.drawCircle(velSX, velSY, DOT_R_VEL + 1, TFT_SAP_GREEN);
+        // KSP prograde marker: green ring + centre dot + spokes
+        drawProgradeMarker(tft, velSX, velSY, DOT_R_VEL, TFT_NEON_GREEN);
         _dockPrevVelX = velSX; _dockPrevVelY = velSY;
     }
 
-    // Always redraw vel dot unconditionally so it is always on top of the port diamond.
-    // Cost: 2 drawCircle = negligible. Guarantees vel is never buried under port.
-    tft.drawCircle(velSX, velSY, DOT_R_VEL,     TFT_NEON_GREEN);
-    tft.drawCircle(velSX, velSY, DOT_R_VEL + 1, TFT_SAP_GREEN);
+    // Always redraw the velocity marker on top so it is never buried under the target marker.
+    drawProgradeMarker(tft, velSX, velSY, DOT_R_VEL, TFT_NEON_GREEN);
 
     // Redraw inner crosshair gap lines — vel circle (r=6,7) overlaps the inner gap
     // region when vel dot is near centre, erasing those segments.

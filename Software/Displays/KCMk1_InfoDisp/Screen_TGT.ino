@@ -166,14 +166,14 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
 
     tft.setFont(Roboto_Black_16);
 
-    // VEL — hollow green circle
-    tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
+    // VEL — green prograde marker
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
     tft.setTextColor(TFT_SAP_GREEN, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0);
     tft.print("VEL");
 
-    // TGT — solid violet diamond (same symbol as DOCK PORT dot)
-    drawDiamondMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
+    // TGT — magenta target marker (same symbol as DOCK PORT dot)
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 5, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("TGT");
@@ -298,8 +298,7 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
             tft.fillRect(_tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH*2+1, EH*2+1, TFT_BLACK);
             _tgtRepairChrome(tft, _tgtPrevTgtX - EH, _tgtPrevTgtY - EH, EH);
         }
-        uint8_t ds = TGT_DOT_R_TGT + 3;
-        drawDiamondMarker(tft, tSX, tSY, ds, TFT_VIOLET);
+        drawProgradeMarker(tft, tSX, tSY, TGT_DOT_R_TGT, TFT_VIOLET);
         _tgtPrevTgtX = tSX; _tgtPrevTgtY = tSY;
     }
 
@@ -312,14 +311,12 @@ static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv,
             tft.fillRect(_tgtPrevVelX - EH, _tgtPrevVelY - EH, EH*2+1, EH*2+1, TFT_BLACK);
             _tgtRepairChrome(tft, _tgtPrevVelX - EH, _tgtPrevVelY - EH, EH);
         }
-        tft.drawCircle(vSX, vSY, TGT_DOT_R_VEL,     TFT_NEON_GREEN);
-        tft.drawCircle(vSX, vSY, TGT_DOT_R_VEL + 1, TFT_SAP_GREEN);
+        drawProgradeMarker(tft, vSX, vSY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
         _tgtPrevVelX = vSX; _tgtPrevVelY = vSY;
     }
 
-    // Always redraw VEL dot on top — ensures it is never buried under TGT diamond
-    tft.drawCircle(vSX, vSY, TGT_DOT_R_VEL,     TFT_NEON_GREEN);
-    tft.drawCircle(vSX, vSY, TGT_DOT_R_VEL + 1, TFT_SAP_GREEN);
+    // Always redraw the velocity marker on top — never buried under the target marker
+    drawProgradeMarker(tft, vSX, vSY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
 
     // Redraw crosshair inner segments — VEL circle can clip them near centre
     {

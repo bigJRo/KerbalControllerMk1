@@ -130,8 +130,8 @@ static void _mnvrDrawReticleChrome(KCM_TFT &tft) {
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;
     tft.setFont(Roboto_Black_16);
 
-    // MANEUVER — solid blue diamond (horizontal split, no fill gaps)
-    drawDiamondMarker(tft, LEG_X + 6, LEG_Y0 + 6, 6, TFT_BLUE);
+    // MANEUVER — blue maneuver marker
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_BLUE);
     tft.setTextColor(TFT_SKY, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0);
     tft.print("MANEUVER");
@@ -254,8 +254,8 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
             tft.fillRect(_mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH*2+1, EH*2+1, TFT_BLACK);
             _mnvrRepairChrome(tft, _mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH);
         }
-        // Diamond — horizontal split: shared edge is scanline-aligned, no raster gaps
-        drawDiamondMarker(tft, sx, sy, DS, TFT_BLUE);
+        // KSP maneuver marker: blue ring + centre dot + spokes
+        drawProgradeMarker(tft, sx, sy, DS, TFT_BLUE);
         // Alignment box — neon green when within 5°
         if (aligned) {
             tft.drawRect(sx - BX,     sy - BX,     BX*2+1, BX*2+1, TFT_NEON_GREEN);

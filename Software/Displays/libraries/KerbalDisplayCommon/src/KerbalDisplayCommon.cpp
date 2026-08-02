@@ -551,6 +551,22 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
   tft.fillTriangle(cx - half, cy, cx + half, cy, cx, cy + half, color);  // bottom half
 }
 
+// Navball-style prograde/target/maneuver marker: a 2 px ring with a filled centre
+// dot and three short spokes radiating out at 12 / 4 / 8 o'clock — the shape KSP
+// uses for the velocity (green), target (magenta) and maneuver (blue) markers.
+// `r` is the ring radius; the spokes extend to r + 5.
+void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
+  tft.drawCircle(cx, cy, r,     color);
+  tft.drawCircle(cx, cy, r - 1, color);
+  tft.fillCircle(cx, cy, 2, color);                    // centre dot
+  static const int16_t spoke[3] = { -90, 30, 150 };    // screen degrees: up, lower-right, lower-left
+  for (uint8_t i = 0; i < 3; i++) {
+    float a = (float)spoke[i] * 0.01745329252f;        // deg -> rad
+    tft.drawLine(cx + (int16_t)(r       * cosf(a)), cy + (int16_t)(r       * sinf(a)),
+                 cx + (int16_t)((r + 5) * cosf(a)), cy + (int16_t)((r + 5) * sinf(a)), color);
+  }
+}
+
 void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
                      int16_t gap, int16_t tickLen) {
   int16_t r4 = r / 4, r2 = r / 2, r34 = (r * 3) / 4, arm = r - 1;

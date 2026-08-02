@@ -199,8 +199,14 @@ void eraseCenteredValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
 
 // Solid diamond marker, centred at (cx,cy), `half` px from centre to each tip.
 // Drawn as two triangles that share the horizontal waist scanline, so the seam has
-// no raster gaps. Used for the maneuver/target/port markers on the reticle screens.
+// no raster gaps. General utility — the reticle screens now use drawProgradeMarker()
+// for the KSP-style velocity/target/maneuver markers.
 void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint16_t color);
+
+// Navball-style prograde/target/maneuver marker: 2 px ring + centre dot + three
+// short spokes at 12/4/8 o'clock. Colour selects the meaning (green velocity,
+// magenta target, blue maneuver). `r` is the ring radius; spokes extend to r + 5.
+void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
 // Shared attitude-reticle chrome for the MNVR / DOCK / TGT screens. All three draw
 // an identical black disc with four concentric rings (r/4, r/2, 3r/4, r coloured
