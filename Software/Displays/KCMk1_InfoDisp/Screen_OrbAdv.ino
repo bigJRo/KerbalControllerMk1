@@ -81,16 +81,12 @@ enum {
     ADV_SLOT_COUNT = 14
 };
 
-// ── Per-frame state ──────────────────────────────────────────────────────────────────
-static PrintState _advPS[ADV_SLOT_COUNT];
-static String     _advLastValue[ADV_SLOT_COUNT];
-
 // ── Public entry points ──────────────────────────────────────────────────────────────
 void chromeScreen_OrbAdv(KCM_TFT &tft) {
-    // Invalidate caches so every value prints on first draw.
+    // Invalidate the shared row cache so every value prints on first draw.
     for (uint8_t i = 0; i < ADV_SLOT_COUNT; i++) {
-        _advPS[i] = PrintState{};
-        _advLastValue[i] = String("\x01");
+        printState[screen_ORBADV][i] = PrintState{};
+        rowCache[screen_ORBADV][i].value = String("\x01");
     }
 
     // Panel divider — matches basic ORB for visual continuity (x=470, full height)
@@ -124,175 +120,50 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
 void drawScreen_OrbAdv(KCM_TFT &tft) {
     const tFont *F = &Roboto_Black_36;
 
+    // Cache-checked value draw backed by the shared row cache (rowCache[screen_ORBADV]).
+    // Value-only compare — colour is always dark green on black. rowN selects the row Y.
+    auto advPut = [&](uint8_t slot, uint16_t x, uint16_t w, uint8_t rowN, const String &v) {
+        RowCache &rc = rowCache[screen_ORBADV][slot];
+        if (rc.value == v) return;
+        printValue(tft, F, x, ADV_ROW_Y0 + rowN * ADV_ROW_PITCH, w, ADV_ROW_H, "",
+                   v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, printState[screen_ORBADV][slot]);
+        rc.value = v;
+    };
+
     // Escape detection — matches basic ORB logic. An escape (open) trajectory
     // has no Ap and no period.
     bool isEscape = (state.eccentricity >= 1.0f) || (state.apoapsis < 0.0f);
+    char buf[12];
 
     // ── Left column ──────────────────────────────────────────────────────────────────
+    advPut(ADV_SMA, ADV_L_VALUE_X, ADV_L_VALUE_W, 0, formatAlt(state.semiMajorAxis));
 
-    // SMA
-    {
-        String v = formatAlt(state.semiMajorAxis);
-        if (v != _advLastValue[ADV_SMA]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_SMA]);
-            _advLastValue[ADV_SMA] = v;
-        }
-    }
+    dtostrf(state.eccentricity, 1, 4, buf);                                     // 4 dp, precise
+    advPut(ADV_ECC, ADV_L_VALUE_X, ADV_L_VALUE_W, 1, String(buf));
 
-    // Eccentricity — 4 decimals, small and precise
-    {
-        char buf[12];
-        dtostrf(state.eccentricity, 1, 4, buf);
-        String v = String(buf);
-        if (v != _advLastValue[ADV_ECC]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_ECC]);
-            _advLastValue[ADV_ECC] = v;
-        }
-    }
-
-    // Periapsis altitude — "---" if below surface (state.periapsis < 0)
-    {
-        String v = (state.periapsis >= 0.0f) ? formatAlt(state.periapsis) : String("---");
-        if (v != _advLastValue[ADV_PE_L]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_PE_L]);
-            _advLastValue[ADV_PE_L] = v;
-        }
-    }
-
-    // Apoapsis altitude — infinity glyph (\x80) on escape
-    {
-        String v = isEscape ? String("\x80") : formatAlt(state.apoapsis);
-        if (v != _advLastValue[ADV_AP_L]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_AP_L]);
-            _advLastValue[ADV_AP_L] = v;
-        }
-    }
-
-    // Current altitude (sea level)
-    {
-        String v = formatAlt(state.altitude);
-        if (v != _advLastValue[ADV_ALT]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_ALT]);
-            _advLastValue[ADV_ALT] = v;
-        }
-    }
-
-    // Orbital velocity
-    {
-        String v = fmtMs(state.orbitalVel);
-        if (v != _advLastValue[ADV_VEL]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_VEL]);
-            _advLastValue[ADV_VEL] = v;
-        }
-    }
-
-    // Orbital period — formatTime, infinity on escape (no closed orbit)
-    {
-        String v = isEscape ? String("\x80") : formatTimeCompact(state.orbitalPeriod);
-        if (v != _advLastValue[ADV_PRD]) {
-            printValue(tft, F, ADV_L_VALUE_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH,
-                       ADV_L_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_PRD]);
-            _advLastValue[ADV_PRD] = v;
-        }
-    }
+    advPut(ADV_PE_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 2,                            // "---" below surface
+           (state.periapsis >= 0.0f) ? formatAlt(state.periapsis) : String("---"));
+    advPut(ADV_AP_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 3,                            // infinity on escape
+           isEscape ? String("\x80") : formatAlt(state.apoapsis));
+    advPut(ADV_ALT, ADV_L_VALUE_X, ADV_L_VALUE_W, 4, formatAlt(state.altitude));
+    advPut(ADV_VEL, ADV_L_VALUE_X, ADV_L_VALUE_W, 5, fmtMs(state.orbitalVel));
+    advPut(ADV_PRD, ADV_L_VALUE_X, ADV_L_VALUE_W, 6,                            // infinity on escape
+           isEscape ? String("\x80") : formatTimeCompact(state.orbitalPeriod));
 
     // ── Right column ─────────────────────────────────────────────────────────────────
+    dtostrf(state.inclination, 1, 1, buf); advPut(ADV_INC,   ADV_R_VALUE_X, ADV_R_VALUE_W, 0, String(buf) + String("\xb0"));
+    dtostrf(state.LAN,         1, 1, buf); advPut(ADV_LAN,   ADV_R_VALUE_X, ADV_R_VALUE_W, 1, String(buf) + String("\xb0"));
+    dtostrf(state.argOfPe,     1, 1, buf); advPut(ADV_ARGPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 2, String(buf) + String("\xb0"));
+    dtostrf(state.trueAnomaly, 1, 1, buf); advPut(ADV_TA,    ADV_R_VALUE_X, ADV_R_VALUE_W, 3, String(buf) + String("\xb0"));
+    dtostrf(state.meanAnomaly, 1, 1, buf); advPut(ADV_MA,    ADV_R_VALUE_X, ADV_R_VALUE_W, 4, String(buf) + String("\xb0"));
 
-    // Inclination — 1 decimal, degree suffix
+    advPut(ADV_TPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 5,                            // "---" if <= 0
+           (state.timeToPe > 0.0f) ? formatTimeCompact(state.timeToPe) : String("---"));
     {
-        char buf[12]; dtostrf(state.inclination, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _advLastValue[ADV_INC]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_INC]);
-            _advLastValue[ADV_INC] = v;
-        }
-    }
-
-    // LAN — Longitude of Ascending Node
-    {
-        char buf[12]; dtostrf(state.LAN, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _advLastValue[ADV_LAN]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_LAN]);
-            _advLastValue[ADV_LAN] = v;
-        }
-    }
-
-    // ArgPe — Argument of Periapsis
-    {
-        char buf[12]; dtostrf(state.argOfPe, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _advLastValue[ADV_ARGPE]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_ARGPE]);
-            _advLastValue[ADV_ARGPE] = v;
-        }
-    }
-
-    // TA — True Anomaly
-    {
-        char buf[12]; dtostrf(state.trueAnomaly, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _advLastValue[ADV_TA]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_TA]);
-            _advLastValue[ADV_TA] = v;
-        }
-    }
-
-    // MA — Mean Anomaly
-    {
-        char buf[12]; dtostrf(state.meanAnomaly, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _advLastValue[ADV_MA]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_MA]);
-            _advLastValue[ADV_MA] = v;
-        }
-    }
-
-    // T+Pe — time until next periapsis (show "---" if Simpit value is ≤ 0)
-    {
-        String v = (state.timeToPe > 0.0f) ? formatTimeCompact(state.timeToPe) : String("---");
-        if (v != _advLastValue[ADV_TPE]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_TPE]);
-            _advLastValue[ADV_TPE] = v;
-        }
-    }
-
-    // T+Ap — time until next apoapsis. Infinity on escape (no Ap), "---" if ≤ 0.
-    {
-        String v;
+        String v;                                                               // infinity on escape, "---" if <= 0
         if (isEscape)                   v = String("\x80");
         else if (state.timeToAp > 0.0f) v = formatTimeCompact(state.timeToAp);
         else                            v = String("---");
-        if (v != _advLastValue[ADV_TAP]) {
-            printValue(tft, F, ADV_R_VALUE_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH,
-                       ADV_R_VALUE_W, ADV_ROW_H, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _advPS[ADV_TAP]);
-            _advLastValue[ADV_TAP] = v;
-        }
+        advPut(ADV_TAP, ADV_R_VALUE_X, ADV_R_VALUE_W, 6, v);
     }
 }
