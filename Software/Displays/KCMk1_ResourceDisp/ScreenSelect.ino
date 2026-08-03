@@ -123,6 +123,7 @@ static bool isSelected(ResourceType t) {
    HELPER -- add a resource to the next empty slot. Returns true if added.
 ****************************************************************************************/
 static bool addResource(ResourceType t) {
+  if (t == RES_EVA_PROP && !evaActive) return false;   // EVA fuel only exists on EVA
   if (slotCount >= MAX_SLOTS) return false;
   slots[slotCount].type         = t;
   // In live mode start at zero — Simpit will populate on next message.
@@ -187,8 +188,26 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
   uint16_t x   = SEL_START_X + col * (SEL_BTN_W + SEL_PAD);
   uint16_t y   = SEL_START_Y + row * (SEL_BTN_H + SEL_PAD);
 
+  // EVA Propellant is shown only while a Kerbal is on EVA; otherwise the cell is
+  // blank (hidden and not selectable).
+  if (t == RES_EVA_PROP && !evaActive) {
+    tft.fillRect(x, y, SEL_BTN_W, SEL_BTN_H, TFT_BLACK);
+    return;
+  }
+
   ButtonLabel btn;
   btn.text               = resFullName(t);
+
+  // On EVA the selection is locked to the EVA bar set — every other resource is
+  // drawn dimmed and inert (tap handler ignores it).
+  if (evaActive && !isEvaResource(t)) {
+    btn.fontColorOff = btn.fontColorOn = TFT_DARK_GREY;
+    btn.backgroundColorOff = btn.backgroundColorOn = TFT_OFF_BLACK;
+    btn.borderColorOff = btn.borderColorOn = TFT_DARK_GREY;
+    drawButton(tft, x, y, SEL_BTN_W, SEL_BTN_H, btn, &Roboto_Black_20, false);
+    return;
+  }
+
   btn.fontColorOff       = TFT_DARK_GREY;
   btn.fontColorOn        = TFT_BLACK;
   btn.backgroundColorOff = TFT_OFF_BLACK;
@@ -332,6 +351,10 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
     return false;
   }
 
+  // On EVA the selection is locked to the fixed EVA bar set — only BACK responds.
+  // CLEAR, presets and grid taps are all ignored so nothing else can be added.
+  if (evaActive) return false;
+
   // CLEAR button
   if (x >= CLEAR_X && x < CLEAR_X + CLEAR_W && y >= CLEAR_Y && y < CLEAR_Y + CLEAR_H) {
     for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
@@ -364,6 +387,7 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
       if (x >= bx && x < bx + SEL_BTN_W && y >= by && y < by + SEL_BTN_H) {
         ResourceType t = resTypeByIndex(i);
         if (t == RES_NONE) return false;
+        if (t == RES_EVA_PROP) return false;   // EVA Propellant only exists on EVA (grid locked then)
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {

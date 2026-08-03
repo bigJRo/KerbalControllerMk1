@@ -99,6 +99,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case CUSTOM_RESOURCE_2_MESSAGE: msgName = "CUSTOM_2";   break;
       case SCENE_CHANGE_MESSAGE:    msgName = "SCENE_CHANGE"; break;
       case VESSEL_CHANGE_MESSAGE:   msgName = "VESSEL_CHANGE";break;
+      case FLIGHT_STATUS_MESSAGE:   msgName = "FLIGHT_STATUS";break;
       default:                      msgName = "UNKNOWN";      break;
     }
     Serial.print(F("ResourceDisp: Simpit msg="));
@@ -123,7 +124,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         currentVesselName = newName;
         // Attempt to recall this vessel's last slot configuration.
         // If not in cache, keep the current slot layout.
-        if (recallVesselSlots(currentVesselName)) {
+        // On EVA the bar set is fixed (EC/EVA/O2/Food/Water) — skip per-vessel
+        // recall so the EVA Kerbal's name can't override it.
+        if (evaActive) {
+          if (debugMode) Serial.println(F("ResourceDisp: EVA active — keeping EVA bar set"));
+        } else if (recallVesselSlots(currentVesselName)) {
           if (debugMode) Serial.println(F("ResourceDisp: vessel slot config recalled"));
           simpit.requestMessageOnChannel(0);
         } else {
@@ -352,6 +357,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     // Scene and vessel events
     // -------------------------------------------------------------------------
 
+    case FLIGHT_STATUS_MESSAGE:
+      // EVA detection: the FLIGHT_IS_EVA bit of the flags byte (msg[0]) is set
+      // while a Kerbal is on EVA. Latch it into evaFlag; loop() reconciles it
+      // into evaActive and swaps between the vessel bars and the EVA bar set.
+      if (msgSize >= 1) evaFlag = (msg[0] & FLIGHT_IS_EVA) != 0;
+      break;
+
     case SCENE_CHANGE_MESSAGE:
       flightScene = (msg[0] == 0);  // 0 = entering flight, 1 = leaving flight
       if (flightScene) {
@@ -450,5 +462,6 @@ void initSimpit() {
   simpit.registerChannel(VESSEL_NAME_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);
+  simpit.registerChannel(FLIGHT_STATUS_MESSAGE);   // EVA detection (FLIGHT_IS_EVA bit)
 }
 

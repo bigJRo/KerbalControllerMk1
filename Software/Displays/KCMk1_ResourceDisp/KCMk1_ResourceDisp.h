@@ -135,12 +135,15 @@ extern bool         flightScene;    // true when KSP is in a flight scene
 extern bool         simpitConnected; // true once Simpit handshake succeeds
 extern bool         idleState;      // true = show standby when not in flight (set by I2C master)
 extern bool         needsMainRedraw; // set by SimpitHandler to request main screen chrome redraw
+extern bool         evaActive;      // true = a Kerbal is on EVA (mode applied); drives the EVA bar set
+extern bool         evaFlag;        // raw latched EVA flag from the last FLIGHT_STATUS_MESSAGE
 
 // Resource type metadata (from Resources.ino)
 const char*    resLabel(ResourceType t);
 const char*    resFullName(ResourceType t);
 uint16_t       resColor(ResourceType t);
 ResourceType   resTypeByIndex(uint8_t index);  // 0-based index into selectable types
+bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set (EC/EVA/O2/Food/Water)
 
 // Screen management
 // Always use switchToScreen() to change screens — never set activeScreen directly.
@@ -153,6 +156,7 @@ void switchToScreen(ScreenType s);
 void processTouchEvents();
 void initDemoMode();
 void initDefaultSlots();
+void loadEvaSlots();     // load the fixed EVA bar set: EC, EVA Propellant, O2, Food, Water
 void initAllSlots();
 void stepDemoState();
 void initSimpit();

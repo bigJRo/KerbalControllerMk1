@@ -42,6 +42,8 @@ bool stageMode        = false;
 bool flightScene      = false;
 bool simpitConnected  = false;
 bool idleState        = false;
+bool evaActive        = false;   // true once the EVA bar set is applied (see loop() reconcile)
+bool evaFlag          = false;   // raw EVA flag from FLIGHT_STATUS_MESSAGE (reconciled in loop())
 
 
 /***************************************************************************************

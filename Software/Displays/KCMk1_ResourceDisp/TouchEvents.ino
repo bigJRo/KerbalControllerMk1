@@ -124,9 +124,15 @@ void processTouchEvents() {
             : F("ResourceDisp: stageMode TOTAL"));
           break;
         case 1:
-          if (debugMode) Serial.println(F("ResourceDisp: reset slots"));
-          initDefaultSlots();
-          switchToScreen(screen_Main);
+          // DFLT resets to the standard vessel bar set. Disabled on EVA — the EVA
+          // bar set is fixed while a Kerbal is on EVA.
+          if (evaActive) {
+            if (debugMode) Serial.println(F("ResourceDisp: DFLT ignored (EVA active)"));
+          } else {
+            if (debugMode) Serial.println(F("ResourceDisp: reset slots"));
+            initDefaultSlots();
+            switchToScreen(screen_Main);
+          }
           clearTouchISR();
           break;
         case 2:

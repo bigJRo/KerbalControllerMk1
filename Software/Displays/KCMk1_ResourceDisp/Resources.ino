@@ -182,6 +182,32 @@ void initDefaultSlots() {
   if (!demoMode) simpit.requestMessageOnChannel(0);
 }
 
+// True for the fixed EVA bar set. When a Kerbal is on EVA the display shows only
+// these five, and nothing else is selectable (see loop() reconcile + ScreenSelect).
+bool isEvaResource(ResourceType t) {
+  return t == RES_ELEC_CHARGE || t == RES_EVA_PROP || t == RES_LS_OXYGEN ||
+         t == RES_LS_FOOD      || t == RES_LS_WATER;
+}
+
+// Load the fixed EVA bar set: Electric Charge, EVA Propellant, Oxygen, Food, Water.
+// Called on the transition into EVA mode. Values zero in live mode (Simpit
+// repopulates on the refresh request); 1.0 in demo so bars are immediately visible.
+void loadEvaSlots() {
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
+  static const ResourceType EVA_TYPES[5] = {
+    RES_ELEC_CHARGE, RES_EVA_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+  };
+  slotCount = 5;
+  for (uint8_t i = 0; i < 5; i++) {
+    slots[i].type         = EVA_TYPES[i];
+    slots[i].current      = demoMode ? 1.0f : 0.0f;
+    slots[i].maxVal       = demoMode ? 1.0f : 0.0f;
+    slots[i].stageCurrent = demoMode ? 0.4f : 0.0f;
+    slots[i].stageMax     = demoMode ? 0.4f : 0.0f;
+  }
+  if (!demoMode) simpit.requestMessageOnChannel(0);
+}
+
 // DEMO ONLY — loads all available resource types into slots for layout testing.
 // Fills up to MAX_SLOTS (16) slots in display order with sine-wave initial values.
 // Called by initDemoMode() in Demo.ino. Not used in live Simpit mode.

@@ -106,6 +106,11 @@ void setup() {
 }
 
 
+// Backup of the vessel bar set captured while NOT on EVA, so the vessel layout can
+// be restored when EVA ends. Refreshed every non-EVA frame in loop() below.
+static ResourceSlot _evaBackup[MAX_SLOTS];
+static uint8_t      _evaBackupCount = 0;
+
 void loop() {
 
   // --- Touch input ---
@@ -113,6 +118,14 @@ void loop() {
 
   // --- I2C slave state update ---
   updateI2CState();
+
+  // Snapshot the current (non-EVA) slot config each frame so it can be restored
+  // when EVA ends. Taken before simpit.update() so it reflects the settled vessel
+  // layout rather than a transient mid-transition state.
+  if (!evaActive) {
+    memcpy(_evaBackup, slots, sizeof(_evaBackup));
+    _evaBackupCount = slotCount;
+  }
 
   // --- Screen chrome on transition ---
   // Matches Annunciator pattern: all transition logic lives here, not inside updateScreen*.
@@ -156,6 +169,27 @@ void loop() {
       prevScreen      = screen_Main;
       needsMainRedraw = false;
     }
+  }
+
+  // --- EVA mode reconcile (after all messages for this frame are processed) ---
+  // evaFlag is latched by FLIGHT_STATUS_MESSAGE. On a change, swap the bar set:
+  // entering EVA loads the fixed EC/EVA/O2/Food/Water set; leaving restores the
+  // vessel layout snapshotted in _evaBackup. switchToScreen(Main) shows the result
+  // and forces a clean chrome redraw on the next pass.
+  if (evaFlag != evaActive) {
+    evaActive = evaFlag;
+    if (evaActive) {
+      loadEvaSlots();
+    } else {
+      memcpy(slots, _evaBackup, sizeof(_evaBackup));
+      slotCount = _evaBackupCount;
+      if (!demoMode) simpit.requestMessageOnChannel(0);
+    }
+    if (debugMode) {
+      Serial.print(F("ResourceDisp: EVA mode -> "));
+      Serial.println(evaActive ? F("ON (EVA bar set)") : F("OFF (vessel bars)"));
+    }
+    switchToScreen(screen_Main);
   }
 
   // --- Update display ---
