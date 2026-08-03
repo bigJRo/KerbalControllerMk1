@@ -105,7 +105,7 @@ ATtiny816-based I2C target modules provide button input, display output, joystic
 | B2 | Right Input Panel | Vehicle controls, stability controls, staging button, mode select switch, auxiliary controls, time controls, rotation input | B2 Panel Hub |
 | C (planned) | Extension unit | Additional displays and button panels — future expansion | TBD |
 
-For the full per-module breakdown of I2C addresses, button assignments, switch wiring, and firmware implementation detail, see `docs/developer/Module_UI_Reference.md`.
+For the full per-module breakdown of I2C addresses, button assignments, switch wiring, and firmware implementation detail, see `Documents/Developer/Module_UI_Reference.md`.
 
 ---
 

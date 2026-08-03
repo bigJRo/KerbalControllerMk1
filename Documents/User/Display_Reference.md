@@ -1,7 +1,7 @@
 # KCMk1 Display Reference
 
 **Document type:** User  
-**Location:** `docs/user/Display_Reference.md`  
+**Location:** `Documents/User/Display_Reference.md`  
 **Version:** 0.1 (stub)  
 **Status:** Placeholder — prior version (Information_Display.docx) is outdated; to be rewritten when display firmware is finalized
 
@@ -31,9 +31,10 @@
 11. Re-entry screen (ENTR)
 
 ### Resource Display (Panel B1)
-1. Main resource screen
-2. Resource select screen
-3. Resource detail screen
+1. Standby screen (idle splash)
+2. Main resource screen (bar graph; EVA mode when EVA is active)
+3. Resource select screen
+4. Resource detail screen
 
 ---
 
