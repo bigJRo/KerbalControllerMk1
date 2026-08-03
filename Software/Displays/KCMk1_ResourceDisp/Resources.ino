@@ -131,8 +131,8 @@ ResourceType resTypeByIndex(uint8_t index) {
   static const ResourceType ORDER[] = {
     // Power (2)
     RES_ELEC_CHARGE, RES_STORED_CHARGE,
-    // Propellants (6) — KSP1 native
-    RES_LIQUID_FUEL, RES_LIQUID_OX, RES_SOLID_FUEL, RES_MONO_PROP, RES_EVA_PROP, RES_XENON,
+    // Propellants (5) — KSP1 native
+    RES_LIQUID_FUEL, RES_LIQUID_OX, RES_SOLID_FUEL, RES_MONO_PROP, RES_XENON,
     // Propellants (4) — CRP mod, KSP1
     RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM, RES_INTAKE_AIR,
     // Nuclear (2) — CRP mod, KSP1
@@ -143,6 +143,9 @@ ResourceType resTypeByIndex(uint8_t index) {
     RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD, RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE,
     // Agriculture (1) — CRP mod, KSP1
     RES_FERTILIZER,
+    // EVA (1) — only selectable while a Kerbal is on EVA; kept last so its cell is
+    // blank at the end of the grid (no mid-grid hole) when hidden.
+    RES_EVA_PROP,
   };
   static const uint8_t ORDER_LEN = sizeof(ORDER) / sizeof(ORDER[0]);
   if (index >= ORDER_LEN) return RES_NONE;
