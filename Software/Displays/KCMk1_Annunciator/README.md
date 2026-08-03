@@ -66,7 +66,7 @@ The panel provides three screens — Main, SOI, and Standby — navigated by tou
 | Library | Version | Notes |
 |---------|---------|-------|
 | KerbalDisplayCommon | 3.0.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (RA8876 / Teensy 4.1) requires ≥ 3.0.0 |
-| KerbalDisplayAudio | 1.0.1 | Non-blocking audio state machine |
+| KerbalDisplayAudio | 1.1.0 | Non-blocking audio state machine |
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
 | ILI9341_fonts (ILI9341_t3) | latest | Anti-aliased fonts (PaulStoffregen) |
@@ -93,7 +93,7 @@ All tunables are in `AAA_Config.ino`. The three operating mode flags can also be
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `demoMode` | `true` | Bench testing without KSP. Simpit disabled; all state driven internally. Can also be toggled at runtime by the I2C master. |
+| `demoMode` | `false` | `false` = live Simpit (production). `true` = bench testing without KSP (Simpit disabled; state driven internally). Can also be toggled at runtime by the I2C master. |
 | `audioEnabled` | `false` | Enables all audio feedback (alarms, chirps, tones). Can also be set via I2C. |
 | `debugMode` | `false` | Enables Serial debug output (touch coords, screen transitions, C&W changes, I2C traffic). |
 | `standaloneMode` | `false` | Bypasses the I2C master handshake on boot. Use for bench testing without the master controller connected. |
@@ -117,9 +117,9 @@ The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConf
 | `CW_LOW_DV_MS` | `150.0` m/s | `DV_STG_ALARM_MS` |
 | `CW_LOW_BURN_S` | `60.0` s | `LNCH_BURNTIME_ALARM_S` |
 
-`CW_EC_LOW_FRAC` (`0.10`) is panel-specific and is not shared.
+`CW_EC_LOW_FRAC` (`0.05`) is panel-specific and is not shared.
 
-**Master alarm mask** — the set of C&W bits that illuminate MASTER ALARM and drive audio. Defined in `AAA_Config.ino` using the `CW_*` constants from `KCMk1_Annunciator.h`. Current mask: `GROUND_PROX`, `HIGH_G`, `BUS_VOLTAGE`, `HIGH_TEMP`, `LOW_DV`.
+**Master alarm mask** — the set of C&W bits that illuminate MASTER ALARM and drive audio. Defined in `AAA_Config.ino` using the `CW_*` constants from `KCMk1_Annunciator.h`. Current mask (9 bits): `GROUND_PROX`, `HIGH_G`, `BUS_VOLTAGE`, `HIGH_TEMP`, `LOW_DV`, `ABORT`, `PE_LOW`, `PROP_LOW`, `LIFE_SUPPORT`.
 
 ---
 
@@ -185,8 +185,8 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 **Standby** — full-screen splash BMP (`/StandbySplash_1024x600.bmp` from SD). No dynamic content. Displayed when `flightScene` is false and `idle_state` is asserted by the master, or on initial boot before a flight scene is active. A 3-finger touch advances to Main when `flightScene` is true.
 
 **Main** — primary operational view. Contains:
-- MASTER ALARM button (top-left, 240×160 px) — illuminates red when any WARNING-level C&W bit is set. Touch to silence audio.
-- Caution & Warning panel (25 annunciator buttons, 5 rows × 5 columns, 98×73 px each)
+- MASTER ALARM button (top-left, 274×176 px) — illuminates red when any WARNING-level C&W bit is set. Touch to silence audio.
+- Caution & Warning panel (25 annunciator buttons, 5 rows × 5 columns, 120×80 px each)
 - DOCK vertical text indicator (above situation column)
 - Vessel situation column (8 indicators: CNTCT, PRE-LNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, SPLASH, LANDED)
 - Panel condition strip (10 buttons, 5×2): DEMO/CTRL/DEBUG, WARP, AUDIO, THRTL ENA, TRIM SET, SPCFT/PLN/RVR, SWITCH ERR, SIMPIT LOST, THRTL PREC, PREC INPUT
@@ -194,7 +194,7 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 - SOI label and body thumbnail (bottom-left, links to SOI screen on touch)
 - Data readouts: CtrlGrp, TW index
 
-**SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (28pt, 36px each): Min Safe Alt, SOI Radius, Reentry Alt (atmo bodies), High Atmo Alt (atmo bodies), Low Space Alt (atmo bodies), High Space Alt, Condition, Surface Gravity. Touch anywhere to return to Main.
+**SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (40pt, 52px each): Min Safe Alt, SOI Radius, Reentry Alt (atmo bodies), High Atmo Alt (atmo bodies), Low Space Alt (atmo bodies), High Space Alt, Condition, Surface Gravity. Touch anywhere to return to Main.
 
 **Standby** — full-screen splash BMP when system is idle.
 

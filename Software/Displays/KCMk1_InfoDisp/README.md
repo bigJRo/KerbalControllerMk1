@@ -99,7 +99,7 @@ All tunables are in `AAA_Config.ino`. Cross-panel aligned thresholds are sourced
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `debugMode` | `false` | Serial debug output. Set `false` for production. |
-| `demoMode` | `true` | `true` = sine-wave demo, no KSP. `false` = live Simpit. |
+| `demoMode` | `false` | `true` = sine-wave demo, no KSP. `false` = live Simpit. |
 | `DISPLAY_ROTATION` | `0` | `0` = normal, `2` = 180° inverted. |
 
 ### Parachute CAG Assignments
@@ -133,11 +133,11 @@ For the full threshold listing (aircraft, landing, docking, orbit, spacecraft th
 
 ## I2C Protocol
 
-The InfoDisp operates as an I2C slave at address **0x12** (`KCM_I2C_ADDR_INFODISP`) on the Wire bus.
+The InfoDisp operates as an I2C slave at address **0x12** (`KCM_I2C_ADDR_INFODISP`) on the Wire2 bus (`KCM_I2C_BUS`, pins 24/25).
 
 ### Outbound Packet — InfoDisp → Master
 
-Size: **10 bytes** (`I2C_PACKET_SIZE`). Sent in response to `Wire.requestFrom(0x12, 10)` after INT asserts. Bytes 0–2 are the status header; bytes 3–9 are the Ascent Autopilot command frame (see `Documents/Developer/Ascent_Autopilot_Interface.md`).
+Size: **10 bytes** (`I2C_PACKET_SIZE`). Sent in response to `KCM_I2C_BUS.requestFrom(0x12, 10)` (Wire2) after INT asserts. Bytes 0–2 are the status header; bytes 3–9 are the Ascent Autopilot command frame (see `Documents/Developer/Ascent_Autopilot_Interface.md`).
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -321,7 +321,7 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 ## Notes
 
 - **`debugMode`** defaults to `false`. Set `true` only during development.
-- **`demoMode`** defaults to `true` (sine-wave demo, no KSP). Set `false` for live Simpit telemetry.
+- **`demoMode`** defaults to `false` (live Simpit telemetry). Set `true` for the sine-wave demo without KSP.
 - **Display rotation** — `DISPLAY_ROTATION = 2` for inverted mounting, `0` for production.
 - **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm buzzer (`tone()`) is on pin 2 and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
 - **KerbalDisplayCommon ≥ 3.0.0** is required (hardware rev 2 / `KCM_TFT`, `RA8876_t41_p`). Do not downgrade.
