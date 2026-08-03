@@ -237,17 +237,18 @@ static uint16_t apPhaseColor(uint8_t p) {
   }
 }
 
-// Pick a legible text colour (black or white) for an arbitrary RGB565 background by
-// its perceived luminance (Rec. 601). White is unreadable on the light phase colours
-// (CYAN ~179, SKY ~177); black is unreadable on the dark ones (DARK_GREEN ~73, RED
-// ~76). Threshold 140 splits the two groups with margin. Channels are scaled 5/6/5 ->
-// 0..255 before weighting.
+// Pick a legible text colour for an arbitrary RGB565 background by its perceived
+// luminance (Rec. 601). White washes out on the light phase colours (CYAN ~179,
+// SKY ~177); on those we use TFT_DARK_GREY — the standard dark-on-light button text
+// used elsewhere (AIRBRK on CYAN, ROVR REV on YELLOW). The dark phases (DARK_GREEN
+// ~73, RED ~76) keep white. Threshold 140 splits the two groups with margin;
+// channels are scaled 5/6/5 -> 0..255 before weighting.
 static uint16_t apTextOn(uint16_t bg) {
   uint16_t r = ((bg >> 11) & 0x1F) * 255 / 31;
   uint16_t g = ((bg >> 5)  & 0x3F) * 255 / 63;
   uint16_t b = ( bg        & 0x1F) * 255 / 31;
   uint16_t lum = (uint16_t)((r * 299 + g * 587 + b * 114) / 1000);
-  return (lum > 140) ? TFT_BLACK : TFT_WHITE;
+  return (lum > 140) ? TFT_DARK_GREY : TFT_WHITE;
 }
 
 // ── CHROME (static) ─────────────────────────────────────────────────────────────────
