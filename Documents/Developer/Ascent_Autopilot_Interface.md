@@ -237,7 +237,7 @@ command with a new `cmdSeq` and keeps the field cyan until the *latest* value is
 ## 8. Notes & edge cases
 
 - **One command in flight.** InfoDisp exposes a single command until it is acknowledged;
-  its internal queue (16 deep) absorbs bursts of edits. The master must ACK to advance.
+  its internal queue (16-slot ring buffer, 15 usable) absorbs bursts of edits. The master must ACK to advance.
   A dropped ACK is self-healing: the command stays exposed and is delivered on a later
   poll (executing on `cmdSeq` change keeps it idempotent).
 - **Demo mode.** When `flags.demoMode` (outbound byte 1, bit 2) is set, InfoDisp is

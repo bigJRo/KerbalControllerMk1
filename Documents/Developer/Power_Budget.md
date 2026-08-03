@@ -141,4 +141,4 @@ All figures derived from measured data and component datasheets. Panel C is a po
 ## Related Documents
 
 - `docs/developer/Hardware_Reference.md` — power rail architecture, supply specification
-- `docs/developer/Module_Interface_Reference.md` — per-module hardware specifications
+- `Documents/Developer/Module_UI_Reference.md` — per-module button/switch assignments, CAG table, axis mappings
