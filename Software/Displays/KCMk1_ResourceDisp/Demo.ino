@@ -54,4 +54,12 @@ void stepDemoState() {
     slots[i].stageMax = 0.4f;
     slots[i].maxVal   = 1.0f;
   }
+
+  // Animate the fixed ring gauges too, each on its own phase offset so they
+  // sweep independently of the bars.
+  for (uint8_t i = 0; i < GAUGE_COUNT; i++) {
+    float gPhase = _demoPhase * 0.8f + i * 1.3f;
+    gauges[i].current = 0.5f + 0.45f * sinf(gPhase);  // 0.05–0.95
+    gauges[i].maxVal  = 1.0f;
+  }
 }

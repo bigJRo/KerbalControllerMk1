@@ -1,8 +1,11 @@
 /***************************************************************************************
    ScreenMain.ino -- Main bar graph screen for Kerbal Controller Mk1 Resource Display
 
-   Layout:
-     Left region  : vertical resource bars, dynamically sized based on slotCount
+   Layout (three regions, left to right):
+     Gauge column : GAUGE_COL_W px — four fixed 270° ring gauges (EC/O2/Food/H2O),
+                    always present in both TOTAL and STAGE mode
+     Bar region   : vertical resource bars for the remaining (user-selected)
+                    resources, dynamically sized based on slotCount
      Right region : SIDEBAR_W px button column, 4 buttons edge-to-edge, full height
 
    Sidebar buttons (top to bottom):
@@ -33,7 +36,15 @@ static const uint16_t SCREEN_H     = KCM_SCREEN_H;   // #3A from SystemConfig
 static const uint16_t AXIS_W       = 44;   // px reserved on left for Y-axis labels + ticks
 static const uint16_t SIDEBAR_W    = 84;   // px -- width of right-hand nav button column (matches InfoDisp)
 static const tFont   *SB_BTN_FONT  = &Roboto_Black_24;  // nav-button label font (fits 4 chars at 84px)
-static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
+
+// Fixed ring-gauge column on the far left (EC/O2/Food/H2O), present in both modes.
+// The bar region is what remains between the gauge column and the sidebar.
+static const uint16_t GAUGE_COL_W  = 120;  // px -- width of the left gauge column
+static const uint16_t GAUGE_R      = 56;   // ring outer radius
+static const uint16_t GAUGE_THICK  = 13;   // ring band thickness
+static inline uint16_t gaugeRowH()  { return SCREEN_H / GAUGE_COUNT; }   // vertical slot per gauge
+
+static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W - GAUGE_COL_W; }
 static inline uint16_t barAreaW()   { return barRegionW() - AXIS_W; }
 static const uint16_t LABEL_H      = 44;
 static const uint16_t PERC_H       = 36;
@@ -131,7 +142,7 @@ static uint16_t barWidth() {
 }
 
 static uint16_t barX(uint8_t index) {
-  return AXIS_W + BAR_PAD + index * (barWidth() + BAR_PAD);
+  return GAUGE_COL_W + AXIS_W + BAR_PAD + index * (barWidth() + BAR_PAD);
 }
 
 
@@ -141,7 +152,7 @@ static uint16_t barX(uint8_t index) {
 ****************************************************************************************/
 static void drawAxis(KCM_TFT &tft) {
   drawLabelledAxis(tft,
-                   0, AXIS_W,
+                   GAUGE_COL_W, AXIS_W,
                    BAR_TOP, BAR_BOTTOM,
                    &Roboto_Black_12,
                    TFT_LIGHT_GREY, TFT_BLACK);
@@ -162,6 +173,115 @@ static const tFont* barFont() {
 
 
 /***************************************************************************************
+   FIXED RING GAUGES (left column)
+   Four 270° ring gauges (gap at the bottom) for EC / O2 / Food / Water, stacked
+   vertically. The ring fills clockwise from bottom-left (0%) over the top to
+   bottom-right (100%); the abbreviation + percentage sit in the centre hole.
+   The ring band always renders in the resource colour; only the percentage text
+   is threshold-coloured. Redraws are gated on the integer percentage and drawn as
+   deltas (grow in resource colour / shrink in track colour) so they don't flicker.
+****************************************************************************************/
+static uint8_t _prevGaugePerc[GAUGE_COUNT];   // last integer % drawn; 255 = force repaint
+
+static inline void _gaugeCenter(uint8_t idx, int16_t &cx, int16_t &cy) {
+  cx = (int16_t)(GAUGE_COL_W / 2);
+  cy = (int16_t)(idx * gaugeRowH() + gaugeRowH() / 2);
+}
+
+// Level (0..1) for a gauge; maxVal == 0 (resource absent) parks at 0.
+static float _gaugeLevel(uint8_t idx) {
+  float m = gauges[idx].maxVal;
+  float l = (m > 0.0f) ? (gauges[idx].current / m) : 0.0f;
+  return constrain(l, 0.0f, 1.0f);
+}
+
+// Draw the ring band for fill fractions [p0,p1] in `color`, as overlapping dots
+// along the 270° arc centreline. p=0 -> 225° (bottom-left), sweeping clockwise
+// (decreasing angle) 270° to p=1 -> -45° (bottom-right).
+static void _gaugeArc(KCM_TFT &tft, int16_t cx, int16_t cy,
+                      float p0, float p1, uint16_t color) {
+  if (p1 <= p0) return;
+  const float rc = (float)GAUGE_R - (float)GAUGE_THICK / 2.0f;
+  int steps = (int)ceilf((p1 - p0) * 270.0f / 1.2f);   // ~1.2° per dot
+  if (steps < 1) steps = 1;
+  int16_t r = (int16_t)(GAUGE_THICK / 2);
+  for (int s = 0; s <= steps; s++) {
+    float p   = p0 + (p1 - p0) * (float)s / (float)steps;
+    float ang = (225.0f - 270.0f * p) * 0.01745329f;   // deg -> rad
+    int16_t px = cx + (int16_t)lroundf(rc * cosf(ang));
+    int16_t py = cy - (int16_t)lroundf(rc * sinf(ang));
+    tft.fillCircle(px, py, r, color);
+  }
+}
+
+// Static abbreviation label (top half of the centre hole) — drawn once.
+static void drawGaugeLabel(KCM_TFT &tft, uint8_t idx) {
+  int16_t cx, cy; _gaugeCenter(idx, cx, cy);
+  const char *lbl = resLabel(gauges[idx].type);
+  tft.setFont(Roboto_Black_16);
+  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+  int16_t lw = getFontStringWidth(&Roboto_Black_16, lbl);
+  tft.setCursor(cx - lw / 2, cy - (int16_t)Roboto_Black_16.cap_height - 3);
+  tft.print(lbl);
+}
+
+// Percentage value (bottom half of the centre hole) — threshold-coloured, redrawn
+// on change. Clears only its own line so the label above is untouched.
+static void drawGaugeValue(KCM_TFT &tft, uint8_t idx, uint8_t perc) {
+  int16_t cx, cy; _gaugeCenter(idx, cx, cy);
+  char pbuf[6];
+  snprintf(pbuf, sizeof(pbuf), "%d%%", perc);
+  uint16_t fore, back;
+  thresholdColor((uint16_t)perc,
+                 (uint16_t)10, TFT_RED,    TFT_BLACK,
+                 (uint16_t)30, TFT_YELLOW, TFT_BLACK,
+                              TFT_WHITE,  TFT_BLACK,
+                 fore, back);
+  int16_t vh = (int16_t)Roboto_Black_20.cap_height + 4;
+  tft.fillRect(cx - 30, cy + 2, 60, vh, back);
+  tft.setFont(Roboto_Black_20);
+  tft.setTextColor(fore, back);
+  int16_t vw = getFontStringWidth(&Roboto_Black_20, pbuf);
+  tft.setCursor(cx - vw / 2, cy + 2);
+  tft.print(pbuf);
+}
+
+// Full gauge draw (track + fill + label + value) — on screen entry / mode change.
+static void drawGaugeFull(KCM_TFT &tft, uint8_t idx) {
+  int16_t cx, cy; _gaugeCenter(idx, cx, cy);
+  uint8_t perc = (uint8_t)(_gaugeLevel(idx) * 100.0f);
+  _gaugeArc(tft, cx, cy, 0.0f, 1.0f, TFT_DARK_GREY);                           // track
+  if (perc > 0) _gaugeArc(tft, cx, cy, 0.0f, perc / 100.0f, resColor(gauges[idx].type));
+  drawGaugeLabel(tft, idx);
+  drawGaugeValue(tft, idx, perc);
+  _prevGaugePerc[idx] = perc;
+}
+
+// Draw the whole gauge column + its divider (called from drawStaticMain).
+static void drawGaugeColumn(KCM_TFT &tft) {
+  tft.drawLine(GAUGE_COL_W, 0, GAUGE_COL_W, SCREEN_H, TFT_GREY);
+  for (uint8_t i = 0; i < GAUGE_COUNT; i++) drawGaugeFull(tft, i);
+}
+
+// Per-frame gauge update — delta arc + value, gated on integer % (flicker-free).
+static void updateGaugeColumn(KCM_TFT &tft) {
+  for (uint8_t i = 0; i < GAUGE_COUNT; i++) {
+    uint8_t perc = (uint8_t)(_gaugeLevel(i) * 100.0f);
+    if (perc == _prevGaugePerc[i]) continue;
+    int16_t cx, cy; _gaugeCenter(i, cx, cy);
+    float prevP = _prevGaugePerc[i] / 100.0f;
+    float curP  = perc / 100.0f;
+    if (perc > _prevGaugePerc[i])
+      _gaugeArc(tft, cx, cy, prevP, curP, resColor(gauges[i].type));   // grow
+    else
+      _gaugeArc(tft, cx, cy, curP, prevP, TFT_DARK_GREY);              // shrink
+    drawGaugeValue(tft, i, perc);
+    _prevGaugePerc[i] = perc;
+  }
+}
+
+
+/***************************************************************************************
    DRAW STATIC CHROME -- main screen
 ****************************************************************************************/
 static float   _prevLevel[MAX_SLOTS];
@@ -171,6 +291,7 @@ static bool    _prevStageMode = false;
 void drawStaticMain(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
+  drawGaugeColumn(tft);
   drawAxis(tft);
 
   // Reset update-pass state so all bars and percentage labels repaint on first pass
@@ -218,6 +339,10 @@ void updateScreenMain(KCM_TFT &tft) {
     redrawStageModeButton(tft);
     for (uint8_t i = 0; i < MAX_SLOTS; i++) { _prevLevel[i] = -1.0f; _prevPerc[i] = 255; }
   }
+
+  // Fixed gauges update every frame (independent of TOTAL/STAGE — they always
+  // show vessel totals). Gated internally on integer %, so this is cheap.
+  updateGaugeColumn(tft);
 
   uint16_t bw = barWidth();
   const tFont *font = barFont();

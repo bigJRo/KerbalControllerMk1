@@ -147,6 +147,14 @@ ResourceType resTypeByIndex(uint8_t index) {
 }
 
 
+// True for the four fixed ring-gauge resources. These are shown as always-on gauges
+// on the main screen and are excluded from the bar/selection pool (never enter slots[]).
+bool isGaugeResource(ResourceType t) {
+  return t == RES_ELEC_CHARGE || t == RES_LS_OXYGEN ||
+         t == RES_LS_FOOD      || t == RES_LS_WATER;
+}
+
+
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
    Standard group: EC, LF, LOx, MP, SF, O2, Food, Water (8 slots).
@@ -162,18 +170,22 @@ ResourceType resTypeByIndex(uint8_t index) {
 ****************************************************************************************/
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = DEFAULT_SLOT_COUNT;  // 8 — matches STD preset count
-  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water
+  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water. The gauge resources
+  // (EC, O2, Food, Water) are shown as ring gauges, not bars, so they are
+  // filtered out here — the default bar set becomes LF, LOx, MP, SF.
   static const ResourceType STD_TYPES[8] = {
     RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
     RES_SOLID_FUEL, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
   };
-  for (uint8_t i = 0; i < DEFAULT_SLOT_COUNT; i++) {
-    slots[i].type         = STD_TYPES[i];
-    slots[i].current      = demoMode ? 1.0f : 0.0f;
-    slots[i].maxVal       = demoMode ? 1.0f : 0.0f;
-    slots[i].stageCurrent = demoMode ? 0.4f : 0.0f;
-    slots[i].stageMax     = demoMode ? 0.4f : 0.0f;
+  slotCount = 0;
+  for (uint8_t i = 0; i < 8; i++) {
+    if (isGaugeResource(STD_TYPES[i])) continue;
+    slots[slotCount].type         = STD_TYPES[i];
+    slots[slotCount].current      = demoMode ? 1.0f : 0.0f;
+    slots[slotCount].maxVal       = demoMode ? 1.0f : 0.0f;
+    slots[slotCount].stageCurrent = demoMode ? 0.4f : 0.0f;
+    slots[slotCount].stageMax     = demoMode ? 0.4f : 0.0f;
+    slotCount++;
   }
   // In live mode, request a Simpit refresh so the new slots populate immediately
   if (!demoMode) simpit.requestMessageOnChannel(0);
@@ -188,6 +200,7 @@ void initAllSlots() {
   for (uint8_t i = 0; slotCount < MAX_SLOTS; i++) {
     ResourceType t = resTypeByIndex(i);
     if (t == RES_NONE) break;
+    if (isGaugeResource(t)) continue;   // EC/O2/Food/Water are gauges, not bars
     slots[slotCount].type         = t;
     slots[slotCount].maxVal       = 1.0f;
     slots[slotCount].stageMax     = 0.4f;
