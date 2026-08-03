@@ -10,7 +10,7 @@ Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1
 
 The Annunciator is a 1024×600 touchscreen display panel that presents real-time KSP telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance. A Teensy 4.1 master controller coordinates the Annunciator via I2C, configuring its operating mode at boot and receiving status updates as flight conditions change.
 
-The panel provides three screens — Main, SOI, and Standby — navigated by touch. The Main screen is the primary operational view, presenting the Caution & Warning panel, vessel situation indicators, SOI thumbnail, and key telemetry readouts. The SOI screen provides detailed celestial body data. The Standby screen displays a full-screen splash image when the system is idle.
+The panel provides three screens — Main, SOI, and Standby. Main and SOI are navigated by touch; Standby is entered and left automatically on flight-scene changes (or an I2C idle request from the master). The Main screen is the primary operational view, presenting the Caution & Warning panel, vessel situation indicators, SOI thumbnail, and key telemetry readouts. The SOI screen provides detailed celestial body data. The Standby screen displays a full-screen splash image when the system is idle.
 
 ---
 
@@ -140,13 +140,18 @@ Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x10, 4)` after INT ass
 
 ### Inbound Packet — Master → Annunciator
 
-Size: **3 bytes**. Sent by master at any time via `Wire.beginTransmission(0x10)` / `Wire.write()` / `Wire.endTransmission()`.
+Size: **3 bytes (legacy)** or **6 bytes (rev-2 extended)**. Sent by master at any time via `Wire.beginTransmission(0x10)` / `Wire.write()` / `Wire.endTransmission()`. `onI2CReceive()` accepts either length (`I2C_CMD_SIZE = 3` or `I2C_CMD_SIZE_EXT = 6`) and drains any other length, so the master can be upgraded independently. The extended bytes 3–5 are not yet in the formal protocol spec (see `I2CSlave.ino` TODO).
 
 | Byte | Field | Description |
 |------|-------|-------------|
 | 0 | `controlByte` | See bit map below |
 | 1 | `ctrlModeByte` | `CtrlMode` enum: `0`=Rover, `1`=Plane, `2`=Spacecraft |
 | 2 | `ctrlGrpByte` | Active control group, 1-based (1–10) |
+| 3 | `modeFlags` low | `state.modeFlags` bits 7:0 (`MF_*` — drives the whole mode/status grid) — *extended only* |
+| 4 | `modeFlags` high | `state.modeFlags` bits 11:8 — *extended only* |
+| 5 | `capValue` | "Cap" readout (`state.capValue`) — *extended only* |
+
+Bytes 3–5 are applied only when a 6-byte command is received; a 3-byte command leaves `modeFlags` and `capValue` unchanged.
 
 **`controlByte` bit map:**
 
@@ -182,17 +187,17 @@ Size: **3 bytes**. Sent by master at any time via `Wire.beginTransmission(0x10)`
 
 Three screens are available. Transitions are managed by `switchToScreen()` in `AAA_Globals.ino`; all screen state, dirty tracking, and chrome invalidation flow through this single function.
 
-**Standby** — full-screen splash BMP (`/StandbySplash_1024x600.bmp` from SD). No dynamic content. Displayed when `flightScene` is false and `idle_state` is asserted by the master, or on initial boot before a flight scene is active. A 3-finger touch advances to Main when `flightScene` is true.
+**Standby** — full-screen splash BMP (`/StandbySplash_1024x600.bmp` from SD). No dynamic content. Displayed when `flightScene` is false and `idle_state` is asserted by the master, or on initial boot before a flight scene is active. Standby is not touch-navigable; the panel leaves it automatically when a flight scene begins (`SCENE_CHANGE`).
 
 **Main** — primary operational view. Contains:
-- MASTER ALARM button (top-left, 274×176 px) — illuminates red when any WARNING-level C&W bit is set. Touch to silence audio.
-- Caution & Warning panel (25 annunciator buttons, 5 rows × 5 columns, 120×80 px each)
-- DOCK vertical text indicator (above situation column)
-- Vessel situation column (8 indicators: CNTCT, PRE-LNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, SPLASH, LANDED)
-- Panel condition strip (10 buttons, 5×2): DEMO/CTRL/DEBUG, WARP, AUDIO, THRTL ENA, TRIM SET, SPCFT/PLN/RVR, SWITCH ERR, SIMPIT LOST, THRTL PREC, PREC INPUT
-- Flight condition block (4 buttons, 2×2): FLYING LOW, LOW SPACE, FLYING HIGH, HIGH SPACE
-- SOI label and body thumbnail (bottom-left, links to SOI screen on touch)
-- Data readouts: CtrlGrp, TW index
+- MASTER ALARM button (top-left, 274×176 px) — illuminates red when any master-alarm-mask C&W bit is set. Touch to silence audio.
+- Caution & Warning panel (25 annunciator buttons, 5 rows × 5 columns, 120×80 px each) at x=274
+- SOI label (274×48) and body thumbnail/globe (274×176) in the left column below MASTER ALARM — touch to open the SOI screen
+- Inner regime column (x=874, 75 px wide): DOCK vertical-text indicator (75×100) at the top, then four regime tiles (75×75) — FLYING LOW, FLYING HIGH, LOW SPACE, HIGH SPACE — with only the single active regime lit
+- Outer vessel-situation column (x=949, eight 75×50 tiles, top→bottom): CONTACT, PRE-LAUNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, LANDED, SPLASH. CONTACT lights whenever LANDED or SPLASH is set
+- Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, THRTL ENA, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
+- SPCFT/PLN/RVR control-mode tile (row 3, 212×80) with vessel-type icon — text green when the control mode matches the vessel type, red on mismatch
+- Bottom telemetry readouts: vessel name and TimeWarp (left column, 424 wide); STG / Tmax / CREW and COMM / Tskin / CAP (right triple, 200 each); CtrlGrp (212×80)
 
 **SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (40pt, 52px each): Min Safe Alt, SOI Radius, Reentry Alt (atmo bodies), High Atmo Alt (atmo bodies), Low Space Alt (atmo bodies), High Space Alt, Condition, Surface Gravity. Touch anywhere to return to Main.
 
@@ -205,8 +210,7 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 | `SCENE_CHANGE` → flight | Switch to Main + request Simpit channel refresh |
 | `SCENE_CHANGE` → non-flight | Switch to Standby |
 | I2C `idle_state` asserted + not in flight | Switch to Standby immediately |
-| 3-finger touch on Standby + `flightScene` | Switch to Main |
-| Touch on SOI thumbnail area (Main) | Switch to SOI |
+| Touch on SOI label/globe area (Main, left column below MASTER ALARM) | Switch to SOI |
 | Touch anywhere on SOI | Return to Main |
 | Vessel switch | Full redraw of current screen + `updateCautionWarningState()` + Simpit channel refresh |
 | EVA state change | Full redraw of current screen |
@@ -248,8 +252,8 @@ The C&W panel is a 32-bit bitmask (`state.cautionWarningState`) recomputed on ev
 **Audio triggers** (when `audioEnabled` is true):
 - WARNING bits newly set → master alarm starts
 - All WARNING bits cleared → master alarm stops, silence latch reset
-- `CW_ALT` newly set → caution tone
-- `CW_DESCENT` or `CW_ATMO` newly set → caution chirp
+- `CW_ALT` or `CW_IMPACT_IMM` newly set → caution tone
+- `CW_DESCENT`, `CW_ATMO`, or `CW_GEAR_UP` newly set → caution chirp
 - Altitude crossing `ALERT_ALT_THRESHOLD` upward → alert chirp
 - Surface velocity crossing `ALERT_VEL_THRESHOLD` upward → alert chirp
 - `ORBIT` bit set (entering orbit) → alert chirp
@@ -268,8 +272,9 @@ The Annunciator assembles its own vessel situation display bitmask from the raw 
 | 4 | `VSIT_ORBIT` | `sit_Orbit` |
 | 5 | `VSIT_ESCAPE` | `sit_Escaping` |
 | 6 | `VSIT_SPLASH` | `sit_Splashed` |
+| 7 | `VSIT_LANDED` | `sit_Landed` |
 
-Named constants are defined in `KCMk1_Annunciator.h`.
+Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are assembled from the raw `FLIGHT_STATUS` situation in `SimpitHandler.ino`. On the outer situation column, LANDED is shown above SPLASH (display order `sitRowToArr`), and both drive the CONTACT tile. Named constants are defined in `KCMk1_Annunciator.h`.
 
 ---
 
@@ -280,7 +285,7 @@ Named constants are defined in `KCMk1_Annunciator.h`.
 | `KCMk1_Annunciator.ino` | `setup()` and `loop()` only |
 | `AAA_Config.ino` | All tunable constants and operating mode flags (including `standaloneMode`, `standaloneTest`) |
 | `AAA_Globals.ino` | Global state, `AppState`, `switchToScreen()`, `invalidateAllState()`, `resetDisplays()` |
-| `ScreenMain.ino` | Main screen layout constants, chrome, C&W panel, situation column, panel condition strip, flight condition block, update pass |
+| `ScreenMain.ino` | Main screen layout constants, chrome, C&W panel, situation column, regime column, mode/status grid, SPCFT tile, update pass |
 | `ScreenSOI.ino` | SOI screen chrome and update pass |
 | `ScreenStandby.ino` | Standby screen — delegates to `drawStandbySplash()` |
 | `CautionWarning.ino` | C&W state machine: `updateCautionWarningState()` |
@@ -290,7 +295,7 @@ Named constants are defined in `KCMk1_Annunciator.h`.
 | `I2CSlave.ino` | I2C slave at 0x10 — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Terminal-aesthetic BIOS POST boot sequence |
 | `Demo.ino` | Demo mode — independent field sweep, calls `updateCautionWarningState()` |
-| `TestMode.ino` | Serial-driven test framework: logic tests (66 cases, automated pass/fail) and display walk-through (57 steps). Activated by `standaloneTest = true`. |
+| `TestMode.ino` | Serial-driven test framework: logic tests (automated pass/fail) and display walk-through (58 steps). Activated by `standaloneTest = true`. |
 
 ---
 
@@ -303,7 +308,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 3. Simpit handshake runs (or demo mode initialises) — `simpitConnected` set accordingly
 4. Annunciator builds a status packet and **asserts pin 0 LOW** (INT)
 5. Master detects INT, calls `Wire.requestFrom(0x10, 4)`, reads the 4-byte status packet
-6. Master inspects state, sends a 3-byte command packet with `requestType = 0x2` (PROCEED) — configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`) can be included in the same packet
+6. Master inspects state, sends a command packet (3-byte legacy or 6-byte extended) with `requestType = 0x2` (PROCEED) — configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`, and in the extended form `modeFlags`/`capValue`) can be included in the same packet
 7. Annunciator receives PROCEED, clears the boot screen, enters `loop()`
 
 **Important:** The master should read the status packet (step 5) before sending PROCEED (step 6). If PROCEED is sent before reading, INT will still be asserted since the `onRequest` handler hasn't fired yet.
@@ -314,7 +319,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
-| **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / RA8876 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. |
+| **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / RA8876 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |
 | **2.1.0** | Complete C&W panel redesign: 25 indicators (5×5), body-aware Pe LOW / Ap LOW / ORBIT STABLE logic using full BodyParams (reentryAlt, lowSpace, soiAlt). Two-tier yellow/red indicators for PE_LOW, PROP_LOW, LIFE_SUPP. Dynamic CHUTE_ENV (off/green/yellow/red). Positive indicators: ORBIT_STABLE, ELEC_GEN. State indicators: SRB_ACTIVE, EVA_ACTIVE. CNTCT situation button driven by LANDED/SPLASH (not VSIT_DOCKED). DOCK vertical text indicator above situation column. Panel condition strip (10 buttons): DEMO/CTRL/DEBUG and SPCFT/PLN/RVR use black background with coloured text. Zone separation via TFT_SILVER gutters. Layout updated: 98×73 C&W buttons, repositioned DOCK/situation/panel/flight-condition zones. SOI screen adds Reentry Alt and SOI Radius rows, removes Escape Velocity, reduces font to 28pt at 36px row height. `standaloneMode` and `standaloneTest` operating modes added. Serial-driven test framework (`TestMode.ino`): 66 logic tests + 57-step display walk-through. KerbalDisplayCommon body table expanded with full BodyParams (gravity, escapeVelocity, synchronousOrbit, reentryAlt, soiAlt, hasSurface, highQThreshold). |
 | **2.0.0** | Major rewrite. RA8875 KDC v2 flicker-free rendering (PrintState, printDisp, printValue). Full AppState struct. Body-aware SOI screen with KASA meatball and per-body BMP. I2C slave boot handshake with master Teensy 4.1. |
 | **1.1.1** | Touch count filter, I2C constants to KCMk1_SystemConfig.h, cross-panel threshold aliases, boot screen live version string, KerbalDisplayCommon 2.1.0. |

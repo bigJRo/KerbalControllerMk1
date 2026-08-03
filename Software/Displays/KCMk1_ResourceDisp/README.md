@@ -201,7 +201,7 @@ The display tracks between `MIN_SLOTS` (4) and `MAX_SLOTS` (16) resource slots. 
 | Group | Resources | Short labels |
 |-------|-----------|-------------|
 | Power | Electric Charge, Stored Charge | EC, StC |
-| Propellants (native) | Liquid Fuel, Oxidizer, Solid Fuel, Monopropellant, Xenon, EVA Propellant¹ | LF, LOx, SF, MP, XE, EVA |
+| Propellants (native) | Liquid Fuel, Oxidizer, Solid Fuel, Mono Propellant, Xenon Gas, EVA Propellant¹ | LF, LOx, SF, MP, XE, EVA |
 | Propellants (CRP) | Liquid Hydrogen, Liquid Methane, Lithium, Intake Air | LH2, LMe, Li, AIR |
 | Nuclear (CRP) | Enriched Uranium, Depleted Fuel | EUr, DFu |
 | Other | Ore, Ablator | ORE, ABL |
@@ -270,7 +270,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 - **`demoMode`** defaults to `false` (live Simpit). Set `true` for bench testing without KSP.
 - **ARP mod** is required for most resource channels. Without it, bars remain at zero.
 - **Stage data** is only available for resources with dedicated Simpit stage channels (LF, LOx, SF, Xenon, Ablator). All others mirror vessel totals in the STAGE section and suppress it on the Detail screen.
-- **Vessel cache eviction** — when `VESSEL_CACHE_SIZE` is exceeded, the oldest entry is overwritten (simple last-in eviction). No LRU tracking.
+- **Vessel cache eviction** — when `VESSEL_CACHE_SIZE` is exceeded, the last cache entry (index `VESSEL_CACHE_SIZE - 1`) is overwritten (simple last-slot eviction). No LRU tracking.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.
