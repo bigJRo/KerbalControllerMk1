@@ -52,16 +52,6 @@ bool idleState        = false;
 ResourceSlot slots[MAX_SLOTS];
 uint8_t      slotCount = DEFAULT_SLOT_COUNT;
 
-// Fixed always-on ring gauges (EC / O2 / Food / Water). Order here is the top-to-bottom
-// display order down the left of the main screen. Values start at 0 (parks at 0%) and
-// are filled by Simpit routing (updateSlot) or animated in demo mode.
-GaugeResource gauges[GAUGE_COUNT] = {
-  { RES_ELEC_CHARGE, 0.0f, 0.0f },
-  { RES_LS_OXYGEN,   0.0f, 0.0f },
-  { RES_LS_FOOD,     0.0f, 0.0f },
-  { RES_LS_WATER,    0.0f, 0.0f },
-};
-
 
 /***************************************************************************************
    SWITCH TO SCREEN

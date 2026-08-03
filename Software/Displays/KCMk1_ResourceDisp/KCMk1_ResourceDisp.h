@@ -93,23 +93,6 @@ struct ResourceSlot {
 
 
 /***************************************************************************************
-   FIXED GAUGE RESOURCES
-   Four resources (Electric Charge, Oxygen, Food, Water) are shown as always-on
-   270° ring gauges down the left of the main screen, in both TOTAL and STAGE mode.
-   They are NOT part of the user-configurable bar slots[] — isGaugeResource() keeps
-   them out of the bar/selection pool so they appear only as gauges. Values are fed
-   by the same Simpit routing (updateSlot) and animated in demo mode.
-   A gauge with maxVal == 0 (resource absent on the vessel) parks at 0%.
-****************************************************************************************/
-struct GaugeResource {
-  ResourceType type;
-  float        current;   // vessel total current amount
-  float        maxVal;    // vessel total max capacity (0 = resource absent -> parks at 0%)
-};
-static constexpr uint8_t GAUGE_COUNT = 4;
-
-
-/***************************************************************************************
    SCREEN TYPE ENUM
 ****************************************************************************************/
 enum ScreenType : uint8_t {
@@ -146,7 +129,6 @@ extern ScreenType   prevScreen;
 extern uint32_t     lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
-extern GaugeResource gauges[GAUGE_COUNT];  // fixed EC/O2/Food/H2O ring gauges (always on)
 extern bool         stageMode;      // false = TOTAL (whole craft), true = STAGE (current stage)
 extern bool         flightScene;    // true when KSP is in a flight scene
 extern bool         simpitConnected; // true once Simpit handshake succeeds
@@ -158,7 +140,6 @@ const char*    resLabel(ResourceType t);
 const char*    resFullName(ResourceType t);
 uint16_t       resColor(ResourceType t);
 ResourceType   resTypeByIndex(uint8_t index);  // 0-based index into selectable types
-bool           isGaugeResource(ResourceType t); // true for the 4 fixed ring-gauge resources
 
 // Screen management
 // Always use switchToScreen() to change screens — never set activeScreen directly.

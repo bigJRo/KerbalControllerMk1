@@ -123,7 +123,6 @@ static bool isSelected(ResourceType t) {
    HELPER -- add a resource to the next empty slot. Returns true if added.
 ****************************************************************************************/
 static bool addResource(ResourceType t) {
-  if (isGaugeResource(t)) return false;   // gauge resources are never bars
   if (slotCount >= MAX_SLOTS) return false;
   slots[slotCount].type         = t;
   // In live mode start at zero — Simpit will populate on next message.
@@ -164,7 +163,6 @@ static void loadPreset(uint8_t presetIndex) {
   slotCount = 0;
   const PresetGroup &pg = PRESETS[presetIndex];
   for (uint8_t i = 0; i < pg.count && slotCount < MAX_SLOTS; i++) {
-    if (isGaugeResource(pg.types[i])) continue;   // gauge resources are never bars
     slots[slotCount].type         = pg.types[i];
     slots[slotCount].current      = demoMode ? 1.0f : 0.0f;
     slots[slotCount].maxVal       = demoMode ? 1.0f : 0.0f;
@@ -191,20 +189,6 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
 
   ButtonLabel btn;
   btn.text               = resFullName(t);
-
-  // Gauge resources aren't bar-selectable — render them as a dimmed, inert tile
-  // so it's clear they live on the always-on gauges rather than the bar grid.
-  if (isGaugeResource(t)) {
-    btn.fontColorOff       = TFT_DARK_GREY;
-    btn.fontColorOn        = TFT_DARK_GREY;
-    btn.backgroundColorOff = TFT_OFF_BLACK;
-    btn.backgroundColorOn  = TFT_OFF_BLACK;
-    btn.borderColorOff     = TFT_DARK_GREY;
-    btn.borderColorOn      = TFT_DARK_GREY;
-    drawButton(tft, x, y, SEL_BTN_W, SEL_BTN_H, btn, &Roboto_Black_20, false);
-    return;
-  }
-
   btn.fontColorOff       = TFT_DARK_GREY;
   btn.fontColorOn        = TFT_BLACK;
   btn.backgroundColorOff = TFT_OFF_BLACK;
@@ -380,7 +364,6 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
       if (x >= bx && x < bx + SEL_BTN_W && y >= by && y < by + SEL_BTN_H) {
         ResourceType t = resTypeByIndex(i);
         if (t == RES_NONE) return false;
-        if (isGaugeResource(t)) return false;   // inert — shown as an always-on gauge
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {

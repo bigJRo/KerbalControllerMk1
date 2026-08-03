@@ -51,19 +51,6 @@
 /***************************************************************************************
    HELPER — update all slots matching a resource type
 ****************************************************************************************/
-// Update the fixed ring gauges if this resource is one of them. Gauges track
-// vessel totals only (no stage split). Runs regardless of slot membership, since
-// the gauge resources are deliberately excluded from slots[].
-static void updateGauge(ResourceType t, float vessel, float vesselMax) {
-  for (uint8_t i = 0; i < GAUGE_COUNT; i++) {
-    if (gauges[i].type == t) {
-      gauges[i].current = vessel;
-      gauges[i].maxVal  = vesselMax;
-      return;
-    }
-  }
-}
-
 static void updateSlot(ResourceType t,
                        float vessel, float vesselMax,
                        float stage,  float stageMax) {
@@ -75,7 +62,6 @@ static void updateSlot(ResourceType t,
       slots[i].stageMax     = stageMax;
     }
   }
-  updateGauge(t, vessel, vesselMax);   // route EC/O2/Food/Water to their gauges
 }
 
 // Vessel-only variant — mirrors vessel to stage (no stage channel available)
