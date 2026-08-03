@@ -94,10 +94,15 @@ void setup() {
     Serial.println(F("ResourceDisp: STANDALONE_TEST — skipping master PROCEED handshake."));
   }
 
-  // Always show standby on boot — BMP splash from SD card.
-  // In demo mode, a touch on the standby screen transitions to the main screen.
-  // In live mode, SCENE_CHANGE_MESSAGE drives the transition.
-  switchToScreen(screen_Standby);
+  // Demo mode: skip the standby splash and go straight to the main bar screen so
+  // the panel self-runs on the bench without needing a touch to advance (mirrors
+  // the InfoDisp). Live mode shows the standby splash (BMP from SD) until a
+  // SCENE_CHANGE_MESSAGE — or a touch in demo — drives the transition.
+  if (demoMode) {
+    switchToScreen(screen_Main);
+  } else {
+    switchToScreen(screen_Standby);
+  }
 }
 
 
