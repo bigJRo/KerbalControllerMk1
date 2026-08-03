@@ -281,9 +281,16 @@ static int8_t flightCondIndex() {
 /***************************************************************************************
    C&W PANEL UPDATE — unchanged logic; cell position via cwBitToCell[].
 ****************************************************************************************/
+// Previous companion-yellow states (PE/PROP/LS two-tier tiles). These toggle
+// without changing cautionWarningState, so they need their own dirty tracking —
+// otherwise a pure yellow transition would not repaint. Mirrors prevChuteEnvState.
+static bool prevPeLowYellow = false, prevPropLowYellow = false, prevLsYellow = false;
+
 void updateCautWarnPanel(KCM_TFT &tft, uint32_t prevCW, uint32_t newCW) {
   uint32_t changed = prevCW ^ newCW;
-  if (changed != 0 || chuteEnvState != prevChuteEnvState) {
+  if (changed != 0 || chuteEnvState != prevChuteEnvState ||
+      peLowYellow != prevPeLowYellow || propLowYellow != prevPropLowYellow ||
+      lsYellow != prevLsYellow) {
     bitSet(changed, CW_PE_LOW);
     bitSet(changed, CW_PROP_LOW);
     bitSet(changed, CW_LIFE_SUPPORT);
@@ -328,6 +335,9 @@ void updateCautWarnPanel(KCM_TFT &tft, uint32_t prevCW, uint32_t newCW) {
     drawButton(tft, x, y, CW_BTN_W, CW_BTN_H, btn, &Roboto_Black_24, on);
   }
   prevChuteEnvState = chuteEnvState;
+  prevPeLowYellow   = peLowYellow;
+  prevPropLowYellow = propLowYellow;
+  prevLsYellow      = lsYellow;
 }
 
 
@@ -574,7 +584,9 @@ void updateScreenMain(KCM_TFT &tft) {
 
   // --- C&W PANEL --- (alarm-mask + chirp wiring unchanged)
   if (state.cautionWarningState != prev.cautionWarningState ||
-      chuteEnvState != prevChuteEnvState) {
+      chuteEnvState != prevChuteEnvState ||
+      peLowYellow != prevPeLowYellow || propLowYellow != prevPropLowYellow ||
+      lsYellow != prevLsYellow) {
     uint32_t newBits = state.cautionWarningState & ~prev.cautionWarningState;
     uint32_t clrBits = prev.cautionWarningState  & ~state.cautionWarningState;
 

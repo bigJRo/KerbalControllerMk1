@@ -65,7 +65,8 @@ static uint8_t _logicPassed = 0;
 static uint8_t _logicFailed = 0;
 
 // Force-on mask for panel status buttons during display walk-through.
-// Read by updatePanelStatus() in ScreenMain.ino to override not-yet-wired items.
+// (rev-2: the panel-status strip was replaced by the mode grid; this force-on flag
+// is not currently read by any draw path — reserved.)
 // Declared here, externed in ScreenMain.ino.
 uint16_t testPsForceOn = 0;
 
@@ -956,7 +957,7 @@ static void runDisplayWalkthrough() {
 
   // Force full redraw -- must happen before applying step state
   invalidateAllState();
-  resetSitAndPanelState();  // resets _prevContact and prevPanelStatusMask sentinels
+  resetSitAndPanelState();  // resets _prevContact and prevModeFlags sentinels
 
   // Apply step state after invalidation so it isn't overwritten
   state.cautionWarningState  = step.cwBits;

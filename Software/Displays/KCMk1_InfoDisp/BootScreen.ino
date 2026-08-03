@@ -4,9 +4,9 @@
    variation drawn from item pools so the sequence differs run to run.
 
    Uses tft.setFont / setCursor / print (GFX graphics mode calls) exclusively.
-   The RA8875 setFontScale/print API puts the chip into internal text mode and the
-   PaulStoffregen v0.7.11 library does not expose a public graphics-mode restore call,
-   so we avoid text mode entirely and stay in graphics mode throughout.
+   The RA8876 GFX text engine draws glyph bitmaps directly in graphics mode (no chip
+   internal text mode), so the sequence renders via setFont/print without any mode
+   switching and stays in graphics mode throughout.
 
    TO CHANGE THE BOOT TEXT: edit the pool arrays in the three _boot_* functions below.
    Do not edit the rendering helpers (_bs_line, _bs_big, etc.).
@@ -284,7 +284,8 @@ static void _boot_E(KCM_TFT &tft) {
 /***************************************************************************************
    BOOT SIM TEXT -- entry point
    Randomly selects one of three sequences each boot.
-   Teensy 4.0 hardware RNG provides entropy without needing an analog pin.
+   Seeded from the Teensy 4.1 ARM DWT cycle counter (ARM_DWT_CYCCNT) — entropy
+   without needing an analog pin.
 ****************************************************************************************/
 void bootSimText(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);

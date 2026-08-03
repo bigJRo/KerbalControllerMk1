@@ -343,7 +343,7 @@ extern uint8_t _pfdManualSel;
 extern bool _lndgReentryMode;
 extern bool _lndgReentryRow3PeA;
 extern bool _lndgReentryRow0TPe;
-extern bool _lndgReentryRow1SL;  // true when row 3 shows PeA (radarAlt > 2000m), false = V.Hrz
+extern bool _lndgReentryRow1SL;  // row 1 label: true = Alt.SL (above atmosphere), false = Alt.Rdr
 
 // LNDG parachute deployment state — reset on vessel switch
 extern bool _drogueDeployed;

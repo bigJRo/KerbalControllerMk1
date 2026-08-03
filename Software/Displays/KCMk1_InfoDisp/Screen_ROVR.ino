@@ -267,7 +267,7 @@ static inline void _rovrPolar(float screenDeg, int16_t r, int16_t &x, int16_t &y
 // ── Compass drawing ───────────────────────────────────────────────────────────────────
 
 // Erase the compass bounding box before redrawing. fillRect is hardware-accelerated
-// on the RA8875 so this is cheap. Bounds cover outer ring, tick marks, labels,
+// on the RA8876 so this is cheap. Bounds cover outer ring, tick marks, labels,
 // nose triangle, and the heading readout box above the triangle.
 static void _rovrEraseCompass(KCM_TFT &tft) {
     int16_t x0 = ROVR_CX - ROVR_R - 8;
@@ -300,7 +300,7 @@ static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
 }
 
 // Cardinal letters (N/E/S/W) at world 0/90/180/270 and numeric labels at other 30°s.
-// Text drawn with top-left cursor; glyph metrics estimated empirically (RA8875 has
+// Text drawn with top-left cursor; glyph metrics estimated empirically (RA8876 has
 // no text-metric API in this library). See inside the loop for per-font numbers.
 //
 // When `erase` is true, each label's glyph box is wiped with a hardware fillRect

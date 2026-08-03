@@ -1,10 +1,11 @@
 /***************************************************************************************
    TouchEvents.ino -- Touch input for Kerbal Controller Mk1 Information Display
 
+   Touch is polled via KCM_Touch each processTouchEvents() call (rev-2 FT5316; no ISR —
+   the rev-1 CTP_INT_PIN touchISR()/_touchPending latch is gone, clearTouchISR() is a
+   compat no-op).
+
    Defence layers:
-   1. ISR flag — touchISR() attached to CTP_INT_PIN RISING captures touches that land
-      and lift during long draw calls (SCFT, ACFT). _touchPending persists until
-      processTouchEvents() runs, preventing missed touches (Problem A).
    2. Count filter — reject count > MAX_TOUCH_COUNT (1). Multi-finger events on a
       single-button sidebar are never intentional; count>1 is a strong phantom signal.
    3. (removed rev-2) The bottom Y dead zone was a GSL1680 edge-noise workaround.
@@ -13,7 +14,6 @@
    4. X bounds check — reject x >= SCREEN_W.
    5. Double-read with coordinate stability — re-read after 8ms; reject if count
       dropped to 0 OR if coordinates moved more than TOUCH_JITTER_MAX pixels.
-      Skipped for ISR-latched touches (finger already lifted, coordinates static).
       Phantom noise jumps around between reads; real touches are stable.
    6. Debounce 500ms — prevents rapid re-fires within a burst.
    7. Require-release — set on ANY confirmed touch, suppressing the rest of a burst
