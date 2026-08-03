@@ -207,7 +207,7 @@ static void _boot_C(KCM_TFT &tft) {
 ****************************************************************************************/
 static void _boot_E(KCM_TFT &tft) {
   static const char * const items[] = {
-    /* 0  */ "Thrust-to-weight ratio ..........",
+    /* 0  */ "Thrust-to-weight ratio ...........",
     /* 1  */ "Staging sequence .................",
     /* 2  */ "Fairings .........................",
     /* 3  */ "Landing legs .....................",
