@@ -45,10 +45,12 @@ const uint8_t DISPLAY_ROTATION = 0;
 
 /***************************************************************************************
    LOW RESOURCE THRESHOLD
-   Bar fill color shifts to red when resource level falls below this percentage.
-   Uses the bar's own resource color above the threshold.
+   Reserved / currently unused. Bars now always render in their designated
+   resource color regardless of level; low-resource warning is shown only by the
+   percentage text color (fixed 10% critical / 30% caution thresholds in
+   ScreenMain). Kept for a possible future low-level cue.
 ****************************************************************************************/
-const uint16_t LOW_RES_THRESHOLD = 20;  // percent
+const uint16_t LOW_RES_THRESHOLD = 20;  // percent (reserved — not currently used)
 
 /***************************************************************************************
    BAR UPDATE HYSTERESIS

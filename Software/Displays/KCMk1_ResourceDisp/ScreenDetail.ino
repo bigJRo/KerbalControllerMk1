@@ -2,7 +2,7 @@
    ScreenDetail.ino -- Numerical resource detail screen for KCMk1 Resource Display
 
    Layout (1024×600, geometry derives from KCM_SCREEN_W/H):
-     Left panel (DET_SEL_W=130px): selector buttons, one per active slot
+     Left panel (DET_SEL_W=180px): selector buttons, one per active slot
      Right panel:
        Header (DET_HDR_H=66px): resource name in Roboto_Black_48 white + color accent strip + BACK
        Divider
@@ -25,14 +25,14 @@ PrintState psDetailRows[6];
    LAYOUT CONSTANTS
 ****************************************************************************************/
 static const uint16_t DET_PAD = 6;
-static const uint16_t DET_SEL_W = 130;
+static const uint16_t DET_SEL_W = 180;   // wider selector column — larger buttons + font
 static const uint16_t DET_PNL_X = DET_SEL_W + 1;
 static const uint16_t DET_PNL_W = KCM_SCREEN_W - DET_PNL_X;
 static const uint16_t DET_HDR_H = 66;                             // taller to fit Roboto_Black_48 (58px)
 static const uint16_t DET_ROW_H = (KCM_SCREEN_H - DET_HDR_H) / 6; // ~89px @600 — all rows, both layouts
 
 // Vertical section label strip (left of data rows)
-static const uint16_t DET_SECT_W = 26;  // wide enough for Roboto_Black_16
+static const uint16_t DET_SECT_W = 32;  // wide enough for Roboto_Black_20
 static const uint16_t DET_ROW_X = DET_PNL_X + DET_SECT_W;
 static const uint16_t DET_ROW_W = KCM_SCREEN_W - DET_ROW_X;
 
@@ -122,9 +122,9 @@ static void drawDetailSelector(KCM_TFT &tft) {
 
   // Scale font to button height so text is as large as possible
   const tFont *btnFont;
-  if      (btnH >= 70) btnFont = &Roboto_Black_20;
-  else if (btnH >= 48) btnFont = &Roboto_Black_16;
-  else                 btnFont = &Roboto_Black_12;
+  if      (btnH >= 70) btnFont = &Roboto_Black_28;
+  else if (btnH >= 48) btnFont = &Roboto_Black_20;
+  else                 btnFont = &Roboto_Black_16;
 
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == RES_NONE) continue;
@@ -171,7 +171,8 @@ static void drawDetailChrome(KCM_TFT &tft) {
   // Header accent strip — offset a few px from panel edge
   tft.fillRect(DET_ACCENT_X, 0, DET_ACCENT_W, DET_HDR_H - 2, resCol);
 
-  // Resource name — Roboto_Black_48 white, clearly larger than data rows
+  // Resource name — Roboto_Black_48 white; the colour accent strip and top
+  // position distinguish it from the (also 48px) data rows below.
   tft.setFont(Roboto_Black_48);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setCursor(DET_ACCENT_X + DET_ACCENT_W + DET_PAD, (DET_HDR_H - 58) / 2);
@@ -184,18 +185,18 @@ static void drawDetailChrome(KCM_TFT &tft) {
   // Always show CRAFT; only show STAGE if this resource has a real stage channel.
   if (_detHasStage()) {
     drawVerticalText(tft, DET_PNL_X, detRowY(0), DET_SECT_W, DET_ROW_H * 3,
-                     &Roboto_Black_16, "CRAFT", TFT_GREY, TFT_BLACK);
+                     &Roboto_Black_20, "CRAFT", TFT_GREY, TFT_BLACK);
     drawVerticalText(tft, DET_PNL_X, detRowY(3), DET_SECT_W, DET_ROW_H * 3,
-                     &Roboto_Black_16, "STAGE", TFT_GREY, TFT_BLACK);
+                     &Roboto_Black_20, "STAGE", TFT_GREY, TFT_BLACK);
   } else {
     drawVerticalText(tft, DET_PNL_X, detRowY(0), DET_SECT_W, DET_ROW_H * 3,
-                     &Roboto_Black_16, "CRAFT", TFT_GREY, TFT_BLACK);
+                     &Roboto_Black_20, "CRAFT", TFT_GREY, TFT_BLACK);
   }
 
   // Row labels (chrome only, no values)
   uint8_t rowCount = _detRowCount();
   for (uint8_t i = 0; i < rowCount; i++) {
-    printDispChrome(tft, &Roboto_Black_36,
+    printDispChrome(tft, &Roboto_Black_48,
                     DET_ROW_X, detRowY(i), DET_ROW_W, DET_ROW_H,
                     detRowLabel(i),
                     TFT_WHITE, TFT_BLACK, NO_BORDER);
@@ -223,7 +224,7 @@ static void drawDetailValues(KCM_TFT &tft) {
     String val = detRowValue(i);
     if (val == _detValCache[i]) continue;
     _detValCache[i] = val;
-    printValue(tft, &Roboto_Black_36,
+    printValue(tft, &Roboto_Black_48,
                DET_ROW_X, detRowY(i), DET_ROW_W, DET_ROW_H,
                detRowLabel(i), val,
                TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psDetailRows[i]);

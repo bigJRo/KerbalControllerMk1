@@ -15,7 +15,8 @@
    Bottom three buttons (DFLT, SEL, DATA) use a navy background.
 
    Each bar:
-     - Drawn in the resource's fixed color when above LOW_RES_THRESHOLD; red below it
+     - Always drawn in the resource's designated fixed color, regardless of fill
+       level. Low-level warning is conveyed solely by the percentage text color.
      - Two-fillRect technique: black from top to empty boundary, then color below
      - Resource label centred below the bar in white (font scales with bar width)
      - Percentage centred above the bar in white (font scales with bar width)
@@ -30,8 +31,8 @@
 static const uint16_t SCREEN_W     = KCM_SCREEN_W;   // #3A from SystemConfig
 static const uint16_t SCREEN_H     = KCM_SCREEN_H;   // #3A from SystemConfig
 static const uint16_t AXIS_W       = 44;   // px reserved on left for Y-axis labels + ticks
-static const uint16_t SIDEBAR_W    = 96;   // px -- width of right-hand nav button column (1024x600)
-static const tFont   *SB_BTN_FONT  = &Roboto_Black_28;  // nav-button label font (tall 4-button column)
+static const uint16_t SIDEBAR_W    = 84;   // px -- width of right-hand nav button column (matches InfoDisp)
+static const tFont   *SB_BTN_FONT  = &Roboto_Black_24;  // nav-button label font (fits 4 chars at 84px)
 static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
 static inline uint16_t barAreaW()   { return barRegionW() - AXIS_W; }
 static const uint16_t LABEL_H      = 44;
@@ -163,8 +164,9 @@ static const tFont* barFont() {
 /***************************************************************************************
    DRAW STATIC CHROME -- main screen
 ****************************************************************************************/
-static float _prevLevel[MAX_SLOTS];
-static bool  _prevStageMode = false;
+static float   _prevLevel[MAX_SLOTS];
+static uint8_t _prevPerc[MAX_SLOTS];   // last integer % drawn per bar; 255 = force repaint
+static bool    _prevStageMode = false;
 
 void drawStaticMain(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
@@ -172,7 +174,7 @@ void drawStaticMain(KCM_TFT &tft) {
   drawAxis(tft);
 
   // Reset update-pass state so all bars and percentage labels repaint on first pass
-  for (uint8_t i = 0; i < MAX_SLOTS; i++) _prevLevel[i] = -1.0f;
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) { _prevLevel[i] = -1.0f; _prevPerc[i] = 255; }
   _prevStageMode = stageMode;
 
   const tFont *font = barFont();
@@ -214,50 +216,62 @@ void updateScreenMain(KCM_TFT &tft) {
   if (stageMode != _prevStageMode) {
     _prevStageMode = stageMode;
     redrawStageModeButton(tft);
-    for (uint8_t i = 0; i < MAX_SLOTS; i++) _prevLevel[i] = -1.0f;
+    for (uint8_t i = 0; i < MAX_SLOTS; i++) { _prevLevel[i] = -1.0f; _prevPerc[i] = 255; }
   }
 
   uint16_t bw = barWidth();
+  const tFont *font = barFont();
 
   for (uint8_t i = 0; i < slotCount; i++) {
     float cur = stageMode ? slots[i].stageCurrent : slots[i].current;
     float max = stageMode ? slots[i].stageMax     : slots[i].maxVal;
     float level = (max > 0.0f) ? (cur / max) : 0.0f;
     level = constrain(level, 0.0f, 1.0f);
+    uint8_t perc = (uint8_t)(level * 100.0f);
 
-    if (fabsf(level - _prevLevel[i]) < BAR_LEVEL_HYSTERESIS) continue;
-    _prevLevel[i] = level;
+    // Redraw the bar fill on any meaningful level change, but redraw the
+    // percentage label ONLY when the integer % actually changes. Decoupling the
+    // two stops the number from being cleared-and-reprinted every frame (the
+    // source of the flicker) while the bar still animates smoothly.
+    bool levelChanged = fabsf(level - _prevLevel[i]) >= BAR_LEVEL_HYSTERESIS;
+    bool percChanged  = (perc != _prevPerc[i]);
+    if (!levelChanged && !percChanged) continue;
 
-    uint16_t x     = barX(i);
-    uint16_t fillH = (uint16_t)((BAR_H - 2) * level);
-    uint8_t  perc  = (uint8_t)(level * 100.0f);
+    uint16_t x = barX(i);
 
-    drawBar(tft, x, bw, fillH,
-            (perc < LOW_RES_THRESHOLD) ? TFT_RED : resColor(slots[i].type));
+    if (levelChanged) {
+      _prevLevel[i] = level;
+      uint16_t fillH = (uint16_t)((BAR_H - 2) * level);
+      // Bar always renders in the resource's designated colour, regardless of
+      // fill level. Low-level warning is conveyed by the percentage text colour.
+      drawBar(tft, x, bw, fillH, resColor(slots[i].type));
+    }
 
-    char percStr[6];
-    snprintf(percStr, sizeof(percStr), "%d%%", perc);
+    if (percChanged) {
+      _prevPerc[i] = perc;
 
-    // Percentage label colour depends on fill level:
-    //   0-10%   : red text on black background   (critical)
-    //  11-30%   : yellow text on black background (caution)
-    //  31-100%  : white text on black background  (nominal)
-    // Bar fill shifts to red below LOW_RES_THRESHOLD (AAA_Config, default 20%).
-    uint16_t percFore, percBack;
-    thresholdColor((uint16_t)perc,
-                   (uint16_t)10, TFT_RED,    TFT_BLACK,
-                   (uint16_t)30, TFT_YELLOW, TFT_BLACK,
-                                TFT_WHITE,  TFT_BLACK,
-                   percFore, percBack);
+      char percStr[6];
+      snprintf(percStr, sizeof(percStr), "%d%%", perc);
 
-    const tFont *font = barFont();
-    int16_t fontH = (int16_t)font->cap_height;
-    tft.fillRect(x, 0, bw, PERC_H, percBack);
-    tft.setFont(*font);
-    tft.setTextColor(percFore, percBack);
-    int16_t tw = getFontStringWidth(font, percStr);
-    tft.setCursor(x + (bw - tw) / 2, (PERC_H - fontH) / 2);
-    tft.print(percStr);
+      // Percentage label colour depends on fill level:
+      //   0-10%   : red text    (critical)
+      //  11-30%   : yellow text  (caution)
+      //  31-100%  : white text   (nominal)
+      uint16_t percFore, percBack;
+      thresholdColor((uint16_t)perc,
+                     (uint16_t)10, TFT_RED,    TFT_BLACK,
+                     (uint16_t)30, TFT_YELLOW, TFT_BLACK,
+                                  TFT_WHITE,  TFT_BLACK,
+                     percFore, percBack);
+
+      int16_t fontH = (int16_t)font->cap_height;
+      tft.fillRect(x, 0, bw, PERC_H, percBack);
+      tft.setFont(*font);
+      tft.setTextColor(percFore, percBack);
+      int16_t tw = getFontStringWidth(font, percStr);
+      tft.setCursor(x + (bw - tw) / 2, (PERC_H - fontH) / 2);
+      tft.print(percStr);
+    }
   }
 }
 
