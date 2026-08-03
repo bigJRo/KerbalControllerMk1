@@ -18,7 +18,7 @@
                    Can also be toggled at runtime by the I2C master — see I2CSlave.ino.
 ****************************************************************************************/
 bool debugMode = false;  // set true to enable Serial debug output during development
-bool demoMode  = false;  // set true for bench testing without KSP; false for production
+bool demoMode  = true;   // set true for bench testing without KSP; false for production
 
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
