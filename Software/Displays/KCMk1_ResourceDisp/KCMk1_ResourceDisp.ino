@@ -22,7 +22,7 @@
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
   Hardware (rev 2):
-    Teensy 4.1, RA8876 (LT7683) 1024x600 TFT on a 16-bit 8080 parallel bus (FlexIO3),
+    Teensy 4.1, LT7683 (RA8876-compatible) 1024x600 TFT on a 16-bit 8080 parallel bus (FlexIO3),
     FT5316 capacitive touch (software I2C, pins 4/5)
     SerialUSB1 -> KSP (Simpit), Serial -> debug output
     Wire2 (pins 24/25) -> I2C slave at 0x11 (master Teensy 4.1)
