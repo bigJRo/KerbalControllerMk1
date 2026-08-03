@@ -115,17 +115,6 @@ void processTouchEvents() {
       break;
 
     case screen_Main: {
-      // ---- TEMPORARY DEMO-ONLY EVA TEST TOGGLE ----
-      // Tap the top-left corner (60x60) in demo mode to flip evaFlag, exercising
-      // the EVA-mode swap without a live FLIGHT_STATUS message. loop() reconciles
-      // it exactly as it would a real one. Remove this block for production.
-      if (demoMode && x2 < 60 && y2 < 60) {
-        evaFlag = !evaFlag;
-        if (debugMode) Serial.println(evaFlag ? F("DEMO: EVA test -> ON") : F("DEMO: EVA test -> OFF"));
-        clearTouchISR();
-        break;
-      }
-
       int8_t btn = sidebarHitTest(x2, y2);
       switch (btn) {
         case 0:

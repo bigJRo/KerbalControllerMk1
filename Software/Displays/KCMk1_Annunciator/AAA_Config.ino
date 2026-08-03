@@ -13,7 +13,7 @@
    debugMode    -- set true to enable Serial debug output (touch coords, state changes).
    All three can also be set at runtime via the I2C command packet from the master.
 ****************************************************************************************/
-bool demoMode       = true;
+bool demoMode       = false;
 bool audioEnabled   = false;
 bool debugMode      = false;
 bool standaloneMode = false;  // true = bypass boot screen / master controller handshake

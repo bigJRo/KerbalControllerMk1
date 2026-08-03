@@ -9,13 +9,13 @@
    OPERATING MODE
 ****************************************************************************************/
 bool debugMode = false;
-bool demoMode  = true;   // true = sine-wave demo values, no KSP required
-bool fpsDiag   = true;   // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
+bool demoMode  = false;  // true = sine-wave demo values, no KSP required
+bool fpsDiag   = false;  // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
 
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
 // for production (master will send PROCEED after reading the status packet).
-const bool STANDALONE_TEST = true;
+const bool STANDALONE_TEST = false;
 
 
 /***************************************************************************************
