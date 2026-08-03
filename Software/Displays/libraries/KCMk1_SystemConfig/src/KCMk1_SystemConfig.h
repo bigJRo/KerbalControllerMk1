@@ -10,12 +10,14 @@
   ─────────────────────────────────────────────────────────────────────────────
   The Annunciator, Info, and Resource panels now share a single carrier board
   built around a Teensy 4.1 driving a 7" 1024x600 IPS TFT (BuyDisplay
-  ER-TFT070A2-6-5633) over the RA8876 controller's 16-bit 8080 parallel bus.
+  ER-TFT070A2-6-5633). The physical display controller is the LT7683, which is
+  register-compatible with the RA8876; the firmware drives it over the RA8876's
+  16-bit 8080 parallel bus via the wwatson4506/TeensyRA8876-8080 driver.
 
     Old stack (rev 1)            New stack (rev 2, this file)
     ----------------------       ------------------------------------------
     Teensy 4.0                   Teensy 4.1
-    RA8875, SPI, 800x480         RA8876, 16-bit parallel 8080, 1024x600
+    RA8875, SPI, 800x480         LT7683 (RA8876-compat), 16-bit 8080, 1024x600
     GSL1680F touch (Wire1)       FT5316 cap touch (software I2C, pins 4/5)
     tone() buzzer (pin 9)        tone() buzzer (TONE, pin 2) + DFPlayer Mini
     SD over SPI (CS 5)           Teensy 4.1 on-board SD (SDIO / BUILTIN_SDCARD)
@@ -29,12 +31,12 @@
 #pragma once
 
 // =============================================================================
-// DISPLAY HARDWARE — RA8876 / 1024x600
+// DISPLAY HARDWARE — LT7683 (RA8876-compatible) / 1024x600
 // =============================================================================
 #define KCM_SCREEN_W              1024
 #define KCM_SCREEN_H              600
 
-// --- RA8876 16-bit 8080 parallel data bus (DB0..DB15 -> Teensy 4.1 pins) ---
+// --- LT7683 16-bit 8080 parallel data bus (DB0..DB15 -> Teensy 4.1 pins) ---
 // These ARE the Teensy 4.1 FlexIO3 parallel pin set used by the
 // wwatson4506/TeensyRA8876-8080 driver (D0=19, /WR=36, /RD=37, ...). The board
 // was laid out around that driver, so the bus is driven by FlexIO3 hardware —
@@ -58,14 +60,14 @@
 #define KCM_TFT_DB14   26
 #define KCM_TFT_DB15   27
 
-// --- RA8876 control lines ---
+// --- LT7683 control lines ---
 #define KCM_TFT_CS      34   // /CS   chip select        (active low)
 #define KCM_TFT_RESET   35   // /RST  hardware reset      (active low)
 #define KCM_TFT_WR      36   // /WR   write strobe        (active low)
 #define KCM_TFT_RD      37   // /RD   read strobe         (active low)
 #define KCM_TFT_RS      33   // RS    register/data select (0=cmd/status, 1=data)
-#define KCM_TFT_WAIT    32   // WAIT  busy from RA8876     (optional flow control)
-#define KCM_TFT_INT     31   // INT   interrupt from RA8876 (unused for now)
+#define KCM_TFT_WAIT    32   // WAIT  busy from LT7683     (optional flow control)
+#define KCM_TFT_INT     31   // INT   interrupt from LT7683 (unused for now)
 #define KCM_TFT_BL      9    // BL_CTRL backlight enable / PWM
 
 // Backlight brightness as a PWM duty cycle (0-100%). Driven via analogWrite() on
@@ -73,7 +75,7 @@
 #define KCM_BL_BRIGHTNESS_PCT  70
 
 // One display frame period in microseconds, used by the double-buffer layer to let
-// a page flip take effect (the RA8876 latches the scan-out base at the frame
+// a page flip take effect (the LT7683 latches the scan-out base at the frame
 // boundary) before the just-freed page is drawn again. Panel runs ~58Hz
 // (PCLK/(Htotal*Vtotal) ~= 50e6/(1348*635)); 20000us (>=50Hz) gives safe margin.
 // Raise if any flicker remains; lower toward ~17000 to allow a higher flip rate.
@@ -142,8 +144,11 @@
 // =============================================================================
 // DEFAULT OPERATING MODES
 // =============================================================================
-#define KCM_DEFAULT_DEBUG_MODE       true
-#define KCM_DEFAULT_DEMO_MODE        true
+// Each sketch owns its own debug/demo mode flags in AAA_Config.ino (all default
+// to false for production). The former KCM_DEFAULT_DEBUG_MODE / _DEMO_MODE macros
+// were unused and defaulted to true, contradicting those per-sketch values, so
+// they were removed. Only the display-rotation default is shared (KCM_Display.h
+// uses it as the default argument to kcmDisplayBegin()).
 #define KCM_DEFAULT_DISPLAY_ROTATION 0
 
 // =============================================================================

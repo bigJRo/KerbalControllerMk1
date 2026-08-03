@@ -67,7 +67,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 3.0.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (RA8876 / Teensy 4.1) requires ≥ 3.0.0 |
+| KerbalDisplayCommon | ≥ 3.0.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
 | KerbalDisplayAudio | 1.1.0 | Non-blocking audio state machine |
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
@@ -131,7 +131,7 @@ The Annunciator operates as an I2C slave at address **0x10** (`KCM_I2C_ADDR_ANNU
 
 ### Outbound Packet — Annunciator → Master
 
-Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x10, 4)` after INT asserts.
+Size: **4 bytes**. Sent in response to `KCM_I2C_BUS.requestFrom(0x10, 4)` (Wire2, pins 24/25) after INT asserts.
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -142,7 +142,7 @@ Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x10, 4)` after INT ass
 
 ### Inbound Packet — Master → Annunciator
 
-Size: **3 bytes (legacy)** or **6 bytes (rev-2 extended)**. Sent by master at any time via `Wire.beginTransmission(0x10)` / `Wire.write()` / `Wire.endTransmission()`. `onI2CReceive()` accepts either length (`I2C_CMD_SIZE = 3` or `I2C_CMD_SIZE_EXT = 6`) and drains any other length, so the master can be upgraded independently. The extended bytes 3–5 are not yet in the formal protocol spec (see `I2CSlave.ino` TODO).
+Size: **3 bytes (legacy)** or **6 bytes (rev-2 extended)**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission(0x10)` / `KCM_I2C_BUS.write()` / `KCM_I2C_BUS.endTransmission()` (Wire2). `onI2CReceive()` accepts either length (`I2C_CMD_SIZE = 3` or `I2C_CMD_SIZE_EXT = 6`) and drains any other length, so the master can be upgraded independently. The extended bytes 3–5 are not yet in the formal protocol spec (see `I2CSlave.ino` TODO).
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -202,8 +202,6 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 - Bottom telemetry readouts: vessel name and TimeWarp (left column, 424 wide); STG / Tmax / CREW and COMM / Tskin / CAP (right triple, 200 each); CtrlGrp (212×80)
 
 **SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (40pt, 52px each): Min Safe Alt, SOI Radius, Reentry Alt (atmo bodies), High Atmo Alt (atmo bodies), Low Space Alt (atmo bodies), High Space Alt, Condition, Surface Gravity. Touch anywhere to return to Main.
-
-**Standby** — full-screen splash BMP when system is idle.
 
 ### Screen Transitions
 
@@ -309,7 +307,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 2. Boot screen renders (terminal-aesthetic BIOS POST; header shows live version string via `snprintf`)
 3. Simpit handshake runs (or demo mode initialises) — `simpitConnected` set accordingly
 4. Annunciator builds a status packet and **asserts pin 0 LOW** (INT)
-5. Master detects INT, calls `Wire.requestFrom(0x10, 4)`, reads the 4-byte status packet
+5. Master detects INT, calls `KCM_I2C_BUS.requestFrom(0x10, 4)` (Wire2), reads the 4-byte status packet
 6. Master inspects state, sends a command packet (3-byte legacy or 6-byte extended) with `requestType = 0x2` (PROCEED) — configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`, and in the extended form `modeFlags`/`capValue`) can be included in the same packet
 7. Annunciator receives PROCEED, clears the boot screen, enters `loop()`
 
