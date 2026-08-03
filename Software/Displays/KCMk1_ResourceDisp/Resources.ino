@@ -17,6 +17,7 @@ const char* resLabel(ResourceType t) {
     case RES_LIQUID_FUEL:       return "LF";
     case RES_LIQUID_OX:         return "LOx";
     case RES_MONO_PROP:         return "MP";
+    case RES_EVA_PROP:          return "EVA";
     case RES_XENON:             return "XE";
     case RES_LIQUID_H2:         return "LH2";
     case RES_LIQUID_METHANE:    return "LMe";
@@ -50,6 +51,7 @@ const char* resFullName(ResourceType t) {
     case RES_LIQUID_FUEL:       return "Liquid Fuel";
     case RES_LIQUID_OX:         return "Oxidizer";
     case RES_MONO_PROP:         return "Mono Propellant";
+    case RES_EVA_PROP:          return "EVA Propellant";
     case RES_XENON:             return "Xenon Gas";
     case RES_LIQUID_H2:         return "Liquid Hydrogen";
     case RES_LIQUID_METHANE:    return "Liquid Methane";
@@ -88,6 +90,7 @@ uint16_t resColor(ResourceType t) {
     case RES_LIQUID_OX:         return TFT_BLUE;
     case RES_SOLID_FUEL:        return TFT_RED;
     case RES_MONO_PROP:         return TFT_DARK_GREEN;
+    case RES_EVA_PROP:          return TFT_MINT;
     case RES_XENON:             return TFT_MAGENTA;
     case RES_LIQUID_H2:         return TFT_FRENCH_BLUE;
     case RES_LIQUID_METHANE:    return TFT_ROYAL;
@@ -128,8 +131,8 @@ ResourceType resTypeByIndex(uint8_t index) {
   static const ResourceType ORDER[] = {
     // Power (2)
     RES_ELEC_CHARGE, RES_STORED_CHARGE,
-    // Propellants (5) — KSP1 native
-    RES_LIQUID_FUEL, RES_LIQUID_OX, RES_SOLID_FUEL, RES_MONO_PROP, RES_XENON,
+    // Propellants (6) — KSP1 native
+    RES_LIQUID_FUEL, RES_LIQUID_OX, RES_SOLID_FUEL, RES_MONO_PROP, RES_EVA_PROP, RES_XENON,
     // Propellants (4) — CRP mod, KSP1
     RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM, RES_INTAKE_AIR,
     // Nuclear (2) — CRP mod, KSP1

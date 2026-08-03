@@ -49,6 +49,7 @@ enum ResourceType : uint8_t {
   RES_LIQUID_OX,
   RES_SOLID_FUEL,
   RES_MONO_PROP,
+  RES_EVA_PROP,
   RES_XENON,
   // Propellants (CRP mod, KSP1 — via CUSTOM_RESOURCE_2_MESSAGE)
   RES_LIQUID_H2,

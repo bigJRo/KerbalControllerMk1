@@ -7,7 +7,7 @@
 
    Channel mapping (KSP1 + ARP mod required for most resource channels):
      Native KSP1 with stage variants:  LF, LOx, SF, Xenon, Ablator
-     Native KSP1 vessel-only:          Electric Charge, Monoprop, Ore
+     Native KSP1 vessel-only:          Electric Charge, Monoprop, EVA Propellant, Ore
      TAC Life Support mod:             Food, Water, Oxygen (TACLS_RESOURCE_MESSAGE)
                                        Waste, Liquid Waste, CO2 (TACLS_WASTE_MESSAGE)
      CRP mod via CUSTOM_RESOURCE_1:    Stored Charge, Enriched Uranium,
@@ -89,6 +89,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case XENON_GAS_MESSAGE:       msgName = "XENON";        break;
       case XENON_GAS_STAGE_MESSAGE: msgName = "XENON_STAGE";  break;
       case ELECTRIC_MESSAGE:        msgName = "ELECTRIC";     break;
+      case EVA_MESSAGE:             msgName = "EVA";          break;
       case ORE_MESSAGE:             msgName = "ORE";          break;
       case AB_MESSAGE:              msgName = "AB";           break;
       case AB_STAGE_MESSAGE:        msgName = "AB_STAGE";     break;
@@ -147,6 +148,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(resourceMessage)) {
         resourceMessage r = parseMessage<resourceMessage>(msg);
         updateSlotVesselOnly(RES_MONO_PROP, r.available, r.total);
+      }
+      break;
+
+    case EVA_MESSAGE:
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseMessage<resourceMessage>(msg);
+        updateSlotVesselOnly(RES_EVA_PROP, r.available, r.total);
       }
       break;
 
@@ -423,6 +431,7 @@ void initSimpit() {
 
   // Power and mining
   simpit.registerChannel(ELECTRIC_MESSAGE);
+  simpit.registerChannel(EVA_MESSAGE);
   simpit.registerChannel(ORE_MESSAGE);
   simpit.registerChannel(AB_MESSAGE);
   simpit.registerChannel(AB_STAGE_MESSAGE);
