@@ -117,7 +117,7 @@ extern const uint8_t  DISPLAY_ROTATION;
 // Slot count limits — constexpr so they can be used as compile-time array sizes
 static constexpr uint8_t MIN_SLOTS          = 4;
 static constexpr uint8_t MAX_SLOTS          = 16;
-static constexpr uint8_t DEFAULT_SLOT_COUNT = 10;
+static constexpr uint8_t DEFAULT_SLOT_COUNT = 9;
 extern const uint16_t LOW_RES_THRESHOLD;   // percent (0-100); reserved — bars no longer recolor by level
 
 // From AAA_Globals.ino

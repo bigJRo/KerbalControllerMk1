@@ -154,7 +154,7 @@ ResourceType resTypeByIndex(uint8_t index) {
 ****************************************************************************************/
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Matches the STD preset exactly: EC, LF, LOx, MP, SF, Ablator, O2, Food, Water, Ore.
+   Matches the STD preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
    Called by the DFLT sidebar button and on first boot.
    NOTE: CLEAR on the Select screen bypasses MIN_SLOTS intentionally — this is by
    design so the user can start fresh from slot 1. removeResource() still enforces
@@ -163,10 +163,10 @@ ResourceType resTypeByIndex(uint8_t index) {
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
   slotCount = DEFAULT_SLOT_COUNT;  // 10 — matches STD preset count
-  // STD preset: EC, LF, LOx, MP, SF, Ablator, O2, Food, Water, Ore
+  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
   static const ResourceType STD_TYPES[DEFAULT_SLOT_COUNT] = {
     RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
-    RES_ABLATOR, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ORE
+    RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
   };
   for (uint8_t i = 0; i < DEFAULT_SLOT_COUNT; i++) {
     slots[i].type         = STD_TYPES[i];
