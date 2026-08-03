@@ -1,7 +1,7 @@
 /***************************************************************************************
    ScreenDetail.ino -- Numerical resource detail screen for KCMk1 Resource Display
 
-   Layout (800×480):
+   Layout (1024×600, geometry derives from KCM_SCREEN_W/H):
      Left panel (DET_SEL_W=130px): selector buttons, one per active slot
      Right panel:
        Header (DET_HDR_H=66px): resource name in Roboto_Black_48 white + color accent strip + BACK
@@ -27,14 +27,14 @@ PrintState psDetailRows[6];
 static const uint16_t DET_PAD = 6;
 static const uint16_t DET_SEL_W = 130;
 static const uint16_t DET_PNL_X = DET_SEL_W + 1;
-static const uint16_t DET_PNL_W = 800 - DET_PNL_X;
-static const uint16_t DET_HDR_H = 66;                     // taller to fit Roboto_Black_48 (58px)
-static const uint16_t DET_ROW_H = (480 - DET_HDR_H) / 6;  // ~69px — used for all rows in both layouts
+static const uint16_t DET_PNL_W = KCM_SCREEN_W - DET_PNL_X;
+static const uint16_t DET_HDR_H = 66;                             // taller to fit Roboto_Black_48 (58px)
+static const uint16_t DET_ROW_H = (KCM_SCREEN_H - DET_HDR_H) / 6; // ~89px @600 — all rows, both layouts
 
 // Vertical section label strip (left of data rows)
 static const uint16_t DET_SECT_W = 26;  // wide enough for Roboto_Black_16
 static const uint16_t DET_ROW_X = DET_PNL_X + DET_SECT_W;
-static const uint16_t DET_ROW_W = 800 - DET_ROW_X;
+static const uint16_t DET_ROW_W = KCM_SCREEN_W - DET_ROW_X;
 
 // Color accent strip in header — offset a few px from the panel edge
 static const uint16_t DET_ACCENT_X = DET_PNL_X + DET_PAD;
@@ -42,7 +42,7 @@ static const uint16_t DET_ACCENT_W = 4;
 
 static const uint16_t DET_BACK_W = 110;
 static const uint16_t DET_BACK_H = DET_HDR_H - DET_PAD * 2;
-static const uint16_t DET_BACK_X = 800 - DET_BACK_W - DET_PAD;
+static const uint16_t DET_BACK_X = KCM_SCREEN_W - DET_BACK_W - DET_PAD;
 static const uint16_t DET_BACK_Y = DET_PAD;
 
 static const ButtonLabel detBtnBack = {
@@ -113,11 +113,11 @@ static String detRowValue(uint8_t row) {
    DRAW SELECTOR COLUMN
 ****************************************************************************************/
 static void drawDetailSelector(KCM_TFT &tft) {
-  tft.fillRect(0, 0, DET_SEL_W, 480, TFT_BLACK);
-  tft.fillRect(DET_SEL_W, 0, 2, 480, TFT_DARK_GREY);  // 2px divider
+  tft.fillRect(0, 0, DET_SEL_W, KCM_SCREEN_H, TFT_BLACK);
+  tft.fillRect(DET_SEL_W, 0, 2, KCM_SCREEN_H, TFT_DARK_GREY);  // 2px divider
   if (slotCount == 0) return;
 
-  uint16_t btnH = 480 / slotCount;
+  uint16_t btnH = KCM_SCREEN_H / slotCount;
   static const uint16_t BTN_PAD = 3;
 
   // Scale font to button height so text is as large as possible
@@ -151,7 +151,7 @@ static void drawDetailSelector(KCM_TFT &tft) {
    Invalidates _detValCache so drawDetailValues() does a full value repaint after.
 ****************************************************************************************/
 static void drawDetailChrome(KCM_TFT &tft) {
-  tft.fillRect(DET_PNL_X, 0, DET_PNL_W, 480, TFT_BLACK);
+  tft.fillRect(DET_PNL_X, 0, DET_PNL_W, KCM_SCREEN_H, TFT_BLACK);
   for (uint8_t i = 0; i < 6; i++) {
     _detValCache[i] = "";   // invalidate all 6 regardless of row count
     psDetailRows[i] = PrintState{};  // reset PrintState sentinel — forces full clear on next draw
@@ -202,9 +202,9 @@ static void drawDetailChrome(KCM_TFT &tft) {
   }
 
   // 1px dividers — below header, and between Craft/Stage sections (if stage shown)
-  tft.drawLine(DET_SEL_W, DET_HDR_H,  800, DET_HDR_H,  TFT_DARK_GREY);
+  tft.drawLine(DET_SEL_W, DET_HDR_H,  KCM_SCREEN_W, DET_HDR_H,  TFT_DARK_GREY);
   if (_detHasStage()) {
-    tft.drawLine(DET_SEL_W, detRowY(3), 800, detRowY(3), TFT_DARK_GREY);
+    tft.drawLine(DET_SEL_W, detRowY(3), KCM_SCREEN_W, detRowY(3), TFT_DARK_GREY);
   }
 }
 
@@ -251,7 +251,7 @@ bool handleDetailTouch(uint16_t x, uint16_t y) {
     return false;
   }
   if (x < DET_SEL_W && slotCount > 0) {
-    uint16_t btnH = 480 / slotCount;
+    uint16_t btnH = KCM_SCREEN_H / slotCount;
     uint8_t  hit  = (uint8_t)(y / btnH);
     if (hit < slotCount && hit != _detailSlot) {
       _detailSlot = hit;

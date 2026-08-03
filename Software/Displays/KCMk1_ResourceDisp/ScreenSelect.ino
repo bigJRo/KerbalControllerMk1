@@ -1,12 +1,12 @@
 /***************************************************************************************
    ScreenSelect.ino -- Resource selection screen for Kerbal Controller Mk1 Resource Display
 
-   Layout (800×480):
+   Layout (1024×600):
      Row 1 (TITLE_H):  "Select Resources" title (large) + slot count + BACK button
      Row 2 (PRESET_H): 6 preset group buttons across grid width, left of BACK
-     Left panel (0..GRID_W-1):    5-column resource grid below header rows
-     Right panel (GRID_W+pad..799): selection order list + CLEAR button
-     All backgrounds pure black.
+     Left panel (0..GRID_W-1):        5-column resource grid below header rows
+     Right panel (GRID_W+pad..W-1):   selection order list + CLEAR button
+     All backgrounds pure black. Geometry derives from KCM_SCREEN_W/H.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -28,15 +28,15 @@ static const uint16_t TOP_H      = TITLE_H + PRESET_H;
 // Resource grid (left panel, below header)
 static const uint8_t  SEL_COLS   = 5;
 static const uint8_t  SEL_ROWS   = (RESOURCE_TYPE_COUNT + SEL_COLS - 1) / SEL_COLS;
-static const uint16_t GRID_W     = 600;
+static const uint16_t GRID_W     = (KCM_SCREEN_W * 3) / 4;   // 768 @1024 — grid 3/4, order list 1/4
 static const uint16_t SEL_BTN_W  = (GRID_W - SEL_PAD * (SEL_COLS + 1)) / SEL_COLS;
-static const uint16_t SEL_BTN_H  = (480 - TOP_H - SEL_PAD * (SEL_ROWS + 1)) / SEL_ROWS;
+static const uint16_t SEL_BTN_H  = (KCM_SCREEN_H - TOP_H - SEL_PAD * (SEL_ROWS + 1)) / SEL_ROWS;
 static const uint16_t SEL_START_X = SEL_PAD;
 static const uint16_t SEL_START_Y = TOP_H + SEL_PAD;
 
 // Right panel (order list)
 static const uint16_t PANEL_X    = GRID_W + SEL_PAD * 2;
-static const uint16_t PANEL_W    = 800 - PANEL_X - SEL_PAD;
+static const uint16_t PANEL_W    = KCM_SCREEN_W - PANEL_X - SEL_PAD;
 
 // BACK button — spans both title and preset rows for easy pressing
 static const ButtonLabel btnBack = {
@@ -44,7 +44,7 @@ static const ButtonLabel btnBack = {
 };
 static const uint16_t BACK_W = 110;
 static const uint16_t BACK_H = TITLE_H + PRESET_H - SEL_PAD * 2;
-static const uint16_t BACK_X = 800 - BACK_W - SEL_PAD;
+static const uint16_t BACK_X = KCM_SCREEN_W - BACK_W - SEL_PAD;
 static const uint16_t BACK_Y = SEL_PAD;
 
 // CLEAR button (bottom of right panel)
@@ -52,7 +52,7 @@ static const ButtonLabel btnClear = {
   "CLEAR", TFT_WHITE, TFT_WHITE, TFT_MAROON, TFT_RED, NO_BORDER, NO_BORDER
 };
 static const uint16_t CLEAR_H = 48;
-static const uint16_t CLEAR_Y = 480 - CLEAR_H - SEL_PAD;
+static const uint16_t CLEAR_Y = KCM_SCREEN_H - CLEAR_H - SEL_PAD;
 static const uint16_t CLEAR_X = PANEL_X;
 static const uint16_t CLEAR_W = PANEL_W;
 
@@ -302,7 +302,7 @@ void drawStaticSelect(KCM_TFT &tft) {
   drawPresetButtons(tft);
 
   // Divider between grid and right panel
-  tft.fillRect(GRID_W + SEL_PAD, TOP_H, 2, 480 - TOP_H, TFT_DARK_GREY);
+  tft.fillRect(GRID_W + SEL_PAD, TOP_H, 2, KCM_SCREEN_H - TOP_H, TFT_DARK_GREY);
 
   // Resource grid
   for (uint8_t i = 0; i < RESOURCE_TYPE_COUNT; i++) {

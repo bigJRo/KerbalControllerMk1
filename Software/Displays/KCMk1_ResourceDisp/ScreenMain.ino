@@ -11,7 +11,7 @@
      2. SEL         -- navigates to the resource selection screen
      3. DATA        -- navigates to the numerical resource detail screen
 
-   Button labels are horizontal, centred, using Roboto_Black_20.
+   Button labels are horizontal, centred, using SB_BTN_FONT (Roboto_Black_28).
    Bottom three buttons (DFLT, SEL, DATA) use a navy background.
 
    Each bar:
@@ -30,7 +30,8 @@
 static const uint16_t SCREEN_W     = KCM_SCREEN_W;   // #3A from SystemConfig
 static const uint16_t SCREEN_H     = KCM_SCREEN_H;   // #3A from SystemConfig
 static const uint16_t AXIS_W       = 44;   // px reserved on left for Y-axis labels + ticks
-static const uint16_t SIDEBAR_W    = 80;   // px -- width of right-hand nav button column
+static const uint16_t SIDEBAR_W    = 96;   // px -- width of right-hand nav button column (1024x600)
+static const tFont   *SB_BTN_FONT  = &Roboto_Black_28;  // nav-button label font (tall 4-button column)
 static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
 static inline uint16_t barAreaW()   { return barRegionW() - AXIS_W; }
 static const uint16_t LABEL_H      = 44;
@@ -98,12 +99,12 @@ static void drawSidebar(KCM_TFT &tft) {
 
   // Button 0: TOTAL / STAGE mode toggle -- always drawn "on" (illuminated)
   const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), modeBtn, &Roboto_Black_20, true);
+  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), modeBtn, SB_BTN_FONT, true);
 
   // Buttons 1-3: action buttons, drawn "on" so their background color always shows
-  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnReset,  &Roboto_Black_20, true);
-  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnSelect, &Roboto_Black_20, true);
-  drawButton(tft, bx, sbBtnY(3), bw, sbBtnH(), btnDetail, &Roboto_Black_20, true);
+  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnReset,  SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(3), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
 }
 
 
@@ -113,7 +114,7 @@ static void drawSidebar(KCM_TFT &tft) {
 ****************************************************************************************/
 void redrawStageModeButton(KCM_TFT &tft) {
   const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, sbX() + 1, sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, &Roboto_Black_20, true);
+  drawButton(tft, sbX() + 1, sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, SB_BTN_FONT, true);
 }
 
 
