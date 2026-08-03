@@ -112,7 +112,7 @@ static String detRowValue(uint8_t row) {
 /***************************************************************************************
    DRAW SELECTOR COLUMN
 ****************************************************************************************/
-static void drawDetailSelector(RA8875 &tft) {
+static void drawDetailSelector(KCM_TFT &tft) {
   tft.fillRect(0, 0, DET_SEL_W, 480, TFT_BLACK);
   tft.fillRect(DET_SEL_W, 0, 2, 480, TFT_DARK_GREY);  // 2px divider
   if (slotCount == 0) return;
@@ -150,7 +150,7 @@ static void drawDetailSelector(RA8875 &tft) {
    Does NOT draw values — those are handled by drawDetailValues() each frame.
    Invalidates _detValCache so drawDetailValues() does a full value repaint after.
 ****************************************************************************************/
-static void drawDetailChrome(RA8875 &tft) {
+static void drawDetailChrome(KCM_TFT &tft) {
   tft.fillRect(DET_PNL_X, 0, DET_PNL_W, 480, TFT_BLACK);
   for (uint8_t i = 0; i < 6; i++) {
     _detValCache[i] = "";   // invalidate all 6 regardless of row count
@@ -216,7 +216,7 @@ static void drawDetailChrome(RA8875 &tft) {
    _detValCache suppresses the printValue call entirely when a value hasn't changed,
    so stable rows produce zero draw calls per frame.
 ****************************************************************************************/
-static void drawDetailValues(RA8875 &tft) {
+static void drawDetailValues(KCM_TFT &tft) {
   if (slotCount == 0 || _detailSlot >= slotCount) return;
   uint8_t rowCount = _detRowCount();
   for (uint8_t i = 0; i < rowCount; i++) {
@@ -234,14 +234,14 @@ static void drawDetailValues(RA8875 &tft) {
 /***************************************************************************************
    PUBLIC INTERFACE
 ****************************************************************************************/
-void drawStaticDetail(RA8875 &tft) {
+void drawStaticDetail(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
   if (_detailSlot >= slotCount && slotCount > 0) _detailSlot = 0;
   drawDetailSelector(tft);
   drawDetailChrome(tft);
 }
 
-void updateScreenDetail(RA8875 &tft) {
+void updateScreenDetail(KCM_TFT &tft) {
   drawDetailValues(tft);
 }
 

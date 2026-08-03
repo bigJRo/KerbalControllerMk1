@@ -178,7 +178,7 @@ static void loadPreset(uint8_t presetIndex) {
 /***************************************************************************************
    DRAW ONE GRID BUTTON
 ****************************************************************************************/
-static void drawSelectButton(RA8875 &tft, uint8_t gridIndex, bool isOn) {
+static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
   ResourceType t = resTypeByIndex(gridIndex);
   if (t == RES_NONE) return;
 
@@ -203,7 +203,7 @@ static void drawSelectButton(RA8875 &tft, uint8_t gridIndex, bool isOn) {
 /***************************************************************************************
    DRAW SLOT COUNT -- small text in title row, left side
 ****************************************************************************************/
-static void drawSlotCount(RA8875 &tft) {
+static void drawSlotCount(KCM_TFT &tft) {
   char countStr[20];
   snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
   int16_t cw = getFontStringWidth(&Roboto_Black_16, countStr);
@@ -220,7 +220,7 @@ static void drawSlotCount(RA8875 &tft) {
 /***************************************************************************************
    DRAW PRESET BUTTONS ROW
 ****************************************************************************************/
-static void drawPresetButtons(RA8875 &tft) {
+static void drawPresetButtons(KCM_TFT &tft) {
   tft.fillRect(0, TITLE_H, BACK_X, PRESET_H, TFT_BLACK);
   for (uint8_t i = 0; i < PRESET_COUNT; i++) {
     uint16_t bx = SEL_PAD + i * (PRESET_BTN_W + SEL_PAD);
@@ -240,7 +240,7 @@ static void drawPresetButtons(RA8875 &tft) {
 /***************************************************************************************
    DRAW ORDER PANEL -- right-side list showing selection order
 ****************************************************************************************/
-static void drawOrderPanel(RA8875 &tft) {
+static void drawOrderPanel(KCM_TFT &tft) {
   uint16_t listH = CLEAR_Y - TOP_H - SEL_PAD * 2;
   tft.fillRect(PANEL_X, TOP_H, PANEL_W, listH + SEL_PAD, TFT_BLACK);
 
@@ -283,7 +283,7 @@ static void drawOrderPanel(RA8875 &tft) {
 /***************************************************************************************
    DRAW STATIC CHROME -- selection screen
 ****************************************************************************************/
-void drawStaticSelect(RA8875 &tft) {
+void drawStaticSelect(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
 
   // Title — large font, vertically centred in title row
@@ -317,7 +317,7 @@ void drawStaticSelect(RA8875 &tft) {
 /***************************************************************************************
    UPDATE PASS
 ****************************************************************************************/
-void updateScreenSelect(RA8875 &tft) {
+void updateScreenSelect(KCM_TFT &tft) {
   // No per-frame updates on select screen — all changes are touch-driven redraws.
 }
 

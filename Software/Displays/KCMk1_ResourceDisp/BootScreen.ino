@@ -3,7 +3,7 @@
    Jurassic Park-themed terminal boot sequence.
 
    Uses tft.setFont / setCursor / print (GFX graphics mode calls) exclusively.
-   The RA8875 setFontScale/print API puts the chip into internal text mode and the
+   The KCM_TFT setFontScale/print API puts the chip into internal text mode and the
    PaulStoffregen v0.7.11 library does not expose a public graphics-mode restore call,
    so we avoid text mode entirely and stay in graphics mode throughout.
 
@@ -30,22 +30,22 @@ static const tFont   *BS_BIG   = &KcmTerm_40;   // big opening / system-ready li
 ****************************************************************************************/
 static void _bs_wait(uint16_t ms) { delay(ms); }
 
-static void _bs_print(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
+static void _bs_print(KCM_TFT &tft, const tFont *font, uint16_t x, uint16_t y,
                       const char *text, uint16_t col) {
   bsPrint(tft, font, x, y, text, col);
 }
 
-static uint16_t _bs_line(RA8875 &tft, uint16_t y, const char *text, uint16_t col) {
+static uint16_t _bs_line(KCM_TFT &tft, uint16_t y, const char *text, uint16_t col) {
   return bsLine(tft, BS_FONT, BS_COL_X, y, BS_ROW_H, text, col);
 }
 
 static uint16_t _bs_blank(uint16_t y) { return bsBlank(y, BS_ROW_H); }
 
-static uint16_t _bs_big(RA8875 &tft, uint16_t y, const char *text, uint16_t col) {
+static uint16_t _bs_big(KCM_TFT &tft, uint16_t y, const char *text, uint16_t col) {
   return bsBig(tft, BS_BIG, BS_COL_X, y, text, col);
 }
 
-static uint16_t _bs_wrap(RA8875 &tft, uint16_t y, const char *text,
+static uint16_t _bs_wrap(KCM_TFT &tft, uint16_t y, const char *text,
                           uint16_t col, uint16_t maxW) {
   return bsWrap(tft, BS_FONT, BS_COL_X, y, BS_ROW_H, text, col, maxW);
 }
@@ -54,9 +54,9 @@ static uint16_t _bs_wrap(RA8875 &tft, uint16_t y, const char *text,
 /***************************************************************************************
    BOOT SIM TEXT
    Jurassic Park-themed terminal sequence.
-   All rendering via helpers -- stays in RA8875 graphics mode throughout.
+   All rendering via helpers -- stays in KCM_TFT graphics mode throughout.
 ****************************************************************************************/
-void bootSimText(RA8875 &tft) {
+void bootSimText(KCM_TFT &tft) {
 
   tft.fillScreen(TFT_BLACK);
   uint16_t y = 0;

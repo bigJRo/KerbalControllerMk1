@@ -5,13 +5,19 @@
    type enum, and extern declarations for all globals.
 ****************************************************************************************/
 
-// Requires KerbalDisplayCommon >= 2.1.0
-#include <KerbalDisplayCommon.h>
+// Requires KerbalDisplayCommon >= 3.0.0 (rev-2: RA8876 KCM_TFT + ILI9341_t3 fonts)
+#include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + fonts + SystemConfig
+#include <KCM_Touch.h>             // FT5316 capacitive touch (rev-2; replaces GSL1680F)
 // KerbalDisplayAudio is a direct sketch dependency (not a KDC sub-dependency).
-// Audio output is not used on this panel, but the library claims pin 9.
+// Audio output is not used on this panel and is never initialised here. NOTE (rev-2):
+// the old rev-1 pin-9 claim now collides with the TFT backlight (KCM_TFT_BL = 9).
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
+
+// rev-2 compat: screen/boot code declares font pointers as the old sumotoy `tFont`
+// type. KerbalDisplayCommon v3 uses ILI9341_t3_font_t; alias so those signatures compile.
+typedef ILI9341_t3_font_t tFont;
 
 
 /***************************************************************************************
@@ -20,10 +26,10 @@
      MAJOR — incompatible structural changes
      MINOR — new features or screens added
      PATCH — bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 2.0.1
+   This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
-static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 3;
+static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
+static const uint8_t SKETCH_VERSION_MINOR = 0;
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -113,7 +119,7 @@ static constexpr uint8_t DEFAULT_SLOT_COUNT = 8;
 extern const uint16_t LOW_RES_THRESHOLD;   // percent (0-100) below which bar turns red
 
 // From AAA_Globals.ino
-extern RA8875       infoDisp;
+extern KCM_TFT       infoDisp;
 extern TouchResult  lastTouch;
 extern KerbalSimpit simpit;
 extern ScreenType   activeScreen;
@@ -147,20 +153,20 @@ void initDefaultSlots();
 void initAllSlots();
 void stepDemoState();
 void initSimpit();
-void bootSimText(RA8875 &tft);
+void bootSimText(KCM_TFT &tft);
 void setupI2CSlave();
 void updateI2CState();
 void buildI2CPacketAndAssert();
 extern volatile bool i2cProceedReceived;
-void drawStaticMain(RA8875 &tft);
-void updateScreenMain(RA8875 &tft);
-void redrawStageModeButton(RA8875 &tft);
+void drawStaticMain(KCM_TFT &tft);
+void updateScreenMain(KCM_TFT &tft);
+void redrawStageModeButton(KCM_TFT &tft);
 int8_t sidebarHitTest(uint16_t x, uint16_t y);
-void drawStaticSelect(RA8875 &tft);
-void updateScreenSelect(RA8875 &tft);
+void drawStaticSelect(KCM_TFT &tft);
+void updateScreenSelect(KCM_TFT &tft);
 bool handleSelectTouch(uint16_t x, uint16_t y);
-void drawStaticDetail(RA8875 &tft);
-void updateScreenDetail(RA8875 &tft);
+void drawStaticDetail(KCM_TFT &tft);
+void updateScreenDetail(KCM_TFT &tft);
 bool handleDetailTouch(uint16_t x, uint16_t y);
 
 

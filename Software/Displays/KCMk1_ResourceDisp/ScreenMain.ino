@@ -91,7 +91,7 @@ static const ButtonLabel btnDetail = {
 /***************************************************************************************
    DRAW SIDEBAR
 ****************************************************************************************/
-static void drawSidebar(RA8875 &tft) {
+static void drawSidebar(KCM_TFT &tft) {
   tft.drawLine(sbX(), 0, sbX(), SCREEN_H, TFT_GREY);
   uint16_t bx = sbX() + 1;
   uint16_t bw = SIDEBAR_W - 1;
@@ -111,7 +111,7 @@ static void drawSidebar(RA8875 &tft) {
    REDRAW MODE BUTTON ONLY
    Called when stageMode toggles to avoid a full screen redraw.
 ****************************************************************************************/
-void redrawStageModeButton(RA8875 &tft) {
+void redrawStageModeButton(KCM_TFT &tft) {
   const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
   drawButton(tft, sbX() + 1, sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, &Roboto_Black_20, true);
 }
@@ -137,7 +137,7 @@ static uint16_t barX(uint8_t index) {
    DRAW Y-AXIS
    Delegates to the library's drawLabelledAxis(). See KerbalDisplayCommon.h.
 ****************************************************************************************/
-static void drawAxis(RA8875 &tft) {
+static void drawAxis(KCM_TFT &tft) {
   drawLabelledAxis(tft,
                    0, AXIS_W,
                    BAR_TOP, BAR_BOTTOM,
@@ -165,7 +165,7 @@ static const tFont* barFont() {
 static float _prevLevel[MAX_SLOTS];
 static bool  _prevStageMode = false;
 
-void drawStaticMain(RA8875 &tft) {
+void drawStaticMain(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
   drawAxis(tft);
@@ -195,7 +195,7 @@ void drawStaticMain(RA8875 &tft) {
 /***************************************************************************************
    DRAW ONE BAR -- flicker-free two-fillRect technique
 ****************************************************************************************/
-static void drawBar(RA8875 &tft, uint16_t x, uint16_t bw, uint16_t fillH, uint16_t color) {
+static void drawBar(KCM_TFT &tft, uint16_t x, uint16_t bw, uint16_t fillH, uint16_t color) {
   uint16_t emptyH = (BAR_H - 2) - fillH;
   uint16_t innerX = x + 1;
   uint16_t innerW = bw - 2;
@@ -209,7 +209,7 @@ static void drawBar(RA8875 &tft, uint16_t x, uint16_t bw, uint16_t fillH, uint16
 /***************************************************************************************
    UPDATE PASS
 ****************************************************************************************/
-void updateScreenMain(RA8875 &tft) {
+void updateScreenMain(KCM_TFT &tft) {
   if (stageMode != _prevStageMode) {
     _prevStageMode = stageMode;
     redrawStageModeButton(tft);

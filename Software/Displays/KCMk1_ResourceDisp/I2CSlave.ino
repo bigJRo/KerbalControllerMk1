@@ -7,7 +7,7 @@
      Slave addr : 0x11
      INT pin    : pin 2, OUTPUT, active-LOW
                   ResourceDisp asserts LOW when a fresh packet is ready.
-                  Master reads via Wire.requestFrom(0x11, I2C_PACKET_SIZE).
+                  Master reads via KCM_I2C_BUS.requestFrom(0x11, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
 
    Outbound packet (ResourceDisp -> Master), I2C_PACKET_SIZE = 4 bytes:
@@ -228,12 +228,12 @@ void buildI2CPacketAndAssert() {
 static void onI2CReceive(int numBytes) {
   if (numBytes == I2C_CMD_SIZE) {
     for (int i = 0; i < I2C_CMD_SIZE; i++) {
-      i2cCmdBuf[i] = Wire.read();
+      i2cCmdBuf[i] = KCM_I2C_BUS.read();
     }
     i2cCmdReady = true;
   } else {
     // Drain unexpected bytes
-    while (Wire.available()) Wire.read();
+    while (KCM_I2C_BUS.available()) KCM_I2C_BUS.read();
   }
 }
 
@@ -245,7 +245,7 @@ static void onI2CReceive(int numBytes) {
    Must complete quickly -- runs in interrupt context.
 ****************************************************************************************/
 static void onI2CRequest() {
-  Wire.write((uint8_t *)i2cPacket, I2C_PACKET_SIZE);
+  KCM_I2C_BUS.write((uint8_t *)i2cPacket, I2C_PACKET_SIZE);
   digitalWriteFast(I2C_INT_PIN, HIGH);   // deassert interrupt
   i2cPacketReady = false;
 }
@@ -259,9 +259,9 @@ void setupI2CSlave() {
   pinMode(I2C_INT_PIN, OUTPUT);
   digitalWriteFast(I2C_INT_PIN, HIGH);   // idle high
 
-  Wire.begin(I2C_SLAVE_ADDR);
-  Wire.onRequest(onI2CRequest);
-  Wire.onReceive(onI2CReceive);
+  KCM_I2C_BUS.begin(I2C_SLAVE_ADDR);
+  KCM_I2C_BUS.onRequest(onI2CRequest);
+  KCM_I2C_BUS.onReceive(onI2CReceive);
 
   buildI2CPacket();
 

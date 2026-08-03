@@ -10,11 +10,11 @@
 #include "KCMk1_ResourceDisp.h"
 
 
-void drawStaticStandby(RA8875 &tft) {
+void drawStaticStandby(KCM_TFT &tft) {
   drawStandbySplash(tft);   // #5A delegates to KDC library
 }
 
 
-void updateScreenStandby(RA8875 &tft) {
+void updateScreenStandby(KCM_TFT &tft) {
   (void)tft;  // nothing to update — standby is purely static
 }

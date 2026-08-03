@@ -10,7 +10,7 @@
 /***************************************************************************************
    DISPLAY AND TOUCH
 ****************************************************************************************/
-RA8875      infoDisp  = RA8875(RA8875_CS, RA8875_RESET);
+KCM_TFT     infoDisp(KCM_TFT_RS, KCM_TFT_CS, KCM_TFT_RESET);
 TouchResult lastTouch;
 
 
