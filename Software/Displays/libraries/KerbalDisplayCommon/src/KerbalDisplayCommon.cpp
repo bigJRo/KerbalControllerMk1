@@ -308,9 +308,17 @@ void drawButton(KCM_TFT &tft, int16_t x, int16_t y, int16_t w, int16_t h,
     int16_t drawX    = x + (w - linePixW) / 2;
     int16_t drawY    = startY + (i * LINE_SPACING);
     if (drawX < x + PADDING) drawX = x + PADDING;
-    // Clear the full line cell height with bgColor before printing to avoid
-    // artefacts from inter-line gaps and glyph height mismatches
-    tft.fillRect(x + 1, drawY, w - 2, charH, bgColor);
+    // Clear the line cell with bgColor before printing to avoid artefacts from
+    // inter-line gaps and glyph height mismatches. Clamp the clear so it never
+    // covers the button's border rows (top y / bottom y+h-1): when text nearly
+    // fills the button (large font / multi-line wrap) an unclamped clear would
+    // erase a strip of the border, leaving visible breaks. The horizontal
+    // inset (x+1, w-2) already protects the left/right border the same way.
+    int16_t clrY = drawY;
+    int16_t clrH = charH;
+    if (clrY < y + 1)          { clrH -= (y + 1 - clrY); clrY = y + 1; }
+    if (clrY + clrH > y + h - 1) clrH = (y + h - 1) - clrY;
+    if (clrH > 0) tft.fillRect(x + 1, clrY, w - 2, clrH, bgColor);
     tft.setCursor(drawX, drawY);
     tft.print(lines[i]);
   }
