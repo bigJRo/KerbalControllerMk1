@@ -111,10 +111,12 @@
 #define KCM_I2C_RST_PIN           1      // RST — shared reset line from the master
 #define KCM_I2C_ADDR_ANNUNCIATOR  0x10
 #define KCM_I2C_ADDR_RESDISP      0x11
-#define KCM_I2C_ADDR_INFODISP     0x12
+#define KCM_I2C_ADDR_INFODISP     0x12   // Info Display 1 (INFO_DISP_UNIT == 1)
+#define KCM_I2C_ADDR_INFODISP_2   0x13   // Info Display 2 (INFO_DISP_UNIT == 2) — same firmware, compile-time unit select
+#define KCM_I2C_ADDR_SYSINFODISP  0x14   // System Info Display — FUTURE WORK (separate hardware board, not yet coded)
 #define KCM_I2C_SYNC_ANNUNCIATOR  0xAC
 #define KCM_I2C_SYNC_RESDISP      0xAD
-#define KCM_I2C_SYNC_INFODISP     0xAE   // was 0xAD — collision fix (item #3)
+#define KCM_I2C_SYNC_INFODISP     0xAE   // was 0xAD — collision fix (item #3); shared by Info Display 1 & 2
 
 // =============================================================================
 // SD CARD — Teensy 4.1 on-board socket (SDIO, not SPI)

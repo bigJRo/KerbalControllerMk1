@@ -4,10 +4,12 @@
 
    Hardware:
      I2C bus    : Wire2 (pins 24/25 on Teensy 4.1) — KCM_I2C_BUS
-     Slave addr : 0x12
+     Slave addr : 0x12 (Info Display 1) or 0x13 (Info Display 2), selected at
+                  compile time by INFO_DISP_UNIT in AAA_Config.ino. Same firmware
+                  image for both boards; only this address differs.
      INT pin    : pin 0 (KCM_I2C_INT_PIN), OUTPUT, active-LOW
                   InfoDisp asserts LOW when a fresh packet is ready.
-                  Master reads via KCM_I2C_BUS.requestFrom(0x12, I2C_PACKET_SIZE).
+                  Master reads via KCM_I2C_BUS.requestFrom(I2C_SLAVE_ADDR, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
 
    Outbound packet (InfoDisp -> Master), I2C_PACKET_SIZE = 10 bytes:
@@ -60,7 +62,19 @@
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
-#define I2C_SLAVE_ADDR   KCM_I2C_ADDR_INFODISP      // #3C from SystemConfig
+// Info Display unit -> I2C slave address. INFO_DISP_UNIT is set per board in
+// AAA_Config.ino (1 = Info Display 1, 2 = Info Display 2). Same firmware image;
+// only the address differs so the master can talk to each board on the shared bus.
+#ifndef INFO_DISP_UNIT
+#define INFO_DISP_UNIT 1
+#endif
+#if   INFO_DISP_UNIT == 1
+#define I2C_SLAVE_ADDR   KCM_I2C_ADDR_INFODISP      // 0x12 (Info Display 1)
+#elif INFO_DISP_UNIT == 2
+#define I2C_SLAVE_ADDR   KCM_I2C_ADDR_INFODISP_2    // 0x13 (Info Display 2)
+#else
+#error "INFO_DISP_UNIT must be 1 (Info Display 1) or 2 (Info Display 2)"
+#endif
 #define I2C_INT_PIN      KCM_I2C_INT_PIN             // #3C from SystemConfig
 #define I2C_PACKET_SIZE  10     // outbound: InfoDisp -> Master (panel-specific; 3 status + AP cmd frame)
 #define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp control/ack (panel-specific)

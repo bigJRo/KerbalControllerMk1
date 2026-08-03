@@ -12,6 +12,16 @@ bool debugMode = false;
 bool demoMode  = false;  // true = sine-wave demo values, no KSP required
 bool fpsDiag   = false;  // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
 
+// INFO_DISP_UNIT — which physical Info Display board this firmware image targets.
+// The Info Display firmware is identical for both units; only the I2C slave address
+// differs so the master can address each board independently on the shared bus.
+//   1 = Info Display 1  -> I2C addr 0x12 (KCM_I2C_ADDR_INFODISP)
+//   2 = Info Display 2  -> I2C addr 0x13 (KCM_I2C_ADDR_INFODISP_2)
+// Set this before flashing each board. The sync/framing byte (0xAE) is shared by
+// both units; the INT pin (pin 0) is per-board wiring and does not change here.
+// (The System Info Display, addr 0x14, is separate hardware and is future work.)
+#define INFO_DISP_UNIT 1
+
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
 // for production (master will send PROCEED after reading the status packet).
