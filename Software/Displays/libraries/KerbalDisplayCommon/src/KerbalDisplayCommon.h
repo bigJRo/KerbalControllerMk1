@@ -53,16 +53,17 @@
 #include "fonts_ili/Roboto_Black_40.c"
 #include "fonts_ili/Roboto_Black_48.c"
 #include "fonts_ili/Roboto_Black_72.c"
-// Terminalia (OFL 1.1) -- a Terminus-faithful monospace terminal font, rendered from
-// Terminalia-Regular.ttf by ttf_to_ili9341.py at each size. Replaces the old IBM VGA
-// TerminalFont; see fonts_ili/OFL.txt and fonts_ili/README.md.
-#include "fonts_ili/Terminalia_16.c"
-#include "fonts_ili/Terminalia_20.c"
-#include "fonts_ili/Terminalia_24.c"
-#include "fonts_ili/Terminalia_28.c"
-#include "fonts_ili/Terminalia_32.c"
-#include "fonts_ili/Terminalia_36.c"
-#include "fonts_ili/Terminalia_40.c"   // 2x native 20px strike — clean heading size
+// KcmTerm -- monospace terminal font, glyph bitmaps from Terminus Font 4.49
+// (SIL OFL 1.1). True bitmaps, so every native size (16/20/24/28/32) is pixel-exact;
+// 36/40 are 2x doubles of the 18/20 strikes. Replaces the old IBM VGA TerminalFont.
+// See fonts_ili/OFL.txt and fonts_ili/README.md.
+#include "fonts_ili/KcmTerm_16.c"
+#include "fonts_ili/KcmTerm_20.c"
+#include "fonts_ili/KcmTerm_24.c"
+#include "fonts_ili/KcmTerm_28.c"
+#include "fonts_ili/KcmTerm_32.c"
+#include "fonts_ili/KcmTerm_36.c"   // 2x native 18px strike
+#include "fonts_ili/KcmTerm_40.c"   // 2x native 20px strike — clean heading size
 
 
 /***************************************************************************************

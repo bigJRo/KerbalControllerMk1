@@ -270,9 +270,9 @@ The pointer fields `soiName`, `dispName`, `image`, and `cond` point into static 
 
 ## Fonts
 
-All fonts are in the ILI9341_t3 (`ILI9341_t3_font_t`) format. Roboto Black sizes (12, 16, 20, 24, 28, 32, 36, 40, 48, 72 px) and the Terminalia monospace terminal font (16, 20, 24, 28, 32, 36, 40 px) are included automatically from `src/fonts_ili/` via `#include` in the library header. No additional installation step is needed. Terminalia (SIL OFL 1.1, a Terminus-faithful rebuild) replaces the old IBM VGA `TerminalFont` and is rendered from `Terminalia-Regular.ttf` by `ttf_to_ili9341.py`; see `src/fonts_ili/OFL.txt`. (The rev-1 sumotoy tFont format has been replaced.)
+All fonts are in the ILI9341_t3 (`ILI9341_t3_font_t`) format. Roboto Black sizes (12, 16, 20, 24, 28, 32, 36, 40, 48, 72 px) and the `KcmTerm` monospace terminal font (16, 20, 24, 28, 32, 36, 40 px) are included automatically from `src/fonts_ili/` via `#include` in the library header. No additional installation step is needed. `KcmTerm` carries the hand-designed bitmaps of **Terminus Font 4.49** (SIL OFL 1.1) — pixel-exact at every native size — converted from the Terminus BDF sources by `bdf_to_ili9341.py`; it replaces the old IBM VGA `TerminalFont`. See `src/fonts_ili/OFL.txt`. (The rev-1 sumotoy tFont format has been replaced.)
 
-Font objects are named `Roboto_Black_24`, `Terminalia_24`, etc. Pass a pointer when calling library functions: `&Roboto_Black_24`.
+Font objects are named `Roboto_Black_24`, `KcmTerm_24`, etc. Pass a pointer when calling library functions: `&Roboto_Black_24`.
 
 ---
 

@@ -18,8 +18,8 @@
 static const uint16_t BS_HOLD  = 300;
 static const uint16_t BS_ROW_H = 18;   // 16px glyph + 2px leading
 static const uint16_t BS_COL_X = 4;
-static const tFont   *BS_FONT  = &Terminalia_16;
-static const tFont   *BS_BIG   = &Terminalia_32;
+static const tFont   *BS_FONT  = &KcmTerm_16;
+static const tFont   *BS_BIG   = &KcmTerm_32;
 
 
 /***************************************************************************************
