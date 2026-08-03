@@ -16,10 +16,12 @@
    CONSTANTS
 ****************************************************************************************/
 static const uint16_t BS_HOLD  = 300;
-static const uint16_t BS_ROW_H = 18;   // 16px glyph + 2px leading
+static const uint16_t BS_ROW_H = 22;   // 16px body glyph + 6px leading
+static const uint16_t VER_ROW  = 34;   // 24px version line + leading
 static const uint16_t BS_COL_X = 4;
-static const tFont   *BS_FONT  = &KcmTerm_16;
-static const tFont   *BS_BIG   = &KcmTerm_32;
+static const tFont   *BS_FONT  = &KcmTerm_16;   // narrative body
+static const tFont   *BS_VER   = &KcmTerm_24;   // version line — matches the Info Display header
+static const tFont   *BS_BIG   = &KcmTerm_40;   // big opening / system-ready lines
 
 
 /***************************************************************************************
@@ -58,11 +60,11 @@ void bootSimText(RA8875 &tft) {
 
   tft.fillScreen(TFT_BLACK);
   uint16_t y = 0;
-  uint16_t wrapW = 792;  // 800px minus left margin
+  uint16_t wrapW = KCM_SCREEN_W - 8;   // full-width text wrap (1024px panel)
 
-  // - Header -
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
-  y += 4;
+  // - Header bar: same format as the Info Display -- top rule / version line / bottom rule -
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
+  y += 6;
   {
     char buf[128];   // #4B version string
     snprintf(buf, sizeof(buf),
@@ -70,11 +72,11 @@ void bootSimText(RA8875 &tft) {
              " / KDC %d.%d.%d",
              SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH,
              KDC_VERSION_MAJOR,    KDC_VERSION_MINOR,    KDC_VERSION_PATCH);
-    _bs_print(tft, BS_FONT, BS_COL_X, y, buf, TFT_GREY);
+    _bs_print(tft, BS_VER, BS_COL_X, y, buf, TFT_GREY);
   }
-  y += BS_ROW_H;
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
-  y += 4;
+  y += VER_ROW;
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
+  y += 8;
   _bs_wait(BS_HOLD);
 
   // Opening line -- big, white
