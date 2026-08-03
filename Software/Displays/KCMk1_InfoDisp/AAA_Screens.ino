@@ -6,17 +6,20 @@
    Most buttons map 1:1 to a screen; the PFD button covers three screens selected by
    context or title-touch (see pfdContextScreen / pfdSelectedScreen). ORB+ (Advanced
    Orbital Elements) has no button — it is reached by tapping the ORBIT title bar.
+   The ASC (Ascent Autopilot) button is parked at the bottom, physically separated from
+   the display-nav cluster and drawn in a distinct purple, since it is an interactive
+   console rather than a display screen.
      0  LNCH  Launch (Pre-launch / Ascent / Circularization — context + title toggle)
-     1  ASC   Ascent Autopilot (touch console for the Simpit ascent autopilot)
-     2  PFD   Primary Flight Display: SPACECRAFT (default) / AIRCRAFT (plane in atmo) /
+     1  PFD   Primary Flight Display: SPACECRAFT (default) / AIRCRAFT (plane in atmo) /
               ROVER (rover). Context-selected; title-touch cycles the three.
-     3  ORB   Orbit Information (Apsides graphic; ORB+ via title tap)
-     4  VEH   Vehicle Information
-     5  MNVR  Maneuver Information
-     6  TGT   Target / Rendezvous Information
-     7  DOCK  Docking Information
-     8  LNDG  Landing Information (Powered Descent)
-     9  ENTR  Landing — Re-entry
+     2  ORB   Orbit Information (Apsides graphic; ORB+ via title tap)
+     3  VEH   Vehicle Information
+     4  MNVR  Maneuver Information
+     5  TGT   Target / Rendezvous Information
+     6  DOCK  Docking Information
+     7  LNDG  Landing Information (Powered Descent)
+     8  ENTR  Landing — Re-entry
+     9  ASC   Ascent Autopilot (touch console for the Simpit ascent autopilot)
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
@@ -51,7 +54,7 @@ const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;
 
 const uint8_t SB_BTN_COUNT = 10;
-const uint8_t SB_PFD_BTN   = 2;   // PFD button index (covers SCFT / ACFT / ROVR)
+const uint8_t SB_PFD_BTN   = 1;   // PFD button index (covers SCFT / ACFT / ROVR)
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -64,26 +67,27 @@ inline uint16_t sbBtnY(uint8_t btn) {
 // pfdSelectedScreen() picks the context/manual one at tap time.
 const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
   screen_LNCH,     // 0 LNCH
-  screen_LNCHAP,   // 1 ASC — Ascent Autopilot (ORB+ moved to ORB title tap)
-  screen_SCFT,     // 2 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
-  screen_ORB,      // 3 ORB
-  screen_VEH,      // 4 VEH
-  screen_MNVR,     // 5 MNVR
-  screen_TGT,      // 6 TGT
-  screen_DOCK,     // 7 DOCK
-  screen_LNDG,     // 8 LNDG
-  screen_LNDGRE    // 9 REEN
+  screen_SCFT,     // 1 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
+  screen_ORB,      // 2 ORB
+  screen_VEH,      // 3 VEH
+  screen_MNVR,     // 4 MNVR
+  screen_TGT,      // 5 TGT
+  screen_DOCK,     // 6 DOCK
+  screen_LNDG,     // 7 LNDG
+  screen_LNDGRE,   // 8 REEN
+  screen_LNCHAP    // 9 ASC — Ascent Autopilot; parked at the bottom, physically separated
+                   //   from the display-nav cluster and drawn in a distinct colour
 };
 
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "ASC", "PFD", "ORB", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR"
+  "LNCH", "PFD", "ORB", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR", "ASC"
 };
 
 // Which sidebar button should highlight for the active screen. SCFT/ACFT/ROVR all
 // map to the PFD button; every other screen maps 1:1.
 uint8_t screenToButton(ScreenType s) {
   if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) return SB_PFD_BTN;
-  if (s == screen_ORBADV) return 3;   // ORB+ reached via ORB title tap — highlight the ORB button
+  if (s == screen_ORBADV) return 2;   // ORB+ reached via ORB title tap — highlight the ORB button
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
     if (SB_BTN_SCREEN[i] == s) return i;
   return 0xFF;   // no button (shouldn't happen — every screen maps)
@@ -231,6 +235,12 @@ void drawSidebar(KCM_TFT &tft) {
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++) {
     ButtonLabel btn = (i == activeBtn) ? btnScreenOn : btnScreenOff;
     btn.text = SB_BTN_IDS[i];
+    // Ascent Autopilot button carries a distinct purple identity so it reads as a
+    // different kind of control (an interactive console, not a display screen). The
+    // sidebar draws with isOn=true, so override backgroundColorOn: brighter violet
+    // when it is the active screen, dimmer purple when idle.
+    if (SB_BTN_SCREEN[i] == screen_LNCHAP)
+      btn.backgroundColorOn = (i == activeBtn) ? TFT_VIOLET : TFT_PURPLE;
     uint16_t by = sbBtnY(i);
     uint16_t h  = bh;
     // Last button tiles to row 599 (the panel's final scanline), where its bottom

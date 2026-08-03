@@ -199,15 +199,15 @@ The panel displays thirteen screens navigated by ten right-hand sidebar buttons.
 | Btn | Sidebar | Screen(s) | Tap-through |
 |-----|---------|-----------|-------------|
 | 0 | LNCH | LAUNCH | Title bar: ASCENT / CIRCULARIZATION. Pre-launch board shown automatically on pad. |
-| 1 | ASC | ASCENT AUTOPILOT | On-screen keypad for parameter entry; touch ARM/DISARM |
-| 2 | PFD | SPACECRAFT / AIRCRAFT / ROVER | Context-selected; title-touch cycles the three |
-| 3 | ORB | ORBIT | Title bar: APSIDES / ADVANCED ELEMENTS |
-| 4 | VEH | VEHICLE INFO | — |
-| 5 | MNVR | MANEUVER | — |
-| 6 | TGT | TARGET | NO TARGET SET fullscreen when no target |
-| 7 | DOCK | DOCKING | NO TARGET SET / DOCKED fullscreen when applicable |
-| 8 | LNDG | LANDING | Powered descent |
-| 9 | ENTR | RE-ENTRY | — |
+| 1 | PFD | SPACECRAFT / AIRCRAFT / ROVER | Context-selected; title-touch cycles the three |
+| 2 | ORB | ORBIT | Title bar: APSIDES / ADVANCED ELEMENTS |
+| 3 | VEH | VEHICLE INFO | — |
+| 4 | MNVR | MANEUVER | — |
+| 5 | TGT | TARGET | NO TARGET SET fullscreen when no target |
+| 6 | DOCK | DOCKING | NO TARGET SET / DOCKED fullscreen when applicable |
+| 7 | LNDG | LANDING | Powered descent |
+| 8 | ENTR | RE-ENTRY | — |
+| 9 | ASC | ASCENT AUTOPILOT | Parked at the bottom, physically separated and drawn in a distinct purple. On-screen keypad for parameter entry; touch ARM/DISARM |
 
 **LNCH** — *Pre-launch board* (automatic when `sit_PreLaunch`, bypassed for planes and rovers): vessel name, type, SAS, RCS, throttle, EC%, crew count, CommNet signal, ΔV.Tot, and parachute CAG states. Tap content area or launch to advance to ascent. *Ascent:* Alt.SL, V.Srf, V.Vrt, ApA, T+Ap, Throttle, T.Burn, ΔV.Stg. *Circularization:* Alt.SL, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg. Auto-switches at ~6% body radius with hysteresis.
 
