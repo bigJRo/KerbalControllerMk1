@@ -36,9 +36,11 @@ python3 ttf_to_ili9341.py Terminalia-Regular.ttf ./ Terminalia 16 20 24 28 32 36
   Open Font License 1.1 (`OFL.txt`). It replaces the old IBM VGA `TerminalFont`
   (which shipped only in 16/32); the OFL family renders crisply at any size, so
   boot/terminal screens can pick whatever size fits.
-- Each glyph is rendered 1-bit (antialiased mask thresholded at 128), full-cell
-  and top-aligned, `width == delta == cell_w` for every glyph (true monospace, so
-  dotted-leader columns align by character count). ASCII `0x20–0x7e` only.
+- Each glyph is rendered 1-bit via FreeType **monochrome hinting** (`fontmode="1"`)
+  — antialias+threshold drifts diagonal stems (e.g. `Y`), monochrome keeps them
+  symmetric. Full-cell, top-aligned, `width == delta == cell_w` for every glyph
+  (true monospace, so dotted-leader columns align by character count). The native
+  Terminus pixel sizes (16/20/24/28/32) reproduce cleanest. ASCII `0x20–0x7e` only.
 - Same **round-trip verification** as above: every glyph is decoded back with the
   ILI9341_t3 bit logic and asserted pixel-identical before emit.
 

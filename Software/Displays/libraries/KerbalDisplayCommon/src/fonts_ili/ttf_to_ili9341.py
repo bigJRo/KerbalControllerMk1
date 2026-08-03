@@ -53,14 +53,15 @@ def render_glyphs(ttf_path, px):
     glyphs = {}
     for c in codes:
         ch = chr(c)
-        # Render into an oversized canvas, threshold at 128 (matches the approved
-        # 1-bit preview), then verify the ink fits the monospace cell.
+        # Render into an oversized canvas with FreeType monochrome hinting (crisp,
+        # symmetric 1-bit stems -- AA+threshold drifts diagonal stems), then verify
+        # the ink fits the monospace cell.
         pad = px
         canvas = Image.new("L", (cell_w + 2 * pad, cell_h + 2 * pad), 0)
         d = ImageDraw.Draw(canvas)
-        d.fontmode = "L"                       # antialiased, we threshold below
+        d.fontmode = "1"                       # FreeType monochrome hinted (crisp 1-bit stems)
         d.text((pad, pad), ch, font=font, fill=255, anchor="la")
-        canvas = canvas.point(lambda p: 1 if p >= 128 else 0)
+        canvas = canvas.point(lambda p: 1 if p > 0 else 0)
         px_data = canvas.load()
         # Ink bbox check — nothing may fall outside the (0..cell_w, 0..cell_h) cell
         # once we shift the pad off. anchor "la" puts the ascender row at y=pad.
