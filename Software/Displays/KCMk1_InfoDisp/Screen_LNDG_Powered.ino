@@ -628,10 +628,12 @@ static void _lndgChromePowered(KCM_TFT &tft) {
     tft.print("SURF DRIFT");
 
     // ── Right panel chrome ──
-    // 8 rows using Roboto_Black_20 labels, Roboto_Black_28 values
+    // 8 rows: full-width rows use Roboto_Black_28 labels / Roboto_Black_36 values
+    // (reticle tier); split rows (Fwd/Lat/Thrtl) stay at Roboto_Black_20 labels.
     // x=360..720, y=TITLE_TOP..SCREEN_H
     {
-        static const tFont   *RCF = &Roboto_Black_20;
+        static const tFont   *RCF  = &Roboto_Black_28;  // full-width row labels — reticle tier
+        static const tFont   *RCFS = &Roboto_Black_20;  // split-row labels (Fwd/Lat/Thrtl) stay one tier smaller
         static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;           // 360px
         static const uint8_t  RNR = 8;
@@ -645,8 +647,8 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         // Row 4: Fwd | Lat split
         {
             uint16_t y = rowYFor(4, RNR), h = rowHFor(RNR);
-            printDispChrome(tft, RCF, RX,        y, RHW - ROW_PAD, h, "Fwd:", COL_LABEL, COL_BACK, COL_NO_BDR);
-            printDispChrome(tft, RCF, RX + RHW,  y, RHW - ROW_PAD, h, "Lat:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX,        y, RHW - ROW_PAD, h, "Fwd:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX + RHW,  y, RHW - ROW_PAD, h, "Lat:", COL_LABEL, COL_BACK, COL_NO_BDR);
             tft.drawLine(RX + RHW,     y, RX + RHW,     rowYFor(5,RNR) - 1, TFT_GREY);
             tft.drawLine(RX + RHW + 1, y, RX + RHW + 1, rowYFor(5,RNR) - 1, TFT_GREY);
         }
@@ -669,7 +671,7 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         // Row 6: Throttle | RCS split — throttle keeps label, RCS is a button
         {
             uint16_t y = rowYFor(6, RNR), h = rowHFor(RNR);
-            printDispChrome(tft, RCF, RX, y, RHW - ROW_PAD, h, "Thrtl:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX, y, RHW - ROW_PAD, h, "Thrtl:", COL_LABEL, COL_BACK, COL_NO_BDR);
             tft.drawLine(RX + RHW,     y, RX + RHW,     rowYFor(7,RNR) - 1, TFT_GREY);
             tft.drawLine(RX + RHW + 1, y, RX + RHW + 1, rowYFor(7,RNR) - 1, TFT_GREY);
         }
@@ -919,7 +921,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
 
     // ── Right panel values ──
     {
-        static const tFont   *RF  = &Roboto_Black_32;   // value font — matches the re-entry panel (both LNDG modes)
+        static const tFont   *RF  = &Roboto_Black_36;   // full-width value font — reticle tier, matches the re-entry panel (both LNDG modes)
         static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;
         static const uint8_t  RNR = 8;
