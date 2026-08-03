@@ -120,6 +120,37 @@ static void _bs_check(KCM_TFT &tft, uint16_t y, const ILI9341_t3_font_t *font, u
 
 
 /***************************************************************************************
+   INTERNAL HELPER -- numbered check row with a dotted leader between the label and the
+   status column (BIOS-POST style). Monospace, so the dots fall on the character grid.
+****************************************************************************************/
+static void _bs_checkNum(KCM_TFT &tft, uint16_t y, const ILI9341_t3_font_t *font, uint16_t col2,
+                         const char *label, const char *status, uint16_t statusCol) {
+  tft.setFont(*font);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setCursor(COL1_X, y);
+  tft.print(label);
+  // Grey dotted leader filling label-end .. status column (one char gap each side).
+  int16_t charW   = getFontStringWidth(font, ".");
+  int16_t dotsX   = COL1_X + getFontStringWidth(font, label) + charW;
+  int16_t dotsEnd = (int16_t)col2 - charW;
+  int16_t nDots   = (charW > 0) ? (dotsEnd - dotsX) / charW : 0;
+  if (nDots > 0) {
+    if (nDots > 60) nDots = 60;
+    char dots[61];
+    memset(dots, '.', (size_t)nDots);
+    dots[nDots] = '\0';
+    tft.setTextColor(TFT_GREY, TFT_BLACK);
+    tft.setCursor(dotsX, y);
+    tft.print(dots);
+  }
+  _bs_wait(BS_HOLD);
+  tft.setTextColor(statusCol, TFT_BLACK);
+  tft.setCursor(col2, y);
+  tft.print(status);
+}
+
+
+/***************************************************************************************
    BOOT SIM TEXT
    Terminal-aesthetic POST sequence, enlarged for 1024x600, with real subsystem
    status. sdOK / touchOK come from the actual init calls in setup(). All rendering
@@ -129,10 +160,11 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
 
   tft.fillScreen(TFT_BLACK);
 
-  // Status column origins: big checks use a 19-char slot; small diagnostics an
-  // 11-char slot. Both depend on the font's glyph advance, so compute at runtime.
-  _bs_col2   = COL1_X + getFontStringWidth(BS_BIG,  "0000000000000000000") + 20;
-  _bs_col2sm = COL1_X + getFontStringWidth(BS_FONT, "00000000000")         + 12;
+  // Status column origins. Big checks reserve a 19-char label slot plus a ~12-char
+  // dotted-leader gap; small diagnostics an 11-char slot. Both depend on the font's
+  // glyph advance, so compute at runtime.
+  _bs_col2   = COL1_X + getFontStringWidth(BS_BIG,  "0000000000000000000 ............") + 12;
+  _bs_col2sm = COL1_X + getFontStringWidth(BS_FONT, "00000000000")                      + 12;
 
   uint16_t y = 0;
   char buf[128];
@@ -155,12 +187,12 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   _bs_wait(BS_HOLD);
 
   // - Real subsystem checks (big) -
-  _bs_check(tft, y, BS_BIG, _bs_col2, "1) DISPLAY  RA8876", "OK",                        TFT_GREEN);   y += BIG_ROW;
-  _bs_check(tft, y, BS_BIG, _bs_col2, "2) TOUCH  FT5316",    touchOK ? "OK"   : "FAIL",  touchOK ? TFT_GREEN : TFT_RED);    y += BIG_ROW;
-  _bs_check(tft, y, BS_BIG, _bs_col2, "3) SD CARD  eMMC",    sdOK    ? "OK"   : "NONE",  sdOK    ? TFT_GREEN : TFT_YELLOW); y += BIG_ROW;
-  _bs_check(tft, y, BS_BIG, _bs_col2, "4) AUDIO  TONE/DFP", "OK",                        TFT_GREEN);   y += BIG_ROW;
-  _bs_check(tft, y, BS_BIG, _bs_col2, "5) I2C SLAVE  0x10", "OK",                        TFT_GREEN);   y += BIG_ROW;
-  _bs_check(tft, y, BS_BIG, _bs_col2, "6) KSP LINK  SIMPIT",
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "1) DISPLAY  RA8876", "OK",                        TFT_GREEN);   y += BIG_ROW;
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "2) TOUCH  FT5316",    touchOK ? "OK"   : "FAIL",  touchOK ? TFT_GREEN : TFT_RED);    y += BIG_ROW;
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "3) SD CARD  eMMC",    sdOK    ? "OK"   : "NONE",  sdOK    ? TFT_GREEN : TFT_YELLOW); y += BIG_ROW;
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "4) AUDIO  TONE/DFP", "OK",                        TFT_GREEN);   y += BIG_ROW;
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "5) I2C SLAVE  0x10", "OK",                        TFT_GREEN);   y += BIG_ROW;
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "6) KSP LINK  SIMPIT",
             demoMode ? "DEMO" : (standaloneMode ? "LOCAL" : "STANDBY"),
             demoMode ? TFT_BLUE : (standaloneMode ? TFT_AQUA : TFT_YELLOW));          y += BIG_ROW + 6;
 
