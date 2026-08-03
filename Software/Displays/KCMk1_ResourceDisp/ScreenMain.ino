@@ -30,7 +30,7 @@
 ****************************************************************************************/
 static const uint16_t SCREEN_W     = KCM_SCREEN_W;   // #3A from SystemConfig
 static const uint16_t SCREEN_H     = KCM_SCREEN_H;   // #3A from SystemConfig
-static const uint16_t AXIS_W       = 44;   // px reserved on left for Y-axis labels + ticks
+static const uint16_t AXIS_W       = 50;   // px reserved on left for Y-axis labels + ticks (fits Black_16)
 static const uint16_t SIDEBAR_W    = 84;   // px -- width of right-hand nav button column (matches InfoDisp)
 static const tFont   *SB_BTN_FONT  = &Roboto_Black_24;  // nav-button label font (fits 4 chars at 84px)
 static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
@@ -40,7 +40,7 @@ static const uint16_t PERC_H       = 36;
 static const uint16_t BAR_TOP      = PERC_H;
 static const uint16_t BAR_BOTTOM   = SCREEN_H - LABEL_H;
 static const uint16_t BAR_H        = BAR_BOTTOM - BAR_TOP;
-static const uint16_t BAR_PAD      = 8;
+static const uint16_t BAR_PAD      = 14;   // gap between bars — wider for clearer separation
 
 // Sidebar: 4 buttons, no padding, edge-to-edge, full height
 static const uint8_t  SB_BTN_COUNT = 4;
@@ -143,7 +143,7 @@ static void drawAxis(KCM_TFT &tft) {
   drawLabelledAxis(tft,
                    0, AXIS_W,
                    BAR_TOP, BAR_BOTTOM,
-                   &Roboto_Black_12,
+                   &Roboto_Black_16,
                    TFT_LIGHT_GREY, TFT_BLACK);
 }
 
