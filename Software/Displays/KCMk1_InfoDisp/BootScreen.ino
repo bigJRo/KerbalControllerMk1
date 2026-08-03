@@ -20,10 +20,10 @@
    CONSTANTS
 ****************************************************************************************/
 static const uint16_t BS_HOLD  = 300;
-static const uint16_t BS_ROW_H = 18;
+static const uint16_t BS_ROW_H = 27;   // 24px (Terminalia_24, cell 25) + 2px leading
 static const uint16_t BS_COL_X = 4;
-static const tFont   *BS_FONT  = &TerminalFont_16;
-static const tFont   *BS_BIG   = &TerminalFont_32;
+static const tFont   *BS_FONT  = &Terminalia_24;   // body — enlarged from 16px for readability
+static const tFont   *BS_BIG   = &Terminalia_36;   // titles / big lines
 
 
 /***************************************************************************************

@@ -135,7 +135,7 @@ void loop() {
   tft.setTextColor(rgb565(0,255,0));
   tft.setCursor(20, 160);
   tft.print("abcdefg 0123456789 %.-");   // baseline/ascender/descender check
-  tft.setFont(TerminalFont_16);
+  tft.setFont(Terminalia_16);
   tft.setTextColor(0xFFFF);
   tft.setCursor(20, 220);
   tft.print("Terminal 8x16: The quick brown fox");

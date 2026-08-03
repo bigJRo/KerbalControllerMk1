@@ -53,8 +53,15 @@
 #include "fonts_ili/Roboto_Black_40.c"
 #include "fonts_ili/Roboto_Black_48.c"
 #include "fonts_ili/Roboto_Black_72.c"
-#include "fonts_ili/TerminalFont_16.c"  // IBM CP437 VGA 8x16 -- fixed-width terminal aesthetic
-#include "fonts_ili/TerminalFont_32.c"  // IBM CP437 VGA 16x32 -- 2x scaled from TerminalFont_16
+// Terminalia (OFL 1.1) -- a Terminus-faithful monospace terminal font, rendered from
+// Terminalia-Regular.ttf by ttf_to_ili9341.py at each size. Replaces the old IBM VGA
+// TerminalFont; see fonts_ili/OFL.txt and fonts_ili/README.md.
+#include "fonts_ili/Terminalia_16.c"
+#include "fonts_ili/Terminalia_20.c"
+#include "fonts_ili/Terminalia_24.c"
+#include "fonts_ili/Terminalia_28.c"
+#include "fonts_ili/Terminalia_32.c"
+#include "fonts_ili/Terminalia_36.c"
 
 
 /***************************************************************************************

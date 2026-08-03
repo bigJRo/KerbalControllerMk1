@@ -23,4 +23,23 @@ RA8876 GFX text engine used on the 7" TFT (hardware rev 2).
 installed library's definition (via `__has_include`) and falls back to the
 canonical layout. See `../../../PORTING_7inch_TFT.md`.
 
-Fonts: Roboto_Black_{12,16,20,24,28,32,36,40,48,72}, TerminalFont_{16,32}.
+## Terminalia (monospace terminal font)
+
+The `Terminalia_*` fonts are generated directly from `Terminalia-Regular.ttf`
+(no sumotoy intermediate) by `ttf_to_ili9341.py`:
+
+```
+python3 ttf_to_ili9341.py Terminalia-Regular.ttf ./ Terminalia 16 20 24 28 32 36
+```
+
+- **Terminalia** is a Terminus-faithful monospace terminal font under the SIL
+  Open Font License 1.1 (`OFL.txt`). It replaces the old IBM VGA `TerminalFont`
+  (which shipped only in 16/32); the OFL family renders crisply at any size, so
+  boot/terminal screens can pick whatever size fits.
+- Each glyph is rendered 1-bit (antialiased mask thresholded at 128), full-cell
+  and top-aligned, `width == delta == cell_w` for every glyph (true monospace, so
+  dotted-leader columns align by character count). ASCII `0x20–0x7e` only.
+- Same **round-trip verification** as above: every glyph is decoded back with the
+  ILI9341_t3 bit logic and asserted pixel-identical before emit.
+
+Fonts: Roboto_Black_{12,16,20,24,28,32,36,40,48,72}, Terminalia_{16,20,24,28,32,36}.

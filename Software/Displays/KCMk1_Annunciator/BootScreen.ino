@@ -1,6 +1,6 @@
 /***************************************************************************************
    BootScreen.ino -- Boot simulation screen for Kerbal Controller Mk1 Annunciator
-   Renders a terminal-aesthetic BIOS POST sequence using the IBM CP437 TerminalFont.
+   Renders a terminal-aesthetic BIOS POST sequence using the Terminalia monospace font (OFL).
 
    Uses tft.setFont / setCursor / print (GFX graphics mode calls) exclusively.
    The RA8875 setFontScale/print API puts the chip into internal text mode and the
@@ -29,8 +29,8 @@ static const uint16_t BS_HOLD  = BS_TUNE_PAUSE ? 400 : 110;  // per-line reveal 
 static const uint16_t BIG_ROW  = 40;   // 32px glyph + 8px leading (checks/title/summary)
 static const uint16_t DIAG_ROW = 22;   // 16px glyph + 6px leading (diagnostics)
 static const uint16_t COL1_X   = 10;
-static const ILI9341_t3_font_t *BS_FONT = &TerminalFont_16;
-static const ILI9341_t3_font_t *BS_BIG  = &TerminalFont_32;
+static const ILI9341_t3_font_t *BS_FONT = &Terminalia_16;
+static const ILI9341_t3_font_t *BS_BIG  = &Terminalia_32;
 
 // Status columns: start of the label slot + a gap. Computed at runtime since they
 // depend on each font's glyph advance. _bs_col2 = big checks, _bs_col2sm = small
