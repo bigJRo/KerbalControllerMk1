@@ -181,11 +181,11 @@ void drawStaticMain(KCM_TFT &tft) {
     uint16_t x = barX(i);
     tft.drawRect(x, BAR_TOP, bw, BAR_H, TFT_GREY);
     if (slots[i].type != RES_NONE) {
-      tft.setFont(font);
+      tft.setFont(*font);
       tft.setTextColor(TFT_WHITE, TFT_BLACK);
       const char *lbl = resLabel(slots[i].type);
       int16_t lblW = getFontStringWidth(font, lbl);
-      int16_t lblH = (int16_t)font->font_height;
+      int16_t lblH = (int16_t)font->cap_height;
       tft.setCursor(x + (bw - lblW) / 2, BAR_BOTTOM + (LABEL_H - lblH) / 2);
       tft.print(lbl);
     }
@@ -251,9 +251,9 @@ void updateScreenMain(KCM_TFT &tft) {
                    percFore, percBack);
 
     const tFont *font = barFont();
-    int16_t fontH = (int16_t)font->font_height;
+    int16_t fontH = (int16_t)font->cap_height;
     tft.fillRect(x, 0, bw, PERC_H, percBack);
-    tft.setFont(font);
+    tft.setFont(*font);
     tft.setTextColor(percFore, percBack);
     int16_t tw = getFontStringWidth(font, percStr);
     tft.setCursor(x + (bw - tw) / 2, (PERC_H - fontH) / 2);

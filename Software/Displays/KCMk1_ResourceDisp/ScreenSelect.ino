@@ -210,7 +210,7 @@ static void drawSlotCount(KCM_TFT &tft) {
   uint16_t cx = BACK_X - cw - SEL_PAD * 2;
   uint16_t cy = (TITLE_H - 20) / 2;  // vertically centred in title row (font height ~20px)
   tft.fillRect(cx - 2, 0, cw + 4, TITLE_H, TFT_BLACK);
-  tft.setFont(&Roboto_Black_16);
+  tft.setFont(Roboto_Black_16);
   tft.setTextColor(TFT_GREY, TFT_BLACK);
   tft.setCursor(cx, cy);
   tft.print(countStr);
@@ -244,7 +244,7 @@ static void drawOrderPanel(KCM_TFT &tft) {
   uint16_t listH = CLEAR_Y - TOP_H - SEL_PAD * 2;
   tft.fillRect(PANEL_X, TOP_H, PANEL_W, listH + SEL_PAD, TFT_BLACK);
 
-  tft.setFont(&Roboto_Black_12);
+  tft.setFont(Roboto_Black_12);
   tft.setTextColor(TFT_GREY, TFT_BLACK);
   tft.setCursor(PANEL_X + 4, TOP_H + 4);
   tft.print("ORDER");
@@ -259,7 +259,7 @@ static void drawOrderPanel(KCM_TFT &tft) {
     bool     filled = (i < slotCount && slots[i].type != RES_NONE);
 
     tft.fillRect(PANEL_X, ry, PANEL_W, rowH - 1, TFT_BLACK);
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     char numStr[4];
     snprintf(numStr, sizeof(numStr), "%d.", i + 1);
@@ -287,7 +287,7 @@ void drawStaticSelect(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
 
   // Title — large font, vertically centred in title row
-  tft.setFont(&Roboto_Black_36);
+  tft.setFont(Roboto_Black_36);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setCursor(SEL_PAD, (TITLE_H - 43) / 2);
   tft.print("Select Resources");

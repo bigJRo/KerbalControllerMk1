@@ -158,7 +158,7 @@ static void drawDetailChrome(KCM_TFT &tft) {
   }
 
   if (slotCount == 0 || _detailSlot >= slotCount) {
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_20);
     tft.setTextColor(TFT_GREY, TFT_BLACK);
     tft.setCursor(DET_PNL_X + DET_PAD, DET_HDR_H + DET_PAD);
     tft.print("No resource selected");
@@ -172,7 +172,7 @@ static void drawDetailChrome(KCM_TFT &tft) {
   tft.fillRect(DET_ACCENT_X, 0, DET_ACCENT_W, DET_HDR_H - 2, resCol);
 
   // Resource name — Roboto_Black_48 white, clearly larger than data rows
-  tft.setFont(&Roboto_Black_48);
+  tft.setFont(Roboto_Black_48);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setCursor(DET_ACCENT_X + DET_ACCENT_W + DET_PAD, (DET_HDR_H - 58) / 2);
   tft.print(resFullName(slots[_detailSlot].type));
