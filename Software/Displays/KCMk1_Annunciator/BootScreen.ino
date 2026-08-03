@@ -14,23 +14,32 @@
 
 /***************************************************************************************
    CONSTANTS
-   BS_HOLD  -- pause between printing a check label and its status word (faster pacing)
-   BIG_ROW  -- pixel pitch per big (check/summary) row
-   COL1_X   -- x position for check label
-   COL2_X   -- x position for status word, computed at runtime from a fixed-width slot
-   BS_FONT  -- fine-print metadata font (version / attribution)
-   BS_BIG   -- title / check / summary font
+   BS_HOLD   -- pause between printing a check label and its status word (faster pacing)
+   TITLE_ROW -- pixel pitch for the 40px panel title / summary rows
+   BIG_ROW   -- pixel pitch for the 32px subsystem-check rows
+   DIAG_ROW  -- pixel pitch for the 16px live-diagnostic rows
+   VER_ROW   -- pixel pitch for the 24px version line
+   COL1_X    -- x position for check label
+   _bs_col2  -- x position for status word, computed at runtime from a fixed-width slot
+   BS_FONT   -- 16px fine print (diagnostics / copyright)
+   BS_VER    -- 24px version line (matches the Info Display header)
+   BS_BIG    -- 32px subsystem-check rows
+   BS_TITLE  -- 40px panel title + summary
 ****************************************************************************************/
 // Tuning aid: when true, the sequence runs slowly and then FREEZES on the finished
 // screen until the operator taps, so the layout can be inspected at leisure. Set
 // false for the fast production auto-advance.
 static const bool     BS_TUNE_PAUSE = false;
 static const uint16_t BS_HOLD  = BS_TUNE_PAUSE ? 400 : 110;  // per-line reveal pause
-static const uint16_t BIG_ROW  = 40;   // 32px glyph + 8px leading (checks/title/summary)
-static const uint16_t DIAG_ROW = 22;   // 16px glyph + 6px leading (diagnostics)
+static const uint16_t TITLE_ROW = 52;  // 40px title/summary glyph + 12px leading
+static const uint16_t BIG_ROW  = 44;   // 32px check glyph + 12px leading (subsystem checks)
+static const uint16_t DIAG_ROW = 26;   // 16px glyph + 10px leading (diagnostics)
+static const uint16_t VER_ROW  = 34;   // 24px version line + 10px leading
 static const uint16_t COL1_X   = 10;
-static const ILI9341_t3_font_t *BS_FONT = &KcmTerm_16;
-static const ILI9341_t3_font_t *BS_BIG  = &KcmTerm_32;
+static const ILI9341_t3_font_t *BS_FONT  = &KcmTerm_16;   // fine print (diagnostics / copyright)
+static const ILI9341_t3_font_t *BS_VER   = &KcmTerm_24;   // version line — matches Info Display header
+static const ILI9341_t3_font_t *BS_BIG   = &KcmTerm_32;   // subsystem check rows
+static const ILI9341_t3_font_t *BS_TITLE = &KcmTerm_40;   // panel title + summary
 
 // Status columns: start of the label slot + a gap. Computed at runtime since they
 // depend on each font's glyph advance. _bs_col2 = big checks, _bs_col2sm = small
@@ -125,21 +134,24 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   _bs_col2   = COL1_X + getFontStringWidth(BS_BIG,  "0000000000000000000") + 20;
   _bs_col2sm = COL1_X + getFontStringWidth(BS_FONT, "00000000000")         + 12;
 
-  uint16_t y = 6;
-  char buf[96];
+  uint16_t y = 0;
+  char buf[128];
 
-  // - Title (big) + version (small, terminal, with branding restored) -
-  _bs_print(tft, BS_BIG, COL1_X, y, "KCMk1 ANNUNCIATOR", TFT_WHITE);
-  y += BIG_ROW;
+  // - Header bar: same format as the Info Display -- top rule / version line /
+  //   bottom rule / big panel title. -
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
+  y += 6;
   snprintf(buf, sizeof(buf),
-           "Jeb's Controller Works   v%d.%d.%d   KDC %d.%d.%d   KDA %d.%d.%d",
+           "KCMk1-ANNUN  //  Jeb's Controller Works  //  v%d.%d.%d / KDC %d.%d.%d / KDA %d.%d.%d",
            SKETCH_VERSION_MAJOR,               SKETCH_VERSION_MINOR,               SKETCH_VERSION_PATCH,
            KDC_VERSION_MAJOR,                  KDC_VERSION_MINOR,                  KDC_VERSION_PATCH,
            KERBAL_DISPLAY_AUDIO_VERSION_MAJOR, KERBAL_DISPLAY_AUDIO_VERSION_MINOR, KERBAL_DISPLAY_AUDIO_VERSION_PATCH);
-  _bs_print(tft, BS_FONT, COL1_X, y, buf, TFT_GREY);
-  y += 24;
+  _bs_print(tft, BS_VER, COL1_X, y, buf, TFT_GREY);
+  y += VER_ROW;
   tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
-  y += 12;
+  y += 8;
+  _bs_print(tft, BS_TITLE, COL1_X, y, "KCMk1 ANNUNCIATOR", TFT_WHITE);
+  y += TITLE_ROW;
   _bs_wait(BS_HOLD);
 
   // - Real subsystem checks (big) -
@@ -180,9 +192,9 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   y += 14;
 
   // - Summary - (touch is the only hard failure; a missing SD card is non-fatal)
-  if (touchOK) _bs_print(tft, BS_BIG, COL1_X, y, "SYSTEMS NOMINAL", TFT_GREEN);
-  else         _bs_print(tft, BS_BIG, COL1_X, y, "TOUCH FAULT",     TFT_RED);
-  y += BIG_ROW + 4;
+  if (touchOK) _bs_print(tft, BS_TITLE, COL1_X, y, "SYSTEMS NOMINAL", TFT_GREEN);
+  else         _bs_print(tft, BS_TITLE, COL1_X, y, "TOUCH FAULT",     TFT_RED);
+  y += TITLE_ROW;
 
   // - Copyright watermark (always shown) + tap prompt in dev mode -
   _bs_print(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
