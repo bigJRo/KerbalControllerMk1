@@ -112,6 +112,7 @@ enum ScreenType : uint8_t {
 // From AAA_Config.ino
 extern bool     debugMode;
 extern bool     demoMode;
+extern const bool     STANDALONE_TEST;   // true = skip I2C master handshake (no master connected)
 extern const uint8_t  DISPLAY_ROTATION;
 // Slot count limits — constexpr so they can be used as compile-time array sizes
 static constexpr uint8_t MIN_SLOTS          = 4;

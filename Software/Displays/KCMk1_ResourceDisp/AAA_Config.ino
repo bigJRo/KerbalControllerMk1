@@ -20,6 +20,11 @@
 bool debugMode = false;  // set true to enable Serial debug output during development
 bool demoMode  = false;  // set true for bench testing without KSP; false for production
 
+// STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
+// and enter loop() immediately. Safe to leave true for bench/UI testing; set false
+// for production (master will send PROCEED after reading the status packet).
+const bool STANDALONE_TEST = true;
+
 
 /***************************************************************************************
    DISPLAY ROTATION

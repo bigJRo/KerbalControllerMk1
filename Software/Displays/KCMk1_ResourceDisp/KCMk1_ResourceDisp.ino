@@ -81,12 +81,18 @@ void setup() {
   // the master can read it. Then spin until the master sends I2C_REQ_PROCEED.
   // While waiting, keep servicing the I2C receive handler via updateI2CState()
   // so the PROCEED command is actually processed.
-  buildI2CPacketAndAssert();
-  if (debugMode) Serial.println(F("ResourceDisp: waiting for master PROCEED..."));
-  while (!i2cProceedReceived) {
-    updateI2CState();
+  // Skip entirely in standalone test mode — no master is present to send PROCEED,
+  // so proceed straight past the boot screen into loop().
+  if (!STANDALONE_TEST) {
+    buildI2CPacketAndAssert();
+    if (debugMode) Serial.println(F("ResourceDisp: waiting for master PROCEED..."));
+    while (!i2cProceedReceived) {
+      updateI2CState();
+    }
+    if (debugMode) Serial.println(F("ResourceDisp: PROCEED received, entering loop."));
+  } else if (debugMode) {
+    Serial.println(F("ResourceDisp: STANDALONE_TEST — skipping master PROCEED handshake."));
   }
-  if (debugMode) Serial.println(F("ResourceDisp: PROCEED received, entering loop."));
 
   // Always show standby on boot — BMP splash from SD card.
   // In demo mode, a touch on the standby screen transitions to the main screen.

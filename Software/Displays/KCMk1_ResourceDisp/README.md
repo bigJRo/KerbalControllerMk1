@@ -244,6 +244,8 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 6. Master sends a 2-byte command packet with `requestType = 0x2` (PROCEED) — configuration flags can be included in the same packet
 7. ResourceDisp receives PROCEED, transitions to Standby screen, enters `loop()`
 
+**Standalone mode:** set `STANDALONE_TEST = true` in `AAA_Config.ino` (as on the other panels) to skip steps 4–7 — the panel proceeds straight past the boot screen into `loop()` with no master connected. The I2C slave is still initialised, so a master can be attached later; standalone only removes the blocking wait for PROCEED. Set `false` for production.
+
 ---
 
 ## Version History
