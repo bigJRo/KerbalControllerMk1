@@ -12,7 +12,7 @@ The Information Display is a 1024×600 touchscreen panel that presents real-time
 
 The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Aircraft/Rover (PFD), Orbit (+ Advanced Elements), Vehicle Info, Maneuver, Target, Docking, Landing (Powered Descent + Re-entry) — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar of ten buttons: most map 1:1 to a screen, the PFD button covers the three vehicle-type screens (context- or title-selected), and Orbit Advanced Elements is reached by tapping the ORBIT title bar.
 
-**Context-switching:** The display automatically selects the most appropriate screen when the scene or vessel changes. Planes route to AIRCRAFT, rovers to ROVER, vessels on the pad or landed to LAUNCH (with the pre-launch board), landers in flight to LANDING (powered descent), vessels near a docking target to DOCKING, and all others to ORBIT.
+**Context-switching:** The display automatically selects the most appropriate screen when the scene or vessel changes. Planes in the atmosphere route to AIRCRAFT, rovers to ROVER, pre-launch vessels to LAUNCH (with the pre-launch board), sub-orbital landers to LANDING (powered descent), vessels near a docking target to DOCKING, recoverable vessels to VEHICLE INFO, and everything else to SPACECRAFT (PFD). Orbit is never auto-selected — reach it from the sidebar.
 
 **Colour conventions** are consistent across all screens: dark green = nominal, yellow = caution, white-on-red = alarm, dark grey = inactive/not applicable. Alarm thresholds are aligned with the KCMk1 Annunciator C&W panel.
 
@@ -213,37 +213,37 @@ The panel displays thirteen screens navigated by ten right-hand sidebar buttons.
 
 **ASC** — Ascent Autopilot touch console for the Simpit ascent autopilot (which runs on Controller_Main). Three columns: MISSION inputs (target apoapsis, inclination, launch N/S), VEH PROFILE inputs (loft, roll hold, max-G) + the ARM/DISARM button, and GUIDANCE outputs (commanded pitch/heading/throttle, G, dynamic pressure, ApA, PeA). Boxed input fields open an on-screen numeric keypad (or toggle) and can be edited at any time; a pilot edit shows in cyan until the autopilot echoes the accepted value back. The phase banner and ARM button colour reflect the autopilot phase (IDLE / VERTICAL / GRAVITY TURN / COAST / CIRCULARIZE / COMPLETE / ABORT). Edits and ARM/DISARM are sent over I2C — see `Documents/Developer/Ascent_Autopilot_Interface.md`.
 
-**ORB** — *Apsides (default):* Alt.SL, V.Orb, ApA, PeA, T+Ap or T+Pe, T+Ign, ΔV.Tot, ΔV.Stg, RCS, SAS. *Advanced Elements:* Ecc, SMA, ApA, PeA, Inc, LAN, True/Mean anomaly, Period. Navigating away resets to Apsides.
+**ORB** — *Apsides (default):* graphical orbit + inclination diagram with numeric readouts Alt.SL, PeA, ApA (left panel) and Inc, Period, Arg.Pe, T+Pe/T+Ap (right panel). *Advanced Elements:* text-only readout — SMA, Ecc, PeA, ApA, Alt.SL, V.Orb, Period (left column) and Inc, LAN, Arg.Pe, True Anom, Mean Anom, T+Pe, T+Ap (right column). Reached by tapping the ORBIT title bar; navigating away via the sidebar returns to Apsides.
 
-**PFD** — Primary Flight Display: full EADI ball with pitch ladder, roll indicator, and fixed aircraft symbol. Right panel: Hdg, Pitch, Roll, SAS, velocity vector heading/pitch, heading/pitch error (nose-to-velocity). Errors coloured only in atmosphere.
+**PFD** — Primary Flight Display (SPACECRAFT): full EADI ball with pitch ladder, roll pointer, fixed spacecraft (boresight) symbol, navball velocity/target/maneuver markers, and Hdg/Pitch/Roll readouts. Right panel: Alt.SL, V.Orb/V.Srf (label swaps with orbital mode), ApA, PeA, T+Ap, T+Ign, ΔV.Stg, and RCS/SAS buttons.
 
-**MNVR** — Alt.SL, V.Orb, T+Ign, T+Mnvr, ΔV.Mnvr, T.Burn, ΔV.Tot, burn heading/pitch. All fields show `---` when no node planned.
+**MNVR** — Burn alignment reticle (blue maneuver marker vs a fixed nose crosshair; neon-green alignment box when within 5°) plus a numeric panel: ΔV.Mnvr, ΔV.Plan (total across all planned nodes), ΔV.Stg, T+Ign, T+Mnvr, Burn Dur, Brg/Elv (nose-to-node error split), and RCS/SAS buttons. A ΔV-burn bar sits under the reticle. **NO MANEUVER** fullscreen when no node is planned.
 
-**TGT** — Alt.SL, V.Orb, Dist, V.Tgt, raw bearing/elevation to target, approach angle errors (velocity-to-target). Dist turns white-on-green below 200 m. NO TARGET SET fullscreen when no target.
+**TGT** — RPOD scope reticle + numeric panel: Alt.SL, V.Orb, Dist, V.Close (signed closure rate — negative = closing), raw bearing/elevation to target (Brg/Elv), approach alignment errors (velocity-to-target, Err/Err), and T+Int (intercept time = Dist ÷ |closure|, shown only while closing). Dist turns white-on-green below 200 m. NO TARGET SET fullscreen when no target.
 
-**DOCK** — Alt.SL, Dist, V.Tgt, total lateral drift magnitude, horizontal/vertical drift components, velocity-to-target bearing/elevation errors, nose-to-target pointing errors, RCS, SAS. SAS: TARGET = green, OFF = white-on-red, all others = red. DOCKED / NO TARGET SET fullscreen when applicable.
+**DOCK** — Approach reticle + numeric panel: Dist, T+Dock (Dist ÷ |closure|, closing only), V.Close (signed closure rate), V.Lat (total lateral drift magnitude), Vel.Brg/Vel.Elv (velocity-vector bearing/elevation error to the port), Nos.Off (total nose angular offset from the port), and RCS/SAS buttons. SAS: TARGET = green, STAB = cyan, OFF = white-on-red, all other modes = red. DOCKED / NO TARGET SET fullscreen when applicable.
 
 **LNDG** — *Powered descent:* T.Grnd, Alt.Rdr, V.Srf, V.Vrt, Fwd/Lat horizontal drift (roll-corrected, craft heading frame), ΔV.Stg, Throttle/RCS, Gear/SAS. Fwd/Lat thresholds tighten as T.Grnd decreases.
 
-**ENTR** — *Re-entry* (separate sidebar screen): T.Grnd/T+Atm, Alt.SL/Alt.Rdr, V.Vrt (switches to V.Hrz below 20 km radar), PeA, V.Srf, Mach/G, drogue/main parachute states, Gear/SAS, plus a heat-shield / retrograde alignment ball. 6-state phase logic drives row labels. SAS white-on-red above Mach 3 if OFF.
+**ENTR** — *Re-entry* (separate sidebar screen): graphical instrument screen — corridor tape, atmosphere-density bar, G meter, and a heat-shield / retrograde alignment ball — with a text panel of T+Grnd/T+Atm (row 0 toggles by descent phase), Alt.SL/Alt.Rdr (row 1 toggles by atmosphere state), V.Srf, V.Vrt, PeA, Mach, drogue/main parachute states, and Gear/SAS buttons. G load is shown by the graphical G meter, not a row. 6-state phase logic drives the corridor bands and row toggles. SAS white-on-red above Mach 3 if OFF.
 
 **VEH** — Vessel name, type, situation, control level, CommNet signal, crew/capacity, ΔV.Stg, ΔV.Tot.
 
-**ACFT** — Alt.Rdr, V.Srf, IAS, V.Vrt, Hdg/Pitch/Roll, AoA/Slip, Mach/G, Gear/Brakes/EC%.
+**ACFT** — Full EADI ball (pitch ladder, roll pointer, aircraft symbol, Hdg/Pitch/Roll readouts) plus a right panel: Alt.Rdr, V.Srf, IAS, V.Vrt, Ma/G split, AoA/Sl split, and GEAR / AIRBRK / BRAKES buttons. The AIRBRK button reads IN (stowed) or OUT (deployed, cyan) from the airbrake CAG (`AIRBRAKE_CAG`, base 38).
 
-**ROVR** — V.Srf, Hdg, bearing and heading error to target, Alt.Rdr, Pitch/Roll, wheel throttle (FWD/NEUT/REV), Gear, Brakes, EC%, SAS. Alt.Rdr colouring inverted (close to ground = green).
+**ROVR** — Rotating compass (heading readout, cardinal ring, rover icon, target-bearing triangle when a target is set) with a Dist strip along the bottom. Left column: V.Srf, EC%, and BRAKES / GEAR / SAS buttons. Top corners: FWD / REV drive-state blocks (both muted = NEUTRAL) driven by wheel throttle. Right column: Elev (surface elevation, Alt.SL − Alt.Rdr), Pitch and Roll tilt indicators.
 
 ### Context Switching
 
 `contextScreen()` selects the screen automatically on vessel or scene change, in priority order:
 
-1. Plane (`type_Plane`) → AIRCRAFT
+1. Plane in the atmosphere (`type_Plane` && `inAtmo`) → AIRCRAFT
 2. Rover (`type_Rover`) → ROVER
-3. On ground (`sit_PreLaunch` or `sit_Landed`) → LAUNCH
-4. Lander in flight (`type_Lander`) → LANDING (powered descent)
-5. Target within 200 m → DOCKING
+3. Pre-launch (`sit_PreLaunch`) → LAUNCH (pre-launch board) — landed vessels are *not* auto-routed
+4. Sub-orbital lander (`type_Lander` && `sit_SubOrb`) → LANDING (powered descent)
+5. Target within 200 m (`DOCK_DIST_WARN_M`) → DOCKING
 6. Recoverable vessel → VEHICLE INFO
-7. Everything else → ORBIT
+7. Everything else → SPACECRAFT (PFD) — Orbit is manual-select from the sidebar
 
 A deferred dock-check fires on the next `TARGETINFO` message after a vessel switch to catch the case where target distance is not yet known at switch time.
 
@@ -274,6 +274,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_ORB.ino` | Orbit (Apsides default — graphical orbit + inclination diagram) |
 | `Screen_OrbAdv.ino` | Orbit Advanced Elements (text-only, tap-through) |
 | `Screen_SCFT.ino` | Spacecraft / PFD — full EADI ball (sidebar PFD, screen index 2) |
+| `EADIBall.ino` | Shared EADI attitude-ball renderer (used by the SPACECRAFT and AIRCRAFT PFDs) |
 | `Screen_MNVR.ino` | Maneuver — alignment reticle + numeric panel |
 | `Screen_TGT.ino` | Target / Rendezvous — RPOD scope + numeric panel |
 | `Screen_DOCK.ino` | Docking — approach reticle + numeric panel |
@@ -282,7 +283,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_LNDG_Reentry.ino` | Landing re-entry (text-only readout board) |
 | `Screen_VEH.ino` | Vehicle Info |
 | `Screen_ACFT.ino` | Aircraft — full EADI ball |
-| `Screen_ROVR.ino` | Rover — compass, throttle bar, tilt indicators (screen index 9) |
+| `Screen_ROVR.ino` | Rover — compass, FWD/REV drive-state blocks, tilt indicators (screen index 9) |
 | `TouchEvents.ino` | Touch debounce, sidebar and title bar dispatch |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
 | `I2CSlave.ino` | I2C slave at 0x12 — packet build/fill, command processing, boot handshake |
@@ -325,8 +326,8 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 - **Display rotation** — `DISPLAY_ROTATION = 2` for inverted mounting, `0` for production.
 - **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm buzzer (`tone()`) is on pin 2 and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
 - **KerbalDisplayCommon ≥ 3.0.0** is required (hardware rev 2 / `KCM_TFT`, `RA8876_t41_p`). Do not downgrade.
-- **`INTERSECTS_MESSAGE`** — intercept data not available in KSP1; TARGET screen INT rows not implemented.
-- **V.Tgt** — always a positive magnitude in KSP1. Signed closure velocity is not available.
+- **`INTERSECTS_MESSAGE`** — orbit-intercept data (`intercept1/2Dist`, `intercept1/2Time`) is not available in KSP1; those `AppState` fields remain unused stubs. This is unrelated to the TARGET screen's **T+Int** row, which *is* implemented — it is derived on-panel as Dist ÷ |closure rate|.
+- **Closure velocity** — the TARGET and DOCKING screens both show closure as a signed **V.Close** value (negative = closing, positive = opening); the intercept-time rows (T+Int / T+Dock) are shown only while closing.
 - **EC%** on the pre-launch board and Rover screen may require the Alternate Resource Panel (ARP) mod in KSP1.
 
 Licensed under the GNU General Public License v3.0.
