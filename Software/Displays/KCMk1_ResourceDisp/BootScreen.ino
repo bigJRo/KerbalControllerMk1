@@ -2,10 +2,9 @@
    BootScreen.ino -- Boot simulation screen for Kerbal Controller Mk1 Resource Display
    Jurassic Park-themed terminal boot sequence.
 
-   Uses tft.setFont / setCursor / print (GFX graphics mode calls) exclusively.
-   The KCM_TFT setFontScale/print API puts the chip into internal text mode and the
-   PaulStoffregen v0.7.11 library does not expose a public graphics-mode restore call,
-   so we avoid text mode entirely and stay in graphics mode throughout.
+   Renders in the RA8876 GFX graphics mode via tft.setFont / setCursor / print and the
+   KerbalDisplayCommon bs* helpers -- no chip internal-text-mode calls (the KDC text
+   engine draws glyph bitmaps directly). Header bar matches the Info Display.
 
    Call bootSimText() from setup() after setupDisplay(), before initSimpit()/initDemoMode().
 ****************************************************************************************/
@@ -54,7 +53,7 @@ static uint16_t _bs_wrap(KCM_TFT &tft, uint16_t y, const char *text,
 /***************************************************************************************
    BOOT SIM TEXT
    Jurassic Park-themed terminal sequence.
-   All rendering via helpers -- stays in KCM_TFT graphics mode throughout.
+   All rendering via helpers -- stays in RA8876 graphics mode throughout.
 ****************************************************************************************/
 void bootSimText(KCM_TFT &tft) {
 

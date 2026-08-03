@@ -1,14 +1,14 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v1.3.0
-Teensy 4.0 firmware for the KSP resource monitoring display module.
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.0.0
+Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
 ---
 
 ## Overview
 
-The Resource Display is an 800×480 touchscreen panel that presents real-time KSP resource telemetry sourced from KerbalSimpit. It runs on a Teensy 4.0 and receives telemetry over USB serial from a running KSP instance. The panel tracks up to 16 resource slots simultaneously and supports per-vessel configuration memory for up to 20 vessels per session.
+The Resource Display is a 1024×600 touchscreen panel that presents real-time KSP resource telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance. The panel tracks up to 16 resource slots simultaneously and supports per-vessel configuration memory for up to 20 vessels per session.
 
 The panel provides four screens — Standby, Main, Select, and Detail — navigated by touch. The Main screen is the primary operational view, displaying resource levels as a bar graph. The Select screen allows the user to configure which resources are monitored and load preset configurations. The Detail screen provides a numerical breakdown of a single resource by craft and stage values.
 
@@ -16,40 +16,46 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 
 ## Hardware
 
+Hardware rev 2: the panel moved from the rev-1 RA8875 800×480 SPI stack to the shared 7" TFT carrier. All pins and the resolution come from `KCMk1_SystemConfig.h`.
+
 | Component | Part | Interface |
 |-----------|------|-----------|
-| Microcontroller | Teensy 4.0 | — |
-| Display | RA8875 800×480 TFT | SPI |
-| Touch controller | GSL1680F capacitive | Wire1 (I2C) |
-| SD card | SD (on RA8875 board) | SPI |
+| Microcontroller | Teensy 4.1 | — |
+| Display | RA8876 (LT7683-compatible) 1024×600 TFT | 16-bit 8080 parallel (FlexIO3) |
+| Touch controller | FT5316 5-point capacitive | software I2C (pins 4/5) |
+| SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
-| I2C slave bus | Master Teensy 4.1 | Wire (I2C) |
+| I2C slave bus | Master Teensy 4.1 | Wire2 (pins 24/25) |
 
 ### Pin Assignments
 
-| Pin | Function | Direction | Assigned by |
-|-----|----------|-----------|-------------|
-| 10 | RA8875 SPI chip select | OUT | KerbalDisplayCommon (`RA8875_CS`) |
-| 11 | SPI MOSI | OUT | Teensy hardware SPI (fixed) |
-| 12 | SPI MISO | IN | Teensy hardware SPI (fixed) |
-| 13 | SPI SCK | OUT | Teensy hardware SPI (fixed) |
-| 15 | RA8875 RESET | OUT | KerbalDisplayCommon (`RA8875_RESET`) |
-| 4 | SD card detect (active-LOW) | IN | KerbalDisplayCommon (`SD_DETECT_PIN`) |
-| 5 | SD card SPI chip select | OUT | KerbalDisplayCommon (`SD_CS_PIN`) |
-| 16 | GSL1680F SCL (Wire1) | — | KerbalDisplayCommon (`CTP_SCL_PIN`) |
-| 17 | GSL1680F SDA (Wire1) | — | KerbalDisplayCommon (`CTP_SDA_PIN`) |
-| 3 | GSL1680F WAKE | OUT | KerbalDisplayCommon (`CTP_WAKE_PIN`) |
-| 22 | GSL1680F INT (HIGH when touched) | IN | KerbalDisplayCommon (`CTP_INT_PIN`) |
-| 9 | Audio PWM (claimed by library, not used) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
-| 18 | I2C SDA (Wire — master bus) | — | Sketch / Wire library |
-| 19 | I2C SCL (Wire — master bus) | — | Sketch / Wire library |
-| 2 | I2C interrupt output to master (active-LOW) | OUT | Sketch (`KCM_I2C_INT_PIN`) |
+All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig.h` (shared across the rev-2 panels). Key lines:
+
+| Pin | Function | Direction | Define |
+|-----|----------|-----------|--------|
+| 34 | RA8876 /CS chip select | OUT | `KCM_TFT_CS` |
+| 33 | RA8876 RS register/data select | OUT | `KCM_TFT_RS` |
+| 35 | RA8876 /RST reset | OUT | `KCM_TFT_RESET` |
+| 36 | RA8876 /WR write strobe | OUT | `KCM_TFT_WR` |
+| 37 | RA8876 /RD read strobe | OUT | `KCM_TFT_RD` |
+| 32 | RA8876 WAIT | IN | `KCM_TFT_WAIT` |
+| 31 | RA8876 INT | IN | `KCM_TFT_INT` |
+| 9 | TFT backlight enable / PWM | OUT | `KCM_TFT_BL` |
+| DB0..DB15 | 16-bit parallel data bus | — | FlexIO3 (driver-owned) |
+| 4 | FT5316 SCL (software I2C) | — | `KCM_CTP_SCL` |
+| 5 | FT5316 SDA (software I2C) | — | `KCM_CTP_SDA` |
+| 3 | FT5316 /RST | OUT | `KCM_CTP_RST` |
+| 6 | FT5316 INT | IN | `KCM_CTP_INT` |
+| — | SD card (SDIO) | — | `BUILTIN_SDCARD` |
+| 24 | I2C SCL2 (Wire2 — master bus) | — | `KCM_I2C_BUS` |
+| 25 | I2C SDA2 (Wire2 — master bus) | — | `KCM_I2C_BUS` |
+| 0 | I2C interrupt output to master (active-LOW) | OUT | `KCM_I2C_INT_PIN` |
 
 **Serial ports:**
 - `Serial` (USB COM port 4) — debug output only
 - `SerialUSB1` (USB COM port 5) — KerbalSimpit telemetry traffic
 
-**I2C note:** Wire (pins 18/19) is the master bus at address **0x11**. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
+**I2C note:** Wire2 (pins 24/25) is the master bus at address **0x11** (`KCM_I2C_ADDR_RESDISP`). The FT5316 touch controller runs on a separate bit-banged software I2C bus (pins 4/5, address 0x38). Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side. Note pin 9 is now the TFT backlight; KerbalDisplayAudio is a linked dependency but audio is never initialised on this panel.
 
 ---
 
@@ -57,9 +63,10 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 2.1.0 | Display primitives, fonts, BMP loader, touch driver, system utils |
+| KerbalDisplayCommon | ≥ 3.0.0 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
+| KCM_Touch | — | FT5316 capacitive touch driver (replaces the rev-1 GSL1680F driver) |
+| TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 16-bit parallel driver + GFX layer — install on the build machine (not vendored) |
 | KerbalDisplayAudio | 1.0.1 | Direct sketch dependency — audio output not used on this panel |
-| RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
 | KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
 
 ### KerbalSimpit Plugin Settings
@@ -232,7 +239,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 1. Hardware init (display, SD, touch, I2C slave)
 2. Boot screen renders (Jurassic Park-themed terminal sequence; header shows live version string)
 3. Simpit connects (or demo mode initialises)
-4. ResourceDisp builds a status packet and **asserts pin 2 LOW** (INT)
+4. ResourceDisp builds a status packet and **asserts the INT pin LOW** (`KCM_I2C_INT_PIN`, pin 0)
 5. Master reads the 4-byte status packet
 6. Master sends a 2-byte command packet with `requestType = 0x2` (PROCEED) — configuration flags can be included in the same packet
 7. ResourceDisp receives PROCEED, transitions to Standby screen, enters `loop()`

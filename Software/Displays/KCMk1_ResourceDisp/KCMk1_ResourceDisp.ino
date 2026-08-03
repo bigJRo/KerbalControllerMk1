@@ -16,14 +16,16 @@
     Demo.ino             -- demo mode animation (sine-wave resource values, no KSP connection)
 
   Libraries:
-    KerbalDisplayCommon  -- display primitives, BMP loader, touch driver, fonts, system utils
+    KerbalDisplayCommon  -- display primitives, BMP loader, fonts, system utils (RA8876/KCM_TFT)
+    KCM_Touch            -- FT5316 capacitive touch driver
     KerbalDisplayAudio   -- audio library (included as dependency; audio not used on this panel)
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
-  Hardware:
-    Teensy 4.0, KCM_TFT 800x480 TFT, GSL1680F capacitive touch
+  Hardware (rev 2):
+    Teensy 4.1, RA8876 (LT7683) 1024x600 TFT on a 16-bit 8080 parallel bus (FlexIO3),
+    FT5316 capacitive touch (software I2C, pins 4/5)
     SerialUSB1 -> KSP (Simpit), Serial -> debug output
-    Wire (pins 18/19) -> I2C slave at 0x11 (master Teensy 4.1)
+    Wire2 (pins 24/25) -> I2C slave at 0x11 (master Teensy 4.1)
 
   Phase 1: Display framework with demo values and touch-based resource selection. ✓
   Phase 2: Simpit integration for live resource telemetry. ✓

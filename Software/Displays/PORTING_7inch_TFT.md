@@ -145,7 +145,9 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
       vessel-type icon on the SPCFT tile; full SOI-detail-screen redesign.
 - [x] **InfoDisp sketch ported** — full `Screen_*.ino` set relaid to 1024×600 on
       `KCM_TFT`; `SCREEN_W/H = KCM_SCREEN_W/H`.
-- [ ] Then repeat the sketch port for ResourceDisp (still rev-1: `RA8875 infoDisp`).
+- [x] **ResourceDisp sketch ported** — `KCM_TFT infoDisp(RS,CS,RESET)`, `KCM_Touch`
+      (FT5316), I2C slave on `Wire2`/`KCM_I2C_BUS`; Main/Select/Detail/Standby/Boot
+      relaid to 1024×600 (no hardcoded 800/480); rev-1 comments + README refreshed.
 
 ---
 

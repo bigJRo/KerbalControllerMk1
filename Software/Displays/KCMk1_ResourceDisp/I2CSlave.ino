@@ -2,10 +2,10 @@
    I2CSlave.ino -- I2C slave interface for KCMk1 Resource Display
    Exposes Resource Display state to the KCMk1 master (Teensy 4.1) over I2C.
 
-   Hardware:
-     I2C bus    : Wire (pins 18/19 on Teensy 4.0)
-     Slave addr : 0x11
-     INT pin    : pin 2, OUTPUT, active-LOW
+   Hardware (rev 2):
+     I2C bus    : KCM_I2C_BUS / Wire2 (pins 24/25 on Teensy 4.1)
+     Slave addr : 0x11 (KCM_I2C_ADDR_RESDISP)
+     INT pin    : KCM_I2C_INT_PIN (pin 0), OUTPUT, active-LOW
                   ResourceDisp asserts LOW when a fresh packet is ready.
                   Master reads via KCM_I2C_BUS.requestFrom(0x11, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
@@ -58,7 +58,7 @@
    PACKET BUFFER
    Built by buildI2CPacket() and consumed by onI2CRequest().
    Declared volatile because it is written on the main thread and read
-   from the Wire interrupt context.
+   from the Wire2 interrupt context.
 ****************************************************************************************/
 static volatile uint8_t i2cPacket[I2C_PACKET_SIZE];
 static volatile bool i2cPacketReady = false;
@@ -221,7 +221,7 @@ void buildI2CPacketAndAssert() {
 
 /***************************************************************************************
    ON RECEIVE HANDLER
-   Called by the Wire library when the master writes to us.
+   Called by the Wire2 library when the master writes to us.
    Copies bytes into the command buffer -- processing deferred to loop().
    Must complete quickly -- runs in interrupt context.
 ****************************************************************************************/
@@ -240,7 +240,7 @@ static void onI2CReceive(int numBytes) {
 
 /***************************************************************************************
    ON REQUEST HANDLER
-   Called by the Wire library when the master issues a requestFrom(0x11, N).
+   Called by the Wire2 library when the master issues a requestFrom(0x11, N).
    Writes the packet and deasserts the interrupt pin.
    Must complete quickly -- runs in interrupt context.
 ****************************************************************************************/
@@ -253,7 +253,7 @@ static void onI2CRequest() {
 
 /***************************************************************************************
    SETUP I2C SLAVE
-   Call from setup() after Wire is ready.
+   Call from setup() after Wire2 (KCM_I2C_BUS) is ready.
 ****************************************************************************************/
 void setupI2CSlave() {
   pinMode(I2C_INT_PIN, OUTPUT);

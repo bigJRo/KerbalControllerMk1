@@ -1,18 +1,20 @@
 /***************************************************************************************
    TouchEvents.ino -- Touch input handling for Kerbal Controller Mk1 Resource Display
 
-   Defence layers (ported from KCMk1_InfoDisp):
+   Touch is the rev-2 FT5316 via KCM_Touch (polled over software I2C; no ISR).
+
+   Defence layers (shared with KCMk1_InfoDisp, the FT5316 reference port):
    1. Count filter  — reject count > 1 (multi-finger noise; no multi-touch gestures
                        on this panel).
-   2. Y dead zone   — reject y >= SCREEN_H - TOUCH_DEAD_ZONE (bottom 12px).
-                       GSL1680F ghost touches accumulate at y≈479 (screen boundary).
+   2. Y dead zone   — reject y >= SCREEN_H - TOUCH_DEAD_ZONE (bottom edge band), where
+                       boundary ghost touches tend to land.
    3. X bounds check — reject x >= SCREEN_W.
    4. Double-read with coordinate stability — re-read after 8ms; discard if count
                        dropped to 0 OR coordinates moved more than TOUCH_JITTER_MAX px.
                        Phantom noise jumps between reads; real touches are stable.
    5. Debounce       — TOUCH_DEBOUNCE_MS suppresses rapid re-fires within a burst.
-   6. Require-release — set on any confirmed touch, suppressing burst tail until
-                        the INT pin goes low.
+   6. Require-release — set on any confirmed touch, suppressing the burst tail until
+                        a polled isTouched() reads clear.
 
    Gestures:
      screen_Standby -> no touch response in live mode; any touch advances to Main in demo.
