@@ -23,7 +23,7 @@ static const uint16_t BS_HOLD  = 300;
 static const uint16_t BS_ROW_H = 27;   // 24px (Terminalia_24, cell 25) + 2px leading
 static const uint16_t BS_COL_X = 4;
 static const tFont   *BS_FONT  = &Terminalia_24;   // body — enlarged from 16px for readability
-static const tFont   *BS_BIG   = &Terminalia_36;   // titles / big lines
+static const tFont   *BS_BIG   = &Terminalia_40;   // titles / big lines (clean 2x-native-20 heading)
 
 
 /***************************************************************************************

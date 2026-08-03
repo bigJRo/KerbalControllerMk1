@@ -1735,7 +1735,9 @@ uint16_t bsBig(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
   tft.setTextColor(col, TFT_BLACK);
   tft.setCursor(col_x, y);
   tft.print(text);
-  return y + 38;
+  // Advance past the glyph cell + a small leading. Font-aware so a taller heading
+  // font can't overlap the next line (was a fixed 38, which only suited a 32px cap).
+  return y + font->cap_height + 5;
 }
 
 uint16_t bsBlank(uint16_t y, uint16_t rowH) {

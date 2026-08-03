@@ -62,6 +62,7 @@
 #include "fonts_ili/Terminalia_28.c"
 #include "fonts_ili/Terminalia_32.c"
 #include "fonts_ili/Terminalia_36.c"
+#include "fonts_ili/Terminalia_40.c"   // 2x native 20px strike — clean heading size
 
 
 /***************************************************************************************

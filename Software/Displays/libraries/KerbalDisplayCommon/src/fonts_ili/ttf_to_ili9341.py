@@ -86,8 +86,21 @@ def render_glyphs(ttf_path, px):
         glyphs[c] = rows
     return cell_w, cell_h, glyphs
 
-def emit(name, ttf_path, px, outdir):
-    cw, ch, glyphs = render_glyphs(ttf_path, px)
+def double_glyphs(cell_w, cell_h, glyphs):
+    """Pixel-double a rendered font (each pixel -> 2x2). Exact, so a native strike
+    (e.g. 20px) yields a perfectly clean 2x size (40px) with no off-grid artifacts."""
+    out = {}
+    for c, rows in glyphs.items():
+        dr = []
+        for r in rows:
+            drow = []
+            for p in r:
+                drow.append(p); drow.append(p)
+            dr.append([x for x in drow]); dr.append([x for x in drow])
+        out[c] = dr
+    return cell_w * 2, cell_h * 2, out
+
+def emit(name, cw, ch, glyphs, outdir):
     codes = sorted(glyphs.keys())
     bits_width  = max(1, cw.bit_length())
     bits_height = max(1, ch.bit_length())
@@ -193,9 +206,20 @@ def emit(name, ttf_path, px, outdir):
     return cw, ch, len(data), len(index), bits_index
 
 if __name__ == "__main__":
+    # Size tokens: "N" renders the outline at N px (use native Terminus sizes:
+    # 16/20/24/28/32 for cleanest glyphs). "N=2xM" pixel-doubles the native M px
+    # strike to an exact, artifact-free N=2M px size (e.g. 40=2x20 for a heading).
     ttf, outdir, base = sys.argv[1], sys.argv[2], sys.argv[3]
-    for s in sys.argv[4:]:
-        s = int(s)
-        cw, ch, dl, il, bi = emit(f"{base}_{s}", ttf, s, outdir)
-        print(f"  OK {base}_{s:<3} cell={cw}x{ch} data={dl}B index={il}B bits_index={bi}")
+    for tok in sys.argv[4:]:
+        if "=2x" in tok:
+            n, m = tok.split("=2x"); n, m = int(n), int(m)
+            assert n == 2 * m, f"{tok}: {n} != 2*{m}"
+            cw, ch, g = double_glyphs(*render_glyphs(ttf, m))
+            label = f"{base}_{n} (2x native {m})"
+        else:
+            n = int(tok)
+            cw, ch, g = render_glyphs(ttf, n)
+            label = f"{base}_{n}"
+        rcw, rch, dl, il, bi = emit(f"{base}_{n}", cw, ch, g, outdir)
+        print(f"  OK {label:<20} cell={rcw}x{rch} data={dl}B index={il}B bits_index={bi}")
     print("All fonts generated and round-trip verified.")

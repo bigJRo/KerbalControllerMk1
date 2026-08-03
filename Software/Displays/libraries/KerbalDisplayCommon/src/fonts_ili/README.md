@@ -29,8 +29,12 @@ The `Terminalia_*` fonts are generated directly from `Terminalia-Regular.ttf`
 (no sumotoy intermediate) by `ttf_to_ili9341.py`:
 
 ```
-python3 ttf_to_ili9341.py Terminalia-Regular.ttf ./ Terminalia 16 20 24 28 32 36
+python3 ttf_to_ili9341.py Terminalia-Regular.ttf ./ Terminalia 16 20 24 28 32 36 40=2x20
 ```
+
+A `N=2xM` token pixel-doubles the native `M` px strike to an exact `N=2M` px size
+(`40=2x20`) — perfectly clean, since doubling is artifact-free, whereas rendering
+the outline directly at an off-grid size like 40 distorts diagonal stems.
 
 - **Terminalia** is a Terminus-faithful monospace terminal font under the SIL
   Open Font License 1.1 (`OFL.txt`). It replaces the old IBM VGA `TerminalFont`
@@ -44,4 +48,4 @@ python3 ttf_to_ili9341.py Terminalia-Regular.ttf ./ Terminalia 16 20 24 28 32 36
 - Same **round-trip verification** as above: every glyph is decoded back with the
   ILI9341_t3 bit logic and asserted pixel-identical before emit.
 
-Fonts: Roboto_Black_{12,16,20,24,28,32,36,40,48,72}, Terminalia_{16,20,24,28,32,36}.
+Fonts: Roboto_Black_{12,16,20,24,28,32,36,40,48,72}, Terminalia_{16,20,24,28,32,36,40}.
