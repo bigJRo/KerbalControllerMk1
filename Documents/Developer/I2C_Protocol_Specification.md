@@ -1,11 +1,11 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.5  
+**Version:** 2.6  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Date:** 2026-06-28
+**Date:** 2026-08-03
 
 ---
 
@@ -27,7 +27,7 @@ The controller owns all game state and situational logic. Target modules own onl
 >
 > The EVA Module (0x07), Dual Encoder (0x0E), and Switch Panel (0x0F) ship **standalone** firmware that does not use these libraries and has **not yet** been updated to v2.x; they remain non-conformant (see Section 8).
 
-> **Display carriers (0x12–0x14):** The Teensy 4.1 display carriers (Annunciator, Info Display 1/2, Resource/Sys Info) sit outside the 0x20–0x2E module range and use **panel-specific** point-to-point protocols rather than the universal packet format defined here. The Information Display's outbound status + Ascent Autopilot command frame, its inbound control/ack packet, and the Master→InfoDisp `AscentStatus` push are documented in **`Ascent_Autopilot_Interface.md`** (and the InfoDisp sketch `README.md`).
+> **Display carriers (0x10–0x14):** The Teensy 4.1 display carriers (Annunciator 0x10, Resource Display 0x11, Info Display 1 0x12, Info Display 2 0x13, and the future System Info Display 0x14) sit outside the 0x20–0x2E module range and use **panel-specific** point-to-point protocols rather than the universal packet format defined for modules above. Their shared framing (bus, address block, sync bytes, and the requestType command scheme) is defined in **§15**; per-display packet layouts live in each display's `README.md`, and the Info Display's Ascent Autopilot command/status frames are specified in **`Ascent_Autopilot_Interface.md`**.
 
 ---
 
@@ -493,7 +493,69 @@ Vessel switch behaviour is module-specific and determined by each module's contr
 
 ---
 
-## 15. Revision History
+## 15. Display-Carrier I2C Protocol
+
+The Teensy 4.1 display carriers (Annunciator, Resource Display, Info Display 1/2, and the future System Info Display) are I2C **targets** on the same bus as the modules but occupy a distinct address block (0x10–0x14) and use **panel-specific** point-to-point packets rather than the universal 3-byte-header module packet (§4). They do not implement the module lifecycle state machine, capability flags, or the module command set (§5); instead they share the lightweight framing and command scheme below. INT signalling (§3, active-low push-pull, 3.3V direct) and the optional hardware RST line (§3.1) apply to the carriers exactly as to modules.
+
+### 15.1 Bus and Address Block
+
+| Parameter | Value |
+|-----------|-------|
+| Bus (carrier side) | `KCM_I2C_BUS` = Wire2 (Teensy 4.1 SCL2=24 / SDA2=25) |
+| INT line | `KCM_I2C_INT_PIN` = pin 0, active-low push-pull, one per carrier |
+| Hardware RST | `KCM_I2C_RST_PIN` = pin 1 (shared reset from master; see §3.1) |
+
+| I2C Address | Constant | Carrier | Outbound sync byte | Status |
+|-------------|----------|---------|--------------------|--------|
+| 0x10 | `KCM_I2C_ADDR_ANNUNCIATOR` | Annunciator (C&W) | 0xAC (`KCM_I2C_SYNC_ANNUNCIATOR`) | Implemented |
+| 0x11 | `KCM_I2C_ADDR_RESDISP` | Resource Display | 0xAD (`KCM_I2C_SYNC_RESDISP`) | Implemented |
+| 0x12 | `KCM_I2C_ADDR_INFODISP` | Info Display 1 | 0xAE (`KCM_I2C_SYNC_INFODISP`) | Implemented |
+| 0x13 | `KCM_I2C_ADDR_INFODISP_2` | Info Display 2 | 0xAE (shared with Info 1) | Implemented (same firmware, `INFO_DISP_UNIT`) |
+| 0x14 | `KCM_I2C_ADDR_SYSINFODISP` | System Info Display | — | **Future work** (separate board, not yet coded) |
+
+Info Display 1 and 2 run the **same** firmware image; the target address is selected at compile time by `INFO_DISP_UNIT` (1 → 0x12, 2 → 0x13). Both use sync byte 0xAE.
+
+### 15.2 Outbound Status Packet (Carrier → Master)
+
+Every carrier's outbound packet begins with **byte 0 = its sync byte** (per the table above) for framing validation; the remaining bytes are panel-specific status. The master reads the packet with `KCM_I2C_BUS.requestFrom(addr, N)` after the carrier asserts INT.
+
+| Carrier | Packet size | Layout reference |
+|---------|-------------|------------------|
+| Annunciator (0x10) | 4 bytes | `KCMk1_Annunciator/README.md` |
+| Resource Display (0x11) | 4 bytes | `KCMk1_ResourceDisp/README.md` |
+| Info Display 1/2 (0x12/0x13) | 10 bytes (3 status + 7-byte Ascent-AP command frame) | `KCMk1_InfoDisp/README.md`, `Ascent_Autopilot_Interface.md` |
+
+### 15.3 Inbound Control Byte (Master → Carrier)
+
+Every carrier's inbound command starts with a **controlByte** whose layout is shared across all carriers:
+
+```
+controlByte:
+  bits 7:4  requestType
+              0x0 = NOP            no operation
+              0x1 = STATUS         send an immediate status packet (asserts INT)
+              0x2 = PROCEED        release the boot hold and enter loop()
+              0x3 = MCU_RESET      soft-reboot the carrier MCU
+              0x4 = DISPLAY_RESET  reset display state / redraw
+  bit  3    idle_state   (1 = switch to standby when not in a flight scene)
+  bit  2    audio / trim (Annunciator: audio enable; InfoDisp: trim hold)
+  bit  1    demoMode     (1 = enable demo values)
+  bit  0    debugMode    (1 = enable Serial debug output)
+```
+
+At power-on each carrier holds in `setup()` until the master sends `PROCEED` (`STANDALONE_TEST` in the sketch bypasses this for bench use). Inbound command lengths are panel-specific:
+
+| Carrier | Inbound command | Notes |
+|---------|-----------------|-------|
+| Annunciator (0x10) | 3 bytes (legacy) or **6 bytes (rev-2 extended)** | Extended form appends `modeFlags` (2 bytes) + `capValue` (1 byte). `onI2CReceive()` accepts either length so the master can be upgraded independently. |
+| Resource Display (0x11) | 2 bytes | controlByte + reserved |
+| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + a 40-byte `AscentStatus` push (sync **0xA5**), dispatched by write length | Byte 1 of the 2-byte command carries the Ascent-AP `ackSeq`. See `Ascent_Autopilot_Interface.md`. |
+
+The `requestType` nibble values and the boot `PROCEED` handshake are identical on all three implemented carriers; only the payload width and the panel-specific status/command fields differ.
+
+---
+
+## 16. Revision History
 
 | Version | Date | Changes |
 |---------|------|---------|
@@ -512,4 +574,5 @@ Vessel switch behaviour is module-specific and determined by each module's contr
 | 2.2 | 2026-05-19 | Universal 3-byte header on all response packets (status byte with lifecycle/fault/data-changed, type ID, transaction counter). Full lifecycle state machine (BOOT_READY/DISABLED/ACTIVE/SLEEPING) defined and documented. SLEEPING vs DISABLED semantics explicitly distinguished. All packet sizes updated (+3 bytes for header). Module registry updated with total packet sizes and conformance status. Indicator Module removed from specification (pure output, non-standard payload — see module README). EVA Module encoder bytes removed (hardware unpopulated). Bus timing updated for new packet sizes. Pending firmware issues identified in conformance column (KBC-001–006, KJC-001–005, THR-001–004). |
 | 2.3 | 2026-05-25 | Corrected PCB designators in §1 terminology definitions and §9.3. Standard module hardware reference 1822→1802; display module hardware reference 1881/1882→1842. |
 | 2.4 | 2026-06-06 | §3 Interrupt Signalling corrected from "active-low open-drain + controller pull-up" to the actual implementation: active-low push-pull, driven low to assert, no pull-up — aligning the spec with Hardware Reference §13.1 (which adopted push-pull at its revision 1.1). Added 5V (ATtiny816, divider) vs 3.3V (Teensy carrier, direct) level-handling distinction. Added §3.1 Hardware Reset (RST) documenting the optional active-low per-module reset line used by Teensy display carriers (full reboot) and distinct from CMD_RESET (application-state reset). Removed a duplicate stale v2.2 copy of the document that had been appended to the file. |
+| 2.6 | 2026-08-03 | Added §15 **Display-Carrier I2C Protocol** — the definitive reference for the Teensy 4.1 display carriers (Annunciator 0x10, Resource 0x11, Info 1 0x12, Info 2 0x13, Sys Info 0x14 future): bus/address block, per-carrier outbound sync bytes (0xAC/0xAD/0xAE + 0xA5 AscentStatus), the shared `requestType` control-byte scheme (NOP/STATUS/PROCEED/MCU_RESET/DISPLAY_RESET), the boot PROCEED handshake, and the Annunciator 3-byte/6-byte extended command. Corrected the §1 display-carrier note range from 0x12–0x14 to 0x10–0x14 (it had omitted the Annunciator and Resource carriers). Added Info Display 2 (0x13, same firmware via `INFO_DISP_UNIT`) and marked the System Info Display (0x14) as future work. Revision History renumbered §15→§16. Consolidation: this document is now the single definitive I2C spec; the removed duplicate copies under `Software/Modules/` are superseded. |
 | 2.5 | 2026-06-28 | Conformance reached for the three pending firmware bodies — KerbalButtonCore v2.0 (KBC-001–006), KerbalJoystickCore v2.0 (KJC-001–005), and Throttle v2.0 (THR-001–004); §1 conformance note and §8 registry updated. Added §9.1.1 switch-group variant: Function Control (0x21) and Vehicle Control (0x24) now read 24 inputs (third shift register U16, Switch Group 1/2 at indices 16–23) and emit a 6-byte payload / 9-byte packet; §8 totals and §13 bus timing updated accordingly. Corrected the joystick registry entry (§8) to 9-byte payload / 12-byte total to match the §9.2 byte layout (button events + change + state bytes were added to the payload but the registry total had not been updated). Clarified that the EVA Module, Dual Encoder, and Switch Panel ship standalone firmware not covered by the library updates and remain pending. |
