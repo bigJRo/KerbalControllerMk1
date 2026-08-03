@@ -18,10 +18,12 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 
 Hardware rev 2: the panel moved from the rev-1 RA8875 800×480 SPI stack to the shared 7" TFT carrier. All pins and the resolution come from `KCMk1_SystemConfig.h`.
 
+The display controller is the **LT7683** (the physical part on the ER-TFT070A2-6-5633 module); it is register-compatible with the RA8876, so the firmware drives it through the `wwatson4506/TeensyRA8876-8080` FlexIO3 driver (class `RA8876_t41_p`). "RA8876" therefore appears in driver/library/class names throughout, while the hardware part is the LT7683.
+
 | Component | Part | Interface |
 |-----------|------|-----------|
 | Microcontroller | Teensy 4.1 | — |
-| Display | RA8876 (LT7683-compatible) 1024×600 TFT | 16-bit 8080 parallel (FlexIO3) |
+| Display | LT7683 (RA8876-compatible) 1024×600 TFT | 16-bit 8080 parallel (FlexIO3) |
 | Touch controller | FT5316 5-point capacitive | software I2C (pins 4/5) |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
@@ -33,13 +35,13 @@ All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig
 
 | Pin | Function | Direction | Define |
 |-----|----------|-----------|--------|
-| 34 | RA8876 /CS chip select | OUT | `KCM_TFT_CS` |
-| 33 | RA8876 RS register/data select | OUT | `KCM_TFT_RS` |
-| 35 | RA8876 /RST reset | OUT | `KCM_TFT_RESET` |
-| 36 | RA8876 /WR write strobe | OUT | `KCM_TFT_WR` |
-| 37 | RA8876 /RD read strobe | OUT | `KCM_TFT_RD` |
-| 32 | RA8876 WAIT | IN | `KCM_TFT_WAIT` |
-| 31 | RA8876 INT | IN | `KCM_TFT_INT` |
+| 34 | Display /CS chip select | OUT | `KCM_TFT_CS` |
+| 33 | Display RS register/data select | OUT | `KCM_TFT_RS` |
+| 35 | Display /RST reset | OUT | `KCM_TFT_RESET` |
+| 36 | Display /WR write strobe | OUT | `KCM_TFT_WR` |
+| 37 | Display /RD read strobe | OUT | `KCM_TFT_RD` |
+| 32 | Display WAIT | IN | `KCM_TFT_WAIT` |
+| 31 | Display INT | IN | `KCM_TFT_INT` |
 | 9 | TFT backlight enable / PWM | OUT | `KCM_TFT_BL` |
 | DB0..DB15 | 16-bit parallel data bus | — | FlexIO3 (driver-owned) |
 | 4 | FT5316 SCL (software I2C) | — | `KCM_CTP_SCL` |
@@ -256,7 +258,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
-| **3.0.0** | Hardware rev 2: Teensy 4.1 / RA8876 (LT7683) 1024×600 TFT via `KCM_TFT` / FT5316 capacitive touch / Wire2 (`KCM_I2C_BUS`). Requires KerbalDisplayCommon ≥ 3.0.0 and KerbalDisplayAudio 1.1.0. All screens relaid to 1024×600. Main screen: bars always render the resource colour (percentage text carries the level threshold); percentage-flicker fix. Default STD set is 9 (EC, LF, LOx, MP, SF, O2, Food, Water, Ablator). Added EVA Propellant and EVA mode (fixed EC/EVA/O2/Food/Water bar set driven by `FLIGHT_STATUS_MESSAGE`, with the Select grid locked). Standalone-test flag added. |
+| **3.0.0** | Hardware rev 2: Teensy 4.1 / LT7683 (RA8876-compatible) 1024×600 TFT via `KCM_TFT` / FT5316 capacitive touch / Wire2 (`KCM_I2C_BUS`). Requires KerbalDisplayCommon ≥ 3.0.0 and KerbalDisplayAudio 1.1.0. All screens relaid to 1024×600. Main screen: bars always render the resource colour (percentage text carries the level threshold); percentage-flicker fix. Default STD set is 9 (EC, LF, LOx, MP, SF, O2, Food, Water, Ablator). Added EVA Propellant and EVA mode (fixed EC/EVA/O2/Food/Water bar set driven by `FLIGHT_STATUS_MESSAGE`, with the Select grid locked). Standalone-test flag added. |
 | **1.3.0** | I2C slave interface and boot handshake with master (Phase 3). I2C constants consolidated to `KCMk1_SystemConfig.h`. Touch count filter changed to `!= 1`. Touch filter constants alias `KCM_TOUCH_*`. Boot screen header shows live version string (sketch + KDC + KDA) via `snprintf`. `switchToScreen()` now records `lastScreenSwitch` timestamp. KDA dependency clarified as direct (not a KDC sub-dependency). Updated to KerbalDisplayCommon 2.1.0 and KerbalDisplayAudio 1.0.1. |
 | **1.2.0** | KerbalSimpit integration for live resource telemetry. Per-vessel configuration memory (`vesselCache[]`). Simpit channel refresh on vessel switch and scene entry. |
 | **1.1.0** | Select screen presets (STD, XPD, VEH, LSP, AIR, ADV). Detail screen with CRAFT/STAGE sections. Stage data support for LF, LOx, SF, Xenon, Ablator. |

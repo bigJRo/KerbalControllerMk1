@@ -779,5 +779,5 @@ Capability flags not listed above are reserved and must be set to 0.
 | Module UI Reference | `docs/developer/Module_UI_Reference.md` | v5.3 — per-module button assignments, switch wiring, CAG table, axis mappings, firmware implementation detail |
 | Power Budget | `docs/developer/Power_Budget.md` | v1.1 — per-module and per-panel power consumption, supply headroom analysis |
 | Expansion Module Specification | `docs/developer/Expansion_Module_Spec.md` | Expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
-| KC-01-1912 Pin Assignment | `Software/Displays/libraries/KCMk1_SystemConfig/src/KCMk1_SystemConfig.h` | Authoritative Teensy 4.1 ↔ RA8876 7" display-carrier pin map (`KCM_TFT_*`, touch, audio, I2C bus defines) |
+| KC-01-1912 Pin Assignment | `Software/Displays/libraries/KCMk1_SystemConfig/src/KCMk1_SystemConfig.h` | Authoritative Teensy 4.1 ↔ LT7683 (RA8876-compatible) 7" display-carrier pin map (`KCM_TFT_*`, touch, audio, I2C bus defines) |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |

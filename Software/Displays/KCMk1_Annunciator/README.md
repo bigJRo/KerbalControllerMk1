@@ -16,10 +16,12 @@ The panel provides three screens — Main, SOI, and Standby. Main and SOI are na
 
 ## Hardware
 
+The display controller is the **LT7683** (the physical part on the BuyDisplay ER-TFT070A2-6-5633 module); it is register-compatible with the RA8876, so the firmware drives it through the `wwatson4506/TeensyRA8876-8080` FlexIO3 driver (class `RA8876_t41_p`). "RA8876" therefore appears in driver/library/class names throughout, while the hardware part is the LT7683.
+
 | Component | Part | Interface |
 |-----------|------|-----------|
 | Microcontroller | Teensy 4.1 | — |
-| Display | RA8876 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633) | 16-bit 8080 parallel (FlexIO3) |
+| Display | LT7683 (RA8876-compatible) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633) | 16-bit 8080 parallel (FlexIO3) |
 | Touch controller | FT5316 5-point capacitive | Software I2C (pins 4/5) |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 | Audio | Buzzer (`tone()`) + DFPlayer Mini | Pin 2 / Serial2 |
@@ -30,15 +32,15 @@ The panel provides three screens — Main, SOI, and Standby. Main and SOI are na
 
 | Pin | Function | Direction | Assigned by |
 |-----|----------|-----------|-------------|
-| 34 | RA8876 /CS chip select | OUT | KCMk1_SystemConfig (`KCM_TFT_CS`) |
-| 33 | RA8876 RS register/data select | OUT | KCMk1_SystemConfig (`KCM_TFT_RS`) |
-| 35 | RA8876 /RESET | OUT | KCMk1_SystemConfig (`KCM_TFT_RESET`) |
-| 36 | RA8876 /WR write strobe | OUT | KCMk1_SystemConfig (`KCM_TFT_WR`) — FlexIO3 driver-owned |
-| 37 | RA8876 /RD read strobe | OUT | KCMk1_SystemConfig (`KCM_TFT_RD`) — FlexIO3 driver-owned |
-| 32 | RA8876 WAIT (busy flow control) | IN | KCMk1_SystemConfig (`KCM_TFT_WAIT`) |
-| 31 | RA8876 INT (unused for now) | IN | KCMk1_SystemConfig (`KCM_TFT_INT`) |
+| 34 | Display /CS chip select | OUT | KCMk1_SystemConfig (`KCM_TFT_CS`) |
+| 33 | Display RS register/data select | OUT | KCMk1_SystemConfig (`KCM_TFT_RS`) |
+| 35 | Display /RESET | OUT | KCMk1_SystemConfig (`KCM_TFT_RESET`) |
+| 36 | Display /WR write strobe | OUT | KCMk1_SystemConfig (`KCM_TFT_WR`) — FlexIO3 driver-owned |
+| 37 | Display /RD read strobe | OUT | KCMk1_SystemConfig (`KCM_TFT_RD`) — FlexIO3 driver-owned |
+| 32 | Display WAIT (busy flow control) | IN | KCMk1_SystemConfig (`KCM_TFT_WAIT`) |
+| 31 | Display INT (unused for now) | IN | KCMk1_SystemConfig (`KCM_TFT_INT`) |
 | 9 | Backlight enable / PWM | OUT | KCMk1_SystemConfig (`KCM_TFT_BL`) |
-| 19, 18, 14, 15, 40, 41, 17, 16, 22, 23, 20, 21, 38, 39, 26, 27 | RA8876 16-bit data bus DB0..DB15 | — | KCMk1_SystemConfig (`KCM_TFT_DB0`..`DB15`) — FlexIO3 driver-owned |
+| 19, 18, 14, 15, 40, 41, 17, 16, 22, 23, 20, 21, 38, 39, 26, 27 | Display 16-bit data bus DB0..DB15 | — | KCMk1_SystemConfig (`KCM_TFT_DB0`..`DB15`) — FlexIO3 driver-owned |
 | 4 | FT5316 SCL (software I2C) | — | KCMk1_SystemConfig (`KCM_CTP_SCL`) |
 | 5 | FT5316 SDA (software I2C) | — | KCMk1_SystemConfig (`KCM_CTP_SDA`) |
 | 3 | FT5316 /RESET | OUT | KCMk1_SystemConfig (`KCM_CTP_RST`) |
@@ -57,7 +59,7 @@ The panel provides three screens — Main, SOI, and Standby. Main and SOI are na
 
 **I2C note:** Wire2 (pins 24/25 = SCL2/SDA2) is the master bus shared with the Teensy 4.1. The FT5316 touch controller runs on a separate software (bit-banged) I2C bus on pins 4/5 — pins 18/19/16/17 are consumed by the display data bus. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
 
-**Pin configuration:** All hardware pins are defined centrally in `KCMk1_SystemConfig.h`, the shared header used by the Annunciator, ResourceDisp, and InfoDisp panels. To remap a pin, edit the `KCM_*` define there rather than overriding per-sketch. The RA8876 data bus, /WR, and /RD lines are owned by the FlexIO3 driver (`wwatson4506/TeensyRA8876-8080`); only /CS, RS, and /RESET are passed to it as plain GPIO.
+**Pin configuration:** All hardware pins are defined centrally in `KCMk1_SystemConfig.h`, the shared header used by the Annunciator, ResourceDisp, and InfoDisp panels. To remap a pin, edit the `KCM_*` define there rather than overriding per-sketch. The display data bus, /WR, and /RD lines are owned by the FlexIO3 driver (`wwatson4506/TeensyRA8876-8080`); only /CS, RS, and /RESET are passed to it as plain GPIO.
 
 ---
 
@@ -319,7 +321,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
-| **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / RA8876 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |
+| **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / LT7683 (RA8876-compatible) 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |
 | **2.1.0** | Complete C&W panel redesign: 25 indicators (5×5), body-aware Pe LOW / Ap LOW / ORBIT STABLE logic using full BodyParams (reentryAlt, lowSpace, soiAlt). Two-tier yellow/red indicators for PE_LOW, PROP_LOW, LIFE_SUPP. Dynamic CHUTE_ENV (off/green/yellow/red). Positive indicators: ORBIT_STABLE, ELEC_GEN. State indicators: SRB_ACTIVE, EVA_ACTIVE. CNTCT situation button driven by LANDED/SPLASH (not VSIT_DOCKED). DOCK vertical text indicator above situation column. Panel condition strip (10 buttons): DEMO/CTRL/DEBUG and SPCFT/PLN/RVR use black background with coloured text. Zone separation via TFT_SILVER gutters. Layout updated: 98×73 C&W buttons, repositioned DOCK/situation/panel/flight-condition zones. SOI screen adds Reentry Alt and SOI Radius rows, removes Escape Velocity, reduces font to 28pt at 36px row height. `standaloneMode` and `standaloneTest` operating modes added. Serial-driven test framework (`TestMode.ino`): 66 logic tests + 57-step display walk-through. KerbalDisplayCommon body table expanded with full BodyParams (gravity, escapeVelocity, synchronousOrbit, reentryAlt, soiAlt, hasSurface, highQThreshold). |
 | **2.0.0** | Major rewrite. RA8875 KDC v2 flicker-free rendering (PrintState, printDisp, printValue). Full AppState struct. Body-aware SOI screen with KASA meatball and per-body BMP. I2C slave boot handshake with master Teensy 4.1. |
 | **1.1.1** | Touch count filter, I2C constants to KCMk1_SystemConfig.h, cross-panel threshold aliases, boot screen live version string, KerbalDisplayCommon 2.1.0. |

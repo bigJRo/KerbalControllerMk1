@@ -27,13 +27,15 @@ The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Air
 | Touch controller | FT5316 capacitive | software I2C |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (USB COM port 2) |
-| I2C slave bus | Master Teensy 4.1 at 0x12 | Wire2 (pins 24/25) |
+| I2C slave bus | Master Teensy 4.1 at 0x12 (Info Display 1) or 0x13 (Info Display 2) | Wire2 (pins 24/25) |
+
+The display controller is the **LT7683** (the physical part on the ER-TFT070A2-6-5633 module); it is register-compatible with the RA8876, so the firmware drives it through the `wwatson4506/TeensyRA8876-8080` FlexIO3 driver (class `RA8876_t41_p`). "RA8876" therefore appears in driver/library/class names throughout, while the hardware part is the LT7683.
 
 See `Documents/Developer/Hardware_Reference.md` (§8.3, KC-01-1912 carrier) for the display-carrier hardware detail.
 
 ### Pin Assignments
 
-All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + RA8876 8080-parallel carrier, KC-01-1912). The 16 display data lines are driven by the Teensy 4.1 FlexIO3 hardware via the `wwatson4506/TeensyRA8876-8080` driver — the defines below are documentation; the driver owns the data/WR/RD lines.
+All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + LT7683 (RA8876-compatible) 8080-parallel carrier, KC-01-1912). The 16 display data lines are driven by the Teensy 4.1 FlexIO3 hardware via the `wwatson4506/TeensyRA8876-8080` driver — the defines below are documentation; the driver owns the data/WR/RD lines.
 
 | Pin(s) | Function | Direction | Define |
 |--------|----------|-----------|--------|
@@ -43,8 +45,8 @@ All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + RA8
 | 35 | Display /RESET | OUT | `KCM_TFT_RESET` |
 | 36 | Display /WR write strobe | OUT | `KCM_TFT_WR` |
 | 37 | Display /RD read strobe | OUT | `KCM_TFT_RD` |
-| 32 | Display WAIT (busy from RA8876) | IN | `KCM_TFT_WAIT` |
-| 31 | Display INT (from RA8876, unused) | IN | `KCM_TFT_INT` |
+| 32 | Display WAIT (busy from LT7683) | IN | `KCM_TFT_WAIT` |
+| 31 | Display INT (from LT7683, unused) | IN | `KCM_TFT_INT` |
 | 9 | Backlight enable / PWM | OUT | `KCM_TFT_BL` |
 | 4 | Touch software-I2C SCL | — | `KCM_CTP_SCL` |
 | 5 | Touch software-I2C SDA | — | `KCM_CTP_SDA` |
@@ -133,11 +135,16 @@ For the full threshold listing (aircraft, landing, docking, orbit, spacecraft th
 
 ## I2C Protocol
 
-The InfoDisp operates as an I2C slave at address **0x12** (`KCM_I2C_ADDR_INFODISP`) on the Wire2 bus (`KCM_I2C_BUS`, pins 24/25).
+The InfoDisp operates as an I2C slave on the Wire2 bus (`KCM_I2C_BUS`, pins 24/25). Two identical Info Display boards run this same firmware; the slave address is chosen at compile time by `INFO_DISP_UNIT` in `AAA_Config.ino`:
+
+- `INFO_DISP_UNIT 1` → **0x12** (`KCM_I2C_ADDR_INFODISP`) — Info Display 1
+- `INFO_DISP_UNIT 2` → **0x13** (`KCM_I2C_ADDR_INFODISP_2`) — Info Display 2
+
+The sync/framing byte (0xAE) is shared by both units. The System Info Display (0x14) is separate hardware and is future work — see `Documents/Developer/Hardware_Reference.md`. In the byte layouts below, `I2C_SLAVE_ADDR` resolves to whichever address the build targets.
 
 ### Outbound Packet — InfoDisp → Master
 
-Size: **10 bytes** (`I2C_PACKET_SIZE`). Sent in response to `KCM_I2C_BUS.requestFrom(0x12, 10)` (Wire2) after INT asserts. Bytes 0–2 are the status header; bytes 3–9 are the Ascent Autopilot command frame (see `Documents/Developer/Ascent_Autopilot_Interface.md`).
+Size: **10 bytes** (`I2C_PACKET_SIZE`). Sent in response to `KCM_I2C_BUS.requestFrom(I2C_SLAVE_ADDR, 10)` (Wire2) after INT asserts. Bytes 0–2 are the status header; bytes 3–9 are the Ascent Autopilot command frame (see `Documents/Developer/Ascent_Autopilot_Interface.md`).
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -286,7 +293,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_ROVR.ino` | Rover — compass, FWD/REV drive-state blocks, tilt indicators (screen index 9) |
 | `TouchEvents.ino` | Touch debounce, sidebar and title bar dispatch |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
-| `I2CSlave.ino` | I2C slave at 0x12 — packet build/fill, command processing, boot handshake |
+| `I2CSlave.ino` | I2C slave at 0x12/0x13 (`INFO_DISP_UNIT`) — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Randomised KSP-themed boot sequences (B: Mission Log, C: Loading Tips, E: Pre-Flight Checklist) |
 | `Demo.ino` | Demo mode — sine-wave `AppState` animation |
 

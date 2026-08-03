@@ -14,13 +14,15 @@ central master controller.
 | `Software/Displays/` | Display-panel firmware and shared display libraries (see below) |
 | `Software/Modules/` | Input-module firmware (buttons, switches, joysticks, encoders, 7-segment, etc.) |
 | `Software/Libraries/`, `Software/Common/` | Shared cross-project code |
-| `Documents/Developer/` | Hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface |
-| `Documents/User/` | Quick-start and panel operating guides |
+| `Documents/Developer/` | Hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface, expansion-module spec |
+| `Documents/User/` | Quick-start guide, panel operating guide, display reference |
 
 ### Display panels (`Software/Displays/`)
 
 The display subsystem targets **hardware rev 2**: Teensy 4.1 driving a 7″
-1024×600 RA8876 TFT over a 16-bit 8080 parallel bus, with FT5316 capacitive touch.
+1024×600 LT7683 (RA8876-compatible) TFT over a 16-bit 8080 parallel bus, with
+FT5316 capacitive touch. (The LT7683 is the physical display controller; it is
+register-compatible with the RA8876, whose driver library the firmware uses.)
 (Porting status and hardware details are in
 [`Software/Displays/PORTING_7inch_TFT.md`](Software/Displays/PORTING_7inch_TFT.md)
 and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_Reference.md).)
@@ -29,7 +31,7 @@ and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_R
 |------------------|------|
 | `KCMk1_Annunciator/` | Caution & Warning annunciator panel (I2C 0x10) |
 | `KCMk1_InfoDisp/` | Flight information display — 13 telemetry screens (I2C 0x12) |
-| `KCMk1_ResourceDisp/` | Resource display (I2C 0x11) — *rev-1, port pending* |
+| `KCMk1_ResourceDisp/` | Resource display (I2C 0x11) — 10 resource bars + EVA mode |
 | `libraries/KerbalDisplayCommon/` | Shared UI toolkit — drawing, fonts, formatting, threshold colouring |
 | `libraries/KCM_Display`, `KCM_Touch`, `KCMk1_SystemConfig` | Display driver wrapper, touch driver, shared pin map + thresholds |
 | `libraries/KerbalDisplayAudio/` | Master-alarm buzzer + DFPlayer audio |

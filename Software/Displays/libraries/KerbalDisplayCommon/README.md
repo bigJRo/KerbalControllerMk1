@@ -1,7 +1,7 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library** · v3.0.0
-UI toolkit for RA8876-based touchscreen display panels used in KSP controller builds.
+**Kerbal Controller Mk1 — Shared Display Library** · v3.1.1
+UI toolkit for LT7683 (RA8876-compatible) touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
 ---
@@ -9,6 +9,8 @@ Part of the KCMk1 controller system.
 ## Overview
 
 KerbalDisplayCommon provides the shared display firmware core for KCMk1 display panels. It abstracts the RA8876 display driver (the `KCM_TFT` type, `RA8876_t41_p` via KCM_Display) into higher-level UI primitives — buttons, text blocks, value formatters, threshold colouring, and BMP drawing — so that sketch code can focus on layout and telemetry logic rather than display housekeeping. As of hardware rev 2, capacitive touch has moved out into its own KCM_Touch library.
+
+The physical display controller is the **LT7683** (on the ER-TFT070A2-6-5633 module); it is register-compatible with the RA8876, so the driver library, its class (`RA8876_t41_p`), and its GFX API all carry the "RA8876" name even though the hardware part is the LT7683.
 
 The library is designed to be used alongside KerbalDisplayAudio and KerbalSimpit in multi-tab Arduino sketches targeting the Teensy 4.1.
 
@@ -19,7 +21,7 @@ The library is designed to be used alongside KerbalDisplayAudio and KerbalSimpit
 | Component | Part | Interface |
 |-----------|------|-----------|
 | Microcontroller | Teensy 4.1 | — |
-| Display | RA8876 (LT7683-compatible) 1024×600 IPS TFT — BuyDisplay ER-TFT070A2-6-5633 | 16-bit 8080 parallel (FlexIO3) |
+| Display | LT7683 (RA8876-compatible) 1024×600 IPS TFT — BuyDisplay ER-TFT070A2-6-5633 | 16-bit 8080 parallel (FlexIO3) |
 | Touch controller | FT5316 5-point capacitive (via KCM_Touch) | Software I2C (bit-banged) |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 
@@ -27,7 +29,7 @@ The library is designed to be used alongside KerbalDisplayAudio and KerbalSimpit
 
 All display, touch, and SD pin assignments now live in **`KCMk1_SystemConfig.h`** (pulled in via `KCM_Display.h`) rather than being defined per-sketch — the carrier board is fixed, so there is nothing to override. The rev-1 `RA8875_*` and `SD_CS_PIN` defines from the SPI stack have been removed. The 16-bit 8080 data bus (`DB0..DB15`) is owned by the TeensyRA8876-8080 FlexIO3 driver; only the control lines below are plain GPIO passed to the driver.
 
-**RA8876 control lines** (`KCM_TFT_*` in `KCMk1_SystemConfig.h`):
+**Display control lines** (`KCM_TFT_*` in `KCMk1_SystemConfig.h`):
 
 | Pin | Define | Function |
 |-----|--------|----------|
@@ -37,7 +39,7 @@ All display, touch, and SD pin assignments now live in **`KCMk1_SystemConfig.h`*
 | 36 | `KCM_TFT_WR` | /WR write strobe (active-LOW) |
 | 37 | `KCM_TFT_RD` | /RD read strobe (active-LOW) |
 | 32 | `KCM_TFT_WAIT` | WAIT busy flow control |
-| 31 | `KCM_TFT_INT` | INT interrupt from RA8876 |
+| 31 | `KCM_TFT_INT` | INT interrupt from LT7683 |
 | 9 | `KCM_TFT_BL` | Backlight enable / PWM |
 
 **FT5316 touch** (handled by the KCM_Touch library, `KCM_CTP_*`): SCL pin 4, SDA pin 5, /RST pin 3, INT pin 6, I2C address `0x38`, on a bit-banged software I2C bus.
@@ -84,7 +86,7 @@ All display, touch, and SD pin assignments now live in **`KCMk1_SystemConfig.h`*
 
 ### Display Setup
 
-`setupDisplay(tft, backColor)` — initialises the RA8876, fills the screen with `backColor`, and prints a ready message to Serial if debug mode is enabled. Call once from `setup()` before any drawing functions.
+`setupDisplay(tft, backColor)` — initialises the display, fills the screen with `backColor`, and prints a ready message to Serial if debug mode is enabled. Call once from `setup()` before any drawing functions.
 
 `setKDCDebugMode(bool)` — enables or disables verbose Serial output from the library (I2C scan, BMP success messages). Error messages (SD failures, BMP errors) are always printed regardless of this setting. Call after `Serial.begin()`.
 
@@ -209,7 +211,26 @@ void thresholdColor(float value,
 
 `drawLabelledAxis(tft, x0, axisW, barTop, barBottom, font, axisColor, backColor)` — draws a vertical percentage axis with major ticks every 10% and minor ticks every 5%. Labels (0%, 50%, 100%) are right-justified within `axisW` pixels. `0%` is at `barBottom`, `100%` is at `barTop`. The axis line is drawn at `x0 + axisW - 1`.
 
-`drawVerticalText(tft, x0, y0, w, h, font, text, color, backColor)` — draws a string one character per line within a rectangle, creating a vertical label strip. Characters are centred horizontally within `w` and the full strip is centred vertically within `h`. The strip is filled with `backColor` before drawing. Used where text rotation is needed since the RA8876 has no native rotation support.
+`drawVerticalText(tft, x0, y0, w, h, font, text, color, backColor)` — draws a string one character per line within a rectangle, creating a vertical label strip. Characters are centred horizontally within `w` and the full strip is centred vertically within `h`. The strip is filled with `backColor` before drawing. Used where text rotation is needed since the display controller has no native rotation support.
+
+### Navball Markers
+
+KSP-style attitude-reticle markers used by the InfoDisp EADI and the MNVR / DOCK / TGT reticle screens. Each takes `(tft, cx, cy, r, color)` — `cx,cy` is the marker centre, `r` the ring radius; all sub-elements (stroke width, dot, spokes) scale from `r` so the marker stays proportional at any size. Colour is the caller's choice (green for velocity/prograde, blue for maneuver, etc.).
+
+| Function | Marker |
+|----------|--------|
+| `drawProgradeMarker` | Prograde — ring + centre dot + three spokes (up/left/right) |
+| `drawRetrogradeMarker` | Retrograde — ring + X |
+| `drawManeuverMarker` | Maneuver node — prograde-style with a gap between dot and prongs |
+| `drawTargetMarker` | Target — gapped-arc ring + centre dot |
+| `drawAntiTargetMarker` | Anti-target — ✕ over a gapped-arc ring |
+| `drawNormalMarker` / `drawAntiNormalMarker` | Normal / anti-normal (up / down triangle spokes) |
+| `drawRadialInMarker` / `drawRadialOutMarker` | Radial-in / radial-out |
+| `drawLevelIndicator` | Level / horizon reference marker |
+
+`enum KspMarkerKind { KSP_MK_PROGRADE, KSP_MK_TARGET, KSP_MK_MANEUVER, KSP_MK_RETROGRADE, KSP_MK_NORMAL, KSP_MK_ANTINORMAL, KSP_MK_RADIAL_IN, KSP_MK_RADIAL_OUT, KSP_MK_ANTITARGET, KSP_MK_LEVEL }` — stable ordinals for callers that select a marker by kind (existing ordinals never change; new kinds append).
+
+`drawThickLine(tft, x0, y0, x1, y1, w, color, caps=true)` — straight line of stroke width `w` px (falls back to `drawLine` for `w≤1`), thickened symmetrically about the ideal line so it stays clean at any angle. `caps=false` suppresses the round end-caps (used for free-ended marker spokes/prongs so they don't read as blobs). This is the primitive the markers above build on.
 
 ### Boot Screen Helpers
 
