@@ -120,11 +120,16 @@ static void drawDetailSelector(KCM_TFT &tft) {
   uint16_t btnH = KCM_SCREEN_H / slotCount;
   static const uint16_t BTN_PAD = 3;
 
-  // Scale font to button height so text is as large as possible
+  // Scale font to button height so text is as large as possible while still
+  // leaving room for a TWO-LINE wrapped name (e.g. "Enriched Uranium") plus its
+  // descenders without spilling over the button border. Thresholds are sized for
+  // the two-line case: ~2*cap_height + descender must clear (btnH - 2*BTN_PAD).
   const tFont *btnFont;
-  if      (btnH >= 70) btnFont = &Roboto_Black_28;
-  else if (btnH >= 48) btnFont = &Roboto_Black_20;
-  else                 btnFont = &Roboto_Black_16;
+  if      (btnH >= 100) btnFont = &Roboto_Black_28;
+  else if (btnH >= 80)  btnFont = &Roboto_Black_24;
+  else if (btnH >= 64)  btnFont = &Roboto_Black_20;
+  else if (btnH >= 54)  btnFont = &Roboto_Black_16;
+  else                  btnFont = &Roboto_Black_12;
 
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == RES_NONE) continue;
