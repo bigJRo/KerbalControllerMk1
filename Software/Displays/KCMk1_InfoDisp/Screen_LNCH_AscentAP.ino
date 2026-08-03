@@ -237,6 +237,19 @@ static uint16_t apPhaseColor(uint8_t p) {
   }
 }
 
+// Pick a legible text colour (black or white) for an arbitrary RGB565 background by
+// its perceived luminance (Rec. 601). White is unreadable on the light phase colours
+// (CYAN ~179, SKY ~177); black is unreadable on the dark ones (DARK_GREEN ~73, RED
+// ~76). Threshold 140 splits the two groups with margin. Channels are scaled 5/6/5 ->
+// 0..255 before weighting.
+static uint16_t apTextOn(uint16_t bg) {
+  uint16_t r = ((bg >> 11) & 0x1F) * 255 / 31;
+  uint16_t g = ((bg >> 5)  & 0x3F) * 255 / 63;
+  uint16_t b = ( bg        & 0x1F) * 255 / 31;
+  uint16_t lum = (uint16_t)((r * 299 + g * 587 + b * 114) / 1000);
+  return (lum > 140) ? TFT_BLACK : TFT_WHITE;
+}
+
 // ── CHROME (static) ─────────────────────────────────────────────────────────────────
 static void chromeScreen_LNCHAP(KCM_TFT &tft) {
   // Any full repaint (screen entry, display reset) starts with the keypad closed — the
@@ -409,9 +422,11 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
     bool armed = apGArmed();
     uint16_t pc = apPhaseColor(state.apPhase);
     const char *txt = armed ? apPhaseName(state.apPhase) : "ARM";
-    uint16_t fg  = armed ? TFT_WHITE : AP_GUARD;
-    uint16_t bg  = armed ? pc        : TFT_OFF_BLACK;
-    uint16_t bdr = armed ? TFT_WHITE : AP_GUARD;
+    // Armed: legible text auto-picked for the phase-colour background (white washes
+    // out on the light CYAN/SKY phases). Disarmed: orange guard text on off-black.
+    uint16_t fg  = armed ? apTextOn(pc) : AP_GUARD;
+    uint16_t bg  = armed ? pc           : TFT_OFF_BLACK;
+    uint16_t bdr = armed ? TFT_WHITE    : AP_GUARD;
     RowCache &rc = rowCache[screen_LNCHAP][AP_ARM_SLOT];
     String key = String(armed ? "A:" : "D:") + txt;
     if (rc.value != key) {
@@ -419,7 +434,7 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
       drawButton(tft, AP_ARM_X, AP_ARM_Y, AP_ARM_W, AP_ARM_H, btn, AP_F_ARM, false);
       const char *hint = armed ? "tap to DISARM" : "tap to ARM";
       textCenter(tft, &Roboto_Black_16, AP_ARM_X, AP_ARM_Y + AP_ARM_H - 24, AP_ARM_W, 18,
-                 hint, armed ? TFT_WHITE : AP_GUARD, bg);
+                 hint, armed ? apTextOn(pc) : AP_GUARD, bg);
       rc.value = key;
     }
   }
