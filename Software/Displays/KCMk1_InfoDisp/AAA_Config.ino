@@ -177,12 +177,6 @@ const float DOCK_BRG_ALARM_DEG = 20.0f;  // red — large angle
    FLIGHT THRESHOLDS — ORBIT (ORB screen)
 ****************************************************************************************/
 
-// Orbit screen: T+Ap/T+Pe near-circular suppression guard.
-// If ApA and PeA are within ORB_CIRCULAR_PCT percent of each other,
-// the orbit is effectively circular and the T+ row shows --- to avoid a
-// rapidly-jumping meaningless value. 1.0 = 1%.
-const float ORB_CIRCULAR_PCT = 1.0f;
-
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — APSIDES (APSI screen) & time thresholds

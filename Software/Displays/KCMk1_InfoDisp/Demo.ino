@@ -361,7 +361,7 @@ void stepDemoState() {
       vOrb = 175.0f;                                    // pad rotation
     } else if (t < 115.0f) {
       // Grows from ~175 toward ~2170 during ascent burn, tracking V.Srf
-      vOrb = 175.0f + (vSrf + 175.0f - 175.0f) * 0.95f; // ≈ vSrf + small offset
+      vOrb = 175.0f + vSrf * 0.95f; // ≈ vSrf + small offset
       // Clamp to realistic progression
       if (vOrb < 175.0f) vOrb = 175.0f;
     } else if (t < 160.0f) {

@@ -61,12 +61,9 @@ uint8_t      slotCount = DEFAULT_SLOT_COUNT;
    resetting prevScreen to the sentinel value screen_COUNT.
    Always use this function — never set activeScreen directly.
 ****************************************************************************************/
-uint32_t lastScreenSwitch = 0;   // #8 timestamp of last switchToScreen() call
-
 void switchToScreen(ScreenType s) {
   activeScreen     = s;
   prevScreen       = screen_COUNT;
-  lastScreenSwitch = millis();   // #8
 }
 
 

@@ -19,7 +19,6 @@
 // Externally accessible (declared extern in KCMk1_InfoDisp.h). _lndgReentryMode is
 // the master toggle; row toggles drive label-swapping in re-entry mode.
 bool _lndgReentryMode    = false;
-bool _lndgReentryRow3PeA  = true;
 bool _lndgReentryRow0TPe  = false;
 bool _lndgReentryRow1SL   = false;
 

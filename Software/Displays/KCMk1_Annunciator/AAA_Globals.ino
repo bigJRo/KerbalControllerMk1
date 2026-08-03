@@ -37,10 +37,7 @@ AppState prev;
 ****************************************************************************************/
 bool    inFlight        = false;
 bool    inEVA           = false;
-bool    hasTarget       = false;
 bool    flightScene     = false;
-bool    docked          = false;
-bool    isRecoverable   = false;
 bool    hasO2           = false;
 bool    inAtmo          = false;
 bool    physTW          = false;   // true when time warp is physics warp
@@ -100,10 +97,6 @@ void invalidateAllState() {
   prev.modeFlags            = ~state.modeFlags;
   prev.gameSOI              = "\x01";
   prev.gear_on              = !state.gear_on;
-  prev.brakes_on            = !state.brakes_on;
-  prev.lights_on            = !state.lights_on;
-  prev.RCS_on               = !state.RCS_on;
-  prev.SAS_on               = !state.SAS_on;
   prev.abort_on             = !state.abort_on;
   prev.alt_sl               = -1.0f;
   prev.alt_surf             = -1.0f;
@@ -137,7 +130,6 @@ void invalidateAllState() {
   prev.tacWW                = -1.0f;
   prev.tacWW_tot            = -1.0f;
   prev.atmoPressure         = -1.0f;
-  prev.atmoTemp             = -1.0f;
   prev.throttleCmd          = state.throttleCmd + 1;
 
   // Force CHUTE_ENV redraw on next update pass
@@ -182,9 +174,6 @@ void resetDisplays() {
   rawSituation    = 0;
   inFlight        = false;
   inEVA           = false;
-  hasTarget       = false;
-  docked          = false;
-  isRecoverable   = false;
   hasO2           = false;
   inAtmo          = false;
   chuteEnvState   = chute_Off;

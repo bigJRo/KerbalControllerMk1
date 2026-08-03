@@ -114,8 +114,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         inFlight          = fs.isInFlight();
         bool wasEVA       = inEVA;
         inEVA             = fs.isInEVA();
-        hasTarget         = fs.hasTarget();
-        isRecoverable     = fs.isRecoverable();
         updateCautionWarningState();
 
         // Force a full screen redraw when EVA state changes (Kerbal exits or
@@ -138,10 +136,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     case ACTIONSTATUS_MESSAGE:
       if (msgSize == 1) {
         state.gear_on   = msg[0] & GEAR_ACTION;
-        state.brakes_on = msg[0] & BRAKES_ACTION;
-        state.lights_on = msg[0] & LIGHT_ACTION;
-        state.RCS_on    = msg[0] & RCS_ACTION;
-        state.SAS_on    = msg[0] & SAS_ACTION;
         state.abort_on  = msg[0] & ABORT_ACTION;
         updateCautionWarningState();
       }
@@ -205,7 +199,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         inAtmo             = a.isVesselInAtmosphere();
         state.atmoPressure = a.pressure;   // kPa -- used for HIGH_Q proxy calculation
         state.airDensity   = a.airDensity; // kg/m3 -- used for CHUTE_ENV dynamic pressure
-        state.atmoTemp     = a.temperature; // K  -- stored for future use
         updateCautionWarningState();
       }
       break;
@@ -340,11 +333,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         simpit.requestMessageOnChannel(0);
       } else if (msg[0] == 2) {
         if (debugMode) Serial.println(F("Annunciator: Docked"));
-        docked = true;
         bitSet(state.vesselSituationState, VSIT_DOCKED);
       } else if (msg[0] == 3) {
         if (debugMode) Serial.println(F("Annunciator: Undocked"));
-        docked = false;
         bitClear(state.vesselSituationState, VSIT_DOCKED);
       }
       break;

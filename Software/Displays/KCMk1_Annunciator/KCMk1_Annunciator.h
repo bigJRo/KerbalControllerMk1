@@ -55,10 +55,6 @@ struct AppState {
 
   // Action groups
   bool gear_on   = false;
-  bool brakes_on = false;
-  bool lights_on = false;
-  bool RCS_on    = false;
-  bool SAS_on    = false;
   bool abort_on  = false;
 
   // Altitude (metres)
@@ -115,7 +111,6 @@ struct AppState {
   // Atmosphere
   float atmoPressure = 0.0f;  // kPa   -- for HIGH Q proxy
   float airDensity   = 0.0f;  // kg/m3 -- for CHUTE ENV (true dynamic pressure q)
-  float atmoTemp     = 0.0f;  // K   -- available for future use
 
   // Throttle
   uint8_t throttleCmd = 0;  // 0-100%
@@ -353,10 +348,7 @@ extern AppState      state;
 extern AppState      prev;
 extern bool          inFlight;
 extern bool          inEVA;
-extern bool          hasTarget;
 extern bool          flightScene;
-extern bool          docked;
-extern bool          isRecoverable;
 extern bool          hasO2;
 extern bool          inAtmo;
 extern bool          physTW;
@@ -405,7 +397,6 @@ void switchToScreen(ScreenType s);
 // Test mode (TestMode.ino) -- serial-driven logic and display test framework.
 void initTestMode();
 void runTestMode();
-extern uint16_t testPsForceOn;  // force-on mask for panel status buttons during display walk-through
 void resetSitAndPanelState();   // force full redraw of situation column and panel status strip
 void forceContactState(bool newContact); // force CONTACT dirty tracker for walk-through
 void forceDockState(bool isDocked);      // force DOCK dirty tracker for walk-through

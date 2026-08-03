@@ -1,15 +1,11 @@
 /***************************************************************************************
    Screen_TGT.ino  —  Target / Rendezvous screen  (RPOD display)
 
-   Replaces Screen_RNDZ.ino. Rename the file and update any references from
-   screen_RNDZ / chromeScreen_RNDZ / drawScreen_RNDZ to the TGT equivalents
-   (see header changes below).
-
    LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌─────────────────────────────────┬──────────────────────────────────────┐
    │                                 │ ALT.SL:         142.8 km             │
    │   RPOD Scope                    │ V.ORB:         2247.3 m/s            │
-   │   (black disc, R=130, ±60°)     │ DIST:           48.3 km             │
+   │   (black disc, R=210, ±60°)     │ DIST:           48.3 km             │
    │                                 │ V.TGT:          124.0 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
    │   ○ velocity vector (NEON_GREEN)│ B.ERR:  +14.0° │ E.ERR:  -9.0°      │
@@ -47,31 +43,6 @@
    prevDot stored in screen coords. On change > 1px:
      fillRect(prev - R_ERASE, ..., TFT_BLACK) → _tgtRepairChrome() → draw new dot
    Erase rect is slightly larger than dot to clean up any anti-alias edge.
-
-   CHANGES REQUIRED IN OTHER FILES
-   ────────────────────────────────
-   1. KCMk1_InfoDisp.h
-      - Rename  screen_RNDZ → screen_TGT  (keep value = 4)
-      - Replace  extern bool _rndzChromDrawn  →  extern bool _tgtChromDrawn
-      - Add to SCREEN_IDS: "TGT"  (slot 4, replacing "TGT" which was already there)
-      - Update SCREEN_TITLES slot 4: "TARGET" (was "TARGET" — no change needed)
-
-   2. AAA_Screens.ino / AAA_Screens chrome/draw dispatch
-      - case screen_TGT: replace RNDZ calls with TGT calls
-
-   3. AAA_Globals.ino
-      - Update contextScreen() tgtDistance auto-switch reference (screen_RNDZ → screen_TGT)
-
-   4. SimpitHandler.ino
-      - Update any screen_RNDZ references to screen_TGT
-
-   5. AAA_Config.ino
-      - Add TGT_VCLOSURE_WARN_MS and TGT_VCLOSURE_ALARM_MS (values at bottom of this file)
-      - Rename section header "FLIGHT THRESHOLDS — TARGET (RNDZ screen)" to "(TGT screen)"
-
-   6. Demo.ino — no changes required; demo already drives tgt* state fields
-
-   7. Delete Screen_RNDZ.ino
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 

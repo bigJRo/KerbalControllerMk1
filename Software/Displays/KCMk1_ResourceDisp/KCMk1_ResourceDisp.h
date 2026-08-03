@@ -127,7 +127,6 @@ extern TouchResult  lastTouch;
 extern KerbalSimpit simpit;
 extern ScreenType   activeScreen;
 extern ScreenType   prevScreen;
-extern uint32_t     lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
 extern bool         stageMode;      // false = TOTAL (whole craft), true = STAGE (current stage)

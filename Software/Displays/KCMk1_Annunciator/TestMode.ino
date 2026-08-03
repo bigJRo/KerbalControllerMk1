@@ -64,12 +64,6 @@ static uint8_t _displayStep = 0;
 static uint8_t _logicPassed = 0;
 static uint8_t _logicFailed = 0;
 
-// Force-on mask for panel status buttons during display walk-through.
-// (rev-2: the panel-status strip was replaced by the mode grid; this force-on flag
-// is not currently read by any draw path — reserved.)
-// Declared here, externed in ScreenMain.ino.
-uint16_t testPsForceOn = 0;
-
 
 /***************************************************************************************
    INIT TEST MODE
@@ -199,9 +193,6 @@ static void resetTestState() {
   // Reset telemetry flags
   inFlight        = false;
   inEVA           = false;
-  hasTarget       = false;
-  docked          = false;
-  isRecoverable   = false;
   hasO2           = false;
   inAtmo          = false;
   physTW          = false;
@@ -227,9 +218,6 @@ static void resetTestState() {
   debugMode       = false;
   audioEnabled    = false;
   simpitConnected = true;   // default connected so SIMPIT LOST is off
-
-  // Reset panel status force-on override
-  testPsForceOn = 0;
 
   // Set body to Kerbin
   setTestBody();
@@ -980,7 +968,6 @@ static void runDisplayWalkthrough() {
   else if (step.psAudio  == 1) audioEnabled     = true;
   if (step.psSimpit == 0)      simpitConnected  = true;
   else if (step.psSimpit == 1) simpitConnected  = false;
-  testPsForceOn = step.psForceOn;
 
   // Vehicle control mode and vessel type for SPCFT button
   if (step.psVehCtrl >= 0)    state.vehCtrlMode = (CtrlMode)step.psVehCtrl;

@@ -341,7 +341,6 @@ extern uint8_t _pfdManualSel;
 
 // LNDG mode state
 extern bool _lndgReentryMode;
-extern bool _lndgReentryRow3PeA;
 extern bool _lndgReentryRow0TPe;
 extern bool _lndgReentryRow1SL;  // row 1 label: true = Alt.SL (above atmosphere), false = Alt.Rdr
 
