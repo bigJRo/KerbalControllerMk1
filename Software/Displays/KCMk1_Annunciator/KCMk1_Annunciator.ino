@@ -5,7 +5,7 @@
     KCMk1_Annunciator.h -- types, enums, AppState, C&W constants, extern declarations
     AAA_Config.ino     -- tunable constants (thresholds, modes, C&W numeric values)
     AAA_Globals.ino    -- AppState struct, telemetry flags, display objects, screen state, switchToScreen()
-    BootScreen.ino     -- Terminal-aesthetic boot simulation sequence (IBM CP437 font, graphics mode only)
+    BootScreen.ino     -- Terminal-aesthetic boot simulation sequence (KcmTerm terminal font, graphics mode only)
     CautionWarning.ino -- updateCautionWarningState() -- recomputes C&W bits from telemetry each frame
     SimpitHandler.ino  -- Simpit message handler (onSimpitMessage) and channel registration (initSimpit)
     ScreenMain.ino     -- main screen layout constants, static chrome, C&W panel, update pass

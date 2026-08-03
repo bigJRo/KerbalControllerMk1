@@ -301,6 +301,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     case SCENE_CHANGE_MESSAGE:
       // KerbalSimpit SCENE_CHANGE sends msg[0]=0 for flight scenes, msg[0]=1 for
       // non-flight (menu, tracking station, etc.) -- hence the inversion.
+      if (msgSize < 1) break;
       flightScene = !msg[0];
       if (debugMode) Serial.println(flightScene
                                     ? F("Annunciator: Entering flight scene")
@@ -322,6 +323,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("Annunciator: Vessel switch"));
         if (audioEnabled) audioSilence();

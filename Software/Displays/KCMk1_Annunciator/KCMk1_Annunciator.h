@@ -42,7 +42,7 @@ struct AppState {
   uint8_t    twIndex    = 0;
   uint8_t    commNet    = 0;
   uint8_t    stage      = 0;
-  uint8_t    skinTemp   = 100;
+  uint8_t    skinTemp   = 0;    // default 0 (like maxTemp) so a fresh boot doesn't trip HIGH_TEMP before the first TEMP_LIMIT_MESSAGE
   uint8_t    ctrlGrp    = 1;
   uint8_t    capValue   = 0;                             // "Cap" readout (rev-2 telemetry; source TBD via I2C)
   String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.1
@@ -226,7 +226,7 @@ static const uint8_t CW_GEAR_UP      = 13;  // Caution     -- gear retracted bel
 static const uint8_t CW_ATMO         = 14;  // Caution     -- vessel inside atmosphere
 
 // Row 3
-static const uint8_t CW_RCS_LOW      = 15;  // Caution     -- total vessel MonoProp < 15%
+static const uint8_t CW_RCS_LOW      = 15;  // Caution     -- total vessel MonoProp < 20% (bit index 15)
 static const uint8_t CW_PROP_IMBAL   = 16;  // Caution     -- stage LF/OX ratio outside expected range
 static const uint8_t CW_COMM_LOST    = 17;  // Caution     -- CommNet signal lost
 static const uint8_t CW_Ap_LOW       = 18;  // Caution     -- apoapsis inside atmosphere (SUB-ORB or ORBIT)
@@ -319,7 +319,7 @@ extern const float  CW_HIGH_G_WARN;          // CW_HIGH_G: negative G threshold
 extern const float  CW_EC_LOW_FRAC;          // CW_BUS_VOLTAGE: EC fraction (0.05 = 5%)
 extern const float  CW_LOW_DV_MS;            // CW_LOW_DV: stage delta-v threshold (m/s)
 extern const float  CW_LOW_BURN_S;           // CW_LOW_DV: stage burn time threshold (s)
-extern const float  CW_RCS_LOW_FRAC;         // CW_RCS_LOW: MonoProp fraction (0.15 = 15%)
+extern const float  CW_RCS_LOW_FRAC;         // CW_RCS_LOW: MonoProp fraction (0.20 = 20%)
 extern const float  CW_PROP_LOW_WARN_FRAC;   // CW_PROP_LOW: yellow tier fraction (0.20)
 extern const float  CW_PROP_LOW_ALARM_FRAC;  // CW_PROP_LOW: red tier fraction (0.05)
 extern const float  CW_PROP_IMBAL_TOL;       // CW_PROP_IMBAL: ratio deviation tolerance (0.10)

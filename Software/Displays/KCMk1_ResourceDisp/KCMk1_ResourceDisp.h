@@ -147,9 +147,9 @@ bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set
 
 // Screen management
 // Always use switchToScreen() to change screens — never set activeScreen directly.
-// switchToScreen() sets activeScreen, resets prevScreen to screen_COUNT (which
-// triggers the chrome redraw block on the next loop pass), and calls clearTouchISR()
-// to discard any touches queued during the transition redraw.
+// switchToScreen() sets activeScreen and resets prevScreen to screen_COUNT, which
+// triggers the chrome redraw block on the next loop pass. (Call sites clear any
+// queued touch themselves; switchToScreen() does not.)
 void switchToScreen(ScreenType s);
 
 // Per-tab functions

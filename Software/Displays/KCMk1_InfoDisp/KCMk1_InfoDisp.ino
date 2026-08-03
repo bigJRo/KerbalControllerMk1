@@ -17,7 +17,7 @@
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
   Hardware:
-    Teensy 4.0, RA8875 800x480 TFT, GSL1680F capacitive touch
+    Teensy 4.1, RA8876 (LT7683) 1024x600 TFT, FT5316 capacitive touch
     SerialUSB1 (USB COM port 2) → KSP via KerbalSimpit plugin
 
   Phase 1: Display framework with 10 screen types, sidebar navigation, demo values. ✓

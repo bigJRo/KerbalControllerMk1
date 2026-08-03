@@ -3,8 +3,8 @@
    Renders a terminal-aesthetic BIOS POST sequence using the KcmTerm monospace font (Terminus bitmaps, OFL).
 
    Uses tft.setFont / setCursor / print (GFX graphics mode calls) exclusively.
-   The RA8875 setFontScale/print API puts the chip into internal text mode and the
-   PaulStoffregen v0.7.11 library does not expose a public graphics-mode restore call,
+   The RA8876 GFX text engine draws glyph bitmaps directly in graphics mode (no chip
+   internal text mode), so the sequence renders via setFont/print without mode switches,
    so we avoid text mode entirely and stay in graphics mode throughout.
 
    Call bootSimText() from setup() after setupDisplay(), before initSimpit()/initDemoMode().

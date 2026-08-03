@@ -155,11 +155,6 @@ ResourceType resTypeByIndex(uint8_t index) {
 
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Standard group: EC, LF, LOx, MP, SF, O2, Food, Water (8 slots).
-   For demo/layout testing initAllSlots() loads every resource type.
-****************************************************************************************/
-/***************************************************************************************
-   DEFAULT SLOT CONFIGURATION
    Matches the STD preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
    Called by the DFLT sidebar button and on first boot.
    NOTE: CLEAR on the Select screen bypasses MIN_SLOTS intentionally — this is by
@@ -168,7 +163,7 @@ ResourceType resTypeByIndex(uint8_t index) {
 ****************************************************************************************/
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = DEFAULT_SLOT_COUNT;  // 10 — matches STD preset count
+  slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches STD preset count
   // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
   static const ResourceType STD_TYPES[DEFAULT_SLOT_COUNT] = {
     RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,

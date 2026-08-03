@@ -11,7 +11,7 @@
      2. SEL         -- navigates to the resource selection screen
      3. DATA        -- navigates to the numerical resource detail screen
 
-   Button labels are horizontal, centred, using SB_BTN_FONT (Roboto_Black_28).
+   Button labels are horizontal, centred, using SB_BTN_FONT (Roboto_Black_24).
    Bottom three buttons (DFLT, SEL, DATA) use a navy background.
 
    Each bar:

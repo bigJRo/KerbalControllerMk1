@@ -365,6 +365,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case SCENE_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
       flightScene = (msg[0] == 0);  // 0 = entering flight, 1 = leaving flight
       if (flightScene) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit entering flight scene"));
@@ -391,6 +392,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit vessel switch — saving and zeroing slots"));
         // Save current config before it's overwritten by the new vessel

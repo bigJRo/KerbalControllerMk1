@@ -6,9 +6,9 @@
      Right panel:
        Header (DET_HDR_H=66px): resource name in Roboto_Black_48 white + color accent strip + BACK
        Divider
-       [DET_SECT_W=26px vertical "CRAFT" label] + 3 Craft rows: Available / Total / Remaining%
+       [DET_SECT_W=32px vertical "CRAFT" label] + 3 Craft rows: Available / Total / Remaining%
        Divider
-       [DET_SECT_W=26px vertical "STAGE" label] + 3 Stage rows: Available / Total / Remaining%
+       [DET_SECT_W=32px vertical "STAGE" label] + 3 Stage rows: Available / Total / Remaining%
 
    Flicker-free rendering:
      drawDetailChrome() — draws labels, dividers, header once on screen entry or slot switch

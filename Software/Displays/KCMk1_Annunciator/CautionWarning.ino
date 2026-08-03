@@ -283,7 +283,7 @@ void updateCautionWarningState() {
   // ROW 3 -- CAUTION tier (yellow)
   // ---------------------------------------------------------------------------------
 
-  // CW_RCS_LOW: total vessel MonoPropellant below 15%.
+  // CW_RCS_LOW: total vessel MonoPropellant below 20%.
   // Suppressed when mono_tot is zero (no RCS tanks / RCS not present on vessel).
   if (state.mono_tot > 0.0f &&
       (state.mono / state.mono_tot) < CW_RCS_LOW_FRAC)
