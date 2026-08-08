@@ -37,11 +37,9 @@ static const int16_t  ACFT_CY        = 300;   // ball centred so bank ticks clea
 static const int16_t  ACFT_R         = 206;   // sized so the derived panel (PANEL_X = CX+R+29)
                                               //   lands at x=580, giving a 360px readout panel
                                               //   matching the reticle/launch screens
-static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // 6.667 px/deg
-
-static const int16_t  ACFT_BALL_Y0   = ACFT_CY - ACFT_R;         // 98
-static const int16_t  ACFT_BALL_Y1   = ACFT_CY + ACFT_R;         // 398
-static const uint16_t ACFT_SCANLINES = (uint16_t)(ACFT_R * 2 + 1); // 301
+static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // R/30 px/deg
+// (ball extents/scanlines + sky/ground/horizon/wings/ladder colours and the
+//  ACFT_BX_ALLSKY/ALLGND sentinels now live in the shared EADIBall.ino renderer.)
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 // Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+233 = 578.
@@ -55,15 +53,6 @@ static const uint8_t  ACFT_PANEL_NR      = 8;
 // Cache managed by rowCache[screen_ACFT] / printState[screen_ACFT] slots 0-8.
 // No additional state variables needed — printValue handles dirty detection.
 
-// Colours
-static const uint16_t ACFT_SKY      = TFT_ROYAL;
-static const uint16_t ACFT_GND      = TFT_UPS_BROWN;
-static const uint16_t ACFT_HORIZON  = TFT_WHITE;
-static const uint16_t ACFT_WINGS    = TFT_YELLOW;
-static const uint16_t ACFT_LADDER   = TFT_WHITE;
-
-static const int16_t  ACFT_BX_ALLSKY = INT16_MIN;
-static const int16_t  ACFT_BX_ALLGND = INT16_MAX;
 
 
 // ── Per-frame state ───────────────────────────────────────────────────────────────────

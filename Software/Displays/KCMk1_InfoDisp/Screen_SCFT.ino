@@ -38,10 +38,8 @@ static const int16_t  SCFT_CX        = 345;
 static const int16_t  SCFT_CY        = 300;
 static const int16_t  SCFT_R         = 206;
 static const float    SCFT_SCALE     = (float)SCFT_R / 30.0f;   // 6.867 px/deg
-
-static const int16_t  SCFT_BALL_Y0   = SCFT_CY - SCFT_R;         // 94
-static const int16_t  SCFT_BALL_Y1   = SCFT_CY + SCFT_R;         // 506
-static const uint16_t SCFT_SCANLINES = (uint16_t)(SCFT_R * 2 + 1); // 413
+// (ball extents/scanlines + the sky/ground/horizon/wings/ladder colours and the
+//  SCFT_BX_ALLSKY/ALLGND sentinels now live in the shared EADIBall.ino renderer.)
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 static const int16_t  SCFT_PANEL_X       = SCFT_CX - (SCFT_R*2+54)/2 + (SCFT_R*2+54) + 2; // 580
@@ -52,17 +50,6 @@ static const uint8_t  SCFT_PANEL_NR      = 8;
 // ── Right panel state ──────────────────────────────────────────────────────────────────
 // Cache managed by rowCache[screen_SCFT] / printState[screen_SCFT] slots 0-8.
 // No additional state variables needed — printValue handles dirty detection.
-
-// Colours
-static const uint16_t SCFT_SKY      = TFT_ROYAL;
-static const uint16_t SCFT_GND      = TFT_UPS_BROWN;
-static const uint16_t SCFT_HORIZON  = TFT_WHITE;
-static const uint16_t SCFT_WINGS    = TFT_YELLOW;
-static const uint16_t SCFT_LADDER   = TFT_WHITE;
-
-static const int16_t  SCFT_BX_ALLSKY = INT16_MIN;
-static const int16_t  SCFT_BX_ALLGND = INT16_MAX;
-
 
 // ── Per-frame state ───────────────────────────────────────────────────────────────────
 
