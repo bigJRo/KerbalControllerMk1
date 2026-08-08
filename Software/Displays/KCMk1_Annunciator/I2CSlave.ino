@@ -10,24 +10,20 @@
                   Master reads via KCM_I2C_BUS.requestFrom(0x10, I2C_PACKET_SIZE).
                   Pin returns HIGH after the onRequest handler fires.
 
-   Outbound packet (Annunciator -> Master), I2C_PACKET_SIZE = 4 bytes:
+   Outbound packet (Annunciator -> Master), I2C_PACKET_SIZE = 6 bytes:
      Byte 0  : 0xAC  -- sync/magic byte for framing validation
      Byte 1  : flags
                  bit 0 = simpitConnected
                  bit 1 = flightScene
                  bit 2 = masterAlarmOn
                  bits 3-7 reserved (0)
-     Byte 2  : cautionWarningState low byte
-     Byte 3  : cautionWarningState high byte
+     Byte 2  : cautionWarningState bits  0-7
+     Byte 3  : cautionWarningState bits  8-15
+     Byte 4  : cautionWarningState bits 16-23
+     Byte 5  : cautionWarningState bits 24-31 (only bit 24 = CW_EVA_ACTIVE used)
+              -- all 25 C&W bits (CW_COUNT) are transmitted.
 
    Inbound packet (Master -> Annunciator):
-     Legacy form is 3 bytes; the rev-2 extended form is 6 bytes (adds the bottom
-     mode-grid flags + Cap readout). onI2CReceive accepts either length, so the
-     master can be upgraded independently. The extended bytes 3-5 are NOT in the
-     I2C protocol spec yet — TODO: add them to the spec and the master sketch.
-       Byte 3  : modeFlags low  (MF_* bits 0-7)
-       Byte 4  : modeFlags high (MF_* bits 8-11)
-       Byte 5  : capValue       ("Cap" readout)
      Byte 0  : controlByte
                  bits 7:4 = requestType
                    0x0 = NOP           -- no operation
@@ -41,6 +37,13 @@
                  bit  0   = debugMode   (1 = enable Serial debug output)
      Byte 1  : ctrlModeByte -- CtrlMode enum value (ctrl_Rover=0, ctrl_Plane=1, ctrl_Spacecraft=2)
      Byte 2  : ctrlGrpByte  -- active control group, 1-based (matches state.ctrlGrp)
+     Legacy form is 3 bytes; the rev-2 extended form is 6 bytes (adds the bottom
+     mode-grid flags + Cap readout). onI2CReceive accepts either length, so the
+     master can be upgraded independently. Both forms are documented in
+     Documents/Developer/I2C_Protocol_Specification.md §15.3.
+       Byte 3  : modeFlags low  (MF_* bits 0-7)
+       Byte 4  : modeFlags high (MF_* bits 8-11)
+       Byte 5  : capValue       ("Cap" readout)
 
    Expanding the protocol:
      Outbound: increment I2C_PACKET_SIZE, add fields to buildI2CPacket().
@@ -51,7 +54,7 @@
 
 #define I2C_SLAVE_ADDR   KCM_I2C_ADDR_ANNUNCIATOR   // #3C from SystemConfig
 #define I2C_INT_PIN      KCM_I2C_INT_PIN             // #3C from SystemConfig
-#define I2C_PACKET_SIZE  4      // outbound: Annunciator -> Master (panel-specific)
+#define I2C_PACKET_SIZE  6      // outbound: Annunciator -> Master (sync+flags+4 CW bytes = all 25 bits)
 #define I2C_CMD_SIZE     3      // inbound (legacy): controlByte, ctrlMode, ctrlGrp
 #define I2C_CMD_SIZE_EXT 6      // inbound (rev 2): + modeFlags(2) + capValue(1)
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_ANNUNCIATOR   // #3C from SystemConfig
@@ -80,8 +83,9 @@ volatile bool i2cProceedReceived = false;
 
 /***************************************************************************************
    PACKET FILL HELPER (#21)
-   Writes current state into any 4-byte buffer. Used by both buildI2CPacket()
+   Writes current state into any I2C_PACKET_SIZE buffer. Used by both buildI2CPacket()
    and the change-detection path in updateI2CState() to avoid duplicated assembly.
+   All 25 C&W bits are sent across 4 bytes (bytes 2-5).
 ****************************************************************************************/
 static void fillI2CPacketBuffer(uint8_t *buf) {
   uint8_t flags = 0;
@@ -91,7 +95,9 @@ static void fillI2CPacketBuffer(uint8_t *buf) {
   buf[0] = I2C_SYNC_BYTE;
   buf[1] = flags;
   buf[2] = (uint8_t)(state.cautionWarningState & 0xFF);
-  buf[3] = (uint8_t)(state.cautionWarningState >> 8);
+  buf[3] = (uint8_t)((state.cautionWarningState >> 8)  & 0xFF);
+  buf[4] = (uint8_t)((state.cautionWarningState >> 16) & 0xFF);
+  buf[5] = (uint8_t)((state.cautionWarningState >> 24) & 0xFF);  // only bit 24 (EVA_ACTIVE) used
 }
 
 /***************************************************************************************
@@ -333,8 +339,11 @@ void updateI2CState() {
     uint8_t candidate[I2C_PACKET_SIZE];
     fillI2CPacketBuffer(candidate);
     if (memcmp((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE) != 0) {
+      // Guard the copy against onI2CRequest() firing mid-memcpy (torn packet).
+      noInterrupts();
       memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
       i2cPacketReady = true;
+      interrupts();
       digitalWriteFast(I2C_INT_PIN, LOW);
       if (debugMode) Serial.println(F("Annunciator: I2C packet ready"));
     }

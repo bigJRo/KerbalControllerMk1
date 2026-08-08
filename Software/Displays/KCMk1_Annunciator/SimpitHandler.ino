@@ -90,7 +90,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(flightStatusMessage)) {
         flightStatusMessage fs = parseMessage<flightStatusMessage>(msg);
         uint8_t sit = fs.vesselSituation;
-        rawSituation = sit;
 
         // Map Simpit raw situation bits to display bitmask.
         // Display: bit0=DOCKED (preserved), bit1=PRE-LAUNCH, bit2=FLIGHT,
@@ -307,11 +306,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       } else {
         if (audioEnabled) audioSilence();
         resetDisplays();
-        // switchToScreen() would call invalidateAllState() a second time on top of
-        // resetDisplays(), corrupting the sentinel values. Set screen state directly.
-        activeScreen     = screen_Standby;
-        prevScreen       = screen_COUNT;
-        lastScreenSwitch = millis();
+        // invalidateAllState() is idempotent (every field derives from state.*/
+        // chuteEnvState, never from prev.*), so switchToScreen() calling it again
+        // after resetDisplays() is harmless — same pattern as VESSEL_CHANGE below.
+        switchToScreen(screen_Standby);
       }
       break;
 

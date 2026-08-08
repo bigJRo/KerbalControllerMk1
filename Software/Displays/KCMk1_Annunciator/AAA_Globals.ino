@@ -43,7 +43,6 @@ bool    inAtmo          = false;
 bool    physTW          = false;   // true when time warp is physics warp
 bool    simpitConnected = false;   // true after Simpit handshake succeeds
 bool    idleState       = false;   // true when master wants standby screen when not in flight
-uint8_t rawSituation    = 0;       // raw Simpit vesselSituation bitmask -- preserves sit_Landed
 
 
 /***************************************************************************************
@@ -68,7 +67,6 @@ BodyParams currentBody;
 ****************************************************************************************/
 ScreenType activeScreen     = screen_Standby;
 ScreenType prevScreen       = screen_COUNT;
-uint32_t   lastScreenSwitch = 0;
 bool       firstPassOnMain  = false;
 bool       alarmSilenced    = false; // true when crew has silenced active master alarm
 
@@ -140,13 +138,12 @@ void invalidateAllState() {
 /***************************************************************************************
    SWITCH TO SCREEN
    Central helper -- always use this instead of setting activeScreen directly.
-   Ensures invalidateAllState(), prevScreen reset, and timestamp are never forgotten.
+   Ensures invalidateAllState() and prevScreen reset are never forgotten.
    Does NOT silence audio or call resetDisplays() -- callers handle those if needed.
 ****************************************************************************************/
 void switchToScreen(ScreenType s) {
   activeScreen     = s;
   prevScreen       = screen_COUNT;
-  lastScreenSwitch = millis();
   invalidateAllState();
 }
 
@@ -171,13 +168,13 @@ void switchToScreen(ScreenType s) {
    state is not guaranteed to be valid until ATMO_CONDITIONS_MESSAGE arrives.
 ****************************************************************************************/
 void resetDisplays() {
-  rawSituation    = 0;
   inFlight        = false;
   inEVA           = false;
   hasO2           = false;
   inAtmo          = false;
   chuteEnvState   = chute_Off;
 
+  resetCautWarnTrackers();   // clear per-flight EC/SF/throttle edge-trackers on switch
   invalidateAllState();
   prevScreen = screen_COUNT;
 }

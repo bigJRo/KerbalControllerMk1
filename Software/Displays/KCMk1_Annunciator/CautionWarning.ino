@@ -50,6 +50,28 @@ bool lsYellow        = false;
 
 
 /***************************************************************************************
+   PER-FLIGHT EDGE-TRACKERS
+   These persist a previous reading between calls (throttle holdoff, EC delta, SF
+   delta). They are reset on scene/vessel change by resetCautWarnTrackers() so the
+   first recompute after a switch doesn't compare the new vessel against the old one
+   (which produced a one-frame spurious ELEC_GEN / SRB_ACTIVE).
+****************************************************************************************/
+static bool     _prevThrottleZero = false;
+static uint32_t _throttleUpAt     = 0;
+static float    _prevEC           = -1.0f;
+static bool     _ecInitialized    = false;
+static float    _prevSF           = -1.0f;
+
+void resetCautWarnTrackers() {
+  _prevThrottleZero = false;
+  _throttleUpAt     = 0;
+  _prevEC           = -1.0f;
+  _ecInitialized    = false;
+  _prevSF           = -1.0f;
+}
+
+
+/***************************************************************************************
    UPDATE CAUTION & WARNING STATE
    Recomputes state.cautionWarningState, chuteEnvState, and state.masterAlarmOn
    from current telemetry. Called after each Simpit message that affects C&W inputs
@@ -73,8 +95,6 @@ void updateCautionWarningState() {
   // KSP stageBurnTime is computed from instantaneous thrust and is unreliable for
   // ~1 second after ignition. The holdoff prevents a false flash on throttle-up.
   bool throttleZero = inFlight && !isPreLaunch && state.throttleCmd == 0;
-  static bool     _prevThrottleZero = false;
-  static uint32_t _throttleUpAt     = 0;
   if (_prevThrottleZero && !throttleZero) _throttleUpAt = millis();
   _prevThrottleZero = throttleZero;
   bool inThrottleHoldOff = !throttleZero &&
@@ -355,11 +375,9 @@ void updateCautionWarningState() {
   // exceeds consumption. Uses a static to persist the previous value between calls.
   // Initialized to current EC on first call (delta = 0, indicator starts off).
   {
-    static float _prevEC       = -1.0f;
-    static bool  _initialized  = false;
-    if (!_initialized) {
-      _prevEC      = state.EC;
-      _initialized = true;
+    if (!_ecInitialized) {
+      _prevEC        = state.EC;
+      _ecInitialized = true;
     }
     if (state.EC > _prevEC + 0.01f)   // 0.01 unit hysteresis to suppress jitter
       bitSet(cw, CW_ELEC_GEN);
@@ -393,7 +411,6 @@ void updateCautionWarningState() {
   // OFF when SF_stage drops below 0.5% (exhausted) or is above 99% (full/new stage).
   // Uses a static to persist the previous SF_stage value between calls.
   {
-    static float _prevSF = -1.0f;
     bool srbBurning = false;
     if (state.SF_stage_tot > 0.0f) {
       float sfFrac = state.SF_stage / state.SF_stage_tot;

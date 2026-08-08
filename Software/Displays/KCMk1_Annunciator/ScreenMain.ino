@@ -63,7 +63,6 @@ static const uint16_t CW_Y0         =   0;
 static const uint16_t CW_BTN_W      = 120;
 static const uint16_t CW_BTN_H      =  80;
 static const uint16_t CW_COLS       =   5;
-static const uint16_t CW_ROWS       =   5;
 
 // Inner flag column (regimes) @ x=874, w=75
 static const uint16_t DOCK_X        = 874;
@@ -105,7 +104,6 @@ static const uint16_t MODE_Y0       = 520;
 static const uint16_t MODE_BTN_W    = 100;
 static const uint16_t MODE_BTN_H    =  40;
 static const uint16_t MODE_COLS     =   6;
-static const uint16_t MODE_ROWS     =   2;
 
 
 /***************************************************************************************
@@ -286,6 +284,21 @@ static int8_t flightCondIndex() {
 // otherwise a pure yellow transition would not repaint. Mirrors prevChuteEnvState.
 static bool prevPeLowYellow = false, prevPropLowYellow = false, prevLsYellow = false;
 
+// Two-tier tiles (PE_LOW / PROP_LOW / LIFE_SUPPORT) paint yellow-on-dark-grey when
+// their companion-yellow flag is set but the red C&W bit is clear. Returns true if it
+// drew the yellow tier (caller should `continue`), false otherwise.
+static bool drawYellowTierTile(KCM_TFT &tft, uint8_t i, bool on, int16_t x, int16_t y,
+                               ButtonLabel &btn) {
+  bool companion = (i == CW_PE_LOW       && peLowYellow)   ||
+                   (i == CW_PROP_LOW     && propLowYellow) ||
+                   (i == CW_LIFE_SUPPORT && lsYellow);
+  if (!companion || on) return false;
+  btn.backgroundColorOff = TFT_YELLOW;
+  btn.fontColorOff       = TFT_DARK_GREY;
+  drawButton(tft, x, y, CW_BTN_W, CW_BTN_H, btn, &Roboto_Black_24, false);
+  return true;
+}
+
 void updateCautWarnPanel(KCM_TFT &tft, uint32_t prevCW, uint32_t newCW) {
   uint32_t changed = prevCW ^ newCW;
   if (changed != 0 || chuteEnvState != prevChuteEnvState ||
@@ -310,18 +323,7 @@ void updateCautWarnPanel(KCM_TFT &tft, uint32_t prevCW, uint32_t newCW) {
 
     ButtonLabel btn = cautWarn[i];
 
-    if (i == CW_PE_LOW && !on && peLowYellow) {
-      btn.backgroundColorOff = TFT_YELLOW; btn.fontColorOff = TFT_DARK_GREY;
-      drawButton(tft, x, y, CW_BTN_W, CW_BTN_H, btn, &Roboto_Black_24, false); continue;
-    }
-    if (i == CW_PROP_LOW && !on && propLowYellow) {
-      btn.backgroundColorOff = TFT_YELLOW; btn.fontColorOff = TFT_DARK_GREY;
-      drawButton(tft, x, y, CW_BTN_W, CW_BTN_H, btn, &Roboto_Black_24, false); continue;
-    }
-    if (i == CW_LIFE_SUPPORT && !on && lsYellow) {
-      btn.backgroundColorOff = TFT_YELLOW; btn.fontColorOff = TFT_DARK_GREY;
-      drawButton(tft, x, y, CW_BTN_W, CW_BTN_H, btn, &Roboto_Black_24, false); continue;
-    }
+    if (drawYellowTierTile(tft, i, on, x, y, btn)) continue;
     if (i == CW_CHUTE_ENV) {
       switch (chuteEnvState) {
         case chute_Red:    btn.backgroundColorOn = TFT_RED;        btn.fontColorOn = TFT_WHITE;     break;
@@ -591,24 +593,8 @@ void updateScreenMain(KCM_TFT &tft) {
     uint32_t clrBits = prev.cautionWarningState  & ~state.cautionWarningState;
 
     if (audioEnabled) {
-      if (newBits & (1ul << CW_LOW_DV))        updateAlarmMask(ALARM_LOW_DV,       true);
-      if (clrBits & (1ul << CW_LOW_DV))        updateAlarmMask(ALARM_LOW_DV,       false);
-      if (newBits & (1ul << CW_HIGH_G))        updateAlarmMask(ALARM_HIGH_G,       true);
-      if (clrBits & (1ul << CW_HIGH_G))        updateAlarmMask(ALARM_HIGH_G,       false);
-      if (newBits & (1ul << CW_HIGH_TEMP))     updateAlarmMask(ALARM_HIGH_TEMP,    true);
-      if (clrBits & (1ul << CW_HIGH_TEMP))     updateAlarmMask(ALARM_HIGH_TEMP,    false);
-      if (newBits & (1ul << CW_BUS_VOLTAGE))   updateAlarmMask(ALARM_BUS_VOLTAGE,  true);
-      if (clrBits & (1ul << CW_BUS_VOLTAGE))   updateAlarmMask(ALARM_BUS_VOLTAGE,  false);
-      if (newBits & (1ul << CW_ABORT))         updateAlarmMask(ALARM_ABORT,        true);
-      if (clrBits & (1ul << CW_ABORT))         updateAlarmMask(ALARM_ABORT,        false);
-      if (newBits & (1ul << CW_GROUND_PROX))   updateAlarmMask(ALARM_GROUND_PROX,  true);
-      if (clrBits & (1ul << CW_GROUND_PROX))   updateAlarmMask(ALARM_GROUND_PROX,  false);
-      if (newBits & (1ul << CW_PE_LOW))        updateAlarmMask(ALARM_PE_LOW,       true);
-      if (clrBits & (1ul << CW_PE_LOW))        updateAlarmMask(ALARM_PE_LOW,       false);
-      if (newBits & (1ul << CW_PROP_LOW))      updateAlarmMask(ALARM_PROP_LOW,     true);
-      if (clrBits & (1ul << CW_PROP_LOW))      updateAlarmMask(ALARM_PROP_LOW,     false);
-      if (newBits & (1ul << CW_LIFE_SUPPORT))  updateAlarmMask(ALARM_LIFE_SUPPORT, true);
-      if (clrBits & (1ul << CW_LIFE_SUPPORT))  updateAlarmMask(ALARM_LIFE_SUPPORT, false);
+      // Master-alarm mask transitions via the shared CW->ALARM table (Audio.ino).
+      applyAlarmTransitions(newBits, clrBits);
 
       if (newBits & (1ul << CW_ALT))           audioCautionTone();
       if (newBits & (1ul << CW_IMPACT_IMM))    audioCautionTone();
@@ -621,6 +607,10 @@ void updateScreenMain(KCM_TFT &tft) {
   }
 
   // --- SITUATION COLUMN ---
+  // Capture the previous situation BEFORE the panel update syncs prev, so the
+  // ORBIT-entry chirp below can still see the transition (the panel block updates
+  // prev.vesselSituationState, which otherwise defeats the chirp edge-detect).
+  uint32_t prevSitForChirp = prev.vesselSituationState;
   if (state.vesselSituationState != prev.vesselSituationState) {
     updateVesselSitPanel(tft, prev.vesselSituationState, state.vesselSituationState);
     prev.vesselSituationState = state.vesselSituationState;
@@ -705,7 +695,7 @@ void updateScreenMain(KCM_TFT &tft) {
     if (currentBody.minSafe > 0 &&
         state.apoapsis >= currentBody.minSafe && prev.apoapsis < currentBody.minSafe) audioAlertChirp();
     if ((state.vesselSituationState & (1 << VSIT_ORBIT)) &&
-        !(prev.vesselSituationState & (1 << VSIT_ORBIT))) audioAlertChirp();
+        !(prevSitForChirp & (1 << VSIT_ORBIT))) audioAlertChirp();
   }
 
   prev.alt_sl   = state.alt_sl;

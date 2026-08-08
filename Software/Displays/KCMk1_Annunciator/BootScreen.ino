@@ -91,18 +91,6 @@ static float _bs_coreTemp() {
 
 
 /***************************************************************************************
-   INTERNAL HELPER -- print a single line at x,y with given font and color
-****************************************************************************************/
-static void _bs_print(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y,
-                       const char *text, uint16_t col) {
-  tft.setFont(*font);
-  tft.setTextColor(col, TFT_BLACK);
-  tft.setCursor(x, y);
-  tft.print(text);
-}
-
-
-/***************************************************************************************
    INTERNAL HELPER -- check/readout row: label at COL1_X, staged pause, status at col2.
    Status colour conveys the result (green OK / red FAIL / yellow non-fatal / info).
 ****************************************************************************************/
@@ -178,11 +166,11 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
            SKETCH_VERSION_MAJOR,               SKETCH_VERSION_MINOR,               SKETCH_VERSION_PATCH,
            KDC_VERSION_MAJOR,                  KDC_VERSION_MINOR,                  KDC_VERSION_PATCH,
            KERBAL_DISPLAY_AUDIO_VERSION_MAJOR, KERBAL_DISPLAY_AUDIO_VERSION_MINOR, KERBAL_DISPLAY_AUDIO_VERSION_PATCH);
-  _bs_print(tft, BS_VER, COL1_X, y, buf, TFT_GREY);
+  bsPrint(tft, BS_VER, COL1_X, y, buf, TFT_GREY);
   y += VER_ROW;
   tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
   y += 8;
-  _bs_print(tft, BS_TITLE, COL1_X, y, "KCMk1 ANNUNCIATOR", TFT_WHITE);
+  bsPrint(tft, BS_TITLE, COL1_X, y, "KCMk1 ANNUNCIATOR", TFT_WHITE);
   y += TITLE_ROW;
   _bs_wait(BS_HOLD);
 
@@ -224,14 +212,14 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   y += 14;
 
   // - Summary - (touch is the only hard failure; a missing SD card is non-fatal)
-  if (touchOK) _bs_print(tft, BS_TITLE, COL1_X, y, "SYSTEMS NOMINAL", TFT_GREEN);
-  else         _bs_print(tft, BS_TITLE, COL1_X, y, "TOUCH FAULT",     TFT_RED);
+  if (touchOK) bsPrint(tft, BS_TITLE, COL1_X, y, "SYSTEMS NOMINAL", TFT_GREEN);
+  else         bsPrint(tft, BS_TITLE, COL1_X, y, "TOUCH FAULT",     TFT_RED);
   y += TITLE_ROW;
 
   // - Copyright watermark (always shown) + tap prompt in dev mode -
-  _bs_print(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
+  bsPrint(tft, BS_FONT, COL1_X, y, "Jeb's Controller Works  //  C-2026", TFT_GREY);
   if (BS_TUNE_PAUSE) {
-    _bs_print(tft, BS_BIG, _bs_col2, y - 4, "TAP TO CONTINUE", TFT_YELLOW);
+    bsPrint(tft, BS_BIG, _bs_col2, y - 4, "TAP TO CONTINUE", TFT_YELLOW);
     _bs_holdForTouch();
   } else {
     _bs_wait(700);   // production: fast hand-off to the app

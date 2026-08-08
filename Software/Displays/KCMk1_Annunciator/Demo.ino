@@ -144,9 +144,6 @@ void stepDemoState() {
     uint8_t dockedBit = state.vesselSituationState & 0x01;
     state.vesselSituationState = dockedBit | sitSeq[demoSitIdx];
     inFlight = (sitSeq[demoSitIdx] & ((1<<VSIT_FLIGHT)|(1<<VSIT_SUBORBIT)|(1<<VSIT_ORBIT)|(1<<VSIT_ESCAPE))) != 0;
-    // Mirror raw situation for CONTACT detection (LANDED or SPLASH)
-    rawSituation = ((sitSeq[demoSitIdx] & (1 << VSIT_SPLASH)) ? sit_Splashed : 0) |
-                   ((sitSeq[demoSitIdx] & (1 << VSIT_LANDED)) ? sit_Landed   : 0);
   }
 
   // Temperatures
@@ -328,8 +325,6 @@ void initDemoMode() {
   demoVesselIndex  = 0;
   state.vesselName = demoVesselNames[demoVesselIndex];
   invalidateAllState();
-  // #23 call switchToScreen() to record timestamp and make entry explicit;
-  // invalidateAllState() above means the switchToScreen() call is not redundant —
-  // it stamps lastScreenSwitch and matches the pattern of the other panels.
+  // Enter the main screen explicitly (matches the pattern of the other panels).
   switchToScreen(screen_Main);
 }

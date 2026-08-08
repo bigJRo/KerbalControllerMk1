@@ -123,7 +123,7 @@ struct AppState {
    Simpit's FLIGHT_STATUS raw situation bits. Named constants here prevent magic
    literals spreading into ScreenMain and CautionWarning.
    Bit 0 (DOCKED) is set/cleared by VESSEL_CHANGE_MESSAGE, not FLIGHT_STATUS.
-   Bit 7 (LANDED) is set from sit_Landed in rawSituation.
+   Bit 7 (LANDED) is set from the Simpit sit_Landed bit in FLIGHT_STATUS.
 ****************************************************************************************/
 /***************************************************************************************
    CELESTIAL-BODY / MEATBALL IMAGE SIZE
@@ -355,11 +355,9 @@ extern bool          physTW;
 extern bool          simpitConnected;
 extern bool          idleState;
 extern volatile bool i2cProceedReceived;
-extern uint8_t       rawSituation;
 extern BodyParams    currentBody;
 extern ScreenType    activeScreen;
 extern ScreenType    prevScreen;
-extern uint32_t      lastScreenSwitch;
 extern bool          firstPassOnMain;
 extern bool          alarmSilenced;
 extern ChuteEnvState chuteEnvState;      // current chute envelope state

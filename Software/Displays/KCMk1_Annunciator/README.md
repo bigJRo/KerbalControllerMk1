@@ -131,18 +131,20 @@ The Annunciator operates as an I2C slave at address **0x10** (`KCM_I2C_ADDR_ANNU
 
 ### Outbound Packet — Annunciator → Master
 
-Size: **4 bytes**. Sent in response to `KCM_I2C_BUS.requestFrom(0x10, 4)` (Wire2, pins 24/25) after INT asserts.
+Size: **6 bytes**. Sent in response to `KCM_I2C_BUS.requestFrom(0x10, 6)` (Wire2, pins 24/25) after INT asserts. All 25 C&W bits (`CW_COUNT`) are transmitted across four bytes.
 
 | Byte | Field | Description |
 |------|-------|-------------|
 | 0 | Sync | `0xAC` (`KCM_I2C_SYNC_ANNUNCIATOR`) — framing validation |
 | 1 | Flags | Bit 0: `simpitConnected`  Bit 1: `flightScene`  Bit 2: `masterAlarmOn`  Bits 3–7: reserved (0) |
-| 2 | CW low | `cautionWarningState` bits 7:0 |
-| 3 | CW high | `cautionWarningState` bits 15:8 |
+| 2 | CW b0-7   | `cautionWarningState` bits 7:0 |
+| 3 | CW b8-15  | `cautionWarningState` bits 15:8 |
+| 4 | CW b16-23 | `cautionWarningState` bits 23:16 |
+| 5 | CW b24-31 | `cautionWarningState` bits 31:24 (only bit 24 = `CW_EVA_ACTIVE` used) |
 
 ### Inbound Packet — Master → Annunciator
 
-Size: **3 bytes (legacy)** or **6 bytes (rev-2 extended)**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission(0x10)` / `KCM_I2C_BUS.write()` / `KCM_I2C_BUS.endTransmission()` (Wire2). `onI2CReceive()` accepts either length (`I2C_CMD_SIZE = 3` or `I2C_CMD_SIZE_EXT = 6`) and drains any other length, so the master can be upgraded independently. The extended bytes 3–5 are not yet in the formal protocol spec (see `I2CSlave.ino` TODO).
+Size: **3 bytes (legacy)** or **6 bytes (rev-2 extended)**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission(0x10)` / `KCM_I2C_BUS.write()` / `KCM_I2C_BUS.endTransmission()` (Wire2). `onI2CReceive()` accepts either length (`I2C_CMD_SIZE = 3` or `I2C_CMD_SIZE_EXT = 6`) and drains any other length, so the master can be upgraded independently. Both forms are documented in `Documents/Developer/I2C_Protocol_Specification.md` §15.3.
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -307,7 +309,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 2. Boot screen renders (terminal-aesthetic BIOS POST; header shows live version string via `snprintf`)
 3. Simpit handshake runs (or demo mode initialises) — `simpitConnected` set accordingly
 4. Annunciator builds a status packet and **asserts pin 0 LOW** (INT)
-5. Master detects INT, calls `KCM_I2C_BUS.requestFrom(0x10, 4)` (Wire2), reads the 4-byte status packet
+5. Master detects INT, calls `KCM_I2C_BUS.requestFrom(0x10, 6)` (Wire2), reads the 6-byte status packet
 6. Master inspects state, sends a command packet (3-byte legacy or 6-byte extended) with `requestType = 0x2` (PROCEED) — configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`, and in the extended form `modeFlags`/`capValue`) can be included in the same packet
 7. Annunciator receives PROCEED, clears the boot screen, enters `loop()`
 

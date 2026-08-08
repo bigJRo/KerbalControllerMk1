@@ -521,7 +521,7 @@ Every carrier's outbound packet begins with **byte 0 = its sync byte** (per the 
 
 | Carrier | Packet size | Layout reference |
 |---------|-------------|------------------|
-| Annunciator (0x10) | 4 bytes | `KCMk1_Annunciator/README.md` |
+| Annunciator (0x10) | 6 bytes (flags + all 25 C&W bits across 4 bytes) | `KCMk1_Annunciator/README.md` |
 | Resource Display (0x11) | 4 bytes | `KCMk1_ResourceDisp/README.md` |
 | Info Display 1/2 (0x12/0x13) | 10 bytes (3 status + 7-byte Ascent-AP command frame) | `KCMk1_InfoDisp/README.md`, `Ascent_Autopilot_Interface.md` |
 
