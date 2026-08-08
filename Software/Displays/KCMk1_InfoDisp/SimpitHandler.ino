@@ -355,6 +355,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case CAGSTATUS_MESSAGE: {
+      if (msgSize != sizeof(cagStatusMessage)) break;   // guard: match the other handlers
       // Cast msg directly to cagStatusMessage and use is_action_activated(n).
       // parseCAGStatusMessage() is deprecated — use the struct directly.
       cagStatusMessage *cag = (cagStatusMessage *)msg;
@@ -374,6 +375,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     // ── Scene and vessel lifecycle ───────────────────────────────────────────────────
 
     case SCENE_CHANGE_MESSAGE:
+      if (msgSize < 1) break;   // guard: single-byte payload
       // msg[0] == 0 → flight scene; msg[0] == 1 → non-flight (menu, tracking, etc.)
       flightScene = (msg[0] == 0);
       if (debugMode)
@@ -394,6 +396,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;   // guard: single-byte payload
       if (msg[0] == 1) {
         // Vessel switch (focus changed to another vessel).
         // Guard: if we just docked (within 2s), KSP sends a vessel switch immediately
@@ -418,13 +421,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _drogueArmedSafe = false;
         _mainArmedSafe   = false;
         // Invalidate all row caches so everything redraws on the new vessel
-        for (uint8_t s = 0; s < SCREEN_COUNT; s++) {
-          for (uint8_t r = 0; r < ROW_COUNT; r++) {
-            rowCache[s][r].value = "\x01";
-            rowCache[s][r].fg    = 0x0001;
-            rowCache[s][r].bg    = 0x0001;
-          }
-        }
+        invalidateAllRowCache();
         // Don't call contextScreen() here — state.vesselType is still the OLD vessel's
         // type at this point. FLIGHT_STATUS_MESSAGE with the new vessel's type will
         // arrive shortly; set a flag and do the context switch when it does.

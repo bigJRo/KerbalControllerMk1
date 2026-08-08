@@ -6,14 +6,15 @@
    compat no-op).
 
    Defence layers:
-   2. Count filter — reject count > MAX_TOUCH_COUNT (1). Multi-finger events on a
-      single-button sidebar are never intentional; count>1 is a strong phantom signal.
+   2. Count filter — accept only count == 1. Multi-finger events on a single-button
+      sidebar are never intentional; count != 1 is a strong phantom signal. Applied to
+      both the first read and the confirmation re-read.
    3. (removed rev-2) The bottom Y dead zone was a GSL1680 edge-noise workaround.
       The FT5316 does not ghost at the panel boundary, and the bottom sidebar
       button (REEN) extends to the last row, so the band is gone.
-   4. X bounds check — reject x >= SCREEN_W.
-   5. Double-read with coordinate stability — re-read after 8ms; reject if count
-      dropped to 0 OR if coordinates moved more than TOUCH_JITTER_MAX pixels.
+   4. Bounds check — reject x >= SCREEN_W or y >= SCREEN_H.
+   5. Double-read with coordinate stability — re-read after 8ms; reject if the re-read
+      count != 1 OR if coordinates moved more than TOUCH_JITTER_MAX pixels.
       Phantom noise jumps around between reads; real touches are stable.
    6. Debounce 500ms — prevents rapid re-fires within a burst.
    7. Require-release — set on ANY confirmed touch, suppressing the rest of a burst
@@ -23,7 +24,6 @@
 
 
 static const uint32_t TOUCH_DEBOUNCE_MS  = KCM_TOUCH_DEBOUNCE_MS;     // #3B from SystemConfig
-static const uint8_t  MAX_TOUCH_COUNT    = 1;                          // reject multi-finger events
 static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px — max coordinate movement across reads
 
 static uint32_t lastTouchTime      = 0;
@@ -73,8 +73,8 @@ void processTouchEvents() {
   // jumps between reads; real touches hold position).
   delay(8);
   TouchResult confirm = readTouch();
-  if (confirm.count == 0) {
-    if (debugMode) Serial.println(F("InfoDisp: Touch discarded (phantom — count=0 on reread)"));
+  if (confirm.count != 1) {
+    if (debugMode) Serial.println(F("InfoDisp: Touch discarded (phantom — count != 1 on reread)"));
     return;
   }
   uint16_t x2 = confirm.points[0].x;
@@ -120,7 +120,8 @@ void processTouchEvents() {
           _lnchManualOverride = true;
           _lnchOrbitalMode    = !_lnchOrbitalMode;
         }
-        for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[0][r].value = "\x01";
+        // switchToScreen() forces a full chrome redraw (drawStaticScreen invalidates
+        // the whole rowCache), so no manual per-row invalidation is needed here.
         switchToScreen(screen_LNCH);
         clearTouchISR();
         if (debugMode) {
@@ -177,7 +178,7 @@ void processTouchEvents() {
     _lnchPrelaunchDismissed = true;   // prevent FLIGHT_STATUS from re-entering
     _lnchOrbitalMode        = false;
     _lnchManualOverride     = false;
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[0][r].value = "\x01";
+    // switchToScreen() forces a full chrome redraw (full rowCache invalidation).
     switchToScreen(screen_LNCH);
     clearTouchISR();
     if (debugMode) Serial.println(F("InfoDisp: Pre-launch board dismissed by tap"));

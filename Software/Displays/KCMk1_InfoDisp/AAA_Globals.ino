@@ -29,12 +29,6 @@ ScreenType prevScreen   = screen_COUNT;  // sentinel -- forces chrome on first l
 
 
 /***************************************************************************************
-   SCREEN TRANSITION TIMESTAMP  (#8)
-****************************************************************************************/
-uint32_t lastScreenSwitch = 0;
-
-
-/***************************************************************************************
    FLIGHT STATE
 ****************************************************************************************/
 bool simpitConnected = false;  // true after Simpit handshake succeeds
@@ -70,7 +64,6 @@ void switchToScreen(ScreenType s) {
   // navigation-time reset is needed here.
   activeScreen     = s;
   prevScreen       = screen_COUNT;
-  lastScreenSwitch = millis();   // #8 record timestamp for touch debounce and diagnostics
 }
 
 
@@ -259,7 +252,8 @@ float estimateTimeToGround() {
 
   static float shown = -1.0f;   // sticky display value (deadbanded)
 
-  bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
+  // situation is a bitmask (multiple bits can be set) — test with & like contextScreen()
+  bool inOrbitOrEscape = (state.situation & (sit_Orbit | sit_Escaping)) != 0;
   if (inOrbitOrEscape || state.radarAlt <= 0.0f || state.verticalVel >= -0.05f) {
     ema = -1.0f; shown = -1.0f;
     return -1.0f;

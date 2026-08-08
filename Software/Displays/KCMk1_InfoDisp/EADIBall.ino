@@ -12,9 +12,10 @@
    values below). The screens keep their own SCFT_ / ACFT_ copies for their tapes/panels;
    these EADI_ values are the single source of truth for the shared ball code.
 
-   Extraction is staged (each stage compiles on its own). Stage 1 (this file, initial):
-   the pure, stateless leaf primitives — scanline fill, disc clip, fixed aircraft symbol.
-   Later stages add the pitch ladder, ADI markers, and the horizon full/delta fill.
+   This file now holds the complete shared ball renderer: the stateless leaf primitives
+   (scanline fill, disc clip, fixed aircraft symbol), the pitch ladder (eadiDrawLadder),
+   the ADI markers (eadiDrawAdiMarker), and the full/delta horizon fill (eadiFullDraw /
+   eadiDeltaDraw).
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 

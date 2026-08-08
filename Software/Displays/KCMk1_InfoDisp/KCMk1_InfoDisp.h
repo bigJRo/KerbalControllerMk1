@@ -72,7 +72,6 @@ extern KCMDoubleBuffer infoDB;
 ****************************************************************************************/
 extern ScreenType activeScreen;
 extern ScreenType prevScreen;
-extern uint32_t   lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 void switchToScreen(ScreenType s);
 
 

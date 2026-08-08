@@ -118,11 +118,7 @@ void stepDemoState() {
   state.airbrake_on = ((millis() / 12000) % 2 == 0);
   state.trimEnabled = ((millis() / 8000)  % 2 == 0);
 
-  // Intercept data — sweeps through valid and invalid states
-  state.intercept1Time = (int32_t)(300.0f * sinf(_demoPhase * 0.18f));  // -300..+300s
-  state.intercept1Dist = 800.0f + 600.0f * sinf(_demoPhase * 0.22f);   // 200..1400m
-  state.intercept2Time = (int32_t)(900.0f * sinf(_demoPhase * 0.12f));  // -900..+900s
-  state.intercept2Dist = 1500.0f + 1200.0f * sinf(_demoPhase * 0.15f); // 300..2700m
+  // (AppState.intercept1/2 Dist/Time are unread future-KSP2 stubs — not driven here.)
 
   // Parachute demo: cycles through stowed->deployed->cut over 30s
   uint32_t chutePhase = (millis() / 10000) % 3;

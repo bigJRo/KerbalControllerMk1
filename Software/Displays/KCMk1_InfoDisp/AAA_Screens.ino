@@ -293,33 +293,6 @@ static void drawTitleToggleIndicator(KCM_TFT &tft) {
    Core versions accept explicit font and nRows for screens with non-standard layout.
    Convenience wrappers use ROW_FONT. All screens use NR=8 rows.
 ****************************************************************************************/
-void drawChrome(KCM_TFT &tft, uint8_t row, const char *label,
-                const tFont *font, uint8_t nRows) {
-  printDispChrome(tft, font,
-                  rowX(), rowYFor(row, nRows), rowW(), rowHFor(nRows),
-                  label, COL_LABEL, COL_BACK, COL_NO_BDR);
-}
-
-void drawChrome(KCM_TFT &tft, uint8_t row, const char *label) {
-  drawChrome(tft, row, label, ROW_FONT, 8);
-}
-
-// Full-width row overload (uses rowX()/rowW() geometry)
-void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
-               const char *label, String value,
-               uint16_t fg, uint16_t bg,
-               const tFont *font, uint8_t nRows) {
-  RowCache &c = rowCache[screen][row];
-  if (c.value == value && c.fg == fg && c.bg == bg) return;
-  printValue(tft, font,
-             rowX(), rowYFor(row, nRows), rowW(), rowHFor(nRows),
-             label, value, fg, bg, COL_BACK,
-             printState[screen][row]);
-  c.value = value;
-  c.fg = fg;
-  c.bg = bg;
-}
-
 // Split-column overload (#51) — explicit x, w for left/right half-row cells
 void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
                uint16_t x, uint16_t w,
@@ -358,6 +331,26 @@ void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
   c.fg = drawFg;
   c.bg = bg;
 }
+
+/***************************************************************************************
+   ROW-CACHE INVALIDATION
+   Reset the cached value/fg/bg for a screen's rows to sentinels that differ from any
+   real draw, forcing the next updateScreen() to repaint every row. Centralised here so
+   drawStaticScreen() and the vessel-switch handler share one definition (previously
+   duplicated with divergent field coverage).
+****************************************************************************************/
+void invalidateRowCache(ScreenType s) {
+  for (uint8_t r = 0; r < ROW_COUNT; r++) {
+    rowCache[(uint8_t)s][r].value = "\x01";
+    rowCache[(uint8_t)s][r].fg    = 0x0001;
+    rowCache[(uint8_t)s][r].bg    = 0x0001;
+  }
+}
+
+void invalidateAllRowCache() {
+  for (uint8_t s = 0; s < SCREEN_COUNT; s++) invalidateRowCache((ScreenType)s);
+}
+
 
 /***************************************************************************************
    SCREEN CHROME FUNCTIONS — labels drawn once on transition
@@ -426,11 +419,7 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
   }
 
   // Invalidate all row cache slots so first updateScreen() draws everything fresh
-  for (uint8_t r = 0; r < ROW_COUNT; r++) {
-    rowCache[(uint8_t)s][r].value = "\x01";
-    rowCache[(uint8_t)s][r].fg = 0x0001;
-    rowCache[(uint8_t)s][r].bg = 0x0001;
-  }
+  invalidateRowCache(s);
 }
 
 void updateScreen(KCM_TFT &tft, ScreenType s) {

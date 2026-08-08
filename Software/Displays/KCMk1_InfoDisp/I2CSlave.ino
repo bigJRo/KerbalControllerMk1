@@ -328,7 +328,10 @@ void setupI2CSlave() {
 
   buildI2CPacket();
 
-  if (debugMode) Serial.println(F("InfoDisp: I2C slave ready at 0x12"));
+  if (debugMode) {
+    Serial.print(F("InfoDisp: I2C slave ready at 0x"));
+    Serial.println(I2C_SLAVE_ADDR, HEX);
+  }
 }
 
 
@@ -358,8 +361,12 @@ void updateI2CState() {
     uint8_t candidate[I2C_PACKET_SIZE];
     fillI2CPacketBuffer(candidate);
     if (memcmp((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE) != 0) {
+      // Guard the copy against onI2CRequest() firing mid-memcpy and transmitting a
+      // torn packet (bytes 0-2 are outside the byte-9 command checksum).
+      noInterrupts();
       memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
       i2cPacketReady = true;
+      interrupts();
       digitalWriteFast(I2C_INT_PIN, LOW);
       if (debugMode) Serial.println(F("InfoDisp: I2C packet ready"));
     }
