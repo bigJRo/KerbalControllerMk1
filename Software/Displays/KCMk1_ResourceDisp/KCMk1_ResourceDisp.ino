@@ -16,14 +16,16 @@
     Demo.ino             -- demo mode animation (sine-wave resource values, no KSP connection)
 
   Libraries:
-    KerbalDisplayCommon  -- display primitives, BMP loader, touch driver, fonts, system utils
+    KerbalDisplayCommon  -- display primitives, BMP loader, fonts, system utils (RA8876/KCM_TFT)
+    KCM_Touch            -- FT5316 capacitive touch driver
     KerbalDisplayAudio   -- audio library (included as dependency; audio not used on this panel)
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
-  Hardware:
-    Teensy 4.0, RA8875 800x480 TFT, GSL1680F capacitive touch
+  Hardware (rev 2):
+    Teensy 4.1, LT7683 (RA8876-compatible) 1024x600 TFT on a 16-bit 8080 parallel bus (FlexIO3),
+    FT5316 capacitive touch (software I2C, pins 4/5)
     SerialUSB1 -> KSP (Simpit), Serial -> debug output
-    Wire (pins 18/19) -> I2C slave at 0x11 (master Teensy 4.1)
+    Wire2 (pins 24/25) -> I2C slave at 0x11 (master Teensy 4.1)
 
   Phase 1: Display framework with demo values and touch-based resource selection. ✓
   Phase 2: Simpit integration for live resource telemetry. ✓
@@ -67,10 +69,7 @@ void setup() {
     // Simpit will populate values once a flight scene is entered.
     // The user's slot selection persists across scene changes — only values are
     // zeroed on SCENE_CHANGE, not the slot type configuration.
-    initDefaultSlots();
-    for (uint8_t i = 0; i < slotCount; i++) {
-      slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-    }
+    initDefaultSlots();   // live mode: sets slot TYPES; values already zeroed within
     initSimpit();
   }
 
@@ -79,19 +78,35 @@ void setup() {
   // the master can read it. Then spin until the master sends I2C_REQ_PROCEED.
   // While waiting, keep servicing the I2C receive handler via updateI2CState()
   // so the PROCEED command is actually processed.
-  buildI2CPacketAndAssert();
-  if (debugMode) Serial.println(F("ResourceDisp: waiting for master PROCEED..."));
-  while (!i2cProceedReceived) {
-    updateI2CState();
+  // Skip entirely in standalone test mode — no master is present to send PROCEED,
+  // so proceed straight past the boot screen into loop().
+  if (!STANDALONE_TEST) {
+    buildI2CPacketAndAssert();
+    if (debugMode) Serial.println(F("ResourceDisp: waiting for master PROCEED..."));
+    while (!i2cProceedReceived) {
+      updateI2CState();
+    }
+    if (debugMode) Serial.println(F("ResourceDisp: PROCEED received, entering loop."));
+  } else if (debugMode) {
+    Serial.println(F("ResourceDisp: STANDALONE_TEST — skipping master PROCEED handshake."));
   }
-  if (debugMode) Serial.println(F("ResourceDisp: PROCEED received, entering loop."));
 
-  // Always show standby on boot — BMP splash from SD card.
-  // In demo mode, a touch on the standby screen transitions to the main screen.
-  // In live mode, SCENE_CHANGE_MESSAGE drives the transition.
-  switchToScreen(screen_Standby);
+  // Demo mode: skip the standby splash and go straight to the main bar screen so
+  // the panel self-runs on the bench without needing a touch to advance (mirrors
+  // the InfoDisp). Live mode shows the standby splash (BMP from SD) until a
+  // SCENE_CHANGE_MESSAGE — or a touch in demo — drives the transition.
+  if (demoMode) {
+    switchToScreen(screen_Main);
+  } else {
+    switchToScreen(screen_Standby);
+  }
 }
 
+
+// Backup of the vessel bar set captured while NOT on EVA, so the vessel layout can
+// be restored when EVA ends. Refreshed every non-EVA frame in loop() below.
+static ResourceSlot _evaBackup[MAX_SLOTS];
+static uint8_t      _evaBackupCount = 0;
 
 void loop() {
 
@@ -100,6 +115,14 @@ void loop() {
 
   // --- I2C slave state update ---
   updateI2CState();
+
+  // Snapshot the current (non-EVA) slot config each frame so it can be restored
+  // when EVA ends. Taken before simpit.update() so it reflects the settled vessel
+  // layout rather than a transient mid-transition state.
+  if (!evaActive) {
+    memcpy(_evaBackup, slots, sizeof(_evaBackup));
+    _evaBackupCount = slotCount;
+  }
 
   // --- Screen chrome on transition ---
   // Matches Annunciator pattern: all transition logic lives here, not inside updateScreen*.
@@ -143,6 +166,27 @@ void loop() {
       prevScreen      = screen_Main;
       needsMainRedraw = false;
     }
+  }
+
+  // --- EVA mode reconcile (after all messages for this frame are processed) ---
+  // evaFlag is latched by FLIGHT_STATUS_MESSAGE. On a change, swap the bar set:
+  // entering EVA loads the fixed EC/EVA/O2/Food/Water set; leaving restores the
+  // vessel layout snapshotted in _evaBackup. switchToScreen(Main) shows the result
+  // and forces a clean chrome redraw on the next pass.
+  if (evaFlag != evaActive) {
+    evaActive = evaFlag;
+    if (evaActive) {
+      loadEvaSlots();
+    } else {
+      memcpy(slots, _evaBackup, sizeof(_evaBackup));
+      slotCount = _evaBackupCount;
+      if (!demoMode) simpit.requestMessageOnChannel(0);
+    }
+    if (debugMode) {
+      Serial.print(F("ResourceDisp: EVA mode -> "));
+      Serial.println(evaActive ? F("ON (EVA bar set)") : F("OFF (vessel bars)"));
+    }
+    switchToScreen(screen_Main);
   }
 
   // --- Update display ---

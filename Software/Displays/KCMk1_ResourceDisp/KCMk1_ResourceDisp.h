@@ -5,13 +5,20 @@
    type enum, and extern declarations for all globals.
 ****************************************************************************************/
 
-// Requires KerbalDisplayCommon >= 2.1.0
-#include <KerbalDisplayCommon.h>
+// Requires KerbalDisplayCommon >= 3.0.0 (rev-2: RA8876 KCM_TFT + ILI9341_t3 fonts)
+#include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + fonts + SystemConfig
+#include <KCM_Touch.h>             // FT5316 capacitive touch (rev-2; replaces GSL1680F)
 // KerbalDisplayAudio is a direct sketch dependency (not a KDC sub-dependency).
-// Audio output is not used on this panel, but the library claims pin 9.
+// Audio is never used on this panel: no setupAudio()/audio*() call is made, so the
+// library configures and drives no pins. Its AUDIO_PIN default is the TONE buzzer on
+// pin 2 (moved from the old rev-1 pin 9, which is now the TFT backlight) — no conflict.
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
+
+// rev-2 compat: screen/boot code declares font pointers as the old sumotoy `tFont`
+// type. KerbalDisplayCommon v3 uses ILI9341_t3_font_t; alias so those signatures compile.
+typedef ILI9341_t3_font_t tFont;
 
 
 /***************************************************************************************
@@ -20,11 +27,11 @@
      MAJOR — incompatible structural changes
      MINOR — new features or screens added
      PATCH — bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 2.0.1
+   This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
-static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 3;
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
+static const uint8_t SKETCH_VERSION_MINOR = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.0.1: EVA reset + audit cleanup (batch C)
 
 
 /***************************************************************************************
@@ -42,6 +49,7 @@ enum ResourceType : uint8_t {
   RES_LIQUID_OX,
   RES_SOLID_FUEL,
   RES_MONO_PROP,
+  RES_EVA_PROP,
   RES_XENON,
   // Propellants (CRP mod, KSP1 — via CUSTOM_RESOURCE_2_MESSAGE)
   RES_LIQUID_H2,
@@ -105,20 +113,20 @@ enum ScreenType : uint8_t {
 // From AAA_Config.ino
 extern bool     debugMode;
 extern bool     demoMode;
+extern const bool     STANDALONE_TEST;   // true = skip I2C master handshake (no master connected)
 extern const uint8_t  DISPLAY_ROTATION;
 // Slot count limits — constexpr so they can be used as compile-time array sizes
 static constexpr uint8_t MIN_SLOTS          = 4;
 static constexpr uint8_t MAX_SLOTS          = 16;
-static constexpr uint8_t DEFAULT_SLOT_COUNT = 8;
-extern const uint16_t LOW_RES_THRESHOLD;   // percent (0-100) below which bar turns red
+static constexpr uint8_t DEFAULT_SLOT_COUNT = 9;
+extern const uint16_t LOW_RES_THRESHOLD;   // percent (0-100); reserved — bars no longer recolor by level
 
 // From AAA_Globals.ino
-extern RA8875       infoDisp;
+extern KCM_TFT       infoDisp;
 extern TouchResult  lastTouch;
 extern KerbalSimpit simpit;
 extern ScreenType   activeScreen;
 extern ScreenType   prevScreen;
-extern uint32_t     lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
 extern bool         stageMode;      // false = TOTAL (whole craft), true = STAGE (current stage)
@@ -126,41 +134,45 @@ extern bool         flightScene;    // true when KSP is in a flight scene
 extern bool         simpitConnected; // true once Simpit handshake succeeds
 extern bool         idleState;      // true = show standby when not in flight (set by I2C master)
 extern bool         needsMainRedraw; // set by SimpitHandler to request main screen chrome redraw
+extern bool         evaActive;      // true = a Kerbal is on EVA (mode applied); drives the EVA bar set
+extern bool         evaFlag;        // raw latched EVA flag from the last FLIGHT_STATUS_MESSAGE
 
 // Resource type metadata (from Resources.ino)
 const char*    resLabel(ResourceType t);
 const char*    resFullName(ResourceType t);
 uint16_t       resColor(ResourceType t);
 ResourceType   resTypeByIndex(uint8_t index);  // 0-based index into selectable types
+bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set (EC/EVA/O2/Food/Water)
 
 // Screen management
 // Always use switchToScreen() to change screens — never set activeScreen directly.
-// switchToScreen() sets activeScreen, resets prevScreen to screen_COUNT (which
-// triggers the chrome redraw block on the next loop pass), and calls clearTouchISR()
-// to discard any touches queued during the transition redraw.
+// switchToScreen() sets activeScreen and resets prevScreen to screen_COUNT, which
+// triggers the chrome redraw block on the next loop pass. (Call sites clear any
+// queued touch themselves; switchToScreen() does not.)
 void switchToScreen(ScreenType s);
 
 // Per-tab functions
 void processTouchEvents();
 void initDemoMode();
 void initDefaultSlots();
+void loadEvaSlots();     // load the fixed EVA bar set: EC, EVA Propellant, O2, Food, Water
 void initAllSlots();
 void stepDemoState();
 void initSimpit();
-void bootSimText(RA8875 &tft);
+void bootSimText(KCM_TFT &tft);
 void setupI2CSlave();
 void updateI2CState();
 void buildI2CPacketAndAssert();
 extern volatile bool i2cProceedReceived;
-void drawStaticMain(RA8875 &tft);
-void updateScreenMain(RA8875 &tft);
-void redrawStageModeButton(RA8875 &tft);
+void drawStaticMain(KCM_TFT &tft);
+void updateScreenMain(KCM_TFT &tft);
+void redrawStageModeButton(KCM_TFT &tft);
 int8_t sidebarHitTest(uint16_t x, uint16_t y);
-void drawStaticSelect(RA8875 &tft);
-void updateScreenSelect(RA8875 &tft);
+void drawStaticSelect(KCM_TFT &tft);
+void updateScreenSelect(KCM_TFT &tft);
 bool handleSelectTouch(uint16_t x, uint16_t y);
-void drawStaticDetail(RA8875 &tft);
-void updateScreenDetail(RA8875 &tft);
+void drawStaticDetail(KCM_TFT &tft);
+void updateScreenDetail(KCM_TFT &tft);
 bool handleDetailTouch(uint16_t x, uint16_t y);
 
 

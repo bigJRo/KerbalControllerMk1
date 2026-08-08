@@ -5,16 +5,16 @@
    In demoMode, the main screen is shown immediately and standby is bypassed.
    Triggered by SCENE_CHANGE_MESSAGE (leaving flight) in SimpitHandler.
    Exited by SCENE_CHANGE_MESSAGE (entering flight) → switchToScreen(screen_Main).
-   Requires /StandbySplash_800x480.bmp on the SD card.
+   Requires /StandbySplash_1024x600.bmp on the SD card.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
 
-void drawStaticStandby(RA8875 &tft) {
+void drawStaticStandby(KCM_TFT &tft) {
   drawStandbySplash(tft);   // #5A delegates to KDC library
 }
 
 
-void updateScreenStandby(RA8875 &tft) {
+void updateScreenStandby(KCM_TFT &tft) {
   (void)tft;  // nothing to update — standby is purely static
 }

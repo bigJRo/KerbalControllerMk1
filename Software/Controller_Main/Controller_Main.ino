@@ -27,8 +27,8 @@ extern "C" void usb_init(void);
    I2C Address Definitions
 ****************************************************************************************/
 #define ANNUN_MC 0x10
-#define INFO_MC 0x11
-#define RES_MC 0x12
+#define RES_MC 0x11   // Resource Display slave (KCM_I2C_ADDR_RESDISP)
+#define INFO_MC 0x12  // Info Display slave    (KCM_I2C_ADDR_INFODISP)
 
 #define Panel_MOD 0x20
 #define UI_MOD 0x21

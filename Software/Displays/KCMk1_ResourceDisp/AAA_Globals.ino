@@ -10,7 +10,7 @@
 /***************************************************************************************
    DISPLAY AND TOUCH
 ****************************************************************************************/
-RA8875      infoDisp  = RA8875(RA8875_CS, RA8875_RESET);
+KCM_TFT     infoDisp(KCM_TFT_RS, KCM_TFT_CS, KCM_TFT_RESET);
 TouchResult lastTouch;
 
 
@@ -42,6 +42,8 @@ bool stageMode        = false;
 bool flightScene      = false;
 bool simpitConnected  = false;
 bool idleState        = false;
+bool evaActive        = false;   // true once the EVA bar set is applied (see loop() reconcile)
+bool evaFlag          = false;   // raw EVA flag from FLIGHT_STATUS_MESSAGE (reconciled in loop())
 
 
 /***************************************************************************************
@@ -59,12 +61,9 @@ uint8_t      slotCount = DEFAULT_SLOT_COUNT;
    resetting prevScreen to the sentinel value screen_COUNT.
    Always use this function — never set activeScreen directly.
 ****************************************************************************************/
-uint32_t lastScreenSwitch = 0;   // #8 timestamp of last switchToScreen() call
-
 void switchToScreen(ScreenType s) {
   activeScreen     = s;
   prevScreen       = screen_COUNT;
-  lastScreenSwitch = millis();   // #8
 }
 
 
@@ -95,7 +94,8 @@ String           currentVesselName = "";
 ****************************************************************************************/
 
 // Save the current slot configuration for a given vessel name.
-// Overwrites an existing entry if the name matches, or uses the oldest/empty slot.
+// Overwrites an existing entry if the name matches, else the first empty entry, else
+// the last cache index (no LRU — a plain "overwrite the last slot" eviction).
 void saveVesselSlots(const String &name) {
   if (name.length() == 0 || slotCount == 0) return;
   // NOTE: if the user hit CLEAR (slotCount == 0) before leaving flight, nothing

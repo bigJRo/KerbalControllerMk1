@@ -133,7 +133,7 @@ All power enters via V_12 on the GX16-10 connector and is regulated on the Expan
 | Regulator | Type | Input | Output | Consumers |
 |-----------|------|-------|--------|-----------|
 | MPM3610 | DC-DC | 12V | 5V | CH334F V5, Teensy 4.1 VIN, RP2040 boards VIN |
-| AP2112K | LDO | 5V | 3.3V | TUSB212, LTC4311, logic level signals |
+| AP2112K | LDO | 5V | 3.3V | TUSB212, logic level signals |
 
 Each display carrier board (KC-01-EX30/31) carries its own local MPM3610 for 5V and AP2112K for 3.3V, consistent with the module power architecture pattern. The RP2040 and SSD1963 draw from these local regulators.
 

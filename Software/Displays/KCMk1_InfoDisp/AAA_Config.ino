@@ -9,12 +9,23 @@
    OPERATING MODE
 ****************************************************************************************/
 bool debugMode = false;
-bool demoMode  = true;   // true = sine-wave demo values, no KSP required
+bool demoMode  = false;  // true = sine-wave demo values, no KSP required
+bool fpsDiag   = false;  // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
+
+// INFO_DISP_UNIT — which physical Info Display board this firmware image targets.
+// The Info Display firmware is identical for both units; only the I2C slave address
+// differs so the master can address each board independently on the shared bus.
+//   1 = Info Display 1  -> I2C addr 0x12 (KCM_I2C_ADDR_INFODISP)
+//   2 = Info Display 2  -> I2C addr 0x13 (KCM_I2C_ADDR_INFODISP_2)
+// Set this before flashing each board. The sync/framing byte (0xAE) is shared by
+// both units; the INT pin (pin 0) is per-board wiring and does not change here.
+// (The System Info Display, addr 0x14, is separate hardware and is future work.)
+#define INFO_DISP_UNIT 1
 
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
 // for production (master will send PROCEED after reading the status packet).
-const bool STANDALONE_TEST = true;
+const bool STANDALONE_TEST = false;
 
 
 /***************************************************************************************
@@ -32,6 +43,11 @@ const uint8_t DROGUE_DEPLOY_CAG = 1;
 const uint8_t DROGUE_CUT_CAG    = 2;
 const uint8_t MAIN_DEPLOY_CAG   = 3;
 const uint8_t MAIN_CUT_CAG      = 4;
+
+// Airbrake — base Custom Action Group 38 (Function Control B4); see
+// Documents/Developer/Module_UI_Reference.md. Read for the AIRCRAFT screen's
+// AIRBRK indicator. Set to 0 to disable (button always shows stowed).
+const uint8_t AIRBRAKE_CAG      = 38;
 
 
 /***************************************************************************************
@@ -60,9 +76,9 @@ const float SLIP_WARN_DEG  = 5.0f;   // yellow
 const float SLIP_ALARM_DEG = 15.0f;  // white-on-red
 
 // G-force thresholds (shared with LNDG re-entry and DOCK)
-const float G_WARN_POS  =  4.0f;   // yellow — sustained high-G
+const float G_WARN_POS  = KCM_HIGH_G_WARN_POS;    // #3D yellow — sustained high-G   (cross-panel aligned)
 const float G_ALARM_POS = KCM_HIGH_G_ALARM_POS;   // #3D aligned with Annunciator CW_HIGH_G_ALARM
-const float G_WARN_NEG  = -2.0f;   // yellow — negative G
+const float G_WARN_NEG  = KCM_HIGH_G_WARN_NEG;    // #3D yellow — negative G          (cross-panel aligned)
 const float G_ALARM_NEG = KCM_HIGH_G_ALARM_NEG;   // #3D aligned with Annunciator CW_HIGH_G_WARN
 
 
@@ -73,6 +89,9 @@ const float G_ALARM_NEG = KCM_HIGH_G_ALARM_NEG;   // #3D aligned with Annunciato
 // T.Grnd / V.Vrt — gear UP (time-based, matches annunciator CW_GROUND_PROX)
 const float LNDG_TGRND_ALARM_S  = KCM_GROUND_PROX_S;   // #3D aligned with Annunciator CW_GROUND_PROX_S
 const float LNDG_TGRND_WARN_S   = 30.0f;   // yellow — T.Grnd below this with gear UP
+const float LNDG_TGRND_HYST_S   = 3.0f;    // colour-band hysteresis: relax only after clearing a
+                                           // threshold by this margin, so a jittery estimate sitting
+                                           // near a boundary can't flip-flop green<->yellow each frame
 
 // T.Grnd / V.Vrt — gear DOWN (speed-based, structural landing limits)
 const float LNDG_VVRT_ALARM_MS  = -8.0f;   // red — crash landing speed (m/s, negative)
@@ -81,6 +100,7 @@ const float LNDG_VVRT_WARN_MS   = -5.0f;   // yellow — fast landing (m/s, nega
 // Alt.Rdr thresholds (m)
 const float ALT_RDR_ALARM_M      = 50.0f;   // white-on-red — very low (LNDG + ACFT)
 const float ALT_RDR_WARN_M       = 500.0f;  // yellow — low altitude (LNDG + ACFT)
+const float LNDG_ALT_RDR_WARN_M  = 200.0f;  // yellow — powered-descent-specific tighter low-alt warning
 
 // Horizontal velocity thresholds (Fwd/Lat) — tighten contextually with T.Grnd
 // T.Grnd > 60s: loose  |  30-60s: mid  |  10-30s: tight  |  <10s: final
@@ -89,21 +109,13 @@ const float LNDG_HVEL_WARN_MID_MS    =  5.0f;  const float LNDG_HVEL_ALARM_MID_M
 const float LNDG_HVEL_WARN_TIGHT_MS  =  2.0f;  const float LNDG_HVEL_ALARM_TIGHT_MS  =   8.0f;
 const float LNDG_HVEL_WARN_FINAL_MS  =  1.0f;  const float LNDG_HVEL_ALARM_FINAL_MS  =   2.0f;
 
-// Re-entry horizontal velocity thresholds (m/s) — V.Hrz on re-entry mode
-const float LNDG_REENTRY_VHRZ_ALARM_MS = 50.0f;   // white-on-red
-const float LNDG_REENTRY_VHRZ_WARN_MS  = 10.0f;   // yellow
-
-
-// Parachute deployment speed limits (m/s surface velocity)
-// KSP's safe/risky/unsafe indicator is speed-based, not dynamic-pressure-based.
-// Stock values from testing and community data:
-//   Drogue: safe below ~500 m/s, risky 500-600 m/s, unsafe above ~600 m/s
-//   Main:   safe below ~250 m/s, risky 250-300 m/s, unsafe above ~300 m/s
-// Tune LNDG_*_RISKY_MS if the display doesn't match your game's yellow threshold.
-const float LNDG_DROGUE_SAFE_MS  = 750.0f;   // green below this
-const float LNDG_DROGUE_RISKY_MS = 850.0f;   // yellow above safe, red above risky
-const float LNDG_MAIN_SAFE_MS    = 475.0f;   // green below this
-const float LNDG_MAIN_RISKY_MS   = 550.0f;   // yellow above safe, red above risky
+// Parachute deployment limits as dynamic pressure q = 0.5*airDensity*v^2 (Pa).
+// KSP destroys a chute deployed above a structural q (force) limit, which is
+// body-independent; expressing the limit as q makes the safe-deploy SPEED
+// altitude-correct (higher up in thin air, lower near the ground). Cross-panel
+// aligned with the Annunciator CW_CHUTE_ENV via KCMk1_SystemConfig.h.
+const float LNDG_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rips above this q (Pa)
+const float LNDG_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rips above this q (Pa)
 
 // Parachute deployment state thresholds
 // LNDG_CHUTE_SEMI_DENSITY: air density (kg/m³) above which the chute begins to
@@ -175,23 +187,10 @@ const float DOCK_BRG_ALARM_DEG = 20.0f;  // red — large angle
    FLIGHT THRESHOLDS — ORBIT (ORB screen)
 ****************************************************************************************/
 
-// Orbit screen: T+Ap/T+Pe near-circular suppression guard.
-// If ApA and PeA are within ORB_CIRCULAR_PCT percent of each other,
-// the orbit is effectively circular and the T+ row shows --- to avoid a
-// rapidly-jumping meaningless value. 1.0 = 1%.
-const float ORB_CIRCULAR_PCT = 1.0f;
-
-// Eccentricity thresholds
-const float ORB_ECC_WARN  = 0.9f;   // yellow — highly elliptical
-const float ORB_ECC_ALARM = 1.0f;   // white-on-red — escape trajectory
-
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — APSIDES (APSI screen) & time thresholds
 ****************************************************************************************/
-
-// Time to apoapsis/periapsis (seconds)
-const float APSI_TIME_WARN_S = 60.0f;    // yellow — node approaching
 
 // Time to ignition (MNVR screen, seconds)
 const float MNVR_TIGN_WARN_S  = 60.0f;   // yellow — get ready to light
@@ -203,17 +202,30 @@ const float MNVR_DV_MARGIN = 1.1f;
 // CommNet signal (percent)
 const float VEH_SIGNAL_WARN_PCT = 50.0f;   // yellow — weak link
 
-// Thermal limits (percent of part limit, skin temperature)
-const uint8_t VEH_TEMP_SUPPRESS_PCT = 40;   // below this: bar suppressed (nominal)
-const uint8_t VEH_TEMP_WARN_PCT     = 70;   // yellow — getting warm
-const uint8_t VEH_TEMP_ALARM_PCT    = 85;   // white-on-red — critical
+// ── Thermal & electrical (annunciator-aligned) ───────────────────────────────
+// Thermal limits (percent of part limit; core or skin temperature). Alarm aligned
+// to the Annunciator CW_HIGH_TEMP (KCM_TEMP_ALARM_PCT); the warn tier is a
+// display-only yellow pre-alarm (the C&W panel has no temperature warning tier).
+const uint8_t TEMP_WARN_PCT  = 75;                  // yellow — getting hot
+const uint8_t TEMP_ALARM_PCT = KCM_TEMP_ALARM_PCT;  // white-on-red — critical (= 90)
+
+// Electric charge (fraction 0..1). Alarm aligned to Annunciator CW_BUS_VOLTAGE
+// (KCM_EC_LOW_ALARM_FRAC = 5%); warn aligned to the resource-low convention
+// (KCM_RES_LOW_WARN_FRAC = 20%, same tier as CW_PROP_LOW / CW_RCS_LOW).
+const float EC_LOW_WARN_FRAC  = KCM_RES_LOW_WARN_FRAC;   // yellow — 20%
+const float EC_LOW_ALARM_FRAC = KCM_EC_LOW_ALARM_FRAC;   // white-on-red — 5%
+
+// Pre-launch EC readiness check — deliberately stricter than the in-flight low-EC
+// alarm above (you want the battery topped off before launch, not merely above the
+// 5% bus-voltage floor). Display-only; no C&W analog.
+const uint8_t EC_PRELAUNCH_READY_PCT = 90;   // green — good to go
+const uint8_t EC_PRELAUNCH_LOW_PCT   = 75;   // yellow — below this: white-on-red
 
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — ATT screen (heading/pitch error)
 ****************************************************************************************/
 const float ATT_ERR_WARN_DEG  =  5.0f;   // yellow
-const float ATT_ERR_ALARM_DEG = 15.0f;   // white-on-red
 
 
 /***************************************************************************************
@@ -227,16 +239,18 @@ const float LNCH_TOAPO_WARN_S  = 30.0f;   // yellow — apoapsis close during bu
 const float LNCH_BURNTIME_ALARM_S = KCM_LOW_BURN_S;   // #3D aligned with Annunciator CW_LOW_BURN_S
 const float LNCH_BURNTIME_WARN_S  = 120.0f;  // yellow
 
+// Fallback body radius when currentBody.radius is unavailable (Kerbin, metres).
+const float DEFAULT_BODY_RADIUS_M = 600000.0f;
+
+// Altitude (as a fraction of body radius) at which the ascent/circularization mode
+// switch flips, with a small hysteresis band so it doesn't chatter near the boundary.
+const float ORB_SWITCH_ALT_FRAC_ASC  = 0.06f;   // switch up to orbital view above this
+const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
+
 
 /***************************************************************************************
    FLIGHT THRESHOLDS — ROVER (ROVR screen)
 ****************************************************************************************/
-
-// Radar altitude thresholds (m) — inverted logic vs aircraft/lander.
-// On a rover, being close to the ground is GOOD (wheels on surface).
-// Green < GOOD, yellow < WARN, red >= WARN (significantly airborne = out of control).
-const float ROVER_ALT_RDR_GOOD_M = 5.0f;    // green — wheels on/near ground
-const float ROVER_ALT_RDR_WARN_M = 10.0f;   // yellow — lightly airborne
 
 // Pitch (slope) thresholds (degrees). Tune per rover — heavier/wider rovers tolerate more.
 const float ROVER_PITCH_WARN_DEG  = 20.0f;   // yellow — getting steep
@@ -246,13 +260,10 @@ const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
 const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
 const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
 
-// Target bearing error thresholds (degrees).
-const float ROVER_BRG_WARN_DEG    = 10.0f;   // yellow — off course
-const float ROVER_BRG_ALARM_DEG   = 30.0f;   // white-on-red — significantly off course
-
-// Electric charge thresholds (%).
-const float ROVER_EC_WARN_PCT     = 50.0f;   // yellow — running low
-const float ROVER_EC_ALARM_PCT    = 25.0f;   // white-on-red — critical
+// Electric charge thresholds (%) — aligned to the shared low-EC thresholds so the
+// rover matches every other screen and the Annunciator CW_BUS_VOLTAGE alarm.
+const float ROVER_EC_WARN_PCT     = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
+const float ROVER_EC_ALARM_PCT    = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
 
 /***************************************************************************************
    PHASE 2 IMPLEMENTATION NOTES

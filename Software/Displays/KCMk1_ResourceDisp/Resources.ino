@@ -17,6 +17,7 @@ const char* resLabel(ResourceType t) {
     case RES_LIQUID_FUEL:       return "LF";
     case RES_LIQUID_OX:         return "LOx";
     case RES_MONO_PROP:         return "MP";
+    case RES_EVA_PROP:          return "EVA";
     case RES_XENON:             return "XE";
     case RES_LIQUID_H2:         return "LH2";
     case RES_LIQUID_METHANE:    return "LMe";
@@ -50,6 +51,7 @@ const char* resFullName(ResourceType t) {
     case RES_LIQUID_FUEL:       return "Liquid Fuel";
     case RES_LIQUID_OX:         return "Oxidizer";
     case RES_MONO_PROP:         return "Mono Propellant";
+    case RES_EVA_PROP:          return "EVA Propellant";
     case RES_XENON:             return "Xenon Gas";
     case RES_LIQUID_H2:         return "Liquid Hydrogen";
     case RES_LIQUID_METHANE:    return "Liquid Methane";
@@ -88,6 +90,7 @@ uint16_t resColor(ResourceType t) {
     case RES_LIQUID_OX:         return TFT_BLUE;
     case RES_SOLID_FUEL:        return TFT_RED;
     case RES_MONO_PROP:         return TFT_DARK_GREEN;
+    case RES_EVA_PROP:          return TFT_MINT;
     case RES_XENON:             return TFT_MAGENTA;
     case RES_LIQUID_H2:         return TFT_FRENCH_BLUE;
     case RES_LIQUID_METHANE:    return TFT_ROYAL;
@@ -140,6 +143,9 @@ ResourceType resTypeByIndex(uint8_t index) {
     RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD, RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE,
     // Agriculture (1) — CRP mod, KSP1
     RES_FERTILIZER,
+    // EVA (1) — only selectable while a Kerbal is on EVA; kept last so its cell is
+    // blank at the end of the grid (no mid-grid hole) when hidden.
+    RES_EVA_PROP,
   };
   static const uint8_t ORDER_LEN = sizeof(ORDER) / sizeof(ORDER[0]);
   if (index >= ORDER_LEN) return RES_NONE;
@@ -149,33 +155,65 @@ ResourceType resTypeByIndex(uint8_t index) {
 
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Standard group: EC, LF, LOx, MP, SF, O2, Food, Water (8 slots).
-   For demo/layout testing initAllSlots() loads every resource type.
-****************************************************************************************/
-/***************************************************************************************
-   DEFAULT SLOT CONFIGURATION
-   Matches the STD preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water.
+   Matches the STD preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
    Called by the DFLT sidebar button and on first boot.
    NOTE: CLEAR on the Select screen bypasses MIN_SLOTS intentionally — this is by
    design so the user can start fresh from slot 1. removeResource() still enforces
    MIN_SLOTS for individual tap-removal.
 ****************************************************************************************/
+// Seed one slot's fill values: 0 in live mode (Simpit repopulates on refresh),
+// visible demo values otherwise. Shared by all the slot-loading paths.
+void initSlotValues(ResourceSlot &s) {
+  s.current      = demoMode ? 1.0f : 0.0f;
+  s.maxVal       = demoMode ? 1.0f : 0.0f;
+  s.stageCurrent = demoMode ? 0.4f : 0.0f;
+  s.stageMax     = demoMode ? 0.4f : 0.0f;
+}
+
+// Zero the fill values of every active slot (leaves type/config intact). Used on
+// scene/vessel transitions so stale values don't show before Simpit repopulates.
+void zeroAllSlotValues() {
+  for (uint8_t i = 0; i < slotCount; i++) {
+    slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
+  }
+}
+
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = DEFAULT_SLOT_COUNT;  // 8 — matches STD preset count
-  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water
-  static const ResourceType STD_TYPES[8] = {
-    RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
-    RES_SOLID_FUEL, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+  slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches STD preset count
+  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
+  static const ResourceType STD_TYPES[DEFAULT_SLOT_COUNT] = {
+    RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
+    RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
   };
   for (uint8_t i = 0; i < DEFAULT_SLOT_COUNT; i++) {
-    slots[i].type         = STD_TYPES[i];
-    slots[i].current      = demoMode ? 1.0f : 0.0f;
-    slots[i].maxVal       = demoMode ? 1.0f : 0.0f;
-    slots[i].stageCurrent = demoMode ? 0.4f : 0.0f;
-    slots[i].stageMax     = demoMode ? 0.4f : 0.0f;
+    slots[i].type = STD_TYPES[i];
+    initSlotValues(slots[i]);
   }
   // In live mode, request a Simpit refresh so the new slots populate immediately
+  if (!demoMode) simpit.requestMessageOnChannel(0);
+}
+
+// True for the fixed EVA bar set. When a Kerbal is on EVA the display shows only
+// these five, and nothing else is selectable (see loop() reconcile + ScreenSelect).
+bool isEvaResource(ResourceType t) {
+  return t == RES_ELEC_CHARGE || t == RES_EVA_PROP || t == RES_LS_OXYGEN ||
+         t == RES_LS_FOOD      || t == RES_LS_WATER;
+}
+
+// Load the fixed EVA bar set: Electric Charge, EVA Propellant, Oxygen, Food, Water.
+// Called on the transition into EVA mode. Values zero in live mode (Simpit
+// repopulates on the refresh request); 1.0 in demo so bars are immediately visible.
+void loadEvaSlots() {
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
+  static const ResourceType EVA_TYPES[5] = {
+    RES_ELEC_CHARGE, RES_EVA_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+  };
+  slotCount = 5;
+  for (uint8_t i = 0; i < 5; i++) {
+    slots[i].type = EVA_TYPES[i];
+    initSlotValues(slots[i]);
+  }
   if (!demoMode) simpit.requestMessageOnChannel(0);
 }
 

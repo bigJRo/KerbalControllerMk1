@@ -4,9 +4,10 @@
    Channels subscribed:
      VESSEL_NAME, SOI, FLIGHT_STATUS, ALTITUDE, VELOCITY, AIRSPEED,
      APSIDES, APSIDESTIME, DELTAV, BURNTIME, ORBIT, ROTATION_DATA,
-     MANEUVER, TARGETINFO, INTERSECTS, ATMO_CONDITIONS, ACTIONSTATUS,
-     CAGSTATUS, THROTTLE_CMD, WHEEL_CMD, ELECTRIC,
+     MANEUVER, TARGETINFO, ATMO_CONDITIONS, ACTIONSTATUS, TEMP_LIMIT,
+     CAGSTATUS, SAS_MODE_INFO, THROTTLE_CMD, WHEEL_CMD, ELECTRIC,
      SCENE_CHANGE, VESSEL_CHANGE
+     (INTERSECTS is KSP2-only and intentionally not registered.)
 
    Phase 2: Simpit integration for live KSP telemetry. ✓
    Phase 3: I2C slave interface. ✓
@@ -50,6 +51,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case THROTTLE_CMD_MESSAGE:    n = "THROTTLE_CMD";    break;
       case WHEEL_CMD_MESSAGE:        n = "WHEEL_CMD";        break;
       case ELECTRIC_MESSAGE:        n = "ELECTRIC";        break;
+      case TEMP_LIMIT_MESSAGE:      n = "TEMP_LIMIT";      break;
       case SCENE_CHANGE_MESSAGE:    n = "SCENE_CHANGE";    break;
       case VESSEL_CHANGE_MESSAGE:   n = "VESSEL_CHANGE";   break;
       default:                      n = "UNKNOWN";         break;
@@ -105,7 +107,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             Serial.print(F(" tgtDist="));
             Serial.println(state.tgtDistance);
           }
-          switchToScreen(contextScreen());
+          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
+          if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
           // TARGETINFO may not have arrived yet — set flag to re-check for docking context
           // once target distance is known (catches switching to a vessel near a dock target)
           _pendingDockCheck = true;
@@ -227,6 +230,16 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       }
       break;
 
+    case TEMP_LIMIT_MESSAGE:
+      // tempLimitMessage: byte tempLimitPercentage (internal/core), byte skinTempLimitPercentage.
+      // Both are the vessel's hottest part as a % of its temperature limit (0-100).
+      if (msgSize == sizeof(tempLimitMessage)) {
+        tempLimitMessage t = parseMessage<tempLimitMessage>(msg);
+        state.coreTempPct = t.tempLimitPercentage;
+        state.skinTempPct = t.skinTempLimitPercentage;
+      }
+      break;
+
     // ── Orbital elements ─────────────────────────────────────────────────────────────
 
     case ORBIT_MESSAGE:
@@ -266,8 +279,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.mnvrTime     = m.timeToNextManeuver;
         state.mnvrDeltaV   = m.deltaVNextManeuver;
         state.mnvrDuration = m.durationNextManeuver;
-        // m.deltaVTotal is the dV remaining in the maneuver plan, NOT the vessel's
-        // total propellant dV. Leave state.totalDeltaV owned by DELTAV_MESSAGE only.
+        // m.deltaVTotal is the dV remaining in the maneuver PLAN (all nodes),
+        // distinct from the vessel's total propellant dV (owned by DELTAV_MESSAGE).
+        state.mnvrTotalDeltaV = m.deltaVTotal;
         state.mnvrHeading  = m.headingNextManeuver;
         state.mnvrPitch    = m.pitchNextManeuver;
       }
@@ -299,10 +313,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           }
           // KSP may report targetAvailable=false even while sending TARGETINFO with
           // a valid distance — use distance alone to confirm a nearby docking target.
-          if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
-            switchToScreen(screen_DOCK);
-          } else {
-            switchToScreen(contextScreen());
+          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
+          if (!isManualLockScreen(activeScreen)) {
+            if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
+              switchToScreen(screen_DOCK);
+            } else {
+              switchToScreen(contextScreen());
+            }
           }
         }
       }
@@ -338,23 +355,27 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case CAGSTATUS_MESSAGE: {
+      if (msgSize != sizeof(cagStatusMessage)) break;   // guard: match the other handlers
       // Cast msg directly to cagStatusMessage and use is_action_activated(n).
       // parseCAGStatusMessage() is deprecated — use the struct directly.
       cagStatusMessage *cag = (cagStatusMessage *)msg;
-      if (DROGUE_DEPLOY_CAG >= 1 && DROGUE_DEPLOY_CAG <= 256)
+      if (DROGUE_DEPLOY_CAG >= 1)
         state.drogueDeploy = cag->is_action_activated(DROGUE_DEPLOY_CAG);
-      if (DROGUE_CUT_CAG   >= 1 && DROGUE_CUT_CAG   <= 256)
+      if (DROGUE_CUT_CAG   >= 1)
         state.drogueCut    = cag->is_action_activated(DROGUE_CUT_CAG);
-      if (MAIN_DEPLOY_CAG  >= 1 && MAIN_DEPLOY_CAG  <= 256)
+      if (MAIN_DEPLOY_CAG  >= 1)
         state.mainDeploy   = cag->is_action_activated(MAIN_DEPLOY_CAG);
-      if (MAIN_CUT_CAG     >= 1 && MAIN_CUT_CAG     <= 256)
+      if (MAIN_CUT_CAG     >= 1)
         state.mainCut      = cag->is_action_activated(MAIN_CUT_CAG);
+      if (AIRBRAKE_CAG     >= 1)
+        state.airbrake_on  = cag->is_action_activated(AIRBRAKE_CAG);
       break;
     }
 
     // ── Scene and vessel lifecycle ───────────────────────────────────────────────────
 
     case SCENE_CHANGE_MESSAGE:
+      if (msgSize < 1) break;   // guard: single-byte payload
       // msg[0] == 0 → flight scene; msg[0] == 1 → non-flight (menu, tracking, etc.)
       flightScene = (msg[0] == 0);
       if (debugMode)
@@ -362,7 +383,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
                                    : F("InfoDisp: Leaving flight scene"));
       if (flightScene) {
         demoMode = false;
-        switchToScreen(contextScreen());
+        // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
+        if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
         simpit.requestMessageOnChannel(0);
       } else {
         // Non-flight (menus, tracking station, etc.) — show standby splash
@@ -374,6 +396,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;   // guard: single-byte payload
       if (msg[0] == 1) {
         // Vessel switch (focus changed to another vessel).
         // Guard: if we just docked (within 2s), KSP sends a vessel switch immediately
@@ -388,7 +411,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _lndgReentryMode    = false;   // #34 reset re-entry mode on vessel switch
         _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
         _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
-        _lndgReentryRow3PeA = true;
+        _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;
         _drogueDeployed  = false;
@@ -398,13 +421,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _drogueArmedSafe = false;
         _mainArmedSafe   = false;
         // Invalidate all row caches so everything redraws on the new vessel
-        for (uint8_t s = 0; s < SCREEN_COUNT; s++) {
-          for (uint8_t r = 0; r < ROW_COUNT; r++) {
-            rowCache[s][r].value = "\x01";
-            rowCache[s][r].fg    = 0x0001;
-            rowCache[s][r].bg    = 0x0001;
-          }
-        }
+        invalidateAllRowCache();
         // Don't call contextScreen() here — state.vesselType is still the OLD vessel's
         // type at this point. FLIGHT_STATUS_MESSAGE with the new vessel's type will
         // arrive shortly; set a flag and do the context switch when it does.
@@ -466,6 +483,7 @@ void initSimpit() {
   simpit.registerChannel(THROTTLE_CMD_MESSAGE);
   simpit.registerChannel(WHEEL_CMD_MESSAGE);
   simpit.registerChannel(ELECTRIC_MESSAGE);
+  simpit.registerChannel(TEMP_LIMIT_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);
 }

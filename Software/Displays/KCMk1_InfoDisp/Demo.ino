@@ -95,10 +95,6 @@ void stepDemoState() {
 
   state.pitch         = 30.0f  * sinf(_demoPhase * 0.5f);
   state.roll          = 45.0f  * sinf(_demoPhase * 0.4f);
-  
-  /*
-  ATT_staticTest_update();
-  */
 
   state.orbVelHeading = 180.0f + 170.0f * sinf(_demoPhase * 0.28f);
   state.orbVelPitch   = 10.0f  * sinf(_demoPhase * 0.45f);
@@ -117,14 +113,12 @@ void stepDemoState() {
   state.rcs_on = ((millis() / 12000) % 2 == 0);
 
   // Gear and Brakes — toggle every ~10 seconds
-  state.gear_on   = ((millis() / 10000) % 2 == 0);
-  state.brakes_on = ((millis() / 15000) % 2 == 0);
+  state.gear_on     = ((millis() / 10000) % 2 == 0);
+  state.brakes_on   = ((millis() / 15000) % 2 == 0);
+  state.airbrake_on = ((millis() / 12000) % 2 == 0);
+  state.trimEnabled = ((millis() / 8000)  % 2 == 0);
 
-  // Intercept data — sweeps through valid and invalid states
-  state.intercept1Time = (int32_t)(300.0f * sinf(_demoPhase * 0.18f));  // -300..+300s
-  state.intercept1Dist = 800.0f + 600.0f * sinf(_demoPhase * 0.22f);   // 200..1400m
-  state.intercept2Time = (int32_t)(900.0f * sinf(_demoPhase * 0.12f));  // -900..+900s
-  state.intercept2Dist = 1500.0f + 1200.0f * sinf(_demoPhase * 0.15f); // 300..2700m
+  // (AppState.intercept1/2 Dist/Time are unread future-KSP2 stubs — not driven here.)
 
   // Parachute demo: cycles through stowed->deployed->cut over 30s
   uint32_t chutePhase = (millis() / 10000) % 3;
@@ -148,6 +142,7 @@ void stepDemoState() {
   // MNVR — mnvrTime goes negative (past node), totalDeltaV crosses below mnvrDeltaV
   state.mnvrTime     = 400.0f  * sinf(_demoPhase * 0.7f);           // -400..+400s
   state.mnvrDeltaV   = 300.0f  + 250.0f * sinf(_demoPhase * 0.5f);  // 50..550 m/s
+  state.mnvrTotalDeltaV = state.mnvrDeltaV + 200.0f + 150.0f * sinf(_demoPhase * 0.3f);  // plan total >= next node
   state.mnvrDuration = 45.0f   + 40.0f  * sinf(_demoPhase * 0.6f);
   state.totalDeltaV  = 300.0f  + 250.0f * sinf(_demoPhase * 0.4f);  // different phase crosses mnvrDeltaV
   state.mnvrHeading  = 180.0f  + 175.0f * sinf(_demoPhase * 0.22f); // 0-360 burn heading
@@ -172,6 +167,32 @@ void stepDemoState() {
   state.airDensity = (state.inAtmo) ? (0.6f + 0.6f * sinf(_demoPhase * 0.25f)) : 0.0f;
 
   // -----------------------------------------------------------------------
+  // ASCENT AUTOPILOT — cycles the phase through a launch so the panel animates
+  // -----------------------------------------------------------------------
+  {
+    float t = fmodf(_demoPhase, 8.0f);              // 0..8 loop
+    uint8_t ph = (t < 0.6f) ? 0 : (t < 1.4f) ? 1 : (t < 4.0f) ? 2 :
+                 (t < 5.5f) ? 3 : (t < 7.0f) ? 4 : 5;
+    state.apPhase       = ph;
+    state.apArmed       = (ph != 0);
+    state.apTargetAlt   = 80000.0f;
+    state.apInclination = 6.0f;
+    state.apSoutherly   = false;
+    state.apLoft        = 1.0f;
+    state.apRollEnable  = false;
+    state.apRollDeg     = 0.0f;
+    state.apMaxG        = 4.0f;
+    float prog = (t - 1.0f) / 3.0f;                 // 0..1 across the gravity turn
+    if (prog < 0.0f) prog = 0.0f;
+    if (prog > 1.0f) prog = 1.0f;
+    state.apCmdPitch    = 90.0f - 65.0f * prog;
+    state.apCmdHeading  = 90.0f;
+    state.apCmdThrottle = (ph == 3) ? 0.0f : (ph == 4) ? 0.6f : 1.0f;
+    state.apDynPressure = 18000.0f * sinf(t * 0.5f);
+    if (state.apDynPressure < 0.0f) state.apDynPressure = 0.0f;
+  }
+
+  // -----------------------------------------------------------------------
   // TGT — toggles targetAvailable periodically
   // -----------------------------------------------------------------------
   state.tgtDistance   = 5000.0f + 4000.0f * sinf(_demoPhase * 0.3f);
@@ -192,6 +213,10 @@ void stepDemoState() {
   state.ctrlLevel     = tick2s % 4;
   // CommNet signal cycles through strong, weak, and lost
   state.commNetSignal = (uint8_t)constrain((int)(70.0f + 70.0f * sinf(_demoPhase * 0.2f)), 0, 100);
+  // Electric charge % — sweeps through the pre-launch board's red/yellow/green bands
+  state.electricChargePercent = constrain(70.0f + 45.0f * sinf(_demoPhase * 0.22f), 0.0f, 100.0f);
+  state.coreTempPct = (uint8_t)constrain(55.0f + 45.0f * sinf(_demoPhase * 0.18f),        0.0f, 100.0f);
+  state.skinTempPct = (uint8_t)constrain(60.0f + 40.0f * sinf(_demoPhase * 0.18f + 0.6f), 0.0f, 100.0f);
 
   // All 17 vessel types, one per 2s (~34s full cycle)
   static const VesselType typeCycle[] = {
@@ -332,7 +357,7 @@ void stepDemoState() {
       vOrb = 175.0f;                                    // pad rotation
     } else if (t < 115.0f) {
       // Grows from ~175 toward ~2170 during ascent burn, tracking V.Srf
-      vOrb = 175.0f + (vSrf + 175.0f - 175.0f) * 0.95f; // ≈ vSrf + small offset
+      vOrb = 175.0f + vSrf * 0.95f; // ≈ vSrf + small offset
       // Clamp to realistic progression
       if (vOrb < 175.0f) vOrb = 175.0f;
     } else if (t < 160.0f) {

@@ -1,7 +1,7 @@
 # KerbalDisplayAudio
 
-**Kerbal Controller Mk1 — Audio Feedback Library** · v1.0.1
-Non-blocking audio state machine for RA8875-based KSP controller display panels.
+**Kerbal Controller Mk1 — Audio Feedback Library** · v1.1.0
+Non-blocking audio state machine for KCMk1 rev-2 KSP controller display panels (Teensy 4.1).
 Part of the KCMk1 controller system.
 
 ---
@@ -18,14 +18,16 @@ The master alarm tone is modelled on the Space Shuttle Caution & Warning specifi
 
 | Pin | Define | Default | Function |
 |-----|--------|---------|----------|
-| 9 | `AUDIO_PIN` | `9` | Piezo buzzer or speaker output |
+| 2 | `AUDIO_PIN` | `2` | Master-alarm buzzer via `tone()` — KCMk1 rev-2 TONE net (pin 2 → Q1/S8050 → 4 kHz buzzer) |
 
-To override the pin, define it before including the library:
+On KCMk1 rev-2 hardware the buzzer moved from pin 9 (now the display backlight) to pin 2, matching `KCM_AUDIO_TONE_PIN` in `KCMk1_SystemConfig.h`. Sketches should keep the two in sync:
 
 ```cpp
-#define AUDIO_PIN 8
+#define AUDIO_PIN KCM_AUDIO_TONE_PIN   // = 2
 #include <KerbalDisplayAudio.h>
 ```
+
+Sampled audio (voice callouts, stingers) is handled separately by the bundled `KCM_DFPlayer` driver — a DFPlayer Mini on `Serial2` (RX2 = 7 / TX2 = 8, 9600 baud). It is independent of the `tone()` state machine documented here; see `KCM_DFPlayer.h`.
 
 ---
 
@@ -45,7 +47,7 @@ All frequency and timing constants are overrideable. Define them before the `#in
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `AUDIO_PIN` | `9` | Output pin for `tone()` |
+| `AUDIO_PIN` | `2` | Output pin for `tone()` |
 | `AUDIO_CHIRP_ALERT_LO` | `880` Hz | Alert chirp first note (A5) |
 | `AUDIO_CHIRP_ALERT_HI` | `1109` Hz | Alert chirp second note (C#6) |
 | `AUDIO_CHIRP_CAUTION_HI` | `1200` Hz | Caution chirp first note (tritone) |
@@ -63,16 +65,17 @@ All frequency and timing constants are overrideable. Define them before the `#in
 
 ### State Machine
 
-The audio state machine runs four modes in priority order (high to low):
+The audio state machine has five states, serviced in priority order (high to low):
 
 | Priority | State | Description |
 |----------|-------|-------------|
 | 1 | `AUDIO_MASTER_ALARM` | Two-tone alternating loop — runs until all conditions clear or silenced |
+| 1 | `AUDIO_MASTER_ALARM_SILENCED` | Alarm latched but muted — `noTone()` called, latch held (crew acknowledged) |
 | 2 | `AUDIO_CAUTION_TONE` | Constant tone for a fixed duration |
 | 3 | `AUDIO_CHIRP` | Two-note sequence (ascending or descending), plays once |
 | 4 | `AUDIO_IDLE` | Silent |
 
-Lower-priority sounds are suppressed while a higher-priority state is active. Chirps and caution tones are suppressed whenever the state machine is in `AUDIO_MASTER_ALARM` — this includes both the sounding and silenced variants of that state. A silenced alarm still holds `AUDIO_MASTER_ALARM`; `noTone()` has been called but the state has not transitioned to `AUDIO_IDLE`.
+Lower-priority sounds are suppressed while a higher-priority state is active. Chirps and caution tones are suppressed whenever the state machine is in `AUDIO_MASTER_ALARM` or `AUDIO_MASTER_ALARM_SILENCED`. A silenced alarm sits in the distinct `AUDIO_MASTER_ALARM_SILENCED` state: the tone is off but the latch is held, so it has not returned to `AUDIO_IDLE`.
 
 ### Master Alarm
 
@@ -99,11 +102,11 @@ The sketch is responsible for:
 
 `audioStartAlarm()` — starts the two-tone master alarm loop. Has no effect if already running. Call when the sketch's alarm condition mask transitions from 0 to non-zero.
 
-`audioStopAlarm()` — stops the master alarm and returns to `AUDIO_IDLE`. Has no effect if not running. Call when the sketch's alarm condition mask transitions from non-zero to 0. Distinct from `audioSilence()`: this clears the alarm state entirely; silence only quiets the tone while keeping `AUDIO_MASTER_ALARM` active.
+`audioStopAlarm()` — ends the master-alarm latch entirely, returning to `AUDIO_IDLE` from either `AUDIO_MASTER_ALARM` or `AUDIO_MASTER_ALARM_SILENCED`. Has no effect if no alarm is latched. Call when the sketch's alarm condition mask transitions from non-zero to 0. Distinct from `audioSilence()`: stop ends the latch; silence only mutes the tone while holding it.
 
-`audioSilence()` — immediately stops all audio and transitions to `AUDIO_IDLE` unconditionally. Use when the crew presses the master alarm button, or when audio is disabled at runtime. Unlike `audioStopAlarm()`, this works regardless of the current audio state. The sketch must manage its own silence latch separately.
+`audioSilence()` — mutes a sounding master alarm by transitioning `AUDIO_MASTER_ALARM` → `AUDIO_MASTER_ALARM_SILENCED` (calls `noTone()` but keeps the alarm latched). It is a no-op unless the master alarm is currently sounding. Use when the crew presses the master-alarm acknowledge button. To end the alarm entirely, use `audioStopAlarm()`.
 
-`audioGetState()` — returns the current `AudioState` enum value (`AUDIO_IDLE`, `AUDIO_CHIRP`, `AUDIO_CAUTION_TONE`, or `AUDIO_MASTER_ALARM`).
+`audioGetState()` — returns the current `AudioState` enum value (`AUDIO_IDLE`, `AUDIO_CHIRP`, `AUDIO_CAUTION_TONE`, `AUDIO_MASTER_ALARM`, or `AUDIO_MASTER_ALARM_SILENCED`).
 
 ---
 
@@ -160,7 +163,8 @@ void loop() {
 
 | Version | Notes |
 |---------|-------|
-| **1.0.1** | `audioSilence()` now stops all audio unconditionally (previously only stopped when in `AUDIO_MASTER_ALARM` state). Clarified documentation distinguishing `audioSilence()` from `audioStopAlarm()`. |
+| **1.1.0** | Hardware rev 2: `AUDIO_PIN` default moved 9 → 2 (TONE buzzer; pin 9 is now the display backlight); sampled audio added via the bundled `KCM_DFPlayer` (DFPlayer Mini on Serial2). New `AUDIO_MASTER_ALARM_SILENCED` state — `audioSilence()` now mutes a sounding alarm by latching into this state (tone off, latch held) instead of returning to `AUDIO_IDLE`, and `audioStopAlarm()` ends the latch from either alarm state. |
+| **1.0.1** | `audioSilence()` stops all audio unconditionally (previously only stopped when in `AUDIO_MASTER_ALARM` state). Clarified documentation distinguishing `audioSilence()` from `audioStopAlarm()`. *(Superseded by 1.1.0.)* |
 | **1.0.0** | Initial release. Four-state priority machine: `AUDIO_IDLE`, `AUDIO_CHIRP`, `AUDIO_CAUTION_TONE`, `AUDIO_MASTER_ALARM`. Space Shuttle C/W spec alarm (375 Hz / 1000 Hz at 2.5 Hz). `millis()`-based timing throughout; no `delay()`. |
 
 ---
@@ -171,7 +175,7 @@ void loop() {
 - **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In KCMk1 sketches this is done in `ScreenMain.ino`; `audioSilence()` is called unconditionally on scene change and vessel switch regardless of the flag.
 - **Single output pin** — all audio is multiplexed through one `tone()` pin. Only one sound plays at a time; the state machine priority order determines which.
 - **No blocking** — `updateAudio()` never calls `delay()`. All timing is `millis()`-based. The function is a no-op when idle.
-- **`tone()` on Teensy 4.0** — `tone()` uses a hardware timer. `AUDIO_PIN` must be a PWM-capable pin.
+- **`tone()` on Teensy 4.1** — `tone()` uses a hardware timer. `AUDIO_PIN` must be a PWM-capable pin.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.

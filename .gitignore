@@ -1,0 +1,18 @@
+# External Arduino libraries dropped into the sketchbook (not part of this repo).
+# These are installed per-machine; keep them out of git.
+Software/Displays/libraries/TeensyRA8876-8080/
+Software/Displays/libraries/TeensyRA8876-GFX-Common*/
+Software/Displays/libraries/ILI9341_fonts/
+Software/Displays/libraries/ILI9341_t3*/
+Software/Displays/libraries/SdFat*/
+Software/Displays/libraries/SD/
+
+# Arduino IDE build/cache artifacts
+build/
+*.hex
+*.elf
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini

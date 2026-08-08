@@ -13,7 +13,7 @@
    debugMode    -- set true to enable Serial debug output (touch coords, state changes).
    All three can also be set at runtime via the I2C command packet from the master.
 ****************************************************************************************/
-bool demoMode       = true;
+bool demoMode       = false;
 bool audioEnabled   = false;
 bool debugMode      = false;
 bool standaloneMode = false;  // true = bypass boot screen / master controller handshake
@@ -21,6 +21,9 @@ bool standaloneMode = false;  // true = bypass boot screen / master controller h
 bool standaloneTest = false;  // true = enter serial-driven test mode after boot.
                               // Implies standaloneMode -- master handshake is skipped.
                               // Set demoMode = false when using standaloneTest.
+bool lampTest       = false;  // true = force every C&W / situation / mode-grid tile
+                              // ON (graphics check, independent of C&W logic).
+                              // Requires demoMode = true. See Demo.ino runLampTest().
 
 /***************************************************************************************
    DISPLAY ROTATION
@@ -125,12 +128,13 @@ const float CW_PROP_LOW_ALARM_FRAC  = 0.05f;            // CW_PROP_LOW: red tier
 const float CW_PROP_NOMINAL_RATIO   = 0.8182f;          // CW_PROP_IMBAL: nominal LF/OX ratio
 const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowed deviation (10%)
 
-// --- Chute envelope (Kerbin defaults, m/s) ---
-// Thresholds represent maximum safe airspeed for deployment.
-// Drogue chutes tolerate higher speeds than main chutes.
-// Body-specific values should be added to BodyParams if flying on other atmospheric bodies.
-const float CW_CHUTE_MAIN_MAX_SPEED   = 250.0f;         // CHUTE_ENV: max speed for main chute (m/s)
-const float CW_CHUTE_DROGUE_MAX_SPEED = 500.0f;         // CHUTE_ENV: max speed for drogue (m/s)
+// --- Chute envelope (dynamic pressure q, Pa) ---
+// A chute's structural limit is a q (force) limit, so it is body-independent and its
+// safe-deploy SPEED is automatically altitude-correct. Calibrated so Kerbin sea-level
+// safe speeds are ~250 m/s (main) / ~500 m/s (drogue). Cross-panel aligned with
+// InfoDisp via KCMk1_SystemConfig.h. q = 0.5 * airDensity * vel_surf^2.
+const float CW_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rip q (Pa)
+const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa)
 
 /***************************************************************************************
    TAC LIFE SUPPORT CONSUMPTION RATES

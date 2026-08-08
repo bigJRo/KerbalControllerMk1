@@ -5,9 +5,11 @@
    and extern declarations for all globals defined in AAA_Config.ino and AAA_Globals.ino.
 ****************************************************************************************/
 
-// Requires KerbalDisplayCommon >= 2.1.0
-#include <KerbalDisplayCommon.h>
+// Requires KerbalDisplayCommon >= 3.0.0 (hardware rev 2: RA8876 / Teensy 4.1)
+#include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + ILI9341_t3 fonts
+#include <KCM_Touch.h>             // FT5316 touch: TouchResult/setupTouch/isTouched/readTouch
 #include <KerbalDisplayAudio.h>
+#include <KCM_DFPlayer.h>          // sampled audio (DFPlayer Mini on Serial2)
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
@@ -34,22 +36,25 @@ struct AppState {
   uint8_t    vesselSituationState = 0x00;         // display bitmask: bit0=DOCKED..bit7=LANDED
   CtrlMode   vehCtrlMode          = ctrl_Spacecraft;
   VesselType vesselType           = type_Ship;
-  String     vesselName           = "TEST CRAFT NAME";  // note: String heap -- low risk on Teensy 4.0
+  String     vesselName           = "TEST CRAFT NAME";  // note: String heap -- low risk on Teensy 4.1
   uint8_t    maxTemp    = 0;
   uint8_t    crewCount  = 0;
   uint8_t    twIndex    = 0;
   uint8_t    commNet    = 0;
   uint8_t    stage      = 0;
-  uint8_t    skinTemp   = 100;
+  uint8_t    skinTemp   = 0;    // default 0 (like maxTemp) so a fresh boot doesn't trip HIGH_TEMP before the first TEMP_LIMIT_MESSAGE
   uint8_t    ctrlGrp    = 1;
-  String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.0
+  uint8_t    capValue   = 0;                             // "Cap" readout (rev-2 telemetry; source TBD via I2C)
+  String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.1
+
+  // Mode/status flags shown in the bottom-right 6x2 grid (rev 2). All 12 bits are
+  // reported by the master controller over I2C; default off until the master
+  // sends them. Bit positions are the MF_* constants below; not all are in the
+  // I2C protocol spec yet (see I2CSlave.ino TODOs).
+  uint16_t   modeFlags  = 0;
 
   // Action groups
   bool gear_on   = false;
-  bool brakes_on = false;
-  bool lights_on = false;
-  bool RCS_on    = false;
-  bool SAS_on    = false;
   bool abort_on  = false;
 
   // Altitude (metres)
@@ -104,8 +109,8 @@ struct AppState {
   float tacWW_tot    = 0.0f;
 
   // Atmosphere
-  float atmoPressure = 0.0f;  // kPa -- for CHUTE ENV and HIGH Q
-  float atmoTemp     = 0.0f;  // K   -- available for future use
+  float atmoPressure = 0.0f;  // kPa   -- for HIGH Q proxy
+  float airDensity   = 0.0f;  // kg/m3 -- for CHUTE ENV (true dynamic pressure q)
 
   // Throttle
   uint8_t throttleCmd = 0;  // 0-100%
@@ -118,8 +123,17 @@ struct AppState {
    Simpit's FLIGHT_STATUS raw situation bits. Named constants here prevent magic
    literals spreading into ScreenMain and CautionWarning.
    Bit 0 (DOCKED) is set/cleared by VESSEL_CHANGE_MESSAGE, not FLIGHT_STATUS.
-   Bit 7 (LANDED) is set from sit_Landed in rawSituation.
+   Bit 7 (LANDED) is set from the Simpit sit_Landed bit in FLIGHT_STATUS.
 ****************************************************************************************/
+/***************************************************************************************
+   CELESTIAL-BODY / MEATBALL IMAGE SIZE
+   The SOI globe and KASA meatball BMPs are 236x164 (named *_236x164.bmp). Shared
+   here so ScreenMain and ScreenSOI centre them identically in their render areas.
+****************************************************************************************/
+static const uint16_t BODY_IMG_W = 236;
+static const uint16_t BODY_IMG_H = 164;
+
+
 static const uint8_t VSIT_DOCKED    = 0;
 static const uint8_t VSIT_PRELAUNCH = 1;
 static const uint8_t VSIT_FLIGHT    = 2;
@@ -128,6 +142,30 @@ static const uint8_t VSIT_ORBIT     = 4;
 static const uint8_t VSIT_ESCAPE    = 5;
 static const uint8_t VSIT_SPLASH    = 6;
 static const uint8_t VSIT_LANDED    = 7;
+
+
+/***************************************************************************************
+   MODE/STATUS FLAG BIT INDICES (bottom-right 6x2 grid, rev 2)
+   state.modeFlags bit positions, row-major to match the grid draw order:
+     Row 0: DEMO  WARP  AUDIO  THRTL_ENA  TRIM  AUTOPILOT
+     Row 1: DEBUG SWITCH_ERR  SIMPIT_LOST  THRTL_PREC  INPUT_PREC  ENG_ARM
+   All driven by the master over I2C (default off). Labels/colours in ScreenMain.
+   NOTE: the exact label/colour/source for each tile is provisional — confirm
+   against the final master protocol (several are not in the I2C spec yet).
+****************************************************************************************/
+static const uint8_t MF_DEMO        =  0;
+static const uint8_t MF_WARP        =  1;
+static const uint8_t MF_AUDIO       =  2;
+static const uint8_t MF_THRTL_ENA   =  3;
+static const uint8_t MF_TRIM        =  4;
+static const uint8_t MF_AUTOPILOT   =  5;
+static const uint8_t MF_DEBUG       =  6;
+static const uint8_t MF_SWITCH_ERR  =  7;
+static const uint8_t MF_SIMPIT_LOST =  8;
+static const uint8_t MF_THRTL_PREC  =  9;
+static const uint8_t MF_INPUT_PREC  = 10;
+static const uint8_t MF_ENG_ARM     = 11;
+static const uint8_t MF_COUNT       = 12;
 
 
 /***************************************************************************************
@@ -183,7 +221,7 @@ static const uint8_t CW_GEAR_UP      = 13;  // Caution     -- gear retracted bel
 static const uint8_t CW_ATMO         = 14;  // Caution     -- vessel inside atmosphere
 
 // Row 3
-static const uint8_t CW_RCS_LOW      = 15;  // Caution     -- total vessel MonoProp < 15%
+static const uint8_t CW_RCS_LOW      = 15;  // Caution     -- total vessel MonoProp < 20% (bit index 15)
 static const uint8_t CW_PROP_IMBAL   = 16;  // Caution     -- stage LF/OX ratio outside expected range
 static const uint8_t CW_COMM_LOST    = 17;  // Caution     -- CommNet signal lost
 static const uint8_t CW_Ap_LOW       = 18;  // Caution     -- apoapsis inside atmosphere (SUB-ORB or ORBIT)
@@ -224,11 +262,11 @@ enum ChuteEnvState : uint8_t {
      MAJOR -- incompatible structural changes
      MINOR -- new features or screens added
      PATCH -- bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 2.1.0
+   This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
-static const uint8_t SKETCH_VERSION_MAJOR = 2;
+static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.1.0: silence-latch fix + outbound C&W I2C widened to 25 bits
 
 
 /***************************************************************************************
@@ -258,6 +296,7 @@ extern bool           audioEnabled;
 extern bool           debugMode;
 extern bool           standaloneMode;  // bypass boot/master handshake for bench testing
 extern bool           standaloneTest;  // serial-driven test mode
+extern bool           lampTest;        // force all tiles on (graphics check)
 extern const uint8_t  DISPLAY_ROTATION;
 extern const uint16_t LOW_DV_MECO_HOLDOFF_MS;
 extern uint8_t        tempAlarm;
@@ -275,13 +314,13 @@ extern const float  CW_HIGH_G_WARN;          // CW_HIGH_G: negative G threshold
 extern const float  CW_EC_LOW_FRAC;          // CW_BUS_VOLTAGE: EC fraction (0.05 = 5%)
 extern const float  CW_LOW_DV_MS;            // CW_LOW_DV: stage delta-v threshold (m/s)
 extern const float  CW_LOW_BURN_S;           // CW_LOW_DV: stage burn time threshold (s)
-extern const float  CW_RCS_LOW_FRAC;         // CW_RCS_LOW: MonoProp fraction (0.15 = 15%)
+extern const float  CW_RCS_LOW_FRAC;         // CW_RCS_LOW: MonoProp fraction (0.20 = 20%)
 extern const float  CW_PROP_LOW_WARN_FRAC;   // CW_PROP_LOW: yellow tier fraction (0.20)
 extern const float  CW_PROP_LOW_ALARM_FRAC;  // CW_PROP_LOW: red tier fraction (0.05)
 extern const float  CW_PROP_IMBAL_TOL;       // CW_PROP_IMBAL: ratio deviation tolerance (0.10)
 extern const float  CW_PROP_NOMINAL_RATIO;   // CW_PROP_IMBAL: expected LF/OX ratio (0.818)
-extern const float  CW_CHUTE_MAIN_MAX_SPEED; // CHUTE_ENV: max speed for main chute deploy (m/s)
-extern const float  CW_CHUTE_DROGUE_MAX_SPEED; // CHUTE_ENV: max speed for drogue deploy (m/s)
+extern const float  CW_CHUTE_MAIN_MAX_Q;     // CHUTE_ENV: main chute rip dynamic pressure (Pa)
+extern const float  CW_CHUTE_DROGUE_MAX_Q;   // CHUTE_ENV: drogue rip dynamic pressure (Pa)
 
 // From AAA_Config.ino -- TAC-LS consumption rates (Earth seconds per Kerbal)
 extern const double TACLS_FOOD_RATE;
@@ -302,28 +341,23 @@ extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
 extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
 // From AAA_Globals.ino
-extern RA8875        infoDisp;
+extern KCM_TFT       infoDisp;
 extern TouchResult   lastTouch;
 extern KerbalSimpit  simpit;
 extern AppState      state;
 extern AppState      prev;
 extern bool          inFlight;
 extern bool          inEVA;
-extern bool          hasTarget;
 extern bool          flightScene;
-extern bool          docked;
-extern bool          isRecoverable;
 extern bool          hasO2;
 extern bool          inAtmo;
 extern bool          physTW;
 extern bool          simpitConnected;
 extern bool          idleState;
 extern volatile bool i2cProceedReceived;
-extern uint8_t       rawSituation;
 extern BodyParams    currentBody;
 extern ScreenType    activeScreen;
 extern ScreenType    prevScreen;
-extern uint32_t      lastScreenSwitch;
 extern bool          firstPassOnMain;
 extern bool          alarmSilenced;
 extern ChuteEnvState chuteEnvState;      // current chute envelope state
@@ -342,6 +376,7 @@ extern const uint16_t ALARM_PROP_LOW;
 extern const uint16_t ALARM_LIFE_SUPPORT;
 extern uint16_t        alarmActiveMask;
 void updateAlarmMask(uint16_t condBit, bool on);
+void syncMasterAlarmAudio();
 
 // PrintState instances for flicker-free printDisp/printValue rendering (KDC v2 API).
 // One per logical display slot that uses printDisp() or printValue().
@@ -360,7 +395,6 @@ void switchToScreen(ScreenType s);
 // Test mode (TestMode.ino) -- serial-driven logic and display test framework.
 void initTestMode();
 void runTestMode();
-extern uint16_t testPsForceOn;  // force-on mask for panel status buttons during display walk-through
 void resetSitAndPanelState();   // force full redraw of situation column and panel status strip
 void forceContactState(bool newContact); // force CONTACT dirty tracker for walk-through
 void forceDockState(bool isDocked);      // force DOCK dirty tracker for walk-through

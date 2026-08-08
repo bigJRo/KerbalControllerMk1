@@ -1,7 +1,7 @@
 # KCMk1 Quick Start Guide
 
 **Document type:** User  
-**Location:** `docs/user/Quick_Start_Guide.md`  
+**Location:** `Documents/User/Quick_Start_Guide.md`  
 **Version:** 0.1 (stub)  
 **Status:** Placeholder — to be completed when hardware build is finalized
 

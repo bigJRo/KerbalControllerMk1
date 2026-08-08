@@ -10,7 +10,9 @@
 /***************************************************************************************
    DISPLAY AND TOUCH
 ****************************************************************************************/
-RA8875       infoDisp  = RA8875(RA8875_CS, RA8875_RESET);
+// RA8876 over FlexIO3 16-bit 8080 parallel. Constructor args are (RS/DC, CS, RESET);
+// the data bus and /WR,/RD are owned by the FlexIO driver (KCMk1_SystemConfig).
+KCM_TFT      infoDisp(KCM_TFT_RS, KCM_TFT_CS, KCM_TFT_RESET);
 TouchResult  lastTouch;
 
 
@@ -35,16 +37,12 @@ AppState prev;
 ****************************************************************************************/
 bool    inFlight        = false;
 bool    inEVA           = false;
-bool    hasTarget       = false;
 bool    flightScene     = false;
-bool    docked          = false;
-bool    isRecoverable   = false;
 bool    hasO2           = false;
 bool    inAtmo          = false;
 bool    physTW          = false;   // true when time warp is physics warp
 bool    simpitConnected = false;   // true after Simpit handshake succeeds
 bool    idleState       = false;   // true when master wants standby screen when not in flight
-uint8_t rawSituation    = 0;       // raw Simpit vesselSituation bitmask -- preserves sit_Landed
 
 
 /***************************************************************************************
@@ -69,7 +67,6 @@ BodyParams currentBody;
 ****************************************************************************************/
 ScreenType activeScreen     = screen_Standby;
 ScreenType prevScreen       = screen_COUNT;
-uint32_t   lastScreenSwitch = 0;
 bool       firstPassOnMain  = false;
 bool       alarmSilenced    = false; // true when crew has silenced active master alarm
 
@@ -94,12 +91,10 @@ void invalidateAllState() {
   prev.stage                = state.stage     + 1;
   prev.skinTemp             = state.skinTemp  + 1;
   prev.ctrlGrp              = state.ctrlGrp   + 1;
+  prev.capValue             = state.capValue  + 1;
+  prev.modeFlags            = ~state.modeFlags;
   prev.gameSOI              = "\x01";
   prev.gear_on              = !state.gear_on;
-  prev.brakes_on            = !state.brakes_on;
-  prev.lights_on            = !state.lights_on;
-  prev.RCS_on               = !state.RCS_on;
-  prev.SAS_on               = !state.SAS_on;
   prev.abort_on             = !state.abort_on;
   prev.alt_sl               = -1.0f;
   prev.alt_surf             = -1.0f;
@@ -133,7 +128,6 @@ void invalidateAllState() {
   prev.tacWW                = -1.0f;
   prev.tacWW_tot            = -1.0f;
   prev.atmoPressure         = -1.0f;
-  prev.atmoTemp             = -1.0f;
   prev.throttleCmd          = state.throttleCmd + 1;
 
   // Force CHUTE_ENV redraw on next update pass
@@ -144,13 +138,12 @@ void invalidateAllState() {
 /***************************************************************************************
    SWITCH TO SCREEN
    Central helper -- always use this instead of setting activeScreen directly.
-   Ensures invalidateAllState(), prevScreen reset, and timestamp are never forgotten.
+   Ensures invalidateAllState() and prevScreen reset are never forgotten.
    Does NOT silence audio or call resetDisplays() -- callers handle those if needed.
 ****************************************************************************************/
 void switchToScreen(ScreenType s) {
   activeScreen     = s;
   prevScreen       = screen_COUNT;
-  lastScreenSwitch = millis();
   invalidateAllState();
 }
 
@@ -175,16 +168,13 @@ void switchToScreen(ScreenType s) {
    state is not guaranteed to be valid until ATMO_CONDITIONS_MESSAGE arrives.
 ****************************************************************************************/
 void resetDisplays() {
-  rawSituation    = 0;
   inFlight        = false;
   inEVA           = false;
-  hasTarget       = false;
-  docked          = false;
-  isRecoverable   = false;
   hasO2           = false;
   inAtmo          = false;
   chuteEnvState   = chute_Off;
 
+  resetCautWarnTrackers();   // clear per-flight EC/SF/throttle edge-trackers on switch
   invalidateAllState();
   prevScreen = screen_COUNT;
 }
