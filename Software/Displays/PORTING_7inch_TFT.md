@@ -13,7 +13,7 @@ Resource panels from the rev-1 display stack to the new 7" TFT carrier board.
 | Subsystem | rev 1 (old) | rev 2 (this board) |
 |---|---|---|
 | MCU | Teensy 4.0 | **Teensy 4.1** |
-| Display controller | RA8875, SPI, 800×480 | **RA8876**, 16-bit 8080 **parallel**, **1024×600** (BuyDisplay ER-TFT070A2-6-5633) |
+| Display controller | RA8875, SPI, 800×480 | **LT7683 (RA8876-compatible)**, 16-bit 8080 **parallel**, **1024×600** (BuyDisplay ER-TFT070A2-6-5633) |
 | Display library | sumotoy `RA8875` | **`wwatson4506/TeensyRA8876-8080`** (`RA8876_t41_p`, FlexIO3) + `TeensyRA8876-GFX-Common` |
 | Fonts | sumotoy `tFont` (proportional 1bpp) | **ILI9341_t3** (`PaulStoffregen/ILI9341_fonts`) |
 | Touch | GSL1680F on Wire1 (16/17) | **FT5316** (FT5x06 family) on **software I2C** (pins 4/5) |

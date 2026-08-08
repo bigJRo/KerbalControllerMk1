@@ -109,18 +109,18 @@ CustomResourceMessages
 
 ## Configuration
 
-All tunables are in `AAA_Config.ino`.
+Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants live in the sketch header `KCMk1_ResourceDisp.h`.
 
-| Constant | Default | Description |
-|----------|---------|-------------|
-| `debugMode` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
-| `demoMode` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
-| `DISPLAY_ROTATION` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
-| `LOW_RES_THRESHOLD` | `20` | Reserved / currently unused. Bars always render in the resource's designated colour regardless of level; low-resource warning is shown only by the percentage-text colour (fixed 10% critical / 30% caution thresholds). |
-| `MIN_SLOTS` | `4` | Minimum number of active resource slots (enforced by `removeResource`). |
-| `MAX_SLOTS` | `16` | Maximum number of active resource slots. |
-| `DEFAULT_SLOT_COUNT` | `9` | Number of slots loaded by `initDefaultSlots()` (STD preset). |
-| `VESSEL_CACHE_SIZE` | `20` | Maximum number of per-vessel slot configurations held in session RAM. |
+| Constant | Location | Default | Description |
+|----------|----------|---------|-------------|
+| `debugMode` | `AAA_Config.ino` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
+| `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
+| `DISPLAY_ROTATION` | `AAA_Config.ino` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
+| `LOW_RES_THRESHOLD` | `AAA_Config.ino` | `20` | Reserved / currently unused. Bars always render in the resource's designated colour regardless of level; low-resource warning is shown only by the percentage-text colour (fixed 10% critical / 30% caution thresholds). |
+| `MIN_SLOTS` | `KCMk1_ResourceDisp.h` | `4` | Minimum number of active resource slots (enforced by `removeResource`). |
+| `MAX_SLOTS` | `KCMk1_ResourceDisp.h` | `16` | Maximum number of active resource slots. |
+| `DEFAULT_SLOT_COUNT` | `KCMk1_ResourceDisp.h` | `9` | Number of slots loaded by `initDefaultSlots()` (STD preset). |
+| `VESSEL_CACHE_SIZE` | `KCMk1_ResourceDisp.h` | `20` | Maximum number of per-vessel slot configurations held in session RAM. |
 | `BAR_LEVEL_HYSTERESIS` | `0.002` | Minimum fractional resource level change required to trigger a bar redraw (0.2%). Prevents constant SPI traffic from small Simpit fluctuations. |
 
 ---

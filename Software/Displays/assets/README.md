@@ -51,8 +51,8 @@ KASA_Worm_1024x600.bmp     KASA_Worm_800x480.bmp
 StandbySplash_800x480.bmp
 ```
 The `*_1024x600` variants are candidates for the standby splash / a logo screen on
-the rev-2 panels; the `*_800x480` variants are the rev-1 (RA8875) sizes, kept for
-the still-unported InfoDisp / ResourceDisp. Say which KASA logo you want as the
+the rev-2 panels; the `*_800x480` variants are the rev-1 (RA8875) sizes, retained
+only as legacy spares (all three displays are now on the 1024×600 carrier). Say which KASA logo you want as the
 standby splash and I'll point `drawStandbySplash()` at it (or copy your pick to
 `StandbySplash_1024x600.bmp`).
 

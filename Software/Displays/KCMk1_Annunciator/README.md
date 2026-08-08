@@ -72,7 +72,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
 | ILI9341_fonts (ILI9341_t3) | latest | Anti-aliased fonts (PaulStoffregen) |
-| KerbalSimpit | latest | KSP telemetry plugin interface |
+| KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
 
 ### KerbalSimpit Plugin Settings
 

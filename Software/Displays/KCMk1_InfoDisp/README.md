@@ -26,7 +26,7 @@ The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Air
 | Display | LT7683 (RA8876-compatible) 1024×600 7" IPS TFT | 8080 16-bit parallel |
 | Touch controller | FT5316 capacitive | software I2C |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
-| KSP telemetry | KerbalSimpit plugin | SerialUSB1 (USB COM port 2) |
+| KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port, e.g. COM5) |
 | I2C slave bus | Master Teensy 4.1 at 0x12 (Info Display 1) or 0x13 (Info Display 2) | Wire2 (pins 24/25) |
 
 The display controller is the **LT7683** (the physical part on the ER-TFT070A2-6-5633 module); it is register-compatible with the RA8876, so the firmware drives it through the `wwatson4506/TeensyRA8876-8080` FlexIO3 driver (class `RA8876_t41_p`). "RA8876" therefore appears in driver/library/class names throughout, while the hardware part is the LT7683.
@@ -60,7 +60,7 @@ All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + LT7
 
 **Serial ports:**
 - `Serial` (USB COM port 1) — debug output when `debugMode = true`
-- `SerialUSB1` (USB COM port 2) — KerbalSimpit telemetry
+- `SerialUSB1` (second USB COM port, e.g. COM5) — KerbalSimpit telemetry
 
 **I2C note:** The slave interface to the Teensy 4.1 master is on **Wire2 (pins 24/25)**. Pins 18/19 (Wire) and 16/17 (Wire1) are consumed by the display data bus, so FT5316 touch runs on a bit-banged software-I2C bus (pins 4/5).
 
@@ -261,7 +261,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `CW_GROUND_PROX` — T.Grnd < 10 s, gear up | T.Grnd / V.Vrt white-on-red at same condition | ✓ Exact |
 | `CW_HIGH_G` — g > 9 or < −5 | G: white-on-red at same values | ✓ Exact |
 | `CW_LOW_DV` — stage ΔV < 150 m/s | ΔV.Stg white-on-red at same value | ✓ Exact |
-| `CW_ALT` — alt < 500 m | Alt.Rdr yellow at 500 m, white-on-red at 50 m | ✓ Aligned |
+| `CW_ALT` — alt < 200 m | Alt.Rdr yellow at 500 m, white-on-red at 50 m | Related (different thresholds) |
 
 ---
 
