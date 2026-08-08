@@ -244,12 +244,7 @@ static bool       _rovrPrevTgtDistAvail  = false;    // whether the target-dista
 static int32_t    _rovrPrevTgtDistVal    = -1;       // last-drawn integer target distance in metres
 
 // ── Shortest-arc delta helper ─────────────────────────────────────────────────────────
-static inline float _rovrHdgDelta(float a, float b) {
-    float d = a - b;
-    while (d >  180.0f) d -= 360.0f;
-    while (d < -180.0f) d += 360.0f;
-    return d;
-}
+static inline float _rovrHdgDelta(float a, float b) { return eadiHdgDelta(a, b); }
 
 // ── Polar → screen conversion ─────────────────────────────────────────────────────────
 //

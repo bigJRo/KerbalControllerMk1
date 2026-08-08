@@ -105,7 +105,7 @@ static const uint16_t RE_TMP_VS = 22;                   // row pitch (skin -> co
 /***************************************************************************************
    HELPERS
 ****************************************************************************************/
-static inline float _reWrap180(float a) { while (a > 180.0f) a -= 360.0f; while (a < -180.0f) a += 360.0f; return a; }
+static inline float _reWrap180(float a) { return eadiHdgDelta(a, 0.0f); }
 
 // ── Chute deployment (dynamic pressure) ──────────────────────────────────────────────
 // Current dynamic pressure q = 0.5*rho*v^2 (Pa); 0 outside the atmosphere.

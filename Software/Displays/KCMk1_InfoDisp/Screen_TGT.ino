@@ -96,11 +96,7 @@ static int16_t _tgtPrevRetX  = 9999, _tgtPrevRetY  = 9999;   // retrograde (oppo
 
 
 // ── Heading error wrap to ±180° ───────────────────────────────────────────────────────
-static inline float _tgtWrapErr(float e) {
-    while (e >  180.0f) e -= 360.0f;
-    while (e < -180.0f) e += 360.0f;
-    return e;
-}
+static inline float _tgtWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Clamp dot to within scope boundary ───────────────────────────────────────────────

@@ -93,11 +93,7 @@ static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome o
 
 
 // ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
-static inline float _mnvrWrapErr(float e) {
-    while (e >  180.0f) e -= 360.0f;
-    while (e < -180.0f) e += 360.0f;
-    return e;
-}
+static inline float _mnvrWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Clamp marker to reticle boundary ─────────────────────────────────────────────────

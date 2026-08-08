@@ -978,11 +978,7 @@ static void _lnchOrUpdateCircDvReadout(KCM_TFT &tft) {
 
 // Wrap a heading error into ±180° (for bearing differences on a 0..360°
 // compass). Duplicated from Screen_MNVR.ino (which declares it static).
-static inline float _lnchOrWrapBrgErr(float e) {
-    while (e >  180.0f) e -= 360.0f;
-    while (e < -180.0f) e += 360.0f;
-    return e;
-}
+static inline float _lnchOrWrapBrgErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 // Draw the ATT indicator chrome: concentric rings at 5°, 10°, 15°, plus
 // centre crosshairs. Drawn once on first-draw / SOI change; the dot is

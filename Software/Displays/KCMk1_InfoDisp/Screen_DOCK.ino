@@ -96,11 +96,7 @@ static float   _dockPrevDist  = -999.0f;   // dist-bar dedup; reset in chrome on
 
 
 // ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
-static inline float _dockWrapErr(float e) {
-    while (e >  180.0f) e -= 360.0f;
-    while (e < -180.0f) e += 360.0f;
-    return e;
-}
+static inline float _dockWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Clamp a dot position to within the reticle boundary ──────────────────────────────
