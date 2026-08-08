@@ -121,45 +121,15 @@ static const int16_t  ACFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_B
 static const int16_t  ACFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
 static const int16_t  ACFT_ROLL_GAP       = 3;    // gap between lines
 
-// Update the roll numeric readout.
+// Update the roll numeric readout — aircraft applies roll warn/alarm colouring (unlike
+// spacecraft). Scaffolding/geometry live in the shared eadiUpdateRollReadout().
 static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
-    int16_t  iRoll   = (int16_t)roundf(roll);
     float    absRoll = fabsf(roll);
-    // Aircraft: roll warn/alarm active (unlike spacecraft)
     uint16_t fg = (absRoll > ROLL_ALARM_DEG) ? TFT_WHITE      :
                   (absRoll > ROLL_WARN_DEG)  ? TFT_YELLOW     : TFT_DARK_GREEN;
     uint16_t bg = (absRoll > ROLL_ALARM_DEG) ? TFT_RED        : TFT_BLACK;
-
-    if (iRoll == _acftPrevRollReadout && fg == _acftPrevRollReadoutFg) return;
-
-    // Erase previous value — right-justified glyph box (matches textRight below).
-    if (_acftPrevRollReadout > -9000) {
-        char oldBuf[8];
-        snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _acftPrevRollReadout);
-        int16_t ow   = getFontStringWidth(&Roboto_Black_28, oldBuf);
-        int16_t capH = (int16_t)Roboto_Black_28.cap_height;
-        int16_t ex   = ACFT_ROLL_ANCHOR_X + ACFT_ROLL_TXT_W - ow - TEXT_BORDER;
-        int16_t ey   = (ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP)
-                       + (ACFT_ROLL_VALUE_H - capH) / 2;
-        tft.fillRect(ex - 1, ey, ow + 2, capH, TFT_BLACK);
-    }
-
-    // Line 1: "Roll:" — label row, right-justified toward the panel divider
-    textRight(tft, &Roboto_Black_24,
-              ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y,
-              ACFT_ROLL_TXT_W, ACFT_ROLL_LABEL_H,
-              "Roll:", TFT_WHITE, TFT_BLACK);
-
-    // Line 2: signed value — larger font, right-justified in value row
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%+d\xB0", iRoll);
-    textRight(tft, &Roboto_Black_28,
-              ACFT_ROLL_ANCHOR_X, ACFT_ROLL_ANCHOR_Y + ACFT_ROLL_LABEL_H + ACFT_ROLL_GAP,
-              ACFT_ROLL_TXT_W, ACFT_ROLL_VALUE_H,
-              buf, fg, bg);
-
-    _acftPrevRollReadout   = iRoll;
-    _acftPrevRollReadoutFg = fg;
+    eadiUpdateRollReadout(tft, roll, fg, bg,
+                          _acftPrevRollReadout, _acftPrevRollReadoutFg);
 }
 
 // ── Pitch tape ────────────────────────────────────────────────────────────────────────
@@ -196,113 +166,16 @@ static float   _acftPrevPitch2      = -9999.0f;   // pitch tape (distinct from b
 static int16_t _acftPrevPitchBox    = -9999;
 static float   _acftPrevVelPitch    = -9999.0f;
 
-// Draw/update the pitch value box — cached on integer change.
+// Draw/update the pitch value box — delegated to the shared helper (see EADIBall.ino).
 static void _acftUpdatePitchBox(KCM_TFT &tft, float pitch) {
-    int16_t iPitch = (int16_t)roundf(pitch);
-    if (iPitch == _acftPrevPitchBox) return;
-
-    char newBuf[8];
-    snprintf(newBuf, sizeof(newBuf), "%+d\xB0", iPitch);
-
-    if (_acftPrevPitchBox > -9000) {
-        char oldBuf[8];
-        snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", _acftPrevPitchBox);
-        eraseCenteredValue(tft, &Roboto_Black_28,
-                   ACFT_PTAPE_BOX_X, ACFT_PTAPE_BOX_Y + 1,
-                   ACFT_PTAPE_BOX_W, ACFT_PTAPE_BOX_H - 2,
-                   oldBuf, TFT_BLACK);
-    }
-    textCenter(tft, &Roboto_Black_28,
-               ACFT_PTAPE_BOX_X, ACFT_PTAPE_BOX_Y + 1,
-               ACFT_PTAPE_BOX_W, ACFT_PTAPE_BOX_H - 2,
-               newBuf, TFT_DARK_GREEN, TFT_BLACK);
-
-    _acftPrevPitchBox = iPitch;
+    eadiUpdatePitchBox(tft, pitch, _acftPrevPitchBox);
 }
 
-// Draw the full pitch tape for the given pitch.
+// Draw the full pitch tape. Aircraft markers: surface velocity pitch only — no target or
+// maneuver markers. Scaffolding lives in the shared helper.
 static void _acftDrawPitchTape(KCM_TFT &tft, float pitch) {
-    // Clear tape in two passes, skipping the box area and staying 1px inside borders
-    int16_t fillW  = ACFT_PTAPE_W - 1;  // stop 1px short of right border
-    int16_t aboveH = ACFT_PTAPE_BOX_Y - ACFT_PTAPE_Y;
-    int16_t belowY = ACFT_PTAPE_BOX_Y + ACFT_PTAPE_BOX_H;
-    int16_t belowH = (ACFT_PTAPE_Y + ACFT_PTAPE_H - 1) - belowY;  // stop 1px short of bottom border
-    tft.fillRect(ACFT_PTAPE_X, ACFT_PTAPE_Y, fillW, aboveH, TFT_BLACK);
-    tft.fillRect(ACFT_PTAPE_X, belowY,       fillW, belowH, TFT_BLACK);
-
-    // Redraw box border (sides may have been touched by above/below fills)
-    tft.drawRect(ACFT_PTAPE_BOX_X, ACFT_PTAPE_BOX_Y, ACFT_PTAPE_BOX_W, ACFT_PTAPE_BOX_H, TFT_LIGHT_GREY);
-    // Box interior not erased — no need to reset _acftPrevPitchBox
-
-    tft.setFont(Roboto_Black_12);
-
-    // Draw ticks from pitch-32 to pitch+32 (slightly beyond ±30° visible range)
-    for (int16_t dp = -32; dp <= 32; dp++) {
-        float deg = pitch + (float)dp;
-        if (deg < -90.0f || deg > 90.0f) continue;  // KSP pitch clamped ±90°
-
-        // Pixel y: current pitch stays at centre (ACFT_CY), offset by dp degrees
-        int16_t py = (int16_t)(ACFT_CY - (float)dp * ACFT_PTAPE_SCALE);
-
-        // Clip to tape interior
-        if (py <= ACFT_PTAPE_Y || py >= ACFT_PTAPE_Y + ACFT_PTAPE_H) continue;
-
-        // Suppress near value box
-        if (py >= ACFT_PTAPE_SUPP_LO && py <= ACFT_PTAPE_SUPP_HI) continue;
-
-        int16_t ideg = (int16_t)roundf(deg);
-
-        if (ideg % 10 == 0) {
-            // Major tick — right-aligned, stopping 1px short of right border
-            int16_t tx0 = ACFT_PTAPE_X + ACFT_PTAPE_W - 11;
-            int16_t tx1 = ACFT_PTAPE_X + ACFT_PTAPE_W - 2;
-            tft.drawLine(tx0, py, tx1, py, TFT_LIGHT_GREY);
-
-            // Label — left of tick, clamped to tape
-            char lbl[8];
-            snprintf(lbl, sizeof(lbl), "%+d", ideg);
-            int16_t lx = ACFT_PTAPE_X + 2;
-            int16_t ly = py - 6;
-            if (ly < ACFT_PTAPE_Y + 1) ly = ACFT_PTAPE_Y + 1;
-            if (ly + 12 > ACFT_PTAPE_Y + ACFT_PTAPE_H - 3)
-                ly = ACFT_PTAPE_Y + ACFT_PTAPE_H - 15;
-            // Only draw if label y is not in suppress zone
-            if (!(ly + 6 >= ACFT_PTAPE_SUPP_LO && ly + 6 <= ACFT_PTAPE_SUPP_HI)) {
-                tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-                tft.setCursor(lx, ly);
-                tft.print(lbl);
-            }
-        } else if (ideg % 2 == 0) {
-            // Minor tick (every 2°) — stopping 1px short of right border
-            int16_t tx0 = ACFT_PTAPE_X + ACFT_PTAPE_W - 7;
-            int16_t tx1 = ACFT_PTAPE_X + ACFT_PTAPE_W - 2;
-            tft.drawLine(tx0, py, tx1, py, TFT_DARK_GREY);
-        }
-    }
-
-    // Redraw the tape's bottom border — the lowest number labels' opaque black
-    // background can paint over it, and it is otherwise only drawn once in chrome.
-    tft.drawLine(ACFT_PTAPE_X - 1,                ACFT_PTAPE_Y + ACFT_PTAPE_H - 1,
-                 ACFT_PTAPE_X + ACFT_PTAPE_W - 1, ACFT_PTAPE_Y + ACFT_PTAPE_H - 1, TFT_LIGHT_GREY);
-
-    // Draw pitch markers (left-pointing triangles on right edge)
-    auto drawPitchMarker = [&](float markerPitch, uint16_t col) {
-        float diff = markerPitch - pitch;
-        int16_t py = (int16_t)(ACFT_CY - diff * ACFT_PTAPE_SCALE);
-        // Peg to tape edges rather than hiding
-        int16_t pyMin = ACFT_PTAPE_Y + ACFT_PTAPE_MRK_HW + 1;
-        int16_t pyMax = ACFT_PTAPE_Y + ACFT_PTAPE_H - ACFT_PTAPE_MRK_HW - 2;
-        if (py < pyMin) py = pyMin;
-        if (py > pyMax) py = pyMax;
-        if (py >= ACFT_PTAPE_SUPP_LO && py <= ACFT_PTAPE_SUPP_HI) return;
-        tft.fillTriangle(ACFT_PTAPE_MRK_TIP_X,  py,
-                         ACFT_PTAPE_MRK_BASE_X,  py - ACFT_PTAPE_MRK_HW,
-                         ACFT_PTAPE_MRK_BASE_X,  py + ACFT_PTAPE_MRK_HW,
-                         col);
-    };
-
-    // Aircraft: surface velocity pitch only — no target or maneuver markers
-    drawPitchMarker(state.srfVelPitch, TFT_NEON_GREEN);
+    EadiTapeMarker mk[1] = { { state.srfVelPitch, TFT_NEON_GREEN } };
+    eadiDrawPitchTape(tft, pitch, mk, 1);
 }
 
 // Update pitch tape — redraws when pitch or velocity pitch changes.
@@ -348,117 +221,17 @@ static const int16_t  ACFT_HDG_MRK_BASE_Y = ACFT_HDG_TAPE_Y + 2;   // 2px below 
 static const int16_t  ACFT_HDG_MRK_TIP_Y  = ACFT_HDG_TAPE_Y + 24;  // 22px tall (enlarged)
 static const int16_t  ACFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide (enlarged)
 
-// Draw/update the heading number box — cached, only redraws when integer heading changes.
-// Uses textCenter for flicker-free rendering: erase old value with black-on-black first.
+// Draw/update the heading number box — delegated to the shared helper (see EADIBall.ino).
 static void _acftUpdateHdgBox(KCM_TFT &tft, float hdg) {
-    int16_t iHdg = (int16_t)roundf(hdg) % 360;
-    if (iHdg < 0) iHdg += 360;
-    if (iHdg == _acftPrevHdgBox) return;
-
-    char oldBuf[8], newBuf[8];
-    snprintf(newBuf, sizeof(newBuf), "%03d\xB0", iHdg);
-
-    // Erase previous value with black-on-black
-    if (_acftPrevHdgBox >= 0) {
-        snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", _acftPrevHdgBox);
-        eraseCenteredValue(tft, &Roboto_Black_28,
-                   ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y + 1,
-                   ACFT_HDG_BOX_W, ACFT_HDG_BOX_H - 2,
-                   oldBuf, TFT_BLACK);
-    }
-
-    // Draw new value
-    textCenter(tft, &Roboto_Black_28,
-               ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y + 1,
-               ACFT_HDG_BOX_W, ACFT_HDG_BOX_H - 2,
-               newBuf, TFT_DARK_GREEN, TFT_BLACK);
-
-    _acftPrevHdgBox = iHdg;
+    eadiUpdateHdgBox(tft, hdg, _acftPrevHdgBox);
 }
 
-// Draw the full heading tape. Only the tape strip — box is handled separately.
+// Draw the full heading tape. Aircraft markers: surface velocity heading only — no target
+// or maneuver markers. Scaffolding lives in the shared helper, which also forces
+// _acftPrevHdgBox to -1 (the fill blackens the box interior).
 static void _acftDrawHeadingTape(KCM_TFT &tft, float hdg) {
-    while (hdg <   0.0f) hdg += 360.0f;
-    while (hdg >= 360.0f) hdg -= 360.0f;
-
-    tft.fillRect(ACFT_HDG_TAPE_X, ACFT_HDG_TAPE_Y, ACFT_HDG_TAPE_W, ACFT_HDG_TAPE_H, TFT_BLACK);
-
-    // Redraw box border after fill (fill erases box sides where they overlap)
-    tft.drawRect(ACFT_HDG_BOX_X, ACFT_HDG_BOX_Y, ACFT_HDG_BOX_W, ACFT_HDG_BOX_H, TFT_LIGHT_GREY);
-
-    // Force box number to redraw — fill blackened the interior
-    _acftPrevHdgBox = -1;
-
-    tft.setFont(Roboto_Black_12);
-
-    for (int16_t d = -32; d <= 32; d++) {
-        float deg = hdg + (float)d;
-        while (deg <   0.0f) deg += 360.0f;
-        while (deg >= 360.0f) deg -= 360.0f;
-
-        int16_t px  = (int16_t)(ACFT_CX + d * ACFT_HDG_SCALE);
-        // Strict clip — exclude boundary pixels to prevent residual at edges
-        if (px <= ACFT_HDG_TAPE_X || px >= ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W) continue;
-
-        // Suppress elements near the box (expanded to cover label text extents)
-        if (px >= ACFT_HDG_SUPP_LO && px <= ACFT_HDG_SUPP_HI) continue;
-
-        int16_t ideg = (int16_t)roundf(deg);
-        if (ideg == 360) ideg = 0;
-
-        if (ideg % 10 == 0) {
-            tft.drawLine(px, ACFT_HDG_TAPE_Y, px, ACFT_HDG_TAPE_Y + 10, TFT_LIGHT_GREY);
-
-            if (px >= ACFT_HDG_LABEL_LO && px <= ACFT_HDG_LABEL_HI) {
-                const char *lbl;
-                uint16_t    col;
-                char        numbuf[8];
-                if      (ideg ==   0) { lbl = "N";  col = TFT_YELLOW;  }
-                else if (ideg ==  90) { lbl = "E";  col = TFT_WHITE;   }
-                else if (ideg == 180) { lbl = "S";  col = TFT_WHITE;   }
-                else if (ideg == 270) { lbl = "W";  col = TFT_WHITE;   }
-                else {
-                    snprintf(numbuf, sizeof(numbuf), "%d", ideg);
-                    lbl = numbuf;
-                    col = TFT_LIGHT_GREY;
-                }
-                tft.setTextColor(col, TFT_BLACK);
-                uint8_t  lw  = strlen(lbl) * 8;
-                // Clamp cursor so label never bleeds outside the tape area
-                int16_t  cx  = px - (int16_t)(lw / 2);
-                if (cx < ACFT_HDG_TAPE_X + 1) cx = ACFT_HDG_TAPE_X + 1;
-                if (cx + lw > ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - 1)
-                    cx = ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - 1 - lw;
-                tft.setCursor(cx, ACFT_HDG_TAPE_Y + 12);
-                tft.print(lbl);
-            }
-        } else if (ideg % 2 == 0) {
-            tft.drawLine(px, ACFT_HDG_TAPE_Y, px, ACFT_HDG_TAPE_Y + 6, TFT_DARK_GREY);
-        }
-    }
-
-    // Draw heading markers after ticks so they render on top
-    auto drawMarker = [&](float markerHdg, uint16_t col) {
-        // Find angular offset with wrap
-        float diff = markerHdg - hdg;
-        while (diff >  180.0f) diff -= 360.0f;
-        while (diff < -180.0f) diff += 360.0f;
-        int16_t px = (int16_t)(ACFT_CX + diff * ACFT_HDG_SCALE);
-        // Peg to tape edges (leave room for half-width) rather than hiding
-        int16_t pxMin = ACFT_HDG_TAPE_X + ACFT_HDG_MRK_HW + 1;
-        int16_t pxMax = ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - ACFT_HDG_MRK_HW - 1;
-        if (px < pxMin) px = pxMin;
-        if (px > pxMax) px = pxMax;
-        // Skip if in suppress zone
-        if (px >= ACFT_HDG_SUPP_LO && px <= ACFT_HDG_SUPP_HI) return;
-        tft.fillTriangle(px,                    ACFT_HDG_MRK_TIP_Y,
-                         px - ACFT_HDG_MRK_HW,  ACFT_HDG_MRK_BASE_Y,
-                         px + ACFT_HDG_MRK_HW,  ACFT_HDG_MRK_BASE_Y,
-                         col);
-    };
-
-    // Aircraft: surface velocity heading only — no target or maneuver markers
-    drawMarker(state.srfVelHeading, TFT_NEON_GREEN);
+    EadiTapeMarker mk[1] = { { state.srfVelHeading, TFT_NEON_GREEN } };
+    eadiDrawHeadingTape(tft, hdg, _acftPrevHdgBox, mk, 1);
 }
 
 // Update heading — tape redraws when heading or velocity heading changes.

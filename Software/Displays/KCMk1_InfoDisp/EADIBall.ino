@@ -656,3 +656,322 @@ void eadiDrawBall(KCM_TFT &tft, bool fullRedraw, float progradeHdg, float progra
     // ── 5. Aircraft symbol — drawn last so it is always on top ────────────────────────
     eadiDrawAircraftSymbol(tft);
 }
+
+
+// ═══ Shared PFD tapes / boxes / roll readout (SCFT + ACFT) ═══════════════════════════
+// SCFT and ACFT draw pixel-identical pitch/heading tapes, pitch/heading value boxes, and
+// a roll readout. Historically each screen carried its own near-identical copy; the only
+// real differences are (a) which markers each tape draws and (b) the roll warn/alarm
+// colouring. The scaffolding lives here; the differences are passed in as parameters.
+// Geometry MUST equal the per-screen SCFT_*/ACFT_* constants — it is re-derived below
+// from the same EADI_CX/CY/R single source of truth, using the identical formulas.
+
+// ── Pitch tape geometry (== SCFT_PTAPE_* == ACFT_PTAPE_*) ────────────────────────────
+static const int16_t EADI_PTAPE_W        = 36;
+static const int16_t EADI_PTAPE_GAP      = 27;
+static const int16_t EADI_PTAPE_X        = EADI_CX - EADI_R - EADI_PTAPE_GAP - EADI_PTAPE_W;
+static const int16_t EADI_PTAPE_Y        = EADI_CY - EADI_R;
+static const int16_t EADI_PTAPE_H        = EADI_CY + EADI_R + 8 - (EADI_CY - EADI_R);
+static const float   EADI_PTAPE_SCALE    = EADI_SCALE;                       // R/30 px/deg
+static const int16_t EADI_PTAPE_BOX_W    = 68;
+static const int16_t EADI_PTAPE_BOX_H    = 38;
+static const int16_t EADI_PTAPE_BOX_X    = EADI_PTAPE_X + EADI_PTAPE_W - 68;
+static const int16_t EADI_PTAPE_BOX_Y    = EADI_CY - EADI_PTAPE_BOX_H / 2;
+static const int16_t EADI_PTAPE_SUPP_LO  = EADI_PTAPE_BOX_Y - 10;
+static const int16_t EADI_PTAPE_SUPP_HI  = EADI_PTAPE_BOX_Y + EADI_PTAPE_BOX_H + 10;
+static const int16_t EADI_PTAPE_MRK_BASE_X = EADI_PTAPE_X + EADI_PTAPE_W - 2;
+static const int16_t EADI_PTAPE_MRK_TIP_X  = EADI_PTAPE_X + EADI_PTAPE_W - 22;
+static const int16_t EADI_PTAPE_MRK_HW     = 9;
+
+// ── Heading tape geometry (== SCFT_HDG_* == ACFT_HDG_*) ──────────────────────────────
+static const int16_t EADI_HDG_TAPE_W     = (EADI_R * 2) + 54;
+static const int16_t EADI_HDG_TAPE_X     = EADI_CX - (EADI_HDG_TAPE_W / 2);
+static const int16_t EADI_HDG_TAPE_Y     = EADI_CY + EADI_R + 8;
+static const int16_t EADI_HDG_TAPE_H     = 32;
+static const float   EADI_HDG_SCALE      = (float)(EADI_R * 2) / 60.0f;
+static const int16_t EADI_HDG_LABEL_LO   = EADI_HDG_TAPE_X + 8;
+static const int16_t EADI_HDG_LABEL_HI   = EADI_HDG_TAPE_X + EADI_HDG_TAPE_W - 8;
+static const int16_t EADI_HDG_BOX_W      = 72;
+static const int16_t EADI_HDG_BOX_H      = EADI_HDG_TAPE_H + 8;
+static const int16_t EADI_HDG_BOX_X      = EADI_CX - (EADI_HDG_BOX_W / 2);
+static const int16_t EADI_HDG_BOX_Y      = EADI_HDG_TAPE_Y;
+static const int16_t EADI_HDG_SUPP_LO    = EADI_HDG_BOX_X - 18;
+static const int16_t EADI_HDG_SUPP_HI    = EADI_HDG_BOX_X + EADI_HDG_BOX_W + 18;
+static const int16_t EADI_HDG_MRK_BASE_Y = EADI_HDG_TAPE_Y + 2;
+static const int16_t EADI_HDG_MRK_TIP_Y  = EADI_HDG_TAPE_Y + 24;
+static const int16_t EADI_HDG_MRK_HW     = 9;
+
+// ── Roll readout geometry (== SCFT_ROLL_* == ACFT_ROLL_*) ────────────────────────────
+static const int16_t EADI_ROLL_ANCHOR_X  = EADI_CX + EADI_R - 54;
+static const int16_t EADI_ROLL_ANCHOR_Y  = TITLE_TOP;
+static const int16_t EADI_ROLL_W         = 80;
+static const int16_t EADI_ROLL_TXT_W     = EADI_ROLL_W + 6;
+static const int16_t EADI_ROLL_LABEL_H   = 30;
+static const int16_t EADI_ROLL_VALUE_H   = 38;
+static const int16_t EADI_ROLL_GAP       = 3;
+
+// Draw/update the pitch value box — cached on integer change. Caller owns `prevBox`.
+void eadiUpdatePitchBox(KCM_TFT &tft, float pitch, int16_t &prevBox) {
+    int16_t iPitch = (int16_t)roundf(pitch);
+    if (iPitch == prevBox) return;
+
+    char newBuf[8];
+    snprintf(newBuf, sizeof(newBuf), "%+d\xB0", iPitch);
+
+    if (prevBox > -9000) {
+        char oldBuf[8];
+        snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", prevBox);
+        eraseCenteredValue(tft, &Roboto_Black_28,
+                   EADI_PTAPE_BOX_X, EADI_PTAPE_BOX_Y + 1,
+                   EADI_PTAPE_BOX_W, EADI_PTAPE_BOX_H - 2,
+                   oldBuf, TFT_BLACK);
+    }
+    textCenter(tft, &Roboto_Black_28,
+               EADI_PTAPE_BOX_X, EADI_PTAPE_BOX_Y + 1,
+               EADI_PTAPE_BOX_W, EADI_PTAPE_BOX_H - 2,
+               newBuf, TFT_DARK_GREEN, TFT_BLACK);
+
+    prevBox = iPitch;
+}
+
+// Draw the full pitch tape. `markers` (value = pitch°, colour) draws the per-screen
+// marker set as left-pointing triangles on the tape's right edge.
+void eadiDrawPitchTape(KCM_TFT &tft, float pitch,
+                       const EadiTapeMarker *markers, uint8_t nMarkers) {
+    // Clear tape in two passes, skipping the box area and staying 1px inside borders
+    int16_t fillW  = EADI_PTAPE_W - 1;  // stop 1px short of right border
+    int16_t aboveH = EADI_PTAPE_BOX_Y - EADI_PTAPE_Y;
+    int16_t belowY = EADI_PTAPE_BOX_Y + EADI_PTAPE_BOX_H;
+    int16_t belowH = (EADI_PTAPE_Y + EADI_PTAPE_H - 1) - belowY;  // stop 1px short of bottom border
+    tft.fillRect(EADI_PTAPE_X, EADI_PTAPE_Y, fillW, aboveH, TFT_BLACK);
+    tft.fillRect(EADI_PTAPE_X, belowY,       fillW, belowH, TFT_BLACK);
+
+    // Redraw box border (sides may have been touched by above/below fills)
+    tft.drawRect(EADI_PTAPE_BOX_X, EADI_PTAPE_BOX_Y, EADI_PTAPE_BOX_W, EADI_PTAPE_BOX_H, TFT_LIGHT_GREY);
+    // Box interior not erased — no need to reset the caller's pitch-box cache
+
+    tft.setFont(Roboto_Black_12);
+
+    // Draw ticks from pitch-32 to pitch+32 (slightly beyond ±30° visible range)
+    for (int16_t dp = -32; dp <= 32; dp++) {
+        float deg = pitch + (float)dp;
+        if (deg < -90.0f || deg > 90.0f) continue;  // KSP pitch clamped ±90°
+
+        // Pixel y: current pitch stays at centre (EADI_CY), offset by dp degrees
+        int16_t py = (int16_t)(EADI_CY - (float)dp * EADI_PTAPE_SCALE);
+
+        // Clip to tape interior
+        if (py <= EADI_PTAPE_Y || py >= EADI_PTAPE_Y + EADI_PTAPE_H) continue;
+
+        // Suppress near value box
+        if (py >= EADI_PTAPE_SUPP_LO && py <= EADI_PTAPE_SUPP_HI) continue;
+
+        int16_t ideg = (int16_t)roundf(deg);
+
+        if (ideg % 10 == 0) {
+            // Major tick — right-aligned, stopping 1px short of right border
+            int16_t tx0 = EADI_PTAPE_X + EADI_PTAPE_W - 11;
+            int16_t tx1 = EADI_PTAPE_X + EADI_PTAPE_W - 2;
+            tft.drawLine(tx0, py, tx1, py, TFT_LIGHT_GREY);
+
+            // Label — left of tick, clamped to tape
+            char lbl[8];
+            snprintf(lbl, sizeof(lbl), "%+d", ideg);
+            int16_t lx = EADI_PTAPE_X + 2;
+            int16_t ly = py - 6;
+            if (ly < EADI_PTAPE_Y + 1) ly = EADI_PTAPE_Y + 1;
+            if (ly + 12 > EADI_PTAPE_Y + EADI_PTAPE_H - 3)
+                ly = EADI_PTAPE_Y + EADI_PTAPE_H - 15;
+            // Only draw if label y is not in suppress zone
+            if (!(ly + 6 >= EADI_PTAPE_SUPP_LO && ly + 6 <= EADI_PTAPE_SUPP_HI)) {
+                tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+                tft.setCursor(lx, ly);
+                tft.print(lbl);
+            }
+        } else if (ideg % 2 == 0) {
+            // Minor tick (every 2°) — stopping 1px short of right border
+            int16_t tx0 = EADI_PTAPE_X + EADI_PTAPE_W - 7;
+            int16_t tx1 = EADI_PTAPE_X + EADI_PTAPE_W - 2;
+            tft.drawLine(tx0, py, tx1, py, TFT_DARK_GREY);
+        }
+    }
+
+    // Redraw the tape's bottom border — the lowest number labels' opaque black
+    // background can paint over it, and it is otherwise only drawn once in chrome.
+    tft.drawLine(EADI_PTAPE_X - 1,                EADI_PTAPE_Y + EADI_PTAPE_H - 1,
+                 EADI_PTAPE_X + EADI_PTAPE_W - 1, EADI_PTAPE_Y + EADI_PTAPE_H - 1, TFT_LIGHT_GREY);
+
+    // Draw pitch markers (left-pointing triangles on right edge)
+    auto drawPitchMarker = [&](float markerPitch, uint16_t col) {
+        float diff = markerPitch - pitch;
+        int16_t py = (int16_t)(EADI_CY - diff * EADI_PTAPE_SCALE);
+        // Peg to tape edges rather than hiding
+        int16_t pyMin = EADI_PTAPE_Y + EADI_PTAPE_MRK_HW + 1;
+        int16_t pyMax = EADI_PTAPE_Y + EADI_PTAPE_H - EADI_PTAPE_MRK_HW - 2;
+        if (py < pyMin) py = pyMin;
+        if (py > pyMax) py = pyMax;
+        if (py >= EADI_PTAPE_SUPP_LO && py <= EADI_PTAPE_SUPP_HI) return;
+        tft.fillTriangle(EADI_PTAPE_MRK_TIP_X,  py,
+                         EADI_PTAPE_MRK_BASE_X,  py - EADI_PTAPE_MRK_HW,
+                         EADI_PTAPE_MRK_BASE_X,  py + EADI_PTAPE_MRK_HW,
+                         col);
+    };
+
+    for (uint8_t i = 0; i < nMarkers; i++)
+        drawPitchMarker(markers[i].value, markers[i].colour);
+}
+
+// Draw/update the heading number box — cached, only redraws when integer heading changes.
+// Uses textCenter for flicker-free rendering: erase old value with black-on-black first.
+void eadiUpdateHdgBox(KCM_TFT &tft, float hdg, int16_t &prevBox) {
+    int16_t iHdg = (int16_t)roundf(hdg) % 360;
+    if (iHdg < 0) iHdg += 360;
+    if (iHdg == prevBox) return;
+
+    char oldBuf[8], newBuf[8];
+    snprintf(newBuf, sizeof(newBuf), "%03d\xB0", iHdg);
+
+    // Erase previous value with black-on-black
+    if (prevBox >= 0) {
+        snprintf(oldBuf, sizeof(oldBuf), "%03d\xB0", prevBox);
+        eraseCenteredValue(tft, &Roboto_Black_28,
+                   EADI_HDG_BOX_X, EADI_HDG_BOX_Y + 1,
+                   EADI_HDG_BOX_W, EADI_HDG_BOX_H - 2,
+                   oldBuf, TFT_BLACK);
+    }
+
+    // Draw new value
+    textCenter(tft, &Roboto_Black_28,
+               EADI_HDG_BOX_X, EADI_HDG_BOX_Y + 1,
+               EADI_HDG_BOX_W, EADI_HDG_BOX_H - 2,
+               newBuf, TFT_DARK_GREEN, TFT_BLACK);
+
+    prevBox = iHdg;
+}
+
+// Draw the full heading tape. Only the tape strip — box is handled separately. The fill
+// blackens the box interior, so the caller's `prevHdgBox` cache is forced to -1 to make
+// the next box update redraw. `markers` (value = heading°, colour) is the per-screen set.
+void eadiDrawHeadingTape(KCM_TFT &tft, float hdg, int16_t &prevHdgBox,
+                         const EadiTapeMarker *markers, uint8_t nMarkers) {
+    while (hdg <   0.0f) hdg += 360.0f;
+    while (hdg >= 360.0f) hdg -= 360.0f;
+
+    tft.fillRect(EADI_HDG_TAPE_X, EADI_HDG_TAPE_Y, EADI_HDG_TAPE_W, EADI_HDG_TAPE_H, TFT_BLACK);
+
+    // Redraw box border after fill (fill erases box sides where they overlap)
+    tft.drawRect(EADI_HDG_BOX_X, EADI_HDG_BOX_Y, EADI_HDG_BOX_W, EADI_HDG_BOX_H, TFT_LIGHT_GREY);
+
+    // Force box number to redraw — fill blackened the interior
+    prevHdgBox = -1;
+
+    tft.setFont(Roboto_Black_12);
+
+    for (int16_t d = -32; d <= 32; d++) {
+        float deg = hdg + (float)d;
+        while (deg <   0.0f) deg += 360.0f;
+        while (deg >= 360.0f) deg -= 360.0f;
+
+        int16_t px  = (int16_t)(EADI_CX + d * EADI_HDG_SCALE);
+        // Strict clip — exclude boundary pixels to prevent residual at edges
+        if (px <= EADI_HDG_TAPE_X || px >= EADI_HDG_TAPE_X + EADI_HDG_TAPE_W) continue;
+
+        // Suppress elements near the box (expanded to cover label text extents)
+        if (px >= EADI_HDG_SUPP_LO && px <= EADI_HDG_SUPP_HI) continue;
+
+        int16_t ideg = (int16_t)roundf(deg);
+        if (ideg == 360) ideg = 0;
+
+        if (ideg % 10 == 0) {
+            tft.drawLine(px, EADI_HDG_TAPE_Y, px, EADI_HDG_TAPE_Y + 10, TFT_LIGHT_GREY);
+
+            if (px >= EADI_HDG_LABEL_LO && px <= EADI_HDG_LABEL_HI) {
+                const char *lbl;
+                uint16_t    col;
+                char        numbuf[8];
+                if      (ideg ==   0) { lbl = "N";  col = TFT_YELLOW;  }
+                else if (ideg ==  90) { lbl = "E";  col = TFT_WHITE;   }
+                else if (ideg == 180) { lbl = "S";  col = TFT_WHITE;   }
+                else if (ideg == 270) { lbl = "W";  col = TFT_WHITE;   }
+                else {
+                    snprintf(numbuf, sizeof(numbuf), "%d", ideg);
+                    lbl = numbuf;
+                    col = TFT_LIGHT_GREY;
+                }
+                tft.setTextColor(col, TFT_BLACK);
+                uint8_t  lw  = strlen(lbl) * 8;
+                // Clamp cursor so label never bleeds outside the tape area
+                int16_t  cx  = px - (int16_t)(lw / 2);
+                if (cx < EADI_HDG_TAPE_X + 1) cx = EADI_HDG_TAPE_X + 1;
+                if (cx + lw > EADI_HDG_TAPE_X + EADI_HDG_TAPE_W - 1)
+                    cx = EADI_HDG_TAPE_X + EADI_HDG_TAPE_W - 1 - lw;
+                tft.setCursor(cx, EADI_HDG_TAPE_Y + 12);
+                tft.print(lbl);
+            }
+        } else if (ideg % 2 == 0) {
+            tft.drawLine(px, EADI_HDG_TAPE_Y, px, EADI_HDG_TAPE_Y + 6, TFT_DARK_GREY);
+        }
+    }
+
+    // Draw heading markers after ticks so they render on top
+    auto drawMarker = [&](float markerHdg, uint16_t col) {
+        // Find angular offset with wrap
+        float diff = markerHdg - hdg;
+        while (diff >  180.0f) diff -= 360.0f;
+        while (diff < -180.0f) diff += 360.0f;
+        int16_t px = (int16_t)(EADI_CX + diff * EADI_HDG_SCALE);
+        // Peg to tape edges (leave room for half-width) rather than hiding
+        int16_t pxMin = EADI_HDG_TAPE_X + EADI_HDG_MRK_HW + 1;
+        int16_t pxMax = EADI_HDG_TAPE_X + EADI_HDG_TAPE_W - EADI_HDG_MRK_HW - 1;
+        if (px < pxMin) px = pxMin;
+        if (px > pxMax) px = pxMax;
+        // Skip if in suppress zone
+        if (px >= EADI_HDG_SUPP_LO && px <= EADI_HDG_SUPP_HI) return;
+        tft.fillTriangle(px,                    EADI_HDG_MRK_TIP_Y,
+                         px - EADI_HDG_MRK_HW,  EADI_HDG_MRK_BASE_Y,
+                         px + EADI_HDG_MRK_HW,  EADI_HDG_MRK_BASE_Y,
+                         col);
+    };
+
+    for (uint8_t i = 0; i < nMarkers; i++)
+        drawMarker(markers[i].value, markers[i].colour);
+}
+
+// Update the roll numeric readout — two lines right-justified toward the panel divider.
+// `fg`/`bg` are computed per screen (SCFT: fixed dark-green; ACFT: roll warn/alarm).
+// Caller owns `prevReadout`/`prevFg`.
+void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
+                           int16_t &prevReadout, uint16_t &prevFg) {
+    int16_t iRoll = (int16_t)roundf(roll);
+
+    if (iRoll == prevReadout && fg == prevFg) return;
+
+    // Erase previous value — right-justified glyph box (matches textRight below).
+    if (prevReadout > -9000) {
+        char oldBuf[8];
+        snprintf(oldBuf, sizeof(oldBuf), "%+d\xB0", prevReadout);
+        int16_t ow   = getFontStringWidth(&Roboto_Black_28, oldBuf);
+        int16_t capH = (int16_t)Roboto_Black_28.cap_height;
+        int16_t ex   = EADI_ROLL_ANCHOR_X + EADI_ROLL_TXT_W - ow - TEXT_BORDER;
+        int16_t ey   = (EADI_ROLL_ANCHOR_Y + EADI_ROLL_LABEL_H + EADI_ROLL_GAP)
+                       + (EADI_ROLL_VALUE_H - capH) / 2;
+        tft.fillRect(ex - 1, ey, ow + 2, capH, TFT_BLACK);
+    }
+
+    // Line 1: "Roll:" — label row, right-justified toward the panel divider
+    textRight(tft, &Roboto_Black_24,
+              EADI_ROLL_ANCHOR_X, EADI_ROLL_ANCHOR_Y,
+              EADI_ROLL_TXT_W, EADI_ROLL_LABEL_H,
+              "Roll:", TFT_WHITE, TFT_BLACK);
+
+    // Line 2: signed value — larger font, right-justified in value row
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%+d\xB0", iRoll);
+    textRight(tft, &Roboto_Black_28,
+              EADI_ROLL_ANCHOR_X, EADI_ROLL_ANCHOR_Y + EADI_ROLL_LABEL_H + EADI_ROLL_GAP,
+              EADI_ROLL_TXT_W, EADI_ROLL_VALUE_H,
+              buf, fg, bg);
+
+    prevReadout = iRoll;
+    prevFg      = fg;
+}

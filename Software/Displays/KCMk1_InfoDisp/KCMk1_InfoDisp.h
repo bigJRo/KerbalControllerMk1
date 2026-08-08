@@ -285,6 +285,23 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s);
 // AAA_Screens.ino — shared SAS-mode navball label/palette (SCFT/ACFT/ROVR)
 void sasNavballLabel(uint8_t mode, const char *&v, uint16_t &fg, uint16_t &bg);
 
+// EADIBall.ino — shared PFD tape/box/roll-readout helpers (SCFT + ACFT).
+// The two attitude screens share pixel-identical tape/box/roll geometry; only the
+// marker sets (which triangles each draws) and roll warn/alarm colouring differ, so
+// those are passed in as parameters. Prototypes are declared here (rather than left to
+// Arduino's auto-prototype pass) because the signatures take references and a struct
+// pointer. Each caller keeps and passes its OWN prev-state caches by reference so the
+// dirty-suppress/reset timing stays per-screen and byte-identical to before.
+struct EadiTapeMarker { float value; uint16_t colour; };   // one coloured tape triangle
+void eadiDrawPitchTape(KCM_TFT &tft, float pitch,
+                       const EadiTapeMarker *markers, uint8_t nMarkers);
+void eadiDrawHeadingTape(KCM_TFT &tft, float hdg, int16_t &prevHdgBox,
+                         const EadiTapeMarker *markers, uint8_t nMarkers);
+void eadiUpdatePitchBox(KCM_TFT &tft, float pitch, int16_t &prevBox);
+void eadiUpdateHdgBox(KCM_TFT &tft, float hdg, int16_t &prevBox);
+void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
+                           int16_t &prevReadout, uint16_t &prevFg);
+
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(KCM_TFT &tft, ScreenType s);
 
