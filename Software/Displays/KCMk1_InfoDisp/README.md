@@ -10,7 +10,7 @@ Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1
 
 The Information Display is a 1024×600 touchscreen panel that presents real-time KSP flight telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance.
 
-The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Aircraft/Rover (PFD), Orbit (+ Advanced Elements), Vehicle Info, Maneuver, Target, Docking, Landing (Powered Descent + Re-entry) — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar of ten buttons: most map 1:1 to a screen, the PFD button covers the three vehicle-type screens (context- or title-selected), and Orbit Advanced Elements is reached by tapping the ORBIT title bar.
+The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Aircraft/Rover/Vehicle (PFD), Orbit (+ Advanced Elements + Maneuver), Target/Docking, Landing (Powered Descent + Re-entry) — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar of six buttons. A first press of a button jumps to its context/primary screen; pressing the button that already owns the active screen cycles that button's modes, and the caption shows the active mode. The PFD button covers the four vehicle-type screens (Spacecraft/Aircraft/Rover/Vehicle) and the ORB button covers Orbit, Advanced Elements, and Maneuver. Title-bar taps no longer switch screens.
 
 **Context-switching:** The display automatically selects the most appropriate screen when the scene or vessel changes. Planes in the atmosphere route to AIRCRAFT, rovers to ROVER, pre-launch vessels to LAUNCH (with the pre-launch board), sub-orbital landers to LANDING (powered descent), vessels near a docking target to DOCKING, recoverable vessels to VEHICLE INFO, and everything else to SPACECRAFT (PFD). Orbit is never auto-selected — reach it from the sidebar.
 
@@ -201,26 +201,22 @@ After initialisation, the InfoDisp asserts INT and spins on `PROCEED` (0x2) befo
 
 ## Screens
 
-The panel displays thirteen screens navigated by ten right-hand sidebar buttons. Screen order follows mission phase progression. The PFD button covers SPACECRAFT / AIRCRAFT / ROVER (context- or title-selected); ORBIT's Advanced Elements view is a tap-through of the ORBIT title bar (no dedicated button).
+The panel displays thirteen screens navigated by six right-hand sidebar buttons. Screen order follows mission phase progression. A first press of a button jumps to its context/primary screen; pressing the button that already owns the active screen cycles its modes, and the button caption shows the active mode. Several buttons are multi-mode: PFD covers SPACECRAFT / AIRCRAFT / ROVER / VEHICLE, ORB covers ORBIT / Advanced Elements / MANEUVER, TGT covers TARGET / DOCKING, and LNDG covers POWERED DESCENT / RE-ENTRY. Title-bar taps no longer switch screens.
 
-| Btn | Sidebar | Screen(s) | Tap-through |
-|-----|---------|-----------|-------------|
-| 0 | LNCH | LAUNCH | Title bar: ASCENT / CIRCULARIZATION. Pre-launch board shown automatically on pad. |
-| 1 | PFD | SPACECRAFT / AIRCRAFT / ROVER | Context-selected; title-touch cycles the three |
-| 2 | ORB | ORBIT | Title bar: APSIDES / ADVANCED ELEMENTS |
-| 3 | VEH | VEHICLE INFO | — |
-| 4 | MNVR | MANEUVER | — |
-| 5 | TGT | TARGET | NO TARGET SET fullscreen when no target |
-| 6 | DOCK | DOCKING | NO TARGET SET / DOCKED fullscreen when applicable |
-| 7 | LNDG | LANDING | Powered descent |
-| 8 | ENTR | RE-ENTRY | — |
-| 9 | ASC | ASCENT AUTOPILOT | Parked at the bottom, physically separated and drawn in a distinct purple. On-screen keypad for parameter entry; touch ARM/DISARM |
+| Btn | Sidebar | Screen(s) | First press / cycle | Caption |
+|-----|---------|-----------|---------------------|---------|
+| 0 | LNCH | LAUNCH | Pre-launch board shown automatically on pad (a press dismisses it into ascent); otherwise press cycles ASCENT ↔ CIRCULARIZATION | PRE / ASC / CIRC |
+| 1 | PFD | SPACECRAFT / AIRCRAFT / ROVER / VEHICLE | First press = context screen (SPC/ACFT/ROVR by vessel; VEH auto-selected for recoverable vessels); press cycles SPC → ACFT → ROVR → VEH | SPC / ACFT / ROVR / VEH |
+| 2 | ORB | ORBIT / ORBIT ADVANCED / MANEUVER | First press = ORBIT (Apsides); press cycles ORB → ORB+ (Advanced Elements) → MNVR (Maneuver) | ORB / ORB+ / MNVR |
+| 3 | TGT | TARGET / DOCKING | First press = DOCKING when a target is within docking range, else TARGET; press cycles TGT ↔ DOCK. NO TARGET SET / DOCKED fullscreen when applicable | TGT / DOCK |
+| 4 | LNDG | POWERED DESCENT / RE-ENTRY | First press = POWERED DESCENT; press cycles DESC ↔ ENTR | DESC / ENTR |
+| 5 | ASC | ASCENT AUTOPILOT | Standalone — parked at the bottom, physically separated and drawn in a distinct purple. On-screen keypad for parameter entry; touch ARM/DISARM | ASC |
 
 **LNCH** — *Pre-launch board* (automatic when `sit_PreLaunch`, bypassed for planes and rovers): vessel name, type, SAS, RCS, throttle, EC%, crew count, CommNet signal, ΔV.Tot, and parachute CAG states. Tap content area or launch to advance to ascent. *Ascent:* Alt.SL, V.Srf, V.Vrt, ApA, T+Ap, Throttle, T.Burn, ΔV.Stg. *Circularization:* Alt.SL, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg. Auto-switches at ~6% body radius with hysteresis.
 
 **ASC** — Ascent Autopilot touch console for the Simpit ascent autopilot (which runs on Controller_Main). Three columns: MISSION inputs (target apoapsis, inclination, launch N/S), VEH PROFILE inputs (loft, roll hold, max-G) + the ARM/DISARM button, and GUIDANCE outputs (commanded pitch/heading/throttle, G, dynamic pressure, ApA, PeA). Boxed input fields open an on-screen numeric keypad (or toggle) and can be edited at any time; a pilot edit shows in cyan until the autopilot echoes the accepted value back. The phase banner and ARM button colour reflect the autopilot phase (IDLE / VERTICAL / GRAVITY TURN / COAST / CIRCULARIZE / COMPLETE / ABORT). Edits and ARM/DISARM are sent over I2C — see `Documents/Developer/Ascent_Autopilot_Interface.md`.
 
-**ORB** — *Apsides (default):* graphical orbit + inclination diagram with numeric readouts Alt.SL, PeA, ApA (left panel) and Inc, Period, Arg.Pe, T+Pe/T+Ap (right panel). *Advanced Elements:* text-only readout — SMA, Ecc, PeA, ApA, Alt.SL, V.Orb, Period (left column) and Inc, LAN, Arg.Pe, True Anom, Mean Anom, T+Pe, T+Ap (right column). Reached by tapping the ORBIT title bar; navigating away via the sidebar returns to Apsides.
+**ORB** — *Apsides (default):* graphical orbit + inclination diagram with numeric readouts Alt.SL, PeA, ApA (left panel) and Inc, Period, Arg.Pe, T+Pe/T+Ap (right panel). *Advanced Elements:* text-only readout — SMA, Ecc, PeA, ApA, Alt.SL, V.Orb, Period (left column) and Inc, LAN, Arg.Pe, True Anom, Mean Anom, T+Pe, T+Ap (right column). Reached by cycling the ORB sidebar button (ORB → ORB+ → MNVR); a first press of ORB from another screen returns to Apsides.
 
 **PFD** — Primary Flight Display (SPACECRAFT): full EADI ball with pitch ladder, roll pointer, fixed spacecraft (boresight) symbol, navball velocity/target/maneuver markers, and Hdg/Pitch/Roll readouts. Right panel: Alt.SL, V.Orb/V.Srf (label swaps with orbital mode), ApA, PeA, T+Ap, T+Ign, ΔV.Stg, and RCS/SAS buttons.
 
@@ -291,7 +287,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_VEH.ino` | Vehicle Info |
 | `Screen_ACFT.ino` | Aircraft — full EADI ball |
 | `Screen_ROVR.ino` | Rover — compass, FWD/REV drive-state blocks, tilt indicators (screen index 9) |
-| `TouchEvents.ino` | Touch debounce, sidebar and title bar dispatch |
+| `TouchEvents.ino` | Touch debounce and sidebar dispatch (mode cycling / screen switch) |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
 | `I2CSlave.ino` | I2C slave at 0x12/0x13 (`INFO_DISP_UNIT`) — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Randomised KSP-themed boot sequences (B: Mission Log, C: Loading Tips, E: Pre-Flight Checklist) |
