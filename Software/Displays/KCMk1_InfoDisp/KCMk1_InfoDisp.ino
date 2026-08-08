@@ -17,7 +17,7 @@
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
   Hardware:
-    Teensy 4.0, RA8875 800x480 TFT, GSL1680F capacitive touch
+    Teensy 4.1, LT7683 (RA8876-compatible) 1024x600 TFT, FT5316 capacitive touch
     SerialUSB1 (USB COM port 2) → KSP via KerbalSimpit plugin
 
   Phase 1: Display framework with 10 screen types, sidebar navigation, demo values. ✓
@@ -49,9 +49,9 @@ void setup() {
 
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
+  infoDB.begin(infoDisp);   // page 0 = visible, canvas = page 0 (boot screen lands here)
   setupSD();
-  setupTouch();
-  attachInterrupt(digitalPinToInterrupt(CTP_INT_PIN), touchISR, RISING);
+  setupTouch();   // FT5316 polling driver (KCM_Touch) — no ISR attach in rev-2
   setupI2CSlave();
 
   bootSimText(infoDisp);
@@ -104,24 +104,76 @@ void loop() {
   }
   _wasDemo = demoMode;
 
-  // --- Standby state: no screen chrome or value updates needed ---
+  // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;
 
-  // --- Screen chrome on transition ---
-  if (prevScreen == screen_COUNT) {
+  // --- Screen transition: a screen change forces a one-time full paint (chrome +
+  //     values) of the new screen and a telemetry refresh so its values populate
+  //     immediately. Steady-state frames redraw only what changed. ---
+  bool screenChanged = (prevScreen != activeScreen);
+  if (screenChanged) {
     if (debugMode) {
       Serial.print(F("InfoDisp: screen -> "));
       Serial.println(activeScreen);
     }
-    drawStaticScreen(infoDisp, activeScreen);
     prevScreen = activeScreen;
-    // Request a full telemetry refresh so the new screen's values populate
-    // immediately rather than waiting for the next natural Simpit update.
     if (!demoMode) simpit.requestMessageOnChannel(0);
   }
 
-  // --- Update display values ---
   if (demoMode) stepDemoState();
 
-  updateScreen(infoDisp, activeScreen);
+  // --- Incremental double buffering ---
+  //  Screen entry (rare): paint full chrome + all values onto the back page, then
+  //  flip. This is the expensive frame (fillScreen + every label re-rasterized).
+  //  Steady state (every other frame): BTE-copy the live front page into the back
+  //  page so it exactly mirrors what's on screen, then run only the change-detected
+  //  updateScreen (a handful of moved gauges / changed values + their erase/repair)
+  //  and flip. Text that didn't change is never re-rasterized — it rides along in
+  //  the hardware copy. Tear-free (page flip) and artifact-free from tearing (all
+  //  drawing happens on the hidden page).
+  uint32_t _copyUs = 0, _updateUs = 0, _flipUs = 0, _t = 0;
+  if (screenChanged) {
+    infoDB.beginFrame(infoDisp);            // canvas -> back page (no copy; we fully paint it)
+    drawStaticScreen(infoDisp, activeScreen);
+    updateScreen(infoDisp, activeScreen);
+    infoDB.flip(infoDisp);
+  } else {
+    infoDB.beginFrameCopy(infoDisp);        // BTE copy front -> back, canvas -> back
+    if (fpsDiag) { _copyUs = infoDB.lastCopyUs; _t = micros(); }
+    updateScreen(infoDisp, activeScreen);
+    if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
+    infoDB.flip(infoDisp);
+    if (fpsDiag) { _flipUs = micros() - _t; } // async geometry completes here (wait-for-GPU)
+  }
+
+  // --- Frame-rate / render-time diagnostic (~1 Hz on Serial). Steady-state frames
+  //     only (screen-entry full paints are excluded so the average reflects the
+  //     incremental cost). copy = BTE front→back; update = change-detected redraw;
+  //     flipwait = block until queued geometry finishes. ---
+  if (fpsDiag && !screenChanged) {
+    static uint32_t _fpsWinStart  = 0;
+    static uint16_t _fpsFrames    = 0;
+    static uint32_t _fpsCopySum   = 0;
+    static uint32_t _fpsUpdateSum = 0;
+    static uint32_t _fpsFlipSum   = 0;
+    _fpsFrames++;
+    _fpsCopySum   += _copyUs;
+    _fpsUpdateSum += _updateUs;
+    _fpsFlipSum   += _flipUs;
+
+    uint32_t now = millis();
+    if (_fpsWinStart == 0) _fpsWinStart = now;
+    if (now - _fpsWinStart >= 1000) {
+      float fps = _fpsFrames * 1000.0f / (float)(now - _fpsWinStart);
+      Serial.print(F("InfoDisp FPS "));      Serial.print(fps, 1);
+      Serial.print(F(" | work ms "));
+      Serial.print((_fpsCopySum + _fpsUpdateSum + _fpsFlipSum) / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" (copy "));            Serial.print(_fpsCopySum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" + update "));         Serial.print(_fpsUpdateSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(" + flipwait "));       Serial.print(_fpsFlipSum / _fpsFrames / 1000.0f, 1);
+      Serial.print(F(") | screen "));        Serial.println(activeScreen);
+      _fpsWinStart = now; _fpsFrames = 0;
+      _fpsCopySum = 0; _fpsUpdateSum = 0; _fpsFlipSum = 0;
+    }
+  }
 }

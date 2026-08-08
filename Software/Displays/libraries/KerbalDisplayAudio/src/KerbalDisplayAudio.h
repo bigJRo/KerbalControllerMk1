@@ -8,10 +8,11 @@
    All timing is millis()-based — no delay() calls.
 
    State machine (priority high → low):
-     AUDIO_MASTER_ALARM  — two-tone alternating loop, started/stopped by the sketch
-     AUDIO_CAUTION_TONE  — single constant tone, fixed duration
-     AUDIO_CHIRP         — two-note ascending or descending sequence, plays once
-     AUDIO_IDLE          — silent
+     AUDIO_MASTER_ALARM          — two-tone alternating loop, started/stopped by the sketch
+     AUDIO_MASTER_ALARM_SILENCED — alarm latched but muted (tone off, crew acknowledged)
+     AUDIO_CAUTION_TONE          — single constant tone, fixed duration
+     AUDIO_CHIRP                 — two-note ascending or descending sequence, plays once
+     AUDIO_IDLE                  — silent
 
    Master alarm condition tracking (which warnings are active, silence latch,
    re-trigger logic) is the responsibility of the calling sketch, not this library.
@@ -21,7 +22,7 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.0.2
+   Version: 1.1.0
 ****************************************************************************************/
 
 /***************************************************************************************
@@ -29,17 +30,29 @@
    Follows the same MAJOR.MINOR.PATCH scheme used by all KCMk1 sketches.
 ****************************************************************************************/
 #define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
-#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 0
-#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 2
+#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 1
+#define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 0
+// 1.1.0 — hardware rev 2: AUDIO_PIN default moved 9 -> 2 (TONE buzzer); added
+//         KCM_DFPlayer (DFPlayer Mini, Serial2) for sampled audio.
 
 #include <Arduino.h>
 
 /***************************************************************************************
    PIN CONFIGURATION
    Override before including this header if needed.
+
+   Hardware rev 2 (KC-01-1911): the master-alarm buzzer is driven from the TONE
+   net on Teensy pin 2 (-> Q1/S8050 -> 4kHz buzzer). Pin 9 is now BL_CTRL
+   (display backlight), so the default moved from 9 to 2. Sketches should set
+   `#define AUDIO_PIN KCM_AUDIO_TONE_PIN` (from KCMk1_SystemConfig) before
+   including this header to stay in sync with the board definition.
+
+   Richer/sampled audio (voice callouts, etc.) is handled separately by the
+   DFPlayer Mini on Serial2 — see KCM_DFPlayer.h. The tone() state machine here
+   is unchanged and still owns the master alarm / caution / chirp cues.
 ****************************************************************************************/
 #ifndef AUDIO_PIN
-  #define AUDIO_PIN 9
+  #define AUDIO_PIN 2
 #endif
 
 /***************************************************************************************

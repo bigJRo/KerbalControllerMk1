@@ -4,31 +4,51 @@
    Included by every .ino tab. Defines types, enums, structs, and extern declarations.
 ****************************************************************************************/
 
-#include <KerbalDisplayCommon.h>
+#include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + ILI9341_t3 fonts
+#include <KCM_Touch.h>             // FT5316 touch: TouchResult/setupTouch/isTouched/readTouch
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
-// I2C slave interface will be added in Phase 3.
+
+// rev-2 compat: the screens declare font pointers as `tFont` (the old sumotoy type
+// name). Fonts are now ILI9341_t3 — alias so the existing declarations compile.
+typedef ILI9341_t3_font_t tFont;
 
 
 /***************************************************************************************
    SCREEN TYPE ENUM
-   Eight information screens navigated by the right-hand sidebar.
-   screen_COUNT is a sentinel — not a real screen.
+   Thirteen information screens reached via ten right-hand sidebar buttons: SCFT/ACFT/
+   ROVR share one "PFD" button (context- or title-selected, see SB_BTN_SCREEN in
+   AAA_Screens.ino), most of the rest map 1:1. LNCHAP (Ascent Autopilot) has its own
+   "ASC" button. ORBADV (Advanced Orbital Elements) has no button — it is a title-tap
+   sub-mode of ORB. LNDGRE (Re-entry) has its own button. ORBADV is manual-select only
+   (contextScreen() never auto-picks it). screen_COUNT is a sentinel — not a real screen.
 ****************************************************************************************/
 enum ScreenType : uint8_t {
-  screen_LNCH  = 0,   // Launch
-  screen_ORB   = 1,   // Orbit (Apsides default + Advanced Elements tap-through)
-  screen_SCFT  = 2,   // Spacecraft attitude (EADI)
-  screen_MNVR  = 3,   // Maneuver
-  screen_TGT   = 4,   // Target / Rendezvous (RPOD display)
-  screen_DOCK  = 5,   // Docking
-  screen_LNDG  = 6,   // Landing
-  screen_VEH   = 7,   // Vehicle
-  screen_ACFT  = 8,   // Aircraft
-  screen_ROVR  = 9,   // Rover
-  screen_COUNT = 10   // sentinel — not a real screen
+  screen_LNCH   = 0,   // Launch
+  screen_ORB    = 1,   // Orbit (Apsides graphic)
+  screen_SCFT   = 2,   // Spacecraft attitude (EADI)
+  screen_MNVR   = 3,   // Maneuver
+  screen_TGT    = 4,   // Target / Rendezvous (RPOD display)
+  screen_DOCK   = 5,   // Docking
+  screen_LNDG   = 6,   // Landing (powered descent)
+  screen_VEH    = 7,   // Vehicle
+  screen_ACFT   = 8,   // Aircraft
+  screen_ROVR   = 9,   // Rover
+  screen_ORBADV = 10,  // Orbit — Advanced Elements (text readout)
+  screen_LNDGRE = 11,  // Landing — Re-entry
+  screen_LNCHAP = 12,  // Ascent Autopilot (replaces ORB+ sidebar slot; ORB+ via ORB title tap)
+  screen_COUNT  = 13   // sentinel — not a real screen
 };
+
+// Manual-lock screen: automatic context switches (vessel change, dock re-check,
+// scene entry) leave RE-ENTRY alone so a deliberate selection sticks — e.g. a
+// re-entry lander shedding debris (heat shield / chutes) emits VESSEL_CHANGE, which
+// would otherwise yank REEN away. ADVANCED ORBIT is no longer locked: a context
+// event may switch away from it like any other ordinary screen.
+inline bool isManualLockScreen(ScreenType s) {
+  return s == screen_LNDGRE;
+}
 
 static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 
@@ -36,8 +56,13 @@ static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 /***************************************************************************************
    DISPLAY OBJECT AND TOUCH
 ****************************************************************************************/
-extern RA8875      infoDisp;
+extern KCM_TFT     infoDisp;
 extern TouchResult lastTouch;
+
+// Hardware double buffer (RA8876 page flip). The loop redraws the whole active
+// screen to the hidden page each frame (Model A) and flips — tear-free and free
+// of single-buffer overdraw artifacts.
+extern KCMDoubleBuffer infoDB;
 
 
 /***************************************************************************************
@@ -47,7 +72,6 @@ extern TouchResult lastTouch;
 ****************************************************************************************/
 extern ScreenType activeScreen;
 extern ScreenType prevScreen;
-extern uint32_t   lastScreenSwitch;   // #8 timestamp of last switchToScreen() call
 void switchToScreen(ScreenType s);
 
 
@@ -57,11 +81,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 2.0.0
+   This sketch requires KerbalDisplayCommon >= 3.1.2
 ****************************************************************************************/
-static const uint8_t SKETCH_VERSION_MAJOR = 0;
-static const uint8_t SKETCH_VERSION_MINOR = 13;
-static const uint8_t SKETCH_VERSION_PATCH = 3;
+static const uint8_t SKETCH_VERSION_MAJOR = 1;
+static const uint8_t SKETCH_VERSION_MINOR = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.0.0: production release (rev-2 display, sidebar nav)
 
 
 /***************************************************************************************
@@ -69,13 +93,12 @@ static const uint8_t SKETCH_VERSION_PATCH = 3;
 ****************************************************************************************/
 extern bool       debugMode;
 extern bool       demoMode;
+extern bool       fpsDiag;   // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
 extern const bool STANDALONE_TEST;  // true = skip I2C master handshake (no master connected)
 extern const float STALL_SPEED_MS;
 extern const float REENTRY_SAS_AERO_STABLE_MACH;
-extern const float LNDG_DROGUE_SAFE_MS;
-extern const float LNDG_DROGUE_RISKY_MS;
-extern const float LNDG_MAIN_SAFE_MS;
-extern const float LNDG_MAIN_RISKY_MS;
+extern const float LNDG_CHUTE_MAIN_MAX_Q;    // main chute rip dynamic pressure (Pa)
+extern const float LNDG_CHUTE_DROGUE_MAX_Q;  // drogue rip dynamic pressure (Pa)
 extern const float LNDG_CHUTE_SEMI_DENSITY;
 extern const float LNDG_DROGUE_FULL_ALT;
 extern const float LNDG_MAIN_FULL_ALT;
@@ -93,7 +116,7 @@ void updateI2CState();
 void buildI2CPacketAndAssert();
 
 // BootScreen.ino
-void bootSimText(RA8875 &tft);
+void bootSimText(KCM_TFT &tft);
 
 // Simpit object (defined in SimpitHandler.ino)
 extern KerbalSimpit simpit;
@@ -139,6 +162,7 @@ struct AppState {
   // Maneuver node
   float     mnvrTime      = 0.0f;    // seconds to next maneuver node
   float     mnvrDeltaV    = 0.0f;    // m/s of next maneuver
+  float     mnvrTotalDeltaV = 0.0f;  // m/s — dV remaining across all planned maneuver nodes (Simpit maneuver deltaVTotal)
   float     mnvrDuration  = 0.0f;    // seconds burn for next maneuver
   float     mnvrHeading   = 0.0f;    // degrees — heading to point for burn (KSP1 only)
   float     mnvrPitch     = 0.0f;    // degrees — pitch to point for burn (KSP1 only)
@@ -159,6 +183,8 @@ struct AppState {
 
   // Action groups
   bool      gear_on       = false;
+  bool      airbrake_on   = false;   // airbrake CAG (AIRBRAKE_CAG) is ON — AIRCRAFT screen
+  bool      trimEnabled   = false;   // trim-hold enabled (from master, I2C controlByte bit 2) — SCFT/ACFT
   bool      brakes_on     = false;
   bool      drogueDeploy  = false;   // drogue deploy CAG is ON
   bool      drogueCut     = false;   // drogue cut CAG is ON (terminal state)
@@ -204,21 +230,49 @@ struct AppState {
   uint8_t         commNetSignal = 0;    // CommNet signal strength 0-100%; 0 when CommNet unused
   bool            inAtmo        = false;   // true when vessel is in atmosphere
   uint8_t         sasMode       = 255;     // AutopilotMode enum; 255 = SAS disabled
+
+  // Ascent autopilot — status echoed from Controller_Main (AscentStatus over I2C).
+  // The parameter fields carry the autopilot's currently-confirmed values; the
+  // InfoDisp stages touch/keypad edits locally and sends them back via the outbound
+  // command channel. Actual Ap/Pe, g-force and SoI body reuse the existing fields
+  // (apoapsis / periapsis / gForce / gameSOI).
+  bool      apArmed        = false;   // autopilot engaged
+  uint8_t   apPhase        = 0;       // 0 IDLE,1 VERTICAL,2 GRAVITY TURN,3 COAST,4 CIRCULARIZE,5 COMPLETE,6 ABORT
+  float     apTargetAlt    = 0.0f;    // m   — commanded target apoapsis
+  float     apInclination  = 0.0f;    // deg 0-180 (0 equatorial, 90 polar, >90 retrograde)
+  bool      apSoutherly    = false;   // launch direction: false = N (ascending), true = S (descending)
+  float     apLoft         = 1.0f;    // exponent ~0.5-2.0 (<1 aggressive, 1 balanced, >1 lofted)
+  bool      apRollEnable   = false;   // roll hold enabled
+  float     apRollDeg      = 0.0f;    // deg -180..180 (roll hold target)
+  float     apMaxG         = 0.0f;    // g cap (0 = off)
+  float     apCmdPitch     = 0.0f;    // deg above horizon (commanded)
+  float     apCmdHeading   = 0.0f;    // deg azimuth (commanded)
+  float     apCmdThrottle  = 0.0f;    // 0..1 (commanded)
+  float     apDynPressure  = 0.0f;    // Pa (dynamic pressure)
 };
 
 extern AppState state;
 extern BodyParams currentBody;
+
+// Re-entry corridor boundaries (metres ASL), used by the RE-ENTRY screen. Declared
+// here (not in the .ino) so Arduino's auto-generated prototypes for the helpers that
+// return it see the type. See Screen_LNDG_Reentry.ino for how the bands are derived.
+struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
 
 
 /***************************************************************************************
    LAYOUT CONSTANTS
    Defined here so both Screens.ino and TouchEvents.ino can reference them.
 ****************************************************************************************/
-// SCREEN_W and SCREEN_H provided by KCMk1_SystemConfig.h as KCM_SCREEN_W / KCM_SCREEN_H
-static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // #3A alias for local code
-static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // #3A alias for local code
-static const uint16_t SIDEBAR_W = 80;
-static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-launch uses slots up to 16)
+// PHASE 2 (rev-2 redesign): the shared framework now spans the full 1024x600 panel.
+// The navigation chrome (sidebar, title bar) and text-row screens derive their
+// geometry from these constants and expand automatically. Graphical screens still
+// carry absolute 800x480 coordinates and render top-left-anchored until each is
+// redesigned in its own step.
+static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // 1024
+static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
+static const uint16_t SIDEBAR_W = 84;
+static const uint8_t  ROW_COUNT = 24;  // max cache slots per screen (Ascent Autopilot uses the most)
 
 
 /***************************************************************************************
@@ -226,21 +280,90 @@ static const uint8_t  ROW_COUNT = 17;  // max cache slots per screen (LNCH pre-l
 ****************************************************************************************/
 
 // Screen*.ino — chrome (static elements drawn once on transition)
-void drawStaticScreen(RA8875 &tft, ScreenType s);
+void drawStaticScreen(KCM_TFT &tft, ScreenType s);
+
+// AAA_Screens.ino — shared SAS-mode navball label/palette (SCFT/ACFT/ROVR)
+void sasNavballLabel(uint8_t mode, const char *&v, uint16_t &fg, uint16_t &bg);
+
+// EADIBall.ino — shared PFD tape/box/roll-readout helpers (SCFT + ACFT).
+// The two attitude screens share pixel-identical tape/box/roll geometry; only the
+// marker sets (which triangles each draws) and roll warn/alarm colouring differ, so
+// those are passed in as parameters. Prototypes are declared here (rather than left to
+// Arduino's auto-prototype pass) because the signatures take references and a struct
+// pointer. Each caller keeps and passes its OWN prev-state caches by reference so the
+// dirty-suppress/reset timing stays per-screen and byte-identical to before.
+struct EadiTapeMarker { float value; uint16_t colour; };   // one coloured tape triangle
+void eadiDrawPitchTape(KCM_TFT &tft, float pitch,
+                       const EadiTapeMarker *markers, uint8_t nMarkers);
+void eadiDrawHeadingTape(KCM_TFT &tft, float hdg, int16_t &prevHdgBox,
+                         const EadiTapeMarker *markers, uint8_t nMarkers);
+void eadiUpdatePitchBox(KCM_TFT &tft, float pitch, int16_t &prevBox);
+void eadiUpdateHdgBox(KCM_TFT &tft, float hdg, int16_t &prevBox);
+void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
+                           int16_t &prevReadout, uint16_t &prevFg);
+// Heading-error wrap to ±180°. Defined in EADIBall.ino; prototyped here so tabs that
+// sort BEFORE EADIBall in the concatenated sketch (e.g. AAA_Screens.ino) can call it.
+float eadiHdgDelta(float a, float b);
+
+// AAA_Screens.ino — shared reticle DOT LAYER (moving markers on top of the shared
+// reticle base) for the TGT and DOCK screens. The two screens draw an identical dot
+// layer — same four markers (target/anti-target + prograde/retrograde), colours, dot
+// radii, clamp logic, erase/repair regions and dirty-suppress timing — differing only
+// in angular SCALE and the four ring-label strings. Those differences are carried in
+// ReticleGeom so one definition serves both. Each screen keeps its OWN ReticleDotCache
+// (passed by reference) so the erase-before-redraw state stays per-screen.
+struct ReticleGeom {
+  int16_t  cx, cy, r;        // disc centre + radius (px) — same for both screens
+  float    scale;            // px per degree (TGT r/60, DOCK r/20)
+  uint8_t  dotRPrimary;      // target/port marker radius
+  uint8_t  dotRVel;          // velocity/prograde marker radius
+  uint8_t  eraseHalf;        // erase-rect half-size
+  const char *const *lbl;    // 4 ring-degree labels, inner→outer
+};
+
+// Per-screen erase-before-redraw cache. 9999 = marker not currently shown (skip erase).
+// Reset to defaults on screen entry via `cache = ReticleDotCache{};`.
+struct ReticleDotCache {
+  int16_t primaryX = 9999, primaryY = 9999;   // target / port
+  int16_t velX     = 9999, velY     = 9999;   // velocity / prograde
+  int16_t antiX    = 9999, antiY    = 9999;   // anti-target (opposite of primary)
+  int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
+};
+
+// The eight derived angles both screens feed to the dot layer, in the shared
+// convention (bearing wrapped to ±180°). Computed from the global `state`.
+struct ReticleAngles {
+  float priBrg,  priElv;     // nose→target (primary marker)
+  float velBrg,  velElv;     // velocity vector vs target bearing
+  float antiBrg, antiElv;    // anti-target (antipodal of primary)
+  float retroBrg, retroElv;  // retrograde (antipodal of velocity)
+};
+
+ReticleAngles reticleComputeAngles();
+void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
+void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
+                            int16_t bx, int16_t by, uint8_t bh);
+void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
+                       float priBrg, float priElv, float velBrg, float velElv,
+                       float antiBrg, float antiElv, float retroBrg, float retroElv);
 
 // Screen*.ino — update (dynamic values redrawn each loop)
-void updateScreen(RA8875 &tft, ScreenType s);
+void updateScreen(KCM_TFT &tft, ScreenType s);
 
 // Standby screen (shown when not in a flight scene)
-void drawStandbyScreen(RA8875 &tft);
+void drawStandbyScreen(KCM_TFT &tft);
 
 // Context-dependent screen selection on vessel/scene change
 ScreenType contextScreen();
 
-// TouchEvents.ino
+// Sidebar button ↔ screen mapping (10 buttons; PFD covers SCFT/ACFT/ROVR)
+uint8_t    screenToButton(ScreenType s);
+ScreenType pfdContextScreen();
+ScreenType pfdScreenForSel(uint8_t sel);
+ScreenType pfdSelectedScreen();
+
+// TouchEvents.ino  (rev-2: FT5316 polling driver — no ISR)
 void processTouchEvents();
-void touchISR();                  // ISR — attached to CTP_INT_PIN RISING in setup()
-extern volatile bool _touchPending;  // set by touchISR, cleared by processTouchEvents
 
 // Demo.ino
 void initDemoMode();
@@ -276,11 +399,14 @@ extern bool _lnchManualOverride;
 extern bool _lnchPrelaunchMode;
 extern bool _lnchPrelaunchDismissed;
 
+// PFD button state (SPACECRAFT/AIRCRAFT/ROVER — title-touch cycle)
+extern bool    _pfdManualOverride;
+extern uint8_t _pfdManualSel;
+
 // LNDG mode state
 extern bool _lndgReentryMode;
-extern bool _lndgReentryRow3PeA;
 extern bool _lndgReentryRow0TPe;
-extern bool _lndgReentryRow1SL;  // true when row 3 shows PeA (radarAlt > 2000m), false = V.Hrz
+extern bool _lndgReentryRow1SL;  // row 1 label: true = Alt.SL (above atmosphere), false = Alt.Rdr
 
 // LNDG parachute deployment state — reset on vessel switch
 extern bool _drogueDeployed;
@@ -298,5 +424,4 @@ extern uint32_t _dockedTimestamp;
 extern bool _pendingContextSwitch;  // set on vessel change; cleared when FLIGHT_STATUS arrives
 extern bool _pendingDockCheck;      // set after context switch; cleared when TARGETINFO arrives
 extern bool _orbAdvancedMode; // true = ADVANCED ELEMENTS tap-through view, false = APSIDES default
-extern bool _prevShowAp;      // Screen_ORB: which time row was last shown (reset on vessel switch)
 extern bool _scftPrevOrbMode;  // Screen_SCFT: previous orbital mode (reset on vessel switch)

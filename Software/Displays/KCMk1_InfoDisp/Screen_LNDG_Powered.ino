@@ -4,12 +4,12 @@
    Active when _lndgReentryMode is FALSE (default). Pilot can toggle to re-entry
    mode via tap (handled in TouchEvents.ino).
 
-   LAYOUT:
-     - Altitude tape (x=4..34)         — vertical 0-500m / 0-50m altitude scale
-     - X-Pointer square (x=120..350)   — horizontal velocity indicator (lat/fwd)
-     - ATT indicator (x=111..227)      — attitude alignment dot in concentric rings
-     - V.Vrt bar (x=283..313)          — vertical velocity 0-15 m/s gauge
-     - Right panel (x=458..720)        — 15 numeric readouts
+   LAYOUT (rev-2 rebalance — graphics fill x=0..578, text panel x=580..940):
+     - Altitude tape (x=0..70, full height)     — vertical 0-500m / 0-50m altitude scale
+     - X-Pointer square (x=128..488, side 360)  — surface-drift centrepiece (lat/fwd velocity)
+     - ATT bullseye (centred under XP, R=50)    — attitude alignment dot in concentric rings
+     - V.Vrt bar (x=544..574, full height)      — vertical velocity 0-15 m/s gauge (far right)
+     - Right panel (x=580..940, 360px)          — numeric readouts
 
    Phase membership (LNDG screen has two modes):
      - POWERED DESCENT (this file)             — default
@@ -25,22 +25,35 @@
 
 /***************************************************************************************
    LAYOUT CONSTANTS
-   Altitude tape: x=4..34, y=TITLE_TOP..SCREEN_H  (full content height = 418px = 0-500m)
-   X-Pointer square: 410×410, x=48..458, y=TITLE_TOP..TITLE_TOP+410
-   Right panel: x=48..CONTENT_W — reserved for later
+   Altitude tape:  x=40..70,  y=TITLE_TOP+8..SCREEN_H  (full height = 0-500m / 0-50m)
+   X-Pointer:      360×360,   x=128..488, y=88..448    (surface-drift centrepiece)
+   ATT bullseye:   R=50,      centred under the X-Pointer
+   V.Vrt bar:      x=544..574, full height             (descent rate 0-15 m/s)
+   Right panel:    x=580..940 (360px, standardized)
 ****************************************************************************************/
+// rev-2 rebalance: the text panel is standardized to the 360px right-panel used by
+// every other screen (x=580..940), freeing the left ~578px for the graphical descent
+// instruments. The X-Pointer (surface-drift) is the featured centrepiece, flanked by
+// full-height altitude and vertical-speed tapes, with the attitude bullseye below it.
+static const uint16_t LNDG_TEXT_X    = 580;              // right text panel left edge (360px wide)
+static const uint16_t LNDG_DIV_X     = LNDG_TEXT_X - 2;  // 578 — graphical/text divider x
+
 static const uint16_t LNDG_TAPE_X    = 40;
-static const uint16_t LNDG_TAPE_W    = 30;
+static const uint16_t LNDG_TAPE_W    = 44;   // matches the ascent-screen vertical bars
 static const uint16_t LNDG_TAPE_Y    = TITLE_TOP + 8;
 static const uint16_t LNDG_TAPE_H    = SCREEN_H - LNDG_TAPE_Y;
 static const float    LNDG_TAPE_PPM  = (float)LNDG_TAPE_H / 500.0f;
 
-static const uint16_t LNDG_XP_X     = 120;
-static const uint16_t LNDG_XP_Y     = LNDG_TAPE_Y + 20;
-static const uint16_t LNDG_XP_SIDE  = 230;
-static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 235
-static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 205
-static const float    LNDG_XP_SCALE = 7.000f;
+// X-Pointer (surface-drift cross-pointer) — the featured instrument. Left/bottom
+// margins carry the FWD/AFT and LATERAL axis ticks + labels, so it is inset from the
+// altitude tape and leaves room below for the axis row and the attitude bullseye.
+static const uint16_t LNDG_XP_X     = 136;
+static const uint16_t LNDG_XP_Y     = TITLE_TOP + 26;               // 88 — below the SURF DRIFT title
+static const uint16_t LNDG_XP_SIDE  = 332;                          // trimmed to give the ATT + ground-track
+                                                                   //   compasses below more room
+static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 308
+static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 268
+static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
 
 // X-Pointer field colours
 static const uint16_t LNDG_XP_BG    = TFT_DARK_GREY;
@@ -78,7 +91,7 @@ static void _lndgHorzColor(float v, float tGround, uint16_t &fg, uint16_t &bg) {
    X-POINTER CHROME ELEMENTS
    Drawn at chrome time and re-applied after needle erase.
 ****************************************************************************************/
-static void _lndgDrawXpChrome(RA8875 &tft) {
+static void _lndgDrawXpChrome(KCM_TFT &tft) {
     uint16_t g5  = (uint16_t)(5.0f  * LNDG_XP_SCALE);
     uint16_t g10 = (uint16_t)(10.0f * LNDG_XP_SCALE);
     uint16_t g2  = (uint16_t)(2.0f  * LNDG_XP_SCALE);
@@ -121,7 +134,7 @@ static void _lndgDrawXpChrome(RA8875 &tft) {
 // Low-altitude tape: covers 0-50m, same geometry as normal tape
 static const float LNDG_TAPE_PPM_LOW = (float)LNDG_TAPE_H / 50.0f;
 
-static void _lndgDrawTapeChrome(RA8875 &tft, bool lowAlt) {
+static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
     float ppm = lowAlt ? LNDG_TAPE_PPM_LOW : LNDG_TAPE_PPM;
 
     // Clear only the numeric label area (x=14..TAPE_X-1), preserving the ALTITUDE strip (x=0..13)
@@ -170,7 +183,7 @@ static void _lndgDrawTapeChrome(RA8875 &tft, bool lowAlt) {
     // Scale labels — right-aligned to x = LNDG_TAPE_X - 2
     // Normal: every 50m, range 50..450 (skip 0m=off-screen, 500m=clips top)
     // Low-alt: every 5m,  range 5..45  (skip 0m=off-screen, 50m=clips top)
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     uint16_t labelStep  = lowAlt ? 5  : 50;
     uint16_t labelStart = lowAlt ? 0  : 0;    // include 0m (clamped to bottom)
@@ -186,8 +199,9 @@ static void _lndgDrawTapeChrome(RA8875 &tft, bool lowAlt) {
         tft.setCursor(lx, ly);
         tft.print(buf);
     }
-    // Redraw ALTITUDE vertical label — must come after label area clear
-    drawVerticalText(tft, 0, 219, 14, 112,
+    // Redraw ALTITUDE vertical label — must come after label area clear.
+    // Full-height box so the label is vertically centred on the tape.
+    drawVerticalText(tft, 0, LNDG_TAPE_Y, 14, LNDG_TAPE_H,
                      &Roboto_Black_12, "ALTITUDE", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
@@ -197,19 +211,22 @@ static void _lndgDrawTapeChrome(RA8875 &tft, bool lowAlt) {
    Field: 120×120px, centred horizontally under X-Pointer
    Scale: ±15° full deflection, 3 reference rings at 5°/10°/15°
 ****************************************************************************************/
-static const uint16_t LNDG_ATT_X     = 111;   // field left edge
-static const uint16_t LNDG_ATT_Y     = 362;   // field top edge (below XP tick/label rows)
-static const uint16_t LNDG_ATT_SIDE  = 116;
-static const uint16_t LNDG_ATT_CX    = LNDG_ATT_X + LNDG_ATT_SIDE / 2;  // 169
-static const uint16_t LNDG_ATT_CY    = LNDG_ATT_Y + LNDG_ATT_SIDE / 2;  // 420
-static const uint8_t  LNDG_ATT_R     = 52;    // outer ring radius (= ±15°)
+// In the band below the X-Pointer's lateral axis row. Shifted left of the
+// X-Pointer centre (307) so the ground-track compass sits to its right, the pair
+// balanced about the centre.
+static const uint16_t LNDG_ATT_CX    = 216;          // left of the X-Pointer centre
+static const uint16_t LNDG_ATT_CY    = 534;          // below the X-Pointer's lateral axis row
+static const uint8_t  LNDG_ATT_R     = 58;           // outer ring radius (= ±15°)
+static const uint16_t LNDG_ATT_SIDE  = LNDG_ATT_R * 2 + 4;
+static const uint16_t LNDG_ATT_X     = LNDG_ATT_CX - LNDG_ATT_SIDE / 2;  // field left edge
+static const uint16_t LNDG_ATT_Y     = LNDG_ATT_CY - LNDG_ATT_SIDE / 2;  // field top edge
 static const float    LNDG_ATT_SCALE = (float)LNDG_ATT_R / 15.0f;
 
 static int16_t _lndgPrevAttX = -999;
 static int16_t _lndgPrevAttY = -999;
 
 
-static void _lndgDrawAttChrome(RA8875 &tft) {
+static void _lndgDrawAttChrome(KCM_TFT &tft) {
     // Black disc background (no bounding square)
     tft.fillCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R + 2, TFT_BLACK);
 
@@ -245,19 +262,19 @@ static void _lndgDrawAttChrome(RA8875 &tft) {
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R,     TFT_GREY);
     tft.drawCircle(LNDG_ATT_CX, LNDG_ATT_CY, LNDG_ATT_R + 1, TFT_DARK_GREY);
 
-    // Range label "15°" outside outer ring, lower-right — 68px from centre (ring edge at 53px)
-    tft.setFont(&Roboto_Black_12);
+    // Range label "15°" outboard of the outer ring, lower-right (clear of the border)
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(207, 461);
+    tft.setCursor(LNDG_ATT_CX + LNDG_ATT_R + 6, LNDG_ATT_CY + LNDG_ATT_R / 2);
     tft.print("15\xb0");
 
-    // "ATT" vertical label to the left of the circle, centred on bar height
-    drawVerticalText(tft, 97, 363 + (116 - 42) / 2, 14, 42,
+    // "ATT" vertical label to the left of the circle, centred on ring height
+    drawVerticalText(tft, LNDG_ATT_CX - LNDG_ATT_R - 20, LNDG_ATT_CY - 21, 14, 42,
                      &Roboto_Black_12, "ATT", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
-static void _lndgDrawAtt(RA8875 &tft) {
+static void _lndgDrawAtt(KCM_TFT &tft) {
     // Deviation of nose from vertical in body frame.
     // tilt = total angular distance from vertical (0 = pointing straight up).
     // Decomposed by roll into screen axes:
@@ -299,6 +316,93 @@ static void _lndgDrawAtt(RA8875 &tft) {
 }
 
 
+/***************************************************************************************
+   GROUND-TRACK COMPASS — heading-up rose with a surface-velocity track marker.
+   Right of the ATT bullseye, the pair balanced about the X-Pointer centre.
+****************************************************************************************/
+static const uint16_t LNDG_TRK_CX = 388;
+static const uint16_t LNDG_TRK_CY = LNDG_ATT_CY;   // same row as the ATT bullseye
+static const uint8_t  LNDG_TRK_R  = 58;
+static float _lndgPrevTrkHdg = -9999.0f;
+static float _lndgPrevTrkVel = -9999.0f;
+
+static void _lndgDrawTrkChrome(KCM_TFT &tft) {
+    tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R + 1, TFT_BLACK);
+    tft.drawCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R,     TFT_GREY);
+    tft.drawCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R + 1, TFT_DARK_GREY);
+
+    // "GND TRK" vertical label to the RIGHT of the rose — mirrors the ATT label
+    drawVerticalText(tft, LNDG_TRK_CX + LNDG_TRK_R + 6, LNDG_TRK_CY - 50, 14, 100,
+                     &Roboto_Black_12, "GND TRK", TFT_LIGHT_GREY, TFT_BLACK);
+
+    _lndgPrevTrkHdg = -9999.0f;   // force the rose to redraw on the next update
+    _lndgPrevTrkVel = -9999.0f;
+}
+
+// Redraw the rotating rose + track marker when heading or the surface-velocity
+// track moves. Heading-up: the vessel nose is fixed at the top (12 o'clock); a
+// world direction wd appears at screen angle (wd - heading - 90)°.
+static void _lndgDrawTrk(KCM_TFT &tft) {
+    float hdg    = state.heading;
+    float trk    = state.srfVelHeading;
+    bool  moving = (state.surfaceVel > 1.0f);   // track meaningful only when moving
+
+    if (_lndgPrevTrkHdg > -9000.0f &&
+        fabsf(hdg - _lndgPrevTrkHdg) < 0.5f &&
+        (!moving || fabsf(trk - _lndgPrevTrkVel) < 0.5f)) return;
+    _lndgPrevTrkHdg = hdg;
+    _lndgPrevTrkVel = trk;
+
+    // Clear the rose interior (inside the bezel)
+    tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, LNDG_TRK_R - 1, TFT_BLACK);
+
+    // Compass ticks every 15° — long/bright at the cardinals, medium at the 30°
+    // marks, short/dim at the intermediate 15° marks, so the finer cadence reads
+    // clearly without crowding the rose.
+    for (int16_t d = 0; d < 360; d += 15) {
+        float   a    = (d - hdg - 90.0f) * (float)DEG_TO_RAD;
+        bool    maj  = (d % 90 == 0);
+        bool    med  = (d % 30 == 0);
+        int16_t r0   = LNDG_TRK_R - 1;
+        int16_t r1   = LNDG_TRK_R - (maj ? 9 : (med ? 6 : 4));
+        float   ca = cosf(a), sa = sinf(a);
+        tft.drawLine(LNDG_TRK_CX + (int16_t)(r0 * ca), LNDG_TRK_CY + (int16_t)(r0 * sa),
+                     LNDG_TRK_CX + (int16_t)(r1 * ca), LNDG_TRK_CY + (int16_t)(r1 * sa),
+                     (maj || med) ? TFT_LIGHT_GREY : TFT_GREY);
+    }
+
+    // Rotating cardinals
+    tft.setFont(Roboto_Black_12);
+    static const int16_t cwd[] = {0, 90, 180, 270};
+    static const char *  ctx[] = {"N", "E", "S", "W"};
+    for (uint8_t i = 0; i < 4; i++) {
+        float   a  = (cwd[i] - hdg - 90.0f) * (float)DEG_TO_RAD;
+        int16_t lx = LNDG_TRK_CX + (int16_t)((LNDG_TRK_R - 19) * cosf(a));
+        int16_t ly = LNDG_TRK_CY + (int16_t)((LNDG_TRK_R - 19) * sinf(a));
+        int16_t cw = getFontStringWidth(&Roboto_Black_12, ctx[i]);
+        tft.setTextColor(cwd[i] == 0 ? TFT_YELLOW : TFT_LIGHT_GREY, TFT_BLACK);
+        tft.setCursor(lx - cw / 2, ly - 7);
+        tft.print(ctx[i]);
+    }
+
+    // Track marker — surface-velocity direction relative to the nose (green arrow
+    // from centre to the rim). Suppressed when nearly stationary.
+    if (moving) {
+        float   ta = (trk - hdg - 90.0f) * (float)DEG_TO_RAD;
+        int16_t tx = LNDG_TRK_CX + (int16_t)((LNDG_TRK_R - 6) * cosf(ta));
+        int16_t ty = LNDG_TRK_CY + (int16_t)((LNDG_TRK_R - 6) * sinf(ta));
+        tft.drawLine(LNDG_TRK_CX, LNDG_TRK_CY, tx, ty, TFT_NEON_GREEN);
+        tft.fillCircle(tx, ty, 4, TFT_NEON_GREEN);
+    }
+
+    // Centre dot (vessel) + fixed nose marker at the top — a filled white triangle
+    // pointing inward from the top rim, far more obvious than a thin lubber line.
+    tft.fillCircle(LNDG_TRK_CX, LNDG_TRK_CY, 3, TFT_DARK_GREY);
+    tft.fillTriangle(LNDG_TRK_CX,     LNDG_TRK_CY - LNDG_TRK_R + 12,
+                     LNDG_TRK_CX - 6, LNDG_TRK_CY - LNDG_TRK_R + 1,
+                     LNDG_TRK_CX + 6, LNDG_TRK_CY - LNDG_TRK_R + 1, TFT_WHITE);
+}
+
 
 /***************************************************************************************
    V.VRT BAR — 0-15 m/s descent rate gauge
@@ -306,22 +410,24 @@ static void _lndgDrawAtt(RA8875 &tft) {
    x=304..334 bar, numeric labels right-align to x=293, "V.Vrt" strip x=250..264
    Colours: green <5, yellow 5-8, red >8 m/s (matches text panel thresholds)
 ****************************************************************************************/
-static const uint16_t LNDG_VV_X    = 283;
-static const uint16_t LNDG_VV_Y    = 363;
-static const uint16_t LNDG_VV_W    = 30;
-static const uint16_t LNDG_VV_H    = 116;
+// Full-height descent-rate bar on the far right of the graphics zone, mirroring the
+// altitude tape on the left and flanking the X-Pointer.
+static const uint16_t LNDG_VV_W    = 44;                          // matches the ascent-screen vertical bars
+static const uint16_t LNDG_VV_X    = 530;                         // bar x=[530,574]; divider at 578
+static const uint16_t LNDG_VV_Y    = TITLE_TOP + 8;              // 70 — top, matching the altitude tape
+static const uint16_t LNDG_VV_H    = SCREEN_H - LNDG_VV_Y - 3;   // bottom border on row 596 (clear of overscan)
 static const float    LNDG_VV_MAX  = 15.0f;
-static const float    LNDG_VV_PPM  = (float)LNDG_VV_H / LNDG_VV_MAX;  // 7.73 px/m/s
-static const uint16_t LNDG_VV_BOT  = LNDG_VV_Y + LNDG_VV_H;           // 479
+static const float    LNDG_VV_PPM  = (float)LNDG_VV_H / LNDG_VV_MAX;
+static const uint16_t LNDG_VV_BOT  = LNDG_VV_Y + LNDG_VV_H;      // 0 m/s baseline
 
 static const uint16_t LNDG_VV_Y5   = LNDG_VV_BOT - (uint16_t)(5.0f  * LNDG_VV_PPM);
 static const uint16_t LNDG_VV_Y8   = LNDG_VV_BOT - (uint16_t)(8.0f  * LNDG_VV_PPM);
-static const uint16_t LNDG_VV_LBRT = 281;  // numeric labels right-align to this x
+static const uint16_t LNDG_VV_LBRT = LNDG_VV_X - 3;  // numeric labels right-align just left of the bar
 
 static float _lndgPrevVV = -9999.0f;
 
 
-static void _lndgDrawVvChrome(RA8875 &tft) {
+static void _lndgDrawVvChrome(KCM_TFT &tft) {
     // Dim zone backgrounds
     tft.fillRect(LNDG_VV_X, LNDG_VV_Y,  LNDG_VV_W, LNDG_VV_Y8 - LNDG_VV_Y,  TFT_DARK_RED);
     tft.fillRect(LNDG_VV_X, LNDG_VV_Y8, LNDG_VV_W, LNDG_VV_Y5 - LNDG_VV_Y8, TFT_OLIVE);
@@ -343,7 +449,7 @@ static void _lndgDrawVvChrome(RA8875 &tft) {
     tft.drawRect(LNDG_VV_X, LNDG_VV_Y, LNDG_VV_W, LNDG_VV_H, TFT_GREY);
 
     // Numeric labels every 5 m/s, right-aligned
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     for (uint16_t v = 0; v <= 15; v += 5) {
         char buf[4]; snprintf(buf, sizeof(buf), "%u", v);
@@ -354,13 +460,14 @@ static void _lndgDrawVvChrome(RA8875 &tft) {
         tft.print(buf);
     }
 
-    // "V.Vrt" vertical label — centred on bar height, 15px gap left of numeric labels
-    drawVerticalText(tft, 250, LNDG_VV_Y + (LNDG_VV_H - 70) / 2, 14, 70,
-                     &Roboto_Black_12, "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
+    // "VERTICAL VELOCITY" vertical label — full-height box so it is vertically
+    // centred on the bar, left of the numeric labels.
+    drawVerticalText(tft, LNDG_VV_X - 34, LNDG_VV_Y, 14, LNDG_VV_H,
+                     &Roboto_Black_12, "VERTICAL VELOCITY", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
-static void _lndgDrawVv(RA8875 &tft) {
+static void _lndgDrawVv(KCM_TFT &tft) {
     float vv     = constrain(-state.verticalVel, 0.0f, LNDG_VV_MAX);
     uint16_t fillH = (uint16_t)(vv * LNDG_VV_PPM);
     uint16_t fillY = LNDG_VV_BOT - fillH;
@@ -412,9 +519,13 @@ static void _lndgDrawVv(RA8875 &tft) {
 /***************************************************************************************
    CHROME: POWERED DESCENT
 ****************************************************************************************/
-static void _lndgChromePowered(RA8875 &tft) {
+static void _lndgChromePowered(KCM_TFT &tft) {
 
-
+    // Select the tape regime from the current altitude BEFORE painting the tape
+    // chrome, otherwise the background is drawn with the stale mode left over from
+    // the previous screen visit while the per-frame strip update uses the correct
+    // one — producing a mixed normal/low-alt colour scheme on the tape.
+    _lndgLowAltMode = (state.radarAlt < 50.0f);
 
     // ── Altitude tape chrome ──
     _lndgDrawTapeChrome(tft, _lndgLowAltMode);
@@ -438,16 +549,16 @@ static void _lndgChromePowered(RA8875 &tft) {
         // x=80..94: 10px gap from tape right (70), 4px gap to numeric labels (x=98)
         // FWD: top-aligned with XP top edge
         // AFT: bottom-aligned with XP bottom edge
-        drawVerticalText(tft, 80, LNDG_XP_Y,      14, 42,
+        drawVerticalText(tft, LNDG_XP_X - 48, LNDG_XP_Y,   14, 42,
                          &Roboto_Black_12, "FWD", TFT_LIGHT_GREY, TFT_BLACK);
-        drawVerticalText(tft, 80, botY - 42,        14, 42,
+        drawVerticalText(tft, LNDG_XP_X - 48, botY - 42,   14, 42,
                          &Roboto_Black_12, "AFT", TFT_LIGHT_GREY, TFT_BLACK);
 
         // ── LATERAL axis label + L/R — all on the same row below bottom axis ──
         // L: left-aligned with XP left edge
         // LATERAL: centred on XP
         // R: right-aligned with XP right edge
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(LNDG_XP_X, botY + 24);                            tft.print("L");
         tft.setCursor(LNDG_XP_CX - 24, botY + 24);                      tft.print("LATERAL");
@@ -482,7 +593,7 @@ static void _lndgChromePowered(RA8875 &tft) {
                 // Left axis: right-aligned, leaving room for vertical axis label strip
                 uint16_t lx = LNDG_XP_X - 8 - lw;
                 uint16_t ly = (uint16_t)max((int16_t)LNDG_XP_Y, (int16_t)(ty - 7));
-                tft.setFont(&Roboto_Black_12);
+                tft.setFont(Roboto_Black_12);
                 tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
                 tft.setCursor(lx, ly);
                 tft.print(buf);
@@ -497,7 +608,7 @@ static void _lndgChromePowered(RA8875 &tft) {
         // Zero tick + label on left axis
         tft.drawLine(LNDG_XP_X - 1, LNDG_XP_CY,
                      LNDG_XP_X - 1 - MAJ, LNDG_XP_CY, COL);
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(LNDG_XP_X - 8 - 7, LNDG_XP_CY - 7);
         tft.print("0");
@@ -511,31 +622,33 @@ static void _lndgChromePowered(RA8875 &tft) {
 
     // ── Instrument title labels ──
     // "SURF DRIFT" — horizontal, centred above the XP field
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(200, 70);
+    tft.setCursor(LNDG_XP_CX - 35, LNDG_XP_Y - 18);
     tft.print("SURF DRIFT");
 
     // ── Right panel chrome ──
-    // 8 rows using Roboto_Black_20 labels, Roboto_Black_28 values
+    // 8 rows: full-width rows use Roboto_Black_28 labels / Roboto_Black_36 values
+    // (reticle tier); split rows (Fwd/Lat/Thrtl) stay at Roboto_Black_20 labels.
     // x=360..720, y=TITLE_TOP..SCREEN_H
     {
-        static const tFont   *RCF = &Roboto_Black_20;
-        static const uint16_t RX  = 364;
+        static const tFont   *RCF  = &Roboto_Black_28;  // full-width row labels — reticle tier
+        static const tFont   *RCFS = &Roboto_Black_20;  // split-row labels (Fwd/Lat/Thrtl) stay one tier smaller
+        static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;           // 360px
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;                   // 180px — half width for split rows
 
         printDispChrome(tft, RCF, RX, rowYFor(0,RNR), RW,  rowHFor(RNR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T.Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T+Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, RCF, RX, rowYFor(2,RNR), RW,  rowHFor(RNR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, RCF, RX, rowYFor(3,RNR), RW,  rowHFor(RNR), "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
         // Row 4: Fwd | Lat split
         {
             uint16_t y = rowYFor(4, RNR), h = rowHFor(RNR);
-            printDispChrome(tft, RCF, RX,        y, RHW - ROW_PAD, h, "Fwd:", COL_LABEL, COL_BACK, COL_NO_BDR);
-            printDispChrome(tft, RCF, RX + RHW,  y, RHW - ROW_PAD, h, "Lat:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX,        y, RHW - ROW_PAD, h, "Fwd:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX + RHW,  y, RHW - ROW_PAD, h, "Lat:", COL_LABEL, COL_BACK, COL_NO_BDR);
             tft.drawLine(RX + RHW,     y, RX + RHW,     rowYFor(5,RNR) - 1, TFT_GREY);
             tft.drawLine(RX + RHW + 1, y, RX + RHW + 1, rowYFor(5,RNR) - 1, TFT_GREY);
         }
@@ -545,20 +658,20 @@ static void _lndgChromePowered(RA8875 &tft) {
         // Divider before VEH section
         uint16_t divY = rowYFor(6, RNR) - 1;
         // (VEH section horizontal divider kept, label omitted — sits in graphical area)
-        tft.drawLine(360, divY,   CONTENT_W, divY,   TFT_GREY);
-        tft.drawLine(360, divY+1, CONTENT_W, divY+1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, divY,   CONTENT_W, divY,   TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, divY+1, CONTENT_W, divY+1, TFT_GREY);
 
         // ── All 2px borders ──
-        // VERTICAL: graphical | text section divider (x=360..361, full height)
-        tft.drawLine(360, TITLE_TOP, 360, SCREEN_H - 1, TFT_GREY);
-        tft.drawLine(361, TITLE_TOP, 361, SCREEN_H - 1, TFT_GREY);
+        // VERTICAL: graphical | text section divider (full height)
+        tft.drawLine(LNDG_DIV_X,     TITLE_TOP, LNDG_DIV_X,     SCREEN_H - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X + 1, TITLE_TOP, LNDG_DIV_X + 1, SCREEN_H - 1, TFT_GREY);
 
         // Horizontal borders drawn in draw function (after value updates) to avoid being overwritten
 
         // Row 6: Throttle | RCS split — throttle keeps label, RCS is a button
         {
             uint16_t y = rowYFor(6, RNR), h = rowHFor(RNR);
-            printDispChrome(tft, RCF, RX, y, RHW - ROW_PAD, h, "Thrtl:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX, y, RHW - ROW_PAD, h, "Thrtl:", COL_LABEL, COL_BACK, COL_NO_BDR);
             tft.drawLine(RX + RHW,     y, RX + RHW,     rowYFor(7,RNR) - 1, TFT_GREY);
             tft.drawLine(RX + RHW + 1, y, RX + RHW + 1, rowYFor(7,RNR) - 1, TFT_GREY);
         }
@@ -574,10 +687,13 @@ static void _lndgChromePowered(RA8875 &tft) {
     // Attitude bullseye
     _lndgDrawAttChrome(tft);
 
+    // Ground-track compass
+    _lndgDrawTrkChrome(tft);
+
     // Redraw LATERAL row labels — bullseye fillCircle may overdraw them
     {
         uint16_t botY = LNDG_XP_Y + LNDG_XP_SIDE;
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_12);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
         tft.setCursor(LNDG_XP_X,                           botY + 24); tft.print("L");
         tft.setCursor(LNDG_XP_CX - 24,                     botY + 24); tft.print("LATERAL");
@@ -594,7 +710,8 @@ static void _lndgChromePowered(RA8875 &tft) {
     _lndgPrevAttX   = -999;
     _lndgPrevAttY   = -999;
     _lndgPrevVV     = -9999.0f;
-    _lndgLowAltMode = (state.radarAlt < 50.0f);
+    // _lndgLowAltMode is set at the top of this function (before the tape chrome
+    // is painted) so the initial background matches the per-frame strip regime.
     // Clear right panel row caches so values redraw on first update
     for (uint8_t r = 0; r <= 14; r++) rowCache[6][r].value = "\x01";
 }
@@ -602,17 +719,19 @@ static void _lndgChromePowered(RA8875 &tft) {
 /***************************************************************************************
    DRAW: POWERED DESCENT
 ****************************************************************************************/
-static void _lndgDrawPowered(RA8875 &tft) {
+static void _lndgDrawPowered(KCM_TFT &tft) {
 
-    // Shared precompute
-    bool inOrbitOrEscape = (state.situation == sit_Orbit || state.situation == sit_Escaping);
-    float tGround = (!inOrbitOrEscape && state.verticalVel < -0.05f && state.radarAlt > 0.0f)
-                    ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
+    // Advance the shared vertical-accel filter exactly once per frame, before any
+    // estimate*() read below (both the X-Pointer colour and the panel use tGround).
+    ttgAdvanceAccel();
+
+    // Regime-aware time-to-ground (Keplerian coast / thrust+drag kinematic / naive)
+    float tGround = estimateTimeToGround();
     float vSq  = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
     float hSpd = (vSq > 0.0f) ? sqrtf(vSq) : 0.0f;
 
-    float headRad    = (state.heading + state.roll) * 0.017453f;
-    float svelHdgRad = state.srfVelHeading * 0.017453f;
+    float headRad    = (state.heading + state.roll) * DEG_TO_RAD;
+    float svelHdgRad = state.srfVelHeading * DEG_TO_RAD;
     float dHeadRad   = svelHdgRad - headRad;
     float vFwd = -hSpd * cosf(dHeadRad);
     float vLat = -hSpd * sinf(dHeadRad);
@@ -624,6 +743,10 @@ static void _lndgDrawPowered(RA8875 &tft) {
     float fwdClamped = constrain(vFwd, -15.0f, 15.0f);
     int16_t latX = (int16_t)(LNDG_XP_CX + latClamped * LNDG_XP_SCALE);
     int16_t fwdY = (int16_t)(LNDG_XP_CY - fwdClamped * LNDG_XP_SCALE);
+    // Keep the needle intersection at least 8px inside the field so the connecting
+    // bars still draw, and the arrowhead/erase boxes (±7px) never spill past the edge.
+    latX = constrain(latX, (int16_t)(LNDG_XP_X + 8), (int16_t)(LNDG_XP_X + LNDG_XP_SIDE - 8));
+    fwdY = constrain(fwdY, (int16_t)(LNDG_XP_Y + 8), (int16_t)(LNDG_XP_Y + LNDG_XP_SIDE - 8));
 
     // Needle colour: dark green=safe, yellow=warn, red=alarm
     float driftMag = sqrtf(vLat * vLat + vFwd * vFwd) / 1.414f;
@@ -671,6 +794,10 @@ static void _lndgDrawPowered(RA8875 &tft) {
                 tft.drawLine(nx1, fy, nx2, fy, needleCol);
         }
 
+        // Redraw the border FIRST (cleans up where the bars touched it) so the
+        // arrowheads and intersection circle below always render on top of it.
+        tft.drawRect(LNDG_XP_X, LNDG_XP_Y, LNDG_XP_SIDE, LNDG_XP_SIDE, TFT_GREY);
+
         // Arrowheads — lateral needle (top + bottom)
         tft.fillTriangle(latX,     LNDG_XP_Y + 4,
                          latX - 6, LNDG_XP_Y + 16,
@@ -689,9 +816,6 @@ static void _lndgDrawPowered(RA8875 &tft) {
         // Intersection circle at needle crossing — solid fill, white centre dot
         tft.fillCircle(latX, fwdY, 7, needleCol);
         tft.fillCircle(latX, fwdY, 3, TFT_WHITE);
-
-        // Redraw border on top — needles and arrowheads may touch it
-        tft.drawRect(LNDG_XP_X, LNDG_XP_Y, LNDG_XP_SIDE, LNDG_XP_SIDE, TFT_GREY);
 
         // Centre reference dot always on top
         tft.fillCircle(LNDG_XP_CX, LNDG_XP_CY, 5, TFT_BLACK);
@@ -790,26 +914,26 @@ static void _lndgDrawPowered(RA8875 &tft) {
         _lndgPrevAlt = (float)newFillY;
     }
 
-    // Attitude bullseye + V.Vrt bar
+    // Attitude bullseye + ground-track compass + V.Vrt bar
     _lndgDrawAtt(tft);
+    _lndgDrawTrk(tft);
     _lndgDrawVv(tft);
 
     // ── Right panel values ──
     {
-        static const tFont   *RF  = &Roboto_Black_28;
-        static const uint16_t RX  = 364;
+        static const tFont   *RF  = &Roboto_Black_36;   // full-width value font — reticle tier, matches the re-entry panel (both LNDG modes)
+        static const uint16_t RX  = LNDG_TEXT_X;
         static const uint16_t RW  = CONTENT_W - RX;
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;
 
-        // Shared precompute (some already done above for XP — recompute cleanly here)
-        bool   inOrb    = (state.situation == sit_Orbit || state.situation == sit_Escaping);
-        float  tGround  = (!inOrb && state.verticalVel < -0.05f && state.radarAlt > 0.0f)
-                          ? fabsf(state.radarAlt / state.verticalVel) : -1.0f;
+        // Reuse the frame's time-to-ground (computed once at the top of this
+        // function) so the panel value and the X-Pointer colour stay consistent
+        // and the shared accel filter is advanced only once per frame.
         float  vSq2     = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
         float  hSpd2    = (vSq2 > 0.0f) ? sqrtf(vSq2) : 0.0f;
-        float  headRad2 = (state.heading + state.roll) * 0.017453f;
-        float  svelRad2 = state.srfVelHeading * 0.017453f;
+        float  headRad2 = (state.heading + state.roll) * DEG_TO_RAD;
+        float  svelRad2 = state.srfVelHeading * DEG_TO_RAD;
         float  dHR2     = svelRad2 - headRad2;
         float  vFwd2    = -hSpd2 * cosf(dHR2);
         float  vLat2    = -hSpd2 * sinf(dHR2);
@@ -822,11 +946,7 @@ static void _lndgDrawPowered(RA8875 &tft) {
         // Helper: draw a right-panel value with row-cache
         auto rpVal = [&](uint8_t row, const char *label, const String &val,
                          uint16_t fgc, uint16_t bgc, uint8_t cacheIdx) {
-            RowCache &rc = rowCache[6][cacheIdx];
-            if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-            printValue(tft, RF, RX, rowYFor(row,RNR), RW, rowHFor(RNR),
-                       label, val, fgc, bgc, COL_BACK, printState[6][cacheIdx]);
-            rc.value = val; rc.fg = fgc; rc.bg = bgc;
+            drawPanelValue(tft, 6, cacheIdx, row, RX, RW, label, val, fgc, bgc, RF, RNR, false);
         };
 
         // Row 0: V.Vrt
@@ -837,22 +957,17 @@ static void _lndgDrawPowered(RA8875 &tft) {
             rpVal(0, "V.Vrt:", fmtMs(state.verticalVel), fg, bg, 0);
         }
 
-        // Row 1: T.Grnd
+        // Row 1: T.Grnd — colours via the shared hysteresis helper (anti-flicker)
         {
-            if (tGround >= 0.0f) {
-                fg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_WHITE  :
-                     (tGround < LNDG_TGRND_WARN_S)  ? TFT_YELLOW : TFT_DARK_GREEN;
-                bg = (tGround < LNDG_TGRND_ALARM_S) ? TFT_RED    : TFT_BLACK;
-                rpVal(1, "T.Grnd:", formatTime(tGround), fg, bg, 1);
-            } else {
-                rpVal(1, "T.Grnd:", "---", TFT_DARK_GREY, TFT_BLACK, 1);
-            }
+            lndgTGroundColors(tGround, fg, bg);
+            if (tGround >= 0.0f) rpVal(1, "T+Grnd:", formatTimeCompact(tGround), fg, bg, 1);
+            else                 rpVal(1, "T+Grnd:", "---", fg, bg, 1);
         }
 
         // Row 2: Alt.Rdr
         {
             fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
-                 (state.radarAlt < 200.0f)          ? TFT_YELLOW : TFT_DARK_GREEN;
+                 (state.radarAlt < LNDG_ALT_RDR_WARN_M) ? TFT_YELLOW : TFT_DARK_GREEN;
             bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
             rpVal(2, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg, 2);
         }
@@ -890,10 +1005,14 @@ static void _lndgDrawPowered(RA8875 &tft) {
             }
         }
 
-        // Row 5: ΔV.Stg
+        // Row 5: ΔV.Stg (low-stage-fuel warning, matches VEH/LNCH)
         {
-            snprintf(buf, sizeof(buf), "%.0f", state.stageDeltaV);
-            rpVal(5, "\xCE\x94V.Stg:", String(buf) + "m/s", TFT_DARK_GREEN, TFT_BLACK, 6);
+            uint16_t sfg, sbg;
+            thresholdColor(state.stageDeltaV,
+                           DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
+                           DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
+                           TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            rpVal(5, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), sfg, sbg, 6);
         }
 
         // Row 6: Throttle | RCS (split)
@@ -904,7 +1023,8 @@ static void _lndgDrawPowered(RA8875 &tft) {
                 String ts = buf;
                 RowCache &tc = rowCache[6][7];
                 if (tc.value != ts) {
-                    printValue(tft, RF, RX, y, RHW-ROW_PAD, h, "Thrtl:", ts, TFT_DARK_GREEN, TFT_BLACK, COL_BACK, printState[6][7]);
+                    // Thrtl stays at 28 — it shares a half-cell with the RCS button, too tight for 32.
+                    printValue(tft, &Roboto_Black_28, RX, y, RHW-ROW_PAD, h, "Thrtl:", ts, TFT_DARK_GREEN, TFT_BLACK, COL_BACK, printState[6][7]);
                     tc.value = ts; tc.fg = TFT_DARK_GREEN; tc.bg = TFT_BLACK;
                 }
             }
@@ -917,7 +1037,7 @@ static void _lndgDrawPowered(RA8875 &tft) {
                     ButtonLabel btn = rcsOn
                         ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                         : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                    drawButton(tft, RX + RHW, y, RHW, h, btn, &Roboto_Black_20, false);
+                    drawButton(tft, RX + RHW, y, RHW, h, btn, &Roboto_Black_28, false);
                     rc2.value = rv;
                 }
             }
@@ -936,7 +1056,7 @@ static void _lndgDrawPowered(RA8875 &tft) {
                     ButtonLabel btn = gearDown
                         ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                         : ButtonLabel{ "GEAR", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                    drawButton(tft, RX - 2, y, RHW + 2, rh, btn, &Roboto_Black_20, false);
+                    drawButton(tft, RX - 2, y, RHW + 2, rh, btn, &Roboto_Black_28, false);
                     gc.value = gv;
                 }
             }
@@ -953,7 +1073,7 @@ static void _lndgDrawPowered(RA8875 &tft) {
                 String ssv = sv;
                 if (sc.value != ssv || sc.fg != sfg || sc.bg != sbg) {
                     ButtonLabel btn = { sv, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };
-                    drawButton(tft, RX + RHW, y, RHW, rh, btn, &Roboto_Black_20, false);
+                    drawButton(tft, RX + RHW, y, RHW, rh, btn, &Roboto_Black_28, false);
                     sc.value = ssv; sc.fg = sfg; sc.bg = sbg;
                 }
             }
@@ -961,14 +1081,14 @@ static void _lndgDrawPowered(RA8875 &tft) {
 
         // Horizontal borders redrawn last — after all value updates so they're never overwritten
         // Alt.Rdr | V.Srf (rows 2→3)
-        tft.drawLine(360, rowYFor(3,RNR) - 2, CONTENT_W, rowYFor(3,RNR) - 2, TFT_GREY);
-        tft.drawLine(360, rowYFor(3,RNR) - 1, CONTENT_W, rowYFor(3,RNR) - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(3,RNR) - 2, CONTENT_W, rowYFor(3,RNR) - 2, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(3,RNR) - 1, CONTENT_W, rowYFor(3,RNR) - 1, TFT_GREY);
         // Fwd/Lat | ΔV.Stg (rows 4→5)
-        tft.drawLine(360, rowYFor(5,RNR) - 2, CONTENT_W, rowYFor(5,RNR) - 2, TFT_GREY);
-        tft.drawLine(360, rowYFor(5,RNR) - 1, CONTENT_W, rowYFor(5,RNR) - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(5,RNR) - 2, CONTENT_W, rowYFor(5,RNR) - 2, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(5,RNR) - 1, CONTENT_W, rowYFor(5,RNR) - 1, TFT_GREY);
         // ΔV.Stg | Thrtl/RCS (rows 5→6)
-        tft.drawLine(360, rowYFor(6,RNR) - 2, CONTENT_W, rowYFor(6,RNR) - 2, TFT_GREY);
-        tft.drawLine(360, rowYFor(6,RNR) - 1, CONTENT_W, rowYFor(6,RNR) - 1, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(6,RNR) - 2, CONTENT_W, rowYFor(6,RNR) - 2, TFT_GREY);
+        tft.drawLine(LNDG_DIV_X, rowYFor(6,RNR) - 1, CONTENT_W, rowYFor(6,RNR) - 1, TFT_GREY);
     }
 }
 

@@ -4,7 +4,7 @@
    Defence layers (ported from KCMk1_InfoDisp):
    1. Count filter   — reject count != 1. No multi-touch gestures on this panel.
    2. Y dead zone    — reject y >= SCREEN_H - TOUCH_DEAD_ZONE (bottom 12px).
-                       GSL1680F ghost touches accumulate at y≈479 (screen boundary).
+                       FT5316 boundary ghost touches tend to land near y≈599 (screen edge).
    3. X bounds check — reject x >= SCREEN_W.
    4. Double-read with coordinate stability — re-read after 8ms; discard if count
                        dropped to 0 OR coordinates moved more than TOUCH_JITTER_MAX px.
@@ -30,13 +30,23 @@ static const uint16_t SCREEN_H           = KCM_SCREEN_H;   // #3A from SystemCon
 
 static uint32_t _lastTouchTime   = 0;
 static bool     _waitForRelease  = false;
+// Boot phantom guard: the FT5316 can report a spurious/settling touch for a short
+// window after its reset. Require at least one confirmed "not touched" reading
+// before accepting ANY tap, so a touch already present at boot cannot fire a
+// gesture (which was knocking the panel onto the SOI screen at startup). Cleared
+// to true the first time the screen is observed untouched.
+static bool     _bootReleaseSeen = false;
 
 
 void processTouchEvents() {
   if (!isTouched()) {
-    _waitForRelease = false;
+    _waitForRelease  = false;
+    _bootReleaseSeen = true;   // screen observed untouched — real taps now allowed
     return;
   }
+
+  // Ignore everything until we've seen the panel released at least once (boot phantom).
+  if (!_bootReleaseSeen) return;
 
   // First read
   lastTouch = readTouch();
@@ -112,8 +122,9 @@ void processTouchEvents() {
           alarmSilenced = true;
           audioSilence();
         }
-      } else if (x2 < MASTER_W && y2 >= MASTER_H) {
-        // SOI area — switch to SOI screen
+      } else if (x2 < MASTER_W && y2 >= MASTER_H && y2 < TOP_H) {
+        // SOI strip + globe area (left column, below master alarm) — go to SOI.
+        // Bounded to the top zone so taps on the bottom telemetry block don't fire.
         switchToScreen(screen_SOI);
         clearTouchISR();
       }

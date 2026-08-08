@@ -1,14 +1,14 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v1.3.0
-Teensy 4.0 firmware for the KSP resource monitoring display module.
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.0.1
+Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
 ---
 
 ## Overview
 
-The Resource Display is an 800×480 touchscreen panel that presents real-time KSP resource telemetry sourced from KerbalSimpit. It runs on a Teensy 4.0 and receives telemetry over USB serial from a running KSP instance. The panel tracks up to 16 resource slots simultaneously and supports per-vessel configuration memory for up to 20 vessels per session.
+The Resource Display is a 1024×600 touchscreen panel that presents real-time KSP resource telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance. The panel tracks up to 16 resource slots simultaneously and supports per-vessel configuration memory for up to 20 vessels per session.
 
 The panel provides four screens — Standby, Main, Select, and Detail — navigated by touch. The Main screen is the primary operational view, displaying resource levels as a bar graph. The Select screen allows the user to configure which resources are monitored and load preset configurations. The Detail screen provides a numerical breakdown of a single resource by craft and stage values.
 
@@ -16,40 +16,48 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 
 ## Hardware
 
+Hardware rev 2: the panel moved from the rev-1 RA8875 800×480 SPI stack to the shared 7" TFT carrier. All pins and the resolution come from `KCMk1_SystemConfig.h`.
+
+The display controller is the **LT7683** (the physical part on the ER-TFT070A2-6-5633 module); it is register-compatible with the RA8876, so the firmware drives it through the `wwatson4506/TeensyRA8876-8080` FlexIO3 driver (class `RA8876_t41_p`). "RA8876" therefore appears in driver/library/class names throughout, while the hardware part is the LT7683.
+
 | Component | Part | Interface |
 |-----------|------|-----------|
-| Microcontroller | Teensy 4.0 | — |
-| Display | RA8875 800×480 TFT | SPI |
-| Touch controller | GSL1680F capacitive | Wire1 (I2C) |
-| SD card | SD (on RA8875 board) | SPI |
+| Microcontroller | Teensy 4.1 | — |
+| Display | LT7683 (RA8876-compatible) 1024×600 TFT | 16-bit 8080 parallel (FlexIO3) |
+| Touch controller | FT5316 5-point capacitive | software I2C (pins 4/5) |
+| SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
-| I2C slave bus | Master Teensy 4.1 | Wire (I2C) |
+| I2C slave bus | Master Teensy 4.1 | Wire2 (pins 24/25) |
 
 ### Pin Assignments
 
-| Pin | Function | Direction | Assigned by |
-|-----|----------|-----------|-------------|
-| 10 | RA8875 SPI chip select | OUT | KerbalDisplayCommon (`RA8875_CS`) |
-| 11 | SPI MOSI | OUT | Teensy hardware SPI (fixed) |
-| 12 | SPI MISO | IN | Teensy hardware SPI (fixed) |
-| 13 | SPI SCK | OUT | Teensy hardware SPI (fixed) |
-| 15 | RA8875 RESET | OUT | KerbalDisplayCommon (`RA8875_RESET`) |
-| 4 | SD card detect (active-LOW) | IN | KerbalDisplayCommon (`SD_DETECT_PIN`) |
-| 5 | SD card SPI chip select | OUT | KerbalDisplayCommon (`SD_CS_PIN`) |
-| 16 | GSL1680F SCL (Wire1) | — | KerbalDisplayCommon (`CTP_SCL_PIN`) |
-| 17 | GSL1680F SDA (Wire1) | — | KerbalDisplayCommon (`CTP_SDA_PIN`) |
-| 3 | GSL1680F WAKE | OUT | KerbalDisplayCommon (`CTP_WAKE_PIN`) |
-| 22 | GSL1680F INT (HIGH when touched) | IN | KerbalDisplayCommon (`CTP_INT_PIN`) |
-| 9 | Audio PWM (claimed by library, not used) | OUT | KerbalDisplayAudio (`AUDIO_PIN`) |
-| 18 | I2C SDA (Wire — master bus) | — | Sketch / Wire library |
-| 19 | I2C SCL (Wire — master bus) | — | Sketch / Wire library |
-| 2 | I2C interrupt output to master (active-LOW) | OUT | Sketch (`KCM_I2C_INT_PIN`) |
+All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig.h` (shared across the rev-2 panels). Key lines:
+
+| Pin | Function | Direction | Define |
+|-----|----------|-----------|--------|
+| 34 | Display /CS chip select | OUT | `KCM_TFT_CS` |
+| 33 | Display RS register/data select | OUT | `KCM_TFT_RS` |
+| 35 | Display /RST reset | OUT | `KCM_TFT_RESET` |
+| 36 | Display /WR write strobe | OUT | `KCM_TFT_WR` |
+| 37 | Display /RD read strobe | OUT | `KCM_TFT_RD` |
+| 32 | Display WAIT | IN | `KCM_TFT_WAIT` |
+| 31 | Display INT | IN | `KCM_TFT_INT` |
+| 9 | TFT backlight enable / PWM | OUT | `KCM_TFT_BL` |
+| DB0..DB15 | 16-bit parallel data bus | — | FlexIO3 (driver-owned) |
+| 4 | FT5316 SCL (software I2C) | — | `KCM_CTP_SCL` |
+| 5 | FT5316 SDA (software I2C) | — | `KCM_CTP_SDA` |
+| 3 | FT5316 /RST | OUT | `KCM_CTP_RST` |
+| 6 | FT5316 INT | IN | `KCM_CTP_INT` |
+| — | SD card (SDIO) | — | `BUILTIN_SDCARD` |
+| 24 | I2C SCL2 (Wire2 — master bus) | — | `KCM_I2C_BUS` |
+| 25 | I2C SDA2 (Wire2 — master bus) | — | `KCM_I2C_BUS` |
+| 0 | I2C interrupt output to master (active-LOW) | OUT | `KCM_I2C_INT_PIN` |
 
 **Serial ports:**
 - `Serial` (USB COM port 4) — debug output only
 - `SerialUSB1` (USB COM port 5) — KerbalSimpit telemetry traffic
 
-**I2C note:** Wire (pins 18/19) is the master bus at address **0x11**. Wire1 (pins 16/17) is used exclusively for the GSL1680F touch controller. Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side.
+**I2C note:** Wire2 (pins 24/25) is the master bus at address **0x11** (`KCM_I2C_ADDR_RESDISP`). The FT5316 touch controller runs on a separate bit-banged software I2C bus (pins 4/5, address 0x38). Pull-ups on the master bus (4.7 kΩ to 3.3 V) should be placed on the master side. Note pin 9 is now the TFT backlight; KerbalDisplayAudio is linked but never invoked on this panel (and its `AUDIO_PIN` default is pin 2, not 9), so it drives no pins and does not conflict with the backlight.
 
 ---
 
@@ -57,9 +65,10 @@ The panel provides four screens — Standby, Main, Select, and Detail — naviga
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | 2.1.0 | Display primitives, fonts, BMP loader, touch driver, system utils |
-| KerbalDisplayAudio | 1.0.1 | Direct sketch dependency — audio output not used on this panel |
-| RA8875 (PaulStoffregen) | 0.7.11 | Display driver — do not upgrade without testing; text mode API changed in later versions |
+| KerbalDisplayCommon | ≥ 3.0.0 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
+| KCM_Touch | — | FT5316 capacitive touch driver (replaces the rev-1 GSL1680F driver) |
+| TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 16-bit parallel driver + GFX layer — install on the build machine (not vendored) |
+| KerbalDisplayAudio | 1.1.0 | Direct sketch dependency — audio output not used on this panel |
 | KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
 
 ### KerbalSimpit Plugin Settings
@@ -100,29 +109,29 @@ CustomResourceMessages
 
 ## Configuration
 
-All tunables are in `AAA_Config.ino`.
+Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants live in the sketch header `KCMk1_ResourceDisp.h`.
 
-| Constant | Default | Description |
-|----------|---------|-------------|
-| `debugMode` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
-| `demoMode` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
-| `DISPLAY_ROTATION` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
-| `LOW_RES_THRESHOLD` | `20` | Resource % below which the bar fill colour shifts to red. |
-| `MIN_SLOTS` | `4` | Minimum number of active resource slots (enforced by `removeResource`). |
-| `MAX_SLOTS` | `16` | Maximum number of active resource slots. |
-| `DEFAULT_SLOT_COUNT` | `8` | Number of slots loaded by `initDefaultSlots()` (STD preset). |
-| `VESSEL_CACHE_SIZE` | `20` | Maximum number of per-vessel slot configurations held in session RAM. |
+| Constant | Location | Default | Description |
+|----------|----------|---------|-------------|
+| `debugMode` | `AAA_Config.ino` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
+| `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
+| `DISPLAY_ROTATION` | `AAA_Config.ino` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
+| `LOW_RES_THRESHOLD` | `AAA_Config.ino` | `20` | Reserved / currently unused. Bars always render in the resource's designated colour regardless of level; low-resource warning is shown only by the percentage-text colour (fixed 10% critical / 30% caution thresholds). |
+| `MIN_SLOTS` | `KCMk1_ResourceDisp.h` | `4` | Minimum number of active resource slots (enforced by `removeResource`). |
+| `MAX_SLOTS` | `KCMk1_ResourceDisp.h` | `16` | Maximum number of active resource slots. |
+| `DEFAULT_SLOT_COUNT` | `KCMk1_ResourceDisp.h` | `9` | Number of slots loaded by `initDefaultSlots()` (STD preset). |
+| `VESSEL_CACHE_SIZE` | `KCMk1_ResourceDisp.h` | `20` | Maximum number of per-vessel slot configurations held in session RAM. |
 | `BAR_LEVEL_HYSTERESIS` | `0.002` | Minimum fractional resource level change required to trigger a bar redraw (0.2%). Prevents constant SPI traffic from small Simpit fluctuations. |
 
 ---
 
 ## I2C Protocol
 
-The Resource Display operates as an I2C slave at address **0x11** (`KCM_I2C_ADDR_RESDISP`) on the Wire bus.
+The Resource Display operates as an I2C slave at address **0x11** (`KCM_I2C_ADDR_RESDISP`) on the Wire2 bus (`KCM_I2C_BUS`, pins 24/25).
 
 ### Outbound Packet — ResourceDisp → Master
 
-Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x11, 4)` after INT asserts.
+Size: **4 bytes**. Sent in response to `KCM_I2C_BUS.requestFrom(0x11, 4)` (Wire2) after INT asserts.
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -133,7 +142,7 @@ Size: **4 bytes**. Sent in response to `Wire.requestFrom(0x11, 4)` after INT ass
 
 ### Inbound Packet — Master → ResourceDisp
 
-Size: **2 bytes**. Sent by master at any time via `Wire.beginTransmission(0x11)` / `Wire.write()` / `Wire.endTransmission()`.
+Size: **2 bytes**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission(0x11)` / `.write()` / `.endTransmission()` (Wire2).
 
 | Byte | Field | Description |
 |------|-------|-------------|
@@ -171,19 +180,21 @@ Size: **2 bytes**. Sent by master at any time via `Wire.beginTransmission(0x11)`
 
 ### Screens
 
-**Standby** — full-screen BMP splash (`/StandbySplash_800x480.bmp` from SD card). Displayed on boot and whenever the panel is not in an active KSP flight scene. In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions to Main automatically. In demo mode, any touch advances to Main.
+**Standby** — full-screen BMP splash (`/StandbySplash_1024x600.bmp` from SD card). Displayed on boot and whenever the panel is not in an active KSP flight scene. In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions to Main automatically. In demo mode, any touch advances to Main.
 
-**Main** — primary operational view. Displays resource bars for all active slots in a left-to-right bar graph with a right-hand sidebar. Bar height represents the fraction of maximum capacity. Bar fill colour shifts to red when the resource falls below `LOW_RES_THRESHOLD`. A percentage label appears above each bar. A vertical percentage axis (0–100%) is drawn on the left edge.
+**Main** — primary operational view. Displays resource bars for all active slots in a left-to-right bar graph with a right-hand sidebar. Bar height represents the fraction of maximum capacity. Bars always render in the resource's designated colour regardless of level; the percentage label above each bar is coloured by level instead (white > 30%, yellow 11–30% caution, red 0–10% critical). A vertical percentage axis (0–100%) is drawn on the left edge.
 
 Sidebar buttons:
 - **TOTL / STG** — toggles between vessel-total and active-stage values
-- **DFLT** — resets to the default 8-slot STD configuration
+- **DFLT** — resets to the default 9-slot STD configuration (disabled while on EVA)
 - **SEL** — opens the Select screen
 - **DATA** — opens the Detail screen
 
 **Select** — resource configuration screen. Left panel: 5-column grid of all available resources. Right panel: ordered slot list with a CLEAR button. Top row: preset buttons (STD, XPD, VEH, LSP, AIR, ADV) and a BACK button. Tapping a resource toggles it. Presets replace the current configuration entirely. In live mode, a Simpit channel refresh is requested after any configuration change.
 
 **Detail** — numerical readout for a single resource. Left panel: selector column with one button per active slot. Right panel: resource name header, followed by data rows. Resources with stage data (LF, LOx, SF, Xenon, Ablator) show six rows in CRAFT and STAGE sections. Resources without stage data show three rows in CRAFT only.
+
+**EVA Mode** — when KerbalSimpit's `FLIGHT_STATUS_MESSAGE` reports a Kerbal on EVA (the `FLIGHT_IS_EVA` flag), the Main screen switches to a fixed five-bar set — **Electric Charge, EVA Propellant, Oxygen, Food, Water** — and the previous vessel configuration is snapshotted and restored automatically when the Kerbal boards again. While on EVA the Select grid, presets, CLEAR and DFLT are locked so no other resources can be added. **EVA Propellant** is only shown/selectable while on EVA; off-EVA its grid cell is blank and inert.
 
 ### Resource Slots
 
@@ -192,12 +203,14 @@ The display tracks between `MIN_SLOTS` (4) and `MAX_SLOTS` (16) resource slots. 
 | Group | Resources | Short labels |
 |-------|-----------|-------------|
 | Power | Electric Charge, Stored Charge | EC, StC |
-| Propellants (native) | Liquid Fuel, Oxidizer, Solid Fuel, Monopropellant, Xenon | LF, LOx, SF, MP, XE |
+| Propellants (native) | Liquid Fuel, Oxidizer, Solid Fuel, Mono Propellant, Xenon Gas, EVA Propellant¹ | LF, LOx, SF, MP, XE, EVA |
 | Propellants (CRP) | Liquid Hydrogen, Liquid Methane, Lithium, Intake Air | LH2, LMe, Li, AIR |
 | Nuclear (CRP) | Enriched Uranium, Depleted Fuel | EUr, DFu |
 | Other | Ore, Ablator | ORE, ABL |
 | Life Support (TAC-LS) | Oxygen, Carbon Dioxide, Food, Waste, Water, Liquid Waste | O2, CO2, FD, WST, H2O, LWS |
-| Agriculture (CRP) | Fertilizer | Fer |
+| Agriculture (CRP) | Fertilizer | FER |
+
+¹ EVA Propellant is only available while a Kerbal is on EVA (see **EVA Mode** above); it is hidden from the grid otherwise.
 
 ### Per-Vessel Configuration Memory
 
@@ -232,10 +245,12 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 1. Hardware init (display, SD, touch, I2C slave)
 2. Boot screen renders (Jurassic Park-themed terminal sequence; header shows live version string)
 3. Simpit connects (or demo mode initialises)
-4. ResourceDisp builds a status packet and **asserts pin 2 LOW** (INT)
+4. ResourceDisp builds a status packet and **asserts the INT pin LOW** (`KCM_I2C_INT_PIN`, pin 0)
 5. Master reads the 4-byte status packet
 6. Master sends a 2-byte command packet with `requestType = 0x2` (PROCEED) — configuration flags can be included in the same packet
 7. ResourceDisp receives PROCEED, transitions to Standby screen, enters `loop()`
+
+**Standalone mode:** set `STANDALONE_TEST = true` in `AAA_Config.ino` (as on the other panels) to skip steps 4–7 — the panel proceeds straight past the boot screen into `loop()` with no master connected. The I2C slave is still initialised, so a master can be attached later; standalone only removes the blocking wait for PROCEED. Set `false` for production.
 
 ---
 
@@ -243,6 +258,8 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.0.1** | Audit batch C: EVA-mode state reset on EVA exit (stale bars no longer persist into the next vessel), duplicate-logic consolidation, and dead-code cleanup. Built against KerbalDisplayCommon 3.1.2. |
+| **3.0.0** | Hardware rev 2: Teensy 4.1 / LT7683 (RA8876-compatible) 1024×600 TFT via `KCM_TFT` / FT5316 capacitive touch / Wire2 (`KCM_I2C_BUS`). Requires KerbalDisplayCommon ≥ 3.0.0 and KerbalDisplayAudio 1.1.0. All screens relaid to 1024×600. Main screen: bars always render the resource colour (percentage text carries the level threshold); percentage-flicker fix. Default STD set is 9 (EC, LF, LOx, MP, SF, O2, Food, Water, Ablator). Added EVA Propellant and EVA mode (fixed EC/EVA/O2/Food/Water bar set driven by `FLIGHT_STATUS_MESSAGE`, with the Select grid locked). Standalone-test flag added. |
 | **1.3.0** | I2C slave interface and boot handshake with master (Phase 3). I2C constants consolidated to `KCMk1_SystemConfig.h`. Touch count filter changed to `!= 1`. Touch filter constants alias `KCM_TOUCH_*`. Boot screen header shows live version string (sketch + KDC + KDA) via `snprintf`. `switchToScreen()` now records `lastScreenSwitch` timestamp. KDA dependency clarified as direct (not a KDC sub-dependency). Updated to KerbalDisplayCommon 2.1.0 and KerbalDisplayAudio 1.0.1. |
 | **1.2.0** | KerbalSimpit integration for live resource telemetry. Per-vessel configuration memory (`vesselCache[]`). Simpit channel refresh on vessel switch and scene entry. |
 | **1.1.0** | Select screen presets (STD, XPD, VEH, LSP, AIR, ADV). Detail screen with CRAFT/STAGE sections. Stage data support for LF, LOx, SF, Xenon, Ablator. |
@@ -256,7 +273,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 - **`demoMode`** defaults to `false` (live Simpit). Set `true` for bench testing without KSP.
 - **ARP mod** is required for most resource channels. Without it, bars remain at zero.
 - **Stage data** is only available for resources with dedicated Simpit stage channels (LF, LOx, SF, Xenon, Ablator). All others mirror vessel totals in the STAGE section and suppress it on the Detail screen.
-- **Vessel cache eviction** — when `VESSEL_CACHE_SIZE` is exceeded, the oldest entry is overwritten (simple last-in eviction). No LRU tracking.
+- **Vessel cache eviction** — when `VESSEL_CACHE_SIZE` is exceeded, the last cache entry (index `VESSEL_CACHE_SIZE - 1`) is overwritten (simple last-slot eviction). No LRU tracking.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.

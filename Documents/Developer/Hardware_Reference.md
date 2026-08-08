@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.8  
-**Date:** 2026-06-27  
+**Version:** 1.9  
+**Date:** 2026-08-03  
 **Document type:** Developer — Hardware
 
 ---
@@ -21,6 +21,7 @@
 | 1.6 | 2026-05-25 | Cleaned up references and reorganized. |
 | 1.7 | 2026-06-06 | Main display carriers (KC-01-1912) changed from Teensy 4.0 + RA8875 800×480 SPI to Teensy 4.1 + LT7683 (RA8876-register-compatible) 1024×600 7" IPS, 8080 16-bit parallel (ER-TFT070A2-6-5633 module). All four carriers (Annunciator, Info 1, Info 2, Resource) standardized on this combo. Display VDD on 5V rail, VDDIO 3.3V (bench-confirmed) — Teensy 4.1 interfaces directly, no level shifters; the former SPI RA8875 MISO buffer (SN74LVC1G125) is not required on the parallel bus. On-module 128 Mbit display RAM (W9812G6JH) enables 1024×600 double-buffering. Per-carrier local MPM3610 confirmed adequate (~760 mA peak vs 1.2 A). §13.1 interrupt conformance generalized to cover 5V (ATtiny816, push-pull + 10k/20k divider) and 3.3V (Teensy carrier, push-pull direct, no divider) module classes; INT remains active-low push-pull, driven low to assert, no pull-up. Updated §3.1, §3.3, §5.3, §6.3, §7.2, §7.5, §7.6, §8.3, §13.1, §13.4, §14. |
 | 1.8 | 2026-06-27 | Enclosure panel redesign. A1 reduced to power button + two 7" displays (Annunciator + configurable Info Display); GPWS Input Panel (0x2A) relocated A1→A2; Abort button relocated B1→A2; staging button and control mode select switch confirmed on B2. Small display carrier (KC-01-1902) migrated from XIAO RA4M1 + 1.9" 320×170 to XIAO RP2350 + 2.0" 240×320 (ER-TFTM020-2) with shared-SPI microSD socket; Sys Info Display (0x14) now on this carrier, Panel A2. Status Indicator Display (0x15, XIAO RA4M1, B2) removed from design — 0x15 folded into the expansion reserved block (0x15–0x1F), and the previously overlapping 0x16–0x1F / 0x18–0x1F rows consolidated into a single range. Updated §3.1, §3.4, §4, §5.3, §8.3. |
+| 1.9 | 2026-08-03 | Documentation audit reconciliation. §6.1 system-load figures pointed to Power Budget as authoritative (interim placeholders retained) since the RP2350 Sys Info Display draw is not yet measured. §8.3 device map: clarified 0x2E (Switch Panel — hardware TBD) and 0x2F (was Indicator Module — removed) to match the Module UI Reference. §14 Related Documents: corrected cross-referenced versions (I2C Protocol v2.4→v2.6, Module UI v5.3→v5.4, Power Budget v1.1→v1.2), added the Ascent Autopilot Interface row, and corrected the `docs/developer/` paths to `Documents/Developer/`. Chip naming standardized to LT7683 (RA8876-compatible) in §14. |
 
 ---
 
@@ -104,7 +105,7 @@ ATtiny816-based I2C target modules provide button input, display output, joystic
 | B2 | Right Input Panel | Vehicle controls, stability controls, staging button, mode select switch, auxiliary controls, time controls, rotation input | B2 Panel Hub |
 | C (planned) | Extension unit | Additional displays and button panels — future expansion | TBD |
 
-For the full per-module breakdown of I2C addresses, button assignments, switch wiring, and firmware implementation detail, see `docs/developer/Module_UI_Reference.md`.
+For the full per-module breakdown of I2C addresses, button assignments, switch wiring, and firmware implementation detail, see `Documents/Developer/Module_UI_Reference.md`.
 
 ---
 
@@ -164,8 +165,10 @@ For the full per-module breakdown of I2C addresses, button assignments, switch w
 |-----------|-------|
 | Input voltage | 12V DC |
 | Rated current | 10A |
-| Typical system load | 3.125A / 37.5W |
-| Peak system load | 4.71A / 56.5W |
+| Typical system load | see Power Budget (interim ~3.1A / 37W @ 12V) |
+| Peak system load | see Power Budget (interim ~4.7A / 57W @ 12V) |
+
+> System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.2). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the last full-system estimate and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
 
 ### 6.2 Power On/Off
 
@@ -342,8 +345,8 @@ The master detects INT_BUS going low on the dedicated interrupt line for each mo
 | 0x2B | Pre-Warp Time | ATtiny816 | B2 |
 | 0x2C | Throttle | ATtiny816 | A2 |
 | 0x2D | Dual Encoder | ATtiny816 | B1 |
-| 0x2E | Reserved | — | — |
-| 0x2F | Reserved | — | — |
+| 0x2E | Switch Panel (reserved — hardware TBD) | — | — |
+| 0x2F | Reserved (was Indicator Module — removed from design) | — | — |
 
 ### 8.4 External Interface Signal Architecture
 
@@ -775,9 +778,10 @@ Capability flags not listed above are reserved and must be set to 0.
 
 | Document | Location | Contents |
 |----------|----------|---------|
-| I2C Protocol Specification | `docs/developer/I2C_Protocol_Specification.md` | v2.4 — packet formats for all module types, addresses, command/response structure, lifecycle state machine, interrupt signalling, hardware reset |
-| Module UI Reference | `docs/developer/Module_UI_Reference.md` | v5.3 — per-module button assignments, switch wiring, CAG table, axis mappings, firmware implementation detail |
-| Power Budget | `docs/developer/Power_Budget.md` | v1.1 — per-module and per-panel power consumption, supply headroom analysis |
-| Expansion Module Specification | `docs/developer/Expansion_Module_Spec.md` | Expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
-| KC-01-1912 Pin Assignment | `docs/developer/KC-01-1912_Pin_Assignment.md` | Teensy 4.1 ↔ LT7683 7" display carrier full pin map, library constructor, bring-up checklist |
+| I2C Protocol Specification | `Documents/Developer/I2C_Protocol_Specification.md` | v2.6 — packet formats for all module types, addresses, command/response structure, lifecycle state machine, interrupt signalling, hardware reset, display-carrier protocol |
+| Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v5.4 — per-module button assignments, switch wiring, CAG table, axis mappings, firmware implementation detail |
+| Power Budget | `Documents/Developer/Power_Budget.md` | v1.2 — per-module and per-panel power consumption, supply headroom analysis |
+| Ascent Autopilot Interface | `Documents/Developer/Ascent_Autopilot_Interface.md` | Info Display ↔ master byte-level contract for the Simpit ascent autopilot command/status frames |
+| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | Expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
+| KC-01-1912 Pin Assignment | `Software/Displays/libraries/KCMk1_SystemConfig/src/KCMk1_SystemConfig.h` | Authoritative Teensy 4.1 ↔ LT7683 (RA8876-compatible) 7" display-carrier pin map (`KCM_TFT_*`, touch, audio, I2C bus defines) |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |

@@ -26,9 +26,11 @@
    Top-level dispatcher Screen_LNCH.ino selects which of these to draw.
 
    Shared with the rest of the LNCH screen (defined in Screen_LNCH.ino):
-     - LNCH_AS_LPANEL_X/W, LNCH_AS_RPANEL_X/W, LNCH_AS_PANEL_Y/H, LNCH_AS_ROW_H
-     - _lnchAsRowY()
+     - LNCH_AS_LPANEL_X/W, LNCH_AS_PANEL_Y/H  (left graphics panel geometry)
      The ascent-specific code below references these freely (single Arduino TU).
+     The rev-2 right (numeric readout) panel uses its own LNCH_AS2_* geometry and
+     _lnchAs2RowY() — right-aligned to the content edge, 400 px wide, full height,
+     larger fonts. Circularization still uses the shared LNCH_AS_RPANEL_* / ROW_H.
 
    Public-to-the-sketch entry points (called by the LNCH dispatcher):
      - _lnchAsResetState()              — clear all change-detection state
@@ -38,141 +40,176 @@
      - _lnchAsDrawRightPanelValues(tft) — per-frame right panel value updates
 ****************************************************************************************/
 
-// Left panel — altitude ladder.
+// ═══════════════════════════════════════════════════════════════════════════
+//  ASCENT LAYOUT ANCHORS — resize the whole screen from here.
+//  Every element below derives its position from these anchors, so changing the
+//  readout width, the shared vertical band, or the panel split reflows all
+//  gauges without touching their individual positioning code.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Right-hand numeric readout column (right-aligned to the content edge).
+static const int16_t LNCH_AS_READOUT_W = 360;
+static const int16_t LNCH_AS_READOUT_X = SCREEN_W - SIDEBAR_W - LNCH_AS_READOUT_W;   // 580
+
+// Left graphics panel: everything left of the readout column.
+static const int16_t LNCH_AS_LP_LEFT   = 0;
+static const int16_t LNCH_AS_LP_RIGHT  = LNCH_AS_READOUT_X - 4;      // small gap before readout (576)
+
+// Shared vertical band for the ladder and all gauges. Move them together here.
+static const int16_t LNCH_AS_BAND_TOP  = TITLE_TOP + 18;            // 80  (~18px under title bar)
+static const int16_t LNCH_AS_BAND_BOT  = SCREEN_H  - 18;            // 582 (~18px above screen bottom)
+
+// Gauge label rows within the band (name label on top; endpoint labels flank
+// the gauge body). The bars/FPA/atmosphere bodies sit between BODY_TOP/BOT; the
+// ladder uses the full band (it carries its own inline labels).
+static const int16_t LNCH_AS_GAUGE_NAME_H   = 24;   // name label height (Black_20)
+static const int16_t LNCH_AS_GAUGE_ENDLBL_H = 18;   // endpoint label height (Black_16)
+static const int16_t LNCH_AS_GAUGE_NAME_Y   = LNCH_AS_BAND_TOP;                                                     // 80
+static const int16_t LNCH_AS_GAUGE_BODY_TOP = LNCH_AS_BAND_TOP + LNCH_AS_GAUGE_NAME_H + LNCH_AS_GAUGE_ENDLBL_H + 6; // 128
+static const int16_t LNCH_AS_GAUGE_BODY_BOT = LNCH_AS_BAND_BOT - LNCH_AS_GAUGE_ENDLBL_H - 2;                        // 562
+static const int16_t LNCH_AS_GAUGE_BODY_MIDY= (LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_GAUGE_BODY_BOT) / 2;
+
+// Horizontal spacing: COL_GAP = whitespace between element bounding boxes;
+// LBL_OVERHANG = how far each bar's endpoint-label box extends beyond the bar.
+static const int16_t LNCH_AS_COL_GAP      = 10;   // compact whitespace to fit the larger FPA
+static const int16_t LNCH_AS_LBL_OVERHANG = 14;
+
+// Left panel — altitude ladder (first column).
 // Vertical strip showing altitude scale with tick labels, reference lines
-// (ground/atmo/orbit), vessel marker, and apoapsis marker.
-//
-// FIXED SCALE: scale top = target orbit altitude + 30 km. The auto-switch to
-// circularization happens at ~6% body radius (well below target orbit), so the
-// scale never needs to grow past this. Fixed scale means no redraw flicker
-// from scale changes; vessel/ApA markers simply saturate at the top in the
-// rare manual-override case.
-//
-// Layout (x=0..155):
-//   Tick label column: x=0..65 (66 wide, right-aligned labels like "100 km")
-//   Main vertical line: x=72
-//   Tick marks: x=66..71 (extend left from the line)
-//   Markers (vessel/apa): x=75..96
-//   Reference lines + short labels: x=73..150
-static const int16_t LNCH_AS_LADDER_LBL_X    = 0;     // left edge of tick label column
+// (ground/atmo/orbit), vessel marker, and apoapsis marker. Anchored at the left
+// edge of the graphics panel; fills the full shared band vertically.
+static const int16_t LNCH_AS_LADDER_LBL_X    = LNCH_AS_LP_LEFT;        // tick label column (0)
 static const int16_t LNCH_AS_LADDER_LBL_W    = 66;    // tick label column width
-static const int16_t LNCH_AS_LADDER_LINE_X   = 72;    // x of main vertical line
+static const int16_t LNCH_AS_LADDER_LINE_X   = LNCH_AS_LP_LEFT + 72;   // main vertical line
 static const int16_t LNCH_AS_LADDER_TICK_W   = 10;    // major tick mark length (minor = half)
-static const int16_t LNCH_AS_LADDER_MARKER_X = 82;    // tip x for markers
+static const int16_t LNCH_AS_LADDER_MARKER_X = LNCH_AS_LP_LEFT + 82;   // tip x for markers
 static const int16_t LNCH_AS_LADDER_MARKER_W = 14;    // marker base width
-static const int16_t LNCH_AS_LADDER_REF_X2   = 150;   // right edge of reference lines
-static const int16_t LNCH_AS_LADDER_Y_TOP    = 83;    // top of ladder strip
-                                                      //   (below title bar and V.Vrt label)
-static const int16_t LNCH_AS_LADDER_Y_BOT    = 467;   // bottom of ladder strip (= ground line)
-static const int16_t LNCH_AS_LADDER_ERASE_X2 = 156;   // right edge for scale-change erase
-                                                      //   (slightly past REF_X2 to cover any label
-                                                      //    glyph overhang)
+static const int16_t LNCH_AS_LADDER_REF_X2   = LNCH_AS_LP_LEFT + 150;  // right edge of reference lines
+static const int16_t LNCH_AS_LADDER_Y_TOP    = LNCH_AS_BAND_TOP;       // top of ladder strip
+static const int16_t LNCH_AS_LADDER_Y_BOT    = LNCH_AS_BAND_BOT;       // bottom of ladder strip (= ground line)
+static const int16_t LNCH_AS_LADDER_ERASE_X2 = LNCH_AS_LP_LEFT + 156;  // right edge for scale-change erase
 static const int16_t LNCH_AS_LADDER_H        = LNCH_AS_LADDER_Y_BOT - LNCH_AS_LADDER_Y_TOP;
 
-// V.Vrt bar — vertical bar showing vertical velocity. Zero at middle, fills
-// upward (green) for positive V.Vrt, downward (red) for negative.
-// Fixed scale: ±500 m/s, saturates at the ends.
-//
-// Layout above/below bar:
-//   y=64..80:  "V.Vrt"     — bar name (Black_16, TFT_LIGHT_GREY)
-//   y=83..95:  "+500"       — top endpoint label (Black_12)
-//   y=98..449: bar body     — 352 px tall
-//   y=451..463:"-500"       — bottom endpoint label (Black_12)
-static const int16_t LNCH_AS_VVRT_X_LEFT     = 180;   // clear of ladder ERASE_X2 (156)
-static const int16_t LNCH_AS_VVRT_W          = 40;
-static const int16_t LNCH_AS_VVRT_Y_TOP      = 98;    // bar top (below "+500" label)
-static const int16_t LNCH_AS_VVRT_Y_BOT      = 449;   // bar bottom (above "-500" label)
+// Column order, left → right:  ladder | ATMO | V.Vrt | V.Orb | FPA
+
+// Atmosphere gauge geometry (second column, left-anchored after the ladder).
+// VERTICAL bar: sea level (dense) at TOP, vacuum at BOTTOM, with a white triangle
+// indicator on EACH side. Body width matches the velocity bars. Zone/tick
+// parameters are defined further down.
+static const int16_t LNCH_AS_ATMO_W          = 44;
+static const int16_t LNCH_AS_ATMO_TRI_HALF_H = 7;    // triangle half height
+static const int16_t LNCH_AS_ATMO_TRI_W      = 12;   // triangle base-to-tip depth
+static const int16_t LNCH_AS_ATMO_TRI_GAP    = 2;    // gap between a tip and the bar edge
+static const int16_t LNCH_AS_ATMO_X_LEFT     = LNCH_AS_LADDER_ERASE_X2 + LNCH_AS_COL_GAP
+                                               + LNCH_AS_ATMO_TRI_GAP + LNCH_AS_ATMO_TRI_W;  // room for the left triangle
+static const int16_t LNCH_AS_ATMO_X_RIGHT    = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W;
+static const int16_t LNCH_AS_ATMO_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;   // sea level (dense)
+static const int16_t LNCH_AS_ATMO_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;   // vacuum / no-atmosphere
+// Right extent (right-triangle base) — the next column starts a COL_GAP after this.
+static const int16_t LNCH_AS_ATMO_RIGHT_EXT  = LNCH_AS_ATMO_X_RIGHT + LNCH_AS_ATMO_TRI_GAP + LNCH_AS_ATMO_TRI_W;
+
+// V.Vrt bar (third column) — vertical velocity, fixed ±500 m/s.
+static const int16_t LNCH_AS_VVRT_W          = 44;   // narrow bar; label box overhangs for "±500 m/s"
+static const int16_t LNCH_AS_VVRT_X_LEFT     = LNCH_AS_ATMO_RIGHT_EXT + LNCH_AS_COL_GAP + LNCH_AS_LBL_OVERHANG;
+static const int16_t LNCH_AS_VVRT_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;
+static const int16_t LNCH_AS_VVRT_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
 static const int16_t LNCH_AS_VVRT_Y_MID      = (LNCH_AS_VVRT_Y_TOP + LNCH_AS_VVRT_Y_BOT) / 2;
 static const float   LNCH_AS_VVRT_SCALE_MS   = 500.0f;
 
-// V.Orb bar — vertical bar showing orbital velocity progress toward the
-// circular-orbit target. Zero at bottom, fills upward (green) as orbital
-// velocity builds. Scale is 0..v_circ_target (body-aware), saturating at
-// the top once target velocity is reached.
-//
-// Same layout as V.Vrt (top/bottom endpoint labels). V.Orb top shows v_circ
-// (e.g. "2262" on Kerbin); bottom always shows "0".
-static const int16_t LNCH_AS_VORB_X_LEFT     = 240;   // 20 px gap from V.Vrt bar
-static const int16_t LNCH_AS_VORB_W          = 40;
-static const int16_t LNCH_AS_VORB_Y_TOP      = LNCH_AS_VVRT_Y_TOP;
-static const int16_t LNCH_AS_VORB_Y_BOT      = LNCH_AS_VVRT_Y_BOT;
+// V.Orb bar (fourth column) — orbital velocity toward v_circ (body-aware).
+static const int16_t LNCH_AS_VORB_W          = 44;
+static const int16_t LNCH_AS_VORB_X_LEFT     = LNCH_AS_VVRT_X_LEFT + LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP;
+static const int16_t LNCH_AS_VORB_Y_TOP      = LNCH_AS_GAUGE_BODY_TOP;
+static const int16_t LNCH_AS_VORB_Y_BOT      = LNCH_AS_GAUGE_BODY_BOT;
 
-// Flight Path Angle dial — half-circle showing FPA from -90° (diving) to
-// +90° (straight up). Right half of a circle, flat side on the left, arrow
-// rotates from the center. The horizon (horizontal line across the middle)
-// separates climbing from falling. Helps visualize the gravity-turn profile
-// at a glance.
+// Flight Path Angle dial (fifth column, rightmost) — semicircle (right half of a
+// circle), flat side on the left at x=CX, a needle rotating from the center.
+// -90°=diving (bottom), 0°=horizon (right), +90°=climbing (top).
 //
-// Geometry: center at (307, 195), radius 80 px. Arrow from center to radius-8.
-// Reserved area: x=280..460, y=64..? within panel.
-// CX=307 places the "+90°" label 9 px from the "2262 m/s" label on V.Orb,
-// matching the 9 px gap between V.Vrt's "+500 m/s" and V.Orb's "2262 m/s"
-// labels — consistent horizontal spacing across all three elements.
-// CY=195 aligns the +90° label with the bars' top endpoint labels at y=83.
-static const int16_t LNCH_AS_DIAL_CX         = 307;   // dial center X
-static const int16_t LNCH_AS_DIAL_CY         = 220;   // dial center Y
-static const int16_t LNCH_AS_DIAL_R          = 80;    // dial radius
-static const int16_t LNCH_AS_DIAL_ARROW_R    = 72;    // arrow tip distance from center
+// The rightmost column stacks two elements: the FPA dial at the top (name on the
+// shared gauge name row, arc top-aligned with the bars) and the HDG tape at the
+// bottom (its number box bottom flush with the ATMO bar bottom).
+static const int16_t LNCH_AS_FPA_LBL_MARGIN = 28;   // +90/-90 labels extend this far left of CX
+static const int16_t LNCH_AS_FPA_R  = 96;           // radius (= width; height = 2R)
+static const int16_t LNCH_AS_FPA_CX = LNCH_AS_VORB_X_LEFT + LNCH_AS_VORB_W + LNCH_AS_LBL_OVERHANG + LNCH_AS_COL_GAP + LNCH_AS_FPA_LBL_MARGIN;  // flat left side
+static const int16_t LNCH_AS_FPA_ARROW_R = 84;      // needle tip distance from center
 
-// Tick sizes. Major ticks at ±30°, ±60°, ±90° (labeled or semantically major).
-// Minor ticks at ±15°, ±45°, ±75° (every 15° not covered by major).
-static const int16_t LNCH_AS_DIAL_MAJ_OUT    = 7;     // major tick: extends 7 px outside R
-static const int16_t LNCH_AS_DIAL_MAJ_IN     = 7;     // major tick: extends 7 px inside R
-static const int16_t LNCH_AS_DIAL_MIN_OUT    = 3;     // minor tick: 3 px outside R
-static const int16_t LNCH_AS_DIAL_MIN_IN     = 3;     // minor tick: 3 px inside R
+// Radial tick extents (px inside / outside the radius).
+static const int16_t LNCH_AS_FPA_MAJ_OUT = 8;
+static const int16_t LNCH_AS_FPA_MAJ_IN  = 8;
+static const int16_t LNCH_AS_FPA_MIN_OUT = 4;
+static const int16_t LNCH_AS_FPA_MIN_IN  = 4;
 
-// Arrow (needle) geometry. Shaft is a rotated rectangle; arrowhead is a triangle.
-static const int16_t LNCH_AS_DIAL_SHAFT_LEN  = 60;    // shaft length from center (arrowhead covers rest)
-static const int16_t LNCH_AS_DIAL_SHAFT_W    = 5;     // shaft width (perpendicular to angle)
-static const int16_t LNCH_AS_DIAL_HEAD_W     = 13;    // arrowhead base width
+// Needle geometry (rotated rectangle shaft + triangle head).
+static const int16_t LNCH_AS_FPA_SHAFT_LEN = 70;    // shaft length from center
+static const int16_t LNCH_AS_FPA_SHAFT_W   = 6;     // shaft width
+static const int16_t LNCH_AS_FPA_HEAD_W    = 16;    // arrowhead base width
+static const int16_t LNCH_AS_FPA_PIVOT_R   = 7;     // pivot circle radius
 
-// Atmosphere gauge — horizontal bar showing current atmospheric density as a
-// fraction of the body's sea-level density (KSP stock-gauge style).
-//
-// Design:
-//   - Four-zone stable colored background:
-//       * Leftmost 1/10: OFF_BLACK (dedicated "no atmosphere" zone)
-//       * Remaining 9/10 is the atmospheric scale, divided into:
-//         - 0-35% density : NAVY        (darkest, "approaching vacuum")
-//         - 35-75% density: FRENCH_BLUE (medium)
-//         - 75-100% density: SKY        (bright, "dense atmosphere")
-//   - 9 vertical tick marks at every 10% step of the atmospheric scale,
-//     spanning the TOP 40% of bar height (notched-gauge look)
-//   - WHITE TRIANGLE INDICATOR traverses along the bottom edge:
-//       * Atmospheric body: position scales across NAVY/FRENCH/SKY zones
-//       * Non-atmosphere body: parks centered in the OFF_BLACK zone
-//
-// Placed below the FPA dial (which ends around y=332 with its -90° label).
-//
-//   y=369..385: "ATMOSPHERE" name label (Black_16, light grey, centered)
-//   y=394..434: bar border + 4-zone fill (41 px tall, 154 px wide)
-//   y=421..444: triangle indicator region (tip inside bar, base 10 px below)
-static const int16_t LNCH_AS_ATMO_X_LEFT   = 287;   // bar left
-static const int16_t LNCH_AS_ATMO_X_RIGHT  = 440;   // bar right (width 154)
-static const int16_t LNCH_AS_ATMO_Y_TOP    = 394;
-static const int16_t LNCH_AS_ATMO_Y_BOT    = 434;
-static const int16_t LNCH_AS_ATMO_LABEL_Y  = 369;
-// Triangle indicator geometry: tip inside bar, base below bar
-static const int16_t LNCH_AS_ATMO_TRI_HALF_W = 6;    // half base width (total base = 13 px)
-static const int16_t LNCH_AS_ATMO_TRI_UP     = 13;   // tip protrudes into bar (y=Y_BOT-13=397)
-static const int16_t LNCH_AS_ATMO_TRI_DOWN   = 10;   // base below bar (y=Y_BOT+10=420, total 23 px tall)
-// Tick-mark geometry. Major ticks at 0%, 10%, ..., 90% of the atmospheric
-// portion (10 ticks). Minor ticks at 5%, 15%, ..., 95% (10 ticks), half-height
-// so majors are clearly distinguishable.
-static const float   LNCH_AS_ATMO_TICK_H_FRAC_MAJOR = 0.40f;  // major tick = 40% of inner height
-static const float   LNCH_AS_ATMO_TICK_H_FRAC_MINOR = 0.20f;  // minor tick = 20% of inner height
-static const int16_t LNCH_AS_ATMO_TICK_COUNT_MAJOR  = 10;     // ticks at 0%, 10%, ..., 90%
-static const int16_t LNCH_AS_ATMO_TICK_COUNT_MINOR  = 10;     // ticks at 5%, 15%, ..., 95%
-// "No atmosphere" segment: leftmost 1/10 of inner width, OFF_BLACK fill
-static const float   LNCH_AS_ATMO_NOATM_W_FRAC = 0.10f; // 10% of inner bar width
+// FPA dial vertical placement — top-aligned with the bars. "FPA" name sits on the
+// shared gauge name row (aligned with V.Vrt/V.Orb); the arc top sits just below it.
+static const int16_t LNCH_AS_FPA_CY     = LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_FPA_R + 16;   // arc top ≈ body top
+static const int16_t LNCH_AS_FPA_LBL_H  = 20;   // Black_16 angle-label box height
+static const int16_t LNCH_AS_FPA_P90_Y  = LNCH_AS_FPA_CY - LNCH_AS_FPA_R - LNCH_AS_FPA_MAJ_OUT - LNCH_AS_FPA_LBL_H - 2;  // +90 label top
+static const int16_t LNCH_AS_FPA_M90_Y  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4;                       // -90 label top
+static const int16_t LNCH_AS_FPA_NAME_Y = LNCH_AS_GAUGE_NAME_Y;   // "FPA" on the shared name row (aligned with V.Orb)
+// Numeric readout box below the dial (bordered like the HDG number box).
+static const int16_t LNCH_AS_FPA_VAL_W  = 96;
+static const int16_t LNCH_AS_FPA_VAL_H  = 34;
+static const int16_t LNCH_AS_FPA_VAL_X  = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2 - LNCH_AS_FPA_VAL_W / 2;
+static const int16_t LNCH_AS_FPA_VAL_Y  = LNCH_AS_FPA_CY + LNCH_AS_FPA_R + 42;
 
-// Tick-mark classification values returned by _lnchAsAtmoTickKind(). Plain
-// int8_t constants rather than an enum so that Arduino's prototype generator
-// (which inserts forward declarations above all sketch code) can handle the
-// function signature without needing the type definition to be visible.
-static const int8_t ATMO_TICK_NONE  = 0;
-static const int8_t ATMO_TICK_MAJOR = 1;
-static const int8_t ATMO_TICK_MINOR = 2;
+// ── Heading tape (bottom of the rightmost column) ─────────────────────────────
+// Horizontal scrolling compass centered on the current vessel heading, with a
+// bug at 90° (due-east launch azimuth) and the surface velocity-vector heading
+// marker. The number box bottom is flush with the ATMO bar bottom
+// (GAUGE_BODY_BOT); the tape and name stack upward from there.
+static const int16_t LNCH_AS_HDG_CX      = LNCH_AS_FPA_CX + LNCH_AS_FPA_R / 2;   // centered on the dial
+static const int16_t LNCH_AS_HDG_W       = 170;
+static const int16_t LNCH_AS_HDG_X       = LNCH_AS_HDG_CX - LNCH_AS_HDG_W / 2;
+static const float   LNCH_AS_HDG_SCALE   = 2.6f;                                 // px per degree (±~33° visible)
+static const int16_t LNCH_AS_HDG_TAPE_H  = 28;
+static const int16_t LNCH_AS_HDG_BOX_W   = 60;
+static const int16_t LNCH_AS_HDG_BOX_H   = 34;
+static const int16_t LNCH_AS_HDG_BOX_X   = LNCH_AS_HDG_CX - LNCH_AS_HDG_BOX_W / 2;
+static const int16_t LNCH_AS_HDG_BOX_Y   = LNCH_AS_GAUGE_BODY_BOT - LNCH_AS_HDG_BOX_H;   // box bottom = ATMO bar bottom
+static const int16_t LNCH_AS_HDG_TAPE_Y  = LNCH_AS_HDG_BOX_Y;                            // box top = tape top (box overhangs below)
+static const int16_t LNCH_AS_HDG_NAME_Y  = LNCH_AS_HDG_TAPE_Y - 26;                      // name row above the tape
+static const int16_t LNCH_AS_HDG_SUPP_LO = LNCH_AS_HDG_BOX_X - 16;
+static const int16_t LNCH_AS_HDG_SUPP_HI = LNCH_AS_HDG_BOX_X + LNCH_AS_HDG_BOX_W + 16;
+static const float   LNCH_AS_HDG_LAUNCH_AZ  = 90.0f;   // due-east launch-azimuth bug
+static const float   LNCH_AS_HDG_VEL_MIN_MS = 20.0f;   // hide velocity marker below this surface speed
+
+// ── STAGE indicator button (in the gap between the FPA readout and the HDG tape) ─
+// Off = standard indicator look (dark-grey text on off-black, grey border); when
+// the current stage's ΔV is spent it lights red with white text — "time to stage".
+// Centered on the dial/HDG column, vertically midway between the FPA value box
+// bottom and the HDG name row.
+static const int16_t LNCH_AS_STAGE_W = 134;   // 40% wider than the original 96
+static const int16_t LNCH_AS_STAGE_H = 43;    // 20% taller than the original 36
+static const int16_t LNCH_AS_STAGE_X = LNCH_AS_HDG_CX - LNCH_AS_STAGE_W / 2;
+// Vertically centered in the whitespace between the FPA value box bottom and the
+// HDG name row top (recomputes if either moves or the button height changes).
+static const int16_t LNCH_AS_STAGE_Y = (LNCH_AS_FPA_VAL_Y + LNCH_AS_FPA_VAL_H + LNCH_AS_HDG_NAME_Y) / 2
+                                       - LNCH_AS_STAGE_H / 2;
+static const float   LNCH_AS_STAGE_EMPTY_MS = 0.5f;    // stage ΔV at/below this reads as spent
+
+// Zone boundaries as fractions of the atmospheric portion (0 = vacuum end/bottom,
+// 1 = sea level/top). Bottom 10% is the OFF_BLACK "no atmosphere" parking segment.
+static const float   LNCH_AS_ATMO_ZONE1_FRAC   = 0.35f;  // NAVY ↔ FRENCH_BLUE
+static const float   LNCH_AS_ATMO_ZONE2_FRAC   = 0.75f;  // FRENCH_BLUE ↔ SKY
+static const float   LNCH_AS_ATMO_NOATM_H_FRAC = 0.10f;  // bottom 10% OFF_BLACK parking
+
+// Tick marks: horizontal lines at 10% steps of the atmospheric portion, on the
+// LEFT of the bar. Majors span 40% of the width, minors 20%.
+static const float   LNCH_AS_ATMO_TICK_W_FRAC_MAJOR = 0.40f;
+static const float   LNCH_AS_ATMO_TICK_W_FRAC_MINOR = 0.20f;
+static const int16_t LNCH_AS_ATMO_TICK_COUNT_MAJOR  = 10;   // 0%, 10%, ..., 90%
+static const int16_t LNCH_AS_ATMO_TICK_COUNT_MINOR  = 10;   // 5%, 15%, ..., 95%
+
+// Tick color on the bright SKY (top) zone — darker than LIGHT_GREY so the ticks
+// don't wash out against the light background.
+static const uint16_t LNCH_AS_ATMO_TICK_SKY_COLOR = TFT_DARK_GREY;
 
 // ── Ascent phase change-detection state ───────────────────────────────────────────────
 // Cached last-drawn values for each row. Re-draw only on change.
@@ -220,7 +257,15 @@ static int16_t _lnchAsPrevFpaTarget    = -9999;  // last target FPA marker posit
 // With the four-zone design (including OFF_BLACK parking), the triangle
 // position alone encodes whether we're in a no-atmosphere or atmospheric
 // state — no separate NoAtm flag is needed.
-static int16_t _lnchAsPrevAtmoTriX   = -1;
+static int16_t _lnchAsPrevAtmoTriY   = -1;
+
+// Heading tape state.
+static float   _lnchAsPrevHdg    = -9999.0f;   // last tape-center heading
+static int16_t _lnchAsPrevHdgBox = -9999;      // last integer heading in the box
+static float   _lnchAsPrevVelHdg = -9999.0f;   // last velocity-vector heading
+
+// STAGE indicator button state (-1 = not yet drawn).
+static int8_t  _lnchAsPrevStageActive = -1;
 
 // ── Ascent phase helpers ──────────────────────────────────────────────────────────────
 //
@@ -340,7 +385,7 @@ static float _lnchAsLadderTickInterval(float scaleTop) {
 static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of label letter (past base)
 static const int16_t LNCH_AS_MARKER_LBL_W    = 16;    // width reserved for label letter
 
-static void _lnchAsDrawAltMarker(RA8875 &tft, int16_t y, uint16_t color,
+static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
                                  bool filled, const char *label) {
     int16_t tipX  = LNCH_AS_LADDER_LINE_X + 3;
     int16_t baseX = LNCH_AS_LADDER_MARKER_X + LNCH_AS_LADDER_MARKER_W;
@@ -363,7 +408,7 @@ static void _lnchAsDrawAltMarker(RA8875 &tft, int16_t y, uint16_t color,
 }
 
 // Erase a previously-drawn marker (triangle bounding box + label area).
-static void _lnchAsEraseAltMarker(RA8875 &tft, int16_t y) {
+static void _lnchAsEraseAltMarker(KCM_TFT &tft, int16_t y) {
     int16_t tipX  = LNCH_AS_LADDER_LINE_X + 3;
     int16_t rightX = LNCH_AS_MARKER_LBL_X + LNCH_AS_MARKER_LBL_W;
     tft.fillRect(tipX, y - 9, rightX - tipX + 1, 19, TFT_BLACK);
@@ -373,7 +418,7 @@ static void _lnchAsEraseAltMarker(RA8875 &tft, int16_t y) {
 // that were passing through the erased region. Called from marker update logic.
 // markerY is the y-center of the erased bounding box (height 19, so the box
 // spans y-9 to y+9).
-static void _lnchAsRepairRefLines(RA8875 &tft, int16_t markerY) {
+static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
     int16_t tipX   = LNCH_AS_LADDER_LINE_X + 3;
     int16_t rightX = LNCH_AS_MARKER_LBL_X + LNCH_AS_MARKER_LBL_W;
     int16_t top    = markerY - 9;
@@ -440,7 +485,7 @@ static void _lnchAsRepairRefLines(RA8875 &tft, int16_t markerY) {
 // Draw static chrome for the altitude ladder: main vertical line, tick marks,
 // tick labels, and reference lines (ground, atmo, orbit) with their labels.
 // Fixed scale — called once per chrome cycle.
-static void _lnchAsDrawLadderChrome(RA8875 &tft) {
+static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
     float scaleTop = _lnchAsLadderScaleTop();
     float tickInt  = _lnchAsLadderTickInterval(scaleTop);
 
@@ -501,9 +546,10 @@ static void _lnchAsDrawLadderChrome(RA8875 &tft) {
         tft.drawLine(LNCH_AS_LADDER_LINE_X + 1, y,
                      LNCH_AS_LADDER_REF_X2 - 2, y,
                      TFT_WHITE);
-        // Label ABOVE the ground line (below would push off-screen past y=479)
+        // Label vertically centered on the ground line (matches ATM/ORB). There
+        // is room below now that the ladder bottom sits ~18px above the screen edge.
         textLeft(tft, &Roboto_Black_16,
-                 LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                 LNCH_AS_LADDER_REF_X2 - 40, y - 8,
                  44, 16,
                  "GND", TFT_LIGHT_GREY, TFT_BLACK);
     }
@@ -518,8 +564,9 @@ static void _lnchAsDrawLadderChrome(RA8875 &tft) {
             for (int16_t x = LNCH_AS_LADDER_LINE_X + 1; x < LNCH_AS_LADDER_REF_X2; x += 6) {
                 tft.drawLine(x, y, x + 3, y, TFT_SKY);
             }
+            // Label vertically centered on the reference line
             textLeft(tft, &Roboto_Black_16,
-                     LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                     LNCH_AS_LADDER_REF_X2 - 40, y - 8,
                      44, 16,
                      "ATM", TFT_SKY, TFT_BLACK);
         }
@@ -535,23 +582,23 @@ static void _lnchAsDrawLadderChrome(RA8875 &tft) {
             for (int16_t x = LNCH_AS_LADDER_LINE_X + 1; x < LNCH_AS_LADDER_REF_X2; x += 6) {
                 tft.drawLine(x, y, x + 3, y, TFT_DARK_GREEN);
             }
-            // Two-line label: "TGT" / "ORB" stacked above the ref line.
-            // Use stacked layout when there's room above (y > Y_TOP + 34 gives
-            // 34 px of clearance for two 16-tall labels with slight spacing).
-            // Otherwise fall back to single-line "ORB" to avoid clipping.
-            if (y > LNCH_AS_LADDER_Y_TOP + 34) {
+            // Two-line label "TGT" / "ORB" vertically centered on the ref line:
+            // TGT sits just above the line, ORB just below, so the line runs in
+            // the 2-px gap between the two words. Needs ~18 px clearance on each
+            // side; otherwise fall back to a single-line "ORB" centered on it.
+            if (y > LNCH_AS_LADDER_Y_TOP + 18 && y < LNCH_AS_LADDER_Y_BOT - 18) {
                 textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 34,
+                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
                          44, 16,
                          "TGT", TFT_DARK_GREEN, TFT_BLACK);
                 textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                         LNCH_AS_LADDER_REF_X2 - 40, y + 1,
                          44, 16,
                          "ORB", TFT_DARK_GREEN, TFT_BLACK);
             } else {
-                // Insufficient room above — single-line fallback
+                // Insufficient room — single-line "ORB" centered on the line
                 textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
+                         LNCH_AS_LADDER_REF_X2 - 40, y - 8,
                          44, 16,
                          "ORB", TFT_DARK_GREEN, TFT_BLACK);
             }
@@ -562,7 +609,7 @@ static void _lnchAsDrawLadderChrome(RA8875 &tft) {
 // Dynamic update: check for scale change first (redraw entire ladder if so),
 // then update vessel and apoapsis markers. On each marker erase, repair any
 // reference line segments that were crossing the erased region.
-static void _lnchAsUpdateLadderMarkers(RA8875 &tft) {
+static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
     float scaleTop = _lnchAsLadderScaleTop();
 
     // Scale-change detection: redraw entire ladder strip if the scale differs
@@ -572,7 +619,7 @@ static void _lnchAsUpdateLadderMarkers(RA8875 &tft) {
         // Erase full ladder region (wider than any single label/mark).
         int16_t eraseTop = max((int16_t)(LNCH_AS_LADDER_Y_TOP - 12), (int16_t)LNCH_AS_PANEL_Y);
         int16_t eraseBot = min((int16_t)(LNCH_AS_LADDER_Y_BOT + 2),
-                               (int16_t)(LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1));
+                               (int16_t)(SCREEN_H - 1));
         // Erase from x=0 to LADDER_ERASE_X2, covering tick labels, ticks, line,
         // markers, and reference-line labels.
         tft.fillRect(LNCH_AS_LADDER_LBL_X, eraseTop,
@@ -641,41 +688,36 @@ static void _lnchAsUpdateLadderMarkers(RA8875 &tft) {
 // Vertical bar with zero at middle. Positive V.Vrt fills upward (green),
 // negative fills downward (red). Scale is fixed at ±LNCH_AS_VVRT_SCALE_MS m/s,
 // saturates at the ends.
-static void _lnchAsDrawVVrtChrome(RA8875 &tft) {
-    // Outer border
+static void _lnchAsDrawVVrtChrome(KCM_TFT &tft) {
+    // Label box spans LBL_OVERHANG px beyond each bar edge so the "±500 m/s"
+    // endpoint labels fit around the widened bar.
+    const int16_t LBL_X0 = LNCH_AS_VVRT_X_LEFT - LNCH_AS_LBL_OVERHANG;
+    const int16_t LBL_W  = LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG;
+
+    // Bar name "V.Vrt" (Black_20)
+    textCenter(tft, &Roboto_Black_20,
+               LBL_X0, LNCH_AS_GAUGE_NAME_Y,
+               LBL_W, LNCH_AS_GAUGE_NAME_H,
+               "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
+
+    // Endpoint labels (Black_16), a few px clear of the bar top/bottom borders.
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VVRT_Y_TOP - LNCH_AS_GAUGE_ENDLBL_H - 6,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               "+500 m/s", TFT_LIGHT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VVRT_Y_BOT + 5,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               "-500 m/s", TFT_LIGHT_GREY, TFT_BLACK);
+
+    // Border + zero line drawn LAST so a label glyph can never nibble the borders.
     tft.drawRect(LNCH_AS_VVRT_X_LEFT, LNCH_AS_VVRT_Y_TOP,
                  LNCH_AS_VVRT_W,
                  LNCH_AS_VVRT_Y_BOT - LNCH_AS_VVRT_Y_TOP + 1,
                  TFT_LIGHT_GREY);
-
-    // Zero line (middle)
     tft.drawLine(LNCH_AS_VVRT_X_LEFT + 1, LNCH_AS_VVRT_Y_MID,
                  LNCH_AS_VVRT_X_LEFT + LNCH_AS_VVRT_W - 2, LNCH_AS_VVRT_Y_MID,
                  TFT_LIGHT_GREY);
-
-    // Label box is wider than the bar itself so longer strings like "+500 m/s"
-    // (50 px at Black_12) fit. Box spans 16 px beyond each edge of the bar;
-    // V.Vrt neighbors (ladder at 156, V.Orb at 240) have room for this.
-    const int16_t LBL_X0 = LNCH_AS_VVRT_X_LEFT - 8;
-    const int16_t LBL_W  = LNCH_AS_VVRT_W + 16;
-
-    // Bar name "V.Vrt" above everything (Black_16)
-    textCenter(tft, &Roboto_Black_16,
-               LBL_X0, LNCH_AS_PANEL_Y + 1,
-               LBL_W, 16,
-               "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
-
-    // Top endpoint label (Black_12)
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VVRT_Y_TOP - 15,
-               LBL_W, 14,
-               "+500 m/s", TFT_LIGHT_GREY, TFT_BLACK);
-
-    // Bottom endpoint label (Black_12)
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VVRT_Y_BOT + 2,
-               LBL_W, 14,
-               "-500 m/s", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 // Update V.Vrt bar fill using incremental drawing (no full-clear + redraw, so
@@ -685,7 +727,7 @@ static void _lnchAsDrawVVrtChrome(RA8875 &tft) {
 // Positive fill: green, grows upward from the zero line (y=MID-1, MID-2, ...).
 // Negative fill: red, grows downward from the zero line (y=MID+1, MID+2, ...).
 // fillPx encodes both magnitude and direction as a signed pixel count.
-static void _lnchAsUpdateVVrtBar(RA8875 &tft) {
+static void _lnchAsUpdateVVrtBar(KCM_TFT &tft) {
     float vv = state.verticalVel;
     if (vv > LNCH_AS_VVRT_SCALE_MS)  vv = LNCH_AS_VVRT_SCALE_MS;
     if (vv < -LNCH_AS_VVRT_SCALE_MS) vv = -LNCH_AS_VVRT_SCALE_MS;
@@ -759,51 +801,51 @@ static void _lnchAsUpdateVVrtBar(RA8875 &tft) {
 // Circular orbit velocity at target altitude (m/s).
 // v_circ = sqrt(μ / r) where μ = g_surf × radius² (classic two-body).
 static float _lnchAsCircularOrbitVelocity() {
-    if (currentBody.radius <= 0.0f || currentBody.surfGrav <= 0.0f) return 1.0f;
+    if (currentBody.radius <= 0.0f || currentBody.gravity <= 0.0f) return 1.0f;
     float targetOrbit = max(currentBody.minSafe, currentBody.lowSpace + 20000.0f);
     float r    = currentBody.radius + targetOrbit;
-    float g    = currentBody.surfGrav * 9.81f;   // surfGrav is in Earth-g
+    float g    = currentBody.gravity;            // rev-2: gravity is m/s² (was surfGrav in g)
     float mu   = g * currentBody.radius * currentBody.radius;
     return sqrtf(mu / r);
 }
 
 // V.Orb bar chrome — border + label. Fill is dynamic.
-static void _lnchAsDrawVOrbChrome(RA8875 &tft) {
-    // Outer border
+static void _lnchAsDrawVOrbChrome(KCM_TFT &tft) {
+    const int16_t LBL_X0 = LNCH_AS_VORB_X_LEFT - LNCH_AS_LBL_OVERHANG;
+    const int16_t LBL_W  = LNCH_AS_VORB_W + 2 * LNCH_AS_LBL_OVERHANG;
+
+    // Bar name "V.Orb" (Black_20)
+    textCenter(tft, &Roboto_Black_20,
+               LBL_X0, LNCH_AS_GAUGE_NAME_Y,
+               LBL_W, LNCH_AS_GAUGE_NAME_H,
+               "V.Orb", TFT_LIGHT_GREY, TFT_BLACK);
+
+    // Top endpoint label — v_circ at target orbit (body-aware), with unit.
+    float vCirc = _lnchAsCircularOrbitVelocity();
+    char topBuf[16];
+    snprintf(topBuf, sizeof(topBuf), "%d m/s", (int)roundf(vCirc));
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VORB_Y_TOP - LNCH_AS_GAUGE_ENDLBL_H - 6,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               topBuf, TFT_LIGHT_GREY, TFT_BLACK);
+
+    // Bottom endpoint label "0 m/s"
+    textCenter(tft, &Roboto_Black_16,
+               LBL_X0, LNCH_AS_VORB_Y_BOT + 5,
+               LBL_W, LNCH_AS_GAUGE_ENDLBL_H,
+               "0 m/s", TFT_LIGHT_GREY, TFT_BLACK);
+
+    // Border drawn LAST so a label glyph can never nibble the top/bottom borders.
     tft.drawRect(LNCH_AS_VORB_X_LEFT, LNCH_AS_VORB_Y_TOP,
                  LNCH_AS_VORB_W,
                  LNCH_AS_VORB_Y_BOT - LNCH_AS_VORB_Y_TOP + 1,
                  TFT_LIGHT_GREY);
-
-    const int16_t LBL_X0 = LNCH_AS_VORB_X_LEFT - 8;
-    const int16_t LBL_W  = LNCH_AS_VORB_W + 16;
-
-    // Bar name "V.Orb" above everything (Black_16)
-    textCenter(tft, &Roboto_Black_16,
-               LBL_X0, LNCH_AS_PANEL_Y + 1,
-               LBL_W, 16,
-               "V.Orb", TFT_LIGHT_GREY, TFT_BLACK);
-
-    // Top endpoint label — v_circ at target orbit (body-aware).
-    float vCirc = _lnchAsCircularOrbitVelocity();
-    char topBuf[16];
-    snprintf(topBuf, sizeof(topBuf), "%d m/s", (int)roundf(vCirc));
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VORB_Y_TOP - 15,
-               LBL_W, 14,
-               topBuf, TFT_LIGHT_GREY, TFT_BLACK);
-
-    // Bottom endpoint label "0 m/s"
-    textCenter(tft, &Roboto_Black_12,
-               LBL_X0, LNCH_AS_VORB_Y_BOT + 2,
-               LBL_W, 14,
-               "0 m/s", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 // V.Orb bar update — incremental fill update (no full-clear + redraw, so no
 // flicker). Fill grows upward from the bottom; we only modify the pixels that
 // change between frames.
-static void _lnchAsUpdateVOrbBar(RA8875 &tft) {
+static void _lnchAsUpdateVOrbBar(KCM_TFT &tft) {
     float vo = state.orbitalVel;
     float vCirc = _lnchAsCircularOrbitVelocity();
 
@@ -902,340 +944,295 @@ static float _lnchAsComputeTargetFPA() {
     return 90.0f * (1.0f - sqrtf(frac));
 }
 
-// Draw a radial tick from the center at angle fpaDeg.
-// tickOut = pixels outside the radius, tickIn = pixels inside the radius.
-static void _lnchAsDrawDialTick(RA8875 &tft, float fpaDeg,
-                                int16_t tickOut, int16_t tickIn,
-                                uint16_t color) {
+// Draw a radial tick at angle fpaDeg. tickOut = px outside R, tickIn = px inside.
+static void _lnchAsDrawDialTick(KCM_TFT &tft, float fpaDeg,
+                                int16_t tickOut, int16_t tickIn, uint16_t color) {
     float rad = fpaDeg * DEG_TO_RAD;
-    float cs = cosf(rad);
-    float sn = sinf(rad);
-    int16_t x0 = LNCH_AS_DIAL_CX + (int16_t)roundf((LNCH_AS_DIAL_R - tickIn)  * cs);
-    int16_t y0 = LNCH_AS_DIAL_CY - (int16_t)roundf((LNCH_AS_DIAL_R - tickIn)  * sn);
-    int16_t x1 = LNCH_AS_DIAL_CX + (int16_t)roundf((LNCH_AS_DIAL_R + tickOut) * cs);
-    int16_t y1 = LNCH_AS_DIAL_CY - (int16_t)roundf((LNCH_AS_DIAL_R + tickOut) * sn);
+    float cs = cosf(rad), sn = sinf(rad);
+    int16_t x0 = LNCH_AS_FPA_CX + (int16_t)roundf((LNCH_AS_FPA_R - tickIn)  * cs);
+    int16_t y0 = LNCH_AS_FPA_CY - (int16_t)roundf((LNCH_AS_FPA_R - tickIn)  * sn);
+    int16_t x1 = LNCH_AS_FPA_CX + (int16_t)roundf((LNCH_AS_FPA_R + tickOut) * cs);
+    int16_t y1 = LNCH_AS_FPA_CY - (int16_t)roundf((LNCH_AS_FPA_R + tickOut) * sn);
     tft.drawLine(x0, y0, x1, y1, color);
 }
 
-// Draw the half-circle arc outline (right half only, -90° to +90°).
-// Uses line segments between sampled points for smooth appearance.
-static void _lnchAsDrawDialArc(RA8875 &tft, uint16_t color) {
-    // Sample at 2° increments from -90 to +90 (91 points, 90 segments).
+// Draw the semicircle arc outline (right half, -90°..+90°).
+static void _lnchAsDrawDialArc(KCM_TFT &tft, uint16_t color) {
     const int16_t STEP = 2;
-    int16_t prevX = LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R;   // 0° point
-    int16_t prevY = LNCH_AS_DIAL_CY;
+    int16_t prevX = LNCH_AS_FPA_CX + LNCH_AS_FPA_R, prevY = LNCH_AS_FPA_CY;
     for (int16_t deg = STEP; deg <= 90; deg += STEP) {
         float rad = deg * DEG_TO_RAD;
-        // Upper half
-        int16_t xU = LNCH_AS_DIAL_CX + (int16_t)roundf(LNCH_AS_DIAL_R * cosf(rad));
-        int16_t yU = LNCH_AS_DIAL_CY - (int16_t)roundf(LNCH_AS_DIAL_R * sinf(rad));
-        tft.drawLine(prevX, prevY, xU, yU, color);
-        prevX = xU; prevY = yU;
+        int16_t x = LNCH_AS_FPA_CX + (int16_t)roundf(LNCH_AS_FPA_R * cosf(rad));
+        int16_t y = LNCH_AS_FPA_CY - (int16_t)roundf(LNCH_AS_FPA_R * sinf(rad));
+        tft.drawLine(prevX, prevY, x, y, color);
+        prevX = x; prevY = y;
     }
-    // Lower half: start from 0° point again going negative
-    prevX = LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R;
-    prevY = LNCH_AS_DIAL_CY;
+    prevX = LNCH_AS_FPA_CX + LNCH_AS_FPA_R; prevY = LNCH_AS_FPA_CY;
     for (int16_t deg = -STEP; deg >= -90; deg -= STEP) {
         float rad = deg * DEG_TO_RAD;
-        int16_t xL = LNCH_AS_DIAL_CX + (int16_t)roundf(LNCH_AS_DIAL_R * cosf(rad));
-        int16_t yL = LNCH_AS_DIAL_CY - (int16_t)roundf(LNCH_AS_DIAL_R * sinf(rad));
-        tft.drawLine(prevX, prevY, xL, yL, color);
-        prevX = xL; prevY = yL;
+        int16_t x = LNCH_AS_FPA_CX + (int16_t)roundf(LNCH_AS_FPA_R * cosf(rad));
+        int16_t y = LNCH_AS_FPA_CY - (int16_t)roundf(LNCH_AS_FPA_R * sinf(rad));
+        tft.drawLine(prevX, prevY, x, y, color);
+        prevX = x; prevY = y;
     }
 }
 
-// Dial chrome: arc outline, horizon line, tick marks, center dot, labels, "FPA" title.
-static void _lnchAsDrawDialChrome(RA8875 &tft) {
-    // Arc outline (right half, -90° to +90°)
-    _lnchAsDrawDialArc(tft, TFT_LIGHT_GREY);
-
-    // Horizon reference line: horizontal, from center to far right of dial,
-    // passing through the 0° point (right edge).
-    tft.drawLine(LNCH_AS_DIAL_CX, LNCH_AS_DIAL_CY,
-                 LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R, LNCH_AS_DIAL_CY,
-                 TFT_LIGHT_GREY);
-
-    // Major ticks at ±30°, ±60°, ±90° (7 px in, 7 px out, drawn 2 px thick
-    // for visual weight). 0° is already drawn as the horizon line — skip.
+// Draw the doubled (2 px) major ticks + single minor ticks in one place, reused
+// by chrome and repair.
+static void _lnchAsDrawDialTicks(KCM_TFT &tft) {
     for (int16_t deg = -90; deg <= 90; deg += 30) {
-        if (deg == 0) continue;
-        _lnchAsDrawDialTick(tft, (float)deg,
-                            LNCH_AS_DIAL_MAJ_OUT, LNCH_AS_DIAL_MAJ_IN,
-                            TFT_LIGHT_GREY);
-        // Second pass 1 px over for thicker appearance — draws a parallel
-        // tick offset by 1 px perpendicular to the radial direction.
-        float rad = (float)deg * DEG_TO_RAD;
-        float cs = cosf(rad), sn = sinf(rad);
-        int16_t dx = (int16_t)roundf( sn);    // perpendicular offset
-        int16_t dy = (int16_t)roundf( cs);
-        int16_t x0 = LNCH_AS_DIAL_CX + (int16_t)roundf((LNCH_AS_DIAL_R - LNCH_AS_DIAL_MAJ_IN)  * cs) + dx;
-        int16_t y0 = LNCH_AS_DIAL_CY - (int16_t)roundf((LNCH_AS_DIAL_R - LNCH_AS_DIAL_MAJ_IN)  * sn) + dy;
-        int16_t x1 = LNCH_AS_DIAL_CX + (int16_t)roundf((LNCH_AS_DIAL_R + LNCH_AS_DIAL_MAJ_OUT) * cs) + dx;
-        int16_t y1 = LNCH_AS_DIAL_CY - (int16_t)roundf((LNCH_AS_DIAL_R + LNCH_AS_DIAL_MAJ_OUT) * sn) + dy;
+        if (deg == 0) continue;   // 0° is the horizon line
+        _lnchAsDrawDialTick(tft, (float)deg, LNCH_AS_FPA_MAJ_OUT, LNCH_AS_FPA_MAJ_IN, TFT_LIGHT_GREY);
+        float rad = (float)deg * DEG_TO_RAD, cs = cosf(rad), sn = sinf(rad);
+        int16_t dx = (int16_t)roundf(sn), dy = (int16_t)roundf(cs);
+        int16_t x0 = LNCH_AS_FPA_CX + (int16_t)roundf((LNCH_AS_FPA_R - LNCH_AS_FPA_MAJ_IN) * cs) + dx;
+        int16_t y0 = LNCH_AS_FPA_CY - (int16_t)roundf((LNCH_AS_FPA_R - LNCH_AS_FPA_MAJ_IN) * sn) + dy;
+        int16_t x1 = LNCH_AS_FPA_CX + (int16_t)roundf((LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT) * cs) + dx;
+        int16_t y1 = LNCH_AS_FPA_CY - (int16_t)roundf((LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT) * sn) + dy;
         tft.drawLine(x0, y0, x1, y1, TFT_LIGHT_GREY);
     }
-
-    // Minor ticks at ±15°, ±45°, ±75° (shorter, single-pixel thickness).
     static const int8_t minorDegs[] = {-75, -45, -15, 15, 45, 75};
-    for (uint8_t i = 0; i < sizeof(minorDegs); i++) {
-        _lnchAsDrawDialTick(tft, (float)minorDegs[i],
-                            LNCH_AS_DIAL_MIN_OUT, LNCH_AS_DIAL_MIN_IN,
-                            TFT_LIGHT_GREY);
-    }
+    for (uint8_t i = 0; i < sizeof(minorDegs); i++)
+        _lnchAsDrawDialTick(tft, (float)minorDegs[i], LNCH_AS_FPA_MIN_OUT, LNCH_AS_FPA_MIN_IN, TFT_LIGHT_GREY);
+}
 
-    // Dark green pivot circle — sits at dial center, looks like an anchor point
-    // for the arrow. Drawn 6 px radius (arrow shaft is 5 px wide, so pivot
-    // visibly extends past the shaft on both sides). Drawn AFTER the arrow in
-    // update so it caps the base.
-    tft.fillCircle(LNCH_AS_DIAL_CX, LNCH_AS_DIAL_CY, 6, TFT_DARK_GREEN);
-
-    // "FPA" name label — placed at top of reserved area. Left-aligned so the
-    // text's left edge sits exactly at the semicircle's flat side (x=CX).
-    // The live readout sits right-aligned with the "0°" label's right edge
-    // on the same line. Uses Black_16 to match the "ATMOSPHERE" gauge label
-    // style (the numeric value uses Black_24 to match the right-panel size).
-    // Box height 29 so the 16-tall label is vertically centered on the same
-    // baseline as the 29-tall Black_24 value.
+// Angle labels (Black_16, matching the V.Vrt "±500 m/s" endpoint labels), placed
+// clear of the tick marks: +90 above the top tick, -90 below the bottom tick, 0 to
+// the right of the arc edge. Split out so the target-marker erase can repair the
+// label it sits on (the +90 marker overlaps the "+90°" text).
+static void _lnchAsDrawDialLabels(KCM_TFT &tft) {
+    textCenter(tft, &Roboto_Black_16,
+               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_P90_Y,
+               64, LNCH_AS_FPA_LBL_H, "+90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_16,
+               LNCH_AS_FPA_CX - 32, LNCH_AS_FPA_M90_Y,
+               64, LNCH_AS_FPA_LBL_H, "-90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
     textLeft(tft, &Roboto_Black_16,
-             LNCH_AS_DIAL_CX - 8, LNCH_AS_PANEL_Y + 1,
-             40, 29,
-             "FPA", TFT_LIGHT_GREY, TFT_BLACK);
-
-    // Angle labels at major extrema: +90 (top), 0 (right), -90 (bottom).
-    // Placed well beyond the tick marks (ticks extend 7 px beyond arc; target
-    // marker extends up to 16 px beyond arc) so neither collides with the
-    // label text.
-    // +90° at (CX, CY - R). Label above the top tick, beyond marker zone.
-    textCenter(tft, &Roboto_Black_12,
-               LNCH_AS_DIAL_CX - 20, LNCH_AS_DIAL_CY - LNCH_AS_DIAL_R - 32,
-               40, 14, "+90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-    // -90° at (CX, CY + R). Label below the bottom tick, beyond marker zone.
-    textCenter(tft, &Roboto_Black_12,
-               LNCH_AS_DIAL_CX - 20, LNCH_AS_DIAL_CY + LNCH_AS_DIAL_R + 18,
-               40, 14, "-90\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-    // 0° at (CX + R, CY). Label to the right of arc edge, beyond marker zone.
-    textCenter(tft, &Roboto_Black_12,
-               LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R + 12, LNCH_AS_DIAL_CY - 7,
-               28, 14, "0\xB0", TFT_LIGHT_GREY, TFT_BLACK);
-
-    // FPA numeric readout area — clear slate; update function will populate.
-    // Reserved below the "-90°" label.
-    // (Nothing to draw here — text painted by the update function.)
+             LNCH_AS_FPA_CX + LNCH_AS_FPA_R + LNCH_AS_FPA_MAJ_OUT + 4, LNCH_AS_FPA_CY - 10,
+             30, LNCH_AS_FPA_LBL_H, "0\xB0", TFT_LIGHT_GREY, TFT_BLACK);
 }
 
-// Repair dial chrome elements that might have been crossed by an arrow erase.
-// Called after erasing an old arrow. Redraws the horizon line, tick marks,
-// and center dot in the vicinity of the old arrow path.
-static void _lnchAsRepairDialChrome(RA8875 &tft) {
-    // Horizon line
-    tft.drawLine(LNCH_AS_DIAL_CX, LNCH_AS_DIAL_CY,
-                 LNCH_AS_DIAL_CX + LNCH_AS_DIAL_R, LNCH_AS_DIAL_CY,
-                 TFT_LIGHT_GREY);
+// Dial chrome: arc, horizon, ticks, pivot, "FPA" name, angle labels.
+static void _lnchAsDrawDialChrome(KCM_TFT &tft) {
+    _lnchAsDrawDialArc(tft, TFT_LIGHT_GREY);
+    tft.drawLine(LNCH_AS_FPA_CX, LNCH_AS_FPA_CY,
+                 LNCH_AS_FPA_CX + LNCH_AS_FPA_R, LNCH_AS_FPA_CY, TFT_LIGHT_GREY);   // horizon
+    _lnchAsDrawDialTicks(tft);
+    tft.fillCircle(LNCH_AS_FPA_CX, LNCH_AS_FPA_CY, LNCH_AS_FPA_PIVOT_R, TFT_DARK_GREEN);
 
-    // Major ticks (doubled for 2-px thickness)
-    for (int16_t deg = -90; deg <= 90; deg += 30) {
-        if (deg == 0) continue;
-        _lnchAsDrawDialTick(tft, (float)deg,
-                            LNCH_AS_DIAL_MAJ_OUT, LNCH_AS_DIAL_MAJ_IN,
-                            TFT_LIGHT_GREY);
-        float rad = (float)deg * DEG_TO_RAD;
-        float cs = cosf(rad), sn = sinf(rad);
-        int16_t dx = (int16_t)roundf( sn);
-        int16_t dy = (int16_t)roundf( cs);
-        int16_t x0 = LNCH_AS_DIAL_CX + (int16_t)roundf((LNCH_AS_DIAL_R - LNCH_AS_DIAL_MAJ_IN)  * cs) + dx;
-        int16_t y0 = LNCH_AS_DIAL_CY - (int16_t)roundf((LNCH_AS_DIAL_R - LNCH_AS_DIAL_MAJ_IN)  * sn) + dy;
-        int16_t x1 = LNCH_AS_DIAL_CX + (int16_t)roundf((LNCH_AS_DIAL_R + LNCH_AS_DIAL_MAJ_OUT) * cs) + dx;
-        int16_t y1 = LNCH_AS_DIAL_CY - (int16_t)roundf((LNCH_AS_DIAL_R + LNCH_AS_DIAL_MAJ_OUT) * sn) + dy;
-        tft.drawLine(x0, y0, x1, y1, TFT_LIGHT_GREY);
-    }
+    // "FPA" name (Black_20), centered over the dial, above the +90 label.
+    textCenter(tft, &Roboto_Black_20,
+               LNCH_AS_HDG_CX - 50, LNCH_AS_FPA_NAME_Y,
+               100, LNCH_AS_GAUGE_NAME_H,
+               "FPA", TFT_LIGHT_GREY, TFT_BLACK);
 
-    // Minor ticks
-    static const int8_t minorDegs[] = {-75, -45, -15, 15, 45, 75};
-    for (uint8_t i = 0; i < sizeof(minorDegs); i++) {
-        _lnchAsDrawDialTick(tft, (float)minorDegs[i],
-                            LNCH_AS_DIAL_MIN_OUT, LNCH_AS_DIAL_MIN_IN,
-                            TFT_LIGHT_GREY);
-    }
+    _lnchAsDrawDialLabels(tft);
 
-    // Pivot circle — drawn LAST so it sits on top of arrow stump at the base
-    tft.fillCircle(LNCH_AS_DIAL_CX, LNCH_AS_DIAL_CY, 6, TFT_DARK_GREEN);
+    // Numeric readout box border (matches the HDG number box aesthetic). The
+    // value itself is painted inside it by _lnchAsUpdateFpaDial.
+    tft.drawRect(LNCH_AS_FPA_VAL_X, LNCH_AS_FPA_VAL_Y,
+                 LNCH_AS_FPA_VAL_W, LNCH_AS_FPA_VAL_H, TFT_LIGHT_GREY);
 }
 
-// Update dial arrow and numeric readout.
-// Arrow is erased by drawing over in BLACK, then repaired (horizon + ticks +
-// center redrawn), then new arrow drawn in GREEN. This avoids flicker on the
-// horizon line and other elements the arrow may cross.
-// Draw (or erase, by passing black) the FPA needle arrow at angle fpaDeg.
-// The arrow is composed of:
-//   - Shaft: rectangle, length SHAFT_LEN, width SHAFT_W (perpendicular to angle)
-//     drawn as two fillTriangle calls
-//   - Arrowhead: triangle, base at end of shaft, tip at ARROW_R
-// All rotated to the given angle around the dial center.
-static void _lnchAsDrawDialArrow(RA8875 &tft, float fpaDeg, uint16_t color) {
+// Repair chrome the needle erase may have crossed (horizon + ticks + pivot).
+static void _lnchAsRepairDialChrome(KCM_TFT &tft) {
+    tft.drawLine(LNCH_AS_FPA_CX, LNCH_AS_FPA_CY,
+                 LNCH_AS_FPA_CX + LNCH_AS_FPA_R, LNCH_AS_FPA_CY, TFT_LIGHT_GREY);
+    _lnchAsDrawDialTicks(tft);
+    tft.fillCircle(LNCH_AS_FPA_CX, LNCH_AS_FPA_CY, LNCH_AS_FPA_PIVOT_R, TFT_DARK_GREEN);
+}
+
+// Draw (or erase) the needle at angle fpaDeg: rotated-rectangle shaft + triangle head.
+static void _lnchAsDrawDialArrow(KCM_TFT &tft, float fpaDeg, uint16_t color) {
     float rad = fpaDeg * DEG_TO_RAD;
-    float cs = cosf(rad);
-    float sn = sinf(rad);
-    // Unit vectors: 'along' follows the angle (toward tip), 'perp' is 90° CCW
-    // Screen y grows downward, so sin is negated.
-    float alongX =  cs;
-    float alongY = -sn;
-    float perpX  =  sn;
-    float perpY  =  cs;
-
-    // Center point
-    float CX = (float)LNCH_AS_DIAL_CX;
-    float CY = (float)LNCH_AS_DIAL_CY;
-
-    // Shaft rectangle corners (half-width offset perpendicular, length along)
-    float hw = (float)LNCH_AS_DIAL_SHAFT_W / 2.0f;
-    float L  = (float)LNCH_AS_DIAL_SHAFT_LEN;
-    int16_t blX = (int16_t)roundf(CX + perpX * hw);
-    int16_t blY = (int16_t)roundf(CY + perpY * hw);
-    int16_t brX = (int16_t)roundf(CX - perpX * hw);
-    int16_t brY = (int16_t)roundf(CY - perpY * hw);
-    int16_t tlX = (int16_t)roundf(CX + alongX * L + perpX * hw);
-    int16_t tlY = (int16_t)roundf(CY + alongY * L + perpY * hw);
-    int16_t trX = (int16_t)roundf(CX + alongX * L - perpX * hw);
-    int16_t trY = (int16_t)roundf(CY + alongY * L - perpY * hw);
+    float cs = cosf(rad), sn = sinf(rad);
+    float alongX = cs, alongY = -sn, perpX = sn, perpY = cs;
+    float CX = (float)LNCH_AS_FPA_CX, CY = (float)LNCH_AS_FPA_CY;
+    float hw = (float)LNCH_AS_FPA_SHAFT_W / 2.0f;
+    float L  = (float)LNCH_AS_FPA_SHAFT_LEN;
+    int16_t blX = (int16_t)roundf(CX + perpX * hw),        blY = (int16_t)roundf(CY + perpY * hw);
+    int16_t brX = (int16_t)roundf(CX - perpX * hw),        brY = (int16_t)roundf(CY - perpY * hw);
+    int16_t tlX = (int16_t)roundf(CX + alongX * L + perpX * hw), tlY = (int16_t)roundf(CY + alongY * L + perpY * hw);
+    int16_t trX = (int16_t)roundf(CX + alongX * L - perpX * hw), trY = (int16_t)roundf(CY + alongY * L - perpY * hw);
     tft.fillTriangle(blX, blY, brX, brY, trX, trY, color);
     tft.fillTriangle(blX, blY, trX, trY, tlX, tlY, color);
-
-    // Arrowhead triangle: tip at ARROW_R, base at SHAFT_LEN with HEAD_W half-width
-    float R  = (float)LNCH_AS_DIAL_ARROW_R;
-    float hhw = (float)LNCH_AS_DIAL_HEAD_W / 2.0f;
-    int16_t tipX  = (int16_t)roundf(CX + alongX * R);
-    int16_t tipY  = (int16_t)roundf(CY + alongY * R);
-    int16_t hblX  = (int16_t)roundf(CX + alongX * L + perpX * hhw);
-    int16_t hblY  = (int16_t)roundf(CY + alongY * L + perpY * hhw);
-    int16_t hbrX  = (int16_t)roundf(CX + alongX * L - perpX * hhw);
-    int16_t hbrY  = (int16_t)roundf(CY + alongY * L - perpY * hhw);
+    float R = (float)LNCH_AS_FPA_ARROW_R, hhw = (float)LNCH_AS_FPA_HEAD_W / 2.0f;
+    int16_t tipX = (int16_t)roundf(CX + alongX * R),           tipY = (int16_t)roundf(CY + alongY * R);
+    int16_t hblX = (int16_t)roundf(CX + alongX * L + perpX * hhw), hblY = (int16_t)roundf(CY + alongY * L + perpY * hhw);
+    int16_t hbrX = (int16_t)roundf(CX + alongX * L - perpX * hhw), hbrY = (int16_t)roundf(CY + alongY * L - perpY * hhw);
     tft.fillTriangle(hblX, hblY, hbrX, hbrY, tipX, tipY, color);
 }
 
-// Draw (or erase, by passing black) the target-FPA marker at angle fpaDeg.
-// The marker is a small triangle pointing INWARD (toward center), sitting
-// just outside the arc. Gives the pilot a visual "aim for here" cue.
-//
-// Triangle size: 8 px base, 6 px depth, base tangent to the arc outer edge,
-// tip pointing inward to a point ~6 px outside the arc.
-static void _lnchAsDrawDialTargetMarker(RA8875 &tft, float fpaDeg, uint16_t color) {
+// Draw (or erase) the target-FPA marker: small triangle just outside the arc,
+// pointing inward.
+static void _lnchAsDrawDialTargetMarker(KCM_TFT &tft, float fpaDeg, uint16_t color) {
     float rad = fpaDeg * DEG_TO_RAD;
-    float cs = cosf(rad);
-    float sn = sinf(rad);
-    float alongX =  cs;
-    float alongY = -sn;
-    float perpX  =  sn;
-    float perpY  =  cs;
-
-    // Marker extends from (R + OUT_OFFSET) outward to (R + OUT_OFFSET + DEPTH).
-    // Triangle points inward, so tip is CLOSER to center (at R + OUT_OFFSET),
-    // base is farther (at R + OUT_OFFSET + DEPTH).
-    // Wait — we want it pointing INWARD, meaning tip is nearest the center. So
-    // let's invert: tip at R+OUT_OFFSET (close), base at R+OUT_OFFSET+DEPTH.
-    const float OUT_OFFSET = 10.0f;   // gap between arc and marker tip
-    const float DEPTH      = 6.0f;    // triangle height radially
-    const float HALF_BASE  = 4.0f;    // half the base width
-
-    float CX = (float)LNCH_AS_DIAL_CX;
-    float CY = (float)LNCH_AS_DIAL_CY;
-    float rTip  = (float)LNCH_AS_DIAL_R + OUT_OFFSET;
-    float rBase = rTip + DEPTH;
-
-    int16_t tipX = (int16_t)roundf(CX + alongX * rTip);
-    int16_t tipY = (int16_t)roundf(CY + alongY * rTip);
-    int16_t blX  = (int16_t)roundf(CX + alongX * rBase + perpX * HALF_BASE);
-    int16_t blY  = (int16_t)roundf(CY + alongY * rBase + perpY * HALF_BASE);
-    int16_t brX  = (int16_t)roundf(CX + alongX * rBase - perpX * HALF_BASE);
-    int16_t brY  = (int16_t)roundf(CY + alongY * rBase - perpY * HALF_BASE);
-
+    float cs = cosf(rad), sn = sinf(rad);
+    float alongX = cs, alongY = -sn, perpX = sn, perpY = cs;
+    const float OUT = 11.0f, DEPTH = 11.0f, HALF = 7.0f;   // enlarged target marker
+    float CX = (float)LNCH_AS_FPA_CX, CY = (float)LNCH_AS_FPA_CY;
+    float rTip = (float)LNCH_AS_FPA_R + OUT, rBase = rTip + DEPTH;
+    int16_t tipX = (int16_t)roundf(CX + alongX * rTip),  tipY = (int16_t)roundf(CY + alongY * rTip);
+    int16_t blX  = (int16_t)roundf(CX + alongX * rBase + perpX * HALF), blY = (int16_t)roundf(CY + alongY * rBase + perpY * HALF);
+    int16_t brX  = (int16_t)roundf(CX + alongX * rBase - perpX * HALF), brY = (int16_t)roundf(CY + alongY * rBase - perpY * HALF);
     tft.fillTriangle(tipX, tipY, blX, blY, brX, brY, color);
 }
 
-// Update dial arrow and numeric readout.
-// Arrow is erased by drawing in BLACK, then chrome is repaired (horizon + ticks
-// + center), then new arrow drawn in GREEN. This avoids flicker on the horizon
-// line and tick marks.
-static void _lnchAsUpdateFpaDial(RA8875 &tft) {
+// Update: needle, target marker, numeric readout (below the dial).
+static void _lnchAsUpdateFpaDial(KCM_TFT &tft) {
     float fpa = _lnchAsComputeFPA();
     if (fpa >  90.0f) fpa =  90.0f;
     if (fpa < -90.0f) fpa = -90.0f;
-
-    // Quantize FPA for change detection — no need to repaint for sub-degree wobble.
-    int16_t iFpa = (int16_t)roundf(fpa);
+    int16_t iFpa    = (int16_t)roundf(fpa);
     int16_t iTarget = (int16_t)roundf(_lnchAsComputeTargetFPA());
-    bool arrowChanged    = (iFpa != _lnchAsPrevFpaReadout);
-    bool readoutChanged  = arrowChanged;
-    bool targetChanged   = (iTarget != _lnchAsPrevFpaTarget);
+    bool arrowChanged  = (iFpa != _lnchAsPrevFpaReadout);
+    bool targetChanged = (iTarget != _lnchAsPrevFpaTarget);
+    if (!arrowChanged && !targetChanged) return;
 
-    if (!arrowChanged && !readoutChanged && !targetChanged) return;
-
-    // Erase old target marker (independent of arrow). Done first so that if
-    // the arrow also needs repainting, the arrow erase+redraw sequence still
-    // leaves the new marker visible.
     if (targetChanged && _lnchAsPrevFpaTarget != -9999) {
         _lnchAsDrawDialTargetMarker(tft, (float)_lnchAsPrevFpaTarget, TFT_BLACK);
+        // The marker sits just outside the arc where the +90/0/-90 labels live, so
+        // its black erase can nibble a label — repair them (cheap, target moves rarely).
+        _lnchAsDrawDialLabels(tft);
     }
-
-    // Erase old arrow (if it was drawn) and repair chrome
     if (arrowChanged && _lnchAsPrevFpaReadout != -9999) {
         _lnchAsDrawDialArrow(tft, (float)_lnchAsPrevFpaReadout, TFT_BLACK);
         _lnchAsRepairDialChrome(tft);
     }
-
-    // Draw new arrow (if FPA changed)
     if (arrowChanged) {
         _lnchAsDrawDialArrow(tft, (float)iFpa, TFT_DARK_GREEN);
-        // Redraw pivot circle ON TOP of the arrow base, so it caps the shaft
-        // with a clean circular anchor.
-        tft.fillCircle(LNCH_AS_DIAL_CX, LNCH_AS_DIAL_CY, 6, TFT_DARK_GREEN);
+        tft.fillCircle(LNCH_AS_FPA_CX, LNCH_AS_FPA_CY, LNCH_AS_FPA_PIVOT_R, TFT_DARK_GREEN);
     }
-
-    // Draw new target marker. Drawn AFTER the arrow/repair so it sits on top
-    // of any arc pixels the arrow erase may have disturbed.
-    if (targetChanged || arrowChanged) {
-        // Redraw target marker if either (a) target moved, or (b) arrow was
-        // repainted (which might have touched the marker's pixels via repair).
+    if (targetChanged || arrowChanged)
         _lnchAsDrawDialTargetMarker(tft, (float)iTarget, TFT_YELLOW);
-    }
 
-    // Numeric readout — right-aligned so its right edge matches the "0°"
-    // label's right edge. The 0° label (textCenter box at x=CX+R+12, W=28)
-    // has its "0°" text spanning x=(CX+R+19)..(CX+R+33), i.e. text right
-    // edge at x = CX+R+33 = 420.
-    // Roboto_Black_24 to match the numeric readout size in the right panel.
-    // Box sized to fit Black_24 widest value "+90°" (~51 px) with padding:
-    //   textRight drawX = x0 + w - textW - TEXT_BORDER
-    //   text right edge = x0 + w - TEXT_BORDER - 1
-    //   For right edge at 420: x0 + w = 429
-    //   With w=72: x0 = 357.
-    // Box cleared before draw so narrower new values fully replace wider old.
-    if (readoutChanged) {
+    // Numeric readout inside the bordered box under the dial.
+    if (arrowChanged) {
         char buf[8];
         snprintf(buf, sizeof(buf), "%+d\xB0", iFpa);
-        tft.fillRect(357, LNCH_AS_PANEL_Y + 1,
-                     72, 29, TFT_BLACK);
-        textRight(tft, &Roboto_Black_24,
-                  357, LNCH_AS_PANEL_Y + 1,
-                  72, 29,
-                  buf, TFT_DARK_GREEN, TFT_BLACK);
+        tft.fillRect(LNCH_AS_FPA_VAL_X + 1, LNCH_AS_FPA_VAL_Y + 1,
+                     LNCH_AS_FPA_VAL_W - 2, LNCH_AS_FPA_VAL_H - 2, TFT_BLACK);
+        textCenter(tft, &Roboto_Black_24,
+                   LNCH_AS_FPA_VAL_X, LNCH_AS_FPA_VAL_Y + 1,
+                   LNCH_AS_FPA_VAL_W, LNCH_AS_FPA_VAL_H - 2, buf, TFT_DARK_GREEN, TFT_BLACK);
     }
-
     _lnchAsPrevFpaReadout = iFpa;
     _lnchAsPrevFpaTarget  = iTarget;
-    // Track arrow end for legacy state; not strictly needed now since we quantize
-    // to integer degrees, but kept consistent.
-    float rad = (float)iFpa * DEG_TO_RAD;
-    _lnchAsPrevFpaArrowEndX = LNCH_AS_DIAL_CX + (int16_t)roundf(LNCH_AS_DIAL_ARROW_R * cosf(rad));
-    _lnchAsPrevFpaArrowEndY = LNCH_AS_DIAL_CY - (int16_t)roundf(LNCH_AS_DIAL_ARROW_R * sinf(rad));
+}
+
+// ── Heading tape ──────────────────────────────────────────────────────────────────────
+
+// Heading number box (cached) — current vessel heading, "NNN°".
+static void _lnchAsUpdateHdgBox(KCM_TFT &tft, float hdg) {
+    int16_t iHdg = (int16_t)roundf(hdg) % 360;
+    if (iHdg < 0) iHdg += 360;
+    if (iHdg == _lnchAsPrevHdgBox) return;
+
+    char buf[8];
+    if (_lnchAsPrevHdgBox >= 0) {           // erase previous value (black-on-black)
+        snprintf(buf, sizeof(buf), "%03d\xB0", _lnchAsPrevHdgBox);
+        eraseCenteredValue(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+                   LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_BLACK);
+    }
+    snprintf(buf, sizeof(buf), "%03d\xB0", iHdg);
+    textCenter(tft, &Roboto_Black_24, LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y + 1,
+               LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H - 2, buf, TFT_DARK_GREEN, TFT_BLACK);
+    _lnchAsPrevHdgBox = iHdg;
+}
+
+// Redraw the heading tape strip: ticks, N/E/S/W + degree labels, and markers
+// (90° launch bug + velocity-vector heading). Tape center = current vessel heading.
+static void _lnchAsDrawHdgTape(KCM_TFT &tft, float hdg) {
+    while (hdg <   0.0f) hdg += 360.0f;
+    while (hdg >= 360.0f) hdg -= 360.0f;
+
+    tft.fillRect(LNCH_AS_HDG_X, LNCH_AS_HDG_TAPE_Y, LNCH_AS_HDG_W, LNCH_AS_HDG_TAPE_H, TFT_BLACK);
+    tft.drawRect(LNCH_AS_HDG_BOX_X, LNCH_AS_HDG_BOX_Y, LNCH_AS_HDG_BOX_W, LNCH_AS_HDG_BOX_H, TFT_LIGHT_GREY);
+    _lnchAsPrevHdgBox = -1;   // fill blackened the box interior — force number redraw
+
+    int16_t halfDeg = (int16_t)(LNCH_AS_HDG_W / (2.0f * LNCH_AS_HDG_SCALE)) + 1;
+    tft.setFont(Roboto_Black_12);
+    for (int16_t d = -halfDeg; d <= halfDeg; d++) {
+        float deg = hdg + (float)d;
+        while (deg <   0.0f) deg += 360.0f;
+        while (deg >= 360.0f) deg -= 360.0f;
+        int16_t px = LNCH_AS_HDG_CX + (int16_t)roundf((float)d * LNCH_AS_HDG_SCALE);
+        if (px <= LNCH_AS_HDG_X || px >= LNCH_AS_HDG_X + LNCH_AS_HDG_W) continue;
+        if (px >= LNCH_AS_HDG_SUPP_LO && px <= LNCH_AS_HDG_SUPP_HI) continue;
+        int16_t ideg = (int16_t)roundf(deg); if (ideg == 360) ideg = 0;
+
+        if (ideg % 10 == 0) {
+            tft.drawLine(px, LNCH_AS_HDG_TAPE_Y, px, LNCH_AS_HDG_TAPE_Y + 9, TFT_LIGHT_GREY);
+            const char *lbl; uint16_t col; char nb[8];
+            if      (ideg ==   0) { lbl = "N"; col = TFT_YELLOW; }
+            else if (ideg ==  90) { lbl = "E"; col = TFT_WHITE;  }
+            else if (ideg == 180) { lbl = "S"; col = TFT_WHITE;  }
+            else if (ideg == 270) { lbl = "W"; col = TFT_WHITE;  }
+            else { snprintf(nb, sizeof(nb), "%d", ideg); lbl = nb; col = TFT_LIGHT_GREY; }
+            tft.setTextColor(col, TFT_BLACK);
+            uint8_t lw = strlen(lbl) * 8;
+            int16_t cx = px - (int16_t)(lw / 2);
+            // Skip the label entirely if it would run off either edge — clamping it
+            // to the edge makes labels stall and bunch up as the tape scrolls.
+            if (cx >= LNCH_AS_HDG_X + 1 && cx + lw <= LNCH_AS_HDG_X + LNCH_AS_HDG_W - 1) {
+                tft.setCursor(cx, LNCH_AS_HDG_TAPE_Y + 11);
+                tft.print(lbl);
+            }
+        } else if (ideg % 2 == 0) {
+            tft.drawLine(px, LNCH_AS_HDG_TAPE_Y, px, LNCH_AS_HDG_TAPE_Y + 5, TFT_DARK_GREY);
+        }
+    }
+
+    // Markers — downward triangles inside the tape (pegged to the edges, hidden
+    // behind the center box's suppress zone).
+    auto drawMarker = [&](float mHdg, uint16_t col) {
+        float diff = mHdg - hdg;
+        while (diff >  180.0f) diff -= 360.0f;
+        while (diff < -180.0f) diff += 360.0f;
+        int16_t px = LNCH_AS_HDG_CX + (int16_t)roundf(diff * LNCH_AS_HDG_SCALE);
+        int16_t pxMin = LNCH_AS_HDG_X + 7, pxMax = LNCH_AS_HDG_X + LNCH_AS_HDG_W - 7;
+        if (px < pxMin) px = pxMin;
+        if (px > pxMax) px = pxMax;
+        if (px >= LNCH_AS_HDG_SUPP_LO && px <= LNCH_AS_HDG_SUPP_HI) return;
+        tft.fillTriangle(px,     LNCH_AS_HDG_TAPE_Y + 18,
+                         px - 6, LNCH_AS_HDG_TAPE_Y + 2,
+                         px + 6, LNCH_AS_HDG_TAPE_Y + 2, col);
+    };
+    // Velocity-vector heading (green), only when actually moving.
+    if (state.surfaceVel >= LNCH_AS_HDG_VEL_MIN_MS)
+        drawMarker(state.srfVelHeading, TFT_NEON_GREEN);
+    // 90° launch-azimuth bug (amber) drawn last so it sits on top.
+    drawMarker(LNCH_AS_HDG_LAUNCH_AZ, TFT_YELLOW);
+}
+
+// Static chrome: "HDG" label + initial tape/box. Resets change-detection state.
+static void _lnchAsDrawHdgTapeChrome(KCM_TFT &tft) {
+    _lnchAsPrevHdg = -9999.0f; _lnchAsPrevHdgBox = -9999; _lnchAsPrevVelHdg = -9999.0f;
+    textCenter(tft, &Roboto_Black_20, LNCH_AS_HDG_X, LNCH_AS_HDG_NAME_Y,
+               LNCH_AS_HDG_W, 24, "HDG", TFT_LIGHT_GREY, TFT_BLACK);
+    _lnchAsDrawHdgTape(tft, state.heading);
+    _lnchAsUpdateHdgBox(tft, state.heading);
+}
+
+// Per-frame update — redraw the strip when heading or velocity heading changes.
+static void _lnchAsUpdateHdgTape(KCM_TFT &tft) {
+    float hdg = state.heading;
+    bool dirty = fabsf(hdg - _lnchAsPrevHdg) >= 0.3f
+              || fabsf(state.srfVelHeading - _lnchAsPrevVelHdg) >= 0.3f;
+    if (dirty) {
+        _lnchAsDrawHdgTape(tft, hdg);
+        _lnchAsPrevHdg    = hdg;
+        _lnchAsPrevVelHdg = state.srfVelHeading;
+    }
+    _lnchAsUpdateHdgBox(tft, hdg);
 }
 
 // ── Atmosphere gauge ──────────────────────────────────────────────────────────────────
 //
-// Horizontal bar showing current atmospheric density as a fraction of the body's
-// sea-level density (0..1). KSP stock-gauge style: fills left-to-right as the
-// vessel sits deep in the atmosphere, empties to zero as it climbs to space.
-// On bodies with no atmosphere, the bar stays empty and an overlay reads
-// "NO ATM".
+// Vertical bar showing current atmospheric density as a fraction of the body's
+// sea-level density (0..1). Sea level (dense) at the top, vacuum at the bottom;
+// a white indicator slides down as the vessel climbs out of the atmosphere. On
+// bodies with no atmosphere the indicator parks in the OFF_BLACK bottom segment.
 //
 // Data inputs from AppState:
 //   state.airDensity   — current air density in kg/m³ (0 in vacuum)
@@ -1287,286 +1284,177 @@ static float _lnchAsAtmoFraction() {
     return sqrtf(sqrtf(ratio));
 }
 
-static const float   LNCH_AS_ATMO_ZONE1_END = 0.35f;  // NAVY → FRENCH_BLUE boundary
-static const float   LNCH_AS_ATMO_ZONE2_END = 0.75f;  // FRENCH_BLUE → SKY boundary
-
-// Classify a given x-coordinate as a major tick, minor tick, or neither.
-// Major ticks are 1-px wide vertical lines at every 10% step of the
-// atmospheric portion (0%, 10%, ..., 90%). Minor ticks sit midway between
-// majors (5%, 15%, ..., 95%). Major ticks take priority if both match.
-// Returns one of ATMO_TICK_NONE / ATMO_TICK_MAJOR / ATMO_TICK_MINOR.
-static int8_t _lnchAsAtmoTickKind(int16_t x) {
-    int16_t innerX0 = LNCH_AS_ATMO_X_LEFT + 1;
-    int16_t innerW  = (LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1) - 2;
-    int16_t noAtmW  = (int16_t)roundf(LNCH_AS_ATMO_NOATM_W_FRAC * innerW);
-    int16_t atmX0   = innerX0 + noAtmW;
-    int16_t atmW    = innerW - noAtmW;
-
-    // Majors at 0%, 10%, ..., 90% = i*10% for i=0..9
-    for (int16_t i = 0; i < LNCH_AS_ATMO_TICK_COUNT_MAJOR; i++) {
-        int16_t tx = atmX0 + (int16_t)roundf((float)i * atmW / LNCH_AS_ATMO_TICK_COUNT_MAJOR);
-        if (x == tx) return ATMO_TICK_MAJOR;
-    }
-    // Minors at 5%, 15%, ..., 95% = (i*10 + 5)% for i=0..9
-    for (int16_t i = 0; i < LNCH_AS_ATMO_TICK_COUNT_MINOR; i++) {
-        int16_t tx = atmX0 + (int16_t)roundf(((float)i + 0.5f) * atmW / LNCH_AS_ATMO_TICK_COUNT_MINOR);
-        if (x == tx) return ATMO_TICK_MINOR;
-    }
-    return ATMO_TICK_NONE;
-}
-
-// Return the bar background color for a given x-coordinate within the bar.
-// Four-zone scheme: leftmost segment is OFF_BLACK ("no atmosphere" parking),
-// remaining width is the atmospheric scale divided into NAVY/FRENCH/SKY.
-// Does NOT handle tick marks — callers that need tick-aware color should use
-// _lnchAsAtmoPixelColor().
-static uint16_t _lnchAsAtmoBgColor(int16_t x) {
-    int16_t innerX0 = LNCH_AS_ATMO_X_LEFT + 1;
-    int16_t innerW  = (LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1) - 2;
-    int16_t noAtmW  = (int16_t)roundf(LNCH_AS_ATMO_NOATM_W_FRAC * innerW);
-    int16_t atmX0   = innerX0 + noAtmW;     // left edge of atmospheric portion
-    int16_t atmW    = innerW - noAtmW;
-
-    if (x < atmX0) return TFT_OFF_BLACK;  // no-atmosphere parking zone
-
-    // Atmospheric zones
-    int16_t z1end = atmX0 + (int16_t)roundf(LNCH_AS_ATMO_ZONE1_END * atmW) - 1;
-    int16_t z2end = atmX0 + (int16_t)roundf(LNCH_AS_ATMO_ZONE2_END * atmW) - 1;
-    if (x <= z1end)      return TFT_NAVY;
-    else if (x <= z2end) return TFT_FRENCH_BLUE;
-    else                 return TFT_SKY;
-}
-
-// Draw the bar's four-zone stable background fill + tick marks. Called from
-// chrome and when restoring the bar after a transition.
-static void _lnchAsDrawAtmoBackground(RA8875 &tft) {
-    int16_t innerX0 = LNCH_AS_ATMO_X_LEFT + 1;
-    int16_t innerY  = LNCH_AS_ATMO_Y_TOP + 1;
-    int16_t innerW  = (LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1) - 2;
-    int16_t innerH  = (LNCH_AS_ATMO_Y_BOT   - LNCH_AS_ATMO_Y_TOP   + 1) - 2;
-
-    int16_t noAtmW  = (int16_t)roundf(LNCH_AS_ATMO_NOATM_W_FRAC * innerW);
-    int16_t atmX0   = innerX0 + noAtmW;
-    int16_t atmW    = innerW - noAtmW;
-    int16_t z1end   = atmX0 + (int16_t)roundf(LNCH_AS_ATMO_ZONE1_END * atmW) - 1;
-    int16_t z2end   = atmX0 + (int16_t)roundf(LNCH_AS_ATMO_ZONE2_END * atmW) - 1;
-
-    // Zone 0: OFF_BLACK (no-atmosphere parking segment, leftmost)
-    tft.fillRect(innerX0, innerY,
-                 noAtmW, innerH,
-                 TFT_OFF_BLACK);
-    // Zone 1: NAVY (darkest, "near vacuum")
-    tft.fillRect(atmX0, innerY,
-                 z1end - atmX0 + 1, innerH,
-                 TFT_NAVY);
-    // Zone 2: FRENCH_BLUE (medium)
-    tft.fillRect(z1end + 1, innerY,
-                 z2end - z1end, innerH,
-                 TFT_FRENCH_BLUE);
-    // Zone 3: SKY (brightest, "dense atmosphere")
-    tft.fillRect(z2end + 1, innerY,
-                 (innerX0 + innerW - 1) - z2end, innerH,
-                 TFT_SKY);
-
-    // Tick marks — 1-px wide vertical lines at the top of the bar. Majors at
-    // every 10% of the atmospheric portion (0%, 10%, ..., 90%), full major
-    // height. Minors midway between majors (5%, 15%, ..., 95%), half height.
-    int16_t tickHMajor = (int16_t)roundf(LNCH_AS_ATMO_TICK_H_FRAC_MAJOR * innerH);
-    int16_t tickHMinor = (int16_t)roundf(LNCH_AS_ATMO_TICK_H_FRAC_MINOR * innerH);
-    if (tickHMajor < 1) tickHMajor = 1;
-    if (tickHMinor < 1) tickHMinor = 1;
-
-    for (int16_t i = 0; i < LNCH_AS_ATMO_TICK_COUNT_MAJOR; i++) {
-        int16_t tx = atmX0 + (int16_t)roundf((float)i * atmW / LNCH_AS_ATMO_TICK_COUNT_MAJOR);
-        tft.drawLine(tx, innerY, tx, innerY + tickHMajor - 1, TFT_LIGHT_GREY);
-    }
-    for (int16_t i = 0; i < LNCH_AS_ATMO_TICK_COUNT_MINOR; i++) {
-        int16_t tx = atmX0 + (int16_t)roundf(((float)i + 0.5f) * atmW / LNCH_AS_ATMO_TICK_COUNT_MINOR);
-        tft.drawLine(tx, innerY, tx, innerY + tickHMinor - 1, TFT_LIGHT_GREY);
-    }
-}
-
-// Chrome: name label above bar + bar border + stable 3-zone interior fill.
-// The bar background never changes; only the triangle indicator moves.
-static void _lnchAsDrawAtmoChrome(RA8875 &tft) {
-    int16_t w = LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1;
-    int16_t h = LNCH_AS_ATMO_Y_BOT - LNCH_AS_ATMO_Y_TOP + 1;
-
-    // Name label centered over bar
-    textCenter(tft, &Roboto_Black_16,
-               LNCH_AS_ATMO_X_LEFT, LNCH_AS_ATMO_LABEL_Y,
-               w, 16,
-               "ATMOSPHERE", TFT_LIGHT_GREY, TFT_BLACK);
-
-    // Three-zone stable background fill
-    _lnchAsDrawAtmoBackground(tft);
-
-    // Bar outer border (drawn last so it cleanly bounds the fill)
-    tft.drawRect(LNCH_AS_ATMO_X_LEFT, LNCH_AS_ATMO_Y_TOP,
-                 w, h,
-                 TFT_LIGHT_GREY);
-}
-
-// Draw the white triangle indicator at a given center x-coordinate. Tip points
-// up, protruding into the bar by TRI_UP px; base sits below the bar by TRI_DOWN px.
-static void _lnchAsDrawAtmoTriangle(RA8875 &tft, int16_t centerX) {
-    int16_t tipY  = LNCH_AS_ATMO_Y_BOT - LNCH_AS_ATMO_TRI_UP;
-    int16_t baseY = LNCH_AS_ATMO_Y_BOT + LNCH_AS_ATMO_TRI_DOWN;
-    tft.fillTriangle(centerX, tipY,
-                     centerX - LNCH_AS_ATMO_TRI_HALF_W, baseY,
-                     centerX + LNCH_AS_ATMO_TRI_HALF_W, baseY,
-                     TFT_WHITE);
-}
-
-// Return the correct background color for a pixel at (x, y) in the triangle's
-// possible region. Accounts for bar interior zones, tick-mark columns (major
-// and minor, each with their own height), bar border, and the area
-// below/beside the bar.
-//
-// Note: with the current geometry the triangle's tip (y=397) sits just below
-// the major tick bottom (y=386). The tick check is defensive — correct even
-// if future geometry moves the triangle tip into the tick region.
-static uint16_t _lnchAsAtmoPixelColor(int16_t x, int16_t y) {
-    int16_t innerX0 = LNCH_AS_ATMO_X_LEFT + 1;
-    int16_t innerX1 = LNCH_AS_ATMO_X_RIGHT - 1;
+// Vertical atmospheric-scale geometry: atmYBot = the y at frac 0 (bottom of the
+// atmospheric portion, just above the OFF_BLACK parking segment); atmH = scale
+// height in px. Sea level (frac 1) is at the top interior row.
+static void _lnchAsAtmoScaleGeom(int16_t &atmYBot, int16_t &atmH) {
     int16_t innerY0 = LNCH_AS_ATMO_Y_TOP + 1;
     int16_t innerY1 = LNCH_AS_ATMO_Y_BOT - 1;
     int16_t innerH  = innerY1 - innerY0 + 1;
-
-    int16_t tickHMajor = (int16_t)roundf(LNCH_AS_ATMO_TICK_H_FRAC_MAJOR * innerH);
-    int16_t tickHMinor = (int16_t)roundf(LNCH_AS_ATMO_TICK_H_FRAC_MINOR * innerH);
-    if (tickHMajor < 1) tickHMajor = 1;
-    if (tickHMinor < 1) tickHMinor = 1;
-    int16_t tickY1Major = innerY0 + tickHMajor - 1;
-    int16_t tickY1Minor = innerY0 + tickHMinor - 1;
-
-    // Border pixels: top, bottom, left, or right edge of the bar rectangle
-    bool onBorder = (y == LNCH_AS_ATMO_Y_TOP  || y == LNCH_AS_ATMO_Y_BOT ||
-                     x == LNCH_AS_ATMO_X_LEFT || x == LNCH_AS_ATMO_X_RIGHT);
-    bool inBarRect = (x >= LNCH_AS_ATMO_X_LEFT && x <= LNCH_AS_ATMO_X_RIGHT &&
-                      y >= LNCH_AS_ATMO_Y_TOP  && y <= LNCH_AS_ATMO_Y_BOT);
-
-    if (inBarRect && onBorder) return TFT_LIGHT_GREY;
-
-    // Interior: tick mark takes priority in its y-range, else zone color.
-    if (x >= innerX0 && x <= innerX1 && y >= innerY0 && y <= innerY1) {
-        int8_t tk = _lnchAsAtmoTickKind(x);
-        if (tk == ATMO_TICK_MAJOR && y <= tickY1Major) return TFT_LIGHT_GREY;
-        if (tk == ATMO_TICK_MINOR && y <= tickY1Minor) return TFT_LIGHT_GREY;
-        return _lnchAsAtmoBgColor(x);
-    }
-
-    // Outside bar (above, below, or beside): black background
-    return TFT_BLACK;
+    int16_t noAtmH  = (int16_t)roundf(LNCH_AS_ATMO_NOATM_H_FRAC * innerH);
+    atmYBot = innerY1 - noAtmH;
+    atmH    = atmYBot - innerY0 + 1;
 }
 
-// Erase the triangle at a given center x-coordinate. The triangle can paint
-// pixels that are:
-//   - inside the bar interior (zone colors)
-//   - on the bar's bottom border (TFT_LIGHT_GREY at y=Y_BOT)
-//   - on the bar's left/right border columns (x=X_LEFT or x=X_RIGHT)
-//   - below the bar (TFT_BLACK)
-//   - outside the bar on the sides (TFT_BLACK)
-//
-// To handle all cases cleanly we repaint the triangle's bounding box row-by-row,
-// using run-length coalescing within each row to minimize draw calls.
-static void _lnchAsEraseAtmoTriangle(RA8875 &tft, int16_t centerX) {
-    int16_t halfW = LNCH_AS_ATMO_TRI_HALF_W;
-    int16_t x0    = centerX - halfW;
-    int16_t x1    = centerX + halfW;
-    int16_t yTop  = LNCH_AS_ATMO_Y_BOT - LNCH_AS_ATMO_TRI_UP;
-    int16_t yBot  = LNCH_AS_ATMO_Y_BOT + LNCH_AS_ATMO_TRI_DOWN;
-
-    for (int16_t y = yTop; y <= yBot; y++) {
-        int16_t runStart = x0;
-        uint16_t runColor = _lnchAsAtmoPixelColor(x0, y);
-        for (int16_t x = x0 + 1; x <= x1; x++) {
-            uint16_t c = _lnchAsAtmoPixelColor(x, y);
-            if (c != runColor) {
-                tft.fillRect(runStart, y, x - runStart, 1, runColor);
-                runStart = x;
-                runColor = c;
-            }
-        }
-        tft.fillRect(runStart, y, x1 - runStart + 1, 1, runColor);
-    }
+// Map an atmospheric fraction (0..1) to a y-pixel on the vertical scale
+// (0 = bottom / vacuum end, 1 = top / sea level).
+static int16_t _lnchAsAtmoFracToY(float frac) {
+    int16_t atmYBot, atmH;
+    _lnchAsAtmoScaleGeom(atmYBot, atmH);
+    if (frac < 0.0f) frac = 0.0f;
+    if (frac > 1.0f) frac = 1.0f;
+    return atmYBot - (int16_t)roundf(frac * (float)(atmH - 1));
 }
 
-// Update: move the white triangle indicator to reflect current state.
-//
-// - Atmospheric body: triangle position maps density fraction (0..1) across
-//   the atmospheric portion of the bar (NAVY/FRENCH/SKY zones). 0% = left
-//   edge of NAVY, 100% = right edge of SKY.
-// - Non-atmosphere body: triangle parks centered in the OFF_BLACK segment
-//   at the left end of the bar.
-//
-// The bar background itself is stable chrome — never changes. Only the
-// triangle moves.
-static void _lnchAsUpdateAtmoGauge(RA8875 &tft) {
-    float frac = _lnchAsAtmoFraction();
-    bool noAtm = (frac < 0.0f);
-
+// Draw the stable vertical zone fill (SKY top → NAVY, OFF_BLACK parking bottom)
+// plus horizontal tick marks along the left of the bar.
+static void _lnchAsDrawAtmoBackground(KCM_TFT &tft) {
     int16_t innerX0 = LNCH_AS_ATMO_X_LEFT + 1;
-    int16_t innerW  = (LNCH_AS_ATMO_X_RIGHT - LNCH_AS_ATMO_X_LEFT + 1) - 2;
-    int16_t noAtmW  = (int16_t)roundf(LNCH_AS_ATMO_NOATM_W_FRAC * innerW);
-    int16_t atmX0   = innerX0 + noAtmW;              // left edge of atmospheric portion
-    int16_t atmW    = innerW - noAtmW;
+    int16_t innerY0 = LNCH_AS_ATMO_Y_TOP + 1;
+    int16_t innerY1 = LNCH_AS_ATMO_Y_BOT - 1;
+    int16_t innerW  = LNCH_AS_ATMO_W - 1;
+    int16_t atmYBot, atmH;
+    _lnchAsAtmoScaleGeom(atmYBot, atmH);
 
-    // Compute target triangle X based on state
-    int16_t triX;
-    if (noAtm) {
-        // Park triangle centered in the OFF_BLACK segment
-        triX = innerX0 + noAtmW / 2;
-    } else {
-        // Map density fraction across atmospheric portion
-        // At frac=0:  triX = atmX0 (left edge of NAVY)
-        // At frac=1:  triX = atmX0 + atmW - 1 (right edge of SKY)
-        triX = atmX0 + (int16_t)roundf(frac * (float)(atmW - 1));
+    int16_t y75 = _lnchAsAtmoFracToY(LNCH_AS_ATMO_ZONE2_FRAC);  // SKY ↔ FRENCH_BLUE
+    int16_t y35 = _lnchAsAtmoFracToY(LNCH_AS_ATMO_ZONE1_FRAC);  // FRENCH_BLUE ↔ NAVY
+
+    tft.fillRect(innerX0, innerY0, innerW, y75 - innerY0,        TFT_SKY);          // dense (top)
+    tft.fillRect(innerX0, y75,     innerW, y35 - y75,            TFT_FRENCH_BLUE);  // medium
+    tft.fillRect(innerX0, y35,     innerW, atmYBot - y35 + 1,    TFT_NAVY);         // near vacuum
+    if (atmYBot + 1 <= innerY1)
+        tft.fillRect(innerX0, atmYBot + 1, innerW, innerY1 - atmYBot, TFT_OFF_BLACK);  // parking
+
+    int16_t tickWMajor = (int16_t)roundf(LNCH_AS_ATMO_TICK_W_FRAC_MAJOR * innerW);
+    int16_t tickWMinor = (int16_t)roundf(LNCH_AS_ATMO_TICK_W_FRAC_MINOR * innerW);
+    if (tickWMajor < 1) tickWMajor = 1;
+    if (tickWMinor < 1) tickWMinor = 1;
+    // Ticks in the bright SKY zone (above y75) use a darker color so they don't
+    // wash out; NAVY/FRENCH_BLUE zones keep light-grey ticks.
+    for (int16_t i = 0; i < LNCH_AS_ATMO_TICK_COUNT_MAJOR; i++) {
+        int16_t ty = _lnchAsAtmoFracToY((float)i / (float)LNCH_AS_ATMO_TICK_COUNT_MAJOR);
+        uint16_t tc = (ty < y75) ? LNCH_AS_ATMO_TICK_SKY_COLOR : TFT_LIGHT_GREY;
+        tft.drawLine(innerX0, ty, innerX0 + tickWMajor - 1, ty, tc);
     }
-
-    if (triX == _lnchAsPrevAtmoTriX) return;  // no change
-
-    // Erase previous triangle (if any)
-    if (_lnchAsPrevAtmoTriX >= 0) {
-        _lnchAsEraseAtmoTriangle(tft, _lnchAsPrevAtmoTriX);
+    for (int16_t i = 0; i < LNCH_AS_ATMO_TICK_COUNT_MINOR; i++) {
+        int16_t ty = _lnchAsAtmoFracToY(((float)i + 0.5f) / (float)LNCH_AS_ATMO_TICK_COUNT_MINOR);
+        uint16_t tc = (ty < y75) ? LNCH_AS_ATMO_TICK_SKY_COLOR : TFT_LIGHT_GREY;
+        tft.drawLine(innerX0, ty, innerX0 + tickWMinor - 1, ty, tc);
     }
-    // Draw new triangle at updated position
-    _lnchAsDrawAtmoTriangle(tft, triX);
-    _lnchAsPrevAtmoTriX = triX;
+}
+
+// Chrome: name label + stable zone fill + border.
+static void _lnchAsDrawAtmoChrome(KCM_TFT &tft) {
+    int16_t cx = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W / 2;
+    textCenter(tft, &Roboto_Black_20,
+               cx - 50, LNCH_AS_GAUGE_NAME_Y, 100, LNCH_AS_GAUGE_NAME_H,
+               "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
+    _lnchAsDrawAtmoBackground(tft);
+    tft.drawRect(LNCH_AS_ATMO_X_LEFT, LNCH_AS_ATMO_Y_TOP,
+                 LNCH_AS_ATMO_W + 1,
+                 LNCH_AS_ATMO_Y_BOT - LNCH_AS_ATMO_Y_TOP + 1,
+                 TFT_LIGHT_GREY);
+}
+
+// Twin triangle indicators: one each side of the bar, pointing toward it, at
+// centerY. Pass TFT_BLACK to erase (both live on the black background outside the
+// bar, so no zone/tick reconstruction is needed).
+static void _lnchAsDrawAtmoTriangle(KCM_TFT &tft, int16_t centerY, uint16_t color) {
+    // Left triangle — points right, tip just left of the bar.
+    int16_t lTipX  = LNCH_AS_ATMO_X_LEFT - LNCH_AS_ATMO_TRI_GAP;
+    int16_t lBaseX = lTipX - LNCH_AS_ATMO_TRI_W;
+    tft.fillTriangle(lTipX,  centerY,
+                     lBaseX, centerY - LNCH_AS_ATMO_TRI_HALF_H,
+                     lBaseX, centerY + LNCH_AS_ATMO_TRI_HALF_H,
+                     color);
+    // Right triangle — points left, tip just right of the bar.
+    int16_t rTipX  = LNCH_AS_ATMO_X_RIGHT + LNCH_AS_ATMO_TRI_GAP;
+    int16_t rBaseX = rTipX + LNCH_AS_ATMO_TRI_W;
+    tft.fillTriangle(rTipX,  centerY,
+                     rBaseX, centerY - LNCH_AS_ATMO_TRI_HALF_H,
+                     rBaseX, centerY + LNCH_AS_ATMO_TRI_HALF_H,
+                     color);
+}
+
+// Update: slide the indicator to the current density fraction (or park it in the
+// OFF_BLACK segment on a non-atmosphere body). The bar background is stable
+// chrome; only the triangle moves.
+static void _lnchAsUpdateAtmoGauge(KCM_TFT &tft) {
+    float frac = _lnchAsAtmoFraction();
+    // In vacuum (airDensity 0, frac == 0) or on a non-atmosphere body (frac < 0),
+    // park the indicators centered in the dark OFF_BLACK segment at the bottom
+    // rather than pegging them at the frac=0 line at the top of that segment.
+    bool  vacuum = (frac <= 0.0f);
+
+    int16_t innerY1 = LNCH_AS_ATMO_Y_BOT - 1;
+    int16_t atmYBot, atmH;
+    _lnchAsAtmoScaleGeom(atmYBot, atmH);
+
+    int16_t triY = vacuum ? (int16_t)((atmYBot + 1 + innerY1) / 2)
+                          : _lnchAsAtmoFracToY(frac);
+    if (triY == _lnchAsPrevAtmoTriY) return;
+
+    if (_lnchAsPrevAtmoTriY >= 0) {
+        _lnchAsDrawAtmoTriangle(tft, _lnchAsPrevAtmoTriY, TFT_BLACK);
+    }
+    _lnchAsDrawAtmoTriangle(tft, triY, TFT_WHITE);
+    _lnchAsPrevAtmoTriY = triY;
+}
+
+// ── STAGE indicator button ────────────────────────────────────────────────────
+// Sits in the whitespace between the FPA readout and the HDG tape. Lights red
+// (white text) when the current stage's ΔV is spent — a "time to stage" cue —
+// and otherwise shows the standard off-look. Change-detected: redraws only when
+// the active state flips.
+static void _lnchAsUpdateStageButton(KCM_TFT &tft) {
+    int8_t active = (state.stageDeltaV <= LNCH_AS_STAGE_EMPTY_MS) ? 1 : 0;
+    if (active == _lnchAsPrevStageActive) return;
+
+    static const ButtonLabel STAGE_LBL = {
+        "STAGE",
+        TFT_DARK_GREY,    // fontColorOff
+        TFT_WHITE,        // fontColorOn
+        TFT_OFF_BLACK,    // backgroundColorOff
+        TFT_RED,          // backgroundColorOn
+        TFT_GREY,         // borderColorOff
+        TFT_GREY,         // borderColorOn
+    };
+    drawButton(tft, LNCH_AS_STAGE_X, LNCH_AS_STAGE_Y,
+               LNCH_AS_STAGE_W, LNCH_AS_STAGE_H,
+               STAGE_LBL, &Roboto_Black_28, active != 0);
+    _lnchAsPrevStageActive = active;
 }
 
 // Left panel chrome — draw ladder (dynamic, dependent on current state),
-// V.Vrt / V.Orb bars, FPA dial, and atmosphere gauge (static chrome).
-static void _lnchAsDrawLeftPanelChrome(RA8875 &tft) {
+// V.Vrt / V.Orb bars, FPA dial, heading tape, and atmosphere (static chrome).
+static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
     _lnchAsDrawLadderChrome(tft);
     _lnchAsDrawVVrtChrome(tft);
     _lnchAsDrawVOrbChrome(tft);
     _lnchAsDrawDialChrome(tft);
+    _lnchAsDrawHdgTapeChrome(tft);
     _lnchAsDrawAtmoChrome(tft);
     // Record scale that was just drawn, so UpdateLadderMarkers doesn't trigger
     // an immediate spurious redraw on the first frame after chrome.
     _lnchAsLastDrawnScaleTop = _lnchAsLadderScaleTop();
 }
 
-// Called every frame: update the ladder markers, bars, dial, and atmo gauge.
-static void _lnchAsDrawLeftPanelValues(RA8875 &tft) {
+// Called every frame: update the ladder markers, bars, dial, heading tape, atmo.
+static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateLadderMarkers(tft);
     _lnchAsUpdateVVrtBar(tft);
     _lnchAsUpdateVOrbBar(tft);
     _lnchAsUpdateFpaDial(tft);
+    _lnchAsUpdateHdgTape(tft);
     _lnchAsUpdateAtmoGauge(tft);
+    _lnchAsUpdateStageButton(tft);
 }
 
 
-// Format a velocity in m/s with 1 decimal place and "m/s" unit, no thousands
-// separator. At Roboto_Black_24, worst case "-3234.5 m/s" = 135 px, well under
-// the ~140 px value-region limit for the widest label ("ΔV.Stg:").
-static String _lnchAsFmtMs1(float v) {
-    if (fabsf(v) < 0.05f) v = 0.0f;  // snap sub-rounding noise and -0.0 to zero
-    char buf[16];
-    dtostrf(v, 1, 1, buf);
-    return String(buf) + " m/s";
-}
+// Ascent/Circ velocity readouts use the shared fmtMs() (thousands-separated at
+// >=1000, 1 decimal below) for cross-screen consistency. fmtMs is never wider
+// than the old 1-decimal form here (it drops the decimal and adds a comma at
+// >=1000), so it stays within the tight ~140 px value region for "ΔV.Stg:".
 
 // Reset all ascent-phase change-detection state + PrintState. Called at chrome
 // time to force a full redraw.
@@ -1613,7 +1501,8 @@ static void _lnchAsResetState() {
     _lnchAsPrevFpaArrowEndY   = -9999;
     _lnchAsPrevFpaReadout     = -9999;
     _lnchAsPrevFpaTarget      = -9999;
-    _lnchAsPrevAtmoTriX       = -1;
+    _lnchAsPrevAtmoTriY       = -1;
+    _lnchAsPrevStageActive    = -1;
 }
 
 
@@ -1640,95 +1529,150 @@ static const char *_lnchAsLabels[8] = {
 // SCFT screen layout. Because it's outside the RPANEL_X..RPANEL_X+W-1 rect
 // painted by printDispChrome's row borders, it isn't overwritten and can be
 // drawn in any order.
-static void _lnchAsDrawRightPanelChrome(RA8875 &tft) {
+// ── rev-2 Ascent right-panel geometry ──────────────────────────────────────
+// Phase 2 redesign: the numeric readout column is right-aligned to the content
+// edge (flush against the sidebar), widened to 400 px, and stretched to fill the
+// full height below the title bar, with larger fonts than the letterboxed
+// original. Ascent-only — the Circularization right panel keeps the shared
+// LNCH_AS_* geometry until its own redesign pass.
+static const int16_t LNCH_AS2_RPANEL_W = 360;
+static const int16_t LNCH_AS2_RPANEL_X = SCREEN_W - SIDEBAR_W - LNCH_AS2_RPANEL_W;  // 580
+static const int16_t LNCH_AS2_RPANEL_Y = LNCH_AS_PANEL_Y;                            // 63
+static const int16_t LNCH_AS2_ROW_H    = (SCREEN_H - LNCH_AS_PANEL_Y) / 8;           // 67
+static const int16_t LNCH_AS2_RPANEL_H = LNCH_AS2_ROW_H * 8;                         // 536
+static const tFont  *LNCH_AS2_LBL_FONT = &Roboto_Black_28;
+static const tFont  *LNCH_AS2_VAL_FONT = &Roboto_Black_36;
+static inline int16_t _lnchAs2RowY(uint8_t row) {
+    return LNCH_AS2_RPANEL_Y + row * LNCH_AS2_ROW_H;
+}
+
+// ── Shared LNCH right-panel readout plumbing ───────────────────────────────
+// Both LNCH phases (Ascent + Circularization) render an identical 8-row numeric
+// readout panel: same LNCH_AS2_* geometry, same Black_28 labels / Black_36
+// values, same vertical divider, same 2-px horizontal group dividers. Only the
+// row LABELS and the set of group-divider rows differ between the phases. These
+// shared helpers hold the single implementation; each phase's public entry
+// points delegate to them, passing their own label array, PrintState array, and
+// divider-row list.
+//
+// Defined here in Screen_LNCH_Ascent.ino, which the Arduino build concatenates
+// BEFORE Screen_LNCH_Circ.ino (alphabetical order), so these file-scope statics
+// are visible to the Circularization phase's code as well.
+
+// Shared right-panel chrome: vertical divider, one label cell per row, and the
+// horizontal group dividers named in divRows. Font is LNCH_AS2_LBL_FONT
+// (Roboto_Black_28) — identical in both phases.
+static void _lnchAs2DrawPanelChrome(KCM_TFT &tft, const char *const *labels,
+                                    const uint8_t *divRows, uint8_t divCount) {
     // Vertical divider in the 2-px gap before the right panel
-    tft.drawLine(LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y,
-                 LNCH_AS_RPANEL_X - 2, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
+    tft.drawLine(LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y,
+                 LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
-    tft.drawLine(LNCH_AS_RPANEL_X - 1, LNCH_AS_PANEL_Y,
-                 LNCH_AS_RPANEL_X - 1, LNCH_AS_PANEL_Y + LNCH_AS_PANEL_H - 1,
+    tft.drawLine(LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y,
+                 LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
 
     for (uint8_t i = 0; i < 8; i++) {
-        printDispChrome(tft, &Roboto_Black_20,
-                        LNCH_AS_RPANEL_X, _lnchAsRowY(i),
-                        LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
-                        _lnchAsLabels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
+        printDispChrome(tft, LNCH_AS2_LBL_FONT,
+                        LNCH_AS2_RPANEL_X, _lnchAs2RowY(i),
+                        LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
+                        labels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
     }
 
-    // Horizontal group dividers — 2 px in TFT_GREY. Three logical groups:
-    //   rows 0-2: Alt.SL, ApA, T+Ap       (altitude trajectory)
-    //   rows 3-4: V.Srf/V.Orb, V.Vrt      (velocity)
-    //   rows 5-7: Thrtl, T.Brn, ΔV.Stg    (propulsion)
-    // Dividers sit in the 2-px gap between row groups (at y=dy-1 and y=dy,
-    // where dy = rowY(3) or rowY(5)). These rows sit OUTSIDE both adjacent
-    // rows' fillRect clear regions (printValue / printDispChrome clear
-    // y0+1..y0+h-2 inclusive), so the divider can't be nibbled when a
+    // Horizontal group dividers — 2 px in TFT_GREY. Each divider sits in the
+    // 2-px gap between row groups (at y=dy-1 and y=dy). These rows sit OUTSIDE
+    // both adjacent rows' fillRect clear regions (printValue / printDispChrome
+    // clear y0+1..y0+h-2 inclusive), so the divider can't be nibbled when a
     // value cell changes background colour (e.g. alarm state toggle).
-    static const uint8_t divRows[] = { 3, 5 };
-    for (uint8_t i = 0; i < sizeof(divRows); i++) {
-        int16_t dy = _lnchAsRowY(divRows[i]);
-        tft.drawLine(LNCH_AS_RPANEL_X, dy - 1,
-                     LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy - 1,
+    for (uint8_t i = 0; i < divCount; i++) {
+        int16_t dy = _lnchAs2RowY(divRows[i]);
+        tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
+                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
                      TFT_GREY);
-        tft.drawLine(LNCH_AS_RPANEL_X, dy,
-                     LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy,
+        tft.drawLine(LNCH_AS2_RPANEL_X, dy,
+                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
                      TFT_GREY);
     }
 }
 
-// Helper: draw a value in a row using library printValue. The value is
-// right-aligned in the cell; the label (already drawn by chrome) is used
-// only for paramW calculation so the value region doesn't overlap the label.
-static void _lnchAsDrawRowValue(RA8875 &tft, uint8_t row, const String &val,
-                                 uint16_t fg, uint16_t bg) {
-    printValue(tft, &Roboto_Black_24,
-               LNCH_AS_RPANEL_X, _lnchAsRowY(row),
-               LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
-               _lnchAsLabels[row], val,
-               fg, bg, TFT_BLACK,
-               _lnchAsPs[row]);
+static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
+    // Ascent group dividers: rows 0-2 (altitude trajectory), 3-4 (velocity),
+    // 5-7 (propulsion) → dividers above rows 3 and 5.
+    static const uint8_t divRows[] = { 3, 5 };
+    _lnchAs2DrawPanelChrome(tft, _lnchAsLabels, divRows, sizeof(divRows));
 }
 
-// Update each row. Each checks its own change detection and returns early if
-// unchanged. Order: Alt, ApA, T+Ap, V.Srf, V.Vrt, Throttle, T.Burn, ΔV.Stg.
+// Shared: draw a value in a readout row using library printValue. The value is
+// right-aligned in the cell; the label (already drawn by chrome) is used only
+// for paramW calculation so the value region doesn't overlap the label. Font is
+// LNCH_AS2_VAL_FONT (Roboto_Black_36) — identical in both LNCH phases.
+static void _lnchAs2DrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
+                                 uint16_t fg, uint16_t bg,
+                                 const char *const *labels, PrintState *ps) {
+    printValue(tft, LNCH_AS2_VAL_FONT,
+               LNCH_AS2_RPANEL_X, _lnchAs2RowY(row),
+               LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
+               labels[row], val,
+               fg, bg, TFT_BLACK,
+               ps[row]);
+}
 
-static void _lnchAsUpdateAlt(RA8875 &tft) {
+// ── Shared LNCH row updaters ───────────────────────────────────────────────
+// Alt / ApA / T+Ap / T.Brn use byte-identical threshold + formatter + suppress
+// logic in both LNCH phases; only the target row index, label array, PrintState
+// array, and change-detection caches differ, so those are passed as parameters.
+//
+// NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ
+// between the phases (Ascent flags a zero-throttle alarm while Circ treats
+// coasting as normal; Ascent change-detects ΔV.Stg at tenths precision while
+// Circ uses whole m/s). See their per-phase definitions.
+
+static void _lnchAs2UpdateAlt(KCM_TFT &tft, uint8_t row,
+                              const char *const *labels, PrintState *ps,
+                              int32_t &prevAlt, uint16_t &prevFg) {
     float alt = state.altitude;
     int32_t iAlt = (int32_t)roundf(alt);
 
     // Threshold: red if negative, yellow near ground, green otherwise
-    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     float altYellow = bodyRad * 0.0015f;
     uint16_t fg = (alt < 0)         ? TFT_RED
                 : (alt < altYellow)  ? TFT_YELLOW
                 : TFT_DARK_GREEN;
 
-    if (iAlt == _lnchAsPrevAlt && fg == _lnchAsPrevAltFg) return;
+    if (iAlt == prevAlt && fg == prevFg) return;
 
-    _lnchAsDrawRowValue(tft, 0, formatAlt((float)iAlt), fg, TFT_BLACK);
-    _lnchAsPrevAlt = iAlt;
-    _lnchAsPrevAltFg = fg;
+    _lnchAs2DrawRowValue(tft, row, formatAlt((float)iAlt), fg, TFT_BLACK, labels, ps);
+    prevAlt = iAlt;
+    prevFg  = fg;
 }
 
-static void _lnchAsUpdateApA(RA8875 &tft) {
+static void _lnchAs2UpdateApA(KCM_TFT &tft, uint8_t row,
+                              const char *const *labels, PrintState *ps,
+                              int32_t &prevApA, uint16_t &prevFg) {
     float apa = state.apoapsis;
     int32_t iApA = (int32_t)roundf(apa);
 
     float warnAlt = max(currentBody.minSafe, currentBody.lowSpace);
     uint16_t fg;
-    if      (apa < 0)                                       fg = TFT_RED;
-    else if (warnAlt > 0 && apa > 0 && apa < warnAlt)       fg = TFT_YELLOW;
-    else                                                    fg = TFT_DARK_GREEN;
+    String   val;
+    if (apa < 0) {                                          // escape: apoapsis undefined -> infinity
+        fg = TFT_DARK_GREEN; val = String("\x80");
+    } else {
+        fg  = (warnAlt > 0 && apa > 0 && apa < warnAlt) ? TFT_YELLOW : TFT_DARK_GREEN;
+        val = formatAlt((float)iApA);
+    }
 
-    if (iApA == _lnchAsPrevApA && fg == _lnchAsPrevApAFg) return;
+    if (iApA == prevApA && fg == prevFg) return;
 
-    _lnchAsDrawRowValue(tft, 1, formatAlt((float)iApA), fg, TFT_BLACK);
-    _lnchAsPrevApA = iApA;
-    _lnchAsPrevApAFg = fg;
+    _lnchAs2DrawRowValue(tft, row, val, fg, TFT_BLACK, labels, ps);
+    prevApA = iApA;
+    prevFg  = fg;
 }
 
-static void _lnchAsUpdateTimeToAp(RA8875 &tft) {
+static void _lnchAs2UpdateTimeToAp(KCM_TFT &tft, uint8_t row,
+                                   const char *const *labels, PrintState *ps,
+                                   int32_t &prevT, uint16_t &prevFg) {
     float ttAp = state.timeToAp;
     int32_t iTtAp = (int32_t)roundf(ttAp);
 
@@ -1746,14 +1690,60 @@ static void _lnchAsUpdateTimeToAp(RA8875 &tft) {
         if      (ttAp < 0)                   fg = TFT_RED;
         else if (ttAp < LNCH_TOAPO_WARN_S)   fg = TFT_YELLOW;
         else                                 fg = TFT_DARK_GREEN;
-        val = formatTime(ttAp);
+        val = formatTimeCompact(ttAp);
     }
 
-    if (iTtAp == _lnchAsPrevTimeToAp && fg == _lnchAsPrevTimeToApFg) return;
+    if (iTtAp == prevT && fg == prevFg) return;
 
-    _lnchAsDrawRowValue(tft, 2, val, fg, TFT_BLACK);
-    _lnchAsPrevTimeToAp = iTtAp;
-    _lnchAsPrevTimeToApFg = fg;
+    _lnchAs2DrawRowValue(tft, row, val, fg, TFT_BLACK, labels, ps);
+    prevT  = iTtAp;
+    prevFg = fg;
+}
+
+static void _lnchAs2UpdateTBurn(KCM_TFT &tft, uint8_t row,
+                                const char *const *labels, PrintState *ps,
+                                int32_t &prevTB, uint16_t &prevFg, uint16_t &prevBg) {
+    float tb = state.stageBurnTime;
+    int32_t iTb = (int32_t)roundf(tb);
+
+    uint16_t fg, bg;
+    thresholdColor(tb,
+                   LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
+                   LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
+                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+
+    if (iTb == prevTB && fg == prevFg && bg == prevBg) return;
+
+    _lnchAs2DrawRowValue(tft, row, formatTimeCompact(tb), fg, bg, labels, ps);
+    prevTB  = iTb;
+    prevFg  = fg;
+    prevBg  = bg;
+}
+
+// Per-phase wrapper: draws an Ascent readout value using the Ascent label and
+// PrintState arrays. Kept so the non-shared updaters (V.Srf/V.Vrt/Thrtl/ΔV.Stg)
+// call sites are unchanged.
+static void _lnchAsDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
+                                 uint16_t fg, uint16_t bg) {
+    _lnchAs2DrawRowValue(tft, row, val, fg, bg, _lnchAsLabels, _lnchAsPs);
+}
+
+// Update each row. Each checks its own change detection and returns early if
+// unchanged. Order: Alt, ApA, T+Ap, V.Srf, V.Vrt, Throttle, T.Burn, ΔV.Stg.
+
+static void _lnchAsUpdateAlt(KCM_TFT &tft) {
+    _lnchAs2UpdateAlt(tft, 0, _lnchAsLabels, _lnchAsPs,
+                      _lnchAsPrevAlt, _lnchAsPrevAltFg);
+}
+
+static void _lnchAsUpdateApA(KCM_TFT &tft) {
+    _lnchAs2UpdateApA(tft, 1, _lnchAsLabels, _lnchAsPs,
+                      _lnchAsPrevApA, _lnchAsPrevApAFg);
+}
+
+static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
+    _lnchAs2UpdateTimeToAp(tft, 2, _lnchAsLabels, _lnchAsPs,
+                           _lnchAsPrevTimeToAp, _lnchAsPrevTimeToApFg);
 }
 
 // Threshold for switching row 3 label from "V.Srf" to "V.Orb". Based on body
@@ -1761,22 +1751,22 @@ static void _lnchAsUpdateTimeToAp(RA8875 &tft) {
 // label swap happens slightly earlier so the pilot sees orbital velocity as
 // soon as it becomes the more meaningful number).
 static bool _lnchAsShowOrbitalVelocity() {
-    float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+    float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     // Same as the circularization phase-switch threshold with hysteresis so
     // the label doesn't flicker near the boundary.
     bool ascending = (state.verticalVel >= 0.0f);
-    float switchAlt = ascending ? (bodyRad * 0.06f) : (bodyRad * 0.055f);
+    float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
     return (state.altitude > switchAlt);
 }
 
 // Row 3 dynamic label redraw. Called when the label needs to change from
 // "V.Srf:" to "V.Orb:" (or vice versa). Clears the row cell and re-chromes
 // it with the new label. The value is redrawn on the next update cycle.
-static void _lnchAsUpdateRow3Label(RA8875 &tft, bool showOrb) {
+static void _lnchAsUpdateRow3Label(KCM_TFT &tft, bool showOrb) {
     const char *label = showOrb ? "V.Orb:" : "V.Srf:";
-    printDispChrome(tft, &Roboto_Black_20,
-                    LNCH_AS_RPANEL_X, _lnchAsRowY(3),
-                    LNCH_AS_RPANEL_W, LNCH_AS_ROW_H,
+    printDispChrome(tft, LNCH_AS2_LBL_FONT,
+                    LNCH_AS2_RPANEL_X, _lnchAs2RowY(3),
+                    LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
                     label, COL_LABEL, TFT_BLACK, COL_NO_BDR);
     // Redraw the group divider above row 3 (re-painted at y=dy-1 and y=dy,
     // matching the chrome's updated divider placement). Before the position
@@ -1788,12 +1778,12 @@ static void _lnchAsUpdateRow3Label(RA8875 &tft, bool showOrb) {
     //
     // The vertical divider at x=RPANEL_X-2..-1 sits OUTSIDE the row rect so
     // doesn't need repair.
-    int16_t dy = _lnchAsRowY(3);
-    tft.drawLine(LNCH_AS_RPANEL_X, dy - 1,
-                 LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy - 1,
+    int16_t dy = _lnchAs2RowY(3);
+    tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
+                 LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
                  TFT_GREY);
-    tft.drawLine(LNCH_AS_RPANEL_X, dy,
-                 LNCH_AS_RPANEL_X + LNCH_AS_RPANEL_W - 1, dy,
+    tft.drawLine(LNCH_AS2_RPANEL_X, dy,
+                 LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
                  TFT_GREY);
     // Reset printState for row 3 so the next value redraws cleanly
     _lnchAsPs[3].prevWidth  = 0;
@@ -1801,7 +1791,7 @@ static void _lnchAsUpdateRow3Label(RA8875 &tft, bool showOrb) {
     _lnchAsPs[3].prevHeight = 0;
 }
 
-static void _lnchAsUpdateVSrf(RA8875 &tft) {
+static void _lnchAsUpdateVSrf(KCM_TFT &tft) {
     bool showOrb = _lnchAsShowOrbitalVelocity();
     float v = showOrb ? state.orbitalVel : state.surfaceVel;
     int16_t iV = (int16_t)roundf(v * 10.0f);  // tenths m/s
@@ -1817,12 +1807,12 @@ static void _lnchAsUpdateVSrf(RA8875 &tft) {
 
     if (iV == _lnchAsPrevVSrf && fg == _lnchAsPrevVSrfFg) return;
 
-    _lnchAsDrawRowValue(tft, 3, _lnchAsFmtMs1(v), fg, TFT_BLACK);
+    _lnchAsDrawRowValue(tft, 3, fmtMs(v), fg, TFT_BLACK);
     _lnchAsPrevVSrf = iV;
     _lnchAsPrevVSrfFg = fg;
 }
 
-static void _lnchAsUpdateVVrt(RA8875 &tft) {
+static void _lnchAsUpdateVVrt(KCM_TFT &tft) {
     float vv = state.verticalVel;
     int16_t iVv = (int16_t)roundf(vv * 10.0f);  // tenths m/s
 
@@ -1839,7 +1829,7 @@ static void _lnchAsUpdateVVrt(RA8875 &tft) {
     } else {
         if (vv < 0) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else        { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        val = _lnchAsFmtMs1(vv);
+        val = fmtMs(vv);
     }
 
     if (iVv == _lnchAsPrevVVrt && fg == _lnchAsPrevVVrtFg && bg == _lnchAsPrevVVrtBg) return;
@@ -1849,7 +1839,7 @@ static void _lnchAsUpdateVVrt(RA8875 &tft) {
     _lnchAsPrevVVrtFg = fg; _lnchAsPrevVVrtBg = bg;
 }
 
-static void _lnchAsUpdateThrottle(RA8875 &tft) {
+static void _lnchAsUpdateThrottle(KCM_TFT &tft) {
     uint8_t thrPct = (uint8_t)constrain(state.throttle * 100.0f, 0.0f, 100.0f);
 
     uint16_t fg, bg;
@@ -1864,24 +1854,12 @@ static void _lnchAsUpdateThrottle(RA8875 &tft) {
     _lnchAsPrevThrFg = fg; _lnchAsPrevThrBg = bg;
 }
 
-static void _lnchAsUpdateTBurn(RA8875 &tft) {
-    float tb = state.stageBurnTime;
-    int32_t iTb = (int32_t)roundf(tb);
-
-    uint16_t fg, bg;
-    thresholdColor(tb,
-                   LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
-                   LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
-                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-
-    if (iTb == _lnchAsPrevTBurn && fg == _lnchAsPrevTBurnFg && bg == _lnchAsPrevTBurnBg) return;
-
-    _lnchAsDrawRowValue(tft, 6, formatTime(tb), fg, bg);
-    _lnchAsPrevTBurn = iTb;
-    _lnchAsPrevTBurnFg = fg; _lnchAsPrevTBurnBg = bg;
+static void _lnchAsUpdateTBurn(KCM_TFT &tft) {
+    _lnchAs2UpdateTBurn(tft, 6, _lnchAsLabels, _lnchAsPs,
+                        _lnchAsPrevTBurn, _lnchAsPrevTBurnFg, _lnchAsPrevTBurnBg);
 }
 
-static void _lnchAsUpdateDVStg(RA8875 &tft) {
+static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
     float dv = state.stageDeltaV;
     int32_t iDv = (int32_t)roundf(dv * 10.0f);  // tenths m/s
 
@@ -1893,12 +1871,12 @@ static void _lnchAsUpdateDVStg(RA8875 &tft) {
 
     if (iDv == _lnchAsPrevDVStg && fg == _lnchAsPrevDVStgFg && bg == _lnchAsPrevDVStgBg) return;
 
-    _lnchAsDrawRowValue(tft, 7, _lnchAsFmtMs1(dv), fg, bg);
+    _lnchAsDrawRowValue(tft, 7, fmtMs(dv), fg, bg);
     _lnchAsPrevDVStg = iDv;
     _lnchAsPrevDVStgFg = fg; _lnchAsPrevDVStgBg = bg;
 }
 
-static void _lnchAsDrawRightPanelValues(RA8875 &tft) {
+static void _lnchAsDrawRightPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateAlt(tft);
     _lnchAsUpdateApA(tft);
     _lnchAsUpdateTimeToAp(tft);

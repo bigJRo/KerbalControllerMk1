@@ -2,10 +2,9 @@
    BootScreen.ino -- Boot simulation screen for Kerbal Controller Mk1 Resource Display
    Jurassic Park-themed terminal boot sequence.
 
-   Uses tft.setFont / setCursor / print (GFX graphics mode calls) exclusively.
-   The RA8875 setFontScale/print API puts the chip into internal text mode and the
-   PaulStoffregen v0.7.11 library does not expose a public graphics-mode restore call,
-   so we avoid text mode entirely and stay in graphics mode throughout.
+   Renders in the RA8876 GFX graphics mode via tft.setFont / setCursor / print and the
+   KerbalDisplayCommon bs* helpers -- no chip internal-text-mode calls (the KDC text
+   engine draws glyph bitmaps directly). Header bar matches the Info Display.
 
    Call bootSimText() from setup() after setupDisplay(), before initSimpit()/initDemoMode().
 ****************************************************************************************/
@@ -16,10 +15,12 @@
    CONSTANTS
 ****************************************************************************************/
 static const uint16_t BS_HOLD  = 300;
-static const uint16_t BS_ROW_H = 18;   // 16px glyph + 2px leading
+static const uint16_t BS_ROW_H = 22;   // 16px body glyph + 6px leading
+static const uint16_t VER_ROW  = 34;   // 24px version line + leading
 static const uint16_t BS_COL_X = 4;
-static const tFont   *BS_FONT  = &TerminalFont_16;
-static const tFont   *BS_BIG   = &TerminalFont_32;
+static const tFont   *BS_FONT  = &KcmTerm_16;   // narrative body
+static const tFont   *BS_VER   = &KcmTerm_24;   // version line — matches the Info Display header
+static const tFont   *BS_BIG   = &KcmTerm_40;   // big opening / system-ready lines
 
 
 /***************************************************************************************
@@ -28,22 +29,22 @@ static const tFont   *BS_BIG   = &TerminalFont_32;
 ****************************************************************************************/
 static void _bs_wait(uint16_t ms) { delay(ms); }
 
-static void _bs_print(RA8875 &tft, const tFont *font, uint16_t x, uint16_t y,
+static void _bs_print(KCM_TFT &tft, const tFont *font, uint16_t x, uint16_t y,
                       const char *text, uint16_t col) {
   bsPrint(tft, font, x, y, text, col);
 }
 
-static uint16_t _bs_line(RA8875 &tft, uint16_t y, const char *text, uint16_t col) {
+static uint16_t _bs_line(KCM_TFT &tft, uint16_t y, const char *text, uint16_t col) {
   return bsLine(tft, BS_FONT, BS_COL_X, y, BS_ROW_H, text, col);
 }
 
 static uint16_t _bs_blank(uint16_t y) { return bsBlank(y, BS_ROW_H); }
 
-static uint16_t _bs_big(RA8875 &tft, uint16_t y, const char *text, uint16_t col) {
+static uint16_t _bs_big(KCM_TFT &tft, uint16_t y, const char *text, uint16_t col) {
   return bsBig(tft, BS_BIG, BS_COL_X, y, text, col);
 }
 
-static uint16_t _bs_wrap(RA8875 &tft, uint16_t y, const char *text,
+static uint16_t _bs_wrap(KCM_TFT &tft, uint16_t y, const char *text,
                           uint16_t col, uint16_t maxW) {
   return bsWrap(tft, BS_FONT, BS_COL_X, y, BS_ROW_H, text, col, maxW);
 }
@@ -52,17 +53,17 @@ static uint16_t _bs_wrap(RA8875 &tft, uint16_t y, const char *text,
 /***************************************************************************************
    BOOT SIM TEXT
    Jurassic Park-themed terminal sequence.
-   All rendering via helpers -- stays in RA8875 graphics mode throughout.
+   All rendering via helpers -- stays in RA8876 graphics mode throughout.
 ****************************************************************************************/
-void bootSimText(RA8875 &tft) {
+void bootSimText(KCM_TFT &tft) {
 
   tft.fillScreen(TFT_BLACK);
   uint16_t y = 0;
-  uint16_t wrapW = 792;  // 800px minus left margin
+  uint16_t wrapW = KCM_SCREEN_W - 8;   // full-width text wrap (1024px panel)
 
-  // - Header -
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
-  y += 4;
+  // - Header bar: same format as the Info Display -- top rule / version line / bottom rule -
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
+  y += 6;
   {
     char buf[128];   // #4B version string
     snprintf(buf, sizeof(buf),
@@ -70,11 +71,11 @@ void bootSimText(RA8875 &tft) {
              " / KDC %d.%d.%d",
              SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH,
              KDC_VERSION_MAJOR,    KDC_VERSION_MINOR,    KDC_VERSION_PATCH);
-    _bs_print(tft, BS_FONT, BS_COL_X, y, buf, TFT_GREY);
+    _bs_print(tft, BS_VER, BS_COL_X, y, buf, TFT_GREY);
   }
-  y += BS_ROW_H;
-  tft.fillRect(0, y, 800, 2, TFT_GREY);
-  y += 4;
+  y += VER_ROW;
+  tft.fillRect(0, y, KCM_SCREEN_W, 2, TFT_GREY);
+  y += 8;
   _bs_wait(BS_HOLD);
 
   // Opening line -- big, white
