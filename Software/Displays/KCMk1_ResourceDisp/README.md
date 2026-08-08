@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.0.0
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.0.1
 Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -258,6 +258,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.0.1** | Audit batch C: EVA-mode state reset on EVA exit (stale bars no longer persist into the next vessel), duplicate-logic consolidation, and dead-code cleanup. Built against KerbalDisplayCommon 3.1.2. |
 | **3.0.0** | Hardware rev 2: Teensy 4.1 / LT7683 (RA8876-compatible) 1024×600 TFT via `KCM_TFT` / FT5316 capacitive touch / Wire2 (`KCM_I2C_BUS`). Requires KerbalDisplayCommon ≥ 3.0.0 and KerbalDisplayAudio 1.1.0. All screens relaid to 1024×600. Main screen: bars always render the resource colour (percentage text carries the level threshold); percentage-flicker fix. Default STD set is 9 (EC, LF, LOx, MP, SF, O2, Food, Water, Ablator). Added EVA Propellant and EVA mode (fixed EC/EVA/O2/Food/Water bar set driven by `FLIGHT_STATUS_MESSAGE`, with the Select grid locked). Standalone-test flag added. |
 | **1.3.0** | I2C slave interface and boot handshake with master (Phase 3). I2C constants consolidated to `KCMk1_SystemConfig.h`. Touch count filter changed to `!= 1`. Touch filter constants alias `KCM_TOUCH_*`. Boot screen header shows live version string (sketch + KDC + KDA) via `snprintf`. `switchToScreen()` now records `lastScreenSwitch` timestamp. KDA dependency clarified as direct (not a KDC sub-dependency). Updated to KerbalDisplayCommon 2.1.0 and KerbalDisplayAudio 1.0.1. |
 | **1.2.0** | KerbalSimpit integration for live resource telemetry. Per-vessel configuration memory (`vesselCache[]`). Simpit channel refresh on vessel switch and scene entry. |

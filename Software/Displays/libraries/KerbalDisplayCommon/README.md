@@ -1,6 +1,6 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library** · v3.1.1
+**Kerbal Controller Mk1 — Shared Display Library** · v3.1.2
 UI toolkit for LT7683 (RA8876-compatible) touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
@@ -350,6 +350,7 @@ All colours are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommo
 
 | Version | Notes |
 |---------|-------|
+| **3.1.2** | `drawButton()` word-wrap hardened (audit batch D): the word-split loop is now bounded by `MAX_WORDS` (a label with >32 words could write one row past `words[][]`) and the per-line copy by `MAX_LINECH` (a wide button + small font could overrun `lines[][64]`); over-long single words truncate to the line buffer. `reticleDrawBase` dropped a redundant concentric `drawCircle`. Comment/header drift corrected (`printDispChrome` doc, `bsBig` advance, buffer-size 800→1024, Teensy 4.0→4.1). |
 | **3.1.1** | Marker polish: `drawThickLine` gained an optional `caps` argument (default true) so free-ended spokes/prongs can suppress the round end-caps that read as small blobs; the marker spokes, prongs, X and face-spokes now draw capless. Shrank the level-indicator nose dot. |
 | **3.1.0** | Completed the KSP navball marker set. Added `drawRetrogradeMarker`, `drawNormalMarker`, `drawAntiNormalMarker`, `drawRadialInMarker`, `drawRadialOutMarker`, `drawAntiTargetMarker` and `drawLevelIndicator` (joining prograde/target/maneuver), and extended `KspMarkerKind` with the new kinds (existing ordinals unchanged). Prograde spokes lengthened, target arc gaps widened, and the maneuver marker now leaves a gap between the centre dot and its prongs. |
 | **3.0.0** | Hardware rev 2 migration. Display type `RA8875` → `KCM_TFT` (`RA8876_t41_p` via KCM_Display); MCU Teensy 4.0 → 4.1; panel 800×480 SPI → 1024×600 16-bit 8080 parallel (FlexIO3). Fonts sumotoy tFont → ILI9341_t3 (`fonts_ili/`). BMP blit now via `writeRect()`. SD via Teensy 4.1 `BUILTIN_SDCARD` (SDIO). Touch moved out to the separate KCM_Touch library (FT5316 on software I2C); GSL1680F driver removed. Pin/resolution defines now sourced from `KCMk1_SystemConfig.h`. |
