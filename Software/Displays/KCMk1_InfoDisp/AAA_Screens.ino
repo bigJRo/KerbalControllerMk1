@@ -2,24 +2,22 @@
    AAA_Screens.ino -- Shared screen infrastructure for Kerbal Controller Mk1 Information Display
    Must compile before Screen_*.ino tabs (AAA_ prefix ensures correct sort order).
 
-   Sidebar buttons (10, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
-   Most buttons map 1:1 to a screen; the PFD button covers three screens selected by
-   context or title-touch (see pfdContextScreen / pfdSelectedScreen). ORB+ (Advanced
-   Orbital Elements) has no button — it is reached by tapping the ORBIT title bar.
-   The ASC (Ascent Autopilot) button is parked at the bottom, physically separated from
-   the display-nav cluster and drawn in a distinct purple, since it is an interactive
-   console rather than a display screen.
-     0  LNCH  Launch (Pre-launch / Ascent / Circularization — context + title toggle)
-     1  PFD   Primary Flight Display: SPACECRAFT (default) / AIRCRAFT (plane in atmo) /
-              ROVER (rover). Context-selected; title-touch cycles the three.
-     2  ORB   Orbit Information (Apsides graphic; ORB+ via title tap)
-     3  VEH   Vehicle Information
-     4  MNVR  Maneuver Information
-     5  TGT   Target / Rendezvous Information
-     6  DOCK  Docking Information
-     7  LNDG  Landing Information (Powered Descent)
-     8  ENTR  Landing — Re-entry
-     9  ASC   Ascent Autopilot (touch console for the Simpit ascent autopilot)
+   Sidebar buttons (8, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
+   Multi-mode buttons CYCLE their modes when pressed while already active, and the
+   button caption shows the active mode (sbButtonLabel); a first press from another
+   screen goes to the button's context/primary mode. Context auto-select still runs on
+   scene/vessel change; a press latches a manual override (see TouchEvents.ino). Title-
+   bar taps no longer switch anything. The ASC (Ascent Autopilot) button is parked at
+   the bottom, physically separated and drawn in a distinct purple, since it is an
+   interactive console rather than a display screen.
+     0  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
+     1  PFD       Primary Flight Display — SPC / ACFT / ROVR (press cycles; context default)
+     2  ORB       Orbit — ORB <-> ORB+ (Advanced Elements)
+     3  VEH       Vehicle Information
+     4  MNVR      Maneuver Information
+     5  TGT/DOCK  Target / Docking — TGT <-> DOCK (context default: DOCK when near a target)
+     6  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
+     7  ASC       Ascent Autopilot (touch console for the Simpit ascent autopilot)
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
@@ -53,8 +51,14 @@ const uint16_t COL_VALUE = TFT_DARK_GREEN;
 const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;
 
-const uint8_t SB_BTN_COUNT = 10;
-const uint8_t SB_PFD_BTN   = 1;   // PFD button index (covers SCFT / ACFT / ROVR)
+const uint8_t SB_BTN_COUNT = 8;
+// Multi-mode button indices. Each of these cycles its modes on a repeated press and
+// shows the active mode's label; a single-mode button just selects its screen.
+const uint8_t SB_LNCH_BTN    = 0;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (manual)
+const uint8_t SB_PFD_BTN     = 1;   // PFD:  SPC -> ACFT -> ROVR
+const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB <-> ORB+
+const uint8_t SB_TGTDOCK_BTN = 5;   // TGT/DOCK
+const uint8_t SB_LNDG_BTN    = 6;   // LNDG/ENTR: DESC <-> ENTR
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -62,35 +66,64 @@ inline uint16_t sbBtnY(uint8_t btn) {
   return btn * sbBtnH();
 }
 
-// Sidebar button -> canonical screen (physical top-to-bottom order). The PFD button
-// (index SB_PFD_BTN) has three screens; SB_BTN_SCREEN holds its default (SCFT), while
-// pfdSelectedScreen() picks the context/manual one at tap time.
+// Sidebar button -> canonical (primary) screen, physical top-to-bottom order. Several
+// buttons cover multiple screens: PFD (SCFT/ACFT/ROVR), ORB (ORB/ORB+), TGT/DOCK
+// (TGT/DOCK), LNDG/ENTR (LNDG/LNDGRE). SB_BTN_SCREEN holds each button's primary
+// screen; the tap handler in TouchEvents.ino cycles the alternates.
 const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
-  screen_LNCH,     // 0 LNCH
-  screen_SCFT,     // 1 PFD  (SCFT default; ACFT / ROVR by context or title toggle)
-  screen_ORB,      // 2 ORB
+  screen_LNCH,     // 0 LNCH      (PRE / ASC / CIRC)
+  screen_SCFT,     // 1 PFD       (SPC default; ACFT / ROVR by context or cycle)
+  screen_ORB,      // 2 ORB       (ORB / ORB+)
   screen_VEH,      // 3 VEH
   screen_MNVR,     // 4 MNVR
-  screen_TGT,      // 5 TGT
-  screen_DOCK,     // 6 DOCK
-  screen_LNDG,     // 7 LNDG
-  screen_LNDGRE,   // 8 REEN
-  screen_LNCHAP    // 9 ASC — Ascent Autopilot; parked at the bottom, physically separated
+  screen_TGT,      // 5 TGT/DOCK  (TGT default; DOCK by context or cycle)
+  screen_LNDG,     // 6 LNDG/ENTR (DESC default; ENTR by cycle)
+  screen_LNCHAP    // 7 ASC — Ascent Autopilot; parked at the bottom, physically separated
                    //   from the display-nav cluster and drawn in a distinct colour
 };
 
+// Base labels (shown when the button is NOT the active screen). When a multi-mode
+// button IS active, sbButtonLabel() substitutes the active mode's label instead.
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "VEH", "MNVR", "TGT", "DOCK", "LNDG", "ENTR", "ASC"
+  "LNCH", "PFD", "ORB", "VEH", "MNVR", "TGT", "LNDG", "ASC"
 };
 
-// Which sidebar button should highlight for the active screen. SCFT/ACFT/ROVR all
-// map to the PFD button; every other screen maps 1:1.
+// Which sidebar button should highlight for the active screen. Multi-screen buttons
+// map all their screens to one index; every other screen maps 1:1.
 uint8_t screenToButton(ScreenType s) {
-  if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) return SB_PFD_BTN;
-  if (s == screen_ORBADV) return 2;   // ORB+ reached via ORB title tap — highlight the ORB button
+  switch (s) {
+    case screen_SCFT: case screen_ACFT:   case screen_ROVR:   return SB_PFD_BTN;
+    case screen_ORB:  case screen_ORBADV:                     return SB_ORB_BTN;
+    case screen_TGT:  case screen_DOCK:                       return SB_TGTDOCK_BTN;
+    case screen_LNDG: case screen_LNDGRE:                     return SB_LNDG_BTN;
+    default: break;
+  }
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
     if (SB_BTN_SCREEN[i] == s) return i;
   return 0xFF;   // no button (shouldn't happen — every screen maps)
+}
+
+// Sidebar button caption for the current state: the active mode's label when this
+// button owns the active screen, otherwise the base label. Mirrors the labelling
+// rules in the sidebar-nav design (LNCH/PRE/ASC/CIRC, PFD/SPC/ACFT/ROVR, ORB/ORB+,
+// TGT/DOCK, LNDG/DESC/ENTR).
+const char *sbButtonLabel(uint8_t i) {
+  if (screenToButton(activeScreen) != i) return SB_BTN_IDS[i];
+  switch (i) {
+    case SB_LNCH_BTN:
+      return _lnchPrelaunchMode ? "PRE" : (_lnchOrbitalMode ? "CIRC" : "ASC");
+    case SB_PFD_BTN:
+      return (activeScreen == screen_ROVR) ? "ROVR"
+           : (activeScreen == screen_ACFT) ? "ACFT" : "SPC";
+    case SB_ORB_BTN:
+      return (activeScreen == screen_ORBADV) ? "ORB+" : "ORB";
+    case SB_TGTDOCK_BTN:
+      return (activeScreen == screen_DOCK) ? "DOCK" : "TGT";
+    case SB_LNDG_BTN:
+      return (activeScreen == screen_LNDGRE) ? "ENTR" : "DESC";
+    default:
+      return SB_BTN_IDS[i];
+  }
 }
 
 const char *const SCREEN_TITLES[SCREEN_COUNT] = {
@@ -378,7 +411,7 @@ void drawSidebar(KCM_TFT &tft) {
   uint8_t  activeBtn = screenToButton(activeScreen);
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++) {
     ButtonLabel btn = (i == activeBtn) ? btnScreenOn : btnScreenOff;
-    btn.text = SB_BTN_IDS[i];
+    btn.text = sbButtonLabel(i);   // active mode's label when this button owns the screen
     // Ascent Autopilot button carries a distinct purple identity so it reads as a
     // different kind of control (an interactive console, not a display screen). The
     // sidebar draws with isOn=true, so override backgroundColorOn: brighter violet
@@ -410,26 +443,6 @@ void drawTitleBar(KCM_TFT &tft, const String &title) {
   textCenter(tft, TITLE_FONT, 0, 0, CONTENT_W, TITLE_H,
              title, TFT_WHITE, TFT_BLACK);
   tft.fillRect(0, TITLE_H, CONTENT_W, TITLE_RULE_H, TFT_GREY);
-}
-
-// Draws a dark-green right-pointing triangle on the left of the title bar.
-// Call after drawTitleBar() on any screen with a title-bar tap action.
-// Triangle: 20px wide × 24px tall, vertically centred in TITLE_H (58px), x=6.
-// Uses ceiling division so every scanline including the tip is at least 1px wide.
-static void drawTitleToggleIndicator(KCM_TFT &tft) {
-  const uint16_t tx = 6;
-  const uint16_t tw = 20;
-  const uint16_t th = 24;
-  const uint16_t ty = (TITLE_H - th) / 2;
-  const uint16_t half = th / 2;
-  for (uint16_t row = 0; row < th; row++) {
-    // Ceiling division: (tw * row + half - 1) / half gives at least 1px from row 1
-    uint16_t extent = (row <= half)
-                        ? (tw * row + half - 1) / half
-                        : (tw * (th - 1 - row) + half - 1) / half;
-    if (row == 0) extent = 1;  // tip: single pixel
-    tft.drawLine(tx, ty + row, tx + extent, ty + row, TFT_DARK_GREEN);
-  }
 }
 
 /***************************************************************************************
@@ -546,19 +559,16 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     drawTitleBar(tft, "RE-ENTRY");
   } else if (s == screen_LNCH) {
     drawTitleBar(tft, _lnchOrbitalMode ? "CIRCULARIZATION" : "ASCENT");
-    drawTitleToggleIndicator(tft);
-    // Red dot indicates manual override of auto phase switch
+    // Red dot indicates manual override of auto phase switch (set by the LNCH button)
     if (_lnchManualOverride)
       tft.fillCircle(CONTENT_W - 14, 29, 6, TFT_RED);
   } else if (s == screen_DOCK) {
     // Vessel name from Simpit reflects the active/combined vessel after docking.
     String dockTitle = String("DOCKING [ ") + state.vesselName + " ]";
     drawTitleBar(tft, dockTitle);
-  } else if (s == screen_SCFT || s == screen_ACFT || s == screen_ROVR) {
-    // PFD family — one sidebar button, title-touch cycles SPACECRAFT/AIRCRAFT/ROVER.
-    drawTitleBar(tft, s);
-    drawTitleToggleIndicator(tft);
   } else {
+    // Mode switching is via the sidebar buttons (see TouchEvents.ino) — the title
+    // bar no longer toggles, so no title-tap indicator is drawn.
     drawTitleBar(tft, s);
   }
 

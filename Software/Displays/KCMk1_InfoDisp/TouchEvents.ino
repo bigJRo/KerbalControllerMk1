@@ -27,16 +27,12 @@ static const uint32_t TOUCH_DEBOUNCE_MS  = KCM_TOUCH_DEBOUNCE_MS;     // #3B fro
 static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px — max coordinate movement across reads
 
 static uint32_t lastTouchTime      = 0;
-static uint32_t lastTitleTouchTime = 0;
 static bool     _waitForRelease    = false;
 
 // Boot phantom guard: require the panel to be seen untouched once before accepting
 // any tap, so a settling touch from the FT5316 right after reset cannot fire a
 // gesture. Cleared to true the first time the screen is observed untouched.
 static bool _bootReleaseSeen = false;
-
-// Title bar uses a shorter debounce — toggles are intentional quick taps
-static const uint32_t TITLE_DEBOUNCE_MS = KCM_TOUCH_TITLE_DEBOUNCE_MS;  // #3B from SystemConfig
 
 
 void processTouchEvents() {
@@ -96,67 +92,9 @@ void processTouchEvents() {
   // Bounds check — applied to final coordinates
   if (x2 >= SCREEN_W || y2 >= SCREEN_H) return;
 
-  // Title bar hit — checked BEFORE main debounce with its own shorter timer
-  // Title bar = y < TITLE_TOP (62px), x < CONTENT_W
-  if (y2 < TITLE_TOP && x2 < CONTENT_W) {
-    if (now - lastTitleTouchTime >= TITLE_DEBOUNCE_MS) {
-      lastTitleTouchTime = now;
-      _waitForRelease = true;
-
-      if (debugMode) {
-        Serial.print(F("InfoDisp: Title touch x="));
-        Serial.print(x2);
-        Serial.print(F(" y="));
-        Serial.println(y2);
-      }
-
-      // ORB↔ORB+ and LNDG↔REEN are now separate sidebar screens (rev-2), not
-      // title-tap sub-modes. LNCH keeps a title toggle (ASCENT↔CIRC phase); the PFD
-      // family (SPACECRAFT/AIRCRAFT/ROVER) cycles its three screens on title touch.
-      if (activeScreen == screen_LNCH) {
-        if (_lnchManualOverride) {
-          _lnchManualOverride = false;
-        } else {
-          _lnchManualOverride = true;
-          _lnchOrbitalMode    = !_lnchOrbitalMode;
-        }
-        // switchToScreen() forces a full chrome redraw (drawStaticScreen invalidates
-        // the whole rowCache), so no manual per-row invalidation is needed here.
-        switchToScreen(screen_LNCH);
-        clearTouchISR();
-        if (debugMode) {
-          Serial.print(F("InfoDisp: LNCH phase -> "));
-          Serial.print(_lnchOrbitalMode ? F("CIRCULARIZATION") : F("ASCENT"));
-          Serial.println(_lnchManualOverride ? F(" [MANUAL]") : F(" [AUTO]"));
-        }
-      } else if (activeScreen == screen_SCFT || activeScreen == screen_ACFT ||
-                 activeScreen == screen_ROVR) {
-        // Cycle SPACECRAFT → AIRCRAFT → ROVER → SPACECRAFT from whatever is shown,
-        // latching a manual override so context no longer moves it.
-        uint8_t cur = (activeScreen == screen_ROVR) ? 2 :
-                      (activeScreen == screen_ACFT) ? 1 : 0;
-        _pfdManualSel      = (cur + 1) % 3;
-        _pfdManualOverride = true;
-        switchToScreen(pfdScreenForSel(_pfdManualSel));
-        clearTouchISR();
-        if (debugMode) {
-          Serial.print(F("InfoDisp: PFD -> "));
-          Serial.println(_pfdManualSel == 2 ? F("ROVER") :
-                         _pfdManualSel == 1 ? F("AIRCRAFT") : F("SPACECRAFT"));
-        }
-      } else if (activeScreen == screen_ORB) {
-        // ORB+ (advanced elements) is now reached by tapping the ORBIT title.
-        switchToScreen(screen_ORBADV);
-        clearTouchISR();
-        if (debugMode) Serial.println(F("InfoDisp: ORB -> ORB+ (advanced elements)"));
-      } else if (activeScreen == screen_ORBADV) {
-        switchToScreen(screen_ORB);
-        clearTouchISR();
-        if (debugMode) Serial.println(F("InfoDisp: ORB+ -> ORB"));
-      }
-    }
-    return;
-  }
+  // Title-bar taps no longer switch modes — mode switching moved to the sidebar
+  // buttons (see the sidebar hit test below). A tap on the title bar (y < TITLE_TOP,
+  // x < CONTENT_W) simply falls through and is a no-op.
 
   // Stamp debounce and require-release immediately — suppresses burst tail
   lastTouchTime = now;
@@ -193,16 +131,82 @@ void processTouchEvents() {
     return;
   }
 
-  // Sidebar hit test — right-hand SIDEBAR_W column. 10 buttons, mapped to screens
-  // via SB_BTN_SCREEN; the PFD button resolves to its context/manual screen.
+  // Sidebar hit test — right-hand SIDEBAR_W column, 8 buttons (SB_BTN_SCREEN).
+  // First press of a button (from another screen) goes to that button's context/
+  // primary mode; pressing the button that already owns the active screen cycles
+  // its modes. Context auto-select still runs on scene/vessel change; a press
+  // latches a manual override for the multi-mode buttons.
   if (x2 >= SCREEN_W - SIDEBAR_W) {
     uint8_t btn = (uint8_t)(y2 / sbBtnH());
-    if (btn < SB_BTN_COUNT) {
-      ScreenType target = (btn == SB_PFD_BTN) ? pfdSelectedScreen() : SB_BTN_SCREEN[btn];
-      if (target != activeScreen) {
-        switchToScreen(target);
-        clearTouchISR();
+    if (btn >= SB_BTN_COUNT) return;
+
+    bool       active   = (screenToButton(activeScreen) == btn);
+    ScreenType target   = activeScreen;
+    bool       doSwitch = false;
+
+    if (!active) {
+      // First press — jump to the button's context/primary screen.
+      switch (btn) {
+        case SB_PFD_BTN:
+          target = pfdSelectedScreen();   // context or last manual PFD sub-screen
+          break;
+        case SB_TGTDOCK_BTN:
+          // Context: docking screen when a target is within docking range, else target.
+          target = (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
+                     ? screen_DOCK : screen_TGT;
+          break;
+        case SB_LNDG_BTN:
+          target = screen_LNDG;           // primary = powered descent (DESC)
+          break;
+        default:
+          target = SB_BTN_SCREEN[btn];    // LNCH (PRE/ASC/CIRC per flags), ORB, single-mode
+          break;
       }
+      doSwitch = (target != activeScreen);
+    } else {
+      // Already on this button — cycle its modes.
+      switch (btn) {
+        case SB_LNCH_BTN:
+          if (_lnchPrelaunchMode) {
+            // Dismiss the pre-launch board into the ascent view.
+            _lnchPrelaunchMode      = false;
+            _lnchPrelaunchDismissed = true;
+            _lnchOrbitalMode        = false;
+          } else {
+            _lnchOrbitalMode = !_lnchOrbitalMode;   // ASC <-> CIRC
+          }
+          _lnchManualOverride = true;
+          target = screen_LNCH; doSwitch = true;
+          break;
+        case SB_PFD_BTN: {
+          uint8_t cur = (activeScreen == screen_ROVR) ? 2 :
+                        (activeScreen == screen_ACFT) ? 1 : 0;
+          _pfdManualSel      = (cur + 1) % 3;        // SPC -> ACFT -> ROVR -> SPC
+          _pfdManualOverride = true;
+          target = pfdScreenForSel(_pfdManualSel); doSwitch = true;
+          break;
+        }
+        case SB_ORB_BTN:
+          target = (activeScreen == screen_ORBADV) ? screen_ORB : screen_ORBADV;
+          doSwitch = true;
+          break;
+        case SB_TGTDOCK_BTN:
+          target = (activeScreen == screen_DOCK) ? screen_TGT : screen_DOCK;
+          doSwitch = true;
+          break;
+        case SB_LNDG_BTN:
+          target = (activeScreen == screen_LNDGRE) ? screen_LNDG : screen_LNDGRE;
+          doSwitch = true;
+          break;
+        default:
+          doSwitch = false;   // single-mode button already active — nothing to cycle
+          break;
+      }
+    }
+
+    if (doSwitch) {
+      switchToScreen(target);
+      clearTouchISR();
     }
   }
 
