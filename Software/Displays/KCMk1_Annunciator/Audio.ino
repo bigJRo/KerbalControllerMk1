@@ -61,6 +61,36 @@ uint16_t alarmActiveMask = 0;
 
 
 /***************************************************************************************
+   CW → ALARM MAPPING TABLE
+   Single source of truth mapping each WARNING-level C&W bit to its ALARM_* mask bit.
+   Used by both the C&W transition handler (ScreenMain, via applyAlarmTransitions())
+   and syncMasterAlarmAudio() so the two can never drift out of sync.
+****************************************************************************************/
+struct CwAlarmMap { uint8_t cwBit; uint16_t alarmBit; };
+static const CwAlarmMap CW_ALARM_MAP[] = {
+  { CW_LOW_DV,       ALARM_LOW_DV       },
+  { CW_HIGH_G,       ALARM_HIGH_G       },
+  { CW_HIGH_TEMP,    ALARM_HIGH_TEMP    },
+  { CW_BUS_VOLTAGE,  ALARM_BUS_VOLTAGE  },
+  { CW_ABORT,        ALARM_ABORT        },
+  { CW_GROUND_PROX,  ALARM_GROUND_PROX  },
+  { CW_PE_LOW,       ALARM_PE_LOW       },
+  { CW_PROP_LOW,     ALARM_PROP_LOW     },
+  { CW_LIFE_SUPPORT, ALARM_LIFE_SUPPORT },
+};
+static const uint8_t CW_ALARM_MAP_COUNT = sizeof(CW_ALARM_MAP) / sizeof(CW_ALARM_MAP[0]);
+
+// Route a C&W newBits/clrBits transition pair through the alarm mask via the table.
+// Called from the C&W update pass in ScreenMain.ino (replaces the per-bit if ladder).
+void applyAlarmTransitions(uint32_t newBits, uint32_t clrBits) {
+  for (uint8_t i = 0; i < CW_ALARM_MAP_COUNT; i++) {
+    if (newBits & (1ul << CW_ALARM_MAP[i].cwBit)) updateAlarmMask(CW_ALARM_MAP[i].alarmBit, true);
+    if (clrBits & (1ul << CW_ALARM_MAP[i].cwBit)) updateAlarmMask(CW_ALARM_MAP[i].alarmBit, false);
+  }
+}
+
+
+/***************************************************************************************
    UPDATE ALARM MASK
    Call when a WARNING-level C&W bit transitions on or off.
    condBit: one of the ALARM_* constants above.
@@ -95,5 +125,37 @@ void updateAlarmMask(uint16_t condBit, bool on) {
       alarmSilenced = false;
       audioStopAlarm();
     }
+  }
+}
+
+
+/***************************************************************************************
+   SYNC MASTER ALARM AUDIO WITH CURRENT C&W STATE
+   Reconciles the alarm-condition mask against the C&W bits that are active RIGHT NOW,
+   rather than waiting for a bit to transition. Call on entry to the main screen so an
+   alarm condition that is already active (e.g. after a screen change, or the forced
+   lamp-test state) sounds immediately instead of staying silent until the next
+   transition.
+
+   Reconciles the mask DIRECTLY to the current C&W state rather than pushing each bit
+   through updateAlarmMask(). Routing a re-entry through updateAlarmMask() treated the
+   already-active conditions as "new while silenced" and un-silenced the alarm, so a
+   crew-silenced master alarm would re-blare after a mere SOI->Main round-trip. Setting
+   the mask directly preserves the silence latch: a silenced alarm stays silent until
+   the conditions actually clear (mask -> 0, which resets the latch) or a genuinely new
+   condition arrives via the live updateAlarmMask() path in the C&W update pass.
+****************************************************************************************/
+void syncMasterAlarmAudio() {
+  uint32_t cw = state.cautionWarningState;
+  uint16_t m  = 0;
+  for (uint8_t i = 0; i < CW_ALARM_MAP_COUNT; i++)
+    if (bitRead(cw, CW_ALARM_MAP[i].cwBit)) m |= CW_ALARM_MAP[i].alarmBit;
+
+  alarmActiveMask = m;
+  if (m == 0) {
+    alarmSilenced = false;
+    audioStopAlarm();
+  } else if (!alarmSilenced && audioGetState() != AUDIO_MASTER_ALARM) {
+    audioStartAlarm();
   }
 }

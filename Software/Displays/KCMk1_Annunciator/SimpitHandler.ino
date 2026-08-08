@@ -90,7 +90,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(flightStatusMessage)) {
         flightStatusMessage fs = parseMessage<flightStatusMessage>(msg);
         uint8_t sit = fs.vesselSituation;
-        rawSituation = sit;
 
         // Map Simpit raw situation bits to display bitmask.
         // Display: bit0=DOCKED (preserved), bit1=PRE-LAUNCH, bit2=FLIGHT,
@@ -114,8 +113,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         inFlight          = fs.isInFlight();
         bool wasEVA       = inEVA;
         inEVA             = fs.isInEVA();
-        hasTarget         = fs.hasTarget();
-        isRecoverable     = fs.isRecoverable();
         updateCautionWarningState();
 
         // Force a full screen redraw when EVA state changes (Kerbal exits or
@@ -138,10 +135,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     case ACTIONSTATUS_MESSAGE:
       if (msgSize == 1) {
         state.gear_on   = msg[0] & GEAR_ACTION;
-        state.brakes_on = msg[0] & BRAKES_ACTION;
-        state.lights_on = msg[0] & LIGHT_ACTION;
-        state.RCS_on    = msg[0] & RCS_ACTION;
-        state.SAS_on    = msg[0] & SAS_ACTION;
         state.abort_on  = msg[0] & ABORT_ACTION;
         updateCautionWarningState();
       }
@@ -204,7 +197,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         hasO2              = a.hasOxygen();
         inAtmo             = a.isVesselInAtmosphere();
         state.atmoPressure = a.pressure;   // kPa -- used for HIGH_Q proxy calculation
-        state.atmoTemp     = a.temperature; // K  -- stored for future use
+        state.airDensity   = a.airDensity; // kg/m3 -- used for CHUTE_ENV dynamic pressure
         updateCautionWarningState();
       }
       break;
@@ -300,6 +293,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     case SCENE_CHANGE_MESSAGE:
       // KerbalSimpit SCENE_CHANGE sends msg[0]=0 for flight scenes, msg[0]=1 for
       // non-flight (menu, tracking station, etc.) -- hence the inversion.
+      if (msgSize < 1) break;
       flightScene = !msg[0];
       if (debugMode) Serial.println(flightScene
                                     ? F("Annunciator: Entering flight scene")
@@ -312,15 +306,15 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       } else {
         if (audioEnabled) audioSilence();
         resetDisplays();
-        // switchToScreen() would call invalidateAllState() a second time on top of
-        // resetDisplays(), corrupting the sentinel values. Set screen state directly.
-        activeScreen     = screen_Standby;
-        prevScreen       = screen_COUNT;
-        lastScreenSwitch = millis();
+        // invalidateAllState() is idempotent (every field derives from state.*/
+        // chuteEnvState, never from prev.*), so switchToScreen() calling it again
+        // after resetDisplays() is harmless — same pattern as VESSEL_CHANGE below.
+        switchToScreen(screen_Standby);
       }
       break;
 
     case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("Annunciator: Vessel switch"));
         if (audioEnabled) audioSilence();
@@ -337,11 +331,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         simpit.requestMessageOnChannel(0);
       } else if (msg[0] == 2) {
         if (debugMode) Serial.println(F("Annunciator: Docked"));
-        docked = true;
         bitSet(state.vesselSituationState, VSIT_DOCKED);
       } else if (msg[0] == 3) {
         if (debugMode) Serial.println(F("Annunciator: Undocked"));
-        docked = false;
         bitClear(state.vesselSituationState, VSIT_DOCKED);
       }
       break;

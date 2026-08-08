@@ -51,6 +51,9 @@ static const uint32_t DEMO_RATE_DV        = 2000;
 static const uint32_t DEMO_RATE_THROTTLE  = 250;
 static const uint32_t DEMO_RATE_GEAR      = 4000;
 static const uint32_t DEMO_RATE_ATMO      = 6000;
+static const uint32_t DEMO_RATE_DOCKED    = 4500;   // toggle DOCKED indicator
+static const uint32_t DEMO_RATE_MODEFLAGS = 700;    // walk the bottom mode grid
+static const uint32_t DEMO_RATE_FLAGS     = 1500;   // exercise flag/resource C&W tiles
 
 
 /***************************************************************************************
@@ -72,6 +75,9 @@ static uint32_t demoLast_dv        = 0;
 static uint32_t demoLast_throttle  = 0;
 static uint32_t demoLast_gear      = 0;
 static uint32_t demoLast_atmo      = 0;
+static uint32_t demoLast_docked    = 0;
+static uint32_t demoLast_modeflags = 0;
+static uint32_t demoLast_flags     = 0;
 
 
 /***************************************************************************************
@@ -83,6 +89,25 @@ static float   demoEC       = 1000.0f;
 static float   demoDV       = 2000.0f;
 static uint8_t demoThrottle = 0;
 static uint8_t demoSitIdx   = 0;
+static uint8_t demoModeBit  = 0;
+static uint8_t demoFlagPhase = 0;
+
+
+/***************************************************************************************
+   LAMP TEST (#7)
+   Graphics check independent of C&W logic: force every state-driven tile ON so all
+   graphics can be verified regardless of whether the telemetry logic would trigger
+   them. Enable with `lampTest = true` (and demoMode = true) in AAA_Config.ino.
+   Note: the inner regime column still shows one tile (driven by flightCondIndex);
+   the C&W grid, situation column, mode grid, DOCK and MASTER ALARM all light.
+****************************************************************************************/
+static void runLampTest() {
+  state.cautionWarningState  = ((uint32_t)1 << CW_COUNT) - 1;   // all C&W bits
+  state.vesselSituationState = 0xFF;                            // all situation flags
+  state.modeFlags            = (uint16_t)(((uint32_t)1 << MF_COUNT) - 1); // all mode tiles
+  chuteEnvState              = chute_Green;                     // CHUTE ENV (green)
+  state.masterAlarmOn        = true;
+}
 
 
 /***************************************************************************************
@@ -91,6 +116,7 @@ static uint8_t demoSitIdx   = 0;
    so C&W panel and master alarm reflect the demo values exactly as in production.
 ****************************************************************************************/
 void stepDemoState() {
+  if (lampTest) { runLampTest(); return; }   // graphics-only check (#7)
   uint32_t now = millis();
 
   // Vessel name and type
@@ -111,14 +137,13 @@ void stepDemoState() {
       (1 << VSIT_ORBIT),
       (1 << VSIT_ESCAPE),
       (1 << VSIT_SPLASH),
+      (1 << VSIT_LANDED),   // (#7) was missing — LANDED (and CONTACT) never lit
     };
     static const uint8_t sitSeqLen = sizeof(sitSeq) / sizeof(sitSeq[0]);
     demoSitIdx = (demoSitIdx + 1) % sitSeqLen;
     uint8_t dockedBit = state.vesselSituationState & 0x01;
     state.vesselSituationState = dockedBit | sitSeq[demoSitIdx];
     inFlight = (sitSeq[demoSitIdx] & ((1<<VSIT_FLIGHT)|(1<<VSIT_SUBORBIT)|(1<<VSIT_ORBIT)|(1<<VSIT_ESCAPE))) != 0;
-    // Mirror raw situation for CONTACT detection
-    rawSituation = (sitSeq[demoSitIdx] & (1 << VSIT_SPLASH)) ? sit_Splashed : 0;
   }
 
   // Temperatures
@@ -232,6 +257,51 @@ void stepDemoState() {
     hasO2  = (atmoPhase == 2);
   }
 
+  // DOCKED indicator toggle (#7 — was never driven in demo)
+  if (now - demoLast_docked >= DEMO_RATE_DOCKED) {
+    demoLast_docked = now;
+    state.vesselSituationState ^= (1 << VSIT_DOCKED);
+  }
+
+  // Bottom mode grid: walk a single bit through all MF_* tiles, then all-on,
+  // then all-off, so every mode tile lights for inspection (#8 / #9).
+  if (now - demoLast_modeflags >= DEMO_RATE_MODEFLAGS) {
+    demoLast_modeflags = now;
+    demoModeBit = (demoModeBit + 1) % (MF_COUNT + 2);
+    uint16_t walk = (demoModeBit < MF_COUNT)  ? (1u << demoModeBit)      // one at a time
+                  : (demoModeBit == MF_COUNT) ? ((1u << MF_COUNT) - 1)   // all on
+                                              : 0u;                      // all off
+    // DEMO / AUDIO / DEBUG tiles reflect the actual panel mode (#8); the rest
+    // walk so every tile can be inspected.
+    uint16_t base = 0;
+    if (demoMode)     base |= (1u << MF_DEMO);
+    if (audioEnabled) base |= (1u << MF_AUDIO);
+    if (debugMode)    base |= (1u << MF_DEBUG);
+    state.modeFlags = base | walk;
+  }
+
+  // Exercise the flag/resource-driven C&W tiles so each lights at some point (#9):
+  // ABORT, EVA ACTIVE, SRB ACTIVE, RCS LOW, PROP LOW/RATIO.
+  if (now - demoLast_flags >= DEMO_RATE_FLAGS) {
+    demoLast_flags = now;
+    demoFlagPhase = (demoFlagPhase + 1) % 6;
+    state.abort_on = (demoFlagPhase == 1);
+    inEVA          = (demoFlagPhase == 2);
+    // SRB ACTIVE requires a DECREASING solid-fuel reading — sweep it down so the
+    // "burning" test passes rather than toggling on/off.
+    static float demoSF = 100.0f;
+    demoSF -= 12.0f;
+    if (demoSF < 0.0f) demoSF = 100.0f;
+    state.SF_stage     = demoSF;
+    state.SF_stage_tot = 100.0f;
+    state.mono     = (demoFlagPhase == 4) ? 5.0f : 90.0f;       // RCS LOW (<15-20%)
+    state.mono_tot = 100.0f;
+    if (demoFlagPhase == 5) { state.LF_stage = 3.0f;  state.OX_stage = 20.0f; } // PROP LOW + ratio off
+    else                    { state.LF_stage = 45.0f; state.OX_stage = 55.0f; }
+    state.LF_stage_tot = 100.0f;
+    state.OX_stage_tot = 100.0f;
+  }
+
   updateCautionWarningState();
 }
 
@@ -255,8 +325,6 @@ void initDemoMode() {
   demoVesselIndex  = 0;
   state.vesselName = demoVesselNames[demoVesselIndex];
   invalidateAllState();
-  // #23 call switchToScreen() to record timestamp and make entry explicit;
-  // invalidateAllState() above means the switchToScreen() call is not redundant —
-  // it stamps lastScreenSwitch and matches the pattern of the other panels.
+  // Enter the main screen explicitly (matches the pattern of the other panels).
   switchToScreen(screen_Main);
 }

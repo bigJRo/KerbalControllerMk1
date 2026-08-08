@@ -57,19 +57,25 @@
 #include "KCMk1_InfoDisp.h"
 
 // ── Layout ────────────────────────────────────────────────────────────────────────────
-static const uint16_t ORB_TITLE_TOP  = 62;
-static const uint16_t ORB_SCREEN_H   = 480;
-static const uint16_t ORB_MAX_R      = 150;   // orbit half-extent (pixels)
+static const uint16_t ORB_TITLE_TOP  = TITLE_TOP;
+static const uint16_t ORB_SCREEN_H   = SCREEN_H;  // full panel height (rev-2 1024x600)
+static const uint16_t ORB_MAX_R      = 170;   // orbit half-extent (pixels)
 
-static const int16_t  ORB_PCX = 180;
-static const int16_t  ORB_ICX = 540;
-static const int16_t  ORB_CY  = 233;
+// rev-2: the two graphical elements each fill half of the 940px-wide content
+// area. Divider at x=470. PLAN occupies x=[0,470] (centre 235); INCL occupies
+// x=[470,940] (centre 705). Shared vertical centre at y=265, below the header
+// strip and above the bottom readout strip (y=448..). The graphics were
+// trimmed again to make room for the larger (Roboto_Black_28) readout text at
+// the bottom and the larger (Roboto_Black_32) SOI body name up top.
+static const int16_t  ORB_PCX = 235;
+static const int16_t  ORB_ICX = 705;
+static const int16_t  ORB_CY  = 265;
 
 // Header strip — protected from scene repaints. Holds ORBIT/INCL labels and
 // the SOI body name. Scene repaints fillRect below this; chrome and the
 // Header strip — contains the ORBIT / INCL panel-title labels and the SOI
 // body name. Laid at y=62..92.
-static const int16_t  HDR_Y0   = 62;   // top of header strip (ORB_TITLE_TOP)
+static const int16_t  HDR_Y0   = TITLE_TOP;   // top of header strip
 static const int16_t  HDR_Y1   = 92;   // bottom of header strip
 
 // PLAN panel drawing bounds vs. erase bounds:
@@ -81,48 +87,48 @@ static const int16_t  HDR_Y1   = 92;   // bottom of header strip
 //                          inside the repaint function after the fillRect.
 //   PLAN_CLIP_Y0/Y1      — inset for marker LABEL placement so labels don't
 //                          drift above the drawing area.
-static const int16_t  PLAN_X0  = 6,   PLAN_X1 = 354;
+static const int16_t  PLAN_X0  = 6,   PLAN_X1 = 468;
 static const int16_t  PLAN_Y0  = HDR_Y1;       // 92 — drawing bound
-static const int16_t  PLAN_Y1  = 400;
+static const int16_t  PLAN_Y1  = 478;
 static const int16_t  PLAN_FILL_Y0 = HDR_Y0;   // 62 — wide erase bound
 static const int16_t  PLAN_CLIP_Y0 = HDR_Y1 + 2;   // 94
-static const int16_t  PLAN_CLIP_Y1 = PLAN_Y1 - 2;  // 398
+static const int16_t  PLAN_CLIP_Y1 = PLAN_Y1 - 2;  // 476
 
-// Readout strip (bottom-left of PLAN panel, Roboto_Black_20)
-static const uint16_t ORB_RDY1 = 404;  // Alt.SL row
-static const uint16_t ORB_RDY2 = 430;  // Pe row
-static const uint16_t ORB_RDY3 = 456;  // Ap row
+// Readout strip (bottom-left of PLAN panel, Roboto_Black_28, rows 37px apart)
+static const uint16_t ORB_RDY1 = 485;  // Alt.SL row
+static const uint16_t ORB_RDY2 = 522;  // Pe row
+static const uint16_t ORB_RDY3 = 559;  // Ap row
 
-// ── INCL panel layout (right half, x=[362,719]) ───────────────────────────────────────
-static const int16_t  INC_CX   = 540;  // panel centre x
-static const int16_t  INC_CY   = 233;  // panel centre y (shared with ORB_CY)
-// Orbit line half-length. Reduced from 150 to 130 to clear the 4-row readout
-// strip below (top row = Inc at y=378). At 90° inclination, line extends
-// bodyCY ± INC_L = 233 ± 130 = 103..363, giving ~13px clearance above the
-// readout strip.
-static const uint16_t INC_L    = 130;
-static const uint16_t INC_BR   =  20;  // body disc radius (px)
+// ── INCL panel layout (right half, x=[470,940]) ───────────────────────────────────────
+static const int16_t  INC_CX   = 705;  // panel centre x
+static const int16_t  INC_CY   = 265;  // panel centre y (shared with ORB_CY)
+// Orbit line half-length. At 90° inclination the line extends bodyCY ± INC_L =
+// 265 ± 160 = 105..425, clearing both the header strip (bottom y=92) and the
+// 4-row readout strip below (top row = Inc at y=448).
+static const uint16_t INC_L    = 160;
+static const uint16_t INC_BR   =  24;  // body disc radius (px)
 
-static const int16_t  INCL_X0 = 362, INCL_X1 = 719;
+static const int16_t  INCL_X0 = 476, INCL_X1 = 938;
 static const int16_t  INCL_Y0 = HDR_Y1;
-// INCL panel extends down only to y=374 to leave space for the 4th readout
-// row at y=378. PLAN panel remains 3 rows (y=404..456 strip).
-static const int16_t  INCL_Y1 = 374;
-// INCL graphics never reach above y=92 (body at y=233, INC_L=130 means top is
-// y=103), so the fillRect matches the drawing bound exactly — no need to
-// erase into the header strip, which would force a body-name redraw.
+// INCL panel extends down only to y=441 to leave space for the 4-row readout
+// strip below (top row = Inc at y=448). PLAN panel has 3 rows (y=485..559).
+static const int16_t  INCL_Y1 = 441;
+// The INCL graphic never rises above y=105 near centre, but the enlarged SOI
+// body name (Roboto_Black_32) now reaches down to ~y=102 on the right; it is
+// re-drawn after every INCL scene repaint (see _orbRepaintIncl) so the fillRect
+// can't leave it clipped.
 static const int16_t  INCL_FILL_Y0 = INCL_Y0;
 static const int16_t  INCL_CLIP_Y0 = HDR_Y1 + 2;
 static const int16_t  INCL_CLIP_Y1 = INCL_Y1 - 2;
 
-// Readout strip (bottom-right)
+// Readout strip (bottom-right, Roboto_Black_28, rows 37px apart)
 // Order: Inc (4th row, top) / PRD / Arg.Pe / T+Pe or T+Ap
-static const uint16_t INC_RDY0 = 378;  // Inc (inclination) row — NEW, top
-static const uint16_t INC_RDY1 = 404;  // PRD (period) row
-static const uint16_t INC_RDY2 = 430;  // Arg.Pe row
-static const uint16_t INC_RDY3 = 456;  // T+Pe or T+Ap row
-static const uint16_t INC_LABEL_X = 366;
-static const uint16_t INC_VALUE_X = 452;
+static const uint16_t INC_RDY0 = 448;  // Inc (inclination) row — top
+static const uint16_t INC_RDY1 = 485;  // PRD (period) row
+static const uint16_t INC_RDY2 = 522;  // Arg.Pe row
+static const uint16_t INC_RDY3 = 559;  // T+Pe or T+Ap row
+static const uint16_t INC_LABEL_X = 480;
+static const uint16_t INC_VALUE_X = 590;
 
 // ── Body parameters ───────────────────────────────────────────────────────────────────
 // Body colors are NOT stored here — see kspBodyColor() / kspAtmoColor() in
@@ -155,11 +161,11 @@ static const OrbBody ORB_BODIES[] = {
     { "Eeloo",   210000.0f,     0.0f,  119082942.0f },  // 16
 };
 
-// ── Compatibility stub ────────────────────────────────────────────────────────────────
-// _orbAdvancedMode is still referenced by AAA_Globals.ino (resets on screen
-// exit) and SimpitHandler.ino (resets on vessel switch) even though ORB no
-// longer toggles modes via title-bar tap. Kept as a no-op placeholder so those
-// files continue to link. Can be removed when those call sites are cleaned up.
+// ── Advanced-mode flag ────────────────────────────────────────────────────────────────
+// rev-2: ORBADV (Advanced Elements) is a dedicated sidebar screen. _orbAdvancedMode
+// is derived from the active screen by drawStaticScreen() (true on screen_ORBADV) so
+// the OrbAdv chrome/draw path is selected; SimpitHandler still resets it on vessel
+// switch. Definition lives here because Screen_OrbAdv.ino documents it as owned by ORB.
 bool          _orbAdvancedMode = false;
 
 // ── Tuning constants ──────────────────────────────────────────────────────────────────
@@ -169,11 +175,9 @@ static const float SIG_ECC        = 0.01f;    // 0.01 bins
 static const float SIG_INCL_DEG   = 0.5f;     // 0.5° bins
 static const float SIG_APS_FRAC   = 0.01f;    // 1% of SMA bins
 
-// Minimum interval between scene repaints (ms). Acts as a floor — sustained
-// parameter changes (burns) cap at 2 Hz scene updates, which reads as
-// professional rather than strobing. Below ~100 ms the gate has no effect
-// because the repaint itself takes longer than that.
-static const uint32_t SCENE_MIN_INTERVAL_MS = 500;
+// rev-2: the minimum-interval (2 Hz) scene-repaint throttle was removed. The
+// scene now repaints as soon as the quantized signature above changes; the bins
+// still provide dead-band hysteresis so float jitter alone won't trigger it.
 
 // Vessel-dot pixel movement threshold before redraw.
 static const int VESSEL_PX_THRESH = 2;
@@ -239,15 +243,15 @@ struct OrbScene {
 // suppresses the auto-generation. Do not remove.
 static void        _orbComputeScene(OrbScene &sc);
 static OrbSceneSig _orbSceneSig(const OrbScene &sc);
-static void        _orbDrawSOIView(RA8875 &tft, const OrbScene &sc);
-static void        _orbDrawMarkers(RA8875 &tft, const OrbScene &sc);
-static void        _orbDrawMarkerDotsOnly(RA8875 &tft, const OrbScene &sc);
-static void        _orbDrawIncl(RA8875 &tft, const OrbScene &sc);
+static void        _orbDrawSOIView(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbDrawMarkers(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbDrawMarkerDotsOnly(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbDrawIncl(KCM_TFT &tft, const OrbScene &sc);
 static bool        _orbVesselPxPlan(const OrbScene &sc, float nu_rad,
                                     int16_t &out_x, int16_t &out_y);
-static void        _orbPatchArcPlan(RA8875 &tft, const OrbScene &sc, float nu_rad);
-static void        _orbRepaintPlan(RA8875 &tft, const OrbScene &sc);
-static void        _orbRepaintIncl(RA8875 &tft, const OrbScene &sc);
+static void        _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad);
+static void        _orbRepaintPlan(KCM_TFT &tft, const OrbScene &sc);
+static void        _orbRepaintIncl(KCM_TFT &tft, const OrbScene &sc);
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────────────
 static void _orbEllipseShape(float PeA_m, float ApA_m, float bodyR_m,
@@ -306,7 +310,7 @@ static void _orbComputeScene(OrbScene &sc) {
     sc.rPe_m       = fmaxf(PeA_m + sc.bodyR_m, 1.0f);
     sc.incl_deg    = state.inclination;
 
-    const float PRE_SCALE_PX = 167.0f;
+    const float PRE_SCALE_PX = 190.0f;
     sc.r_pe_px = isEsc
                  ? (sc.rPe_m / (3.0f * sc.bodyR_m)) * PRE_SCALE_PX
                  : (float)ORB_MAX_R;
@@ -409,7 +413,7 @@ static OrbSceneSig _orbSceneSig(const OrbScene &sc) {
 }
 
 // ── PLAN panel draw — ellipse or hyperbola, focus-centred ─────────────────────────────
-static void _orbDrawHyperbola(RA8875 &tft,
+static void _orbDrawHyperbola(KCM_TFT &tft,
                                int16_t focusX, int16_t focusY,
                                float ecc, float argOfPe_rad,
                                float r_pe_px, uint16_t col) {
@@ -481,7 +485,7 @@ static void _orbDrawHyperbola(RA8875 &tft,
 // 120 steps = ~8 px chords at 150 px radius. Visually smooth without being
 // wasteful. 90 steps showed visible waviness on the curvy side; 180 was
 // smooth but added ~15 ms per repaint.
-static void _orbDrawEllipse(RA8875 &tft, float ecc, float argOfPe_rad, uint16_t col) {
+static void _orbDrawEllipse(KCM_TFT &tft, float ecc, float argOfPe_rad, uint16_t col) {
     float a_px = (float)ORB_MAX_R;
     float b_px = a_px * sqrtf(fmaxf(0.0f, 1.0f - ecc*ecc));
     float cosA = cosf(argOfPe_rad), sinA = sinf(argOfPe_rad);
@@ -506,8 +510,8 @@ static void _orbDrawEllipse(RA8875 &tft, float ecc, float argOfPe_rad, uint16_t 
 
 // Draw SOI view — body at panel centre, SOI ring dashed, orbit arc, Pe marker.
 // No vessel dot here — Layer 3 handles that uniformly.
-static void _orbDrawSOIView(RA8875 &tft, const OrbScene &sc) {
-    const float SOI_PX = 155.0f;
+static void _orbDrawSOIView(KCM_TFT &tft, const OrbScene &sc) {
+    const float SOI_PX = 172.0f;
     const int16_t FX = ORB_PCX, FY = ORB_CY;
 
     float scale   = SOI_PX / sc.soi_m;
@@ -541,14 +545,14 @@ static void _orbDrawSOIView(RA8875 &tft, const OrbScene &sc) {
     int16_t pe_x = FX + (int16_t)(r_pe_px * cosA);
     int16_t pe_y = FY - (int16_t)(r_pe_px * sinA);
     if (pe_x >= PLAN_X0 && pe_x <= PLAN_X1 && pe_y >= PLAN_CLIP_Y0 && pe_y <= PLAN_CLIP_Y1) {
-        tft.fillCircle(pe_x, pe_y, 2, TFT_MAGENTA);
-        int16_t lx = (int16_t)constrain((int)(pe_x + 10.0f * cosA),
+        tft.fillCircle(pe_x, pe_y, 3, TFT_MAGENTA);
+        int16_t lx = (int16_t)constrain((int)(pe_x + 20.0f * cosA),
                                         (int)PLAN_X0, (int)(PLAN_X1 - 8));
-        int16_t ly = (int16_t)constrain((int)(pe_y - 10.0f * sinA),
+        int16_t ly = (int16_t)constrain((int)(pe_y - 20.0f * sinA),
                                         (int)PLAN_CLIP_Y0, (int)(PLAN_CLIP_Y1 - 4));
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-        tft.setCursor(lx - 8, ly - 6); tft.print("Pe");
+        tft.setCursor(lx - 10, ly - 9); tft.print("Pe");
     }
 }
 
@@ -560,15 +564,17 @@ static void _orbDrawSOIView(RA8875 &tft, const OrbScene &sc) {
 // (e.g. Pe at argOfPe=90° lives at y=83 which is above PLAN_CLIP_Y0=94 but
 // within the panel drawing area because PLAN extends up into the header strip
 // y=62..92 for graphic content — only chrome text is excluded there).
-static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
-    const int8_t  DOT_R   = 3;
+static void _orbDrawMarkers(KCM_TFT &tft, const OrbScene &sc) {
+    const int8_t  DOT_R   = 4;
     // Dot visibility bounds — loose (panel interior plus header strip for top).
     const int16_t DOT_Y_MIN = HDR_Y0;       // 62 — dots can be at very top
     const int16_t DOT_Y_MAX = PLAN_Y1 - 2;  // 398
-    // Label placement bounds — tighter inset.
+    // Label placement bounds. LY_MIN reaches up into the (empty, PLAN-side)
+    // header strip so a Pe/Ap dot near the panel top still gets its label placed
+    // outboard (above the dot) rather than clamped down on top of it.
     const int16_t LX_MIN = PLAN_X0,  LX_MAX = PLAN_X1 - 8;
-    const int16_t LY_MIN = PLAN_CLIP_Y0,  LY_MAX = PLAN_CLIP_Y1 - 4;
-    const float   OFFSET = 14.0f;
+    const int16_t LY_MIN = HDR_Y0 + 2,  LY_MAX = PLAN_CLIP_Y1 - 4;
+    const float   OFFSET = 24.0f;
 
     float cosA = cosf(sc.argOfPe_rad), sinA = sinf(sc.argOfPe_rad);
 
@@ -597,9 +603,9 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
             tft.fillCircle(an_x, an_y, DOT_R, TFT_CYAN);
             if (!nearMarker(an_x, an_y, pe_sx, pe_sy) &&
                 !nearMarker(an_x, an_y, ap_sx, ap_sy)) {
-                int16_t lx = (int16_t)constrain(an_x + 6,  (int)LX_MIN, (int)LX_MAX);
-                int16_t ly = (int16_t)constrain(an_y - 14, (int)LY_MIN, (int)LY_MAX);
-                tft.setFont(&Roboto_Black_12);
+                int16_t lx = (int16_t)constrain(an_x + 12, (int)LX_MIN, (int)LX_MAX);
+                int16_t ly = (int16_t)constrain(an_y - 16, (int)LY_MIN, (int)LY_MAX);
+                tft.setFont(Roboto_Black_16);
                 tft.setTextColor(TFT_CYAN, TFT_BLACK);
                 tft.setCursor(lx, ly); tft.print("AN");
             }
@@ -615,9 +621,9 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                 tft.fillCircle(dn_x, dn_y, DOT_R, TFT_YELLOW);
                 if (!nearMarker(dn_x, dn_y, pe_sx, pe_sy) &&
                     !nearMarker(dn_x, dn_y, ap_sx, ap_sy)) {
-                    int16_t lx = (int16_t)constrain(dn_x - 22, (int)LX_MIN, (int)LX_MAX);
-                    int16_t ly = (int16_t)constrain(dn_y - 14, (int)LY_MIN, (int)LY_MAX);
-                    tft.setFont(&Roboto_Black_12);
+                    int16_t lx = (int16_t)constrain(dn_x - 32, (int)LX_MIN, (int)LX_MAX);
+                    int16_t ly = (int16_t)constrain(dn_y - 16, (int)LY_MIN, (int)LY_MAX);
+                    tft.setFont(Roboto_Black_16);
                     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
                     tft.setCursor(lx, ly); tft.print("DN");
                 }
@@ -647,9 +653,9 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                                         (int)LX_MIN, (int)LX_MAX);
         int16_t ly = (int16_t)constrain((int)(pe_y - OFFSET * sinA),
                                         (int)LY_MIN, (int)LY_MAX);
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-        tft.setCursor(lx - 8, ly - 6); tft.print("Pe");
+        tft.setCursor(lx - 10, ly - 9); tft.print("Pe");
     }
 
     // ── Ap ────────────────────────────────────────────────────────────────────────────
@@ -663,9 +669,9 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
                                             (int)LX_MIN, (int)LX_MAX);
             int16_t ly = (int16_t)constrain((int)(ap_y + OFFSET * sinA),
                                             (int)LY_MIN, (int)LY_MAX);
-            tft.setFont(&Roboto_Black_12);
+            tft.setFont(Roboto_Black_16);
             tft.setTextColor(TFT_BLUE, TFT_BLACK);
-            tft.setCursor(lx - 8, ly - 6); tft.print("Ap");
+            tft.setCursor(lx - 10, ly - 9); tft.print("Ap");
         }
     }
 }
@@ -677,8 +683,8 @@ static void _orbDrawMarkers(RA8875 &tft, const OrbScene &sc) {
 // can't reach them (labels are 14 px offset from dots, patch extends ~7 px
 // from old dot) and we want to avoid the black-background-rectangle of text
 // drawing stomping orbit-line pixels.
-static void _orbDrawMarkerDotsOnly(RA8875 &tft, const OrbScene &sc) {
-    const int8_t DOT_R = 3;
+static void _orbDrawMarkerDotsOnly(KCM_TFT &tft, const OrbScene &sc) {
+    const int8_t DOT_R = 4;
     // Match the loose bounds used by _orbDrawMarkers for the dots — the tight
     // PLAN_CLIP_Y0 was for labels, not dots. Using it here suppressed Pe/Ap
     // dots when argOfPe ≈ 90° put them near the panel top edge.
@@ -733,7 +739,7 @@ static void _orbDrawMarkerDotsOnly(RA8875 &tft, const OrbScene &sc) {
 
 // ── INCL panel draw — tilted orbit line, body, Pe/Ap markers ─────────────────────────
 // No vessel dot here — Layer 3 handles that uniformly.
-static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
+static void _orbDrawIncl(KCM_TFT &tft, const OrbScene &sc) {
     int16_t n_x = (int16_t)(INC_CX + sc.dx), n_y = (int16_t)(sc.bodyCY - sc.dy);
     int16_t s_x = (int16_t)(INC_CX - sc.dx), s_y = (int16_t)(sc.bodyCY + sc.dy);
 
@@ -749,16 +755,16 @@ static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
     tft.fillCircle(INC_CX, sc.bodyCY, INC_BR, sc.bodyCol);
 
     // N / S labels
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-    tft.setCursor(INC_CX - 4, sc.bodyCY - INC_BR - 14); tft.print("N");
-    tft.setCursor(INC_CX - 4, sc.bodyCY + INC_BR + 2);  tft.print("S");
+    tft.setCursor(INC_CX - 5, sc.bodyCY - INC_BR - 20); tft.print("N");
+    tft.setCursor(INC_CX - 5, sc.bodyCY + INC_BR + 3);  tft.print("S");
 
     // AN label on WEST side of body disc (only when inclined)
     if (sc.incl_deg > 0.5f) {
-        tft.setFont(&Roboto_Black_12);
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
-        tft.setCursor(INC_CX - INC_BR - 18, sc.bodyCY - 6); tft.print("AN");
+        tft.setCursor(INC_CX - INC_BR - 28, sc.bodyCY - 8); tft.print("AN");
     }
 
     // Note: numeric inclination value was here; moved to the readout strip
@@ -773,13 +779,13 @@ static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
     float pe_dist2 = (t_pe * sc.dx) * (t_pe * sc.dx) + (t_pe * sc.dy) * (t_pe * sc.dy);
     if (pe_dist2 > (float)((INC_BR+4)*(INC_BR+4)) &&
         pe_x >= INCL_X0 && pe_x <= INCL_X1 && pe_y >= INCL_CLIP_Y0 && pe_y <= INCL_CLIP_Y1) {
-        tft.fillCircle(pe_x, pe_y, 3, TFT_MAGENTA);
-        tft.setFont(&Roboto_Black_12);
+        tft.fillCircle(pe_x, pe_y, 4, TFT_MAGENTA);
+        tft.setFont(Roboto_Black_16);
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         int16_t lx = (pe_x >= INC_CX)
-            ? (int16_t)constrain(pe_x + 6,  INCL_X0+2, INCL_X1-22)
-            : (int16_t)constrain(pe_x - 22, INCL_X0+2, INCL_X1-22);
-        tft.setCursor(lx, (int16_t)constrain(pe_y - 14, INCL_CLIP_Y0+2, INCL_CLIP_Y1-14));
+            ? (int16_t)constrain(pe_x + 12, INCL_X0+2, INCL_X1-22)
+            : (int16_t)constrain(pe_x - 32, INCL_X0+2, INCL_X1-22);
+        tft.setCursor(lx, (int16_t)constrain(pe_y - 18, INCL_CLIP_Y0+2, INCL_CLIP_Y1-14));
         tft.print("Pe");
     }
 
@@ -791,13 +797,13 @@ static void _orbDrawIncl(RA8875 &tft, const OrbScene &sc) {
         float ap_dist2 = (t_ap * sc.dx) * (t_ap * sc.dx) + (t_ap * sc.dy) * (t_ap * sc.dy);
         if (ap_dist2 > (float)((INC_BR+4)*(INC_BR+4)) &&
             ap_x >= INCL_X0 && ap_x <= INCL_X1 && ap_y >= INCL_CLIP_Y0 && ap_y <= INCL_CLIP_Y1) {
-            tft.fillCircle(ap_x, ap_y, 3, TFT_BLUE);
-            tft.setFont(&Roboto_Black_12);
+            tft.fillCircle(ap_x, ap_y, 4, TFT_BLUE);
+            tft.setFont(Roboto_Black_16);
             tft.setTextColor(TFT_BLUE, TFT_BLACK);
             int16_t lx = (ap_x >= INC_CX)
-                ? (int16_t)constrain(ap_x + 6,  INCL_X0+2, INCL_X1-22)
-                : (int16_t)constrain(ap_x - 22, INCL_X0+2, INCL_X1-22);
-            tft.setCursor(lx, (int16_t)constrain(ap_y - 14, INCL_CLIP_Y0+2, INCL_CLIP_Y1-14));
+                ? (int16_t)constrain(ap_x + 12, INCL_X0+2, INCL_X1-22)
+                : (int16_t)constrain(ap_x - 32, INCL_X0+2, INCL_X1-22);
+            tft.setCursor(lx, (int16_t)constrain(ap_y - 18, INCL_CLIP_Y0+2, INCL_CLIP_Y1-14));
             tft.print("Ap");
         }
     }
@@ -847,7 +853,7 @@ static bool _orbVesselPxPlan(const OrbScene &sc, float nu_rad,
 // For hyperbolic/SOI cases, there's no such periodic step structure — the
 // hyperbola/SOI drawings are small and any mismatch is tolerable. Fall back
 // to the focal-polar form for those.
-static void _orbPatchArcPlan(RA8875 &tft, const OrbScene &sc, float nu_rad) {
+static void _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad) {
     // ── Ellipse case: retrace ellipse's exact parametric vertices ────────────────────
     if (!sc.useSoiView && !sc.isEscape) {
         const uint16_t STEPS = 120;  // MUST match _orbDrawEllipse
@@ -923,7 +929,7 @@ static void _orbPatchArcPlan(RA8875 &tft, const OrbScene &sc, float nu_rad) {
     float scale_m_to_px = 0.0f;
     int16_t fx, fy;
     if (sc.useSoiView) {
-        const float SOI_PX = 155.0f;
+        const float SOI_PX = 172.0f;
         scale_m_to_px = SOI_PX / sc.soi_m;
         fx = ORB_PCX; fy = ORB_CY;
     } else {
@@ -988,7 +994,8 @@ static void _orbPatchArcPlan(RA8875 &tft, const OrbScene &sc, float nu_rad) {
 }
 
 // ── Per-frame state ───────────────────────────────────────────────────────────────────
-static PrintState _orbPS[7];  // readout strip PrintStates (slot 6 = Inc on INCL)
+// Readout strip caching uses the shared rowCache[screen_ORB]/printState[screen_ORB]
+// (slots 0..6; slot 6 = Inc on INCL) — see the orbPut helper in drawScreen_ORB.
 
 // Vessel dot cache (both panels).
 static bool    _planDotValid = false;
@@ -1012,12 +1019,6 @@ static bool        _pendingSig = false;
 // scene repaint region), so scene repaints don't disturb it.
 static int16_t     _lastBodyIdxDrawn = -1;
 
-// Readout string cache — tracks last-drawn value strings so printValue is only
-// called when the text actually changes. printValue with PrintState is
-// flicker-free only when the string is unchanged and the call is skipped; when
-// called every frame on a changing string, the character-cell erase phase is
-// visible.
-static String      _lastReadout[7];
 // Last-drawn T+Pe/T+Ap label: 0=Pe, 1=Ap, -1=never drawn.
 static int8_t      _lastTLabel = -1;
 
@@ -1029,16 +1030,24 @@ static uint32_t    _vesselUpdateCount = 0;
 // bodyIdx changes. Position: right-justified in a box over the INCL panel
 // header area. Uses textRight which clears its own background — this gives
 // a clean redraw when the body actually changes.
-static void _orbDrawBodyName(RA8875 &tft, uint8_t bodyIdx) {
-    textRight(tft, &Roboto_Black_20,
-              362, ORB_TITLE_TOP + 5, 360, 24,
+static void _orbDrawBodyName(KCM_TFT &tft, uint8_t bodyIdx) {
+    // Roboto_Black_32 (cap 38): right-justified, top at y=63 so the name spans
+    // y=63..101 — it reaches ~9px below the header strip into the INCL panel's
+    // (empty) top-right corner. _orbRepaintIncl re-draws it after its fillRect so
+    // a scene repaint can't leave the lower slice clipped.
+    // Clear the name bbox first — names are right-justified and vary in width
+    // (Eve → Minmus), so without this a shorter name would leave the left tail
+    // of the previous (longer) name as a ghost.
+    tft.fillRect(740, 62, 190, 40, TFT_BLACK);
+    textRight(tft, &Roboto_Black_32,
+              476, 63, 460, 38,
               String(ORB_BODIES[bodyIdx].name),
               TFT_LIGHT_GREY, TFT_BLACK);
     _lastBodyIdxDrawn = (int16_t)bodyIdx;
 }
 
 // ── Scene redraw — full panel clear + redraw from scratch ─────────────────────────────
-static void _orbRepaintPlan(RA8875 &tft, const OrbScene &sc) {
+static void _orbRepaintPlan(KCM_TFT &tft, const OrbScene &sc) {
     uint32_t t0 = micros();
     // Erase bound extends up into the header strip (y=62..92) so atmo/body
     // pixels that naturally draw above y=92 (e.g. argOfPe near 90°) get
@@ -1087,18 +1096,19 @@ static void _orbRepaintPlan(RA8875 &tft, const OrbScene &sc) {
     _planDotValid = false;
 }
 
-static void _orbRepaintIncl(RA8875 &tft, const OrbScene &sc) {
+static void _orbRepaintIncl(KCM_TFT &tft, const OrbScene &sc) {
     uint32_t t0 = micros();
-    // INCL fillRect covers only the graphics area (y=92..374). The body name
-    // in the header strip above is drawn in chrome and refreshed only when
-    // bodyIdx changes. The INCL graphic never extends into the header strip
-    // (bodyCY=233 ± INC_L=130 gives y=103..363), so no flicker.
+    // INCL fillRect covers the graphics area (y=92..441). The enlarged SOI body
+    // name (Roboto_Black_32) reaches ~9px below the header strip into this
+    // region's top-right corner, so the fillRect clips its lower slice — we
+    // re-draw the name below, after the graphic, to restore it every repaint.
     tft.fillRect(INCL_X0, INCL_FILL_Y0,
                  (uint16_t)(INCL_X1 - INCL_X0),
                  (uint16_t)(INCL_Y1 - INCL_FILL_Y0), TFT_BLACK);
     uint32_t t1 = micros();
 
     _orbDrawIncl(tft, sc);
+    _orbDrawBodyName(tft, sc.bodyIdx);   // restore name slice erased by the fillRect
     uint32_t t2 = micros();
 
     if (debugMode) {
@@ -1114,7 +1124,7 @@ static void _orbRepaintIncl(RA8875 &tft, const OrbScene &sc) {
 }
 
 // ── Public entry points ───────────────────────────────────────────────────────────────
-static void chromeScreen_ORB(RA8875 &tft) {
+static void chromeScreen_ORB(KCM_TFT &tft) {
     // Invalidate all caches on screen entry — force scene repaint and dot redraw
     // on the first updateScreen call.
     _sceneValid        = false;
@@ -1125,11 +1135,11 @@ static void chromeScreen_ORB(RA8875 &tft) {
     _vesselUpdateCount = 0;
     _lastBodyIdxDrawn  = -1;
     _lastTLabel        = -1;
-    for (uint8_t i = 0; i < 7; i++) { _orbPS[i] = PrintState{}; _lastReadout[i] = String("\x01"); }
+    for (uint8_t i = 0; i < 7; i++) { printState[screen_ORB][i] = PrintState{}; rowCache[screen_ORB][i].value = String("\x01"); }
 
-    // Panel divider
-    tft.drawLine(360, ORB_TITLE_TOP, 360, ORB_SCREEN_H, TFT_GREY);
-    tft.drawLine(361, ORB_TITLE_TOP, 361, ORB_SCREEN_H, TFT_GREY);
+    // Panel divider — centred at x=470 (half of the 940px content area)
+    tft.drawLine(CONTENT_W / 2, ORB_TITLE_TOP, CONTENT_W / 2, ORB_SCREEN_H, TFT_GREY);
+    tft.drawLine(471, ORB_TITLE_TOP, 471, ORB_SCREEN_H, TFT_GREY);
 
     // Panel labels "ORBIT" and "INCL" are intentionally absent — the screen
     // title already says "ORBIT" and the left/right functional split is clear
@@ -1138,30 +1148,31 @@ static void chromeScreen_ORB(RA8875 &tft) {
 
     // Body name — right-justified over INCL panel, in the header strip.
     // Drawn once in chrome, refreshed only when bodyIdx changes. The body
-    // graphic is at x=520..560 so this name at x=640..719 is never overlapped.
+    // graphic is at x=679..731 (INC_CX ± INC_BR) and never rises above y=102,
+    // so this name in the header strip (y=67..91) is never overlapped.
     _orbDrawBodyName(tft, _orbBodyIdx());
 
     // Readout strip labels. PLAN side is 3 rows; INCL side is 4 rows (Inc
-    // moved here from the graphic). All use Roboto_Black_20 except where noted.
+    // moved here from the graphic). All use Roboto_Black_28 except where noted.
     // Alt.SL / PRD / Arg.Pe / T+Pe-T+Ap labels are white; Pe and Ap use their
     // dot colours (magenta / blue) as mnemonic colour coding; Inc is also white.
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_28);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL");
+    tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL:");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY2); tft.print("Pe");
+    tft.setCursor(6,   ORB_RDY2); tft.print("PeA:");
     tft.setTextColor(TFT_BLUE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY3); tft.print("Ap");
+    tft.setCursor(6,   ORB_RDY3); tft.print("ApA:");
 
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("Inc:");
-    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PRD");
-    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("Arg.Pe");
+    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("Period:");
+    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("Arg.Pe:");
     // T+Pe / T+Ap label is drawn on demand from drawScreen_ORB via _lastTLabel cache
 }
 
-static void drawScreen_ORB(RA8875 &tft) {
+static void drawScreen_ORB(KCM_TFT &tft) {
     uint32_t frameStart = debugMode ? micros() : 0;
 
     // ── Compute current scene + signature ────────────────────────────────────────────
@@ -1172,35 +1183,13 @@ static void drawScreen_ORB(RA8875 &tft) {
     uint32_t now = millis();
 
     // ── Scene-change gating ──────────────────────────────────────────────────────────
-    // The repaint itself takes ~50-100 ms on this hardware, so a gate shorter
-    // than that doesn't actually gate anything — by the time the next call to
-    // drawScreen_ORB comes in, the interval has already elapsed.
-    //
-    // The interval of 500 ms is a floor on how often the scene can repaint:
-    // rapid sustained changes (burn, maneuver) cap at 2 Hz, which matches the
-    // "professional look" requirement.
-    //
-    // Critical subtlety: the post-interval check compares the current sig
-    // against the LAST DRAWN sig, not against whatever sig triggered the
-    // pending flag. This means transient flips that settle back during the
-    // hold-off window do NOT force a repaint — the screen is already showing
-    // the current state. Only signatures that still differ after the interval
-    // trigger a repaint.
-    bool sceneNeedsRepaint = false;
-    if (!_sceneValid) {
-        sceneNeedsRepaint = true;
-    } else if (sig != _lastSig) {
-        _pendingSig = true;
-    } else {
-        // Current sig matches what's drawn — clear the pending flag. A prior
-        // transient change that triggered _pendingSig has since resolved.
-        _pendingSig = false;
-    }
-    if (_pendingSig
-        && (sig != _lastSig)                                // still stale
-        && (now - _lastSceneRepaint >= SCENE_MIN_INTERVAL_MS)) {
-        sceneNeedsRepaint = true;
-    }
+    // Throttle removed (rev-2): repaint as soon as the quantized signature
+    // changes — no minimum-interval / 2 Hz cap. The signature bins still give
+    // dead-band hysteresis against floating-point jitter, so the scene only
+    // repaints when something visually different actually happens (which under
+    // the global double buffer means the repaint lands on the hidden page).
+    bool sceneNeedsRepaint = (!_sceneValid) || (sig != _lastSig);
+    _pendingSig = false;
 
     // ── Layer 2: scene repaint ───────────────────────────────────────────────────────
     if (sceneNeedsRepaint) {
@@ -1252,7 +1241,7 @@ static void drawScreen_ORB(RA8875 &tft) {
         // Erase old dot (if any), then restore markers and orbit line around
         // the erase region.
         if (_planDotValid) {
-            tft.fillCircle(_planDotX, _planDotY, 5, TFT_BLACK);
+            tft.fillCircle(_planDotX, _planDotY, 6, TFT_BLACK);
             if (debugMode) vt1 = micros();
 
             // Order:
@@ -1285,7 +1274,7 @@ static void drawScreen_ORB(RA8875 &tft) {
 
         // Draw new dot
         if (vesselVisiblePlan) {
-            tft.fillCircle(vx, vy, 4, TFT_NEON_GREEN);
+            tft.fillCircle(vx, vy, 5, TFT_NEON_GREEN);
             _planDotX     = vx;
             _planDotY     = vy;
             _planDotValid = true;
@@ -1313,7 +1302,7 @@ static void drawScreen_ORB(RA8875 &tft) {
             // Erase old dot — on a 2-px-thick straight line, simplest is to
             // redraw the two parallel line segments locally across a small box
             // around the old dot. Full-line redraw is cheap for straight lines.
-            tft.fillCircle(_inclDotX, _inclDotY, 5, TFT_BLACK);
+            tft.fillCircle(_inclDotX, _inclDotY, 6, TFT_BLACK);
 
             // Re-draw the local piece of the tilted 2-px line.
             // Project the old dot onto the line parameter to find the local span.
@@ -1337,7 +1326,7 @@ static void drawScreen_ORB(RA8875 &tft) {
                 tft.fillCircle(INC_CX, drawSc.bodyCY, INC_BR, drawSc.bodyCol);
         }
         if (inclVisible) {
-            tft.fillCircle(ivx, ivy, 4, TFT_NEON_GREEN);
+            tft.fillCircle(ivx, ivy, 5, TFT_NEON_GREEN);
             _inclDotX     = ivx;
             _inclDotY     = ivy;
             _inclDotValid = true;
@@ -1372,8 +1361,18 @@ static void drawScreen_ORB(RA8875 &tft) {
     // printValue with PrintState is flicker-free when the string changes width,
     // but when called every frame on an unchanged string the character-cell
     // erase flickers the glyphs visibly. Compare strings before calling.
-    const tFont *F = &Roboto_Black_20;
-    const uint16_t RH = 26;
+    const tFont *F = &Roboto_Black_28;
+    const uint16_t RH = 37;
+
+    // Cache-checked readout draw backed by the shared rowCache[screen_ORB] (value-only
+    // compare; dark green on black). Geometry is explicit per readout.
+    auto orbPut = [&](uint8_t slot, int16_t x, int16_t y, int16_t w, const String &v) {
+        RowCache &rc = rowCache[screen_ORB][slot];
+        if (rc.value == v) return;
+        printValue(tft, F, x, y, w, RH, "", v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK,
+                   printState[screen_ORB][slot]);
+        rc.value = v;
+    };
 
     // Compute altSL_m from current true anomaly for display
     float altSL_m = -1.0f;
@@ -1395,14 +1394,7 @@ static void drawScreen_ORB(RA8875 &tft) {
     // needs to be distinguishable from a small positive value.
 
     // Row 0 — Alt.SL
-    {
-        String v = (altSL_m >= 0.0f) ? formatAlt(altSL_m) : String("---");
-        if (v != _lastReadout[0]) {
-            printValue(tft, F, 110, ORB_RDY1, 246, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[0]);
-            _lastReadout[0] = v;
-        }
-    }
+    orbPut(0, 110, ORB_RDY1, 360, (altSL_m >= 0.0f) ? formatAlt(altSL_m) : String("---"));
     // Row 1 — Pe
     // Hide when Pe is inside the body (impact trajectory, periapsis below
     // surface). Uses the same physical-altitude rule as the marker visibility
@@ -1410,42 +1402,19 @@ static void drawScreen_ORB(RA8875 &tft) {
     // > 0 (the value here PeA_m is already state.periapsis clamped to ≥ 0).
     {
         bool  peHid  = !drawSc.isEscape && (drawSc.rPe_m <= drawSc.bodyR_m);
-        String v = peHid ? String("---") : formatAlt(PeA_m);
-        if (v != _lastReadout[1]) {
-            printValue(tft, F, 110, ORB_RDY2, 246, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[1]);
-            _lastReadout[1] = v;
-        }
+        orbPut(1, 110, ORB_RDY2, 360, peHid ? String("---") : formatAlt(PeA_m));
     }
     // Row 2 — Ap
-    {
-        String v = drawSc.isEscape ? String("\x80") : formatAlt(ApA_m);
-        if (v != _lastReadout[2]) {
-            printValue(tft, F, 110, ORB_RDY3, 246, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[2]);
-            _lastReadout[2] = v;
-        }
-    }
+    orbPut(2, 110, ORB_RDY3, 360, drawSc.isEscape ? String("\x80") : formatAlt(ApA_m));
     // Row 3 — PRD (orbital period)
-    {
-        String v = drawSc.isEscape ? String("\x80")
-                                   : (state.orbitalPeriod > 0.0f ? formatTime(state.orbitalPeriod)
-                                                                 : String("---"));
-        if (v != _lastReadout[3]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY1, 267, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[3]);
-            _lastReadout[3] = v;
-        }
-    }
+    orbPut(3, INC_VALUE_X, INC_RDY1, 348,
+           drawSc.isEscape ? String("\x80")
+                           : (state.orbitalPeriod > 0.0f ? formatTimeCompact(state.orbitalPeriod)
+                                                         : String("---")));
     // Row 4 — Arg.Pe
     {
         char buf[10]; dtostrf(state.argOfPe, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _lastReadout[4]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY2, 267, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[4]);
-            _lastReadout[4] = v;
-        }
+        orbPut(4, INC_VALUE_X, INC_RDY2, 348, String(buf) + String("\xb0"));
     }
     // Row 5 — T+Pe / T+Ap (dynamic label + value)
     // Pick whichever is next in time, i.e. whichever positive value is smaller.
@@ -1475,20 +1444,15 @@ static void drawScreen_ORB(RA8875 &tft) {
         if (nowLabel != _lastTLabel) {
             // Label flipped — redraw label. fillRect only fires on the flip,
             // not every frame, so no flicker.
-            tft.fillRect(INC_LABEL_X, INC_RDY3, 80, RH, TFT_BLACK);
-            tft.setFont(F);
+            tft.fillRect(INC_LABEL_X, INC_RDY3, 100, RH, TFT_BLACK);
+            tft.setFont(*F);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);
             tft.setCursor(INC_LABEL_X, INC_RDY3);
-            tft.print(showPe ? "T+Pe" : "T+Ap");
+            tft.print(showPe ? "T+Pe:" : "T+Ap:");
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;
-        String v = (t > 0.0f) ? formatTime(t) : String("---");
-        if (v != _lastReadout[5]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY3, 267, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[5]);
-            _lastReadout[5] = v;
-        }
+        orbPut(5, INC_VALUE_X, INC_RDY3, 348, (t > 0.0f) ? formatTimeCompact(t) : String("---"));
     }
 
     // Row 6 (INCL top) — Inc (inclination, degrees)
@@ -1497,12 +1461,7 @@ static void drawScreen_ORB(RA8875 &tft) {
     // readouts.
     {
         char buf[10]; dtostrf(drawSc.incl_deg, 1, 1, buf);
-        String v = String(buf) + String("\xb0");
-        if (v != _lastReadout[6]) {
-            printValue(tft, F, INC_VALUE_X, INC_RDY0, 267, RH, "",
-                       v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, _orbPS[6]);
-            _lastReadout[6] = v;
-        }
+        orbPut(6, INC_VALUE_X, INC_RDY0, 348, String(buf) + String("\xb0"));
     }
 
     // Optional: total frame timing (very lightweight — only prints on scene repaint)

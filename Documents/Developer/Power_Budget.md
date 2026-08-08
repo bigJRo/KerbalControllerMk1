@@ -4,7 +4,7 @@
 **Author:** J. Rostoker  
 **Version:** 1.2  
 **Date:** 2026-06-27  
-**Location:** `docs/developer/Power_Budget.md`
+**Location:** `Documents/Developer/Power_Budget.md`
 
 *12V supply: 10A rated · MPM3610 converter efficiency: ~88% · All currents in mA*
 
@@ -140,5 +140,5 @@ All figures derived from measured data and component datasheets. Panel C is a po
 
 ## Related Documents
 
-- `docs/developer/Hardware_Reference.md` — power rail architecture, supply specification
-- `docs/developer/Module_Interface_Reference.md` — per-module hardware specifications
+- `Documents/Developer/Hardware_Reference.md` — power rail architecture, supply specification
+- `Documents/Developer/Module_UI_Reference.md` — per-module button/switch assignments, CAG table, axis mappings

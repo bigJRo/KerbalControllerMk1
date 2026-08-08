@@ -4,7 +4,8 @@
    Two modes:
      - POWERED DESCENT (Screen_LNDG_Powered.ino) — graphical altitude tape + X-Pointer +
        ATT + V.Vrt bar (default)
-     - RE-ENTRY (Screen_LNDG_Reentry.ino)        — text-only readout board (pilot toggle)
+     - RE-ENTRY (Screen_LNDG_Reentry.ino)        — graphical: corridor tape, heat-shield/
+       retrograde alignment ball, chute deploy envelope, VSI/G/thermal gauges + text panel
 
    Mode toggle is via screen-tap, handled in TouchEvents.ino:
      _lndgReentryMode is flipped on tap.
@@ -18,7 +19,6 @@
 // Externally accessible (declared extern in KCMk1_InfoDisp.h). _lndgReentryMode is
 // the master toggle; row toggles drive label-swapping in re-entry mode.
 bool _lndgReentryMode    = false;
-bool _lndgReentryRow3PeA  = true;
 bool _lndgReentryRow0TPe  = false;
 bool _lndgReentryRow1SL   = false;
 
@@ -40,13 +40,13 @@ bool _mainArmedSafe   = false;
 //   - Screen_LNDG_Powered.ino (when _lndgReentryMode is false)
 //   - Screen_LNDG_Reentry.ino (when _lndgReentryMode is true)
 
-static void chromeScreen_LNDG(RA8875 &tft) {
+static void chromeScreen_LNDG(KCM_TFT &tft) {
     if (!_lndgReentryMode) _lndgChromePowered(tft);
     else                   _lndgChromeReentry(tft);
 }
 
 
-static void drawScreen_LNDG(RA8875 &tft) {
+static void drawScreen_LNDG(KCM_TFT &tft) {
     if (!_lndgReentryMode) _lndgDrawPowered(tft);
     else                   _lndgDrawReentry(tft);
 }

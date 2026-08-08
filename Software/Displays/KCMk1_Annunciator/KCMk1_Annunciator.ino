@@ -5,7 +5,7 @@
     KCMk1_Annunciator.h -- types, enums, AppState, C&W constants, extern declarations
     AAA_Config.ino     -- tunable constants (thresholds, modes, C&W numeric values)
     AAA_Globals.ino    -- AppState struct, telemetry flags, display objects, screen state, switchToScreen()
-    BootScreen.ino     -- Terminal-aesthetic boot simulation sequence (IBM CP437 font, graphics mode only)
+    BootScreen.ino     -- Terminal-aesthetic boot simulation sequence (KcmTerm terminal font, graphics mode only)
     CautionWarning.ino -- updateCautionWarningState() -- recomputes C&W bits from telemetry each frame
     SimpitHandler.ino  -- Simpit message handler (onSimpitMessage) and channel registration (initSimpit)
     ScreenMain.ino     -- main screen layout constants, static chrome, C&W panel, update pass
@@ -22,8 +22,9 @@
     KerbalDisplayAudio   -- non-blocking audio state machine (chirps, caution tone, master alarm)
     KerbalSimpit         -- KSP telemetry communication via KerbalSimpit KSP plugin
 
-  Hardware:
-    Teensy 4.0, RA8875 800x480 TFT, GSL1680F capacitive touch, SerialUSB1 -> KSP
+  Hardware (rev 2):
+    Teensy 4.1, LT7683 (RA8876-compatible) 1024x600 TFT (FlexIO3 16-bit 8080), FT5316 capacitive touch,
+    DFPlayer Mini audio + TONE buzzer, slave I2C on Wire2, SerialUSB1 -> KSP
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by Jason Rostoker for Jeb's Controller Works.
@@ -47,12 +48,13 @@ void setup() {
 
   setupDisplay(infoDisp, TFT_BLACK);
   if (DISPLAY_ROTATION != 0) infoDisp.setRotation(DISPLAY_ROTATION);
-  setupSD();
+  bool sdOK    = setupSD();     // real status surfaced on the boot screen
   setupTouch();
+  bool touchOK = probeTouch();  // FT5316 I2C ACK probe
   setupAudio();
   setupI2CSlave();
 
-  bootSimText(infoDisp);
+  bootSimText(infoDisp, sdOK, touchOK);
 
   if (standaloneTest) {
     // Test mode implies standalone -- no Simpit, no master handshake.
@@ -111,6 +113,11 @@ void loop() {
       case screen_Main:
         drawStaticMain(infoDisp);
         firstPassOnMain = true;
+        // drawStaticMain() synced prev.cautionWarningState = state, so the update
+        // pass won't see already-active alarm conditions as transitions. Reconcile
+        // the alarm audio with the current C&W state here so an alarm that is
+        // already up on entry (incl. lamp test) sounds instead of staying silent.
+        if (audioEnabled) syncMasterAlarmAudio();
         // drawStaticMain() syncs prev.gameSOI = state.gameSOI to suppress a
         // redundant SOI label redraw, but the SOI body image and lower data
         // fields still need their first draw. Invalidate prev values for
@@ -124,6 +131,8 @@ void loop() {
         prev.commNet    = state.commNet  + 1;
         prev.stage      = state.stage    + 1;
         prev.ctrlGrp    = state.ctrlGrp  + 1;
+        prev.capValue   = state.capValue + 1;
+        // modeFlags + SPCFT tile are drawn by drawStaticMain() (full redraw).
         break;
       case screen_SOI:
         drawStaticSOI(infoDisp);

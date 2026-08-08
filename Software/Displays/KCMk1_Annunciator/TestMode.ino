@@ -64,11 +64,6 @@ static uint8_t _displayStep = 0;
 static uint8_t _logicPassed = 0;
 static uint8_t _logicFailed = 0;
 
-// Force-on mask for panel status buttons during display walk-through.
-// Read by updatePanelStatus() in ScreenMain.ino to override not-yet-wired items.
-// Declared here, externed in ScreenMain.ino.
-uint16_t testPsForceOn = 0;
-
 
 /***************************************************************************************
    INIT TEST MODE
@@ -198,9 +193,6 @@ static void resetTestState() {
   // Reset telemetry flags
   inFlight        = false;
   inEVA           = false;
-  hasTarget       = false;
-  docked          = false;
-  isRecoverable   = false;
   hasO2           = false;
   inAtmo          = false;
   physTW          = false;
@@ -226,9 +218,6 @@ static void resetTestState() {
   debugMode       = false;
   audioEnabled    = false;
   simpitConnected = true;   // default connected so SIMPIT LOST is off
-
-  // Reset panel status force-on override
-  testPsForceOn = 0;
 
   // Set body to Kerbin
   setTestBody();
@@ -659,8 +648,9 @@ static void runLogicTests() {
   // CW_CHUTE_ENV -- red (too fast for drogue)
   {
     resetTestState();
-    inAtmo         = true;
-    state.vel_surf = CW_CHUTE_DROGUE_MAX_SPEED + 100.0f;
+    inAtmo           = true;
+    state.airDensity = 1.225f;                  // Kerbin sea-level density (q calibration)
+    state.vel_surf   = 600.0f;                  // q > drogue limit
     updateCautionWarningState();
     bool pass = bitRead(state.cautionWarningState, CW_CHUTE_ENV) &&
                 chuteEnvState == chute_Red;
@@ -668,7 +658,7 @@ static void runLogicTests() {
     if (pass) _logicPassed++; else _logicFailed++;
 
     // yellow (safe for drogue, not main)
-    state.vel_surf = CW_CHUTE_MAIN_MAX_SPEED + 10.0f;
+    state.vel_surf = 350.0f;                     // main limit < q < drogue limit
     updateCautionWarningState();
     pass = bitRead(state.cautionWarningState, CW_CHUTE_ENV) &&
            chuteEnvState == chute_Yellow;
@@ -676,7 +666,7 @@ static void runLogicTests() {
     if (pass) _logicPassed++; else _logicFailed++;
 
     // green (safe for mains)
-    state.vel_surf = CW_CHUTE_MAIN_MAX_SPEED - 10.0f;
+    state.vel_surf = 200.0f;                     // q < main limit
     updateCautionWarningState();
     pass = bitRead(state.cautionWarningState, CW_CHUTE_ENV) &&
            chuteEnvState == chute_Green;
@@ -955,7 +945,7 @@ static void runDisplayWalkthrough() {
 
   // Force full redraw -- must happen before applying step state
   invalidateAllState();
-  resetSitAndPanelState();  // resets _prevContact and prevPanelStatusMask sentinels
+  resetSitAndPanelState();  // resets _prevContact and prevModeFlags sentinels
 
   // Apply step state after invalidation so it isn't overwritten
   state.cautionWarningState  = step.cwBits;
@@ -978,7 +968,6 @@ static void runDisplayWalkthrough() {
   else if (step.psAudio  == 1) audioEnabled     = true;
   if (step.psSimpit == 0)      simpitConnected  = true;
   else if (step.psSimpit == 1) simpitConnected  = false;
-  testPsForceOn = step.psForceOn;
 
   // Vehicle control mode and vessel type for SPCFT button
   if (step.psVehCtrl >= 0)    state.vehCtrlMode = (CtrlMode)step.psVehCtrl;
@@ -1007,8 +996,11 @@ static void runDisplayWalkthrough() {
   updateVesselSitPanel(infoDisp, ~state.vesselSituationState, state.vesselSituationState);
   prev.vesselSituationState = state.vesselSituationState;
   updateDockedIndicator(infoDisp);
-  updateFlightCondBlock(infoDisp);
-  updatePanelStatus(infoDisp);
+  updateRegimeColumn(infoDisp);
+  // rev 2: the bottom mode grid is master-driven (state.modeFlags); the legacy
+  // psForceOn walk-through no longer lights these tiles. TODO: drive modeFlags
+  // from the test steps for a full walk-through.
+  updateModeGrid(infoDisp);
 
   // Serial output
   Serial.println();

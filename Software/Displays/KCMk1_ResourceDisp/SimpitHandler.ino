@@ -7,7 +7,7 @@
 
    Channel mapping (KSP1 + ARP mod required for most resource channels):
      Native KSP1 with stage variants:  LF, LOx, SF, Xenon, Ablator
-     Native KSP1 vessel-only:          Electric Charge, Monoprop, Ore
+     Native KSP1 vessel-only:          Electric Charge, Monoprop, EVA Propellant, Ore
      TAC Life Support mod:             Food, Water, Oxygen (TACLS_RESOURCE_MESSAGE)
                                        Waste, Liquid Waste, CO2 (TACLS_WASTE_MESSAGE)
      CRP mod via CUSTOM_RESOURCE_1:    Stored Charge, Enriched Uranium,
@@ -17,9 +17,9 @@
 
    Resources with no stage variant copy vessel values to stage fields (best effort).
 
-   SCENE_CHANGE_MESSAGE:
-     msg[0]==0 → entering flight scene → demoMode cleared, live data active
-     msg[0]==1 → leaving flight scene  → slots zeroed, demoMode not restored
+   SCENE_CHANGE_MESSAGE (only reached in live mode — demo never services Simpit):
+     msg[0]==0 → entering flight scene → slots zeroed, refresh requested, main screen
+     msg[0]==1 → leaving flight scene  → config saved, EVA latch + slots cleared, standby
 
    -------------------------------------------------------------------------------
    REQUIRED: KSP/GameData/KerbalSimpit/PluginData/Settings.cfg
@@ -89,6 +89,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case XENON_GAS_MESSAGE:       msgName = "XENON";        break;
       case XENON_GAS_STAGE_MESSAGE: msgName = "XENON_STAGE";  break;
       case ELECTRIC_MESSAGE:        msgName = "ELECTRIC";     break;
+      case EVA_MESSAGE:             msgName = "EVA";          break;
       case ORE_MESSAGE:             msgName = "ORE";          break;
       case AB_MESSAGE:              msgName = "AB";           break;
       case AB_STAGE_MESSAGE:        msgName = "AB_STAGE";     break;
@@ -98,6 +99,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case CUSTOM_RESOURCE_2_MESSAGE: msgName = "CUSTOM_2";   break;
       case SCENE_CHANGE_MESSAGE:    msgName = "SCENE_CHANGE"; break;
       case VESSEL_CHANGE_MESSAGE:   msgName = "VESSEL_CHANGE";break;
+      case FLIGHT_STATUS_MESSAGE:   msgName = "FLIGHT_STATUS";break;
       default:                      msgName = "UNKNOWN";      break;
     }
     Serial.print(F("ResourceDisp: Simpit msg="));
@@ -122,7 +124,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         currentVesselName = newName;
         // Attempt to recall this vessel's last slot configuration.
         // If not in cache, keep the current slot layout.
-        if (recallVesselSlots(currentVesselName)) {
+        // On EVA the bar set is fixed (EC/EVA/O2/Food/Water) — skip per-vessel
+        // recall so the EVA Kerbal's name can't override it.
+        if (evaActive) {
+          if (debugMode) Serial.println(F("ResourceDisp: EVA active — keeping EVA bar set"));
+        } else if (recallVesselSlots(currentVesselName)) {
           if (debugMode) Serial.println(F("ResourceDisp: vessel slot config recalled"));
           simpit.requestMessageOnChannel(0);
         } else {
@@ -147,6 +153,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(resourceMessage)) {
         resourceMessage r = parseMessage<resourceMessage>(msg);
         updateSlotVesselOnly(RES_MONO_PROP, r.available, r.total);
+      }
+      break;
+
+    case EVA_MESSAGE:
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseMessage<resourceMessage>(msg);
+        updateSlotVesselOnly(RES_EVA_PROP, r.available, r.total);
       }
       break;
 
@@ -344,15 +357,20 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     // Scene and vessel events
     // -------------------------------------------------------------------------
 
+    case FLIGHT_STATUS_MESSAGE:
+      // EVA detection: the FLIGHT_IS_EVA bit of the flags byte (msg[0]) is set
+      // while a Kerbal is on EVA. Latch it into evaFlag; loop() reconciles it
+      // into evaActive and swaps between the vessel bars and the EVA bar set.
+      if (msgSize >= 1) evaFlag = (msg[0] & FLIGHT_IS_EVA) != 0;
+      break;
+
     case SCENE_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
       flightScene = (msg[0] == 0);  // 0 = entering flight, 1 = leaving flight
       if (flightScene) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit entering flight scene"));
-        demoMode = false;
         // Zero slots so stale values don't show before Simpit repopulates them
-        for (uint8_t i = 0; i < slotCount; i++) {
-          slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-        }
+        zeroAllSlotValues();
         // Request immediate refresh on all subscribed channels.
         // Simpit only sends resource messages when values change — without this,
         // static resources (full tanks, idle engines) won't update until first change.
@@ -362,23 +380,25 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit leaving flight scene"));
         // Save current config before leaving flight
         saveVesselSlots(currentVesselName);
-        // Zero slots and return to standby
-        for (uint8_t i = 0; i < slotCount; i++) {
-          slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-        }
+        // Clear EVA latch so an EVA that ended off-scene doesn't stay engaged, then
+        // zero slots and return to standby.
+        evaFlag = evaActive = false;
+        zeroAllSlotValues();
         switchToScreen(screen_Standby);
       }
       break;
 
     case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit vessel switch — saving and zeroing slots"));
         // Save current config before it's overwritten by the new vessel
         saveVesselSlots(currentVesselName);
         currentVesselName = "";  // will be repopulated by VESSEL_NAME_MESSAGE
-        for (uint8_t i = 0; i < slotCount; i++) {
-          slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-        }
+        // Clear the EVA latch — if the new vessel is still an EVA Kerbal, the next
+        // FLIGHT_STATUS re-sets evaFlag and loop() reconciles it back on.
+        evaFlag = evaActive = false;
+        zeroAllSlotValues();
         // Request main screen redraw via flag — loop() will call drawStaticMain()
         // after simpit.update() returns, ensuring the screen is cleared before any
         // subsequent resource messages for the new vessel are drawn.
@@ -423,6 +443,7 @@ void initSimpit() {
 
   // Power and mining
   simpit.registerChannel(ELECTRIC_MESSAGE);
+  simpit.registerChannel(EVA_MESSAGE);
   simpit.registerChannel(ORE_MESSAGE);
   simpit.registerChannel(AB_MESSAGE);
   simpit.registerChannel(AB_STAGE_MESSAGE);
@@ -441,5 +462,6 @@ void initSimpit() {
   simpit.registerChannel(VESSEL_NAME_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);
+  simpit.registerChannel(FLIGHT_STATUS_MESSAGE);   // EVA detection (FLIGHT_IS_EVA bit)
 }
 

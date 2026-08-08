@@ -16,10 +16,10 @@ PrintState psSOIRows[SOI_MAX_ROWS];
 const uint16_t SOI_IMG_W  = 240;
 const uint16_t SOI_IMG_H  = 168;
 const uint16_t SOI_NAME_X = SOI_IMG_W;
-const uint16_t SOI_NAME_W = 800 - 2 * SOI_IMG_W;  // 320px centre panel
+const uint16_t SOI_NAME_W = KCM_SCREEN_W - 2 * SOI_IMG_W;  // centre panel (rev2: full width)
 const uint16_t SOI_ROWS_Y = SOI_IMG_H;
-const uint16_t SOI_ROWS_H = 480 - SOI_IMG_H;       // 312px for data rows
-const uint16_t SOI_ROW_H  = 36;                    // 36px per row -- fits 8-9 rows
+const uint16_t SOI_ROWS_H = KCM_SCREEN_H - SOI_IMG_H;      // data rows (rev2: full height)
+const uint16_t SOI_ROW_H  = 52;                    // 52px per row (rev2: larger text); 8 rows fit in 432px
 
 
 /***************************************************************************************
@@ -27,10 +27,11 @@ const uint16_t SOI_ROW_H  = 36;                    // 36px per row -- fits 8-9 r
    Draws background and left KASA meatball BMP.
    drawSOIBody() is called immediately after to fill body-specific content.
 ****************************************************************************************/
-void drawStaticSOI(RA8875 &tft) {
-  tft.setXY(0, 0);
+void drawStaticSOI(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
-  drawBMP(tft, "/KASA_Meatball_240x168.bmp", 2, 2);
+  // KASA meatball (236x164) centred in the left image slot (SOI_IMG_W x SOI_IMG_H).
+  drawBMP(tft, "/KASA_Meatball_236x164.bmp",
+          (SOI_IMG_W - BODY_IMG_W) / 2, (SOI_IMG_H - BODY_IMG_H) / 2);
 }
 
 
@@ -40,7 +41,7 @@ void drawStaticSOI(RA8875 &tft) {
    Left meatball is NOT touched -- drawn once in drawStaticSOI.
    Called whenever currentBody changes while screen_SOI is active.
 ****************************************************************************************/
-void drawSOIBody(RA8875 &tft) {
+void drawSOIBody(KCM_TFT &tft) {
   struct SOIRow { const char *label; String value; };
   SOIRow rows[8];
   uint8_t rowCount = 0;
@@ -57,20 +58,23 @@ void drawSOIBody(RA8875 &tft) {
   rows[rowCount++] = { "Surf. Gravity:",  String(currentBody.gravity, 2) + " m/s\xb2"     };
 
   tft.fillRect(SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H, TFT_BLACK);
-  printTitle(tft, &Roboto_Black_48, SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H,
+  printTitle(tft, &Roboto_Black_72, SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H,
              currentBody.dispName, TFT_WHITE, TFT_BLACK, NO_BORDER);
 
   tft.fillRect(0, SOI_ROWS_Y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROWS_H, TFT_BLACK);
   for (uint8_t i = 0; i < rowCount; i++) {
     uint16_t y = SOI_ROWS_Y + i * SOI_ROW_H;
-    printDisp(tft, &Roboto_Black_28, 0, y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROW_H,
+    printDisp(tft, &Roboto_Black_40, 0, y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROW_H,
               rows[i].label, rows[i].value,
               TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, NO_BORDER,
               psSOIRows[i]);
   }
 
-  // Right BMP drawn last -- sits on top of any overlapping content
-  drawBMP(tft, currentBody.image, SOI_NAME_X + SOI_NAME_W + 2, 2);
+  // Right body BMP drawn last -- sits on top of any overlapping content.
+  // Centred (236x164) in the right image slot (SOI_IMG_W wide).
+  drawBMP(tft, currentBody.image,
+          SOI_NAME_X + SOI_NAME_W + (SOI_IMG_W - BODY_IMG_W) / 2,
+          (SOI_IMG_H - BODY_IMG_H) / 2);
 }
 
 
@@ -78,7 +82,7 @@ void drawSOIBody(RA8875 &tft) {
    UPDATE PASS -- redraws body content only when gameSOI has changed.
    prev.gameSOI is synced at screen entry to suppress a redundant redraw.
 ****************************************************************************************/
-void updateScreenSOI(RA8875 &tft) {
+void updateScreenSOI(KCM_TFT &tft) {
   if (state.gameSOI != prev.gameSOI) {
     drawSOIBody(tft);
     prev.gameSOI = state.gameSOI;

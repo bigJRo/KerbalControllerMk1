@@ -45,11 +45,6 @@ static const int16_t LNCH_AS_PANEL_H     = 417;  // content below title, to bott
 // launch values like "+3,234" fit within the value region after label+padding.
 static const int16_t LNCH_AS_ROW_H       = 52;
 
-// Row Y positions
-static inline int16_t _lnchAsRowY(uint8_t row) {
-    return LNCH_AS_PANEL_Y + row * LNCH_AS_ROW_H;
-}
-
 
 // ── Top-level dispatchers ──────────────────────────────────────────────────────────────
 // chromeScreen_LNCH is called once on screen entry / SOI change, drawScreen_LNCH on
@@ -60,7 +55,7 @@ static inline int16_t _lnchAsRowY(uint8_t row) {
 // The phase-mode flags _lnchPrelaunchMode and _lnchOrbitalMode are set by SimpitHandler
 // (pre-launch transitions) and by drawScreen_LNCH itself (altitude hysteresis).
 
-static void chromeScreen_LNCH(RA8875 &tft) {
+static void chromeScreen_LNCH(KCM_TFT &tft) {
   // _lnchOrbitalMode is set by drawScreen_LNCH via hysteresis before chrome is called.
   if (_lnchPrelaunchMode) {
     // ── PRE-LAUNCH board (see Screen_LNCH_PreLaunch.ino) ──
@@ -78,9 +73,8 @@ static void chromeScreen_LNCH(RA8875 &tft) {
 
   } else {
     // ── Orbital (circularization) phase ──
-    // Left panel: BLANK (placeholder for Stage 6 — orbit diagram with Ap/Pe).
-    //   drawStaticScreen already did fillScreen(TFT_BLACK) before calling this,
-    //   so nothing to draw for now.
+    // Left panel: orbit diagram (Ap/Pe) — drawn per-frame by _lnchOrDrawLeftPanelValues,
+    //   so it needs no static chrome here (drawStaticScreen already cleared to black).
     // Right panel: 8 numeric readouts — same layout style as ascent but with
     //   orbital-specific row set (Alt.SL / V.Orb / ApA / PeA / T+Ap / Thrtl /
     //   T.Brn / ΔV.Stg) and orbital change-detection state.
@@ -90,7 +84,7 @@ static void chromeScreen_LNCH(RA8875 &tft) {
 }
 
 
-static void drawScreen_LNCH(RA8875 &tft) {
+static void drawScreen_LNCH(KCM_TFT &tft) {
   static const uint8_t NR = 8;
 
   // ── PRE-LAUNCH board (see Screen_LNCH_PreLaunch.ino) ──
@@ -101,9 +95,9 @@ static void drawScreen_LNCH(RA8875 &tft) {
 
   // Phase detection with hysteresis — ascending uses higher threshold to prevent
   // rapid switching near the boundary.
-  float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : 600000.0f;
+  float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
   bool  ascending = (state.verticalVel >= 0.0f);
-  float switchAlt = ascending ? (bodyRad * 0.06f) : (bodyRad * 0.055f);
+  float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
   bool  orbMode   = (state.altitude > switchAlt);
 
   // Phase switch — auto only if not manually overridden
@@ -116,10 +110,11 @@ static void drawScreen_LNCH(RA8875 &tft) {
 
   // Manual override indicator — red dot on right of title bar.
   // Drawn every loop: red when overridden, black (erase) when auto.
-  // Position matches drawStaticScreen: x=706, y=29, r=6.
+  // Position matches drawStaticScreen (CONTENT_W - 14, y=29, r=6) so the chrome
+  // dot and this per-frame dot coincide — a single indicator, not two.
   {
     uint16_t indCol = _lnchManualOverride ? TFT_RED : TFT_BLACK;
-    tft.fillCircle(706, 29, 6, indCol);
+    tft.fillCircle(CONTENT_W - 14, 29, 6, indCol);
   }
 
   if (!_lnchOrbitalMode) {

@@ -20,16 +20,18 @@ extern "C" void usb_init(void);
 
 #include "module_packets.h"               // Per-type I2C packet sizing + universal header helpers
 #include "module_variables.h"             // Module Register Definitions
-#include "../Common/custom_action_grp_def.h"  // Custom Action Group Definitions
-#include "../Common/keyboard_def.h"           // Keyboard Code Definitions
+#include "ascent_autopilot.h"             // Launch-to-orbit ascent autopilot
+#include "C:\Dev\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
+#include "C:\Dev\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
+#include "C:\Dev\KerbalControllerMk1\Software\Common\body_params.h"            // Shared celestial-body table (ascent autopilot)
 
 
 /***************************************************************************************
    I2C Address Definitions
 ****************************************************************************************/
 #define ANNUN_MC 0x10
-#define INFO_MC 0x11
-#define RES_MC 0x12
+#define RES_MC 0x11   // Resource Display slave (KCM_I2C_ADDR_RESDISP)
+#define INFO_MC 0x12  // Info Display slave    (KCM_I2C_ADDR_INFODISP)
 
 // I2C module addresses — Module UI Reference / I2C Protocol Specification v2.6 registry.
 #define UI_MOD 0x20           // UI Control          (KMC_TYPE_UI_CONTROL)
@@ -194,6 +196,12 @@ void setup() {
 
 
   Serial.println("COMPLETE");
+
+  /********************************************************
+    Initialise the ascent autopilot (loads default config;
+    edit via apGetConfig()/apSetTargets() and engage with apArm())
+  *********************************************************/
+  apInit();
 }
 
 
@@ -217,6 +225,17 @@ void loop() {
   if (abortButton.update()) {
     if (abortButton.fallingEdge()) {
       mySimpit.activateAction(ABORT_ACTION);
+      apDisarm();  // an abort always drops the autopilot back to manual control
     }
   }
+
+  /********************************************************
+    Ascent Autopilot
+      - apSerialConsole() lets you ARM/DISARM and set ALT/INC/LOFT
+        over the primary Serial link for bench testing.
+      - apUpdate() runs the guidance loop and emits control to KSP
+        only while the autopilot is armed; it is a no-op otherwise.
+  *********************************************************/
+  apSerialConsole();
+  apUpdate();
 }

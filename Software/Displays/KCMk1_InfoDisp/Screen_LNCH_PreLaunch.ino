@@ -31,7 +31,7 @@ static const uint16_t _lnchPlAHW    = _lnchPlAW / 2;                           /
 // ── Chrome ─────────────────────────────────────────────────────────────────────────────
 // Draws labels, dividers, and title bar. Called once per screen-entry. Values are
 // updated separately by _lnchPrelaunchDrawValues each frame.
-static void _lnchPrelaunchDrawChrome(RA8875 &tft) {
+static void _lnchPrelaunchDrawChrome(KCM_TFT &tft) {
     const uint8_t  NR   = _lnchPlNumRows;
     const tFont   *F    = _lnchPlFont;
     const uint16_t AX   = _lnchPlAX;
@@ -55,7 +55,7 @@ static void _lnchPrelaunchDrawChrome(RA8875 &tft) {
             tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, nextY - 1, TFT_GREY);
     };
     plSplit(2, "SAS:",      "RCS:");
-    plSplit(3, "Throttle:", "EC%:");
+    plSplit(3, "Thrtl:", "EC%:");
     plSplit(4, "Crew:",     "Comm:");
     printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "\xCE\x94V.Tot:", COL_LABEL, COL_BACK, COL_NO_BDR);
     plSplit(6, "Drogue:",   "Main:");
@@ -74,7 +74,7 @@ static void _lnchPrelaunchDrawChrome(RA8875 &tft) {
 // Updates the eight rows of values with change detection. Horizontal dividers are
 // repainted every frame because printValue's fillRect sometimes nibbles them (same
 // pattern as ATT and ROVR screens).
-static void _lnchPrelaunchDrawValues(RA8875 &tft) {
+static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     const uint8_t  NR   = _lnchPlNumRows;
     const tFont   *F    = _lnchPlFont;
     const uint16_t AX   = _lnchPlAX;
@@ -168,14 +168,14 @@ static void _lnchPrelaunchDrawValues(RA8875 &tft) {
         String thrStr = formatPerc(thrPct);
         if (thrPct == 0) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else             { fg = TFT_WHITE;       bg = TFT_RED;   }
-        plValL(3, 4, "Throttle:", thrStr, fg, bg);
+        plValL(3, 4, "Thrtl:", thrStr, fg, bg);
 
-        // EC%: green≥90%, yellow=75-89%, red=<75%
+        // EC%: pre-launch readiness — green when topped off, red when not ready.
         uint8_t ecPct = (uint8_t)constrain(state.electricChargePercent, 0.0f, 100.0f);
         String ecStr = formatPerc(ecPct);
-        if      (ecPct >= 90) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        else if (ecPct >= 75) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
-        else                  { fg = TFT_WHITE;       bg = TFT_RED;   }
+        if      (ecPct >= EC_PRELAUNCH_READY_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+        else if (ecPct >= EC_PRELAUNCH_LOW_PCT)   { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                                       { fg = TFT_WHITE;       bg = TFT_RED;   }
         plValR(3, 5, "EC%:", ecStr, fg, bg);
     }
 
@@ -189,7 +189,7 @@ static void _lnchPrelaunchDrawValues(RA8875 &tft) {
         // CommNet: green=>50%, yellow=10-50%, red=<10%
         uint8_t sig = (uint8_t)constrain(state.commNetSignal, 0, 100);
         String sigStr = formatPerc(sig);
-        if      (sig >= 50) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+        if      (sig >= VEH_SIGNAL_WARN_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (sig >= 10) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                { fg = TFT_WHITE;       bg = TFT_RED;   }
         plValR(4, 7, "CommNet:", sigStr, fg, bg);

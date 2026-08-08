@@ -1,12 +1,12 @@
 /***************************************************************************************
    ScreenSelect.ino -- Resource selection screen for Kerbal Controller Mk1 Resource Display
 
-   Layout (800×480):
+   Layout (1024×600):
      Row 1 (TITLE_H):  "Select Resources" title (large) + slot count + BACK button
      Row 2 (PRESET_H): 6 preset group buttons across grid width, left of BACK
-     Left panel (0..GRID_W-1):    5-column resource grid below header rows
-     Right panel (GRID_W+pad..799): selection order list + CLEAR button
-     All backgrounds pure black.
+     Left panel (0..GRID_W-1):        5-column resource grid below header rows
+     Right panel (GRID_W+pad..W-1):   selection order list + CLEAR button
+     All backgrounds pure black. Geometry derives from KCM_SCREEN_W/H.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -28,15 +28,15 @@ static const uint16_t TOP_H      = TITLE_H + PRESET_H;
 // Resource grid (left panel, below header)
 static const uint8_t  SEL_COLS   = 5;
 static const uint8_t  SEL_ROWS   = (RESOURCE_TYPE_COUNT + SEL_COLS - 1) / SEL_COLS;
-static const uint16_t GRID_W     = 600;
+static const uint16_t GRID_W     = (KCM_SCREEN_W * 3) / 4;   // 768 @1024 — grid 3/4, order list 1/4
 static const uint16_t SEL_BTN_W  = (GRID_W - SEL_PAD * (SEL_COLS + 1)) / SEL_COLS;
-static const uint16_t SEL_BTN_H  = (480 - TOP_H - SEL_PAD * (SEL_ROWS + 1)) / SEL_ROWS;
+static const uint16_t SEL_BTN_H  = (KCM_SCREEN_H - TOP_H - SEL_PAD * (SEL_ROWS + 1)) / SEL_ROWS;
 static const uint16_t SEL_START_X = SEL_PAD;
 static const uint16_t SEL_START_Y = TOP_H + SEL_PAD;
 
 // Right panel (order list)
 static const uint16_t PANEL_X    = GRID_W + SEL_PAD * 2;
-static const uint16_t PANEL_W    = 800 - PANEL_X - SEL_PAD;
+static const uint16_t PANEL_W    = KCM_SCREEN_W - PANEL_X - SEL_PAD;
 
 // BACK button — spans both title and preset rows for easy pressing
 static const ButtonLabel btnBack = {
@@ -44,7 +44,7 @@ static const ButtonLabel btnBack = {
 };
 static const uint16_t BACK_W = 110;
 static const uint16_t BACK_H = TITLE_H + PRESET_H - SEL_PAD * 2;
-static const uint16_t BACK_X = 800 - BACK_W - SEL_PAD;
+static const uint16_t BACK_X = KCM_SCREEN_W - BACK_W - SEL_PAD;
 static const uint16_t BACK_Y = SEL_PAD;
 
 // CLEAR button (bottom of right panel)
@@ -52,7 +52,7 @@ static const ButtonLabel btnClear = {
   "CLEAR", TFT_WHITE, TFT_WHITE, TFT_MAROON, TFT_RED, NO_BORDER, NO_BORDER
 };
 static const uint16_t CLEAR_H = 48;
-static const uint16_t CLEAR_Y = 480 - CLEAR_H - SEL_PAD;
+static const uint16_t CLEAR_Y = KCM_SCREEN_H - CLEAR_H - SEL_PAD;
 static const uint16_t CLEAR_X = PANEL_X;
 static const uint16_t CLEAR_W = PANEL_W;
 
@@ -77,9 +77,9 @@ struct PresetGroup {
 
 static const PresetGroup PRESETS[PRESET_COUNT] = {
   { "STD", {   // Standard Resource Group
-      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
-      RES_SOLID_FUEL, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
-    }, 8 },
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
+      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
+    }, 9 },
   { "XPD", {   // Expedition Craft Resource Group
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
       RES_LIQUID_H2, RES_ENRICHED_URANIUM, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
@@ -123,14 +123,10 @@ static bool isSelected(ResourceType t) {
    HELPER -- add a resource to the next empty slot. Returns true if added.
 ****************************************************************************************/
 static bool addResource(ResourceType t) {
+  if (t == RES_EVA_PROP && !evaActive) return false;   // EVA fuel only exists on EVA
   if (slotCount >= MAX_SLOTS) return false;
-  slots[slotCount].type         = t;
-  // In live mode start at zero — Simpit will populate on next message.
-  // In demo mode start at 1.0 so bars are visible immediately.
-  slots[slotCount].current      = demoMode ? 1.0f : 0.0f;
-  slots[slotCount].maxVal       = demoMode ? 1.0f : 0.0f;
-  slots[slotCount].stageCurrent = demoMode ? 0.4f : 0.0f;
-  slots[slotCount].stageMax     = demoMode ? 0.4f : 0.0f;
+  slots[slotCount].type = t;
+  initSlotValues(slots[slotCount]);   // 0 live / visible demo values
   slotCount++;
   return true;
 }
@@ -163,11 +159,8 @@ static void loadPreset(uint8_t presetIndex) {
   slotCount = 0;
   const PresetGroup &pg = PRESETS[presetIndex];
   for (uint8_t i = 0; i < pg.count && slotCount < MAX_SLOTS; i++) {
-    slots[slotCount].type         = pg.types[i];
-    slots[slotCount].current      = demoMode ? 1.0f : 0.0f;
-    slots[slotCount].maxVal       = demoMode ? 1.0f : 0.0f;
-    slots[slotCount].stageCurrent = demoMode ? 0.4f : 0.0f;
-    slots[slotCount].stageMax     = demoMode ? 0.4f : 0.0f;
+    slots[slotCount].type = pg.types[i];
+    initSlotValues(slots[slotCount]);
     slotCount++;
   }
   // In live mode, request a Simpit refresh so the new slots populate immediately
@@ -178,7 +171,7 @@ static void loadPreset(uint8_t presetIndex) {
 /***************************************************************************************
    DRAW ONE GRID BUTTON
 ****************************************************************************************/
-static void drawSelectButton(RA8875 &tft, uint8_t gridIndex, bool isOn) {
+static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
   ResourceType t = resTypeByIndex(gridIndex);
   if (t == RES_NONE) return;
 
@@ -187,8 +180,26 @@ static void drawSelectButton(RA8875 &tft, uint8_t gridIndex, bool isOn) {
   uint16_t x   = SEL_START_X + col * (SEL_BTN_W + SEL_PAD);
   uint16_t y   = SEL_START_Y + row * (SEL_BTN_H + SEL_PAD);
 
+  // EVA Propellant is shown only while a Kerbal is on EVA; otherwise the cell is
+  // blank (hidden and not selectable).
+  if (t == RES_EVA_PROP && !evaActive) {
+    tft.fillRect(x, y, SEL_BTN_W, SEL_BTN_H, TFT_BLACK);
+    return;
+  }
+
   ButtonLabel btn;
   btn.text               = resFullName(t);
+
+  // On EVA the selection is locked to the EVA bar set — every other resource is
+  // drawn dimmed and inert (tap handler ignores it).
+  if (evaActive && !isEvaResource(t)) {
+    btn.fontColorOff = btn.fontColorOn = TFT_DARK_GREY;
+    btn.backgroundColorOff = btn.backgroundColorOn = TFT_OFF_BLACK;
+    btn.borderColorOff = btn.borderColorOn = TFT_DARK_GREY;
+    drawButton(tft, x, y, SEL_BTN_W, SEL_BTN_H, btn, &Roboto_Black_20, false);
+    return;
+  }
+
   btn.fontColorOff       = TFT_DARK_GREY;
   btn.fontColorOn        = TFT_BLACK;
   btn.backgroundColorOff = TFT_OFF_BLACK;
@@ -203,14 +214,14 @@ static void drawSelectButton(RA8875 &tft, uint8_t gridIndex, bool isOn) {
 /***************************************************************************************
    DRAW SLOT COUNT -- small text in title row, left side
 ****************************************************************************************/
-static void drawSlotCount(RA8875 &tft) {
+static void drawSlotCount(KCM_TFT &tft) {
   char countStr[20];
   snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
   int16_t cw = getFontStringWidth(&Roboto_Black_16, countStr);
   uint16_t cx = BACK_X - cw - SEL_PAD * 2;
   uint16_t cy = (TITLE_H - 20) / 2;  // vertically centred in title row (font height ~20px)
   tft.fillRect(cx - 2, 0, cw + 4, TITLE_H, TFT_BLACK);
-  tft.setFont(&Roboto_Black_16);
+  tft.setFont(Roboto_Black_16);
   tft.setTextColor(TFT_GREY, TFT_BLACK);
   tft.setCursor(cx, cy);
   tft.print(countStr);
@@ -220,7 +231,7 @@ static void drawSlotCount(RA8875 &tft) {
 /***************************************************************************************
    DRAW PRESET BUTTONS ROW
 ****************************************************************************************/
-static void drawPresetButtons(RA8875 &tft) {
+static void drawPresetButtons(KCM_TFT &tft) {
   tft.fillRect(0, TITLE_H, BACK_X, PRESET_H, TFT_BLACK);
   for (uint8_t i = 0; i < PRESET_COUNT; i++) {
     uint16_t bx = SEL_PAD + i * (PRESET_BTN_W + SEL_PAD);
@@ -240,11 +251,11 @@ static void drawPresetButtons(RA8875 &tft) {
 /***************************************************************************************
    DRAW ORDER PANEL -- right-side list showing selection order
 ****************************************************************************************/
-static void drawOrderPanel(RA8875 &tft) {
+static void drawOrderPanel(KCM_TFT &tft) {
   uint16_t listH = CLEAR_Y - TOP_H - SEL_PAD * 2;
   tft.fillRect(PANEL_X, TOP_H, PANEL_W, listH + SEL_PAD, TFT_BLACK);
 
-  tft.setFont(&Roboto_Black_12);
+  tft.setFont(Roboto_Black_12);
   tft.setTextColor(TFT_GREY, TFT_BLACK);
   tft.setCursor(PANEL_X + 4, TOP_H + 4);
   tft.print("ORDER");
@@ -259,7 +270,7 @@ static void drawOrderPanel(RA8875 &tft) {
     bool     filled = (i < slotCount && slots[i].type != RES_NONE);
 
     tft.fillRect(PANEL_X, ry, PANEL_W, rowH - 1, TFT_BLACK);
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_12);
 
     char numStr[4];
     snprintf(numStr, sizeof(numStr), "%d.", i + 1);
@@ -283,11 +294,11 @@ static void drawOrderPanel(RA8875 &tft) {
 /***************************************************************************************
    DRAW STATIC CHROME -- selection screen
 ****************************************************************************************/
-void drawStaticSelect(RA8875 &tft) {
+void drawStaticSelect(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
 
   // Title — large font, vertically centred in title row
-  tft.setFont(&Roboto_Black_36);
+  tft.setFont(Roboto_Black_36);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setCursor(SEL_PAD, (TITLE_H - 43) / 2);
   tft.print("Select Resources");
@@ -302,7 +313,7 @@ void drawStaticSelect(RA8875 &tft) {
   drawPresetButtons(tft);
 
   // Divider between grid and right panel
-  tft.fillRect(GRID_W + SEL_PAD, TOP_H, 2, 480 - TOP_H, TFT_DARK_GREY);
+  tft.fillRect(GRID_W + SEL_PAD, TOP_H, 2, KCM_SCREEN_H - TOP_H, TFT_DARK_GREY);
 
   // Resource grid
   for (uint8_t i = 0; i < RESOURCE_TYPE_COUNT; i++) {
@@ -317,7 +328,7 @@ void drawStaticSelect(RA8875 &tft) {
 /***************************************************************************************
    UPDATE PASS
 ****************************************************************************************/
-void updateScreenSelect(RA8875 &tft) {
+void updateScreenSelect(KCM_TFT &tft) {
   // No per-frame updates on select screen — all changes are touch-driven redraws.
 }
 
@@ -331,6 +342,10 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
     switchToScreen(screen_Main);
     return false;
   }
+
+  // On EVA the selection is locked to the fixed EVA bar set — only BACK responds.
+  // CLEAR, presets and grid taps are all ignored so nothing else can be added.
+  if (evaActive) return false;
 
   // CLEAR button
   if (x >= CLEAR_X && x < CLEAR_X + CLEAR_W && y >= CLEAR_Y && y < CLEAR_Y + CLEAR_H) {
@@ -364,6 +379,7 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
       if (x >= bx && x < bx + SEL_BTN_W && y >= by && y < by + SEL_BTN_H) {
         ResourceType t = resTypeByIndex(i);
         if (t == RES_NONE) return false;
+        if (t == RES_EVA_PROP) return false;   // EVA Propellant only exists on EVA (grid locked then)
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {

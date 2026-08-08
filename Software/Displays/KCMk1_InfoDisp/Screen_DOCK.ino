@@ -1,7 +1,7 @@
 /***************************************************************************************
    Screen_DOCK.ino  —  Docking screen: graphical approach reticle + critical numbers
 
-   LAYOUT (800×480, content area 720×418 below title bar)
+   LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌────────────────────────────────┬──────────────────────────────────────┐
    │                                │ DIST:         247 m                  │
    │   Approach Reticle             │ V.CLOSE:    -1.4 m/s                 │
@@ -22,11 +22,12 @@
                       At centre → your nose is pointing at the port (aligned)
    Perfect approach = both dots at centre simultaneously
 
-   RETICLE GEOMETRY (screen coords)
+   RETICLE GEOMETRY (rev-2, 1024×600)
    ──────────────────────────────────
-   Centre: (192, 271)  Radius: 170px  Scale: 170/30 = 5.67 px/deg
-   Rings: ±5° r=28, ±10° r=57, ±20° r=113, ±30° r=170
-   Left panel: x=0..384  Right panel: x=385..719
+   Centre: (289, 300)  Radius: 210px  Scale: 10.5 px/deg (±20° full scale)
+   Rings: ±5° r=52, ±10° r=105, ±15° r=157, ±20° r=210. Centred in the left
+   region x=[0,578]; approach bar centred under it.
+   Right panel: 360 px at x=580 (matches ascent/MNVR), labels 28 / values 36
 
    DOT UPDATE STRATEGY
    ────────────────────
@@ -51,117 +52,72 @@ bool     _vesselDocked    = false;
 uint32_t _dockedTimestamp = 0;
 
 
-// ── Reticle geometry constants ────────────────────────────────────────────────────────
-static const uint16_t RET_CX   = 192;   // reticle centre x (screen)
-static const uint16_t RET_CY   = 251;   // reticle centre y — raised vs screen centre to give legend room
-static const uint16_t RET_R    = 170;   // reticle radius (px)
-static const float    RET_SCALE = (float)RET_R / 20.0f;  // px per degree (8.5) — ±20° full scale
+// ── Reticle geometry — centred and stretched to fill the left region (matches MNVR) ──
+// The readout panel now sits on the far right (x=580), leaving x=[0,578] for the
+// reticle. It is centred there, enlarged, and the approach bar is centred below.
+static const uint16_t RET_CX   = RETICLE_CX;   // centre of the left region x=[0,578]
+static const uint16_t RET_CY   = RETICLE_CY;
+static const uint16_t RET_R    = RETICLE_R;    // reticle radius (px)
+static const float    RET_SCALE = (float)RET_R / 20.0f;  // 10.5 px/deg — ±20° full scale
 
-// Ring radii for ±5°, ±10°, ±20°, ±30°
-static const uint16_t RING_5  = 42;   // 5° × 8.5px
-static const uint16_t RING_10 = 85;   // 10° × 8.5px
-static const uint16_t RING_15 = 127;  // 15° × 8.5px (replaces old 20° ring)
-static const uint16_t RING_20 = RET_R;  // 20° = full radius
+// Ring radii for ±5°, ±10°, ±15°, ±20°
+static const uint16_t RING_5  = RET_R / 4;         // 52
+static const uint16_t RING_10 = RET_R / 2;         // 105
+static const uint16_t RING_15 = (RET_R * 3) / 4;   // 157
+static const uint16_t RING_20 = RET_R;             // 210 — ±20° boundary
 
-// Dot display sizes
-static const uint8_t DOT_R_PORT  = 11;   // target port dot radius (increased)
-static const uint8_t DOT_R_VEL   =  9;   // velocity vector dot radius (increased)
-static const uint8_t DOT_R_ERASE = 16;   // erase rect half-size (covers dot + any overdraw)
+// Dot display sizes — scaled up with the larger reticle
+static const uint8_t DOT_R_PORT  = 22;   // target port marker radius
+static const uint8_t DOT_R_VEL   = 19;   // velocity vector marker radius
+static const uint8_t DOT_R_ERASE = 33;   // erase rect half-size (covers prograde ring 19 + spoke 12)
 
-// Right panel geometry
-static const uint16_t RP_X   = 385;     // right panel left edge
-static const uint16_t RP_W   = 335;     // right panel width
+// Right panel geometry — matches the ascent/circ readout panel (360 px wide,
+// right-aligned to the content edge, labels Black_28, values Black_36).
+static const uint16_t RP_W   = RETICLE_RP_W;
+static const uint16_t RP_X   = SCREEN_W - SIDEBAR_W - RP_W;   // 580
 static const uint8_t  RP_NR  = 8;       // number of rows
-static const tFont   *RP_F   = &Roboto_Black_28;  // value font
+static const tFont   *RP_LBL = &Roboto_Black_28;  // label font (chrome)
+static const tFont   *RP_F   = &Roboto_Black_36;  // value font
 
-// Approach bar geometry (row 7 bottom)
-static const uint16_t BAR_X  = 19;    // 90% bar — (LEFT_W - BAR_W)/2 margin
-static const uint16_t BAR_W  = 346;   // 90% of 385px left panel
-static const uint16_t BAR_H  = 22;   // taller bar, visible at docking distance
+// Approach bar geometry — centred under the reticle
+static const uint16_t BAR_W  = RETICLE_BAR_W;
+static const uint16_t BAR_X  = RET_CX - BAR_W / 2;   // 64
+static const uint16_t BAR_H  = 26;
 static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking approach range)
 
 
-// ── Previous dot positions (for erase) ───────────────────────────────────────────────
-// Stored as screen coordinates. 9999 = not yet drawn (skip erase on first frame).
-static int16_t _dockPrevPortX = 9999, _dockPrevPortY = 9999;
-static int16_t _dockPrevVelX  = 9999, _dockPrevVelY  = 9999;
+// ── Shared dot-layer geometry + per-screen erase cache ───────────────────────────────
+// The moving marker layer is shared with TGT (see reticleUpdateDots in AAA_Screens.ino).
+// Only the angular SCALE and the four ring labels differ; both are captured here. Built
+// from the existing named constants above so values never diverge from the chrome/bar.
+static const char *const DOCK_RING_LBL[4] = { "5", "10", "15", "20" };
+static const ReticleGeom DOCK_GEOM = {
+    (int16_t)RET_CX, (int16_t)RET_CY, (int16_t)RET_R, RET_SCALE,
+    DOT_R_PORT, DOT_R_VEL, DOT_R_ERASE,
+    DOCK_RING_LBL
+};
+// Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
+static ReticleDotCache _dockDots;
+static float   _dockPrevDist  = -999.0f;   // dist-bar dedup; reset in chrome on re-entry
 
 
 // ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
-static inline float _dockWrapErr(float e) {
-    while (e >  180.0f) e -= 360.0f;
-    while (e < -180.0f) e += 360.0f;
-    return e;
-}
-
-
-// ── Clamp a dot position to within the reticle boundary ──────────────────────────────
-static void _dockClampDot(int16_t &sx, int16_t &sy) {
-    float dx = sx - RET_CX, dy = sy - RET_CY;
-    float dist = sqrtf(dx*dx + dy*dy);
-    float maxR = (float)(RET_R - DOT_R_PORT - 2);
-    if (dist > maxR && dist > 0.5f) {
-        float scale = maxR / dist;
-        sx = RET_CX + (int16_t)(dx * scale);
-        sy = RET_CY + (int16_t)(dy * scale);
-    }
-}
+static inline float _dockWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Draw the static reticle chrome ───────────────────────────────────────────────────
-static void _dockDrawReticleChrome(RA8875 &tft) {
-    // Black disc background
-    tft.fillCircle(RET_CX, RET_CY, RET_R, TFT_BLACK);
+static void _dockDrawReticleChrome(KCM_TFT &tft) {
+    // Shared disc + rings + cardinals + crosshair + ticks + bezel (MNVR/DOCK gap 18, tick 14)
+    reticleDrawBase(tft, RET_CX, RET_CY, RET_R, 18, 14);
 
-    // Inner good-zone fill (subtle dark green inside ±5°)
-    tft.fillCircle(RET_CX, RET_CY, RING_5, TFT_OFF_BLACK);
-
-    // Concentric rings at 5° increments
-    tft.drawCircle(RET_CX, RET_CY, RING_5,  TFT_DARK_GREEN);   // ±5° — good zone
-    tft.drawCircle(RET_CX, RET_CY, RING_10, TFT_DARK_GREY);    // ±10°
-    tft.drawCircle(RET_CX, RET_CY, RING_15, TFT_DARK_GREY);    // ±15°
-    tft.drawCircle(RET_CX, RET_CY, RING_20, TFT_GREY);         // ±20° boundary
-
-    // Cardinal lines: full-diameter lines at 0°/90°/180°/270°, dim grey
-    // These extend across the full circle, split by a small gap at centre for the crosshair symbol
-    uint16_t gap = 18, arm = RET_R - 1;
-    // Vertical (0°/180°): top to bottom
-    tft.drawLine(RET_CX, RET_CY - arm, RET_CX, RET_CY - gap, TFT_DARK_GREY);
-    tft.drawLine(RET_CX, RET_CY + gap, RET_CX, RET_CY + arm, TFT_DARK_GREY);
-    // Horizontal (90°/270°): left to right
-    tft.drawLine(RET_CX - arm, RET_CY, RET_CX - gap, RET_CY, TFT_DARK_GREY);
-    tft.drawLine(RET_CX + gap, RET_CY, RET_CX + arm, RET_CY, TFT_DARK_GREY);
-
-    // Crosshair symbol at centre (your nose — always fixed)
-    tft.drawLine(RET_CX - gap + 2, RET_CY, RET_CX - 4, RET_CY, TFT_GREY);
-    tft.drawLine(RET_CX + 4,       RET_CY, RET_CX + gap - 2, RET_CY, TFT_GREY);
-    tft.drawLine(RET_CX, RET_CY - gap + 2, RET_CX, RET_CY - 4, TFT_GREY);
-    tft.drawLine(RET_CX, RET_CY + 4,       RET_CX, RET_CY + gap - 2, TFT_GREY);
-    tft.fillCircle(RET_CX, RET_CY, 2, TFT_GREY);
-
-    // Minor ticks at 30° increments on the outer ring (skipping cardinals at 0/90/180/270)
-    for (uint16_t deg = 30; deg < 360; deg += 30) {
-        if (deg % 90 == 0) continue;  // cardinals already drawn as full lines
-        float rad = (deg - 90) * DEG_TO_RAD;  // -90 converts to 0=top convention
-        int16_t ox = RET_CX + (int16_t)(RET_R * cosf(rad));
-        int16_t oy = RET_CY + (int16_t)(RET_R * sinf(rad));
-        int16_t ix = RET_CX + (int16_t)((RET_R - 14) * cosf(rad));
-        int16_t iy = RET_CY + (int16_t)((RET_R - 14) * sinf(rad));
-        tft.drawLine(ox, oy, ix, iy, TFT_DARK_GREY);
-    }
-
-    // Ring degree labels (positioned just inside each ring, in the NE quadrant)
+    // Ring degree labels (positioned just inside each ring, in the NE quadrant).
     // Single-arg setTextColor = transparent background.
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
     tft.setTextColor(TFT_LIGHT_GREY);
     tft.setCursor(RET_CX + 3, RET_CY - RING_5  + 3);  tft.print("5");
     tft.setCursor(RET_CX + 3, RET_CY - RING_10 + 3);  tft.print("10");
     tft.setCursor(RET_CX + 3, RET_CY - RING_15 + 3);  tft.print("15");
     tft.setCursor(RET_CX + 3, RET_CY - RING_20 + 3);  tft.print("20");
-
-    // Bezel ring
-    tft.drawCircle(RET_CX, RET_CY, RET_R,     TFT_GREY);
-    tft.drawCircle(RET_CX, RET_CY, RET_R + 1, TFT_DARK_GREY);
 
     // Legend: 3 rows stacked in top-left corner, above/beside the circle top
     // y=68,88,108 — all safely left of circle edge at those y positions
@@ -169,17 +125,16 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     static const uint16_t LEG_Y0 = TITLE_TOP + 6;  // 68
     static const uint16_t LEG_DY = 20;              // row spacing
 
-    tft.setFont(&Roboto_Black_12);
+    tft.setFont(Roboto_Black_16);
 
-    // Row 0: VEL — hollow green circle
-    tft.drawCircle(LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
+    // Row 0: VEL — green prograde marker
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
     tft.setTextColor(TFT_SAP_GREEN, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0);
     tft.print("VEL");
 
-    // Row 1: PORT — solid magenta diamond
-    tft.fillTriangle(LEG_X,   LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7, LEG_X+6, LEG_Y0+LEG_DY+1,  TFT_VIOLET);  // top half
-    tft.fillTriangle(LEG_X,   LEG_Y0+LEG_DY+7, LEG_X+12, LEG_Y0+LEG_DY+7, LEG_X+6, LEG_Y0+LEG_DY+13, TFT_VIOLET);  // bottom half
+    // Row 1: PORT — magenta target marker
+    drawTargetMarker(tft, LEG_X + 6, LEG_Y0 + LEG_DY + 7, 6, TFT_VIOLET);
     tft.setTextColor(TFT_VIOLET, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0 + LEG_DY);
     tft.print("PORT");
@@ -198,9 +153,9 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
     // Bar label/value font matches LNCH_Circ ΔV Burn bar and MNVR ΔV Burn bar
     // (Black_20). Bar shifted 8 px down (RET_CY+R+20 → +28) to make room for the
     // taller 24 px label between the reticle bottom and the bar.
-    uint16_t barY = RET_CY + RET_R + 28;   // 449 — bar top
-    uint16_t lblY = barY - 24;              // 425 — label row above bar
-    tft.setFont(&Roboto_Black_20);
+    uint16_t barY = RET_CY + RET_R + 42;   // 552 — bar top
+    uint16_t lblY = barY - 34;              // 518 — label row above bar
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     tft.setCursor(BAR_X, lblY);
     tft.print("APPROACH");
@@ -209,19 +164,19 @@ static void _dockDrawReticleChrome(RA8875 &tft) {
 
 
 // ── Draw right-panel chrome (static labels) ───────────────────────────────────────────
-static void _dockDrawRightChrome(RA8875 &tft) {
+static void _dockDrawRightChrome(KCM_TFT &tft) {
     // Rows 0–1: range and time
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T.Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T+Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider between T.Dock(1) and V.Close(2)
+    // Divider between T+Dock(1) and V.Close(2)
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Rows 2–3: speed
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between V.Lat(3) and Vel.Brg(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
@@ -229,8 +184,8 @@ static void _dockDrawRightChrome(RA8875 &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Rows 4–5: approach path alignment (velocity vector vs port)
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between Vel.Elv(5) and Nos.Off(6)
     { uint16_t dy = rowYFor(6,RP_NR) - 1;
@@ -238,7 +193,7 @@ static void _dockDrawRightChrome(RA8875 &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Row 6: nose total angular offset from port (combined bearing + elevation)
-    printDispChrome(tft, &Roboto_Black_20, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Off:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Off:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider before RCS/SAS button row (row 7)
     { uint16_t dy = rowYFor(7, RP_NR) - 1;
@@ -252,153 +207,19 @@ static void _dockDrawRightChrome(RA8875 &tft) {
 }
 
 
-// ── Update dots — erase old, draw new ────────────────────────────────────────────────
-// ── Ring/crosshair redraw after dot erase ─────────────────────────────────────────────
-// After a fillRect erase, any static chrome (rings, crosshair) that intersected
-// the erase box must be redrawn. Ring intersects erase box if:
-//   closest point on ring to box centre is within the box,
-//   AND farthest corner of box from centre is beyond the ring radius.
-// Simplified: check if box overlaps the annulus [r-1, r+1].
-static void _dockRepairChrome(RA8875 &tft, int16_t bx, int16_t by, uint8_t bh) {
-    // bx,by = erase box top-left, bh = erase box half-size (so w=h=2*bh+1)
-    // Box bounds: bx..bx+2*bh, by..by+2*bh
-    int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
-
-    // For each ring: check if the ring circle intersects the box
-    // Closest point on box to ring centre (RET_CX, RET_CY):
-    float cx = (float)constrain((int)RET_CX, (int)boxX0, (int)boxX1);
-    float cy = (float)constrain((int)RET_CY, (int)boxY0, (int)boxY1);
-    float distToCentre = sqrtf((cx-RET_CX)*(cx-RET_CX) + (cy-RET_CY)*(cy-RET_CY));
-    // Farthest corner from ring centre:
-    float dx = fmaxf(fabsf(boxX0-RET_CX), fabsf(boxX1-RET_CX));
-    float dy = fmaxf(fabsf(boxY0-RET_CY), fabsf(boxY1-RET_CY));
-    float distFar = sqrtf(dx*dx + dy*dy);
-
-    static const uint16_t rings[]  = {RING_5, RING_10, RING_15, RING_20};
-    static const uint16_t rcols[]  = {TFT_DARK_GREEN, TFT_DARK_GREY, TFT_DARK_GREY, TFT_GREY};
-    for (uint8_t i = 0; i < 4; i++) {
-        float r = (float)rings[i];
-        if (distToCentre <= r + 1.5f && distFar >= r - 1.5f) {
-            tft.drawCircle(RET_CX, RET_CY, rings[i], rcols[i]);
-        }
-    }
-
-    // Crosshair / cardinal lines: redraw anything in the erase box
-    // Cardinal lines span full radius; crosshair symbol is the inner gap region
-    static const uint16_t cgap = 18, carm = RET_R - 1;
-    // Horizontal cardinal segments
-    if (boxY0 <= RET_CY && RET_CY <= boxY1) {
-        if (boxX0 < (int16_t)(RET_CX - cgap))
-            tft.drawLine(RET_CX - carm, RET_CY, RET_CX - cgap, RET_CY, TFT_DARK_GREY);
-        if (boxX1 > (int16_t)(RET_CX + cgap))
-            tft.drawLine(RET_CX + cgap, RET_CY, RET_CX + carm, RET_CY, TFT_DARK_GREY);
-        // Crosshair symbol inner segments
-        if (boxX0 <= RET_CX || boxX1 >= RET_CX) {
-            tft.drawLine(RET_CX - cgap + 2, RET_CY, RET_CX - 4, RET_CY, TFT_GREY);
-            tft.drawLine(RET_CX + 4, RET_CY, RET_CX + cgap - 2, RET_CY, TFT_GREY);
-        }
-    }
-    // Vertical cardinal segments
-    if (boxX0 <= RET_CX && RET_CX <= boxX1) {
-        if (boxY0 < (int16_t)(RET_CY - cgap))
-            tft.drawLine(RET_CX, RET_CY - carm, RET_CX, RET_CY - cgap, TFT_DARK_GREY);
-        if (boxY1 > (int16_t)(RET_CY + cgap))
-            tft.drawLine(RET_CX, RET_CY + cgap, RET_CX, RET_CY + carm, TFT_DARK_GREY);
-        // Crosshair symbol inner segments
-        if (boxY0 <= RET_CY || boxY1 >= RET_CY) {
-            tft.drawLine(RET_CX, RET_CY - cgap + 2, RET_CX, RET_CY - 4, TFT_GREY);
-            tft.drawLine(RET_CX, RET_CY + 4, RET_CX, RET_CY + cgap - 2, TFT_GREY);
-        }
-    }
-    // Centre dot
-    if (boxX0 <= RET_CX && RET_CX <= boxX1 && boxY0 <= RET_CY && RET_CY <= boxY1)
-        tft.fillCircle(RET_CX, RET_CY, 2, TFT_GREY);
-
-    // Inner good-zone fill (if erase hit the ±5° ring interior)
-    if (distToCentre <= RING_5 - 1) {
-        tft.fillCircle(RET_CX, RET_CY, RING_5 - 1, TFT_OFF_BLACK);
-        tft.drawCircle(RET_CX, RET_CY, RING_5, TFT_DARK_GREEN);
-    }
-}
+// Dot-layer machinery (clamp / erase / chrome-repair / update) is shared with TGT —
+// see reticleClampDot / reticleRepairDotChrome / reticleUpdateDots in AAA_Screens.ino.
+// DOCK drives them via DOCK_GEOM (scale = r/20, ring labels 5/10/15/20) and _dockDots.
 
 
-// ── Update dots: erase old, repair chrome, draw new ──────────────────────────────────
-// Port dot:  solid filled diamond (magenta)
-// Vel dot:   hollow circle outline only (green) — shows through if port is inside
-static void _dockUpdateDots(RA8875 &tft, float noseBrg, float noseElv,
-                              float velBrg, float velElv) {
-    // Port dot screen position
-    int16_t portSX = RET_CX + (int16_t)(-noseBrg * RET_SCALE);
-    int16_t portSY = RET_CY + (int16_t)( noseElv * RET_SCALE);
-    _dockClampDot(portSX, portSY);
-
-    // Vel dot screen position
-    int16_t velSX = RET_CX + (int16_t)(-velBrg * RET_SCALE);
-    int16_t velSY = RET_CY + (int16_t)( velElv * RET_SCALE);
-    _dockClampDot(velSX, velSY);
-
-    static const uint8_t EH = DOT_R_ERASE;
-
-    // Erase and redraw port dot (solid diamond)
-    bool portMoved = (_dockPrevPortX == 9999 ||
-                      abs(portSX - _dockPrevPortX) > 1 ||
-                      abs(portSY - _dockPrevPortY) > 1);
-    if (portMoved) {
-        if (_dockPrevPortX != 9999) {
-            tft.fillRect(_dockPrevPortX-EH, _dockPrevPortY-EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _dockRepairChrome(tft, _dockPrevPortX-EH, _dockPrevPortY-EH, EH);
-        }
-        // Solid diamond: 4 filled triangles
-        uint8_t ds = DOT_R_PORT + 3;  // diamond half-size
-        tft.fillTriangle(portSX-ds, portSY, portSX+ds, portSY, portSX, portSY-ds, TFT_VIOLET);  // top half
-        tft.fillTriangle(portSX-ds, portSY, portSX+ds, portSY, portSX, portSY+ds, TFT_VIOLET);  // bottom half
-        _dockPrevPortX = portSX; _dockPrevPortY = portSY;
-    }
-
-    // Erase and redraw vel dot (hollow circle)
-    bool velMoved = (_dockPrevVelX == 9999 ||
-                     abs(velSX - _dockPrevVelX) > 1 ||
-                     abs(velSY - _dockPrevVelY) > 1);
-    if (velMoved) {
-        if (_dockPrevVelX != 9999) {
-            tft.fillRect(_dockPrevVelX-EH, _dockPrevVelY-EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _dockRepairChrome(tft, _dockPrevVelX-EH, _dockPrevVelY-EH, EH);
-        }
-        // Hollow circle: just outlines (so port diamond shows through if overlapping)
-        tft.drawCircle(velSX, velSY, DOT_R_VEL,     TFT_NEON_GREEN);
-        tft.drawCircle(velSX, velSY, DOT_R_VEL + 1, TFT_SAP_GREEN);
-        _dockPrevVelX = velSX; _dockPrevVelY = velSY;
-    }
-
-    // Always redraw vel dot unconditionally so it is always on top of the port diamond.
-    // Cost: 2 drawCircle = negligible. Guarantees vel is never buried under port.
-    tft.drawCircle(velSX, velSY, DOT_R_VEL,     TFT_NEON_GREEN);
-    tft.drawCircle(velSX, velSY, DOT_R_VEL + 1, TFT_SAP_GREEN);
-
-    // Redraw inner crosshair gap lines — vel circle (r=6,7) overlaps the inner gap
-    // region when vel dot is near centre, erasing those segments.
-    {
-        static const uint16_t g = 18;  // cgap from chrome
-        tft.drawLine(RET_CX - g + 2, RET_CY, RET_CX - 4, RET_CY, TFT_GREY);
-        tft.drawLine(RET_CX + 4,     RET_CY, RET_CX + g - 2, RET_CY, TFT_GREY);
-        tft.drawLine(RET_CX, RET_CY - g + 2, RET_CX, RET_CY - 4, TFT_GREY);
-        tft.drawLine(RET_CX, RET_CY + 4,     RET_CX, RET_CY + g - 2, TFT_GREY);
-    }
-
-    // Crosshair centre always on top
-    tft.fillCircle(RET_CX, RET_CY, 2, TFT_GREY);
-}
-
-
-static void _dockDrawDistBar(RA8875 &tft, float dist) {
+static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
     // barY must match what _dockDrawReticleChrome drew (Black_20 label).
-    static const uint16_t barY = RET_CY + RET_R + 28;  // 449
-    static const uint16_t lblY = barY - 24;             // 425 — label row above bar
+    static const uint16_t barY = RET_CY + RET_R + 42;  // 552
+    static const uint16_t lblY = barY - 34;             // 518 — label row above bar
 
     // Threshold gate: only redraw when distance changes by > 1m
-    static float prevDist = -999.0f;
-    if (fabsf(dist - prevDist) < 1.0f) return;
-    prevDist = dist;
+    if (fabsf(dist - _dockPrevDist) < 1.0f) return;
+    _dockPrevDist = dist;
 
     float clamped = fminf(fmaxf(dist, 0.0f), BAR_MAX_DIST);
     uint16_t barCol = (dist < DOCK_DIST_ALARM_M) ? TFT_RED :
@@ -420,17 +241,17 @@ static void _dockDrawDistBar(RA8875 &tft, float dist) {
     else if (dist >= 100.0f)  snprintf(buf, sizeof(buf), "%.0fm",  dist);
     else                      snprintf(buf, sizeof(buf), "%.1fm",  dist);
 
-    tft.setFont(&Roboto_Black_20);
+    tft.setFont(Roboto_Black_24);
     tft.setTextColor(barCol, TFT_BLACK);
     // Clear right half of label row (24 px tall for Black_20) then right-align distance text
-    tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 24, TFT_BLACK);
-    int16_t tw = getFontStringWidth(&Roboto_Black_20, buf);
+    tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 30, TFT_BLACK);
+    int16_t tw = getFontStringWidth(&Roboto_Black_24, buf);   // measure in the draw font, not RP_LBL (Black_28)
     tft.setCursor(BAR_X + BAR_W - tw, lblY);
     tft.print(buf);
 }
 
 // ── CHROME ────────────────────────────────────────────────────────────────────────────
-static void chromeScreen_DOCK(RA8875 &tft) {
+static void chromeScreen_DOCK(KCM_TFT &tft) {
     if (_vesselDocked) {
         _dockChromDrawn = false;
         tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -450,8 +271,8 @@ static void chromeScreen_DOCK(RA8875 &tft) {
     _dockChromDrawn = true;
 
     // Reset dot positions so first draw doesn't try to erase stale coords
-    _dockPrevPortX = 9999; _dockPrevPortY = 9999;
-    _dockPrevVelX  = 9999; _dockPrevVelY  = 9999;
+    _dockDots = ReticleDotCache{};
+    _dockPrevDist  = -999.0f;   // force the approach-distance bar to repaint on entry
 
     // Left panel: clear + reticle chrome
     tft.fillRect(0, TITLE_TOP, RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -467,13 +288,13 @@ static void chromeScreen_DOCK(RA8875 &tft) {
     // Invalidate value cache for this screen
     for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[5][r].value = "\x01";
     for (uint8_t r = 0; r < ROW_COUNT; r++) printState[5][r] = PrintState{};  // force full redraw
-    // Reset approach bar so it redraws immediately on screen entry
-    // (bar uses a static prevDist — reset by passing a sentinel value on next draw)
+    // (the approach-distance bar's _dockPrevDist sentinel is reset above so it
+    //  repaints on screen entry.)
 }
 
 
 // ── DRAW (called every loop) ──────────────────────────────────────────────────────────
-static void drawScreen_DOCK(RA8875 &tft) {
+static void drawScreen_DOCK(KCM_TFT &tft) {
     uint32_t _t0 = micros();
     // Docked: nothing to update
     if (_vesselDocked) return;
@@ -486,14 +307,13 @@ static void drawScreen_DOCK(RA8875 &tft) {
     if (!_dockChromDrawn) { switchToScreen(screen_DOCK); return; }
 
     // ── Compute derived values ────────────────────────────────────────────────────────
-
-    // Nose-to-port errors (where is the port relative to your nose?)
-    float noseBrg = _dockWrapErr(state.heading   - state.tgtHeading);
-    float noseElv = state.pitch - state.tgtPitch;
-
-    // Velocity-to-target errors (where is velocity vector relative to target bearing?)
-    float velBrg  = _dockWrapErr(state.tgtHeading - state.tgtVelHeading);
-    float velElv  = state.tgtPitch - state.tgtVelPitch;
+    // Shared derived-angle block (identical to TGT): nose→port, velocity→target and both
+    // antipodal directions, bearings wrapped to ±180°.
+    ReticleAngles ang = reticleComputeAngles();
+    float noseBrg = ang.priBrg,   noseElv  = ang.priElv;    // port relative to nose
+    float velBrg  = ang.velBrg,   velElv   = ang.velElv;    // velocity vector vs target
+    float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
+    float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
 
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
     float v_lat_mag = 0.0f;
@@ -518,7 +338,8 @@ static void drawScreen_DOCK(RA8875 &tft) {
     }
 
     // ── Update reticle dots ───────────────────────────────────────────────────────────
-    _dockUpdateDots(tft, noseBrg, noseElv, velBrg, velElv);
+    reticleUpdateDots(tft, DOCK_GEOM, _dockDots,
+                      noseBrg, noseElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     char buf[20];
@@ -526,11 +347,7 @@ static void drawScreen_DOCK(RA8875 &tft) {
 
     auto dockVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                         uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[5][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
-        printValue(tft, RP_F, RP_X, rowYFor(row, RP_NR), RP_W, rowHFor(RP_NR),
-                   label, val, fgc, bgc, COL_BACK, printState[5][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+        drawPanelValue(tft, 5, slot, row, RP_X, RP_W, label, val, fgc, bgc, RP_F, RP_NR, false);
     };
 
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {
@@ -551,13 +368,13 @@ static void drawScreen_DOCK(RA8875 &tft) {
         float vc = state.tgtVelocity;
         bool closing = (vc < -0.01f);
         if (!closing) {
-            dockVal(1, 1, "T.Dock:", "---", TFT_DARK_GREY, TFT_BLACK);
+            dockVal(1, 1, "T+Dock:", "---", TFT_DARK_GREY, TFT_BLACK);
         } else {
             float tDock = state.tgtDistance / fabsf(vc);
             if      (tDock < 10.0f)  { fg = TFT_WHITE;     bg = TFT_RED;   }
             else if (tDock < 30.0f)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
             else                     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-            dockVal(1, 1, "T.Dock:", formatTime((int64_t)tDock), fg, bg);
+            dockVal(1, 1, "T+Dock:", formatTimeCompact(tDock), fg, bg);
         }
     }
 
@@ -619,7 +436,7 @@ static void drawScreen_DOCK(RA8875 &tft) {
                 ButtonLabel btn = rcsOn
                     ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
                     : ButtonLabel{ "RCS", TFT_DARK_GREY, TFT_DARK_GREY, TFT_OFF_BLACK,  TFT_OFF_BLACK,  TFT_GREY, TFT_GREY };
-                drawButton(tft, RP_X, ry, hw, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, RP_X, ry, hw, rh, btn, RP_LBL, false);
                 rc.value = rcsStr;
             }
         }
@@ -645,7 +462,7 @@ static void drawScreen_DOCK(RA8875 &tft) {
             String sv = v;
             if (rc.value != sv || rc.fg != sasFg || rc.bg != sasBg) {
                 ButtonLabel btn = { v, sasFg, sasFg, sasBg, sasBg, TFT_GREY, TFT_GREY };
-                drawButton(tft, sasX, ry, sasW, rh, btn, &Roboto_Black_20, false);
+                drawButton(tft, sasX, ry, sasW, rh, btn, RP_LBL, false);
                 rc.value = sv; rc.fg = sasFg; rc.bg = sasBg;
             }
         }
@@ -655,7 +472,7 @@ static void drawScreen_DOCK(RA8875 &tft) {
     _dockDrawDistBar(tft, state.tgtDistance);
 
     // Redraw all dividers last — printValue fills can erase them
-    // Between T.Dock(1) and V.Close(2)
+    // Between T+Dock(1) and V.Close(2)
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
@@ -675,9 +492,11 @@ static void drawScreen_DOCK(RA8875 &tft) {
     tft.drawLine(RP_X - 2, TITLE_TOP, RP_X - 2, SCREEN_H, TFT_GREY);
     tft.drawLine(RP_X - 1, TITLE_TOP, RP_X - 1, SCREEN_H, TFT_GREY);
 
-    uint32_t _dt = micros() - _t0;
-    Serial.print("DOCK total=");
-    Serial.print((float)_dt / 1000.0f, 2);
-    Serial.print("ms  dist="); Serial.print(state.tgtDistance, 1);
-    Serial.print("m  vc=");    Serial.println(state.tgtVelocity, 2);
+    if (debugMode) {
+        uint32_t _dt = micros() - _t0;
+        Serial.print("DOCK total=");
+        Serial.print((float)_dt / 1000.0f, 2);
+        Serial.print("ms  dist="); Serial.print(state.tgtDistance, 1);
+        Serial.print("m  vc=");    Serial.println(state.tgtVelocity, 2);
+    }
 }
