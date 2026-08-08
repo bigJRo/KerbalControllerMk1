@@ -20,9 +20,9 @@ extern "C" void usb_init(void);
 
 #include "module_variables.h"                                                                                     // Module Register Definitions
 #include "ascent_autopilot.h"                                                                                     // Launch-to-orbit ascent autopilot
-#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
-#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
-#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\body_params.h"            // Shared celestial-body table (ascent autopilot)
+#include "C:\Dev\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
+#include "C:\Dev\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
+#include "C:\Dev\KerbalControllerMk1\Software\Common\body_params.h"            // Shared celestial-body table (ascent autopilot)
 
 
 /***************************************************************************************

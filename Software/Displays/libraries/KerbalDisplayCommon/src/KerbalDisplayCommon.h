@@ -577,7 +577,7 @@ enum VesselSituation : uint8_t {
 //   Software/Common/body_params.h
 //
 // Usage is unchanged: BodyParams b = getBodyParams("Kerbin");  (see that header).
-#include "C:\Users\jason\OneDrive\Documents\Arduino\KerbalControllerMk1\Software\Common\body_params.h"
+#include "C:\Dev\KerbalControllerMk1\Software\Common\body_params.h"
 
 // =============================================================================
 // --- Capacitive touch ---
