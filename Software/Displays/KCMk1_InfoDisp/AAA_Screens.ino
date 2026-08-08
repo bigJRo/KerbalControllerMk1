@@ -140,11 +140,15 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ASCENT AUTOPILOT"
 };
 
+// Sidebar buttons are always drawn with isOn=true, so only the *On fields render;
+// the *Off fields mirror them for clarity. Idle button: BLACK bg, DARK_GREEN text.
+// Selected button: DARK_GREEN bg, WHITE text. (The ASC button substitutes NAVY for
+// DARK_GREEN via an override in drawSidebar().)
 const ButtonLabel btnScreenOff = {
-  "", TFT_WHITE, TFT_WHITE, TFT_OFF_BLACK, TFT_NAVY, TFT_GREY, TFT_GREY
+  "", TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, TFT_GREY, TFT_GREY
 };
 const ButtonLabel btnScreenOn = {
-  "", TFT_WHITE, TFT_WHITE, TFT_CORNELL, TFT_CORNELL, TFT_GREY, TFT_WHITE
+  "", TFT_WHITE, TFT_WHITE, TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_WHITE
 };
 
 /***************************************************************************************
@@ -410,12 +414,14 @@ void drawSidebar(KCM_TFT &tft) {
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++) {
     ButtonLabel btn = (i == activeBtn) ? btnScreenOn : btnScreenOff;
     btn.text = sbButtonLabel(i);   // active mode's label when this button owns the screen
-    // Ascent Autopilot button carries a distinct purple identity so it reads as a
-    // different kind of control (an interactive console, not a display screen). The
-    // sidebar draws with isOn=true, so override backgroundColorOn: brighter violet
-    // when it is the active screen, dimmer purple when idle.
-    if (SB_BTN_SCREEN[i] == screen_LNCHAP)
-      btn.backgroundColorOn = (i == activeBtn) ? TFT_VIOLET : TFT_PURPLE;
+    // Ascent Autopilot button carries a distinct NAVY identity (in place of the
+    // DARK_GREEN the display-nav buttons use) so it reads as a different kind of
+    // control — an interactive console, not a display screen. Selected: NAVY bg,
+    // white text. Idle: BLACK bg, NAVY text. (Sidebar draws with isOn=true.)
+    if (SB_BTN_SCREEN[i] == screen_LNCHAP) {
+      if (i == activeBtn) btn.backgroundColorOn = TFT_NAVY;   // selected: NAVY bg (white text)
+      else                btn.fontColorOn       = TFT_NAVY;   // idle: NAVY text (black bg)
+    }
     uint16_t by = sbBtnY(i);
     uint16_t h  = bh;
     // Last button tiles to row 599 (the panel's final scanline), where its bottom
