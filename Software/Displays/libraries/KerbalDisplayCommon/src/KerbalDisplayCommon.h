@@ -11,6 +11,8 @@
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
 
+   v3.1.1 — marker polish: drawThickLine gained a caps arg so free-ended spokes
+            draw without round end-caps; shrank the level-indicator nose dot.
    v3.1.0 — added the full KSP navball marker set: retrograde, normal, anti-normal,
    radial-in, radial-out, anti-target and the level indicator draw functions (joining
    prograde/target/maneuver), all selectable via the extended KspMarkerKind enum.
@@ -387,8 +389,9 @@ void printDisp(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                uint16_t backColor, uint16_t borderColor,
                DispCache &cache, PrintState &ps);
 
-// Value-only redraw — use on updates. Clears and redraws only the right-hand
-// value region, leaving the param label and border completely untouched.
+// Chrome-only redraw — draws the static label + border and fills the block
+// background, leaving the value region for printValue() to fill. Call once when
+// laying out a screen; use printValue() thereafter for per-update value redraws.
 void printDispChrome(KCM_TFT &tft, const ILI9341_t3_font_t *font,
                      uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                      String label,
@@ -468,7 +471,7 @@ void bsPrint(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t x, uint16_t y
 uint16_t bsLine(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                 uint16_t y, uint16_t rowH, const char *text, uint16_t col);
 
-// Print with double-height font, advance y by 38px. Returns new y.
+// Print with a double-height font; advances y by (font cap_height + 5px). Returns new y.
 uint16_t bsBig(KCM_TFT &tft, const ILI9341_t3_font_t *font, uint16_t col_x,
                uint16_t y, const char *text, uint16_t col);
 
@@ -486,7 +489,7 @@ void bsShuffle(uint8_t *arr, uint8_t n);
 // Draw a string one character per line within a rectangle — vertical label strip.
 // Text is centred horizontally within w and vertically within h.
 // The strip is filled with backColor before drawing.
-// Use where text rotation is needed but the RA8875 has no native rotation support.
+// Use where text rotation is needed but the display controller has no native rotation support.
 void drawVerticalText(KCM_TFT &tft,
                       uint16_t x0, uint16_t y0, uint16_t w, uint16_t h,
                       const ILI9341_t3_font_t *font,

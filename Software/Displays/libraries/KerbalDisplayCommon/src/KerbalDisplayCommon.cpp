@@ -246,7 +246,9 @@ void drawButton(KCM_TFT &tft, int16_t x, int16_t y, int16_t w, int16_t h,
         wLen = 0;
       }
     } else {
-      if (wLen < MAX_WORDCH - 1) words[wordCount][wLen++] = c;
+      // Guard wordCount too: once MAX_WORDS words are captured, further characters
+      // would write into words[MAX_WORDS][...] — one row past the array.
+      if (wordCount < MAX_WORDS && wLen < MAX_WORDCH - 1) words[wordCount][wLen++] = c;
     }
   }
   if (wLen > 0 && wordCount < MAX_WORDS) {
@@ -264,16 +266,21 @@ void drawButton(KCM_TFT &tft, int16_t x, int16_t y, int16_t w, int16_t h,
     int16_t curLinePixW = getFontStringWidth(font, lines[lineCount]);
     int16_t spaceW      = (curLinePixW > 0) ? getFontCharWidth(font, ' ') : 0;
     int16_t needed      = curLinePixW + spaceW + wordPixW;
-    if (needed <= availW) {
-      uint8_t curLen = strlen(lines[lineCount]);
+    size_t  wordLen     = strlen(words[wi]);
+    uint8_t curLen      = strlen(lines[lineCount]);
+    // Fit on the current line only if it fits by pixel width AND stays within the
+    // MAX_LINECH byte buffer (pixel width alone doesn't bound the char count).
+    if (needed <= availW && (size_t)curLen + 1 + wordLen < MAX_LINECH) {
       if (curLen > 0) lines[lineCount][curLen++] = ' ';
-      memcpy(&lines[lineCount][curLen], words[wi], strlen(words[wi]));
-      lines[lineCount][curLen + strlen(words[wi])] = '\0';
+      memcpy(&lines[lineCount][curLen], words[wi], wordLen);
+      lines[lineCount][curLen + wordLen] = '\0';
     } else {
       lineCount++;
       if (lineCount < MAX_LINES) {
-        memcpy(lines[lineCount], words[wi], strlen(words[wi]));
-        lines[lineCount][strlen(words[wi])] = '\0';
+        // Truncate an over-long single word to the line buffer rather than overrun.
+        size_t n = (wordLen < MAX_LINECH - 1) ? wordLen : (MAX_LINECH - 1);
+        memcpy(lines[lineCount], words[wi], n);
+        lines[lineCount][n] = '\0';
       }
     }
   }
@@ -773,11 +780,11 @@ void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
   tft.fillCircle(cx, cy, r,  TFT_BLACK);
   tft.fillCircle(cx, cy, r4, TFT_OFF_BLACK);
 
-  // Concentric rings (r/4 good-zone green, then grey ..., outer grey boundary)
+  // Concentric rings (r/4 good-zone green, then grey). The outer grey boundary at
+  // radius r is drawn once by the bezel-ring block below.
   tft.drawCircle(cx, cy, r4,  TFT_DARK_GREEN);
   tft.drawCircle(cx, cy, r2,  TFT_DARK_GREY);
   tft.drawCircle(cx, cy, r34, TFT_DARK_GREY);
-  tft.drawCircle(cx, cy, r,   TFT_GREY);
 
   // Cardinal lines with a centre gap for the crosshair
   tft.drawLine(cx,       cy - arm, cx,       cy - gap, TFT_DARK_GREY);
@@ -1489,7 +1496,7 @@ BMPResult drawBMP(KCM_TFT &tft, const char *filename, uint16_t x, uint16_t y) {
   // --- Buffers ---
   // (#A15) Fixed-size at the panel worst case rather than VLAs sized from
   // imgW. Eliminates a non-standard C++ feature and makes stack usage
-  // statically knowable. Sizes track KCM_SCREEN_W (800 → 2400 + 1600 = 4 KB).
+  // statically knowable. Sizes track KCM_SCREEN_W (1024 → ~3072 + 2048 ≈ 5 KB).
   // (#A16) rowBuf includes 3 extra bytes for worst-case BMP row padding
   // (rows are padded to 4-byte boundaries), so we can read full padded rows
   // when consuming sequentially.
@@ -1825,7 +1832,7 @@ void bsShuffle(uint8_t *arr, uint8_t n) {
 
 /***************************************************************************************
    SYSTEM UTILITIES
-   Teensy 4.0 (IMXRT1062) specific. Uses hardware registers only (SCB_AIRCR,
+   Teensy 4.1 (IMXRT1062) specific. Uses hardware registers only (SCB_AIRCR,
    USB1_USBCMD) — no Teensy core-internal functions, so safe to call from library code.
    Do not call from within an ISR.
 ****************************************************************************************/
