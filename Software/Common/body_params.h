@@ -51,7 +51,7 @@
 struct BodyParams {
   const char* soiName;          // Simpit SOI string — matches what Simpit sends
   const char* dispName;         // Display name, uppercase, max 8 chars + null
-  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_240x168.bmp"
+  const char* image;            // SD card BMP path, e.g. "/Kerbin-Display_236x164.bmp"
   const char* cond;             // Atmosphere condition string:
                                 //   "Vacuum", "Atmosphere", "Breathable", "Plasma"
   // --- Altitude boundaries (metres, from wiki science biome table) ---
@@ -91,103 +91,103 @@ static const BodyParams _bodyTable[] = {
   //         syncOrb     synodic      incl
   //         atmo   o2     surf   highQ
 
-  { "Kerbol", "KERBOL", "/Kerbol-Display_240x168.bmp", "Plasma",
+  { "Kerbol", "KERBOL", "/Kerbol-Display_236x164.bmp", "Plasma",
     1000000,  18000,   600000,   1000000000, 600000,   DBL_MAX,
     261600000, 17.1f,   94672.01f,
     1508045286.0f, 0,      0.0f,
     true,  false, false, 0.0f },
 
-  { "Moho",   "MOHO",   "/Moho-Display_240x168.bmp",   "Vacuum",
+  { "Moho",   "MOHO",   "/Moho-Display_236x164.bmp",   "Vacuum",
     6900,     0,       0,        80000,      0,        9646663.0,
     250000,    2.7f,    1161.41f,
     0,          2918346,    7.0f,
     false, false, true,  0.0f },
 
-  { "Eve",    "EVE",    "/Eve-Display_240x168.bmp",    "Atmosphere",
+  { "Eve",    "EVE",    "/Eve-Display_236x164.bmp",    "Atmosphere",
     7600,     22000,   90000,    400000,     57000,    85109365.0,
     700000,    16.7f,   4831.96f,
     10328472,   14687035,   2.10f,
     true,  false, true,  0.0f },
 
-  { "Gilly",  "GILLY",  "/Gilly-Display_240x168.bmp",  "Vacuum",
+  { "Gilly",  "GILLY",  "/Gilly-Display_236x164.bmp",  "Vacuum",
     7500,     0,       0,        6000,       0,        126123.0,
     13000,     0.049f,  35.71f,
     42138,      417243,     12.0f,
     false, false, true,  0.0f },
 
-  { "Kerbin", "KERBIN", "/Kerbin-Display_240x168.bmp", "Breathable",
+  { "Kerbin", "KERBIN", "/Kerbin-Display_236x164.bmp", "Breathable",
     6800,     18000,   70000,    250000,     45000,    84159286.0,
     600000,    9.81f,   3431.03f,
     2863334,    0,          0.0f,
     true,  true,  true,  0.0f },
 
-  { "Mun",    "MUN",    "/Mun-Display_240x168.bmp",    "Vacuum",
+  { "Mun",    "MUN",    "/Mun-Display_236x164.bmp",    "Vacuum",
     7100,     0,       0,        60000,      0,        2429559.0,
     200000,    1.63f,   807.08f,
     0,          141115,     0.0f,
     false, false, true,  0.0f },
 
-  { "Minmus", "MINMUS", "/Minmus-Display_240x168.bmp", "Vacuum",
+  { "Minmus", "MINMUS", "/Minmus-Display_236x164.bmp", "Vacuum",
     5800,     0,       0,        30000,      0,        2247428.0,
     60000,     0.491f,  242.61f,
     357940,     1220131,    6.0f,
     false, false, true,  0.0f },
 
-  { "Duna",   "DUNA",   "/Duna-Display_240x168.bmp",   "Atmosphere",
+  { "Duna",   "DUNA",   "/Duna-Display_236x164.bmp",   "Atmosphere",
     8300,     12000,   50000,    140000,     20000,    47921949.0,
     320000,    2.94f,   1372.41f,
     2879999,    19645697.0f, 0.06f,
     true,  false, true,  0.0f },
 
-  { "Ike",    "IKE",    "/Ike-Display_240x168.bmp",    "Vacuum",
+  { "Ike",    "IKE",    "/Ike-Display_236x164.bmp",    "Vacuum",
     12800,    0,       0,        50000,      0,        1049599.0,
     130000,    1.1f,    534.48f,
     0,          65766,      0.2f,
     false, false, true,  0.0f },
 
-  { "Dres",   "DRES",   "/Dres-Display_240x168.bmp",   "Vacuum",
+  { "Dres",   "DRES",   "/Dres-Display_236x164.bmp",   "Vacuum",
     5700,     0,       0,        25000,      0,        32832840.0,
     138000,    1.13f,   558.00f,
     732244,     11392903,   5.0f,
     false, false, true,  0.0f },
 
-  { "Jool",   "JOOL",   "/Jool-Display_240x168.bmp",   "Atmosphere",
+  { "Jool",   "JOOL",   "/Jool-Display_236x164.bmp",   "Atmosphere",
     120000,   120000,  200000,   4000000,    150000,   2455985200.0,
     6000000,   7.85f,   9704.43f,
     15010461,   10090901,   0.05f,
     true,  false, false, 0.0f },
 
-  { "Laythe", "LAYTHE", "/Laythe-Display_240x168.bmp", "Breathable",
+  { "Laythe", "LAYTHE", "/Laythe-Display_236x164.bmp", "Breathable",
     6100,     10000,   50000,    200000,     38000,    3723646.0,
     500000,    7.85f,   2801.43f,
     0,          53007,      0.0f,
     true,  true,  true,  0.0f },
 
-  { "Vall",   "VALL",   "/Vall-Display_240x168.bmp",   "Vacuum",
+  { "Vall",   "VALL",   "/Vall-Display_236x164.bmp",   "Vacuum",
     8000,     0,       0,        90000,      0,        2406401.0,
     300000,    2.31f,   1176.10f,
     0,          106069,     0.0f,
     false, false, true,  0.0f },
 
-  { "Tylo",   "TYLO",   "/Tylo-Display_240x168.bmp",   "Vacuum",
+  { "Tylo",   "TYLO",   "/Tylo-Display_236x164.bmp",   "Vacuum",
     13000,    0,       0,        250000,     0,        10856518.0,
     600000,    7.85f,   3068.81f,
     0,          212356,     0.025f,
     false, false, true,  0.0f },
 
-  { "Bop",    "BOP",    "/Bop-Display_240x168.bmp",    "Vacuum",
+  { "Bop",    "BOP",    "/Bop-Display_236x164.bmp",    "Vacuum",
     21800,    0,       0,        25000,      0,        1221061.0,
     65000,     0.589f,  276.62f,
     0,          547355,     15.0f,
     false, false, true,  0.0f },
 
-  { "Pol",    "POL",    "/Pol-Display_240x168.bmp",    "Vacuum",
+  { "Pol",    "POL",    "/Pol-Display_236x164.bmp",    "Vacuum",
     4900,     0,       0,        22000,      0,        1042139.0,
     44000,     0.373f,  181.12f,
     0,          909742,     4.25f,
     false, false, true,  0.0f },
 
-  { "Eeloo",  "EELOO",  "/Eeloo-Display_240x168.bmp",  "Vacuum",
+  { "Eeloo",  "EELOO",  "/Eeloo-Display_236x164.bmp",  "Vacuum",
     3800,     0,       0,        60000,      0,        119082940.0,
     210000,    1.69f,   841.83f,
     683690,     9776696,    6.15f,
