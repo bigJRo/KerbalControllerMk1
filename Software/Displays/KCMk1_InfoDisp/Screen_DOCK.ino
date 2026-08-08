@@ -92,6 +92,7 @@ static int16_t _dockPrevPortX = 9999, _dockPrevPortY = 9999;
 static int16_t _dockPrevVelX  = 9999, _dockPrevVelY  = 9999;
 static int16_t _dockPrevAntiX = 9999, _dockPrevAntiY = 9999;   // anti-target (opposite of port)
 static int16_t _dockPrevRetX  = 9999, _dockPrevRetY  = 9999;   // retrograde (opposite of vel)
+static float   _dockPrevDist  = -999.0f;   // dist-bar dedup; reset in chrome on re-entry
 
 
 // ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
@@ -334,9 +335,8 @@ static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
     static const uint16_t lblY = barY - 34;             // 518 — label row above bar
 
     // Threshold gate: only redraw when distance changes by > 1m
-    static float prevDist = -999.0f;
-    if (fabsf(dist - prevDist) < 1.0f) return;
-    prevDist = dist;
+    if (fabsf(dist - _dockPrevDist) < 1.0f) return;
+    _dockPrevDist = dist;
 
     float clamped = fminf(fmaxf(dist, 0.0f), BAR_MAX_DIST);
     uint16_t barCol = (dist < DOCK_DIST_ALARM_M) ? TFT_RED :
@@ -392,6 +392,7 @@ static void chromeScreen_DOCK(KCM_TFT &tft) {
     _dockPrevVelX  = 9999; _dockPrevVelY  = 9999;
     _dockPrevAntiX = 9999; _dockPrevAntiY = 9999;
     _dockPrevRetX  = 9999; _dockPrevRetY  = 9999;
+    _dockPrevDist  = -999.0f;   // force the approach-distance bar to repaint on entry
 
     // Left panel: clear + reticle chrome
     tft.fillRect(0, TITLE_TOP, RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -407,8 +408,8 @@ static void chromeScreen_DOCK(KCM_TFT &tft) {
     // Invalidate value cache for this screen
     for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[5][r].value = "\x01";
     for (uint8_t r = 0; r < ROW_COUNT; r++) printState[5][r] = PrintState{};  // force full redraw
-    // Reset approach bar so it redraws immediately on screen entry
-    // (bar uses a static prevDist — reset by passing a sentinel value on next draw)
+    // (the approach-distance bar's _dockPrevDist sentinel is reset above so it
+    //  repaints on screen entry.)
 }
 
 

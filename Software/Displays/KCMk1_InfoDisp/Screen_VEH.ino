@@ -173,7 +173,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   // Row 6 — Stage ΔV
   thresholdColor(state.stageDeltaV,
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
-                 (float)constrain(stgWarn, 0.0f, 65535.0f), TFT_YELLOW, TFT_BLACK,
+                 stgWarn, TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
   vehVal(6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
 

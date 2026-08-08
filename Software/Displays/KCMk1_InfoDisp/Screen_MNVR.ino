@@ -89,6 +89,7 @@ static const uint8_t MNVR_SC = (uint8_t)screen_MNVR;   // 3
 // ── Previous marker state ─────────────────────────────────────────────────────────────
 static int16_t _mnvrPrevMrkX    = 9999, _mnvrPrevMrkY = 9999;
 static bool    _mnvrPrevAligned = false;
+static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome on re-entry
 
 
 // ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
@@ -282,9 +283,8 @@ static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
     static const uint16_t barY = MNVR_CY + MNVR_R + 42;
     static const uint16_t lblY = barY - 34;
 
-    static float prevDV = -999.0f;
-    if (fabsf(dvNode - prevDV) < 1.0f) return;
-    prevDV = dvNode;
+    if (fabsf(dvNode - _mnvrPrevDV) < 1.0f) return;
+    _mnvrPrevDV = dvNode;
 
     float    maxDV    = fmaxf(dvStage, dvNode);
     bool     tight    = (dvStage < dvNode * MNVR_DV_MARGIN);
@@ -324,6 +324,7 @@ void chromeScreen_MNVR(KCM_TFT &tft) {
     _mnvrChromDrawn  = true;
     _mnvrPrevMrkX    = 9999; _mnvrPrevMrkY = 9999;
     _mnvrPrevAligned = false;
+    _mnvrPrevDV      = -999.0f;   // force ΔV bar + value to repaint on screen entry
 
     tft.fillRect(0, TITLE_TOP, MNVR_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
     _mnvrDrawReticleChrome(tft);

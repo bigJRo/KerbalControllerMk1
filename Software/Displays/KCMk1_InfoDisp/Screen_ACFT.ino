@@ -617,20 +617,21 @@ static void _acftUpdateSlipBall(KCM_TFT &tft, float slip) {
 
 // ── AoA arc indicator ────────────────────────────────────────────────────────────────
 // Solid arc on the left bezel. Zero AoA = 9 o'clock (180°).
-// Positive AoA (nose above velocity) = arc toward 11 o'clock (decreasing angle).
+// Arc angle = AOA_ZERO_DEG + aoa (see _acftUpdateAoAArc), so POSITIVE AoA (nose above
+// velocity) INCREASES the screen angle from 180° toward 205°.
 // Arc spans AOA_ANG_LO..AOA_ANG_HI in screen-angle degrees.
 // Safe range: stays clear of bank=±60 roll ticks (which live at 210° and 330°).
 // Drawn as solid colour bands using fillTriangle pairs — no float drift, no gaps.
 static const int16_t  AOA_R_INNER  = ACFT_R + 4;    // 154px — just outside bezel
 static const int16_t  AOA_R_OUTER  = ACFT_R + 18;   // 168px
 static const float    AOA_ZERO_DEG = 180.0f;         // 9 o'clock
-static const int16_t  AOA_ANG_LO   = 155;            // low screen angle (= AoA +25°)
-static const int16_t  AOA_ANG_HI   = 205;            // high screen angle (= AoA -25°)
+static const int16_t  AOA_ANG_LO   = 155;            // low screen angle  (= AoA -25°)
+static const int16_t  AOA_ANG_HI   = 205;            // high screen angle (= AoA +25°)
 // AoA thresholds in arc-angle space (1:1 scale: 1° AoA = 1° arc)
-// Positive AoA → arc angle decreases from 180°
-// warn zone:  arc 170°..160°  (AoA 10°..20°)
-// alarm zone: arc 160°..155°  (AoA 20°..25°)
-// same zones mirrored below zero
+// Positive AoA → arc angle increases from 180°
+// warn zone:  arc 190°..200°  (AoA +10°..+20°)
+// alarm zone: arc 200°..205°  (AoA +20°..+25°)
+// (negative AoA occupies 180°..155° symmetrically)
 
 // Precomputed integer-degree cos/sin table for the arc range (155..206 inclusive)
 static const uint8_t  AOA_STEPS     = (uint8_t)(AOA_ANG_HI - AOA_ANG_LO + 2); // 52 entries
