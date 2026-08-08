@@ -94,7 +94,8 @@ String           currentVesselName = "";
 ****************************************************************************************/
 
 // Save the current slot configuration for a given vessel name.
-// Overwrites an existing entry if the name matches, or uses the oldest/empty slot.
+// Overwrites an existing entry if the name matches, else the first empty entry, else
+// the last cache index (no LRU — a plain "overwrite the last slot" eviction).
 void saveVesselSlots(const String &name) {
   if (name.length() == 0 || slotCount == 0) return;
   // NOTE: if the user hit CLEAR (slotCount == 0) before leaving flight, nothing

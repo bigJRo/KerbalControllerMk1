@@ -13,9 +13,10 @@
                            Use for bench testing without KSP running.
                    false = live mode: Simpit connects via SerialUSB1 and populates slots
                            from KSP telemetry. Set this before deploying with KSP.
-                   NOTE: SCENE_CHANGE_MESSAGE from Simpit will clear demoMode at runtime
-                   when a flight scene is entered, matching the Annunciator pattern.
-                   Can also be toggled at runtime by the I2C master — see I2CSlave.ino.
+                   NOTE: demo mode can only be turned OFF at runtime by the I2C master
+                   (see I2CSlave.ino). Simpit messages cannot clear it — while demoMode
+                   is true the loop runs stepDemoState() and never services Simpit, so
+                   onSimpitMessage()/SCENE_CHANGE never fires.
 ****************************************************************************************/
 bool debugMode = false;  // set true to enable Serial debug output during development
 bool demoMode  = false;  // set true for bench testing without KSP; false for production

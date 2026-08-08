@@ -125,13 +125,8 @@ static bool isSelected(ResourceType t) {
 static bool addResource(ResourceType t) {
   if (t == RES_EVA_PROP && !evaActive) return false;   // EVA fuel only exists on EVA
   if (slotCount >= MAX_SLOTS) return false;
-  slots[slotCount].type         = t;
-  // In live mode start at zero — Simpit will populate on next message.
-  // In demo mode start at 1.0 so bars are visible immediately.
-  slots[slotCount].current      = demoMode ? 1.0f : 0.0f;
-  slots[slotCount].maxVal       = demoMode ? 1.0f : 0.0f;
-  slots[slotCount].stageCurrent = demoMode ? 0.4f : 0.0f;
-  slots[slotCount].stageMax     = demoMode ? 0.4f : 0.0f;
+  slots[slotCount].type = t;
+  initSlotValues(slots[slotCount]);   // 0 live / visible demo values
   slotCount++;
   return true;
 }
@@ -164,11 +159,8 @@ static void loadPreset(uint8_t presetIndex) {
   slotCount = 0;
   const PresetGroup &pg = PRESETS[presetIndex];
   for (uint8_t i = 0; i < pg.count && slotCount < MAX_SLOTS; i++) {
-    slots[slotCount].type         = pg.types[i];
-    slots[slotCount].current      = demoMode ? 1.0f : 0.0f;
-    slots[slotCount].maxVal       = demoMode ? 1.0f : 0.0f;
-    slots[slotCount].stageCurrent = demoMode ? 0.4f : 0.0f;
-    slots[slotCount].stageMax     = demoMode ? 0.4f : 0.0f;
+    slots[slotCount].type = pg.types[i];
+    initSlotValues(slots[slotCount]);
     slotCount++;
   }
   // In live mode, request a Simpit refresh so the new slots populate immediately

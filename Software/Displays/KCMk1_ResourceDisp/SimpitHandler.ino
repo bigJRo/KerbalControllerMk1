@@ -17,9 +17,9 @@
 
    Resources with no stage variant copy vessel values to stage fields (best effort).
 
-   SCENE_CHANGE_MESSAGE:
-     msg[0]==0 → entering flight scene → demoMode cleared, live data active
-     msg[0]==1 → leaving flight scene  → slots zeroed, demoMode not restored
+   SCENE_CHANGE_MESSAGE (only reached in live mode — demo never services Simpit):
+     msg[0]==0 → entering flight scene → slots zeroed, refresh requested, main screen
+     msg[0]==1 → leaving flight scene  → config saved, EVA latch + slots cleared, standby
 
    -------------------------------------------------------------------------------
    REQUIRED: KSP/GameData/KerbalSimpit/PluginData/Settings.cfg
@@ -369,11 +369,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       flightScene = (msg[0] == 0);  // 0 = entering flight, 1 = leaving flight
       if (flightScene) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit entering flight scene"));
-        demoMode = false;
         // Zero slots so stale values don't show before Simpit repopulates them
-        for (uint8_t i = 0; i < slotCount; i++) {
-          slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-        }
+        zeroAllSlotValues();
         // Request immediate refresh on all subscribed channels.
         // Simpit only sends resource messages when values change — without this,
         // static resources (full tanks, idle engines) won't update until first change.
@@ -383,10 +380,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit leaving flight scene"));
         // Save current config before leaving flight
         saveVesselSlots(currentVesselName);
-        // Zero slots and return to standby
-        for (uint8_t i = 0; i < slotCount; i++) {
-          slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-        }
+        // Clear EVA latch so an EVA that ended off-scene doesn't stay engaged, then
+        // zero slots and return to standby.
+        evaFlag = evaActive = false;
+        zeroAllSlotValues();
         switchToScreen(screen_Standby);
       }
       break;
@@ -398,9 +395,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // Save current config before it's overwritten by the new vessel
         saveVesselSlots(currentVesselName);
         currentVesselName = "";  // will be repopulated by VESSEL_NAME_MESSAGE
-        for (uint8_t i = 0; i < slotCount; i++) {
-          slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-        }
+        // Clear the EVA latch — if the new vessel is still an EVA Kerbal, the next
+        // FLIGHT_STATUS re-sets evaFlag and loop() reconciles it back on.
+        evaFlag = evaActive = false;
+        zeroAllSlotValues();
         // Request main screen redraw via flag — loop() will call drawStaticMain()
         // after simpit.update() returns, ensuring the screen is cleared before any
         // subsequent resource messages for the new vessel are drawn.

@@ -69,10 +69,7 @@ void setup() {
     // Simpit will populate values once a flight scene is entered.
     // The user's slot selection persists across scene changes — only values are
     // zeroed on SCENE_CHANGE, not the slot type configuration.
-    initDefaultSlots();
-    for (uint8_t i = 0; i < slotCount; i++) {
-      slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
-    }
+    initDefaultSlots();   // live mode: sets slot TYPES; values already zeroed within
     initSimpit();
   }
 

@@ -287,8 +287,11 @@ void updateI2CState() {
     uint8_t candidate[I2C_PACKET_SIZE];
     fillI2CPacketBuffer(candidate);
     if (memcmp((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE) != 0) {
+      // Guard the copy against onI2CRequest() firing mid-memcpy (torn packet).
+      noInterrupts();
       memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
       i2cPacketReady = true;
+      interrupts();
       digitalWriteFast(I2C_INT_PIN, LOW);
       if (debugMode) Serial.println(F("ResourceDisp: I2C packet ready"));
     }

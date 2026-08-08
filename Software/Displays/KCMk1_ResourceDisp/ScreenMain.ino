@@ -20,7 +20,8 @@
      - Two-fillRect technique: black from top to empty boundary, then color below
      - Resource label centred below the bar in white (font scales with bar width)
      - Percentage centred above the bar in white (font scales with bar width)
-     - Percentage color: >30% white, 11-30% yellow (caution), 0-10% red (critical)
+     - Percentage color (thresholdColor uses strict <): >=30% white,
+       10-29% yellow (caution), 0-9% red (critical)
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -130,8 +131,10 @@ static uint16_t barWidth() {
   return (barAreaW() - totalPad) / slotCount;
 }
 
-static uint16_t barX(uint8_t index) {
-  return AXIS_W + BAR_PAD + index * (barWidth() + BAR_PAD);
+// Pass the already-computed bar width so the per-bar loop doesn't recompute
+// barWidth() (an integer divide) once per bar per frame.
+static uint16_t barX(uint8_t index, uint16_t bw) {
+  return AXIS_W + BAR_PAD + index * (bw + BAR_PAD);
 }
 
 
@@ -180,23 +183,21 @@ void drawStaticMain(KCM_TFT &tft) {
   const tFont *font = barFont();
   uint16_t bw = barWidth();
   for (uint8_t i = 0; i < slotCount; i++) {
-    uint16_t x = barX(i);
+    uint16_t x = barX(i, bw);
     tft.drawRect(x, BAR_TOP, bw, BAR_H, TFT_GREY);
-    if (slots[i].type != RES_NONE) {
-      tft.setFont(*font);
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-      const char *lbl = resLabel(slots[i].type);
-      int16_t lblW = getFontStringWidth(font, lbl);
-      int16_t lblH = (int16_t)font->cap_height;
-      tft.setCursor(x + (bw - lblW) / 2, BAR_BOTTOM + (LABEL_H - lblH) / 2);
-      tft.print(lbl);
-    }
+    if (slots[i].type != RES_NONE)
+      textCenter(tft, font, x, BAR_BOTTOM, bw, LABEL_H,
+                 resLabel(slots[i].type), TFT_WHITE, TFT_BLACK);
   }
 }
 
 
 /***************************************************************************************
    DRAW ONE BAR -- flicker-free two-fillRect technique
+   NOTE: intentionally NOT the library's drawVertBarGraph() delta-erase. This full
+   empty+fill repaint is robust to the mode-toggle path (updateScreenMain resets
+   _prevLevel to -1 WITHOUT clearing the screen); a delta-erase keyed on prevVal would
+   leave stale fill above a bar that shrank across the toggle.
 ****************************************************************************************/
 static void drawBar(KCM_TFT &tft, uint16_t x, uint16_t bw, uint16_t fillH, uint16_t color) {
   uint16_t emptyH = (BAR_H - 2) - fillH;
@@ -237,7 +238,7 @@ void updateScreenMain(KCM_TFT &tft) {
     bool percChanged  = (perc != _prevPerc[i]);
     if (!levelChanged && !percChanged) continue;
 
-    uint16_t x = barX(i);
+    uint16_t x = barX(i, bw);
 
     if (levelChanged) {
       _prevLevel[i] = level;
@@ -253,10 +254,10 @@ void updateScreenMain(KCM_TFT &tft) {
       char percStr[6];
       snprintf(percStr, sizeof(percStr), "%d%%", perc);
 
-      // Percentage label colour depends on fill level:
-      //   0-10%   : red text    (critical)
-      //  11-30%   : yellow text  (caution)
-      //  31-100%  : white text   (nominal)
+      // Percentage label colour depends on fill level (thresholdColor: strict <):
+      //   0-9%    : red text    (critical)
+      //  10-29%   : yellow text  (caution)
+      //  30-100%  : white text   (nominal)
       uint16_t percFore, percBack;
       thresholdColor((uint16_t)perc,
                      (uint16_t)10, TFT_RED,    TFT_BLACK,

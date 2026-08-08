@@ -161,6 +161,23 @@ ResourceType resTypeByIndex(uint8_t index) {
    design so the user can start fresh from slot 1. removeResource() still enforces
    MIN_SLOTS for individual tap-removal.
 ****************************************************************************************/
+// Seed one slot's fill values: 0 in live mode (Simpit repopulates on refresh),
+// visible demo values otherwise. Shared by all the slot-loading paths.
+void initSlotValues(ResourceSlot &s) {
+  s.current      = demoMode ? 1.0f : 0.0f;
+  s.maxVal       = demoMode ? 1.0f : 0.0f;
+  s.stageCurrent = demoMode ? 0.4f : 0.0f;
+  s.stageMax     = demoMode ? 0.4f : 0.0f;
+}
+
+// Zero the fill values of every active slot (leaves type/config intact). Used on
+// scene/vessel transitions so stale values don't show before Simpit repopulates.
+void zeroAllSlotValues() {
+  for (uint8_t i = 0; i < slotCount; i++) {
+    slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
+  }
+}
+
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
   slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches STD preset count
@@ -170,11 +187,8 @@ void initDefaultSlots() {
     RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
   };
   for (uint8_t i = 0; i < DEFAULT_SLOT_COUNT; i++) {
-    slots[i].type         = STD_TYPES[i];
-    slots[i].current      = demoMode ? 1.0f : 0.0f;
-    slots[i].maxVal       = demoMode ? 1.0f : 0.0f;
-    slots[i].stageCurrent = demoMode ? 0.4f : 0.0f;
-    slots[i].stageMax     = demoMode ? 0.4f : 0.0f;
+    slots[i].type = STD_TYPES[i];
+    initSlotValues(slots[i]);
   }
   // In live mode, request a Simpit refresh so the new slots populate immediately
   if (!demoMode) simpit.requestMessageOnChannel(0);
@@ -197,11 +211,8 @@ void loadEvaSlots() {
   };
   slotCount = 5;
   for (uint8_t i = 0; i < 5; i++) {
-    slots[i].type         = EVA_TYPES[i];
-    slots[i].current      = demoMode ? 1.0f : 0.0f;
-    slots[i].maxVal       = demoMode ? 1.0f : 0.0f;
-    slots[i].stageCurrent = demoMode ? 0.4f : 0.0f;
-    slots[i].stageMax     = demoMode ? 0.4f : 0.0f;
+    slots[i].type = EVA_TYPES[i];
+    initSlotValues(slots[i]);
   }
   if (!demoMode) simpit.requestMessageOnChannel(0);
 }
