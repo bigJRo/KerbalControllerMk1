@@ -131,7 +131,7 @@ void processTouchEvents() {
     return;
   }
 
-  // Sidebar hit test — right-hand SIDEBAR_W column, 8 buttons (SB_BTN_SCREEN).
+  // Sidebar hit test — right-hand SIDEBAR_W column, 6 buttons (SB_BTN_SCREEN).
   // First press of a button (from another screen) goes to that button's context/
   // primary mode; pressing the button that already owns the active screen cycles
   // its modes. Context auto-select still runs on scene/vessel change; a press
@@ -179,15 +179,18 @@ void processTouchEvents() {
           target = screen_LNCH; doSwitch = true;
           break;
         case SB_PFD_BTN: {
-          uint8_t cur = (activeScreen == screen_ROVR) ? 2 :
+          uint8_t cur = (activeScreen == screen_VEH)  ? 3 :
+                        (activeScreen == screen_ROVR) ? 2 :
                         (activeScreen == screen_ACFT) ? 1 : 0;
-          _pfdManualSel      = (cur + 1) % 3;        // SPC -> ACFT -> ROVR -> SPC
+          _pfdManualSel      = (cur + 1) % 4;        // SPC -> ACFT -> ROVR -> VEH -> SPC
           _pfdManualOverride = true;
           target = pfdScreenForSel(_pfdManualSel); doSwitch = true;
           break;
         }
         case SB_ORB_BTN:
-          target = (activeScreen == screen_ORBADV) ? screen_ORB : screen_ORBADV;
+          // ORB -> ORB+ -> MNVR -> ORB
+          target = (activeScreen == screen_ORB)    ? screen_ORBADV :
+                   (activeScreen == screen_ORBADV) ? screen_MNVR   : screen_ORB;
           doSwitch = true;
           break;
         case SB_TGTDOCK_BTN:

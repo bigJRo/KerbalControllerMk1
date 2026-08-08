@@ -2,7 +2,7 @@
    AAA_Screens.ino -- Shared screen infrastructure for Kerbal Controller Mk1 Information Display
    Must compile before Screen_*.ino tabs (AAA_ prefix ensures correct sort order).
 
-   Sidebar buttons (8, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
+   Sidebar buttons (6, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
    Multi-mode buttons CYCLE their modes when pressed while already active, and the
    button caption shows the active mode (sbButtonLabel); a first press from another
    screen goes to the button's context/primary mode. Context auto-select still runs on
@@ -11,18 +11,16 @@
    the bottom, physically separated and drawn in a distinct purple, since it is an
    interactive console rather than a display screen.
      0  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
-     1  PFD       Primary Flight Display — SPC / ACFT / ROVR (press cycles; context default)
-     2  ORB       Orbit — ORB <-> ORB+ (Advanced Elements)
-     3  VEH       Vehicle Information
-     4  MNVR      Maneuver Information
-     5  TGT/DOCK  Target / Docking — TGT <-> DOCK (context default: DOCK when near a target)
-     6  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
-     7  ASC       Ascent Autopilot (touch console for the Simpit ascent autopilot)
+     1  PFD       Primary Flight Display — SPC -> ACFT -> ROVR -> VEH (press cycles; context default)
+     2  ORB       Orbit — ORB -> ORB+ (Advanced Elements) -> MNVR (Maneuver) (press cycles)
+     3  TGT/DOCK  Target / Docking — TGT <-> DOCK (context default: DOCK when near a target)
+     4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
+     5  ASC       Ascent Autopilot (touch console for the Simpit ascent autopilot)
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
      Data rows  : text screens fill the content height evenly
-     Sidebar    : 84px right-hand column, 10 labelled buttons
+     Sidebar    : 84px right-hand column, 6 labelled buttons
 
    Update pattern (mirrors Annunciator):
      Chrome (labels)  : printDispChrome() — called once per screen transition.
@@ -51,14 +49,14 @@ const uint16_t COL_VALUE = TFT_DARK_GREEN;
 const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;
 
-const uint8_t SB_BTN_COUNT = 8;
+const uint8_t SB_BTN_COUNT = 6;
 // Multi-mode button indices. Each of these cycles its modes on a repeated press and
 // shows the active mode's label; a single-mode button just selects its screen.
 const uint8_t SB_LNCH_BTN    = 0;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (manual)
-const uint8_t SB_PFD_BTN     = 1;   // PFD:  SPC -> ACFT -> ROVR
-const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB <-> ORB+
-const uint8_t SB_TGTDOCK_BTN = 5;   // TGT/DOCK
-const uint8_t SB_LNDG_BTN    = 6;   // LNDG/ENTR: DESC <-> ENTR
+const uint8_t SB_PFD_BTN     = 1;   // PFD:  SPC -> ACFT -> ROVR -> VEH
+const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB -> ORB+ -> MNVR
+const uint8_t SB_TGTDOCK_BTN = 3;   // TGT/DOCK
+const uint8_t SB_LNDG_BTN    = 4;   // LNDG/ENTR: DESC <-> ENTR
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -67,35 +65,33 @@ inline uint16_t sbBtnY(uint8_t btn) {
 }
 
 // Sidebar button -> canonical (primary) screen, physical top-to-bottom order. Several
-// buttons cover multiple screens: PFD (SCFT/ACFT/ROVR), ORB (ORB/ORB+), TGT/DOCK
-// (TGT/DOCK), LNDG/ENTR (LNDG/LNDGRE). SB_BTN_SCREEN holds each button's primary
-// screen; the tap handler in TouchEvents.ino cycles the alternates.
+// buttons cover multiple screens: PFD (SCFT/ACFT/ROVR/VEH), ORB (ORB/ORB+/MNVR),
+// TGT/DOCK (TGT/DOCK), LNDG/ENTR (LNDG/LNDGRE). SB_BTN_SCREEN holds each button's
+// primary screen; the tap handler in TouchEvents.ino cycles the alternates.
 const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
   screen_LNCH,     // 0 LNCH      (PRE / ASC / CIRC)
-  screen_SCFT,     // 1 PFD       (SPC default; ACFT / ROVR by context or cycle)
-  screen_ORB,      // 2 ORB       (ORB / ORB+)
-  screen_VEH,      // 3 VEH
-  screen_MNVR,     // 4 MNVR
-  screen_TGT,      // 5 TGT/DOCK  (TGT default; DOCK by context or cycle)
-  screen_LNDG,     // 6 LNDG/ENTR (DESC default; ENTR by cycle)
-  screen_LNCHAP    // 7 ASC — Ascent Autopilot; parked at the bottom, physically separated
+  screen_SCFT,     // 1 PFD       (SPC default; ACFT / ROVR / VEH by context or cycle)
+  screen_ORB,      // 2 ORB       (ORB / ORB+ / MNVR)
+  screen_TGT,      // 3 TGT/DOCK  (TGT default; DOCK by context or cycle)
+  screen_LNDG,     // 4 LNDG/ENTR (DESC default; ENTR by cycle)
+  screen_LNCHAP    // 5 ASC — Ascent Autopilot; parked at the bottom, physically separated
                    //   from the display-nav cluster and drawn in a distinct colour
 };
 
 // Base labels (shown when the button is NOT the active screen). When a multi-mode
 // button IS active, sbButtonLabel() substitutes the active mode's label instead.
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "VEH", "MNVR", "TGT", "LNDG", "ASC"
+  "LNCH", "PFD", "ORB", "TGT", "LNDG", "ASC"
 };
 
 // Which sidebar button should highlight for the active screen. Multi-screen buttons
 // map all their screens to one index; every other screen maps 1:1.
 uint8_t screenToButton(ScreenType s) {
   switch (s) {
-    case screen_SCFT: case screen_ACFT:   case screen_ROVR:   return SB_PFD_BTN;
-    case screen_ORB:  case screen_ORBADV:                     return SB_ORB_BTN;
-    case screen_TGT:  case screen_DOCK:                       return SB_TGTDOCK_BTN;
-    case screen_LNDG: case screen_LNDGRE:                     return SB_LNDG_BTN;
+    case screen_SCFT: case screen_ACFT: case screen_ROVR: case screen_VEH: return SB_PFD_BTN;
+    case screen_ORB:  case screen_ORBADV: case screen_MNVR:                return SB_ORB_BTN;
+    case screen_TGT:  case screen_DOCK:                                    return SB_TGTDOCK_BTN;
+    case screen_LNDG: case screen_LNDGRE:                                  return SB_LNDG_BTN;
     default: break;
   }
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
@@ -105,18 +101,20 @@ uint8_t screenToButton(ScreenType s) {
 
 // Sidebar button caption for the current state: the active mode's label when this
 // button owns the active screen, otherwise the base label. Mirrors the labelling
-// rules in the sidebar-nav design (LNCH/PRE/ASC/CIRC, PFD/SPC/ACFT/ROVR, ORB/ORB+,
-// TGT/DOCK, LNDG/DESC/ENTR).
+// rules in the sidebar-nav design (LNCH/PRE/ASC/CIRC, PFD/SPC/ACFT/ROVR/VEH,
+// ORB/ORB+/MNVR, TGT/DOCK, LNDG/DESC/ENTR).
 const char *sbButtonLabel(uint8_t i) {
   if (screenToButton(activeScreen) != i) return SB_BTN_IDS[i];
   switch (i) {
     case SB_LNCH_BTN:
       return _lnchPrelaunchMode ? "PRE" : (_lnchOrbitalMode ? "CIRC" : "ASC");
     case SB_PFD_BTN:
-      return (activeScreen == screen_ROVR) ? "ROVR"
+      return (activeScreen == screen_VEH)  ? "VEH"
+           : (activeScreen == screen_ROVR) ? "ROVR"
            : (activeScreen == screen_ACFT) ? "ACFT" : "SPC";
     case SB_ORB_BTN:
-      return (activeScreen == screen_ORBADV) ? "ORB+" : "ORB";
+      return (activeScreen == screen_ORBADV) ? "ORB+"
+           : (activeScreen == screen_MNVR)   ? "MNVR" : "ORB";
     case SB_TGTDOCK_BTN:
       return (activeScreen == screen_DOCK) ? "DOCK" : "TGT";
     case SB_LNDG_BTN:

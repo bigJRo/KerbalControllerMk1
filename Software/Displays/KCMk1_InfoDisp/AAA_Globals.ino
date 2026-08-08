@@ -118,13 +118,14 @@ ScreenType contextScreen() {
 
 
 /***************************************************************************************
-   PFD BUTTON (SPACECRAFT / AIRCRAFT / ROVER)
-   The single PFD sidebar button shows one of three screens. By default the choice is
-   made from vessel context; a title-touch cycles the three and latches a manual
-   override (mirrors the LNCH ASCENT/CIRC title toggle).
+   PFD BUTTON (SPACECRAFT / AIRCRAFT / ROVER / VEHICLE)
+   The single PFD sidebar button shows one of four screens. By default the choice is
+   made from vessel context; cycling the PFD sidebar button steps through them and
+   latches a manual override (mirrors the LNCH ASCENT/CIRC sidebar toggle). VEH is
+   only reachable by manual cycle — it is never chosen by context.
 ****************************************************************************************/
-bool    _pfdManualOverride = false;   // true once the pilot cycles PFD via title touch
-uint8_t _pfdManualSel      = 0;       // 0 = SCFT, 1 = ACFT, 2 = ROVR
+bool    _pfdManualOverride = false;   // true once the pilot cycles PFD via sidebar
+uint8_t _pfdManualSel      = 0;       // 0 = SCFT, 1 = ACFT, 2 = ROVR, 3 = VEH
 
 // Context-appropriate PFD screen: rover → ROVR, plane in atmosphere → ACFT,
 // everything else → SCFT (spacecraft — the default).
@@ -136,7 +137,9 @@ ScreenType pfdContextScreen() {
 
 // Map a PFD sub-selection index to its screen.
 ScreenType pfdScreenForSel(uint8_t sel) {
-  return (sel == 2) ? screen_ROVR : (sel == 1) ? screen_ACFT : screen_SCFT;
+  return (sel == 3) ? screen_VEH  :
+         (sel == 2) ? screen_ROVR :
+         (sel == 1) ? screen_ACFT : screen_SCFT;
 }
 
 // The PFD screen to show when the PFD button is tapped: the manual selection if the
