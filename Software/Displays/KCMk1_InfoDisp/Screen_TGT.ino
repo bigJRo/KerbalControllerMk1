@@ -41,7 +41,7 @@
    DOT UPDATE STRATEGY  (same as DOCK)
    ────────────────────
    prevDot stored in screen coords. On change > 1px:
-     fillRect(prev - R_ERASE, ..., TFT_BLACK) → _tgtRepairChrome() → draw new dot
+     fillRect(prev - R_ERASE, ..., TFT_BLACK) → reticleRepairDotChrome() → draw new dot
    Erase rect is slightly larger than dot to clean up any anti-alias edge.
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
@@ -87,29 +87,22 @@ static const float    TGT_BAR_MAX_MS = 250.0f;   // full bar = 250 m/s closure
 static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on entry)
 
 
-// ── Previous dot positions (for erase-before-redraw) ─────────────────────────────────
-// 9999 = not yet drawn (skip erase on first frame after chrome)
-static int16_t _tgtPrevTgtX = 9999, _tgtPrevTgtY = 9999;
-static int16_t _tgtPrevVelX = 9999, _tgtPrevVelY = 9999;
-static int16_t _tgtPrevAntiX = 9999, _tgtPrevAntiY = 9999;   // anti-target (opposite of tgt)
-static int16_t _tgtPrevRetX  = 9999, _tgtPrevRetY  = 9999;   // retrograde (opposite of vel)
+// ── Shared dot-layer geometry + per-screen erase cache ───────────────────────────────
+// The moving marker layer is shared with DOCK (see reticleUpdateDots in AAA_Screens.ino).
+// Only the angular SCALE and the four ring labels differ; both are captured here. Built
+// from the existing named constants above so values never diverge from the chrome/bar.
+static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
+static const ReticleGeom TGT_GEOM = {
+    TGT_SCX, TGT_SCY, TGT_R, TGT_SCALE,
+    TGT_DOT_R_TGT, TGT_DOT_R_VEL, TGT_DOT_R_ERASE,
+    TGT_RING_LBL
+};
+// Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
+static ReticleDotCache _tgtDots;
 
 
 // ── Heading error wrap to ±180° ───────────────────────────────────────────────────────
 static inline float _tgtWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
-
-
-// ── Clamp dot to within scope boundary ───────────────────────────────────────────────
-static void _tgtClampDot(int16_t &sx, int16_t &sy) {
-    float dx = sx - TGT_SCX, dy = sy - TGT_SCY;
-    float dist = sqrtf(dx*dx + dy*dy);
-    float maxR = (float)(TGT_R - TGT_DOT_R_VEL * 3 / 2 - 2);  // widest marker = prograde ring + spoke
-    if (dist > maxR && dist > 0.5f) {
-        float scale = maxR / dist;
-        sx = TGT_SCX + (int16_t)(dx * scale);
-        sy = TGT_SCY + (int16_t)(dy * scale);
-    }
-}
 
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
@@ -202,118 +195,9 @@ static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
 }
 
 
-// ── Repair scope chrome after dot erase ───────────────────────────────────────────────
-// After a fillRect erase, any rings or crosshair lines that intersected the
-// erase box must be redrawn. Logic mirrors Screen_DOCK._dockRepairChrome().
-static void _tgtRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
-    int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
-
-    // Shared reticle restore: rings / cardinals / crosshair / centre-dot / good-zone.
-    // Returns the marker's distance from centre so we can detect a good-zone hit.
-    float d = reticleRepair(tft, TGT_SCX, TGT_SCY, TGT_R, 18, bx, by, bh);
-
-    // Redraw the ring label(s) whose bbox overlaps the erase box (each sits at
-    // (SCX+3, SCY - RING_r + 3); bbox sized for Roboto_Black_16). Redrawing only
-    // the overlapping one avoids painting a label over a different dot. The
-    // innermost ("15") label sits at radius ~49, inside the good-zone fill
-    // (radius R/4-1) — so when a marker enters the inner circle the good-zone
-    // repaint erases it even though the erase box may not overlap its bbox. Force
-    // its redraw whenever the marker is inside the good zone (goodZoneHit).
-    {
-        static const uint16_t lblR[]  = {TGT_RING_15, TGT_RING_30, TGT_RING_45, TGT_RING_60};
-        static const char    *lblTxt[]= {"15", "30", "45", "60"};
-        bool fontSet = false;
-        for (uint8_t i = 0; i < 4; i++) {
-            int16_t lx = TGT_SCX + 3, ly = TGT_SCY - lblR[i] + 3;
-            bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
-            bool goodZoneHit = (i == 0 && d <= (float)(TGT_R / 4));
-            if (boxHit || goodZoneHit) {
-                if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
-                tft.setCursor(lx, ly);
-                tft.print(lblTxt[i]);
-            }
-        }
-    }
-}
-
-
-// ── Update scope dots — erase old, repair chrome, draw new ───────────────────────────
-// TGT dot:  solid violet diamond — where the target is relative to nose
-// VEL dot:  hollow neon-green circle — where velocity vector points relative to target
-//
-// Angular convention (matches DOCK):
-//   tgtSX = SCX + (-bearingErr × SCALE)   — positive bearing → dot left of centre
-//   tgtSY = SCY + (  elevErr   × SCALE)   — positive elevation → dot above centre
-// Draw a reticle "opposite" marker only while it is inside the scope FOV; erase it (and
-// repair chrome) when it moves or leaves view. prevX/prevY cache its last position
-// (9999 = not shown). In-view markers are redrawn every frame (robust against overdraw).
-// Erase-phase for one reticle marker: if it should be hidden, or has moved >1px, erase its
-// cached position and repair chrome, then advance the cache to the current position. The draw
-// phase runs after ALL erases, so a moving marker's erase never clips a neighbouring one, and
-// redrawing at the cache (not the live position) avoids sub-pixel smear.
-static void _tgtErase(KCM_TFT &tft, int16_t curX, int16_t curY,
-                      int16_t &prevX, int16_t &prevY, bool visible) {
-    const uint8_t EH = TGT_DOT_R_ERASE;
-    if (!visible) {
-        if (prevX != 9999) {
-            tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _tgtRepairChrome(tft, prevX - EH, prevY - EH, EH);
-            prevX = prevY = 9999;
-        }
-        return;
-    }
-    if (prevX == 9999 || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
-        if (prevX != 9999) {
-            tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _tgtRepairChrome(tft, prevX - EH, prevY - EH, EH);
-        }
-        prevX = curX; prevY = curY;
-    }
-}
-
-static void _tgtUpdateDots(KCM_TFT &tft, float tgtBrg, float tgtElv, float velBrg, float velElv,
-                           float antiBrg, float antiElv, float retroBrg, float retroElv) {
-    // TGT dot: where is the target relative to your nose?
-    int16_t tSX = TGT_SCX + (int16_t)(-tgtBrg * TGT_SCALE);
-    int16_t tSY = TGT_SCY + (int16_t)( tgtElv * TGT_SCALE);
-    _tgtClampDot(tSX, tSY);
-
-    // VEL dot: where is your velocity vector relative to the target bearing?
-    int16_t vSX = TGT_SCX + (int16_t)(-velBrg * TGT_SCALE);
-    int16_t vSY = TGT_SCY + (int16_t)( velElv * TGT_SCALE);
-    _tgtClampDot(vSX, vSY);
-
-    // Opposite (antipodal) marker positions + in-view test. Anti-target/retrograde show only
-    // inside the FOV; their primaries (target/velocity) are suppressed while the opposite is
-    // shown (the primary would otherwise sit clamped on the rim, pointing away).
-    const float maxR = (float)(TGT_R - TGT_DOT_R_VEL * 3 / 2 - 2);
-    int16_t aSX = TGT_SCX + (int16_t)(-antiBrg  * TGT_SCALE), aSY = TGT_SCY + (int16_t)(antiElv  * TGT_SCALE);
-    int16_t rSX = TGT_SCX + (int16_t)(-retroBrg * TGT_SCALE), rSY = TGT_SCY + (int16_t)(retroElv * TGT_SCALE);
-    bool antiInView  = ((float)(aSX-TGT_SCX)*(aSX-TGT_SCX) + (float)(aSY-TGT_SCY)*(aSY-TGT_SCY)) <= maxR*maxR;
-    bool retroInView = ((float)(rSX-TGT_SCX)*(rSX-TGT_SCX) + (float)(rSY-TGT_SCY)*(rSY-TGT_SCY)) <= maxR*maxR;
-
-    // Erase phase (all markers) then draw phase, so a moving marker's erase never clips a
-    // neighbour. Draw order is bottom-to-top: opposites, target, velocity on top.
-    _tgtErase(tft, aSX, aSY, _tgtPrevAntiX, _tgtPrevAntiY, antiInView);
-    _tgtErase(tft, rSX, rSY, _tgtPrevRetX,  _tgtPrevRetY,  retroInView);
-    _tgtErase(tft, tSX, tSY, _tgtPrevTgtX,  _tgtPrevTgtY,  !antiInView);
-    _tgtErase(tft, vSX, vSY, _tgtPrevVelX,  _tgtPrevVelY,  !retroInView);
-
-    if (_tgtPrevAntiX != 9999) drawAntiTargetMarker(tft, _tgtPrevAntiX, _tgtPrevAntiY, TGT_DOT_R_TGT, TFT_VIOLET);
-    if (_tgtPrevRetX  != 9999) drawRetrogradeMarker(tft, _tgtPrevRetX,  _tgtPrevRetY,  TGT_DOT_R_VEL, TFT_NEON_GREEN);
-    if (_tgtPrevTgtX  != 9999) drawTargetMarker(tft, _tgtPrevTgtX, _tgtPrevTgtY, TGT_DOT_R_TGT, TFT_VIOLET);
-    if (_tgtPrevVelX  != 9999) drawProgradeMarker(tft, _tgtPrevVelX, _tgtPrevVelY, TGT_DOT_R_VEL, TFT_NEON_GREEN);
-
-    // Redraw crosshair inner segments — VEL circle can clip them near centre
-    {
-        static const uint16_t g = 18;   // matches reticleDrawBase gap
-        tft.drawLine(TGT_SCX - g + 2, TGT_SCY, TGT_SCX - 4, TGT_SCY, TFT_GREY);
-        tft.drawLine(TGT_SCX + 4,     TGT_SCY, TGT_SCX + g - 2, TGT_SCY, TFT_GREY);
-        tft.drawLine(TGT_SCX, TGT_SCY - g + 2, TGT_SCX, TGT_SCY - 4, TFT_GREY);
-        tft.drawLine(TGT_SCX, TGT_SCY + 4,     TGT_SCX, TGT_SCY + g - 2, TFT_GREY);
-    }
-    tft.fillCircle(TGT_SCX, TGT_SCY, 2, TFT_GREY);
-}
+// Dot-layer machinery (clamp / erase / chrome-repair / update) is shared with DOCK —
+// see reticleClampDot / reticleRepairDotChrome / reticleUpdateDots in AAA_Screens.ino.
+// TGT drives them via TGT_GEOM (scale = r/60, ring labels 15/30/45/60) and _tgtDots.
 
 
 // ── CHROME ────────────────────────────────────────────────────────────────────────────
@@ -329,10 +213,7 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     _tgtChromDrawn = true;
 
     // Reset dot positions — first draw must not try to erase stale coordinates
-    _tgtPrevTgtX = 9999; _tgtPrevTgtY = 9999;
-    _tgtPrevVelX = 9999; _tgtPrevVelY = 9999;
-    _tgtPrevAntiX = 9999; _tgtPrevAntiY = 9999;
-    _tgtPrevRetX  = 9999; _tgtPrevRetY  = 9999;
+    _tgtDots = ReticleDotCache{};
     _tgtPrevBarVC = -9999.0f;   // force the closure bar to redraw on entry
 
     // Left panel: clear and draw scope chrome
@@ -411,23 +292,17 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     if (!_tgtChromDrawn) { switchToScreen(screen_TGT); return; }
 
     // ── Derived values ────────────────────────────────────────────────────────────────
-
-    // Nose-to-target errors: where is the target relative to your nose?
-    float tgtBrg = _tgtWrapErr(state.heading   - state.tgtHeading);
-    float tgtElv = state.pitch - state.tgtPitch;
-
-    // Velocity-to-target errors: is your velocity vector pointed at the target?
-    float velBrg = _tgtWrapErr(state.tgtHeading - state.tgtVelHeading);
-    float velElv = state.tgtPitch - state.tgtVelPitch;
-
-    // Opposites (antipodal direction): anti-target and retrograde, in the same convention.
-    float antiBrg  = _tgtWrapErr(state.heading    - (state.tgtHeading    + 180.0f));
-    float antiElv  = state.pitch    + state.tgtPitch;
-    float retroBrg = _tgtWrapErr(state.tgtHeading - (state.tgtVelHeading + 180.0f));
-    float retroElv = state.tgtPitch + state.tgtVelPitch;
+    // Shared derived-angle block (identical to DOCK): nose→target, velocity→target and
+    // both antipodal directions, bearings wrapped to ±180°.
+    ReticleAngles ang = reticleComputeAngles();
+    float tgtBrg = ang.priBrg,   tgtElv   = ang.priElv;    // target relative to nose
+    float velBrg = ang.velBrg,   velElv   = ang.velElv;    // velocity vector vs target
+    float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
+    float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
 
     // ── Update scope dots ─────────────────────────────────────────────────────────────
-    _tgtUpdateDots(tft, tgtBrg, tgtElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
+    reticleUpdateDots(tft, TGT_GEOM, _tgtDots,
+                      tgtBrg, tgtElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     const uint8_t NR = TGT_RP_NR;
