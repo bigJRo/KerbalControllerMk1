@@ -787,20 +787,7 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
     if (newMode == _rovrPrevSasMode) return;
 
     const char *v; uint16_t fg, bg;
-    switch (state.sasMode) {
-        case 255: v = "SAS";  fg = TFT_DARK_GREY; bg = TFT_OFF_BLACK;  break;
-        case 0:   v = "STAB"; fg = TFT_WHITE;     bg = TFT_DARK_GREEN; break;
-        case 1:   v = "PRO";  fg = TFT_DARK_GREY; bg = TFT_NEON_GREEN; break;
-        case 2:   v = "RETR"; fg = TFT_DARK_GREY; bg = TFT_NEON_GREEN; break;
-        case 3:   v = "NRM";  fg = TFT_WHITE;     bg = TFT_MAGENTA;    break;
-        case 4:   v = "ANRM"; fg = TFT_WHITE;     bg = TFT_MAGENTA;    break;
-        case 5:   v = "RAD+"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
-        case 6:   v = "RAD-"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
-        case 7:   v = "TGT";  fg = TFT_WHITE;     bg = TFT_VIOLET;     break;
-        case 8:   v = "ATGT"; fg = TFT_WHITE;     bg = TFT_VIOLET;     break;
-        case 9:   v = "MNVR"; fg = TFT_WHITE;     bg = TFT_BLUE;       break;
-        default:  v = "SAS";  fg = TFT_DARK_GREY; bg = TFT_OFF_BLACK;  break;
-    }
+    sasNavballLabel(state.sasMode, v, fg, bg);
 
     ButtonLabel btn = { v, fg, fg, bg, bg, TFT_GREY, TFT_GREY };
     drawButton(tft,

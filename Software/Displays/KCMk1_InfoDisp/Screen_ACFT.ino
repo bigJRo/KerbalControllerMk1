@@ -1081,20 +1081,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         // SAS (slot 11) — SCFT generic colour scheme
         {
             const char *v; uint16_t sfg, sbg;
-            switch (state.sasMode) {
-                case 255: v = "SAS";  sfg = TFT_DARK_GREY;  sbg = TFT_OFF_BLACK;  break;
-                case 0:   v = "STAB"; sfg = TFT_WHITE;       sbg = TFT_DARK_GREEN; break;
-                case 1:   v = "PRO";  sfg = TFT_DARK_GREY;   sbg = TFT_NEON_GREEN; break;
-                case 2:   v = "RETR"; sfg = TFT_DARK_GREY;   sbg = TFT_NEON_GREEN; break;
-                case 3:   v = "NRM";  sfg = TFT_WHITE;       sbg = TFT_MAGENTA;    break;
-                case 4:   v = "ANRM"; sfg = TFT_WHITE;       sbg = TFT_MAGENTA;    break;
-                case 5:   v = "RAD+"; sfg = TFT_DARK_GREY;   sbg = TFT_SKY;        break;
-                case 6:   v = "RAD-"; sfg = TFT_DARK_GREY;   sbg = TFT_SKY;        break;
-                case 7:   v = "TGT";  sfg = TFT_WHITE;       sbg = TFT_VIOLET;     break;
-                case 8:   v = "ATGT"; sfg = TFT_WHITE;       sbg = TFT_VIOLET;     break;
-                case 9:   v = "MNVR"; sfg = TFT_WHITE;       sbg = TFT_BLUE;       break;
-                default:  v = "SAS";  sfg = TFT_DARK_GREY;   sbg = TFT_OFF_BLACK;  break;
-            }
+            sasNavballLabel(state.sasMode, v, sfg, sbg);
             RowCache &rc = rowCache[SC][11];
             if (rc.value != v || rc.fg != sfg || rc.bg != sbg) {
                 ButtonLabel btn = { v, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };

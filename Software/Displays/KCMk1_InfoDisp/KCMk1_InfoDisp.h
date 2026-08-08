@@ -282,6 +282,9 @@ static const uint8_t  ROW_COUNT = 24;  // max cache slots per screen (Ascent Aut
 // Screen*.ino — chrome (static elements drawn once on transition)
 void drawStaticScreen(KCM_TFT &tft, ScreenType s);
 
+// AAA_Screens.ino — shared SAS-mode navball label/palette (SCFT/ACFT/ROVR)
+void sasNavballLabel(uint8_t mode, const char *&v, uint16_t &fg, uint16_t &bg);
+
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(KCM_TFT &tft, ScreenType s);
 

@@ -353,6 +353,29 @@ void invalidateAllRowCache() {
 
 
 /***************************************************************************************
+   SAS-MODE NAVBALL LABEL / PALETTE
+   Shared by the SPACECRAFT / AIRCRAFT / ROVER PFD screens (previously triplicated
+   verbatim). Maps the Simpit SAS mode to the button label + fg/bg palette.
+   255 (SAS off) and any unknown value fall back to the dimmed "SAS" chip.
+****************************************************************************************/
+void sasNavballLabel(uint8_t mode, const char *&v, uint16_t &fg, uint16_t &bg) {
+  switch (mode) {
+    case 0:  v = "STAB"; fg = TFT_WHITE;     bg = TFT_DARK_GREEN; break;
+    case 1:  v = "PRO";  fg = TFT_DARK_GREY; bg = TFT_NEON_GREEN; break;
+    case 2:  v = "RETR"; fg = TFT_DARK_GREY; bg = TFT_NEON_GREEN; break;
+    case 3:  v = "NRM";  fg = TFT_WHITE;     bg = TFT_MAGENTA;    break;
+    case 4:  v = "ANRM"; fg = TFT_WHITE;     bg = TFT_MAGENTA;    break;
+    case 5:  v = "RAD+"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
+    case 6:  v = "RAD-"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
+    case 7:  v = "TGT";  fg = TFT_WHITE;     bg = TFT_VIOLET;     break;
+    case 8:  v = "ATGT"; fg = TFT_WHITE;     bg = TFT_VIOLET;     break;
+    case 9:  v = "MNVR"; fg = TFT_WHITE;     bg = TFT_BLUE;       break;
+    default: v = "SAS";  fg = TFT_DARK_GREY; bg = TFT_OFF_BLACK;  break;  // 255 = off / unknown
+  }
+}
+
+
+/***************************************************************************************
    SCREEN CHROME FUNCTIONS — labels drawn once on transition
 ****************************************************************************************/
 
