@@ -315,54 +315,22 @@ static void _lnchOrDrawRightPanelChrome(KCM_TFT &tft) {
     // Right panel geometry/fonts match the ascent phase's readout exactly
     // (LNCH_AS2_* — 360 px wide at x=580, 8 rows of 67 px, Black_28 labels /
     // Black_36 values), so the two LNCH phases present an identical text region.
-    // Vertical divider in the 2-px gap before the right panel
-    tft.drawLine(LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y,
-                 LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
-                 TFT_GREY);
-    tft.drawLine(LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y,
-                 LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
-                 TFT_GREY);
-
-    for (uint8_t i = 0; i < 8; i++) {
-        printDispChrome(tft, &Roboto_Black_28,
-                        LNCH_AS2_RPANEL_X, _lnchAs2RowY(i),
-                        LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
-                        _lnchOrLabels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
-    }
-
-    // Horizontal group dividers — 2 px in TFT_GREY, matching SCFT pattern.
-    // Rows grouped logically:
-    //   rows 0-1: Alt.SL, V.Orb         (position + velocity)
-    //   rows 2-3: ApA, PeA              (trajectory)
-    //   row  4:   T+Ap                   (timing to apoapsis)
-    //   row  5:   Thrtl                  (current engine state)
-    //   rows 6-7: T.Brn, ΔV.Stg         (stage resources)
-    // Dividers sit in the 2-px gap between row groups (at y=dy-1 and y=dy,
-    // where dy = rowY(2), rowY(4), rowY(5), rowY(6)). Same rationale as the
-    // ascent-phase dividers: placed outside both adjacent rows' fillRect
-    // clear regions so bg-colour changes (alarms) don't nibble them.
+    // Shared implementation lives in Screen_LNCH_Ascent.ino
+    // (_lnchAs2DrawPanelChrome). Orbital group dividers:
+    //   rows 0-1: Alt.SL, V.Orb   rows 2-3: ApA, PeA   row 4: T+Ap
+    //   row  5:   Thrtl            rows 6-7: T.Brn, ΔV.Stg
+    // → dividers above rows 2, 4, 5, 6.
     static const uint8_t divRows[] = { 2, 4, 5, 6 };
-    for (uint8_t i = 0; i < sizeof(divRows); i++) {
-        int16_t dy = _lnchAs2RowY(divRows[i]);
-        tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
-                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
-                     TFT_GREY);
-        tft.drawLine(LNCH_AS2_RPANEL_X, dy,
-                     LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
-                     TFT_GREY);
-    }
+    _lnchAs2DrawPanelChrome(tft, _lnchOrLabels, divRows, sizeof(divRows));
 }
 
 // Helper: draw a value in an orbital-phase row using printValue. The label was
 // drawn by chrome; value is right-aligned in the cell.
 static void _lnchOrDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
                                  uint16_t fg, uint16_t bg) {
-    printValue(tft, &Roboto_Black_36,
-               LNCH_AS2_RPANEL_X, _lnchAs2RowY(row),
-               LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
-               _lnchOrLabels[row], val,
-               fg, bg, TFT_BLACK,
-               _lnchOrPs[row]);
+    // Delegates to the shared helper (Screen_LNCH_Ascent.ino), passing the
+    // orbital-phase label + PrintState arrays.
+    _lnchAs2DrawRowValue(tft, row, val, fg, bg, _lnchOrLabels, _lnchOrPs);
 }
 
 // ── Orbital row update functions ──────────────────────────────────────────────────────
@@ -370,21 +338,8 @@ static void _lnchOrDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
 // Order: Alt, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg.
 
 static void _lnchOrUpdateAlt(KCM_TFT &tft) {
-    float alt = state.altitude;
-    int32_t iAlt = (int32_t)roundf(alt);
-
-    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
-    float altYellow = bodyRad * 0.0015f;  // ~900m Kerbin
-
-    uint16_t fg = (alt < 0)         ? TFT_RED
-                : (alt < altYellow)  ? TFT_YELLOW
-                : TFT_DARK_GREEN;
-
-    if (iAlt == _lnchOrPrevAlt && fg == _lnchOrPrevAltFg) return;
-
-    _lnchOrDrawRowValue(tft, 0, formatAlt((float)iAlt), fg, TFT_BLACK);
-    _lnchOrPrevAlt = iAlt;
-    _lnchOrPrevAltFg = fg;
+    _lnchAs2UpdateAlt(tft, 0, _lnchOrLabels, _lnchOrPs,
+                      _lnchOrPrevAlt, _lnchOrPrevAltFg);
 }
 
 static void _lnchOrUpdateVOrb(KCM_TFT &tft) {
@@ -405,24 +360,8 @@ static void _lnchOrUpdateVOrb(KCM_TFT &tft) {
 // green otherwise. warnAlt uses lowSpace (atmosphere top) not flyHigh —
 // flyHigh is a biome boundary (~18km Kerbin), not an orbital threshold.
 static void _lnchOrUpdateApA(KCM_TFT &tft) {
-    float apa = state.apoapsis;
-    int32_t iApA = (int32_t)roundf(apa);
-
-    float warnAlt = max(currentBody.minSafe, currentBody.lowSpace);
-    uint16_t fg;
-    String   val;
-    if (apa < 0) {                                         // escape: apoapsis undefined -> infinity
-        fg = TFT_DARK_GREEN; val = String("\x80");
-    } else {
-        fg  = (warnAlt > 0 && apa > 0 && apa < warnAlt) ? TFT_YELLOW : TFT_DARK_GREEN;
-        val = formatAlt((float)iApA);
-    }
-
-    if (iApA == _lnchOrPrevApA && fg == _lnchOrPrevApAFg) return;
-
-    _lnchOrDrawRowValue(tft, 2, val, fg, TFT_BLACK);
-    _lnchOrPrevApA = iApA;
-    _lnchOrPrevApAFg = fg;
+    _lnchAs2UpdateApA(tft, 2, _lnchOrLabels, _lnchOrPs,
+                      _lnchOrPrevApA, _lnchOrPrevApAFg);
 }
 
 static void _lnchOrUpdatePeA(KCM_TFT &tft) {
@@ -443,33 +382,9 @@ static void _lnchOrUpdatePeA(KCM_TFT &tft) {
 }
 
 static void _lnchOrUpdateTimeToAp(KCM_TFT &tft) {
-    float ttAp = state.timeToAp;
-    int32_t iTtAp = (int32_t)roundf(ttAp);
-
-    // Suppress display when no apoapsis (suborbital below surface) or vessel
-    // is on the pad / landed — same logic as ascent.
-    bool suppress = (state.apoapsis <= 0.0f) ||
-                    (state.situation & sit_PreLaunch) ||
-                    (state.situation & sit_Landed);
-
-    uint16_t fg;
-    String val;
-    if (suppress) {
-        val = "---";
-        fg = TFT_DARK_GREY;
-        iTtAp = -1 << 29;
-    } else {
-        if      (ttAp < 0)                   fg = TFT_RED;
-        else if (ttAp < LNCH_TOAPO_WARN_S)   fg = TFT_YELLOW;
-        else                                 fg = TFT_DARK_GREEN;
-        val = formatTimeCompact(ttAp);
-    }
-
-    if (iTtAp == _lnchOrPrevTimeToAp && fg == _lnchOrPrevTimeToApFg) return;
-
-    _lnchOrDrawRowValue(tft, 4, val, fg, TFT_BLACK);
-    _lnchOrPrevTimeToAp = iTtAp;
-    _lnchOrPrevTimeToApFg = fg;
+    // Suppress logic + thresholds identical to ascent; shared implementation.
+    _lnchAs2UpdateTimeToAp(tft, 4, _lnchOrLabels, _lnchOrPs,
+                           _lnchOrPrevTimeToAp, _lnchOrPrevTimeToApFg);
 }
 
 static void _lnchOrUpdateThrottle(KCM_TFT &tft) {
@@ -489,21 +404,8 @@ static void _lnchOrUpdateThrottle(KCM_TFT &tft) {
 }
 
 static void _lnchOrUpdateTBurn(KCM_TFT &tft) {
-    float tb = state.stageBurnTime;
-    int32_t iTb = (int32_t)roundf(tb);
-
-    uint16_t fg, bg;
-    thresholdColor(tb,
-                   LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
-                   LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
-                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-
-    if (iTb == _lnchOrPrevTBurn &&
-        fg == _lnchOrPrevTBurnFg && bg == _lnchOrPrevTBurnBg) return;
-
-    _lnchOrDrawRowValue(tft, 6, formatTimeCompact(tb), fg, bg);
-    _lnchOrPrevTBurn = iTb;
-    _lnchOrPrevTBurnFg = fg; _lnchOrPrevTBurnBg = bg;
+    _lnchAs2UpdateTBurn(tft, 6, _lnchOrLabels, _lnchOrPs,
+                        _lnchOrPrevTBurn, _lnchOrPrevTBurnFg, _lnchOrPrevTBurnBg);
 }
 
 static void _lnchOrUpdateDVStg(KCM_TFT &tft) {

@@ -1546,7 +1546,24 @@ static inline int16_t _lnchAs2RowY(uint8_t row) {
     return LNCH_AS2_RPANEL_Y + row * LNCH_AS2_ROW_H;
 }
 
-static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
+// ── Shared LNCH right-panel readout plumbing ───────────────────────────────
+// Both LNCH phases (Ascent + Circularization) render an identical 8-row numeric
+// readout panel: same LNCH_AS2_* geometry, same Black_28 labels / Black_36
+// values, same vertical divider, same 2-px horizontal group dividers. Only the
+// row LABELS and the set of group-divider rows differ between the phases. These
+// shared helpers hold the single implementation; each phase's public entry
+// points delegate to them, passing their own label array, PrintState array, and
+// divider-row list.
+//
+// Defined here in Screen_LNCH_Ascent.ino, which the Arduino build concatenates
+// BEFORE Screen_LNCH_Circ.ino (alphabetical order), so these file-scope statics
+// are visible to the Circularization phase's code as well.
+
+// Shared right-panel chrome: vertical divider, one label cell per row, and the
+// horizontal group dividers named in divRows. Font is LNCH_AS2_LBL_FONT
+// (Roboto_Black_28) — identical in both phases.
+static void _lnchAs2DrawPanelChrome(KCM_TFT &tft, const char *const *labels,
+                                    const uint8_t *divRows, uint8_t divCount) {
     // Vertical divider in the 2-px gap before the right panel
     tft.drawLine(LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y,
                  LNCH_AS2_RPANEL_X - 2, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
@@ -1559,20 +1576,15 @@ static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
         printDispChrome(tft, LNCH_AS2_LBL_FONT,
                         LNCH_AS2_RPANEL_X, _lnchAs2RowY(i),
                         LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
-                        _lnchAsLabels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
+                        labels[i], COL_LABEL, TFT_BLACK, COL_NO_BDR);
     }
 
-    // Horizontal group dividers — 2 px in TFT_GREY. Three logical groups:
-    //   rows 0-2: Alt.SL, ApA, T+Ap       (altitude trajectory)
-    //   rows 3-4: V.Srf/V.Orb, V.Vrt      (velocity)
-    //   rows 5-7: Thrtl, T.Brn, ΔV.Stg    (propulsion)
-    // Dividers sit in the 2-px gap between row groups (at y=dy-1 and y=dy,
-    // where dy = rowY(3) or rowY(5)). These rows sit OUTSIDE both adjacent
-    // rows' fillRect clear regions (printValue / printDispChrome clear
-    // y0+1..y0+h-2 inclusive), so the divider can't be nibbled when a
+    // Horizontal group dividers — 2 px in TFT_GREY. Each divider sits in the
+    // 2-px gap between row groups (at y=dy-1 and y=dy). These rows sit OUTSIDE
+    // both adjacent rows' fillRect clear regions (printValue / printDispChrome
+    // clear y0+1..y0+h-2 inclusive), so the divider can't be nibbled when a
     // value cell changes background colour (e.g. alarm state toggle).
-    static const uint8_t divRows[] = { 3, 5 };
-    for (uint8_t i = 0; i < sizeof(divRows); i++) {
+    for (uint8_t i = 0; i < divCount; i++) {
         int16_t dy = _lnchAs2RowY(divRows[i]);
         tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
                      LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
@@ -1583,23 +1595,41 @@ static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
     }
 }
 
-// Helper: draw a value in a row using library printValue. The value is
-// right-aligned in the cell; the label (already drawn by chrome) is used
-// only for paramW calculation so the value region doesn't overlap the label.
-static void _lnchAsDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
-                                 uint16_t fg, uint16_t bg) {
+static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
+    // Ascent group dividers: rows 0-2 (altitude trajectory), 3-4 (velocity),
+    // 5-7 (propulsion) → dividers above rows 3 and 5.
+    static const uint8_t divRows[] = { 3, 5 };
+    _lnchAs2DrawPanelChrome(tft, _lnchAsLabels, divRows, sizeof(divRows));
+}
+
+// Shared: draw a value in a readout row using library printValue. The value is
+// right-aligned in the cell; the label (already drawn by chrome) is used only
+// for paramW calculation so the value region doesn't overlap the label. Font is
+// LNCH_AS2_VAL_FONT (Roboto_Black_36) — identical in both LNCH phases.
+static void _lnchAs2DrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
+                                 uint16_t fg, uint16_t bg,
+                                 const char *const *labels, PrintState *ps) {
     printValue(tft, LNCH_AS2_VAL_FONT,
                LNCH_AS2_RPANEL_X, _lnchAs2RowY(row),
                LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
-               _lnchAsLabels[row], val,
+               labels[row], val,
                fg, bg, TFT_BLACK,
-               _lnchAsPs[row]);
+               ps[row]);
 }
 
-// Update each row. Each checks its own change detection and returns early if
-// unchanged. Order: Alt, ApA, T+Ap, V.Srf, V.Vrt, Throttle, T.Burn, ΔV.Stg.
+// ── Shared LNCH row updaters ───────────────────────────────────────────────
+// Alt / ApA / T+Ap / T.Brn use byte-identical threshold + formatter + suppress
+// logic in both LNCH phases; only the target row index, label array, PrintState
+// array, and change-detection caches differ, so those are passed as parameters.
+//
+// NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ
+// between the phases (Ascent flags a zero-throttle alarm while Circ treats
+// coasting as normal; Ascent change-detects ΔV.Stg at tenths precision while
+// Circ uses whole m/s). See their per-phase definitions.
 
-static void _lnchAsUpdateAlt(KCM_TFT &tft) {
+static void _lnchAs2UpdateAlt(KCM_TFT &tft, uint8_t row,
+                              const char *const *labels, PrintState *ps,
+                              int32_t &prevAlt, uint16_t &prevFg) {
     float alt = state.altitude;
     int32_t iAlt = (int32_t)roundf(alt);
 
@@ -1610,14 +1640,16 @@ static void _lnchAsUpdateAlt(KCM_TFT &tft) {
                 : (alt < altYellow)  ? TFT_YELLOW
                 : TFT_DARK_GREEN;
 
-    if (iAlt == _lnchAsPrevAlt && fg == _lnchAsPrevAltFg) return;
+    if (iAlt == prevAlt && fg == prevFg) return;
 
-    _lnchAsDrawRowValue(tft, 0, formatAlt((float)iAlt), fg, TFT_BLACK);
-    _lnchAsPrevAlt = iAlt;
-    _lnchAsPrevAltFg = fg;
+    _lnchAs2DrawRowValue(tft, row, formatAlt((float)iAlt), fg, TFT_BLACK, labels, ps);
+    prevAlt = iAlt;
+    prevFg  = fg;
 }
 
-static void _lnchAsUpdateApA(KCM_TFT &tft) {
+static void _lnchAs2UpdateApA(KCM_TFT &tft, uint8_t row,
+                              const char *const *labels, PrintState *ps,
+                              int32_t &prevApA, uint16_t &prevFg) {
     float apa = state.apoapsis;
     int32_t iApA = (int32_t)roundf(apa);
 
@@ -1631,14 +1663,16 @@ static void _lnchAsUpdateApA(KCM_TFT &tft) {
         val = formatAlt((float)iApA);
     }
 
-    if (iApA == _lnchAsPrevApA && fg == _lnchAsPrevApAFg) return;
+    if (iApA == prevApA && fg == prevFg) return;
 
-    _lnchAsDrawRowValue(tft, 1, val, fg, TFT_BLACK);
-    _lnchAsPrevApA = iApA;
-    _lnchAsPrevApAFg = fg;
+    _lnchAs2DrawRowValue(tft, row, val, fg, TFT_BLACK, labels, ps);
+    prevApA = iApA;
+    prevFg  = fg;
 }
 
-static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
+static void _lnchAs2UpdateTimeToAp(KCM_TFT &tft, uint8_t row,
+                                   const char *const *labels, PrintState *ps,
+                                   int32_t &prevT, uint16_t &prevFg) {
     float ttAp = state.timeToAp;
     int32_t iTtAp = (int32_t)roundf(ttAp);
 
@@ -1659,11 +1693,57 @@ static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
         val = formatTimeCompact(ttAp);
     }
 
-    if (iTtAp == _lnchAsPrevTimeToAp && fg == _lnchAsPrevTimeToApFg) return;
+    if (iTtAp == prevT && fg == prevFg) return;
 
-    _lnchAsDrawRowValue(tft, 2, val, fg, TFT_BLACK);
-    _lnchAsPrevTimeToAp = iTtAp;
-    _lnchAsPrevTimeToApFg = fg;
+    _lnchAs2DrawRowValue(tft, row, val, fg, TFT_BLACK, labels, ps);
+    prevT  = iTtAp;
+    prevFg = fg;
+}
+
+static void _lnchAs2UpdateTBurn(KCM_TFT &tft, uint8_t row,
+                                const char *const *labels, PrintState *ps,
+                                int32_t &prevTB, uint16_t &prevFg, uint16_t &prevBg) {
+    float tb = state.stageBurnTime;
+    int32_t iTb = (int32_t)roundf(tb);
+
+    uint16_t fg, bg;
+    thresholdColor(tb,
+                   LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
+                   LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
+                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+
+    if (iTb == prevTB && fg == prevFg && bg == prevBg) return;
+
+    _lnchAs2DrawRowValue(tft, row, formatTimeCompact(tb), fg, bg, labels, ps);
+    prevTB  = iTb;
+    prevFg  = fg;
+    prevBg  = bg;
+}
+
+// Per-phase wrapper: draws an Ascent readout value using the Ascent label and
+// PrintState arrays. Kept so the non-shared updaters (V.Srf/V.Vrt/Thrtl/ΔV.Stg)
+// call sites are unchanged.
+static void _lnchAsDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
+                                 uint16_t fg, uint16_t bg) {
+    _lnchAs2DrawRowValue(tft, row, val, fg, bg, _lnchAsLabels, _lnchAsPs);
+}
+
+// Update each row. Each checks its own change detection and returns early if
+// unchanged. Order: Alt, ApA, T+Ap, V.Srf, V.Vrt, Throttle, T.Burn, ΔV.Stg.
+
+static void _lnchAsUpdateAlt(KCM_TFT &tft) {
+    _lnchAs2UpdateAlt(tft, 0, _lnchAsLabels, _lnchAsPs,
+                      _lnchAsPrevAlt, _lnchAsPrevAltFg);
+}
+
+static void _lnchAsUpdateApA(KCM_TFT &tft) {
+    _lnchAs2UpdateApA(tft, 1, _lnchAsLabels, _lnchAsPs,
+                      _lnchAsPrevApA, _lnchAsPrevApAFg);
+}
+
+static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
+    _lnchAs2UpdateTimeToAp(tft, 2, _lnchAsLabels, _lnchAsPs,
+                           _lnchAsPrevTimeToAp, _lnchAsPrevTimeToApFg);
 }
 
 // Threshold for switching row 3 label from "V.Srf" to "V.Orb". Based on body
@@ -1775,20 +1855,8 @@ static void _lnchAsUpdateThrottle(KCM_TFT &tft) {
 }
 
 static void _lnchAsUpdateTBurn(KCM_TFT &tft) {
-    float tb = state.stageBurnTime;
-    int32_t iTb = (int32_t)roundf(tb);
-
-    uint16_t fg, bg;
-    thresholdColor(tb,
-                   LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
-                   LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
-                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-
-    if (iTb == _lnchAsPrevTBurn && fg == _lnchAsPrevTBurnFg && bg == _lnchAsPrevTBurnBg) return;
-
-    _lnchAsDrawRowValue(tft, 6, formatTimeCompact(tb), fg, bg);
-    _lnchAsPrevTBurn = iTb;
-    _lnchAsPrevTBurnFg = fg; _lnchAsPrevTBurnBg = bg;
+    _lnchAs2UpdateTBurn(tft, 6, _lnchAsLabels, _lnchAsPs,
+                        _lnchAsPrevTBurn, _lnchAsPrevTBurnFg, _lnchAsPrevTBurnBg);
 }
 
 static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
