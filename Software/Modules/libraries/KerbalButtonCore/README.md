@@ -5,7 +5,7 @@
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.9 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.10 (conformant)  
 
 ---
 
@@ -19,7 +19,7 @@ The library manages:
   (or 24 inputs via three registers — see *24-input switch-group modules*)
 - 12 RGB NeoPixel buttons (WS2811, tinyNeoPixel_Static)
 - 4 discrete LED outputs (2N3904 NPN switched, on/off only)
-- I2C target communication, fully conformant with system I2C Protocol v2.4
+- I2C target communication, fully conformant with system I2C Protocol v2.10
   (universal 3-byte header, transaction counter, lifecycle state machine)
 - Dual-buffer button state latching with guaranteed edge detection
 - Per-button LED state machine with core and extended states

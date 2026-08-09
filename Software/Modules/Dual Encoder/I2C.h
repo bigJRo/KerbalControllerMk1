@@ -8,7 +8,7 @@
  *
  * @brief       I2C target handler for the Dual Encoder Module.
  *
- *              Conformant with I2C Protocol Specification v2.9. Data packet
+ *              Conformant with I2C Protocol Specification v2.10. Data packet
  *              (module → controller, 7 bytes, spec §9.5):
  *                Byte 0:  Status byte    (lifecycle/fault/data-changed)
  *                Byte 1:  Module Type ID

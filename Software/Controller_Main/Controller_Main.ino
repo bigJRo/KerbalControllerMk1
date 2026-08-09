@@ -33,7 +33,7 @@ extern "C" void usb_init(void);
 #define RES_MC 0x11   // Resource Display slave (KCM_I2C_ADDR_RESDISP)
 #define INFO_MC 0x12  // Info Display slave    (KCM_I2C_ADDR_INFODISP)
 
-// I2C module addresses — Module UI Reference / I2C Protocol Specification v2.6 registry.
+// I2C module addresses — Module UI Reference / I2C Protocol Specification v2.10 registry.
 #define UI_MOD 0x20           // UI Control          (KMC_TYPE_UI_CONTROL)
 #define Function_MOD 0x21     // Function Control    (KMC_TYPE_FUNCTION_CONTROL, 24-input)
 #define ActionCtrl_MOD 0x22   // Action Control      (KMC_TYPE_ACTION_CONTROL)

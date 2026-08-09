@@ -175,7 +175,7 @@ Full bus address map:
 
 ## Protocol Reference
 
-Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6 (§9.1.1 switch-group variant)
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.10 (§9.1.1 switch-group variant)
 
 Button state packet (module → controller, INT-triggered, 9 bytes):
 ```

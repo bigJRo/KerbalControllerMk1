@@ -205,7 +205,7 @@ This module occupies address `0x26`. The system controller expects `KMC_TYPE_AUX
 
 ## Protocol Reference
 
-Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.10
 
 Standard 7-byte button state packet (module → controller, INT-triggered): a 3-byte universal header followed by a 4-byte payload (button events HI/LO, change mask HI/LO).
 

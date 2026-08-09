@@ -39,7 +39,7 @@ static bool _intAsserted = false;
 static bool _localEnable = true;
 
 // Lifecycle (KMC_STATUS_*), transaction counter, and fault flag for
-// I2C Protocol v2.4 conformance. _enabled tracks the motor/LED active
+// I2C Protocol v2.10 conformance. _enabled tracks the motor/LED active
 // state and equals (lifecycle == ACTIVE).
 static uint8_t _lifecycle = KMC_STATUS_BOOT_READY;
 static uint8_t _txCounter = 0;

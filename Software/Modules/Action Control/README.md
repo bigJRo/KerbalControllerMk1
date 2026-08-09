@@ -154,7 +154,7 @@ This module occupies address `0x22`. The system controller expects `KBC_TYPE_ACT
 
 ## Protocol Reference
 
-Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.10
 
 Button state packet (module → controller, INT-triggered, 7 bytes):
 ```

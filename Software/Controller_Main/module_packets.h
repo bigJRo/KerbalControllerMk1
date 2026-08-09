@@ -5,7 +5,7 @@
    Single source of truth for resolving, per module Type ID, the total number of
    bytes the controller must read from a target on each INT-triggered read, and
    for parsing the universal 3-byte packet header that every conformant module
-   (I2C Protocol Specification v2.6) places ahead of its payload.
+   (I2C Protocol Specification v2.10) places ahead of its payload.
 
    Every data packet is:
        Byte 0: Status byte       (lifecycle bits 1:0, fault bit 2, data-changed bit 3)
@@ -55,7 +55,7 @@
 // ============================================================
 //  Total packet size (header + payload) by module Type ID
 //
-//  Payload sizes per I2C Protocol Specification v2.6 §8/§9:
+//  Payload sizes per I2C Protocol Specification v2.10 §8/§9:
 //    standard button (16-input)      4-byte payload -> 7 total
 //    switch-group button (24-input)  6-byte payload -> 9 total  (0x21, 0x24)
 //    joystick                        9-byte payload -> 12 total (0x09, 0x0A)

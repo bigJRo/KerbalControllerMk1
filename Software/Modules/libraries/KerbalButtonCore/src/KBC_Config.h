@@ -43,7 +43,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
- *              Protocol defined in I2C_Protocol_Specification.md v2.9
+ *              Protocol defined in I2C_Protocol_Specification.md v2.10
  *              Schematic reference: KC-01-1801 (Button) / KC-01-1811 (Wide Button)
  */
 

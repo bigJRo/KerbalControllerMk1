@@ -25,7 +25,7 @@
 static bool _intAsserted = false;
 
 // Lifecycle (KMC_STATUS_*), transaction counter, and fault flag for
-// I2C Protocol v2.4 conformance.
+// I2C Protocol v2.10 conformance.
 static uint8_t _lifecycle = KMC_STATUS_BOOT_READY;
 static uint8_t _txCounter = 0;
 static bool    _fault     = false;

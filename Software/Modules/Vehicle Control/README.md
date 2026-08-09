@@ -179,7 +179,7 @@ After flashing, the module powers on dark (BOOT_READY → DISABLED). Once the co
 
 ## Protocol Reference
 
-Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.6 (§9.1.1 switch-group variant)
+Full I2C protocol specification: `I2C_Protocol_Specification.md` v2.10 (§9.1.1 switch-group variant)
 
 Identity response capability flags: `0x01` (KBC_CAP_EXTENDED_STATES) — the system controller uses this to know extended LED states are valid for this module.
 

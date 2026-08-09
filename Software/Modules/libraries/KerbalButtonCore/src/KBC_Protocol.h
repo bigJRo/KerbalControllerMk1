@@ -18,7 +18,7 @@
  *              library without coupling to a specific I2C implementation.
  *
  *              v2.0 brings the library to full conformance with the
- *              system I2C Protocol Specification v2.9: every data packet
+ *              system I2C Protocol Specification v2.10: every data packet
  *              now carries the universal 3-byte header (status byte,
  *              module type ID, transaction counter) ahead of the
  *              button-event payload, and the full lifecycle command set
@@ -26,7 +26,7 @@
  *              modules read 24 inputs (KBC_INPUT_COUNT == 24) and emit a
  *              6-byte payload (9-byte total packet).
  *
- *              Full protocol specification: I2C_Protocol_Specification.md v2.9
+ *              Full protocol specification: I2C_Protocol_Specification.md v2.10
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

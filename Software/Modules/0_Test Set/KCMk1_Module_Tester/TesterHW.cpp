@@ -6,7 +6,7 @@
  * @organization Jeb's Controller Works
  *
  * @brief       Hardware I/O implementation: shared-bus I2C controller ops,
- *              packet parsing to the current protocol (v2.9), and the INA228
+ *              packet parsing to the current protocol (v2.10), and the INA228
  *              power monitor.
  *
  * @license     GNU General Public License v3.0 (GPL-3.0)
