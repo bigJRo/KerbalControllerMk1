@@ -48,6 +48,47 @@
    Priority (high -> low): TERRAIN/PULL UP > SINK RATE > TOO LOW GEAR > MINIMUMS >
    altitude ladder. Exactly one condition owns the audio each frame.
 
+   COVERAGE vs A REAL GPWS (conscious scope decisions)
+   A classic ground-proximity warning computer has seven modes plus the EGPWS/TAWS
+   forward-looking additions. KSP/KerbalSimpit exposes only surface altitude, vertical
+   speed, surface speed, gear and situation -- there is no forward-looking terrain,
+   ILS glideslope, flap position, roll angle or wind. So we implement the modes those
+   inputs can support and DELIBERATELY OMIT the rest rather than fake them:
+     Mode 1  Excessive descent rate ....... IMPLEMENTED. SINK RATE (altitude-scaled
+                                            rate boundary) and the hard PULL UP envelope.
+     Mode 2  Excessive terrain closure ..... ADAPTED/FOLDED. No forward-looking terrain,
+                                            so closure is approximated by time-to-impact
+                                            on surface altitude; "TERRAIN" is the hard-
+                                            warning entry annunciation before PULL UP.
+     Mode 3  Altitude loss after takeoff ... NOT IMPLEMENTED ("DON'T SINK"). Feasible in
+                                            KSP but needs takeoff/climb-phase tracking;
+                                            deferred, not a data limitation.
+     Mode 4  Unsafe terrain clearance ...... PARTIAL. 4A TOO LOW GEAR implemented. 4B
+                                            TOO LOW FLAPS omitted (no flap state in
+                                            Simpit); 4C climb-clearance term omitted.
+     Mode 5  Below glideslope .............. NOT IMPLEMENTED ("GLIDESLOPE"). No ILS.
+     Mode 6  Advisory callouts ............. PARTIAL. Altitude ladder + MINIMUMS
+                                            implemented; BANK ANGLE omitted (no roll
+                                            telemetry subscribed).
+     Mode 7  Windshear .................... NOT IMPLEMENTED. No wind/windshear data.
+     EGPWS   Forward-looking terrain (TCF/ .. NOT IMPLEMENTED. No terrain database or
+             TAD), "TERRAIN AHEAD" .......... GPS look-ahead in KSP.
+   See the coverage table in KCMk1_Annunciator/README.md for the same summary.
+
+   CALLOUT CADENCE vs A REAL GPWS
+   Real-system behaviour we match, and where we deliberately differ:
+     - Altitude callouts / MINIMUMS: spoken ONCE per descent through the level, never
+       repeated. Matches Mode 6 advisory behaviour exactly.
+     - PULL UP (Mode 1/2 hard): a real "WHOOP WHOOP PULL UP" repeats essentially
+       gaplessly while in the envelope. We replay every GPWS_HARD_GAP_MS (~ one clip
+       length) gated on the BUSY line, giving a near-continuous repeat with no overlap.
+     - SINK RATE (Mode 1): real systems repeat the aural roughly every 1-1.5 s while in
+       the envelope. We use GPWS_SINK_GAP_MS in that band.
+     - TOO LOW GEAR (Mode 4A): a real system re-annunciates while the aircraft stays in
+       the envelope. We deliberately speak it ONCE per entry (re-arms when the condition
+       clears) to avoid nagging on a slow KSP approach -- a conscious simplification.
+       The numeric ladder is what tracks the continued descent afterwards.
+
    The DFPlayer path plays numbered clips from ITS OWN microSD card (not the Teensy
    BMP card). The clip-number map is the GPWS_CLIP_* enum below and is documented in
    KCMk1_Annunciator/README.md (folder /01, tracks 001..016).

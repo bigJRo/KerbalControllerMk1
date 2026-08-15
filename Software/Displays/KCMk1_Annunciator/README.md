@@ -135,8 +135,8 @@ The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConf
 | `GPWS_DESCENT_DEADBAND_MS` | `0.1` m/s | `|vel_vert|` below this is treated as level flight. |
 | `GPWS_ALT_JUMP_M` | `2000.0` m | Single-frame surface-altitude jump that re-seeds the callout tracker (vessel switch / warp / terrain step) without a spurious callout. |
 | `GPWS_MIN_DEDUP_M` | `8.0` m | A ladder rung within this of the threshold is spoken as "MINIMUMS" instead of its number. |
-| `GPWS_HARD_GAP_MS` | `1400` ms | Minimum gap between repeated PULL UP callouts. |
-| `GPWS_SINK_GAP_MS` | `1800` ms | Minimum gap between repeated SINK RATE callouts. |
+| `GPWS_HARD_GAP_MS` | `1400` ms | Minimum gap between repeated PULL UP callouts (≈ one clip length → near-continuous, like a real "WHOOP WHOOP PULL UP"). |
+| `GPWS_SINK_GAP_MS` | `1500` ms | Minimum gap between repeated SINK RATE callouts (real systems repeat ≈ every 1–1.5 s). |
 
 **Master alarm mask** — the set of C&W bits that illuminate MASTER ALARM and drive audio. Defined in `AAA_Config.ino` using the `CW_*` constants from `KCMk1_Annunciator.h`. Current mask (9 bits): `GROUND_PROX`, `HIGH_G`, `BUS_VOLTAGE`, `HIGH_TEMP`, `LOW_DV`, `ABORT`, `PE_LOW`, `PROP_LOW`, `LIFE_SUPPORT`.
 
@@ -322,6 +322,23 @@ Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are ass
 | 5 | Altitude ladder | number, once per rung | ACTIVE | descending through a fixed AGL rung |
 
 Playback is fully **non-blocking**: `gpwsUpdate()` never calls `delay()`; recurring warnings re-arm from `millis()` cadence timers and the DFPlayer **BUSY** line (`isPlaying()`, pin 11). Hard warnings preempt a soft clip already playing; soft callouts only start when the player is idle. Altitude callouts **defer rather than drop**: while a higher-priority warning owns the audio (or the player is finishing a clip), the crossing tracker (`_prevAlt`) is held, so when the audio frees up the callout for the vessel's *current* altitude is spoken — not a stale backlog of every rung passed during the warning. The callout tracker is reset on scene exit and vessel switch (`gpwsReset()` from `SimpitHandler.ino`) and re-seeds on any large single-frame altitude jump, so callouts never carry across a flight boundary.
+
+**Coverage vs. a real GPWS.** A classic ground-proximity warning computer has seven modes plus the EGPWS/TAWS forward-looking additions. KSP/KerbalSimpit exposes only surface altitude, vertical speed, surface speed, gear and situation — there is no forward-looking terrain, ILS glideslope, flap position, roll angle or wind — so the modes those inputs can't support are **deliberately omitted rather than faked**:
+
+| Real GPWS mode | Callout(s) | Status here | Why |
+|----------------|-----------|-------------|-----|
+| **Mode 1** — Excessive descent rate | SINK RATE → PULL UP | ✅ Implemented | SINK RATE = altitude-scaled rate boundary; the hard PULL UP envelope covers the Mode-1 pull-up |
+| **Mode 2** — Excessive terrain closure | TERRAIN, TERRAIN → PULL UP | ◐ Adapted | No forward-looking terrain; closure approximated by time-to-impact on surface altitude. "TERRAIN" is the hard-warning entry annunciation |
+| **Mode 3** — Altitude loss after takeoff / go-around | DON'T SINK | ✗ Not implemented | Feasible in KSP but needs takeoff/climb-phase tracking — deferred, not a data limitation |
+| **Mode 4** — Unsafe terrain clearance (not in landing config) | TOO LOW GEAR / TOO LOW FLAPS / TOO LOW TERRAIN | ◐ Partial | Only 4A **TOO LOW GEAR**. No flap state in Simpit (4B); no climb-clearance term (4C) |
+| **Mode 5** — Below glideslope | GLIDESLOPE | ✗ Not implemented | No ILS/glideslope in KSP |
+| **Mode 6** — Advisory callouts | altitude callouts, MINIMUMS, BANK ANGLE | ◐ Partial | Altitude ladder + MINIMUMS implemented; **BANK ANGLE** omitted (no roll telemetry subscribed) |
+| **Mode 7** — Windshear (reactive) | WINDSHEAR | ✗ Not implemented | No wind/windshear telemetry |
+| **EGPWS/TAWS** — forward-looking terrain (TCF/TAD) | TERRAIN AHEAD, OBSTACLE AHEAD | ✗ Not implemented | No terrain database / GPS look-ahead in KSP |
+
+Legend: ✅ implemented · ◐ partial/adapted · ✗ not implemented. The same summary is mirrored in the `GPWS.ino` header ("COVERAGE vs A REAL GPWS").
+
+**Callout cadence vs. a real GPWS.** Altitude callouts and MINIMUMS are spoken **once** per descent through the level (matches Mode-6 advisory behaviour). **PULL UP** repeats every `GPWS_HARD_GAP_MS` (≈ one clip length, BUSY-gated) — a near-continuous repeat like a real "WHOOP WHOOP PULL UP". **SINK RATE** repeats every `GPWS_SINK_GAP_MS` (~1.5 s, matching the ~1–1.5 s real-system rate). **TOO LOW GEAR** is spoken **once per entry** and re-arms when the condition clears — a conscious simplification of the real Mode-4 re-annunciation to avoid nagging on a slow KSP approach; the numeric ladder then tracks the continued descent.
 
 **DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply numbered clips `001.mp3`…`016.mp3`; suggested spoken text:
 

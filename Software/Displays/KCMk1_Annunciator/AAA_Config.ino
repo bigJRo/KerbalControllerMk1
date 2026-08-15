@@ -158,8 +158,12 @@ const float    GPWS_SINK_RATE_SLOPE      = 0.08f;   // added allowed descent rat
 const float    GPWS_DESCENT_DEADBAND_MS  = 0.1f;    // |vel_vert| below this is treated as level (m/s)
 const float    GPWS_ALT_JUMP_M           = 2000.0f; // single-frame alt jump that re-seeds crossings (vessel switch/warp)
 const float    GPWS_MIN_DEDUP_M          = 8.0f;    // ladder rung within this of threshold spoken as MINIMUMS (m)
+// Repeat cadences, chosen against real-GPWS behaviour (see GPWS.ino "CALLOUT CADENCE"):
+//   PULL UP  -- a real "WHOOP WHOOP PULL UP" repeats near-gaplessly; ~1 clip length
+//               gated on the BUSY line gives a continuous repeat with no overlap.
+//   SINK RATE -- real systems re-annunciate roughly every 1-1.5 s while in the envelope.
 const uint16_t GPWS_HARD_GAP_MS          = 1400;    // min gap between repeated PULL UP callouts (ms)
-const uint16_t GPWS_SINK_GAP_MS          = 1800;    // min gap between repeated SINK RATE callouts (ms)
+const uint16_t GPWS_SINK_GAP_MS          = 1500;    // min gap between repeated SINK RATE callouts (ms) -- ~real-system rate
 
 /***************************************************************************************
    TAC LIFE SUPPORT CONSUMPTION RATES
