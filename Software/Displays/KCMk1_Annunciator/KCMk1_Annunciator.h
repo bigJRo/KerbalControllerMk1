@@ -346,8 +346,9 @@ extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 // From AAA_Config.ino -- GPWS function tunables (see GPWS.ino)
 extern const uint8_t  GPWS_VOLUME;
 extern const float    GPWS_PULLUP_S;
-extern const float    GPWS_SINK_S;
-extern const float    GPWS_SINK_MIN_MS;
+extern const float    GPWS_SINK_CEIL_M;
+extern const float    GPWS_SINK_RATE_FLOOR_MS;
+extern const float    GPWS_SINK_RATE_SLOPE;
 extern const float    GPWS_DESCENT_DEADBAND_MS;
 extern const float    GPWS_ALT_JUMP_M;
 extern const float    GPWS_MIN_DEDUP_M;

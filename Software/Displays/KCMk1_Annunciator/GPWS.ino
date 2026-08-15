@@ -171,14 +171,25 @@ static void gpwsClearLatches() {
   _gearLatched = false;
 }
 
-// Lowest ladder/minimums rung the vessel just descended THROUGH this frame.
-// Returns the clip number, or 0 if no rung was crossed. "Lowest" (closest to the
-// ground) wins when a fast descent crosses several rungs in one frame.
+// True when the relayed altitude threshold is a sane decision height. Shared by the
+// ladder/MINIMUMS crossing check and the TOO LOW GEAR altitude gate so both consumers
+// agree on what a usable threshold is -- a garbled 0/negative or absurd value from an
+// unconfigured GPWS Input panel disables both threshold-based callouts rather than
+// disabling only MINIMUMS while leaving the gear warning on a bogus altitude.
+static inline bool gpwsThresholdValid() {
+  float thr = (float)_gpwsThreshold;
+  return (thr >= GPWS_MIN_THRESHOLD_M && thr <= GPWS_MAX_THRESHOLD_M);
+}
+
+// Lowest ladder/minimums rung the vessel just descended THROUGH between prevAlt and
+// alt. Returns the clip number, or 0 if no rung was crossed. "Lowest" (closest to the
+// ground) wins when several rungs are crossed in one span -- so a callout deferred
+// behind higher-priority audio announces the vessel's CURRENT altitude, not a backlog.
 static uint8_t gpwsCrossedClip(float prevAlt, float alt) {
   uint8_t  best     = 0;
   float    bestAlt  = 1e9f;
   float    thr      = (float)_gpwsThreshold;
-  bool     thrValid = (thr >= GPWS_MIN_THRESHOLD_M && thr <= GPWS_MAX_THRESHOLD_M);
+  bool     thrValid = gpwsThresholdValid();
 
   // Fixed numeric rungs (masking any rung that collides with the minimums callout).
   for (uint8_t i = 0; i < GPWS_LADDER_COUNT; i++) {
@@ -239,7 +250,7 @@ void gpwsSetConfig(uint8_t cfgByte, int16_t thresholdM) {
    Config (mode/flags/threshold) is preserved -- it is owned by the master.
 ****************************************************************************************/
 void gpwsReset() {
-  if (_busyAttached) gpwsDfp.stop();
+  gpwsDfp.stop();   // plain UART command -- does not need the BUSY sense line
   gpwsClearLatches();
   _gpwsEnabled = false;
 }
@@ -262,13 +273,24 @@ void gpwsSetup() {
    UPDATE
    Call every loop() pass. Evaluates GPWS conditions from `state` and drives the
    DFPlayer. Highest-priority active condition owns the audio each frame.
+
+   CROSSING-TRACKER DISCIPLINE
+   `_prevAlt` is the altitude-ladder crossing detector. It is advanced to the current
+   altitude ONLY when the ladder is actually serviced this frame -- either a rung
+   callout is spoken, or no rung is pending. While a higher-priority condition
+   (TERRAIN/PULL UP, SINK RATE, TOO LOW GEAR) owns the audio, or the DFPlayer is still
+   busy with the previous clip, `_prevAlt` is LEFT UNTOUCHED so the pending crossing
+   survives. Because gpwsCrossedClip() returns the LOWEST rung crossed across the whole
+   [_prevAlt, alt] span, a deferred callout announces the vessel's CURRENT altitude
+   rather than replaying a stale backlog. This is why the higher-priority branches
+   below do not write `_prevAlt`.
 ****************************************************************************************/
 void gpwsUpdate() {
   // --- Enable gate: flight scene, audio on, GPWS not OFF -----------------------
   bool enabled = flightScene && audioEnabled && (_gpwsMode != GPWS_MODE_OFF);
   if (!enabled) {
     if (_gpwsEnabled) {                 // just became disabled -- hush and flush
-      if (_busyAttached) gpwsDfp.stop();
+      gpwsDfp.stop();                   // plain UART command -- BUSY line not required
       gpwsClearLatches();
     }
     _gpwsEnabled = false;
@@ -297,6 +319,23 @@ void gpwsUpdate() {
   }
 
   uint32_t now = millis();
+  bool busy = _busyAttached && gpwsDfp.isPlaying();
+
+  // --- Gear condition + latch re-arm -------------------------------------------
+  // Evaluated EVERY frame, before any priority early-return, so the latch clears the
+  // instant the condition clears (gear deployed or climbed back up) even while a
+  // higher-priority episode owns the audio. Otherwise the warning could not re-arm.
+  bool gearCond = airDesc && !state.gear_on &&
+                  gpwsThresholdValid() && alt < (float)_gpwsThreshold;
+  if (!gearCond) _gearLatched = false;
+
+  // --- SINK RATE condition -----------------------------------------------------
+  // Excessive descent RATE for the current altitude (Mode-1 style), not merely "any
+  // descent". Only evaluated near the ground (below GPWS_SINK_CEIL_M); the allowed
+  // rate scales with altitude so a normal approach does not nag, but a steep sink
+  // near terrain does. Gated on ACTIVE mode.
+  bool sinkExcessive = softEnabled && airDesc && alt < GPWS_SINK_CEIL_M &&
+                       vs > (GPWS_SINK_RATE_FLOOR_MS + alt * GPWS_SINK_RATE_SLOPE);
 
   // --- Priority 1: HARD warning -- TERRAIN then recurring PULL UP ---------------
   if (hardEnabled && airDesc && tImpact < GPWS_PULLUP_S) {
@@ -305,49 +344,52 @@ void gpwsUpdate() {
       gpwsPlay(GPWS_CLIP_TERRAIN);     // entry annunciation preempts any soft clip
       _terrainDone = true;
       _lastHardMs  = now;
-    } else if ((!_busyAttached || !gpwsDfp.isPlaying()) &&
-               (now - _lastHardMs) >= GPWS_HARD_GAP_MS) {
+    } else if (!busy && (now - _lastHardMs) >= GPWS_HARD_GAP_MS) {
       gpwsPlay(GPWS_CLIP_PULL_UP);
       _lastHardMs = now;
     }
-    _prevAlt = alt;
-    return;
+    return;                            // defer ladder -- do not advance _prevAlt
   }
   _hardActive  = false;
   _terrainDone = false;
 
   // Below here, everything is a soft callout -- only in ACTIVE mode.
+  // Keep the tracker current so no stale backlog builds while soft callouts are off.
   if (!softEnabled) { _prevAlt = alt; return; }
 
-  bool busy = _busyAttached && gpwsDfp.isPlaying();
-
   // --- Priority 2: SINK RATE (recurring caution) -------------------------------
-  if (airDesc && tImpact < GPWS_SINK_S && vs > GPWS_SINK_MIN_MS) {
+  if (sinkExcessive) {
     if (!busy && (now - _lastSinkMs) >= GPWS_SINK_GAP_MS) {
       gpwsPlay(GPWS_CLIP_SINK_RATE);
       _lastSinkMs = now;
     }
-    _prevAlt = alt;
-    return;
+    return;                            // defer ladder -- do not advance _prevAlt
   }
 
   // --- Priority 3: TOO LOW GEAR (once, until condition clears) ------------------
-  bool gearCond = airDesc && !state.gear_on && alt < (float)_gpwsThreshold;
   if (gearCond) {
     if (!_gearLatched && !busy) {
       gpwsPlay(GPWS_CLIP_TOO_LOW_GEAR);
       _gearLatched = true;
     }
-    _prevAlt = alt;
-    return;    // gear check supersedes the numeric ladder
+    return;                            // supersedes the ladder -- do not advance _prevAlt
   }
-  _gearLatched = false;
 
   // --- Priority 4: altitude ladder + MINIMUMS (descent crossings) --------------
   if (airDesc && _prevAlt > 0.0f) {
     uint8_t clip = gpwsCrossedClip(_prevAlt, alt);
-    if (clip != 0 && !busy) gpwsPlay(clip);
+    if (clip != 0) {
+      // Advance past the rung ONLY when the callout is actually spoken. If the player
+      // is busy, leave _prevAlt so the crossing is retried on the next idle frame
+      // (gpwsCrossedClip will then pick the lowest still-relevant rung).
+      if (!busy) {
+        gpwsPlay(clip);
+        _prevAlt = alt;
+      }
+      return;
+    }
   }
 
+  // No pending callout -- track altitude normally.
   _prevAlt = alt;
 }

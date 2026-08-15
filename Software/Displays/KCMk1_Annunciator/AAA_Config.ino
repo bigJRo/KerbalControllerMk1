@@ -148,8 +148,13 @@ const uint8_t  GPWS_VOLUME               = 24;      // DFPlayer volume (0..30)
 // PULL UP aligned with CW_GROUND_PROX so the voice warning and the master-alarm tone
 // fire together in the imminent-impact window.
 const float    GPWS_PULLUP_S             = KCM_GROUND_PROX_S; // time-to-impact for TERRAIN/PULL UP (s)
-const float    GPWS_SINK_S               = 20.0f;   // time-to-impact upper bound for SINK RATE (s)
-const float    GPWS_SINK_MIN_MS          = 5.0f;    // min descent rate for SINK RATE (m/s) -- ignores gentle sink
+// SINK RATE (Mode-1 style): fires only near the ground when the descent RATE exceeds an
+// altitude-scaled boundary, so a normal approach does not nag but a steep sink does.
+// Boundary: excessive when |vel_vert| > GPWS_SINK_RATE_FLOOR_MS + alt * GPWS_SINK_RATE_SLOPE.
+// Defaults: ~3.8 m/s at 10 m, ~7 m/s at 50 m, ~11 m/s at 100 m, ~27 m/s at 300 m.
+const float    GPWS_SINK_CEIL_M          = 300.0f;  // only evaluate SINK RATE below this AGL (m)
+const float    GPWS_SINK_RATE_FLOOR_MS   = 3.0f;    // base excessive descent rate at ground (m/s)
+const float    GPWS_SINK_RATE_SLOPE      = 0.08f;   // added allowed descent rate per metre AGL (m/s per m)
 const float    GPWS_DESCENT_DEADBAND_MS  = 0.1f;    // |vel_vert| below this is treated as level (m/s)
 const float    GPWS_ALT_JUMP_M           = 2000.0f; // single-frame alt jump that re-seeds crossings (vessel switch/warp)
 const float    GPWS_MIN_DEDUP_M          = 8.0f;    // ladder rung within this of threshold spoken as MINIMUMS (m)

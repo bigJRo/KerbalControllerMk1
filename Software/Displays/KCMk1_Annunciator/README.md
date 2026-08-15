@@ -129,8 +129,9 @@ The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConf
 |----------|---------|-------------|
 | `GPWS_VOLUME` | `24` | DFPlayer voice volume (0–30). |
 | `GPWS_PULLUP_S` | `10.0` s | Time-to-impact at/below which TERRAIN then PULL UP sound (aliases `KCM_GROUND_PROX_S` so voice and master-alarm tone align). |
-| `GPWS_SINK_S` | `20.0` s | Time-to-impact upper bound for the SINK RATE caution. |
-| `GPWS_SINK_MIN_MS` | `5.0` m/s | Minimum descent rate for SINK RATE — gentle descents are ignored. |
+| `GPWS_SINK_CEIL_M` | `300.0` m | SINK RATE is only evaluated below this AGL. |
+| `GPWS_SINK_RATE_FLOOR_MS` | `3.0` m/s | Base excessive-descent-rate boundary at ground level. |
+| `GPWS_SINK_RATE_SLOPE` | `0.08` m/s per m | Added allowed descent rate per metre AGL — SINK RATE fires when `|vel_vert| > floor + alt × slope` (≈7 m/s at 50 m, ≈11 m/s at 100 m). |
 | `GPWS_DESCENT_DEADBAND_MS` | `0.1` m/s | `|vel_vert|` below this is treated as level flight. |
 | `GPWS_ALT_JUMP_M` | `2000.0` m | Single-frame surface-altitude jump that re-seeds the callout tracker (vessel switch / warp / terrain step) without a spurious callout. |
 | `GPWS_MIN_DEDUP_M` | `8.0` m | A ladder rung within this of the threshold is spoken as "MINIMUMS" instead of its number. |
@@ -315,12 +316,12 @@ Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are ass
 | Priority | Callout | Clip(s) | Mode gate | Condition |
 |----------|---------|---------|-----------|-----------|
 | 1 | TERRAIN → PULL UP | `TERRAIN` once, then `PULL UP` repeating (`GPWS_HARD_GAP_MS`) | proxAlarm armed (ACTIVE or PROX) | `t < GPWS_PULLUP_S` — preempts any soft clip |
-| 2 | SINK RATE | `SINK RATE` repeating (`GPWS_SINK_GAP_MS`) | ACTIVE | `t < GPWS_SINK_S` and descent rate > `GPWS_SINK_MIN_MS` |
+| 2 | SINK RATE | `SINK RATE` repeating (`GPWS_SINK_GAP_MS`) | ACTIVE | below `GPWS_SINK_CEIL_M` and descent rate exceeds the altitude-scaled boundary `GPWS_SINK_RATE_FLOOR_MS + alt × GPWS_SINK_RATE_SLOPE` |
 | 3 | TOO LOW GEAR | `TOO LOW, GEAR` once | ACTIVE | gear up and `alt_surf < threshold` |
 | 4 | MINIMUMS | `MINIMUMS` once | ACTIVE | descending through `threshold` |
 | 5 | Altitude ladder | number, once per rung | ACTIVE | descending through a fixed AGL rung |
 
-Playback is fully **non-blocking**: `gpwsUpdate()` never calls `delay()`; recurring warnings re-arm from `millis()` cadence timers and the DFPlayer **BUSY** line (`isPlaying()`, pin 11). Hard warnings preempt a soft clip already playing; soft callouts only start when the player is idle. The callout tracker is reset on scene exit and vessel switch (`gpwsReset()` from `SimpitHandler.ino`) and re-seeds on any large single-frame altitude jump, so callouts never carry across a flight boundary.
+Playback is fully **non-blocking**: `gpwsUpdate()` never calls `delay()`; recurring warnings re-arm from `millis()` cadence timers and the DFPlayer **BUSY** line (`isPlaying()`, pin 11). Hard warnings preempt a soft clip already playing; soft callouts only start when the player is idle. Altitude callouts **defer rather than drop**: while a higher-priority warning owns the audio (or the player is finishing a clip), the crossing tracker (`_prevAlt`) is held, so when the audio frees up the callout for the vessel's *current* altitude is spoken — not a stale backlog of every rung passed during the warning. The callout tracker is reset on scene exit and vessel switch (`gpwsReset()` from `SimpitHandler.ino`) and re-seeds on any large single-frame altitude jump, so callouts never carry across a flight boundary.
 
 **DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply numbered clips `001.mp3`…`016.mp3`; suggested spoken text:
 
