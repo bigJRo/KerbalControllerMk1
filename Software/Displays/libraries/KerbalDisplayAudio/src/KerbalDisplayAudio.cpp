@@ -31,18 +31,32 @@ static inline AudioState _restState() {
   return _alarmSilenced ? AUDIO_MASTER_ALARM_SILENCED : AUDIO_IDLE;
 }
 
+// Amplifier enable (PAM8302A /SD via AUDIO_EN_PIN, active-high):
+//   true  -> HIGH -> amp powered, ready to sound
+//   false -> LOW  -> amp shut down (mutes Class-D idle hiss between cues)
+// Enable just before tone() and disable right after noTone() at each idle
+// transition. Compiles to nothing when AUDIO_EN_PIN == AUDIO_EN_NONE.
+static inline void _ampEnable(bool on) {
+  if (AUDIO_EN_PIN != AUDIO_EN_NONE) digitalWrite(AUDIO_EN_PIN, on ? HIGH : LOW);
+}
+
 // Internal: start a chirp sequence (used by audioAlertChirp and audioCautionChirp)
 static void _startChirp(bool ascending) {
   _chirpAscending  = ascending;
   _chirpSecondNote = false;
   _audioPhaseStart = millis();
   _audioState      = AUDIO_CHIRP;
+  _ampEnable(true);
   tone(AUDIO_PIN, ascending ? AUDIO_CHIRP_ALERT_LO : AUDIO_CHIRP_CAUTION_HI);
 }
 
 void setupAudio() {
   pinMode(AUDIO_PIN, OUTPUT);
   noTone(AUDIO_PIN);
+  if (AUDIO_EN_PIN != AUDIO_EN_NONE) {
+    pinMode(AUDIO_EN_PIN, OUTPUT);
+    _ampEnable(false);          // amp stays shut down until a cue sounds
+  }
 }
 
 void updateAudio() {
@@ -61,6 +75,7 @@ void updateAudio() {
       } else {
         if (now - _audioPhaseStart >= AUDIO_CHIRP_NOTE_MS) {
           noTone(AUDIO_PIN);
+          _ampEnable(false);
           _audioState = _restState();  // back to silenced latch, or idle
         }
       }
@@ -69,6 +84,7 @@ void updateAudio() {
     case AUDIO_CAUTION_TONE:
       if (now - _audioPhaseStart >= AUDIO_CAUTION_TONE_MS) {
         noTone(AUDIO_PIN);
+        _ampEnable(false);
         _audioState = _restState();  // back to silenced latch, or idle
       }
       break;
@@ -107,6 +123,7 @@ void audioCautionTone() {
   noTone(AUDIO_PIN);
   _audioPhaseStart = millis();
   _audioState      = AUDIO_CAUTION_TONE;
+  _ampEnable(true);
   tone(AUDIO_PIN, AUDIO_CAUTION_TONE_FREQ);
 }
 
@@ -118,6 +135,7 @@ void audioStartAlarm() {
   _alarmHiPhase    = true;
   _audioPhaseStart = millis();
   _audioState      = AUDIO_MASTER_ALARM;
+  _ampEnable(true);
   tone(AUDIO_PIN, AUDIO_ALARM_FREQ_HI);
 }
 
@@ -131,6 +149,7 @@ void audioStopAlarm() {
   if (_audioState == AUDIO_MASTER_ALARM ||
       _audioState == AUDIO_MASTER_ALARM_SILENCED) {
     noTone(AUDIO_PIN);
+    _ampEnable(false);
     _audioState = AUDIO_IDLE;
   }
   // If a chirp/caution cue is sounding when conditions clear, it keeps playing
@@ -146,6 +165,7 @@ void audioStopAlarm() {
 void audioSilence() {
   if (_audioState == AUDIO_MASTER_ALARM) {
     noTone(AUDIO_PIN);
+    _ampEnable(false);
     _alarmSilenced = true;
     _audioState    = AUDIO_MASTER_ALARM_SILENCED;
   }

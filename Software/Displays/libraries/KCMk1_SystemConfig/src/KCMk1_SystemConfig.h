@@ -19,7 +19,7 @@
     Teensy 4.0                   Teensy 4.1
     RA8875, SPI, 800x480         LT7683 (RA8876-compat), 16-bit 8080, 1024x600
     GSL1680F touch (Wire1)       FT5316 cap touch (software I2C, pins 4/5)
-    tone() buzzer (pin 9)        tone() buzzer (TONE, pin 2) + DFPlayer Mini
+    tone() buzzer (pin 9)        tone() -> PAM8302A amp + speaker (TONE 29, EN 30) + DFPlayer
     SD over SPI (CS 5)           Teensy 4.1 on-board SD (SDIO / BUILTIN_SDCARD)
     slave I2C on Wire (18/19)    slave I2C on Wire2 (24/25)
     INT-to-master pin 2          INT_BUS pin 0
@@ -99,11 +99,24 @@
 #define KCM_CTP_I2C_ADDR 0x38  // FT5x06/FT5316 fixed 7-bit address
 
 // =============================================================================
-// AUDIO — master-alarm buzzer (tone) + DFPlayer Mini (sampled)
+// AUDIO — master-alarm tone -> PAM8302A amp + speaker + DFPlayer Mini (sampled)
 // =============================================================================
-#define KCM_AUDIO_TONE_PIN  2    // TONE -> Q1/S8050 -> 4kHz buzzer (tone())
+// KC-01-1911 V2.1: the earlier S8050 buzzer stage was replaced by a PAM8302A
+// Class-D amplifier driving an external 8 ohm speaker (with an input volume trim).
+// TONE (pin 29) feeds the amp input via tone(); TONE_EN (pin 30) drives the amp's
+// active-low shutdown (/SD) so firmware can power the amp down between cues and mute
+// Class-D idle hiss. The board pulls /SD low, so the amp is OFF until firmware
+// enables it. (TONE moved 2 -> 29 for V2.1; pin 2 is no longer an audio pin.)
+#define KCM_AUDIO_TONE_PIN  29   // TONE -> PAM8302A amp input -> external speaker (tone())
+#define KCM_AUDIO_EN_PIN    30   // TONE_EN -> PAM8302A /SD (amp enable, active-high)
+// KerbalDisplayAudio picks these up automatically (it #includes this header and
+// defaults AUDIO_PIN / AUDIO_EN_PIN to them), so audio sketches need no pin #define.
 #define KCM_DFPLAYER_SERIAL Serial2  // Teensy 4.1 Serial2 = RX2(7)/TX2(8)
 #define KCM_DFPLAYER_BAUD   9600
+// AUDIO_BUSY <- DFPlayer Mini BUSY output (KC-01-1911 V2.1): LOW while a clip is
+// playing, HIGH when idle/stopped. Also drives the front-panel playback LED via Q1.
+// Read with KCM_DFPlayer::attachBusyPin()/isPlaying() to know when a clip finishes.
+#define KCM_AUDIO_BUSY_PIN  11
 
 // =============================================================================
 // MODULE / SLAVE I2C BUS — Wire2 (to the master controller)

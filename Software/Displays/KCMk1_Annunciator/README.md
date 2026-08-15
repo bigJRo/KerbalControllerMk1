@@ -24,7 +24,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | Display | LT7683 (RA8876-compatible) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633) | 16-bit 8080 parallel (FlexIO3) |
 | Touch controller | FT5316 5-point capacitive | Software I2C (pins 4/5) |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
-| Audio | Buzzer (`tone()`) + DFPlayer Mini | Pin 2 / Serial2 |
+| Audio | PAM8302A amp + speaker (`tone()`) + DFPlayer Mini | Pin 29 (+ TONE_EN enable pin 30) / Serial2 |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
 | I2C slave bus | Master Teensy 4.1 | Wire2 (I2C) |
 
@@ -45,9 +45,11 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | 5 | FT5316 SDA (software I2C) | — | KCMk1_SystemConfig (`KCM_CTP_SDA`) |
 | 3 | FT5316 /RESET | OUT | KCMk1_SystemConfig (`KCM_CTP_RST`) |
 | 6 | FT5316 INT (data ready) | IN | KCMk1_SystemConfig (`KCM_CTP_INT`) |
-| 2 | Buzzer tone output (master alarm) | OUT | KCMk1_SystemConfig (`KCM_AUDIO_TONE_PIN`) |
+| 29 | Master-alarm tone → PAM8302A amp input | OUT | KCMk1_SystemConfig (`KCM_AUDIO_TONE_PIN`) |
+| 30 | PAM8302A amp enable (`/SD`, net TONE_EN) — mutes idle hiss between cues | OUT | KCMk1_SystemConfig (`KCM_AUDIO_EN_PIN`) |
 | 7 | DFPlayer Mini RX2 (Serial2) | IN | Teensy hardware Serial2 (fixed) |
 | 8 | DFPlayer Mini TX2 (Serial2) | OUT | Teensy hardware Serial2 (fixed) |
+| 11 | DFPlayer BUSY (net AUDIO_BUSY) — LOW = clip playing | IN | KCMk1_SystemConfig (`KCM_AUDIO_BUSY_PIN`) |
 | 24 | I2C SCL2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |
 | 25 | I2C SDA2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |
 | 0 | I2C interrupt output to master (active-LOW) | OUT | KCMk1_SystemConfig (`KCM_I2C_INT_PIN`) |
@@ -321,6 +323,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.1.1** | KC-01-1911 **V2.1 audio hardware**: the `tone()` master-alarm output moved to **pin 29**, and the S8050 buzzer stage was replaced by a **PAM8302A Class-D amplifier + external 8 Ω speaker** with an input volume trim. The amp's active-low shutdown (net **TONE_EN**, **pin 30**) is driven by the audio library to power the amp down between cues, muting Class-D idle hiss. The DFPlayer Mini **BUSY** line is now wired to the Teensy (net **AUDIO_BUSY**, **pin 11**) for optional `isPlaying()` polling. No sketch-logic changes: `KerbalDisplayAudio` self-configures these pins from `KCMk1_SystemConfig` (`KCM_AUDIO_TONE_PIN` / `KCM_AUDIO_EN_PIN` / `KCM_AUDIO_BUSY_PIN`). Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.0** | Silenced-alarm re-blare fix: a C&W condition that clears and re-triggers while the master alarm is silenced now re-arms the alarm instead of staying latched silent. Outbound status I2C widened to carry all **25** C&W bits (4 C&W bytes; request packet 4→6 bytes) so the master receives the full panel state, not a truncated subset. Audit batch B cleanup (bug fixes, dead-code removal). Built against KerbalDisplayCommon 3.1.2. |
 | **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / LT7683 (RA8876-compatible) 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |
 | **2.1.0** | Complete C&W panel redesign: 25 indicators (5×5), body-aware Pe LOW / Ap LOW / ORBIT STABLE logic using full BodyParams (reentryAlt, lowSpace, soiAlt). Two-tier yellow/red indicators for PE_LOW, PROP_LOW, LIFE_SUPP. Dynamic CHUTE_ENV (off/green/yellow/red). Positive indicators: ORBIT_STABLE, ELEC_GEN. State indicators: SRB_ACTIVE, EVA_ACTIVE. CNTCT situation button driven by LANDED/SPLASH (not VSIT_DOCKED). DOCK vertical text indicator above situation column. Panel condition strip (10 buttons): DEMO/CTRL/DEBUG and SPCFT/PLN/RVR use black background with coloured text. Zone separation via TFT_SILVER gutters. Layout updated: 98×73 C&W buttons, repositioned DOCK/situation/panel/flight-condition zones. SOI screen adds Reentry Alt and SOI Radius rows, removes Escape Velocity, reduces font to 28pt at 36px row height. `standaloneMode` and `standaloneTest` operating modes added. Serial-driven test framework (`TestMode.ino`): 66 logic tests + 57-step display walk-through. KerbalDisplayCommon body table expanded with full BodyParams (gravity, escapeVelocity, synchronousOrbit, reentryAlt, soiAlt, hasSurface, highQThreshold). |

@@ -7,16 +7,19 @@
 
    The DFPlayer Mini (U8) plays numbered .mp3/.wav clips from its own microSD
    card for sampled audio (voice callouts, ambience, alert stingers) that the
-   tone() buzzer in KerbalDisplayAudio can't synthesise. It is fire-and-forget
+   tone() amp path in KerbalDisplayAudio can't synthesise. It is fire-and-forget
    over a 9600-baud UART:
 
        Teensy Serial2 TX2 (pin 8 / AUDIO_TX) -> DFPlayer RX
        Teensy Serial2 RX2 (pin 7 / AUDIO_RX) <- DFPlayer TX
 
-   On the carrier board the DFPlayer BUSY line drives a status LED via Q2; it is
-   NOT wired back to the Teensy, so playback state is not polled here — commands
-   are sent open-loop. This driver implements the DFPlayer 10-byte command frame
-   directly, so no third-party DFPlayer library is required.
+   On the carrier board the DFPlayer BUSY line drives a front-panel status LED via
+   Q1 and (KC-01-1911 V2.1) is also wired back to the Teensy on AUDIO_BUSY / pin 11
+   (KCM_AUDIO_BUSY_PIN). BUSY is LOW while a clip is playing and HIGH when idle, so
+   attachBusyPin() + isPlaying() let a sketch tell when playback has finished. If the
+   busy pin is not attached, commands are simply sent open-loop. This driver
+   implements the DFPlayer 10-byte command frame directly, so no third-party
+   DFPlayer library is required.
 
    Frame: 7E FF 06 CMD FB PARAM_H PARAM_L CK_H CK_L EF
           checksum = -(sum of bytes FF..PARAM_L)
@@ -24,9 +27,14 @@
    Usage:
      #include <KCM_DFPlayer.h>
      KCM_DFPlayer dfp(KCM_DFPLAYER_SERIAL);   // Serial2
-     void setup() { dfp.begin(); dfp.setVolume(22); }
+     void setup() {
+       dfp.begin();
+       dfp.setVolume(22);
+       dfp.attachBusyPin(KCM_AUDIO_BUSY_PIN); // pin 11 — optional, enables isPlaying()
+     }
      dfp.playTrack(1);            // play 0001.mp3 in the root / first index
      dfp.playFolderTrack(2, 5);   // play /02/005.mp3
+     if (!dfp.isPlaying()) { ... } // true while a clip is playing (BUSY low)
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -51,9 +59,19 @@ class KCM_DFPlayer {
   void resume();                       // 0x0D
   void reset();                        // 0x0C
 
+  // Optional hardware BUSY line (DFPlayer BUSY -> AUDIO_BUSY, KCM_AUDIO_BUSY_PIN).
+  // BUSY is LOW while a clip plays, HIGH when idle; read as INPUT_PULLUP.
+  void attachBusyPin(uint8_t pin);
+  bool busyPinAttached() const { return _busyPin != NO_PIN; }
+  // True while a clip is playing (BUSY asserted low). Returns false when no busy
+  // pin is attached, so guard on busyPinAttached() if that distinction matters.
+  bool isPlaying() const;
+
  private:
+  static const uint8_t NO_PIN = 0xFF;
   void sendCmd(uint8_t cmd, uint16_t param);
   HardwareSerial &_port;
+  uint8_t _busyPin = NO_PIN;
 };
 
 #endif // KCM_DFPLAYER_H

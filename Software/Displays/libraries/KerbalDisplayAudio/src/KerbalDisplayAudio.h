@@ -22,7 +22,7 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.1.0
+   Version: 1.3.0
 ****************************************************************************************/
 
 /***************************************************************************************
@@ -30,29 +30,80 @@
    Follows the same MAJOR.MINOR.PATCH scheme used by all KCMk1 sketches.
 ****************************************************************************************/
 #define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
-#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 1
+#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 3
 #define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 0
+// 1.3.0 — KC-01-1911 V2.1: the DFPlayer BUSY line is now wired to the Teensy
+//         (AUDIO_BUSY, pin 11). KCM_DFPlayer gains attachBusyPin()/isPlaying() to
+//         poll playback state (BUSY low = clip playing); optional, open-loop if unused.
+// 1.2.0 — hardware rev V2.1 (KC-01-1911): the S8050 buzzer stage is replaced by a
+//         PAM8302A Class-D amplifier driving an external speaker. TONE (AUDIO_PIN)
+//         default moved 2 -> 29; new optional amp enable pin (AUDIO_EN_PIN, net
+//         TONE_EN, pin 30) is driven HIGH while a cue sounds and LOW when
+//         idle/silenced to power the amp down and mute Class-D idle hiss between
+//         cues. Backward compatible: AUDIO_EN_PIN undefined -> logic compiles out.
 // 1.1.0 — hardware rev 2: AUDIO_PIN default moved 9 -> 2 (TONE buzzer); added
 //         KCM_DFPlayer (DFPlayer Mini, Serial2) for sampled audio.
 
 #include <Arduino.h>
 
 /***************************************************************************************
-   PIN CONFIGURATION
-   Override before including this header if needed.
+   BOARD PIN MAP — single source of truth
 
-   Hardware rev 2 (KC-01-1911): the master-alarm buzzer is driven from the TONE
-   net on Teensy pin 2 (-> Q1/S8050 -> 4kHz buzzer). Pin 9 is now BL_CTRL
-   (display backlight), so the default moved from 9 to 2. Sketches should set
-   `#define AUDIO_PIN KCM_AUDIO_TONE_PIN` (from KCMk1_SystemConfig) before
-   including this header to stay in sync with the board definition.
+   Pull in KCMk1_SystemConfig on a KCMk1 build so AUDIO_PIN / AUDIO_EN_PIN default to
+   the board's authoritative pin map (KCM_AUDIO_TONE_PIN / KCM_AUDIO_EN_PIN) in EVERY
+   translation unit — including this library's own .cpp. This matters: a sketch-level
+   `#define AUDIO_PIN ...` does NOT reach a separately-compiled library .cpp, so the
+   tone/enable pins must be resolved here, not in the sketch. Guarded by __has_include
+   so the library still builds stand-alone, falling back to the literals below.
+****************************************************************************************/
+#if defined(__has_include)
+#  if __has_include(<KCMk1_SystemConfig.h>)
+#    include <KCMk1_SystemConfig.h>
+#  endif
+#endif
+
+/***************************************************************************************
+   PIN CONFIGURATION
+
+   KC-01-1911 V2.1: TONE (pin 29) drives the input of a PAM8302A Class-D amplifier
+   (via a volume trim + coupling network) driving an external 8 ohm speaker. (Earlier
+   revs drove an S8050 buzzer — rev-2 on pin 2, rev-1 on pin 9.) The pin comes from
+   KCM_AUDIO_TONE_PIN when KCMk1_SystemConfig is present; the literal 29 is only the
+   stand-alone fallback. Define AUDIO_PIN before including this header only to force a
+   non-board pin.
 
    Richer/sampled audio (voice callouts, etc.) is handled separately by the
    DFPlayer Mini on Serial2 — see KCM_DFPlayer.h. The tone() state machine here
    is unchanged and still owns the master alarm / caution / chirp cues.
 ****************************************************************************************/
 #ifndef AUDIO_PIN
-  #define AUDIO_PIN 2
+#  ifdef KCM_AUDIO_TONE_PIN
+#    define AUDIO_PIN KCM_AUDIO_TONE_PIN
+#  else
+#    define AUDIO_PIN 29
+#  endif
+#endif
+
+/***************************************************************************************
+   AMPLIFIER ENABLE PIN
+
+   The PAM8302A has an active-low shutdown input (/SD). On KC-01-1911 V2.1 it is wired
+   to Teensy pin 30 (net TONE_EN) so firmware can power the amp down when nothing is
+   sounding, eliminating Class-D idle hiss between cues. The library drives it HIGH
+   while any cue is sounding and LOW when idle or silenced (active-high: HIGH = amp on,
+   LOW = shut down; the board pulls /SD low, so the amp is OFF until firmware enables it).
+
+   The pin comes from KCM_AUDIO_EN_PIN when KCMk1_SystemConfig is present. On hardware
+   without an amp-enable pin (e.g. the old buzzer stage, or a stand-alone build), it
+   resolves to AUDIO_EN_NONE and all enable logic compiles out with zero overhead.
+****************************************************************************************/
+#define AUDIO_EN_NONE 255
+#ifndef AUDIO_EN_PIN
+#  ifdef KCM_AUDIO_EN_PIN
+#    define AUDIO_EN_PIN KCM_AUDIO_EN_PIN
+#  else
+#    define AUDIO_EN_PIN AUDIO_EN_NONE   // no amp-enable pin present
+#  endif
 #endif
 
 /***************************************************************************************

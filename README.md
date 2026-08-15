@@ -34,7 +34,7 @@ and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_R
 | `KCMk1_ResourceDisp/` | Resource display (I2C 0x11) — up to 16 resource bars (9 by default) + EVA mode |
 | `libraries/KerbalDisplayCommon/` | Shared UI toolkit — drawing, fonts, formatting, threshold colouring |
 | `libraries/KCM_Display`, `KCM_Touch`, `KCMk1_SystemConfig` | Display driver wrapper, touch driver, shared pin map + thresholds |
-| `libraries/KerbalDisplayAudio/` | Master-alarm buzzer + DFPlayer audio |
+| `libraries/KerbalDisplayAudio/` | Master-alarm audio (PAM8302A amp + speaker) + DFPlayer audio |
 
 Each panel sketch has its own README with per-panel wiring, dependencies, and
 screen documentation.
