@@ -10,8 +10,8 @@
 #include <KCM_Touch.h>             // FT5316 capacitive touch (rev-2; replaces GSL1680F)
 // KerbalDisplayAudio is a direct sketch dependency (not a KDC sub-dependency).
 // Audio is never used on this panel: no setupAudio()/audio*() call is made, so the
-// library configures and drives no pins. Its AUDIO_PIN default is the TONE buzzer on
-// pin 2 (moved from the old rev-1 pin 9, which is now the TFT backlight) — no conflict.
+// library configures and drives no pins. Its AUDIO_PIN default is the TONE line on
+// pin 2 (→ PAM8302A amp; moved from old rev-1 pin 9, now the TFT backlight) — no conflict.
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)

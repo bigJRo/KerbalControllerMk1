@@ -24,7 +24,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | Display | LT7683 (RA8876-compatible) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633) | 16-bit 8080 parallel (FlexIO3) |
 | Touch controller | FT5316 5-point capacitive | Software I2C (pins 4/5) |
 | SD card | Teensy 4.1 on-board microSD | SDIO (`BUILTIN_SDCARD`) |
-| Audio | Buzzer (`tone()`) + DFPlayer Mini | Pin 2 / Serial2 |
+| Audio | PAM8302A amp + speaker (`tone()`) + DFPlayer Mini | Pin 2 (+ TONE_EN enable) / Serial2 |
 | KSP telemetry | KerbalSimpit plugin | SerialUSB1 (second USB COM port) |
 | I2C slave bus | Master Teensy 4.1 | Wire2 (I2C) |
 
@@ -45,7 +45,8 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | 5 | FT5316 SDA (software I2C) | — | KCMk1_SystemConfig (`KCM_CTP_SDA`) |
 | 3 | FT5316 /RESET | OUT | KCMk1_SystemConfig (`KCM_CTP_RST`) |
 | 6 | FT5316 INT (data ready) | IN | KCMk1_SystemConfig (`KCM_CTP_INT`) |
-| 2 | Buzzer tone output (master alarm) | OUT | KCMk1_SystemConfig (`KCM_AUDIO_TONE_PIN`) |
+| 2 | Master-alarm tone → PAM8302A amp input | OUT | KCMk1_SystemConfig (`KCM_AUDIO_TONE_PIN`) |
+| _(TONE_EN)_ | PAM8302A amp enable (`/SD`) — mutes idle hiss between cues | OUT | KCMk1_SystemConfig (`KCM_AUDIO_EN_PIN`) |
 | 7 | DFPlayer Mini RX2 (Serial2) | IN | Teensy hardware Serial2 (fixed) |
 | 8 | DFPlayer Mini TX2 (Serial2) | OUT | Teensy hardware Serial2 (fixed) |
 | 24 | I2C SCL2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |

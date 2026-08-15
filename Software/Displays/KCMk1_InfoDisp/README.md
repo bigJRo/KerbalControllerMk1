@@ -52,7 +52,7 @@ All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + LT7
 | 5 | Touch software-I2C SDA | — | `KCM_CTP_SDA` |
 | 3 | Touch /RESET (active-LOW) | OUT | `KCM_CTP_RST` |
 | 6 | Touch INT (data-ready) | IN | `KCM_CTP_INT` |
-| 2 | Master-alarm buzzer (`tone()`) | OUT | `KCM_AUDIO_TONE_PIN` |
+| 2 | Master-alarm tone → PAM8302A amp | OUT | `KCM_AUDIO_TONE_PIN` |
 | 7,8 | DFPlayer Mini serial (Serial2 RX2/TX2) | — | `KCM_DFPLAYER_SERIAL` |
 | 24,25 | I2C slave bus to master (Wire2 SCL2/SDA2) | — | `KCM_I2C_BUS` |
 | 0 | I2C INT (active-LOW, output to master) | OUT | `KCM_I2C_INT_PIN` |
@@ -76,7 +76,7 @@ All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + LT7
 | KCMk1_SystemConfig | — | Shared hardware pin map + cross-panel threshold constants (this repo) |
 | TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 8080-parallel display driver (wwatson4506) |
 | ILI9341_fonts (PaulStoffregen) | — | ILI9341_t3 font format used by KerbalDisplayCommon |
-| KerbalDisplayAudio | — | Master-alarm buzzer (`tone()`, pin 2) + DFPlayer audio support |
+| KerbalDisplayAudio | — | Master-alarm audio (`tone()`, pin 2 → PAM8302A amp) + DFPlayer support |
 | KerbalSimpit | 2.4.0 | KSP telemetry plugin interface |
 
 ### KerbalSimpit Plugin Settings
@@ -328,7 +328,7 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 - **`debugMode`** defaults to `false`. Set `true` only during development.
 - **`demoMode`** defaults to `false` (live Simpit telemetry). Set `true` for the sine-wave demo without KSP.
 - **Display rotation** — `DISPLAY_ROTATION = 2` for inverted mounting, `0` for production.
-- **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm buzzer (`tone()`) is on pin 2 and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
+- **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm tone (`tone()` → PAM8302A amp) is on pin 2 and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
 - **KerbalDisplayCommon ≥ 3.0.0** is required (hardware rev 2 / `KCM_TFT`, `RA8876_t41_p`). Do not downgrade.
 - **`INTERSECTS_MESSAGE`** — orbit-intercept data (`intercept1/2Dist`, `intercept1/2Time`) is not available in KSP1; those `AppState` fields remain unused stubs. This is unrelated to the TARGET screen's **T+Int** row, which *is* implemented — it is derived on-panel as Dist ÷ |closure rate|.
 - **Closure velocity** — the TARGET and DOCKING screens both show closure as a signed **V.Close** value (negative = closing, positive = opening); the intercept-time rows (T+Int / T+Dock) are shown only while closing.

@@ -17,7 +17,7 @@ Resource panels from the rev-1 display stack to the new 7" TFT carrier board.
 | Display library | sumotoy `RA8875` | **`wwatson4506/TeensyRA8876-8080`** (`RA8876_t41_p`, FlexIO3) + `TeensyRA8876-GFX-Common` |
 | Fonts | sumotoy `tFont` (proportional 1bpp) | **ILI9341_t3** (`PaulStoffregen/ILI9341_fonts`) |
 | Touch | GSL1680F on Wire1 (16/17) | **FT5316** (FT5x06 family) on **software I2C** (pins 4/5) |
-| Audio | `tone()` buzzer on pin 9 | `tone()` buzzer on **TONE / pin 2** + **DFPlayer Mini** (Serial2, sampled) |
+| Audio | `tone()` buzzer on pin 9 | `tone()` → **PAM8302A amp + speaker** on **TONE / pin 2** (+ **TONE_EN** amp enable) + **DFPlayer Mini** (Serial2, sampled) |
 | Asset storage | SD over SPI (CS 5) | **Teensy 4.1 on-board SD** (SDIO / `BUILTIN_SDCARD`) |
 | Backlight | RA8875 internal | **BL_CTRL on pin 9** |
 | Slave I2C (to master) | Wire (18/19) | **Wire2** (24/25) |
@@ -58,7 +58,7 @@ DISPLAY CONTROL (GPIO)
 TOUCH (FT5316, software I2C)
   SCL_LOCAL=4  SDA_LOCAL=5  CTP_/RST=3  CTP_INT=6   (addr 0x38)
 AUDIO
-  TONE buzzer=2   DFPlayer: AUDIO_RX=7 (RX2)  AUDIO_TX=8 (TX2)  [Serial2]
+  TONE (amp in)=2   TONE_EN (amp /SD enable)=see KCM_AUDIO_EN_PIN   DFPlayer: AUDIO_RX=7 (RX2)  AUDIO_TX=8 (TX2)  [Serial2]
 MODULE / SLAVE I2C (to master controller) — Wire2
   SCL_BUS=24 (SCL2)  SDA_BUS=25 (SDA2)  INT_BUS=0  RST=1
 SD CARD
@@ -162,7 +162,7 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
    coordinates. Set `KCM_CTP_SWAP_XY / INVERT_X / INVERT_Y` so a touch lands under
    the finger.
 4. **SD**: `SD.begin(BUILTIN_SDCARD)`; draw a 1024×600 test BMP.
-5. **Audio**: `tone()` on pin 2 buzzer; DFPlayer `playTrack(1)` from its microSD.
+5. **Audio**: `tone()` on pin 2 → PAM8302A amp + speaker; DFPlayer `playTrack(1)` from its microSD.
 6. **Slave I2C**: bring up the Wire2 slave + INT_BUS handshake with the master.
 7. Only then layer the full Annunciator UI back on.
 

@@ -19,7 +19,7 @@
     Teensy 4.0                   Teensy 4.1
     RA8875, SPI, 800x480         LT7683 (RA8876-compat), 16-bit 8080, 1024x600
     GSL1680F touch (Wire1)       FT5316 cap touch (software I2C, pins 4/5)
-    tone() buzzer (pin 9)        tone() buzzer (TONE, pin 2) + DFPlayer Mini
+    tone() buzzer (pin 9)        tone() -> PAM8302A amp + speaker (TONE 2) + DFPlayer
     SD over SPI (CS 5)           Teensy 4.1 on-board SD (SDIO / BUILTIN_SDCARD)
     slave I2C on Wire (18/19)    slave I2C on Wire2 (24/25)
     INT-to-master pin 2          INT_BUS pin 0
@@ -99,9 +99,19 @@
 #define KCM_CTP_I2C_ADDR 0x38  // FT5x06/FT5316 fixed 7-bit address
 
 // =============================================================================
-// AUDIO — master-alarm buzzer (tone) + DFPlayer Mini (sampled)
+// AUDIO — master-alarm tone -> PAM8302A amp + speaker + DFPlayer Mini (sampled)
 // =============================================================================
-#define KCM_AUDIO_TONE_PIN  2    // TONE -> Q1/S8050 -> 4kHz buzzer (tone())
+// KC-01-1911 V2.1: the earlier S8050 buzzer stage was replaced by a PAM8302A
+// Class-D amplifier driving an external 8 ohm speaker (with an input volume trim).
+// TONE (pin 2) feeds the amp input via tone(); TONE_EN drives the amp's active-low
+// shutdown (/SD) so firmware can power the amp down between cues and mute Class-D
+// idle hiss. The board pulls /SD low, so the amp is OFF until firmware enables it.
+#define KCM_AUDIO_TONE_PIN  2    // TONE -> PAM8302A amp input -> external speaker (tone())
+// KCM_AUDIO_EN_PIN — Teensy GPIO on the TONE_EN net -> PAM8302A /SD (amp enable).
+// Enable it in the sketch with:  #define AUDIO_EN_PIN KCM_AUDIO_EN_PIN
+// TODO: set to the TONE_EN GPIO from the KC-01-1911 V2.1 schematic (a free pin;
+//       10/11/12/13/28/29/30 are candidates, minus whichever carries AUDIO_BUSY).
+// #define KCM_AUDIO_EN_PIN  <pin>
 #define KCM_DFPLAYER_SERIAL Serial2  // Teensy 4.1 Serial2 = RX2(7)/TX2(8)
 #define KCM_DFPLAYER_BAUD   9600
 
