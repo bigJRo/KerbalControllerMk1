@@ -22,7 +22,7 @@
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Final code written by J. Rostoker for Jeb's Controller Works.
-   Version: 1.2.0
+   Version: 1.3.0
 ****************************************************************************************/
 
 /***************************************************************************************
@@ -30,8 +30,11 @@
    Follows the same MAJOR.MINOR.PATCH scheme used by all KCMk1 sketches.
 ****************************************************************************************/
 #define KERBAL_DISPLAY_AUDIO_VERSION_MAJOR 1
-#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 2
+#define KERBAL_DISPLAY_AUDIO_VERSION_MINOR 3
 #define KERBAL_DISPLAY_AUDIO_VERSION_PATCH 0
+// 1.3.0 — KC-01-1911 V2.1: the DFPlayer BUSY line is now wired to the Teensy
+//         (AUDIO_BUSY, pin 11). KCM_DFPlayer gains attachBusyPin()/isPlaying() to
+//         poll playback state (BUSY low = clip playing); optional, open-loop if unused.
 // 1.2.0 — hardware rev V2.1 (KC-01-1911): the S8050 buzzer stage is replaced by a
 //         PAM8302A Class-D amplifier driving an external speaker. TONE (AUDIO_PIN)
 //         default moved 2 -> 29; new optional amp enable pin (AUDIO_EN_PIN, net

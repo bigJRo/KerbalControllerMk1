@@ -58,7 +58,7 @@ DISPLAY CONTROL (GPIO)
 TOUCH (FT5316, software I2C)
   SCL_LOCAL=4  SDA_LOCAL=5  CTP_/RST=3  CTP_INT=6   (addr 0x38)
 AUDIO
-  TONE (amp in)=29   TONE_EN (amp /SD enable)=30   DFPlayer: AUDIO_RX=7 (RX2)  AUDIO_TX=8 (TX2)  [Serial2]
+  TONE (amp in)=29   TONE_EN (amp /SD enable)=30   DFPlayer: AUDIO_RX=7 (RX2)  AUDIO_TX=8 (TX2)  AUDIO_BUSY=11  [Serial2]
 MODULE / SLAVE I2C (to master controller) — Wire2
   SCL_BUS=24 (SCL2)  SDA_BUS=25 (SDA2)  INT_BUS=0  RST=1
 SD CARD

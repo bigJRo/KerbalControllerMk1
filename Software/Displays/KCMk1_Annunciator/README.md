@@ -49,6 +49,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | 30 | PAM8302A amp enable (`/SD`, net TONE_EN) — mutes idle hiss between cues | OUT | KCMk1_SystemConfig (`KCM_AUDIO_EN_PIN`) |
 | 7 | DFPlayer Mini RX2 (Serial2) | IN | Teensy hardware Serial2 (fixed) |
 | 8 | DFPlayer Mini TX2 (Serial2) | OUT | Teensy hardware Serial2 (fixed) |
+| 11 | DFPlayer BUSY (net AUDIO_BUSY) — LOW = clip playing | IN | KCMk1_SystemConfig (`KCM_AUDIO_BUSY_PIN`) |
 | 24 | I2C SCL2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |
 | 25 | I2C SDA2 (Wire2 — master bus) | — | KCMk1_SystemConfig (`KCM_I2C_BUS`) |
 | 0 | I2C interrupt output to master (active-LOW) | OUT | KCMk1_SystemConfig (`KCM_I2C_INT_PIN`) |

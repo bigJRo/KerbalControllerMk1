@@ -54,6 +54,7 @@ All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + LT7
 | 6 | Touch INT (data-ready) | IN | `KCM_CTP_INT` |
 | 29 | Master-alarm tone → PAM8302A amp | OUT | `KCM_AUDIO_TONE_PIN` |
 | 7,8 | DFPlayer Mini serial (Serial2 RX2/TX2) | — | `KCM_DFPLAYER_SERIAL` |
+| 11 | DFPlayer BUSY (net AUDIO_BUSY, LOW = playing) | IN | `KCM_AUDIO_BUSY_PIN` |
 | 24,25 | I2C slave bus to master (Wire2 SCL2/SDA2) | — | `KCM_I2C_BUS` |
 | 0 | I2C INT (active-LOW, output to master) | OUT | `KCM_I2C_INT_PIN` |
 | 1 | I2C RST (shared reset line from master) | IN | `KCM_I2C_RST_PIN` |

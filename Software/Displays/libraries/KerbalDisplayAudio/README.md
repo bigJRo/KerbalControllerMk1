@@ -1,6 +1,6 @@
 # KerbalDisplayAudio
 
-**Kerbal Controller Mk1 — Audio Feedback Library** · v1.2.0
+**Kerbal Controller Mk1 — Audio Feedback Library** · v1.3.0
 Non-blocking audio state machine for KCMk1 rev-2 KSP controller display panels (Teensy 4.1).
 Part of the KCMk1 controller system.
 
@@ -31,7 +31,7 @@ The `tone()` output has moved with the hardware: rev-1 pin 9 → rev-2 pin 2 →
 
 For a stand-alone build (no `KCMk1_SystemConfig` on the include path), `AUDIO_PIN` falls back to `29` and `AUDIO_EN_PIN` to `AUDIO_EN_NONE` (enable logic compiles out). Define either macro before the `#include` to force a non-board value.
 
-Sampled audio (voice callouts, stingers) is handled separately by the bundled `KCM_DFPlayer` driver — a DFPlayer Mini on `Serial2` (RX2 = 7 / TX2 = 8, 9600 baud). It is independent of the `tone()` state machine documented here; see `KCM_DFPlayer.h`.
+Sampled audio (voice callouts, stingers) is handled separately by the bundled `KCM_DFPlayer` driver — a DFPlayer Mini on `Serial2` (RX2 = 7 / TX2 = 8, 9600 baud). Its BUSY line is wired to **pin 11** (`KCM_AUDIO_BUSY_PIN`, net AUDIO_BUSY): call `attachBusyPin(KCM_AUDIO_BUSY_PIN)` then `isPlaying()` to poll playback state (BUSY low = clip playing). It is independent of the `tone()` state machine documented here; see `KCM_DFPlayer.h`.
 
 ---
 
@@ -169,6 +169,7 @@ void loop() {
 
 | Version | Notes |
 |---------|-------|
+| **1.3.0** | KC-01-1911 V2.1: the DFPlayer Mini BUSY line is now wired to the Teensy (net AUDIO_BUSY, pin 11 / `KCM_AUDIO_BUSY_PIN`) instead of only driving the front-panel LED. `KCM_DFPlayer` gains `attachBusyPin(pin)` and `isPlaying()` so sketches can poll when a clip finishes (BUSY low = playing). Optional and backward compatible — without a busy pin the driver stays open-loop as before. |
 | **1.2.0** | Hardware rev **KC-01-1911 V2.1**: buzzer stage (S8050) replaced by a PAM8302A Class-D amplifier + external speaker with input volume trim. `AUDIO_PIN` (TONE) default moved 2 → 29. New optional `AUDIO_EN_PIN` (net TONE_EN, pin 30 → amp `/SD`): the library drives it HIGH while any cue is sounding and LOW when idle or silenced, powering the amp down to mute Class-D idle hiss between cues. `AUDIO_PIN`/`AUDIO_EN_PIN` now derive from `KCMk1_SystemConfig` automatically (guarded `__has_include`), so they resolve in the library's own `.cpp` — not just the sketch. Backward compatible — no SystemConfig → literals (`29` / `AUDIO_EN_NONE`, enable logic compiles out). |
 | **1.1.0** | Hardware rev 2: `AUDIO_PIN` default moved 9 → 2 (TONE buzzer; pin 9 is now the display backlight); sampled audio added via the bundled `KCM_DFPlayer` (DFPlayer Mini on Serial2). New `AUDIO_MASTER_ALARM_SILENCED` state — `audioSilence()` now mutes a sounding alarm by latching into this state (tone off, latch held) instead of returning to `AUDIO_IDLE`, and `audioStopAlarm()` ends the latch from either alarm state. |
 | **1.0.1** | `audioSilence()` stops all audio unconditionally (previously only stopped when in `AUDIO_MASTER_ALARM` state). Clarified documentation distinguishing `audioSilence()` from `audioStopAlarm()`. *(Superseded by 1.1.0.)* |

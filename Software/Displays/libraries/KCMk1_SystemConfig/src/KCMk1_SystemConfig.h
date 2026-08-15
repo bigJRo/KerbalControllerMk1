@@ -113,6 +113,10 @@
 // defaults AUDIO_PIN / AUDIO_EN_PIN to them), so audio sketches need no pin #define.
 #define KCM_DFPLAYER_SERIAL Serial2  // Teensy 4.1 Serial2 = RX2(7)/TX2(8)
 #define KCM_DFPLAYER_BAUD   9600
+// AUDIO_BUSY <- DFPlayer Mini BUSY output (KC-01-1911 V2.1): LOW while a clip is
+// playing, HIGH when idle/stopped. Also drives the front-panel playback LED via Q1.
+// Read with KCM_DFPlayer::attachBusyPin()/isPlaying() to know when a clip finishes.
+#define KCM_AUDIO_BUSY_PIN  11
 
 // =============================================================================
 // MODULE / SLAVE I2C BUS — Wire2 (to the master controller)
