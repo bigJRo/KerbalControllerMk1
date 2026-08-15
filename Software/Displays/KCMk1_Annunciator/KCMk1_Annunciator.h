@@ -269,7 +269,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.1.0: silence-latch fix + outbound C&W I2C widened to 25 bits
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.1.1: KC-01-1911 V2.1 audio — PAM8302A amp (TONE 29, EN 30), DFPlayer BUSY 11; requires KerbalDisplayAudio >= 1.3.0
 
 
 /***************************************************************************************
