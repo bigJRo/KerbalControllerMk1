@@ -11,7 +11,8 @@
 // KerbalDisplayAudio is a direct sketch dependency (not a KDC sub-dependency).
 // Audio is never used on this panel: no setupAudio()/audio*() call is made, so the
 // library configures and drives no pins. Its AUDIO_PIN default is the TONE line on
-// pin 2 (→ PAM8302A amp; moved from old rev-1 pin 9, now the TFT backlight) — no conflict.
+// pin 29 (→ PAM8302A amp; from KCM_AUDIO_TONE_PIN) and amp-enable TONE_EN on pin 30 —
+// neither is touched here since no audio function is called, so no conflict.
 #include <KerbalDisplayAudio.h>
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)

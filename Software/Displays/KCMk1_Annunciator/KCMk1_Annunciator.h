@@ -8,6 +8,9 @@
 // Requires KerbalDisplayCommon >= 3.0.0 (hardware rev 2: RA8876 / Teensy 4.1)
 #include <KerbalDisplayCommon.h>   // pulls in KCM_Display (KCM_TFT) + ILI9341_t3 fonts
 #include <KCM_Touch.h>             // FT5316 touch: TouchResult/setupTouch/isTouched/readTouch
+// KerbalDisplayAudio pulls its TONE (pin 29) and amp-enable TONE_EN (pin 30) pins from
+// KCMk1_SystemConfig automatically (KCM_AUDIO_TONE_PIN / KCM_AUDIO_EN_PIN) — no local
+// override needed. The PAM8302A amp is powered down between cues (no idle hiss).
 #include <KerbalDisplayAudio.h>
 #include <KCM_DFPlayer.h>          // sampled audio (DFPlayer Mini on Serial2)
 #include <KerbalSimpit.h>

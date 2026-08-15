@@ -17,7 +17,7 @@ Resource panels from the rev-1 display stack to the new 7" TFT carrier board.
 | Display library | sumotoy `RA8875` | **`wwatson4506/TeensyRA8876-8080`** (`RA8876_t41_p`, FlexIO3) + `TeensyRA8876-GFX-Common` |
 | Fonts | sumotoy `tFont` (proportional 1bpp) | **ILI9341_t3** (`PaulStoffregen/ILI9341_fonts`) |
 | Touch | GSL1680F on Wire1 (16/17) | **FT5316** (FT5x06 family) on **software I2C** (pins 4/5) |
-| Audio | `tone()` buzzer on pin 9 | `tone()` → **PAM8302A amp + speaker** on **TONE / pin 2** (+ **TONE_EN** amp enable) + **DFPlayer Mini** (Serial2, sampled) |
+| Audio | `tone()` buzzer on pin 9 | `tone()` → **PAM8302A amp + speaker** on **TONE / pin 29** (+ **TONE_EN** amp enable, pin 30) + **DFPlayer Mini** (Serial2, sampled) |
 | Asset storage | SD over SPI (CS 5) | **Teensy 4.1 on-board SD** (SDIO / `BUILTIN_SDCARD`) |
 | Backlight | RA8875 internal | **BL_CTRL on pin 9** |
 | Slave I2C (to master) | Wire (18/19) | **Wire2** (24/25) |
@@ -58,7 +58,7 @@ DISPLAY CONTROL (GPIO)
 TOUCH (FT5316, software I2C)
   SCL_LOCAL=4  SDA_LOCAL=5  CTP_/RST=3  CTP_INT=6   (addr 0x38)
 AUDIO
-  TONE (amp in)=2   TONE_EN (amp /SD enable)=see KCM_AUDIO_EN_PIN   DFPlayer: AUDIO_RX=7 (RX2)  AUDIO_TX=8 (TX2)  [Serial2]
+  TONE (amp in)=29   TONE_EN (amp /SD enable)=30   DFPlayer: AUDIO_RX=7 (RX2)  AUDIO_TX=8 (TX2)  [Serial2]
 MODULE / SLAVE I2C (to master controller) — Wire2
   SCL_BUS=24 (SCL2)  SDA_BUS=25 (SDA2)  INT_BUS=0  RST=1
 SD CARD
@@ -78,7 +78,7 @@ sketch (Annunciator / InfoDisp / ResourceDisp)
   ├── KCM_Display          KCM_TFT = RA8876_t41_p + kcmDisplayBegin()  [new]
   │     └── (dep) TeensyRA8876-8080 + TeensyRA8876-GFX-Common + ILI9341_fonts
   ├── KCM_Touch            FT5316 software-I2C driver (TouchResult API)  [new]
-  ├── KerbalDisplayAudio   tone() state machine (AUDIO_PIN=2) + KCM_DFPlayer  [updated]
+  ├── KerbalDisplayAudio   tone() state machine (AUDIO_PIN=29, amp EN=30) + KCM_DFPlayer  [updated]
   └── KerbalDisplayCommon  UI toolkit — buttons/text/formatters/BMP/bodies  [migrated v3.0.0]
 ```
 
@@ -115,7 +115,7 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
 - [x] `KCM_Display` — `KCM_TFT` typedef + `kcmDisplayBegin()` glue over `RA8876_t41_p`.
 - [x] `KCM_Touch` — FT5316 software-I2C driver, API-compatible with the old touch surface
       (orientation + protocol confirmed against the vendor demo).
-- [x] `KerbalDisplayAudio` — `AUDIO_PIN` → TONE/pin 2; added `KCM_DFPlayer` (Serial2).
+- [x] `KerbalDisplayAudio` — `AUDIO_PIN` → TONE/pin 29 (+ amp-enable TONE_EN/pin 30, PAM8302A); added `KCM_DFPlayer` (Serial2).
 
 **Done — fonts + common library:**
 - [x] **Fonts converted** sumotoy `tFont` → ILI9341_t3 (`fonts_ili/`, all 12 fonts),
@@ -130,7 +130,7 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
       `ScreenMain` geometry (MASTER 274×176, C&W 5×5 @120×80, two 75px flag
       columns, new bottom telemetry + 6×2 master mode grid), `AAA_Globals`
       (KCM_TFT object), `I2CSlave` (Wire2 + INT_BUS pin 0 + extended 6-byte
-      command), `KCM_Touch`, audio on TONE/pin 2, and BootScreen/ScreenSOI/
+      command), `KCM_Touch`, audio on TONE/pin 29, and BootScreen/ScreenSOI/
       ScreenStandby/TestMode reconciled. C&W logic + ButtonLabels reused.
       `AppState` gained `capValue` + `modeFlags` (MF_* bits).
 
@@ -162,7 +162,7 @@ Bus width 16, start at `KCM_TFT_BUS_SPEED_MHZ = 20` and raise once stable.
    coordinates. Set `KCM_CTP_SWAP_XY / INVERT_X / INVERT_Y` so a touch lands under
    the finger.
 4. **SD**: `SD.begin(BUILTIN_SDCARD)`; draw a 1024×600 test BMP.
-5. **Audio**: `tone()` on pin 2 → PAM8302A amp + speaker; DFPlayer `playTrack(1)` from its microSD.
+5. **Audio**: `tone()` on pin 29 → PAM8302A amp + speaker (amp enable TONE_EN pin 30); DFPlayer `playTrack(1)` from its microSD.
 6. **Slave I2C**: bring up the Wire2 slave + INT_BUS handshake with the master.
 7. Only then layer the full Annunciator UI back on.
 

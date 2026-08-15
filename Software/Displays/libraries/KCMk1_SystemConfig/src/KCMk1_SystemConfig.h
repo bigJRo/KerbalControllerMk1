@@ -19,7 +19,7 @@
     Teensy 4.0                   Teensy 4.1
     RA8875, SPI, 800x480         LT7683 (RA8876-compat), 16-bit 8080, 1024x600
     GSL1680F touch (Wire1)       FT5316 cap touch (software I2C, pins 4/5)
-    tone() buzzer (pin 9)        tone() -> PAM8302A amp + speaker (TONE 2) + DFPlayer
+    tone() buzzer (pin 9)        tone() -> PAM8302A amp + speaker (TONE 29, EN 30) + DFPlayer
     SD over SPI (CS 5)           Teensy 4.1 on-board SD (SDIO / BUILTIN_SDCARD)
     slave I2C on Wire (18/19)    slave I2C on Wire2 (24/25)
     INT-to-master pin 2          INT_BUS pin 0
@@ -103,15 +103,14 @@
 // =============================================================================
 // KC-01-1911 V2.1: the earlier S8050 buzzer stage was replaced by a PAM8302A
 // Class-D amplifier driving an external 8 ohm speaker (with an input volume trim).
-// TONE (pin 2) feeds the amp input via tone(); TONE_EN drives the amp's active-low
-// shutdown (/SD) so firmware can power the amp down between cues and mute Class-D
-// idle hiss. The board pulls /SD low, so the amp is OFF until firmware enables it.
-#define KCM_AUDIO_TONE_PIN  2    // TONE -> PAM8302A amp input -> external speaker (tone())
-// KCM_AUDIO_EN_PIN — Teensy GPIO on the TONE_EN net -> PAM8302A /SD (amp enable).
-// Enable it in the sketch with:  #define AUDIO_EN_PIN KCM_AUDIO_EN_PIN
-// TODO: set to the TONE_EN GPIO from the KC-01-1911 V2.1 schematic (a free pin;
-//       10/11/12/13/28/29/30 are candidates, minus whichever carries AUDIO_BUSY).
-// #define KCM_AUDIO_EN_PIN  <pin>
+// TONE (pin 29) feeds the amp input via tone(); TONE_EN (pin 30) drives the amp's
+// active-low shutdown (/SD) so firmware can power the amp down between cues and mute
+// Class-D idle hiss. The board pulls /SD low, so the amp is OFF until firmware
+// enables it. (TONE moved 2 -> 29 for V2.1; pin 2 is no longer an audio pin.)
+#define KCM_AUDIO_TONE_PIN  29   // TONE -> PAM8302A amp input -> external speaker (tone())
+#define KCM_AUDIO_EN_PIN    30   // TONE_EN -> PAM8302A /SD (amp enable, active-high)
+// KerbalDisplayAudio picks these up automatically (it #includes this header and
+// defaults AUDIO_PIN / AUDIO_EN_PIN to them), so audio sketches need no pin #define.
 #define KCM_DFPLAYER_SERIAL Serial2  // Teensy 4.1 Serial2 = RX2(7)/TX2(8)
 #define KCM_DFPLAYER_BAUD   9600
 

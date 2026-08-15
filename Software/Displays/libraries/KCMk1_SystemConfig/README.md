@@ -45,7 +45,7 @@ The data bus, `/WR`, and `/RD` are owned by the FlexIO3 driver — those defines
 | Group | Constants |
 |-------|-----------|
 | Capacitive touch (FT5316, software I2C) | `KCM_CTP_SCL` (4), `KCM_CTP_SDA` (5), `KCM_CTP_RST` (3), `KCM_CTP_INT` (6), `KCM_CTP_I2C_ADDR` (0x38) |
-| Audio | `KCM_AUDIO_TONE_PIN` (2), `KCM_DFPLAYER_SERIAL` (Serial2), `KCM_DFPLAYER_BAUD` (9600) |
+| Audio | `KCM_AUDIO_TONE_PIN` (29, → PAM8302A amp), `KCM_AUDIO_EN_PIN` (30, amp `/SD` enable), `KCM_DFPLAYER_SERIAL` (Serial2), `KCM_DFPLAYER_BAUD` (9600) |
 | SD card | `KCM_SD_CS` (`BUILTIN_SDCARD`, SDIO) |
 | Serial | `KCM_SERIAL_BAUD` (115200) |
 

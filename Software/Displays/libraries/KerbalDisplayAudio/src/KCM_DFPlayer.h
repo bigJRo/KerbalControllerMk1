@@ -7,7 +7,7 @@
 
    The DFPlayer Mini (U8) plays numbered .mp3/.wav clips from its own microSD
    card for sampled audio (voice callouts, ambience, alert stingers) that the
-   tone() buzzer in KerbalDisplayAudio can't synthesise. It is fire-and-forget
+   tone() amp path in KerbalDisplayAudio can't synthesise. It is fire-and-forget
    over a 9600-baud UART:
 
        Teensy Serial2 TX2 (pin 8 / AUDIO_TX) -> DFPlayer RX
