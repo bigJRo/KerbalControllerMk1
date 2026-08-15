@@ -1,6 +1,6 @@
 # KerbalDisplayAudio
 
-**Kerbal Controller Mk1 — Audio Feedback Library** · v1.1.0
+**Kerbal Controller Mk1 — Audio Feedback Library** · v1.2.0
 Non-blocking audio state machine for KCMk1 rev-2 KSP controller display panels (Teensy 4.1).
 Part of the KCMk1 controller system.
 
@@ -18,14 +18,20 @@ The master alarm tone is modelled on the Space Shuttle Caution & Warning specifi
 
 | Pin | Define | Default | Function |
 |-----|--------|---------|----------|
-| 2 | `AUDIO_PIN` | `2` | Master-alarm buzzer via `tone()` — KCMk1 rev-2 TONE net (pin 2 → Q1/S8050 → 4 kHz buzzer) |
+| 2 | `AUDIO_PIN` | `2` | `tone()` output — KCMk1 TONE net (pin 2 → PAM8302A amp input → external speaker) |
+| — | `AUDIO_EN_PIN` | `AUDIO_EN_NONE` (off) | Optional amp enable — TONE_EN net → PAM8302A `/SD`. Driven HIGH while sounding, LOW when idle |
 
-On KCMk1 rev-2 hardware the buzzer moved from pin 9 (now the display backlight) to pin 2, matching `KCM_AUDIO_TONE_PIN` in `KCMk1_SystemConfig.h`. Sketches should keep the two in sync:
+On KCMk1 rev-2 the `tone()` output moved from pin 9 (now the display backlight) to pin 2, matching `KCM_AUDIO_TONE_PIN` in `KCMk1_SystemConfig.h`.
+
+On **KC-01-1911 V2.1** the buzzer stage (S8050) was replaced by a **PAM8302A Class-D amplifier** driving an external 8 Ω speaker, with a volume trim on the input. The amplifier's active-low shutdown (`/SD`) is wired to a Teensy GPIO (net **TONE_EN**). Set `AUDIO_EN_PIN` to that pin and the library powers the amp down between cues, eliminating Class-D idle hiss. It defaults OFF at power-up (board pull-down on `/SD`) until firmware enables it. Keep both defines in sync with the board:
 
 ```cpp
-#define AUDIO_PIN KCM_AUDIO_TONE_PIN   // = 2
+#define AUDIO_PIN    KCM_AUDIO_TONE_PIN   // = 2  (tone output)
+#define AUDIO_EN_PIN KCM_AUDIO_EN_PIN     // amp /SD enable (TONE_EN)
 #include <KerbalDisplayAudio.h>
 ```
+
+Leave `AUDIO_EN_PIN` undefined on hardware without an amp-enable pin (e.g. the old buzzer stage) — the enable logic then compiles out entirely.
 
 Sampled audio (voice callouts, stingers) is handled separately by the bundled `KCM_DFPlayer` driver — a DFPlayer Mini on `Serial2` (RX2 = 7 / TX2 = 8, 9600 baud). It is independent of the `tone()` state machine documented here; see `KCM_DFPlayer.h`.
 
@@ -48,6 +54,7 @@ All frequency and timing constants are overrideable. Define them before the `#in
 | Constant | Default | Description |
 |----------|---------|-------------|
 | `AUDIO_PIN` | `2` | Output pin for `tone()` |
+| `AUDIO_EN_PIN` | `AUDIO_EN_NONE` | Optional PAM8302A amp-enable pin (active-high). `AUDIO_EN_NONE` disables the feature |
 | `AUDIO_CHIRP_ALERT_LO` | `880` Hz | Alert chirp first note (A5) |
 | `AUDIO_CHIRP_ALERT_HI` | `1109` Hz | Alert chirp second note (C#6) |
 | `AUDIO_CHIRP_CAUTION_HI` | `1200` Hz | Caution chirp first note (tritone) |
@@ -90,7 +97,7 @@ The sketch is responsible for:
 
 ### API
 
-`setupAudio()` — configures `AUDIO_PIN` as output and silences it. Call once from `setup()`.
+`setupAudio()` — configures `AUDIO_PIN` as output and silences it, and (when `AUDIO_EN_PIN` is set) configures the amp-enable pin as output and shuts the amp down. Call once from `setup()`.
 
 `updateAudio()` — services all audio timing. Call every `loop()` iteration. Returns immediately if audio is idle.
 
@@ -163,6 +170,7 @@ void loop() {
 
 | Version | Notes |
 |---------|-------|
+| **1.2.0** | Hardware rev **KC-01-1911 V2.1**: buzzer stage (S8050) replaced by a PAM8302A Class-D amplifier + external speaker with input volume trim. New optional `AUDIO_EN_PIN` (net TONE_EN → amp `/SD`): the library drives it HIGH while any cue is sounding and LOW when idle or silenced, powering the amp down to mute Class-D idle hiss between cues. Backward compatible — undefined (`AUDIO_EN_NONE`) compiles the enable logic out. |
 | **1.1.0** | Hardware rev 2: `AUDIO_PIN` default moved 9 → 2 (TONE buzzer; pin 9 is now the display backlight); sampled audio added via the bundled `KCM_DFPlayer` (DFPlayer Mini on Serial2). New `AUDIO_MASTER_ALARM_SILENCED` state — `audioSilence()` now mutes a sounding alarm by latching into this state (tone off, latch held) instead of returning to `AUDIO_IDLE`, and `audioStopAlarm()` ends the latch from either alarm state. |
 | **1.0.1** | `audioSilence()` stops all audio unconditionally (previously only stopped when in `AUDIO_MASTER_ALARM` state). Clarified documentation distinguishing `audioSilence()` from `audioStopAlarm()`. *(Superseded by 1.1.0.)* |
 | **1.0.0** | Initial release. Four-state priority machine: `AUDIO_IDLE`, `AUDIO_CHIRP`, `AUDIO_CAUTION_TONE`, `AUDIO_MASTER_ALARM`. Space Shuttle C/W spec alarm (375 Hz / 1000 Hz at 2.5 Hz). `millis()`-based timing throughout; no `delay()`. |
