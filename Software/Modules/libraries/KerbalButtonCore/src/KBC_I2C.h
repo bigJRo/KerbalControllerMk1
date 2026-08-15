@@ -11,7 +11,7 @@
  *              module (target) and the system controller.
  *
  *              Implements the full shared command set defined in
- *              I2C_Protocol_Specification.md v2.4:
+ *              I2C_Protocol_Specification.md v2.10:
  *                CMD_GET_IDENTITY    — respond with module identity packet
  *                CMD_SET_LED_STATE   — apply 8-byte nibble-packed LED update
  *                CMD_SET_BRIGHTNESS  — set ENABLED state brightness
@@ -44,8 +44,8 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: Wire library (megaTinyCore)
- *              Hardware: KC-01-1822 v1.1
- *              Protocol: I2C_Protocol_Specification.md v2.4
+ *              Hardware: KC-01-1801/1802 and KC-01-1811/1812
+ *              Protocol: I2C_Protocol_Specification.md v2.10
  */
 
 #ifndef KBC_I2C_H

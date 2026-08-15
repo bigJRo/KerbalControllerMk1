@@ -10,9 +10,9 @@
  *              Manages reading KBC_INPUT_COUNT button inputs from
  *              KBC_SHIFTREG_COUNT daisy-chained SN74HC165PWR shift
  *              registers using the ShiftIn library
- *              (InfectedBytes/ArduinoShiftIn): two registers (U14, U15)
- *              for the default 16 inputs, or three (U14, U15, U16) for
- *              the 24-input switch-group modules.
+ *              (InfectedBytes/ArduinoShiftIn): two registers for the
+ *              default 16 inputs, or three for the 24-input switch-group
+ *              modules.
  *
  *              Provides dual-buffer latching to guarantee every button
  *              press and release edge is captured and reported to the
@@ -24,8 +24,8 @@
  *
  *              Button index conventions:
  *                KBC index 0-11  : NeoPixel RGB buttons (BUTTON01-12 on PCB)
- *                KBC index 12-15 : Discrete LED buttons (BUTTON13-16 on PCB)
- *                KBC index 16-23 : Switch-group discrete inputs (U16), no LED
+ *                KBC index 12-15 : Panel switch inputs (BUTTON13-16 on PCB), no LED
+ *                KBC index 16-23 : Switch-group inputs, no LED
  *                                  (24-input modules only)
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
@@ -33,8 +33,8 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: ShiftIn library (InfectedBytes/ArduinoShiftIn)
- *              Hardware: KC-01-1822 v1.1
- *              Protocol: I2C_Protocol_Specification.md v2.4
+ *              Hardware: KC-01-1801/1802 and KC-01-1811/1812
+ *              Protocol: I2C_Protocol_Specification.md v2.10
  */
 
 #ifndef KBC_SHIFTREG_H

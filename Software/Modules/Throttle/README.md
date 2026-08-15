@@ -24,7 +24,7 @@ This is a standalone sketch with tab-based organisation. It is not a KerbalButto
 | I2C Address | `0x2C` |
 | Module Type ID | `0x0D` |
 | Capability Flags | `0x20` (THR_CAP_MOTORIZED, bit 5) |
-| Data Packet Size | 4 bytes |
+| Data Packet Size | 7 bytes (3-byte header + 4-byte payload) |
 | Buttons | 4 discrete (active high, hardware pull-downs) |
 | LEDs | 4 discrete (2N3904 NPN switched, on/off only) |
 | Motor driver | L293DD H-bridge |
@@ -139,18 +139,21 @@ Precision mode:
 
 ## I2C Protocol
 
-### Data Packet (module → controller, 4 bytes)
+### Data Packet (module → controller, 7 bytes)
 
 ```
-Byte 0:   Status flags  (bit0=enabled, bit1=precision mode,
+Byte 0:   Status byte   (lifecycle bits 1:0, fault bit 2, data-changed bit 3)
+Byte 1:   Module Type ID
+Byte 2:   Transaction counter
+Byte 3:   Status flags  (bit0=enabled, bit1=precision mode,
                           bit2=pilot touching slider, bit3=motor moving)
-Byte 1:   Button events (bit0=THRTL_100 pressed, bit1=THRTL_UP pressed,
+Byte 4:   Button events (bit0=THRTL_100 pressed, bit1=THRTL_UP pressed,
                           bit2=THRTL_DOWN pressed, bit3=THRTL_00 pressed)
-Byte 2:   Value HIGH    (throttle value, big-endian uint16, 0 to INT16_MAX)
-Byte 3:   Value LOW     (throttle value)
+Byte 5:   Value HIGH    (throttle value, big-endian uint16, 0 to INT16_MAX)
+Byte 6:   Value LOW     (throttle value)
 ```
 
-Button events (byte 1) are rising-edge only — set in the packet that captures the press, cleared after read. The throttle value (bytes 2-3) reflects the current output regardless of how it was set.
+Bytes 0–2 are the universal 3-byte header (status, module type ID, transaction counter) added for I2C protocol v2.x conformance. Button events (byte 4) are rising-edge only — set in the packet that captures the press, cleared after read. The throttle value (bytes 5-6) reflects the current output regardless of how it was set.
 
 INT asserts on any button press or throttle value change exceeding THR_WIPER_CHANGE_MIN (4 ADC counts).
 
@@ -271,3 +274,4 @@ After flashing all LEDs should be OFF (module starts disabled). Send `CMD_ENABLE
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
+| 2.0 | 2026-06-28 | Data packet is now 7 bytes (3-byte universal header + 4-byte payload) under I2C protocol v2.x |

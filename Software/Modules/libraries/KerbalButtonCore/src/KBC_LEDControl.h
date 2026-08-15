@@ -7,24 +7,21 @@
  * @organization Jeb's Controller Works
  *
  * @brief       LED state machine for the KerbalButtonCore library.
- *              Manages all LED output for both NeoPixel RGB buttons
- *              (KBC indices 0-11) and discrete LED buttons (KBC
- *              indices 12-15).
+ *              Manages LED output for the 12 NeoPixel RGB buttons
+ *              (KBC indices 0-11). Indices 12-15 are panel switch inputs
+ *              with no LED hardware on the current boards, so nothing is
+ *              driven for them (their colour-array slots are ignored).
  *
  *              Supports the full KBC LED state set:
  *                OFF            — unlit
- *                ENABLED        — dim white backlight (NeoPixel only)
+ *                ENABLED        — dim white backlight
  *                ACTIVE         — full brightness, per-button color
  *                WARNING        — flashing amber (extended modules)
  *                ALERT          — flashing red   (extended modules)
  *                ARMED          — static cyan    (extended modules)
  *                PARTIAL_DEPLOY — static amber   (extended modules)
- *
- *              Discrete LED buttons (indices 12-15) are driven by
- *              2N3904 NPN transistors and are ON/OFF only. They cannot
- *              express the ENABLED dim state — ENABLED maps to ON for
- *              discrete buttons. Flash states (WARNING, ALERT) are
- *              supported via software timing on discrete outputs.
+ *                CUT            — static red     (extended modules)
+ *                ACTIVE_ALT     — second per-button active color
  *
  *              All brightness scaling for the ENABLED state is performed
  *              in software via KBC_scaleColor(). The tinyNeoPixel
@@ -35,8 +32,8 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: tinyNeoPixel_Static library (megaTinyCore)
- *              Hardware: KC-01-1822 v1.1
- *              Protocol: I2C_Protocol_Specification.md v2.4
+ *              Hardware: KC-01-1801/1802 and KC-01-1811/1812
+ *              Protocol: I2C_Protocol_Specification.md v2.10
  */
 
 #ifndef KBC_LEDCONTROL_H
@@ -91,10 +88,15 @@ public:
      *                       values defining the ACTIVE color for each button.
      *                       Array must remain valid for the lifetime of this
      *                       object (declare as const in module sketch).
+     * @param  altColors     Optional pointer to array of KBC_BUTTON_COUNT
+     *                       RGBColor values for the ACTIVE_ALT state. Pass
+     *                       nullptr to fall back to activeColors. Must remain
+     *                       valid for the lifetime of this object.
      * @param  brightness    Initial ENABLED state brightness (0-255).
      *                       Defaults to KBC_ENABLED_BRIGHTNESS.
      */
     void begin(const RGBColor* activeColors,
+               const RGBColor* altColors  = nullptr,
                uint8_t brightness = KBC_ENABLED_BRIGHTNESS);
 
     // --------------------------------------------------------
@@ -125,8 +127,8 @@ public:
 
     /**
      * @brief  Set the ENABLED state brightness for NeoPixel buttons.
-     *         Applied via software RGB scaling — does not affect
-     *         discrete LED buttons (indices 12-15).
+     *         Applied via software RGB scaling to the NeoPixel buttons
+     *         (indices 0-11); indices 12-15 are switch inputs with no LED.
      *
      *         Does not render — call render() after this to push to hardware.
      *
@@ -158,8 +160,9 @@ public:
     /**
      * @brief  Push current LED state to hardware.
      *
-     *         Writes all NeoPixel colors to the tinyNeoPixel buffer
-     *         and calls show(). Updates all discrete LED pin outputs.
+     *         Writes all NeoPixel colors (indices 0-11) to the
+     *         tinyNeoPixel buffer and calls show(). Indices 12-15 are
+     *         switch inputs with no LED, so nothing is driven for them.
      *
      *         Relatively expensive on the ATtiny816 — only call when
      *         state has actually changed. The update() method calls
@@ -211,12 +214,6 @@ private:
     tinyNeoPixel _pixels;
 
     // --------------------------------------------------------
-    //  Discrete LED pin table
-    // --------------------------------------------------------
-
-    static const uint8_t _discretePins[KBC_DISCRETE_COUNT];
-
-    // --------------------------------------------------------
     //  Per-button state
     // --------------------------------------------------------
 
@@ -225,6 +222,10 @@ private:
 
     /** @brief Pointer to per-button active color array (from sketch). */
     const RGBColor* _activeColors;
+
+    /** @brief Pointer to per-button alternate active color array (optional;
+     *         used by KBC_LED_ACTIVE_ALT). nullptr falls back to _activeColors. */
+    const RGBColor* _altColors;
 
     /** @brief ENABLED state brightness scalar (0-255). */
     uint8_t _brightness;
@@ -259,14 +260,6 @@ private:
      * @param  color  Color to write.
      */
     void _setNeoPixel(uint8_t index, RGBColor color);
-
-    /**
-     * @brief  Write a resolved color to a discrete LED button (index 12-15).
-     *         Discrete LEDs are ON/OFF only — any non-zero color = ON.
-     * @param  index  KBC button index (12-15).
-     * @param  color  Color to write (only zero vs non-zero is used).
-     */
-    void _setDiscrete(uint8_t index, RGBColor color);
 };
 
 #endif // KBC_LEDCONTROL_H

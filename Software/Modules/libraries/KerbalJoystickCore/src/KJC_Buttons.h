@@ -10,7 +10,7 @@
  *              KerbalJoystickCore library.
  *
  *              Manages three button inputs:
- *                BTN_JOY — joystick pushbutton (PA6, direct GPIO,
+ *                BTN_JOY — joystick pushbutton (PB5, direct GPIO,
  *                          active high, hardware pull-down, no LED)
  *                BTN01   — NeoPixel RGB button 1 (PC0, WS2811)
  *                BTN02   — NeoPixel RGB button 2 (PB3, WS2811)

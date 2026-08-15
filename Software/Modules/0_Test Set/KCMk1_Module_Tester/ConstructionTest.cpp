@@ -1,0 +1,488 @@
+/**
+ * @file        ConstructionTest.cpp
+ * @version     2.0.0
+ * @project     Kerbal Controller Mk1 — Module Tester
+ * @author      J. Rostoker
+ * @organization Jeb's Controller Works
+ *
+ * @brief       Per-board-type construction test sequences. Implemented as a
+ *              small step-table runner: each module kind has an ordered list
+ *              of steps; each step drives the board's outputs and/or verifies
+ *              its inputs, then the operator confirms PASS/FAIL (some steps
+ *              auto-pass on detection). See ConstructionTest.h.
+ *
+ * @license     GNU General Public License v3.0 (GPL-3.0)
+ */
+
+#include "ConstructionTest.h"
+#include "TesterConfig.h"
+#include "TesterHW.h"
+#include "TesterUI.h"
+#include <KerbalModuleCommon.h>
+#include <string.h>
+#include <stdio.h>
+
+// ============================================================
+//  Step model
+// ============================================================
+enum StepType : uint8_t {
+    ST_ENABLE,      // send CMD_ENABLE, auto-advance
+    ST_LEDWALK,     // light each LED position in turn, then confirm
+    ST_BTNWALK,     // detect every labelled input
+    ST_AXIS,        // joystick axis range sweep
+    ST_MOTOR,       // throttle motor full-range sweep
+    ST_TOUCH,       // throttle touch + manual wiper
+    ST_ENC,         // dual-encoder direction test (arg = encoder index)
+    ST_VALUEDELTA,  // display encoder via value up/down
+    ST_SEG,         // display segment/digit pattern
+    ST_BULB,        // CMD_BULB_TEST confirm
+    ST_SUMMARY      // results + finish
+};
+struct Step { StepType type; uint8_t arg; };
+
+// Per-kind step sequences -----------------------------------
+static const Step STEPS_BTN[]   = { {ST_ENABLE,0},{ST_LEDWALK,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
+static const Step STEPS_JOY[]   = { {ST_ENABLE,0},{ST_AXIS,0},{ST_BTNWALK,0},{ST_LEDWALK,0},{ST_SUMMARY,0} };
+// Generic display module (e.g. Pre-Warp Time): display is on and CMD_SET_VALUE
+// is honoured as soon as it goes ACTIVE, so the SET_VALUE segment cycle and the
+// live value/button steps all work directly. Like every K7SC display module it
+// drives its own button LEDs (ignores CMD_SET_LED_STATE), so the LED check is a
+// bulb test (lights all segments + LEDs via the module's own handler) rather
+// than an LED walk.
+static const Step STEPS_DISP[]  = { {ST_ENABLE,0},{ST_SEG,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_BULB,0},{ST_SUMMARY,0} };
+// GPWS Input is an autonomous display module: it lights its 7-seg and reports
+// its secondary buttons only when the operator engages GPWS mode (BTN01), and
+// it drives its own button LEDs (ignores CMD_SET_LED_STATE). So it gets its
+// own sequence: CMD_BULB_TEST exercises all segments + LEDs at once (works
+// regardless of mode), then value-delta and button-walk verify the live
+// inputs. No LED walk — the module owns its LEDs and the bulb step covers them.
+static const Step STEPS_GPWS[]  = { {ST_ENABLE,0},{ST_BULB,0},{ST_VALUEDELTA,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
+static const Step STEPS_THR[]   = { {ST_ENABLE,0},{ST_MOTOR,0},{ST_TOUCH,0},{ST_BULB,0},{ST_BTNWALK,0},{ST_SUMMARY,0} };
+static const Step STEPS_DENC[]  = { {ST_ENABLE,0},{ST_ENC,0},{ST_ENC,1},{ST_BTNWALK,0},{ST_SUMMARY,0} };
+
+// ============================================================
+//  Runtime state
+// ============================================================
+static bool              _active = false;
+static const ModuleInfo* _info   = nullptr;
+static uint8_t           _addr    = 0;
+static const Step*       _steps   = nullptr;
+static uint8_t           _stepCount = 0;
+static uint8_t           _stepIdx   = 0;
+static bool              _entered   = false;
+
+static uint32_t _t0 = 0, _tPoll = 0;
+static uint8_t  _sub = 0;          // per-step sub-phase
+static uint8_t  _ledIdx = 0;
+
+static ModuleState _st;            // last parsed module state (persists across frames)
+static uint32_t _seen = 0;         // button-walk detected mask
+static int16_t  _amin[3], _amax[3];
+static bool     _encCW = false, _encCCW = false;
+static bool     _vFirst = true, _vUp = false, _vDown = false;
+static int32_t  _vMin = 0, _vMax = 0;   // running value extremes this step
+// A value swing must clear this many counts in each direction before it
+// registers, so residual SET_VALUE reports from the segment step and single-
+// count encoder jitter cannot auto-pass the value-delta check.
+static const int32_t V_DELTA = 3;
+
+static uint8_t  _result[8];        // 0=pending,1=pass,2=fail per step
+static const uint8_t LED_ACTIVE_STATE = KMC_LED_ACTIVE;
+
+// status line scratch
+static char  _line[6][28];
+static const char* _linePtr[6];
+
+// ============================================================
+//  Helpers
+// ============================================================
+static uint8_t ledCount() {
+    switch (_info->kind) {
+        case MK_BUTTON12:
+        case MK_BUTTON24:     return 16;   // 12 NeoPixel + 4 discrete positions
+        case MK_JOYSTICK:     return 2;
+        case MK_DISPLAY:      return 3;
+        default:              return 0;
+    }
+}
+
+static uint32_t pressedMask(const ModuleState& st) {
+    switch (_info->kind) {
+        case MK_JOYSTICK: return st.flags;   // persistent button state
+        default:          return st.events;  // current/edge bits
+    }
+}
+
+static void sendLedSingle(uint8_t idx) {
+    uint8_t pl[KMC_LED_PAYLOAD_SIZE];
+    memset(pl, 0, sizeof(pl));
+    if (idx < 16) kmcLedPackSet(pl, idx, LED_ACTIVE_STATE);
+    hwSendCommand(_addr, KMC_CMD_SET_LED_STATE, pl, KMC_LED_PAYLOAD_SIZE);
+}
+
+static void sendThrottle(uint16_t v) {
+    uint8_t pl[2] = { (uint8_t)(v >> 8), (uint8_t)(v & 0xFF) };
+    hwSendCommand(_addr, KMC_CMD_SET_THROTTLE, pl, 2);
+}
+
+static void sendValue(uint16_t v) {
+    uint8_t pl[2] = { (uint8_t)(v >> 8), (uint8_t)(v & 0xFF) };
+    hwSendCommand(_addr, KMC_CMD_SET_VALUE, pl, 2);
+}
+
+// Read the module's current state (throttled) into the persistent _st.
+// Returns true if _st was refreshed this call; _st always holds the most
+// recent successful parse so handlers can read it on throttled frames too.
+// Reads ONLY when the module asserts INT — a read with nothing queued
+// returns a zeroed header + 0xFF fill, which would set every event bit and
+// instantly (falsely) pass the button-walk step. The type ID in the header
+// must also match the module under test.
+static bool readState() {
+    uint32_t now = millis();
+    if (now - _tPoll < INPUT_POLL_MS) return false;
+    if (!hwModuleIntAsserted()) return false;
+    _tPoll = now;
+    uint8_t pkt[16];
+    uint8_t expect = kindPacketSize(_info->kind);
+    uint8_t n = hwReadPacket(_addr, pkt, expect);
+    if (n < expect || pkt[1] != _info->typeId) return false;
+    hwParsePacket(_info, pkt, n, _st);
+    return true;
+}
+
+static void buildHeader(char* buf, uint8_t n) {
+    snprintf(buf, n, "CONSTR TEST  %s  %u/%u",
+             _info->name, (unsigned)(_stepIdx + 1), (unsigned)_stepCount);
+}
+
+static void finishStep(bool pass) {
+    if (_stepIdx < sizeof(_result)) _result[_stepIdx] = pass ? 1 : 2;
+    _stepIdx++;
+    _entered = false;
+}
+
+static void enterStep() {
+    _entered = true;
+    _sub = 0; _ledIdx = 0; _seen = 0; _t0 = millis();
+    _encCW = _encCCW = false; _vFirst = true; _vUp = _vDown = false; _vMin = _vMax = 0;
+    for (uint8_t i = 0; i < 3; i++) { _amin[i] = 32767; _amax[i] = -32768; }
+    memset(&_st, 0, sizeof(_st));
+}
+
+// Poll the control buttons; ABORT ends the whole test from any screen.
+static CtButton ctPoll(uint8_t mask) {
+    CtButton b = uiCtPoll(mask | CTB_ABORT);
+    if (b == CT_ABORT) _active = false;
+    return b;
+}
+
+// Render only when the content actually changed. ctUpdate() runs every
+// loop() pass; unconditionally repainting the full screen flickers badly
+// on hardware. FNV-1a hash over everything that affects the rendering.
+static uint32_t _lastRenderSig = 0;
+
+static uint32_t _sigStr(uint32_t h, const char* s) {
+    if (!s) return h ^ 0x9E3779B9UL;
+    while (*s) { h ^= (uint8_t)*s++; h *= 16777619UL; }
+    h ^= 0xFF; h *= 16777619UL;   // terminator so "ab","c" != "a","bc"
+    return h;
+}
+
+static void ctRender(const char* header, const char* instruction,
+                     const char* const* status, uint8_t statusCount,
+                     uint8_t btnMask) {
+    uint32_t h = 2166136261UL;
+    h = _sigStr(h, header);
+    h = _sigStr(h, instruction);
+    for (uint8_t i = 0; i < statusCount; i++) h = _sigStr(h, status[i]);
+    h ^= btnMask; h *= 16777619UL;
+    h ^= statusCount; h *= 16777619UL;
+    if (h == _lastRenderSig) return;
+    _lastRenderSig = h;
+    uiCtRender(header, instruction, status, statusCount, btnMask);
+}
+
+// ============================================================
+//  ctBegin / ctActive
+// ============================================================
+void ctBegin(const ModuleInfo* info, uint8_t addr) {
+    _info = info; _addr = addr; _active = (info != nullptr);
+    switch (info->kind) {
+        case MK_BUTTON12:
+        case MK_BUTTON24:     _steps = STEPS_BTN;  _stepCount = sizeof(STEPS_BTN)/sizeof(Step);  break;
+        case MK_JOYSTICK:     _steps = STEPS_JOY;  _stepCount = sizeof(STEPS_JOY)/sizeof(Step);  break;
+        case MK_DISPLAY:
+            if (info->typeId == KMC_TYPE_GPWS_INPUT) {
+                _steps = STEPS_GPWS; _stepCount = sizeof(STEPS_GPWS)/sizeof(Step);
+            } else {
+                _steps = STEPS_DISP; _stepCount = sizeof(STEPS_DISP)/sizeof(Step);
+            }
+            break;
+        case MK_THROTTLE:     _steps = STEPS_THR;  _stepCount = sizeof(STEPS_THR)/sizeof(Step);  break;
+        case MK_DUAL_ENCODER: _steps = STEPS_DENC; _stepCount = sizeof(STEPS_DENC)/sizeof(Step); break;
+        default:              _active = false; return;
+    }
+    memset(_result, 0, sizeof(_result));
+    _stepIdx = 0; _entered = false;
+    _lastRenderSig = 0;   // force the first ctRender paint
+}
+
+bool ctActive() { return _active; }
+
+// ============================================================
+//  Step handlers (each renders + advances; ABORT handled centrally)
+// ============================================================
+
+static void stepEnable() {
+    hwSendCommand(_addr, KMC_CMD_ENABLE, nullptr, 0);
+    finishStep(true);   // nothing to confirm
+}
+
+static void stepLedWalk() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    uint8_t total = ledCount();
+    if (_sub == 0) {
+        // Walk: light one LED at a time, ~450ms each.
+        if (millis() - _t0 >= 450) { _t0 = millis(); _ledIdx++; }
+        if (_ledIdx >= total) { _sub = 1; sendLedSingle(255); /* none */ }
+        else sendLedSingle(_ledIdx);
+        snprintf(_line[0], 28, "Lighting LED %u of %u", (unsigned)(_ledIdx + 1), (unsigned)total);
+        _linePtr[0] = _line[0];
+        ctRender(hdr, "Watch each LED light in turn", _linePtr, 1, CTB_ABORT);
+        ctPoll(CTB_ABORT);
+    } else {
+        ctRender(hdr, "All LEDs lit in order/colour?", nullptr, 0,
+                   CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
+        CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
+        if (b == CT_PASS) finishStep(true);
+        else if (b == CT_FAIL) finishStep(false);
+        else if (b == CT_RETRY) { _sub = 0; _ledIdx = 0; _t0 = millis(); }
+    }
+}
+
+static void stepBtnWalk() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    if (readState()) _seen |= pressedMask(_st);
+
+    // Count labelled inputs and how many seen.
+    uint8_t need = 0, got = 0;
+    for (uint8_t i = 0; i < _info->inputCount; i++) {
+        if (_info->labels[i] && _info->labels[i][0]) {
+            need++;
+            if (_seen & (1UL << i)) got++;
+        }
+    }
+    snprintf(_line[0], 28, "Detected %u / %u inputs", got, need);
+    _linePtr[0] = _line[0];
+    // Show up to 3 not-yet-seen labels as hints.
+    uint8_t hintRow = 1, shown = 0;
+    for (uint8_t i = 0; i < _info->inputCount && shown < 3; i++) {
+        if (_info->labels[i] && _info->labels[i][0] && !(_seen & (1UL << i))) {
+            snprintf(_line[hintRow], 28, "press: %s", _info->labels[i]);
+            _linePtr[hintRow] = _line[hintRow]; hintRow++; shown++;
+        }
+    }
+    ctRender(hdr, "Press every input once", _linePtr, hintRow,
+               CTB_PASS | CTB_FAIL | CTB_ABORT);
+
+    if (need > 0 && got >= need) { finishStep(true); return; }   // auto-pass
+    CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
+    if (b == CT_PASS) finishStep(true);
+    else if (b == CT_FAIL) finishStep(false);
+}
+
+static void stepAxis() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    if (readState()) {
+        for (uint8_t i = 0; i < 3; i++) {
+            if (_st.axis[i] < _amin[i]) _amin[i] = _st.axis[i];
+            if (_st.axis[i] > _amax[i]) _amax[i] = _st.axis[i];
+        }
+    }
+    bool rangedAll = true;
+    for (uint8_t i = 0; i < 3; i++) {
+        int32_t span = (int32_t)_amax[i] - (int32_t)_amin[i];
+        snprintf(_line[i], 28, "AX%u %6d  [%d..%d]", (unsigned)(i + 1),
+                 _st.axis[i], _amin[i], _amax[i]);
+        _linePtr[i] = _line[i];
+        if (span < 16000) rangedAll = false;
+    }
+    ctRender(hdr, "Move stick full range + twist", _linePtr, 3,
+               CTB_PASS | CTB_FAIL | CTB_ABORT);
+    if (rangedAll) { finishStep(true); return; }
+    CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
+    if (b == CT_PASS) finishStep(true);
+    else if (b == CT_FAIL) finishStep(false);
+}
+
+static void stepMotor() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    // sub 0..2 = drive 0% / 100% / 50% with 1.2s dwell each, then confirm.
+    static const uint16_t targets[3] = { 0, 32767, 16384 };
+    static const char*    tnames[3]  = { "0%", "100%", "50%" };
+    if (_sub < 3) {
+        if (millis() - _t0 >= 1200) { _sub++; _t0 = millis(); if (_sub < 3) sendThrottle(targets[_sub]); }
+        else if (_t0 == millis() || _sub == 0) { sendThrottle(targets[_sub]); }
+        if (_sub < 3) {
+            snprintf(_line[0], 28, "Driving to %s", tnames[_sub]);
+            _linePtr[0] = _line[0];
+            ctRender(hdr, "Slider should move full range", _linePtr, 1, CTB_ABORT);
+            ctPoll(CTB_ABORT);
+        }
+    } else {
+        ctRender(hdr, "Slider moved smoothly 0-100%?", nullptr, 0,
+                   CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
+        CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
+        if (b == CT_PASS) finishStep(true);
+        else if (b == CT_FAIL) finishStep(false);
+        else if (b == CT_RETRY) { _sub = 0; _t0 = millis(); sendThrottle(0); }
+    }
+}
+
+static void stepTouch() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    readState();
+    bool touch = (_st.flags & 0x04) != 0;         // THR_FLAG_TOUCH (bit 2)
+    snprintf(_line[0], 28, "Touch: %s", touch ? "YES" : "no");
+    snprintf(_line[1], 28, "Wiper value: %u", _st.value);
+    _linePtr[0] = _line[0]; _linePtr[1] = _line[1];
+    ctRender(hdr, "Grab & slide by hand", _linePtr, 2,
+               CTB_PASS | CTB_FAIL | CTB_ABORT);
+    CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
+    if (b == CT_PASS) finishStep(true);
+    else if (b == CT_FAIL) finishStep(false);
+}
+
+static void stepEnc(uint8_t idx) {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    if (readState()) {
+        if (_st.enc[idx] > 0) _encCW = true;
+        if (_st.enc[idx] < 0) _encCCW = true;
+    }
+    snprintf(_line[0], 28, "ENC%u  CW:%s  CCW:%s", (unsigned)(idx + 1),
+             _encCW ? "ok" : "--", _encCCW ? "ok" : "--");
+    _linePtr[0] = _line[0];
+    ctRender(hdr, "Turn the encoder both ways", _linePtr, 1,
+               CTB_FAIL | CTB_ABORT);
+    if (_encCW && _encCCW) { finishStep(true); return; }
+    CtButton b = ctPoll(CTB_FAIL | CTB_ABORT);
+    if (b == CT_FAIL) finishStep(false);
+}
+
+static void stepValueDelta() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    if (readState()) {
+        int32_t v = (int32_t)_st.value;
+        if (_vFirst) { _vMin = _vMax = v; _vFirst = false; }
+        else {
+            if (v > _vMax) _vMax = v;
+            if (v < _vMin) _vMin = v;
+            // Require a real swing in each direction: value climbed at least
+            // V_DELTA above its lowest point (an up turn) and dropped at least
+            // V_DELTA below its highest point (a down turn). This ignores the
+            // single residual value carried in from the segment step and any
+            // one-count encoder jitter.
+            if (v >= _vMin + V_DELTA) _vUp = true;
+            if (v <= _vMax - V_DELTA) _vDown = true;
+        }
+    }
+    snprintf(_line[0], 28, "Value: %u", _st.value);
+    snprintf(_line[1], 28, "up:%s  down:%s", _vUp ? "ok" : "--", _vDown ? "ok" : "--");
+    _linePtr[0] = _line[0]; _linePtr[1] = _line[1];
+    // GPWS reports the encoder only once GPWS mode is engaged (BTN01), so
+    // remind the operator to turn it on before expecting value changes.
+    const char* instr = (_info->typeId == KMC_TYPE_GPWS_INPUT)
+                            ? "Press GPWS Enable, then turn encoder"
+                            : "Turn encoder up then down";
+    ctRender(hdr, instr, _linePtr, 2, CTB_FAIL | CTB_ABORT);
+    if (_vUp && _vDown) { finishStep(true); return; }
+    CtButton b = ctPoll(CTB_FAIL | CTB_ABORT);
+    if (b == CT_FAIL) finishStep(false);
+}
+
+static void stepSeg() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    // Drive the module's display alternately 8888 (all segments) and 1234
+    // every second so the operator can confirm every segment lights. The
+    // on-screen status text is kept STATIC ("Cycling 8888 / 1234"): if it
+    // changed with the value, ctRender's signature would change each second
+    // and repaint the whole screen — the flicker that made the PASS/FAIL
+    // buttons impossible to tap.
+    if (_sub == 0) { _t0 = millis(); _sub = 1; sendValue(8888); }
+    else if (millis() - _t0 >= 1000) {
+        _t0 = millis();
+        _sub = (_sub == 1) ? 2 : 1;          // toggle 8888 <-> 1234
+        sendValue(_sub == 1 ? 8888 : 1234);
+    }
+    _linePtr[0] = "Cycling 8888 / 1234";
+    ctRender(hdr, "All digits & segments OK?", _linePtr, 1,
+               CTB_PASS | CTB_FAIL | CTB_ABORT);
+    CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_ABORT);
+    if (b == CT_PASS) finishStep(true);
+    else if (b == CT_FAIL) finishStep(false);
+}
+
+static void stepBulb() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    // CMD_BULB_TEST is persistent per spec: 0x01 starts, 0x00 stops — the
+    // master controls the duration. Always send the explicit stop on every
+    // exit path or the module stays latched in bulb mode.
+    static const uint8_t BULB_ON  = 0x01;
+    static const uint8_t BULB_OFF = 0x00;
+    if (_sub == 0) { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_ON, 1); _sub = 1; }
+    // Display modules light every 7-seg segment as well as their button LEDs
+    // under bulb test; button/throttle modules light discrete LEDs only.
+    const char* prompt = (_info->kind == MK_DISPLAY)
+                             ? "All segments + LEDs lit?"
+                             : "All discrete LEDs lit?";
+    ctRender(hdr, prompt, nullptr, 0,
+               CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
+    CtButton b = ctPoll(CTB_PASS | CTB_FAIL | CTB_RETRY | CTB_ABORT);
+    if (!_active) {   // aborted from this screen — stop the bulb first
+        hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_OFF, 1);
+        return;
+    }
+    if (b == CT_PASS)  { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_OFF, 1); finishStep(true); }
+    else if (b == CT_FAIL) { hwSendCommand(_addr, KMC_CMD_BULB_TEST, &BULB_OFF, 1); finishStep(false); }
+    else if (b == CT_RETRY) { _sub = 0; }
+}
+
+static void stepSummary() {
+    char hdr[40]; buildHeader(hdr, sizeof(hdr));
+    uint8_t rows = 0;
+    for (uint8_t i = 0; i < _stepIdx && rows < 6; i++) {
+        if (_result[i] == 0) continue;
+        snprintf(_line[rows], 28, "step %u: %s", (unsigned)(i + 1),
+                 _result[i] == 1 ? "PASS" : "FAIL");
+        _linePtr[rows] = _line[rows]; rows++;
+    }
+    ctRender(hdr, "Construction test complete", _linePtr, rows, CTB_NEXT | CTB_ABORT);
+    CtButton b = ctPoll(CTB_NEXT | CTB_ABORT);
+    if (b == CT_NEXT || b == CT_ABORT) _active = false;
+}
+
+// ============================================================
+//  ctUpdate() — dispatch the current step
+// ============================================================
+void ctUpdate() {
+    if (!_active) return;
+    if (_stepIdx >= _stepCount) { _stepIdx = _stepCount - 1; }  // clamp to summary
+
+    const Step& s = _steps[_stepIdx];
+    if (!_entered) enterStep();
+
+    // Each handler polls via ctPoll(), which ends the test on ABORT.
+    switch (s.type) {
+        case ST_ENABLE:     stepEnable();         break;
+        case ST_LEDWALK:    stepLedWalk();        break;
+        case ST_BTNWALK:    stepBtnWalk();        break;
+        case ST_AXIS:       stepAxis();           break;
+        case ST_MOTOR:      stepMotor();          break;
+        case ST_TOUCH:      stepTouch();          break;
+        case ST_ENC:        stepEnc(s.arg);       break;
+        case ST_VALUEDELTA: stepValueDelta();     break;
+        case ST_SEG:        stepSeg();            break;
+        case ST_BULB:       stepBulb();           break;
+        case ST_SUMMARY:    stepSummary();        break;
+    }
+}

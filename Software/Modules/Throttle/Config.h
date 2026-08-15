@@ -1,6 +1,6 @@
 /**
  * @file        Config.h
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
@@ -87,41 +87,44 @@
 #define THR_BIT_00              3
 
 // ============================================================
-//  Pin assignments — ATtiny816 KC-01-1861/1862 v1.1
+//  Pin assignments — ATtiny816, KC-01-1871 schematic / KC-01-1872 board (V2.0)
+//
+//  Verified against KC-01-1871_V2.0_Throttle Module_SCH. Note that the
+//  five illuminated panel switches share a SINGLE backlight-enable line
+//  (LED_ENA, PC3) driven through one 2N3904 per switch — there are no
+//  per-button LED outputs. The throttle-enable switch (THRTL_ENA) is a
+//  local-enable input in the schematic but is NOT wired up in the final
+//  build, so it has no pin here; the local enable is held active in
+//  firmware (see _localEnable in I2C.cpp).
 // ============================================================
 
-/** @brief Motor forward direction — binary output to L293D INPUT1. */
-#define THR_PIN_MTR_FWD         PIN_PB4
+/** @brief Motor forward direction — binary output to L293DD INPUT1/INPUT3. */
+#define THR_PIN_MTR_FWD         PIN_PA7
 
-/** @brief Motor reverse direction — binary output to L293D INPUT2. */
-#define THR_PIN_MTR_REV         PIN_PB5
+/** @brief Motor reverse direction — binary output to L293DD INPUT2/INPUT4. */
+#define THR_PIN_MTR_REV         PIN_PA6
 
-/** @brief Motor speed — PWM output to L293D ENABLE. */
-#define THR_PIN_SPEED           PIN_PB3
+/** @brief Motor speed — PWM output to L293DD ENABLE1/ENABLE2. */
+#define THR_PIN_SPEED           PIN_PC0
 
 /** @brief Throttle 100% button — active high. */
-#define THR_PIN_THRTL_100       PIN_PA6
-
-/** @brief Throttle 100% LED — discrete output via 2N3904. */
-#define THR_PIN_LED_100         PIN_PA7
+#define THR_PIN_THRTL_100       PIN_PB4
 
 /** @brief Throttle UP button — active high. */
-#define THR_PIN_THRTL_UP        PIN_PB2
-
-/** @brief Throttle UP LED — discrete output via 2N3904. */
-#define THR_PIN_LED_UP          PIN_PC0
+#define THR_PIN_THRTL_UP        PIN_PB3
 
 /** @brief Throttle DOWN button — active high. */
 #define THR_PIN_THRTL_DOWN      PIN_PC1
 
-/** @brief Throttle DOWN LED — discrete output via 2N3904. */
-#define THR_PIN_LED_DOWN        PIN_PC2
-
 /** @brief Throttle 0% button — active high. */
-#define THR_PIN_THRTL_00        PIN_PC3
+#define THR_PIN_THRTL_00        PIN_PC2
 
-/** @brief Throttle 0% LED — discrete output via 2N3904. */
-#define THR_PIN_LED_00          PIN_PA1
+/**
+ * @brief Shared switch-backlight enable — single discrete output via one
+ *        2N3904 per switch, all gated together. HIGH lights all five panel
+ *        switch backlights; there are no independent per-button LEDs.
+ */
+#define THR_PIN_LED_ENA         PIN_PC3
 
 /** @brief Capacitive touch sensor output — active high when touched. */
 #define THR_PIN_TOUCH_IND       PIN_PA3

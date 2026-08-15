@@ -1,6 +1,6 @@
 /**
  * @file        ExtendedModule.ino
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -35,7 +35,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Requires: KerbalButtonCore library
- *              Hardware: KC-01-1822 v1.1 (ATtiny816)
+ *              Hardware: KC-01-1801/1802 and KC-01-1811/1812 (ATtiny816)
  *              IDE settings:
  *                Board: ATtiny816 (megaTinyCore)
  *                Clock: 10 MHz or higher
@@ -69,10 +69,10 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_GREEN,   // B9  — Drogue Deploy ← extended states active in flight
     KBC_RED,     // B10 — Main Cut      ← extended states active in flight
     KBC_RED,     // B11 — Drogue Cut    ← extended states active in flight
-    KBC_GREEN,   // B12 — discrete (unused)
-    KBC_GREEN,   // B13 — discrete (unused)
-    KBC_GREEN,   // B14 — discrete (unused)
-    KBC_GREEN,   // B15 — discrete (unused)
+    KBC_OFF,     // B12 — switch input, no LED
+    KBC_OFF,     // B13 — switch input, no LED
+    KBC_OFF,     // B14 — switch input, no LED
+    KBC_OFF,     // B15 — switch input, no LED
 };
 
 // ============================================================

@@ -5,8 +5,8 @@
 **Date:** 2026-04-07  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1822 Button Module Base v1.1  
-**Library:** KerbalButtonCore v1.0.0  
+**Hardware:** KC-01-1802 Button Module Base v1.1  
+**Library:** KerbalButtonCore v2.0.0  
 
 ---
 

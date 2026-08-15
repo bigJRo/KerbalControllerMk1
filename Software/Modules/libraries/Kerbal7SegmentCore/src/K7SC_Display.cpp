@@ -1,6 +1,6 @@
 /**
  * @file        K7SC_Display.cpp
- * @version     1.1.0
+ * @version     2.0.0
  * @date        2026-04-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -28,7 +28,7 @@ static uint8_t  _intensity     = K7SC_MAX_INTENSITY;
 //  CLK (PA7), DATA (PA6), and LOAD (PA5) are all on Port A.
 //  Direct register access replaces digitalWrite() in the bit-bang
 //  loop, reducing a 4-digit display update from ~250μs to ~25μs
-//  at 10MHz. This matters for encoder responsiveness — fast spin
+//  at 20MHz. This matters for encoder responsiveness — fast spin
 //  triggers 100-step jumps, each requiring a full display refresh.
 //
 //  PORTA.OUT is the output data register for Port A on the
@@ -57,7 +57,7 @@ static uint8_t  _intensity     = K7SC_MAX_INTENSITY;
 //
 //  CLK idles LOW. Data is set up before the rising edge.
 //  MAX7219 maximum clock frequency: 10MHz — well within budget
-//  since direct port writes at 10MHz CPU give ~4 cycles per bit.
+//  since direct port writes at 20MHz CPU give ~4 cycles per bit.
 // ============================================================
 
 static void _spiSend(uint8_t reg, uint8_t data) {
@@ -93,13 +93,13 @@ static void _writeValue(uint16_t value) {
     while (value >= 10)   { d[1]++; value -= 10;   }
     d[0] = (uint8_t)value;
 
-    // Physical display wiring (from schematic KC-01-1881/1882 v2.0):
+    // Physical display wiring (from schematic KC-01-1841/1842 v2.0):
     //   MAX7219 DIG0 (reg 1) -> G4 = leftmost  physical digit = thousands
     //   MAX7219 DIG1 (reg 2) -> G3             physical digit = hundreds
     //   MAX7219 DIG2 (reg 3) -> G2             physical digit = tens
     //   MAX7219 DIG3 (reg 4) -> G1 = rightmost physical digit = units
     //
-    // Verified by hardware diagnostic on KC-01-1880 v2.0.
+    // Verified by hardware diagnostic on KC-01-1841 v2.0.
     // Leading zero suppression: blank regs 1-3 from left; reg 4 always shown.
     bool leading = true;
 

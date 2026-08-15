@@ -1,17 +1,17 @@
 /**
  * @file        Motor.h
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       L293D H-bridge motor control for the Throttle Module.
+ * @brief       L293DD H-bridge motor control for the Throttle Module.
  *
  *              Motor direction: MTR_FWD and MTR_REV are binary signals
- *              to the L293D INPUT pins. Only one should be HIGH at a time.
+ *              to the L293DD INPUT pins. Only one should be HIGH at a time.
  *
- *              Motor speed: SPEED drives the L293D ENABLE pin via PWM.
+ *              Motor speed: SPEED drives the L293DD ENABLE pin via PWM.
  *              0 = stopped, 255 = full speed.
  *
  *              Position control: bang-bang with near-target slowdown.

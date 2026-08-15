@@ -19,8 +19,9 @@
  *              This replaces the v1.0.0 raw struct initializer approach
  *              that silently swapped the R and G channels in every color.
  *
- *              ENABLED state uses the W channel only via KMC_WHITE_ONLY()
- *              for a clean neutral backlight without RGB tint.
+ *              ENABLED state uses equal R=G=B (with W=0) for a dim
+ *              neutral white backlight — the W channel is unused in the
+ *              NEO_GRB 3-byte mode on KC-01-1841 v2.0.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -41,7 +42,7 @@ static const GRBWColor K7SC_OFF           = { 0, 0, 0, 0 };
 
 /**
  * @brief ENABLED state — dim neutral white via equal R/G/B.
- *        W channel is not used (NEO_GRB 3-byte mode on KC-01-1880 v2.0).
+ *        W channel is not used (NEO_GRB 3-byte mode on KC-01-1841 v2.0).
  *        Brightness set by K7SC_ENABLED_BRIGHTNESS in K7SC_Config.h.
  */
 static const GRBWColor K7SC_ENABLED_COLOR = {

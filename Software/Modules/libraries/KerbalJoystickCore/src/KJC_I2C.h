@@ -8,7 +8,7 @@
  *
  * @brief       I2C target handler for KerbalJoystickCore modules.
  *
- *              Conformant with I2C Protocol Specification v2.4. The
+ *              Conformant with I2C Protocol Specification v2.10. The
  *              joystick data packet is 12 bytes (3-byte universal header
  *              + 9-byte payload, spec §9.2):
  *

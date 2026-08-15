@@ -1,6 +1,6 @@
 /**
  * @file        I2C.cpp
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
@@ -32,8 +32,14 @@ static bool _enabled     = false;
 static bool _precision   = false;
 static bool _intAsserted = false;
 
+// Local throttle-enable state. In the schematic this was a panel switch
+// (THRTL_ENA); in the final build that switch is not wired, so the local
+// enable is held active. The module is only motor/LED-active when the master
+// has commanded ACTIVE *and* the local enable is set.
+static bool _localEnable = true;
+
 // Lifecycle (KMC_STATUS_*), transaction counter, and fault flag for
-// I2C Protocol v2.4 conformance. _enabled tracks the motor/LED active
+// I2C Protocol v2.10 conformance. _enabled tracks the motor/LED active
 // state and equals (lifecycle == ACTIVE).
 static uint8_t _lifecycle = KMC_STATUS_BOOT_READY;
 static uint8_t _txCounter = 0;
@@ -78,7 +84,10 @@ static void _clearINT() {
 // ============================================================
 
 static void _enable() {
-    _enabled = true;
+    // Master-commanded ACTIVE gates on the local enable (held active — the
+    // THRTL_ENA switch is not wired in the final build).
+    _enabled = _localEnable;
+    if (!_enabled) return;
     buttonsLEDsOn();
     // Motor resumes normal operation — was seeking 0 while disabled
     // No target set yet — motor stays where it is
@@ -164,9 +173,10 @@ static void _dispatch() {
             break;
 
         case CMD_BULB_TEST:
-            // Flash the panel indicator LED (LED1) briefly
-            // LED1 is the board-mounted indicator, not a button LED
-            // Use button LEDs as proxy since they are user-visible
+            // Spec: 1-byte payload, 0x01 = start, 0x00 = stop. This module's
+            // bulb test is timed (shared switch backlight as user-visible proxy), so a
+            // 0x00 "stop" is a no-op — it must NOT retrigger the flash.
+            if (_cmdLen >= 2 && _cmdBuf[1] == 0x00) break;
             buttonsLEDsOn();
             delay(THR_BULB_TEST_MS);
             if (!_enabled) buttonsLEDsOff();

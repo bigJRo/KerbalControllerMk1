@@ -10,7 +10,7 @@ int16_t enc1_pos = 0;
 int16_t prev_enc1_pos = 0;
 int16_t enc2_pos = 0;
 int16_t prev_enc2_pos = 0;
-uint8_t ctrlGrp = 0;
+uint8_t ctrlGrp = 1;  // Active control group 1..6 (Module UI Reference v5.4); 1 = Default Group
 const uint8_t pPanelMode = 0b00000011;    //Panel Control Input
 const uint8_t pPanelButt01 = 0b00000100;  //Panel Control Button 01
 const uint8_t pPanelButt02 = 0b00001000;  //Panel Control Button 02
@@ -199,7 +199,7 @@ const uint16_t pLights = 0b0000000000000001;      //Lights button
 const uint16_t pGear = 0b0000000000000010;        // Gear button
 const uint16_t pSolarArray = 0b0000000000000100;  // Solar Array button; Custom Action Group 11
 const uint16_t pRadiator = 0b0000000000001000;    // Radiator button; Custom Action Group 14
-const uint16_t pDrogue = 0b00000000000100000;     // Drogue Chute button; Custom Action Group 15
+const uint16_t pDrogue = 0b0000000000010000;      // Drogue Chute button (bit 4 — was colliding with pBrakes at bit 5)
 const uint16_t pBrakes = 0b0000000000100000;      // Brakes button
 const uint16_t pLadder = 0b0000000001000000;      // Ladder button; Custom Action Group 17
 const uint16_t pAntenna = 0b0000000010000000;     // Antenna button; Custom Action Group 12
@@ -232,3 +232,38 @@ const uint16_t pPhysTW = 0b0000000100000000;    //Physical Time Warp Override
 const uint16_t pWarpDec = 0b0000001000000000;   //Decrease Time Warp
 const uint16_t pWarpInc = 0b0000010000000000;   //Increase Time Warp
 const uint16_t pCancelTW = 0b0000100000000000;  //Increase Time Warp
+
+
+/***************************************************************************************
+   Switch Group 1 — Function Control (0x21), KBC indices 16-23
+    Discrete panel switches read in the upper byte of the 24-input event/change
+    planes (bit 16+n). Reconstruct the 24-bit input word from the 9-byte packet
+    payload (3 event bytes) and test these masks. See Module UI Reference v5.4.
+****************************************************************************************/
+uint32_t prevSwitchGrp1;
+uint32_t newSwitchGrp1;
+const uint32_t pSG1_MSTR     = (1UL << 16);  // OPER / RESET  (momentary)
+const uint32_t pSG1_DISPL    = (1UL << 17);  // OPER / CLR    (momentary)
+const uint32_t pSG1_ENGINE   = (1UL << 18);  // SAFE / ARM    (latching)
+const uint32_t pSG1_THROTTLE = (1UL << 19);  // INOP / ACT    (latching)
+const uint32_t pSG1_SCE      = (1UL << 20);  // NORM / AUX    (latching)
+const uint32_t pSG1_UPTLM    = (1UL << 21);  // INHIB / XMIT  (latching)
+const uint32_t pSG1_LTG      = (1UL << 22);  // NORM / TEST   (momentary)
+const uint32_t pSG1_THRTL    = (1UL << 23);  // STD / FINE    (latching)
+
+
+/***************************************************************************************
+   Switch Group 2 — Vehicle Control (0x24), KBC indices 16-23
+    Discrete panel switches read in the upper byte of the 24-input event/change
+    planes (bit 16+n). See Module UI Reference v5.4.
+****************************************************************************************/
+uint32_t prevSwitchGrp2;
+uint32_t newSwitchGrp2;
+const uint32_t pSG2_CHUTE   = (1UL << 16);  // SAFE / ARM   — parachute interlock
+const uint32_t pSG2_GEAR    = (1UL << 17);  // UP / DOWN
+const uint32_t pSG2_BRAKE   = (1UL << 18);  // REL / LOCK
+const uint32_t pSG2_EXT_LT  = (1UL << 19);  // OFF / ILLUM
+const uint32_t pSG2_SAS     = (1UL << 20);  // OFF / ENAB
+const uint32_t pSG2_RCS     = (1UL << 21);  // OFF / ENAB
+const uint32_t pSG2_THC_RHC = (1UL << 22);  // NORM / PREC
+const uint32_t pSG2_AUDIO   = (1UL << 23);  // MUTE / LIVE

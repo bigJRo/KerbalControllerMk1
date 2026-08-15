@@ -18,7 +18,7 @@
  *              library without coupling to a specific I2C implementation.
  *
  *              v2.0 brings the library to full conformance with the
- *              system I2C Protocol Specification v2.4: every data packet
+ *              system I2C Protocol Specification v2.10: every data packet
  *              now carries the universal 3-byte header (status byte,
  *              module type ID, transaction counter) ahead of the
  *              button-event payload, and the full lifecycle command set
@@ -26,7 +26,7 @@
  *              modules read 24 inputs (KBC_INPUT_COUNT == 24) and emit a
  *              6-byte payload (9-byte total packet).
  *
- *              Full protocol specification: I2C_Protocol_Specification.md v2.5
+ *              Full protocol specification: I2C_Protocol_Specification.md v2.10
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -89,6 +89,8 @@
 #define KBC_LED_ALERT           KMC_LED_ALERT
 #define KBC_LED_ARMED           KMC_LED_ARMED
 #define KBC_LED_PARTIAL_DEPLOY  KMC_LED_PARTIAL_DEPLOY
+#define KBC_LED_CUT             KMC_LED_CUT
+#define KBC_LED_ACTIVE_ALT      KMC_LED_ACTIVE_ALT
 
 // ============================================================
 //  Packet sizes
@@ -136,22 +138,19 @@
 // ============================================================
 //  Button / input counts
 //
-//  KBC_BUTTON_COUNT is the number of LED/colour positions (12 RGB +
-//  4 discrete) and sizes the per-button active-colour array in every
-//  sketch — it is always 16. KBC_INPUT_COUNT (KBC_Config.h) is the
-//  number of shift-register inputs read and reported (16 or 24); on
-//  24-input modules, indices 16-23 are discrete switch inputs with no
-//  LED hardware.
+//  KBC_BUTTON_COUNT is the number of LED/colour positions and sizes the
+//  per-button active-colour array in every sketch — always 16 for index
+//  stability, but only the 12 NeoPixels (indices 0-11) are driven; indices
+//  12-15 are switch inputs with no LED. KBC_INPUT_COUNT (KBC_Config.h) is
+//  the number of shift-register inputs read and reported (16 or 24); on
+//  24-input modules, indices 16-23 are switch inputs.
 // ============================================================
 
 /** @brief Number of LED/colour positions per module (sizes activeColors[]). */
 #define KBC_BUTTON_COUNT            16
 
-/** @brief Number of RGB LED buttons per module (NeoPixel chain). */
+/** @brief Number of RGB LED buttons per module (NeoPixel chain, indices 0-11). */
 #define KBC_RGB_BUTTON_COUNT        12
-
-/** @brief Number of discrete LED buttons per module. */
-#define KBC_DISCRETE_BUTTON_COUNT   4
 
 // ============================================================
 //  Capability flags — aliases for KMC_CAP_* from KerbalModuleCommon
@@ -167,7 +166,7 @@
 //  Module Type ID registry — aliases for KMC_TYPE_* from KerbalModuleCommon
 //
 //  Full registry (all module types) is in KerbalModuleCommon.h.
-//  KBC_TYPE_* aliases provided here for the six standard KBC modules.
+//  KBC_TYPE_* aliases provided here for the seven standard KBC modules.
 // ============================================================
 
 #define KBC_TYPE_RESERVED           KMC_TYPE_RESERVED
@@ -177,6 +176,7 @@
 #define KBC_TYPE_STABILITY_CONTROL  KMC_TYPE_STABILITY_CONTROL
 #define KBC_TYPE_VEHICLE_CONTROL    KMC_TYPE_VEHICLE_CONTROL
 #define KBC_TYPE_TIME_CONTROL       KMC_TYPE_TIME_CONTROL
+#define KBC_TYPE_AUX_CTRL           KMC_TYPE_AUX_CTRL
 #define KBC_TYPE_UNKNOWN            KMC_TYPE_UNKNOWN
 
 // ============================================================

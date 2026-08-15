@@ -1,23 +1,27 @@
 /**
  * @file        Buttons.h
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Button input and discrete LED output for the Throttle Module.
+ * @brief       Button input and switch-backlight output for the Throttle Module.
  *
- *              Four buttons: THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00
- *              Four discrete LEDs (2N3904 NPN switched):
- *                THRTL_100_LED, THRTL_UP_LED, THRTL_DOWN_LED, THRTL_00_LED
+ *              Four command buttons: THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00.
+ *              (A fifth panel switch, THRTL_ENA, appears in the schematic but
+ *              is NOT wired in the final build — it has no pin. A firmware
+ *              local-enable (_localEnable, held active) replaces it; see Config.h.)
  *
- *              All buttons active high with hardware pull-downs (RN1 10k).
- *              All LEDs active high through 2N3904 transistors.
+ *              All buttons active high with hardware pull-downs.
  *
- *              LED behavior:
- *                All ON  — throttle enabled
- *                All OFF — throttle disabled
+ *              Switch backlights: a SINGLE shared enable line (LED_ENA, PC3)
+ *              gates all five illuminated switches together through one 2N3904
+ *              per switch — there are no independent per-button LEDs.
+ *
+ *              Backlight behavior:
+ *                On  — throttle enabled
+ *                Off — throttle disabled
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -31,8 +35,8 @@
 // ============================================================
 
 /**
- * @brief Initialise button GPIO and LED pins.
- *        All LEDs off on start (module starts disabled).
+ * @brief Initialise button GPIO and the shared backlight-enable pin.
+ *        Backlight off on start (module starts disabled).
  */
 void buttonsBegin();
 
@@ -56,12 +60,12 @@ bool buttonsIsIntPending();
 uint8_t buttonsGetEvents();
 
 /**
- * @brief Set all LEDs on (throttle enabled state).
+ * @brief Turn the shared switch backlight on (throttle enabled state).
  */
 void buttonsLEDsOn();
 
 /**
- * @brief Set all LEDs off (throttle disabled state).
+ * @brief Turn the shared switch backlight off (throttle disabled state).
  */
 void buttonsLEDsOff();
 

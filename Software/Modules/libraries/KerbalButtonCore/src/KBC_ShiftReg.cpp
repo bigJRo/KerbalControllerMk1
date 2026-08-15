@@ -14,8 +14,8 @@
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
  *              Requires: ShiftIn library (InfectedBytes/ArduinoShiftIn)
- *              Hardware: KC-01-1822 v1.1
- *              Protocol: I2C_Protocol_Specification.md v2.4
+ *              Hardware: KC-01-1801/1802 and KC-01-1811/1812
+ *              Protocol: I2C_Protocol_Specification.md v2.10
  */
 
 #include "KBC_ShiftReg.h"
@@ -24,69 +24,92 @@
 // ============================================================
 //  ShiftIn bit → KBC button index remap table
 //
-//  The ShiftIn<2> library reads 16 bits into a uint16_t with the
-//  first bit shifted out placed in the MSB (bit 15). The hardware
-//  chain order (U15 feeds U14's SER, U14's QH feeds DATA_IN) and
-//  the 74HC165's H-first shift order produce the following mapping
-//  from ShiftIn bit position to PCB button label to KBC index:
+//  ShiftIn::read() places the FIRST bit clocked out in the MSB
+//  (result |= value << ((dataWidth-1) - i)). The register NEAREST the MCU
+//  (BUTTON00-07, its QH wired directly to DATA_IN) is clocked out first,
+//  and each 74HC165 presents its H input first. So for a 16-bit read the
+//  near register fills the HIGH byte (H→bit15 .. A→bit8) and the far
+//  register (BUTTON08-15) fills the LOW byte (H→bit7 .. A→bit0). Physical
+//  BUTTONnn maps directly to KBC index nn.
 //
 //  ShiftIn bit  PCB button  KBC index
 //  ───────────  ──────────  ─────────
-//       15       BUTTON09       8
-//       14       BUTTON10       9
-//       13       BUTTON11      10
-//       12       BUTTON12      11
-//       11       BUTTON13      12
-//       10       BUTTON14      13
-//        9       BUTTON15      14
-//        8       BUTTON16      15
-//        7       BUTTON01       0
-//        6       BUTTON02       1
-//        5       BUTTON03       2
-//        4       BUTTON04       3
-//        3       BUTTON05       4
-//        2       BUTTON06       5
-//        1       BUTTON07       6
-//        0       BUTTON08       7
+//       15       BUTTON07       7
+//       14       BUTTON06       6
+//       13       BUTTON05       5
+//       12       BUTTON04       4
+//       11       BUTTON03       3
+//       10       BUTTON02       2
+//        9       BUTTON01       1
+//        8       BUTTON00       0
+//        7       BUTTON15      15
+//        6       BUTTON14      14
+//        5       BUTTON13      13
+//        4       BUTTON12      12
+//        3       BUTTON11      11
+//        2       BUTTON10      10
+//        1       BUTTON09       9
+//        0       BUTTON08       8
 //
 //  KBC_SR_BUTTON_MAP[i] = KBC index for ShiftIn bit i.
 //  Stored in PROGMEM to preserve SRAM on the ATtiny816.
 //
 //  24-input switch-group modules (KBC_INPUT_COUNT == 24) add a third
-//  register U16 furthest from the MCU (U16 → U15 → U14 → DATA_IN), so
-//  its inputs occupy ShiftIn bits 16-23 and map to KBC indices 16-23.
-//  The U16 sub-map mirrors the H-first per-byte order of U14/U15
-//  (ShiftIn bit 16+i → KBC index 23-i). This ordering is a hardware
-//  assumption to confirm against the KC-01-1812 schematic for the
-//  Switch Group 1/2 wiring, exactly as the U14/U15 map above is.
+//  register (BUTTON16-23, A=BUTTON16 .. H=BUTTON23) furthest from the MCU.
+//  With dataWidth = 24 the byte positions shift: the near register
+//  (BUTTON00-07) moves to bits 16-23, the middle (BUTTON08-15) to bits
+//  8-15, and the third register to bits 0-7 — so the 16- and 24-input
+//  tables are DISTINCT, not one appended to the other. Verified against
+//  the KC-01-1811 (Wide Button) schematic.
 // ============================================================
 
 static const uint8_t KBC_SR_BUTTON_MAP[KBC_INPUT_COUNT] PROGMEM = {
-    7,   // ShiftIn bit 0  → BUTTON08 → KBC index 7
-    6,   // ShiftIn bit 1  → BUTTON07 → KBC index 6
-    5,   // ShiftIn bit 2  → BUTTON06 → KBC index 5
-    4,   // ShiftIn bit 3  → BUTTON05 → KBC index 4
-    3,   // ShiftIn bit 4  → BUTTON04 → KBC index 3
-    2,   // ShiftIn bit 5  → BUTTON03 → KBC index 2
-    1,   // ShiftIn bit 6  → BUTTON02 → KBC index 1
-    0,   // ShiftIn bit 7  → BUTTON01 → KBC index 0
-    15,  // ShiftIn bit 8  → BUTTON16 → KBC index 15
-    14,  // ShiftIn bit 9  → BUTTON15 → KBC index 14
-    13,  // ShiftIn bit 10 → BUTTON14 → KBC index 13
-    12,  // ShiftIn bit 11 → BUTTON13 → KBC index 12
-    11,  // ShiftIn bit 12 → BUTTON12 → KBC index 11
-    10,  // ShiftIn bit 13 → BUTTON11 → KBC index 10
-    9,   // ShiftIn bit 14 → BUTTON10 → KBC index 9
-    8,   // ShiftIn bit 15 → BUTTON09 → KBC index 8
 #if KBC_INPUT_COUNT == 24
-    23,  // ShiftIn bit 16 → SW group input → KBC index 23 (B23)
-    22,  // ShiftIn bit 17 → SW group input → KBC index 22 (B22)
-    21,  // ShiftIn bit 18 → SW group input → KBC index 21 (B21)
-    20,  // ShiftIn bit 19 → SW group input → KBC index 20 (B20)
-    19,  // ShiftIn bit 20 → SW group input → KBC index 19 (B19)
-    18,  // ShiftIn bit 21 → SW group input → KBC index 18 (B18)
-    17,  // ShiftIn bit 22 → SW group input → KBC index 17 (B17)
-    16   // ShiftIn bit 23 → SW group input → KBC index 16 (B16)
+    // dataWidth = 24: 3rd register (BUTTON16-23) in bits 0-7,
+    // middle (BUTTON08-15) in bits 8-15, near (BUTTON00-07) in bits 16-23.
+    16,  // ShiftIn bit 0  → BUTTON16 → KBC index 16
+    17,  // ShiftIn bit 1  → BUTTON17 → KBC index 17
+    18,  // ShiftIn bit 2  → BUTTON18 → KBC index 18
+    19,  // ShiftIn bit 3  → BUTTON19 → KBC index 19
+    20,  // ShiftIn bit 4  → BUTTON20 → KBC index 20
+    21,  // ShiftIn bit 5  → BUTTON21 → KBC index 21
+    22,  // ShiftIn bit 6  → BUTTON22 → KBC index 22
+    23,  // ShiftIn bit 7  → BUTTON23 → KBC index 23
+    8,   // ShiftIn bit 8  → BUTTON08 → KBC index 8
+    9,   // ShiftIn bit 9  → BUTTON09 → KBC index 9
+    10,  // ShiftIn bit 10 → BUTTON10 → KBC index 10
+    11,  // ShiftIn bit 11 → BUTTON11 → KBC index 11
+    12,  // ShiftIn bit 12 → BUTTON12 → KBC index 12
+    13,  // ShiftIn bit 13 → BUTTON13 → KBC index 13
+    14,  // ShiftIn bit 14 → BUTTON14 → KBC index 14
+    15,  // ShiftIn bit 15 → BUTTON15 → KBC index 15
+    0,   // ShiftIn bit 16 → BUTTON00 → KBC index 0
+    1,   // ShiftIn bit 17 → BUTTON01 → KBC index 1
+    2,   // ShiftIn bit 18 → BUTTON02 → KBC index 2
+    3,   // ShiftIn bit 19 → BUTTON03 → KBC index 3
+    4,   // ShiftIn bit 20 → BUTTON04 → KBC index 4
+    5,   // ShiftIn bit 21 → BUTTON05 → KBC index 5
+    6,   // ShiftIn bit 22 → BUTTON06 → KBC index 6
+    7    // ShiftIn bit 23 → BUTTON07 → KBC index 7
+#else
+    // dataWidth = 16: far register (BUTTON08-15) in bits 0-7,
+    // near (BUTTON00-07) in bits 8-15.
+    8,   // ShiftIn bit 0  → BUTTON08 → KBC index 8
+    9,   // ShiftIn bit 1  → BUTTON09 → KBC index 9
+    10,  // ShiftIn bit 2  → BUTTON10 → KBC index 10
+    11,  // ShiftIn bit 3  → BUTTON11 → KBC index 11
+    12,  // ShiftIn bit 4  → BUTTON12 → KBC index 12
+    13,  // ShiftIn bit 5  → BUTTON13 → KBC index 13
+    14,  // ShiftIn bit 6  → BUTTON14 → KBC index 14
+    15,  // ShiftIn bit 7  → BUTTON15 → KBC index 15
+    0,   // ShiftIn bit 8  → BUTTON00 → KBC index 0
+    1,   // ShiftIn bit 9  → BUTTON01 → KBC index 1
+    2,   // ShiftIn bit 10 → BUTTON02 → KBC index 2
+    3,   // ShiftIn bit 11 → BUTTON03 → KBC index 3
+    4,   // ShiftIn bit 12 → BUTTON04 → KBC index 4
+    5,   // ShiftIn bit 13 → BUTTON05 → KBC index 5
+    6,   // ShiftIn bit 14 → BUTTON06 → KBC index 6
+    7    // ShiftIn bit 15 → BUTTON07 → KBC index 7
 #endif
 };
 
@@ -118,8 +141,9 @@ void KBCShiftReg::begin() {
         KBC_PIN_SR_CLK
     );
 
-    // Use a slightly longer pulse width than the default 5us for
-    // reliable operation across the full operating temperature range.
+    // Apply the KBC load pulse width (KBC_SR_LOAD_PULSE_US = 5us, equal
+    // to the ShiftIn default) explicitly for reliable operation across
+    // the full operating temperature range.
     _shift.setPulseWidth(KBC_SR_LOAD_PULSE_US);
 
     // Clear all state
@@ -257,11 +281,11 @@ uint32_t KBCShiftReg::_readRaw() {
 // ============================================================
 //  _remap() — internal
 //
-//  Translates a raw ShiftIn<2> uint16_t reading into a uint16_t
-//  where bit N corresponds to KBC button index N.
+//  Translates a raw ShiftIn<KBC_SHIFTREG_COUNT> uint32_t reading into a
+//  uint32_t where bit N corresponds to KBC button index N.
 //
-//  Iterates through all 16 ShiftIn bit positions, looks up the
-//  corresponding KBC index from the PROGMEM remap table, and
+//  Iterates through all KBC_INPUT_COUNT ShiftIn bit positions (16 or 24),
+//  looks up the corresponding KBC index from the PROGMEM remap table, and
 //  builds the remapped result one bit at a time.
 // ============================================================
 

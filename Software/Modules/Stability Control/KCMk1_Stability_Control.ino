@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Stability_Control.ino
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -10,9 +10,9 @@
  *
  *              This module provides ten SAS mode buttons, an RCS toggle,
  *              and an Invert modifier for Kerbal Space Program, plus two
- *              discrete staging inputs. The staging enable position (B15)
- *              has both a discrete input and a discrete LED output acting
- *              as a safety interlock indicator.
+ *              staging switch inputs (B14 Stage, B15 Stage Enable). Both
+ *              are switch inputs only; the library no longer drives
+ *              discrete LEDs, so neither position has an LED output.
  *
  *              (Resolves Module UI Reference Open Item #10/TODO #10: RCS
  *              is now a NeoPixel button at B10; the former SAS_ENA / RCS_ENA
@@ -34,11 +34,11 @@
  *                      Invert     Maneuver   Retrograde Anti-Norm  Radial Out Anti-Tgt
  *                      AMBER      GREEN      GREEN      GREEN      GREEN      GREEN
  *
- *              Discrete positions (outside NeoPixel grid):
+ *              Switch positions (outside NeoPixel grid):
  *                B12 - Not installed (SAS_ENA moved to Switch Group 2)
  *                B13 - Not installed (RCS_ENA moved to Switch Group 2)
- *                B14 - Stage        - discrete input, latching, no LED
- *                B15 - Stage Enable - discrete input + discrete LED interlock
+ *                B14 - Stage        - switch input, latching, no LED
+ *                B15 - Stage Enable - switch input, no LED
  *
  *              Button-to-KBC index mapping:
  *                BUTTON01 (PCB) -> KBC index 0  -> Target
@@ -56,7 +56,7 @@
  *                BUTTON13 (PCB) -> KBC index 12 -> Not installed
  *                BUTTON14 (PCB) -> KBC index 13 -> Not installed
  *                BUTTON15 (PCB) -> KBC index 14 -> Stage (input only)
- *                BUTTON16 (PCB) -> KBC index 15 -> Stage Enable (input + LED)
+ *                BUTTON16 (PCB) -> KBC index 15 -> Stage Enable (input only)
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -95,9 +95,8 @@
 //  B10    : RCS - GREEN (RCS toggle)
 //  B11    : Invert - AMBER (modifier, draws attention)
 //  B12-B13: Not installed - KBC_OFF (SAS_ENA/RCS_ENA moved to Switch Group 2)
-//  B14    : Stage - discrete input, no LED - KBC_OFF
-//  B15    : Stage Enable - discrete input + discrete LED interlock.
-//           KBC_DISCRETE_ON so the ACTIVE state lights the discrete LED.
+//  B14    : Stage - switch input, no LED - KBC_OFF
+//  B15    : Stage Enable - switch input, no LED - KBC_OFF
 // ============================================================
 
 const RGBColor activeColors[KBC_BUTTON_COUNT] = {
@@ -115,8 +114,8 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_AMBER,        // B11 - Invert       (Col 6, Row 2) - modifier
     KBC_OFF,          // B12 - Not installed (SAS_ENA moved to Switch Group 2)
     KBC_OFF,          // B13 - Not installed (RCS_ENA moved to Switch Group 2)
-    KBC_OFF,          // B14 - Stage (latching toggle, discrete input, no LED)
-    KBC_DISCRETE_ON,  // B15 - Stage Enable (discrete input + discrete LED)
+    KBC_OFF,          // B14 - Stage (latching toggle, switch input, no LED)
+    KBC_OFF,          // B15 - Stage Enable (switch input, no LED)
 };
 
 // ============================================================
@@ -137,9 +136,8 @@ void setup() {
 
     // Initialise all library subsystems. The module powers on dark
     // (BOOT_READY → DISABLED); NeoPixel buttons B0-B11 light to ENABLED
-    // on CMD_ENABLE. B12-B13 are not installed; B14/B15 are discrete
-    // staging inputs (B15 also drives a discrete interlock LED, set by
-    // the controller via CMD_SET_LED_STATE).
+    // on CMD_ENABLE. B12-B13 are not installed; B14/B15 are staging
+    // switch inputs only, with no LED output.
     kbc.begin();
 }
 

@@ -12,9 +12,10 @@
  *              Override any #ifndef-guarded constant by defining it
  *              before including Kerbal7SegmentCore.h in the sketch.
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware: KC-01-1881/1882 7-Segment Display Module v2.0
+ * @note        Hardware: KC-01-1841/1842 7-Segment Display Module v2.0
  *              Target:   ATtiny816-MNR (megaTinyCore)
  */
 
@@ -74,7 +75,7 @@
 #define K7SC_STATE_BTN03_BIT    3     // bit 3:    BTN03 active
 
 // ============================================================
-//  Pin assignments — ATtiny816, KC-01-1881/1882 v2.0
+//  Pin assignments — ATtiny816, KC-01-1841/1842 v2.0
 // ============================================================
 
 /** @brief MAX7219 SPI clock — PA7. */
@@ -98,7 +99,7 @@
 /** @brief BTN03 — PC1, active high. */
 #define K7SC_PIN_BTN03          PIN_PC1
 
-/** @brief BTN_EN — encoder pushbutton, PB3, active high (10k pull-down R6). */
+/** @brief BTN_EN — encoder pushbutton, PB3, active high (10k pull-down R11). */
 #define K7SC_PIN_BTN_EN         PIN_PB3
 
 /** @brief NeoPixel data out — PC3. */
@@ -113,7 +114,7 @@
 /** @brief INT output to master — PC0, active low.
  *  @note  This module uses PC0 for INT. PA1 is used for BTN01
  *         on this PCB. Master wiring must account for this.
- *         Verified against KC-01-1880 v2.0 schematic. */
+ *         Verified against KC-01-1841 v2.0 schematic. */
 #define K7SC_PIN_INT            PIN_PC0
 
 /** @brief I2C SCL — PB0. */
@@ -126,7 +127,7 @@
 //  NeoPixel configuration
 //
 //  SK6812MINI-EA: GRB 3-byte mode. NEO_GRB is the hardware-
-//  validated configuration on KC-01-1880 v2.0 at 20 MHz.
+//  validated configuration on KC-01-1841 v2.0 at 20 MHz.
 // ============================================================
 
 /** @brief SK6812MINI-EA colour order — GRB (3 bytes/pixel). */
@@ -250,10 +251,10 @@
 // ============================================================
 
 #define K7SC_MAX_REG_NOOP        0x00
-#define K7SC_MAX_REG_DIGIT0      0x01  // rightmost digit
+#define K7SC_MAX_REG_DIGIT0      0x01  // leftmost digit
 #define K7SC_MAX_REG_DIGIT1      0x02
 #define K7SC_MAX_REG_DIGIT2      0x03
-#define K7SC_MAX_REG_DIGIT3      0x04  // leftmost digit
+#define K7SC_MAX_REG_DIGIT3      0x04  // rightmost digit
 #define K7SC_MAX_REG_DECODE      0x09
 #define K7SC_MAX_REG_INTENSITY   0x0A
 #define K7SC_MAX_REG_SCANLIMIT   0x0B
@@ -266,4 +267,17 @@
 /** @brief Default MAX7219 display intensity (0-15). */
 #ifndef K7SC_MAX_INTENSITY
   #define K7SC_MAX_INTENSITY     8
+#endif
+
+// ============================================================
+//  ENABLED-state backlight brightness
+//
+//  Applied to R=G=B in K7SC_ENABLED_COLOR (K7SC_Colors.h) to
+//  produce a dim neutral white backlight. W channel unused
+//  (NEO_GRB 3-byte mode on KC-01-1841 v2.0).
+// ============================================================
+
+/** @brief ENABLED-state dim white brightness (0-255). */
+#ifndef K7SC_ENABLED_BRIGHTNESS
+  #define K7SC_ENABLED_BRIGHTNESS  32
 #endif

@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Action_Control.ino
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -11,7 +11,7 @@
  *              This module provides twelve custom action group toggles
  *              (AG1–AG12) for Kerbal Space Program. All twelve positions
  *              are uniform GREEN action-group buttons. (Resolves Module UI
- *              Reference Open Item #7/TODO #8: the former CP PRI / CP ALT
+ *              Reference Open Item #8/TODO #8: the former CP PRI / CP ALT
  *              control-point buttons at B10/B11 are now AG1/AG7 — the
  *              control-point functions moved to the AUX CTRL module, and the
  *              CTRL_MODE discrete inputs moved to the direct-wired Ctrl Mode

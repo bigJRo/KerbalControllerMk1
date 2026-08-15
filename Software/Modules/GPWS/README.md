@@ -173,7 +173,7 @@ Flight scene exit / serial loss → DISABLE → all dark, defaults reset
 ### Prerequisites
 
 1. Arduino IDE with megaTinyCore installed
-2. KerbalModuleCommon v1.1.0 (Sketch → Include Library → Add .ZIP)
+2. KerbalModuleCommon v1.7.1+ (header-only; Sketch → Include Library → Add .ZIP)
 3. Kerbal7SegmentCore v2.0.0 (Sketch → Include Library → Add .ZIP)
 
 ### Arduino IDE Settings

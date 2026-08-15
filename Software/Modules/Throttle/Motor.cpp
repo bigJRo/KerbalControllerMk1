@@ -1,12 +1,12 @@
 /**
  * @file        Motor.cpp
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       L293D H-bridge motor control implementation.
+ * @brief       L293DD H-bridge motor control implementation.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

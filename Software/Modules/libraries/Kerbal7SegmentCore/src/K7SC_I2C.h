@@ -23,7 +23,8 @@
  *                SET_VALUE                    → cmdState.hasNewValue + newValue
  *                SET_LED_STATE                → cmdState.hasLEDState + ledState
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  */
 
 #pragma once

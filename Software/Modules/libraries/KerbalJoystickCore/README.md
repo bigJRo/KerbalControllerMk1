@@ -5,7 +5,7 @@
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.4 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.10 (conformant)  
 
 ---
 
@@ -23,7 +23,7 @@ The library manages:
 - Option E hybrid INT assertion strategy
 - 2 NeoPixel RGB buttons (WS2811, tinyNeoPixel_Static) on PC1
 - 1 joystick pushbutton (direct GPIO, no LED)
-- I2C target communication, conformant with I2C Protocol v2.4 (universal
+- I2C target communication, conformant with I2C Protocol v2.10 (universal
   3-byte header, transaction counter, lifecycle state machine)
 
 This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire protocol but uses a device-specific 12-byte data packet (3-byte header + 9-byte joystick payload).
@@ -40,13 +40,13 @@ This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire pro
 | ATtiny816 Pin | Net Name | Function |
 |---|---|---|
 | PA1 (pin 20) | INT | Interrupt output (active low) |
-| PA6 (pin 7) | BUTTON_JOY | Joystick pushbutton (active high) |
+| PA5 (pin 6) | AXIS1 | Analog input — X axis |
+| PA6 (pin 7) | AXIS2 | Analog input — Y axis |
 | PA7 (pin 8) | AXIS3 | Analog input — Z rotation |
 | PB0 (pin 14) | SCL | I2C clock |
 | PB1 (pin 13) | SDA | I2C data |
 | PB3 (pin 11) | BUTTON02 | NeoPixel button 2 |
-| PB4 (pin 10) | AXIS1 | Analog input — X axis |
-| PB5 (pin 9) | AXIS2 | Analog input — Y axis |
+| PB5 (pin 9) | BUTTON_JOY | Joystick pushbutton (active high) |
 | PC0 (pin 15) | BUTTON01 | NeoPixel button 1 |
 | PC1 (pin 16) | NEOPIX_CMD | NeoPixel data output |
 

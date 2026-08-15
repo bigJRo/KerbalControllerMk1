@@ -21,7 +21,7 @@
   <text x="100" y="122" font-size="6" fill="#ffffff" text-anchor="middle" font-weight="500">SW</text>
   <!-- Labels -->
   <text x="100" y="74" font-size="8" fill="#6b7280" text-anchor="middle">PEC11R-4220F-S0024</text>
-  <text x="100" y="174" font-size="7.5" fill="#9ca3af" text-anchor="middle">A=PC1 · B=PC2 · SW=PC3</text>
+  <text x="100" y="174" font-size="7.5" fill="#9ca3af" text-anchor="middle">A=PC3 · B=PC2 · SW=PC1</text>
   <text x="100" y="185" font-size="7" fill="#9ca3af" text-anchor="middle">+CW · -CCW · hardware debounced</text>
 
   <!-- ENC2 -->
@@ -36,10 +36,10 @@
   <text x="280" y="122" font-size="6" fill="#ffffff" text-anchor="middle" font-weight="500">SW</text>
   <!-- Labels -->
   <text x="280" y="74" font-size="8" fill="#6b7280" text-anchor="middle">PEC11R-4220F-S0024</text>
-  <text x="280" y="174" font-size="7.5" fill="#9ca3af" text-anchor="middle">A=PA6 · B=PA5 · SW=PA4</text>
+  <text x="280" y="174" font-size="7.5" fill="#9ca3af" text-anchor="middle">A=PA7 · B=PB5 · SW=PB4</text>
   <text x="280" y="185" font-size="7" fill="#9ca3af" text-anchor="middle">+CW · -CCW · hardware debounced</text>
 
   <!-- Legend -->
   <text x="16" y="203" font-size="7.5" fill="#9ca3af">Encoder functions defined by main controller · deltas accumulate between reads · no LEDs · INT=PA1</text>
-  <text x="16" y="214" font-size="7.5" fill="#9ca3af">KC-01-1871/1872 v1.0 · Jeb's Controller Works</text>
+  <text x="16" y="214" font-size="7.5" fill="#9ca3af">KC-01-1862 v2.0 · Jeb's Controller Works</text>
 </svg>

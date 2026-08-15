@@ -16,8 +16,9 @@
  *
  *              This is not a KerbalButtonCore (KBC) module. It shares
  *              the same Kerbal Controller Mk1 I2C wire protocol but
- *              uses a device-specific 8-byte data packet defined in
- *              the protocol specification Section 9.
+ *              uses a device-specific 12-byte data packet (3-byte
+ *              header + 9-byte payload) defined in the protocol
+ *              specification Section 9.
  *
  *              Minimum sketch:
  *

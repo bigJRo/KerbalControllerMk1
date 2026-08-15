@@ -9,7 +9,8 @@
  * @brief       Button and NeoPixel driver — reports edges to inputState.
  *              No state machine. Sketch owns all LED and button logic.
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  */
 
 #include <Arduino.h>

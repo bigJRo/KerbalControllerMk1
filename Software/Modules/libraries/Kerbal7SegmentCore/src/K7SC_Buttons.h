@@ -17,7 +17,8 @@
  *                bit 2 = BTN03  (PC1)
  *                bit 3 = BTN_EN (PB3, encoder pushbutton)
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  */
 
 #pragma once

@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Dual_Encoder.ino
- * @version     1.0
+ * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -17,9 +17,9 @@
  *              Module Type ID: 0x0E
  *              Capability:     0x04 (encoder data in packet)
  *
- *              Hardware: KC-01-1871/1872 Dual Encoder Module v1.0
- *              Both encoders: PEC11R-4220F-S0024 with hardware RC
- *              debounce (10nF caps on A/B channels).
+ *              Hardware: KC-01-1862 Dual Encoder Module v2.0
+ *              Both encoders: PEC11R-4220F-S0024 on KC-01-1852 carrier
+ *              boards with hardware RC debounce (10nF caps on A/B channels).
  *
  *              Tab structure:
  *                Config.h         — pins, constants, commands
@@ -30,7 +30,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware: KC-01-1871/1872 v1.0 (ATtiny816)
+ * @note        Hardware: KC-01-1862 v2.0 (ATtiny816)
  *              IDE settings:
  *                Board:   ATtiny816 (megaTinyCore)
  *                Clock:   10 MHz or higher

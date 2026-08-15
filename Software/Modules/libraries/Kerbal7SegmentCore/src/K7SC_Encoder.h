@@ -6,7 +6,7 @@
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
- * @brief       Rotary encoder input driver for KC-01-1881/1882.
+ * @brief       Rotary encoder input driver for KC-01-1841/1842.
  *
  *              Reports raw signed delta to inputState.encoderDelta.
  *              All value tracking, acceleration, and display updates
@@ -16,7 +16,8 @@
  *              ENC_B on PB5 (sampled in ISR). Hardware RC debounce
  *              (10nF) on both channels.
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  */
 
 #pragma once

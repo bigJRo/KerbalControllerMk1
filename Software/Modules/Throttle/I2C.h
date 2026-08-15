@@ -1,6 +1,6 @@
 /**
  * @file        I2C.h
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
@@ -8,7 +8,7 @@
  *
  * @brief       I2C target handler for the Throttle Module.
  *
- *              Conformant with I2C Protocol Specification v2.4. Data packet
+ *              Conformant with I2C Protocol Specification v2.10. Data packet
  *              (module → controller, 7 bytes, spec §9.4):
  *                Byte 0:   Status byte   (lifecycle/fault/data-changed)
  *                Byte 1:   Module Type ID
@@ -28,7 +28,7 @@
  *                0x01 CMD_GET_IDENTITY   — identity response
  *                0x02 CMD_SET_LED_STATE  — accepted, ignored (no NeoPixels)
  *                0x03 CMD_SET_BRIGHTNESS — accepted, ignored
- *                0x04 CMD_BULB_TEST      — flashes indicator LED
+ *                0x04 CMD_BULB_TEST      — flashes the shared switch backlight
  *                0x05 CMD_SLEEP          — freeze state (SLEEPING), motor holds
  *                0x06 CMD_WAKE           — resume from SLEEPING to ACTIVE
  *                0x07 CMD_RESET          — reset to defaults, stay ACTIVE

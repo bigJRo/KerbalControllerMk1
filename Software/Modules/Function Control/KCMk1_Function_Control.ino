@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Function_Control.ino
- * @version     2.0
+ * @version     2.0.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

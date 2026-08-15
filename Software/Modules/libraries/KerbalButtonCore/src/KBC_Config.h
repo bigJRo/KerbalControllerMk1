@@ -10,23 +10,22 @@
  *              configuration values for the KerbalButtonCore library.
  *
  *              All values defined here reflect the common KBC PCB hardware
- *              design (KC-01-1822 v1.1) based on the ATtiny816-MNR
+ *              design (KC-01-1801/1802 and KC-01-1811/1812) based on the ATtiny816-MNR
  *              microcontroller with megaTinyCore pin mapping, featuring:
  *                - 16 button inputs via two daisy-chained 74HC165 shift
- *                  registers (U14, U15) read via the ShiftIn<2> library.
+ *                  registers read via the ShiftIn<2> library.
  *                  Switch-group modules (Function Control, Vehicle Control)
- *                  add a third register (U16) for 24 inputs — selected per
+ *                  add a third register for 24 inputs — selected per
  *                  sketch via KBC_INPUT_COUNT / KBC_SHIFTREG_COUNT (see below).
  *                - 12 RGB NeoPixel buttons driven by WS2811 ICs
  *                  (tinyNeoPixel_Static, PIN_PA4, NEO_RGB order)
- *                - 4 discrete LED outputs via 2N3904 NPN transistors
- *                  (buttons 13-16 on PCB, KBC indices 12-15)
+ *                  (KBC indices 12-15 are switch INPUTS, no LED outputs)
  *                - I2C target interface (Wire library, PIN_PB1/PIN_PB0)
  *                - Active-low interrupt output (PIN_PA1)
  *
  *              Button index convention (canonical throughout all library code):
  *                KBC index 0-11  : NeoPixel RGB buttons (BUTTON01-12 on PCB)
- *                KBC index 12-15 : Discrete LED buttons (BUTTON13-16 on PCB)
+ *                KBC index 12-15 : Panel switch inputs (BUTTON13-16 on PCB), no LED
  *              All protocol packets, LED state arrays, and ShiftIn remapping
  *              use this 0-15 index exclusively.
  *
@@ -44,8 +43,8 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Part of the KerbalButtonCore (KBC) library.
- *              Protocol defined in I2C_Protocol_Specification.md v2.4
- *              Schematic reference: KC-01-1821 v1.1
+ *              Protocol defined in I2C_Protocol_Specification.md v2.10
+ *              Schematic reference: KC-01-1801 (Button) / KC-01-1811 (Wide Button)
  */
 
 #ifndef KBC_CONFIG_H
@@ -100,27 +99,31 @@
 #define KBC_PIN_INT             PIN_PA1
 
 // ============================================================
-//  Shift register pins (74HC165, U14 + U15 daisy-chained)
+//  Shift register pins (two/three daisy-chained 74HC165)
 //
-//  Two SN74HC165PWR ICs are daisy-chained to read 16 button
-//  inputs. U15 (BUTTON09-16) feeds into U14's SER input.
-//  U14's QH feeds DATA_IN to the ATtiny.
+//  The register NEAREST the MCU reads BUTTON00-07 and its QH feeds
+//  DATA_IN; the next register (BUTTON08-15) feeds the near register's
+//  SER input. 24-input modules add a third register (BUTTON16-23) at the
+//  far end. (Schematic reference designators differ per board — KC-01-1801
+//  labels them U16/U17 and KC-01-1811 uses U18/U19/U20 — so they are
+//  referred to functionally here.)
 //
-//  Read using ShiftIn<2> library (InfectedBytes/ArduinoShiftIn).
+//  Read using ShiftIn<N> library (InfectedBytes/ArduinoShiftIn).
 //  Constructor: shift.begin(LOAD, CLK_EN, DATA, CLK)
 //
 //  Read sequence:
 //    1. CLK_EN HIGH  — disable clock
-//    2. LOAD LOW     — latch all 16 inputs in parallel
+//    2. LOAD LOW     — latch inputs in parallel
 //    3. LOAD HIGH    — end latch pulse
 //    4. CLK_EN LOW   — enable clock
-//    5. Read 16 bits — ShiftIn library handles clocking
+//    5. Read bits    — ShiftIn library handles clocking
 //
-//  ShiftIn<2> bit-to-KBC-index mapping (see KBC_ShiftReg.cpp):
-//    shift.state(15..8) → U15 (A..H) → KBC index 8..15
-//    shift.state(7..0)  → U14 (A..H) → KBC index 0..7
-//    Note: within each byte, bit order is inverted relative to
-//    input pin label (A=MSB, H=LSB per 74HC165 shift order).
+//  Bit-to-KBC-index mapping, 16-input (see KBC_ShiftReg.cpp). ShiftIn
+//  places the first-clocked bit in the MSB, and the near register clocks
+//  out first, so it occupies the HIGH byte:
+//    shift.state(15..8) → near register BUTTON00-07 → KBC index 7..0
+//    shift.state(7..0)  → far register  BUTTON08-15 → KBC index 15..8
+//    Within each byte, H is first-out (MSB) and A is last (LSB).
 //    Full remap handled by KBC_SR_BUTTON_MAP in KBC_ShiftReg.cpp.
 // ============================================================
 
@@ -139,11 +142,10 @@
 // ============================================================
 //  Shift register input width (16-input default, 24-input switch groups)
 //
-//  Most modules read 16 inputs from two daisy-chained 74HC165 ICs
-//  (U14, U15). The two switch-group modules — Function Control (0x21)
-//  and Vehicle Control (0x24) — fit a third register (U16) to read
-//  Switch Group 1/2 panel inputs at KBC indices 16-23, for 24 inputs
-//  read as three shift-register bytes.
+//  Most modules read 16 inputs from two daisy-chained 74HC165 ICs. The two
+//  switch-group modules — Function Control (0x21) and Vehicle Control
+//  (0x24) — fit a third register to read Switch Group 1/2 panel inputs at
+//  KBC indices 16-23, for 24 inputs read as three shift-register bytes.
 //
 //  A sketch selects the 24-input variant by defining both constants
 //  before including KerbalButtonCore.h:
@@ -154,9 +156,10 @@
 //
 //  KBC_INPUT_COUNT widens the input data path (button state, change
 //  mask, debounce, remap table) and the response packet payload.
-//  It does NOT change the LED/colour path — modules still drive at
-//  most 12 NeoPixel + 4 discrete LEDs (KBC_BUTTON_COUNT positions).
-//  KBC indices 16-23 are discrete inputs with no LED hardware.
+//  It does NOT change the LED/colour path — modules drive 12 NeoPixel
+//  LEDs (indices 0-11); the KBC_BUTTON_COUNT colour array stays 16 but
+//  indices 12-15 (and 16-23 on 24-input modules) are switch inputs with
+//  no LED hardware.
 // ============================================================
 
 /** @brief Number of button/switch inputs read from the shift chain (16 or 24). */
@@ -196,64 +199,23 @@
 #define KBC_NEO_COLOR_ORDER     NEO_RGB
 
 // ============================================================
-//  Discrete LED pins (KBC button indices 12-15)
+//  Discrete LEDs — removed
 //
-//  Four single-color LED outputs for buttons 13-16 (PCB labels).
-//  Each LED is driven through a 2N3904 NPN transistor with a
-//  470Ω collector resistor. The ATtiny drives the base through
-//  a 10kΩ resistor.
-//
-//  IMPORTANT: These are transistor-switched, ON/OFF only.
-//  No PWM brightness control is possible through this circuit.
-//  The ENABLED dim state is not available for discrete buttons —
-//  they will be fully ON when ENABLED and fully OFF when OFF.
-//
-//  Logic: ATtiny HIGH → transistor ON → LED ON (active high).
-//
-//  PCB label → KBC index → ATtiny pin mapping:
-//    BUTTON13 / led_13  →  KBC index 12  →  PIN_PB3 (pin 11)
-//    BUTTON14 / led_14  →  KBC index 13  →  PIN_PC0 (pin 15)
-//    BUTTON15 / led_15  →  KBC index 14  →  PIN_PC2 (pin 17)
-//    BUTTON16 / led_16  →  KBC index 15  →  PIN_PC1 (pin 16)
-//
-//  Note: led_15 (PC2, pin 17) and led_16 (PC1, pin 16) are
-//  swapped relative to port pin order. Always use the explicit
-//  KBC_DISCRETE_PINS array — never drive by sequential port loop.
+//  Earlier board revisions carried four transistor-switched single-colour
+//  LEDs on KBC indices 12-15. The current boards (KC-01-1801/1802 and
+//  KC-01-1811/1812) do not populate them — indices 12-15 are panel switch
+//  INPUTS with no LED outputs. The discrete-LED driver has been removed;
+//  only the 12 NeoPixels (indices 0-11) are driven. LED state for indices
+//  12-15 is accepted (KBC_BUTTON_COUNT stays 16) but never rendered.
 // ============================================================
-
-/** @brief Discrete LED pin for KBC button index 12 (PCB: BUTTON13/led_13). */
-#define KBC_PIN_LED_12          PIN_PB3
-
-/** @brief Discrete LED pin for KBC button index 13 (PCB: BUTTON14/led_14). */
-#define KBC_PIN_LED_13          PIN_PC0
-
-/** @brief Discrete LED pin for KBC button index 14 (PCB: BUTTON15/led_15). */
-#define KBC_PIN_LED_14          PIN_PC2
-
-/** @brief Discrete LED pin for KBC button index 15 (PCB: BUTTON16/led_16). */
-#define KBC_PIN_LED_15          PIN_PC1
-
-/**
- * @brief Discrete LED pin array indexed by KBC button index.
- *        Usage: digitalWrite(KBC_DISCRETE_PINS[kbcIndex - 12], state)
- *        Note: PC2/PC1 swap is handled here — do not reorder.
- */
-#define KBC_DISCRETE_PINS       { KBC_PIN_LED_12, KBC_PIN_LED_13, \
-                                  KBC_PIN_LED_14, KBC_PIN_LED_15 }
-
-/** @brief Number of discrete LED buttons. */
-#define KBC_DISCRETE_COUNT      4
-
-/** @brief KBC index of the first discrete LED button. */
-#define KBC_DISCRETE_INDEX_FIRST  12
 
 // ============================================================
 //  Shift register timing
 //
 //  Minimum pulse widths for reliable 74HC165 operation.
 //  The ShiftIn library uses its own internal pulseWidth (default
-//  5us). These constants are provided for reference and used
-//  only if the ShiftIn pulseWidth is overridden in the sketch.
+//  5us). KBCShiftReg::begin() always applies KBC_SR_LOAD_PULSE_US
+//  via _shift.setPulseWidth().
 // ============================================================
 
 /** @brief Minimum LOAD pulse width in microseconds. */
@@ -298,9 +260,8 @@
 // ============================================================
 //  LED brightness defaults
 //
-//  KBC_ENABLED_BRIGHTNESS applies to NeoPixel buttons only.
-//  Discrete LED buttons are ON/OFF only — this value has no
-//  effect on KBC button indices 12-15.
+//  KBC_ENABLED_BRIGHTNESS applies to the NeoPixel buttons (indices 0-11);
+//  indices 12-15 are switch inputs with no LED.
 //
 //  Scaling is performed in software via KBC_scaleColor() in
 //  KBC_LEDControl. The tinyNeoPixel setBrightness() API is
@@ -314,7 +275,6 @@
 /**
  * @brief Default ENABLED state brightness for NeoPixel buttons (0-255).
  *        32 ≈ 12.5% — visible but non-distracting in a dark cockpit.
- *        Has no effect on discrete LED buttons (indices 12-15).
  *        Override: #define KBC_ENABLED_BRIGHTNESS 64
  */
 #ifndef KBC_ENABLED_BRIGHTNESS
@@ -362,8 +322,8 @@
 /** @brief Library firmware version — major. Bumped to 2 for protocol v2.4. */
 #define KBC_FIRMWARE_MAJOR          2
 
-/** @brief Library firmware version — minor. */
-#define KBC_FIRMWARE_MINOR          0
+/** @brief Library firmware version — minor. Bumped to 2 for KBC_LED_CUT. */
+#define KBC_FIRMWARE_MINOR          2
 
 // ============================================================
 //  Compile-time validation

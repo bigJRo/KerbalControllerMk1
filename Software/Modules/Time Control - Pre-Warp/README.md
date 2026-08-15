@@ -144,7 +144,7 @@ No action. State persists across vessel switches — pilot configures as needed.
 ### Prerequisites
 
 1. Arduino IDE with megaTinyCore installed
-2. KerbalModuleCommon v1.1.0 (Sketch → Include Library → Add .ZIP)
+2. KerbalModuleCommon v1.7.1+ (header-only; Sketch → Include Library → Add .ZIP)
 3. Kerbal7SegmentCore v2.0.0 (Sketch → Include Library → Add .ZIP)
 
 ### Arduino IDE Settings

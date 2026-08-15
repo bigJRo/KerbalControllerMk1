@@ -8,7 +8,8 @@
  *
  * @brief       I2C target handler implementation.
  *
- * @license     GNU General Public License v3.0
+ * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
+ *              https://www.gnu.org/licenses/gpl-3.0.html
  */
 
 #include <Arduino.h>
