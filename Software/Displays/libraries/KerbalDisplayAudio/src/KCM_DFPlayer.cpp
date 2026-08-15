@@ -51,3 +51,14 @@ void KCM_DFPlayer::stop()   { sendCmd(DFP_CMD_STOP,   0); }
 void KCM_DFPlayer::pause()  { sendCmd(DFP_CMD_PAUSE,  0); }
 void KCM_DFPlayer::resume() { sendCmd(DFP_CMD_RESUME, 0); }
 void KCM_DFPlayer::reset()  { sendCmd(DFP_CMD_RESET,  0); }
+
+// DFPlayer BUSY idles HIGH and is pulled LOW while a clip plays. INPUT_PULLUP keeps
+// the line defined as idle when the module is high-Z (e.g. during reset/boot).
+void KCM_DFPlayer::attachBusyPin(uint8_t pin) {
+  _busyPin = pin;
+  pinMode(pin, INPUT_PULLUP);
+}
+
+bool KCM_DFPlayer::isPlaying() const {
+  return _busyPin != NO_PIN && digitalRead(_busyPin) == LOW;
+}
