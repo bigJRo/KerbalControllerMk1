@@ -137,6 +137,26 @@ const float CW_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rip q (Pa)
 const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa)
 
 /***************************************************************************************
+   GPWS FUNCTION TUNABLES (GPWS.ino)
+   Ground Proximity Warning System voice callouts on the DFPlayer. Configuration
+   (mode / proximity-alarm / rendezvous-radar / altitude threshold) is relayed from
+   the GPWS Input Panel module by the master over I2C -- these constants only tune the
+   local flight logic and audio cadence, and can be flight-tuned without touching
+   GPWS.ino. Times are seconds unless noted.
+****************************************************************************************/
+const uint8_t  GPWS_VOLUME               = 24;      // DFPlayer volume (0..30)
+// PULL UP aligned with CW_GROUND_PROX so the voice warning and the master-alarm tone
+// fire together in the imminent-impact window.
+const float    GPWS_PULLUP_S             = KCM_GROUND_PROX_S; // time-to-impact for TERRAIN/PULL UP (s)
+const float    GPWS_SINK_S               = 20.0f;   // time-to-impact upper bound for SINK RATE (s)
+const float    GPWS_SINK_MIN_MS          = 5.0f;    // min descent rate for SINK RATE (m/s) -- ignores gentle sink
+const float    GPWS_DESCENT_DEADBAND_MS  = 0.1f;    // |vel_vert| below this is treated as level (m/s)
+const float    GPWS_ALT_JUMP_M           = 2000.0f; // single-frame alt jump that re-seeds crossings (vessel switch/warp)
+const float    GPWS_MIN_DEDUP_M          = 8.0f;    // ladder rung within this of threshold spoken as MINIMUMS (m)
+const uint16_t GPWS_HARD_GAP_MS          = 1400;    // min gap between repeated PULL UP callouts (ms)
+const uint16_t GPWS_SINK_GAP_MS          = 1800;    // min gap between repeated SINK RATE callouts (ms)
+
+/***************************************************************************************
    TAC LIFE SUPPORT CONSUMPTION RATES
    Source: TacLifeSupport source code (GlobalSettings.cs), units per Earth second per Kerbal.
    These are the default values from the TAC-LS config. If the player has modified

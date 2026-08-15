@@ -38,16 +38,26 @@
      Byte 1  : ctrlModeByte -- CtrlMode enum value (ctrl_Rover=0, ctrl_Plane=1, ctrl_Spacecraft=2)
      Byte 2  : ctrlGrpByte  -- active control group, 1-based (matches state.ctrlGrp)
      Legacy form is 3 bytes; the rev-2 extended form is 6 bytes (adds the bottom
-     mode-grid flags + Cap readout). onI2CReceive accepts either length, so the
-     master can be upgraded independently. Both forms are documented in
+     mode-grid flags + Cap readout); the rev-3 form is 9 bytes (adds relayed GPWS
+     config). onI2CReceive accepts any of the three lengths, so the master can be
+     upgraded independently. All forms are documented in
      Documents/Developer/I2C_Protocol_Specification.md §15.3.
        Byte 3  : modeFlags low  (MF_* bits 0-7)
        Byte 4  : modeFlags high (MF_* bits 8-11)
        Byte 5  : capValue       ("Cap" readout)
+       Byte 6  : GPWS config     bits1:0=mode (0=OFF,1=ACTIVE,2=PROX),
+                                 bit2=proxAlarm, bit3=rdvRadar
+                                 (same layout the GPWS Input module reports)
+       Byte 7  : GPWS threshold HIGH (int16 metres, big-endian)
+       Byte 8  : GPWS threshold LOW
+     The GPWS config originates on the GPWS Input Panel module (0x2A) and is passed
+     through by the master; the Annunciator's GPWS function (GPWS.ino) consumes it.
 
    Expanding the protocol:
      Outbound: increment I2C_PACKET_SIZE, add fields to buildI2CPacket().
-     Inbound:  increment I2C_CMD_SIZE, add fields to processI2CCommand().
+     Inbound:  define a new accepted length (as I2C_CMD_SIZE_GPWS = 9 did), grow
+               I2C_CMD_SIZE_MAX / i2cCmdBuf, accept it in onI2CReceive(), and add
+               the new fields to processI2CCommand().
      Update master sketch to match in both cases.
 ****************************************************************************************/
 #include "KCMk1_Annunciator.h"
@@ -55,8 +65,10 @@
 #define I2C_SLAVE_ADDR   KCM_I2C_ADDR_ANNUNCIATOR   // #3C from SystemConfig
 #define I2C_INT_PIN      KCM_I2C_INT_PIN             // #3C from SystemConfig
 #define I2C_PACKET_SIZE  6      // outbound: Annunciator -> Master (sync+flags+4 CW bytes = all 25 bits)
-#define I2C_CMD_SIZE     3      // inbound (legacy): controlByte, ctrlMode, ctrlGrp
-#define I2C_CMD_SIZE_EXT 6      // inbound (rev 2): + modeFlags(2) + capValue(1)
+#define I2C_CMD_SIZE      3     // inbound (legacy): controlByte, ctrlMode, ctrlGrp
+#define I2C_CMD_SIZE_EXT  6     // inbound (rev 2): + modeFlags(2) + capValue(1)
+#define I2C_CMD_SIZE_GPWS 9     // inbound (rev 3): + GPWS config(1) + threshold(2)
+#define I2C_CMD_SIZE_MAX  9     // largest accepted inbound command
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_ANNUNCIATOR   // #3C from SystemConfig
 
 // requestType values (bits 7:4 of controlByte)
@@ -114,7 +126,7 @@ static void buildI2CPacket() {
    Called from loop() to apply a received command packet.
    Runs on the main thread -- safe to modify state, globals, and call Serial.
 ****************************************************************************************/
-static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE_EXT];  // volatile: written in ISR, read on main thread
+static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE_MAX];  // volatile: written in ISR, read on main thread
 static volatile uint8_t i2cCmdLen = 0;                 // bytes received for the pending command
 static volatile bool i2cCmdReady = false;
 
@@ -128,6 +140,16 @@ static void processI2CCommand() {
   if (i2cCmdLen >= I2C_CMD_SIZE_EXT) {
     state.modeFlags = (uint16_t)i2cCmdBuf[3] | ((uint16_t)i2cCmdBuf[4] << 8);
     state.capValue  = i2cCmdBuf[5];
+  }
+
+  // --- GPWS (rev 3) fields: config byte + int16 altitude threshold ---
+  // Relayed from the GPWS Input panel module. cfgByte bit layout matches the
+  // module's reported state byte (bits1:0=mode, bit2=proxAlarm, bit3=rdvRadar);
+  // threshold is big-endian metres. Applied only when the master sends 9+ bytes.
+  if (i2cCmdLen >= I2C_CMD_SIZE_GPWS) {
+    uint8_t gpwsCfg  = i2cCmdBuf[6];
+    int16_t gpwsThr  = (int16_t)(((uint16_t)i2cCmdBuf[7] << 8) | i2cCmdBuf[8]);
+    gpwsSetConfig(gpwsCfg, gpwsThr);
   }
 
   // --- Lower nibble: mode configuration bits ---
@@ -274,8 +296,10 @@ void buildI2CPacketAndAssert() {
    Must complete quickly -- runs in interrupt context.
 ****************************************************************************************/
 static void onI2CReceive(int numBytes) {
-  // Accept the legacy 3-byte command or the rev-2 6-byte extended command.
-  if (numBytes == I2C_CMD_SIZE || numBytes == I2C_CMD_SIZE_EXT) {
+  // Accept the legacy 3-byte command, the rev-2 6-byte extended command, or the
+  // rev-3 9-byte command (adds relayed GPWS config).
+  if (numBytes == I2C_CMD_SIZE || numBytes == I2C_CMD_SIZE_EXT ||
+      numBytes == I2C_CMD_SIZE_GPWS) {
     for (int i = 0; i < numBytes; i++) {
       i2cCmdBuf[i] = KCM_I2C_BUS.read();
     }

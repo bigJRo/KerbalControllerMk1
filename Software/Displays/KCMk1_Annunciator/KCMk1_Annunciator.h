@@ -268,8 +268,8 @@ enum ChuteEnvState : uint8_t {
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.1.1: KC-01-1911 V2.1 audio — PAM8302A amp (TONE 29, EN 30), DFPlayer BUSY 11; requires KerbalDisplayAudio >= 1.3.0
+static const uint8_t SKETCH_VERSION_MINOR = 2;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.2.0: GPWS function — aviation-style voice callouts on the DFPlayer, configured from the GPWS Input panel relayed over I2C (rev-3 9-byte inbound command); requires KerbalDisplayAudio >= 1.3.0
 
 
 /***************************************************************************************
@@ -343,6 +343,17 @@ extern const float  TACLS_OXYGEN_ALARM_S;   // red:    10 minutes
 extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
 extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
+// From AAA_Config.ino -- GPWS function tunables (see GPWS.ino)
+extern const uint8_t  GPWS_VOLUME;
+extern const float    GPWS_PULLUP_S;
+extern const float    GPWS_SINK_S;
+extern const float    GPWS_SINK_MIN_MS;
+extern const float    GPWS_DESCENT_DEADBAND_MS;
+extern const float    GPWS_ALT_JUMP_M;
+extern const float    GPWS_MIN_DEDUP_M;
+extern const uint16_t GPWS_HARD_GAP_MS;
+extern const uint16_t GPWS_SINK_GAP_MS;
+
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;
 extern TouchResult   lastTouch;
@@ -391,6 +402,14 @@ extern PrintState psSOIRows[];
 void setupI2CSlave();
 void buildI2CPacketAndAssert();
 void updateI2CState();
+
+// GPWS function (GPWS.ino) -- ground proximity voice callouts on the DFPlayer.
+// gpwsSetConfig() is called from I2CSlave.ino with the GPWS Input panel state byte
+// (bits1:0=mode, bit2=proxAlarm, bit3=rdvRadar) and int16 altitude threshold (m).
+void gpwsSetup();
+void gpwsUpdate();
+void gpwsSetConfig(uint8_t cfgByte, int16_t thresholdM);
+void gpwsReset();
 
 // Screen navigation -- always use this instead of setting activeScreen directly.
 void switchToScreen(ScreenType s);

@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.1.0
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.2.0
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -70,7 +70,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 | Library | Version | Notes |
 |---------|---------|-------|
 | KerbalDisplayCommon | ≥ 3.0.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
-| KerbalDisplayAudio | 1.1.0 | Non-blocking audio state machine |
+| KerbalDisplayAudio | ≥ 1.3.0 | Non-blocking `tone()` audio state machine + bundled `KCM_DFPlayer` driver (DFPlayer Mini BUSY polling for the GPWS function) |
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
 | ILI9341_fonts (ILI9341_t3) | latest | Anti-aliased fonts (PaulStoffregen) |
@@ -123,6 +123,20 @@ The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConf
 
 `CW_EC_LOW_FRAC` (`0.05`) is panel-specific and is not shared.
 
+**GPWS function tunables** (`AAA_Config.ino`, `GPWS_*`) — tune the local Ground Proximity Warning logic and voice-callout cadence. The GPWS *configuration* (mode / proximity-alarm / rendezvous-radar / altitude threshold) is not set here: it originates on the GPWS Input Panel module and is relayed by the master over I2C (see the GPWS Function feature section).
+
+| Constant | Default | Description |
+|----------|---------|-------------|
+| `GPWS_VOLUME` | `24` | DFPlayer voice volume (0–30). |
+| `GPWS_PULLUP_S` | `10.0` s | Time-to-impact at/below which TERRAIN then PULL UP sound (aliases `KCM_GROUND_PROX_S` so voice and master-alarm tone align). |
+| `GPWS_SINK_S` | `20.0` s | Time-to-impact upper bound for the SINK RATE caution. |
+| `GPWS_SINK_MIN_MS` | `5.0` m/s | Minimum descent rate for SINK RATE — gentle descents are ignored. |
+| `GPWS_DESCENT_DEADBAND_MS` | `0.1` m/s | `|vel_vert|` below this is treated as level flight. |
+| `GPWS_ALT_JUMP_M` | `2000.0` m | Single-frame surface-altitude jump that re-seeds the callout tracker (vessel switch / warp / terrain step) without a spurious callout. |
+| `GPWS_MIN_DEDUP_M` | `8.0` m | A ladder rung within this of the threshold is spoken as "MINIMUMS" instead of its number. |
+| `GPWS_HARD_GAP_MS` | `1400` ms | Minimum gap between repeated PULL UP callouts. |
+| `GPWS_SINK_GAP_MS` | `1800` ms | Minimum gap between repeated SINK RATE callouts. |
+
 **Master alarm mask** — the set of C&W bits that illuminate MASTER ALARM and drive audio. Defined in `AAA_Config.ino` using the `CW_*` constants from `KCMk1_Annunciator.h`. Current mask (9 bits): `GROUND_PROX`, `HIGH_G`, `BUS_VOLTAGE`, `HIGH_TEMP`, `LOW_DV`, `ABORT`, `PE_LOW`, `PROP_LOW`, `LIFE_SUPPORT`.
 
 ---
@@ -146,18 +160,21 @@ Size: **6 bytes**. Sent in response to `KCM_I2C_BUS.requestFrom(0x10, 6)` (Wire2
 
 ### Inbound Packet — Master → Annunciator
 
-Size: **3 bytes (legacy)** or **6 bytes (rev-2 extended)**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission(0x10)` / `KCM_I2C_BUS.write()` / `KCM_I2C_BUS.endTransmission()` (Wire2). `onI2CReceive()` accepts either length (`I2C_CMD_SIZE = 3` or `I2C_CMD_SIZE_EXT = 6`) and drains any other length, so the master can be upgraded independently. Both forms are documented in `Documents/Developer/I2C_Protocol_Specification.md` §15.3.
+Size: **3 bytes (legacy)**, **6 bytes (rev-2 extended)**, or **9 bytes (rev-3, adds relayed GPWS config)**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission(0x10)` / `KCM_I2C_BUS.write()` / `KCM_I2C_BUS.endTransmission()` (Wire2). `onI2CReceive()` accepts any of the three lengths (`I2C_CMD_SIZE = 3`, `I2C_CMD_SIZE_EXT = 6`, `I2C_CMD_SIZE_GPWS = 9`) and drains any other length, so the master can be upgraded independently. All forms are documented in `Documents/Developer/I2C_Protocol_Specification.md` §15.3.
 
 | Byte | Field | Description |
 |------|-------|-------------|
 | 0 | `controlByte` | See bit map below |
 | 1 | `ctrlModeByte` | `CtrlMode` enum: `0`=Rover, `1`=Plane, `2`=Spacecraft |
 | 2 | `ctrlGrpByte` | Active control group, 1-based (1–10) |
-| 3 | `modeFlags` low | `state.modeFlags` bits 7:0 (`MF_*` — drives the whole mode/status grid) — *extended only* |
-| 4 | `modeFlags` high | `state.modeFlags` bits 11:8 — *extended only* |
-| 5 | `capValue` | "Cap" readout (`state.capValue`) — *extended only* |
+| 3 | `modeFlags` low | `state.modeFlags` bits 7:0 (`MF_*` — drives the whole mode/status grid) — *rev-2+* |
+| 4 | `modeFlags` high | `state.modeFlags` bits 11:8 — *rev-2+* |
+| 5 | `capValue` | "Cap" readout (`state.capValue`) — *rev-2+* |
+| 6 | `gpwsConfig` | GPWS config — bits 1:0 = mode (`0`=OFF, `1`=ACTIVE, `2`=PROX), bit 2 = proxAlarm, bit 3 = rdvRadar — *rev-3* |
+| 7 | `gpwsThreshold` high | GPWS altitude threshold, int16 metres, big-endian — *rev-3* |
+| 8 | `gpwsThreshold` low | — *rev-3* |
 
-Bytes 3–5 are applied only when a 6-byte command is received; a 3-byte command leaves `modeFlags` and `capValue` unchanged.
+Bytes 3–5 are applied only when a 6-byte (or longer) command is received; bytes 6–8 only when a 9-byte command is received. A shorter command leaves the corresponding fields unchanged. The GPWS config byte uses the **same bit layout the GPWS Input Panel module reports** in its own packet (state byte), so the master relays it unchanged; see the GPWS Function feature section.
 
 **`controlByte` bit map:**
 
@@ -182,7 +199,7 @@ Bytes 3–5 are applied only when a 6-byte command is received; a 3-byte command
 ### Expanding the Protocol
 
 - **Outbound:** increment `I2C_PACKET_SIZE` and add fields to `fillI2CPacketBuffer()` in `I2CSlave.ino`
-- **Inbound:** increment `I2C_CMD_SIZE` and add fields to `processI2CCommand()` in `I2CSlave.ino`
+- **Inbound:** add a new accepted length (as `I2C_CMD_SIZE_GPWS = 9` did), grow `i2cCmdBuf`/`I2C_CMD_SIZE_MAX`, accept it in `onI2CReceive()`, and add fields to `processI2CCommand()` in `I2CSlave.ino`
 - Update the master sketch to match in both cases
 
 ---
@@ -280,6 +297,54 @@ The Annunciator assembles its own vessel situation display bitmask from the raw 
 
 Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are assembled from the raw `FLIGHT_STATUS` situation in `SimpitHandler.ino`. On the outer situation column, LANDED is shown above SPLASH (display order `sitRowToArr`), and both drive the CONTACT tile. Named constants are defined in `KCMk1_Annunciator.h`.
 
+### GPWS Function (voice callouts)
+
+`GPWS.ino` implements an aviation-style **Ground Proximity Warning System** that runs entirely on the Annunciator's Teensy 4.1. It watches the Simpit telemetry already collected in `state` (surface altitude, vertical speed, gear, situation) and speaks voice callouts through the **DFPlayer Mini** on the 7" board (Serial2). It is **independent of the `tone()` master-alarm** state machine — the tone alarm still owns `CW_GROUND_PROX` and the other WARNING tones on the PAM8302A path, while GPWS voice is layered on top through the separate DFPlayer path. The two can sound together; the GPWS function does not read or alter `cautionWarningState`.
+
+**Configuration source.** The GPWS is configured by four parameters that **originate on the GPWS Input Panel module** (KC-01-1880, I2C `0x2A`) and are relayed to the Annunciator by the master inside the inbound I2C command (rev-3, bytes 6–8; see the Inbound Packet section). The config byte reuses the GPWS Input module's own reported state-byte layout, so the master passes it through unchanged:
+
+| Field | Source (GPWS Input) | Effect on the Annunciator GPWS |
+|-------|---------------------|-------------------------------|
+| `mode` (bits 1:0) | BTN01 cycle: OFF / ACTIVE / PROX | `OFF` inhibits everything; `ACTIVE` = full callout suite; `PROX` = proximity (TERRAIN/PULL UP) only |
+| `proxAlarm` (bit 2) | BTN02 | Arms the imminent-impact TERRAIN/PULL UP hard warning (in both ACTIVE and PROX) |
+| `rdvRadar` (bit 3) | BTN03 | **Reserved** — stored/logged, no callouts yet (needs a target-range Simpit channel the panel does not subscribe to) |
+| `threshold` (int16 m) | encoder value | Decision height: the "MINIMUMS" callout altitude and the TOO LOW GEAR check altitude |
+
+**Callout logic.** Time-to-impact `t = alt_surf / |vel_vert|` while airborne and descending. Exactly one condition owns the audio each frame (priority high → low):
+
+| Priority | Callout | Clip(s) | Mode gate | Condition |
+|----------|---------|---------|-----------|-----------|
+| 1 | TERRAIN → PULL UP | `TERRAIN` once, then `PULL UP` repeating (`GPWS_HARD_GAP_MS`) | proxAlarm armed (ACTIVE or PROX) | `t < GPWS_PULLUP_S` — preempts any soft clip |
+| 2 | SINK RATE | `SINK RATE` repeating (`GPWS_SINK_GAP_MS`) | ACTIVE | `t < GPWS_SINK_S` and descent rate > `GPWS_SINK_MIN_MS` |
+| 3 | TOO LOW GEAR | `TOO LOW, GEAR` once | ACTIVE | gear up and `alt_surf < threshold` |
+| 4 | MINIMUMS | `MINIMUMS` once | ACTIVE | descending through `threshold` |
+| 5 | Altitude ladder | number, once per rung | ACTIVE | descending through a fixed AGL rung |
+
+Playback is fully **non-blocking**: `gpwsUpdate()` never calls `delay()`; recurring warnings re-arm from `millis()` cadence timers and the DFPlayer **BUSY** line (`isPlaying()`, pin 11). Hard warnings preempt a soft clip already playing; soft callouts only start when the player is idle. The callout tracker is reset on scene exit and vessel switch (`gpwsReset()` from `SimpitHandler.ino`) and re-seeds on any large single-frame altitude jump, so callouts never carry across a flight boundary.
+
+**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply numbered clips `001.mp3`…`016.mp3`; suggested spoken text:
+
+| Track | File | Spoken |
+|-------|------|--------|
+| 1 | `/01/001.mp3` | "PULL UP" |
+| 2 | `/01/002.mp3` | "TERRAIN, TERRAIN" |
+| 3 | `/01/003.mp3` | "SINK RATE" |
+| 4 | `/01/004.mp3` | "TOO LOW, GEAR" |
+| 5 | `/01/005.mp3` | "MINIMUMS" |
+| 6 | `/01/006.mp3` | "ONE THOUSAND" |
+| 7 | `/01/007.mp3` | "FIVE HUNDRED" |
+| 8 | `/01/008.mp3` | "FOUR HUNDRED" |
+| 9 | `/01/009.mp3` | "THREE HUNDRED" |
+| 10 | `/01/010.mp3` | "TWO HUNDRED" |
+| 11 | `/01/011.mp3` | "ONE HUNDRED" |
+| 12 | `/01/012.mp3` | "FIFTY" |
+| 13 | `/01/013.mp3` | "FORTY" |
+| 14 | `/01/014.mp3` | "THIRTY" |
+| 15 | `/01/015.mp3` | "TWENTY" |
+| 16 | `/01/016.mp3` | "TEN" |
+
+The ladder rungs are 1000, 500, 400, 300, 200, 100, 50, 40, 30, 20, 10 m AGL (`GPWS_LADDER` in `GPWS.ino`). Audio is gated by `audioEnabled` and the flight scene, exactly like the `tone()` cues.
+
 ---
 
 ## Tab Structure
@@ -294,6 +359,7 @@ Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are ass
 | `ScreenStandby.ino` | Standby screen — delegates to `drawStandbySplash()` |
 | `CautionWarning.ino` | C&W state machine: `updateCautionWarningState()` |
 | `Audio.ino` | Master alarm condition tracking and audio trigger logic |
+| `GPWS.ino` | Ground Proximity Warning System voice callouts on the DFPlayer (`gpwsSetup`/`gpwsUpdate`/`gpwsSetConfig`/`gpwsReset`) |
 | `TouchEvents.ino` | Touch debounce and gesture dispatch |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
 | `I2CSlave.ino` | I2C slave at 0x10 — packet build/fill, command processing, boot handshake |
@@ -323,6 +389,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.2.0** | **GPWS function** added (`GPWS.ino`): an aviation-style Ground Proximity Warning System that runs on the Annunciator's Teensy 4.1, drives the **DFPlayer Mini** with voice callouts (PULL UP, TERRAIN, SINK RATE, TOO LOW GEAR, MINIMUMS, and a descending altitude ladder), and is configured by the GPWS Input Panel module's mode / proximity-alarm / rendezvous-radar / altitude-threshold parameters **relayed by the master over I2C**. Inbound I2C command gained a **rev-3 9-byte form** (`I2C_CMD_SIZE_GPWS`) carrying the GPWS config byte + int16 threshold; the config byte reuses the GPWS Input module's own state-byte layout for pass-through relay. Non-blocking playback via the DFPlayer BUSY line. Independent of the `tone()` master-alarm path — the two audio paths coexist. Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.1** | KC-01-1911 **V2.1 audio hardware**: the `tone()` master-alarm output moved to **pin 29**, and the S8050 buzzer stage was replaced by a **PAM8302A Class-D amplifier + external 8 Ω speaker** with an input volume trim. The amp's active-low shutdown (net **TONE_EN**, **pin 30**) is driven by the audio library to power the amp down between cues, muting Class-D idle hiss. The DFPlayer Mini **BUSY** line is now wired to the Teensy (net **AUDIO_BUSY**, **pin 11**) for optional `isPlaying()` polling. No sketch-logic changes: `KerbalDisplayAudio` self-configures these pins from `KCMk1_SystemConfig` (`KCM_AUDIO_TONE_PIN` / `KCM_AUDIO_EN_PIN` / `KCM_AUDIO_BUSY_PIN`). Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.0** | Silenced-alarm re-blare fix: a C&W condition that clears and re-triggers while the master alarm is silenced now re-arms the alarm instead of staying latched silent. Outbound status I2C widened to carry all **25** C&W bits (4 C&W bytes; request packet 4→6 bytes) so the master receives the full panel state, not a truncated subset. Audit batch B cleanup (bug fixes, dead-code removal). Built against KerbalDisplayCommon 3.1.2. |
 | **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / LT7683 (RA8876-compatible) 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |
@@ -336,7 +403,8 @@ The Annunciator follows a deterministic startup handshake with the master before
 ## Notes
 
 - **ARP mod required** for `CW_BUS_VOLTAGE`. Without ARP, KSP1 never sends `ELECTRIC_MESSAGE`.
-- **`audioEnabled`** defaults to `false` — must be enabled in `AAA_Config.ino` or via I2C from the master.
+- **`audioEnabled`** defaults to `false` — must be enabled in `AAA_Config.ino` or via I2C from the master. It gates both the `tone()` cues and the GPWS voice callouts.
+- **GPWS voice** (DFPlayer) is separate from the `tone()` master-alarm path and requires numbered clips on the DFPlayer's own microSD card (see the GPWS Function feature section). Without the card / clips the commands are harmless no-ops. GPWS stays silent until the master relays a non-OFF mode (rev-3 I2C command) and a flight scene is active.
 - **`DISPLAY_ROTATION`** — set `2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not needed; the FT5316 reports in screen-native coordinates at rotation 0.
 - **Demo mode** drives all `AppState` fields at configurable rates. `ctrlMode` and `ctrlGrp` are not cycled — they are owned by the master and preserved as last set via I2C. Switching demo off at runtime connects Simpit if not already connected, or requests a full channel refresh if it is.
 - **String heap usage** — `state.vesselName` and `state.gameSOI` use Arduino `String`. Low risk on Teensy 4.1 (1 MB RAM) but worth noting if porting to a memory-constrained target.

@@ -299,12 +299,14 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
                                     ? F("Annunciator: Entering flight scene")
                                     : F("Annunciator: Leaving flight scene"));
       if (flightScene) {
+        gpwsReset();   // reseed GPWS crossing tracker for the new flight
         switchToScreen(screen_Main);
         // Request immediate refresh on all subscribed channels so static values
         // (full tanks, stable orbit, etc.) populate without waiting for a change event.
         simpit.requestMessageOnChannel(0);
       } else {
         if (audioEnabled) audioSilence();
+        gpwsReset();   // hush any GPWS callout on leaving the flight scene
         resetDisplays();
         // invalidateAllState() is idempotent (every field derives from state.*/
         // chuteEnvState, never from prev.*), so switchToScreen() calling it again
@@ -318,6 +320,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("Annunciator: Vessel switch"));
         if (audioEnabled) audioSilence();
+        gpwsReset();   // flush GPWS callouts/crossing tracker for the new vessel
         resetDisplays();
         switchToScreen(activeScreen);
         prevScreen = screen_COUNT;
