@@ -183,7 +183,7 @@ void loop() {
 - **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In KCMk1 sketches this is done in `ScreenMain.ino`; `audioSilence()` is called unconditionally on scene change and vessel switch regardless of the flag.
 - **Single output pin** — all audio is multiplexed through one `tone()` pin. Only one sound plays at a time; the state machine priority order determines which.
 - **No blocking** — `updateAudio()` never calls `delay()`. All timing is `millis()`-based. The function is a no-op when idle.
-- **`tone()` on Teensy 4.1** — `tone()` uses a hardware timer. `AUDIO_PIN` must be a PWM-capable pin.
+- **`tone()` on Teensy 4.1** — `tone()` is timer-driven (it toggles the pin from an interrupt), so `AUDIO_PIN` can be any digital output pin; it does not need to be PWM-capable. On V2.1 it is pin 29.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.
