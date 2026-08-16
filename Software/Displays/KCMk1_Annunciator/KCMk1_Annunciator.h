@@ -16,6 +16,11 @@
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
+// Forward declaration for GPWS.ino's ladder-rung struct. GpwsRung is fully defined in
+// GPWS.ino, but the Arduino builder injects gpwsCrossed()'s prototype at the top of the
+// combined sketch (before that definition); this makes the type name resolve there.
+struct GpwsRung;
+
 
 /***************************************************************************************
    CONTROL MODE ENUM
@@ -280,7 +285,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.5.1: DON'T SINK clip is a single utterance -- firmware now plays it twice for the "don't sink, don't sink" doublet (_dsRepeat); STALL is a buzzer re-triggered continuously (STALL_GAP_MS 1200->60) so it sounds unbroken while stalled
+static const uint8_t SKETCH_VERSION_PATCH = 2;  // 3.5.2: build fix -- forward-declare GpwsRung in this header so the Arduino auto-generated prototype for gpwsCrossed() (injected above GPWS.ino's struct definition) resolves the type; no behaviour change
 
 
 /***************************************************************************************
