@@ -280,7 +280,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.5.0: threshold-bug crossing reworked into a gear/type/altitude tree -- gear-up crossing plays new GROUND PROXIMITY (clip 34); gear-down aircraft tone above DH_SPLIT_M (300 m) but APPROACHING MINIMUMS + MINIMUMS below it; landers always tone; number-at-bug always masked
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.5.1: DON'T SINK clip is a single utterance -- firmware now plays it twice for the "don't sink, don't sink" doublet (_dsRepeat); STALL is a buzzer re-triggered continuously (STALL_GAP_MS 1200->60) so it sounds unbroken while stalled
 
 
 /***************************************************************************************

@@ -45,14 +45,17 @@
              envelopes: 2A (gear up, higher ceiling, sensitive) and 2B (gear down =
              landing config, lower ceiling, desensitised).
      Mode 3  DON'T SINK -- altitude loss after takeoff, proportional to height;
-             spoken twice, then only as the loss deepens.
+             spoken twice, then only as the loss deepens. Each annunciation is the
+             doublet "don't sink, don't sink"; the clip is a single utterance so the
+             firmware plays it twice (see _dsRepeat).
      Mode 4  TOO LOW GEAR (< 500 ft, inhibited for the first ~15 s after liftoff) +
              speed-expanded TOO LOW TERRAIN (4A, < 1000 ft) + minimum-terrain-clearance
              floor (4C, 75% of post-takeoff peak, gear up).
      Mode 6  altitude callouts (feet) + MINIMUMS + altitude-ramped BANK ANGLE.
    Plus non-GPWS extras (also GREEN, fixed-threshold approximations -- no per-craft
-   Simpit source): STALL (AoA = pitch - surfaceVelocityPitch), the takeoff-roll
-   V1 / ROTATE speed callouts, and a GEAR UP retract reminder after a positive climb.
+   Simpit source): STALL (AoA = pitch - surfaceVelocityPitch) -- a buzzer clip re-armed
+   continuously while stalled, the takeoff-roll V1 / ROTATE speed callouts, and a GEAR
+   UP retract reminder after a positive climb.
    Modes 5 (glideslope) and 7 (windshear) and forward-looking terrain are omitted --
    no ILS / wind / terrain-database data in KSP.
 
@@ -306,7 +309,7 @@ static const uint16_t MODE3_GAP_MS  = 1500;
 static const uint16_t TERR4_GAP_MS  = 1500;
 static const uint16_t GEAR_GAP_MS   = 1500;
 static const uint16_t BANK_GAP_MS   = 1500;
-static const uint16_t STALL_GAP_MS  = 1200;
+static const uint16_t STALL_GAP_MS  = 60;       // STALL is a buzzer: retrigger the instant it ends (small debounce covers BUSY-assert latency) -> continuous while stalled
 static const uint16_t RETARD_GAP_MS = 1000;
 static const uint16_t POSTTERR_GAP_MS = 1500;   // Mode 2 post-warning TERRAIN repeat
 
@@ -356,6 +359,7 @@ static bool     _m3Active     = false;
 static uint32_t _lastM3Ms     = 0;
 static uint8_t  _m3Count      = 0;       // DON'T SINK annunciations this episode
 static float    _m3LastLoss   = 0.0f;    // altitude loss at the last DON'T SINK
+static uint8_t  _dsRepeat     = 0;       // DON'T SINK doublet: extra plays pending (clip is single)
 
 static bool     _terr4Active  = false;
 static uint32_t _lastTerr4Ms  = 0;
@@ -432,7 +436,7 @@ static void gpwsClearLatches() {
   _closPrevAlt = -1.0f; _closPrevMs = 0; _closRate = 0.0f;
   _hardActive = false; _terrainDone = false; _terr2Recent = false;
   _wasOnGround = false; _m3Armed = false; _m3MaxAlt = 0.0f; _m3Active = false;
-  _m3Count = 0; _m3LastLoss = 0.0f;
+  _m3Count = 0; _m3LastLoss = 0.0f; _dsRepeat = 0;
   _terr4Active = false; _gearActive = false; _bankActive = false;
   _stallActive = false; _retardActive = false;
   _v1Done = false; _rotateDone = false;
@@ -761,7 +765,9 @@ void gpwsUpdate() {
 
   // === Priority ladder (EGPWS aural priority order) ============================
 
-  // 1: STALL -- a separate stall-warning system that outranks all of GPWS.
+  // 1: STALL -- a separate stall-warning system that outranks all of GPWS. The clip is
+  //    a buzzer; it re-triggers as soon as it finishes (STALL_GAP_MS) so it sounds
+  //    continuously for as long as the stall condition is present.
   if (stallCond) {
     if (!busy && (!_stallActive || (now - _lastStallMs) >= STALL_GAP_MS)) {
       gpwsPlay(GPWS_CLIP_STALL); _lastStallMs = now; _stallActive = true;
@@ -864,7 +870,15 @@ void gpwsUpdate() {
     return;
   }
 
-  // 11: DON'T SINK (Mode 3) -- spoken twice, then only as the loss deepens.
+  // 11: DON'T SINK (Mode 3) -- each annunciation is the doublet "don't sink, don't
+  //     sink". The clip is a single "don't sink", so the second half is played by
+  //     _dsRepeat on the next BUSY-clear (a tight back-to-back, at Mode 3 priority so
+  //     a real warning can still preempt it). Annunciation cadence is unchanged:
+  //     spoken twice, then only as the loss deepens.
+  if (_dsRepeat > 0) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_DONT_SINK); _dsRepeat--; }
+    return;
+  }
   if (m3Sink) {
     float loss = _m3MaxAlt - alt;
     bool speak = false;
@@ -873,7 +887,7 @@ void gpwsUpdate() {
     else if (_m3Count >= 2 && loss > _m3LastLoss * M3_WORSEN_FRAC &&
              (now - _lastM3Ms) >= MODE3_GAP_MS)                          speak = true;   // worsening
     if (speak && !busy) {
-      gpwsPlay(GPWS_CLIP_DONT_SINK);
+      gpwsPlay(GPWS_CLIP_DONT_SINK); _dsRepeat = 1;   // + second half of the doublet
       _lastM3Ms = now; _m3LastLoss = loss; _m3Active = true;
       if (_m3Count < 2) _m3Count++;
     }

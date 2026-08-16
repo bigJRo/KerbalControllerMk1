@@ -356,7 +356,7 @@ In **rdvRadar** the bug is a *range*, so closing through it just plays the **TON
 | **Mode 7** — Windshear | ✗ Not implemented | No wind data |
 | **EGPWS/TAWS** — forward-looking terrain | ✗ Not implemented | No terrain database / look-ahead in KSP |
 
-**Cadence.** Ladder callouts, MINIMUMS, APPROACHING MINIMUMS, V1, ROTATE, GEAR UP and the bug tone fire **once** per crossing/event. PULL UP repeats near-gaplessly (`HARD_GAP_MS`, BUSY-gated); post-warning TERRAIN repeats on `POSTTERR_GAP_MS`. SINK RATE / TOO LOW TERRAIN / TOO LOW GEAR / BANK ANGLE / STALL / RETARD re-annunciate on their `*_GAP_MS` cadence (~1–1.5 s) while in the envelope. **DON'T SINK** is the exception — it is spoken twice, then falls silent until the altitude loss deepens by `M3_WORSEN_FRAC` (per the manual), rather than repeating on a fixed cadence. Doublet/siren phrasing (WHOOP WHOOP PULL UP, TERRAIN×2, DON'T SINK×2, BANK ANGLE×2) is baked into the clip; the firmware provides the between-annunciation repeat.
+**Cadence.** Ladder callouts, MINIMUMS, APPROACHING MINIMUMS, V1, ROTATE, GEAR UP and the bug tone fire **once** per crossing/event. PULL UP repeats near-gaplessly (`HARD_GAP_MS`, BUSY-gated); post-warning TERRAIN repeats on `POSTTERR_GAP_MS`. SINK RATE / TOO LOW TERRAIN / TOO LOW GEAR / BANK ANGLE / RETARD re-annunciate on their `*_GAP_MS` cadence (~1–1.5 s) while in the envelope. **STALL** is a buzzer clip re-triggered continuously (~60 ms `STALL_GAP_MS`, BUSY-gated) so it sounds unbroken while the stall condition holds. **DON'T SINK** is the exception — it is spoken twice, then falls silent until the altitude loss deepens by `M3_WORSEN_FRAC` (20%) rather than repeating on a fixed cadence. Doublet/siren phrasing for WHOOP WHOOP PULL UP, TERRAIN×2, and BANK ANGLE×2 is baked into those clips; **DON'T SINK** is a single-utterance clip that the firmware plays twice (`_dsRepeat`) to form the "don't sink, don't sink" doublet.
 
 **Lander / rocket profile.** For any vessel whose type is **not** `type_Plane`, `gpwsUpdate()` hands off to `gpwsUpdateLander()` — a vertical-landing aid rather than the aircraft suite. The panel mode/threshold work the same (GREEN = warnings + callouts + tone; proxAlarm = callouts + tone; rdvRadar = target-distance callouts). Every warning requires **airborne + descending**, so a rover or parked craft stays silent. Callouts, priority high → low:
 
@@ -379,9 +379,9 @@ No terrain-closure, don't-sink, too-low-gear, bank-angle, stall or minimums in t
 | 3 | "SINK RATE" | | 19 | "THREE HUNDRED" (300) |
 | 4 | "TOO LOW, GEAR" | | 20 | "TWO HUNDRED" (200) |
 | 5 | "TOO LOW, TERRAIN" | | 21 | "ONE HUNDRED" (100) |
-| 6 | "DON'T SINK, DON'T SINK" | | 22 | "NINETY" (90) |
+| 6 | "DON'T SINK" (single — firmware doubles it) | | 22 | "NINETY" (90) |
 | 7 | "BANK ANGLE, BANK ANGLE" | | 23 | "EIGHTY" (80) |
-| 8 | "STALL" | | 24 | "SEVENTY" (70) |
+| 8 | STALL buzzer (firmware loops it continuously) | | 24 | "SEVENTY" (70) |
 | 9 | "MINIMUMS" | | 25 | "SIXTY" (60) |
 | 10 | "APPROACHING MINIMUMS" | | 26 | "FIFTY" (50) |
 | 11 | "V ONE" | | 27 | "FORTY" (40) |
@@ -439,6 +439,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.5.1** | Callout playback tuned to the recorded clips: **DON'T SINK** (clip 6) is a single utterance, so the firmware now plays it twice (`_dsRepeat`) to form the "don't sink, don't sink" doublet at Mode 3 priority. **STALL** (clip 8) is a buzzer, re-triggered continuously (`STALL_GAP_MS` 1200 → 60 ms, BUSY-gated) so it sounds unbroken while the stall condition holds. |
 | **3.5.0** | Threshold-bug crossing reworked into a gear/type/altitude decision tree. **Gear up** through the bug → new **GROUND PROXIMITY** call (clip **34**), both profiles. **Gear down**: aircraft with the bug **≥ 300 m** (`DH_SPLIT_M`) get a generic **tone**; **< 300 m** it's a real decision height (**APPROACHING MINIMUMS** + **MINIMUMS**, no tone); landers always tone. rdvRadar range bug still tone-only. The number callout at the bug altitude is now always masked so it can't double with the bug's own call. Requires the new `034` clip. |
 | **3.4.1** | Lander **SINK RATE** gains a **descent-rate floor** (`LANDER_SINK_FLOOR_MS` = 6 m/s). Below it a touchdown is comfortably survivable (stock LT-05/LT-1/LT-2 legs fail at ~12 m/s), so a gentle powered landing no longer trips SINK RATE inside the time-to-impact window. |
 | **3.4.0** | GPWS gains a **vessel-type-selected lander / rocket profile** (`gpwsUpdateLander()`). `type_Plane` keeps the aircraft EGPWS suite; **any other vessel type** (rocket, lander, probe, …) gets a vertical-landing aid: **SINK RATE** (time-to-impact, sharing the C&W GROUND PROX metric `KCM_GROUND_PROX_S` so the voice and lamp agree), **HORIZONTAL SPEED** (tip-over risk, new clip **33**), **RETARD** (thrust-still-commanded final descent), and **metre** altitude callouts — plus the threshold bug tone. Every lander warning requires airborne + descending, so grounded vessels stay silent. The panel mode / threshold apply to both profiles. Requires the new `033` clip on the DFPlayer. |
