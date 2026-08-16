@@ -24,15 +24,18 @@
      Mode 1  SINK RATE (outer) + PULL UP (inner), floored descent-rate-vs-altitude
              envelopes (< 2450 ft).
      Mode 2  TERRAIN,TERRAIN -> PULL UP from smoothed terrain closure (d alt_surf/dt),
-             then a post-warning TERRAIN tail while clearance keeps decreasing.
+             then a post-warning TERRAIN tail while clearance keeps decreasing. Two
+             envelopes: 2A (gear up, higher ceiling, sensitive) and 2B (gear down =
+             landing config, lower ceiling, desensitised).
      Mode 3  DON'T SINK -- altitude loss after takeoff, proportional to height;
              spoken twice, then only as the loss deepens.
-     Mode 4  TOO LOW GEAR (< 500 ft) + speed-expanded TOO LOW TERRAIN (4A, < 1000 ft)
-             + minimum-terrain-clearance floor (4C, 75% of post-takeoff peak, gear up).
+     Mode 4  TOO LOW GEAR (< 500 ft, inhibited for the first ~15 s after liftoff) +
+             speed-expanded TOO LOW TERRAIN (4A, < 1000 ft) + minimum-terrain-clearance
+             floor (4C, 75% of post-takeoff peak, gear up).
      Mode 6  altitude callouts (feet) + MINIMUMS + altitude-ramped BANK ANGLE.
    Plus non-GPWS extras (also GREEN, fixed-threshold approximations -- no per-craft
-   Simpit source): STALL (AoA = pitch - surfaceVelocityPitch), and the takeoff-roll
-   V1 / ROTATE speed callouts.
+   Simpit source): STALL (AoA = pitch - surfaceVelocityPitch), the takeoff-roll
+   V1 / ROTATE speed callouts, and a GEAR UP retract reminder after a positive climb.
    Modes 5 (glideslope) and 7 (windshear) and forward-looking terrain are omitted --
    no ILS / wind / terrain-database data in KSP.
 
@@ -42,6 +45,8 @@
      the threshold. RETARD repeats in the flare (gear down, in atmo, very low).
    CALLOUTS (distance profile) -- target range in METRES: 500/200/100/50/40/30/20/10/5.
    Number clips are shared between the feet and metre ladders.
+   RETARD only sounds while thrust is still commanded (throttleCmd > 0), so it stops
+   once the throttle is pulled to idle in the flare.
 
    THRESHOLD "BUG" (encoder value, 0-9999 m) -- crossing it plays the bug TONE clip:
    descending through it (altitude, where it is also the MINIMUMS decision height) or
@@ -57,7 +62,7 @@
    per the Honeywell MK VI/VIII Pilot Guide aural-priority table):
      STALL > PULL UP / TERRAIN (hard) > post-warning TERRAIN > bug TONE > MINIMUMS >
      TOO LOW TERRAIN (4A/4C) > RETARD > altitude/distance callouts > TOO LOW GEAR >
-     SINK RATE > DON'T SINK > BANK ANGLE > V1 > ROTATE.
+     SINK RATE > DON'T SINK > BANK ANGLE > V1 > ROTATE > GEAR UP (advisory).
 
    CROSSING-TRACKER DISCIPLINE -- `_prevAlt`/`_prevDist` advance only when the ladder is
    serviced; frozen while a higher-priority clip owns the audio or the player is busy
@@ -117,6 +122,7 @@ static KCM_DFPlayer gpwsDfp(KCM_DFPLAYER_SERIAL);
 #define GPWS_CLIP_20           29    // "TWENTY"
 #define GPWS_CLIP_10           30    // "TEN"
 #define GPWS_CLIP_5            31    // "FIVE"
+#define GPWS_CLIP_GEAR_UP     32    // "GEAR UP" / "LANDING GEAR" (retract-gear reminder)
 
 
 /***************************************************************************************
@@ -165,10 +171,18 @@ static const float SINK_SLOPE      = 0.0272f;
 static const float PULLUP_FLOOR_MS = 7.62f;   // ~1500 fpm floor
 static const float PULLUP_SLOPE    = 0.0374f;
 
-// Mode 2 -- terrain closure (m/s) from smoothed d(alt_surf)/dt.
-static const float M2_CEIL_M       = 746.8f;
-static const float TERR_FLOOR_MS   = 10.0f;
-static const float TERR_SLOPE      = 0.040f;
+// Mode 2 -- terrain closure (m/s) from smoothed d(alt_surf)/dt. Two envelopes:
+//   2A (clean, gear up): higher ceiling and more sensitive -- terrain closure is
+//      unexpected in cruise/climb, so warn early.
+//   2B (landing config, gear DOWN): lower ceiling and desensitised, so a normal
+//      gear-down approach over rising terrain doesn't nuisance-trip. (Real EGPWS
+//      keys 2B off gear + flaps; KSP gives us gear only, which we use as the proxy.)
+static const float M2A_CEIL_M      = 670.6f;  // 2200 ft
+static const float TERR2A_FLOOR_MS = 10.0f;
+static const float TERR2A_SLOPE    = 0.040f;
+static const float M2B_CEIL_M      = 240.5f;  // 789 ft
+static const float TERR2B_FLOOR_MS = 15.0f;   // desensitised: needs faster closure
+static const float TERR2B_SLOPE    = 0.045f;
 static const float CLOSURE_ALPHA   = 0.30f;
 static const float CLOSURE_MIN_DT_S= 0.05f;
 // Post-warning "TERRAIN": after PULL UP exits, keep saying TERRAIN while terrain
@@ -190,6 +204,9 @@ static const float TOOLOW_SPEED_MS = 98.0f;   // ~190 kt expansion speed
 // Mode 4C takeoff Minimum Terrain Clearance floor = MTC_FRAC of the post-takeoff peak
 // radio altitude (non-decreasing). Sinking below it (gear up) -> TOO LOW TERRAIN.
 static const float MTC_FRAC        = 0.75f;   // manual: 75% of (15 s avg) radio altitude
+// TOO LOW GEAR nuisance gate: inhibit during the initial takeoff climb-out, where the
+// gear is legitimately still up, until this long after liftoff (EGPWS-style inhibit).
+static const uint32_t TOOLOW_ARM_MS = 15000;  // 15 s
 
 // Mode 6 -- BANK ANGLE altitude-dependent limit (deg), turbofan envelope:
 // +/-10 deg at 5-30 ft, ramp to +/-40 deg by 150 ft, ramp to +/-55 deg by 2450 ft.
@@ -216,6 +233,11 @@ static const float STALL_MIN_SPEED_MS= 10.0f; // ignore near-zero airspeed noise
 // SET THESE to the plane you fly. V1 is just below rotation.
 static const float V1_SPEED_MS       = 55.0f;   // ~107 kt
 static const float VR_SPEED_MS       = 65.0f;   // ~126 kt (rotate)
+
+// GEAR UP -- advisory to retract the gear once a positive climb is established after
+// takeoff. Spoken once per takeoff. Not a classic EGPWS callout (borrowed from the
+// KSP_GPWS mod); requires a positive vertical speed so it doesn't fire in the flare.
+static const uint32_t GEARUP_DELAY_MS = 6000;   // ~6 s after liftoff
 
 // General.
 static const float DESCENT_DEADBAND_MS = 0.1f;
@@ -296,6 +318,8 @@ static uint32_t _lastRetardMs = 0;
 
 static bool     _v1Done       = false;   // V1 spoken this takeoff roll
 static bool     _rotateDone   = false;   // ROTATE spoken this takeoff roll
+static uint32_t _takeoffMs    = 0;       // millis() at liftoff (0 = no takeoff seen this scene)
+static bool     _gearUpDone   = false;   // GEAR UP reminder spoken this takeoff
 
 
 /***************************************************************************************
@@ -354,6 +378,7 @@ static void gpwsClearLatches() {
   _terr4Active = false; _gearActive = false; _bankActive = false;
   _stallActive = false; _retardActive = false;
   _v1Done = false; _rotateDone = false;
+  _takeoffMs = 0; _gearUpDone = false;
 }
 
 
@@ -440,13 +465,16 @@ void gpwsUpdate() {
   }
 
   // --- Mode 3 arm/track --------------------------------------------------------
-  if (onGround) { _m3Armed = false; _m3MaxAlt = 0.0f; }
+  if (onGround) { _m3Armed = false; _m3MaxAlt = 0.0f; _gearUpDone = false; }
   else if (isAloft) {
-    if (_wasOnGround) { _m3Armed = true; _m3MaxAlt = alt; }
+    if (_wasOnGround) { _m3Armed = true; _m3MaxAlt = alt; _takeoffMs = now; }
     if (alt > M3_CEIL_M) _m3Armed = false;
     if (alt > _m3MaxAlt) _m3MaxAlt = alt;
   }
   _wasOnGround = onGround;
+  // Time since liftoff; a huge value when no takeoff was observed (airborne start) so
+  // the takeoff-inhibit gates fall open rather than latching shut.
+  uint32_t sinceTakeoff = (_takeoffMs == 0) ? 0xFFFFFFFFu : (now - _takeoffMs);
 
   // --- Ladder trackers (re-seed on jump; bump up while climbing / range opening)
   if (_prevAlt < 0.0f || fabsf(alt - _prevAlt) > ALT_JUMP_M) _prevAlt = alt;
@@ -483,19 +511,25 @@ void gpwsUpdate() {
   bool inM1   = airDesc && alt < M1_CEIL_M;
   bool sink1  = warningsOn && inM1 && vs > (SINK_FLOOR_MS   + SINK_SLOPE   * alt);
   bool pull1  = warningsOn && inM1 && vs > (PULLUP_FLOOR_MS + PULLUP_SLOPE * alt);
-  bool terr2  = warningsOn && isAloft && alt > 0.0f && alt < M2_CEIL_M &&
-                _closRate > (TERR_FLOOR_MS + TERR_SLOPE * alt);
+  // Mode 2 envelope depends on configuration: gear DOWN = landing config (2B).
+  bool  landingCfg = state.gear_on;
+  float m2Ceil  = landingCfg ? M2B_CEIL_M      : M2A_CEIL_M;
+  float m2Floor = landingCfg ? TERR2B_FLOOR_MS : TERR2A_FLOOR_MS;
+  float m2Slope = landingCfg ? TERR2B_SLOPE    : TERR2A_SLOPE;
+  bool terr2  = warningsOn && isAloft && alt > 0.0f && alt < m2Ceil &&
+                _closRate > (m2Floor + m2Slope * alt);
   // Mode 2 post-warning: keep saying TERRAIN after PULL UP exits while still closing.
   if (_closRate <= 0.0f || !warningsOn) _terr2Recent = false;
   bool postTerr = warningsOn && _terr2Recent && isAloft && alt > 0.0f &&
-                  alt < M2_CEIL_M && _closRate > POST_TERR_FLOOR_MS;
+                  alt < m2Ceil && _closRate > POST_TERR_FLOOR_MS;
 
   bool m3Sink = warningsOn && _m3Armed && descending &&
                 (_m3MaxAlt - alt) > max(M3_LOSS_MIN_M, M3_LOSS_FRAC * _m3MaxAlt);
   if (!m3Sink) { _m3Active = false; _m3Count = 0; }
 
   bool gearUp   = warningsOn && !state.gear_on && isAloft && alt > 0.0f;
-  bool gearCond = gearUp && alt < GEAR_ALT_M;
+  // TOO LOW GEAR is inhibited during the initial climb-out (gear legitimately up).
+  bool gearCond = gearUp && alt < GEAR_ALT_M && sinceTakeoff > TOOLOW_ARM_MS;
   // TOO LOW TERRAIN = Mode 4A (high-speed gear-up) OR Mode 4C (takeoff MTC floor).
   bool terr4A   = gearUp && alt < TERR4_ALT_M && spd > TOOLOW_SPEED_MS;
   bool mtcBreach= warningsOn && _m3Armed && !state.gear_on && alt > 0.0f &&
@@ -511,7 +545,10 @@ void gpwsUpdate() {
                    aoa > STALL_AOA_DEG;
   if (!stallCond) _stallActive = false;
 
-  bool retardCond = altCallouts && airDesc && state.gear_on && inAtmo && alt < RETARD_ALT_M;
+  // RETARD is a "reduce thrust" call: only sound it while thrust is still commanded
+  // (throttle > 0), so it stops once the pilot pulls to idle in the flare.
+  bool retardCond = altCallouts && airDesc && state.gear_on && inAtmo &&
+                    alt < RETARD_ALT_M && state.throttleCmd > 0;
   if (!retardCond) _retardActive = false;
 
   // V1 / ROTATE: takeoff roll only; re-arm when stationary on the ground.
@@ -647,6 +684,13 @@ void gpwsUpdate() {
   // 14: ROTATE (takeoff roll).
   if (warningsOn && onGround && !_rotateDone && spd >= VR_SPEED_MS) {
     if (!busy) { gpwsPlay(GPWS_CLIP_ROTATE); _rotateDone = true; }
+    return;
+  }
+
+  // 15: GEAR UP -- retract-gear reminder once a positive climb is established.
+  if (warningsOn && isAloft && state.gear_on && !_gearUpDone && _takeoffMs != 0 &&
+      sinceTakeoff > GEARUP_DELAY_MS && state.vel_vert > 0.0f) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_GEAR_UP); _gearUpDone = true; }
     return;
   }
 }
