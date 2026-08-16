@@ -53,7 +53,8 @@
    (TERRAIN,TERRAIN / DON'T SINK,DON'T SINK / BANK ANGLE,BANK ANGLE / WHOOP WHOOP PULL
    UP) is baked into the clip; the firmware provides the between-annunciation repeat.
 
-   PRIORITY (high -> low, one DFPlayer clip per frame -- EGPWS aural-priority order):
+   PRIORITY (high -> low, one DFPlayer clip per frame -- EGPWS aural-priority order,
+   per the Honeywell MK VI/VIII Pilot Guide aural-priority table):
      STALL > PULL UP / TERRAIN (hard) > post-warning TERRAIN > bug TONE > MINIMUMS >
      TOO LOW TERRAIN (4A/4C) > RETARD > altitude/distance callouts > TOO LOW GEAR >
      SINK RATE > DON'T SINK > BANK ANGLE > V1 > ROTATE.
