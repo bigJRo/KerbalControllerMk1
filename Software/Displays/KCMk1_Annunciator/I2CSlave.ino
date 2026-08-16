@@ -48,7 +48,8 @@
        Byte 6  : GPWS config     bits1:0=mode (0=OFF,1=ACTIVE,2=PROX),
                                  bit2=proxAlarm, bit3=rdvRadar
                                  (same layout the GPWS Input module reports)
-       Byte 7  : GPWS threshold HIGH (int16 metres, big-endian)
+       Byte 7  : GPWS threshold HIGH (int16 metres, big-endian -- altitude
+                                 decision height, or target range in rdv mode)
        Byte 8  : GPWS threshold LOW
      The GPWS config originates on the GPWS Input Panel module (0x2A) and is passed
      through by the master; the Annunciator's GPWS function (GPWS.ino) consumes it.

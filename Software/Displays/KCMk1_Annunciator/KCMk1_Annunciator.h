@@ -83,6 +83,10 @@ struct AppState {
   // bank-angle callout (Mode 6). Range approx -180..180; 0 = wings level.
   float roll = 0.0f;
 
+  // Target (TARGETINFO) -- used by the GPWS rendezvous-radar distance callouts.
+  float tgtDistance = 0.0f;  // metres to target (0 = no/unknown target)
+  float tgtVelocity = 0.0f;  // closing speed (m/s)
+
   // Resources -- electric charge
   float EC       = 0.0f;
   float EC_total = 0.0f;
@@ -347,23 +351,8 @@ extern const float  TACLS_OXYGEN_ALARM_S;   // red:    10 minutes
 extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
 extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
-// From AAA_Config.ino -- GPWS function tunables (see GPWS.ino)
-extern const uint8_t  GPWS_VOLUME;
-extern const float    GPWS_PULLUP_S;
-extern const float    GPWS_SINK_CEIL_M;
-extern const float    GPWS_SINK_RATE_FLOOR_MS;
-extern const float    GPWS_SINK_RATE_SLOPE;
-extern const float    GPWS_DESCENT_DEADBAND_MS;
-extern const float    GPWS_ALT_JUMP_M;
-extern const float    GPWS_MIN_DEDUP_M;
-extern const float    GPWS_MODE3_CEIL_M;
-extern const float    GPWS_MODE3_LOSS_M;
-extern const float    GPWS_BANK_DEG;
-extern const uint16_t GPWS_HARD_GAP_MS;
-extern const uint16_t GPWS_SINK_GAP_MS;
-extern const uint16_t GPWS_MODE3_GAP_MS;
-extern const uint16_t GPWS_GEAR_GAP_MS;
-extern const uint16_t GPWS_BANK_GAP_MS;
+// GPWS function tunables now live locally in GPWS.ino (TUNABLES block) so the whole
+// envelope definition stays in one place -- no AAA_Config externs needed.
 
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;

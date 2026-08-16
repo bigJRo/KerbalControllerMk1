@@ -7,7 +7,7 @@
 
    Channels subscribed:
      VESSEL_NAME, SOI, FLIGHT_STATUS, TEMP_LIMIT, ACTIONSTATUS,
-     ALTITUDE, VELOCITY, AIRSPEED, ROTATION_DATA, APSIDES,
+     ALTITUDE, VELOCITY, AIRSPEED, ROTATION_DATA, TARGETINFO, APSIDES,
      DELTAV, BURNTIME,
      ATMO_CONDITIONS,
      ELECTRIC,
@@ -54,6 +54,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case VELOCITY_MESSAGE:        msgName = "VELOCITY";        break;
       case AIRSPEED_MESSAGE:        msgName = "AIRSPEED";        break;
       case ROTATION_DATA_MESSAGE:   msgName = "ROTATION_DATA";   break;
+      case TARGETINFO_MESSAGE:      msgName = "TARGETINFO";      break;
       case APSIDES_MESSAGE:         msgName = "APSIDES";         break;
       case DELTAV_MESSAGE:          msgName = "DELTAV";          break;
       case BURNTIME_MESSAGE:        msgName = "BURNTIME";        break;
@@ -183,6 +184,16 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(vesselPointingMessage)) {
         vesselPointingMessage r = parseMessage<vesselPointingMessage>(msg);
         state.roll = r.roll;
+      }
+      break;
+
+    case TARGETINFO_MESSAGE:
+      // Target range/closing speed for the GPWS rendezvous-radar distance callouts.
+      // Does not affect C&W -- GPWS reads state.tgtDistance directly.
+      if (msgSize == sizeof(targetMessage)) {
+        targetMessage t = parseMessage<targetMessage>(msg);
+        state.tgtDistance = t.distance;
+        state.tgtVelocity = t.velocity;
       }
       break;
 
@@ -379,6 +390,7 @@ void initSimpit() {
   simpit.registerChannel(VELOCITY_MESSAGE);
   simpit.registerChannel(AIRSPEED_MESSAGE);
   simpit.registerChannel(ROTATION_DATA_MESSAGE);   // vessel attitude -- roll for GPWS bank angle
+  simpit.registerChannel(TARGETINFO_MESSAGE);      // target range for GPWS rendezvous callouts
   simpit.registerChannel(APSIDES_MESSAGE);
   simpit.registerChannel(DELTAV_MESSAGE);
   simpit.registerChannel(BURNTIME_MESSAGE);

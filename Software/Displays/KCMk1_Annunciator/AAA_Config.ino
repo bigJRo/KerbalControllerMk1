@@ -136,48 +136,9 @@ const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowe
 const float CW_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rip q (Pa)
 const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa)
 
-/***************************************************************************************
-   GPWS FUNCTION TUNABLES (GPWS.ino)
-   Ground Proximity Warning System voice callouts on the DFPlayer. Configuration
-   (mode / proximity-alarm / rendezvous-radar / altitude threshold) is relayed from
-   the GPWS Input Panel module by the master over I2C -- these constants only tune the
-   local flight logic and audio cadence, and can be flight-tuned without touching
-   GPWS.ino. Times are seconds unless noted.
-****************************************************************************************/
-const uint8_t  GPWS_VOLUME               = 24;      // DFPlayer volume (0..30)
-// PULL UP aligned with CW_GROUND_PROX so the voice warning and the master-alarm tone
-// fire together in the imminent-impact window.
-const float    GPWS_PULLUP_S             = KCM_GROUND_PROX_S; // time-to-impact for TERRAIN/PULL UP (s)
-// SINK RATE (Mode-1 style): fires only near the ground when the descent RATE exceeds an
-// altitude-scaled boundary, so a normal approach does not nag but a steep sink does.
-// Boundary: excessive when |vel_vert| > GPWS_SINK_RATE_FLOOR_MS + alt * GPWS_SINK_RATE_SLOPE.
-// Defaults: ~3.8 m/s at 10 m, ~7 m/s at 50 m, ~11 m/s at 100 m, ~27 m/s at 300 m.
-const float    GPWS_SINK_CEIL_M          = 300.0f;  // only evaluate SINK RATE below this AGL (m)
-const float    GPWS_SINK_RATE_FLOOR_MS   = 3.0f;    // base excessive descent rate at ground (m/s)
-const float    GPWS_SINK_RATE_SLOPE      = 0.08f;   // added allowed descent rate per metre AGL (m/s per m)
-const float    GPWS_DESCENT_DEADBAND_MS  = 0.1f;    // |vel_vert| below this is treated as level (m/s)
-const float    GPWS_ALT_JUMP_M           = 2000.0f; // single-frame alt jump that re-seeds crossings (vessel switch/warp)
-const float    GPWS_MIN_DEDUP_M          = 8.0f;    // ladder rung within this of threshold spoken as MINIMUMS (m)
-// DON'T SINK (Mode 3): altitude loss after takeoff / go-around. Armed the moment the
-// vessel leaves the ground and disarmed once it climbs above GPWS_MODE3_CEIL_M (an
-// established climb). While armed, a net altitude loss from the post-takeoff peak
-// greater than GPWS_MODE3_LOSS_M annunciates "DON'T SINK".
-const float    GPWS_MODE3_CEIL_M         = 300.0f;  // climbout ceiling -- disarm Mode 3 above this AGL (m)
-const float    GPWS_MODE3_LOSS_M         = 15.0f;   // altitude loss from post-takeoff peak that triggers DON'T SINK (m)
-// BANK ANGLE (Mode 6): excessive bank in atmospheric flight. Roll from ROTATION_DATA.
-// Threshold aligned with the InfoDisp aircraft "steep bank" warning tier (60 deg).
-const float    GPWS_BANK_DEG             = 60.0f;   // |roll| above this annunciates BANK ANGLE (deg)
-
-// Repeat cadences, chosen against real-GPWS behaviour (see GPWS.ino "CALLOUT CADENCE"):
-//   PULL UP    -- a real "WHOOP WHOOP PULL UP" repeats near-gaplessly; ~1 clip length
-//                 gated on the BUSY line gives a continuous repeat with no overlap.
-//   SINK RATE / DON'T SINK / TOO LOW GEAR / BANK ANGLE -- real systems re-annunciate
-//                 roughly every 1-1.5 s while the vessel remains in the envelope.
-const uint16_t GPWS_HARD_GAP_MS          = 1400;    // min gap between repeated PULL UP callouts (ms)
-const uint16_t GPWS_SINK_GAP_MS          = 1500;    // min gap between repeated SINK RATE callouts (ms)
-const uint16_t GPWS_MODE3_GAP_MS         = 1500;    // min gap between repeated DON'T SINK callouts (ms)
-const uint16_t GPWS_GEAR_GAP_MS          = 1500;    // min gap between repeated TOO LOW GEAR callouts (ms)
-const uint16_t GPWS_BANK_GAP_MS          = 1500;    // min gap between repeated BANK ANGLE callouts (ms)
+// GPWS function tunables were moved into GPWS.ino (its TUNABLES block) so the whole
+// aviation-faithful envelope definition (Mode 1/2/3/4/6 boundaries, callout ladders,
+// cadences) stays in one reviewable place. Nothing GPWS-related lives here now.
 
 /***************************************************************************************
    TAC LIFE SUPPORT CONSUMPTION RATES
