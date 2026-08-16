@@ -296,11 +296,20 @@ Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are ass
 | Panel state | Audio profile |
 |---|---|
 | **OFF** | Silent |
-| **GREEN** (ACTIVE) | **Everything** — all warning modes (1/2/3/4/6-bank) **+** altitude callouts + MINIMUMS + threshold bug tone |
-| **AMBER + proxAlarm** | Altitude callouts + MINIMUMS + bug tone **only** (no warnings) |
+| **GREEN** (ACTIVE) | **Everything** — all warning modes (1/2/3/4/6-bank) **+** altitude callouts + RETARD + the threshold-bug outcome (see below) |
+| **AMBER + proxAlarm** | Altitude callouts + RETARD + the threshold-bug outcome **only** (no warnings) |
 | **AMBER + rdvRadar** | Target-**distance** callouts + bug tone **only**, on `tgtDistance` |
 
-proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes (module firmware ≥ 2.1.0). The **threshold** (encoder, 0–9999 m) is a settable **bug**: crossing it plays a bug-tone clip — descending through it in metres AGL (altitude profiles, where it is also the MINIMUMS decision height, so tone **and** spoken MINIMUMS fire) or closing through it in metres of range (distance profile, tone only).
+proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes (module firmware ≥ 2.1.0). The **threshold** (encoder, 0–9999 m) is a settable **bug**. What fires when you descend through it depends on gear, vessel type, and how high the bug is set:
+
+| At the crossing (altitude profiles) | Result |
+|---|---|
+| **Gear up** (aircraft *or* lander) | **GROUND PROXIMITY** (clip 34) — you're at your set altitude with no gear |
+| **Gear down**, aircraft, bug **≥ 300 m** (`DH_SPLIT_M`) | Generic altitude **TONE** — a high bug is just a level marker |
+| **Gear down**, aircraft, bug **< 300 m** | Real **decision height**: **APPROACHING MINIMUMS** (100 ft above) then **MINIMUMS** (at the bug) — no tone |
+| **Gear down**, lander (any bug) | **TONE** — a lander's bug is always a landing cue (no minimums, no 300 m split) |
+
+In **rdvRadar** the bug is a *range*, so closing through it just plays the **TONE** (gear-agnostic). The number callout at the bug altitude is always suppressed so it never doubles with whatever the bug itself plays.
 
 **Priority ladder** — one clip owns the DFPlayer per frame. Warnings are GREEN-only; callouts/tone/minimums also sound in the amber profiles. The order follows the **EGPWS aural-priority table** (Honeywell MK VI/VIII), highest first:
 
@@ -355,13 +364,13 @@ proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes
 |---------|-----------|
 | **SINK RATE** | time-to-impact `alt_surf / \|vel_vert\| < LANDER_TIMP_S` (the **same metric as the C&W GROUND PROX lamp**, `KCM_GROUND_PROX_S` = 10 s, so voice and lamp agree) **and** descending faster than `LANDER_SINK_FLOOR_MS` (6 m/s). A gentle, leg-survivable touchdown (stock legs fail ~12 m/s) stays silent. Reuses the SINK RATE clip |
 | **HORIZONTAL SPEED** | lateral speed above an altitude-ramped limit `HSPEED_FRAC · (alt + HSPEED_BASE_M)` below `HSPEED_CEIL_M` (400 m) — tip-over / skid risk. **New clip 33** |
-| **bug TONE** | threshold-bug crossing (altitude or target range), as elsewhere |
+| **bug TONE / GROUND PROXIMITY** | threshold-bug crossing: **gear down** → tone; **gear up** → GROUND PROXIMITY (clip 34). No 300 m split or minimums in this profile |
 | **RETARD** | thrust still commanded (`throttleCmd > 0`) in the final descent below `LANDER_RETARD_ALT_M` (15 m). Reuses the RETARD clip |
 | **Altitude callouts (metres)** | descending through a **metre** ladder — 2500, 1000, 500, 100, 50, 40, 30, 20, 10 m — reusing the number clips. (rdvRadar swaps in the target-distance ladder) |
 
 No terrain-closure, don't-sink, too-low-gear, bank-angle, stall or minimums in this profile — they don't apply to a vertical rocket landing.
 
-**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply `001.mp3`…`033.mp3`. The number clips (15–31) are shared between the feet altitude ladder and the metre distance ladder:
+**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply `001.mp3`…`034.mp3`. The number clips (15–31) are shared between the feet altitude ladder and the metre distance ladder:
 
 | Track | Spoken | | Track | Spoken |
 |-------|--------|---|-------|--------|
@@ -382,6 +391,7 @@ No terrain-closure, don't-sink, too-low-gear, bank-angle, stall or minimums in t
 | 15 | "TWO THOUSAND FIVE HUNDRED" | | 31 | "FIVE" (5) |
 | 16 | "ONE THOUSAND" | | 32 | "GEAR UP" / "LANDING GEAR" |
 | | | | 33 | "HORIZONTAL SPEED" |
+| | | | 34 | "GROUND PROXIMITY" |
 
 Audio is gated by `audioEnabled` and the flight scene.
 
@@ -429,6 +439,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.5.0** | Threshold-bug crossing reworked into a gear/type/altitude decision tree. **Gear up** through the bug → new **GROUND PROXIMITY** call (clip **34**), both profiles. **Gear down**: aircraft with the bug **≥ 300 m** (`DH_SPLIT_M`) get a generic **tone**; **< 300 m** it's a real decision height (**APPROACHING MINIMUMS** + **MINIMUMS**, no tone); landers always tone. rdvRadar range bug still tone-only. The number callout at the bug altitude is now always masked so it can't double with the bug's own call. Requires the new `034` clip. |
 | **3.4.1** | Lander **SINK RATE** gains a **descent-rate floor** (`LANDER_SINK_FLOOR_MS` = 6 m/s). Below it a touchdown is comfortably survivable (stock LT-05/LT-1/LT-2 legs fail at ~12 m/s), so a gentle powered landing no longer trips SINK RATE inside the time-to-impact window. |
 | **3.4.0** | GPWS gains a **vessel-type-selected lander / rocket profile** (`gpwsUpdateLander()`). `type_Plane` keeps the aircraft EGPWS suite; **any other vessel type** (rocket, lander, probe, …) gets a vertical-landing aid: **SINK RATE** (time-to-impact, sharing the C&W GROUND PROX metric `KCM_GROUND_PROX_S` so the voice and lamp agree), **HORIZONTAL SPEED** (tip-over risk, new clip **33**), **RETARD** (thrust-still-commanded final descent), and **metre** altitude callouts — plus the threshold bug tone. Every lander warning requires airborne + descending, so grounded vessels stay silent. The panel mode / threshold apply to both profiles. Requires the new `033` clip on the DFPlayer. |
 | **3.3.0** | GPWS refinements informed by a comparison with the KSP_GPWS mod. **Mode 2** gains a **2A/2B envelope split** — gear-down selects a lower-ceiling, desensitised landing-config envelope (gear as the flaps proxy) so normal gear-down approaches over rising terrain don't nuisance-trip. **TOO LOW GEAR** is now **inhibited for ~15 s after liftoff** (`TOOLOW_ARM_MS`), silencing the initial gear-up climb-out. **RETARD** is gated on **commanded throttle** (`throttleCmd > 0`), so it stops when the throttle is pulled to idle in the flare. New **GEAR UP** advisory (clip **32**) — a retract-gear reminder that fires once after a positive post-takeoff climb is established. Requires the new `032` clip on the DFPlayer. |

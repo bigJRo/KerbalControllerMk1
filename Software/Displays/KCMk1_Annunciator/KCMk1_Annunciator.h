@@ -279,8 +279,8 @@ enum ChuteEnvState : uint8_t {
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 4;
-static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.4.1: lander SINK RATE gains a descent-rate floor (LANDER_SINK_FLOOR_MS = 6 m/s, ~half the ~12 m/s stock landing-leg impact tolerance) so a gentle, leg-survivable touchdown stays silent
+static const uint8_t SKETCH_VERSION_MINOR = 5;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.5.0: threshold-bug crossing reworked into a gear/type/altitude tree -- gear-up crossing plays new GROUND PROXIMITY (clip 34); gear-down aircraft tone above DH_SPLIT_M (300 m) but APPROACHING MINIMUMS + MINIMUMS below it; landers always tone; number-at-bug always masked
 
 
 /***************************************************************************************

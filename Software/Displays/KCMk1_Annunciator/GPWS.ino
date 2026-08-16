@@ -29,6 +29,14 @@
      altCallouts  = ACTIVE || (PROX && !rdvRadar)
      distCallouts =           (PROX &&  rdvRadar)
 
+   THRESHOLD BUG at the crossing (descending through the set altitude; see DH_SPLIT_M):
+     gear UP                          -> GROUND PROXIMITY (clip 34), both profiles.
+     gear DOWN, aircraft, bug >=300 m -> generic altitude TONE (a high bug is a marker).
+     gear DOWN, aircraft, bug < 300 m -> real decision height: APPROACHING MINIMUMS then
+                                          MINIMUMS (no tone).
+     gear DOWN, lander (any bug)      -> TONE (a lander's bug is always a landing cue).
+     rdvRadar (range bug)             -> TONE on closing through the bug (gear-agnostic).
+
    WARNINGS (GREEN only) -- real-GPWS mode coverage
      Mode 1  SINK RATE (outer) + PULL UP (inner), floored descent-rate-vs-altitude
              envelopes (< 2450 ft).
@@ -133,6 +141,7 @@ static KCM_DFPlayer gpwsDfp(KCM_DFPLAYER_SERIAL);
 #define GPWS_CLIP_5            31    // "FIVE"
 #define GPWS_CLIP_GEAR_UP     32    // "GEAR UP" / "LANDING GEAR" (retract-gear reminder)
 #define GPWS_CLIP_HORIZ_SPD   33    // "HORIZONTAL SPEED" (lander profile)
+#define GPWS_CLIP_GND_PROX    34    // "GROUND PROXIMITY" (bug crossed with gear up)
 
 
 /***************************************************************************************
@@ -237,6 +246,11 @@ static const float BANK_RAMP_HI_M  = 746.8f;  // 2450 ft
 // Approach markers.
 static const float APPR_MIN_MARGIN_M = 30.5f; // "APPROACHING MINIMUMS" this far above the bug (100 ft)
 static const float RETARD_ALT_M      = 6.1f;  // RETARD flare below this AGL (20 ft)
+// Threshold-bug behaviour at the crossing (descending through the bug, gear down):
+//   aircraft bug >= this -> generic altitude TONE; bug < this -> real decision height,
+//   so APPROACHING MINIMUMS + MINIMUMS instead. (Landers: gear down always TONEs.)
+//   Gear UP at the bug -> GROUND PROXIMITY (clip 34), both profiles.
+static const float DH_SPLIT_M        = 300.0f;
 
 // STALL -- AoA = pitch - surfaceVelocityPitch (degrees). Cross-panel aligned with the
 // InfoDisp aircraft EADI AoA arc via KCMk1_SystemConfig (KCM_AOA_STALL_DEG = "beyond
@@ -322,6 +336,7 @@ static float    _tonePrevAlt  = -1.0f;
 static float    _tonePrevDist = -1.0f;
 static bool     _tonePending  = false;
 static bool     _minPending   = false;   // MINIMUMS crossed (gear down), awaiting the player
+static bool     _gndProxPending = false; // GROUND PROXIMITY: bug crossed with gear up
 
 static float    _closPrevAlt  = -1.0f;
 static uint32_t _closPrevMs   = 0;
@@ -413,7 +428,7 @@ static uint8_t gpwsCrossed(const GpwsRung *tbl, uint8_t n, float prev, float cur
 static void gpwsClearLatches() {
   _prevAlt = _prevDist = -1.0f;
   _tonePrevAlt = _tonePrevDist = -1.0f;
-  _tonePending = false; _minPending = false;
+  _tonePending = false; _minPending = false; _gndProxPending = false;
   _closPrevAlt = -1.0f; _closPrevMs = 0; _closRate = 0.0f;
   _hardActive = false; _terrainDone = false; _terr2Recent = false;
   _wasOnGround = false; _m3Armed = false; _m3MaxAlt = 0.0f; _m3Active = false;
@@ -508,13 +523,17 @@ static void gpwsUpdateLander() {
     if (dist > _prevDist) _prevDist = dist;
   }
 
-  // --- Bug-tone crossing (altitude or range). No spoken MINIMUMS in this profile. ---
+  // --- Bug crossing: gear down -> TONE, gear up -> GROUND PROXIMITY. No MINIMUMS
+  //     in this profile, and no 300 m split (a lander's bug is always a landing cue). --
   if (altCallouts && thrOK && airDesc) {
     if (_tonePrevAlt < 0.0f || fabsf(alt - _tonePrevAlt) > ALT_JUMP_M) _tonePrevAlt = alt;
-    if (_tonePrevAlt > thr && alt <= thr) _tonePending = true;
+    if (_tonePrevAlt > thr && alt <= thr) {
+      if (state.gear_on) _tonePending    = true;
+      else               _gndProxPending = true;
+    }
     _tonePrevAlt = alt;
   } else if (!distCallouts) {
-    _tonePrevAlt = -1.0f;
+    _tonePrevAlt = -1.0f; _gndProxPending = false;
   }
   if (distCallouts && thrOK && tgtValid) {
     if (_tonePrevDist < 0.0f || fabsf(dist - _tonePrevDist) > DIST_JUMP_M) _tonePrevDist = dist;
@@ -552,7 +571,13 @@ static void gpwsUpdateLander() {
     return;
   }
 
-  // 3: bug TONE (threshold marker).
+  // 3a: GROUND PROXIMITY -- crossed the bug with gear up (one-shot).
+  if (_gndProxPending) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_GND_PROX); _gndProxPending = false; }
+    return;
+  }
+
+  // 3: bug TONE (threshold marker, gear down).
   if (_tonePending) {
     if (!busy) { gpwsPlay(GPWS_CLIP_TONE); _tonePending = false; }
     return;
@@ -568,7 +593,9 @@ static void gpwsUpdateLander() {
 
   // 5: altitude callouts (metres) / distance callouts.
   if (altCallouts && airDesc && _prevAlt > 0.0f) {
-    uint8_t clip = gpwsCrossed(LAND_LADDER, LAND_LADDER_COUNT, _prevAlt, alt, nullptr, 0, MIN_DEDUP_M);
+    GpwsRung spec[1]; uint8_t ns = 0;
+    if (thrOK) spec[ns++] = { thr, 0 };   // mask the number at the bug (tone / gnd-prox owns it)
+    uint8_t clip = gpwsCrossed(LAND_LADDER, LAND_LADDER_COUNT, _prevAlt, alt, spec, ns, MIN_DEDUP_M);
     if (clip != 0) {
       if (!busy) { gpwsPlay(clip); _prevAlt = alt; }
       return;
@@ -663,18 +690,21 @@ void gpwsUpdate() {
     if (dist > _prevDist) _prevDist = dist;
   }
 
-  // --- Bug-tone + MINIMUMS crossing (independent trackers) ----------------------
-  // The bug tone fires on any threshold crossing; MINIMUMS is gear-gated (manual:
-  // decision-height callout requires gear down) and fires from its own high slot.
+  // --- Bug crossing (descending through the threshold) --------------------------
+  // Gear UP  -> GROUND PROXIMITY (you are at your set altitude with no gear).
+  // Gear DOWN, bug >= DH_SPLIT_M -> generic altitude TONE (a high bug is just a marker).
+  // Gear DOWN, bug <  DH_SPLIT_M -> a real decision height: APPROACHING MINIMUMS (in the
+  //   callout ladder) + MINIMUMS here, instead of the tone.
   if (altCallouts && thrOK && airDesc) {
     if (_tonePrevAlt < 0.0f || fabsf(alt - _tonePrevAlt) > ALT_JUMP_M) _tonePrevAlt = alt;
     if (_tonePrevAlt > thr && alt <= thr) {
-      _tonePending = true;
-      if (state.gear_on) _minPending = true;
+      if (!state.gear_on)          _gndProxPending = true;
+      else if (thr >= DH_SPLIT_M)  _tonePending    = true;
+      else                         _minPending     = true;
     }
     _tonePrevAlt = alt;
   } else if (!distCallouts) {
-    _tonePrevAlt = -1.0f; _minPending = false;
+    _tonePrevAlt = -1.0f; _minPending = false; _gndProxPending = false;
   }
   if (distCallouts && thrOK && tgtValid) {
     if (_tonePrevDist < 0.0f || fabsf(dist - _tonePrevDist) > DIST_JUMP_M) _tonePrevDist = dist;
@@ -757,13 +787,19 @@ void gpwsUpdate() {
     return;
   }
 
-  // 4: bug TONE (threshold marker -- leads MINIMUMS).
+  // 4a: GROUND PROXIMITY -- descended through the bug with gear up (one-shot).
+  if (_gndProxPending) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_GND_PROX); _gndProxPending = false; }
+    return;
+  }
+
+  // 4: bug TONE (generic altitude marker -- gear down, high bug).
   if (_tonePending) {
     if (!busy) { gpwsPlay(GPWS_CLIP_TONE); _tonePending = false; }
     return;
   }
 
-  // 5: MINIMUMS (decision height, gear down) -- ranks above TOO LOW TERRAIN/callouts.
+  // 5: MINIMUMS (decision height, gear down, low bug) -- above TOO LOW TERRAIN/callouts.
   if (_minPending) {
     if (!busy) { gpwsPlay(GPWS_CLIP_MINIMUMS); _minPending = false; }
     return;
@@ -790,10 +826,12 @@ void gpwsUpdate() {
   // crossing this owns the frame (fires or defers); with no crossing it falls through.
   if (altCallouts && airDesc && _prevAlt > 0.0f) {
     GpwsRung spec[2]; uint8_t ns = 0;
-    if (thrOK && state.gear_on) {          // minimums family only with gear down
-      spec[ns++] = { thr, 0 };             // mask the number at the decision height
-      float appr = thr + APPR_MIN_MARGIN_M;
-      if (appr <= THR_MAX_M) spec[ns++] = { appr, GPWS_CLIP_APPR_MIN };
+    if (thrOK) {
+      spec[ns++] = { thr, 0 };             // mask the number at the bug (tone/mins/gnd-prox owns it)
+      if (state.gear_on && thr < DH_SPLIT_M) {   // APPROACHING MINIMUMS only for a real decision height
+        float appr = thr + APPR_MIN_MARGIN_M;
+        if (appr <= THR_MAX_M) spec[ns++] = { appr, GPWS_CLIP_APPR_MIN };
+      }
     }
     uint8_t clip = gpwsCrossed(ALT_LADDER, ALT_LADDER_COUNT, _prevAlt, alt, spec, ns, MIN_DEDUP_M);
     if (clip != 0) {
