@@ -280,7 +280,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 2;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.2.0: GPWS function — aviation-style voice callouts on the DFPlayer, configured from the GPWS Input panel relayed over I2C (rev-3 9-byte inbound command); requires KerbalDisplayAudio >= 1.3.0
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.2.1: GPWS EGPWS-conformance pass — priority reordered to the Honeywell MK VI/VIII aural-priority table; Mode 2 post-warning TERRAIN tail; Mode 3 spoken-twice-then-on-worsening; Mode 4C minimum-terrain-clearance floor; gear-gated MINIMUMS in its own priority slot; three-segment BANK ANGLE ramp to 55°
 
 
 /***************************************************************************************

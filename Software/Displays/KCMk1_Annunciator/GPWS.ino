@@ -23,9 +23,12 @@
    WARNINGS (GREEN only) -- real-GPWS mode coverage
      Mode 1  SINK RATE (outer) + PULL UP (inner), floored descent-rate-vs-altitude
              envelopes (< 2450 ft).
-     Mode 2  TERRAIN,TERRAIN -> PULL UP from smoothed terrain closure (d alt_surf/dt).
-     Mode 3  DON'T SINK -- altitude loss after takeoff, proportional to height.
-     Mode 4  TOO LOW GEAR (< 500 ft) + speed-expanded TOO LOW TERRAIN (< 1000 ft).
+     Mode 2  TERRAIN,TERRAIN -> PULL UP from smoothed terrain closure (d alt_surf/dt),
+             then a post-warning TERRAIN tail while clearance keeps decreasing.
+     Mode 3  DON'T SINK -- altitude loss after takeoff, proportional to height;
+             spoken twice, then only as the loss deepens.
+     Mode 4  TOO LOW GEAR (< 500 ft) + speed-expanded TOO LOW TERRAIN (4A, < 1000 ft)
+             + minimum-terrain-clearance floor (4C, 75% of post-takeoff peak, gear up).
      Mode 6  altitude callouts (feet) + MINIMUMS + altitude-ramped BANK ANGLE.
    Plus non-GPWS extras (also GREEN, fixed-threshold approximations -- no per-craft
    Simpit source): STALL (AoA = pitch - surfaceVelocityPitch), and the takeoff-roll
@@ -50,9 +53,10 @@
    (TERRAIN,TERRAIN / DON'T SINK,DON'T SINK / BANK ANGLE,BANK ANGLE / WHOOP WHOOP PULL
    UP) is baked into the clip; the firmware provides the between-annunciation repeat.
 
-   PRIORITY (high -> low, one DFPlayer clip per frame):
-     PULL UP > TERRAIN > STALL > SINK RATE > DON'T SINK > TOO LOW TERRAIN >
-     TOO LOW GEAR > BANK ANGLE > V1 > ROTATE > RETARD > bug TONE > callout ladder.
+   PRIORITY (high -> low, one DFPlayer clip per frame -- EGPWS aural-priority order):
+     STALL > PULL UP / TERRAIN (hard) > post-warning TERRAIN > bug TONE > MINIMUMS >
+     TOO LOW TERRAIN (4A/4C) > RETARD > altitude/distance callouts > TOO LOW GEAR >
+     SINK RATE > DON'T SINK > BANK ANGLE > V1 > ROTATE.
 
    CROSSING-TRACKER DISCIPLINE -- `_prevAlt`/`_prevDist` advance only when the ladder is
    serviced; frozen while a higher-priority clip owns the audio or the player is busy
@@ -166,22 +170,34 @@ static const float TERR_FLOOR_MS   = 10.0f;
 static const float TERR_SLOPE      = 0.040f;
 static const float CLOSURE_ALPHA   = 0.30f;
 static const float CLOSURE_MIN_DT_S= 0.05f;
+// Post-warning "TERRAIN": after PULL UP exits, keep saying TERRAIN while terrain
+// clearance is still decreasing (closure above this floor) -- manual Mode 2 behaviour.
+static const float POST_TERR_FLOOR_MS = 2.0f;
 
 // Mode 3 -- DON'T SINK.
 static const float M3_CEIL_M       = 457.0f;  // ~1500 ft climbout window
 static const float M3_LOSS_FRAC    = 0.10f;   // ~10% of height AGL
 static const float M3_LOSS_MIN_M   = 3.0f;
+// Manual: DON'T SINK is spoken only TWICE unless the altitude loss keeps growing.
+// After the first two, it repeats only when the loss deepens by this factor (20%).
+static const float M3_WORSEN_FRAC  = 1.20f;
 
-// Mode 4 -- gear-up terrain clearance.
+// Mode 4A/4C -- terrain clearance.
 static const float GEAR_ALT_M      = 152.4f;  // 500 ft  -> TOO LOW GEAR
 static const float TERR4_ALT_M     = 304.8f;  // 1000 ft -> TOO LOW TERRAIN (high speed)
 static const float TOOLOW_SPEED_MS = 98.0f;   // ~190 kt expansion speed
+// Mode 4C takeoff Minimum Terrain Clearance floor = MTC_FRAC of the post-takeoff peak
+// radio altitude (non-decreasing). Sinking below it (gear up) -> TOO LOW TERRAIN.
+static const float MTC_FRAC        = 0.75f;   // manual: 75% of (15 s avg) radio altitude
 
-// Mode 6 -- BANK ANGLE altitude-dependent limit (deg).
+// Mode 6 -- BANK ANGLE altitude-dependent limit (deg), turbofan envelope:
+// +/-10 deg at 5-30 ft, ramp to +/-40 deg by 150 ft, ramp to +/-55 deg by 2450 ft.
 static const float BANK_LO_DEG     = 10.0f;
-static const float BANK_HI_DEG     = 45.0f;
+static const float BANK_MID_DEG    = 40.0f;
+static const float BANK_HI_DEG     = 55.0f;
 static const float BANK_RAMP_LO_M  = 9.1f;    // 30 ft
-static const float BANK_RAMP_HI_M  = 45.7f;   // 150 ft
+static const float BANK_RAMP_MID_M = 45.7f;   // 150 ft
+static const float BANK_RAMP_HI_M  = 746.8f;  // 2450 ft
 
 // Approach markers.
 static const float APPR_MIN_MARGIN_M = 30.5f; // "APPROACHING MINIMUMS" this far above the bug (100 ft)
@@ -218,6 +234,7 @@ static const uint16_t GEAR_GAP_MS   = 1500;
 static const uint16_t BANK_GAP_MS   = 1500;
 static const uint16_t STALL_GAP_MS  = 1200;
 static const uint16_t RETARD_GAP_MS = 1000;
+static const uint16_t POSTTERR_GAP_MS = 1500;   // Mode 2 post-warning TERRAIN repeat
 
 
 /***************************************************************************************
@@ -244,6 +261,7 @@ static float    _prevDist     = -1.0f;
 static float    _tonePrevAlt  = -1.0f;
 static float    _tonePrevDist = -1.0f;
 static bool     _tonePending  = false;
+static bool     _minPending   = false;   // MINIMUMS crossed (gear down), awaiting the player
 
 static float    _closPrevAlt  = -1.0f;
 static uint32_t _closPrevMs   = 0;
@@ -253,12 +271,16 @@ static bool     _hardActive   = false;
 static bool     _terrainDone  = false;
 static uint32_t _lastHardMs   = 0;
 static uint32_t _lastSinkMs   = 0;
+static bool     _terr2Recent  = false;   // in/after a Mode-2 episode (post-warning TERRAIN)
+static uint32_t _lastPostTerrMs = 0;
 
 static bool     _wasOnGround  = false;
 static bool     _m3Armed      = false;
 static float    _m3MaxAlt     = 0.0f;
 static bool     _m3Active     = false;
 static uint32_t _lastM3Ms     = 0;
+static uint8_t  _m3Count      = 0;       // DON'T SINK annunciations this episode
+static float    _m3LastLoss   = 0.0f;    // altitude loss at the last DON'T SINK
 
 static bool     _terr4Active  = false;
 static uint32_t _lastTerr4Ms  = 0;
@@ -290,19 +312,25 @@ static inline bool gpwsThresholdValid() {
 
 static float gpwsBankLimit(float alt) {
   if (alt <= BANK_RAMP_LO_M) return BANK_LO_DEG;
-  if (alt >= BANK_RAMP_HI_M) return BANK_HI_DEG;
-  return BANK_LO_DEG + (BANK_HI_DEG - BANK_LO_DEG) *
-         (alt - BANK_RAMP_LO_M) / (BANK_RAMP_HI_M - BANK_RAMP_LO_M);
+  if (alt <= BANK_RAMP_MID_M)
+    return BANK_LO_DEG + (BANK_MID_DEG - BANK_LO_DEG) *
+           (alt - BANK_RAMP_LO_M) / (BANK_RAMP_MID_M - BANK_RAMP_LO_M);
+  if (alt <= BANK_RAMP_HI_M)
+    return BANK_MID_DEG + (BANK_HI_DEG - BANK_MID_DEG) *
+           (alt - BANK_RAMP_MID_M) / (BANK_RAMP_HI_M - BANK_RAMP_MID_M);
+  return BANK_HI_DEG;
 }
 
 // Lowest rung in [prev, cur] the value descended/closed THROUGH. `spec` holds special
-// rungs (e.g. MINIMUMS at the bug) that also mask numeric rungs within `dedup`.
+// rungs that mask numeric rungs within `dedup`; a special with clip 0 masks only (used
+// so MINIMUMS -- fired from its own higher-priority slot -- suppresses the number at
+// the decision height without re-firing here).
 static uint8_t gpwsCrossed(const GpwsRung *tbl, uint8_t n, float prev, float cur,
                            const GpwsRung *spec, uint8_t ns, float dedup) {
   uint8_t best = 0; float bestVal = 1e9f;
   for (uint8_t i = 0; i < ns; i++) {
     float r = spec[i].val;
-    if (prev > r && cur <= r && r < bestVal) { best = spec[i].clip; bestVal = r; }
+    if (spec[i].clip != 0 && prev > r && cur <= r && r < bestVal) { best = spec[i].clip; bestVal = r; }
   }
   for (uint8_t i = 0; i < n; i++) {
     float r = tbl[i].val;
@@ -317,10 +345,11 @@ static uint8_t gpwsCrossed(const GpwsRung *tbl, uint8_t n, float prev, float cur
 static void gpwsClearLatches() {
   _prevAlt = _prevDist = -1.0f;
   _tonePrevAlt = _tonePrevDist = -1.0f;
-  _tonePending = false;
+  _tonePending = false; _minPending = false;
   _closPrevAlt = -1.0f; _closPrevMs = 0; _closRate = 0.0f;
-  _hardActive = false; _terrainDone = false;
+  _hardActive = false; _terrainDone = false; _terr2Recent = false;
   _wasOnGround = false; _m3Armed = false; _m3MaxAlt = 0.0f; _m3Active = false;
+  _m3Count = 0; _m3LastLoss = 0.0f;
   _terr4Active = false; _gearActive = false; _bankActive = false;
   _stallActive = false; _retardActive = false;
   _v1Done = false; _rotateDone = false;
@@ -430,13 +459,18 @@ void gpwsUpdate() {
     if (dist > _prevDist) _prevDist = dist;
   }
 
-  // --- Bug-tone crossing (independent trackers) --------------------------------
+  // --- Bug-tone + MINIMUMS crossing (independent trackers) ----------------------
+  // The bug tone fires on any threshold crossing; MINIMUMS is gear-gated (manual:
+  // decision-height callout requires gear down) and fires from its own high slot.
   if (altCallouts && thrOK && airDesc) {
     if (_tonePrevAlt < 0.0f || fabsf(alt - _tonePrevAlt) > ALT_JUMP_M) _tonePrevAlt = alt;
-    if (_tonePrevAlt > thr && alt <= thr) _tonePending = true;
+    if (_tonePrevAlt > thr && alt <= thr) {
+      _tonePending = true;
+      if (state.gear_on) _minPending = true;
+    }
     _tonePrevAlt = alt;
   } else if (!distCallouts) {
-    _tonePrevAlt = -1.0f;
+    _tonePrevAlt = -1.0f; _minPending = false;
   }
   if (distCallouts && thrOK && tgtValid) {
     if (_tonePrevDist < 0.0f || fabsf(dist - _tonePrevDist) > DIST_JUMP_M) _tonePrevDist = dist;
@@ -450,16 +484,24 @@ void gpwsUpdate() {
   bool pull1  = warningsOn && inM1 && vs > (PULLUP_FLOOR_MS + PULLUP_SLOPE * alt);
   bool terr2  = warningsOn && isAloft && alt > 0.0f && alt < M2_CEIL_M &&
                 _closRate > (TERR_FLOOR_MS + TERR_SLOPE * alt);
+  // Mode 2 post-warning: keep saying TERRAIN after PULL UP exits while still closing.
+  if (_closRate <= 0.0f || !warningsOn) _terr2Recent = false;
+  bool postTerr = warningsOn && _terr2Recent && isAloft && alt > 0.0f &&
+                  alt < M2_CEIL_M && _closRate > POST_TERR_FLOOR_MS;
 
   bool m3Sink = warningsOn && _m3Armed && descending &&
                 (_m3MaxAlt - alt) > max(M3_LOSS_MIN_M, M3_LOSS_FRAC * _m3MaxAlt);
-  if (!m3Sink) _m3Active = false;
+  if (!m3Sink) { _m3Active = false; _m3Count = 0; }
 
   bool gearUp   = warningsOn && !state.gear_on && isAloft && alt > 0.0f;
   bool gearCond = gearUp && alt < GEAR_ALT_M;
-  bool terr4Cond= gearUp && alt < TERR4_ALT_M && spd > TOOLOW_SPEED_MS;
-  if (!gearCond)  _gearActive  = false;
-  if (!terr4Cond) _terr4Active = false;
+  // TOO LOW TERRAIN = Mode 4A (high-speed gear-up) OR Mode 4C (takeoff MTC floor).
+  bool terr4A   = gearUp && alt < TERR4_ALT_M && spd > TOOLOW_SPEED_MS;
+  bool mtcBreach= warningsOn && _m3Armed && !state.gear_on && alt > 0.0f &&
+                  alt < MTC_FRAC * _m3MaxAlt;
+  bool tlTerr   = terr4A || mtcBreach;
+  if (!gearCond) _gearActive  = false;
+  if (!tlTerr)   _terr4Active = false;
 
   bool bankCond = warningsOn && isAloft && inAtmo && fabsf(state.roll) > gpwsBankLimit(alt);
   if (!bankCond) _bankActive = false;
@@ -474,18 +516,9 @@ void gpwsUpdate() {
   // V1 / ROTATE: takeoff roll only; re-arm when stationary on the ground.
   if (onGround && spd < 5.0f) { _v1Done = false; _rotateDone = false; }
 
-  // === Priority ladder =========================================================
+  // === Priority ladder (EGPWS aural priority order) ============================
 
-  // 1/2: HARD -- PULL UP (Mode 1 inner or Mode 2) with a TERRAIN entry on Mode 2.
-  if (pull1 || terr2) {
-    if (!_hardActive) { _hardActive = true; _terrainDone = !terr2; }
-    if (terr2 && !_terrainDone) { gpwsPlay(GPWS_CLIP_TERRAIN); _terrainDone = true; _lastHardMs = now; }
-    else if (!busy && (now - _lastHardMs) >= HARD_GAP_MS) { gpwsPlay(GPWS_CLIP_PULL_UP); _lastHardMs = now; }
-    return;
-  }
-  _hardActive = false; _terrainDone = false;
-
-  // 3: STALL.
+  // 1: STALL -- a separate stall-warning system that outranks all of GPWS.
   if (stallCond) {
     if (!busy && (!_stallActive || (now - _lastStallMs) >= STALL_GAP_MS)) {
       gpwsPlay(GPWS_CLIP_STALL); _lastStallMs = now; _stallActive = true;
@@ -493,57 +526,45 @@ void gpwsUpdate() {
     return;
   }
 
-  // 4: SINK RATE.
-  if (sink1) {
-    if (!busy && (now - _lastSinkMs) >= SINK_GAP_MS) { gpwsPlay(GPWS_CLIP_SINK_RATE); _lastSinkMs = now; }
+  // 2: HARD -- PULL UP (Mode 1 inner or Mode 2) with a TERRAIN entry on Mode 2.
+  if (pull1 || terr2) {
+    if (terr2) _terr2Recent = true;   // arm the post-warning TERRAIN
+    if (!_hardActive) { _hardActive = true; _terrainDone = !terr2; }
+    if (terr2 && !_terrainDone) { gpwsPlay(GPWS_CLIP_TERRAIN); _terrainDone = true; _lastHardMs = now; }
+    else if (!busy && (now - _lastHardMs) >= HARD_GAP_MS) { gpwsPlay(GPWS_CLIP_PULL_UP); _lastHardMs = now; }
     return;
   }
+  _hardActive = false; _terrainDone = false;
 
-  // 5: DON'T SINK.
-  if (m3Sink) {
-    if (!busy && (!_m3Active || (now - _lastM3Ms) >= MODE3_GAP_MS)) {
-      gpwsPlay(GPWS_CLIP_DONT_SINK); _lastM3Ms = now; _m3Active = true;
+  // 3: Mode 2 post-warning TERRAIN (still closing after PULL UP exits).
+  if (postTerr) {
+    if (!busy && (now - _lastPostTerrMs) >= POSTTERR_GAP_MS) {
+      gpwsPlay(GPWS_CLIP_TERRAIN); _lastPostTerrMs = now;
     }
     return;
   }
 
-  // 6: TOO LOW TERRAIN.
-  if (terr4Cond) {
+  // 4: bug TONE (threshold marker -- leads MINIMUMS).
+  if (_tonePending) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_TONE); _tonePending = false; }
+    return;
+  }
+
+  // 5: MINIMUMS (decision height, gear down) -- ranks above TOO LOW TERRAIN/callouts.
+  if (_minPending) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_MINIMUMS); _minPending = false; }
+    return;
+  }
+
+  // 6: TOO LOW TERRAIN (Mode 4A high-speed / Mode 4C takeoff MTC).
+  if (tlTerr) {
     if (!busy && (!_terr4Active || (now - _lastTerr4Ms) >= TERR4_GAP_MS)) {
       gpwsPlay(GPWS_CLIP_TOO_LOW_TERR); _lastTerr4Ms = now; _terr4Active = true;
     }
     return;
   }
 
-  // 7: TOO LOW GEAR.
-  if (gearCond) {
-    if (!busy && (!_gearActive || (now - _lastGearMs) >= GEAR_GAP_MS)) {
-      gpwsPlay(GPWS_CLIP_TOO_LOW_GEAR); _lastGearMs = now; _gearActive = true;
-    }
-    return;
-  }
-
-  // 8: BANK ANGLE.
-  if (bankCond) {
-    if (!busy && (!_bankActive || (now - _lastBankMs) >= BANK_GAP_MS)) {
-      gpwsPlay(GPWS_CLIP_BANK_ANGLE); _lastBankMs = now; _bankActive = true;
-    }
-    return;
-  }
-
-  // 9: V1 (takeoff roll).
-  if (warningsOn && onGround && !_v1Done && spd >= V1_SPEED_MS) {
-    if (!busy) { gpwsPlay(GPWS_CLIP_V1); _v1Done = true; }
-    return;
-  }
-
-  // 10: ROTATE (takeoff roll).
-  if (warningsOn && onGround && !_rotateDone && spd >= VR_SPEED_MS) {
-    if (!busy) { gpwsPlay(GPWS_CLIP_ROTATE); _rotateDone = true; }
-    return;
-  }
-
-  // 11: RETARD (flare, recurring).
+  // 7: RETARD (flare) -- above the low altitude numbers so it isn't buried.
   if (retardCond) {
     if (!busy && (!_retardActive || (now - _lastRetardMs) >= RETARD_GAP_MS)) {
       gpwsPlay(GPWS_CLIP_RETARD); _lastRetardMs = now; _retardActive = true;
@@ -551,17 +572,13 @@ void gpwsUpdate() {
     return;
   }
 
-  // 12: bug TONE.
-  if (_tonePending) {
-    if (!busy) { gpwsPlay(GPWS_CLIP_TONE); _tonePending = false; }
-    return;
-  }
-
-  // 13: callout ladder + MINIMUMS + APPROACHING MINIMUMS.
+  // 8: altitude callouts (numbers + APPROACHING MINIMUMS) / distance callouts.
+  // Above TOO LOW GEAR / SINK RATE / DON'T SINK per the EGPWS priority table. On a
+  // crossing this owns the frame (fires or defers); with no crossing it falls through.
   if (altCallouts && airDesc && _prevAlt > 0.0f) {
     GpwsRung spec[2]; uint8_t ns = 0;
-    if (thrOK) {
-      spec[ns++] = { thr, GPWS_CLIP_MINIMUMS };
+    if (thrOK && state.gear_on) {          // minimums family only with gear down
+      spec[ns++] = { thr, 0 };             // mask the number at the decision height
       float appr = thr + APPR_MIN_MARGIN_M;
       if (appr <= THR_MAX_M) spec[ns++] = { appr, GPWS_CLIP_APPR_MIN };
     }
@@ -580,5 +597,55 @@ void gpwsUpdate() {
     _prevDist = dist;
   } else {
     _prevAlt = alt;
+  }
+
+  // 9: TOO LOW GEAR.
+  if (gearCond) {
+    if (!busy && (!_gearActive || (now - _lastGearMs) >= GEAR_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_TOO_LOW_GEAR); _lastGearMs = now; _gearActive = true;
+    }
+    return;
+  }
+
+  // 10: SINK RATE (Mode 1 outer).
+  if (sink1) {
+    if (!busy && (now - _lastSinkMs) >= SINK_GAP_MS) { gpwsPlay(GPWS_CLIP_SINK_RATE); _lastSinkMs = now; }
+    return;
+  }
+
+  // 11: DON'T SINK (Mode 3) -- spoken twice, then only as the loss deepens.
+  if (m3Sink) {
+    float loss = _m3MaxAlt - alt;
+    bool speak = false;
+    if (!_m3Active)                                                     speak = true;   // 1st
+    else if (_m3Count < 2 && (now - _lastM3Ms) >= MODE3_GAP_MS)         speak = true;   // 2nd
+    else if (_m3Count >= 2 && loss > _m3LastLoss * M3_WORSEN_FRAC &&
+             (now - _lastM3Ms) >= MODE3_GAP_MS)                          speak = true;   // worsening
+    if (speak && !busy) {
+      gpwsPlay(GPWS_CLIP_DONT_SINK);
+      _lastM3Ms = now; _m3LastLoss = loss; _m3Active = true;
+      if (_m3Count < 2) _m3Count++;
+    }
+    return;
+  }
+
+  // 12: BANK ANGLE.
+  if (bankCond) {
+    if (!busy && (!_bankActive || (now - _lastBankMs) >= BANK_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_BANK_ANGLE); _lastBankMs = now; _bankActive = true;
+    }
+    return;
+  }
+
+  // 13: V1 (takeoff roll).
+  if (warningsOn && onGround && !_v1Done && spd >= V1_SPEED_MS) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_V1); _v1Done = true; }
+    return;
+  }
+
+  // 14: ROTATE (takeoff roll).
+  if (warningsOn && onGround && !_rotateDone && spd >= VR_SPEED_MS) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_ROTATE); _rotateDone = true; }
+    return;
   }
 }

@@ -300,31 +300,34 @@ Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are ass
 
 proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes (module firmware ≥ 2.1.0). The **threshold** (encoder, 0–9999 m) is a settable **bug**: crossing it plays a bug-tone clip — descending through it in metres AGL (altitude profiles, where it is also the MINIMUMS decision height, so tone **and** spoken MINIMUMS fire) or closing through it in metres of range (distance profile, tone only).
 
-**Warning modes** (GREEN only) — one clip owns the DFPlayer per frame, priority high → low:
+**Priority ladder** — one clip owns the DFPlayer per frame. Warnings are GREEN-only; callouts/tone/minimums also sound in the amber profiles. The order follows the **EGPWS aural-priority table** (Honeywell MK VI/VIII), highest first:
 
 | # | Callout | Mode | Condition |
 |---|---------|------|-----------|
-| 1 | WHOOP WHOOP PULL UP | 1 (inner) / 2 | descent rate `> PULLUP_FLOOR + PULLUP_SLOPE·alt` (< 747 m), **or** terrain closure over the Mode-2 boundary |
-| 2 | TERRAIN, TERRAIN | 2 | entry annunciation when the Mode-2 closure envelope trips, then PULL UP repeats |
-| 3 | STALL | — (extra) | airborne in atmosphere, AoA `= pitch − srfVelPitch > STALL_AOA_DEG` (20° = `KCM_AOA_STALL_DEG`, shared with the InfoDisp AoA arc), speed `> STALL_MIN_SPEED_MS` |
-| 4 | SINK RATE | 1 (outer) | descent rate `> SINK_FLOOR + SINK_SLOPE·alt` (< 747 m) — floored, so a normal flare stays silent |
-| 5 | DON'T SINK | 3 | armed on liftoff, disarmed above `M3_CEIL_M`; net altitude loss from the post-takeoff peak `> max(M3_LOSS_MIN, M3_LOSS_FRAC·height)` |
-| 6 | TOO LOW, TERRAIN | 4A | gear up, `< TERR4_ALT_M` (1000 ft), and speed `> TOOLOW_SPEED_MS` (~190 kt) |
-| 7 | TOO LOW, GEAR | 4A | gear up, airborne, `< GEAR_ALT_M` (500 ft) — not descent-gated |
-| 8 | BANK ANGLE | 6 | in atmosphere, `|roll|` beyond the altitude-ramped limit (`BANK_LO_DEG` near ground → `BANK_HI_DEG` above `BANK_RAMP_HI_M`) |
-| 9 | V1 | — (extra) | takeoff roll (on ground), speed `≥ V1_SPEED_MS`; spoken once, re-arms when stationary |
-| 10 | ROTATE | — (extra) | takeoff roll (on ground), speed `≥ VR_SPEED_MS`; spoken once |
+| 1 | STALL | — (extra) | a separate stall-warning system that outranks all of GPWS: airborne in atmosphere, AoA `= pitch − srfVelPitch > STALL_AOA_DEG` (20° = `KCM_AOA_STALL_DEG`, shared with the InfoDisp AoA arc), speed `> STALL_MIN_SPEED_MS` |
+| 2 | WHOOP WHOOP PULL UP / TERRAIN, TERRAIN | 1 (inner) / 2 | descent rate `> PULLUP_FLOOR + PULLUP_SLOPE·alt` (< 747 m), **or** terrain closure over the Mode-2 boundary. Mode 2 says TERRAIN once on entry, then PULL UP repeats |
+| 3 | TERRAIN, TERRAIN (post-warning) | 2 | after PULL UP exits, TERRAIN keeps repeating (`POSTTERR_GAP_MS`) while terrain clearance is still decreasing (closure `> POST_TERR_FLOOR_MS`) — manual Mode-2 tail behaviour |
+| 4 | bug TONE | — | threshold-bug crossing (leads MINIMUMS); see below |
+| 5 | MINIMUMS | 6 | decision-height callout at the bug — **gear down only** (armed at the crossing), fired from its own high-priority slot |
+| 6 | TOO LOW, TERRAIN | 4A / 4C | **4A**: gear up, `< TERR4_ALT_M` (1000 ft), speed `> TOOLOW_SPEED_MS` (~190 kt). **4C**: gear up and sinking below `MTC_FRAC` (75%) of the post-takeoff peak radio altitude (minimum-terrain-clearance floor) |
+| 7 | RETARD | — (extra) | repeating flare callout, above the low-altitude numbers so it isn't buried: descending, gear down, in atmosphere, below `RETARD_ALT_M` (20 ft) |
+| 8 | altitude / distance callouts | 6 | the number ladder + APPROACHING MINIMUMS (see below) |
+| 9 | TOO LOW, GEAR | 4A | gear up, airborne, `< GEAR_ALT_M` (500 ft) — not descent-gated |
+| 10 | SINK RATE | 1 (outer) | descent rate `> SINK_FLOOR + SINK_SLOPE·alt` (< 747 m) — floored, so a normal flare stays silent |
+| 11 | DON'T SINK | 3 | armed on liftoff, disarmed above `M3_CEIL_M`; net altitude loss from the post-takeoff peak `> max(M3_LOSS_MIN, M3_LOSS_FRAC·height)`. Spoken **twice**, then only as the loss deepens by `M3_WORSEN_FRAC` (20%) |
+| 12 | BANK ANGLE | 6 | in atmosphere, `|roll|` beyond the altitude-ramped limit (see envelope below) |
+| 13 | V1 | — (extra) | takeoff roll (on ground), speed `≥ V1_SPEED_MS`; spoken once, re-arms when stationary |
+| 14 | ROTATE | — (extra) | takeoff roll (on ground), speed `≥ VR_SPEED_MS`; spoken once |
 
-**Callouts** (below the warnings in priority): **RETARD** (flare), the bug **TONE** on threshold crossing, then the altitude ladder + **APPROACHING MINIMUMS**/**MINIMUMS** (altitude profiles) or the distance ladder (distance profile).
+**The bug TONE, MINIMUMS, RETARD** and the number ladders sit *inside* the priority ladder above (slots 4/5/7/8) — the altitude ladder adds APPROACHING MINIMUMS / MINIMUMS (altitude profiles), the distance ladder replaces it (distance profile).
 
-- **RETARD** — repeating flare callout: descending, gear down, in atmosphere, below `RETARD_ALT_M` (20 ft). Altitude/GREEN profiles.
 - **Altitude ladder** — real radio-altitude **feet** values (Airbus-dense near the ground), spoken once per crossing, compared against `alt_surf` in metres: **2500, 1000, 500, 400, 300, 200, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5 ft**.
-- **APPROACHING MINIMUMS** at `threshold + APPR_MIN_MARGIN_M` (~100 ft above the bug), **MINIMUMS** at the bug itself (with the bug tone).
+- **APPROACHING MINIMUMS** at `threshold + APPR_MIN_MARGIN_M` (~100 ft above the bug), **MINIMUMS** at the bug itself (with the bug tone) — **gear down only**. With gear up neither the number at the decision height is masked nor MINIMUMS spoken.
 - **Distance ladder** — metres of target range, spoken once per crossing (rdvRadar profile, target present): **500, 200, 100, 50, 40, 30, 20, 10, 5 m**. Reuses the number clips.
 
 **Extras (`STALL`, `V1`, `ROTATE`, `RETARD`)** aren't real GPWS modes. STALL's AoA threshold is **cross-panel aligned** with the InfoDisp aircraft AoA arc (`KCM_AOA_STALL_DEG` = 20°, the "beyond stall AoA" red tier) in `KCMk1_SystemConfig.h`. V1/ROTATE have no per-craft Simpit source, so they fire off fixed speeds in the `TUNABLES` block — defaults `V1_SPEED_MS = 55`, `VR_SPEED_MS = 65` m/s (KSP planes typically rotate ~50 m/s, ranging ~40–110 m/s by design; **set these to the plane you fly**).
 
-**Envelopes** are floored piecewise-linear descent-rate / closure-rate boundaries approximating the Honeywell Mark VII envelopes (representative values — exact boundaries vary by model). The **floor** on Mode 1 is what keeps PULL UP/SINK RATE silent on a normal landing. Mode 2 closure is derived from the **smoothed rate of change of `alt_surf`** (which captures terrain rising under the vessel — KSP has no forward-looking terrain).
+**Envelopes** are floored piecewise-linear descent-rate / closure-rate boundaries approximating the Honeywell Mark VII envelopes (representative values — exact boundaries vary by model). The **floor** on Mode 1 is what keeps PULL UP/SINK RATE silent on a normal landing. Mode 2 closure is derived from the **smoothed rate of change of `alt_surf`** (which captures terrain rising under the vessel — KSP has no forward-looking terrain). The **BANK ANGLE** limit is a three-segment ramp matching the turbofan envelope: ±`BANK_LO_DEG` (10°) at/below `BANK_RAMP_LO_M` (30 ft), rising to ±`BANK_MID_DEG` (40°) by `BANK_RAMP_MID_M` (150 ft), then to ±`BANK_HI_DEG` (55°) by `BANK_RAMP_HI_M` (2450 ft) and held above.
 
 **Non-blocking & deferral.** `gpwsUpdate()` never calls `delay()`; recurring warnings re-arm from `millis()` cadences and the DFPlayer **BUSY** line. Warnings preempt; callouts start only when idle and **defer rather than drop** — the ladder tracker (`_prevAlt`/`_prevDist`) is held while suppressed, so a deferred callout announces the vessel's *current* altitude/range, and is bumped up while climbing (or the range opening) so a non-descending suppressor can't strand it. State resets on scene exit / vessel switch (`gpwsReset()`).
 
@@ -333,15 +336,15 @@ proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes
 | Real GPWS mode | Status | Notes |
 |----------------|--------|-------|
 | **Mode 1** — Excessive descent rate | ✅ Implemented | Floored SINK RATE (outer) + PULL UP (inner) descent-rate-vs-altitude envelopes, < 2450 ft |
-| **Mode 2** — Terrain closure | ✅ Implemented (approx) | Closure from smoothed d(`alt_surf`)/dt; TERRAIN → PULL UP. 2B landing-config (flaps) omitted |
-| **Mode 3** — Altitude loss after takeoff | ✅ Implemented | DON'T SINK; proportional loss (~10% of height) over the ~1500 ft climbout window |
-| **Mode 4** — Unsafe terrain clearance | ◐ Partial | 4A TOO LOW GEAR (< 500 ft) + speed-expanded TOO LOW TERRAIN (< 1000 ft). 4B TOO LOW FLAPS omitted (no flap data) |
+| **Mode 2** — Terrain closure | ✅ Implemented (approx) | Closure from smoothed d(`alt_surf`)/dt; TERRAIN → PULL UP, then post-warning TERRAIN while still closing. 2B landing-config (flaps) omitted |
+| **Mode 3** — Altitude loss after takeoff | ✅ Implemented | DON'T SINK; proportional loss (~10% of height) over the ~1500 ft climbout window. Spoken twice, then only as the loss deepens |
+| **Mode 4** — Unsafe terrain clearance | ◐ Partial | 4A TOO LOW GEAR (< 500 ft) + speed-expanded TOO LOW TERRAIN (< 1000 ft); 4C minimum-terrain-clearance floor (75% of the post-takeoff peak, gear up). 4B TOO LOW FLAPS omitted (no flap data) |
 | **Mode 5** — Below glideslope | ✗ Not implemented | No ILS in KSP |
 | **Mode 6** — Advisory callouts | ✅ Implemented | Feet altitude callouts, MINIMUMS at the decision height, altitude-ramped BANK ANGLE |
 | **Mode 7** — Windshear | ✗ Not implemented | No wind data |
 | **EGPWS/TAWS** — forward-looking terrain | ✗ Not implemented | No terrain database / look-ahead in KSP |
 
-**Cadence.** Ladder callouts, MINIMUMS, APPROACHING MINIMUMS, V1, ROTATE and the bug tone fire **once** per crossing/event. PULL UP repeats near-gaplessly (`HARD_GAP_MS`, BUSY-gated). SINK RATE / DON'T SINK / TOO LOW TERRAIN / TOO LOW GEAR / BANK ANGLE / STALL / RETARD re-annunciate on their `*_GAP_MS` cadence (~1–1.5 s) while in the envelope. Doublet/siren phrasing (WHOOP WHOOP PULL UP, TERRAIN×2, DON'T SINK×2, BANK ANGLE×2) is baked into the clip; the firmware provides the between-annunciation repeat.
+**Cadence.** Ladder callouts, MINIMUMS, APPROACHING MINIMUMS, V1, ROTATE and the bug tone fire **once** per crossing/event. PULL UP repeats near-gaplessly (`HARD_GAP_MS`, BUSY-gated); post-warning TERRAIN repeats on `POSTTERR_GAP_MS`. SINK RATE / TOO LOW TERRAIN / TOO LOW GEAR / BANK ANGLE / STALL / RETARD re-annunciate on their `*_GAP_MS` cadence (~1–1.5 s) while in the envelope. **DON'T SINK** is the exception — it is spoken twice, then falls silent until the altitude loss deepens by `M3_WORSEN_FRAC` (per the manual), rather than repeating on a fixed cadence. Doublet/siren phrasing (WHOOP WHOOP PULL UP, TERRAIN×2, DON'T SINK×2, BANK ANGLE×2) is baked into the clip; the firmware provides the between-annunciation repeat.
 
 **DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply `001.mp3`…`031.mp3`. The number clips (15–31) are shared between the feet altitude ladder and the metre distance ladder:
 
@@ -410,6 +413,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.2.1** | **GPWS EGPWS-conformance pass** (graded against the Honeywell MK VI/VIII Pilot Guide). The priority ladder was reordered to the manual's **aural-priority table**: STALL > PULL UP/TERRAIN > post-warning TERRAIN > bug TONE > MINIMUMS > TOO LOW TERRAIN > RETARD > callouts > TOO LOW GEAR > SINK RATE > DON'T SINK > BANK ANGLE > V1 > ROTATE. Six behavioural changes: **(A)** the reorder itself; **(B)** Mode **4C** minimum-terrain-clearance floor (TOO LOW TERRAIN when sinking below 75% of the post-takeoff peak radio altitude, gear up); **(C)** Mode 3 **DON'T SINK** spoken twice, then only as the altitude loss deepens (per the manual), instead of a fixed repeat; **(D)** Mode 2 **post-warning TERRAIN** tail after PULL UP exits while clearance keeps decreasing; **(E)** **MINIMUMS** gear-gated and fired from its own high-priority slot (the decision-height number is masked only with gear down); **(F)** three-segment **BANK ANGLE** ramp (±10° → ±40° → ±55°). No new clips or I2C changes. |
 | **3.2.0** | **GPWS function** added (`GPWS.ino`): an aviation-**faithful** Ground Proximity Warning System on the Annunciator's Teensy 4.1, driving the **DFPlayer Mini**. Mode coverage: Mode 1 floored SINK RATE (outer) + PULL UP (inner) descent-rate envelopes; Mode 2 TERRAIN/PULL UP from smoothed terrain-closure (d`alt_surf`/dt); Mode 3 DON'T SINK (proportional altitude loss after takeoff); Mode 4A TOO LOW GEAR + speed-expanded TOO LOW TERRAIN; Mode 6 **feet** radio-altitude callouts + MINIMUMS + altitude-ramped BANK ANGLE. Modes 5/7, 4B and forward-looking terrain omitted for lack of KSP data. **Control model:** GREEN = all modes + callouts; amber **proxAlarm** = altitude callouts + MINIMUMS only; amber **rdvRadar** = target-**distance** callouts (on `tgtDistance`) — the two amber submodes are mutually exclusive (GPWS Input module firmware ≥ 2.1.0). The encoder **threshold** is a settable bug that plays a tone clip on crossing (altitude or range). Config relayed by the master over I2C (rev-3 9-byte command, `I2C_CMD_SIZE_GPWS`, reusing the module's state-byte layout). Subscribes to `ROTATION_DATA` (roll/pitch) and `TARGETINFO` (range). Non-blocking; warnings preempt, callouts defer; recurring warnings re-annunciate on ~1.5 s cadences. Adds non-GPWS extras (fixed-threshold approximations): **STALL** (AoA), takeoff **V1**/**ROTATE**, flare **RETARD**, and **APPROACHING MINIMUMS**; the altitude ladder is Airbus-dense (2500…5 ft incl. 90/80/70/60). 31 DFPlayer clips (number words shared between the feet and metre ladders). Independent of the `tone()` master-alarm path. Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.1** | KC-01-1911 **V2.1 audio hardware**: the `tone()` master-alarm output moved to **pin 29**, and the S8050 buzzer stage was replaced by a **PAM8302A Class-D amplifier + external 8 Ω speaker** with an input volume trim. The amp's active-low shutdown (net **TONE_EN**, **pin 30**) is driven by the audio library to power the amp down between cues, muting Class-D idle hiss. The DFPlayer Mini **BUSY** line is now wired to the Teensy (net **AUDIO_BUSY**, **pin 11**) for optional `isPlaying()` polling. No sketch-logic changes: `KerbalDisplayAudio` self-configures these pins from `KCMk1_SystemConfig` (`KCM_AUDIO_TONE_PIN` / `KCM_AUDIO_EN_PIN` / `KCM_AUDIO_BUSY_PIN`). Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.0** | Silenced-alarm re-blare fix: a C&W condition that clears and re-triggers while the master alarm is silenced now re-arms the alarm instead of staying latched silent. Outbound status I2C widened to carry all **25** C&W bits (4 C&W bytes; request packet 4→6 bytes) so the master receives the full panel state, not a truncated subset. Audit batch B cleanup (bug fixes, dead-code removal). Built against KerbalDisplayCommon 3.1.2. |
