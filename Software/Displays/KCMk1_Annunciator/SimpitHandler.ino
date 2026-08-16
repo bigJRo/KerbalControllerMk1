@@ -178,12 +178,14 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
 
     case ROTATION_DATA_MESSAGE:
-      // Vessel attitude. Only roll is used (GPWS bank-angle callout). Does not
-      // affect C&W, so no updateCautionWarningState() call -- GPWS reads state.roll
-      // directly in gpwsUpdate().
+      // Vessel attitude for the GPWS bank-angle (roll) and STALL AoA (pitch minus
+      // surface-velocity pitch) callouts. Does not affect C&W, so no
+      // updateCautionWarningState() call -- GPWS reads these directly in gpwsUpdate().
       if (msgSize == sizeof(vesselPointingMessage)) {
         vesselPointingMessage r = parseMessage<vesselPointingMessage>(msg);
-        state.roll = r.roll;
+        state.roll        = r.roll;
+        state.pitch       = r.pitch;
+        state.srfVelPitch = r.surfaceVelocityPitch;
       }
       break;
 

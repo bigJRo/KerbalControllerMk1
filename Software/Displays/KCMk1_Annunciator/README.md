@@ -304,18 +304,25 @@ proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes
 
 | # | Callout | Mode | Condition |
 |---|---------|------|-----------|
-| 1 | PULL UP | 1 (inner) / 2 | descent rate `> PULLUP_FLOOR + PULLUP_SLOPE·alt` (< 747 m), **or** terrain closure over the Mode-2 boundary |
+| 1 | WHOOP WHOOP PULL UP | 1 (inner) / 2 | descent rate `> PULLUP_FLOOR + PULLUP_SLOPE·alt` (< 747 m), **or** terrain closure over the Mode-2 boundary |
 | 2 | TERRAIN, TERRAIN | 2 | entry annunciation when the Mode-2 closure envelope trips, then PULL UP repeats |
-| 3 | SINK RATE | 1 (outer) | descent rate `> SINK_FLOOR + SINK_SLOPE·alt` (< 747 m) — floored, so a normal flare stays silent |
-| 4 | DON'T SINK | 3 | armed on liftoff, disarmed above `M3_CEIL_M`; net altitude loss from the post-takeoff peak `> max(M3_LOSS_MIN, M3_LOSS_FRAC·height)` |
-| 5 | TOO LOW, TERRAIN | 4A | gear up, `< TERR4_ALT_M` (1000 ft), and speed `> TOOLOW_SPEED_MS` (~190 kt) |
-| 6 | TOO LOW, GEAR | 4A | gear up, airborne, `< GEAR_ALT_M` (500 ft) — not descent-gated |
-| 7 | BANK ANGLE | 6 | in atmosphere, `|roll|` beyond the altitude-ramped limit (`BANK_LO_DEG` near ground → `BANK_HI_DEG` above `BANK_RAMP_HI_M`) |
+| 3 | STALL | — (extra) | airborne in atmosphere, AoA `= pitch − srfVelPitch > STALL_AOA_DEG` (~15°), speed `> STALL_MIN_SPEED_MS` |
+| 4 | SINK RATE | 1 (outer) | descent rate `> SINK_FLOOR + SINK_SLOPE·alt` (< 747 m) — floored, so a normal flare stays silent |
+| 5 | DON'T SINK | 3 | armed on liftoff, disarmed above `M3_CEIL_M`; net altitude loss from the post-takeoff peak `> max(M3_LOSS_MIN, M3_LOSS_FRAC·height)` |
+| 6 | TOO LOW, TERRAIN | 4A | gear up, `< TERR4_ALT_M` (1000 ft), and speed `> TOOLOW_SPEED_MS` (~190 kt) |
+| 7 | TOO LOW, GEAR | 4A | gear up, airborne, `< GEAR_ALT_M` (500 ft) — not descent-gated |
+| 8 | BANK ANGLE | 6 | in atmosphere, `|roll|` beyond the altitude-ramped limit (`BANK_LO_DEG` near ground → `BANK_HI_DEG` above `BANK_RAMP_HI_M`) |
+| 9 | V1 | — (extra) | takeoff roll (on ground), speed `≥ V1_SPEED_MS`; spoken once, re-arms when stationary |
+| 10 | ROTATE | — (extra) | takeoff roll (on ground), speed `≥ VR_SPEED_MS`; spoken once |
 
-**Callouts** (below the warnings in priority): the bug **TONE** on threshold crossing, then the altitude ladder + **MINIMUMS** (altitude profiles) or the distance ladder (distance profile).
+**Callouts** (below the warnings in priority): **RETARD** (flare), the bug **TONE** on threshold crossing, then the altitude ladder + **APPROACHING MINIMUMS**/**MINIMUMS** (altitude profiles) or the distance ladder (distance profile).
 
-- **Altitude ladder** — real radio-altitude **feet** values, spoken once per crossing, compared against `alt_surf` in metres: **2500, 1000, 500, 400, 300, 200, 100, 50, 40, 30, 20, 10 ft**.
-- **Distance ladder** — metres of target range, spoken once per crossing (rdvRadar profile, target present): **500, 200, 100, 50, 40, 30, 20, 10, 5, 1 m**. Reuses the number clips.
+- **RETARD** — repeating flare callout: descending, gear down, in atmosphere, below `RETARD_ALT_M` (20 ft). Altitude/GREEN profiles.
+- **Altitude ladder** — real radio-altitude **feet** values (Airbus-dense near the ground), spoken once per crossing, compared against `alt_surf` in metres: **2500, 1000, 500, 400, 300, 200, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5 ft**.
+- **APPROACHING MINIMUMS** at `threshold + APPR_MIN_MARGIN_M` (~100 ft above the bug), **MINIMUMS** at the bug itself (with the bug tone).
+- **Distance ladder** — metres of target range, spoken once per crossing (rdvRadar profile, target present): **500, 200, 100, 50, 40, 30, 20, 10, 5 m**. Reuses the number clips.
+
+**Extras (`STALL`, `V1`, `ROTATE`, `RETARD`)** aren't real GPWS modes and have no per-craft Simpit source — they fire off fixed thresholds in the `TUNABLES` block (set `V1_SPEED_MS`/`VR_SPEED_MS`/`STALL_AOA_DEG` to the vessel you fly), so they're approximate.
 
 **Envelopes** are floored piecewise-linear descent-rate / closure-rate boundaries approximating the Honeywell Mark VII envelopes (representative values — exact boundaries vary by model). The **floor** on Mode 1 is what keeps PULL UP/SINK RATE silent on a normal landing. Mode 2 closure is derived from the **smoothed rate of change of `alt_surf`** (which captures terrain rising under the vessel — KSP has no forward-looking terrain).
 
@@ -334,24 +341,28 @@ proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes
 | **Mode 7** — Windshear | ✗ Not implemented | No wind data |
 | **EGPWS/TAWS** — forward-looking terrain | ✗ Not implemented | No terrain database / look-ahead in KSP |
 
-**Cadence.** Ladder callouts, MINIMUMS and the bug tone fire **once** per crossing. PULL UP repeats near-gaplessly (`HARD_GAP_MS`, BUSY-gated). SINK RATE / DON'T SINK / TOO LOW TERRAIN / TOO LOW GEAR / BANK ANGLE re-annunciate every ~1.5 s while in the envelope — matching the real ~1–1.5 s rate.
+**Cadence.** Ladder callouts, MINIMUMS, APPROACHING MINIMUMS, V1, ROTATE and the bug tone fire **once** per crossing/event. PULL UP repeats near-gaplessly (`HARD_GAP_MS`, BUSY-gated). SINK RATE / DON'T SINK / TOO LOW TERRAIN / TOO LOW GEAR / BANK ANGLE / STALL / RETARD re-annunciate on their `*_GAP_MS` cadence (~1–1.5 s) while in the envelope. Doublet/siren phrasing (WHOOP WHOOP PULL UP, TERRAIN×2, DON'T SINK×2, BANK ANGLE×2) is baked into the clip; the firmware provides the between-annunciation repeat.
 
-**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply `001.mp3`…`023.mp3`. The number clips (10–23) are shared between the feet altitude ladder and the metre distance ladder:
+**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply `001.mp3`…`031.mp3`. The number clips (15–31) are shared between the feet altitude ladder and the metre distance ladder:
 
 | Track | Spoken | | Track | Spoken |
 |-------|--------|---|-------|--------|
-| 1 | "PULL UP" | | 12 | "FIVE HUNDRED" |
-| 2 | "TERRAIN, TERRAIN" | | 13 | "FOUR HUNDRED" |
-| 3 | "SINK RATE" | | 14 | "THREE HUNDRED" |
-| 4 | "TOO LOW, GEAR" | | 15 | "TWO HUNDRED" |
-| 5 | "TOO LOW, TERRAIN" | | 16 | "ONE HUNDRED" |
-| 6 | "DON'T SINK" | | 17 | "FIFTY" |
-| 7 | "BANK ANGLE" | | 18 | "FORTY" |
-| 8 | "MINIMUMS" | | 19 | "THIRTY" |
-| 9 | bug tone / beep | | 20 | "TWENTY" |
-| 10 | "TWO THOUSAND FIVE HUNDRED" | | 21 | "TEN" |
-| 11 | "ONE THOUSAND" | | 22 | "FIVE" |
-| | | | 23 | "ONE" |
+| 1 | "WHOOP WHOOP PULL UP" | | 17 | "FIVE HUNDRED" (500) |
+| 2 | "TERRAIN, TERRAIN" | | 18 | "FOUR HUNDRED" (400) |
+| 3 | "SINK RATE" | | 19 | "THREE HUNDRED" (300) |
+| 4 | "TOO LOW, GEAR" | | 20 | "TWO HUNDRED" (200) |
+| 5 | "TOO LOW, TERRAIN" | | 21 | "ONE HUNDRED" (100) |
+| 6 | "DON'T SINK, DON'T SINK" | | 22 | "NINETY" (90) |
+| 7 | "BANK ANGLE, BANK ANGLE" | | 23 | "EIGHTY" (80) |
+| 8 | "STALL" | | 24 | "SEVENTY" (70) |
+| 9 | "MINIMUMS" | | 25 | "SIXTY" (60) |
+| 10 | "APPROACHING MINIMUMS" | | 26 | "FIFTY" (50) |
+| 11 | "V ONE" | | 27 | "FORTY" (40) |
+| 12 | "ROTATE" | | 28 | "THIRTY" (30) |
+| 13 | "RETARD" | | 29 | "TWENTY" (20) |
+| 14 | bug tone / beep | | 30 | "TEN" (10) |
+| 15 | "TWO THOUSAND FIVE HUNDRED" | | 31 | "FIVE" (5) |
+| 16 | "ONE THOUSAND" | | | |
 
 Audio is gated by `audioEnabled` and the flight scene.
 
@@ -399,7 +410,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
-| **3.2.0** | **GPWS function** added (`GPWS.ino`): an aviation-**faithful** Ground Proximity Warning System on the Annunciator's Teensy 4.1, driving the **DFPlayer Mini**. Mode coverage: Mode 1 floored SINK RATE (outer) + PULL UP (inner) descent-rate envelopes; Mode 2 TERRAIN/PULL UP from smoothed terrain-closure (d`alt_surf`/dt); Mode 3 DON'T SINK (proportional altitude loss after takeoff); Mode 4A TOO LOW GEAR + speed-expanded TOO LOW TERRAIN; Mode 6 **feet** radio-altitude callouts + MINIMUMS + altitude-ramped BANK ANGLE. Modes 5/7, 4B and forward-looking terrain omitted for lack of KSP data. **Control model:** GREEN = all modes + callouts; amber **proxAlarm** = altitude callouts + MINIMUMS only; amber **rdvRadar** = target-**distance** callouts (on `tgtDistance`) — the two amber submodes are mutually exclusive (GPWS Input module firmware ≥ 2.1.0). The encoder **threshold** is a settable bug that plays a tone clip on crossing (altitude or range). Config relayed by the master over I2C (rev-3 9-byte command, `I2C_CMD_SIZE_GPWS`, reusing the module's state-byte layout). Subscribes to `ROTATION_DATA` (roll) and `TARGETINFO` (range). Non-blocking; warnings preempt, callouts defer; recurring warnings re-annunciate on ~1.5 s cadences. 23 DFPlayer clips (number words shared between the feet and metre ladders). Independent of the `tone()` master-alarm path. Requires **KerbalDisplayAudio ≥ 1.3.0**. |
+| **3.2.0** | **GPWS function** added (`GPWS.ino`): an aviation-**faithful** Ground Proximity Warning System on the Annunciator's Teensy 4.1, driving the **DFPlayer Mini**. Mode coverage: Mode 1 floored SINK RATE (outer) + PULL UP (inner) descent-rate envelopes; Mode 2 TERRAIN/PULL UP from smoothed terrain-closure (d`alt_surf`/dt); Mode 3 DON'T SINK (proportional altitude loss after takeoff); Mode 4A TOO LOW GEAR + speed-expanded TOO LOW TERRAIN; Mode 6 **feet** radio-altitude callouts + MINIMUMS + altitude-ramped BANK ANGLE. Modes 5/7, 4B and forward-looking terrain omitted for lack of KSP data. **Control model:** GREEN = all modes + callouts; amber **proxAlarm** = altitude callouts + MINIMUMS only; amber **rdvRadar** = target-**distance** callouts (on `tgtDistance`) — the two amber submodes are mutually exclusive (GPWS Input module firmware ≥ 2.1.0). The encoder **threshold** is a settable bug that plays a tone clip on crossing (altitude or range). Config relayed by the master over I2C (rev-3 9-byte command, `I2C_CMD_SIZE_GPWS`, reusing the module's state-byte layout). Subscribes to `ROTATION_DATA` (roll/pitch) and `TARGETINFO` (range). Non-blocking; warnings preempt, callouts defer; recurring warnings re-annunciate on ~1.5 s cadences. Adds non-GPWS extras (fixed-threshold approximations): **STALL** (AoA), takeoff **V1**/**ROTATE**, flare **RETARD**, and **APPROACHING MINIMUMS**; the altitude ladder is Airbus-dense (2500…5 ft incl. 90/80/70/60). 31 DFPlayer clips (number words shared between the feet and metre ladders). Independent of the `tone()` master-alarm path. Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.1** | KC-01-1911 **V2.1 audio hardware**: the `tone()` master-alarm output moved to **pin 29**, and the S8050 buzzer stage was replaced by a **PAM8302A Class-D amplifier + external 8 Ω speaker** with an input volume trim. The amp's active-low shutdown (net **TONE_EN**, **pin 30**) is driven by the audio library to power the amp down between cues, muting Class-D idle hiss. The DFPlayer Mini **BUSY** line is now wired to the Teensy (net **AUDIO_BUSY**, **pin 11**) for optional `isPlaying()` polling. No sketch-logic changes: `KerbalDisplayAudio` self-configures these pins from `KCMk1_SystemConfig` (`KCM_AUDIO_TONE_PIN` / `KCM_AUDIO_EN_PIN` / `KCM_AUDIO_BUSY_PIN`). Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.0** | Silenced-alarm re-blare fix: a C&W condition that clears and re-triggers while the master alarm is silenced now re-arms the alarm instead of staying latched silent. Outbound status I2C widened to carry all **25** C&W bits (4 C&W bytes; request packet 4→6 bytes) so the master receives the full panel state, not a truncated subset. Audit batch B cleanup (bug fixes, dead-code removal). Built against KerbalDisplayCommon 3.1.2. |
 | **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / LT7683 (RA8876-compatible) 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |

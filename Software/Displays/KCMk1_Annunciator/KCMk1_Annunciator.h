@@ -79,9 +79,12 @@ struct AppState {
   // G-forces
   float gForces = 0.0f;
 
-  // Attitude -- roll/bank angle in degrees (ROTATION_DATA). Used by the GPWS
-  // bank-angle callout (Mode 6). Range approx -180..180; 0 = wings level.
-  float roll = 0.0f;
+  // Attitude -- degrees (ROTATION_DATA). roll drives the GPWS bank-angle callout
+  // (Mode 6); pitch and surfaceVelocityPitch give the GPWS STALL AoA proxy
+  // (angle of attack = pitch - srfVelPitch). roll range approx -180..180.
+  float roll        = 0.0f;
+  float pitch       = 0.0f;
+  float srfVelPitch = 0.0f;   // surface-velocity (flight-path) pitch
 
   // Target (TARGETINFO) -- used by the GPWS rendezvous-radar distance callouts.
   float tgtDistance = 0.0f;  // metres to target (0 = no/unknown target)
