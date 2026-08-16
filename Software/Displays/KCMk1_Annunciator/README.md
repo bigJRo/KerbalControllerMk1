@@ -135,8 +135,14 @@ The five cross-panel aligned thresholds below are sourced from `KCMk1_SystemConf
 | `GPWS_DESCENT_DEADBAND_MS` | `0.1` m/s | `|vel_vert|` below this is treated as level flight. |
 | `GPWS_ALT_JUMP_M` | `2000.0` m | Single-frame surface-altitude jump that re-seeds the callout tracker (vessel switch / warp / terrain step) without a spurious callout. |
 | `GPWS_MIN_DEDUP_M` | `8.0` m | A ladder rung within this of the threshold is spoken as "MINIMUMS" instead of its number. |
+| `GPWS_MODE3_CEIL_M` | `300.0` m | DON'T SINK (Mode 3) is armed on liftoff and disarmed once the vessel climbs above this AGL (established climb). |
+| `GPWS_MODE3_LOSS_M` | `15.0` m | Net altitude loss from the post-takeoff peak that triggers DON'T SINK. |
+| `GPWS_BANK_DEG` | `60.0`° | `|roll|` above which BANK ANGLE sounds (aligned with the InfoDisp aircraft steep-bank tier). |
 | `GPWS_HARD_GAP_MS` | `1400` ms | Minimum gap between repeated PULL UP callouts (≈ one clip length → near-continuous, like a real "WHOOP WHOOP PULL UP"). |
 | `GPWS_SINK_GAP_MS` | `1500` ms | Minimum gap between repeated SINK RATE callouts (real systems repeat ≈ every 1–1.5 s). |
+| `GPWS_MODE3_GAP_MS` | `1500` ms | Minimum gap between repeated DON'T SINK callouts. |
+| `GPWS_GEAR_GAP_MS` | `1500` ms | Minimum gap between repeated TOO LOW GEAR callouts. |
+| `GPWS_BANK_GAP_MS` | `1500` ms | Minimum gap between repeated BANK ANGLE callouts. |
 
 **Master alarm mask** — the set of C&W bits that illuminate MASTER ALARM and drive audio. Defined in `AAA_Config.ino` using the `CW_*` constants from `KCMk1_Annunciator.h`. Current mask (9 bits): `GROUND_PROX`, `HIGH_G`, `BUS_VOLTAGE`, `HIGH_TEMP`, `LOW_DV`, `ABORT`, `PE_LOW`, `PROP_LOW`, `LIFE_SUPPORT`.
 
@@ -316,10 +322,12 @@ Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are ass
 | Priority | Callout | Clip(s) | Mode gate | Condition |
 |----------|---------|---------|-----------|-----------|
 | 1 | TERRAIN → PULL UP | `TERRAIN` once, then `PULL UP` repeating (`GPWS_HARD_GAP_MS`) | proxAlarm armed (ACTIVE or PROX) | `t < GPWS_PULLUP_S` — preempts any soft clip |
-| 2 | SINK RATE | `SINK RATE` repeating (`GPWS_SINK_GAP_MS`) | ACTIVE | below `GPWS_SINK_CEIL_M` and descent rate exceeds the altitude-scaled boundary `GPWS_SINK_RATE_FLOOR_MS + alt × GPWS_SINK_RATE_SLOPE` |
-| 3 | TOO LOW GEAR | `TOO LOW, GEAR` once | ACTIVE | gear up and `alt_surf < threshold` |
-| 4 | MINIMUMS | `MINIMUMS` once | ACTIVE | descending through `threshold` |
-| 5 | Altitude ladder | number, once per rung | ACTIVE | descending through a fixed AGL rung |
+| 2 | DON'T SINK (Mode 3) | `DON'T SINK` repeating (`GPWS_MODE3_GAP_MS`) | ACTIVE | armed on liftoff until climbout clears `GPWS_MODE3_CEIL_M`; descending with net loss from the post-takeoff peak > `GPWS_MODE3_LOSS_M` |
+| 3 | SINK RATE (Mode 1) | `SINK RATE` repeating (`GPWS_SINK_GAP_MS`) | ACTIVE | below `GPWS_SINK_CEIL_M` and descent rate exceeds `GPWS_SINK_RATE_FLOOR_MS + alt × GPWS_SINK_RATE_SLOPE` |
+| 4 | TOO LOW GEAR (Mode 4A) | `TOO LOW, GEAR` repeating (`GPWS_GEAR_GAP_MS`) | ACTIVE | gear up, descending, and `alt_surf < threshold` |
+| 5 | BANK ANGLE (Mode 6) | `BANK ANGLE` repeating (`GPWS_BANK_GAP_MS`) | ACTIVE | in atmosphere and `|roll| > GPWS_BANK_DEG` (not descent-gated) |
+| 6 | MINIMUMS | `MINIMUMS` once | ACTIVE | descending through `threshold` |
+| 6 | Altitude ladder | number, once per rung | ACTIVE | descending through a fixed AGL rung |
 
 Playback is fully **non-blocking**: `gpwsUpdate()` never calls `delay()`; recurring warnings re-arm from `millis()` cadence timers and the DFPlayer **BUSY** line (`isPlaying()`, pin 11). Hard warnings preempt a soft clip already playing; soft callouts only start when the player is idle. Altitude callouts **defer rather than drop**: while a higher-priority warning owns the audio (or the player is finishing a clip), the crossing tracker (`_prevAlt`) is held, so when the audio frees up the callout for the vessel's *current* altitude is spoken — not a stale backlog of every rung passed during the warning. The callout tracker is reset on scene exit and vessel switch (`gpwsReset()` from `SimpitHandler.ino`) and re-seeds on any large single-frame altitude jump, so callouts never carry across a flight boundary.
 
@@ -329,18 +337,18 @@ Playback is fully **non-blocking**: `gpwsUpdate()` never calls `delay()`; recurr
 |----------------|-----------|-------------|-----|
 | **Mode 1** — Excessive descent rate | SINK RATE → PULL UP | ✅ Implemented | SINK RATE = altitude-scaled rate boundary; the hard PULL UP envelope covers the Mode-1 pull-up |
 | **Mode 2** — Excessive terrain closure | TERRAIN, TERRAIN → PULL UP | ◐ Adapted | No forward-looking terrain; closure approximated by time-to-impact on surface altitude. "TERRAIN" is the hard-warning entry annunciation |
-| **Mode 3** — Altitude loss after takeoff / go-around | DON'T SINK | ✗ Not implemented | Feasible in KSP but needs takeoff/climb-phase tracking — deferred, not a data limitation |
-| **Mode 4** — Unsafe terrain clearance (not in landing config) | TOO LOW GEAR / TOO LOW FLAPS / TOO LOW TERRAIN | ◐ Partial | Only 4A **TOO LOW GEAR**. No flap state in Simpit (4B); no climb-clearance term (4C) |
+| **Mode 3** — Altitude loss after takeoff / go-around | DON'T SINK | ✅ Implemented | Armed on liftoff, disarmed once past the climbout ceiling; fires on net altitude loss from the post-takeoff peak |
+| **Mode 4** — Unsafe terrain clearance (not in landing config) | TOO LOW GEAR / TOO LOW FLAPS / TOO LOW TERRAIN | ◐ Partial | 4A **TOO LOW GEAR** implemented (recurring). No flap state in Simpit (4B); no climb-clearance term (4C) |
 | **Mode 5** — Below glideslope | GLIDESLOPE | ✗ Not implemented | No ILS/glideslope in KSP |
-| **Mode 6** — Advisory callouts | altitude callouts, MINIMUMS, BANK ANGLE | ◐ Partial | Altitude ladder + MINIMUMS implemented; **BANK ANGLE** omitted (no roll telemetry subscribed) |
+| **Mode 6** — Advisory callouts | altitude callouts, MINIMUMS, BANK ANGLE | ✅ Implemented | Altitude ladder + MINIMUMS + **BANK ANGLE** (excessive roll in atmosphere, from `ROTATION_DATA`) |
 | **Mode 7** — Windshear (reactive) | WINDSHEAR | ✗ Not implemented | No wind/windshear telemetry |
 | **EGPWS/TAWS** — forward-looking terrain (TCF/TAD) | TERRAIN AHEAD, OBSTACLE AHEAD | ✗ Not implemented | No terrain database / GPS look-ahead in KSP |
 
 Legend: ✅ implemented · ◐ partial/adapted · ✗ not implemented. The same summary is mirrored in the `GPWS.ino` header ("COVERAGE vs A REAL GPWS").
 
-**Callout cadence vs. a real GPWS.** Altitude callouts and MINIMUMS are spoken **once** per descent through the level (matches Mode-6 advisory behaviour). **PULL UP** repeats every `GPWS_HARD_GAP_MS` (≈ one clip length, BUSY-gated) — a near-continuous repeat like a real "WHOOP WHOOP PULL UP". **SINK RATE** repeats every `GPWS_SINK_GAP_MS` (~1.5 s, matching the ~1–1.5 s real-system rate). **TOO LOW GEAR** is spoken **once per entry** and re-arms when the condition clears — a conscious simplification of the real Mode-4 re-annunciation to avoid nagging on a slow KSP approach; the numeric ladder then tracks the continued descent.
+**Callout cadence vs. a real GPWS.** Altitude callouts and MINIMUMS are spoken **once** per descent through the level (matches Mode-6 advisory behaviour). **PULL UP** repeats every `GPWS_HARD_GAP_MS` (≈ one clip length, BUSY-gated) — a near-continuous repeat like a real "WHOOP WHOOP PULL UP". The recurring warnings — **SINK RATE**, **DON'T SINK**, **TOO LOW GEAR** and **BANK ANGLE** — each re-annunciate on their own `GPWS_*_GAP_MS` cadence (~1.5 s, matching the ~1–1.5 s real-system rate) for as long as the vessel stays in the envelope, firing immediately on entry and then on the timer. All are BUSY-gated so clips never overlap.
 
-**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply numbered clips `001.mp3`…`016.mp3`; suggested spoken text:
+**DFPlayer clip index** (folder `/01` on the DFPlayer's own microSD card — *not* the Teensy BMP card). Supply numbered clips `001.mp3`…`018.mp3`; suggested spoken text:
 
 | Track | File | Spoken |
 |-------|------|--------|
@@ -360,6 +368,8 @@ Legend: ✅ implemented · ◐ partial/adapted · ✗ not implemented. The same 
 | 14 | `/01/014.mp3` | "THIRTY" |
 | 15 | `/01/015.mp3` | "TWENTY" |
 | 16 | `/01/016.mp3` | "TEN" |
+| 17 | `/01/017.mp3` | "DON'T SINK" |
+| 18 | `/01/018.mp3` | "BANK ANGLE" |
 
 The ladder rungs are 1000, 500, 400, 300, 200, 100, 50, 40, 30, 20, 10 m AGL (`GPWS_LADDER` in `GPWS.ino`). Audio is gated by `audioEnabled` and the flight scene, exactly like the `tone()` cues.
 
@@ -407,7 +417,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
-| **3.2.0** | **GPWS function** added (`GPWS.ino`): an aviation-style Ground Proximity Warning System that runs on the Annunciator's Teensy 4.1, drives the **DFPlayer Mini** with voice callouts (PULL UP, TERRAIN, SINK RATE, TOO LOW GEAR, MINIMUMS, and a descending altitude ladder), and is configured by the GPWS Input Panel module's mode / proximity-alarm / rendezvous-radar / altitude-threshold parameters **relayed by the master over I2C**. Inbound I2C command gained a **rev-3 9-byte form** (`I2C_CMD_SIZE_GPWS`) carrying the GPWS config byte + int16 threshold; the config byte reuses the GPWS Input module's own state-byte layout for pass-through relay. Non-blocking playback via the DFPlayer BUSY line. Independent of the `tone()` master-alarm path — the two audio paths coexist. Requires **KerbalDisplayAudio ≥ 1.3.0**. |
+| **3.2.0** | **GPWS function** added (`GPWS.ino`): an aviation-style Ground Proximity Warning System that runs on the Annunciator's Teensy 4.1 and drives the **DFPlayer Mini** with voice callouts. Real-GPWS mode coverage: Mode 1 (SINK RATE / PULL UP), Mode 2 folded into the imminent-impact PULL UP (TERRAIN), Mode 3 (DON'T SINK, altitude loss after takeoff), Mode 4A (TOO LOW GEAR), Mode 6 (descending altitude ladder + MINIMUMS + BANK ANGLE); Modes 5/7 and forward-looking terrain omitted for lack of KSP data — see the coverage table. Configured by the GPWS Input Panel module's mode / proximity-alarm / rendezvous-radar / altitude-threshold parameters **relayed by the master over I2C** (rev-3 9-byte inbound command, `I2C_CMD_SIZE_GPWS`, reusing the module's own state-byte layout). Subscribes to `ROTATION_DATA` for roll (bank angle). Non-blocking playback via the DFPlayer BUSY line; recurring warnings re-annunciate on ~1.5 s cadences. Independent of the `tone()` master-alarm path — the two audio paths coexist. Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.1** | KC-01-1911 **V2.1 audio hardware**: the `tone()` master-alarm output moved to **pin 29**, and the S8050 buzzer stage was replaced by a **PAM8302A Class-D amplifier + external 8 Ω speaker** with an input volume trim. The amp's active-low shutdown (net **TONE_EN**, **pin 30**) is driven by the audio library to power the amp down between cues, muting Class-D idle hiss. The DFPlayer Mini **BUSY** line is now wired to the Teensy (net **AUDIO_BUSY**, **pin 11**) for optional `isPlaying()` polling. No sketch-logic changes: `KerbalDisplayAudio` self-configures these pins from `KCMk1_SystemConfig` (`KCM_AUDIO_TONE_PIN` / `KCM_AUDIO_EN_PIN` / `KCM_AUDIO_BUSY_PIN`). Requires **KerbalDisplayAudio ≥ 1.3.0**. |
 | **3.1.0** | Silenced-alarm re-blare fix: a C&W condition that clears and re-triggers while the master alarm is silenced now re-arms the alarm instead of staying latched silent. Outbound status I2C widened to carry all **25** C&W bits (4 C&W bytes; request packet 4→6 bytes) so the master receives the full panel state, not a truncated subset. Audit batch B cleanup (bug fixes, dead-code removal). Built against KerbalDisplayCommon 3.1.2. |
 | **3.0.0** | Hardware rev 2 port. Migrated from Teensy 4.0 / RA8875 SPI 800×480 to Teensy 4.1 / LT7683 (RA8876-compatible) 16-bit 8080 parallel (FlexIO3) 1024×600 IPS TFT (BuyDisplay ER-TFT070A2-6-5633), driven via `KCM_TFT` (`KCM_Display`) over the `wwatson4506/TeensyRA8876-8080` driver. Touch changed from GSL1680F (Wire1) to FT5316 5-point capacitive on a software I2C bus (pins 4/5). SD moved to the Teensy 4.1 on-board microSD over SDIO (`BUILTIN_SDCARD`). Audio: `tone()` buzzer moved to pin 2, DFPlayer Mini added on Serial2 (RX2=7 / TX2=8). Slave I2C bus moved from Wire (18/19) to Wire2 (24/25); INT-to-master on pin 0, shared RST on pin 1. All hardware pins centralised in `KCMk1_SystemConfig.h`. Requires KerbalDisplayCommon ≥ 3.0.0. Screens relaid out to 1024×600. Main bottom zone reworked: the rev-1 panel condition strip and 2×2 flight-condition block were replaced by a 6×2 mode/status grid of 12 `MF_*` tiles driven by `state.modeFlags` (`updateModeGrid`), a single vertical 4-tile regime column under DOCK, and a separate SPCFT control-mode tile (`updateSpcftTile`). Inbound I2C command gained a 6-byte extended form carrying `modeFlags` + `capValue`. |

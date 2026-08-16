@@ -79,6 +79,10 @@ struct AppState {
   // G-forces
   float gForces = 0.0f;
 
+  // Attitude -- roll/bank angle in degrees (ROTATION_DATA). Used by the GPWS
+  // bank-angle callout (Mode 6). Range approx -180..180; 0 = wings level.
+  float roll = 0.0f;
+
   // Resources -- electric charge
   float EC       = 0.0f;
   float EC_total = 0.0f;
@@ -352,8 +356,14 @@ extern const float    GPWS_SINK_RATE_SLOPE;
 extern const float    GPWS_DESCENT_DEADBAND_MS;
 extern const float    GPWS_ALT_JUMP_M;
 extern const float    GPWS_MIN_DEDUP_M;
+extern const float    GPWS_MODE3_CEIL_M;
+extern const float    GPWS_MODE3_LOSS_M;
+extern const float    GPWS_BANK_DEG;
 extern const uint16_t GPWS_HARD_GAP_MS;
 extern const uint16_t GPWS_SINK_GAP_MS;
+extern const uint16_t GPWS_MODE3_GAP_MS;
+extern const uint16_t GPWS_GEAR_GAP_MS;
+extern const uint16_t GPWS_BANK_GAP_MS;
 
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;

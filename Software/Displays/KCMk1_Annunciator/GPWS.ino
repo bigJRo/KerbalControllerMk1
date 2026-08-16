@@ -4,8 +4,9 @@
    WHAT THIS IS
    An aviation-style GPWS that runs entirely on the Annunciator's Teensy 4.1. It
    watches the Simpit telemetry already collected in `state` (surface altitude,
-   vertical speed, gear, situation) and speaks voice callouts through the DFPlayer
-   Mini on the 7" board (Serial2). It is INDEPENDENT of the tone() master-alarm state
+   vertical speed, gear, situation, and roll/bank from ROTATION_DATA) and speaks voice
+   callouts through the DFPlayer Mini on the 7" board (Serial2). It is INDEPENDENT of
+   the tone() master-alarm state
    machine in KerbalDisplayAudio: the tone alarm still owns CW_GROUND_PROX and the
    other WARNING tones; GPWS voice is layered on top through the separate DFPlayer
    audio path. The two can sound together.
@@ -25,10 +26,12 @@
    MODE SEMANTICS
      OFF     -- GPWS fully inhibited, DFPlayer silent.
      ACTIVE  -- full suite: descending altitude callouts, MINIMUMS, SINK RATE,
-                TOO LOW GEAR, plus TERRAIN/PULL UP when proxAlarm is armed.
+                DON'T SINK (altitude loss after takeoff), TOO LOW GEAR, BANK ANGLE,
+                plus TERRAIN/PULL UP when proxAlarm is armed.
      PROX    -- proximity only: TERRAIN/PULL UP hard warning when proxAlarm is
-                armed; every soft callout (altitude ladder, sink rate, gear) is
-                suppressed. Matches the GPWS Input "proximity tone only" amber state.
+                armed; every soft callout (altitude ladder, sink rate, don't sink,
+                gear, bank angle) is suppressed. Matches the GPWS Input "proximity
+                tone only" amber state.
 
    proxAlarm  gates the hard TERRAIN/PULL UP warning in BOTH ACTIVE and PROX modes.
               On the GPWS Input panel BTN02 arms it (and, pressed while ACTIVE,
@@ -45,8 +48,9 @@
    clip already playing; soft callouts only start when the player is idle, so a
    higher-priority warning is never talked over.
 
-   Priority (high -> low): TERRAIN/PULL UP > SINK RATE > TOO LOW GEAR > MINIMUMS >
-   altitude ladder. Exactly one condition owns the audio each frame.
+   Priority (high -> low): TERRAIN/PULL UP > DON'T SINK > SINK RATE > TOO LOW GEAR >
+   BANK ANGLE > MINIMUMS > altitude ladder. Exactly one condition owns the audio each
+   frame.
 
    COVERAGE vs A REAL GPWS (conscious scope decisions)
    A classic ground-proximity warning computer has seven modes plus the EGPWS/TAWS
@@ -60,16 +64,18 @@
                                             so closure is approximated by time-to-impact
                                             on surface altitude; "TERRAIN" is the hard-
                                             warning entry annunciation before PULL UP.
-     Mode 3  Altitude loss after takeoff ... NOT IMPLEMENTED ("DON'T SINK"). Feasible in
-                                            KSP but needs takeoff/climb-phase tracking;
-                                            deferred, not a data limitation.
-     Mode 4  Unsafe terrain clearance ...... PARTIAL. 4A TOO LOW GEAR implemented. 4B
-                                            TOO LOW FLAPS omitted (no flap state in
-                                            Simpit); 4C climb-clearance term omitted.
+     Mode 3  Altitude loss after takeoff ... IMPLEMENTED ("DON'T SINK"). Armed on
+                                            liftoff, disarmed once past the climbout
+                                            ceiling; fires on net altitude loss from
+                                            the post-takeoff peak.
+     Mode 4  Unsafe terrain clearance ...... PARTIAL. 4A TOO LOW GEAR implemented
+                                            (recurring while in the envelope). 4B TOO
+                                            LOW FLAPS omitted (no flap state in Simpit);
+                                            4C climb-clearance term omitted.
      Mode 5  Below glideslope .............. NOT IMPLEMENTED ("GLIDESLOPE"). No ILS.
-     Mode 6  Advisory callouts ............. PARTIAL. Altitude ladder + MINIMUMS
-                                            implemented; BANK ANGLE omitted (no roll
-                                            telemetry subscribed).
+     Mode 6  Advisory callouts ............. IMPLEMENTED. Altitude ladder + MINIMUMS,
+                                            and BANK ANGLE (excessive roll in atmo,
+                                            from ROTATION_DATA).
      Mode 7  Windshear .................... NOT IMPLEMENTED. No wind/windshear data.
      EGPWS   Forward-looking terrain (TCF/ .. NOT IMPLEMENTED. No terrain database or
              TAD), "TERRAIN AHEAD" .......... GPS look-ahead in KSP.
@@ -82,12 +88,11 @@
      - PULL UP (Mode 1/2 hard): a real "WHOOP WHOOP PULL UP" repeats essentially
        gaplessly while in the envelope. We replay every GPWS_HARD_GAP_MS (~ one clip
        length) gated on the BUSY line, giving a near-continuous repeat with no overlap.
-     - SINK RATE (Mode 1): real systems repeat the aural roughly every 1-1.5 s while in
-       the envelope. We use GPWS_SINK_GAP_MS in that band.
-     - TOO LOW GEAR (Mode 4A): a real system re-annunciates while the aircraft stays in
-       the envelope. We deliberately speak it ONCE per entry (re-arms when the condition
-       clears) to avoid nagging on a slow KSP approach -- a conscious simplification.
-       The numeric ladder is what tracks the continued descent afterwards.
+     - SINK RATE (Mode 1), DON'T SINK (Mode 3), TOO LOW GEAR (Mode 4A) and BANK ANGLE
+       (Mode 6): real systems re-annunciate roughly every 1-1.5 s while the vessel
+       stays in the envelope. Each repeats on its own GPWS_*_GAP_MS cadence, firing
+       immediately on entry (the *_Active flag is false) and then on the cadence timer,
+       always gated on the BUSY line so clips never overlap.
 
    The DFPlayer path plays numbered clips from ITS OWN microSD card (not the Teensy
    BMP card). The clip-number map is the GPWS_CLIP_* enum below and is documented in
@@ -133,6 +138,8 @@ static KCM_DFPlayer gpwsDfp(KCM_DFPLAYER_SERIAL);
 #define GPWS_CLIP_30          14     // "THIRTY"
 #define GPWS_CLIP_20          15     // "TWENTY"
 #define GPWS_CLIP_10          16     // "TEN"
+#define GPWS_CLIP_DONT_SINK   17     // "DON'T SINK"     (Mode 3, recurring)
+#define GPWS_CLIP_BANK_ANGLE  18     // "BANK ANGLE"     (Mode 6, recurring)
 
 
 /***************************************************************************************
@@ -189,7 +196,18 @@ static uint32_t _lastHardMs    = 0;       // last PULL UP cadence stamp
 
 static uint32_t _lastSinkMs    = 0;       // last SINK RATE cadence stamp
 
-static bool     _gearLatched   = false;   // TOO LOW GEAR spoken, awaiting condition clear
+static bool     _gearActive    = false;   // TOO LOW GEAR condition currently held
+static uint32_t _lastGearMs    = 0;       // last TOO LOW GEAR cadence stamp
+
+static bool     _bankActive    = false;   // BANK ANGLE condition currently held
+static uint32_t _lastBankMs    = 0;       // last BANK ANGLE cadence stamp
+
+// Mode 3 (DON'T SINK) -- altitude loss after takeoff.
+static bool     _wasOnGround   = false;   // previous-frame on-ground state (liftoff edge)
+static bool     _m3Armed       = false;   // in the post-takeoff climbout window
+static float    _m3MaxAlt      = 0.0f;    // peak surface alt reached since liftoff
+static bool     _m3Active      = false;   // DON'T SINK condition currently held
+static uint32_t _lastM3Ms      = 0;       // last DON'T SINK cadence stamp
 
 
 /***************************************************************************************
@@ -209,7 +227,14 @@ static void gpwsClearLatches() {
   _prevAlt     = -1.0f;
   _hardActive  = false;
   _terrainDone = false;
-  _gearLatched = false;
+  _gearActive  = false;
+  _bankActive  = false;
+  // Require a REAL on-ground frame before a liftoff edge can arm Mode 3, so a vessel
+  // loaded already airborne (no PRELAUNCH/LANDED frame) does not spuriously arm.
+  _wasOnGround = false;
+  _m3Armed     = false;
+  _m3MaxAlt    = 0.0f;
+  _m3Active    = false;
 }
 
 // True when the relayed altitude threshold is a sane decision height. Shared by the
@@ -316,15 +341,19 @@ void gpwsSetup() {
    DFPlayer. Highest-priority active condition owns the audio each frame.
 
    CROSSING-TRACKER DISCIPLINE
-   `_prevAlt` is the altitude-ladder crossing detector. It is advanced to the current
-   altitude ONLY when the ladder is actually serviced this frame -- either a rung
-   callout is spoken, or no rung is pending. While a higher-priority condition
-   (TERRAIN/PULL UP, SINK RATE, TOO LOW GEAR) owns the audio, or the DFPlayer is still
-   busy with the previous clip, `_prevAlt` is LEFT UNTOUCHED so the pending crossing
-   survives. Because gpwsCrossedClip() returns the LOWEST rung crossed across the whole
-   [_prevAlt, alt] span, a deferred callout announces the vessel's CURRENT altitude
-   rather than replaying a stale backlog. This is why the higher-priority branches
-   below do not write `_prevAlt`.
+   `_prevAlt` is the altitude-ladder crossing detector. The ladder only fires on
+   DOWNWARD crossings, so:
+     - While climbing, `_prevAlt` is bumped up to the current altitude every frame, so
+       a higher-priority callout that returns early during a climb (e.g. BANK ANGLE)
+       can never freeze it below the vessel and swallow the upper rungs on the next
+       descent.
+     - While descending, `_prevAlt` is advanced ONLY when the ladder is actually
+       serviced (a rung is spoken, or none is pending). Whenever a higher-priority
+       condition owns the audio, or the DFPlayer is still busy, `_prevAlt` is LEFT
+       UNTOUCHED so the pending crossing survives. Because gpwsCrossedClip() returns
+       the LOWEST rung crossed across the whole [_prevAlt, alt] span, a deferred
+       callout announces the vessel's CURRENT altitude, not a stale backlog. This is
+       why the higher-priority branches below do not write `_prevAlt`.
 ****************************************************************************************/
 void gpwsUpdate() {
   // --- Enable gate: flight scene, audio on, GPWS not OFF -----------------------
@@ -341,12 +370,14 @@ void gpwsUpdate() {
 
   // --- Which callout classes are permitted in the current mode -----------------
   bool hardEnabled = _gpwsProxAlarm;                     // TERRAIN/PULL UP (ACTIVE or PROX)
-  bool softEnabled = (_gpwsMode == GPWS_MODE_ACTIVE);    // ladder / sink / gear / minimums
+  bool softEnabled = (_gpwsMode == GPWS_MODE_ACTIVE);    // ladder/sink/gear/minimums/mode3/bank
 
   // --- Flight geometry from Simpit state ---------------------------------------
   uint8_t sit    = state.vesselSituationState;
   bool isAloft   = bitRead(sit, VSIT_FLIGHT)  || bitRead(sit, VSIT_SUBORBIT) ||
                    bitRead(sit, VSIT_ORBIT)   || bitRead(sit, VSIT_ESCAPE);
+  bool onGround  = bitRead(sit, VSIT_LANDED)  || bitRead(sit, VSIT_SPLASH) ||
+                   bitRead(sit, VSIT_PRELAUNCH);
   float alt      = state.alt_surf;
   float vs       = fabsf(state.vel_vert);
   bool descending = (state.vel_vert < -GPWS_DESCENT_DEADBAND_MS);
@@ -358,25 +389,50 @@ void gpwsUpdate() {
   if (_prevAlt < 0.0f || fabsf(alt - _prevAlt) > GPWS_ALT_JUMP_M) {
     _prevAlt = alt;
   }
+  // Climbing: keep the tracker at the current altitude (see CROSSING-TRACKER DISCIPLINE).
+  if (alt > _prevAlt) _prevAlt = alt;
 
   uint32_t now = millis();
   bool busy = _busyAttached && gpwsDfp.isPlaying();
 
-  // --- Gear condition + latch re-arm -------------------------------------------
-  // Evaluated EVERY frame, before any priority early-return, so the latch clears the
-  // instant the condition clears (gear deployed or climbed back up) even while a
-  // higher-priority episode owns the audio. Otherwise the warning could not re-arm.
+  // === Conditions evaluated EVERY frame (before any priority early-return) =======
+  // Kept out of the priority branches so their "held" state and Mode-3 tracking stay
+  // correct even while a higher-priority episode owns the audio.
+
+  // Mode 3 arm/track: arm on liftoff (ground -> air), disarm once an established climb
+  // clears GPWS_MODE3_CEIL_M or the vessel is back on the ground; track the peak alt.
+  if (onGround) {
+    _m3Armed  = false;
+    _m3MaxAlt = 0.0f;
+  } else if (isAloft) {
+    if (_wasOnGround) { _m3Armed = true; _m3MaxAlt = alt; }   // liftoff edge
+    if (alt > GPWS_MODE3_CEIL_M) _m3Armed = false;            // established climb
+    if (alt > _m3MaxAlt) _m3MaxAlt = alt;                     // running peak
+  }
+  _wasOnGround = onGround;
+
+  // DON'T SINK: armed climbout, descending, net loss from the post-takeoff peak.
+  bool m3Sink = softEnabled && _m3Armed && descending &&
+                (_m3MaxAlt - alt) > GPWS_MODE3_LOSS_M;
+  if (!m3Sink) _m3Active = false;
+
+  // TOO LOW GEAR: airborne descending, gear up, below the (valid) decision height.
   bool gearCond = airDesc && !state.gear_on &&
                   gpwsThresholdValid() && alt < (float)_gpwsThreshold;
-  if (!gearCond) _gearLatched = false;
+  if (!gearCond) _gearActive = false;
 
-  // --- SINK RATE condition -----------------------------------------------------
-  // Excessive descent RATE for the current altitude (Mode-1 style), not merely "any
-  // descent". Only evaluated near the ground (below GPWS_SINK_CEIL_M); the allowed
-  // rate scales with altitude so a normal approach does not nag, but a steep sink
-  // near terrain does. Gated on ACTIVE mode.
+  // BANK ANGLE: excessive roll in atmospheric flight (not descent-gated).
+  bool bankCond = softEnabled && isAloft && inAtmo &&
+                  fabsf(state.roll) > GPWS_BANK_DEG;
+  if (!bankCond) _bankActive = false;
+
+  // SINK RATE: excessive descent RATE for the current altitude (Mode-1 style), not
+  // "any descent". Only near the ground; the allowed rate scales with altitude so a
+  // normal approach does not nag but a steep sink does.
   bool sinkExcessive = softEnabled && airDesc && alt < GPWS_SINK_CEIL_M &&
                        vs > (GPWS_SINK_RATE_FLOOR_MS + alt * GPWS_SINK_RATE_SLOPE);
+
+  // === Priority ladder -- exactly one condition owns the audio this frame ========
 
   // --- Priority 1: HARD warning -- TERRAIN then recurring PULL UP ---------------
   if (hardEnabled && airDesc && tImpact < GPWS_PULLUP_S) {
@@ -398,7 +454,17 @@ void gpwsUpdate() {
   // Keep the tracker current so no stale backlog builds while soft callouts are off.
   if (!softEnabled) { _prevAlt = alt; return; }
 
-  // --- Priority 2: SINK RATE (recurring caution) -------------------------------
+  // --- Priority 2: DON'T SINK (Mode 3, recurring) ------------------------------
+  if (m3Sink) {
+    if (!busy && (!_m3Active || (now - _lastM3Ms) >= GPWS_MODE3_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_DONT_SINK);
+      _lastM3Ms  = now;
+      _m3Active  = true;
+    }
+    return;                            // defer ladder -- do not advance _prevAlt
+  }
+
+  // --- Priority 3: SINK RATE (Mode 1, recurring) -------------------------------
   if (sinkExcessive) {
     if (!busy && (now - _lastSinkMs) >= GPWS_SINK_GAP_MS) {
       gpwsPlay(GPWS_CLIP_SINK_RATE);
@@ -407,16 +473,27 @@ void gpwsUpdate() {
     return;                            // defer ladder -- do not advance _prevAlt
   }
 
-  // --- Priority 3: TOO LOW GEAR (once, until condition clears) ------------------
+  // --- Priority 4: TOO LOW GEAR (Mode 4A, recurring while in envelope) ----------
   if (gearCond) {
-    if (!_gearLatched && !busy) {
+    if (!busy && (!_gearActive || (now - _lastGearMs) >= GPWS_GEAR_GAP_MS)) {
       gpwsPlay(GPWS_CLIP_TOO_LOW_GEAR);
-      _gearLatched = true;
+      _lastGearMs = now;
+      _gearActive = true;
     }
     return;                            // supersedes the ladder -- do not advance _prevAlt
   }
 
-  // --- Priority 4: altitude ladder + MINIMUMS (descent crossings) --------------
+  // --- Priority 5: BANK ANGLE (Mode 6, recurring while over-banked) -------------
+  if (bankCond) {
+    if (!busy && (!_bankActive || (now - _lastBankMs) >= GPWS_BANK_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_BANK_ANGLE);
+      _lastBankMs = now;
+      _bankActive = true;
+    }
+    return;                            // defer ladder -- do not advance _prevAlt
+  }
+
+  // --- Priority 6: altitude ladder + MINIMUMS (descent crossings) --------------
   if (airDesc && _prevAlt > 0.0f) {
     uint8_t clip = gpwsCrossedClip(_prevAlt, alt);
     if (clip != 0) {

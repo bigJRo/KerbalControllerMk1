@@ -7,7 +7,7 @@
 
    Channels subscribed:
      VESSEL_NAME, SOI, FLIGHT_STATUS, TEMP_LIMIT, ACTIONSTATUS,
-     ALTITUDE, VELOCITY, AIRSPEED, APSIDES,
+     ALTITUDE, VELOCITY, AIRSPEED, ROTATION_DATA, APSIDES,
      DELTAV, BURNTIME,
      ATMO_CONDITIONS,
      ELECTRIC,
@@ -53,6 +53,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case ALTITUDE_MESSAGE:        msgName = "ALTITUDE";        break;
       case VELOCITY_MESSAGE:        msgName = "VELOCITY";        break;
       case AIRSPEED_MESSAGE:        msgName = "AIRSPEED";        break;
+      case ROTATION_DATA_MESSAGE:   msgName = "ROTATION_DATA";   break;
       case APSIDES_MESSAGE:         msgName = "APSIDES";         break;
       case DELTAV_MESSAGE:          msgName = "DELTAV";          break;
       case BURNTIME_MESSAGE:        msgName = "BURNTIME";        break;
@@ -172,6 +173,16 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.apoapsis  = a.apoapsis;
         state.periapsis = a.periapsis;  // now stored for CW_PE_LOW
         updateCautionWarningState();
+      }
+      break;
+
+    case ROTATION_DATA_MESSAGE:
+      // Vessel attitude. Only roll is used (GPWS bank-angle callout). Does not
+      // affect C&W, so no updateCautionWarningState() call -- GPWS reads state.roll
+      // directly in gpwsUpdate().
+      if (msgSize == sizeof(vesselPointingMessage)) {
+        vesselPointingMessage r = parseMessage<vesselPointingMessage>(msg);
+        state.roll = r.roll;
       }
       break;
 
@@ -367,6 +378,7 @@ void initSimpit() {
   simpit.registerChannel(ALTITUDE_MESSAGE);
   simpit.registerChannel(VELOCITY_MESSAGE);
   simpit.registerChannel(AIRSPEED_MESSAGE);
+  simpit.registerChannel(ROTATION_DATA_MESSAGE);   // vessel attitude -- roll for GPWS bank angle
   simpit.registerChannel(APSIDES_MESSAGE);
   simpit.registerChannel(DELTAV_MESSAGE);
   simpit.registerChannel(BURNTIME_MESSAGE);
