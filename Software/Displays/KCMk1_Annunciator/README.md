@@ -306,7 +306,7 @@ proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes
 |---|---------|------|-----------|
 | 1 | WHOOP WHOOP PULL UP | 1 (inner) / 2 | descent rate `> PULLUP_FLOOR + PULLUP_SLOPE·alt` (< 747 m), **or** terrain closure over the Mode-2 boundary |
 | 2 | TERRAIN, TERRAIN | 2 | entry annunciation when the Mode-2 closure envelope trips, then PULL UP repeats |
-| 3 | STALL | — (extra) | airborne in atmosphere, AoA `= pitch − srfVelPitch > STALL_AOA_DEG` (~15°), speed `> STALL_MIN_SPEED_MS` |
+| 3 | STALL | — (extra) | airborne in atmosphere, AoA `= pitch − srfVelPitch > STALL_AOA_DEG` (20° = `KCM_AOA_STALL_DEG`, shared with the InfoDisp AoA arc), speed `> STALL_MIN_SPEED_MS` |
 | 4 | SINK RATE | 1 (outer) | descent rate `> SINK_FLOOR + SINK_SLOPE·alt` (< 747 m) — floored, so a normal flare stays silent |
 | 5 | DON'T SINK | 3 | armed on liftoff, disarmed above `M3_CEIL_M`; net altitude loss from the post-takeoff peak `> max(M3_LOSS_MIN, M3_LOSS_FRAC·height)` |
 | 6 | TOO LOW, TERRAIN | 4A | gear up, `< TERR4_ALT_M` (1000 ft), and speed `> TOOLOW_SPEED_MS` (~190 kt) |
@@ -322,7 +322,7 @@ proxAlarm (BTN02) and rdvRadar (BTN03) are **mutually exclusive** amber submodes
 - **APPROACHING MINIMUMS** at `threshold + APPR_MIN_MARGIN_M` (~100 ft above the bug), **MINIMUMS** at the bug itself (with the bug tone).
 - **Distance ladder** — metres of target range, spoken once per crossing (rdvRadar profile, target present): **500, 200, 100, 50, 40, 30, 20, 10, 5 m**. Reuses the number clips.
 
-**Extras (`STALL`, `V1`, `ROTATE`, `RETARD`)** aren't real GPWS modes and have no per-craft Simpit source — they fire off fixed thresholds in the `TUNABLES` block (set `V1_SPEED_MS`/`VR_SPEED_MS`/`STALL_AOA_DEG` to the vessel you fly), so they're approximate.
+**Extras (`STALL`, `V1`, `ROTATE`, `RETARD`)** aren't real GPWS modes. STALL's AoA threshold is **cross-panel aligned** with the InfoDisp aircraft AoA arc (`KCM_AOA_STALL_DEG` = 20°, the "beyond stall AoA" red tier) in `KCMk1_SystemConfig.h`. V1/ROTATE have no per-craft Simpit source, so they fire off fixed speeds in the `TUNABLES` block — defaults `V1_SPEED_MS = 55`, `VR_SPEED_MS = 65` m/s (KSP planes typically rotate ~50 m/s, ranging ~40–110 m/s by design; **set these to the plane you fly**).
 
 **Envelopes** are floored piecewise-linear descent-rate / closure-rate boundaries approximating the Honeywell Mark VII envelopes (representative values — exact boundaries vary by model). The **floor** on Mode 1 is what keeps PULL UP/SINK RATE silent on a normal landing. Mode 2 closure is derived from the **smoothed rate of change of `alt_surf`** (which captures terrain rising under the vessel — KSP has no forward-looking terrain).
 

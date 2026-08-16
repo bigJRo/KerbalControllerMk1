@@ -187,13 +187,18 @@ static const float BANK_RAMP_HI_M  = 45.7f;   // 150 ft
 static const float APPR_MIN_MARGIN_M = 30.5f; // "APPROACHING MINIMUMS" this far above the bug (100 ft)
 static const float RETARD_ALT_M      = 6.1f;  // RETARD flare below this AGL (20 ft)
 
-// STALL (AoA = pitch - surfaceVelocityPitch, degrees).
-static const float STALL_AOA_DEG     = 15.0f; // approximate critical AoA
+// STALL -- AoA = pitch - surfaceVelocityPitch (degrees). Cross-panel aligned with the
+// InfoDisp aircraft EADI AoA arc via KCMk1_SystemConfig (KCM_AOA_STALL_DEG = "beyond
+// stall AoA" red tier), so the display and the aural stall point are identical.
+static const float STALL_AOA_DEG     = KCM_AOA_STALL_DEG;
 static const float STALL_MIN_SPEED_MS= 10.0f; // ignore near-zero airspeed noise
 
-// Takeoff-roll speed callouts (m/s) -- set to the vessel you fly.
-static const float V1_SPEED_MS       = 70.0f;
-static const float VR_SPEED_MS        = 80.0f;
+// Takeoff-roll speed callouts (m/s). KSP planes vary widely: the common rule of thumb
+// is to rotate (nose up) around ~50 m/s, and typical liftoff runs ~40-110 m/s
+// depending on the design (light STOL low, heavy jets high). Defaults sit mid-band --
+// SET THESE to the plane you fly. V1 is just below rotation.
+static const float V1_SPEED_MS       = 55.0f;   // ~107 kt
+static const float VR_SPEED_MS       = 65.0f;   // ~126 kt (rotate)
 
 // General.
 static const float DESCENT_DEADBAND_MS = 0.1f;

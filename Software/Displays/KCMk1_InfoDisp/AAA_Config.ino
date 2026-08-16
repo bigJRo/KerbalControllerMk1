@@ -67,9 +67,10 @@ const float GEAR_MAX_SPEED_MS = 160.0f;
 const float ROLL_WARN_DEG  = 60.0f;   // yellow — steep bank
 const float ROLL_ALARM_DEG = 90.0f;   // white-on-red — inverted / structural risk
 
-// AoA thresholds (degrees absolute)
-const float AOA_WARN_DEG  = 10.0f;   // yellow — approaching stall AoA
-const float AOA_ALARM_DEG = 20.0f;   // white-on-red — beyond stall AoA
+// AoA thresholds (degrees absolute) — cross-panel aligned with the Annunciator GPWS
+// STALL callout via KCMk1_SystemConfig.h (same "stall AoA" on both panels).
+const float AOA_WARN_DEG  = KCM_AOA_WARN_DEG;   // yellow — approaching stall AoA
+const float AOA_ALARM_DEG = KCM_AOA_STALL_DEG;  // white-on-red — beyond stall AoA (GPWS STALL point)
 
 // Sideslip thresholds (degrees absolute)
 const float SLIP_WARN_DEG  = 5.0f;   // yellow
