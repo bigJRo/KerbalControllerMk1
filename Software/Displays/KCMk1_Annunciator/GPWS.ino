@@ -262,7 +262,11 @@ static const uint32_t GEARUP_DELAY_MS = 6000;   // ~6 s after liftoff
 //     the SAME metric as the C&W GROUND PROX lamp (KCM_GROUND_PROX_S), so the voice
 //     callout and the annunciator lamp stay consistent across the panel.
 static const float LANDER_TIMP_S       = KCM_GROUND_PROX_S;  // 10 s to impact
-static const float LANDER_SINK_MIN_MS  = 2.0f;   // ignore crawling descents
+// Descent-rate floor: below this a touchdown is comfortably survivable, so SINK RATE
+// stays silent even inside the time-to-impact window. Stock KSP landing legs (LT-05 /
+// LT-1 / LT-2) all fail at ~12 m/s impact, so 6 m/s is a 2x safety margin and about
+// the usual "gentle landing" target (the KSP_GPWS mod uses a 5 m/s touchdown ref).
+static const float LANDER_SINK_FLOOR_MS = 6.0f;
 //   HORIZONTAL SPEED -- lateral speed too high for height (tip-over / skid risk). The
 //     limit ramps with altitude: hLimit = HSPEED_FRAC * (alt + HSPEED_BASE_M).
 static const float HSPEED_CEIL_M       = 400.0f;
@@ -460,8 +464,10 @@ void gpwsSetup() {
    LANDER / ROCKET PROFILE  -- run for any vessel type that is not type_Plane.
 
    A vertical-landing aid rather than the aircraft EGPWS suite. Callouts:
-     SINK RATE        -- time-to-impact (alt / |vertical speed|) under LANDER_TIMP_S,
-                         the same metric as the C&W GROUND PROX lamp.
+     SINK RATE        -- time-to-impact (alt / |vertical speed|) under LANDER_TIMP_S
+                         AND descending faster than LANDER_SINK_FLOOR_MS (a gentle,
+                         leg-survivable touchdown stays silent). Time-to-impact shares
+                         the C&W GROUND PROX metric so the voice and lamp agree.
      HORIZONTAL SPEED -- lateral speed above an altitude-ramped limit (tip-over risk).
      RETARD           -- thrust still commanded in the final descent.
      altitude callouts-- METRE ladder (rockets think in metres); + the bug TONE.
@@ -518,7 +524,7 @@ static void gpwsUpdateLander() {
 
   // --- Conditions ---
   float tImp     = (vs > 0.01f) ? (alt / vs) : 1e9f;
-  bool sinkCond  = warningsOn && airDesc && vs > LANDER_SINK_MIN_MS && tImp < LANDER_TIMP_S;
+  bool sinkCond  = warningsOn && airDesc && vs > LANDER_SINK_FLOOR_MS && tImp < LANDER_TIMP_S;
   float hLimit   = HSPEED_FRAC * (alt + HSPEED_BASE_M);
   bool hspdCond  = warningsOn && airDesc && alt < HSPEED_CEIL_M &&
                    hspd > HSPEED_MIN_MS && hspd > hLimit;

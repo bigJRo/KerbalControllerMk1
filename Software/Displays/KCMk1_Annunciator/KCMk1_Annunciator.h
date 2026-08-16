@@ -280,7 +280,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 4;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.4.0: GPWS gains a vessel-type-selected lander/rocket profile (SINK RATE via the shared GROUND-PROX time-to-impact metric, HORIZONTAL SPEED [clip 33], RETARD, metre altitude callouts); type_Plane keeps the aircraft suite, any other type runs the lander profile
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.4.1: lander SINK RATE gains a descent-rate floor (LANDER_SINK_FLOOR_MS = 6 m/s, ~half the ~12 m/s stock landing-leg impact tolerance) so a gentle, leg-survivable touchdown stays silent
 
 
 /***************************************************************************************
