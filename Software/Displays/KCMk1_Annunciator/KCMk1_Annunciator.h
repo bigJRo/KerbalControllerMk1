@@ -16,6 +16,11 @@
 #include <KerbalSimpit.h>
 #include <KCMk1_SystemConfig.h>   // shared hardware/threshold constants (KCMk1_SystemConfig library)
 
+// Forward declaration for GPWS.ino's ladder-rung struct. GpwsRung is fully defined in
+// GPWS.ino, but the Arduino builder injects gpwsCrossed()'s prototype at the top of the
+// combined sketch (before that definition); this makes the type name resolve there.
+struct GpwsRung;
+
 
 /***************************************************************************************
    CONTROL MODE ENUM
@@ -78,6 +83,17 @@ struct AppState {
 
   // G-forces
   float gForces = 0.0f;
+
+  // Attitude -- degrees (ROTATION_DATA). roll drives the GPWS bank-angle callout
+  // (Mode 6); pitch and surfaceVelocityPitch give the GPWS STALL AoA proxy
+  // (angle of attack = pitch - srfVelPitch). roll range approx -180..180.
+  float roll        = 0.0f;
+  float pitch       = 0.0f;
+  float srfVelPitch = 0.0f;   // surface-velocity (flight-path) pitch
+
+  // Target (TARGETINFO) -- used by the GPWS rendezvous-radar distance callouts.
+  float tgtDistance = 0.0f;  // metres to target (0 = no/unknown target)
+  float tgtVelocity = 0.0f;  // closing speed (m/s)
 
   // Resources -- electric charge
   float EC       = 0.0f;
@@ -268,8 +284,8 @@ enum ChuteEnvState : uint8_t {
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.1.1: KC-01-1911 V2.1 audio — PAM8302A amp (TONE 29, EN 30), DFPlayer BUSY 11; requires KerbalDisplayAudio >= 1.3.0
+static const uint8_t SKETCH_VERSION_MINOR = 5;
+static const uint8_t SKETCH_VERSION_PATCH = 2;  // 3.5.2: build fix -- forward-declare GpwsRung in this header so the Arduino auto-generated prototype for gpwsCrossed() (injected above GPWS.ino's struct definition) resolves the type; no behaviour change
 
 
 /***************************************************************************************
@@ -343,6 +359,9 @@ extern const float  TACLS_OXYGEN_ALARM_S;   // red:    10 minutes
 extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
 extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
+// GPWS function tunables now live locally in GPWS.ino (TUNABLES block) so the whole
+// envelope definition stays in one place -- no AAA_Config externs needed.
+
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;
 extern TouchResult   lastTouch;
@@ -391,6 +410,14 @@ extern PrintState psSOIRows[];
 void setupI2CSlave();
 void buildI2CPacketAndAssert();
 void updateI2CState();
+
+// GPWS function (GPWS.ino) -- ground proximity voice callouts on the DFPlayer.
+// gpwsSetConfig() is called from I2CSlave.ino with the GPWS Input panel state byte
+// (bits1:0=mode, bit2=proxAlarm, bit3=rdvRadar) and int16 altitude threshold (m).
+void gpwsSetup();
+void gpwsUpdate();
+void gpwsSetConfig(uint8_t cfgByte, int16_t thresholdM);
+void gpwsReset();
 
 // Screen navigation -- always use this instead of setting activeScreen directly.
 void switchToScreen(ScreenType s);

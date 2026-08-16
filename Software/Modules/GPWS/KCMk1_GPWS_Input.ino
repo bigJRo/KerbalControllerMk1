@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_GPWS_Input.ino
- * @version     2.0.0
+ * @version     2.1.0
  * @date        2026-04-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
@@ -23,10 +23,13 @@
  *                           State 0 (BACKLIT): GPWS off, display blank
  *                           State 1 (GREEN):   Full GPWS active
  *                           State 2 (AMBER):   Proximity tone only
- *                BTN02 — Proximity Alarm — toggle (BACKLIT ↔ GREEN)
- *                           Pressing while BTN01=ACTIVE forces BTN01→PROX
- *                           and sets proximity alarm active.
- *                BTN03 — Rendezvous Radar — toggle (BACKLIT ↔ GREEN)
+ *                BTN02 — Proximity Alarm — amber submode (BACKLIT ↔ GREEN)
+ *                           Pressing forces BTN01→PROX (amber) and sets proximity
+ *                           alarm active. Mutually exclusive with BTN03 (rendezvous
+ *                           radar) — turning one on clears the other.
+ *                BTN03 — Rendezvous Radar — amber submode (BACKLIT ↔ GREEN)
+ *                           Mirror of BTN02: pressing forces BTN01→PROX (amber) and
+ *                           sets rendezvous radar active, clearing proximity alarm.
  *                BTN_EN — Encoder pushbutton — resets threshold to
  *                           DEFAULT_VALUE (200m)
  *
@@ -378,35 +381,49 @@ void loop() {
         _sendPacket = true;
     }
 
-    // ── BTN02 — Proximity Alarm (toggle) ─────────────────────
+    // ── BTN02 — Proximity Alarm (amber submode) ──────────────
+    // proxAlarm and rendezvous radar are the two mutually-exclusive amber submodes:
+    // pressing either forces BTN01 to PROX (amber) and clears the other. In the
+    // annunciator these select the altitude-callout (prox) vs target-distance (rdv)
+    // audio profile. Pressing BTN02 again while already in that submode clears it
+    // (back to a bare amber PROX). BTN02/BTN03 are handled identically.
     if (inputState.buttonPressed & (1 << BTN_PROX)) {
         if (_gpwsMode == GPWS_ACTIVE) {
-            // Force BTN01 to PROX mode and activate proximity alarm
-            _gpwsMode   = GPWS_PROX;
+            _gpwsMode   = GPWS_PROX;   // force amber
             _proxActive = true;
+            _rdvActive  = false;       // mutual exclusion
             renderLEDs();
             _pktEvents |= (1 << BTN_PROX);
-            _pktChange |= (1 << BTN_PROX);
+            _pktChange |= (1 << BTN_PROX) | (1 << BTN_RDV);
             _sendPacket = true;
         } else if (_gpwsMode == GPWS_PROX) {
             _proxActive = !_proxActive;
-            setLED(BTN_PROX, _proxActive ? LED_GREEN : LED_BACKLIT);
-            buttonsShow();
+            if (_proxActive) _rdvActive = false;   // turning prox on clears rdv
+            renderLEDs();
             _pktEvents |= (1 << BTN_PROX);
-            _pktChange |= (1 << BTN_PROX);
+            _pktChange |= (1 << BTN_PROX) | (1 << BTN_RDV);
             _sendPacket = true;
         }
         // GPWS_OFF — ignore entirely, no packet
     }
 
-    // ── BTN03 — Rendezvous Radar (toggle) ────────────────────
+    // ── BTN03 — Rendezvous Radar (amber submode) ─────────────
+    // Mirror of BTN02: forces amber and is mutually exclusive with proxAlarm.
     if (inputState.buttonPressed & (1 << BTN_RDV)) {
-        if (_gpwsMode != GPWS_OFF) {
-            _rdvActive = !_rdvActive;
-            setLED(BTN_RDV, _rdvActive ? LED_GREEN : LED_BACKLIT);
-            buttonsShow();
+        if (_gpwsMode == GPWS_ACTIVE) {
+            _gpwsMode   = GPWS_PROX;   // force amber
+            _rdvActive  = true;
+            _proxActive = false;       // mutual exclusion
+            renderLEDs();
             _pktEvents |= (1 << BTN_RDV);
-            _pktChange |= (1 << BTN_RDV);
+            _pktChange |= (1 << BTN_RDV) | (1 << BTN_PROX);
+            _sendPacket = true;
+        } else if (_gpwsMode == GPWS_PROX) {
+            _rdvActive = !_rdvActive;
+            if (_rdvActive) _proxActive = false;   // turning rdv on clears prox
+            renderLEDs();
+            _pktEvents |= (1 << BTN_RDV);
+            _pktChange |= (1 << BTN_RDV) | (1 << BTN_PROX);
             _sendPacket = true;
         }
         // GPWS_OFF — ignore entirely, no packet

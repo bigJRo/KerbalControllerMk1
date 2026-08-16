@@ -136,6 +136,10 @@ const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowe
 const float CW_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rip q (Pa)
 const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa)
 
+// GPWS function tunables were moved into GPWS.ino (its TUNABLES block) so the whole
+// aviation-faithful envelope definition (Mode 1/2/3/4/6 boundaries, callout ladders,
+// cadences) stays in one reviewable place. Nothing GPWS-related lives here now.
+
 /***************************************************************************************
    TAC LIFE SUPPORT CONSUMPTION RATES
    Source: TacLifeSupport source code (GlobalSettings.cs), units per Earth second per Kerbal.

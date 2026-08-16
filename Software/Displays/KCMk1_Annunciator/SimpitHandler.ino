@@ -7,7 +7,7 @@
 
    Channels subscribed:
      VESSEL_NAME, SOI, FLIGHT_STATUS, TEMP_LIMIT, ACTIONSTATUS,
-     ALTITUDE, VELOCITY, AIRSPEED, APSIDES,
+     ALTITUDE, VELOCITY, AIRSPEED, ROTATION_DATA, TARGETINFO, APSIDES,
      DELTAV, BURNTIME,
      ATMO_CONDITIONS,
      ELECTRIC,
@@ -53,6 +53,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case ALTITUDE_MESSAGE:        msgName = "ALTITUDE";        break;
       case VELOCITY_MESSAGE:        msgName = "VELOCITY";        break;
       case AIRSPEED_MESSAGE:        msgName = "AIRSPEED";        break;
+      case ROTATION_DATA_MESSAGE:   msgName = "ROTATION_DATA";   break;
+      case TARGETINFO_MESSAGE:      msgName = "TARGETINFO";      break;
       case APSIDES_MESSAGE:         msgName = "APSIDES";         break;
       case DELTAV_MESSAGE:          msgName = "DELTAV";          break;
       case BURNTIME_MESSAGE:        msgName = "BURNTIME";        break;
@@ -172,6 +174,28 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.apoapsis  = a.apoapsis;
         state.periapsis = a.periapsis;  // now stored for CW_PE_LOW
         updateCautionWarningState();
+      }
+      break;
+
+    case ROTATION_DATA_MESSAGE:
+      // Vessel attitude for the GPWS bank-angle (roll) and STALL AoA (pitch minus
+      // surface-velocity pitch) callouts. Does not affect C&W, so no
+      // updateCautionWarningState() call -- GPWS reads these directly in gpwsUpdate().
+      if (msgSize == sizeof(vesselPointingMessage)) {
+        vesselPointingMessage r = parseMessage<vesselPointingMessage>(msg);
+        state.roll        = r.roll;
+        state.pitch       = r.pitch;
+        state.srfVelPitch = r.surfaceVelocityPitch;
+      }
+      break;
+
+    case TARGETINFO_MESSAGE:
+      // Target range/closing speed for the GPWS rendezvous-radar distance callouts.
+      // Does not affect C&W -- GPWS reads state.tgtDistance directly.
+      if (msgSize == sizeof(targetMessage)) {
+        targetMessage t = parseMessage<targetMessage>(msg);
+        state.tgtDistance = t.distance;
+        state.tgtVelocity = t.velocity;
       }
       break;
 
@@ -299,12 +323,14 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
                                     ? F("Annunciator: Entering flight scene")
                                     : F("Annunciator: Leaving flight scene"));
       if (flightScene) {
+        gpwsReset();   // reseed GPWS crossing tracker for the new flight
         switchToScreen(screen_Main);
         // Request immediate refresh on all subscribed channels so static values
         // (full tanks, stable orbit, etc.) populate without waiting for a change event.
         simpit.requestMessageOnChannel(0);
       } else {
         if (audioEnabled) audioSilence();
+        gpwsReset();   // hush any GPWS callout on leaving the flight scene
         resetDisplays();
         // invalidateAllState() is idempotent (every field derives from state.*/
         // chuteEnvState, never from prev.*), so switchToScreen() calling it again
@@ -318,6 +344,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("Annunciator: Vessel switch"));
         if (audioEnabled) audioSilence();
+        gpwsReset();   // flush GPWS callouts/crossing tracker for the new vessel
         resetDisplays();
         switchToScreen(activeScreen);
         prevScreen = screen_COUNT;
@@ -364,6 +391,8 @@ void initSimpit() {
   simpit.registerChannel(ALTITUDE_MESSAGE);
   simpit.registerChannel(VELOCITY_MESSAGE);
   simpit.registerChannel(AIRSPEED_MESSAGE);
+  simpit.registerChannel(ROTATION_DATA_MESSAGE);   // vessel attitude -- roll for GPWS bank angle
+  simpit.registerChannel(TARGETINFO_MESSAGE);      // target range for GPWS rendezvous callouts
   simpit.registerChannel(APSIDES_MESSAGE);
   simpit.registerChannel(DELTAV_MESSAGE);
   simpit.registerChannel(BURNTIME_MESSAGE);

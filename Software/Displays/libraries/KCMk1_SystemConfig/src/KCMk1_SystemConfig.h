@@ -179,6 +179,11 @@
 #define KCM_TEMP_ALARM_PCT          90    // CW_HIGH_TEMP (tempAlarm) — core/skin temp % of limit
 #define KCM_EC_LOW_ALARM_FRAC     0.05f   // CW_BUS_VOLTAGE (CW_EC_LOW_FRAC) — electric charge fraction
 #define KCM_RES_LOW_WARN_FRAC     0.20f   // CW_PROP_LOW / CW_RCS_LOW yellow tier — generic "resource low" warn
+// Angle of attack (degrees absolute). AoA = pitch - surfaceVelocityPitch. Shared by
+// the InfoDisp aircraft EADI AoA arc (AOA_WARN_DEG / AOA_ALARM_DEG) and the Annunciator
+// GPWS STALL callout so the "stall" point is identical on both panels.
+#define KCM_AOA_WARN_DEG          10.0f   // AOA_WARN_DEG  — approaching stall AoA (yellow)
+#define KCM_AOA_STALL_DEG         20.0f   // AOA_ALARM_DEG / GPWS STALL — beyond stall AoA (red)
 
 // Chute deployment limits as dynamic pressure q = 0.5*airDensity*v^2 (Pa). A chute's
 // structural limit is a q (force) limit and is body-independent; expressing it as q

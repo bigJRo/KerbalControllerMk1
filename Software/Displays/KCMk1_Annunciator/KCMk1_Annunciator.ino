@@ -13,6 +13,7 @@
     ScreenStandby.ino  -- standby screen static chrome and update pass
     TouchEvents.ino    -- touch debounce and gesture dispatch (processTouchEvents)
     Audio.ino          -- master alarm condition tracking (ALARM_* bits, updateAlarmMask) and audio wiring notes
+    GPWS.ino           -- Ground Proximity Warning System voice callouts on the DFPlayer (gpwsSetup/gpwsUpdate/gpwsSetConfig/gpwsReset)
     Demo.ino           -- demo mode animation (stepDemoState, initDemoMode)
     TestMode.ino       -- serial-driven logic and display test framework
     I2CSlave.ino       -- I2C slave interface to KCMk1 master (Teensy 4.1) at address 0x10
@@ -52,6 +53,7 @@ void setup() {
   setupTouch();
   bool touchOK = probeTouch();  // FT5316 I2C ACK probe
   setupAudio();
+  gpwsSetup();
   setupI2CSlave();
 
   bootSimText(infoDisp, sdOK, touchOK);
@@ -92,6 +94,9 @@ void loop() {
 
   // --- Audio timing ---
   updateAudio();
+
+  // --- GPWS voice callouts (DFPlayer) ---
+  gpwsUpdate();
 
   // --- I2C slave state update ---
   updateI2CState();

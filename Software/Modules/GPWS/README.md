@@ -42,8 +42,8 @@ The GPWS Input Panel allows the pilot to configure ground proximity warning syst
 | Button | Pin | Function | Behaviour | Colours |
 |---|---|---|---|---|
 | BTN01 | PA1 | GPWS Enable | 3-state cycle | BACKLIT → GREEN → AMBER → BACKLIT |
-| BTN02 | PC2 | Proximity Alarm | Toggle | BACKLIT ↔ GREEN |
-| BTN03 | PC1 | Rendezvous Radar | Toggle | BACKLIT ↔ GREEN |
+| BTN02 | PC2 | Proximity Alarm | Amber submode | BACKLIT ↔ GREEN |
+| BTN03 | PC1 | Rendezvous Radar | Amber submode | BACKLIT ↔ GREEN |
 | BTN_EN | PB3 | Reset Threshold | Momentary | No LED — resets display to 200m |
 
 ### BTN01 State Meanings
@@ -54,9 +54,11 @@ The GPWS Input Panel allows the pilot to configure ground proximity warning syst
 | 1 | GREEN | Full GPWS active — warning at threshold |
 | 2 | AMBER | Proximity tone only |
 
-### BTN02 Special Behaviour
+### BTN02 / BTN03 Special Behaviour — amber submodes
 
-Pressing BTN02 while BTN01 is in state 1 (GREEN / full GPWS) forces BTN01 to state 2 (AMBER / proximity only) and simultaneously activates the proximity alarm. Both changes are reported in the same packet.
+Proximity Alarm (BTN02) and Rendezvous Radar (BTN03) are the two **mutually-exclusive amber submodes**. Pressing either while BTN01 is GREEN (full GPWS) forces BTN01 to state 2 (AMBER) and activates that flag while clearing the other; pressing it again while amber clears the flag (bare amber). Turning one on always clears the other. All affected changes are reported in the same packet (both BTN02 and BTN03 change bits set).
+
+On the annunciator these select the amber audio profile: **Proximity Alarm → altitude callouts + MINIMUMS + threshold tone**; **Rendezvous Radar → target-distance callouts + threshold tone** (the encoder threshold is read as a target range in metres instead of an altitude). GREEN remains full GPWS: all warning modes plus the altitude callouts.
 
 ### INT Suppression
 
@@ -197,6 +199,7 @@ Flight scene exit / serial loss → DISABLE → all dark, defaults reset
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.1.0 | 2026-08-16 | BTN02 (Proximity Alarm) and BTN03 (Rendezvous Radar) are now the two mutually-exclusive amber submodes: pressing either forces BTN01 to AMBER and clears the other. On the annunciator, Proximity Alarm selects altitude callouts + MINIMUMS and Rendezvous Radar selects target-distance callouts, both using the encoder threshold as a bug (tone on crossing). No packet-format change — same 8-byte packet and state-byte layout. |
 | 2.0.0 | 2026-04-28 | Complete rewrite for Kerbal7SegmentCore v2.0.0. All application logic moved to sketch. Library is now hardware interface only. Encoder acceleration sketch-implemented. INT suppression redesigned. Vessel switch is a no-op. |
 | 1.1.0 | 2026-04-27 | Updated for Kerbal7SegmentCore v1.1.0 |
 | 1.0 | 2026-04-08 | Initial release |
