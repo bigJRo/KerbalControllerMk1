@@ -5,8 +5,17 @@
    An aviation-faithful GPWS + callout suite that runs entirely on the Annunciator's
    Teensy 4.1. It watches the Simpit telemetry in `state` (surface altitude ~ radio
    altitude, vertical speed, surface speed, gear, situation, roll, pitch, surface-
-   velocity pitch, and target range) and speaks callouts through the DFPlayer Mini on
-   the 7" board (Serial2). It is INDEPENDENT of the tone() master-alarm state machine.
+   velocity pitch, throttle, and target range) and speaks callouts through the DFPlayer
+   Mini on the 7" board (Serial2). It is INDEPENDENT of the tone() master-alarm machine.
+
+   TWO PROFILES, selected by vessel type:
+     type_Plane          -> the full EGPWS aircraft suite documented below.
+     anything else        -> the vertical-landing (lander/rocket) profile in
+     (rocket/lander/probe)   gpwsUpdateLander(): SINK RATE (time-to-impact, shared with
+                             the C&W GROUND PROX metric), HORIZONTAL SPEED, RETARD, and
+                             a METRE altitude ladder + bug tone. Grounded vessels are
+                             silent (every lander warning needs airborne + descending).
+   The rest of this header describes the aircraft profile.
 
    CONTROL MODEL (mode/flags relayed from the GPWS Input panel over I2C)
      OFF                      -> silent.
@@ -123,6 +132,7 @@ static KCM_DFPlayer gpwsDfp(KCM_DFPLAYER_SERIAL);
 #define GPWS_CLIP_10           30    // "TEN"
 #define GPWS_CLIP_5            31    // "FIVE"
 #define GPWS_CLIP_GEAR_UP     32    // "GEAR UP" / "LANDING GEAR" (retract-gear reminder)
+#define GPWS_CLIP_HORIZ_SPD   33    // "HORIZONTAL SPEED" (lander profile)
 
 
 /***************************************************************************************
@@ -157,6 +167,13 @@ static const GpwsRung DIST_LADDER[] = {  // target range, metres
   {  20.0f, GPWS_CLIP_20  }, {  10.0f, GPWS_CLIP_10  }, {   5.0f, GPWS_CLIP_5   },
 };
 static const uint8_t DIST_LADDER_COUNT = sizeof(DIST_LADDER) / sizeof(DIST_LADDER[0]);
+
+static const GpwsRung LAND_LADDER[] = {  // lander profile: altitude AGL, METRES
+  { 2500.0f, GPWS_CLIP_2500 }, { 1000.0f, GPWS_CLIP_1000 }, { 500.0f, GPWS_CLIP_500 },
+  {  100.0f, GPWS_CLIP_100  }, {   50.0f, GPWS_CLIP_50   }, {  40.0f, GPWS_CLIP_40  },
+  {   30.0f, GPWS_CLIP_30   }, {   20.0f, GPWS_CLIP_20   }, {  10.0f, GPWS_CLIP_10  },
+};
+static const uint8_t LAND_LADDER_COUNT = sizeof(LAND_LADDER) / sizeof(LAND_LADDER[0]);
 
 
 /***************************************************************************************
@@ -238,6 +255,22 @@ static const float VR_SPEED_MS       = 65.0f;   // ~126 kt (rotate)
 // takeoff. Spoken once per takeoff. Not a classic EGPWS callout (borrowed from the
 // KSP_GPWS mod); requires a positive vertical speed so it doesn't fire in the flare.
 static const uint32_t GEARUP_DELAY_MS = 6000;   // ~6 s after liftoff
+
+// Lander / rocket profile (any vessel type that is NOT type_Plane). Self-guarding:
+// every warning requires airborne + descending, so grounded rovers/stations are silent.
+//   SINK RATE -- time-to-impact (alt / |vertical speed|) under LANDER_TIMP_S. This is
+//     the SAME metric as the C&W GROUND PROX lamp (KCM_GROUND_PROX_S), so the voice
+//     callout and the annunciator lamp stay consistent across the panel.
+static const float LANDER_TIMP_S       = KCM_GROUND_PROX_S;  // 10 s to impact
+static const float LANDER_SINK_MIN_MS  = 2.0f;   // ignore crawling descents
+//   HORIZONTAL SPEED -- lateral speed too high for height (tip-over / skid risk). The
+//     limit ramps with altitude: hLimit = HSPEED_FRAC * (alt + HSPEED_BASE_M).
+static const float HSPEED_CEIL_M       = 400.0f;
+static const float HSPEED_FRAC         = 0.20f;
+static const float HSPEED_BASE_M       = 5.0f;
+static const float HSPEED_MIN_MS       = 2.0f;
+//   RETARD -- cut thrust in the final descent (throttle still commanded, very low).
+static const float LANDER_RETARD_ALT_M = 15.0f;
 
 // General.
 static const float DESCENT_DEADBAND_MS = 0.1f;
@@ -321,6 +354,12 @@ static bool     _rotateDone   = false;   // ROTATE spoken this takeoff roll
 static uint32_t _takeoffMs    = 0;       // millis() at liftoff (0 = no takeoff seen this scene)
 static bool     _gearUpDone   = false;   // GEAR UP reminder spoken this takeoff
 
+// Lander-profile cadence latches.
+static bool     _lsinkActive  = false;
+static uint32_t _lastLsinkMs  = 0;
+static bool     _hspdActive   = false;
+static uint32_t _lastHspdMs   = 0;
+
 
 /***************************************************************************************
    HELPERS
@@ -379,6 +418,7 @@ static void gpwsClearLatches() {
   _stallActive = false; _retardActive = false;
   _v1Done = false; _rotateDone = false;
   _takeoffMs = 0; _gearUpDone = false;
+  _lsinkActive = false; _hspdActive = false;
 }
 
 
@@ -417,6 +457,131 @@ void gpwsSetup() {
 
 
 /***************************************************************************************
+   LANDER / ROCKET PROFILE  -- run for any vessel type that is not type_Plane.
+
+   A vertical-landing aid rather than the aircraft EGPWS suite. Callouts:
+     SINK RATE        -- time-to-impact (alt / |vertical speed|) under LANDER_TIMP_S,
+                         the same metric as the C&W GROUND PROX lamp.
+     HORIZONTAL SPEED -- lateral speed above an altitude-ramped limit (tip-over risk).
+     RETARD           -- thrust still commanded in the final descent.
+     altitude callouts-- METRE ladder (rockets think in metres); + the bug TONE.
+   Every warning requires airborne + descending, so grounded vessels stay silent.
+   Priority (high -> low): SINK RATE > HORIZONTAL SPEED > bug TONE > RETARD > callouts.
+****************************************************************************************/
+static void gpwsUpdateLander() {
+  bool warningsOn   = (_gpwsMode == GPWS_MODE_ACTIVE);
+  bool altCallouts  = (_gpwsMode == GPWS_MODE_ACTIVE) ||
+                      (_gpwsMode == GPWS_MODE_PROX && !_gpwsRdvRadar);
+  bool distCallouts = (_gpwsMode == GPWS_MODE_PROX && _gpwsRdvRadar);
+
+  uint8_t sit  = state.vesselSituationState;
+  bool isAloft = bitRead(sit, VSIT_FLIGHT)  || bitRead(sit, VSIT_SUBORBIT) ||
+                 bitRead(sit, VSIT_ORBIT)   || bitRead(sit, VSIT_ESCAPE);
+  float alt   = state.alt_surf;
+  float vv    = state.vel_vert;
+  float vs    = fabsf(vv);
+  bool descending = (vv < -DESCENT_DEADBAND_MS);
+  bool airDesc = isAloft && descending && alt > 0.0f;
+  float h2    = state.vel_surf * state.vel_surf - vv * vv;   // horizontal speed^2
+  float hspd  = (h2 > 0.0f) ? sqrtf(h2) : 0.0f;
+  float thr   = (float)_gpwsThreshold;
+  bool thrOK  = gpwsThresholdValid();
+
+  uint32_t now = millis();
+  bool busy = _busyAttached && gpwsDfp.isPlaying();
+
+  // --- Ladder trackers (re-seed on jump; bump up while climbing / range opening) ---
+  if (_prevAlt < 0.0f || fabsf(alt - _prevAlt) > ALT_JUMP_M) _prevAlt = alt;
+  if (alt > _prevAlt) _prevAlt = alt;
+
+  float dist = state.tgtDistance;
+  bool tgtValid = (dist > TGT_MIN_M);
+  if (!tgtValid) { _prevDist = -1.0f; _tonePrevDist = -1.0f; }
+  else {
+    if (_prevDist < 0.0f || fabsf(dist - _prevDist) > DIST_JUMP_M) _prevDist = dist;
+    if (dist > _prevDist) _prevDist = dist;
+  }
+
+  // --- Bug-tone crossing (altitude or range). No spoken MINIMUMS in this profile. ---
+  if (altCallouts && thrOK && airDesc) {
+    if (_tonePrevAlt < 0.0f || fabsf(alt - _tonePrevAlt) > ALT_JUMP_M) _tonePrevAlt = alt;
+    if (_tonePrevAlt > thr && alt <= thr) _tonePending = true;
+    _tonePrevAlt = alt;
+  } else if (!distCallouts) {
+    _tonePrevAlt = -1.0f;
+  }
+  if (distCallouts && thrOK && tgtValid) {
+    if (_tonePrevDist < 0.0f || fabsf(dist - _tonePrevDist) > DIST_JUMP_M) _tonePrevDist = dist;
+    if (_tonePrevDist > thr && dist <= thr) _tonePending = true;
+    _tonePrevDist = dist;
+  }
+
+  // --- Conditions ---
+  float tImp     = (vs > 0.01f) ? (alt / vs) : 1e9f;
+  bool sinkCond  = warningsOn && airDesc && vs > LANDER_SINK_MIN_MS && tImp < LANDER_TIMP_S;
+  float hLimit   = HSPEED_FRAC * (alt + HSPEED_BASE_M);
+  bool hspdCond  = warningsOn && airDesc && alt < HSPEED_CEIL_M &&
+                   hspd > HSPEED_MIN_MS && hspd > hLimit;
+  // RETARD is a callout (sounds in proxAlarm too), like the aircraft profile.
+  bool retardCond= altCallouts && airDesc && alt < LANDER_RETARD_ALT_M && state.throttleCmd > 0;
+  if (!sinkCond)   _lsinkActive  = false;
+  if (!hspdCond)   _hspdActive   = false;
+  if (!retardCond) _retardActive = false;
+
+  // === Priority ladder =========================================================
+
+  // 1: SINK RATE (excessive descent for landing).
+  if (sinkCond) {
+    if (!busy && (!_lsinkActive || (now - _lastLsinkMs) >= SINK_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_SINK_RATE); _lastLsinkMs = now; _lsinkActive = true;
+    }
+    return;
+  }
+
+  // 2: HORIZONTAL SPEED.
+  if (hspdCond) {
+    if (!busy && (!_hspdActive || (now - _lastHspdMs) >= SINK_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_HORIZ_SPD); _lastHspdMs = now; _hspdActive = true;
+    }
+    return;
+  }
+
+  // 3: bug TONE (threshold marker).
+  if (_tonePending) {
+    if (!busy) { gpwsPlay(GPWS_CLIP_TONE); _tonePending = false; }
+    return;
+  }
+
+  // 4: RETARD (cut thrust in the flare).
+  if (retardCond) {
+    if (!busy && (!_retardActive || (now - _lastRetardMs) >= RETARD_GAP_MS)) {
+      gpwsPlay(GPWS_CLIP_RETARD); _lastRetardMs = now; _retardActive = true;
+    }
+    return;
+  }
+
+  // 5: altitude callouts (metres) / distance callouts.
+  if (altCallouts && airDesc && _prevAlt > 0.0f) {
+    uint8_t clip = gpwsCrossed(LAND_LADDER, LAND_LADDER_COUNT, _prevAlt, alt, nullptr, 0, MIN_DEDUP_M);
+    if (clip != 0) {
+      if (!busy) { gpwsPlay(clip); _prevAlt = alt; }
+      return;
+    }
+    _prevAlt = alt;
+  } else if (distCallouts && tgtValid && _prevDist > 0.0f && dist < _prevDist) {
+    uint8_t clip = gpwsCrossed(DIST_LADDER, DIST_LADDER_COUNT, _prevDist, dist, nullptr, 0, MIN_DEDUP_M);
+    if (clip != 0) {
+      if (!busy) { gpwsPlay(clip); _prevDist = dist; }
+      return;
+    }
+    _prevDist = dist;
+  } else {
+    _prevAlt = alt;
+  }
+}
+
+
+/***************************************************************************************
    UPDATE  -- call every loop() pass.
 ****************************************************************************************/
 void gpwsUpdate() {
@@ -427,6 +592,10 @@ void gpwsUpdate() {
     return;
   }
   _gpwsEnabled = true;
+
+  // Profile select: only true aircraft get the full EGPWS aircraft suite below; every
+  // other vessel type (rocket, lander, probe, ...) gets the vertical-landing profile.
+  if (state.vesselType != type_Plane) { gpwsUpdateLander(); return; }
 
   bool warningsOn   = (_gpwsMode == GPWS_MODE_ACTIVE);
   bool altCallouts  = (_gpwsMode == GPWS_MODE_ACTIVE) ||

@@ -279,8 +279,8 @@ enum ChuteEnvState : uint8_t {
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 3;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.3.0: GPWS Mode 2 gains a 2A/2B (clean vs landing-config) envelope split; TOO LOW GEAR inhibited during the initial takeoff climb-out; RETARD gated on commanded throttle; new GEAR UP retract-reminder advisory (clip 32)
+static const uint8_t SKETCH_VERSION_MINOR = 4;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.4.0: GPWS gains a vessel-type-selected lander/rocket profile (SINK RATE via the shared GROUND-PROX time-to-impact metric, HORIZONTAL SPEED [clip 33], RETARD, metre altitude callouts); type_Plane keeps the aircraft suite, any other type runs the lander profile
 
 
 /***************************************************************************************
