@@ -319,10 +319,10 @@ enum KspMarkerKind {
 // Shared attitude-reticle chrome for the MNVR / DOCK / TGT screens. All three draw
 // an identical black disc with four concentric rings (r/4, r/2, 3r/4, r coloured
 // dark-green / dark-grey / dark-grey / grey), cardinal cross with a centre gap, a
-// small nose crosshair, 30° minor ticks, and a two-px bezel. They differ only in
-// the cardinal `gap` (18 for MNVR/DOCK, 16 for TGT) and the minor-tick length
-// `tickLen` (14 for MNVR/DOCK, 10 for TGT). Ring degree LABELS, the legend, and the
-// bottom bar remain per-screen (drawn by the caller after this base).
+// small nose crosshair, 30° minor ticks, and a two-px bezel. All three pass the same
+// cardinal `gap` of 18 and minor-tick length of 14, so their chrome is identical; the
+// re-entry retro ball reuses this base at 12/9 for its smaller disc. Ring degree
+// LABELS, the legend, and the bottom bar remain per-screen (drawn after this base).
 void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
                      int16_t gap, int16_t tickLen);
 

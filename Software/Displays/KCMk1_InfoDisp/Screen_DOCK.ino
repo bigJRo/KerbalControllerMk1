@@ -4,13 +4,13 @@
    LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌────────────────────────────────┬──────────────────────────────────────┐
    │                                │ DIST:         247 m                  │
-   │   Approach Reticle             │ V.CLOSE:    -1.4 m/s                 │
-   │   (black disc, R=170)          │ DRIFT.H:   +0.24 m/s                 │
-   │                                │ DRIFT.V:   -0.04 m/s                 │
-   │   ● velocity vector (green)    │ NOS.BRG:    +12.3°                   │
-   │   ◆ target port (magenta)      │ NOS.ELV:     +8.1°                   │
-   │   + fixed crosshair (grey)     │ RCS: ON      SAS: TARGET             │
-   │                                │ [approach distance bar]              │
+   │   Approach Reticle             │ T+DOCK:       3:42                   │
+   │   (black disc, R=210)          │ V.CLOSE:    -1.4 m/s                 │
+   │                                │ V.LAT:      0.24 m/s                 │
+   │   ● velocity vector (green)    │ V.BRG:       +2.3°                   │
+   │   ◆ target port (magenta)      │ V.ELV:       -1.1°                   │
+   │   + fixed crosshair (grey)     │ NOS.OFF:      8.1°                   │
+   │                                │ [RCS]        [SAS: TARGET]           │
    └────────────────────────────────┴──────────────────────────────────────┘
 
    RETICLE SEMANTICS

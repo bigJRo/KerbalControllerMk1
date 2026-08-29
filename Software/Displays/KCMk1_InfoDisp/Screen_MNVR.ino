@@ -5,7 +5,7 @@
    ┌────────────────────────────────┬──────────────────────────────────────┐
    │                                │ ΔV.Mnvr:      847 m/s                │
    │   Alignment Reticle            │ ΔV.Plan:     1204 m/s               │
-   │   (black disc, R=170)          │ ΔV.Stg:       923 m/s                │
+   │   (black disc, R=210)          │ ΔV.Stg:       923 m/s                │
    │                                │ T+Ign:        4:32                   │
    │   ◆ maneuver marker (blue)     │ T+Mnvr:       5:19                   │
    │   □ green box when aligned     │ Burn dur:     1:47                   │
@@ -18,7 +18,7 @@
    Fixed crosshair  = your nose direction (always at centre)
    Marker (MNVR)    = where the burn vector points relative to your nose.
                       At centre → aligned for the burn.
-   Marker colour    = always maneuver blue (TFT_BLUE).
+   Marker colour    = maneuver blue (TFT_BLUE), half-brightness TFT_NAVY while pinned.
    Alignment box    = neon-green square drawn around diamond when
                       error magnitude < ATT_ERR_WARN_DEG (5°).
    Dimmed marker (TFT_NAVY) = pinned at the scope boundary, i.e. the node is further
@@ -27,9 +27,10 @@
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ─────────────────
-   Centre: (289, 295)  Radius: 225px  Scale: 11.25 px/deg (±20° full scale)
-   Rings: 5°=56px  10°=112px  15°=168px  20°=225px. Centred in the left region
-   x=[0,578]; ΔV bar centred under it.
+   Centre: (289, 300)  Radius: 210px  Scale: 10.5 px/deg (±20° full scale)
+   Rings: 5°=52px  10°=105px  15°=157px  20°=210px. Centred in the left region
+   x=[0,578]; ΔV bar centred under it. Centre/radius are the shared RETICLE_*
+   constants, identical to DOCK and TGT.
 
    PANEL: 360 px wide at x=580 (matches ascent/circ), NR=8 rows of 67 px,
    labels Black_28, values Black_36
@@ -56,16 +57,16 @@ static bool _mnvrChromDrawn  = false;
 // ── Reticle geometry — centred and stretched to fill the left region ─────────────────
 // The readout panel now sits on the far right (x=580, matching the ascent/circ
 // panel), leaving x=[0,578] for the reticle. The reticle is centred in that band
-// and enlarged; the ΔV bar is centred under it.
+// using the shared RETICLE_* constants; the ΔV bar is centred under it.
 static const uint16_t MNVR_CX    = RETICLE_CX;   // centre of the left region x=[0,578]
-static const uint16_t MNVR_CY    = RETICLE_CY;   // nudged down for more whitespace above
-static const uint16_t MNVR_R     = RETICLE_R;    // slightly reduced so top gap grows to ~28 px
+static const uint16_t MNVR_CY    = RETICLE_CY;   // shared disc centre y (DOCK/TGT match)
+static const uint16_t MNVR_R     = RETICLE_R;    // shared disc radius (DOCK/TGT match)
 static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 10.5 px/deg, ±20° full scale
 
-static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 56
-static const uint16_t MNVR_RING_10 = MNVR_R / 2;         // 112
-static const uint16_t MNVR_RING_15 = (MNVR_R * 3) / 4;   // 168
-static const uint16_t MNVR_RING_20 = MNVR_R;             // 225
+static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 52
+static const uint16_t MNVR_RING_10 = MNVR_R / 2;         // 105
+static const uint16_t MNVR_RING_15 = (MNVR_R * 3) / 4;   // 157
+static const uint16_t MNVR_RING_20 = MNVR_R;             // 210
 
 // Marker sizing — diamond and box scaled up with the larger reticle
 static const uint8_t MNVR_MRK_DS  = 26;   // maneuver marker prong length

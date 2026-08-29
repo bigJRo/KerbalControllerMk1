@@ -6,7 +6,7 @@
    │                                 │ ALT.SL:         142.8 km             │
    │   RPOD Scope                    │ V.ORB:         2247.3 m/s            │
    │   (black disc, R=210, ±60°)     │ DIST:           48.3 km             │
-   │                                 │ V.TGT:          124.0 m/s            │
+   │                                 │ V.CLOSE:         -1.4 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
    │   ○ velocity vector (NEON_GREEN)│ V.BRG:  +14.0° │ V.ELV:  -9.0°      │
    │   + nose crosshair (fixed)      │ T+INT:          6m 30s               │
@@ -34,11 +34,11 @@
    MNVR and DOCK reticles.
    Right panel: 360 px at x=580 (matches MNVR/DOCK), labels 28 / values 36
 
-   RIGHT PANEL — 7 rows, rowHFor(7) = 59px each
+   RIGHT PANEL — 7 rows, rowHFor(7) = 76px each
    Row 0  Alt.SL   full-width
    Row 1  V.Orb    full-width
    Row 2  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
-   Row 3  V.Tgt    full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
+   Row 3  V.Close  full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
    Row 4  Brg|Elv  split — bearing and elevation of the target from the NOSE
    Row 5  V.Brg|V.Elv split — approach-path error about the target axis, colour-coded
    Row 6  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
