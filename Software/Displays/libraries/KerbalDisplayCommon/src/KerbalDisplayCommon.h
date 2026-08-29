@@ -3,7 +3,7 @@
 
 #define KDC_VERSION_MAJOR 3
 #define KDC_VERSION_MINOR 5
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library
@@ -560,6 +560,9 @@ struct DispCache {
    Tracks the previous render's pixel width, background colour, and font height so
    the library can draw text first (no blank frame) then clean up trailing pixels from
    a previously wider value, and do a full clear only on background/font changes.
+   Because values are right-aligned, prevWidth also locates the previous value's LEFT
+   edge: printValue starts its clear there, so a value wide enough to have been painted
+   left of the label gap is cleaned up too rather than ghosting a coloured bar.
 
    Breaking change from v1.x: printValue and printDisp now require a PrintState &
    parameter. Callers must declare one PrintState per logical display slot.

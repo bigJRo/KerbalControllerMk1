@@ -1430,27 +1430,40 @@ void printValue(KCM_TFT &tft, const ILI9341_t3_font_t *font,
   }
 
   int16_t  newTextW = getFontStringWidth(font, value.c_str());
-  int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;
-  if (newTextX < regionX) newTextX = regionX;
-  uint16_t newH = (uint16_t)font->cap_height;
+  int16_t  newTextX = x0 + w - newTextW - TEXT_BORDER;   // where textRight will draw
+  uint16_t newH     = (uint16_t)font->cap_height;
 
   bool bgChanged     = (valBack != ps.prevBg)    && (ps.prevBg     != 0x0001);
   bool heightChanged = (newH    != ps.prevHeight) && (ps.prevHeight != 0);
 
-  // Note: callers must size cells so the value fits regionW. A value wider than
-  // the cell is right-aligned by textRight spilling left of regionX; because the
-  // clears below start at regionX (they must not erase the caller's label, which
-  // lives left of regionX), such an overflow cannot be cleaned up and will ghost
-  // when a narrower value replaces it. Keep wide values (e.g. hours-form times)
-  // out of tight cells at the call site.
+  // Clear from where the previous value actually started, not from regionX.
+  // regionX reserves the label plus 1 px on the left, while textRight right-aligns
+  // to x0+w-TEXT_BORDER — the two ends account for TEXT_BORDER asymmetrically, so a
+  // value measuring up to TEXT_BORDER-1 px inside regionW is still painted left of
+  // regionX. Those pixels carry the value's own opaque background, so a clear that
+  // began at regionX left them behind: a narrower value replacing a wider one (e.g.
+  // MNVR "-100°" → "-10°" on a red alarm background) ghosted a coloured bar at the
+  // left edge of the value field.
+  //
+  // Starting the clear at the previous text's left edge repairs exactly the pixels
+  // the previous value painted and nothing more — reaching left of regionX cannot
+  // harm the caller's label, because whatever is there was already overwritten by
+  // that value's background when it was drawn.
+  int16_t prevTextX = (ps.prevHeight != 0)
+                        ? (int16_t)(x0 + w - (int16_t)ps.prevWidth - TEXT_BORDER)
+                        : regionX;
+  int16_t clearX = (prevTextX < regionX) ? prevTextX : regionX;
+  if (clearX < (int16_t)x0 + 1) clearX = (int16_t)x0 + 1;   // never leave the cell
+
   if (bgChanged || heightChanged) {
-    tft.fillRect(regionX, y0 + 1, regionW, h - 2, backColor);
+    tft.fillRect(clearX, y0 + 1, regionX + regionW - clearX, h - 2, backColor);
   }
 
   textRight(tft, font, x0, y0, w, h, value, valColor, valBack);
 
-  if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth) {
-    tft.fillRect(regionX, y0 + 1, newTextX - regionX, h - 2, backColor);
+  if (!bgChanged && !heightChanged && (uint16_t)newTextW < ps.prevWidth &&
+      newTextX > clearX) {
+    tft.fillRect(clearX, y0 + 1, newTextX - clearX, h - 2, backColor);
   }
 
   ps.prevWidth  = (uint16_t)newTextW;

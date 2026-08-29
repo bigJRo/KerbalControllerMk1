@@ -1,6 +1,6 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library** · v3.5.0
+**Kerbal Controller Mk1 — Shared Display Library** · v3.5.1
 UI toolkit for LT7683 (RA8876-compatible) touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
@@ -350,6 +350,7 @@ All colours are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommo
 
 | Version | Notes |
 |---------|-------|
+| **3.5.1** | **`printValue` no longer ghosts a coloured bar when a wide value shrinks.** The value region was cleared from `regionX` (label width + 1 px) while `textRight` right-aligns to `x0+w-TEXT_BORDER`, so the two ends accounted for `TEXT_BORDER` asymmetrically: a value measuring inside `regionW` could still be painted up to `TEXT_BORDER-1` px left of `regionX`, and its opaque background survived every clear. On MNVR that left a red bar at the left edge of `Brg:`/`Elv:` after a three-digit alarm reading was replaced by a two-digit one. The clear now starts at the previous value's own left edge (derived from `PrintState::prevWidth`), which repairs exactly the pixels that value painted — it cannot damage the caller's label, since anything it reaches left of `regionX` was already overwritten when the wide value was drawn. |
 | **3.5.0** | **Off-scale markers are visibly pinned.** A marker beyond full scale was clamped to the boundary and drawn identically to a real reading — on DOCK a port 45° off the nose was pixel-identical to one at 17.3°, across a 146°-wide ambiguous band. `reticleClampDot` now returns whether it clamped, `ReticleDotCache` carries `primaryPinned`/`velPinned`, and a pinned marker is drawn at half brightness in new `TFT_DIM_VIOLET` / `TFT_DIM_NEON_GRN` shades — direction stays honest, and the marker no longer claims a distance it doesn't have. `reticleEraseDot` gained a `restyled` argument (defaulted, so existing calls are unaffected): the pinned transition can move the marker as little as 1 px, which the `>1 px` movement gate swallows, so without it a bright marker could be left drawn while clamped. |
 | **3.4.0** | `ReticleAngles::appBrg`/`appElv` become **`appRight`/`appUp`** — the relative-velocity direction decomposed about the **target** axis (carrying the vessel roll) instead of horizon-frame heading/pitch differences. The old pair inflated with pitch: a 6° approach-path error printed 9.9° at 60° pitch. The new pair is the exact 3D angle and agrees with the on-screen VEL-to-PORT marker gap to within 0.31° inside DOCK's ±20° scale, growing to ~2.9° at TGT's 60° rim. |
 | **3.3.1** | Documented the project-wide rule that every boresight display builds its `KspBodyAxes` with the vessel roll, so screen up is always the craft's roof. The horizon-referenced path (`rollDeg = 0`) now has no caller; kept because it costs nothing and a world-referenced scope could want it. |

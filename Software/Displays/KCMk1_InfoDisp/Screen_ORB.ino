@@ -47,7 +47,9 @@
 
    Right panel — Orbital inclination (INCL):
      Edge-on view. Equatorial plane = dashed horizontal at INC_CY.
-     Orbit line through body centre at angle = inclination.
+     Orbit line through body centre at angle = inclination. Draw order is
+     equator -> body disc -> orbit line, so the line runs unbroken in front of
+     the body — the same "orbit line on top" rule the planar panel follows.
      AN (TFT_CYAN) at upper-right end (matches planar view where AN is east/right).
      DN (TFT_YELLOW) at lower-left end.
      Vessel (TFT_NEON_GREEN) at sin(argPe+nu)*INC_L along the orbit line.
@@ -747,12 +749,14 @@ static void _orbDrawIncl(KCM_TFT &tft, const OrbScene &sc) {
     for (int16_t x = INCL_X0; x < INCL_X1; x += 10)
         tft.drawLine(x, sc.bodyCY, min((int16_t)(x + 6), INCL_X1), sc.bodyCY, TFT_GREY);
 
-    // Orbit line (2px thick)
+    // Body disc, then the orbit line over it. Same draw order as the PLAN panel:
+    // the orbit line is the readout and the body is context, so the line stays
+    // unbroken across the disc instead of being cut into two stubs by it.
+    tft.fillCircle(INC_CX, sc.bodyCY, INC_BR, sc.bodyCol);
+
+    // Orbit line (2px thick) — drawn last so it is in front of the body
     tft.drawLine(s_x, s_y,     n_x, n_y,     sc.orbitCol);
     tft.drawLine(s_x, s_y + 1, n_x, n_y + 1, sc.orbitCol);
-
-    // Body disc on top of orbit line
-    tft.fillCircle(INC_CX, sc.bodyCY, INC_BR, sc.bodyCol);
 
     // N / S labels
     tft.setFont(Roboto_Black_16);
@@ -1304,6 +1308,14 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             // around the old dot. Full-line redraw is cheap for straight lines.
             tft.fillCircle(_inclDotX, _inclDotY, 6, TFT_BLACK);
 
+            // Redraw the body disc if the patch area overlapped it — cheap safety.
+            // Done before the line patch so the repair rebuilds the scene in the
+            // same order _orbDrawIncl draws it (body first, line over it); patching
+            // the line first and the disc second would punch a hole in the line.
+            int dxb = _inclDotX - INC_CX, dyb = _inclDotY - drawSc.bodyCY;
+            if (dxb*dxb + dyb*dyb < (INC_BR + 10) * (INC_BR + 10))
+                tft.fillCircle(INC_CX, drawSc.bodyCY, INC_BR, drawSc.bodyCol);
+
             // Re-draw the local piece of the tilted 2-px line.
             // Project the old dot onto the line parameter to find the local span.
             // Simpler approach: redraw a small segment from (dot-6px) to (dot+6px)
@@ -1319,11 +1331,6 @@ static void drawScreen_ORB(KCM_TFT &tft) {
                 tft.drawLine(a_x, a_y,     b_x, b_y,     drawSc.orbitCol);
                 tft.drawLine(a_x, a_y + 1, b_x, b_y + 1, drawSc.orbitCol);
             }
-
-            // Redraw the body disc if the patch area overlapped it — cheap safety.
-            int dxb = _inclDotX - INC_CX, dyb = _inclDotY - drawSc.bodyCY;
-            if (dxb*dxb + dyb*dyb < (INC_BR + 10) * (INC_BR + 10))
-                tft.fillCircle(INC_CX, drawSc.bodyCY, INC_BR, drawSc.bodyCol);
         }
         if (inclVisible) {
             tft.fillCircle(ivx, ivy, 5, TFT_NEON_GREEN);
