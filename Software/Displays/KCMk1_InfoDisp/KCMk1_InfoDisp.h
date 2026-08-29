@@ -85,7 +85,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 7;   // 1.0.7: off-scale markers dimmed on all three reticles
+static const uint8_t SKETCH_VERSION_PATCH = 8;   // 1.0.8: DOCK carries the same four angle rows as TGT
 
 
 /***************************************************************************************

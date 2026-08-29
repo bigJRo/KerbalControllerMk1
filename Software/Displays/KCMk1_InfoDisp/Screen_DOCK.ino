@@ -7,9 +7,9 @@
    │   Approach Reticle             │ T+DOCK:       3:42                   │
    │   (black disc, R=210)          │ V.CLOSE:    -1.4 m/s                 │
    │                                │ V.LAT:      0.24 m/s                 │
-   │   ● velocity vector (green)    │ V.BRG:       +2.3°                   │
-   │   ◆ target port (magenta)      │ V.ELV:       -1.1°                   │
-   │   + fixed crosshair (grey)     │ NOS.OFF:      8.1°                   │
+   │   ● velocity vector (green)    │ BRG:    +2°  │ ELV:    -1°           │
+   │   ◆ target port (magenta)      │ V.BRG:  +1°  │ V.ELV:  -0°           │
+   │   + fixed crosshair (grey)     │ NOS.OFF:      2.3°                   │
    │                                │ [RCS]        [SAS: TARGET]           │
    └────────────────────────────────┴──────────────────────────────────────┘
 
@@ -43,6 +43,17 @@
    marker ON the magenta PORT marker to fly straight down the approach axis (that gap is
    what V.Brg / V.Elv read out in degrees). Both frames are one and the same when the
    nose is already on the port.
+
+   PANEL: 360 px wide at x=580, NR=8 rows of 67 px, labels Black_28, values Black_36
+   Row 0: Dist            Row 1: T+Dock
+   Row 2: V.Close         Row 3: V.Lat
+   Row 4: Brg | Elv split — the port relative to the nose (informational)
+   Row 5: V.Brg | V.Elv split — approach-path error, colour-banded, "---" past 90°
+   Row 6: Nos.Off — total nose offset from the port, colour-banded
+   Row 7: RCS | SAS buttons (to screen bottom)
+   Rows 4 and 5 mirror TGT exactly, so the same four angles read the same way on both
+   screens. The split cells cannot hold a decimal, so both pairs are whole degrees;
+   V.Lat (m/s, two decimals) is the precision instrument at docking range.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ──────────────────────────────────
@@ -202,16 +213,32 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
     printDispChrome(tft, RP_LBL, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, RP_LBL, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider between V.Lat(3) and V.Brg(4)
+    // Divider between V.Lat(3) and Brg|Elv(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
-    // Rows 4–5: approach path alignment (velocity vector vs port)
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "V.Brg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "V.Elv:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    // Rows 4–5: the same two split pairs TGT carries — where the port is relative to the
+    // nose, then where the velocity is relative to the approach axis.
+    {
+        uint16_t hw = RP_W / 2, h = rowHFor(RP_NR);
 
-    // Divider between V.Elv(5) and Nos.Off(6)
+        // Row 4: Brg | Elv — the port relative to the nose (informational, like TGT).
+        uint16_t y4 = rowYFor(4, RP_NR);
+        printDispChrome(tft, RP_LBL, RP_X,      y4, hw - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RP_LBL, RP_X + hw, y4, hw - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        for (int8_t dx = -1; dx <= 1; dx++)
+            tft.drawLine(RP_X + hw + dx, y4, RP_X + hw + dx, y4 + h - 1, TFT_GREY);
+
+        // Row 5: V.Brg | V.Elv — approach-path error about the target axis.
+        uint16_t y5 = rowYFor(5, RP_NR);
+        printDispChrome(tft, RP_LBL, RP_X,      y5, hw - ROW_PAD, h, "V.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RP_LBL, RP_X + hw, y5, hw - ROW_PAD, h, "V.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        for (int8_t dx = -1; dx <= 1; dx++)
+            tft.drawLine(RP_X + hw + dx, y5, RP_X + hw + dx, y5 + h - 1, TFT_GREY);
+    }
+
+    // Divider between V.Brg|V.Elv(5) and Nos.Off(6)
     { uint16_t dy = rowYFor(6,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
@@ -377,6 +404,13 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         drawPanelValue(tft, 5, slot, row, RP_X, RP_W, label, val, fgc, bgc, RP_F, RP_NR, false);
     };
 
+    // Half-width cells for the two split rows, independent cache slots (as TGT does).
+    const uint16_t RP_HW = RP_W / 2;
+    auto dockValH = [&](uint8_t row, uint8_t slot, uint16_t x, const char *label,
+                        const String &val, uint16_t fgc, uint16_t bgc) {
+        drawPanelValue(tft, 5, slot, row, x, RP_HW - ROW_PAD, label, val, fgc, bgc, RP_F, RP_NR, false);
+    };
+
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {
         float ae = fabsf(e);
         if      (ae >= DOCK_BRG_ALARM_DEG) { fg = TFT_WHITE;     bg = TFT_RED;   }
@@ -425,36 +459,45 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         dockVal(3, 3, "V.Lat:", fmtMs(v_lat_mag), fg, bg);
     }
 
-    // Row 4 — V.Brg: how far RIGHT of the approach axis the velocity points (slot 4).
-    // Target-referenced, not the nose-referenced angle the marker is plotted at: on the
+    // Row 4 — Brg | Elv: where the port sits relative to the NOSE (cache slots 4, 5).
+    // The signed pair behind Nos.Off, and literally where the violet marker is on the
+    // reticle. Informational dark green, matching TGT — Nos.Off carries the colour band.
+    // Whole degrees: the half-width cell cannot hold a decimal (measured), and the full
+    // +/-180 range has to fit when the port swings behind you.
+    {
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priRight);
+        dockValH(4, 4, RP_X,         "Brg:", buf, TFT_DARK_GREEN, TFT_BLACK);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priUp);
+        dockValH(4, 5, RP_X + RP_HW, "Elv:", buf, TFT_DARK_GREEN, TFT_BLACK);
+    }
+
+    // Row 5 — V.Brg | V.Elv: approach-path error about the target axis (slots 6, 7).
+    // Target-referenced, not the nose-referenced angle the markers are plotted at: on the
     // reticle this is the gap between the green velocity marker and the violet port
     // marker. Zero = flying straight down the approach axis, whatever the nose is doing.
     if (!appValid) {
-        dockVal(4, 4, "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
+        dockValH(5, 6, RP_X,         "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
+        dockValH(5, 7, RP_X + RP_HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
     } else {
         angCol(appRight, fg, bg);
-        snprintf(buf, sizeof(buf), "%+.1f\xB0", appRight);
-        dockVal(4, 4, "V.Brg:", buf, fg, bg);
-    }
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", appRight);
+        dockValH(5, 6, RP_X,         "V.Brg:", buf, fg, bg);
 
-    // Row 5 — V.Elv: how far ABOVE the approach axis the velocity points (slot 5).
-    if (!appValid) {
-        dockVal(5, 5, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
-    } else {
         angCol(appUp, fg, bg);
-        snprintf(buf, sizeof(buf), "%+.1f\xB0", appUp);
-        dockVal(5, 5, "V.Elv:", buf, fg, bg);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", appUp);
+        dockValH(5, 7, RP_X + RP_HW, "V.Elv:", buf, fg, bg);
     }
 
-    // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 6)
+    // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 10)
     // The boresight projection makes this exact rather than a Pythagorean approximation:
     // the plotted radius IS the angular separation, so this is literally how far from
-    // the crosshair the PORT marker sits. Always positive — unsigned offset.
+    // the crosshair the PORT marker sits. Always positive — unsigned offset, and the one
+    // row of the three still colour-banded, so alignment status stays signalled.
     {
         float noseOff = sqrtf(ang.priRight * ang.priRight + ang.priUp * ang.priUp);
         angCol(noseOff, fg, bg);
         snprintf(buf, sizeof(buf), "%.1f\xB0", noseOff);
-        dockVal(6, 6, "Nos.Off:", buf, fg, bg);
+        dockVal(6, 10, "Nos.Off:", buf, fg, bg);
     }
 
     // Row 7 — RCS | SAS buttons (full height to screen bottom)
@@ -514,11 +557,11 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
-    // Between V.Lat(3) and V.Brg(4)
+    // Between V.Lat(3) and Brg|Elv(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
-    // Between V.Elv(5) and Nos.Off(6)
+    // Between V.Brg|V.Elv(5) and Nos.Off(6)
     { uint16_t dy = rowYFor(6,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
