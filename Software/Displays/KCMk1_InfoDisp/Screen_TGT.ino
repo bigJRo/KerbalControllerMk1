@@ -17,9 +17,11 @@
    Fixed crosshair (+) = your nose direction (always at screen centre)
    Violet diamond (TGT) = where the target is relative to your nose
                           Centre → nose is pointed at target
-   Green circle (VEL)   = where your velocity vector points relative to target
-                          Centre → you are flying directly toward target
-   Perfect intercept    = both dots converging toward centre simultaneously
+   Green circle (VEL)   = where your relative velocity points relative to your nose
+                          Centre → you are flying straight along the boresight
+   Perfect intercept    = both dots converging on each other (VEL sitting on TGT means
+                          the relative velocity is aimed at the target; the B.Err/E.Err
+                          readouts are that same gap in degrees)
 
    SCOPE GEOMETRY (rev-2, 1024×600)
    ──────────────
@@ -92,17 +94,16 @@ static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on e
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
+// rollRef = false: the long-range scope stays horizon-referenced (heading/pitch), like
+// MNVR. Only DOCK rotates its marker layer into body axes, where hand-flown RCS
+// translation makes that the useful frame.
 static const ReticleGeom TGT_GEOM = {
     TGT_SCX, TGT_SCY, TGT_R, TGT_SCALE,
     TGT_DOT_R_TGT, TGT_DOT_R_VEL, TGT_DOT_R_ERASE,
-    TGT_RING_LBL
+    TGT_RING_LBL, false
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _tgtDots;
-
-
-// ── Heading error wrap to ±180° ───────────────────────────────────────────────────────
-static inline float _tgtWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
@@ -296,7 +297,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // both antipodal directions, bearings wrapped to ±180°.
     ReticleAngles ang = reticleComputeAngles();
     float tgtBrg = ang.priBrg,   tgtElv   = ang.priElv;    // target relative to nose
-    float velBrg = ang.velBrg,   velElv   = ang.velElv;    // velocity vector vs target
+    float velBrg = ang.velBrg,   velElv   = ang.velElv;    // relative velocity vs nose
     float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
     float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
 
@@ -377,8 +378,10 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     };
     {
-        float brgErr = _tgtWrapErr(state.tgtHeading - state.tgtVelHeading);
-        float elvErr = state.tgtPitch - state.tgtVelPitch;
+        // Same target-referenced pair the shared angle block already derives, and the
+        // on-screen gap between the VEL and TGT markers.
+        float brgErr = ang.appBrg;
+        float elvErr = ang.appElv;
 
         errColor(fabsf(brgErr), fg, bg);
         snprintf(buf, sizeof(buf), "%+.0f\xB0", brgErr);

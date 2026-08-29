@@ -202,21 +202,36 @@ const uint16_t RETICLE_BAR_W = 450;                             // bottom bar wi
 ****************************************************************************************/
 
 // Derived angles both screens feed to the dot layer. Byte-identical math in both
-// (previously duplicated in drawScreen_TGT / drawScreen_DOCK). Calls eadiHdgDelta
-// directly — the per-screen _tgtWrapErr/_dockWrapErr wrappers delegate to it identically.
+// (previously duplicated in drawScreen_TGT / drawScreen_DOCK). Bearings are wrapped
+// through eadiHdgDelta directly.
+//
+// EVERY PLOTTED MARKER IS NOSE-REFERENCED. The fixed centre crosshair is the nose, so
+// each marker's offset is measured from state.heading/state.pitch — port, anti-target,
+// velocity and retrograde alike. That single frame is what makes the velocity marker
+// flyable: it shows where the craft is actually going relative to where it is pointing,
+// so an RCS translation pulls the marker toward the direction you thrust (marker up and
+// right of centre → thrust left and down to walk it back to the crosshair).
+//
+// appBrg/appElv are the one target-referenced pair and are NEVER plotted — they feed the
+// numeric approach-path readouts. By construction they equal the on-screen separation
+// between the velocity marker and the port marker (appBrg == velBrg - priBrg), so the
+// numbers and the picture always agree.
 ReticleAngles reticleComputeAngles() {
   ReticleAngles a;
   // Nose→target: where is the target relative to your nose?
   a.priBrg  = eadiHdgDelta(state.heading - state.tgtHeading, 0.0f);
   a.priElv  = state.pitch - state.tgtPitch;
-  // Velocity→target: is your velocity vector pointed at the target bearing?
-  a.velBrg  = eadiHdgDelta(state.tgtHeading - state.tgtVelHeading, 0.0f);
-  a.velElv  = state.tgtPitch - state.tgtVelPitch;
-  // Opposites (antipodal): anti-target and retrograde, same convention.
-  a.antiBrg  = eadiHdgDelta(state.heading    - (state.tgtHeading    + 180.0f), 0.0f);
-  a.antiElv  = state.pitch    + state.tgtPitch;
-  a.retroBrg = eadiHdgDelta(state.tgtHeading - (state.tgtVelHeading + 180.0f), 0.0f);
-  a.retroElv = state.tgtPitch + state.tgtVelPitch;
+  // Nose→relative velocity: where is the craft going relative to where it is pointing?
+  a.velBrg  = eadiHdgDelta(state.heading - state.tgtVelHeading, 0.0f);
+  a.velElv  = state.pitch - state.tgtVelPitch;
+  // Opposites (antipodal): anti-target and retrograde, same nose-referenced convention.
+  a.antiBrg  = eadiHdgDelta(state.heading - (state.tgtHeading    + 180.0f), 0.0f);
+  a.antiElv  = state.pitch + state.tgtPitch;
+  a.retroBrg = eadiHdgDelta(state.heading - (state.tgtVelHeading + 180.0f), 0.0f);
+  a.retroElv = state.pitch + state.tgtVelPitch;
+  // Readout only — approach-path error: is the relative velocity aimed at the port?
+  a.appBrg = eadiHdgDelta(state.tgtHeading - state.tgtVelHeading, 0.0f);
+  a.appElv = state.tgtPitch - state.tgtVelPitch;
   return a;
 }
 
@@ -286,28 +301,54 @@ static void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
 // Update scope dots — erase old, repair chrome, draw new.
 //   primary marker: solid target/port diamond (violet)
 //   vel marker:     hollow prograde circle (neon green)
-// Angular convention: sx = cx + (-brg * scale); sy = cy + (elv * scale).
-// Anti-target/retrograde show only inside the FOV; the matching primary is suppressed
-// while its opposite is shown. Erase phase runs for all markers, then the draw phase
-// (bottom-to-top: opposites, primary, velocity on top). Finally the inner crosshair
-// gap segments + centre dot are redrawn (the vel circle can clip them near centre).
+// Angular convention: sx = cx + (-brg * scale); sy = cy + (elv * scale) — i.e. +brg is
+// leftward and +elv is downward on screen, all four pairs measured from the nose.
+//
+// ROLL REFERENCE (g.rollRef). The angles arrive in the horizon frame (heading/pitch),
+// whose "up" is the local vertical, not the craft's roof. On a screen the pilot flies
+// by hand that is the wrong up: RCS translation is in BODY axes, so with the craft
+// rolled 90° a translate-left would slide the velocity marker down the screen. When
+// g.rollRef is set (DOCK), the marker offsets are rotated by -state.roll — the same
+// rotation the EADI ball applies to its navball markers — which puts the whole layer in
+// body axes. Screen up/right then always means the craft's up/right, so translating
+// left always walks the marker left: velocity marker up and right of the crosshair →
+// thrust left and down. The chrome is rotationally symmetric (rings, cross arms, 30°
+// ticks) so nothing under the markers has to rotate with them.
+// TGT/MNVR leave rollRef false and stay horizon-referenced.
 void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
                        float priBrg, float priElv, float velBrg, float velElv,
                        float antiBrg, float antiElv, float retroBrg, float retroElv) {
+  // Angle pair → screen coords, with the optional body-frame roll rotation.
+  const float rRad = g.rollRef ? (-state.roll * (float)DEG_TO_RAD) : 0.0f;
+  const float cosR = g.rollRef ? cosf(rRad) : 1.0f;
+  const float sinR = g.rollRef ? sinf(rRad) : 0.0f;
+  auto project = [&](float brg, float elv, int16_t &sx, int16_t &sy) {
+    float ux = -brg * g.scale;   // +x = rightward on screen
+    float uy =  elv * g.scale;   // +y = downward on screen
+    if (g.rollRef) {
+      float rx = ux * cosR - uy * sinR;
+      float ry = ux * sinR + uy * cosR;
+      ux = rx; uy = ry;
+    }
+    sx = g.cx + (int16_t)ux;
+    sy = g.cy + (int16_t)uy;
+  };
+
   // Primary dot: where is the target/port relative to your nose?
-  int16_t pSX = g.cx + (int16_t)(-priBrg * g.scale);
-  int16_t pSY = g.cy + (int16_t)( priElv * g.scale);
+  int16_t pSX, pSY;
+  project(priBrg, priElv, pSX, pSY);
   reticleClampDot(g, pSX, pSY);
 
-  // Vel dot: where is your velocity vector relative to the target bearing?
-  int16_t vSX = g.cx + (int16_t)(-velBrg * g.scale);
-  int16_t vSY = g.cy + (int16_t)( velElv * g.scale);
+  // Vel dot: where is your relative-velocity vector relative to your nose?
+  int16_t vSX, vSY;
+  project(velBrg, velElv, vSX, vSY);
   reticleClampDot(g, vSX, vSY);
 
   // Opposite (antipodal) marker positions + in-view test.
   const float maxR = (float)(g.r - g.dotRVel * 3 / 2 - 2);
-  int16_t aSX = g.cx + (int16_t)(-antiBrg  * g.scale), aSY = g.cy + (int16_t)(antiElv  * g.scale);
-  int16_t rSX = g.cx + (int16_t)(-retroBrg * g.scale), rSY = g.cy + (int16_t)(retroElv * g.scale);
+  int16_t aSX, aSY, rSX, rSY;
+  project(antiBrg,  antiElv,  aSX, aSY);
+  project(retroBrg, retroElv, rSX, rSY);
   bool antiInView  = ((float)(aSX-g.cx)*(aSX-g.cx) + (float)(aSY-g.cy)*(aSY-g.cy)) <= maxR*maxR;
   bool retroInView = ((float)(rSX-g.cx)*(rSX-g.cx) + (float)(rSY-g.cy)*(rSY-g.cy)) <= maxR*maxR;
 

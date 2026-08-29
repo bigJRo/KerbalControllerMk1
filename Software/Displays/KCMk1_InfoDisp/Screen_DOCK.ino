@@ -16,11 +16,27 @@
    RETICLE SEMANTICS
    ─────────────────
    Fixed crosshair  = your nose direction (always at centre)
-   Green dot (VEL)  = where your velocity vector points relative to target bearing
-                      At centre → you are flying straight at the port (on axis)
+   Green dot (VEL)  = the direction of the RELATIVE velocity between your craft and the
+                      target port, drawn relative to your nose
+                      At centre → you are translating straight along the boresight
    Magenta dot (PORT) = where the port is relative to your nose
                       At centre → your nose is pointing at the port (aligned)
    Perfect approach = both dots at centre simultaneously
+
+   FLYING THE VELOCITY MARKER
+   ──────────────────────────
+   The marker layer is referenced to the craft's BODY axes (rotated by -roll), so screen
+   up/right is always the craft's up/right — the same axes as the RCS translation keys.
+   An RCS translation pulls the relative velocity toward the direction you thrust, so the
+   marker moves the way you thrust:
+
+       marker up + right of the crosshair  →  thrust LEFT and DOWN to centre it
+       marker down + left of the crosshair →  thrust RIGHT and UP to centre it
+
+   Kill lateral drift by walking the green marker onto the crosshair; put the green
+   marker ON the magenta PORT marker to fly straight down the approach axis (that gap is
+   what Vel.Brg / Vel.Elv read out in degrees). Both frames are one and the same when the
+   nose is already on the port.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ──────────────────────────────────
@@ -91,18 +107,18 @@ static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking appro
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const DOCK_RING_LBL[4] = { "5", "10", "15", "20" };
+// rollRef = true: the marker layer is rotated by -roll into the craft's BODY axes, so
+// screen up/right always means the craft's up/right and the RCS translation keys move
+// the markers the way the pilot expects at any roll attitude. DOCK is the only reticle
+// that does this — TGT/MNVR stay horizon-referenced.
 static const ReticleGeom DOCK_GEOM = {
     (int16_t)RET_CX, (int16_t)RET_CY, (int16_t)RET_R, RET_SCALE,
     DOT_R_PORT, DOT_R_VEL, DOT_R_ERASE,
-    DOCK_RING_LBL
+    DOCK_RING_LBL, true
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _dockDots;
 static float   _dockPrevDist  = -999.0f;   // dist-bar dedup; reset in chrome on re-entry
-
-
-// ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
-static inline float _dockWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Draw the static reticle chrome ───────────────────────────────────────────────────
@@ -311,9 +327,10 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // antipodal directions, bearings wrapped to ±180°.
     ReticleAngles ang = reticleComputeAngles();
     float noseBrg = ang.priBrg,   noseElv  = ang.priElv;    // port relative to nose
-    float velBrg  = ang.velBrg,   velElv   = ang.velElv;    // velocity vector vs target
+    float velBrg  = ang.velBrg,   velElv   = ang.velElv;    // relative velocity vs nose
     float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
     float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
+    float appBrg  = ang.appBrg,   appElv   = ang.appElv;    // readout: approach path vs port
 
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
     float v_lat_mag = 0.0f;
@@ -399,14 +416,17 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     }
 
     // Row 4 — Vel.Brg: bearing error of velocity vector vs port (cache slot 4)
-    // Is your approach path aimed at the port?
-    angCol(velBrg, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", velBrg);
+    // Is your approach path aimed at the port? Target-referenced (ang.appBrg), NOT the
+    // nose-referenced angle the marker is plotted at — on the reticle this is the gap
+    // between the green velocity marker and the violet port marker. Zero = flying
+    // straight down the approach axis, whatever the nose is doing.
+    angCol(appBrg, fg, bg);
+    snprintf(buf, sizeof(buf), "%+.1f\xB0", appBrg);
     dockVal(4, 4, "Vel.Brg:", buf, fg, bg);
 
     // Row 5 — Vel.Elv: elevation error of velocity vector vs port (cache slot 5)
-    angCol(velElv, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", velElv);
+    angCol(appElv, fg, bg);
+    snprintf(buf, sizeof(buf), "%+.1f\xB0", appElv);
     dockVal(5, 5, "Vel.Elv:", buf, fg, bg);
 
     // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 6)

@@ -85,7 +85,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.0.0: production release (rev-2 display, sidebar nav)
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.0.1: DOCK/TGT velocity marker nose-referenced; DOCK marker layer roll-referenced
 
 
 /***************************************************************************************
@@ -319,6 +319,7 @@ struct ReticleGeom {
   uint8_t  dotRVel;          // velocity/prograde marker radius
   uint8_t  eraseHalf;        // erase-rect half-size
   const char *const *lbl;    // 4 ring-degree labels, inner→outer
+  bool     rollRef;          // true = rotate the marker layer by -roll (body-referenced)
 };
 
 // Per-screen erase-before-redraw cache. 9999 = marker not currently shown (skip erase).
@@ -330,13 +331,20 @@ struct ReticleDotCache {
   int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
 };
 
-// The eight derived angles both screens feed to the dot layer, in the shared
-// convention (bearing wrapped to ±180°). Computed from the global `state`.
+// The derived angles both screens feed to the dot layer, in the shared convention
+// (bearing wrapped to ±180°). Computed from the global `state`.
+//
+// The four PLOTTED pairs are all referenced to the NOSE (the fixed centre crosshair),
+// so every marker on the reticle lives in one frame: a marker sits right of centre
+// because that direction is right of the nose. appBrg/appElv are NOT plotted — they
+// are the target-referenced approach-path error used by the numeric readouts, and are
+// exactly the on-screen separation between the velocity marker and the port marker.
 struct ReticleAngles {
-  float priBrg,  priElv;     // nose→target (primary marker)
-  float velBrg,  velElv;     // velocity vector vs target bearing
+  float priBrg,  priElv;     // nose→target/port (primary marker)
+  float velBrg,  velElv;     // nose→relative-velocity vector (velocity marker)
   float antiBrg, antiElv;    // anti-target (antipodal of primary)
   float retroBrg, retroElv;  // retrograde (antipodal of velocity)
+  float appBrg,  appElv;     // readout only: velocity vector vs target bearing
 };
 
 ReticleAngles reticleComputeAngles();
