@@ -2,14 +2,20 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 3
-#define KDC_VERSION_PATCH 1
+#define KDC_VERSION_MINOR 4
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.4.0 — added drawTargetProgradeMarker: the prograde spokes and centre dot drawn with
+            the target marker's gapped ring. The plain prograde glyph meant ORBITAL
+            velocity on the PFD ball and TARGET-RELATIVE velocity on the TGT/DOCK
+            reticles -- same symbol, same colour, two reference frames. reticleUpdateDots
+            now draws the velocity marker with it.
 
    v3.3.1 — documented the project-wide rule that every boresight display builds its
             axes with the vessel roll; the horizon-referenced path (rollDeg = 0) now has
@@ -53,7 +59,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.3.1
+  Version: 3.4.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -259,6 +265,12 @@ void drawProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_
 // right (a "+" cut through the circle) plus a centre dot. Used for the target /
 // docking-port marker (magenta). `r` is the ring radius; stroke/dot scale from `r`.
 void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
+
+// Target-relative prograde: the prograde spokes and centre dot with the TARGET marker's
+// gapped ring. Distinguishes the velocity marker on the TGT/DOCK reticles (velocity
+// RELATIVE TO THE TARGET) from the plain prograde glyph on the PFD ball (orbital or
+// surface velocity) -- previously the same symbol in the same colour for both.
+void drawTargetProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color);
 
 // KSP maneuver-node marker: centre dot + three prongs (up, lower-left, lower-right)
 // each ending in a short perpendicular crossbar, no ring. Used for the maneuver

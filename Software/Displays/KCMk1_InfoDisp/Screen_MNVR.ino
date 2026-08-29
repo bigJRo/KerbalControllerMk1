@@ -349,9 +349,15 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         drawPanelValue(tft, MNVR_SC, slot, row, X, W, label, val, fgc, bgc, MNVR_RP_F, NR, false);
     };
 
+    // Threshold colouring, matching DOCK/TGT and the reticle rings: green inside the
+    // inner ring, yellow out to the middle ring, red beyond. This lambda previously
+    // ignored its argument and returned the plain value colour, so MNVR was the one
+    // reticle screen whose angle readouts never changed colour at all.
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {
-        // Original screen colour logic — plain value colour, no alarm states
-        fg = COL_VALUE; bg = COL_BACK;
+        float ae = fabsf(e);
+        if      (ae >= ATT_ERR_ALARM_DEG) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        else if (ae >= ATT_ERR_WARN_DEG)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     };
 
     // Row 0 — ΔV.Mnvr

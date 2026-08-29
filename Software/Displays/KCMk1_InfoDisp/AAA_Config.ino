@@ -158,9 +158,14 @@ const float TGT_VCLOSURE_WARN_MS  = 200.0f;  // yellow — fast approach
 const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast
 
 // Approach alignment error thresholds (degrees absolute)
-// Wider than DOCK — long-range ops tolerate larger angles
-const float TGT_BRG_WARN_DEG  =  5.0f;   // yellow — off-axis approach
-const float TGT_BRG_ALARM_DEG = 15.0f;   // white-on-red — significantly misaligned
+// THE RETICLE RINGS ARE THE COLOUR BANDS. Every reticle draws its good zone at
+// full-scale/4 and its middle ring at full-scale/2, so the thresholds are set to those
+// radii and the picture can never disagree with the numbers: green inside the inner
+// ring, yellow out to the middle ring, red beyond. TGT runs +/-60 deg full scale.
+// These really are wider than DOCK now — the old 5/15 was TIGHTER than DOCK's 10/20,
+// the opposite of what this comment claimed and of what the two phases need.
+const float TGT_BRG_WARN_DEG  = 15.0f;   // yellow — inner ring  (60/4)
+const float TGT_BRG_ALARM_DEG = 30.0f;   // white-on-red — middle ring  (60/2)
 
 
 /***************************************************************************************
@@ -179,9 +184,13 @@ const float DOCK_VCLOSURE_ALARM_DIST_M = 100.0f;
 const float DOCK_DRIFT_WARN_MS  = 0.1f;   // yellow
 const float DOCK_DRIFT_ALARM_MS = 0.5f;   // white-on-red
 
-// Bearing/elevation angle (degrees absolute)
-const float DOCK_BRG_WARN_DEG  = 10.0f;  // yellow — target off bore
-const float DOCK_BRG_ALARM_DEG = 20.0f;  // red — large angle
+// Bearing/elevation angle (degrees absolute) — the reticle rings, as above.
+// DOCK runs +/-20 deg full scale, so these are tighter than TGT: the precision phase
+// gets the tighter tolerance, which is what the old 10/20-vs-TGT-5/15 had backwards.
+// Applied to BOTH Vel.Brg/Vel.Elv (approach path vs port) and Nos.Off (nose off bore) —
+// two different quantities sharing one band, which suits both at docking range.
+const float DOCK_BRG_WARN_DEG  =  5.0f;  // yellow — inner ring  (20/4)
+const float DOCK_BRG_ALARM_DEG = 10.0f;  // red — middle ring  (20/2)
 
 
 /***************************************************************************************
@@ -226,7 +235,10 @@ const uint8_t EC_PRELAUNCH_LOW_PCT   = 75;   // yellow — below this: white-on-
 /***************************************************************************************
    FLIGHT THRESHOLDS — ATT screen (heading/pitch error)
 ****************************************************************************************/
-const float ATT_ERR_WARN_DEG  =  5.0f;   // yellow
+// MNVR runs +/-20 deg full scale, so these match the reticle rings exactly as above.
+// WARN also gates the neon-green alignment box drawn around the maneuver marker.
+const float ATT_ERR_WARN_DEG  =  5.0f;   // yellow — inner ring  (20/4)
+const float ATT_ERR_ALARM_DEG = 10.0f;   // white-on-red — middle ring  (20/2)
 
 
 /***************************************************************************************
