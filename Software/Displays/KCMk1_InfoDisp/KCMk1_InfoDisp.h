@@ -81,11 +81,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.4.0
+   This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 6;   // 1.0.6: readouts derived from the markers; one name per quantity
+static const uint8_t SKETCH_VERSION_PATCH = 7;   // 1.0.7: off-scale markers dimmed on all three reticles
 
 
 /***************************************************************************************

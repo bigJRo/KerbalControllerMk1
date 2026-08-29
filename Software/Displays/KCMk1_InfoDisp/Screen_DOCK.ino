@@ -23,6 +23,10 @@
                       At centre → your nose is pointing at the port (aligned)
    Perfect approach = both dots at centre simultaneously
 
+   A marker DIMMED to half brightness is pinned at the scope boundary: it is further off
+   the nose than the outer ring can show, so its direction is still honest but its
+   distance understates the real angle. Nos.Off carries the true value.
+
    FLYING THE VELOCITY MARKER
    ──────────────────────────
    The marker layer is referenced to the craft's BODY axes, so screen up/right is always

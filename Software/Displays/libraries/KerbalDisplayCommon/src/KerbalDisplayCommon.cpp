@@ -973,7 +973,7 @@ void reticleProject(const ReticleGeom &g, float degRight, float degUp,
   sy = g.cy + (int16_t)(-degUp    * g.scale);
 }
 
-void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
+bool reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
   float dx = sx - g.cx, dy = sy - g.cy;
   float dist = sqrtf(dx*dx + dy*dy);
   float maxR = (float)(g.r - g.clampMargin);
@@ -981,7 +981,9 @@ void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
     float scale = maxR / dist;
     sx = g.cx + (int16_t)(dx * scale);
     sy = g.cy + (int16_t)(dy * scale);
+    return true;                 // pinned: direction still honest, distance is not
   }
+  return false;
 }
 
 void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
@@ -1007,7 +1009,8 @@ void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
 
 void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
                      int16_t curX, int16_t curY,
-                     int16_t &prevX, int16_t &prevY, bool visible) {
+                     int16_t &prevX, int16_t &prevY, bool visible,
+                     bool restyled) {
   const uint8_t EH = g.eraseHalf;
   if (!visible) {
     if (prevX != 9999) {
@@ -1017,7 +1020,7 @@ void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
     }
     return;
   }
-  if (prevX == 9999 || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
+  if (prevX == 9999 || restyled || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
     if (prevX != 9999) {
       tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
       reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
@@ -1031,12 +1034,12 @@ void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
   // Primary dot: where is the target/port relative to your nose?
   int16_t pSX, pSY;
   reticleProject(g, a.priRight, a.priUp, pSX, pSY);
-  reticleClampDot(g, pSX, pSY);
+  const bool priPinned = reticleClampDot(g, pSX, pSY);
 
   // Vel dot: where is your relative-velocity vector relative to your nose?
   int16_t vSX, vSY;
   reticleProject(g, a.velRight, a.velUp, vSX, vSY);
-  reticleClampDot(g, vSX, vSY);
+  const bool velPinned = reticleClampDot(g, vSX, vSY);
 
   // Opposite (antipodal) marker positions + in-view test.
   const float maxR = (float)(g.r - g.clampMargin);
@@ -1050,13 +1053,22 @@ void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
   // neighbour. Draw order bottom-to-top: opposites, primary, velocity on top.
   reticleEraseDot(tft, g, aSX, aSY, c.antiX,    c.antiY,    antiInView);
   reticleEraseDot(tft, g, rSX, rSY, c.retroX,   c.retroY,   retroInView);
-  reticleEraseDot(tft, g, pSX, pSY, c.primaryX, c.primaryY, !antiInView);
-  reticleEraseDot(tft, g, vSX, vSY, c.velX,     c.velY,     !retroInView);
+  reticleEraseDot(tft, g, pSX, pSY, c.primaryX, c.primaryY, !antiInView,
+                  priPinned != c.primaryPinned);
+  reticleEraseDot(tft, g, vSX, vSY, c.velX,     c.velY,     !retroInView,
+                  velPinned != c.velPinned);
+  c.primaryPinned = priPinned;
+  c.velPinned     = velPinned;
 
   if (c.antiX    != 9999) drawAntiTargetMarker(tft, c.antiX,    c.antiY,    g.dotRPrimary, TFT_VIOLET);
   if (c.retroX   != 9999) drawRetrogradeMarker(tft, c.retroX,   c.retroY,   g.dotRVel,     TFT_NEON_GREEN);
-  if (c.primaryX != 9999) drawTargetMarker(tft,     c.primaryX, c.primaryY, g.dotRPrimary, TFT_VIOLET);
-  if (c.velX     != 9999) drawProgradeMarker(tft,   c.velX,     c.velY,     g.dotRVel,     TFT_NEON_GREEN);
+  // A pinned marker is drawn at half brightness: it is clamped at the boundary, so its
+  // direction is honest but its distance understates the real angle and it must not read
+  // as a live value. Nos.Off / Brg / Elv carry the true number.
+  if (c.primaryX != 9999) drawTargetMarker(tft,   c.primaryX, c.primaryY, g.dotRPrimary,
+                                           c.primaryPinned ? TFT_DIM_VIOLET   : TFT_VIOLET);
+  if (c.velX     != 9999) drawProgradeMarker(tft, c.velX,     c.velY,     g.dotRVel,
+                                           c.velPinned     ? TFT_DIM_NEON_GRN : TFT_NEON_GREEN);
 
   // Redraw crosshair inner segments — the vel circle can clip them near centre.
   {

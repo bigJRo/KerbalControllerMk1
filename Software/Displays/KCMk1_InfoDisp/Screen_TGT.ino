@@ -19,6 +19,9 @@
                           Centre → nose is pointed at target
    Green circle (VEL)   = where your relative velocity points relative to your nose
                           Centre → you are flying straight along the boresight
+   Dimmed marker        = pinned at the scope boundary (further off the nose than the
+                          outer ring can show); direction honest, distance understated.
+                          Brg/Elv carry the true value.
    Perfect intercept    = both dots converging on each other (VEL sitting on TGT means
                           the relative velocity is aimed at the target; V.Brg/V.Elv are
                           that error in degrees, measured about the target axis)

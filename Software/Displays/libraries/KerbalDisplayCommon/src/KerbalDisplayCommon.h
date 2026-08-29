@@ -2,7 +2,7 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 4
+#define KDC_VERSION_MINOR 5
 #define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
@@ -10,6 +10,14 @@
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.5.0 — off-scale markers are now visibly pinned. reticleClampDot returns whether it
+            clamped, ReticleDotCache carries primaryPinned/velPinned, and reticleUpdateDots
+            draws a clamped marker in a new half-brightness shade (TFT_DIM_VIOLET /
+            TFT_DIM_NEON_GRN) so it cannot be read as a live value. reticleEraseDot gained
+            a `restyled` argument: the transition can move the marker as little as 1 px,
+            which the >1 px movement gate would otherwise swallow, leaving a bright marker
+            drawn while clamped.
 
    v3.4.0 — ReticleAngles::appBrg/appElv become appRight/appUp: the relative velocity
             decomposed about the TARGET axis rather than horizon-frame heading/pitch
@@ -60,7 +68,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.4.0
+  Version: 3.5.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -150,6 +158,7 @@
 #define TFT_MAGENTA      0xF81F  /*  31,   0,  31 */
 #define TFT_PURPLE       0x8010  /*  16,   0,  16 */
 #define TFT_VIOLET       0x901A  /*  18,   0,  26 */
+#define TFT_DIM_VIOLET   0x480D  /*   9,   0,  13 -- half TFT_VIOLET */
 #define TFT_YELLOW       0xFDC2  /*  31,  46,   2 */
 #define TFT_DULL_YELLOW  0xEEEB  /*  29,  55,  11 */
 #define TFT_DARK_YELLOW  0xA500  /*  20,  40,   0 */
@@ -160,6 +169,7 @@
 #define TFT_ORANGE       0xFBE0  /*  31,  31,   0 */
 #define TFT_AIR_SUP_BLUE 0x7517  /*  14,  40,  23 */
 #define TFT_NEON_GREEN   0x3FE2  /*   7,  63,   2 */
+#define TFT_DIM_NEON_GRN 0x1BE1  /*   3,  31,   1 -- half TFT_NEON_GREEN */
 #define TFT_SAP_GREEN    0x53E5  /*  10,  31,   5 */
 #define TFT_INT_ORANGE   0xFA80  /*  31,  20,   0 */
 #define TFT_UPS_BROWN    0x6203  /*  12,  16,   3 */
@@ -426,6 +436,10 @@ struct ReticleDotCache {
   int16_t velX     = 9999, velY     = 9999;   // velocity / prograde
   int16_t antiX    = 9999, antiY    = 9999;   // anti-target (opposite of primary)
   int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
+  // Pinned = clamped at the scope boundary, so the marker's direction is honest but its
+  // distance is not. Cached because the marker is redrawn dimmed while pinned, and that
+  // colour change has to force a repaint even when the marker has not moved a pixel.
+  bool    primaryPinned = false, velPinned = false;
 };
 
 // The derived angles a screen feeds to the dot layer. All four PLOTTED pairs are
@@ -454,8 +468,11 @@ void reticleProject(const ReticleGeom &g, float degRight, float degUp,
                     int16_t &sx, int16_t &sy);
 
 // Clamp a marker to within the scope boundary, keeping g.clampMargin px clear of the
-// rim so the widest symbol still draws whole.
-void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
+// rim so the widest symbol still draws whole. Returns true if the marker was actually
+// clamped -- i.e. it is off-scale and its plotted distance understates the real angle.
+// Callers draw a pinned marker in its half-brightness shade so it cannot be mistaken for
+// a live reading; the numeric readouts (Nos.Off, Brg/Elv) carry the true value.
+bool reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
 
 // Repair scope chrome after a fillRect marker erase: the shared reticleRepair restore
 // (rings / cardinals / crosshair / centre dot / good-zone), then the ring degree
@@ -468,9 +485,12 @@ void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
 // cached position and repair the chrome, then advance the cache. Callers run every
 // erase before any draw, so a moving marker never clips a neighbour, and then redraw
 // at the cache position (no sub-pixel smear).
+// `restyled` forces the erase/repaint even when the marker has not moved, so a change of
+// appearance (pinned <-> live) is not swallowed by the >1 px movement gate.
 void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
                      int16_t curX, int16_t curY,
-                     int16_t &prevX, int16_t &prevY, bool visible);
+                     int16_t &prevX, int16_t &prevY, bool visible,
+                     bool restyled = false);
 
 // Full four-marker layer (DOCK / TGT): erase all, draw bottom-to-top (opposites,
 // primary, velocity on top), then restore the inner crosshair the velocity ring can

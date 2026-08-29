@@ -21,6 +21,9 @@
    Marker colour    = always maneuver blue (TFT_BLUE).
    Alignment box    = neon-green square drawn around diamond when
                       error magnitude < ATT_ERR_WARN_DEG (5°).
+   Dimmed marker (TFT_NAVY) = pinned at the scope boundary, i.e. the node is further
+                      off the nose than the outer ring can show. Direction honest,
+                      distance understated; Brg/Elv carry the true value.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ─────────────────
@@ -104,6 +107,7 @@ static const ReticleGeom MNVR_GEOM = {
 // ── Previous marker state ─────────────────────────────────────────────────────────────
 static int16_t _mnvrPrevMrkX    = 9999, _mnvrPrevMrkY = 9999;
 static bool    _mnvrPrevAligned = false;
+static bool    _mnvrPrevPinned  = false;   // marker clamped at the scope boundary
 static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome on re-entry
 
 
@@ -203,14 +207,19 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 
 
 // ── Update burn vector marker ─────────────────────────────────────────────────────────
-// Diamond always TFT_BLUE. Neon-green alignment box appears when error < 5°.
+// Diamond TFT_BLUE, or TFT_NAVY (half brightness) while pinned at the scope boundary.
+// Neon-green alignment box appears when the error is under 5°.
 static void _mnvrUpdateMarker(KCM_TFT &tft, float nodeRight, float nodeUp) {
     float errMag  = sqrtf(nodeRight*nodeRight + nodeUp*nodeUp);
     bool  aligned = (errMag < ATT_ERR_WARN_DEG);
 
     int16_t sx, sy;
     reticleProject(MNVR_GEOM, nodeRight, nodeUp, sx, sy);
-    reticleClampDot(MNVR_GEOM, sx, sy);
+    // Pinned = the node is further off the nose than the outer ring can show, so the
+    // marker's direction is still honest but its distance understates the real angle.
+    // It is drawn at half brightness so it cannot be read as a live value; Brg/Elv
+    // carry the true number, now up to +/-180 deg.
+    const bool pinned = reticleClampDot(MNVR_GEOM, sx, sy);
 
     static const uint8_t EH = MNVR_ERASE_R;
     static const uint8_t DS = MNVR_MRK_DS;
@@ -220,14 +229,15 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float nodeRight, float nodeUp) {
                          abs(sx - _mnvrPrevMrkX) > 1 ||
                          abs(sy - _mnvrPrevMrkY) > 1);
     bool alignChanged = (aligned != _mnvrPrevAligned);
+    bool pinChanged   = (pinned  != _mnvrPrevPinned);
 
-    if (moved || alignChanged) {
+    if (moved || alignChanged || pinChanged) {
         if (_mnvrPrevMrkX != 9999) {
             tft.fillRect(_mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH*2+1, EH*2+1, TFT_BLACK);
             reticleRepairDotChrome(tft, MNVR_GEOM, _mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH);
         }
         // KSP maneuver marker: dot + three T-capped prongs
-        drawManeuverMarker(tft, sx, sy, DS, TFT_BLUE);
+        drawManeuverMarker(tft, sx, sy, DS, pinned ? TFT_NAVY : TFT_BLUE);
         // Alignment box — neon green when within 5°
         if (aligned) {
             tft.drawRect(sx - BX,     sy - BX,     BX*2+1, BX*2+1, TFT_NEON_GREEN);
@@ -236,6 +246,7 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float nodeRight, float nodeUp) {
         _mnvrPrevMrkX    = sx;
         _mnvrPrevMrkY    = sy;
         _mnvrPrevAligned = aligned;
+        _mnvrPrevPinned  = pinned;
     }
 
     // Crosshair always on top
@@ -295,6 +306,7 @@ void chromeScreen_MNVR(KCM_TFT &tft) {
     _mnvrChromDrawn  = true;
     _mnvrPrevMrkX    = 9999; _mnvrPrevMrkY = 9999;
     _mnvrPrevAligned = false;
+    _mnvrPrevPinned  = false;
     _mnvrPrevDV      = -999.0f;   // force ΔV bar + value to repaint on screen entry
 
     tft.fillRect(0, TITLE_TOP, MNVR_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
