@@ -6,9 +6,9 @@
    │                                 │ ALT.SL:         142.8 km             │
    │   RPOD Scope                    │ V.ORB:         2247.3 m/s            │
    │   (black disc, R=210, ±60°)     │ DIST:           48.3 km             │
-   │                                 │ V.TGT:          124.0 m/s            │
+   │                                 │ V.CLOSE:         -1.4 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
-   │   ○ velocity vector (NEON_GREEN)│ B.ERR:  +14.0° │ E.ERR:  -9.0°      │
+   │   ○ velocity vector (NEON_GREEN)│ V.BRG:  +14.0° │ V.ELV:  -9.0°      │
    │   + nose crosshair (fixed)      │ T+INT:          6m 30s               │
    └─────────────────────────────────┴──────────────────────────────────────┘
 
@@ -17,9 +17,14 @@
    Fixed crosshair (+) = your nose direction (always at screen centre)
    Violet diamond (TGT) = where the target is relative to your nose
                           Centre → nose is pointed at target
-   Green circle (VEL)   = where your velocity vector points relative to target
-                          Centre → you are flying directly toward target
-   Perfect intercept    = both dots converging toward centre simultaneously
+   Green circle (VEL)   = where your relative velocity points relative to your nose
+                          Centre → you are flying straight along the boresight
+   Dimmed marker        = pinned at the scope boundary (further off the nose than the
+                          outer ring can show); direction honest, distance understated.
+                          Brg/Elv carry the true value.
+   Perfect intercept    = both dots converging on each other (VEL sitting on TGT means
+                          the relative velocity is aimed at the target; V.Brg/V.Elv are
+                          that error in degrees, measured about the target axis)
 
    SCOPE GEOMETRY (rev-2, 1024×600)
    ──────────────
@@ -29,13 +34,13 @@
    MNVR and DOCK reticles.
    Right panel: 360 px at x=580 (matches MNVR/DOCK), labels 28 / values 36
 
-   RIGHT PANEL — 7 rows, rowHFor(7) = 59px each
+   RIGHT PANEL — 7 rows, rowHFor(7) = 76px each
    Row 0  Alt.SL   full-width
    Row 1  V.Orb    full-width
    Row 2  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
-   Row 3  V.Tgt    full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
-   Row 4  Brg|Elv  split — raw bearing and elevation to target, informational
-   Row 5  Err|Err   split — approach alignment errors (bearing/elevation), colour-coded
+   Row 3  V.Close  full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
+   Row 4  Brg|Elv  split — bearing and elevation of the target from the NOSE
+   Row 5  V.Brg|V.Elv split — approach-path error about the target axis, colour-coded
    Row 6  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
 
    DOT UPDATE STRATEGY  (same as DOCK)
@@ -88,21 +93,22 @@ static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on e
 
 
 // ── Shared dot-layer geometry + per-screen erase cache ───────────────────────────────
-// The moving marker layer is shared with DOCK (see reticleUpdateDots in AAA_Screens.ino).
+// The moving marker layer is shared with MNVR/DOCK (reticleUpdateDots, KerbalDisplayCommon).
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
+// Body-referenced, like every other boresight display in the project. TGT and DOCK are
+// the same task at different ranges — they share a sidebar button, and the Dist row goes
+// white-on-green below 200 m to say "switch to DOCK" — so a frame change between them
+// would re-anchor every marker at exactly the moment the pilot crosses over.
 static const ReticleGeom TGT_GEOM = {
     TGT_SCX, TGT_SCY, TGT_R, TGT_SCALE,
     TGT_DOT_R_TGT, TGT_DOT_R_VEL, TGT_DOT_R_ERASE,
-    TGT_RING_LBL
+    TGT_DOT_R_VEL * 3 / 2 + 2,      // clampMargin — widest symbol is the prograde ring + spoke
+    TGT_RING_LBL, &Roboto_Black_16
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _tgtDots;
-
-
-// ── Heading error wrap to ±180° ───────────────────────────────────────────────────────
-static inline float _tgtWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
 
 
 // ── Draw static scope chrome ──────────────────────────────────────────────────────────
@@ -128,7 +134,9 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
 
     tft.setFont(Roboto_Black_16);
 
-    // VEL — green prograde marker
+    // VEL — green prograde marker (target-RELATIVE velocity; the PFD ball uses the
+    //       same glyph for orbital/surface velocity — context tells them apart,
+    //       the legend names this one)
     drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
     tft.setTextColor(TFT_SAP_GREEN, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0);
@@ -195,8 +203,8 @@ static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
 }
 
 
-// Dot-layer machinery (clamp / erase / chrome-repair / update) is shared with DOCK —
-// see reticleClampDot / reticleRepairDotChrome / reticleUpdateDots in AAA_Screens.ino.
+// Dot-layer machinery (project / clamp / erase / chrome-repair / update) lives in
+// KerbalDisplayCommon ≥ 3.2.0 and is shared with MNVR and DOCK.
 // TGT drives them via TGT_GEOM (scale = r/60, ring labels 15/30/45/60) and _tgtDots.
 
 
@@ -253,11 +261,11 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
 
-    // Row 5: Err | Err split (approach alignment errors)
+    // Row 5: V.Brg | V.Elv split (approach-path error about the target axis)
     {
         uint16_t y = rowYFor(5, NR), h = rowH;
-        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "Err:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "Err:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "V.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "V.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
@@ -295,14 +303,10 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // Shared derived-angle block (identical to DOCK): nose→target, velocity→target and
     // both antipodal directions, bearings wrapped to ±180°.
     ReticleAngles ang = reticleComputeAngles();
-    float tgtBrg = ang.priBrg,   tgtElv   = ang.priElv;    // target relative to nose
-    float velBrg = ang.velBrg,   velElv   = ang.velElv;    // velocity vector vs target
-    float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
-    float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
 
     // ── Update scope dots ─────────────────────────────────────────────────────────────
-    reticleUpdateDots(tft, TGT_GEOM, _tgtDots,
-                      tgtBrg, tgtElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
+    // Shared marker layer (KerbalDisplayCommon).
+    reticleUpdateDots(tft, TGT_GEOM, _tgtDots, ang);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     const uint8_t NR = TGT_RP_NR;
@@ -355,38 +359,46 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     }
 
     // Row 4 — Brg | Elv  (cache slots 4, 5)
-    // Raw bearing and elevation to target — informational, always dark green.
-    // Display bearing as a signed value: wrap 0–360 to –180..+180 so
-    // positive = target to the right, negative = target to the left.
+    // Where the target sits relative to the NOSE — the same quantity MNVR's Brg/Elv
+    // shows, and literally where the violet TGT marker is on the scope. This used to
+    // print state.tgtHeading wrapped to +/-180 under a comment claiming "positive =
+    // target to the right", which was the vessel's compass bearing: with the target dead
+    // ahead on heading 120 it read +120, not 0.
     {
-        float dispBrg = state.tgtHeading;
-        if (dispBrg > 180.0f) dispBrg -= 360.0f;
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", dispBrg);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priRight);
         tgtValH(4, 4, TGT_RP_X, "Brg:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
 
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", state.tgtPitch);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priUp);
         tgtValH(4, 5, TGT_RP_X + HW, "Elv:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 5 — B.Err | E.Err  (cache slots 6, 7)
-    // Approach alignment errors. Green < 5°, yellow < 15°, white-on-red >= 15°.
-    // Uses TGT-specific thresholds (wider than DOCK — long-range ops are less precise).
+    // Row 5 — V.Brg | V.Elv  (cache slots 6, 7)
+    // Approach-path error about the TARGET axis: how far right and above the approach
+    // path the relative velocity actually points. Same quantity DOCK shows under the
+    // same labels. Colour bands are the scope rings (green inside 15 deg, yellow to
+    // 30 deg, red beyond).
     auto errColor = [](float ae, uint16_t &fg, uint16_t &bg) {
         if      (ae >= TGT_BRG_ALARM_DEG) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (ae >= TGT_BRG_WARN_DEG)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     };
     {
-        float brgErr = _tgtWrapErr(state.tgtHeading - state.tgtVelHeading);
-        float elvErr = state.tgtPitch - state.tgtVelPitch;
+        // Past 90 deg the craft is travelling away from the target and the signed pair
+        // stops being flyable, so both cells show "---" (the idiom T+Int already uses
+        // when not closing). It also keeps the value inside the half-width cell.
+        bool appValid = (sqrtf(ang.appRight*ang.appRight + ang.appUp*ang.appUp) <= 90.0f);
+        if (!appValid) {
+            tgtValH(5, 6, TGT_RP_X,      "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
+            tgtValH(5, 7, TGT_RP_X + HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
+        } else {
+            errColor(fabsf(ang.appRight), fg, bg);
+            snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appRight);
+            tgtValH(5, 6, TGT_RP_X, "V.Brg:", String(buf), fg, bg);
 
-        errColor(fabsf(brgErr), fg, bg);
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", brgErr);
-        tgtValH(5, 6, TGT_RP_X, "Err:", String(buf), fg, bg);
-
-        errColor(fabsf(elvErr), fg, bg);
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", elvErr);
-        tgtValH(5, 7, TGT_RP_X + HW, "Err:", String(buf), fg, bg);
+            errColor(fabsf(ang.appUp), fg, bg);
+            snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appUp);
+            tgtValH(5, 7, TGT_RP_X + HW, "V.Elv:", String(buf), fg, bg);
+        }
     }
 
     // Row 6 — T+Int  (cache slot 8)

@@ -191,147 +191,53 @@ const uint16_t RETICLE_R     = 210;                             // disc radius
 const uint16_t RETICLE_BAR_W = 450;                             // bottom bar width (centred under disc)
 
 /***************************************************************************************
-   SHARED RETICLE DOT LAYER (TGT + DOCK)
-   The moving marker layer that sits on top of the shared reticle base. TGT and DOCK
-   draw a byte-identical dot layer (same four markers, colours, dot radii, clamp,
-   erase/repair regions, in-view/antipodal logic and inner-crosshair repair); they
-   differ only in angular SCALE and the four ring-label strings, both carried in
-   ReticleGeom. Extracted here (concatenated before Screen_DOCK/Screen_TGT) so one
-   definition serves both. Each caller passes its OWN ReticleDotCache by reference,
-   keeping the erase-before-redraw state per-screen and byte-identical to before.
+   RETICLE ANGLES — the AppState adapter for the shared reticle marker layer
+   The marker layer itself (ReticleGeom / ReticleDotCache / ReticleAngles, plus
+   reticleProject / reticleClampDot / reticleEraseDot / reticleRepairDotChrome /
+   reticleUpdateDots) now lives in KerbalDisplayCommon ≥ 3.3.0, beside the
+   reticleDrawBase + reticleRepair chrome it draws on, so MNVR / DOCK / TGT all run
+   one implementation. Nothing there reads telemetry.
+   This function is the seam: it is the only reticle code that touches the global
+   `state`, turning vessel/target telemetry into the library's ReticleAngles via
+   kspBodyAxes + kspBoresightAngles.
 ****************************************************************************************/
 
-// Derived angles both screens feed to the dot layer. Byte-identical math in both
-// (previously duplicated in drawScreen_TGT / drawScreen_DOCK). Calls eadiHdgDelta
-// directly — the per-screen _tgtWrapErr/_dockWrapErr wrappers delegate to it identically.
+// Every plotted pair is boresight-relative (+right, +up) from kspBoresightAngles, so a
+// marker's distance from the crosshair is its TRUE angular offset from the nose at any
+// attitude, and the axes are built with the vessel roll — the project-wide rule that
+// EVERY boresight display is body-referenced. Screen up is the craft's roof, so the
+// pilot's instinct is the same on every one of them:
+//   position markers (node / port / target) — steer TOWARD them: marker up and right
+//     means pitch up and yaw right, and it walks back to the crosshair.
+//   velocity markers (prograde)             — thrust AWAY from them: marker up and
+//     right means thrust left and down, and it walks back to the crosshair.
+// Those responses are opposite because of what the symbols mean, not because of the
+// frame; the body frame is what puts both of them in the axes the controls use.
+//
+// appRight/appUp are the readout pair: the relative velocity decomposed about the TARGET
+// axis rather than the nose, so "is my approach path aimed at the port, and which way is
+// it off" is answered exactly, in the pilot's own right/up sense (the target axes carry
+// the vessel roll). Every angular readout on the three reticle screens now comes from
+// this block, so the numbers, the colour bands and the markers cannot disagree.
 ReticleAngles reticleComputeAngles() {
   ReticleAngles a;
-  // Nose→target: where is the target relative to your nose?
-  a.priBrg  = eadiHdgDelta(state.heading - state.tgtHeading, 0.0f);
-  a.priElv  = state.pitch - state.tgtPitch;
-  // Velocity→target: is your velocity vector pointed at the target bearing?
-  a.velBrg  = eadiHdgDelta(state.tgtHeading - state.tgtVelHeading, 0.0f);
-  a.velElv  = state.tgtPitch - state.tgtVelPitch;
-  // Opposites (antipodal): anti-target and retrograde, same convention.
-  a.antiBrg  = eadiHdgDelta(state.heading    - (state.tgtHeading    + 180.0f), 0.0f);
-  a.antiElv  = state.pitch    + state.tgtPitch;
-  a.retroBrg = eadiHdgDelta(state.tgtHeading - (state.tgtVelHeading + 180.0f), 0.0f);
-  a.retroElv = state.tgtPitch + state.tgtVelPitch;
+  const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
+
+  // Where is the target/port relative to the nose?
+  kspBoresightAngles(ax, state.tgtHeading, state.tgtPitch, a.priRight, a.priUp);
+  // Where is the craft going relative to where it is pointing?
+  kspBoresightAngles(ax, state.tgtVelHeading, state.tgtVelPitch, a.velRight, a.velUp);
+  // Opposites: anti-target and retrograde (heading + 180, pitch negated).
+  kspBoresightAngles(ax, state.tgtHeading    + 180.0f, -state.tgtPitch,
+                     a.antiRight,  a.antiUp);
+  kspBoresightAngles(ax, state.tgtVelHeading + 180.0f, -state.tgtVelPitch,
+                     a.retroRight, a.retroUp);
+
+  // Readout only — approach-path error, measured about the TARGET axis: how far right
+  // and above the approach path is the relative velocity actually pointing?
+  const KspBodyAxes tax = kspBodyAxes(state.tgtHeading, state.tgtPitch, state.roll);
+  kspBoresightAngles(tax, state.tgtVelHeading, state.tgtVelPitch, a.appRight, a.appUp);
   return a;
-}
-
-// Clamp a dot to within the scope boundary (widest marker = prograde ring + spoke).
-void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
-  float dx = sx - g.cx, dy = sy - g.cy;
-  float dist = sqrtf(dx*dx + dy*dy);
-  float maxR = (float)(g.r - g.dotRVel * 3 / 2 - 2);
-  if (dist > maxR && dist > 0.5f) {
-    float scale = maxR / dist;
-    sx = g.cx + (int16_t)(dx * scale);
-    sy = g.cy + (int16_t)(dy * scale);
-  }
-}
-
-// Repair scope chrome after a fillRect dot erase. Shared reticle restore (rings /
-// cardinals / crosshair / centre-dot / good-zone) then redraw the ring degree label(s)
-// whose bbox overlaps the erase box, PLUS the innermost one when the good-zone refill
-// (radius r/4) painted over it (marker inside that ring). Ring radii are r/4, r/2,
-// 3r/4, r — identical in both screens; only the label text differs (g.lbl).
-void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
-                            int16_t bx, int16_t by, uint8_t bh) {
-  int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
-
-  float d = reticleRepair(tft, g.cx, g.cy, g.r, 18, bx, by, bh);
-
-  const uint16_t lblR[4] = { (uint16_t)(g.r / 4), (uint16_t)(g.r / 2),
-                             (uint16_t)((g.r * 3) / 4), (uint16_t)g.r };
-  bool fontSet = false;
-  for (uint8_t i = 0; i < 4; i++) {
-    int16_t lx = g.cx + 3, ly = g.cy - lblR[i] + 3;
-    bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
-    bool goodZoneHit = (i == 0 && d <= (float)(g.r / 4));
-    if (boxHit || goodZoneHit) {
-      if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
-      tft.setCursor(lx, ly);
-      tft.print(g.lbl[i]);
-    }
-  }
-}
-
-// Erase-phase for one reticle marker: if it should be hidden, or has moved >1px, erase
-// its cached position and repair chrome, then advance the cache. The draw phase runs
-// after ALL erases (so a moving marker never clips a neighbour) and redraws at the cache
-// (no sub-pixel smear). File-scope static — internal to reticleUpdateDots.
-static void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
-                            int16_t curX, int16_t curY,
-                            int16_t &prevX, int16_t &prevY, bool visible) {
-  const uint8_t EH = g.eraseHalf;
-  if (!visible) {
-    if (prevX != 9999) {
-      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
-      prevX = prevY = 9999;
-    }
-    return;
-  }
-  if (prevX == 9999 || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
-    if (prevX != 9999) {
-      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
-    }
-    prevX = curX; prevY = curY;
-  }
-}
-
-// Update scope dots — erase old, repair chrome, draw new.
-//   primary marker: solid target/port diamond (violet)
-//   vel marker:     hollow prograde circle (neon green)
-// Angular convention: sx = cx + (-brg * scale); sy = cy + (elv * scale).
-// Anti-target/retrograde show only inside the FOV; the matching primary is suppressed
-// while its opposite is shown. Erase phase runs for all markers, then the draw phase
-// (bottom-to-top: opposites, primary, velocity on top). Finally the inner crosshair
-// gap segments + centre dot are redrawn (the vel circle can clip them near centre).
-void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
-                       float priBrg, float priElv, float velBrg, float velElv,
-                       float antiBrg, float antiElv, float retroBrg, float retroElv) {
-  // Primary dot: where is the target/port relative to your nose?
-  int16_t pSX = g.cx + (int16_t)(-priBrg * g.scale);
-  int16_t pSY = g.cy + (int16_t)( priElv * g.scale);
-  reticleClampDot(g, pSX, pSY);
-
-  // Vel dot: where is your velocity vector relative to the target bearing?
-  int16_t vSX = g.cx + (int16_t)(-velBrg * g.scale);
-  int16_t vSY = g.cy + (int16_t)( velElv * g.scale);
-  reticleClampDot(g, vSX, vSY);
-
-  // Opposite (antipodal) marker positions + in-view test.
-  const float maxR = (float)(g.r - g.dotRVel * 3 / 2 - 2);
-  int16_t aSX = g.cx + (int16_t)(-antiBrg  * g.scale), aSY = g.cy + (int16_t)(antiElv  * g.scale);
-  int16_t rSX = g.cx + (int16_t)(-retroBrg * g.scale), rSY = g.cy + (int16_t)(retroElv * g.scale);
-  bool antiInView  = ((float)(aSX-g.cx)*(aSX-g.cx) + (float)(aSY-g.cy)*(aSY-g.cy)) <= maxR*maxR;
-  bool retroInView = ((float)(rSX-g.cx)*(rSX-g.cx) + (float)(rSY-g.cy)*(rSY-g.cy)) <= maxR*maxR;
-
-  // Erase phase (all markers) then draw phase, so a moving marker's erase never clips a
-  // neighbour. Draw order bottom-to-top: opposites, primary, velocity on top.
-  reticleEraseDot(tft, g, aSX, aSY, c.antiX,    c.antiY,    antiInView);
-  reticleEraseDot(tft, g, rSX, rSY, c.retroX,   c.retroY,   retroInView);
-  reticleEraseDot(tft, g, pSX, pSY, c.primaryX, c.primaryY, !antiInView);
-  reticleEraseDot(tft, g, vSX, vSY, c.velX,     c.velY,     !retroInView);
-
-  if (c.antiX    != 9999) drawAntiTargetMarker(tft, c.antiX,    c.antiY,    g.dotRPrimary, TFT_VIOLET);
-  if (c.retroX   != 9999) drawRetrogradeMarker(tft, c.retroX,   c.retroY,   g.dotRVel,     TFT_NEON_GREEN);
-  if (c.primaryX != 9999) drawTargetMarker(tft,     c.primaryX, c.primaryY, g.dotRPrimary, TFT_VIOLET);
-  if (c.velX     != 9999) drawProgradeMarker(tft,   c.velX,     c.velY,     g.dotRVel,     TFT_NEON_GREEN);
-
-  // Redraw crosshair inner segments — the vel circle can clip them near centre.
-  {
-    static const uint16_t gp = 18;   // matches reticleDrawBase gap
-    tft.drawLine(g.cx - gp + 2, g.cy, g.cx - 4, g.cy, TFT_GREY);
-    tft.drawLine(g.cx + 4,      g.cy, g.cx + gp - 2, g.cy, TFT_GREY);
-    tft.drawLine(g.cx, g.cy - gp + 2, g.cx, g.cy - 4, TFT_GREY);
-    tft.drawLine(g.cx, g.cy + 4,      g.cx, g.cy + gp - 2, TFT_GREY);
-  }
-  tft.fillCircle(g.cx, g.cy, 2, TFT_GREY);
 }
 
 /***************************************************************************************

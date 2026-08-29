@@ -81,11 +81,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.1.2
+   This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.0.0: production release (rev-2 display, sidebar nav)
+static const uint8_t SKETCH_VERSION_PATCH = 8;   // 1.0.8: DOCK carries the same four angle rows as TGT
 
 
 /***************************************************************************************
@@ -301,51 +301,19 @@ void eadiUpdatePitchBox(KCM_TFT &tft, float pitch, int16_t &prevBox);
 void eadiUpdateHdgBox(KCM_TFT &tft, float hdg, int16_t &prevBox);
 void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
                            int16_t &prevReadout, uint16_t &prevFg);
-// Heading-error wrap to ±180°. Defined in EADIBall.ino; prototyped here so tabs that
-// sort BEFORE EADIBall in the concatenated sketch (e.g. AAA_Screens.ino) can call it.
-float eadiHdgDelta(float a, float b);
+// eadiHdgDelta (heading wrap to ±180°) moved to KerbalDisplayCommon ≥ 3.2.0 — it had
+// eighteen call sites across the sketch and no dependency on anything sketch-local.
 
-// AAA_Screens.ino — shared reticle DOT LAYER (moving markers on top of the shared
-// reticle base) for the TGT and DOCK screens. The two screens draw an identical dot
-// layer — same four markers (target/anti-target + prograde/retrograde), colours, dot
-// radii, clamp logic, erase/repair regions and dirty-suppress timing — differing only
-// in angular SCALE and the four ring-label strings. Those differences are carried in
-// ReticleGeom so one definition serves both. Each screen keeps its OWN ReticleDotCache
-// (passed by reference) so the erase-before-redraw state stays per-screen.
-struct ReticleGeom {
-  int16_t  cx, cy, r;        // disc centre + radius (px) — same for both screens
-  float    scale;            // px per degree (TGT r/60, DOCK r/20)
-  uint8_t  dotRPrimary;      // target/port marker radius
-  uint8_t  dotRVel;          // velocity/prograde marker radius
-  uint8_t  eraseHalf;        // erase-rect half-size
-  const char *const *lbl;    // 4 ring-degree labels, inner→outer
-};
-
-// Per-screen erase-before-redraw cache. 9999 = marker not currently shown (skip erase).
-// Reset to defaults on screen entry via `cache = ReticleDotCache{};`.
-struct ReticleDotCache {
-  int16_t primaryX = 9999, primaryY = 9999;   // target / port
-  int16_t velX     = 9999, velY     = 9999;   // velocity / prograde
-  int16_t antiX    = 9999, antiY    = 9999;   // anti-target (opposite of primary)
-  int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
-};
-
-// The eight derived angles both screens feed to the dot layer, in the shared
-// convention (bearing wrapped to ±180°). Computed from the global `state`.
-struct ReticleAngles {
-  float priBrg,  priElv;     // nose→target (primary marker)
-  float velBrg,  velElv;     // velocity vector vs target bearing
-  float antiBrg, antiElv;    // anti-target (antipodal of primary)
-  float retroBrg, retroElv;  // retrograde (antipodal of velocity)
-};
-
+// The reticle marker layer moved to KerbalDisplayCommon ≥ 3.3.0 as well:
+// ReticleGeom / ReticleDotCache / ReticleAngles and reticleProject / reticleClampDot /
+// reticleEraseDot / reticleRepairDotChrome / reticleUpdateDots. None of it reads
+// telemetry, so it belongs with the reticleDrawBase chrome it draws on, and MNVR /
+// DOCK / TGT now share one implementation.
+//
+// What stays here is the seam — the one reticle function that touches the global
+// `state`, turning vessel/target telemetry into the library's ReticleAngles.
+// Defined in AAA_Screens.ino.
 ReticleAngles reticleComputeAngles();
-void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
-void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
-                            int16_t bx, int16_t by, uint8_t bh);
-void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
-                       float priBrg, float priElv, float velBrg, float velElv,
-                       float antiBrg, float antiElv, float retroBrg, float retroElv);
 
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(KCM_TFT &tft, ScreenType s);

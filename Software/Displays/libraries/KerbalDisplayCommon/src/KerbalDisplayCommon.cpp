@@ -890,6 +890,199 @@ float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
 
 
 /***************************************************************************************
+   BORESIGHT PROJECTION
+   See the header for the contract and for why this replaced the old flat
+   heading/pitch-difference scheme. Roll handedness is defined here and nowhere else.
+****************************************************************************************/
+void kspDirUnit(float headingDeg, float pitchDeg, float out[3]) {
+  const float h = headingDeg * (float)DEG_TO_RAD, p = pitchDeg * (float)DEG_TO_RAD;
+  const float cp = cosf(p);
+  out[0] = cp * sinf(h);   // East
+  out[1] = cp * cosf(h);   // North
+  out[2] = sinf(p);        // Up
+}
+
+KspBodyAxes kspBodyAxes(float headingDeg, float pitchDeg, float rollDeg) {
+  KspBodyAxes ax;
+  kspDirUnit(headingDeg, pitchDeg, ax.fwd);
+
+  // Unrolled basis: right lies on the horizon 90 deg clockwise of the nose heading,
+  // up completes the right-handed set (right x fwd points at the local vertical when
+  // the craft is level).
+  float r0[3], u0[3];
+  kspDirUnit(headingDeg + 90.0f, 0.0f, r0);
+  u0[0] = r0[1]*ax.fwd[2] - r0[2]*ax.fwd[1];
+  u0[1] = r0[2]*ax.fwd[0] - r0[0]*ax.fwd[2];
+  u0[2] = r0[0]*ax.fwd[1] - r0[1]*ax.fwd[0];
+
+  // Roll the basis about the nose. THE definition of roll handedness for the project:
+  // a body-referenced display rotates world content by -roll, so the axes themselves
+  // rotate by +roll. If markers spin the wrong way in KSP, negate rollDeg here.
+  if (rollDeg != 0.0f) {
+    const float a = rollDeg * (float)DEG_TO_RAD;
+    const float c = cosf(a), sn = sinf(a);
+    for (uint8_t i = 0; i < 3; i++) {
+      ax.right[i] = r0[i]*c - u0[i]*sn;
+      ax.up[i]    = r0[i]*sn + u0[i]*c;
+    }
+  } else {
+    for (uint8_t i = 0; i < 3; i++) { ax.right[i] = r0[i]; ax.up[i] = u0[i]; }
+  }
+  return ax;
+}
+
+void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPitchDeg,
+                        float &degRight, float &degUp) {
+  float m[3];
+  kspDirUnit(dirHeadingDeg, dirPitchDeg, m);
+
+  const float cf = m[0]*ax.fwd[0]   + m[1]*ax.fwd[1]   + m[2]*ax.fwd[2];
+  const float cr = m[0]*ax.right[0] + m[1]*ax.right[1] + m[2]*ax.right[2];
+  const float cu = m[0]*ax.up[0]    + m[1]*ax.up[1]    + m[2]*ax.up[2];
+
+  // Azimuthal equidistant: radius = the true angle off the boresight, direction = the
+  // clock angle of the perpendicular component. atan2(perp, along) rather than acos so
+  // it stays accurate for small offsets, and it spans the full 0..180.
+  const float perp = sqrtf(cr*cr + cu*cu);
+  if (perp < 1e-6f) {
+    // Exactly on the boresight axis -- the clock angle is undefined. Ahead is the
+    // centre; dead astern is pinned straight up so the caller's clamp has a direction.
+    degRight = 0.0f;
+    degUp    = (cf >= 0.0f) ? 0.0f : 180.0f;
+    return;
+  }
+  const float theta = atan2f(perp, cf) * (float)RAD_TO_DEG;
+  degRight = theta * (cr / perp);
+  degUp    = theta * (cu / perp);
+}
+
+float eadiHdgDelta(float a, float b) {
+  float d = a - b;
+  while (d >  180.0f) d -= 360.0f;
+  while (d < -180.0f) d += 360.0f;
+  return d;
+}
+
+
+/***************************************************************************************
+   SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
+****************************************************************************************/
+void reticleProject(const ReticleGeom &g, float degRight, float degUp,
+                    int16_t &sx, int16_t &sy) {
+  sx = g.cx + (int16_t)( degRight * g.scale);
+  sy = g.cy + (int16_t)(-degUp    * g.scale);
+}
+
+bool reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
+  float dx = sx - g.cx, dy = sy - g.cy;
+  float dist = sqrtf(dx*dx + dy*dy);
+  float maxR = (float)(g.r - g.clampMargin);
+  if (dist > maxR && dist > 0.5f) {
+    float scale = maxR / dist;
+    sx = g.cx + (int16_t)(dx * scale);
+    sy = g.cy + (int16_t)(dy * scale);
+    return true;                 // pinned: direction still honest, distance is not
+  }
+  return false;
+}
+
+void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
+                            int16_t bx, int16_t by, uint8_t bh) {
+  int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
+
+  float d = reticleRepair(tft, g.cx, g.cy, g.r, 18, bx, by, bh);
+
+  const uint16_t lblR[4] = { (uint16_t)(g.r / 4), (uint16_t)(g.r / 2),
+                             (uint16_t)((g.r * 3) / 4), (uint16_t)g.r };
+  bool fontSet = false;
+  for (uint8_t i = 0; i < 4; i++) {
+    int16_t lx = g.cx + 3, ly = g.cy - lblR[i] + 3;
+    bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
+    bool goodZoneHit = (i == 0 && d <= (float)(g.r / 4));
+    if (boxHit || goodZoneHit) {
+      if (!fontSet) { tft.setFont(*g.lblFont); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
+      tft.setCursor(lx, ly);
+      tft.print(g.lbl[i]);
+    }
+  }
+}
+
+void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
+                     int16_t curX, int16_t curY,
+                     int16_t &prevX, int16_t &prevY, bool visible,
+                     bool restyled) {
+  const uint8_t EH = g.eraseHalf;
+  if (!visible) {
+    if (prevX != 9999) {
+      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
+      prevX = prevY = 9999;
+    }
+    return;
+  }
+  if (prevX == 9999 || restyled || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
+    if (prevX != 9999) {
+      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
+    }
+    prevX = curX; prevY = curY;
+  }
+}
+
+void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
+                       const ReticleAngles &a) {
+  // Primary dot: where is the target/port relative to your nose?
+  int16_t pSX, pSY;
+  reticleProject(g, a.priRight, a.priUp, pSX, pSY);
+  const bool priPinned = reticleClampDot(g, pSX, pSY);
+
+  // Vel dot: where is your relative-velocity vector relative to your nose?
+  int16_t vSX, vSY;
+  reticleProject(g, a.velRight, a.velUp, vSX, vSY);
+  const bool velPinned = reticleClampDot(g, vSX, vSY);
+
+  // Opposite (antipodal) marker positions + in-view test.
+  const float maxR = (float)(g.r - g.clampMargin);
+  int16_t aSX, aSY, rSX, rSY;
+  reticleProject(g, a.antiRight,  a.antiUp,  aSX, aSY);
+  reticleProject(g, a.retroRight, a.retroUp, rSX, rSY);
+  bool antiInView  = ((float)(aSX-g.cx)*(aSX-g.cx) + (float)(aSY-g.cy)*(aSY-g.cy)) <= maxR*maxR;
+  bool retroInView = ((float)(rSX-g.cx)*(rSX-g.cx) + (float)(rSY-g.cy)*(rSY-g.cy)) <= maxR*maxR;
+
+  // Erase phase (all markers) then draw phase, so a moving marker's erase never clips a
+  // neighbour. Draw order bottom-to-top: opposites, primary, velocity on top.
+  reticleEraseDot(tft, g, aSX, aSY, c.antiX,    c.antiY,    antiInView);
+  reticleEraseDot(tft, g, rSX, rSY, c.retroX,   c.retroY,   retroInView);
+  reticleEraseDot(tft, g, pSX, pSY, c.primaryX, c.primaryY, !antiInView,
+                  priPinned != c.primaryPinned);
+  reticleEraseDot(tft, g, vSX, vSY, c.velX,     c.velY,     !retroInView,
+                  velPinned != c.velPinned);
+  c.primaryPinned = priPinned;
+  c.velPinned     = velPinned;
+
+  if (c.antiX    != 9999) drawAntiTargetMarker(tft, c.antiX,    c.antiY,    g.dotRPrimary, TFT_VIOLET);
+  if (c.retroX   != 9999) drawRetrogradeMarker(tft, c.retroX,   c.retroY,   g.dotRVel,     TFT_NEON_GREEN);
+  // A pinned marker is drawn at half brightness: it is clamped at the boundary, so its
+  // direction is honest but its distance understates the real angle and it must not read
+  // as a live value. Nos.Off / Brg / Elv carry the true number.
+  if (c.primaryX != 9999) drawTargetMarker(tft,   c.primaryX, c.primaryY, g.dotRPrimary,
+                                           c.primaryPinned ? TFT_DIM_VIOLET   : TFT_VIOLET);
+  if (c.velX     != 9999) drawProgradeMarker(tft, c.velX,     c.velY,     g.dotRVel,
+                                           c.velPinned     ? TFT_DIM_NEON_GRN : TFT_NEON_GREEN);
+
+  // Redraw crosshair inner segments — the vel circle can clip them near centre.
+  {
+    static const uint16_t gp = 18;   // matches reticleDrawBase gap
+    tft.drawLine(g.cx - gp + 2, g.cy, g.cx - 4, g.cy, TFT_GREY);
+    tft.drawLine(g.cx + 4,      g.cy, g.cx + gp - 2, g.cy, TFT_GREY);
+    tft.drawLine(g.cx, g.cy - gp + 2, g.cx, g.cy - 4, TFT_GREY);
+    tft.drawLine(g.cx, g.cy + 4,      g.cx, g.cy + gp - 2, TFT_GREY);
+  }
+  tft.fillCircle(g.cx, g.cy, 2, TFT_GREY);
+}
+
+
+/***************************************************************************************
    FORMATTING HELPERS - BASIC
    Convert numeric values to formatted Strings for use with print functions.
 ****************************************************************************************/

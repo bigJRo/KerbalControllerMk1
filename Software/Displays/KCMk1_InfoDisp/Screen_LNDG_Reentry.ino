@@ -105,7 +105,6 @@ static const uint16_t RE_TMP_VS = 22;                   // row pitch (skin -> co
 /***************************************************************************************
    HELPERS
 ****************************************************************************************/
-static inline float _reWrap180(float a) { return eadiHdgDelta(a, 0.0f); }
 
 // ── Chute deployment (dynamic pressure) ──────────────────────────────────────────────
 // Current dynamic pressure q = 0.5*rho*v^2 (Pa); 0 outside the atmosphere.
@@ -374,19 +373,24 @@ static void _reDrawBall(KCM_TFT &tft) {
                      bx - (int16_t)(6 * cosf(pp)), by - (int16_t)(6 * sinf(pp)), TFT_YELLOW);
   }
 
-  // Retrograde marker — where the surface-retrograde vector sits relative to the nose
-  // (boresight = reticle centre). Roll-rotated into the cockpit frame.
+  // Retrograde marker — where the surface-retrograde vector (the airflow the heat
+  // shield must face) sits relative to the nose; boresight = reticle centre.
+  // The shared boresight projection makes AoA the TRUE nose-to-airflow angle at any
+  // attitude; the old heading/pitch-difference form inflated it with pitch, and rotated
+  // by +state.roll where the bank pointer above and the EADI ball both use the opposite
+  // sense — so the marker spun the wrong way as bank built up. One definition now, in
+  // kspBodyAxes (KerbalDisplayCommon).
   bool  moving = (state.surfaceVel > 1.0f);
-  float yawErr = _reWrap180((state.srfVelHeading + 180.0f) - state.heading);
-  float pitErr = (-state.srfVelPitch) - state.pitch;
-  float aoa    = sqrtf(yawErr * yawErr + pitErr * pitErr);
+  const KspBodyAxes _reAx = kspBodyAxes(state.heading, state.pitch, state.roll);
+  float retroRight, retroUp;
+  kspBoresightAngles(_reAx, state.srfVelHeading + 180.0f, -state.srfVelPitch,
+                     retroRight, retroUp);
+  float aoa    = sqrtf(retroRight * retroRight + retroUp * retroUp);
   uint16_t mc  = (aoa < 10.0f) ? TFT_NEON_GREEN : (aoa < 30.0f) ? TFT_YELLOW : TFT_RED;
 
   if (moving) {
-    float a  = state.roll * (float)DEG_TO_RAD;
-    float dx = yawErr * RE_ATT_FS, dy = -pitErr * RE_ATT_FS;
-    float rx = dx * cosf(a) - dy * sinf(a);
-    float ry = dx * sinf(a) + dy * cosf(a);
+    float rx =  retroRight * RE_ATT_FS;
+    float ry = -retroUp    * RE_ATT_FS;
     float mag = sqrtf(rx * rx + ry * ry);
     float lim = R - 23;                          // keep the whole (r=14) symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }

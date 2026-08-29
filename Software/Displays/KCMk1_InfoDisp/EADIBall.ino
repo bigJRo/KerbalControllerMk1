@@ -327,13 +327,7 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) 
 // ═══ ADI ball markers (prograde / target / maneuver) ═════════════════════════════════
 static const int16_t EADI_ADI_MRK_HD = 32;   // marker extent (prograde ring 18 + spoke 12)
 
-// Shortest-arc delta between two headings, result in [-180, 180].
-float eadiHdgDelta(float a, float b) {
-    float d = a - b;
-    while (d >  180.0f) d -= 360.0f;
-    while (d < -180.0f) d += 360.0f;
-    return d;
-}
+// eadiHdgDelta (shortest-arc heading delta) now lives in KerbalDisplayCommon.
 
 // Draw one KSP navball marker on the ADI ball at the given world-space heading/pitch
 // (relative to the current vessel attitude, read from `state`). Skips the draw if it
@@ -341,21 +335,16 @@ float eadiHdgDelta(float a, float b) {
 // `dirty` bitmap so the next delta fill repaints them (prevents trails).
 void eadiDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
                        uint16_t fillCol, uint8_t kind) {
-    // Delta from current vessel attitude
-    float dh = eadiHdgDelta(markerHdg, state.heading);
-    float dp = markerPitch - state.pitch;
-
-    // Ball uses negated roll (matches KerbalSimpit convention)
-    float cosR = cosf(-state.roll * (float)DEG_TO_RAD);
-    float sinR = sinf(-state.roll * (float)DEG_TO_RAD);
-
-    // Unrolled-frame offset: +dh degrees rightward, +dp degrees upward (so -y)
-    float ux = dh * EADI_SCALE;
-    float uy = -dp * EADI_SCALE;
-
-    // Apply roll rotation (angle = -state.roll)
-    int16_t sx = (int16_t)(EADI_CX + ux * cosR - uy * sinR);
-    int16_t sy = (int16_t)(EADI_CY + ux * sinR + uy * cosR);
+    // True boresight projection into the cockpit frame, shared with the reticles and the
+    // re-entry retro ball (KerbalDisplayCommon). The ball's own horizon line and pitch
+    // ladder are still drawn on the older flat model, so a marker can sit up to ~4 px
+    // off the drawn horizon at the widest visible lateral offset — within the ±25° the
+    // marker clip allows. Making the ball itself spherical is a separate job.
+    const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
+    float degRight, degUp;
+    kspBoresightAngles(ax, markerHdg, markerPitch, degRight, degUp);
+    int16_t sx = (int16_t)(EADI_CX + degRight * EADI_SCALE);
+    int16_t sy = (int16_t)(EADI_CY - degUp    * EADI_SCALE);
 
     // Clip: entire marker must fit inside ball. Use (R - HD) so outline doesn't cross rim.
     int16_t dx = sx - EADI_CX, dy = sy - EADI_CY;

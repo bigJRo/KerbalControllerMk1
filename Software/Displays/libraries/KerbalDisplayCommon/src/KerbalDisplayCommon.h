@@ -2,14 +2,54 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 1
-#define KDC_VERSION_PATCH 2
+#define KDC_VERSION_MINOR 5
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.5.0 — off-scale markers are now visibly pinned. reticleClampDot returns whether it
+            clamped, ReticleDotCache carries primaryPinned/velPinned, and reticleUpdateDots
+            draws a clamped marker in a new half-brightness shade (TFT_DIM_VIOLET /
+            TFT_DIM_NEON_GRN) so it cannot be read as a live value. reticleEraseDot gained
+            a `restyled` argument: the transition can move the marker as little as 1 px,
+            which the >1 px movement gate would otherwise swallow, leaving a bright marker
+            drawn while clamped.
+
+   v3.4.0 — ReticleAngles::appBrg/appElv become appRight/appUp: the relative velocity
+            decomposed about the TARGET axis rather than horizon-frame heading/pitch
+            differences, so the approach-path readouts are the exact 3D angle and agree
+            with the on-screen marker gap. (3.4.0 briefly named an unrelated marker glyph
+            that was prototyped and reverted before release; that version never left the
+            branch, so the number is reused rather than skipped.)
+
+   v3.3.1 — documented the project-wide rule that every boresight display builds its
+            axes with the vessel roll; the horizon-referenced path (rollDeg = 0) now has
+            no caller but is kept for a possible world-referenced scope.
+
+   v3.3.0 — true boresight projection. kspCockpitOffset (flat heading/pitch offsets
+            rotated by roll) is REPLACED by kspBodyAxes + kspBoresightAngles, which
+            resolve the vessel attitude into 3D body axes and project a world
+            direction azimuthal-equidistant about the boresight. The displayed radius
+            is now the TRUE angular separation at any attitude; the old scheme
+            stretched the bearing axis by ~1/cos(pitch) and inverted past ~80 deg.
+            Roll is carried by the axes, so ReticleGeom::rollRef is gone — a caller
+            picks the frame by passing roll (body-referenced) or 0 (horizon) when it
+            builds the axes. ReticleAngles now carries right/up pairs rather than
+            bearing/elevation. Superseding 3.2.0's kspCockpitOffset outright is safe:
+            it existed only on this branch and had no other consumers.
+
+   v3.2.0 — the shared reticle marker layer moved in from KCMk1_InfoDisp: ReticleGeom /
+            ReticleDotCache / ReticleAngles plus reticleProject / reticleClampDot /
+            reticleEraseDot / reticleRepairDotChrome / reticleUpdateDots now sit beside
+            the reticleDrawBase + reticleRepair chrome they already called, so MNVR /
+            DOCK / TGT run one implementation instead of three. Added kspCockpitOffset,
+            the SINGLE definition of roll handedness for every body-referenced display
+            (EADI ball markers, the DOCK reticle, the re-entry retro ball), and
+            eadiHdgDelta (heading wrap), previously sketch-local.
 
    v3.1.1 — marker polish: drawThickLine gained a caps arg so free-ended spokes
             draw without round end-caps; shrank the level-indicator nose dot.
@@ -28,7 +68,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.1.1
+  Version: 3.5.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -118,6 +158,7 @@
 #define TFT_MAGENTA      0xF81F  /*  31,   0,  31 */
 #define TFT_PURPLE       0x8010  /*  16,   0,  16 */
 #define TFT_VIOLET       0x901A  /*  18,   0,  26 */
+#define TFT_DIM_VIOLET   0x480D  /*   9,   0,  13 -- half TFT_VIOLET */
 #define TFT_YELLOW       0xFDC2  /*  31,  46,   2 */
 #define TFT_DULL_YELLOW  0xEEEB  /*  29,  55,  11 */
 #define TFT_DARK_YELLOW  0xA500  /*  20,  40,   0 */
@@ -128,6 +169,7 @@
 #define TFT_ORANGE       0xFBE0  /*  31,  31,   0 */
 #define TFT_AIR_SUP_BLUE 0x7517  /*  14,  40,  23 */
 #define TFT_NEON_GREEN   0x3FE2  /*   7,  63,   2 */
+#define TFT_DIM_NEON_GRN 0x1BE1  /*   3,  31,   1 -- half TFT_NEON_GREEN */
 #define TFT_SAP_GREEN    0x53E5  /*  10,  31,   5 */
 #define TFT_INT_ORANGE   0xFA80  /*  31,  20,   0 */
 #define TFT_UPS_BROWN    0x6203  /*  12,  16,   3 */
@@ -277,10 +319,10 @@ enum KspMarkerKind {
 // Shared attitude-reticle chrome for the MNVR / DOCK / TGT screens. All three draw
 // an identical black disc with four concentric rings (r/4, r/2, 3r/4, r coloured
 // dark-green / dark-grey / dark-grey / grey), cardinal cross with a centre gap, a
-// small nose crosshair, 30° minor ticks, and a two-px bezel. They differ only in
-// the cardinal `gap` (18 for MNVR/DOCK, 16 for TGT) and the minor-tick length
-// `tickLen` (14 for MNVR/DOCK, 10 for TGT). Ring degree LABELS, the legend, and the
-// bottom bar remain per-screen (drawn by the caller after this base).
+// small nose crosshair, 30° minor ticks, and a two-px bezel. All three pass the same
+// cardinal `gap` of 18 and minor-tick length of 14, so their chrome is identical; the
+// re-entry retro ball reuses this base at 12/9 for its smaller disc. Ring degree
+// LABELS, the legend, and the bottom bar remain per-screen (drawn after this base).
 void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
                      int16_t gap, int16_t tickLen);
 
@@ -292,6 +334,170 @@ void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
 // the good-zone refill covered the innermost ring label (radius ≈ r/4).
 float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
                     int16_t gap, int16_t bx, int16_t by, uint8_t bh);
+
+/***************************************************************************************
+   BORESIGHT PROJECTION
+   Every boresight-centred display in this project -- the EADI ball markers, the MNVR /
+   TGT / DOCK reticles, the re-entry retro ball -- answers one question: given a world
+   direction (navball heading/pitch), where does it sit relative to where the craft is
+   POINTING? Telemetry arrives in the horizon frame, the screen is in the craft's frame,
+   and the conversion is a genuine 3D rotation, not a pair of angle subtractions.
+
+   The old approach subtracted heading and pitch and scaled the differences. That is
+   only valid near zero pitch: heading lines converge toward the poles, so it stretched
+   the horizontal axis by roughly 1/cos(pitch) -- a 10 deg error reads 14 deg at 45 deg
+   pitch, 20 deg at 60 deg -- and inverted entirely past about 80 deg, which is exactly
+   where a radial-in/out maneuver node puts you.
+
+   PROJECTION. Azimuthal equidistant about the boresight: the radius of the plotted
+   offset IS the true angular separation from the nose, in degrees, at any attitude and
+   out to 180 deg. That is the property a reticle with degree-labelled rings needs --
+   a marker on the 10 deg ring is 10 deg off the nose, always. (The obvious
+   alternative, an atan2 pair per axis, is gnomonic: it reads 71.8 deg for a true
+   60 deg offset at a 45 deg clock angle, which would make TGT's outer rings lie.)
+
+   ROLL HANDEDNESS lives in kspBodyAxes and nowhere else. If markers rotate the wrong
+   way in KSP, flip the sign of rollDeg there and every screen follows.
+****************************************************************************************/
+
+// Vessel body axes as unit vectors in ENU (East, North, Up) -- the frame navball
+// heading/pitch already use.
+struct KspBodyAxes {
+  float fwd[3];     // out the nose
+  float right[3];   // out the starboard side
+  float up[3];      // out the roof
+};
+
+// Resolve a navball attitude into body axes.
+//   rollDeg = state.roll  -> body/cockpit frame: screen up is the craft's roof, which
+//                            is what a hand-flown display wants (RCS translation and
+//                            pitch/yaw are both in these axes). Every boresight display
+//                            in this project passes the vessel roll -- there are no
+//                            exceptions, so one instinct serves them all.
+//   rollDeg = 0           -> horizon-referenced frame: screen up is the local vertical.
+//                            No current caller wants this; kept because it costs
+//                            nothing and a world-referenced scope may want it.
+// Well conditioned everywhere except exactly at the +/-90 deg pitch singularity of the
+// heading/pitch/roll parameterisation itself, where heading and roll trade off.
+KspBodyAxes kspBodyAxes(float headingDeg, float pitchDeg, float rollDeg);
+
+// Unit vector for a world direction given as navball heading/pitch, in ENU.
+void kspDirUnit(float headingDeg, float pitchDeg, float out[3]);
+
+// Project a world direction onto a boresight-centred display.
+//   degRight  + = right of the nose
+//   degUp     + = above the nose
+// hypot(degRight, degUp) is the true angular separation from the boresight (0..180).
+// A direction exactly on the boresight axis returns (0,0) ahead or (0,180) behind,
+// where the clock angle is genuinely undefined.
+void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPitchDeg,
+                        float &degRight, float &degUp);
+
+// Shortest-arc delta between two headings, result in [-180, 180]. Pass b = 0 to wrap a
+// single already-differenced angle into range.
+float eadiHdgDelta(float a, float b);
+
+
+/***************************************************************************************
+   SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
+   The moving markers that sit on top of the reticleDrawBase chrome. All three screens
+   run this same layer -- same clamp, same erase/repair region, same chrome repair --
+   and differ only in the per-screen values carried in ReticleGeom.
+
+   MARKER CONVENTION. Angles are boresight-relative (+right, +up) from
+   kspBoresightAngles, plotted sx = cx + degRight*scale, sy = cy - degUp*scale. Every
+   plotted marker uses this one frame, which is what makes a velocity marker flyable --
+   it shows where the craft is going relative to where it is pointing, so a translation
+   pulls the marker toward the direction you thrust.
+
+   ROLL REFERENCE is chosen upstream, by whether the caller built its KspBodyAxes with
+   the vessel roll or with 0. Every screen in this project uses the vessel roll, so
+   screen up is always the craft's roof and one pilot instinct serves every display.
+   The chrome is rotationally symmetric, so nothing underneath rotates with the markers.
+****************************************************************************************/
+
+// Per-screen reticle configuration. Everything the marker layer needs that differs
+// between MNVR (1 marker, roll-free), DOCK (4 markers, roll-referenced) and TGT.
+struct ReticleGeom {
+  int16_t  cx, cy, r;        // disc centre + radius (px)
+  float    scale;            // px per degree (TGT r/60, MNVR/DOCK r/20)
+  uint8_t  dotRPrimary;      // target/port marker radius
+  uint8_t  dotRVel;          // velocity/prograde marker radius
+  uint8_t  eraseHalf;        // erase-rect half-size
+  uint8_t  clampMargin;      // px kept clear inside the rim = widest marker half-extent
+  const char *const *lbl;    // 4 ring-degree labels, inner -> outer
+  const ILI9341_t3_font_t *lblFont;   // font those labels are drawn in
+};
+
+// Per-screen erase-before-redraw cache. 9999 = marker not currently shown (skip erase).
+// Reset to defaults on screen entry via `cache = ReticleDotCache{};`.
+struct ReticleDotCache {
+  int16_t primaryX = 9999, primaryY = 9999;   // target / port
+  int16_t velX     = 9999, velY     = 9999;   // velocity / prograde
+  int16_t antiX    = 9999, antiY    = 9999;   // anti-target (opposite of primary)
+  int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
+  // Pinned = clamped at the scope boundary, so the marker's direction is honest but its
+  // distance is not. Cached because the marker is redrawn dimmed while pinned, and that
+  // colour change has to force a repaint even when the marker has not moved a pixel.
+  bool    primaryPinned = false, velPinned = false;
+};
+
+// The derived angles a screen feeds to the dot layer. All four PLOTTED pairs are
+// boresight-relative (+right, +up) from kspBoresightAngles, so every marker lives in
+// one frame and its distance from centre is its true angular offset from the nose.
+// Which frame -- body or horizon -- was decided when the caller built the axes.
+//
+// appRight/appUp are the one TARGET-referenced pair and are never plotted: they are the
+// relative-velocity direction decomposed about the TARGET axis (rolled with the vessel),
+// i.e. how far right and above the approach axis the craft is actually travelling. That
+// is the exact 3D angle, and it agrees with the on-screen VEL-to-PORT marker gap to
+// within 0.31 deg while the target is inside DOCK's +/-20 deg scale, growing to about
+// 2.9 deg out at TGT's 60 deg rim (the plotted gap is a difference of two azimuthal-
+// equidistant positions, which is only exactly the angle between them when one sits on
+// the boresight).
+struct ReticleAngles {
+  float priRight,   priUp;     // nose -> target/port (primary marker)
+  float velRight,   velUp;     // nose -> relative-velocity vector (velocity marker)
+  float antiRight,  antiUp;    // anti-target (antipodal of primary)
+  float retroRight, retroUp;   // retrograde (antipodal of velocity)
+  float appRight,   appUp;     // readout only: velocity vs the target axis (see above)
+};
+
+// Boresight angles (+right, +up) -> screen coords for this reticle's scale.
+void reticleProject(const ReticleGeom &g, float degRight, float degUp,
+                    int16_t &sx, int16_t &sy);
+
+// Clamp a marker to within the scope boundary, keeping g.clampMargin px clear of the
+// rim so the widest symbol still draws whole. Returns true if the marker was actually
+// clamped -- i.e. it is off-scale and its plotted distance understates the real angle.
+// Callers draw a pinned marker in its half-brightness shade so it cannot be mistaken for
+// a live reading; the numeric readouts (Nos.Off, Brg/Elv) carry the true value.
+bool reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
+
+// Repair scope chrome after a fillRect marker erase: the shared reticleRepair restore
+// (rings / cardinals / crosshair / centre dot / good-zone), then the ring degree
+// label(s) whose bbox the erase box overlapped, plus the innermost one when the
+// good-zone refill painted over it.
+void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
+                            int16_t bx, int16_t by, uint8_t bh);
+
+// Erase-phase for one marker: if it should be hidden, or has moved > 1 px, erase its
+// cached position and repair the chrome, then advance the cache. Callers run every
+// erase before any draw, so a moving marker never clips a neighbour, and then redraw
+// at the cache position (no sub-pixel smear).
+// `restyled` forces the erase/repaint even when the marker has not moved, so a change of
+// appearance (pinned <-> live) is not swallowed by the >1 px movement gate.
+void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
+                     int16_t curX, int16_t curY,
+                     int16_t &prevX, int16_t &prevY, bool visible,
+                     bool restyled = false);
+
+// Full four-marker layer (DOCK / TGT): erase all, draw bottom-to-top (opposites,
+// primary, velocity on top), then restore the inner crosshair the velocity ring can
+// clip. Anti-target / retrograde appear only inside the FOV, and each suppresses its
+// opposite while shown.
+void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
+                       const ReticleAngles &a);
 
 // --- Basic formatters ---
 String formatInt(uint16_t value);

@@ -5,7 +5,7 @@
    ┌────────────────────────────────┬──────────────────────────────────────┐
    │                                │ ΔV.Mnvr:      847 m/s                │
    │   Alignment Reticle            │ ΔV.Plan:     1204 m/s               │
-   │   (black disc, R=170)          │ ΔV.Stg:       923 m/s                │
+   │   (black disc, R=210)          │ ΔV.Stg:       923 m/s                │
    │                                │ T+Ign:        4:32                   │
    │   ◆ maneuver marker (blue)     │ T+Mnvr:       5:19                   │
    │   □ green box when aligned     │ Burn dur:     1:47                   │
@@ -18,15 +18,19 @@
    Fixed crosshair  = your nose direction (always at centre)
    Marker (MNVR)    = where the burn vector points relative to your nose.
                       At centre → aligned for the burn.
-   Marker colour    = always maneuver blue (TFT_BLUE).
+   Marker colour    = maneuver blue (TFT_BLUE), half-brightness TFT_NAVY while pinned.
    Alignment box    = neon-green square drawn around diamond when
                       error magnitude < ATT_ERR_WARN_DEG (5°).
+   Dimmed marker (TFT_NAVY) = pinned at the scope boundary, i.e. the node is further
+                      off the nose than the outer ring can show. Direction honest,
+                      distance understated; Brg/Elv carry the true value.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ─────────────────
-   Centre: (289, 295)  Radius: 225px  Scale: 11.25 px/deg (±20° full scale)
-   Rings: 5°=56px  10°=112px  15°=168px  20°=225px. Centred in the left region
-   x=[0,578]; ΔV bar centred under it.
+   Centre: (289, 300)  Radius: 210px  Scale: 10.5 px/deg (±20° full scale)
+   Rings: 5°=52px  10°=105px  15°=157px  20°=210px. Centred in the left region
+   x=[0,578]; ΔV bar centred under it. Centre/radius are the shared RETICLE_*
+   constants, identical to DOCK and TGT.
 
    PANEL: 360 px wide at x=580 (matches ascent/circ), NR=8 rows of 67 px,
    labels Black_28, values Black_36
@@ -53,16 +57,16 @@ static bool _mnvrChromDrawn  = false;
 // ── Reticle geometry — centred and stretched to fill the left region ─────────────────
 // The readout panel now sits on the far right (x=580, matching the ascent/circ
 // panel), leaving x=[0,578] for the reticle. The reticle is centred in that band
-// and enlarged; the ΔV bar is centred under it.
+// using the shared RETICLE_* constants; the ΔV bar is centred under it.
 static const uint16_t MNVR_CX    = RETICLE_CX;   // centre of the left region x=[0,578]
-static const uint16_t MNVR_CY    = RETICLE_CY;   // nudged down for more whitespace above
-static const uint16_t MNVR_R     = RETICLE_R;    // slightly reduced so top gap grows to ~28 px
+static const uint16_t MNVR_CY    = RETICLE_CY;   // shared disc centre y (DOCK/TGT match)
+static const uint16_t MNVR_R     = RETICLE_R;    // shared disc radius (DOCK/TGT match)
 static const float    MNVR_SCALE = (float)MNVR_R / 20.0f;   // 10.5 px/deg, ±20° full scale
 
-static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 56
-static const uint16_t MNVR_RING_10 = MNVR_R / 2;         // 112
-static const uint16_t MNVR_RING_15 = (MNVR_R * 3) / 4;   // 168
-static const uint16_t MNVR_RING_20 = MNVR_R;             // 225
+static const uint16_t MNVR_RING_5  = MNVR_R / 4;         // 52
+static const uint16_t MNVR_RING_10 = MNVR_R / 2;         // 105
+static const uint16_t MNVR_RING_15 = (MNVR_R * 3) / 4;   // 157
+static const uint16_t MNVR_RING_20 = MNVR_R;             // 210
 
 // Marker sizing — diamond and box scaled up with the larger reticle
 static const uint8_t MNVR_MRK_DS  = 26;   // maneuver marker prong length
@@ -85,28 +89,27 @@ static const uint16_t MNVR_BAR_H = 26;
 // Screen cache index
 static const uint8_t MNVR_SC = (uint8_t)screen_MNVR;   // 3
 
+// ── Shared marker-layer geometry ─────────────────────────────────────────────────────
+// MNVR draws a single marker rather than DOCK/TGT's four, so it does not call
+// reticleUpdateDots — but the clamp, the erase-rect chrome repair and the angle→screen
+// projection are the same code, and now come from KerbalDisplayCommon rather than from
+// per-screen copies. dotRPrimary/dotRVel carry the maneuver diamond's prong length;
+// The marker is body-referenced like every other boresight display in the project, so
+// pitch and yaw move it the way the pilot expects at any roll attitude.
+static const char *const MNVR_RING_LBL[4] = { "5", "10", "15", "20" };
+static const ReticleGeom MNVR_GEOM = {
+    (int16_t)MNVR_CX, (int16_t)MNVR_CY, (int16_t)MNVR_R, MNVR_SCALE,
+    MNVR_MRK_DS, MNVR_MRK_DS, MNVR_ERASE_R,
+    MNVR_MRK_DS + 2,                // clampMargin — was MNVR_R - MNVR_MRK_DS - 2
+    MNVR_RING_LBL, &Roboto_Black_16
+};
+
 
 // ── Previous marker state ─────────────────────────────────────────────────────────────
 static int16_t _mnvrPrevMrkX    = 9999, _mnvrPrevMrkY = 9999;
 static bool    _mnvrPrevAligned = false;
+static bool    _mnvrPrevPinned  = false;   // marker clamped at the scope boundary
 static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome on re-entry
-
-
-// ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
-static inline float _mnvrWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
-
-
-// ── Clamp marker to reticle boundary ─────────────────────────────────────────────────
-static void _mnvrClampMrk(int16_t &sx, int16_t &sy) {
-    float dx = sx - MNVR_CX, dy = sy - MNVR_CY;
-    float dist = sqrtf(dx*dx + dy*dy);
-    float maxR = (float)(MNVR_R - MNVR_MRK_DS - 2);
-    if (dist > maxR && dist > 0.5f) {
-        float scale = maxR / dist;
-        sx = MNVR_CX + (int16_t)(dx * scale);
-        sy = MNVR_CY + (int16_t)(dy * scale);
-    }
-}
 
 
 // ── Draw reticle chrome ───────────────────────────────────────────────────────────────
@@ -204,38 +207,20 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 }
 
 
-// ── Repair chrome after marker erase ─────────────────────────────────────────────────
-static void _mnvrRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
-    int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
-    float d = reticleRepair(tft, MNVR_CX, MNVR_CY, MNVR_R, 18, bx, by, bh);
-
-    // Redraw the ring label(s) the erase box overlapped, plus the innermost one if
-    // the good-zone refill (radius R/4) just painted over it (marker inside it).
-    static const uint16_t lblR[]   = {MNVR_RING_5, MNVR_RING_10, MNVR_RING_15, MNVR_RING_20};
-    static const char    *lblTxt[] = {"5", "10", "15", "20"};
-    bool fontSet = false;
-    for (uint8_t i = 0; i < 4; i++) {
-        int16_t lx = MNVR_CX + 3, ly = MNVR_CY - lblR[i] + 3;
-        bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
-        bool goodZoneHit = (i == 0 && d <= (float)(MNVR_R / 4));
-        if (boxHit || goodZoneHit) {
-            if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
-            tft.setCursor(lx, ly);
-            tft.print(lblTxt[i]);
-        }
-    }
-}
-
-
 // ── Update burn vector marker ─────────────────────────────────────────────────────────
-// Diamond always TFT_BLUE. Neon-green alignment box appears when error < 5°.
-static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
-    float errMag  = sqrtf(brgErr*brgErr + elvErr*elvErr);
+// Diamond TFT_BLUE, or TFT_NAVY (half brightness) while pinned at the scope boundary.
+// Neon-green alignment box appears when the error is under 5°.
+static void _mnvrUpdateMarker(KCM_TFT &tft, float nodeRight, float nodeUp) {
+    float errMag  = sqrtf(nodeRight*nodeRight + nodeUp*nodeUp);
     bool  aligned = (errMag < ATT_ERR_WARN_DEG);
 
-    int16_t sx = MNVR_CX + (int16_t)(-brgErr * MNVR_SCALE);
-    int16_t sy = MNVR_CY + (int16_t)( elvErr * MNVR_SCALE);
-    _mnvrClampMrk(sx, sy);
+    int16_t sx, sy;
+    reticleProject(MNVR_GEOM, nodeRight, nodeUp, sx, sy);
+    // Pinned = the node is further off the nose than the outer ring can show, so the
+    // marker's direction is still honest but its distance understates the real angle.
+    // It is drawn at half brightness so it cannot be read as a live value; Brg/Elv
+    // carry the true number, now up to +/-180 deg.
+    const bool pinned = reticleClampDot(MNVR_GEOM, sx, sy);
 
     static const uint8_t EH = MNVR_ERASE_R;
     static const uint8_t DS = MNVR_MRK_DS;
@@ -245,14 +230,15 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
                          abs(sx - _mnvrPrevMrkX) > 1 ||
                          abs(sy - _mnvrPrevMrkY) > 1);
     bool alignChanged = (aligned != _mnvrPrevAligned);
+    bool pinChanged   = (pinned  != _mnvrPrevPinned);
 
-    if (moved || alignChanged) {
+    if (moved || alignChanged || pinChanged) {
         if (_mnvrPrevMrkX != 9999) {
             tft.fillRect(_mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _mnvrRepairChrome(tft, _mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH);
+            reticleRepairDotChrome(tft, MNVR_GEOM, _mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH);
         }
         // KSP maneuver marker: dot + three T-capped prongs
-        drawManeuverMarker(tft, sx, sy, DS, TFT_BLUE);
+        drawManeuverMarker(tft, sx, sy, DS, pinned ? TFT_NAVY : TFT_BLUE);
         // Alignment box — neon green when within 5°
         if (aligned) {
             tft.drawRect(sx - BX,     sy - BX,     BX*2+1, BX*2+1, TFT_NEON_GREEN);
@@ -261,6 +247,7 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
         _mnvrPrevMrkX    = sx;
         _mnvrPrevMrkY    = sy;
         _mnvrPrevAligned = aligned;
+        _mnvrPrevPinned  = pinned;
     }
 
     // Crosshair always on top
@@ -320,6 +307,7 @@ void chromeScreen_MNVR(KCM_TFT &tft) {
     _mnvrChromDrawn  = true;
     _mnvrPrevMrkX    = 9999; _mnvrPrevMrkY = 9999;
     _mnvrPrevAligned = false;
+    _mnvrPrevPinned  = false;
     _mnvrPrevDV      = -999.0f;   // force ΔV bar + value to repaint on screen entry
 
     tft.fillRect(0, TITLE_TOP, MNVR_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -344,8 +332,14 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     if (!_mnvrChromDrawn) { switchToScreen(screen_MNVR); return; }
 
     // ── Derived values ────────────────────────────────────────────────────────────────
-    float brgErr = _mnvrWrapErr(state.heading - state.mnvrHeading);
-    float elvErr = state.pitch - state.mnvrPitch;
+    // One boresight projection drives the marker, the alignment box AND the Brg/Elv
+    // readouts, so the numbers say exactly where the marker is. These were horizon-frame
+    // heading/pitch differences, which inflated with pitch: a node 10 deg off the nose
+    // printed 13.8 deg at 45 deg pitch and 62.9 deg at 80 deg while the marker sat
+    // correctly on the 10 deg ring.
+    const KspBodyAxes _ax = kspBodyAxes(state.heading, state.pitch, state.roll);
+    float brgErr, elvErr;
+    kspBoresightAngles(_ax, state.mnvrHeading, state.mnvrPitch, brgErr, elvErr);
     float tIgn   = state.mnvrTime - state.mnvrDuration * 0.5f;
 
     // ── Update reticle marker ─────────────────────────────────────────────────────────
@@ -363,9 +357,15 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         drawPanelValue(tft, MNVR_SC, slot, row, X, W, label, val, fgc, bgc, MNVR_RP_F, NR, false);
     };
 
+    // Threshold colouring, matching DOCK/TGT and the reticle rings: green inside the
+    // inner ring, yellow out to the middle ring, red beyond. This lambda previously
+    // ignored its argument and returned the plain value colour, so MNVR was the one
+    // reticle screen whose angle readouts never changed colour at all.
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {
-        // Original screen colour logic — plain value colour, no alarm states
-        fg = COL_VALUE; bg = COL_BACK;
+        float ae = fabsf(e);
+        if      (ae >= ATT_ERR_ALARM_DEG) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        else if (ae >= ATT_ERR_WARN_DEG)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     };
 
     // Row 0 — ΔV.Mnvr
