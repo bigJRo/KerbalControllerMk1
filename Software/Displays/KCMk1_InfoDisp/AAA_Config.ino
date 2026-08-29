@@ -187,7 +187,7 @@ const float DOCK_DRIFT_ALARM_MS = 0.5f;   // white-on-red
 // Bearing/elevation angle (degrees absolute) — the reticle rings, as above.
 // DOCK runs +/-20 deg full scale, so these are tighter than TGT: the precision phase
 // gets the tighter tolerance, which is what the old 10/20-vs-TGT-5/15 had backwards.
-// Applied to BOTH Vel.Brg/Vel.Elv (approach path vs port) and Nos.Off (nose off bore) —
+// Applied to BOTH V.Brg/V.Elv (approach path vs port) and Nos.Off (nose off bore) —
 // two different quantities sharing one band, which suits both at docking range.
 const float DOCK_BRG_WARN_DEG  =  5.0f;  // yellow — inner ring  (20/4)
 const float DOCK_BRG_ALARM_DEG = 10.0f;  // red — middle ring  (20/2)

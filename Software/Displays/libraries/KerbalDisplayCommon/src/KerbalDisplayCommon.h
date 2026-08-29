@@ -2,14 +2,21 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 3
-#define KDC_VERSION_PATCH 1
+#define KDC_VERSION_MINOR 4
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.4.0 — ReticleAngles::appBrg/appElv become appRight/appUp: the relative velocity
+            decomposed about the TARGET axis rather than horizon-frame heading/pitch
+            differences, so the approach-path readouts are the exact 3D angle and agree
+            with the on-screen marker gap. (3.4.0 briefly named an unrelated marker glyph
+            that was prototyped and reverted before release; that version never left the
+            branch, so the number is reused rather than skipped.)
 
    v3.3.1 — documented the project-wide rule that every boresight display builds its
             axes with the vessel roll; the horizon-referenced path (rollDeg = 0) now has
@@ -53,7 +60,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.3.1
+  Version: 3.4.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -426,16 +433,20 @@ struct ReticleDotCache {
 // one frame and its distance from centre is its true angular offset from the nose.
 // Which frame -- body or horizon -- was decided when the caller built the axes.
 //
-// appBrg/appElv are the one target-referenced pair and are NEVER plotted. They feed the
-// numeric approach-path readouts and are still horizon-frame heading/pitch differences,
-// so they no longer match the on-screen VEL-to-PORT gap exactly once the vessel is
-// pitched. Reconciling the readouts with the picture is a separate open item.
+// appRight/appUp are the one TARGET-referenced pair and are never plotted: they are the
+// relative-velocity direction decomposed about the TARGET axis (rolled with the vessel),
+// i.e. how far right and above the approach axis the craft is actually travelling. That
+// is the exact 3D angle, and it agrees with the on-screen VEL-to-PORT marker gap to
+// within 0.31 deg while the target is inside DOCK's +/-20 deg scale, growing to about
+// 2.9 deg out at TGT's 60 deg rim (the plotted gap is a difference of two azimuthal-
+// equidistant positions, which is only exactly the angle between them when one sits on
+// the boresight).
 struct ReticleAngles {
   float priRight,   priUp;     // nose -> target/port (primary marker)
   float velRight,   velUp;     // nose -> relative-velocity vector (velocity marker)
   float antiRight,  antiUp;    // anti-target (antipodal of primary)
   float retroRight, retroUp;   // retrograde (antipodal of velocity)
-  float appBrg,     appElv;    // readout only: velocity vector vs target bearing
+  float appRight,   appUp;     // readout only: velocity vs the target axis (see above)
 };
 
 // Boresight angles (+right, +up) -> screen coords for this reticle's scale.

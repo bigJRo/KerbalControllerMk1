@@ -8,7 +8,7 @@
    │   (black disc, R=210, ±60°)     │ DIST:           48.3 km             │
    │                                 │ V.TGT:          124.0 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
-   │   ○ velocity vector (NEON_GREEN)│ B.ERR:  +14.0° │ E.ERR:  -9.0°      │
+   │   ○ velocity vector (NEON_GREEN)│ V.BRG:  +14.0° │ V.ELV:  -9.0°      │
    │   + nose crosshair (fixed)      │ T+INT:          6m 30s               │
    └─────────────────────────────────┴──────────────────────────────────────┘
 
@@ -20,8 +20,8 @@
    Green circle (VEL)   = where your relative velocity points relative to your nose
                           Centre → you are flying straight along the boresight
    Perfect intercept    = both dots converging on each other (VEL sitting on TGT means
-                          the relative velocity is aimed at the target; the B.Err/E.Err
-                          readouts are that same gap in degrees)
+                          the relative velocity is aimed at the target; V.Brg/V.Elv are
+                          that error in degrees, measured about the target axis)
 
    SCOPE GEOMETRY (rev-2, 1024×600)
    ──────────────
@@ -36,8 +36,8 @@
    Row 1  V.Orb    full-width
    Row 2  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
    Row 3  V.Tgt    full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
-   Row 4  Brg|Elv  split — raw bearing and elevation to target, informational
-   Row 5  Err|Err   split — approach alignment errors (bearing/elevation), colour-coded
+   Row 4  Brg|Elv  split — bearing and elevation of the target from the NOSE
+   Row 5  V.Brg|V.Elv split — approach-path error about the target axis, colour-coded
    Row 6  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
 
    DOT UPDATE STRATEGY  (same as DOCK)
@@ -258,11 +258,11 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
 
-    // Row 5: Err | Err split (approach alignment errors)
+    // Row 5: V.Brg | V.Elv split (approach-path error about the target axis)
     {
         uint16_t y = rowYFor(5, NR), h = rowH;
-        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "Err:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "Err:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "V.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "V.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
@@ -356,40 +356,46 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     }
 
     // Row 4 — Brg | Elv  (cache slots 4, 5)
-    // Raw bearing and elevation to target — informational, always dark green.
-    // Display bearing as a signed value: wrap 0–360 to –180..+180 so
-    // positive = target to the right, negative = target to the left.
+    // Where the target sits relative to the NOSE — the same quantity MNVR's Brg/Elv
+    // shows, and literally where the violet TGT marker is on the scope. This used to
+    // print state.tgtHeading wrapped to +/-180 under a comment claiming "positive =
+    // target to the right", which was the vessel's compass bearing: with the target dead
+    // ahead on heading 120 it read +120, not 0.
     {
-        float dispBrg = state.tgtHeading;
-        if (dispBrg > 180.0f) dispBrg -= 360.0f;
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", dispBrg);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priRight);
         tgtValH(4, 4, TGT_RP_X, "Brg:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
 
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", state.tgtPitch);
+        snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priUp);
         tgtValH(4, 5, TGT_RP_X + HW, "Elv:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 5 — B.Err | E.Err  (cache slots 6, 7)
-    // Approach alignment errors. Green < 5°, yellow < 15°, white-on-red >= 15°.
-    // Uses TGT-specific thresholds (wider than DOCK — long-range ops are less precise).
+    // Row 5 — V.Brg | V.Elv  (cache slots 6, 7)
+    // Approach-path error about the TARGET axis: how far right and above the approach
+    // path the relative velocity actually points. Same quantity DOCK shows under the
+    // same labels. Colour bands are the scope rings (green inside 15 deg, yellow to
+    // 30 deg, red beyond).
     auto errColor = [](float ae, uint16_t &fg, uint16_t &bg) {
         if      (ae >= TGT_BRG_ALARM_DEG) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (ae >= TGT_BRG_WARN_DEG)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     };
     {
-        // Same target-referenced pair the shared angle block already derives, and the
-        // on-screen gap between the VEL and TGT markers.
-        float brgErr = ang.appBrg;
-        float elvErr = ang.appElv;
+        // Past 90 deg the craft is travelling away from the target and the signed pair
+        // stops being flyable, so both cells show "---" (the idiom T+Int already uses
+        // when not closing). It also keeps the value inside the half-width cell.
+        bool appValid = (sqrtf(ang.appRight*ang.appRight + ang.appUp*ang.appUp) <= 90.0f);
+        if (!appValid) {
+            tgtValH(5, 6, TGT_RP_X,      "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
+            tgtValH(5, 7, TGT_RP_X + HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
+        } else {
+            errColor(fabsf(ang.appRight), fg, bg);
+            snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appRight);
+            tgtValH(5, 6, TGT_RP_X, "V.Brg:", String(buf), fg, bg);
 
-        errColor(fabsf(brgErr), fg, bg);
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", brgErr);
-        tgtValH(5, 6, TGT_RP_X, "Err:", String(buf), fg, bg);
-
-        errColor(fabsf(elvErr), fg, bg);
-        snprintf(buf, sizeof(buf), "%+.0f\xB0", elvErr);
-        tgtValH(5, 7, TGT_RP_X + HW, "Err:", String(buf), fg, bg);
+            errColor(fabsf(ang.appUp), fg, bg);
+            snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appUp);
+            tgtValH(5, 7, TGT_RP_X + HW, "V.Elv:", String(buf), fg, bg);
+        }
     }
 
     // Row 6 — T+Int  (cache slot 8)

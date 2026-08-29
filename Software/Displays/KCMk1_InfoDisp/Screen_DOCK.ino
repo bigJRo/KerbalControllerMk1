@@ -37,7 +37,7 @@
 
    Kill lateral drift by walking the green marker onto the crosshair; put the green
    marker ON the magenta PORT marker to fly straight down the approach axis (that gap is
-   what Vel.Brg / Vel.Elv read out in degrees). Both frames are one and the same when the
+   what V.Brg / V.Elv read out in degrees). Both frames are one and the same when the
    nose is already on the port.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
@@ -198,16 +198,16 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
     printDispChrome(tft, RP_LBL, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, RP_LBL, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider between V.Lat(3) and Vel.Brg(4)
+    // Divider between V.Lat(3) and V.Brg(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Rows 4–5: approach path alignment (velocity vector vs port)
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "Vel.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(4,RP_NR), RP_W, rowHFor(RP_NR), "V.Brg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(5,RP_NR), RP_W, rowHFor(RP_NR), "V.Elv:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider between Vel.Elv(5) and Nos.Off(6)
+    // Divider between V.Elv(5) and Nos.Off(6)
     { uint16_t dy = rowYFor(6,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
@@ -331,7 +331,12 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // Shared derived-angle block (identical to TGT): nose→port, velocity→target and both
     // antipodal directions, bearings wrapped to ±180°.
     ReticleAngles ang = reticleComputeAngles();
-    float appBrg  = ang.appBrg,  appElv  = ang.appElv;    // readout: approach path vs port
+    // Approach-path error about the target axis — drives rows 4 and 5.
+    float appRight = ang.appRight, appUp = ang.appUp;
+    // Beyond 90 deg the craft is travelling away from the port and the signed pair
+    // stops being actionable, so the rows show "---" (the same idiom T+Dock uses
+    // when not closing) rather than a large number nobody can fly.
+    bool appValid = (sqrtf(appRight*appRight + appUp*appUp) <= 90.0f);
 
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
     float v_lat_mag = 0.0f;
@@ -416,19 +421,26 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         dockVal(3, 3, "V.Lat:", fmtMs(v_lat_mag), fg, bg);
     }
 
-    // Row 4 — Vel.Brg: bearing error of velocity vector vs port (cache slot 4)
-    // Is your approach path aimed at the port? Target-referenced (ang.appBrg), NOT the
-    // nose-referenced angle the marker is plotted at — on the reticle this is the gap
-    // between the green velocity marker and the violet port marker. Zero = flying
-    // straight down the approach axis, whatever the nose is doing.
-    angCol(appBrg, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", appBrg);
-    dockVal(4, 4, "Vel.Brg:", buf, fg, bg);
+    // Row 4 — V.Brg: how far RIGHT of the approach axis the velocity points (slot 4).
+    // Target-referenced, not the nose-referenced angle the marker is plotted at: on the
+    // reticle this is the gap between the green velocity marker and the violet port
+    // marker. Zero = flying straight down the approach axis, whatever the nose is doing.
+    if (!appValid) {
+        dockVal(4, 4, "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
+    } else {
+        angCol(appRight, fg, bg);
+        snprintf(buf, sizeof(buf), "%+.1f\xB0", appRight);
+        dockVal(4, 4, "V.Brg:", buf, fg, bg);
+    }
 
-    // Row 5 — Vel.Elv: elevation error of velocity vector vs port (cache slot 5)
-    angCol(appElv, fg, bg);
-    snprintf(buf, sizeof(buf), "%+.1f\xB0", appElv);
-    dockVal(5, 5, "Vel.Elv:", buf, fg, bg);
+    // Row 5 — V.Elv: how far ABOVE the approach axis the velocity points (slot 5).
+    if (!appValid) {
+        dockVal(5, 5, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
+    } else {
+        angCol(appUp, fg, bg);
+        snprintf(buf, sizeof(buf), "%+.1f\xB0", appUp);
+        dockVal(5, 5, "V.Elv:", buf, fg, bg);
+    }
 
     // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 6)
     // The boresight projection makes this exact rather than a Pythagorean approximation:
@@ -498,11 +510,11 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
-    // Between V.Lat(3) and Vel.Brg(4)
+    // Between V.Lat(3) and V.Brg(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
-    // Between Vel.Elv(5) and Nos.Off(6)
+    // Between V.Elv(5) and Nos.Off(6)
     { uint16_t dy = rowYFor(6,RP_NR) - 1;
       tft.drawLine(RP_X, dy,   RP_X+RP_W, dy,   TFT_GREY);
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }

@@ -214,9 +214,11 @@ const uint16_t RETICLE_BAR_W = 450;                             // bottom bar wi
 // Those responses are opposite because of what the symbols mean, not because of the
 // frame; the body frame is what puts both of them in the axes the controls use.
 //
-// appBrg/appElv stay horizon-frame heading/pitch differences — they are readouts, not
-// markers. They no longer equal the on-screen VEL-to-PORT gap once the vessel is
-// pitched; reconciling the readouts with the picture is a separate open item.
+// appRight/appUp are the readout pair: the relative velocity decomposed about the TARGET
+// axis rather than the nose, so "is my approach path aimed at the port, and which way is
+// it off" is answered exactly, in the pilot's own right/up sense (the target axes carry
+// the vessel roll). Every angular readout on the three reticle screens now comes from
+// this block, so the numbers, the colour bands and the markers cannot disagree.
 ReticleAngles reticleComputeAngles() {
   ReticleAngles a;
   const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
@@ -231,9 +233,10 @@ ReticleAngles reticleComputeAngles() {
   kspBoresightAngles(ax, state.tgtVelHeading + 180.0f, -state.tgtVelPitch,
                      a.retroRight, a.retroUp);
 
-  // Readout only — approach-path error: is the relative velocity aimed at the port?
-  a.appBrg = eadiHdgDelta(state.tgtHeading - state.tgtVelHeading, 0.0f);
-  a.appElv = state.tgtPitch - state.tgtVelPitch;
+  // Readout only — approach-path error, measured about the TARGET axis: how far right
+  // and above the approach path is the relative velocity actually pointing?
+  const KspBodyAxes tax = kspBodyAxes(state.tgtHeading, state.tgtPitch, state.roll);
+  kspBoresightAngles(tax, state.tgtVelHeading, state.tgtVelPitch, a.appRight, a.appUp);
   return a;
 }
 

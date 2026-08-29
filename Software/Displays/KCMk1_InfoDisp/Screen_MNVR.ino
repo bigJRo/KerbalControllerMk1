@@ -204,14 +204,7 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 
 // ── Update burn vector marker ─────────────────────────────────────────────────────────
 // Diamond always TFT_BLUE. Neon-green alignment box appears when error < 5°.
-static void _mnvrUpdateMarker(KCM_TFT &tft) {
-    // Boresight projection: nodeRight/nodeUp are the node's true angular offset from
-    // the nose, so the plotted radius IS the alignment error — no Pythagorean
-    // approximation, and correct at the high pitch a radial-in/out node demands.
-    const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
-    float nodeRight, nodeUp;
-    kspBoresightAngles(ax, state.mnvrHeading, state.mnvrPitch, nodeRight, nodeUp);
-
+static void _mnvrUpdateMarker(KCM_TFT &tft, float nodeRight, float nodeUp) {
     float errMag  = sqrtf(nodeRight*nodeRight + nodeUp*nodeUp);
     bool  aligned = (errMag < ATT_ERR_WARN_DEG);
 
@@ -326,16 +319,18 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     if (!_mnvrChromDrawn) { switchToScreen(screen_MNVR); return; }
 
     // ── Derived values ────────────────────────────────────────────────────────────────
-    // brgErr/elvErr feed the Brg/Elv readouts only and are still horizon-frame
-    // heading/pitch differences, so they diverge from the marker's true offset once the
-    // vessel is pitched. Reconciling the readouts with the picture is a separate open
-    // item; the marker itself derives its own boresight angles.
-    float brgErr = eadiHdgDelta(state.heading - state.mnvrHeading, 0.0f);
-    float elvErr = state.pitch - state.mnvrPitch;
+    // One boresight projection drives the marker, the alignment box AND the Brg/Elv
+    // readouts, so the numbers say exactly where the marker is. These were horizon-frame
+    // heading/pitch differences, which inflated with pitch: a node 10 deg off the nose
+    // printed 13.8 deg at 45 deg pitch and 62.9 deg at 80 deg while the marker sat
+    // correctly on the 10 deg ring.
+    const KspBodyAxes _ax = kspBodyAxes(state.heading, state.pitch, state.roll);
+    float brgErr, elvErr;
+    kspBoresightAngles(_ax, state.mnvrHeading, state.mnvrPitch, brgErr, elvErr);
     float tIgn   = state.mnvrTime - state.mnvrDuration * 0.5f;
 
     // ── Update reticle marker ─────────────────────────────────────────────────────────
-    _mnvrUpdateMarker(tft);
+    _mnvrUpdateMarker(tft, brgErr, elvErr);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     uint8_t  NR = MNVR_RP_NR;
