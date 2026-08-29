@@ -638,51 +638,6 @@ void drawTargetMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t 
   }
 }
 
-// Target-relative prograde marker: the prograde spokes and centre dot, drawn with the
-// TARGET marker's gapped ring instead of a solid one -- "prograde, target flavour".
-//
-// The plain prograde glyph means the ORBITAL/surface velocity on the PFD ball and the
-// TARGET-RELATIVE velocity on the TGT/DOCK reticles. Same symbol, same neon green, two
-// different reference frames, and nothing on screen said which. Borrowing the target
-// ring rather than inventing a colour keeps the KSP reading (prograde is prograde) and
-// stays clear of the yellow/red warning palette.
-//
-// The gaps sit at right/down/left/up and the spokes at up/right/left, so each spoke
-// emerges through a gap rather than crossing the ring, and the ring reads as four arcs
-// centred on the diagonals -- the same shape as drawTargetMarker's ring.
-//
-// GAP is wider than drawTargetMarker's 15 deg on purpose. That marker has no spokes, so
-// a 30 deg gap reads as a gap; here the spoke plus the arcs' round end-caps swallow most
-// of it and the ring comes out looking solid, which is the one thing this glyph must not
-// look like. 26 deg leaves the four arcs clearly separated at the real 19 px marker size.
-void drawTargetProgradeMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r, uint16_t color) {
-  int16_t w = _mkStroke(r), ext = _mkSpoke(r);
-
-  // Ring — four arc segments, same construction as drawTargetMarker with a wider gap.
-  const float GAP  = 26.0f;
-  const float STEP = 6.0f * _MK_D2R;
-  for (uint8_t q = 0; q < 4; q++) {
-    float a0 = ((float)(q * 90) + GAP)         * _MK_D2R;
-    float a1 = ((float)(q * 90) + 90.0f - GAP) * _MK_D2R;
-    int16_t px = cx + (int16_t)(r * cosf(a0)), py = cy + (int16_t)(r * sinf(a0));
-    for (float a = a0 + STEP; a < a1; a += STEP) {
-      int16_t x = cx + (int16_t)(r * cosf(a)), y = cy + (int16_t)(r * sinf(a));
-      drawThickLine(tft, px, py, x, y, w, color); px = x; py = y;
-    }
-    int16_t x = cx + (int16_t)(r * cosf(a1)), y = cy + (int16_t)(r * sinf(a1));
-    drawThickLine(tft, px, py, x, y, w, color);
-  }
-
-  tft.fillCircle(cx, cy, _mkDot(r), color);            // centre dot
-  static const int16_t spoke[3] = { -90, 0, 180 };     // screen degrees: up, right, left
-  for (uint8_t i = 0; i < 3; i++) {
-    float a = (float)spoke[i] * _MK_D2R;
-    drawThickLine(tft, cx + (int16_t)(r         * cosf(a)), cy + (int16_t)(r         * sinf(a)),
-                       cx + (int16_t)((r + ext) * cosf(a)), cy + (int16_t)((r + ext) * sinf(a)),
-                  w, color, false);
-  }
-}
-
 // KSP maneuver-node marker: a centre dot with three prongs pointing up, lower-left
 // and lower-right, each ending in a short perpendicular crossbar. No ring. Used for
 // the maneuver marker (blue). `r` is the prong length from centre to crossbar.
@@ -1101,7 +1056,7 @@ void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
   if (c.antiX    != 9999) drawAntiTargetMarker(tft, c.antiX,    c.antiY,    g.dotRPrimary, TFT_VIOLET);
   if (c.retroX   != 9999) drawRetrogradeMarker(tft, c.retroX,   c.retroY,   g.dotRVel,     TFT_NEON_GREEN);
   if (c.primaryX != 9999) drawTargetMarker(tft,     c.primaryX, c.primaryY, g.dotRPrimary, TFT_VIOLET);
-  if (c.velX     != 9999) drawTargetProgradeMarker(tft, c.velX, c.velY, g.dotRVel, TFT_NEON_GREEN);
+  if (c.velX     != 9999) drawProgradeMarker(tft,   c.velX,     c.velY,     g.dotRVel,     TFT_NEON_GREEN);
 
   // Redraw crosshair inner segments — the vel circle can clip them near centre.
   {

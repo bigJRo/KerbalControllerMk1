@@ -131,9 +131,10 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
 
     tft.setFont(Roboto_Black_16);
 
-    // VEL — green target-prograde marker (gapped ring: target-RELATIVE velocity,
-    //       as distinct from the PFD ball's orbital prograde)
-    drawTargetProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
+    // VEL — green prograde marker (target-RELATIVE velocity; the PFD ball uses the
+    //       same glyph for orbital/surface velocity — context tells them apart,
+    //       the legend names this one)
+    drawProgradeMarker(tft, LEG_X + 6, LEG_Y0 + 6, 5, TFT_NEON_GREEN);
     tft.setTextColor(TFT_SAP_GREEN, TFT_BLACK);
     tft.setCursor(LEG_X + 16, LEG_Y0);
     tft.print("VEL");
