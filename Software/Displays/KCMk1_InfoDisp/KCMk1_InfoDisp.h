@@ -81,11 +81,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.1.2
+   This sketch requires KerbalDisplayCommon >= 3.2.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.0.1: DOCK/TGT velocity marker nose-referenced; DOCK marker layer roll-referenced
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.0.2: reticle marker layer moved to KerbalDisplayCommon; one roll handedness
 
 
 /***************************************************************************************
@@ -301,59 +301,19 @@ void eadiUpdatePitchBox(KCM_TFT &tft, float pitch, int16_t &prevBox);
 void eadiUpdateHdgBox(KCM_TFT &tft, float hdg, int16_t &prevBox);
 void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
                            int16_t &prevReadout, uint16_t &prevFg);
-// Heading-error wrap to ±180°. Defined in EADIBall.ino; prototyped here so tabs that
-// sort BEFORE EADIBall in the concatenated sketch (e.g. AAA_Screens.ino) can call it.
-float eadiHdgDelta(float a, float b);
+// eadiHdgDelta (heading wrap to ±180°) moved to KerbalDisplayCommon ≥ 3.2.0 — it had
+// eighteen call sites across the sketch and no dependency on anything sketch-local.
 
-// AAA_Screens.ino — shared reticle DOT LAYER (moving markers on top of the shared
-// reticle base) for the TGT and DOCK screens. The two screens draw an identical dot
-// layer — same four markers (target/anti-target + prograde/retrograde), colours, dot
-// radii, clamp logic, erase/repair regions and dirty-suppress timing — differing only
-// in angular SCALE and the four ring-label strings. Those differences are carried in
-// ReticleGeom so one definition serves both. Each screen keeps its OWN ReticleDotCache
-// (passed by reference) so the erase-before-redraw state stays per-screen.
-struct ReticleGeom {
-  int16_t  cx, cy, r;        // disc centre + radius (px) — same for both screens
-  float    scale;            // px per degree (TGT r/60, DOCK r/20)
-  uint8_t  dotRPrimary;      // target/port marker radius
-  uint8_t  dotRVel;          // velocity/prograde marker radius
-  uint8_t  eraseHalf;        // erase-rect half-size
-  const char *const *lbl;    // 4 ring-degree labels, inner→outer
-  bool     rollRef;          // true = rotate the marker layer by -roll (body-referenced)
-};
-
-// Per-screen erase-before-redraw cache. 9999 = marker not currently shown (skip erase).
-// Reset to defaults on screen entry via `cache = ReticleDotCache{};`.
-struct ReticleDotCache {
-  int16_t primaryX = 9999, primaryY = 9999;   // target / port
-  int16_t velX     = 9999, velY     = 9999;   // velocity / prograde
-  int16_t antiX    = 9999, antiY    = 9999;   // anti-target (opposite of primary)
-  int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
-};
-
-// The derived angles both screens feed to the dot layer, in the shared convention
-// (bearing wrapped to ±180°). Computed from the global `state`.
+// The reticle marker layer moved to KerbalDisplayCommon ≥ 3.2.0 as well:
+// ReticleGeom / ReticleDotCache / ReticleAngles and reticleProject / reticleClampDot /
+// reticleEraseDot / reticleRepairDotChrome / reticleUpdateDots. None of it reads
+// telemetry, so it belongs with the reticleDrawBase chrome it draws on, and MNVR /
+// DOCK / TGT now share one implementation.
 //
-// The four PLOTTED pairs are all referenced to the NOSE (the fixed centre crosshair),
-// so every marker on the reticle lives in one frame: a marker sits right of centre
-// because that direction is right of the nose. appBrg/appElv are NOT plotted — they
-// are the target-referenced approach-path error used by the numeric readouts, and are
-// exactly the on-screen separation between the velocity marker and the port marker.
-struct ReticleAngles {
-  float priBrg,  priElv;     // nose→target/port (primary marker)
-  float velBrg,  velElv;     // nose→relative-velocity vector (velocity marker)
-  float antiBrg, antiElv;    // anti-target (antipodal of primary)
-  float retroBrg, retroElv;  // retrograde (antipodal of velocity)
-  float appBrg,  appElv;     // readout only: velocity vector vs target bearing
-};
-
+// What stays here is the seam — the one reticle function that touches the global
+// `state`, turning vessel/target telemetry into the library's ReticleAngles.
+// Defined in AAA_Screens.ino.
 ReticleAngles reticleComputeAngles();
-void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
-void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
-                            int16_t bx, int16_t by, uint8_t bh);
-void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
-                       float priBrg, float priElv, float velBrg, float velElv,
-                       float antiBrg, float antiElv, float retroBrg, float retroElv);
 
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(KCM_TFT &tft, ScreenType s);

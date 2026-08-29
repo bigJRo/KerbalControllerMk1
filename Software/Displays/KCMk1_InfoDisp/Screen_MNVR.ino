@@ -85,28 +85,26 @@ static const uint16_t MNVR_BAR_H = 26;
 // Screen cache index
 static const uint8_t MNVR_SC = (uint8_t)screen_MNVR;   // 3
 
+// ── Shared marker-layer geometry ─────────────────────────────────────────────────────
+// MNVR draws a single marker rather than DOCK/TGT's four, so it does not call
+// reticleUpdateDots — but the clamp, the erase-rect chrome repair and the angle→screen
+// projection are the same code, and now come from KerbalDisplayCommon rather than from
+// per-screen copies. dotRPrimary/dotRVel carry the maneuver diamond's prong length;
+// rollRef stays false (the burn-vector scope is horizon-referenced, like TGT).
+static const char *const MNVR_RING_LBL[4] = { "5", "10", "15", "20" };
+static const ReticleGeom MNVR_GEOM = {
+    (int16_t)MNVR_CX, (int16_t)MNVR_CY, (int16_t)MNVR_R, MNVR_SCALE,
+    MNVR_MRK_DS, MNVR_MRK_DS, MNVR_ERASE_R,
+    MNVR_MRK_DS + 2,                // clampMargin — was MNVR_R - MNVR_MRK_DS - 2
+    MNVR_RING_LBL, &Roboto_Black_16,
+    false                           // rollRef
+};
+
 
 // ── Previous marker state ─────────────────────────────────────────────────────────────
 static int16_t _mnvrPrevMrkX    = 9999, _mnvrPrevMrkY = 9999;
 static bool    _mnvrPrevAligned = false;
 static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome on re-entry
-
-
-// ── Wrap heading error to ±180° ───────────────────────────────────────────────────────
-static inline float _mnvrWrapErr(float e) { return eadiHdgDelta(e, 0.0f); }
-
-
-// ── Clamp marker to reticle boundary ─────────────────────────────────────────────────
-static void _mnvrClampMrk(int16_t &sx, int16_t &sy) {
-    float dx = sx - MNVR_CX, dy = sy - MNVR_CY;
-    float dist = sqrtf(dx*dx + dy*dy);
-    float maxR = (float)(MNVR_R - MNVR_MRK_DS - 2);
-    if (dist > maxR && dist > 0.5f) {
-        float scale = maxR / dist;
-        sx = MNVR_CX + (int16_t)(dx * scale);
-        sy = MNVR_CY + (int16_t)(dy * scale);
-    }
-}
 
 
 // ── Draw reticle chrome ───────────────────────────────────────────────────────────────
@@ -204,38 +202,15 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 }
 
 
-// ── Repair chrome after marker erase ─────────────────────────────────────────────────
-static void _mnvrRepairChrome(KCM_TFT &tft, int16_t bx, int16_t by, uint8_t bh) {
-    int16_t boxX0=bx, boxX1=bx+2*bh, boxY0=by, boxY1=by+2*bh;
-    float d = reticleRepair(tft, MNVR_CX, MNVR_CY, MNVR_R, 18, bx, by, bh);
-
-    // Redraw the ring label(s) the erase box overlapped, plus the innermost one if
-    // the good-zone refill (radius R/4) just painted over it (marker inside it).
-    static const uint16_t lblR[]   = {MNVR_RING_5, MNVR_RING_10, MNVR_RING_15, MNVR_RING_20};
-    static const char    *lblTxt[] = {"5", "10", "15", "20"};
-    bool fontSet = false;
-    for (uint8_t i = 0; i < 4; i++) {
-        int16_t lx = MNVR_CX + 3, ly = MNVR_CY - lblR[i] + 3;
-        bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
-        bool goodZoneHit = (i == 0 && d <= (float)(MNVR_R / 4));
-        if (boxHit || goodZoneHit) {
-            if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
-            tft.setCursor(lx, ly);
-            tft.print(lblTxt[i]);
-        }
-    }
-}
-
-
 // ── Update burn vector marker ─────────────────────────────────────────────────────────
 // Diamond always TFT_BLUE. Neon-green alignment box appears when error < 5°.
 static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
     float errMag  = sqrtf(brgErr*brgErr + elvErr*elvErr);
     bool  aligned = (errMag < ATT_ERR_WARN_DEG);
 
-    int16_t sx = MNVR_CX + (int16_t)(-brgErr * MNVR_SCALE);
-    int16_t sy = MNVR_CY + (int16_t)( elvErr * MNVR_SCALE);
-    _mnvrClampMrk(sx, sy);
+    int16_t sx, sy;
+    reticleProject(MNVR_GEOM, brgErr, elvErr, 0.0f, sx, sy);
+    reticleClampDot(MNVR_GEOM, sx, sy);
 
     static const uint8_t EH = MNVR_ERASE_R;
     static const uint8_t DS = MNVR_MRK_DS;
@@ -249,7 +224,7 @@ static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
     if (moved || alignChanged) {
         if (_mnvrPrevMrkX != 9999) {
             tft.fillRect(_mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-            _mnvrRepairChrome(tft, _mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH);
+            reticleRepairDotChrome(tft, MNVR_GEOM, _mnvrPrevMrkX - EH, _mnvrPrevMrkY - EH, EH);
         }
         // KSP maneuver marker: dot + three T-capped prongs
         drawManeuverMarker(tft, sx, sy, DS, TFT_BLUE);
@@ -344,7 +319,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     if (!_mnvrChromDrawn) { switchToScreen(screen_MNVR); return; }
 
     // ── Derived values ────────────────────────────────────────────────────────────────
-    float brgErr = _mnvrWrapErr(state.heading - state.mnvrHeading);
+    float brgErr = eadiHdgDelta(state.heading - state.mnvrHeading, 0.0f);
     float elvErr = state.pitch - state.mnvrPitch;
     float tIgn   = state.mnvrTime - state.mnvrDuration * 0.5f;
 

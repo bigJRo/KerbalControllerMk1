@@ -191,19 +191,17 @@ const uint16_t RETICLE_R     = 210;                             // disc radius
 const uint16_t RETICLE_BAR_W = 450;                             // bottom bar width (centred under disc)
 
 /***************************************************************************************
-   SHARED RETICLE DOT LAYER (TGT + DOCK)
-   The moving marker layer that sits on top of the shared reticle base. TGT and DOCK
-   draw a byte-identical dot layer (same four markers, colours, dot radii, clamp,
-   erase/repair regions, in-view/antipodal logic and inner-crosshair repair); they
-   differ only in angular SCALE and the four ring-label strings, both carried in
-   ReticleGeom. Extracted here (concatenated before Screen_DOCK/Screen_TGT) so one
-   definition serves both. Each caller passes its OWN ReticleDotCache by reference,
-   keeping the erase-before-redraw state per-screen and byte-identical to before.
+   RETICLE ANGLES — the AppState adapter for the shared reticle marker layer
+   The marker layer itself (ReticleGeom / ReticleDotCache / ReticleAngles, plus
+   reticleProject / reticleClampDot / reticleEraseDot / reticleRepairDotChrome /
+   reticleUpdateDots) now lives in KerbalDisplayCommon ≥ 3.2.0, beside the
+   reticleDrawBase + reticleRepair chrome it draws on, so MNVR / DOCK / TGT all run
+   one implementation. Nothing there reads telemetry.
+   This function is the seam: it is the only reticle code that touches the global
+   `state`, turning vessel/target telemetry into the library's ReticleAngles.
 ****************************************************************************************/
 
-// Derived angles both screens feed to the dot layer. Byte-identical math in both
-// (previously duplicated in drawScreen_TGT / drawScreen_DOCK). Bearings are wrapped
-// through eadiHdgDelta directly.
+// Bearings are wrapped through eadiHdgDelta (KerbalDisplayCommon).
 //
 // EVERY PLOTTED MARKER IS NOSE-REFERENCED. The fixed centre crosshair is the nose, so
 // each marker's offset is measured from state.heading/state.pitch — port, anti-target,
@@ -232,149 +230,11 @@ ReticleAngles reticleComputeAngles() {
   // Readout only — approach-path error: is the relative velocity aimed at the port?
   a.appBrg = eadiHdgDelta(state.tgtHeading - state.tgtVelHeading, 0.0f);
   a.appElv = state.tgtPitch - state.tgtVelPitch;
+  // Roll rides along so the dot layer never reaches for the global `state` itself;
+  // it is applied only by a geom that sets rollRef (DOCK).
+  a.roll = state.roll;
   return a;
 }
-
-// Clamp a dot to within the scope boundary (widest marker = prograde ring + spoke).
-void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
-  float dx = sx - g.cx, dy = sy - g.cy;
-  float dist = sqrtf(dx*dx + dy*dy);
-  float maxR = (float)(g.r - g.dotRVel * 3 / 2 - 2);
-  if (dist > maxR && dist > 0.5f) {
-    float scale = maxR / dist;
-    sx = g.cx + (int16_t)(dx * scale);
-    sy = g.cy + (int16_t)(dy * scale);
-  }
-}
-
-// Repair scope chrome after a fillRect dot erase. Shared reticle restore (rings /
-// cardinals / crosshair / centre-dot / good-zone) then redraw the ring degree label(s)
-// whose bbox overlaps the erase box, PLUS the innermost one when the good-zone refill
-// (radius r/4) painted over it (marker inside that ring). Ring radii are r/4, r/2,
-// 3r/4, r — identical in both screens; only the label text differs (g.lbl).
-void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
-                            int16_t bx, int16_t by, uint8_t bh) {
-  int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
-
-  float d = reticleRepair(tft, g.cx, g.cy, g.r, 18, bx, by, bh);
-
-  const uint16_t lblR[4] = { (uint16_t)(g.r / 4), (uint16_t)(g.r / 2),
-                             (uint16_t)((g.r * 3) / 4), (uint16_t)g.r };
-  bool fontSet = false;
-  for (uint8_t i = 0; i < 4; i++) {
-    int16_t lx = g.cx + 3, ly = g.cy - lblR[i] + 3;
-    bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
-    bool goodZoneHit = (i == 0 && d <= (float)(g.r / 4));
-    if (boxHit || goodZoneHit) {
-      if (!fontSet) { tft.setFont(Roboto_Black_16); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
-      tft.setCursor(lx, ly);
-      tft.print(g.lbl[i]);
-    }
-  }
-}
-
-// Erase-phase for one reticle marker: if it should be hidden, or has moved >1px, erase
-// its cached position and repair chrome, then advance the cache. The draw phase runs
-// after ALL erases (so a moving marker never clips a neighbour) and redraws at the cache
-// (no sub-pixel smear). File-scope static — internal to reticleUpdateDots.
-static void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
-                            int16_t curX, int16_t curY,
-                            int16_t &prevX, int16_t &prevY, bool visible) {
-  const uint8_t EH = g.eraseHalf;
-  if (!visible) {
-    if (prevX != 9999) {
-      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
-      prevX = prevY = 9999;
-    }
-    return;
-  }
-  if (prevX == 9999 || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
-    if (prevX != 9999) {
-      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
-      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
-    }
-    prevX = curX; prevY = curY;
-  }
-}
-
-// Update scope dots — erase old, repair chrome, draw new.
-//   primary marker: solid target/port diamond (violet)
-//   vel marker:     hollow prograde circle (neon green)
-// Angular convention: sx = cx + (-brg * scale); sy = cy + (elv * scale) — i.e. +brg is
-// leftward and +elv is downward on screen, all four pairs measured from the nose.
-//
-// ROLL REFERENCE (g.rollRef). The angles arrive in the horizon frame (heading/pitch),
-// whose "up" is the local vertical, not the craft's roof. On a screen the pilot flies
-// by hand that is the wrong up: RCS translation is in BODY axes, so with the craft
-// rolled 90° a translate-left would slide the velocity marker down the screen. When
-// g.rollRef is set (DOCK), the marker offsets are rotated by -state.roll — the same
-// rotation the EADI ball applies to its navball markers — which puts the whole layer in
-// body axes. Screen up/right then always means the craft's up/right, so translating
-// left always walks the marker left: velocity marker up and right of the crosshair →
-// thrust left and down. The chrome is rotationally symmetric (rings, cross arms, 30°
-// ticks) so nothing under the markers has to rotate with them.
-// TGT/MNVR leave rollRef false and stay horizon-referenced.
-void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
-                       float priBrg, float priElv, float velBrg, float velElv,
-                       float antiBrg, float antiElv, float retroBrg, float retroElv) {
-  // Angle pair → screen coords, with the optional body-frame roll rotation.
-  const float rRad = g.rollRef ? (-state.roll * (float)DEG_TO_RAD) : 0.0f;
-  const float cosR = g.rollRef ? cosf(rRad) : 1.0f;
-  const float sinR = g.rollRef ? sinf(rRad) : 0.0f;
-  auto project = [&](float brg, float elv, int16_t &sx, int16_t &sy) {
-    float ux = -brg * g.scale;   // +x = rightward on screen
-    float uy =  elv * g.scale;   // +y = downward on screen
-    if (g.rollRef) {
-      float rx = ux * cosR - uy * sinR;
-      float ry = ux * sinR + uy * cosR;
-      ux = rx; uy = ry;
-    }
-    sx = g.cx + (int16_t)ux;
-    sy = g.cy + (int16_t)uy;
-  };
-
-  // Primary dot: where is the target/port relative to your nose?
-  int16_t pSX, pSY;
-  project(priBrg, priElv, pSX, pSY);
-  reticleClampDot(g, pSX, pSY);
-
-  // Vel dot: where is your relative-velocity vector relative to your nose?
-  int16_t vSX, vSY;
-  project(velBrg, velElv, vSX, vSY);
-  reticleClampDot(g, vSX, vSY);
-
-  // Opposite (antipodal) marker positions + in-view test.
-  const float maxR = (float)(g.r - g.dotRVel * 3 / 2 - 2);
-  int16_t aSX, aSY, rSX, rSY;
-  project(antiBrg,  antiElv,  aSX, aSY);
-  project(retroBrg, retroElv, rSX, rSY);
-  bool antiInView  = ((float)(aSX-g.cx)*(aSX-g.cx) + (float)(aSY-g.cy)*(aSY-g.cy)) <= maxR*maxR;
-  bool retroInView = ((float)(rSX-g.cx)*(rSX-g.cx) + (float)(rSY-g.cy)*(rSY-g.cy)) <= maxR*maxR;
-
-  // Erase phase (all markers) then draw phase, so a moving marker's erase never clips a
-  // neighbour. Draw order bottom-to-top: opposites, primary, velocity on top.
-  reticleEraseDot(tft, g, aSX, aSY, c.antiX,    c.antiY,    antiInView);
-  reticleEraseDot(tft, g, rSX, rSY, c.retroX,   c.retroY,   retroInView);
-  reticleEraseDot(tft, g, pSX, pSY, c.primaryX, c.primaryY, !antiInView);
-  reticleEraseDot(tft, g, vSX, vSY, c.velX,     c.velY,     !retroInView);
-
-  if (c.antiX    != 9999) drawAntiTargetMarker(tft, c.antiX,    c.antiY,    g.dotRPrimary, TFT_VIOLET);
-  if (c.retroX   != 9999) drawRetrogradeMarker(tft, c.retroX,   c.retroY,   g.dotRVel,     TFT_NEON_GREEN);
-  if (c.primaryX != 9999) drawTargetMarker(tft,     c.primaryX, c.primaryY, g.dotRPrimary, TFT_VIOLET);
-  if (c.velX     != 9999) drawProgradeMarker(tft,   c.velX,     c.velY,     g.dotRVel,     TFT_NEON_GREEN);
-
-  // Redraw crosshair inner segments — the vel circle can clip them near centre.
-  {
-    static const uint16_t gp = 18;   // matches reticleDrawBase gap
-    tft.drawLine(g.cx - gp + 2, g.cy, g.cx - 4, g.cy, TFT_GREY);
-    tft.drawLine(g.cx + 4,      g.cy, g.cx + gp - 2, g.cy, TFT_GREY);
-    tft.drawLine(g.cx, g.cy - gp + 2, g.cx, g.cy - 4, TFT_GREY);
-    tft.drawLine(g.cx, g.cy + 4,      g.cx, g.cy + gp - 2, TFT_GREY);
-  }
-  tft.fillCircle(g.cx, g.cy, 2, TFT_GREY);
-}
-
 /***************************************************************************************
    VALUE FORMATTERS
 ****************************************************************************************/

@@ -103,7 +103,7 @@ static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking appro
 
 
 // ── Shared dot-layer geometry + per-screen erase cache ───────────────────────────────
-// The moving marker layer is shared with TGT (see reticleUpdateDots in AAA_Screens.ino).
+// The moving marker layer is shared with MNVR/TGT (reticleUpdateDots, KerbalDisplayCommon).
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const DOCK_RING_LBL[4] = { "5", "10", "15", "20" };
@@ -114,7 +114,9 @@ static const char *const DOCK_RING_LBL[4] = { "5", "10", "15", "20" };
 static const ReticleGeom DOCK_GEOM = {
     (int16_t)RET_CX, (int16_t)RET_CY, (int16_t)RET_R, RET_SCALE,
     DOT_R_PORT, DOT_R_VEL, DOT_R_ERASE,
-    DOCK_RING_LBL, true
+    DOT_R_VEL * 3 / 2 + 2,          // clampMargin — widest symbol is the prograde ring + spoke
+    DOCK_RING_LBL, &Roboto_Black_16,
+    true                            // rollRef
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _dockDots;
@@ -223,9 +225,9 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
 }
 
 
-// Dot-layer machinery (clamp / erase / chrome-repair / update) is shared with TGT —
-// see reticleClampDot / reticleRepairDotChrome / reticleUpdateDots in AAA_Screens.ino.
-// DOCK drives them via DOCK_GEOM (scale = r/20, ring labels 5/10/15/20) and _dockDots.
+// Dot-layer machinery (project / clamp / erase / chrome-repair / update) lives in
+// KerbalDisplayCommon ≥ 3.2.0 and is shared with MNVR and TGT. DOCK drives it via
+// DOCK_GEOM (scale = r/20, ring labels 5/10/15/20, rollRef set) and _dockDots.
 
 
 static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
@@ -326,11 +328,8 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // Shared derived-angle block (identical to TGT): nose→port, velocity→target and both
     // antipodal directions, bearings wrapped to ±180°.
     ReticleAngles ang = reticleComputeAngles();
-    float noseBrg = ang.priBrg,   noseElv  = ang.priElv;    // port relative to nose
-    float velBrg  = ang.velBrg,   velElv   = ang.velElv;    // relative velocity vs nose
-    float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
-    float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
-    float appBrg  = ang.appBrg,   appElv   = ang.appElv;    // readout: approach path vs port
+    float noseBrg = ang.priBrg,  noseElv = ang.priElv;    // port relative to nose
+    float appBrg  = ang.appBrg,  appElv  = ang.appElv;    // readout: approach path vs port
 
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
     float v_lat_mag = 0.0f;
@@ -355,8 +354,9 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     }
 
     // ── Update reticle dots ───────────────────────────────────────────────────────────
-    reticleUpdateDots(tft, DOCK_GEOM, _dockDots,
-                      noseBrg, noseElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
+    // Shared marker layer (KerbalDisplayCommon). DOCK_GEOM sets rollRef, so it rotates
+    // the markers into body axes using ang.roll.
+    reticleUpdateDots(tft, DOCK_GEOM, _dockDots, ang);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     char buf[20];

@@ -890,6 +890,148 @@ float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
 
 
 /***************************************************************************************
+   COCKPIT-FRAME PROJECTION
+   THE single definition of roll handedness for every body-referenced display in the
+   project. See the header for the contract. If markers rotate the wrong way in KSP,
+   the sign of `rollDeg` below is the one thing to flip.
+****************************************************************************************/
+void kspCockpitOffset(float degRight, float degUp, float scale, float rollDeg,
+                      float &dx, float &dy) {
+  float ux =  degRight * scale;   // +x = right on screen
+  float uy = -degUp    * scale;   // +y = down  on screen
+
+  // A body-referenced view rotates world content by -roll: roll right by phi and the
+  // horizon swings counter-clockwise by phi in the pilot's eye. With screen y pointing
+  // DOWN, [c -s; s c] is a CLOCKWISE rotation, so the negated angle gives that.
+  if (rollDeg != 0.0f) {
+    const float a = -rollDeg * (float)DEG_TO_RAD;
+    const float c = cosf(a), sn = sinf(a);
+    const float rx = ux * c - uy * sn;
+    const float ry = ux * sn + uy * c;
+    ux = rx; uy = ry;
+  }
+  dx = ux; dy = uy;
+}
+
+float eadiHdgDelta(float a, float b) {
+  float d = a - b;
+  while (d >  180.0f) d -= 360.0f;
+  while (d < -180.0f) d += 360.0f;
+  return d;
+}
+
+
+/***************************************************************************************
+   SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
+****************************************************************************************/
+void reticleProject(const ReticleGeom &g, float brg, float elv, float rollDeg,
+                    int16_t &sx, int16_t &sy) {
+  // Reticle convention -> cockpit-projection convention: +brg is LEFT on screen and
+  // +elv is DOWN, so the boresight-relative angles are (-brg) right and (-elv) up.
+  float dx, dy;
+  kspCockpitOffset(-brg, -elv, g.scale, g.rollRef ? rollDeg : 0.0f, dx, dy);
+  sx = g.cx + (int16_t)dx;
+  sy = g.cy + (int16_t)dy;
+}
+
+void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
+  float dx = sx - g.cx, dy = sy - g.cy;
+  float dist = sqrtf(dx*dx + dy*dy);
+  float maxR = (float)(g.r - g.clampMargin);
+  if (dist > maxR && dist > 0.5f) {
+    float scale = maxR / dist;
+    sx = g.cx + (int16_t)(dx * scale);
+    sy = g.cy + (int16_t)(dy * scale);
+  }
+}
+
+void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
+                            int16_t bx, int16_t by, uint8_t bh) {
+  int16_t boxX0 = bx, boxX1 = bx + 2*bh, boxY0 = by, boxY1 = by + 2*bh;
+
+  float d = reticleRepair(tft, g.cx, g.cy, g.r, 18, bx, by, bh);
+
+  const uint16_t lblR[4] = { (uint16_t)(g.r / 4), (uint16_t)(g.r / 2),
+                             (uint16_t)((g.r * 3) / 4), (uint16_t)g.r };
+  bool fontSet = false;
+  for (uint8_t i = 0; i < 4; i++) {
+    int16_t lx = g.cx + 3, ly = g.cy - lblR[i] + 3;
+    bool boxHit      = (boxX1 >= lx && boxX0 <= lx + 26 && boxY1 >= ly && boxY0 <= ly + 20);
+    bool goodZoneHit = (i == 0 && d <= (float)(g.r / 4));
+    if (boxHit || goodZoneHit) {
+      if (!fontSet) { tft.setFont(*g.lblFont); tft.setTextColor(TFT_LIGHT_GREY); fontSet = true; }
+      tft.setCursor(lx, ly);
+      tft.print(g.lbl[i]);
+    }
+  }
+}
+
+void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
+                     int16_t curX, int16_t curY,
+                     int16_t &prevX, int16_t &prevY, bool visible) {
+  const uint8_t EH = g.eraseHalf;
+  if (!visible) {
+    if (prevX != 9999) {
+      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
+      prevX = prevY = 9999;
+    }
+    return;
+  }
+  if (prevX == 9999 || abs(curX - prevX) > 1 || abs(curY - prevY) > 1) {
+    if (prevX != 9999) {
+      tft.fillRect(prevX - EH, prevY - EH, EH*2+1, EH*2+1, TFT_BLACK);
+      reticleRepairDotChrome(tft, g, prevX - EH, prevY - EH, EH);
+    }
+    prevX = curX; prevY = curY;
+  }
+}
+
+void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
+                       const ReticleAngles &a) {
+  // Primary dot: where is the target/port relative to your nose?
+  int16_t pSX, pSY;
+  reticleProject(g, a.priBrg, a.priElv, a.roll, pSX, pSY);
+  reticleClampDot(g, pSX, pSY);
+
+  // Vel dot: where is your relative-velocity vector relative to your nose?
+  int16_t vSX, vSY;
+  reticleProject(g, a.velBrg, a.velElv, a.roll, vSX, vSY);
+  reticleClampDot(g, vSX, vSY);
+
+  // Opposite (antipodal) marker positions + in-view test.
+  const float maxR = (float)(g.r - g.clampMargin);
+  int16_t aSX, aSY, rSX, rSY;
+  reticleProject(g, a.antiBrg,  a.antiElv,  a.roll, aSX, aSY);
+  reticleProject(g, a.retroBrg, a.retroElv, a.roll, rSX, rSY);
+  bool antiInView  = ((float)(aSX-g.cx)*(aSX-g.cx) + (float)(aSY-g.cy)*(aSY-g.cy)) <= maxR*maxR;
+  bool retroInView = ((float)(rSX-g.cx)*(rSX-g.cx) + (float)(rSY-g.cy)*(rSY-g.cy)) <= maxR*maxR;
+
+  // Erase phase (all markers) then draw phase, so a moving marker's erase never clips a
+  // neighbour. Draw order bottom-to-top: opposites, primary, velocity on top.
+  reticleEraseDot(tft, g, aSX, aSY, c.antiX,    c.antiY,    antiInView);
+  reticleEraseDot(tft, g, rSX, rSY, c.retroX,   c.retroY,   retroInView);
+  reticleEraseDot(tft, g, pSX, pSY, c.primaryX, c.primaryY, !antiInView);
+  reticleEraseDot(tft, g, vSX, vSY, c.velX,     c.velY,     !retroInView);
+
+  if (c.antiX    != 9999) drawAntiTargetMarker(tft, c.antiX,    c.antiY,    g.dotRPrimary, TFT_VIOLET);
+  if (c.retroX   != 9999) drawRetrogradeMarker(tft, c.retroX,   c.retroY,   g.dotRVel,     TFT_NEON_GREEN);
+  if (c.primaryX != 9999) drawTargetMarker(tft,     c.primaryX, c.primaryY, g.dotRPrimary, TFT_VIOLET);
+  if (c.velX     != 9999) drawProgradeMarker(tft,   c.velX,     c.velY,     g.dotRVel,     TFT_NEON_GREEN);
+
+  // Redraw crosshair inner segments — the vel circle can clip them near centre.
+  {
+    static const uint16_t gp = 18;   // matches reticleDrawBase gap
+    tft.drawLine(g.cx - gp + 2, g.cy, g.cx - 4, g.cy, TFT_GREY);
+    tft.drawLine(g.cx + 4,      g.cy, g.cx + gp - 2, g.cy, TFT_GREY);
+    tft.drawLine(g.cx, g.cy - gp + 2, g.cx, g.cy - 4, TFT_GREY);
+    tft.drawLine(g.cx, g.cy + 4,      g.cx, g.cy + gp - 2, TFT_GREY);
+  }
+  tft.fillCircle(g.cx, g.cy, 2, TFT_GREY);
+}
+
+
+/***************************************************************************************
    FORMATTING HELPERS - BASIC
    Convert numeric values to formatted Strings for use with print functions.
 ****************************************************************************************/

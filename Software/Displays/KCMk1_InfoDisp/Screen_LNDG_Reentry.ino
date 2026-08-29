@@ -105,7 +105,6 @@ static const uint16_t RE_TMP_VS = 22;                   // row pitch (skin -> co
 /***************************************************************************************
    HELPERS
 ****************************************************************************************/
-static inline float _reWrap180(float a) { return eadiHdgDelta(a, 0.0f); }
 
 // ── Chute deployment (dynamic pressure) ──────────────────────────────────────────────
 // Current dynamic pressure q = 0.5*rho*v^2 (Pa); 0 outside the atmosphere.
@@ -377,16 +376,19 @@ static void _reDrawBall(KCM_TFT &tft) {
   // Retrograde marker — where the surface-retrograde vector sits relative to the nose
   // (boresight = reticle centre). Roll-rotated into the cockpit frame.
   bool  moving = (state.surfaceVel > 1.0f);
-  float yawErr = _reWrap180((state.srfVelHeading + 180.0f) - state.heading);
+  float yawErr = eadiHdgDelta((state.srfVelHeading + 180.0f) - state.heading, 0.0f);
   float pitErr = (-state.srfVelPitch) - state.pitch;
   float aoa    = sqrtf(yawErr * yawErr + pitErr * pitErr);
   uint16_t mc  = (aoa < 10.0f) ? TFT_NEON_GREEN : (aoa < 30.0f) ? TFT_YELLOW : TFT_RED;
 
   if (moving) {
-    float a  = state.roll * (float)DEG_TO_RAD;
-    float dx = yawErr * RE_ATT_FS, dy = -pitErr * RE_ATT_FS;
-    float rx = dx * cosf(a) - dy * sinf(a);
-    float ry = dx * sinf(a) + dy * cosf(a);
+    // Cockpit-frame projection via the shared helper. This previously rotated by
+    // +state.roll while the bank pointer twelve lines above uses -state.roll and the
+    // EADI ball uses -state.roll for its own markers — the marker was the odd one out
+    // and spun the wrong way as bank built up. One definition now, in
+    // kspCockpitOffset (KerbalDisplayCommon), so this cannot drift again.
+    float rx, ry;
+    kspCockpitOffset(yawErr, pitErr, RE_ATT_FS, state.roll, rx, ry);
     float mag = sqrtf(rx * rx + ry * ry);
     float lim = R - 23;                          // keep the whole (r=14) symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }

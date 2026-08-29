@@ -90,7 +90,7 @@ static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on e
 
 
 // ── Shared dot-layer geometry + per-screen erase cache ───────────────────────────────
-// The moving marker layer is shared with DOCK (see reticleUpdateDots in AAA_Screens.ino).
+// The moving marker layer is shared with MNVR/DOCK (reticleUpdateDots, KerbalDisplayCommon).
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
@@ -100,7 +100,9 @@ static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
 static const ReticleGeom TGT_GEOM = {
     TGT_SCX, TGT_SCY, TGT_R, TGT_SCALE,
     TGT_DOT_R_TGT, TGT_DOT_R_VEL, TGT_DOT_R_ERASE,
-    TGT_RING_LBL, false
+    TGT_DOT_R_VEL * 3 / 2 + 2,      // clampMargin — widest symbol is the prograde ring + spoke
+    TGT_RING_LBL, &Roboto_Black_16,
+    false                           // rollRef
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _tgtDots;
@@ -196,8 +198,8 @@ static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
 }
 
 
-// Dot-layer machinery (clamp / erase / chrome-repair / update) is shared with DOCK —
-// see reticleClampDot / reticleRepairDotChrome / reticleUpdateDots in AAA_Screens.ino.
+// Dot-layer machinery (project / clamp / erase / chrome-repair / update) lives in
+// KerbalDisplayCommon ≥ 3.2.0 and is shared with MNVR and DOCK.
 // TGT drives them via TGT_GEOM (scale = r/60, ring labels 15/30/45/60) and _tgtDots.
 
 
@@ -296,14 +298,11 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // Shared derived-angle block (identical to DOCK): nose→target, velocity→target and
     // both antipodal directions, bearings wrapped to ±180°.
     ReticleAngles ang = reticleComputeAngles();
-    float tgtBrg = ang.priBrg,   tgtElv   = ang.priElv;    // target relative to nose
-    float velBrg = ang.velBrg,   velElv   = ang.velElv;    // relative velocity vs nose
-    float antiBrg  = ang.antiBrg,  antiElv  = ang.antiElv;
-    float retroBrg = ang.retroBrg, retroElv = ang.retroElv;
 
     // ── Update scope dots ─────────────────────────────────────────────────────────────
-    reticleUpdateDots(tft, TGT_GEOM, _tgtDots,
-                      tgtBrg, tgtElv, velBrg, velElv, antiBrg, antiElv, retroBrg, retroElv);
+    // Shared marker layer (KerbalDisplayCommon). TGT_GEOM leaves rollRef false, so the
+    // scope stays horizon-referenced and ang.roll is ignored.
+    reticleUpdateDots(tft, TGT_GEOM, _tgtDots, ang);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     const uint8_t NR = TGT_RP_NR;

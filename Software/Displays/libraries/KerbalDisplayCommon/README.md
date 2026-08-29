@@ -1,6 +1,6 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library** · v3.1.2
+**Kerbal Controller Mk1 — Shared Display Library** · v3.2.0
 UI toolkit for LT7683 (RA8876-compatible) touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
@@ -350,6 +350,7 @@ All colours are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommo
 
 | Version | Notes |
 |---------|-------|
+| **3.2.0** | **Reticle marker layer moved in from KCMk1_InfoDisp.** `ReticleGeom` / `ReticleDotCache` / `ReticleAngles` plus `reticleProject`, `reticleClampDot`, `reticleEraseDot`, `reticleRepairDotChrome` and `reticleUpdateDots` now live beside the `reticleDrawBase` + `reticleRepair` chrome they already drew on — none of it reads telemetry, and MNVR / DOCK / TGT now run one implementation instead of three (MNVR previously carried its own copies of the clamp and the chrome repair). `ReticleGeom` gained `clampMargin` (explicit rim keep-out, replacing a hardcoded `dotRVel*3/2` that did not fit MNVR's marker), `lblFont`, and `rollRef`. New **`kspCockpitOffset`** — the single definition of roll handedness for every body-referenced display in the project (EADI ball markers, the DOCK reticle, the re-entry retro ball), returning a pixel offset so each caller keeps its own rounding. `eadiHdgDelta` (heading wrap to ±180°) also moved in; it had eighteen call sites across the InfoDisp sketch and no sketch-local dependencies. Additive only — no existing signature changed. |
 | **3.1.2** | `drawButton()` word-wrap hardened (audit batch D): the word-split loop is now bounded by `MAX_WORDS` (a label with >32 words could write one row past `words[][]`) and the per-line copy by `MAX_LINECH` (a wide button + small font could overrun `lines[][64]`); over-long single words truncate to the line buffer. `reticleDrawBase` dropped a redundant concentric `drawCircle`. Comment/header drift corrected (`printDispChrome` doc, `bsBig` advance, buffer-size 800→1024, Teensy 4.0→4.1). |
 | **3.1.1** | Marker polish: `drawThickLine` gained an optional `caps` argument (default true) so free-ended spokes/prongs can suppress the round end-caps that read as small blobs; the marker spokes, prongs, X and face-spokes now draw capless. Shrank the level-indicator nose dot. |
 | **3.1.0** | Completed the KSP navball marker set. Added `drawRetrogradeMarker`, `drawNormalMarker`, `drawAntiNormalMarker`, `drawRadialInMarker`, `drawRadialOutMarker`, `drawAntiTargetMarker` and `drawLevelIndicator` (joining prograde/target/maneuver), and extended `KspMarkerKind` with the new kinds (existing ordinals unchanged). Prograde spokes lengthened, target arc gaps widened, and the maneuver marker now leaves a gap between the centre dot and its prongs. |

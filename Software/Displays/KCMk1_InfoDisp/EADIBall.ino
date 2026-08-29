@@ -327,13 +327,7 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) 
 // ═══ ADI ball markers (prograde / target / maneuver) ═════════════════════════════════
 static const int16_t EADI_ADI_MRK_HD = 32;   // marker extent (prograde ring 18 + spoke 12)
 
-// Shortest-arc delta between two headings, result in [-180, 180].
-float eadiHdgDelta(float a, float b) {
-    float d = a - b;
-    while (d >  180.0f) d -= 360.0f;
-    while (d < -180.0f) d += 360.0f;
-    return d;
-}
+// eadiHdgDelta (shortest-arc heading delta) now lives in KerbalDisplayCommon.
 
 // Draw one KSP navball marker on the ADI ball at the given world-space heading/pitch
 // (relative to the current vessel attitude, read from `state`). Skips the draw if it
@@ -345,17 +339,14 @@ void eadiDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
     float dh = eadiHdgDelta(markerHdg, state.heading);
     float dp = markerPitch - state.pitch;
 
-    // Ball uses negated roll (matches KerbalSimpit convention)
-    float cosR = cosf(-state.roll * (float)DEG_TO_RAD);
-    float sinR = sinf(-state.roll * (float)DEG_TO_RAD);
-
-    // Unrolled-frame offset: +dh degrees rightward, +dp degrees upward (so -y)
-    float ux = dh * EADI_SCALE;
-    float uy = -dp * EADI_SCALE;
-
-    // Apply roll rotation (angle = -state.roll)
-    int16_t sx = (int16_t)(EADI_CX + ux * cosR - uy * sinR);
-    int16_t sy = (int16_t)(EADI_CY + ux * sinR + uy * cosR);
+    // Horizon-frame offset rotated into the cockpit frame. The roll handedness lives
+    // in kspCockpitOffset (KerbalDisplayCommon) — the single definition shared with
+    // the DOCK reticle and the re-entry retro ball. Centre is added before the cast,
+    // as before, so marker pixels are unchanged.
+    float ux, uy;
+    kspCockpitOffset(dh, dp, EADI_SCALE, state.roll, ux, uy);
+    int16_t sx = (int16_t)(EADI_CX + ux);
+    int16_t sy = (int16_t)(EADI_CY + uy);
 
     // Clip: entire marker must fit inside ball. Use (R - HD) so outline doesn't cross rim.
     int16_t dx = sx - EADI_CX, dy = sy - EADI_CY;

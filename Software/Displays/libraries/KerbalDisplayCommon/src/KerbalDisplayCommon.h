@@ -2,14 +2,23 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 1
-#define KDC_VERSION_PATCH 2
+#define KDC_VERSION_MINOR 2
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.2.0 — the shared reticle marker layer moved in from KCMk1_InfoDisp: ReticleGeom /
+            ReticleDotCache / ReticleAngles plus reticleProject / reticleClampDot /
+            reticleEraseDot / reticleRepairDotChrome / reticleUpdateDots now sit beside
+            the reticleDrawBase + reticleRepair chrome they already called, so MNVR /
+            DOCK / TGT run one implementation instead of three. Added kspCockpitOffset,
+            the SINGLE definition of roll handedness for every body-referenced display
+            (EADI ball markers, the DOCK reticle, the re-entry retro ball), and
+            eadiHdgDelta (heading wrap), previously sketch-local.
 
    v3.1.1 — marker polish: drawThickLine gained a caps arg so free-ended spokes
             draw without round end-caps; shrank the level-indicator nose dot.
@@ -28,7 +37,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.1.1
+  Version: 3.2.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -292,6 +301,128 @@ void reticleDrawBase(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
 // the good-zone refill covered the innermost ring label (radius ≈ r/4).
 float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
                     int16_t gap, int16_t bx, int16_t by, uint8_t bh);
+
+/***************************************************************************************
+   COCKPIT-FRAME PROJECTION
+   Every body-referenced display in this project -- the EADI ball and its navball
+   markers, the DOCK approach reticle, the re-entry retro ball -- draws world
+   directions that arrive in the HORIZON frame (heading/pitch, "up" = local vertical)
+   onto a screen whose axes are the CRAFT's (up = the roof, right = the starboard
+   side). That conversion is a single rotation by the vessel roll, and it has exactly
+   one correct handedness.
+
+   kspCockpitOffset is the only place in the project that rotation is written. If the
+   markers ever rotate the wrong way in KSP, flip the sign of `rollDeg` inside it and
+   every screen follows -- there is nowhere else for two screens to disagree.
+
+   It returns a screen-space OFFSET in pixels rather than an absolute position so each
+   caller keeps its own float->int rounding (the reticle truncates the offset, the EADI
+   ball truncates centre+offset; those differ by up to 1 px and are preserved).
+     degRight  degrees right of the boresight   (+ = right)
+     degUp     degrees above the boresight      (+ = up)
+     scale     pixels per degree
+     rollDeg   vessel roll, KerbalSimpit convention (state.roll). 0 = leave the offset
+               in the horizon frame, which is what the non-cockpit reticles want.
+     dx, dy    out: pixel offset from the display centre (+x right, +y DOWN)
+****************************************************************************************/
+void kspCockpitOffset(float degRight, float degUp, float scale, float rollDeg,
+                      float &dx, float &dy);
+
+// Shortest-arc delta between two headings, result in [-180, 180]. Pass b = 0 to wrap a
+// single already-differenced angle into range.
+float eadiHdgDelta(float a, float b);
+
+
+/***************************************************************************************
+   SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
+   The moving markers that sit on top of the reticleDrawBase chrome. All three screens
+   run this same layer -- same clamp, same erase/repair region, same chrome repair --
+   and differ only in the per-screen values carried in ReticleGeom.
+
+   MARKER CONVENTION. Angles are (bearing, elevation) offsets FROM THE NOSE, which is
+   the fixed centre crosshair: sx = cx - brg*scale, sy = cy + elv*scale. So +brg is
+   leftward and +elv is downward on screen. Every plotted marker uses this one frame,
+   which is what makes a velocity marker flyable -- it shows where the craft is going
+   relative to where it is pointing, so a translation pulls the marker toward the
+   direction you thrust.
+
+   ROLL REFERENCE. A screen sets rollRef when its markers should be rotated into the
+   craft's body axes via kspCockpitOffset (DOCK, where the pilot hand-flies RCS
+   translation and screen up/right must mean the craft's up/right). MNVR and TGT leave
+   it false and stay horizon-referenced. The chrome is rotationally symmetric, so
+   nothing underneath has to rotate with the markers.
+****************************************************************************************/
+
+// Per-screen reticle configuration. Everything the marker layer needs that differs
+// between MNVR (1 marker, roll-free), DOCK (4 markers, roll-referenced) and TGT.
+struct ReticleGeom {
+  int16_t  cx, cy, r;        // disc centre + radius (px)
+  float    scale;            // px per degree (TGT r/60, MNVR/DOCK r/20)
+  uint8_t  dotRPrimary;      // target/port marker radius
+  uint8_t  dotRVel;          // velocity/prograde marker radius
+  uint8_t  eraseHalf;        // erase-rect half-size
+  uint8_t  clampMargin;      // px kept clear inside the rim = widest marker half-extent
+  const char *const *lbl;    // 4 ring-degree labels, inner -> outer
+  const ILI9341_t3_font_t *lblFont;   // font those labels are drawn in
+  bool     rollRef;          // true = rotate the marker layer into body axes
+};
+
+// Per-screen erase-before-redraw cache. 9999 = marker not currently shown (skip erase).
+// Reset to defaults on screen entry via `cache = ReticleDotCache{};`.
+struct ReticleDotCache {
+  int16_t primaryX = 9999, primaryY = 9999;   // target / port
+  int16_t velX     = 9999, velY     = 9999;   // velocity / prograde
+  int16_t antiX    = 9999, antiY    = 9999;   // anti-target (opposite of primary)
+  int16_t retroX   = 9999, retroY   = 9999;   // retrograde (opposite of velocity)
+};
+
+// The derived angles a screen feeds to the dot layer (bearings wrapped to +/-180).
+// The four PLOTTED pairs are all nose-referenced, so every marker lives in one frame.
+// appBrg/appElv are the one target-referenced pair and are NEVER plotted -- they feed
+// the numeric approach-path readouts, and equal the on-screen separation between the
+// velocity marker and the primary marker (appBrg == velBrg - priBrg).
+// The producer is the sketch (it reads vessel/target telemetry); this is just the
+// vehicle that carries the result across the library boundary.
+struct ReticleAngles {
+  float priBrg,  priElv;     // nose -> target/port (primary marker)
+  float velBrg,  velElv;     // nose -> relative-velocity vector (velocity marker)
+  float antiBrg, antiElv;    // anti-target (antipodal of primary)
+  float retroBrg, retroElv;  // retrograde (antipodal of velocity)
+  float appBrg,  appElv;     // readout only: velocity vector vs target bearing
+  float roll;                // vessel roll, used only when the geom sets rollRef
+};
+
+// (bearing, elevation) -> screen coords, applying the body-frame rotation when the
+// geom sets rollRef. rollDeg is ignored for a horizon-referenced geom, so a caller
+// with no roll of its own may pass 0.
+void reticleProject(const ReticleGeom &g, float brg, float elv, float rollDeg,
+                    int16_t &sx, int16_t &sy);
+
+// Clamp a marker to within the scope boundary, keeping g.clampMargin px clear of the
+// rim so the widest symbol still draws whole.
+void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy);
+
+// Repair scope chrome after a fillRect marker erase: the shared reticleRepair restore
+// (rings / cardinals / crosshair / centre dot / good-zone), then the ring degree
+// label(s) whose bbox the erase box overlapped, plus the innermost one when the
+// good-zone refill painted over it.
+void reticleRepairDotChrome(KCM_TFT &tft, const ReticleGeom &g,
+                            int16_t bx, int16_t by, uint8_t bh);
+
+// Erase-phase for one marker: if it should be hidden, or has moved > 1 px, erase its
+// cached position and repair the chrome, then advance the cache. Callers run every
+// erase before any draw, so a moving marker never clips a neighbour, and then redraw
+// at the cache position (no sub-pixel smear).
+void reticleEraseDot(KCM_TFT &tft, const ReticleGeom &g,
+                     int16_t curX, int16_t curY,
+                     int16_t &prevX, int16_t &prevY, bool visible);
+
+// Full four-marker layer (DOCK / TGT): erase all, draw bottom-to-top (opposites,
+// primary, velocity on top), then restore the inner crosshair the velocity ring can
+// clip. Anti-target / retrograde appear only inside the FOV, and each suppresses its
+// opposite while shown.
+void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
+                       const ReticleAngles &a);
 
 // --- Basic formatters ---
 String formatInt(uint16_t value);
