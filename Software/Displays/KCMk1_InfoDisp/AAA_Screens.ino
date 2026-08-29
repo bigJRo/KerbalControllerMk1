@@ -194,62 +194,42 @@ const uint16_t RETICLE_BAR_W = 450;                             // bottom bar wi
    RETICLE ANGLES — the AppState adapter for the shared reticle marker layer
    The marker layer itself (ReticleGeom / ReticleDotCache / ReticleAngles, plus
    reticleProject / reticleClampDot / reticleEraseDot / reticleRepairDotChrome /
-   reticleUpdateDots) now lives in KerbalDisplayCommon ≥ 3.2.0, beside the
+   reticleUpdateDots) now lives in KerbalDisplayCommon ≥ 3.3.0, beside the
    reticleDrawBase + reticleRepair chrome it draws on, so MNVR / DOCK / TGT all run
    one implementation. Nothing there reads telemetry.
    This function is the seam: it is the only reticle code that touches the global
-   `state`, turning vessel/target telemetry into the library's ReticleAngles.
+   `state`, turning vessel/target telemetry into the library's ReticleAngles via
+   kspBodyAxes + kspBoresightAngles.
 ****************************************************************************************/
 
-// Bearings are wrapped through eadiHdgDelta (KerbalDisplayCommon).
+// Every plotted pair is boresight-relative (+right, +up) from kspBoresightAngles, so a
+// marker's distance from the crosshair is its TRUE angular offset from the nose at any
+// attitude. bodyReferenced picks the frame: true builds the axes with the vessel roll
+// (screen up = the craft's roof, what a hand-flown display wants), false with roll 0
+// (screen up = local vertical).
 //
-// EVERY PLOTTED MARKER IS NOSE-REFERENCED. The fixed centre crosshair is the nose, so
-// each marker's offset is measured from state.heading/state.pitch — port, anti-target,
-// velocity and retrograde alike. That single frame is what makes the velocity marker
-// flyable: it shows where the craft is actually going relative to where it is pointing,
-// so an RCS translation pulls the marker toward the direction you thrust (marker up and
-// right of centre → thrust left and down to walk it back to the crosshair).
-//
-// appBrg/appElv are the one target-referenced pair and are NEVER plotted — they feed the
-// numeric approach-path readouts. By construction they equal the on-screen separation
-// between the velocity marker and the port marker (appBrg == velBrg - priBrg), so the
-// numbers and the picture always agree.
-ReticleAngles reticleComputeAngles() {
+// appBrg/appElv stay horizon-frame heading/pitch differences — they are readouts, not
+// markers. They no longer equal the on-screen VEL-to-PORT gap once the vessel is
+// pitched; reconciling the readouts with the picture is a separate open item.
+ReticleAngles reticleComputeAngles(bool bodyReferenced) {
   ReticleAngles a;
-  // Nose→target: where is the target relative to your nose?
-  a.priBrg  = eadiHdgDelta(state.heading - state.tgtHeading, 0.0f);
-  a.priElv  = state.pitch - state.tgtPitch;
-  // Nose→relative velocity: where is the craft going relative to where it is pointing?
-  a.velBrg  = eadiHdgDelta(state.heading - state.tgtVelHeading, 0.0f);
-  a.velElv  = state.pitch - state.tgtVelPitch;
-  // Opposites (antipodal): anti-target and retrograde, same nose-referenced convention.
-  a.antiBrg  = eadiHdgDelta(state.heading - (state.tgtHeading    + 180.0f), 0.0f);
-  a.antiElv  = state.pitch + state.tgtPitch;
-  a.retroBrg = eadiHdgDelta(state.heading - (state.tgtVelHeading + 180.0f), 0.0f);
-  a.retroElv = state.pitch + state.tgtVelPitch;
+  const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch,
+                                     bodyReferenced ? state.roll : 0.0f);
+
+  // Where is the target/port relative to the nose?
+  kspBoresightAngles(ax, state.tgtHeading, state.tgtPitch, a.priRight, a.priUp);
+  // Where is the craft going relative to where it is pointing?
+  kspBoresightAngles(ax, state.tgtVelHeading, state.tgtVelPitch, a.velRight, a.velUp);
+  // Opposites: anti-target and retrograde (heading + 180, pitch negated).
+  kspBoresightAngles(ax, state.tgtHeading    + 180.0f, -state.tgtPitch,
+                     a.antiRight,  a.antiUp);
+  kspBoresightAngles(ax, state.tgtVelHeading + 180.0f, -state.tgtVelPitch,
+                     a.retroRight, a.retroUp);
+
   // Readout only — approach-path error: is the relative velocity aimed at the port?
   a.appBrg = eadiHdgDelta(state.tgtHeading - state.tgtVelHeading, 0.0f);
   a.appElv = state.tgtPitch - state.tgtVelPitch;
-  // Roll rides along so the dot layer never reaches for the global `state` itself;
-  // it is applied only by a geom that sets rollRef (DOCK).
-  a.roll = state.roll;
   return a;
-}
-/***************************************************************************************
-   VALUE FORMATTERS
-****************************************************************************************/
-String fmtNum(float v) {
-  if (fabsf(v) < 0.05f) v = 0.0f;  // snap -0.0 and sub-rounding noise to zero
-  if (v >= 1000.0f || v <= -1000.0f) return formatSep(v);
-  char buf[16];
-  dtostrf(v, 1, 1, buf);
-  return String(buf);
-}
-String fmtUnit(float v, const char *unit) {
-  return fmtNum(v) + " " + unit;
-}
-String fmtMs(float v) {
-  return fmtUnit(v, "m/s");
 }
 
 // formatTime() removed — formatting improvements merged into library formatTime() (#5C)

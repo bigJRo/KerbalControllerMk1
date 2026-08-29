@@ -25,8 +25,10 @@
 
    FLYING THE VELOCITY MARKER
    ──────────────────────────
-   The marker layer is referenced to the craft's BODY axes (rotated by -roll), so screen
-   up/right is always the craft's up/right — the same axes as the RCS translation keys.
+   The marker layer is referenced to the craft's BODY axes, so screen up/right is always
+   the craft's up/right — the same axes as the RCS translation keys. A marker's distance
+   from the crosshair is its TRUE angular offset from the nose at any attitude, so the
+   ring labels mean what they say.
    An RCS translation pulls the relative velocity toward the direction you thrust, so the
    marker moves the way you thrust:
 
@@ -107,16 +109,15 @@ static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking appro
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const DOCK_RING_LBL[4] = { "5", "10", "15", "20" };
-// rollRef = true: the marker layer is rotated by -roll into the craft's BODY axes, so
-// screen up/right always means the craft's up/right and the RCS translation keys move
-// the markers the way the pilot expects at any roll attitude. DOCK is the only reticle
-// that does this — TGT/MNVR stay horizon-referenced.
+// DOCK is the body-referenced reticle: reticleComputeAngles(true) builds the axes with
+// the vessel roll, so screen up/right always means the craft's up/right and the RCS
+// translation keys move the markers the way the pilot expects at any roll attitude.
+// TGT and MNVR pass false and stay horizon-referenced.
 static const ReticleGeom DOCK_GEOM = {
     (int16_t)RET_CX, (int16_t)RET_CY, (int16_t)RET_R, RET_SCALE,
     DOT_R_PORT, DOT_R_VEL, DOT_R_ERASE,
     DOT_R_VEL * 3 / 2 + 2,          // clampMargin — widest symbol is the prograde ring + spoke
-    DOCK_RING_LBL, &Roboto_Black_16,
-    true                            // rollRef
+    DOCK_RING_LBL, &Roboto_Black_16
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _dockDots;
@@ -227,7 +228,8 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
 
 // Dot-layer machinery (project / clamp / erase / chrome-repair / update) lives in
 // KerbalDisplayCommon ≥ 3.2.0 and is shared with MNVR and TGT. DOCK drives it via
-// DOCK_GEOM (scale = r/20, ring labels 5/10/15/20, rollRef set) and _dockDots.
+// DOCK_GEOM (scale = r/20, ring labels 5/10/15/20) and _dockDots, with the angle
+// block called body-referenced.
 
 
 static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
@@ -327,8 +329,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // ── Compute derived values ────────────────────────────────────────────────────────
     // Shared derived-angle block (identical to TGT): nose→port, velocity→target and both
     // antipodal directions, bearings wrapped to ±180°.
-    ReticleAngles ang = reticleComputeAngles();
-    float noseBrg = ang.priBrg,  noseElv = ang.priElv;    // port relative to nose
+    ReticleAngles ang = reticleComputeAngles(true);      // true = body-referenced
     float appBrg  = ang.appBrg,  appElv  = ang.appElv;    // readout: approach path vs port
 
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis
@@ -354,8 +355,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     }
 
     // ── Update reticle dots ───────────────────────────────────────────────────────────
-    // Shared marker layer (KerbalDisplayCommon). DOCK_GEOM sets rollRef, so it rotates
-    // the markers into body axes using ang.roll.
+    // Shared marker layer (KerbalDisplayCommon); the angles are already body-referenced.
     reticleUpdateDots(tft, DOCK_GEOM, _dockDots, ang);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
@@ -430,10 +430,11 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     dockVal(5, 5, "Vel.Elv:", buf, fg, bg);
 
     // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 6)
-    // Combined bearing + elevation error via Pythagorean approximation (accurate to <0.1°
-    // within the ±20° operating range of the DOCK screen). Always positive — unsigned offset.
+    // The boresight projection makes this exact rather than a Pythagorean approximation:
+    // the plotted radius IS the angular separation, so this is literally how far from
+    // the crosshair the PORT marker sits. Always positive — unsigned offset.
     {
-        float noseOff = sqrtf(noseBrg * noseBrg + noseElv * noseElv);
+        float noseOff = sqrtf(ang.priRight * ang.priRight + ang.priUp * ang.priUp);
         angCol(noseOff, fg, bg);
         snprintf(buf, sizeof(buf), "%.1f\xB0", noseOff);
         dockVal(6, 6, "Nos.Off:", buf, fg, bg);

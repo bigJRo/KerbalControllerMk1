@@ -90,14 +90,15 @@ static const uint8_t MNVR_SC = (uint8_t)screen_MNVR;   // 3
 // reticleUpdateDots — but the clamp, the erase-rect chrome repair and the angle→screen
 // projection are the same code, and now come from KerbalDisplayCommon rather than from
 // per-screen copies. dotRPrimary/dotRVel carry the maneuver diamond's prong length;
-// rollRef stays false (the burn-vector scope is horizon-referenced, like TGT).
+// MNVR_BODY_REF stays false for now: the burn-vector scope is horizon-referenced like
+// TGT. Flipping it to true is the whole change — the roll lives in the body axes.
+static const bool MNVR_BODY_REF = false;
 static const char *const MNVR_RING_LBL[4] = { "5", "10", "15", "20" };
 static const ReticleGeom MNVR_GEOM = {
     (int16_t)MNVR_CX, (int16_t)MNVR_CY, (int16_t)MNVR_R, MNVR_SCALE,
     MNVR_MRK_DS, MNVR_MRK_DS, MNVR_ERASE_R,
     MNVR_MRK_DS + 2,                // clampMargin — was MNVR_R - MNVR_MRK_DS - 2
-    MNVR_RING_LBL, &Roboto_Black_16,
-    false                           // rollRef
+    MNVR_RING_LBL, &Roboto_Black_16
 };
 
 
@@ -204,12 +205,20 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
 
 // ── Update burn vector marker ─────────────────────────────────────────────────────────
 // Diamond always TFT_BLUE. Neon-green alignment box appears when error < 5°.
-static void _mnvrUpdateMarker(KCM_TFT &tft, float brgErr, float elvErr) {
-    float errMag  = sqrtf(brgErr*brgErr + elvErr*elvErr);
+static void _mnvrUpdateMarker(KCM_TFT &tft) {
+    // Boresight projection: nodeRight/nodeUp are the node's true angular offset from
+    // the nose, so the plotted radius IS the alignment error — no Pythagorean
+    // approximation, and correct at the high pitch a radial-in/out node demands.
+    const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch,
+                                       MNVR_BODY_REF ? state.roll : 0.0f);
+    float nodeRight, nodeUp;
+    kspBoresightAngles(ax, state.mnvrHeading, state.mnvrPitch, nodeRight, nodeUp);
+
+    float errMag  = sqrtf(nodeRight*nodeRight + nodeUp*nodeUp);
     bool  aligned = (errMag < ATT_ERR_WARN_DEG);
 
     int16_t sx, sy;
-    reticleProject(MNVR_GEOM, brgErr, elvErr, 0.0f, sx, sy);
+    reticleProject(MNVR_GEOM, nodeRight, nodeUp, sx, sy);
     reticleClampDot(MNVR_GEOM, sx, sy);
 
     static const uint8_t EH = MNVR_ERASE_R;
@@ -319,12 +328,16 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     if (!_mnvrChromDrawn) { switchToScreen(screen_MNVR); return; }
 
     // ── Derived values ────────────────────────────────────────────────────────────────
+    // brgErr/elvErr feed the Brg/Elv readouts only and are still horizon-frame
+    // heading/pitch differences, so they diverge from the marker's true offset once the
+    // vessel is pitched. Reconciling the readouts with the picture is a separate open
+    // item; the marker itself derives its own boresight angles.
     float brgErr = eadiHdgDelta(state.heading - state.mnvrHeading, 0.0f);
     float elvErr = state.pitch - state.mnvrPitch;
     float tIgn   = state.mnvrTime - state.mnvrDuration * 0.5f;
 
     // ── Update reticle marker ─────────────────────────────────────────────────────────
-    _mnvrUpdateMarker(tft, brgErr, elvErr);
+    _mnvrUpdateMarker(tft);
 
     // ── Right panel values ────────────────────────────────────────────────────────────
     uint8_t  NR = MNVR_RP_NR;

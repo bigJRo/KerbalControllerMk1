@@ -373,22 +373,24 @@ static void _reDrawBall(KCM_TFT &tft) {
                      bx - (int16_t)(6 * cosf(pp)), by - (int16_t)(6 * sinf(pp)), TFT_YELLOW);
   }
 
-  // Retrograde marker — where the surface-retrograde vector sits relative to the nose
-  // (boresight = reticle centre). Roll-rotated into the cockpit frame.
+  // Retrograde marker — where the surface-retrograde vector (the airflow the heat
+  // shield must face) sits relative to the nose; boresight = reticle centre.
+  // The shared boresight projection makes AoA the TRUE nose-to-airflow angle at any
+  // attitude; the old heading/pitch-difference form inflated it with pitch, and rotated
+  // by +state.roll where the bank pointer above and the EADI ball both use the opposite
+  // sense — so the marker spun the wrong way as bank built up. One definition now, in
+  // kspBodyAxes (KerbalDisplayCommon).
   bool  moving = (state.surfaceVel > 1.0f);
-  float yawErr = eadiHdgDelta((state.srfVelHeading + 180.0f) - state.heading, 0.0f);
-  float pitErr = (-state.srfVelPitch) - state.pitch;
-  float aoa    = sqrtf(yawErr * yawErr + pitErr * pitErr);
+  const KspBodyAxes _reAx = kspBodyAxes(state.heading, state.pitch, state.roll);
+  float retroRight, retroUp;
+  kspBoresightAngles(_reAx, state.srfVelHeading + 180.0f, -state.srfVelPitch,
+                     retroRight, retroUp);
+  float aoa    = sqrtf(retroRight * retroRight + retroUp * retroUp);
   uint16_t mc  = (aoa < 10.0f) ? TFT_NEON_GREEN : (aoa < 30.0f) ? TFT_YELLOW : TFT_RED;
 
   if (moving) {
-    // Cockpit-frame projection via the shared helper. This previously rotated by
-    // +state.roll while the bank pointer twelve lines above uses -state.roll and the
-    // EADI ball uses -state.roll for its own markers — the marker was the odd one out
-    // and spun the wrong way as bank built up. One definition now, in
-    // kspCockpitOffset (KerbalDisplayCommon), so this cannot drift again.
-    float rx, ry;
-    kspCockpitOffset(yawErr, pitErr, RE_ATT_FS, state.roll, rx, ry);
+    float rx =  retroRight * RE_ATT_FS;
+    float ry = -retroUp    * RE_ATT_FS;
     float mag = sqrtf(rx * rx + ry * ry);
     float lim = R - 23;                          // keep the whole (r=14) symbol inside the disc
     if (mag > lim && mag > 0.0f) { float k = lim / mag; rx *= k; ry *= k; }

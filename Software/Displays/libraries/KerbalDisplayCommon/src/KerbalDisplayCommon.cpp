@@ -890,27 +890,70 @@ float reticleRepair(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t r,
 
 
 /***************************************************************************************
-   COCKPIT-FRAME PROJECTION
-   THE single definition of roll handedness for every body-referenced display in the
-   project. See the header for the contract. If markers rotate the wrong way in KSP,
-   the sign of `rollDeg` below is the one thing to flip.
+   BORESIGHT PROJECTION
+   See the header for the contract and for why this replaced the old flat
+   heading/pitch-difference scheme. Roll handedness is defined here and nowhere else.
 ****************************************************************************************/
-void kspCockpitOffset(float degRight, float degUp, float scale, float rollDeg,
-                      float &dx, float &dy) {
-  float ux =  degRight * scale;   // +x = right on screen
-  float uy = -degUp    * scale;   // +y = down  on screen
+void kspDirUnit(float headingDeg, float pitchDeg, float out[3]) {
+  const float h = headingDeg * (float)DEG_TO_RAD, p = pitchDeg * (float)DEG_TO_RAD;
+  const float cp = cosf(p);
+  out[0] = cp * sinf(h);   // East
+  out[1] = cp * cosf(h);   // North
+  out[2] = sinf(p);        // Up
+}
 
-  // A body-referenced view rotates world content by -roll: roll right by phi and the
-  // horizon swings counter-clockwise by phi in the pilot's eye. With screen y pointing
-  // DOWN, [c -s; s c] is a CLOCKWISE rotation, so the negated angle gives that.
+KspBodyAxes kspBodyAxes(float headingDeg, float pitchDeg, float rollDeg) {
+  KspBodyAxes ax;
+  kspDirUnit(headingDeg, pitchDeg, ax.fwd);
+
+  // Unrolled basis: right lies on the horizon 90 deg clockwise of the nose heading,
+  // up completes the right-handed set (right x fwd points at the local vertical when
+  // the craft is level).
+  float r0[3], u0[3];
+  kspDirUnit(headingDeg + 90.0f, 0.0f, r0);
+  u0[0] = r0[1]*ax.fwd[2] - r0[2]*ax.fwd[1];
+  u0[1] = r0[2]*ax.fwd[0] - r0[0]*ax.fwd[2];
+  u0[2] = r0[0]*ax.fwd[1] - r0[1]*ax.fwd[0];
+
+  // Roll the basis about the nose. THE definition of roll handedness for the project:
+  // a body-referenced display rotates world content by -roll, so the axes themselves
+  // rotate by +roll. If markers spin the wrong way in KSP, negate rollDeg here.
   if (rollDeg != 0.0f) {
-    const float a = -rollDeg * (float)DEG_TO_RAD;
+    const float a = rollDeg * (float)DEG_TO_RAD;
     const float c = cosf(a), sn = sinf(a);
-    const float rx = ux * c - uy * sn;
-    const float ry = ux * sn + uy * c;
-    ux = rx; uy = ry;
+    for (uint8_t i = 0; i < 3; i++) {
+      ax.right[i] = r0[i]*c - u0[i]*sn;
+      ax.up[i]    = r0[i]*sn + u0[i]*c;
+    }
+  } else {
+    for (uint8_t i = 0; i < 3; i++) { ax.right[i] = r0[i]; ax.up[i] = u0[i]; }
   }
-  dx = ux; dy = uy;
+  return ax;
+}
+
+void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPitchDeg,
+                        float &degRight, float &degUp) {
+  float m[3];
+  kspDirUnit(dirHeadingDeg, dirPitchDeg, m);
+
+  const float cf = m[0]*ax.fwd[0]   + m[1]*ax.fwd[1]   + m[2]*ax.fwd[2];
+  const float cr = m[0]*ax.right[0] + m[1]*ax.right[1] + m[2]*ax.right[2];
+  const float cu = m[0]*ax.up[0]    + m[1]*ax.up[1]    + m[2]*ax.up[2];
+
+  // Azimuthal equidistant: radius = the true angle off the boresight, direction = the
+  // clock angle of the perpendicular component. atan2(perp, along) rather than acos so
+  // it stays accurate for small offsets, and it spans the full 0..180.
+  const float perp = sqrtf(cr*cr + cu*cu);
+  if (perp < 1e-6f) {
+    // Exactly on the boresight axis -- the clock angle is undefined. Ahead is the
+    // centre; dead astern is pinned straight up so the caller's clamp has a direction.
+    degRight = 0.0f;
+    degUp    = (cf >= 0.0f) ? 0.0f : 180.0f;
+    return;
+  }
+  const float theta = atan2f(perp, cf) * (float)RAD_TO_DEG;
+  degRight = theta * (cr / perp);
+  degUp    = theta * (cu / perp);
 }
 
 float eadiHdgDelta(float a, float b) {
@@ -924,14 +967,10 @@ float eadiHdgDelta(float a, float b) {
 /***************************************************************************************
    SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
 ****************************************************************************************/
-void reticleProject(const ReticleGeom &g, float brg, float elv, float rollDeg,
+void reticleProject(const ReticleGeom &g, float degRight, float degUp,
                     int16_t &sx, int16_t &sy) {
-  // Reticle convention -> cockpit-projection convention: +brg is LEFT on screen and
-  // +elv is DOWN, so the boresight-relative angles are (-brg) right and (-elv) up.
-  float dx, dy;
-  kspCockpitOffset(-brg, -elv, g.scale, g.rollRef ? rollDeg : 0.0f, dx, dy);
-  sx = g.cx + (int16_t)dx;
-  sy = g.cy + (int16_t)dy;
+  sx = g.cx + (int16_t)( degRight * g.scale);
+  sy = g.cy + (int16_t)(-degUp    * g.scale);
 }
 
 void reticleClampDot(const ReticleGeom &g, int16_t &sx, int16_t &sy) {
@@ -991,19 +1030,19 @@ void reticleUpdateDots(KCM_TFT &tft, const ReticleGeom &g, ReticleDotCache &c,
                        const ReticleAngles &a) {
   // Primary dot: where is the target/port relative to your nose?
   int16_t pSX, pSY;
-  reticleProject(g, a.priBrg, a.priElv, a.roll, pSX, pSY);
+  reticleProject(g, a.priRight, a.priUp, pSX, pSY);
   reticleClampDot(g, pSX, pSY);
 
   // Vel dot: where is your relative-velocity vector relative to your nose?
   int16_t vSX, vSY;
-  reticleProject(g, a.velBrg, a.velElv, a.roll, vSX, vSY);
+  reticleProject(g, a.velRight, a.velUp, vSX, vSY);
   reticleClampDot(g, vSX, vSY);
 
   // Opposite (antipodal) marker positions + in-view test.
   const float maxR = (float)(g.r - g.clampMargin);
   int16_t aSX, aSY, rSX, rSY;
-  reticleProject(g, a.antiBrg,  a.antiElv,  a.roll, aSX, aSY);
-  reticleProject(g, a.retroBrg, a.retroElv, a.roll, rSX, rSY);
+  reticleProject(g, a.antiRight,  a.antiUp,  aSX, aSY);
+  reticleProject(g, a.retroRight, a.retroUp, rSX, rSY);
   bool antiInView  = ((float)(aSX-g.cx)*(aSX-g.cx) + (float)(aSY-g.cy)*(aSY-g.cy)) <= maxR*maxR;
   bool retroInView = ((float)(rSX-g.cx)*(rSX-g.cx) + (float)(rSY-g.cy)*(rSY-g.cy)) <= maxR*maxR;
 

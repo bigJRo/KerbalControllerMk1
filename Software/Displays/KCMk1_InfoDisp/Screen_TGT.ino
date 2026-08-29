@@ -94,15 +94,14 @@ static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on e
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
-// rollRef = false: the long-range scope stays horizon-referenced (heading/pitch), like
-// MNVR. Only DOCK rotates its marker layer into body axes, where hand-flown RCS
-// translation makes that the useful frame.
+// The long-range scope stays horizon-referenced: reticleComputeAngles(false) builds the
+// axes with roll 0. At rendezvous range you steer with SAS rather than hand-flying, so
+// the craft's roll is not the useful reference. Only DOCK passes true.
 static const ReticleGeom TGT_GEOM = {
     TGT_SCX, TGT_SCY, TGT_R, TGT_SCALE,
     TGT_DOT_R_TGT, TGT_DOT_R_VEL, TGT_DOT_R_ERASE,
     TGT_DOT_R_VEL * 3 / 2 + 2,      // clampMargin — widest symbol is the prograde ring + spoke
-    TGT_RING_LBL, &Roboto_Black_16,
-    false                           // rollRef
+    TGT_RING_LBL, &Roboto_Black_16
 };
 // Per-screen erase-before-redraw cache (9999 = marker not shown). Reset on entry.
 static ReticleDotCache _tgtDots;
@@ -297,11 +296,10 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // ── Derived values ────────────────────────────────────────────────────────────────
     // Shared derived-angle block (identical to DOCK): nose→target, velocity→target and
     // both antipodal directions, bearings wrapped to ±180°.
-    ReticleAngles ang = reticleComputeAngles();
+    ReticleAngles ang = reticleComputeAngles(false);   // false = horizon-referenced
 
     // ── Update scope dots ─────────────────────────────────────────────────────────────
-    // Shared marker layer (KerbalDisplayCommon). TGT_GEOM leaves rollRef false, so the
-    // scope stays horizon-referenced and ang.roll is ignored.
+    // Shared marker layer (KerbalDisplayCommon).
     reticleUpdateDots(tft, TGT_GEOM, _tgtDots, ang);
 
     // ── Right panel values ────────────────────────────────────────────────────────────

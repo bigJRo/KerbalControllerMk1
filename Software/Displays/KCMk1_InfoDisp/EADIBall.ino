@@ -335,18 +335,16 @@ static const int16_t EADI_ADI_MRK_HD = 32;   // marker extent (prograde ring 18 
 // `dirty` bitmap so the next delta fill repaints them (prevents trails).
 void eadiDrawAdiMarker(KCM_TFT &tft, float markerHdg, float markerPitch,
                        uint16_t fillCol, uint8_t kind) {
-    // Delta from current vessel attitude
-    float dh = eadiHdgDelta(markerHdg, state.heading);
-    float dp = markerPitch - state.pitch;
-
-    // Horizon-frame offset rotated into the cockpit frame. The roll handedness lives
-    // in kspCockpitOffset (KerbalDisplayCommon) — the single definition shared with
-    // the DOCK reticle and the re-entry retro ball. Centre is added before the cast,
-    // as before, so marker pixels are unchanged.
-    float ux, uy;
-    kspCockpitOffset(dh, dp, EADI_SCALE, state.roll, ux, uy);
-    int16_t sx = (int16_t)(EADI_CX + ux);
-    int16_t sy = (int16_t)(EADI_CY + uy);
+    // True boresight projection into the cockpit frame, shared with the reticles and the
+    // re-entry retro ball (KerbalDisplayCommon). The ball's own horizon line and pitch
+    // ladder are still drawn on the older flat model, so a marker can sit up to ~4 px
+    // off the drawn horizon at the widest visible lateral offset — within the ±25° the
+    // marker clip allows. Making the ball itself spherical is a separate job.
+    const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
+    float degRight, degUp;
+    kspBoresightAngles(ax, markerHdg, markerPitch, degRight, degUp);
+    int16_t sx = (int16_t)(EADI_CX + degRight * EADI_SCALE);
+    int16_t sy = (int16_t)(EADI_CY - degUp    * EADI_SCALE);
 
     // Clip: entire marker must fit inside ball. Use (R - HD) so outline doesn't cross rim.
     int16_t dx = sx - EADI_CX, dy = sy - EADI_CY;
