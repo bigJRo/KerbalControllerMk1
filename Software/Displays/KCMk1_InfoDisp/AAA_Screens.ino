@@ -204,17 +204,22 @@ const uint16_t RETICLE_BAR_W = 450;                             // bottom bar wi
 
 // Every plotted pair is boresight-relative (+right, +up) from kspBoresightAngles, so a
 // marker's distance from the crosshair is its TRUE angular offset from the nose at any
-// attitude. bodyReferenced picks the frame: true builds the axes with the vessel roll
-// (screen up = the craft's roof, what a hand-flown display wants), false with roll 0
-// (screen up = local vertical).
+// attitude, and the axes are built with the vessel roll — the project-wide rule that
+// EVERY boresight display is body-referenced. Screen up is the craft's roof, so the
+// pilot's instinct is the same on every one of them:
+//   position markers (node / port / target) — steer TOWARD them: marker up and right
+//     means pitch up and yaw right, and it walks back to the crosshair.
+//   velocity markers (prograde)             — thrust AWAY from them: marker up and
+//     right means thrust left and down, and it walks back to the crosshair.
+// Those responses are opposite because of what the symbols mean, not because of the
+// frame; the body frame is what puts both of them in the axes the controls use.
 //
 // appBrg/appElv stay horizon-frame heading/pitch differences — they are readouts, not
 // markers. They no longer equal the on-screen VEL-to-PORT gap once the vessel is
 // pitched; reconciling the readouts with the picture is a separate open item.
-ReticleAngles reticleComputeAngles(bool bodyReferenced) {
+ReticleAngles reticleComputeAngles() {
   ReticleAngles a;
-  const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch,
-                                     bodyReferenced ? state.roll : 0.0f);
+  const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
 
   // Where is the target/port relative to the nose?
   kspBoresightAngles(ax, state.tgtHeading, state.tgtPitch, a.priRight, a.priUp);

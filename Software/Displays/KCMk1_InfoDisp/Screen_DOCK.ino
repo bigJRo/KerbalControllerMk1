@@ -109,10 +109,9 @@ static const float    BAR_MAX_DIST = 250.0f;   // full bar = 250m (docking appro
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const DOCK_RING_LBL[4] = { "5", "10", "15", "20" };
-// DOCK is the body-referenced reticle: reticleComputeAngles(true) builds the axes with
-// the vessel roll, so screen up/right always means the craft's up/right and the RCS
-// translation keys move the markers the way the pilot expects at any roll attitude.
-// TGT and MNVR pass false and stay horizon-referenced.
+// Body-referenced, like every other boresight display in the project: screen up/right
+// always means the craft's up/right, so the RCS translation keys move the markers the
+// way the pilot expects at any roll attitude.
 static const ReticleGeom DOCK_GEOM = {
     (int16_t)RET_CX, (int16_t)RET_CY, (int16_t)RET_R, RET_SCALE,
     DOT_R_PORT, DOT_R_VEL, DOT_R_ERASE,
@@ -329,7 +328,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // ── Compute derived values ────────────────────────────────────────────────────────
     // Shared derived-angle block (identical to TGT): nose→port, velocity→target and both
     // antipodal directions, bearings wrapped to ±180°.
-    ReticleAngles ang = reticleComputeAngles(true);      // true = body-referenced
+    ReticleAngles ang = reticleComputeAngles();
     float appBrg  = ang.appBrg,  appElv  = ang.appElv;    // readout: approach path vs port
 
     // Lateral drift magnitude — off-axis speed component perpendicular to approach axis

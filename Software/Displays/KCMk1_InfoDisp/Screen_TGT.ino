@@ -94,9 +94,10 @@ static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on e
 // Only the angular SCALE and the four ring labels differ; both are captured here. Built
 // from the existing named constants above so values never diverge from the chrome/bar.
 static const char *const TGT_RING_LBL[4] = { "15", "30", "45", "60" };
-// The long-range scope stays horizon-referenced: reticleComputeAngles(false) builds the
-// axes with roll 0. At rendezvous range you steer with SAS rather than hand-flying, so
-// the craft's roll is not the useful reference. Only DOCK passes true.
+// Body-referenced, like every other boresight display in the project. TGT and DOCK are
+// the same task at different ranges — they share a sidebar button, and the Dist row goes
+// white-on-green below 200 m to say "switch to DOCK" — so a frame change between them
+// would re-anchor every marker at exactly the moment the pilot crosses over.
 static const ReticleGeom TGT_GEOM = {
     TGT_SCX, TGT_SCY, TGT_R, TGT_SCALE,
     TGT_DOT_R_TGT, TGT_DOT_R_VEL, TGT_DOT_R_ERASE,
@@ -296,7 +297,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // ── Derived values ────────────────────────────────────────────────────────────────
     // Shared derived-angle block (identical to DOCK): nose→target, velocity→target and
     // both antipodal directions, bearings wrapped to ±180°.
-    ReticleAngles ang = reticleComputeAngles(false);   // false = horizon-referenced
+    ReticleAngles ang = reticleComputeAngles();
 
     // ── Update scope dots ─────────────────────────────────────────────────────────────
     // Shared marker layer (KerbalDisplayCommon).

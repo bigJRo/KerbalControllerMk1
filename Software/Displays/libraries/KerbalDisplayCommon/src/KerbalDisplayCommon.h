@@ -3,13 +3,17 @@
 
 #define KDC_VERSION_MAJOR 3
 #define KDC_VERSION_MINOR 3
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.3.1 — documented the project-wide rule that every boresight display builds its
+            axes with the vessel roll; the horizon-referenced path (rollDeg = 0) now has
+            no caller but is kept for a possible world-referenced scope.
 
    v3.3.0 — true boresight projection. kspCockpitOffset (flat heading/pitch offsets
             rotated by roll) is REPLACED by kspBodyAxes + kspBoresightAngles, which
@@ -49,7 +53,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.3.0
+  Version: 3.3.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -350,8 +354,12 @@ struct KspBodyAxes {
 // Resolve a navball attitude into body axes.
 //   rollDeg = state.roll  -> body/cockpit frame: screen up is the craft's roof, which
 //                            is what a hand-flown display wants (RCS translation and
-//                            pitch/yaw are both in these axes).
+//                            pitch/yaw are both in these axes). Every boresight display
+//                            in this project passes the vessel roll -- there are no
+//                            exceptions, so one instinct serves them all.
 //   rollDeg = 0           -> horizon-referenced frame: screen up is the local vertical.
+//                            No current caller wants this; kept because it costs
+//                            nothing and a world-referenced scope may want it.
 // Well conditioned everywhere except exactly at the +/-90 deg pitch singularity of the
 // heading/pitch/roll parameterisation itself, where heading and roll trade off.
 KspBodyAxes kspBodyAxes(float headingDeg, float pitchDeg, float rollDeg);
@@ -386,9 +394,9 @@ float eadiHdgDelta(float a, float b);
    pulls the marker toward the direction you thrust.
 
    ROLL REFERENCE is chosen upstream, by whether the caller built its KspBodyAxes with
-   the vessel roll (body frame -- screen up is the craft's roof, what a hand-flown
-   display wants) or with 0 (horizon frame). The chrome is rotationally symmetric, so
-   nothing underneath has to rotate with the markers either way.
+   the vessel roll or with 0. Every screen in this project uses the vessel roll, so
+   screen up is always the craft's roof and one pilot instinct serves every display.
+   The chrome is rotationally symmetric, so nothing underneath rotates with the markers.
 ****************************************************************************************/
 
 // Per-screen reticle configuration. Everything the marker layer needs that differs

@@ -90,9 +90,8 @@ static const uint8_t MNVR_SC = (uint8_t)screen_MNVR;   // 3
 // reticleUpdateDots — but the clamp, the erase-rect chrome repair and the angle→screen
 // projection are the same code, and now come from KerbalDisplayCommon rather than from
 // per-screen copies. dotRPrimary/dotRVel carry the maneuver diamond's prong length;
-// MNVR_BODY_REF stays false for now: the burn-vector scope is horizon-referenced like
-// TGT. Flipping it to true is the whole change — the roll lives in the body axes.
-static const bool MNVR_BODY_REF = false;
+// The marker is body-referenced like every other boresight display in the project, so
+// pitch and yaw move it the way the pilot expects at any roll attitude.
 static const char *const MNVR_RING_LBL[4] = { "5", "10", "15", "20" };
 static const ReticleGeom MNVR_GEOM = {
     (int16_t)MNVR_CX, (int16_t)MNVR_CY, (int16_t)MNVR_R, MNVR_SCALE,
@@ -209,8 +208,7 @@ static void _mnvrUpdateMarker(KCM_TFT &tft) {
     // Boresight projection: nodeRight/nodeUp are the node's true angular offset from
     // the nose, so the plotted radius IS the alignment error — no Pythagorean
     // approximation, and correct at the high pitch a radial-in/out node demands.
-    const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch,
-                                       MNVR_BODY_REF ? state.roll : 0.0f);
+    const KspBodyAxes ax = kspBodyAxes(state.heading, state.pitch, state.roll);
     float nodeRight, nodeUp;
     kspBoresightAngles(ax, state.mnvrHeading, state.mnvrPitch, nodeRight, nodeUp);
 

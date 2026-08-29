@@ -81,11 +81,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.3.0
+   This sketch requires KerbalDisplayCommon >= 3.3.1
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.0.3: true boresight projection on all four attitude displays
+static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.0.4: every boresight display body-referenced
 
 
 /***************************************************************************************
@@ -313,7 +313,7 @@ void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
 // What stays here is the seam — the one reticle function that touches the global
 // `state`, turning vessel/target telemetry into the library's ReticleAngles.
 // Defined in AAA_Screens.ino.
-ReticleAngles reticleComputeAngles(bool bodyReferenced);
+ReticleAngles reticleComputeAngles();
 
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(KCM_TFT &tft, ScreenType s);
