@@ -237,6 +237,23 @@ ReticleAngles reticleComputeAngles() {
   return a;
 }
 
+/***************************************************************************************
+   VALUE FORMATTERS
+****************************************************************************************/
+String fmtNum(float v) {
+  if (fabsf(v) < 0.05f) v = 0.0f;  // snap -0.0 and sub-rounding noise to zero
+  if (v >= 1000.0f || v <= -1000.0f) return formatSep(v);
+  char buf[16];
+  dtostrf(v, 1, 1, buf);
+  return String(buf);
+}
+String fmtUnit(float v, const char *unit) {
+  return fmtNum(v) + " " + unit;
+}
+String fmtMs(float v) {
+  return fmtUnit(v, "m/s");
+}
+
 // formatTime() removed — formatting improvements merged into library formatTime() (#5C)
 // All call sites now call formatTime() directly.
 
