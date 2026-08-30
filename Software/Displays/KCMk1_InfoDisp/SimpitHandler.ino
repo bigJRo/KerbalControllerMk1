@@ -392,7 +392,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // Non-flight (menus, tracking station, etc.) — show standby splash
         demoMode = false;
         drawStandbyScreen(infoDisp);
-        activeScreen = screen_LNCH;
+        activeScreen = SCREEN_HOME;   // park on this panel's home screen behind the splash
         prevScreen   = screen_COUNT;
       }
       break;

@@ -24,7 +24,7 @@ KerbalSimpit simpit(SerialUSB1);
 /***************************************************************************************
    SCREEN STATE
 ****************************************************************************************/
-ScreenType activeScreen = screen_LNCH;
+ScreenType activeScreen = SCREEN_HOME;   // per-unit home screen (KCMk1_InfoDisp.h)
 ScreenType prevScreen   = screen_COUNT;  // sentinel -- forces chrome on first loop
 
 
@@ -92,8 +92,18 @@ void switchToScreen(ScreenType s) {
 // Answers "what am I flying?" and nothing else. This is pfdContextScreen() plus the
 // recoverable-vessel rule: a piece of debris or a spent probe has no useful attitude
 // display, so VEHICLE INFO is the right PFD-family member for it.
+//
+// The pre-launch exclusion is load-bearing. KSP reports a vessel on the pad as
+// recoverable — you can recover it without launching — so a bare isRecoverable test
+// puts VEHICLE INFO up on the pad, which is exactly where the pilot wants the PFD.
+// The old combined ladder never hit this because its pre-launch rule sat above its
+// recoverable rule and shielded it; splitting the ladders moved the pre-launch rule
+// to the other panel and left this one exposed. The shield is restored explicitly
+// rather than by ordering, since there is no longer a pre-launch rule here to hide
+// behind. Landed-and-recoverable after a flight still routes to VEHICLE INFO, which
+// is the case the rule was written for.
 ScreenType vehicleContextScreen() {
-  if (state.isRecoverable) return screen_VEH;
+  if (state.isRecoverable && !(state.situation & sit_PreLaunch)) return screen_VEH;
   return pfdContextScreen();   // rover -> ROVR, plane in atmosphere -> ACFT, else SCFT
 }
 

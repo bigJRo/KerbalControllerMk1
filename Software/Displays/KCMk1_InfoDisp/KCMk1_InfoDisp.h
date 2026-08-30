@@ -79,6 +79,21 @@ inline bool isManualLockScreen(ScreenType s) {
   return s == screen_LNDGRE;
 }
 
+// The panel's home screen: where it sits before any telemetry has arrived (boot,
+// demo mode) and where it is parked while KSP is out of a flight scene, so the first
+// frame after a scene entry is already the right screen for this panel's role rather
+// than a screen it then has to switch away from.
+//
+// This is the role's resting screen, not its context ladder's fallback. On unit 2 the
+// ladder rests on ORBIT, but a panel that has never seen telemetry is far more likely
+// to be about to launch than to be in orbit, so LAUNCH stays its home. On unit 1 the
+// PFD is the answer in every case its ladder can produce for an unknown vessel.
+#if INFO_DISP_IS_PFD_UNIT
+static const ScreenType SCREEN_HOME = screen_SCFT;   // vehicle-type panel -> PFD
+#else
+static const ScreenType SCREEN_HOME = screen_LNCH;   // mission-phase panel -> LAUNCH
+#endif
+
 // Manual selection latch. Set by any sidebar press that changes the screen, cleared
 // on vessel change and on flight-scene entry. While it is set, context auto-routing
 // leaves the screen alone — a deliberate pick outlives an incidental context event
@@ -128,7 +143,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.1.0: per-unit panel roles (see README)
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.1.1: per-unit home screen; PFD on the pad
 
 
 /***************************************************************************************

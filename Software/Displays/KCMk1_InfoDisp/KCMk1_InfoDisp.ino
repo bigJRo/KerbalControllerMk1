@@ -60,7 +60,7 @@ void setup() {
     // Demo mode: no KSP connection, show live screens immediately
     if (debugMode) Serial.println(F("InfoDisp: Demo mode — Simpit disabled."));
     initDemoMode();
-    switchToScreen(screen_LNCH);
+    switchToScreen(SCREEN_HOME);
   } else {
     // Live mode: show standby splash while waiting for Simpit to connect.
     // SCENE_CHANGE_MESSAGE will replace it with the standby or flight screen.
