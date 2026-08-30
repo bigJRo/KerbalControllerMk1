@@ -142,8 +142,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 2;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.2.1: adopt a flight scene already in progress
+static const uint8_t SKETCH_VERSION_MINOR = 3;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.3.0: armed annunciations show state, not request
 
 
 /***************************************************************************************
@@ -373,10 +373,13 @@ inline bool     touchInSidebar(uint16_t x) { return x >= SIDEBAR_X && x < SIDEBA
 inline bool     touchInContent(uint16_t x) { return x >= CONTENT_X && x < CONTENT_X + CONTENT_W; }
 inline uint16_t touchContentX(uint16_t x)  { return (uint16_t)(x - CONTENT_X); }
 
-// Ascent Autopilot (Screen_LNCH_AscentAP.ino) — effective armed state, including a
-// pilot ARM/DISARM tap Controller_Main has not echoed back yet. The ARM button and the
-// sidebar ASC key both annunciate this, so they must read the same value.
-bool apArmedEffective();
+// Ascent Autopilot (Screen_LNCH_AscentAP.ino) — the armed state as annunciated: what
+// the autopilot itself reports, never a pilot tap Controller_Main has not echoed back.
+// The ARM button, the ARMED/DISARMED banner and the sidebar ASC key all read this, so
+// they cannot disagree and none of them can say DISARMED while the vehicle is still
+// being flown by the autopilot. A tap in flight shows as a pending cue on the ARM
+// button, not as a change of state.
+bool apArmedAnnunciated();
 
 // Sidebar (AAA_Screens.ino). drawSidebar() paints the strip as chrome on a screen
 // change; updateSidebar() repaints it mid-flight when a key's state colour changes.

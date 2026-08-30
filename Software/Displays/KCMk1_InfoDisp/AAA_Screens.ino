@@ -442,7 +442,7 @@ void drawSidebar(KCM_TFT &tft) {
     // the display-nav cluster. The sidebar draws with isOn=true, so only the ...On
     // fields are overridden; the border is left alone, so it still reads white when
     // this key owns the active screen and grey when it does not.
-    if (SB_BTN_SCREEN[i] == screen_LNCHAP && apArmedEffective()) {
+    if (SB_BTN_SCREEN[i] == screen_LNCHAP && apArmedAnnunciated()) {
       btn.backgroundColorOn = TFT_DARK_GREEN;
       btn.fontColorOn       = TFT_WHITE;
     }
@@ -466,17 +466,17 @@ void drawSidebar(KCM_TFT &tft) {
    when they are not touching the panel. Called once per steady-state frame; it repaints
    the 84 px strip only when a state colour actually changes.
 
-   The armed state read here is apArmedEffective(), the same value the ARM button on the
-   Ascent Autopilot screen renders. Reading raw state.apArmed instead left the key green
-   after a DISARM tap until Controller_Main echoed the change back — and forever when it
-   never did, which is every time in demo mode.
+   The armed state read here is apArmedAnnunciated(), the same value the ARM button and
+   the ARMED/DISARMED banner render — the autopilot's own state, never an unacknowledged
+   tap. The key going green therefore means the vehicle is being flown by the autopilot,
+   not that someone asked for it to be.
 
    Unit 1 has no state-coloured key (its sixth button is VEH), so this compiles out.
 ****************************************************************************************/
 void updateSidebar(KCM_TFT &tft) {
 #if INFO_DISP_IS_MISSION_UNIT
   static bool prevArmed = false;
-  const bool armed = apArmedEffective();
+  const bool armed = apArmedAnnunciated();
   if (armed == prevArmed) return;
   prevArmed = armed;
   drawSidebar(tft);
