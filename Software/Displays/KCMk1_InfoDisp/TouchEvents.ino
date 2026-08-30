@@ -223,7 +223,10 @@ void processTouchEvents() {
           doSwitch = true;
           break;
         case SB_TGTDOCK_BTN:
-          target = (activeScreen == screen_DOCK) ? screen_TGT : screen_DOCK;
+          // TGT -> DOCK -> NAV. The boresight view of the target, the close-in
+          // approach view, and the plan view — the same question at three ranges.
+          target = (activeScreen == screen_TGT)  ? screen_DOCK
+                 : (activeScreen == screen_DOCK) ? screen_NAV : screen_TGT;
           doSwitch = true;
           break;
         case SB_LNDG_BTN:

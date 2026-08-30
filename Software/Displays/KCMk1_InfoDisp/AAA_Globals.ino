@@ -125,7 +125,8 @@ ScreenType vehicleContextScreen() {
 //   5. Landed or splashed                -> TARGET if one is set, else VEHICLE INFO
 //   6. Burn imminent (or running)        -> MANEUVER
 //   7. Target in the approach window     -> TARGET
-//   8. Everything else                   -> ORBIT
+//   8. Flying in an atmosphere, not climbing out -> NAVIGATION
+//   9. Everything else                   -> ORBIT
 //
 // ORBIT as the resting state is the change that the second panel pays for. The
 // single-display ladder deliberately never auto-selected it ("Orbit is manual-select
@@ -206,7 +207,19 @@ ScreenType missionContextScreen() {
   if (state.targetAvailable && state.tgtDistance > tgtLo && state.tgtDistance < tgtHi)
     return screen_TGT;
 
-  // 6. Everything else -> ORBIT (Apsides).
+  // Flying inside an atmosphere, and not climbing out of it -> NAVIGATION. ORBIT is
+  // the right resting state for something in orbit and says nothing to an aircraft:
+  // apoapsis, periapsis, inclination and period are not numbers you fly a jet on.
+  //
+  // The discriminator is apoapsis against the top of the atmosphere. A spaceplane on
+  // the way up has already thrown its apoapsis into space and wants exactly what ORBIT
+  // shows; an aircraft's apoapsis is underground or trivial. Same telemetry, same
+  // situation flags, but the trajectory says which one this is.
+  if (state.inAtmo && currentBody.hasAtmo && currentBody.lowSpace > 0.0f &&
+      state.apoapsis < currentBody.lowSpace)
+    return screen_NAV;
+
+  // Everything else -> ORBIT (Apsides).
   return screen_ORB;
 }
 

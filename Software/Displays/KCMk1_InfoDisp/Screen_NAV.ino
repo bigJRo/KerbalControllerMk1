@@ -1,0 +1,268 @@
+/***************************************************************************************
+   Screen_NAV.ino -- Navigation display (mission panel, atmospheric flight)
+
+   The other half of a glass-cockpit pair. Info Display 1 holds the PFD (attitude,
+   altitude, speed); this is the plan view beside it — where the vessel is pointed,
+   where it is actually going, and where the target is. That pairing is the standard
+   airliner arrangement, and it is the one thing the mission panel had nothing to offer
+   during atmospheric flight: its fallback was ORBIT, whose apsides and period mean
+   nothing to an aircraft.
+
+   Routed to when the vessel is in the atmosphere and its apoapsis is below the top of
+   that atmosphere — i.e. flying in the air rather than climbing out of it. A spaceplane
+   building apoapsis keeps ORBIT, which is what it wants; see missionContextScreen().
+
+   Layout (940 x 538 content area):
+
+     Compass card, centred        rotating rose, nose fixed at 12 o'clock
+       nose triangle              vessel heading, always straight up
+       green marker               ground track — where the vessel is actually moving
+       violet marker              target bearing (matches the target colour elsewhere)
+     Heading box, above the card  HDG, three digits
+     Left column                  TRK (ground track), DRIFT (track minus heading)
+     Right column                 DIST, V.CLS (closure, when a target is set)
+     Bottom strip                 IAS / V.Srf and Alt.Rdr
+
+   Drift is the one number here that appears nowhere else on either panel: the angle
+   between where the nose points and where the vessel is going. In an atmosphere that
+   is the crab angle, and it is the difference between a heading that is holding and a
+   heading that is quietly sliding off.
+
+   Everything is derived from telemetry the panel already receives — heading,
+   srfVelHeading, target bearing and distance, closure. No new Simpit channels.
+****************************************************************************************/
+#include "KCMk1_InfoDisp.h"
+
+
+// ── Geometry ──────────────────────────────────────────────────────────────────────────
+// Deliberately identical to ROVER's card. The vertical budget between the title rule
+// (y=62) and the bottom edge is the same on both screens, and ROVER's numbers already
+// spend it correctly: the heading box clears the rule by 5 px and the ring clears the
+// bottom strip by 8 px. Sizing this card independently produced a box at y=57, four
+// pixels into the title rule. Matching also means the two navigation screens read as
+// one instrument family, which is the point of sharing the renderer at all.
+static const int16_t NAV_CX = CONTENT_W / 2;   // 470
+static const int16_t NAV_CY = 344;
+static const int16_t NAV_R  = 200;
+
+static const CompassGeom NAV_GEOM = {
+  NAV_CX, NAV_CY,
+  NAV_R,
+  196,          // tick outer  (inside the ring, so tick-erase never touches it)
+  178,          // major tick inner
+  185,          // minor tick inner
+  157, 157,     // letter / numeric label centres
+  204, 219, 12, // nose: tip just outside the ring, base beyond it
+  128, 110, 12  // bearing markers: inside the label boxes (which reach in to ~136)
+};
+
+static const float NAV_HDG_THRESH_DEG = 0.5f;   // card rotates
+static const float NAV_MK_THRESH_DEG  = 1.0f;   // marker moved
+
+// Heading readout, above the nose triangle.
+static const int16_t NAV_HDG_BOX_W = 110;
+static const int16_t NAV_HDG_BOX_H = 52;
+static const int16_t NAV_HDG_BOX_X = NAV_CX - (NAV_HDG_BOX_W / 2);
+static const int16_t NAV_HDG_BOX_Y = NAV_CY - NAV_GEOM.noseRBase - 6 - NAV_HDG_BOX_H;
+
+// Side columns, same widths as ROVER's so the compass centres between them.
+static const int16_t NAV_COL_W    = 190;
+static const int16_t NAV_LCOL_X   = 0;
+static const int16_t NAV_RCOL_X   = CONTENT_W - NAV_COL_W;   // 750
+static const int16_t NAV_COL_Y    = TITLE_TOP;
+static const int16_t NAV_BLOCK_H  = 120;
+static const int16_t NAV_LBL_H    = 32;
+static const int16_t NAV_VAL_H    = 48;
+
+// Bottom strip — speed and radar altitude, in the gap between the two columns and
+// below the ring (whose lowest point is y=544). Same band ROVER puts its target
+// distance in.
+static const int16_t NAV_STRIP_Y  = 552;
+static const int16_t NAV_STRIP_H  = 48;   // Roboto_Black_36 cap 43 + padding
+static const int16_t NAV_STRIP_W  = 250;
+
+// ── State ─────────────────────────────────────────────────────────────────────────────
+static CompassCache       _navCard;
+static CompassMarkerCache _navTrkMk;    // ground-track marker
+static CompassMarkerCache _navTgtMk;    // target-bearing marker
+static int16_t _navPrevHdg      = -9999;
+static int16_t _navPrevTrk      = -9999;
+static int16_t _navPrevDrift    = -9999;
+static int32_t _navPrevDist     = -1;
+static bool    _navPrevDistAvail = false;
+static int16_t _navPrevClose    = -9999;
+static int16_t _navPrevSpd      = -9999;
+static int32_t _navPrevAlt      = -99999;
+
+// ── Ground track ──────────────────────────────────────────────────────────────────────
+// Where the vessel is actually moving, as opposed to where it is pointed. Only
+// meaningful once there is enough surface speed for the velocity vector's heading to be
+// stable; below that KSP's reported heading wanders and the marker would spin.
+static const float NAV_TRK_MIN_MS = 5.0f;
+
+static inline bool _navHasTrack() { return state.surfaceVel >= NAV_TRK_MIN_MS; }
+
+
+/***************************************************************************************
+   CHROME — drawn once on screen entry
+****************************************************************************************/
+void chromeScreen_NAV(KCM_TFT &tft) {
+  compassDrawRing(tft, NAV_GEOM);
+  compassDrawNose(tft, NAV_GEOM);
+
+  // Heading box: border is chrome, the value redraws on change.
+  tft.drawRect(NAV_HDG_BOX_X, NAV_HDG_BOX_Y, NAV_HDG_BOX_W, NAV_HDG_BOX_H, TFT_GREY);
+
+  // Column labels.
+  textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
+             "TRK", TFT_WHITE, TFT_BLACK);
+  textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
+             "DRIFT", TFT_WHITE, TFT_BLACK);
+  textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
+             "DIST", TFT_WHITE, TFT_BLACK);
+  textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
+             "V.CLS", TFT_WHITE, TFT_BLACK);
+
+  // Force every value to repaint on the first frame after entry.
+  _navCard = CompassCache();
+  _navTrkMk = CompassMarkerCache();
+  _navTgtMk = CompassMarkerCache();
+  _navPrevHdg = _navPrevTrk = _navPrevDrift = -9999;
+  _navPrevClose = _navPrevSpd = -9999;
+  _navPrevDist = -1;
+  _navPrevDistAvail = false;
+  _navPrevAlt = -99999;
+}
+
+
+/***************************************************************************************
+   PER-FRAME UPDATE
+****************************************************************************************/
+void drawScreen_NAV(KCM_TFT &tft) {
+  const float hdg = state.heading;
+
+  // ── Compass card ───────────────────────────────────────────────────────────────────
+  // The card rotation erases and redraws ticks and labels, which pass through the band
+  // the markers occupy, so both markers are re-stamped whenever the card moves.
+  bool cardMoved = compassUpdateCard(tft, NAV_GEOM, _navCard, hdg, NAV_HDG_THRESH_DEG);
+  if (cardMoved) {
+    _navTrkMk.prevAvail = false;
+    _navTgtMk.prevAvail = false;
+  }
+
+  // ── Ground-track marker ────────────────────────────────────────────────────────────
+  const bool  hasTrk = _navHasTrack();
+  const float trkScreenDeg = hasTrk ? eadiHdgDelta(state.srfVelHeading, hdg) : 0.0f;
+  compassUpdateMarker(tft, NAV_GEOM, _navTrkMk, hasTrk, trkScreenDeg,
+                      TFT_NEON_GREEN, NAV_MK_THRESH_DEG);
+
+  // ── Target-bearing marker ──────────────────────────────────────────────────────────
+  const bool  hasTgt = state.targetAvailable;
+  const float tgtScreenDeg = hasTgt ? eadiHdgDelta(state.tgtHeading, hdg) : 0.0f;
+  compassUpdateMarker(tft, NAV_GEOM, _navTgtMk, hasTgt, tgtScreenDeg,
+                      TFT_VIOLET, NAV_MK_THRESH_DEG);
+
+  // ── Heading readout ────────────────────────────────────────────────────────────────
+  {
+    int16_t h = (int16_t)lroundf(hdg) % 360;
+    if (h < 0) h += 360;
+    if (h != _navPrevHdg) {
+      _navPrevHdg = h;
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%03d\xB0", h);
+      tft.fillRect(NAV_HDG_BOX_X + 2, NAV_HDG_BOX_Y + 2,
+                   NAV_HDG_BOX_W - 4, NAV_HDG_BOX_H - 4, TFT_BLACK);
+      textCenter(tft, &Roboto_Black_36, NAV_HDG_BOX_X, NAV_HDG_BOX_Y,
+                 NAV_HDG_BOX_W, NAV_HDG_BOX_H, buf, TFT_WHITE, TFT_BLACK);
+    }
+  }
+
+  // ── TRK — ground track, or dashes when too slow to be meaningful ───────────────────
+  {
+    int16_t t = -1;
+    if (hasTrk) {
+      t = (int16_t)lroundf(state.srfVelHeading) % 360;
+      if (t < 0) t += 360;
+    }
+    if (t != _navPrevTrk) {
+      _navPrevTrk = t;
+      char buf[8];
+      if (t < 0) snprintf(buf, sizeof(buf), "---");
+      else       snprintf(buf, sizeof(buf), "%03d\xB0", t);
+      tft.fillRect(NAV_LCOL_X, NAV_COL_Y + NAV_LBL_H, NAV_COL_W, NAV_VAL_H, TFT_BLACK);
+      textCenter(tft, &Roboto_Black_36, NAV_LCOL_X, NAV_COL_Y + NAV_LBL_H,
+                 NAV_COL_W, NAV_VAL_H, buf,
+                 (t < 0) ? TFT_DARK_GREY : TFT_NEON_GREEN, TFT_BLACK);
+    }
+  }
+
+  // ── DRIFT — track minus heading, the crab angle ────────────────────────────────────
+  // Yellow past NAV_DRIFT_WARN_DEG: in an atmosphere a large crab angle is either a
+  // strong crosswind-equivalent or a vessel that is not going where it is pointed.
+  {
+    int16_t d = -9999;
+    if (hasTrk) d = (int16_t)lroundf(eadiHdgDelta(state.srfVelHeading, hdg));
+    if (d != _navPrevDrift) {
+      _navPrevDrift = d;
+      char buf[10];
+      if (d == -9999) snprintf(buf, sizeof(buf), "---");
+      else            snprintf(buf, sizeof(buf), "%+d\xB0", d);
+      uint16_t fg = (d == -9999)             ? TFT_DARK_GREY
+                  : (abs(d) >= NAV_DRIFT_WARN_DEG) ? TFT_YELLOW
+                                             : TFT_DARK_GREEN;
+      tft.fillRect(NAV_LCOL_X, NAV_COL_Y + NAV_BLOCK_H + NAV_LBL_H,
+                   NAV_COL_W, NAV_VAL_H, TFT_BLACK);
+      textCenter(tft, &Roboto_Black_36, NAV_LCOL_X, NAV_COL_Y + NAV_BLOCK_H + NAV_LBL_H,
+                 NAV_COL_W, NAV_VAL_H, buf, fg, TFT_BLACK);
+    }
+  }
+
+  // ── DIST — range to target ─────────────────────────────────────────────────────────
+  {
+    int32_t dist = hasTgt ? (int32_t)lroundf(state.tgtDistance) : -1;
+    if (dist != _navPrevDist || hasTgt != _navPrevDistAvail) {
+      _navPrevDist = dist;
+      _navPrevDistAvail = hasTgt;
+      tft.fillRect(NAV_RCOL_X, NAV_COL_Y + NAV_LBL_H, NAV_COL_W, NAV_VAL_H, TFT_BLACK);
+      textCenter(tft, &Roboto_Black_36, NAV_RCOL_X, NAV_COL_Y + NAV_LBL_H,
+                 NAV_COL_W, NAV_VAL_H,
+                 hasTgt ? formatAlt(state.tgtDistance) : String("---"),
+                 hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+    }
+  }
+
+  // ── V.CLS — closure rate, negative closing (same sign convention as TGT/DOCK) ──────
+  {
+    int16_t c = hasTgt ? (int16_t)lroundf(state.tgtVelocity) : -9999;
+    if (c != _navPrevClose) {
+      _navPrevClose = c;
+      tft.fillRect(NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H + NAV_LBL_H,
+                   NAV_COL_W, NAV_VAL_H, TFT_BLACK);
+      textCenter(tft, &Roboto_Black_36, NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H + NAV_LBL_H,
+                 NAV_COL_W, NAV_VAL_H,
+                 hasTgt ? fmtMs(state.tgtVelocity) : String("---"),
+                 hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+    }
+  }
+
+  // ── Bottom strip — speed on the left, radar altitude on the right ──────────────────
+  {
+    int16_t spd = (int16_t)lroundf(state.surfaceVel);
+    if (spd != _navPrevSpd) {
+      _navPrevSpd = spd;
+      tft.fillRect(NAV_COL_W, NAV_STRIP_Y, NAV_STRIP_W, NAV_STRIP_H, TFT_BLACK);
+      textLeft(tft, &Roboto_Black_36, NAV_COL_W, NAV_STRIP_Y, NAV_STRIP_W, NAV_STRIP_H,
+               (String("V.Srf ") + fmtMs(state.surfaceVel)).c_str(),
+               TFT_DARK_GREEN, TFT_BLACK);
+    }
+    int32_t alt = (int32_t)lroundf(state.radarAlt);
+    if (alt != _navPrevAlt) {
+      _navPrevAlt = alt;
+      tft.fillRect(CONTENT_W - NAV_COL_W - NAV_STRIP_W, NAV_STRIP_Y, NAV_STRIP_W, NAV_STRIP_H, TFT_BLACK);
+      textRight(tft, &Roboto_Black_36, CONTENT_W - NAV_COL_W - NAV_STRIP_W, NAV_STRIP_Y,
+                NAV_STRIP_W, NAV_STRIP_H,
+                (String("Alt.Rdr ") + formatAlt(state.radarAlt)).c_str(),
+                TFT_DARK_GREEN, TFT_BLACK);
+    }
+  }
+}

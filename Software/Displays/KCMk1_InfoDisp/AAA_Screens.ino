@@ -15,7 +15,8 @@
                   default). Unit 2 keeps VEH in this ring; unit 1 gives it button 5.
      1  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
      2  ORB       Orbit — ORB -> ORB+ (Advanced Elements) -> MNVR (Maneuver) (press cycles)
-     3  TGT/DOCK  Target / Docking — TGT <-> DOCK (context default: DOCK when near a target)
+     3  TGT/DOCK  Target / Docking / Navigation — TGT -> DOCK -> NAV (press cycles;
+                  context default: DOCK when near a target, NAV in atmospheric flight)
      4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
      5  per unit  Unit 1: VEH (Vehicle Info, single-mode).
                   Unit 2: ASC (Ascent Autopilot console).
@@ -130,7 +131,7 @@ uint8_t screenToButton(ScreenType s) {
 #endif
     case screen_SCFT: case screen_ACFT: case screen_ROVR:                  return SB_PFD_BTN;
     case screen_ORB:  case screen_ORBADV: case screen_MNVR:                return SB_ORB_BTN;
-    case screen_TGT:  case screen_DOCK:                                    return SB_TGTDOCK_BTN;
+    case screen_TGT:  case screen_DOCK: case screen_NAV:                    return SB_TGTDOCK_BTN;
     case screen_LNDG: case screen_LNDGRE:                                  return SB_LNDG_BTN;
     default: break;
   }
@@ -157,7 +158,8 @@ const char *sbButtonLabel(uint8_t i) {
       return (activeScreen == screen_ORBADV) ? "ORB+"
            : (activeScreen == screen_MNVR)   ? "MNVR" : "ORB";
     case SB_TGTDOCK_BTN:
-      return (activeScreen == screen_DOCK) ? "DOCK" : "TGT";
+      return (activeScreen == screen_DOCK) ? "DOCK"
+           : (activeScreen == screen_NAV)  ? "NAV" : "TGT";
     case SB_LNDG_BTN:
       return (activeScreen == screen_LNDGRE) ? "ENTR" : "DESC";
     default:
@@ -178,7 +180,8 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ROVER",
   "ORBIT ADVANCED",
   "RE-ENTRY",
-  "ASCENT AUTOPILOT"
+  "ASCENT AUTOPILOT",
+  "NAVIGATION"
 };
 
 /***************************************************************************************
@@ -722,6 +725,7 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     case screen_LNDGRE: chromeScreen_LNDG(tft); break;   // _lndgReentryMode set true above
     case screen_ACFT:   chromeScreen_ACFT(tft); break;
     case screen_LNCHAP: chromeScreen_LNCHAP(tft); break;
+    case screen_NAV:    chromeScreen_NAV(tft); break;
     default: break;
   }
 
@@ -746,6 +750,7 @@ void updateScreen(KCM_TFT &tft, ScreenType s) {
     case screen_LNDGRE: _lndgReentryMode = true;  drawScreen_LNDG(tft); break;
     case screen_ACFT:   drawScreen_ACFT(tft); break;
     case screen_LNCHAP: drawScreen_LNCHAP(tft); break;
+    case screen_NAV:    drawScreen_NAV(tft); break;
     default: break;
   }
 }

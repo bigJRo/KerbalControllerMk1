@@ -67,7 +67,8 @@ enum ScreenType : uint8_t {
   screen_ORBADV = 10,  // Orbit — Advanced Elements (text readout)
   screen_LNDGRE = 11,  // Landing — Re-entry
   screen_LNCHAP = 12,  // Ascent Autopilot (replaces ORB+ sidebar slot; ORB+ via ORB title tap)
-  screen_COUNT  = 13   // sentinel — not a real screen
+  screen_NAV    = 13,  // Navigation display — compass rose, ground track, target bearing
+  screen_COUNT  = 14   // sentinel — not a real screen
 };
 
 // RE-ENTRY used to pin itself against automatic switches, because it was manual-only
@@ -143,8 +144,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.5.0: VEH is mission-panel only; chip restyle
+static const uint8_t SKETCH_VERSION_MINOR = 6;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.6.0: NAVIGATION screen; shared compass renderer
 
 
 /***************************************************************************************
@@ -168,6 +169,7 @@ extern const uint32_t CONTEXT_DWELL_MS;
 extern const float DOCK_CTX_RELEASE_M, TGT_CTX_RELEASE_MIN_M, TGT_CTX_RELEASE_MAX_M;
 extern const float MNVR_CTX_RELEASE_S, REENTRY_CTX_MACH;
 extern const float LNDG_CTX_ALT_M, LNDG_CTX_ALT_RELEASE_M, LNDG_CTX_VVERT_MS;
+extern const int16_t NAV_DRIFT_WARN_DEG;
 
 // Flight state (populated by SimpitHandler.ino)
 extern bool simpitConnected;  // true after Simpit handshake succeeds
@@ -318,6 +320,39 @@ struct AppState {
 
 extern AppState state;
 extern BodyParams currentBody;
+
+/***************************************************************************************
+   COMPASS ROSE (Compass.ino)
+   Shared rotating compass card, used by ROVER and NAV. Pure geometry and pixels: it
+   reads no telemetry and owns no state. The caller supplies its own radii and its own
+   prev-drawn caches, so the redraw gating stays per-screen — the same split the
+   reticle layer (MNVR/TGT/DOCK) and the EADI tape (SCFT/ACFT) already use.
+****************************************************************************************/
+struct CompassGeom {
+  int16_t cx, cy;                 // card centre
+  int16_t rRing;                  // outer ring
+  int16_t rTickOuter;             // tick outer end (inside rRing, so tick-erase spares it)
+  int16_t rTickMajorInner;        // 30 deg tick inner end
+  int16_t rTickMinorInner;        // 5 deg tick inner end
+  int16_t rLetter, rNumLabel;     // label centres
+  int16_t noseRTip, noseRBase, noseHalfW;   // fixed 12 o'clock triangle, outside the ring
+  int16_t mkRTip, mkRBase, mkHalfW;         // bearing marker, inside the ring
+};
+struct CompassCache       { float prevHeading = -9999.0f; };
+struct CompassMarkerCache { bool prevAvail = false; float prevScreenDeg = -9999.0f; };
+
+void compassPolar(const CompassGeom &g, float screenDeg, int16_t r, int16_t &x, int16_t &y);
+void compassDrawRing(KCM_TFT &tft, const CompassGeom &g);
+void compassDrawTicks(KCM_TFT &tft, const CompassGeom &g, float headingDeg, bool erase);
+void compassDrawLabels(KCM_TFT &tft, const CompassGeom &g, float headingDeg, bool erase);
+void compassDrawNose(KCM_TFT &tft, const CompassGeom &g);
+void compassDrawMarker(KCM_TFT &tft, const CompassGeom &g, float screenDeg,
+                       uint16_t colour, bool erase);
+bool compassUpdateCard(KCM_TFT &tft, const CompassGeom &g, CompassCache &c,
+                       float headingDeg, float threshDeg);
+void compassUpdateMarker(KCM_TFT &tft, const CompassGeom &g, CompassMarkerCache &c,
+                         bool available, float screenDeg, uint16_t colour, float threshDeg);
+
 
 // Re-entry corridor boundaries (metres ASL), used by the RE-ENTRY screen. Declared
 // here (not in the .ino) so Arduino's auto-generated prototypes for the helpers that
@@ -476,6 +511,10 @@ void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
 // `state`, turning vessel/target telemetry into the library's ReticleAngles.
 // Defined in AAA_Screens.ino.
 ReticleAngles reticleComputeAngles();
+
+// Screen_NAV.ino — navigation display (compass rose, ground track, target bearing)
+void chromeScreen_NAV(KCM_TFT &tft);
+void drawScreen_NAV(KCM_TFT &tft);
 
 // Screen*.ino — update (dynamic values redrawn each loop)
 void updateScreen(KCM_TFT &tft, ScreenType s);

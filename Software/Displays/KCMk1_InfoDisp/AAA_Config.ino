@@ -228,6 +228,11 @@ const float LNDG_CTX_ALT_M         = 10000.0f;  // radar altitude to enter
 const float LNDG_CTX_ALT_RELEASE_M = 12000.0f;  // and to leave (release band)
 const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 
+// NAV — drift (ground track minus heading) shown yellow past this. In an atmosphere a
+// large crab angle is either a strong sideways component or a vessel that is not going
+// where it is pointed; either is worth noticing before it becomes a heading error.
+const int16_t NAV_DRIFT_WARN_DEG = 10;
+
 // Closure rate — alarm at >2 m/s within 100m
 const float DOCK_VCLOSURE_ALARM_MS   = 2.0f;
 const float DOCK_VCLOSURE_ALARM_DIST_M = 100.0f;

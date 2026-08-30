@@ -243,21 +243,23 @@ static int32_t    _rovrPrevElev         = -99999;   // last-drawn integer elevat
 static bool       _rovrPrevTgtDistAvail  = false;    // whether the target-distance label/value were drawn
 static int32_t    _rovrPrevTgtDistVal    = -1;       // last-drawn integer target distance in metres
 
+// ── Shared compass card ───────────────────────────────────────────────────────────────
+// The rose (ring, ticks, labels, nose, bearing marker) moved to Compass.ino when the
+// NAV screen was added, so the two navigation screens run one implementation rather
+// than two hand-maintained copies — the same consolidation the reticle layer and the
+// EADI tape already went through. Every radius below is ROVER's original value; only
+// the code that consumes them is now shared.
+static const CompassGeom ROVR_GEOM = {
+  ROVR_CX, ROVR_CY,
+  ROVR_R,
+  ROVR_R_TICK_OUTER, ROVR_R_TICK_INNER, ROVR_R_MINOR_INNER,
+  ROVR_R_LETTER, ROVR_R_NUMLABEL,
+  ROVR_NOSE_R_TIP, ROVR_NOSE_R_BASE, ROVR_NOSE_HALF_W,
+  ROVR_TGT_R_TIP,  ROVR_TGT_R_BASE,  ROVR_TGT_HALF_W
+};
+
 // ── Shortest-arc delta helper ─────────────────────────────────────────────────────────
 static inline float _rovrHdgDelta(float a, float b) { return eadiHdgDelta(a, b); }
-
-// ── Polar → screen conversion ─────────────────────────────────────────────────────────
-//
-// Compass screen angle: measured from 12 o'clock (up), increasing clockwise.
-// A world-frame bearing `worldDeg` (N=0, E=90, S=180, W=270) appears on-compass at
-// screenAngle = worldDeg - headingDeg. Screen coords:
-//   x = cx + r * sin(screenDeg * π/180)
-//   y = cy - r * cos(screenDeg * π/180)
-static inline void _rovrPolar(float screenDeg, int16_t r, int16_t &x, int16_t &y) {
-    float rad = screenDeg * (float)DEG_TO_RAD;
-    x = (int16_t)(ROVR_CX + (float)r * sinf(rad));
-    y = (int16_t)(ROVR_CY - (float)r * cosf(rad));
-}
 
 // ── Compass drawing ───────────────────────────────────────────────────────────────────
 
@@ -272,141 +274,29 @@ static void _rovrEraseCompass(KCM_TFT &tft) {
     tft.fillRect(x0, y0, x1 - x0, y1 - y0, TFT_BLACK);
 }
 
-// Tick marks every 5° (72 ticks): majors every 30° (long, light grey), minors at
-// every other 5° position (shorter, dim grey). Every tick is re-rendered in
-// software on each heading change. When `erase` is true, all ticks are drawn in
-// black to wipe the previous frame's ticks before drawing them at the new heading.
-static void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
-    for (int16_t worldDeg = 0; worldDeg < 360; worldDeg += 5) {
-        float screenDeg = (float)worldDeg - headingDeg;
-        int16_t x0, y0, x1, y1;
-        if (worldDeg % 30 == 0) {
-            // Major tick — long, light grey
-            _rovrPolar(screenDeg, ROVR_R_TICK_OUTER, x1, y1);
-            _rovrPolar(screenDeg, ROVR_R_TICK_INNER, x0, y0);
-            tft.drawLine(x0, y0, x1, y1, erase ? TFT_BLACK : TFT_LIGHT_GREY);
-        } else {
-            // Minor tick — short, TFT_GREY (dimmer than the light-grey majors)
-            _rovrPolar(screenDeg, ROVR_R_TICK_OUTER,  x1, y1);
-            _rovrPolar(screenDeg, ROVR_R_MINOR_INNER, x0, y0);
-            tft.drawLine(x0, y0, x1, y1, erase ? TFT_BLACK : TFT_GREY);
-        }
-    }
+// Compass card, nose and target marker — thin adapters onto the shared renderer in
+// Compass.ino. The geometry, colours and erase strategy are unchanged; ROVR_GEOM
+// carries this screen's original radii, and each screen keeps its own prev-drawn
+// cache so the redraw gating stays independent. Equivalence with the previous
+// hand-rolled versions was verified on the host: every draw call, at every heading
+// and every marker bearing, is identical.
+static inline void _rovrDrawTicks(KCM_TFT &tft, float headingDeg, bool erase) {
+    compassDrawTicks(tft, ROVR_GEOM, headingDeg, erase);
 }
 
-// Cardinal letters (N/E/S/W) at world 0/90/180/270 and numeric labels at other 30°s.
-// Text drawn with top-left cursor; glyph metrics estimated empirically (RA8876 has
-// no text-metric API in this library). See inside the loop for per-font numbers.
-//
-// When `erase` is true, each label's glyph box is wiped with a hardware fillRect
-// instead of re-rendering the glyph black-on-black. Text rasterization is the most
-// expensive software primitive in this driver; the fillRect covers the same box
-// (cursorX..cursorX+width, cursorY..cursorY+cap_height) at a fraction of the cost.
-// The box reaches inward to R≈136, still clear of the target triangle (R≤128), and
-// outward to R≈169, clear of the ring (R=200) and ticks (R≥178).
-static void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
-    tft.setFont(Roboto_Black_28);
-    const int16_t capH = (int16_t)Roboto_Black_28.cap_height;
-
-    struct LabelSpec { int16_t worldDeg; const char *text; uint16_t color; int16_t r; };
-    static const LabelSpec labels[] = {
-        {   0, "N",  TFT_YELLOW,     ROVR_R_LETTER },
-        {  30, "03", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        {  60, "06", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        {  90, "E",  TFT_WHITE,      ROVR_R_LETTER },
-        { 120, "12", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        { 150, "15", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        { 180, "S",  TFT_WHITE,      ROVR_R_LETTER },
-        { 210, "21", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        { 240, "24", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        { 270, "W",  TFT_WHITE,      ROVR_R_LETTER },
-        { 300, "30", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-        { 330, "33", TFT_LIGHT_GREY, ROVR_R_NUMLABEL },
-    };
-
-    for (uint8_t i = 0; i < sizeof(labels) / sizeof(labels[0]); i++) {
-        float screenDeg = (float)labels[i].worldDeg - headingDeg;
-        int16_t x, y;
-        _rovrPolar(screenDeg, labels[i].r, x, y);
-
-        // Roboto_Black_28 metrics (empirical): glyph ~16 px wide, ~24 px tall
-        uint8_t textLen = strlen(labels[i].text);
-        int16_t textW = (int16_t)(textLen * 16);
-        int16_t textH = 24;
-        int16_t cursorX = x - textW / 2;
-        int16_t cursorY = y - textH / 2;
-
-        if (erase) {
-            // Hardware fillRect over the glyph box — much cheaper than a black
-            // text render. Use the true glyph width (+2 px slack) so no stray
-            // pixels survive.
-            int16_t realW = getFontStringWidth(&Roboto_Black_28, labels[i].text);
-            tft.fillRect(cursorX - 1, cursorY, realW + 2, capH, TFT_BLACK);
-        } else {
-            tft.setTextColor(labels[i].color, TFT_BLACK);
-            tft.setCursor(cursorX, cursorY);
-            tft.print(labels[i].text);
-        }
-    }
+static inline void _rovrDrawLabels(KCM_TFT &tft, float headingDeg, bool erase) {
+    compassDrawLabels(tft, ROVR_GEOM, headingDeg, erase);
 }
 
-// Vessel heading indicator — white triangle above the ring, pointing INWARD
-// toward the compass centre. Marks the 12 o'clock position which always
-// corresponds to vessel heading (ring rotates around it).
-static void _rovrDrawNose(KCM_TFT &tft) {
-    int16_t tipX, tipY, blX, blY, brX, brY;
-    _rovrPolar(0.0f, ROVR_NOSE_R_TIP, tipX, tipY);
-    float angOffset = (float)ROVR_NOSE_HALF_W / (float)ROVR_NOSE_R_BASE * (180.0f / (float)PI);
-    _rovrPolar(-angOffset, ROVR_NOSE_R_BASE, blX, blY);
-    _rovrPolar( angOffset, ROVR_NOSE_R_BASE, brX, brY);
-    tft.fillTriangle(tipX, tipY, blX, blY, brX, brY, TFT_WHITE);
+static inline void _rovrDrawNose(KCM_TFT &tft) {
+    compassDrawNose(tft, ROVR_GEOM);
 }
 
-// Target bearing indicator — violet triangle inside the ring at the target's
-// relative bearing on the compass (screenDeg = targetHeading - vesselHeading,
-// wrapped to ±180°). Tip points outward (toward the ring); base points toward
-// centre. When the target is dead ahead, screenDeg=0 and the triangle sits at
-// 12 o'clock with its tip pointing up.
-//
-// When `erase` is true, a bounding rectangle around the triangle is filled in
-// black rather than drawing a black triangle. This guarantees complete pixel
-// coverage regardless of rasterizer edge-pixel rules (triangle-based erase
-// with vertex dilation was leaving trails at certain angles). The bounding
-// rect is padded a few px beyond the triangle extents for safety. The target
-// triangle sits well inside the annular band with 25+ px clearance from both
-// the rover icon and the compass labels, so over-painting with a bounding
-// rect is safe.
-static void _rovrDrawTargetAt(KCM_TFT &tft, float screenDeg, bool erase) {
-    int16_t tipX, tipY, blX, blY, brX, brY;
-    _rovrPolar(screenDeg, ROVR_TGT_R_TIP, tipX, tipY);
-    float angOffset = (float)ROVR_TGT_HALF_W / (float)ROVR_TGT_R_BASE * (180.0f / (float)PI);
-    _rovrPolar(screenDeg - angOffset, ROVR_TGT_R_BASE, blX, blY);
-    _rovrPolar(screenDeg + angOffset, ROVR_TGT_R_BASE, brX, brY);
-
-    if (erase) {
-        // Bounding rect, padded 3 px on all sides. Guaranteed to cover the
-        // drawn triangle completely, no rasterization edge issues.
-        int16_t xMin = tipX;
-        int16_t xMax = tipX;
-        if (blX < xMin) xMin = blX;
-        if (brX < xMin) xMin = brX;
-        if (blX > xMax) xMax = blX;
-        if (brX > xMax) xMax = brX;
-        int16_t yMin = tipY;
-        int16_t yMax = tipY;
-        if (blY < yMin) yMin = blY;
-        if (brY < yMin) yMin = brY;
-        if (blY > yMax) yMax = blY;
-        if (brY > yMax) yMax = brY;
-        const int16_t pad = 3;
-        tft.fillRect(xMin - pad, yMin - pad,
-                     (xMax - xMin) + 2 * pad + 1,
-                     (yMax - yMin) + 2 * pad + 1,
-                     TFT_BLACK);
-    } else {
-        tft.fillTriangle(tipX, tipY, blX, blY, brX, brY, TFT_VIOLET);
-    }
+// Target bearing marker — violet, matching the target colour used on SCFT/ACFT.
+static inline void _rovrDrawTargetAt(KCM_TFT &tft, float screenDeg, bool erase) {
+    compassDrawMarker(tft, ROVR_GEOM, screenDeg, TFT_VIOLET, erase);
 }
+
 
 // Target triangle update — called every frame. Decides whether the target
 // triangle needs to be erased, redrawn, or both. Independent of the main
@@ -1219,7 +1109,7 @@ static void _rovrChromeCompass(KCM_TFT &tft) {
     _rovrEraseCompass(tft);
 
     // Stationary: outer ring
-    tft.drawCircle(ROVR_CX, ROVR_CY, ROVR_R, TFT_LIGHT_GREY);
+    compassDrawRing(tft, ROVR_GEOM);
 
     // Stationary: vessel heading indicator (triangle at top of ring, pointing inward)
     _rovrDrawNose(tft);
