@@ -24,6 +24,22 @@
    Populates state fields only — never draws directly. May call switchToScreen()
    on SCENE_CHANGE_MESSAGE and VESSEL_CHANGE_MESSAGE events.
 ****************************************************************************************/
+/***************************************************************************************
+   FLIGHT-SCENE ENTRY
+   Shared by the explicit SCENE_CHANGE and by the inference in FLIGHT_STATUS below, so
+   the two routes into a flight scene cannot drift apart.
+****************************************************************************************/
+static void enterFlightScene() {
+  flightScene = true;
+  demoMode    = false;
+  // Entering a flight scene is a fresh start — release any held manual pick so the
+  // panel opens on its context screen rather than wherever it was parked.
+  clearManualScreenLatch();
+  if (contextSwitchAllowed()) switchToScreen(contextScreen());
+  simpit.requestMessageOnChannel(0);
+}
+
+
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
   if (debugMode) {
@@ -95,6 +111,20 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.targetAvailable = fs.hasTarget();
         // state.inAtmo populated by ATMO_CONDITIONS_MESSAGE
         // state.sasMode — no field in KerbalSimpit 2.4.0 flightStatusMessage
+
+        // Simpit sends FLIGHT_STATUS only from a flight scene, so receiving it while
+        // we believe we are not in one means the SCENE_CHANGE that would have told us
+        // never arrived. That is the normal case when a panel boots into a flight
+        // already in progress — SCENE_CHANGE is an event, not a state you can ask for,
+        // so a display powered up (or USB re-enumerated) mid-flight would otherwise sit
+        // on the standby splash until the pilot happened to change scene or vessel.
+        // Adopting it here rather than on an earlier channel is deliberate: this
+        // message's vessel data is applied just above, so the context ladder routes on
+        // the real vessel instead of on default state.
+        if (!flightScene) {
+          if (debugMode) Serial.println(F("InfoDisp: flight scene inferred from FLIGHT_STATUS"));
+          enterFlightScene();
+        }
 
         // If a vessel switch is pending, now we have the correct vesselType — switch screens
         if (_pendingContextSwitch) {
@@ -377,18 +407,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     case SCENE_CHANGE_MESSAGE:
       if (msgSize < 1) break;   // guard: single-byte payload
       // msg[0] == 0 → flight scene; msg[0] == 1 → non-flight (menu, tracking, etc.)
-      flightScene = (msg[0] == 0);
       if (debugMode)
-        Serial.println(flightScene ? F("InfoDisp: Entering flight scene")
-                                   : F("InfoDisp: Leaving flight scene"));
-      if (flightScene) {
-        demoMode = false;
-        // Entering a flight scene is a fresh start — release any held manual pick so
-        // the panel opens on its context screen rather than wherever it was parked.
-        clearManualScreenLatch();
-        if (contextSwitchAllowed()) switchToScreen(contextScreen());
-        simpit.requestMessageOnChannel(0);
+        Serial.println((msg[0] == 0) ? F("InfoDisp: Entering flight scene")
+                                     : F("InfoDisp: Leaving flight scene"));
+      if (msg[0] == 0) {
+        enterFlightScene();
       } else {
+        flightScene = false;
         // Non-flight (menus, tracking station, etc.) — show standby splash
         demoMode = false;
         drawStandbyScreen(infoDisp);

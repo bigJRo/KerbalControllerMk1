@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.2.0
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.5.3
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -439,6 +439,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.5.3** | **A panel booting into a running flight no longer sits on standby.** `flightScene` was only ever set by `SCENE_CHANGE_MESSAGE`, which Simpit sends as an *event* — there is no way to ask for the current scene. A panel that boots (or whose USB re-enumerates) while a flight is already running therefore never hears it and sits on the standby screen until the pilot happens to change scene or vessel. Since Simpit sends `FLIGHT_STATUS` only from a flight scene, receiving it while the panel believes it is not in one is proof that the transition was missed, so the panel now adopts the scene there. Both routes go through one new `enterFlightScene()` so they cannot drift apart. The hook sits at the end of the `FLIGHT_STATUS` handler rather than earlier, so the message's own vessel data is already applied, so the caution & warning state is already current when the Main screen comes up. Shared with the InfoDisp and Resource Display, which had the same defect. (The README title line also caught up with the header, which had been at 3.5.x for several releases.) |
 | **3.5.2** | Build fix: forward-declare `struct GpwsRung;` in `KCMk1_Annunciator.h`. The Arduino builder injects `gpwsCrossed()`'s prototype at the top of the combined sketch — above `GPWS.ino`'s `GpwsRung` definition — which otherwise errors with *"'GpwsRung' does not name a type."* No behaviour change. |
 | **3.5.1** | Callout playback tuned to the recorded clips: **DON'T SINK** (clip 6) is a single utterance, so the firmware now plays it twice (`_dsRepeat`) to form the "don't sink, don't sink" doublet at Mode 3 priority. **STALL** (clip 8) is a buzzer, re-triggered continuously (`STALL_GAP_MS` 1200 → 60 ms, BUSY-gated) so it sounds unbroken while the stall condition holds. |
 | **3.5.0** | Threshold-bug crossing reworked into a gear/type/altitude decision tree. **Gear up** through the bug → new **GROUND PROXIMITY** call (clip **34**), both profiles. **Gear down**: aircraft with the bug **≥ 300 m** (`DH_SPLIT_M`) get a generic **tone**; **< 300 m** it's a real decision height (**APPROACHING MINIMUMS** + **MINIMUMS**, no tone); landers always tone. rdvRadar range bug still tone-only. The number callout at the bug altitude is now always masked so it can't double with the bug's own call. Requires the new `034` clip. |

@@ -143,7 +143,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 2;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.2.0: PFD promoted to the top sidebar key
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.2.1: adopt a flight scene already in progress
 
 
 /***************************************************************************************

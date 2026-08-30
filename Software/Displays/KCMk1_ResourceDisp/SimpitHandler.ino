@@ -73,6 +73,23 @@ static void updateSlotVesselOnly(ResourceType t, float vessel, float vesselMax) 
 /***************************************************************************************
    SIMPIT MESSAGE HANDLER
 ****************************************************************************************/
+/***************************************************************************************
+   FLIGHT-SCENE ENTRY
+   Shared by the explicit SCENE_CHANGE and by the inference in FLIGHT_STATUS below, so
+   the two routes into a flight scene cannot drift apart.
+****************************************************************************************/
+static void enterFlightScene() {
+  flightScene = true;
+  // Zero slots so stale values don't show before Simpit repopulates them
+  zeroAllSlotValues();
+  // Request immediate refresh on all subscribed channels. Simpit only sends resource
+  // messages when values change — without this, static resources (full tanks, idle
+  // engines) won't update until first change.
+  simpit.requestMessageOnChannel(0);
+  switchToScreen(screen_Main);
+}
+
+
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
   if (debugMode) {
@@ -362,21 +379,25 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       // while a Kerbal is on EVA. Latch it into evaFlag; loop() reconciles it
       // into evaActive and swaps between the vessel bars and the EVA bar set.
       if (msgSize >= 1) evaFlag = (msg[0] & FLIGHT_IS_EVA) != 0;
+      // Simpit sends FLIGHT_STATUS only from a flight scene, so receiving it while we
+      // believe we are not in one means the SCENE_CHANGE that would have told us never
+      // arrived — the normal case when a panel boots into a flight already in progress.
+      // SCENE_CHANGE is an event, not a state you can ask for, so without this the
+      // panel would sit on the standby splash until the pilot changed scene or vessel.
+      if (!flightScene) {
+        if (debugMode) Serial.println(F("ResourceDisp: flight scene inferred from FLIGHT_STATUS"));
+        enterFlightScene();
+      }
       break;
 
     case SCENE_CHANGE_MESSAGE:
       if (msgSize < 1) break;
-      flightScene = (msg[0] == 0);  // 0 = entering flight, 1 = leaving flight
-      if (flightScene) {
+      // 0 = entering flight, 1 = leaving flight
+      if (msg[0] == 0) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit entering flight scene"));
-        // Zero slots so stale values don't show before Simpit repopulates them
-        zeroAllSlotValues();
-        // Request immediate refresh on all subscribed channels.
-        // Simpit only sends resource messages when values change — without this,
-        // static resources (full tanks, idle engines) won't update until first change.
-        simpit.requestMessageOnChannel(0);
-        switchToScreen(screen_Main);
+        enterFlightScene();
       } else {
+        flightScene = false;
         if (debugMode) Serial.println(F("ResourceDisp: Simpit leaving flight scene"));
         // Save current config before leaving flight
         saveVesselSlots(currentVesselName);

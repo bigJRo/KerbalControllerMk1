@@ -285,7 +285,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 2;  // 3.5.2: build fix -- forward-declare GpwsRung in this header so the Arduino auto-generated prototype for gpwsCrossed() (injected above GPWS.ino's struct definition) resolves the type; no behaviour change
+static const uint8_t SKETCH_VERSION_PATCH = 3;  // 3.5.3: adopt a flight scene already in progress
 
 
 /***************************************************************************************
