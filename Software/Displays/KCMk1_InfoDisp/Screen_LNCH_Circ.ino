@@ -102,15 +102,21 @@ static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot 
 //   Label: "Burn Dur:" in Black_20 light grey
 //   Value: formatTimeCompact(mnvrDuration) in Black_24 dark green
 //          ("---" in dark grey when no maneuver node)
-static const int16_t LNCH_OR_BDUR_LBL_Y = 258;                                  // below the ATT disc (disc bottom 230 + margin)
-static const int16_t LNCH_OR_BDUR_VAL_Y = LNCH_OR_BDUR_LBL_Y + 27;             // 24 px label + 3 px gap
+// First left-rail slot, below the ATT disc. Was the burn-duration readout; that moved
+// to the right column, and this slot now carries eccentricity — how circular the orbit
+// in the diagram beside it actually is.
+static const int16_t LNCH_OR_ECC_LBL_Y = 258;                              // disc bottom 230 + margin
+static const int16_t LNCH_OR_ECC_VAL_Y = LNCH_OR_ECC_LBL_Y + 27;           // 24 px label + 3 px gap
 
 // ΔV-to-circularize readout: fills the left-rail whitespace below Burn Dur.
 // Standalone vis-viva estimate of the ΔV needed to circularize at apoapsis (the
 // key pre-burn planning number). Label + prominent value, centered on the ATT
 // column. Vertically centered in the gap between Burn Dur and the bottom band.
-static const int16_t LNCH_OR_CIRCDV_LBL_Y = 372;   // label row ("ΔV Circ:", Black_20)
-static const int16_t LNCH_OR_CIRCDV_VAL_Y = 400;   // value row (Black_28)
+// Second left-rail slot. Was the ΔV-to-circularise readout; that moved to the right
+// column with the other two burn numbers, and this slot now carries the apsis gap —
+// the number the orbit diagram directly above it is a picture of.
+static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("Ap-Pe:", Black_20)
+static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 
 
 
@@ -202,11 +208,16 @@ static PrintState _lnchOrTignPs;
 static int16_t   _lnchOrPrevAttDotX = 9999;
 static int16_t   _lnchOrPrevAttDotY = 9999;
 static uint16_t  _lnchOrPrevAttDotCol = 0;
-// Burn-duration readout prev state: rounded seconds (-9999 = not drawn,
-// -9998 = "---" placeholder). Skip redraw when value rounds the same.
+// Burn-duration and ΔV-to-circularise readouts. Both now live in the right column
+// beside stage burn time -- the three numbers that describe the burn, together --
+// but their change detection is unchanged: rounded value, -9999 = not drawn,
+// -9998 = showing the "---" placeholder.
 static int32_t   _lnchOrPrevBurnDurSec = -9999;
-// ΔV-to-circularize readout prev state (-9999 = not drawn, -9998 = "---").
 static int32_t   _lnchOrPrevCircDvRounded = -9999;
+// Left-rail readouts: eccentricity (x1000) and the apsis gap (metres). These describe
+// the shape of the orbit, so they sit with the picture of it rather than with the burn.
+static int32_t   _lnchOrPrevEccMilli = -9999;
+static int32_t   _lnchOrPrevGapM     = -9999;
 // SOI name we last drew the static layer for. If SOI changes mid-session, we
 // need to redraw the static layer.
 static char _lnchOrPrevSoi[24] = {0};
@@ -226,8 +237,6 @@ static int16_t    _lnchOrTpPeY     = -9999;
 static bool       _lnchOrTpPeLow   = false;  // periapsis was off the bottom of the scale
 static int32_t    _lnchOrTpApVal   = -1 << 30;
 static int32_t    _lnchOrTpPeVal   = -1 << 30;
-static int32_t    _lnchOrTpEcc     = -9999;  // eccentricity x1000
-static int32_t    _lnchOrTpGap     = -1 << 30;
 static PrintState _lnchOrTpPs[3];
 
 
@@ -236,6 +245,8 @@ static PrintState _lnchOrTpPs[3];
 static void _lnchOrResetState() {
     _lnchOrPrevTBurn      = -1 << 30;
     _lnchOrPrevTBurnFg    = 0xFFFF; _lnchOrPrevTBurnBg = 0xFFFF;
+    _lnchOrPrevEccMilli   = -9999;
+    _lnchOrPrevGapM       = -9999;
 
     // Apsis tape: drop the frame so the first update recomputes and redraws the scale,
     // and forget the marker rows so nothing is erased at a stale position.
@@ -244,8 +255,6 @@ static void _lnchOrResetState() {
     _lnchOrTpApY      = -9999;     _lnchOrTpPeY   = -9999;
     _lnchOrTpPeLow    = false;
     _lnchOrTpApVal    = -1 << 30;  _lnchOrTpPeVal = -1 << 30;
-    _lnchOrTpEcc      = -9999;
-    _lnchOrTpGap      = -1 << 30;
     for (uint8_t i = 0; i < 3; i++) {
         _lnchOrTpPs[i].prevWidth  = 0;
         _lnchOrTpPs[i].prevBg     = 0x0001;
@@ -604,11 +613,17 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
 }
 
 
-// ── Numeric block: Ecc, Ap-Pe, T.Brn ──────────────────────────────────────────────────
-// The only three values on this screen the PFD does not carry. Eccentricity is the goal
-// metric (zero is circular), the apsis gap is what the burn is closing, and stage burn
-// time is what is left to close it with.
-static const char *const _lnchOrTpLabels[3] = { "Ecc:", "Ap-Pe:", "T.Brn:" };
+// ── Numeric block: the burn, in three numbers ─────────────────────────────────────────
+// How much velocity change the circularisation needs, how long the burn will take, and
+// how long the stage can burn for. Read top to bottom they answer one question -- can
+// this stage finish this burn -- which is why they sit together rather than scattered
+// across the screen. The first two moved here from the left rail; the orbit-shape
+// numbers that were here (Ecc, Ap-Pe) went the other way, to sit with the diagram.
+//
+// Stg.Brn is stage endurance from Simpit's BURNTIME_MESSAGE: seconds of thrust left in
+// the tank, not a countdown of this burn. It was labelled T.Brn, which read like a
+// time-to/through-burn beside two numbers that genuinely are about this burn.
+static const char *const _lnchOrTpLabels[3] = { "\xCE\x94V.Circ:", "Burn Dur:", "Stg.Brn:" };
 
 // Row cell geometry. printValue reserves the label's width out of the same x0/w it is
 // handed and does not repaint the label itself, so chrome and value share one cell.
@@ -636,36 +651,37 @@ static void _lnchOrTapeDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val
 }
 
 static void _lnchOrTapeUpdateRows(KCM_TFT &tft) {
-    // Ecc — zero is circular. Yellow until the orbit is round enough to call done.
+    // Row 0 — ΔV to circularise at apoapsis, from vis-viva (see _lnchOrCircDvEstimate).
     {
-        float e = state.eccentricity;
-        int32_t iE = (int32_t)lroundf(e * 1000.0f);
-        if (iE != _lnchOrTpEcc) {
-            char buf[10];
-            snprintf(buf, sizeof(buf), "%.3f", e);
-            _lnchOrTapeDrawRowValue(tft, 0, String(buf),
-                                    (e < 0.02f) ? TFT_DARK_GREEN : TFT_YELLOW, TFT_BLACK);
-            _lnchOrTpEcc = iE;
+        const float dv = _lnchOrCircDvEstimate();
+        const int32_t iDv = (dv > 0.0f) ? (int32_t)lroundf(dv) : -9998;
+        if (iDv != _lnchOrPrevCircDvRounded) {
+            char buf[16];
+            uint16_t fg;
+            if (iDv <= -9998) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
+            else { snprintf(buf, sizeof(buf), "%dm/s", (int)iDv); fg = TFT_DARK_GREEN; }
+            _lnchOrTapeDrawRowValue(tft, 0, String(buf), fg, TFT_BLACK);
+            _lnchOrPrevCircDvRounded = iDv;
         }
     }
-    // Ap-Pe — the gap the burn is closing.
+    // Row 1 — how long the planned burn runs. Dashed with no node.
     {
-        bool have = (state.apoapsis > 0.0f);
-        int32_t gap = have ? (int32_t)lroundf(state.apoapsis - state.periapsis) : -1 << 30;
-        if (gap != _lnchOrTpGap) {
+        const bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f) &&
+                             state.mnvrDuration > 0.0f;
+        const int32_t sec = hasMnvr ? (int32_t)lroundf(state.mnvrDuration) : -9998;
+        if (sec != _lnchOrPrevBurnDurSec) {
             _lnchOrTapeDrawRowValue(tft, 1,
-                have ? formatAlt(state.apoapsis - state.periapsis) : String("---"),
-                have ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
-            _lnchOrTpGap = gap;
+                hasMnvr ? formatTimeCompact(state.mnvrDuration) : String("---"),
+                hasMnvr ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+            _lnchOrPrevBurnDurSec = sec;
         }
     }
-    // T.Brn — stage burn time remaining, the one row kept from the panel this replaced.
-    // Same thresholds as the ascent readout, but drawn on this column's own geometry:
-    // _lnchAs2UpdateTBurn() lays its value out on the 67 px ascent rows and would put
-    // this one 200 px up the screen.
+    // Row 2 — stage endurance. Same thresholds as the ascent readout, but drawn on this
+    // column's own geometry: _lnchAs2UpdateTBurn() lays its value out on the 67 px
+    // ascent rows and would put this one 200 px up the screen.
     {
-        float tb = state.stageBurnTime;
-        int32_t iTb = (int32_t)roundf(tb);
+        const float tb = state.stageBurnTime;
+        const int32_t iTb = (int32_t)lroundf(tb);
         uint16_t fg, bg;
         thresholdColor(tb,
                        LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
@@ -678,6 +694,7 @@ static void _lnchOrTapeUpdateRows(KCM_TFT &tft) {
         }
     }
 }
+
 
 
 // Static chrome for the right column — header, scale and row labels.
@@ -1039,101 +1056,71 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     _lnchOrPrevTignBg  = valBg;
 }
 
-// Update the Burn Duration readout — a centered label+value block below the
-// ATT disc. Shows the planned burn length (state.mnvrDuration). Helps the
-// pilot mentally prepare before ignition and gauge progress during the burn.
+// ── Left-rail readouts: eccentricity and the apsis gap ────────────────────────────────
 //
-// Label "Burn dur" stays light-grey on black (chrome — drawn once on first
-// frame). Value formatTimeCompact(mnvrDuration) in dark green (or "---" / dark
-// grey when no maneuver). Change detection on rounded seconds skips the
-// redraw when nothing visible changed.
+// These two slots used to carry Burn Dur and ΔV Circ. Those are burn numbers, and the
+// three burn numbers now sit together in the right column; these two describe the shape
+// of the orbit, so they belong beside the picture of it. Eccentricity is how circular
+// the diagram above them already is, and the apsis gap is the distance between the two
+// dots drawn on it — a number the diagram shows but cannot state.
 //
-// Centered horizontally on LNCH_OR_ATT_CX. Width budget ~80 px (matches
-// IGN button); typical formatTime values like "1m 23s" fit easily at
-// Roboto_Black_24.
-static void _lnchOrUpdateBurnDurReadout(KCM_TFT &tft) {
-    bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f) &&
-                   state.mnvrDuration > 0.0f;
-
-    int32_t  newSec;
-    uint16_t valFg;
-    String   val;
-    if (!hasMnvr) {
-        newSec = -9998;  // "---" placeholder sentinel
-        valFg  = TFT_DARK_GREY;
-        val    = "---";
-    } else {
-        newSec = (int32_t)roundf(state.mnvrDuration);
-        valFg  = TFT_DARK_GREEN;
-        val    = formatTimeCompact((int64_t)state.mnvrDuration);
-    }
-
-    bool first_draw = (_lnchOrPrevBurnDurSec == -9999);
-    if (newSec == _lnchOrPrevBurnDurSec && !first_draw) return;
-
-    // Draw the label "Burn Dur:" once on first frame — its colour and text
-    // never change, so subsequent updates skip it. Black_20 (24 px).
-    if (first_draw) {
+// Both slots draw the same way: a fixed label rendered once (its text and colour never
+// change), and a value centred under it in a cleared box.
+static void _lnchOrRailReadout(KCM_TFT &tft, int16_t lblY, int16_t valY,
+                               const char *label, const String &val,
+                               uint16_t fg, bool firstDraw) {
+    if (firstDraw) {
         tft.setFont(Roboto_Black_20);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-        int16_t lblW = getFontStringWidth(&Roboto_Black_20, "Burn Dur:");
-        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, LNCH_OR_BDUR_LBL_Y);
-        tft.print("Burn Dur:");
+        int16_t lblW = getFontStringWidth(&Roboto_Black_20, label);
+        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, lblY);
+        tft.print(label);
     }
-
-    // Clear the value region (a fixed-width rect centered on ATT_CX, tall
-    // enough for Black_24's 29-px font).
-    const int16_t valRegionW = 140;
-    const int16_t valRegionX = LNCH_OR_ATT_CX - valRegionW / 2;
-    tft.fillRect(valRegionX, LNCH_OR_BDUR_VAL_Y, valRegionW, 30, TFT_BLACK);
-
-    // Draw the value, horizontally centered. Black_24 (29 px) — matches
-    // the T+Ign value font for visual consistency across time displays.
-    tft.setFont(Roboto_Black_24);
-    tft.setTextColor(valFg, TFT_BLACK);
-    int16_t valW = getFontStringWidth(&Roboto_Black_24, val.c_str());
-    tft.setCursor(LNCH_OR_ATT_CX - valW / 2, LNCH_OR_BDUR_VAL_Y);
-    tft.print(val.c_str());
-
-    _lnchOrPrevBurnDurSec = newSec;
-}
-
-// ΔV-to-circularize readout — a centered label+value block in the left rail
-// below Burn Dur. Shows the vis-viva estimate of the ΔV needed to circularize at
-// apoapsis (the standalone, always-on version of the ΔV Burn bar's estimate).
-// Label is drawn once (never changes); value change-detected on rounded m/s.
-static void _lnchOrUpdateCircDvReadout(KCM_TFT &tft) {
-    float dvEst = _lnchOrCircDvEstimate();
-    int32_t newVal = (dvEst > 0.0f) ? (int32_t)roundf(dvEst) : -9998;  // -9998 = "---"
-
-    bool first_draw = (_lnchOrPrevCircDvRounded == -9999);
-    if (newVal == _lnchOrPrevCircDvRounded && !first_draw) return;
-
-    // Label once on first frame — colour/text never change. Black_20, centered.
-    if (first_draw) {
-        tft.setFont(Roboto_Black_20);
-        tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-        int16_t lblW = getFontStringWidth(&Roboto_Black_20, "\xCE\x94V Circ:");
-        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, LNCH_OR_CIRCDV_LBL_Y);
-        tft.print("\xCE\x94V Circ:");
-    }
-
-    // Clear + draw the value, horizontally centered on the ATT column. Black_28
-    // (prominent — this is the key pre-burn planning number).
-    const int16_t valRegionW = 130;
-    tft.fillRect(LNCH_OR_ATT_CX - valRegionW / 2, LNCH_OR_CIRCDV_VAL_Y, valRegionW, 36, TFT_BLACK);
-    char buf[16];
-    uint16_t fg;
-    if (newVal <= -9998) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
-    else { snprintf(buf, sizeof(buf), "%dm/s", (int)newVal); fg = TFT_DARK_GREEN; }
+    // 130 wide, centred on the rail: x 9..139, which stays clear of the orbit diagram's
+    // leftmost extent at x=140. This is the width the ΔV Circ readout used; Burn Dur's
+    // 140 reached 144 and only got away with it because nothing was there.
+    const int16_t regionW = 130;
+    tft.fillRect(LNCH_OR_ATT_CX - regionW / 2, valY, regionW, 36, TFT_BLACK);
     tft.setFont(Roboto_Black_28);
     tft.setTextColor(fg, TFT_BLACK);
-    int16_t vw = getFontStringWidth(&Roboto_Black_28, buf);
-    tft.setCursor(LNCH_OR_ATT_CX - vw / 2, LNCH_OR_CIRCDV_VAL_Y);
-    tft.print(buf);
-
-    _lnchOrPrevCircDvRounded = newVal;
+    int16_t vw = getFontStringWidth(&Roboto_Black_28, val.c_str());
+    tft.setCursor(LNCH_OR_ATT_CX - vw / 2, valY);
+    tft.print(val.c_str());
 }
+
+// Eccentricity — the goal metric. Zero is a circle, and green says the burn is done.
+static void _lnchOrUpdateEccReadout(KCM_TFT &tft) {
+    const bool haveOrbit = (state.apoapsis > 0.0f);
+    const int32_t milli = haveOrbit ? (int32_t)lroundf(state.eccentricity * 1000.0f) : -9998;
+    const bool first = (_lnchOrPrevEccMilli == -9999);
+    if (milli == _lnchOrPrevEccMilli && !first) return;
+
+    char buf[12];
+    uint16_t fg;
+    if (!haveOrbit) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
+    else {
+        snprintf(buf, sizeof(buf), "%.3f", state.eccentricity);
+        fg = (state.eccentricity < 0.02f) ? TFT_DARK_GREEN : TFT_YELLOW;
+    }
+    _lnchOrRailReadout(tft, LNCH_OR_ECC_LBL_Y, LNCH_OR_ECC_VAL_Y, "Ecc:", String(buf), fg, first);
+    _lnchOrPrevEccMilli = milli;
+}
+
+// Apsis gap — the distance the burn is closing, and the thing the two dots on the
+// diagram above are separated by. Sentinels match the other readouts on this rail:
+// -9999 = never drawn, -9998 = showing the "---" placeholder.
+static void _lnchOrUpdateGapReadout(KCM_TFT &tft) {
+    const bool haveOrbit = (state.apoapsis > 0.0f);
+    const int32_t gap = haveOrbit ? (int32_t)lroundf(state.apoapsis - state.periapsis) : -9998;
+    const bool first = (_lnchOrPrevGapM == -9999);
+    if (gap == _lnchOrPrevGapM && !first) return;
+
+    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "Ap-Pe:",
+                       haveOrbit ? formatAlt(state.apoapsis - state.periapsis) : String("---"),
+                       haveOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, first);
+    _lnchOrPrevGapM = gap;
+}
+
 
 // Wrap a heading error into ±180° (for bearing differences on a 0..360°
 // compass). Duplicated from Screen_MNVR.ino (which declares it static).
@@ -1354,8 +1341,11 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrPrevAttDotX    = 9999;
         _lnchOrPrevAttDotY    = 9999;
         _lnchOrPrevAttDotCol  = 0;
-        _lnchOrPrevBurnDurSec = -9999;
-        _lnchOrPrevCircDvRounded = -9999;
+        // This wipe clears the left rail, so the readouts drawn there lose their
+        // labels and must redraw from scratch. The burn numbers are not among them
+        // any more -- they live in the right column, which this does not touch.
+        _lnchOrPrevEccMilli = -9999;
+        _lnchOrPrevGapM     = -9999;
         // Record the static-layer geometry we just drew so that on future
         // frames we can detect radius drift (due to compressed-scaling
         // recomputation as orbit elements change) and cleanly erase before
@@ -1655,6 +1645,6 @@ static void _lnchOrDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchOrUpdateProgressBar(tft);
     _lnchOrUpdateTignRow(tft);
     _lnchOrUpdateAttIndicator(tft);
-    _lnchOrUpdateBurnDurReadout(tft);
-    _lnchOrUpdateCircDvReadout(tft);
+    _lnchOrUpdateEccReadout(tft);
+    _lnchOrUpdateGapReadout(tft);
 }
