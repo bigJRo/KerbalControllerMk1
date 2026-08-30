@@ -142,8 +142,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.1.3: ASC key follows the effective armed state
+static const uint8_t SKETCH_VERSION_MINOR = 2;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.2.0: PFD promoted to the top sidebar key
 
 
 /***************************************************************************************

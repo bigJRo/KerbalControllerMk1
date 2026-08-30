@@ -11,14 +11,20 @@
    On unit 2 the ASC (Ascent Autopilot) button is parked at the bottom, below the
    display-nav cluster, since it is an interactive console rather than a display screen;
    it turns green while the autopilot is armed. Unit 1 carries VEH in that slot.
-     0  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
-     1  PFD       Primary Flight Display — SPC -> ACFT -> ROVR (press cycles; context
+     0  PFD       Primary Flight Display — SPC -> ACFT -> ROVR (press cycles; context
                   default). Unit 2 keeps VEH in this ring; unit 1 gives it button 5.
+     1  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
      2  ORB       Orbit — ORB -> ORB+ (Advanced Elements) -> MNVR (Maneuver) (press cycles)
      3  TGT/DOCK  Target / Docking — TGT <-> DOCK (context default: DOCK when near a target)
      4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
      5  per unit  Unit 1: VEH (Vehicle Info, single-mode).
                   Unit 2: ASC (Ascent Autopilot console).
+
+   Button order is identical on both units so one reach serves either panel. PFD is
+   pinned to the top: it is the screen a pilot returns to from anywhere, it is unit 1's
+   whole role, and the top key is the easiest to find without looking. The remaining
+   five keep the original mission-phase progression, LNCH through LNDG, with the
+   single-mode key (VEH / ASC) parked at the bottom.
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
@@ -56,8 +62,8 @@ const uint16_t COL_NO_BDR = TFT_BLACK;
 const uint8_t SB_BTN_COUNT = 6;
 // Multi-mode button indices. Each of these cycles its modes on a repeated press and
 // shows the active mode's label; a single-mode button just selects its screen.
-const uint8_t SB_LNCH_BTN    = 0;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (manual)
-const uint8_t SB_PFD_BTN     = 1;   // PFD:  SPC -> ACFT -> ROVR (-> VEH on unit 2)
+const uint8_t SB_PFD_BTN     = 0;   // PFD:  SPC -> ACFT -> ROVR (-> VEH on unit 2)
+const uint8_t SB_LNCH_BTN    = 1;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (manual)
 const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB -> ORB+ -> MNVR
 const uint8_t SB_TGTDOCK_BTN = 3;   // TGT/DOCK
 const uint8_t SB_LNDG_BTN    = 4;   // LNDG/ENTR: DESC <-> ENTR
@@ -89,23 +95,23 @@ inline uint16_t sbBtnY(uint8_t btn) {
 // out of the PFD ring shortens that ring from four modes to three — VEH was the
 // deepest cycle on the panel that uses cycling most.
 const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
-  screen_LNCH,     // 0 LNCH      (PRE / ASC / CIRC)
-  screen_SCFT,     // 1 PFD       (SPC default; ACFT / ROVR by context or cycle)
+  screen_SCFT,     // 0 PFD       (SPC default; ACFT / ROVR by context or cycle)
+  screen_LNCH,     // 1 LNCH      (PRE / ASC / CIRC)
   screen_ORB,      // 2 ORB       (ORB / ORB+ / MNVR)
   screen_TGT,      // 3 TGT/DOCK  (TGT default; DOCK by context or cycle)
   screen_LNDG,     // 4 LNDG/ENTR (DESC default; ENTR by cycle)
 #if INFO_DISP_IS_PFD_UNIT
   screen_VEH       // 5 VEH — Vehicle Info, single-mode
 #else
-  screen_LNCHAP    // 5 ASC — Ascent Autopilot; parked at the bottom, physically separated
-                   //   from the display-nav cluster and drawn in a distinct colour
+  screen_LNCHAP    // 5 ASC — Ascent Autopilot; parked at the bottom, below the
+                   //   display-nav cluster. Green while the autopilot is armed.
 #endif
 };
 
 // Base labels (shown when the button is NOT the active screen). When a multi-mode
 // button IS active, sbButtonLabel() substitutes the active mode's label instead.
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "TGT", "LNDG",
+  "PFD", "LNCH", "ORB", "TGT", "LNDG",
 #if INFO_DISP_IS_PFD_UNIT
   "VEH"
 #else
