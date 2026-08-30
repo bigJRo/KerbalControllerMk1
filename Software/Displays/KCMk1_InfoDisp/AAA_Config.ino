@@ -228,6 +228,18 @@ const float LNDG_CTX_ALT_M         = 10000.0f;  // radar altitude to enter
 const float LNDG_CTX_ALT_RELEASE_M = 12000.0f;  // and to leave (release band)
 const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 
+// ASCENT — dynamic pressure bands (kPa). A Kerbin ascent peaks near 10-15 kPa around
+// 5-8 km; a steep or overpowered climb pushes past that, which is where an airframe
+// starts paying for it. Caution then alarm, so max Q annunciates instead of merely
+// being computable.
+const float LNCH_Q_WARN_KPA  = 20.0f;
+const float LNCH_Q_ALARM_KPA = 40.0f;
+
+// ASCENT — load factor bands (g), aligned with the Annunciator's crew limits so the
+// two panels cannot disagree about what a high-G ascent is.
+const float LNCH_G_WARN  = 3.0f;
+const float LNCH_G_ALARM = 5.0f;
+
 // LAUNCH — throttle at or below this counts as coasting, which is what moves the screen
 // from ASCENT to CIRCULARISATION. Not zero: KSP can report a hair of throttle from a
 // trim or a spent stage still nominally lit.
