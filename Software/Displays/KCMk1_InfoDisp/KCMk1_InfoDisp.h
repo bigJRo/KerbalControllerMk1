@@ -144,8 +144,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 8;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.8.1: ASCENT/CIRC switches on the engine, not altitude
+static const uint8_t SKETCH_VERSION_MINOR = 9;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.9.0: apsis convergence tape on the circularisation screen
 
 
 /***************************************************************************************
