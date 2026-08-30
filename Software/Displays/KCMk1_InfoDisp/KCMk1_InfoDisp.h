@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 9;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.9.0: apsis convergence tape on the circularisation screen
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.9.1: apsis tape build fixes
 
 
 /***************************************************************************************
@@ -360,6 +360,13 @@ void compassUpdateMarker(KCM_TFT &tft, const CompassGeom &g, CompassMarkerCache 
 // here (not in the .ino) so Arduino's auto-generated prototypes for the helpers that
 // return it see the type. See Screen_LNDG_Reentry.ino for how the bands are derived.
 struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
+
+// Apsis-tape frame (metres ASL) for the circularisation screen's convergence tape:
+// the altitudes at the top and bottom of the scale and the tick spacing between them.
+// Here rather than in the .ino for the same reason as ReCorridor above -- the helper
+// that computes it returns one by value, and Arduino's generated prototype for that
+// helper is emitted ahead of anything the .ino declares itself.
+struct ApsisTape { float top, bottom, step; bool valid; };
 
 // Re-entry corridor, shared by the RE-ENTRY screen and the mission context ladder so
 // both agree on what a re-entry is. _rePeRegime: 0 danger, 1 safe, 2 aerobrake,

@@ -211,6 +211,26 @@ static int32_t   _lnchOrPrevCircDvRounded = -9999;
 // need to redraw the static layer.
 static char _lnchOrPrevSoi[24] = {0};
 
+// ── Apsis convergence tape state ──────────────────────────────────────────────────────
+// Up here rather than beside the tape's drawing code further down, because
+// _lnchOrResetState() below clears it. The ApsisTape frame type lives in
+// KCMk1_InfoDisp.h -- see the note there on why it cannot live in this file.
+//
+// Note the Tp prefix on these: _lnchOrPrevApY / _lnchOrPrevPeY are already the orbit
+// diagram's own Ap/Pe marker pixels a hundred lines above, and _lnchOrPrevPeVal would
+// have been a prefix of its _lnchOrPrevPeValid.
+static ApsisTape  _lnchOrTape      = { 0.0f, 0.0f, 0.0f, false };
+static bool       _lnchOrTapeDirty = true;   // scale changed -> static layer needs redraw
+static int16_t    _lnchOrTpApY     = -9999;  // last-drawn marker rows (-9999 = never drawn)
+static int16_t    _lnchOrTpPeY     = -9999;
+static bool       _lnchOrTpPeLow   = false;  // periapsis was off the bottom of the scale
+static int32_t    _lnchOrTpApVal   = -1 << 30;
+static int32_t    _lnchOrTpPeVal   = -1 << 30;
+static int32_t    _lnchOrTpEcc     = -9999;  // eccentricity x1000
+static int32_t    _lnchOrTpGap     = -1 << 30;
+static PrintState _lnchOrTpPs[3];
+
+
 // Reset all orbital-phase change-detection state + PrintState. Called at
 // chrome time to force a full redraw.
 static void _lnchOrResetState() {
@@ -219,13 +239,13 @@ static void _lnchOrResetState() {
 
     // Apsis tape: drop the frame so the first update recomputes and redraws the scale,
     // and forget the marker rows so nothing is erased at a stale position.
-    _lnchOrTape.valid  = false;
-    _lnchOrTapeDirty   = true;
-    _lnchOrPrevApY     = -9999;   _lnchOrPrevPeY   = -9999;
-    _lnchOrPrevPeLow   = false;
-    _lnchOrPrevApVal   = -1 << 30; _lnchOrPrevPeVal = -1 << 30;
-    _lnchOrPrevEcc     = -9999;
-    _lnchOrPrevGap     = -1 << 30;
+    _lnchOrTape.valid = false;
+    _lnchOrTapeDirty  = true;
+    _lnchOrTpApY      = -9999;     _lnchOrTpPeY   = -9999;
+    _lnchOrTpPeLow    = false;
+    _lnchOrTpApVal    = -1 << 30;  _lnchOrTpPeVal = -1 << 30;
+    _lnchOrTpEcc      = -9999;
+    _lnchOrTpGap      = -1 << 30;
     for (uint8_t i = 0; i < 3; i++) {
         _lnchOrTpPs[i].prevWidth  = 0;
         _lnchOrTpPs[i].prevBg     = 0x0001;
@@ -323,17 +343,6 @@ static const int16_t LNCH_OR_TP_STRIP_H = 21;                           // marke
 static const int16_t LNCH_OR_TP_ROW_Y   = 476;
 static const int16_t LNCH_OR_TP_ROW_H   = 41;                           // 3 rows -> 476..598
 
-struct OrTape { float top, bottom, step; bool valid; };
-static OrTape  _lnchOrTape      = { 0.0f, 0.0f, 0.0f, false };
-static bool    _lnchOrTapeDirty = true;    // scale changed -> static layer needs a redraw
-static int16_t _lnchOrPrevApY   = -9999;   // last-drawn marker rows (-9999 = never drawn)
-static int16_t _lnchOrPrevPeY   = -9999;
-static bool    _lnchOrPrevPeLow = false;   // periapsis was off the bottom of the scale
-static int32_t _lnchOrPrevApVal = -1 << 30;
-static int32_t _lnchOrPrevPeVal = -1 << 30;
-static int32_t _lnchOrPrevEcc   = -9999;   // eccentricity x1000
-static int32_t _lnchOrPrevGap   = -1 << 30;
-static PrintState _lnchOrTpPs[3];
 
 
 // Orbit-safe altitude: top of the atmosphere where there is one, highest terrain where
@@ -361,8 +370,8 @@ static float _lnchOrTapeStep(float span) {
     return m * mag;
 }
 
-static OrTape _lnchOrTapeScale() {
-    OrTape t; t.valid = false; t.top = t.bottom = t.step = 0.0f;
+static ApsisTape _lnchOrTapeScale() {
+    ApsisTape t; t.valid = false; t.top = t.bottom = t.step = 0.0f;
     const float fl = _lnchOrTapeFloor();
     const float ap = state.apoapsis;
     if (ap <= 0.0f || fl <= 0.0f || ap <= fl) return t;   // no orbit to frame yet
@@ -396,7 +405,7 @@ static void _lnchOrTapeEnsureScale() {
         if (ap > _lnchOrTape.bottom + 0.02f * span && ap < _lnchOrTape.top - 0.03f * span)
             return;
     }
-    OrTape t = _lnchOrTapeScale();
+    ApsisTape t = _lnchOrTapeScale();
     if (t.valid && (t.top != _lnchOrTape.top || t.bottom != _lnchOrTape.bottom)) {
         _lnchOrTape = t;
         _lnchOrTapeDirty = true;
@@ -554,8 +563,8 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
     if (_lnchOrTapeDirty) {
         _lnchOrTapeDrawStatic(tft);
         _lnchOrTapeDirty = false;
-        _lnchOrPrevApY = _lnchOrPrevPeY = -9999;      // markers were wiped with the layer
-        _lnchOrPrevApVal = _lnchOrPrevPeVal = -1 << 30;
+        _lnchOrTpApY = _lnchOrTpPeY = -9999;      // markers were wiped with the layer
+        _lnchOrTpApVal = _lnchOrTpPeVal = -1 << 30;
     }
     if (!_lnchOrTape.valid) return;
 
@@ -566,19 +575,19 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
     // Round to whole metres so a jittering float does not repaint every frame.
     const int32_t apVal = (int32_t)lroundf(state.apoapsis);
     const int32_t peVal = (int32_t)lroundf(state.periapsis);
-    const bool apMoved  = (yAp != _lnchOrPrevApY) || (apVal != _lnchOrPrevApVal);
-    const bool peMoved  = (yPe != _lnchOrPrevPeY) || (peVal != _lnchOrPrevPeVal) ||
-                          (peLow != _lnchOrPrevPeLow);
+    const bool apMoved  = (yAp != _lnchOrTpApY) || (apVal != _lnchOrTpApVal);
+    const bool peMoved  = (yPe != _lnchOrTpPeY) || (peVal != _lnchOrTpPeVal) ||
+                          (peLow != _lnchOrTpPeLow);
     if (!apMoved && !peMoved) return;
 
-    if (_lnchOrPrevApY > -9000 && _lnchOrPrevPeY > -9000)
-        _lnchOrTapeEraseGap(tft, _lnchOrPrevApY, _lnchOrPrevPeY);
-    if (apMoved && _lnchOrPrevApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrPrevApY);
-    if (peMoved && _lnchOrPrevPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrPrevPeY);
+    if (_lnchOrTpApY > -9000 && _lnchOrTpPeY > -9000)
+        _lnchOrTapeEraseGap(tft, _lnchOrTpApY, _lnchOrTpPeY);
+    if (apMoved && _lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
+    if (peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
     // An erase strip can clip the other marker; redraw both rather than track overlap.
     if (apMoved || peMoved) {
-        if (!apMoved && _lnchOrPrevApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrPrevApY);
-        if (!peMoved && _lnchOrPrevPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrPrevPeY);
+        if (!apMoved && _lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
+        if (!peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
     }
 
     _lnchOrTapeDrawGap(tft, yAp, yPe, TFT_GREY);
@@ -588,8 +597,8 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
     _lnchOrTapeDrawMarker(tft, yPe, peSafe ? TFT_NEON_GREEN : TFT_YELLOW,
                           "Pe", state.periapsis, peLow);
 
-    _lnchOrPrevApY = yAp; _lnchOrPrevPeY = yPe; _lnchOrPrevPeLow = peLow;
-    _lnchOrPrevApVal = apVal; _lnchOrPrevPeVal = peVal;
+    _lnchOrTpApY = yAp; _lnchOrTpPeY = yPe; _lnchOrTpPeLow = peLow;
+    _lnchOrTpApVal = apVal; _lnchOrTpPeVal = peVal;
 }
 
 
@@ -629,23 +638,23 @@ static void _lnchOrTapeUpdateRows(KCM_TFT &tft) {
     {
         float e = state.eccentricity;
         int32_t iE = (int32_t)lroundf(e * 1000.0f);
-        if (iE != _lnchOrPrevEcc) {
+        if (iE != _lnchOrTpEcc) {
             char buf[10];
             snprintf(buf, sizeof(buf), "%.3f", e);
             _lnchOrTapeDrawRowValue(tft, 0, String(buf),
                                     (e < 0.02f) ? TFT_DARK_GREEN : TFT_YELLOW, TFT_BLACK);
-            _lnchOrPrevEcc = iE;
+            _lnchOrTpEcc = iE;
         }
     }
     // Ap-Pe — the gap the burn is closing.
     {
         bool have = (state.apoapsis > 0.0f);
         int32_t gap = have ? (int32_t)lroundf(state.apoapsis - state.periapsis) : -1 << 30;
-        if (gap != _lnchOrPrevGap) {
+        if (gap != _lnchOrTpGap) {
             _lnchOrTapeDrawRowValue(tft, 1,
                 have ? formatAlt(state.apoapsis - state.periapsis) : String("---"),
                 have ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
-            _lnchOrPrevGap = gap;
+            _lnchOrTpGap = gap;
         }
     }
     // T.Brn — stage burn time remaining, the one row kept from the panel this replaced.
@@ -1468,9 +1477,9 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     }
 
     bool pe_changed = !_lnchOrPrevPeValid ||
-                      pe_x != _lnchOrPrevPeX || pe_y != _lnchOrPrevPeY;
+                      pe_x != _lnchOrPrevPeX || pe_y != _lnchOrTpPeY;
     bool ap_changed = !_lnchOrPrevApValid ||
-                      ap_x != _lnchOrPrevApX || ap_y != _lnchOrPrevApY;
+                      ap_x != _lnchOrPrevApX || ap_y != _lnchOrTpApY;
     bool vsl_changed = !_lnchOrPrevVslValid ||
                        (vessel_valid && (vsl_x != _lnchOrPrevVslX ||
                                          vsl_y != _lnchOrPrevVslY)) ||
@@ -1492,14 +1501,14 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     }
     if (pe_changed && _lnchOrPrevPeValid) {
         // Erase prev dot (r=5 → 6 for safety)
-        tft.fillCircle(_lnchOrPrevPeX, _lnchOrPrevPeY, 6, TFT_BLACK);
+        tft.fillCircle(_lnchOrPrevPeX, _lnchOrTpPeY, 6, TFT_BLACK);
         // Erase prev label — centered at _lnchOrPrevPeLbl{X,Y}, ~12×11 from center
         // (Black_16 is 19 px tall, "Pe" ~19 px wide).
         tft.fillRect(_lnchOrPrevPeLblX - 12, _lnchOrPrevPeLblY - 11,
                      24, 22, TFT_BLACK);
     }
     if (ap_changed && _lnchOrPrevApValid) {
-        tft.fillCircle(_lnchOrPrevApX, _lnchOrPrevApY, 6, TFT_BLACK);
+        tft.fillCircle(_lnchOrPrevApX, _lnchOrTpApY, 6, TFT_BLACK);
         tft.fillRect(_lnchOrPrevApLblX - 12, _lnchOrPrevApLblY - 11,
                      24, 22, TFT_BLACK);
     }
@@ -1606,7 +1615,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         tft.setCursor(pe_lbl_cx - 10, pe_lbl_cy - 10);
         tft.print("Pe");
-        _lnchOrPrevPeX = pe_x; _lnchOrPrevPeY = pe_y;
+        _lnchOrPrevPeX = pe_x; _lnchOrTpPeY = pe_y;
         _lnchOrPrevPeLblX = pe_lbl_cx; _lnchOrPrevPeLblY = pe_lbl_cy;
         _lnchOrPrevPeValid = true;
     }
@@ -1616,7 +1625,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(ap_lbl_cx - 10, ap_lbl_cy - 10);
         tft.print("Ap");
-        _lnchOrPrevApX = ap_x; _lnchOrPrevApY = ap_y;
+        _lnchOrPrevApX = ap_x; _lnchOrTpApY = ap_y;
         _lnchOrPrevApLblX = ap_lbl_cx; _lnchOrPrevApLblY = ap_lbl_cy;
         _lnchOrPrevApValid = true;
     }
