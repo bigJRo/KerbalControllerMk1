@@ -55,38 +55,52 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
 
 /***************************************************************************************
    SIDEBAR BUTTON DEFINITIONS
-   Mode button uses two ButtonLabel instances — one per stageMode state.
-   Bottom three buttons share a navy background.
-   All buttons have a TFT_GREY border for visual separation.
+   The sidebar is chrome, not data, so it is achromatic — white-on-black, grey border —
+   and shows an engaged state by reverse video. This matches the InfoDisp sidebar and
+   the convention bezel-key flight decks use, and it keeps the panel's colour vocabulary
+   (green nominal / yellow caution / red alarm, and the per-resource bar colours) for
+   the telemetry the sidebar frames. See the InfoDisp README for the full rationale.
+
+   Previously the mode key filled DARK_GREEN for TOTAL and TFT_CORNELL for STAGE, to
+   distinguish two equally normal display modes. Both are bar identity colours on this
+   very panel — DARK_GREEN is MonoPropellant and TFT_CORNELL is CO2 (see resColor() in
+   Resources.ino) — so the key wore two resources' colours while sitting beside their
+   bars. TFT_CORNELL is also a red (#B51C19), a strong one to park permanently next to
+   percentage labels that turn red below 10%. The three action keys filled navy, which
+   signals nothing.
+
+   The mode key is the one key with state: TOTAL is the default and draws like any other
+   key, STAGE reverse-videos, so the key reads as "changed from the default" as well as
+   naming the mode. The border stays grey on both, since neither is a selection.
 ****************************************************************************************/
 static const ButtonLabel btnModeTotal = {
   "TOTL",
   TFT_WHITE, TFT_WHITE,
-  TFT_OFF_BLACK, TFT_DARK_GREEN,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnModeStage = {
   "STG",
-  TFT_WHITE, TFT_WHITE,
-  TFT_OFF_BLACK, TFT_CORNELL,
+  TFT_BLACK, TFT_BLACK,
+  TFT_GREY, TFT_GREY,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnReset = {
   "DFLT",
   TFT_WHITE, TFT_WHITE,
-  TFT_NAVY, TFT_NAVY,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnSelect = {
   "SEL",
   TFT_WHITE, TFT_WHITE,
-  TFT_NAVY, TFT_NAVY,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnDetail = {
   "DATA",
   TFT_WHITE, TFT_WHITE,
-  TFT_NAVY, TFT_NAVY,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 
