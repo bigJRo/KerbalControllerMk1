@@ -124,7 +124,9 @@ static inline uint8_t _reChuteTier(float maxQ) {
 
 // Re-entry corridor boundaries (metres, ASL), velocity-adjusted. ReCorridor is
 // declared in KCMk1_InfoDisp.h so the auto-prototype for this helper sees the type.
-static ReCorridor _reCorridor() {
+// Not static: the mission context ladder reuses this to decide when a re-entry is
+// pending, so the rule and the screen agree on what counts as one by construction.
+ReCorridor _reCorridor() {
   ReCorridor c; c.valid = false; c.dangerLine = c.safeTop = c.atmoTop = 0.0f;
   float atmoTop = currentBody.lowSpace;
   if (!currentBody.hasAtmo || atmoTop <= 0.0f) return c;
@@ -143,7 +145,7 @@ static ReCorridor _reCorridor() {
 
 // Classify a periapsis (ASL) into a corridor regime: 0 danger, 1 safe, 2 aerobrake,
 // 3 no-reentry, -1 n/a. Colours chosen to match the tape zones.
-static int8_t _rePeRegime(const ReCorridor &c, float pe) {
+int8_t _rePeRegime(const ReCorridor &c, float pe) {
   if (!c.valid) return -1;
   if (pe >= c.atmoTop)    return 3;
   if (pe >= c.safeTop)    return 2;

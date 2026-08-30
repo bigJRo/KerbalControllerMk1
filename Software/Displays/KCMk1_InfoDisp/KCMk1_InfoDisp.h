@@ -70,14 +70,11 @@ enum ScreenType : uint8_t {
   screen_COUNT  = 13   // sentinel — not a real screen
 };
 
-// Manual-lock screen: automatic context switches (vessel change, dock re-check,
-// scene entry) leave RE-ENTRY alone so a deliberate selection sticks — e.g. a
-// re-entry lander shedding debris (heat shield / chutes) emits VESSEL_CHANGE, which
-// would otherwise yank REEN away. ADVANCED ORBIT is no longer locked: a context
-// event may switch away from it like any other ordinary screen.
-inline bool isManualLockScreen(ScreenType s) {
-  return s == screen_LNDGRE;
-}
+// RE-ENTRY used to pin itself against automatic switches, because it was manual-only
+// and a VESSEL_CHANGE (a lander shedding a heat shield) would otherwise yank it away.
+// Both halves of that reasoning are gone: the ladders now run continuously, so a
+// re-selection follows immediately after any such event, and the generalised manual
+// latch below already makes a deliberate pick stick on every screen rather than one.
 
 // The panel's home screen: where it sits before any telemetry has arrived (boot,
 // demo mode) and where it is parked while KSP is out of a flight scene, so the first
@@ -101,12 +98,16 @@ static const ScreenType SCREEN_HOME = screen_LNCH;   // mission-phase panel -> L
 // more with the two panels split by role than it did on a single display: each panel
 // now has a job, so a screen the pilot parked is a screen they are using.
 // Generalises the per-button _pfdManualOverride / _lnchManualOverride latches.
-extern bool _manualScreenLatch;
+extern bool       _manualScreenLatch;
+extern ScreenType _latchedAgainst;
 void clearManualScreenLatch();
+void setManualScreenLatch();
 
-// The gate every context auto-switch must pass: no manual latch held, and the active
-// screen is not one that pins itself (RE-ENTRY).
+// The gate every context auto-switch must pass.
 bool contextSwitchAllowed();
+
+// Per-frame context routing — releases a stale override, then routes if allowed.
+void updateContextScreen();
 
 static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 
@@ -142,8 +143,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 3;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.3.1: demo acknowledges AP console commands
+static const uint8_t SKETCH_VERSION_MINOR = 4;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.4.0: ladders run continuously; new phase rules
 
 
 /***************************************************************************************
@@ -163,6 +164,10 @@ extern const float LNDG_MAIN_FULL_ALT;
 extern const uint8_t DISPLAY_ROTATION;
 extern const float TGT_CONTEXT_MAX_M;    // TARGET auto-select outer bound (m)
 extern const float MNVR_CONTEXT_LEAD_S;  // MANEUVER auto-select lead before ignition (s)
+extern const uint32_t CONTEXT_DWELL_MS;
+extern const float DOCK_CTX_RELEASE_M, TGT_CTX_RELEASE_MIN_M, TGT_CTX_RELEASE_MAX_M;
+extern const float MNVR_CTX_RELEASE_S, REENTRY_CTX_MACH;
+extern const float LNDG_CTX_ALT_M, LNDG_CTX_ALT_RELEASE_M, LNDG_CTX_VVERT_MS;
 
 // Flight state (populated by SimpitHandler.ino)
 extern bool simpitConnected;  // true after Simpit handshake succeeds
@@ -319,6 +324,12 @@ extern BodyParams currentBody;
 // return it see the type. See Screen_LNDG_Reentry.ino for how the bands are derived.
 struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
 
+// Re-entry corridor, shared by the RE-ENTRY screen and the mission context ladder so
+// both agree on what a re-entry is. _rePeRegime: 0 danger, 1 safe, 2 aerobrake,
+// 3 no re-entry, -1 n/a.
+ReCorridor _reCorridor();
+int8_t     _rePeRegime(const ReCorridor &c, float pe);
+
 
 /***************************************************************************************
    LAYOUT CONSTANTS
@@ -409,6 +420,11 @@ bool apDemoApplyCommand(uint8_t op, float payload);
 // being flown by the autopilot. A tap in flight shows as a pending cue on the ARM
 // button, not as a change of state.
 bool apArmedAnnunciated();
+
+// Title-bar AUTO/MAN chip (AAA_Screens.ino) — whether the screen was chosen by the
+// context ladder or is being held by hand.
+void updateModeChip(KCM_TFT &tft);
+void invalidateModeChip();
 
 // Sidebar (AAA_Screens.ino). drawSidebar() paints the strip as chrome on a screen
 // change; updateSidebar() repaints it mid-flight when a key's state colour changes.

@@ -110,11 +110,13 @@ ScreenType vehicleContextScreen() {
 // ── Info Display 2: mission-phase ladder ────────────────────────────────────────────
 // Answers "what phase am I in?" and nothing else, highest priority first:
 //   1. Pre-launch                        -> LAUNCH (pre-launch board)
-//   2. Sub-orbital lander                -> POWERED DESCENT
-//   3. Target inside docking range       -> DOCKING
-//   4. Burn imminent (or running)        -> MANEUVER
-//   5. Target in the approach window     -> TARGET
-//   6. Everything else                   -> ORBIT
+//   2. Descending into an atmosphere     -> RE-ENTRY
+//   3. Descending close to the ground    -> POWERED DESCENT
+//   4. Target inside docking range       -> DOCKING
+//   5. Landed or splashed                -> TARGET if one is set, else VEHICLE INFO
+//   6. Burn imminent (or running)        -> MANEUVER
+//   7. Target in the approach window     -> TARGET
+//   8. Everything else                   -> ORBIT
 //
 // ORBIT as the resting state is the change that the second panel pays for. The
 // single-display ladder deliberately never auto-selected it ("Orbit is manual-select
@@ -131,15 +133,50 @@ ScreenType missionContextScreen() {
   if (state.situation & sit_PreLaunch)
     return screen_LNCH;
 
-  // 2. Sub-orbital lander -> powered descent.
-  if (state.vesselType == type_Lander && (state.situation & sit_SubOrb))
-    return screen_LNDG;
+  // 2. Coming down under an atmosphere -> RE-ENTRY. The test is the RE-ENTRY screen's
+  //    own corridor classifier, so the rule and the screen cannot disagree about what
+  //    counts as a re-entry, and it fires before entry interface — which is when the
+  //    pilot wants the corridor tape, not after. The speed gate is what keeps it off
+  //    an aircraft in level flight, whose periapsis is far underground and therefore
+  //    "in the corridor" by the bare test.
+  if (currentBody.hasAtmo && state.verticalVel < 0.0f) {
+    ReCorridor corr = _reCorridor();
+    int8_t reg = _rePeRegime(corr, state.periapsis);
+    bool comingIn = (!state.inAtmo || state.machNumber > REENTRY_CTX_MACH);
+    if ((reg == 0 || reg == 1) && comingIn) return screen_LNDGRE;
+  }
+
+  // 3. Powered terminal descent -> POWERED DESCENT. Gated on proximity and a real
+  //    descent rate rather than on vessel type: the old `type_Lander && sit_SubOrb`
+  //    test missed every Ship landing on the Mun, and sub-orbital is also what a
+  //    rocket looks like on the way up. A plane in atmosphere is excluded — its
+  //    approach instrument is the AIRCRAFT screen on the other panel.
+  {
+    const float lndgAlt = (activeScreen == screen_LNDG) ? LNDG_CTX_ALT_RELEASE_M
+                                                        : LNDG_CTX_ALT_M;
+    const bool planeInAir = (state.vesselType == type_Plane && state.inAtmo);
+    if (!planeInAir && state.verticalVel < LNDG_CTX_VVERT_MS &&
+        state.radarAlt > 0.0f && state.radarAlt < lndgAlt)
+      return screen_LNDG;
+  }
 
   // 3. Target within docking range -> docking screen.
   //    Use tgtDistance alone — KSP may report targetAvailable=false even while
   //    actively sending TARGETINFO with a valid distance (observed in KSP1).
-  if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
+  //    The limit widens once DOCKING owns the screen: holding station at exactly
+  //    200 m must not oscillate the panel. Same pattern in rules 4 and 5.
+  const float dockLim = (activeScreen == screen_DOCK) ? DOCK_CTX_RELEASE_M : DOCK_DIST_WARN_M;
+  if (state.tgtDistance > 0.0f && state.tgtDistance <= dockLim)
     return screen_DOCK;
+
+  // On the surface -> TARGET when one is set, otherwise VEHICLE INFO. ORBIT was the
+  // fallback for everything, which meant a rover parked on Duna got apoapsis,
+  // periapsis, inclination and period — every one of them meaningless on the ground.
+  // This sits above the MANEUVER and approach-window rules deliberately: a landed
+  // vessel is not flying a burn, and a rover's target is a waypoint at any range, so
+  // it wants TARGET whether or not the range falls in the flight approach window.
+  if (state.situation & (sit_Landed | sit_Splashed))
+    return state.targetAvailable ? screen_TGT : screen_VEH;
 
   // 4. Maneuver node with an imminent burn -> MANEUVER. Time-to-ignition is measured
   //    to the start of the burn (half the burn duration ahead of the node), matching
@@ -147,14 +184,17 @@ ScreenType missionContextScreen() {
   //    should already be running, which still belongs on this screen; KSP clears the
   //    node when the burn completes, which drops the rule.
   bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
-  if (hasMnvr && (state.mnvrTime - state.mnvrDuration * 0.5f) < MNVR_CONTEXT_LEAD_S)
+  const float mnvrLead = (activeScreen == screen_MNVR) ? MNVR_CTX_RELEASE_S : MNVR_CONTEXT_LEAD_S;
+  if (hasMnvr && (state.mnvrTime - state.mnvrDuration * 0.5f) < mnvrLead)
     return screen_MNVR;
 
   // 5. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
   //    ends: inside DOCK_DIST_WARN_M rule 3 has already taken it, and past
   //    TGT_CONTEXT_MAX_M the scope has nothing useful to show yet.
-  if (state.targetAvailable &&
-      state.tgtDistance > DOCK_DIST_WARN_M && state.tgtDistance < TGT_CONTEXT_MAX_M)
+  const bool tgtActive = (activeScreen == screen_TGT);
+  const float tgtLo = tgtActive ? TGT_CTX_RELEASE_MIN_M : DOCK_DIST_WARN_M;
+  const float tgtHi = tgtActive ? TGT_CTX_RELEASE_MAX_M : TGT_CONTEXT_MAX_M;
+  if (state.targetAvailable && state.tgtDistance > tgtLo && state.tgtDistance < tgtHi)
     return screen_TGT;
 
   // 6. Everything else -> ORBIT (Apsides).
@@ -172,18 +212,64 @@ ScreenType contextScreen() {
 
 /***************************************************************************************
    MANUAL SELECTION LATCH
-   Set by any sidebar press that changes the screen (TouchEvents.ino); cleared on
-   vessel change and on flight-scene entry, where a fresh context read is what the
-   pilot wants. contextSwitchAllowed() is the gate every auto-route passes through.
+   Set by a sidebar press that changes the screen (TouchEvents.ino). An override means
+   "not this, now" — not "never again" — so it releases three ways:
+
+     - the situation it was set against passes. _latchedAgainst records what the ladder
+       was recommending at the moment of the press; once the ladder's answer changes,
+       the pilot's objection is about a situation that no longer exists. Parking on
+       ORBIT during a rendezvous therefore holds until the target actually comes inside
+       docking range, and then the panel takes over again.
+     - the pilot presses the button owning the screen the ladder currently wants, which
+       is an explicit "back to auto".
+     - vessel change or flight-scene entry, as before.
+
+   Without a release rule, continuous evaluation would mean one exploratory press
+   disables automatic routing for the rest of the flight.
 ****************************************************************************************/
-bool _manualScreenLatch = false;
+bool       _manualScreenLatch = false;
+ScreenType _latchedAgainst    = screen_COUNT;   // ladder's answer when the pilot pressed
 
 void clearManualScreenLatch() {
   _manualScreenLatch = false;
+  _latchedAgainst    = screen_COUNT;
+}
+
+void setManualScreenLatch() {
+  _manualScreenLatch = true;
+  _latchedAgainst    = contextScreen();
 }
 
 bool contextSwitchAllowed() {
-  return !_manualScreenLatch && !isManualLockScreen(activeScreen);
+  return !_manualScreenLatch;
+}
+
+
+/***************************************************************************************
+   CONTINUOUS CONTEXT ROUTING
+   Called once per frame. Previously the ladders ran only at vessel/scene boundaries,
+   which meant the panels did not follow the mission: liftoff, reaching orbit, a node
+   coming due, a target closing and re-entry all passed without either panel
+   reconsidering, and the MANEUVER and TARGET rules were effectively unreachable.
+
+   The dwell is deliberately checked after the latch release, so a change in the
+   ladder's answer frees a held override immediately even if the switch itself waits.
+****************************************************************************************/
+static uint32_t _lastAutoSwitchMs = 0;
+
+void updateContextScreen() {
+  const ScreenType want = contextScreen();
+
+  // Release an override whose situation has passed (see the latch notes above).
+  if (_manualScreenLatch && want != _latchedAgainst) clearManualScreenLatch();
+
+  if (!contextSwitchAllowed()) return;
+  if (want == activeScreen) return;
+
+  const uint32_t now = millis();
+  if (now - _lastAutoSwitchMs < CONTEXT_DWELL_MS) return;
+  _lastAutoSwitchMs = now;
+  switchToScreen(want);
 }
 
 

@@ -236,10 +236,14 @@ void processTouchEvents() {
       }
     }
 
+    // Latch policy, applied whether or not the press changes the screen: pressing
+    // through to the screen the ladder currently wants is an explicit return to
+    // automatic; anything else is an override, recorded against the ladder's current
+    // answer so it releases once that situation passes. See AAA_Globals.ino.
+    if (target == contextScreen()) clearManualScreenLatch();
+    else                           setManualScreenLatch();
+
     if (doSwitch) {
-      // A deliberate pick outlives incidental context events until the vessel or the
-      // scene changes — see contextSwitchAllowed() in AAA_Globals.ino.
-      _manualScreenLatch = true;
       switchToScreen(target);
       clearTouchISR();
     }

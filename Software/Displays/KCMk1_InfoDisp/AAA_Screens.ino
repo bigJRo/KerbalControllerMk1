@@ -458,6 +458,44 @@ void drawSidebar(KCM_TFT &tft) {
 }
 
 /***************************************************************************************
+   AUTO / MAN CHIP
+   Says whether the screen in front of the pilot was chosen by the context ladder or
+   held by hand. With the ladders running continuously this is the difference between
+   "this panel will follow the mission" and "this panel is where I put it", and there
+   is no way to infer it from the content — so it is stated, in words, rather than left
+   to a coloured dot.
+
+   MAN covers both overrides that can hold a screen: the panel-level selection latch,
+   and the LAUNCH screen's own ASC/CIRC phase override, which can outlive the latch
+   when the latch auto-releases.
+
+   Cyan follows the panel's existing convention for a pilot-entered or pilot-selected
+   value (the editable Ascent Autopilot fields use it), so the chip spends no alerting
+   colour to say that the pilot is driving.
+****************************************************************************************/
+static const uint16_t CHIP_W = 54, CHIP_H = 22;
+static int8_t _chipShown = -1;    // -1 = unknown/needs redraw, 0 = AUTO, 1 = MAN
+
+void invalidateModeChip() { _chipShown = -1; }
+
+static bool panelInAuto() {
+  if (_manualScreenLatch) return false;
+  if (activeScreen == screen_LNCH && _lnchManualOverride) return false;
+  return true;
+}
+
+void updateModeChip(KCM_TFT &tft) {
+  const int8_t want = panelInAuto() ? 0 : 1;
+  if (want == _chipShown) return;
+  _chipShown = want;
+  const uint16_t x = CONTENT_W - CHIP_W - 6, y = 6;
+  tft.fillRect(x, y, CHIP_W, CHIP_H, TFT_BLACK);
+  textCenter(tft, &Roboto_Black_16, x, y, CHIP_W, CHIP_H,
+             want ? "MAN" : "AUTO", want ? TFT_CYAN : TFT_GREY, TFT_BLACK);
+}
+
+
+/***************************************************************************************
    SIDEBAR STATE REFRESH
    drawSidebar() is chrome: it runs from drawStaticScreen(), which runs only on a screen
    change. That is fine for a key whose colour depends only on which screen is active,
@@ -598,6 +636,7 @@ void sasNavballLabel(uint8_t mode, const char *&v, uint16_t &fg, uint16_t &bg) {
 void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
+  invalidateModeChip();   // the title bar is about to be repainted over the chip
 
   // Dynamic titles.
   // ORB/ORBADV and LNDG/LNDGRE are now sibling sidebar screens (no title toggle).
@@ -617,9 +656,9 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     drawTitleBar(tft, "RE-ENTRY");
   } else if (s == screen_LNCH) {
     drawTitleBar(tft, _lnchOrbitalMode ? "CIRCULARIZATION" : "ASCENT");
-    // Red dot indicates manual override of auto phase switch (set by the LNCH button)
-    if (_lnchManualOverride)
-      tft.fillCircle(CONTENT_W - 14, 29, 6, TFT_RED);
+    // The manual-override red dot that used to sit here is gone: the panel-level
+    // AUTO/MAN chip (updateModeChip) covers this screen's phase override too, and one
+    // explicit indicator beats a coloured dot whose meaning has to be remembered.
   } else if (s == screen_DOCK) {
     // Vessel name from Simpit reflects the active/combined vessel after docking.
     String dockTitle = String("DOCKING [ ") + state.vesselName + " ]";

@@ -122,6 +122,11 @@ void loop() {
 
   if (demoMode) stepDemoState();
 
+  // --- Context routing: both ladders run every frame, so the panels follow the
+  //     mission rather than only re-pairing at vessel and scene boundaries. Guarded
+  //     by the manual latch, a release band per rule and a minimum dwell. ---
+  updateContextScreen();
+
   // --- Incremental double buffering ---
   //  Screen entry (rare): paint full chrome + all values onto the back page, then
   //  flip. This is the expensive frame (fillScreen + every label re-rasterized).
@@ -141,12 +146,14 @@ void loop() {
     canvasContentRegion(infoDisp);
     drawStaticScreen(infoDisp, activeScreen);
     updateScreen(infoDisp, activeScreen);
+    updateModeChip(infoDisp);
     infoDB.flip(infoDisp);
   } else {
     infoDB.beginFrameCopy(infoDisp);        // BTE copy front -> back, canvas -> back
     canvasContentRegion(infoDisp);
     if (fpsDiag) { _copyUs = infoDB.lastCopyUs; _t = micros(); }
     updateScreen(infoDisp, activeScreen);
+    updateModeChip(infoDisp);  // AUTO / MAN — is this screen the ladder's choice or the pilot's?
     updateSidebar(infoDisp);   // repaint the strip if a key's state colour changed
     if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
     infoDB.flip(infoDisp);

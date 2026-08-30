@@ -192,6 +192,42 @@ const float TGT_CONTEXT_MAX_M = 2000.0f;
 // passes, which keeps MANEUVER up through the burn itself.
 const float MNVR_CONTEXT_LEAD_S = 600.0f;   // 10 min
 
+/***************************************************************************************
+   CONTEXT ROUTING — continuous evaluation
+   Both ladders are re-evaluated every frame rather than only at vessel/scene
+   boundaries, so the panels follow the mission. Two guards keep that from flapping:
+
+   A release band on every numeric rule. Once a rule owns the screen its threshold
+   widens, so a value parked on the boundary — station-keeping at 200 m, a burn sitting
+   at ten minutes out — cannot oscillate the panel. Entry thresholds are unchanged;
+   only the exit is looser.
+
+   A minimum dwell between automatic switches, as a blanket guard for everything the
+   bands do not cover (an atmosphere boundary flickering inAtmo, a target flickering
+   in and out of Simpit's view).
+****************************************************************************************/
+const uint32_t CONTEXT_DWELL_MS      = 4000;     // min gap between automatic switches
+const float    DOCK_CTX_RELEASE_M    = 250.0f;   // leave DOCKING past this (enter at 200)
+const float    TGT_CTX_RELEASE_MIN_M = 150.0f;   // leave TARGET below this (enter at 200)
+const float    TGT_CTX_RELEASE_MAX_M = 2400.0f;  // leave TARGET above this (enter at 2000)
+const float    MNVR_CTX_RELEASE_S    = 700.0f;   // leave MANEUVER past this (enter at 600)
+
+// RE-ENTRY auto-select. The corridor test (periapsis inside the atmosphere, descending)
+// is true for any aircraft in level flight too — its periapsis is far underground — so
+// the rule additionally requires the vessel to be coming in fast or from outside the
+// atmosphere. Mach 3 is the same marker the RE-ENTRY screen already uses for its SAS
+// annunciation.
+const float REENTRY_CTX_MACH = 3.0f;
+
+// POWERED DESCENT auto-select. The old rule was `type_Lander && sit_SubOrb`, which
+// missed every Ship doing a Mun landing and fired on ascent (sub-orbital is also what
+// a rocket climbing out looks like). Proximity plus a real descent rate is what the
+// screen is actually for. Planes in atmosphere are excluded: their approach instrument
+// is the AIRCRAFT screen on the other panel.
+const float LNDG_CTX_ALT_M         = 10000.0f;  // radar altitude to enter
+const float LNDG_CTX_ALT_RELEASE_M = 12000.0f;  // and to leave (release band)
+const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
+
 // Closure rate — alarm at >2 m/s within 100m
 const float DOCK_VCLOSURE_ALARM_MS   = 2.0f;
 const float DOCK_VCLOSURE_ALARM_DIST_M = 100.0f;
