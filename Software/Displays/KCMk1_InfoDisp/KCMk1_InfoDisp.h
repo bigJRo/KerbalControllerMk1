@@ -143,7 +143,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 3;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.3.0: armed annunciations show state, not request
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.3.1: demo acknowledges AP console commands
 
 
 /***************************************************************************************
@@ -372,6 +372,35 @@ static const uint16_t SIDEBAR_BTN_X = SCREEN_W - SIDEBAR_W + 1;
 inline bool     touchInSidebar(uint16_t x) { return x >= SIDEBAR_X && x < SIDEBAR_X + SIDEBAR_W; }
 inline bool     touchInContent(uint16_t x) { return x >= CONTENT_X && x < CONTENT_X + CONTENT_W; }
 inline uint16_t touchContentX(uint16_t x)  { return (uint16_t)(x - CONTENT_X); }
+
+/***************************************************************************************
+   ASCENT AUTOPILOT COMMAND CONTRACT
+   Opcodes carried in the outbound I2C command frame (Screen_LNCH_AscentAP.ino builds
+   it, I2CSlave.ino ships it, Controller_Main executes it). Byte-level layout is in
+   Documents/Developer/Ascent_Autopilot_Interface.md.
+
+   They live here rather than in the console tab because Demo.ino also has to read them
+   — in demo mode there is no master, so the demo executes these commands itself — and
+   Demo.ino compiles before Screen_LNCH_AscentAP.ino in the concatenated sketch.
+****************************************************************************************/
+enum {
+  AP_CMD_NOP             = 0x00,
+  AP_CMD_SET_TARGET_ALT  = 0x01,   // payload = metres
+  AP_CMD_SET_INCLINATION = 0x02,   // payload = degrees
+  AP_CMD_SET_LAUNCH_DIR  = 0x03,   // payload = 0 north / 1 south
+  AP_CMD_SET_LOFT        = 0x04,   // payload = exponent
+  AP_CMD_SET_ROLL        = 0x05,   // payload = degrees, or AP_ROLL_OFF to disable hold
+  AP_CMD_SET_MAXG        = 0x06,   // payload = g (0 = off)
+  AP_CMD_ARM             = 0x10,   // payload = 0
+  AP_CMD_DISARM          = 0x11,   // payload = 0
+};
+static const float AP_ROLL_OFF = 1.0e9f;   // roll-hold disable sentinel (outside +/-180)
+
+// Demo.ino — stands in for Controller_Main while demoMode is set: applies an AP command
+// to the demo's own autopilot model, which stepDemoState() then publishes into state.ap*
+// so the console's command/echo round trip closes. Returns true if the opcode was
+// recognised, which is what raises the console's pending cue.
+bool apDemoApplyCommand(uint8_t op, float payload);
 
 // Ascent Autopilot (Screen_LNCH_AscentAP.ino) — the armed state as annunciated: what
 // the autopilot itself reports, never a pilot tap Controller_Main has not echoed back.

@@ -136,18 +136,11 @@ bool apArmedAnnunciated() { return state.apArmed; }
 // its next inbound packet, which pops the queue. Pending (cyan) values clear separately,
 // in apReconcilePending(), once Controller_Main echoes the accepted value back in the
 // AscentStatus frame — so the UI confirms the round-trip, not merely command delivery.
-enum {
-  AP_CMD_NOP             = 0x00,
-  AP_CMD_SET_TARGET_ALT  = 0x01,   // payload = metres
-  AP_CMD_SET_INCLINATION = 0x02,   // payload = degrees
-  AP_CMD_SET_LAUNCH_DIR  = 0x03,   // payload = 0 north / 1 south
-  AP_CMD_SET_LOFT        = 0x04,   // payload = exponent
-  AP_CMD_SET_ROLL        = 0x05,   // payload = degrees, or AP_ROLL_OFF to disable hold
-  AP_CMD_SET_MAXG        = 0x06,   // payload = g (0 = off)
-  AP_CMD_ARM             = 0x10,   // payload = 0
-  AP_CMD_DISARM          = 0x11,   // payload = 0
-};
-static const float AP_ROLL_OFF = 1.0e9f;   // roll-hold disable sentinel (outside +/-180)
+// AP_CMD_* opcodes and the roll sentinel are the command contract between this console,
+// I2CSlave.ino and (in demo mode) Demo.ino, so they live in KCMk1_InfoDisp.h — Demo.ino
+// compiles before this tab and could not otherwise see them. Byte-level layout is in
+// Documents/Developer/Ascent_Autopilot_Interface.md.
+
 
 struct ApCmd { uint8_t op; float payload; };
 static const uint8_t AP_CMDQ_LEN = 16;
@@ -168,7 +161,10 @@ static bool apEnqueueCmd(uint8_t op, float payload) {
   (void)op; (void)payload;
   return false;
 #else
-  if (demoMode) return false;                  // no master to drain the queue in demo
+  // No master to drain the queue in demo — the demo applies the command to its own
+  // autopilot model and publishes the result on the next frame, so the console's
+  // round trip closes and its pending cue clears exactly as it does in flight.
+  if (demoMode) return apDemoApplyCommand(op, payload);
   uint8_t next = (uint8_t)((apCmdTail + 1) % AP_CMDQ_LEN);
   if (next == apCmdHead) return false;         // full — drop (queue holds 15, never happens)
   apCmdQ[apCmdTail].op = op;
