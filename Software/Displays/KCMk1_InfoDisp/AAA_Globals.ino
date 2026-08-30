@@ -121,12 +121,12 @@ ScreenType vehicleContextScreen() {
 //   1. Pre-launch                        -> LAUNCH (pre-launch board)
 //   2. Descending into an atmosphere     -> RE-ENTRY
 //   3. Descending close to the ground    -> POWERED DESCENT
-//   4. Target inside docking range       -> DOCKING
-//   5. Landed or splashed                -> TARGET if one is set, else VEHICLE INFO
-//   6. Burn imminent (or running)        -> MANEUVER
-//   7. Target in the approach window     -> TARGET
-//   8. On EVA                            -> TARGET
-//   9. Flying in an atmosphere, not climbing out -> NAVIGATION
+//   4. Aircraft flying in an atmosphere  -> NAVIGATION
+//   5. Target inside docking range       -> DOCKING
+//   6. Landed or splashed                -> TARGET if one is set, else VEHICLE INFO
+//   7. Burn imminent (or running)        -> MANEUVER
+//   8. Target in the approach window     -> TARGET
+//   9. On EVA                            -> TARGET
 //  10. Everything else                   -> ORBIT
 //
 // ORBIT as the resting state is the change that the second panel pays for. The
@@ -171,25 +171,60 @@ ScreenType missionContextScreen() {
       return screen_LNDG;
   }
 
-  // 3. Target within docking range -> docking screen.
+  // 4. An aircraft flying inside an atmosphere -> NAVIGATION. ORBIT is the right
+  //    resting state for something in orbit and says nothing to an aircraft: apoapsis,
+  //    periapsis, inclination and period are not numbers you fly a jet on.
+  //
+  //    NAVIGATION is a navigation display, and a navigation display exists to pair with
+  //    an attitude display. The condition is therefore exactly the one the other panel
+  //    uses to put AIRCRAFT up: NAV appears if and only if its partner PFD is the
+  //    aircraft PFD, and the two panels are the standard airliner pair or they are not
+  //    paired at all. An aircraft that KSP does not know is an aircraft gets neither.
+  //
+  //    Stating it that way rather than as "in an atmosphere" is what keeps a rocket
+  //    out. A booster a kilometre off the pad is also in an atmosphere with a trivial
+  //    apoapsis, and the first form of this rule handed it a compass rose during ascent
+  //    -- then swapped to ORBIT mid-burn, the moment apoapsis crossed the top of the
+  //    atmosphere. The apoapsis test stays and does the remaining work: a spaceplane on
+  //    the way up is still an aircraft by type and still in the atmosphere, but it has
+  //    already thrown its apoapsis into space and wants exactly what ORBIT shows.
+  //
+  //    It sits this high because nothing below it is an aircraft instrument. TARGET and
+  //    DOCKING outranked it from the bottom of the ladder, so a plane cruising to a
+  //    waypoint 1.5 km ahead got the rendezvous scope, and one at 150 m got the
+  //    docking-port alignment reticle -- exactly when the navigation display is most
+  //    wanted. Above it sit the only two rules that legitimately beat a compass: the
+  //    pre-launch board, and the re-entry corridor, which is what a spaceplane at Mach
+  //    6 needs and NAV is not.
+  //
+  //    Landed and splashed are excluded. Rollout and taxi belong to the surface rule,
+  //    which routes to the recovery summary; this rule is about flying.
+  if (state.vesselType == type_Plane && state.inAtmo &&
+      !(state.situation & (sit_Landed | sit_Splashed)) &&
+      currentBody.hasAtmo && currentBody.lowSpace > 0.0f &&
+      state.apoapsis < currentBody.lowSpace)
+    return screen_NAV;
+
+  // 5. Target within docking range -> docking screen.
   //    Use tgtDistance alone — KSP may report targetAvailable=false even while
   //    actively sending TARGETINFO with a valid distance (observed in KSP1).
   //    The limit widens once DOCKING owns the screen: holding station at exactly
-  //    200 m must not oscillate the panel. Same pattern in rules 4 and 5.
+  //    200 m must not oscillate the panel. Same pattern in rules 7 and 8.
   const float dockLim = (activeScreen == screen_DOCK) ? DOCK_CTX_RELEASE_M : DOCK_DIST_WARN_M;
   if (state.tgtDistance > 0.0f && state.tgtDistance <= dockLim)
     return screen_DOCK;
 
-  // On the surface -> TARGET when one is set, otherwise VEHICLE INFO. ORBIT was the
-  // fallback for everything, which meant a rover parked on Duna got apoapsis,
-  // periapsis, inclination and period — every one of them meaningless on the ground.
-  // This sits above the MANEUVER and approach-window rules deliberately: a landed
-  // vessel is not flying a burn, and a rover's target is a waypoint at any range, so
-  // it wants TARGET whether or not the range falls in the flight approach window.
+  // 6. On the surface -> TARGET when one is set, otherwise VEHICLE INFO. ORBIT was the
+  //    fallback for everything, which meant a rover parked on Duna got apoapsis,
+  //    periapsis, inclination and period — every one of them meaningless on the ground.
+  //    This sits above the MANEUVER and approach-window rules deliberately: a landed
+  //    vessel is not flying a burn, and a rover's target is a waypoint at any range, so
+  //    it wants TARGET whether or not the range falls in the flight approach window.
+  //    It also owns aircraft rollout and taxi, which rule 4 hands back to it.
   if (state.situation & (sit_Landed | sit_Splashed))
     return state.targetAvailable ? screen_TGT : screen_VEH;
 
-  // 4. Maneuver node with an imminent burn -> MANEUVER. Time-to-ignition is measured
+  // 7. Maneuver node with an imminent burn -> MANEUVER. Time-to-ignition is measured
   //    to the start of the burn (half the burn duration ahead of the node), matching
   //    the T+Ign the MANEUVER screen itself shows. A negative value means the burn
   //    should already be running, which still belongs on this screen; KSP clears the
@@ -199,8 +234,8 @@ ScreenType missionContextScreen() {
   if (hasMnvr && (state.mnvrTime - state.mnvrDuration * 0.5f) < mnvrLead)
     return screen_MNVR;
 
-  // 5. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
-  //    ends: inside DOCK_DIST_WARN_M rule 3 has already taken it, and past
+  // 8. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
+  //    ends: inside DOCK_DIST_WARN_M rule 5 has already taken it, and past
   //    TGT_CONTEXT_MAX_M the scope has nothing useful to show yet.
   const bool tgtActive = (activeScreen == screen_TGT);
   const float tgtLo = tgtActive ? TGT_CTX_RELEASE_MIN_M : DOCK_DIST_WARN_M;
@@ -208,41 +243,19 @@ ScreenType missionContextScreen() {
   if (state.targetAvailable && state.tgtDistance > tgtLo && state.tgtDistance < tgtHi)
     return screen_TGT;
 
-  // On EVA -> TARGET. A Kerbal outside the craft is doing exactly one thing: getting to
-  // something. The rules above already cover it once a target is set and close (DOCKING
-  // inside 200 m, TARGET out to 2 km); this catches the rest, including the case that
-  // matters most -- no target selected, where TARGET's "NO TARGET SET" fullscreen is
-  // honest advice rather than a dead end. ORBIT was the alternative, and a Kerbal has an
-  // apoapsis in the same sense a thrown wrench does.
+  // 9. On EVA -> TARGET. A Kerbal outside the craft is doing exactly one thing: getting
+  //    to something. The rules above already cover it once a target is set and close
+  //    (DOCKING inside 200 m, TARGET out to 2 km); this catches the rest, including the
+  //    case that matters most -- no target selected, where TARGET's "NO TARGET SET"
+  //    fullscreen is honest advice rather than a dead end. ORBIT was the alternative,
+  //    and a Kerbal has an apoapsis in the same sense a thrown wrench does.
   //
-  // Below the surface rule deliberately: a Kerbal standing on the Mun is not on an
-  // approach, and rule 5 already answers for them.
+  //    Below the surface rule deliberately: a Kerbal standing on the Mun is not on an
+  //    approach, and rule 6 already answers for them.
   if (state.vesselType == type_EVA)
     return screen_TGT;
 
-  // Flying an aircraft inside an atmosphere -> NAVIGATION. ORBIT is the right resting
-  // state for something in orbit and says nothing to an aircraft: apoapsis, periapsis,
-  // inclination and period are not numbers you fly a jet on.
-  //
-  // NAVIGATION is a navigation display, and a navigation display exists to pair with an
-  // attitude display. The condition is therefore exactly the one the other panel uses to
-  // put AIRCRAFT up: NAV appears if and only if its partner PFD is the aircraft PFD, and
-  // the two panels are the standard airliner pair or they are not paired at all.
-  //
-  // Stating it that way rather than as "in an atmosphere" is what keeps a rocket out.
-  // A booster a kilometre off the pad is also in an atmosphere with a trivial apoapsis,
-  // and the first form of this rule handed it a compass rose during ascent -- then
-  // swapped to ORBIT mid-burn, the moment apoapsis crossed the top of the atmosphere.
-  //
-  // The apoapsis test stays, and does the remaining work: a spaceplane on the way up is
-  // still an aircraft by type and still in the atmosphere, but it has already thrown its
-  // apoapsis into space and wants exactly what ORBIT shows.
-  if (state.vesselType == type_Plane && state.inAtmo &&
-      currentBody.hasAtmo && currentBody.lowSpace > 0.0f &&
-      state.apoapsis < currentBody.lowSpace)
-    return screen_NAV;
-
-  // Everything else -> ORBIT (Apsides).
+  // 10. Everything else -> ORBIT (Apsides).
   return screen_ORB;
 }
 

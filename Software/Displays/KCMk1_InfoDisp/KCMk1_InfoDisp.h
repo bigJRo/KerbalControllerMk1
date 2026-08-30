@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.7.1: NAVIGATION no longer captures rocket ascent
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.7.2: NAVIGATION outranks DOCKING and TARGET for aircraft
 
 
 /***************************************************************************************
