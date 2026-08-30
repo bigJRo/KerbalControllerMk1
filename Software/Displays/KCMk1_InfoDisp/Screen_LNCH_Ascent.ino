@@ -1399,7 +1399,13 @@ static String _lnchAsPrevAtmoVal, _lnchAsPrevVVrtVal, _lnchAsPrevVOrbVal;
 static void _lnchAsGaugeValue(KCM_TFT &tft, int16_t lblX0, int16_t lblW,
                               const String &val, uint16_t fg, String &prev) {
     if (val == prev) return;
-    tft.fillRect(lblX0, LNCH_AS_GAUGE_VAL_Y, lblW, LNCH_AS_GAUGE_VAL_H, TFT_BLACK);
+    // Boxed, so the window reads as part of its gauge rather than as loose text
+    // floating above it. Border drawn every time: the fill that clears the old value
+    // covers the inside only, so the frame is never touched, but drawing it here keeps
+    // the window whole after a chrome repaint without a separate code path.
+    tft.fillRect(lblX0 + 1, LNCH_AS_GAUGE_VAL_Y + 1,
+                 lblW - 2, LNCH_AS_GAUGE_VAL_H - 2, TFT_BLACK);
+    tft.drawRect(lblX0, LNCH_AS_GAUGE_VAL_Y, lblW, LNCH_AS_GAUGE_VAL_H, TFT_GREY);
     textCenter(tft, &Roboto_Black_20, lblX0, LNCH_AS_GAUGE_VAL_Y, lblW,
                LNCH_AS_GAUGE_VAL_H, val, fg, TFT_BLACK);
     prev = val;
@@ -1517,12 +1523,24 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
 // The three bar gauges' digital windows. Their values used to be rows 0-4 of the
 // readout column; they now sit on the gauges they belong to.
 static void _lnchAsUpdateGaugeValues(KCM_TFT &tft) {
-    // ATMO — air density, the rho in the dynamic pressure on the readout column.
+    // ATMO — the gauge's own scale position as a percentage, which is what the triangle
+    // beside it is pointing at.
+    //
+    // Not raw density: the bar plots (rho / rho_surface)^0.25, a fourth-root precisely
+    // so the thin upper atmosphere stays visible, and a linear density in kg/m3 collapses
+    // to "0.00" above about 30 km while the triangle is still a quarter of the way up the
+    // bar. Showing the depth fraction instead keeps the number alive for as long as the
+    // picture is, and makes the window the bar's own readout rather than a second,
+    // differently-scaled quantity that appears to have died.
     {
-        const int16_t cx = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W / 2;
+        const int16_t cx   = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W / 2;
+        const float   frac = _lnchAsAtmoFraction();
         char buf[12];
-        snprintf(buf, sizeof(buf), "%.2f", state.airDensity);
-        _lnchAsGaugeValue(tft, cx - 50, 100, String(buf), TFT_DARK_GREEN, _lnchAsPrevAtmoVal);
+        uint16_t fg = TFT_DARK_GREEN;
+        if (frac < 0.0f)      { strcpy(buf, "---"); fg = TFT_DARK_GREY; }   // no atmosphere
+        else if (frac <= 0.0f) { strcpy(buf, "0%");  fg = TFT_DARK_GREY; }  // vacuum
+        else                   snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(frac * 100.0f));
+        _lnchAsGaugeValue(tft, cx - 50, 100, String(buf), fg, _lnchAsPrevAtmoVal);
     }
     // V.Vrt — signed, red descending, matching the bar's own fill colours.
     //
@@ -1842,20 +1860,25 @@ static void _lnchAsUpdateQ(KCM_TFT &tft) {
     const float q = _lnchAsDynPressureKPa();
     const int32_t iQ = (int32_t)lroundf(q * 10.0f);          // tenths of a kPa
 
+    const bool haveAir = (state.inAtmo && state.airDensity > 0.0f);
+
     uint16_t fg, bg;
-    if      (q >= LNCH_Q_ALARM_KPA) { fg = TFT_WHITE;      bg = TFT_RED;   }
-    else if (q >= LNCH_Q_WARN_KPA)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
-    else                            { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-
-    if (iQ == _lnchAsPrevQ && fg == _lnchAsPrevQFg && bg == _lnchAsPrevQBg) return;
-
     char buf[16];
-    if (!state.inAtmo || state.airDensity <= 0.0f) {
+    if (!haveAir) {
         strcpy(buf, "---");
         fg = TFT_DARK_GREY; bg = TFT_BLACK;
     } else {
         snprintf(buf, sizeof(buf), "%.1f kPa", q);
+        if      (q >= LNCH_Q_ALARM_KPA) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        else if (q >= LNCH_Q_WARN_KPA)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                            { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     }
+
+    // Colours settled before the change test: deciding them from the thresholds and then
+    // overriding for the placeholder meant an out-of-atmosphere frame compared a green
+    // threshold colour against a stored grey one and repainted every single frame.
+    if (iQ == _lnchAsPrevQ && fg == _lnchAsPrevQFg && bg == _lnchAsPrevQBg) return;
+
     _lnchAsDrawRowValue(tft, 2, String(buf), fg, bg);
     _lnchAsPrevQ = iQ; _lnchAsPrevQFg = fg; _lnchAsPrevQBg = bg;
 }
