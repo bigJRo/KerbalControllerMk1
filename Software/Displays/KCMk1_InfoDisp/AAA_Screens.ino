@@ -469,14 +469,45 @@ void drawSidebar(KCM_TFT &tft) {
    and the LAUNCH screen's own ASC/CIRC phase override, which can outlive the latch
    when the latch auto-releases.
 
-   Cyan follows the panel's existing convention for a pilot-entered or pilot-selected
-   value (the editable Ascent Autopilot fields use it), so the chip spends no alerting
-   colour to say that the pilot is driving.
+   MAN is dark green — engaged-mode green, the same assignment the ASC key uses while
+   the autopilot is armed. A held selection is a mode the pilot has engaged, so it
+   reads as engaged rather than as an exception, and no alerting colour is spent.
+   AUTO is grey: the resting state, stated but not asserted.
+
+   Both states are outlined rather than filled, matching the sidebar keys, so the chip
+   reads as a status badge and not as something to press.
 ****************************************************************************************/
-static const uint16_t CHIP_W = 54, CHIP_H = 22;
+static const uint16_t CHIP_W = 58, CHIP_H = 22, CHIP_R = 5;
 static int8_t _chipShown = -1;    // -1 = unknown/needs redraw, 0 = AUTO, 1 = MAN
 
 void invalidateModeChip() { _chipShown = -1; }
+
+// Rounded-rectangle outline. The display driver has no round-rect primitive, so the
+// four straight edges are drawn inset by the corner radius and the corners are a
+// Bresenham quarter-arc mirrored into all four — only drawLine and drawPixel, both of
+// which the driver provides. Local to the chip for now; promote it to
+// KerbalDisplayCommon if a second caller appears.
+static void drawRoundRectOutline(KCM_TFT &tft, int16_t x, int16_t y,
+                                 int16_t w, int16_t h, int16_t r, uint16_t col) {
+  const int16_t x1 = x + w - 1, y1 = y + h - 1;
+  tft.drawLine(x + r, y,  x1 - r, y,  col);
+  tft.drawLine(x + r, y1, x1 - r, y1, col);
+  tft.drawLine(x,  y + r, x,  y1 - r, col);
+  tft.drawLine(x1, y + r, x1, y1 - r, col);
+  int16_t f = 1 - r, ddF_x = 1, ddF_y = -2 * r, px = 0, py = r;
+  while (px < py) {
+    if (f >= 0) { py--; ddF_y += 2; f += ddF_y; }
+    px++; ddF_x += 2; f += ddF_x;
+    tft.drawPixel(x1 - r + px, y1 - r + py, col);
+    tft.drawPixel(x1 - r + py, y1 - r + px, col);
+    tft.drawPixel(x  + r - px, y1 - r + py, col);
+    tft.drawPixel(x  + r - py, y1 - r + px, col);
+    tft.drawPixel(x1 - r + px, y  + r - py, col);
+    tft.drawPixel(x1 - r + py, y  + r - px, col);
+    tft.drawPixel(x  + r - px, y  + r - py, col);
+    tft.drawPixel(x  + r - py, y  + r - px, col);
+  }
+}
 
 static bool panelInAuto() {
   if (_manualScreenLatch) return false;
@@ -489,9 +520,11 @@ void updateModeChip(KCM_TFT &tft) {
   if (want == _chipShown) return;
   _chipShown = want;
   const uint16_t x = CONTENT_W - CHIP_W - 6, y = 6;
+  const uint16_t col = want ? TFT_DARK_GREEN : TFT_GREY;
   tft.fillRect(x, y, CHIP_W, CHIP_H, TFT_BLACK);
+  drawRoundRectOutline(tft, x, y, CHIP_W, CHIP_H, CHIP_R, col);
   textCenter(tft, &Roboto_Black_16, x, y, CHIP_W, CHIP_H,
-             want ? "MAN" : "AUTO", want ? TFT_CYAN : TFT_GREY, TFT_BLACK);
+             want ? "MAN" : "AUTO", col, TFT_BLACK);
 }
 
 

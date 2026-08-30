@@ -143,8 +143,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 4;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.4.1: vessel type outranks the recoverable rule
+static const uint8_t SKETCH_VERSION_MINOR = 5;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.5.0: VEH is mission-panel only; chip restyle
 
 
 /***************************************************************************************

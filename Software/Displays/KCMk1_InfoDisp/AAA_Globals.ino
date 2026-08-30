@@ -103,22 +103,17 @@ void switchToScreen(ScreenType s) {
 // behind. Landed-and-recoverable after a flight still routes to VEHICLE INFO, which
 // is the case the rule was written for.
 ScreenType vehicleContextScreen() {
-  // Vessel type first, recoverable last. The single-screen ladder this came from had
-  // the recoverable rule at position 6, below plane and rover; flattening it to the
-  // top when the ladders were split was a regression, and one that only became visible
-  // once the ladder ran every frame rather than at boundaries. KSP reports anything
-  // sitting on the home body as recoverable, so a rover being driven on Kerbin, or a
-  // plane rolling out after landing, is recoverable — and would show VEHICLE INFO
-  // instead of the screen for the vehicle actually being operated.
-  if (state.vesselType == type_Rover)                 return screen_ROVR;
-  if (state.vesselType == type_Plane && state.inAtmo) return screen_ACFT;
-
-  // A vessel you are no longer flying: debris, a spent probe, a capsule down and
-  // waiting for recovery. Not on the pad, where recoverable is also true and the PFD
-  // is what the pilot wants.
-  if (state.isRecoverable && !(state.situation & sit_PreLaunch)) return screen_VEH;
-
-  return screen_SCFT;
+  // This panel answers one question and admits no exceptions: what am I flying? The
+  // answer is always an instrument for the vehicle — rover, aircraft or spacecraft.
+  //
+  // VEHICLE INFO used to be routed here for a recoverable vessel, and it is a status
+  // summary rather than an instrument, so it belongs to the mission panel — which now
+  // routes to it from the surface rule. Keeping it on both produced the one pairing
+  // where the two panels showed the same screen (a capsule down and awaiting
+  // recovery), and, until the precedence fix, replaced the rover screen with a static
+  // summary while the rover was being driven. It remains one press away on this
+  // panel's own VEH key.
+  return pfdContextScreen();   // rover -> ROVR, plane in atmosphere -> ACFT, else SCFT
 }
 
 // ── Info Display 2: mission-phase ladder ────────────────────────────────────────────
