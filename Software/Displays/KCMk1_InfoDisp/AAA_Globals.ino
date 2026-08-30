@@ -220,15 +220,25 @@ ScreenType missionContextScreen() {
   if (state.vesselType == type_EVA)
     return screen_TGT;
 
-  // Flying inside an atmosphere, and not climbing out of it -> NAVIGATION. ORBIT is
-  // the right resting state for something in orbit and says nothing to an aircraft:
-  // apoapsis, periapsis, inclination and period are not numbers you fly a jet on.
+  // Flying an aircraft inside an atmosphere -> NAVIGATION. ORBIT is the right resting
+  // state for something in orbit and says nothing to an aircraft: apoapsis, periapsis,
+  // inclination and period are not numbers you fly a jet on.
   //
-  // The discriminator is apoapsis against the top of the atmosphere. A spaceplane on
-  // the way up has already thrown its apoapsis into space and wants exactly what ORBIT
-  // shows; an aircraft's apoapsis is underground or trivial. Same telemetry, same
-  // situation flags, but the trajectory says which one this is.
-  if (state.inAtmo && currentBody.hasAtmo && currentBody.lowSpace > 0.0f &&
+  // NAVIGATION is a navigation display, and a navigation display exists to pair with an
+  // attitude display. The condition is therefore exactly the one the other panel uses to
+  // put AIRCRAFT up: NAV appears if and only if its partner PFD is the aircraft PFD, and
+  // the two panels are the standard airliner pair or they are not paired at all.
+  //
+  // Stating it that way rather than as "in an atmosphere" is what keeps a rocket out.
+  // A booster a kilometre off the pad is also in an atmosphere with a trivial apoapsis,
+  // and the first form of this rule handed it a compass rose during ascent -- then
+  // swapped to ORBIT mid-burn, the moment apoapsis crossed the top of the atmosphere.
+  //
+  // The apoapsis test stays, and does the remaining work: a spaceplane on the way up is
+  // still an aircraft by type and still in the atmosphere, but it has already thrown its
+  // apoapsis into space and wants exactly what ORBIT shows.
+  if (state.vesselType == type_Plane && state.inAtmo &&
+      currentBody.hasAtmo && currentBody.lowSpace > 0.0f &&
       state.apoapsis < currentBody.lowSpace)
     return screen_NAV;
 
