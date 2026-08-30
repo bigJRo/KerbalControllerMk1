@@ -124,10 +124,11 @@ ScreenType vehicleContextScreen() {
 //   4. Aircraft flying in an atmosphere  -> NAVIGATION
 //   5. Target inside docking range       -> DOCKING
 //   6. Landed or splashed                -> TARGET if one is set, else VEHICLE INFO
-//   7. Burn imminent (or running)        -> MANEUVER
-//   8. Target in the approach window     -> TARGET
-//   9. On EVA                            -> TARGET
-//  10. Everything else                   -> ORBIT
+//   7. Climbing towards an orbit yet to exist -> LAUNCH (ascent / circularisation)
+//   8. Burn imminent (or running)        -> MANEUVER
+//   9. Target in the approach window     -> TARGET
+//  10. On EVA                            -> TARGET
+//  11. Everything else                   -> ORBIT
 //
 // ORBIT as the resting state is the change that the second panel pays for. The
 // single-display ladder deliberately never auto-selected it ("Orbit is manual-select
@@ -209,7 +210,7 @@ ScreenType missionContextScreen() {
   //    Use tgtDistance alone — KSP may report targetAvailable=false even while
   //    actively sending TARGETINFO with a valid distance (observed in KSP1).
   //    The limit widens once DOCKING owns the screen: holding station at exactly
-  //    200 m must not oscillate the panel. Same pattern in rules 7 and 8.
+  //    200 m must not oscillate the panel. Same pattern in rules 7, 8 and 9.
   const float dockLim = (activeScreen == screen_DOCK) ? DOCK_CTX_RELEASE_M : DOCK_DIST_WARN_M;
   if (state.tgtDistance > 0.0f && state.tgtDistance <= dockLim)
     return screen_DOCK;
@@ -224,7 +225,49 @@ ScreenType missionContextScreen() {
   if (state.situation & (sit_Landed | sit_Splashed))
     return state.targetAvailable ? screen_TGT : screen_VEH;
 
-  // 7. Maneuver node with an imminent burn -> MANEUVER. Time-to-ignition is measured
+  // 7. Climbing towards an orbit that does not exist yet -> LAUNCH.
+  //
+  //    LAUNCH owns the whole arc from liftoff to orbit insertion, not just the pad.
+  //    Before this rule the ladder routed to it on `sit_PreLaunch` alone, so the screen
+  //    vanished the instant the clamps released and the mission panel spent the entire
+  //    ascent on ORBIT -- a plan view of an orbit that does not exist yet, while the
+  //    ascent readout it does have (ApA, T+Ap, T.Burn, dV.Stg) sat one press away.
+  //    Worse, a circularisation node pulled it to MANEUVER, which is the generic burn
+  //    reticle rather than the screen built for this specific burn.
+  //
+  //    Two tests, and between them they say "going up, and not there yet":
+  //
+  //      periapsis < the orbit-safe altitude -- there is no orbit yet. That altitude is
+  //      max(minSafe, lowSpace), which body_params.h already defines as the boundary
+  //      between an orbit and an aerobrake: the top of the atmosphere where there is
+  //      one, the highest terrain where there is not. Kerbin 70 km, Mun 7.1 km.
+  //
+  //      vertical speed positive -- still climbing. This is what keeps the rule off a
+  //      descent, which matters on an airless body where neither RE-ENTRY nor POWERED
+  //      DESCENT is watching: a lander coming down from Mun orbit also has a periapsis
+  //      below the surface, and without this test it would read LAUNCH all the way down.
+  //
+  //    The release band lets the second test survive apoapsis. Vertical speed passes
+  //    through zero at the top of the coast, which is the middle of the arc rather than
+  //    the end of it, so once LAUNCH owns the screen it holds until the vessel is coming
+  //    down in earnest (LNCH_CTX_VVERT_RELEASE_MS).
+  //
+  //    The screen picks its own mode within the arc -- pre-launch board, ascent, or
+  //    circularisation -- so this rule only has to decide that the vessel is launching.
+  //
+  //    Rovers and Kerbals are excluded: a rover cresting a hill and a Kerbal on a
+  //    jetpack are both briefly climbing with no periapsis, and neither is launching.
+  {
+    const bool  canLaunch    = (state.vesselType != type_Rover && state.vesselType != type_EVA);
+    const float orbitSafeAlt = (currentBody.minSafe > currentBody.lowSpace)
+                                 ? currentBody.minSafe : currentBody.lowSpace;
+    const float ascVv = (activeScreen == screen_LNCH) ? LNCH_CTX_VVERT_RELEASE_MS : 0.0f;
+    if (canLaunch && orbitSafeAlt > 0.0f &&
+        state.verticalVel > ascVv && state.periapsis < orbitSafeAlt)
+      return screen_LNCH;
+  }
+
+  // 8. Maneuver node with an imminent burn -> MANEUVER. Time-to-ignition is measured
   //    to the start of the burn (half the burn duration ahead of the node), matching
   //    the T+Ign the MANEUVER screen itself shows. A negative value means the burn
   //    should already be running, which still belongs on this screen; KSP clears the
@@ -234,7 +277,7 @@ ScreenType missionContextScreen() {
   if (hasMnvr && (state.mnvrTime - state.mnvrDuration * 0.5f) < mnvrLead)
     return screen_MNVR;
 
-  // 8. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
+  // 9. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
   //    ends: inside DOCK_DIST_WARN_M rule 5 has already taken it, and past
   //    TGT_CONTEXT_MAX_M the scope has nothing useful to show yet.
   const bool tgtActive = (activeScreen == screen_TGT);
@@ -243,7 +286,7 @@ ScreenType missionContextScreen() {
   if (state.targetAvailable && state.tgtDistance > tgtLo && state.tgtDistance < tgtHi)
     return screen_TGT;
 
-  // 9. On EVA -> TARGET. A Kerbal outside the craft is doing exactly one thing: getting
+  // 10. On EVA -> TARGET. A Kerbal outside the craft is doing exactly one thing: getting
   //    to something. The rules above already cover it once a target is set and close
   //    (DOCKING inside 200 m, TARGET out to 2 km); this catches the rest, including the
   //    case that matters most -- no target selected, where TARGET's "NO TARGET SET"
@@ -255,7 +298,7 @@ ScreenType missionContextScreen() {
   if (state.vesselType == type_EVA)
     return screen_TGT;
 
-  // 10. Everything else -> ORBIT (Apsides).
+  // 11. Everything else -> ORBIT (Apsides).
   return screen_ORB;
 }
 

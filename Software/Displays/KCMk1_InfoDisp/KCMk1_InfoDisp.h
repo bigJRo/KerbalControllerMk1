@@ -144,8 +144,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.7.2: NAVIGATION outranks DOCKING and TARGET for aircraft
+static const uint8_t SKETCH_VERSION_MINOR = 8;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.8.0: LAUNCH owns the ascent arc, not just the pad
 
 
 /***************************************************************************************
@@ -169,6 +169,7 @@ extern const uint32_t CONTEXT_DWELL_MS;
 extern const float DOCK_CTX_RELEASE_M, TGT_CTX_RELEASE_MIN_M, TGT_CTX_RELEASE_MAX_M;
 extern const float MNVR_CTX_RELEASE_S, REENTRY_CTX_MACH;
 extern const float LNDG_CTX_ALT_M, LNDG_CTX_ALT_RELEASE_M, LNDG_CTX_VVERT_MS;
+extern const float   LNCH_CTX_VVERT_RELEASE_MS;
 extern const int16_t NAV_DRIFT_WARN_DEG;
 
 // Flight state (populated by SimpitHandler.ino)

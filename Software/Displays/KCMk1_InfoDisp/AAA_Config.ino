@@ -228,6 +228,12 @@ const float LNDG_CTX_ALT_M         = 10000.0f;  // radar altitude to enter
 const float LNDG_CTX_ALT_RELEASE_M = 12000.0f;  // and to leave (release band)
 const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 
+// LAUNCH context — the ascent arc releases when the vessel stops climbing. Zero is the
+// entry threshold; this is the release threshold, so a coast through apoapsis (where
+// vertical speed passes through zero on its way to the circularisation burn) does not
+// drop the screen. Same release-band pattern as the DOCKING, TARGET and MANEUVER rules.
+const float LNCH_CTX_VVERT_RELEASE_MS = -20.0f;
+
 // NAV — drift (ground track minus heading) shown yellow past this. In an atmosphere a
 // large crab angle is either a strong sideways component or a vessel that is not going
 // where it is pointed; either is worth noticing before it becomes a heading error.
