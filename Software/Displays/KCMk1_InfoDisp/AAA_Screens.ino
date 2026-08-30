@@ -8,9 +8,9 @@
    screen goes to the button's context/primary mode. Context auto-select still runs on
    scene/vessel change; a press latches the manual selection until the vessel or the
    scene changes (see contextSwitchAllowed()). Title-bar taps no longer switch anything.
-   On unit 2 the ASC (Ascent Autopilot) button is parked at the bottom, physically
-   separated and drawn in a distinct purple, since it is an interactive console rather
-   than a display screen; unit 1 carries VEH in that slot and draws it normally.
+   On unit 2 the ASC (Ascent Autopilot) button is parked at the bottom, below the
+   display-nav cluster, since it is an interactive console rather than a display screen;
+   it turns green while the autopilot is armed. Unit 1 carries VEH in that slot.
      0  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
      1  PFD       Primary Flight Display — SPC -> ACFT -> ROVR (press cycles; context
                   default). Unit 2 keeps VEH in this ring; unit 1 gives it button 5.
@@ -175,11 +175,29 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ASCENT AUTOPILOT"
 };
 
+/***************************************************************************************
+   SIDEBAR KEY PALETTE
+   The sidebar is chrome, not data, so it is achromatic: selection is shown by reverse
+   video — white-on-black unselected, black-on-grey selected — which is the convention
+   every bezel-key flight deck uses (the Garmin G1000 softkey row, the closest analogue
+   to this sidebar, is exactly this) and which FAA display guidance assumes when it
+   assigns light grey to inactive soft-button labels.
+
+   It previously filled unselected keys navy and the selected key TFT_CORNELL, which is
+   a red (#B51C19). That put the vocabulary's highest-urgency colour permanently on
+   screen, on every screen, marking the least urgent fact the panel knows — the page you
+   are already looking at — while this same panel uses white-on-red for the dV, G-load
+   and ground-proximity alarms. Chrome does not get to spend the alerting colours.
+
+   Keeping the keys neutral also leaves room to colour a key by the state of the screen
+   behind it, the way an EICAS flags a page you are not on. Nothing does that yet; the
+   ASC armed state below is the first instance.
+****************************************************************************************/
 const ButtonLabel btnScreenOff = {
-  "", TFT_WHITE, TFT_WHITE, TFT_OFF_BLACK, TFT_NAVY, TFT_GREY, TFT_GREY
+  "", TFT_WHITE, TFT_WHITE, TFT_BLACK, TFT_BLACK, TFT_GREY, TFT_GREY
 };
 const ButtonLabel btnScreenOn = {
-  "", TFT_WHITE, TFT_WHITE, TFT_CORNELL, TFT_CORNELL, TFT_GREY, TFT_WHITE
+  "", TFT_BLACK, TFT_BLACK, TFT_GREY,  TFT_GREY,  TFT_GREY, TFT_WHITE
 };
 
 /***************************************************************************************
@@ -408,12 +426,20 @@ void drawSidebar(KCM_TFT &tft) {
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++) {
     ButtonLabel btn = (i == activeBtn) ? btnScreenOn : btnScreenOff;
     btn.text = sbButtonLabel(i);   // active mode's label when this button owns the screen
-    // Ascent Autopilot button carries a distinct purple identity so it reads as a
-    // different kind of control (an interactive console, not a display screen). The
-    // sidebar draws with isOn=true, so override backgroundColorOn: brighter violet
-    // when it is the active screen, dimmer purple when idle.
-    if (SB_BTN_SCREEN[i] == screen_LNCHAP)
-      btn.backgroundColorOn = (i == activeBtn) ? TFT_VIOLET : TFT_PURPLE;
+    // Ascent Autopilot key: green while the autopilot is armed. Engaged-mode green is
+    // the standard assignment, so the one sidebar key with state worth annunciating is
+    // the one key that carries colour — and it carries it only while that state holds.
+    // This replaces a fixed purple/violet identity, which said "different kind of
+    // control" in a hue the flight-deck vocabulary does not assign, and said it
+    // identically whether the autopilot was idle or flying the vehicle. What kind of
+    // control it is, is already carried by its position: parked at the bottom, below
+    // the display-nav cluster. The sidebar draws with isOn=true, so only the ...On
+    // fields are overridden; the border is left alone, so it still reads white when
+    // this key owns the active screen and grey when it does not.
+    if (SB_BTN_SCREEN[i] == screen_LNCHAP && state.apArmed) {
+      btn.backgroundColorOn = TFT_DARK_GREEN;
+      btn.fontColorOn       = TFT_WHITE;
+    }
     uint16_t by = sbBtnY(i);
     uint16_t h  = bh;
     // Last button tiles to row 599 (the panel's final scanline), where its bottom
@@ -424,6 +450,29 @@ void drawSidebar(KCM_TFT &tft) {
   }
   canvasContentRegion(tft);
 }
+
+/***************************************************************************************
+   SIDEBAR STATE REFRESH
+   drawSidebar() is chrome: it runs from drawStaticScreen(), which runs only on a screen
+   change. That is fine for a key whose colour depends only on which screen is active,
+   and wrong for a key whose colour depends on live state — the ASC key would not turn
+   green until the pilot happened to switch screens, which during an ascent is exactly
+   when they are not touching the panel. Called once per steady-state frame; it repaints
+   the 84 px strip only when a state colour actually changes.
+
+   Unit 1 has no state-coloured key (its sixth button is VEH), so this compiles out.
+****************************************************************************************/
+void updateSidebar(KCM_TFT &tft) {
+#if INFO_DISP_IS_MISSION_UNIT
+  static bool prevArmed = false;
+  if (state.apArmed == prevArmed) return;
+  prevArmed = state.apArmed;
+  drawSidebar(tft);
+#else
+  (void)tft;
+#endif
+}
+
 
 /***************************************************************************************
    DRAW TITLE BAR (chrome — once per transition)

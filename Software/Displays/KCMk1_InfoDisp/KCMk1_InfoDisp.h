@@ -143,7 +143,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.1.1: per-unit home screen; PFD on the pad
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.1.2: achromatic sidebar keys
 
 
 /***************************************************************************************
@@ -372,6 +372,11 @@ static const uint16_t SIDEBAR_BTN_X = SCREEN_W - SIDEBAR_W + 1;
 inline bool     touchInSidebar(uint16_t x) { return x >= SIDEBAR_X && x < SIDEBAR_X + SIDEBAR_W; }
 inline bool     touchInContent(uint16_t x) { return x >= CONTENT_X && x < CONTENT_X + CONTENT_W; }
 inline uint16_t touchContentX(uint16_t x)  { return (uint16_t)(x - CONTENT_X); }
+
+// Sidebar (AAA_Screens.ino). drawSidebar() paints the strip as chrome on a screen
+// change; updateSidebar() repaints it mid-flight when a key's state colour changes.
+void drawSidebar(KCM_TFT &tft);
+void updateSidebar(KCM_TFT &tft);
 
 // Drawing region control (AAA_Screens.ino). Screens draw in content space; the canvas
 // origin is offset so those coordinates land in the content region of the panel.

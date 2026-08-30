@@ -147,6 +147,7 @@ void loop() {
     canvasContentRegion(infoDisp);
     if (fpsDiag) { _copyUs = infoDB.lastCopyUs; _t = micros(); }
     updateScreen(infoDisp, activeScreen);
+    updateSidebar(infoDisp);   // repaint the strip if a key's state colour changed
     if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
     infoDB.flip(infoDisp);
     if (fpsDiag) { _flipUs = micros() - _t; } // async geometry completes here (wait-for-GPU)
