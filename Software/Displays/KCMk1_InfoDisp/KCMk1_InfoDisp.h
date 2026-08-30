@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 9;
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.9.3: circularisation numbers grouped by subject
+static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.9.4: Ap-Pe no longer overflows its box
 
 
 /***************************************************************************************

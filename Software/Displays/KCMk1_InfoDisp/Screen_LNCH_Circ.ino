@@ -1088,6 +1088,35 @@ static void _lnchOrRailReadout(KCM_TFT &tft, int16_t lblY, int16_t valY,
     tft.print(val.c_str());
 }
 
+// Compact altitude for a narrow box.
+//
+// formatAlt() only switches to km above 1,000,000 m, so everything from 100 km to
+// 1000 km renders as six digits and a separator: "513,000 m" measures 135 px and this
+// rail box is 130. That band is not exotic -- a Kerbin circularisation begins in it,
+// with apoapsis at 101 km and periapsis still hundreds of kilometres underground.
+//
+// Promoting a band early enough that the scaled value never reaches five digits caps
+// the widest output at "9,999 Mm" (128 px). The 9999.5 thresholds are what keeps the
+// rounding at the top of a band from producing that fifth digit: 9,999,999 m becomes
+// "10 Mm", not "10,000 km". Metre precision on an apsis gap was false anyway.
+//
+// formatSep() renders two decimals below 1000, which would give "513.00 km" (134 px --
+// still too wide), so the scaled value is rounded and passed to formatSepI64 instead.
+//
+// Fits to 9,999 Gm; beyond that (1e13 m, some forty times Kerbol's outer SOI) it would
+// overflow again. A candidate to promote beside formatTimeCompact() in the shared
+// library if a second caller ever wants it.
+static String _lnchOrAltCompact(float v) {
+    const bool  neg = (v < 0.0f);
+    const float a   = neg ? -v : v;
+    const char *unit; float scaled;
+    if      (a < 9999.5f)   { unit = " m";  scaled = a;          }
+    else if (a < 9999.5e3f) { unit = " km"; scaled = a / 1.0e3f; }
+    else if (a < 9999.5e6f) { unit = " Mm"; scaled = a / 1.0e6f; }
+    else                    { unit = " Gm"; scaled = a / 1.0e9f; }
+    return String(neg ? "-" : "") + formatSepI64((int64_t)lroundf(scaled)) + String(unit);
+}
+
 // Eccentricity — the goal metric. Zero is a circle, and green says the burn is done.
 static void _lnchOrUpdateEccReadout(KCM_TFT &tft) {
     const bool haveOrbit = (state.apoapsis > 0.0f);
@@ -1116,7 +1145,8 @@ static void _lnchOrUpdateGapReadout(KCM_TFT &tft) {
     if (gap == _lnchOrPrevGapM && !first) return;
 
     _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "Ap-Pe:",
-                       haveOrbit ? formatAlt(state.apoapsis - state.periapsis) : String("---"),
+                       haveOrbit ? _lnchOrAltCompact(state.apoapsis - state.periapsis)
+                                 : String("---"),
                        haveOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, first);
     _lnchOrPrevGapM = gap;
 }
