@@ -73,6 +73,22 @@ static bool _scftOrbMode() {
     return state.altitude > switchAlt;
 }
 
+// ── EVA mode ──────────────────────────────────────────────────────────────────────────
+// A Kerbal outside the craft is still a vessel as far as KSP and Simpit are concerned,
+// so it lands here on the vehicle panel — and the attitude ball is genuinely the right
+// instrument, because you do orient on EVA. The numeric panel beside it was not: a
+// Kerbal has no stage, no burn and no apoapsis worth reading, so rows 2-6 were showing
+// dV.Stg, ApA, PeA, T+Ap and T+Ign, none of which mean anything to a person holding a
+// jetpack. Those five rows swap to what an EVA is actually flown on: how high above the
+// surface, how fast relative to it, and how far from and how quickly closing on whatever
+// you are trying to reach.
+//
+// Row 6 becomes suit charge. dV.Stg would read a flat green 0 m/s, and electric charge
+// is the number that ends an EVA -- ROVER already reads the same field for the same
+// reason.
+static inline bool _scftEvaMode() { return state.vesselType == type_EVA; }
+static bool _scftPrevEvaMode = false;
+
 
 
 
@@ -511,8 +527,16 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     static const char *panelLabels[] = {
         "Alt.SL:", nullptr, "ApA:", "PeA:", "T+Ap:", "T+Ign:", "\xCE\x94V.Stg:"
     };
+    // On EVA the same seven rows carry a different set — see _scftEvaMode(). Row 1 is
+    // pinned to V.Orb here rather than following orbMode, so that V.Orb and V.Srf are
+    // both always on the panel: the pair is how you tell station-keeping from drifting.
+    static const char *evaPanelLabels[] = {
+        "Alt.SL:", "V.Orb:", "Alt.Rdr:", "V.Srf:", "Dist:", "V.Close:", "EC:"
+    };
+    const bool evaChrome = _scftEvaMode();
     for (uint8_t r = 0; r < 7; r++) {
-        const char *lbl = (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:") : panelLabels[r];
+        const char *lbl = evaChrome ? evaPanelLabels[r]
+                        : (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:") : panelLabels[r];
         printDispChrome(tft, PF, SCFT_PANEL_X, rowYFor(r, SCFT_PANEL_NR),
                         SCFT_PANEL_W, rowHFor(SCFT_PANEL_NR),
                         lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -538,6 +562,8 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 
     bool hasMnvr  = (state.mnvrTime > 0.0f);
     bool hasOrbit = (state.apoapsis > 0.0f || state.periapsis > 0.0f);
+    bool evaMode  = _scftEvaMode();
+    bool hasTgt   = state.targetAvailable;
     uint16_t fw = SCFT_PANEL_W;
     uint16_t hw = SCFT_PANEL_W / 2;
 
@@ -553,14 +579,47 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         attPanelVal(0, 0, "Alt.SL:", val, fg, TFT_BLACK);
     }
 
-    // Row 1 — V.Orb or V.Srf depending on orbital mode
+    // Row 1 — V.Orb or V.Srf depending on orbital mode; pinned to V.Orb on EVA, where
+    // row 3 carries V.Srf and the two are read as a pair.
     {
         uint16_t fg = TFT_DARK_GREEN;
-        const char *lbl = orbMode ? "V.Orb:" : "V.Srf:";
-        float vel = orbMode ? state.orbitalVel : state.surfaceVel;
+        const char *lbl = (evaMode || orbMode) ? "V.Orb:" : "V.Srf:";
+        float vel = (evaMode || orbMode) ? state.orbitalVel : state.surfaceVel;
         String val = hasOrbit ? fmtMs(vel) : "---";
         attPanelVal(1, 1, lbl, val, fg, TFT_BLACK);
     }
+
+    // Rows 2-6 on EVA — height above the surface, drift, and the approach numbers.
+    // Returns early: the split row 7 (RCS/SAS) and the dividers below are shared, so
+    // they are drawn by the common tail, not duplicated here.
+    if (evaMode) {
+        // Row 2 — Alt.Rdr. The one altitude that matters when a Kerbal is near a surface.
+        attPanelVal(2, 2, "Alt.Rdr:", formatAlt(state.radarAlt), TFT_DARK_GREEN, TFT_BLACK);
+
+        // Row 3 — V.Srf. Beside V.Orb above: station-keeping vs drifting.
+        attPanelVal(3, 3, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
+
+        // Row 4 — Dist to target, dashed when nothing is selected.
+        attPanelVal(4, 4, "Dist:", hasTgt ? formatAlt(state.tgtDistance) : String("---"),
+                    hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+
+        // Row 5 — V.Close. Same sign convention as TGT/DOCK: negative is closing.
+        attPanelVal(5, 5, "V.Close:", hasTgt ? fmtMs(state.tgtVelocity) : String("---"),
+                    hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+
+        // Row 6 — suit charge, on ROVER's thresholds (5% alarm, 20% caution).
+        {
+            float ec = constrain(state.electricChargePercent, 0.0f, 100.0f);
+            uint16_t fg, bg;
+            thresholdColor(ec,
+                           ROVER_EC_ALARM_PCT, TFT_WHITE,  TFT_RED,
+                           ROVER_EC_WARN_PCT,  TFT_YELLOW, TFT_BLACK,
+                           TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(ec));
+            attPanelVal(6, 6, "EC:", String(buf), fg, bg);
+        }
+    } else {
 
     // Row 2 — ApA
     {
@@ -610,8 +669,10 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
         attPanelVal(6, 6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
     }
+    }   // end of the non-EVA rows 2-6
 
-    // Row 7 split — RCS button (left half) | SAS button (right half)
+    // Row 7 split — RCS button (left half) | SAS button (right half).
+    // Shared: RCS and SAS are exactly as meaningful for a Kerbal on a jetpack.
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(SCFT_PANEL_NR);  // full row top (no ROW_PAD)
         uint16_t rh  = SCREEN_H - ry - 1;                        // bottom border on row 598 (599 overscanned)
@@ -677,6 +738,17 @@ static void _scftDrawTrim(KCM_TFT &tft) {
 }
 
 static void drawScreen_SCFT(KCM_TFT &tft) {
+    // Boarding or leaving a craft changes which seven rows the panel carries, and the
+    // row labels are chrome. Re-enter the screen so the chrome redraws with them --
+    // exactly how the V.Orb/V.Srf swap below has always been handled.
+    bool evaMode = _scftEvaMode();
+    if (evaMode != _scftPrevEvaMode) {
+        _scftPrevEvaMode      = evaMode;
+        _scftFullRedrawNeeded = true;
+        switchToScreen(screen_SCFT);
+        return;
+    }
+
     bool orbMode = _scftOrbMode();
     if (orbMode != _scftPrevOrbMode) {
         _scftPrevOrbMode      = orbMode;

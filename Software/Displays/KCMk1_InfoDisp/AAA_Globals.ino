@@ -125,8 +125,9 @@ ScreenType vehicleContextScreen() {
 //   5. Landed or splashed                -> TARGET if one is set, else VEHICLE INFO
 //   6. Burn imminent (or running)        -> MANEUVER
 //   7. Target in the approach window     -> TARGET
-//   8. Flying in an atmosphere, not climbing out -> NAVIGATION
-//   9. Everything else                   -> ORBIT
+//   8. On EVA                            -> TARGET
+//   9. Flying in an atmosphere, not climbing out -> NAVIGATION
+//  10. Everything else                   -> ORBIT
 //
 // ORBIT as the resting state is the change that the second panel pays for. The
 // single-display ladder deliberately never auto-selected it ("Orbit is manual-select
@@ -205,6 +206,18 @@ ScreenType missionContextScreen() {
   const float tgtLo = tgtActive ? TGT_CTX_RELEASE_MIN_M : DOCK_DIST_WARN_M;
   const float tgtHi = tgtActive ? TGT_CTX_RELEASE_MAX_M : TGT_CONTEXT_MAX_M;
   if (state.targetAvailable && state.tgtDistance > tgtLo && state.tgtDistance < tgtHi)
+    return screen_TGT;
+
+  // On EVA -> TARGET. A Kerbal outside the craft is doing exactly one thing: getting to
+  // something. The rules above already cover it once a target is set and close (DOCKING
+  // inside 200 m, TARGET out to 2 km); this catches the rest, including the case that
+  // matters most -- no target selected, where TARGET's "NO TARGET SET" fullscreen is
+  // honest advice rather than a dead end. ORBIT was the alternative, and a Kerbal has an
+  // apoapsis in the same sense a thrown wrench does.
+  //
+  // Below the surface rule deliberately: a Kerbal standing on the Mun is not on an
+  // approach, and rule 5 already answers for them.
+  if (state.vesselType == type_EVA)
     return screen_TGT;
 
   // Flying inside an atmosphere, and not climbing out of it -> NAVIGATION. ORBIT is

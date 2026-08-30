@@ -144,8 +144,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 6;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.6.0: NAVIGATION screen; shared compass renderer
+static const uint8_t SKETCH_VERSION_MINOR = 7;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.7.0: EVA instruments on SPACECRAFT and the mission ladder
 
 
 /***************************************************************************************
