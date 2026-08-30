@@ -16,13 +16,42 @@ typedef ILI9341_t3_font_t tFont;
 
 
 /***************************************************************************************
+   INFO DISPLAY UNIT SELECT
+   Which physical Info Display board this firmware image targets. Both boards run the
+   same image; the unit number picks the I2C slave address, the sidebar layout side,
+   the context-routing ladder and the sidebar button set.
+     1 = Info Display 1 -> I2C 0x12, panel A1 (left display panel, inboard half).
+         Vehicle-type display: the PFD family (SPACECRAFT / AIRCRAFT / ROVER / VEHICLE).
+         Sidebar on the LEFT (outboard) edge. No Ascent Autopilot console.
+     2 = Info Display 2 -> I2C 0x13, panel B1 (right display panel, inboard half).
+         Mission-phase display: LAUNCH / LANDING / DOCKING / TARGET / MANEUVER / ORBIT.
+         Sidebar on the RIGHT (outboard) edge. Owns the Ascent Autopilot console.
+   Set this before flashing each board.
+
+   This lives in the header rather than AAA_Config.ino because the layout constants
+   and sidebar tables below are compile-time conditional on it, and the header is
+   processed before any .ino tab in the concatenated sketch translation unit.
+****************************************************************************************/
+#ifndef INFO_DISP_UNIT
+#define INFO_DISP_UNIT 1
+#endif
+#if (INFO_DISP_UNIT != 1) && (INFO_DISP_UNIT != 2)
+#error "INFO_DISP_UNIT must be 1 (Info Display 1) or 2 (Info Display 2)"
+#endif
+
+// Role predicates — prefer these to bare INFO_DISP_UNIT comparisons at use sites.
+#define INFO_DISP_IS_PFD_UNIT      (INFO_DISP_UNIT == 1)   // vehicle-type display
+#define INFO_DISP_IS_MISSION_UNIT  (INFO_DISP_UNIT == 2)   // mission-phase display
+
+
+/***************************************************************************************
    SCREEN TYPE ENUM
-   Thirteen information screens reached via ten right-hand sidebar buttons: SCFT/ACFT/
-   ROVR share one "PFD" button (context- or title-selected, see SB_BTN_SCREEN in
-   AAA_Screens.ino), most of the rest map 1:1. LNCHAP (Ascent Autopilot) has its own
-   "ASC" button. ORBADV (Advanced Orbital Elements) has no button — it is a title-tap
-   sub-mode of ORB. LNDGRE (Re-entry) has its own button. ORBADV is manual-select only
-   (contextScreen() never auto-picks it). screen_COUNT is a sentinel — not a real screen.
+   Thirteen information screens reached via six sidebar buttons (see SB_BTN_SCREEN in
+   AAA_Screens.ino, which is per-unit). Several buttons cover more than one screen and
+   cycle their modes on a repeat press: PFD covers SCFT/ACFT/ROVR (+VEH on unit 2),
+   ORB covers ORB/ORBADV/MNVR, TGT covers TGT/DOCK, LNDG covers LNDG/LNDGRE. The
+   sixth button is LNCHAP (Ascent Autopilot console) on unit 2 and VEH on unit 1.
+   screen_COUNT is a sentinel — not a real screen.
 ****************************************************************************************/
 enum ScreenType : uint8_t {
   screen_LNCH   = 0,   // Launch
@@ -49,6 +78,20 @@ enum ScreenType : uint8_t {
 inline bool isManualLockScreen(ScreenType s) {
   return s == screen_LNDGRE;
 }
+
+// Manual selection latch. Set by any sidebar press that changes the screen, cleared
+// on vessel change and on flight-scene entry. While it is set, context auto-routing
+// leaves the screen alone — a deliberate pick outlives an incidental context event
+// (crossing docking range, a node appearing, an atmosphere transition). This matters
+// more with the two panels split by role than it did on a single display: each panel
+// now has a job, so a screen the pilot parked is a screen they are using.
+// Generalises the per-button _pfdManualOverride / _lnchManualOverride latches.
+extern bool _manualScreenLatch;
+void clearManualScreenLatch();
+
+// The gate every context auto-switch must pass: no manual latch held, and the active
+// screen is not one that pins itself (RE-ENTRY).
+bool contextSwitchAllowed();
 
 static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 
@@ -84,8 +127,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 0;
-static const uint8_t SKETCH_VERSION_PATCH = 8;   // 1.0.8: DOCK carries the same four angle rows as TGT
+static const uint8_t SKETCH_VERSION_MINOR = 1;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.1.0: per-unit panel roles (see README)
 
 
 /***************************************************************************************
@@ -103,6 +146,8 @@ extern const float LNDG_CHUTE_SEMI_DENSITY;
 extern const float LNDG_DROGUE_FULL_ALT;
 extern const float LNDG_MAIN_FULL_ALT;
 extern const uint8_t DISPLAY_ROTATION;
+extern const float TGT_CONTEXT_MAX_M;    // TARGET auto-select outer bound (m)
+extern const float MNVR_CONTEXT_LEAD_S;  // MANEUVER auto-select lead before ignition (s)
 
 // Flight state (populated by SimpitHandler.ino)
 extern bool simpitConnected;  // true after Simpit handshake succeeds
@@ -272,7 +317,51 @@ struct ReCorridor { float dangerLine, safeTop, atmoTop; bool valid; };
 static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // 1024
 static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
 static const uint16_t SIDEBAR_W = 84;
+static const uint16_t CONTENT_W = SCREEN_W - SIDEBAR_W;   // 940 (moved here from AAA_Screens.ino
+                                                          // so the touch helpers below can see it)
 static const uint8_t  ROW_COUNT = 24;  // max cache slots per screen (Ascent Autopilot uses the most)
+
+
+/***************************************************************************************
+   SIDEBAR SIDE — per unit
+   Both info displays sit inboard on their own panel, so their inner edges meet at the
+   console centreline: Annunciator | Info 1 || Info 2 | Resource Display. Putting each
+   sidebar on its panel's OUTBOARD edge mirrors the two about that centreline and buys
+   three things:
+     - the two content areas become adjacent, so the PFD on unit 1 and the phase screen
+       on unit 2 read as one field rather than being split by 168 px of button column;
+     - every content-area touch target on unit 1 (RCS/SAS/GEAR, the pre-launch dismiss
+       tap) moves 84 px inboard, toward the pilot, rather than away;
+     - each sidebar falls under its own hand — left off the A2 throttle/translation
+       stick, right off the B2 rotation stick — so the forearm approaches from outboard
+       and does not cross the content it is navigating.
+   Content occupies [CONTENT_X, CONTENT_X + CONTENT_W); the sidebar occupies
+   [SIDEBAR_X, SIDEBAR_X + SIDEBAR_W). The 1 px divider rule always sits on the
+   sidebar's inboard edge, against the content.
+****************************************************************************************/
+#if INFO_DISP_IS_PFD_UNIT
+static const uint16_t SIDEBAR_X     = 0;                    // left (outboard on panel A1)
+static const uint16_t CONTENT_X     = SIDEBAR_W;
+static const uint16_t SIDEBAR_DIV_X = SIDEBAR_W - 1;        // divider on the inboard edge
+static const uint16_t SIDEBAR_BTN_X = 0;
+#else
+static const uint16_t SIDEBAR_X     = SCREEN_W - SIDEBAR_W; // right (outboard on panel B1)
+static const uint16_t CONTENT_X     = 0;
+static const uint16_t SIDEBAR_DIV_X = SCREEN_W - SIDEBAR_W;
+static const uint16_t SIDEBAR_BTN_X = SCREEN_W - SIDEBAR_W + 1;
+#endif
+
+// Touch coordinates arrive in panel space. Screens lay themselves out in content
+// space, which is offset by CONTENT_X, so a content-area handler must be given the
+// translated x. On unit 2 CONTENT_X is 0 and these are all identities.
+inline bool     touchInSidebar(uint16_t x) { return x >= SIDEBAR_X && x < SIDEBAR_X + SIDEBAR_W; }
+inline bool     touchInContent(uint16_t x) { return x >= CONTENT_X && x < CONTENT_X + CONTENT_W; }
+inline uint16_t touchContentX(uint16_t x)  { return (uint16_t)(x - CONTENT_X); }
+
+// Drawing region control (AAA_Screens.ino). Screens draw in content space; the canvas
+// origin is offset so those coordinates land in the content region of the panel.
+void canvasContentRegion(KCM_TFT &tft);
+void canvasPanelRegion(KCM_TFT &tft);
 
 
 /***************************************************************************************
@@ -321,10 +410,15 @@ void updateScreen(KCM_TFT &tft, ScreenType s);
 // Standby screen (shown when not in a flight scene)
 void drawStandbyScreen(KCM_TFT &tft);
 
-// Context-dependent screen selection on vessel/scene change
-ScreenType contextScreen();
+// Context-dependent screen selection on vessel/scene change. contextScreen() is the
+// entry point every caller uses; it dispatches to the ladder for this unit. Both
+// ladders are declared — and compiled — on both units, so flipping INFO_DISP_UNIT
+// changes only which one runs.
+ScreenType contextScreen();          // -> vehicle or mission ladder, per INFO_DISP_UNIT
+ScreenType vehicleContextScreen();   // Info Display 1 — "what am I flying?"
+ScreenType missionContextScreen();   // Info Display 2 — "what phase am I in?"
 
-// Sidebar button ↔ screen mapping (10 buttons; PFD covers SCFT/ACFT/ROVR)
+// Sidebar button ↔ screen mapping (6 buttons; PFD covers SCFT/ACFT/ROVR, +VEH on unit 2)
 uint8_t    screenToButton(ScreenType s);
 ScreenType pfdContextScreen();
 ScreenType pfdScreenForSel(uint8_t sel);

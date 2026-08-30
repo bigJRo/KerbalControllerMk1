@@ -49,7 +49,7 @@
 
 // Right-hand numeric readout column (right-aligned to the content edge).
 static const int16_t LNCH_AS_READOUT_W = 360;
-static const int16_t LNCH_AS_READOUT_X = SCREEN_W - SIDEBAR_W - LNCH_AS_READOUT_W;   // 580
+static const int16_t LNCH_AS_READOUT_X = CONTENT_W - LNCH_AS_READOUT_W;              // 580
 
 // Left graphics panel: everything left of the readout column.
 static const int16_t LNCH_AS_LP_LEFT   = 0;
@@ -1536,7 +1536,7 @@ static const char *_lnchAsLabels[8] = {
 // original. Ascent-only — the Circularization right panel keeps the shared
 // LNCH_AS_* geometry until its own redesign pass.
 static const int16_t LNCH_AS2_RPANEL_W = 360;
-static const int16_t LNCH_AS2_RPANEL_X = SCREEN_W - SIDEBAR_W - LNCH_AS2_RPANEL_W;  // 580
+static const int16_t LNCH_AS2_RPANEL_X = CONTENT_W - LNCH_AS2_RPANEL_W;             // 580
 static const int16_t LNCH_AS2_RPANEL_Y = LNCH_AS_PANEL_Y;                            // 63
 static const int16_t LNCH_AS2_ROW_H    = (SCREEN_H - LNCH_AS_PANEL_Y) / 8;           // 67
 static const int16_t LNCH_AS2_RPANEL_H = LNCH_AS2_ROW_H * 8;                         // 536

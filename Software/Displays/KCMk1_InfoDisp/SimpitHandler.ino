@@ -107,17 +107,21 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             Serial.print(F(" tgtDist="));
             Serial.println(state.tgtDistance);
           }
-          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
-          if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
+          // A held manual pick and self-pinning screens (RE-ENTRY) stay put — don't
+          // let an auto route steal them.
+          if (contextSwitchAllowed()) switchToScreen(contextScreen());
           // TARGETINFO may not have arrived yet — set flag to re-check for docking context
           // once target distance is known (catches switching to a vessel near a dock target)
           _pendingDockCheck = true;
         }
 
-        // Pre-launch board: only for vessel types that would go to LNCH screen.
-        // Planes → ACFT and Rovers → ROVR even on the pad, so skip the board for them.
-        bool planeOrRover = (state.vesselType == type_Plane || state.vesselType == type_Rover);
-        bool isPreLaunch  = (!planeOrRover && (state.situation & sit_PreLaunch) != 0);
+        // Pre-launch board. The plane/rover exclusion this used to carry existed only
+        // because vessel-type routing sat above the pre-launch rule on a single
+        // display: a spaceplane on the pad went to ACFT, so arming the board would
+        // have set a mode for a screen the pilot could not see. The two ladders no
+        // longer compete — pre-launch is a phase, answered on the mission panel — so
+        // the board is armed for every vessel type on the pad, spaceplanes included.
+        bool isPreLaunch = (state.situation & sit_PreLaunch) != 0;
         if (isPreLaunch && !_lnchPrelaunchMode && !_lnchPrelaunchDismissed) {
           _lnchPrelaunchMode = true;
           if (activeScreen == screen_LNCH) switchToScreen(screen_LNCH);
@@ -311,16 +315,12 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             Serial.print(F(" tgtDist="));
             Serial.println(state.tgtDistance);
           }
-          // KSP may report targetAvailable=false even while sending TARGETINFO with
-          // a valid distance — use distance alone to confirm a nearby docking target.
-          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
-          if (!isManualLockScreen(activeScreen)) {
-            if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
-              switchToScreen(screen_DOCK);
-            } else {
-              switchToScreen(contextScreen());
-            }
-          }
+          // Re-run the ladder now that target distance is known. The DOCK special
+          // case the old code had here is redundant: the mission ladder tests the
+          // same distance in rule 3, and on the vehicle-type unit DOCK is not a
+          // destination at all, so routing there would have been wrong.
+          // A held manual pick and self-pinning screens (RE-ENTRY) stay put.
+          if (contextSwitchAllowed()) switchToScreen(contextScreen());
         }
       }
       break;
@@ -383,8 +383,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
                                    : F("InfoDisp: Leaving flight scene"));
       if (flightScene) {
         demoMode = false;
-        // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
-        if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
+        // Entering a flight scene is a fresh start — release any held manual pick so
+        // the panel opens on its context screen rather than wherever it was parked.
+        clearManualScreenLatch();
+        if (contextSwitchAllowed()) switchToScreen(contextScreen());
         simpit.requestMessageOnChannel(0);
       } else {
         // Non-flight (menus, tracking station, etc.) — show standby splash
@@ -412,6 +414,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
         _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
         _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
+        clearManualScreenLatch();      // new vessel — release the held manual pick
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;
         _drogueDeployed  = false;

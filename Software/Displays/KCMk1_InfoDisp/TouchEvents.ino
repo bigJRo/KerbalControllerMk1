@@ -26,8 +26,19 @@
 static const uint32_t TOUCH_DEBOUNCE_MS  = KCM_TOUCH_DEBOUNCE_MS;     // #3B from SystemConfig
 static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px — max coordinate movement across reads
 
+// Repeat press on the SAME sidebar button — a deliberate mode cycle. The full 500 ms
+// window is a phantom-rejection budget sized for an arbitrary tap anywhere on the
+// panel; it makes cycling punitive, since reaching VEH from SPC costs three presses
+// and therefore 1.5 s of enforced waiting. A second press on a button the pilot just
+// pressed is the least ambiguous input the panel receives, and layer 7 (require-
+// release) already guarantees the finger lifted in between, so it gets a shorter
+// window. Every other tap — a first press, a different button, anything in the
+// content area — keeps the full budget.
+static const uint32_t TOUCH_CYCLE_DEBOUNCE_MS = 150;
+
 static uint32_t lastTouchTime      = 0;
 static bool     _waitForRelease    = false;
+static uint8_t  _lastSidebarBtn    = 0xFF;   // last sidebar button pressed (0xFF = none)
 
 // Boot phantom guard: require the panel to be seen untouched once before accepting
 // any tap, so a settling touch from the FT5316 right after reset cannot fire a
@@ -59,11 +70,19 @@ void processTouchEvents() {
 
   if (_waitForRelease) return;
 
-  uint32_t now = millis();
-  if (now - lastTouchTime < TOUCH_DEBOUNCE_MS) return;
-
   uint16_t x1 = lastTouch.points[0].x;
   uint16_t y1 = lastTouch.points[0].y;
+
+  // Pick the debounce window before spending 8 ms on the confirmation re-read. The
+  // first-read coordinates are good enough to classify the tap; the confirmation
+  // still has to agree with them, so a phantom cannot buy the shorter window.
+  uint32_t now        = millis();
+  uint32_t debounceMs = TOUCH_DEBOUNCE_MS;
+  if (touchInSidebar(x1) && _lastSidebarBtn != 0xFF &&
+      (uint8_t)(y1 / sbBtnH()) == _lastSidebarBtn) {
+    debounceMs = TOUCH_CYCLE_DEBOUNCE_MS;
+  }
+  if (now - lastTouchTime < debounceMs) return;
 
   // Double-read after 8ms — confirm the touch is real and stable (phantom noise
   // jumps between reads; real touches hold position).
@@ -99,6 +118,9 @@ void processTouchEvents() {
   // Stamp debounce and require-release immediately — suppresses burst tail
   lastTouchTime = now;
   _waitForRelease = true;
+  // Cleared here and re-set below only if this tap lands on a sidebar button, so the
+  // shortened cycle window is available strictly for a run of presses on one button.
+  _lastSidebarBtn = 0xFF;
 
   if (debugMode) {
     Serial.print(F("InfoDisp: Touch count="));
@@ -111,7 +133,7 @@ void processTouchEvents() {
 
   // Pre-launch board: tap anywhere in content area to advance to ascent mode
   if (activeScreen == screen_LNCH && _lnchPrelaunchMode &&
-      x2 < SCREEN_W - SIDEBAR_W && y2 >= TITLE_TOP) {
+      touchInContent(x2) && y2 >= TITLE_TOP) {
     _lnchPrelaunchMode      = false;
     _lnchPrelaunchDismissed = true;   // prevent FLIGHT_STATUS from re-entering
     _lnchOrbitalMode        = false;
@@ -125,20 +147,23 @@ void processTouchEvents() {
 
   // Ascent Autopilot: content-area taps drive its on-screen keypad / editable
   // fields / ARM button. Sidebar taps (x past the content area) fall through.
-  if (activeScreen == screen_LNCHAP && x2 < SCREEN_W - SIDEBAR_W && y2 >= TITLE_TOP) {
-    apScreenTouch(x2, y2);
+  if (activeScreen == screen_LNCHAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    // apScreenTouch() lays its keypad out in content space — hand it the translated x.
+    apScreenTouch(touchContentX(x2), y2);
     clearTouchISR();
     return;
   }
 
-  // Sidebar hit test — right-hand SIDEBAR_W column, 6 buttons (SB_BTN_SCREEN).
+  // Sidebar hit test — the SIDEBAR_W column on this unit's outboard edge (left on
+  // unit 1, right on unit 2), 6 buttons (SB_BTN_SCREEN).
   // First press of a button (from another screen) goes to that button's context/
   // primary mode; pressing the button that already owns the active screen cycles
   // its modes. Context auto-select still runs on scene/vessel change; a press
   // latches a manual override for the multi-mode buttons.
-  if (x2 >= SCREEN_W - SIDEBAR_W) {
+  if (touchInSidebar(x2)) {
     uint8_t btn = (uint8_t)(y2 / sbBtnH());
     if (btn >= SB_BTN_COUNT) return;
+    _lastSidebarBtn = btn;   // arms the shortened debounce for a repeat press
 
     bool       active   = (screenToButton(activeScreen) == btn);
     ScreenType target   = activeScreen;
@@ -179,10 +204,14 @@ void processTouchEvents() {
           target = screen_LNCH; doSwitch = true;
           break;
         case SB_PFD_BTN: {
+          // Ring depth is per unit: unit 1 promoted VEH to its own button, so its
+          // ring is the three attitude screens (SPC -> ACFT -> ROVR). Unit 2, where
+          // the PFD button is the off-role one, keeps all four in the ring.
+          const uint8_t PFD_RING_LEN = INFO_DISP_IS_PFD_UNIT ? 3 : 4;
           uint8_t cur = (activeScreen == screen_VEH)  ? 3 :
                         (activeScreen == screen_ROVR) ? 2 :
                         (activeScreen == screen_ACFT) ? 1 : 0;
-          _pfdManualSel      = (cur + 1) % 4;        // SPC -> ACFT -> ROVR -> VEH -> SPC
+          _pfdManualSel      = (uint8_t)((cur + 1) % PFD_RING_LEN);
           _pfdManualOverride = true;
           target = pfdScreenForSel(_pfdManualSel); doSwitch = true;
           break;
@@ -208,6 +237,9 @@ void processTouchEvents() {
     }
 
     if (doSwitch) {
+      // A deliberate pick outlives incidental context events until the vessel or the
+      // scene changes — see contextSwitchAllowed() in AAA_Globals.ino.
+      _manualScreenLatch = true;
       switchToScreen(target);
       clearTouchISR();
     }

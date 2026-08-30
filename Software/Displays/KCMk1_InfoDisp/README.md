@@ -1,6 +1,6 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.0.0
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.1.0
 Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -10,9 +10,22 @@ Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1
 
 The Information Display is a 1024×600 touchscreen panel that presents real-time KSP flight telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance.
 
-The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Aircraft/Rover/Vehicle (PFD), Orbit (+ Advanced Elements + Maneuver), Target/Docking, Landing (Powered Descent + Re-entry) — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a right-hand sidebar of six buttons. A first press of a button jumps to its context/primary screen; pressing the button that already owns the active screen cycles that button's modes, and the caption shows the active mode. The PFD button covers the four vehicle-type screens (Spacecraft/Aircraft/Rover/Vehicle) and the ORB button covers Orbit, Advanced Elements, and Maneuver. Title-bar taps no longer switch screens.
+The panel provides thirteen screens — Launch, Ascent Autopilot, Spacecraft/Aircraft/Rover/Vehicle (PFD), Orbit (+ Advanced Elements + Maneuver), Target/Docking, Landing (Powered Descent + Re-entry) — ordered to follow mission phase progression from pre-launch through landing. Navigation is via a sidebar of six buttons on the panel's outboard edge. A first press of a button jumps to its context/primary screen; pressing the button that already owns the active screen cycles that button's modes, and the caption shows the active mode. Title-bar taps no longer switch screens.
 
-**Context-switching:** The display automatically selects the most appropriate screen when the scene or vessel changes. Planes in the atmosphere route to AIRCRAFT, rovers to ROVER, pre-launch vessels to LAUNCH (with the pre-launch board), sub-orbital landers to LANDING (powered descent), vessels near a docking target to DOCKING, recoverable vessels to VEHICLE INFO, and everything else to SPACECRAFT (PFD). Orbit is never auto-selected — reach it from the sidebar.
+**Two units, two roles.** The controller carries two Info Displays, and they are not clones. Both run this firmware and every screen is reachable from either panel, but each has a job and a different set of defaults:
+
+| | Info Display 1 (0x12, panel A1) | Info Display 2 (0x13, panel B1) |
+|---|---|---|
+| Role | Vehicle-type — *what am I flying?* | Mission-phase — *what phase am I in?* |
+| Holds | The PFD family: SPACECRAFT / AIRCRAFT / ROVER / VEHICLE | LAUNCH / LANDING / DOCKING / TARGET / MANEUVER / ORBIT |
+| Resting screen | SPACECRAFT (PFD) | ORBIT |
+| Sidebar edge | Left (outboard on A1) | Right (outboard on B1) |
+| Sixth button | VEH — Vehicle Info | ASC — Ascent Autopilot console |
+| Ascent Autopilot | Not carried; cannot send commands | Sole owner of the command channel |
+
+Both panels sit inboard on their own half of the console, so their content areas meet at the centreline and read as one field, with the two button columns falling outboard under the pilot's respective hands.
+
+**Context-switching:** Each panel automatically selects the most appropriate screen for its own role when the scene or vessel changes; see [Context Switching](#context-switching) below. A deliberate sidebar selection latches and survives context events until the vessel or the scene changes.
 
 **Colour conventions** are consistent across all screens: dark green = nominal, yellow = caution, white-on-red = alarm, dark grey = inactive/not applicable. Alarm thresholds are aligned with the KCMk1 Annunciator C&W panel.
 
@@ -101,6 +114,7 @@ All tunables are in `AAA_Config.ino`. Cross-panel aligned thresholds are sourced
 
 | Constant | Default | Description |
 |----------|---------|-------------|
+| `INFO_DISP_UNIT` | `1` | **In `KCMk1_InfoDisp.h`, not this file.** `1` = Info Display 1 (0x12, vehicle-type role, left sidebar), `2` = Info Display 2 (0x13, mission-phase role, right sidebar, owns the Ascent Autopilot). Set before flashing each board. It lives in the header because the layout constants and sidebar tables are compile-time conditional on it. |
 | `debugMode` | `false` | Serial debug output. Set `false` for production. |
 | `demoMode` | `false` | `true` = sine-wave demo, no KSP. `false` = live Simpit. |
 | `DISPLAY_ROTATION` | `0` | `0` = normal, `2` = 180° inverted. |
@@ -130,16 +144,25 @@ Cross-panel aligned thresholds (edit in `KCMk1_SystemConfig.h`):
 | `DV_STG_ALARM_MS` | `150.0` m/s | `CW_LOW_DV_MS` |
 | `LNCH_BURNTIME_ALARM_S` | `60.0` s | `CW_LOW_BURN_S` |
 
+### Context Routing Bounds (Info Display 2)
+
+| Constant | Default | Description |
+|----------|---------|-------------|
+| `TGT_CONTEXT_MAX_M` | `2000.0` m | Outer bound of the TARGET auto-select window. Inside `DOCK_DIST_WARN_M` (200 m) the DOCKING screen takes priority; past this the RPOD scope has nothing useful to show and ORBIT is the better view. |
+| `MNVR_CONTEXT_LEAD_S` | `600.0` s | How far ahead of ignition a planned node auto-selects MANEUVER. Gated on the burn being imminent rather than on a node merely existing, since nodes persist long after they matter. |
+
 For the full threshold listing (aircraft, landing, docking, orbit, spacecraft thresholds), see `AAA_Config.ino`.
 
 ---
 
 ## I2C Protocol
 
-The InfoDisp operates as an I2C slave on the Wire2 bus (`KCM_I2C_BUS`, pins 24/25). Two identical Info Display boards run this same firmware; the slave address is chosen at compile time by `INFO_DISP_UNIT` in `AAA_Config.ino`:
+The InfoDisp operates as an I2C slave on the Wire2 bus (`KCM_I2C_BUS`, pins 24/25). Both Info Display boards run this same firmware image; the unit is chosen at compile time by `INFO_DISP_UNIT` in `KCMk1_InfoDisp.h`:
 
 - `INFO_DISP_UNIT 1` → **0x12** (`KCM_I2C_ADDR_INFODISP`) — Info Display 1
 - `INFO_DISP_UNIT 2` → **0x13** (`KCM_I2C_ADDR_INFODISP_2`) — Info Display 2
+
+Beyond the address, the unit selects the panel's role: which context ladder runs, which side the sidebar sits on, what button 5 is, and whether the Ascent Autopilot command channel is live. See the role table in the Overview.
 
 The sync/framing byte (0xAE) is shared by both units. The System Info Display (0x14) is separate hardware and is future work — see `Documents/Developer/Hardware_Reference.md`. In the byte layouts below, `I2C_SLAVE_ADDR` resolves to whichever address the build targets.
 
@@ -202,16 +225,19 @@ After initialisation, the InfoDisp asserts INT and spins on `PROCEED` (0x2) befo
 
 ## Screens
 
-The panel displays thirteen screens navigated by six right-hand sidebar buttons. Screen order follows mission phase progression. A first press of a button jumps to its context/primary screen; pressing the button that already owns the active screen cycles its modes, and the button caption shows the active mode. Several buttons are multi-mode: PFD covers SPACECRAFT / AIRCRAFT / ROVER / VEHICLE, ORB covers ORBIT / Advanced Elements / MANEUVER, TGT covers TARGET / DOCKING, and LNDG covers POWERED DESCENT / RE-ENTRY. Title-bar taps no longer switch screens.
+The panel displays thirteen screens navigated by six outboard-edge sidebar buttons. Screen order follows mission phase progression. A first press of a button jumps to its context/primary screen; pressing the button that already owns the active screen cycles its modes, and the button caption shows the active mode. Several buttons are multi-mode: PFD covers SPACECRAFT / AIRCRAFT / ROVER (plus VEHICLE on unit 2), ORB covers ORBIT / Advanced Elements / MANEUVER, TGT covers TARGET / DOCKING, and LNDG covers POWERED DESCENT / RE-ENTRY. Title-bar taps no longer switch screens.
+
+Buttons 0–4 are identical on both units, so every screen stays reachable from either panel and losing one display never costs a screen class. Only button 5 differs.
 
 | Btn | Sidebar | Screen(s) | First press / cycle | Caption |
 |-----|---------|-----------|---------------------|---------|
 | 0 | LNCH | LAUNCH | Pre-launch board shown automatically on pad (a press dismisses it into ascent); otherwise press cycles ASCENT ↔ CIRCULARIZATION | PRE / ASC / CIRC |
-| 1 | PFD | SPACECRAFT / AIRCRAFT / ROVER / VEHICLE | First press = context screen (SPC/ACFT/ROVR by vessel; VEH auto-selected for recoverable vessels); press cycles SPC → ACFT → ROVR → VEH | SPC / ACFT / ROVR / VEH |
+| 1 | PFD | SPACECRAFT / AIRCRAFT / ROVER (/ VEHICLE) | First press = context screen (SPC/ACFT/ROVR by vessel). Press cycles SPC → ACFT → ROVR on unit 1, which carries VEH on its own button; unit 2 keeps the four-deep ring SPC → ACFT → ROVR → VEH | SPC / ACFT / ROVR / VEH |
 | 2 | ORB | ORBIT / ORBIT ADVANCED / MANEUVER | First press = ORBIT (Apsides); press cycles ORB → ORB+ (Advanced Elements) → MNVR (Maneuver) | ORB / ORB+ / MNVR |
 | 3 | TGT | TARGET / DOCKING | First press = DOCKING when a target is within docking range, else TARGET; press cycles TGT ↔ DOCK. NO TARGET SET / DOCKED fullscreen when applicable | TGT / DOCK |
 | 4 | LNDG | POWERED DESCENT / RE-ENTRY | First press = POWERED DESCENT; press cycles DESC ↔ ENTR | DESC / ENTR |
-| 5 | ASC | ASCENT AUTOPILOT | Standalone — parked at the bottom, physically separated and drawn in a distinct purple. On-screen keypad for parameter entry; touch ARM/DISARM | ASC |
+| 5 | ASC *(unit 2)* | ASCENT AUTOPILOT | Standalone — parked at the bottom, physically separated and drawn in a distinct purple. On-screen keypad for parameter entry; touch ARM/DISARM. Unit 2 only: it is the sole owner of the autopilot command channel | ASC |
+| 5 | VEH *(unit 1)* | VEHICLE INFO | Standalone, single-mode. Promoted out of the PFD ring on the vehicle-type panel — it is where the ladder routes a recoverable vessel, and moving it here shortens that panel's PFD ring from four modes to three | VEH |
 
 **LNCH** — *Pre-launch board* (automatic when `sit_PreLaunch`, bypassed for planes and rovers): vessel name, type, SAS, RCS, throttle, EC%, crew count, CommNet signal, ΔV.Tot, and parachute CAG states. Tap content area or launch to advance to ascent. *Ascent:* Alt.SL, V.Srf, V.Vrt, ApA, T+Ap, Throttle, T.Burn, ΔV.Stg. *Circularization:* Alt.SL, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg. Auto-switches at ~6% body radius with hysteresis.
 
@@ -239,17 +265,37 @@ The panel displays thirteen screens navigated by six right-hand sidebar buttons.
 
 ### Context Switching
 
-`contextScreen()` selects the screen automatically on vessel or scene change, in priority order:
+Each panel runs its own ladder. Splitting them is what makes two displays worth more than one: the single-display ladder had to interleave vessel-type and mission-phase rules and rank one above the other, and vessel type won — so a spaceplane on the pad never saw the pre-launch board, and neither a spaceplane nor a rover closing on a target ever auto-routed to DOCKING. With a panel per question, neither ladder masks the other and both are complete.
 
-1. Plane in the atmosphere (`type_Plane` && `inAtmo`) → AIRCRAFT
-2. Rover (`type_Rover`) → ROVER
-3. Pre-launch (`sit_PreLaunch`) → LAUNCH (pre-launch board) — landed vessels are *not* auto-routed
-4. Sub-orbital lander (`type_Lander` && `sit_SubOrb`) → LANDING (powered descent)
-5. Target within 200 m (`DOCK_DIST_WARN_M`) → DOCKING
-6. Recoverable vessel → VEHICLE INFO
-7. Everything else → SPACECRAFT (PFD) — Orbit is manual-select from the sidebar
+**Info Display 1 — `vehicleContextScreen()`**
 
-A deferred dock-check fires on the next `TARGETINFO` message after a vessel switch to catch the case where target distance is not yet known at switch time.
+| Priority | Condition | Screen |
+|---|---|---|
+| 1 | Recoverable vessel | VEHICLE INFO |
+| 2 | Rover | ROVER |
+| 3 | Plane in the atmosphere | AIRCRAFT |
+| 4 | Everything else | SPACECRAFT (PFD) |
+
+**Info Display 2 — `missionContextScreen()`**
+
+| Priority | Condition | Screen |
+|---|---|---|
+| 1 | Pre-launch (`sit_PreLaunch`) — every vessel type, spaceplanes included | LAUNCH (pre-launch board) |
+| 2 | Sub-orbital lander (`type_Lander` && `sit_SubOrb`) | POWERED DESCENT |
+| 3 | Target within `DOCK_DIST_WARN_M` (200 m) | DOCKING |
+| 4 | Node planned and T+Ign < `MNVR_CONTEXT_LEAD_S` (10 min), including during the burn | MANEUVER |
+| 5 | Target between 200 m and `TGT_CONTEXT_MAX_M` (2000 m) | TARGET |
+| 6 | Everything else | ORBIT |
+
+Three of these are new, and all three are things a single display could not afford:
+
+- **ORBIT as the resting state.** Previously "Orbit is never auto-selected — reach it from the sidebar", because auto-selecting it would have cost the pilot their attitude reference. Info Display 1 now holds that permanently.
+- **MANEUVER on an imminent burn** (rule 4), gated on time-to-ignition rather than on a node merely existing — nodes persist long after they stop being the pilot's concern. Negative time-to-ignition passes too, so the screen stays up through the burn.
+- **TARGET in the approach window** (rule 5), bounded at both ends: inside 200 m rule 3 has already taken it, and past 2000 m the RPOD scope has nothing useful to show.
+
+A deferred dock-check fires on the next `TARGETINFO` message after a vessel switch to catch the case where target distance is not yet known at switch time; it re-runs the ladder rather than routing to DOCKING directly.
+
+**Manual selection latch.** Any sidebar press that changes the screen latches that choice, and context auto-routing leaves the panel alone until the vessel changes or a flight scene is entered. RE-ENTRY additionally pins itself (`isManualLockScreen()`) so debris shed during descent cannot displace it. `contextSwitchAllowed()` is the gate every auto-route passes.
 
 ### Annunciator Alignment
 
@@ -268,7 +314,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 |------|-------------|
 | `KCMk1_InfoDisp.ino` | `setup()` and `loop()` only |
 | `AAA_Config.ino` | All tunable constants |
-| `AAA_Globals.ino` | Global state, `AppState`, `switchToScreen()`, `contextScreen()`, `drawStandbyScreen()` |
+| `AAA_Globals.ino` | Global state, `AppState`, `switchToScreen()`, the two context ladders + `contextScreen()`, the manual-selection latch, `drawStandbyScreen()` |
 | `AAA_Screens.ino` | Shared screen infrastructure, layout constants, `drawValue()` helper, dispatch switches |
 | `Screen_LNCH.ino` | Launch dispatcher (selects pre-launch / ascent / circularization) |
 | `Screen_LNCH_PreLaunch.ino` | Launch pre-launch checklist board |
@@ -290,7 +336,7 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_ROVR.ino` | Rover — compass, FWD/REV drive-state blocks, tilt indicators (screen index 9) |
 | `TouchEvents.ino` | Touch debounce and sidebar dispatch (mode cycling / screen switch) |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
-| `I2CSlave.ino` | I2C slave at 0x12/0x13 (`INFO_DISP_UNIT`) — packet build/fill, command processing, boot handshake |
+| `I2CSlave.ino` | I2C slave at 0x12/0x13 (`INFO_DISP_UNIT`, set in `KCMk1_InfoDisp.h`) — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Randomised KSP-themed boot sequences (B: Mission Log, C: Loading Tips, E: Pre-Flight Checklist) |
 | `Demo.ino` | Demo mode — sine-wave `AppState` animation |
 
@@ -316,6 +362,7 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 
 | Version | Notes |
 |---------|-------|
+| **1.1.0** | **The two Info Displays stop being clones.** They ran byte-identical firmware differing only in I2C address, so both auto-routed to the same screen at the same moment: two panels showing one screenful of information, twice, and re-converging at exactly the busiest moments — crossing 200 m to a target snapped both to DOCKING and destroyed whatever second view the pilot had set up. Each panel now has a role. **Info Display 1 is the vehicle-type panel** (*what am I flying?*) and holds the PFD family; **Info Display 2 is the mission-phase panel** (*what phase am I in?*) and holds the plan and target views. This is not just a default: the old `contextScreen()` was two unrelated ladders interleaved, forced to rank one above the other, and vessel type won — so its rules 1–2 masked its rules 3–5. A spaceplane on the pad never saw the pre-launch board; neither a spaceplane nor a rover closing on a target ever auto-routed to DOCKING. `contextScreen()` now splits into `vehicleContextScreen()` and `missionContextScreen()`, one per panel, and neither masks the other. The plane/rover exclusion on the pre-launch board — which existed only to paper over that masking — is gone. **Three routes the second panel pays for:** ORBIT becomes the mission panel's resting state (previously never auto-selected, because on one display it would have stolen the attitude reference); MANEUVER auto-selects on an imminent burn, gated on time-to-ignition (`MNVR_CONTEXT_LEAD_S`, 10 min) rather than on a node merely existing, and stays up through the burn; TARGET auto-selects in a bounded approach window (200 m to `TGT_CONTEXT_MAX_M`, 2000 m). **Manual selection now latches** — any sidebar press survives context events until the vessel or scene changes (`contextSwitchAllowed()`), generalising the per-button `_pfdManualOverride` pattern; with each panel doing a job, a screen the pilot parked is a screen they are using. **Sidebars moved outboard.** Both panels sit inboard on their own half of the console, so their inner edges meet at the centreline; unit 1's sidebar moves to its left edge, mirroring the pair about that line. The content areas become adjacent and read as one field, every content-area touch target on unit 1 moves 84 px inboard rather than away, and each button column falls under its own hand. Implemented as a canvas-origin offset (`canvasContentRegion()`) rather than by editing ~700 drawing calls: the RA8876 canvas stride stays `SCREEN_W`, so advancing the base address by `CONTENT_X` pixels shifts every row identically. Unit 2's offset is zero and its register writes are unchanged. **Button 5 is per-unit:** unit 2 keeps the Ascent Autopilot console and is now its sole owner — `apEnqueueCmd()` compiles to a no-op on unit 1, so the single-editor assumption behind the pending-edit reconcile is a property of the command channel rather than of the navigation table. Unit 1 carries VEH there instead, which also shortens its PFD ring from four modes to three. **Cycling is quicker:** a repeat press on the same sidebar button now debounces at 150 ms instead of 500 ms (a first press, a different button, and content-area taps keep the full window), so a three-deep cycle no longer costs 1.5 s of enforced waiting. Buttons 0–4 remain identical on both units and all thirteen screens stay reachable from either panel — the units differ in defaults, not in capability. `INFO_DISP_UNIT` moved from `AAA_Config.ino` to `KCMk1_InfoDisp.h`, since the layout constants and sidebar tables are now compile-time conditional on it. |
 | **1.0.8** | **DOCK now carries the same four angle rows as TGT.** It showed only `V.Brg`/`V.Elv`, as two full-width rows, with the nose-to-port angle available solely as the unsigned `Nos.Off` magnitude — so the signed pair TGT shows was missing on the screen that needs it most. Rows 4 and 5 are now split pairs mirroring TGT exactly: `Brg`\|`Elv` (the port relative to the nose, informational) then `V.Brg`\|`V.Elv` (approach-path error about the target axis, colour-banded, `---` past 90°). `Nos.Off` keeps the freed full-width row 6 and stays colour-banded, so alignment status is still signalled and DOCK is a superset of TGT rather than a rearrangement. One trade-off: the half-width cells cannot hold a decimal — measured against the real font, `V.Brg:` plus `+12.3°` needs 204 px against 178 available — so both pairs are whole degrees, matching TGT. `V.Lat` (m/s, two decimals) remains the precision instrument at docking range, and the marker itself gives sub-degree visual resolution. |
 | **1.0.7** | **Off-scale markers are now dimmed instead of silently lying.** All three reticles clamp a marker that falls beyond full scale, which keeps its direction honest but discards its distance — and drew it identically to a real reading. The ambiguous bands were wide: DOCK honest to 17.3° then pinned all the way to 162.9° where the anti-target takes over (146° wide), TGT honest to 51.9° then pinned to 128.5° (77°), MNVR honest to 17.3° then pinned to 180° with no antipodal marker at all (163°). A pinned marker is now drawn at half brightness — `TFT_DIM_VIOLET` for the port/target, `TFT_DIM_NEON_GRN` for velocity, `TFT_NAVY` for MNVR's maneuver diamond — so it reads as pegged rather than as a live value, while `Nos.Off` / `Brg` / `Elv` carry the true angle. The colour change is forced through the redraw gate by a cached pinned flag: the transition can move the marker as little as 1 px, which the `>1 px` movement test would otherwise swallow. |
 | **1.0.6** | **Angle readouts now come from the same projection the markers do, and each quantity has one name.** The `Brg`/`Elv`/`Err` rows still computed horizon-frame heading/pitch differences after 1.0.3 moved the markers to a true boresight projection, so the numbers contradicted the picture *and* the ring-derived colour bands: a node 10° off the nose printed 13.8° at 45° pitch and 62.9° at 80°, and a 6° approach-path error printed 9.9° at 60° pitch — yellow, while the marker sat inside the green ring. MNVR's `Brg`/`Elv` now come from the same boresight angles that place its marker and gate its alignment box. **TGT's `Brg`/`Elv` row was showing the vessel's compass bearing:** it printed `state.tgtHeading` wrapped to ±180 under a comment claiming "positive = target to the right", so a target dead ahead on heading 120 read +120 instead of 0. It is now nose-relative, the same quantity MNVR shows. **Naming:** DOCK's `Vel.Brg`/`Vel.Elv` and TGT's `Err`/`Err` were the identical value under two names — both are now **`V.Brg`/`V.Elv`**, matching the project's existing `V.` prefix for velocity quantities. That pair is now measured about the target axis, making it the exact 3D approach-path error rather than a horizon-frame difference, and it shows `---` past 90° (the idiom `T+Int`/`T+Dock` already use) where the signed pair stops being flyable — which also keeps it inside TGT's 178 px half-cells, verified against the real font metrics. |

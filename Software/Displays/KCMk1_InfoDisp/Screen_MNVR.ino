@@ -76,7 +76,7 @@ static const uint8_t MNVR_ERASE_R = 29;   // erase rect half-size (covers prong 
 // Right panel geometry — matches the ascent/circ readout panel: 360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36.
 static const uint16_t MNVR_RP_W   = RETICLE_RP_W;
-static const uint16_t MNVR_RP_X   = SCREEN_W - SIDEBAR_W - MNVR_RP_W;   // 580
+static const uint16_t MNVR_RP_X   = CONTENT_W - MNVR_RP_W;              // 580
 static const uint8_t  MNVR_RP_NR  = 8;
 static const tFont   *MNVR_RP_LBL = &Roboto_Black_28;   // row labels (chrome)
 static const tFont   *MNVR_RP_F   = &Roboto_Black_36;   // row values

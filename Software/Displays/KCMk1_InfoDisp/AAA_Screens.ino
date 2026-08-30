@@ -6,16 +6,19 @@
    Multi-mode buttons CYCLE their modes when pressed while already active, and the
    button caption shows the active mode (sbButtonLabel); a first press from another
    screen goes to the button's context/primary mode. Context auto-select still runs on
-   scene/vessel change; a press latches a manual override (see TouchEvents.ino). Title-
-   bar taps no longer switch anything. The ASC (Ascent Autopilot) button is parked at
-   the bottom, physically separated and drawn in a distinct purple, since it is an
-   interactive console rather than a display screen.
+   scene/vessel change; a press latches the manual selection until the vessel or the
+   scene changes (see contextSwitchAllowed()). Title-bar taps no longer switch anything.
+   On unit 2 the ASC (Ascent Autopilot) button is parked at the bottom, physically
+   separated and drawn in a distinct purple, since it is an interactive console rather
+   than a display screen; unit 1 carries VEH in that slot and draws it normally.
      0  LNCH      Launch — LNCH / PRE (auto on pad) / ASC <-> CIRC (press cycles)
-     1  PFD       Primary Flight Display — SPC -> ACFT -> ROVR -> VEH (press cycles; context default)
+     1  PFD       Primary Flight Display — SPC -> ACFT -> ROVR (press cycles; context
+                  default). Unit 2 keeps VEH in this ring; unit 1 gives it button 5.
      2  ORB       Orbit — ORB -> ORB+ (Advanced Elements) -> MNVR (Maneuver) (press cycles)
      3  TGT/DOCK  Target / Docking — TGT <-> DOCK (context default: DOCK when near a target)
      4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
-     5  ASC       Ascent Autopilot (touch console for the Simpit ascent autopilot)
+     5  per unit  Unit 1: VEH (Vehicle Info, single-mode).
+                  Unit 2: ASC (Ascent Autopilot console).
 
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
@@ -34,7 +37,8 @@
 /***************************************************************************************
    LAYOUT CONSTANTS
 ****************************************************************************************/
-const uint16_t CONTENT_W = SCREEN_W - SIDEBAR_W;
+// CONTENT_W / CONTENT_X / SIDEBAR_X now live in KCMk1_InfoDisp.h — the touch helpers
+// there need them, and the header is processed before any tab.
 
 const uint16_t TITLE_H = 58;
 const uint16_t TITLE_RULE_H = 4;
@@ -53,10 +57,12 @@ const uint8_t SB_BTN_COUNT = 6;
 // Multi-mode button indices. Each of these cycles its modes on a repeated press and
 // shows the active mode's label; a single-mode button just selects its screen.
 const uint8_t SB_LNCH_BTN    = 0;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (manual)
-const uint8_t SB_PFD_BTN     = 1;   // PFD:  SPC -> ACFT -> ROVR -> VEH
+const uint8_t SB_PFD_BTN     = 1;   // PFD:  SPC -> ACFT -> ROVR (-> VEH on unit 2)
 const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB -> ORB+ -> MNVR
 const uint8_t SB_TGTDOCK_BTN = 3;   // TGT/DOCK
 const uint8_t SB_LNDG_BTN    = 4;   // LNDG/ENTR: DESC <-> ENTR
+// Button 5 is single-mode on both units (VEH on unit 1, ASC on unit 2), so it needs
+// no index constant — the tap handler's default branch selects SB_BTN_SCREEN[5].
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -65,30 +71,58 @@ inline uint16_t sbBtnY(uint8_t btn) {
 }
 
 // Sidebar button -> canonical (primary) screen, physical top-to-bottom order. Several
-// buttons cover multiple screens: PFD (SCFT/ACFT/ROVR/VEH), ORB (ORB/ORB+/MNVR),
+// buttons cover multiple screens: PFD (SCFT/ACFT/ROVR, +VEH on unit 2), ORB (ORB/ORB+/MNVR),
 // TGT/DOCK (TGT/DOCK), LNDG/ENTR (LNDG/LNDGRE). SB_BTN_SCREEN holds each button's
 // primary screen; the tap handler in TouchEvents.ino cycles the alternates.
+// The first five buttons are identical on both units: every screen stays reachable
+// from either panel, so losing one display never costs a screen class. Only the sixth
+// differs, and only in what a first press lands on.
+//
+// Unit 2 keeps the Ascent Autopilot console. It is the only console on either panel
+// that sends commands, and two of them driving one autopilot is an ambiguity worth
+// designing out rather than discovering during a gravity turn — the pending-edit
+// reconcile assumes a single editor, and ARM/DISARM has no business having two
+// sources. apEnqueueCmd() enforces the same rule at the command channel.
+//
+// Unit 1 gets VEHICLE INFO in that slot instead. It is on-role for the vehicle-type
+// panel, it is where the ladder already routes a recoverable vessel, and promoting it
+// out of the PFD ring shortens that ring from four modes to three — VEH was the
+// deepest cycle on the panel that uses cycling most.
 const ScreenType SB_BTN_SCREEN[SB_BTN_COUNT] = {
   screen_LNCH,     // 0 LNCH      (PRE / ASC / CIRC)
-  screen_SCFT,     // 1 PFD       (SPC default; ACFT / ROVR / VEH by context or cycle)
+  screen_SCFT,     // 1 PFD       (SPC default; ACFT / ROVR by context or cycle)
   screen_ORB,      // 2 ORB       (ORB / ORB+ / MNVR)
   screen_TGT,      // 3 TGT/DOCK  (TGT default; DOCK by context or cycle)
   screen_LNDG,     // 4 LNDG/ENTR (DESC default; ENTR by cycle)
+#if INFO_DISP_IS_PFD_UNIT
+  screen_VEH       // 5 VEH — Vehicle Info, single-mode
+#else
   screen_LNCHAP    // 5 ASC — Ascent Autopilot; parked at the bottom, physically separated
                    //   from the display-nav cluster and drawn in a distinct colour
+#endif
 };
 
 // Base labels (shown when the button is NOT the active screen). When a multi-mode
 // button IS active, sbButtonLabel() substitutes the active mode's label instead.
 const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
-  "LNCH", "PFD", "ORB", "TGT", "LNDG", "ASC"
+  "LNCH", "PFD", "ORB", "TGT", "LNDG",
+#if INFO_DISP_IS_PFD_UNIT
+  "VEH"
+#else
+  "ASC"
+#endif
 };
 
 // Which sidebar button should highlight for the active screen. Multi-screen buttons
 // map all their screens to one index; every other screen maps 1:1.
 uint8_t screenToButton(ScreenType s) {
   switch (s) {
-    case screen_SCFT: case screen_ACFT: case screen_ROVR: case screen_VEH: return SB_PFD_BTN;
+#if !INFO_DISP_IS_PFD_UNIT
+    // Unit 2 keeps VEH inside the PFD ring; unit 1 gives it its own button, so it
+    // falls through to the SB_BTN_SCREEN lookup below and highlights button 5.
+    case screen_VEH:                                                       return SB_PFD_BTN;
+#endif
+    case screen_SCFT: case screen_ACFT: case screen_ROVR:                  return SB_PFD_BTN;
     case screen_ORB:  case screen_ORBADV: case screen_MNVR:                return SB_ORB_BTN;
     case screen_TGT:  case screen_DOCK:                                    return SB_TGTDOCK_BTN;
     case screen_LNDG: case screen_LNDGRE:                                  return SB_LNDG_BTN;
@@ -109,6 +143,7 @@ const char *sbButtonLabel(uint8_t i) {
     case SB_LNCH_BTN:
       return _lnchPrelaunchMode ? "PRE" : (_lnchOrbitalMode ? "CIRC" : "ASC");
     case SB_PFD_BTN:
+      // VEH only appears in this ring on unit 2; unit 1 labels its own button.
       return (activeScreen == screen_VEH)  ? "VEH"
            : (activeScreen == screen_ROVR) ? "ROVR"
            : (activeScreen == screen_ACFT) ? "ACFT" : "SPC";
@@ -184,7 +219,7 @@ inline uint16_t rowW() {
 // bottom bar. Only the angular scale (±20° vs ±60°) and the ring labels differ per
 // screen. Define the common geometry once so a re-layout touches a single place.
 const uint16_t RETICLE_RP_W  = 360;                              // right readout panel width
-const uint16_t RETICLE_RP_X  = SCREEN_W - SIDEBAR_W - RETICLE_RP_W;  // 580 — panel left edge
+const uint16_t RETICLE_RP_X  = CONTENT_W - RETICLE_RP_W;             // 580 — panel left edge
 const uint16_t RETICLE_CX    = (RETICLE_RP_X - 2) / 2;          // 289 — disc centre in left region
 const uint16_t RETICLE_CY    = 300;                             // disc centre y
 const uint16_t RETICLE_R     = 210;                             // disc radius
@@ -304,12 +339,69 @@ uint16_t kspAtmoColor(const char *name) {
 }
 
 /***************************************************************************************
+   DRAWING REGIONS
+   Every screen lays itself out in content space: x from 0 to CONTENT_W. On unit 2 that
+   is also panel space, because the sidebar is on the right and the content starts at 0.
+   On unit 1 the sidebar is on the left, so content has to land 84 px further right.
+
+   Rather than add CONTENT_X to ~700 drawing calls — every one of them a chance for a
+   silent 84 px error — the shift is applied once, at the canvas origin. The RA8876
+   addresses the canvas as a linear framebuffer of stride canvasImageWidth; because
+   that stride stays SCREEN_W, advancing the base address by CONTENT_X pixels shifts
+   every row by exactly CONTENT_X and nothing else. Drawing at content x=0 lands at
+   panel x=CONTENT_X on every scanline, with no shear.
+
+   Two details this has to get right, both learned from canvasTo() in KCM_Display.h:
+     - currentPage must move with canvasImageStartAddress. The driver's writeRect()
+       text path blits relative to currentPage while the 2D geometry engine uses the
+       canvas address; leaving them apart puts text and geometry on different origins.
+     - the active window must clamp the content region to CONTENT_W. Without it, a
+       fill that runs to the full panel width would spill past the end of the row and
+       wrap into the left edge of the next one.
+
+   On unit 2 CONTENT_X is 0 and canvasContentRegion() is exactly the full-panel setup
+   the double buffer already installs, so that unit's register writes are unchanged.
+****************************************************************************************/
+// The canvas base must stay 4-byte aligned. At 16 bpp that makes SIDEBAR_W even.
+static_assert((SIDEBAR_W * 2) % 4 == 0, "SIDEBAR_W must keep the canvas base 4-byte aligned");
+
+void canvasPanelRegion(KCM_TFT &tft) {
+  const uint32_t base = infoDB.backAddr();
+  tft.canvasImageStartAddress(base);
+  tft.canvasImageWidth(SCREEN_W);
+  tft.currentPage = base;             // keep text blits on the same origin as geometry
+  tft.activeWindowXY(0, 0);
+  tft.activeWindowWH(SCREEN_W, SCREEN_H);
+}
+
+void canvasContentRegion(KCM_TFT &tft) {
+  if (CONTENT_X == 0) { canvasPanelRegion(tft); return; }   // unit 2 — nothing to shift
+  const uint32_t base = infoDB.backAddr() + (uint32_t)CONTENT_X * 2UL;   // 16 bpp
+  tft.canvasImageStartAddress(base);
+  tft.canvasImageWidth(SCREEN_W);
+  tft.currentPage = base;
+  tft.activeWindowXY(0, 0);
+  tft.activeWindowWH(CONTENT_W, SCREEN_H);   // clamp so a full-width fill cannot wrap
+}
+
+
+/***************************************************************************************
    DRAW SIDEBAR
+   Drawn in panel space, not content space — it is the one piece of chrome that lives
+   outside the content region. Restores the content region on exit so the caller can
+   carry on drawing screen content without knowing this happened.
 ****************************************************************************************/
 void drawSidebar(KCM_TFT &tft) {
-  const uint16_t divX = SCREEN_W - SIDEBAR_W;
-  tft.drawLine(divX, 0, divX, SCREEN_H - 1, TFT_GREY);
-  uint16_t bx = divX + 1;
+  canvasPanelRegion(tft);
+  // Clear the strip first. drawStaticScreen()'s fillScreen runs in the content region,
+  // which on unit 1 stops at the sidebar, and the buttons do not quite cover the strip
+  // themselves — the last one is clamped a row short so its bottom border stays visible
+  // (see below). Without this the final scanline would keep stale pixels from whatever
+  // was last on this page. On unit 2 the fillScreen already covered it; the extra fill
+  // costs one rect per screen entry.
+  tft.fillRect(SIDEBAR_X, 0, SIDEBAR_W, SCREEN_H, TFT_BLACK);
+  tft.drawLine(SIDEBAR_DIV_X, 0, SIDEBAR_DIV_X, SCREEN_H - 1, TFT_GREY);
+  uint16_t bx = SIDEBAR_BTN_X;
   uint16_t bw = SIDEBAR_W - 1;
   uint16_t bh = sbBtnH();
   uint8_t  activeBtn = screenToButton(activeScreen);
@@ -330,6 +422,7 @@ void drawSidebar(KCM_TFT &tft) {
     if (i == SB_BTN_COUNT - 1) h = (SCREEN_H - 1) - by;
     drawButton(tft, bx, by, bw, h, btn, &Roboto_Black_20, true);
   }
+  canvasContentRegion(tft);
 }
 
 /***************************************************************************************

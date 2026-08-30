@@ -72,48 +72,108 @@ void switchToScreen(ScreenType s) {
    Returns the most operationally relevant screen for the current vessel state.
    Called on VESSEL_CHANGE_MESSAGE and on entering a flight scene.
 
-   Priority (highest to lowest):
-     1. Plane in atmosphere                    → ACFT (PFD)
-     2. Rover                                  → ROVR (PFD)
-     3. Pre-launch                             → LNCH (pre-launch board)
-     4. Sub-orbital lander                     → LNDG (powered descent)
-     5. Target within docking range            → DOCK
-     6. Recoverable vessel                     → VEH
-     7. Anything else                          → SCFT (Spacecraft PFD — default)
-   Orbit is no longer auto-selected — reach it from the sidebar.
+   The single-display ladder this replaces interleaved two unrelated questions —
+   "what am I flying?" (vessel type) and "what phase am I in?" (mission situation) —
+   and had to rank one above the other. Vessel type won, so the phase rules below it
+   were masked: a spaceplane on the pad never saw the pre-launch board, and neither a
+   spaceplane nor a rover closing on a target ever auto-routed to DOCKING. That was
+   not a bug in the ordering; it is what happens when one screen must answer both
+   questions. With two panels each ladder gets its own display and neither masks the
+   other, so both are complete.
+
+     Info Display 1 (panel A1) — vehicle-type ladder. Holds the PFD family.
+     Info Display 2 (panel B1) — mission-phase ladder. Holds the plan/target views.
+
+   contextScreen() is the single entry point; it dispatches on INFO_DISP_UNIT so the
+   call sites in SimpitHandler.ino stay unit-agnostic.
 ****************************************************************************************/
-ScreenType contextScreen() {
-  // 1. Plane in the atmosphere → aircraft PFD. Out of the atmosphere a plane is a
-  //    spacecraft, so it falls through to the spacecraft/default routing below.
-  if (state.vesselType == type_Plane && state.inAtmo)
-    return screen_ACFT;
 
-  // 2. Rover always goes to rover screen regardless of situation
-  if (state.vesselType == type_Rover)
-    return screen_ROVR;
+// ── Info Display 1: vehicle-type ladder ─────────────────────────────────────────────
+// Answers "what am I flying?" and nothing else. This is pfdContextScreen() plus the
+// recoverable-vessel rule: a piece of debris or a spent probe has no useful attitude
+// display, so VEHICLE INFO is the right PFD-family member for it.
+ScreenType vehicleContextScreen() {
+  if (state.isRecoverable) return screen_VEH;
+  return pfdContextScreen();   // rover -> ROVR, plane in atmosphere -> ACFT, else SCFT
+}
 
-  // 3. Pre-launch → launch screen (shows the pre-launch board). Landed vessels are
-  //    not auto-routed here anymore.
+// ── Info Display 2: mission-phase ladder ────────────────────────────────────────────
+// Answers "what phase am I in?" and nothing else, highest priority first:
+//   1. Pre-launch                        -> LAUNCH (pre-launch board)
+//   2. Sub-orbital lander                -> POWERED DESCENT
+//   3. Target inside docking range       -> DOCKING
+//   4. Burn imminent (or running)        -> MANEUVER
+//   5. Target in the approach window     -> TARGET
+//   6. Everything else                   -> ORBIT
+//
+// ORBIT as the resting state is the change that the second panel pays for. The
+// single-display ladder deliberately never auto-selected it ("Orbit is manual-select
+// from the sidebar") because doing so would have stolen the pilot's attitude
+// reference. Info Display 1 now holds that permanently, so the plan view is free to
+// be where this panel sits when nothing more urgent is happening.
+//
+// Rules 4 and 5 are new for the same reason, and both are bounded rather than bare
+// existence tests — see TGT_CONTEXT_MAX_M / MNVR_CONTEXT_LEAD_S in AAA_Config.ino.
+ScreenType missionContextScreen() {
+  // 1. Pre-launch -> launch screen (shows the pre-launch board). Unlike the old
+  //    combined ladder this is reached by planes and rovers too: their vessel-type
+  //    routing now happens on the other panel and no longer masks the phase.
   if (state.situation & sit_PreLaunch)
     return screen_LNCH;
 
-  // 4. Sub-orbital lander → powered descent.
+  // 2. Sub-orbital lander -> powered descent.
   if (state.vesselType == type_Lander && (state.situation & sit_SubOrb))
     return screen_LNDG;
 
-  // 5. Target within docking range → docking screen.
-  // Use tgtDistance alone — KSP may report targetAvailable=false even while
-  // actively sending TARGETINFO with a valid distance (observed in KSP1).
+  // 3. Target within docking range -> docking screen.
+  //    Use tgtDistance alone — KSP may report targetAvailable=false even while
+  //    actively sending TARGETINFO with a valid distance (observed in KSP1).
   if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
     return screen_DOCK;
 
-  // 6. Recoverable vessel (debris, probe, etc. that can be recovered) → Vehicle Info
-  if (state.isRecoverable)
-    return screen_VEH;
+  // 4. Maneuver node with an imminent burn -> MANEUVER. Time-to-ignition is measured
+  //    to the start of the burn (half the burn duration ahead of the node), matching
+  //    the T+Ign the MANEUVER screen itself shows. A negative value means the burn
+  //    should already be running, which still belongs on this screen; KSP clears the
+  //    node when the burn completes, which drops the rule.
+  bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
+  if (hasMnvr && (state.mnvrTime - state.mnvrDuration * 0.5f) < MNVR_CONTEXT_LEAD_S)
+    return screen_MNVR;
 
-  // 7. Everything else (orbit, atmospheric flight, splashed, unknown) → Spacecraft
-  //    PFD. Orbit is manual-select from the sidebar.
-  return screen_SCFT;
+  // 5. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
+  //    ends: inside DOCK_DIST_WARN_M rule 3 has already taken it, and past
+  //    TGT_CONTEXT_MAX_M the scope has nothing useful to show yet.
+  if (state.targetAvailable &&
+      state.tgtDistance > DOCK_DIST_WARN_M && state.tgtDistance < TGT_CONTEXT_MAX_M)
+    return screen_TGT;
+
+  // 6. Everything else -> ORBIT (Apsides).
+  return screen_ORB;
+}
+
+ScreenType contextScreen() {
+#if INFO_DISP_IS_PFD_UNIT
+  return vehicleContextScreen();
+#else
+  return missionContextScreen();
+#endif
+}
+
+
+/***************************************************************************************
+   MANUAL SELECTION LATCH
+   Set by any sidebar press that changes the screen (TouchEvents.ino); cleared on
+   vessel change and on flight-scene entry, where a fresh context read is what the
+   pilot wants. contextSwitchAllowed() is the gate every auto-route passes through.
+****************************************************************************************/
+bool _manualScreenLatch = false;
+
+void clearManualScreenLatch() {
+  _manualScreenLatch = false;
+}
+
+bool contextSwitchAllowed() {
+  return !_manualScreenLatch && !isManualLockScreen(activeScreen);
 }
 
 

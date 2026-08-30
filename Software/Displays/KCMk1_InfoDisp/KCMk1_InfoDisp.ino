@@ -132,13 +132,19 @@ void loop() {
   //  the hardware copy. Tear-free (page flip) and artifact-free from tearing (all
   //  drawing happens on the hidden page).
   uint32_t _copyUs = 0, _updateUs = 0, _flipUs = 0, _t = 0;
+  // beginFrame/beginFrameCopy install the full-panel canvas; canvasContentRegion()
+  // then offsets the origin so screens keep drawing in content space regardless of
+  // which side this unit's sidebar is on. drawSidebar() steps out to panel space for
+  // its own strip and restores the content region itself. No-op on unit 2.
   if (screenChanged) {
     infoDB.beginFrame(infoDisp);            // canvas -> back page (no copy; we fully paint it)
+    canvasContentRegion(infoDisp);
     drawStaticScreen(infoDisp, activeScreen);
     updateScreen(infoDisp, activeScreen);
     infoDB.flip(infoDisp);
   } else {
     infoDB.beginFrameCopy(infoDisp);        // BTE copy front -> back, canvas -> back
+    canvasContentRegion(infoDisp);
     if (fpsDiag) { _copyUs = infoDB.lastCopyUs; _t = micros(); }
     updateScreen(infoDisp, activeScreen);
     if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }

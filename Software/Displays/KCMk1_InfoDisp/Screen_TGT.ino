@@ -78,7 +78,7 @@ static const uint8_t TGT_DOT_R_ERASE = 33;  // erase rect half-size (covers prog
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
 static const uint16_t TGT_RP_W  = RETICLE_RP_W;
-static const uint16_t TGT_RP_X  = SCREEN_W - SIDEBAR_W - TGT_RP_W;   // 580
+static const uint16_t TGT_RP_X  = CONTENT_W - TGT_RP_W;              // 580
 static const uint8_t  TGT_RP_NR = 7;
 static const tFont   *TGT_RP_LF = &Roboto_Black_28;  // label font (printDispChrome)
 static const tFont   *TGT_RP_F  = &Roboto_Black_36;  // value font (printValue)

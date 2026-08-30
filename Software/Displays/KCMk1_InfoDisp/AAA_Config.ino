@@ -12,15 +12,12 @@ bool debugMode = false;
 bool demoMode  = false;  // true = sine-wave demo values, no KSP required
 bool fpsDiag   = false;  // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
 
-// INFO_DISP_UNIT — which physical Info Display board this firmware image targets.
-// The Info Display firmware is identical for both units; only the I2C slave address
-// differs so the master can address each board independently on the shared bus.
-//   1 = Info Display 1  -> I2C addr 0x12 (KCM_I2C_ADDR_INFODISP)
-//   2 = Info Display 2  -> I2C addr 0x13 (KCM_I2C_ADDR_INFODISP_2)
-// Set this before flashing each board. The sync/framing byte (0xAE) is shared by
-// both units; the INT pin (pin 0) is per-board wiring and does not change here.
-// (The System Info Display, addr 0x14, is separate hardware and is future work.)
-#define INFO_DISP_UNIT 1
+// INFO_DISP_UNIT — which physical Info Display board this firmware image targets —
+// now lives in KCMk1_InfoDisp.h. It has to be visible before any .ino tab compiles
+// because the layout constants and sidebar tables are conditional on it, and this
+// file is concatenated after the header is processed. Set it there, not here.
+// The sync/framing byte (0xAE) is shared by both units; the INT pin (pin 0) is
+// per-board wiring. (The System Info Display, addr 0x14, is separate hardware.)
 
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
@@ -175,6 +172,25 @@ const float TGT_BRG_ALARM_DEG = 30.0f;   // white-on-red — middle ring  (60/2)
 // Distance to target (m)
 const float DOCK_DIST_ALARM_M = 50.0f;    // white-on-red
 const float DOCK_DIST_WARN_M  = 200.0f;   // yellow
+
+/***************************************************************************************
+   CONTEXT ROUTING — mission-phase display (Info Display 2 only)
+   Bounds for the two context rules that only became affordable once the PFD moved to
+   its own panel. On a single display, auto-routing to TARGET or MANEUVER would have
+   cost the pilot their attitude reference; with Info Display 1 permanently holding
+   the PFD family, it costs nothing.
+****************************************************************************************/
+
+// TARGET auto-select window (m). Below DOCK_DIST_WARN_M the DOCKING screen wins; past
+// this the target is far enough that ORBIT is the more useful view, so a plane-change
+// or transfer burn planned around a distant target does not sit on an RPOD scope.
+const float TGT_CONTEXT_MAX_M = 2000.0f;
+
+// MANEUVER auto-select lead time (s) before ignition. Nodes persist long after they
+// stop being the pilot's concern, so the rule is gated on the burn being imminent
+// rather than merely planned. Negative time-to-ignition (the burn is running) also
+// passes, which keeps MANEUVER up through the burn itself.
+const float MNVR_CONTEXT_LEAD_S = 600.0f;   // 10 min
 
 // Closure rate — alarm at >2 m/s within 100m
 const float DOCK_VCLOSURE_ALARM_MS   = 2.0f;

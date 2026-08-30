@@ -138,12 +138,22 @@ static uint8_t apCmdCurSeq = 0;                // seq of head command in flight 
 static uint8_t apCmdSeqCtr = 0;                // monotonic seq generator, wraps 1..255
 
 static void apEnqueueCmd(uint8_t op, float payload) {
+#if INFO_DISP_IS_PFD_UNIT
+  // Only the mission panel (unit 2) owns the autopilot. Unit 1 has no ASC sidebar
+  // button, so it should never reach here — this is the backstop that makes the
+  // single-editor rule a property of the command channel rather than of the
+  // navigation table, so a future sidebar change cannot quietly reopen a second
+  // command source into one autopilot.
+  (void)op; (void)payload;
+  return;
+#else
   if (demoMode) return;                        // no master to drain the queue in demo
   uint8_t next = (uint8_t)((apCmdTail + 1) % AP_CMDQ_LEN);
   if (next == apCmdHead) return;               // full — drop (queue holds 15, never happens)
   apCmdQ[apCmdTail].op = op;
   apCmdQ[apCmdTail].payload = payload;
   apCmdTail = next;
+#endif
 }
 
 // Assign a sequence number to a newly-exposed head command. Main-thread only; called
