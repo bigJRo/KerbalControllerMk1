@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 9;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.9.1: apsis tape build fixes
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.9.2: marker trails; tape markers match the diagram
 
 
 /***************************************************************************************

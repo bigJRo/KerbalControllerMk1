@@ -590,12 +590,14 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
         if (!peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
     }
 
+    // Cyan apoapsis, magenta periapsis — the same two colours the orbit diagram gives
+    // its Ap and Pe dots on the other half of this screen, so the marker on the tape and
+    // the dot on the diagram read as the same apsis rather than two unrelated things.
+    // State is annunciated by form instead of hue: the marker draws hollow while the
+    // value is off the bottom of the scale, and the floor line says where the danger is.
     _lnchOrTapeDrawGap(tft, yAp, yPe, TFT_GREY);
-    _lnchOrTapeDrawMarker(tft, yAp, TFT_WHITE, "Ap", state.apoapsis, apLow);
-    // Periapsis green once it is above the floor: that is the moment an orbit exists.
-    const bool peSafe = (!peLow && state.periapsis >= _lnchOrTapeFloor());
-    _lnchOrTapeDrawMarker(tft, yPe, peSafe ? TFT_NEON_GREEN : TFT_YELLOW,
-                          "Pe", state.periapsis, peLow);
+    _lnchOrTapeDrawMarker(tft, yAp, TFT_CYAN,    "Ap", state.apoapsis,  apLow);
+    _lnchOrTapeDrawMarker(tft, yPe, TFT_MAGENTA, "Pe", state.periapsis, peLow);
 
     _lnchOrTpApY = yAp; _lnchOrTpPeY = yPe; _lnchOrTpPeLow = peLow;
     _lnchOrTpApVal = apVal; _lnchOrTpPeVal = peVal;
@@ -1477,9 +1479,9 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     }
 
     bool pe_changed = !_lnchOrPrevPeValid ||
-                      pe_x != _lnchOrPrevPeX || pe_y != _lnchOrTpPeY;
+                      pe_x != _lnchOrPrevPeX || pe_y != _lnchOrPrevPeY;
     bool ap_changed = !_lnchOrPrevApValid ||
-                      ap_x != _lnchOrPrevApX || ap_y != _lnchOrTpApY;
+                      ap_x != _lnchOrPrevApX || ap_y != _lnchOrPrevApY;
     bool vsl_changed = !_lnchOrPrevVslValid ||
                        (vessel_valid && (vsl_x != _lnchOrPrevVslX ||
                                          vsl_y != _lnchOrPrevVslY)) ||
@@ -1501,14 +1503,14 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
     }
     if (pe_changed && _lnchOrPrevPeValid) {
         // Erase prev dot (r=5 → 6 for safety)
-        tft.fillCircle(_lnchOrPrevPeX, _lnchOrTpPeY, 6, TFT_BLACK);
+        tft.fillCircle(_lnchOrPrevPeX, _lnchOrPrevPeY, 6, TFT_BLACK);
         // Erase prev label — centered at _lnchOrPrevPeLbl{X,Y}, ~12×11 from center
         // (Black_16 is 19 px tall, "Pe" ~19 px wide).
         tft.fillRect(_lnchOrPrevPeLblX - 12, _lnchOrPrevPeLblY - 11,
                      24, 22, TFT_BLACK);
     }
     if (ap_changed && _lnchOrPrevApValid) {
-        tft.fillCircle(_lnchOrPrevApX, _lnchOrTpApY, 6, TFT_BLACK);
+        tft.fillCircle(_lnchOrPrevApX, _lnchOrPrevApY, 6, TFT_BLACK);
         tft.fillRect(_lnchOrPrevApLblX - 12, _lnchOrPrevApLblY - 11,
                      24, 22, TFT_BLACK);
     }
@@ -1615,7 +1617,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
         tft.setCursor(pe_lbl_cx - 10, pe_lbl_cy - 10);
         tft.print("Pe");
-        _lnchOrPrevPeX = pe_x; _lnchOrTpPeY = pe_y;
+        _lnchOrPrevPeX = pe_x; _lnchOrPrevPeY = pe_y;
         _lnchOrPrevPeLblX = pe_lbl_cx; _lnchOrPrevPeLblY = pe_lbl_cy;
         _lnchOrPrevPeValid = true;
     }
@@ -1625,7 +1627,7 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(ap_lbl_cx - 10, ap_lbl_cy - 10);
         tft.print("Ap");
-        _lnchOrPrevApX = ap_x; _lnchOrTpApY = ap_y;
+        _lnchOrPrevApX = ap_x; _lnchOrPrevApY = ap_y;
         _lnchOrPrevApLblX = ap_lbl_cx; _lnchOrPrevApLblY = ap_lbl_cy;
         _lnchOrPrevApValid = true;
     }
