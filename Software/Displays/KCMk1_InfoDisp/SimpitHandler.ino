@@ -160,6 +160,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           _lnchPrelaunchMode      = false;
           _lnchPrelaunchDismissed = false;
           _lnchOrbitalMode        = false;
+          _lnchCoastLatched       = false;
           _lnchManualOverride     = false;
           if (activeScreen == screen_LNCH) switchToScreen(screen_LNCH);
         } else if (!isPreLaunch) {

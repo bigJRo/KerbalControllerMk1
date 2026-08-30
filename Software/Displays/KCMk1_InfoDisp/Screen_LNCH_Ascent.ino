@@ -1746,10 +1746,14 @@ static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
                            _lnchAsPrevTimeToAp, _lnchAsPrevTimeToApFg);
 }
 
-// Threshold for switching row 3 label from "V.Srf" to "V.Orb". Based on body
-// radius (same formula as the auto-switch to circularization mode, except the
-// label swap happens slightly earlier so the pilot sees orbital velocity as
-// soon as it becomes the more meaningful number).
+// Threshold for switching row 3 label from "V.Srf" to "V.Orb". Based on body radius:
+// orbital velocity becomes the more meaningful number as the vessel leaves the air,
+// and altitude is the right axis for that question.
+//
+// This was once the same formula as the ASCENT/CIRCULARISATION switch. It no longer is
+// — that switch now keys off the engine, since altitude could not tell a spaceplane
+// still burning from one coasting — and the two are independent decisions: which
+// velocity to show, and which phase of the arc this is.
 static bool _lnchAsShowOrbitalVelocity() {
     float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     // Same as the circularization phase-switch threshold with hysteresis so

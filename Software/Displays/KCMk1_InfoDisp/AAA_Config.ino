@@ -228,6 +228,11 @@ const float LNDG_CTX_ALT_M         = 10000.0f;  // radar altitude to enter
 const float LNDG_CTX_ALT_RELEASE_M = 12000.0f;  // and to leave (release band)
 const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 
+// LAUNCH — throttle at or below this counts as coasting, which is what moves the screen
+// from ASCENT to CIRCULARISATION. Not zero: KSP can report a hair of throttle from a
+// trim or a spent stage still nominally lit.
+const float LNCH_COAST_THROTTLE = 0.02f;
+
 // LAUNCH context — the ascent arc releases when the vessel stops climbing. Zero is the
 // entry threshold; this is the release threshold, so a coast through apoapsis (where
 // vertical speed passes through zero on its way to the circularisation burn) does not
