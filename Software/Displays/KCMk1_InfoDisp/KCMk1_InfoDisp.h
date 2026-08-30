@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.10.0: ascent gauges carry their own digits
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.10.1: remove dead shared row updaters
 
 
 /***************************************************************************************

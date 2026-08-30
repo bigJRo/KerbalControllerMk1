@@ -1732,57 +1732,18 @@ static void _lnchAs2DrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
 }
 
 // ── Shared LNCH row updaters ───────────────────────────────────────────────
-// Alt / ApA / T+Ap / T.Brn use byte-identical threshold + formatter + suppress
-// logic in both LNCH phases; only the target row index, label array, PrintState
-// array, and change-detection caches differ, so those are passed as parameters.
+// T+Ap and Stg.Brn use byte-identical threshold + formatter + suppress logic wherever
+// they appear; only the target row index, label array, PrintState array, and
+// change-detection caches differ, so those are passed as parameters.
 //
-// NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ
-// between the phases (Ascent flags a zero-throttle alarm while Circ treats
-// coasting as normal; Ascent change-detects ΔV.Stg at tenths precision while
-// Circ uses whole m/s). See their per-phase definitions.
-
-static void _lnchAs2UpdateAlt(KCM_TFT &tft, uint8_t row,
-                              const char *const *labels, PrintState *ps,
-                              int32_t &prevAlt, uint16_t &prevFg) {
-    float alt = state.altitude;
-    int32_t iAlt = (int32_t)roundf(alt);
-
-    // Threshold: red if negative, yellow near ground, green otherwise
-    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
-    float altYellow = bodyRad * 0.0015f;
-    uint16_t fg = (alt < 0)         ? TFT_RED
-                : (alt < altYellow)  ? TFT_YELLOW
-                : TFT_DARK_GREEN;
-
-    if (iAlt == prevAlt && fg == prevFg) return;
-
-    _lnchAs2DrawRowValue(tft, row, formatAlt((float)iAlt), fg, TFT_BLACK, labels, ps);
-    prevAlt = iAlt;
-    prevFg  = fg;
-}
-
-static void _lnchAs2UpdateApA(KCM_TFT &tft, uint8_t row,
-                              const char *const *labels, PrintState *ps,
-                              int32_t &prevApA, uint16_t &prevFg) {
-    float apa = state.apoapsis;
-    int32_t iApA = (int32_t)roundf(apa);
-
-    float warnAlt = max(currentBody.minSafe, currentBody.lowSpace);
-    uint16_t fg;
-    String   val;
-    if (apa < 0) {                                          // escape: apoapsis undefined -> infinity
-        fg = TFT_DARK_GREEN; val = String("\x80");
-    } else {
-        fg  = (warnAlt > 0 && apa > 0 && apa < warnAlt) ? TFT_YELLOW : TFT_DARK_GREEN;
-        val = formatAlt((float)iApA);
-    }
-
-    if (iApA == prevApA && fg == prevFg) return;
-
-    _lnchAs2DrawRowValue(tft, row, val, fg, TFT_BLACK, labels, ps);
-    prevApA = iApA;
-    prevFg  = fg;
-}
+// Alt and ApA had shared updaters here too. Both are gone: the circularisation phase
+// replaced its readout column with the apsis tape, and on ascent those two values moved
+// onto the altitude ladder that draws their markers, so neither had a caller left.
+//
+// NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ between
+// the phases (Ascent flags a zero-throttle alarm while Circ treats coasting as normal;
+// Ascent change-detects ΔV.Stg at tenths precision while Circ uses whole m/s). See
+// their per-phase definitions.
 
 static void _lnchAs2UpdateTimeToAp(KCM_TFT &tft, uint8_t row,
                                    const char *const *labels, PrintState *ps,
