@@ -110,6 +110,15 @@ static float apGMxg(){ return apDMxg ? apMxg    : state.apMaxG; }
 static bool  apGArmed(){ return apArmOvr >= 0 ? (apArmOvr == 1) : state.apArmed; }
 static uint16_t apEditColor(bool dirty){ return dirty ? AP_EDT : AP_VAL; }
 
+// Public: the effective armed state — the pilot's commanded intent while a tap is
+// still in flight, the autopilot's own state otherwise. This is what the ARM button
+// itself renders, so anything else annunciating "armed" (the sidebar ASC key) has to
+// read it too. Reading raw state.apArmed instead leaves the two disagreeing for the
+// whole command round-trip, and indefinitely whenever the echo does not arrive —
+// in demo mode, for instance, stepDemoState() drives state.apArmed from the demo
+// phase and never acknowledges a DISARM tap at all.
+bool apArmedEffective() { return apGArmed(); }
+
 // ── Outbound command channel (InfoDisp -> Controller_Main) ────────────────────────────
 // Pilot edits and ARM/DISARM taps queue here as (opcode, float-payload) commands. The
 // I2C master (Controller_Main) reads the head command from the outbound packet, applies

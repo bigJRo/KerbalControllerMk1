@@ -143,7 +143,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.1.2: achromatic sidebar keys
+static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.1.3: ASC key follows the effective armed state
 
 
 /***************************************************************************************
@@ -372,6 +372,11 @@ static const uint16_t SIDEBAR_BTN_X = SCREEN_W - SIDEBAR_W + 1;
 inline bool     touchInSidebar(uint16_t x) { return x >= SIDEBAR_X && x < SIDEBAR_X + SIDEBAR_W; }
 inline bool     touchInContent(uint16_t x) { return x >= CONTENT_X && x < CONTENT_X + CONTENT_W; }
 inline uint16_t touchContentX(uint16_t x)  { return (uint16_t)(x - CONTENT_X); }
+
+// Ascent Autopilot (Screen_LNCH_AscentAP.ino) — effective armed state, including a
+// pilot ARM/DISARM tap Controller_Main has not echoed back yet. The ARM button and the
+// sidebar ASC key both annunciate this, so they must read the same value.
+bool apArmedEffective();
 
 // Sidebar (AAA_Screens.ino). drawSidebar() paints the strip as chrome on a screen
 // change; updateSidebar() repaints it mid-flight when a key's state colour changes.
