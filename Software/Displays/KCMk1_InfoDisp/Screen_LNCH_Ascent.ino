@@ -49,11 +49,19 @@
 
 // Right-hand numeric readout column (right-aligned to the content edge).
 //
-// Seven rows, not the eight this panel carried before. Alt.SL, ApA, V.Srf and V.Vrt
-// moved onto the gauges that draw them; T+Ap, Thrtl, Q, Mach, G, Stg.Brn and dV.Stg are
-// what is left, every one a value with no picture anywhere on this screen. Fewer rows,
-// so each is taller. ASCENT is the only user of this panel -- the circularisation phase
-// replaced its copy with the apsis tape.
+// Seven rows, not the eight this panel carried before. V.Srf and V.Vrt moved onto the
+// two bars that draw them; Alt.SL and ApA were dropped outright. T+Ap, Thrtl, Q, Mach,
+// G, Stg.Brn and dV.Stg are what is left, every one a value with no picture anywhere on
+// this screen. Fewer rows, so each is taller. ASCENT is the only user of this panel --
+// the circularisation phase replaced its copy with the apsis tape.
+//
+// Alt.SL and ApA are position-only on this screen now: the altitude ladder marks both
+// against a labelled tick scale, and there is nowhere to put their digits. The left
+// panel is packed to 573 px of 576, and the gap between the ladder's marker letters
+// (ending at x=116) and the ATMO gauge's left triangle (x=166) is 10 px, where "101 km"
+// needs about 60. The PFD on the other panel carries both in the great majority of
+// ascent phases; the exception is a spaceplane still in the atmosphere, where that panel
+// is AIRCRAFT and has neither -- a deliberate, accepted cost rather than an oversight.
 //
 // Declared up here with the other anchors because the PrintState array and the label
 // table size themselves from it a thousand lines above the readout geometry block, and
@@ -1755,8 +1763,8 @@ static void _lnchAs2DrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
 // change-detection caches differ, so those are passed as parameters.
 //
 // Alt and ApA had shared updaters here too. Both are gone: the circularisation phase
-// replaced its readout column with the apsis tape, and on ascent those two values moved
-// onto the altitude ladder that draws their markers, so neither had a caller left.
+// replaced its readout column with the apsis tape, and on ascent both rows were dropped
+// in favour of the altitude ladder's markers, so neither had a caller left.
 //
 // NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ between
 // the phases (Ascent flags a zero-throttle alarm while Circ treats coasting as normal;
