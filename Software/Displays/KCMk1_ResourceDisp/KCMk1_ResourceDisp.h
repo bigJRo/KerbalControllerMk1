@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 1;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 3.1.0: achromatic button chrome (matches InfoDisp)
+static const uint8_t SKETCH_VERSION_MINOR = 2;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 3.2.0: sidebar moved to the left (inboard on B1)
 
 
 /***************************************************************************************
