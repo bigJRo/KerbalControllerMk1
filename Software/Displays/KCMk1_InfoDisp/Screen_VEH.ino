@@ -132,11 +132,12 @@ static void drawScreen_VEH(KCM_TFT &tft) {
     default:            condName = "---";          break;
   }
   // Sky blue when recoverable, since that is the actionable state; otherwise nominal.
-  // The suffix is spelled out rather than marked with a middle dot: 0xB7 is not in
-  // Roboto_Black_48, and a missing glyph measures zero and draws nothing, so the row
-  // would have silently read "LANDED  RECOVERABLE" with an unexplained gap.
+  // Separated by a middle dot (0xB7). That glyph was missing from every Roboto_Black
+  // size until fonts_ili/add_middot.py added it -- 0xB7 sat two codepoints past
+  // index2_last -- and a missing glyph measures zero and draws nothing, so this row
+  // would have read "LANDED  RECOVERABLE" with an unexplained gap rather than failing.
   const String statusVal = state.isRecoverable
-                             ? String(condName) + " - RECOVERABLE"
+                             ? String(condName) + " \xB7 RECOVERABLE"
                              : String(condName);
   vehVal(2, "Status:", statusVal,
          state.isRecoverable ? (uint16_t)TFT_SKY : (uint16_t)TFT_DARK_GREEN, TFT_BLACK);

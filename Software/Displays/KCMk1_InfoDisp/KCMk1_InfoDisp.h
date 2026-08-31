@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 17;  // 1.10.17: VEHICLE status keeps the situation when recoverable
+static const uint8_t SKETCH_VERSION_PATCH = 18;  // 1.10.18: middle dot exists now; VEHICLE status uses it
 
 
 /***************************************************************************************
