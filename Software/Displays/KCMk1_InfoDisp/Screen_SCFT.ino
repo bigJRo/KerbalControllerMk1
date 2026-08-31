@@ -523,9 +523,9 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
 
     static const tFont *PF = &Roboto_Black_28;   // label font — matches reticle/launch panels
 
-    // Rows 0-6: single-width rows with label (row 1 label depends on orbMode)
+    // Rows 0-6: single-width rows. Rows 1 and 5 depend on orbMode (see below).
     static const char *panelLabels[] = {
-        "Alt.SL:", nullptr, "ApA:", "PeA:", "T+Ap:", "T+Ign:", "\xCE\x94V.Stg:"
+        "Alt.SL:", nullptr, "ApA:", "PeA:", "T+Ap:", nullptr, "\xCE\x94V.Stg:"
     };
     // On EVA the same seven rows carry a different set — see _scftEvaMode(). Row 1 is
     // pinned to V.Orb here rather than following orbMode, so that V.Orb and V.Srf are
@@ -535,8 +535,23 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     };
     const bool evaChrome = _scftEvaMode();
     for (uint8_t r = 0; r < 7; r++) {
+        // Row 5 is T+Ign in orbit and V.Vrt below the mode-switch altitude. Real
+        // spacecraft treat altitude rate as a phase-specific instrument rather than a
+        // permanent one: the Shuttle's PFD carries a vertical-speed tape only in its
+        // entry configuration (on orbit it shows the ADI ball alone) and its AVVI's
+        // radar portion is live only in MM305; Apollo gave the LM a dedicated ALT RATE
+        // tapemeter because the LM lands, while the CM had none and read altitude rate
+        // from the DSKY on demand (V06 N62); Orion puts altitude rate on its entry
+        // format. This row does the same thing with the switch the screen already runs.
+        //
+        // The trade is exact. Above the switch a node countdown is the useful half --
+        // and the PFD is the ONLY place it appears outside MANEUVER's ten-minute window,
+        // so it must not simply be dropped. Below the switch a node countdown is close
+        // to meaningless and descent rate is the number being flown.
         const char *lbl = evaChrome ? evaPanelLabels[r]
-                        : (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:") : panelLabels[r];
+                        : (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:")
+                        : (r == 5) ? (_scftOrbMode() ? "T+Ign:" : "V.Vrt:")
+                        : panelLabels[r];
         printDispChrome(tft, PF, SCFT_PANEL_X, rowYFor(r, SCFT_PANEL_NR),
                         SCFT_PANEL_W, rowHFor(SCFT_PANEL_NR),
                         lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -648,8 +663,16 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         attPanelVal(4, 4, lbl, val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 5 — T+Ign
-    {
+    // Row 5 — T+Ign in orbit, V.Vrt below the mode-switch altitude. See the chrome
+    // above for why the row is regime-switched at all.
+    if (!orbMode) {
+        // Reported, not alarmed. LNDG's thresholds are LANDING thresholds -- alarm at
+        // -8 m/s, caution at -5 -- and reusing them here would paint the row red for the
+        // whole of a normal descent, which is the always-on alarm that teaches a pilot
+        // to ignore the colour. POWERED DESCENT owns that alarm and has the radar
+        // altitude to justify it; the Shuttle's AVVI is likewise an unalarmed tape.
+        attPanelVal(5, 5, "V.Vrt:", fmtMs(state.verticalVel), TFT_DARK_GREEN, TFT_BLACK);
+    } else {
         float tIgn = hasMnvr ? state.mnvrTime - state.mnvrDuration / 2.0f : -1.0f;
         uint16_t fg, bg = TFT_BLACK;
         String val;

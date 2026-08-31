@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 18;  // 1.10.18: middle dot exists now; VEHICLE status uses it
+static const uint8_t SKETCH_VERSION_PATCH = 19;  // 1.10.19: PFD row 5 is T+Ign in orbit, V.Vrt below
 
 
 /***************************************************************************************
