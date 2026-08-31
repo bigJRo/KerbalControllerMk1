@@ -88,6 +88,53 @@ void switchToScreen(ScreenType s) {
    call sites in SimpitHandler.ino stay unit-agnostic.
 ****************************************************************************************/
 
+/***************************************************************************************
+   THE LADDER'S OWN PREVIOUS ANSWER
+   Several mission rules widen their threshold once their screen has been chosen, so the
+   panel does not oscillate while a vessel sits on a boundary -- DOCKING is entered at
+   200 m and left at 250, MANEUVER at 600 s and left at 700, and so on.
+
+   Those bands used to be keyed on `activeScreen`, which was wrong in a way that made a
+   sidebar press undo itself. switchToScreen() sets activeScreen, so pressing away from
+   an auto-chosen screen COLLAPSED its band in the same frame: parked at 220 m the panel
+   shows DOCKING (inside the 250 m release limit), you press PFD, activeScreen is no
+   longer DOCK, the limit snaps back to 200, 220 no longer qualifies, and the ladder's
+   answer changes -- which releases the manual latch that press had just set against it,
+   and the router switches you somewhere else on the very same pass. Nothing in the
+   telemetry had to move. Every band had such a trap: 200-250 m on DOCKING, 600-700 s on
+   MANEUVER, 10-12 km on POWERED DESCENT, 150-200 and 2000-2400 m on TARGET, and 0 to
+   -20 m/s of vertical speed on LAUNCH, which is where anything coasting near apoapsis
+   sits.
+
+   Keying them on what the LADDER last recommended instead makes contextScreen() a
+   function of telemetry and its own history and nothing else -- where the pilot has
+   navigated cannot perturb it, so a latch stays pinned to a snapshot that is still
+   valid. It also fixes the quieter half of the same bug: with the old test the
+   hysteresis did nothing at all while the pilot was parked on a manually chosen screen,
+   so the ladder's answer could oscillate across a threshold on its own and release
+   latches with no press involved at all.
+
+   screen_COUNT means "no previous answer" -- the entry thresholds apply, which is what
+   must happen on the first evaluation and after a vessel change.
+****************************************************************************************/
+static ScreenType _lastContextWant = screen_COUNT;
+
+// Switch dwell, declared here rather than beside updateContextScreen() because
+// resetContextRouting() below has to see it and the Arduino builder hoists function
+// prototypes but not variables. See updateContextScreen() for what the two dwells are
+// for and why a press gets the longer one.
+static uint32_t _lastSwitchMs        = 0;
+static bool     _lastSwitchWasManual = false;
+
+// Everything the router remembers belongs to the vessel and scene it was learned in: the
+// ladder's previous answer, and the pilot's last press. A vessel change retires both, in
+// the same breath as the manual latch it already released.
+void resetContextRouting() {
+  _lastContextWant     = screen_COUNT;
+  _lastSwitchWasManual = false;
+}
+
+
 // ── Info Display 1: vehicle-type ladder ─────────────────────────────────────────────
 // Answers "what am I flying?" and nothing else. This is pfdContextScreen() plus the
 // recoverable-vessel rule: a piece of debris or a spent probe has no useful attitude
@@ -164,7 +211,7 @@ ScreenType missionContextScreen() {
   //    rocket looks like on the way up. A plane in atmosphere is excluded — its
   //    approach instrument is the AIRCRAFT screen on the other panel.
   {
-    const float lndgAlt = (activeScreen == screen_LNDG) ? LNDG_CTX_ALT_RELEASE_M
+    const float lndgAlt = (_lastContextWant == screen_LNDG) ? LNDG_CTX_ALT_RELEASE_M
                                                         : LNDG_CTX_ALT_M;
     const bool planeInAir = (state.vesselType == type_Plane && state.inAtmo);
     if (!planeInAir && state.verticalVel < LNDG_CTX_VVERT_MS &&
@@ -211,7 +258,7 @@ ScreenType missionContextScreen() {
   //    actively sending TARGETINFO with a valid distance (observed in KSP1).
   //    The limit widens once DOCKING owns the screen: holding station at exactly
   //    200 m must not oscillate the panel. Same pattern in rules 7, 8 and 9.
-  const float dockLim = (activeScreen == screen_DOCK) ? DOCK_CTX_RELEASE_M : DOCK_DIST_WARN_M;
+  const float dockLim = (_lastContextWant == screen_DOCK) ? DOCK_CTX_RELEASE_M : DOCK_DIST_WARN_M;
   if (state.tgtDistance > 0.0f && state.tgtDistance <= dockLim)
     return screen_DOCK;
 
@@ -261,7 +308,7 @@ ScreenType missionContextScreen() {
     const bool  canLaunch    = (state.vesselType != type_Rover && state.vesselType != type_EVA);
     const float orbitSafeAlt = (currentBody.minSafe > currentBody.lowSpace)
                                  ? currentBody.minSafe : currentBody.lowSpace;
-    const float ascVv = (activeScreen == screen_LNCH) ? LNCH_CTX_VVERT_RELEASE_MS : 0.0f;
+    const float ascVv = (_lastContextWant == screen_LNCH) ? LNCH_CTX_VVERT_RELEASE_MS : 0.0f;
     if (canLaunch && orbitSafeAlt > 0.0f &&
         state.verticalVel > ascVv && state.periapsis < orbitSafeAlt)
       return screen_LNCH;
@@ -273,14 +320,14 @@ ScreenType missionContextScreen() {
   //    should already be running, which still belongs on this screen; KSP clears the
   //    node when the burn completes, which drops the rule.
   bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f);
-  const float mnvrLead = (activeScreen == screen_MNVR) ? MNVR_CTX_RELEASE_S : MNVR_CONTEXT_LEAD_S;
+  const float mnvrLead = (_lastContextWant == screen_MNVR) ? MNVR_CTX_RELEASE_S : MNVR_CONTEXT_LEAD_S;
   if (hasMnvr && (state.mnvrTime - state.mnvrDuration * 0.5f) < mnvrLead)
     return screen_MNVR;
 
   // 9. Target in the approach window -> TARGET (the RPOD scope). Bounded at both
   //    ends: inside DOCK_DIST_WARN_M rule 5 has already taken it, and past
   //    TGT_CONTEXT_MAX_M the scope has nothing useful to show yet.
-  const bool tgtActive = (activeScreen == screen_TGT);
+  const bool tgtActive = (_lastContextWant == screen_TGT);
   const float tgtLo = tgtActive ? TGT_CTX_RELEASE_MIN_M : DOCK_DIST_WARN_M;
   const float tgtHi = tgtActive ? TGT_CTX_RELEASE_MAX_M : TGT_CONTEXT_MAX_M;
   if (state.targetAvailable && state.tgtDistance > tgtLo && state.tgtDistance < tgtHi)
@@ -377,7 +424,25 @@ void modeToggle(ModeOverride &m, bool autoValue) {
    The dwell is deliberately checked after the latch release, so a change in the
    ladder's answer frees a held override immediately even if the switch itself waits.
 ****************************************************************************************/
-static uint32_t _lastAutoSwitchMs = 0;
+// A DELIBERATE PRESS OUTRANKS AN AUTOMATIC ONE, so the two carry separate dwells and
+// the last switch decides which applies. The dwell used to be recorded only when the
+// router itself switched, which meant a manual selection got no protection at all: the
+// moment the latch released for any reason, the gap since the last AUTOMATIC switch was
+// usually already spent and the router fired on the same frame. A press that is undone
+// 100 ms later reads as a broken panel whatever the routing logic thinks it is doing.
+//
+// The latch is still what carries the meaning -- "not this, now", released when the
+// situation it was set against passes. This is only the floor underneath it, for the
+// cases where the latch legitimately releases straight away: long enough that a press
+// is never visually undone, short enough that a real phase change is not held off.
+// (_lastSwitchMs / _lastSwitchWasManual are declared with _lastContextWant near the top
+// of this file, for the hoisting reason noted there.)
+
+// Called by the sidebar tap handler for every press that changes the screen.
+void noteManualScreenSwitch() {
+  _lastSwitchMs        = millis();
+  _lastSwitchWasManual = true;
+}
 
 void updateContextScreen() {
   const ScreenType want = contextScreen();
@@ -385,12 +450,20 @@ void updateContextScreen() {
   // Release an override whose situation has passed (see the latch notes above).
   if (_manualScreenLatch && want != _latchedAgainst) clearManualScreenLatch();
 
+  // Advance the ladder's own history AFTER the latch test and BEFORE any early return,
+  // so the hysteresis bands track what the ladder wants on every frame -- including the
+  // frames where the pilot holds an override and nothing switches. Keying them on this
+  // rather than on activeScreen is the whole point; see the note at the top of the file.
+  _lastContextWant = want;
+
   if (!contextSwitchAllowed()) return;
   if (want == activeScreen) return;
 
   const uint32_t now = millis();
-  if (now - _lastAutoSwitchMs < CONTEXT_DWELL_MS) return;
-  _lastAutoSwitchMs = now;
+  const uint32_t dwell = _lastSwitchWasManual ? MANUAL_DWELL_MS : CONTEXT_DWELL_MS;
+  if (now - _lastSwitchMs < dwell) return;
+  _lastSwitchMs        = now;
+  _lastSwitchWasManual = false;
   switchToScreen(want);
 }
 

@@ -103,6 +103,8 @@ extern bool       _manualScreenLatch;
 extern ScreenType _latchedAgainst;
 void clearManualScreenLatch();
 void setManualScreenLatch();
+void noteManualScreenSwitch();   // record a press for the manual dwell
+void resetContextRouting();      // drop the ladder's remembered answer + press dwell
 
 // The gate every context auto-switch must pass.
 bool contextSwitchAllowed();
@@ -183,7 +185,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 11;
-static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.11.4: dedup, dead code, stale comments
+static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.11.5: a sidebar press no longer undoes itself
 
 
 /***************************************************************************************
@@ -203,6 +205,7 @@ extern const uint8_t DISPLAY_ROTATION;
 extern const float TGT_CONTEXT_MAX_M;    // TARGET auto-select outer bound (m)
 extern const float MNVR_CONTEXT_LEAD_S;  // MANEUVER auto-select lead before ignition (s)
 extern const uint32_t CONTEXT_DWELL_MS;
+extern const uint32_t MANUAL_DWELL_MS;
 extern const float DOCK_CTX_RELEASE_M, TGT_CTX_RELEASE_MIN_M, TGT_CTX_RELEASE_MAX_M;
 extern const float MNVR_CTX_RELEASE_S, REENTRY_CTX_MACH;
 extern const float LNDG_CTX_ALT_M, LNDG_CTX_ALT_RELEASE_M, LNDG_CTX_VVERT_MS;

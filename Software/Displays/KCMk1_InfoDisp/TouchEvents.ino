@@ -262,6 +262,7 @@ void processTouchEvents() {
 
     if (doSwitch) {
       switchToScreen(target);
+      noteManualScreenSwitch();   // a press gets its own dwell — see updateContextScreen
       clearTouchISR();
     }
   }

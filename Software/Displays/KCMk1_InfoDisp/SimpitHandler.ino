@@ -35,6 +35,7 @@ static void enterFlightScene() {
   // Entering a flight scene is a fresh start — release any held manual pick so the
   // panel opens on its context screen rather than wherever it was parked.
   clearManualScreenLatch();
+  resetContextRouting();      // ladder history + press dwell belong to the old scene
   // Same for the reference overrides on the two attitude screens: a pinned SRF/ORB or
   // SL/RDR belongs to the flight it was pinned in.
   modeClearOverride(_scftVelRefOverride);
@@ -471,6 +472,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
         _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
         clearManualScreenLatch();      // new vessel — release the held manual pick
+        resetContextRouting();         //   and the routing state with it
         modeClearOverride(_scftVelRefOverride);   // and the held attitude references
         modeClearOverride(_acftAltRefOverride);
         _lndgReentryRow0TPe = false;

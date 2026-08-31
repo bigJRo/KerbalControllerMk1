@@ -218,6 +218,11 @@ const float MNVR_CONTEXT_LEAD_S = 600.0f;   // 10 min
    in and out of Simpit's view).
 ****************************************************************************************/
 const uint32_t CONTEXT_DWELL_MS      = 4000;     // min gap between automatic switches
+// A sidebar press is deliberate, so it is protected for longer than one automatic
+// switch protects the next. This is a floor, not the mechanism: the manual latch is
+// what actually holds a chosen screen, and this only covers the case where the latch
+// releases immediately because the ladder's answer legitimately changed.
+const uint32_t MANUAL_DWELL_MS       = 10000;    // min gap between a press and an auto switch
 const float    DOCK_CTX_RELEASE_M    = 250.0f;   // leave DOCKING past this (enter at 200)
 const float    TGT_CTX_RELEASE_MIN_M = 150.0f;   // leave TARGET below this (enter at 200)
 const float    TGT_CTX_RELEASE_MAX_M = 2400.0f;  // leave TARGET above this (enter at 2000)
