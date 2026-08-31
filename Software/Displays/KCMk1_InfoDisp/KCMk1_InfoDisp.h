@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 8;   // 1.10.8: NAV marker-pair fix, own-ship bitmap, BRG, legend
+static const uint8_t SKETCH_VERSION_PATCH = 9;   // 1.10.9: own-ship 25% larger with a tapered tail; legend to the corner
 
 
 /***************************************************************************************

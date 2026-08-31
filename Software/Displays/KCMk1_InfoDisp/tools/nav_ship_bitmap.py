@@ -9,7 +9,7 @@ fillTriangle primitives could not do.
 """
 import sys, zlib, struct
 
-W, H = 110, 122           # bitmap size in device pixels
+W, H = 138, 152           # bitmap size in device pixels
 SS   = 8                 # supersampling factor
 
 # Right half, nose to tail. Fractions of the bitmap height for y, of the height for x too
@@ -27,9 +27,9 @@ HALF = [
     (0.082, 0.800),      # fuselage side, tailplane root leading edge
     (0.205, 0.930),      # tailplane tip, leading edge
     (0.205, 0.980),      # tailplane tip, trailing edge
-    (0.070, 0.940),      # tailplane root trailing edge
-    (0.070, 1.000),      # tail
-    (0.000, 1.000),
+    (0.064, 0.945),      # tailplane root trailing edge
+    (0.045, 0.980),      # tail cone -- this taper is load-bearing. Running the fuselage
+    (0.000, 1.000),      # straight back to y=1.0 left a stub rectangle behind the tail.
 ]
 
 def polygon():
