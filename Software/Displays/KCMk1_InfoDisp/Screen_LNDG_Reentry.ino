@@ -629,7 +629,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
-  splitLabels(6, "Drog:", "Main:");
+  splitLabels(6, "Drogue:", "Main:");
   // Row 7 buttons are drawn in the update pass; only draw the divider here.
   {
     uint16_t y = rowYFor(7, RE_NR);

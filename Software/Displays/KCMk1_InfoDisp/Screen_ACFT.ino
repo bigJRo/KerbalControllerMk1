@@ -606,7 +606,12 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(2, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "IAS:",     COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(3, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Row 4: Ma | G split
+    // Row 4: Ma | G split.
+    // "Ma:", not "Mach:" as ASCENT and RE-ENTRY use, and this is measured rather than
+    // careless: these split cells are 180 px, "Mach:" is 101 px at the value font and the
+    // widest Mach reading is 95, which overflows by 26. Dropping a decimal does not save
+    // it either. The abbreviation is forced by the cell, and it is the one place in the
+    // sketch where a quantity carries a second name.
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         uint16_t y  = rowYFor(4, ACFT_PANEL_NR), h = rowHFor(ACFT_PANEL_NR);
@@ -616,12 +621,15 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
 
-    // Row 5: AoA | Slip split
+    // Row 5: AoA | Slip split. "Slip:" in full, matching the slip-ball label on the same
+    // screen -- the panel row used to say "Sl:" while the ball said "Slip:", one quantity
+    // with two names three inches apart. It fits: the value is already whole degrees, so
+    // the widest case "+180deg" is 96 px against a 74 px label in a 174 px usable cell.
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         uint16_t y  = rowYFor(5, ACFT_PANEL_NR), h = rowHFor(ACFT_PANEL_NR);
         printDispChrome(tft, PF, ACFT_PANEL_X,      y, hw, h, "AoA:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "Sl:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "Slip:", COL_LABEL, COL_BACK, COL_NO_BDR);
         tft.drawLine(ACFT_PANEL_X + hw,     y, ACFT_PANEL_X + hw,     y + h - 1, TFT_GREY);
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
@@ -767,7 +775,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &sc2 = rowCache[SC][7];
             if (sc2.value != sv || sc2.fg != fg || sc2.bg != bg) {
                 printValue(tft, VF, ACFT_PANEL_X + hw, y5, hw, h5,
-                           "Sl:", sv, fg, bg, COL_BACK, printState[SC][7]);
+                           "Slip:", sv, fg, bg, COL_BACK, printState[SC][7]);
                 sc2.value = sv; sc2.fg = fg; sc2.bg = bg;
             }
         }

@@ -684,7 +684,10 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
 }
 
 // ── Elevation readout ─────────────────────────────────────────────────────────────────
-// "Elev:" label over integer surface-altitude value in meters. Elevation is
+// "Alt.Trn:" label over integer surface-altitude value in meters. Named for the Alt
+// family (Alt.SL, Alt.Rdr) it belongs to, not "Elev:", which sat one letter away from
+// the "Elv:" that DOCKING, TARGET and MANEUVER use for an elevation ANGLE -- a different
+// quantity in different units. Terrain elevation is
 // computed as (altitude_ASL - radarAlt_AGL), giving the altitude of the terrain
 // surface below the vessel — i.e. how high up the current terrain is above
 // sea level. Same block style as V.Srf on the left side.
@@ -707,7 +710,7 @@ static void _rovrDrawElevChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, _rovrElevLabelY(),
                ROVR_RCOL_W, ROVR_LBL_H,
-               "Elev:", TFT_WHITE, TFT_BLACK);
+               "Alt.Trn:", TFT_WHITE, TFT_BLACK);
 }
 
 static void _rovrUpdateElev(KCM_TFT &tft) {

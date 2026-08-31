@@ -1,6 +1,6 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.10.15
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.10.16
 Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -395,10 +395,39 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 
 ---
 
+## Readout label vocabulary
+
+One quantity, one name. Every readout label on all fourteen screens was collected and
+compared; where the same value carried two names, the shorter or less standard one was
+renamed. Widths were measured against the real glyph data in each label's actual cell
+before any rename was applied — `printValue()` reserves the label's width in the **value**
+font and right-aligns the value in what is left, so a longer label eats the value's room.
+
+| Quantity | Canonical | Was, and where |
+|---|---|---|
+| Throttle | `Thrtl:` | `Thr:` on ASCENT AUTOPILOT |
+| Inclination | `Inc:` | `Incl:` on ASCENT AUTOPILOT |
+| Dynamic pressure | `Q:` | `q:` on ASCENT AUTOPILOT |
+| Drogue chute | `Drogue:` | `Drog:` on RE-ENTRY |
+| Sideslip | `Slip:` | `Sl:` on the AIRCRAFT panel row — while the slip **ball** on the same screen said `Slip:` |
+| Closure rate | `V.Close` | `V.CLS` on NAVIGATION (now `V.CLOSE`, since that screen's column heads are all-caps — case is layout, a different abbreviation is a second name) |
+| Terrain elevation | `Alt.Trn:` | `Elev:` on ROVER, one letter from the `Elv:` that DOCKING / TARGET / MANEUVER use for an elevation **angle** — a different quantity in different units |
+
+**One exception, and it is measured rather than careless.** AIRCRAFT keeps `Ma:` where
+ASCENT and RE-ENTRY say `Mach:`. Its split cells are 180 px; `Mach:` is 101 px at the
+value font against a widest reading of 95, which overflows by 26, and dropping a decimal
+does not save it. The abbreviation is forced by the cell. It is recorded in the code so it
+is not "fixed" later without re-measuring.
+
+Case differences that are purely layout are not renames: NAVIGATION's column heads are
+all-caps (`DIST`, `T+INT`) where the same tokens appear as `Dist:` and `T+Int:` in
+label-and-value rows elsewhere.
+
 ## Version History
 
 | Version | Notes |
 |---------|-------|
+| **1.10.16** | **One name per quantity, across all fourteen screens.** Every readout label was collected and compared; seven quantities carried two names and are now canonical — `Thrtl:` (was `Thr:` on the autopilot), `Inc:` (was `Incl:`), `Q:` (was `q:`), `Drogue:` (was `Drog:` on RE-ENTRY), `Slip:` (the AIRCRAFT panel row said `Sl:` while the slip **ball** on the same screen said `Slip:`), `V.CLOSE` on NAVIGATION (was `V.CLS`), and `Alt.Trn:` on ROVER (was `Elev:`, one letter from the `Elv:` that three other screens use for an elevation *angle* — a different quantity in different units). Each rename was **measured in its actual cell first**, against the real glyph data: `printValue()` reserves the label's width in the value font and right-aligns the value in what is left, so a longer label eats the value's room. That check blocked one of them — AIRCRAFT keeps `Ma:` because its 180 px split cell cannot hold `Mach:` (101 px label + 95 px widest value), and dropping a decimal does not save it. The exception is now written into the code so it is not "fixed" later without re-measuring. The full table is under **Readout label vocabulary** above. |
 | **1.10.15** | **TARGET drops `Alt.SL` and `V.Orb`, and the five rows that are left grow from 76 px to 106.** Both were duplicated on this screen's partner — TARGET is reached from three of the mission ladder's rules and SPACECRAFT is the vehicle panel in all three — and, unlike `Dist` and `V.Close`, neither related to anything on the scope. That distinction is the whole test: **the scope is purely angular**, plotting the bearing and elevation of the target and of the relative velocity vector, so range and closure are the two numbers it *cannot* show, which is exactly what earns them their rows. Altitude above sea level and orbital speed are not about the target at all. Nothing replaces them — the closest-approach fields in `AppState` are KSP2-only stubs and there is no relative inclination or phase angle in the telemetry — so the height goes to legibility, the same trade ASCENT made when it went from eight rows to seven. |
 | **1.10.14** | **POWERED DESCENT trades a row that carried no information for one that decides the landing.** `V.Srf` was not merely duplicated on SPACECRAFT — it was **derivable from three numbers on its own screen**: the panel shows `V.Vrt`, and `Fwd`/`Lat` are the components of the horizontal speed, which is itself √(V.Srf²−V.Vrt²). A reader with the other three already had it. In its place, **`Stg.Brn`** — seconds of thrust left — which has no picture on either panel and is the number a powered descent actually turns on, using the same field, label and thresholds ASCENT and CIRCULARISATION already use, so a burn-time warning means the same thing going up and coming down. |
 | **1.10.13** | **ORBIT's readout strip gains the two numbers its own diagram cannot show.** The PLAN side carried three rows against the INCL side's four, and the free slot at y=448 plus `Alt.SL` make two. `Alt.SL` goes because it was duplicated on this screen's partner — ORBIT is the mission panel's resting state, so that partner is SPACECRAFT in every phase it appears in — and because it annotated nothing: `PeA` and `ApA` are duplicated there too and stay regardless, since they are the magenta and blue **labels for the apsis markers**, drawn in the markers' own colours, and an orbit diagram with unnamed apsides is worse than a repeated number. `Alt.SL`'s white label named the green vessel dot only by inference. In their place, **SMA** and **Ecc**, promoted from ORBIT ADVANCED with the same labels, the same formats and the same order — they are the PLAN diagram's own two parameters, since it draws `a_px = MAX_R` *always* (so the picture is normalised and deliberately cannot show orbit size) and `b_px = MAX_R·√(1−e²)`. SMA restores the dimension the normalisation throws away; Ecc names the one it draws. Making room exposed a bound that had gone stale: **`PLAN_Y1` was 478 because the strip used to start at 485**, and the scene repaint `fillRect`s down to it — so the new top row's label, which is chrome drawn once, was wiped on every scene change. It is now 441, level with `INCL_Y1`, which is the same relationship it always encoded (marker labels clamp to `PLAN_Y1−6` and reach `PLAN_Y1+4`). The harness checks the label's **height**, not just its presence: the old bound left 3 rows of 33, which a "did anything paint?" test accepts. And a latent bug the build warnings surfaced: `_orbVesselPxPlan()` returns false on four paths and leaves `vx`/`vy` **unwritten** on every one, while the caller compared them regardless. Besides being undefined, it decided whether a dot that had just passed behind the body got erased — if the indeterminate values landed within `VESSEL_PX_THRESH` of the cached position, the stale dot stayed on the orbit until something else moved. Visibility is now its own trigger. |

@@ -471,8 +471,11 @@ void chromeScreen_NAV(KCM_TFT &tft) {
              "BRG", TFT_WHITE, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
              "DIST", TFT_WHITE, TFT_BLACK);
+  // V.CLOSE, not V.CLS: this screen's column heads are all-caps, but the token itself is
+  // the one SPACECRAFT, DOCKING and TARGET already use for closure rate. Case is a
+  // layout choice; a different abbreviation would be a second name.
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
-             "V.CLS", TFT_WHITE, TFT_BLACK);
+             "V.CLOSE", TFT_WHITE, TFT_BLACK);
   // Third block completes the target group: how far, how fast, how long.
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + 2 * NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
              "T+INT", TFT_WHITE, TFT_BLACK);

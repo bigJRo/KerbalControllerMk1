@@ -63,16 +63,16 @@ static const uint8_t AP_BODY_SLOT  = 22;
 struct ApCell { int16_t x; uint8_t row; const char *label; bool edit; };
 static const ApCell AP_CELLS[AP_SLOT_COUNT] = {
   { AP_C1X, 0, "Tgt Ap:", true  },
-  { AP_C1X, 1, "Incl:",   true  },
+  { AP_C1X, 1, "Inc:",    true  },
   { AP_C1X, 2, "Launch:", true  },
   { AP_C2X, 0, "Loft:",   true  },
   { AP_C2X, 1, "Roll:",   true  },
   { AP_C2X, 2, "Max-G:",  true  },
   { AP_C3X, 0, "Pitch:",  false },
   { AP_C3X, 1, "Hdg:",    false },
-  { AP_C3X, 2, "Thr:",    false },
+  { AP_C3X, 2, "Thrtl:",  false },
   { AP_C3X, 3, "G:",      false },
-  { AP_C3X, 4, "q:",      false },
+  { AP_C3X, 4, "Q:",      false },
   { AP_C3X, 5, "ApA:",    false },
   { AP_C3X, 6, "PeA:",    false },
 };
