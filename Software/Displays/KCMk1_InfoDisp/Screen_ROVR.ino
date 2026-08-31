@@ -82,10 +82,17 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 // (region left edge x=190) and the formatted distance value is flush-right against
 // the right column (region right edge x=750). The strip sits just below the
 // compass erase region (which ends at y=551), so the two never collide.
+// Two pairs share the strip's 560 px (190..750). Measured against the real glyph data:
+// "Dist:" is 74 px and "T+Tgt:" 109 at Black_36, the widest value ("59m 30s") is 142, so
+// both pairs need 467 and there are 93 px of air to distribute.
 static const int16_t ROVR_TGTD_LBL_X     = 190;
-static const int16_t ROVR_TGTD_LBL_W     = 250;
-static const int16_t ROVR_TGTD_VAL_X     = 500;
-static const int16_t ROVR_TGTD_VAL_W     = 250;  // right edge = 500+250 = 750
+static const int16_t ROVR_TGTD_LBL_W     = 90;
+static const int16_t ROVR_TGTD_VAL_X     = 280;
+static const int16_t ROVR_TGTD_VAL_W     = 155;  // right edge = 435
+static const int16_t ROVR_TGTT_LBL_X     = 465;
+static const int16_t ROVR_TGTT_LBL_W     = 125;
+static const int16_t ROVR_TGTT_VAL_X     = 595;
+static const int16_t ROVR_TGTT_VAL_W     = 155;  // right edge = 750
 static const int16_t ROVR_TGTD_Y         = 552;
 static const int16_t ROVR_TGTD_H         = 48;   // Roboto_Black_36 cap 43 + padding
 
@@ -227,7 +234,15 @@ static int16_t    _rovrPrevThrFill      = -9999;    // last-drawn throttle state
                                                     //   (+1 = forward, 0 = neutral, -1 = reverse)
 static int16_t    _rovrPrevVSrf         = -9999;    // last-drawn signed speed in tenths m/s
                                                     //   (i.e. roundf(speed * 10.0f))
-static int16_t    _rovrPrevEcPct        = -9999;    // last-drawn integer EC%
+static String     _rovrPrevEndurVal     = "";       // last-drawn endurance text
+// Endurance sentinels. Up here with the state rather than beside _rovrEnduranceSec
+// because the target strip reads them and the Arduino builder hoists function
+// prototypes but NOT constants -- same trap as ReCorridor and ApsisTape.
+static const int32_t ROVR_ENDUR_UNKNOWN  = -1;   // no usable rate yet
+static const int32_t ROVR_ENDUR_CHARGING = -2;   // net gain (solar)
+static String     _rovrPrevTgtTimeVal   = "";       // last-drawn T+Tgt text
+static uint16_t   _rovrPrevTgtTimeFg    = 0xFFFF;
+static uint16_t   _rovrPrevTgtTimeBg    = 0xFFFF;
 static uint16_t   _rovrPrevEcFg         = 0xFFFF;   // last-drawn EC% fg color (for threshold change)
 static uint16_t   _rovrPrevEcBg         = 0xFFFF;   // last-drawn EC% bg color
 static int8_t     _rovrPrevBrake        = -1;       // -1=never drawn, 0=off, 1=on
@@ -349,50 +364,85 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
 // triangle and the convention used on SCFT/ACFT target markers.
 static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     if (!state.targetAvailable) {
-        // Target is not available. Erase the label/value if they were drawn.
+        // Target is not available. Erase both pairs if they were drawn.
         if (_rovrPrevTgtDistAvail) {
             tft.fillRect(ROVR_TGTD_LBL_X, ROVR_TGTD_Y,
-                         ROVR_TGTD_LBL_W, ROVR_TGTD_H, TFT_BLACK);
-            tft.fillRect(ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
-                         ROVR_TGTD_VAL_W, ROVR_TGTD_H, TFT_BLACK);
+                         ROVR_TGTT_VAL_X + ROVR_TGTT_VAL_W - ROVR_TGTD_LBL_X,
+                         ROVR_TGTD_H, TFT_BLACK);
             _rovrPrevTgtDistAvail = false;
             _rovrPrevTgtDistVal   = -1;
+            _rovrPrevTgtTimeVal   = "";
         }
         return;
     }
 
-    // Target IS available. Draw the label if this is the first frame since it
-    // appeared (the label is static, so we only draw it once per availability
-    // transition).
+    // Both labels are static, so they are drawn once per availability transition.
     if (!_rovrPrevTgtDistAvail) {
         textLeft(tft, &Roboto_Black_36,
-                 ROVR_TGTD_LBL_X, ROVR_TGTD_Y,
-                 ROVR_TGTD_LBL_W, ROVR_TGTD_H,
+                 ROVR_TGTD_LBL_X, ROVR_TGTD_Y, ROVR_TGTD_LBL_W, ROVR_TGTD_H,
                  "Dist:", TFT_WHITE, TFT_BLACK);
+        textLeft(tft, &Roboto_Black_36,
+                 ROVR_TGTT_LBL_X, ROVR_TGTD_Y, ROVR_TGTT_LBL_W, ROVR_TGTD_H,
+                 "T+Tgt:", TFT_WHITE, TFT_BLACK);
         _rovrPrevTgtDistAvail = true;
-        _rovrPrevTgtDistVal   = -1;   // force value redraw below
+        _rovrPrevTgtDistVal   = -1;   // force both values to redraw below
+        _rovrPrevTgtTimeVal   = "";
     }
 
-    // Distance value — redraw only on integer-metre change to match the
-    // precision of formatAlt's output.
+    // ── Distance ────────────────────────────────────────────────────────────────────
     int32_t iDist = (int32_t)roundf(state.tgtDistance);
-    if (iDist == _rovrPrevTgtDistVal) return;
-
-    // Erase previous value by fillRect over the value strip. Using fillRect
-    // rather than text-overdraw because textRight's x position depends on
-    // string length — the old and new strings may not cover the same pixels.
-    if (_rovrPrevTgtDistVal >= 0) {
-        tft.fillRect(ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
-                     ROVR_TGTD_VAL_W, ROVR_TGTD_H, TFT_BLACK);
+    if (iDist != _rovrPrevTgtDistVal) {
+        // fillRect rather than text overdraw: textRight's x depends on string length, so
+        // the old and new strings may not cover the same pixels.
+        if (_rovrPrevTgtDistVal >= 0)
+            tft.fillRect(ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
+                         ROVR_TGTD_VAL_W, ROVR_TGTD_H, TFT_BLACK);
+        textRight(tft, &Roboto_Black_36,
+                  ROVR_TGTD_VAL_X, ROVR_TGTD_Y, ROVR_TGTD_VAL_W, ROVR_TGTD_H,
+                  formatAlt((float)iDist), TFT_VIOLET, TFT_BLACK);
+        _rovrPrevTgtDistVal = iDist;
     }
 
-    String newStr = formatAlt((float)iDist);
-    textRight(tft, &Roboto_Black_36,
-              ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
-              ROVR_TGTD_VAL_W, ROVR_TGTD_H,
-              newStr, TFT_VIOLET, TFT_BLACK);
-
-    _rovrPrevTgtDistVal = iDist;
+    // ── Time to target, coloured by whether the charge will actually get you there ───
+    // The compass carries the bearing and the strip carries the distance, so direction
+    // and range are covered; a time is the thing the picture cannot draw. Closure comes
+    // from state.tgtVelocity, which SimpitHandler resolves onto the line of sight -- a
+    // rover's heading rarely points at the target, and dividing by ground speed would
+    // flatter the arrival every time.
+    //
+    // The COLOUR is the useful part, and it is about reachability rather than about the
+    // ETA itself (an ETA has no natural tiers of its own). Red means the charge runs out
+    // before you arrive. The 0.8 factor is because arriving at zero is not arriving.
+    //
+    // ONE-WAY. This says nothing about getting home again: the return route is unknown
+    // and the rover may recharge in sunlight. Do not read a green T+Tgt as "I can get
+    // back". A round-trip variant would be 2 x T+Tgt against Endur, if it is ever wanted.
+    {
+        const bool closing = (state.tgtVelocity < -0.5f);
+        String val; uint16_t fg = TFT_DARK_GREY, bg = TFT_BLACK;
+        if (!closing) {
+            val = "---";
+        } else {
+            const int32_t eta = (int32_t)(state.tgtDistance / fabsf(state.tgtVelocity));
+            val = formatTimeCompact((int64_t)eta);
+            const int32_t endur = _rovrEnduranceSec();
+            if (endur == ROVR_ENDUR_UNKNOWN || endur == ROVR_ENDUR_CHARGING) {
+                fg = TFT_DARK_GREEN;                       // unbounded or unknown: no claim
+            } else if (eta >= endur)          { fg = TFT_WHITE;  bg = TFT_RED; }
+            else if (eta >= (endur * 4) / 5)  { fg = TFT_YELLOW;               }
+            else                              { fg = TFT_DARK_GREEN;           }
+        }
+        if (val != _rovrPrevTgtTimeVal || fg != _rovrPrevTgtTimeFg || bg != _rovrPrevTgtTimeBg) {
+            tft.fillRect(ROVR_TGTT_VAL_X, ROVR_TGTD_Y,
+                         ROVR_TGTT_VAL_W, ROVR_TGTD_H, TFT_BLACK);
+            textRight(tft, &Roboto_Black_36,
+                      ROVR_TGTT_VAL_X, ROVR_TGTD_Y, ROVR_TGTT_VAL_W, ROVR_TGTD_H,
+                      val, fg, bg);
+            _rovrPrevTgtTimeVal = val;
+            _rovrPrevTgtTimeFg  = fg;
+            _rovrPrevTgtTimeBg  = bg;
+        }
+    }
 }
 
 // Rover silhouette (top-down) at compass centre. Stationary — the rover always
@@ -553,12 +603,78 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
     _rovrPrevVSrf = iSpeed;
 }
 
-// ── EC% readout ───────────────────────────────────────────────────────────────────────
-// "EC%:" label on top, integer percentage below with threshold-based color.
-// Using ROVER_EC_WARN_PCT / ROVER_EC_ALARM_PCT from AAA_Config.ino:
-//   < ALARM (25%): WHITE-on-RED (critical)
-//   < WARN (50%):  YELLOW-on-BLACK
-//   otherwise:     DARK_GREEN-on-BLACK
+// ── Endurance readout ─────────────────────────────────────────────────────────────────
+// This block used to be EC%, and a percentage was the wrong number to put here. No EV
+// instrument cluster shows state of charge alone: SOC is always paired with estimated
+// range, because SOC answers "how full" and range answers the question actually being
+// asked, which is "can I get back". On a Mun rover 20% tells you nothing about whether
+// that is four minutes or forty. The level itself is not lost -- the Resource Display
+// carries EC%, and the Annunciator owns the low-charge alarm on the same thresholds.
+//
+// This is the rover's version of the change POWERED DESCENT already made, swapping a
+// derivable velocity for Stg.Brn: convert a level into the time it buys you, because
+// time is what the phase turns on.
+//
+// COLOURED BY TIME, NOT BY PERCENTAGE. Colouring from ROVER_EC_*_PCT would put the
+// problem straight back: 19% would show yellow beside "2h 14m", and 40% under a heavy
+// load would show GREEN beside "4m". This cell is a different quantity from EC% and
+// properly gets its own scale -- the same relationship Stg.Brn (seconds) has to
+// dV.Stg (m/s).
+//
+// DERIVED, so the window is the whole design. electricChargePercent is computed from
+// available/total and crawls on a large battery, so the rate comes from a ring buffer
+// spanning tens of seconds rather than frame to frame. Three cases have to be designed
+// rather than discovered on the bench:
+//   - solar panels can make the net rate POSITIVE. That is "CHG", not a negative time.
+//   - below a floor the figure is not decision-relevant (beyond ~10 h), so it reads
+//     "---" rather than a fictitious precision.
+//   - parked with nothing drawing, the rate is noise around zero, which the floor
+//     catches for the same reason.
+static const uint8_t ROVR_ENDUR_N   = 32;      // ring samples
+static const uint16_t ROVR_ENDUR_MS = 1500;    // ~1.5 s apart -> ~48 s window
+static const float   ROVR_ENDUR_FLOOR_PCT_S = 0.002f;  // ~14 h to empty; below this, "---"
+
+static float    _rovrEcRing[ROVR_ENDUR_N];
+static uint32_t _rovrEcRingMs[ROVR_ENDUR_N];
+static uint8_t  _rovrEcRingHead  = 0;
+static uint8_t  _rovrEcRingCount = 0;
+static uint32_t _rovrEcLastMs    = 0;
+
+void rovrEnduranceReset() {
+    _rovrEcRingHead = 0; _rovrEcRingCount = 0; _rovrEcLastMs = 0;
+}
+
+// Net discharge rate in percent per second, POSITIVE while draining. Returns false until
+// the window holds enough spread to mean anything.
+static bool _rovrDischargeRate(float &pctPerSec) {
+    if (_rovrEcRingCount < 4) return false;
+    const uint8_t newest = (uint8_t)((_rovrEcRingHead + ROVR_ENDUR_N - 1) % ROVR_ENDUR_N);
+    const uint8_t oldest = (uint8_t)((_rovrEcRingHead + ROVR_ENDUR_N - _rovrEcRingCount) % ROVR_ENDUR_N);
+    const float dt = (float)(uint32_t)(_rovrEcRingMs[newest] - _rovrEcRingMs[oldest]) / 1000.0f;
+    if (dt < 5.0f) return false;
+    pctPerSec = (_rovrEcRing[oldest] - _rovrEcRing[newest]) / dt;
+    return true;
+}
+
+static void _rovrEnduranceSample(float ecPct, uint32_t now) {
+    if (_rovrEcRingCount != 0 && (uint32_t)(now - _rovrEcLastMs) < ROVR_ENDUR_MS) return;
+    _rovrEcRing[_rovrEcRingHead]   = ecPct;
+    _rovrEcRingMs[_rovrEcRingHead] = now;
+    _rovrEcRingHead = (uint8_t)((_rovrEcRingHead + 1) % ROVR_ENDUR_N);
+    if (_rovrEcRingCount < ROVR_ENDUR_N) _rovrEcRingCount++;
+    _rovrEcLastMs = now;
+}
+
+static int32_t _rovrEnduranceSec() {
+    float rate;
+    if (!_rovrDischargeRate(rate)) return ROVR_ENDUR_UNKNOWN;
+    if (rate <= -ROVR_ENDUR_FLOOR_PCT_S) return ROVR_ENDUR_CHARGING;   // net gain
+    if (rate <   ROVR_ENDUR_FLOOR_PCT_S) return ROVR_ENDUR_UNKNOWN;    // flat / noise
+    float ec = state.electricChargePercent;
+    if (ec < 0.0f) ec = 0.0f; else if (ec > 100.0f) ec = 100.0f;
+    return (int32_t)(ec / rate);
+}
+
 static inline int16_t _rovrEcLabelY() {
     int16_t totalContent = ROVR_LBL_H + ROVR_LBL_VAL_GAP + ROVR_VAL_H;
     return ROVR_EC_Y + (ROVR_EC_H - totalContent) / 2;
@@ -567,7 +683,6 @@ static inline int16_t _rovrEcValueY() {
     return _rovrEcLabelY() + ROVR_LBL_H + ROVR_LBL_VAL_GAP;
 }
 
-// Draw the stationary EC% chrome: bounding box border and label.
 static void _rovrDrawEcChrome(KCM_TFT &tft) {
     tft.drawRect(ROVR_LCOL_X, ROVR_EC_Y,
                  ROVR_LCOL_W, ROVR_EC_H,
@@ -576,44 +691,39 @@ static void _rovrDrawEcChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "EC%:", TFT_WHITE, TFT_BLACK);
+               "Endur:", TFT_WHITE, TFT_BLACK);
 }
 
 static void _rovrUpdateEc(KCM_TFT &tft) {
-    float ec = state.electricChargePercent;
-    if (ec < 0.0f) ec = 0.0f; else if (ec > 100.0f) ec = 100.0f;
-    int16_t iEc = (int16_t)roundf(ec);
+    _rovrEnduranceSample(state.electricChargePercent, millis());
+    const int32_t sec = _rovrEnduranceSec();
 
-    // Compute threshold colors
-    uint16_t fg, bg;
-    if      (ec < ROVER_EC_ALARM_PCT) { fg = TFT_WHITE;      bg = TFT_RED;   }
-    else if (ec < ROVER_EC_WARN_PCT)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
-    else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-
-    if (iEc == _rovrPrevEcPct && fg == _rovrPrevEcFg && bg == _rovrPrevEcBg) return;
-
-    int16_t valueY = _rovrEcValueY();
-
-    // Erase previous value using its own previous bg color (important: if the
-    // threshold transitioned into/out of the RED alarm state, the bg is different)
-    if (_rovrPrevEcPct > -9000) {
-        char oldBuf[8];
-        snprintf(oldBuf, sizeof(oldBuf), "%d%%", _rovrPrevEcPct);
-        eraseCenteredValue(tft, &Roboto_Black_36,
-                                ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
-                                oldBuf, _rovrPrevEcBg);
+    uint16_t fg, bg = TFT_BLACK;
+    String val;
+    if (sec == ROVR_ENDUR_CHARGING)     { fg = TFT_DARK_GREEN; val = "CHG"; }
+    else if (sec == ROVR_ENDUR_UNKNOWN) { fg = TFT_DARK_GREY;  val = "---"; }
+    else {
+        val = formatTimeCompact((int64_t)sec);
+        if      (sec < ROVER_ENDUR_ALARM_S) { fg = TFT_WHITE;      bg = TFT_RED; }
+        else if (sec < ROVER_ENDUR_WARN_S)  { fg = TFT_YELLOW;                   }
+        else                                { fg = TFT_DARK_GREEN;               }
     }
 
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d%%", iEc);
-    textCenter(tft, &Roboto_Black_36,
-               ROVR_LCOL_X, valueY,
-               ROVR_LCOL_W, ROVR_VAL_H,
-               buf, fg, bg);
+    if (val == _rovrPrevEndurVal && fg == _rovrPrevEcFg && bg == _rovrPrevEcBg) return;
 
-    _rovrPrevEcPct = iEc;
-    _rovrPrevEcFg  = fg;
-    _rovrPrevEcBg  = bg;
+    const int16_t valueY = _rovrEcValueY();
+    if (_rovrPrevEndurVal.length() > 0) {
+        eraseCenteredValue(tft, &Roboto_Black_36,
+                           ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
+                           _rovrPrevEndurVal.c_str(), _rovrPrevEcBg);
+    }
+    textCenter(tft, &Roboto_Black_36,
+               ROVR_LCOL_X, valueY, ROVR_LCOL_W, ROVR_VAL_H,
+               val.c_str(), fg, bg);
+
+    _rovrPrevEndurVal = val;
+    _rovrPrevEcFg     = fg;
+    _rovrPrevEcBg     = bg;
 }
 
 // ── BRAKE / GEAR / SAS buttons ────────────────────────────────────────────────────────
@@ -1179,7 +1289,9 @@ static void chromeScreen_ROVR(KCM_TFT &tft) {
     _rovrPrevTgtScreenDeg = -9999.0f;
     _rovrPrevThrFill      = -9999;
     _rovrPrevVSrf         = -9999;
-    _rovrPrevEcPct        = -9999;
+    _rovrPrevEndurVal     = "";
+    _rovrPrevTgtTimeVal   = "";
+    rovrEnduranceReset();
     _rovrPrevEcFg         = 0xFFFF;
     _rovrPrevEcBg         = 0xFFFF;
     _rovrPrevBrake        = -1;

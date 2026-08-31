@@ -363,10 +363,20 @@ const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
 const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
 const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
 
-// Electric charge thresholds (%) — aligned to the shared low-EC thresholds so the
-// rover matches every other screen and the Annunciator CW_BUS_VOLTAGE alarm.
-const float ROVER_EC_WARN_PCT     = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
-const float ROVER_EC_ALARM_PCT    = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
+// Endurance thresholds (seconds of charge remaining). The ROVER block that used to show
+// EC% now shows time to empty, so it is coloured on TIME, not on percentage -- see the
+// note on the readout in Screen_ROVR.ino. The percentage tiers still exist where a
+// percentage is displayed: the Resource Display shows EC%, and the Annunciator owns the
+// low-charge alarm on EC_LOW_WARN_FRAC / EC_LOW_ALARM_FRAC.
+const int32_t ROVER_ENDUR_WARN_S  = 3600;   // yellow — under an hour of charge left
+const int32_t ROVER_ENDUR_ALARM_S = 600;    // white-on-red — under ten minutes
+
+// Percentage tiers, for the places a CHARGE LEVEL is still what is displayed: SPACECRAFT's
+// EVA row 6, and the Resource Display. Named for the quantity rather than for the rover,
+// which no longer uses them. Aligned to the shared low-EC thresholds so every percentage
+// on the panel and the Annunciator's CW_BUS_VOLTAGE alarm agree.
+const float EC_PCT_WARN  = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
+const float EC_PCT_ALARM = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
 
 /***************************************************************************************
    PHASE 2 IMPLEMENTATION NOTES

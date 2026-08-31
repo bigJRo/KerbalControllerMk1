@@ -809,8 +809,8 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
             float ec = constrain(state.electricChargePercent, 0.0f, 100.0f);
             uint16_t fg, bg;
             thresholdColor(ec,
-                           ROVER_EC_ALARM_PCT, TFT_WHITE,  TFT_RED,
-                           ROVER_EC_WARN_PCT,  TFT_YELLOW, TFT_BLACK,
+                           EC_PCT_ALARM, TFT_WHITE,  TFT_RED,
+                           EC_PCT_WARN,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, fg, bg);
             char buf[8];
             snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(ec));
