@@ -9,6 +9,51 @@ static const uint32_t DEMO_UPDATE_MS = 100;
 static uint32_t _demoLast  = 0;
 static float    _demoPhase = 0.0f;
 
+/***************************************************************************************
+   DEMO-SIDE ASCENT AUTOPILOT
+   In demo mode there is no Controller_Main to accept the console's commands and echo
+   the accepted values back, so the demo plays that part. Console taps arrive here via
+   apDemoApplyCommand(); stepDemoState() publishes these fields into state.ap* instead
+   of the literals it used to hardcode, which closes the round trip the console expects
+   — command out, accepted value back. Without it, an ARM/DISARM tap or a parameter
+   edit would raise a pending cue that nothing could ever clear, because the demo would
+   overwrite the field with its own literal on the very next frame.
+
+   The ascent animation is gated on the armed state rather than driving it: the demo
+   boots armed so the guidance outputs animate as they always have, DISARM parks it in
+   IDLE, and ARM starts it running again from where it left off.
+****************************************************************************************/
+static bool     _demoApArmed   = true;      // boots armed so the animation runs as before
+static float    _demoApT       = 0.0f;      // ascent timer, advances only while armed
+static float    _demoApTgtAlt  = 80000.0f;
+static float    _demoApIncl    = 6.0f;
+static bool     _demoApSouth   = false;
+static float    _demoApLoft    = 1.0f;
+static bool     _demoApRollEn  = false;
+static float    _demoApRollDeg = 0.0f;
+static float    _demoApMaxG    = 4.0f;
+
+// Applied from apEnqueueCmd() when demoMode is set. Returns true when the opcode was
+// recognised, which is what raises the console's pending cue — cleared a frame later
+// when stepDemoState() publishes the new value and apReconcilePending() sees it match.
+bool apDemoApplyCommand(uint8_t op, float payload) {
+  switch (op) {
+    case AP_CMD_SET_TARGET_ALT:  _demoApTgtAlt = payload; return true;
+    case AP_CMD_SET_INCLINATION: _demoApIncl   = payload; return true;
+    case AP_CMD_SET_LAUNCH_DIR:  _demoApSouth  = (payload != 0.0f); return true;
+    case AP_CMD_SET_LOFT:        _demoApLoft   = payload; return true;
+    case AP_CMD_SET_MAXG:        _demoApMaxG   = payload; return true;
+    case AP_CMD_SET_ROLL:
+      // AP_ROLL_OFF is the disable sentinel, outside the +/-180 range.
+      _demoApRollEn  = (fabsf(payload) <= 180.0f);
+      if (_demoApRollEn) _demoApRollDeg = payload;
+      return true;
+    case AP_CMD_ARM:             _demoApArmed = true;  return true;
+    case AP_CMD_DISARM:          _demoApArmed = false; return true;
+    default: return false;
+  }
+}
+
 
 void initDemoMode() {
   state.vesselName      = "Jeb's Rocket";
@@ -170,18 +215,22 @@ void stepDemoState() {
   // ASCENT AUTOPILOT — cycles the phase through a launch so the panel animates
   // -----------------------------------------------------------------------
   {
-    float t = fmodf(_demoPhase, 8.0f);              // 0..8 loop
-    uint8_t ph = (t < 0.6f) ? 0 : (t < 1.4f) ? 1 : (t < 4.0f) ? 2 :
-                 (t < 5.5f) ? 3 : (t < 7.0f) ? 4 : 5;
+    // The ascent runs only while armed; DISARM parks it in IDLE and holds the timer, so
+    // ARM resumes where it left off. Phase never returns to IDLE while armed — IDLE is
+    // what disarmed looks like — so the bands below start at VERTICAL.
+    if (_demoApArmed) _demoApT = fmodf(_demoApT + 0.015f, 8.0f);
+    float t = _demoApT;
+    uint8_t ph = !_demoApArmed ? 0
+               : (t < 0.8f) ? 1 : (t < 3.4f) ? 2 : (t < 4.9f) ? 3 : (t < 6.4f) ? 4 : 5;
     state.apPhase       = ph;
-    state.apArmed       = (ph != 0);
-    state.apTargetAlt   = 80000.0f;
-    state.apInclination = 6.0f;
-    state.apSoutherly   = false;
-    state.apLoft        = 1.0f;
-    state.apRollEnable  = false;
-    state.apRollDeg     = 0.0f;
-    state.apMaxG        = 4.0f;
+    state.apArmed       = _demoApArmed;
+    state.apTargetAlt   = _demoApTgtAlt;
+    state.apInclination = _demoApIncl;
+    state.apSoutherly   = _demoApSouth;
+    state.apLoft        = _demoApLoft;
+    state.apRollEnable  = _demoApRollEn;
+    state.apRollDeg     = _demoApRollDeg;
+    state.apMaxG        = _demoApMaxG;
     float prog = (t - 1.0f) / 3.0f;                 // 0..1 across the gravity turn
     if (prog < 0.0f) prog = 0.0f;
     if (prog > 1.0f) prog = 1.0f;

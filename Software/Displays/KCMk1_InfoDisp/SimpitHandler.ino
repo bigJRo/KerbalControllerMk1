@@ -24,6 +24,27 @@
    Populates state fields only — never draws directly. May call switchToScreen()
    on SCENE_CHANGE_MESSAGE and VESSEL_CHANGE_MESSAGE events.
 ****************************************************************************************/
+/***************************************************************************************
+   FLIGHT-SCENE ENTRY
+   Shared by the explicit SCENE_CHANGE and by the inference in FLIGHT_STATUS below, so
+   the two routes into a flight scene cannot drift apart.
+****************************************************************************************/
+static void enterFlightScene() {
+  flightScene = true;
+  demoMode    = false;
+  // Entering a flight scene is a fresh start — release any held manual pick so the
+  // panel opens on its context screen rather than wherever it was parked.
+  clearManualScreenLatch();
+  resetContextRouting();      // ladder history + press dwell belong to the old scene
+  // Same for the reference overrides on the two attitude screens: a pinned SRF/ORB or
+  // SL/RDR belongs to the flight it was pinned in.
+  modeClearOverride(_scftVelRefOverride);
+  modeClearOverride(_acftAltRefOverride);
+  if (contextSwitchAllowed()) switchToScreen(contextScreen());
+  simpit.requestMessageOnChannel(0);
+}
+
+
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
   if (debugMode) {
@@ -96,6 +117,20 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // state.inAtmo populated by ATMO_CONDITIONS_MESSAGE
         // state.sasMode — no field in KerbalSimpit 2.4.0 flightStatusMessage
 
+        // Simpit sends FLIGHT_STATUS only from a flight scene, so receiving it while
+        // we believe we are not in one means the SCENE_CHANGE that would have told us
+        // never arrived. That is the normal case when a panel boots into a flight
+        // already in progress — SCENE_CHANGE is an event, not a state you can ask for,
+        // so a display powered up (or USB re-enumerated) mid-flight would otherwise sit
+        // on the standby splash until the pilot happened to change scene or vessel.
+        // Adopting it here rather than on an earlier channel is deliberate: this
+        // message's vessel data is applied just above, so the context ladder routes on
+        // the real vessel instead of on default state.
+        if (!flightScene) {
+          if (debugMode) Serial.println(F("InfoDisp: flight scene inferred from FLIGHT_STATUS"));
+          enterFlightScene();
+        }
+
         // If a vessel switch is pending, now we have the correct vesselType — switch screens
         if (_pendingContextSwitch) {
           _pendingContextSwitch = false;
@@ -107,17 +142,21 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             Serial.print(F(" tgtDist="));
             Serial.println(state.tgtDistance);
           }
-          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
-          if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
+          // A held manual pick and self-pinning screens (RE-ENTRY) stay put — don't
+          // let an auto route steal them.
+          if (contextSwitchAllowed()) switchToScreen(contextScreen());
           // TARGETINFO may not have arrived yet — set flag to re-check for docking context
           // once target distance is known (catches switching to a vessel near a dock target)
           _pendingDockCheck = true;
         }
 
-        // Pre-launch board: only for vessel types that would go to LNCH screen.
-        // Planes → ACFT and Rovers → ROVR even on the pad, so skip the board for them.
-        bool planeOrRover = (state.vesselType == type_Plane || state.vesselType == type_Rover);
-        bool isPreLaunch  = (!planeOrRover && (state.situation & sit_PreLaunch) != 0);
+        // Pre-launch board. The plane/rover exclusion this used to carry existed only
+        // because vessel-type routing sat above the pre-launch rule on a single
+        // display: a spaceplane on the pad went to ACFT, so arming the board would
+        // have set a mode for a screen the pilot could not see. The two ladders no
+        // longer compete — pre-launch is a phase, answered on the mission panel — so
+        // the board is armed for every vessel type on the pad, spaceplanes included.
+        bool isPreLaunch = (state.situation & sit_PreLaunch) != 0;
         if (isPreLaunch && !_lnchPrelaunchMode && !_lnchPrelaunchDismissed) {
           _lnchPrelaunchMode = true;
           if (activeScreen == screen_LNCH) switchToScreen(screen_LNCH);
@@ -126,6 +165,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           _lnchPrelaunchMode      = false;
           _lnchPrelaunchDismissed = false;
           _lnchOrbitalMode        = false;
+          _lnchCoastLatched       = false;
           _lnchManualOverride     = false;
           if (activeScreen == screen_LNCH) switchToScreen(screen_LNCH);
         } else if (!isPreLaunch) {
@@ -293,11 +333,37 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(targetMessage)) {
         targetMessage t = parseMessage<targetMessage>(msg);
         state.tgtDistance   = t.distance;
-        state.tgtVelocity   = t.velocity;
         state.tgtHeading    = t.heading;
         state.tgtPitch      = t.pitch;
         state.tgtVelHeading = t.velocityHeading;
         state.tgtVelPitch   = t.velocityPitch;
+
+        // Closure rate, signed: negative = closing. Simpit does NOT send a signed
+        // value -- KerbalSimpitRevamped's TargetInfo.cs sets
+        //     myTargetInfo.velocity = FlightGlobals.ship_tgtVelocity.magnitude;
+        // which is never negative. Taking it as signed left every consumer's
+        // "closing" test false forever: T+INT (NAV), T+Int (TARGET) and T+Dock
+        // (DOCKING) all read "---" permanently, and V.Close on TARGET and DOCKING
+        // could never reach nominal green. Demo mode hid it, because Demo.ino writes
+        // state.tgtVelocity directly with a signed sine and never comes through here.
+        //
+        // The magnitude is the speed along the whole relative velocity vector, so it
+        // also overstates closure whenever the craft is not heading straight at the
+        // target. Both directions arrive as navball heading/pitch pairs from the same
+        // Simpit encoder, so projecting one onto the other recovers the true
+        // line-of-sight rate. Only the ANGLE between the two matters, which makes this
+        // insensitive to any axis-ordering difference between kspDirUnit's ENU frame
+        // and Simpit's -- both vectors are built by the same function here.
+        {
+          float vHat[3], dHat[3];
+          kspDirUnit(t.velocityHeading, t.velocityPitch, vHat);
+          kspDirUnit(t.heading,         t.pitch,         dHat);
+          const float cosT = vHat[0]*dHat[0] + vHat[1]*dHat[1] + vHat[2]*dHat[2];
+          // ship_tgtVelocity is the craft's velocity relative to the target, so it
+          // points along craft->target while closing: cosT > 0. Negate for the
+          // panel-wide "negative = closing" convention.
+          state.tgtVelocity = -t.velocity * cosT;
+        }
 
         // After a vessel switch, contextScreen() runs before tgtDistance is known,
         // so the docking distance check may fail even with a valid nearby target.
@@ -311,16 +377,12 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
             Serial.print(F(" tgtDist="));
             Serial.println(state.tgtDistance);
           }
-          // KSP may report targetAvailable=false even while sending TARGETINFO with
-          // a valid distance — use distance alone to confirm a nearby docking target.
-          // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
-          if (!isManualLockScreen(activeScreen)) {
-            if (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M) {
-              switchToScreen(screen_DOCK);
-            } else {
-              switchToScreen(contextScreen());
-            }
-          }
+          // Re-run the ladder now that target distance is known. The DOCK special
+          // case the old code had here is redundant: the mission ladder tests the
+          // same distance in rule 3, and on the vehicle-type unit DOCK is not a
+          // destination at all, so routing there would have been wrong.
+          // A held manual pick and self-pinning screens (RE-ENTRY) stay put.
+          if (contextSwitchAllowed()) switchToScreen(contextScreen());
         }
       }
       break;
@@ -377,20 +439,17 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     case SCENE_CHANGE_MESSAGE:
       if (msgSize < 1) break;   // guard: single-byte payload
       // msg[0] == 0 → flight scene; msg[0] == 1 → non-flight (menu, tracking, etc.)
-      flightScene = (msg[0] == 0);
       if (debugMode)
-        Serial.println(flightScene ? F("InfoDisp: Entering flight scene")
-                                   : F("InfoDisp: Leaving flight scene"));
-      if (flightScene) {
-        demoMode = false;
-        // Manual-only screens (REEN/ORB+) stay put — don't let an auto route steal them.
-        if (!isManualLockScreen(activeScreen)) switchToScreen(contextScreen());
-        simpit.requestMessageOnChannel(0);
+        Serial.println((msg[0] == 0) ? F("InfoDisp: Entering flight scene")
+                                     : F("InfoDisp: Leaving flight scene"));
+      if (msg[0] == 0) {
+        enterFlightScene();
       } else {
+        flightScene = false;
         // Non-flight (menus, tracking station, etc.) — show standby splash
         demoMode = false;
         drawStandbyScreen(infoDisp);
-        activeScreen = screen_LNCH;
+        activeScreen = SCREEN_HOME;   // park on this panel's home screen behind the splash
         prevScreen   = screen_COUNT;
       }
       break;
@@ -412,6 +471,10 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
         _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
         _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
+        clearManualScreenLatch();      // new vessel — release the held manual pick
+        resetContextRouting();         //   and the routing state with it
+        modeClearOverride(_scftVelRefOverride);   // and the held attitude references
+        modeClearOverride(_acftAltRefOverride);
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;
         _drogueDeployed  = false;

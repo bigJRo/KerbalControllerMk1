@@ -102,40 +102,32 @@ static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot 
 //   Label: "Burn Dur:" in Black_20 light grey
 //   Value: formatTimeCompact(mnvrDuration) in Black_24 dark green
 //          ("---" in dark grey when no maneuver node)
-static const int16_t LNCH_OR_BDUR_LBL_Y = 258;                                  // below the ATT disc (disc bottom 230 + margin)
-static const int16_t LNCH_OR_BDUR_VAL_Y = LNCH_OR_BDUR_LBL_Y + 27;             // 24 px label + 3 px gap
+// First left-rail slot, below the ATT disc. Was the burn-duration readout; that moved
+// to the right column, and this slot now carries eccentricity — how circular the orbit
+// in the diagram beside it actually is.
+static const int16_t LNCH_OR_ECC_LBL_Y = 258;                              // disc bottom 230 + margin
+static const int16_t LNCH_OR_ECC_VAL_Y = LNCH_OR_ECC_LBL_Y + 27;           // 24 px label + 3 px gap
 
 // ΔV-to-circularize readout: fills the left-rail whitespace below Burn Dur.
 // Standalone vis-viva estimate of the ΔV needed to circularize at apoapsis (the
 // key pre-burn planning number). Label + prominent value, centered on the ATT
 // column. Vertically centered in the gap between Burn Dur and the bottom band.
-static const int16_t LNCH_OR_CIRCDV_LBL_Y = 372;   // label row ("ΔV Circ:", Black_20)
-static const int16_t LNCH_OR_CIRCDV_VAL_Y = 400;   // value row (Black_28)
+// Second left-rail slot. Was the ΔV-to-circularise readout; that moved to the right
+// column with the other two burn numbers, and this slot now carries the apsis gap —
+// the number the orbit diagram directly above it is a picture of.
+static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("Ap-Pe:", Black_20)
+static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 
 
 
 // ── Orbital (circularization) phase change-detection state ────────────────────────────
-// Mirrors the ascent state structure. Row order for orbital phase:
-//   0: Alt.SL, 1: V.Orb, 2: ApA, 3: PeA, 4: T+Ap, 5: Thrtl, 6: T.Brn, 7: ΔV.Stg
-static int32_t _lnchOrPrevAlt        = -1 << 30;  // m
-static int16_t _lnchOrPrevVOrb       = -9999;     // tenths m/s
-static int32_t _lnchOrPrevApA        = -1 << 30;  // m
-static int32_t _lnchOrPrevPeA        = -1 << 30;  // m
-static int32_t _lnchOrPrevTimeToAp   = -1 << 30;  // seconds
-static int16_t _lnchOrPrevThrottle   = -1;        // percent
+// This was eight rows mirroring the ascent readout. T.Brn is the only one that stayed;
+// the apsis tape further down owns the rest of the column now.
 static int32_t _lnchOrPrevTBurn      = -1 << 30;  // seconds
-static int32_t _lnchOrPrevDVStg      = -1 << 30;  // m/s
 
-static uint16_t _lnchOrPrevAltFg     = 0xFFFF;
-static uint16_t _lnchOrPrevVOrbFg    = 0xFFFF;
-static uint16_t _lnchOrPrevApAFg     = 0xFFFF;
-static uint16_t _lnchOrPrevPeAFg     = 0xFFFF;
-static uint16_t _lnchOrPrevTimeToApFg= 0xFFFF;
-static uint16_t _lnchOrPrevThrFg     = 0xFFFF; static uint16_t _lnchOrPrevThrBg  = 0xFFFF;
+// T.Brn is the one row that survived the eight-row readout this column used to be; the
+// rest of that panel's change-detection state went with it. See the apsis tape below.
 static uint16_t _lnchOrPrevTBurnFg   = 0xFFFF; static uint16_t _lnchOrPrevTBurnBg = 0xFFFF;
-static uint16_t _lnchOrPrevDVStgFg   = 0xFFFF; static uint16_t _lnchOrPrevDVStgBg = 0xFFFF;
-
-static PrintState _lnchOrPs[8];   // PrintState tracking for each orbital row
 
 
 // ── Orbit graphic prev-frame state (for erase-then-redraw, no full wipe) ─────────────
@@ -216,38 +208,57 @@ static PrintState _lnchOrTignPs;
 static int16_t   _lnchOrPrevAttDotX = 9999;
 static int16_t   _lnchOrPrevAttDotY = 9999;
 static uint16_t  _lnchOrPrevAttDotCol = 0;
-// Burn-duration readout prev state: rounded seconds (-9999 = not drawn,
-// -9998 = "---" placeholder). Skip redraw when value rounds the same.
+// Burn-duration and ΔV-to-circularise readouts. Both now live in the right column
+// beside stage burn time -- the three numbers that describe the burn, together --
+// but their change detection is unchanged: rounded value, -9999 = not drawn,
+// -9998 = showing the "---" placeholder.
 static int32_t   _lnchOrPrevBurnDurSec = -9999;
-// ΔV-to-circularize readout prev state (-9999 = not drawn, -9998 = "---").
 static int32_t   _lnchOrPrevCircDvRounded = -9999;
+// Left-rail readouts: eccentricity (x1000) and the apsis gap (metres). These describe
+// the shape of the orbit, so they sit with the picture of it rather than with the burn.
+static int32_t   _lnchOrPrevEccMilli = -9999;
+static int32_t   _lnchOrPrevGapM     = -9999;
 // SOI name we last drew the static layer for. If SOI changes mid-session, we
 // need to redraw the static layer.
 static char _lnchOrPrevSoi[24] = {0};
 
+// ── Apsis convergence tape state ──────────────────────────────────────────────────────
+// Up here rather than beside the tape's drawing code further down, because
+// _lnchOrResetState() below clears it. The ApsisTape frame type lives in
+// KCMk1_InfoDisp.h -- see the note there on why it cannot live in this file.
+//
+// Note the Tp prefix on these: _lnchOrPrevApY / _lnchOrPrevPeY are already the orbit
+// diagram's own Ap/Pe marker pixels a hundred lines above, and _lnchOrPrevPeVal would
+// have been a prefix of its _lnchOrPrevPeValid.
+static ApsisTape  _lnchOrTape      = { 0.0f, 0.0f, 0.0f, false };
+static bool       _lnchOrTapeDirty = true;   // scale changed -> static layer needs redraw
+static int16_t    _lnchOrTpApY     = -9999;  // last-drawn marker rows (-9999 = never drawn)
+static int16_t    _lnchOrTpPeY     = -9999;
+static bool       _lnchOrTpPeLow   = false;  // periapsis was off the bottom of the scale
+static int32_t    _lnchOrTpApVal   = -1 << 30;
+static int32_t    _lnchOrTpPeVal   = -1 << 30;
+static PrintState _lnchOrTpPs[3];
+
+
 // Reset all orbital-phase change-detection state + PrintState. Called at
 // chrome time to force a full redraw.
 static void _lnchOrResetState() {
-    _lnchOrPrevAlt        = -1 << 30;
-    _lnchOrPrevVOrb       = -9999;
-    _lnchOrPrevApA        = -1 << 30;
-    _lnchOrPrevPeA        = -1 << 30;
-    _lnchOrPrevTimeToAp   = -1 << 30;
-    _lnchOrPrevThrottle   = -1;
     _lnchOrPrevTBurn      = -1 << 30;
-    _lnchOrPrevDVStg      = -1 << 30;
-    _lnchOrPrevAltFg      = 0xFFFF;
-    _lnchOrPrevVOrbFg     = 0xFFFF;
-    _lnchOrPrevApAFg      = 0xFFFF;
-    _lnchOrPrevPeAFg      = 0xFFFF;
-    _lnchOrPrevTimeToApFg = 0xFFFF;
-    _lnchOrPrevThrFg      = 0xFFFF; _lnchOrPrevThrBg  = 0xFFFF;
     _lnchOrPrevTBurnFg    = 0xFFFF; _lnchOrPrevTBurnBg = 0xFFFF;
-    _lnchOrPrevDVStgFg    = 0xFFFF; _lnchOrPrevDVStgBg = 0xFFFF;
-    for (uint8_t i = 0; i < 8; i++) {
-        _lnchOrPs[i].prevWidth  = 0;
-        _lnchOrPs[i].prevBg     = 0x0001;
-        _lnchOrPs[i].prevHeight = 0;
+    _lnchOrPrevEccMilli   = -9999;
+    _lnchOrPrevGapM       = -9999;
+
+    // Apsis tape: drop the frame so the first update recomputes and redraws the scale,
+    // and forget the marker rows so nothing is erased at a stale position.
+    _lnchOrTape.valid = false;
+    _lnchOrTapeDirty  = true;
+    _lnchOrTpApY      = -9999;     _lnchOrTpPeY   = -9999;
+    _lnchOrTpPeLow    = false;
+    _lnchOrTpApVal    = -1 << 30;  _lnchOrTpPeVal = -1 << 30;
+    for (uint8_t i = 0; i < 3; i++) {
+        _lnchOrTpPs[i].prevWidth  = 0;
+        _lnchOrTpPs[i].prevBg     = 0x0001;
+        _lnchOrTpPs[i].prevHeight = 0;
     }
     // Invalidate global printState slots (shared across phases).
     for (uint8_t i = 0; i < ROW_COUNT; i++) {
@@ -289,153 +300,416 @@ static void _lnchOrResetState() {
 
 // ── Orbital (circularization) phase — right panel ─────────────────────────────────────
 //
-// Mirrors the ascent right panel exactly (LNCH_AS2_* geometry/fonts): 8 rows,
-// Black_28 labels / Black_36 values, label on the left and value right-aligned,
-// dividers between rows. Uses a separate row-label set and change-detection state.
+/***************************************************************************************
+   APSIS CONVERGENCE TAPE — the right third of the circularisation screen
+****************************************************************************************
+
+   This column used to be eight numeric rows mirroring the ascent phase: Alt.SL, V.Orb,
+   ApA, PeA, T+Ap, Thrtl, T.Brn, dV.Stg. Seven of the eight also sit on the PFD on the
+   other panel, in every phase this screen is up -- so 38% of the display was restating
+   the display beside it, and the one relationship the pilot is actually flying appeared
+   on neither.
+
+   A circularisation burn is a single task: raise periapsis until it meets apoapsis. Both
+   numbers are on the PFD, but the *gap between them* and the rate it is closing are not,
+   and no readout can show a rate. So the column becomes a vertical altitude tape with
+   apoapsis fixed near the top, periapsis climbing to meet it, and the orbit-safe altitude
+   drawn as the floor the orbit has to clear. Three rows beneath carry the only numbers on
+   this screen the PFD does not already have.
+
+   Why the tape and not a bigger orbit diagram: the diagram is height-boxed, with 35 px of
+   slack above it and 36 below. The freed space is 360 px of *width*, and a tape is the
+   instrument that fits a tall narrow column.
+
+   SCALE. Ends are quantised to whole tick steps, so the frame only moves when apoapsis
+   crosses a step boundary rather than drifting every frame -- one rescale across a whole
+   Kerbin circularisation burn, measured on the host. The step is chosen 1-2-5 and walked
+   upward until the tape carries at most eight ticks, because quantising the ends widens
+   the range and can otherwise ask for more labels than there is room to draw.
+
+   A suborbital periapsis is hundreds of kilometres below the surface and cannot be framed
+   with the apoapsis. Its marker clamps to the bottom of the scale and draws hollow, the
+   way an off-scale value is annunciated on a real tape; it fills in as the burn brings the
+   periapsis up into view. That transition -- hollow at the bottom, then rising -- is the
+   burn starting to work.
+****************************************************************************************/
+
+static const int16_t LNCH_OR_TP_X       = 580;                          // column left edge
+static const int16_t LNCH_OR_TP_W       = 360;
+static const int16_t LNCH_OR_TP_RIGHT   = LNCH_OR_TP_X + LNCH_OR_TP_W;  // 940
+static const int16_t LNCH_OR_TP_HDR_Y   = 68;                           // header label row
+static const int16_t LNCH_OR_TP_Y       = 104;                          // scale top
+static const int16_t LNCH_OR_TP_H       = 356;                          // scale height -> 104..460
+static const int16_t LNCH_OR_TP_RAIL_X  = LNCH_OR_TP_X + 96;            // 676 — the scale line
+static const int16_t LNCH_OR_TP_TICK_W  = 9;                            // tick length, left of rail
+static const int16_t LNCH_OR_TP_MK_W    = 18;                           // marker triangle length
+static const int16_t LNCH_OR_TP_MK_H    = 9;                            // marker half-height
+static const int16_t LNCH_OR_TP_LBL_X   = LNCH_OR_TP_RAIL_X + LNCH_OR_TP_MK_W + 9;   // 703
+static const int16_t LNCH_OR_TP_GAP_X   = LNCH_OR_TP_X + 30;            // 610 — gap bracket
+static const int16_t LNCH_OR_TP_STRIP_H = 21;                           // marker erase half-height
+
+// Numeric block under the tape — three rows, the only values here the PFD lacks.
+static const int16_t LNCH_OR_TP_ROW_Y   = 476;
+static const int16_t LNCH_OR_TP_ROW_H   = 41;                           // 3 rows -> 476..598
+
+
+
+// Orbit-safe altitude: top of the atmosphere where there is one, highest terrain where
+// there is not. The same max(minSafe, lowSpace) the mission ladder uses to decide whether
+// an orbit exists yet, so the floor on this tape and the rule that put this screen up
+// cannot disagree.
+static float _lnchOrTapeFloor() {
+    return (currentBody.minSafe > currentBody.lowSpace) ? currentBody.minSafe
+                                                        : currentBody.lowSpace;
+}
+
+// Next 1-2-5 step above the given one, so the tick search can walk upward.
+static float _lnchOrTapeStepUp(float step) {
+    float mag = powf(10.0f, floorf(log10f(step * 1.0001f)));
+    float n   = step / mag;
+    return (n < 1.5f) ? 2.0f * mag : (n < 3.5f) ? 5.0f * mag : 10.0f * mag;
+}
+
+static float _lnchOrTapeStep(float span) {
+    if (span <= 0.0f) return 1.0f;
+    float raw = span / 6.0f;
+    float mag = powf(10.0f, floorf(log10f(raw)));
+    float n   = raw / mag;
+    float m   = (n <= 1.5f) ? 1.0f : (n <= 3.5f) ? 2.0f : (n <= 7.5f) ? 5.0f : 10.0f;
+    return m * mag;
+}
+
+static ApsisTape _lnchOrTapeScale() {
+    ApsisTape t; t.valid = false; t.top = t.bottom = t.step = 0.0f;
+    const float fl = _lnchOrTapeFloor();
+    const float ap = state.apoapsis;
+    if (ap <= 0.0f || fl <= 0.0f || ap <= fl) return t;   // no orbit to frame yet
+
+    const float band = ap - fl;
+    float rawTop = ap + band * 0.12f;                     // headroom above apoapsis
+    float rawBot = fl - band * 0.18f;                     // a little air under the floor
+    if (rawBot < 0.0f) rawBot = 0.0f;
+
+    // Quantising the ends to whole steps widens the range, which can ask for more ticks
+    // than the tape has room to label. Walk the step up until it fits.
+    float step = _lnchOrTapeStep(rawTop - rawBot);
+    for (uint8_t guard = 0; guard < 8; guard++) {
+        t.top    = ceilf(rawTop / step) * step;
+        t.bottom = floorf(rawBot / step) * step;
+        if ((t.top - t.bottom) / step <= 8.5f) break;
+        step = _lnchOrTapeStepUp(step);
+    }
+    t.step = step;
+    if (t.top <= t.bottom) return t;
+    t.valid = true;
+    return t;
+}
+
+// Re-frame only when apoapsis is no longer comfortably inside the current scale. Holding
+// the frame is what keeps the ticks still while the periapsis marker moves.
+static void _lnchOrTapeEnsureScale() {
+    const float ap = state.apoapsis;
+    if (_lnchOrTape.valid) {
+        const float span = _lnchOrTape.top - _lnchOrTape.bottom;
+        if (ap > _lnchOrTape.bottom + 0.02f * span && ap < _lnchOrTape.top - 0.03f * span)
+            return;
+    }
+    ApsisTape t = _lnchOrTapeScale();
+    if (t.valid && (t.top != _lnchOrTape.top || t.bottom != _lnchOrTape.bottom)) {
+        _lnchOrTape = t;
+        _lnchOrTapeDirty = true;
+    } else if (t.valid) {
+        _lnchOrTape = t;
+    } else if (_lnchOrTape.valid) {
+        _lnchOrTape.valid = false;
+        _lnchOrTapeDirty = true;
+    }
+}
+
+// Altitude -> screen row, clamped to the tape. `below` reports an off-scale value, which
+// the caller annunciates rather than drawing at a lie of a position.
+static int16_t _lnchOrTapeYFor(float alt, bool &below) {
+    const float span = _lnchOrTape.top - _lnchOrTape.bottom;
+    float f = (span > 0.0f) ? (_lnchOrTape.top - alt) / span : 1.0f;
+    below = (f > 1.0f);
+    if (f < 0.0f) f = 0.0f; else if (f > 1.0f) f = 1.0f;
+    return LNCH_OR_TP_Y + (int16_t)lroundf(f * (float)LNCH_OR_TP_H);
+}
+
+// Compact tick label: "70k", "1.2M" — the scale needs the magnitude, not the metres.
+static void _lnchOrTapeTickText(float alt, char *buf, uint8_t n) {
+    float a = fabsf(alt);
+    if (a >= 1.0e6f)      snprintf(buf, n, "%.1fM", alt / 1.0e6f);
+    else if (a >= 1000.0f) snprintf(buf, n, "%.0fk", alt / 1000.0f);
+    else                   snprintf(buf, n, "%.0f", alt);
+}
+
+// ── Static layer: rail, ticks, tick labels, and the orbit-safe floor ──────────────────
+// Redrawn only when the scale changes, which the quantised ends make rare.
+static void _lnchOrTapeDrawStatic(KCM_TFT &tft) {
+    tft.fillRect(LNCH_OR_TP_X, LNCH_OR_TP_HDR_Y - 4,
+                 LNCH_OR_TP_W, (LNCH_OR_TP_Y + LNCH_OR_TP_H + 26) - (LNCH_OR_TP_HDR_Y - 4),
+                 TFT_BLACK);
+
+    textCenter(tft, &Roboto_Black_20, LNCH_OR_TP_X, LNCH_OR_TP_HDR_Y, LNCH_OR_TP_W, 26,
+               "APSIS CONVERGENCE", TFT_LIGHT_GREY, TFT_BLACK);
+
+    if (!_lnchOrTape.valid) {
+        textCenter(tft, &Roboto_Black_24, LNCH_OR_TP_X, LNCH_OR_TP_Y + LNCH_OR_TP_H / 2 - 18,
+                   LNCH_OR_TP_W, 36, "NO ORBIT", TFT_DARK_GREY, TFT_BLACK);
+        return;
+    }
+
+    tft.drawLine(LNCH_OR_TP_RAIL_X, LNCH_OR_TP_Y,
+                 LNCH_OR_TP_RAIL_X, LNCH_OR_TP_Y + LNCH_OR_TP_H, TFT_GREY);
+
+    tft.setFont(Roboto_Black_16);
+    for (float a = _lnchOrTape.bottom; a <= _lnchOrTape.top + _lnchOrTape.step * 0.01f;
+         a += _lnchOrTape.step) {
+        bool dummy;
+        int16_t y = _lnchOrTapeYFor(a, dummy);
+        tft.drawLine(LNCH_OR_TP_RAIL_X - LNCH_OR_TP_TICK_W, y, LNCH_OR_TP_RAIL_X, y, TFT_GREY);
+        char buf[10];
+        _lnchOrTapeTickText(a, buf, sizeof(buf));
+        int16_t w = getFontStringWidth(&Roboto_Black_16, buf);
+        tft.setTextColor(TFT_GREY, TFT_BLACK);
+        tft.setCursor(LNCH_OR_TP_RAIL_X - LNCH_OR_TP_TICK_W - 5 - w, y - 10);
+        tft.print(buf);
+    }
+
+    // The orbit-safe floor: below this line there is no orbit, only an aerobrake.
+    bool below;
+    int16_t yF = _lnchOrTapeYFor(_lnchOrTapeFloor(), below);
+    if (!below) {
+        for (int16_t x = LNCH_OR_TP_RAIL_X + 2; x < LNCH_OR_TP_RIGHT - 2; x += 8)
+            tft.drawLine(x, yF, x + 3, yF, TFT_DARK_RED);
+        tft.setFont(Roboto_Black_16);
+        tft.setTextColor(TFT_DARK_RED, TFT_BLACK);
+        tft.setCursor(LNCH_OR_TP_LBL_X, yF + 5);
+        tft.print(currentBody.hasAtmo ? "atmosphere" : "terrain");
+    }
+}
+
+// Repair the floor's dashed line where a marker erase has just cut through it.
+static void _lnchOrTapeRepairFloor(KCM_TFT &tft, int16_t yTop, int16_t yBot) {
+    if (!_lnchOrTape.valid) return;
+    bool below;
+    int16_t yF = _lnchOrTapeYFor(_lnchOrTapeFloor(), below);
+    if (below || yF < yTop || yF > yBot) return;
+    for (int16_t x = LNCH_OR_TP_RAIL_X + 2; x < LNCH_OR_TP_RIGHT - 2; x += 8)
+        tft.drawLine(x, yF, x + 3, yF, TFT_DARK_RED);
+    tft.setFont(Roboto_Black_16);
+    tft.setTextColor(TFT_DARK_RED, TFT_BLACK);
+    tft.setCursor(LNCH_OR_TP_LBL_X, yF + 5);
+    tft.print(currentBody.hasAtmo ? "atmosphere" : "terrain");
+}
+
+// Erase the full-width strip a marker occupies, then repair what the wipe cut through.
 //
-// Row order / labels:
-//   0: Alt.SL  (same as ascent)
-//   1: V.Orb   (permanent in orbital phase — no V.Srf swap)
-//   2: ApA     (apoapsis altitude)
-//   3: PeA     (periapsis altitude — NEW for orbital, replaces V.Vrt)
-//   4: T+Ap    (time to apoapsis)
-//   5: Thrtl   (throttle percent)
-//   6: T.Brn   (stage burn time remaining)
-//   7: ΔV.Stg  (stage delta-V remaining)
-static const char *_lnchOrLabels[8] = {
-    "Alt.SL:", "V.Orb:", "ApA:", "PeA:",
-    "T+Ap:", "Thrtl:", "T.Brn:", "\xCE\x94V.Stg:"
-};
+// The strip starts ON the rail, not one pixel right of it: a marker's apex sits in the
+// rail's own pixel column, so an erase that spared the rail would leave a coloured pixel
+// behind at every position the marker had ever occupied. Wipe the column and redraw the
+// rail segment instead.
+static void _lnchOrTapeEraseStrip(KCM_TFT &tft, int16_t y) {
+    int16_t y0 = y - LNCH_OR_TP_STRIP_H;
+    int16_t h  = LNCH_OR_TP_STRIP_H * 2 + 1;
+    if (y0 < LNCH_OR_TP_Y - LNCH_OR_TP_STRIP_H) y0 = LNCH_OR_TP_Y - LNCH_OR_TP_STRIP_H;
 
-// Draw static chrome for the orbital-phase right panel. Matches the ascent
-// chrome exactly — same LNCH_AS2_* geometry (360 px @ x=580, 8×67 px rows),
-// same fonts (Black_28 labels / Black_36 values), same 2-px dividers — just
-// with orbital row labels.
+    tft.fillRect(LNCH_OR_TP_RAIL_X, y0, LNCH_OR_TP_RIGHT - LNCH_OR_TP_RAIL_X, h, TFT_BLACK);
+
+    int16_t r0 = (y0 < LNCH_OR_TP_Y) ? LNCH_OR_TP_Y : y0;
+    int16_t r1 = (y0 + h > LNCH_OR_TP_Y + LNCH_OR_TP_H) ? LNCH_OR_TP_Y + LNCH_OR_TP_H
+                                                        : (int16_t)(y0 + h);
+    if (r1 >= r0) tft.drawLine(LNCH_OR_TP_RAIL_X, r0, LNCH_OR_TP_RAIL_X, r1, TFT_GREY);
+
+    _lnchOrTapeRepairFloor(tft, y0, y0 + h);
+}
+
+// One marker: a triangle with its apex on the rail, and its label to the right. Hollow
+// when the value is off the bottom of the scale.
+static void _lnchOrTapeDrawMarker(KCM_TFT &tft, int16_t y, uint16_t col,
+                                  const char *tag, float alt, bool low) {
+    const int16_t ax = LNCH_OR_TP_RAIL_X,                    ay = y;
+    const int16_t bx = LNCH_OR_TP_RAIL_X + LNCH_OR_TP_MK_W,  by = y - LNCH_OR_TP_MK_H;
+    const int16_t cx = bx,                                   cy = y + LNCH_OR_TP_MK_H;
+    if (low) {
+        // Outline only. The display class exposes fillTriangle but not drawTriangle,
+        // so the hollow form is three lines — the same reason the orbit diagram's
+        // chevron below is drawn that way.
+        tft.drawLine(ax, ay, bx, by, col);
+        tft.drawLine(bx, by, cx, cy, col);
+        tft.drawLine(cx, cy, ax, ay, col);
+    } else {
+        tft.fillTriangle(ax, ay, bx, by, cx, cy, col);
+    }
+
+    String txt = String(tag) + " " + (low ? String("---") : formatAlt(alt));
+    tft.setFont(Roboto_Black_24);
+    tft.setTextColor(col, TFT_BLACK);
+    tft.setCursor(LNCH_OR_TP_LBL_X, y - 14);
+    tft.print(txt.c_str());
+}
+
+// The bracket spanning apoapsis to periapsis. This is the instrument's whole point: two
+// markers say where the apsides are, the bracket says how far apart they still are.
+static void _lnchOrTapeDrawGap(KCM_TFT &tft, int16_t yAp, int16_t yPe, uint16_t col) {
+    if (yPe <= yAp + 3) return;
+    tft.drawLine(LNCH_OR_TP_GAP_X, yAp, LNCH_OR_TP_GAP_X, yPe, col);
+    tft.drawLine(LNCH_OR_TP_GAP_X, yAp, LNCH_OR_TP_GAP_X + 7, yAp, col);
+    tft.drawLine(LNCH_OR_TP_GAP_X, yPe, LNCH_OR_TP_GAP_X + 7, yPe, col);
+}
+
+static void _lnchOrTapeEraseGap(KCM_TFT &tft, int16_t yAp, int16_t yPe) {
+    if (yPe < yAp) { int16_t t = yAp; yAp = yPe; yPe = t; }
+    tft.fillRect(LNCH_OR_TP_GAP_X - 1, yAp - 2, 10, (yPe - yAp) + 5, TFT_BLACK);
+}
+
+
+// ── Per-frame update ──────────────────────────────────────────────────────────────────
+static void _lnchOrTapeUpdate(KCM_TFT &tft) {
+    _lnchOrTapeEnsureScale();
+
+    if (_lnchOrTapeDirty) {
+        _lnchOrTapeDrawStatic(tft);
+        _lnchOrTapeDirty = false;
+        _lnchOrTpApY = _lnchOrTpPeY = -9999;      // markers were wiped with the layer
+        _lnchOrTpApVal = _lnchOrTpPeVal = -1 << 30;
+    }
+    if (!_lnchOrTape.valid) return;
+
+    bool apLow = false, peLow = false;
+    const int16_t yAp = _lnchOrTapeYFor(state.apoapsis,  apLow);
+    const int16_t yPe = _lnchOrTapeYFor(state.periapsis, peLow);
+
+    // Round to whole metres so a jittering float does not repaint every frame.
+    const int32_t apVal = (int32_t)lroundf(state.apoapsis);
+    const int32_t peVal = (int32_t)lroundf(state.periapsis);
+    const bool apMoved  = (yAp != _lnchOrTpApY) || (apVal != _lnchOrTpApVal);
+    const bool peMoved  = (yPe != _lnchOrTpPeY) || (peVal != _lnchOrTpPeVal) ||
+                          (peLow != _lnchOrTpPeLow);
+    if (!apMoved && !peMoved) return;
+
+    if (_lnchOrTpApY > -9000 && _lnchOrTpPeY > -9000)
+        _lnchOrTapeEraseGap(tft, _lnchOrTpApY, _lnchOrTpPeY);
+    if (apMoved && _lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
+    if (peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
+    // An erase strip can clip the other marker; redraw both rather than track overlap.
+    if (apMoved || peMoved) {
+        if (!apMoved && _lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
+        if (!peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
+    }
+
+    // Cyan apoapsis, magenta periapsis — the same two colours the orbit diagram gives
+    // its Ap and Pe dots on the other half of this screen, so the marker on the tape and
+    // the dot on the diagram read as the same apsis rather than two unrelated things.
+    // State is annunciated by form instead of hue: the marker draws hollow while the
+    // value is off the bottom of the scale, and the floor line says where the danger is.
+    _lnchOrTapeDrawGap(tft, yAp, yPe, TFT_GREY);
+    _lnchOrTapeDrawMarker(tft, yAp, TFT_CYAN,    "Ap", state.apoapsis,  apLow);
+    _lnchOrTapeDrawMarker(tft, yPe, TFT_MAGENTA, "Pe", state.periapsis, peLow);
+
+    _lnchOrTpApY = yAp; _lnchOrTpPeY = yPe; _lnchOrTpPeLow = peLow;
+    _lnchOrTpApVal = apVal; _lnchOrTpPeVal = peVal;
+}
+
+
+// ── Numeric block: the burn, in three numbers ─────────────────────────────────────────
+// How much velocity change the circularisation needs, how long the burn will take, and
+// how long the stage can burn for. Read top to bottom they answer one question -- can
+// this stage finish this burn -- which is why they sit together rather than scattered
+// across the screen. The first two moved here from the left rail; the orbit-shape
+// numbers that were here (Ecc, Ap-Pe) went the other way, to sit with the diagram.
+//
+// Stg.Brn is stage endurance from Simpit's BURNTIME_MESSAGE: seconds of thrust left in
+// the tank, not a countdown of this burn. It was labelled T.Brn, which read like a
+// time-to/through-burn beside two numbers that genuinely are about this burn.
+static const char *const _lnchOrTpLabels[3] = { "\xCE\x94V.Circ:", "Burn Dur:", "Stg.Brn:" };
+
+// Row cell geometry. printValue reserves the label's width out of the same x0/w it is
+// handed and does not repaint the label itself, so chrome and value share one cell.
+static const int16_t LNCH_OR_TP_CELL_X = LNCH_OR_TP_X + 8;
+static const int16_t LNCH_OR_TP_CELL_W = LNCH_OR_TP_W - 16;
+
+static void _lnchOrTapeDrawRowsChrome(KCM_TFT &tft) {
+    tft.fillRect(LNCH_OR_TP_X, LNCH_OR_TP_ROW_Y - 6, LNCH_OR_TP_W,
+                 (SCREEN_H - 1) - (LNCH_OR_TP_ROW_Y - 6), TFT_BLACK);
+    tft.drawLine(LNCH_OR_TP_X + 6, LNCH_OR_TP_ROW_Y - 6,
+                 LNCH_OR_TP_RIGHT - 6, LNCH_OR_TP_ROW_Y - 6, TFT_GREY);
+    for (uint8_t r = 0; r < 3; r++)
+        printDispChrome(tft, &Roboto_Black_24, LNCH_OR_TP_CELL_X,
+                        LNCH_OR_TP_ROW_Y + r * LNCH_OR_TP_ROW_H,
+                        LNCH_OR_TP_CELL_W, LNCH_OR_TP_ROW_H,
+                        _lnchOrTpLabels[r], COL_LABEL, COL_BACK, COL_NO_BDR);
+}
+
+static void _lnchOrTapeDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
+                                    uint16_t fg, uint16_t bg) {
+    printValue(tft, &Roboto_Black_28, LNCH_OR_TP_CELL_X,
+               LNCH_OR_TP_ROW_Y + row * LNCH_OR_TP_ROW_H,
+               LNCH_OR_TP_CELL_W, LNCH_OR_TP_ROW_H,
+               _lnchOrTpLabels[row], val, fg, bg, TFT_BLACK, _lnchOrTpPs[row]);
+}
+
+static void _lnchOrTapeUpdateRows(KCM_TFT &tft) {
+    // Row 0 — ΔV to circularise at apoapsis, from vis-viva (see _lnchOrCircDvEstimate).
+    {
+        const float dv = _lnchOrCircDvEstimate();
+        const int32_t iDv = (dv > 0.0f) ? (int32_t)lroundf(dv) : -9998;
+        if (iDv != _lnchOrPrevCircDvRounded) {
+            char buf[16];
+            uint16_t fg;
+            if (iDv <= -9998) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
+            else { snprintf(buf, sizeof(buf), "%dm/s", (int)iDv); fg = TFT_DARK_GREEN; }
+            _lnchOrTapeDrawRowValue(tft, 0, String(buf), fg, TFT_BLACK);
+            _lnchOrPrevCircDvRounded = iDv;
+        }
+    }
+    // Row 1 — how long the planned burn runs. Dashed with no node.
+    {
+        const bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f) &&
+                             state.mnvrDuration > 0.0f;
+        const int32_t sec = hasMnvr ? (int32_t)lroundf(state.mnvrDuration) : -9998;
+        if (sec != _lnchOrPrevBurnDurSec) {
+            _lnchOrTapeDrawRowValue(tft, 1,
+                hasMnvr ? formatTimeCompact(state.mnvrDuration) : String("---"),
+                hasMnvr ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+            _lnchOrPrevBurnDurSec = sec;
+        }
+    }
+    // Row 2 — stage endurance. Same thresholds as the ascent readout, but drawn on this
+    // column's own geometry: _lnchAs2UpdateTBurn() lays its value out on the 67 px
+    // ascent rows and would put this one 200 px up the screen.
+    {
+        const float tb = state.stageBurnTime;
+        const int32_t iTb = (int32_t)lroundf(tb);
+        uint16_t fg, bg;
+        thresholdColor(tb,
+                       LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
+                       LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
+                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+        if (iTb != _lnchOrPrevTBurn || fg != _lnchOrPrevTBurnFg || bg != _lnchOrPrevTBurnBg) {
+            _lnchOrTapeDrawRowValue(tft, 2, formatTimeCompact(tb), fg, bg);
+            _lnchOrPrevTBurn = iTb;
+            _lnchOrPrevTBurnFg = fg; _lnchOrPrevTBurnBg = bg;
+        }
+    }
+}
+
+
+
+// Static chrome for the right column — header, scale and row labels.
 static void _lnchOrDrawRightPanelChrome(KCM_TFT &tft) {
-    // Right panel geometry/fonts match the ascent phase's readout exactly
-    // (LNCH_AS2_* — 360 px wide at x=580, 8 rows of 67 px, Black_28 labels /
-    // Black_36 values), so the two LNCH phases present an identical text region.
-    // Shared implementation lives in Screen_LNCH_Ascent.ino
-    // (_lnchAs2DrawPanelChrome). Orbital group dividers:
-    //   rows 0-1: Alt.SL, V.Orb   rows 2-3: ApA, PeA   row 4: T+Ap
-    //   row  5:   Thrtl            rows 6-7: T.Brn, ΔV.Stg
-    // → dividers above rows 2, 4, 5, 6.
-    static const uint8_t divRows[] = { 2, 4, 5, 6 };
-    _lnchAs2DrawPanelChrome(tft, _lnchOrLabels, divRows, sizeof(divRows));
-}
-
-// Helper: draw a value in an orbital-phase row using printValue. The label was
-// drawn by chrome; value is right-aligned in the cell.
-static void _lnchOrDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
-                                 uint16_t fg, uint16_t bg) {
-    // Delegates to the shared helper (Screen_LNCH_Ascent.ino), passing the
-    // orbital-phase label + PrintState arrays.
-    _lnchAs2DrawRowValue(tft, row, val, fg, bg, _lnchOrLabels, _lnchOrPs);
-}
-
-// ── Orbital row update functions ──────────────────────────────────────────────────────
-// Each checks its own change detection and returns early if unchanged.
-// Order: Alt, V.Orb, ApA, PeA, T+Ap, Throttle, T.Burn, ΔV.Stg.
-
-static void _lnchOrUpdateAlt(KCM_TFT &tft) {
-    _lnchAs2UpdateAlt(tft, 0, _lnchOrLabels, _lnchOrPs,
-                      _lnchOrPrevAlt, _lnchOrPrevAltFg);
-}
-
-static void _lnchOrUpdateVOrb(KCM_TFT &tft) {
-    float v = state.orbitalVel;
-    int16_t iV = (int16_t)roundf(v * 10.0f);  // tenths m/s
-
-    uint16_t fg = (v < 0) ? TFT_RED : TFT_DARK_GREEN;
-
-    if (iV == _lnchOrPrevVOrb && fg == _lnchOrPrevVOrbFg) return;
-
-    _lnchOrDrawRowValue(tft, 1, fmtMs(v), fg, TFT_BLACK);
-    _lnchOrPrevVOrb = iV;
-    _lnchOrPrevVOrbFg = fg;
-}
-
-// ApA / PeA share the same threshold logic: red if negative (suborbital /
-// impact trajectory), yellow if positive but below safe orbital altitude,
-// green otherwise. warnAlt uses lowSpace (atmosphere top) not flyHigh —
-// flyHigh is a biome boundary (~18km Kerbin), not an orbital threshold.
-static void _lnchOrUpdateApA(KCM_TFT &tft) {
-    _lnchAs2UpdateApA(tft, 2, _lnchOrLabels, _lnchOrPs,
-                      _lnchOrPrevApA, _lnchOrPrevApAFg);
-}
-
-static void _lnchOrUpdatePeA(KCM_TFT &tft) {
-    float pea = state.periapsis;
-    int32_t iPeA = (int32_t)roundf(pea);
-
-    float warnAlt = max(currentBody.minSafe, currentBody.lowSpace);
-    uint16_t fg;
-    if      (pea < 0)                                      fg = TFT_RED;
-    else if (warnAlt > 0 && pea > 0 && pea < warnAlt)      fg = TFT_YELLOW;
-    else                                                   fg = TFT_DARK_GREEN;
-
-    if (iPeA == _lnchOrPrevPeA && fg == _lnchOrPrevPeAFg) return;
-
-    _lnchOrDrawRowValue(tft, 3, formatAlt((float)iPeA), fg, TFT_BLACK);
-    _lnchOrPrevPeA = iPeA;
-    _lnchOrPrevPeAFg = fg;
-}
-
-static void _lnchOrUpdateTimeToAp(KCM_TFT &tft) {
-    // Suppress logic + thresholds identical to ascent; shared implementation.
-    _lnchAs2UpdateTimeToAp(tft, 4, _lnchOrLabels, _lnchOrPs,
-                           _lnchOrPrevTimeToAp, _lnchOrPrevTimeToApFg);
-}
-
-static void _lnchOrUpdateThrottle(KCM_TFT &tft) {
-    uint8_t thrPct = (uint8_t)constrain(state.throttle * 100.0f, 0.0f, 100.0f);
-
-    // Coasting (throttle=0) is normal during orbital phase, so no warning;
-    // active burn is always green.
-    uint16_t fg = TFT_DARK_GREEN;
-    uint16_t bg = TFT_BLACK;
-
-    if ((int16_t)thrPct == _lnchOrPrevThrottle &&
-        fg == _lnchOrPrevThrFg && bg == _lnchOrPrevThrBg) return;
-
-    _lnchOrDrawRowValue(tft, 5, formatPerc(thrPct), fg, bg);
-    _lnchOrPrevThrottle = (int16_t)thrPct;
-    _lnchOrPrevThrFg = fg; _lnchOrPrevThrBg = bg;
-}
-
-static void _lnchOrUpdateTBurn(KCM_TFT &tft) {
-    _lnchAs2UpdateTBurn(tft, 6, _lnchOrLabels, _lnchOrPs,
-                        _lnchOrPrevTBurn, _lnchOrPrevTBurnFg, _lnchOrPrevTBurnBg);
-}
-
-static void _lnchOrUpdateDVStg(KCM_TFT &tft) {
-    float dv = state.stageDeltaV;
-    int32_t iDv = (int32_t)roundf(dv);
-
-    uint16_t fg, bg;
-    thresholdColor(dv,
-                   DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
-                   DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
-                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-
-    if (iDv == _lnchOrPrevDVStg &&
-        fg == _lnchOrPrevDVStgFg && bg == _lnchOrPrevDVStgBg) return;
-
-    _lnchOrDrawRowValue(tft, 7, fmtMs(dv), fg, bg);
-    _lnchOrPrevDVStg = iDv;
-    _lnchOrPrevDVStgFg = fg; _lnchOrPrevDVStgBg = bg;
+    tft.drawLine(LNCH_OR_TP_X - 2, TITLE_TOP, LNCH_OR_TP_X - 2, SCREEN_H - 1, TFT_GREY);
+    tft.drawLine(LNCH_OR_TP_X - 1, TITLE_TOP, LNCH_OR_TP_X - 1, SCREEN_H - 1, TFT_GREY);
+    _lnchOrTapeDirty = true;          // _lnchOrTapeUpdate draws the scale on the first frame
+    _lnchOrTapeDrawRowsChrome(tft);
 }
 
 static void _lnchOrDrawRightPanelValues(KCM_TFT &tft) {
-    _lnchOrUpdateAlt(tft);
-    _lnchOrUpdateVOrb(tft);
-    _lnchOrUpdateApA(tft);
-    _lnchOrUpdatePeA(tft);
-    _lnchOrUpdateTimeToAp(tft);
-    _lnchOrUpdateThrottle(tft);
-    _lnchOrUpdateTBurn(tft);
-    _lnchOrUpdateDVStg(tft);
+    _lnchOrTapeUpdate(tft);
+    _lnchOrTapeUpdateRows(tft);
 }
+
 
 // ── Orbital phase — left-panel orbit graphic ──────────────────────────────────────────
 //
@@ -782,101 +1056,101 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     _lnchOrPrevTignBg  = valBg;
 }
 
-// Update the Burn Duration readout — a centered label+value block below the
-// ATT disc. Shows the planned burn length (state.mnvrDuration). Helps the
-// pilot mentally prepare before ignition and gauge progress during the burn.
+// ── Left-rail readouts: eccentricity and the apsis gap ────────────────────────────────
 //
-// Label "Burn dur" stays light-grey on black (chrome — drawn once on first
-// frame). Value formatTimeCompact(mnvrDuration) in dark green (or "---" / dark
-// grey when no maneuver). Change detection on rounded seconds skips the
-// redraw when nothing visible changed.
+// These two slots used to carry Burn Dur and ΔV Circ. Those are burn numbers, and the
+// three burn numbers now sit together in the right column; these two describe the shape
+// of the orbit, so they belong beside the picture of it. Eccentricity is how circular
+// the diagram above them already is, and the apsis gap is the distance between the two
+// dots drawn on it — a number the diagram shows but cannot state.
 //
-// Centered horizontally on LNCH_OR_ATT_CX. Width budget ~80 px (matches
-// IGN button); typical formatTime values like "1m 23s" fit easily at
-// Roboto_Black_24.
-static void _lnchOrUpdateBurnDurReadout(KCM_TFT &tft) {
-    bool hasMnvr = (state.mnvrTime > 0.0f || state.mnvrDeltaV > 0.0f) &&
-                   state.mnvrDuration > 0.0f;
-
-    int32_t  newSec;
-    uint16_t valFg;
-    String   val;
-    if (!hasMnvr) {
-        newSec = -9998;  // "---" placeholder sentinel
-        valFg  = TFT_DARK_GREY;
-        val    = "---";
-    } else {
-        newSec = (int32_t)roundf(state.mnvrDuration);
-        valFg  = TFT_DARK_GREEN;
-        val    = formatTimeCompact((int64_t)state.mnvrDuration);
-    }
-
-    bool first_draw = (_lnchOrPrevBurnDurSec == -9999);
-    if (newSec == _lnchOrPrevBurnDurSec && !first_draw) return;
-
-    // Draw the label "Burn Dur:" once on first frame — its colour and text
-    // never change, so subsequent updates skip it. Black_20 (24 px).
-    if (first_draw) {
+// Both slots draw the same way: a fixed label rendered once (its text and colour never
+// change), and a value centred under it in a cleared box.
+static void _lnchOrRailReadout(KCM_TFT &tft, int16_t lblY, int16_t valY,
+                               const char *label, const String &val,
+                               uint16_t fg, bool firstDraw) {
+    if (firstDraw) {
         tft.setFont(Roboto_Black_20);
         tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-        int16_t lblW = getFontStringWidth(&Roboto_Black_20, "Burn Dur:");
-        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, LNCH_OR_BDUR_LBL_Y);
-        tft.print("Burn Dur:");
+        int16_t lblW = getFontStringWidth(&Roboto_Black_20, label);
+        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, lblY);
+        tft.print(label);
     }
-
-    // Clear the value region (a fixed-width rect centered on ATT_CX, tall
-    // enough for Black_24's 29-px font).
-    const int16_t valRegionW = 140;
-    const int16_t valRegionX = LNCH_OR_ATT_CX - valRegionW / 2;
-    tft.fillRect(valRegionX, LNCH_OR_BDUR_VAL_Y, valRegionW, 30, TFT_BLACK);
-
-    // Draw the value, horizontally centered. Black_24 (29 px) — matches
-    // the T+Ign value font for visual consistency across time displays.
-    tft.setFont(Roboto_Black_24);
-    tft.setTextColor(valFg, TFT_BLACK);
-    int16_t valW = getFontStringWidth(&Roboto_Black_24, val.c_str());
-    tft.setCursor(LNCH_OR_ATT_CX - valW / 2, LNCH_OR_BDUR_VAL_Y);
-    tft.print(val.c_str());
-
-    _lnchOrPrevBurnDurSec = newSec;
-}
-
-// ΔV-to-circularize readout — a centered label+value block in the left rail
-// below Burn Dur. Shows the vis-viva estimate of the ΔV needed to circularize at
-// apoapsis (the standalone, always-on version of the ΔV Burn bar's estimate).
-// Label is drawn once (never changes); value change-detected on rounded m/s.
-static void _lnchOrUpdateCircDvReadout(KCM_TFT &tft) {
-    float dvEst = _lnchOrCircDvEstimate();
-    int32_t newVal = (dvEst > 0.0f) ? (int32_t)roundf(dvEst) : -9998;  // -9998 = "---"
-
-    bool first_draw = (_lnchOrPrevCircDvRounded == -9999);
-    if (newVal == _lnchOrPrevCircDvRounded && !first_draw) return;
-
-    // Label once on first frame — colour/text never change. Black_20, centered.
-    if (first_draw) {
-        tft.setFont(Roboto_Black_20);
-        tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
-        int16_t lblW = getFontStringWidth(&Roboto_Black_20, "\xCE\x94V Circ:");
-        tft.setCursor(LNCH_OR_ATT_CX - lblW / 2, LNCH_OR_CIRCDV_LBL_Y);
-        tft.print("\xCE\x94V Circ:");
-    }
-
-    // Clear + draw the value, horizontally centered on the ATT column. Black_28
-    // (prominent — this is the key pre-burn planning number).
-    const int16_t valRegionW = 130;
-    tft.fillRect(LNCH_OR_ATT_CX - valRegionW / 2, LNCH_OR_CIRCDV_VAL_Y, valRegionW, 36, TFT_BLACK);
-    char buf[16];
-    uint16_t fg;
-    if (newVal <= -9998) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
-    else { snprintf(buf, sizeof(buf), "%dm/s", (int)newVal); fg = TFT_DARK_GREEN; }
+    // 130 wide, centred on the rail: x 9..139, which stays clear of the orbit diagram's
+    // leftmost extent at x=140. This is the width the ΔV Circ readout used; Burn Dur's
+    // 140 reached 144 and only got away with it because nothing was there.
+    const int16_t regionW = 130;
+    tft.fillRect(LNCH_OR_ATT_CX - regionW / 2, valY, regionW, 36, TFT_BLACK);
     tft.setFont(Roboto_Black_28);
     tft.setTextColor(fg, TFT_BLACK);
-    int16_t vw = getFontStringWidth(&Roboto_Black_28, buf);
-    tft.setCursor(LNCH_OR_ATT_CX - vw / 2, LNCH_OR_CIRCDV_VAL_Y);
-    tft.print(buf);
-
-    _lnchOrPrevCircDvRounded = newVal;
+    int16_t vw = getFontStringWidth(&Roboto_Black_28, val.c_str());
+    tft.setCursor(LNCH_OR_ATT_CX - vw / 2, valY);
+    tft.print(val.c_str());
 }
+
+// Compact altitude for a narrow box.
+//
+// formatAlt() only switches to km above 1,000,000 m, so everything from 100 km to
+// 1000 km renders as six digits and a separator: "513,000 m" measures 135 px and this
+// rail box is 130. That band is not exotic -- a Kerbin circularisation begins in it,
+// with apoapsis at 101 km and periapsis still hundreds of kilometres underground.
+//
+// Promoting a band early enough that the scaled value never reaches five digits caps
+// the widest output at "9,999 Mm" (128 px). The 9999.5 thresholds are what keeps the
+// rounding at the top of a band from producing that fifth digit: 9,999,999 m becomes
+// "10 Mm", not "10,000 km". Metre precision on an apsis gap was false anyway.
+//
+// formatSep() renders two decimals below 1000, which would give "513.00 km" (134 px --
+// still too wide), so the scaled value is rounded and passed to formatSepI64 instead.
+//
+// Fits to 9,999 Gm; beyond that (1e13 m, some forty times Kerbol's outer SOI) it would
+// overflow again. A candidate to promote beside formatTimeCompact() in the shared
+// library if a second caller ever wants it.
+static String _lnchOrAltCompact(float v) {
+    const bool  neg = (v < 0.0f);
+    const float a   = neg ? -v : v;
+    const char *unit; float scaled;
+    if      (a < 9999.5f)   { unit = " m";  scaled = a;          }
+    else if (a < 9999.5e3f) { unit = " km"; scaled = a / 1.0e3f; }
+    else if (a < 9999.5e6f) { unit = " Mm"; scaled = a / 1.0e6f; }
+    else                    { unit = " Gm"; scaled = a / 1.0e9f; }
+    return String(neg ? "-" : "") + formatSepI64((int64_t)lroundf(scaled)) + String(unit);
+}
+
+// Eccentricity — the goal metric. Zero is a circle, and green says the burn is done.
+static void _lnchOrUpdateEccReadout(KCM_TFT &tft) {
+    const bool haveOrbit = (state.apoapsis > 0.0f);
+    const int32_t milli = haveOrbit ? (int32_t)lroundf(state.eccentricity * 1000.0f) : -9998;
+    const bool first = (_lnchOrPrevEccMilli == -9999);
+    if (milli == _lnchOrPrevEccMilli && !first) return;
+
+    char buf[12];
+    uint16_t fg;
+    if (!haveOrbit) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
+    else {
+        snprintf(buf, sizeof(buf), "%.3f", state.eccentricity);
+        fg = (state.eccentricity < 0.02f) ? TFT_DARK_GREEN : TFT_YELLOW;
+    }
+    _lnchOrRailReadout(tft, LNCH_OR_ECC_LBL_Y, LNCH_OR_ECC_VAL_Y, "Ecc:", String(buf), fg, first);
+    _lnchOrPrevEccMilli = milli;
+}
+
+// Apsis gap — the distance the burn is closing, and the thing the two dots on the
+// diagram above are separated by. Sentinels match the other readouts on this rail:
+// -9999 = never drawn, -9998 = showing the "---" placeholder.
+static void _lnchOrUpdateGapReadout(KCM_TFT &tft) {
+    const bool haveOrbit = (state.apoapsis > 0.0f);
+    const int32_t gap = haveOrbit ? (int32_t)lroundf(state.apoapsis - state.periapsis) : -9998;
+    const bool first = (_lnchOrPrevGapM == -9999);
+    if (gap == _lnchOrPrevGapM && !first) return;
+
+    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "Ap-Pe:",
+                       haveOrbit ? _lnchOrAltCompact(state.apoapsis - state.periapsis)
+                                 : String("---"),
+                       haveOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, first);
+    _lnchOrPrevGapM = gap;
+}
+
 
 // Wrap a heading error into ±180° (for bearing differences on a 0..360°
 // compass). Duplicated from Screen_MNVR.ino (which declares it static).
@@ -1097,8 +1371,11 @@ static void _lnchOrDrawOrbitGraphic(KCM_TFT &tft) {
         _lnchOrPrevAttDotX    = 9999;
         _lnchOrPrevAttDotY    = 9999;
         _lnchOrPrevAttDotCol  = 0;
-        _lnchOrPrevBurnDurSec = -9999;
-        _lnchOrPrevCircDvRounded = -9999;
+        // This wipe clears the left rail, so the readouts drawn there lose their
+        // labels and must redraw from scratch. The burn numbers are not among them
+        // any more -- they live in the right column, which this does not touch.
+        _lnchOrPrevEccMilli = -9999;
+        _lnchOrPrevGapM     = -9999;
         // Record the static-layer geometry we just drew so that on future
         // frames we can detect radius drift (due to compressed-scaling
         // recomputation as orbit elements change) and cleanly erase before
@@ -1398,6 +1675,6 @@ static void _lnchOrDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchOrUpdateProgressBar(tft);
     _lnchOrUpdateTignRow(tft);
     _lnchOrUpdateAttIndicator(tft);
-    _lnchOrUpdateBurnDurReadout(tft);
-    _lnchOrUpdateCircDvReadout(tft);
+    _lnchOrUpdateEccReadout(tft);
+    _lnchOrUpdateGapReadout(tft);
 }

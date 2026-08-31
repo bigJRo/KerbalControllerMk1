@@ -31,15 +31,16 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-// Geometry mirrors the ACFT (aircraft) screen exactly — same ball centre, radius,
-// and readout panel — so the two attitude screens are visually identical. SCFT
-// omits the VSI, slip, and AoA indicators.
-static const int16_t  SCFT_CX        = 345;
-static const int16_t  SCFT_CY        = 300;
-static const int16_t  SCFT_R         = 206;
-static const float    SCFT_SCALE     = (float)SCFT_R / 30.0f;   // 6.867 px/deg
-// (ball extents/scanlines + the sky/ground/horizon/wings/ladder colours and the
-//  SCFT_BX_ALLSKY/ALLGND sentinels now live in the shared EADIBall.ino renderer.)
+// ONE PFD, ONE SET OF NUMBERS -- see the same note at the head of Screen_ACFT.ino.
+// This screen and AIRCRAFT draw the same instrument with the same renderer, and the
+// geometry used to be written out in full three times over, each re-derived from its own
+// copy of CX/CY/R. EADIBall.ino holds the single definition; these are aliases so the
+// chrome below still reads in this screen's own vocabulary. SPACECRAFT differs from
+// AIRCRAFT only in what it omits (VSI, slip, AoA) and in its row content, never in where
+// anything sits.
+static const int16_t  SCFT_CX        = EADI_CX;
+static const int16_t  SCFT_CY        = EADI_CY;
+static const int16_t  SCFT_R         = EADI_R;
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 static const int16_t  SCFT_PANEL_X       = SCFT_CX - (SCFT_R*2+54)/2 + (SCFT_R*2+54) + 2; // 580
@@ -65,13 +66,96 @@ static bool     _scftFullRedrawNeeded = true;
 
 
 
-// ── Orbital mode helper ───────────────────────────────────────────────────────────────
-static bool _scftOrbMode() {
+// ── Orbital mode helpers ──────────────────────────────────────────────────────────────
+// One altitude test used to drive three different things: row 1's V.Orb/V.Srf, row 5's
+// T+Ign/V.Vrt, and the prograde marker on the ball and both tapes. Only two of those are
+// a REFERENCE choice. Row 5's swap is a PHASE decision -- am I near the ground, is
+// descent rate the number being flown -- that merely happened to reuse the same test.
+//
+// The distinction did not matter while both were automatic, because they always agreed.
+// It matters the moment the pilot can override the reference: forcing ORB at 10 km during
+// a re-entry must not trade descent rate away for a meaningless ignition countdown. So
+// the two are separate predicates, and only the reference one is overridable.
+static bool _scftAutoOrb() {
     float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     bool  ascending = (state.verticalVel >= 0.0f);
     float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
     return state.altitude > switchAlt;
 }
+
+// The velocity reference actually in force: automatic unless the pilot has pinned one.
+ModeOverride _scftVelRefOverride;
+// Chip cache: -1 unknown, 0 auto-SRF, 1 auto-ORB, 2 held-SRF, 3 held-ORB. Declared here
+// rather than beside its draw function because chromeScreen_SCFT resets it, and the
+// Arduino builder hoists prototypes but not variables.
+static int8_t _scftChipShown = -1;
+static bool _scftVelRef() { return modeResolve(_scftVelRefOverride, _scftAutoOrb()); }
+
+// ── EVA mode ──────────────────────────────────────────────────────────────────────────
+// A Kerbal outside the craft is still a vessel as far as KSP and Simpit are concerned,
+// so it lands here on the vehicle panel — and the attitude ball is genuinely the right
+// instrument, because you do orient on EVA. The numeric panel beside it was not: a
+// Kerbal has no stage, no burn and no apoapsis worth reading, so rows 2-6 were showing
+// dV.Stg, ApA, PeA, T+Ap and T+Ign, none of which mean anything to a person holding a
+// jetpack. Those five rows swap to what an EVA is actually flown on: how high above the
+// surface, how fast relative to it, and how far from and how quickly closing on whatever
+// you are trying to reach.
+//
+// Row 6 becomes suit charge. dV.Stg would read a flat green 0 m/s, and electric charge
+// is the number that ends an EVA -- ROVER already reads the same field for the same
+// reason.
+static inline bool _scftEvaMode() { return state.vesselType == type_EVA; }
+static bool _scftPrevEvaMode = false;
+
+
+// ── Row 5: descent rate, ignition countdown, or the burn itself ───────────────────────
+// Three states, not two. Below the mode switch the row is V.Vrt (see the chrome, which
+// explains why altitude rate is phase-specific instrumentation on every real spacecraft
+// that flies it). Above the switch it is T+Ign -- and, once that burn is actually under
+// way, dV.Rem counting down.
+//
+// The countdown is Apollo's. The CSM Entry Monitor System's dV counter was set before a
+// burn and counted to zero as the SPS thrust; the crew shut down on it, and it was the
+// most-watched number in the burn. Nothing on this controller counted a burn down before
+// this: MANEUVER carries Brg, Elv, Burn.Dur, T+Ign and T+Mnvr, and no dV at all.
+//
+// Row 5 is the right home because the fit is exact -- a countdown TO ignition is
+// meaningless once ignition has happened, so the row is free precisely when the burn
+// number is wanted. V.Vrt's claim below the switch is untouched: a noded burn under
+// 36 km is rare, and descent rate still wins there if one happens.
+//
+// One difference from the EMS worth knowing. Apollo's counter integrated an accelerometer
+// along the thrust axis, so it measured what the engine actually delivered and pointing
+// error showed up as a residual that would not null. state.mnvrDeltaV is the guidance
+// number -- what the node still needs -- which nulls correctly however the craft is
+// pointed, and therefore hides that error. It is the better number to fly on; it is not
+// the same instrument.
+static const uint8_t SCFT_R5_VVRT  = 0;
+static const uint8_t SCFT_R5_TIGN  = 1;
+static const uint8_t SCFT_R5_DVREM = 2;
+
+// Seconds until the burn should light, negative once it should already have.
+static float _scftTIgn() {
+    return (state.mnvrTime > 0.0f) ? (state.mnvrTime - state.mnvrDuration / 2.0f) : 1.0f;
+}
+
+static uint8_t _scftRow5Mode() {
+    if (!_scftAutoOrb()) return SCFT_R5_VVRT;   // phase, not reference -- see above
+    const bool hasNode  = (state.mnvrTime > 0.0f) && (state.mnvrDeltaV > 0.0f);
+    const bool burning  = hasNode && (state.throttle > 0.01f) && (_scftTIgn() <= 0.0f);
+    return burning ? SCFT_R5_DVREM : SCFT_R5_TIGN;
+}
+
+static const char *_scftRow5Label(uint8_t mode) {
+    return (mode == SCFT_R5_VVRT)  ? "V.Vrt:"
+         : (mode == SCFT_R5_DVREM) ? "\xCE\x94V.Rem:"
+                                   : "T+Ign:";
+}
+
+// The label follows the throttle, so it cannot wait for a full chrome repaint the way
+// the orbMode swap does. Only row 5's chrome is redrawn, and its cache slot is cleared
+// so printValue repaints the value that printDispChrome just filled over.
+static uint8_t _scftPrevRow5Mode = 255;
 
 
 
@@ -114,15 +198,8 @@ static int16_t  _scftPrevPitchReadout   = -9999;
 static uint16_t _scftPrevPitchReadoutFg = 0;
 
 
-// Roll readout — two lines, right-justified toward the panel divider (matches ACFT).
-// Label: Roboto_Black_24, Value: Roboto_Black_28.
-static const int16_t  SCFT_ROLL_ANCHOR_X  = SCFT_CX + SCFT_R - 54; // right edge tucked by the divider
-static const int16_t  SCFT_ROLL_ANCHOR_Y  = TITLE_TOP;             // pinned just below the title rule
-static const int16_t  SCFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
-static const int16_t  SCFT_ROLL_TXT_W     = SCFT_ROLL_W + 6;   // text-justify reference (matches ACFT)
-static const int16_t  SCFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
-static const int16_t  SCFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
-static const int16_t  SCFT_ROLL_GAP       = 3;    // gap between lines
+// Roll readout — geometry is EADI_ROLL_* in EADIBall.ino, which is what actually draws
+// it. This screen only chooses the colour (a fixed dark green -- no roll warnings).
 
 // Update the roll numeric readout — spacecraft uses a fixed dark-green (no roll warnings).
 // Scaffolding/geometry live in the shared eadiUpdateRollReadout(); see EADIBall.ino.
@@ -142,27 +219,16 @@ static bool    _scftPrevMnvrActive = false;
 // Current value box centred on disc centre (pitch=0 line).
 // Markers: left-pointing triangles on the right edge for vel/tgt/mnvr pitch.
 
-static const int16_t  SCFT_PTAPE_W       = 36;
-static const int16_t  SCFT_PTAPE_GAP     = 27;                          // right edge aligns with HDG tape left
-static const int16_t  SCFT_PTAPE_X       = SCFT_CX - SCFT_R - SCFT_PTAPE_GAP - SCFT_PTAPE_W; // 133
-static const int16_t  SCFT_PTAPE_Y       = SCFT_CY - SCFT_R;              // 96 — top of disc
-static const int16_t  SCFT_PTAPE_H       = SCFT_CY + SCFT_R + 8 - (SCFT_CY - SCFT_R); // 336 — bottom aligns with HDG tape top (CY+R+8)
-static const float    SCFT_PTAPE_SCALE   = SCFT_SCALE;
-
-// Current value box — centred vertically on disc centre (pitch=0)
-static const int16_t  SCFT_PTAPE_BOX_W   = 68;
-static const int16_t  SCFT_PTAPE_BOX_H   = 38;                          // taller for comfortable text margin
-static const int16_t  SCFT_PTAPE_BOX_X   = SCFT_PTAPE_X + SCFT_PTAPE_W - 68; // right edge flush with tape right
-static const int16_t  SCFT_PTAPE_BOX_Y   = SCFT_CY - SCFT_PTAPE_BOX_H / 2; // 241
-
-// Suppress zone — ticks/labels suppressed near the value box
-static const int16_t  SCFT_PTAPE_SUPP_LO = SCFT_PTAPE_BOX_Y - 10;
-static const int16_t  SCFT_PTAPE_SUPP_HI = SCFT_PTAPE_BOX_Y + SCFT_PTAPE_BOX_H + 10;
-
-// Markers — left-pointing triangles on right edge of tape
-static const int16_t  SCFT_PTAPE_MRK_BASE_X = SCFT_PTAPE_X + SCFT_PTAPE_W - 2;
-static const int16_t  SCFT_PTAPE_MRK_TIP_X  = SCFT_PTAPE_X + SCFT_PTAPE_W - 22; // 20px (matches ACFT)
-static const int16_t  SCFT_PTAPE_MRK_HW     = 9;
+// Only the outer frame and the value box are drawn here; the ticks, labels, markers and
+// suppress zone belong to eadiDrawPitchTape.
+static const int16_t  SCFT_PTAPE_W       = EADI_PTAPE_W;       // 36
+static const int16_t  SCFT_PTAPE_X       = EADI_PTAPE_X;       // 76
+static const int16_t  SCFT_PTAPE_Y       = EADI_PTAPE_Y;       // 94  — top of disc
+static const int16_t  SCFT_PTAPE_H       = EADI_PTAPE_H;       // 420 — bottom meets the HDG tape
+static const int16_t  SCFT_PTAPE_BOX_W   = EADI_PTAPE_BOX_W;   // 68
+static const int16_t  SCFT_PTAPE_BOX_H   = EADI_PTAPE_BOX_H;   // 38
+static const int16_t  SCFT_PTAPE_BOX_X   = EADI_PTAPE_BOX_X;   // 44
+static const int16_t  SCFT_PTAPE_BOX_Y   = EADI_PTAPE_BOX_Y;   // 281 — centred on pitch = 0
 
 // State
 static float   _scftPrevPitch2      = -9999.0f;   // pitch tape (distinct from ball state)
@@ -216,29 +282,16 @@ static float   _scftPrevTgtHdg     = -9999.0f;
 static float   _scftPrevMnvrHdg    = -9999.0f;
 
 // ── Heading tape geometry ─────────────────────────────────────────────────────────────
-static const int16_t  SCFT_HDG_TAPE_W    = (SCFT_R * 2) + 54;              // 382 — ±35° visible
-static const int16_t  SCFT_HDG_TAPE_X    = SCFT_CX - (SCFT_HDG_TAPE_W / 2); // 169
-static const int16_t  SCFT_HDG_TAPE_Y    = SCFT_CY + SCFT_R + 8;    // 432 — 8px below disc
-static const int16_t  SCFT_HDG_TAPE_H    = 32;
-static const float    SCFT_HDG_SCALE     = (float)(SCFT_R * 2) / 60.0f;
-static const int16_t  SCFT_HDG_LABEL_LO  = SCFT_HDG_TAPE_X + 8;
-static const int16_t  SCFT_HDG_LABEL_HI  = SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W - 8;
-
-// Box — top aligned with tape top, extends 8px BELOW tape bottom so its
-// bottom border is outside the fillRect zone and never flickers
-static const int16_t  SCFT_HDG_BOX_W     = 72;
-static const int16_t  SCFT_HDG_BOX_H     = 40;                     // TAPE_H + 8 = 40
-static const int16_t  SCFT_HDG_BOX_X     = SCFT_CX - (SCFT_HDG_BOX_W / 2);
-static const int16_t  SCFT_HDG_BOX_Y     = SCFT_HDG_TAPE_Y;
-
-// Suppress zone — covers box + max label half-width (12px)
-static const int16_t  SCFT_HDG_SUPP_LO   = SCFT_HDG_BOX_X - 18;
-static const int16_t  SCFT_HDG_SUPP_HI   = SCFT_HDG_BOX_X + SCFT_HDG_BOX_W + 18;
-
-// Heading markers — long thin downward triangles fully inside the tape
-static const int16_t  SCFT_HDG_MRK_BASE_Y = SCFT_HDG_TAPE_Y + 2;   // 2px below tape top
-static const int16_t  SCFT_HDG_MRK_TIP_Y  = SCFT_HDG_TAPE_Y + 24;  // 22px tall (matches ACFT)
-static const int16_t  SCFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide
+// As above: frame and box only. Ticks, labels, markers and the suppress zone are
+// eadiDrawHeadingTape's.
+static const int16_t  SCFT_HDG_TAPE_W    = EADI_HDG_TAPE_W;    // 466 — ±35° visible
+static const int16_t  SCFT_HDG_TAPE_X    = EADI_HDG_TAPE_X;    // 112
+static const int16_t  SCFT_HDG_TAPE_Y    = EADI_HDG_TAPE_Y;    // 514 — 8 px below the disc
+static const int16_t  SCFT_HDG_TAPE_H    = EADI_HDG_TAPE_H;    // 32
+static const int16_t  SCFT_HDG_BOX_W     = EADI_HDG_BOX_W;     // 72
+static const int16_t  SCFT_HDG_BOX_H     = EADI_HDG_BOX_H;     // 40 — 8 px taller than the tape,
+static const int16_t  SCFT_HDG_BOX_X     = EADI_HDG_BOX_X;     //   so its bottom border sits
+static const int16_t  SCFT_HDG_BOX_Y     = EADI_HDG_BOX_Y;     //   outside the fill and can't flicker
 
 // Draw/update the heading number box — delegated to the shared helper (see EADIBall.ino).
 static void _scftUpdateHdgBox(KCM_TFT &tft, float hdg) {
@@ -409,6 +462,120 @@ static void _scftUpdateVitals(KCM_TFT &tft) {
 }
 
 
+// ── Attitude rate pointers ────────────────────────────────────────────────────────────
+// The one conspicuous thing both real attitude balls carry that this one did not. The
+// Shuttle ADI has three rate pointers on the ball's edges (full scale selectable +/-1,
+// +/-5 or +/-10 deg/s on the ADI RATE switch) and the Apollo FDAI has the same three
+// needles, because a spacecraft is flown on rates: an RCS pulse is judged by the rate it
+// produces, not by where the ball settles ten seconds later.
+//
+// Rates come from kcmRateUpdate (KerbalDisplayCommon), which differentiates the ROTATION
+// rather than the Euler angles so it stays well conditioned near vertical -- see the
+// header there, including the bench test that is still outstanding.
+//
+// PLACEMENT, and why it is not the Shuttle's. The Shuttle puts roll along the top of the
+// ball and yaw along the bottom, so each pointer moves the way its axis moves. There is
+// no room for that here, and the numbers say so rather than the eye: the throttle scale
+// runs to x~54, the pitch tape occupies 75..112, the disc bezel is 137..553, the bank
+// labels reach x=130 and x=556 at y=174..193, the heading tape starts at y=514 and the
+// panel divider is at x=578. That leaves three usable columns -- 18 px, 23 px and 20 px
+// wide -- and nothing horizontal wider than 23 px anywhere on the screen.
+//
+// So all three share one column to the right of the ball, stacked, all vertical, all
+// reading the same way: UP IS POSITIVE, with positive meaning roll right, nose up, nose
+// right. Consistency between the three is worth more than matching a layout we cannot
+// fit, and keeping them together is how a rate cluster is actually scanned.
+static const float   SCFT_RATE_FS     = 10.0f;   // deg/s at either end of every bar
+
+static const int16_t SCFT_RATE_X      = 557;     // clear of the "60" bank label (556)
+static const int16_t SCFT_RATE_W      = 20;      //   and the panel divider (578)
+static const int16_t SCFT_RATE_LBL_H  = 14;      // single-letter name above each bar
+// VERTICAL BUDGET. The column is boxed in at both ends and both numbers are measured
+// against the real glyph data rather than guessed:
+//   TOP  -- the roll readout is right-justified into x 497..583, so it lands squarely on
+//           this column. Its value row paints y 97..130 ("+180" at Roboto_Black_28,
+//           cap 33, centred in the 38 px value row below the 30 px label row from
+//           TITLE_TOP=62). The first version started the stack at y=96, which put the "P"
+//           label and the top 20 px of the pitch bar inside that box -- so every time the
+//           roll digits changed they were erased. Start at 136 to clear it with margin.
+//   BOTTOM-- the TRIM flag: "TRIM" is 59 px at Roboto_Black_24 (cap 29), right-aligned to
+//           the heading tape's right edge (578) less 8, so x 511..570 -- squarely on this
+//           column too -- and its erase rect starts at y=473. The stack must end above it.
+// That leaves 136..471, i.e. 335 px for 3*(14 + BAR_H) + 2*8, so BAR_H <= 92.
+static const int16_t SCFT_RATE_BAR_H  = 92;
+static const int16_t SCFT_RATE_PITCH_Y = 136;                                   // R
+static const int16_t SCFT_RATE_ROLL_Y  = SCFT_RATE_PITCH_Y + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
+static const int16_t SCFT_RATE_YAW_Y   = SCFT_RATE_ROLL_Y  + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
+
+static const uint16_t SCFT_RATE_FILL  = TFT_WHITE;
+
+static KcmRateTracker _scftRates;
+static const int16_t  SCFT_RATE_RESET = INT16_MIN;
+static int16_t _scftPrevRollPx  = SCFT_RATE_RESET;
+static int16_t _scftPrevPitchPx = SCFT_RATE_RESET;
+static int16_t _scftPrevYawPx   = SCFT_RATE_RESET;
+
+// Signed pixel offset from a bar's zero line, clamped to the track.
+static int16_t _scftRatePx(float degPerSec) {
+    const int16_t halfSpan = SCFT_RATE_BAR_H / 2 - 1;
+    float f = degPerSec / SCFT_RATE_FS;
+    if (f >  1.0f) f =  1.0f;
+    if (f < -1.0f) f = -1.0f;
+    return (int16_t)lroundf(f * (float)halfSpan);
+}
+
+static inline int16_t _scftRateBarY(int16_t rowY) { return rowY + SCFT_RATE_LBL_H; }
+
+// Track outline, zero tick and single-letter name for all three bars.
+static void _scftDrawRateChrome(KCM_TFT &tft) {
+    static const char *names[3] = { "P", "R", "Y" };
+    const int16_t rowY[3] = { SCFT_RATE_PITCH_Y, SCFT_RATE_ROLL_Y, SCFT_RATE_YAW_Y };
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    for (uint8_t i = 0; i < 3; i++) {
+        const int16_t lw = getFontStringWidth(&Roboto_Black_12, names[i]);
+        tft.setCursor(SCFT_RATE_X + (SCFT_RATE_W - lw) / 2, rowY[i]);
+        tft.print(names[i]);
+        const int16_t by = _scftRateBarY(rowY[i]);
+        tft.drawRect(SCFT_RATE_X, by, SCFT_RATE_W, SCFT_RATE_BAR_H, TFT_GREY);
+        const int16_t zy = by + SCFT_RATE_BAR_H / 2;
+        tft.drawLine(SCFT_RATE_X - 3, zy, SCFT_RATE_X + SCFT_RATE_W + 2, zy, TFT_LIGHT_GREY);
+    }
+}
+
+// Repaint one bar's fill. Only the union of the old and new extents is touched, so a
+// pointer trembling around zero costs a few pixels rather than a full-track fill --
+// these move on almost every frame, unlike the vitals bars they sit near.
+static void _scftDrawRateFill(KCM_TFT &tft, int16_t rowY, int16_t oldPx, int16_t newPx) {
+    const int16_t lo = (int16_t)min((int)(oldPx < 0 ? oldPx : 0), (int)(newPx < 0 ? newPx : 0));
+    const int16_t hi = (int16_t)max((int)(oldPx > 0 ? oldPx : 0), (int)(newPx > 0 ? newPx : 0));
+    if (lo == 0 && hi == 0) return;
+    const int16_t zy = _scftRateBarY(rowY) + SCFT_RATE_BAR_H / 2;   // + is up
+    tft.fillRect(SCFT_RATE_X + 1, zy - hi, SCFT_RATE_W - 2, (hi - lo), TFT_BLACK);
+    if (newPx > 0)      tft.fillRect(SCFT_RATE_X + 1, zy - newPx, SCFT_RATE_W - 2, newPx,  SCFT_RATE_FILL);
+    else if (newPx < 0) tft.fillRect(SCFT_RATE_X + 1, zy,         SCFT_RATE_W - 2, -newPx, SCFT_RATE_FILL);
+}
+
+static void _scftUpdateRates(KCM_TFT &tft) {
+    const bool first = (_scftPrevPitchPx == SCFT_RATE_RESET);
+    if (!kcmRateUpdate(_scftRates, state.heading, state.pitch, state.roll, millis()) && !first)
+        return;
+
+    const int16_t pp = _scftRatePx(_scftRates.pitch);
+    const int16_t rp = _scftRatePx(_scftRates.roll);
+    const int16_t yp = _scftRatePx(_scftRates.yaw);
+    const int16_t pPrev = first ? 0 : _scftPrevPitchPx;
+    const int16_t rPrev = first ? 0 : _scftPrevRollPx;
+    const int16_t yPrev = first ? 0 : _scftPrevYawPx;
+
+    if (pp != pPrev || first) _scftDrawRateFill(tft, SCFT_RATE_PITCH_Y, pPrev, pp);
+    if (rp != rPrev || first) _scftDrawRateFill(tft, SCFT_RATE_ROLL_Y,  rPrev, rp);
+    if (yp != yPrev || first) _scftDrawRateFill(tft, SCFT_RATE_YAW_Y,   yPrev, yp);
+
+    _scftPrevPitchPx = pp; _scftPrevRollPx = rp; _scftPrevYawPx = yp;
+}
+
+
 // ── Screen chrome ─────────────────────────────────────────────────────────────────────
 static void chromeScreen_SCFT(KCM_TFT &tft) {
     eadiBallResetState();
@@ -448,6 +615,11 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     _scftPrevEC           = -9999;
     _scftPrevCore         = -9999;
     _scftPrevSkin         = -9999;
+    _scftChipShown = -1;
+    kcmRateReset(_scftRates);
+    _scftPrevRollPx       = SCFT_RATE_RESET;
+    _scftPrevPitchPx      = SCFT_RATE_RESET;
+    _scftPrevYawPx        = SCFT_RATE_RESET;
 
     // Bezel ring
     tft.drawCircle(SCFT_CX, SCFT_CY, SCFT_R,     TFT_LIGHT_GREY);
@@ -499,6 +671,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     // ── Throttle bar (left) + vitals strip (bottom) — fill the ACFT VSI/slip slots ─────
     _scftDrawThrottleChrome(tft);
     _scftVitalsChrome(tft);
+    _scftDrawRateChrome(tft);
 
     // ── Right panel chrome ─────────────────────────────────────────────────────────────
     // Vertical divider (2px) between ADI and panel
@@ -507,16 +680,43 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
 
     static const tFont *PF = &Roboto_Black_28;   // label font — matches reticle/launch panels
 
-    // Rows 0-6: single-width rows with label (row 1 label depends on orbMode)
+    // Rows 0-6: single-width rows. Rows 1 and 5 depend on orbMode (see below).
     static const char *panelLabels[] = {
-        "Alt.SL:", nullptr, "ApA:", "PeA:", "T+Ap:", "T+Ign:", "\xCE\x94V.Stg:"
+        "Alt.SL:", nullptr, "ApA:", "PeA:", "T+Ap:", nullptr, "\xCE\x94V.Stg:"
     };
+    // On EVA the same seven rows carry a different set — see _scftEvaMode(). Row 1 is
+    // pinned to V.Orb here rather than following orbMode, so that V.Orb and V.Srf are
+    // both always on the panel: the pair is how you tell station-keeping from drifting.
+    static const char *evaPanelLabels[] = {
+        "Alt.SL:", "V.Orb:", "Alt.Rdr:", "V.Srf:", "Dist:", "V.Close:", "EC:"
+    };
+    const bool evaChrome = _scftEvaMode();
     for (uint8_t r = 0; r < 7; r++) {
-        const char *lbl = (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:") : panelLabels[r];
+        // Row 5 is T+Ign in orbit and V.Vrt below the mode-switch altitude. Real
+        // spacecraft treat altitude rate as a phase-specific instrument rather than a
+        // permanent one: the Shuttle's PFD carries a vertical-speed tape only in its
+        // entry configuration (on orbit it shows the ADI ball alone) and its AVVI's
+        // radar portion is live only in MM305; Apollo gave the LM a dedicated ALT RATE
+        // tapemeter because the LM lands, while the CM had none and read altitude rate
+        // from the DSKY on demand (V06 N62); Orion puts altitude rate on its entry
+        // format. This row does the same thing with the switch the screen already runs.
+        //
+        // The trade is exact. Above the switch a node countdown is the useful half --
+        // and the PFD is the ONLY place it appears outside MANEUVER's ten-minute window,
+        // so it must not simply be dropped. Below the switch a node countdown is close
+        // to meaningless and descent rate is the number being flown.
+        const char *lbl = evaChrome ? evaPanelLabels[r]
+                        : (r == 1) ? (_scftVelRef() ? "V.Orb:" : "V.Srf:")
+                        : (r == 5) ? _scftRow5Label(_scftRow5Mode())
+                        : panelLabels[r];
         printDispChrome(tft, PF, SCFT_PANEL_X, rowYFor(r, SCFT_PANEL_NR),
                         SCFT_PANEL_W, rowHFor(SCFT_PANEL_NR),
                         lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
     }
+
+    // Chrome has just painted row 5 with whichever label was current; record it so the
+    // update below only relabels when it actually changes.
+    _scftPrevRow5Mode = evaChrome ? (uint8_t)255 : _scftRow5Mode();
 
     // Row 7 — split divider (2px)
     {
@@ -538,6 +738,8 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 
     bool hasMnvr  = (state.mnvrTime > 0.0f);
     bool hasOrbit = (state.apoapsis > 0.0f || state.periapsis > 0.0f);
+    bool evaMode  = _scftEvaMode();
+    bool hasTgt   = state.targetAvailable;
     uint16_t fw = SCFT_PANEL_W;
     uint16_t hw = SCFT_PANEL_W / 2;
 
@@ -553,14 +755,47 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         attPanelVal(0, 0, "Alt.SL:", val, fg, TFT_BLACK);
     }
 
-    // Row 1 — V.Orb or V.Srf depending on orbital mode
+    // Row 1 — V.Orb or V.Srf depending on orbital mode; pinned to V.Orb on EVA, where
+    // row 3 carries V.Srf and the two are read as a pair.
     {
         uint16_t fg = TFT_DARK_GREEN;
-        const char *lbl = orbMode ? "V.Orb:" : "V.Srf:";
-        float vel = orbMode ? state.orbitalVel : state.surfaceVel;
+        const char *lbl = (evaMode || orbMode) ? "V.Orb:" : "V.Srf:";
+        float vel = (evaMode || orbMode) ? state.orbitalVel : state.surfaceVel;
         String val = hasOrbit ? fmtMs(vel) : "---";
         attPanelVal(1, 1, lbl, val, fg, TFT_BLACK);
     }
+
+    // Rows 2-6 on EVA — height above the surface, drift, and the approach numbers.
+    // Returns early: the split row 7 (RCS/SAS) and the dividers below are shared, so
+    // they are drawn by the common tail, not duplicated here.
+    if (evaMode) {
+        // Row 2 — Alt.Rdr. The one altitude that matters when a Kerbal is near a surface.
+        attPanelVal(2, 2, "Alt.Rdr:", formatAlt(state.radarAlt), TFT_DARK_GREEN, TFT_BLACK);
+
+        // Row 3 — V.Srf. Beside V.Orb above: station-keeping vs drifting.
+        attPanelVal(3, 3, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
+
+        // Row 4 — Dist to target, dashed when nothing is selected.
+        attPanelVal(4, 4, "Dist:", hasTgt ? formatAlt(state.tgtDistance) : String("---"),
+                    hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+
+        // Row 5 — V.Close. Same sign convention as TGT/DOCK: negative is closing.
+        attPanelVal(5, 5, "V.Close:", hasTgt ? fmtMs(state.tgtVelocity) : String("---"),
+                    hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+
+        // Row 6 — suit charge, on ROVER's thresholds (5% alarm, 20% caution).
+        {
+            float ec = constrain(state.electricChargePercent, 0.0f, 100.0f);
+            uint16_t fg, bg;
+            thresholdColor(ec,
+                           EC_PCT_ALARM, TFT_WHITE,  TFT_RED,
+                           EC_PCT_WARN,  TFT_YELLOW, TFT_BLACK,
+                           TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(ec));
+            attPanelVal(6, 6, "EC:", String(buf), fg, bg);
+        }
+    } else {
 
     // Row 2 — ApA
     {
@@ -589,16 +824,46 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         attPanelVal(4, 4, lbl, val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 5 — T+Ign
+    // Row 5 — V.Vrt below the mode switch, T+Ign above it, dV.Rem once that burn is
+    // actually under way. See _scftRow5Mode above for why all three live on one row.
     {
-        float tIgn = hasMnvr ? state.mnvrTime - state.mnvrDuration / 2.0f : -1.0f;
-        uint16_t fg, bg = TFT_BLACK;
+        const uint8_t r5 = _scftRow5Mode();
+        // The label follows the throttle, so unlike the orbMode swap it cannot wait for
+        // a screen re-entry. Repaint just this row's chrome and clear its cache slot,
+        // since printDispChrome has filled over the value printValue last wrote.
+        if (r5 != _scftPrevRow5Mode) {
+            printDispChrome(tft, &Roboto_Black_28, SCFT_PANEL_X,
+                            rowYFor(5, SCFT_PANEL_NR), SCFT_PANEL_W,
+                            rowHFor(SCFT_PANEL_NR), _scftRow5Label(r5),
+                            COL_LABEL, COL_BACK, COL_NO_BDR);
+            rowCache[SC][5] = RowCache();
+            printState[SC][5] = PrintState();
+            _scftPrevRow5Mode = r5;
+        }
+
+        uint16_t fg = TFT_DARK_GREEN, bg = TFT_BLACK;
         String val;
-        if (!hasMnvr)        { fg = TFT_DARK_GREY; val = "---"; }
-        else if (tIgn < 0.0f){ fg = TFT_WHITE; bg = TFT_RED; val = formatTimeCompact((int64_t)tIgn); }
-        else if (tIgn < MNVR_TIGN_WARN_S){ fg = TFT_YELLOW; val = formatTimeCompact((int64_t)tIgn); }
-        else                  { fg = TFT_DARK_GREEN; val = formatTimeCompact((int64_t)tIgn); }
-        attPanelVal(5, 5, "T+Ign:", val, fg, bg);
+        if (r5 == SCFT_R5_VVRT) {
+            // Reported, not alarmed. LNDG's thresholds are LANDING thresholds -- alarm at
+            // -8 m/s, caution at -5 -- and reusing them here would paint the row red for
+            // the whole of a normal descent, which is the always-on alarm that teaches a
+            // pilot to ignore the colour. POWERED DESCENT owns that alarm and has the
+            // radar altitude to justify it; the Shuttle's AVVI is likewise unalarmed.
+            val = fmtMs(state.verticalVel);
+        } else if (r5 == SCFT_R5_DVREM) {
+            // Unalarmed for the same reason the EMS counter was: it is watched, not
+            // warned on. The pilot shuts down when it reaches zero.
+            val = fmtMs(state.mnvrDeltaV);
+        } else {
+            const float tIgn = hasMnvr ? _scftTIgn() : -1.0f;
+            if (!hasMnvr)                     { fg = TFT_DARK_GREY; val = "---"; }
+            else if (tIgn < 0.0f)             { fg = TFT_WHITE; bg = TFT_RED;
+                                                val = formatTimeCompact((int64_t)tIgn); }
+            else if (tIgn < MNVR_TIGN_WARN_S) { fg = TFT_YELLOW;
+                                                val = formatTimeCompact((int64_t)tIgn); }
+            else                              { val = formatTimeCompact((int64_t)tIgn); }
+        }
+        attPanelVal(5, 5, _scftRow5Label(r5), val, fg, bg);
     }
 
     // Row 6 — ΔV.Stg (low-stage-fuel warning, matches VEH/LNCH)
@@ -610,8 +875,10 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
         attPanelVal(6, 6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
     }
+    }   // end of the non-EVA rows 2-6
 
-    // Row 7 split — RCS button (left half) | SAS button (right half)
+    // Row 7 split — RCS button (left half) | SAS button (right half).
+    // Shared: RCS and SAS are exactly as meaningful for a Kerbal on a jetpack.
     {
         uint16_t ry  = TITLE_TOP + 7 * rowHFor(SCFT_PANEL_NR);  // full row top (no ROW_PAD)
         uint16_t rh  = SCREEN_H - ry - 1;                        // bottom border on row 598 (599 overscanned)
@@ -660,6 +927,33 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 // "TRIM" annunciation (cyan) in the graphical area's bottom-right corner: right-aligned to
 // the heading-tape right edge, bottom just above the heading-tape top. Redrawn each frame
 // while trim is enabled; erased once when it clears.
+// ── Velocity reference chip ───────────────────────────────────────────────────────────
+// SRF or ORB, mirrored from TRIM at the heading tape's left edge. See drawRefChip in
+// AAA_Screens.ino for the colour rule and the hit box.
+//
+// It annunciates the VELOCITY reference only -- the prograde marker on the ball and both
+// tapes, and row 1. It deliberately does not cover altitude: SRF and ORB differ by a
+// rotation about the body's spin axis, and altitude is radial and unchanged by that
+// rotation, so Alt.SL is the same number in both frames and there is no such thing as an
+// orbital altitude. (The Shuttle mixed them freely for the same reason: its AMI showed
+// Earth-relative velocity beside the AVVI's geodetic altitude, with nothing to
+// annunciate.) Nor does it cover row 5, which is a phase choice -- see _scftAutoOrb.
+
+static void _scftUpdateRefChip(KCM_TFT &tft) {
+    const bool orb  = _scftVelRef();
+    const bool held = _scftVelRefOverride.manual;
+    const int8_t want = (int8_t)((held ? 2 : 0) + (orb ? 1 : 0));
+    if (want == _scftChipShown) return;
+    _scftChipShown = want;
+    drawRefChip(tft, orb ? "ORB" : "SRF", held);
+}
+
+// One tap pins the other reference, or drops back to auto if that is what auto wants.
+void scftToggleVelRef() {
+    modeToggle(_scftVelRefOverride, _scftAutoOrb());
+    _scftChipShown = -1;   // repaint on the next frame
+}
+
 static void _scftDrawTrim(KCM_TFT &tft) {
     static bool prev = false;
     int16_t tw = getFontStringWidth(&Roboto_Black_24, "TRIM");
@@ -677,7 +971,18 @@ static void _scftDrawTrim(KCM_TFT &tft) {
 }
 
 static void drawScreen_SCFT(KCM_TFT &tft) {
-    bool orbMode = _scftOrbMode();
+    // Boarding or leaving a craft changes which seven rows the panel carries, and the
+    // row labels are chrome. Re-enter the screen so the chrome redraws with them --
+    // exactly how the V.Orb/V.Srf swap below has always been handled.
+    bool evaMode = _scftEvaMode();
+    if (evaMode != _scftPrevEvaMode) {
+        _scftPrevEvaMode      = evaMode;
+        _scftFullRedrawNeeded = true;
+        switchToScreen(screen_SCFT);
+        return;
+    }
+
+    bool orbMode = _scftVelRef();
     if (orbMode != _scftPrevOrbMode) {
         _scftPrevOrbMode      = orbMode;
         _scftFullRedrawNeeded = true;
@@ -750,7 +1055,9 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     _scftUpdateHeadingTape(tft, state.heading);
     _scftUpdateThrottle(tft, state.throttle);
     _scftUpdateVitals(tft);
+    _scftUpdateRates(tft);
     _scftUpdatePanel(tft, orbMode);
+    _scftUpdateRefChip(tft);
     _scftDrawTrim(tft);
 }
 

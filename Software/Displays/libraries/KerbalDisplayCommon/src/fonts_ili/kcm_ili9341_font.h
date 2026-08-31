@@ -19,6 +19,31 @@
 
 #include <stdint.h>
 
+/***************************************************************************************
+   GLYPH DATA BELONGS IN FLASH
+   On Teensy 4 the linker puts plain `const` arrays into .data, which lives in DTCM --
+   the data half of the 512 KB FlexRAM that ITCM is also carved out of. Seventeen fonts
+   is ~189 KB of glyph data, which was nearly the whole of that half: a build measured
+   .data at 195,264 bytes against a DTCM allowance of 196,608, leaving nothing for the
+   stack and making teensy_size fail outright rather than report it.
+
+   Flash is memory-mapped on this part, so moving the arrays there is purely a section
+   attribute -- the renderer dereferences the same pointers, with no pgm_read_* dance
+   and no code change. The cost is that glyph fetches go through the FlexSPI cache
+   rather than DTCM, which is what PROGMEM exists for.
+
+   Defined as a no-op off-target so the host test harnesses still compile these files.
+****************************************************************************************/
+#ifndef KCM_FONT_FLASH
+  #if defined(__IMXRT1062__)
+    #define KCM_FONT_FLASH __attribute__((section(".progmem")))
+  #else
+    #define KCM_FONT_FLASH
+  #endif
+#endif
+
+
+
 // The font .c files in this directory are BOTH #included into the C++ display
 // code AND compiled standalone by Arduino as C translation units. The RA8876/
 // ILI9341_t3 struct headers are C++-only, so only pull them in under C++; a

@@ -31,9 +31,21 @@
 ****************************************************************************************/
 static const uint16_t SCREEN_W     = KCM_SCREEN_W;   // #3A from SystemConfig
 static const uint16_t SCREEN_H     = KCM_SCREEN_H;   // #3A from SystemConfig
-static const uint16_t AXIS_W       = 50;   // px reserved on left for Y-axis labels + ticks (fits Black_16)
-static const uint16_t SIDEBAR_W    = 84;   // px -- width of right-hand nav button column (matches InfoDisp)
+static const uint16_t AXIS_W       = 50;   // px reserved for the Y-axis labels + ticks (fits Black_16)
+static const uint16_t SIDEBAR_W    = 84;   // px -- width of the nav button column (matches InfoDisp)
 static const tFont   *SB_BTN_FONT  = &Roboto_Black_24;  // nav-button label font (fits 4 chars at 84px)
+
+// The sidebar sits on the LEFT edge. On panel B1 this display is outboard of Info
+// Display 2, whose own sidebar is on its right edge — so putting this one on the left
+// brings the two button columns together at the boundary between the two screens,
+// where they form a single control cluster near the middle of the panel rather than
+// sitting a full screen-width apart with the far one at B1's outboard corner.
+//
+// Content therefore occupies [CONTENT_X, SCREEN_W): the Y-axis strip first, then the
+// bars. Everything downstream derives from CONTENT_X via barX() and drawAxis(), so
+// this is the only place the offset is stated.
+static const uint16_t SIDEBAR_X    = 0;
+static const uint16_t CONTENT_X    = SIDEBAR_W;
 static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
 static inline uint16_t barAreaW()   { return barRegionW() - AXIS_W; }
 static const uint16_t LABEL_H      = 44;
@@ -47,46 +59,63 @@ static const uint16_t BAR_PAD      = 14;   // gap between bars — wider for cle
 static const uint8_t  SB_BTN_COUNT = 4;
 
 // Sidebar geometry computed at runtime via inline functions so barRegionW()
-// always reflects the current SIDEBAR_W value without duplication.
-static inline uint16_t sbX()    { return SCREEN_W - SIDEBAR_W; }
+// always reflects the current SIDEBAR_W value without duplication. sbX() is the
+// sidebar's left edge; the 1 px divider rule sits on its inboard (right) edge,
+// against the content.
+static inline uint16_t sbX()    { return SIDEBAR_X; }
+static inline uint16_t sbDivX() { return SIDEBAR_X + SIDEBAR_W - 1; }
 static inline uint16_t sbBtnH() { return SCREEN_H / SB_BTN_COUNT; }
 static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
 
 
 /***************************************************************************************
    SIDEBAR BUTTON DEFINITIONS
-   Mode button uses two ButtonLabel instances — one per stageMode state.
-   Bottom three buttons share a navy background.
-   All buttons have a TFT_GREY border for visual separation.
+   The sidebar is chrome, not data, so it is achromatic — white-on-black, grey border —
+   and shows an engaged state by reverse video. This matches the InfoDisp sidebar and
+   the convention bezel-key flight decks use, and it keeps the panel's colour vocabulary
+   (green nominal / yellow caution / red alarm, and the per-resource bar colours) for
+   the telemetry the sidebar frames. See the InfoDisp README for the full rationale.
+
+   Previously the mode key filled DARK_GREEN for TOTAL and TFT_CORNELL for STAGE, to
+   distinguish two equally normal display modes. Both are bar identity colours on this
+   very panel — DARK_GREEN is MonoPropellant and TFT_CORNELL is CO2 (see resColor() in
+   Resources.ino) — so the key wore two resources' colours while sitting beside their
+   bars. TFT_CORNELL is also a red (#B51C19), a strong one to park permanently next to
+   percentage labels that turn red below 10%. The three action keys filled navy, which
+   signals nothing.
+
+   The mode key is the one key with state: TOTAL is the default and draws like any other
+   key, STAGE reverse-videos, so the key reads as "changed from the default" as well as
+   naming the mode. The border stays grey on both, since neither is a selection.
 ****************************************************************************************/
 static const ButtonLabel btnModeTotal = {
   "TOTL",
   TFT_WHITE, TFT_WHITE,
-  TFT_OFF_BLACK, TFT_DARK_GREEN,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnModeStage = {
   "STG",
-  TFT_WHITE, TFT_WHITE,
-  TFT_OFF_BLACK, TFT_CORNELL,
+  TFT_BLACK, TFT_BLACK,
+  TFT_GREY, TFT_GREY,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnReset = {
   "DFLT",
   TFT_WHITE, TFT_WHITE,
-  TFT_NAVY, TFT_NAVY,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnSelect = {
   "SEL",
   TFT_WHITE, TFT_WHITE,
-  TFT_NAVY, TFT_NAVY,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 static const ButtonLabel btnDetail = {
   "DATA",
   TFT_WHITE, TFT_WHITE,
-  TFT_NAVY, TFT_NAVY,
+  TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
 
@@ -95,8 +124,8 @@ static const ButtonLabel btnDetail = {
    DRAW SIDEBAR
 ****************************************************************************************/
 static void drawSidebar(KCM_TFT &tft) {
-  tft.drawLine(sbX(), 0, sbX(), SCREEN_H, TFT_GREY);
-  uint16_t bx = sbX() + 1;
+  tft.drawLine(sbDivX(), 0, sbDivX(), SCREEN_H, TFT_GREY);
+  uint16_t bx = sbX();
   uint16_t bw = SIDEBAR_W - 1;
 
   // Button 0: TOTAL / STAGE mode toggle -- always drawn "on" (illuminated)
@@ -116,7 +145,7 @@ static void drawSidebar(KCM_TFT &tft) {
 ****************************************************************************************/
 void redrawStageModeButton(KCM_TFT &tft) {
   const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, sbX() + 1, sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, SB_BTN_FONT, true);
+  drawButton(tft, sbX(), sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, SB_BTN_FONT, true);
 }
 
 
@@ -134,7 +163,7 @@ static uint16_t barWidth() {
 // Pass the already-computed bar width so the per-bar loop doesn't recompute
 // barWidth() (an integer divide) once per bar per frame.
 static uint16_t barX(uint8_t index, uint16_t bw) {
-  return AXIS_W + BAR_PAD + index * (bw + BAR_PAD);
+  return CONTENT_X + AXIS_W + BAR_PAD + index * (bw + BAR_PAD);
 }
 
 
@@ -144,7 +173,7 @@ static uint16_t barX(uint8_t index, uint16_t bw) {
 ****************************************************************************************/
 static void drawAxis(KCM_TFT &tft) {
   drawLabelledAxis(tft,
-                   0, AXIS_W,
+                   CONTENT_X, AXIS_W,
                    BAR_TOP, BAR_BOTTOM,
                    &Roboto_Black_16,
                    TFT_LIGHT_GREY, TFT_BLACK);
@@ -281,7 +310,7 @@ void updateScreenMain(KCM_TFT &tft) {
    SIDEBAR HIT TEST
 ****************************************************************************************/
 int8_t sidebarHitTest(uint16_t x, uint16_t y) {
-  if (x < sbX()) return -1;
+  if (x < SIDEBAR_X || x >= SIDEBAR_X + SIDEBAR_W) return -1;
   for (uint8_t btn = 0; btn < SB_BTN_COUNT; btn++) {
     uint16_t by = sbBtnY(btn);
     if (y >= by && y < by + sbBtnH()) return (int8_t)btn;

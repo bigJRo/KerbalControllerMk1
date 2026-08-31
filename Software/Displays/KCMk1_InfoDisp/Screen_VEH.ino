@@ -110,27 +110,37 @@ static void drawScreen_VEH(KCM_TFT &tft) {
     }
   }
 
-  // Row 2 — Flight status / situation
+  // Row 2 — Flight status: the situation, and whether the vessel can be recovered.
+  //
+  // Both, not one or the other. Recoverable used to REPLACE the situation, which threw
+  // away the more informative half exactly when it mattered: KSP reports a vessel on the
+  // pad as recoverable -- the same quirk vehicleContextScreen() has to shield against --
+  // so the pre-launch board's own summary read "RECOVERABLE" instead of "PRE-LAUNCH".
+  // Splashed lost to it too, and being in the water is worth knowing before you press
+  // recover. The row is 749 px wide against a worst case of 689, so there was never a
+  // reason to choose.
   const char *condName;
-  uint16_t condColor;
-  if (state.isRecoverable) {
-    condName  = "RECOVERABLE";
-    condColor = TFT_SKY;
-  } else {
-    condColor = TFT_DARK_GREEN;
-    switch (state.situation) {
-      case sit_PreLaunch: condName = "PRE-LAUNCH";   break;
-      case sit_Flying:    condName = "IN FLIGHT";    break;
-      case sit_SubOrb:    condName = "SUB-ORBITAL";  break;
-      case sit_Orbit:     condName = "IN ORBIT";     break;
-      case sit_Escaping:  condName = "ESCAPE ORBIT"; break;
-      case sit_Landed:    condName = "LANDED";       break;
-      case sit_Splashed:  condName = "SPLASHED";     break;
-      case sit_Docked:    condName = "DOCKED";       break;
-      default:            condName = "---";          break;
-    }
+  switch (state.situation) {
+    case sit_PreLaunch: condName = "PRE-LAUNCH";   break;
+    case sit_Flying:    condName = "IN FLIGHT";    break;
+    case sit_SubOrb:    condName = "SUB-ORBITAL";  break;
+    case sit_Orbit:     condName = "IN ORBIT";     break;
+    case sit_Escaping:  condName = "ESCAPE ORBIT"; break;
+    case sit_Landed:    condName = "LANDED";       break;
+    case sit_Splashed:  condName = "SPLASHED";     break;
+    case sit_Docked:    condName = "DOCKED";       break;
+    default:            condName = "---";          break;
   }
-  vehVal(2, "Status:", condName, condColor, TFT_BLACK);
+  // Sky blue when recoverable, since that is the actionable state; otherwise nominal.
+  // Separated by a middle dot (0xB7). That glyph was missing from every Roboto_Black
+  // size until fonts_ili/add_middot.py added it -- 0xB7 sat two codepoints past
+  // index2_last -- and a missing glyph measures zero and draws nothing, so this row
+  // would have read "LANDED  RECOVERABLE" with an unexplained gap rather than failing.
+  const String statusVal = state.isRecoverable
+                             ? String(condName) + " \xB7 RECOVERABLE"
+                             : String(condName);
+  vehVal(2, "Status:", statusVal,
+         state.isRecoverable ? (uint16_t)TFT_SKY : (uint16_t)TFT_DARK_GREEN, TFT_BLACK);
 
   // ── CREW block (rows 3-5): crew, control, comms ──
 

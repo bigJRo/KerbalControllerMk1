@@ -59,14 +59,14 @@ static const int16_t  RE_TAPE_M   = 8;    // marker half-height inset (= triangl
 static const uint16_t RE_ATMO_LBL_X = 114;                          // vertical label column
 static const uint16_t RE_ATMO_X   = 130;
 static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape
-static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 82 — same top as the tape's border
-static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 585 — same bottom as the tape's border
+static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 78  — same top as the tape's border
+static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 589 — same bottom as the tape's border
 static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
 
 // ── G METER (left cluster — a third vertical bar just right of the ATMOSPHERE bar) ──
-static const uint16_t RE_GA_Y   = RE_ATMO_Y;                // 82 — match the ATMO/altitude top
-static const uint16_t RE_GA_H   = RE_ATMO_BOT - RE_GA_Y;    // 503 — match the ATMO height
-static const uint16_t RE_GA_BOT = RE_GA_Y + RE_GA_H;        // 585
+static const uint16_t RE_GA_Y   = RE_ATMO_Y;                // 78  — match the ATMO/altitude top
+static const uint16_t RE_GA_H   = RE_ATMO_BOT - RE_GA_Y;    // 511 — match the ATMO height
+static const uint16_t RE_GA_BOT = RE_GA_Y + RE_GA_H;        // 589
 static const uint16_t RE_GF_X   = 218;  static const uint16_t RE_GF_W = 34;  // bar (left gutter carries axis numbers)
 static const uint16_t RE_GLBL_X = RE_GF_X - 36;             // 182 — "G METER" vertical label column
 
@@ -91,7 +91,7 @@ static const uint16_t RE_CT_X     = 297;                // bar left edge
 static const uint16_t RE_CT_W     = 262;                // bar width (airspeed axis)
 static const uint16_t RE_CT_Y     = 436;                // bar top
 static const uint16_t RE_CT_H     = 54;                 // bar height
-static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W;  // 570 — bar right edge
+static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W;  // 559 — bar right edge
 static const float    RE_CT_VMAX  = 1000.0f;            // airspeed axis max (m/s)
 
 // Skin / core temperature — two horizontal bars beneath the chute bar.
@@ -124,7 +124,9 @@ static inline uint8_t _reChuteTier(float maxQ) {
 
 // Re-entry corridor boundaries (metres, ASL), velocity-adjusted. ReCorridor is
 // declared in KCMk1_InfoDisp.h so the auto-prototype for this helper sees the type.
-static ReCorridor _reCorridor() {
+// Not static: the mission context ladder reuses this to decide when a re-entry is
+// pending, so the rule and the screen agree on what counts as one by construction.
+ReCorridor _reCorridor() {
   ReCorridor c; c.valid = false; c.dangerLine = c.safeTop = c.atmoTop = 0.0f;
   float atmoTop = currentBody.lowSpace;
   if (!currentBody.hasAtmo || atmoTop <= 0.0f) return c;
@@ -143,7 +145,7 @@ static ReCorridor _reCorridor() {
 
 // Classify a periapsis (ASL) into a corridor regime: 0 danger, 1 safe, 2 aerobrake,
 // 3 no-reentry, -1 n/a. Colours chosen to match the tape zones.
-static int8_t _rePeRegime(const ReCorridor &c, float pe) {
+int8_t _rePeRegime(const ReCorridor &c, float pe) {
   if (!c.valid) return -1;
   if (pe >= c.atmoTop)    return 3;
   if (pe >= c.safeTop)    return 2;
@@ -627,7 +629,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
-  splitLabels(6, "Drog:", "Main:");
+  splitLabels(6, "Drogue:", "Main:");
   // Row 7 buttons are drawn in the update pass; only draw the divider here.
   {
     uint16_t y = rowYFor(7, RE_NR);

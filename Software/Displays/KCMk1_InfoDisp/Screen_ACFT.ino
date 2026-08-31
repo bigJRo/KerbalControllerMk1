@@ -31,15 +31,24 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-static const int16_t  ACFT_CX        = 345;   // 1024x600: PFD sits left, data panel right
-static const int16_t  ACFT_CY        = 300;   // ball centred so bank ticks clear the title rule
-                                              //   (top ~84) and the slip strip reaches the bottom
-static const int16_t  ACFT_R         = 206;   // sized so the derived panel (PANEL_X = CX+R+29)
-                                              //   lands at x=580, giving a 360px readout panel
-                                              //   matching the reticle/launch screens
-static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // R/30 px/deg
-// (ball extents/scanlines + sky/ground/horizon/wings/ladder colours and the
-//  ACFT_BX_ALLSKY/ALLGND sentinels now live in the shared EADIBall.ino renderer.)
+// ONE PFD, ONE SET OF NUMBERS. This screen, SPACECRAFT and the shared EADIBall renderer
+// all draw the same instrument, so they have to agree pixel for pixel about where the
+// disc, the tapes and the value boxes sit. They used to say so three times over, each
+// re-deriving the whole layout from its own copy of CX/CY/R -- 84 constants that were
+// equal only because nobody had yet edited one of the three. The comments had already
+// drifted: seven of them still quoted values from before the disc was enlarged, and two
+// layout decisions in this repo were made off those stale numbers and came out wrong.
+//
+// EADIBall.ino now holds the single definition. The ACFT_* names below are kept, as
+// aliases, so this screen's own chrome still reads in its own vocabulary -- but there is
+// nothing left here that can disagree with the renderer.
+static const int16_t  ACFT_CX        = EADI_CX;
+static const int16_t  ACFT_CY        = EADI_CY;
+static const int16_t  ACFT_R         = EADI_R;      // sized so the derived panel
+                                                    //   (PANEL_X = CX+R+29) lands at x=580,
+                                                    //   giving a 360px readout panel that
+                                                    //   matches the reticle/launch screens
+static const float    ACFT_SCALE     = EADI_SCALE;  // R/30 px/deg
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 // Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+233 = 578.
@@ -62,6 +71,67 @@ static float    _acftPrevRoll    = -9999.0f;
 
 // Aircraft always uses surface velocity — no orbital mode switching
 static bool     _acftFullRedrawNeeded = true;
+
+
+// ── Row 0: the altimeter, and when radar altitude takes it over ───────────────────────
+// This screen had no barometric altitude at all. Row 0 was Alt.Rdr full-time, and its
+// partner does not cover for it -- NAVIGATION carries Trk, Drift, Brg, Dist, V.Close,
+// T+Int and Hdg -- so you could fly a KSP aeroplane on this controller and read your
+// clearance over the ridge you were about to hit, but never the altitude you were
+// cruising at.
+//
+// Real practice is the other way round and settles both halves at once. The PFD's
+// altitude tape is barometric, always, on every aircraft built since the basic T; radio
+// altitude is a separate and strictly conditional readout, appearing on the A320 only
+// below 2,500 ft and stepping its resolution up as the ground comes closer (10 ft, then
+// 5 ft below 50 ft, then 1 ft below 10 ft). It exists for the last few hundred metres,
+// not the cruise.
+//
+// So row 0 is Alt.SL, handing over to Alt.Rdr below the switch height, with the same
+// hysteresis idiom the SPACECRAFT rows use and the same pilot override.
+//
+// ONE DELIBERATE DEPARTURE. The A320 turns radio altitude amber below 400 ft. Not copied:
+// this panel reserves yellow for caution, and a normal landing would paint the row yellow
+// every single time -- the always-on alarm that teaches a pilot to ignore the colour.
+// It is the same objection that kept V.Vrt out of the alarm tiers on SPACECRAFT row 5.
+// The existing radar-altitude alarm tiers stay, because those are a real GPWS-style
+// alarm about ground proximity rather than a mode annunciation.
+ModeOverride _acftAltRefOverride;
+static int8_t _acftChipShown = -1;   // -1 unknown, 0 auto-SL, 1 auto-RDR, 2 held-SL, 3 held-RDR
+static int8_t _acftPrevAltRef = -1;   // last label painted on row 0 (-1 = none yet)
+// IAS trend state. Up here rather than beside _acftDrawIasTrend because chromeScreen_ACFT
+// resets it, and the Arduino builder hoists prototypes but not variables.
+static float    _acftTrendPrevIas = -9999.0f;
+static uint32_t _acftTrendPrevMs  = 0;
+static float    _acftTrendAccel   = 0.0f;   // m/s^2, smoothed
+static int8_t   _acftTrendShown   = 0;      // -3..+3, 0 = nothing drawn
+
+static bool _acftAutoRdr() {
+    // Hysteresis so the row cannot chatter while levelling off at the switch height.
+    static bool rdr = false;
+    const float a = state.radarAlt;
+    if (rdr) { if (a > ACFT_ALT_RDR_OFF_M) rdr = false; }
+    else     { if (a < ACFT_ALT_RDR_ON_M)  rdr = true;  }
+    return rdr;
+}
+
+// true = show radar altitude.
+static bool _acftAltRef() { return modeResolve(_acftAltRefOverride, _acftAutoRdr()); }
+
+// Radar altitude with resolution rising as the ground approaches, the way a real radio
+// altimeter reads. Metric equivalents of the A320's 10 ft / 5 ft / 1 ft steps.
+static String _acftFmtRdr(float m) {
+    char buf[16];
+    if (m < 10.0f)       snprintf(buf, sizeof(buf), "%.1f m", (double)m);
+    else if (m < 100.0f) snprintf(buf, sizeof(buf), "%d m", (int)lroundf(m));
+    else                 snprintf(buf, sizeof(buf), "%d m", ((int)lroundf(m / 5.0f)) * 5);
+    return String(buf);
+}
+
+void acftToggleAltRef() {
+    modeToggle(_acftAltRefOverride, _acftAutoRdr());
+    _acftChipShown = -1;
+}
 
 
 
@@ -103,23 +173,8 @@ static uint16_t _acftPrevRollReadoutFg = 0;          // last drawn foreground co
 // ── Pitch readout state ───────────────────────────────────────────────────────────────
 
 
-// Roll readout — two lines centred in fixed-width block
-// Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
-static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 54; // right edge tucked against
-                                                                   //   the panel divider
-static const int16_t  ACFT_ROLL_ANCHOR_Y  = TITLE_TOP;             // pinned just below the title
-                                                                   //   rule (y58–61); independent of
-                                                                   //   R so a bigger ball can't push
-                                                                   //   the readout into the title bar
-static const int16_t  ACFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
-// Label/value are right-justified toward the panel divider. textRight() insets by
-// TEXT_BORDER(8) from the box's right edge, so extend the justify reference 6px
-// past ACFT_ROLL_W: text right edge lands at x=569, 2px clear of the divider (571),
-// ~10px right of the old centred position for typical narrow roll values.
-static const int16_t  ACFT_ROLL_TXT_W     = ACFT_ROLL_W + 6;   // 86 — text-justify reference
-static const int16_t  ACFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
-static const int16_t  ACFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
-static const int16_t  ACFT_ROLL_GAP       = 3;    // gap between lines
+// Roll readout — geometry is EADI_ROLL_* in EADIBall.ino, which is what actually draws
+// it. This screen only chooses the colour.
 
 // Update the roll numeric readout — aircraft applies roll warn/alarm colouring (unlike
 // spacecraft). Scaffolding/geometry live in the shared eadiUpdateRollReadout().
@@ -139,27 +194,16 @@ static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
 // Current value box centred on disc centre (pitch=0 line).
 // Markers: left-pointing triangles on the right edge for vel/tgt/mnvr pitch.
 
-static const int16_t  ACFT_PTAPE_W       = 36;
-static const int16_t  ACFT_PTAPE_GAP     = 27;                          // right edge aligns with HDG tape left
-static const int16_t  ACFT_PTAPE_X       = ACFT_CX - ACFT_R - ACFT_PTAPE_GAP - ACFT_PTAPE_W; // 133
-static const int16_t  ACFT_PTAPE_Y       = ACFT_CY - ACFT_R;              // 96 — top of disc
-static const int16_t  ACFT_PTAPE_H       = ACFT_CY + ACFT_R + 8 - (ACFT_CY - ACFT_R); // 336 — bottom aligns with HDG tape top (CY+R+8)
-static const float    ACFT_PTAPE_SCALE   = ACFT_SCALE;
-
-// Current value box — centred vertically on disc centre (pitch=0)
-static const int16_t  ACFT_PTAPE_BOX_W   = 68;
-static const int16_t  ACFT_PTAPE_BOX_H   = 38;                          // taller for comfortable text margin
-static const int16_t  ACFT_PTAPE_BOX_X   = ACFT_PTAPE_X + ACFT_PTAPE_W - 68; // right edge flush with tape right
-static const int16_t  ACFT_PTAPE_BOX_Y   = ACFT_CY - ACFT_PTAPE_BOX_H / 2; // 241
-
-// Suppress zone — ticks/labels suppressed near the value box
-static const int16_t  ACFT_PTAPE_SUPP_LO = ACFT_PTAPE_BOX_Y - 10;
-static const int16_t  ACFT_PTAPE_SUPP_HI = ACFT_PTAPE_BOX_Y + ACFT_PTAPE_BOX_H + 10;
-
-// Markers — left-pointing triangles on right edge of tape
-static const int16_t  ACFT_PTAPE_MRK_BASE_X = ACFT_PTAPE_X + ACFT_PTAPE_W - 2;
-static const int16_t  ACFT_PTAPE_MRK_TIP_X  = ACFT_PTAPE_X + ACFT_PTAPE_W - 22; // 20px — enlarged
-static const int16_t  ACFT_PTAPE_MRK_HW     = 9;                                // enlarged from 6
+// Only the outer frame and the value box are drawn here (in chromeScreen_ACFT); the
+// ticks, labels, markers and suppress zone belong to eadiDrawPitchTape.
+static const int16_t  ACFT_PTAPE_W       = EADI_PTAPE_W;       // 36
+static const int16_t  ACFT_PTAPE_X       = EADI_PTAPE_X;       // 76
+static const int16_t  ACFT_PTAPE_Y       = EADI_PTAPE_Y;       // 94  — top of disc
+static const int16_t  ACFT_PTAPE_H       = EADI_PTAPE_H;       // 420 — bottom meets the HDG tape
+static const int16_t  ACFT_PTAPE_BOX_W   = EADI_PTAPE_BOX_W;   // 68
+static const int16_t  ACFT_PTAPE_BOX_H   = EADI_PTAPE_BOX_H;   // 38
+static const int16_t  ACFT_PTAPE_BOX_X   = EADI_PTAPE_BOX_X;   // 44
+static const int16_t  ACFT_PTAPE_BOX_Y   = EADI_PTAPE_BOX_Y;   // 281 — centred on pitch = 0
 
 // State
 static float   _acftPrevPitch2      = -9999.0f;   // pitch tape (distinct from ball state)
@@ -197,29 +241,16 @@ static int16_t _acftPrevHdgBox     = -9999;
 static float   _acftPrevVelHdg     = -9999.0f;
 
 // ── Heading tape geometry ─────────────────────────────────────────────────────────────
-static const int16_t  ACFT_HDG_TAPE_W    = (ACFT_R * 2) + 54;              // 354 — ±35° visible
-static const int16_t  ACFT_HDG_TAPE_X    = ACFT_CX - (ACFT_HDG_TAPE_W / 2); // 83
-static const int16_t  ACFT_HDG_TAPE_Y    = ACFT_CY + ACFT_R + 8;    // 406 — 8px below disc bottom
-static const int16_t  ACFT_HDG_TAPE_H    = 32;
-static const float    ACFT_HDG_SCALE     = (float)(ACFT_R * 2) / 60.0f;
-static const int16_t  ACFT_HDG_LABEL_LO  = ACFT_HDG_TAPE_X + 8;
-static const int16_t  ACFT_HDG_LABEL_HI  = ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - 8;
-
-// Box — top aligned with tape top, extends 8px BELOW tape bottom so its
-// bottom border is outside the fillRect zone and never flickers
-static const int16_t  ACFT_HDG_BOX_W     = 72;
-static const int16_t  ACFT_HDG_BOX_H     = ACFT_HDG_TAPE_H + 8;    // = 40
-static const int16_t  ACFT_HDG_BOX_X     = ACFT_CX - (ACFT_HDG_BOX_W / 2);
-static const int16_t  ACFT_HDG_BOX_Y     = ACFT_HDG_TAPE_Y;
-
-// Suppress zone — covers box + max label half-width (12px)
-static const int16_t  ACFT_HDG_SUPP_LO   = ACFT_HDG_BOX_X - 18;
-static const int16_t  ACFT_HDG_SUPP_HI   = ACFT_HDG_BOX_X + ACFT_HDG_BOX_W + 18;
-
-// Heading markers — long thin downward triangles fully inside the tape
-static const int16_t  ACFT_HDG_MRK_BASE_Y = ACFT_HDG_TAPE_Y + 2;   // 2px below tape top
-static const int16_t  ACFT_HDG_MRK_TIP_Y  = ACFT_HDG_TAPE_Y + 24;  // 22px tall (enlarged)
-static const int16_t  ACFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide (enlarged)
+// As above: frame and box only. Ticks, labels, markers and the suppress zone are
+// eadiDrawHeadingTape's.
+static const int16_t  ACFT_HDG_TAPE_W    = EADI_HDG_TAPE_W;    // 466 — ±35° visible
+static const int16_t  ACFT_HDG_TAPE_X    = EADI_HDG_TAPE_X;    // 112
+static const int16_t  ACFT_HDG_TAPE_Y    = EADI_HDG_TAPE_Y;    // 514 — 8 px below the disc
+static const int16_t  ACFT_HDG_TAPE_H    = EADI_HDG_TAPE_H;    // 32
+static const int16_t  ACFT_HDG_BOX_W     = EADI_HDG_BOX_W;     // 72
+static const int16_t  ACFT_HDG_BOX_H     = EADI_HDG_BOX_H;     // 40 — 8 px taller than the tape,
+static const int16_t  ACFT_HDG_BOX_X     = EADI_HDG_BOX_X;     //   so its bottom border sits
+static const int16_t  ACFT_HDG_BOX_Y     = EADI_HDG_BOX_Y;     //   outside the fill and can't flicker
 
 // Draw/update the heading number box — delegated to the shared helper (see EADIBall.ino).
 static void _acftUpdateHdgBox(KCM_TFT &tft, float hdg) {
@@ -384,8 +415,8 @@ static void _acftUpdateSlipBall(KCM_TFT &tft, float slip) {
 // Arc spans AOA_ANG_LO..AOA_ANG_HI in screen-angle degrees.
 // Safe range: stays clear of bank=±60 roll ticks (which live at 210° and 330°).
 // Drawn as solid colour bands using fillTriangle pairs — no float drift, no gaps.
-static const int16_t  AOA_R_INNER  = ACFT_R + 4;    // 154px — just outside bezel
-static const int16_t  AOA_R_OUTER  = ACFT_R + 18;   // 168px
+static const int16_t  AOA_R_INNER  = ACFT_R + 4;    // 210 — just outside the bezel (R+2)
+static const int16_t  AOA_R_OUTER  = ACFT_R + 18;   // 224 — 14 px band
 static const float    AOA_ZERO_DEG = 180.0f;         // 9 o'clock
 static const int16_t  AOA_ANG_LO   = 155;            // low screen angle  (= AoA -25°)
 static const int16_t  AOA_ANG_HI   = 205;            // high screen angle (= AoA +25°)
@@ -507,6 +538,11 @@ static void _acftUpdateAoAArc(KCM_TFT &tft, float aoa) {
 // ── Screen update ─────────────────────────────────────────────────────────────────────
 
 static void chromeScreen_ACFT(KCM_TFT &tft) {
+    _acftChipShown  = -1;
+    _acftPrevAltRef = -1;
+    _acftTrendPrevIas = -9999.0f;
+    _acftTrendAccel = 0.0f;
+    _acftTrendShown = 0;
     eadiBallResetState();
     _acftFullRedrawNeeded      = true;
     eadiResetRollIndicator();
@@ -601,12 +637,19 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     static const tFont *PF = &Roboto_Black_28;   // label font — matches reticle/launch panels
 
     // Rows 0-3: single-width labels
-    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR),
+                    _acftAltRef() ? "Alt.Rdr:" : "Alt.SL:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    _acftPrevAltRef = (int8_t)_acftAltRef();   // record what chrome just painted
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(1, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(2, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "IAS:",     COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(3, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Row 4: Ma | G split
+    // Row 4: Ma | G split.
+    // "Ma:", not "Mach:" as ASCENT and RE-ENTRY use, and this is measured rather than
+    // careless: these split cells are 180 px, "Mach:" is 101 px at the value font and the
+    // widest Mach reading is 95, which overflows by 26. Dropping a decimal does not save
+    // it either. The abbreviation is forced by the cell, and it is the one place in the
+    // sketch where a quantity carries a second name.
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         uint16_t y  = rowYFor(4, ACFT_PANEL_NR), h = rowHFor(ACFT_PANEL_NR);
@@ -616,12 +659,15 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
 
-    // Row 5: AoA | Slip split
+    // Row 5: AoA | Slip split. "Slip:" in full, matching the slip-ball label on the same
+    // screen -- the panel row used to say "Sl:" while the ball said "Slip:", one quantity
+    // with two names three inches apart. It fits: the value is already whole degrees, so
+    // the widest case "+180deg" is 96 px against a 74 px label in a 174 px usable cell.
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         uint16_t y  = rowYFor(5, ACFT_PANEL_NR), h = rowHFor(ACFT_PANEL_NR);
         printDispChrome(tft, PF, ACFT_PANEL_X,      y, hw, h, "AoA:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "Sl:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "Slip:", COL_LABEL, COL_BACK, COL_NO_BDR);
         tft.drawLine(ACFT_PANEL_X + hw,     y, ACFT_PANEL_X + hw,     y + h - 1, TFT_GREY);
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
@@ -647,6 +693,92 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 
 
 
+// ── IAS trend ─────────────────────────────────────────────────────────────────────────
+// Garmin's trend vector is a magenta line up or down the speed tape whose end marks the
+// airspeed predicted six seconds out at the current acceleration; it is a large part of
+// why a glass PFD feels ahead of the aircraft. Its LENGTH is meaningful because it is
+// commensurate with the tape's own scale -- it literally reaches the speed you will have.
+//
+// We have no speed tape, so any length would be an invented scale, and in the ~40 px this
+// row can spare only about three lengths are actually distinguishable. A continuously
+// scaled arrow would therefore degrade to three states while implying precision it does
+// not have. So the three states are made honest instead: a stack of one to three
+// chevrons, up or down, thresholded on the six-second predicted change.
+//
+// Drawn OUTSIDE printValue's fill rect. printValue repaints the value region on every
+// change, which would erase anything inside it -- the same hazard the panels already
+// guard against by redrawing their row dividers last.
+static const float   ACFT_TREND_S      = 6.0f;    // prediction horizon, as Garmin's
+static const float   ACFT_TREND_1_MS   = 2.0f;    // one chevron above this predicted delta
+static const float   ACFT_TREND_2_MS   = 6.0f;    // two
+static const float   ACFT_TREND_3_MS   = 12.0f;   // three
+static const int16_t ACFT_TREND_W      = 13;      // chevron half-width
+static const int16_t ACFT_TREND_H      = 7;       // chevron height (apex to base)
+static const int16_t ACFT_TREND_THICK  = 3;       // stroke weight, in stacked scanlines
+static const int16_t ACFT_TREND_STEP   = 10;      // vertical pitch of the stack
+static const int16_t ACFT_TREND_X      = ACFT_PANEL_X + 92;   // clear of the "IAS:" label
+static const int16_t ACFT_TREND_BOX_W  = 2 * ACFT_TREND_W + 6;
+static const int16_t ACFT_TREND_BOX_H  = 3 * ACFT_TREND_STEP + ACFT_TREND_H +
+                                         ACFT_TREND_THICK + 4;
+// Magenta, not green. The chevrons are the one thing in this row that is a PREDICTION
+// rather than a measurement, and magenta is what a glass cockpit reserves for computed
+// guidance (flight director bars, the magenta course line on a moving map) as against the
+// green of live state. Colouring them like the IAS value they sit beside implied they
+// were part of it. Keep this distinct from TFT_VIOLET, which is the target-marker colour
+// on SCFT/ACFT/ROVR -- these are unrelated channels that must not read as one.
+static const uint16_t ACFT_TREND_COL   = TFT_MAGENTA;
+
+static void _acftDrawIasTrend(KCM_TFT &tft, float ias) {
+    const uint32_t now = millis();
+    if (_acftTrendPrevIas < -9000.0f) { _acftTrendPrevIas = ias; _acftTrendPrevMs = now; return; }
+    const float dt = (float)(uint32_t)(now - _acftTrendPrevMs) / 1000.0f;
+    if (dt >= 0.10f) {
+        if (dt <= 2.0f) {
+            const float a = (ias - _acftTrendPrevIas) / dt;
+            const float k = dt / (0.8f + dt);         // ~0.8 s smoothing
+            _acftTrendAccel += k * (a - _acftTrendAccel);
+        }
+        _acftTrendPrevIas = ias;
+        _acftTrendPrevMs  = now;
+    }
+
+    const float d = _acftTrendAccel * ACFT_TREND_S;
+    const float ad = fabsf(d);
+    int8_t want = 0;
+    if      (ad >= ACFT_TREND_3_MS) want = 3;
+    else if (ad >= ACFT_TREND_2_MS) want = 2;
+    else if (ad >= ACFT_TREND_1_MS) want = 1;
+    if (d < 0.0f) want = (int8_t)-want;
+    if (want == _acftTrendShown) return;
+    _acftTrendShown = want;
+
+    const int16_t y0 = rowYFor(2, ACFT_PANEL_NR) +
+                       (rowHFor(ACFT_PANEL_NR) - ACFT_TREND_BOX_H) / 2;
+    tft.fillRect(ACFT_TREND_X - ACFT_TREND_W - 3, y0, ACFT_TREND_BOX_W, ACFT_TREND_BOX_H, TFT_BLACK);
+    if (want == 0) return;
+
+    const bool up = (want > 0);
+    const int8_t n = up ? want : (int8_t)-want;
+    for (int8_t i = 0; i < n; i++) {
+        // Stack from the pointing end back, so one chevron always sits in the same place.
+        // The stroke is laid down as ACFT_TREND_THICK scanlines BELOW the nominal line, so
+        // the down-stack has to start that much higher or the thickest chevron's base
+        // would spill out of the erase box and survive the next repaint.
+        const int16_t ty = up ? (y0 + 2 + i * ACFT_TREND_STEP)
+                              : (y0 + ACFT_TREND_BOX_H - 2 - ACFT_TREND_H
+                                    - (ACFT_TREND_THICK - 1) - i * ACFT_TREND_STEP);
+        const int16_t apexY = up ? ty : (int16_t)(ty + ACFT_TREND_H);
+        const int16_t baseY = up ? (int16_t)(ty + ACFT_TREND_H) : ty;
+        for (int16_t o = 0; o < ACFT_TREND_THICK; o++) {
+            tft.drawLine(ACFT_TREND_X - ACFT_TREND_W, baseY + o,
+                         ACFT_TREND_X,                apexY + o, ACFT_TREND_COL);
+            tft.drawLine(ACFT_TREND_X,                apexY + o,
+                         ACFT_TREND_X + ACFT_TREND_W, baseY + o, ACFT_TREND_COL);
+        }
+    }
+}
+
+
 // ── Right panel update ─────────────────────────────────────────────────────────────────
 // Row order: Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear|Airbrk(6), Brakes|SAS(7)
 // Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
@@ -666,10 +798,27 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
 
     // Row 0 — Alt.Rdr
     {
-        fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
-             (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
-        bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
-        acftVal(0, 0, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
+        const bool rdr = _acftAltRef();
+        // The label follows the switch height, so like SPACECRAFT's row 5 it repaints its
+        // own chrome rather than waiting for a screen re-entry, and clears its cache slot
+        // because printDispChrome fills over the value.
+        if ((int8_t)rdr != _acftPrevAltRef) {
+            printDispChrome(tft, &Roboto_Black_28, ACFT_PANEL_X,
+                            rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W,
+                            rowHFor(ACFT_PANEL_NR), rdr ? "Alt.Rdr:" : "Alt.SL:",
+                            COL_LABEL, COL_BACK, COL_NO_BDR);
+            rowCache[SC][0] = RowCache();
+            printState[SC][0] = PrintState();
+            _acftPrevAltRef = (int8_t)rdr;
+        }
+        if (rdr) {
+            fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
+                 (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
+            bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
+            acftVal(0, 0, "Alt.Rdr:", _acftFmtRdr(state.radarAlt), fg, bg);
+        } else {
+            acftVal(0, 0, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
+        }
     }
 
     // Row 1 — V.Srf (surfaceVel is a magnitude, always >= 0)
@@ -677,15 +826,24 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         acftVal(1, 1, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 2 — IAS with stall warning
+    // Row 2 — IAS, with a trend indicator.
+    //
+    // NO SPEED-BASED STALL WARNING HERE, deliberately. This row used to branch on
+    // STALL_SPEED_MS, which was 0.0f in AAA_Config.ino, so the threshold arm had never
+    // once executed and the row was permanently dark green -- dead code implying a
+    // feature the panel did not have. A real PFD gets low-speed awareness either from
+    // V-speeds (the white/green/yellow/red bands, red at Vne) or from angle of attack.
+    // KSP and Simpit give us no V-speeds at any price, so the banded version is not
+    // available; AoA is, we already compute it, and it is the physically correct stall
+    // predictor regardless of speed -- which is why AoA-based awareness is what modern
+    // light-aircraft PFDs actually fit. The AoA arc and the AoA row below are therefore
+    // the single stall channel, and colouring IAS from the same signal would just put
+    // one warning on the screen twice. Do not re-add a speed threshold without a real
+    // per-airframe stall speed to put in it.
     {
         float ias = state.IAS;
-        if (STALL_SPEED_MS > 0.0f) {
-            if      (ias < STALL_SPEED_MS * 0.5f) { fg = TFT_WHITE;     bg = TFT_RED;   }
-            else if (ias < STALL_SPEED_MS)         { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-            else                                   { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        } else { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        acftVal(2, 2, "IAS:", fmtMs(ias), fg, bg);
+        acftVal(2, 2, "IAS:", fmtMs(ias), TFT_DARK_GREEN, TFT_BLACK);
+        _acftDrawIasTrend(tft, ias);
     }
 
     // Row 3 — V.Vrt — colours match VSI bar thresholds
@@ -767,7 +925,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &sc2 = rowCache[SC][7];
             if (sc2.value != sv || sc2.fg != fg || sc2.bg != bg) {
                 printValue(tft, VF, ACFT_PANEL_X + hw, y5, hw, h5,
-                           "Sl:", sv, fg, bg, COL_BACK, printState[SC][7]);
+                           "Slip:", sv, fg, bg, COL_BACK, printState[SC][7]);
                 sc2.value = sv; sc2.fg = fg; sc2.bg = bg;
             }
         }
@@ -880,6 +1038,18 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
 // "TRIM" annunciation (cyan) in the graphical area's bottom-right corner: right-aligned to
 // the heading-tape right edge, bottom just above the heading-tape top. Redrawn each frame
 // while trim is enabled; erased once when it clears.
+// ── Altitude datum chip ───────────────────────────────────────────────────────────────
+// SL or RDR, mirrored from TRIM. Same helper, colour rule and hit box as SPACECRAFT's
+// velocity-reference chip -- see drawRefChip in AAA_Screens.ino.
+static void _acftUpdateRefChip(KCM_TFT &tft) {
+    const bool rdr  = _acftAltRef();
+    const bool held = _acftAltRefOverride.manual;
+    const int8_t want = (int8_t)((held ? 2 : 0) + (rdr ? 1 : 0));
+    if (want == _acftChipShown) return;
+    _acftChipShown = want;
+    drawRefChip(tft, rdr ? "RDR" : "SL", held);
+}
+
 static void _acftDrawTrim(KCM_TFT &tft) {
     static bool prev = false;
     int16_t tw = getFontStringWidth(&Roboto_Black_24, "TRIM");
@@ -970,6 +1140,7 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
     _acftUpdateAoAArc(tft, aoa);
     _acftUpdatePanel(tft);
 
+    _acftUpdateRefChip(tft);
     _acftDrawTrim(tft);
 
     if (debugMode) {

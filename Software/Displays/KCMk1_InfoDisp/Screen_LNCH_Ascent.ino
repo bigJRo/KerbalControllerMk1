@@ -26,7 +26,7 @@
    Top-level dispatcher Screen_LNCH.ino selects which of these to draw.
 
    Shared with the rest of the LNCH screen (defined in Screen_LNCH.ino):
-     - LNCH_AS_LPANEL_X/W, LNCH_AS_PANEL_Y/H  (left graphics panel geometry)
+     - LNCH_AS_PANEL_Y, LNCH_AS_LP_LEFT       (left graphics panel geometry)
      The ascent-specific code below references these freely (single Arduino TU).
      The rev-2 right (numeric readout) panel uses its own LNCH_AS2_* geometry and
      _lnchAs2RowY() — right-aligned to the content edge, 400 px wide, full height,
@@ -48,12 +48,32 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Right-hand numeric readout column (right-aligned to the content edge).
-static const int16_t LNCH_AS_READOUT_W = 360;
-static const int16_t LNCH_AS_READOUT_X = SCREEN_W - SIDEBAR_W - LNCH_AS_READOUT_W;   // 580
+//
+// Seven rows, not the eight this panel carried before. V.Srf and V.Vrt moved onto the
+// two bars that draw them; Alt.SL and ApA were dropped outright. T+Ap, Thrtl, Q, Mach,
+// G, Stg.Brn and dV.Stg are what is left, every one a value with no picture anywhere on
+// this screen. Fewer rows, so each is taller. ASCENT is the only user of this panel --
+// the circularisation phase replaced its copy with the apsis tape.
+//
+// Alt.SL and ApA are position-only on this screen now: the altitude ladder marks both
+// against a labelled tick scale, and there is nowhere to put their digits. The left
+// panel is packed to 573 px of 576; the ladder strip is erased out to x=156 (its marker
+// labels reach x=124) and the atmosphere column's left triangle starts at x=166, so the
+// free space between them is 10 px, where "101 km" needs about 60. The PFD on the other panel carries both in the great majority of
+// ascent phases; the exception is a spaceplane still in the atmosphere, where that panel
+// is AIRCRAFT and has neither -- a deliberate, accepted cost rather than an oversight.
+//
+// Declared up here with the other anchors because the PrintState array and the label
+// table size themselves from it a thousand lines above the readout geometry block, and
+// the Arduino builder hoists function prototypes but not constants.
+static const uint8_t LNCH_AS2_NROWS    = 7;
+
+// The readout column is LNCH_AS2_RPANEL_W/X, declared with the rest of the row table
+// further down. A second, identical pair (LNCH_AS_READOUT_W/X) used to be declared here
+// -- same 360 px, same CONTENT_W - 360 -- and nothing read it.
 
 // Left graphics panel: everything left of the readout column.
 static const int16_t LNCH_AS_LP_LEFT   = 0;
-static const int16_t LNCH_AS_LP_RIGHT  = LNCH_AS_READOUT_X - 4;      // small gap before readout (576)
 
 // Shared vertical band for the ladder and all gauges. Move them together here.
 static const int16_t LNCH_AS_BAND_TOP  = TITLE_TOP + 18;            // 80  (~18px under title bar)
@@ -65,9 +85,18 @@ static const int16_t LNCH_AS_BAND_BOT  = SCREEN_H  - 18;            // 582 (~18p
 static const int16_t LNCH_AS_GAUGE_NAME_H   = 24;   // name label height (Black_20)
 static const int16_t LNCH_AS_GAUGE_ENDLBL_H = 18;   // endpoint label height (Black_16)
 static const int16_t LNCH_AS_GAUGE_NAME_Y   = LNCH_AS_BAND_TOP;                                                     // 80
-static const int16_t LNCH_AS_GAUGE_BODY_TOP = LNCH_AS_BAND_TOP + LNCH_AS_GAUGE_NAME_H + LNCH_AS_GAUGE_ENDLBL_H + 6; // 128
+
+// Digital window row, between the gauge name and its top endpoint label. Each bar
+// carries its own value here rather than in the readout column 400 px to the right:
+// a tape whose digits are at the other end of the display is two half-instruments,
+// and reading magnitude and precision costs a saccade every time. Shifting BODY_TOP
+// is all it takes to make room -- every gauge derives from it, which is what the
+// anchor block above exists for.
+static const int16_t LNCH_AS_GAUGE_VAL_H    = 26;
+static const int16_t LNCH_AS_GAUGE_VAL_Y    = LNCH_AS_BAND_TOP + LNCH_AS_GAUGE_NAME_H;                              // 104
+static const int16_t LNCH_AS_GAUGE_BODY_TOP = LNCH_AS_BAND_TOP + LNCH_AS_GAUGE_NAME_H + LNCH_AS_GAUGE_VAL_H
+                                              + LNCH_AS_GAUGE_ENDLBL_H + 6;                                         // 154
 static const int16_t LNCH_AS_GAUGE_BODY_BOT = LNCH_AS_BAND_BOT - LNCH_AS_GAUGE_ENDLBL_H - 2;                        // 562
-static const int16_t LNCH_AS_GAUGE_BODY_MIDY= (LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_GAUGE_BODY_BOT) / 2;
 
 // Horizontal spacing: COL_GAP = whitespace between element bounding boxes;
 // LBL_OVERHANG = how far each bar's endpoint-label box extends beyond the bar.
@@ -213,21 +242,21 @@ static const uint16_t LNCH_AS_ATMO_TICK_SKY_COLOR = TFT_DARK_GREY;
 
 // ── Ascent phase change-detection state ───────────────────────────────────────────────
 // Cached last-drawn values for each row. Re-draw only on change.
-static int32_t _lnchAsPrevAlt        = -1 << 30;  // m
-static int32_t _lnchAsPrevApA        = -1 << 30;  // m
+// Alt.SL, ApA, V.Srf and V.Vrt moved onto their gauges, and their caches with them --
+// the gauge windows keep last-drawn strings instead. What is left is the readout
+// column's own seven rows.
 static int32_t _lnchAsPrevTimeToAp   = -1 << 30;  // seconds
-static int16_t _lnchAsPrevVSrf       = -9999;     // tenths m/s
-static int16_t _lnchAsPrevVVrt       = -9999;     // tenths m/s
 static int16_t _lnchAsPrevThrottle   = -1;        // percent (0-100)
+static int32_t _lnchAsPrevQ          = -1 << 30;  // tenths of a kPa
+static int32_t _lnchAsPrevMach       = -9999;     // hundredths, -9999 = "---"
+static int32_t _lnchAsPrevG          = -1 << 30;  // tenths of a g
 static int32_t _lnchAsPrevTBurn      = -1 << 30;  // seconds
 static int32_t _lnchAsPrevDVStg      = -1 << 30;  // m/s (as tenths? or int)
 // Track colors too (threshold changes don't alter the numeric value but still require redraw)
-static uint16_t _lnchAsPrevAltFg     = 0xFFFF;
-static uint16_t _lnchAsPrevApAFg     = 0xFFFF;
 static uint16_t _lnchAsPrevTimeToApFg= 0xFFFF;
-static uint16_t _lnchAsPrevVSrfFg    = 0xFFFF;
-static uint16_t _lnchAsPrevVVrtFg    = 0xFFFF; static uint16_t _lnchAsPrevVVrtBg = 0xFFFF;
 static uint16_t _lnchAsPrevThrFg     = 0xFFFF; static uint16_t _lnchAsPrevThrBg  = 0xFFFF;
+static uint16_t _lnchAsPrevQFg       = 0xFFFF; static uint16_t _lnchAsPrevQBg    = 0xFFFF;
+static uint16_t _lnchAsPrevGFg       = 0xFFFF; static uint16_t _lnchAsPrevGBg    = 0xFFFF;
 static uint16_t _lnchAsPrevTBurnFg   = 0xFFFF; static uint16_t _lnchAsPrevTBurnBg = 0xFFFF;
 static uint16_t _lnchAsPrevDVStgFg   = 0xFFFF; static uint16_t _lnchAsPrevDVStgBg = 0xFFFF;
 
@@ -278,7 +307,7 @@ static int8_t  _lnchAsPrevStageActive = -1;
 // left and the value is right-aligned. Labels are short ("V.Srf:", "ΔV.Stg:")
 // and don't carry units since the unit ("m/s") is implicit from KSP convention.
 
-static PrintState _lnchAsPs[8];   // PrintState tracking for each of 8 rows
+static PrintState _lnchAsPs[LNCH_AS2_NROWS];   // PrintState tracking, one per readout row
 
 
 // ── Altitude ladder ───────────────────────────────────────────────────────────────────
@@ -377,13 +406,20 @@ static float _lnchAsLadderTickInterval(float scaleTop) {
     return 100000.0f;
 }
 
-// Draw an altitude-marker triangle pointing left at altitude y, with a small
-// letter label to the right. 'filled' selects vessel (filled) vs apoapsis
-// (hollow) style; 'label' is a one-letter tag ("V" or "A") drawn at Black_16
-// in the same color as the triangle.
+// Draw an altitude-marker triangle pointing left at altitude y, with a short label to
+// the right. 'filled' selects vessel (filled, "ALT") vs apoapsis (hollow, "Ap") style;
+// the label is drawn at Black_16 in the same color as the triangle.
 // Tip at LADDER_LINE_X+3, base at MARKER_X + MARKER_W, label just past the base.
-static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of label letter (past base)
-static const int16_t LNCH_AS_MARKER_LBL_W    = 16;    // width reserved for label letter
+static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of the label (past the base)
+static const int16_t LNCH_AS_MARKER_LBL_W    = 32;    // width reserved for the marker label
+                                                     // "ALT" is 30 px at Black_16, so the
+                                                     // cell is 32. This also sizes the
+                                                     // marker ERASE, which is why it has
+                                                     // to be measured rather than guessed.
+// A marker's drawn extent and the erase box are both 19 rows tall, so erasing one
+// marker clips the other whenever their centres are within 19 - 1 + 19 - 1 = 18 px.
+// (That 19 was also spelled out as a constant here; nothing read it, and a number no
+// code depends on is one that drifts from the geometry it claims to describe.)
 
 static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
                                  bool filled, const char *label) {
@@ -400,7 +436,11 @@ static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
         tft.drawLine(tipX, y, baseX, y + halfH, color);
         tft.drawLine(baseX, y - halfH, baseX, y + halfH, color);
     }
-    // One-letter label to the right of the triangle
+    // Label to the right of the triangle. Drawn opaquely on black, so where a marker
+    // sits on a reference line its label covers that line's label rather than
+    // interleaving with it; the repair below puts the reference label back when the
+    // marker moves off.
+    if (!label || !*label) return;
     textLeft(tft, &Roboto_Black_16,
              LNCH_AS_MARKER_LBL_X - 8, y - 9,   // x0-8 because textLeft adds TEXT_BORDER=8
              LNCH_AS_MARKER_LBL_W, 18,
@@ -414,10 +454,44 @@ static void _lnchAsEraseAltMarker(KCM_TFT &tft, int16_t y) {
     tft.fillRect(tipX, y - 9, rightX - tipX + 1, 19, TFT_BLACK);
 }
 
-// After erasing a marker, repair any reference line segments (GND/ATM/ORB)
-// that were passing through the erased region. Called from marker update logic.
-// markerY is the y-center of the erased bounding box (height 19, so the box
-// spans y-9 to y+9).
+// Reference-line labels (GND / ATM / TGT+ORB). Their glyphs start at x=118 and the
+// marker erase box reaches x=132, so a marker passing a reference line takes a bite out
+// of its label. The lines were already repaired after an erase; the labels were not, and
+// the bite stayed on screen until the next ladder scale change. Both the chrome and the
+// repair go through these two helpers now, so the two cannot drift apart.
+static const int16_t LNCH_AS_REF_LBL_X = LNCH_AS_LADDER_REF_X2 - 40;
+static const int16_t LNCH_AS_REF_LBL_W = 44;
+static const int16_t LNCH_AS_REF_LBL_H = 16;
+
+static void _lnchAsDrawRefLabel(KCM_TFT &tft, int16_t y0, const char *s, uint16_t color) {
+    textLeft(tft, &Roboto_Black_16,
+             LNCH_AS_REF_LBL_X, y0, LNCH_AS_REF_LBL_W, LNCH_AS_REF_LBL_H,
+             s, color, TFT_BLACK);
+}
+
+// The ORBIT line's label is "TGT" over "ORB" straddling the line, so the pilot reads it
+// as an altitude being aimed for; it falls back to a single centred "ORB" when the line
+// is too close to either end of the ladder for two rows.
+static void _lnchAsDrawOrbRefLabel(KCM_TFT &tft, int16_t refY) {
+    if (refY > LNCH_AS_LADDER_Y_TOP + 18 && refY < LNCH_AS_LADDER_Y_BOT - 18) {
+        _lnchAsDrawRefLabel(tft, refY - 17, "TGT", TFT_DARK_GREEN);
+        _lnchAsDrawRefLabel(tft, refY +  1, "ORB", TFT_DARK_GREEN);
+    } else {
+        _lnchAsDrawRefLabel(tft, refY -  8, "ORB", TFT_DARK_GREEN);
+    }
+}
+
+// After erasing a marker, repair the reference lines (GND/ATM/ORB) and their labels
+// where the erased region crossed them. markerY is the y-center of the erased bounding
+// box (height 19, so the box spans y-9 to y+9).
+//
+// The line and the label have different reach. A line is one row, so it needs repair
+// only when it falls inside the box. A label is 19 rows tall and the two-row ORB label
+// straddles its line by 18, so a label is repainted whenever its line is within 28 rows
+// -- generous on purpose: the labels are opaque and identical every time, so a redundant
+// repaint costs nothing and a missed one leaves a hole.
+static const int16_t LNCH_AS_REF_LBL_REACH = 28;
+
 static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
     int16_t tipX   = LNCH_AS_LADDER_LINE_X + 3;
     int16_t rightX = LNCH_AS_MARKER_LBL_X + LNCH_AS_MARKER_LBL_W;
@@ -435,6 +509,8 @@ static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
             int16_t x1 = min(rightX, (int16_t)(LNCH_AS_LADDER_REF_X2 - 2));
             if (x1 >= x0) tft.drawLine(x0, refY, x1, refY, TFT_WHITE);
         }
+        if (abs(refY - markerY) <= LNCH_AS_REF_LBL_REACH)
+            _lnchAsDrawRefLabel(tft, refY - 8, "GND", TFT_LIGHT_GREY);
     }
 
     // Check ATM (dashed sky-blue at y = lowSpace altitude)
@@ -456,6 +532,9 @@ static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
                 tft.drawLine(csx, refY, cex, refY, TFT_SKY);
             }
         }
+        if (refY < LNCH_AS_LADDER_Y_BOT - 2 && refY > LNCH_AS_LADDER_Y_TOP + 2 &&
+            abs(refY - markerY) <= LNCH_AS_REF_LBL_REACH)
+            _lnchAsDrawRefLabel(tft, refY - 8, "ATM", TFT_SKY);
     }
 
     // Check ORB (dashed dark-green at target orbit altitude)
@@ -475,6 +554,9 @@ static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
                 tft.drawLine(csx, refY, cex, refY, TFT_DARK_GREEN);
             }
         }
+        if (refY < LNCH_AS_LADDER_Y_BOT - 2 && refY > LNCH_AS_LADDER_Y_TOP + 2 &&
+            abs(refY - markerY) <= LNCH_AS_REF_LBL_REACH)
+            _lnchAsDrawOrbRefLabel(tft, refY);
     }
 
     // Also repair the main vertical ladder line if it crosses the erase region.
@@ -548,10 +630,7 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
                      TFT_WHITE);
         // Label vertically centered on the ground line (matches ATM/ORB). There
         // is room below now that the ladder bottom sits ~18px above the screen edge.
-        textLeft(tft, &Roboto_Black_16,
-                 LNCH_AS_LADDER_REF_X2 - 40, y - 8,
-                 44, 16,
-                 "GND", TFT_LIGHT_GREY, TFT_BLACK);
+        _lnchAsDrawRefLabel(tft, y - 8, "GND", TFT_LIGHT_GREY);
     }
 
     // ATMO — only for atmospheric bodies (lowSpace > 0). Drawn at the actual
@@ -565,10 +644,7 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
                 tft.drawLine(x, y, x + 3, y, TFT_SKY);
             }
             // Label vertically centered on the reference line
-            textLeft(tft, &Roboto_Black_16,
-                     LNCH_AS_LADDER_REF_X2 - 40, y - 8,
-                     44, 16,
-                     "ATM", TFT_SKY, TFT_BLACK);
+            _lnchAsDrawRefLabel(tft, y - 8, "ATM", TFT_SKY);
         }
     }
 
@@ -582,26 +658,9 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
             for (int16_t x = LNCH_AS_LADDER_LINE_X + 1; x < LNCH_AS_LADDER_REF_X2; x += 6) {
                 tft.drawLine(x, y, x + 3, y, TFT_DARK_GREEN);
             }
-            // Two-line label "TGT" / "ORB" vertically centered on the ref line:
-            // TGT sits just above the line, ORB just below, so the line runs in
-            // the 2-px gap between the two words. Needs ~18 px clearance on each
-            // side; otherwise fall back to a single-line "ORB" centered on it.
-            if (y > LNCH_AS_LADDER_Y_TOP + 18 && y < LNCH_AS_LADDER_Y_BOT - 18) {
-                textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
-                         44, 16,
-                         "TGT", TFT_DARK_GREEN, TFT_BLACK);
-                textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y + 1,
-                         44, 16,
-                         "ORB", TFT_DARK_GREEN, TFT_BLACK);
-            } else {
-                // Insufficient room — single-line "ORB" centered on the line
-                textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 8,
-                         44, 16,
-                         "ORB", TFT_DARK_GREEN, TFT_BLACK);
-            }
+            // "TGT" over "ORB" straddling the line, or a single centred "ORB" when
+            // there is not room for two rows -- see _lnchAsDrawOrbRefLabel().
+            _lnchAsDrawOrbRefLabel(tft, y);
         }
     }
 }
@@ -635,52 +694,40 @@ static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
         _lnchAsLastDrawnScaleTop = scaleTop;
     }
 
-    // Vessel marker (always shown)
-    int16_t vesselY = _lnchAsAltToY(state.altitude, scaleTop);
-    if (vesselY != _lnchAsPrevVesselPx) {
-        if (_lnchAsPrevVesselPx >= 0) {
-            _lnchAsEraseAltMarker(tft, _lnchAsPrevVesselPx);
-            _lnchAsRepairRefLines(tft, _lnchAsPrevVesselPx);
-        }
-        _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "V");
-        _lnchAsPrevVesselPx = vesselY;
+    // Vessel and apoapsis markers.
+    //
+    // Both are erased, then both are redrawn, whenever either has moved. The version
+    // this replaces erased one marker and redrew the other only "if it was within 6 px",
+    // which was a guess: the erase box is 19 rows tall and a marker's own drawn extent is
+    // 19 rows, so one marker's erase clips the other up to 18 px away, and the reference-
+    // label repair above reaches 28. A miss left a marker half erased on the ladder until
+    // the next scale change, which is what the bench saw. Two triangles and two short
+    // labels cost nothing per frame; the proximity arithmetic cost correctness.
+    int16_t    vesselY   = _lnchAsAltToY(state.altitude, scaleTop);
+    const bool apaValid  = (state.apoapsis > 0.0f);
+    int16_t    apaY      = apaValid ? _lnchAsAltToY(state.apoapsis, scaleTop) : (int16_t)-1;
 
-        // If ApA was on top of vessel's old position, it may have been erased — redraw.
-        if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0 &&
-            abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-            _lnchAsDrawAltMarker(tft, _lnchAsPrevApAPx, TFT_YELLOW, false, "A");
-        }
+    const bool moved = (vesselY != _lnchAsPrevVesselPx) ||
+                       (apaValid != _lnchAsPrevApAValid) ||
+                       (apaValid && apaY != _lnchAsPrevApAPx);
+    if (!moved) return;
+
+    if (_lnchAsPrevVesselPx >= 0) {
+        _lnchAsEraseAltMarker(tft, _lnchAsPrevVesselPx);
+        _lnchAsRepairRefLines(tft, _lnchAsPrevVesselPx);
+    }
+    if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0) {
+        _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
+        _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
     }
 
-    // Apoapsis marker (only when valid — apoapsis > 0)
-    bool apaValid = (state.apoapsis > 0.0f);
-    if (apaValid) {
-        int16_t apaY = _lnchAsAltToY(state.apoapsis, scaleTop);
-        if (apaY != _lnchAsPrevApAPx || !_lnchAsPrevApAValid) {
-            if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0) {
-                _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
-                _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
-                // If vessel was on top of ApA's old position, redraw vessel
-                if (abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-                    _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "V");
-                }
-            }
-            _lnchAsDrawAltMarker(tft, apaY, TFT_YELLOW, false, "A");
-            _lnchAsPrevApAPx    = apaY;
-            _lnchAsPrevApAValid = true;
-        }
-    } else {
-        // Apoapsis not valid — erase any previously drawn marker
-        if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0) {
-            _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
-            _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
-            if (abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-                _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "V");
-            }
-            _lnchAsPrevApAValid = false;
-            _lnchAsPrevApAPx    = -1;
-        }
-    }
+    // Apoapsis first, so where the two coincide the vessel marker is the one on top.
+    if (apaValid) _lnchAsDrawAltMarker(tft, apaY, TFT_YELLOW, false, "Ap");
+    _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "ALT");
+
+    _lnchAsPrevVesselPx = vesselY;
+    _lnchAsPrevApAPx    = apaValid ? apaY : (int16_t)-1;
+    _lnchAsPrevApAValid = apaValid;
 }
 
 // ── V.Vrt bar ─────────────────────────────────────────────────────────────────────────
@@ -1343,11 +1390,82 @@ static void _lnchAsDrawAtmoBackground(KCM_TFT &tft) {
     }
 }
 
+// Which velocity is the meaningful one. Surface speed low down; orbital once the
+// vessel is leaving the air, where that is the number an ascent is flown on. Altitude
+// is the right axis for this question, with hysteresis so the value does not flicker
+// at the boundary.
+//
+// This was once the same formula as the ASCENT/CIRCULARISATION phase switch. It no
+// longer is -- that switch keys off the engine, since altitude could not tell a
+// spaceplane still burning from one coasting -- and the two are independent decisions:
+// which velocity to show, and which phase of the arc this is.
+//
+// It used to drive a label swap on a readout row. That row is now the V.Orb gauge's own
+// digital window, and this drives the window instead.
+static bool _lnchAsShowOrbitalVelocity() {
+    float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
+    bool  ascending = (state.verticalVel >= 0.0f);
+    float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC)
+                                : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
+    return (state.altitude > switchAlt);
+}
+
+
+// ── Gauge digital windows ─────────────────────────────────────────────────────────────
+// One value per bar, centred in the row between the gauge name and its top endpoint
+// label. Each keeps its own last-drawn string so an unchanged value costs nothing; the
+// box is cleared and redrawn rather than tracked per glyph, which is cheap here because
+// the row is 72 px wide and hardware fillRect is the fastest thing this driver does.
+// Widest that fits the 72 px bar window at Black_20 is five digits and a sign
+// ("-1,234" is 62 px); six digits ("123,456", 77 px) would not. That is 100 km/s, and
+// this screen is only up below the coast latch, where V.Orb tops out near 3,000.
+static String _lnchAsPrevVVrtVal, _lnchAsPrevVOrbVal;
+
+static void _lnchAsGaugeValue(KCM_TFT &tft, int16_t lblX0, int16_t lblW,
+                              const String &val, uint16_t fg, String &prev) {
+    if (val == prev) return;
+    // Boxed, so the window reads as part of its gauge rather than as loose text
+    // floating above it. Border drawn every time: the fill that clears the old value
+    // covers the inside only, so the frame is never touched, but drawing it here keeps
+    // the window whole after a chrome repaint without a separate code path.
+    tft.fillRect(lblX0 + 1, LNCH_AS_GAUGE_VAL_Y + 1,
+                 lblW - 2, LNCH_AS_GAUGE_VAL_H - 2, TFT_BLACK);
+    tft.drawRect(lblX0, LNCH_AS_GAUGE_VAL_Y, lblW, LNCH_AS_GAUGE_VAL_H, TFT_GREY);
+    textCenter(tft, &Roboto_Black_20, lblX0, LNCH_AS_GAUGE_VAL_Y, lblW,
+               LNCH_AS_GAUGE_VAL_H, val, fg, TFT_BLACK);
+    prev = val;
+}
+
+// Dynamic pressure, from the density the ATMO gauge is already drawing and surface
+// speed: q = 0.5 * rho * v^2, in pascals. Shown in kPa, which keeps a Kerbin ascent's
+// 10-15 kPa peak to three characters instead of five.
+//
+// This is the number the ATMO gauge cannot show. Density falls monotonically from the
+// pad; q rises to a peak around 5-8 km and then falls, and that peak is the one
+// structural event of an ascent.
+static float _lnchAsDynPressureKPa() {
+    const float v = state.surfaceVel;
+    return 0.5f * state.airDensity * v * v / 1000.0f;
+}
+
 // Chrome: name label + stable zone fill + border.
 static void _lnchAsDrawAtmoChrome(KCM_TFT &tft) {
-    int16_t cx = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W / 2;
+    // Name box matches the column's true extent (triangle to triangle), not a fixed
+    // 100 px centred on the bar: the wider box reached x=252 and overlapped the V.Vrt
+    // window at 248, so once both carried a border the two drew in the same four columns
+    // and the shared edge flickered between them every frame.
+    //
+    // This column has a name and no value window. A percentage restating where the
+    // triangle already points said nothing, and the time-to-vacuum that briefly replaced
+    // it was a different quantity from the one the bar plots, which forced the column
+    // name to label the number instead of the gauge. The bar is the instrument here --
+    // sky-to-navy with a triangle on each side -- and it does not need a number under it
+    // to be read. Q, on the right column, is the atmospheric number worth digits, and it
+    // is the one the bar genuinely cannot show.
+    const int16_t nameX0 = LNCH_AS_ATMO_X_LEFT - LNCH_AS_ATMO_TRI_GAP - LNCH_AS_ATMO_TRI_W;
+    const int16_t nameW  = LNCH_AS_ATMO_RIGHT_EXT - nameX0;
     textCenter(tft, &Roboto_Black_20,
-               cx - 50, LNCH_AS_GAUGE_NAME_Y, 100, LNCH_AS_GAUGE_NAME_H,
+               nameX0, LNCH_AS_GAUGE_NAME_Y, nameW, LNCH_AS_GAUGE_NAME_H,
                "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
     _lnchAsDrawAtmoBackground(tft);
     tft.drawRect(LNCH_AS_ATMO_X_LEFT, LNCH_AS_ATMO_Y_TOP,
@@ -1440,8 +1558,41 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
 }
 
 // Called every frame: update the ladder markers, bars, dial, heading tape, atmo.
+// The three bar gauges' digital windows. Their values used to be rows 0-4 of the
+// readout column; they now sit on the gauges they belong to.
+static void _lnchAsUpdateGaugeValues(KCM_TFT &tft) {
+    // Two windows, not three: the atmosphere column carries a name and a bar only.
+    // See _lnchAsDrawAtmoChrome() for why.
+    // V.Vrt — signed, red descending, matching the bar's own fill colours.
+    //
+    // Bare number, no unit. The window is 72 px and fmtMs() carries " m/s", which makes
+    // even "-12.0 m/s" 90 px wide; the bar's own endpoint labels already say +/-500 m/s
+    // directly above and below it, so repeating the unit is what would not fit AND what
+    // says nothing.
+    {
+        const int16_t x0 = LNCH_AS_VVRT_X_LEFT - LNCH_AS_LBL_OVERHANG;
+        const int16_t w  = LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG;
+        _lnchAsGaugeValue(tft, x0, w,
+                          formatSepI64((int64_t)lroundf(state.verticalVel)),
+                          (state.verticalVel < 0.0f) ? TFT_RED : TFT_DARK_GREEN,
+                          _lnchAsPrevVVrtVal);
+    }
+    // V.Orb — surface speed low down, orbital once that is the meaningful number.
+    // Same swap the readout row used to make, on the same test.
+    {
+        const int16_t x0 = LNCH_AS_VORB_X_LEFT - LNCH_AS_LBL_OVERHANG;
+        const int16_t w  = LNCH_AS_VORB_W + 2 * LNCH_AS_LBL_OVERHANG;
+        const bool orb = _lnchAsShowOrbitalVelocity();
+        _lnchAsGaugeValue(tft, x0, w,
+                          formatSepI64((int64_t)lroundf(orb ? state.orbitalVel
+                                                            : state.surfaceVel)),
+                          TFT_DARK_GREEN, _lnchAsPrevVOrbVal);
+    }
+}
+
 static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
     _lnchAsUpdateLadderMarkers(tft);
+    _lnchAsUpdateGaugeValues(tft);
     _lnchAsUpdateVVrtBar(tft);
     _lnchAsUpdateVOrbBar(tft);
     _lnchAsUpdateFpaDial(tft);
@@ -1459,23 +1610,22 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
 // Reset all ascent-phase change-detection state + PrintState. Called at chrome
 // time to force a full redraw.
 static void _lnchAsResetState() {
-    _lnchAsPrevAlt        = -1 << 30;
-    _lnchAsPrevApA        = -1 << 30;
     _lnchAsPrevTimeToAp   = -1 << 30;
-    _lnchAsPrevVSrf       = -9999;
-    _lnchAsPrevVVrt       = -9999;
     _lnchAsPrevThrottle   = -1;
+    _lnchAsPrevQ          = -1 << 30;
+    _lnchAsPrevMach       = -9999;
+    _lnchAsPrevG          = -1 << 30;
     _lnchAsPrevTBurn      = -1 << 30;
     _lnchAsPrevDVStg      = -1 << 30;
-    _lnchAsPrevAltFg      = 0xFFFF;
-    _lnchAsPrevApAFg      = 0xFFFF;
     _lnchAsPrevTimeToApFg = 0xFFFF;
-    _lnchAsPrevVSrfFg     = 0xFFFF;
-    _lnchAsPrevVVrtFg     = 0xFFFF; _lnchAsPrevVVrtBg = 0xFFFF;
     _lnchAsPrevThrFg      = 0xFFFF; _lnchAsPrevThrBg  = 0xFFFF;
+    _lnchAsPrevQFg        = 0xFFFF; _lnchAsPrevQBg    = 0xFFFF;
+    _lnchAsPrevGFg        = 0xFFFF; _lnchAsPrevGBg    = 0xFFFF;
     _lnchAsPrevTBurnFg    = 0xFFFF; _lnchAsPrevTBurnBg = 0xFFFF;
     _lnchAsPrevDVStgFg    = 0xFFFF; _lnchAsPrevDVStgBg = 0xFFFF;
-    for (uint8_t i = 0; i < 8; i++) {
+    // Gauge digital windows: forget the last string so each redraws with its chrome.
+    _lnchAsPrevVVrtVal = ""; _lnchAsPrevVOrbVal = "";
+    for (uint8_t i = 0; i < LNCH_AS2_NROWS; i++) {
         _lnchAsPs[i].prevWidth  = 0;
         _lnchAsPs[i].prevBg     = 0x0001;  // sentinel
         _lnchAsPs[i].prevHeight = 0;
@@ -1512,9 +1662,11 @@ static void _lnchAsResetState() {
 // Row 3 ("V.Srf" / "V.Orb") is label-swapped by the update function based on
 // altitude — at high altitude the value switches from surface velocity to
 // orbital velocity.
-static const char *_lnchAsLabels[8] = {
-    "Alt.SL:", "ApA:", "T+Ap:", "V.Srf:",
-    "V.Vrt:", "Thrtl:", "T.Brn:", "\xCE\x94V.Stg:"
+// Stg.Brn, not T.Brn: it is Simpit's BURNTIME_MESSAGE -- seconds of thrust left in the
+// stage, not a countdown of any particular burn. The old label read like a time-to.
+// The circularisation phase uses the same name for the same field.
+static const char *_lnchAsLabels[LNCH_AS2_NROWS] = {
+    "T+Ap:", "Thrtl:", "Q:", "Mach:", "G:", "Stg.Brn:", "\xCE\x94V.Stg:"
 };
 
 // Draw static chrome for the ascent-phase right panel: a border separating
@@ -1536,10 +1688,10 @@ static const char *_lnchAsLabels[8] = {
 // original. Ascent-only — the Circularization right panel keeps the shared
 // LNCH_AS_* geometry until its own redesign pass.
 static const int16_t LNCH_AS2_RPANEL_W = 360;
-static const int16_t LNCH_AS2_RPANEL_X = SCREEN_W - SIDEBAR_W - LNCH_AS2_RPANEL_W;  // 580
+static const int16_t LNCH_AS2_RPANEL_X = CONTENT_W - LNCH_AS2_RPANEL_W;             // 580
 static const int16_t LNCH_AS2_RPANEL_Y = LNCH_AS_PANEL_Y;                            // 63
-static const int16_t LNCH_AS2_ROW_H    = (SCREEN_H - LNCH_AS_PANEL_Y) / 8;           // 67
-static const int16_t LNCH_AS2_RPANEL_H = LNCH_AS2_ROW_H * 8;                         // 536
+static const int16_t LNCH_AS2_ROW_H    = (SCREEN_H - LNCH_AS_PANEL_Y) / LNCH_AS2_NROWS;  // 76
+static const int16_t LNCH_AS2_RPANEL_H = LNCH_AS2_ROW_H * LNCH_AS2_NROWS;                 // 532
 static const tFont  *LNCH_AS2_LBL_FONT = &Roboto_Black_28;
 static const tFont  *LNCH_AS2_VAL_FONT = &Roboto_Black_36;
 static inline int16_t _lnchAs2RowY(uint8_t row) {
@@ -1572,7 +1724,7 @@ static void _lnchAs2DrawPanelChrome(KCM_TFT &tft, const char *const *labels,
                  LNCH_AS2_RPANEL_X - 1, LNCH_AS2_RPANEL_Y + LNCH_AS2_RPANEL_H - 1,
                  TFT_GREY);
 
-    for (uint8_t i = 0; i < 8; i++) {
+    for (uint8_t i = 0; i < LNCH_AS2_NROWS; i++) {
         printDispChrome(tft, LNCH_AS2_LBL_FONT,
                         LNCH_AS2_RPANEL_X, _lnchAs2RowY(i),
                         LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
@@ -1596,9 +1748,10 @@ static void _lnchAs2DrawPanelChrome(KCM_TFT &tft, const char *const *labels,
 }
 
 static void _lnchAsDrawRightPanelChrome(KCM_TFT &tft) {
-    // Ascent group dividers: rows 0-2 (altitude trajectory), 3-4 (velocity),
-    // 5-7 (propulsion) → dividers above rows 3 and 5.
-    static const uint8_t divRows[] = { 3, 5 };
+    // Groups: row 0 trajectory, row 1 the throttle setting, rows 2-4 air data
+    // (Q / Mach / G rise and fall together through the ascent), rows 5-6 what is
+    // left in the stage → dividers above rows 1, 2 and 5.
+    static const uint8_t divRows[] = { 1, 2, 5 };
     _lnchAs2DrawPanelChrome(tft, _lnchAsLabels, divRows, sizeof(divRows));
 }
 
@@ -1618,57 +1771,18 @@ static void _lnchAs2DrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
 }
 
 // ── Shared LNCH row updaters ───────────────────────────────────────────────
-// Alt / ApA / T+Ap / T.Brn use byte-identical threshold + formatter + suppress
-// logic in both LNCH phases; only the target row index, label array, PrintState
-// array, and change-detection caches differ, so those are passed as parameters.
+// T+Ap and Stg.Brn use byte-identical threshold + formatter + suppress logic wherever
+// they appear; only the target row index, label array, PrintState array, and
+// change-detection caches differ, so those are passed as parameters.
 //
-// NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ
-// between the phases (Ascent flags a zero-throttle alarm while Circ treats
-// coasting as normal; Ascent change-detects ΔV.Stg at tenths precision while
-// Circ uses whole m/s). See their per-phase definitions.
-
-static void _lnchAs2UpdateAlt(KCM_TFT &tft, uint8_t row,
-                              const char *const *labels, PrintState *ps,
-                              int32_t &prevAlt, uint16_t &prevFg) {
-    float alt = state.altitude;
-    int32_t iAlt = (int32_t)roundf(alt);
-
-    // Threshold: red if negative, yellow near ground, green otherwise
-    float bodyRad = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
-    float altYellow = bodyRad * 0.0015f;
-    uint16_t fg = (alt < 0)         ? TFT_RED
-                : (alt < altYellow)  ? TFT_YELLOW
-                : TFT_DARK_GREEN;
-
-    if (iAlt == prevAlt && fg == prevFg) return;
-
-    _lnchAs2DrawRowValue(tft, row, formatAlt((float)iAlt), fg, TFT_BLACK, labels, ps);
-    prevAlt = iAlt;
-    prevFg  = fg;
-}
-
-static void _lnchAs2UpdateApA(KCM_TFT &tft, uint8_t row,
-                              const char *const *labels, PrintState *ps,
-                              int32_t &prevApA, uint16_t &prevFg) {
-    float apa = state.apoapsis;
-    int32_t iApA = (int32_t)roundf(apa);
-
-    float warnAlt = max(currentBody.minSafe, currentBody.lowSpace);
-    uint16_t fg;
-    String   val;
-    if (apa < 0) {                                          // escape: apoapsis undefined -> infinity
-        fg = TFT_DARK_GREEN; val = String("\x80");
-    } else {
-        fg  = (warnAlt > 0 && apa > 0 && apa < warnAlt) ? TFT_YELLOW : TFT_DARK_GREEN;
-        val = formatAlt((float)iApA);
-    }
-
-    if (iApA == prevApA && fg == prevFg) return;
-
-    _lnchAs2DrawRowValue(tft, row, val, fg, TFT_BLACK, labels, ps);
-    prevApA = iApA;
-    prevFg  = fg;
-}
+// Alt and ApA had shared updaters here too. Both are gone: the circularisation phase
+// replaced its readout column with the apsis tape, and on ascent both rows were dropped
+// in favour of the altitude ladder's markers, so neither had a caller left.
+//
+// NOTE: Throttle and ΔV.Stg are deliberately NOT shared — they genuinely differ between
+// the phases (Ascent flags a zero-throttle alarm while Circ treats coasting as normal;
+// Ascent change-detects ΔV.Stg at tenths precision while Circ uses whole m/s). See
+// their per-phase definitions.
 
 static void _lnchAs2UpdateTimeToAp(KCM_TFT &tft, uint8_t row,
                                    const char *const *labels, PrintState *ps,
@@ -1731,114 +1845,20 @@ static void _lnchAsDrawRowValue(KCM_TFT &tft, uint8_t row, const String &val,
 // Update each row. Each checks its own change detection and returns early if
 // unchanged. Order: Alt, ApA, T+Ap, V.Srf, V.Vrt, Throttle, T.Burn, ΔV.Stg.
 
-static void _lnchAsUpdateAlt(KCM_TFT &tft) {
-    _lnchAs2UpdateAlt(tft, 0, _lnchAsLabels, _lnchAsPs,
-                      _lnchAsPrevAlt, _lnchAsPrevAltFg);
-}
+// ── Readout column updaters ───────────────────────────────────────────────────────────
+// Rows 0-4 of this column used to be Alt.SL, ApA, T+Ap, V.Srf and V.Vrt. Four of those
+// five were the digits for a gauge on this same screen and now live on it; only T+Ap
+// had no picture, and it stays. Q, Mach and G take the freed rows -- none of the three
+// was anywhere on this screen, and all three are already in the telemetry.
 
-static void _lnchAsUpdateApA(KCM_TFT &tft) {
-    _lnchAs2UpdateApA(tft, 1, _lnchAsLabels, _lnchAsPs,
-                      _lnchAsPrevApA, _lnchAsPrevApAFg);
-}
-
+// Row 0 — T+Ap. Shared with the circularisation phase.
 static void _lnchAsUpdateTimeToAp(KCM_TFT &tft) {
-    _lnchAs2UpdateTimeToAp(tft, 2, _lnchAsLabels, _lnchAsPs,
+    _lnchAs2UpdateTimeToAp(tft, 0, _lnchAsLabels, _lnchAsPs,
                            _lnchAsPrevTimeToAp, _lnchAsPrevTimeToApFg);
 }
 
-// Threshold for switching row 3 label from "V.Srf" to "V.Orb". Based on body
-// radius (same formula as the auto-switch to circularization mode, except the
-// label swap happens slightly earlier so the pilot sees orbital velocity as
-// soon as it becomes the more meaningful number).
-static bool _lnchAsShowOrbitalVelocity() {
-    float bodyRad  = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
-    // Same as the circularization phase-switch threshold with hysteresis so
-    // the label doesn't flicker near the boundary.
-    bool ascending = (state.verticalVel >= 0.0f);
-    float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
-    return (state.altitude > switchAlt);
-}
-
-// Row 3 dynamic label redraw. Called when the label needs to change from
-// "V.Srf:" to "V.Orb:" (or vice versa). Clears the row cell and re-chromes
-// it with the new label. The value is redrawn on the next update cycle.
-static void _lnchAsUpdateRow3Label(KCM_TFT &tft, bool showOrb) {
-    const char *label = showOrb ? "V.Orb:" : "V.Srf:";
-    printDispChrome(tft, LNCH_AS2_LBL_FONT,
-                    LNCH_AS2_RPANEL_X, _lnchAs2RowY(3),
-                    LNCH_AS2_RPANEL_W, LNCH_AS2_ROW_H,
-                    label, COL_LABEL, TFT_BLACK, COL_NO_BDR);
-    // Redraw the group divider above row 3 (re-painted at y=dy-1 and y=dy,
-    // matching the chrome's updated divider placement). Before the position
-    // move, printDispChrome's fillRect nibbled the divider's bottom pixel —
-    // now the divider sits OUTSIDE the fill region so it's preserved
-    // automatically. We still repair here because printDispChrome itself
-    // paints over the row above's last pixel (which is y=dy-1 in the new
-    // scheme), so we need to restore both pixels.
-    //
-    // The vertical divider at x=RPANEL_X-2..-1 sits OUTSIDE the row rect so
-    // doesn't need repair.
-    int16_t dy = _lnchAs2RowY(3);
-    tft.drawLine(LNCH_AS2_RPANEL_X, dy - 1,
-                 LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy - 1,
-                 TFT_GREY);
-    tft.drawLine(LNCH_AS2_RPANEL_X, dy,
-                 LNCH_AS2_RPANEL_X + LNCH_AS2_RPANEL_W - 1, dy,
-                 TFT_GREY);
-    // Reset printState for row 3 so the next value redraws cleanly
-    _lnchAsPs[3].prevWidth  = 0;
-    _lnchAsPs[3].prevBg     = 0x0001;
-    _lnchAsPs[3].prevHeight = 0;
-}
-
-static void _lnchAsUpdateVSrf(KCM_TFT &tft) {
-    bool showOrb = _lnchAsShowOrbitalVelocity();
-    float v = showOrb ? state.orbitalVel : state.surfaceVel;
-    int16_t iV = (int16_t)roundf(v * 10.0f);  // tenths m/s
-
-    uint16_t fg = (v < 0) ? TFT_RED : TFT_DARK_GREEN;
-
-    // Label swap triggers chrome redraw for row 3.
-    if (showOrb != _lnchAsPrevVRow3IsOrb) {
-        _lnchAsUpdateRow3Label(tft, showOrb);
-        _lnchAsPrevVRow3IsOrb = showOrb;
-        _lnchAsPrevVSrf = -9999;  // force value redraw below
-    }
-
-    if (iV == _lnchAsPrevVSrf && fg == _lnchAsPrevVSrfFg) return;
-
-    _lnchAsDrawRowValue(tft, 3, fmtMs(v), fg, TFT_BLACK);
-    _lnchAsPrevVSrf = iV;
-    _lnchAsPrevVSrfFg = fg;
-}
-
-static void _lnchAsUpdateVVrt(KCM_TFT &tft) {
-    float vv = state.verticalVel;
-    int16_t iVv = (int16_t)roundf(vv * 10.0f);  // tenths m/s
-
-    bool suppress = (fabsf(vv) < 0.05f) ||
-                    (state.situation & sit_PreLaunch) ||
-                    (state.situation & sit_Landed);
-
-    uint16_t fg, bg;
-    String val;
-    if (suppress) {
-        val = "---";
-        fg = TFT_DARK_GREY; bg = TFT_BLACK;
-        iVv = -9000;
-    } else {
-        if (vv < 0) { fg = TFT_WHITE;      bg = TFT_RED;   }
-        else        { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        val = fmtMs(vv);
-    }
-
-    if (iVv == _lnchAsPrevVVrt && fg == _lnchAsPrevVVrtFg && bg == _lnchAsPrevVVrtBg) return;
-
-    _lnchAsDrawRowValue(tft, 4, val, fg, bg);
-    _lnchAsPrevVVrt = iVv;
-    _lnchAsPrevVVrtFg = fg; _lnchAsPrevVVrtBg = bg;
-}
-
+// Row 1 — throttle. White-on-red at zero: on an ascent a closed throttle is an event,
+// not a resting state (the circularisation phase treats coasting as normal instead).
 static void _lnchAsUpdateThrottle(KCM_TFT &tft) {
     uint8_t thrPct = (uint8_t)constrain(state.throttle * 100.0f, 0.0f, 100.0f);
 
@@ -1849,40 +1869,105 @@ static void _lnchAsUpdateThrottle(KCM_TFT &tft) {
     if ((int16_t)thrPct == _lnchAsPrevThrottle &&
         fg == _lnchAsPrevThrFg && bg == _lnchAsPrevThrBg) return;
 
-    _lnchAsDrawRowValue(tft, 5, formatPerc(thrPct), fg, bg);
+    _lnchAsDrawRowValue(tft, 1, formatPerc(thrPct), fg, bg);
     _lnchAsPrevThrottle = thrPct;
     _lnchAsPrevThrFg = fg; _lnchAsPrevThrBg = bg;
 }
 
+// Row 2 — dynamic pressure. Yellow approaching the structural band, white-on-red past
+// it: max Q is the one moment of an ascent where the airframe, not the trajectory, is
+// the limit, and nothing else on either panel annunciates it.
+static void _lnchAsUpdateQ(KCM_TFT &tft) {
+    const float q = _lnchAsDynPressureKPa();
+    const int32_t iQ = (int32_t)lroundf(q * 10.0f);          // tenths of a kPa
+
+    const bool haveAir = (state.inAtmo && state.airDensity > 0.0f);
+
+    uint16_t fg, bg;
+    char buf[16];
+    if (!haveAir) {
+        strcpy(buf, "---");
+        fg = TFT_DARK_GREY; bg = TFT_BLACK;
+    } else {
+        snprintf(buf, sizeof(buf), "%.1f kPa", q);
+        if      (q >= LNCH_Q_ALARM_KPA) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        else if (q >= LNCH_Q_WARN_KPA)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+        else                            { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+    }
+
+    // Colours settled before the change test: deciding them from the thresholds and then
+    // overriding for the placeholder meant an out-of-atmosphere frame compared a green
+    // threshold colour against a stored grey one and repainted every single frame.
+    if (iQ == _lnchAsPrevQ && fg == _lnchAsPrevQFg && bg == _lnchAsPrevQBg) return;
+
+    _lnchAsDrawRowValue(tft, 2, String(buf), fg, bg);
+    _lnchAsPrevQ = iQ; _lnchAsPrevQFg = fg; _lnchAsPrevQBg = bg;
+}
+
+// Row 3 — Mach. Dashed outside an atmosphere, where it means nothing.
+static void _lnchAsUpdateMach(KCM_TFT &tft) {
+    const bool inAir = state.inAtmo;
+    const int32_t iM = inAir ? (int32_t)lroundf(state.machNumber * 100.0f) : -9999;
+    if (iM == _lnchAsPrevMach) return;
+
+    char buf[12];
+    if (!inAir) strcpy(buf, "---");
+    else        snprintf(buf, sizeof(buf), "%.2f", state.machNumber);
+    _lnchAsDrawRowValue(tft, 3, String(buf),
+                        inAir ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+    _lnchAsPrevMach = iM;
+}
+
+// Row 4 — load factor. Yellow then white-on-red on the crew limits the Annunciator
+// already uses, so the two panels cannot disagree about what a high-G ascent is.
+static void _lnchAsUpdateG(KCM_TFT &tft) {
+    const float g = state.gForce;
+    const int32_t iG = (int32_t)lroundf(g * 10.0f);
+
+    uint16_t fg, bg;
+    if      (g >= LNCH_G_ALARM) { fg = TFT_WHITE;      bg = TFT_RED;   }
+    else if (g >= LNCH_G_WARN)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
+    else                        { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
+
+    if (iG == _lnchAsPrevG && fg == _lnchAsPrevGFg && bg == _lnchAsPrevGBg) return;
+
+    char buf[12];
+    snprintf(buf, sizeof(buf), "%.1f", g);
+    _lnchAsDrawRowValue(tft, 4, String(buf), fg, bg);
+    _lnchAsPrevG = iG; _lnchAsPrevGFg = fg; _lnchAsPrevGBg = bg;
+}
+
+// Row 5 — stage endurance. Shared with the circularisation phase.
 static void _lnchAsUpdateTBurn(KCM_TFT &tft) {
-    _lnchAs2UpdateTBurn(tft, 6, _lnchAsLabels, _lnchAsPs,
+    _lnchAs2UpdateTBurn(tft, 5, _lnchAsLabels, _lnchAsPs,
                         _lnchAsPrevTBurn, _lnchAsPrevTBurnFg, _lnchAsPrevTBurnBg);
 }
 
+// Row 6 — stage delta-V.
 static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
     float dv = state.stageDeltaV;
-    int32_t iDv = (int32_t)roundf(dv * 10.0f);  // tenths m/s
+    int32_t iDv = (int32_t)roundf(dv);
 
     uint16_t fg, bg;
     thresholdColor(dv,
                    DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                    DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
-                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+                   TFT_DARK_GREEN, TFT_BLACK, fg, bg);
 
-    if (iDv == _lnchAsPrevDVStg && fg == _lnchAsPrevDVStgFg && bg == _lnchAsPrevDVStgBg) return;
+    if (iDv == _lnchAsPrevDVStg &&
+        fg == _lnchAsPrevDVStgFg && bg == _lnchAsPrevDVStgBg) return;
 
-    _lnchAsDrawRowValue(tft, 7, fmtMs(dv), fg, bg);
+    _lnchAsDrawRowValue(tft, 6, fmtMs(dv), fg, bg);
     _lnchAsPrevDVStg = iDv;
     _lnchAsPrevDVStgFg = fg; _lnchAsPrevDVStgBg = bg;
 }
 
 static void _lnchAsDrawRightPanelValues(KCM_TFT &tft) {
-    _lnchAsUpdateAlt(tft);
-    _lnchAsUpdateApA(tft);
     _lnchAsUpdateTimeToAp(tft);
-    _lnchAsUpdateVSrf(tft);
-    _lnchAsUpdateVVrt(tft);
     _lnchAsUpdateThrottle(tft);
+    _lnchAsUpdateQ(tft);
+    _lnchAsUpdateMach(tft);
+    _lnchAsUpdateG(tft);
     _lnchAsUpdateTBurn(tft);
     _lnchAsUpdateDVStg(tft);
 }

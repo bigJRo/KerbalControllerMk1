@@ -45,8 +45,10 @@ static const uint16_t DET_BACK_H = DET_HDR_H - DET_PAD * 2;
 static const uint16_t DET_BACK_X = KCM_SCREEN_W - DET_BACK_W - DET_PAD;
 static const uint16_t DET_BACK_Y = DET_PAD;
 
+// Achromatic navigation chrome, matching the Select screen's BACK and the Main
+// sidebar. The grey border carries the key shape now that the fill is black.
 static const ButtonLabel detBtnBack = {
-  "BACK", TFT_WHITE, TFT_WHITE, TFT_DARK_GREEN, TFT_GREEN, NO_BORDER, NO_BORDER
+  "BACK", TFT_WHITE, TFT_WHITE, TFT_BLACK, TFT_BLACK, TFT_GREY, TFT_GREY
 };
 
 static uint8_t _detailSlot = 0;

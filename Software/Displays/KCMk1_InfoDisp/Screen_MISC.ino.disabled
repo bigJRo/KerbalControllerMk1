@@ -290,8 +290,8 @@ static void drawScreen_MISC(KCM_TFT &tft) {
 
     // EC%
     snprintf(buf, sizeof(buf), "%.0f%%", state.electricChargePercent);
-    if      (state.electricChargePercent < ROVER_EC_ALARM_PCT) { fg = TFT_WHITE;     bg = TFT_RED;   }
-    else if (state.electricChargePercent < ROVER_EC_WARN_PCT)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+    if      (state.electricChargePercent < EC_PCT_ALARM) { fg = TFT_WHITE;     bg = TFT_RED;   }
+    else if (state.electricChargePercent < EC_PCT_WARN)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else                                                        { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
     {
       String s = buf;

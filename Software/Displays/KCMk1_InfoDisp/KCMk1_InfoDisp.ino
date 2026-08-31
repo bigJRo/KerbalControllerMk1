@@ -60,7 +60,7 @@ void setup() {
     // Demo mode: no KSP connection, show live screens immediately
     if (debugMode) Serial.println(F("InfoDisp: Demo mode — Simpit disabled."));
     initDemoMode();
-    switchToScreen(screen_LNCH);
+    switchToScreen(SCREEN_HOME);
   } else {
     // Live mode: show standby splash while waiting for Simpit to connect.
     // SCENE_CHANGE_MESSAGE will replace it with the standby or flight screen.
@@ -107,9 +107,26 @@ void loop() {
   // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;
 
+  if (demoMode) stepDemoState();
+
+  // --- Context routing: both ladders run every frame, so the panels follow the
+  //     mission rather than only re-pairing at vessel and scene boundaries. Guarded
+  //     by the manual latch, a release band per rule and a minimum dwell. ---
+  updateContextScreen();
+
   // --- Screen transition: a screen change forces a one-time full paint (chrome +
   //     values) of the new screen and a telemetry refresh so its values populate
-  //     immediately. Steady-state frames redraw only what changed. ---
+  //     immediately. Steady-state frames redraw only what changed.
+  //
+  //     This is detected AFTER updateContextScreen(), which is the last thing in the
+  //     frame that can change activeScreen. It used to be detected before, so a switch
+  //     the context ladder made on this pass was invisible to the test: the frame took
+  //     the incremental branch and drew the NEW screen's change-detected values onto a
+  //     BTE copy of the OLD screen's chrome, presenting one frame that was half of each
+  //     before the next pass repainted it properly. Touch and Simpit switches never hit
+  //     it because both run above this point; only the ladder's own switches did, which
+  //     is why it showed up as a flash of two screens whenever a panel followed the
+  //     mission on its own. ---
   bool screenChanged = (prevScreen != activeScreen);
   if (screenChanged) {
     if (debugMode) {
@@ -119,8 +136,6 @@ void loop() {
     prevScreen = activeScreen;
     if (!demoMode) simpit.requestMessageOnChannel(0);
   }
-
-  if (demoMode) stepDemoState();
 
   // --- Incremental double buffering ---
   //  Screen entry (rare): paint full chrome + all values onto the back page, then
@@ -132,15 +147,24 @@ void loop() {
   //  the hardware copy. Tear-free (page flip) and artifact-free from tearing (all
   //  drawing happens on the hidden page).
   uint32_t _copyUs = 0, _updateUs = 0, _flipUs = 0, _t = 0;
+  // beginFrame/beginFrameCopy install the full-panel canvas; canvasContentRegion()
+  // then offsets the origin so screens keep drawing in content space regardless of
+  // which side this unit's sidebar is on. drawSidebar() steps out to panel space for
+  // its own strip and restores the content region itself. No-op on unit 2.
   if (screenChanged) {
     infoDB.beginFrame(infoDisp);            // canvas -> back page (no copy; we fully paint it)
+    canvasContentRegion(infoDisp);
     drawStaticScreen(infoDisp, activeScreen);
     updateScreen(infoDisp, activeScreen);
+    updateModeChip(infoDisp);
     infoDB.flip(infoDisp);
   } else {
     infoDB.beginFrameCopy(infoDisp);        // BTE copy front -> back, canvas -> back
+    canvasContentRegion(infoDisp);
     if (fpsDiag) { _copyUs = infoDB.lastCopyUs; _t = micros(); }
     updateScreen(infoDisp, activeScreen);
+    updateModeChip(infoDisp);  // AUTO / MAN — is this screen the ladder's choice or the pilot's?
+    updateSidebar(infoDisp);   // repaint the strip if a key's state colour changed
     if (fpsDiag) { _updateUs = micros() - _t; _t = micros(); }
     infoDB.flip(infoDisp);
     if (fpsDiag) { _flipUs = micros() - _t; } // async geometry completes here (wait-for-GPU)

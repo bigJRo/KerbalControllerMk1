@@ -956,11 +956,115 @@ void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPit
   degUp    = theta * (cu / perp);
 }
 
+void drawRoundRectOutline(KCM_TFT &tft, int16_t x, int16_t y,
+                                 int16_t w, int16_t h, int16_t r, uint16_t col) {
+  const int16_t x1 = x + w - 1, y1 = y + h - 1;
+  tft.drawLine(x + r, y,  x1 - r, y,  col);
+  tft.drawLine(x + r, y1, x1 - r, y1, col);
+  tft.drawLine(x,  y + r, x,  y1 - r, col);
+  tft.drawLine(x1, y + r, x1, y1 - r, col);
+  int16_t f = 1 - r, ddF_x = 1, ddF_y = -2 * r, px = 0, py = r;
+  while (px < py) {
+    if (f >= 0) { py--; ddF_y += 2; f += ddF_y; }
+    px++; ddF_x += 2; f += ddF_x;
+    tft.drawPixel(x1 - r + px, y1 - r + py, col);
+    tft.drawPixel(x1 - r + py, y1 - r + px, col);
+    tft.drawPixel(x  + r - px, y1 - r + py, col);
+    tft.drawPixel(x  + r - py, y1 - r + px, col);
+    tft.drawPixel(x1 - r + px, y  + r - py, col);
+    tft.drawPixel(x1 - r + py, y  + r - px, col);
+    tft.drawPixel(x  + r - px, y  + r - py, col);
+    tft.drawPixel(x  + r - py, y  + r - px, col);
+  }
+}
+
 float eadiHdgDelta(float a, float b) {
   float d = a - b;
   while (d >  180.0f) d -= 360.0f;
   while (d < -180.0f) d += 360.0f;
   return d;
+}
+
+
+/***************************************************************************************
+   BODY ANGULAR RATES  -- see the header for why this differentiates the rotation
+   rather than the Euler angles, and for the bench test that is still outstanding.
+****************************************************************************************/
+void kcmRateReset(KcmRateTracker &t) {
+  t.primed = false;
+  t.prevMs = 0;
+  t.roll = t.pitch = t.yaw = 0.0f;
+}
+
+bool kcmRateUpdate(KcmRateTracker &t, float headingDeg, float pitchDeg, float rollDeg,
+                   uint32_t nowMs, float tauMs, uint32_t staleMs) {
+  const KspBodyAxes ax = kspBodyAxes(headingDeg, pitchDeg, rollDeg);
+
+  // Right-handed order: (fwd, up, right). KspBodyAxes stores (fwd, right, up), which
+  // is left-handed -- see the header.
+  float cur[3][3];
+  for (uint8_t i = 0; i < 3; i++) {
+    cur[0][i] = ax.fwd[i];
+    cur[1][i] = ax.up[i];
+    cur[2][i] = ax.right[i];
+  }
+
+  if (!t.primed) {
+    memcpy(t.prev, cur, sizeof(cur));
+    t.prevMs = nowMs;
+    t.primed = true;
+    return false;
+  }
+
+  // Unchanged basis means no new telemetry, not "not rotating" -- hold, then decay.
+  bool moved = false;
+  for (uint8_t i = 0; i < 3 && !moved; i++)
+    for (uint8_t j = 0; j < 3; j++)
+      if (fabsf(cur[i][j] - t.prev[i][j]) > 1e-6f) { moved = true; break; }
+
+  if (!moved) {
+    if ((uint32_t)(nowMs - t.prevMs) < staleMs) return false;
+    const bool wasNonZero = (fabsf(t.roll) + fabsf(t.pitch) + fabsf(t.yaw)) > 0.05f;
+    t.roll = t.pitch = t.yaw = 0.0f;
+    return wasNonZero;
+  }
+
+  const float dt = (float)(uint32_t)(nowMs - t.prevMs) / 1000.0f;
+
+  // dR[i][j] = e_i(previous) . e_j(current) -- computed BEFORE prev is overwritten.
+  float dR[3][3];
+  for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t j = 0; j < 3; j++)
+      dR[i][j] = t.prev[i][0]*cur[j][0] + t.prev[i][1]*cur[j][1] + t.prev[i][2]*cur[j][2];
+
+  memcpy(t.prev, cur, sizeof(cur));
+  t.prevMs = nowMs;
+
+  // A long gap means the link stalled or the vessel changed: re-prime rather than
+  // reporting the whole accumulated rotation as one enormous rate.
+  if (dt <= 0.0f || dt > 2.0f) return false;
+
+  // Skew-symmetric part = rotation vector, about (fwd, up, right).
+  const float wFwd   = (dR[2][1] - dR[1][2]) * 0.5f / dt;
+  const float wUp    = (dR[0][2] - dR[2][0]) * 0.5f / dt;
+  const float wRight = (dR[1][0] - dR[0][1]) * 0.5f / dt;
+
+  // Aviation convention. About +fwd the roof swings to starboard, which is a right
+  // bank, so roll takes the sign as-is. About +right the nose rises, so pitch does
+  // too. About +up the nose swings to PORT, so yaw is negated to make nose-right
+  // positive.
+  const float RAD2DEG = 57.29577951308232f;
+  const float rRoll  =  wFwd   * RAD2DEG;
+  const float rPitch =  wRight * RAD2DEG;
+  const float rYaw   = -wUp    * RAD2DEG;
+
+  const float a = (tauMs > 0.0f) ? (dt * 1000.0f) / (tauMs + dt * 1000.0f) : 1.0f;
+  const float pr = t.roll, pp = t.pitch, py = t.yaw;
+  t.roll  += a * (rRoll  - t.roll);
+  t.pitch += a * (rPitch - t.pitch);
+  t.yaw   += a * (rYaw   - t.yaw);
+
+  return (fabsf(t.roll - pr) + fabsf(t.pitch - pp) + fabsf(t.yaw - py)) > 0.05f;
 }
 
 
@@ -1135,29 +1239,41 @@ static String _getSign(float &value) {
 // directly with an int64_t.
 
 // Core implementation — operates on a signed 64-bit integer.
-// Buffer sizing (#A6): int64 max is 19 digits → ~6 separator groups → 24
-// chars of commas + 3-digit leading group = 27 chars worst case. buf[64]
-// gives ample margin. INT64_MIN is unsupported (negation overflows); not
-// reachable from any realistic Kerbal value.
+//
+// Filled BACKWARDS from the end of one buffer, a digit at a time. The previous version
+// built the string front-to-back and so had to re-emit everything it had already
+// produced on each group: `sprintf(tempBuf, ",%03d%s", current, buf); strcpy(buf,
+// tempBuf)` is two passes over the whole accumulated string per three digits, which
+// makes it quadratic in the digit count and costs two 64-byte buffers plus a printf
+// invocation per group. This is the hottest formatting path on the panel — every
+// formatAlt() on every visible distance readout lands here every frame — so it is worth
+// the few lines. Writing right-to-left also puts the separators exactly where the
+// modulus already is, with no need to zero-pad a leading group that must not be padded.
+//
+// Buffer sizing: the widest possible result is INT64_MIN, "-9,223,372,036,854,775,808"
+// — 1 sign + 19 digits + 6 separators + NUL = 27 bytes. 28 leaves a byte spare.
 static String _formatSepInt64(int64_t value) {
-  char buf[64]     = "";
-  char tempBuf[64] = "";
-  String sign;
-  if (value < 0) { value = -value; sign = "-"; }
-  if (value < 1000) {
-    char small[16];
-    sprintf(small, "%lld", (long long)value);
-    return sign + String(small);
-  }
-  while (value >= 1000) {
-    int current = (int)(value % 1000);
-    value /= 1000;
-    sprintf(tempBuf, ",%03d%s", current, buf);
-    strcpy(buf, tempBuf);
-  }
-  char output[64];
-  sprintf(output, "%lld%s", (long long)value, buf);
-  return sign + String(output);
+  char  buf[28];
+  char *p = buf + sizeof(buf) - 1;
+  *p = '\0';
+
+  const bool neg = (value < 0);
+  // Negate into an UNSIGNED accumulator. The old code did `value = -value` on the signed
+  // type, which is undefined for INT64_MIN — a limitation it documented ("not reachable
+  // from any realistic Kerbal value") rather than fixed. Unsigned negation is modular and
+  // well defined, so the whole range now works and the caveat goes away.
+  uint64_t v = neg ? (uint64_t)0 - (uint64_t)value : (uint64_t)value;
+
+  uint8_t inGroup = 0;
+  do {
+    if (inGroup == 3) { *--p = ','; inGroup = 0; }
+    *--p = (char)('0' + (uint8_t)(v % 10u));
+    v /= 10u;
+    inGroup++;
+  } while (v != 0);
+
+  if (neg) *--p = '-';
+  return String(p);
 }
 
 String formatSep(float value) {

@@ -21,29 +21,17 @@
 
 
 bool _lnchOrbitalMode      = false;
+bool _lnchCoastLatched     = false;  // true once the ascent burn has ended (see below)
 bool _lnchManualOverride   = false;  // true = pilot has overridden auto phase switch
 bool _lnchPrelaunchMode    = false;  // true = sit_PreLaunch board is showing
 bool _lnchPrelaunchDismissed = false; // true = pilot tapped to dismiss; don't re-enter
 
 // ── Ascent phase geometry ─────────────────────────────────────────────────────────────
-// Content area: x=0..719, y=63..479 (717×417 usable)
-// Left panel (graphics): x=0..452 (453 wide)
-// Right panel (numeric readouts): x=453..719 (267 wide)
-// Panel split matches the SCFT screen convention: right panel starts at x=453,
-// with a 2-px vertical divider in the gap (at x=451, 452). Right-panel fonts
-// also match SCFT: Roboto_Black_20 labels, Roboto_Black_24 values.
-static const int16_t LNCH_AS_LPANEL_X    = 0;
-static const int16_t LNCH_AS_LPANEL_W    = 453;
-static const int16_t LNCH_AS_RPANEL_X    = 453;
-static const int16_t LNCH_AS_RPANEL_W    = 267;
-static const int16_t LNCH_AS_PANEL_Y     = 63;   // just below title bar
-static const int16_t LNCH_AS_PANEL_H     = 417;  // content below title, to bottom
-
-// Right panel: 8 stacked numeric readouts, 52 px each (8 × 52 = 416, fits in 417).
-// Each row uses library printDispChrome for label+border and printValue for value.
-// Font: Roboto_Black_24 — large enough to read easily, small enough that worst-case
-// launch values like "+3,234" fit within the value region after label+padding.
-static const int16_t LNCH_AS_ROW_H       = 52;
+// Six panel constants used to live here describing a 717x417 content area split at
+// x=453 -- the rev-1 720x480 screen. This panel has been 1024x600 since rev-2 and the
+// live ASCENT layout is in Screen_LNCH_Ascent.ino, so every one of them was both unused
+// and wrong. Only the title offset survives, and it is still correct.
+static const int16_t LNCH_AS_PANEL_Y     = 63;   // just below the title bar
 
 
 // ── Top-level dispatchers ──────────────────────────────────────────────────────────────
@@ -93,12 +81,46 @@ static void drawScreen_LNCH(KCM_TFT &tft) {
     return;
   }
 
-  // Phase detection with hysteresis — ascending uses higher threshold to prevent
-  // rapid switching near the boundary.
-  float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
-  bool  ascending = (state.verticalVel >= 0.0f);
-  float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
-  bool  orbMode   = (state.altitude > switchAlt);
+  // ── Phase detection: ASCENT until the coast begins, CIRCULARISATION after ──────────
+  //
+  // The launch arc has three ordered stages and this screen has two modes, so ASCENT is
+  // the powered ascent and CIRCULARISATION is everything from the coast onward.
+  //
+  // This used to switch on altitude, at 6% of body radius — 36 km on Kerbin. Altitude
+  // is the wrong axis for it. A spaceplane can have its apoapsis parked above the
+  // atmosphere while still burning at 35 km, and a Mun ascent finishes below the Kerbin
+  // threshold entirely, so one number cannot serve both. What actually separates the
+  // stages is the engine: you are ascending while you are pushing apoapsis up, and
+  // coasting once you stop.
+  //
+  // Two conditions, because throttle alone is not enough:
+  //
+  //   Throttle closed. The direct signal, and the only one that works on an airless
+  //   body, where there is no atmosphere boundary to cross.
+  //
+  //   Apoapsis already at or above the orbit-safe altitude — the ascent burn has done
+  //   its job. Without this a throttle-down through max Q, or a staging gap, would read
+  //   as a coast a minute after liftoff.
+  //
+  // And it latches. The circularisation burn re-opens the throttle, so a live test would
+  // drop back to ASCENT for the one burn CIRCULARISATION exists to fly. Once the coast
+  // has started the ascent is over.
+  //
+  // It clears on the surface and whenever apoapsis falls back below the line. The
+  // surface test is what makes a Mun ascent start in ASCENT: SimpitHandler clears the
+  // latch on leaving the pad, which covers a launch from KSC but not a departure from
+  // another body's surface, where the vessel is sit_Landed rather than sit_PreLaunch --
+  // and a lander parked high on the Mun can have an apoapsis above minSafe while
+  // standing still. Sitting on the ground is not a coast.
+  const float orbitSafeAlt = (currentBody.minSafe > currentBody.lowSpace)
+                               ? currentBody.minSafe : currentBody.lowSpace;
+  const bool  apoapsisParked = (orbitSafeAlt > 0.0f && state.apoapsis >= orbitSafeAlt);
+  const bool  onSurface      = (state.situation & (sit_Landed | sit_Splashed | sit_PreLaunch)) != 0;
+
+  if (onSurface || !apoapsisParked)               _lnchCoastLatched = false;
+  else if (state.throttle <= LNCH_COAST_THROTTLE) _lnchCoastLatched = true;
+
+  bool orbMode = _lnchCoastLatched;
 
   // Phase switch — auto only if not manually overridden
   if (!_lnchManualOverride && orbMode != _lnchOrbitalMode) {
@@ -108,14 +130,9 @@ static void drawScreen_LNCH(KCM_TFT &tft) {
     return;
   }
 
-  // Manual override indicator — red dot on right of title bar.
-  // Drawn every loop: red when overridden, black (erase) when auto.
-  // Position matches drawStaticScreen (CONTENT_W - 14, y=29, r=6) so the chrome
-  // dot and this per-frame dot coincide — a single indicator, not two.
-  {
-    uint16_t indCol = _lnchManualOverride ? TFT_RED : TFT_BLACK;
-    tft.fillCircle(CONTENT_W - 14, 29, 6, indCol);
-  }
+  // The per-frame manual-override dot that lived here is gone — the panel-level
+  // AUTO/MAN chip (updateModeChip) annunciates this screen's phase override too,
+  // and it occupies the same corner of the title bar.
 
   if (!_lnchOrbitalMode) {
     // =========================================================

@@ -38,18 +38,25 @@ static const uint16_t SEL_START_Y = TOP_H + SEL_PAD;
 static const uint16_t PANEL_X    = GRID_W + SEL_PAD * 2;
 static const uint16_t PANEL_W    = KCM_SCREEN_W - PANEL_X - SEL_PAD;
 
-// BACK button — spans both title and preset rows for easy pressing
+// BACK button — spans both title and preset rows for easy pressing.
+// Achromatic navigation chrome, matching the Main sidebar. The grey border is not
+// decoration here: with a black fill on a black screen it is the only thing that makes
+// the key visible.
 static const ButtonLabel btnBack = {
-  "BACK", TFT_WHITE, TFT_WHITE, TFT_DARK_GREEN, TFT_GREEN, NO_BORDER, NO_BORDER
+  "BACK", TFT_WHITE, TFT_WHITE, TFT_BLACK, TFT_BLACK, TFT_GREY, TFT_GREY
 };
 static const uint16_t BACK_W = 110;
 static const uint16_t BACK_H = TITLE_H + PRESET_H - SEL_PAD * 2;
 static const uint16_t BACK_X = KCM_SCREEN_W - BACK_W - SEL_PAD;
 static const uint16_t BACK_Y = SEL_PAD;
 
-// CLEAR button (bottom of right panel)
+// CLEAR button (bottom of right panel). This one deselects every resource, so it keeps
+// an affordance the plain keys do not — but as a guard, not an alarm: orange legend and
+// border on off-black, the same treatment the InfoDisp Ascent Autopilot ARM button uses
+// for a control with consequences. A red fill would have read as a caution condition in
+// a panel whose percentage labels turn red below 10%.
 static const ButtonLabel btnClear = {
-  "CLEAR", TFT_WHITE, TFT_WHITE, TFT_MAROON, TFT_RED, NO_BORDER, NO_BORDER
+  "CLEAR", TFT_ORANGE, TFT_ORANGE, TFT_OFF_BLACK, TFT_OFF_BLACK, TFT_ORANGE, TFT_ORANGE
 };
 static const uint16_t CLEAR_H = 48;
 static const uint16_t CLEAR_Y = KCM_SCREEN_H - CLEAR_H - SEL_PAD;
@@ -237,10 +244,11 @@ static void drawPresetButtons(KCM_TFT &tft) {
     uint16_t bx = SEL_PAD + i * (PRESET_BTN_W + SEL_PAD);
     ButtonLabel btn;
     btn.text               = PRESETS[i].label;
+    // Preset keys are momentary actions — achromatic like the rest of the chrome.
     btn.fontColorOff       = TFT_WHITE;
     btn.fontColorOn        = TFT_WHITE;
-    btn.backgroundColorOff = TFT_NAVY;
-    btn.backgroundColorOn  = TFT_ROYAL;
+    btn.backgroundColorOff = TFT_BLACK;
+    btn.backgroundColorOn  = TFT_BLACK;
     btn.borderColorOff     = TFT_GREY;
     btn.borderColorOn      = TFT_WHITE;
     drawButton(tft, bx, PRESET_Y, PRESET_BTN_W, PRESET_BTN_H, btn, &Roboto_Black_16, false);

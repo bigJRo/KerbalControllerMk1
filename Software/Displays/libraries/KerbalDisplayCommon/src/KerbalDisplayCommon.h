@@ -2,14 +2,43 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 5
-#define KDC_VERSION_PATCH 1
+#define KDC_VERSION_MINOR 7
+#define KDC_VERSION_PATCH 2
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.7.2 — formatSep/formatSepI64 fill their buffer backwards, one digit at a time. The
+            previous version built the string front-to-back with a sprintf + strcpy of
+            the whole accumulated result per three-digit group -- quadratic in the digit
+            count, two 64-byte buffers, and a printf call per group -- on what is the
+            hottest formatting path on the panel, since every formatAlt() on every
+            visible distance readout lands there every frame. ~7x faster on the same
+            workload with byte-identical output over 40,269 differential test values.
+            Also removes the INT64_MIN caveat: the old `value = -value` was undefined
+            there and was documented as unreachable rather than fixed; negating into an
+            unsigned accumulator is well defined over the whole range.
+
+   v3.7.1 — glyph data moved out of DTCM into flash. On Teensy 4 a plain `const` array
+            lands in .data, which shares the 512 KB of FlexRAM with ITCM; seventeen fonts
+            is ~189 KB of it, and a build measured .data at 195,264 against a DTCM
+            allowance of 196,608 -- nothing left for the stack, and teensy_size failing
+            outright rather than reporting it. A KCM_FONT_FLASH section attribute on each
+            font's _data[] and _index[] moves them to .progmem. Flash is memory-mapped on
+            this part, so the renderer is unchanged; the macro is a no-op off-target so
+            the host harnesses still build the same files.
+
+   v3.7.0 — kcmRateUpdate/kcmRateReset: body angular rates for the Shuttle-style rate
+            pointers, derived from the relative rotation of two successive kspBodyAxes
+            frames rather than by differentiating the Euler angles, so they stay well
+            conditioned at the +/-90 deg pitch singularity a launch sits in. Also
+            promotes drawRoundRectOutline in from KCMk1_InfoDisp, as its own note there
+            anticipated, now that the reference chips are its second and third callers.
+
+   v3.6.0 — U+00B7 MIDDLE DOT added to every Roboto Black size.
 
    v3.5.0 — off-scale markers are now visibly pinned. reticleClampDot returns whether it
             clamped, ReticleDotCache carries primaryPinned/velPinned, and reticleUpdateDots
@@ -68,7 +97,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.5.0
+  Version: 3.7.2
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -393,9 +422,83 @@ void kspDirUnit(float headingDeg, float pitchDeg, float out[3]);
 void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPitchDeg,
                         float &degRight, float &degUp);
 
+// Rounded-rectangle OUTLINE. The display driver has no round-rect primitive, so the four
+// straight edges are drawn inset by the corner radius and the corners are a Bresenham
+// quarter-arc mirrored into all four -- only drawLine and drawPixel, both of which the
+// driver provides. Used for status badges that must read as state rather than as
+// something to press: the AUTO/MAN mode chip and the reference chips beside the balls.
+void drawRoundRectOutline(KCM_TFT &tft, int16_t x, int16_t y,
+                          int16_t w, int16_t h, int16_t r, uint16_t col);
+
 // Shortest-arc delta between two headings, result in [-180, 180]. Pass b = 0 to wrap a
 // single already-differenced angle into range.
 float eadiHdgDelta(float a, float b);
+
+
+/***************************************************************************************
+   BODY ANGULAR RATES  (the Shuttle ADI / Apollo FDAI rate pointers)
+
+   Real spacecraft attitude balls carry rate pointers as well as attitude, because a
+   spacecraft is flown on rates: an RCS pulse is judged by the rate it produces, not by
+   where the ball settles ten seconds later.
+
+   WHY NOT DIFFERENTIATE THE EULER ANGLES. Heading/pitch/roll rates blow up near +/-90
+   deg pitch, where heading and roll trade off against each other -- and a rocket on
+   ascent sits there for the first minutes of every flight. But that is a defect of the
+   PARAMETERISATION, not of the orientation: if heading jumps +10 deg and roll jumps
+   -10 deg at pitch 90, the craft has not moved and the basis built from the pair is
+   unchanged. So this differentiates the ROTATION instead of the angles, and is well
+   conditioned at every attitude.
+
+   HOW. Build the body basis at two successive samples and take the relative rotation
+   dR = R1^T R2, whose skew-symmetric part is the rotation vector:
+
+       w_i = (dR[k][j] - dR[j][k]) / 2      for (i,j,k) cyclic in a right-handed triad
+
+   exact to second order in the angle, so at telemetry cadence (per-sample angles of a
+   few degrees) it is far inside its validity and needs no acos -- which would be
+   ill-conditioned near zero rate, i.e. most of the time.
+
+   HANDEDNESS. KspBodyAxes stores (fwd, right, up) with up = right x fwd, which is a
+   LEFT-handed ordering. The right-handed triad is (fwd, up, right), and that is the
+   order used internally here. Output is converted to the aviation convention:
+   roll + = right wing down, pitch + = nose up, yaw + = nose right.
+
+   NOT YET FLIGHT-VERIFIED. Probed against kspBodyAxes directly, the pair that leaves
+   the ORIENTATION untouched at pitch 90 is heading +d with roll +d -- the SAME sign,
+   not opposite (heading +20 / roll -20 is a genuine 40 deg rotation and reads as one).
+   At 89.5 deg the residual is ~0.17 deg per 50 ms step, i.e. ~3 deg/s, which is the
+   real motion of a craft half a degree off vertical, against the ~400 deg/s that naive
+   Euler differentiation would report on two axes.
+
+   What is NOT yet confirmed is that KSP itself reports the pair that way. If it instead
+   pins heading to an arbitrary value near vertical, the basis jumps and the rates spike.
+   Bench test: point straight up and roll slowly; roll rate should be smooth, not spiky.
+   Until that is run, treat near-vertical rates as unconfirmed.
+****************************************************************************************/
+
+struct KcmRateTracker {
+  float    prev[3][3];      // previous basis, rows in (fwd, up, right) order
+  uint32_t prevMs   = 0;    // timestamp of the sample that produced prev
+  bool     primed   = false;
+  float    roll     = 0.0f; // deg/s, smoothed, aviation convention
+  float    pitch    = 0.0f;
+  float    yaw      = 0.0f;
+};
+
+// Feed one attitude sample. Returns true when the smoothed rates changed.
+//
+// Telemetry arrives slower than the draw loop, so repeated identical attitudes are
+// "no new packet", not "not rotating", and are ignored rather than integrated -- which
+// would otherwise read zero between packets and spike on each arrival. After
+// staleMs of genuinely unchanging attitude the rates decay to zero, which is the
+// correct reading for a craft that really has stopped.
+//
+// tauMs is the smoothing time constant; 0 disables smoothing.
+bool kcmRateUpdate(KcmRateTracker &t, float headingDeg, float pitchDeg, float rollDeg,
+                   uint32_t nowMs, float tauMs = 250.0f, uint32_t staleMs = 600);
+
+void kcmRateReset(KcmRateTracker &t);
 
 
 /***************************************************************************************

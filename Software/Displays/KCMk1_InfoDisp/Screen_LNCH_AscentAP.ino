@@ -63,16 +63,16 @@ static const uint8_t AP_BODY_SLOT  = 22;
 struct ApCell { int16_t x; uint8_t row; const char *label; bool edit; };
 static const ApCell AP_CELLS[AP_SLOT_COUNT] = {
   { AP_C1X, 0, "Tgt Ap:", true  },
-  { AP_C1X, 1, "Incl:",   true  },
+  { AP_C1X, 1, "Inc:",    true  },
   { AP_C1X, 2, "Launch:", true  },
   { AP_C2X, 0, "Loft:",   true  },
   { AP_C2X, 1, "Roll:",   true  },
   { AP_C2X, 2, "Max-G:",  true  },
   { AP_C3X, 0, "Pitch:",  false },
   { AP_C3X, 1, "Hdg:",    false },
-  { AP_C3X, 2, "Thr:",    false },
+  { AP_C3X, 2, "Thrtl:",  false },
   { AP_C3X, 3, "G:",      false },
-  { AP_C3X, 4, "q:",      false },
+  { AP_C3X, 4, "Q:",      false },
   { AP_C3X, 5, "ApA:",    false },
   { AP_C3X, 6, "PeA:",    false },
 };
@@ -107,8 +107,27 @@ static float apGLof(){ return apDLof ? apLof    : state.apLoft; }
 static bool  apGRolEn(){ return apDRol ? apRolEn  : state.apRollEnable; }
 static float apGRolDeg(){ return apDRol ? apRolDeg : state.apRollDeg; }
 static float apGMxg(){ return apDMxg ? apMxg    : state.apMaxG; }
-static bool  apGArmed(){ return apArmOvr >= 0 ? (apArmOvr == 1) : state.apArmed; }
 static uint16_t apEditColor(bool dirty){ return dirty ? AP_EDT : AP_VAL; }
+
+// Two different questions, deliberately kept apart — conflating them has produced a
+// bug twice now.
+//
+//   apArmCommanded()  — what the pilot has asked for: the queued ARM/DISARM tap while
+//                       one is in flight, the autopilot's state otherwise. Drives what
+//                       the NEXT tap does, so a second tap reverses a pending command
+//                       rather than repeating it, and a lost acknowledgement cannot
+//                       lock the button out.
+//   apArmedAnnunciated() — what the autopilot actually reports. Everything that TELLS
+//                       the pilot whether the vehicle is armed reads this and only
+//                       this: the ARM button, the ARMED/DISARMED banner, and the
+//                       sidebar ASC key. An annunciation must never say DISARMED while
+//                       the autopilot is still flying the vehicle, so a tap alone is
+//                       not enough to change it — Controller_Main has to echo it back.
+//                       The wait is shown as a pending cue, not by lying about state.
+static bool apArmCommanded(){ return apArmOvr >= 0 ? (apArmOvr == 1) : state.apArmed; }
+static bool apArmPending()  { return apArmOvr >= 0; }
+
+bool apArmedAnnunciated() { return state.apArmed; }
 
 // ── Outbound command channel (InfoDisp -> Controller_Main) ────────────────────────────
 // Pilot edits and ARM/DISARM taps queue here as (opcode, float-payload) commands. The
@@ -117,18 +136,11 @@ static uint16_t apEditColor(bool dirty){ return dirty ? AP_EDT : AP_VAL; }
 // its next inbound packet, which pops the queue. Pending (cyan) values clear separately,
 // in apReconcilePending(), once Controller_Main echoes the accepted value back in the
 // AscentStatus frame — so the UI confirms the round-trip, not merely command delivery.
-enum {
-  AP_CMD_NOP             = 0x00,
-  AP_CMD_SET_TARGET_ALT  = 0x01,   // payload = metres
-  AP_CMD_SET_INCLINATION = 0x02,   // payload = degrees
-  AP_CMD_SET_LAUNCH_DIR  = 0x03,   // payload = 0 north / 1 south
-  AP_CMD_SET_LOFT        = 0x04,   // payload = exponent
-  AP_CMD_SET_ROLL        = 0x05,   // payload = degrees, or AP_ROLL_OFF to disable hold
-  AP_CMD_SET_MAXG        = 0x06,   // payload = g (0 = off)
-  AP_CMD_ARM             = 0x10,   // payload = 0
-  AP_CMD_DISARM          = 0x11,   // payload = 0
-};
-static const float AP_ROLL_OFF = 1.0e9f;   // roll-hold disable sentinel (outside +/-180)
+// AP_CMD_* opcodes and the roll sentinel are the command contract between this console,
+// I2CSlave.ino and (in demo mode) Demo.ino, so they live in KCMk1_InfoDisp.h — Demo.ino
+// compiles before this tab and could not otherwise see them. Byte-level layout is in
+// Documents/Developer/Ascent_Autopilot_Interface.md.
+
 
 struct ApCmd { uint8_t op; float payload; };
 static const uint8_t AP_CMDQ_LEN = 16;
@@ -137,13 +149,29 @@ static uint8_t apCmdHead = 0, apCmdTail = 0;   // ring-buffer indices (empty whe
 static uint8_t apCmdCurSeq = 0;                // seq of head command in flight (0 = none)
 static uint8_t apCmdSeqCtr = 0;                // monotonic seq generator, wraps 1..255
 
-static void apEnqueueCmd(uint8_t op, float payload) {
-  if (demoMode) return;                        // no master to drain the queue in demo
+// Returns true when the command was actually queued. Callers that show a pending cue
+// must gate it on this: a cue for a command that was never sent would never clear.
+static bool apEnqueueCmd(uint8_t op, float payload) {
+#if INFO_DISP_IS_PFD_UNIT
+  // Only the mission panel (unit 2) owns the autopilot. Unit 1 has no ASC sidebar
+  // button, so it should never reach here — this is the backstop that makes the
+  // single-editor rule a property of the command channel rather than of the
+  // navigation table, so a future sidebar change cannot quietly reopen a second
+  // command source into one autopilot.
+  (void)op; (void)payload;
+  return false;
+#else
+  // No master to drain the queue in demo — the demo applies the command to its own
+  // autopilot model and publishes the result on the next frame, so the console's
+  // round trip closes and its pending cue clears exactly as it does in flight.
+  if (demoMode) return apDemoApplyCommand(op, payload);
   uint8_t next = (uint8_t)((apCmdTail + 1) % AP_CMDQ_LEN);
-  if (next == apCmdHead) return;               // full — drop (queue holds 15, never happens)
+  if (next == apCmdHead) return false;         // full — drop (queue holds 15, never happens)
   apCmdQ[apCmdTail].op = op;
   apCmdQ[apCmdTail].payload = payload;
   apCmdTail = next;
+  return true;
+#endif
 }
 
 // Assign a sequence number to a newly-exposed head command. Main-thread only; called
@@ -191,6 +219,7 @@ void apReconcilePending() {
   if (apDRol && state.apRollEnable == apRolEn &&
       (!apRolEn || fabsf(state.apRollDeg  - apRolDeg) < 0.5f))   apDRol = false;
   if (apDMxg && fabsf(state.apMaxG        - apMxg)    < 0.05f)   apDMxg = false;
+  // Clears the pending cue once Controller_Main reports the commanded armed state.
   if (apArmOvr >= 0 && state.apArmed == (apArmOvr == 1))         apArmOvr = -1;
 }
 
@@ -358,9 +387,11 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
     }
   }
   {
-    bool armed = apGArmed();
+    bool armed = apArmedAnnunciated();
     String bs = state.gameSOI;
-    String as = armed ? "ARMED" : "DISARMED";
+    // Truth, always. A queued tap appends "..." rather than flipping the word, so the
+    // banner cannot read DISARMED while the autopilot is still armed.
+    String as = String(armed ? "ARMED" : "DISARMED") + (apArmPending() ? "..." : "");
     uint16_t ac = armed ? TFT_NEON_GREEN : TFT_DARK_GREY;
     RowCache &rc = rowCache[screen_LNCHAP][AP_BODY_SLOT];
     String combo = bs + "|" + as;
@@ -420,22 +451,29 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
 
   // ARM control
   {
-    bool armed = apGArmed();
+    bool armed   = apArmedAnnunciated();   // the autopilot's state, never the tap
+    bool pending = apArmPending();         // a tap queued, not yet echoed back
     uint16_t pc = apPhaseColor(state.apPhase);
     const char *txt = armed ? apPhaseName(state.apPhase) : "ARM";
     // Armed: legible text auto-picked for the phase-colour background (white washes
     // out on the light CYAN/SKY phases). Disarmed: orange guard text on off-black.
     uint16_t fg  = armed ? apTextOn(pc) : AP_GUARD;
     uint16_t bg  = armed ? pc           : TFT_OFF_BLACK;
-    uint16_t bdr = armed ? TFT_WHITE    : AP_GUARD;
+    // While a command is in flight the border goes to the pending colour the editable
+    // fields already use, and the hint says which way it is going. The fill and legend
+    // stay on the real state: the pilot gets immediate confirmation that the tap
+    // registered — which a touchscreen owes them, having no detent — without the panel
+    // claiming a state the autopilot has not reached.
+    uint16_t bdr = pending ? AP_EDT : (armed ? TFT_WHITE : AP_GUARD);
     RowCache &rc = rowCache[screen_LNCHAP][AP_ARM_SLOT];
-    String key = String(armed ? "A:" : "D:") + txt;
+    String key = String(armed ? "A:" : "D:") + (pending ? "P:" : "-:") + txt;
     if (rc.value != key) {
       ButtonLabel btn = { txt, fg, fg, bg, bg, bdr, bdr };
       drawButton(tft, AP_ARM_X, AP_ARM_Y, AP_ARM_W, AP_ARM_H, btn, AP_F_ARM, false);
-      const char *hint = armed ? "tap to DISARM" : "tap to ARM";
+      const char *hint = pending ? (apArmCommanded() ? "ARMING..." : "DISARMING...")
+                                 : (armed ? "tap to DISARM" : "tap to ARM");
       textCenter(tft, &Roboto_Black_16, AP_ARM_X, AP_ARM_Y + AP_ARM_H - 24, AP_ARM_W, 18,
-                 hint, armed ? apTextOn(pc) : AP_GUARD, bg);
+                 hint, pending ? AP_EDT : (armed ? apTextOn(pc) : AP_GUARD), bg);
       rc.value = key;
     }
   }
@@ -499,11 +537,17 @@ void apScreenTouch(uint16_t x, uint16_t y) {
 
   // ARM / DISARM
   if (x >= AP_ARM_X && x < AP_ARM_X + AP_ARM_W && y >= AP_ARM_Y && y < AP_ARM_Y + AP_ARM_H) {
-    bool wantArm = !apGArmed();
-    apArmOvr = wantArm ? 1 : 0;
-    rowCache[screen_LNCHAP][AP_ARM_SLOT].value = "\x01";   // force ARM + banner redraw
-    rowCache[screen_LNCHAP][AP_BODY_SLOT].value = "\x01";
-    apEnqueueCmd(wantArm ? AP_CMD_ARM : AP_CMD_DISARM, 0.0f);
+    // Toggle from the COMMANDED state, so a second tap while one is in flight reverses
+    // that command instead of re-sending it, and a lost echo cannot lock the button.
+    bool wantArm = !apArmCommanded();
+    // The pending cue is raised only if a command really went out. In demo mode (and on
+    // unit 1, where the command channel is compiled out) nothing is queued and nothing
+    // will ever acknowledge it, so a cue raised here would sit on the button forever.
+    if (apEnqueueCmd(wantArm ? AP_CMD_ARM : AP_CMD_DISARM, 0.0f)) {
+      apArmOvr = wantArm ? 1 : 0;
+      rowCache[screen_LNCHAP][AP_ARM_SLOT].value = "\x01";   // force ARM + banner redraw
+      rowCache[screen_LNCHAP][AP_BODY_SLOT].value = "\x01";
+    }
     return;
   }
   // Editable fields

@@ -34,14 +34,24 @@
    MNVR and DOCK reticles.
    Right panel: 360 px at x=580 (matches MNVR/DOCK), labels 28 / values 36
 
-   RIGHT PANEL — 7 rows, rowHFor(7) = 76px each
-   Row 0  Alt.SL   full-width
-   Row 1  V.Orb    full-width
-   Row 2  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
-   Row 3  V.Close  full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
-   Row 4  Brg|Elv  split — bearing and elevation of the target from the NOSE
-   Row 5  V.Brg|V.Elv split — approach-path error about the target axis, colour-coded
-   Row 6  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
+   RIGHT PANEL — 5 rows, rowHFor(5) = 106px each
+   Row 0  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
+   Row 1  V.Close  full-width — yellow when OPENING; white-on-red when closing fast and
+                    already close (TGT_VCLOSURE_ALARM_MS gated on RNDZ_DIST_WARN_M)
+   Row 2  Brg|Elv  split — bearing and elevation of the target from the NOSE
+   Row 3  V.Brg|V.Elv split — approach-path error about the target axis, colour-coded
+   Row 4  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
+
+   Alt.SL and V.Orb used to head this panel and are gone. Both were duplicated on this
+   screen's partner -- TARGET is reached from three of the mission ladder's rules and
+   SPACECRAFT is the vehicle panel in all of them -- and, unlike Dist and V.Close,
+   neither related to anything on the scope. The scope is purely angular: it plots the
+   bearing and elevation of the port and of the relative velocity vector, so range and
+   closure are the two numbers it CANNOT show, which is what earns them their rows.
+   Altitude above sea level and orbital speed are not about the target at all.
+   Nothing replaces them: the closest-approach fields in AppState are KSP2-only stubs,
+   and there is no relative inclination or phase angle in the telemetry. So the height
+   goes to the five rows that are left, 76 px -> 106 px each.
 
    DOT UPDATE STRATEGY  (same as DOCK)
    ────────────────────
@@ -78,8 +88,8 @@ static const uint8_t TGT_DOT_R_ERASE = 33;  // erase rect half-size (covers prog
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
 static const uint16_t TGT_RP_W  = RETICLE_RP_W;
-static const uint16_t TGT_RP_X  = SCREEN_W - SIDEBAR_W - TGT_RP_W;   // 580
-static const uint8_t  TGT_RP_NR = 7;
+static const uint16_t TGT_RP_X  = CONTENT_W - TGT_RP_W;              // 580
+static const uint8_t  TGT_RP_NR = 5;
 static const tFont   *TGT_RP_LF = &Roboto_Black_28;  // label font (printDispChrome)
 static const tFont   *TGT_RP_F  = &Roboto_Black_36;  // value font (printValue)
 
@@ -232,53 +242,44 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     tft.drawLine(TGT_RP_X - 2, TITLE_TOP, TGT_RP_X - 2, SCREEN_H, TFT_GREY);
     tft.drawLine(TGT_RP_X - 1, TITLE_TOP, TGT_RP_X - 1, SCREEN_H, TFT_GREY);
 
-    // Right panel chrome — 7 rows
+    // Right panel chrome — 5 rows
     const tFont *F   = TGT_RP_LF;   // label font for printDispChrome
     const uint8_t NR = TGT_RP_NR;
     uint16_t rowH    = rowHFor(NR);
     uint16_t HW      = TGT_RP_W / 2;
 
-    // Rows 0–3: full-width labels
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(0,NR), TGT_RP_W, rowH, "Alt.SL:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(1,NR), TGT_RP_W, rowH, "V.Orb:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    // Rows 0–1: full-width labels
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(0,NR), TGT_RP_W, rowH, "Dist:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(1,NR), TGT_RP_W, rowH, "V.Close:",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Divider between V.Orb (row 1) and Dist (row 2)
+    // Row 2: Brg | Elv split
     {
-        uint16_t dy = rowYFor(2,NR) - 1;
-        tft.drawLine(TGT_RP_X, dy,   TGT_RP_X + TGT_RP_W, dy,   TFT_GREY);
-        tft.drawLine(TGT_RP_X, dy+1, TGT_RP_X + TGT_RP_W, dy+1, TFT_GREY);
-    }
-
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(2,NR), TGT_RP_W, rowH, "Dist:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(3,NR), TGT_RP_W, rowH, "V.Close:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-
-    // Row 4: Brg | Elv split
-    {
-        uint16_t y = rowYFor(4, NR), h = rowH;
+        uint16_t y = rowYFor(2, NR), h = rowH;
         printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
 
-    // Row 5: V.Brg | V.Elv split (approach-path error about the target axis)
+    // Row 3: V.Brg | V.Elv split (approach-path error about the target axis)
     {
-        uint16_t y = rowYFor(5, NR), h = rowH;
+        uint16_t y = rowYFor(3, NR), h = rowH;
         printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "V.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "V.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
 
-    // Row 6: T+Int full-width
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(6,NR), TGT_RP_W, rowH, "T+Int:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    // Row 4: T+Int full-width
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(4,NR), TGT_RP_W, rowH, "T+Int:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
-    // Horizontal dividers between rows 3/4, 5/6
+    // Horizontal dividers between rows 1/2 and 3/4 — the two angle pairs are set off
+    // from the range/closure block above and the intercept time below.
     {
-        uint16_t d1 = rowYFor(4,NR) - 1;
+        uint16_t d1 = rowYFor(2,NR) - 1;
         tft.drawLine(TGT_RP_X, d1,   TGT_RP_X + TGT_RP_W, d1,   TFT_GREY);
         tft.drawLine(TGT_RP_X, d1+1, TGT_RP_X + TGT_RP_W, d1+1, TFT_GREY);
-        uint16_t d2 = rowYFor(6,NR) - 1;
+        uint16_t d2 = rowYFor(4,NR) - 1;
         tft.drawLine(TGT_RP_X, d2,   TGT_RP_X + TGT_RP_W, d2,   TFT_GREY);
         tft.drawLine(TGT_RP_X, d2+1, TGT_RP_X + TGT_RP_W, d2+1, TFT_GREY);
     }
@@ -327,25 +328,21 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         drawPanelValue(tft, screen_TGT, slot, row, x, HW - ROW_PAD, label, val, fgc, bgc, TGT_RP_F, NR, false);
     };
 
-    // Row 0 — Alt.SL  (cache slot 0)
-    fg = (state.altitude < 0.0f) ? TFT_RED : TFT_DARK_GREEN;
-    tgtVal(0, 0, "Alt.SL:", formatAlt(state.altitude), fg, TFT_BLACK);
-
-    // Row 1 — V.Orb  (cache slot 1)
-    tgtVal(1, 1, "V.Orb:", fmtMs(state.orbitalVel), TFT_DARK_GREEN, TFT_BLACK);
-
-    // Row 2 — Dist  (cache slot 2)
+    // Row 0 — Dist  (cache slot 0)
     // White-on-green < DOCK_DIST_WARN_M: switch to DOCK screen.
     // Yellow < RNDZ_DIST_WARN_M: closing, pay attention.
     // Dark green otherwise: nominal long range.
     if      (state.tgtDistance < DOCK_DIST_WARN_M)  { fg = TFT_WHITE;      bg = TFT_DARK_GREEN; }
     else if (state.tgtDistance < RNDZ_DIST_WARN_M)  { fg = TFT_YELLOW;     bg = TFT_BLACK;      }
-    else                                             { fg = TFT_DARK_GREEN; bg = TFT_BLACK;      }
-    tgtVal(2, 2, "Dist:", formatAlt(state.tgtDistance), fg, bg);
+    else                                            { fg = TFT_DARK_GREEN; bg = TFT_BLACK;      }
+    tgtVal(0, 0, "Dist:", formatAlt(state.tgtDistance), fg, bg);
 
-    // Row 3 — V.Tgt  (cache slot 3)
+    // Row 1 — V.Close  (cache slot 1)
     // Speed of closure. Negative = closing (good), positive = opening (bad).
-    // Alarm: fast closure at short range. Warn: moderate. Nominal: dark green.
+    // Two states, not three. Yellow means OPENING -- the range is growing, whatever the
+    // speed. White-on-red means closing fast AND already close; the range gate is what
+    // makes the alarm mean something, since 500 m/s of closure is routine at 40 km.
+    // There is no "moderate closure" tier: on a rendezvous that is the whole approach.
     {
         float vc  = state.tgtVelocity;
         float avc = fabsf(vc);
@@ -355,7 +352,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         if (tooFast)       { fg = TFT_WHITE;  bg = TFT_RED;   }
         else if (!closing) { fg = TFT_YELLOW; bg = TFT_BLACK; }
         else               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        tgtVal(3, 3, "V.Close:", fmtMs(vc), fg, bg);
+        tgtVal(1, 1, "V.Close:", fmtMs(vc), fg, bg);
     }
 
     // Row 4 — Brg | Elv  (cache slots 4, 5)
@@ -366,10 +363,10 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // ahead on heading 120 it read +120, not 0.
     {
         snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priRight);
-        tgtValH(4, 4, TGT_RP_X, "Brg:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
+        tgtValH(2, 2, TGT_RP_X, "Brg:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
 
         snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priUp);
-        tgtValH(4, 5, TGT_RP_X + HW, "Elv:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
+        tgtValH(2, 3, TGT_RP_X + HW, "Elv:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 5 — V.Brg | V.Elv  (cache slots 6, 7)
@@ -388,16 +385,16 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         // when not closing). It also keeps the value inside the half-width cell.
         bool appValid = (sqrtf(ang.appRight*ang.appRight + ang.appUp*ang.appUp) <= 90.0f);
         if (!appValid) {
-            tgtValH(5, 6, TGT_RP_X,      "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
-            tgtValH(5, 7, TGT_RP_X + HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
+            tgtValH(3, 4, TGT_RP_X,      "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
+            tgtValH(3, 5, TGT_RP_X + HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
         } else {
             errColor(fabsf(ang.appRight), fg, bg);
             snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appRight);
-            tgtValH(5, 6, TGT_RP_X, "V.Brg:", String(buf), fg, bg);
+            tgtValH(3, 4, TGT_RP_X, "V.Brg:", String(buf), fg, bg);
 
             errColor(fabsf(ang.appUp), fg, bg);
             snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appUp);
-            tgtValH(5, 7, TGT_RP_X + HW, "V.Elv:", String(buf), fg, bg);
+            tgtValH(3, 5, TGT_RP_X + HW, "V.Elv:", String(buf), fg, bg);
         }
     }
 
@@ -415,7 +412,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
             tIntStr = "---";
             fg = TFT_DARK_GREY; bg = TFT_BLACK;
         }
-        tgtVal(6, 8, "T+Int:", tIntStr, fg, bg);
+        tgtVal(4, 6, "T+Int:", tIntStr, fg, bg);
     }
 
     // ── Closure-velocity bar (left panel, under the scope) ───────────────────────────
@@ -445,22 +442,8 @@ static void drawScreen_TGT(KCM_TFT &tft) {
 }
 
 
-/***************************************************************************************
-   AAA_Config.ino additions required
-   Add these constants to the "FLIGHT THRESHOLDS — TARGET" section:
-
-   // Closure velocity thresholds (m/s, absolute value)
-   const float TGT_VCLOSURE_WARN_MS  = 200.0f;  // yellow — fast approach
-   const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast
-
-   // Approach alignment error thresholds (degrees absolute)
-   // Wider than DOCK thresholds — long-range ops tolerate larger angles
-   const float TGT_BRG_WARN_DEG  = 5.0f;   // yellow — off-axis approach
-   const float TGT_BRG_ALARM_DEG = 15.0f;  // white-on-red — significantly misaligned
-
-   KCMk1_InfoDisp.h additions required:
-   - extern bool _tgtChromDrawn;   // replaces extern bool _rndzChromDrawn
-   - Rename screen_RNDZ → screen_TGT in the ScreenType enum (keep value = 4)
-   - Update SCREEN_TITLES[4] to "TARGET" (already correct if unchanged)
-   - Update SCREEN_IDS[4]   to "TGT"    (already correct if unchanged)
-****************************************************************************************/
+// (A block of "AAA_Config.ino additions required" migration notes lived here: the
+// screen_RNDZ -> screen_TGT rename and the constants it needed. The rename shipped long
+// ago and the constants it listed no longer match the ones in use -- it quoted the
+// pre-1.0.5 bearing thresholds of 5/15 deg, which are now 15/30. Removed: a checklist
+// for a finished job is only a source of wrong numbers.)

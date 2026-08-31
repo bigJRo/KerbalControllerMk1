@@ -107,7 +107,7 @@ static const uint8_t DOT_R_ERASE = 33;   // erase rect half-size (covers prograd
 // Right panel geometry — matches the ascent/circ readout panel (360 px wide,
 // right-aligned to the content edge, labels Black_28, values Black_36).
 static const uint16_t RP_W   = RETICLE_RP_W;
-static const uint16_t RP_X   = SCREEN_W - SIDEBAR_W - RP_W;   // 580
+static const uint16_t RP_X   = CONTENT_W - RP_W;              // 580
 static const uint8_t  RP_NR  = 8;       // number of rows
 static const tFont   *RP_LBL = &Roboto_Black_28;  // label font (chrome)
 static const tFont   *RP_F   = &Roboto_Black_36;  // value font

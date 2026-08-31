@@ -12,15 +12,12 @@ bool debugMode = false;
 bool demoMode  = false;  // true = sine-wave demo values, no KSP required
 bool fpsDiag   = false;  // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
 
-// INFO_DISP_UNIT — which physical Info Display board this firmware image targets.
-// The Info Display firmware is identical for both units; only the I2C slave address
-// differs so the master can address each board independently on the shared bus.
-//   1 = Info Display 1  -> I2C addr 0x12 (KCM_I2C_ADDR_INFODISP)
-//   2 = Info Display 2  -> I2C addr 0x13 (KCM_I2C_ADDR_INFODISP_2)
-// Set this before flashing each board. The sync/framing byte (0xAE) is shared by
-// both units; the INT pin (pin 0) is per-board wiring and does not change here.
-// (The System Info Display, addr 0x14, is separate hardware and is future work.)
-#define INFO_DISP_UNIT 1
+// INFO_DISP_UNIT — which physical Info Display board this firmware image targets —
+// now lives in KCMk1_InfoDisp.h. It has to be visible before any .ino tab compiles
+// because the layout constants and sidebar tables are conditional on it, and this
+// file is concatenated after the header is processed. Set it there, not here.
+// The sync/framing byte (0xAE) is shared by both units; the INT pin (pin 0) is
+// per-board wiring. (The System Info Display, addr 0x14, is separate hardware.)
 
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
@@ -55,9 +52,13 @@ const uint8_t AIRBRAKE_CAG      = 38;
    Tune these per-aircraft during flight testing.
 ****************************************************************************************/
 
-// IAS stall speed (m/s). Yellow below this, white-on-red below half.
-// Set to 0.0 to disable stall warning entirely.
-const float STALL_SPEED_MS = 0.0f;
+// IAS stall speed (m/s). REMOVED, not merely disabled: it was 0.0f, which meant the
+// AIRCRAFT IAS row's threshold branch had never executed and the row was permanently
+// dark green while the code implied a stall warning existed. A stall speed is
+// per-airframe and KSP does not report one, so there was never a value to put here.
+// Low-speed awareness lives on the AoA arc and the AoA row instead, which is the
+// physically correct predictor and is what modern light-aircraft PFDs fit for the same
+// reason. See the note on the IAS row in Screen_ACFT.ino before re-adding anything here.
 
 // Maximum safe gear-down speed (m/s). Gear DOWN above this → yellow warning.
 // Typical KSP aircraft: 150–200 m/s. 160 m/s ≈ 576 km/h.
@@ -153,9 +154,16 @@ const float DV_TOT_WARN_MS  = 500.0f;  // yellow — mission nearly out of prope
 // Distance to target (m) — yellow <5km, white-on-green <200m (ready for DOCK)
 const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow — closing
 
-// Closure velocity thresholds (m/s, absolute value)
-const float TGT_VCLOSURE_WARN_MS  = 200.0f;  // yellow — fast approach
-const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast
+// Closure velocity alarm (m/s, absolute value). ONE tier, deliberately -- and it is
+// gated on range as well as speed (see Screen_TGT): the alarm is "closing fast AND
+// already inside RNDZ_DIST_WARN_M", because 500 m/s of closure at 40 km is a normal
+// transfer and the same number at 3 km is an impact. There used to be a
+// TGT_VCLOSURE_WARN_MS = 200 here as well, documented as "yellow -- fast approach". No
+// code ever read it; the row's yellow means the closure is NEGATIVE (opening, and so
+// not an approach at all), which is a different quantity entirely. Removed rather than
+// wired up: a speed-only middle tier would have fired constantly on any normal
+// rendezvous and taught the pilot to ignore the colour.
+const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast, and close
 
 // Approach alignment error thresholds (degrees absolute)
 // THE RETICLE RINGS ARE THE COLOUR BANDS. Every reticle draws its good zone at
@@ -175,6 +183,94 @@ const float TGT_BRG_ALARM_DEG = 30.0f;   // white-on-red — middle ring  (60/2)
 // Distance to target (m)
 const float DOCK_DIST_ALARM_M = 50.0f;    // white-on-red
 const float DOCK_DIST_WARN_M  = 200.0f;   // yellow
+
+/***************************************************************************************
+   CONTEXT ROUTING — mission-phase display (Info Display 2 only)
+   Bounds for the two context rules that only became affordable once the PFD moved to
+   its own panel. On a single display, auto-routing to TARGET or MANEUVER would have
+   cost the pilot their attitude reference; with Info Display 1 permanently holding
+   the PFD family, it costs nothing.
+****************************************************************************************/
+
+// TARGET auto-select window (m). Below DOCK_DIST_WARN_M the DOCKING screen wins; past
+// this the target is far enough that ORBIT is the more useful view, so a plane-change
+// or transfer burn planned around a distant target does not sit on an RPOD scope.
+const float TGT_CONTEXT_MAX_M = 2000.0f;
+
+// MANEUVER auto-select lead time (s) before ignition. Nodes persist long after they
+// stop being the pilot's concern, so the rule is gated on the burn being imminent
+// rather than merely planned. Negative time-to-ignition (the burn is running) also
+// passes, which keeps MANEUVER up through the burn itself.
+const float MNVR_CONTEXT_LEAD_S = 600.0f;   // 10 min
+
+/***************************************************************************************
+   CONTEXT ROUTING — continuous evaluation
+   Both ladders are re-evaluated every frame rather than only at vessel/scene
+   boundaries, so the panels follow the mission. Two guards keep that from flapping:
+
+   A release band on every numeric rule. Once a rule owns the screen its threshold
+   widens, so a value parked on the boundary — station-keeping at 200 m, a burn sitting
+   at ten minutes out — cannot oscillate the panel. Entry thresholds are unchanged;
+   only the exit is looser.
+
+   A minimum dwell between automatic switches, as a blanket guard for everything the
+   bands do not cover (an atmosphere boundary flickering inAtmo, a target flickering
+   in and out of Simpit's view).
+****************************************************************************************/
+const uint32_t CONTEXT_DWELL_MS      = 4000;     // min gap between automatic switches
+// A sidebar press is deliberate, so it is protected for longer than one automatic
+// switch protects the next. This is a floor, not the mechanism: the manual latch is
+// what actually holds a chosen screen, and this only covers the case where the latch
+// releases immediately because the ladder's answer legitimately changed.
+const uint32_t MANUAL_DWELL_MS       = 10000;    // min gap between a press and an auto switch
+const float    DOCK_CTX_RELEASE_M    = 250.0f;   // leave DOCKING past this (enter at 200)
+const float    TGT_CTX_RELEASE_MIN_M = 150.0f;   // leave TARGET below this (enter at 200)
+const float    TGT_CTX_RELEASE_MAX_M = 2400.0f;  // leave TARGET above this (enter at 2000)
+const float    MNVR_CTX_RELEASE_S    = 700.0f;   // leave MANEUVER past this (enter at 600)
+
+// RE-ENTRY auto-select. The corridor test (periapsis inside the atmosphere, descending)
+// is true for any aircraft in level flight too — its periapsis is far underground — so
+// the rule additionally requires the vessel to be coming in fast or from outside the
+// atmosphere. Mach 3 is the same marker the RE-ENTRY screen already uses for its SAS
+// annunciation.
+const float REENTRY_CTX_MACH = 3.0f;
+
+// POWERED DESCENT auto-select. The old rule was `type_Lander && sit_SubOrb`, which
+// missed every Ship doing a Mun landing and fired on ascent (sub-orbital is also what
+// a rocket climbing out looks like). Proximity plus a real descent rate is what the
+// screen is actually for. Planes in atmosphere are excluded: their approach instrument
+// is the AIRCRAFT screen on the other panel.
+const float LNDG_CTX_ALT_M         = 10000.0f;  // radar altitude to enter
+const float LNDG_CTX_ALT_RELEASE_M = 12000.0f;  // and to leave (release band)
+const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
+
+// ASCENT — dynamic pressure bands (kPa). A Kerbin ascent peaks near 10-15 kPa around
+// 5-8 km; a steep or overpowered climb pushes past that, which is where an airframe
+// starts paying for it. Caution then alarm, so max Q annunciates instead of merely
+// being computable.
+const float LNCH_Q_WARN_KPA  = 20.0f;
+const float LNCH_Q_ALARM_KPA = 40.0f;
+
+// ASCENT — load factor bands (g), aligned with the Annunciator's crew limits so the
+// two panels cannot disagree about what a high-G ascent is.
+const float LNCH_G_WARN  = 3.0f;
+const float LNCH_G_ALARM = 5.0f;
+
+// LAUNCH — throttle at or below this counts as coasting, which is what moves the screen
+// from ASCENT to CIRCULARISATION. Not zero: KSP can report a hair of throttle from a
+// trim or a spent stage still nominally lit.
+const float LNCH_COAST_THROTTLE = 0.02f;
+
+// LAUNCH context — the ascent arc releases when the vessel stops climbing. Zero is the
+// entry threshold; this is the release threshold, so a coast through apoapsis (where
+// vertical speed passes through zero on its way to the circularisation burn) does not
+// drop the screen. Same release-band pattern as the DOCKING, TARGET and MANEUVER rules.
+const float LNCH_CTX_VVERT_RELEASE_MS = -20.0f;
+
+// NAV — drift (ground track minus heading) shown yellow past this. In an atmosphere a
+// large crab angle is either a strong sideways component or a vessel that is not going
+// where it is pointed; either is worth noticing before it becomes a heading error.
+const int16_t NAV_DRIFT_WARN_DEG = 10;
 
 // Closure rate — alarm at >2 m/s within 100m
 const float DOCK_VCLOSURE_ALARM_MS   = 2.0f;
@@ -257,6 +353,12 @@ const float DEFAULT_BODY_RADIUS_M = 600000.0f;
 
 // Altitude (as a fraction of body radius) at which the ascent/circularization mode
 // switch flips, with a small hysteresis band so it doesn't chatter near the boundary.
+// AIRCRAFT row 0 hands over from Alt.SL to Alt.Rdr near the ground, the way a real PFD
+// brings radio altitude in only for the approach (the A320 shows it below 2,500 ft, i.e.
+// ~760 m). Hysteresis so levelling off at the switch height cannot chatter the label.
+const float ACFT_ALT_RDR_ON_M  = 750.0f;   // below this, radar altitude takes row 0
+const float ACFT_ALT_RDR_OFF_M = 850.0f;   // above this, barometric altitude takes it back
+
 const float ORB_SWITCH_ALT_FRAC_ASC  = 0.06f;   // switch up to orbital view above this
 const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
 
@@ -273,10 +375,20 @@ const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
 const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
 const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
 
-// Electric charge thresholds (%) — aligned to the shared low-EC thresholds so the
-// rover matches every other screen and the Annunciator CW_BUS_VOLTAGE alarm.
-const float ROVER_EC_WARN_PCT     = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
-const float ROVER_EC_ALARM_PCT    = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
+// Endurance thresholds (seconds of charge remaining). The ROVER block that used to show
+// EC% now shows time to empty, so it is coloured on TIME, not on percentage -- see the
+// note on the readout in Screen_ROVR.ino. The percentage tiers still exist where a
+// percentage is displayed: the Resource Display shows EC%, and the Annunciator owns the
+// low-charge alarm on EC_LOW_WARN_FRAC / EC_LOW_ALARM_FRAC.
+const int32_t ROVER_ENDUR_WARN_S  = 3600;   // yellow — under an hour of charge left
+const int32_t ROVER_ENDUR_ALARM_S = 600;    // white-on-red — under ten minutes
+
+// Percentage tiers, for the places a CHARGE LEVEL is still what is displayed: SPACECRAFT's
+// EVA row 6, and the Resource Display. Named for the quantity rather than for the rover,
+// which no longer uses them. Aligned to the shared low-EC thresholds so every percentage
+// on the panel and the Annunciator's CW_BUS_VOLTAGE alarm agree.
+const float EC_PCT_WARN  = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
+const float EC_PCT_ALARM = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
 
 /***************************************************************************************
    PHASE 2 IMPLEMENTATION NOTES

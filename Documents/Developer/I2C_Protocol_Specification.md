@@ -527,10 +527,10 @@ The Teensy 4.1 display carriers (Annunciator, Resource Display, Info Display 1/2
 | 0x10 | `KCM_I2C_ADDR_ANNUNCIATOR` | Annunciator (C&W) | 0xAC (`KCM_I2C_SYNC_ANNUNCIATOR`) | Implemented |
 | 0x11 | `KCM_I2C_ADDR_RESDISP` | Resource Display | 0xAD (`KCM_I2C_SYNC_RESDISP`) | Implemented |
 | 0x12 | `KCM_I2C_ADDR_INFODISP` | Info Display 1 | 0xAE (`KCM_I2C_SYNC_INFODISP`) | Implemented |
-| 0x13 | `KCM_I2C_ADDR_INFODISP_2` | Info Display 2 | 0xAE (shared with Info 1) | Implemented (same firmware, `INFO_DISP_UNIT`) |
+| 0x13 | `KCM_I2C_ADDR_INFODISP_2` | Info Display 2 | 0xAE (shared with Info 1) | Implemented (same firmware, `INFO_DISP_UNIT`; sole Ascent-AP command source) |
 | 0x14 | `KCM_I2C_ADDR_SYSINFODISP` | System Info Display | — | **Future work** (separate board, not yet coded) |
 
-Info Display 1 and 2 run the **same** firmware image; the target address is selected at compile time by `INFO_DISP_UNIT` (1 → 0x12, 2 → 0x13). Both use sync byte 0xAE.
+Info Display 1 and 2 run the **same** firmware image; the target address is selected at compile time by `INFO_DISP_UNIT` in `KCMk1_InfoDisp.h` (1 → 0x12, 2 → 0x13). Both use sync byte 0xAE. The unit also selects the panel's role — Info Display 1 is the vehicle-type display, Info Display 2 the mission-phase display and the sole owner of the Ascent Autopilot command channel, so an Ascent-AP command frame is only ever non-zero from 0x13. See the InfoDisp README.
 
 ### 15.2 Outbound Status Packet (Carrier → Master)
 

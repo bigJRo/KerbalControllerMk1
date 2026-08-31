@@ -57,7 +57,7 @@ The data bus, `/WR`, and `/RD` are owned by the FlexIO3 driver — those defines
 | Slave addresses | `KCM_I2C_ADDR_ANNUNCIATOR` (0x10), `KCM_I2C_ADDR_RESDISP` (0x11), `KCM_I2C_ADDR_INFODISP` (0x12), `KCM_I2C_ADDR_INFODISP_2` (0x13), `KCM_I2C_ADDR_SYSINFODISP` (0x14 — **future work**) |
 | Sync / framing bytes | `KCM_I2C_SYNC_ANNUNCIATOR` (0xAC), `KCM_I2C_SYNC_RESDISP` (0xAD), `KCM_I2C_SYNC_INFODISP` (0xAE — shared by Info Display 1 & 2) |
 
-Info Display 1 (0x12) and Info Display 2 (0x13) run the **same** InfoDisp firmware; the target board is chosen at compile time by `INFO_DISP_UNIT` in the InfoDisp `AAA_Config.ino`. The System Info Display (0x14) is separate hardware and is not yet coded — see `Documents/Developer/Hardware_Reference.md`.
+Info Display 1 (0x12) and Info Display 2 (0x13) run the **same** InfoDisp firmware; the target board is chosen at compile time by `INFO_DISP_UNIT` in the InfoDisp `KCMk1_InfoDisp.h`, which also selects the panel's role (vehicle-type vs mission-phase) and sidebar side. The System Info Display (0x14) is separate hardware and is not yet coded — see `Documents/Developer/Hardware_Reference.md`.
 
 ### Touch filter and operating-mode default
 

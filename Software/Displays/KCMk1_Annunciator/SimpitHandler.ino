@@ -39,6 +39,21 @@
    Populates state and logic globals. Does NOT touch prev or draw anything.
    Calls updateCautionWarningState() after any message that affects C&W inputs.
 ****************************************************************************************/
+/***************************************************************************************
+   FLIGHT-SCENE ENTRY
+   Shared by the explicit SCENE_CHANGE and by the inference in FLIGHT_STATUS below, so
+   the two routes into a flight scene cannot drift apart.
+****************************************************************************************/
+static void enterFlightScene() {
+  flightScene = true;
+  gpwsReset();   // reseed GPWS crossing tracker for the new flight
+  switchToScreen(screen_Main);
+  // Request immediate refresh on all subscribed channels so static values
+  // (full tanks, stable orbit, etc.) populate without waiting for a change event.
+  simpit.requestMessageOnChannel(0);
+}
+
+
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
   // Debug: log every incoming message by name so the Serial Monitor is readable.
@@ -122,6 +137,18 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // the re-board may arrive before FLIGHT_STATUS updates inEVA, leaving
         // the SOI thumbnail and data fields stale.
         if (inEVA != wasEVA) prevScreen = screen_COUNT;
+
+        // Simpit sends FLIGHT_STATUS only from a flight scene, so receiving it while
+        // we believe we are not in one means the SCENE_CHANGE that would have told us
+        // never arrived — the normal case when a panel boots into a flight already in
+        // progress. SCENE_CHANGE is an event, not a state you can ask for, so without
+        // this the panel would sit on the standby screen until the pilot changed scene
+        // or vessel. This message's vessel data is applied just above, so the C&W state
+        // is already current when the Main screen comes up.
+        if (!flightScene) {
+          if (debugMode) Serial.println(F("Annunciator: flight scene inferred from FLIGHT_STATUS"));
+          enterFlightScene();
+        }
       }
       break;
 
@@ -195,7 +222,19 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(targetMessage)) {
         targetMessage t = parseMessage<targetMessage>(msg);
         state.tgtDistance = t.distance;
-        state.tgtVelocity = t.velocity;
+        // Signed closure, matching the InfoDisp: negative = closing. Simpit sends
+        // ship_tgtVelocity.magnitude, which is never negative and is the speed along
+        // the whole relative velocity vector rather than along the line of sight, so
+        // it is projected onto the bearing here. Nothing on this panel reads the sign
+        // today -- GPWS uses tgtDistance -- but the two panels must not disagree about
+        // what the same field means.
+        {
+          float vHat[3], dHat[3];
+          kspDirUnit(t.velocityHeading, t.velocityPitch, vHat);
+          kspDirUnit(t.heading,         t.pitch,         dHat);
+          state.tgtVelocity = -t.velocity *
+                              (vHat[0]*dHat[0] + vHat[1]*dHat[1] + vHat[2]*dHat[2]);
+        }
       }
       break;
 
@@ -318,17 +357,13 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       // KerbalSimpit SCENE_CHANGE sends msg[0]=0 for flight scenes, msg[0]=1 for
       // non-flight (menu, tracking station, etc.) -- hence the inversion.
       if (msgSize < 1) break;
-      flightScene = !msg[0];
-      if (debugMode) Serial.println(flightScene
+      if (debugMode) Serial.println(!msg[0]
                                     ? F("Annunciator: Entering flight scene")
                                     : F("Annunciator: Leaving flight scene"));
-      if (flightScene) {
-        gpwsReset();   // reseed GPWS crossing tracker for the new flight
-        switchToScreen(screen_Main);
-        // Request immediate refresh on all subscribed channels so static values
-        // (full tanks, stable orbit, etc.) populate without waiting for a change event.
-        simpit.requestMessageOnChannel(0);
+      if (!msg[0]) {
+        enterFlightScene();
       } else {
+        flightScene = false;
         if (audioEnabled) audioSilence();
         gpwsReset();   // hush any GPWS callout on leaving the flight scene
         resetDisplays();

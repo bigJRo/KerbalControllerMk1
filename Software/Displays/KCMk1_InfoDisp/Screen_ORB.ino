@@ -46,7 +46,7 @@
      Switches to SOI view when altSL > 2*bodyR.
 
    Right panel — Orbital inclination (INCL):
-     Edge-on view. Equatorial plane = dashed horizontal at INC_CY.
+     Edge-on view. Equatorial plane = dashed horizontal at ORB_CY.
      Orbit line through body centre at angle = inclination. Draw order is
      equator -> body disc -> orbit line, so the line runs unbroken in front of
      the body — the same "orbit line on top" rule the planar panel follows.
@@ -70,7 +70,6 @@ static const uint16_t ORB_MAX_R      = 170;   // orbit half-extent (pixels)
 // trimmed again to make room for the larger (Roboto_Black_28) readout text at
 // the bottom and the larger (Roboto_Black_32) SOI body name up top.
 static const int16_t  ORB_PCX = 235;
-static const int16_t  ORB_ICX = 705;
 static const int16_t  ORB_CY  = 265;
 
 // Header strip — protected from scene repaints. Holds ORBIT/INCL labels and
@@ -91,19 +90,47 @@ static const int16_t  HDR_Y1   = 92;   // bottom of header strip
 //                          drift above the drawing area.
 static const int16_t  PLAN_X0  = 6,   PLAN_X1 = 468;
 static const int16_t  PLAN_Y0  = HDR_Y1;       // 92 — drawing bound
-static const int16_t  PLAN_Y1  = 478;
+// 441, the same bound the INCL panel uses, so the two halves stop level. This is not a
+// free constant: the PLAN scene repaint fillRects from PLAN_FILL_Y0 down to PLAN_Y1, and
+// marker labels are clamped to PLAN_Y1-6 and drawn 9 px above their anchor with a 19 px
+// cap, so the lowest label pixel lands at PLAN_Y1+4. It was 478 because the readout strip
+// used to start at 485. The strip now starts at 448, so the bound moves with it -- left
+// at 478 the repaint wiped the new top row's label on every scene change, which is
+// exactly what the harness caught. The ellipse itself only reaches y=435 (ORB_CY + MAX_R),
+// so nothing graphical is lost.
+static const int16_t  PLAN_Y1  = 441;
 static const int16_t  PLAN_FILL_Y0 = HDR_Y0;   // 62 — wide erase bound
 static const int16_t  PLAN_CLIP_Y0 = HDR_Y1 + 2;   // 94
-static const int16_t  PLAN_CLIP_Y1 = PLAN_Y1 - 2;  // 476
+static const int16_t  PLAN_CLIP_Y1 = PLAN_Y1 - 2;  // 439
 
 // Readout strip (bottom-left of PLAN panel, Roboto_Black_28, rows 37px apart)
-static const uint16_t ORB_RDY1 = 485;  // Alt.SL row
+// PLAN readout strip. Four rows now, matching the INCL side -- the top slot at y=448
+// was simply empty before, while the right-hand strip already used it for Inc.
+//
+// SMA and Ecc are promoted from ORBIT ADVANCED, and they are not arbitrary picks: they
+// are the PLAN diagram's own two parameters. The ellipse is drawn with a_px = MAX_R
+// ALWAYS -- the picture is normalised, so it deliberately cannot show orbit size -- and
+// b_px = MAX_R * sqrt(1-e^2), so eccentricity is literally what gives it its shape. SMA
+// restores the dimension the normalisation throws away; Ecc names the one it draws.
+//
+// They replace Alt.SL, which was duplicated on this panel's partner. ORBIT is the mission
+// panel's resting state, so its partner is SPACECRAFT in every phase it appears in, and
+// that screen carries Alt.SL at the same size. PeA and ApA are duplicated there too and
+// stay regardless: they are the magenta and blue LABELS for the two apsis markers, drawn
+// in the markers' own colours, and a picture of an orbit with unnamed apsides is worse
+// than a repeated number. Alt.SL had no such pairing -- its white label named the green
+// vessel dot only by inference.
+//
+// Same labels and same formats as ORBIT ADVANCED (formatAlt / four decimal places), and
+// the same order as that screen's left column, so one quantity does not acquire a second
+// name or a second precision by moving one screen over.
+static const uint16_t ORB_RDY0 = 448;  // SMA row
+static const uint16_t ORB_RDY1 = 485;  // Ecc row
 static const uint16_t ORB_RDY2 = 522;  // Pe row
 static const uint16_t ORB_RDY3 = 559;  // Ap row
 
 // ── INCL panel layout (right half, x=[470,940]) ───────────────────────────────────────
 static const int16_t  INC_CX   = 705;  // panel centre x
-static const int16_t  INC_CY   = 265;  // panel centre y (shared with ORB_CY)
 // Orbit line half-length. At 90° inclination the line extends bodyCY ± INC_L =
 // 265 ± 160 = 105..425, clearing both the header strip (bottom y=92) and the
 // 4-row readout strip below (top row = Inc at y=448).
@@ -560,8 +587,8 @@ static void _orbDrawSOIView(KCM_TFT &tft, const OrbScene &sc) {
 
 // Draw Pe / Ap / AN / DN markers on the planar orbit.
 // No cached pixel positions stored — scene repaint always covers the full panel.
-// Marker DOT bounds use PLAN_Y0/Y1 (panel interior, 92..400). Marker LABEL
-// bounds use PLAN_CLIP_Y0/Y1 (slightly inset, 94..398) so label text doesn't
+// Marker DOT bounds use PLAN_Y0/Y1 (panel interior, 92..441). Marker LABEL
+// bounds use PLAN_CLIP_Y0/Y1 (slightly inset, 94..439) so label text doesn't
 // print too close to panel edges. Dots can be at the very top of the panel
 // (e.g. Pe at argOfPe=90° lives at y=83 which is above PLAN_CLIP_Y0=94 but
 // within the panel drawing area because PLAN extends up into the header strip
@@ -570,7 +597,7 @@ static void _orbDrawMarkers(KCM_TFT &tft, const OrbScene &sc) {
     const int8_t  DOT_R   = 4;
     // Dot visibility bounds — loose (panel interior plus header strip for top).
     const int16_t DOT_Y_MIN = HDR_Y0;       // 62 — dots can be at very top
-    const int16_t DOT_Y_MAX = PLAN_Y1 - 2;  // 398
+    const int16_t DOT_Y_MAX = PLAN_Y1 - 2;  // 439
     // Label placement bounds. LY_MIN reaches up into the (empty, PLAN-side)
     // header strip so a Pe/Ap dot near the panel top still gets its label placed
     // outboard (above the dot) rather than clamped down on top of it.
@@ -1139,7 +1166,7 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     _vesselUpdateCount = 0;
     _lastBodyIdxDrawn  = -1;
     _lastTLabel        = -1;
-    for (uint8_t i = 0; i < 7; i++) { printState[screen_ORB][i] = PrintState{}; rowCache[screen_ORB][i].value = String("\x01"); }
+    for (uint8_t i = 0; i < 8; i++) { printState[screen_ORB][i] = PrintState{}; rowCache[screen_ORB][i].value = String("\x01"); }
 
     // Panel divider — centred at x=470 (half of the 940px content area)
     tft.drawLine(CONTENT_W / 2, ORB_TITLE_TOP, CONTENT_W / 2, ORB_SCREEN_H, TFT_GREY);
@@ -1156,13 +1183,13 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     // so this name in the header strip (y=67..91) is never overlapped.
     _orbDrawBodyName(tft, _orbBodyIdx());
 
-    // Readout strip labels. PLAN side is 3 rows; INCL side is 4 rows (Inc
-    // moved here from the graphic). All use Roboto_Black_28 except where noted.
-    // Alt.SL / PRD / Arg.Pe / T+Pe-T+Ap labels are white; Pe and Ap use their
-    // dot colours (magenta / blue) as mnemonic colour coding; Inc is also white.
+    // Readout strip labels. Four rows a side now. All use Roboto_Black_28.
+    // SMA / Ecc / PRD / Arg.Pe / T+Pe-T+Ap / Inc labels are white; Pe and Ap use their
+    // dot colours (magenta / blue) as mnemonic colour coding.
     tft.setFont(Roboto_Black_28);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY1); tft.print("Alt.SL:");
+    tft.setCursor(6,   ORB_RDY0); tft.print("SMA:");
+    tft.setCursor(6,   ORB_RDY1); tft.print("Ecc:");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
     tft.setCursor(6,   ORB_RDY2); tft.print("PeA:");
     tft.setTextColor(TFT_BLUE, TFT_BLACK);
@@ -1228,14 +1255,25 @@ static void drawScreen_ORB(KCM_TFT &tft) {
 
     uint32_t vt0 = 0, vt1 = 0, vt2 = 0, vt3 = 0;
 
-    int16_t vx, vy;
+    int16_t vx = 0, vy = 0;
     bool vesselVisiblePlan = _orbVesselPxPlan(drawSc, nu_rad, vx, vy);
 
     // Trigger redraw when: no dot currently drawn (covers hidden→visible AND first frame),
-    // OR the new position differs from the drawn position by VESSEL_PX_THRESH in either axis.
-    // Hidden→hidden case: !_planDotValid is true but vesselVisiblePlan is false, so we
-    // enter the block, skip the erase (no old dot), and skip the draw — cheap no-op.
+    // OR the vessel is hidden (so a dot that is up must be erased), OR the new position
+    // differs from the drawn position by VESSEL_PX_THRESH in either axis.
+    //
+    // The !vesselVisiblePlan term is load-bearing, not belt-and-braces.
+    // _orbVesselPxPlan() returns false on four paths -- past the asymptote, inside the
+    // body, off the panel in x, off it in y -- and on every one of them it leaves vx and
+    // vy untouched. The previous test read them anyway. Besides being undefined, it
+    // decided whether a dot that had just passed behind the body got erased: if the
+    // indeterminate values happened to land within VESSEL_PX_THRESH of the cached
+    // position the block was skipped, and the stale dot sat on the orbit until something
+    // else moved. Visibility is now its own trigger and the positions are only read when
+    // they mean something. Hidden→hidden costs one no-op pass, since the branch below
+    // clears _planDotValid.
     bool vesselMovedPlan = !_planDotValid
+                        || !vesselVisiblePlan
                         || abs((int)vx - (int)_planDotX) >= VESSEL_PX_THRESH
                         || abs((int)vy - (int)_planDotY) >= VESSEL_PX_THRESH;
 
@@ -1381,19 +1419,6 @@ static void drawScreen_ORB(KCM_TFT &tft) {
         rc.value = v;
     };
 
-    // Compute altSL_m from current true anomaly for display
-    float altSL_m = -1.0f;
-    if (drawSc.isEscape) {
-        float asymAng = acosf(-1.0f / drawSc.ecc);
-        if (fabsf(nu_rad) < asymAng - 0.05f) {
-            float l_m = drawSc.rPe_m * (drawSc.ecc + 1.0f);
-            altSL_m   = l_m / (1.0f + drawSc.ecc * cosf(nu_rad)) - drawSc.bodyR_m;
-        }
-    } else {
-        float l_m = drawSc.sma_m * (1.0f - drawSc.ecc*drawSc.ecc);
-        altSL_m   = l_m / (1.0f + drawSc.ecc * cosf(nu_rad)) - drawSc.bodyR_m;
-    }
-
     float PeA_m  = fmaxf(0.0f, state.periapsis);
     float ApA_m  = fmaxf(0.0f, state.apoapsis);
     // timeToPe / timeToAp are used raw (not fmaxf-clamped) in the row-5 block
@@ -1401,7 +1426,15 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // needs to be distinguishable from a small positive value.
 
     // Row 0 — Alt.SL
-    orbPut(0, 110, ORB_RDY1, 360, (altSL_m >= 0.0f) ? formatAlt(altSL_m) : String("---"));
+    // SMA and Ecc, exactly as ORBIT ADVANCED renders them. On an escape trajectory the
+    // semi-major axis is negative and the eccentricity is at or above 1; both are still
+    // the real elements, and formatAlt() carries the sign, so neither is special-cased.
+    orbPut(0, 110, ORB_RDY0, 360, formatAlt(state.semiMajorAxis));
+    {
+        char ebuf[16];
+        dtostrf(state.eccentricity, 1, 4, ebuf);
+        orbPut(7, 110, ORB_RDY1, 360, String(ebuf));
+    }
     // Row 1 — Pe
     // Hide when Pe is inside the body (impact trajectory, periapsis below
     // surface). Uses the same physical-altitude rule as the marker visibility
