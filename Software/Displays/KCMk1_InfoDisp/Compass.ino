@@ -208,7 +208,7 @@ bool compassUpdateCard(KCM_TFT &tft, const CompassGeom &g, CompassCache &c,
    depends on the erase pad, the triangle's bounding box and the angle between them.
    Two triangles per frame cost nothing.
 ****************************************************************************************/
-void compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
+bool compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
                              CompassMarkerCache &ca, bool availA, float degA, uint16_t colA,
                              CompassMarkerCache &cb, bool availB, float degB, uint16_t colB,
                              float threshDeg) {
@@ -216,7 +216,7 @@ void compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
                     (availA && fabsf(eadiHdgDelta(degA, ca.prevScreenDeg)) >= threshDeg);
   const bool chgB = (availB != cb.prevAvail) ||
                     (availB && fabsf(eadiHdgDelta(degB, cb.prevScreenDeg)) >= threshDeg);
-  if (!chgA && !chgB) return;
+  if (!chgA && !chgB) return false;
 
   if (ca.prevAvail) compassDrawMarker(tft, g, ca.prevScreenDeg, colA, true);
   if (cb.prevAvail) compassDrawMarker(tft, g, cb.prevScreenDeg, colB, true);
@@ -225,6 +225,11 @@ void compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
   if (availB) { compassDrawMarker(tft, g, degB, colB, false); cb.prevScreenDeg = degB; }
   ca.prevAvail = availA;
   cb.prevAvail = availB;
+  // The caller may have its own artwork attached to one of these markers -- NAVIGATION's
+  // track stalk runs into the ground-track triangle's base -- and a marker's erase box is
+  // padded 3 px beyond the triangle, so a redraw here can take a bite out of it. Say so,
+  // rather than leaving the caller to guess from its own change test.
+  return true;
 }
 
 

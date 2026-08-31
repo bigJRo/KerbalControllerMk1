@@ -144,8 +144,10 @@ static const float NAV_TRK_MIN_MS = 5.0f;
 // silhouette at any bearing, which is what lets the erase be a plain black repaint: there
 // is nothing of the aeroplane under it to repair.
 static const int16_t NAV_TRK_LINE_GAP = 5;    // clearance between silhouette and stalk
-static const int16_t NAV_TRK_LINE_R1  = 121;  // 2 px short of the marker base
-static const int16_t NAV_TRK_LINE_HW  = 1;    // half width: 2*HW+1 parallel lines
+static const int16_t NAV_TRK_LINE_R1  = 122;  // 1 px short of the marker base at r=123, so
+                                              // the stem meets the triangle without ever
+                                              // painting a pixel the marker also paints
+static const float   NAV_TRK_LINE_HW  = 2.5f; // half width in px (so a 5 px stem)
 
 // ── Own-ship symbol ───────────────────────────────────────────────────────────────────
 // A plan-view aircraft at the card centre, nose up. The rose turns around it, which is
@@ -392,24 +394,43 @@ static void _navDrawTrackLine(KCM_TFT &tft, float screenDeg, bool erase) {
   int16_t x0, y0, x1, y1;
   compassPolar(NAV_GEOM, screenDeg, r0, x0, y0);
   compassPolar(NAV_GEOM, screenDeg, NAV_TRK_LINE_R1, x1, y1);
+
+  // Filled quad, not a bundle of parallel lines. Offsetting several Bresenham lines by a
+  // rounded perpendicular gives uneven spacing on a diagonal -- at 22 degrees the offsets
+  // land on (1,0) and (2,1), so the stem came out stippled along both edges. Two
+  // triangles give clean edges at any bearing and make the width a single float.
   const float dx = (float)(x1 - x0), dy = (float)(y1 - y0);
   const float len = sqrtf(dx * dx + dy * dy);
-  const float px = (len > 0.0f) ? -dy / len : 0.0f;
-  const float py = (len > 0.0f) ?  dx / len : 0.0f;
-  const uint16_t c = erase ? TFT_BLACK : TFT_NEON_GREEN;
-  for (int16_t k = -NAV_TRK_LINE_HW; k <= NAV_TRK_LINE_HW; k++) {
-    const int16_t ox = (int16_t)lroundf(px * (float)k);
-    const int16_t oy = (int16_t)lroundf(py * (float)k);
-    tft.drawLine(x0 + ox, y0 + oy, x1 + ox, y1 + oy, c);
-  }
+  if (len < 1.0f) return;
+  const float ox = -dy / len * NAV_TRK_LINE_HW;
+  const float oy =  dx / len * NAV_TRK_LINE_HW;
+  const int16_t ax = (int16_t)lroundf((float)x0 + ox), ay = (int16_t)lroundf((float)y0 + oy);
+  const int16_t bx = (int16_t)lroundf((float)x0 - ox), by = (int16_t)lroundf((float)y0 - oy);
+  const int16_t cx2 = (int16_t)lroundf((float)x1 - ox), cy2 = (int16_t)lroundf((float)y1 - oy);
+  const int16_t dx2 = (int16_t)lroundf((float)x1 + ox), dy2 = (int16_t)lroundf((float)y1 + oy);
+
+  const uint16_t col = erase ? TFT_BLACK : TFT_NEON_GREEN;
+  tft.fillTriangle(ax, ay, bx, by, cx2, cy2, col);
+  tft.fillTriangle(ax, ay, cx2, cy2, dx2, dy2, col);
 }
 
-// Kept in step with the marker it belongs to: same availability, same movement
-// threshold, updated in the same pass, so the stalk and its triangle never disagree.
-static void _navUpdateTrackLine(KCM_TFT &tft, bool avail, float screenDeg) {
-  const bool moved = _navTrkLineAvail &&
-                     fabsf(eadiHdgDelta(screenDeg, _navTrkLineDeg)) >= NAV_MK_THRESH_DEG;
-  if (avail == _navTrkLineAvail && !moved) return;
+
+// Kept in step with the triangle it is the tail of.
+//
+// The angle comes from the marker's OWN cache, not from the live bearing, and the test is
+// exact equality rather than a movement threshold. Both matter: compassUpdateMarkerPair()
+// redraws BOTH markers whenever EITHER has changed, so the ground-track triangle follows
+// sub-threshold bearing changes any time the target marker moves. The stalk, testing its
+// own threshold against the live bearing, did not -- so the head walked away from the
+// body by up to a degree, which at r=123 is two pixels of lateral offset. That is the
+// separation the bench saw.
+//
+// `force` covers the other half: a marker's erase box is padded 3 px past its triangle
+// and so reaches r~120, one pixel into the stalk's top. Whenever the pair redrew anything
+// the stalk is redrawn too, whether or not its own angle changed.
+static void _navUpdateTrackLine(KCM_TFT &tft, bool avail, float screenDeg, bool force) {
+  const bool moved = _navTrkLineAvail && (screenDeg != _navTrkLineDeg);
+  if (avail == _navTrkLineAvail && !moved && !force) return;
 
   if (_navTrkLineAvail) _navDrawTrackLine(tft, _navTrkLineDeg, true);
   if (avail) { _navDrawTrackLine(tft, screenDeg, false); _navTrkLineDeg = screenDeg; }
@@ -495,11 +516,12 @@ void drawScreen_NAV(KCM_TFT &tft) {
   const float trkScreenDeg = hasTrk ? eadiHdgDelta(state.srfVelHeading, hdg) : 0.0f;
   const bool  hasTgt = state.targetAvailable;
   const float tgtScreenDeg = hasTgt ? eadiHdgDelta(state.tgtHeading, hdg) : 0.0f;
-  compassUpdateMarkerPair(tft, NAV_GEOM,
-                          _navTrkMk, hasTrk, trkScreenDeg, TFT_NEON_GREEN,
-                          _navTgtMk, hasTgt, tgtScreenDeg, TFT_VIOLET,
-                          NAV_MK_THRESH_DEG);
-  _navUpdateTrackLine(tft, hasTrk, trkScreenDeg);
+  const bool markersRedrawn =
+      compassUpdateMarkerPair(tft, NAV_GEOM,
+                              _navTrkMk, hasTrk, trkScreenDeg, TFT_NEON_GREEN,
+                              _navTgtMk, hasTgt, tgtScreenDeg, TFT_VIOLET,
+                              NAV_MK_THRESH_DEG);
+  _navUpdateTrackLine(tft, _navTrkMk.prevAvail, _navTrkMk.prevScreenDeg, markersRedrawn);
 
   // ── Heading readout ────────────────────────────────────────────────────────────────
   {

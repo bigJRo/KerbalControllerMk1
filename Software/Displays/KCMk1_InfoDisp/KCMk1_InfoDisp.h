@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 11;  // 1.10.11: NAV ground-track line, so DRIFT has a picture
+static const uint8_t SKETCH_VERSION_PATCH = 12;  // 1.10.12: track arrow is one shape, with a solid stem
 
 
 /***************************************************************************************
@@ -356,7 +356,7 @@ void compassDrawMarker(KCM_TFT &tft, const CompassGeom &g, float screenDeg,
                        uint16_t colour, bool erase);
 bool compassUpdateCard(KCM_TFT &tft, const CompassGeom &g, CompassCache &c,
                        float headingDeg, float threshDeg);
-void compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
+bool compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
                              CompassMarkerCache &ca, bool availA, float degA, uint16_t colA,
                              CompassMarkerCache &cb, bool availB, float degB, uint16_t colB,
                              float threshDeg);
