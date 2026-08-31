@@ -90,17 +90,25 @@ static const int16_t NAV_VAL_H    = 48;
 // right column is the whole of what this screen knows and that panel does not.
 
 // ── State ─────────────────────────────────────────────────────────────────────────────
+// Reset sentinel for the change-detection caches. It has to differ from every value a
+// cell can legitimately hold INCLUDING that cell's own "no value" marker. DRIFT used
+// -9999 for both, so entering the screen with no ground track compared equal to the
+// reset value and the "---" was never drawn at all -- the cell just stayed black. V.CLS
+// had the same collision on -9999, and DIST and T+INT on -1. One sentinel that no cell
+// can produce ends the whole class.
+static const int16_t NAV_CACHE_RESET16 = INT16_MIN;
+static const int32_t NAV_CACHE_RESET32 = INT32_MIN;
+
 static CompassCache       _navCard;
 static CompassMarkerCache _navTrkMk;    // ground-track marker
 static CompassMarkerCache _navTgtMk;    // target-bearing marker
-static int16_t _navPrevHdg      = -9999;
-static int16_t _navPrevTrk      = -9999;
-static int16_t _navPrevDrift    = -9999;
-static int32_t _navPrevDist     = -1;
-static bool    _navPrevDistAvail = false;
-static int16_t _navPrevClose    = -9999;
-static int32_t _navPrevTInt     = -1;     // whole seconds; -1 = not closing / no target
-static int16_t _navPrevBrg      = -9999;
+static int16_t _navPrevHdg      = NAV_CACHE_RESET16;
+static int16_t _navPrevTrk      = NAV_CACHE_RESET16;
+static int16_t _navPrevDrift    = NAV_CACHE_RESET16;
+static int32_t _navPrevDist     = NAV_CACHE_RESET32;
+static int16_t _navPrevClose    = NAV_CACHE_RESET16;
+static int32_t _navPrevTInt     = NAV_CACHE_RESET32;  // whole seconds; -1 = not closing
+static int16_t _navPrevBrg      = NAV_CACHE_RESET16;
 
 // ── Ground track ──────────────────────────────────────────────────────────────────────
 // Where the vessel is actually moving, as opposed to where it is pointed. Only
@@ -344,14 +352,15 @@ void chromeScreen_NAV(KCM_TFT &tft) {
 
   // Column labels.
   textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
-             "TRK", TFT_NEON_GREEN, TFT_BLACK);
+             "TRK", TFT_WHITE, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
              "DRIFT", TFT_WHITE, TFT_BLACK);
   // BRG completes the set: every marker on the card has a number. The nose is HDG in the
-  // box above it, the green marker is TRK, the violet one is BRG. The heading labels are
-  // tinted to their marker's colour so the pairing does not have to be remembered.
+  // box above it, the green marker is TRK, the violet one is BRG. Column headings are all
+  // white, like every other heading on the panel -- the legend in the corner is what ties
+  // a name to a marker colour, so the headings do not have to carry it too.
   textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y + 2 * NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
-             "BRG", TFT_VIOLET, TFT_BLACK);
+             "BRG", TFT_WHITE, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
              "DIST", TFT_WHITE, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
@@ -368,12 +377,9 @@ void chromeScreen_NAV(KCM_TFT &tft) {
   _navCard = CompassCache();
   _navTrkMk = CompassMarkerCache();
   _navTgtMk = CompassMarkerCache();
-  _navPrevHdg = _navPrevTrk = _navPrevDrift = -9999;
-  _navPrevClose = -9999;
-  _navPrevDist = -1;
-  _navPrevTInt = -1;
-  _navPrevBrg  = -9999;
-  _navPrevDistAvail = false;
+  _navPrevHdg = _navPrevTrk = _navPrevDrift = NAV_CACHE_RESET16;
+  _navPrevClose = _navPrevBrg = NAV_CACHE_RESET16;
+  _navPrevDist  = _navPrevTInt = NAV_CACHE_RESET32;
 }
 
 
@@ -485,9 +491,8 @@ void drawScreen_NAV(KCM_TFT &tft) {
   // ── DIST — range to target ─────────────────────────────────────────────────────────
   {
     int32_t dist = hasTgt ? (int32_t)lroundf(state.tgtDistance) : -1;
-    if (dist != _navPrevDist || hasTgt != _navPrevDistAvail) {
+    if (dist != _navPrevDist) {
       _navPrevDist = dist;
-      _navPrevDistAvail = hasTgt;
       tft.fillRect(NAV_RCOL_X, NAV_COL_Y + NAV_LBL_H, NAV_COL_W, NAV_VAL_H, TFT_BLACK);
       textCenter(tft, &Roboto_Black_36, NAV_RCOL_X, NAV_COL_Y + NAV_LBL_H,
                  NAV_COL_W, NAV_VAL_H,
