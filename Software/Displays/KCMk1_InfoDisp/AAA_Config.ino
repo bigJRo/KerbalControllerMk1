@@ -52,9 +52,13 @@ const uint8_t AIRBRAKE_CAG      = 38;
    Tune these per-aircraft during flight testing.
 ****************************************************************************************/
 
-// IAS stall speed (m/s). Yellow below this, white-on-red below half.
-// Set to 0.0 to disable stall warning entirely.
-const float STALL_SPEED_MS = 0.0f;
+// IAS stall speed (m/s). REMOVED, not merely disabled: it was 0.0f, which meant the
+// AIRCRAFT IAS row's threshold branch had never executed and the row was permanently
+// dark green while the code implied a stall warning existed. A stall speed is
+// per-airframe and KSP does not report one, so there was never a value to put here.
+// Low-speed awareness lives on the AoA arc and the AoA row instead, which is the
+// physically correct predictor and is what modern light-aircraft PFDs fit for the same
+// reason. See the note on the IAS row in Screen_ACFT.ino before re-adding anything here.
 
 // Maximum safe gear-down speed (m/s). Gear DOWN above this → yellow warning.
 // Typical KSP aircraft: 150–200 m/s. 160 m/s ≈ 576 km/h.

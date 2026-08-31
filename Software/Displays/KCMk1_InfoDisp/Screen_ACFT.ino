@@ -90,6 +90,12 @@ static bool     _acftFullRedrawNeeded = true;
 ModeOverride _acftAltRefOverride;
 static int8_t _acftChipShown = -1;   // -1 unknown, 0 auto-SL, 1 auto-RDR, 2 held-SL, 3 held-RDR
 static int8_t _acftPrevAltRef = -1;   // last label painted on row 0 (-1 = none yet)
+// IAS trend state. Up here rather than beside _acftDrawIasTrend because chromeScreen_ACFT
+// resets it, and the Arduino builder hoists prototypes but not variables.
+static float    _acftTrendPrevIas = -9999.0f;
+static uint32_t _acftTrendPrevMs  = 0;
+static float    _acftTrendAccel   = 0.0f;   // m/s^2, smoothed
+static int8_t   _acftTrendShown   = 0;      // -3..+3, 0 = nothing drawn
 
 static bool _acftAutoRdr() {
     // Hysteresis so the row cannot chatter while levelling off at the switch height.
@@ -564,6 +570,9 @@ static void _acftUpdateAoAArc(KCM_TFT &tft, float aoa) {
 static void chromeScreen_ACFT(KCM_TFT &tft) {
     _acftChipShown  = -1;
     _acftPrevAltRef = -1;
+    _acftTrendPrevIas = -9999.0f;
+    _acftTrendAccel = 0.0f;
+    _acftTrendShown = 0;
     eadiBallResetState();
     _acftFullRedrawNeeded      = true;
     eadiResetRollIndicator();
@@ -714,6 +723,78 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 
 
 
+// ── IAS trend ─────────────────────────────────────────────────────────────────────────
+// Garmin's trend vector is a magenta line up or down the speed tape whose end marks the
+// airspeed predicted six seconds out at the current acceleration; it is a large part of
+// why a glass PFD feels ahead of the aircraft. Its LENGTH is meaningful because it is
+// commensurate with the tape's own scale -- it literally reaches the speed you will have.
+//
+// We have no speed tape, so any length would be an invented scale, and in the ~40 px this
+// row can spare only about three lengths are actually distinguishable. A continuously
+// scaled arrow would therefore degrade to three states while implying precision it does
+// not have. So the three states are made honest instead: a stack of one to three
+// chevrons, up or down, thresholded on the six-second predicted change.
+//
+// Drawn OUTSIDE printValue's fill rect. printValue repaints the value region on every
+// change, which would erase anything inside it -- the same hazard the panels already
+// guard against by redrawing their row dividers last.
+static const float   ACFT_TREND_S      = 6.0f;    // prediction horizon, as Garmin's
+static const float   ACFT_TREND_1_MS   = 2.0f;    // one chevron above this predicted delta
+static const float   ACFT_TREND_2_MS   = 6.0f;    // two
+static const float   ACFT_TREND_3_MS   = 12.0f;   // three
+static const int16_t ACFT_TREND_W      = 13;      // chevron half-width
+static const int16_t ACFT_TREND_H      = 6;       // chevron height
+static const int16_t ACFT_TREND_STEP   = 8;       // vertical pitch of the stack
+static const int16_t ACFT_TREND_X      = ACFT_PANEL_X + 92;   // clear of the "IAS:" label
+static const int16_t ACFT_TREND_BOX_W  = 2 * ACFT_TREND_W + 6;
+static const int16_t ACFT_TREND_BOX_H  = 3 * ACFT_TREND_STEP + ACFT_TREND_H + 4;
+
+static void _acftDrawIasTrend(KCM_TFT &tft, float ias) {
+    const uint32_t now = millis();
+    if (_acftTrendPrevIas < -9000.0f) { _acftTrendPrevIas = ias; _acftTrendPrevMs = now; return; }
+    const float dt = (float)(uint32_t)(now - _acftTrendPrevMs) / 1000.0f;
+    if (dt >= 0.10f) {
+        if (dt <= 2.0f) {
+            const float a = (ias - _acftTrendPrevIas) / dt;
+            const float k = dt / (0.8f + dt);         // ~0.8 s smoothing
+            _acftTrendAccel += k * (a - _acftTrendAccel);
+        }
+        _acftTrendPrevIas = ias;
+        _acftTrendPrevMs  = now;
+    }
+
+    const float d = _acftTrendAccel * ACFT_TREND_S;
+    const float ad = fabsf(d);
+    int8_t want = 0;
+    if      (ad >= ACFT_TREND_3_MS) want = 3;
+    else if (ad >= ACFT_TREND_2_MS) want = 2;
+    else if (ad >= ACFT_TREND_1_MS) want = 1;
+    if (d < 0.0f) want = (int8_t)-want;
+    if (want == _acftTrendShown) return;
+    _acftTrendShown = want;
+
+    const int16_t y0 = rowYFor(2, ACFT_PANEL_NR) +
+                       (rowHFor(ACFT_PANEL_NR) - ACFT_TREND_BOX_H) / 2;
+    tft.fillRect(ACFT_TREND_X - ACFT_TREND_W - 3, y0, ACFT_TREND_BOX_W, ACFT_TREND_BOX_H, TFT_BLACK);
+    if (want == 0) return;
+
+    const bool up = (want > 0);
+    const int8_t n = up ? want : (int8_t)-want;
+    const uint16_t col = TFT_DARK_GREEN;
+    for (int8_t i = 0; i < n; i++) {
+        // Stack from the pointing end back, so one chevron always sits in the same place.
+        const int16_t ty = up ? (y0 + 2 + i * ACFT_TREND_STEP)
+                              : (y0 + ACFT_TREND_BOX_H - 2 - ACFT_TREND_H - i * ACFT_TREND_STEP);
+        const int16_t apexY = up ? ty : (int16_t)(ty + ACFT_TREND_H);
+        const int16_t baseY = up ? (int16_t)(ty + ACFT_TREND_H) : ty;
+        for (int8_t o = 0; o <= 1; o++) {
+            tft.drawLine(ACFT_TREND_X - ACFT_TREND_W, baseY + o, ACFT_TREND_X, apexY + o, col);
+            tft.drawLine(ACFT_TREND_X, apexY + o, ACFT_TREND_X + ACFT_TREND_W, baseY + o, col);
+        }
+    }
+}
+
+
 // ── Right panel update ─────────────────────────────────────────────────────────────────
 // Row order: Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear|Airbrk(6), Brakes|SAS(7)
 // Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
@@ -761,15 +842,24 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         acftVal(1, 1, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 2 — IAS with stall warning
+    // Row 2 — IAS, with a trend indicator.
+    //
+    // NO SPEED-BASED STALL WARNING HERE, deliberately. This row used to branch on
+    // STALL_SPEED_MS, which is 0.0f in AAA_Config.ino, so the threshold arm had never
+    // once executed and the row was permanently dark green -- dead code implying a
+    // feature the panel did not have. A real PFD gets low-speed awareness either from
+    // V-speeds (the white/green/yellow/red bands, red at Vne) or from angle of attack.
+    // KSP and Simpit give us no V-speeds at any price, so the banded version is not
+    // available; AoA is, we already compute it, and it is the physically correct stall
+    // predictor regardless of speed -- which is why AoA-based awareness is what modern
+    // light-aircraft PFDs actually fit. The AoA arc and the AoA row below are therefore
+    // the single stall channel, and colouring IAS from the same signal would just put
+    // one warning on the screen twice. Do not re-add a speed threshold without a real
+    // per-airframe stall speed to put in it.
     {
         float ias = state.IAS;
-        if (STALL_SPEED_MS > 0.0f) {
-            if      (ias < STALL_SPEED_MS * 0.5f) { fg = TFT_WHITE;     bg = TFT_RED;   }
-            else if (ias < STALL_SPEED_MS)         { fg = TFT_YELLOW;    bg = TFT_BLACK; }
-            else                                   { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        } else { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        acftVal(2, 2, "IAS:", fmtMs(ias), fg, bg);
+        acftVal(2, 2, "IAS:", fmtMs(ias), TFT_DARK_GREEN, TFT_BLACK);
+        _acftDrawIasTrend(tft, ias);
     }
 
     // Row 3 — V.Vrt — colours match VSI bar thresholds

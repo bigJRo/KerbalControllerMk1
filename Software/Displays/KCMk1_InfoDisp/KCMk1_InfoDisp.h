@@ -183,7 +183,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 11;
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.11.0: pilot-selectable attitude references
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.11.1: extreme-attitude chevrons, IAS trend
 
 
 /***************************************************************************************

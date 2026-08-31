@@ -215,6 +215,82 @@ void eadiUpdateRollIndicator(KCM_TFT &tft, float roll) {
 
 
 // ═══ Pitch ladder ════════════════════════════════════════════════════════════════════
+// ═══ Extreme-attitude chevrons ═══════════════════════════════════════════════════════
+// Red chevrons pointing at the horizon once it has left the disc, on both attitude
+// screens -- every modern PFD draws them (50 deg up / 30 deg down on the G1000, 60/40 on
+// the G5) because at an extreme attitude the ball alone stops telling you which way is
+// out.
+//
+// The onset is OUR geometry, not Garmin's numbers. The ball is scaled R/30, so the
+// horizon leaves the disc at exactly +/-30 deg in both directions and the fill goes solid
+// sky or solid ground -- the renderer already has EADI_BX_ALLSKY / ALLGND sentinels for
+// that state. Symmetric, because our geometry is symmetric. The labelled ladder rungs
+// still give the number; what the chevrons add is the direction of recovery at a glance,
+// at the moment the pilot has least attention to spare. In KSP, where aeroplanes get
+// flipped regularly, that is worth more than it is in a real cockpit.
+//
+// NOT decluttering past 30/20/65 the way a real PFD does. Our readout panel is a separate
+// region rather than an overlay on the ball, so blanking it would remove numbers a KSP
+// pilot still wants while inverted and gain nothing in legibility.
+//
+// Drawn inside eadiDrawLadder so they inherit its dirty-scanline bookkeeping and are
+// erased by the same delta pass as the rungs.
+static const float   EADI_CHEV_ON_DEG  = 32.0f;   // hysteresis, so the boundary cannot
+static const float   EADI_CHEV_OFF_DEG = 28.0f;   //   flicker while levelling out
+static const int16_t EADI_CHEV_D1      = 52;      // apex distance from disc centre
+static const int16_t EADI_CHEV_D2      = 108;
+static const int16_t EADI_CHEV_LEN     = 30;      // arm run-back along the pointing axis
+static const int16_t EADI_CHEV_HW      = 30;      // arm half-width across it (45 deg)
+static bool _eadiChevronOn = false;
+
+void eadiDrawExtremeChevrons(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) {
+    // Distance from the disc centre to the horizon point IS the pitch, in pixels.
+    const float dx = BCX - (float)EADI_CX, dy = BCY - (float)EADI_CY;
+    const float distPx = sqrtf(dx*dx + dy*dy);
+    const float pitchDeg = distPx / EADI_SCALE;
+
+    if (_eadiChevronOn) { if (pitchDeg < EADI_CHEV_OFF_DEG) _eadiChevronOn = false; }
+    else                { if (pitchDeg > EADI_CHEV_ON_DEG)  _eadiChevronOn = true;  }
+    if (!_eadiChevronOn || distPx < 1.0f) return;
+
+    // Unit vector from the disc centre toward the horizon: the way out.
+    const float hx = dx / distPx, hy = dy / distPx;
+    const float px = -hy, py = hx;              // perpendicular, for the arms
+    (void)sinR; (void)cosR;                     // roll is already carried by (hx,hy)
+
+    const float rr = (float)EADI_R * (float)EADI_R;
+    const int16_t dists[2] = { EADI_CHEV_D1, EADI_CHEV_D2 };
+    for (uint8_t i = 0; i < 2; i++) {
+        const float ax = (float)EADI_CX + hx * (float)dists[i];
+        const float ay = (float)EADI_CY + hy * (float)dists[i];
+        // Arms run back from the apex, opening away from the horizon.
+        const float bx = ax - hx * (float)EADI_CHEV_LEN;
+        const float by = ay - hy * (float)EADI_CHEV_LEN;
+        const float e1x = bx + px * (float)EADI_CHEV_HW, e1y = by + py * (float)EADI_CHEV_HW;
+        const float e2x = bx - px * (float)EADI_CHEV_HW, e2y = by - py * (float)EADI_CHEV_HW;
+
+        // Skip a chevron that would fall outside the disc -- clipping a V leaves a shape
+        // that reads as something else.
+        const float m1 = (e1x-EADI_CX)*(e1x-EADI_CX) + (e1y-EADI_CY)*(e1y-EADI_CY);
+        const float m2 = (e2x-EADI_CX)*(e2x-EADI_CX) + (e2y-EADI_CY)*(e2y-EADI_CY);
+        if (m1 >= rr || m2 >= rr) continue;
+
+        int16_t yLo = (int16_t)min(min(ay, e1y), e2y) - 2;
+        int16_t yHi = (int16_t)max(max(ay, e1y), e2y) + 2;
+        for (int16_t yd = yLo; yd <= yHi; yd++) eadiLadderDirtySet(yd);
+
+        // Two passes one pixel apart, the same way the ladder thickens its rungs.
+        for (int8_t o = 0; o <= 1; o++) {
+            const int16_t ox = (int16_t)(hx * (float)o), oy = (int16_t)(hy * (float)o);
+            tft.drawLine((int16_t)ax + ox, (int16_t)ay + oy,
+                         (int16_t)e1x + ox, (int16_t)e1y + oy, TFT_RED);
+            tft.drawLine((int16_t)ax + ox, (int16_t)ay + oy,
+                         (int16_t)e2x + ox, (int16_t)e2y + oy, TFT_RED);
+        }
+    }
+}
+
+
 // Draw the pitch ladder. Rungs/labels are marked dirty for next frame's delta erase.
 void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) {
     static const int16_t HL_MAJ  = 47;   // major rung half-length
@@ -321,6 +397,8 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) 
         placeLabel(cx1, cy1);
         placeLabel(cx2, cy2);
     }
+
+    eadiDrawExtremeChevrons(tft, BCX, BCY, sinR, cosR);
 }
 
 
@@ -535,6 +613,7 @@ void eadiBallResetState() {
     eadiBuildChordTable();
     memset(_eadiLadderDirty,     0, sizeof(_eadiLadderDirty));
     memset(_eadiLadderDirtyPrev, 0, sizeof(_eadiLadderDirtyPrev));
+    _eadiChevronOn   = false;
     _eadiPrevHorizLo = INT16_MAX;
     _eadiPrevHorizHi = INT16_MIN;
 }
