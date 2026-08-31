@@ -425,6 +425,108 @@ static void _scftUpdateVitals(KCM_TFT &tft) {
 }
 
 
+// ── Attitude rate pointers ────────────────────────────────────────────────────────────
+// The one conspicuous thing both real attitude balls carry that this one did not. The
+// Shuttle ADI has three rate pointers on the ball's edges (full scale selectable +/-1,
+// +/-5 or +/-10 deg/s on the ADI RATE switch) and the Apollo FDAI has the same three
+// needles, because a spacecraft is flown on rates: an RCS pulse is judged by the rate it
+// produces, not by where the ball settles ten seconds later.
+//
+// Rates come from kcmRateUpdate (KerbalDisplayCommon), which differentiates the ROTATION
+// rather than the Euler angles so it stays well conditioned near vertical -- see the
+// header there, including the bench test that is still outstanding.
+//
+// PLACEMENT, and why it is not the Shuttle's. The Shuttle puts roll along the top of the
+// ball and yaw along the bottom, so each pointer moves the way its axis moves. There is
+// no room for that here, and the numbers say so rather than the eye: the throttle scale
+// runs to x~54, the pitch tape occupies 75..112, the disc bezel is 137..553, the bank
+// labels reach x=130 and x=556 at y=174..193, the heading tape starts at y=514 and the
+// panel divider is at x=578. That leaves three usable columns -- 18 px, 23 px and 20 px
+// wide -- and nothing horizontal wider than 23 px anywhere on the screen.
+//
+// So all three share one column to the right of the ball, stacked, all vertical, all
+// reading the same way: UP IS POSITIVE, with positive meaning roll right, nose up, nose
+// right. Consistency between the three is worth more than matching a layout we cannot
+// fit, and keeping them together is how a rate cluster is actually scanned.
+static const float   SCFT_RATE_FS     = 10.0f;   // deg/s at either end of every bar
+
+static const int16_t SCFT_RATE_X      = 557;     // clear of the "60" bank label (556)
+static const int16_t SCFT_RATE_W      = 20;      //   and the panel divider (578)
+static const int16_t SCFT_RATE_LBL_H  = 14;      // single-letter name above each bar
+static const int16_t SCFT_RATE_BAR_H  = 116;
+static const int16_t SCFT_RATE_PITCH_Y = 96;                                    // R
+static const int16_t SCFT_RATE_ROLL_Y  = SCFT_RATE_PITCH_Y + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
+static const int16_t SCFT_RATE_YAW_Y   = SCFT_RATE_ROLL_Y  + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
+
+static const uint16_t SCFT_RATE_FILL  = TFT_WHITE;
+
+static KcmRateTracker _scftRates;
+static const int16_t  SCFT_RATE_RESET = INT16_MIN;
+static int16_t _scftPrevRollPx  = SCFT_RATE_RESET;
+static int16_t _scftPrevPitchPx = SCFT_RATE_RESET;
+static int16_t _scftPrevYawPx   = SCFT_RATE_RESET;
+
+// Signed pixel offset from a bar's zero line, clamped to the track.
+static int16_t _scftRatePx(float degPerSec) {
+    const int16_t halfSpan = SCFT_RATE_BAR_H / 2 - 1;
+    float f = degPerSec / SCFT_RATE_FS;
+    if (f >  1.0f) f =  1.0f;
+    if (f < -1.0f) f = -1.0f;
+    return (int16_t)lroundf(f * (float)halfSpan);
+}
+
+static inline int16_t _scftRateBarY(int16_t rowY) { return rowY + SCFT_RATE_LBL_H; }
+
+// Track outline, zero tick and single-letter name for all three bars.
+static void _scftDrawRateChrome(KCM_TFT &tft) {
+    static const char *names[3] = { "P", "R", "Y" };
+    const int16_t rowY[3] = { SCFT_RATE_PITCH_Y, SCFT_RATE_ROLL_Y, SCFT_RATE_YAW_Y };
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+    for (uint8_t i = 0; i < 3; i++) {
+        const int16_t lw = getFontStringWidth(&Roboto_Black_12, names[i]);
+        tft.setCursor(SCFT_RATE_X + (SCFT_RATE_W - lw) / 2, rowY[i]);
+        tft.print(names[i]);
+        const int16_t by = _scftRateBarY(rowY[i]);
+        tft.drawRect(SCFT_RATE_X, by, SCFT_RATE_W, SCFT_RATE_BAR_H, TFT_GREY);
+        const int16_t zy = by + SCFT_RATE_BAR_H / 2;
+        tft.drawLine(SCFT_RATE_X - 3, zy, SCFT_RATE_X + SCFT_RATE_W + 2, zy, TFT_LIGHT_GREY);
+    }
+}
+
+// Repaint one bar's fill. Only the union of the old and new extents is touched, so a
+// pointer trembling around zero costs a few pixels rather than a full-track fill --
+// these move on almost every frame, unlike the vitals bars they sit near.
+static void _scftDrawRateFill(KCM_TFT &tft, int16_t rowY, int16_t oldPx, int16_t newPx) {
+    const int16_t lo = (int16_t)min((int)(oldPx < 0 ? oldPx : 0), (int)(newPx < 0 ? newPx : 0));
+    const int16_t hi = (int16_t)max((int)(oldPx > 0 ? oldPx : 0), (int)(newPx > 0 ? newPx : 0));
+    if (lo == 0 && hi == 0) return;
+    const int16_t zy = _scftRateBarY(rowY) + SCFT_RATE_BAR_H / 2;   // + is up
+    tft.fillRect(SCFT_RATE_X + 1, zy - hi, SCFT_RATE_W - 2, (hi - lo), TFT_BLACK);
+    if (newPx > 0)      tft.fillRect(SCFT_RATE_X + 1, zy - newPx, SCFT_RATE_W - 2, newPx,  SCFT_RATE_FILL);
+    else if (newPx < 0) tft.fillRect(SCFT_RATE_X + 1, zy,         SCFT_RATE_W - 2, -newPx, SCFT_RATE_FILL);
+}
+
+static void _scftUpdateRates(KCM_TFT &tft) {
+    const bool first = (_scftPrevPitchPx == SCFT_RATE_RESET);
+    if (!kcmRateUpdate(_scftRates, state.heading, state.pitch, state.roll, millis()) && !first)
+        return;
+
+    const int16_t pp = _scftRatePx(_scftRates.pitch);
+    const int16_t rp = _scftRatePx(_scftRates.roll);
+    const int16_t yp = _scftRatePx(_scftRates.yaw);
+    const int16_t pPrev = first ? 0 : _scftPrevPitchPx;
+    const int16_t rPrev = first ? 0 : _scftPrevRollPx;
+    const int16_t yPrev = first ? 0 : _scftPrevYawPx;
+
+    if (pp != pPrev || first) _scftDrawRateFill(tft, SCFT_RATE_PITCH_Y, pPrev, pp);
+    if (rp != rPrev || first) _scftDrawRateFill(tft, SCFT_RATE_ROLL_Y,  rPrev, rp);
+    if (yp != yPrev || first) _scftDrawRateFill(tft, SCFT_RATE_YAW_Y,   yPrev, yp);
+
+    _scftPrevPitchPx = pp; _scftPrevRollPx = rp; _scftPrevYawPx = yp;
+}
+
+
 // ── Screen chrome ─────────────────────────────────────────────────────────────────────
 static void chromeScreen_SCFT(KCM_TFT &tft) {
     eadiBallResetState();
@@ -464,6 +566,10 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     _scftPrevEC           = -9999;
     _scftPrevCore         = -9999;
     _scftPrevSkin         = -9999;
+    kcmRateReset(_scftRates);
+    _scftPrevRollPx       = SCFT_RATE_RESET;
+    _scftPrevPitchPx      = SCFT_RATE_RESET;
+    _scftPrevYawPx        = SCFT_RATE_RESET;
 
     // Bezel ring
     tft.drawCircle(SCFT_CX, SCFT_CY, SCFT_R,     TFT_LIGHT_GREY);
@@ -515,6 +621,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     // ── Throttle bar (left) + vitals strip (bottom) — fill the ACFT VSI/slip slots ─────
     _scftDrawThrottleChrome(tft);
     _scftVitalsChrome(tft);
+    _scftDrawRateChrome(tft);
 
     // ── Right panel chrome ─────────────────────────────────────────────────────────────
     // Vertical divider (2px) between ADI and panel
@@ -845,6 +952,7 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     _scftUpdateHeadingTape(tft, state.heading);
     _scftUpdateThrottle(tft, state.throttle);
     _scftUpdateVitals(tft);
+    _scftUpdateRates(tft);
     _scftUpdatePanel(tft, orbMode);
     _scftDrawTrim(tft);
 }

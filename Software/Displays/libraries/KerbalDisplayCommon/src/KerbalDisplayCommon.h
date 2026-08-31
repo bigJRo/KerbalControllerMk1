@@ -399,6 +399,72 @@ float eadiHdgDelta(float a, float b);
 
 
 /***************************************************************************************
+   BODY ANGULAR RATES  (the Shuttle ADI / Apollo FDAI rate pointers)
+
+   Real spacecraft attitude balls carry rate pointers as well as attitude, because a
+   spacecraft is flown on rates: an RCS pulse is judged by the rate it produces, not by
+   where the ball settles ten seconds later.
+
+   WHY NOT DIFFERENTIATE THE EULER ANGLES. Heading/pitch/roll rates blow up near +/-90
+   deg pitch, where heading and roll trade off against each other -- and a rocket on
+   ascent sits there for the first minutes of every flight. But that is a defect of the
+   PARAMETERISATION, not of the orientation: if heading jumps +10 deg and roll jumps
+   -10 deg at pitch 90, the craft has not moved and the basis built from the pair is
+   unchanged. So this differentiates the ROTATION instead of the angles, and is well
+   conditioned at every attitude.
+
+   HOW. Build the body basis at two successive samples and take the relative rotation
+   dR = R1^T R2, whose skew-symmetric part is the rotation vector:
+
+       w_i = (dR[k][j] - dR[j][k]) / 2      for (i,j,k) cyclic in a right-handed triad
+
+   exact to second order in the angle, so at telemetry cadence (per-sample angles of a
+   few degrees) it is far inside its validity and needs no acos -- which would be
+   ill-conditioned near zero rate, i.e. most of the time.
+
+   HANDEDNESS. KspBodyAxes stores (fwd, right, up) with up = right x fwd, which is a
+   LEFT-handed ordering. The right-handed triad is (fwd, up, right), and that is the
+   order used internally here. Output is converted to the aviation convention:
+   roll + = right wing down, pitch + = nose up, yaw + = nose right.
+
+   NOT YET FLIGHT-VERIFIED. Probed against kspBodyAxes directly, the pair that leaves
+   the ORIENTATION untouched at pitch 90 is heading +d with roll +d -- the SAME sign,
+   not opposite (heading +20 / roll -20 is a genuine 40 deg rotation and reads as one).
+   At 89.5 deg the residual is ~0.17 deg per 50 ms step, i.e. ~3 deg/s, which is the
+   real motion of a craft half a degree off vertical, against the ~400 deg/s that naive
+   Euler differentiation would report on two axes.
+
+   What is NOT yet confirmed is that KSP itself reports the pair that way. If it instead
+   pins heading to an arbitrary value near vertical, the basis jumps and the rates spike.
+   Bench test: point straight up and roll slowly; roll rate should be smooth, not spiky.
+   Until that is run, treat near-vertical rates as unconfirmed.
+****************************************************************************************/
+
+struct KcmRateTracker {
+  float    prev[3][3];      // previous basis, rows in (fwd, up, right) order
+  uint32_t prevMs   = 0;    // timestamp of the sample that produced prev
+  bool     primed   = false;
+  float    roll     = 0.0f; // deg/s, smoothed, aviation convention
+  float    pitch    = 0.0f;
+  float    yaw      = 0.0f;
+};
+
+// Feed one attitude sample. Returns true when the smoothed rates changed.
+//
+// Telemetry arrives slower than the draw loop, so repeated identical attitudes are
+// "no new packet", not "not rotating", and are ignored rather than integrated -- which
+// would otherwise read zero between packets and spike on each arrival. After
+// staleMs of genuinely unchanging attitude the rates decay to zero, which is the
+// correct reading for a craft that really has stopped.
+//
+// tauMs is the smoothing time constant; 0 disables smoothing.
+bool kcmRateUpdate(KcmRateTracker &t, float headingDeg, float pitchDeg, float rollDeg,
+                   uint32_t nowMs, float tauMs = 250.0f, uint32_t staleMs = 600);
+
+void kcmRateReset(KcmRateTracker &t);
+
+
+/***************************************************************************************
    SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
    The moving markers that sit on top of the reticleDrawBase chrome. All three screens
    run this same layer -- same clamp, same erase/repair region, same chrome repair --

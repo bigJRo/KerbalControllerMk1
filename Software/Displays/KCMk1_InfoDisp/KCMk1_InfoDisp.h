@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 19;  // 1.10.19: PFD row 5 is T+Ign in orbit, V.Vrt below
+static const uint8_t SKETCH_VERSION_PATCH = 20;  // 1.10.20: attitude rate pointers on the PFD
 
 
 /***************************************************************************************

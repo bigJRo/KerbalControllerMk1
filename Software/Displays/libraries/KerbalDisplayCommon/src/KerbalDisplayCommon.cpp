@@ -965,6 +965,88 @@ float eadiHdgDelta(float a, float b) {
 
 
 /***************************************************************************************
+   BODY ANGULAR RATES  -- see the header for why this differentiates the rotation
+   rather than the Euler angles, and for the bench test that is still outstanding.
+****************************************************************************************/
+void kcmRateReset(KcmRateTracker &t) {
+  t.primed = false;
+  t.prevMs = 0;
+  t.roll = t.pitch = t.yaw = 0.0f;
+}
+
+bool kcmRateUpdate(KcmRateTracker &t, float headingDeg, float pitchDeg, float rollDeg,
+                   uint32_t nowMs, float tauMs, uint32_t staleMs) {
+  const KspBodyAxes ax = kspBodyAxes(headingDeg, pitchDeg, rollDeg);
+
+  // Right-handed order: (fwd, up, right). KspBodyAxes stores (fwd, right, up), which
+  // is left-handed -- see the header.
+  float cur[3][3];
+  for (uint8_t i = 0; i < 3; i++) {
+    cur[0][i] = ax.fwd[i];
+    cur[1][i] = ax.up[i];
+    cur[2][i] = ax.right[i];
+  }
+
+  if (!t.primed) {
+    memcpy(t.prev, cur, sizeof(cur));
+    t.prevMs = nowMs;
+    t.primed = true;
+    return false;
+  }
+
+  // Unchanged basis means no new telemetry, not "not rotating" -- hold, then decay.
+  bool moved = false;
+  for (uint8_t i = 0; i < 3 && !moved; i++)
+    for (uint8_t j = 0; j < 3; j++)
+      if (fabsf(cur[i][j] - t.prev[i][j]) > 1e-6f) { moved = true; break; }
+
+  if (!moved) {
+    if ((uint32_t)(nowMs - t.prevMs) < staleMs) return false;
+    const bool wasNonZero = (fabsf(t.roll) + fabsf(t.pitch) + fabsf(t.yaw)) > 0.05f;
+    t.roll = t.pitch = t.yaw = 0.0f;
+    return wasNonZero;
+  }
+
+  const float dt = (float)(uint32_t)(nowMs - t.prevMs) / 1000.0f;
+
+  // dR[i][j] = e_i(previous) . e_j(current) -- computed BEFORE prev is overwritten.
+  float dR[3][3];
+  for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t j = 0; j < 3; j++)
+      dR[i][j] = t.prev[i][0]*cur[j][0] + t.prev[i][1]*cur[j][1] + t.prev[i][2]*cur[j][2];
+
+  memcpy(t.prev, cur, sizeof(cur));
+  t.prevMs = nowMs;
+
+  // A long gap means the link stalled or the vessel changed: re-prime rather than
+  // reporting the whole accumulated rotation as one enormous rate.
+  if (dt <= 0.0f || dt > 2.0f) return false;
+
+  // Skew-symmetric part = rotation vector, about (fwd, up, right).
+  const float wFwd   = (dR[2][1] - dR[1][2]) * 0.5f / dt;
+  const float wUp    = (dR[0][2] - dR[2][0]) * 0.5f / dt;
+  const float wRight = (dR[1][0] - dR[0][1]) * 0.5f / dt;
+
+  // Aviation convention. About +fwd the roof swings to starboard, which is a right
+  // bank, so roll takes the sign as-is. About +right the nose rises, so pitch does
+  // too. About +up the nose swings to PORT, so yaw is negated to make nose-right
+  // positive.
+  const float RAD2DEG = 57.29577951308232f;
+  const float rRoll  =  wFwd   * RAD2DEG;
+  const float rPitch =  wRight * RAD2DEG;
+  const float rYaw   = -wUp    * RAD2DEG;
+
+  const float a = (tauMs > 0.0f) ? (dt * 1000.0f) / (tauMs + dt * 1000.0f) : 1.0f;
+  const float pr = t.roll, pp = t.pitch, py = t.yaw;
+  t.roll  += a * (rRoll  - t.roll);
+  t.pitch += a * (rPitch - t.pitch);
+  t.yaw   += a * (rYaw   - t.yaw);
+
+  return (fabsf(t.roll - pr) + fabsf(t.pitch - pp) + fabsf(t.yaw - py)) > 0.05f;
+}
+
+
+/***************************************************************************************
    SHARED RETICLE MARKER LAYER  (MNVR / DOCK / TGT)
 ****************************************************************************************/
 void reticleProject(const ReticleGeom &g, float degRight, float degUp,
