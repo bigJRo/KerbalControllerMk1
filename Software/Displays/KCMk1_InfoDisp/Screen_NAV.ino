@@ -20,7 +20,7 @@
        violet marker              target bearing (matches the target colour elsewhere)
      Heading box, above the card  HDG, three digits
      Left column                  TRK (ground track), DRIFT (track minus heading)
-     Right column                 DIST, V.CLS (closure, when a target is set)
+     Right column                 DIST, V.CLS (closure) and T+INT, when a target is set
      Bottom strip                 IAS / V.Srf and Alt.Rdr
 
    Drift is the one number here that appears nowhere else on either panel: the angle
@@ -91,6 +91,7 @@ static int16_t _navPrevDrift    = -9999;
 static int32_t _navPrevDist     = -1;
 static bool    _navPrevDistAvail = false;
 static int16_t _navPrevClose    = -9999;
+static int32_t _navPrevTInt     = -1;     // whole seconds; -1 = not closing / no target
 static int16_t _navPrevSpd      = -9999;
 static int32_t _navPrevAlt      = -99999;
 
@@ -122,6 +123,9 @@ void chromeScreen_NAV(KCM_TFT &tft) {
              "DIST", TFT_WHITE, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
              "V.CLS", TFT_WHITE, TFT_BLACK);
+  // Third block completes the target group: how far, how fast, how long.
+  textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + 2 * NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
+             "T+INT", TFT_WHITE, TFT_BLACK);
 
   // Force every value to repaint on the first frame after entry.
   _navCard = CompassCache();
@@ -130,6 +134,7 @@ void chromeScreen_NAV(KCM_TFT &tft) {
   _navPrevHdg = _navPrevTrk = _navPrevDrift = -9999;
   _navPrevClose = _navPrevSpd = -9999;
   _navPrevDist = -1;
+  _navPrevTInt = -1;
   _navPrevDistAvail = false;
   _navPrevAlt = -99999;
 }
@@ -242,6 +247,24 @@ void drawScreen_NAV(KCM_TFT &tft) {
                  NAV_COL_W, NAV_VAL_H,
                  hasTgt ? fmtMs(state.tgtVelocity) : String("---"),
                  hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
+    }
+  }
+
+  // ── T+INT — time to intercept, distance over closure rate ──────────────────────────
+  // The same quantity, the same formula and the same label as TARGET's T+Int row: only
+  // meaningful while actually closing, dashed otherwise. DIST and V.CLS were already
+  // here and neither answers "how long"; on an approach that is the number being flown
+  // to, and it is nowhere on this panel's partner.
+  {
+    const bool closing = hasTgt && (state.tgtVelocity < -0.5f);
+    int32_t t = closing ? (int32_t)(state.tgtDistance / fabsf(state.tgtVelocity)) : -1;
+    if (t != _navPrevTInt) {
+      _navPrevTInt = t;
+      const int16_t y = NAV_COL_Y + 2 * NAV_BLOCK_H + NAV_LBL_H;
+      tft.fillRect(NAV_RCOL_X, y, NAV_COL_W, NAV_VAL_H, TFT_BLACK);
+      textCenter(tft, &Roboto_Black_36, NAV_RCOL_X, y, NAV_COL_W, NAV_VAL_H,
+                 closing ? formatTimeCompact((float)t) : String("---"),
+                 closing ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
     }
   }
 
