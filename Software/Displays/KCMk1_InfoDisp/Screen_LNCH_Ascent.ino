@@ -57,9 +57,9 @@
 //
 // Alt.SL and ApA are position-only on this screen now: the altitude ladder marks both
 // against a labelled tick scale, and there is nowhere to put their digits. The left
-// panel is packed to 573 px of 576, and the gap between the ladder's marker letters
-// (ending at x=116) and the ATMO gauge's left triangle (x=166) is 10 px, where "101 km"
-// needs about 60. The PFD on the other panel carries both in the great majority of
+// panel is packed to 573 px of 576; the ladder strip is erased out to x=156 (its marker
+// labels reach x=124) and the atmosphere column's left triangle starts at x=166, so the
+// free space between them is 10 px, where "101 km" needs about 60. The PFD on the other panel carries both in the great majority of
 // ascent phases; the exception is a spaceplane still in the atmosphere, where that panel
 // is AIRCRAFT and has neither -- a deliberate, accepted cost rather than an oversight.
 //
@@ -413,7 +413,10 @@ static float _lnchAsLadderTickInterval(float scaleTop) {
 // in the same color as the triangle.
 // Tip at LADDER_LINE_X+3, base at MARKER_X + MARKER_W, label just past the base.
 static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of label letter (past base)
-static const int16_t LNCH_AS_MARKER_LBL_W    = 16;    // width reserved for label letter
+static const int16_t LNCH_AS_MARKER_LBL_W    = 24;    // width reserved for the marker label
+                                                     // (24, not 16: "Ap" is 20 px at
+                                                     // Black_16 and the marker erase is
+                                                     // sized from this)
 
 static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
                                  bool filled, const char *label) {
@@ -430,7 +433,10 @@ static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
         tft.drawLine(tipX, y, baseX, y + halfH, color);
         tft.drawLine(baseX, y - halfH, baseX, y + halfH, color);
     }
-    // One-letter label to the right of the triangle
+    // Label to the right of the triangle. The vessel marker passes an empty string: a
+    // filled pointer on an altitude scale is "you are here" without being told, and the
+    // bare "V" it used to carry read as a velocity rather than as the vessel.
+    if (!label || !*label) return;
     textLeft(tft, &Roboto_Black_16,
              LNCH_AS_MARKER_LBL_X - 8, y - 9,   // x0-8 because textLeft adds TEXT_BORDER=8
              LNCH_AS_MARKER_LBL_W, 18,
@@ -672,13 +678,13 @@ static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
             _lnchAsEraseAltMarker(tft, _lnchAsPrevVesselPx);
             _lnchAsRepairRefLines(tft, _lnchAsPrevVesselPx);
         }
-        _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "V");
+        _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "");
         _lnchAsPrevVesselPx = vesselY;
 
         // If ApA was on top of vessel's old position, it may have been erased — redraw.
         if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0 &&
             abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-            _lnchAsDrawAltMarker(tft, _lnchAsPrevApAPx, TFT_YELLOW, false, "A");
+            _lnchAsDrawAltMarker(tft, _lnchAsPrevApAPx, TFT_YELLOW, false, "Ap");
         }
     }
 
@@ -692,10 +698,10 @@ static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
                 _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
                 // If vessel was on top of ApA's old position, redraw vessel
                 if (abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-                    _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "V");
+                    _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "");
                 }
             }
-            _lnchAsDrawAltMarker(tft, apaY, TFT_YELLOW, false, "A");
+            _lnchAsDrawAltMarker(tft, apaY, TFT_YELLOW, false, "Ap");
             _lnchAsPrevApAPx    = apaY;
             _lnchAsPrevApAValid = true;
         }
@@ -705,7 +711,7 @@ static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
             _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
             _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
             if (abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-                _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "V");
+                _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "");
             }
             _lnchAsPrevApAValid = false;
             _lnchAsPrevApAPx    = -1;
@@ -1433,10 +1439,22 @@ static float _lnchAsDynPressureKPa() {
 
 // Chrome: name label + stable zone fill + border.
 static void _lnchAsDrawAtmoChrome(KCM_TFT &tft) {
-    int16_t cx = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W / 2;
+    // Name box matches the column's true extent (triangle to triangle), not a fixed 100 px
+    // centred on the bar. The wider box reached x=252 and overlapped the V.Vrt window at
+    // 248, so once both carried a border the two drew in the same four columns and the
+    // shared edge flickered between them every frame. 166..238 leaves the same 10 px gap
+    // to the V.Vrt window that the other columns have between them.
+    //
+    // The name says "T+Vac", not "ATMO", because the name row labels the number below it
+    // and this is the one column where the bar and its window show different quantities.
+    // The bar is a sky-to-navy gradient with a triangle on an altitude-like axis: it says
+    // "atmosphere, and how deep" without being told. A bare "3:14" says nothing at all.
+    // Label the ambiguous half.
+    const int16_t nameX0 = LNCH_AS_ATMO_X_LEFT - LNCH_AS_ATMO_TRI_GAP - LNCH_AS_ATMO_TRI_W;
+    const int16_t nameW  = LNCH_AS_ATMO_RIGHT_EXT - nameX0;
     textCenter(tft, &Roboto_Black_20,
-               cx - 50, LNCH_AS_GAUGE_NAME_Y, 100, LNCH_AS_GAUGE_NAME_H,
-               "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
+               nameX0, LNCH_AS_GAUGE_NAME_Y, nameW, LNCH_AS_GAUGE_NAME_H,
+               "T+Vac", TFT_LIGHT_GREY, TFT_BLACK);
     _lnchAsDrawAtmoBackground(tft);
     tft.drawRect(LNCH_AS_ATMO_X_LEFT, LNCH_AS_ATMO_Y_TOP,
                  LNCH_AS_ATMO_W + 1,
@@ -1531,24 +1549,45 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
 // The three bar gauges' digital windows. Their values used to be rows 0-4 of the
 // readout column; they now sit on the gauges they belong to.
 static void _lnchAsUpdateGaugeValues(KCM_TFT &tft) {
-    // ATMO — the gauge's own scale position as a percentage, which is what the triangle
-    // beside it is pointing at.
+    // ATMO — time until the vessel leaves the atmosphere.
     //
-    // Not raw density: the bar plots (rho / rho_surface)^0.25, a fourth-root precisely
-    // so the thin upper atmosphere stays visible, and a linear density in kg/m3 collapses
-    // to "0.00" above about 30 km while the triangle is still a quarter of the way up the
-    // bar. Showing the depth fraction instead keeps the number alive for as long as the
-    // picture is, and makes the window the bar's own readout rather than a second,
-    // differently-scaled quantity that appears to have died.
+    // Not the gauge's own scale position: a percentage that restates where the triangle
+    // already is adds nothing, which is the same objection that moved the bar values out
+    // of the readout column in the first place. And not raw density, which the first
+    // version showed: the bar plots (rho / rho_surface)^0.25, a fourth root precisely so
+    // the thin upper atmosphere stays visible, so a linear density in kg/m3 reaches
+    // "0.00" around 30 km while the triangle is still a quarter of the way up.
+    //
+    // Time-to-vacuum is the question the bar cannot answer. The bar says how deep; this
+    // says how much longer the air matters -- when drag stops shaping the trajectory and
+    // the ascent becomes a vacuum problem. Instantaneous-rate extrapolation, the same
+    // convention T+Ap and T.Grnd already use on this panel.
+    //
+    // The target is lowSpace, which is the same atmosphere top the ladder two columns to
+    // the left draws its sky-blue ATM reference line at, so the number counts down to a
+    // line the pilot can already see the vessel marker climbing toward.
     {
-        const int16_t cx   = LNCH_AS_ATMO_X_LEFT + LNCH_AS_ATMO_W / 2;
-        const float   frac = _lnchAsAtmoFraction();
+        const int16_t x0 = LNCH_AS_ATMO_X_LEFT - LNCH_AS_ATMO_TRI_GAP - LNCH_AS_ATMO_TRI_W;
+        const int16_t w  = LNCH_AS_ATMO_RIGHT_EXT - x0;
+        const float   top = currentBody.lowSpace;
+        const float   rem = top - state.altitude;
+
         char buf[12];
         uint16_t fg = TFT_DARK_GREEN;
-        if (frac < 0.0f)      { strcpy(buf, "---"); fg = TFT_DARK_GREY; }   // no atmosphere
-        else if (frac <= 0.0f) { strcpy(buf, "0%");  fg = TFT_DARK_GREY; }  // vacuum
-        else                   snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(frac * 100.0f));
-        _lnchAsGaugeValue(tft, cx - 50, 100, String(buf), fg, _lnchAsPrevAtmoVal);
+        if (!currentBody.hasAtmo || top <= 0.0f || rem <= 0.0f) {
+            strcpy(buf, "---"); fg = TFT_DARK_GREY;          // already out, or no air to leave
+        } else if (state.verticalVel <= 1.0f) {
+            strcpy(buf, "---"); fg = TFT_DARK_GREY;          // not climbing: no estimate to give
+        } else {
+            const float t = rem / state.verticalVel;
+            // Over an hour is not an ascent. formatTimeCompact would render "1h 02:03",
+            // which is 82 px in a 72 px box, so the useless case is also the one that
+            // would not fit -- dash it rather than widen the window for it.
+            if (t > 3600.0f) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
+            else             { snprintf(buf, sizeof(buf), "%d:%02d",
+                                        (int)(t / 60.0f), (int)fmodf(t, 60.0f)); }
+        }
+        _lnchAsGaugeValue(tft, x0, w, String(buf), fg, _lnchAsPrevAtmoVal);
     }
     // V.Vrt — signed, red descending, matching the bar's own fill colours.
     //

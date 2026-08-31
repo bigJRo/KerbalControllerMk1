@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.10.3: ascent ladder is position-only, documented
+static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.10.4: ascent gauge windows unstacked; ATMO window shows T+Vac
 
 
 /***************************************************************************************
