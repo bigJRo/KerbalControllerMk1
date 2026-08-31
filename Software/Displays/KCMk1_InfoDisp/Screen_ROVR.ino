@@ -615,7 +615,7 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
 // derivable velocity for Stg.Brn: convert a level into the time it buys you, because
 // time is what the phase turns on.
 //
-// COLOURED BY TIME, NOT BY PERCENTAGE. Colouring from ROVER_EC_*_PCT would put the
+// COLOURED BY TIME, NOT BY PERCENTAGE. Colouring from the EC_PCT_* tiers would put the
 // problem straight back: 19% would show yellow beside "2h 14m", and 40% under a heavy
 // load would show GREEN beside "4m". This cell is a different quantity from EC% and
 // properly gets its own scale -- the same relationship Stg.Brn (seconds) has to

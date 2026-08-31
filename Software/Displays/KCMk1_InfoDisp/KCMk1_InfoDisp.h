@@ -193,7 +193,6 @@ extern bool       debugMode;
 extern bool       demoMode;
 extern bool       fpsDiag;   // true = print frame-rate / render-time diagnostics to Serial (~1 Hz)
 extern const bool STANDALONE_TEST;  // true = skip I2C master handshake (no master connected)
-extern const float STALL_SPEED_MS;
 extern const float REENTRY_SAS_AERO_STABLE_MACH;
 extern const float LNDG_CHUTE_MAIN_MAX_Q;    // main chute rip dynamic pressure (Pa)
 extern const float LNDG_CHUTE_DROGUE_MAX_Q;  // drogue rip dynamic pressure (Pa)

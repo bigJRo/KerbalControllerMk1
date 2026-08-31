@@ -845,7 +845,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // Row 2 — IAS, with a trend indicator.
     //
     // NO SPEED-BASED STALL WARNING HERE, deliberately. This row used to branch on
-    // STALL_SPEED_MS, which is 0.0f in AAA_Config.ino, so the threshold arm had never
+    // STALL_SPEED_MS, which was 0.0f in AAA_Config.ino, so the threshold arm had never
     // once executed and the row was permanently dark green -- dead code implying a
     // feature the panel did not have. A real PFD gets low-speed awareness either from
     // V-speeds (the white/green/yellow/red bands, red at Vne) or from angle of attack.
