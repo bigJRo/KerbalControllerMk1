@@ -3,13 +3,22 @@
 
 #define KDC_VERSION_MAJOR 3
 #define KDC_VERSION_MINOR 7
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.7.1 — glyph data moved out of DTCM into flash. On Teensy 4 a plain `const` array
+            lands in .data, which shares the 512 KB of FlexRAM with ITCM; seventeen fonts
+            is ~189 KB of it, and a build measured .data at 195,264 against a DTCM
+            allowance of 196,608 -- nothing left for the stack, and teensy_size failing
+            outright rather than reporting it. A KCM_FONT_FLASH section attribute on each
+            font's _data[] and _index[] moves them to .progmem. Flash is memory-mapped on
+            this part, so the renderer is unchanged; the macro is a no-op off-target so
+            the host harnesses still build the same files.
 
    v3.7.0 — kcmRateUpdate/kcmRateReset: body angular rates for the Shuttle-style rate
             pointers, derived from the relative rotation of two successive kspBodyAxes
@@ -77,7 +86,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.7.0
+  Version: 3.7.1
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
