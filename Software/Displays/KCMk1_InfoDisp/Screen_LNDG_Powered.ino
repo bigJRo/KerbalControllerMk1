@@ -642,7 +642,14 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         printDispChrome(tft, RCF, RX, rowYFor(0,RNR), RW,  rowHFor(RNR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T+Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
         printDispChrome(tft, RCF, RX, rowYFor(2,RNR), RW,  rowHFor(RNR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RCF, RX, rowYFor(3,RNR), RW,  rowHFor(RNR), "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+        // Stg.Brn, not V.Srf. V.Srf carried no information on this screen: the panel
+        // already shows V.Vrt, and Fwd and Lat are the two components of the horizontal
+        // speed, which is itself sqrt(V.Srf^2 - V.Vrt^2) -- so V.Srf was fully determined
+        // by three numbers sitting beside it, and duplicated on SPACECRAFT besides.
+        // Seconds of thrust left is the number a powered descent actually turns on, it
+        // has no picture on either panel, and it is the same field and label ASCENT and
+        // CIRCULARISATION already use.
+        printDispChrome(tft, RCF, RX, rowYFor(3,RNR), RW,  rowHFor(RNR), "Stg.Brn:", COL_LABEL, COL_BACK, COL_NO_BDR);
 
         // Row 4: Fwd | Lat split
         {
@@ -972,8 +979,16 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             rpVal(2, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg, 2);
         }
 
-        // Row 3: V.Srf
-        rpVal(3, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK, 3);
+        // Row 3: Stg.Brn — same thresholds as ASCENT's, so a burn-time warning means
+        // the same thing on the way up and on the way down.
+        {
+            uint16_t sfg, sbg;
+            thresholdColor(state.stageBurnTime,
+                           LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
+                           LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
+                           TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            rpVal(3, "Stg.Brn:", formatTimeCompact(state.stageBurnTime), sfg, sbg, 3);
+        }
 
         // Row 4: Fwd | Lat (split)
         {
@@ -1080,7 +1095,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         }
 
         // Horizontal borders redrawn last — after all value updates so they're never overwritten
-        // Alt.Rdr | V.Srf (rows 2→3)
+        // Alt.Rdr | Stg.Brn (rows 2→3)
         tft.drawLine(LNDG_DIV_X, rowYFor(3,RNR) - 2, CONTENT_W, rowYFor(3,RNR) - 2, TFT_GREY);
         tft.drawLine(LNDG_DIV_X, rowYFor(3,RNR) - 1, CONTENT_W, rowYFor(3,RNR) - 1, TFT_GREY);
         // Fwd/Lat | ΔV.Stg (rows 4→5)
