@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 12;  // 1.10.12: track arrow is one shape, with a solid stem
+static const uint8_t SKETCH_VERSION_PATCH = 13;  // 1.10.13: ORBIT gains SMA and Ecc; stale vessel-dot fix
 
 
 /***************************************************************************************
