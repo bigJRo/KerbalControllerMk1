@@ -33,7 +33,9 @@ class Font:
 
     @staticmethod
     def _array(src, sym):
-        m = re.search(re.escape(sym) + r'\s*\[\s*\]\s*=\s*\{(.*?)\n\};', src, re.S)
+        # The declaration may carry a section attribute between the [] and the =
+        # (KCM_FONT_FLASH, which puts glyph data in flash on Teensy 4).
+        m = re.search(re.escape(sym) + r'\s*\[\s*\]\s*(?:\w+\s*)*=\s*\{(.*?)\n\};', src, re.S)
         return bytearray(int(x, 16) for x in re.findall(r'0x([0-9A-Fa-f]{2})', m.group(1)))
 
     # --- bit access, matching _fetchbits_unsigned ---

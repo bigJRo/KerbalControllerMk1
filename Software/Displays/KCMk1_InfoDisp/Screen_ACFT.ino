@@ -743,11 +743,20 @@ static const float   ACFT_TREND_1_MS   = 2.0f;    // one chevron above this pred
 static const float   ACFT_TREND_2_MS   = 6.0f;    // two
 static const float   ACFT_TREND_3_MS   = 12.0f;   // three
 static const int16_t ACFT_TREND_W      = 13;      // chevron half-width
-static const int16_t ACFT_TREND_H      = 6;       // chevron height
-static const int16_t ACFT_TREND_STEP   = 8;       // vertical pitch of the stack
+static const int16_t ACFT_TREND_H      = 7;       // chevron height (apex to base)
+static const int16_t ACFT_TREND_THICK  = 3;       // stroke weight, in stacked scanlines
+static const int16_t ACFT_TREND_STEP   = 10;      // vertical pitch of the stack
 static const int16_t ACFT_TREND_X      = ACFT_PANEL_X + 92;   // clear of the "IAS:" label
 static const int16_t ACFT_TREND_BOX_W  = 2 * ACFT_TREND_W + 6;
-static const int16_t ACFT_TREND_BOX_H  = 3 * ACFT_TREND_STEP + ACFT_TREND_H + 4;
+static const int16_t ACFT_TREND_BOX_H  = 3 * ACFT_TREND_STEP + ACFT_TREND_H +
+                                         ACFT_TREND_THICK + 4;
+// Magenta, not green. The chevrons are the one thing in this row that is a PREDICTION
+// rather than a measurement, and magenta is what a glass cockpit reserves for computed
+// guidance (flight director bars, the magenta course line on a moving map) as against the
+// green of live state. Colouring them like the IAS value they sit beside implied they
+// were part of it. Keep this distinct from TFT_VIOLET, which is the target-marker colour
+// on SCFT/ACFT/ROVR -- these are unrelated channels that must not read as one.
+static const uint16_t ACFT_TREND_COL   = TFT_MAGENTA;
 
 static void _acftDrawIasTrend(KCM_TFT &tft, float ias) {
     const uint32_t now = millis();
@@ -780,16 +789,21 @@ static void _acftDrawIasTrend(KCM_TFT &tft, float ias) {
 
     const bool up = (want > 0);
     const int8_t n = up ? want : (int8_t)-want;
-    const uint16_t col = TFT_DARK_GREEN;
     for (int8_t i = 0; i < n; i++) {
         // Stack from the pointing end back, so one chevron always sits in the same place.
+        // The stroke is laid down as ACFT_TREND_THICK scanlines BELOW the nominal line, so
+        // the down-stack has to start that much higher or the thickest chevron's base
+        // would spill out of the erase box and survive the next repaint.
         const int16_t ty = up ? (y0 + 2 + i * ACFT_TREND_STEP)
-                              : (y0 + ACFT_TREND_BOX_H - 2 - ACFT_TREND_H - i * ACFT_TREND_STEP);
+                              : (y0 + ACFT_TREND_BOX_H - 2 - ACFT_TREND_H
+                                    - (ACFT_TREND_THICK - 1) - i * ACFT_TREND_STEP);
         const int16_t apexY = up ? ty : (int16_t)(ty + ACFT_TREND_H);
         const int16_t baseY = up ? (int16_t)(ty + ACFT_TREND_H) : ty;
-        for (int8_t o = 0; o <= 1; o++) {
-            tft.drawLine(ACFT_TREND_X - ACFT_TREND_W, baseY + o, ACFT_TREND_X, apexY + o, col);
-            tft.drawLine(ACFT_TREND_X, apexY + o, ACFT_TREND_X + ACFT_TREND_W, baseY + o, col);
+        for (int16_t o = 0; o < ACFT_TREND_THICK; o++) {
+            tft.drawLine(ACFT_TREND_X - ACFT_TREND_W, baseY + o,
+                         ACFT_TREND_X,                apexY + o, ACFT_TREND_COL);
+            tft.drawLine(ACFT_TREND_X,                apexY + o,
+                         ACFT_TREND_X + ACFT_TREND_W, baseY + o, ACFT_TREND_COL);
         }
     }
 }

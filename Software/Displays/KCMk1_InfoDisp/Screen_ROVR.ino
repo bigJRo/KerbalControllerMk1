@@ -82,19 +82,31 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 // (region left edge x=190) and the formatted distance value is flush-right against
 // the right column (region right edge x=750). The strip sits just below the
 // compass erase region (which ends at y=551), so the two never collide.
-// Two pairs share the strip's 560 px (190..750). Measured against the real glyph data:
-// "Dist:" is 74 px and "T+Tgt:" 109 at Black_36, the widest value ("59m 30s") is 142, so
-// both pairs need 467 and there are 93 px of air to distribute.
+// Two pairs share the strip's 560 px (190..750), and at Roboto_Black_36 they did not fit.
+// The first budget assumed the widest time was "59m 30s" at 142 px; the actual string is
+// "59 m: 30 s" -- formatTimeCompact is IDENTICAL to formatTime below one hour, and that is
+// formatTime's minutes form -- which is 171 px against a 155 px cell. textRight aligns to
+// the cell's right edge and simply starts further left when the string overruns, so the
+// value walked backwards into the "T+Tgt:" label and sat on top of it. Distance had the
+// same defect and was worse: formatAlt/formatSep emit two decimals below 1000, so a plain
+// "999.00 m" is 119 px and "999.99 km" is 134, with "999,999 km" at 150.
+//
+// Dropping the strip to Roboto_Black_28 fixes both with room to spare. Re-measured
+// against the real glyph data at Black_28: "Dist:" 58, "T+Tgt:" 85, widest distance 150
+// ("999,999 km"), widest time 131 ("59 m: 30 s"). Each value cell is sized so that even a
+// string filling it cannot reach back past its own left edge -- the label can then never
+// be overwritten, whatever the value formats to.
+static const tFont  *ROVR_TGTD_FONT      = &Roboto_Black_28;
 static const int16_t ROVR_TGTD_LBL_X     = 190;
-static const int16_t ROVR_TGTD_LBL_W     = 90;
-static const int16_t ROVR_TGTD_VAL_X     = 280;
-static const int16_t ROVR_TGTD_VAL_W     = 155;  // right edge = 435
-static const int16_t ROVR_TGTT_LBL_X     = 465;
-static const int16_t ROVR_TGTT_LBL_W     = 125;
-static const int16_t ROVR_TGTT_VAL_X     = 595;
-static const int16_t ROVR_TGTT_VAL_W     = 155;  // right edge = 750
+static const int16_t ROVR_TGTD_LBL_W     = 70;   // label ends at 256 (190 + 8 + 58)
+static const int16_t ROVR_TGTD_VAL_X     = 260;
+static const int16_t ROVR_TGTD_VAL_W     = 170;  // right edge = 430; fits 162 px of value
+static const int16_t ROVR_TGTT_LBL_X     = 460;  // 30 px clear of the distance value cell
+static const int16_t ROVR_TGTT_LBL_W     = 97;   // label ends at 553 (460 + 8 + 85)
+static const int16_t ROVR_TGTT_VAL_X     = 560;
+static const int16_t ROVR_TGTT_VAL_W     = 190;  // right edge = 750; fits 182 px of value
 static const int16_t ROVR_TGTD_Y         = 552;
-static const int16_t ROVR_TGTD_H         = 48;   // Roboto_Black_36 cap 43 + padding
+static const int16_t ROVR_TGTD_H         = 44;   // Roboto_Black_28 cap 33, vertically centred
 
 // Heading readout — single-line boxed value above the nose triangle. The box
 // border is stationary chrome; only the numeric value is redrawn on changes.
@@ -378,10 +390,10 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
 
     // Both labels are static, so they are drawn once per availability transition.
     if (!_rovrPrevTgtDistAvail) {
-        textLeft(tft, &Roboto_Black_36,
+        textLeft(tft, ROVR_TGTD_FONT,
                  ROVR_TGTD_LBL_X, ROVR_TGTD_Y, ROVR_TGTD_LBL_W, ROVR_TGTD_H,
                  "Dist:", TFT_WHITE, TFT_BLACK);
-        textLeft(tft, &Roboto_Black_36,
+        textLeft(tft, ROVR_TGTD_FONT,
                  ROVR_TGTT_LBL_X, ROVR_TGTD_Y, ROVR_TGTT_LBL_W, ROVR_TGTD_H,
                  "T+Tgt:", TFT_WHITE, TFT_BLACK);
         _rovrPrevTgtDistAvail = true;
@@ -397,7 +409,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
         if (_rovrPrevTgtDistVal >= 0)
             tft.fillRect(ROVR_TGTD_VAL_X, ROVR_TGTD_Y,
                          ROVR_TGTD_VAL_W, ROVR_TGTD_H, TFT_BLACK);
-        textRight(tft, &Roboto_Black_36,
+        textRight(tft, ROVR_TGTD_FONT,
                   ROVR_TGTD_VAL_X, ROVR_TGTD_Y, ROVR_TGTD_VAL_W, ROVR_TGTD_H,
                   formatAlt((float)iDist), TFT_VIOLET, TFT_BLACK);
         _rovrPrevTgtDistVal = iDist;
@@ -435,7 +447,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
         if (val != _rovrPrevTgtTimeVal || fg != _rovrPrevTgtTimeFg || bg != _rovrPrevTgtTimeBg) {
             tft.fillRect(ROVR_TGTT_VAL_X, ROVR_TGTD_Y,
                          ROVR_TGTT_VAL_W, ROVR_TGTD_H, TFT_BLACK);
-            textRight(tft, &Roboto_Black_36,
+            textRight(tft, ROVR_TGTD_FONT,
                       ROVR_TGTT_VAL_X, ROVR_TGTD_Y, ROVR_TGTT_VAL_W, ROVR_TGTD_H,
                       val, fg, bg);
             _rovrPrevTgtTimeVal = val;

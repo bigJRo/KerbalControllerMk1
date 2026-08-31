@@ -520,11 +520,20 @@ static const float   SCFT_RATE_FS     = 10.0f;   // deg/s at either end of every
 static const int16_t SCFT_RATE_X      = 557;     // clear of the "60" bank label (556)
 static const int16_t SCFT_RATE_W      = 20;      //   and the panel divider (578)
 static const int16_t SCFT_RATE_LBL_H  = 14;      // single-letter name above each bar
-// Shortened from 116 so the column ends at y=462, clear of the TRIM flag at y=475 --
-// TRIM is right-aligned to the heading tape (x 515..570) and would have run straight
-// through the bottom of the yaw bar.
-static const int16_t SCFT_RATE_BAR_H  = 100;
-static const int16_t SCFT_RATE_PITCH_Y = 96;                                    // R
+// VERTICAL BUDGET. The column is boxed in at both ends and both numbers are measured
+// against the real glyph data rather than guessed:
+//   TOP  -- the roll readout is right-justified into x 497..583, so it lands squarely on
+//           this column. Its value row paints y 97..130 ("+180" at Roboto_Black_28,
+//           cap 33, centred in the 38 px value row below the 30 px label row from
+//           TITLE_TOP=62). The first version started the stack at y=96, which put the "P"
+//           label and the top 20 px of the pitch bar inside that box -- so every time the
+//           roll digits changed they were erased. Start at 136 to clear it with margin.
+//   BOTTOM-- the TRIM flag: "TRIM" is 59 px at Roboto_Black_24 (cap 29), right-aligned to
+//           the heading tape's right edge (578) less 8, so x 511..570 -- squarely on this
+//           column too -- and its erase rect starts at y=473. The stack must end above it.
+// That leaves 136..471, i.e. 335 px for 3*(14 + BAR_H) + 2*8, so BAR_H <= 92.
+static const int16_t SCFT_RATE_BAR_H  = 92;
+static const int16_t SCFT_RATE_PITCH_Y = 136;                                   // R
 static const int16_t SCFT_RATE_ROLL_Y  = SCFT_RATE_PITCH_Y + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
 static const int16_t SCFT_RATE_YAW_Y   = SCFT_RATE_ROLL_Y  + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
 
