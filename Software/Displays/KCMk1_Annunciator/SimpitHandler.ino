@@ -222,7 +222,19 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(targetMessage)) {
         targetMessage t = parseMessage<targetMessage>(msg);
         state.tgtDistance = t.distance;
-        state.tgtVelocity = t.velocity;
+        // Signed closure, matching the InfoDisp: negative = closing. Simpit sends
+        // ship_tgtVelocity.magnitude, which is never negative and is the speed along
+        // the whole relative velocity vector rather than along the line of sight, so
+        // it is projected onto the bearing here. Nothing on this panel reads the sign
+        // today -- GPWS uses tgtDistance -- but the two panels must not disagree about
+        // what the same field means.
+        {
+          float vHat[3], dHat[3];
+          kspDirUnit(t.velocityHeading, t.velocityPitch, vHat);
+          kspDirUnit(t.heading,         t.pitch,         dHat);
+          state.tgtVelocity = -t.velocity *
+                              (vHat[0]*dHat[0] + vHat[1]*dHat[1] + vHat[2]*dHat[2]);
+        }
       }
       break;
 

@@ -268,7 +268,11 @@ struct AppState {
   // Target (only valid when targetAvailable)
   bool      targetAvailable = false;
   float     tgtDistance   = 0.0f;    // m
-  float     tgtVelocity   = 0.0f;    // m/s relative (negative = closing)
+  float     tgtVelocity   = 0.0f;    // m/s along the bearing, negative = closing.
+                                     //   NOT Simpit's raw field, which is the unsigned
+                                     //   magnitude of the whole relative velocity --
+                                     //   SimpitHandler projects it onto the line of
+                                     //   sight so this sign convention is real.
   float     tgtHeading    = 0.0f;    // degrees — bearing to target
   float     tgtPitch      = 0.0f;    // degrees — elevation to target
   float     tgtVelHeading = 0.0f;    // degrees — heading of relative velocity vector

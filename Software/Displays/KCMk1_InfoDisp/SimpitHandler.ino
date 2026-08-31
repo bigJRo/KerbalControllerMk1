@@ -328,11 +328,37 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(targetMessage)) {
         targetMessage t = parseMessage<targetMessage>(msg);
         state.tgtDistance   = t.distance;
-        state.tgtVelocity   = t.velocity;
         state.tgtHeading    = t.heading;
         state.tgtPitch      = t.pitch;
         state.tgtVelHeading = t.velocityHeading;
         state.tgtVelPitch   = t.velocityPitch;
+
+        // Closure rate, signed: negative = closing. Simpit does NOT send a signed
+        // value -- KerbalSimpitRevamped's TargetInfo.cs sets
+        //     myTargetInfo.velocity = FlightGlobals.ship_tgtVelocity.magnitude;
+        // which is never negative. Taking it as signed left every consumer's
+        // "closing" test false forever: T+INT (NAV), T+Int (TARGET) and T+Dock
+        // (DOCKING) all read "---" permanently, and V.Close on TARGET and DOCKING
+        // could never reach nominal green. Demo mode hid it, because Demo.ino writes
+        // state.tgtVelocity directly with a signed sine and never comes through here.
+        //
+        // The magnitude is the speed along the whole relative velocity vector, so it
+        // also overstates closure whenever the craft is not heading straight at the
+        // target. Both directions arrive as navball heading/pitch pairs from the same
+        // Simpit encoder, so projecting one onto the other recovers the true
+        // line-of-sight rate. Only the ANGLE between the two matters, which makes this
+        // insensitive to any axis-ordering difference between kspDirUnit's ENU frame
+        // and Simpit's -- both vectors are built by the same function here.
+        {
+          float vHat[3], dHat[3];
+          kspDirUnit(t.velocityHeading, t.velocityPitch, vHat);
+          kspDirUnit(t.heading,         t.pitch,         dHat);
+          const float cosT = vHat[0]*dHat[0] + vHat[1]*dHat[1] + vHat[2]*dHat[2];
+          // ship_tgtVelocity is the craft's velocity relative to the target, so it
+          // points along craft->target while closing: cosT > 0. Negate for the
+          // panel-wide "negative = closing" convention.
+          state.tgtVelocity = -t.velocity * cosT;
+        }
 
         // After a vessel switch, contextScreen() runs before tgtDistance is known,
         // so the docking distance check may fail even with a valid nearby target.

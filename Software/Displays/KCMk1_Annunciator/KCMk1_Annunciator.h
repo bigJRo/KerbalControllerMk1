@@ -93,7 +93,7 @@ struct AppState {
 
   // Target (TARGETINFO) -- used by the GPWS rendezvous-radar distance callouts.
   float tgtDistance = 0.0f;  // metres to target (0 = no/unknown target)
-  float tgtVelocity = 0.0f;  // closing speed (m/s)
+  float tgtVelocity = 0.0f;  // closing speed along the bearing (m/s); negative = closing
 
   // Resources -- electric charge
   float EC       = 0.0f;
