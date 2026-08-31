@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 6;   // 1.10.6: NAV gains T+INT, completing its target group
+static const uint8_t SKETCH_VERSION_PATCH = 7;   // 1.10.7: NAV drops its duplicated strip; the compass card takes the height
 
 
 /***************************************************************************************

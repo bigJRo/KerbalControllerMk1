@@ -21,7 +21,6 @@
      Heading box, above the card  HDG, three digits
      Left column                  TRK (ground track), DRIFT (track minus heading)
      Right column                 DIST, V.CLS (closure) and T+INT, when a target is set
-     Bottom strip                 IAS / V.Srf and Alt.Rdr
 
    Drift is the one number here that appears nowhere else on either panel: the angle
    between where the nose points and where the vessel is going. In an atmosphere that
@@ -35,25 +34,34 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-// Deliberately identical to ROVER's card. The vertical budget between the title rule
-// (y=62) and the bottom edge is the same on both screens, and ROVER's numbers already
-// spend it correctly: the heading box clears the rule by 5 px and the ring clears the
-// bottom strip by 8 px. Sizing this card independently produced a box at y=57, four
-// pixels into the title rule. Matching also means the two navigation screens read as
-// one instrument family, which is the point of sharing the renderer at all.
+// ROVER's card at 1.12x. Every proportion is ROVER's, scaled by one factor, so the two
+// screens still read as one instrument family and the shared renderer still drives both
+// -- but this screen has no bottom strip to clear, so the card spends the height ROVER
+// spends on target distance.
+//
+// The scale is not a preference, it is what the budget allows. The heading box has to
+// clear the title rule (y=62) by 5 px and the ring has to clear the bottom edge, and the
+// box hangs off the nose base, which scales with the radius:
+//
+//   box top    = cy - noseRBase - 6 - NAV_HDG_BOX_H = 370 - 245 - 58 = 67   (rule + 5)
+//   ring bottom= cy + rRing                         = 370 + 224      = 594  (edge - 5)
+//
+// Sizing this card by eye rather than from that budget is how an earlier attempt put the
+// heading box at y=57, four pixels into the title rule. Horizontally the ring spans
+// 246..694, clearing both 190 px side columns by 56 px.
 static const int16_t NAV_CX = CONTENT_W / 2;   // 470
-static const int16_t NAV_CY = 344;
-static const int16_t NAV_R  = 200;
+static const int16_t NAV_CY = 370;
+static const int16_t NAV_R  = 224;
 
 static const CompassGeom NAV_GEOM = {
   NAV_CX, NAV_CY,
   NAV_R,
-  196,          // tick outer  (inside the ring, so tick-erase never touches it)
-  178,          // major tick inner
-  185,          // minor tick inner
-  157, 157,     // letter / numeric label centres
-  204, 219, 12, // nose: tip just outside the ring, base beyond it
-  128, 110, 12  // bearing markers: inside the label boxes (which reach in to ~136)
+  219,          // tick outer  (inside the ring, so tick-erase never touches it)
+  199,          // major tick inner
+  207,          // minor tick inner
+  176, 176,     // letter / numeric label centres
+  228, 245, 13, // nose: tip just outside the ring, base beyond it
+  143, 123, 13  // bearing markers: inside the label boxes (which reach in to ~152)
 };
 
 static const float NAV_HDG_THRESH_DEG = 0.5f;   // card rotates
@@ -74,12 +82,12 @@ static const int16_t NAV_BLOCK_H  = 120;
 static const int16_t NAV_LBL_H    = 32;
 static const int16_t NAV_VAL_H    = 48;
 
-// Bottom strip — speed and radar altitude, in the gap between the two columns and
-// below the ring (whose lowest point is y=544). Same band ROVER puts its target
-// distance in.
-static const int16_t NAV_STRIP_Y  = 552;
-static const int16_t NAV_STRIP_H  = 48;   // Roboto_Black_36 cap 43 + padding
-static const int16_t NAV_STRIP_W  = 250;
+// No bottom strip. It carried V.Srf and Alt.Rdr, and this screen's partner is always
+// AIRCRAFT -- the routing rule is the same condition on both panels -- so both numbers
+// were on the other display in every phase NAV can appear in, at the same size, while
+// the instrument they sat under was 48 px smaller than it needed to be. There is no
+// always-available number NAV can show that AIRCRAFT does not: the target group in the
+// right column is the whole of what this screen knows and that panel does not.
 
 // ── State ─────────────────────────────────────────────────────────────────────────────
 static CompassCache       _navCard;
@@ -92,8 +100,6 @@ static int32_t _navPrevDist     = -1;
 static bool    _navPrevDistAvail = false;
 static int16_t _navPrevClose    = -9999;
 static int32_t _navPrevTInt     = -1;     // whole seconds; -1 = not closing / no target
-static int16_t _navPrevSpd      = -9999;
-static int32_t _navPrevAlt      = -99999;
 
 // ── Ground track ──────────────────────────────────────────────────────────────────────
 // Where the vessel is actually moving, as opposed to where it is pointed. Only
@@ -132,11 +138,10 @@ void chromeScreen_NAV(KCM_TFT &tft) {
   _navTrkMk = CompassMarkerCache();
   _navTgtMk = CompassMarkerCache();
   _navPrevHdg = _navPrevTrk = _navPrevDrift = -9999;
-  _navPrevClose = _navPrevSpd = -9999;
+  _navPrevClose = -9999;
   _navPrevDist = -1;
   _navPrevTInt = -1;
   _navPrevDistAvail = false;
-  _navPrevAlt = -99999;
 }
 
 
@@ -268,24 +273,4 @@ void drawScreen_NAV(KCM_TFT &tft) {
     }
   }
 
-  // ── Bottom strip — speed on the left, radar altitude on the right ──────────────────
-  {
-    int16_t spd = (int16_t)lroundf(state.surfaceVel);
-    if (spd != _navPrevSpd) {
-      _navPrevSpd = spd;
-      tft.fillRect(NAV_COL_W, NAV_STRIP_Y, NAV_STRIP_W, NAV_STRIP_H, TFT_BLACK);
-      textLeft(tft, &Roboto_Black_36, NAV_COL_W, NAV_STRIP_Y, NAV_STRIP_W, NAV_STRIP_H,
-               (String("V.Srf ") + fmtMs(state.surfaceVel)).c_str(),
-               TFT_DARK_GREEN, TFT_BLACK);
-    }
-    int32_t alt = (int32_t)lroundf(state.radarAlt);
-    if (alt != _navPrevAlt) {
-      _navPrevAlt = alt;
-      tft.fillRect(CONTENT_W - NAV_COL_W - NAV_STRIP_W, NAV_STRIP_Y, NAV_STRIP_W, NAV_STRIP_H, TFT_BLACK);
-      textRight(tft, &Roboto_Black_36, CONTENT_W - NAV_COL_W - NAV_STRIP_W, NAV_STRIP_Y,
-                NAV_STRIP_W, NAV_STRIP_H,
-                (String("Alt.Rdr ") + formatAlt(state.radarAlt)).c_str(),
-                TFT_DARK_GREEN, TFT_BLACK);
-    }
-  }
 }
