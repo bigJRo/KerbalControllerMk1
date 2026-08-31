@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 14;  // 1.10.14: POWERED DESCENT swaps V.Srf for Stg.Brn
+static const uint8_t SKETCH_VERSION_PATCH = 15;  // 1.10.15: TARGET drops to five taller rows
 
 
 /***************************************************************************************
