@@ -109,12 +109,43 @@ static int32_t _navPrevDist     = NAV_CACHE_RESET32;
 static int16_t _navPrevClose    = NAV_CACHE_RESET16;
 static int32_t _navPrevTInt     = NAV_CACHE_RESET32;  // whole seconds; -1 = not closing
 static int16_t _navPrevBrg      = NAV_CACHE_RESET16;
+static bool    _navTrkLineAvail = false;
+static float   _navTrkLineDeg   = 0.0f;
 
 // ── Ground track ──────────────────────────────────────────────────────────────────────
 // Where the vessel is actually moving, as opposed to where it is pointed. Only
 // meaningful once there is enough surface speed for the velocity vector's heading to be
 // stable; below that KSP's reported heading wanders and the marker would spin.
 static const float NAV_TRK_MIN_MS = 5.0f;
+
+// ── Track line ────────────────────────────────────────────────────────────────────────
+// A stalk from just outside the own-ship symbol out to the ground-track marker, so the
+// crab angle is a visible wedge between the nose (fixed at 12 o'clock) and the track,
+// rather than only the signed number in the DRIFT cell. DRIFT is the one value on this
+// screen that appears nowhere else on either panel, and it was the only one with no
+// picture.
+//
+// This is what the card's interior can carry. The free band is r=78 (the aeroplane's
+// furthest painted pixel, a wingtip) to r=123 (where the bearing markers start), and it
+// cannot be widened: the rose's label boxes are 33 px tall centred on r=176, so their
+// inner corners reach r~150, which is why the markers top out at 143. 45 px is too
+// little for range rings -- three decades of log scale would put them 11 px apart -- but
+// it is ample for a stalk.
+//
+// Only the ground track gets one. Two radial lines from a common centre are collinear
+// whenever their bearings match, so erasing one would erase the other exactly where they
+// overlap and neither would be put back -- the same collision the two markers had. The
+// target pointer is a bearing pointer, which conventionally carries no tail anyway.
+// The stalk starts at the silhouette's edge ALONG ITS OWN BEARING, found by sampling the
+// bitmap, not at a fixed radius. A fixed radius has to clear the wingtips at r=78, but
+// along most bearings the aeroplane ends far sooner -- at 22 degrees it ends at r~33 --
+// so a fixed start left a 53 px gap and the stalk read as a detached dash instead of a
+// line coming off the aircraft. Sampling also guarantees the stalk never overlaps the
+// silhouette at any bearing, which is what lets the erase be a plain black repaint: there
+// is nothing of the aeroplane under it to repair.
+static const int16_t NAV_TRK_LINE_GAP = 5;    // clearance between silhouette and stalk
+static const int16_t NAV_TRK_LINE_R1  = 121;  // 2 px short of the marker base
+static const int16_t NAV_TRK_LINE_HW  = 1;    // half width: 2*HW+1 parallel lines
 
 // ── Own-ship symbol ───────────────────────────────────────────────────────────────────
 // A plan-view aircraft at the card centre, nose up. The rose turns around it, which is
@@ -329,6 +360,62 @@ static void _navDrawOwnShip(KCM_TFT &tft) {
   }
 }
 
+// Is (x, y) inside the own-ship silhouette? Screen coordinates in, bitmap bit out.
+static bool _navShipPixel(int16_t x, int16_t y) {
+  const int16_t bx = x - (NAV_CX - NAV_SHIP_W / 2);
+  const int16_t by = y - (NAV_CY - NAV_SHIP_H / 2);
+  if (bx < 0 || by < 0 || bx >= NAV_SHIP_W || by >= NAV_SHIP_H) return false;
+  return (NAV_SHIP_BMP[by * NAV_SHIP_STRIDE + (bx >> 3)] >> (7 - (bx & 7))) & 1u;
+}
+
+// Radius at which the silhouette ends along a screen bearing: the LAST set pixel walking
+// outward, not the first clear one, because a ray can leave the fuselage and re-enter at
+// the wing.
+static int16_t _navShipEdgeR(float screenDeg) {
+  const int16_t rMax = (NAV_SHIP_W > NAV_SHIP_H ? NAV_SHIP_W : NAV_SHIP_H) / 2 + 2;
+  int16_t last = 0;
+  for (int16_t r = 4; r <= rMax; r++) {
+    int16_t x, y;
+    compassPolar(NAV_GEOM, screenDeg, r, x, y);
+    if (_navShipPixel(x, y)) last = r;
+  }
+  return last;
+}
+
+// Draw or erase the track stalk at a screen bearing. Erasing repaints the identical
+// Bresenham path in black, which is exact, and nothing else is painted in this band --
+// the aeroplane stops at r=78 and the markers start at 123 -- so a black erase cannot
+// damage anything it did not draw.
+static void _navDrawTrackLine(KCM_TFT &tft, float screenDeg, bool erase) {
+  const int16_t r0 = _navShipEdgeR(screenDeg) + NAV_TRK_LINE_GAP;
+  if (r0 >= NAV_TRK_LINE_R1) return;
+  int16_t x0, y0, x1, y1;
+  compassPolar(NAV_GEOM, screenDeg, r0, x0, y0);
+  compassPolar(NAV_GEOM, screenDeg, NAV_TRK_LINE_R1, x1, y1);
+  const float dx = (float)(x1 - x0), dy = (float)(y1 - y0);
+  const float len = sqrtf(dx * dx + dy * dy);
+  const float px = (len > 0.0f) ? -dy / len : 0.0f;
+  const float py = (len > 0.0f) ?  dx / len : 0.0f;
+  const uint16_t c = erase ? TFT_BLACK : TFT_NEON_GREEN;
+  for (int16_t k = -NAV_TRK_LINE_HW; k <= NAV_TRK_LINE_HW; k++) {
+    const int16_t ox = (int16_t)lroundf(px * (float)k);
+    const int16_t oy = (int16_t)lroundf(py * (float)k);
+    tft.drawLine(x0 + ox, y0 + oy, x1 + ox, y1 + oy, c);
+  }
+}
+
+// Kept in step with the marker it belongs to: same availability, same movement
+// threshold, updated in the same pass, so the stalk and its triangle never disagree.
+static void _navUpdateTrackLine(KCM_TFT &tft, bool avail, float screenDeg) {
+  const bool moved = _navTrkLineAvail &&
+                     fabsf(eadiHdgDelta(screenDeg, _navTrkLineDeg)) >= NAV_MK_THRESH_DEG;
+  if (avail == _navTrkLineAvail && !moved) return;
+
+  if (_navTrkLineAvail) _navDrawTrackLine(tft, _navTrkLineDeg, true);
+  if (avail) { _navDrawTrackLine(tft, screenDeg, false); _navTrkLineDeg = screenDeg; }
+  _navTrkLineAvail = avail;
+}
+
 // One legend row: the marker's own triangle, then its name in the marker's colour.
 static void _navKeyRow(KCM_TFT &tft, int16_t y, uint16_t colour, const char *name) {
   const int16_t w = NAV_KEY_TRI_W, h = NAV_KEY_TRI_H;
@@ -377,6 +464,7 @@ void chromeScreen_NAV(KCM_TFT &tft) {
   _navCard = CompassCache();
   _navTrkMk = CompassMarkerCache();
   _navTgtMk = CompassMarkerCache();
+  _navTrkLineAvail = false;
   _navPrevHdg = _navPrevTrk = _navPrevDrift = NAV_CACHE_RESET16;
   _navPrevClose = _navPrevBrg = NAV_CACHE_RESET16;
   _navPrevDist  = _navPrevTInt = NAV_CACHE_RESET32;
@@ -411,6 +499,7 @@ void drawScreen_NAV(KCM_TFT &tft) {
                           _navTrkMk, hasTrk, trkScreenDeg, TFT_NEON_GREEN,
                           _navTgtMk, hasTgt, tgtScreenDeg, TFT_VIOLET,
                           NAV_MK_THRESH_DEG);
+  _navUpdateTrackLine(tft, hasTrk, trkScreenDeg);
 
   // ── Heading readout ────────────────────────────────────────────────────────────────
   {

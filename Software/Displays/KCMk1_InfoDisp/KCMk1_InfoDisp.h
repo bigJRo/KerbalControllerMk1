@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 10;  // 1.10.10: NAV cells blank on cold entry; column headings all white
+static const uint8_t SKETCH_VERSION_PATCH = 11;  // 1.10.11: NAV ground-track line, so DRIFT has a picture
 
 
 /***************************************************************************************
