@@ -2,14 +2,23 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 5
-#define KDC_VERSION_PATCH 1
+#define KDC_VERSION_MINOR 7
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.7.0 — kcmRateUpdate/kcmRateReset: body angular rates for the Shuttle-style rate
+            pointers, derived from the relative rotation of two successive kspBodyAxes
+            frames rather than by differentiating the Euler angles, so they stay well
+            conditioned at the +/-90 deg pitch singularity a launch sits in. Also
+            promotes drawRoundRectOutline in from KCMk1_InfoDisp, as its own note there
+            anticipated, now that the reference chips are its second and third callers.
+
+   v3.6.0 — U+00B7 MIDDLE DOT added to every Roboto Black size.
 
    v3.5.0 — off-scale markers are now visibly pinned. reticleClampDot returns whether it
             clamped, ReticleDotCache carries primaryPinned/velPinned, and reticleUpdateDots
@@ -68,7 +77,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.5.0
+  Version: 3.7.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -392,6 +401,14 @@ void kspDirUnit(float headingDeg, float pitchDeg, float out[3]);
 // where the clock angle is genuinely undefined.
 void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPitchDeg,
                         float &degRight, float &degUp);
+
+// Rounded-rectangle OUTLINE. The display driver has no round-rect primitive, so the four
+// straight edges are drawn inset by the corner radius and the corners are a Bresenham
+// quarter-arc mirrored into all four -- only drawLine and drawPixel, both of which the
+// driver provides. Used for status badges that must read as state rather than as
+// something to press: the AUTO/MAN mode chip and the reference chips beside the balls.
+void drawRoundRectOutline(KCM_TFT &tft, int16_t x, int16_t y,
+                          int16_t w, int16_t h, int16_t r, uint16_t col);
 
 // Shortest-arc delta between two headings, result in [-180, 180]. Pass b = 0 to wrap a
 // single already-differenced angle into range.

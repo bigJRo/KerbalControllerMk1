@@ -35,6 +35,10 @@ static void enterFlightScene() {
   // Entering a flight scene is a fresh start — release any held manual pick so the
   // panel opens on its context screen rather than wherever it was parked.
   clearManualScreenLatch();
+  // Same for the reference overrides on the two attitude screens: a pinned SRF/ORB or
+  // SL/RDR belongs to the flight it was pinned in.
+  modeClearOverride(_scftVelRefOverride);
+  modeClearOverride(_acftAltRefOverride);
   if (contextSwitchAllowed()) switchToScreen(contextScreen());
   simpit.requestMessageOnChannel(0);
 }
@@ -467,6 +471,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
         _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
         clearManualScreenLatch();      // new vessel — release the held manual pick
+        modeClearOverride(_scftVelRefOverride);   // and the held attitude references
+        modeClearOverride(_acftAltRefOverride);
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;
         _drogueDeployed  = false;

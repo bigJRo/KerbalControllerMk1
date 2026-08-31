@@ -107,6 +107,44 @@ void setManualScreenLatch();
 // The gate every context auto-switch must pass.
 bool contextSwitchAllowed();
 
+
+/***************************************************************************************
+   TWO-STATE MODE WITH A PILOT OVERRIDE
+   Generalises the manual selection latch above to any automatic two-way choice a
+   screen makes for itself -- SPACECRAFT's velocity reference (SRF/ORB), AIRCRAFT's
+   altitude datum (SL/RDR).
+
+   This is more authentic than a purely automatic mode, not less. The Shuttle's ADI
+   ATTITUDE switch was a manual three-position selector (INRTL / LVLH / REF) and Apollo's
+   was the same; an attitude reference the crew could not choose is the ahistorical part.
+
+   RELEASE RULE is the screen latch's, for the same reason: an override means "not this,
+   now", not "never again". `against` records what the automatic rule was saying at the
+   moment of the press, so once the rule's own answer changes the pilot's objection is
+   about a situation that no longer exists and the latch drops. Pressing again while auto
+   already agrees is the explicit "back to auto". Vessel change and scene entry clear it,
+   as they clear the screen latch.
+
+   The struct lives here rather than in a .ino because the Arduino builder hoists function
+   prototypes above everything a .ino declares -- a prototype taking it by reference could
+   not see a definition further down the tab. Same reason as ReCorridor and ApsisTape.
+****************************************************************************************/
+struct ModeOverride {
+  bool manual  = false;   // the pilot has pinned a choice
+  bool pinned  = false;   // the choice they pinned
+  bool against = false;   // what the automatic rule said when they pinned it
+};
+
+// Effective value: the pinned choice while held, the automatic one otherwise. Releases a
+// held choice whose situation has passed, so call this every frame rather than caching.
+bool modeResolve(ModeOverride &m, bool autoValue);
+
+// One press: flip the effective value and hold it -- or drop back to auto if the flip
+// lands on what the automatic rule already wants.
+void modeToggle(ModeOverride &m, bool autoValue);
+
+void modeClearOverride(ModeOverride &m);
+
 // Per-frame context routing — releases a stale override, then routes if allowed.
 void updateContextScreen();
 
@@ -144,8 +182,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 21;  // 1.10.21: PFD row 5 counts a noded burn down
+static const uint8_t SKETCH_VERSION_MINOR = 11;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.11.0: pilot-selectable attitude references
 
 
 /***************************************************************************************

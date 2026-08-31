@@ -956,6 +956,28 @@ void kspBoresightAngles(const KspBodyAxes &ax, float dirHeadingDeg, float dirPit
   degUp    = theta * (cu / perp);
 }
 
+void drawRoundRectOutline(KCM_TFT &tft, int16_t x, int16_t y,
+                                 int16_t w, int16_t h, int16_t r, uint16_t col) {
+  const int16_t x1 = x + w - 1, y1 = y + h - 1;
+  tft.drawLine(x + r, y,  x1 - r, y,  col);
+  tft.drawLine(x + r, y1, x1 - r, y1, col);
+  tft.drawLine(x,  y + r, x,  y1 - r, col);
+  tft.drawLine(x1, y + r, x1, y1 - r, col);
+  int16_t f = 1 - r, ddF_x = 1, ddF_y = -2 * r, px = 0, py = r;
+  while (px < py) {
+    if (f >= 0) { py--; ddF_y += 2; f += ddF_y; }
+    px++; ddF_x += 2; f += ddF_x;
+    tft.drawPixel(x1 - r + px, y1 - r + py, col);
+    tft.drawPixel(x1 - r + py, y1 - r + px, col);
+    tft.drawPixel(x  + r - px, y1 - r + py, col);
+    tft.drawPixel(x  + r - py, y1 - r + px, col);
+    tft.drawPixel(x1 - r + px, y  + r - py, col);
+    tft.drawPixel(x1 - r + py, y  + r - px, col);
+    tft.drawPixel(x  + r - px, y  + r - py, col);
+    tft.drawPixel(x  + r - py, y  + r - px, col);
+  }
+}
+
 float eadiHdgDelta(float a, float b) {
   float d = a - b;
   while (d >  180.0f) d -= 360.0f;

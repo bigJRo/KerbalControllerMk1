@@ -485,31 +485,49 @@ static int8_t _chipShown = -1;    // -1 = unknown/needs redraw, 0 = AUTO, 1 = MA
 
 void invalidateModeChip() { _chipShown = -1; }
 
-// Rounded-rectangle outline. The display driver has no round-rect primitive, so the
-// four straight edges are drawn inset by the corner radius and the corners are a
-// Bresenham quarter-arc mirrored into all four — only drawLine and drawPixel, both of
-// which the driver provides. Local to the chip for now; promote it to
-// KerbalDisplayCommon if a second caller appears.
-static void drawRoundRectOutline(KCM_TFT &tft, int16_t x, int16_t y,
-                                 int16_t w, int16_t h, int16_t r, uint16_t col) {
-  const int16_t x1 = x + w - 1, y1 = y + h - 1;
-  tft.drawLine(x + r, y,  x1 - r, y,  col);
-  tft.drawLine(x + r, y1, x1 - r, y1, col);
-  tft.drawLine(x,  y + r, x,  y1 - r, col);
-  tft.drawLine(x1, y + r, x1, y1 - r, col);
-  int16_t f = 1 - r, ddF_x = 1, ddF_y = -2 * r, px = 0, py = r;
-  while (px < py) {
-    if (f >= 0) { py--; ddF_y += 2; f += ddF_y; }
-    px++; ddF_x += 2; f += ddF_x;
-    tft.drawPixel(x1 - r + px, y1 - r + py, col);
-    tft.drawPixel(x1 - r + py, y1 - r + px, col);
-    tft.drawPixel(x  + r - px, y1 - r + py, col);
-    tft.drawPixel(x  + r - py, y1 - r + px, col);
-    tft.drawPixel(x1 - r + px, y  + r - py, col);
-    tft.drawPixel(x1 - r + py, y  + r - px, col);
-    tft.drawPixel(x  + r - px, y  + r - py, col);
-    tft.drawPixel(x  + r - py, y  + r - px, col);
-  }
+// drawRoundRectOutline lives in KerbalDisplayCommon. It was local to this chip with a
+// note to promote it if a second caller appeared; the reference chips below are the
+// second and third.
+
+
+/***************************************************************************************
+   REFERENCE CHIP  (SPACECRAFT velocity reference, AIRCRAFT altitude datum)
+   Says which of a two-state mode the screen is using, and whether the pilot pinned it.
+
+   The Shuttle annunciated its ADI's attitude reference beside the instrument because a
+   ball whose frame is not stated is ambiguous; the same is true of a prograde marker
+   that silently follows an altitude threshold. Both screens put the chip mirrored from
+   their TRIM flag, at the heading tape's left edge.
+
+   COLOUR follows the AUTO/MAN chip exactly: grey while the automatic rule is in force,
+   dark green while the pilot holds it. A held reference is a mode the pilot engaged, so
+   it reads as engaged rather than as an exception, and no alerting colour is spent.
+   Cyan is deliberately NOT used -- that is reserved for pilot-ENTERED values, and this
+   is a mode, not a value. Outlined rather than filled, like the mode chip and the
+   sidebar keys, so it reads as status.
+
+   The chip is smaller than the ~40 px a finger wants, so the HIT BOX is larger than the
+   drawn shape -- see refChipHit.
+****************************************************************************************/
+static const int16_t REF_CHIP_W = 52, REF_CHIP_H = 24, REF_CHIP_R = 5;
+// Mirrored from TRIM, which is right-aligned to the heading tape's right edge just above
+// it. Both attitude screens share the tape geometry, so one pair of constants serves both.
+static const int16_t REF_CHIP_X = 120;   // heading tape left edge (112) + 8
+static const int16_t REF_CHIP_Y = 475;   // level with TRIM
+
+void drawRefChip(KCM_TFT &tft, const char *text, bool held) {
+  const uint16_t col = held ? TFT_DARK_GREEN : TFT_GREY;
+  tft.fillRect(REF_CHIP_X, REF_CHIP_Y, REF_CHIP_W, REF_CHIP_H, TFT_BLACK);
+  drawRoundRectOutline(tft, REF_CHIP_X, REF_CHIP_Y, REF_CHIP_W, REF_CHIP_H, REF_CHIP_R, col);
+  textCenter(tft, &Roboto_Black_16, REF_CHIP_X, REF_CHIP_Y, REF_CHIP_W, REF_CHIP_H,
+             text, col, TFT_BLACK);
+}
+
+// Touch target, generously larger than the 52x24 chip. Nothing else on either screen
+// consumes a touch in this region, so the slack costs nothing.
+bool refChipHit(int16_t cx, int16_t cy) {
+  return cx >= REF_CHIP_X - 26 && cx < REF_CHIP_X + REF_CHIP_W + 26 &&
+         cy >= REF_CHIP_Y - 22 && cy < REF_CHIP_Y + REF_CHIP_H + 22;
 }
 
 static bool panelInAuto() {

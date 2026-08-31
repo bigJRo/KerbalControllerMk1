@@ -337,6 +337,12 @@ const float DEFAULT_BODY_RADIUS_M = 600000.0f;
 
 // Altitude (as a fraction of body radius) at which the ascent/circularization mode
 // switch flips, with a small hysteresis band so it doesn't chatter near the boundary.
+// AIRCRAFT row 0 hands over from Alt.SL to Alt.Rdr near the ground, the way a real PFD
+// brings radio altitude in only for the approach (the A320 shows it below 2,500 ft, i.e.
+// ~760 m). Hysteresis so levelling off at the switch height cannot chatter the label.
+const float ACFT_ALT_RDR_ON_M  = 750.0f;   // below this, radar altitude takes row 0
+const float ACFT_ALT_RDR_OFF_M = 850.0f;   // above this, barometric altitude takes it back
+
 const float ORB_SWITCH_ALT_FRAC_ASC  = 0.06f;   // switch up to orbital view above this
 const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
 

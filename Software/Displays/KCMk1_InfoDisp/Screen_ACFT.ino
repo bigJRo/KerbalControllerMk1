@@ -64,6 +64,61 @@ static float    _acftPrevRoll    = -9999.0f;
 static bool     _acftFullRedrawNeeded = true;
 
 
+// ── Row 0: the altimeter, and when radar altitude takes it over ───────────────────────
+// This screen had no barometric altitude at all. Row 0 was Alt.Rdr full-time, and its
+// partner does not cover for it -- NAVIGATION carries Trk, Drift, Brg, Dist, V.Close,
+// T+Int and Hdg -- so you could fly a KSP aeroplane on this controller and read your
+// clearance over the ridge you were about to hit, but never the altitude you were
+// cruising at.
+//
+// Real practice is the other way round and settles both halves at once. The PFD's
+// altitude tape is barometric, always, on every aircraft built since the basic T; radio
+// altitude is a separate and strictly conditional readout, appearing on the A320 only
+// below 2,500 ft and stepping its resolution up as the ground comes closer (10 ft, then
+// 5 ft below 50 ft, then 1 ft below 10 ft). It exists for the last few hundred metres,
+// not the cruise.
+//
+// So row 0 is Alt.SL, handing over to Alt.Rdr below the switch height, with the same
+// hysteresis idiom the SPACECRAFT rows use and the same pilot override.
+//
+// ONE DELIBERATE DEPARTURE. The A320 turns radio altitude amber below 400 ft. Not copied:
+// this panel reserves yellow for caution, and a normal landing would paint the row yellow
+// every single time -- the always-on alarm that teaches a pilot to ignore the colour.
+// It is the same objection that kept V.Vrt out of the alarm tiers on SPACECRAFT row 5.
+// The existing radar-altitude alarm tiers stay, because those are a real GPWS-style
+// alarm about ground proximity rather than a mode annunciation.
+ModeOverride _acftAltRefOverride;
+static int8_t _acftChipShown = -1;   // -1 unknown, 0 auto-SL, 1 auto-RDR, 2 held-SL, 3 held-RDR
+static int8_t _acftPrevAltRef = -1;   // last label painted on row 0 (-1 = none yet)
+
+static bool _acftAutoRdr() {
+    // Hysteresis so the row cannot chatter while levelling off at the switch height.
+    static bool rdr = false;
+    const float a = state.radarAlt;
+    if (rdr) { if (a > ACFT_ALT_RDR_OFF_M) rdr = false; }
+    else     { if (a < ACFT_ALT_RDR_ON_M)  rdr = true;  }
+    return rdr;
+}
+
+// true = show radar altitude.
+static bool _acftAltRef() { return modeResolve(_acftAltRefOverride, _acftAutoRdr()); }
+
+// Radar altitude with resolution rising as the ground approaches, the way a real radio
+// altimeter reads. Metric equivalents of the A320's 10 ft / 5 ft / 1 ft steps.
+static String _acftFmtRdr(float m) {
+    char buf[16];
+    if (m < 10.0f)       snprintf(buf, sizeof(buf), "%.1f m", (double)m);
+    else if (m < 100.0f) snprintf(buf, sizeof(buf), "%d m", (int)lroundf(m));
+    else                 snprintf(buf, sizeof(buf), "%d m", ((int)lroundf(m / 5.0f)) * 5);
+    return String(buf);
+}
+
+void acftToggleAltRef() {
+    modeToggle(_acftAltRefOverride, _acftAutoRdr());
+    _acftChipShown = -1;
+}
+
+
 
 
 
@@ -507,6 +562,8 @@ static void _acftUpdateAoAArc(KCM_TFT &tft, float aoa) {
 // ── Screen update ─────────────────────────────────────────────────────────────────────
 
 static void chromeScreen_ACFT(KCM_TFT &tft) {
+    _acftChipShown  = -1;
+    _acftPrevAltRef = -1;
     eadiBallResetState();
     _acftFullRedrawNeeded      = true;
     eadiResetRollIndicator();
@@ -601,7 +658,9 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     static const tFont *PF = &Roboto_Black_28;   // label font — matches reticle/launch panels
 
     // Rows 0-3: single-width labels
-    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR),
+                    _acftAltRef() ? "Alt.Rdr:" : "Alt.SL:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    _acftPrevAltRef = (int8_t)_acftAltRef();   // record what chrome just painted
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(1, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(2, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "IAS:",     COL_LABEL, COL_BACK, COL_NO_BDR);
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(3, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
@@ -674,10 +733,27 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
 
     // Row 0 — Alt.Rdr
     {
-        fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
-             (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
-        bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
-        acftVal(0, 0, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
+        const bool rdr = _acftAltRef();
+        // The label follows the switch height, so like SPACECRAFT's row 5 it repaints its
+        // own chrome rather than waiting for a screen re-entry, and clears its cache slot
+        // because printDispChrome fills over the value.
+        if ((int8_t)rdr != _acftPrevAltRef) {
+            printDispChrome(tft, &Roboto_Black_28, ACFT_PANEL_X,
+                            rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W,
+                            rowHFor(ACFT_PANEL_NR), rdr ? "Alt.Rdr:" : "Alt.SL:",
+                            COL_LABEL, COL_BACK, COL_NO_BDR);
+            rowCache[SC][0] = RowCache();
+            printState[SC][0] = PrintState();
+            _acftPrevAltRef = (int8_t)rdr;
+        }
+        if (rdr) {
+            fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
+                 (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
+            bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
+            acftVal(0, 0, "Alt.Rdr:", _acftFmtRdr(state.radarAlt), fg, bg);
+        } else {
+            acftVal(0, 0, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
+        }
     }
 
     // Row 1 — V.Srf (surfaceVel is a magnitude, always >= 0)
@@ -888,6 +964,18 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
 // "TRIM" annunciation (cyan) in the graphical area's bottom-right corner: right-aligned to
 // the heading-tape right edge, bottom just above the heading-tape top. Redrawn each frame
 // while trim is enabled; erased once when it clears.
+// ── Altitude datum chip ───────────────────────────────────────────────────────────────
+// SL or RDR, mirrored from TRIM. Same helper, colour rule and hit box as SPACECRAFT's
+// velocity-reference chip -- see drawRefChip in AAA_Screens.ino.
+static void _acftUpdateRefChip(KCM_TFT &tft) {
+    const bool rdr  = _acftAltRef();
+    const bool held = _acftAltRefOverride.manual;
+    const int8_t want = (int8_t)((held ? 2 : 0) + (rdr ? 1 : 0));
+    if (want == _acftChipShown) return;
+    _acftChipShown = want;
+    drawRefChip(tft, rdr ? "RDR" : "SL", held);
+}
+
 static void _acftDrawTrim(KCM_TFT &tft) {
     static bool prev = false;
     int16_t tw = getFontStringWidth(&Roboto_Black_24, "TRIM");
@@ -978,6 +1066,7 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
     _acftUpdateAoAArc(tft, aoa);
     _acftUpdatePanel(tft);
 
+    _acftUpdateRefChip(tft);
     _acftDrawTrim(tft);
 
     if (debugMode) {

@@ -347,6 +347,27 @@ bool contextSwitchAllowed() {
 
 
 /***************************************************************************************
+   TWO-STATE MODE OVERRIDE -- see the header for the release rule and why it exists.
+****************************************************************************************/
+void modeClearOverride(ModeOverride &m) { m.manual = false; }
+
+bool modeResolve(ModeOverride &m, bool autoValue) {
+  // The situation the pilot objected to has passed: auto now says something different
+  // from what it was saying when they pinned, so the objection no longer applies.
+  if (m.manual && autoValue != m.against) m.manual = false;
+  return m.manual ? m.pinned : autoValue;
+}
+
+void modeToggle(ModeOverride &m, bool autoValue) {
+  const bool next = !modeResolve(m, autoValue);
+  if (next == autoValue) { m.manual = false; return; }   // explicit back to auto
+  m.manual  = true;
+  m.pinned  = next;
+  m.against = autoValue;
+}
+
+
+/***************************************************************************************
    CONTINUOUS CONTEXT ROUTING
    Called once per frame. Previously the ladders ran only at vessel/scene boundaries,
    which meant the panels did not follow the mission: liftoff, reaching orbit, a node

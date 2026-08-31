@@ -145,6 +145,20 @@ void processTouchEvents() {
     return;
   }
 
+  // Attitude screens: the reference chip. One tap pins the other reference (or drops
+  // back to auto); the chip's colour says which state it is in. The ball itself is
+  // deliberately NOT a target -- it is the primary instrument, and a stray touch
+  // changing the reference mid-burn is a bad way to find that out.
+  if ((activeScreen == screen_SCFT || activeScreen == screen_ACFT) &&
+      touchInContent(x2) && y2 >= TITLE_TOP &&
+      refChipHit(touchContentX(x2), y2)) {
+    if (activeScreen == screen_SCFT) scftToggleVelRef();
+    else                             acftToggleAltRef();
+    clearTouchISR();
+    if (debugMode) Serial.println(F("InfoDisp: reference chip tapped"));
+    return;
+  }
+
   // Ascent Autopilot: content-area taps drive its on-screen keypad / editable
   // fields / ARM button. Sidebar taps (x past the content area) fall through.
   if (activeScreen == screen_LNCHAP && touchInContent(x2) && y2 >= TITLE_TOP) {

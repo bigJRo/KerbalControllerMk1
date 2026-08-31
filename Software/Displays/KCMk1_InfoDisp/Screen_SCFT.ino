@@ -65,13 +65,30 @@ static bool     _scftFullRedrawNeeded = true;
 
 
 
-// ── Orbital mode helper ───────────────────────────────────────────────────────────────
-static bool _scftOrbMode() {
+// ── Orbital mode helpers ──────────────────────────────────────────────────────────────
+// One altitude test used to drive three different things: row 1's V.Orb/V.Srf, row 5's
+// T+Ign/V.Vrt, and the prograde marker on the ball and both tapes. Only two of those are
+// a REFERENCE choice. Row 5's swap is a PHASE decision -- am I near the ground, is
+// descent rate the number being flown -- that merely happened to reuse the same test.
+//
+// The distinction did not matter while both were automatic, because they always agreed.
+// It matters the moment the pilot can override the reference: forcing ORB at 10 km during
+// a re-entry must not trade descent rate away for a meaningless ignition countdown. So
+// the two are separate predicates, and only the reference one is overridable.
+static bool _scftAutoOrb() {
     float bodyRad   = (currentBody.radius > 0.0f) ? currentBody.radius : DEFAULT_BODY_RADIUS_M;
     bool  ascending = (state.verticalVel >= 0.0f);
     float switchAlt = ascending ? (bodyRad * ORB_SWITCH_ALT_FRAC_ASC) : (bodyRad * ORB_SWITCH_ALT_FRAC_DESC);
     return state.altitude > switchAlt;
 }
+
+// The velocity reference actually in force: automatic unless the pilot has pinned one.
+ModeOverride _scftVelRefOverride;
+// Chip cache: -1 unknown, 0 auto-SRF, 1 auto-ORB, 2 held-SRF, 3 held-ORB. Declared here
+// rather than beside its draw function because chromeScreen_SCFT resets it, and the
+// Arduino builder hoists prototypes but not variables.
+static int8_t _scftChipShown = -1;
+static bool _scftVelRef() { return modeResolve(_scftVelRefOverride, _scftAutoOrb()); }
 
 // ── EVA mode ──────────────────────────────────────────────────────────────────────────
 // A Kerbal outside the craft is still a vessel as far as KSP and Simpit are concerned,
@@ -122,7 +139,7 @@ static float _scftTIgn() {
 }
 
 static uint8_t _scftRow5Mode() {
-    if (!_scftOrbMode()) return SCFT_R5_VVRT;
+    if (!_scftAutoOrb()) return SCFT_R5_VVRT;   // phase, not reference -- see above
     const bool hasNode  = (state.mnvrTime > 0.0f) && (state.mnvrDeltaV > 0.0f);
     const bool burning  = hasNode && (state.throttle > 0.01f) && (_scftTIgn() <= 0.0f);
     return burning ? SCFT_R5_DVREM : SCFT_R5_TIGN;
@@ -503,7 +520,10 @@ static const float   SCFT_RATE_FS     = 10.0f;   // deg/s at either end of every
 static const int16_t SCFT_RATE_X      = 557;     // clear of the "60" bank label (556)
 static const int16_t SCFT_RATE_W      = 20;      //   and the panel divider (578)
 static const int16_t SCFT_RATE_LBL_H  = 14;      // single-letter name above each bar
-static const int16_t SCFT_RATE_BAR_H  = 116;
+// Shortened from 116 so the column ends at y=462, clear of the TRIM flag at y=475 --
+// TRIM is right-aligned to the heading tape (x 515..570) and would have run straight
+// through the bottom of the yaw bar.
+static const int16_t SCFT_RATE_BAR_H  = 100;
 static const int16_t SCFT_RATE_PITCH_Y = 96;                                    // R
 static const int16_t SCFT_RATE_ROLL_Y  = SCFT_RATE_PITCH_Y + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
 static const int16_t SCFT_RATE_YAW_Y   = SCFT_RATE_ROLL_Y  + SCFT_RATE_LBL_H + SCFT_RATE_BAR_H + 8;
@@ -616,6 +636,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     _scftPrevEC           = -9999;
     _scftPrevCore         = -9999;
     _scftPrevSkin         = -9999;
+    _scftChipShown = -1;
     kcmRateReset(_scftRates);
     _scftPrevRollPx       = SCFT_RATE_RESET;
     _scftPrevPitchPx      = SCFT_RATE_RESET;
@@ -706,7 +727,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
         // so it must not simply be dropped. Below the switch a node countdown is close
         // to meaningless and descent rate is the number being flown.
         const char *lbl = evaChrome ? evaPanelLabels[r]
-                        : (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:")
+                        : (r == 1) ? (_scftVelRef() ? "V.Orb:" : "V.Srf:")
                         : (r == 5) ? _scftRow5Label(_scftRow5Mode())
                         : panelLabels[r];
         printDispChrome(tft, PF, SCFT_PANEL_X, rowYFor(r, SCFT_PANEL_NR),
@@ -927,6 +948,33 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
 // "TRIM" annunciation (cyan) in the graphical area's bottom-right corner: right-aligned to
 // the heading-tape right edge, bottom just above the heading-tape top. Redrawn each frame
 // while trim is enabled; erased once when it clears.
+// ── Velocity reference chip ───────────────────────────────────────────────────────────
+// SRF or ORB, mirrored from TRIM at the heading tape's left edge. See drawRefChip in
+// AAA_Screens.ino for the colour rule and the hit box.
+//
+// It annunciates the VELOCITY reference only -- the prograde marker on the ball and both
+// tapes, and row 1. It deliberately does not cover altitude: SRF and ORB differ by a
+// rotation about the body's spin axis, and altitude is radial and unchanged by that
+// rotation, so Alt.SL is the same number in both frames and there is no such thing as an
+// orbital altitude. (The Shuttle mixed them freely for the same reason: its AMI showed
+// Earth-relative velocity beside the AVVI's geodetic altitude, with nothing to
+// annunciate.) Nor does it cover row 5, which is a phase choice -- see _scftAutoOrb.
+
+static void _scftUpdateRefChip(KCM_TFT &tft) {
+    const bool orb  = _scftVelRef();
+    const bool held = _scftVelRefOverride.manual;
+    const int8_t want = (int8_t)((held ? 2 : 0) + (orb ? 1 : 0));
+    if (want == _scftChipShown) return;
+    _scftChipShown = want;
+    drawRefChip(tft, orb ? "ORB" : "SRF", held);
+}
+
+// One tap pins the other reference, or drops back to auto if that is what auto wants.
+void scftToggleVelRef() {
+    modeToggle(_scftVelRefOverride, _scftAutoOrb());
+    _scftChipShown = -1;   // repaint on the next frame
+}
+
 static void _scftDrawTrim(KCM_TFT &tft) {
     static bool prev = false;
     int16_t tw = getFontStringWidth(&Roboto_Black_24, "TRIM");
@@ -955,7 +1003,7 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
         return;
     }
 
-    bool orbMode = _scftOrbMode();
+    bool orbMode = _scftVelRef();
     if (orbMode != _scftPrevOrbMode) {
         _scftPrevOrbMode      = orbMode;
         _scftFullRedrawNeeded = true;
@@ -1030,6 +1078,7 @@ static void drawScreen_SCFT(KCM_TFT &tft) {
     _scftUpdateVitals(tft);
     _scftUpdateRates(tft);
     _scftUpdatePanel(tft, orbMode);
+    _scftUpdateRefChip(tft);
     _scftDrawTrim(tft);
 }
 
