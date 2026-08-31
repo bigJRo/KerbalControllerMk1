@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 7;   // 1.10.7: NAV drops its duplicated strip; the compass card takes the height
+static const uint8_t SKETCH_VERSION_PATCH = 8;   // 1.10.8: NAV marker-pair fix, own-ship bitmap, BRG, legend
 
 
 /***************************************************************************************
@@ -356,6 +356,10 @@ void compassDrawMarker(KCM_TFT &tft, const CompassGeom &g, float screenDeg,
                        uint16_t colour, bool erase);
 bool compassUpdateCard(KCM_TFT &tft, const CompassGeom &g, CompassCache &c,
                        float headingDeg, float threshDeg);
+void compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
+                             CompassMarkerCache &ca, bool availA, float degA, uint16_t colA,
+                             CompassMarkerCache &cb, bool availB, float degB, uint16_t colB,
+                             float threshDeg);
 void compassUpdateMarker(KCM_TFT &tft, const CompassGeom &g, CompassMarkerCache &c,
                          bool available, float screenDeg, uint16_t colour, float threshDeg);
 

@@ -193,6 +193,41 @@ bool compassUpdateCard(KCM_TFT &tft, const CompassGeom &g, CompassCache &c,
    availability has changed. Screen bearing is the world bearing minus vessel heading,
    wrapped to +/-180.
 ****************************************************************************************/
+/***************************************************************************************
+   MARKER PAIR UPDATE — two markers that share one annulus.
+
+   compassUpdateMarker() is correct on its own but not in company: each marker's erase is
+   a bounding box a few pixels larger than the triangle, and two markers on the same ring
+   pass through each other as the card turns. Whichever moves erases the other and does
+   not put it back, so on NAVIGATION the moving target-bearing marker would sweep the
+   ring once and take the stationary ground-track marker with it.
+
+   The fix is the one the ascent ladder's two altitude markers use: when either has
+   changed, erase both, then draw both. A proximity test asking "are they close enough to
+   interfere?" is the version that leaves half a marker on the screen, because the answer
+   depends on the erase pad, the triangle's bounding box and the angle between them.
+   Two triangles per frame cost nothing.
+****************************************************************************************/
+void compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
+                             CompassMarkerCache &ca, bool availA, float degA, uint16_t colA,
+                             CompassMarkerCache &cb, bool availB, float degB, uint16_t colB,
+                             float threshDeg) {
+  const bool chgA = (availA != ca.prevAvail) ||
+                    (availA && fabsf(eadiHdgDelta(degA, ca.prevScreenDeg)) >= threshDeg);
+  const bool chgB = (availB != cb.prevAvail) ||
+                    (availB && fabsf(eadiHdgDelta(degB, cb.prevScreenDeg)) >= threshDeg);
+  if (!chgA && !chgB) return;
+
+  if (ca.prevAvail) compassDrawMarker(tft, g, ca.prevScreenDeg, colA, true);
+  if (cb.prevAvail) compassDrawMarker(tft, g, cb.prevScreenDeg, colB, true);
+
+  if (availA) { compassDrawMarker(tft, g, degA, colA, false); ca.prevScreenDeg = degA; }
+  if (availB) { compassDrawMarker(tft, g, degB, colB, false); cb.prevScreenDeg = degB; }
+  ca.prevAvail = availA;
+  cb.prevAvail = availB;
+}
+
+
 void compassUpdateMarker(KCM_TFT &tft, const CompassGeom &g, CompassMarkerCache &c,
                          bool available, float screenDeg, uint16_t colour,
                          float threshDeg) {
