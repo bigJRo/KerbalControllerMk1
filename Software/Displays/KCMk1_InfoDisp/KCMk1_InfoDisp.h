@@ -145,7 +145,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 10;
-static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.10.4: ascent gauge windows unstacked; ATMO window shows T+Vac
+static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.10.5: ladder repair + marker labels; context switch full-paint fix
 
 
 /***************************************************************************************

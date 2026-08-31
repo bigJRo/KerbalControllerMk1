@@ -107,9 +107,26 @@ void loop() {
   // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;
 
+  if (demoMode) stepDemoState();
+
+  // --- Context routing: both ladders run every frame, so the panels follow the
+  //     mission rather than only re-pairing at vessel and scene boundaries. Guarded
+  //     by the manual latch, a release band per rule and a minimum dwell. ---
+  updateContextScreen();
+
   // --- Screen transition: a screen change forces a one-time full paint (chrome +
   //     values) of the new screen and a telemetry refresh so its values populate
-  //     immediately. Steady-state frames redraw only what changed. ---
+  //     immediately. Steady-state frames redraw only what changed.
+  //
+  //     This is detected AFTER updateContextScreen(), which is the last thing in the
+  //     frame that can change activeScreen. It used to be detected before, so a switch
+  //     the context ladder made on this pass was invisible to the test: the frame took
+  //     the incremental branch and drew the NEW screen's change-detected values onto a
+  //     BTE copy of the OLD screen's chrome, presenting one frame that was half of each
+  //     before the next pass repainted it properly. Touch and Simpit switches never hit
+  //     it because both run above this point; only the ladder's own switches did, which
+  //     is why it showed up as a flash of two screens whenever a panel followed the
+  //     mission on its own. ---
   bool screenChanged = (prevScreen != activeScreen);
   if (screenChanged) {
     if (debugMode) {
@@ -119,13 +136,6 @@ void loop() {
     prevScreen = activeScreen;
     if (!demoMode) simpit.requestMessageOnChannel(0);
   }
-
-  if (demoMode) stepDemoState();
-
-  // --- Context routing: both ladders run every frame, so the panels follow the
-  //     mission rather than only re-pairing at vessel and scene boundaries. Guarded
-  //     by the manual latch, a release band per rule and a minimum dwell. ---
-  updateContextScreen();
 
   // --- Incremental double buffering ---
   //  Screen entry (rare): paint full chrome + all values onto the back page, then

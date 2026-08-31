@@ -407,16 +407,19 @@ static float _lnchAsLadderTickInterval(float scaleTop) {
     return 100000.0f;
 }
 
-// Draw an altitude-marker triangle pointing left at altitude y, with a small
-// letter label to the right. 'filled' selects vessel (filled) vs apoapsis
-// (hollow) style; 'label' is a one-letter tag ("V" or "A") drawn at Black_16
-// in the same color as the triangle.
+// Draw an altitude-marker triangle pointing left at altitude y, with a short label to
+// the right. 'filled' selects vessel (filled, "ALT") vs apoapsis (hollow, "Ap") style;
+// the label is drawn at Black_16 in the same color as the triangle.
 // Tip at LADDER_LINE_X+3, base at MARKER_X + MARKER_W, label just past the base.
-static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of label letter (past base)
-static const int16_t LNCH_AS_MARKER_LBL_W    = 24;    // width reserved for the marker label
-                                                     // (24, not 16: "Ap" is 20 px at
-                                                     // Black_16 and the marker erase is
-                                                     // sized from this)
+static const int16_t LNCH_AS_MARKER_LBL_X    = 100;   // x of the label (past the base)
+static const int16_t LNCH_AS_MARKER_LBL_W    = 32;    // width reserved for the marker label
+                                                     // "ALT" is 30 px at Black_16, so the
+                                                     // cell is 32. This also sizes the
+                                                     // marker ERASE, which is why it has
+                                                     // to be measured rather than guessed.
+// A marker's drawn extent and the erase box are both 19 rows tall, so erasing one
+// marker clips the other whenever their centres are within 19 - 1 + 19 - 1 = 18 px.
+static const int16_t LNCH_AS_MARKER_ROWS     = 19;
 
 static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
                                  bool filled, const char *label) {
@@ -433,9 +436,10 @@ static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
         tft.drawLine(tipX, y, baseX, y + halfH, color);
         tft.drawLine(baseX, y - halfH, baseX, y + halfH, color);
     }
-    // Label to the right of the triangle. The vessel marker passes an empty string: a
-    // filled pointer on an altitude scale is "you are here" without being told, and the
-    // bare "V" it used to carry read as a velocity rather than as the vessel.
+    // Label to the right of the triangle. Drawn opaquely on black, so where a marker
+    // sits on a reference line its label covers that line's label rather than
+    // interleaving with it; the repair below puts the reference label back when the
+    // marker moves off.
     if (!label || !*label) return;
     textLeft(tft, &Roboto_Black_16,
              LNCH_AS_MARKER_LBL_X - 8, y - 9,   // x0-8 because textLeft adds TEXT_BORDER=8
@@ -450,10 +454,44 @@ static void _lnchAsEraseAltMarker(KCM_TFT &tft, int16_t y) {
     tft.fillRect(tipX, y - 9, rightX - tipX + 1, 19, TFT_BLACK);
 }
 
-// After erasing a marker, repair any reference line segments (GND/ATM/ORB)
-// that were passing through the erased region. Called from marker update logic.
-// markerY is the y-center of the erased bounding box (height 19, so the box
-// spans y-9 to y+9).
+// Reference-line labels (GND / ATM / TGT+ORB). Their glyphs start at x=118 and the
+// marker erase box reaches x=132, so a marker passing a reference line takes a bite out
+// of its label. The lines were already repaired after an erase; the labels were not, and
+// the bite stayed on screen until the next ladder scale change. Both the chrome and the
+// repair go through these two helpers now, so the two cannot drift apart.
+static const int16_t LNCH_AS_REF_LBL_X = LNCH_AS_LADDER_REF_X2 - 40;
+static const int16_t LNCH_AS_REF_LBL_W = 44;
+static const int16_t LNCH_AS_REF_LBL_H = 16;
+
+static void _lnchAsDrawRefLabel(KCM_TFT &tft, int16_t y0, const char *s, uint16_t color) {
+    textLeft(tft, &Roboto_Black_16,
+             LNCH_AS_REF_LBL_X, y0, LNCH_AS_REF_LBL_W, LNCH_AS_REF_LBL_H,
+             s, color, TFT_BLACK);
+}
+
+// The ORBIT line's label is "TGT" over "ORB" straddling the line, so the pilot reads it
+// as an altitude being aimed for; it falls back to a single centred "ORB" when the line
+// is too close to either end of the ladder for two rows.
+static void _lnchAsDrawOrbRefLabel(KCM_TFT &tft, int16_t refY) {
+    if (refY > LNCH_AS_LADDER_Y_TOP + 18 && refY < LNCH_AS_LADDER_Y_BOT - 18) {
+        _lnchAsDrawRefLabel(tft, refY - 17, "TGT", TFT_DARK_GREEN);
+        _lnchAsDrawRefLabel(tft, refY +  1, "ORB", TFT_DARK_GREEN);
+    } else {
+        _lnchAsDrawRefLabel(tft, refY -  8, "ORB", TFT_DARK_GREEN);
+    }
+}
+
+// After erasing a marker, repair the reference lines (GND/ATM/ORB) and their labels
+// where the erased region crossed them. markerY is the y-center of the erased bounding
+// box (height 19, so the box spans y-9 to y+9).
+//
+// The line and the label have different reach. A line is one row, so it needs repair
+// only when it falls inside the box. A label is 19 rows tall and the two-row ORB label
+// straddles its line by 18, so a label is repainted whenever its line is within 28 rows
+// -- generous on purpose: the labels are opaque and identical every time, so a redundant
+// repaint costs nothing and a missed one leaves a hole.
+static const int16_t LNCH_AS_REF_LBL_REACH = 28;
+
 static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
     int16_t tipX   = LNCH_AS_LADDER_LINE_X + 3;
     int16_t rightX = LNCH_AS_MARKER_LBL_X + LNCH_AS_MARKER_LBL_W;
@@ -471,6 +509,8 @@ static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
             int16_t x1 = min(rightX, (int16_t)(LNCH_AS_LADDER_REF_X2 - 2));
             if (x1 >= x0) tft.drawLine(x0, refY, x1, refY, TFT_WHITE);
         }
+        if (abs(refY - markerY) <= LNCH_AS_REF_LBL_REACH)
+            _lnchAsDrawRefLabel(tft, refY - 8, "GND", TFT_LIGHT_GREY);
     }
 
     // Check ATM (dashed sky-blue at y = lowSpace altitude)
@@ -492,6 +532,9 @@ static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
                 tft.drawLine(csx, refY, cex, refY, TFT_SKY);
             }
         }
+        if (refY < LNCH_AS_LADDER_Y_BOT - 2 && refY > LNCH_AS_LADDER_Y_TOP + 2 &&
+            abs(refY - markerY) <= LNCH_AS_REF_LBL_REACH)
+            _lnchAsDrawRefLabel(tft, refY - 8, "ATM", TFT_SKY);
     }
 
     // Check ORB (dashed dark-green at target orbit altitude)
@@ -511,6 +554,9 @@ static void _lnchAsRepairRefLines(KCM_TFT &tft, int16_t markerY) {
                 tft.drawLine(csx, refY, cex, refY, TFT_DARK_GREEN);
             }
         }
+        if (refY < LNCH_AS_LADDER_Y_BOT - 2 && refY > LNCH_AS_LADDER_Y_TOP + 2 &&
+            abs(refY - markerY) <= LNCH_AS_REF_LBL_REACH)
+            _lnchAsDrawOrbRefLabel(tft, refY);
     }
 
     // Also repair the main vertical ladder line if it crosses the erase region.
@@ -584,10 +630,7 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
                      TFT_WHITE);
         // Label vertically centered on the ground line (matches ATM/ORB). There
         // is room below now that the ladder bottom sits ~18px above the screen edge.
-        textLeft(tft, &Roboto_Black_16,
-                 LNCH_AS_LADDER_REF_X2 - 40, y - 8,
-                 44, 16,
-                 "GND", TFT_LIGHT_GREY, TFT_BLACK);
+        _lnchAsDrawRefLabel(tft, y - 8, "GND", TFT_LIGHT_GREY);
     }
 
     // ATMO — only for atmospheric bodies (lowSpace > 0). Drawn at the actual
@@ -601,10 +644,7 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
                 tft.drawLine(x, y, x + 3, y, TFT_SKY);
             }
             // Label vertically centered on the reference line
-            textLeft(tft, &Roboto_Black_16,
-                     LNCH_AS_LADDER_REF_X2 - 40, y - 8,
-                     44, 16,
-                     "ATM", TFT_SKY, TFT_BLACK);
+            _lnchAsDrawRefLabel(tft, y - 8, "ATM", TFT_SKY);
         }
     }
 
@@ -618,26 +658,9 @@ static void _lnchAsDrawLadderChrome(KCM_TFT &tft) {
             for (int16_t x = LNCH_AS_LADDER_LINE_X + 1; x < LNCH_AS_LADDER_REF_X2; x += 6) {
                 tft.drawLine(x, y, x + 3, y, TFT_DARK_GREEN);
             }
-            // Two-line label "TGT" / "ORB" vertically centered on the ref line:
-            // TGT sits just above the line, ORB just below, so the line runs in
-            // the 2-px gap between the two words. Needs ~18 px clearance on each
-            // side; otherwise fall back to a single-line "ORB" centered on it.
-            if (y > LNCH_AS_LADDER_Y_TOP + 18 && y < LNCH_AS_LADDER_Y_BOT - 18) {
-                textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 17,
-                         44, 16,
-                         "TGT", TFT_DARK_GREEN, TFT_BLACK);
-                textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y + 1,
-                         44, 16,
-                         "ORB", TFT_DARK_GREEN, TFT_BLACK);
-            } else {
-                // Insufficient room — single-line "ORB" centered on the line
-                textLeft(tft, &Roboto_Black_16,
-                         LNCH_AS_LADDER_REF_X2 - 40, y - 8,
-                         44, 16,
-                         "ORB", TFT_DARK_GREEN, TFT_BLACK);
-            }
+            // "TGT" over "ORB" straddling the line, or a single centred "ORB" when
+            // there is not room for two rows -- see _lnchAsDrawOrbRefLabel().
+            _lnchAsDrawOrbRefLabel(tft, y);
         }
     }
 }
@@ -671,52 +694,40 @@ static void _lnchAsUpdateLadderMarkers(KCM_TFT &tft) {
         _lnchAsLastDrawnScaleTop = scaleTop;
     }
 
-    // Vessel marker (always shown)
-    int16_t vesselY = _lnchAsAltToY(state.altitude, scaleTop);
-    if (vesselY != _lnchAsPrevVesselPx) {
-        if (_lnchAsPrevVesselPx >= 0) {
-            _lnchAsEraseAltMarker(tft, _lnchAsPrevVesselPx);
-            _lnchAsRepairRefLines(tft, _lnchAsPrevVesselPx);
-        }
-        _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "");
-        _lnchAsPrevVesselPx = vesselY;
+    // Vessel and apoapsis markers.
+    //
+    // Both are erased, then both are redrawn, whenever either has moved. The version
+    // this replaces erased one marker and redrew the other only "if it was within 6 px",
+    // which was a guess: the erase box is 19 rows tall and a marker's own drawn extent is
+    // 19 rows, so one marker's erase clips the other up to 18 px away, and the reference-
+    // label repair above reaches 28. A miss left a marker half erased on the ladder until
+    // the next scale change, which is what the bench saw. Two triangles and two short
+    // labels cost nothing per frame; the proximity arithmetic cost correctness.
+    int16_t    vesselY   = _lnchAsAltToY(state.altitude, scaleTop);
+    const bool apaValid  = (state.apoapsis > 0.0f);
+    int16_t    apaY      = apaValid ? _lnchAsAltToY(state.apoapsis, scaleTop) : (int16_t)-1;
 
-        // If ApA was on top of vessel's old position, it may have been erased — redraw.
-        if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0 &&
-            abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-            _lnchAsDrawAltMarker(tft, _lnchAsPrevApAPx, TFT_YELLOW, false, "Ap");
-        }
+    const bool moved = (vesselY != _lnchAsPrevVesselPx) ||
+                       (apaValid != _lnchAsPrevApAValid) ||
+                       (apaValid && apaY != _lnchAsPrevApAPx);
+    if (!moved) return;
+
+    if (_lnchAsPrevVesselPx >= 0) {
+        _lnchAsEraseAltMarker(tft, _lnchAsPrevVesselPx);
+        _lnchAsRepairRefLines(tft, _lnchAsPrevVesselPx);
+    }
+    if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0) {
+        _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
+        _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
     }
 
-    // Apoapsis marker (only when valid — apoapsis > 0)
-    bool apaValid = (state.apoapsis > 0.0f);
-    if (apaValid) {
-        int16_t apaY = _lnchAsAltToY(state.apoapsis, scaleTop);
-        if (apaY != _lnchAsPrevApAPx || !_lnchAsPrevApAValid) {
-            if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0) {
-                _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
-                _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
-                // If vessel was on top of ApA's old position, redraw vessel
-                if (abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-                    _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "");
-                }
-            }
-            _lnchAsDrawAltMarker(tft, apaY, TFT_YELLOW, false, "Ap");
-            _lnchAsPrevApAPx    = apaY;
-            _lnchAsPrevApAValid = true;
-        }
-    } else {
-        // Apoapsis not valid — erase any previously drawn marker
-        if (_lnchAsPrevApAValid && _lnchAsPrevApAPx >= 0) {
-            _lnchAsEraseAltMarker(tft, _lnchAsPrevApAPx);
-            _lnchAsRepairRefLines(tft, _lnchAsPrevApAPx);
-            if (abs(_lnchAsPrevApAPx - vesselY) <= 6) {
-                _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "");
-            }
-            _lnchAsPrevApAValid = false;
-            _lnchAsPrevApAPx    = -1;
-        }
-    }
+    // Apoapsis first, so where the two coincide the vessel marker is the one on top.
+    if (apaValid) _lnchAsDrawAltMarker(tft, apaY, TFT_YELLOW, false, "Ap");
+    _lnchAsDrawAltMarker(tft, vesselY, TFT_DARK_GREEN, true, "ALT");
+
+    _lnchAsPrevVesselPx = vesselY;
+    _lnchAsPrevApAPx    = apaValid ? apaY : (int16_t)-1;
+    _lnchAsPrevApAValid = apaValid;
 }
 
 // ── V.Vrt bar ─────────────────────────────────────────────────────────────────────────
@@ -1408,7 +1419,7 @@ static bool _lnchAsShowOrbitalVelocity() {
 // Widest that fits the 72 px bar window at Black_20 is five digits and a sign
 // ("-1,234" is 62 px); six digits ("123,456", 77 px) would not. That is 100 km/s, and
 // this screen is only up below the coast latch, where V.Orb tops out near 3,000.
-static String _lnchAsPrevAtmoVal, _lnchAsPrevVVrtVal, _lnchAsPrevVOrbVal;
+static String _lnchAsPrevVVrtVal, _lnchAsPrevVOrbVal;
 
 static void _lnchAsGaugeValue(KCM_TFT &tft, int16_t lblX0, int16_t lblW,
                               const String &val, uint16_t fg, String &prev) {
@@ -1439,22 +1450,23 @@ static float _lnchAsDynPressureKPa() {
 
 // Chrome: name label + stable zone fill + border.
 static void _lnchAsDrawAtmoChrome(KCM_TFT &tft) {
-    // Name box matches the column's true extent (triangle to triangle), not a fixed 100 px
-    // centred on the bar. The wider box reached x=252 and overlapped the V.Vrt window at
-    // 248, so once both carried a border the two drew in the same four columns and the
-    // shared edge flickered between them every frame. 166..238 leaves the same 10 px gap
-    // to the V.Vrt window that the other columns have between them.
+    // Name box matches the column's true extent (triangle to triangle), not a fixed
+    // 100 px centred on the bar: the wider box reached x=252 and overlapped the V.Vrt
+    // window at 248, so once both carried a border the two drew in the same four columns
+    // and the shared edge flickered between them every frame.
     //
-    // The name says "T+Vac", not "ATMO", because the name row labels the number below it
-    // and this is the one column where the bar and its window show different quantities.
-    // The bar is a sky-to-navy gradient with a triangle on an altitude-like axis: it says
-    // "atmosphere, and how deep" without being told. A bare "3:14" says nothing at all.
-    // Label the ambiguous half.
+    // This column has a name and no value window. A percentage restating where the
+    // triangle already points said nothing, and the time-to-vacuum that briefly replaced
+    // it was a different quantity from the one the bar plots, which forced the column
+    // name to label the number instead of the gauge. The bar is the instrument here --
+    // sky-to-navy with a triangle on each side -- and it does not need a number under it
+    // to be read. Q, on the right column, is the atmospheric number worth digits, and it
+    // is the one the bar genuinely cannot show.
     const int16_t nameX0 = LNCH_AS_ATMO_X_LEFT - LNCH_AS_ATMO_TRI_GAP - LNCH_AS_ATMO_TRI_W;
     const int16_t nameW  = LNCH_AS_ATMO_RIGHT_EXT - nameX0;
     textCenter(tft, &Roboto_Black_20,
                nameX0, LNCH_AS_GAUGE_NAME_Y, nameW, LNCH_AS_GAUGE_NAME_H,
-               "T+Vac", TFT_LIGHT_GREY, TFT_BLACK);
+               "ATMO", TFT_LIGHT_GREY, TFT_BLACK);
     _lnchAsDrawAtmoBackground(tft);
     tft.drawRect(LNCH_AS_ATMO_X_LEFT, LNCH_AS_ATMO_Y_TOP,
                  LNCH_AS_ATMO_W + 1,
@@ -1549,46 +1561,8 @@ static void _lnchAsDrawLeftPanelChrome(KCM_TFT &tft) {
 // The three bar gauges' digital windows. Their values used to be rows 0-4 of the
 // readout column; they now sit on the gauges they belong to.
 static void _lnchAsUpdateGaugeValues(KCM_TFT &tft) {
-    // ATMO — time until the vessel leaves the atmosphere.
-    //
-    // Not the gauge's own scale position: a percentage that restates where the triangle
-    // already is adds nothing, which is the same objection that moved the bar values out
-    // of the readout column in the first place. And not raw density, which the first
-    // version showed: the bar plots (rho / rho_surface)^0.25, a fourth root precisely so
-    // the thin upper atmosphere stays visible, so a linear density in kg/m3 reaches
-    // "0.00" around 30 km while the triangle is still a quarter of the way up.
-    //
-    // Time-to-vacuum is the question the bar cannot answer. The bar says how deep; this
-    // says how much longer the air matters -- when drag stops shaping the trajectory and
-    // the ascent becomes a vacuum problem. Instantaneous-rate extrapolation, the same
-    // convention T+Ap and T.Grnd already use on this panel.
-    //
-    // The target is lowSpace, which is the same atmosphere top the ladder two columns to
-    // the left draws its sky-blue ATM reference line at, so the number counts down to a
-    // line the pilot can already see the vessel marker climbing toward.
-    {
-        const int16_t x0 = LNCH_AS_ATMO_X_LEFT - LNCH_AS_ATMO_TRI_GAP - LNCH_AS_ATMO_TRI_W;
-        const int16_t w  = LNCH_AS_ATMO_RIGHT_EXT - x0;
-        const float   top = currentBody.lowSpace;
-        const float   rem = top - state.altitude;
-
-        char buf[12];
-        uint16_t fg = TFT_DARK_GREEN;
-        if (!currentBody.hasAtmo || top <= 0.0f || rem <= 0.0f) {
-            strcpy(buf, "---"); fg = TFT_DARK_GREY;          // already out, or no air to leave
-        } else if (state.verticalVel <= 1.0f) {
-            strcpy(buf, "---"); fg = TFT_DARK_GREY;          // not climbing: no estimate to give
-        } else {
-            const float t = rem / state.verticalVel;
-            // Over an hour is not an ascent. formatTimeCompact would render "1h 02:03",
-            // which is 82 px in a 72 px box, so the useless case is also the one that
-            // would not fit -- dash it rather than widen the window for it.
-            if (t > 3600.0f) { strcpy(buf, "---"); fg = TFT_DARK_GREY; }
-            else             { snprintf(buf, sizeof(buf), "%d:%02d",
-                                        (int)(t / 60.0f), (int)fmodf(t, 60.0f)); }
-        }
-        _lnchAsGaugeValue(tft, x0, w, String(buf), fg, _lnchAsPrevAtmoVal);
-    }
+    // Two windows, not three: the atmosphere column carries a name and a bar only.
+    // See _lnchAsDrawAtmoChrome() for why.
     // V.Vrt — signed, red descending, matching the bar's own fill colours.
     //
     // Bare number, no unit. The window is 72 px and fmtMs() carries " m/s", which makes
@@ -1650,7 +1624,7 @@ static void _lnchAsResetState() {
     _lnchAsPrevTBurnFg    = 0xFFFF; _lnchAsPrevTBurnBg = 0xFFFF;
     _lnchAsPrevDVStgFg    = 0xFFFF; _lnchAsPrevDVStgBg = 0xFFFF;
     // Gauge digital windows: forget the last string so each redraws with its chrome.
-    _lnchAsPrevAtmoVal = ""; _lnchAsPrevVVrtVal = ""; _lnchAsPrevVOrbVal = "";
+    _lnchAsPrevVVrtVal = ""; _lnchAsPrevVOrbVal = "";
     for (uint8_t i = 0; i < LNCH_AS2_NROWS; i++) {
         _lnchAsPs[i].prevWidth  = 0;
         _lnchAsPs[i].prevBg     = 0x0001;  // sentinel
