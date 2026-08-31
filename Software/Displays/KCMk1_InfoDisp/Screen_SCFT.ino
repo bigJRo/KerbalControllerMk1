@@ -90,6 +90,56 @@ static inline bool _scftEvaMode() { return state.vesselType == type_EVA; }
 static bool _scftPrevEvaMode = false;
 
 
+// ── Row 5: descent rate, ignition countdown, or the burn itself ───────────────────────
+// Three states, not two. Below the mode switch the row is V.Vrt (see the chrome, which
+// explains why altitude rate is phase-specific instrumentation on every real spacecraft
+// that flies it). Above the switch it is T+Ign -- and, once that burn is actually under
+// way, dV.Rem counting down.
+//
+// The countdown is Apollo's. The CSM Entry Monitor System's dV counter was set before a
+// burn and counted to zero as the SPS thrust; the crew shut down on it, and it was the
+// most-watched number in the burn. Nothing on this controller counted a burn down before
+// this: MANEUVER carries Brg, Elv, Burn.Dur, T+Ign and T+Mnvr, and no dV at all.
+//
+// Row 5 is the right home because the fit is exact -- a countdown TO ignition is
+// meaningless once ignition has happened, so the row is free precisely when the burn
+// number is wanted. V.Vrt's claim below the switch is untouched: a noded burn under
+// 36 km is rare, and descent rate still wins there if one happens.
+//
+// One difference from the EMS worth knowing. Apollo's counter integrated an accelerometer
+// along the thrust axis, so it measured what the engine actually delivered and pointing
+// error showed up as a residual that would not null. state.mnvrDeltaV is the guidance
+// number -- what the node still needs -- which nulls correctly however the craft is
+// pointed, and therefore hides that error. It is the better number to fly on; it is not
+// the same instrument.
+static const uint8_t SCFT_R5_VVRT  = 0;
+static const uint8_t SCFT_R5_TIGN  = 1;
+static const uint8_t SCFT_R5_DVREM = 2;
+
+// Seconds until the burn should light, negative once it should already have.
+static float _scftTIgn() {
+    return (state.mnvrTime > 0.0f) ? (state.mnvrTime - state.mnvrDuration / 2.0f) : 1.0f;
+}
+
+static uint8_t _scftRow5Mode() {
+    if (!_scftOrbMode()) return SCFT_R5_VVRT;
+    const bool hasNode  = (state.mnvrTime > 0.0f) && (state.mnvrDeltaV > 0.0f);
+    const bool burning  = hasNode && (state.throttle > 0.01f) && (_scftTIgn() <= 0.0f);
+    return burning ? SCFT_R5_DVREM : SCFT_R5_TIGN;
+}
+
+static const char *_scftRow5Label(uint8_t mode) {
+    return (mode == SCFT_R5_VVRT)  ? "V.Vrt:"
+         : (mode == SCFT_R5_DVREM) ? "\xCE\x94V.Rem:"
+                                   : "T+Ign:";
+}
+
+// The label follows the throttle, so it cannot wait for a full chrome repaint the way
+// the orbMode swap does. Only row 5's chrome is redrawn, and its cache slot is cleared
+// so printValue repaints the value that printDispChrome just filled over.
+static uint8_t _scftPrevRow5Mode = 255;
+
+
 
 
 
@@ -657,12 +707,16 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
         // to meaningless and descent rate is the number being flown.
         const char *lbl = evaChrome ? evaPanelLabels[r]
                         : (r == 1) ? (_scftOrbMode() ? "V.Orb:" : "V.Srf:")
-                        : (r == 5) ? (_scftOrbMode() ? "T+Ign:" : "V.Vrt:")
+                        : (r == 5) ? _scftRow5Label(_scftRow5Mode())
                         : panelLabels[r];
         printDispChrome(tft, PF, SCFT_PANEL_X, rowYFor(r, SCFT_PANEL_NR),
                         SCFT_PANEL_W, rowHFor(SCFT_PANEL_NR),
                         lbl, COL_LABEL, COL_BACK, COL_NO_BDR);
     }
+
+    // Chrome has just painted row 5 with whichever label was current; record it so the
+    // update below only relabels when it actually changes.
+    _scftPrevRow5Mode = evaChrome ? (uint8_t)255 : _scftRow5Mode();
 
     // Row 7 — split divider (2px)
     {
@@ -770,24 +824,46 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         attPanelVal(4, 4, lbl, val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 5 — T+Ign in orbit, V.Vrt below the mode-switch altitude. See the chrome
-    // above for why the row is regime-switched at all.
-    if (!orbMode) {
-        // Reported, not alarmed. LNDG's thresholds are LANDING thresholds -- alarm at
-        // -8 m/s, caution at -5 -- and reusing them here would paint the row red for the
-        // whole of a normal descent, which is the always-on alarm that teaches a pilot
-        // to ignore the colour. POWERED DESCENT owns that alarm and has the radar
-        // altitude to justify it; the Shuttle's AVVI is likewise an unalarmed tape.
-        attPanelVal(5, 5, "V.Vrt:", fmtMs(state.verticalVel), TFT_DARK_GREEN, TFT_BLACK);
-    } else {
-        float tIgn = hasMnvr ? state.mnvrTime - state.mnvrDuration / 2.0f : -1.0f;
-        uint16_t fg, bg = TFT_BLACK;
+    // Row 5 — V.Vrt below the mode switch, T+Ign above it, dV.Rem once that burn is
+    // actually under way. See _scftRow5Mode above for why all three live on one row.
+    {
+        const uint8_t r5 = _scftRow5Mode();
+        // The label follows the throttle, so unlike the orbMode swap it cannot wait for
+        // a screen re-entry. Repaint just this row's chrome and clear its cache slot,
+        // since printDispChrome has filled over the value printValue last wrote.
+        if (r5 != _scftPrevRow5Mode) {
+            printDispChrome(tft, &Roboto_Black_28, SCFT_PANEL_X,
+                            rowYFor(5, SCFT_PANEL_NR), SCFT_PANEL_W,
+                            rowHFor(SCFT_PANEL_NR), _scftRow5Label(r5),
+                            COL_LABEL, COL_BACK, COL_NO_BDR);
+            rowCache[SC][5] = RowCache();
+            printState[SC][5] = PrintState();
+            _scftPrevRow5Mode = r5;
+        }
+
+        uint16_t fg = TFT_DARK_GREEN, bg = TFT_BLACK;
         String val;
-        if (!hasMnvr)        { fg = TFT_DARK_GREY; val = "---"; }
-        else if (tIgn < 0.0f){ fg = TFT_WHITE; bg = TFT_RED; val = formatTimeCompact((int64_t)tIgn); }
-        else if (tIgn < MNVR_TIGN_WARN_S){ fg = TFT_YELLOW; val = formatTimeCompact((int64_t)tIgn); }
-        else                  { fg = TFT_DARK_GREEN; val = formatTimeCompact((int64_t)tIgn); }
-        attPanelVal(5, 5, "T+Ign:", val, fg, bg);
+        if (r5 == SCFT_R5_VVRT) {
+            // Reported, not alarmed. LNDG's thresholds are LANDING thresholds -- alarm at
+            // -8 m/s, caution at -5 -- and reusing them here would paint the row red for
+            // the whole of a normal descent, which is the always-on alarm that teaches a
+            // pilot to ignore the colour. POWERED DESCENT owns that alarm and has the
+            // radar altitude to justify it; the Shuttle's AVVI is likewise unalarmed.
+            val = fmtMs(state.verticalVel);
+        } else if (r5 == SCFT_R5_DVREM) {
+            // Unalarmed for the same reason the EMS counter was: it is watched, not
+            // warned on. The pilot shuts down when it reaches zero.
+            val = fmtMs(state.mnvrDeltaV);
+        } else {
+            const float tIgn = hasMnvr ? _scftTIgn() : -1.0f;
+            if (!hasMnvr)                     { fg = TFT_DARK_GREY; val = "---"; }
+            else if (tIgn < 0.0f)             { fg = TFT_WHITE; bg = TFT_RED;
+                                                val = formatTimeCompact((int64_t)tIgn); }
+            else if (tIgn < MNVR_TIGN_WARN_S) { fg = TFT_YELLOW;
+                                                val = formatTimeCompact((int64_t)tIgn); }
+            else                              { val = formatTimeCompact((int64_t)tIgn); }
+        }
+        attPanelVal(5, 5, _scftRow5Label(r5), val, fg, bg);
     }
 
     // Row 6 — ΔV.Stg (low-stage-fuel warning, matches VEH/LNCH)
