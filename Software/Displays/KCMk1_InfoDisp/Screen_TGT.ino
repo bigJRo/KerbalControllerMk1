@@ -36,7 +36,8 @@
 
    RIGHT PANEL — 5 rows, rowHFor(5) = 106px each
    Row 0  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
-   Row 1  V.Close  full-width, colour-coded by speed (TGT_VCLOSURE thresholds)
+   Row 1  V.Close  full-width — yellow when OPENING; white-on-red when closing fast and
+                    already close (TGT_VCLOSURE_ALARM_MS gated on RNDZ_DIST_WARN_M)
    Row 2  Brg|Elv  split — bearing and elevation of the target from the NOSE
    Row 3  V.Brg|V.Elv split — approach-path error about the target axis, colour-coded
    Row 4  T+Int    full-width — estimated intercept time (dist / |vtgt|), closing only
@@ -338,7 +339,10 @@ static void drawScreen_TGT(KCM_TFT &tft) {
 
     // Row 1 — V.Close  (cache slot 1)
     // Speed of closure. Negative = closing (good), positive = opening (bad).
-    // Alarm: fast closure at short range. Warn: moderate. Nominal: dark green.
+    // Two states, not three. Yellow means OPENING -- the range is growing, whatever the
+    // speed. White-on-red means closing fast AND already close; the range gate is what
+    // makes the alarm mean something, since 500 m/s of closure is routine at 40 km.
+    // There is no "moderate closure" tier: on a rendezvous that is the whole approach.
     {
         float vc  = state.tgtVelocity;
         float avc = fabsf(vc);
@@ -438,22 +442,8 @@ static void drawScreen_TGT(KCM_TFT &tft) {
 }
 
 
-/***************************************************************************************
-   AAA_Config.ino additions required
-   Add these constants to the "FLIGHT THRESHOLDS — TARGET" section:
-
-   // Closure velocity thresholds (m/s, absolute value)
-   const float TGT_VCLOSURE_WARN_MS  = 200.0f;  // yellow — fast approach
-   const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast
-
-   // Approach alignment error thresholds (degrees absolute)
-   // Wider than DOCK thresholds — long-range ops tolerate larger angles
-   const float TGT_BRG_WARN_DEG  = 5.0f;   // yellow — off-axis approach
-   const float TGT_BRG_ALARM_DEG = 15.0f;  // white-on-red — significantly misaligned
-
-   KCMk1_InfoDisp.h additions required:
-   - extern bool _tgtChromDrawn;   // replaces extern bool _rndzChromDrawn
-   - Rename screen_RNDZ → screen_TGT in the ScreenType enum (keep value = 4)
-   - Update SCREEN_TITLES[4] to "TARGET" (already correct if unchanged)
-   - Update SCREEN_IDS[4]   to "TGT"    (already correct if unchanged)
-****************************************************************************************/
+// (A block of "AAA_Config.ino additions required" migration notes lived here: the
+// screen_RNDZ -> screen_TGT rename and the constants it needed. The rename shipped long
+// ago and the constants it listed no longer match the ones in use -- it quoted the
+// pre-1.0.5 bearing thresholds of 5/15 deg, which are now 15/30. Removed: a checklist
+// for a finished job is only a source of wrong numbers.)

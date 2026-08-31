@@ -31,15 +31,16 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-// Geometry mirrors the ACFT (aircraft) screen exactly — same ball centre, radius,
-// and readout panel — so the two attitude screens are visually identical. SCFT
-// omits the VSI, slip, and AoA indicators.
-static const int16_t  SCFT_CX        = 345;
-static const int16_t  SCFT_CY        = 300;
-static const int16_t  SCFT_R         = 206;
-static const float    SCFT_SCALE     = (float)SCFT_R / 30.0f;   // 6.867 px/deg
-// (ball extents/scanlines + the sky/ground/horizon/wings/ladder colours and the
-//  SCFT_BX_ALLSKY/ALLGND sentinels now live in the shared EADIBall.ino renderer.)
+// ONE PFD, ONE SET OF NUMBERS -- see the same note at the head of Screen_ACFT.ino.
+// This screen and AIRCRAFT draw the same instrument with the same renderer, and the
+// geometry used to be written out in full three times over, each re-derived from its own
+// copy of CX/CY/R. EADIBall.ino holds the single definition; these are aliases so the
+// chrome below still reads in this screen's own vocabulary. SPACECRAFT differs from
+// AIRCRAFT only in what it omits (VSI, slip, AoA) and in its row content, never in where
+// anything sits.
+static const int16_t  SCFT_CX        = EADI_CX;
+static const int16_t  SCFT_CY        = EADI_CY;
+static const int16_t  SCFT_R         = EADI_R;
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 static const int16_t  SCFT_PANEL_X       = SCFT_CX - (SCFT_R*2+54)/2 + (SCFT_R*2+54) + 2; // 580
@@ -197,15 +198,8 @@ static int16_t  _scftPrevPitchReadout   = -9999;
 static uint16_t _scftPrevPitchReadoutFg = 0;
 
 
-// Roll readout — two lines, right-justified toward the panel divider (matches ACFT).
-// Label: Roboto_Black_24, Value: Roboto_Black_28.
-static const int16_t  SCFT_ROLL_ANCHOR_X  = SCFT_CX + SCFT_R - 54; // right edge tucked by the divider
-static const int16_t  SCFT_ROLL_ANCHOR_Y  = TITLE_TOP;             // pinned just below the title rule
-static const int16_t  SCFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
-static const int16_t  SCFT_ROLL_TXT_W     = SCFT_ROLL_W + 6;   // text-justify reference (matches ACFT)
-static const int16_t  SCFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
-static const int16_t  SCFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
-static const int16_t  SCFT_ROLL_GAP       = 3;    // gap between lines
+// Roll readout — geometry is EADI_ROLL_* in EADIBall.ino, which is what actually draws
+// it. This screen only chooses the colour (a fixed dark green -- no roll warnings).
 
 // Update the roll numeric readout — spacecraft uses a fixed dark-green (no roll warnings).
 // Scaffolding/geometry live in the shared eadiUpdateRollReadout(); see EADIBall.ino.
@@ -225,27 +219,16 @@ static bool    _scftPrevMnvrActive = false;
 // Current value box centred on disc centre (pitch=0 line).
 // Markers: left-pointing triangles on the right edge for vel/tgt/mnvr pitch.
 
-static const int16_t  SCFT_PTAPE_W       = 36;
-static const int16_t  SCFT_PTAPE_GAP     = 27;                          // right edge aligns with HDG tape left
-static const int16_t  SCFT_PTAPE_X       = SCFT_CX - SCFT_R - SCFT_PTAPE_GAP - SCFT_PTAPE_W; // 133
-static const int16_t  SCFT_PTAPE_Y       = SCFT_CY - SCFT_R;              // 96 — top of disc
-static const int16_t  SCFT_PTAPE_H       = SCFT_CY + SCFT_R + 8 - (SCFT_CY - SCFT_R); // 336 — bottom aligns with HDG tape top (CY+R+8)
-static const float    SCFT_PTAPE_SCALE   = SCFT_SCALE;
-
-// Current value box — centred vertically on disc centre (pitch=0)
-static const int16_t  SCFT_PTAPE_BOX_W   = 68;
-static const int16_t  SCFT_PTAPE_BOX_H   = 38;                          // taller for comfortable text margin
-static const int16_t  SCFT_PTAPE_BOX_X   = SCFT_PTAPE_X + SCFT_PTAPE_W - 68; // right edge flush with tape right
-static const int16_t  SCFT_PTAPE_BOX_Y   = SCFT_CY - SCFT_PTAPE_BOX_H / 2; // 241
-
-// Suppress zone — ticks/labels suppressed near the value box
-static const int16_t  SCFT_PTAPE_SUPP_LO = SCFT_PTAPE_BOX_Y - 10;
-static const int16_t  SCFT_PTAPE_SUPP_HI = SCFT_PTAPE_BOX_Y + SCFT_PTAPE_BOX_H + 10;
-
-// Markers — left-pointing triangles on right edge of tape
-static const int16_t  SCFT_PTAPE_MRK_BASE_X = SCFT_PTAPE_X + SCFT_PTAPE_W - 2;
-static const int16_t  SCFT_PTAPE_MRK_TIP_X  = SCFT_PTAPE_X + SCFT_PTAPE_W - 22; // 20px (matches ACFT)
-static const int16_t  SCFT_PTAPE_MRK_HW     = 9;
+// Only the outer frame and the value box are drawn here; the ticks, labels, markers and
+// suppress zone belong to eadiDrawPitchTape.
+static const int16_t  SCFT_PTAPE_W       = EADI_PTAPE_W;       // 36
+static const int16_t  SCFT_PTAPE_X       = EADI_PTAPE_X;       // 76
+static const int16_t  SCFT_PTAPE_Y       = EADI_PTAPE_Y;       // 94  — top of disc
+static const int16_t  SCFT_PTAPE_H       = EADI_PTAPE_H;       // 420 — bottom meets the HDG tape
+static const int16_t  SCFT_PTAPE_BOX_W   = EADI_PTAPE_BOX_W;   // 68
+static const int16_t  SCFT_PTAPE_BOX_H   = EADI_PTAPE_BOX_H;   // 38
+static const int16_t  SCFT_PTAPE_BOX_X   = EADI_PTAPE_BOX_X;   // 44
+static const int16_t  SCFT_PTAPE_BOX_Y   = EADI_PTAPE_BOX_Y;   // 281 — centred on pitch = 0
 
 // State
 static float   _scftPrevPitch2      = -9999.0f;   // pitch tape (distinct from ball state)
@@ -299,29 +282,16 @@ static float   _scftPrevTgtHdg     = -9999.0f;
 static float   _scftPrevMnvrHdg    = -9999.0f;
 
 // ── Heading tape geometry ─────────────────────────────────────────────────────────────
-static const int16_t  SCFT_HDG_TAPE_W    = (SCFT_R * 2) + 54;              // 382 — ±35° visible
-static const int16_t  SCFT_HDG_TAPE_X    = SCFT_CX - (SCFT_HDG_TAPE_W / 2); // 169
-static const int16_t  SCFT_HDG_TAPE_Y    = SCFT_CY + SCFT_R + 8;    // 432 — 8px below disc
-static const int16_t  SCFT_HDG_TAPE_H    = 32;
-static const float    SCFT_HDG_SCALE     = (float)(SCFT_R * 2) / 60.0f;
-static const int16_t  SCFT_HDG_LABEL_LO  = SCFT_HDG_TAPE_X + 8;
-static const int16_t  SCFT_HDG_LABEL_HI  = SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W - 8;
-
-// Box — top aligned with tape top, extends 8px BELOW tape bottom so its
-// bottom border is outside the fillRect zone and never flickers
-static const int16_t  SCFT_HDG_BOX_W     = 72;
-static const int16_t  SCFT_HDG_BOX_H     = 40;                     // TAPE_H + 8 = 40
-static const int16_t  SCFT_HDG_BOX_X     = SCFT_CX - (SCFT_HDG_BOX_W / 2);
-static const int16_t  SCFT_HDG_BOX_Y     = SCFT_HDG_TAPE_Y;
-
-// Suppress zone — covers box + max label half-width (12px)
-static const int16_t  SCFT_HDG_SUPP_LO   = SCFT_HDG_BOX_X - 18;
-static const int16_t  SCFT_HDG_SUPP_HI   = SCFT_HDG_BOX_X + SCFT_HDG_BOX_W + 18;
-
-// Heading markers — long thin downward triangles fully inside the tape
-static const int16_t  SCFT_HDG_MRK_BASE_Y = SCFT_HDG_TAPE_Y + 2;   // 2px below tape top
-static const int16_t  SCFT_HDG_MRK_TIP_Y  = SCFT_HDG_TAPE_Y + 24;  // 22px tall (matches ACFT)
-static const int16_t  SCFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide
+// As above: frame and box only. Ticks, labels, markers and the suppress zone are
+// eadiDrawHeadingTape's.
+static const int16_t  SCFT_HDG_TAPE_W    = EADI_HDG_TAPE_W;    // 466 — ±35° visible
+static const int16_t  SCFT_HDG_TAPE_X    = EADI_HDG_TAPE_X;    // 112
+static const int16_t  SCFT_HDG_TAPE_Y    = EADI_HDG_TAPE_Y;    // 514 — 8 px below the disc
+static const int16_t  SCFT_HDG_TAPE_H    = EADI_HDG_TAPE_H;    // 32
+static const int16_t  SCFT_HDG_BOX_W     = EADI_HDG_BOX_W;     // 72
+static const int16_t  SCFT_HDG_BOX_H     = EADI_HDG_BOX_H;     // 40 — 8 px taller than the tape,
+static const int16_t  SCFT_HDG_BOX_X     = EADI_HDG_BOX_X;     //   so its bottom border sits
+static const int16_t  SCFT_HDG_BOX_Y     = EADI_HDG_BOX_Y;     //   outside the fill and can't flicker
 
 // Draw/update the heading number box — delegated to the shared helper (see EADIBall.ino).
 static void _scftUpdateHdgBox(KCM_TFT &tft, float hdg) {

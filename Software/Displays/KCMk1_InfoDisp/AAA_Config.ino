@@ -154,9 +154,16 @@ const float DV_TOT_WARN_MS  = 500.0f;  // yellow — mission nearly out of prope
 // Distance to target (m) — yellow <5km, white-on-green <200m (ready for DOCK)
 const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow — closing
 
-// Closure velocity thresholds (m/s, absolute value)
-const float TGT_VCLOSURE_WARN_MS  = 200.0f;  // yellow — fast approach
-const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast
+// Closure velocity alarm (m/s, absolute value). ONE tier, deliberately -- and it is
+// gated on range as well as speed (see Screen_TGT): the alarm is "closing fast AND
+// already inside RNDZ_DIST_WARN_M", because 500 m/s of closure at 40 km is a normal
+// transfer and the same number at 3 km is an impact. There used to be a
+// TGT_VCLOSURE_WARN_MS = 200 here as well, documented as "yellow -- fast approach". No
+// code ever read it; the row's yellow means the closure is NEGATIVE (opening, and so
+// not an approach at all), which is a different quantity entirely. Removed rather than
+// wired up: a speed-only middle tier would have fired constantly on any normal
+// rendezvous and taught the pilot to ignore the colour.
+const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast, and close
 
 // Approach alignment error thresholds (degrees absolute)
 // THE RETICLE RINGS ARE THE COLOUR BANDS. Every reticle draws its good zone at

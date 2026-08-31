@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.5.3
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.5.4
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -69,7 +69,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | ≥ 3.0.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
+| KerbalDisplayCommon | ≥ 3.7.2 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
 | KerbalDisplayAudio | ≥ 1.3.0 | Non-blocking `tone()` audio state machine + bundled `KCM_DFPlayer` driver (DFPlayer Mini BUSY polling for the GPWS function) |
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
@@ -439,6 +439,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.5.4** | **Target closure is signed at ingestion — a fix that shipped here without a version bump, which is what this entry is really recording.** Simpit's `TargetInfo.cs` sets `velocity = ship_tgtVelocity.magnitude` and never returns a negative, but this panel's `AppState` documented `tgtVelocity` as "negative = closing" and its consumers were written to that contract. `SimpitHandler` now resolves the velocity onto the line of sight (`-|v| · cos θ` between the velocity and bearing unit vectors) so the sign means what everything downstream already assumed. The behaviour changed in the InfoDisp 1.10.19 cycle and this sketch's version string stayed at 3.5.3, so a panel could not be identified from its boot screen — on a controller where three boards are flashed separately that is a real hazard, and it is why `tools/panel_lint.py` was added and why the version now moves. Also picks up **KerbalDisplayCommon 3.7.2**: glyph data out of DTCM into flash (3.7.1), which this sketch benefits from equally, and the `formatSep` rewrite. **Clear the build cache before the next build**, or a stale object will link the old DTCM-resident fonts straight back in. |
 | **3.5.3** | **A panel booting into a running flight no longer sits on standby.** `flightScene` was only ever set by `SCENE_CHANGE_MESSAGE`, which Simpit sends as an *event* — there is no way to ask for the current scene. A panel that boots (or whose USB re-enumerates) while a flight is already running therefore never hears it and sits on the standby screen until the pilot happens to change scene or vessel. Since Simpit sends `FLIGHT_STATUS` only from a flight scene, receiving it while the panel believes it is not in one is proof that the transition was missed, so the panel now adopts the scene there. Both routes go through one new `enterFlightScene()` so they cannot drift apart. The hook sits at the end of the `FLIGHT_STATUS` handler rather than earlier, so the message's own vessel data is already applied, so the caution & warning state is already current when the Main screen comes up. Shared with the InfoDisp and Resource Display, which had the same defect. (The README title line also caught up with the header, which had been at 3.5.x for several releases.) |
 | **3.5.2** | Build fix: forward-declare `struct GpwsRung;` in `KCMk1_Annunciator.h`. The Arduino builder injects `gpwsCrossed()`'s prototype at the top of the combined sketch — above `GPWS.ino`'s `GpwsRung` definition — which otherwise errors with *"'GpwsRung' does not name a type."* No behaviour change. |
 | **3.5.1** | Callout playback tuned to the recorded clips: **DON'T SINK** (clip 6) is a single utterance, so the firmware now plays it twice (`_dsRepeat`) to form the "don't sink, don't sink" doublet at Mode 3 priority. **STALL** (clip 8) is a buzzer, re-triggered continuously (`STALL_GAP_MS` 1200 → 60 ms, BUSY-gated) so it sounds unbroken while the stall condition holds. |

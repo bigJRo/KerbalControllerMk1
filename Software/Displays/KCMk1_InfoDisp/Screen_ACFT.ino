@@ -31,15 +31,24 @@
 
 
 // ── Geometry ──────────────────────────────────────────────────────────────────────────
-static const int16_t  ACFT_CX        = 345;   // 1024x600: PFD sits left, data panel right
-static const int16_t  ACFT_CY        = 300;   // ball centred so bank ticks clear the title rule
-                                              //   (top ~84) and the slip strip reaches the bottom
-static const int16_t  ACFT_R         = 206;   // sized so the derived panel (PANEL_X = CX+R+29)
-                                              //   lands at x=580, giving a 360px readout panel
-                                              //   matching the reticle/launch screens
-static const float    ACFT_SCALE     = (float)ACFT_R / 30.0f;   // R/30 px/deg
-// (ball extents/scanlines + sky/ground/horizon/wings/ladder colours and the
-//  ACFT_BX_ALLSKY/ALLGND sentinels now live in the shared EADIBall.ino renderer.)
+// ONE PFD, ONE SET OF NUMBERS. This screen, SPACECRAFT and the shared EADIBall renderer
+// all draw the same instrument, so they have to agree pixel for pixel about where the
+// disc, the tapes and the value boxes sit. They used to say so three times over, each
+// re-deriving the whole layout from its own copy of CX/CY/R -- 84 constants that were
+// equal only because nobody had yet edited one of the three. The comments had already
+// drifted: seven of them still quoted values from before the disc was enlarged, and two
+// layout decisions in this repo were made off those stale numbers and came out wrong.
+//
+// EADIBall.ino now holds the single definition. The ACFT_* names below are kept, as
+// aliases, so this screen's own chrome still reads in its own vocabulary -- but there is
+// nothing left here that can disagree with the renderer.
+static const int16_t  ACFT_CX        = EADI_CX;
+static const int16_t  ACFT_CY        = EADI_CY;
+static const int16_t  ACFT_R         = EADI_R;      // sized so the derived panel
+                                                    //   (PANEL_X = CX+R+29) lands at x=580,
+                                                    //   giving a 360px readout panel that
+                                                    //   matches the reticle/launch screens
+static const float    ACFT_SCALE     = EADI_SCALE;  // R/30 px/deg
 
 // ── Right panel geometry ───────────────────────────────────────────────────────────────
 // Panel left = HDG tape right + 2. HDG tape right = CX + (R*2+54)/2 = 345+233 = 578.
@@ -164,23 +173,8 @@ static uint16_t _acftPrevRollReadoutFg = 0;          // last drawn foreground co
 // ── Pitch readout state ───────────────────────────────────────────────────────────────
 
 
-// Roll readout — two lines centred in fixed-width block
-// Label: Roboto_Black_24, Value: Roboto_Black_28 (enlarged)
-static const int16_t  ACFT_ROLL_ANCHOR_X  = ACFT_CX + ACFT_R - 54; // right edge tucked against
-                                                                   //   the panel divider
-static const int16_t  ACFT_ROLL_ANCHOR_Y  = TITLE_TOP;             // pinned just below the title
-                                                                   //   rule (y58–61); independent of
-                                                                   //   R so a bigger ball can't push
-                                                                   //   the readout into the title bar
-static const int16_t  ACFT_ROLL_W         = 80;   // block width ("+180°" _28 = 74px fits)
-// Label/value are right-justified toward the panel divider. textRight() insets by
-// TEXT_BORDER(8) from the box's right edge, so extend the justify reference 6px
-// past ACFT_ROLL_W: text right edge lands at x=569, 2px clear of the divider (571),
-// ~10px right of the old centred position for typical narrow roll values.
-static const int16_t  ACFT_ROLL_TXT_W     = ACFT_ROLL_W + 6;   // 86 — text-justify reference
-static const int16_t  ACFT_ROLL_LABEL_H   = 30;   // label line height (Roboto_Black_24, cap 29)
-static const int16_t  ACFT_ROLL_VALUE_H   = 38;   // value line height (Roboto_Black_28, cap 33)
-static const int16_t  ACFT_ROLL_GAP       = 3;    // gap between lines
+// Roll readout — geometry is EADI_ROLL_* in EADIBall.ino, which is what actually draws
+// it. This screen only chooses the colour.
 
 // Update the roll numeric readout — aircraft applies roll warn/alarm colouring (unlike
 // spacecraft). Scaffolding/geometry live in the shared eadiUpdateRollReadout().
@@ -200,27 +194,16 @@ static void _acftUpdateRollReadout(KCM_TFT &tft, float roll) {
 // Current value box centred on disc centre (pitch=0 line).
 // Markers: left-pointing triangles on the right edge for vel/tgt/mnvr pitch.
 
-static const int16_t  ACFT_PTAPE_W       = 36;
-static const int16_t  ACFT_PTAPE_GAP     = 27;                          // right edge aligns with HDG tape left
-static const int16_t  ACFT_PTAPE_X       = ACFT_CX - ACFT_R - ACFT_PTAPE_GAP - ACFT_PTAPE_W; // 133
-static const int16_t  ACFT_PTAPE_Y       = ACFT_CY - ACFT_R;              // 96 — top of disc
-static const int16_t  ACFT_PTAPE_H       = ACFT_CY + ACFT_R + 8 - (ACFT_CY - ACFT_R); // 336 — bottom aligns with HDG tape top (CY+R+8)
-static const float    ACFT_PTAPE_SCALE   = ACFT_SCALE;
-
-// Current value box — centred vertically on disc centre (pitch=0)
-static const int16_t  ACFT_PTAPE_BOX_W   = 68;
-static const int16_t  ACFT_PTAPE_BOX_H   = 38;                          // taller for comfortable text margin
-static const int16_t  ACFT_PTAPE_BOX_X   = ACFT_PTAPE_X + ACFT_PTAPE_W - 68; // right edge flush with tape right
-static const int16_t  ACFT_PTAPE_BOX_Y   = ACFT_CY - ACFT_PTAPE_BOX_H / 2; // 241
-
-// Suppress zone — ticks/labels suppressed near the value box
-static const int16_t  ACFT_PTAPE_SUPP_LO = ACFT_PTAPE_BOX_Y - 10;
-static const int16_t  ACFT_PTAPE_SUPP_HI = ACFT_PTAPE_BOX_Y + ACFT_PTAPE_BOX_H + 10;
-
-// Markers — left-pointing triangles on right edge of tape
-static const int16_t  ACFT_PTAPE_MRK_BASE_X = ACFT_PTAPE_X + ACFT_PTAPE_W - 2;
-static const int16_t  ACFT_PTAPE_MRK_TIP_X  = ACFT_PTAPE_X + ACFT_PTAPE_W - 22; // 20px — enlarged
-static const int16_t  ACFT_PTAPE_MRK_HW     = 9;                                // enlarged from 6
+// Only the outer frame and the value box are drawn here (in chromeScreen_ACFT); the
+// ticks, labels, markers and suppress zone belong to eadiDrawPitchTape.
+static const int16_t  ACFT_PTAPE_W       = EADI_PTAPE_W;       // 36
+static const int16_t  ACFT_PTAPE_X       = EADI_PTAPE_X;       // 76
+static const int16_t  ACFT_PTAPE_Y       = EADI_PTAPE_Y;       // 94  — top of disc
+static const int16_t  ACFT_PTAPE_H       = EADI_PTAPE_H;       // 420 — bottom meets the HDG tape
+static const int16_t  ACFT_PTAPE_BOX_W   = EADI_PTAPE_BOX_W;   // 68
+static const int16_t  ACFT_PTAPE_BOX_H   = EADI_PTAPE_BOX_H;   // 38
+static const int16_t  ACFT_PTAPE_BOX_X   = EADI_PTAPE_BOX_X;   // 44
+static const int16_t  ACFT_PTAPE_BOX_Y   = EADI_PTAPE_BOX_Y;   // 281 — centred on pitch = 0
 
 // State
 static float   _acftPrevPitch2      = -9999.0f;   // pitch tape (distinct from ball state)
@@ -258,29 +241,16 @@ static int16_t _acftPrevHdgBox     = -9999;
 static float   _acftPrevVelHdg     = -9999.0f;
 
 // ── Heading tape geometry ─────────────────────────────────────────────────────────────
-static const int16_t  ACFT_HDG_TAPE_W    = (ACFT_R * 2) + 54;              // 354 — ±35° visible
-static const int16_t  ACFT_HDG_TAPE_X    = ACFT_CX - (ACFT_HDG_TAPE_W / 2); // 83
-static const int16_t  ACFT_HDG_TAPE_Y    = ACFT_CY + ACFT_R + 8;    // 406 — 8px below disc bottom
-static const int16_t  ACFT_HDG_TAPE_H    = 32;
-static const float    ACFT_HDG_SCALE     = (float)(ACFT_R * 2) / 60.0f;
-static const int16_t  ACFT_HDG_LABEL_LO  = ACFT_HDG_TAPE_X + 8;
-static const int16_t  ACFT_HDG_LABEL_HI  = ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W - 8;
-
-// Box — top aligned with tape top, extends 8px BELOW tape bottom so its
-// bottom border is outside the fillRect zone and never flickers
-static const int16_t  ACFT_HDG_BOX_W     = 72;
-static const int16_t  ACFT_HDG_BOX_H     = ACFT_HDG_TAPE_H + 8;    // = 40
-static const int16_t  ACFT_HDG_BOX_X     = ACFT_CX - (ACFT_HDG_BOX_W / 2);
-static const int16_t  ACFT_HDG_BOX_Y     = ACFT_HDG_TAPE_Y;
-
-// Suppress zone — covers box + max label half-width (12px)
-static const int16_t  ACFT_HDG_SUPP_LO   = ACFT_HDG_BOX_X - 18;
-static const int16_t  ACFT_HDG_SUPP_HI   = ACFT_HDG_BOX_X + ACFT_HDG_BOX_W + 18;
-
-// Heading markers — long thin downward triangles fully inside the tape
-static const int16_t  ACFT_HDG_MRK_BASE_Y = ACFT_HDG_TAPE_Y + 2;   // 2px below tape top
-static const int16_t  ACFT_HDG_MRK_TIP_Y  = ACFT_HDG_TAPE_Y + 24;  // 22px tall (enlarged)
-static const int16_t  ACFT_HDG_MRK_HW     = 9;                     // half-width → 19px wide (enlarged)
+// As above: frame and box only. Ticks, labels, markers and the suppress zone are
+// eadiDrawHeadingTape's.
+static const int16_t  ACFT_HDG_TAPE_W    = EADI_HDG_TAPE_W;    // 466 — ±35° visible
+static const int16_t  ACFT_HDG_TAPE_X    = EADI_HDG_TAPE_X;    // 112
+static const int16_t  ACFT_HDG_TAPE_Y    = EADI_HDG_TAPE_Y;    // 514 — 8 px below the disc
+static const int16_t  ACFT_HDG_TAPE_H    = EADI_HDG_TAPE_H;    // 32
+static const int16_t  ACFT_HDG_BOX_W     = EADI_HDG_BOX_W;     // 72
+static const int16_t  ACFT_HDG_BOX_H     = EADI_HDG_BOX_H;     // 40 — 8 px taller than the tape,
+static const int16_t  ACFT_HDG_BOX_X     = EADI_HDG_BOX_X;     //   so its bottom border sits
+static const int16_t  ACFT_HDG_BOX_Y     = EADI_HDG_BOX_Y;     //   outside the fill and can't flicker
 
 // Draw/update the heading number box — delegated to the shared helper (see EADIBall.ino).
 static void _acftUpdateHdgBox(KCM_TFT &tft, float hdg) {
@@ -445,8 +415,8 @@ static void _acftUpdateSlipBall(KCM_TFT &tft, float slip) {
 // Arc spans AOA_ANG_LO..AOA_ANG_HI in screen-angle degrees.
 // Safe range: stays clear of bank=±60 roll ticks (which live at 210° and 330°).
 // Drawn as solid colour bands using fillTriangle pairs — no float drift, no gaps.
-static const int16_t  AOA_R_INNER  = ACFT_R + 4;    // 154px — just outside bezel
-static const int16_t  AOA_R_OUTER  = ACFT_R + 18;   // 168px
+static const int16_t  AOA_R_INNER  = ACFT_R + 4;    // 210 — just outside the bezel (R+2)
+static const int16_t  AOA_R_OUTER  = ACFT_R + 18;   // 224 — 14 px band
 static const float    AOA_ZERO_DEG = 180.0f;         // 9 o'clock
 static const int16_t  AOA_ANG_LO   = 155;            // low screen angle  (= AoA -25°)
 static const int16_t  AOA_ANG_HI   = 205;            // high screen angle (= AoA +25°)

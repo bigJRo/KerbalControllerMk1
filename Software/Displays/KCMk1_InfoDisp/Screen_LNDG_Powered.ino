@@ -51,8 +51,8 @@ static const uint16_t LNDG_XP_X     = 136;
 static const uint16_t LNDG_XP_Y     = TITLE_TOP + 26;               // 88 — below the SURF DRIFT title
 static const uint16_t LNDG_XP_SIDE  = 332;                          // trimmed to give the ATT + ground-track
                                                                    //   compasses below more room
-static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 308
-static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 268
+static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 302
+static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 254
 static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
 
 // X-Pointer field colours
@@ -217,9 +217,6 @@ static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
 static const uint16_t LNDG_ATT_CX    = 216;          // left of the X-Pointer centre
 static const uint16_t LNDG_ATT_CY    = 534;          // below the X-Pointer's lateral axis row
 static const uint8_t  LNDG_ATT_R     = 58;           // outer ring radius (= ±15°)
-static const uint16_t LNDG_ATT_SIDE  = LNDG_ATT_R * 2 + 4;
-static const uint16_t LNDG_ATT_X     = LNDG_ATT_CX - LNDG_ATT_SIDE / 2;  // field left edge
-static const uint16_t LNDG_ATT_Y     = LNDG_ATT_CY - LNDG_ATT_SIDE / 2;  // field top edge
 static const float    LNDG_ATT_SCALE = (float)LNDG_ATT_R / 15.0f;
 
 static int16_t _lndgPrevAttX = -999;

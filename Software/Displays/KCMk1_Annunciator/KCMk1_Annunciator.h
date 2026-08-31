@@ -172,6 +172,10 @@ static const uint8_t VSIT_LANDED    = 7;
    NOTE: the exact label/colour/source for each tile is provisional — confirm
    against the final master protocol (several are not in the I2C spec yet).
 ****************************************************************************************/
+// panel-lint: keep-begin — these name the WIRE FORMAT, not call sites. The tile grid is
+// drawn by index from a table, so most of the twelve are never referenced by name; they
+// exist so the master's I2C bit assignment is written down somewhere the firmware can be
+// checked against. Do not delete the unreferenced ones as dead code.
 static const uint8_t MF_DEMO        =  0;
 static const uint8_t MF_WARP        =  1;
 static const uint8_t MF_AUDIO       =  2;
@@ -185,6 +189,7 @@ static const uint8_t MF_THRTL_PREC  =  9;
 static const uint8_t MF_INPUT_PREC  = 10;
 static const uint8_t MF_ENG_ARM     = 11;
 static const uint8_t MF_COUNT       = 12;
+// panel-lint: keep-end
 
 
 /***************************************************************************************
@@ -285,7 +290,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 3;  // 3.5.3: adopt a flight scene already in progress
+static const uint8_t SKETCH_VERSION_PATCH = 4;  // 3.5.4: target closure sign fixed at ingestion
 
 
 /***************************************************************************************

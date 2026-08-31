@@ -65,7 +65,7 @@ All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | ≥ 3.0.0 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
+| KerbalDisplayCommon | ≥ 3.7.2 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
 | KCM_Touch | — | FT5316 capacitive touch driver (replaces the rev-1 GSL1680F driver) |
 | TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 16-bit parallel driver + GFX layer — install on the build machine (not vendored) |
 | KerbalDisplayAudio | 1.1.0 | Direct sketch dependency — audio output not used on this panel |

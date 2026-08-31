@@ -183,7 +183,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 11;
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.11.3: rate-cluster and ROVER-strip layout fixes
+static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.11.4: dedup, dead code, stale comments
 
 
 /***************************************************************************************

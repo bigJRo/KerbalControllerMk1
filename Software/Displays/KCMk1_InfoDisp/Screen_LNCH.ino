@@ -27,24 +27,11 @@ bool _lnchPrelaunchMode    = false;  // true = sit_PreLaunch board is showing
 bool _lnchPrelaunchDismissed = false; // true = pilot tapped to dismiss; don't re-enter
 
 // ── Ascent phase geometry ─────────────────────────────────────────────────────────────
-// Content area: x=0..719, y=63..479 (717×417 usable)
-// Left panel (graphics): x=0..452 (453 wide)
-// Right panel (numeric readouts): x=453..719 (267 wide)
-// Panel split matches the SCFT screen convention: right panel starts at x=453,
-// with a 2-px vertical divider in the gap (at x=451, 452). Right-panel fonts
-// also match SCFT: Roboto_Black_20 labels, Roboto_Black_24 values.
-static const int16_t LNCH_AS_LPANEL_X    = 0;
-static const int16_t LNCH_AS_LPANEL_W    = 453;
-static const int16_t LNCH_AS_RPANEL_X    = 453;
-static const int16_t LNCH_AS_RPANEL_W    = 267;
-static const int16_t LNCH_AS_PANEL_Y     = 63;   // just below title bar
-static const int16_t LNCH_AS_PANEL_H     = 417;  // content below title, to bottom
-
-// Right panel: 8 stacked numeric readouts, 52 px each (8 × 52 = 416, fits in 417).
-// Each row uses library printDispChrome for label+border and printValue for value.
-// Font: Roboto_Black_24 — large enough to read easily, small enough that worst-case
-// launch values like "+3,234" fit within the value region after label+padding.
-static const int16_t LNCH_AS_ROW_H       = 52;
+// Six panel constants used to live here describing a 717x417 content area split at
+// x=453 -- the rev-1 720x480 screen. This panel has been 1024x600 since rev-2 and the
+// live ASCENT layout is in Screen_LNCH_Ascent.ino, so every one of them was both unused
+// and wrong. Only the title offset survives, and it is still correct.
+static const int16_t LNCH_AS_PANEL_Y     = 63;   // just below the title bar
 
 
 // ── Top-level dispatchers ──────────────────────────────────────────────────────────────

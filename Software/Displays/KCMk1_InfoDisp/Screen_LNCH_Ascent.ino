@@ -26,7 +26,7 @@
    Top-level dispatcher Screen_LNCH.ino selects which of these to draw.
 
    Shared with the rest of the LNCH screen (defined in Screen_LNCH.ino):
-     - LNCH_AS_LPANEL_X/W, LNCH_AS_PANEL_Y/H  (left graphics panel geometry)
+     - LNCH_AS_PANEL_Y, LNCH_AS_LP_LEFT       (left graphics panel geometry)
      The ascent-specific code below references these freely (single Arduino TU).
      The rev-2 right (numeric readout) panel uses its own LNCH_AS2_* geometry and
      _lnchAs2RowY() — right-aligned to the content edge, 400 px wide, full height,
@@ -68,12 +68,12 @@
 // the Arduino builder hoists function prototypes but not constants.
 static const uint8_t LNCH_AS2_NROWS    = 7;
 
-static const int16_t LNCH_AS_READOUT_W = 360;
-static const int16_t LNCH_AS_READOUT_X = CONTENT_W - LNCH_AS_READOUT_W;              // 580
+// The readout column is LNCH_AS2_RPANEL_W/X, declared with the rest of the row table
+// further down. A second, identical pair (LNCH_AS_READOUT_W/X) used to be declared here
+// -- same 360 px, same CONTENT_W - 360 -- and nothing read it.
 
 // Left graphics panel: everything left of the readout column.
 static const int16_t LNCH_AS_LP_LEFT   = 0;
-static const int16_t LNCH_AS_LP_RIGHT  = LNCH_AS_READOUT_X - 4;      // small gap before readout (576)
 
 // Shared vertical band for the ladder and all gauges. Move them together here.
 static const int16_t LNCH_AS_BAND_TOP  = TITLE_TOP + 18;            // 80  (~18px under title bar)
@@ -97,7 +97,6 @@ static const int16_t LNCH_AS_GAUGE_VAL_Y    = LNCH_AS_BAND_TOP + LNCH_AS_GAUGE_N
 static const int16_t LNCH_AS_GAUGE_BODY_TOP = LNCH_AS_BAND_TOP + LNCH_AS_GAUGE_NAME_H + LNCH_AS_GAUGE_VAL_H
                                               + LNCH_AS_GAUGE_ENDLBL_H + 6;                                         // 154
 static const int16_t LNCH_AS_GAUGE_BODY_BOT = LNCH_AS_BAND_BOT - LNCH_AS_GAUGE_ENDLBL_H - 2;                        // 562
-static const int16_t LNCH_AS_GAUGE_BODY_MIDY= (LNCH_AS_GAUGE_BODY_TOP + LNCH_AS_GAUGE_BODY_BOT) / 2;
 
 // Horizontal spacing: COL_GAP = whitespace between element bounding boxes;
 // LBL_OVERHANG = how far each bar's endpoint-label box extends beyond the bar.
@@ -419,7 +418,8 @@ static const int16_t LNCH_AS_MARKER_LBL_W    = 32;    // width reserved for the 
                                                      // to be measured rather than guessed.
 // A marker's drawn extent and the erase box are both 19 rows tall, so erasing one
 // marker clips the other whenever their centres are within 19 - 1 + 19 - 1 = 18 px.
-static const int16_t LNCH_AS_MARKER_ROWS     = 19;
+// (That 19 was also spelled out as a constant here; nothing read it, and a number no
+// code depends on is one that drifts from the geometry it claims to describe.)
 
 static void _lnchAsDrawAltMarker(KCM_TFT &tft, int16_t y, uint16_t color,
                                  bool filled, const char *label) {

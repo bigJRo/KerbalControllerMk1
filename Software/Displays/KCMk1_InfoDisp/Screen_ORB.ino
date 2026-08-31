@@ -46,7 +46,7 @@
      Switches to SOI view when altSL > 2*bodyR.
 
    Right panel — Orbital inclination (INCL):
-     Edge-on view. Equatorial plane = dashed horizontal at INC_CY.
+     Edge-on view. Equatorial plane = dashed horizontal at ORB_CY.
      Orbit line through body centre at angle = inclination. Draw order is
      equator -> body disc -> orbit line, so the line runs unbroken in front of
      the body — the same "orbit line on top" rule the planar panel follows.
@@ -70,7 +70,6 @@ static const uint16_t ORB_MAX_R      = 170;   // orbit half-extent (pixels)
 // trimmed again to make room for the larger (Roboto_Black_28) readout text at
 // the bottom and the larger (Roboto_Black_32) SOI body name up top.
 static const int16_t  ORB_PCX = 235;
-static const int16_t  ORB_ICX = 705;
 static const int16_t  ORB_CY  = 265;
 
 // Header strip — protected from scene repaints. Holds ORBIT/INCL labels and
@@ -132,7 +131,6 @@ static const uint16_t ORB_RDY3 = 559;  // Ap row
 
 // ── INCL panel layout (right half, x=[470,940]) ───────────────────────────────────────
 static const int16_t  INC_CX   = 705;  // panel centre x
-static const int16_t  INC_CY   = 265;  // panel centre y (shared with ORB_CY)
 // Orbit line half-length. At 90° inclination the line extends bodyCY ± INC_L =
 // 265 ± 160 = 105..425, clearing both the header strip (bottom y=92) and the
 // 4-row readout strip below (top row = Inc at y=448).

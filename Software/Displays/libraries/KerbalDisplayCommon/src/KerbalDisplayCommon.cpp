@@ -1239,29 +1239,41 @@ static String _getSign(float &value) {
 // directly with an int64_t.
 
 // Core implementation — operates on a signed 64-bit integer.
-// Buffer sizing (#A6): int64 max is 19 digits → ~6 separator groups → 24
-// chars of commas + 3-digit leading group = 27 chars worst case. buf[64]
-// gives ample margin. INT64_MIN is unsupported (negation overflows); not
-// reachable from any realistic Kerbal value.
+//
+// Filled BACKWARDS from the end of one buffer, a digit at a time. The previous version
+// built the string front-to-back and so had to re-emit everything it had already
+// produced on each group: `sprintf(tempBuf, ",%03d%s", current, buf); strcpy(buf,
+// tempBuf)` is two passes over the whole accumulated string per three digits, which
+// makes it quadratic in the digit count and costs two 64-byte buffers plus a printf
+// invocation per group. This is the hottest formatting path on the panel — every
+// formatAlt() on every visible distance readout lands here every frame — so it is worth
+// the few lines. Writing right-to-left also puts the separators exactly where the
+// modulus already is, with no need to zero-pad a leading group that must not be padded.
+//
+// Buffer sizing: the widest possible result is INT64_MIN, "-9,223,372,036,854,775,808"
+// — 1 sign + 19 digits + 6 separators + NUL = 27 bytes. 28 leaves a byte spare.
 static String _formatSepInt64(int64_t value) {
-  char buf[64]     = "";
-  char tempBuf[64] = "";
-  String sign;
-  if (value < 0) { value = -value; sign = "-"; }
-  if (value < 1000) {
-    char small[16];
-    sprintf(small, "%lld", (long long)value);
-    return sign + String(small);
-  }
-  while (value >= 1000) {
-    int current = (int)(value % 1000);
-    value /= 1000;
-    sprintf(tempBuf, ",%03d%s", current, buf);
-    strcpy(buf, tempBuf);
-  }
-  char output[64];
-  sprintf(output, "%lld%s", (long long)value, buf);
-  return sign + String(output);
+  char  buf[28];
+  char *p = buf + sizeof(buf) - 1;
+  *p = '\0';
+
+  const bool neg = (value < 0);
+  // Negate into an UNSIGNED accumulator. The old code did `value = -value` on the signed
+  // type, which is undefined for INT64_MIN — a limitation it documented ("not reachable
+  // from any realistic Kerbal value") rather than fixed. Unsigned negation is modular and
+  // well defined, so the whole range now works and the caveat goes away.
+  uint64_t v = neg ? (uint64_t)0 - (uint64_t)value : (uint64_t)value;
+
+  uint8_t inGroup = 0;
+  do {
+    if (inGroup == 3) { *--p = ','; inGroup = 0; }
+    *--p = (char)('0' + (uint8_t)(v % 10u));
+    v /= 10u;
+    inGroup++;
+  } while (v != 0);
+
+  if (neg) *--p = '-';
+  return String(p);
 }
 
 String formatSep(float value) {

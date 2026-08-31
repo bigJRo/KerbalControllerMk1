@@ -59,14 +59,14 @@ static const int16_t  RE_TAPE_M   = 8;    // marker half-height inset (= triangl
 static const uint16_t RE_ATMO_LBL_X = 114;                          // vertical label column
 static const uint16_t RE_ATMO_X   = 130;
 static const uint16_t RE_ATMO_W   = RE_TAPE_W;                      // same width as the tape
-static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 82 — same top as the tape's border
-static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 585 — same bottom as the tape's border
+static const uint16_t RE_ATMO_Y   = RE_TAPE_Y + RE_TAPE_M;          // 78  — same top as the tape's border
+static const uint16_t RE_ATMO_BOT = RE_TAPE_BOT - RE_TAPE_M;        // 589 — same bottom as the tape's border
 static const uint16_t RE_ATMO_H   = RE_ATMO_BOT - RE_ATMO_Y;
 
 // ── G METER (left cluster — a third vertical bar just right of the ATMOSPHERE bar) ──
-static const uint16_t RE_GA_Y   = RE_ATMO_Y;                // 82 — match the ATMO/altitude top
-static const uint16_t RE_GA_H   = RE_ATMO_BOT - RE_GA_Y;    // 503 — match the ATMO height
-static const uint16_t RE_GA_BOT = RE_GA_Y + RE_GA_H;        // 585
+static const uint16_t RE_GA_Y   = RE_ATMO_Y;                // 78  — match the ATMO/altitude top
+static const uint16_t RE_GA_H   = RE_ATMO_BOT - RE_GA_Y;    // 511 — match the ATMO height
+static const uint16_t RE_GA_BOT = RE_GA_Y + RE_GA_H;        // 589
 static const uint16_t RE_GF_X   = 218;  static const uint16_t RE_GF_W = 34;  // bar (left gutter carries axis numbers)
 static const uint16_t RE_GLBL_X = RE_GF_X - 36;             // 182 — "G METER" vertical label column
 
@@ -91,7 +91,7 @@ static const uint16_t RE_CT_X     = 297;                // bar left edge
 static const uint16_t RE_CT_W     = 262;                // bar width (airspeed axis)
 static const uint16_t RE_CT_Y     = 436;                // bar top
 static const uint16_t RE_CT_H     = 54;                 // bar height
-static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W;  // 570 — bar right edge
+static const uint16_t RE_CT_RIGHT = RE_CT_X + RE_CT_W;  // 559 — bar right edge
 static const float    RE_CT_VMAX  = 1000.0f;            // airspeed axis max (m/s)
 
 // Skin / core temperature — two horizontal bars beneath the chute bar.

@@ -52,7 +52,6 @@ const uint16_t TITLE_RULE_H = 4;
 const uint16_t TITLE_TOP = TITLE_H + TITLE_RULE_H;
 
 const tFont *TITLE_FONT = &Roboto_Black_36;
-const tFont *ROW_FONT = &Roboto_Black_40;  // all screen row labels
 const uint16_t ROW_PAD = 2;
 
 const uint16_t COL_LABEL = TFT_WHITE;
@@ -598,7 +597,7 @@ void drawTitleBar(KCM_TFT &tft, const String &title) {
 /***************************************************************************************
    ROW PRIMITIVES
    Core versions accept explicit font and nRows for screens with non-standard layout.
-   Convenience wrappers use ROW_FONT. All screens use NR=8 rows.
+   Convenience wrappers take the font from their caller. All screens use NR=8 rows.
 ****************************************************************************************/
 // Split-column overload (#51) — explicit x, w for left/right half-row cells
 void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,

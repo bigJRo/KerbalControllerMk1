@@ -26,7 +26,6 @@ static const int16_t  EADI_R         = 206;
 static const uint16_t EADI_SKY       = TFT_ROYAL;
 static const uint16_t EADI_GND       = TFT_UPS_BROWN;
 static const uint16_t EADI_HORIZON   = TFT_WHITE;
-static const uint16_t EADI_WINGS     = TFT_YELLOW;
 static const uint16_t EADI_LADDER    = TFT_WHITE;
 static const int16_t  EADI_BX_ALLSKY = INT16_MIN;   // scanline is entirely sky
 static const int16_t  EADI_BX_ALLGND = INT16_MAX;   // scanline is entirely ground
