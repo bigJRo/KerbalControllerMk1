@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="SPACECRAFT">
+<title>SPACECRAFT</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="84" y="0" width="940" height="58" fill="#000000"/>
+<rect x="84" y="58" width="940" height="4" fill="#848284"/>
+<text x="554" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SPACECRAFT</text>
+<rect x="960" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="989" y="22" fill="#848284" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTO</text>
+<rect x="0" y="2" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="42" y="59" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="0" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="0" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="0" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="0" y="402" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="459" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="0" y="502" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="559" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">VEH</text>
+<line x1="83" y1="0" x2="83" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="90" y="68" width="928" height="526" fill="#212021" stroke="#3A3D3A" stroke-width="1"/>
+<text x="554" y="150" fill="#BDBEBD" font-size="34" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">CONTENT AREA</text>
+<text x="554" y="184" fill="#848284" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">940 × 538 px</text>
+<text x="554" y="224" fill="#848284" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="middle">graphics on the outboard side, a 360 px eight-row readout panel inboard</text>
+<circle cx="124" cy="29" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="124" y="35" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">1</text>
+<circle cx="926" cy="18" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="926" y="24" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">2</text>
+<circle cx="110" cy="84" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="110" y="90" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">4</text>
+<circle cx="110" cy="300" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="110" y="306" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">3</text>
+<line x1="84" y1="84" x2="96" y2="84" stroke="#FFBA10" stroke-width="1" stroke-dasharray="3 3"/>
+<line x1="84" y1="300" x2="96" y2="300" stroke="#FFBA10" stroke-width="1" stroke-dasharray="3 3"/>
+<circle cx="160" cy="352" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="160" y="358" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">1</text>
+<text x="186" y="358" fill="#BDBEBD" font-size="19" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">Title bar — the screen's own name (58 px, plus a 4 px rule)</text>
+<circle cx="160" cy="392" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="160" y="398" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">2</text>
+<text x="186" y="398" fill="#BDBEBD" font-size="19" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">AUTO / MAN chip — did the panel choose this screen, or did you?</text>
+<circle cx="160" cy="432" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="160" y="438" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">3</text>
+<text x="186" y="438" fill="#BDBEBD" font-size="19" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">Sidebar — six keys on the panel's outboard edge</text>
+<circle cx="160" cy="472" r="14" fill="#FFBA10" stroke="#000000" stroke-width="2"/>
+<text x="160" y="478" fill="#000000" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">4</text>
+<text x="186" y="478" fill="#BDBEBD" font-size="19" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">The selected key reverse-videos: black on grey</text>
+<text x="146" y="556" fill="#848284" font-size="17" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">Unit 1 is drawn here — on unit 2 the sidebar sits on the right instead.</text>
+</svg>

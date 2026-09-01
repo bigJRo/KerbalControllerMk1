@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="NAVIGATION">
+<title>NAVIGATION</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="0" y="0" width="940" height="58" fill="#000000"/>
+<rect x="0" y="58" width="940" height="4" fill="#848284"/>
+<text x="470" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">NAVIGATION</text>
+<rect x="876" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="905" y="22" fill="#848284" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTO</text>
+<rect x="941" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="941" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="941" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="941" y="302" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="982" y="359" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="941" y="402" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="459" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="941" y="502" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="559" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASC</text>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<circle cx="470" cy="370" r="224" fill="#000000" stroke="#C5C2C5" stroke-width="2"/>
+<line x1="689.966" y1="366.16" x2="671.969" y2="366.475" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="689.464" y1="385.346" x2="678.491" y2="384.579" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="687.291" y1="404.416" x2="676.427" y2="402.695" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="683.465" y1="423.223" x2="672.792" y2="420.562" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="678.014" y1="441.625" x2="667.613" y2="438.044" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="670.98" y1="459.482" x2="660.931" y2="455.008" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="662.416" y1="476.658" x2="646.673" y2="467.932" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="652.388" y1="493.022" x2="643.269" y2="486.871" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="640.972" y1="508.45" x2="632.424" y2="501.528" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="628.255" y1="522.825" x2="620.342" y2="515.184" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="614.333" y1="536.036" x2="607.116" y2="527.734" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="599.313" y1="547.984" x2="592.847" y2="539.085" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="583.308" y1="558.577" x2="574.038" y2="543.148" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="566.442" y1="567.735" x2="561.62" y2="557.848" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="548.841" y1="575.388" x2="544.899" y2="565.118" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="530.64" y1="581.478" x2="527.608" y2="570.904" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="511.978" y1="585.958" x2="509.879" y2="575.16" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="492.996" y1="588.795" x2="491.846" y2="577.855" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="473.84" y1="589.966" x2="473.525" y2="571.969" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="454.654" y1="589.464" x2="455.421" y2="578.491" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="435.584" y1="587.291" x2="437.305" y2="576.427" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="416.777" y1="583.465" x2="419.438" y2="572.792" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="398.375" y1="578.014" x2="401.956" y2="567.613" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="380.518" y1="570.98" x2="384.992" y2="560.931" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="363.342" y1="562.416" x2="372.068" y2="546.673" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="346.978" y1="552.388" x2="353.129" y2="543.269" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="331.55" y1="540.972" x2="338.472" y2="532.424" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="317.175" y1="528.255" x2="324.816" y2="520.342" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="303.964" y1="514.333" x2="312.266" y2="507.116" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="292.016" y1="499.313" x2="300.915" y2="492.847" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="281.423" y1="483.308" x2="296.852" y2="474.038" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="272.265" y1="466.442" x2="282.152" y2="461.62" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="264.612" y1="448.841" x2="274.882" y2="444.899" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="258.522" y1="430.64" x2="269.096" y2="427.608" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="254.042" y1="411.978" x2="264.84" y2="409.879" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="251.205" y1="392.996" x2="262.145" y2="391.846" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="250.034" y1="373.84" x2="268.031" y2="373.525" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="250.536" y1="354.654" x2="261.509" y2="355.421" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="252.709" y1="335.584" x2="263.573" y2="337.305" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="256.535" y1="316.777" x2="267.208" y2="319.438" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="261.986" y1="298.375" x2="272.387" y2="301.956" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="269.02" y1="280.518" x2="279.069" y2="284.992" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="277.584" y1="263.342" x2="293.327" y2="272.068" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="287.612" y1="246.978" x2="296.731" y2="253.129" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="299.028" y1="231.55" x2="307.576" y2="238.472" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="311.745" y1="217.175" x2="319.658" y2="224.816" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="325.667" y1="203.964" x2="332.884" y2="212.266" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="340.687" y1="192.016" x2="347.153" y2="200.915" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="356.692" y1="181.423" x2="365.962" y2="196.852" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="373.558" y1="172.265" x2="378.38" y2="182.152" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="391.159" y1="164.612" x2="395.101" y2="174.882" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="409.36" y1="158.522" x2="412.392" y2="169.096" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="428.022" y1="154.042" x2="430.121" y2="164.84" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="447.004" y1="151.205" x2="448.154" y2="162.145" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="466.16" y1="150.034" x2="466.475" y2="168.031" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="485.346" y1="150.536" x2="484.579" y2="161.509" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="504.416" y1="152.709" x2="502.695" y2="163.573" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="523.223" y1="156.535" x2="520.562" y2="167.208" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="541.625" y1="161.986" x2="538.044" y2="172.387" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="559.482" y1="169.02" x2="555.008" y2="179.069" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="576.658" y1="177.584" x2="567.932" y2="193.327" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="593.022" y1="187.612" x2="586.871" y2="196.731" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="608.45" y1="199.028" x2="601.528" y2="207.576" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="622.825" y1="211.745" x2="615.184" y2="219.658" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="636.036" y1="225.667" x2="627.734" y2="232.884" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="647.984" y1="240.687" x2="639.085" y2="247.153" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="658.577" y1="256.692" x2="643.148" y2="265.962" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="667.735" y1="273.558" x2="657.848" y2="278.38" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="675.388" y1="291.159" x2="665.118" y2="295.101" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="681.478" y1="309.36" x2="670.904" y2="312.392" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="685.958" y1="328.022" x2="675.16" y2="330.121" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="688.795" y1="347.004" x2="677.855" y2="348.154" stroke="#FFFFFF" stroke-width="1"/>
+<text x="648.973" y="376.876" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">N</text>
+<text x="473.124" y="558.973" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">E</text>
+<text x="291.027" y="383.124" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">S</text>
+<text x="466.876" y="201.027" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">W</text>
+<text x="626.557" y="463.781" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">03</text>
+<text x="562.192" y="530.433" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">06</text>
+<text x="383.219" y="533.557" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">12</text>
+<text x="316.567" y="469.192" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">15</text>
+<text x="313.443" y="290.219" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">21</text>
+<text x="377.808" y="223.567" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">24</text>
+<text x="556.781" y="220.443" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">30</text>
+<text x="623.433" y="284.808" fill="#BDBEBD" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">33</text>
+<polygon points="470,142 458,127 482,127" fill="#FFBA10"/>
+<polygon points="487.814,243.246 504.652,228.172 475.784,224.115" fill="#3AFF10"/>
+<polygon points="535.925,260.283 557.314,252.986 532.326,237.972" fill="#9400D6"/>
+<polygon points="470,318 464,344 404,376 404,390 464,374 464,404 446,416 446,424 470,416 494,424 494,416 476,404 476,374 536,390 536,376 476,344" fill="#C5C2C5"/>
+<rect x="415" y="69" width="110" height="52" fill="#000000" stroke="#FFFFFF" stroke-width="2"/>
+<text x="470" y="109" fill="#007D00" font-size="34" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">271°</text>
+<line x1="478.35" y1="310.584" x2="487.814" y2="243.246" stroke="#3AFF10" stroke-width="2"/>
+<text x="10" y="88" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">TRK</text>
+<text x="180" y="136" fill="#007D00" font-size="40" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">279°</text>
+<text x="10" y="208" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">DRIFT</text>
+<text x="180" y="256" fill="#007D00" font-size="40" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">+8°</text>
+<text x="10" y="328" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">BRG</text>
+<text x="180" y="376" fill="#9400D6" font-size="40" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">302°</text>
+<text x="750" y="88" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">DIST</text>
+<text x="930" y="136" fill="#007D00" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">12.4 km</text>
+<text x="750" y="208" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">V.CLOSE</text>
+<text x="930" y="256" fill="#007D00" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-88 m/s</text>
+<text x="750" y="328" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">T+INT</text>
+<text x="930" y="376" fill="#007D00" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">2m 21s</text>
+<text x="10" y="550" fill="#3AFF10" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">TRK  GND TRACK</text>
+<text x="10" y="580" fill="#9400D6" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">BRG  TO TARGET</text>
+</svg>

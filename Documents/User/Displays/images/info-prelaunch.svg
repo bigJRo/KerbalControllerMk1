@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="LAUNCH">
+<title>LAUNCH</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="0" y="0" width="940" height="58" fill="#000000"/>
+<rect x="0" y="58" width="940" height="4" fill="#848284"/>
+<text x="470" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LAUNCH</text>
+<rect x="876" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="905" y="22" fill="#848284" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTO</text>
+<rect x="941" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="941" y="102" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="982" y="159" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="941" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="941" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="941" y="402" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="459" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="941" y="502" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="559" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASC</text>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<text x="470" y="118" fill="#FFBA10" font-size="44" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PRE-LAUNCH</text>
+<text x="28" y="186.5" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Vessel:</text>
+<text x="912" y="186.5" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">Kerbal X</text>
+<text x="28" y="244.5" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Type:</text>
+<text x="912" y="244.5" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">Ship</text>
+<text x="28" y="301.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">SAS:</text>
+<text x="462" y="301.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">ON</text>
+<text x="478" y="301.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">RCS:</text>
+<text x="912" y="301.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">ON</text>
+<text x="28" y="359.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Thrtl:</text>
+<text x="462" y="359.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">100%</text>
+<text x="478" y="359.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">EC%:</text>
+<text x="912" y="359.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">97%</text>
+<text x="28" y="417.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Crew:</text>
+<text x="462" y="417.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3 / 3</text>
+<text x="478" y="417.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Comm:</text>
+<text x="912" y="417.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">100%</text>
+<text x="28" y="475.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Drogue:</text>
+<text x="462" y="475.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">STOWED</text>
+<text x="478" y="475.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Main:</text>
+<text x="912" y="475.8" fill="#007D00" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">STOWED</text>
+<text x="28" y="533.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">D.Cut:</text>
+<text x="462" y="533.8" fill="#BDBEBD" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">CAG 2</text>
+<text x="478" y="533.8" fill="#FFFFFF" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">M.Cut:</text>
+<text x="912" y="533.8" fill="#BDBEBD" font-size="28" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">CAG 4</text>
+<text x="20" y="578" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">ΔV.Tot:</text>
+<text x="240" y="578" fill="#007D00" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">4 250 m/s</text>
+<text x="920" y="578" fill="#848284" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="end">touch anywhere to dismiss</text>
+</svg>

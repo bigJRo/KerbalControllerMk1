@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="Resource Display -- DETAIL screen">
+<title>Resource Display -- DETAIL screen</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="3" y="2" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="42" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">EC</text>
+<rect x="3" y="68" width="174" height="62" fill="#FF7D00" stroke="#FFFFFF" stroke-width="2"/>
+<text x="90" y="108" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LF</text>
+<rect x="3" y="134" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="174" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LOx</text>
+<rect x="3" y="200" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="240" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">MP</text>
+<rect x="3" y="266" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="306" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SF</text>
+<rect x="3" y="332" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="372" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">O2</text>
+<rect x="3" y="398" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="438" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FD</text>
+<rect x="3" y="464" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="504" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">H2O</text>
+<rect x="3" y="530" width="174" height="62" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="90" y="570" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ABL</text>
+<line x1="181" y1="0" x2="181" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="187" y="8" width="4" height="50" fill="#FF7D00"/>
+<text x="203" y="50" fill="#FFFFFF" font-size="48" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Liquid Fuel</text>
+<rect x="908" y="6" width="110" height="54" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="963" y="42" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">BACK</text>
+<rect x="181" y="66" width="32" height="267" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="197" y="199.5" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 197 199.5)">CRAFT</text>
+<text x="229" y="122.5" fill="#FFFFFF" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Available:</text>
+<text x="1012" y="122.5" fill="#007D00" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">1440.0</text>
+<line x1="213" y1="155" x2="1024" y2="155" stroke="#3A3D3A" stroke-width="1"/>
+<text x="229" y="211.5" fill="#FFFFFF" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Total:</text>
+<text x="1012" y="211.5" fill="#007D00" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3240.0</text>
+<line x1="213" y1="244" x2="1024" y2="244" stroke="#3A3D3A" stroke-width="1"/>
+<text x="229" y="300.5" fill="#FFFFFF" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Remaining:</text>
+<text x="1012" y="300.5" fill="#007D00" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">44%</text>
+<line x1="213" y1="333" x2="1024" y2="333" stroke="#3A3D3A" stroke-width="1"/>
+<rect x="181" y="333" width="32" height="267" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="197" y="466.5" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 197 466.5)">STAGE</text>
+<text x="229" y="389.5" fill="#FFFFFF" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Available:</text>
+<text x="1012" y="389.5" fill="#007D00" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">360.0</text>
+<line x1="213" y1="422" x2="1024" y2="422" stroke="#3A3D3A" stroke-width="1"/>
+<text x="229" y="478.5" fill="#FFFFFF" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Total:</text>
+<text x="1012" y="478.5" fill="#007D00" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">720.0</text>
+<line x1="213" y1="511" x2="1024" y2="511" stroke="#3A3D3A" stroke-width="1"/>
+<text x="229" y="567.5" fill="#FFFFFF" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Remaining:</text>
+<text x="1012" y="567.5" fill="#007D00" font-size="32" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">50%</text>
+<line x1="213" y1="600" x2="1024" y2="600" stroke="#3A3D3A" stroke-width="1"/>
+</svg>

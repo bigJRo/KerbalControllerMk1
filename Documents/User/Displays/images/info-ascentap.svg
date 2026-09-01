@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="ASCENT AUTOPILOT">
+<title>ASCENT AUTOPILOT</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="0" y="0" width="940" height="58" fill="#000000"/>
+<rect x="0" y="58" width="940" height="4" fill="#848284"/>
+<text x="470" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASCENT AUTOPILOT</text>
+<rect x="876" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#007D00" stroke-width="2"/>
+<text x="905" y="22" fill="#007D00" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">MAN</text>
+<rect x="941" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="941" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="941" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="941" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="941" y="402" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="459" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="941" y="502" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="982" y="559" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASC</text>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="6" y="62" width="928" height="64" fill="#212021" stroke="#007D00" stroke-width="2"/>
+<text x="470" y="106" fill="#007D00" font-size="34" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ARMED — GRAVITY TURN</text>
+<text x="155" y="154" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">MISSION</text>
+<text x="12" y="208" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Tgt Ap:</text>
+<rect x="122" y="176" width="176" height="50" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="290" y="210" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">100 km</text>
+<text x="12" y="266" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Inc:</text>
+<rect x="122" y="234" width="176" height="50" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="290" y="268" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0.0°</text>
+<text x="12" y="324" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Launch:</text>
+<rect x="122" y="292" width="176" height="50" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="290" y="326" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">NORTH</text>
+<text x="471" y="154" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">VEH PROFILE</text>
+<text x="328" y="208" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Loft:</text>
+<rect x="438" y="176" width="176" height="50" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="606" y="210" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0.55</text>
+<text x="328" y="266" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Roll:</text>
+<rect x="438" y="234" width="176" height="50" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="606" y="268" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">OFF</text>
+<text x="328" y="324" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Max-G:</text>
+<rect x="438" y="292" width="176" height="50" fill="#000000" stroke="#73C2FF" stroke-width="2"/>
+<text x="606" y="326" fill="#73C2FF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3.0</text>
+<text x="787" y="154" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">GUIDANCE</text>
+<text x="644" y="208" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Pitch:</text>
+<text x="930" y="208" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">42.6°</text>
+<text x="644" y="266" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Hdg:</text>
+<text x="930" y="266" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">090°</text>
+<text x="644" y="324" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Thrtl:</text>
+<text x="930" y="324" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">100%</text>
+<text x="644" y="382" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">G:</text>
+<text x="930" y="382" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">1.9</text>
+<text x="644" y="440" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Q:</text>
+<text x="930" y="440" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">12.4 kPa</text>
+<text x="644" y="498" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">ApA:</text>
+<text x="930" y="498" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">62.1 km</text>
+<text x="644" y="556" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">PeA:</text>
+<text x="930" y="556" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-410 km</text>
+<line x1="314" y1="132" x2="314" y2="590" stroke="#3A3D3A" stroke-width="1"/>
+<line x1="630" y1="132" x2="630" y2="590" stroke="#3A3D3A" stroke-width="1"/>
+<rect x="322" y="460" width="298" height="136" fill="#212021" stroke="#007D00" stroke-width="3"/>
+<text x="471" y="530" fill="#007D00" font-size="44" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DISARM</text>
+<text x="471" y="566" fill="#BDBEBD" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">autopilot reports ARMED</text>
+</svg>

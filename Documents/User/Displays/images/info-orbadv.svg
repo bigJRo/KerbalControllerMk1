@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="ORBIT ADVANCED">
+<title>ORBIT ADVANCED</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="0" y="0" width="940" height="58" fill="#000000"/>
+<rect x="0" y="58" width="940" height="4" fill="#848284"/>
+<text x="470" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORBIT ADVANCED</text>
+<rect x="876" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#007D00" stroke-width="2"/>
+<text x="905" y="22" fill="#007D00" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">MAN</text>
+<rect x="941" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="941" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="941" y="202" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="982" y="259" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="941" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="941" y="402" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="459" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="941" y="502" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="559" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASC</text>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<text x="14" y="126" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">SMA:</text>
+<text x="462" y="126" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">700.0 km</text>
+<text x="14" y="199" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Ecc:</text>
+<text x="462" y="199" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0.0021</text>
+<text x="14" y="272" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">PeA:</text>
+<text x="462" y="272" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">96.0 km</text>
+<text x="14" y="345" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">ApA:</text>
+<text x="462" y="345" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">102.4 km</text>
+<text x="14" y="418" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Alt.SL:</text>
+<text x="462" y="418" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">99.8 km</text>
+<text x="14" y="491" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">V.Orb:</text>
+<text x="462" y="491" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">2 246 m/s</text>
+<text x="14" y="564" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Period:</text>
+<text x="462" y="564" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">32m 10s</text>
+<text x="480" y="126" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Inc:</text>
+<text x="930" y="126" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">28.51°</text>
+<text x="480" y="199" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">LAN:</text>
+<text x="930" y="199" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">142.08°</text>
+<text x="480" y="272" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Arg.Pe:</text>
+<text x="930" y="272" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">104.62°</text>
+<text x="480" y="345" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">True Anom:</text>
+<text x="930" y="345" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">212.44°</text>
+<text x="480" y="418" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Mean Anom:</text>
+<text x="930" y="418" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">213.01°</text>
+<text x="480" y="491" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">T+Pe:</text>
+<text x="930" y="491" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">24m 03s</text>
+<text x="480" y="564" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">T+Ap:</text>
+<text x="930" y="564" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">8m 42s</text>
+<line x1="470" y1="66" x2="470" y2="596" stroke="#3A3D3A" stroke-width="1"/>
+</svg>

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="Resource Display -- SELECT screen">
+<title>Resource Display -- SELECT screen</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<text x="12" y="38" fill="#FFFFFF" font-size="34" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Select Resources</text>
+<text x="894" y="34" fill="#848284" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">9 / 16</text>
+<rect x="908" y="6" width="110" height="80" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="963" y="56" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">BACK</text>
+<rect x="6" y="54" width="144" height="32" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="78" y="77" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">STD</text>
+<rect x="156" y="54" width="144" height="32" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="228" y="77" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">XPD</text>
+<rect x="306" y="54" width="144" height="32" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="378" y="77" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">VEH</text>
+<rect x="456" y="54" width="144" height="32" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="528" y="77" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LSP</text>
+<rect x="606" y="54" width="144" height="32" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="678" y="77" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AIR</text>
+<rect x="756" y="54" width="144" height="32" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="828" y="77" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ADV</text>
+<rect x="6" y="98" width="146" height="94" fill="#FFBA10" stroke="#FFFFFF" stroke-width="2"/>
+<text x="79" y="154" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">EC</text>
+<rect x="158" y="98" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="231" y="154" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">StC</text>
+<rect x="310" y="98" width="146" height="94" fill="#FF7D00" stroke="#FFFFFF" stroke-width="2"/>
+<text x="383" y="154" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LF</text>
+<rect x="462" y="98" width="146" height="94" fill="#0000FF" stroke="#FFFFFF" stroke-width="2"/>
+<text x="535" y="154" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LOx</text>
+<rect x="614" y="98" width="146" height="94" fill="#FF0000" stroke="#FFFFFF" stroke-width="2"/>
+<text x="687" y="154" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SF</text>
+<rect x="6" y="198" width="146" height="94" fill="#007D00" stroke="#FFFFFF" stroke-width="2"/>
+<text x="79" y="254" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">MP</text>
+<rect x="158" y="198" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="231" y="254" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">XE</text>
+<rect x="310" y="198" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="383" y="254" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LH2</text>
+<rect x="462" y="198" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="535" y="254" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LMe</text>
+<rect x="614" y="198" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="687" y="254" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Li</text>
+<rect x="6" y="298" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="79" y="354" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AIR</text>
+<rect x="158" y="298" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="231" y="354" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">EUr</text>
+<rect x="310" y="298" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="383" y="354" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DFu</text>
+<rect x="462" y="298" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="535" y="354" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORE</text>
+<rect x="614" y="298" width="146" height="94" fill="#9400D6" stroke="#FFFFFF" stroke-width="2"/>
+<text x="687" y="354" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ABL</text>
+<rect x="6" y="398" width="146" height="94" fill="#C5C2C5" stroke="#FFFFFF" stroke-width="2"/>
+<text x="79" y="454" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">O2</text>
+<rect x="158" y="398" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="231" y="454" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">CO2</text>
+<rect x="310" y="398" width="146" height="94" fill="#848200" stroke="#FFFFFF" stroke-width="2"/>
+<text x="383" y="454" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FD</text>
+<rect x="462" y="398" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="535" y="454" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">WST</text>
+<rect x="614" y="398" width="146" height="94" fill="#00FFFF" stroke="#FFFFFF" stroke-width="2"/>
+<text x="687" y="454" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">H2O</text>
+<rect x="6" y="498" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="79" y="554" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LWS</text>
+<rect x="158" y="498" width="146" height="94" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="231" y="554" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FER</text>
+<rect x="310" y="498" width="146" height="94" fill="#000000" stroke="#3A3D3A" stroke-width="1"/>
+<text x="383" y="551" fill="#3A3D3A" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">—</text>
+<rect x="780" y="98" width="238" height="448" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="899" y="126" fill="#FFFFFF" font-size="20" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORDER</text>
+<text x="792" y="160" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">1 EC</text>
+<text x="792" y="194" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">2 LF</text>
+<text x="792" y="228" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">3 LOx</text>
+<text x="792" y="262" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">4 MP</text>
+<text x="792" y="296" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">5 SF</text>
+<text x="792" y="330" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">6 O2</text>
+<text x="792" y="364" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">7 FD</text>
+<text x="792" y="398" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">8 H2O</text>
+<text x="792" y="432" fill="#BDBEBD" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">9 ABL</text>
+<rect x="780" y="546" width="238" height="48" fill="#212021" stroke="#FF7D00" stroke-width="2"/>
+<text x="899" y="574" fill="#FF7D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">CLEAR</text>
+</svg>

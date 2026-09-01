@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="POWERED DESCENT">
+<title>POWERED DESCENT</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="0" y="0" width="940" height="58" fill="#000000"/>
+<rect x="0" y="58" width="940" height="4" fill="#848284"/>
+<text x="470" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">POWERED DESCENT</text>
+<rect x="876" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="905" y="22" fill="#848284" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTO</text>
+<rect x="941" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="941" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="941" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="941" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="941" y="402" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="982" y="459" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="941" y="502" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="559" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASC</text>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="40" y="70" width="44" height="526" fill="#212021" stroke="#848284" stroke-width="1"/>
+<rect x="41" y="501.32" width="42" height="94.68" fill="#007D00"/>
+<line x1="34" y1="596" x2="40" y2="596" stroke="#848284" stroke-width="1"/>
+<text x="31" y="601" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0</text>
+<line x1="34" y1="464.5" x2="40" y2="464.5" stroke="#848284" stroke-width="1"/>
+<text x="31" y="469.5" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">250</text>
+<line x1="34" y1="333" x2="40" y2="333" stroke="#848284" stroke-width="1"/>
+<text x="31" y="338" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">500</text>
+<line x1="34" y1="201.5" x2="40" y2="201.5" stroke="#848284" stroke-width="1"/>
+<text x="31" y="206.5" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">750</text>
+<line x1="34" y1="70" x2="40" y2="70" stroke="#848284" stroke-width="1"/>
+<text x="31" y="75" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">1k</text>
+<polygon points="86,501.32 98,494.32 98,508.32" fill="#FFFFFF"/>
+<text x="14" y="340" fill="#FFFFFF" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 14 340)">ALTITUDE</text>
+<rect x="136" y="88" width="332" height="332" fill="#3A3D3A" stroke="#848284" stroke-width="1"/>
+<line x1="219" y1="88" x2="219" y2="420" stroke="#BDBEBD" stroke-width="1"/>
+<line x1="136" y1="171" x2="468" y2="171" stroke="#BDBEBD" stroke-width="1"/>
+<line x1="302" y1="88" x2="302" y2="420" stroke="#BDBEBD" stroke-width="1"/>
+<line x1="136" y1="254" x2="468" y2="254" stroke="#BDBEBD" stroke-width="1"/>
+<line x1="385" y1="88" x2="385" y2="420" stroke="#BDBEBD" stroke-width="1"/>
+<line x1="136" y1="337" x2="468" y2="337" stroke="#BDBEBD" stroke-width="1"/>
+<rect x="260" y="212" width="84" height="84" fill="none" stroke="#848284" stroke-width="1"/>
+<line x1="302" y1="88" x2="302" y2="420" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="136" y1="254" x2="468" y2="254" stroke="#FFFFFF" stroke-width="1"/>
+<circle cx="334" cy="226" r="10" fill="none" stroke="#3AFF10" stroke-width="3"/>
+<line x1="302" y1="226" x2="324" y2="226" stroke="#3AFF10" stroke-width="2"/>
+<line x1="334" y1="254" x2="334" y2="236" stroke="#3AFF10" stroke-width="2"/>
+<text x="302" y="82" fill="#FFFFFF" font-size="16" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SURF DRIFT</text>
+<text x="302" y="440" fill="#BDBEBD" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FWD ↑   AFT ↓   LATERAL →</text>
+<circle cx="216" cy="534" r="52" fill="#000000" stroke="#C5C2C5" stroke-width="2"/>
+<circle cx="216" cy="534" r="13" fill="none" stroke="#007D00" stroke-width="1" stroke-dasharray="3 4"/>
+<circle cx="224" cy="526" r="8" fill="none" stroke="#3AFF10" stroke-width="3"/>
+<text x="216" y="596" fill="#FFFFFF" font-size="16" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ATT</text>
+<circle cx="388" cy="534" r="52" fill="#000000" stroke="#C5C2C5" stroke-width="2"/>
+<text x="388" y="499" fill="#BDBEBD" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">N</text>
+<text x="428" y="539" fill="#BDBEBD" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">E</text>
+<text x="388" y="579" fill="#BDBEBD" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">S</text>
+<text x="348" y="539" fill="#BDBEBD" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">W</text>
+<line x1="388" y1="534" x2="418" y2="512" stroke="#3AFF10" stroke-width="3"/>
+<text x="388" y="596" fill="#FFFFFF" font-size="16" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">GND TRK</text>
+<rect x="530" y="70" width="44" height="527" fill="#212021" stroke="#848284" stroke-width="1"/>
+<rect x="531" y="470.52" width="42" height="126.48" fill="#007D00"/>
+<line x1="524" y1="597" x2="530" y2="597" stroke="#848284" stroke-width="1"/>
+<text x="521" y="602" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0</text>
+<line x1="524" y1="423.09" x2="530" y2="423.09" stroke="#848284" stroke-width="1"/>
+<text x="521" y="428.09" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-5</text>
+<line x1="524" y1="317.69" x2="530" y2="317.69" stroke="#848284" stroke-width="1"/>
+<text x="521" y="322.69" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-8</text>
+<line x1="524" y1="70" x2="530" y2="70" stroke="#848284" stroke-width="1"/>
+<text x="521" y="75" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-15</text>
+<polygon points="576,470.52 588,463.52 588,477.52" fill="#FFFFFF"/>
+<text x="498" y="340" fill="#FFFFFF" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 498 340)">V.Vrt</text>
+<line x1="578" y1="62" x2="578" y2="600" stroke="#3A3D3A" stroke-width="2"/>
+<text x="588" y="104.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">V.Vrt:</text>
+<text x="932" y="104.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-3.6 m/s</text>
+<text x="588" y="171.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">T+Grnd:</text>
+<text x="932" y="171.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">24 s</text>
+<text x="588" y="238.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Alt.Rdr:</text>
+<text x="932" y="238.6" fill="#FFBA10" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">86 m</text>
+<text x="588" y="305.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Stg.Brn:</text>
+<text x="932" y="305.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">42 s</text>
+<text x="588" y="369.8" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Fwd:</text>
+<text x="752" y="369.8" fill="#007D00" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">+1.4</text>
+<text x="768" y="369.8" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Lat:</text>
+<text x="932" y="369.8" fill="#007D00" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-0.6</text>
+<text x="588" y="439.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">ΔV.Stg:</text>
+<text x="932" y="439.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">820 m/s</text>
+<text x="588" y="505.2" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Thrtl:</text>
+<text x="752" y="505.2" fill="#007D00" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">62%</text>
+<rect x="760" y="466" width="180" height="63" fill="#007D00" stroke="#848284" stroke-width="2"/>
+<text x="850" y="508" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RCS</text>
+<rect x="580" y="533" width="180" height="63" fill="#007D00" stroke="#848284" stroke-width="2"/>
+<text x="670" y="575" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">GEAR</text>
+<rect x="760" y="533" width="180" height="63" fill="#007D00" stroke="#848284" stroke-width="2"/>
+<text x="850" y="575" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RETR</text>
+</svg>

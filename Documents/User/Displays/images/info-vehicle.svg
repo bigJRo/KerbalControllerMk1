@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="VEHICLE INFO">
+<title>VEHICLE INFO</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="84" y="0" width="940" height="58" fill="#000000"/>
+<rect x="84" y="58" width="940" height="4" fill="#848284"/>
+<text x="554" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">VEHICLE INFO</text>
+<rect x="960" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="989" y="22" fill="#848284" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTO</text>
+<rect x="0" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="0" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="0" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="0" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="0" y="402" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="42" y="459" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="0" y="502" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="42" y="559" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">VEH</text>
+<line x1="83" y1="0" x2="83" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="90" y="62" width="34" height="335" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="107" y="229.5" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 107 229.5)">INFO</text>
+<rect x="90" y="397" width="34" height="67" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="107" y="430.5" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 107 430.5)">CREW</text>
+<rect x="90" y="464" width="34" height="134" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="107" y="531" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 107 531)">PROP</text>
+<text x="134" y="106" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Vessel:</text>
+<text x="1006" y="106" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">Kerbal X</text>
+<text x="134" y="173" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Type:</text>
+<text x="1006" y="173" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">Ship</text>
+<text x="134" y="240" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Status:</text>
+<text x="1006" y="240" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">IN ORBIT</text>
+<text x="134" y="307" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Control:</text>
+<text x="1006" y="307" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">Full Control</text>
+<text x="134" y="374" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Comm:</text>
+<text x="1006" y="374" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">88%</text>
+<text x="134" y="441" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Crew:</text>
+<text x="1006" y="441" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3 / 3</text>
+<text x="134" y="508" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">ΔV.Stg:</text>
+<text x="1006" y="508" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">1 620 m/s</text>
+<text x="134" y="575" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">ΔV.Tot:</text>
+<text x="1006" y="575" fill="#007D00" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">2 940 m/s</text>
+</svg>

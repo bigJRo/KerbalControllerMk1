@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="Annunciator -- MAIN screen">
+<title>Annunciator -- MAIN screen</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="1" y="1" width="272" height="174" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="137" y="82.8" fill="#3A3D3A" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">MASTER</text>
+<text x="137" y="114.8" fill="#3A3D3A" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ALARM</text>
+<rect x="1" y="177" width="272" height="46" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="9" y="208" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">SOI:</text>
+<text x="265" y="208" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">Kerbin</text>
+<rect x="1" y="225" width="272" height="174" fill="#000000" stroke="#848284" stroke-width="1"/>
+<circle cx="137" cy="312" r="66" fill="#003D8C" stroke="#848284" stroke-width="1"/>
+<path d="M 90 288 q 26 -16 46 2 q 22 18 44 -4 q 8 26 -12 44 q -34 26 -66 6 q -18 -18 -12 -48 Z" fill="#003D00"/>
+<text x="137" y="392" fill="#848284" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="middle">body thumbnail — touch to open SOI</text>
+<rect x="275" y="1" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="334" y="45.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LOW ΔV</text>
+<rect x="395" y="1" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="454" y="45.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">HIGH G</text>
+<rect x="515" y="1" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="574" y="45.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">HIGH TEMP</text>
+<rect x="635" y="1" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="694" y="36.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">BUS</text>
+<text x="694" y="53.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">VOLTAGE</text>
+<rect x="755" y="1" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="814" y="45.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ABORT</text>
+<rect x="275" y="81" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="334" y="116.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">GROUND</text>
+<text x="334" y="133.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PROX</text>
+<rect x="395" y="81" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="454" y="125.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Pe LOW</text>
+<rect x="515" y="81" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="574" y="125.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PROP LOW</text>
+<rect x="635" y="81" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="694" y="116.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LIFE</text>
+<text x="694" y="133.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SUPPORT</text>
+<rect x="755" y="81" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="814" y="116.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">O2</text>
+<text x="814" y="133.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PRESENT</text>
+<rect x="275" y="161" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="334" y="196.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">IMPACT</text>
+<text x="334" y="213.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">IMM</text>
+<rect x="395" y="161" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="454" y="205.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ALT</text>
+<rect x="515" y="161" width="118" height="78" fill="#FFBA10" stroke="#848284" stroke-width="1"/>
+<text x="574" y="205.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESCENT</text>
+<rect x="635" y="161" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="694" y="205.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">GEAR UP</text>
+<rect x="755" y="161" width="118" height="78" fill="#FFBA10" stroke="#848284" stroke-width="1"/>
+<text x="814" y="205.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ATMO</text>
+<rect x="275" y="241" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="334" y="285.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RCS LOW</text>
+<rect x="395" y="241" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="454" y="276.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PROP</text>
+<text x="454" y="293.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RATIO</text>
+<rect x="515" y="241" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="574" y="285.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">COMM LOST</text>
+<rect x="635" y="241" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="694" y="285.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Ap LOW</text>
+<rect x="755" y="241" width="118" height="78" fill="#FFBA10" stroke="#848284" stroke-width="1"/>
+<text x="814" y="285.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">HIGH Q</text>
+<rect x="275" y="321" width="118" height="78" fill="#FF5100" stroke="#848284" stroke-width="1"/>
+<text x="334" y="356.9" fill="#FFFFFF" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SRB</text>
+<text x="334" y="373.9" fill="#FFFFFF" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ACTIVE</text>
+<rect x="395" y="321" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="454" y="356.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORBIT</text>
+<text x="454" y="373.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">STABLE</text>
+<rect x="515" y="321" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="574" y="365.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ELEC GEN</text>
+<rect x="635" y="321" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="694" y="365.4" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">CHUTE ENV</text>
+<rect x="755" y="321" width="118" height="78" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="814" y="356.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">EVA</text>
+<text x="814" y="373.9" fill="#3A3D3A" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ACTIVE</text>
+<rect x="875" y="1" width="73" height="98" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="911" y="26" fill="#3A3D3A" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">D</text>
+<text x="911" y="47" fill="#3A3D3A" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">O</text>
+<text x="911" y="68" fill="#3A3D3A" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">C</text>
+<text x="911" y="89" fill="#3A3D3A" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">K</text>
+<rect x="875" y="101" width="73" height="73" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="911.5" y="134.82" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FLYING</text>
+<text x="911.5" y="148.82" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LOW</text>
+<rect x="875" y="176" width="73" height="73" fill="#007D00" stroke="#848284" stroke-width="1"/>
+<text x="911.5" y="209.82" fill="#FFFFFF" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FLYING</text>
+<text x="911.5" y="223.82" fill="#FFFFFF" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">HIGH</text>
+<rect x="875" y="251" width="73" height="73" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="911.5" y="284.82" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LOW</text>
+<text x="911.5" y="298.82" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SPACE</text>
+<rect x="875" y="326" width="73" height="73" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="911.5" y="359.82" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">HIGH</text>
+<text x="911.5" y="373.82" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SPACE</text>
+<rect x="950" y="1" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="29.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">CONTACT</text>
+<rect x="950" y="51" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="72.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PRE-</text>
+<text x="986.5" y="86.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LAUNCH</text>
+<rect x="950" y="101" width="73" height="48" fill="#003D00" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="129.32" fill="#FFFFFF" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">FLIGHT</text>
+<rect x="950" y="151" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="172.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SUB-</text>
+<text x="986.5" y="186.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORBIT</text>
+<rect x="950" y="201" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="229.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORBIT</text>
+<rect x="950" y="251" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="279.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ESCAPE</text>
+<rect x="950" y="301" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="329.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LANDED</text>
+<rect x="950" y="351" width="73" height="48" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="986.5" y="379.32" fill="#3A3D3A" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SPLASH</text>
+<line x1="0" y1="400" x2="1024" y2="400" stroke="#C5C2C5" stroke-width="2"/>
+<rect x="1" y="401" width="422" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="9" y="440" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Kerbal X</text>
+<rect x="1" y="461" width="422" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="9" y="500" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">TimeWarp:</text>
+<text x="415" y="500" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">1x</text>
+<rect x="424" y="401" width="198" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="432" y="438.4" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">STG:</text>
+<text x="614" y="438.4" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">2</text>
+<rect x="624" y="401" width="198" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="632" y="438.4" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Tmax:</text>
+<text x="814" y="438.4" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">41%</text>
+<rect x="824" y="401" width="198" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="832" y="438.4" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">CREW:</text>
+<text x="1014" y="438.4" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3</text>
+<rect x="424" y="461" width="198" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="432" y="498.4" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">COMM:</text>
+<text x="614" y="498.4" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">88%</text>
+<rect x="624" y="461" width="198" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="632" y="498.4" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Tskin:</text>
+<text x="814" y="498.4" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">36%</text>
+<rect x="824" y="461" width="198" height="58" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="832" y="498.4" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">CAP:</text>
+<text x="1014" y="498.4" fill="#007D00" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0</text>
+<rect x="1" y="521" width="210" height="78" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="9" y="552" fill="#FFFFFF" font-size="22" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">CtrlGrp:</text>
+<text x="203" y="588" fill="#007D00" font-size="34" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3</text>
+<rect x="213" y="521" width="210" height="78" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="288" y="573" fill="#007D00" font-size="34" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SPCFT</text>
+<rect x="360" y="536" width="46" height="48" fill="none" stroke="#007D00" stroke-width="2"/>
+<polygon points="383,540 398,578 368,578" fill="#007D00"/>
+<rect x="425" y="521" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="474" y="544.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DEMO</text>
+<rect x="525" y="521" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="574" y="544.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">WARP</text>
+<rect x="625" y="521" width="98" height="38" fill="#007D00" stroke="#848284" stroke-width="1"/>
+<text x="674" y="544.68" fill="#FFFFFF" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUDIO</text>
+<rect x="725" y="521" width="98" height="38" fill="#007D00" stroke="#848284" stroke-width="1"/>
+<text x="774" y="544.68" fill="#FFFFFF" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">THRTL ENA</text>
+<rect x="825" y="521" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="874" y="544.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TRIM</text>
+<rect x="925" y="521" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="974" y="544.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTOPILOT</text>
+<rect x="425" y="561" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="474" y="584.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DEBUG</text>
+<rect x="525" y="561" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="574" y="584.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SWITCH ERR</text>
+<rect x="625" y="561" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="674" y="584.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">SIMPIT LOST</text>
+<rect x="725" y="561" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="774" y="584.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">THRTL PREC</text>
+<rect x="825" y="561" width="98" height="38" fill="#212021" stroke="#848284" stroke-width="1"/>
+<text x="874" y="584.68" fill="#3A3D3A" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">INPUT PREC</text>
+<rect x="925" y="561" width="98" height="38" fill="#007D00" stroke="#848284" stroke-width="1"/>
+<text x="974" y="584.68" fill="#FFFFFF" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ENG ARM</text>
+</svg>

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 600" width="1024" height="600" role="img" aria-label="RE-ENTRY">
+<title>RE-ENTRY</title>
+<rect x="0" y="0" width="1024" height="600" fill="#000000"/>
+<rect x="0" y="0" width="940" height="58" fill="#000000"/>
+<rect x="0" y="58" width="940" height="4" fill="#848284"/>
+<text x="470" y="44" fill="#FFFFFF" font-size="36" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RE-ENTRY</text>
+<rect x="876" y="6" width="58" height="22" rx="5" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="905" y="22" fill="#848284" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">AUTO</text>
+<rect x="941" y="2" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="59" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">PFD</text>
+<rect x="941" y="102" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="159" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">LNCH</text>
+<rect x="941" y="202" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="259" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ORB</text>
+<rect x="941" y="302" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="359" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">TGT</text>
+<rect x="941" y="402" width="82" height="96" fill="#848284" stroke="#FFFFFF" stroke-width="2"/>
+<text x="982" y="459" fill="#000000" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">DESC</text>
+<rect x="941" y="502" width="82" height="96" fill="#000000" stroke="#848284" stroke-width="2"/>
+<text x="982" y="559" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">ASC</text>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="44" y="70" width="35" height="527" fill="#212021" stroke="#848284" stroke-width="1"/>
+<line x1="38" y1="597" x2="44" y2="597" stroke="#848284" stroke-width="1"/>
+<text x="35" y="602" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0</text>
+<line x1="38" y1="412.55" x2="44" y2="412.55" stroke="#848284" stroke-width="1"/>
+<text x="35" y="417.55" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">25k</text>
+<line x1="38" y1="228.1" x2="44" y2="228.1" stroke="#848284" stroke-width="1"/>
+<text x="35" y="233.1" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">50k</text>
+<line x1="38" y1="70" x2="44" y2="70" stroke="#848284" stroke-width="1"/>
+<text x="35" y="75" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">70k</text>
+<polygon points="81,354.58 93,347.58 93,361.58" fill="#FFFFFF"/>
+<text x="26" y="340" fill="#FFFFFF" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 26 340)">ALTITUDE</text>
+<linearGradient id="atm2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#00007B"/><stop offset="1" stop-color="#73C2FF"/></linearGradient>
+<rect x="130" y="78" width="35" height="511" fill="url(#atm2)" stroke="#848284" stroke-width="1"/>
+<polygon points="128,300 116,293 116,307" fill="#FFFFFF"/>
+<text x="114" y="340" fill="#FFFFFF" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 114 340)">ATMOSPHERE</text>
+<rect x="218" y="78" width="34" height="511" fill="#212021" stroke="#848284" stroke-width="1"/>
+<rect x="219" y="320" width="32" height="268" fill="#007D00"/>
+<line x1="212" y1="589" x2="218" y2="589" stroke="#848284" stroke-width="1"/>
+<text x="209" y="594" fill="#848284" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">0</text>
+<line x1="212" y1="461.25" x2="218" y2="461.25" stroke="#848284" stroke-width="1"/>
+<text x="209" y="466.25" fill="#848284" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3</text>
+<line x1="212" y1="333.5" x2="218" y2="333.5" stroke="#848284" stroke-width="1"/>
+<text x="209" y="338.5" fill="#848284" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">5</text>
+<line x1="212" y1="205.75" x2="218" y2="205.75" stroke="#848284" stroke-width="1"/>
+<text x="209" y="210.75" fill="#848284" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">7</text>
+<line x1="212" y1="78" x2="218" y2="78" stroke="#848284" stroke-width="1"/>
+<text x="209" y="83" fill="#848284" font-size="12" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">9</text>
+<text x="182" y="340" fill="#FFFFFF" font-size="14" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle" transform="rotate(-90 182 340)">G METER</text>
+<circle cx="428" cy="212" r="122" fill="#000000" stroke="#C5C2C5" stroke-width="2"/>
+<circle cx="428" cy="212" r="40" fill="none" stroke="#007D00" stroke-width="1" stroke-dasharray="4 5"/>
+<line x1="396" y1="212" x2="460" y2="212" stroke="#FFFFFF" stroke-width="2"/>
+<line x1="428" y1="180" x2="428" y2="244" stroke="#FFFFFF" stroke-width="2"/>
+<circle cx="452" cy="192" r="11" fill="none" stroke="#3AFF10" stroke-width="3"/>
+<text x="428" y="356" fill="#FFFFFF" font-size="16" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RETRO ALIGNMENT</text>
+<text x="297" y="412" fill="#FFFFFF" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">CHUTE DEPLOY</text>
+<rect x="297" y="436" width="262" height="54" fill="#212021" stroke="#848284" stroke-width="1"/>
+<rect x="298" y="437" width="96" height="52" fill="#007D00"/>
+<rect x="394" y="437" width="92" height="52" fill="#FFBA10"/>
+<rect x="486" y="437" width="72" height="52" fill="#FF0000"/>
+<polygon points="430,432 422,420 438,420" fill="#FFFFFF"/>
+<text x="297" y="508" fill="#848284" font-size="13" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">AIRSPEED (m/s)</text>
+<text x="282" y="544" fill="#FFFFFF" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">SKIN</text>
+<rect x="288" y="528" width="270" height="18" fill="#212021" stroke="#848284" stroke-width="1"/>
+<rect x="289" y="529" width="216" height="16" fill="#FFBA10"/>
+<text x="282" y="574" fill="#FFFFFF" font-size="15" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">CORE</text>
+<rect x="288" y="558" width="270" height="18" fill="#212021" stroke="#848284" stroke-width="1"/>
+<rect x="289" y="559" width="108" height="16" fill="#007D00"/>
+<line x1="578" y1="62" x2="578" y2="600" stroke="#3A3D3A" stroke-width="2"/>
+<text x="588" y="104.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">T+Grnd:</text>
+<text x="932" y="104.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">3m 12s</text>
+<text x="588" y="171.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Alt.SL:</text>
+<text x="932" y="171.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">38.4 km</text>
+<text x="588" y="238.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">V.Srf:</text>
+<text x="932" y="238.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">1 640 m/s</text>
+<text x="588" y="305.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">V.Vrt:</text>
+<text x="932" y="305.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-284 m/s</text>
+<text x="588" y="372.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">PeA:</text>
+<text x="932" y="372.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">-142 km</text>
+<text x="588" y="439.6" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Mach:</text>
+<text x="932" y="439.6" fill="#007D00" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">5.42</text>
+<text x="588" y="503.8" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Drogue:</text>
+<text x="752" y="503.8" fill="#007D00" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">STOWED</text>
+<text x="768" y="503.8" fill="#FFFFFF" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">Main:</text>
+<text x="932" y="503.8" fill="#007D00" font-size="18" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="end">STOWED</text>
+<rect x="580" y="533" width="180" height="63" fill="#212021" stroke="#848284" stroke-width="2"/>
+<text x="670" y="575" fill="#3A3D3A" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">GEAR</text>
+<rect x="760" y="533" width="180" height="63" fill="#007D00" stroke="#848284" stroke-width="2"/>
+<text x="850" y="575" fill="#FFFFFF" font-size="26" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">RETR</text>
+</svg>

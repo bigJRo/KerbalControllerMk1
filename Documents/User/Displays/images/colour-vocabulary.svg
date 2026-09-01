@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 400" width="1024" height="400" role="img" aria-label="KCMk1 display colour vocabulary">
+<title>KCMk1 display colour vocabulary</title>
+<rect x="0" y="0" width="1024" height="400" fill="#000000"/>
+<text x="24" y="46" fill="#FFFFFF" font-size="30" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="start">COLOUR VOCABULARY — the same on every panel</text>
+<rect x="24" y="74" width="200" height="42" fill="#007D00" stroke="#848284" stroke-width="1"/>
+<text x="124" y="103" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Nominal</text>
+<text x="244" y="103" fill="#BDBEBD" font-size="21" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">value is inside its normal band — nothing to do</text>
+<rect x="24" y="126" width="200" height="42" fill="#FFBA10" stroke="#848284" stroke-width="1"/>
+<text x="124" y="155" fill="#3A3D3A" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Caution</text>
+<text x="244" y="155" fill="#BDBEBD" font-size="21" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">approaching a limit — plan an action</text>
+<rect x="24" y="178" width="200" height="42" fill="#FF0000" stroke="#848284" stroke-width="1"/>
+<text x="124" y="207" fill="#FFFFFF" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Alarm</text>
+<text x="244" y="207" fill="#BDBEBD" font-size="21" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">limit exceeded — act now (white on red)</text>
+<rect x="24" y="230" width="200" height="42" fill="#3A3D3A" stroke="#848284" stroke-width="1"/>
+<text x="124" y="259" fill="#BDBEBD" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Inactive</text>
+<text x="244" y="259" fill="#BDBEBD" font-size="21" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">not applicable, or no data (shown as ---)</text>
+<rect x="24" y="282" width="200" height="42" fill="#73C2FF" stroke="#848284" stroke-width="1"/>
+<text x="124" y="311" fill="#000000" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Pilot entry</text>
+<text x="244" y="311" fill="#BDBEBD" font-size="21" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">cyan: entered by you, not yet confirmed by the system</text>
+<rect x="24" y="334" width="200" height="42" fill="#848284" stroke="#848284" stroke-width="1"/>
+<text x="124" y="363" fill="#000000" font-size="24" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="bold" text-anchor="middle">Chrome</text>
+<text x="244" y="363" fill="#BDBEBD" font-size="21" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="normal" text-anchor="start">keys, borders, scales — never carries alerting colour</text>
+</svg>

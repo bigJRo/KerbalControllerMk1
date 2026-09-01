@@ -37,7 +37,9 @@ and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_R
 | `libraries/KerbalDisplayAudio/` | Master-alarm audio (PAM8302A amp + speaker) + DFPlayer audio |
 
 Each panel sketch has its own README with per-panel wiring, dependencies, and
-screen documentation.
+screen documentation. For the pilot-facing side of the same screens — what every
+field, lamp and gauge means and how to read it — see
+[`Documents/User/Display_Reference.md`](Documents/User/Display_Reference.md).
 
 ## License
 
