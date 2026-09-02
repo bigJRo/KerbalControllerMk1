@@ -12,7 +12,10 @@
        [DET_SECT_W=32px vertical "STAGE" label] + the same 5 Stage rows
      Rate and Time come from Sampling.ino, the same estimate the Main screen's trend
      arrows and TTE counters use. Row height and font follow the row count: 5 rows
-     (no stage channel) get Roboto_Black_48, 10 rows get Roboto_Black_36.
+     (no stage channel) get Roboto_Black_48, 10 rows get Roboto_Black_32.
+       Bug bar (DET_BUG_H, bottom of the right panel): the reserve bug's value in
+       cyan, keys -10 / -1 / +1 / +10 to set it to a precise percent, and CLR. The
+       first step on a resource without a bug starts one at the caution fraction.
 
    Flicker-free rendering:
      drawDetailChrome() — draws labels, dividers, header once on screen entry or slot switch
@@ -34,6 +37,16 @@ static const uint16_t DET_PNL_X = DET_SEL_W + 1;
 static const uint16_t DET_PNL_W = KCM_SCREEN_W - DET_PNL_X;
 static const uint16_t DET_HDR_H = 66;                             // taller to fit Roboto_Black_48 (58px)
 static const uint8_t  DET_SECT_ROWS = 5;                          // rows per CRAFT / STAGE section
+
+// Bug bar along the bottom of the right panel
+static const uint16_t DET_BUG_H     = 50;
+static const uint16_t DET_BUG_Y     = KCM_SCREEN_H - DET_BUG_H;   // 550
+static const uint16_t DET_BUG_KEY_W = 90;
+static const uint16_t DET_BUG_KEY_H = DET_BUG_H - DET_PAD * 2;    // 38
+static const uint16_t DET_BUG_RO_W  = 170;                        // "BUG 25%" readout cell
+static const uint8_t  DET_BUG_KEYS  = 5;                          // -10 -1 +1 +10 CLR
+static const int8_t   DET_BUG_STEP[DET_BUG_KEYS] = { -10, -1, 1, 10, 0 };   // 0 = CLR
+static const char    *DET_BUG_TEXT[DET_BUG_KEYS] = { "-10", "-1", "+1", "+10", "CLR" };
 
 // Vertical section label strip (left of data rows)
 static const uint16_t DET_SECT_W = 32;  // wide enough for Roboto_Black_20
@@ -74,7 +87,7 @@ static bool _detHasStage() {
 // Number of rows to render: 5 (craft only) or 10 (craft + stage)
 static uint8_t _detRowCount() { return _detHasStage() ? 2 * DET_SECT_ROWS : DET_SECT_ROWS; }
 
-static uint16_t _detRowH() { return (KCM_SCREEN_H - DET_HDR_H) / _detRowCount(); }
+static uint16_t _detRowH() { return (KCM_SCREEN_H - DET_HDR_H - DET_BUG_H) / _detRowCount(); }
 
 static uint16_t detRowY(uint8_t row) {
   return DET_HDR_H + row * _detRowH();
@@ -82,7 +95,57 @@ static uint16_t detRowY(uint8_t row) {
 
 // Row font follows the row height so both layouts fill their rows.
 static const tFont *_detRowFont() {
-  return (_detRowCount() > DET_SECT_ROWS) ? &Roboto_Black_36 : &Roboto_Black_48;
+  return (_detRowCount() > DET_SECT_ROWS) ? &Roboto_Black_32 : &Roboto_Black_48;
+}
+
+
+/***************************************************************************************
+   BUG BAR
+   Readout on the left, step keys and CLR to its right. The keys use the plain
+   achromatic chrome; CLR takes the orange guard treatment since it discards a
+   pilot-entered value. The readout redraws alone on a key press; the Main screen
+   picks the change up through its own cache on return.
+****************************************************************************************/
+static uint16_t _detBugKeyX(uint8_t k) {
+  return DET_PNL_X + DET_PAD + DET_BUG_RO_W + k * (DET_BUG_KEY_W + DET_PAD);
+}
+
+static void drawDetailBugReadout(KCM_TFT &tft) {
+  char buf[16];
+  if (_detailSlot < slotCount && slots[_detailSlot].bug >= 0.0f)
+    snprintf(buf, sizeof(buf), "BUG %d%%", (int)roundf(slots[_detailSlot].bug * 100.0f));
+  else
+    strlcpy(buf, "BUG ---", sizeof(buf));
+  tft.fillRect(DET_PNL_X, DET_BUG_Y, DET_BUG_RO_W, DET_BUG_H, TFT_BLACK);
+  textCenter(tft, &Roboto_Black_24, DET_PNL_X, DET_BUG_Y, DET_BUG_RO_W, DET_BUG_H,
+             String(buf), TFT_CYAN, TFT_BLACK);
+}
+
+static void drawDetailBugBar(KCM_TFT &tft) {
+  tft.fillRect(DET_PNL_X, DET_BUG_Y, DET_PNL_W, DET_BUG_H, TFT_BLACK);
+  tft.drawLine(DET_SEL_W, DET_BUG_Y, KCM_SCREEN_W, DET_BUG_Y, TFT_DARK_GREY);
+  drawDetailBugReadout(tft);
+  for (uint8_t k = 0; k < DET_BUG_KEYS; k++) {
+    bool clr = (DET_BUG_STEP[k] == 0);
+    ButtonLabel b;
+    b.text = DET_BUG_TEXT[k];
+    b.fontColorOff = b.fontColorOn = clr ? TFT_ORANGE : TFT_WHITE;
+    b.backgroundColorOff = b.backgroundColorOn = clr ? TFT_OFF_BLACK : TFT_BLACK;
+    b.borderColorOff = b.borderColorOn = clr ? TFT_ORANGE : TFT_GREY;
+    drawButton(tft, _detBugKeyX(k), DET_BUG_Y + DET_PAD, DET_BUG_KEY_W, DET_BUG_KEY_H,
+               b, &Roboto_Black_20, false);
+  }
+}
+
+// Apply one key. A step on a resource without a bug starts one at the caution
+// fraction, so the first press gives a sensible bug rather than 1%.
+static void adjustDetailBug(int8_t stepPct) {
+  if (_detailSlot >= slotCount) return;
+  ResourceSlot &s = slots[_detailSlot];
+  if (stepPct == 0) { s.bug = -1.0f; return; }
+  if (s.bug < 0.0f) s.bug = RES_WARN_FRAC;
+  else              s.bug += stepPct / 100.0f;
+  s.bug = constrain(roundf(s.bug * 100.0f) / 100.0f, 0.01f, 0.99f);
 }
 
 /***************************************************************************************
@@ -231,6 +294,8 @@ static void drawDetailChrome(KCM_TFT &tft) {
   if (_detHasStage()) {
     tft.drawLine(DET_SEL_W, detRowY(DET_SECT_ROWS), KCM_SCREEN_W, detRowY(DET_SECT_ROWS), TFT_DARK_GREY);
   }
+
+  drawDetailBugBar(tft);
 }
 
 
@@ -275,6 +340,18 @@ void updateScreenDetail(KCM_TFT &tft) {
 bool handleDetailTouch(uint16_t x, uint16_t y) {
   if (x >= DET_BACK_X && x < DET_BACK_X + DET_BACK_W && y >= DET_BACK_Y && y < DET_BACK_Y + DET_BACK_H) {
     switchToScreen(screen_Main);
+    return false;
+  }
+  // Bug bar keys
+  if (y >= DET_BUG_Y && x >= DET_PNL_X && slotCount > 0 && _detailSlot < slotCount) {
+    for (uint8_t k = 0; k < DET_BUG_KEYS; k++) {
+      uint16_t kx = _detBugKeyX(k);
+      if (x >= kx && x < kx + DET_BUG_KEY_W) {
+        adjustDetailBug(DET_BUG_STEP[k]);
+        drawDetailBugReadout(infoDisp);
+        return true;
+      }
+    }
     return false;
   }
   if (x < DET_SEL_W && slotCount > 0) {

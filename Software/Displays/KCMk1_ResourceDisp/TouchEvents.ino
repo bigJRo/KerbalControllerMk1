@@ -18,7 +18,8 @@
 
    Gestures:
      screen_Standby -> no touch response in live mode; any touch advances to Main in demo.
-     screen_Main    -> tap anywhere on a meter            : open Detail on that resource
+     screen_Main    -> tap on an alert-strip message       : open Detail on that resource
+                    -> tap anywhere on a meter            : open Detail on that resource
                     -> touch HELD still BUG_HOLD_MS on a tape : set a reserve bug there,
                        or clear the bug if the touch landed on one
                     -> touch on a bug, then DRAG            : move the bug with the finger
@@ -211,7 +212,15 @@ void processTouchEvents() {
             : F("ResourceDisp: counter row PERCENT"));
           break;
         default: {
-          // Not a sidebar key: arm the meter hold. Tap or bug is decided later.
+          // Not a sidebar key. A strip message opens Detail at once; a meter arms
+          // the hold, and tap or bug is decided later.
+          int8_t sm = stripHitTest(x2, y2);
+          if (sm >= 0) {
+            setDetailSlot((uint8_t)sm);
+            switchToScreen(screen_Detail);
+            clearTouchISR();
+            break;
+          }
           bool  onTape = false;
           float level  = 0.0f;
           int8_t m = meterHitTest(x2, y2, onTape, level);

@@ -128,6 +128,12 @@ struct ResLimits {
   bool  enabled;    // false: no bands, never alerts
 };
 
+// Time-remaining tiers, game seconds; warn == 0 means the resource has none.
+struct ResTimeLimits {
+  float warn;
+  float alarm;
+};
+
 
 /***************************************************************************************
    RESOURCE SLOT STRUCT
@@ -196,6 +202,7 @@ struct MeterCache {
   uint8_t  state;       // last drawn alert state; 255 = force
   bool     hasData;     // last drawn capacity-present flag
   bool     awaiting;    // last drawn refresh-pending flag
+  bool     timeFlag;    // last state was raised by a time-remaining tier
   float    bug;         // last drawn reserve bug; -2 = force (-1 is "no bug")
   int8_t   trend;       // last drawn trend arrow; 127 = force
   char     counter[8];  // last drawn counter-row string (% or TTE); "\x01" = force
@@ -237,6 +244,11 @@ extern const uint32_t TREND_WINDOW_MS;   // trend arrow sample window
 extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of capacity per window
 extern const uint32_t TTE_WINDOW_MS;     // time-to-empty rate sample window
 extern const float    ALERT_HYST_FRAC;   // hysteresis on the caution/alarm thresholds
+extern const float    TIME_WARN_S_EC,  TIME_ALARM_S_EC;
+extern const float    TIME_WARN_S_O2,  TIME_ALARM_S_O2;
+extern const float    TIME_WARN_S_H2O, TIME_ALARM_S_H2O;
+extern const float    TIME_WARN_S_FOOD, TIME_ALARM_S_FOOD;
+extern const float    TIME_HYST_FRAC;    // fraction above a time threshold needed to leave its tier
 extern const uint32_t BUG_HOLD_MS;       // hold time to set or clear a bug
 extern const float    BUG_GRAB_TOL;      // a touch this close to an existing bug grabs it
 extern const uint16_t BUG_DRAG_MIN_PX;   // travel before a grabbed bug starts to move
@@ -270,6 +282,7 @@ bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set
 ResGroup       resGroup(ResourceType t);       // subsystem group for Main-screen ordering
 const char*    resGroupLabel(ResGroup g);      // short group label drawn over a run of meters
 ResLimits      resLimits(ResourceType t);      // caution/alarm bands for the meter scale
+ResTimeLimits  resTimeLimits(ResourceType t);  // time-remaining tiers, 0 = none
 // 0 nominal, 1 caution, 2 alarm, 3 reserve-bug crossed (caution severity, bug colour);
 // with hysteresis against the previously drawn state.
 uint8_t        alertState(ResourceType t, float level, float bug, uint8_t prev);
@@ -318,6 +331,7 @@ int8_t sidebarHitTest(uint16_t x, uint16_t y);
 // Meter under (x,y), or -1. onTape is true for a hit on the tape rows (level is the
 // 0..1 scale position of the touch), false for a hit on the label/counter rows.
 int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level);
+int8_t stripHitTest(uint16_t x, uint16_t y);     // slot whose alert-strip message is under (x,y), or -1
 float  meterLevelAtY(uint16_t y);                // 0..1 scale position of a tape row (clamped)
 bool   meterBugNear(uint8_t i, float level);     // slot i has a bug within BUG_GRAB_TOL of level
 void   setMeterBug(uint8_t i, float level);      // place slot i's reserve bug (snapped to 1%)

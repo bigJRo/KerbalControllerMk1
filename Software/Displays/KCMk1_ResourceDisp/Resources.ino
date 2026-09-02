@@ -332,6 +332,21 @@ ResLimits resLimits(ResourceType t) {
 
 
 /***************************************************************************************
+   TIME-REMAINING TIERS
+   Which resources alert on time left, and at what times. See AAA_Config.ino.
+****************************************************************************************/
+ResTimeLimits resTimeLimits(ResourceType t) {
+  switch (t) {
+    case RES_ELEC_CHARGE: return { TIME_WARN_S_EC,   TIME_ALARM_S_EC   };
+    case RES_LS_OXYGEN:   return { TIME_WARN_S_O2,   TIME_ALARM_S_O2   };
+    case RES_LS_WATER:    return { TIME_WARN_S_H2O,  TIME_ALARM_S_H2O  };
+    case RES_LS_FOOD:     return { TIME_WARN_S_FOOD, TIME_ALARM_S_FOOD };
+    default:              return { 0.0f, 0.0f };
+  }
+}
+
+
+/***************************************************************************************
    ALERT STATE WITH HYSTERESIS
    0 nominal, 1 caution, 2 alarm, 3 reserve bug crossed. `prev` is the state the caller
    last drew (255 or 0 for none). Once in a state, the threshold that would leave it is moved

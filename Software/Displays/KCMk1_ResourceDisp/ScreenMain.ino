@@ -155,6 +155,7 @@ static const uint16_t BAL_BAR_H    = 10;
 static const float    LF_PER_LOX   = 9.0f / 11.0f;   // KSP LF:LOx burn ratio
 
 static const uint16_t BAND_W       = 4;    // limit-band column, left of the tape
+static const uint16_t BUG_TXT_W    = 20;   // room right of the ticks for the bug's percent
 static const uint16_t MARK_H       = 2;    // secondary-value marker line thickness
 static const uint16_t SPLIT_GAP    = 1;    // black gap between the primary and secondary columns
 
@@ -394,12 +395,13 @@ static void drawFrame(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, ui
   tft.drawRect(g.tapeX, TAPE_TOP, st.tapeW, TAPE_H, frameColor(state));
 }
 
-// Reserve bug: a cyan index in the tick zone, tip against the frame, plus a cyan mark
-// across the band column so it reads on the scale. Redrawing clears the whole tick
-// zone and band and repaints them, since the old bug sat on both; both are cheap.
+// Reserve bug: a cyan index in the tick zone, tip against the frame, its percent in
+// small cyan figures beside it, plus a cyan mark across the band column so it reads
+// on the scale. Redrawing clears the tick zone, the figure area and the band and
+// repaints them, since the old bug sat on all three; all are cheap.
 static void drawBug(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
                     ResourceType t, float bug) {
-  tft.fillRect(g.tickX, TAPE_TOP, st.tickL + 1, TAPE_H, TFT_BLACK);
+  tft.fillRect(g.tickX, TAPE_TOP, st.tickL + 1 + BUG_TXT_W, TAPE_H, TFT_BLACK);
   drawTicks(tft, st, g);
   drawBands(tft, g, t);
   if (bug < 0.0f) return;
@@ -407,6 +409,14 @@ static void drawBug(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
   int16_t hh = (int16_t)st.tickL;
   tft.fillTriangle(g.tickX, y, g.tickX + st.tickL, y - hh, g.tickX + st.tickL, y + hh, TFT_CYAN);
   tft.fillRect(g.bandX, y - 1, BAND_W, 2, TFT_CYAN);
+  char pct[5];
+  snprintf(pct, sizeof(pct), "%d", (int)roundf(bug * 100.0f));
+  int16_t th = Roboto_Black_12.cap_height;
+  int16_t ty = constrain((int16_t)(y - th / 2), (int16_t)TAPE_TOP, (int16_t)(TAPE_BOTTOM - th));
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.setCursor(g.tickX + st.tickL + 2, ty);
+  tft.print(pct);
 }
 
 // Group label band and dividers. Runs of same-group meters (slots are already in
@@ -532,8 +542,14 @@ static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, co
 ****************************************************************************************/
 enum StripCode : uint8_t { STRIP_NONE = 0, STRIP_CAUTION, STRIP_ALARM, STRIP_BUG };
 static uint8_t _stripCode[MAX_SLOTS];
+static bool    _stripTime[MAX_SLOTS];   // the state came from a time-remaining tier
 static char    _stripSig[160];   // last drawn line, "\x01" = force
 static bool    _balShown = false;
+
+// Where each drawn message sits, so a tap on it can open Detail on that resource.
+struct StripHit { uint16_t x0, x1; uint8_t slot; };
+static StripHit _stripHits[MAX_SLOTS];
+static uint8_t  _stripHitCount = 0;
 
 static uint16_t stripAvailW() {
   return (uint16_t)(SCREEN_W - STRIP_X - (_balShown ? BAL_W : 0));
@@ -568,7 +584,7 @@ static void updateAlertStrip(KCM_TFT &tft) {
       bool pick = (sev == STRIP_ALARM) ? (code == STRIP_ALARM)
                                        : (code == STRIP_CAUTION || code == STRIP_BUG);
       if (!pick || n >= sizeof(sig) - 8) continue;
-      n += snprintf(sig + n, sizeof(sig) - n, "%d%d|", code, i);
+      n += snprintf(sig + n, sizeof(sig) - n, "%d%d%c|", code, i, _stripTime[i] ? 't' : '-');
     }
   }
   if (strcmp(sig, _stripSig) == 0) return;
@@ -578,6 +594,7 @@ static void updateAlertStrip(KCM_TFT &tft) {
   tft.fillRect(CONTENT_X, 0, xEnd - CONTENT_X, ALERT_H, TFT_BLACK);
   uint16_t x = STRIP_X + STRIP_PAD;
   uint8_t  dropped = 0;
+  _stripHitCount = 0;
   if (refreshPending) stripPut(tft, x, xEnd, "REFRESHING", TFT_WHITE, TFT_BLACK);
   for (uint8_t sev = STRIP_ALARM; sev >= STRIP_CAUTION; sev--) {
     for (uint8_t i = 0; i < slotCount; i++) {
@@ -588,14 +605,20 @@ static void updateAlertStrip(KCM_TFT &tft) {
       char msg[16];
       // Red names the condition (LOW, or HIGH for a waste product); yellow names the
       // tier (CAUT), matching the panel's caution/alarm vocabulary; a bug crossing
-      // says so.
-      const char *what = (code == STRIP_BUG)     ? "BUG"
+      // says so; a state raised by a time-remaining tier says TIME in either colour.
+      const char *what = _stripTime[i]           ? "TIME"
+                       : (code == STRIP_BUG)     ? "BUG"
                        : (code == STRIP_CAUTION) ? "CAUT"
                        : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
       snprintf(msg, sizeof(msg), "%s %s", resLabel(slots[i].type), what);
       bool alarm = (code == STRIP_ALARM);
       uint16_t fore = alarm ? TFT_WHITE : (code == STRIP_BUG) ? TFT_CYAN : TFT_YELLOW;
-      if (dropped || !stripPut(tft, x, xEnd, msg, fore, alarm ? TFT_RED : TFT_BLACK)) dropped++;
+      uint16_t xStart = x;
+      if (dropped || !stripPut(tft, x, xEnd, msg, fore, alarm ? TFT_RED : TFT_BLACK)) {
+        dropped++;
+      } else if (_stripHitCount < MAX_SLOTS) {
+        _stripHits[_stripHitCount++] = { (uint16_t)(xStart - STRIP_PAD), x, i };
+      }
     }
   }
   if (dropped) {
@@ -607,6 +630,15 @@ static void updateAlertStrip(KCM_TFT &tft) {
     tft.setCursor(xEnd - w, (ALERT_H - STRIP_FONT->cap_height) / 2);
     tft.print(more);
   }
+}
+
+
+int8_t stripHitTest(uint16_t x, uint16_t y) {
+  if (y >= ALERT_H) return -1;
+  for (uint8_t k = 0; k < _stripHitCount; k++) {
+    if (x >= _stripHits[k].x0 && x < _stripHits[k].x1) return (int8_t)_stripHits[k].slot;
+  }
+  return -1;
 }
 
 
@@ -715,6 +747,7 @@ static void resetDrawCaches() {
     _mc[i].state      = 255;
     _mc[i].hasData    = false;
     _mc[i].awaiting   = false;
+    _mc[i].timeFlag   = false;
     _mc[i].bug        = -2.0f;
     _mc[i].trend      = 127;
     _mc[i].counter[0] = 1;       // sentinel: matches no real string, forces a redraw
@@ -723,11 +756,39 @@ static void resetDrawCaches() {
     _mc[i].units[1]   = '\0';
   }
   _prevTteMode = tteMode;
-  for (uint8_t i = 0; i < MAX_SLOTS; i++) _stripCode[i] = STRIP_NONE;
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) { _stripCode[i] = STRIP_NONE; _stripTime[i] = false; }
   _stripSig[0] = 1; _stripSig[1] = '\0';
+  _stripHitCount = 0;
   _balShown = false;
   _balPx = -32768;
   _balText[0] = 1; _balText[1] = '\0';
+}
+
+
+/***************************************************************************************
+   TIME-REMAINING TIERS
+   Raises the state for a resource whose time to empty (game seconds, already warp
+   corrected) is inside a tier. Leaving a tier needs the time to exceed the threshold
+   by TIME_HYST_FRAC, keyed on whether the previous state came from a time tier.
+   timeFlag reports whether the returned state is the time tier's doing, so the
+   strip can say TIME rather than LOW.
+****************************************************************************************/
+static uint8_t applyTimeTiers(ResourceType t, float tteS, uint8_t state,
+                              uint8_t prevState, bool prevTime, bool &timeFlag) {
+  timeFlag = false;
+  ResTimeLimits tl = resTimeLimits(t);
+  if (tl.warn <= 0.0f || tteS < 0.0f) return state;
+  float alarmT = tl.alarm * ((prevTime && prevState == ALERT_ALARM)   ? 1.0f + TIME_HYST_FRAC : 1.0f);
+  float warnT  = tl.warn  * ((prevTime && prevState == ALERT_CAUTION) ? 1.0f + TIME_HYST_FRAC : 1.0f);
+  if (tteS < alarmT) {
+    timeFlag = (state != ALERT_ALARM);
+    return ALERT_ALARM;
+  }
+  if (tteS < warnT && state != ALERT_ALARM && state != ALERT_CAUTION) {
+    timeFlag = true;
+    return ALERT_CAUTION;
+  }
+  return state;
 }
 
 
@@ -810,16 +871,20 @@ void updateScreenMain(KCM_TFT &tft) {
     bool    awaiting = !hasData && slotAwaiting(i);
     uint8_t state    = hasData ? alertState(s.type, level, s.bug, c.state) : 0;
     const SlotSample &smp = sampleTot[i];
+    float   tteS     = hasData ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f;
+    bool    timeFlag = false;
+    if (hasData) state = applyTimeTiers(s.type, tteS, state, c.state, c.timeFlag, timeFlag);
 
     // Message for the alert strip.
     if      (!hasData || state == ALERT_NOMINAL) _stripCode[i] = STRIP_NONE;
     else if (state == ALERT_ALARM)               _stripCode[i] = STRIP_ALARM;
     else if (state == ALERT_BUG)                 _stripCode[i] = STRIP_BUG;
     else                                         _stripCode[i] = STRIP_CAUTION;
+    _stripTime[i] = hasData && timeFlag;
 
     char counter[8];
     if (!hasData)     strlcpy(counter, awaiting ? "..." : "---", sizeof(counter));
-    else if (tteMode) fmtTte(sampleTteSeconds(smp, s.type, cur, max), counter, sizeof(counter));
+    else if (tteMode) fmtTte(tteS, counter, sizeof(counter));
     else              snprintf(counter, sizeof(counter), "%d%%", (int)(level * 100.0f));
 
     char units[12];
@@ -833,7 +898,8 @@ void updateScreenMain(KCM_TFT &tft) {
     bool markChanged  = (c.mark < -1.5f) ||                       // forced
                         ((mark < 0.0f) != (c.mark < 0.0f)) ||     // marker appeared / vanished
                         (mark >= 0.0f && fabsf(mark - c.mark) >= BAR_LEVEL_HYSTERESIS);
-    bool stateChanged   = (state != c.state) || (hasData != c.hasData) || (awaiting != c.awaiting);
+    bool stateChanged   = (state != c.state) || (hasData != c.hasData) || (awaiting != c.awaiting) ||
+                          (timeFlag != c.timeFlag);
     bool counterChanged = (strcmp(counter, c.counter) != 0) || stateChanged;
     bool trendChanged   = (smp.trend != c.trend) || stateChanged;
     bool unitsChanged   = (strcmp(units, c.units) != 0);
@@ -852,6 +918,7 @@ void updateScreenMain(KCM_TFT &tft) {
       c.state    = state;
       c.hasData  = hasData;
       c.awaiting = awaiting;
+      c.timeFlag = timeFlag;
       drawFrame(tft, st, g, hasData ? state : 0);
     }
     if (levelChanged || markChanged) {
@@ -923,7 +990,7 @@ bool meterBugNear(uint8_t i, float level) {
 
 void setMeterBug(uint8_t i, float level) {
   if (i >= slotCount) return;
-  slots[i].bug = roundf(level * 100.0f) / 100.0f;
+  slots[i].bug = constrain(roundf(level * 100.0f) / 100.0f, 0.01f, 0.99f);
 }
 
 void clearMeterBug(uint8_t i) {

@@ -86,6 +86,28 @@ const float    TREND_MIN_FRAC  = 0.0005f;   // fraction of capacity that counts 
 const uint32_t TTE_WINDOW_MS = 10000;       // ms per rate sample window
 
 /***************************************************************************************
+   TIME-REMAINING TIERS
+   A meter also alerts on the time its resource has left at the current rate (the
+   same estimate the TTE counter shows), regardless of the percent: caution below
+   the warn time, alarm below the alarm time. Seconds of game time; 0 = no time tier.
+   O2, water and food match the Annunciator's TACLS_*_WARN_S / _ALARM_S so the two
+   panels agree; there is no shared define yet, keep them in step. EC is this panel's
+   own. A tier is left only once the time exceeds its threshold by TIME_HYST_FRAC.
+   Note the estimate's floor: a drain slower than about 5.5 hours to empty reads as
+   no rate (see TTE_WINDOW_MS), so the water and food warn tiers cannot fire from
+   this panel; the Annunciator computes those from consumption rates instead.
+****************************************************************************************/
+const float TIME_WARN_S_EC    = 15.0f * 60.0f;
+const float TIME_ALARM_S_EC   =  5.0f * 60.0f;
+const float TIME_WARN_S_O2    = 30.0f * 60.0f;     // TACLS_OXYGEN_WARN_S
+const float TIME_ALARM_S_O2   = 10.0f * 60.0f;     // TACLS_OXYGEN_ALARM_S
+const float TIME_WARN_S_H2O   = 12.0f * 3600.0f;   // TACLS_WATER_WARN_S
+const float TIME_ALARM_S_H2O  =  4.0f * 3600.0f;   // TACLS_WATER_ALARM_S
+const float TIME_WARN_S_FOOD  = 72.0f * 3600.0f;   // TACLS_FOOD_WARN_S
+const float TIME_ALARM_S_FOOD = 24.0f * 3600.0f;   // TACLS_FOOD_ALARM_S
+const float TIME_HYST_FRAC    = 0.10f;
+
+/***************************************************************************************
    ALERT HYSTERESIS
    A level sitting exactly on a caution or alarm fraction would otherwise flip the
    frame and counter colour on every message. Once a meter is in a state it must
