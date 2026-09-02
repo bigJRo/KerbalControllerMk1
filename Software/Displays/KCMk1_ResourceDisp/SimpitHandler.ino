@@ -304,7 +304,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       // into evaActive and swaps between the vessel bars and the EVA bar set.
       if (msgSize >= 1) evaFlag = (msg[0] & FLIGHT_IS_EVA) != 0;
       // Time warp: byte 2 is KSP's warp rate index. KSP only allows physics warp
-      // inside an atmosphere (flag bit 3, FLIGHT_IS_IN_ATMOSPHERE), so the flag
+      // inside an atmosphere (flag bit 3, FLIGHT_IS_ATMO_TW), so the flag
       // selects which rate table the index refers to. The sampling windows are
       // restarted on a change so no window blends two rates.
       if (msgSize >= 3) {

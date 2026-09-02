@@ -8,18 +8,20 @@ HOISTS A PROTOTYPE FOR EVERY FUNCTION above the whole thing. That second step is
 panel_lint cannot see and what a host g++ run of the tabs in isolation misses: a
 function whose signature names a struct defined inside a .ino compiles fine tab by tab
 and fails in the IDE with "'MeterStyle' does not name a type". This tool reproduces
-the hoisting, then runs g++ -fsyntax-only against stand-ins for the display, touch,
-Simpit and Arduino libraries (tools/host_stubs/). The stubs draw nothing; the palette
-and font metrics are generated from the real KerbalDisplayCommon sources so a colour
-or font name that does not exist fails here too.
+the hoisting, then runs g++ -fsyntax-only with the REAL in-repo libraries on the
+include path (KerbalDisplayCommon, KCM_Display, KCM_Touch, KerbalDisplayAudio,
+KCMk1_SystemConfig, the fonts) and stand-ins only for what the repo does not carry:
+the Arduino/Teensy core, the RA8876 driver class, and the KerbalSimpit client
+(tools/host_stubs/). So a colour, font, library function or Simpit message id that
+does not exist fails here the way it fails in the IDE; the stubs draw nothing.
 
 Usage:
-    python3 tools/host_compile.py                      # KCMk1_ResourceDisp
+    python3 tools/host_compile.py                      # all three panels
     python3 tools/host_compile.py KCMk1_ResourceDisp   # one sketch by name
     python3 tools/host_compile.py --keep               # leave the build dir for inspection
 
-Exit status is g++'s. The stubs currently cover the ResourceDisp's surface; a new
-symbol on another panel is a one-line addition to the matching stub header.
+Exit status is g++'s. A new Arduino, driver or Simpit symbol is a one-line addition
+to the matching stub header.
 """
 
 import argparse
@@ -33,10 +35,24 @@ import tempfile
 HERE     = os.path.dirname(os.path.abspath(__file__))
 DISPLAYS = os.path.dirname(HERE)
 STUBS    = os.path.join(HERE, "host_stubs")
-KDC_SRC  = os.path.join(DISPLAYS, "libraries", "KerbalDisplayCommon", "src")
-SYSCFG   = os.path.join(DISPLAYS, "libraries", "KCMk1_SystemConfig", "src")
+LIB_ROOT = os.path.join(DISPLAYS, "libraries")
+COMMON   = os.path.join(os.path.dirname(DISPLAYS), "Common")   # Software/Common
+KDC_HDR  = os.path.join(LIB_ROOT, "KerbalDisplayCommon", "src", "KerbalDisplayCommon.h")
 
-DEFAULT_SKETCHES = ["KCMk1_ResourceDisp"]
+DEFAULT_SKETCHES = ["KCMk1_Annunciator", "KCMk1_InfoDisp", "KCMk1_ResourceDisp"]
+
+
+def library_include_dirs():
+    """Every in-repo library's src/, plus KerbalDisplayCommon's font directory (its
+    header includes the font .c files by relative path and the font header by name)."""
+    dirs = []
+    for name in sorted(os.listdir(LIB_ROOT)):
+        src = os.path.join(LIB_ROOT, name, "src")
+        if os.path.isdir(src):
+            dirs.append(src)
+    dirs.append(os.path.join(LIB_ROOT, "KerbalDisplayCommon", "src", "fonts_ili"))
+    dirs.append(COMMON)
+    return dirs
 
 
 def tabs(sketch_dir):
@@ -62,47 +78,31 @@ DEF = re.compile(
 KEYWORDS = {'if', 'for', 'while', 'switch', 'return', 'else', 'do'}
 
 
+# An explicit prototype somewhere in the sketch. The IDE does not generate one for a
+# function that already has one, which is how a tab declares a function whose
+# signature names a type defined further down (the InfoDisp's OrbScene helpers).
+DECL = re.compile(
+    r'^(?:static\s+|inline\s+|const\s+|constexpr\s+)*[A-Za-z_][\w:<>]*(?:\s*[\*&])?\s+&?\s*(\w+)\s*\([^;{}()]*\)\s*;',
+    re.M)
+
+
 def hoisted_prototypes(files):
+    srcs = [strip_comments(open(fp, encoding='utf-8', errors='replace').read()) for fp in files]
+    declared = set()
+    for src in srcs:
+        declared.update(m.group(1) for m in DECL.finditer(src))
     protos = []
-    for fp in files:
-        src = strip_comments(open(fp, encoding='utf-8', errors='replace').read())
+    for src in srcs:
         for m in DEF.finditer(src):
             sig  = m.group(1)
             head = sig.split('(')[0].split()
             if head[0] in KEYWORDS or 'struct' in head or 'enum' in head or 'class' in head:
                 continue
+            name = sig.split('(')[0].split()[-1].lstrip('*&')
+            if name in declared:
+                continue
             protos.append(' '.join(sig.split()) + ';')
     return protos
-
-
-def gen_colors(out_dir):
-    """Every TFT_* colour and KDC_VERSION_* define from the real KerbalDisplayCommon.h."""
-    lines = ["#pragma once"]
-    for line in open(os.path.join(KDC_SRC, "KerbalDisplayCommon.h"), encoding='utf-8', errors='replace'):
-        if re.match(r'\s*#define\s+(TFT_\w+\s+0x[0-9A-Fa-f]+|KDC_VERSION_\w+\s+\d+)', line):
-            lines.append(line.rstrip())
-    open(os.path.join(out_dir, "gen_colors.h"), "w").write("\n".join(lines) + "\n")
-
-
-def gen_fonts(out_dir):
-    """One ILI9341_t3_font_t per font .c in the library, with its real cap_height and
-    line_space, so font-name typos and size assumptions fail on the host too."""
-    lines = ["#pragma once", "#include <cstdint>",
-             "struct ILI9341_t3_font_t { uint8_t version, reserved, index1_first, index1_last, "
-             "index2_first, index2_last, bits_index, bits_width, bits_height, bits_xoffset, "
-             "bits_yoffset, bits_delta, line_space, cap_height; };",
-             "typedef ILI9341_t3_font_t tFont;"]
-    fdir = os.path.join(KDC_SRC, "fonts_ili")
-    for f in sorted(os.listdir(fdir)):
-        if not f.endswith(".c"):
-            continue
-        src = open(os.path.join(fdir, f), encoding='utf-8', errors='replace').read()
-        cap = re.search(r'(\d+),\s*//\s*cap_height', src)
-        ls  = re.search(r'(\d+),\s*//\s*line_space', src)
-        name = f[:-2]
-        lines.append("static const ILI9341_t3_font_t %s = {1,0,32,126,0,0,0,0,0,0,0,0,%s,%s};"
-                     % (name, ls.group(1) if ls else 0, cap.group(1) if cap else 0))
-    open(os.path.join(out_dir, "gen_fonts.h"), "w").write("\n".join(lines) + "\n")
 
 
 def build(sketch, keep):
@@ -113,11 +113,12 @@ def build(sketch, keep):
         return 2
     out = tempfile.mkdtemp(prefix="kcm_host_")
     try:
-        gen_colors(out)
-        gen_fonts(out)
-        open(os.path.join(out, "Serial_impl.cpp"), "w").write(
-            "#include <Arduino.h>\nHostSerial Serial, SerialUSB1, Serial2;\nHostWire Wire, Wire1, Wire2;\n"
-            "const unsigned char TEXT_BORDER = 8;\n")
+        # KerbalDisplayCommon.h includes Software/Common/body_params.h by an absolute
+        # Windows path. A copy in the build dir (first on the include path) swaps that
+        # for a plain <body_params.h>, which Software/Common on the path satisfies.
+        kdc = open(KDC_HDR, encoding='utf-8', errors='replace').read()
+        kdc = re.sub(r'#include\s+"[A-Za-z]:\\[^"]*body_params\.h"', '#include <body_params.h>', kdc)
+        open(os.path.join(out, "KerbalDisplayCommon.h"), "w").write(kdc)
         # Concatenate like the IDE: header include first (so the hoisted prototypes
         # see the sketch's own types), then the prototypes, then every tab in order.
         parts = ['#include <Arduino.h>', '#include "%s.h"' % sketch]
@@ -129,9 +130,9 @@ def build(sketch, keep):
         open(cpp, "w").write("\n".join(parts) + "\n")
         cmd = ["g++", "-std=gnu++17", "-fsyntax-only", "-Wall", "-Wextra",
                "-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unused-variable",
-               "-Wno-vla",
-               "-I" + out, "-I" + STUBS, "-I" + SYSCFG, "-I" + sketch_dir,
-               "-x", "c++", cpp]
+               "-Wno-vla", "-Wno-narrowing",
+               "-I" + out, "-I" + STUBS] + ["-I" + d for d in library_include_dirs()] + \
+              ["-I" + sketch_dir, "-x", "c++", cpp]
         print("== %s: %d tabs, %d prototypes hoisted" % (sketch, len(files), len(parts) - 2 - len(files) * 2))
         r = subprocess.run(cmd, capture_output=True, text=True)
         if r.stdout:
