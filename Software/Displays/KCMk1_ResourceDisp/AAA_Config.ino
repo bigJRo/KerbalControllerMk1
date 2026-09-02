@@ -21,6 +21,11 @@
 bool debugMode = false;  // set true to enable Serial debug output during development
 bool demoMode  = false;  // set true for bench testing without KSP; false for production
 
+// DEMO_EVA: with demoMode, start the demo on EVA -- the fixed EVA slot set and the
+// ring-gauge layout -- instead of the vessel tape screen. Bench switch for the EVA
+// layout; has no effect in live mode, where FLIGHT_STATUS decides.
+const bool DEMO_EVA = false;
+
 // STANDALONE_TEST: true = no I2C master connected — skip the boot PROCEED handshake
 // and enter loop() immediately. Safe to leave true for bench/UI testing; set false
 // for production (master will send PROCEED after reading the status packet).

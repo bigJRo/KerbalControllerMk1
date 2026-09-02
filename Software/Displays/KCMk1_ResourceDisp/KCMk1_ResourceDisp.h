@@ -233,6 +233,7 @@ enum ScreenType : uint8_t {
 extern bool     debugMode;
 extern bool     demoMode;
 extern const bool     STANDALONE_TEST;   // true = skip I2C master handshake (no master connected)
+extern const bool     DEMO_EVA;          // demo starts on EVA (ring-gauge layout)
 extern const uint8_t  DISPLAY_ROTATION;
 // Slot count limit — constexpr so it can be used as a compile-time array size.
 // There is no floor: with absent resources collapsing, the panel copes with any

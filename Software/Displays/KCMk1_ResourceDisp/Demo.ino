@@ -42,6 +42,9 @@ bool demoResourceAbsent(ResourceType t) {
 ****************************************************************************************/
 void initDemoMode() {
   initAllSlots();
+  // DEMO_EVA: latch the EVA flag as FLIGHT_STATUS would. loop() reconciles it on
+  // its first pass, loads the EVA slot set and shows the ring-gauge layout.
+  if (DEMO_EVA) evaFlag = true;
 }
 
 

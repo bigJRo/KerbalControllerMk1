@@ -128,6 +128,7 @@ Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants
 |----------|----------|---------|-------------|
 | `debugMode` | `AAA_Config.ino` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
 | `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
+| `DEMO_EVA` | `AAA_Config.ino` | `false` | With `demoMode`, start the demo on EVA: the fixed EVA slot set and the ring-gauge layout. Bench switch for the EVA screen; no effect in live mode. |
 | `DISPLAY_ROTATION` | `AAA_Config.ino` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
 | `RES_WARN_FRAC` | `AAA_Config.ino` | `KCM_RES_LOW_WARN_FRAC` (0.20) | Caution (yellow) band: a consumable meter alerts below this fraction of capacity. Aliases the cross-panel constant so it matches the Annunciator PROP LOW / RCS LOW tier. |
 | `RES_ALARM_FRAC` | `AAA_Config.ino` | `KCM_EC_LOW_ALARM_FRAC` (0.05) | Alarm (red) band: a consumable meter alerts below this fraction. Aliases the cross-panel constant so it matches the Annunciator red tier. |
