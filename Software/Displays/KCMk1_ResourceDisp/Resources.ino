@@ -402,7 +402,8 @@ void noteResourcePresence(ResourceType t, float available, float total) {
 }
 
 bool resAbsent(ResourceType t) {
-  if (demoMode || t == RES_NONE || t >= RES_COUNT) return false;
+  if (t == RES_NONE || t >= RES_COUNT) return false;
+  if (demoMode) return demoResourceAbsent(t);   // scripted, see Demo.ino
   return resPresence[t] == PRES_ABSENT;
 }
 

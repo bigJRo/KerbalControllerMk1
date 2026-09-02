@@ -220,10 +220,10 @@ Each meter, top to bottom:
 Sidebar buttons (top to bottom):
 - **SEL** — opens the Select screen
 - **DATA** — opens the Detail screen
-- **CLR BUG** — removes every reserve bug on the vessel (orange guard treatment, since it discards pilot-entered state)
 - **TTE** — toggles the counter row between percent and time-to-empty; reverse-videos while engaged
+- **CLR BUG** — removes every reserve bug on the vessel (two-line legend, orange guard treatment since it discards pilot-entered state)
 
-**Select** — resource configuration screen. A tap the limits refuse (adding at 16 slots, removing at the 4-slot floor) flashes the slot counter yellow with `MAX` or `MIN` for a moment. Slots are kept in subsystem order as they are added, so the ORDER list shows what the Main screen will draw. Presets, each a set that should all be aboard the craft type it names: **SPCT** (spacecraft: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator), **XPD** (expedition: nuclear/hydrogen deep-space), **SRF** (surface: EC, Stored Charge, Ore, LF, LOx, MP, O2, Food, Water), **LSP** (all TAC-LS), **ACFT** (aircraft: EC, LF, Intake Air, MP, O2, Food, Water; no oxidizer, a spaceplane is SPCT plus Intake Air) and **ADV** (everything modded). Left panel: 5-column grid of all available resources. Right panel: ordered slot list with a CLEAR button. Top row: preset buttons (STD, XPD, VEH, LSP, AIR, ADV) and a BACK button. Tapping a resource toggles it. Presets replace the current configuration entirely. In live mode, a Simpit channel refresh is requested after any configuration change.
+**Select** — resource configuration screen. A tap the limits refuse (adding at 16 slots, removing at the 4-slot floor) flashes the slot counter yellow with `MAX` or `MIN` for a moment. Slots are kept in subsystem order as they are added, so the ORDER list shows what the Main screen will draw. Presets, each a set that should all be aboard the craft type it names: **SPCT** (spacecraft: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator), **XPD** (expedition: nuclear/hydrogen deep-space), **SRF** (surface: EC, Stored Charge, Ore, LF, LOx, MP, O2, Food, Water), **ACFT** (aircraft: EC, LF, Intake Air, MP, O2, Food, Water; no oxidizer, a spaceplane is SPCT plus Intake Air), **LSP** (all TAC-LS) and **ADV** (everything modded). Left panel: 5-column grid of all available resources. Right panel: ordered slot list with a CLEAR button. Top row: preset buttons (STD, XPD, VEH, LSP, AIR, ADV) and a BACK button. Tapping a resource toggles it. Presets replace the current configuration entirely. In live mode, a Simpit channel refresh is requested after any configuration change.
 
 **Detail** — numerical readout for a single resource. Left panel: selector column with one button per active slot. Right panel: resource name header, followed by data rows: Available, Total, Remaining %, **Rate** (units per game second, signed) and **Time** (to empty, or to full for waste). Resources with stage data (LF, LOx, SF, Xenon, Ablator) show the five rows in both CRAFT and STAGE sections; the rest show CRAFT only. Rate and Time are the same estimate the Main screen's trend arrows and TTE counters use (`Sampling.ino`). A **bug bar** along the bottom shows the resource's reserve bug in cyan with `-10` `-1` `+1` `+10` keys to set it to a precise percent and `CLR` to remove it; the first step on a resource without a bug starts one at the caution fraction.
 
@@ -268,7 +268,7 @@ Slot configurations are saved per vessel name in `vesselCache[]` (up to `VESSEL_
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration; single-resource channels are a table, not a case each |
 | `I2CSlave.ino` | I2C slave at 0x11 — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Jurassic Park-themed terminal boot sequence |
-| `Demo.ino` | Demo mode — sine-wave resource values sweeping the full 0–100% range, no KSP connection |
+| `Demo.ino` | Demo mode — sine-wave resource values sweeping the full 0–100% range, plus a scripted presence scenario (every 20 s: nothing absent, then SF and Ablator absent, then those plus MP and Xenon) to exercise the collapse; no KSP connection |
 
 ---
 

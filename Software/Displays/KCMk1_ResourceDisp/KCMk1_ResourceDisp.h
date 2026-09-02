@@ -314,6 +314,7 @@ void switchToScreen(ScreenType s);
 // Per-tab functions
 void processTouchEvents();
 void initDemoMode();
+bool demoResourceAbsent(ResourceType t);   // demo's scripted "not aboard" phases
 void initDefaultSlots();
 void loadEvaSlots();     // load the fixed EVA bar set: EC, EVA Propellant, O2, Food, Water
 void initAllSlots();

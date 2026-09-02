@@ -21,8 +21,8 @@
    Sidebar buttons (top to bottom):
      0. SEL     -- navigates to the resource selection screen
      1. DATA    -- navigates to the numerical resource detail screen
-     2. CLR BUG -- removes every reserve bug on the vessel
-     3. TTE     -- toggles the counter row between percent and time-to-empty
+     2. TTE     -- toggles the counter row between percent and time-to-empty
+     3. CLR BUG -- removes every reserve bug on the vessel (two-line legend)
 
    Visibility: a slot whose resource the vessel does not carry (see resAbsent) draws
    no meter at all. The meters that do draw are the "visible" slots, numbered 0..
@@ -249,14 +249,17 @@ static const ButtonLabel btnTteOn = {
 };
 // CLR BUG removes every reserve bug on the vessel. It takes the guard treatment the
 // Select screen's CLEAR key uses -- orange legend and border on off-black -- since it
-// discards pilot-entered state, and a smaller font so the two-word legend fits.
-static const ButtonLabel btnClrBug = {
-  "CLR BUG",
-  TFT_ORANGE, TFT_ORANGE,
-  TFT_OFF_BLACK, TFT_OFF_BLACK,
-  TFT_ORANGE, TFT_ORANGE
-};
-static const tFont *SB_CLRBUG_FONT = &Roboto_Black_16;
+// discards pilot-entered state. The legend is two words on two lines in the same
+// font as the other keys; drawButton is single-line, so this key draws itself.
+static void drawClrBugKey(KCM_TFT &tft, uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+  tft.fillRect(x, y, w, h, TFT_OFF_BLACK);
+  tft.drawRect(x, y, w, h, TFT_ORANGE);
+  int16_t  capH = SB_BTN_FONT->cap_height;
+  uint16_t gap  = 8;
+  uint16_t top  = y + (h - (2 * capH + gap)) / 2;
+  textCenter(tft, SB_BTN_FONT, x, top,               w, capH, "CLR", TFT_ORANGE, TFT_OFF_BLACK);
+  textCenter(tft, SB_BTN_FONT, x, top + capH + gap,  w, capH, "BUG", TFT_ORANGE, TFT_OFF_BLACK);
+}
 static const ButtonLabel btnSelect = {
   "SEL",
   TFT_WHITE, TFT_WHITE,
@@ -279,14 +282,16 @@ static void drawSidebar(KCM_TFT &tft) {
   uint16_t bx = sbX();
   uint16_t bw = SIDEBAR_W - 1;
 
-  // Buttons 0-2: action buttons, drawn "on" so their background colour always shows
+  // Buttons 0-1: action buttons, drawn "on" so their background colour always shows
   drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
   drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnClrBug, SB_CLRBUG_FONT, true);
 
-  // Button 3: TTE counter-mode toggle
+  // Button 2: TTE counter-mode toggle
   const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
-  drawButton(tft, bx, sbBtnY(3), bw, sbBtnH(), tteBtn, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), tteBtn, SB_BTN_FONT, true);
+
+  // Button 3: CLR BUG
+  drawClrBugKey(tft, bx, sbBtnY(3), bw, sbBtnH());
 }
 
 
@@ -296,7 +301,7 @@ static void drawSidebar(KCM_TFT &tft) {
 ****************************************************************************************/
 void redrawTteButton(KCM_TFT &tft) {
   const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
-  drawButton(tft, sbX(), sbBtnY(3), SIDEBAR_W - 1, sbBtnH(), tteBtn, SB_BTN_FONT, true);
+  drawButton(tft, sbX(), sbBtnY(2), SIDEBAR_W - 1, sbBtnH(), tteBtn, SB_BTN_FONT, true);
 }
 
 

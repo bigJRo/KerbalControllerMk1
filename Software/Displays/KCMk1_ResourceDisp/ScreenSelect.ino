@@ -98,14 +98,14 @@ static const PresetGroup PRESETS[PRESET_COUNT] = {
       RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_ORE, RES_LIQUID_FUEL, RES_LIQUID_OX,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 9 },
-  { "LSP", {    // Life support: everything TAC-LS
-      RES_ELEC_CHARGE, RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD,
-      RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE, RES_FERTILIZER
-    }, 8 },
   { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPCT plus Intake Air.
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_INTAKE_AIR,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 7 },
+  { "LSP", {    // Life support: everything TAC-LS
+      RES_ELEC_CHARGE, RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD,
+      RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE, RES_FERTILIZER
+    }, 8 },
   { "ADV", {   // Advanced Resource Group
       RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_XENON, RES_ORE,
       RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,

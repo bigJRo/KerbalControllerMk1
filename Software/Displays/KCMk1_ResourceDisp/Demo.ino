@@ -3,13 +3,37 @@
    Drives resource levels with slow sinusoidal sweeps so all display features are
    exercised without a live KSP connection. Each slot gets an independent phase offset
    so bars move independently. Only active when demoMode is true.
+
+   Presence scenario: every DEMO_ABSENT_PERIOD_MS the demo moves through three
+   phases of "not aboard" -- nothing absent, then Solid Fuel and Ablator absent (a
+   craft past staging with no heat shield), then those plus MonoPropellant and Xenon
+   -- so the Main screen's collapse, the Select screen's dimming and the ORDER list
+   can all be checked without a vessel to switch to. An absent resource's values
+   are held at zero so Detail reads as it would live.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
 
-static const uint32_t DEMO_UPDATE_MS = 50;   // update interval in ms
+static const uint32_t DEMO_UPDATE_MS       = 50;      // update interval in ms
+static const uint32_t DEMO_ABSENT_PERIOD_MS = 20000;  // time in each presence phase
 static uint32_t _demoLast = 0;
 static float    _demoPhase = 0.0f;           // global phase counter (radians)
+
+
+/***************************************************************************************
+   PRESENCE SCENARIO
+****************************************************************************************/
+static uint8_t demoAbsentPhase() {
+  return (uint8_t)((millis() / DEMO_ABSENT_PERIOD_MS) % 3);
+}
+
+bool demoResourceAbsent(ResourceType t) {
+  uint8_t phase = demoAbsentPhase();
+  if (phase == 0) return false;
+  if (t == RES_SOLID_FUEL || t == RES_ABLATOR) return true;
+  if (phase == 2 && (t == RES_MONO_PROP || t == RES_XENON)) return true;
+  return false;
+}
 
 
 /***************************************************************************************
@@ -39,6 +63,10 @@ void stepDemoState() {
 
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == RES_NONE) continue;
+    if (demoResourceAbsent(slots[i].type)) {
+      slots[i].current = slots[i].maxVal = slots[i].stageCurrent = slots[i].stageMax = 0.0f;
+      continue;
+    }
     float offset = i * 0.785f;  // PI/4 per slot
 
     // Total: slow sweep across the FULL range, so every meter visits 0% and 100%

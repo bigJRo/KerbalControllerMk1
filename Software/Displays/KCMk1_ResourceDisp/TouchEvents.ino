@@ -28,8 +28,8 @@
                         still fire on touch-down)
                     -> sidebar btn 0 (SELECT)      : switch to screen_Select
                     -> sidebar btn 1 (DETAIL)      : switch to screen_Detail
-                    -> sidebar btn 2 (CLR BUG)     : remove every reserve bug
-                    -> sidebar btn 3 (TTE)         : toggle tteMode (counter row % / time)
+                    -> sidebar btn 2 (TTE)         : toggle tteMode (counter row % / time)
+                    -> sidebar btn 3 (CLR BUG)     : remove every reserve bug
      screen_Select  -> resource grid / presets / BACK / CLEAR : handled by handleSelectTouch()
      screen_Detail  -> selector column / BACK      : handled by handleDetailTouch()
 ****************************************************************************************/
@@ -203,13 +203,13 @@ void processTouchEvents() {
           clearTouchISR();
           break;
         case 2:
-          clearAllBugs();
-          break;
-        case 3:
           tteMode = !tteMode;
           if (debugMode) Serial.println(tteMode
             ? F("ResourceDisp: counter row TTE")
             : F("ResourceDisp: counter row PERCENT"));
+          break;
+        case 3:
+          clearAllBugs();
           break;
         default: {
           // Not a sidebar key. A strip message opens Detail at once; a meter arms

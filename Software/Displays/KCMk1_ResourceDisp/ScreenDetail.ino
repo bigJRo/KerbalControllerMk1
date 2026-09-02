@@ -38,11 +38,13 @@ static const uint16_t DET_PNL_W = KCM_SCREEN_W - DET_PNL_X;
 static const uint16_t DET_HDR_H = 66;                             // taller to fit Roboto_Black_48 (58px)
 static const uint8_t  DET_SECT_ROWS = 5;                          // rows per CRAFT / STAGE section
 
-// Bug bar along the bottom of the right panel
-static const uint16_t DET_BUG_H     = 50;
-static const uint16_t DET_BUG_Y     = KCM_SCREEN_H - DET_BUG_H;   // 550
-static const uint16_t DET_BUG_KEY_W = 90;
-static const uint16_t DET_BUG_KEY_H = DET_BUG_H - DET_PAD * 2;    // 38
+// Bug bar along the bottom of the right panel. Tall enough that the keys clear the
+// bottom-edge touch dead zone with a finger-sized target to spare, and the hit test
+// takes the whole bar height, not just the drawn key.
+static const uint16_t DET_BUG_H     = 80;
+static const uint16_t DET_BUG_Y     = KCM_SCREEN_H - DET_BUG_H;   // 520
+static const uint16_t DET_BUG_KEY_W = 110;
+static const uint16_t DET_BUG_KEY_H = DET_BUG_H - DET_PAD * 2;    // 68
 static const uint16_t DET_BUG_RO_W  = 170;                        // "BUG 25%" readout cell
 static const uint8_t  DET_BUG_KEYS  = 5;                          // -10 -1 +1 +10 CLR
 static const int8_t   DET_BUG_STEP[DET_BUG_KEYS] = { -10, -1, 1, 10, 0 };   // 0 = CLR
@@ -342,11 +344,11 @@ bool handleDetailTouch(uint16_t x, uint16_t y) {
     switchToScreen(screen_Main);
     return false;
   }
-  // Bug bar keys
+  // Bug bar keys -- the whole bar height and half the gap either side count
   if (y >= DET_BUG_Y && x >= DET_PNL_X && slotCount > 0 && _detailSlot < slotCount) {
     for (uint8_t k = 0; k < DET_BUG_KEYS; k++) {
       uint16_t kx = _detBugKeyX(k);
-      if (x >= kx && x < kx + DET_BUG_KEY_W) {
+      if (x + DET_PAD / 2 >= kx && x < kx + DET_BUG_KEY_W + DET_PAD / 2) {
         adjustDetailBug(DET_BUG_STEP[k]);
         drawDetailBugReadout(infoDisp);
         return true;
