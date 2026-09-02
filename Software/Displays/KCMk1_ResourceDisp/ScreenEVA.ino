@@ -23,8 +23,8 @@
    code calls evaHitTest / evaLevelAt for the geometry.
 
    Drawing: the driver has no arc primitive but a fast filled circle. An arc is a
-   chain of filled dots of the ring's thickness spaced half a thickness apart, which
-   gives rounded ends for free. The full track and bands draw once at chrome time; a
+   chain of filled dots of the ring's thickness, spaced closely enough that the edge
+   reads smooth (see arcDots), which gives rounded ends for free. The full track and bands draw once at chrome time; a
    level change draws only the dots between the old and new end angles, colour going
    up and track colour coming down, then restores the rounded cap.
 ****************************************************************************************/
@@ -87,11 +87,15 @@ static inline void arcPoint(const EvaGauge &g, float radius, float angDeg, int16
 }
 
 // Dots along the centreline from a0 to a1 (degrees, a1 >= a0), dot radius half the
-// ring thickness, spaced half a thickness so the chain is gap-free.
+// ring thickness. Spacing sets the edge: neighbouring dots of radius R spaced s
+// apart leave a dip of R - sqrt(R^2 - s^2/4) at the edge, so s = 2*sqrt(R) keeps
+// the dip under half a pixel and the arc reads as a smooth band rather than a
+// string of beads. Half a thickness apart, the obvious choice, scallops visibly.
 static void arcDots(KCM_TFT &tft, const EvaGauge &g, float a0, float a1, uint16_t color) {
   if (a1 < a0) return;
-  float stepDeg = (0.5f * g.thick / (float)g.r) * RAD_TO_DEG;
-  if (stepDeg < 1.0f) stepDeg = 1.0f;
+  float R = 0.5f * g.thick;
+  float stepDeg = (2.0f * sqrtf(R) / (float)g.r) * RAD_TO_DEG;
+  if (stepDeg < 0.5f) stepDeg = 0.5f;
   int16_t x, y;
   for (float a = a0; a < a1; a += stepDeg) {
     arcPoint(g, g.r, a, x, y);
