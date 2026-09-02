@@ -66,7 +66,8 @@ static bool     _holdDragging = false;   // travel exceeded BUG_DRAG_MIN_PX: bug
 static uint32_t _holdStartMs  = 0;
 static uint8_t  _holdSlot     = 0;
 static float    _holdLevel    = 0.0f;
-static uint16_t _holdY0       = 0;       // touch-down row, for the drag threshold
+static uint16_t _holdX0       = 0;       // touch-down point, for the drag threshold
+static uint16_t _holdY0       = 0;
 
 
 void processTouchEvents() {
@@ -98,13 +99,15 @@ void processTouchEvents() {
     if (_holdOnTape && _holdOnBug) {
       TouchResult tr = readTouch();
       if (tr.count >= 1) {
+        uint16_t x  = tr.points[0].x;
         uint16_t y  = tr.points[0].y;
+        uint16_t dx = (x > _holdX0) ? x - _holdX0 : _holdX0 - x;
         uint16_t dy = (y > _holdY0) ? y - _holdY0 : _holdY0 - y;
-        if (!_holdDragging && dy >= BUG_DRAG_MIN_PX) {
+        if (!_holdDragging && (dx >= BUG_DRAG_MIN_PX || dy >= BUG_DRAG_MIN_PX)) {
           _holdDragging = true;
           if (debugMode) Serial.println(F("ResourceDisp: bug drag started"));
         }
-        if (_holdDragging) setMeterBug(_holdSlot, meterLevelAtY(y), 1);   // drag: 1% steps
+        if (_holdDragging) setMeterBug(_holdSlot, mainLevelAt(_holdSlot, x, y), 1);   // drag: 1% steps
       }
     }
     if (!_holdFired && !_holdDragging && _holdOnTape && millis() - _holdStartMs >= BUG_HOLD_MS) {
@@ -223,7 +226,7 @@ void processTouchEvents() {
           }
           bool  onTape = false;
           float level  = 0.0f;
-          int8_t m = meterHitTest(x2, y2, onTape, level);
+          int8_t m = mainHitTest(x2, y2, onTape, level);
           if (m >= 0) {
             _holdActive    = true;
             _holdFired     = false;
@@ -233,6 +236,7 @@ void processTouchEvents() {
             _holdStartMs   = millis();
             _holdSlot      = (uint8_t)m;
             _holdLevel     = level;
+            _holdX0        = x2;
             _holdY0        = y2;
             _releaseSeenMs = 0;
             if (debugMode) {

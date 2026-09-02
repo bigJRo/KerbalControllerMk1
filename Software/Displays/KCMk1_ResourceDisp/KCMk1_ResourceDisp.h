@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 6;   // 3.6.0: presence across refresh, alarm flash, strip tab
+static const uint8_t SKETCH_VERSION_MINOR = 7;   // 3.7.0: EVA ring-gauge layout
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -333,6 +333,16 @@ void buildI2CPacketAndAssert();
 extern volatile bool i2cProceedReceived;
 void drawStaticMain(KCM_TFT &tft);
 void updateScreenMain(KCM_TFT &tft);
+// EVA layout of the Main screen (ScreenEVA.ino); Main hands over while evaActive.
+void   drawStaticEVA(KCM_TFT &tft);
+void   updateScreenEVA(KCM_TFT &tft);
+int8_t evaHitTest(uint16_t x, uint16_t y, bool &onRing, float &level);
+float  evaLevelAt(uint8_t slot, uint16_t x, uint16_t y);
+// Level under a touch on the current Main layout (tape row or ring angle).
+float  mainLevelAt(uint8_t slot, uint16_t x, uint16_t y);
+int8_t mainHitTest(uint16_t x, uint16_t y, bool &onGauge, float &level);
+uint16_t dimColor(uint16_t c);   // half brightness of an RGB565 colour
+void   fmtUnits(float v, char *buf, size_t n);   // compact units counter
 void redrawTteButton(KCM_TFT &tft);
 int8_t sidebarHitTest(uint16_t x, uint16_t y);
 // Meter under (x,y), or -1. onTape is true for a hit on the tape rows (level is the

@@ -202,7 +202,7 @@ static MeterGeom meterGeom(const MeterStyle &st, uint8_t i) {
 // Half-brightness of an RGB565 colour: each channel shifted down one bit, with the
 // bits that would cross a channel boundary masked off. The library's TFT_DIM_VIOLET
 // and TFT_DIM_NEON_GRN are exactly this of their parents.
-static inline uint16_t dimColor(uint16_t c) {
+uint16_t dimColor(uint16_t c) {
   return (c >> 1) & 0x7BEF;
 }
 
@@ -333,7 +333,7 @@ static inline uint16_t frameColor(uint8_t state) {
    123k. Kept local rather than using formatSep(): that keeps two decimals up to 999
    and adds thousands separators, both too wide for the compact pitch.
 ****************************************************************************************/
-static void fmtUnits(float v, char *buf, size_t n) {
+void fmtUnits(float v, char *buf, size_t n) {
   if (v < 0.0f) v = 0.0f;
   if (v >= 100000.0f) {
     snprintf(buf, n, "%dk", (int)(v / 1000.0f + 0.5f));
@@ -594,8 +594,16 @@ void drawStaticMain(KCM_TFT &tft) {
 
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
-  drawAxis(tft);
   resetDrawCaches();
+
+  // On EVA the gauges take the content area; the sidebar and strip stay ours.
+  if (evaActive) {
+    resetAllSampling();
+    stripResetAll();
+    drawStaticEVA(tft);
+    return;
+  }
+  drawAxis(tft);
 
   // The sampling arrays and the strip's alarm timers are indexed by slot, so they
   // are only discarded when the slot sequence actually changed (an add, a removal,
@@ -643,10 +651,12 @@ void drawStaticMain(KCM_TFT &tft) {
 void updateScreenMain(KCM_TFT &tft) {
   if (tteMode != _prevTteMode) {
     // Counter row changes meaning: every dynamic element repaints, chrome and the
-    // rate estimate stay.
-    resetDrawCaches();
+    // rate estimate stay. (The EVA layout always shows time, so only the key redraws.)
+    if (!evaActive) resetDrawCaches();
+    _prevTteMode = tteMode;
     redrawTteButton(tft);
   }
+  if (evaActive) { updateScreenEVA(tft); return; }
 
   // Presence changed since the chrome was drawn: the row is laid out again.
   {
@@ -808,6 +818,18 @@ void clearMeterBug(uint8_t i) {
   if (i >= slotCount) return;
   slots[i].bug = -1.0f;
   if (debugMode) { Serial.print(F("ResourceDisp: bug cleared on ")); Serial.println(resLabel(slots[i].type)); }
+}
+
+
+/***************************************************************************************
+   LAYOUT-INDEPENDENT TOUCH GEOMETRY -- what TouchEvents.ino calls
+****************************************************************************************/
+int8_t mainHitTest(uint16_t x, uint16_t y, bool &onGauge, float &level) {
+  return evaActive ? evaHitTest(x, y, onGauge, level) : meterHitTest(x, y, onGauge, level);
+}
+
+float mainLevelAt(uint8_t slot, uint16_t x, uint16_t y) {
+  return evaActive ? evaLevelAt(slot, x, y) : meterLevelAtY(y);
 }
 
 
