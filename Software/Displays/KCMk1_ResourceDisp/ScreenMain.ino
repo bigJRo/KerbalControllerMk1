@@ -43,10 +43,10 @@
      empty tape and no bands lit, rather than a 0% alarm.
 
    Pitch classes: PITCH_STD for up to DEFAULT_SLOT_COUNT meters, PITCH_CMP above
-   that. Within a class every meter keeps its width, and a meter's position depends
-   only on the meters before it in subsystem order -- not on how many follow. A
-   dedicated cockpit meter never moves, and the muscle memory that gives is most of
-   the point of a physical panel.
+   that. Within a class every meter keeps its width and pitch, and the row is
+   centred in the meter area, so a partial set sits in the middle of the screen
+   rather than bunched against the axis. Fixed width is what keeps the meters
+   reading as instruments rather than as a chart that restretches per vessel.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -72,7 +72,7 @@ static const tFont   *SB_BTN_FONT  = &Roboto_Black_24;  // nav-button label font
 static const uint16_t SIDEBAR_X    = 0;
 static const uint16_t CONTENT_X    = SIDEBAR_W;
 static const uint16_t METER_X0     = CONTENT_X + AXIS_W;        // 134 -- first meter's left edge
-static const uint16_t METER_AREA_W = SCREEN_W - METER_X0;       // 890 -- room for the meters
+static const uint16_t METER_AREA_W = SCREEN_W - METER_X0;       // 890 -- the row of meters is centred in this
 
 // Fixed pitch classes. Both derive from the area width so a screen-size change moves
 // them together; neither depends on the live slot count.
@@ -127,9 +127,12 @@ static inline const MeterStyle &meterStyle() {
   return (slotCount <= DEFAULT_SLOT_COUNT) ? STYLE_STD : STYLE_CMP;
 }
 
-// Left edge of meter i's pitch cell.
+// Left edge of meter i's pitch cell. The row of slotCount meters is centred in the
+// meter area; slotCount only changes through a chrome redraw, so every caller in
+// one frame sees the same origin.
 static inline uint16_t pitchX(const MeterStyle &st, uint8_t i) {
-  return METER_X0 + i * st.pitch;
+  uint16_t rowW = slotCount * st.pitch;
+  return METER_X0 + (METER_AREA_W - rowW) / 2 + i * st.pitch;
 }
 
 
