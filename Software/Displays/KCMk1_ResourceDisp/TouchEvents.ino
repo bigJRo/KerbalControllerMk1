@@ -45,6 +45,13 @@ static bool     _waitForRelease = false;
 // record and the outcome is decided later -- on release before BUG_HOLD_MS it is a
 // tap (Detail); once the hold matures on a tape it sets or clears the bug at the
 // level FIRST touched, and the release then does nothing.
+//
+// Release is a polled register read over bit-banged I2C, and one read can come back
+// empty (or fail outright) while the finger is still down. A release therefore only
+// counts once it has persisted for TOUCH_RELEASE_MS; a shorter gap is ignored and the
+// hold keeps timing from its original start.
+static const uint32_t TOUCH_RELEASE_MS = 80;
+static uint32_t _releaseSeenMs = 0;    // first untouched read of the current gap; 0 = none
 static bool     _holdActive = false;
 static bool     _holdFired  = false;
 static bool     _holdOnTape = false;
@@ -56,21 +63,29 @@ static float    _holdLevel  = 0.0f;
 void processTouchEvents() {
   if (!isTouched()) {
     if (_holdActive) {
-      // Finger lifted. A hold that never matured is a tap.
+      uint32_t t = millis();
+      if (_releaseSeenMs == 0) { _releaseSeenMs = t; return; }        // gap starts
+      if (t - _releaseSeenMs < TOUCH_RELEASE_MS) return;              // may be a glitch
+      // Release confirmed. A hold that never matured is a tap.
       if (!_holdFired) {
+        if (debugMode) Serial.println(F("ResourceDisp: meter tap -> Detail"));
         setDetailSlot(_holdSlot);
         switchToScreen(screen_Detail);
         clearTouchISR();
       }
-      _holdActive = false;
+      _holdActive    = false;
+      _releaseSeenMs = 0;
     }
     _waitForRelease = false;
     return;
   }
 
-  // Finger still down on an armed meter: only the hold timer matters.
+  // Finger still down on an armed meter: only the hold timer matters. A gap that
+  // ended before TOUCH_RELEASE_MS is forgotten here.
   if (_holdActive) {
+    _releaseSeenMs = 0;
     if (!_holdFired && _holdOnTape && millis() - _holdStartMs >= BUG_HOLD_MS) {
+      if (debugMode) Serial.println(F("ResourceDisp: meter hold matured -> bug"));
       toggleMeterBug(_holdSlot, _holdLevel);
       _holdFired = true;
     }
@@ -183,12 +198,17 @@ void processTouchEvents() {
           float level  = 0.0f;
           int8_t m = meterHitTest(x2, y2, onTape, level);
           if (m >= 0) {
-            _holdActive  = true;
-            _holdFired   = false;
-            _holdOnTape  = onTape;
-            _holdStartMs = now;
-            _holdSlot    = (uint8_t)m;
-            _holdLevel   = level;
+            _holdActive    = true;
+            _holdFired     = false;
+            _holdOnTape    = onTape;
+            _holdStartMs   = millis();
+            _holdSlot      = (uint8_t)m;
+            _holdLevel     = level;
+            _releaseSeenMs = 0;
+            if (debugMode) {
+              Serial.print(F("ResourceDisp: meter touch armed slot=")); Serial.print(m);
+              Serial.print(F(" tape=")); Serial.println(onTape);
+            }
           }
           break;
         }
