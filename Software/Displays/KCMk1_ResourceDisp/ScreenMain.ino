@@ -116,11 +116,11 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
    in a signature must already be visible from the header.)
 ****************************************************************************************/
 static const MeterStyle STYLE_STD = {
-  PITCH_STD, 30, 9, 6, 14, 6,
+  PITCH_STD, 40, 12, 6, 14, 6,
   &Roboto_Black_20, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_16
 };
 static const MeterStyle STYLE_CMP = {
-  PITCH_CMP, 16, 5, 5, 11, 5,
+  PITCH_CMP, 22, 7, 5, 11, 5,
   &Roboto_Black_16, &Roboto_Black_16, &Roboto_Black_12, &Roboto_Black_12
 };
 
