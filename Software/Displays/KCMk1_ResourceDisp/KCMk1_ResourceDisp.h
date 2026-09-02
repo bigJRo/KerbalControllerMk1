@@ -126,6 +126,52 @@ struct ResourceSlot {
 
 
 /***************************************************************************************
+   MAIN-SCREEN METER TYPES (ScreenMain.ino)
+   Defined here rather than in the tab because the Arduino build hoists a prototype
+   for every function above the concatenated tabs, so any type that appears in a
+   function signature must be visible from this header.
+****************************************************************************************/
+// Everything that differs between the two fixed pitch classes.
+struct MeterStyle {
+  uint16_t     pitch;       // px per meter
+  uint16_t     tapeW;       // thermometer column width, frame included
+  uint16_t     caretW;      // gutter left of the band for the secondary-value caret
+  uint16_t     tickL;       // major tick length right of the tape (minor = half)
+  uint16_t     arrowCellW;  // trend-arrow cell at the right of the counter row
+  uint16_t     arrowHalfH;  // trend-arrow half height
+  const tFont *labelFont;
+  const tFont *percFont;
+  const tFont *unitsFont;
+  const tFont *groupFont;
+};
+
+// Per-meter x geometry. The scale group (caret gutter | band | tape | ticks) is
+// centred in the pitch cell.
+struct MeterGeom {
+  uint16_t px;      // pitch cell left edge
+  uint16_t caretX;  // caret gutter left edge
+  uint16_t bandX;   // limit-band column left edge
+  uint16_t tapeX;   // tape frame left edge
+  uint16_t tickX;   // first tick pixel, right of the frame
+};
+
+// Per-meter update cache. One entry per slot; reset on chrome redraw and mode toggle.
+struct MeterCache {
+  float    level;     // last drawn primary level; -1 = force
+  float    mark;      // last drawn secondary level; -2 = force (-1 is "no marker")
+  uint8_t  perc;      // last drawn integer %; 255 = force
+  uint8_t  state;     // last drawn alert state; 255 = force
+  bool     hasData;   // last drawn capacity-present flag
+  int8_t   trend;     // last drawn trend arrow; 127 = force
+  char     units[12]; // last drawn units string; "\x01" = force
+  // Trend sampling
+  float    trendRef;    // primary value at the start of the current window
+  uint32_t trendRefMs;  // window start
+  int8_t   trendNow;    // current direction: -1 falling, 0 steady, +1 rising
+};
+
+
+/***************************************************************************************
    SCREEN TYPE ENUM
 ****************************************************************************************/
 enum ScreenType : uint8_t {

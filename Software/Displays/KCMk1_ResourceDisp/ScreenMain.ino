@@ -102,20 +102,10 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
 
 /***************************************************************************************
    METER STYLE -- everything that differs between the two pitch classes
+   (MeterStyle / MeterGeom / MeterCache are defined in KCMk1_ResourceDisp.h: the
+   Arduino build hoists a prototype for every function above the tabs, so a type used
+   in a signature must already be visible from the header.)
 ****************************************************************************************/
-struct MeterStyle {
-  uint16_t     pitch;       // px per meter
-  uint16_t     tapeW;       // thermometer column width, frame included
-  uint16_t     caretW;      // gutter left of the band for the secondary-value caret
-  uint16_t     tickL;       // major tick length right of the tape (minor = half)
-  uint16_t     arrowCellW;  // trend-arrow cell at the right of the counter row
-  uint16_t     arrowHalfH;  // trend-arrow half height
-  const tFont *labelFont;
-  const tFont *percFont;
-  const tFont *unitsFont;
-  const tFont *groupFont;
-};
-
 static const MeterStyle STYLE_STD = {
   PITCH_STD, 30, 8, 6, 14, 6,
   &Roboto_Black_20, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_16
@@ -134,14 +124,6 @@ static inline uint16_t pitchX(const MeterStyle &st, uint8_t i) {
   return METER_X0 + i * st.pitch;
 }
 
-// The scale group (caret gutter | band | tape | ticks) is centred in the pitch cell.
-struct MeterGeom {
-  uint16_t px;      // pitch cell left edge
-  uint16_t caretX;  // caret gutter left edge
-  uint16_t bandX;   // limit-band column left edge
-  uint16_t tapeX;   // tape frame left edge
-  uint16_t tickX;   // first tick pixel, right of the frame
-};
 
 static MeterGeom meterGeom(const MeterStyle &st, uint8_t i) {
   MeterGeom g;
@@ -442,20 +424,6 @@ static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, co
    One entry per slot. Reset by drawStaticMain() (full repaint) and by the mode toggle
    in updateScreenMain() (repaint of the dynamics only).
 ****************************************************************************************/
-struct MeterCache {
-  float    level;     // last drawn primary level; -1 = force
-  float    mark;      // last drawn secondary level; -2 = force (-1 is "no marker")
-  uint8_t  perc;      // last drawn integer %; 255 = force
-  uint8_t  state;     // last drawn alert state; 255 = force
-  bool     hasData;   // last drawn capacity-present flag
-  int8_t   trend;     // last drawn trend arrow; 127 = force
-  char     units[12]; // last drawn units string; "\x01" = force
-  // Trend sampling
-  float    trendRef;    // primary value at the start of the current window
-  uint32_t trendRefMs;  // window start
-  int8_t   trendNow;    // current direction: -1 falling, 0 steady, +1 rising
-};
-
 static MeterCache _mc[MAX_SLOTS];
 static bool       _prevStageMode = false;
 
