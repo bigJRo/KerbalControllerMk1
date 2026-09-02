@@ -6,6 +6,7 @@
     AAA_Globals.ino      -- ResourceSlot struct, display objects, Simpit object, screen state, globals
     Resources.ino        -- resource type definitions, color map, slot initialisation
     ScreenMain.ino       -- main tape-meter screen with 4-button sidebar
+    ScreenMainStrip.ino  -- the Main screen's alert strip and propellant balance indicator
     ScreenSelect.ino     -- resource selection screen (grid + presets + order panel)
     ScreenDetail.ino     -- numerical resource detail screen (craft/stage values per resource)
     ScreenStandby.ino    -- standby BMP splash screen

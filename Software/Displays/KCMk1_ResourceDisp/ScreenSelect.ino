@@ -145,20 +145,15 @@ static bool addResource(ResourceType t) {
 /***************************************************************************************
    HELPER -- remove a resource from slots[], compact the array.
 ****************************************************************************************/
-// Returns false when the MIN_SLOTS floor blocked the removal.
-static bool removeResource(ResourceType t) {
-  // Enforce MIN_SLOTS floor — don't remove if already at the minimum.
-  // (CLEAR bypasses this intentionally by zeroing slotCount directly.)
-  if (slotCount <= MIN_SLOTS) return false;
+static void removeResource(ResourceType t) {
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == t) {
       for (uint8_t j = i; j < slotCount - 1; j++) slots[j] = slots[j + 1];
       slots[slotCount - 1] = ResourceSlot();
       slotCount--;
-      return true;
+      return;
     }
   }
-  return true;
 }
 
 
@@ -227,17 +222,16 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
 
 /***************************************************************************************
    DRAW SLOT COUNT -- small text in title row, right of centre
-   A tap the limits refuse (adding at MAX_SLOTS, removing at MIN_SLOTS) used to do
-   nothing at all. It now flashes this count yellow for SEL_FLASH_MS with the limit
-   named, so the pilot sees why the grid did not respond.
+   A tap the limit refuses (adding at MAX_SLOTS) used to do nothing at all. It now
+   flashes this count yellow for SEL_FLASH_MS with MAX beside it, so the pilot sees
+   why the grid did not respond.
 ****************************************************************************************/
 static const uint32_t SEL_FLASH_MS = 700;
 static uint32_t _selFlashUntil = 0;   // millis() at which the flash reverts; 0 = idle
-static bool     _selFlashMin   = false;
 
 static void drawSlotCount(KCM_TFT &tft, bool flash) {
   char countStr[24];
-  if (flash) snprintf(countStr, sizeof(countStr), "%d / %d  %s", slotCount, MAX_SLOTS, _selFlashMin ? "MIN" : "MAX");
+  if (flash) snprintf(countStr, sizeof(countStr), "%d / %d  MAX", slotCount, MAX_SLOTS);
   else       snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
   int16_t cw = getFontStringWidth(&Roboto_Black_16, countStr);
   uint16_t cx = BACK_X - cw - SEL_PAD * 2;
@@ -251,8 +245,7 @@ static void drawSlotCount(KCM_TFT &tft, bool flash) {
   tft.print(countStr);
 }
 
-static void flashSlotLimit(KCM_TFT &tft, bool atMin) {
-  _selFlashMin   = atMin;
+static void flashSlotLimit(KCM_TFT &tft) {
   _selFlashUntil = millis() + SEL_FLASH_MS;
   drawSlotCount(tft, true);
 }
@@ -422,10 +415,10 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {
-          if (!removeResource(t)) { flashSlotLimit(infoDisp, true); return false; }
+          removeResource(t);
         } else {
           if (!addResource(t)) {
-            if (slotCount >= MAX_SLOTS) flashSlotLimit(infoDisp, false);
+            if (slotCount >= MAX_SLOTS) flashSlotLimit(infoDisp);
             return false;
           }
           requestResourceRefresh();   // so the new slot populates immediately

@@ -37,8 +37,8 @@ const uint8_t DISPLAY_ROTATION = 0;
 
 /***************************************************************************************
    SLOT CONFIGURATION
-   MIN_SLOTS / MAX_SLOTS -- hard limits on how many bars can be active.
-   DEFAULT_SLOT_COUNT    -- how many slots are pre-populated on first boot.
+   MAX_SLOTS          -- hard limit on how many meters can be active.
+   DEFAULT_SLOT_COUNT -- how many slots are pre-populated on first boot.
    These are defined as constexpr in KCMk1_ResourceDisp.h so they can be used
    as compile-time array sizes (e.g. in VesselSlotRecord).
 ****************************************************************************************/
@@ -106,6 +106,16 @@ const float TIME_ALARM_S_H2O  =  4.0f * 3600.0f;   // TACLS_WATER_ALARM_S
 const float TIME_WARN_S_FOOD  = 72.0f * 3600.0f;   // TACLS_FOOD_WARN_S
 const float TIME_ALARM_S_FOOD = 24.0f * 3600.0f;   // TACLS_FOOD_ALARM_S
 const float TIME_HYST_FRAC    = 0.10f;
+
+/***************************************************************************************
+   NEW-ALARM FLASH
+   A tile in the alert strip that has just turned alarm flashes -- the tile off and
+   the text red for a half period, then white-on-red again -- for ALARM_FLASH_MS,
+   then holds steady. The caution-and-warning convention for a new alarm, kept
+   short because the Annunciator owns acknowledgement.
+****************************************************************************************/
+const uint32_t ALARM_FLASH_MS      = 3000;
+const uint32_t ALARM_FLASH_HALF_MS = 250;
 
 /***************************************************************************************
    ALERT HYSTERESIS

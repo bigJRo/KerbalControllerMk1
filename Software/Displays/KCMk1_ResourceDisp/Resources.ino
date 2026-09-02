@@ -176,9 +176,6 @@ ResourceType resTypeByIndex(uint8_t index) {
    DEFAULT SLOT CONFIGURATION
    Matches the SPCT preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
    Loaded on first boot; the Select screen's SPCT key loads the same set.
-   NOTE: CLEAR on the Select screen bypasses MIN_SLOTS intentionally — this is by
-   design so the user can start fresh from slot 1. removeResource() still enforces
-   MIN_SLOTS for individual tap-removal.
 ****************************************************************************************/
 // Seed one slot's fill values: 0 in live mode (Simpit repopulates on refresh),
 // visible demo values otherwise. Shared by all the slot-loading paths.

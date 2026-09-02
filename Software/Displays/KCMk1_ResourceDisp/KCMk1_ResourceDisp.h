@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 5;   // 3.5.0: presence-driven collapse, presets, time cautions
+static const uint8_t SKETCH_VERSION_MINOR = 6;   // 3.6.0: presence across refresh, alarm flash, strip tab
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -90,11 +90,13 @@ static const uint8_t RESOURCE_TYPE_COUNT = (uint8_t)RES_COUNT - 1;
    since the last refresh; a channel that never answers (mod not installed) becomes
    absent when the refresh times out.
    An absent resource draws no meter and is inert on the Select screen.
+   A plain refresh keeps the last known presence until the answer arrives; only a
+   vessel switch or scene entry resets it to unknown.
 ****************************************************************************************/
 enum ResPresence : uint8_t { PRES_UNKNOWN = 0, PRES_PRESENT, PRES_ABSENT };
 extern uint8_t resPresence[];              // indexed by ResourceType
 bool resAbsent(ResourceType t);            // true only once known absent (never in demo)
-void resetResourcePresence();              // all unknown -- on every refresh request
+void resetResourcePresence();              // all unknown -- on vessel switch / scene entry
 void noteResourcePresence(ResourceType t, float available, float total);
 
 
@@ -232,8 +234,9 @@ extern bool     debugMode;
 extern bool     demoMode;
 extern const bool     STANDALONE_TEST;   // true = skip I2C master handshake (no master connected)
 extern const uint8_t  DISPLAY_ROTATION;
-// Slot count limits — constexpr so they can be used as compile-time array sizes
-static constexpr uint8_t MIN_SLOTS          = 4;
+// Slot count limit — constexpr so it can be used as a compile-time array size.
+// There is no floor: with absent resources collapsing, the panel copes with any
+// number of meters, and CLEAR could always empty the set anyway.
 static constexpr uint8_t MAX_SLOTS          = 16;
 static constexpr uint8_t DEFAULT_SLOT_COUNT = 9;
 extern const float    RES_WARN_FRAC;     // caution band top (fraction of capacity)
@@ -249,6 +252,8 @@ extern const float    TIME_WARN_S_O2,  TIME_ALARM_S_O2;
 extern const float    TIME_WARN_S_H2O, TIME_ALARM_S_H2O;
 extern const float    TIME_WARN_S_FOOD, TIME_ALARM_S_FOOD;
 extern const float    TIME_HYST_FRAC;    // fraction above a time threshold needed to leave its tier
+extern const uint32_t ALARM_FLASH_MS;    // how long a new alarm tile flashes in the strip
+extern const uint32_t ALARM_FLASH_HALF_MS; // half period of that flash
 extern const uint32_t BUG_HOLD_MS;       // hold time to set or clear a bug
 extern const uint8_t  BUG_SNAP_PCT;      // a hold places a bug on a multiple of this percent; a drag moves it by 1%
 extern const float    BUG_GRAB_TOL;      // a touch this close to an existing bug grabs it
@@ -333,6 +338,13 @@ int8_t sidebarHitTest(uint16_t x, uint16_t y);
 // Meter under (x,y), or -1. onTape is true for a hit on the tape rows (level is the
 // 0..1 scale position of the touch), false for a hit on the label/counter rows.
 int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level);
+
+// Alert strip + balance (ScreenMainStrip.ino)
+enum StripCode : uint8_t { STRIP_NONE = 0, STRIP_CAUTION, STRIP_ALARM, STRIP_BUG };
+void   stripReset();                              // forget drawn state (chrome redraw)
+void   stripResetAll();                           // ... and the per-slot codes / alarm timers (slot sequence changed)
+void   stripSetSlot(uint8_t i, uint8_t code, bool timeFlag);   // per-slot report, every update pass
+void   stripUpdate(KCM_TFT &tft);                 // redraw whatever changed
 int8_t stripHitTest(uint16_t x, uint16_t y);     // slot whose alert-strip message is under (x,y), or -1
 float  meterLevelAtY(uint16_t y);                // 0..1 scale position of a tape row (clamped)
 bool   meterBugNear(uint8_t i, float level);     // slot i has a bug within BUG_GRAB_TOL of level

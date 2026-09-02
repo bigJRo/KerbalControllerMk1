@@ -123,7 +123,10 @@ void requestResourceRefresh() {
   if (demoMode) return;
   refreshPending   = true;
   refreshRequestMs = millis();
-  resetResourcePresence();   // every channel is about to answer; start from unknown
+  // Presence is NOT reset here: the last known answer stands until a new one
+  // arrives, so a refresh after a Select change does not flash absent meters back
+  // as "..." for three seconds. A vessel switch or scene entry resets it, since
+  // the new vessel's answers may differ.
   simpit.requestMessageOnChannel(0);
 }
 
@@ -138,8 +141,10 @@ void requestResourceRefresh() {
 ****************************************************************************************/
 static void enterFlightScene() {
   flightScene = true;
-  // Zero slots so stale values don't show before Simpit repopulates them
+  // Zero slots so stale values don't show before Simpit repopulates them, and
+  // forget which resources the previous vessel carried.
   zeroAllSlotValues();
+  resetResourcePresence();
   // Request immediate refresh on all subscribed channels. Simpit only sends resource
   // messages when values change — without this, static resources (full tanks, idle
   // engines) won't update until first change.
@@ -355,6 +360,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // FLIGHT_STATUS re-sets evaFlag and loop() reconciles it back on.
         evaFlag = evaActive = false;
         zeroAllSlotValues();
+        resetResourcePresence();   // a different vessel carries different resources
         // Request main screen redraw via flag — loop() will call drawStaticMain()
         // after simpit.update() returns, ensuring the screen is cleared before any
         // subsequent resource messages for the new vessel are drawn.

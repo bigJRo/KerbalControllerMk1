@@ -72,6 +72,13 @@ static const ButtonLabel detBtnBack = {
 
 static uint8_t _detailSlot = 0;
 static String _detValCache[DET_MAX_ROWS];
+static uint16_t _detAbsentSig = 0;   // bit per slot: absent when the selector was drawn
+
+static uint16_t _detAbsentNow() {
+  uint16_t sig = 0;
+  for (uint8_t i = 0; i < slotCount && i < 16; i++) if (resAbsent(slots[i].type)) sig |= (1u << i);
+  return sig;
+}
 
 void setDetailSlot(uint8_t i) {
   if (i < slotCount) _detailSlot = i;
@@ -217,14 +224,17 @@ static void drawDetailSelector(KCM_TFT &tft) {
 
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == RES_NONE) continue;
+    // A resource the vessel does not carry keeps its key -- its rows read "---" --
+    // but draws dimmed, as it does on the Select screen.
+    bool absent = resAbsent(slots[i].type);
     ButtonLabel btn;
     btn.text = resFullName(slots[i].type);
     btn.fontColorOff = TFT_DARK_GREY;
-    btn.fontColorOn = TFT_BLACK;
+    btn.fontColorOn = absent ? TFT_DARK_GREY : TFT_BLACK;
     btn.backgroundColorOff = TFT_OFF_BLACK;
-    btn.backgroundColorOn = resColor(slots[i].type);
-    btn.borderColorOff = TFT_GREY;
-    btn.borderColorOn = TFT_WHITE;
+    btn.backgroundColorOn = absent ? TFT_OFF_BLACK : resColor(slots[i].type);
+    btn.borderColorOff = absent ? TFT_DARK_GREY : TFT_GREY;
+    btn.borderColorOn = absent ? TFT_DARK_GREY : TFT_WHITE;
     drawButton(tft, BTN_PAD, i * btnH + BTN_PAD,
                DET_SEL_W - BTN_PAD * 2, btnH - BTN_PAD * 2,
                btn, btnFont, i == _detailSlot);
@@ -331,11 +341,19 @@ static void drawDetailValues(KCM_TFT &tft) {
 void drawStaticDetail(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
   if (_detailSlot >= slotCount && slotCount > 0) _detailSlot = 0;
+  _detAbsentSig = _detAbsentNow();
   drawDetailSelector(tft);
   drawDetailChrome(tft);
 }
 
 void updateScreenDetail(KCM_TFT &tft) {
+  // Presence can change while this screen is up (a refresh answers); the selector
+  // dimming follows it.
+  uint16_t sig = _detAbsentNow();
+  if (sig != _detAbsentSig) {
+    _detAbsentSig = sig;
+    drawDetailSelector(tft);
+  }
   drawDetailValues(tft);
 }
 
