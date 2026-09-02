@@ -123,7 +123,7 @@ Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants
 | `TREND_MIN_FRAC` | `AAA_Config.ino` | `0.0005` | Movement across one window, as a fraction of capacity, needed to show a rising/falling arrow, and the deadband below which the TTE rate reads as zero. Keeps both quiet on per-message jitter. |
 | `TTE_WINDOW_MS` | `AAA_Config.ino` | `10000` | Rate sample window behind the TTE counter and the Detail Rate/Time rows. Longer than the trend window so slow drains register; with the deadband above, the slowest reportable drain is about 5.5 hours to empty. Rates are measured in real time and converted to game time with the warp index from `FLIGHT_STATUS_MESSAGE`; sampling restarts on a warp change. |
 | `ALERT_HYST_FRAC` | `AAA_Config.ino` | `0.01` | Hysteresis on every caution/alarm threshold, as a fraction of capacity. |
-| `BUG_HOLD_MS` | `AAA_Config.ino` | `2000` | How long a touch must be held on a tape to set or clear a reserve bug. A shorter touch is a tap and opens Detail. |
+| `BUG_HOLD_MS` | `AAA_Config.ino` | `1500` | How long a touch must be held on a tape to set or clear a reserve bug. A shorter touch is a tap and opens Detail. |
 | `BUG_CLEAR_TOL` | `AAA_Config.ino` | `0.03` | A hold within this fraction of an existing reserve bug clears it instead of moving it. |
 | `REFRESH_TIMEOUT_MS` | `AAA_Config.ino` | `3000` | How long after a channel refresh request a silent slot is drawn as `...` (awaiting) before it becomes `---` (not aboard). |
 | `MIN_SLOTS` | `KCMk1_ResourceDisp.h` | `4` | Minimum number of active resource slots (enforced by `removeResource`). |
@@ -208,7 +208,7 @@ A slot whose capacity is zero shows an empty tape and, in grey, `...` while a ch
 
 **Alert hysteresis.** Once a meter is in caution or alarm it must move `ALERT_HYST_FRAC` of capacity back across the threshold to leave it, so a level resting on a threshold cannot flip colour on every message.
 
-**Touch.** A tap anywhere on a meter opens the Detail screen on that resource. A touch held on its tape for two seconds sets or clears a reserve bug there; the release after a matured hold does nothing.
+**Touch.** A tap anywhere on a meter opens the Detail screen on that resource. A touch held on its tape for a second and a half sets or clears a reserve bug there; the release after a matured hold does nothing.
 
 **Spacing.** The meters always spread across the full meter area, so the pitch is the area divided by the slot count. The meter itself stays fixed: tape width, stage column and fonts come in two classes, standard for up to nine meters and compact for ten to sixteen, so a meter reads as the same instrument whether it has the screen to itself or shares it with fifteen others.
 

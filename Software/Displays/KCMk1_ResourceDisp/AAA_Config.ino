@@ -101,7 +101,7 @@ const float ALERT_HYST_FRAC = 0.01f;        // fraction of capacity
    it instead, so a bug is toggled from the place it sits. A plain tap anywhere on a
    meter opens the Detail screen. Bugs are saved with the vessel's slot configuration.
 ****************************************************************************************/
-const uint32_t BUG_HOLD_MS  = 2000;         // ms a touch must be held to set or clear a bug
+const uint32_t BUG_HOLD_MS  = 1500;         // ms a touch must be held to set or clear a bug
 const float    BUG_CLEAR_TOL = 0.03f;       // fraction of capacity
 
 /***************************************************************************************
