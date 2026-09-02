@@ -24,7 +24,8 @@
 
    Uses SCREEN_W, CONTENT_X and ALERT_H from ScreenMain.ino, which precedes this tab
    in the build. Redraws only when the composed line changes (a signature buffer
-   detects it), plus the flash phase while a new alarm is flashing.
+   detects it); while a new alarm is flashing only its own tile is repainted, so
+   the steady messages beside it do not blink with it.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -56,16 +57,23 @@ static uint32_t _alarmSince[MAX_SLOTS];   // millis() the slot's tile turned ala
 static char     _stripSig[200];           // last drawn line, "\x01" = force
 static bool     _balShown = false;
 
-// Where each drawn message sits, so a tap on it can open Detail on that resource.
-struct StripHit { uint16_t x0, x1; uint8_t slot; };
+// Where each drawn message sits, so a tap on it can open Detail on that resource
+// and a flashing tile can be repainted in place without disturbing its neighbours.
+struct StripHit { uint16_t x0, x1; uint8_t slot; uint8_t code; };
 static StripHit _stripHits[MAX_SLOTS];
 static uint8_t  _stripHitCount = 0;
+static char     _flashSig[MAX_SLOTS + 1];   // last drawn flash phase per hit
+
+// Explicit prototype: the IDE generates one for every function above the tabs,
+// where StripHit is not yet visible, unless the sketch declares it itself.
+static void stripRepaintHit(KCM_TFT &tft, const StripHit &h, uint32_t now);
 
 static int16_t _balPx = -1;        // last drawn pointer offset, px from centre; -32768 = force
 static char    _balText[24];       // last drawn counter
 
 void stripReset() {
   _stripSig[0] = 1; _stripSig[1] = '\0';
+  _flashSig[0] = '\0';
   _stripHitCount = 0;
   _balShown = false;
   _balPx = -32768;
@@ -125,10 +133,44 @@ static bool stripPut(KCM_TFT &tft, uint16_t &x, uint16_t xEnd, const char *text,
   return true;
 }
 
+// The message text for a slot's current code.
+static void stripMessage(uint8_t i, char *msg, size_t n) {
+  uint8_t code = _stripCode[i];
+  // Red names the condition (LOW, or HIGH for a waste product); yellow names the
+  // tier (CAUT), matching the panel's caution/alarm vocabulary; a bug crossing
+  // says so; a state raised by a time-remaining tier says TIME in either colour.
+  const char *what = _stripTime[i]           ? "TIME"
+                   : (code == STRIP_BUG)     ? "BUG"
+                   : (code == STRIP_CAUTION) ? "CAUT"
+                   : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
+  snprintf(msg, n, "%s %s", resLabel(slots[i].type), what);
+}
+
+// Colours for a slot's message; `off` is the flash half-period with the tile dark.
+static void stripColors(uint8_t code, bool off, uint16_t &fore, uint16_t &back) {
+  bool alarm = (code == STRIP_ALARM);
+  fore = alarm ? (off ? TFT_RED : TFT_WHITE) : (code == STRIP_BUG) ? TFT_CYAN : TFT_YELLOW;
+  back = (alarm && !off) ? TFT_RED : TFT_BLACK;
+}
+
+// Repaint one drawn message in place: its own tile area only, so the messages
+// either side are untouched. Used for the flash phases of a new alarm.
+static void stripRepaintHit(KCM_TFT &tft, const StripHit &h, uint32_t now) {
+  char msg[16];
+  stripMessage(h.slot, msg, sizeof(msg));
+  uint16_t fore, back;
+  stripColors(h.code, alarmFlashPhase(h.slot, now) == 1, fore, back);
+  tft.fillRect(h.x0, 0, h.x1 - h.x0, ALERT_H, TFT_BLACK);
+  uint16_t x = h.x0 + STRIP_PAD;
+  stripPut(tft, x, SCREEN_W, msg, fore, back);
+}
+
 static void updateAlertStrip(KCM_TFT &tft) {
   uint32_t now = millis();
-  // Compose the signature: one token per message in display order, with the flash
-  // phase of a new alarm so the redraw follows it.
+  // Compose the layout signature: one token per message in display order. The
+  // flash phase is deliberately NOT part of it -- a phase change repaints only the
+  // tile concerned (below), never the whole line, so the steady messages beside a
+  // flashing one do not blink with it.
   char sig[sizeof(_stripSig)];
   size_t n = 0;
   if (refreshPending) n += snprintf(sig + n, sizeof(sig) - n, "R|");
@@ -137,12 +179,25 @@ static void updateAlertStrip(KCM_TFT &tft) {
       uint8_t code = _stripCode[i];
       bool pick = (sev == STRIP_ALARM) ? (code == STRIP_ALARM)
                                        : (code == STRIP_CAUTION || code == STRIP_BUG);
-      if (!pick || n >= sizeof(sig) - 10) continue;
-      n += snprintf(sig + n, sizeof(sig) - n, "%d%d%c%d|", code, i, _stripTime[i] ? 't' : '-',
-                    alarmFlashPhase(i, now));
+      if (!pick || n >= sizeof(sig) - 8) continue;
+      n += snprintf(sig + n, sizeof(sig) - n, "%d%d%c|", code, i, _stripTime[i] ? 't' : '-');
     }
   }
-  if (strcmp(sig, _stripSig) == 0) return;
+  if (strcmp(sig, _stripSig) == 0) {
+    // Same line as last time: only the flash phases can have moved.
+    char fsig[sizeof(_flashSig)];
+    uint8_t k = 0;
+    for (; k < _stripHitCount && k < MAX_SLOTS; k++)
+      fsig[k] = (_stripHits[k].code == STRIP_ALARM) ? ('0' + alarmFlashPhase(_stripHits[k].slot, now)) : '-';
+    fsig[k] = '\0';
+    if (strcmp(fsig, _flashSig) != 0) {
+      for (uint8_t j = 0; j < _stripHitCount; j++) {
+        if (fsig[j] != _flashSig[j]) stripRepaintHit(tft, _stripHits[j], now);
+      }
+      strlcpy(_flashSig, fsig, sizeof(_flashSig));
+    }
+    return;
+  }
   strlcpy(_stripSig, sig, sizeof(_stripSig));
 
   uint16_t xEnd = STRIP_X + stripAvailW();
@@ -158,25 +213,23 @@ static void updateAlertStrip(KCM_TFT &tft) {
                                        : (code == STRIP_CAUTION || code == STRIP_BUG);
       if (!pick) continue;
       char msg[16];
-      // Red names the condition (LOW, or HIGH for a waste product); yellow names the
-      // tier (CAUT), matching the panel's caution/alarm vocabulary; a bug crossing
-      // says so; a state raised by a time-remaining tier says TIME in either colour.
-      const char *what = _stripTime[i]           ? "TIME"
-                       : (code == STRIP_BUG)     ? "BUG"
-                       : (code == STRIP_CAUTION) ? "CAUT"
-                       : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
-      snprintf(msg, sizeof(msg), "%s %s", resLabel(slots[i].type), what);
-      bool alarm = (code == STRIP_ALARM);
-      bool off   = alarm && alarmFlashPhase(i, now) == 1;   // flash: tile off, red text
-      uint16_t fore = alarm ? (off ? TFT_RED : TFT_WHITE) : (code == STRIP_BUG) ? TFT_CYAN : TFT_YELLOW;
-      uint16_t back = (alarm && !off) ? TFT_RED : TFT_BLACK;
+      stripMessage(i, msg, sizeof(msg));
+      uint16_t fore, back;
+      stripColors(code, code == STRIP_ALARM && alarmFlashPhase(i, now) == 1, fore, back);
       uint16_t xStart = x;
       if (dropped || !stripPut(tft, x, xEnd, msg, fore, back)) {
         dropped++;
       } else if (_stripHitCount < MAX_SLOTS) {
-        _stripHits[_stripHitCount++] = { (uint16_t)(xStart - STRIP_PAD), x, i };
+        _stripHits[_stripHitCount++] = { (uint16_t)(xStart - STRIP_PAD), x, i, code };
       }
     }
+  }
+  // Record the phases the full redraw painted, so the in-place path starts in step.
+  {
+    uint8_t k = 0;
+    for (; k < _stripHitCount && k < MAX_SLOTS; k++)
+      _flashSig[k] = (_stripHits[k].code == STRIP_ALARM) ? ('0' + alarmFlashPhase(_stripHits[k].slot, now)) : '-';
+    _flashSig[k] = '\0';
   }
   if (dropped) {
     char more[8];
