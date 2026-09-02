@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 7;   // 3.7.0: EVA ring-gauge layout
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.7.1: EVA gauges re-spaced, bands via fillArc
+static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: vessel memory and TTE toggle persist in EEPROM
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -395,20 +395,36 @@ inline bool resHasStageData(ResourceType t) {
    Slot types and reserve bugs are stored — values are always repopulated from Simpit.
 ****************************************************************************************/
 static constexpr uint8_t VESSEL_CACHE_SIZE = 20;
+static constexpr uint8_t VESSEL_NAME_LEN   = 40;   // stored name, including the terminator
 
+// One remembered vessel. Fixed-width so the record is also the EEPROM image (see
+// Persist.ino); a name longer than the field is truncated, which is how it is keyed.
 struct VesselSlotRecord {
-  String       vesselName;                // empty = unused entry
+  char         name[VESSEL_NAME_LEN];     // "" = unused entry
   ResourceType types[MAX_SLOTS];
   float        bugs[MAX_SLOTS];           // reserve bug per slot, < 0 = none
   uint8_t      count = 0;
 };
 
+// The cache is kept in recency order: index 0 is the vessel most recently saved or
+// recalled, so when it is full the last entry is the one to give up.
 extern VesselSlotRecord vesselCache[VESSEL_CACHE_SIZE];
 extern String           currentVesselName;
 
 // Vessel slot cache helpers (AAA_Globals.ino)
 void saveVesselSlots(const String &name);
 bool recallVesselSlots(const String &name);
+void clearVesselCache();
+
+// Persistence (Persist.ino): the vessel cache and the TTE toggle live in the Teensy's
+// emulated EEPROM. persistLoad() at boot, persistService() every loop pass (stores a
+// settled change), persistStoreNow() at the moments a hitch does not matter.
+void    persistLoad();
+void    persistService();
+void    persistStoreNow();
+uint8_t persistVesselCount();
+extern const uint32_t PERSIST_SETTLE_MS;
+extern const bool     PERSIST_WIPE;
 
 // From AAA_Config.ino — bar update hysteresis
 extern const float BAR_LEVEL_HYSTERESIS;  // minimum level change fraction to trigger redraw

@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.7.1
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.8.0
 Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -129,6 +129,8 @@ Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants
 | `debugMode` | `AAA_Config.ino` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
 | `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
 | `DEMO_EVA` | `AAA_Config.ino` | `false` | With `demoMode`, start the demo on EVA: the fixed EVA slot set and the ring-gauge layout. Bench switch for the EVA screen; no effect in live mode. |
+| `PERSIST_SETTLE_MS` | `AAA_Config.ino` | `30000` | How long a layout, bug or TTE-toggle change must hold still before it is written to EEPROM. A vessel switch or leaving the flight scene writes at once. |
+| `PERSIST_WIPE` | `AAA_Config.ino` | `false` | `true` erases the stored vessel memory at boot and logs it. Flash, boot once, set it back to `false`. |
 | `DISPLAY_ROTATION` | `AAA_Config.ino` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
 | `RES_WARN_FRAC` | `AAA_Config.ino` | `KCM_RES_LOW_WARN_FRAC` (0.20) | Caution (yellow) band: a consumable meter alerts below this fraction of capacity. Aliases the cross-panel constant so it matches the Annunciator PROP LOW / RCS LOW tier. |
 | `RES_ALARM_FRAC` | `AAA_Config.ino` | `KCM_EC_LOW_ALARM_FRAC` (0.05) | Alarm (red) band: a consumable meter alerts below this fraction. Aliases the cross-panel constant so it matches the Annunciator red tier. |
@@ -262,7 +264,11 @@ The display tracks up to `MAX_SLOTS` (16) resource slots. Each slot holds a `Res
 
 ### Per-Vessel Configuration Memory
 
-Slot configurations are saved per vessel name in `vesselCache[]` (up to `VESSEL_CACHE_SIZE` entries). On vessel switch, the panel attempts to recall the previous configuration for the new vessel. If not found, the current configuration is retained. On scene exit, the current configuration is saved for the active vessel. The cache is held in RAM only — it does not persist across power cycles.
+Slot configurations, with their reserve bugs, are saved per vessel name in `vesselCache[]` (up to `VESSEL_CACHE_SIZE` = 20 entries, keyed by the first 39 characters of the name `VESSEL_NAME_MESSAGE` reports). On vessel switch the panel recalls the configuration remembered for the new vessel; if there is none, the current configuration is retained. The cache is kept in recency order, so when it is full the vessel longest unused is the one forgotten. On EVA nothing is saved: the slots are the fixed EVA set, not a layout worth remembering under a Kerbal's name.
+
+**Persistence.** The cache and the TTE toggle survive a power cycle: they live in the Teensy 4.1's emulated EEPROM (`Persist.ino`), about 1.5 KB of a 4 KB wear-levelled block, with a magic, a schema number and a CRC-16 so a bad or outdated block is discarded rather than loaded. Writes happen on a vessel switch and on leaving the flight scene, where a few milliseconds' hitch cannot be seen, and otherwise once a change (a bug dragged, a layout built, the toggle pressed) has held still for `PERSIST_SETTLE_MS`, so a power cut mid-flight loses at most that long of edits. Only bytes that differ are programmed. Demo mode never writes. `PERSIST_WIPE` forgets everything at the next boot. Bugs are stored as whole percent, which is lossless since every gesture sets whole percent. The SD card was considered and passed over: a card can be absent or corrupt, FAT writes stall, and the bench would then behave differently from the installed unit.
+
+Simpit identifies a vessel by name only, so two craft with the same name share one record and a renamed vessel starts afresh.
 
 ---
 
@@ -272,7 +278,8 @@ Slot configurations are saved per vessel name in `vesselCache[]` (up to `VESSEL_
 |------|-------------|
 | `KCMk1_ResourceDisp.ino` | `setup()` and `loop()` only |
 | `AAA_Config.ino` | All tunable constants (thresholds, modes, slot config) |
-| `AAA_Globals.ino` | `ResourceSlot` struct, display objects, Simpit object, screen state, vessel cache helpers |
+| `AAA_Globals.ino` | `ResourceSlot` struct, display objects, Simpit object, screen state, vessel cache helpers (recency-ordered) |
+| `Persist.ino` | EEPROM persistence of the vessel memory and the TTE toggle: CRC'd image, settle timer, store-now at vessel switch and scene exit |
 | `Resources.ino` | Resource type definitions, colour map, subsystem groups, limit-band table, alert state with hysteresis, slot initialisation and group sort |
 | `Sampling.ino` | Per-slot rate and trend sampling (total and stage), warp-corrected time-to-empty, refresh tracking — shared by Main and Detail |
 | `ScreenMain.ino` | Main tape-meter screen with 4-button left-hand sidebar |
@@ -309,6 +316,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.8.0** | **Vessel memory and the TTE toggle persist across power cycles.** The per-vessel slot cache (types and reserve bugs) and the TTE toggle are stored in the Teensy 4.1's emulated EEPROM by the new `Persist.ino`: a CRC-16'd image with a magic and schema number, written on a vessel switch and on leaving the flight scene, and otherwise once a change has held still for `PERSIST_SETTLE_MS` (30 s). Demo mode never writes; `PERSIST_WIPE` forgets everything at boot. The cache itself is now recency-ordered with fixed-width names, so a full cache evicts the vessel longest unused instead of always the last entry, and nothing is saved while on EVA, where the slots are the fixed EVA set rather than a vessel's layout. |
 | **3.7.1** | **EVA gauges re-spaced, bands pixel-exact, centre text cleared whole.** The small gauges grew (ring radius 56 → 70) and the big one gave up a little (190 → 168) so the three columns fit with equal white space, 63 px, between the big gauge and the left pair and between the pairs; the pair rows are the same distance apart and centred in the content height. The limit bands are now ring segments filled by the new `fillArc` in KerbalDisplayCommon 3.9.0 (the driver has no arc primitive; its hardware curve draws whole quadrants only), so their edges and ends are crisp instead of the beaded thick-line chords. The centre text clears the whole inner disc before redrawing: on the small gauges the percent group and its alarm tile are wider than the inscribed square that used to be cleared, which left a third-digit ghost, tile edges and arrow remnants behind. |
 | **3.7.0** | **EVA layout: ring gauges.** On EVA the Main screen hands its content area to `ScreenEVA.ino`: a large 270° ring gauge for EVA Propellant and four small ones for EC, O2, Food and Water, open at the bottom with the label in the gap, filling clockwise from the lower left on a half-brightness track, bands outside the track, bug as a cyan dot, time to empty always shown. Same sidebar, strip and gestures; the touch code asks the Main screen for geometry (`mainHitTest` / `mainLevelAt`) and gets tape rows or ring angles depending on the layout. |
 | **3.6.0** | **Presence survives a refresh, rates survive a redraw, new alarms flash, no slot floor, strip in its own tab.** A plain refresh no longer resets presence to unknown, so a Select change does not flash absent meters back as `...`; only a vessel switch or scene entry does. The sampling arrays and alarm timers are discarded only when the slot sequence actually changed, so a redraw for a presence change or a vessel-name message keeps the rate estimate. A tile that has just turned alarm flashes in the strip for three seconds. The Detail selector dims a resource the vessel does not carry and follows presence changes. The four-slot floor is gone. The alert strip and balance indicator moved to `ScreenMainStrip.ino` behind `stripReset` / `stripSetSlot` / `stripUpdate` / `stripHitTest`. `tools/host_compile.py` now covers all three panels. |

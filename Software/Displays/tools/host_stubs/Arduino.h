@@ -48,7 +48,9 @@ extern volatile uint32_t ARM_DWT_CYCCNT, ARM_DWT_CTRL, ARM_DEMCR;
 #define abs(x) ((x) > 0 ? (x) : -(x))
 #define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 
-inline uint32_t millis() { return 0; }
+// Clock the host harnesses can drive: stubMillis() is the settable value millis() reads.
+inline uint32_t &stubMillis() { static uint32_t m = 0; return m; }
+inline uint32_t millis() { return stubMillis(); }
 inline uint32_t micros() { return 0; }
 inline void delay(uint32_t) {}
 inline void delayMicroseconds(uint32_t) {}

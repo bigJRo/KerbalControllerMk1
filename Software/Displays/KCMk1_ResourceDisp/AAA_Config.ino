@@ -33,6 +33,19 @@ const bool STANDALONE_TEST = false;
 
 
 /***************************************************************************************
+   PERSISTENCE
+   The per-vessel slot memory and the TTE toggle are kept in the Teensy's emulated
+   EEPROM (Persist.ino). A change settles for PERSIST_SETTLE_MS before it is written,
+   so a bug being dragged or a layout being built costs one write, not one per step;
+   a vessel switch or leaving the flight scene writes at once. Demo mode never writes.
+   PERSIST_WIPE true erases the stored block at boot (and logs it); flash, boot once,
+   set it back to false.
+****************************************************************************************/
+const uint32_t PERSIST_SETTLE_MS = 30000;
+const bool     PERSIST_WIPE      = false;
+
+
+/***************************************************************************************
    DISPLAY ROTATION
    0 = normal (connector at bottom)
    2 = 180deg (connector at top -- for inverted debug mounting)

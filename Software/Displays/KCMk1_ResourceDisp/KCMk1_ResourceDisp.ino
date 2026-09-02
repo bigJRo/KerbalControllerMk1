@@ -59,6 +59,7 @@ void setup() {
   setupSD();
   setupTouch();
   setupI2CSlave();
+  persistLoad();   // vessel memory and the TTE toggle from EEPROM (before any screen reads them)
 
   bootSimText(infoDisp);
 
@@ -194,6 +195,9 @@ void loop() {
 
   // --- Rate and trend sampling (both modes; every screen reads from it) ---
   updateAllSampling();
+
+  // --- Persistence: write a settled layout / bug / toggle change to EEPROM ---
+  persistService();
 
   // --- Update display ---
   switch (activeScreen) {

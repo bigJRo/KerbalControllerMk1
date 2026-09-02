@@ -339,8 +339,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       } else {
         flightScene = false;
         if (debugMode) Serial.println(F("ResourceDisp: Simpit leaving flight scene"));
-        // Save current config before leaving flight
-        saveVesselSlots(currentVesselName);
+        // Save current config before leaving flight, and write the memory out now,
+        // while a few milliseconds' hitch costs nothing. On EVA the slots are the
+        // fixed EVA set, not this vessel's layout, so there is nothing to save.
+        if (!evaActive) saveVesselSlots(currentVesselName);
+        persistStoreNow();
         // Clear EVA latch so an EVA that ended off-scene doesn't stay engaged, then
         // zero slots and return to standby.
         evaFlag = evaActive = false;
@@ -353,8 +356,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize < 1) break;
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit vessel switch — saving and zeroing slots"));
-        // Save current config before it's overwritten by the new vessel
-        saveVesselSlots(currentVesselName);
+        // Save current config before it's overwritten by the new vessel, and write
+        // the memory out now. On EVA the slots are the fixed EVA set, not a layout
+        // worth remembering under the Kerbal's name.
+        if (!evaActive) saveVesselSlots(currentVesselName);
+        persistStoreNow();
         currentVesselName = "";  // will be repopulated by VESSEL_NAME_MESSAGE
         // Clear the EVA latch — if the new vessel is still an EVA Kerbal, the next
         // FLIGHT_STATUS re-sets evaFlag and loop() reconciles it back on.
