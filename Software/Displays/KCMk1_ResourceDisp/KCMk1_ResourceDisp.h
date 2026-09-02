@@ -148,9 +148,8 @@ struct SlotSample {
    for every function above the concatenated tabs, so any type that appears in a
    function signature must be visible from this header.
 ****************************************************************************************/
-// Everything that differs between the two fixed pitch classes.
+// Everything that differs between the two meter classes (standard / compact).
 struct MeterStyle {
-  uint16_t     pitch;       // px per meter
   uint16_t     tapeW;       // thermometer column width, frame included
   uint16_t     secW;        // secondary (stage/total) column width inside the tape
   uint16_t     tickL;       // major tick length right of the tape (minor = half)

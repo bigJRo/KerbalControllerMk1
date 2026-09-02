@@ -61,11 +61,11 @@
    it. A tap close to an existing bug clears it. Bugs travel with the vessel's slot
    memory.
 
-   Pitch classes: PITCH_STD for up to DEFAULT_SLOT_COUNT meters, PITCH_CMP above
-   that. Within a class every meter keeps its width and pitch, and the row is
-   centred in the meter area, so a partial set sits in the middle of the screen
-   rather than bunched against the axis. Fixed width is what keeps the meters
-   reading as instruments rather than as a chart that restretches per vessel.
+   Spacing: the meters always spread across the full meter area, so the pitch is
+   the area divided by the slot count. What stays fixed is the meter itself: tape
+   width, stage column and fonts come in two classes, standard for up to
+   DEFAULT_SLOT_COUNT meters and compact above that, so a meter reads as the same
+   instrument whether it has the screen to itself or shares it with fifteen others.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -93,10 +93,12 @@ static const uint16_t CONTENT_X    = SIDEBAR_W;
 static const uint16_t METER_X0     = CONTENT_X + AXIS_W;        // 134 -- first meter's left edge
 static const uint16_t METER_AREA_W = SCREEN_W - METER_X0;       // 890 -- the row of meters is centred in this
 
-// Fixed pitch classes. Both derive from the area width so a screen-size change moves
-// them together; neither depends on the live slot count.
-static const uint16_t PITCH_STD    = METER_AREA_W / DEFAULT_SLOT_COUNT;  // 98 -- up to 9 meters
-static const uint16_t PITCH_CMP    = METER_AREA_W / MAX_SLOTS;           // 55 -- 10 to 16 meters
+// Pitch: the meters spread across the whole area, so this follows the slot count.
+// slotCount only changes through a chrome redraw, so every caller in one frame sees
+// the same value. The remainder of the division is split either side of the row.
+static inline uint16_t meterPitch() {
+  return (slotCount > 0) ? (uint16_t)(METER_AREA_W / slotCount) : METER_AREA_W;
+}
 
 // Vertical bands, top to bottom.
 static const uint16_t ALERT_H      = 24;   // alert strip (Black_16 cap 19)
@@ -145,11 +147,11 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
    in a signature must already be visible from the header.)
 ****************************************************************************************/
 static const MeterStyle STYLE_STD = {
-  PITCH_STD, 40, 12, 6, 14, 6,
+  40, 12, 6, 14, 6,
   &Roboto_Black_20, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_16
 };
 static const MeterStyle STYLE_CMP = {
-  PITCH_CMP, 22, 7, 5, 11, 5,
+  22, 7, 5, 11, 5,
   &Roboto_Black_16, &Roboto_Black_16, &Roboto_Black_12, &Roboto_Black_12
 };
 
@@ -157,12 +159,13 @@ static inline const MeterStyle &meterStyle() {
   return (slotCount <= DEFAULT_SLOT_COUNT) ? STYLE_STD : STYLE_CMP;
 }
 
-// Left edge of meter i's pitch cell. The row of slotCount meters is centred in the
-// meter area; slotCount only changes through a chrome redraw, so every caller in
-// one frame sees the same origin.
+// Left edge of meter i's pitch cell. The few pixels of division remainder are split
+// either side of the row so it stays centred in the area.
 static inline uint16_t pitchX(const MeterStyle &st, uint8_t i) {
-  uint16_t rowW = slotCount * st.pitch;
-  return METER_X0 + (METER_AREA_W - rowW) / 2 + i * st.pitch;
+  (void)st;
+  uint16_t pitch = meterPitch();
+  uint16_t rowW  = slotCount * pitch;
+  return METER_X0 + (METER_AREA_W - rowW) / 2 + i * pitch;
 }
 
 
@@ -170,7 +173,7 @@ static MeterGeom meterGeom(const MeterStyle &st, uint8_t i) {
   MeterGeom g;
   uint16_t scaleW = BAND_W + 1 + st.tapeW + 1 + st.tickL;
   g.px    = pitchX(st, i);
-  g.bandX = g.px + (st.pitch - scaleW) / 2;
+  g.bandX = g.px + (meterPitch() - scaleW) / 2;
   g.tapeX = g.bandX + BAND_W + 1;
   g.tickX = g.tapeX + st.tapeW + 1;
   return g;
@@ -380,7 +383,7 @@ static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
     while (runEnd + 1 < slotCount && resGroup(slots[runEnd + 1].type) == grp) runEnd++;
 
     uint16_t x0 = pitchX(st, runStart);
-    uint16_t x1 = pitchX(st, runEnd) + st.pitch;   // exclusive
+    uint16_t x1 = pitchX(st, runEnd) + meterPitch();   // exclusive
     uint16_t ly = GROUP_Y + GROUP_H - 3;           // bracket line row
     tft.drawLine(x0 + 3, ly, x1 - 4, ly, TFT_GREY);
     tft.drawLine(x0 + 3, ly, x0 + 3, ly + 3, TFT_GREY);
@@ -444,7 +447,7 @@ static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
 // "---" in grey.
 static void drawCounter(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
                         bool hasData, const char *s, uint8_t state) {
-  uint16_t cellW = st.pitch - st.arrowCellW;
+  uint16_t cellW = meterPitch() - st.arrowCellW;
   uint16_t back  = (hasData && state == 2) ? TFT_RED : TFT_BLACK;
   uint16_t fore  = !hasData ? TFT_GREY : (state == 2) ? TFT_WHITE : stateColor(state);
   tft.fillRect(g.px, PERC_Y, cellW, PERC_H, back);
@@ -455,7 +458,7 @@ static void drawCounter(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
 // none = steady. Coloured with the counter's state.
 static void drawTrend(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
                       int8_t trend, uint8_t state) {
-  uint16_t cx0 = g.px + st.pitch - st.arrowCellW;
+  uint16_t cx0 = g.px + meterPitch() - st.arrowCellW;
   tft.fillRect(cx0, PERC_Y, st.arrowCellW, PERC_H, TFT_BLACK);
   if (trend == 0) return;
   int16_t cx = cx0 + st.arrowCellW / 2;
@@ -468,9 +471,10 @@ static void drawTrend(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
 }
 
 static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, const char *s) {
-  tft.fillRect(g.px, UNITS_Y, st.pitch, UNITS_H, TFT_BLACK);
+  uint16_t pitch = meterPitch();
+  tft.fillRect(g.px, UNITS_Y, pitch, UNITS_H, TFT_BLACK);
   if (s[0] == '\0') return;
-  textCenter(tft, st.unitsFont, g.px, UNITS_Y, st.pitch, UNITS_H, String(s), TFT_LIGHT_GREY, TFT_BLACK);
+  textCenter(tft, st.unitsFont, g.px, UNITS_Y, pitch, UNITS_H, String(s), TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
@@ -555,7 +559,7 @@ static void updateAlertStrip(KCM_TFT &tft) {
    is scaled so a surplus equal to half the propellant aboard is full deflection.
 ****************************************************************************************/
 static int16_t _balPx = -1;        // last drawn pointer offset, px from centre; -32768 = force
-static char    _balText[16];       // last drawn counter
+static char    _balText[24];       // last drawn counter
 
 static int8_t findSlot(ResourceType t) {
   for (uint8_t i = 0; i < slotCount; i++) if (slots[i].type == t) return (int8_t)i;
@@ -622,7 +626,7 @@ static void updateBalance(KCM_TFT &tft) {
     tft.fillRect(barX + BAL_BAR_W / 2 + px - 1, barY + 1, 3, BAL_BAR_H - 2, TFT_WHITE);
   }
 
-  char text[16], num[12];
+  char text[24], num[12];
   fmtUnits(fabsf(surplus), num, sizeof(num));
   snprintf(text, sizeof(text), "%s +%s", (surplus >= 0.0f) ? "LOx" : "LF", num);
   if (strcmp(text, _balText) != 0) {
@@ -693,7 +697,7 @@ void drawStaticMain(KCM_TFT &tft) {
     drawBands(tft, g, slots[i].type);
     drawTicks(tft, st, g);
     drawFrame(tft, st, g, 0);
-    textCenter(tft, st.labelFont, g.px, LABEL_Y, st.pitch, LABEL_H,
+    textCenter(tft, st.labelFont, g.px, LABEL_Y, meterPitch(), LABEL_H,
                resLabel(slots[i].type), TFT_WHITE, TFT_BLACK);
   }
 }
@@ -808,9 +812,10 @@ int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
   const MeterStyle &st = meterStyle();
   if (slotCount == 0) return -1;
   uint16_t x0 = pitchX(st, 0);
-  uint16_t x1 = pitchX(st, slotCount - 1) + st.pitch;
+  uint16_t pitch = meterPitch();
+  uint16_t x1 = pitchX(st, slotCount - 1) + pitch;
   if (x < x0 || x >= x1) return -1;
-  int8_t i = (int8_t)((x - x0) / st.pitch);
+  int8_t i = (int8_t)((x - x0) / pitch);
   if (i >= (int8_t)slotCount || slots[i].type == RES_NONE) return -1;
   if (y >= TAPE_TOP && y < TAPE_BOTTOM) {
     onTape = true;
