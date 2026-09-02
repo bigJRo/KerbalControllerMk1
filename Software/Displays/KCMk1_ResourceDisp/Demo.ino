@@ -41,17 +41,18 @@ void stepDemoState() {
     if (slots[i].type == RES_NONE) continue;
     float offset = i * 0.785f;  // PI/4 per slot
 
-    // Total: slow sweep across full range
+    // Total: slow sweep across the FULL range, so every meter visits 0% and 100%
+    // and the counters, limit bands and alarm cell can be checked at both ends.
     float totalPhase = _demoPhase + offset;
-    slots[i].current = 0.5f + 0.48f * sinf(totalPhase);  // 0.02–0.98
+    slots[i].current = 0.5f + 0.5f * sinf(totalPhase);   // 0.00-1.00
 
-    // Stage: faster sweep, smaller amplitude, lower average
-    // Represents the current stage having less capacity than the whole vessel
+    // Stage: faster, independent sweep of the stage FRACTION across its full
+    // range, so the secondary column visibly moves against the primary rather
+    // than pinning at 100%. Stage max is a fixed fraction of total max (~40% of
+    // the vessel) so the units counters differ between the two modes.
     float stagePhase = _demoPhase * 2.3f + offset + 1.0f;
-    slots[i].stageCurrent = 0.35f + 0.30f * sinf(stagePhase);  // 0.05–0.65
-
-    // Stage max is a fixed fraction of total max (demo: ~40% of vessel)
-    slots[i].stageMax = 0.4f;
-    slots[i].maxVal   = 1.0f;
+    slots[i].stageMax     = 0.4f;
+    slots[i].stageCurrent = slots[i].stageMax * (0.5f + 0.5f * sinf(stagePhase));
+    slots[i].maxVal       = 1.0f;
   }
 }

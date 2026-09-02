@@ -23,9 +23,16 @@
            are visible whether or not the level is in them. This is the Shuttle
            F7/O3 meter convention, and it is what the filled bars lacked: their only
            warning was the percentage label changing colour.
-         . a white marker across the tape at the SECONDARY value (stage in TOTL,
-           total in STG) with a caret in the gutter left of the band. Drawn only for
-           resources with a separate stage channel; the rest mirror total to stage.
+         . for resources with a separate stage channel, the tape is split into two
+           columns, the way the Shuttle PRPLT QTY meter carried its three pointers
+           side by side: the wide left column is the PRIMARY value in the resource
+           colour, the narrow right column is the SECONDARY value (stage in TOTL,
+           total in STG) in a half-brightness shade of the same colour, and a white
+           line across the whole tape marks the secondary level so it reads against
+           the ticks even where the narrow column is only a few pixels wide. The
+           mode key therefore chooses which value is wide and counted, not which
+           one you can see. Resources without a stage channel get one full-width
+           column, which is itself the cue that there is no stage figure.
          . tick marks on the right edge: major every 10%, minor every 5%
        The frame is grey when nominal and takes the caution/alarm colour on breach.
      - resource short label
@@ -88,6 +95,7 @@ static const uint16_t UNITS_Y      = PERC_Y + PERC_H;            // 578
 
 static const uint16_t BAND_W       = 4;    // limit-band column, left of the tape
 static const uint16_t MARK_H       = 2;    // secondary-value marker line thickness
+static const uint16_t SPLIT_GAP    = 1;    // black gap between the primary and secondary columns
 
 // Sidebar: 4 buttons, no padding, edge-to-edge, full height
 static const uint8_t  SB_BTN_COUNT = 4;
@@ -107,11 +115,11 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
    in a signature must already be visible from the header.)
 ****************************************************************************************/
 static const MeterStyle STYLE_STD = {
-  PITCH_STD, 30, 8, 6, 14, 6,
+  PITCH_STD, 30, 9, 6, 14, 6,
   &Roboto_Black_20, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_16
 };
 static const MeterStyle STYLE_CMP = {
-  PITCH_CMP, 16, 7, 5, 11, 5,
+  PITCH_CMP, 16, 5, 5, 11, 5,
   &Roboto_Black_16, &Roboto_Black_16, &Roboto_Black_12, &Roboto_Black_12
 };
 
@@ -127,13 +135,19 @@ static inline uint16_t pitchX(const MeterStyle &st, uint8_t i) {
 
 static MeterGeom meterGeom(const MeterStyle &st, uint8_t i) {
   MeterGeom g;
-  uint16_t scaleW = st.caretW + 1 + BAND_W + 1 + st.tapeW + 1 + st.tickL;
-  g.px     = pitchX(st, i);
-  g.caretX = g.px + (st.pitch - scaleW) / 2;
-  g.bandX  = g.caretX + st.caretW + 1;
-  g.tapeX  = g.bandX + BAND_W + 1;
-  g.tickX  = g.tapeX + st.tapeW + 1;
+  uint16_t scaleW = BAND_W + 1 + st.tapeW + 1 + st.tickL;
+  g.px    = pitchX(st, i);
+  g.bandX = g.px + (st.pitch - scaleW) / 2;
+  g.tapeX = g.bandX + BAND_W + 1;
+  g.tickX = g.tapeX + st.tapeW + 1;
   return g;
+}
+
+// Half-brightness of an RGB565 colour: each channel shifted down one bit, with the
+// bits that would cross a channel boundary masked off. The library's TFT_DIM_VIOLET
+// and TFT_DIM_NEON_GRN are exactly this of their parents.
+static inline uint16_t dimColor(uint16_t c) {
+  return (c >> 1) & 0x7BEF;
 }
 
 // Screen y of a 0..1 level on the tape's inner scale (0 at the bottom inner row).
@@ -352,33 +366,41 @@ static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
    METER DYNAMICS -- redrawn by updateScreenMain() as values change
 ****************************************************************************************/
 
-// Fill: flicker-free two-fillRect technique. Full empty+fill repaint, so it is robust
-// to the mode-toggle path (which resets the caches WITHOUT clearing the screen); a
-// delta-erase keyed on the previous value would leave stale fill above a tape that
-// shrank across the toggle.
-static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
-                     float level, uint16_t color) {
+// Fill: flicker-free two-fillRect technique per column -- black from the top down to
+// the level, colour below it. Full repaint each time, so it is robust to the mode-
+// toggle path (which resets the caches WITHOUT clearing the screen); a delta-erase
+// keyed on the previous value would leave stale fill above a column that shrank
+// across the toggle.
+//
+// mark < 0: one full-width column at `level`.
+// mark >= 0: the interior is split -- primary column on the left at `level` in the
+// resource colour, secondary column (secW wide) on the right at `mark` in the dimmed
+// colour, SPLIT_GAP of black between -- and a white MARK_H line across the whole
+// interior at the secondary level, drawn last since it sits on top of both columns.
+static void fillColumn(KCM_TFT &tft, uint16_t x, uint16_t w, float level, uint16_t color) {
   uint16_t fillH  = (uint16_t)(TAPE_INNER_H * level);
   uint16_t emptyH = TAPE_INNER_H - fillH;
-  uint16_t ix = g.tapeX + 1;
-  uint16_t iw = st.tapeW - 2;
-  if (emptyH > 0) tft.fillRect(ix, TAPE_TOP + 1,          iw, emptyH, TFT_BLACK);
-  if (fillH  > 0) tft.fillRect(ix, TAPE_TOP + 1 + emptyH, iw, fillH,  color);
+  if (emptyH > 0) tft.fillRect(x, TAPE_TOP + 1,          w, emptyH, TFT_BLACK);
+  if (fillH  > 0) tft.fillRect(x, TAPE_TOP + 1 + emptyH, w, fillH,  color);
 }
 
-// Secondary-value marker: caret in the gutter pointing at the band, plus a MARK_H
-// line across the tape interior. Drawn after the fill, since the line sits on top of
-// it. level < 0 clears the marker.
-static void drawMarker(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, float level) {
-  tft.fillRect(g.caretX, TAPE_TOP, st.caretW, TAPE_H, TFT_BLACK);
-  if (level < 0.0f) return;
-  int16_t y  = (int16_t)levelY(level);
-  int16_t hh = (int16_t)st.caretW / 2 + 1;
-  tft.fillTriangle(g.caretX, y - hh, g.caretX, y + hh, g.caretX + st.caretW - 1, y, TFT_WHITE);
-  int16_t ly = y - (int16_t)MARK_H / 2;
+static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                     float level, float mark, uint16_t color) {
+  uint16_t ix = g.tapeX + 1;
+  uint16_t iw = st.tapeW - 2;
+  if (mark < 0.0f) {
+    fillColumn(tft, ix, iw, level, color);
+    return;
+  }
+  uint16_t priW = iw - st.secW - SPLIT_GAP;
+  fillColumn(tft, ix, priW, level, color);
+  tft.fillRect(ix + priW, TAPE_TOP + 1, SPLIT_GAP, TAPE_INNER_H, TFT_BLACK);
+  fillColumn(tft, ix + priW + SPLIT_GAP, st.secW, mark, dimColor(color));
+
+  int16_t ly = (int16_t)levelY(mark) - (int16_t)MARK_H / 2;
   if (ly < (int16_t)TAPE_TOP + 1) ly = TAPE_TOP + 1;
   if (ly + (int16_t)MARK_H > (int16_t)TAPE_BOTTOM - 1) ly = TAPE_BOTTOM - 1 - MARK_H;
-  tft.fillRect(g.tapeX + 1, ly, st.tapeW - 2, MARK_H, TFT_WHITE);
+  tft.fillRect(ix, ly, iw, MARK_H, TFT_WHITE);
 }
 
 // Percent counter. Alarm is white-on-red across the whole cell, the InfoDisp /
@@ -515,7 +537,7 @@ void updateScreenMain(KCM_TFT &tft) {
 
     bool  hasData = (max > 0.0f);
     float level   = hasData ? constrain(cur / max, 0.0f, 1.0f) : 0.0f;
-    float mark    = -1.0f;   // no marker
+    float mark    = -1.0f;   // no secondary column
     if (hasData && resHasStageData(s.type) && secMax > 0.0f)
       mark = constrain(secCur / secMax, 0.0f, 1.0f);
 
@@ -552,8 +574,7 @@ void updateScreenMain(KCM_TFT &tft) {
     if (levelChanged || markChanged) {
       c.level = level;
       c.mark  = mark;
-      drawFill(tft, st, g, level, resColor(s.type));
-      drawMarker(tft, st, g, mark);
+      drawFill(tft, st, g, level, mark, resColor(s.type));
     }
     if (percChanged) {
       c.perc = perc;
