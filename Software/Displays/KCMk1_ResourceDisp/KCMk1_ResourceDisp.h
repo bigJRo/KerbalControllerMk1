@@ -32,7 +32,7 @@ typedef ILI9341_t3_font_t tFont;
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 7;   // 3.7.0: EVA ring-gauge layout
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.7.1: EVA gauges re-spaced, bands via fillArc
 
 
 /***************************************************************************************

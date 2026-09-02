@@ -590,6 +590,57 @@ void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   if (caps && cap >= 1) { tft.fillCircle(x0, y0, cap, color); tft.fillCircle(x1, y1, cap, color); }
 }
 
+
+/***************************************************************************************
+   FILL ARC
+   Annular sector between two angles, scan-converted row by row. A pixel belongs to
+   the sector when its distance from the centre is in [rIn, rOut) and its bearing is
+   inside the sweep; bearings are tested with cross products against the start and
+   end direction vectors rather than atan2 per pixel. For a sweep up to 180 degrees
+   the pixel must be clockwise of the start AND anticlockwise of the end; past 180
+   the sector is everything but its complement, so EITHER test suffices. Consecutive
+   qualifying pixels on a row go out as one horizontal run.
+****************************************************************************************/
+void fillArc(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t rIn, int16_t rOut,
+             float a0Deg, float a1Deg, uint16_t color) {
+  if (rOut <= 0 || rIn >= rOut) return;
+  if (rIn < 0) rIn = 0;
+  float sweep = a1Deg - a0Deg;
+  if (sweep <= 0.0f) return;
+  bool  full  = sweep >= 360.0f;
+  bool  wide  = sweep > 180.0f;
+  float sx = cosf(a0Deg * DEG_TO_RAD), sy = sinf(a0Deg * DEG_TO_RAD);
+  float ex = cosf(a1Deg * DEG_TO_RAD), ey = sinf(a1Deg * DEG_TO_RAD);
+  int32_t rIn2 = (int32_t)rIn * rIn, rOut2 = (int32_t)rOut * rOut;
+
+  for (int16_t dy = -rOut; dy <= rOut; dy++) {
+    int32_t dy2 = (int32_t)dy * dy;
+    if (dy2 >= rOut2) continue;
+    int16_t xo = (int16_t)sqrtf((float)(rOut2 - dy2));      // outer half-width this row
+    int16_t runStart = 0;
+    bool    inRun = false;
+    for (int16_t dx = -xo; dx <= xo + 1; dx++) {
+      bool on = false;
+      if (dx <= xo) {
+        int32_t d2 = (int32_t)dx * dx + dy2;
+        if (d2 >= rIn2 && d2 < rOut2) {
+          if (full) on = true;
+          else {
+            bool afterStart = (sx * dy - sy * dx) >= 0.0f;   // clockwise of the start ray
+            bool beforeEnd  = (ex * dy - ey * dx) <= 0.0f;   // anticlockwise of the end ray
+            on = wide ? (afterStart || beforeEnd) : (afterStart && beforeEnd);
+          }
+        }
+      }
+      if (on && !inRun) { runStart = dx; inRun = true; }
+      else if (!on && inRun) {
+        tft.drawFastHLine(cx + runStart, cy + dy, dx - runStart, color);
+        inRun = false;
+      }
+    }
+  }
+}
+
 // Sub-element sizing shared by the KSP markers: stroke width, centre-dot radius and
 // spoke overshoot all scale from the ring/prong radius `r` so the marker stays
 // proportional (and legibly thick) whether it is a tiny legend key or a full-size

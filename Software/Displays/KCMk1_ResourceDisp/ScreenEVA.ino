@@ -22,14 +22,16 @@
    around the arc; a tap anywhere on a gauge opens Detail. The Main screen's touch
    code calls evaHitTest / evaLevelAt for the geometry.
 
-   Drawing: the driver has no arc primitive but a fast filled circle. An arc is a
-   chain of filled dots of the ring's thickness on a FIXED angular grid, spaced
-   closely enough that the edge reads smooth (see the grid notes below), which gives
-   rounded ends for free. Because every dot, drawn or erased, sits on the same grid,
-   an erase covers exactly what a draw painted and no scallop is left behind. The
-   full track and bands draw once at chrome time; a level change draws only the grid
-   dots between the old and new end, colour going up and track colour coming down,
-   then restores the rounded cap. The bands are thick-line arcs, not dots.
+   Drawing: the driver has no arc primitive but a fast filled circle. The ring is a
+   chain of filled dots of its own thickness on a FIXED angular grid, spaced closely
+   enough that the edge reads smooth (see the grid notes below), which gives rounded
+   ends for free. Because every dot, drawn or erased, sits on the same grid, an erase
+   covers exactly what a draw painted and no scallop is left behind. The full track
+   and bands draw once at chrome time; a level change draws only the grid dots
+   between the old and new end, colour going up and track colour coming down, then
+   restores the rounded cap. The bands are too thin for dots or chords to look like
+   anything but beads, so they use KerbalDisplayCommon's fillArc, which scan-converts
+   the ring segment pixel-exact.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -42,11 +44,11 @@
 ****************************************************************************************/
 static const float    EVA_ARC_START = 135.0f;
 static const float    EVA_ARC_SWEEP = 270.0f;
-static const uint16_t EVA_BAND_GAP  = 6;    // band arc centreline sits this far outside the track
-static const uint16_t EVA_BAND_W    = 5;    // band arc stroke width
+static const uint16_t EVA_BAND_GAP  = 4;    // band inner edge sits this far outside the track
+static const uint16_t EVA_BAND_W    = 5;    // band radial width
 static const uint16_t EVA_BUG_OUT   = 16;   // bug dot centre sits this far outside the track
 static const uint16_t EVA_BUG_R     = 5;
-static const uint16_t EVA_BUG_TXT   = 14;   // bug percent text centre sits this far beyond the dot
+static const uint16_t EVA_BUG_TXT   = 10;   // bug percent text starts this far beyond the dot
 
 struct EvaGauge {
   ResourceType type;
@@ -61,17 +63,22 @@ struct EvaGauge {
 };
 
 // Sidebar 84 px and the alert strip 24 px are the Main screen's; the gauges sit in
-// the content area below the strip. Each gauge owns a disc out to its bug text
-// (r + thick/2 + EVA_BUG_OUT + EVA_BUG_R + EVA_BUG_TXT + ~10 for the figures):
-// 257 px for the big gauge, 86 px for the small ones. Centres are placed so those
-// discs clear each other, the strip, the sidebar and the screen edge.
+// the content area below the strip (x 84..1024, y 24..600). What the eye reads as a
+// gauge is the ring plus its bands, a disc of r + thick/2 + EVA_BAND_GAP + EVA_BAND_W:
+// 193 px for the big gauge, 88 px for the small ones. Bug figures reach further,
+// another EVA_BUG_OUT + EVA_BUG_R + EVA_BUG_TXT plus half their width, so the
+// outermost centres are placed to keep those on screen (big: 90 px clear of the
+// sidebar; small right column: 6 px clear of the edge). The three columns are then
+// spaced so the white space between the big disc and the left pair equals the space
+// between the pairs, 63 px, and the pair rows are the same 63 px apart, centred in
+// the content height. The big gauge is centred in it too.
 static const uint8_t EVA_GAUGE_COUNT = 5;
 static const EvaGauge EVA_GAUGES[EVA_GAUGE_COUNT] = {
-  { RES_EVA_PROP,    342, 312, 190, 40, &Roboto_Black_72, &Roboto_Black_24, &Roboto_Black_36, &Roboto_Black_16, true  },
-  { RES_ELEC_CHARGE, 715, 170,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
-  { RES_LS_OXYGEN,   905, 170,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
-  { RES_LS_FOOD,     715, 440,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
-  { RES_LS_WATER,    905, 440,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_EVA_PROP,    317, 312, 168, 32, &Roboto_Black_72, &Roboto_Black_24, &Roboto_Black_36, &Roboto_Black_16, true  },
+  { RES_ELEC_CHARGE, 661, 194,  70, 18, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_LS_OXYGEN,   900, 194,  70, 18, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_LS_FOOD,     661, 433,  70, 18, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_LS_WATER,    900, 433,  70, 18, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
 };
 
 // Explicit prototypes: the IDE generates one for every function above the tabs,
@@ -127,21 +134,11 @@ static void arcGridDots(KCM_TFT &tft, const EvaGauge &g, int16_t i0, int16_t i1,
   }
 }
 
-// Limit band: a thick-line arc just outside the track, drawn as short chords with
-// round caps so it reads as one solid stroke. A chord every 3 degrees at these
-// radii sags well under a pixel.
+// Limit band: a ring segment EVA_BAND_W wide just outside the track, scan-converted
+// pixel-exact by fillArc so its edges and ends are crisp at this width.
 static void bandArc(KCM_TFT &tft, const EvaGauge &g, float f0, float f1, uint16_t color) {
-  float radius = g.r + g.thick / 2 + EVA_BAND_GAP;
-  float a0 = evaAngle(f0), a1 = evaAngle(f1);
-  int16_t px, py, x, y;
-  arcPoint(g, radius, a0, px, py);
-  for (float a = a0 + 3.0f; a < a1 + 2.99f; a += 3.0f) {
-    if (a > a1) a = a1;
-    arcPoint(g, radius, a, x, y);
-    drawThickLine(tft, px, py, x, y, EVA_BAND_W, color, true);
-    px = x; py = y;
-    if (a >= a1) break;
-  }
+  int16_t rIn = g.r + g.thick / 2 + EVA_BAND_GAP;
+  fillArc(tft, g.cx, g.cy, rIn, rIn + EVA_BAND_W, evaAngle(f0), evaAngle(f1), color);
 }
 
 static void drawBands(KCM_TFT &tft, const EvaGauge &g) {
@@ -212,8 +209,11 @@ static int8_t evaSlotOf(ResourceType t) {
 /***************************************************************************************
    CENTRE TEXT
    Percent with the trend arrow two spaces to its right, centred as a group; the time
-   line beneath; the units line beneath that on the big gauge. Everything inside the
-   ring's inner circle, so the cleared rectangle is the inscribed square.
+   line beneath; the units line beneath that on the big gauge. The whole inner disc
+   is cleared first: the group (and its alarm tile) is wider than the inscribed
+   square on the small gauges, so clearing only the square left digit and tile
+   remnants outside it. The rows are sized so the widest case, "100%" with the tile
+   and arrow, still fits the chord at its own row.
 ****************************************************************************************/
 static uint16_t evaStateColor(uint8_t state) {
   switch (state) {
@@ -226,9 +226,9 @@ static uint16_t evaStateColor(uint8_t state) {
 
 static void drawEvaCentre(KCM_TFT &tft, const EvaGauge &g, bool hasData, uint8_t state,
                           const char *perc, int8_t trend, const char *tte, const char *units) {
-  uint16_t inner = g.r - g.thick / 2 - 2;            // inner radius
-  uint16_t half  = (uint16_t)(inner * 0.707f);       // inscribed square half side
-  tft.fillRect(g.cx - half, g.cy - half, half * 2, half * 2, TFT_BLACK);
+  uint16_t inner = g.r - g.thick / 2 - 2;            // inner radius, clear of the ring
+  uint16_t half  = (uint16_t)(inner * 0.707f);       // inscribed square half side (text boxes)
+  tft.fillCircle(g.cx, g.cy, inner, TFT_BLACK);
 
   bool     alarm = hasData && state == ALERT_ALARM;
   uint16_t fore  = !hasData ? TFT_GREY : alarm ? TFT_WHITE : evaStateColor(state);
@@ -241,8 +241,7 @@ static void drawEvaCentre(KCM_TFT &tft, const EvaGauge &g, bool hasData, uint8_t
   int16_t  groupW = textW + gapW + arrowW;
 
   // Rows: percent, time, (units) stacked and centred on cy
-  int16_t rows = g.big ? 3 : 2;
-  int16_t rowGap = g.big ? 10 : 4;
+  int16_t rowGap = g.big ? 6 : 4;
   int16_t totalH = capH + rowGap + timeH + (g.big ? rowGap + g.timeFont->cap_height : 0);
   int16_t y = g.cy - totalH / 2;
   int16_t gx = g.cx - groupW / 2;
@@ -261,7 +260,6 @@ static void drawEvaCentre(KCM_TFT &tft, const EvaGauge &g, bool hasData, uint8_t
     y += timeH + rowGap;
     textCenter(tft, g.timeFont, g.cx - half, y, half * 2, timeH, String(units), TFT_LIGHT_GREY, TFT_BLACK);
   }
-  (void)rows;
 }
 
 // Resource label in the gap at the bottom of the arc.

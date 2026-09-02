@@ -2,7 +2,7 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 8
+#define KDC_VERSION_MINOR 9
 #define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
@@ -10,6 +10,15 @@
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.9.0 — fillArc: a pixel-exact annular-sector fill (ring segment, or a pie slice
+            with rIn = 0) between two angles. The RA8876 driver has circles, ellipses
+            and rounded rectangles but no arc, and the hardware's own curve command
+            only draws whole quadrants, so an arc with arbitrary ends had to be built
+            here: the sector is scan-converted row by row into horizontal runs, so
+            both edges and both radial ends land on the exact pixels, with none of the
+            beading a chain of dots or chords leaves at small stroke widths. Added
+            for the ResourceDisp EVA ring gauges' limit bands.
 
    v3.8.0 — four palette entries for the ResourceDisp meter fills, each filling a gap
             the existing palette could not: TFT_BRICK, a rust red for Solid Fuel that
@@ -308,6 +317,16 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
 // cleanly at any angle. Used by the KSP navball markers for their spokes/prongs/X.
 void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                    int16_t w, uint16_t color, bool caps = true);
+
+// Annular sector (ring segment) filled pixel-exact between two angles: every pixel
+// whose distance from (cx,cy) is in [rIn, rOut) and whose bearing lies within the
+// sweep. Angles in degrees, clockwise from 3 o'clock as the screen sees it (y down),
+// the sweep running from a0Deg to a1Deg (a1 > a0; 360 or more fills the whole ring).
+// rIn = 0 gives a pie slice. Scan-converted into horizontal runs, so both edges and
+// the radial ends fall on exact pixels at any radius or stroke width; use it for
+// limit bands, gauge tracks and dial segments where a chain of dots or chords beads.
+void fillArc(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t rIn, int16_t rOut,
+             float a0Deg, float a1Deg, uint16_t color);
 
 // KSP prograde marker: ring + centre dot + three spokes pointing up/right/left. Used
 // for the velocity/prograde marker (green) and the maneuver marker (blue). `r` is the
