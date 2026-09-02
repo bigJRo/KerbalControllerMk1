@@ -18,8 +18,11 @@
 
    Gestures:
      screen_Standby -> no touch response in live mode; any touch advances to Main in demo.
-     screen_Main    -> tap on a meter's label/counter rows : open Detail on that resource
-                    -> tap on a meter's tape rows          : set / clear a reserve bug there
+     screen_Main    -> tap anywhere on a meter            : open Detail on that resource
+                    -> touch HELD BUG_HOLD_MS on a tape    : set / clear a reserve bug there
+                       (a meter touch is deferred until release or the hold matures;
+                        see the hold state below -- the sidebar keys still fire on
+                        touch-down)
                     -> sidebar btn 0 (DFLT)        : reset slots to default (STD preset)
                     -> sidebar btn 1 (SELECT)      : switch to screen_Select
                     -> sidebar btn 2 (DETAIL)      : switch to screen_Detail
@@ -38,10 +41,39 @@ static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px 
 static uint32_t _lastTouchTime  = 0;
 static bool     _waitForRelease = false;
 
+// Meter hold state. A confirmed touch on a meter does not act at once: it arms this
+// record and the outcome is decided later -- on release before BUG_HOLD_MS it is a
+// tap (Detail); once the hold matures on a tape it sets or clears the bug at the
+// level FIRST touched, and the release then does nothing.
+static bool     _holdActive = false;
+static bool     _holdFired  = false;
+static bool     _holdOnTape = false;
+static uint32_t _holdStartMs = 0;
+static uint8_t  _holdSlot   = 0;
+static float    _holdLevel  = 0.0f;
+
 
 void processTouchEvents() {
   if (!isTouched()) {
+    if (_holdActive) {
+      // Finger lifted. A hold that never matured is a tap.
+      if (!_holdFired) {
+        setDetailSlot(_holdSlot);
+        switchToScreen(screen_Detail);
+        clearTouchISR();
+      }
+      _holdActive = false;
+    }
     _waitForRelease = false;
+    return;
+  }
+
+  // Finger still down on an armed meter: only the hold timer matters.
+  if (_holdActive) {
+    if (!_holdFired && _holdOnTape && millis() - _holdStartMs >= BUG_HOLD_MS) {
+      toggleMeterBug(_holdSlot, _holdLevel);
+      _holdFired = true;
+    }
     return;
   }
 
@@ -146,16 +178,17 @@ void processTouchEvents() {
             : F("ResourceDisp: counter row PERCENT"));
           break;
         default: {
-          // Not a sidebar key: a tap on a meter's foot opens Detail on it.
+          // Not a sidebar key: arm the meter hold. Tap or bug is decided later.
           bool  onTape = false;
           float level  = 0.0f;
           int8_t m = meterHitTest(x2, y2, onTape, level);
-          if (m >= 0 && onTape) {
-            toggleMeterBug((uint8_t)m, level);
-          } else if (m >= 0) {
-            setDetailSlot((uint8_t)m);
-            switchToScreen(screen_Detail);
-            clearTouchISR();
+          if (m >= 0) {
+            _holdActive  = true;
+            _holdFired   = false;
+            _holdOnTape  = onTape;
+            _holdStartMs = now;
+            _holdSlot    = (uint8_t)m;
+            _holdLevel   = level;
           }
           break;
         }

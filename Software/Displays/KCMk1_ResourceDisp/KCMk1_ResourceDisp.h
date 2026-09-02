@@ -219,7 +219,8 @@ extern const uint32_t TREND_WINDOW_MS;   // trend arrow sample window
 extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of capacity per window
 extern const uint32_t TTE_WINDOW_MS;     // time-to-empty rate sample window
 extern const float    ALERT_HYST_FRAC;   // hysteresis on the caution/alarm thresholds
-extern const float    BUG_CLEAR_TOL;     // a tap this close to an existing bug clears it
+extern const uint32_t BUG_HOLD_MS;       // hold time to set or clear a bug
+extern const float    BUG_CLEAR_TOL;     // a hold this close to an existing bug clears it
 extern const uint32_t REFRESH_TIMEOUT_MS; // how long a slot may be "awaiting" after a refresh
 
 // From AAA_Globals.ino
@@ -250,7 +251,10 @@ bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set
 ResGroup       resGroup(ResourceType t);       // subsystem group for Main-screen ordering
 const char*    resGroupLabel(ResGroup g);      // short group label drawn over a run of meters
 ResLimits      resLimits(ResourceType t);      // caution/alarm bands for the meter scale
-uint8_t        alertState(ResourceType t, float level, float bug, uint8_t prev);  // 0/1/2 with hysteresis
+// 0 nominal, 1 caution, 2 alarm, 3 reserve-bug crossed (caution severity, bug colour);
+// with hysteresis against the previously drawn state.
+uint8_t        alertState(ResourceType t, float level, float bug, uint8_t prev);
+static const uint8_t ALERT_NOMINAL = 0, ALERT_CAUTION = 1, ALERT_ALARM = 2, ALERT_BUG = 3;
 void           sortSlotsByGroup();             // stable in-place sort of slots[] by resGroup()
 
 // Sampling (Sampling.ino)

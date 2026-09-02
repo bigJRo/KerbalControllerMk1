@@ -95,13 +95,14 @@ const float ALERT_HYST_FRAC = 0.01f;        // fraction of capacity
 
 /***************************************************************************************
    RESERVE BUG
-   A tap on a meter's tape sets a pilot-defined reserve bug at that level (snapped to
-   whole percent); the meter goes to caution when the level crosses it. A tap within
-   BUG_CLEAR_TOL of an existing bug clears it instead, so a bug is toggled from the
-   place it sits rather than needing a separate key. Bugs are saved with the vessel's
-   slot configuration.
+   A touch HELD on a meter's tape for BUG_HOLD_MS sets a pilot-defined reserve bug at
+   the level first touched (snapped to whole percent); the meter shows the bug colour
+   when the level crosses it. A hold within BUG_CLEAR_TOL of an existing bug clears
+   it instead, so a bug is toggled from the place it sits. A plain tap anywhere on a
+   meter opens the Detail screen. Bugs are saved with the vessel's slot configuration.
 ****************************************************************************************/
-const float BUG_CLEAR_TOL = 0.03f;          // fraction of capacity
+const uint32_t BUG_HOLD_MS  = 2000;         // ms a touch must be held to set or clear a bug
+const float    BUG_CLEAR_TOL = 0.03f;       // fraction of capacity
 
 /***************************************************************************************
    REFRESH TIMEOUT

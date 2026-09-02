@@ -332,37 +332,40 @@ ResLimits resLimits(ResourceType t) {
 
 /***************************************************************************************
    ALERT STATE WITH HYSTERESIS
-   0 nominal, 1 caution, 2 alarm. `prev` is the state the caller last drew (255 or 0
-   for none). Once in a state, the threshold that would leave it is moved
+   0 nominal, 1 caution, 2 alarm, 3 reserve bug crossed. `prev` is the state the caller
+   last drew (255 or 0 for none). Once in a state, the threshold that would leave it is moved
    ALERT_HYST_FRAC further into the nominal region, so a value resting on a
    threshold cannot toggle the colour every message. A pilot-set reserve bug (bug >= 0)
-   adds a caution threshold of its own: below it for a consumable, above it for a
-   waste product.
+   adds a threshold of its own, below it for a consumable and above it for a waste
+   product, reported as ALERT_BUG so it draws in the bug colour rather than yellow. The
+   fixed limits outrank it: a level inside both a limit band and the bug shows the
+   limit's state.
 ****************************************************************************************/
 uint8_t alertState(ResourceType t, float level, float bug, uint8_t prev) {
   ResLimits lim = resLimits(t);
-  if (prev > 2) prev = 0;
+  if (prev > ALERT_BUG) prev = ALERT_NOMINAL;
   float h = ALERT_HYST_FRAC;
   bool highIsBad = lim.enabled && lim.highIsBad;
-  uint8_t state = 0;
+  bool inCaution = (prev == ALERT_CAUTION || prev == ALERT_ALARM);
+  uint8_t state = ALERT_NOMINAL;
   if (lim.enabled) {
     if (highIsBad) {
-      float a = lim.alarm - ((prev == 2) ? h : 0.0f);
-      float w = lim.warn  - ((prev >= 1) ? h : 0.0f);
-      if      (level > a) state = 2;
-      else if (level > w) state = 1;
+      float a = lim.alarm - ((prev == ALERT_ALARM) ? h : 0.0f);
+      float w = lim.warn  - (inCaution ? h : 0.0f);
+      if      (level > a) state = ALERT_ALARM;
+      else if (level > w) state = ALERT_CAUTION;
     } else {
-      float a = lim.alarm + ((prev == 2) ? h : 0.0f);
-      float w = lim.warn  + ((prev >= 1) ? h : 0.0f);
-      if      (level < a) state = 2;
-      else if (level < w) state = 1;
+      float a = lim.alarm + ((prev == ALERT_ALARM) ? h : 0.0f);
+      float w = lim.warn  + (inCaution ? h : 0.0f);
+      if      (level < a) state = ALERT_ALARM;
+      else if (level < w) state = ALERT_CAUTION;
     }
   }
-  // A pilot-set reserve bug adds a caution threshold in the bad direction. It never
-  // raises an alarm; the fixed limit table owns red.
-  if (bug >= 0.0f && state < 1) {
-    float b = bug + ((prev >= 1) ? (highIsBad ? -h : h) : 0.0f);
-    if (highIsBad ? (level > b) : (level < b)) state = 1;
+  // The reserve bug: its own threshold in the bad direction, its own state and
+  // colour. It never raises an alarm; the fixed limit table owns red.
+  if (bug >= 0.0f && state == ALERT_NOMINAL) {
+    float b = bug + ((prev == ALERT_BUG) ? (highIsBad ? -h : h) : 0.0f);
+    if (highIsBad ? (level > b) : (level < b)) state = ALERT_BUG;
   }
   return state;
 }

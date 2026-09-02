@@ -58,12 +58,12 @@
      channel refresh is still pending for it or "---" once it is not going to answer
      (resource not aboard) -- never a 0% alarm.
 
-   Touch: a tap on a meter's label/counter rows opens the Detail screen on that
-   resource. A tap on its tape rows sets a RESERVE BUG at that level -- a cyan index
-   in the tick zone with a cyan mark on the band, cyan being this project's colour
-   for pilot-entered values -- and the meter goes to caution when the level crosses
-   it. A tap close to an existing bug clears it. Bugs travel with the vessel's slot
-   memory.
+   Touch: a tap anywhere on a meter opens the Detail screen on that resource. A touch
+   HELD on its tape for BUG_HOLD_MS sets a RESERVE BUG at the level first touched -- a
+   cyan index in the tick zone with a cyan mark on the band, cyan being this project's
+   colour for pilot-entered values -- and when the level crosses it the meter's frame,
+   counter and alert-strip message take the bug colour rather than caution yellow. A
+   hold close to an existing bug clears it. Bugs travel with the vessel's slot memory.
 
    Spacing: the meters always spread across the full meter area, so the pitch is
    the area divided by the slot count. What stays fixed is the meter itself: tape
@@ -289,11 +289,16 @@ static void drawAxis(KCM_TFT &tft) {
    The state itself comes from alertState() in Resources.ino (with hysteresis).
 ****************************************************************************************/
 static inline uint16_t stateColor(uint8_t state) {
-  return (state == 2) ? TFT_RED : (state == 1) ? TFT_YELLOW : TFT_WHITE;
+  switch (state) {
+    case ALERT_ALARM:   return TFT_RED;
+    case ALERT_CAUTION: return TFT_YELLOW;
+    case ALERT_BUG:     return TFT_CYAN;
+    default:            return TFT_WHITE;
+  }
 }
 
 static inline uint16_t frameColor(uint8_t state) {
-  return (state == 0) ? TFT_GREY : stateColor(state);
+  return (state == ALERT_NOMINAL) ? TFT_GREY : stateColor(state);
 }
 
 
@@ -458,7 +463,7 @@ static const uint16_t COUNTER_PAD = 4;   // red tile margin beyond the counter t
 static void drawCounterRow(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
                            bool hasData, const char *s, int8_t trend, uint8_t state) {
   uint16_t pitch  = meterPitch();
-  bool     alarm  = hasData && state == 2;
+  bool     alarm  = hasData && state == ALERT_ALARM;
   uint16_t back   = alarm ? TFT_RED : TFT_BLACK;
   uint16_t fore   = !hasData ? TFT_GREY : alarm ? TFT_WHITE : stateColor(state);
   int16_t  textW  = getFontStringWidth(st.percFont, s);
@@ -491,8 +496,8 @@ static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, co
 /***************************************************************************************
    ALERT STRIP
    One line, worst first: alarms white-on-red as "<LBL> LOW" (or HIGH for a waste
-   product), cautions in yellow as "<LBL> CAUT", a reserve-bug crossing as "<LBL> BUG", and
-   "REFRESHING" in white while a channel refresh is pending.
+   product), cautions in yellow as "<LBL> CAUT", a reserve-bug crossing in the bug's
+   cyan as "<LBL> BUG", and "REFRESHING" in white while a channel refresh is pending.
    Messages that do not fit collapse into "+N" in grey. Redrawn only when the
    composed line changes, which the signature buffer detects.
 ****************************************************************************************/
@@ -560,8 +565,8 @@ static void updateAlertStrip(KCM_TFT &tft) {
                        : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
       snprintf(msg, sizeof(msg), "%s %s", resLabel(slots[i].type), what);
       bool alarm = (code == STRIP_ALARM);
-      if (dropped || !stripPut(tft, x, xEnd, msg, alarm ? TFT_WHITE : TFT_YELLOW,
-                               alarm ? TFT_RED : TFT_BLACK)) dropped++;
+      uint16_t fore = alarm ? TFT_WHITE : (code == STRIP_BUG) ? TFT_CYAN : TFT_YELLOW;
+      if (dropped || !stripPut(tft, x, xEnd, msg, fore, alarm ? TFT_RED : TFT_BLACK)) dropped++;
     }
   }
   if (dropped) {
@@ -758,12 +763,11 @@ void updateScreenMain(KCM_TFT &tft) {
     uint8_t state    = hasData ? alertState(s.type, level, s.bug, c.state) : 0;
     const SlotSample &smp = sampleTot[i];
 
-    // Message for the alert strip. A caution the fixed limits would not have raised
-    // on their own is the reserve bug's.
-    if      (!hasData || state == 0) _stripCode[i] = STRIP_NONE;
-    else if (state == 2)             _stripCode[i] = STRIP_ALARM;
-    else if (alertState(s.type, level, -1.0f, c.state) >= 1) _stripCode[i] = STRIP_CAUTION;
-    else                             _stripCode[i] = STRIP_BUG;
+    // Message for the alert strip.
+    if      (!hasData || state == ALERT_NOMINAL) _stripCode[i] = STRIP_NONE;
+    else if (state == ALERT_ALARM)               _stripCode[i] = STRIP_ALARM;
+    else if (state == ALERT_BUG)                 _stripCode[i] = STRIP_BUG;
+    else                                         _stripCode[i] = STRIP_CAUTION;
 
     char counter[8];
     if (!hasData)     strlcpy(counter, awaiting ? "..." : "---", sizeof(counter));
@@ -855,8 +859,8 @@ int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
 
 /***************************************************************************************
    TOGGLE RESERVE BUG
-   Sets slot i's bug at the tapped level, snapped to a whole percent, or clears it if
-   the tap is within BUG_CLEAR_TOL of the bug already there. The update pass sees the
+   Sets slot i's bug at the held level, snapped to a whole percent, or clears it if
+   the hold is within BUG_CLEAR_TOL of the bug already there. The update pass sees the
    change through its cache and redraws the index.
 ****************************************************************************************/
 void toggleMeterBug(uint8_t i, float level) {
