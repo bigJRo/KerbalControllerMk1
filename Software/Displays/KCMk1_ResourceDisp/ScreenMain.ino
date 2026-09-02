@@ -19,10 +19,17 @@
    them, else vessel totals.
 
    Sidebar buttons (top to bottom):
-     0. DFLT  -- resets slots to the STD default group
-     1. SEL   -- navigates to the resource selection screen
-     2. DATA  -- navigates to the numerical resource detail screen
-     3. TTE   -- toggles the counter row between percent and time-to-empty
+     0. SEL     -- navigates to the resource selection screen
+     1. DATA    -- navigates to the numerical resource detail screen
+     2. CLR BUG -- removes every reserve bug on the vessel
+     3. TTE     -- toggles the counter row between percent and time-to-empty
+
+   Visibility: a slot whose resource the vessel does not carry (see resAbsent) draws
+   no meter at all. The meters that do draw are the "visible" slots, numbered 0..
+   _visCount-1 in slot order; _vis[] maps a visible position back to its slot. The
+   pitch follows the visible count, so a preset can carry SF and Ablator for every
+   launch and neither costs a column on a craft without them. Presence changes
+   trigger a full chrome redraw.
 
    Each meter, top to bottom:
      - group label band (shared by a run of same-group meters)
@@ -54,9 +61,9 @@
        (white / yellow / white-on-red, the alarm tile covering the counter only,
        with the arrow outside it in red)
      - units counter (raw resource units, compacted to fit the pitch)
-     A slot whose capacity is zero shows an empty tape and, in grey, "..." while a
-     channel refresh is still pending for it or "---" once it is not going to answer
-     (resource not aboard) -- never a 0% alarm.
+     A slot whose capacity is zero shows an empty tape and "..." in grey while a
+     channel refresh is still pending for it; once the vessel is known not to carry
+     the resource the meter is gone (see Visibility above).
 
    Touch: a tap anywhere on a meter opens the Detail screen on that resource. A touch
    HELD still on its tape for BUG_HOLD_MS sets a RESERVE BUG at the level first
@@ -100,11 +107,26 @@ static const uint16_t CONTENT_X    = SIDEBAR_W;
 static const uint16_t METER_X0     = CONTENT_X + AXIS_W;        // 134 -- first meter's left edge
 static const uint16_t METER_AREA_W = SCREEN_W - METER_X0;       // 890 -- the row of meters is centred in this
 
-// Pitch: the meters spread across the whole area, so this follows the slot count.
-// slotCount only changes through a chrome redraw, so every caller in one frame sees
+// Visible slots: the ones that draw a meter. Rebuilt by drawStaticMain(); the update
+// pass compares against a fresh build each frame and redraws the chrome when
+// presence has changed.
+static uint8_t _vis[MAX_SLOTS];
+static uint8_t _visCount = 0;
+
+static uint8_t buildVisible(uint8_t *out) {
+  uint8_t n = 0;
+  for (uint8_t i = 0; i < slotCount; i++) {
+    if (slots[i].type == RES_NONE || resAbsent(slots[i].type)) continue;
+    out[n++] = i;
+  }
+  return n;
+}
+
+// Pitch: the meters spread across the whole area, so this follows the visible
+// count. It only changes through a chrome redraw, so every caller in one frame sees
 // the same value. The remainder of the division is split either side of the row.
 static inline uint16_t meterPitch() {
-  return (slotCount > 0) ? (uint16_t)(METER_AREA_W / slotCount) : METER_AREA_W;
+  return (_visCount > 0) ? (uint16_t)(METER_AREA_W / _visCount) : METER_AREA_W;
 }
 
 // Vertical bands, top to bottom.
@@ -163,16 +185,16 @@ static const MeterStyle STYLE_CMP = {
 };
 
 static inline const MeterStyle &meterStyle() {
-  return (slotCount <= DEFAULT_SLOT_COUNT) ? STYLE_STD : STYLE_CMP;
+  return (_visCount <= DEFAULT_SLOT_COUNT) ? STYLE_STD : STYLE_CMP;
 }
 
-// Left edge of meter i's pitch cell. The few pixels of division remainder are split
-// either side of the row so it stays centred in the area.
-static inline uint16_t pitchX(const MeterStyle &st, uint8_t i) {
+// Left edge of visible meter k's pitch cell. The few pixels of division remainder
+// are split either side of the row so it stays centred in the area.
+static inline uint16_t pitchX(const MeterStyle &st, uint8_t k) {
   (void)st;
   uint16_t pitch = meterPitch();
-  uint16_t rowW  = slotCount * pitch;
-  return METER_X0 + (METER_AREA_W - rowW) / 2 + i * pitch;
+  uint16_t rowW  = _visCount * pitch;
+  return METER_X0 + (METER_AREA_W - rowW) / 2 + k * pitch;
 }
 
 
@@ -224,12 +246,16 @@ static const ButtonLabel btnTteOn = {
   TFT_GREY, TFT_GREY,
   TFT_GREY, TFT_GREY
 };
-static const ButtonLabel btnReset = {
-  "DFLT",
-  TFT_WHITE, TFT_WHITE,
-  TFT_BLACK, TFT_BLACK,
-  TFT_GREY, TFT_GREY
+// CLR BUG removes every reserve bug on the vessel. It takes the guard treatment the
+// Select screen's CLEAR key uses -- orange legend and border on off-black -- since it
+// discards pilot-entered state, and a smaller font so the two-word legend fits.
+static const ButtonLabel btnClrBug = {
+  "CLR BUG",
+  TFT_ORANGE, TFT_ORANGE,
+  TFT_OFF_BLACK, TFT_OFF_BLACK,
+  TFT_ORANGE, TFT_ORANGE
 };
+static const tFont *SB_CLRBUG_FONT = &Roboto_Black_16;
 static const ButtonLabel btnSelect = {
   "SEL",
   TFT_WHITE, TFT_WHITE,
@@ -253,9 +279,9 @@ static void drawSidebar(KCM_TFT &tft) {
   uint16_t bw = SIDEBAR_W - 1;
 
   // Buttons 0-2: action buttons, drawn "on" so their background colour always shows
-  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), btnReset,  SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnClrBug, SB_CLRBUG_FONT, true);
 
   // Button 3: TTE counter-mode toggle
   const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
@@ -389,10 +415,10 @@ static void drawBug(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
 // divider through the tape rows.
 static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
   uint8_t runStart = 0;
-  while (runStart < slotCount) {
-    ResGroup grp = resGroup(slots[runStart].type);
+  while (runStart < _visCount) {
+    ResGroup grp = resGroup(slots[_vis[runStart]].type);
     uint8_t runEnd = runStart;
-    while (runEnd + 1 < slotCount && resGroup(slots[runEnd + 1].type) == grp) runEnd++;
+    while (runEnd + 1 < _visCount && resGroup(slots[_vis[runEnd + 1]].type) == grp) runEnd++;
 
     uint16_t x0 = pitchX(st, runStart);
     uint16_t x1 = pitchX(st, runEnd) + meterPitch();   // exclusive
@@ -404,7 +430,7 @@ static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
     textCenter(tft, st.groupFont, x0, GROUP_Y, x1 - x0, GROUP_H,
                String(" ") + resGroupLabel(grp) + " ", TFT_LIGHT_GREY, TFT_BLACK);
 
-    if (runEnd + 1 < slotCount) {
+    if (runEnd + 1 < _visCount) {
       tft.drawLine(x1 - 1, TAPE_TOP, x1 - 1, TAPE_BOTTOM, TFT_DARK_GREY);
     }
     runStart = runEnd + 1;
@@ -719,13 +745,21 @@ void drawStaticMain(KCM_TFT &tft) {
   drawAxis(tft);
   resetDrawCaches();
   resetAllSampling();   // slots may have been reordered by the sort above
+  _visCount = buildVisible(_vis);
+
+  if (_visCount == 0) {
+    textCenter(tft, &Roboto_Black_24, METER_X0, TAPE_TOP, METER_AREA_W, TAPE_H,
+               slotCount ? "NO SELECTED RESOURCE ABOARD" : "NO RESOURCES SELECTED",
+               TFT_GREY, TFT_BLACK);
+    return;
+  }
 
   const MeterStyle &st = meterStyle();
   drawGroupBands(tft, st);
 
-  for (uint8_t i = 0; i < slotCount; i++) {
-    if (slots[i].type == RES_NONE) continue;
-    MeterGeom g = meterGeom(st, i);
+  for (uint8_t k = 0; k < _visCount; k++) {
+    uint8_t i = _vis[k];
+    MeterGeom g = meterGeom(st, k);
     drawBands(tft, g, slots[i].type);
     drawTicks(tft, st, g);
     drawFrame(tft, st, g, 0);
@@ -746,10 +780,21 @@ void updateScreenMain(KCM_TFT &tft) {
     redrawTteButton(tft);
   }
 
+  // Presence changed since the chrome was drawn: the row is laid out again.
+  {
+    uint8_t fresh[MAX_SLOTS];
+    uint8_t n = buildVisible(fresh);
+    if (n != _visCount || memcmp(fresh, _vis, n) != 0) {
+      drawStaticMain(tft);
+      return;
+    }
+  }
+  if (_visCount == 0) return;
+
   const MeterStyle &st = meterStyle();
 
-  for (uint8_t i = 0; i < slotCount; i++) {
-    if (slots[i].type == RES_NONE) continue;
+  for (uint8_t k = 0; k < _visCount; k++) {
+    uint8_t i = _vis[k];
     ResourceSlot &s = slots[i];
     MeterCache   &c = _mc[i];
 
@@ -797,7 +842,7 @@ void updateScreenMain(KCM_TFT &tft) {
 
     if (!levelChanged && !markChanged && !counterChanged && !trendChanged && !unitsChanged && !bugChanged) continue;
 
-    MeterGeom g = meterGeom(st, i);
+    MeterGeom g = meterGeom(st, k);
 
     if (bugChanged) {
       c.bug = s.bug;
@@ -838,13 +883,14 @@ void updateScreenMain(KCM_TFT &tft) {
 ****************************************************************************************/
 int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
   const MeterStyle &st = meterStyle();
-  if (slotCount == 0) return -1;
+  if (_visCount == 0) return -1;
   uint16_t x0 = pitchX(st, 0);
   uint16_t pitch = meterPitch();
-  uint16_t x1 = pitchX(st, slotCount - 1) + pitch;
+  uint16_t x1 = pitchX(st, _visCount - 1) + pitch;
   if (x < x0 || x >= x1) return -1;
-  int8_t i = (int8_t)((x - x0) / pitch);
-  if (i >= (int8_t)slotCount || slots[i].type == RES_NONE) return -1;
+  uint8_t k = (uint8_t)((x - x0) / pitch);
+  if (k >= _visCount) return -1;
+  int8_t i = (int8_t)_vis[k];
   if (y >= TAPE_TOP && y < TAPE_BOTTOM) {
     onTape = true;
     level  = (float)((TAPE_BOTTOM - 1) - y) / (float)TAPE_INNER_H;

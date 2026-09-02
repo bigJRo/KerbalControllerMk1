@@ -82,29 +82,30 @@ struct PresetGroup {
   uint8_t      count;
 };
 
+// Everything in a preset should be aboard the craft type it names; a resource the
+// vessel turns out not to carry is skipped at load time (see loadPreset) and would
+// draw no meter anyway. Nine or fewer keeps the standard meter class.
 static const PresetGroup PRESETS[PRESET_COUNT] = {
-  { "STD", {   // Standard Resource Group
+  { "SPCT", {   // Spacecraft: stock launch-to-orbit set
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
       RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
     }, 9 },
-  { "XPD", {   // Expedition Craft Resource Group
+  { "XPD", {    // Expedition: nuclear / hydrogen deep-space craft
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
       RES_LIQUID_H2, RES_ENRICHED_URANIUM, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 9 },
-  { "VEH", {   // Vehicle Resource Group
-      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX,
-      RES_MONO_PROP, RES_SOLID_FUEL, RES_XENON, RES_ORE, RES_ABLATOR,
-      RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,
-      RES_ENRICHED_URANIUM, RES_DEPLETED_URANIUM, RES_FERTILIZER
-    }, 15 },
-  { "LSP", {   // Life Support Resource Group
+  { "SRF", {    // Surface: rover, lander, ISRU base
+      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_ORE, RES_LIQUID_FUEL, RES_LIQUID_OX,
+      RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 9 },
+  { "LSP", {    // Life support: everything TAC-LS
       RES_ELEC_CHARGE, RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD,
       RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE, RES_FERTILIZER
     }, 8 },
-  { "AIR", {   // Aircraft Resource Group
-      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_INTAKE_AIR,
+  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPCT plus Intake Air.
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_INTAKE_AIR,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
-    }, 8 },
+    }, 7 },
   { "ADV", {   // Advanced Resource Group
       RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_XENON, RES_ORE,
       RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,
@@ -131,6 +132,7 @@ static bool isSelected(ResourceType t) {
 ****************************************************************************************/
 static bool addResource(ResourceType t) {
   if (t == RES_EVA_PROP && !evaActive) return false;   // EVA fuel only exists on EVA
+  if (resAbsent(t)) return false;                       // the vessel does not carry it
   if (slotCount >= MAX_SLOTS) return false;
   slots[slotCount].type = t;
   initSlotValues(slots[slotCount]);   // 0 live / visible demo values
@@ -169,6 +171,7 @@ static void loadPreset(uint8_t presetIndex) {
   slotCount = 0;
   const PresetGroup &pg = PRESETS[presetIndex];
   for (uint8_t i = 0; i < pg.count && slotCount < MAX_SLOTS; i++) {
+    if (resAbsent(pg.types[i])) continue;   // not aboard this vessel
     slots[slotCount].type = pg.types[i];
     initSlotValues(slots[slotCount]);
     slotCount++;
@@ -201,8 +204,9 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
   btn.text               = resFullName(t);
 
   // On EVA the selection is locked to the EVA bar set — every other resource is
-  // drawn dimmed and inert (tap handler ignores it).
-  if (evaActive && !isEvaResource(t)) {
+  // drawn dimmed and inert (tap handler ignores it). A resource the vessel is known
+  // not to carry is drawn the same way: there is nothing to show for it.
+  if ((evaActive && !isEvaResource(t)) || resAbsent(t)) {
     btn.fontColorOff = btn.fontColorOn = TFT_DARK_GREY;
     btn.backgroundColorOff = btn.backgroundColorOn = TFT_OFF_BLACK;
     btn.borderColorOff = btn.borderColorOn = TFT_DARK_GREY;
@@ -306,7 +310,9 @@ static void drawOrderPanel(KCM_TFT &tft) {
     tft.print(numStr);
 
     if (filled) {
-      uint16_t col = resColor(slots[i].type);
+      // A selected resource the vessel does not carry keeps its place in the list
+      // but shows dimmed: it draws no meter until the vessel has some.
+      uint16_t col = resAbsent(slots[i].type) ? TFT_DARK_GREY : resColor(slots[i].type);
       tft.fillRect(PANEL_X + 22, ry + 1, PANEL_W - 24, rowH - 3, col);
       tft.setTextColor(TFT_BLACK, col);
       tft.setCursor(PANEL_X + 25, ry + (rowH - 12) / 2);
@@ -412,6 +418,7 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
         ResourceType t = resTypeByIndex(i);
         if (t == RES_NONE) return false;
         if (t == RES_EVA_PROP) return false;   // EVA Propellant only exists on EVA (grid locked then)
+        if (resAbsent(t)) return false;        // inert: the vessel does not carry it
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {

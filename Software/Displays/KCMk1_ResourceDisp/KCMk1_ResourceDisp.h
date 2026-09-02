@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 4;   // 3.4.0: alert strip, reserve bugs, balance, rate rows
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.4.1: resource palette audit
+static const uint8_t SKETCH_VERSION_MINOR = 5;   // 3.5.0: presence-driven collapse, presets, time cautions
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -78,6 +78,24 @@ enum ResourceType : uint8_t {
 
 // Number of selectable resource types (excludes RES_NONE)
 static const uint8_t RESOURCE_TYPE_COUNT = (uint8_t)RES_COUNT - 1;
+
+
+/***************************************************************************************
+   RESOURCE PRESENCE
+   Whether the current vessel carries each resource. The Simpit plugin sends a
+   resource message with total = 0 and available = 0 when the vessel has no such
+   resource (it is not in ARP's vessel resource table), and a channel request forces
+   that message even when nothing changed -- so after a refresh, a zero total is a
+   definitive "not aboard", not a missing answer. Unknown until the first message
+   since the last refresh; a channel that never answers (mod not installed) becomes
+   absent when the refresh times out.
+   An absent resource draws no meter and is inert on the Select screen.
+****************************************************************************************/
+enum ResPresence : uint8_t { PRES_UNKNOWN = 0, PRES_PRESENT, PRES_ABSENT };
+extern uint8_t resPresence[];              // indexed by ResourceType
+bool resAbsent(ResourceType t);            // true only once known absent (never in demo)
+void resetResourcePresence();              // all unknown -- on every refresh request
+void noteResourcePresence(ResourceType t, float available, float total);
 
 
 /***************************************************************************************
@@ -256,6 +274,8 @@ ResLimits      resLimits(ResourceType t);      // caution/alarm bands for the me
 // with hysteresis against the previously drawn state.
 uint8_t        alertState(ResourceType t, float level, float bug, uint8_t prev);
 static const uint8_t ALERT_NOMINAL = 0, ALERT_CAUTION = 1, ALERT_ALARM = 2, ALERT_BUG = 3;
+uint8_t        resOrderIndex(ResourceType t); // canonical position (the Select grid order)
+void           clearAllBugs();               // remove every reserve bug on the vessel
 void           sortSlotsByGroup();             // stable in-place sort of slots[] by resGroup()
 
 // Sampling (Sampling.ino)

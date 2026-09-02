@@ -57,6 +57,7 @@
 ****************************************************************************************/
 static void applyResource(ResourceType t, bool stage, bool mirror, float avail, float total) {
   uint32_t now = millis();
+  if (!stage) noteResourcePresence(t, avail, total);   // vessel messages decide presence
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type != t) continue;
     if (stage) {
@@ -122,6 +123,7 @@ void requestResourceRefresh() {
   if (demoMode) return;
   refreshPending   = true;
   refreshRequestMs = millis();
+  resetResourcePresence();   // every channel is about to answer; start from unknown
   simpit.requestMessageOnChannel(0);
 }
 

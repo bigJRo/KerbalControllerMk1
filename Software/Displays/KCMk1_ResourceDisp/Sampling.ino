@@ -94,7 +94,14 @@ void updateAllSampling() {
         break;
       }
     }
-    if (allAnswered || now - refreshRequestMs > REFRESH_TIMEOUT_MS) refreshPending = false;
+    if (allAnswered || now - refreshRequestMs > REFRESH_TIMEOUT_MS) {
+      refreshPending = false;
+      // A channel that never answered is not going to: the mod behind it is not
+      // installed. Treat it as absent so its meter collapses like any other.
+      for (uint8_t t = 1; t < (uint8_t)RES_COUNT; t++) {
+        if (resPresence[t] == PRES_UNKNOWN) resPresence[t] = PRES_ABSENT;
+      }
+    }
   }
 }
 

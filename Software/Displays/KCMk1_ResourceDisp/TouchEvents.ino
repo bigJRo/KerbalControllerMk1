@@ -25,9 +25,9 @@
                        (a meter touch is deferred until release, the hold matures, or
                         a drag begins; see the hold state below -- the sidebar keys
                         still fire on touch-down)
-                    -> sidebar btn 0 (DFLT)        : reset slots to default (STD preset)
-                    -> sidebar btn 1 (SELECT)      : switch to screen_Select
-                    -> sidebar btn 2 (DETAIL)      : switch to screen_Detail
+                    -> sidebar btn 0 (SELECT)      : switch to screen_Select
+                    -> sidebar btn 1 (DETAIL)      : switch to screen_Detail
+                    -> sidebar btn 2 (CLR BUG)     : remove every reserve bug
                     -> sidebar btn 3 (TTE)         : toggle tteMode (counter row % / time)
      screen_Select  -> resource grid / presets / BACK / CLEAR : handled by handleSelectTouch()
      screen_Detail  -> selector column / BACK      : handled by handleDetailTouch()
@@ -194,24 +194,15 @@ void processTouchEvents() {
       int8_t btn = sidebarHitTest(x2, y2);
       switch (btn) {
         case 0:
-          // DFLT resets to the standard vessel meter set. Disabled on EVA — the EVA
-          // set is fixed while a Kerbal is on EVA.
-          if (evaActive) {
-            if (debugMode) Serial.println(F("ResourceDisp: DFLT ignored (EVA active)"));
-          } else {
-            if (debugMode) Serial.println(F("ResourceDisp: reset slots"));
-            initDefaultSlots();
-            switchToScreen(screen_Main);
-          }
-          clearTouchISR();
-          break;
-        case 1:
           switchToScreen(screen_Select);
           clearTouchISR();
           break;
-        case 2:
+        case 1:
           switchToScreen(screen_Detail);
           clearTouchISR();
+          break;
+        case 2:
+          clearAllBugs();
           break;
         case 3:
           tteMode = !tteMode;

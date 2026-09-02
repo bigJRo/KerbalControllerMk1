@@ -174,8 +174,8 @@ ResourceType resTypeByIndex(uint8_t index) {
 
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Matches the STD preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
-   Called by the DFLT sidebar button and on first boot.
+   Matches the SPCT preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
+   Loaded on first boot; the Select screen's SPCT key loads the same set.
    NOTE: CLEAR on the Select screen bypasses MIN_SLOTS intentionally — this is by
    design so the user can start fresh from slot 1. removeResource() still enforces
    MIN_SLOTS for individual tap-removal.
@@ -199,8 +199,8 @@ void zeroAllSlotValues() {
 
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches STD preset count
-  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
+  slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches SPCT preset count
+  // SPCT preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
   static const ResourceType STD_TYPES[DEFAULT_SLOT_COUNT] = {
     RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
     RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
@@ -373,21 +373,68 @@ uint8_t alertState(ResourceType t, float level, float bug, uint8_t prev) {
 
 
 /***************************************************************************************
-   SORT SLOTS BY GROUP
-   Stable insertion sort of the active slots by resGroup() rank; within a group the
-   existing order (selection order) is kept. Values travel with their slot, so this
-   is safe to call whenever the slot set may have changed. Called by drawStaticMain()
-   so every path onto the Main screen lays the meters out in subsystem order.
+   RESOURCE PRESENCE
 ****************************************************************************************/
+uint8_t resPresence[RES_COUNT];
+
+void resetResourcePresence() {
+  for (uint8_t i = 0; i < (uint8_t)RES_COUNT; i++) resPresence[i] = PRES_UNKNOWN;
+}
+
+void noteResourcePresence(ResourceType t, float available, float total) {
+  if (t == RES_NONE || t >= RES_COUNT) return;
+  resPresence[t] = (total > 0.0f || available > 0.0f) ? PRES_PRESENT : PRES_ABSENT;
+}
+
+bool resAbsent(ResourceType t) {
+  if (demoMode || t == RES_NONE || t >= RES_COUNT) return false;
+  return resPresence[t] == PRES_ABSENT;
+}
+
+
+/***************************************************************************************
+   CANONICAL ORDER
+   A resource's position in the Select grid order, which is also the order meters
+   take within a group: LF always before LOx, whichever was selected first, so a
+   layout is the same on every vessel.
+****************************************************************************************/
+uint8_t resOrderIndex(ResourceType t) {
+  for (uint8_t i = 0; i < RESOURCE_TYPE_COUNT; i++) {
+    if (resTypeByIndex(i) == t) return i;
+  }
+  return RESOURCE_TYPE_COUNT;
+}
+
+
+/***************************************************************************************
+   SORT SLOTS BY GROUP
+   Insertion sort of the active slots by (group rank, canonical order). Values travel
+   with their slot, so this is safe to call whenever the slot set may have changed.
+   Called by drawStaticMain() so every path onto the Main screen lays the meters out
+   the same way, and by the Select screen as slots are added.
+****************************************************************************************/
+static inline uint16_t slotSortKey(ResourceType t) {
+  return ((uint16_t)resGroup(t) << 8) | resOrderIndex(t);
+}
+
 void sortSlotsByGroup() {
   for (uint8_t i = 1; i < slotCount; i++) {
     ResourceSlot key = slots[i];
-    uint8_t rank = (uint8_t)resGroup(key.type);
+    uint16_t rank = slotSortKey(key.type);
     int16_t j = (int16_t)i - 1;
-    while (j >= 0 && (uint8_t)resGroup(slots[j].type) > rank) {
+    while (j >= 0 && slotSortKey(slots[j].type) > rank) {
       slots[j + 1] = slots[j];
       j--;
     }
     slots[j + 1] = key;
   }
+}
+
+
+/***************************************************************************************
+   CLEAR ALL BUGS -- the CLR BUG sidebar key
+****************************************************************************************/
+void clearAllBugs() {
+  for (uint8_t i = 0; i < slotCount; i++) slots[i].bug = -1.0f;
+  if (debugMode) Serial.println(F("ResourceDisp: all bugs cleared"));
 }
