@@ -23,10 +23,13 @@
    code calls evaHitTest / evaLevelAt for the geometry.
 
    Drawing: the driver has no arc primitive but a fast filled circle. An arc is a
-   chain of filled dots of the ring's thickness, spaced closely enough that the edge
-   reads smooth (see arcDots), which gives rounded ends for free. The full track and bands draw once at chrome time; a
-   level change draws only the dots between the old and new end angles, colour going
-   up and track colour coming down, then restores the rounded cap.
+   chain of filled dots of the ring's thickness on a FIXED angular grid, spaced
+   closely enough that the edge reads smooth (see the grid notes below), which gives
+   rounded ends for free. Because every dot, drawn or erased, sits on the same grid,
+   an erase covers exactly what a draw painted and no scallop is left behind. The
+   full track and bands draw once at chrome time; a level change draws only the grid
+   dots between the old and new end, colour going up and track colour coming down,
+   then restores the rounded cap. The bands are thick-line arcs, not dots.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -39,10 +42,11 @@
 ****************************************************************************************/
 static const float    EVA_ARC_START = 135.0f;
 static const float    EVA_ARC_SWEEP = 270.0f;
-static const uint16_t EVA_BAND_GAP  = 6;    // band arc sits this far outside the track
-static const uint16_t EVA_BAND_R    = 2;    // band dot radius
-static const uint16_t EVA_BUG_OUT   = 16;   // bug dot sits this far outside the track
+static const uint16_t EVA_BAND_GAP  = 6;    // band arc centreline sits this far outside the track
+static const uint16_t EVA_BAND_W    = 5;    // band arc stroke width
+static const uint16_t EVA_BUG_OUT   = 16;   // bug dot centre sits this far outside the track
 static const uint16_t EVA_BUG_R     = 5;
+static const uint16_t EVA_BUG_TXT   = 14;   // bug percent text centre sits this far beyond the dot
 
 struct EvaGauge {
   ResourceType type;
@@ -52,27 +56,34 @@ struct EvaGauge {
   const tFont *percFont;
   const tFont *timeFont;
   const tFont *labelFont;
+  const tFont *bugFont;
   bool         big;        // the EVA propellant gauge: units line, larger counter
 };
 
 // Sidebar 84 px and the alert strip 24 px are the Main screen's; the gauges sit in
-// the content area below the strip.
+// the content area below the strip. Each gauge owns a disc out to its bug text
+// (r + thick/2 + EVA_BUG_OUT + EVA_BUG_R + EVA_BUG_TXT + ~10 for the figures):
+// 257 px for the big gauge, 86 px for the small ones. Centres are placed so those
+// discs clear each other, the strip, the sidebar and the screen edge.
 static const uint8_t EVA_GAUGE_COUNT = 5;
 static const EvaGauge EVA_GAUGES[EVA_GAUGE_COUNT] = {
-  { RES_EVA_PROP,    384, 318, 222, 44, &Roboto_Black_72, &Roboto_Black_24, &Roboto_Black_28, true  },
-  { RES_ELEC_CHARGE, 760, 160,  72, 20, &Roboto_Black_28, &Roboto_Black_16, &Roboto_Black_20, false },
-  { RES_LS_OXYGEN,   930, 160,  72, 20, &Roboto_Black_28, &Roboto_Black_16, &Roboto_Black_20, false },
-  { RES_LS_FOOD,     760, 430,  72, 20, &Roboto_Black_28, &Roboto_Black_16, &Roboto_Black_20, false },
-  { RES_LS_WATER,    930, 430,  72, 20, &Roboto_Black_28, &Roboto_Black_16, &Roboto_Black_20, false },
+  { RES_EVA_PROP,    342, 312, 190, 40, &Roboto_Black_72, &Roboto_Black_24, &Roboto_Black_36, &Roboto_Black_16, true  },
+  { RES_ELEC_CHARGE, 715, 170,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_LS_OXYGEN,   905, 170,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_LS_FOOD,     715, 440,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
+  { RES_LS_WATER,    905, 440,  56, 16, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_24, &Roboto_Black_12, false },
 };
 
 // Explicit prototypes: the IDE generates one for every function above the tabs,
 // where EvaGauge is not yet visible, unless the sketch declares it itself.
 static inline void arcPoint(const EvaGauge &g, float radius, float angDeg, int16_t &x, int16_t &y);
-static void  arcDots(KCM_TFT &tft, const EvaGauge &g, float a0, float a1, uint16_t color);
-static void  bandDots(KCM_TFT &tft, const EvaGauge &g, float f0, float f1, uint16_t color);
+static uint16_t gridSteps(const EvaGauge &g);
+static float    gridStepDeg(const EvaGauge &g);
+static int16_t  gridIndex(const EvaGauge &g, float level);
+static void  arcGridDots(KCM_TFT &tft, const EvaGauge &g, int16_t i0, int16_t i1, uint16_t color);
+static void  bandArc(KCM_TFT &tft, const EvaGauge &g, float f0, float f1, uint16_t color);
 static void  drawBands(KCM_TFT &tft, const EvaGauge &g);
-static void  drawBugDot(KCM_TFT &tft, const EvaGauge &g, float bug, uint16_t color);
+static void  drawBug(KCM_TFT &tft, const EvaGauge &g, float bug, bool erase);
 static void  drawEvaCentre(KCM_TFT &tft, const EvaGauge &g, bool hasData, uint8_t state,
                            const char *perc, int8_t trend, const char *tte, const char *units);
 static void  drawEvaLabel(KCM_TFT &tft, const EvaGauge &g);
@@ -86,32 +97,50 @@ static inline void arcPoint(const EvaGauge &g, float radius, float angDeg, int16
   y = (int16_t)lroundf(g.cy + radius * sinf(a));
 }
 
-// Dots along the centreline from a0 to a1 (degrees, a1 >= a0), dot radius half the
-// ring thickness. Spacing sets the edge: neighbouring dots of radius R spaced s
-// apart leave a dip of R - sqrt(R^2 - s^2/4) at the edge, so s = 2*sqrt(R) keeps
-// the dip under half a pixel and the arc reads as a smooth band rather than a
-// string of beads. Half a thickness apart, the obvious choice, scallops visibly.
-static void arcDots(KCM_TFT &tft, const EvaGauge &g, float a0, float a1, uint16_t color) {
-  if (a1 < a0) return;
+// The dot grid. Neighbouring dots of radius R spaced s apart leave an edge dip of
+// R - sqrt(R^2 - s^2/4), so s = 2*sqrt(R) keeps it under half a pixel and the arc
+// reads as a smooth band rather than a string of beads. The sweep is divided into a
+// whole number of such steps, so grid index 0 is the start and index gridSteps() is
+// exactly the end, and every draw and erase uses the same centres.
+static uint16_t gridSteps(const EvaGauge &g) {
   float R = 0.5f * g.thick;
-  float stepDeg = (2.0f * sqrtf(R) / (float)g.r) * RAD_TO_DEG;
-  if (stepDeg < 0.5f) stepDeg = 0.5f;
-  int16_t x, y;
-  for (float a = a0; a < a1; a += stepDeg) {
-    arcPoint(g, g.r, a, x, y);
-    tft.fillCircle(x, y, g.thick / 2, color);
-  }
-  arcPoint(g, g.r, a1, x, y);
-  tft.fillCircle(x, y, g.thick / 2, color);
+  float sDeg = (2.0f * sqrtf(R) / (float)g.r) * RAD_TO_DEG;
+  uint16_t n = (uint16_t)ceilf(EVA_ARC_SWEEP / sDeg);
+  return n < 8 ? 8 : n;
+}
+static float gridStepDeg(const EvaGauge &g) { return EVA_ARC_SWEEP / gridSteps(g); }
+
+// Highest grid index at or below a level, so the arc never overstates it.
+static int16_t gridIndex(const EvaGauge &g, float level) {
+  int16_t i = (int16_t)floorf(level * gridSteps(g) + 0.0001f);
+  return constrain(i, (int16_t)0, (int16_t)gridSteps(g));
 }
 
-// Thin dotted arc for the limit bands, just outside the track.
-static void bandDots(KCM_TFT &tft, const EvaGauge &g, float f0, float f1, uint16_t color) {
-  float radius = g.r + g.thick / 2 + EVA_BAND_GAP;
+// Grid dots i0..i1 inclusive, dot radius half the ring thickness.
+static void arcGridDots(KCM_TFT &tft, const EvaGauge &g, int16_t i0, int16_t i1, uint16_t color) {
+  if (i1 < i0) return;
+  float step = gridStepDeg(g);
   int16_t x, y;
-  for (float a = evaAngle(f0); a <= evaAngle(f1); a += 1.0f) {
+  for (int16_t i = i0; i <= i1; i++) {
+    arcPoint(g, g.r, EVA_ARC_START + i * step, x, y);
+    tft.fillCircle(x, y, g.thick / 2, color);
+  }
+}
+
+// Limit band: a thick-line arc just outside the track, drawn as short chords with
+// round caps so it reads as one solid stroke. A chord every 3 degrees at these
+// radii sags well under a pixel.
+static void bandArc(KCM_TFT &tft, const EvaGauge &g, float f0, float f1, uint16_t color) {
+  float radius = g.r + g.thick / 2 + EVA_BAND_GAP;
+  float a0 = evaAngle(f0), a1 = evaAngle(f1);
+  int16_t px, py, x, y;
+  arcPoint(g, radius, a0, px, py);
+  for (float a = a0 + 3.0f; a < a1 + 2.99f; a += 3.0f) {
+    if (a > a1) a = a1;
     arcPoint(g, radius, a, x, y);
-    tft.fillCircle(x, y, EVA_BAND_R, color);
+    drawThickLine(tft, px, py, x, y, EVA_BAND_W, color, true);
+    px = x; py = y;
+    if (a >= a1) break;
   }
 }
 
@@ -119,18 +148,32 @@ static void drawBands(KCM_TFT &tft, const EvaGauge &g) {
   ResLimits lim = resLimits(g.type);
   if (!lim.enabled) return;
   if (lim.highIsBad) {
-    bandDots(tft, g, lim.warn, lim.alarm, TFT_YELLOW);
-    bandDots(tft, g, lim.alarm, 1.0f, TFT_RED);
+    bandArc(tft, g, lim.warn, lim.alarm, TFT_YELLOW);
+    bandArc(tft, g, lim.alarm, 1.0f, TFT_RED);
   } else {
-    bandDots(tft, g, lim.alarm, lim.warn, TFT_YELLOW);
-    bandDots(tft, g, 0.0f, lim.alarm, TFT_RED);
+    bandArc(tft, g, lim.alarm, lim.warn, TFT_YELLOW);
+    bandArc(tft, g, 0.0f, lim.alarm, TFT_RED);
   }
 }
 
-static void drawBugDot(KCM_TFT &tft, const EvaGauge &g, float bug, uint16_t color) {
+// Reserve bug: a cyan dot outside the bands at the bug's angle, with its percent in
+// cyan figures further outboard along the same radial. erase=true paints the same
+// footprint black; nothing else lives out there, so no repair is needed.
+static void drawBug(KCM_TFT &tft, const EvaGauge &g, float bug, bool erase) {
+  uint16_t col = erase ? TFT_BLACK : TFT_CYAN;
+  float ang = evaAngle(bug);
   int16_t x, y;
-  arcPoint(g, g.r + g.thick / 2 + EVA_BUG_OUT, evaAngle(bug), x, y);
-  tft.fillCircle(x, y, EVA_BUG_R, color);
+  arcPoint(g, g.r + g.thick / 2 + EVA_BUG_OUT, ang, x, y);
+  tft.fillCircle(x, y, EVA_BUG_R, col);
+
+  char pct[5];
+  snprintf(pct, sizeof(pct), "%d", (int)roundf(bug * 100.0f));
+  int16_t tw = getFontStringWidth(g.bugFont, pct);
+  int16_t th = g.bugFont->cap_height;
+  int16_t tx, ty;
+  arcPoint(g, g.r + g.thick / 2 + EVA_BUG_OUT + EVA_BUG_R + EVA_BUG_TXT + tw / 2, ang, tx, ty);
+  if (erase) tft.fillRect(tx - tw / 2 - 2, ty - th / 2 - 2, tw + 4, th + 4, TFT_BLACK);
+  else       textCenter(tft, g.bugFont, tx - tw / 2, ty - th / 2, tw, th, String(pct), col, TFT_BLACK);
 }
 
 
@@ -138,7 +181,7 @@ static void drawBugDot(KCM_TFT &tft, const EvaGauge &g, float bug, uint16_t colo
    PER-GAUGE CACHE
 ****************************************************************************************/
 struct EvaCache {
-  float   level;       // last drawn level; -1 = force (track only)
+  int16_t endIdx;      // grid index of the drawn arc end; -1 = force (track only, nothing lit)
   uint8_t state;       // 255 = force
   bool    hasData;
   bool    timeFlag;
@@ -152,7 +195,7 @@ static EvaCache _ec[EVA_GAUGE_COUNT];
 
 static void resetEvaCaches() {
   for (uint8_t k = 0; k < EVA_GAUGE_COUNT; k++) {
-    _ec[k].level = -1.0f; _ec[k].state = 255; _ec[k].hasData = false; _ec[k].timeFlag = false;
+    _ec[k].endIdx = -1; _ec[k].state = 255; _ec[k].hasData = false; _ec[k].timeFlag = false;
     _ec[k].trend = 127;   _ec[k].bug = -2.0f;
     _ec[k].perc[0] = 1;   _ec[k].perc[1] = '\0';
     _ec[k].tte[0]  = 1;   _ec[k].tte[1]  = '\0';
@@ -192,14 +235,14 @@ static void drawEvaCentre(KCM_TFT &tft, const EvaGauge &g, bool hasData, uint8_t
   uint16_t back  = alarm ? TFT_RED : TFT_BLACK;
   int16_t  capH  = g.percFont->cap_height;
   int16_t  timeH = g.timeFont->cap_height;
-  int16_t  arrowW = g.big ? 18 : 10, arrowH = g.big ? 11 : 6;
+  int16_t  arrowW = g.big ? 18 : 9, arrowH = g.big ? 11 : 5;
   int16_t  gapW  = getFontStringWidth(g.percFont, "  ");
   int16_t  textW = getFontStringWidth(g.percFont, perc);
   int16_t  groupW = textW + gapW + arrowW;
 
   // Rows: percent, time, (units) stacked and centred on cy
   int16_t rows = g.big ? 3 : 2;
-  int16_t rowGap = g.big ? 10 : 6;
+  int16_t rowGap = g.big ? 10 : 4;
   int16_t totalH = capH + rowGap + timeH + (g.big ? rowGap + g.timeFont->cap_height : 0);
   int16_t y = g.cy - totalH / 2;
   int16_t gx = g.cx - groupW / 2;
@@ -225,7 +268,7 @@ static void drawEvaCentre(KCM_TFT &tft, const EvaGauge &g, bool hasData, uint8_t
 static void drawEvaLabel(KCM_TFT &tft, const EvaGauge &g) {
   int16_t h = g.labelFont->cap_height;
   int16_t y = g.cy + g.r - h / 2;
-  textCenter(tft, g.labelFont, g.cx - g.r / 2, y, g.r, h, resLabel(g.type), resColor(g.type), TFT_BLACK);
+  textCenter(tft, g.labelFont, g.cx - g.r, y, g.r * 2, h, resLabel(g.type), resColor(g.type), TFT_BLACK);
 }
 
 
@@ -237,7 +280,7 @@ void drawStaticEVA(KCM_TFT &tft) {
   stripReset();
   for (uint8_t k = 0; k < EVA_GAUGE_COUNT; k++) {
     const EvaGauge &g = EVA_GAUGES[k];
-    arcDots(tft, g, EVA_ARC_START, EVA_ARC_START + EVA_ARC_SWEEP, dimColor(resColor(g.type)));
+    arcGridDots(tft, g, 0, gridSteps(g), dimColor(resColor(g.type)));
     drawBands(tft, g);
     drawEvaLabel(tft, g);
   }
@@ -286,7 +329,8 @@ void updateScreenEVA(KCM_TFT &tft) {
       fmtUnits(cur, units, sizeof(units));
     }
 
-    bool levelChanged = fabsf(level - c.level) >= BAR_LEVEL_HYSTERESIS;
+    int16_t endIdx = hasData ? gridIndex(g, level) : 0;
+    bool levelChanged = (endIdx != c.endIdx);
     bool stateChanged = (state != c.state) || (hasData != c.hasData) || (timeFlag != c.timeFlag);
     bool textChanged  = stateChanged || strcmp(perc, c.perc) != 0 || strcmp(tte, c.tte) != 0 ||
                         strcmp(units, c.units) != 0 || smp.trend != c.trend;
@@ -294,20 +338,25 @@ void updateScreenEVA(KCM_TFT &tft) {
                         (s.bug >= 0.0f && fabsf(s.bug - c.bug) > 0.0001f);
 
     if (bugChanged) {
-      if (c.bug >= 0.0f) drawBugDot(tft, g, c.bug, TFT_BLACK);
-      if (s.bug >= 0.0f) drawBugDot(tft, g, s.bug, TFT_CYAN);
+      if (c.bug >= 0.0f) drawBug(tft, g, c.bug, true);
+      if (s.bug >= 0.0f) drawBug(tft, g, s.bug, false);
       c.bug = s.bug;
     }
     if (levelChanged) {
-      float prev = (c.level < 0.0f) ? 0.0f : c.level;
+      // Lit dots are grid 1..endIdx (index 0 is the start cap, lit only when the
+      // arc has any length). Going up paints the new ones in colour; going down
+      // repaints the dropped ones in track colour, then relights the new end dot so
+      // its rounded cap is whole again where the erasing neighbour overlapped it.
+      int16_t prev = (c.endIdx < 0) ? 0 : c.endIdx;
       uint16_t col = resColor(s.type), dimc = dimColor(col);
-      if (level > prev) {
-        arcDots(tft, g, evaAngle(prev), evaAngle(level), col);
-      } else if (level < prev) {
-        arcDots(tft, g, evaAngle(level), evaAngle(prev), dimc);
-        if (level > 0.0f) arcDots(tft, g, evaAngle(level), evaAngle(level), col);   // restore the cap
+      if (endIdx > prev) {
+        arcGridDots(tft, g, (prev == 0) ? 0 : prev + 1, endIdx, col);
+      } else if (endIdx < prev) {
+        arcGridDots(tft, g, endIdx + 1, prev, dimc);
+        if (endIdx > 0) arcGridDots(tft, g, endIdx, endIdx, col);
+        else            arcGridDots(tft, g, 0, 0, dimc);
       }
-      c.level = level;
+      c.endIdx = endIdx;
     }
     if (textChanged) {
       c.state = state; c.hasData = hasData; c.timeFlag = timeFlag; c.trend = smp.trend;
@@ -339,7 +388,7 @@ int8_t evaHitTest(uint16_t x, uint16_t y, bool &onRing, float &level) {
     const EvaGauge &g = EVA_GAUGES[k];
     float dx = (float)x - g.cx, dy = (float)y - g.cy;
     float d  = sqrtf(dx * dx + dy * dy);
-    float outer = g.r + g.thick / 2 + EVA_BUG_OUT + EVA_BUG_R + 4;
+    float outer = g.r + g.thick / 2 + EVA_BUG_OUT + EVA_BUG_R + EVA_BUG_TXT;
     float innerRing = g.r - g.thick / 2 - 8;
     if (d > outer) continue;
     int8_t si = evaSlotOf(g.type);
