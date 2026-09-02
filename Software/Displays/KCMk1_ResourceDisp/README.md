@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.2.1
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.3.0
 Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -10,7 +10,7 @@ Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1
 
 The Resource Display is a 1024×600 touchscreen panel that presents real-time KSP resource telemetry sourced from KerbalSimpit. It runs on a Teensy 4.1 and receives telemetry over USB serial from a running KSP instance. The panel tracks up to 16 resource slots simultaneously and supports per-vessel configuration memory for up to 20 vessels per session.
 
-The panel provides four screens — Standby, Main, Select, and Detail — navigated by touch. The Main screen is the primary operational view, displaying resource levels as a bar graph. The Select screen allows the user to configure which resources are monitored and load preset configurations. The Detail screen provides a numerical breakdown of a single resource by craft and stage values.
+The panel provides four screens — Standby, Main, Select, and Detail — navigated by touch. The Main screen is the primary operational view, displaying resource levels as a row of Shuttle-style tape meters grouped by subsystem. The Select screen allows the user to configure which resources are monitored and load preset configurations. The Detail screen provides a numerical breakdown of a single resource by craft and stage values.
 
 ---
 
@@ -116,12 +116,16 @@ Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants
 | `debugMode` | `AAA_Config.ino` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
 | `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
 | `DISPLAY_ROTATION` | `AAA_Config.ino` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
-| `LOW_RES_THRESHOLD` | `AAA_Config.ino` | `20` | Reserved / currently unused. Bars always render in the resource's designated colour regardless of level; low-resource warning is shown only by the percentage-text colour (fixed 10% critical / 30% caution thresholds). |
+| `RES_WARN_FRAC` | `AAA_Config.ino` | `KCM_RES_LOW_WARN_FRAC` (0.20) | Caution (yellow) band: a consumable meter alerts below this fraction of capacity. Aliases the cross-panel constant so it matches the Annunciator PROP LOW / RCS LOW tier. |
+| `RES_ALARM_FRAC` | `AAA_Config.ino` | `KCM_EC_LOW_ALARM_FRAC` (0.05) | Alarm (red) band: a consumable meter alerts below this fraction. Aliases the cross-panel constant so it matches the Annunciator red tier. |
+| `WASTE_WARN_FRAC` / `WASTE_ALARM_FRAC` | `AAA_Config.ino` | `0.80` / `0.95` | Waste-type meters (CO2, Waste, Liquid Waste, Depleted Fuel) alert on filling up, at these fractions full. Match the Annunciator `TACLS_WASTE_*` fractions; keep in step by hand, there is no shared define yet. |
+| `TREND_WINDOW_MS` | `AAA_Config.ino` | `2000` | Trend-arrow sample window. Each meter compares its value against the value at the start of the window. |
+| `TREND_MIN_FRAC` | `AAA_Config.ino` | `0.0005` | Movement across one window, as a fraction of capacity, needed to show a rising/falling arrow. Keeps the arrow quiet on per-message jitter. |
 | `MIN_SLOTS` | `KCMk1_ResourceDisp.h` | `4` | Minimum number of active resource slots (enforced by `removeResource`). |
 | `MAX_SLOTS` | `KCMk1_ResourceDisp.h` | `16` | Maximum number of active resource slots. |
 | `DEFAULT_SLOT_COUNT` | `KCMk1_ResourceDisp.h` | `9` | Number of slots loaded by `initDefaultSlots()` (STD preset). |
 | `VESSEL_CACHE_SIZE` | `KCMk1_ResourceDisp.h` | `20` | Maximum number of per-vessel slot configurations held in session RAM. |
-| `BAR_LEVEL_HYSTERESIS` | `0.002` | Minimum fractional resource level change required to trigger a bar redraw (0.2%). Prevents constant SPI traffic from small Simpit fluctuations. |
+| `BAR_LEVEL_HYSTERESIS` | `AAA_Config.ino` | `0.002` | Minimum fractional level change required to redraw a tape fill or its secondary marker (0.2%). Prevents constant bus traffic from small Simpit fluctuations. |
 
 ---
 
@@ -182,7 +186,19 @@ Size: **2 bytes**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission
 
 **Standby** — full-screen BMP splash (`/StandbySplash_1024x600.bmp` from SD card). Displayed on boot and whenever the panel is not in an active KSP flight scene. In live mode, `SCENE_CHANGE_MESSAGE` entering flight transitions to Main automatically. In demo mode, any touch advances to Main.
 
-**Main** — primary operational view. Displays resource bars for all active slots in a left-to-right bar graph with a left-hand sidebar. Sidebar keys are achromatic — white-on-black with a grey border — so the panel's colour budget belongs entirely to the bars and their level thresholds; the TOTL/STG mode key reverse-videos in STAGE to show it has moved off the default. See the InfoDisp README for the full rationale. Bar height represents the fraction of maximum capacity. Bars always render in the resource's designated colour regardless of level; the percentage label above each bar is coloured by level instead (white > 30%, yellow 11–30% caution, red 0–10% critical). A vertical percentage axis (0–100%) is drawn along the content's left edge, just inboard of the sidebar.
+**Main** — primary operational view: one vertical tape meter per active slot, laid out the way the Shuttle's F7/O3 panel meters were, with a left-hand sidebar. Sidebar keys are achromatic — white-on-black with a grey border — so the panel's colour budget belongs entirely to the meters, their limit bands and their alert states; the TOTL/STG mode key reverse-videos in STAGE to show it has moved off the default. See the InfoDisp README for the full rationale. A shared 0–100% axis sits just inboard of the sidebar.
+
+Each meter, top to bottom:
+
+- **Group label.** Meters are laid out in subsystem order — PWR, PROP, NUC, MISC, LS, AGR — with a bracketed label over each run and a 1 px divider between runs. The ordering is applied to the slot list itself on every entry to the Main screen (`sortSlotsByGroup()`), so the Detail selector and the Select order list agree with the meters. Within a group, selection order is kept.
+- **The tape.** A narrow thermometer column, filled in the resource's fixed colour to the *primary* value (vessel total in TOTL, active stage in STG). On its left is a **limit-band column** with the resource's alarm and caution fractions painted red and yellow on the scale, visible whether or not the level is in them. Consumables band at the bottom (below `RES_WARN_FRAC` / `RES_ALARM_FRAC`); waste-type resources band at the top (above `WASTE_WARN_FRAC` / `WASTE_ALARM_FRAC`); Ore and Intake Air have no bands. Tick marks on the right edge: major every 10%, minor every 5%. The frame is grey when nominal and turns yellow or red on breach.
+- **Secondary marker.** For the five resources with a separate stage channel (LF, LOx, SF, Xenon, Ablator), a white line across the tape with a caret in the gutter marks the *other* value — stage in TOTL, total in STG — so both are always visible and the mode key only chooses which one the fill and counter follow.
+- **Label**, then the **percent counter**, coloured by state: white nominal, yellow caution, white-on-red alarm. A **trend arrow** in a cell to its right shows rising or falling while the value moves more than `TREND_MIN_FRAC` of capacity per `TREND_WINDOW_MS` window.
+- **Units counter**: the raw resource amount, compacted to fit (1.23 / 12.3 / 123 / 1234 / 12.3k).
+
+A slot whose capacity is zero — the resource is not aboard — shows `---` in grey with an empty tape and no alert, rather than a 0% alarm.
+
+**Fixed pitch.** Meters sit at a constant pitch, left-anchored, so a meter's position depends only on the meters before it, never on how many follow: `PITCH_STD` (890/9 = 98 px) for up to nine meters, `PITCH_CMP` (890/16 = 55 px) for ten to sixteen, with fonts and tape width stepping down in the compact class.
 
 Sidebar buttons:
 - **TOTL / STG** — toggles between vessel-total and active-stage values
@@ -194,7 +210,7 @@ Sidebar buttons:
 
 **Detail** — numerical readout for a single resource. Left panel: selector column with one button per active slot. Right panel: resource name header, followed by data rows. Resources with stage data (LF, LOx, SF, Xenon, Ablator) show six rows in CRAFT and STAGE sections. Resources without stage data show three rows in CRAFT only.
 
-**EVA Mode** — when KerbalSimpit's `FLIGHT_STATUS_MESSAGE` reports a Kerbal on EVA (the `FLIGHT_IS_EVA` flag), the Main screen switches to a fixed five-bar set — **Electric Charge, EVA Propellant, Oxygen, Food, Water** — and the previous vessel configuration is snapshotted and restored automatically when the Kerbal boards again. While on EVA the Select grid, presets, CLEAR and DFLT are locked so no other resources can be added. **EVA Propellant** is only shown/selectable while on EVA; off-EVA its grid cell is blank and inert.
+**EVA Mode** — when KerbalSimpit's `FLIGHT_STATUS_MESSAGE` reports a Kerbal on EVA (the `FLIGHT_IS_EVA` flag), the Main screen switches to a fixed five-meter set — **Electric Charge, EVA Propellant, Oxygen, Food, Water** — and the previous vessel configuration is snapshotted and restored automatically when the Kerbal boards again. While on EVA the Select grid, presets, CLEAR and DFLT are locked so no other resources can be added. **EVA Propellant** is only shown/selectable while on EVA; off-EVA its grid cell is blank and inert.
 
 ### Resource Slots
 
@@ -225,8 +241,8 @@ Slot configurations are saved per vessel name in `vesselCache[]` (up to `VESSEL_
 | `KCMk1_ResourceDisp.ino` | `setup()` and `loop()` only |
 | `AAA_Config.ino` | All tunable constants (thresholds, modes, slot config) |
 | `AAA_Globals.ino` | `ResourceSlot` struct, display objects, Simpit object, screen state, vessel cache helpers |
-| `Resources.ino` | Resource type definitions, colour map, slot initialisation |
-| `ScreenMain.ino` | Main bar graph screen with 4-button left-hand sidebar |
+| `Resources.ino` | Resource type definitions, colour map, subsystem groups, limit-band table, slot initialisation and group sort |
+| `ScreenMain.ino` | Main tape-meter screen with 4-button left-hand sidebar |
 | `ScreenSelect.ino` | Resource selection screen (grid + presets + order panel) |
 | `ScreenDetail.ino` | Numerical resource detail screen (craft/stage values per resource) |
 | `ScreenStandby.ino` | Standby screen — delegates to `drawStandbySplash()` |
@@ -258,6 +274,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.3.0** | **Tape meters replace the bar chart.** The filled bars' only warning was the percentage label changing colour — a 12 px target at sixteen bars — and the limits were invisible until crossed. Each slot is now a Shuttle-style tape meter: a narrow thermometer column with the resource's caution and alarm fractions painted as a red/yellow **limit band on the scale itself**, tick marks every 5%, and a frame that takes the alert colour on breach. Thresholds come from a per-resource table (`resLimits()`): consumables alert low at the cross-panel `KCM_RES_LOW_WARN_FRAC` / `KCM_EC_LOW_ALARM_FRAC` fractions, so a meter goes yellow and red where the Annunciator does (previously a fixed 30/10 that matched nothing); waste-type resources (CO2, Waste, Liquid Waste, Depleted Fuel) alert on filling up at the Annunciator's 80/95; Ore and Intake Air have no bands. **Stage is no longer hidden behind the toggle**: resources with a stage channel carry a white marker at the secondary value, so TOTL/STG now chooses which value the fill and counter follow rather than which one you can see. Each meter gained a **units counter** and a **trend arrow** beside the percent counter (the DATA screen was the only place with real numbers, and 50% of a small monopropellant tank is a few units). Alarm is now white-on-red across the counter cell, the InfoDisp/Annunciator alarm treatment. Meters sit at a **fixed pitch**, left-anchored, in **subsystem order** with a bracketed group label and a divider between groups; the sort is applied to the slot list on entry to Main so Detail and the Select order list agree. A slot with zero capacity shows `---` in grey rather than a 0% alarm. `LOW_RES_THRESHOLD` (reserved, unused) is removed. |
 | **3.0.1** | Audit batch C: EVA-mode state reset on EVA exit (stale bars no longer persist into the next vessel), duplicate-logic consolidation, and dead-code cleanup. Built against KerbalDisplayCommon 3.1.2. |
 | **3.2.1** | **A panel booting into a running flight no longer sits on standby.** `flightScene` was only ever set by `SCENE_CHANGE_MESSAGE`, which Simpit sends as an *event* — there is no way to ask for the current scene. A panel that boots (or whose USB re-enumerates) while a flight is already running therefore never hears it and sits on the standby screen until the pilot happens to change scene or vessel. Since Simpit sends `FLIGHT_STATUS` only from a flight scene, receiving it while the panel believes it is not in one is proof that the transition was missed, so the panel now adopts the scene there. Both routes go through one new `enterFlightScene()` so they cannot drift apart. The hook sits at the end of the `FLIGHT_STATUS` handler rather than earlier, so the message's own vessel data is already applied, and the slot zero + channel refresh the scene entry already did now run on both routes. Shared with the InfoDisp and Annunciator, which had the same defect. |
 | **3.2.0** | **Sidebar moved to the left edge.** On panel B1 this display sits outboard of Info Display 2, whose own sidebar is on its right edge, so the two button columns previously sat a full screen-width apart with this one at B1's outboard corner — the longest reach on the panel. They now meet at the boundary between the two screens and read as one control cluster near the middle of B1. Content occupies `[CONTENT_X, SCREEN_W)`: the Y-axis strip first, then the bars. Everything downstream already derived from `barX()` and `drawAxis()`, so the offset is stated once; `sbDivX()` puts the 1 px divider rule on the sidebar's inboard edge, against the content. Verified for every slot count from 1 to 16 that the bars stay clear of both the axis and the sidebar and inside the right edge. The Select and Detail screens have no sidebar and are unchanged — their BACK keys stay in the top-right corner. |
@@ -274,7 +291,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 - **`debugMode`** defaults to `false`. Set `true` during development for touch coordinates and Simpit message logging.
 - **`demoMode`** defaults to `false` (live Simpit). Set `true` for bench testing without KSP.
-- **ARP mod** is required for most resource channels. Without it, bars remain at zero.
+- **ARP mod** is required for most resource channels. Without it, meters show `---` (no capacity reported).
 - **Stage data** is only available for resources with dedicated Simpit stage channels (LF, LOx, SF, Xenon, Ablator). All others mirror vessel totals in the STAGE section and suppress it on the Detail screen.
 - **Vessel cache eviction** — when `VESSEL_CACHE_SIZE` is exceeded, the last cache entry (index `VESSEL_CACHE_SIZE - 1`) is overwritten (simple last-slot eviction). No LRU tracking.
 

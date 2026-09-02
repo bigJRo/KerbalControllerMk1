@@ -234,3 +234,101 @@ void initAllSlots() {
     slotCount++;
   }
 }
+
+
+/***************************************************************************************
+   RESOURCE SUBSYSTEM GROUP
+   Drives the Main screen's meter order and group labels. Same grouping as the
+   Select grid, so a resource sits under the same heading on both screens.
+****************************************************************************************/
+ResGroup resGroup(ResourceType t) {
+  switch (t) {
+    case RES_ELEC_CHARGE:
+    case RES_STORED_CHARGE:     return GRP_POWER;
+    case RES_LIQUID_FUEL:
+    case RES_LIQUID_OX:
+    case RES_SOLID_FUEL:
+    case RES_MONO_PROP:
+    case RES_EVA_PROP:
+    case RES_XENON:
+    case RES_LIQUID_H2:
+    case RES_LIQUID_METHANE:
+    case RES_LITHIUM:
+    case RES_INTAKE_AIR:        return GRP_PROP;
+    case RES_ENRICHED_URANIUM:
+    case RES_DEPLETED_URANIUM:  return GRP_NUCLEAR;
+    case RES_ORE:
+    case RES_ABLATOR:           return GRP_MISC;
+    case RES_LS_OXYGEN:
+    case RES_LS_CO2:
+    case RES_LS_FOOD:
+    case RES_LS_WASTE:
+    case RES_LS_WATER:
+    case RES_LS_LIQUID_WASTE:   return GRP_LIFE;
+    case RES_FERTILIZER:        return GRP_AGRI;
+    default:                    return GRP_MISC;
+  }
+}
+
+// Short enough to fit over a single compact-pitch meter in Roboto_Black_12.
+const char* resGroupLabel(ResGroup g) {
+  switch (g) {
+    case GRP_POWER:   return "PWR";
+    case GRP_PROP:    return "PROP";
+    case GRP_NUCLEAR: return "NUC";
+    case GRP_MISC:    return "MISC";
+    case GRP_LIFE:    return "LS";
+    case GRP_AGRI:    return "AGR";
+    default:          return "";
+  }
+}
+
+
+/***************************************************************************************
+   RESOURCE LIMIT BANDS
+   Which resources alert, in which direction, and at what fractions. The two tiers
+   come from AAA_Config.ino (generic: cross-panel aligned with the Annunciator;
+   waste: fraction full).
+     - Consumables (power, propellants, nuclear fuel, ablator, O2/food/water,
+       fertilizer): alert on running LOW.
+     - Waste products (CO2, Waste, Liquid Waste, Depleted Fuel): alert on filling UP.
+     - Ore and Intake Air: no bands. Ore is cargo with no operational floor, and
+       intake air is a flow that tracks airspeed rather than a stock that depletes.
+****************************************************************************************/
+ResLimits resLimits(ResourceType t) {
+  switch (t) {
+    case RES_ORE:
+    case RES_INTAKE_AIR:
+      return { 0.0f, 0.0f, false, false };
+    case RES_LS_CO2:
+    case RES_LS_WASTE:
+    case RES_LS_LIQUID_WASTE:
+    case RES_DEPLETED_URANIUM:
+      return { WASTE_WARN_FRAC, WASTE_ALARM_FRAC, true, true };
+    case RES_NONE:
+      return { 0.0f, 0.0f, false, false };
+    default:
+      return { RES_WARN_FRAC, RES_ALARM_FRAC, false, true };
+  }
+}
+
+
+/***************************************************************************************
+   SORT SLOTS BY GROUP
+   Stable insertion sort of the active slots by resGroup() rank; within a group the
+   existing order (selection order) is kept. Values travel with their slot, so this
+   is safe to call whenever the slot set may have changed. Called by drawStaticMain()
+   so every path onto the Main screen lays the meters out in subsystem order.
+****************************************************************************************/
+void sortSlotsByGroup() {
+  for (uint8_t i = 1; i < slotCount; i++) {
+    ResourceSlot key = slots[i];
+    uint8_t rank = (uint8_t)resGroup(key.type);
+    int16_t j = (int16_t)i - 1;
+    while (j >= 0 && (uint8_t)resGroup(slots[j].type) > rank) {
+      slots[j + 1] = slots[j];
+      j--;
+    }
+    slots[j + 1] = key;
+  }
+}

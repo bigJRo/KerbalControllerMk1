@@ -45,13 +45,34 @@ const uint8_t DISPLAY_ROTATION = 0;
 
 
 /***************************************************************************************
-   LOW RESOURCE THRESHOLD
-   Reserved / currently unused. Bars now always render in their designated
-   resource color regardless of level; low-resource warning is shown only by the
-   percentage text color (fixed 10% critical / 30% caution thresholds in
-   ScreenMain). Kept for a possible future low-level cue.
+   RESOURCE LIMIT BANDS
+   The caution (yellow) and alarm (red) fractions painted on every tape meter's limit
+   band, and used to colour its counter and frame. Per-resource assignment is the
+   resLimits() table in Resources.ino; these are the two tiers it draws from.
+
+   The generic tiers alias the cross-panel constants in KCMk1_SystemConfig.h so a
+   meter here goes yellow at the same fraction the Annunciator lights PROP LOW / RCS
+   LOW, and red at the fraction it lights BUS VOLTAGE / the propellant red tier.
+
+   Waste-type resources (CO2, Waste, Liquid Waste, Depleted Fuel) alert on FILLING
+   rather than emptying. Their fractions match the Annunciator's TACLS_WASTE_WARN_FRAC
+   / TACLS_WASTE_ALARM_FRAC, which have no shared define yet; keep them in step.
 ****************************************************************************************/
-const uint16_t LOW_RES_THRESHOLD = 20;  // percent (reserved — not currently used)
+const float RES_WARN_FRAC    = KCM_RES_LOW_WARN_FRAC;   // caution below this fraction of capacity
+const float RES_ALARM_FRAC   = KCM_EC_LOW_ALARM_FRAC;   // alarm below this fraction of capacity
+const float WASTE_WARN_FRAC  = 0.80f;                   // caution above this fraction full
+const float WASTE_ALARM_FRAC = 0.95f;                   // alarm above this fraction full
+
+/***************************************************************************************
+   TREND ARROW
+   Each meter compares its primary value against the value at the start of a
+   TREND_WINDOW_MS window. A move of more than TREND_MIN_FRAC of capacity across the
+   window shows a rising or falling arrow beside the percent counter; less shows
+   nothing. The window is the arrow's worst-case lag behind a real change; the
+   fraction is what keeps it quiet on the per-message jitter Simpit delivers.
+****************************************************************************************/
+const uint32_t TREND_WINDOW_MS = 2000;      // ms per trend sample window
+const float    TREND_MIN_FRAC  = 0.0005f;   // fraction of capacity that counts as movement
 
 /***************************************************************************************
    BAR UPDATE HYSTERESIS

@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 2;
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.2.1: adopt a flight scene already in progress
+static const uint8_t SKETCH_VERSION_MINOR = 3;   // 3.3.0: tape meters replace the bar chart
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -81,6 +81,37 @@ static const uint8_t RESOURCE_TYPE_COUNT = (uint8_t)RES_COUNT - 1;
 
 
 /***************************************************************************************
+   RESOURCE SUBSYSTEM GROUP
+   The Main screen lays meters out in this order, with a bracketed label over each
+   run and a divider between runs, the way a cockpit panel clusters its meters by
+   system. Ranks follow the Select grid's grouping.
+****************************************************************************************/
+enum ResGroup : uint8_t {
+  GRP_POWER = 0,   // Electric Charge, Stored Charge
+  GRP_PROP,        // propellants, native and CRP, plus EVA Propellant and Intake Air
+  GRP_NUCLEAR,     // Enriched Uranium, Depleted Fuel
+  GRP_MISC,        // Ore, Ablator
+  GRP_LIFE,        // TAC-LS resources
+  GRP_AGRI,        // Fertilizer
+  GRP_COUNT
+};
+
+
+/***************************************************************************************
+   RESOURCE LIMIT BANDS
+   Caution and alarm fractions a meter paints on its scale and alerts against.
+   highIsBad flips the sense for waste-type resources, which alert on filling up.
+   enabled=false gives a plain scale with no bands (cargo, intake air).
+****************************************************************************************/
+struct ResLimits {
+  float warn;       // caution fraction
+  float alarm;      // alarm fraction
+  bool  highIsBad;  // true: alert above the fractions; false: alert below them
+  bool  enabled;    // false: no bands, never alerts
+};
+
+
+/***************************************************************************************
    RESOURCE SLOT STRUCT
    One instance per active bar on the main screen.
    current and maxVal are 0.0–1.0 floats for demo; will be actual units from Simpit later.
@@ -120,7 +151,12 @@ extern const uint8_t  DISPLAY_ROTATION;
 static constexpr uint8_t MIN_SLOTS          = 4;
 static constexpr uint8_t MAX_SLOTS          = 16;
 static constexpr uint8_t DEFAULT_SLOT_COUNT = 9;
-extern const uint16_t LOW_RES_THRESHOLD;   // percent (0-100); reserved — bars no longer recolor by level
+extern const float    RES_WARN_FRAC;     // caution band top (fraction of capacity)
+extern const float    RES_ALARM_FRAC;    // alarm band top (fraction of capacity)
+extern const float    WASTE_WARN_FRAC;   // waste-type caution: fraction full
+extern const float    WASTE_ALARM_FRAC;  // waste-type alarm: fraction full
+extern const uint32_t TREND_WINDOW_MS;   // trend arrow sample window
+extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of capacity per window
 
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;
@@ -144,6 +180,10 @@ const char*    resFullName(ResourceType t);
 uint16_t       resColor(ResourceType t);
 ResourceType   resTypeByIndex(uint8_t index);  // 0-based index into selectable types
 bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set (EC/EVA/O2/Food/Water)
+ResGroup       resGroup(ResourceType t);       // subsystem group for Main-screen ordering
+const char*    resGroupLabel(ResGroup g);      // short group label drawn over a run of meters
+ResLimits      resLimits(ResourceType t);      // caution/alarm bands for the meter scale
+void           sortSlotsByGroup();             // stable in-place sort of slots[] by resGroup()
 
 // Screen management
 // Always use switchToScreen() to change screens — never set activeScreen directly.

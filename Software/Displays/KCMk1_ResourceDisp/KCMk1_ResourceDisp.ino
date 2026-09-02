@@ -5,7 +5,7 @@
     AAA_Config.ino       -- tunable constants (thresholds, modes, slot config)
     AAA_Globals.ino      -- ResourceSlot struct, display objects, Simpit object, screen state, globals
     Resources.ino        -- resource type definitions, color map, slot initialisation
-    ScreenMain.ino       -- main bar graph screen with 4-button sidebar
+    ScreenMain.ino       -- main tape-meter screen with 4-button sidebar
     ScreenSelect.ino     -- resource selection screen (grid + presets + order panel)
     ScreenDetail.ino     -- numerical resource detail screen (craft/stage values per resource)
     ScreenStandby.ino    -- standby BMP splash screen
