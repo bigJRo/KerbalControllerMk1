@@ -56,3 +56,4 @@ void stepDemoState() {
     slots[i].maxVal       = 1.0f;
   }
 }
+

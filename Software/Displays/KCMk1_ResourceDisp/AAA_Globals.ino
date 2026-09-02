@@ -40,6 +40,9 @@ ScreenType prevScreen   = screen_COUNT;    // sentinel -- forces chrome on first
                   Set by I2C master command in Phase 3.
 ****************************************************************************************/
 bool tteMode          = false;
+float    warpFactor       = 1.0f;   // updated from FLIGHT_STATUS; 1.0 until the first arrives
+bool     refreshPending   = false;
+uint32_t refreshRequestMs = 0;
 bool flightScene      = false;
 bool simpitConnected  = false;
 bool idleState        = false;
@@ -107,7 +110,10 @@ void saveVesselSlots(const String &name) {
   for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
     if (vesselCache[i].vesselName == name) {
       vesselCache[i].count = slotCount;
-      for (uint8_t j = 0; j < slotCount; j++) vesselCache[i].types[j] = slots[j].type;
+      for (uint8_t j = 0; j < slotCount; j++) {
+        vesselCache[i].types[j] = slots[j].type;
+        vesselCache[i].bugs[j]  = slots[j].bug;
+      }
       return;
     }
   }
@@ -117,7 +123,10 @@ void saveVesselSlots(const String &name) {
     if (vesselCache[i].vesselName.length() == 0) {
       vesselCache[i].vesselName = name;
       vesselCache[i].count = slotCount;
-      for (uint8_t j = 0; j < slotCount; j++) vesselCache[i].types[j] = slots[j].type;
+      for (uint8_t j = 0; j < slotCount; j++) {
+        vesselCache[i].types[j] = slots[j].type;
+        vesselCache[i].bugs[j]  = slots[j].bug;
+      }
       return;
     }
   }
@@ -126,7 +135,10 @@ void saveVesselSlots(const String &name) {
   uint8_t idx = VESSEL_CACHE_SIZE - 1;
   vesselCache[idx].vesselName = name;
   vesselCache[idx].count = slotCount;
-  for (uint8_t j = 0; j < slotCount; j++) vesselCache[idx].types[j] = slots[j].type;
+  for (uint8_t j = 0; j < slotCount; j++) {
+    vesselCache[idx].types[j] = slots[j].type;
+    vesselCache[idx].bugs[j]  = slots[j].bug;
+  }
 }
 
 // Attempt to recall slot configuration for a given vessel name.
@@ -139,6 +151,7 @@ bool recallVesselSlots(const String &name) {
       slotCount = vesselCache[i].count;
       for (uint8_t j = 0; j < slotCount; j++) {
         slots[j].type = vesselCache[i].types[j];
+        slots[j].bug  = vesselCache[i].bugs[j];
         // values stay at 0.0f — Simpit will populate them
       }
       return true;

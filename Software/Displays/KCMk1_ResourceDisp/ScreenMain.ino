@@ -3,10 +3,20 @@
 
    Layout (1024x600):
      Left  : SIDEBAR_W px button column, 4 keys edge-to-edge, full height
+     Top   : ALERT_H px alert strip across the content -- an EICAS-style message line
+             listing every meter in caution or alarm, worst first ("SF LOW", "CO2
+             HIGH", "LF BUG"), "REFRESHING" while a channel refresh is pending, and
+             at its right end the PROPELLANT BALANCE indicator (below)
      Then  : AXIS_W px shared 0-100% axis
-     Then  : one tape meter per active slot at a FIXED pitch, left-anchored, in
+     Then  : one tape meter per active slot at a FIXED pitch, centred as a row, in
              subsystem order, with a bracketed group label above each run of
              same-group meters and a divider between groups
+
+   Propellant balance (Apollo's OXID UNBAL meter): KSP engines burn LF and LOx at
+   9:11, so when the two tanks are not in that ratio one runs dry first and the rest
+   is dead weight. When both are on the panel, a centre-zero bar shows which side is
+   in surplus and a counter says by how many units. Stage quantities when both have
+   them, else vessel totals.
 
    Sidebar buttons (top to bottom):
      0. DFLT  -- resets slots to the STD default group
@@ -40,8 +50,16 @@
        while steady or filling). Coloured by state (white / yellow / white-on-red),
        with a trend arrow in a cell to its right while the value is moving
      - units counter (raw resource units, compacted to fit the pitch)
-     A slot whose capacity is zero (resource not aboard) shows "---" in grey with an
-     empty tape and no bands lit, rather than a 0% alarm.
+     A slot whose capacity is zero shows an empty tape and, in grey, "..." while a
+     channel refresh is still pending for it or "---" once it is not going to answer
+     (resource not aboard) -- never a 0% alarm.
+
+   Touch: a tap on a meter's label/counter rows opens the Detail screen on that
+   resource. A tap on its tape rows sets a RESERVE BUG at that level -- a cyan index
+   in the tick zone with a cyan mark on the band, cyan being this project's colour
+   for pilot-entered values -- and the meter goes to caution when the level crosses
+   it. A tap close to an existing bug clears it. Bugs travel with the vessel's slot
+   memory.
 
    Pitch classes: PITCH_STD for up to DEFAULT_SLOT_COUNT meters, PITCH_CMP above
    that. Within a class every meter keeps its width and pitch, and the row is
@@ -81,18 +99,29 @@ static const uint16_t PITCH_STD    = METER_AREA_W / DEFAULT_SLOT_COUNT;  // 98 -
 static const uint16_t PITCH_CMP    = METER_AREA_W / MAX_SLOTS;           // 55 -- 10 to 16 meters
 
 // Vertical bands, top to bottom.
-static const uint16_t GROUP_H      = 26;   // subsystem label band across the top
-static const uint16_t TAPE_TOP     = GROUP_H + 6;               // 32
+static const uint16_t ALERT_H      = 24;   // alert strip (Black_16 cap 19)
+static const uint16_t GROUP_Y      = ALERT_H;                   // 24
+static const uint16_t GROUP_H      = 26;   // subsystem label band
+static const uint16_t TAPE_TOP     = GROUP_Y + GROUP_H + 6;     // 56
 static const uint16_t LABEL_H      = 26;   // resource short label (Black_20 cap 24)
 static const uint16_t PERC_H       = 32;   // percent counter + trend arrow (Black_24 cap 29)
 static const uint16_t UNITS_H      = 22;   // units counter (Black_16 cap 19)
 static const uint16_t FOOT_H       = LABEL_H + PERC_H + UNITS_H;  // 80
 static const uint16_t TAPE_BOTTOM  = SCREEN_H - FOOT_H;          // 520
-static const uint16_t TAPE_H       = TAPE_BOTTOM - TAPE_TOP;     // 488
-static const uint16_t TAPE_INNER_H = TAPE_H - 2;                 // 486 -- fill area inside the frame
+static const uint16_t TAPE_H       = TAPE_BOTTOM - TAPE_TOP;     // 464
+static const uint16_t TAPE_INNER_H = TAPE_H - 2;                 // 462 -- fill area inside the frame
 static const uint16_t LABEL_Y      = TAPE_BOTTOM;                // 520
 static const uint16_t PERC_Y       = LABEL_Y + LABEL_H;          // 546
 static const uint16_t UNITS_Y      = PERC_Y + PERC_H;            // 578
+
+// Alert strip: messages from the content's left edge; the balance indicator, when
+// shown, takes the rightmost BAL_W px.
+static const tFont   *STRIP_FONT   = &Roboto_Black_16;
+static const uint16_t STRIP_X      = CONTENT_X + 4;
+static const uint16_t BAL_W        = 270;  // balance indicator cell at the strip's right end
+static const uint16_t BAL_BAR_W    = 100;  // centre-zero bar
+static const uint16_t BAL_BAR_H    = 10;
+static const float    LF_PER_LOX   = 9.0f / 11.0f;   // KSP LF:LOx burn ratio
 
 static const uint16_t BAND_W       = 4;    // limit-band column, left of the tape
 static const uint16_t MARK_H       = 2;    // secondary-value marker line thickness
@@ -249,23 +278,9 @@ static void drawAxis(KCM_TFT &tft) {
 
 
 /***************************************************************************************
-   ALERT STATE
-   0 nominal, 1 caution, 2 alarm -- from the resource's limit table. Waste-type
-   resources alert on filling up rather than running down.
+   ALERT COLOURS
+   The state itself comes from alertState() in Resources.ino (with hysteresis).
 ****************************************************************************************/
-static uint8_t meterState(ResourceType t, float level) {
-  ResLimits lim = resLimits(t);
-  if (!lim.enabled) return 0;
-  if (lim.highIsBad) {
-    if (level > lim.alarm) return 2;
-    if (level > lim.warn)  return 1;
-  } else {
-    if (level < lim.alarm) return 2;
-    if (level < lim.warn)  return 1;
-  }
-  return 0;
-}
-
 static inline uint16_t stateColor(uint8_t state) {
   return (state == 2) ? TFT_RED : (state == 1) ? TFT_YELLOW : TFT_WHITE;
 }
@@ -295,42 +310,6 @@ static void fmtUnits(float v, char *buf, size_t n) {
   } else {
     dtostrf(v, 1, 2, buf);
   }
-}
-
-
-/***************************************************************************************
-   TIME-TO-EMPTY FORMATTER
-   Seconds to a string that fits the counter cell in either pitch class:
-   "4:35" under ten minutes, "42m" under an hour, "5.5h" under a hundred hours.
-   secs < 0 (no usable rate) gives "---".
-****************************************************************************************/
-static void fmtTte(float secs, char *buf, size_t n) {
-  if (secs < 0.0f) {
-    strlcpy(buf, "---", n);
-  } else if (secs < 600.0f) {
-    uint16_t s = (uint16_t)secs;
-    snprintf(buf, n, "%d:%02d", s / 60, s % 60);
-  } else if (secs < 3600.0f) {
-    snprintf(buf, n, "%dm", (int)(secs / 60.0f));
-  } else if (secs < 360000.0f) {
-    dtostrf(secs / 3600.0f, 1, 1, buf);
-    strlcat(buf, "h", n);
-  } else {
-    strlcpy(buf, ">99h", n);
-  }
-}
-
-// Seconds until the resource is exhausted (or, for a waste-type resource, full) at
-// the smoothed rate; -1 when there is no usable rate in the depleting direction.
-static float tteSeconds(const MeterCache &c, ResourceType t, float cur, float max) {
-  if (!c.rateValid || c.rate == 0.0f) return -1.0f;
-  ResLimits lim = resLimits(t);
-  if (lim.highIsBad) {
-    if (c.rate <= 0.0f) return -1.0f;
-    return (max - cur) / c.rate;
-  }
-  if (c.rate >= 0.0f) return -1.0f;
-  return cur / -c.rate;
 }
 
 
@@ -374,6 +353,21 @@ static void drawFrame(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, ui
   tft.drawRect(g.tapeX, TAPE_TOP, st.tapeW, TAPE_H, frameColor(state));
 }
 
+// Reserve bug: a cyan index in the tick zone, tip against the frame, plus a cyan mark
+// across the band column so it reads on the scale. Redrawing clears the whole tick
+// zone and band and repaints them, since the old bug sat on both; both are cheap.
+static void drawBug(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                    ResourceType t, float bug) {
+  tft.fillRect(g.tickX, TAPE_TOP, st.tickL + 1, TAPE_H, TFT_BLACK);
+  drawTicks(tft, st, g);
+  drawBands(tft, g, t);
+  if (bug < 0.0f) return;
+  int16_t y  = (int16_t)levelY(bug);
+  int16_t hh = (int16_t)st.tickL;
+  tft.fillTriangle(g.tickX, y, g.tickX + st.tickL, y - hh, g.tickX + st.tickL, y + hh, TFT_CYAN);
+  tft.fillRect(g.bandX, y - 1, BAND_W, 2, TFT_CYAN);
+}
+
 // Group label band and dividers. Runs of same-group meters (slots are already in
 // subsystem order) share one label centred over the run, sitting on a bracket line
 // with a short down-tick at each end; consecutive runs are separated by a 1 px
@@ -387,12 +381,12 @@ static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
 
     uint16_t x0 = pitchX(st, runStart);
     uint16_t x1 = pitchX(st, runEnd) + st.pitch;   // exclusive
-    uint16_t ly = GROUP_H - 3;                     // bracket line row
+    uint16_t ly = GROUP_Y + GROUP_H - 3;           // bracket line row
     tft.drawLine(x0 + 3, ly, x1 - 4, ly, TFT_GREY);
     tft.drawLine(x0 + 3, ly, x0 + 3, ly + 3, TFT_GREY);
     tft.drawLine(x1 - 4, ly, x1 - 4, ly + 3, TFT_GREY);
     // Label drawn last, black-backed, so it breaks the bracket line: -- PROP --
-    textCenter(tft, st.groupFont, x0, 0, x1 - x0, GROUP_H,
+    textCenter(tft, st.groupFont, x0, GROUP_Y, x1 - x0, GROUP_H,
                String(" ") + resGroupLabel(grp) + " ", TFT_LIGHT_GREY, TFT_BLACK);
 
     if (runEnd + 1 < slotCount) {
@@ -446,8 +440,8 @@ static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
 
 // Counter row: the percent, or the time-to-empty string in TTE mode. Alarm is
 // white-on-red across the whole cell, the InfoDisp / Annunciator alarm treatment;
-// caution is yellow text; nominal white. A slot with no capacity shows its "---" in
-// grey.
+// caution is yellow text; nominal white. A slot with no capacity shows its "..." or
+// "---" in grey.
 static void drawCounter(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
                         bool hasData, const char *s, uint8_t state) {
   uint16_t cellW = st.pitch - st.arrowCellW;
@@ -481,10 +475,173 @@ static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, co
 
 
 /***************************************************************************************
-   PER-METER UPDATE CACHE
-   One entry per slot. The drawn-state half is reset by drawStaticMain() (full
-   repaint) and by the TTE toggle in updateScreenMain() (repaint of the dynamics
-   only); the sampling half only by drawStaticMain(), so a toggle keeps the rate.
+   ALERT STRIP
+   One line, worst first: alarms in red, cautions in yellow, a reserve-bug crossing
+   as "<LBL> BUG", and "REFRESHING" in white while a channel refresh is pending.
+   Messages that do not fit collapse into "+N" in grey. Redrawn only when the
+   composed line changes, which the signature buffer detects.
+****************************************************************************************/
+enum StripCode : uint8_t { STRIP_NONE = 0, STRIP_CAUTION, STRIP_ALARM, STRIP_BUG };
+static uint8_t _stripCode[MAX_SLOTS];
+static char    _stripSig[160];   // last drawn line, "\x01" = force
+static bool    _balShown = false;
+
+static uint16_t stripAvailW() {
+  return (uint16_t)(SCREEN_W - STRIP_X - (_balShown ? BAL_W : 0));
+}
+
+// Append one message to the line; returns false when it would not fit.
+static bool stripPut(KCM_TFT &tft, uint16_t &x, uint16_t xEnd, const char *text, uint16_t color) {
+  int16_t w = getFontStringWidth(STRIP_FONT, text);
+  if (x + w > xEnd) return false;
+  tft.setFont(*STRIP_FONT);
+  tft.setTextColor(color, TFT_BLACK);
+  tft.setCursor(x, (ALERT_H - STRIP_FONT->cap_height) / 2);
+  tft.print(text);
+  x += w + getFontStringWidth(STRIP_FONT, "  ");
+  return true;
+}
+
+static void updateAlertStrip(KCM_TFT &tft) {
+  // Compose the signature: one token per message in display order.
+  char sig[sizeof(_stripSig)];
+  size_t n = 0;
+  if (refreshPending) n += snprintf(sig + n, sizeof(sig) - n, "R|");
+  for (uint8_t sev = STRIP_ALARM; sev >= STRIP_CAUTION; sev--) {
+    for (uint8_t i = 0; i < slotCount; i++) {
+      uint8_t code = _stripCode[i];
+      bool pick = (sev == STRIP_ALARM) ? (code == STRIP_ALARM)
+                                       : (code == STRIP_CAUTION || code == STRIP_BUG);
+      if (!pick || n >= sizeof(sig) - 8) continue;
+      n += snprintf(sig + n, sizeof(sig) - n, "%d%d|", code, i);
+    }
+  }
+  if (strcmp(sig, _stripSig) == 0) return;
+  strlcpy(_stripSig, sig, sizeof(_stripSig));
+
+  uint16_t xEnd = STRIP_X + stripAvailW();
+  tft.fillRect(CONTENT_X, 0, xEnd - CONTENT_X, ALERT_H, TFT_BLACK);
+  uint16_t x = STRIP_X;
+  uint8_t  dropped = 0;
+  if (refreshPending) stripPut(tft, x, xEnd, "REFRESHING", TFT_WHITE);
+  for (uint8_t sev = STRIP_ALARM; sev >= STRIP_CAUTION; sev--) {
+    for (uint8_t i = 0; i < slotCount; i++) {
+      uint8_t code = _stripCode[i];
+      bool pick = (sev == STRIP_ALARM) ? (code == STRIP_ALARM)
+                                       : (code == STRIP_CAUTION || code == STRIP_BUG);
+      if (!pick) continue;
+      char msg[16];
+      const char *what = (code == STRIP_BUG) ? "BUG" : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
+      snprintf(msg, sizeof(msg), "%s %s", resLabel(slots[i].type), what);
+      if (dropped || !stripPut(tft, x, xEnd, msg, (code == STRIP_ALARM) ? TFT_RED : TFT_YELLOW)) dropped++;
+    }
+  }
+  if (dropped) {
+    char more[8];
+    snprintf(more, sizeof(more), "+%d", dropped);
+    int16_t w = getFontStringWidth(STRIP_FONT, more);
+    tft.setFont(*STRIP_FONT);
+    tft.setTextColor(TFT_GREY, TFT_BLACK);
+    tft.setCursor(xEnd - w, (ALERT_H - STRIP_FONT->cap_height) / 2);
+    tft.print(more);
+  }
+}
+
+
+/***************************************************************************************
+   PROPELLANT BALANCE
+   Surplus of one propellant over what the other can burn with it, at 9:11. Positive
+   = LOx in surplus (pointer right), negative = LF in surplus (pointer left). The bar
+   is scaled so a surplus equal to half the propellant aboard is full deflection.
+****************************************************************************************/
+static int16_t _balPx = -1;        // last drawn pointer offset, px from centre; -32768 = force
+static char    _balText[16];       // last drawn counter
+
+static int8_t findSlot(ResourceType t) {
+  for (uint8_t i = 0; i < slotCount; i++) if (slots[i].type == t) return (int8_t)i;
+  return -1;
+}
+
+// Returns true when the indicator applies, filling surplus (units, signed) and the
+// pointer fraction (-1..1).
+static bool balanceCompute(float &surplus, float &frac) {
+  int8_t lf = findSlot(RES_LIQUID_FUEL), lox = findSlot(RES_LIQUID_OX);
+  if (lf < 0 || lox < 0) return false;
+  const ResourceSlot &a = slots[lf], &b = slots[lox];
+  if (a.maxVal <= 0.0f || b.maxVal <= 0.0f) return false;
+  bool useStage = (a.stageMax > 0.0f && b.stageMax > 0.0f);
+  float fuel = useStage ? a.stageCurrent : a.current;
+  float ox   = useStage ? b.stageCurrent : b.current;
+  float total = fuel + ox;
+  if (total <= 0.0f) return false;
+  float loxNeeded = fuel / LF_PER_LOX;          // LOx the LF on hand can burn
+  if (ox >= loxNeeded) surplus = ox - loxNeeded;          // LOx left over
+  else                 surplus = -(fuel - ox * LF_PER_LOX); // LF left over, negative
+  frac = constrain(surplus / (0.5f * total), -1.0f, 1.0f);
+  return true;
+}
+
+static void drawBalanceChrome(KCM_TFT &tft) {
+  uint16_t x0 = SCREEN_W - BAL_W;
+  tft.fillRect(x0, 0, BAL_W, ALERT_H, TFT_BLACK);
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_GREY, TFT_BLACK);
+  tft.setCursor(x0 + 4, (ALERT_H - 14) / 2);
+  tft.print("BAL");
+  uint16_t barX = x0 + 60, barY = (ALERT_H - BAL_BAR_H) / 2;
+  tft.setCursor(barX - 18, (ALERT_H - 14) / 2);
+  tft.print("LF");
+  tft.setCursor(barX + BAL_BAR_W + 4, (ALERT_H - 14) / 2);
+  tft.print("LOx");
+  tft.drawRect(barX, barY, BAL_BAR_W, BAL_BAR_H, TFT_GREY);
+  tft.drawLine(barX + BAL_BAR_W / 2, barY - 2, barX + BAL_BAR_W / 2, barY + BAL_BAR_H + 1, TFT_LIGHT_GREY);
+}
+
+static void updateBalance(KCM_TFT &tft) {
+  float surplus, frac;
+  bool show = balanceCompute(surplus, frac);
+  if (show != _balShown) {
+    _balShown = show;
+    _stripSig[0] = 1; _stripSig[1] = '\0';   // message width changed: relay the strip
+    if (show) drawBalanceChrome(tft);
+    else      tft.fillRect(SCREEN_W - BAL_W, 0, BAL_W, ALERT_H, TFT_BLACK);
+    _balPx = -32768;
+    _balText[0] = 1; _balText[1] = '\0';
+  }
+  if (!show) return;
+
+  uint16_t x0 = SCREEN_W - BAL_W;
+  uint16_t barX = x0 + 60, barY = (ALERT_H - BAL_BAR_H) / 2;
+  int16_t px = (int16_t)(frac * (BAL_BAR_W / 2 - 3));
+  if (px != _balPx) {
+    if (_balPx != -32768) {
+      tft.fillRect(barX + BAL_BAR_W / 2 + _balPx - 1, barY + 1, 3, BAL_BAR_H - 2, TFT_BLACK);
+      tft.drawLine(barX + BAL_BAR_W / 2, barY + 1, barX + BAL_BAR_W / 2, barY + BAL_BAR_H - 2, TFT_LIGHT_GREY);
+    }
+    _balPx = px;
+    tft.fillRect(barX + BAL_BAR_W / 2 + px - 1, barY + 1, 3, BAL_BAR_H - 2, TFT_WHITE);
+  }
+
+  char text[16], num[12];
+  fmtUnits(fabsf(surplus), num, sizeof(num));
+  snprintf(text, sizeof(text), "%s +%s", (surplus >= 0.0f) ? "LOx" : "LF", num);
+  if (strcmp(text, _balText) != 0) {
+    strlcpy(_balText, text, sizeof(_balText));
+    uint16_t tx = barX + BAL_BAR_W + 34;
+    tft.fillRect(tx, 0, SCREEN_W - tx, ALERT_H, TFT_BLACK);
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setCursor(tx, (ALERT_H - 14) / 2);
+    tft.print(text);
+  }
+}
+
+
+/***************************************************************************************
+   PER-METER DRAWN-STATE CACHE
+   One entry per slot. Reset by drawStaticMain() (full repaint) and by the TTE toggle
+   in updateScreenMain() (repaint of the dynamics only). Rates and trends come from
+   Sampling.ino and are not touched by either.
 ****************************************************************************************/
 static MeterCache _mc[MAX_SLOTS];
 static bool       _prevTteMode = false;
@@ -495,6 +652,8 @@ static void resetDrawCaches() {
     _mc[i].mark       = -2.0f;
     _mc[i].state      = 255;
     _mc[i].hasData    = false;
+    _mc[i].awaiting   = false;
+    _mc[i].bug        = -2.0f;
     _mc[i].trend      = 127;
     _mc[i].counter[0] = 1;       // sentinel: matches no real string, forces a redraw
     _mc[i].counter[1] = '\0';
@@ -502,50 +661,11 @@ static void resetDrawCaches() {
     _mc[i].units[1]   = '\0';
   }
   _prevTteMode = tteMode;
-}
-
-static void resetSampling(uint32_t now) {
-  for (uint8_t i = 0; i < MAX_SLOTS; i++) {
-    _mc[i].trendRef   = -1.0f;   // < 0 = window not started
-    _mc[i].trendRefMs = now;
-    _mc[i].trendNow   = 0;
-    _mc[i].tteRef     = -1.0f;
-    _mc[i].tteRefMs   = now;
-    _mc[i].rate       = 0.0f;
-    _mc[i].rateValid  = false;
-  }
-}
-
-// Sampling, two windows per slot, both restarting on every sample:
-//   Trend (TREND_WINDOW_MS): a move of more than TREND_MIN_FRAC of capacity across
-//   the window sets the arrow direction, so it lags a real change by at most one
-//   window and does not chatter on the per-message fluctuations Simpit delivers.
-//   Rate (TTE_WINDOW_MS): units per second across the window, smoothed 50/50 with
-//   the previous estimate. The same deadband applies, so a drain too slow to move
-//   the trend arrow in a long window reads as no rate rather than as a wild TTE.
-static void updateSampling(MeterCache &c, bool hasData, float cur, float max, uint32_t now) {
-  if (!hasData) {
-    c.trendNow = 0;  c.trendRef = -1.0f;
-    c.rateValid = false; c.rate = 0.0f; c.tteRef = -1.0f;
-    return;
-  }
-  if (c.trendRef < 0.0f) { c.trendRef = cur; c.trendRefMs = now; }
-  else if (now - c.trendRefMs >= TREND_WINDOW_MS) {
-    float frac = (cur - c.trendRef) / max;
-    c.trendNow   = (frac > TREND_MIN_FRAC) ? 1 : (frac < -TREND_MIN_FRAC) ? -1 : 0;
-    c.trendRef   = cur;
-    c.trendRefMs = now;
-  }
-  if (c.tteRef < 0.0f) { c.tteRef = cur; c.tteRefMs = now; }
-  else if (now - c.tteRefMs >= TTE_WINDOW_MS) {
-    float dt   = (now - c.tteRefMs) / 1000.0f;
-    float move = cur - c.tteRef;
-    float r    = (fabsf(move) / max < TREND_MIN_FRAC) ? 0.0f : move / dt;
-    c.rate      = c.rateValid ? 0.5f * c.rate + 0.5f * r : r;
-    c.rateValid = true;
-    c.tteRef    = cur;
-    c.tteRefMs  = now;
-  }
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) _stripCode[i] = STRIP_NONE;
+  _stripSig[0] = 1; _stripSig[1] = '\0';
+  _balShown = false;
+  _balPx = -32768;
+  _balText[0] = 1; _balText[1] = '\0';
 }
 
 
@@ -562,7 +682,7 @@ void drawStaticMain(KCM_TFT &tft) {
   drawSidebar(tft);
   drawAxis(tft);
   resetDrawCaches();
-  resetSampling(millis());
+  resetAllSampling();   // slots may have been reordered by the sort above
 
   const MeterStyle &st = meterStyle();
   drawGroupBands(tft, st);
@@ -583,8 +703,6 @@ void drawStaticMain(KCM_TFT &tft) {
    UPDATE PASS
 ****************************************************************************************/
 void updateScreenMain(KCM_TFT &tft) {
-  uint32_t now = millis();
-
   if (tteMode != _prevTteMode) {
     // Counter row changes meaning: every dynamic element repaints, chrome and the
     // rate estimate stay.
@@ -608,13 +726,20 @@ void updateScreenMain(KCM_TFT &tft) {
     if (hasData && resHasStageData(s.type) && s.stageMax > 0.0f)
       mark = constrain(s.stageCurrent / s.stageMax, 0.0f, 1.0f);
 
-    uint8_t state = hasData ? meterState(s.type, level) : 0;
+    bool    awaiting = !hasData && slotAwaiting(i);
+    uint8_t state    = hasData ? alertState(s.type, level, s.bug, c.state) : 0;
+    const SlotSample &smp = sampleTot[i];
 
-    updateSampling(c, hasData, cur, max, now);
+    // Message for the alert strip. A caution the fixed limits would not have raised
+    // on their own is the reserve bug's.
+    if      (!hasData || state == 0) _stripCode[i] = STRIP_NONE;
+    else if (state == 2)             _stripCode[i] = STRIP_ALARM;
+    else if (alertState(s.type, level, -1.0f, c.state) >= 1) _stripCode[i] = STRIP_CAUTION;
+    else                             _stripCode[i] = STRIP_BUG;
 
     char counter[8];
-    if (!hasData)     strlcpy(counter, "---", sizeof(counter));
-    else if (tteMode) fmtTte(tteSeconds(c, s.type, cur, max), counter, sizeof(counter));
+    if (!hasData)     strlcpy(counter, awaiting ? "..." : "---", sizeof(counter));
+    else if (tteMode) fmtTte(sampleTteSeconds(smp, s.type, cur, max), counter, sizeof(counter));
     else              snprintf(counter, sizeof(counter), "%d%%", (int)(level * 100.0f));
 
     char units[12];
@@ -628,18 +753,25 @@ void updateScreenMain(KCM_TFT &tft) {
     bool markChanged  = (c.mark < -1.5f) ||                       // forced
                         ((mark < 0.0f) != (c.mark < 0.0f)) ||     // marker appeared / vanished
                         (mark >= 0.0f && fabsf(mark - c.mark) >= BAR_LEVEL_HYSTERESIS);
-    bool stateChanged   = (state != c.state) || (hasData != c.hasData);
+    bool stateChanged   = (state != c.state) || (hasData != c.hasData) || (awaiting != c.awaiting);
     bool counterChanged = (strcmp(counter, c.counter) != 0) || stateChanged;
-    bool trendChanged   = (c.trendNow != c.trend) || stateChanged;
+    bool trendChanged   = (smp.trend != c.trend) || stateChanged;
     bool unitsChanged   = (strcmp(units, c.units) != 0);
+    bool bugChanged     = (c.bug < -1.5f) || ((s.bug < 0.0f) != (c.bug < 0.0f)) ||
+                          (s.bug >= 0.0f && fabsf(s.bug - c.bug) > 0.0001f);
 
-    if (!levelChanged && !markChanged && !counterChanged && !trendChanged && !unitsChanged) continue;
+    if (!levelChanged && !markChanged && !counterChanged && !trendChanged && !unitsChanged && !bugChanged) continue;
 
     MeterGeom g = meterGeom(st, i);
 
+    if (bugChanged) {
+      c.bug = s.bug;
+      drawBug(tft, st, g, s.type, s.bug);
+    }
     if (stateChanged) {
-      c.state   = state;
-      c.hasData = hasData;
+      c.state    = state;
+      c.hasData  = hasData;
+      c.awaiting = awaiting;
       drawFrame(tft, st, g, hasData ? state : 0);
     }
     if (levelChanged || markChanged) {
@@ -652,13 +784,67 @@ void updateScreenMain(KCM_TFT &tft) {
       drawCounter(tft, st, g, hasData, counter, state);
     }
     if (trendChanged) {
-      c.trend = c.trendNow;
-      drawTrend(tft, st, g, c.trendNow, state);
+      c.trend = smp.trend;
+      drawTrend(tft, st, g, smp.trend, state);
     }
     if (unitsChanged) {
       strlcpy(c.units, units, sizeof(c.units));
       drawUnits(tft, st, g, units);
     }
+  }
+
+  updateBalance(tft);
+  updateAlertStrip(tft);
+}
+
+
+/***************************************************************************************
+   METER HIT TEST
+   Which meter, and which part of it, a touch landed on. The tape rows give the
+   scale position of the touch so the caller can place a reserve bug; the foot rows
+   (label, counter, units) open the Detail screen on that resource.
+****************************************************************************************/
+int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
+  const MeterStyle &st = meterStyle();
+  if (slotCount == 0) return -1;
+  uint16_t x0 = pitchX(st, 0);
+  uint16_t x1 = pitchX(st, slotCount - 1) + st.pitch;
+  if (x < x0 || x >= x1) return -1;
+  int8_t i = (int8_t)((x - x0) / st.pitch);
+  if (i >= (int8_t)slotCount || slots[i].type == RES_NONE) return -1;
+  if (y >= TAPE_TOP && y < TAPE_BOTTOM) {
+    onTape = true;
+    level  = (float)((TAPE_BOTTOM - 1) - y) / (float)TAPE_INNER_H;
+    level  = constrain(level, 0.0f, 1.0f);
+    return i;
+  }
+  if (y >= LABEL_Y && y < SCREEN_H) {
+    onTape = false;
+    level  = 0.0f;
+    return i;
+  }
+  return -1;
+}
+
+
+/***************************************************************************************
+   TOGGLE RESERVE BUG
+   Sets slot i's bug at the tapped level, snapped to a whole percent, or clears it if
+   the tap is within BUG_CLEAR_TOL of the bug already there. The update pass sees the
+   change through its cache and redraws the index.
+****************************************************************************************/
+void toggleMeterBug(uint8_t i, float level) {
+  if (i >= slotCount) return;
+  ResourceSlot &s = slots[i];
+  if (s.bug >= 0.0f && fabsf(level - s.bug) <= BUG_CLEAR_TOL) {
+    s.bug = -1.0f;
+    if (debugMode) { Serial.print(F("ResourceDisp: bug cleared on ")); Serial.println(resLabel(s.type)); }
+    return;
+  }
+  s.bug = roundf(level * 100.0f) / 100.0f;
+  if (debugMode) {
+    Serial.print(F("ResourceDisp: bug set on ")); Serial.print(resLabel(s.type));
+    Serial.print(F(" at ")); Serial.println(s.bug);
   }
 }
 

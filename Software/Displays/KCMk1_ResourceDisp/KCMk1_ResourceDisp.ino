@@ -14,6 +14,7 @@
     SimpitHandler.ino    -- KerbalSimpit message handler and channel registration
     I2CSlave.ino         -- I2C slave interface to KCMk1 master (Teensy 4.1) at address 0x11
     Demo.ino             -- demo mode animation (sine-wave resource values, no KSP connection)
+    Sampling.ino         -- per-slot rate/trend sampling shared by the Main and Detail screens
 
   Libraries:
     KerbalDisplayCommon  -- display primitives, BMP loader, fonts, system utils (RA8876/KCM_TFT)
@@ -180,7 +181,7 @@ void loop() {
     } else {
       memcpy(slots, _evaBackup, sizeof(_evaBackup));
       slotCount = _evaBackupCount;
-      if (!demoMode) simpit.requestMessageOnChannel(0);
+      requestResourceRefresh();
     }
     if (debugMode) {
       Serial.print(F("ResourceDisp: EVA mode -> "));
@@ -188,6 +189,9 @@ void loop() {
     }
     switchToScreen(screen_Main);
   }
+
+  // --- Rate and trend sampling (both modes; every screen reads from it) ---
+  updateAllSampling();
 
   // --- Update display ---
   switch (activeScreen) {

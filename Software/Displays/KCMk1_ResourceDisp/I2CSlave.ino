@@ -132,7 +132,7 @@ static void processI2CCommand() {
       } else {
         // Simpit already connected — request a full channel refresh so values
         // repopulate immediately without waiting for a change event.
-        simpit.requestMessageOnChannel(0);
+        requestResourceRefresh();
         if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, channel refresh requested"));
       }
     }

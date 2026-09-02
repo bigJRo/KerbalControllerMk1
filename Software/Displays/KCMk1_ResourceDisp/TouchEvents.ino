@@ -18,7 +18,9 @@
 
    Gestures:
      screen_Standby -> no touch response in live mode; any touch advances to Main in demo.
-     screen_Main    -> sidebar btn 0 (DFLT)        : reset slots to default (STD preset)
+     screen_Main    -> tap on a meter's label/counter rows : open Detail on that resource
+                    -> tap on a meter's tape rows          : set / clear a reserve bug there
+                    -> sidebar btn 0 (DFLT)        : reset slots to default (STD preset)
                     -> sidebar btn 1 (SELECT)      : switch to screen_Select
                     -> sidebar btn 2 (DETAIL)      : switch to screen_Detail
                     -> sidebar btn 3 (TTE)         : toggle tteMode (counter row % / time)
@@ -143,8 +145,20 @@ void processTouchEvents() {
             ? F("ResourceDisp: counter row TTE")
             : F("ResourceDisp: counter row PERCENT"));
           break;
-        default:
+        default: {
+          // Not a sidebar key: a tap on a meter's foot opens Detail on it.
+          bool  onTape = false;
+          float level  = 0.0f;
+          int8_t m = meterHitTest(x2, y2, onTape, level);
+          if (m >= 0 && onTape) {
+            toggleMeterBug((uint8_t)m, level);
+          } else if (m >= 0) {
+            setDetailSlot((uint8_t)m);
+            switchToScreen(screen_Detail);
+            clearTouchISR();
+          }
           break;
+        }
       }
       break;
     }

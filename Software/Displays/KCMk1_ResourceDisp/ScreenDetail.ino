@@ -6,9 +6,13 @@
      Right panel:
        Header (DET_HDR_H=66px): resource name in Roboto_Black_48 white + color accent strip + BACK
        Divider
-       [DET_SECT_W=32px vertical "CRAFT" label] + 3 Craft rows: Available / Total / Remaining%
+       [DET_SECT_W=32px vertical "CRAFT" label] + 5 Craft rows:
+           Available / Total / Remaining% / Rate (units per game second) / Time (to empty)
        Divider
-       [DET_SECT_W=32px vertical "STAGE" label] + 3 Stage rows: Available / Total / Remaining%
+       [DET_SECT_W=32px vertical "STAGE" label] + the same 5 Stage rows
+     Rate and Time come from Sampling.ino, the same estimate the Main screen's trend
+     arrows and TTE counters use. Row height and font follow the row count: 5 rows
+     (no stage channel) get Roboto_Black_48, 10 rows get Roboto_Black_36.
 
    Flicker-free rendering:
      drawDetailChrome() — draws labels, dividers, header once on screen entry or slot switch
@@ -16,9 +20,9 @@
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
-// PrintState instances for KDC v2 printValue() — one per detail row (max 6).
+// PrintState instances for KDC v2 printValue() — one per detail row (max 10).
 // Defined here, declared extern in KCMk1_ResourceDisp.h.
-PrintState psDetailRows[6];
+PrintState psDetailRows[DET_MAX_ROWS];
 
 
 /***************************************************************************************
@@ -29,7 +33,7 @@ static const uint16_t DET_SEL_W = 180;   // wider selector column — larger but
 static const uint16_t DET_PNL_X = DET_SEL_W + 1;
 static const uint16_t DET_PNL_W = KCM_SCREEN_W - DET_PNL_X;
 static const uint16_t DET_HDR_H = 66;                             // taller to fit Roboto_Black_48 (58px)
-static const uint16_t DET_ROW_H = (KCM_SCREEN_H - DET_HDR_H) / 6; // ~89px @600 — all rows, both layouts
+static const uint8_t  DET_SECT_ROWS = 5;                          // rows per CRAFT / STAGE section
 
 // Vertical section label strip (left of data rows)
 static const uint16_t DET_SECT_W = 32;  // wide enough for Roboto_Black_20
@@ -52,7 +56,11 @@ static const ButtonLabel detBtnBack = {
 };
 
 static uint8_t _detailSlot = 0;
-static String _detValCache[6];
+static String _detValCache[DET_MAX_ROWS];
+
+void setDetailSlot(uint8_t i) {
+  if (i < slotCount) _detailSlot = i;
+}
 
 
 /***************************************************************************************
@@ -63,12 +71,19 @@ static bool _detHasStage() {
   return resHasStageData(slots[_detailSlot].type);
 }
 
+// Number of rows to render: 5 (craft only) or 10 (craft + stage)
+static uint8_t _detRowCount() { return _detHasStage() ? 2 * DET_SECT_ROWS : DET_SECT_ROWS; }
+
+static uint16_t _detRowH() { return (KCM_SCREEN_H - DET_HDR_H) / _detRowCount(); }
+
 static uint16_t detRowY(uint8_t row) {
-  return DET_HDR_H + row * DET_ROW_H;
+  return DET_HDR_H + row * _detRowH();
 }
 
-// Number of rows to render: 3 (craft only) or 6 (craft + stage)
-static uint8_t _detRowCount() { return _detHasStage() ? 6 : 3; }
+// Row font follows the row height so both layouts fill their rows.
+static const tFont *_detRowFont() {
+  return (_detRowCount() > DET_SECT_ROWS) ? &Roboto_Black_36 : &Roboto_Black_48;
+}
 
 /***************************************************************************************
    ROW LABEL
@@ -77,13 +92,12 @@ static uint8_t _detRowCount() { return _detHasStage() ? 6 : 3; }
    vertical CRAFT/STAGE strip, not the row label itself.
 ****************************************************************************************/
 static const char *detRowLabel(uint8_t row) {
-  switch (row) {
+  switch (row % DET_SECT_ROWS) {
     case 0: return "Available:";
     case 1: return "Total:";
     case 2: return "Remaining:";
-    case 3: return "Available:";
-    case 4: return "Total:";
-    case 5: return "Remaining:";
+    case 3: return "Rate:";
+    case 4: return "Time:";
     default: return "";
   }
 }
@@ -97,15 +111,18 @@ static const char *detRowLabel(uint8_t row) {
 static String detRowValue(uint8_t row) {
   if (_detailSlot >= slotCount) return "--";
   ResourceSlot &s = slots[_detailSlot];
-  float craftPerc = (s.maxVal > 0.0f) ? (s.current / s.maxVal * 100.0f) : 0.0f;
-  float stagePerc = (s.stageMax > 0.0f) ? (s.stageCurrent / s.stageMax * 100.0f) : 0.0f;
-  switch (row) {
-    case 0: return formatFloat(s.current, 2);
-    case 1: return formatFloat(s.maxVal, 2);
-    case 2: return formatFloat(craftPerc, 1) + "%";
-    case 3: return formatFloat(s.stageCurrent, 2);
-    case 4: return formatFloat(s.stageMax, 2);
-    case 5: return formatFloat(stagePerc, 1) + "%";
+  bool  stage = (row >= DET_SECT_ROWS);
+  float cur   = stage ? s.stageCurrent : s.current;
+  float max   = stage ? s.stageMax     : s.maxVal;
+  const SlotSample &smp = stage ? sampleStg[_detailSlot] : sampleTot[_detailSlot];
+  char buf[12];
+  switch (row % DET_SECT_ROWS) {
+    case 0: return formatFloat(cur, 2);
+    case 1: return formatFloat(max, 2);
+    case 2: return formatFloat((max > 0.0f) ? (cur / max * 100.0f) : 0.0f, 1) + "%";
+    case 3: fmtRate(smp, buf, sizeof(buf)); return String(buf);
+    case 4: fmtTte((max > 0.0f) ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f, buf, sizeof(buf));
+            return String(buf);
     default: return "--";
   }
 }
@@ -159,8 +176,8 @@ static void drawDetailSelector(KCM_TFT &tft) {
 ****************************************************************************************/
 static void drawDetailChrome(KCM_TFT &tft) {
   tft.fillRect(DET_PNL_X, 0, DET_PNL_W, KCM_SCREEN_H, TFT_BLACK);
-  for (uint8_t i = 0; i < 6; i++) {
-    _detValCache[i] = "";   // invalidate all 6 regardless of row count
+  for (uint8_t i = 0; i < DET_MAX_ROWS; i++) {
+    _detValCache[i] = "";   // invalidate every row regardless of row count
     psDetailRows[i] = PrintState{};  // reset PrintState sentinel — forces full clear on next draw
   }
 
@@ -190,21 +207,21 @@ static void drawDetailChrome(KCM_TFT &tft) {
 
   // Vertical section labels — delegates to library's drawVerticalText()
   // Always show CRAFT; only show STAGE if this resource has a real stage channel.
+  uint16_t rowH    = _detRowH();
+  uint16_t sectH   = rowH * DET_SECT_ROWS;
+  const tFont *rowFont = _detRowFont();
+  drawVerticalText(tft, DET_PNL_X, detRowY(0), DET_SECT_W, sectH,
+                   &Roboto_Black_20, "CRAFT", TFT_GREY, TFT_BLACK);
   if (_detHasStage()) {
-    drawVerticalText(tft, DET_PNL_X, detRowY(0), DET_SECT_W, DET_ROW_H * 3,
-                     &Roboto_Black_20, "CRAFT", TFT_GREY, TFT_BLACK);
-    drawVerticalText(tft, DET_PNL_X, detRowY(3), DET_SECT_W, DET_ROW_H * 3,
+    drawVerticalText(tft, DET_PNL_X, detRowY(DET_SECT_ROWS), DET_SECT_W, sectH,
                      &Roboto_Black_20, "STAGE", TFT_GREY, TFT_BLACK);
-  } else {
-    drawVerticalText(tft, DET_PNL_X, detRowY(0), DET_SECT_W, DET_ROW_H * 3,
-                     &Roboto_Black_20, "CRAFT", TFT_GREY, TFT_BLACK);
   }
 
   // Row labels (chrome only, no values)
   uint8_t rowCount = _detRowCount();
   for (uint8_t i = 0; i < rowCount; i++) {
-    printDispChrome(tft, &Roboto_Black_48,
-                    DET_ROW_X, detRowY(i), DET_ROW_W, DET_ROW_H,
+    printDispChrome(tft, rowFont,
+                    DET_ROW_X, detRowY(i), DET_ROW_W, rowH,
                     detRowLabel(i),
                     TFT_WHITE, TFT_BLACK, NO_BORDER);
   }
@@ -212,7 +229,7 @@ static void drawDetailChrome(KCM_TFT &tft) {
   // 1px dividers — below header, and between Craft/Stage sections (if stage shown)
   tft.drawLine(DET_SEL_W, DET_HDR_H,  KCM_SCREEN_W, DET_HDR_H,  TFT_DARK_GREY);
   if (_detHasStage()) {
-    tft.drawLine(DET_SEL_W, detRowY(3), KCM_SCREEN_W, detRowY(3), TFT_DARK_GREY);
+    tft.drawLine(DET_SEL_W, detRowY(DET_SECT_ROWS), KCM_SCREEN_W, detRowY(DET_SECT_ROWS), TFT_DARK_GREY);
   }
 }
 
@@ -227,12 +244,14 @@ static void drawDetailChrome(KCM_TFT &tft) {
 static void drawDetailValues(KCM_TFT &tft) {
   if (slotCount == 0 || _detailSlot >= slotCount) return;
   uint8_t rowCount = _detRowCount();
+  uint16_t rowH    = _detRowH();
+  const tFont *rowFont = _detRowFont();
   for (uint8_t i = 0; i < rowCount; i++) {
     String val = detRowValue(i);
     if (val == _detValCache[i]) continue;
     _detValCache[i] = val;
-    printValue(tft, &Roboto_Black_48,
-               DET_ROW_X, detRowY(i), DET_ROW_W, DET_ROW_H,
+    printValue(tft, rowFont,
+               DET_ROW_X, detRowY(i), DET_ROW_W, rowH,
                detRowLabel(i), val,
                TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psDetailRows[i]);
   }

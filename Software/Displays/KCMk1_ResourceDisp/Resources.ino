@@ -190,8 +190,7 @@ void initDefaultSlots() {
     slots[i].type = STD_TYPES[i];
     initSlotValues(slots[i]);
   }
-  // In live mode, request a Simpit refresh so the new slots populate immediately
-  if (!demoMode) simpit.requestMessageOnChannel(0);
+  requestResourceRefresh();
 }
 
 // True for the fixed EVA bar set. When a Kerbal is on EVA the display shows only
@@ -214,7 +213,7 @@ void loadEvaSlots() {
     slots[i].type = EVA_TYPES[i];
     initSlotValues(slots[i]);
   }
-  if (!demoMode) simpit.requestMessageOnChannel(0);
+  requestResourceRefresh();
 }
 
 // DEMO ONLY — loads all available resource types into slots for layout testing.
@@ -310,6 +309,44 @@ ResLimits resLimits(ResourceType t) {
     default:
       return { RES_WARN_FRAC, RES_ALARM_FRAC, false, true };
   }
+}
+
+
+/***************************************************************************************
+   ALERT STATE WITH HYSTERESIS
+   0 nominal, 1 caution, 2 alarm. `prev` is the state the caller last drew (255 or 0
+   for none). Once in a state, the threshold that would leave it is moved
+   ALERT_HYST_FRAC further into the nominal region, so a value resting on a
+   threshold cannot toggle the colour every message. A pilot-set reserve bug (bug >= 0)
+   adds a caution threshold of its own: below it for a consumable, above it for a
+   waste product.
+****************************************************************************************/
+uint8_t alertState(ResourceType t, float level, float bug, uint8_t prev) {
+  ResLimits lim = resLimits(t);
+  if (prev > 2) prev = 0;
+  float h = ALERT_HYST_FRAC;
+  bool highIsBad = lim.enabled && lim.highIsBad;
+  uint8_t state = 0;
+  if (lim.enabled) {
+    if (highIsBad) {
+      float a = lim.alarm - ((prev == 2) ? h : 0.0f);
+      float w = lim.warn  - ((prev >= 1) ? h : 0.0f);
+      if      (level > a) state = 2;
+      else if (level > w) state = 1;
+    } else {
+      float a = lim.alarm + ((prev == 2) ? h : 0.0f);
+      float w = lim.warn  + ((prev >= 1) ? h : 0.0f);
+      if      (level < a) state = 2;
+      else if (level < w) state = 1;
+    }
+  }
+  // A pilot-set reserve bug adds a caution threshold in the bad direction. It never
+  // raises an alarm; the fixed limit table owns red.
+  if (bug >= 0.0f && state < 1) {
+    float b = bug + ((prev >= 1) ? (highIsBad ? -h : h) : 0.0f);
+    if (highIsBad ? (level > b) : (level < b)) state = 1;
+  }
+  return state;
 }
 
 

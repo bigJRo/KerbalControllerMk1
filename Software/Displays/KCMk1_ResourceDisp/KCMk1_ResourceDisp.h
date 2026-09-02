@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 3;   // 3.3.0: tape meters replace the bar chart
+static const uint8_t SKETCH_VERSION_MINOR = 4;   // 3.4.0: alert strip, reserve bugs, balance, rate rows
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -122,6 +122,23 @@ struct ResourceSlot {
   float        maxVal       = 1.0f;   // vessel total max capacity
   float        stageCurrent = 0.0f;   // active stage current amount
   float        stageMax     = 1.0f;   // active stage max capacity
+  uint32_t     updatedMs    = 0;      // millis() of the last Simpit message for this slot
+  float        bug          = -1.0f;  // pilot-set reserve bug, fraction of capacity; < 0 = none
+};
+
+
+/***************************************************************************************
+   SLOT SAMPLE (Sampling.ino)
+   Rate and trend estimate for one value stream (a slot's total or its stage).
+****************************************************************************************/
+struct SlotSample {
+  float    trendRef;    // value at the start of the trend window; < 0 = not started
+  uint32_t trendRefMs;  // trend window start
+  int8_t   trend;       // -1 falling, 0 steady, +1 rising
+  float    tteRef;      // value at the start of the rate window; < 0 = not started
+  uint32_t tteRefMs;    // rate window start
+  float    rate;        // smoothed rate, units per REAL second, negative = depleting
+  bool     rateValid;   // at least one full window has been measured
 };
 
 
@@ -154,27 +171,18 @@ struct MeterGeom {
   uint16_t tickX;   // first tick pixel, right of the frame
 };
 
-// Per-meter update cache. One entry per slot. The drawn-state half is reset on
-// chrome redraw and on the TTE toggle; the sampling half only on chrome redraw, so
-// a toggle does not throw away the rate estimate.
+// Per-meter drawn-state cache. One entry per slot; reset on chrome redraw and on
+// the TTE toggle. Rates live in Sampling.ino, not here, so a toggle keeps them.
 struct MeterCache {
-  // Drawn state
   float    level;       // last drawn total level; -1 = force
   float    mark;        // last drawn stage level; -2 = force (-1 is "no stage column")
   uint8_t  state;       // last drawn alert state; 255 = force
   bool     hasData;     // last drawn capacity-present flag
+  bool     awaiting;    // last drawn refresh-pending flag
+  float    bug;         // last drawn reserve bug; -2 = force (-1 is "no bug")
   int8_t   trend;       // last drawn trend arrow; 127 = force
   char     counter[8];  // last drawn counter-row string (% or TTE); "\x01" = force
   char     units[12];   // last drawn units string; "\x01" = force
-  // Trend sampling (short window: direction only)
-  float    trendRef;    // value at the start of the current window; < 0 = not started
-  uint32_t trendRefMs;  // window start
-  int8_t   trendNow;    // current direction: -1 falling, 0 steady, +1 rising
-  // Time-to-empty sampling (long window: rate in units per second, smoothed)
-  float    tteRef;      // value at the start of the current window; < 0 = not started
-  uint32_t tteRefMs;    // window start
-  float    rate;        // smoothed rate, units/s, negative = depleting
-  bool     rateValid;   // at least one full window has been measured
 };
 
 
@@ -211,6 +219,9 @@ extern const float    WASTE_ALARM_FRAC;  // waste-type alarm: fraction full
 extern const uint32_t TREND_WINDOW_MS;   // trend arrow sample window
 extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of capacity per window
 extern const uint32_t TTE_WINDOW_MS;     // time-to-empty rate sample window
+extern const float    ALERT_HYST_FRAC;   // hysteresis on the caution/alarm thresholds
+extern const float    BUG_CLEAR_TOL;     // a tap this close to an existing bug clears it
+extern const uint32_t REFRESH_TIMEOUT_MS; // how long a slot may be "awaiting" after a refresh
 
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;
@@ -221,6 +232,9 @@ extern ScreenType   prevScreen;
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
 extern bool         tteMode;        // false = counter row shows %, true = time-to-empty
+extern float        warpFactor;     // game seconds per real second (from FLIGHT_STATUS warp index)
+extern bool         refreshPending; // a channel refresh has been requested and not all slots answered
+extern uint32_t     refreshRequestMs; // millis() of that request
 extern bool         flightScene;    // true when KSP is in a flight scene
 extern bool         simpitConnected; // true once Simpit handshake succeeds
 extern bool         idleState;      // true = show standby when not in flight (set by I2C master)
@@ -237,7 +251,21 @@ bool           isEvaResource(ResourceType t);  // true for the fixed EVA bar set
 ResGroup       resGroup(ResourceType t);       // subsystem group for Main-screen ordering
 const char*    resGroupLabel(ResGroup g);      // short group label drawn over a run of meters
 ResLimits      resLimits(ResourceType t);      // caution/alarm bands for the meter scale
+uint8_t        alertState(ResourceType t, float level, float bug, uint8_t prev);  // 0/1/2 with hysteresis
 void           sortSlotsByGroup();             // stable in-place sort of slots[] by resGroup()
+
+// Sampling (Sampling.ino)
+extern SlotSample sampleTot[];   // per-slot total-value sample
+extern SlotSample sampleStg[];   // per-slot stage-value sample
+void   updateAllSampling();      // once per loop pass
+void   resetAllSampling();       // after any slot reorder or warp change
+bool   slotAwaiting(uint8_t i);  // slot has not answered the current refresh yet
+float  sampleTteSeconds(const SlotSample &c, ResourceType t, float cur, float max);
+void   fmtTte(float secs, char *buf, size_t n);
+void   fmtRate(const SlotSample &c, char *buf, size_t n);
+
+// Simpit (SimpitHandler.ino)
+void   requestResourceRefresh(); // ask Simpit to resend every channel; stamps refreshRequestMs
 
 // Screen management
 // Always use switchToScreen() to change screens — never set activeScreen directly.
@@ -263,12 +291,17 @@ void drawStaticMain(KCM_TFT &tft);
 void updateScreenMain(KCM_TFT &tft);
 void redrawTteButton(KCM_TFT &tft);
 int8_t sidebarHitTest(uint16_t x, uint16_t y);
+// Meter under (x,y), or -1. onTape is true for a hit on the tape rows (level is the
+// 0..1 scale position of the touch), false for a hit on the label/counter rows.
+int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level);
+void   toggleMeterBug(uint8_t i, float level);   // set a reserve bug at level, or clear one near it
 void drawStaticSelect(KCM_TFT &tft);
 void updateScreenSelect(KCM_TFT &tft);
 bool handleSelectTouch(uint16_t x, uint16_t y);
 void drawStaticDetail(KCM_TFT &tft);
 void updateScreenDetail(KCM_TFT &tft);
 bool handleDetailTouch(uint16_t x, uint16_t y);
+void setDetailSlot(uint8_t i);   // choose which slot the Detail screen opens on
 
 
 /***************************************************************************************
@@ -293,13 +326,14 @@ inline bool resHasStageData(ResourceType t) {
    In-RAM cache of per-vessel slot configurations.
    Persists for the duration of the session (until power cycle or reset).
    Keyed by vessel name (from VESSEL_NAME_MESSAGE). Up to VESSEL_CACHE_SIZE entries.
-   Slot types only are stored — values are always repopulated from Simpit on recall.
+   Slot types and reserve bugs are stored — values are always repopulated from Simpit.
 ****************************************************************************************/
 static constexpr uint8_t VESSEL_CACHE_SIZE = 20;
 
 struct VesselSlotRecord {
   String       vesselName;                // empty = unused entry
   ResourceType types[MAX_SLOTS];
+  float        bugs[MAX_SLOTS];           // reserve bug per slot, < 0 = none
   uint8_t      count = 0;
 };
 
@@ -314,5 +348,6 @@ bool recallVesselSlots(const String &name);
 extern const float BAR_LEVEL_HYSTERESIS;  // minimum level change fraction to trigger redraw
 
 // PrintState instances for KDC v2 printValue() rendering (ScreenDetail.ino).
-// One per detail row (max 6 rows: 3 craft + 3 stage).
-extern PrintState psDetailRows[6];
+// One per detail row (max 10 rows: 5 craft + 5 stage).
+static constexpr uint8_t DET_MAX_ROWS = 10;
+extern PrintState psDetailRows[DET_MAX_ROWS];

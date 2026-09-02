@@ -86,6 +86,33 @@ const float    TREND_MIN_FRAC  = 0.0005f;   // fraction of capacity that counts 
 const uint32_t TTE_WINDOW_MS = 10000;       // ms per rate sample window
 
 /***************************************************************************************
+   ALERT HYSTERESIS
+   A level sitting exactly on a caution or alarm fraction would otherwise flip the
+   frame and counter colour on every message. Once a meter is in a state it must
+   move ALERT_HYST_FRAC of capacity back across the threshold to leave it.
+****************************************************************************************/
+const float ALERT_HYST_FRAC = 0.01f;        // fraction of capacity
+
+/***************************************************************************************
+   RESERVE BUG
+   A tap on a meter's tape sets a pilot-defined reserve bug at that level (snapped to
+   whole percent); the meter goes to caution when the level crosses it. A tap within
+   BUG_CLEAR_TOL of an existing bug clears it instead, so a bug is toggled from the
+   place it sits rather than needing a separate key. Bugs are saved with the vessel's
+   slot configuration.
+****************************************************************************************/
+const float BUG_CLEAR_TOL = 0.03f;          // fraction of capacity
+
+/***************************************************************************************
+   REFRESH TIMEOUT
+   After requestResourceRefresh() a slot that has not answered is drawn as "..."
+   (awaiting) rather than "---" (not aboard). Simpit answers a refresh within a few
+   message cycles; past this timeout the panel stops waiting and "---" means what
+   it says.
+****************************************************************************************/
+const uint32_t REFRESH_TIMEOUT_MS = 3000;   // ms
+
+/***************************************************************************************
    BAR UPDATE HYSTERESIS
    Minimum fractional change in resource level required to trigger a bar redraw.
    Prevents constant redraws from small Simpit value fluctuations.

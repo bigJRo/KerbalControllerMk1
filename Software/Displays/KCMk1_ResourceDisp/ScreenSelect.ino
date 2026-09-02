@@ -135,6 +135,7 @@ static bool addResource(ResourceType t) {
   slots[slotCount].type = t;
   initSlotValues(slots[slotCount]);   // 0 live / visible demo values
   slotCount++;
+  sortSlotsByGroup();   // keep the ORDER list showing what the Main screen will draw
   return true;
 }
 
@@ -142,18 +143,20 @@ static bool addResource(ResourceType t) {
 /***************************************************************************************
    HELPER -- remove a resource from slots[], compact the array.
 ****************************************************************************************/
-static void removeResource(ResourceType t) {
+// Returns false when the MIN_SLOTS floor blocked the removal.
+static bool removeResource(ResourceType t) {
   // Enforce MIN_SLOTS floor — don't remove if already at the minimum.
   // (CLEAR bypasses this intentionally by zeroing slotCount directly.)
-  if (slotCount <= MIN_SLOTS) return;
+  if (slotCount <= MIN_SLOTS) return false;
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == t) {
       for (uint8_t j = i; j < slotCount - 1; j++) slots[j] = slots[j + 1];
       slots[slotCount - 1] = ResourceSlot();
       slotCount--;
-      return;
+      return true;
     }
   }
+  return true;
 }
 
 
@@ -170,8 +173,8 @@ static void loadPreset(uint8_t presetIndex) {
     initSlotValues(slots[slotCount]);
     slotCount++;
   }
-  // In live mode, request a Simpit refresh so the new slots populate immediately
-  if (!demoMode) simpit.requestMessageOnChannel(0);
+  sortSlotsByGroup();
+  requestResourceRefresh();
 }
 
 
@@ -219,19 +222,35 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
 
 
 /***************************************************************************************
-   DRAW SLOT COUNT -- small text in title row, left side
+   DRAW SLOT COUNT -- small text in title row, right of centre
+   A tap the limits refuse (adding at MAX_SLOTS, removing at MIN_SLOTS) used to do
+   nothing at all. It now flashes this count yellow for SEL_FLASH_MS with the limit
+   named, so the pilot sees why the grid did not respond.
 ****************************************************************************************/
-static void drawSlotCount(KCM_TFT &tft) {
-  char countStr[20];
-  snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
+static const uint32_t SEL_FLASH_MS = 700;
+static uint32_t _selFlashUntil = 0;   // millis() at which the flash reverts; 0 = idle
+static bool     _selFlashMin   = false;
+
+static void drawSlotCount(KCM_TFT &tft, bool flash) {
+  char countStr[24];
+  if (flash) snprintf(countStr, sizeof(countStr), "%d / %d  %s", slotCount, MAX_SLOTS, _selFlashMin ? "MIN" : "MAX");
+  else       snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
   int16_t cw = getFontStringWidth(&Roboto_Black_16, countStr);
   uint16_t cx = BACK_X - cw - SEL_PAD * 2;
   uint16_t cy = (TITLE_H - 20) / 2;  // vertically centred in title row (font height ~20px)
-  tft.fillRect(cx - 2, 0, cw + 4, TITLE_H, TFT_BLACK);
+  // Clear the widest string this cell can hold so a shorter one leaves no ghost.
+  int16_t maxW = getFontStringWidth(&Roboto_Black_16, "16 / 16  MAX");
+  tft.fillRect(BACK_X - maxW - SEL_PAD * 2 - 2, 0, maxW + 4, TITLE_H, TFT_BLACK);
   tft.setFont(Roboto_Black_16);
-  tft.setTextColor(TFT_GREY, TFT_BLACK);
+  tft.setTextColor(flash ? TFT_YELLOW : TFT_GREY, TFT_BLACK);
   tft.setCursor(cx, cy);
   tft.print(countStr);
+}
+
+static void flashSlotLimit(KCM_TFT &tft, bool atMin) {
+  _selFlashMin   = atMin;
+  _selFlashUntil = millis() + SEL_FLASH_MS;
+  drawSlotCount(tft, true);
 }
 
 
@@ -312,7 +331,8 @@ void drawStaticSelect(KCM_TFT &tft) {
   tft.print("Select Resources");
 
   // Slot count — same line, right-aligned before BACK
-  drawSlotCount(tft);
+  _selFlashUntil = 0;
+  drawSlotCount(tft, false);
 
   // BACK button — tall, spans both rows
   drawButton(tft, BACK_X, BACK_Y, BACK_W, BACK_H, btnBack, &Roboto_Black_20, false);
@@ -337,7 +357,11 @@ void drawStaticSelect(KCM_TFT &tft) {
    UPDATE PASS
 ****************************************************************************************/
 void updateScreenSelect(KCM_TFT &tft) {
-  // No per-frame updates on select screen — all changes are touch-driven redraws.
+  // The only per-frame work is reverting a limit flash once it has been seen.
+  if (_selFlashUntil != 0 && (int32_t)(millis() - _selFlashUntil) >= 0) {
+    _selFlashUntil = 0;
+    drawSlotCount(tft, false);
+  }
 }
 
 
@@ -391,18 +415,21 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {
-          removeResource(t);
+          if (!removeResource(t)) { flashSlotLimit(infoDisp, true); return false; }
         } else {
-          if (!addResource(t)) return false;
-          // In live mode, request refresh so the new slot populates immediately
-          if (!demoMode) simpit.requestMessageOnChannel(0);
+          if (!addResource(t)) {
+            if (slotCount >= MAX_SLOTS) flashSlotLimit(infoDisp, false);
+            return false;
+          }
+          requestResourceRefresh();   // so the new slot populates immediately
         }
 
         // Redraw this button only
         drawSelectButton(infoDisp, i, !wasSelected);
 
         // Refresh slot count in title row
-        drawSlotCount(infoDisp);
+        _selFlashUntil = 0;
+        drawSlotCount(infoDisp, false);
 
         // Refresh order panel (preset buttons untouched)
         drawOrderPanel(infoDisp);
