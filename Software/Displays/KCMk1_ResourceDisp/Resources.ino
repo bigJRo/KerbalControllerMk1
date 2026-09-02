@@ -77,38 +77,52 @@ const char* resFullName(ResourceType t) {
 
 /***************************************************************************************
    RESOURCE COLOR
-   Fixed color per resource type. Colors match TFT_* palette in KerbalDisplayCommon.
+   Fixed colour per resource type, from the TFT_* palette in KerbalDisplayCommon.
    RES_NONE returns TFT_DARK_GREY (empty slot indicator).
+
+   Rules (3.4.1 audit):
+     - No fill uses an alert colour. TFT_RED is the alarm colour and TFT_YELLOW the
+       caution colour, and a tape sits beside its own red/yellow limit band; a fill in
+       either would read as a condition rather than an identity.
+     - No fill uses a signalling colour: TFT_CYAN is pilot-entered (the reserve bug),
+       white/silver is the stage marker line and the counters.
+     - Every fill must survive half brightness, since the stage column of LF, LOx,
+       SF, Xenon and Ablator draws at dimColor(). Pure blue halved to navy.
+     - One colour family per subsystem group where the palette allows, so a run of
+       meters under one label also reads as one family.
+   Nearest-miss colours worth adding to the library later: a brick red for Solid
+   Fuel (crimson is still a red, just pinker than the alarm), and a plum for CO2.
+   Liquid Methane's ocean is the darkest fill left; it is a rare CRP resource.
 ****************************************************************************************/
 uint16_t resColor(ResourceType t) {
   switch (t) {
-    // Power
-    case RES_ELEC_CHARGE:       return TFT_YELLOW;
-    case RES_STORED_CHARGE:     return TFT_AIR_SUP_BLUE;
-    // Propellants
+    // Power -- gold family
+    case RES_ELEC_CHARGE:       return TFT_GOLD;
+    case RES_STORED_CHARGE:     return TFT_DULL_YELLOW;
+    // Propellants -- rocket pair, RCS greens, exotics
     case RES_LIQUID_FUEL:       return TFT_ORANGE;
-    case RES_LIQUID_OX:         return TFT_BLUE;
-    case RES_SOLID_FUEL:        return TFT_RED;
-    case RES_MONO_PROP:         return TFT_DARK_GREEN;
+    case RES_LIQUID_OX:         return TFT_FRENCH_BLUE;
+    case RES_SOLID_FUEL:        return TFT_CRIMSON;
+    case RES_MONO_PROP:         return TFT_MED_GREEN;
     case RES_EVA_PROP:          return TFT_MINT;
     case RES_XENON:             return TFT_MAGENTA;
-    case RES_LIQUID_H2:         return TFT_FRENCH_BLUE;
-    case RES_LIQUID_METHANE:    return TFT_ROYAL;
-    case RES_LITHIUM:           return TFT_INT_ORANGE;
-    case RES_INTAKE_AIR:        return TFT_AQUA;
-    // Nuclear (CRP mod, KSP1)
+    case RES_LIQUID_H2:         return TFT_SKY;
+    case RES_LIQUID_METHANE:    return TFT_OCEAN;
+    case RES_LITHIUM:           return TFT_ROSE;
+    case RES_INTAKE_AIR:        return TFT_SILVER;
+    // Nuclear (CRP mod, KSP1) -- greens, the waste product dimmer
     case RES_ENRICHED_URANIUM:  return TFT_NEON_GREEN;
     case RES_DEPLETED_URANIUM:  return TFT_SAP_GREEN;
     // Other
-    case RES_ORE:               return TFT_MAROON;
+    case RES_ORE:               return TFT_TAN;
     case RES_ABLATOR:           return TFT_VIOLET;
-    // Life Support
-    case RES_LS_OXYGEN:         return TFT_SILVER;
-    case RES_LS_CO2:            return TFT_CORNELL;
+    // Life Support -- steel blue for O2, aqua for water, earth tones for the rest
+    case RES_LS_OXYGEN:         return TFT_AIR_SUP_BLUE;
+    case RES_LS_CO2:            return TFT_PURPLE;
     case RES_LS_FOOD:           return TFT_OLIVE;
     case RES_LS_WASTE:          return TFT_BROWN;
-    case RES_LS_WATER:          return TFT_CYAN;
-    case RES_LS_LIQUID_WASTE:   return TFT_DULL_YELLOW;
+    case RES_LS_WATER:          return TFT_AQUA;
+    case RES_LS_LIQUID_WASTE:   return TFT_DARK_YELLOW;
     // Agriculture
     case RES_FERTILIZER:        return TFT_UPS_BROWN;
     default:                    return TFT_DARK_GREY;
