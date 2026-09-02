@@ -59,11 +59,14 @@
      (resource not aboard) -- never a 0% alarm.
 
    Touch: a tap anywhere on a meter opens the Detail screen on that resource. A touch
-   HELD on its tape for BUG_HOLD_MS sets a RESERVE BUG at the level first touched -- a
-   cyan index in the tick zone with a cyan mark on the band, cyan being this project's
-   colour for pilot-entered values -- and when the level crosses it the meter's frame,
-   counter and alert-strip message take the bug colour rather than caution yellow. A
-   hold close to an existing bug clears it. Bugs travel with the vessel's slot memory.
+   HELD still on its tape for BUG_HOLD_MS sets a RESERVE BUG at the level first
+   touched -- a cyan index in the tick zone with a cyan mark on the band, cyan being
+   this project's colour for pilot-entered values -- and when the level crosses it the
+   meter's frame, counter and alert-strip message take the bug colour rather than
+   caution yellow. A touch that lands on an existing bug grabs it: held still it
+   clears the bug, dragged it moves the bug with the finger. Bugs travel with the
+   vessel's slot memory. The gesture logic lives in TouchEvents.ino; this tab only
+   answers geometry questions and edits the slot.
 
    Spacing: the meters always spread across the full meter area, so the pitch is
    the area divided by the slot count. What stays fixed is the meter itself: tape
@@ -858,24 +861,29 @@ int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
 
 
 /***************************************************************************************
-   TOGGLE RESERVE BUG
-   Sets slot i's bug at the held level, snapped to a whole percent, or clears it if
-   the hold is within BUG_CLEAR_TOL of the bug already there. The update pass sees the
-   change through its cache and redraws the index.
+   RESERVE BUG EDITS
+   The update pass sees a change through its cache and redraws the index, so these
+   only touch the slot.
 ****************************************************************************************/
-void toggleMeterBug(uint8_t i, float level) {
+float meterLevelAtY(uint16_t y) {
+  if (y >= TAPE_BOTTOM) return 0.0f;
+  if (y <= TAPE_TOP)    return 1.0f;
+  return constrain((float)((TAPE_BOTTOM - 1) - y) / (float)TAPE_INNER_H, 0.0f, 1.0f);
+}
+
+bool meterBugNear(uint8_t i, float level) {
+  return i < slotCount && slots[i].bug >= 0.0f && fabsf(level - slots[i].bug) <= BUG_GRAB_TOL;
+}
+
+void setMeterBug(uint8_t i, float level) {
   if (i >= slotCount) return;
-  ResourceSlot &s = slots[i];
-  if (s.bug >= 0.0f && fabsf(level - s.bug) <= BUG_CLEAR_TOL) {
-    s.bug = -1.0f;
-    if (debugMode) { Serial.print(F("ResourceDisp: bug cleared on ")); Serial.println(resLabel(s.type)); }
-    return;
-  }
-  s.bug = roundf(level * 100.0f) / 100.0f;
-  if (debugMode) {
-    Serial.print(F("ResourceDisp: bug set on ")); Serial.print(resLabel(s.type));
-    Serial.print(F(" at ")); Serial.println(s.bug);
-  }
+  slots[i].bug = roundf(level * 100.0f) / 100.0f;
+}
+
+void clearMeterBug(uint8_t i) {
+  if (i >= slotCount) return;
+  slots[i].bug = -1.0f;
+  if (debugMode) { Serial.print(F("ResourceDisp: bug cleared on ")); Serial.println(resLabel(slots[i].type)); }
 }
 
 

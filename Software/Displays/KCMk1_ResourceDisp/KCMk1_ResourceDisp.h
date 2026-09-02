@@ -220,7 +220,8 @@ extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of ca
 extern const uint32_t TTE_WINDOW_MS;     // time-to-empty rate sample window
 extern const float    ALERT_HYST_FRAC;   // hysteresis on the caution/alarm thresholds
 extern const uint32_t BUG_HOLD_MS;       // hold time to set or clear a bug
-extern const float    BUG_CLEAR_TOL;     // a hold this close to an existing bug clears it
+extern const float    BUG_GRAB_TOL;      // a touch this close to an existing bug grabs it
+extern const uint16_t BUG_DRAG_MIN_PX;   // travel before a grabbed bug starts to move
 extern const uint32_t REFRESH_TIMEOUT_MS; // how long a slot may be "awaiting" after a refresh
 
 // From AAA_Globals.ino
@@ -297,7 +298,10 @@ int8_t sidebarHitTest(uint16_t x, uint16_t y);
 // Meter under (x,y), or -1. onTape is true for a hit on the tape rows (level is the
 // 0..1 scale position of the touch), false for a hit on the label/counter rows.
 int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level);
-void   toggleMeterBug(uint8_t i, float level);   // set a reserve bug at level, or clear one near it
+float  meterLevelAtY(uint16_t y);                // 0..1 scale position of a tape row (clamped)
+bool   meterBugNear(uint8_t i, float level);     // slot i has a bug within BUG_GRAB_TOL of level
+void   setMeterBug(uint8_t i, float level);      // place slot i's reserve bug (snapped to 1%)
+void   clearMeterBug(uint8_t i);                 // remove slot i's reserve bug
 void drawStaticSelect(KCM_TFT &tft);
 void updateScreenSelect(KCM_TFT &tft);
 bool handleSelectTouch(uint16_t x, uint16_t y);

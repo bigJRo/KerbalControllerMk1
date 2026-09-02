@@ -97,12 +97,16 @@ const float ALERT_HYST_FRAC = 0.01f;        // fraction of capacity
    RESERVE BUG
    A touch HELD on a meter's tape for BUG_HOLD_MS sets a pilot-defined reserve bug at
    the level first touched (snapped to whole percent); the meter shows the bug colour
-   when the level crosses it. A hold within BUG_CLEAR_TOL of an existing bug clears
-   it instead, so a bug is toggled from the place it sits. A plain tap anywhere on a
-   meter opens the Detail screen. Bugs are saved with the vessel's slot configuration.
+   when the level crosses it. A touch that lands within BUG_GRAB_TOL of an existing
+   bug grabs it: held still for BUG_HOLD_MS it clears the bug, moved more than
+   BUG_DRAG_MIN_PX it drags the bug with the finger until release. The drag threshold
+   is the hysteresis that keeps a twitch during a hold from reading as a move. A plain
+   tap anywhere on a meter opens the Detail screen. Bugs are saved with the vessel's
+   slot configuration.
 ****************************************************************************************/
-const uint32_t BUG_HOLD_MS  = 1500;         // ms a touch must be held to set or clear a bug
-const float    BUG_CLEAR_TOL = 0.03f;       // fraction of capacity
+const uint32_t BUG_HOLD_MS     = 1500;      // ms a touch must be held still to set or clear a bug
+const float    BUG_GRAB_TOL    = 0.08f;     // fraction of capacity within which a touch grabs a bug
+const uint16_t BUG_DRAG_MIN_PX = 12;        // px of travel before a grabbed bug starts to move
 
 /***************************************************************************************
    REFRESH TIMEOUT
