@@ -5,7 +5,7 @@
      Left  : SIDEBAR_W px button column, 4 keys edge-to-edge, full height
      Top   : ALERT_H px alert strip across the content -- an EICAS-style message line
              listing every meter in caution or alarm, worst first ("SF LOW", "CO2
-             HIGH", "LF BUG"), "REFRESHING" while a channel refresh is pending, and
+             HIGH", "MP CAUT", "LF BUG"), "REFRESHING" while a channel refresh is pending, and
              at its right end the PROPELLANT BALANCE indicator (below)
      Then  : AXIS_W px shared 0-100% axis
      Then  : one tape meter per active slot at a FIXED pitch, centred as a row, in
@@ -480,8 +480,9 @@ static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, co
 
 /***************************************************************************************
    ALERT STRIP
-   One line, worst first: alarms in red, cautions in yellow, a reserve-bug crossing
-   as "<LBL> BUG", and "REFRESHING" in white while a channel refresh is pending.
+   One line, worst first: alarms white-on-red as "<LBL> LOW" (or HIGH for a waste
+   product), cautions in yellow as "<LBL> CAUT", a reserve-bug crossing as "<LBL> BUG", and
+   "REFRESHING" in white while a channel refresh is pending.
    Messages that do not fit collapse into "+N" in grey. Redrawn only when the
    composed line changes, which the signature buffer detects.
 ****************************************************************************************/
@@ -494,15 +495,21 @@ static uint16_t stripAvailW() {
   return (uint16_t)(SCREEN_W - STRIP_X - (_balShown ? BAL_W : 0));
 }
 
-// Append one message to the line; returns false when it would not fit.
-static bool stripPut(KCM_TFT &tft, uint16_t &x, uint16_t xEnd, const char *text, uint16_t color) {
+// Append one message to the line; returns false when it would not fit. A message
+// with a non-black background gets a filled tile behind it, STRIP_PAD wider than the
+// text each side -- the alarm treatment is white on red, as on the counter cells.
+static const uint16_t STRIP_PAD = 4;
+
+static bool stripPut(KCM_TFT &tft, uint16_t &x, uint16_t xEnd, const char *text,
+                     uint16_t fore, uint16_t back) {
   int16_t w = getFontStringWidth(STRIP_FONT, text);
-  if (x + w > xEnd) return false;
+  if (x + w + STRIP_PAD > xEnd) return false;
+  if (back != TFT_BLACK) tft.fillRect(x - STRIP_PAD, 1, w + STRIP_PAD * 2, ALERT_H - 2, back);
   tft.setFont(*STRIP_FONT);
-  tft.setTextColor(color, TFT_BLACK);
+  tft.setTextColor(fore, back);
   tft.setCursor(x, (ALERT_H - STRIP_FONT->cap_height) / 2);
   tft.print(text);
-  x += w + getFontStringWidth(STRIP_FONT, "  ");
+  x += w + STRIP_PAD + getFontStringWidth(STRIP_FONT, "  ");
   return true;
 }
 
@@ -525,9 +532,9 @@ static void updateAlertStrip(KCM_TFT &tft) {
 
   uint16_t xEnd = STRIP_X + stripAvailW();
   tft.fillRect(CONTENT_X, 0, xEnd - CONTENT_X, ALERT_H, TFT_BLACK);
-  uint16_t x = STRIP_X;
+  uint16_t x = STRIP_X + STRIP_PAD;
   uint8_t  dropped = 0;
-  if (refreshPending) stripPut(tft, x, xEnd, "REFRESHING", TFT_WHITE);
+  if (refreshPending) stripPut(tft, x, xEnd, "REFRESHING", TFT_WHITE, TFT_BLACK);
   for (uint8_t sev = STRIP_ALARM; sev >= STRIP_CAUTION; sev--) {
     for (uint8_t i = 0; i < slotCount; i++) {
       uint8_t code = _stripCode[i];
@@ -535,9 +542,16 @@ static void updateAlertStrip(KCM_TFT &tft) {
                                        : (code == STRIP_CAUTION || code == STRIP_BUG);
       if (!pick) continue;
       char msg[16];
-      const char *what = (code == STRIP_BUG) ? "BUG" : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
+      // Red names the condition (LOW, or HIGH for a waste product); yellow names the
+      // tier (CAUT), matching the panel's caution/alarm vocabulary; a bug crossing
+      // says so.
+      const char *what = (code == STRIP_BUG)     ? "BUG"
+                       : (code == STRIP_CAUTION) ? "CAUT"
+                       : (resLimits(slots[i].type).highIsBad ? "HIGH" : "LOW");
       snprintf(msg, sizeof(msg), "%s %s", resLabel(slots[i].type), what);
-      if (dropped || !stripPut(tft, x, xEnd, msg, (code == STRIP_ALARM) ? TFT_RED : TFT_YELLOW)) dropped++;
+      bool alarm = (code == STRIP_ALARM);
+      if (dropped || !stripPut(tft, x, xEnd, msg, alarm ? TFT_WHITE : TFT_YELLOW,
+                               alarm ? TFT_RED : TFT_BLACK)) dropped++;
     }
   }
   if (dropped) {
