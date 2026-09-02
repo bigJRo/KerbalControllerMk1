@@ -250,7 +250,7 @@ extern const float    TIME_WARN_S_H2O, TIME_ALARM_S_H2O;
 extern const float    TIME_WARN_S_FOOD, TIME_ALARM_S_FOOD;
 extern const float    TIME_HYST_FRAC;    // fraction above a time threshold needed to leave its tier
 extern const uint32_t BUG_HOLD_MS;       // hold time to set or clear a bug
-extern const uint8_t  BUG_SNAP_PCT;      // touch-set bugs snap to a multiple of this percent
+extern const uint8_t  BUG_SNAP_PCT;      // a hold places a bug on a multiple of this percent; a drag moves it by 1%
 extern const float    BUG_GRAB_TOL;      // a touch this close to an existing bug grabs it
 extern const uint16_t BUG_DRAG_MIN_PX;   // travel before a grabbed bug starts to move
 extern const uint32_t REFRESH_TIMEOUT_MS; // how long a slot may be "awaiting" after a refresh
@@ -336,7 +336,7 @@ int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level);
 int8_t stripHitTest(uint16_t x, uint16_t y);     // slot whose alert-strip message is under (x,y), or -1
 float  meterLevelAtY(uint16_t y);                // 0..1 scale position of a tape row (clamped)
 bool   meterBugNear(uint8_t i, float level);     // slot i has a bug within BUG_GRAB_TOL of level
-void   setMeterBug(uint8_t i, float level);      // place slot i's reserve bug (snapped to 1%)
+void   setMeterBug(uint8_t i, float level, uint8_t snapPct);  // place slot i's bug on a snapPct grid
 void   clearMeterBug(uint8_t i);                 // remove slot i's reserve bug
 void drawStaticSelect(KCM_TFT &tft);
 void updateScreenSelect(KCM_TFT &tft);

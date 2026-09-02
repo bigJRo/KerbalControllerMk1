@@ -104,7 +104,7 @@ void processTouchEvents() {
           _holdDragging = true;
           if (debugMode) Serial.println(F("ResourceDisp: bug drag started"));
         }
-        if (_holdDragging) setMeterBug(_holdSlot, meterLevelAtY(y));
+        if (_holdDragging) setMeterBug(_holdSlot, meterLevelAtY(y), 1);   // drag: 1% steps
       }
     }
     if (!_holdFired && !_holdDragging && _holdOnTape && millis() - _holdStartMs >= BUG_HOLD_MS) {
@@ -113,7 +113,7 @@ void processTouchEvents() {
         clearMeterBug(_holdSlot);
       } else {
         if (debugMode) Serial.println(F("ResourceDisp: meter hold matured -> bug set"));
-        setMeterBug(_holdSlot, _holdLevel);
+        setMeterBug(_holdSlot, _holdLevel, BUG_SNAP_PCT);   // first placement: 5% grid
       }
       _holdFired = true;
     }

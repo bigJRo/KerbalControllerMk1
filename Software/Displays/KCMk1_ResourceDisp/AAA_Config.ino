@@ -129,7 +129,7 @@ const float ALERT_HYST_FRAC = 0.01f;        // fraction of capacity
    slot configuration.
 ****************************************************************************************/
 const uint32_t BUG_HOLD_MS     = 1000;      // ms a touch must be held still to set or clear a bug
-const uint8_t  BUG_SNAP_PCT    = 5;         // touch-set and dragged bugs land on a multiple of this
+const uint8_t  BUG_SNAP_PCT    = 5;         // a hold places a bug on a multiple of this; a drag moves it by 1%
 const float    BUG_GRAB_TOL    = 0.08f;     // fraction of capacity within which a touch grabs a bug
 const uint16_t BUG_DRAG_MIN_PX = 12;        // px of travel before a grabbed bug starts to move
 
