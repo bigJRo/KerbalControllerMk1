@@ -31,14 +31,15 @@ ScreenType prevScreen   = screen_COUNT;    // sentinel -- forces chrome on first
 
 /***************************************************************************************
    DISPLAY MODE
-   stageMode   -- false = show vessel totals, true = show active stage values.
+   tteMode     -- false = counter row shows percent, true = time-to-empty at the
+                  current rate (time-to-full for waste-type resources).
    flightScene -- true when KSP is in a flight scene (set by SCENE_CHANGE_MESSAGE).
                   Used to guard screen transitions — don't show flight data out of flight.
    simpitConnected -- true once the Simpit handshake succeeds.
    idleState   -- when true and not in a flight scene, show standby screen.
                   Set by I2C master command in Phase 3.
 ****************************************************************************************/
-bool stageMode        = false;
+bool tteMode          = false;
 bool flightScene      = false;
 bool simpitConnected  = false;
 bool idleState        = false;

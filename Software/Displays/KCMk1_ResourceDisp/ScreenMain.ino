@@ -9,15 +9,15 @@
              same-group meters and a divider between groups
 
    Sidebar buttons (top to bottom):
-     0. TOTL / STG  -- toggles stageMode (which value the fill and counter show)
-     1. DFLT        -- resets slots to the STD default group
-     2. SEL         -- navigates to the resource selection screen
-     3. DATA        -- navigates to the numerical resource detail screen
+     0. DFLT  -- resets slots to the STD default group
+     1. SEL   -- navigates to the resource selection screen
+     2. DATA  -- navigates to the numerical resource detail screen
+     3. TTE   -- toggles the counter row between percent and time-to-empty
 
    Each meter, top to bottom:
      - group label band (shared by a run of same-group meters)
      - the tape: a narrow thermometer column filled in the resource colour to the
-       PRIMARY value (vessel total in TOTL, active stage in STG), with
+       vessel TOTAL, with
          . a limit-band column on its left. The resource's alarm and caution
            fractions are painted red and yellow on the scale itself, so the limits
            are visible whether or not the level is in them. This is the Shuttle
@@ -25,19 +25,20 @@
            warning was the percentage label changing colour.
          . for resources with a separate stage channel, the tape is split into two
            columns, the way the Shuttle PRPLT QTY meter carried its three pointers
-           side by side: the wide left column is the PRIMARY value in the resource
-           colour, the narrow right column is the SECONDARY value (stage in TOTL,
-           total in STG) in a half-brightness shade of the same colour, and a white
-           line across the whole tape marks the secondary level so it reads against
-           the ticks even where the narrow column is only a few pixels wide. The
-           mode key therefore chooses which value is wide and counted, not which
-           one you can see. Resources without a stage channel get one full-width
-           column, which is itself the cue that there is no stage figure.
+           side by side: the wide left column is the vessel total in the resource
+           colour, the narrow right column is the ACTIVE STAGE in a half-brightness
+           shade of the same colour, and a white line across the whole tape marks
+           the stage level so it reads against the ticks even where the narrow
+           column is only a few pixels wide. Resources without a stage channel get
+           one full-width column, which is itself the cue that there is no stage
+           figure. Both values are always visible; there is no mode to toggle.
          . tick marks on the right edge: major every 10%, minor every 5%
        The frame is grey when nominal and takes the caution/alarm colour on breach.
      - resource short label
-     - percent counter, coloured by state (white / yellow / white-on-red), with a
-       trend arrow in a cell to its right while the value is moving
+     - counter row: the percent of capacity, or with the TTE key engaged the time
+       to empty at the current rate (time to full for waste-type resources, "---"
+       while steady or filling). Coloured by state (white / yellow / white-on-red),
+       with a trend arrow in a cell to its right while the value is moving
      - units counter (raw resource units, compacted to fit the pitch)
      A slot whose capacity is zero (resource not aboard) shows "---" in grey with an
      empty tape and no bands lit, rather than a 0% alarm.
@@ -167,18 +168,19 @@ static inline uint16_t levelY(float level) {
    (yellow caution / red alarm, and the per-resource meter colours) for the telemetry
    the sidebar frames. See the InfoDisp README for the full rationale.
 
-   The mode key is the one key with state: TOTAL is the default and draws like any other
-   key, STAGE reverse-videos, so the key reads as "changed from the default" as well as
-   naming the mode. The border stays grey on both, since neither is a selection.
+   TTE is the one key with state: percent is the default and the key draws like any
+   other, time-to-empty reverse-videos, so the key reads as "changed from the default"
+   as well as naming the mode. The border stays grey on both, since neither is a
+   selection.
 ****************************************************************************************/
-static const ButtonLabel btnModeTotal = {
-  "TOTL",
+static const ButtonLabel btnTteOff = {
+  "TTE",
   TFT_WHITE, TFT_WHITE,
   TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
-static const ButtonLabel btnModeStage = {
-  "STG",
+static const ButtonLabel btnTteOn = {
+  "TTE",
   TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY,
   TFT_GREY, TFT_GREY
@@ -211,24 +213,24 @@ static void drawSidebar(KCM_TFT &tft) {
   uint16_t bx = sbX();
   uint16_t bw = SIDEBAR_W - 1;
 
-  // Button 0: TOTAL / STAGE mode toggle -- always drawn "on" (illuminated)
-  const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), modeBtn, SB_BTN_FONT, true);
+  // Buttons 0-2: action buttons, drawn "on" so their background colour always shows
+  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), btnReset,  SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
 
-  // Buttons 1-3: action buttons, drawn "on" so their background color always shows
-  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnReset,  SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(3), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
+  // Button 3: TTE counter-mode toggle
+  const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
+  drawButton(tft, bx, sbBtnY(3), bw, sbBtnH(), tteBtn, SB_BTN_FONT, true);
 }
 
 
 /***************************************************************************************
-   REDRAW MODE BUTTON ONLY
-   Called when stageMode toggles to avoid a full screen redraw.
+   REDRAW TTE BUTTON ONLY
+   Called when tteMode toggles to avoid a full screen redraw.
 ****************************************************************************************/
-void redrawStageModeButton(KCM_TFT &tft) {
-  const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, sbX(), sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, SB_BTN_FONT, true);
+void redrawTteButton(KCM_TFT &tft) {
+  const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
+  drawButton(tft, sbX(), sbBtnY(3), SIDEBAR_W - 1, sbBtnH(), tteBtn, SB_BTN_FONT, true);
 }
 
 
@@ -293,6 +295,42 @@ static void fmtUnits(float v, char *buf, size_t n) {
   } else {
     dtostrf(v, 1, 2, buf);
   }
+}
+
+
+/***************************************************************************************
+   TIME-TO-EMPTY FORMATTER
+   Seconds to a string that fits the counter cell in either pitch class:
+   "4:35" under ten minutes, "42m" under an hour, "5.5h" under a hundred hours.
+   secs < 0 (no usable rate) gives "---".
+****************************************************************************************/
+static void fmtTte(float secs, char *buf, size_t n) {
+  if (secs < 0.0f) {
+    strlcpy(buf, "---", n);
+  } else if (secs < 600.0f) {
+    uint16_t s = (uint16_t)secs;
+    snprintf(buf, n, "%d:%02d", s / 60, s % 60);
+  } else if (secs < 3600.0f) {
+    snprintf(buf, n, "%dm", (int)(secs / 60.0f));
+  } else if (secs < 360000.0f) {
+    dtostrf(secs / 3600.0f, 1, 1, buf);
+    strlcat(buf, "h", n);
+  } else {
+    strlcpy(buf, ">99h", n);
+  }
+}
+
+// Seconds until the resource is exhausted (or, for a waste-type resource, full) at
+// the smoothed rate; -1 when there is no usable rate in the depleting direction.
+static float tteSeconds(const MeterCache &c, ResourceType t, float cur, float max) {
+  if (!c.rateValid || c.rate == 0.0f) return -1.0f;
+  ResLimits lim = resLimits(t);
+  if (lim.highIsBad) {
+    if (c.rate <= 0.0f) return -1.0f;
+    return (max - cur) / c.rate;
+  }
+  if (c.rate >= 0.0f) return -1.0f;
+  return cur / -c.rate;
 }
 
 
@@ -375,11 +413,11 @@ static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
 // keyed on the previous value would leave stale fill above a column that shrank
 // across the toggle.
 //
-// mark < 0: one full-width column at `level`.
-// mark >= 0: the interior is split -- primary column on the left at `level` in the
-// resource colour, secondary column (secW wide) on the right at `mark` in the dimmed
+// mark < 0: one full-width column at `level` (the vessel total).
+// mark >= 0: the interior is split -- total column on the left at `level` in the
+// resource colour, stage column (secW wide) on the right at `mark` in the dimmed
 // colour, SPLIT_GAP of black between -- and a white MARK_H line across the whole
-// interior at the secondary level, drawn last since it sits on top of both columns.
+// interior at the stage level, drawn last since it sits on top of both columns.
 static void fillColumn(KCM_TFT &tft, uint16_t x, uint16_t w, float level, uint16_t color) {
   uint16_t fillH  = (uint16_t)(TAPE_INNER_H * level);
   uint16_t emptyH = TAPE_INNER_H - fillH;
@@ -406,18 +444,16 @@ static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
   tft.fillRect(ix, ly, iw, MARK_H, TFT_WHITE);
 }
 
-// Percent counter. Alarm is white-on-red across the whole cell, the InfoDisp /
-// Annunciator alarm treatment; caution is yellow text; nominal white. A slot with no
-// capacity shows "---" in grey.
-static void drawPercent(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
-                        bool hasData, uint8_t perc, uint8_t state) {
+// Counter row: the percent, or the time-to-empty string in TTE mode. Alarm is
+// white-on-red across the whole cell, the InfoDisp / Annunciator alarm treatment;
+// caution is yellow text; nominal white. A slot with no capacity shows its "---" in
+// grey.
+static void drawCounter(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                        bool hasData, const char *s, uint8_t state) {
   uint16_t cellW = st.pitch - st.arrowCellW;
   uint16_t back  = (hasData && state == 2) ? TFT_RED : TFT_BLACK;
   uint16_t fore  = !hasData ? TFT_GREY : (state == 2) ? TFT_WHITE : stateColor(state);
   tft.fillRect(g.px, PERC_Y, cellW, PERC_H, back);
-  char s[6];
-  if (hasData) snprintf(s, sizeof(s), "%d%%", perc);
-  else         strlcpy(s, "---", sizeof(s));
   textCenter(tft, st.percFont, g.px, PERC_Y, cellW, PERC_H, String(s), fore, back);
 }
 
@@ -446,42 +482,70 @@ static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, co
 
 /***************************************************************************************
    PER-METER UPDATE CACHE
-   One entry per slot. Reset by drawStaticMain() (full repaint) and by the mode toggle
-   in updateScreenMain() (repaint of the dynamics only).
+   One entry per slot. The drawn-state half is reset by drawStaticMain() (full
+   repaint) and by the TTE toggle in updateScreenMain() (repaint of the dynamics
+   only); the sampling half only by drawStaticMain(), so a toggle keeps the rate.
 ****************************************************************************************/
 static MeterCache _mc[MAX_SLOTS];
-static bool       _prevStageMode = false;
+static bool       _prevTteMode = false;
 
-static void resetMeterCaches(uint32_t now) {
+static void resetDrawCaches() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) {
     _mc[i].level      = -1.0f;
     _mc[i].mark       = -2.0f;
-    _mc[i].perc       = 255;
     _mc[i].state      = 255;
     _mc[i].hasData    = false;
     _mc[i].trend      = 127;
-    _mc[i].units[0]   = 1;       // sentinel: matches no real string, forces a redraw
+    _mc[i].counter[0] = 1;       // sentinel: matches no real string, forces a redraw
+    _mc[i].counter[1] = '\0';
+    _mc[i].units[0]   = 1;
     _mc[i].units[1]   = '\0';
+  }
+  _prevTteMode = tteMode;
+}
+
+static void resetSampling(uint32_t now) {
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) {
     _mc[i].trendRef   = -1.0f;   // < 0 = window not started
     _mc[i].trendRefMs = now;
     _mc[i].trendNow   = 0;
+    _mc[i].tteRef     = -1.0f;
+    _mc[i].tteRefMs   = now;
+    _mc[i].rate       = 0.0f;
+    _mc[i].rateValid  = false;
   }
-  _prevStageMode = stageMode;
 }
 
-// Trend: compare the primary value against the value at the start of a
-// TREND_WINDOW_MS window; a move of more than TREND_MIN_FRAC of capacity across the
-// window sets the direction. Windows are per slot and restart on every sample, so
-// the arrow lags a real change by at most one window and does not chatter on the
-// small per-message fluctuations Simpit delivers.
-static void updateTrend(MeterCache &c, bool hasData, float cur, float max, uint32_t now) {
-  if (!hasData) { c.trendNow = 0; c.trendRef = -1.0f; return; }
-  if (c.trendRef < 0.0f) { c.trendRef = cur; c.trendRefMs = now; return; }
-  if (now - c.trendRefMs < TREND_WINDOW_MS) return;
-  float frac = (cur - c.trendRef) / max;
-  c.trendNow   = (frac > TREND_MIN_FRAC) ? 1 : (frac < -TREND_MIN_FRAC) ? -1 : 0;
-  c.trendRef   = cur;
-  c.trendRefMs = now;
+// Sampling, two windows per slot, both restarting on every sample:
+//   Trend (TREND_WINDOW_MS): a move of more than TREND_MIN_FRAC of capacity across
+//   the window sets the arrow direction, so it lags a real change by at most one
+//   window and does not chatter on the per-message fluctuations Simpit delivers.
+//   Rate (TTE_WINDOW_MS): units per second across the window, smoothed 50/50 with
+//   the previous estimate. The same deadband applies, so a drain too slow to move
+//   the trend arrow in a long window reads as no rate rather than as a wild TTE.
+static void updateSampling(MeterCache &c, bool hasData, float cur, float max, uint32_t now) {
+  if (!hasData) {
+    c.trendNow = 0;  c.trendRef = -1.0f;
+    c.rateValid = false; c.rate = 0.0f; c.tteRef = -1.0f;
+    return;
+  }
+  if (c.trendRef < 0.0f) { c.trendRef = cur; c.trendRefMs = now; }
+  else if (now - c.trendRefMs >= TREND_WINDOW_MS) {
+    float frac = (cur - c.trendRef) / max;
+    c.trendNow   = (frac > TREND_MIN_FRAC) ? 1 : (frac < -TREND_MIN_FRAC) ? -1 : 0;
+    c.trendRef   = cur;
+    c.trendRefMs = now;
+  }
+  if (c.tteRef < 0.0f) { c.tteRef = cur; c.tteRefMs = now; }
+  else if (now - c.tteRefMs >= TTE_WINDOW_MS) {
+    float dt   = (now - c.tteRefMs) / 1000.0f;
+    float move = cur - c.tteRef;
+    float r    = (fabsf(move) / max < TREND_MIN_FRAC) ? 0.0f : move / dt;
+    c.rate      = c.rateValid ? 0.5f * c.rate + 0.5f * r : r;
+    c.rateValid = true;
+    c.tteRef    = cur;
+    c.tteRefMs  = now;
+  }
 }
 
 
@@ -497,7 +561,8 @@ void drawStaticMain(KCM_TFT &tft) {
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
   drawAxis(tft);
-  resetMeterCaches(millis());
+  resetDrawCaches();
+  resetSampling(millis());
 
   const MeterStyle &st = meterStyle();
   drawGroupBands(tft, st);
@@ -520,10 +585,11 @@ void drawStaticMain(KCM_TFT &tft) {
 void updateScreenMain(KCM_TFT &tft) {
   uint32_t now = millis();
 
-  if (stageMode != _prevStageMode) {
-    // Primary and secondary swap: every dynamic element repaints, chrome stays.
-    resetMeterCaches(now);
-    redrawStageModeButton(tft);
+  if (tteMode != _prevTteMode) {
+    // Counter row changes meaning: every dynamic element repaints, chrome and the
+    // rate estimate stay.
+    resetDrawCaches();
+    redrawTteButton(tft);
   }
 
   const MeterStyle &st = meterStyle();
@@ -533,21 +599,23 @@ void updateScreenMain(KCM_TFT &tft) {
     ResourceSlot &s = slots[i];
     MeterCache   &c = _mc[i];
 
-    float cur    = stageMode ? s.stageCurrent : s.current;
-    float max    = stageMode ? s.stageMax     : s.maxVal;
-    float secCur = stageMode ? s.current      : s.stageCurrent;
-    float secMax = stageMode ? s.maxVal       : s.stageMax;
+    float cur = s.current;
+    float max = s.maxVal;
 
     bool  hasData = (max > 0.0f);
     float level   = hasData ? constrain(cur / max, 0.0f, 1.0f) : 0.0f;
-    float mark    = -1.0f;   // no secondary column
-    if (hasData && resHasStageData(s.type) && secMax > 0.0f)
-      mark = constrain(secCur / secMax, 0.0f, 1.0f);
+    float mark    = -1.0f;   // no stage column
+    if (hasData && resHasStageData(s.type) && s.stageMax > 0.0f)
+      mark = constrain(s.stageCurrent / s.stageMax, 0.0f, 1.0f);
 
-    uint8_t perc  = (uint8_t)(level * 100.0f);
     uint8_t state = hasData ? meterState(s.type, level) : 0;
 
-    updateTrend(c, hasData, cur, max, now);
+    updateSampling(c, hasData, cur, max, now);
+
+    char counter[8];
+    if (!hasData)     strlcpy(counter, "---", sizeof(counter));
+    else if (tteMode) fmtTte(tteSeconds(c, s.type, cur, max), counter, sizeof(counter));
+    else              snprintf(counter, sizeof(counter), "%d%%", (int)(level * 100.0f));
 
     char units[12];
     if (hasData) fmtUnits(cur, units, sizeof(units));
@@ -560,12 +628,12 @@ void updateScreenMain(KCM_TFT &tft) {
     bool markChanged  = (c.mark < -1.5f) ||                       // forced
                         ((mark < 0.0f) != (c.mark < 0.0f)) ||     // marker appeared / vanished
                         (mark >= 0.0f && fabsf(mark - c.mark) >= BAR_LEVEL_HYSTERESIS);
-    bool stateChanged = (state != c.state) || (hasData != c.hasData);
-    bool percChanged  = (perc != c.perc) || stateChanged;
-    bool trendChanged = (c.trendNow != c.trend) || stateChanged;
-    bool unitsChanged = (strcmp(units, c.units) != 0);
+    bool stateChanged   = (state != c.state) || (hasData != c.hasData);
+    bool counterChanged = (strcmp(counter, c.counter) != 0) || stateChanged;
+    bool trendChanged   = (c.trendNow != c.trend) || stateChanged;
+    bool unitsChanged   = (strcmp(units, c.units) != 0);
 
-    if (!levelChanged && !markChanged && !percChanged && !trendChanged && !unitsChanged) continue;
+    if (!levelChanged && !markChanged && !counterChanged && !trendChanged && !unitsChanged) continue;
 
     MeterGeom g = meterGeom(st, i);
 
@@ -579,9 +647,9 @@ void updateScreenMain(KCM_TFT &tft) {
       c.mark  = mark;
       drawFill(tft, st, g, level, mark, resColor(s.type));
     }
-    if (percChanged) {
-      c.perc = perc;
-      drawPercent(tft, st, g, hasData, perc, state);
+    if (counterChanged) {
+      strlcpy(c.counter, counter, sizeof(c.counter));
+      drawCounter(tft, st, g, hasData, counter, state);
     }
     if (trendChanged) {
       c.trend = c.trendNow;

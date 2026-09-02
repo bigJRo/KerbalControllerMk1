@@ -154,19 +154,27 @@ struct MeterGeom {
   uint16_t tickX;   // first tick pixel, right of the frame
 };
 
-// Per-meter update cache. One entry per slot; reset on chrome redraw and mode toggle.
+// Per-meter update cache. One entry per slot. The drawn-state half is reset on
+// chrome redraw and on the TTE toggle; the sampling half only on chrome redraw, so
+// a toggle does not throw away the rate estimate.
 struct MeterCache {
-  float    level;     // last drawn primary level; -1 = force
-  float    mark;      // last drawn secondary level; -2 = force (-1 is "no secondary column")
-  uint8_t  perc;      // last drawn integer %; 255 = force
-  uint8_t  state;     // last drawn alert state; 255 = force
-  bool     hasData;   // last drawn capacity-present flag
-  int8_t   trend;     // last drawn trend arrow; 127 = force
-  char     units[12]; // last drawn units string; "\x01" = force
-  // Trend sampling
-  float    trendRef;    // primary value at the start of the current window
+  // Drawn state
+  float    level;       // last drawn total level; -1 = force
+  float    mark;        // last drawn stage level; -2 = force (-1 is "no stage column")
+  uint8_t  state;       // last drawn alert state; 255 = force
+  bool     hasData;     // last drawn capacity-present flag
+  int8_t   trend;       // last drawn trend arrow; 127 = force
+  char     counter[8];  // last drawn counter-row string (% or TTE); "\x01" = force
+  char     units[12];   // last drawn units string; "\x01" = force
+  // Trend sampling (short window: direction only)
+  float    trendRef;    // value at the start of the current window; < 0 = not started
   uint32_t trendRefMs;  // window start
   int8_t   trendNow;    // current direction: -1 falling, 0 steady, +1 rising
+  // Time-to-empty sampling (long window: rate in units per second, smoothed)
+  float    tteRef;      // value at the start of the current window; < 0 = not started
+  uint32_t tteRefMs;    // window start
+  float    rate;        // smoothed rate, units/s, negative = depleting
+  bool     rateValid;   // at least one full window has been measured
 };
 
 
@@ -202,6 +210,7 @@ extern const float    WASTE_WARN_FRAC;   // waste-type caution: fraction full
 extern const float    WASTE_ALARM_FRAC;  // waste-type alarm: fraction full
 extern const uint32_t TREND_WINDOW_MS;   // trend arrow sample window
 extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of capacity per window
+extern const uint32_t TTE_WINDOW_MS;     // time-to-empty rate sample window
 
 // From AAA_Globals.ino
 extern KCM_TFT       infoDisp;
@@ -211,7 +220,7 @@ extern ScreenType   activeScreen;
 extern ScreenType   prevScreen;
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
 extern uint8_t      slotCount;      // number of currently active slots (4-16)
-extern bool         stageMode;      // false = TOTAL (whole craft), true = STAGE (current stage)
+extern bool         tteMode;        // false = counter row shows %, true = time-to-empty
 extern bool         flightScene;    // true when KSP is in a flight scene
 extern bool         simpitConnected; // true once Simpit handshake succeeds
 extern bool         idleState;      // true = show standby when not in flight (set by I2C master)
@@ -252,7 +261,7 @@ void buildI2CPacketAndAssert();
 extern volatile bool i2cProceedReceived;
 void drawStaticMain(KCM_TFT &tft);
 void updateScreenMain(KCM_TFT &tft);
-void redrawStageModeButton(KCM_TFT &tft);
+void redrawTteButton(KCM_TFT &tft);
 int8_t sidebarHitTest(uint16_t x, uint16_t y);
 void drawStaticSelect(KCM_TFT &tft);
 void updateScreenSelect(KCM_TFT &tft);

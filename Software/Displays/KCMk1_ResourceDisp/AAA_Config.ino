@@ -75,6 +75,17 @@ const uint32_t TREND_WINDOW_MS = 2000;      // ms per trend sample window
 const float    TREND_MIN_FRAC  = 0.0005f;   // fraction of capacity that counts as movement
 
 /***************************************************************************************
+   TIME TO EMPTY
+   The TTE key swaps the counter row from percent to the time remaining at the
+   current rate. The rate is measured over TTE_WINDOW_MS windows (longer than the
+   trend window, so slow drains register) and smoothed 50/50 across windows. A move
+   of less than TREND_MIN_FRAC of capacity across one window counts as no rate, so
+   the slowest rate the panel will report is TREND_MIN_FRAC per window: with the
+   defaults a drain slower than about 5.5 hours to empty reads "---".
+****************************************************************************************/
+const uint32_t TTE_WINDOW_MS = 10000;       // ms per rate sample window
+
+/***************************************************************************************
    BAR UPDATE HYSTERESIS
    Minimum fractional change in resource level required to trigger a bar redraw.
    Prevents constant redraws from small Simpit value fluctuations.
