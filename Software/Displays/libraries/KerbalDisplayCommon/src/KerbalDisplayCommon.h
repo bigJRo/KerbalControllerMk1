@@ -11,13 +11,15 @@
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
 
-   v3.8.0 — three palette entries for the ResourceDisp meter fills, each filling a gap
+   v3.8.0 — four palette entries for the ResourceDisp meter fills, each filling a gap
             the existing palette could not: TFT_BRICK, a rust red for Solid Fuel that
             stays clearly off the TFT_RED alarm colour beside a red limit band;
             TFT_PLUM, a muted magenta for CO2 that is neither a red (it alerts HIGH
-            against a red band) nor already used in the life-support family; and
+            against a red band) nor already used in the life-support family;
             TFT_STRAW, a pale straw yellow for Liquid Waste that reads as what it is,
-            distinct from the TFT_GOLD used for Electric Charge.
+            distinct from the TFT_GOLD used for Electric Charge; and TFT_LIME, a
+            yellow-green for Stored Charge, far enough in hue from both that gold and
+            the magentas that every other free colour sat beside something.
 
    v3.7.2 — formatSep/formatSepI64 fill their buffer backwards, one digit at a time. The
             previous version built the string front-to-back with a sprintf + strcpy of
@@ -219,6 +221,7 @@
 #define TFT_BRICK        0xC285  /*  24,  20,   5 -- rust red, off the TFT_RED alarm colour */
 #define TFT_PLUM         0x91F0  /*  18,  15,  16 -- muted magenta */
 #define TFT_STRAW        0xEE2E  /*  29,  49,  14 -- pale straw yellow */
+#define TFT_LIME         0xC7E8  /*  24,  63,   8 -- yellow-green */
 
 
 /***************************************************************************************

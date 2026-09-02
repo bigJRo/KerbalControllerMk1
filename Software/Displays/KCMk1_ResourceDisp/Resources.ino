@@ -90,9 +90,10 @@ const char* resFullName(ResourceType t) {
        SF, Xenon and Ablator draws at dimColor(). Pure blue halved to navy.
      - One colour family per subsystem group where the palette allows, so a run of
        meters under one label also reads as one family.
-   TFT_BRICK, TFT_PLUM and TFT_STRAW (KerbalDisplayCommon 3.8.0) exist for this
-   table: Solid Fuel needed a red that is not the alarm red, CO2 a bright non-red the
-   life-support family had not used, and Liquid Waste a straw yellow. Liquid Methane's
+   TFT_BRICK, TFT_PLUM, TFT_STRAW and TFT_LIME (KerbalDisplayCommon 3.8.0) exist for
+   this table: Solid Fuel needed a red that is not the alarm red, CO2 a bright non-red
+   the life-support family had not used, Liquid Waste a straw yellow, and Stored
+   Charge something beside gold that is neither a yellow nor a magenta. Liquid Methane's
    ocean is the darkest fill left; it is a rare CRP resource.
 
    Two of the life-support colours are a joke and are meant to stay one: Waste is
@@ -102,7 +103,7 @@ uint16_t resColor(ResourceType t) {
   switch (t) {
     // Power
     case RES_ELEC_CHARGE:       return TFT_GOLD;
-    case RES_STORED_CHARGE:     return TFT_PURPLE;      // charged-capacitor purple; dull yellow sat too close to EC
+    case RES_STORED_CHARGE:     return TFT_LIME;        // dull yellow sat too close to EC, purple too close to CO2's plum
     // Propellants -- rocket pair, RCS greens, exotics
     case RES_LIQUID_FUEL:       return TFT_ORANGE;
     case RES_LIQUID_OX:         return TFT_FRENCH_BLUE;
