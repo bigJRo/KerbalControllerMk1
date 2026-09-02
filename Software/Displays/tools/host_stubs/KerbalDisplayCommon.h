@@ -7,9 +7,6 @@
 #include <KCM_Display.h>
 #include "gen_colors.h"
 #include "gen_fonts.h"
-#define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 7
-#define KDC_VERSION_PATCH 2
 #define NO_BORDER 0x0001
 #ifndef KCM_SCREEN_W
 #define KCM_SCREEN_W 1024

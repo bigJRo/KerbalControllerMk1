@@ -2,14 +2,22 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 7
-#define KDC_VERSION_PATCH 2
+#define KDC_VERSION_MINOR 8
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.8.0 — three palette entries for the ResourceDisp meter fills, each filling a gap
+            the existing palette could not: TFT_BRICK, a rust red for Solid Fuel that
+            stays clearly off the TFT_RED alarm colour beside a red limit band;
+            TFT_PLUM, a muted magenta for CO2 that is neither a red (it alerts HIGH
+            against a red band) nor already used in the life-support family; and
+            TFT_STRAW, a pale straw yellow for Liquid Waste that reads as what it is,
+            distinct from the TFT_GOLD used for Electric Charge.
 
    v3.7.2 — formatSep/formatSepI64 fill their buffer backwards, one digit at a time. The
             previous version built the string front-to-back with a sprintf + strcpy of
@@ -97,7 +105,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.7.2
+  Version: 3.8.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -208,6 +216,9 @@
 #define TFT_ROSE         0xF3CF  /*  30,  30,  15 */
 #define TFT_CRIMSON      0xD8A7  /*  27,   5,   7 */
 #define TFT_OCEAN        0x01F1  /*   0,  15,  17 */
+#define TFT_BRICK        0xC285  /*  24,  20,   5 -- rust red, off the TFT_RED alarm colour */
+#define TFT_PLUM         0x91F0  /*  18,  15,  16 -- muted magenta */
+#define TFT_STRAW        0xEE2E  /*  29,  49,  14 -- pale straw yellow */
 
 
 /***************************************************************************************

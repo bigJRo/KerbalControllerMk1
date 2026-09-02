@@ -90,19 +90,23 @@ const char* resFullName(ResourceType t) {
        SF, Xenon and Ablator draws at dimColor(). Pure blue halved to navy.
      - One colour family per subsystem group where the palette allows, so a run of
        meters under one label also reads as one family.
-   Nearest-miss colours worth adding to the library later: a brick red for Solid
-   Fuel (crimson is still a red, just pinker than the alarm), and a plum for CO2.
-   Liquid Methane's ocean is the darkest fill left; it is a rare CRP resource.
+   TFT_BRICK, TFT_PLUM and TFT_STRAW (KerbalDisplayCommon 3.8.0) exist for this
+   table: Solid Fuel needed a red that is not the alarm red, CO2 a bright non-red the
+   life-support family had not used, and Liquid Waste a straw yellow. Liquid Methane's
+   ocean is the darkest fill left; it is a rare CRP resource.
+
+   Two of the life-support colours are a joke and are meant to stay one: Waste is
+   brown and Liquid Waste is straw.
 ****************************************************************************************/
 uint16_t resColor(ResourceType t) {
   switch (t) {
-    // Power -- gold family
+    // Power
     case RES_ELEC_CHARGE:       return TFT_GOLD;
-    case RES_STORED_CHARGE:     return TFT_DULL_YELLOW;
+    case RES_STORED_CHARGE:     return TFT_PURPLE;      // charged-capacitor purple; dull yellow sat too close to EC
     // Propellants -- rocket pair, RCS greens, exotics
     case RES_LIQUID_FUEL:       return TFT_ORANGE;
     case RES_LIQUID_OX:         return TFT_FRENCH_BLUE;
-    case RES_SOLID_FUEL:        return TFT_CRIMSON;
+    case RES_SOLID_FUEL:        return TFT_BRICK;
     case RES_MONO_PROP:         return TFT_MED_GREEN;
     case RES_EVA_PROP:          return TFT_MINT;
     case RES_XENON:             return TFT_MAGENTA;
@@ -118,11 +122,11 @@ uint16_t resColor(ResourceType t) {
     case RES_ABLATOR:           return TFT_VIOLET;
     // Life Support -- steel blue for O2, aqua for water, earth tones for the rest
     case RES_LS_OXYGEN:         return TFT_AIR_SUP_BLUE;
-    case RES_LS_CO2:            return TFT_PURPLE;
+    case RES_LS_CO2:            return TFT_PLUM;
     case RES_LS_FOOD:           return TFT_OLIVE;
     case RES_LS_WASTE:          return TFT_BROWN;
     case RES_LS_WATER:          return TFT_AQUA;
-    case RES_LS_LIQUID_WASTE:   return TFT_DARK_YELLOW;
+    case RES_LS_LIQUID_WASTE:   return TFT_STRAW;
     // Agriculture
     case RES_FERTILIZER:        return TFT_UPS_BROWN;
     default:                    return TFT_DARK_GREY;

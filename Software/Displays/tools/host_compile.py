@@ -76,10 +76,10 @@ def hoisted_prototypes(files):
 
 
 def gen_colors(out_dir):
-    """Every TFT_* define from the real KerbalDisplayCommon.h, verbatim."""
+    """Every TFT_* colour and KDC_VERSION_* define from the real KerbalDisplayCommon.h."""
     lines = ["#pragma once"]
     for line in open(os.path.join(KDC_SRC, "KerbalDisplayCommon.h"), encoding='utf-8', errors='replace'):
-        if re.match(r'\s*#define\s+TFT_\w+\s+0x[0-9A-Fa-f]+', line):
+        if re.match(r'\s*#define\s+(TFT_\w+\s+0x[0-9A-Fa-f]+|KDC_VERSION_\w+\s+\d+)', line):
             lines.append(line.rstrip())
     open(os.path.join(out_dir, "gen_colors.h"), "w").write("\n".join(lines) + "\n")
 
