@@ -153,7 +153,7 @@ struct MeterStyle {
   uint16_t     tapeW;       // thermometer column width, frame included
   uint16_t     secW;        // secondary (stage/total) column width inside the tape
   uint16_t     tickL;       // major tick length right of the tape (minor = half)
-  uint16_t     arrowCellW;  // trend-arrow cell at the right of the counter row
+  uint16_t     arrowW;      // trend-arrow glyph width
   uint16_t     arrowHalfH;  // trend-arrow half height
   const tFont *labelFont;
   const tFont *percFont;

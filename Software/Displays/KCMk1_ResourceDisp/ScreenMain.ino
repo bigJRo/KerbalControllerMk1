@@ -47,8 +47,11 @@
      - resource short label
      - counter row: the percent of capacity, or with the TTE key engaged the time
        to empty at the current rate (time to full for waste-type resources, "---"
-       while steady or filling). Coloured by state (white / yellow / white-on-red),
-       with a trend arrow in a cell to its right while the value is moving
+       while steady or filling), with a trend arrow two spaces to its right while
+       the value is moving. Counter, gap and arrow slot are centred in the pitch
+       cell as one group, the arrow slot reserved whether or not an arrow shows,
+       so the number never shifts when the trend changes. Coloured by state
+       (white / yellow / white-on-red, the alarm tile hugging the group)
      - units counter (raw resource units, compacted to fit the pitch)
      A slot whose capacity is zero shows an empty tape and, in grey, "..." while a
      channel refresh is still pending for it or "---" once it is not going to answer
@@ -147,11 +150,11 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
    in a signature must already be visible from the header.)
 ****************************************************************************************/
 static const MeterStyle STYLE_STD = {
-  40, 12, 6, 14, 6,
+  40, 12, 6, 10, 6,
   &Roboto_Black_20, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_16
 };
 static const MeterStyle STYLE_CMP = {
-  22, 7, 5, 11, 5,
+  22, 7, 5, 7, 5,
   &Roboto_Black_16, &Roboto_Black_16, &Roboto_Black_12, &Roboto_Black_12
 };
 
@@ -441,33 +444,37 @@ static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
   tft.fillRect(ix, ly, iw, MARK_H, TFT_WHITE);
 }
 
-// Counter row: the percent, or the time-to-empty string in TTE mode. Alarm is
-// white-on-red across the whole cell, the InfoDisp / Annunciator alarm treatment;
-// caution is yellow text; nominal white. A slot with no capacity shows its "..." or
-// "---" in grey.
-static void drawCounter(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
-                        bool hasData, const char *s, uint8_t state) {
-  uint16_t cellW = meterPitch() - st.arrowCellW;
-  uint16_t back  = (hasData && state == 2) ? TFT_RED : TFT_BLACK;
-  uint16_t fore  = !hasData ? TFT_GREY : (state == 2) ? TFT_WHITE : stateColor(state);
-  tft.fillRect(g.px, PERC_Y, cellW, PERC_H, back);
-  textCenter(tft, st.percFont, g.px, PERC_Y, cellW, PERC_H, String(s), fore, back);
-}
+// Counter row: the percent (or the time-to-empty string in TTE mode), a two-space
+// gap, and the trend arrow slot, laid out as one group centred in the pitch cell.
+// The arrow slot is reserved even when no arrow shows, so the number stays put as
+// the trend comes and goes. Alarm is white on a red tile that hugs the group, the
+// InfoDisp / Annunciator alarm treatment; caution is yellow text; nominal white. A
+// slot with no capacity shows its "..." or "---" in grey. Up = increasing, down =
+// decreasing, no arrow = steady.
+static const uint16_t COUNTER_PAD = 4;   // red tile margin beyond the group
 
-// Trend arrow in the cell right of the counter: up = increasing, down = decreasing,
-// none = steady. Coloured with the counter's state.
-static void drawTrend(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
-                      int8_t trend, uint8_t state) {
-  uint16_t cx0 = g.px + meterPitch() - st.arrowCellW;
-  tft.fillRect(cx0, PERC_Y, st.arrowCellW, PERC_H, TFT_BLACK);
+static void drawCounterRow(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                           bool hasData, const char *s, int8_t trend, uint8_t state) {
+  uint16_t pitch  = meterPitch();
+  bool     alarm  = hasData && state == 2;
+  uint16_t back   = alarm ? TFT_RED : TFT_BLACK;
+  uint16_t fore   = !hasData ? TFT_GREY : alarm ? TFT_WHITE : stateColor(state);
+  int16_t  textW  = getFontStringWidth(st.percFont, s);
+  int16_t  gapW   = getFontStringWidth(st.percFont, "  ");
+  int16_t  groupW = textW + gapW + st.arrowW;
+  int16_t  gx     = g.px + ((int16_t)pitch - groupW) / 2;   // group left edge
+
+  tft.fillRect(g.px, PERC_Y, pitch, PERC_H, TFT_BLACK);
+  if (alarm) tft.fillRect(gx - COUNTER_PAD, PERC_Y + 1, groupW + COUNTER_PAD * 2, PERC_H - 2, back);
+  textCenter(tft, st.percFont, gx, PERC_Y, textW, PERC_H, String(s), fore, back);
+
   if (trend == 0) return;
-  int16_t cx = cx0 + st.arrowCellW / 2;
+  int16_t cx = gx + textW + gapW + st.arrowW / 2;
   int16_t cy = PERC_Y + PERC_H / 2;
-  int16_t hw = (int16_t)(st.arrowCellW - 4) / 2;
+  int16_t hw = (int16_t)st.arrowW / 2;
   int16_t hh = (int16_t)st.arrowHalfH;
-  uint16_t col = stateColor(state);
-  if (trend > 0) tft.fillTriangle(cx, cy - hh, cx - hw, cy + hh, cx + hw, cy + hh, col);
-  else           tft.fillTriangle(cx, cy + hh, cx - hw, cy - hh, cx + hw, cy - hh, col);
+  if (trend > 0) tft.fillTriangle(cx, cy - hh, cx - hw, cy + hh, cx + hw, cy + hh, fore);
+  else           tft.fillTriangle(cx, cy + hh, cx - hw, cy - hh, cx + hw, cy - hh, fore);
 }
 
 static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, const char *s) {
@@ -797,13 +804,10 @@ void updateScreenMain(KCM_TFT &tft) {
       c.mark  = mark;
       drawFill(tft, st, g, level, mark, resColor(s.type));
     }
-    if (counterChanged) {
+    if (counterChanged || trendChanged) {
       strlcpy(c.counter, counter, sizeof(c.counter));
-      drawCounter(tft, st, g, hasData, counter, state);
-    }
-    if (trendChanged) {
       c.trend = smp.trend;
-      drawTrend(tft, st, g, smp.trend, state);
+      drawCounterRow(tft, st, g, hasData, counter, smp.trend, state);
     }
     if (unitsChanged) {
       strlcpy(c.units, units, sizeof(c.units));
