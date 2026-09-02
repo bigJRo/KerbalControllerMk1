@@ -250,6 +250,7 @@ extern const float    TIME_WARN_S_H2O, TIME_ALARM_S_H2O;
 extern const float    TIME_WARN_S_FOOD, TIME_ALARM_S_FOOD;
 extern const float    TIME_HYST_FRAC;    // fraction above a time threshold needed to leave its tier
 extern const uint32_t BUG_HOLD_MS;       // hold time to set or clear a bug
+extern const uint8_t  BUG_SNAP_PCT;      // touch-set bugs snap to a multiple of this percent
 extern const float    BUG_GRAB_TOL;      // a touch this close to an existing bug grabs it
 extern const uint16_t BUG_DRAG_MIN_PX;   // travel before a grabbed bug starts to move
 extern const uint32_t REFRESH_TIMEOUT_MS; // how long a slot may be "awaiting" after a refresh

@@ -993,9 +993,12 @@ bool meterBugNear(uint8_t i, float level) {
   return i < slotCount && slots[i].bug >= 0.0f && fabsf(level - slots[i].bug) <= BUG_GRAB_TOL;
 }
 
+// Touch-set (hold or drag): snapped to BUG_SNAP_PCT. The Detail screen's keys write
+// the slot directly at 1% resolution.
 void setMeterBug(uint8_t i, float level) {
   if (i >= slotCount) return;
-  slots[i].bug = constrain(roundf(level * 100.0f) / 100.0f, 0.01f, 0.99f);
+  float pct = roundf(level * 100.0f / BUG_SNAP_PCT) * BUG_SNAP_PCT;
+  slots[i].bug = constrain(pct / 100.0f, 0.01f, 0.99f);
 }
 
 void clearMeterBug(uint8_t i) {
