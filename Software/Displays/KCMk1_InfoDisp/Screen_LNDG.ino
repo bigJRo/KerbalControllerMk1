@@ -7,8 +7,9 @@
      - RE-ENTRY (Screen_LNDG_Reentry.ino)        — graphical: corridor tape, heat-shield/
        retrograde alignment ball, chute deploy envelope, VSI/G/thermal gauges + text panel
 
-   Mode toggle is via screen-tap, handled in TouchEvents.ino:
-     _lndgReentryMode is flipped on tap.
+   The two are sibling sidebar screens (screen_LNDG / screen_LNDGRE): a repeat press
+   on the LNDG key cycles them, and AAA_Screens.ino derives _lndgReentryMode from the
+   active screen before dispatching here.
 
    On vessel switch, all mode flags + parachute state are reset (SimpitHandler.ino).
 ****************************************************************************************/

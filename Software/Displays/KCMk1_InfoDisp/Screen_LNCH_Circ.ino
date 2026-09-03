@@ -446,10 +446,19 @@ static void _lnchOrTapeTickText(float alt, char *buf, uint8_t n) {
 
 // ── Static layer: rail, ticks, tick labels, and the orbit-safe floor ──────────────────
 // Redrawn only when the scale changes, which the quantised ends make rare.
+// The divider between the tape and the three rows beneath it. Drawn by the rows
+// chrome, and again by anything above it whose erase reaches it: the static wipe and
+// a marker strip for a periapsis clamped at the bottom of the scale both do.
+static void _lnchOrTapeDrawRowsDivider(KCM_TFT &tft) {
+    tft.drawLine(LNCH_OR_TP_X + 6, LNCH_OR_TP_ROW_Y - 6,
+                 LNCH_OR_TP_RIGHT - 6, LNCH_OR_TP_ROW_Y - 6, TFT_GREY);
+}
+
 static void _lnchOrTapeDrawStatic(KCM_TFT &tft) {
     tft.fillRect(LNCH_OR_TP_X, LNCH_OR_TP_HDR_Y - 4,
                  LNCH_OR_TP_W, (LNCH_OR_TP_Y + LNCH_OR_TP_H + 26) - (LNCH_OR_TP_HDR_Y - 4),
                  TFT_BLACK);
+    _lnchOrTapeDrawRowsDivider(tft);
 
     textCenter(tft, &Roboto_Black_20, LNCH_OR_TP_X, LNCH_OR_TP_HDR_Y, LNCH_OR_TP_W, 26,
                "APSIS CONVERGENCE", TFT_LIGHT_GREY, TFT_BLACK);
@@ -516,6 +525,7 @@ static void _lnchOrTapeEraseStrip(KCM_TFT &tft, int16_t y) {
     if (y0 < LNCH_OR_TP_Y - LNCH_OR_TP_STRIP_H) y0 = LNCH_OR_TP_Y - LNCH_OR_TP_STRIP_H;
 
     tft.fillRect(LNCH_OR_TP_RAIL_X, y0, LNCH_OR_TP_RIGHT - LNCH_OR_TP_RAIL_X, h, TFT_BLACK);
+    if (y0 + h > LNCH_OR_TP_ROW_Y - 6) _lnchOrTapeDrawRowsDivider(tft);
 
     int16_t r0 = (y0 < LNCH_OR_TP_Y) ? LNCH_OR_TP_Y : y0;
     int16_t r1 = (y0 + h > LNCH_OR_TP_Y + LNCH_OR_TP_H) ? LNCH_OR_TP_Y + LNCH_OR_TP_H
@@ -591,13 +601,10 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
 
     if (_lnchOrTpApY > -9000 && _lnchOrTpPeY > -9000)
         _lnchOrTapeEraseGap(tft, _lnchOrTpApY, _lnchOrTpPeY);
-    if (apMoved && _lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
-    if (peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
-    // An erase strip can clip the other marker; redraw both rather than track overlap.
-    if (apMoved || peMoved) {
-        if (!apMoved && _lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
-        if (!peMoved && _lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
-    }
+    // An erase strip can clip the other marker, so erase and redraw both rather than
+    // track overlap.
+    if (_lnchOrTpApY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpApY);
+    if (_lnchOrTpPeY > -9000) _lnchOrTapeEraseStrip(tft, _lnchOrTpPeY);
 
     // Cyan apoapsis, magenta periapsis — the same two colours the orbit diagram gives
     // its Ap and Pe dots on the other half of this screen, so the marker on the tape and
@@ -633,8 +640,7 @@ static const int16_t LNCH_OR_TP_CELL_W = LNCH_OR_TP_W - 16;
 static void _lnchOrTapeDrawRowsChrome(KCM_TFT &tft) {
     tft.fillRect(LNCH_OR_TP_X, LNCH_OR_TP_ROW_Y - 6, LNCH_OR_TP_W,
                  (SCREEN_H - 1) - (LNCH_OR_TP_ROW_Y - 6), TFT_BLACK);
-    tft.drawLine(LNCH_OR_TP_X + 6, LNCH_OR_TP_ROW_Y - 6,
-                 LNCH_OR_TP_RIGHT - 6, LNCH_OR_TP_ROW_Y - 6, TFT_GREY);
+    _lnchOrTapeDrawRowsDivider(tft);
     for (uint8_t r = 0; r < 3; r++)
         printDispChrome(tft, &Roboto_Black_24, LNCH_OR_TP_CELL_X,
                         LNCH_OR_TP_ROW_Y + r * LNCH_OR_TP_ROW_H,
@@ -1029,7 +1035,7 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
         val    = "---";
     } else {
         float tIgn = state.mnvrTime - state.mnvrDuration * 0.5f;
-        newSec = (int32_t)roundf(tIgn);
+        newSec = (int32_t)tIgn;   // truncated, as formatTimeCompact prints it
         if      (tIgn < MNVR_TIGN_ALARM_S) { valFg = TFT_WHITE;      valBg = TFT_RED;   }
         else if (tIgn < MNVR_TIGN_WARN_S)  { valFg = TFT_YELLOW;     valBg = TFT_BLACK; }
         else                               { valFg = TFT_DARK_GREEN; valBg = TFT_BLACK; }

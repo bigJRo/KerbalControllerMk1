@@ -6,15 +6,17 @@
      - ASCENT: graphical altitude ladder + V.Vrt bar + velocity dial (left panel),
                numeric readouts (right panel). Auto-enters when sit_PreLaunch ends.
      - ORBITAL (circularization): orbit-diagram view with Ap/Pe markers and vessel
-               position (left panel), numeric readouts (right panel). Auto-switches
-               at altitude > 6% of body radius (matches KSP navball auto-switch).
+               position (left panel), apsis convergence tape (right panel). Entered
+               on the coast latch: throttle closed with apoapsis above the orbit-safe
+               altitude (see drawScreen_LNCH).
 
    Phase switching:
      - sit_PreLaunch → PRE-LAUNCH (auto, via SimpitHandler)
      - sit_PreLaunch clears → ASCENT
-     - alt > bodyRad * 0.06 → ORBITAL (with hysteresis at 0.055 descending)
-     - alt < hysteresis → ASCENT
-     - Pilot tap: toggle manual override (stops auto-switching, flips current mode)
+     - coast latch set → ORBITAL; cleared on the surface or when apoapsis falls back
+     - A repeat press on the LNCH sidebar key flips the mode and sets the manual
+       override (TouchEvents.ino), which stops auto-switching until the vessel or
+       scene changes.
 
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
@@ -44,7 +46,7 @@ static const int16_t LNCH_AS_PANEL_Y     = 63;   // just below the title bar
 // (pre-launch transitions) and by drawScreen_LNCH itself (altitude hysteresis).
 
 static void chromeScreen_LNCH(KCM_TFT &tft) {
-  // _lnchOrbitalMode is set by drawScreen_LNCH via hysteresis before chrome is called.
+  // _lnchOrbitalMode is set by drawScreen_LNCH from the coast latch before chrome is called.
   if (_lnchPrelaunchMode) {
     // ── PRE-LAUNCH board (see Screen_LNCH_PreLaunch.ino) ──
     _lnchPrelaunchDrawChrome(tft);
@@ -73,8 +75,6 @@ static void chromeScreen_LNCH(KCM_TFT &tft) {
 
 
 static void drawScreen_LNCH(KCM_TFT &tft) {
-  static const uint8_t NR = 8;
-
   // ── PRE-LAUNCH board (see Screen_LNCH_PreLaunch.ino) ──
   if (_lnchPrelaunchMode) {
     _lnchPrelaunchDrawValues(tft);
@@ -125,8 +125,7 @@ static void drawScreen_LNCH(KCM_TFT &tft) {
   // Phase switch — auto only if not manually overridden
   if (!_lnchManualOverride && orbMode != _lnchOrbitalMode) {
     _lnchOrbitalMode = orbMode;
-    for (uint8_t r = 0; r < NR; r++) rowCache[0][r].value = "\x01";
-    switchToScreen(screen_LNCH);
+    switchToScreen(screen_LNCH);   // full chrome; drawStaticScreen invalidates the row cache
     return;
   }
 
@@ -141,8 +140,8 @@ static void drawScreen_LNCH(KCM_TFT &tft) {
     // Right panel: 8 numeric readouts, each with its own change detection
     //
     // Uses _lnchOrbitalMode (persistent state) rather than the freshly-computed
-    // `orbMode` (altitude-based), so that manual override mode correctly draws
-    // the ascent visuals even at altitudes above the auto-switch threshold.
+    // `orbMode` (the coast latch), so that manual override mode correctly draws
+    // the ascent visuals even while the latch says coast.
     // =========================================================
     _lnchAsDrawLeftPanelValues(tft);
     _lnchAsDrawRightPanelValues(tft);

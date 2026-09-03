@@ -78,6 +78,8 @@
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
+static const uint8_t DOCK_SC = (uint8_t)screen_DOCK;   // row-cache / print-state index
+
 
 // ── State flags (extern linkage matches KCMk1_InfoDisp.h declarations) ───────────────
 bool     _dockChromDrawn  = false;
@@ -186,8 +188,7 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
 
     // Bottom-left: APPROACH bar (90% width, centred, with label row above).
     // Bar label/value font matches LNCH_Circ ΔV Burn bar and MNVR ΔV Burn bar
-    // (Black_20). Bar shifted 8 px down (RET_CY+R+20 → +28) to make room for the
-    // taller 24 px label between the reticle bottom and the bar.
+    // (Black_24); the label row sits between the reticle bottom and the bar.
     uint16_t barY = RET_CY + RET_R + 42;   // 552 — bar top
     uint16_t lblY = barY - 34;              // 518 — label row above bar
     tft.setFont(Roboto_Black_24);
@@ -265,7 +266,7 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
 
 
 static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
-    // barY must match what _dockDrawReticleChrome drew (Black_20 label).
+    // barY must match what _dockDrawReticleChrome drew (Black_24 label).
     static const uint16_t barY = RET_CY + RET_R + 42;  // 552
     static const uint16_t lblY = barY - 34;             // 518 — label row above bar
 
@@ -287,7 +288,7 @@ static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
         tft.fillRect(fillX, barY + 1, fillW, BAR_H - 2, barCol);
 
     // Distance value: right-aligned at right edge of bar, on the label row above bar.
-    // Black_20 — matches the "APPROACH" label font for visual unity.
+    // Black_24 — matches the "APPROACH" label font for visual unity.
     char buf[12];
     if      (dist >= 1000.0f) snprintf(buf, sizeof(buf), "%.1fkm", dist/1000.0f);
     else if (dist >= 100.0f)  snprintf(buf, sizeof(buf), "%.0fm",  dist);
@@ -295,7 +296,7 @@ static void _dockDrawDistBar(KCM_TFT &tft, float dist) {
 
     tft.setFont(Roboto_Black_24);
     tft.setTextColor(barCol, TFT_BLACK);
-    // Clear right half of label row (24 px tall for Black_20) then right-align distance text
+    // Clear right half of label row (30 px tall for Black_24) then right-align distance text
     tft.fillRect(BAR_X + BAR_W/2, lblY, BAR_W/2, 30, TFT_BLACK);
     int16_t tw = getFontStringWidth(&Roboto_Black_24, buf);   // measure in the draw font, not RP_LBL (Black_28)
     tft.setCursor(BAR_X + BAR_W - tw, lblY);
@@ -337,9 +338,9 @@ static void chromeScreen_DOCK(KCM_TFT &tft) {
     // Right panel chrome
     _dockDrawRightChrome(tft);
 
-    // Invalidate value cache for this screen
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[5][r].value = "\x01";
-    for (uint8_t r = 0; r < ROW_COUNT; r++) printState[5][r] = PrintState{};  // force full redraw
+    // Reset the print states — forces a full clear on the first value draw. (The row
+    // cache itself is invalidated by drawStaticScreen() after this chrome.)
+    for (uint8_t r = 0; r < ROW_COUNT; r++) printState[DOCK_SC][r] = PrintState{};
     // (the approach-distance bar's _dockPrevDist sentinel is reset above so it
     //  repaints on screen entry.)
 }
@@ -401,14 +402,14 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
 
     auto dockVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
                         uint16_t fgc, uint16_t bgc) {
-        drawPanelValue(tft, 5, slot, row, RP_X, RP_W, label, val, fgc, bgc, RP_F, RP_NR, false);
+        drawPanelValue(tft, DOCK_SC, slot, row, RP_X, RP_W, label, val, fgc, bgc, RP_F, RP_NR, false);
     };
 
     // Half-width cells for the two split rows, independent cache slots (as TGT does).
     const uint16_t RP_HW = RP_W / 2;
     auto dockValH = [&](uint8_t row, uint8_t slot, uint16_t x, const char *label,
                         const String &val, uint16_t fgc, uint16_t bgc) {
-        drawPanelValue(tft, 5, slot, row, x, RP_HW - ROW_PAD, label, val, fgc, bgc, RP_F, RP_NR, false);
+        drawPanelValue(tft, DOCK_SC, slot, row, x, RP_HW - ROW_PAD, label, val, fgc, bgc, RP_F, RP_NR, false);
     };
 
     auto angCol = [](float e, uint16_t &fg, uint16_t &bg) {
@@ -432,8 +433,8 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
             dockVal(1, 1, "T+DOCK", "---", TFT_DARK_GREY, TFT_BLACK);
         } else {
             float tDock = state.tgtDistance / fabsf(vc);
-            if      (tDock < 10.0f)  { fg = TFT_WHITE;     bg = TFT_RED;   }
-            else if (tDock < 30.0f)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
+            if      (tDock < DOCK_TDOCK_ALARM_S) { fg = TFT_WHITE;     bg = TFT_RED;   }
+            else if (tDock < DOCK_TDOCK_WARN_S)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
             else                     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
             dockVal(1, 1, "T+DOCK", formatTimeCompact(tDock), fg, bg);
         }
@@ -512,7 +513,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         {
             bool rcsOn = state.rcs_on;
             String rcsStr = rcsOn ? "ON" : "OFF";
-            RowCache &rc = rowCache[5][8];
+            RowCache &rc = rowCache[DOCK_SC][8];
             if (rc.value != rcsStr) {
                 ButtonLabel btn = rcsOn
                     ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
@@ -539,7 +540,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
                 case 9:   v = "MNVR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 default:  v = "SAS";  sasFg = TFT_DARK_GREY; sasBg = TFT_OFF_BLACK;  break;
             }
-            RowCache &rc = rowCache[5][9];
+            RowCache &rc = rowCache[DOCK_SC][9];
             String sv = v;
             if (rc.value != sv || rc.fg != sasFg || rc.bg != sasBg) {
                 ButtonLabel btn = { v, sasFg, sasFg, sasBg, sasBg, TFT_GREY, TFT_GREY };

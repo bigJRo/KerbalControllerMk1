@@ -194,7 +194,7 @@ static void _reDrawTape(KCM_TFT &tft) {
     return (int16_t)(yBot - f * usableH);
   };
   const uint16_t ix   = RE_TAPE_X + 1, iw = RE_TAPE_W - 2;
-  const uint16_t barR = RE_TAPE_X + RE_TAPE_W;      // bar right edge (88)
+  const uint16_t barR = RE_TAPE_X + RE_TAPE_W;      // bar right edge (79)
 
   // Full-footprint erase (label gutter + bar + marker gutter) — kills streaks.
   tft.fillRect(14, RE_TAPE_Y, (barR + RE_TAPE_GUT) - 14, RE_TAPE_H + 2, TFT_BLACK);
@@ -608,6 +608,15 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
                    "G METER", TFT_LIGHT_GREY, TFT_BLACK);
 
   const uint16_t RHW = RE_TXT_W / 2;
+  // Decide both swappable row labels from the current state before painting them.
+  // Painted from stale flags (a previous visit, the vessel-switch reset) the first draw
+  // pass found the mismatch and re-entered the screen before writing a single value:
+  // one frame of labels over empty rows. Same ordering Powered uses for its tape regime.
+  {
+    const float atmoAlt = (currentBody.lowSpace > 0.0f) ? currentBody.lowSpace : 70000.0f;
+    _lndgReentryRow1SL  = !state.inAtmo;
+    _lndgReentryRow0TPe = (!state.inAtmo && state.periapsis < atmoAlt);
+  }
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
   const char *r0 = _lndgReentryRow0TPe ? "T+ATM" : "T+GRND";
   const char *r1 = _lndgReentryRow1SL  ? "ALT.SL" : "ALT.RDR";
@@ -733,7 +742,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   // Row 5: Mach (transonic band highlighted)
   {
     float m = state.machNumber; snprintf(buf, sizeof(buf), "%.2f", m);
-    bool transonic = (m >= 0.85f && m <= 1.2f);
+    bool transonic = (m >= MACH_TRANSONIC_LO && m <= MACH_TRANSONIC_HI);
     reVal(5, "MACH", String(buf), transonic ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
   }
 

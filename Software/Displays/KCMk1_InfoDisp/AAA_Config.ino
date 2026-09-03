@@ -73,6 +73,11 @@ const float ROLL_ALARM_DEG = 90.0f;   // white-on-red — inverted / structural 
 const float AOA_WARN_DEG  = KCM_AOA_WARN_DEG;   // yellow — approaching stall AoA
 const float AOA_ALARM_DEG = KCM_AOA_STALL_DEG;  // white-on-red — beyond stall AoA (GPWS STALL point)
 
+// Transonic band (Mach). The MACH readout on AIRCRAFT and RE-ENTRY turns yellow across
+// it: drag and control authority both change abruptly here.
+const float MACH_TRANSONIC_LO = 0.85f;
+const float MACH_TRANSONIC_HI = 1.2f;
+
 // Sideslip thresholds (degrees absolute)
 const float SLIP_WARN_DEG  = 5.0f;   // yellow
 const float SLIP_ALARM_DEG = 15.0f;  // white-on-red
@@ -251,8 +256,11 @@ const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 const float LNCH_Q_WARN_KPA  = 20.0f;
 const float LNCH_Q_ALARM_KPA = 40.0f;
 
-// ASCENT — load factor bands (g), aligned with the Annunciator's crew limits so the
-// two panels cannot disagree about what a high-G ascent is.
+// ASCENT — load factor bands (g). Deliberately tighter than the panel-wide G_WARN_POS /
+// G_ALARM_POS (4 / 9 g, the Annunciator's crew limits): an ascent is a planned profile
+// and a nominal one peaks near 3 g, so a stage pulling 5 g is the vehicle overpowered
+// for its mass, worth an alarm here even though it is not a crew emergency. The
+// Ascent Autopilot's max-G cap defaults into this band.
 const float LNCH_G_WARN  = 3.0f;
 const float LNCH_G_ALARM = 5.0f;
 
@@ -276,6 +284,10 @@ const int16_t NAV_DRIFT_WARN_DEG = 10;
 const float DOCK_VCLOSURE_ALARM_MS   = 2.0f;
 const float DOCK_VCLOSURE_ALARM_DIST_M = 100.0f;
 
+// Time to dock (distance over closure rate, seconds)
+const float DOCK_TDOCK_WARN_S  = 30.0f;   // yellow
+const float DOCK_TDOCK_ALARM_S = 10.0f;   // white-on-red
+
 // Drift speed (m/s magnitude)
 const float DOCK_DRIFT_WARN_MS  = 0.1f;   // yellow
 const float DOCK_DRIFT_ALARM_MS = 0.5f;   // white-on-red
@@ -290,12 +302,7 @@ const float DOCK_BRG_ALARM_DEG = 10.0f;  // red — middle ring  (20/2)
 
 
 /***************************************************************************************
-   FLIGHT THRESHOLDS — ORBIT (ORB screen)
-****************************************************************************************/
-
-
-/***************************************************************************************
-   FLIGHT THRESHOLDS — APSIDES (APSI screen) & time thresholds
+   FLIGHT THRESHOLDS — MANEUVER (MNVR screen) & VEHICLE INFO
 ****************************************************************************************/
 
 // Time to ignition (MNVR screen, seconds)
@@ -329,7 +336,7 @@ const uint8_t EC_PRELAUNCH_LOW_PCT   = 75;   // yellow — below this: white-on-
 
 
 /***************************************************************************************
-   FLIGHT THRESHOLDS — ATT screen (heading/pitch error)
+   FLIGHT THRESHOLDS — MANEUVER reticle (heading/pitch error)
 ****************************************************************************************/
 // MNVR runs +/-20 deg full scale, so these match the reticle rings exactly as above.
 // WARN also gates the neon-green alignment box drawn around the maneuver marker.
@@ -389,44 +396,3 @@ const int32_t ROVER_ENDUR_ALARM_S = 600;    // white-on-red — under ten minute
 // on the panel and the Annunciator's CW_BUS_VOLTAGE alarm agree.
 const float EC_PCT_WARN  = EC_LOW_WARN_FRAC  * 100.0f;   // yellow — 20%
 const float EC_PCT_ALARM = EC_LOW_ALARM_FRAC * 100.0f;   // white-on-red — 5%
-
-/***************************************************************************************
-   PHASE 2 IMPLEMENTATION NOTES
-   Items to complete when adding Simpit integration:
-
-   VEH screen:
-     state.commNetSignal comes from FLIGHT_STATUS_MESSAGE (channel 36).
-     All other VEH fields (vesselName, vesselType, ctrlLevel, crewCount, crewCapacity,
-       situation, isRecoverable) also come from FLIGHT_STATUS_MESSAGE and VESSEL_NAME_MESSAGE.
-
-   APSI screen:
-     Subscribe to APSIDESTIME_MESSAGE (channel 24).
-     Struct: apsidesTimeMessage { int32_t periapsis; int32_t apoapsis; }
-
-   MNVR screen:
-     Subscribe to MANEUVER_MESSAGE (channel 34).
-     Struct: maneuverMessage { float timeToNextManeuver; float deltaVNextManeuver;
-       float durationNextManeuver; float deltaVTotal;
-       float headingNextManeuver; float pitchNextManeuver; }
-
-   RNDZ + DOCK screens:
-     Subscribe to TARGETINFO_MESSAGE (channel 25).
-     Use FLIGHT_HAS_TARGET flag from FLIGHT_STATUS_MESSAGE.
-
-   RNDZ screen intercept data:
-     Subscribe to INTERSECTS_MESSAGE (channel 33).
-
-   ORB screen:
-     Subscribe to ORBIT_MESSAGE (channel 36).
-
-   ATT screen:
-     Subscribe to ROTATION_DATA_MESSAGE (channel 45) and SAS_MODE_INFO_MESSAGE (channel 35).
-
-   LNDG screen:
-     state.gear_on   from ACTIONSTATUS_MESSAGE & GEAR_ACTION
-     state.brakes_on from ACTIONSTATUS_MESSAGE & BRAKES_ACTION
-     state.airDensity from ATMO_CONDITIONS_MESSAGE (channel 44).
-     Drogue/Main deploy via CAGSTATUS_MESSAGE (channel 41).
-
-   Parachute static bools (_drogueDeployed etc.) must be reset on vessel switch.
-****************************************************************************************/

@@ -100,7 +100,7 @@ static const char *const MNVR_RING_LBL[4] = { "5", "10", "15", "20" };
 static const ReticleGeom MNVR_GEOM = {
     (int16_t)MNVR_CX, (int16_t)MNVR_CY, (int16_t)MNVR_R, MNVR_SCALE,
     MNVR_MRK_DS, MNVR_MRK_DS, MNVR_ERASE_R,
-    MNVR_MRK_DS + 2,                // clampMargin — was MNVR_R - MNVR_MRK_DS - 2
+    MNVR_MRK_DS + 2,                // clampMargin
     MNVR_RING_LBL, &Roboto_Black_16
 };
 
@@ -110,6 +110,7 @@ static int16_t _mnvrPrevMrkX    = 9999, _mnvrPrevMrkY = 9999;
 static bool    _mnvrPrevAligned = false;
 static bool    _mnvrPrevPinned  = false;   // marker clamped at the scope boundary
 static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome on re-entry
+static uint16_t _mnvrPrevBarCol = 0;         // and its colour, which stage ΔV also drives
 
 
 // ── Draw reticle chrome ───────────────────────────────────────────────────────────────
@@ -266,12 +267,14 @@ static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
     static const uint16_t barY = MNVR_CY + MNVR_R + 42;
     static const uint16_t lblY = barY - 34;
 
-    if (fabsf(dvNode - _mnvrPrevDV) < 1.0f) return;
-    _mnvrPrevDV = dvNode;
-
     float    maxDV    = fmaxf(dvStage, dvNode);
     bool     tight    = (dvStage < dvNode * MNVR_DV_MARGIN);
     uint16_t barCol   = tight ? TFT_YELLOW : TFT_DARK_GREEN;
+    // The colour depends on stage ΔV as well as the node's, so a staging event with an
+    // unchanged node has to repaint too, or the bar and the ΔV.STG row disagree.
+    if (fabsf(dvNode - _mnvrPrevDV) < 1.0f && barCol == _mnvrPrevBarCol) return;
+    _mnvrPrevDV     = dvNode;
+    _mnvrPrevBarCol = barCol;
     float    fraction = (maxDV > 0.0f) ? fminf(dvNode / maxDV, 1.0f) : 0.0f;
     uint16_t fillW    = (uint16_t)(fraction * (MNVR_BAR_W - 2));
 
@@ -309,13 +312,13 @@ void chromeScreen_MNVR(KCM_TFT &tft) {
     _mnvrPrevAligned = false;
     _mnvrPrevPinned  = false;
     _mnvrPrevDV      = -999.0f;   // force ΔV bar + value to repaint on screen entry
+    _mnvrPrevBarCol = 0;
 
     tft.fillRect(0, TITLE_TOP, MNVR_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
     _mnvrDrawReticleChrome(tft);
     _mnvrDrawRightChrome(tft);
 
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[MNVR_SC][r].value = "\x01";
-    for (uint8_t r = 0; r < ROW_COUNT; r++) printState[MNVR_SC][r] = PrintState{};
+    for (uint8_t r = 0; r < ROW_COUNT; r++) printState[MNVR_SC][r] = PrintState{};   // row cache: drawStaticScreen()
 }
 
 
@@ -383,8 +386,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
 
     // Row 3 — T+Ign (time to ignition = node time minus half burn duration)
     {
-        if      (tIgn < 0.0f)              { fg = TFT_WHITE;      bg = TFT_RED;   }
-        else if (tIgn < MNVR_TIGN_ALARM_S) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        if      (tIgn < MNVR_TIGN_ALARM_S) { fg = TFT_WHITE;      bg = TFT_RED;   }   // includes a burn already due
         else if (tIgn < MNVR_TIGN_WARN_S)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         String val = (state.mnvrDeltaV > 0.0f) ? formatTimeCompact((int64_t)tIgn) : "---";

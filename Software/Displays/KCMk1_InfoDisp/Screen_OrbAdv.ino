@@ -10,9 +10,8 @@
      view.
 
    Access:
-     Reached by tapping the title bar while on the ORBIT screen. State lives
-     in _orbAdvancedMode (defined in Screen_ORB.ino). Chrome + draw dispatch
-     happens in AAA_Screens.ino based on that flag.
+     Its own sidebar screen (screen_ORBADV), reached by cycling the ORB key:
+     ORB -> ORB+ -> MNVR. AAA_Screens.ino dispatches its chrome and draw directly.
 
    Layout (rev-2, 940x600 content):
      Two columns of 7 rows each, Roboto_Black_36, 73 px row pitch starting at
@@ -44,11 +43,6 @@
 
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
-
-// Note: chromeScreen_OrbAdv and drawScreen_OrbAdv are forward-declared in
-// KCMk1_InfoDisp.h for cross-file visibility (AAA_Screens.ino dispatch needs
-// them, and Arduino's auto-prototyper doesn't handle alphabetical-merge-order
-// reliably for cross-file references).
 
 // ── Layout constants ─────────────────────────────────────────────────────────────────
 // Font: Roboto_Black_36 (cap 43, line_space 48). Row pitch 73 px gives ~25 px
@@ -83,20 +77,18 @@ enum {
 
 // ── Public entry points ──────────────────────────────────────────────────────────────
 void chromeScreen_OrbAdv(KCM_TFT &tft) {
-    // Invalidate the shared row cache so every value prints on first draw.
-    for (uint8_t i = 0; i < ADV_SLOT_COUNT; i++) {
-        printState[screen_ORBADV][i] = PrintState{};
-        rowCache[screen_ORBADV][i].value = String("\x01");
-    }
+    // Reset the print states so every value gets a full clear on first draw. (The row
+    // cache itself is invalidated by drawStaticScreen() after this chrome.)
+    for (uint8_t i = 0; i < ADV_SLOT_COUNT; i++) printState[screen_ORBADV][i] = PrintState{};
 
     // Panel divider — matches basic ORB for visual continuity (x=470, full height)
     tft.drawLine(CONTENT_W / 2,     ADV_TITLE_TOP, CONTENT_W / 2,     SCREEN_H, TFT_GREY);
     tft.drawLine(CONTENT_W / 2 + 1, ADV_TITLE_TOP, CONTENT_W / 2 + 1, SCREEN_H, TFT_GREY);
 
-    // Draw all labels once. All labels are white on black; values are drawn
-    // by drawScreen_OrbAdv on each update (dark green).
+    // Draw all labels once, in the panel-wide label grey; values are drawn by
+    // drawScreen_OrbAdv on each update (dark green).
     tft.setFont(Roboto_Black_36);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextColor(KDC_LABEL_COLOR, TFT_BLACK);
 
     // Left column labels
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("SMA");

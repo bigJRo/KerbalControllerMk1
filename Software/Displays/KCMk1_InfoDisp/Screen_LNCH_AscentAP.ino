@@ -492,11 +492,13 @@ static void apCommitKeypad() {
   float v = (apKpLen ? atof(apKpBuf) : 0.0f);
   if (v < e.mn) v = e.mn; if (v > e.mx) v = e.mx;
   switch (e.slot) {
-    case AP_TGTALT: apTgt = v; apDTgt = true; apEnqueueCmd(AP_CMD_SET_TARGET_ALT, v);  break;  // metres
-    case AP_INCL:   apInc = v; apDInc = true; apEnqueueCmd(AP_CMD_SET_INCLINATION, v); break;
-    case AP_LOFT:   apLof = v; apDLof = true; apEnqueueCmd(AP_CMD_SET_LOFT, v);        break;
-    case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = true; apEnqueueCmd(AP_CMD_SET_ROLL, v); break;
-    case AP_MAXG:   apMxg = v; apDMxg = true; apEnqueueCmd(AP_CMD_SET_MAXG, v);        break;
+    // The pending cue is raised only for a command that was actually queued (see
+    // apEnqueueCmd): a cue for one that was not would never clear.
+    case AP_TGTALT: apTgt = v; apDTgt = apEnqueueCmd(AP_CMD_SET_TARGET_ALT, v);  break;  // metres
+    case AP_INCL:   apInc = v; apDInc = apEnqueueCmd(AP_CMD_SET_INCLINATION, v); break;
+    case AP_LOFT:   apLof = v; apDLof = apEnqueueCmd(AP_CMD_SET_LOFT, v);        break;
+    case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, v); break;
+    case AP_MAXG:   apMxg = v; apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, v);        break;
   }
   apCloseKeypad();
 }
@@ -515,8 +517,8 @@ static void apKeypadTouch(uint16_t x, uint16_t y) {
   if (strcmp(k, "CLR") == 0) { apKpLen = 0; apKpBuf[0] = '\0'; apKpRedraw = true; return; }
   if (strcmp(k, "DEL") == 0) { if (apKpLen) { apKpBuf[--apKpLen] = '\0'; apKpRedraw = true; } return; }
   if (strcmp(k, "OFF") == 0) {
-    if (e.kind == 2)      { apRolEn = false; apDRol = true; apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); apCloseKeypad(); }
-    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = true; apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f);        apCloseKeypad(); }
+    if (e.kind == 2)      { apRolEn = false; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); apCloseKeypad(); }
+    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f);        apCloseKeypad(); }
     return;
   }
   if (strcmp(k, "+/-") == 0) {                      // sign toggle
@@ -556,9 +558,9 @@ void apScreenTouch(uint16_t x, uint16_t y) {
     int16_t cx = AP_CELLS[e.slot].x, cy = apRowY(AP_CELLS[e.slot].row);
     if (x >= cx && x < cx + AP_COLW && y >= cy && y < cy + AP_ROW_H) {
       if (e.kind == 1) {                             // Launch N/S toggle
-        apDir = !apGDir(); apDDir = true;
+        apDir = !apGDir();
+        apDDir = apEnqueueCmd(AP_CMD_SET_LAUNCH_DIR, apDir ? 1.0f : 0.0f);
         rowCache[screen_LNCHAP][e.slot].value = "\x01";
-        apEnqueueCmd(AP_CMD_SET_LAUNCH_DIR, apDir ? 1.0f : 0.0f);
       } else {
         apOpenKeypad(i);
       }

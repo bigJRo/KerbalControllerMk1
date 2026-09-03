@@ -12,18 +12,16 @@
      LAYER 2 — Orbit scene (ellipse/hyperbola, body, atmosphere, Pe/Ap/AN/DN markers,
                             SOI ring, INCL orbit line + body)
        Treated as a single indivisible unit. A "scene signature" is computed each
-       frame from the parameters that affect drawing. When the signature changes
-       AND a minimum interval has elapsed since the last scene repaint, the entire
-       panel rect is fillRect-ed to black and the whole scene is redrawn from
-       scratch. No per-element erase, no cached pixel positions for markers, no
+       frame from the parameters that affect drawing. When the signature changes,
+       the entire panel rect is fillRect-ed to black and the whole scene is redrawn
+       from scratch. No per-element erase, no cached pixel positions for markers, no
        black-tracing ellipses.
 
        Quantization is the hysteresis — scene changes fire only when a quantized
-       field flips, not on floating-point jitter. The minimum interval prevents
-       strobing during sustained maneuvering.
+       field flips, not on floating-point jitter. (A minimum repaint interval used
+       to sit on top of that; the double buffer made it unnecessary.)
 
-       PLAN panel and INCL panel are independent scenes with independent signatures
-       and independent minimum-interval gates.
+       PLAN panel and INCL panel share one signature and repaint together.
 
      LAYER 3 — Vessel dot (both panels)
        Small filled circle — the one shape where sprite-erase works cleanly.
@@ -72,10 +70,8 @@ static const uint16_t ORB_MAX_R      = 170;   // orbit half-extent (pixels)
 static const int16_t  ORB_PCX = 235;
 static const int16_t  ORB_CY  = 265;
 
-// Header strip — protected from scene repaints. Holds ORBIT/INCL labels and
-// the SOI body name. Scene repaints fillRect below this; chrome and the
-// Header strip — contains the ORBIT / INCL panel-title labels and the SOI
-// body name. Laid at y=62..92.
+// Header strip — protected from scene repaints, which fillRect below it. Holds the
+// SOI body name. Laid at y=62..92.
 static const int16_t  HDR_Y0   = TITLE_TOP;   // top of header strip
 static const int16_t  HDR_Y1   = 92;   // bottom of header strip
 
@@ -189,13 +185,6 @@ static const OrbBody ORB_BODIES[] = {
     { "Pol",      44000.0f,     0.0f,    1042138.0f },  // 15
     { "Eeloo",   210000.0f,     0.0f,  119082942.0f },  // 16
 };
-
-// ── Advanced-mode flag ────────────────────────────────────────────────────────────────
-// rev-2: ORBADV (Advanced Elements) is a dedicated sidebar screen. _orbAdvancedMode
-// is derived from the active screen by drawStaticScreen() (true on screen_ORBADV) so
-// the OrbAdv chrome/draw path is selected; SimpitHandler still resets it on vessel
-// switch. Definition lives here because Screen_OrbAdv.ino documents it as owned by ORB.
-bool          _orbAdvancedMode = false;
 
 // ── Tuning constants ──────────────────────────────────────────────────────────────────
 // Scene-signature quantization bin sizes (produce hysteresis).
@@ -1026,7 +1015,7 @@ static void _orbPatchArcPlan(KCM_TFT &tft, const OrbScene &sc, float nu_rad) {
 
 // ── Per-frame state ───────────────────────────────────────────────────────────────────
 // Readout strip caching uses the shared rowCache[screen_ORB]/printState[screen_ORB]
-// (slots 0..6; slot 6 = Inc on INCL) — see the orbPut helper in drawScreen_ORB.
+// (slots 0..7; 6 = Inc on INCL, 7 = Ecc) — see the orbPut helper in drawScreen_ORB.
 
 // Vessel dot cache (both panels).
 static bool    _planDotValid = false;
@@ -1040,10 +1029,6 @@ static int16_t _inclDotY     = 0;
 static bool        _sceneValid = false;
 static OrbScene    _lastScene;
 static OrbSceneSig _lastSig;
-static uint32_t    _lastSceneRepaint = 0;
-
-// Pending scene change held off by the minimum-interval gate.
-static bool        _pendingSig = false;
 
 // Body name cache — tracks last-drawn bodyIdx so the name is only redrawn when
 // the SOI actually changes. The name lives in the header strip (above the
@@ -1161,8 +1146,6 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     _sceneValid        = false;
     _planDotValid      = false;
     _inclDotValid      = false;
-    _lastSceneRepaint  = 0;
-    _pendingSig        = false;
     _vesselUpdateCount = 0;
     _lastBodyIdxDrawn  = -1;
     _lastTLabel        = -1;
@@ -1170,7 +1153,7 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
 
     // Panel divider — centred at x=470 (half of the 940px content area)
     tft.drawLine(CONTENT_W / 2, ORB_TITLE_TOP, CONTENT_W / 2, ORB_SCREEN_H, TFT_GREY);
-    tft.drawLine(471, ORB_TITLE_TOP, 471, ORB_SCREEN_H, TFT_GREY);
+    tft.drawLine(CONTENT_W / 2 + 1, ORB_TITLE_TOP, CONTENT_W / 2 + 1, ORB_SCREEN_H, TFT_GREY);
 
     // Panel labels "ORBIT" and "INCL" are intentionally absent — the screen
     // title already says "ORBIT" and the left/right functional split is clear
@@ -1184,10 +1167,10 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     _orbDrawBodyName(tft, _orbBodyIdx());
 
     // Readout strip labels. Four rows a side now. All use Roboto_Black_28.
-    // SMA / Ecc / PRD / Arg.Pe / T+Pe-T+Ap / Inc labels are white; Pe and Ap use their
-    // dot colours (magenta / blue) as mnemonic colour coding.
+    // SMA / Ecc / PRD / Arg.Pe / T+Pe-T+Ap / Inc labels take the panel-wide label grey;
+    // Pe and Ap use their dot colours (magenta / blue) as mnemonic colour coding.
     tft.setFont(Roboto_Black_28);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextColor(KDC_LABEL_COLOR, TFT_BLACK);
     tft.setCursor(6,   ORB_RDY0); tft.print("SMA");
     tft.setCursor(6,   ORB_RDY1); tft.print("ECC");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
@@ -1196,7 +1179,7 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     tft.setCursor(6,   ORB_RDY3); tft.print("APA");
 
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextColor(KDC_LABEL_COLOR, TFT_BLACK);
     tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("INC");
     tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PERIOD");
     tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("ARG.PE");
@@ -1220,7 +1203,6 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // repaints when something visually different actually happens (which under
     // the global double buffer means the repaint lands on the hidden page).
     bool sceneNeedsRepaint = (!_sceneValid) || (sig != _lastSig);
-    _pendingSig = false;
 
     // ── Layer 2: scene repaint ───────────────────────────────────────────────────────
     if (sceneNeedsRepaint) {
@@ -1232,8 +1214,6 @@ static void drawScreen_ORB(KCM_TFT &tft) {
         _lastScene        = sc;
         _lastSig          = sig;
         _sceneValid       = true;
-        _lastSceneRepaint = now;
-        _pendingSig       = false;
     }
 
     // Body name — drawn once in chrome, then refreshed only when the SOI body
@@ -1244,10 +1224,9 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     }
 
     // ── Layer 3: vessel dot on PLAN panel ────────────────────────────────────────────
-    // Use the cached scene so vessel position matches what's drawn on screen.
-    // (If sig changed but repaint was gated off, the cached scene is still the
-    // one that's actually visible.)
-    const OrbScene &drawSc = _sceneValid ? _lastScene : sc;
+    // The cached scene is the one on screen (a repaint just refreshed it), so the
+    // vessel is placed against exactly what is drawn.
+    const OrbScene &drawSc = _lastScene;
 
     float nu_rad = state.trueAnomaly * (PI / 180.0f);
     while (nu_rad >  PI) nu_rad -= 2.0f * PI;
@@ -1395,10 +1374,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
                 Serial.print(vt3 - vt2);
                 Serial.print(F("us"));
             }
-            Serial.print(F("  sinceRepaint="));
-            Serial.print(now - _lastSceneRepaint);
-            Serial.print(F("ms  pending="));
-            Serial.println(_pendingSig ? 1 : 0);
+            Serial.println();
         }
     }
 
@@ -1425,8 +1401,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // below, because a negative value there means "passed / unavailable" and
     // needs to be distinguishable from a small positive value.
 
-    // Row 0 — Alt.SL
-    // SMA and Ecc, exactly as ORBIT ADVANCED renders them. On an escape trajectory the
+    // Rows 0 and 7 — SMA and Ecc, exactly as ORBIT ADVANCED renders them. On an escape trajectory the
     // semi-major axis is negative and the eccentricity is at or above 1; both are still
     // the real elements, and formatAlt() carries the sign, so neither is special-cased.
     orbPut(0, 110, ORB_RDY0, 360, formatAlt(state.semiMajorAxis));
@@ -1486,7 +1461,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             // not every frame, so no flicker.
             tft.fillRect(INC_LABEL_X, INC_RDY3, 100, RH, TFT_BLACK);
             tft.setFont(*F);
-            tft.setTextColor(TFT_WHITE, TFT_BLACK);
+            tft.setTextColor(KDC_LABEL_COLOR, TFT_BLACK);
             tft.setCursor(INC_LABEL_X, INC_RDY3);
             tft.print(showPe ? "T+PE" : "T+AP");
             _lastTLabel = nowLabel;
@@ -1496,7 +1471,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     }
 
     // Row 6 (INCL top) — Inc (inclination, degrees)
-    // Label "INC" is white chrome (drawn in chromeScreen_ORB). Value is the
+    // Label "INC" is grey chrome (drawn in chromeScreen_ORB). Value is the
     // inclination in degrees to 1 decimal place, dark-green like the other
     // readouts.
     {

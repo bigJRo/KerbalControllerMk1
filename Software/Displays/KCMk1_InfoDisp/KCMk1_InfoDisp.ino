@@ -109,6 +109,10 @@ void loop() {
 
   if (demoMode) stepDemoState();
 
+  // Screen-independent sampling: the ROVER endurance window accumulates whatever
+  // screen is up, so it has an answer the moment ROVER is shown.
+  rovrEnduranceService();
+
   // --- Context routing: both ladders run every frame, so the panels follow the
   //     mission rather than only re-pairing at vessel and scene boundaries. Guarded
   //     by the manual latch, a release band per rule and a minimum dwell. ---

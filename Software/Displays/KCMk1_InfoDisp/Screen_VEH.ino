@@ -37,7 +37,7 @@ static void chromeScreen_VEH(KCM_TFT &tft) {
 
   // Dividers — drawn LAST, +1 offset to clear printValue fillRect boundary
   uint16_t d1 = TITLE_TOP + rowH*3 + 1;  // after Status  (row2/row3)
-  uint16_t d2 = TITLE_TOP + rowH*6 + 1;  // after Signal  (row5/row6)
+  uint16_t d2 = TITLE_TOP + rowH*6 + 1;  // after Crew    (row5/row6)
   tft.drawLine(0, d1,   CONTENT_W, d1,   TFT_GREY);
   tft.drawLine(0, d1+1, CONTENT_W, d1+1, TFT_GREY);
   tft.drawLine(0, d2,   CONTENT_W, d2,   TFT_GREY);
@@ -57,7 +57,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   // vehVal -> drawValue() split overload with AX/AW section geometry (#6B)
   auto vehVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    drawValue(tft, 7, row, AX, AW, label, val, fgc, bgc, F, NR);
+    drawValue(tft, (uint8_t)screen_VEH, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // ── INFO block (rows 0-2): identity ──
@@ -96,7 +96,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   const uint16_t TICON_X = AX + AW - TICON_W - 8;                 // right edge = value text margin
   const uint16_t TICON_Y = rowYFor(1, NR) + (rowHFor(NR) - TICON_W) / 2;
   const uint16_t AW_TYPE = (uint16_t)(TICON_X - TICON_GAP - AX + 8);  // cell stops short of the icon
-  drawValue(tft, 7, 1, AX, AW_TYPE, "TYPE", typeName, typeColor, TFT_BLACK, F, NR);
+  drawValue(tft, (uint8_t)screen_VEH, 1, AX, AW_TYPE, "TYPE", typeName, typeColor, TFT_BLACK, F, NR);
 
   // The icon is re-read from SD only when the type changes (SD reads are slow);
   // between changes it rides along in the double-buffer's page copy.

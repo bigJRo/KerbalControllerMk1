@@ -271,12 +271,8 @@ static int16_t _lnchAsPrevVVrtFillPx = 0;        // last V.Vrt bar fill height (
 static int16_t _lnchAsPrevVOrbFillPx = 0;        // last V.Orb bar fill height (unsigned, pixels from bottom)
 static float   _lnchAsLastDrawnScaleTop = 0.0f;  // scale top last rendered on screen
 static float   _lnchAsCurrScaleTop      = 0.0f;  // current (grow-only) scale top target (m)
-static bool    _lnchAsPrevVRow3IsOrb    = false; // row 3: true = "V.Orb" label, false = "V.Srf"
 
-// FPA dial state. Arrow tracked by its endpoint pixel so it can be erased
-// cleanly on change. Sentinel -9999 = "arrow not yet drawn" (first frame).
-static int16_t _lnchAsPrevFpaArrowEndX = -9999;
-static int16_t _lnchAsPrevFpaArrowEndY = -9999;
+// FPA dial state.
 static int16_t _lnchAsPrevFpaReadout   = -9999;  // last FPA value shown (integer degrees)
 static int16_t _lnchAsPrevFpaTarget    = -9999;  // last target FPA marker position (integer degrees)
 
@@ -1646,9 +1642,6 @@ static void _lnchAsResetState() {
     _lnchAsPrevVOrbFillPx     = 0;
     _lnchAsCurrScaleTop       = 0.0f;  // forces grow-from-zero on next query
     _lnchAsLastDrawnScaleTop  = 0.0f;
-    _lnchAsPrevVRow3IsOrb     = false; // chrome draws V.Srf initially — match that
-    _lnchAsPrevFpaArrowEndX   = -9999;
-    _lnchAsPrevFpaArrowEndY   = -9999;
     _lnchAsPrevFpaReadout     = -9999;
     _lnchAsPrevFpaTarget      = -9999;
     _lnchAsPrevAtmoTriY       = -1;

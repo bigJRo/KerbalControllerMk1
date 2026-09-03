@@ -1,24 +1,25 @@
 /***************************************************************************************
    TouchEvents.ino -- Touch input for Kerbal Controller Mk1 Information Display
 
-   Touch is polled via KCM_Touch each processTouchEvents() call (rev-2 FT5316; no ISR —
-   the rev-1 CTP_INT_PIN touchISR()/_touchPending latch is gone, clearTouchISR() is a
-   compat no-op).
+   Touch is polled via KCM_Touch each processTouchEvents() call (rev-2 FT5316; no ISR --
+   the rev-1 CTP_INT_PIN touchISR()/_touchPending latch is gone).
 
    Defence layers:
+   1. Boot guard — nothing is accepted until the panel has once been seen untouched,
+      so a settling touch from the FT5316 right after reset cannot fire a gesture.
    2. Count filter — accept only count == 1. Multi-finger events on a single-button
       sidebar are never intentional; count != 1 is a strong phantom signal. Applied to
       both the first read and the confirmation re-read.
-   3. (removed rev-2) The bottom Y dead zone was a GSL1680 edge-noise workaround.
-      The FT5316 does not ghost at the panel boundary, and the bottom sidebar
-      button (REEN) extends to the last row, so the band is gone.
-   4. Bounds check — reject x >= SCREEN_W or y >= SCREEN_H.
-   5. Double-read with coordinate stability — re-read after 8ms; reject if the re-read
+   3. Bounds check — reject x >= SCREEN_W or y >= SCREEN_H.
+   4. Double-read with coordinate stability — re-read after 8ms; reject if the re-read
       count != 1 OR if coordinates moved more than TOUCH_JITTER_MAX pixels.
       Phantom noise jumps around between reads; real touches are stable.
-   6. Debounce 500ms — prevents rapid re-fires within a burst.
-   7. Require-release — set on ANY confirmed touch, suppressing the rest of a burst
-      until INT goes low.
+   5. Debounce — TOUCH_DEBOUNCE_MS between taps, shortened to TOUCH_CYCLE_DEBOUNCE_MS
+      for a repeat press on the same sidebar key (see below).
+   6. Require-release — set on ANY confirmed touch, suppressing the rest of a burst
+      until the panel is seen untouched again.
+   (The rev-1 bottom-row dead zone is gone: it was a GSL1680 edge-noise workaround, and
+   the FT5316 does not ghost at the panel boundary.)
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
@@ -138,9 +139,7 @@ void processTouchEvents() {
     _lnchPrelaunchDismissed = true;   // prevent FLIGHT_STATUS from re-entering
     _lnchOrbitalMode        = false;
     _lnchManualOverride     = false;
-    // switchToScreen() forces a full chrome redraw (full rowCache invalidation).
-    switchToScreen(screen_LNCH);
-    clearTouchISR();
+    switchToScreen(screen_LNCH);   // full chrome redraw
     if (debugMode) Serial.println(F("InfoDisp: Pre-launch board dismissed by tap"));
     return;
   }
@@ -154,7 +153,6 @@ void processTouchEvents() {
       refChipHit(touchContentX(x2), y2)) {
     if (activeScreen == screen_SCFT) scftToggleVelRef();
     else                             acftToggleAltRef();
-    clearTouchISR();
     if (debugMode) Serial.println(F("InfoDisp: reference chip tapped"));
     return;
   }
@@ -164,7 +162,6 @@ void processTouchEvents() {
   if (activeScreen == screen_LNCHAP && touchInContent(x2) && y2 >= TITLE_TOP) {
     // apScreenTouch() lays its keypad out in content space — hand it the translated x.
     apScreenTouch(touchContentX(x2), y2);
-    clearTouchISR();
     return;
   }
 
@@ -263,8 +260,7 @@ void processTouchEvents() {
     if (doSwitch) {
       switchToScreen(target);
       noteManualScreenSwitch();   // a press gets its own dwell — see updateContextScreen
-      clearTouchISR();
-    }
+      }
   }
 
 }
