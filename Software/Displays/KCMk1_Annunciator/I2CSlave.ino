@@ -131,25 +131,27 @@ static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE_MAX];  // volatile: written in IS
 static volatile uint8_t i2cCmdLen = 0;                 // bytes received for the pending command
 static volatile bool i2cCmdReady = false;
 
-static void processI2CCommand() {
-  uint8_t controlByte  = i2cCmdBuf[0];
-  uint8_t ctrlModeByte = i2cCmdBuf[1];
-  uint8_t ctrlGrpByte  = i2cCmdBuf[2];
+// Takes a snapshot of the command (copied out of the ISR buffer under noInterrupts by
+// updateI2CState), so a second write landing mid-way cannot tear the one being applied.
+static void processI2CCommand(const uint8_t *cmd, uint8_t len) {
+  uint8_t controlByte  = cmd[0];
+  uint8_t ctrlModeByte = cmd[1];
+  uint8_t ctrlGrpByte  = cmd[2];
 
   // --- Extended (rev 2) fields: bottom mode-grid flags + Cap readout ---
   // Present only when the master sends the 6-byte command; otherwise left as-is.
-  if (i2cCmdLen >= I2C_CMD_SIZE_EXT) {
-    state.modeFlags = (uint16_t)i2cCmdBuf[3] | ((uint16_t)i2cCmdBuf[4] << 8);
-    state.capValue  = i2cCmdBuf[5];
+  if (len >= I2C_CMD_SIZE_EXT) {
+    state.modeFlags = (uint16_t)cmd[3] | ((uint16_t)cmd[4] << 8);
+    state.capValue  = cmd[5];
   }
 
   // --- GPWS (rev 3) fields: config byte + int16 altitude threshold ---
   // Relayed from the GPWS Input panel module. cfgByte bit layout matches the
   // module's reported state byte (bits1:0=mode, bit2=proxAlarm, bit3=rdvRadar);
   // threshold is big-endian metres. Applied only when the master sends 9+ bytes.
-  if (i2cCmdLen >= I2C_CMD_SIZE_GPWS) {
-    uint8_t gpwsCfg  = i2cCmdBuf[6];
-    int16_t gpwsThr  = (int16_t)(((uint16_t)i2cCmdBuf[7] << 8) | i2cCmdBuf[8]);
+  if (len >= I2C_CMD_SIZE_GPWS) {
+    uint8_t gpwsCfg  = cmd[6];
+    int16_t gpwsThr  = (int16_t)(((uint16_t)cmd[7] << 8) | cmd[8]);
     gpwsSetConfig(gpwsCfg, gpwsThr);
   }
 
@@ -353,11 +355,17 @@ void setupI2CSlave() {
    against the last transmitted packet, keeping all assembly logic in one place.
 ****************************************************************************************/
 void updateI2CState() {
-  // --- Apply any pending inbound command ---
+  // --- Apply any pending inbound command (snapshot it out of the ISR buffer) ---
+  uint8_t cmd[I2C_CMD_SIZE_MAX];
+  uint8_t len = 0;
+  noInterrupts();
   if (i2cCmdReady) {
+    len = i2cCmdLen;
+    for (uint8_t i = 0; i < len; i++) cmd[i] = i2cCmdBuf[i];
     i2cCmdReady = false;
-    processI2CCommand();
   }
+  interrupts();
+  if (len) processI2CCommand(cmd, len);
 
   // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {

@@ -67,7 +67,6 @@ BodyParams currentBody;
 ****************************************************************************************/
 ScreenType activeScreen     = screen_Standby;
 ScreenType prevScreen       = screen_COUNT;
-bool       firstPassOnMain  = false;
 bool       alarmSilenced    = false; // true when crew has silenced active master alarm
 
 

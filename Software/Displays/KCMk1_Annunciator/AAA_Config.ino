@@ -1,7 +1,8 @@
 /***************************************************************************************
    AAA_Config.ino -- Tunable constants for Kerbal Controller Mk1 Annunciator
    Adjust these values to calibrate behaviour without touching application logic.
-   All three operating mode flags can also be set at runtime via I2C from the master.
+   demoMode, audioEnabled and debugMode can also be set at runtime via I2C from the
+   master; the standalone / test / lamp-test switches are compile-time only.
 ****************************************************************************************/
 #include "KCMk1_Annunciator.h"
 

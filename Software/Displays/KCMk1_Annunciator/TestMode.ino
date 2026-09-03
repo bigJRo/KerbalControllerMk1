@@ -12,10 +12,10 @@
         yellow (companion bool) and red (C&W bit) tiers separately.
 
    D -- Display walk-through
-        Steps through every C&W indicator, situation button, panel status button,
-        and flight condition indicator one at a time. Directly forces state to
-        illuminate each indicator in isolation so rendering is verified independently
-        of logic. Advance with ENTER or N. Go back with B. Quit with Q.
+        Steps through every C&W indicator, situation button, regime tile, mode-grid
+        tile and SPCFT state one at a time. Directly forces state to illuminate each
+        indicator in isolation so rendering is verified independently of logic.
+        Advance with ENTER or N. Go back with B. Quit with Q.
 
    SERIAL COMMANDS (available at any time):
    L   -- run logic tests
@@ -100,10 +100,7 @@ void runTestMode() {
   // During walk-through, runDisplayWalkthrough() draws directly so we skip here
   if (!_inDisplayWalk) {
     if (activeScreen != prevScreen) {
-      if (activeScreen == screen_Main) {
-        drawStaticMain(infoDisp);
-        firstPassOnMain = true;
-      }
+      if (activeScreen == screen_Main) drawStaticMain(infoDisp);
       prevScreen = activeScreen;
     }
     updateScreenMain(infoDisp);
@@ -182,7 +179,8 @@ static void resetTestState() {
   state = AppState();
 
   // Override fields whose defaults would trigger C&W conditions:
-  // skinTemp defaults to 100 which exceeds tempAlarm(90) -> triggers HIGH_TEMP
+  // (temperatures already default to 0; kept explicit so a future default change
+  // cannot make HIGH_TEMP leak into every test)
   state.skinTemp  = 0;
   state.maxTemp   = 0;
   // periapsis defaults to 0 which is below reentryAlt(45000) -> triggers PE_LOW
@@ -212,12 +210,13 @@ static void resetTestState() {
   chuteEnvState     = chute_Off;
   prevChuteEnvState = chute_Off;
 
-  // Reset panel mode flags to safe display baseline
-  // These must be reset here so display walk-through steps don't bleed into each other
+  // Reset the mode grid and panel flags to a dark baseline so walk-through steps
+  // don't bleed into each other.
+  state.modeFlags = 0;
   demoMode        = false;
   debugMode       = false;
   audioEnabled    = false;
-  simpitConnected = true;   // default connected so SIMPIT LOST is off
+  simpitConnected = true;
 
   // Set body to Kerbin
   setTestBody();
@@ -631,7 +630,9 @@ static void runLogicTests() {
       state.apoapsis  = currentBody.lowSpace + 50000.0f; },
     { state.periapsis = currentBody.reentryAlt - 1000.0f; }); // Pe inside atmo
 
-  // CW_ELEC_GEN -- tested via delta tracking (needs two calls)
+  // CW_ELEC_GEN -- latched by a rising reading, released by a falling one. The
+  // latch must survive recomputes with the reading unchanged (every other Simpit
+  // message triggers one), which is what the middle call checks.
   {
     resetTestState();
     state.EC = 500.0f;
@@ -639,6 +640,8 @@ static void runLogicTests() {
     state.EC = 505.0f;            // EC increased
     updateCautionWarningState();
     checkBit(CW_ELEC_GEN, true, "ELEC_GEN", "on: EC increasing");
+    updateCautionWarningState();  // unchanged reading: must stay lit
+    checkBit(CW_ELEC_GEN, true, "ELEC_GEN", "on: held across an unrelated recompute");
 
     state.EC = 504.0f;            // EC decreased
     updateCautionWarningState();
@@ -682,7 +685,8 @@ static void runLogicTests() {
     if (pass) _logicPassed++; else _logicFailed++;
   }
 
-  // CW_SRB_ACTIVE -- needs delta tracking
+  // CW_SRB_ACTIVE -- latched by a falling reading, held across recomputes with the
+  // reading unchanged, released by exhaustion or a full (new) stage.
   {
     resetTestState();
     state.SF_stage_tot = 1000.0f;
@@ -691,12 +695,16 @@ static void runLogicTests() {
     state.SF_stage     = 850.0f;   // decreasing -- SRB burning
     updateCautionWarningState();
     checkBit(CW_SRB_ACTIVE, true, "SRB_ACTIVE", "on: SF decreasing");
+    updateCautionWarningState();   // unchanged reading: must stay lit
+    checkBit(CW_SRB_ACTIVE, true, "SRB_ACTIVE", "on: held across an unrelated recompute");
 
-    state.SF_stage     = 849.9f;   // still decreasing
+    state.SF_stage     = 2.0f;     // 0.2% -- exhausted
     updateCautionWarningState();
-    state.SF_stage     = 849.9f;   // stable -- no longer decreasing
+    checkBit(CW_SRB_ACTIVE, false, "SRB_ACTIVE", "off: SF exhausted");
+
+    state.SF_stage     = 1000.0f;  // a fresh full stage
     updateCautionWarningState();
-    checkBit(CW_SRB_ACTIVE, false, "SRB_ACTIVE", "off: SF stable");
+    checkBit(CW_SRB_ACTIVE, false, "SRB_ACTIVE", "off: new full stage");
   }
 
   // CW_EVA_ACTIVE
@@ -736,64 +744,6 @@ static void runLogicTests() {
     }
   }
 
-  // ---------------------------------------------------------------------------------
-  // PANEL STATUS INDICATORS
-  // Tests the boolean state flags that drive each panel status button.
-  // ---------------------------------------------------------------------------------
-  Serial.println();
-  Serial.println(F("--- Panel Status Indicators ---"));
-
-  // Save current flags
-  bool saveDemoMode       = demoMode;
-  bool saveDebugMode      = debugMode;
-  bool saveAudioEnabled   = audioEnabled;
-  bool saveSimpitConn     = simpitConnected;
-  bool saveStandaloneMode = standaloneMode;
-  bool saveStandaloneTest = standaloneTest;
-  uint8_t saveTwIndex     = state.twIndex;
-
-  // DEMO on/off
-  demoMode = true; debugMode = false;
-  printResult(demoMode && !debugMode,  "DEMO on",       "demoMode=true debugMode=false");
-  demoMode = false;
-  printResult(!demoMode && !debugMode, "DEMO off",      "demoMode=false");
-
-  // DEBUG on/off (same DEMO button, purple)
-  debugMode = true; demoMode = false;
-  printResult(debugMode,               "DEBUG on",      "debugMode=true");
-  debugMode = false;
-  printResult(!debugMode,              "DEBUG off",     "debugMode=false");
-
-  // WARP on/off
-  state.twIndex = 3;
-  printResult(state.twIndex > 0,       "WARP on",       "twIndex=3");
-  state.twIndex = 0;
-  printResult(!(state.twIndex > 0),    "WARP off",      "twIndex=0");
-
-  // AUDIO on/off
-  audioEnabled = true;
-  printResult(audioEnabled,            "AUDIO on",      "audioEnabled=true");
-  audioEnabled = false;
-  printResult(!audioEnabled,           "AUDIO off",     "audioEnabled=false");
-
-  // SIMPIT LOST on/off
-  simpitConnected = false;
-  printResult(!simpitConnected,        "SIMPIT LOST on",  "simpitConnected=false");
-  simpitConnected = true;
-  printResult(simpitConnected,         "SIMPIT LOST off", "simpitConnected=true");
-
-  // Restore flags
-  demoMode        = saveDemoMode;
-  debugMode       = saveDebugMode;
-  audioEnabled    = saveAudioEnabled;
-  simpitConnected = saveSimpitConn;
-  standaloneMode  = saveStandaloneMode;
-  standaloneTest  = saveStandaloneTest;
-  state.twIndex   = saveTwIndex;
-
-  Serial.println(F("  NOTE: THRTL ENA, THRTL PREC, PREC INPUT, TRIM SET,"));
-  Serial.println(F("        SWITCH ERR, SPCFT -- not yet wired to I2C,"));
-  Serial.println(F("        tested in display walk-through only."));
   Serial.println();
   Serial.println(F("=== LOGIC TEST SUMMARY ==="));
   Serial.print(F("  PASSED: ")); Serial.println(_logicPassed);
@@ -811,7 +761,8 @@ static void runLogicTests() {
    Each step illuminates one indicator in isolation and describes it in the Serial monitor.
    Directly writes state.cautionWarningState rather than going through logic,
    so rendering is verified independently of logic correctness.
-   Steps: 25 C&W buttons + 2-tier variants + situation column + panel status + flight cond.
+   Steps: 25 C&W buttons + 2-tier variants + situation column + regime tiles + the
+   twelve mode-grid tiles (state.modeFlags, as the master drives them) + SPCFT states.
 ****************************************************************************************/
 struct DisplayStep {
   const char   *name;
@@ -824,30 +775,23 @@ struct DisplayStep {
   // Flight condition fields
   bool          fcInAtmo;
   float         fcAlt;
-  // Panel status overrides (-1=no override, 0=off, 1=on/demoMode, 2=debugMode)
-  int8_t        psDemo;
-  int8_t        psWarp;
-  int8_t        psAudio;
-  int8_t        psSimpit;
-  // Force specific panel status buttons ON regardless of wiring state
-  // Bit positions match panel status array indices 0-9
-  uint16_t      psForceOn;
-  // Vehicle control mode and type for SPCFT/PLN/RVR button testing
+  // Mode grid: the MF_* bits to light (state.modeFlags, the master's word)
+  uint16_t      modeBits;
+  // Vehicle control mode and type for the SPCFT/PLN/RVR tile
   // -1 = no override (use default ctrl_Spacecraft / type_Ship)
-  int8_t        psVehCtrl;    // 0=ctrl_Rover, 1=ctrl_Plane, 2=ctrl_Spacecraft
-  int8_t        psVesselType; // 0=type_Ship, 1=type_Plane, 2=type_Rover
+  int8_t        psVehCtrl;    // CtrlMode value: 0=ctrl_Rover, 1=ctrl_Plane, 2=ctrl_Spacecraft
+  int8_t        psVesselType; // VesselType value (type_Ship=7, type_Plane=8, type_Rover=5)
   const char   *description;
 };
 
 // Field order: name, cwBits, peY, propY, lsY, chuteState, sitBits,
-//              fcInAtmo, fcAlt, psDemo, psWarp, psAudio, psSimpit, psForceOn, description
-// psDemo: -1=no override, 0=CTRL(green), 1=demoMode(blue), 2=debugMode(purple)
-// psWarp/psAudio/psSimpit: -1=no override, 0=off, 1=on
-// psForceOn: bitmask of panel status indices to force ON (for not-yet-wired items)
-// psVehCtrl: -1=no override, 0=ctrl_Rover, 1=ctrl_Plane, 2=ctrl_Spacecraft
-// psVesselType: -1=no override, 0=type_Ship, 1=type_Plane, 2=type_Rover
+//              fcInAtmo, fcAlt, modeBits, psVehCtrl, psVesselType, description
 #define DS_PLAIN(n,cw,pe,pr,ls,ch,sit,desc) \
-  { n, cw, pe, pr, ls, ch, sit, false, 0.0f, -1, -1, -1, -1, 0, -1, -1, desc }
+  { n, cw, pe, pr, ls, ch, sit, false, 0.0f, 0, -1, -1, desc }
+#define DS_MODE(n,bits,desc) \
+  { n, 0, false, false, false, chute_Off, 0, false, 0.0f, bits, -1, -1, desc }
+#define DS_SPCFT(n,ctrl,type,desc) \
+  { n, 0, false, false, false, chute_Off, 0, false, 0.0f, 0, ctrl, type, desc }
 
 static const DisplayStep _displaySteps[] = {
   // --- C&W buttons -- Row 0 ---
@@ -897,31 +841,32 @@ static const DisplayStep _displaySteps[] = {
   DS_PLAIN("SIT: SPLASH",   0,false,false,false,chute_Off,(1<<VSIT_SPLASH),    "Situation: SPLASH (blue) + CNTCT (blue)"),
   DS_PLAIN("SIT: LANDED",   0,false,false,false,chute_Off,(1<<VSIT_LANDED),    "Situation: LANDED (green) + CNTCT (blue)"),
   DS_PLAIN("SIT: DOCK",     0,false,false,false,chute_Off,(1<<VSIT_DOCKED),    "DOCK indicator (green vertical text)"),
-  // --- Flight condition block ---
-  { "FC: FLYING LOW",  0,false,false,false,chute_Off,(1<<VSIT_FLIGHT), true,  10000.0f,-1,-1,-1,-1,0,-1,-1, "Flight cond: FLYING LOW (green)" },
-  { "FC: FLYING HIGH", 0,false,false,false,chute_Off,(1<<VSIT_FLIGHT), true,  30000.0f,-1,-1,-1,-1,0,-1,-1, "Flight cond: FLYING HIGH (green)" },
-  { "FC: LOW SPACE",   0,false,false,false,chute_Off,(1<<VSIT_ORBIT),  false,100000.0f,-1,-1,-1,-1,0,-1,-1, "Flight cond: LOW SPACE (green)" },
-  { "FC: HIGH SPACE",  0,false,false,false,chute_Off,(1<<VSIT_ORBIT),  false,300000.0f,-1,-1,-1,-1,0,-1,-1, "Flight cond: HIGH SPACE (green)" },
-  // --- Panel status strip ---
-  { "PS: DEMO",        0,false,false,false,chute_Off,0,false,0.0f, 1,-1,-1,-1,0,-1,-1, "Panel status: DEMO button (black bg, blue text=DEMO)" },
-  { "PS: DEBUG",       0,false,false,false,chute_Off,0,false,0.0f, 2,-1,-1,-1,0,-1,-1, "Panel status: DEMO button (black bg, purple text=DEBUG)" },
-  { "PS: CTRL",        0,false,false,false,chute_Off,0,false,0.0f, 0,-1,-1,-1,0,-1,-1, "Panel status: DEMO button (black bg, green text=CTRL)" },
-  { "PS: WARP",        0,false,false,false,chute_Off,0,false,0.0f,-1, 1,-1,-1,0,-1,-1, "Panel status: WARP (yellow bg)" },
-  { "PS: AUDIO",       0,false,false,false,chute_Off,0,false,0.0f,-1,-1, 1,-1,0,-1,-1, "Panel status: AUDIO (green bg)" },
-  { "PS: THRTL ENA",   0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,(1<<3),-1,-1, "Panel status: THRTL ENA (green bg) -- forced on" },
-  { "PS: TRIM SET",    0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,(1<<4),-1,-1, "Panel status: TRIM SET (cyan bg) -- forced on" },
-  { "PS: THRTL PREC",  0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,(1<<8),-1,-1, "Panel status: THRTL PREC (green bg) -- forced on" },
-  { "PS: PREC INPUT",  0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,(1<<9),-1,-1, "Panel status: PREC INPUT (green bg) -- forced on" },
-  { "PS: SIMPIT LOST", 0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1, 1,0,-1,-1, "Panel status: SIMPIT LOST (red bg)" },
-  // --- SPCFT/PLN/RVR button states (black bg, colored text) ---
-  // psVehCtrl:    0=ctrl_Rover, 1=ctrl_Plane, 2=ctrl_Spacecraft
-  // psVesselType: actual VesselType enum values: type_Ship=7, type_Plane=8, type_Rover=5
-  { "PS: SPCFT match", 0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,0, 2, 7, "SPCFT button: black bg, green text=SPCFT (ctrl_Spacecraft, type_Ship)" },
-  { "PS: PLN match",   0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,0, 1, 8, "SPCFT button: black bg, green text=PLN (ctrl_Plane, type_Plane)" },
-  { "PS: RVR match",   0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,0, 0, 5, "SPCFT button: black bg, green text=RVR (ctrl_Rover, type_Rover)" },
-  { "PS: SPCFT err",   0,false,false,false,chute_Off,0,false,0.0f,-1,-1,-1,-1,0, 1, 7, "SPCFT button: black bg, red text=PLN (ctrl_Plane but type_Ship -- mismatch)" },
+  // --- Regime column ---
+  { "FC: FLYING LOW",  0,false,false,false,chute_Off,(1<<VSIT_FLIGHT), true,  10000.0f, 0,-1,-1, "Regime: FLYING LOW (green)" },
+  { "FC: FLYING HIGH", 0,false,false,false,chute_Off,(1<<VSIT_FLIGHT), true,  30000.0f, 0,-1,-1, "Regime: FLYING HIGH (green)" },
+  { "FC: LOW SPACE",   0,false,false,false,chute_Off,(1<<VSIT_ORBIT),  false,100000.0f, 0,-1,-1, "Regime: LOW SPACE (green)" },
+  { "FC: HIGH SPACE",  0,false,false,false,chute_Off,(1<<VSIT_ORBIT),  false,300000.0f, 0,-1,-1, "Regime: HIGH SPACE (green)" },
+  // --- Mode grid (state.modeFlags, one tile at a time, then all) ---
+  DS_MODE("MODE: DEMO",        1u << MF_DEMO,        "Mode grid: DEMO (blue)"),
+  DS_MODE("MODE: WARP",        1u << MF_WARP,        "Mode grid: WARP (yellow)"),
+  DS_MODE("MODE: AUDIO",       1u << MF_AUDIO,       "Mode grid: AUDIO (green)"),
+  DS_MODE("MODE: THRTL ENA",   1u << MF_THRTL_ENA,   "Mode grid: THRTL ENA (green)"),
+  DS_MODE("MODE: TRIM",        1u << MF_TRIM,        "Mode grid: TRIM (aqua)"),
+  DS_MODE("MODE: AUTOPILOT",   1u << MF_AUTOPILOT,   "Mode grid: AUTOPILOT (green)"),
+  DS_MODE("MODE: DEBUG",       1u << MF_DEBUG,       "Mode grid: DEBUG (purple)"),
+  DS_MODE("MODE: SWITCH ERR",  1u << MF_SWITCH_ERR,  "Mode grid: SWITCH ERR (red)"),
+  DS_MODE("MODE: SIMPIT LOST", 1u << MF_SIMPIT_LOST, "Mode grid: SIMPIT LOST (red)"),
+  DS_MODE("MODE: THRTL PREC",  1u << MF_THRTL_PREC,  "Mode grid: THRTL PREC (green)"),
+  DS_MODE("MODE: INPUT PREC",  1u << MF_INPUT_PREC,  "Mode grid: INPUT PREC (green)"),
+  DS_MODE("MODE: ENG ARM",     1u << MF_ENG_ARM,     "Mode grid: ENG ARM (green)"),
+  DS_MODE("MODE: ALL ON",      (uint16_t)((1u << MF_COUNT) - 1), "Mode grid: every tile lit"),
+  // --- SPCFT tile: control mode against vessel type ---
+  DS_SPCFT("SPCFT match", ctrl_Spacecraft, type_Ship,  "SPCFT tile: green SPCFT (ctrl_Spacecraft, type_Ship) + ship icon"),
+  DS_SPCFT("PLN match",   ctrl_Plane,      type_Plane, "SPCFT tile: green PLN (ctrl_Plane, type_Plane) + plane icon"),
+  DS_SPCFT("RVR match",   ctrl_Rover,      type_Rover, "SPCFT tile: green RVR (ctrl_Rover, type_Rover) + rover icon"),
+  DS_SPCFT("SPCFT err",   ctrl_Plane,      type_Ship,  "SPCFT tile: red PLN (ctrl_Plane but type_Ship -- mismatch)"),
   // --- ALL OFF ---
-  { "PS: ALL OFF",     0,false,false,false,chute_Off,0,false,0.0f, 0, 0, 0, 0,0, 2, 7, "Panel status: all dark; CTRL+SPCFT show grey text only (both unlit by design)" },
+  DS_SPCFT("ALL OFF",     ctrl_Spacecraft, type_Ship,  "Everything dark; SPCFT green, mode grid unlit"),
 };
 
 static const uint8_t _displayStepCount =
@@ -957,19 +902,9 @@ static void runDisplayWalkthrough() {
   state.masterAlarmOn        = (step.cwBits & masterAlarmMask) != 0;
   inAtmo                     = step.fcInAtmo;
   state.alt_sl               = step.fcAlt;
+  state.modeFlags            = step.modeBits;
 
-  // Panel status overrides -- applied after invalidation
-  if (step.psDemo == 0)       { demoMode = false; debugMode = false; }
-  else if (step.psDemo == 1)  { demoMode = true;  debugMode = false; }
-  else if (step.psDemo == 2)  { demoMode = false; debugMode = true;  }
-  if (step.psWarp   == 0)      state.twIndex    = 0;
-  else if (step.psWarp   == 1) state.twIndex    = 3;
-  if (step.psAudio  == 0)      audioEnabled     = false;
-  else if (step.psAudio  == 1) audioEnabled     = true;
-  if (step.psSimpit == 0)      simpitConnected  = true;
-  else if (step.psSimpit == 1) simpitConnected  = false;
-
-  // Vehicle control mode and vessel type for SPCFT button
+  // Vehicle control mode and vessel type for the SPCFT tile
   if (step.psVehCtrl >= 0)    state.vehCtrlMode = (CtrlMode)step.psVehCtrl;
   if (step.psVesselType >= 0) state.vesselType  = (VesselType)step.psVesselType;
 
@@ -987,9 +922,9 @@ static void runDisplayWalkthrough() {
   // Force DOCK to redraw correctly
   forceDockState(bitRead(state.vesselSituationState, VSIT_DOCKED));
 
-  // Draw all zones
+  // Draw all zones (same fonts as the live chrome, so a step looks like flight)
   drawButton(infoDisp, MASTER_X, MASTER_Y, MASTER_W, MASTER_H,
-             masterAlarmLabel, &Roboto_Black_36, state.masterAlarmOn);
+             masterAlarmLabel, &Roboto_Black_48, state.masterAlarmOn);
   prev.masterAlarmOn = state.masterAlarmOn;
   updateCautWarnPanel(infoDisp, ~state.cautionWarningState, state.cautionWarningState);
   prev.cautionWarningState = state.cautionWarningState;
@@ -997,10 +932,9 @@ static void runDisplayWalkthrough() {
   prev.vesselSituationState = state.vesselSituationState;
   updateDockedIndicator(infoDisp);
   updateRegimeColumn(infoDisp);
-  // rev 2: the bottom mode grid is master-driven (state.modeFlags); the legacy
-  // psForceOn walk-through no longer lights these tiles. TODO: drive modeFlags
-  // from the test steps for a full walk-through.
   updateModeGrid(infoDisp);
+  updateSpcftTile(infoDisp);
+  drawBottomZonePerimeter(infoDisp);
 
   // Serial output
   Serial.println();

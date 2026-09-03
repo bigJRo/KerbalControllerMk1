@@ -18,7 +18,10 @@
    Defined as a global (not a local static) so TouchEvents.ino can set it on button press.
 
    AUDIO TRIGGER LOCATIONS
-   C&W bit change triggers (alarm, caution tone, chirps) -- ScreenMain.ino
+   C&W bit change triggers (alarm, caution tone, chirps) -- serviceAlarmAudio() below,
+     called from loop() every pass so the audio does not depend on which screen is
+     up. (It used to live in the Main screen's update pass, which left the SOI screen
+     mute: a new warning there made no sound, and the alarm was silenced on the way.)
    Scene change and vessel change silencing               -- SimpitHandler.ino
 
    The audio state machine is in the KerbalDisplayAudio library.
@@ -158,4 +161,54 @@ void syncMasterAlarmAudio() {
   } else if (!alarmSilenced && audioGetState() != AUDIO_MASTER_ALARM) {
     audioStartAlarm();
   }
+}
+
+
+/***************************************************************************************
+   AUDIO SERVICE -- every loop pass, whatever screen is up
+   Keeps its own copy of the C&W word and of the crossing references, so the display
+   caches can be invalidated freely without replaying a cue. On the first pass of a
+   flight scene (and again after a vessel switch, via audioResetService) it seeds the
+   references from the live state and reconciles the master alarm against the bits
+   active right now, so a condition already up on entry sounds, and no crossing chirp
+   fires for a reference that was never seen.
+****************************************************************************************/
+static bool     _audSeeded  = false;
+static uint32_t _audPrevCW  = 0;
+static uint8_t  _audPrevSit = 0;
+static float    _audPrevAlt = 0.0f, _audPrevVel = 0.0f, _audPrevAp = 0.0f;
+
+void audioResetService() { _audSeeded = false; }
+
+void serviceAlarmAudio() {
+  if (!flightScene || !audioEnabled) { _audSeeded = false; return; }
+  uint32_t cw = state.cautionWarningState;
+
+  if (!_audSeeded) {
+    _audSeeded  = true;
+    _audPrevCW  = cw;
+    _audPrevSit = state.vesselSituationState;
+    _audPrevAlt = state.alt_sl; _audPrevVel = state.vel_surf; _audPrevAp = state.apoapsis;
+    syncMasterAlarmAudio();
+    return;
+  }
+
+  // C&W transitions: master alarm through the shared table, then the caution cues.
+  uint32_t newBits = cw & ~_audPrevCW;
+  uint32_t clrBits = _audPrevCW & ~cw;
+  if (newBits | clrBits) {
+    applyAlarmTransitions(newBits, clrBits);
+    if (newBits & ((1ul << CW_ALT) | (1ul << CW_IMPACT_IMM)))                          audioCautionTone();
+    if (newBits & ((1ul << CW_DESCENT) | (1ul << CW_ATMO) | (1ul << CW_GEAR_UP)))      audioCautionChirp();
+  }
+  _audPrevCW = cw;
+
+  // Upward threshold crossings: alert chirps.
+  if (state.alt_sl   >= ALERT_ALT_THRESHOLD && _audPrevAlt < ALERT_ALT_THRESHOLD) audioAlertChirp();
+  if (state.vel_surf >= ALERT_VEL_THRESHOLD && _audPrevVel < ALERT_VEL_THRESHOLD) audioAlertChirp();
+  if (currentBody.minSafe > 0 &&
+      state.apoapsis >= currentBody.minSafe && _audPrevAp < currentBody.minSafe)   audioAlertChirp();
+  if (bitRead(state.vesselSituationState, VSIT_ORBIT) && !bitRead(_audPrevSit, VSIT_ORBIT)) audioAlertChirp();
+  _audPrevAlt = state.alt_sl; _audPrevVel = state.vel_surf; _audPrevAp = state.apoapsis;
+  _audPrevSit = state.vesselSituationState;
 }
