@@ -118,6 +118,12 @@ static bool _acftAutoRdr() {
 // true = show radar altitude.
 static bool _acftAltRef() { return modeResolve(_acftAltRefOverride, _acftAutoRdr()); }
 
+// Vertical speed is coloured on POWERED DESCENT's landing tiers (caution below -5 m/s,
+// alarm below -8) only when the aircraft is on an approach: gear down, or below the
+// radar-altimeter handover height. In cruise a normal descent runs well past both, and
+// an always-on alarm is the one that teaches a pilot to ignore the colour.
+static bool _acftLandingTiers() { return state.gear_on || _acftAutoRdr(); }
+
 // Radar altitude with resolution rising as the ground approaches, the way a real radio
 // altimeter reads. Metric equivalents of the A320's 10 ft / 5 ft / 1 ft steps.
 static String _acftFmtRdr(float m) {
@@ -328,7 +334,8 @@ static void _acftUpdateVSI(KCM_TFT &tft, float vVrt) {
     int16_t barH   = SCREEN_H - TITLE_TOP - VSI_LABEL_H;
     tft.fillRect(VSI_X, barTop, VSI_BAR_W, barH, TFT_BLACK);
     if (fillH > 0) {
-        uint16_t col = (vVrt < LNDG_VVRT_ALARM_MS) ? TFT_RED :
+        uint16_t col = !_acftLandingTiers()        ? TFT_DARK_GREEN :
+                       (vVrt < LNDG_VVRT_ALARM_MS) ? TFT_RED :
                        (vVrt < LNDG_VVRT_WARN_MS)  ? TFT_YELLOW : TFT_DARK_GREEN;
         int16_t fillY = (clamped > 0.0f) ? VSI_ZERO_Y - fillH : VSI_ZERO_Y + 2;
         // Clamp fill to bar area (don't paint over label)
@@ -850,7 +857,8 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // Row 3 — V.Vrt — colours match VSI bar thresholds
     {
         float vv = state.verticalVel;
-        if      (vv < LNDG_VVRT_ALARM_MS) { fg = TFT_WHITE;     bg = TFT_RED;   }
+        if      (!_acftLandingTiers())     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }   // cruise: reported, not alarmed
+        else if (vv < LNDG_VVRT_ALARM_MS) { fg = TFT_WHITE;     bg = TFT_RED;   }
         else if (vv < LNDG_VVRT_WARN_MS)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
         else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         acftVal(3, 3, "V.VRT", fmtMs(vv), fg, bg);

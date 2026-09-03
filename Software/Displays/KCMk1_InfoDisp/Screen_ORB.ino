@@ -1387,13 +1387,17 @@ static void drawScreen_ORB(KCM_TFT &tft) {
 
     // Cache-checked readout draw backed by the shared rowCache[screen_ORB] (value-only
     // compare; dark green on black). Geometry is explicit per readout.
-    auto orbPut = [&](uint8_t slot, int16_t x, int16_t y, int16_t w, const String &v) {
+    // Values arrive as C strings in stack buffers; the cache compare allocates nothing
+    // and a String is built only for the value about to be drawn.
+    auto orbPut = [&](uint8_t slot, int16_t x, int16_t y, int16_t w, const char *v) {
         RowCache &rc = rowCache[screen_ORB][slot];
         if (rc.value == v) return;
-        printValue(tft, F, x, y, w, RH, "", v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK,
+        String s(v);
+        printValue(tft, F, x, y, w, RH, "", s, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK,
                    printState[screen_ORB][slot]);
-        rc.value = v;
+        rc.value = s;
     };
+    char vb[48];
 
     float PeA_m  = fmaxf(0.0f, state.periapsis);
     float ApA_m  = fmaxf(0.0f, state.apoapsis);
@@ -1404,11 +1408,12 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // Rows 0 and 7 — SMA and Ecc, exactly as ORBIT ADVANCED renders them. On an escape trajectory the
     // semi-major axis is negative and the eccentricity is at or above 1; both are still
     // the real elements, and formatAlt() carries the sign, so neither is special-cased.
-    orbPut(0, 110, ORB_RDY0, 360, formatAlt(state.semiMajorAxis));
+    formatAltBuf(state.semiMajorAxis, vb, sizeof(vb));
+    orbPut(0, 110, ORB_RDY0, 360, vb);
     {
         char ebuf[16];
         dtostrf(state.eccentricity, 1, 4, ebuf);
-        orbPut(7, 110, ORB_RDY1, 360, String(ebuf));
+        orbPut(7, 110, ORB_RDY1, 360, ebuf);
     }
     // Row 1 — Pe
     // Hide when Pe is inside the body (impact trajectory, periapsis below
@@ -1417,19 +1422,21 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // > 0 (the value here PeA_m is already state.periapsis clamped to ≥ 0).
     {
         bool  peHid  = !drawSc.isEscape && (drawSc.rPe_m <= drawSc.bodyR_m);
-        orbPut(1, 110, ORB_RDY2, 360, peHid ? String("---") : formatAlt(PeA_m));
+        if (peHid) orbPut(1, 110, ORB_RDY2, 360, "---");
+        else { formatAltBuf(PeA_m, vb, sizeof(vb)); orbPut(1, 110, ORB_RDY2, 360, vb); }
     }
     // Row 2 — Ap
-    orbPut(2, 110, ORB_RDY3, 360, drawSc.isEscape ? String("\x80") : formatAlt(ApA_m));
+    if (drawSc.isEscape) orbPut(2, 110, ORB_RDY3, 360, "\x80");
+    else { formatAltBuf(ApA_m, vb, sizeof(vb)); orbPut(2, 110, ORB_RDY3, 360, vb); }
     // Row 3 — PRD (orbital period)
-    orbPut(3, INC_VALUE_X, INC_RDY1, 348,
-           drawSc.isEscape ? String("\x80")
-                           : (state.orbitalPeriod > 0.0f ? formatTimeCompact(state.orbitalPeriod)
-                                                         : String("---")));
+    if (drawSc.isEscape)                 orbPut(3, INC_VALUE_X, INC_RDY1, 348, "\x80");
+    else if (state.orbitalPeriod > 0.0f) { formatTimeCompactBuf(state.orbitalPeriod, vb, sizeof(vb)); orbPut(3, INC_VALUE_X, INC_RDY1, 348, vb); }
+    else                                 orbPut(3, INC_VALUE_X, INC_RDY1, 348, "---");
     // Row 4 — Arg.Pe
     {
         char buf[10]; dtostrf(state.argOfPe, 1, 1, buf);
-        orbPut(4, INC_VALUE_X, INC_RDY2, 348, String(buf) + String("\xb0"));
+        snprintf(vb, sizeof(vb), "%s\xb0", buf);
+        orbPut(4, INC_VALUE_X, INC_RDY2, 348, vb);
     }
     // Row 5 — T+Pe / T+Ap (dynamic label + value)
     // Pick whichever is next in time, i.e. whichever positive value is smaller.
@@ -1467,7 +1474,8 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;
-        orbPut(5, INC_VALUE_X, INC_RDY3, 348, (t > 0.0f) ? formatTimeCompact(t) : String("---"));
+        if (t > 0.0f) { formatTimeCompactBuf(t, vb, sizeof(vb)); orbPut(5, INC_VALUE_X, INC_RDY3, 348, vb); }
+        else          orbPut(5, INC_VALUE_X, INC_RDY3, 348, "---");
     }
 
     // Row 6 (INCL top) — Inc (inclination, degrees)
@@ -1476,7 +1484,8 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     // readouts.
     {
         char buf[10]; dtostrf(drawSc.incl_deg, 1, 1, buf);
-        orbPut(6, INC_VALUE_X, INC_RDY0, 348, String(buf) + String("\xb0"));
+        snprintf(vb, sizeof(vb), "%s\xb0", buf);
+        orbPut(6, INC_VALUE_X, INC_RDY0, 348, vb);
     }
 
     // Optional: total frame timing (very lightweight — only prints on scene repaint)

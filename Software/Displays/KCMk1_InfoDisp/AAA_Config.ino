@@ -256,13 +256,11 @@ const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 const float LNCH_Q_WARN_KPA  = 20.0f;
 const float LNCH_Q_ALARM_KPA = 40.0f;
 
-// ASCENT — load factor bands (g). Deliberately tighter than the panel-wide G_WARN_POS /
-// G_ALARM_POS (4 / 9 g, the Annunciator's crew limits): an ascent is a planned profile
-// and a nominal one peaks near 3 g, so a stage pulling 5 g is the vehicle overpowered
-// for its mass, worth an alarm here even though it is not a crew emergency. The
-// Ascent Autopilot's max-G cap defaults into this band.
-const float LNCH_G_WARN  = 3.0f;
-const float LNCH_G_ALARM = 5.0f;
+// ASCENT — load factor bands (g): the panel-wide G_WARN_POS / G_ALARM_POS, which are
+// the Annunciator's crew limits, so the two panels cannot disagree about what a
+// high-G ascent is.
+const float LNCH_G_WARN  = G_WARN_POS;
+const float LNCH_G_ALARM = G_ALARM_POS;
 
 // LAUNCH — throttle at or below this counts as coasting, which is what moves the screen
 // from ASCENT to CIRCULARISATION. Not zero: KSP can report a hair of throttle from a

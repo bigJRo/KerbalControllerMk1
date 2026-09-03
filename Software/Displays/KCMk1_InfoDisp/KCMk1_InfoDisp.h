@@ -184,11 +184,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.10.0 (KDC_LABEL_COLOR)
+   This sketch requires KerbalDisplayCommon >= 3.11.0 (buffer formatters)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 13;  // 1.13.0: bug sweep, optimisation and cleanup pass
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.13.1: VSI tiers on approach only, G bands aliased, heap-free row values
 
 
 /***************************************************************************************

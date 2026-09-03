@@ -1,6 +1,6 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library** · v3.10.0
+**Kerbal Controller Mk1 — Shared Display Library** · v3.11.0
 UI toolkit for LT7683 (RA8876-compatible) touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
@@ -365,6 +365,7 @@ All colours are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommo
 
 | Version | Notes |
 |---------|-------|
+| **3.11.0** | **Buffer forms of the telemetry formatters.** `formatSepBuf`, `formatTimeBuf`, `formatTimeCompactBuf` and `formatAltBuf` write into a caller's buffer; the String forms are now thin wrappers over them, so the two cannot disagree. A screen that formats every row every frame (the Info Display's ORBIT, ORBIT ADVANCED, ASCENT AUTOPILOT and pre-launch board) can format into a stack buffer, compare against its row cache with `String == const char*`, which allocates nothing, and construct a String only for a value that changed. |
 | **3.10.0** | **Readout label style.** `KDC_LABEL_COLOR` (`TFT_GREY`) and a written rule set, above: a caption beside a live value is grey, uppercase and carries no colon; the value's colour tells the two apart. Before this the three panels disagreed: the Info Display used mixed case with a colon on all 83 of its labels, the Annunciator mixed caps and mixed case with colons, and the Resource Display had just moved to caps without. All three adopted the rule in one change, every label measured in its cell first. |
 | **3.9.0** | **`fillArc`: a pixel-exact ring segment.** The RA8876 driver offers circles, ellipses and rounded rectangles but no arc, and the controller's own curve command only draws whole quadrants, so an arc with arbitrary ends is scan-converted here: each row of the annulus is walked and the pixels whose bearing falls inside the sweep (tested with cross products against the start and end rays, no per-pixel `atan2`) go out as horizontal runs. Both edges and both radial ends land on exact pixels at any radius or width, which a chain of dots or thick-line chords cannot manage below about eight pixels of stroke. Added for the ResourceDisp EVA gauges' limit bands. |
 | **3.8.0** | **Four palette entries for the ResourceDisp meter fills**, each filling a gap the existing palette could not. `TFT_BRICK` (0xC285) is a rust red for Solid Fuel that stays clearly off the `TFT_RED` alarm colour when the tape sits beside a red limit band. `TFT_PLUM` (0x91F0) is a muted magenta for CO2, which alerts HIGH against a red band and so cannot be a red, and whose life-support family already used every other earth tone. `TFT_STRAW` (0xEE2E) is a pale straw yellow for Liquid Waste, distinct from the `TFT_GOLD` Electric Charge uses. `TFT_LIME` (0xC7E8) is a yellow-green for Stored Charge, which needed to sit beside gold without reading as it and away from the magentas every other free colour neighboured. |

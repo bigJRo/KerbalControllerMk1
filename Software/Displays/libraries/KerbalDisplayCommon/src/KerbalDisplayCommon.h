@@ -11,6 +11,10 @@
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
 
+   v3.11.0 — Buffer forms of the telemetry formatters (formatSepBuf, formatTimeBuf,
+            formatTimeCompactBuf, formatAltBuf). The String forms now wrap them, so a
+            screen can format into a stack buffer and compare against its row cache
+            without a heap allocation per row per frame.
    v3.10.0 — KDC_LABEL_COLOR and the readout label style rule (README, "Readout label
             style"): a caption beside a live value is grey, uppercase, and carries no
             colon; the value's white or state colour is what tells the two apart, as on
@@ -661,6 +665,14 @@ String formatSepI64(int64_t value);
 String formatTime(float timeVal);
 String formatTimeCompact(float timeVal);  // like formatTime() but compresses hours/days to fit tight cells
 String formatAlt(float value);
+// Buffer forms (v3.11.0). Same text as the String forms, which wrap them. For a
+// screen that formats every row every frame: format into a stack buffer, compare
+// against the row cache (String == const char* allocates nothing), and construct
+// a String only for a value that changed. 48 bytes covers every case.
+void formatSepBuf(float value, char *buf, size_t n);
+void formatTimeBuf(float timeVal, char *buf, size_t n);
+void formatTimeCompactBuf(float timeVal, char *buf, size_t n);
+void formatAltBuf(float value, char *buf, size_t n);
 String twString(uint8_t twIndex, bool physTW);
 
 // --- Threshold color selector ---

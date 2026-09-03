@@ -1303,9 +1303,10 @@ static String _getSign(float &value) {
 //
 // Buffer sizing: the widest possible result is INT64_MIN, "-9,223,372,036,854,775,808"
 // — 1 sign + 19 digits + 6 separators + NUL = 27 bytes. 28 leaves a byte spare.
-static String _formatSepInt64(int64_t value) {
-  char  buf[28];
-  char *p = buf + sizeof(buf) - 1;
+// Formats from the end of the caller's buffer and returns a pointer to the first
+// character. The buffer needs 28 bytes for the full int64 range.
+static const char *_sepInt64Into(int64_t value, char *buf, size_t n) {
+  char *p = buf + n - 1;
   *p = '\0';
 
   const bool neg = (value < 0);
@@ -1324,27 +1325,45 @@ static String _formatSepInt64(int64_t value) {
   } while (v != 0);
 
   if (neg) *--p = '-';
-  return String(p);
+  return p;
 }
 
-String formatSep(float value) {
-  String sign = _getSign(value);
+static String _formatSepInt64(int64_t value) {
+  char buf[28];
+  return String(_sepInt64Into(value, buf, sizeof(buf)));
+}
+
+// Buffer forms of the formatters below. The String forms wrap these, so the two can
+// never disagree; a screen that formats every row every frame uses the buffer form
+// and compares against its cache before it constructs a String at all.
+void formatSepBuf(float value, char *buf, size_t n) {
+  const bool neg = (value < 0);
+  if (neg) value = -value;
   if (value < 1000) {
     char tempStr[16];
     dtostrf(value, 2, 2, tempStr);
-    return sign + String(tempStr);
+    snprintf(buf, n, "%s%s", neg ? "-" : "", tempStr);
+    return;
   }
   // Delegate to the int64 core. Float precision caps usable integer range
   // at ~1.6e7; large values are formatted as the nearest representable float.
-  return sign + _formatSepInt64((int64_t)value);
+  char tmp[28];
+  snprintf(buf, n, "%s%s", neg ? "-" : "", _sepInt64Into((int64_t)value, tmp, sizeof(tmp)));
+}
+
+String formatSep(float value) {
+  char buf[40];
+  formatSepBuf(value, buf, sizeof(buf));
+  return String(buf);
 }
 
 String formatSepI64(int64_t value) {
   return _formatSepInt64(value);
 }
 
-String formatTime(float timeVal) {
-  String sign = _getSign(timeVal);
+void formatTimeBuf(float timeVal, char *buf, size_t n) {
+  const bool neg = (timeVal < 0);
+  if (neg) timeVal = -timeVal;
   const uint16_t kerbinDay = 6;  // Kerbin day = 6 hours
   // #65 use int64_t to avoid 32-bit overflow beyond ~24.8 Kerbin days
   int64_t timeMillis = (int64_t)(fabsf(timeVal) * 1000.0f);
@@ -1372,7 +1391,13 @@ String formatTime(float timeVal) {
     // Pure-seconds: strip decimal, add space before unit (#5C incorporates fmtTime improvements)
     sprintf(timeStr, "%lld s", (long long)calcSecs);
   }
-  return sign + String(timeStr);
+  snprintf(buf, n, "%s%s", neg ? "-" : "", timeStr);
+}
+
+String formatTime(float timeVal) {
+  char buf[48];
+  formatTimeBuf(timeVal, buf, sizeof(buf));
+  return String(buf);
 }
 
 // Compact time — for value cells too tight for formatTime()'s hours form
@@ -1381,34 +1406,46 @@ String formatTime(float timeVal) {
 // unchanged. At/above 1 hour it drops to a 2-unit form ("Hh MMm" / "Dd HHh")
 // that stays narrow (≤ ~175px). Use it wherever a time value can legitimately
 // grow into the hours/days range and must still fit its cell.
-String formatTimeCompact(float timeVal) {
+void formatTimeCompactBuf(float timeVal, char *buf, size_t n) {
   int64_t secs = (int64_t)fabsf(timeVal);
-  if (secs < 3600) return formatTime(timeVal);   // < 1 h: unchanged
+  if (secs < 3600) { formatTimeBuf(timeVal, buf, n); return; }   // < 1 h: unchanged
 
-  String sign = _getSign(timeVal);
+  const bool neg = (timeVal < 0);
   const int64_t kerbinDay = 6;                    // Kerbin day = 6 hours
   int64_t hrsT = secs / 3600;
   int64_t days = hrsT / kerbinDay;
   int64_t hr   = hrsT % kerbinDay;
   int64_t mn   = (secs % 3600) / 60;
-  char buf[28];   // room for the full int64 day count ("%lldd") without truncation
-  if      (days >= 10000) snprintf(buf, sizeof(buf), "%lldd", (long long)days);
-  else if (days > 0)      snprintf(buf, sizeof(buf), "%lldd %02lldh", (long long)days, (long long)hr);
-  else                    snprintf(buf, sizeof(buf), "%lldh %02lldm", (long long)hrsT, (long long)mn);
-  return sign + String(buf);
+  char t[28];   // room for the full int64 day count ("%lldd") without truncation
+  if      (days >= 10000) snprintf(t, sizeof(t), "%lldd", (long long)days);
+  else if (days > 0)      snprintf(t, sizeof(t), "%lldd %02lldh", (long long)days, (long long)hr);
+  else                    snprintf(t, sizeof(t), "%lldh %02lldm", (long long)hrsT, (long long)mn);
+  snprintf(buf, n, "%s%s", neg ? "-" : "", t);
+}
+
+String formatTimeCompact(float timeVal) {
+  char buf[40];
+  formatTimeCompactBuf(timeVal, buf, sizeof(buf));
+  return String(buf);
+}
+
+void formatAltBuf(float value, char *buf, size_t n) {
+  const bool neg = (value < 0);
+  if (neg) value = -value;
+  float scaled; const char *unit;
+  if      (value < 1000000)         { scaled = value;                          unit = " m";  }
+  else if (value < 1000000000)      { scaled = (float)(value / 1000.0);        unit = " km"; }
+  else if (value < 1000000000000.0) { scaled = (float)(value / 1000000.0);     unit = " Mm"; }
+  else                              { scaled = (float)(value / 1000000000.0);  unit = " Gm"; }
+  char num[40];
+  formatSepBuf(scaled, num, sizeof(num));
+  snprintf(buf, n, "%s%s%s", neg ? "-" : "", num, unit);
 }
 
 String formatAlt(float value) {
-  String sign = _getSign(value);
-  if (value < 1000000) {
-    return sign + formatSep(value) + " m";
-  } else if (value < 1000000000) {
-    return sign + formatSep(value / 1000.0) + " km";
-  } else if (value < 1000000000000.0) {
-    return sign + formatSep(value / 1000000.0) + " Mm";
-  } else {
-    return sign + formatSep(value / 1000000000.0) + " Gm";
-  }
+  char buf[48];
+  formatAltBuf(value, buf, sizeof(buf));
+  return String(buf);
 }
 
 /***************************************************************************************

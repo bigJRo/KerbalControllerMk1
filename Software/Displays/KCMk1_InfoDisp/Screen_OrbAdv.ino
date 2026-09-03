@@ -114,48 +114,52 @@ void drawScreen_OrbAdv(KCM_TFT &tft) {
 
     // Cache-checked value draw backed by the shared row cache (rowCache[screen_ORBADV]).
     // Value-only compare — colour is always dark green on black. rowN selects the row Y.
-    auto advPut = [&](uint8_t slot, uint16_t x, uint16_t w, uint8_t rowN, const String &v) {
+    // Values arrive as C strings in stack buffers; the cache compare allocates nothing
+    // and a String is built only for the value about to be drawn. Fourteen rows at the
+    // frame rate used to be fourteen heap allocations a frame for a screen that mostly
+    // shows the same figures.
+    auto advPut = [&](uint8_t slot, uint16_t x, uint16_t w, uint8_t rowN, const char *v) {
         RowCache &rc = rowCache[screen_ORBADV][slot];
         if (rc.value == v) return;
+        String s(v);
         printValue(tft, F, x, ADV_ROW_Y0 + rowN * ADV_ROW_PITCH, w, ADV_ROW_H, "",
-                   v, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, printState[screen_ORBADV][slot]);
-        rc.value = v;
+                   s, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, printState[screen_ORBADV][slot]);
+        rc.value = s;
     };
+    char vb[48];
+    auto deg = [&](float d) { char t[12]; dtostrf(d, 1, 1, t); snprintf(vb, sizeof(vb), "%s\xb0", t); return (const char *)vb; };
 
     // Escape detection — matches basic ORB logic. An escape (open) trajectory
     // has no Ap and no period.
     bool isEscape = (state.eccentricity >= 1.0f) || (state.apoapsis < 0.0f);
-    char buf[12];
+    char buf[16];
 
     // ── Left column ──────────────────────────────────────────────────────────────────
-    advPut(ADV_SMA, ADV_L_VALUE_X, ADV_L_VALUE_W, 0, formatAlt(state.semiMajorAxis));
-
-    dtostrf(state.eccentricity, 1, 4, buf);                                     // 4 dp, precise
-    advPut(ADV_ECC, ADV_L_VALUE_X, ADV_L_VALUE_W, 1, String(buf));
-
-    advPut(ADV_PE_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 2,                            // "---" below surface
-           (state.periapsis >= 0.0f) ? formatAlt(state.periapsis) : String("---"));
-    advPut(ADV_AP_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 3,                            // infinity on escape
-           isEscape ? String("\x80") : formatAlt(state.apoapsis));
-    advPut(ADV_ALT, ADV_L_VALUE_X, ADV_L_VALUE_W, 4, formatAlt(state.altitude));
-    advPut(ADV_VEL, ADV_L_VALUE_X, ADV_L_VALUE_W, 5, fmtMs(state.orbitalVel));
-    advPut(ADV_PRD, ADV_L_VALUE_X, ADV_L_VALUE_W, 6,                            // infinity on escape
-           isEscape ? String("\x80") : formatTimeCompact(state.orbitalPeriod));
+    formatAltBuf(state.semiMajorAxis, vb, sizeof(vb));
+    advPut(ADV_SMA, ADV_L_VALUE_X, ADV_L_VALUE_W, 0, vb);
+    dtostrf(state.eccentricity, 1, 4, buf);
+    advPut(ADV_ECC, ADV_L_VALUE_X, ADV_L_VALUE_W, 1, buf);
+    if (state.periapsis >= 0.0f) { formatAltBuf(state.periapsis, vb, sizeof(vb)); advPut(ADV_PE_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 2, vb); }
+    else                         advPut(ADV_PE_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 2, "---");   // below surface
+    if (isEscape) advPut(ADV_AP_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 3, "\x80");   // infinity on escape
+    else { formatAltBuf(state.apoapsis, vb, sizeof(vb)); advPut(ADV_AP_L, ADV_L_VALUE_X, ADV_L_VALUE_W, 3, vb); }
+    formatAltBuf(state.altitude, vb, sizeof(vb));
+    advPut(ADV_ALT, ADV_L_VALUE_X, ADV_L_VALUE_W, 4, vb);
+    fmtMsBuf(state.orbitalVel, vb, sizeof(vb));
+    advPut(ADV_VEL, ADV_L_VALUE_X, ADV_L_VALUE_W, 5, vb);
+    if (isEscape) advPut(ADV_PRD, ADV_L_VALUE_X, ADV_L_VALUE_W, 6, "\x80");
+    else { formatTimeCompactBuf(state.orbitalPeriod, vb, sizeof(vb)); advPut(ADV_PRD, ADV_L_VALUE_X, ADV_L_VALUE_W, 6, vb); }
 
     // ── Right column ─────────────────────────────────────────────────────────────────
-    dtostrf(state.inclination, 1, 1, buf); advPut(ADV_INC,   ADV_R_VALUE_X, ADV_R_VALUE_W, 0, String(buf) + String("\xb0"));
-    dtostrf(state.LAN,         1, 1, buf); advPut(ADV_LAN,   ADV_R_VALUE_X, ADV_R_VALUE_W, 1, String(buf) + String("\xb0"));
-    dtostrf(state.argOfPe,     1, 1, buf); advPut(ADV_ARGPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 2, String(buf) + String("\xb0"));
-    dtostrf(state.trueAnomaly, 1, 1, buf); advPut(ADV_TA,    ADV_R_VALUE_X, ADV_R_VALUE_W, 3, String(buf) + String("\xb0"));
-    dtostrf(state.meanAnomaly, 1, 1, buf); advPut(ADV_MA,    ADV_R_VALUE_X, ADV_R_VALUE_W, 4, String(buf) + String("\xb0"));
+    advPut(ADV_INC,   ADV_R_VALUE_X, ADV_R_VALUE_W, 0, deg(state.inclination));
+    advPut(ADV_LAN,   ADV_R_VALUE_X, ADV_R_VALUE_W, 1, deg(state.LAN));
+    advPut(ADV_ARGPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 2, deg(state.argOfPe));
+    advPut(ADV_TA,    ADV_R_VALUE_X, ADV_R_VALUE_W, 3, deg(state.trueAnomaly));
+    advPut(ADV_MA,    ADV_R_VALUE_X, ADV_R_VALUE_W, 4, deg(state.meanAnomaly));
 
-    advPut(ADV_TPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 5,                            // "---" if <= 0
-           (state.timeToPe > 0.0f) ? formatTimeCompact(state.timeToPe) : String("---"));
-    {
-        String v;                                                               // infinity on escape, "---" if <= 0
-        if (isEscape)                   v = String("\x80");
-        else if (state.timeToAp > 0.0f) v = formatTimeCompact(state.timeToAp);
-        else                            v = String("---");
-        advPut(ADV_TAP, ADV_R_VALUE_X, ADV_R_VALUE_W, 6, v);
-    }
+    if (state.timeToPe > 0.0f) { formatTimeCompactBuf(state.timeToPe, vb, sizeof(vb)); advPut(ADV_TPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 5, vb); }
+    else                       advPut(ADV_TPE, ADV_R_VALUE_X, ADV_R_VALUE_W, 5, "---");
+    if (isEscape)                   advPut(ADV_TAP, ADV_R_VALUE_X, ADV_R_VALUE_W, 6, "\x80");   // infinity on escape
+    else if (state.timeToAp > 0.0f) { formatTimeCompactBuf(state.timeToAp, vb, sizeof(vb)); advPut(ADV_TAP, ADV_R_VALUE_X, ADV_R_VALUE_W, 6, vb); }
+    else                            advPut(ADV_TAP, ADV_R_VALUE_X, ADV_R_VALUE_W, 6, "---");
 }

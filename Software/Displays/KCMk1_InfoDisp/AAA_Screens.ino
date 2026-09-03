@@ -319,6 +319,21 @@ String fmtMs(float v) {
   return fmtUnit(v, "m/s");
 }
 
+// Buffer forms, for a screen that formats every row every frame: same text as the
+// String forms above, into the caller's buffer.
+void fmtNumBuf(float v, char *buf, size_t n) {
+  if (fabsf(v) < 0.05f) v = 0.0f;
+  if (v >= 1000.0f || v <= -1000.0f) { formatSepBuf(v, buf, n); return; }
+  char t[16];
+  dtostrf(v, 1, 1, t);
+  strlcpy(buf, t, n);
+}
+void fmtMsBuf(float v, char *buf, size_t n) {
+  char t[24];
+  fmtNumBuf(v, t, sizeof(t));
+  snprintf(buf, n, "%s m/s", t);
+}
+
 // formatTime() removed — formatting improvements merged into library formatTime() (#5C)
 // All call sites now call formatTime() directly.
 
@@ -617,6 +632,26 @@ void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
   c.bg = bg;
 }
 
+// C-string form: the cache compare (String == const char*) allocates nothing, so a row
+// whose value has not changed costs no heap traffic at all. The String is built only
+// for a value that is about to be drawn.
+void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
+               uint16_t x, uint16_t w,
+               const char *label, const char *value,
+               uint16_t fg, uint16_t bg,
+               const tFont *font, uint8_t nRows) {
+  RowCache &c = rowCache[screen][row];
+  if (c.fg == fg && c.bg == bg && c.value == value) return;
+  String v(value);
+  printValue(tft, font,
+             x, rowYFor(row, nRows), w, rowHFor(nRows),
+             label, v, fg, bg, COL_BACK,
+             printState[screen][row]);
+  c.value = v;
+  c.fg = fg;
+  c.bg = bg;
+}
+
 // Right-panel cache-checked draw with an explicit cache `slot` distinct from the
 // geometry `row` (needed by screens whose half-width cells share a Y row but need two
 // cache slots) and an explicit column x/w. Y/H derive from rowYFor/rowHFor(nRows).
@@ -635,6 +670,25 @@ void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
              label, value, drawFg, bg, COL_BACK,
              printState[screen][slot]);
   c.value = value;
+  c.fg = drawFg;
+  c.bg = bg;
+}
+
+// C-string form of drawPanelValue — see drawValue above.
+void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
+                    uint16_t x, uint16_t w,
+                    const char *label, const char *value,
+                    uint16_t fg, uint16_t bg,
+                    const tFont *font, uint8_t nRows, bool greyDashes) {
+  uint16_t drawFg = (greyDashes && strcmp(value, "---") == 0) ? TFT_DARK_GREY : fg;
+  RowCache &c = rowCache[screen][slot];
+  if (c.fg == drawFg && c.bg == bg && c.value == value) return;
+  String v(value);
+  printValue(tft, font,
+             x, rowYFor(row, nRows), w, rowHFor(nRows),
+             label, v, drawFg, bg, COL_BACK,
+             printState[screen][slot]);
+  c.value = v;
   c.fg = drawFg;
   c.bg = bg;
 }

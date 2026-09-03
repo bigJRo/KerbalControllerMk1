@@ -83,39 +83,42 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     uint16_t fg, bg;
 
     // plVal -> drawValue() full-row variant (slot=cache idx, row=display row) (#6C/#44)
-    auto plVal = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
+    auto plVal = [&](uint8_t row, uint8_t slot, const char *label, const char *val,
                      uint16_t fgc, uint16_t bgc) {
-        RowCache &rc = rowCache[0][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
+        RowCache &rc = rowCache[screen_LNCH][slot];
+        if (rc.fg == fgc && rc.bg == bgc && rc.value == val) return;   // no allocation
+        String v(val);
         printValue(tft, F, AX, rowYFor(row, NR), AW, rowHFor(NR),
-                   label, val, fgc, bgc, COL_BACK, printState[0][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+                   label, v, fgc, bgc, COL_BACK, printState[screen_LNCH][slot]);
+        rc.value = v; rc.fg = fgc; rc.bg = bgc;
     };
 
     // plValL -> left-half split, slot=cache idx (#6C/#44)
-    auto plValL = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
+    auto plValL = [&](uint8_t row, uint8_t slot, const char *label, const char *val,
                       uint16_t fgc, uint16_t bgc) {
         uint16_t xL = AX, wL = AHW - ROW_PAD;
-        RowCache &rc = rowCache[0][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
+        RowCache &rc = rowCache[screen_LNCH][slot];
+        if (rc.fg == fgc && rc.bg == bgc && rc.value == val) return;   // no allocation
+        String v(val);
         printValue(tft, F, xL, rowYFor(row, NR), wL, rowHFor(NR),
-                   label, val, fgc, bgc, COL_BACK, printState[0][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+                   label, v, fgc, bgc, COL_BACK, printState[screen_LNCH][slot]);
+        rc.value = v; rc.fg = fgc; rc.bg = bgc;
     };
 
     // plValR -> right-half split, slot=cache idx (#6C/#44)
-    auto plValR = [&](uint8_t row, uint8_t slot, const char *label, const String &val,
+    auto plValR = [&](uint8_t row, uint8_t slot, const char *label, const char *val,
                       uint16_t fgc, uint16_t bgc) {
         uint16_t xR = AX + AHW + ROW_PAD, wR = AHW - ROW_PAD;
-        RowCache &rc = rowCache[0][slot];
-        if (rc.value == val && rc.fg == fgc && rc.bg == bgc) return;
+        RowCache &rc = rowCache[screen_LNCH][slot];
+        if (rc.fg == fgc && rc.bg == bgc && rc.value == val) return;   // no allocation
+        String v(val);
         printValue(tft, F, xR, rowYFor(row, NR), wR, rowHFor(NR),
-                   label, val, fgc, bgc, COL_BACK, printState[0][slot]);
-        rc.value = val; rc.fg = fgc; rc.bg = bgc;
+                   label, v, fgc, bgc, COL_BACK, printState[screen_LNCH][slot]);
+        rc.value = v; rc.fg = fgc; rc.bg = bgc;
     };
 
     // Row 0 — Vessel name (full width, always dark green)
-    plVal(0, 14, "VESSEL", state.vesselName, TFT_DARK_GREEN, TFT_BLACK);
+    plVal(0, 14, "VESSEL", state.vesselName.c_str(), TFT_DARK_GREEN, TFT_BLACK);
 
     // Row 1 — Vessel type (full width, always dark green — informational confirmation)
     {
@@ -165,14 +168,14 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     {
         // Throttle: green=0%, red=any non-zero
         uint8_t thrPct = (uint8_t)constrain(state.throttle * 100.0f, 0.0f, 100.0f);
-        String thrStr = formatPerc(thrPct);
+        char thrStr[8]; snprintf(thrStr, sizeof(thrStr), "%u%%", thrPct);
         if (thrPct == 0) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else             { fg = TFT_WHITE;       bg = TFT_RED;   }
         plValL(3, 4, "THRTL", thrStr, fg, bg);
 
         // EC%: pre-launch readiness — green when topped off, red when not ready.
         uint8_t ecPct = (uint8_t)constrain(state.electricChargePercent, 0.0f, 100.0f);
-        String ecStr = formatPerc(ecPct);
+        char ecStr[8]; snprintf(ecStr, sizeof(ecStr), "%u%%", ecPct);
         if      (ecPct >= EC_PRELAUNCH_READY_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (ecPct >= EC_PRELAUNCH_LOW_PCT)   { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                       { fg = TFT_WHITE;       bg = TFT_RED;   }
@@ -188,7 +191,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
 
         // CommNet: green=>50%, yellow=10-50%, red=<10%
         uint8_t sig = (uint8_t)constrain(state.commNetSignal, 0, 100);
-        String sigStr = formatPerc(sig);
+        char sigStr[8]; snprintf(sigStr, sizeof(sigStr), "%u%%", sig);
         if      (sig >= VEH_SIGNAL_WARN_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (sig >= 10) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                { fg = TFT_WHITE;       bg = TFT_RED;   }
@@ -201,7 +204,8 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
                        DV_STG_ALARM_MS, TFT_WHITE, TFT_RED,
                        DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                             TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-        plVal(5, 16, "\xCE\x94V.TOT", fmtMs(state.totalDeltaV), fg, bg);
+        char dv[32]; fmtMsBuf(state.totalDeltaV, dv, sizeof(dv));
+        plVal(5, 16, "\xCE\x94V.TOT", dv, fg, bg);
     }
 
     // Row 6 — Drogue deploy (CAG 1) | Main deploy (CAG 3)
