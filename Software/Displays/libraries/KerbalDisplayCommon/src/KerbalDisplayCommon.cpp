@@ -1271,15 +1271,6 @@ String formatFloatUnits(float value, uint8_t decimals, String units) {
    formatTime() uses Kerbin day = 6 hours.
 ****************************************************************************************/
 
-// Internal helper — extracts sign and makes value positive
-static String _getSign(float &value) {
-  if (value < 0) {
-    value *= -1;
-    return "-";
-  }
-  return "";
-}
-
 // formatSep(): for values >= 1000 the decimal part is dropped and a thousands
 // separator is inserted instead (e.g. 1234.5 -> "1,234"). This is intentional —
 // at that scale the decimal is noise on a display. (#64)

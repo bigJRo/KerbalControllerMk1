@@ -741,7 +741,6 @@ void updateScreenMain(KCM_TFT &tft) {
    (label, counter, units) open the Detail screen on that resource.
 ****************************************************************************************/
 int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
-  const MeterStyle &st = meterStyle();
   if (_visCount == 0) return -1;
   uint16_t x0 = pitchX(0);
   uint16_t pitch = meterPitch();
