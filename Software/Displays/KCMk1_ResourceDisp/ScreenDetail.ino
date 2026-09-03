@@ -71,10 +71,8 @@ static const uint16_t DET_HIST_BOX_W = DET_HIST_W - 38 - DET_PAD;
 static const uint16_t DET_HIST_BOX_H = 200;
 static const uint16_t DET_HIST_BOX_Y = DET_HDR_H + ((KCM_SCREEN_H - DET_HDR_H - DET_BUG_H) - DET_HIST_BOX_H) / 2;
 static const uint16_t DET_HIST_INSET = 4;   // plot area inside the box: the 2 px line and the 3 px dot stay off the border
-static const uint8_t  DET_HIST_TICKS = 5;   // time scale ticks along the bottom, evenly spaced; labels at the ends and middle
 static uint32_t _histDrawnSeq = 0;
 static char     _histCaption[16];
-static char     _histAxis[3][10];           // left / middle / right time labels as drawn
 
 // Color accent strip in header — offset a few px from the panel edge
 static const uint16_t DET_ACCENT_X = DET_PNL_X + DET_PAD;
@@ -223,60 +221,69 @@ static String detRowValue(uint8_t row) {
 
 /***************************************************************************************
    HISTORY TRACE
-   Chrome: the box, the 0 / 50 / 100 marks and the caption cell. Trace: cleared and
-   redrawn whole whenever a sample lands (every HIST_PERIOD_MS) or the slot changes;
-   at most HIST_LEN short segments, a few milliseconds on the RA8876. A sample with
-   no data breaks the line. The newest point carries a dot.
+   A grid chart: level 0-100% up the side with a mark every DET_HIST_PCT_STEP, time
+   along the bottom with a mark every DET_HIST_T_STEP samples (two real minutes) from
+   NOW at the right back to the buffer's full span at the left. The time labels are
+   game time from the warp recorded with each sample. Chrome draws the box, the
+   side labels and the tick marks; the trace pass clears the box and redraws the
+   grid, the reference lines, the line and the end dot whenever a sample lands
+   (every HIST_PERIOD_MS) or the slot changes, and refreshes the time labels that
+   changed. A sample with no data breaks the line.
 ****************************************************************************************/
+static const uint16_t DET_HIST_PCT_STEP = 20;                                  // side marks every this many percent
+static const uint16_t DET_HIST_T_STEP   = (2 * 60 * 1000) / HIST_PERIOD_MS;    // 24 samples = two real minutes
+static const uint8_t  DET_HIST_T_TICKS  = HIST_LEN / DET_HIST_T_STEP + 1;      // 6: 0, 2 .. 10 min
+static char _histAxis[DET_HIST_T_TICKS][10];                                   // time labels as drawn
+
+static inline uint16_t histPlotX0() { return DET_HIST_BOX_X + DET_HIST_INSET; }
+static inline uint16_t histPlotX1() { return DET_HIST_BOX_X + DET_HIST_BOX_W - 1 - DET_HIST_INSET; }
+static inline uint16_t histPlotY0() { return DET_HIST_BOX_Y + DET_HIST_INSET; }
+static inline uint16_t histPlotY1() { return DET_HIST_BOX_Y + DET_HIST_BOX_H - 1 - DET_HIST_INSET; }
+// x of a point `a` sample periods before now; a = HIST_LEN is the left edge.
+static inline int16_t histXAgo(uint16_t a) { return (int16_t)(histPlotX1() - (uint32_t)a * (histPlotX1() - histPlotX0()) / HIST_LEN); }
+static inline int16_t histYOf(float frac)  { return (int16_t)(histPlotY1() - (int16_t)(constrain(frac, 0.0f, 1.0f) * (histPlotY1() - histPlotY0()))); }
+
 static void drawDetailHistoryChrome(KCM_TFT &tft) {
   if (!DETAIL_HISTORY) return;
   tft.fillRect(DET_HIST_X, DET_HDR_H + 1, DET_HIST_W, KCM_SCREEN_H - DET_HDR_H - DET_BUG_H - 1, TFT_BLACK);
-  tft.drawRect(DET_HIST_BOX_X, DET_HIST_BOX_Y, DET_HIST_BOX_W, DET_HIST_BOX_H, TFT_DARK_GREY);
   tft.setFont(Roboto_Black_12);
   tft.setTextColor(TFT_GREY, TFT_BLACK);
-  const char *marks[3] = { "100", "50", "0" };
-  for (uint8_t m = 0; m < 3; m++) {
-    uint16_t y = DET_HIST_BOX_Y + (DET_HIST_BOX_H - 1) * m / 2;
-    int16_t w = getFontStringWidth(&Roboto_Black_12, marks[m]);
-    tft.setCursor(DET_HIST_BOX_X - 6 - w, y - 7);
-    tft.print(marks[m]);
-    tft.drawFastHLine(DET_HIST_BOX_X - 3, y, 3, TFT_GREY);
+  // Level marks up the left side.
+  for (uint16_t p = 0; p <= 100; p += DET_HIST_PCT_STEP) {
+    int16_t y = histYOf(p / 100.0f);
+    char lab[5]; snprintf(lab, sizeof(lab), "%d", p);
+    int16_t w = getFontStringWidth(&Roboto_Black_12, lab);
+    tft.setCursor(DET_HIST_BOX_X - 7 - w, y - 7);
+    tft.print(lab);
+    tft.drawFastHLine(DET_HIST_BOX_X - 4, y, 4, TFT_GREY);
   }
-  // Time scale ticks under the box; the labels come with the trace.
-  for (uint8_t k = 0; k < DET_HIST_TICKS; k++) {
-    uint16_t x = DET_HIST_BOX_X + DET_HIST_INSET + (uint32_t)(DET_HIST_BOX_W - 1 - 2 * DET_HIST_INSET) * k / (DET_HIST_TICKS - 1);
-    tft.drawFastVLine(x, DET_HIST_BOX_Y + DET_HIST_BOX_H, (k % 2 == 0) ? 5 : 3, TFT_GREY);
+  // Time marks under the bottom edge.
+  for (uint8_t j = 0; j < DET_HIST_T_TICKS; j++) {
+    tft.drawFastVLine(histXAgo(j * DET_HIST_T_STEP), DET_HIST_BOX_Y + DET_HIST_BOX_H, 4, TFT_GREY);
   }
   _histCaption[0] = '\0';
-  for (uint8_t k = 0; k < 3; k++) _histAxis[k][0] = '\0';
+  for (uint8_t j = 0; j < DET_HIST_T_TICKS; j++) _histAxis[j][0] = '\0';
   _histDrawnSeq = histSeq() - 1;   // force the first trace
 }
 
-// Time scale labels: game time back from now at the left, middle and right ticks,
-// from the samples that sit there. A tick with no sample yet stays blank. Redrawn
-// only when the text changes.
+// Time labels: game time back from now at each tick, NOW at the right. A tick the
+// buffer has not reached yet stays blank. Only a label whose text changed is redrawn.
 static void drawDetailHistoryAxis(KCM_TFT &tft) {
-  uint16_t n = histCount();
-  uint16_t xL = DET_HIST_BOX_X + DET_HIST_INSET;
-  uint16_t xR = DET_HIST_BOX_X + DET_HIST_BOX_W - 1 - DET_HIST_INSET;
-  uint16_t xM = (uint16_t)((xL + xR) / 2);
-  uint16_t y  = DET_HIST_BOX_Y + DET_HIST_BOX_H + 7;
-  const uint16_t xs[3] = { xL, xM, xR };
-  for (uint8_t k = 0; k < 3; k++) {
+  uint16_t n  = histCount();
+  uint16_t y  = DET_HIST_BOX_Y + DET_HIST_BOX_H + 6;
+  int16_t maxW = getFontStringWidth(&Roboto_Black_12, "-99.9h");
+  for (uint8_t j = 0; j < DET_HIST_T_TICKS; j++) {
+    uint16_t a = j * DET_HIST_T_STEP;
     char lab[10] = "";
-    if (k == 2) strlcpy(lab, "NOW", sizeof(lab));
-    else {
-      // The sample at this tick: index into the buffer as if it were full.
-      int32_t pos = (k == 0) ? 0 : (HIST_LEN - 1) / 2;
-      int32_t idx = pos - (HIST_LEN - n);
-      if (n >= 2 && idx >= 0) { char d[8]; fmtTte(histGameAgo((uint16_t)idx), d, sizeof(d)); snprintf(lab, sizeof(lab), "-%s", d); }
-    }
-    if (strcmp(lab, _histAxis[k]) == 0) continue;
-    strlcpy(_histAxis[k], lab, sizeof(_histAxis[k]));
-    int16_t w = getFontStringWidth(&Roboto_Black_12, lab);
-    int16_t maxW = getFontStringWidth(&Roboto_Black_12, "-99.9h");
-    int16_t x = (k == 0) ? xs[k] : (k == 1) ? xs[k] - w / 2 : xs[k] - w;
-    int16_t cx = (k == 0) ? xs[k] : (k == 1) ? xs[k] - maxW / 2 : xs[k] - maxW;
+    if (j == 0) strlcpy(lab, "NOW", sizeof(lab));
+    else if (n >= 2 && a <= n) { char d[8]; fmtTte(histGameAgoSamples(a), d, sizeof(d)); snprintf(lab, sizeof(lab), "-%s", d); }
+    if (strcmp(lab, _histAxis[j]) == 0) continue;
+    strlcpy(_histAxis[j], lab, sizeof(_histAxis[j]));
+    int16_t tx = histXAgo(a);
+    int16_t w  = getFontStringWidth(&Roboto_Black_12, lab);
+    // Centred on the tick, except the ends, which hug the box.
+    int16_t x  = (j == 0) ? tx - w : (j == DET_HIST_T_TICKS - 1) ? tx : tx - w / 2;
+    int16_t cx = (j == 0) ? tx - maxW : (j == DET_HIST_T_TICKS - 1) ? tx : tx - maxW / 2;
     tft.fillRect(cx, y, maxW, 16, TFT_BLACK);
     if (!lab[0]) continue;
     tft.setFont(Roboto_Black_12);
@@ -306,30 +313,29 @@ static void drawDetailHistory(KCM_TFT &tft) {
     tft.print(cap);
   }
 
-  // Interior: clear, band and bug lines, then the trace. The plot area is inset so
-  // the line and the end dot never reach the border, which is redrawn anyway since
-  // the clear takes the whole box.
+  // Box: clear, border, grid, reference lines, then the trace. The plot area is
+  // inset so the line and the end dot never reach the border.
   tft.fillRect(DET_HIST_BOX_X, DET_HIST_BOX_Y, DET_HIST_BOX_W, DET_HIST_BOX_H, TFT_BLACK);
   tft.drawRect(DET_HIST_BOX_X, DET_HIST_BOX_Y, DET_HIST_BOX_W, DET_HIST_BOX_H, TFT_DARK_GREY);
-  uint16_t x0 = DET_HIST_BOX_X + DET_HIST_INSET, y0 = DET_HIST_BOX_Y + DET_HIST_INSET;
-  uint16_t w  = DET_HIST_BOX_W - 2 * DET_HIST_INSET, h = DET_HIST_BOX_H - 2 * DET_HIST_INSET;
-  auto yOf = [&](float frac) -> int16_t { return (int16_t)(y0 + h - 1 - (int16_t)(constrain(frac, 0.0f, 1.0f) * (h - 1))); };
+  uint16_t lx = DET_HIST_BOX_X + 1, lw = DET_HIST_BOX_W - 2;
+  uint16_t ly = DET_HIST_BOX_Y + 1, lh = DET_HIST_BOX_H - 2;
+  for (uint16_t p = DET_HIST_PCT_STEP; p < 100; p += DET_HIST_PCT_STEP) tft.drawFastHLine(lx, histYOf(p / 100.0f), lw, TFT_OFF_BLACK);
+  for (uint8_t j = 1; j < DET_HIST_T_TICKS - 1; j++) tft.drawFastVLine(histXAgo(j * DET_HIST_T_STEP), ly, lh, TFT_OFF_BLACK);
   ResLimits lim = resLimits(t);
-  uint16_t lx = DET_HIST_BOX_X + 1, lw = DET_HIST_BOX_W - 2;   // reference lines span the box
   if (lim.enabled) {
-    tft.drawFastHLine(lx, yOf(lim.warn),  lw, dimColor(TFT_YELLOW));
-    tft.drawFastHLine(lx, yOf(lim.alarm), lw, dimColor(TFT_RED));
+    tft.drawFastHLine(lx, histYOf(lim.warn),  lw, dimColor(TFT_YELLOW));
+    tft.drawFastHLine(lx, histYOf(lim.alarm), lw, dimColor(TFT_RED));
   }
   float bug = slots[_detailSlot].bug;
-  if (bug >= 0.0f) tft.drawFastHLine(lx, yOf(bug), lw, TFT_CYAN);
+  if (bug >= 0.0f) tft.drawFastHLine(lx, histYOf(bug), lw, TFT_CYAN);
 
   uint16_t col = resColor(t);
   int16_t px = -1, py = -1;
   for (uint16_t k = 0; k < n; k++) {
     uint16_t lv = histLevel(t, k);
     if (lv == HIST_NONE) { px = -1; continue; }
-    int16_t x = (int16_t)(x0 + (uint32_t)(HIST_LEN - n + k) * (w - 1) / (HIST_LEN - 1));
-    int16_t y = yOf(lv / 1000.0f);
+    int16_t x = histXAgo((uint16_t)(n - 1 - k));
+    int16_t y = histYOf(lv / 1000.0f);
     if (px >= 0) drawThickLine(tft, px, py, x, y, 2, col, false);
     px = x; py = y;
   }

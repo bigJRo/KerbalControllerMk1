@@ -32,7 +32,7 @@ typedef ILI9341_t3_font_t tFont;
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 12;  // 3.12.0: level history trace on the Detail screen
-static const uint8_t SKETCH_VERSION_PATCH = 2;   // 3.12.2: demo starts on the default layout
+static const uint8_t SKETCH_VERSION_PATCH = 3;   // 3.12.3: history grid, 2 min and 20% markers
 
 
 /***************************************************************************************
@@ -323,6 +323,7 @@ uint16_t histCount();                                   // samples held, 0..HIST
 uint16_t histLevel(ResourceType t, uint16_t k);         // k = 0 oldest .. histCount()-1 newest; level x1000 or HIST_NONE
 float    histGameSecs();                                // game time the held samples span
 float    histGameAgo(uint16_t k);                       // game seconds between sample k and the newest
+float    histGameAgoSamples(uint16_t a);                // game seconds spanned by the newest a sample periods
 uint32_t histSeq();                                     // bumps on every push or reset
 // Time-remaining tiers on top of a level state, with hysteresis against the state the
 // caller last used; timeFlag reports the tier did it. Shared by Main, EVA and the summary.

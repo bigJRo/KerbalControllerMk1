@@ -154,6 +154,23 @@ float histGameAgo(uint16_t k) {
 float    histGameSecs() { return _histGame; }
 uint32_t histSeq()      { return _histSeq; }
 
+// Game time spanned by the newest a sample periods, for the time scale's fixed
+// ticks. A period beyond the oldest held sample (the 10 min tick sits one period
+// left of it) is counted at that sample's warp, or the current warp when empty.
+float histGameAgoSamples(uint16_t a) {
+  float secs = 0.0f;
+  for (uint16_t i = 0; i < a; i++) {
+    float wf = warpFactor;
+    if (_histCount > 0) {
+      int32_t j = (int32_t)_histCount - 1 - (int32_t)i;
+      if (j < 0) j = 0;
+      wf = _histWarp[(_histHead + HIST_LEN - _histCount + j) % HIST_LEN];
+    }
+    secs += wf * (HIST_PERIOD_MS / 1000.0f);
+  }
+  return secs;
+}
+
 uint16_t histLevel(ResourceType t, uint16_t k) {
   if (k >= _histCount || (uint16_t)t >= (uint16_t)RES_COUNT) return HIST_NONE;
   uint16_t idx = (uint16_t)((_histHead + HIST_LEN - _histCount + k) % HIST_LEN);
