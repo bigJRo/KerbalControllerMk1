@@ -59,7 +59,7 @@ static const int16_t  ACFT_PANEL_W       = ACFT_PANEL_RIGHT - ACFT_PANEL_X;  // 
 static const uint8_t  ACFT_PANEL_NR      = 8;
 
 // ── Right panel state ──────────────────────────────────────────────────────────────────
-// Cache managed by rowCache[screen_ACFT] / printState[screen_ACFT] slots 0-8.
+// Cache managed by rowCache[screen_ACFT] / printState[screen_ACFT] slots 0-11.
 // No additional state variables needed — printValue handles dirty detection.
 
 
@@ -69,8 +69,8 @@ static const uint8_t  ACFT_PANEL_NR      = 8;
 static float    _acftPrevPitch   = -9999.0f;
 static float    _acftPrevRoll    = -9999.0f;
 
-// Aircraft always uses surface velocity — no orbital mode switching
 static bool     _acftFullRedrawNeeded = true;
+static bool     _acftTrimShown        = false;   // TRIM flag is on screen (reset by chrome)
 
 
 // ── Row 0: the altimeter, and when radar altitude takes it over ───────────────────────
@@ -117,6 +117,12 @@ static bool _acftAutoRdr() {
 
 // true = show radar altitude.
 static bool _acftAltRef() { return modeResolve(_acftAltRefOverride, _acftAutoRdr()); }
+
+// Vertical speed is coloured on POWERED DESCENT's landing tiers (caution below -5 m/s,
+// alarm below -8) only when the aircraft is on an approach: gear down, or below the
+// radar-altimeter handover height. In cruise a normal descent runs well past both, and
+// an always-on alarm is the one that teaches a pilot to ignore the colour.
+static bool _acftLandingTiers() { return state.gear_on || _acftAutoRdr(); }
 
 // Radar altitude with resolution rising as the ground approaches, the way a real radio
 // altimeter reads. Metric equivalents of the A320's 10 ft / 5 ft / 1 ft steps.
@@ -328,7 +334,8 @@ static void _acftUpdateVSI(KCM_TFT &tft, float vVrt) {
     int16_t barH   = SCREEN_H - TITLE_TOP - VSI_LABEL_H;
     tft.fillRect(VSI_X, barTop, VSI_BAR_W, barH, TFT_BLACK);
     if (fillH > 0) {
-        uint16_t col = (vVrt < LNDG_VVRT_ALARM_MS) ? TFT_RED :
+        uint16_t col = !_acftLandingTiers()        ? TFT_DARK_GREEN :
+                       (vVrt < LNDG_VVRT_ALARM_MS) ? TFT_RED :
                        (vVrt < LNDG_VVRT_WARN_MS)  ? TFT_YELLOW : TFT_DARK_GREEN;
         int16_t fillY = (clamped > 0.0f) ? VSI_ZERO_Y - fillH : VSI_ZERO_Y + 2;
         // Clamp fill to bar area (don't paint over label)
@@ -385,11 +392,11 @@ static void _acftDrawSlipChrome(KCM_TFT &tft) {
         tft.print(markTxt[i]);
     }
 
-    // "Slip:" label — right-justified in the space left of the strip, matching the
+    // "SLIP" label — right-justified in the space left of the strip, matching the
     // Pitch/Hdg label style
     textRight(tft, &Roboto_Black_24,
                VSI_TICK_X0 + 2, SLIP_Y, SLIP_X - VSI_TICK_X0 - 2, SLIP_H,
-               "Slip:", TFT_WHITE, TFT_BLACK);
+               "SLIP", TFT_WHITE, TFT_BLACK);
 }
 
 static void _acftUpdateSlipBall(KCM_TFT &tft, float slip) {
@@ -428,10 +435,10 @@ static const int16_t  AOA_ANG_HI   = 205;            // high screen angle (= AoA
 
 // Precomputed integer-degree cos/sin table for the arc range (155..206 inclusive)
 static const uint8_t  AOA_STEPS     = (uint8_t)(AOA_ANG_HI - AOA_ANG_LO + 2); // 52 entries
-static int16_t _aoaIX[52];   // inner x at each degree
-static int16_t _aoaIY[52];   // inner y
-static int16_t _aoaOX[52];   // outer x
-static int16_t _aoaOY[52];   // outer y
+static int16_t _aoaIX[AOA_STEPS];   // inner x at each degree
+static int16_t _aoaIY[AOA_STEPS];   // inner y
+static int16_t _aoaOX[AOA_STEPS];   // outer x
+static int16_t _aoaOY[AOA_STEPS];   // outer y
 static bool    _aoaTableReady = false;
 
 static void _aoaBuildTable() {
@@ -538,6 +545,7 @@ static void _acftUpdateAoAArc(KCM_TFT &tft, float aoa) {
 // ── Screen update ─────────────────────────────────────────────────────────────────────
 
 static void chromeScreen_ACFT(KCM_TFT &tft) {
+    _acftTrimShown = false;
     _acftChipShown  = -1;
     _acftPrevAltRef = -1;
     _acftTrendPrevIas = -9999.0f;
@@ -599,12 +607,12 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     tft.drawLine(ACFT_PTAPE_X - 1,                  ACFT_PTAPE_Y + ACFT_PTAPE_H - 1,
                  ACFT_PTAPE_X + ACFT_PTAPE_W - 1,    ACFT_PTAPE_Y + ACFT_PTAPE_H - 1, TFT_LIGHT_GREY);
 
-    // "Pitch:" right-justified to right edge of pitch value box (box widened left
+    // "PITCH" right-justified to right edge of pitch value box (box widened left
     // so the larger _24 label — 75px — fits without clipping the pitch value box)
     textRight(tft, &Roboto_Black_24,
               ACFT_PTAPE_BOX_X - 24, ACFT_PTAPE_Y - 32,
               ACFT_PTAPE_BOX_W + 24, 30,
-              "Pitch:", TFT_WHITE, TFT_BLACK);
+              "PITCH", TFT_WHITE, TFT_BLACK);
 
     // Heading tape border — top (light grey) and two sides (darker), open at bottom
     tft.drawLine(ACFT_HDG_TAPE_X - 1, ACFT_HDG_TAPE_Y - 1,
@@ -614,11 +622,11 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
     tft.drawLine(ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W, ACFT_HDG_TAPE_Y - 1,
                  ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W, ACFT_HDG_TAPE_Y + ACFT_HDG_TAPE_H, TFT_GREY);
 
-    // "Hdg:" right-justified to same right edge as "Pitch:" label
+    // "HDG" right-justified to same right edge as "PITCH" label
     textRight(tft, &Roboto_Black_24,
               ACFT_PTAPE_BOX_X, ACFT_HDG_BOX_Y + ACFT_HDG_BOX_H / 2 - 15,
               ACFT_PTAPE_BOX_W, 30,
-              "Hdg:", TFT_WHITE, TFT_BLACK);
+              "HDG", TFT_WHITE, TFT_BLACK);
 
     // ── VSI tape chrome ───────────────────────────────────────────────────────────────
     _acftDrawVSIChrome(tft);
@@ -638,36 +646,36 @@ static void chromeScreen_ACFT(KCM_TFT &tft) {
 
     // Rows 0-3: single-width labels
     printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR),
-                    _acftAltRef() ? "Alt.Rdr:" : "Alt.SL:", COL_LABEL, COL_BACK, COL_NO_BDR);
+                    _acftAltRef() ? "ALT.RDR" : "ALT.SL", COL_LABEL, COL_BACK, COL_NO_BDR);
     _acftPrevAltRef = (int8_t)_acftAltRef();   // record what chrome just painted
-    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(1, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Srf:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(2, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "IAS:",     COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(3, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(1, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.SRF",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(2, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "IAS",     COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, PF, ACFT_PANEL_X, rowYFor(3, ACFT_PANEL_NR), ACFT_PANEL_W, rowHFor(ACFT_PANEL_NR), "V.VRT",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Row 4: Ma | G split.
-    // "Ma:", not "Mach:" as ASCENT and RE-ENTRY use, and this is measured rather than
-    // careless: these split cells are 180 px, "Mach:" is 101 px at the value font and the
+    // "MA", not "MACH" as ASCENT and RE-ENTRY use, and this is measured rather than
+    // careless: these split cells are 180 px, "MACH" is 101 px at the value font and the
     // widest Mach reading is 95, which overflows by 26. Dropping a decimal does not save
     // it either. The abbreviation is forced by the cell, and it is the one place in the
     // sketch where a quantity carries a second name.
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         uint16_t y  = rowYFor(4, ACFT_PANEL_NR), h = rowHFor(ACFT_PANEL_NR);
-        printDispChrome(tft, PF, ACFT_PANEL_X,      y, hw, h, "Ma:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "G:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, PF, ACFT_PANEL_X,      y, hw, h, "MA", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "G",  COL_LABEL, COL_BACK, COL_NO_BDR);
         tft.drawLine(ACFT_PANEL_X + hw,     y, ACFT_PANEL_X + hw,     y + h - 1, TFT_GREY);
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
 
-    // Row 5: AoA | Slip split. "Slip:" in full, matching the slip-ball label on the same
-    // screen -- the panel row used to say "Sl:" while the ball said "Slip:", one quantity
+    // Row 5: AoA | Slip split. "SLIP" in full, matching the slip-ball label on the same
+    // screen -- the panel row used to say "SL" while the ball said "SLIP", one quantity
     // with two names three inches apart. It fits: the value is already whole degrees, so
     // the widest case "+180deg" is 96 px against a 74 px label in a 174 px usable cell.
     {
         uint16_t hw = ACFT_PANEL_W / 2;
         uint16_t y  = rowYFor(5, ACFT_PANEL_NR), h = rowHFor(ACFT_PANEL_NR);
-        printDispChrome(tft, PF, ACFT_PANEL_X,      y, hw, h, "AoA:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "Slip:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, PF, ACFT_PANEL_X,      y, hw, h, "AOA",  COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, PF, ACFT_PANEL_X + hw, y, hw, h, "SLIP", COL_LABEL, COL_BACK, COL_NO_BDR);
         tft.drawLine(ACFT_PANEL_X + hw,     y, ACFT_PANEL_X + hw,     y + h - 1, TFT_GREY);
         tft.drawLine(ACFT_PANEL_X + hw + 1, y, ACFT_PANEL_X + hw + 1, y + h - 1, TFT_GREY);
     }
@@ -716,7 +724,7 @@ static const int16_t ACFT_TREND_W      = 13;      // chevron half-width
 static const int16_t ACFT_TREND_H      = 7;       // chevron height (apex to base)
 static const int16_t ACFT_TREND_THICK  = 3;       // stroke weight, in stacked scanlines
 static const int16_t ACFT_TREND_STEP   = 10;      // vertical pitch of the stack
-static const int16_t ACFT_TREND_X      = ACFT_PANEL_X + 92;   // clear of the "IAS:" label
+static const int16_t ACFT_TREND_X      = ACFT_PANEL_X + 92;   // clear of the "IAS" label
 static const int16_t ACFT_TREND_BOX_W  = 2 * ACFT_TREND_W + 6;
 static const int16_t ACFT_TREND_BOX_H  = 3 * ACFT_TREND_STEP + ACFT_TREND_H +
                                          ACFT_TREND_THICK + 4;
@@ -780,8 +788,8 @@ static void _acftDrawIasTrend(KCM_TFT &tft, float ias) {
 
 
 // ── Right panel update ─────────────────────────────────────────────────────────────────
-// Row order: Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear|Airbrk(6), Brakes|SAS(7)
-// Cache slots: 0=Alt.Rdr, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
+// Row order: Alt.SL/Alt.Rdr(0), V.Srf(1), IAS(2), V.Vrt(3), Ma|G(4), AoA|Slip(5), Gear|Airbrk(6), Brakes|SAS(7)
+// Cache slots: 0=Alt, 1=V.Srf, 2=IAS, 3=V.Vrt, 4=Ma, 5=G, 6=AoA, 7=Slip,
 //              8=Gear, 9=Airbrk, 10=Brakes, 11=SAS
 static void _acftUpdatePanel(KCM_TFT &tft) {
     static const tFont  *VF = &Roboto_Black_36;   // value font — matches reticle/launch panels
@@ -805,7 +813,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         if ((int8_t)rdr != _acftPrevAltRef) {
             printDispChrome(tft, &Roboto_Black_28, ACFT_PANEL_X,
                             rowYFor(0, ACFT_PANEL_NR), ACFT_PANEL_W,
-                            rowHFor(ACFT_PANEL_NR), rdr ? "Alt.Rdr:" : "Alt.SL:",
+                            rowHFor(ACFT_PANEL_NR), rdr ? "ALT.RDR" : "ALT.SL",
                             COL_LABEL, COL_BACK, COL_NO_BDR);
             rowCache[SC][0] = RowCache();
             printState[SC][0] = PrintState();
@@ -815,15 +823,15 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
                  (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
             bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
-            acftVal(0, 0, "Alt.Rdr:", _acftFmtRdr(state.radarAlt), fg, bg);
+            acftVal(0, 0, "ALT.RDR", _acftFmtRdr(state.radarAlt), fg, bg);
         } else {
-            acftVal(0, 0, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
+            acftVal(0, 0, "ALT.SL", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
         }
     }
 
     // Row 1 — V.Srf (surfaceVel is a magnitude, always >= 0)
     {
-        acftVal(1, 1, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
+        acftVal(1, 1, "V.SRF", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 2 — IAS, with a trend indicator.
@@ -842,17 +850,18 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
     // per-airframe stall speed to put in it.
     {
         float ias = state.IAS;
-        acftVal(2, 2, "IAS:", fmtMs(ias), TFT_DARK_GREEN, TFT_BLACK);
+        acftVal(2, 2, "IAS", fmtMs(ias), TFT_DARK_GREEN, TFT_BLACK);
         _acftDrawIasTrend(tft, ias);
     }
 
     // Row 3 — V.Vrt — colours match VSI bar thresholds
     {
         float vv = state.verticalVel;
-        if      (vv < LNDG_VVRT_ALARM_MS) { fg = TFT_WHITE;     bg = TFT_RED;   }
+        if      (!_acftLandingTiers())     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }   // cruise: reported, not alarmed
+        else if (vv < LNDG_VVRT_ALARM_MS) { fg = TFT_WHITE;     bg = TFT_RED;   }
         else if (vv < LNDG_VVRT_WARN_MS)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
         else                               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        acftVal(3, 3, "V.Vrt:", fmtMs(vv), fg, bg);
+        acftVal(3, 3, "V.VRT", fmtMs(vv), fg, bg);
     }
 
     // Row 4 — Ma | G split
@@ -860,13 +869,13 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
         uint16_t y4 = rowYFor(4, ACFT_PANEL_NR), h4 = rowHFor(ACFT_PANEL_NR);
         float m = state.machNumber;
         snprintf(buf, sizeof(buf), "%.2f", m);
-        bool transonic = (m >= 0.85f && m <= 1.2f);
+        bool transonic = (m >= MACH_TRANSONIC_LO && m <= MACH_TRANSONIC_HI);
         uint16_t mfg = transonic ? TFT_YELLOW : TFT_DARK_GREEN;
         {
             String ms = buf; RowCache &mc = rowCache[SC][4];
             if (mc.value != ms || mc.fg != mfg) {
                 printValue(tft, VF, ACFT_PANEL_X, y4, hw, h4,
-                           "Ma:", ms, mfg, TFT_BLACK, COL_BACK, printState[SC][4]);
+                           "MA", ms, mfg, TFT_BLACK, COL_BACK, printState[SC][4]);
                 mc.value = ms; mc.fg = mfg; mc.bg = TFT_BLACK;
             }
         }
@@ -879,7 +888,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             String gs = buf; RowCache &gc = rowCache[SC][5];
             if (gc.value != gs || gc.fg != fg || gc.bg != bg) {
                 printValue(tft, VF, ACFT_PANEL_X + hw, y4, hw, h4,
-                           "G:", gs, fg, bg, COL_BACK, printState[SC][5]);
+                           "G", gs, fg, bg, COL_BACK, printState[SC][5]);
                 gc.value = gs; gc.fg = fg; gc.bg = bg;
             }
         }
@@ -901,19 +910,13 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &ac = rowCache[SC][6];
             if (ac.value != av || ac.fg != fg || ac.bg != bg) {
                 printValue(tft, VF, ACFT_PANEL_X, y5, hw, h5,
-                           "AoA:", av, fg, bg, COL_BACK, printState[SC][6]);
+                           "AOA", av, fg, bg, COL_BACK, printState[SC][6]);
                 ac.value = av; ac.fg = fg; ac.bg = bg;
             }
         }
 
-        // Slip (slot 7) — computed in drawScreen_ACFT and passed via panel
-        // Re-derive here to keep panel self-contained
-        float slip = 0.0f;
-        if (state.surfaceVel > 0.5f) {
-            slip = state.heading - state.srfVelHeading;
-            while (slip >  180.0f) slip -= 360.0f;
-            while (slip < -180.0f) slip += 360.0f;
-        }
+        // Slip (slot 7), re-derived here so the panel is self-contained.
+        float slip = (state.surfaceVel > 0.5f) ? eadiHdgDelta(state.heading, state.srfVelHeading) : 0.0f;
         float absSlip = fabsf(slip);
         if (state.surfaceVel < 0.5f)           { fg = TFT_DARK_GREY; bg = TFT_BLACK; }
         else if (absSlip >= SLIP_ALARM_DEG)    { fg = TFT_WHITE;     bg = TFT_RED;   }
@@ -925,7 +928,7 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
             RowCache &sc2 = rowCache[SC][7];
             if (sc2.value != sv || sc2.fg != fg || sc2.bg != bg) {
                 printValue(tft, VF, ACFT_PANEL_X + hw, y5, hw, h5,
-                           "Slip:", sv, fg, bg, COL_BACK, printState[SC][7]);
+                           "SLIP", sv, fg, bg, COL_BACK, printState[SC][7]);
                 sc2.value = sv; sc2.fg = fg; sc2.bg = bg;
             }
         }
@@ -1050,8 +1053,9 @@ static void _acftUpdateRefChip(KCM_TFT &tft) {
     drawRefChip(tft, rdr ? "RDR" : "SL", held);
 }
 
+// Drawn on the edges only: the frame copy carries the flag between them.
 static void _acftDrawTrim(KCM_TFT &tft) {
-    static bool prev = false;
+    if (state.trimEnabled == _acftTrimShown) return;
     int16_t tw = getFontStringWidth(&Roboto_Black_24, "TRIM");
     int16_t x  = (ACFT_HDG_TAPE_X + ACFT_HDG_TAPE_W) - tw - 8;
     int16_t y  = ACFT_HDG_TAPE_Y - (int16_t)Roboto_Black_24.cap_height - 2 - 8;
@@ -1060,10 +1064,10 @@ static void _acftDrawTrim(KCM_TFT &tft) {
         tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setCursor(x, y);
         tft.print("TRIM");
-    } else if (prev) {
+    } else {
         tft.fillRect(x - 2, y - 2, tw + 4, (int16_t)Roboto_Black_24.cap_height + 6, TFT_BLACK);
     }
-    prev = state.trimEnabled;
+    _acftTrimShown = state.trimEnabled;
 }
 
 static void drawScreen_ACFT(KCM_TFT &tft) {
@@ -1126,9 +1130,7 @@ static void drawScreen_ACFT(KCM_TFT &tft) {
     float aoa = 0.0f, slip = 0.0f;
     if (state.surfaceVel > 0.5f) {
         aoa  = state.pitch - state.srfVelPitch;
-        slip = state.heading - state.srfVelHeading;
-        while (slip >  180.0f) slip -= 360.0f;
-        while (slip < -180.0f) slip += 360.0f;
+        slip = eadiHdgDelta(state.heading, state.srfVelHeading);
     }
 
     eadiUpdateRollIndicator(tft, state.roll);

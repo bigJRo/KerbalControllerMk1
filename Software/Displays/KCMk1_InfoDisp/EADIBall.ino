@@ -242,7 +242,7 @@ static const int16_t EADI_CHEV_LEN     = 30;      // arm run-back along the poin
 static const int16_t EADI_CHEV_HW      = 30;      // arm half-width across it (45 deg)
 static bool _eadiChevronOn = false;
 
-void eadiDrawExtremeChevrons(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) {
+void eadiDrawExtremeChevrons(KCM_TFT &tft, float BCX, float BCY) {
     // Distance from the disc centre to the horizon point IS the pitch, in pixels.
     const float dx = BCX - (float)EADI_CX, dy = BCY - (float)EADI_CY;
     const float distPx = sqrtf(dx*dx + dy*dy);
@@ -254,8 +254,8 @@ void eadiDrawExtremeChevrons(KCM_TFT &tft, float BCX, float BCY, float sinR, flo
 
     // Unit vector from the disc centre toward the horizon: the way out.
     const float hx = dx / distPx, hy = dy / distPx;
-    const float px = -hy, py = hx;              // perpendicular, for the arms
-    (void)sinR; (void)cosR;                     // roll is already carried by (hx,hy)
+    const float px = -hy, py = hx;              // perpendicular, for the arms; roll is
+                                                // already carried by (hx,hy)
 
     const float rr = (float)EADI_R * (float)EADI_R;
     const int16_t dists[2] = { EADI_CHEV_D1, EADI_CHEV_D2 };
@@ -397,7 +397,7 @@ void eadiDrawLadder(KCM_TFT &tft, float BCX, float BCY, float sinR, float cosR) 
         placeLabel(cx2, cy2);
     }
 
-    eadiDrawExtremeChevrons(tft, BCX, BCY, sinR, cosR);
+    eadiDrawExtremeChevrons(tft, BCX, BCY);
 }
 
 
@@ -553,8 +553,7 @@ void eadiDeltaDraw(KCM_TFT &tft, float sinR, float cosR, float K) {
             if (bx_new_s == _eadiPrevBx[i] && newGL == _eadiPrevGroundLeft) continue;
             int16_t y  = EADI_BALL_Y0 + (int16_t)i;
             int16_t x0 = EADI_CX - chw, x1 = EADI_CX + chw;
-            bool gl = (bx_new_s == EADI_BX_ALLGND) ? newGL :
-                      (bx_new_s == EADI_BX_ALLSKY)  ? false : newGL;
+            bool gl = (bx_new_s == EADI_BX_ALLSKY) ? false : newGL;
             eadiDrawScanline(tft, y, x0, x1, bx_new_s, gl);
             _eadiPrevBx[i] = bx_new_s;
             continue;
@@ -1025,11 +1024,11 @@ void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
         tft.fillRect(ex - 1, ey, ow + 2, capH, TFT_BLACK);
     }
 
-    // Line 1: "Roll:" — label row, right-justified toward the panel divider
+    // Line 1: "ROLL" — label row, right-justified toward the panel divider
     textRight(tft, &Roboto_Black_24,
               EADI_ROLL_ANCHOR_X, EADI_ROLL_ANCHOR_Y,
               EADI_ROLL_TXT_W, EADI_ROLL_LABEL_H,
-              "Roll:", TFT_WHITE, TFT_BLACK);
+              "ROLL", TFT_WHITE, TFT_BLACK);
 
     // Line 2: signed value — larger font, right-justified in value row
     char buf[8];

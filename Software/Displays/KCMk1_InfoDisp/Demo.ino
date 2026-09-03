@@ -103,6 +103,7 @@ void stepDemoState() {
   // Orbital velocity — goes slightly negative to exercise red band
   state.orbitalVel  = 2000.0f * sinf(_demoPhase * 0.35f);   // -2000..+2000 m/s
   state.surfaceVel  = 1800.0f * sinf(_demoPhase * 0.38f);
+  state.wheelThrottle = sinf(_demoPhase * 0.2f);   // -1..1: drives ROVER's FWD / REV blocks
   // verticalVel: large enough to drive ORB/SRF hysteresis switch, but also
   // sweeps through small negative values for realistic T_GRND calculation
   state.verticalVel = 15.0f * sinf(_demoPhase * 0.8f);      // -15..+15 m/s
@@ -165,14 +166,14 @@ void stepDemoState() {
 
   // (AppState.intercept1/2 Dist/Time are unread future-KSP2 stubs — not driven here.)
 
-  // Parachute demo: cycles through stowed->deployed->cut over 30s
+  // Parachute demo: walks stowed -> deployed -> cut over 30 s. The RE-ENTRY screen's
+  // chute states latch the way KSP's do (a cut chute stays cut until repacked, which
+  // only a vessel switch resets), so the demo shows the sequence once, not on a loop.
   uint32_t chutePhase = (millis() / 10000) % 3;
   state.drogueDeploy = (chutePhase >= 1);
   state.drogueCut    = (chutePhase >= 2);
   state.mainDeploy   = (chutePhase >= 1) && ((millis() / 5000) % 2 == 0);
   state.mainCut      = false;  // main rarely cut in demo
-  // Air density cycles 0..1.2 kg/m3 (Kerbin sea level = 1.2)
-  state.airDensity   = 0.6f + 0.6f * sinf(_demoPhase * 0.15f);
 
   // -----------------------------------------------------------------------
   // LNCH — stage burn time: sweeps 0..150s through red(<60), yellow(<120), green
@@ -207,8 +208,9 @@ void stepDemoState() {
   state.machNumber = 1.5f + 1.2f * sinf(_demoPhase * 0.5f);
   state.IAS        = 180.0f + 150.0f * sinf(_demoPhase * 0.45f);
   state.gForce     = 7.0f   * sinf(_demoPhase * 0.6f);
-  // Air density sweeps 0..1.5 kg/m3 to exercise parachute safety thresholds
-  // At v=100 m/s: q = 0.5 * 1.2 * 10000 = 6000 Pa (unsafe for main)
+  // Air density sweeps 0..1.2 kg/m3 in atmosphere (0 outside) to exercise the
+  // parachute safety thresholds: at v=100 m/s the peak is q = 0.5 * 1.2 * 10000 =
+  // 6000 Pa, above the main-chute limit.
   state.airDensity = (state.inAtmo) ? (0.6f + 0.6f * sinf(_demoPhase * 0.25f)) : 0.0f;
 
   // -----------------------------------------------------------------------

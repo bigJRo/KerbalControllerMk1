@@ -1,12 +1,11 @@
 /***************************************************************************************
    Screen_ROVR.ino -- Rover screen — chromeScreen_ROVR, drawScreen_ROVR
    Dedicated display for type_Rover vessels. contextScreen() routes here automatically.
-   rowCache index: [9] (screen_ROVR = 9)
 
    Layout (1024 × 600, content area x=0..939, sidebar at x=940..1023):
      LEFT COLUMN (x=0..190, 5 stacked boxes):
        V.Srf    — signed surface speed (m/s), 1 decimal, direction-colored
-       EC%      — electric charge %, threshold-colored (green/yellow/red)
+       ENDUR    — time to empty at the measured net discharge rate (coloured on time)
        BRAKES   — button: white on dark green when on, muted when off
        GEAR     — button: white on dark green when deployed, muted when up
        SAS      — button: navball-palette mode colors (STAB/PRO/RETR/...)
@@ -22,11 +21,11 @@
        Target bearing triangle inside ring when state.targetAvailable
 
      TGT STATUS STRIP (within the compass region, along its bottom, y=552..600):
-       "Dist:" label flush-left against the left column, formatted distance value
-       flush-right against the right column, shown only when state.targetAvailable
+       DIST and T+TGT (range, and time to reach it at the current closing speed),
+       shown only when state.targetAvailable
 
      RIGHT COLUMN (x=750..940, 3 stacked boxes):
-       Elev     — elevation (altitude ASL - radarAlt AGL), formatted via
+       ALT.TRN  — terrain elevation (altitude ASL - radarAlt AGL), formatted via
                   formatAlt (auto-scales m/km/Mm/Gm with thousands separator)
        Pitch    — side-view tilting silhouette + 1-decimal signed angle
        Roll     — rear-view tilting silhouette + 1-decimal signed angle
@@ -78,7 +77,7 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 
 // Target distance readout — shown only when a target is selected (targetAvailable).
 // Status strip along the bottom of the compass region, between the two side
-// columns and below the ring. Label "Dist:" is flush-left against the left column
+// columns and below the ring. Label "DIST" is flush-left against the left column
 // (region left edge x=190) and the formatted distance value is flush-right against
 // the right column (region right edge x=750). The strip sits just below the
 // compass erase region (which ends at y=551), so the two never collide.
@@ -87,12 +86,12 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 // "59 m: 30 s" -- formatTimeCompact is IDENTICAL to formatTime below one hour, and that is
 // formatTime's minutes form -- which is 171 px against a 155 px cell. textRight aligns to
 // the cell's right edge and simply starts further left when the string overruns, so the
-// value walked backwards into the "T+Tgt:" label and sat on top of it. Distance had the
+// value walked backwards into the "T+TGT" label and sat on top of it. Distance had the
 // same defect and was worse: formatAlt/formatSep emit two decimals below 1000, so a plain
 // "999.00 m" is 119 px and "999.99 km" is 134, with "999,999 km" at 150.
 //
 // Dropping the strip to Roboto_Black_28 fixes both with room to spare. Re-measured
-// against the real glyph data at Black_28: "Dist:" 58, "T+Tgt:" 85, widest distance 150
+// against the real glyph data at Black_28: "DIST" 58, "T+TGT" 85, widest distance 150
 // ("999,999 km"), widest time 131 ("59 m: 30 s"). Each value cell is sized so that even a
 // string filling it cannot reach back past its own left edge -- the label can then never
 // be overwritten, whatever the value formats to.
@@ -367,7 +366,7 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
 }
 
 // Target-distance readout — status strip along the bottom of the compass region.
-// "Dist:" label flush-left against the left column, formatted distance value flush-
+// "DIST" label flush-left against the left column, formatted distance value flush-
 // right against the right column. Both are visible only when a target is selected;
 // when no target, both strips are erased to black.
 //
@@ -392,10 +391,10 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     if (!_rovrPrevTgtDistAvail) {
         textLeft(tft, ROVR_TGTD_FONT,
                  ROVR_TGTD_LBL_X, ROVR_TGTD_Y, ROVR_TGTD_LBL_W, ROVR_TGTD_H,
-                 "Dist:", TFT_WHITE, TFT_BLACK);
+                 "DIST", KDC_LABEL_COLOR, TFT_BLACK);
         textLeft(tft, ROVR_TGTD_FONT,
                  ROVR_TGTT_LBL_X, ROVR_TGTD_Y, ROVR_TGTT_LBL_W, ROVR_TGTD_H,
-                 "T+Tgt:", TFT_WHITE, TFT_BLACK);
+                 "T+TGT", KDC_LABEL_COLOR, TFT_BLACK);
         _rovrPrevTgtDistAvail = true;
         _rovrPrevTgtDistVal   = -1;   // force both values to redraw below
         _rovrPrevTgtTimeVal   = "";
@@ -535,7 +534,7 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
     _rovrPrevThrFill = newState;
 }
 
-// Surface velocity readout — "V.Srf:" label over signed speed (m/s) with 1 decimal.
+// Surface velocity readout — "V.SRF" label over signed speed (m/s) with 1 decimal.
 // Label drawn once in chrome. Value updated via cached dirty check. Sign derived
 // from comparing state.srfVelHeading to state.heading (>90° off-nose = reversing).
 //
@@ -564,7 +563,7 @@ static void _rovrDrawVSrfChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrVSrfLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "V.Srf:", TFT_WHITE, TFT_BLACK);
+               "V.SRF", KDC_LABEL_COLOR, TFT_BLACK);
 }
 
 static void _rovrUpdateVSrf(KCM_TFT &tft) {
@@ -635,8 +634,12 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
 //
 // DERIVED, so the window is the whole design. electricChargePercent is computed from
 // available/total and crawls on a large battery, so the rate comes from a ring buffer
-// spanning tens of seconds rather than frame to frame. Three cases have to be designed
-// rather than discovered on the bench:
+// spanning tens of seconds rather than frame to frame. The ring is fed from loop() on
+// every screen (rovrEnduranceService) and reset on a vessel switch, not on screen
+// entry: a window that restarted with the chrome read "---" for the first seconds of
+// every visit, and one that survived a vessel switch turned the step in charge into a
+// spurious rate for the next 48 s. Three cases have to be designed rather than
+// discovered on the bench:
 //   - solar panels can make the net rate POSITIVE. That is "CHG", not a negative time.
 //   - below a floor the figure is not decision-relevant (beyond ~10 h), so it reads
 //     "---" rather than a fictitious precision.
@@ -677,6 +680,11 @@ static void _rovrEnduranceSample(float ecPct, uint32_t now) {
     _rovrEcLastMs = now;
 }
 
+// Called from loop() every frame; samples at ROVR_ENDUR_MS.
+void rovrEnduranceService() {
+    _rovrEnduranceSample(state.electricChargePercent, millis());
+}
+
 static int32_t _rovrEnduranceSec() {
     float rate;
     if (!_rovrDischargeRate(rate)) return ROVR_ENDUR_UNKNOWN;
@@ -703,11 +711,10 @@ static void _rovrDrawEcChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "Endur:", TFT_WHITE, TFT_BLACK);
+               "ENDUR", KDC_LABEL_COLOR, TFT_BLACK);
 }
 
 static void _rovrUpdateEc(KCM_TFT &tft) {
-    _rovrEnduranceSample(state.electricChargePercent, millis());
     const int32_t sec = _rovrEnduranceSec();
 
     uint16_t fg, bg = TFT_BLACK;
@@ -806,9 +813,9 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
 }
 
 // ── Elevation readout ─────────────────────────────────────────────────────────────────
-// "Alt.Trn:" label over integer surface-altitude value in meters. Named for the Alt
-// family (Alt.SL, Alt.Rdr) it belongs to, not "Elev:", which sat one letter away from
-// the "Elv:" that DOCKING, TARGET and MANEUVER use for an elevation ANGLE -- a different
+// "ALT.TRN" label over integer surface-altitude value in meters. Named for the Alt
+// family (Alt.SL, Alt.Rdr) it belongs to, not "ELEV", which sat one letter away from
+// the "ELV" that DOCKING, TARGET and MANEUVER use for an elevation ANGLE -- a different
 // quantity in different units. Terrain elevation is
 // computed as (altitude_ASL - radarAlt_AGL), giving the altitude of the terrain
 // surface below the vessel — i.e. how high up the current terrain is above
@@ -832,7 +839,7 @@ static void _rovrDrawElevChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, _rovrElevLabelY(),
                ROVR_RCOL_W, ROVR_LBL_H,
-               "Alt.Trn:", TFT_WHITE, TFT_BLACK);
+               "ALT.TRN", KDC_LABEL_COLOR, TFT_BLACK);
 }
 
 static void _rovrUpdateElev(KCM_TFT &tft) {
@@ -1067,7 +1074,7 @@ static void _rovrDrawPitchChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_PITCH_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
-               "Pitch:", TFT_WHITE, TFT_BLACK);
+               "PITCH", KDC_LABEL_COLOR, TFT_BLACK);
 
     // Horizontal reference lines at silhouette centre Y, inside the box edges
     int16_t refY  = ROVR_PITCH_SIL_CY;
@@ -1086,7 +1093,7 @@ static void _rovrDrawRollChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_ROLL_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
-               "Roll:", TFT_WHITE, TFT_BLACK);
+               "ROLL", KDC_LABEL_COLOR, TFT_BLACK);
 
     int16_t refY  = ROVR_ROLL_SIL_CY;
     int16_t lxL   = ROVR_RCOL_X + ROVR_TILT_REF_MARGIN;
@@ -1303,7 +1310,6 @@ static void chromeScreen_ROVR(KCM_TFT &tft) {
     _rovrPrevVSrf         = -9999;
     _rovrPrevEndurVal     = "";
     _rovrPrevTgtTimeVal   = "";
-    rovrEnduranceReset();
     _rovrPrevEcFg         = 0xFFFF;
     _rovrPrevEcBg         = 0xFFFF;
     _rovrPrevBrake        = -1;

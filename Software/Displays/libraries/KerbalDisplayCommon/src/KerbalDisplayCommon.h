@@ -2,14 +2,43 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 7
-#define KDC_VERSION_PATCH 2
+#define KDC_VERSION_MINOR 10
+#define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
    KerbalDisplayCommon Library
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.11.0 — Buffer forms of the telemetry formatters (formatSepBuf, formatTimeBuf,
+            formatTimeCompactBuf, formatAltBuf). The String forms now wrap them, so a
+            screen can format into a stack buffer and compare against its row cache
+            without a heap allocation per row per frame.
+   v3.10.0 — KDC_LABEL_COLOR and the readout label style rule (README, "Readout label
+            style"): a caption beside a live value is grey, uppercase, and carries no
+            colon; the value's white or state colour is what tells the two apart, as on
+            the Shuttle's DPS pages and on EICAS/ECAM. All three panels adopted it in the
+            same change (InfoDisp 1.12.0, Annunciator 3.6.0, ResourceDisp 3.13.1).
+
+   v3.9.0 — fillArc: a pixel-exact annular-sector fill (ring segment, or a pie slice
+            with rIn = 0) between two angles. The RA8876 driver has circles, ellipses
+            and rounded rectangles but no arc, and the hardware's own curve command
+            only draws whole quadrants, so an arc with arbitrary ends had to be built
+            here: the sector is scan-converted row by row into horizontal runs, so
+            both edges and both radial ends land on the exact pixels, with none of the
+            beading a chain of dots or chords leaves at small stroke widths. Added
+            for the ResourceDisp EVA ring gauges' limit bands.
+
+   v3.8.0 — four palette entries for the ResourceDisp meter fills, each filling a gap
+            the existing palette could not: TFT_BRICK, a rust red for Solid Fuel that
+            stays clearly off the TFT_RED alarm colour beside a red limit band;
+            TFT_PLUM, a muted magenta for CO2 that is neither a red (it alerts HIGH
+            against a red band) nor already used in the life-support family;
+            TFT_STRAW, a pale straw yellow for Liquid Waste that reads as what it is,
+            distinct from the TFT_GOLD used for Electric Charge; and TFT_LIME, a
+            yellow-green for Stored Charge, far enough in hue from both that gold and
+            the magentas that every other free colour sat beside something.
 
    v3.7.2 — formatSep/formatSepI64 fill their buffer backwards, one digit at a time. The
             previous version built the string front-to-back with a sprintf + strcpy of
@@ -97,7 +126,7 @@
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Final code written by J. Rostoker for Jeb's Controller Works.
-  Version: 3.7.2
+  Version: 3.8.0
 ****************************************************************************************/
 #include <Arduino.h>
 #include <SD.h>
@@ -208,6 +237,10 @@
 #define TFT_ROSE         0xF3CF  /*  30,  30,  15 */
 #define TFT_CRIMSON      0xD8A7  /*  27,   5,   7 */
 #define TFT_OCEAN        0x01F1  /*   0,  15,  17 */
+#define TFT_BRICK        0xC285  /*  24,  20,   5 -- rust red, off the TFT_RED alarm colour */
+#define TFT_PLUM         0x91F0  /*  18,  15,  16 -- muted magenta */
+#define TFT_STRAW        0xEE2E  /*  29,  49,  14 -- pale straw yellow */
+#define TFT_LIME         0xC7E8  /*  24,  63,   8 -- yellow-green */
 
 
 /***************************************************************************************
@@ -294,6 +327,16 @@ void drawDiamondMarker(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t half, uint1
 // cleanly at any angle. Used by the KSP navball markers for their spokes/prongs/X.
 void drawThickLine(KCM_TFT &tft, int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                    int16_t w, uint16_t color, bool caps = true);
+
+// Annular sector (ring segment) filled pixel-exact between two angles: every pixel
+// whose distance from (cx,cy) is in [rIn, rOut) and whose bearing lies within the
+// sweep. Angles in degrees, clockwise from 3 o'clock as the screen sees it (y down),
+// the sweep running from a0Deg to a1Deg (a1 > a0; 360 or more fills the whole ring).
+// rIn = 0 gives a pie slice. Scan-converted into horizontal runs, so both edges and
+// the radial ends fall on exact pixels at any radius or stroke width; use it for
+// limit bands, gauge tracks and dial segments where a chain of dots or chords beads.
+void fillArc(KCM_TFT &tft, int16_t cx, int16_t cy, int16_t rIn, int16_t rOut,
+             float a0Deg, float a1Deg, uint16_t color);
 
 // KSP prograde marker: ring + centre dot + three spokes pointing up/right/left. Used
 // for the velocity/prograde marker (green) and the maneuver marker (blue). `r` is the
@@ -622,6 +665,14 @@ String formatSepI64(int64_t value);
 String formatTime(float timeVal);
 String formatTimeCompact(float timeVal);  // like formatTime() but compresses hours/days to fit tight cells
 String formatAlt(float value);
+// Buffer forms (v3.11.0). Same text as the String forms, which wrap them. For a
+// screen that formats every row every frame: format into a stack buffer, compare
+// against the row cache (String == const char* allocates nothing), and construct
+// a String only for a value that changed. 48 bytes covers every case.
+void formatSepBuf(float value, char *buf, size_t n);
+void formatTimeBuf(float timeVal, char *buf, size_t n);
+void formatTimeCompactBuf(float timeVal, char *buf, size_t n);
+void formatAltBuf(float value, char *buf, size_t n);
 String twString(uint8_t twIndex, bool physTW);
 
 // --- Threshold color selector ---
@@ -680,6 +731,11 @@ struct PrintState {
   uint16_t prevBg     = 0x0001;  // sentinel: 0x0001 = no previous render
   uint16_t prevHeight = 0;       // font height of last render (0 = no previous render)
 };
+
+// Readout label colour: the caption beside a live value on every panel. The label
+// style rule (README, "Readout label style"): grey, uppercase, no colon; the value
+// carries the white or state colour, which is what tells the two apart.
+static const uint16_t KDC_LABEL_COLOR = TFT_GREY;
 
 // --- Display block functions ---
 

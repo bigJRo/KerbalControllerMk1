@@ -20,7 +20,7 @@
 #include "KCMk1_InfoDisp.h"
 
 // ── Palette / fonts ─────────────────────────────────────────────────────────────────
-static const uint16_t AP_LBL = TFT_LIGHT_GREY;
+static const uint16_t AP_LBL = KDC_LABEL_COLOR;
 static const uint16_t AP_VAL = TFT_DARK_GREEN;
 static const uint16_t AP_HDR = TFT_WHITE;
 static const uint16_t AP_BOX = TFT_GREY;
@@ -62,19 +62,19 @@ static const uint8_t AP_BODY_SLOT  = 22;
 
 struct ApCell { int16_t x; uint8_t row; const char *label; bool edit; };
 static const ApCell AP_CELLS[AP_SLOT_COUNT] = {
-  { AP_C1X, 0, "Tgt Ap:", true  },
-  { AP_C1X, 1, "Inc:",    true  },
-  { AP_C1X, 2, "Launch:", true  },
-  { AP_C2X, 0, "Loft:",   true  },
-  { AP_C2X, 1, "Roll:",   true  },
-  { AP_C2X, 2, "Max-G:",  true  },
-  { AP_C3X, 0, "Pitch:",  false },
-  { AP_C3X, 1, "Hdg:",    false },
-  { AP_C3X, 2, "Thrtl:",  false },
-  { AP_C3X, 3, "G:",      false },
-  { AP_C3X, 4, "Q:",      false },
-  { AP_C3X, 5, "ApA:",    false },
-  { AP_C3X, 6, "PeA:",    false },
+  { AP_C1X, 0, "TGT AP", true  },
+  { AP_C1X, 1, "INC",    true  },
+  { AP_C1X, 2, "LAUNCH", true  },
+  { AP_C2X, 0, "LOFT",   true  },
+  { AP_C2X, 1, "ROLL",   true  },
+  { AP_C2X, 2, "MAX-G",  true  },
+  { AP_C3X, 0, "PITCH",  false },
+  { AP_C3X, 1, "HDG",    false },
+  { AP_C3X, 2, "THRTL",  false },
+  { AP_C3X, 3, "G",      false },
+  { AP_C3X, 4, "Q",      false },
+  { AP_C3X, 5, "APA",    false },
+  { AP_C3X, 6, "PEA",    false },
 };
 static inline int16_t apValX(uint8_t slot) { return AP_CELLS[slot].x + AP_COLW - AP_VALW; }
 static inline int16_t apValY(uint8_t slot) { return apRowY(AP_CELLS[slot].row) + 4; }
@@ -310,6 +310,13 @@ static void apPut(KCM_TFT &tft, uint8_t slot, const String &val, uint16_t fg) {
              "", val, fg, TFT_BLACK, TFT_BLACK, printState[screen_LNCHAP][slot]);
   rc.value = val; rc.fg = fg; rc.bg = TFT_BLACK;
 }
+// C-string form: the cache compare allocates nothing; the String is built only for a
+// value about to be drawn. Every per-frame value on the console comes through here.
+static void apPut(KCM_TFT &tft, uint8_t slot, const char *val, uint16_t fg) {
+  RowCache &rc = rowCache[screen_LNCHAP][slot];
+  if (rc.fg == fg && rc.value == val) return;
+  apPut(tft, slot, String(val), fg);
+}
 
 // Format the live keypad entry with thousands separators in the integer part,
 // preserving a leading sign and any decimal portion being typed.
@@ -373,38 +380,40 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
     return;                       // freeze the panel behind the modal while editing
   }
 
-  char buf[24];
+  char buf[48];
 
   // Phase banner
   {
     uint16_t pc = apPhaseColor(state.apPhase);
-    String pn = apPhaseName(state.apPhase);
+    const char *pn = apPhaseName(state.apPhase);
     RowCache &rc = rowCache[screen_LNCHAP][AP_PHASE_SLOT];
-    if (rc.value != pn || rc.fg != pc) {
+    if (rc.fg != pc || rc.value != pn) {
       tft.fillRect(0, AP_BANNER_Y, 640, AP_BANNER_H, TFT_BLACK);
-      textLeft(tft, AP_F_BANN, 8, AP_BANNER_Y, 632, AP_BANNER_H, pn.c_str(), pc, TFT_BLACK);
+      textLeft(tft, AP_F_BANN, 8, AP_BANNER_Y, 632, AP_BANNER_H, pn, pc, TFT_BLACK);
       rc.value = pn; rc.fg = pc;
     }
   }
   {
     bool armed = apArmedAnnunciated();
-    String bs = state.gameSOI;
+    const char *bs = state.gameSOI.c_str();
     // Truth, always. A queued tap appends "..." rather than flipping the word, so the
     // banner cannot read DISARMED while the autopilot is still armed.
-    String as = String(armed ? "ARMED" : "DISARMED") + (apArmPending() ? "..." : "");
+    char as[16];
+    snprintf(as, sizeof(as), "%s%s", armed ? "ARMED" : "DISARMED", apArmPending() ? "..." : "");
     uint16_t ac = armed ? TFT_NEON_GREEN : TFT_DARK_GREY;
     RowCache &rc = rowCache[screen_LNCHAP][AP_BODY_SLOT];
-    String combo = bs + "|" + as;
-    if (rc.value != combo || rc.fg != ac) {
+    char combo[64];
+    snprintf(combo, sizeof(combo), "%s|%s", bs, as);
+    if (rc.fg != ac || rc.value != combo) {
       tft.fillRect(648, AP_BANNER_Y, CONTENT_W - 648, AP_BANNER_H, TFT_BLACK);
-      textRight(tft, &Roboto_Black_20, 648, AP_BANNER_Y + 4,  CONTENT_W - 648 - 6, 24, bs.c_str(), AP_LBL, TFT_BLACK);
-      textRight(tft, &Roboto_Black_28, 648, AP_BANNER_Y + 30, CONTENT_W - 648 - 6, 30, as.c_str(), ac, TFT_BLACK);
+      textRight(tft, &Roboto_Black_20, 648, AP_BANNER_Y + 4,  CONTENT_W - 648 - 6, 24, bs, AP_LBL, TFT_BLACK);
+      textRight(tft, &Roboto_Black_28, 648, AP_BANNER_Y + 30, CONTENT_W - 648 - 6, 30, as, ac, TFT_BLACK);
       rc.value = combo; rc.fg = ac;
     }
   }
 
   // Mission (inputs — pending shown in AP_EDT colour)
-  apPut(tft, AP_TGTALT, formatAlt(apGTgt()), apEditColor(apDTgt));
+  { formatAltBuf(apGTgt(), buf, sizeof(buf)); apPut(tft, AP_TGTALT, buf, apEditColor(apDTgt)); }
   { snprintf(buf, sizeof(buf), "%.1f\xB0", apGInc()); apPut(tft, AP_INCL, buf, apEditColor(apDInc)); }
   apPut(tft, AP_DIR, apGDir() ? "SOUTH" : "NORTH", apEditColor(apDDir));
 
@@ -423,7 +432,8 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
     int16_t pct = (int16_t)roundf(state.apCmdThrottle * 100.0f);
     if (pct < 0) pct = 0; if (pct > 100) pct = 100;
     RowCache &rc = rowCache[screen_LNCHAP][AP_THR];
-    String v = String(pct);
+    char v[8];
+    snprintf(v, sizeof(v), "%d", pct);
     if (rc.value != v) {
       int16_t bx = apValX(AP_THR), by = apValY(AP_THR), bw = AP_VALW - 2, bh = AP_VALH;
       int16_t barW = 80, fillW = (int16_t)(barW * pct / 100);
@@ -446,8 +456,8 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
   if (state.apDynPressure >= 1000.0f) snprintf(buf, sizeof(buf), "%.1f kPa", state.apDynPressure / 1000.0f);
   else                                snprintf(buf, sizeof(buf), "%.0f Pa",  state.apDynPressure);
   apPut(tft, AP_Q, buf, AP_VAL);
-  apPut(tft, AP_APA, formatAlt(state.apoapsis),  TFT_LIGHT_GREY);
-  apPut(tft, AP_PE,  formatAlt(state.periapsis), TFT_LIGHT_GREY);
+  formatAltBuf(state.apoapsis,  buf, sizeof(buf)); apPut(tft, AP_APA, buf, TFT_LIGHT_GREY);
+  formatAltBuf(state.periapsis, buf, sizeof(buf)); apPut(tft, AP_PE,  buf, TFT_LIGHT_GREY);
 
   // ARM control
   {
@@ -466,7 +476,8 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
     // claiming a state the autopilot has not reached.
     uint16_t bdr = pending ? AP_EDT : (armed ? TFT_WHITE : AP_GUARD);
     RowCache &rc = rowCache[screen_LNCHAP][AP_ARM_SLOT];
-    String key = String(armed ? "A:" : "D:") + (pending ? "P:" : "-:") + txt;
+    char key[32];
+    snprintf(key, sizeof(key), "%s%s%s", armed ? "A:" : "D:", pending ? "P:" : "-:", txt);
     if (rc.value != key) {
       ButtonLabel btn = { txt, fg, fg, bg, bg, bdr, bdr };
       drawButton(tft, AP_ARM_X, AP_ARM_Y, AP_ARM_W, AP_ARM_H, btn, AP_F_ARM, false);
@@ -492,11 +503,13 @@ static void apCommitKeypad() {
   float v = (apKpLen ? atof(apKpBuf) : 0.0f);
   if (v < e.mn) v = e.mn; if (v > e.mx) v = e.mx;
   switch (e.slot) {
-    case AP_TGTALT: apTgt = v; apDTgt = true; apEnqueueCmd(AP_CMD_SET_TARGET_ALT, v);  break;  // metres
-    case AP_INCL:   apInc = v; apDInc = true; apEnqueueCmd(AP_CMD_SET_INCLINATION, v); break;
-    case AP_LOFT:   apLof = v; apDLof = true; apEnqueueCmd(AP_CMD_SET_LOFT, v);        break;
-    case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = true; apEnqueueCmd(AP_CMD_SET_ROLL, v); break;
-    case AP_MAXG:   apMxg = v; apDMxg = true; apEnqueueCmd(AP_CMD_SET_MAXG, v);        break;
+    // The pending cue is raised only for a command that was actually queued (see
+    // apEnqueueCmd): a cue for one that was not would never clear.
+    case AP_TGTALT: apTgt = v; apDTgt = apEnqueueCmd(AP_CMD_SET_TARGET_ALT, v);  break;  // metres
+    case AP_INCL:   apInc = v; apDInc = apEnqueueCmd(AP_CMD_SET_INCLINATION, v); break;
+    case AP_LOFT:   apLof = v; apDLof = apEnqueueCmd(AP_CMD_SET_LOFT, v);        break;
+    case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, v); break;
+    case AP_MAXG:   apMxg = v; apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, v);        break;
   }
   apCloseKeypad();
 }
@@ -515,8 +528,8 @@ static void apKeypadTouch(uint16_t x, uint16_t y) {
   if (strcmp(k, "CLR") == 0) { apKpLen = 0; apKpBuf[0] = '\0'; apKpRedraw = true; return; }
   if (strcmp(k, "DEL") == 0) { if (apKpLen) { apKpBuf[--apKpLen] = '\0'; apKpRedraw = true; } return; }
   if (strcmp(k, "OFF") == 0) {
-    if (e.kind == 2)      { apRolEn = false; apDRol = true; apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); apCloseKeypad(); }
-    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = true; apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f);        apCloseKeypad(); }
+    if (e.kind == 2)      { apRolEn = false; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); apCloseKeypad(); }
+    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f);        apCloseKeypad(); }
     return;
   }
   if (strcmp(k, "+/-") == 0) {                      // sign toggle
@@ -556,9 +569,9 @@ void apScreenTouch(uint16_t x, uint16_t y) {
     int16_t cx = AP_CELLS[e.slot].x, cy = apRowY(AP_CELLS[e.slot].row);
     if (x >= cx && x < cx + AP_COLW && y >= cy && y < cy + AP_ROW_H) {
       if (e.kind == 1) {                             // Launch N/S toggle
-        apDir = !apGDir(); apDDir = true;
+        apDir = !apGDir();
+        apDDir = apEnqueueCmd(AP_CMD_SET_LAUNCH_DIR, apDir ? 1.0f : 0.0f);
         rowCache[screen_LNCHAP][e.slot].value = "\x01";
-        apEnqueueCmd(AP_CMD_SET_LAUNCH_DIR, apDir ? 1.0f : 0.0f);
       } else {
         apOpenKeypad(i);
       }

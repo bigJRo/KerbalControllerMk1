@@ -189,14 +189,11 @@ bool compassUpdateCard(KCM_TFT &tft, const CompassGeom &g, CompassCache &c,
 
 
 /***************************************************************************************
-   MARKER UPDATE — erase the old marker and draw the new one when it has moved or its
-   availability has changed. Screen bearing is the world bearing minus vessel heading,
-   wrapped to +/-180.
-****************************************************************************************/
-/***************************************************************************************
-   MARKER PAIR UPDATE — two markers that share one annulus.
+   MARKER PAIR UPDATE — two markers that share one annulus. Erases the old markers and
+   draws the new ones when either has moved or its availability has changed. Screen
+   bearing is the world bearing minus vessel heading, wrapped to +/-180.
 
-   compassUpdateMarker() is correct on its own but not in company: each marker's erase is
+   A single-marker update is correct on its own but not in company: each marker's erase is
    a bounding box a few pixels larger than the triangle, and two markers on the same ring
    pass through each other as the card turns. Whichever moves erases the other and does
    not put it back, so on NAVIGATION the moving target-bearing marker would sweep the
@@ -232,18 +229,3 @@ bool compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
   return true;
 }
 
-
-void compassUpdateMarker(KCM_TFT &tft, const CompassGeom &g, CompassMarkerCache &c,
-                         bool available, float screenDeg, uint16_t colour,
-                         float threshDeg) {
-  bool moved = (c.prevAvail && fabsf(eadiHdgDelta(screenDeg, c.prevScreenDeg)) >= threshDeg);
-
-  if (c.prevAvail && (!available || moved))
-    compassDrawMarker(tft, g, c.prevScreenDeg, colour, true);
-
-  if (available && (!c.prevAvail || moved)) {
-    compassDrawMarker(tft, g, screenDeg, colour, false);
-    c.prevScreenDeg = screenDeg;
-  }
-  c.prevAvail = available;
-}

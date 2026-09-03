@@ -31,18 +31,23 @@ ScreenType prevScreen   = screen_COUNT;    // sentinel -- forces chrome on first
 
 /***************************************************************************************
    DISPLAY MODE
-   stageMode   -- false = show vessel totals, true = show active stage values.
+   tteMode     -- false = counter row shows percent, true = time-to-empty at the
+                  current rate (time-to-full for waste-type resources).
    flightScene -- true when KSP is in a flight scene (set by SCENE_CHANGE_MESSAGE).
                   Used to guard screen transitions — don't show flight data out of flight.
    simpitConnected -- true once the Simpit handshake succeeds.
    idleState   -- when true and not in a flight scene, show standby screen.
                   Set by I2C master command in Phase 3.
 ****************************************************************************************/
-bool stageMode        = false;
+bool tteMode          = false;
+float    warpFactor       = 1.0f;   // updated from FLIGHT_STATUS; 1.0 until the first arrives
+bool     refreshPending   = false;
+uint32_t refreshRequestMs = 0;
 bool flightScene      = false;
 bool simpitConnected  = false;
 bool idleState        = false;
 bool evaActive        = false;   // true once the EVA bar set is applied (see loop() reconcile)
+bool layoutRecalled   = false;   // the current layout came from vessel memory (shown in the strip)
 bool evaFlag          = false;   // raw EVA flag from FLIGHT_STATUS_MESSAGE (reconciled in loop())
 
 
@@ -81,67 +86,128 @@ bool needsMainRedraw = false;
 
 /***************************************************************************************
    VESSEL SLOT MEMORY
-   In-RAM cache of up to VESSEL_CACHE_SIZE per-vessel slot configurations.
-   currentVesselName is populated by VESSEL_NAME_MESSAGE.
-   vesselCache is searched/updated on vessel change and name receipt.
+   Cache of up to VESSEL_CACHE_SIZE per-vessel slot configurations, keyed by the name
+   VESSEL_NAME_MESSAGE reports (truncated to VESSEL_NAME_LEN - 1 characters). It is
+   loaded from EEPROM at boot and written back by Persist.ino, so it survives a power
+   cycle. Kept in recency order: a save or a recall moves its record to the front,
+   and a full cache evicts the last record, the one longest unused.
 ****************************************************************************************/
 VesselSlotRecord vesselCache[VESSEL_CACHE_SIZE];
 String           currentVesselName = "";
+VesselSlotRecord defaultLayout;      // count 0 until the pilot sets one
 
 
 /***************************************************************************************
    VESSEL CACHE HELPERS
 ****************************************************************************************/
+static int8_t vesselCacheFind(const char *name) {
+  for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
+    if (vesselCache[i].name[0] != '\0' && strcmp(vesselCache[i].name, name) == 0) return (int8_t)i;
+  }
+  return -1;
+}
 
-// Save the current slot configuration for a given vessel name.
-// Overwrites an existing entry if the name matches, else the first empty entry, else
-// the last cache index (no LRU — a plain "overwrite the last slot" eviction).
+// Move record idx to the front, shifting the ones before it down by one.
+static void vesselCacheToFront(uint8_t idx) {
+  if (idx == 0) return;
+  VesselSlotRecord tmp = vesselCache[idx];
+  memmove(&vesselCache[1], &vesselCache[0], idx * sizeof(VesselSlotRecord));
+  vesselCache[0] = tmp;
+}
+
+void clearVesselCache() {
+  for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
+    vesselCache[i].name[0] = '\0';
+    vesselCache[i].count   = 0;
+  }
+}
+
+// Forget one vessel: drop its record and close the gap so recency order holds.
+void forgetVesselSlots(const String &name) {
+  char key[VESSEL_NAME_LEN];
+  strlcpy(key, name.c_str(), sizeof(key));
+  int8_t idx = vesselCacheFind(key);
+  if (idx < 0) return;
+  uint8_t n = VESSEL_CACHE_SIZE - 1 - (uint8_t)idx;
+  if (n) memmove(&vesselCache[idx], &vesselCache[idx + 1], n * sizeof(VesselSlotRecord));
+  vesselCache[VESSEL_CACHE_SIZE - 1].name[0] = '\0';
+  vesselCache[VESSEL_CACHE_SIZE - 1].count   = 0;
+}
+
+// Save the current slot configuration for a given vessel name: overwrite its record
+// if it has one, else take the first empty one, else evict the last. Either way the
+// record ends up at the front. An EMPTY set is not a layout: CLEAR is the explicit
+// "forget" for a vessel, so saving one removes the vessel's record instead, and the
+// next visit starts from the default like any vessel not in memory.
 void saveVesselSlots(const String &name) {
-  if (name.length() == 0 || slotCount == 0) return;
-  // NOTE: if the user hit CLEAR (slotCount == 0) before leaving flight, nothing
-  // is saved for this vessel. On next load it will start with the default layout.
-  // This is intentional — CLEAR is an explicit "forget" action.
+  if (name.length() == 0) return;
+  if (slotCount == 0) { forgetVesselSlots(name); return; }
+  char key[VESSEL_NAME_LEN];
+  strlcpy(key, name.c_str(), sizeof(key));
 
-  // Look for an existing entry to overwrite
-  for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
-    if (vesselCache[i].vesselName == name) {
-      vesselCache[i].count = slotCount;
-      for (uint8_t j = 0; j < slotCount; j++) vesselCache[i].types[j] = slots[j].type;
-      return;
+  int8_t idx = vesselCacheFind(key);
+  if (idx < 0) {
+    for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
+      if (vesselCache[i].name[0] == '\0') { idx = (int8_t)i; break; }
     }
   }
+  if (idx < 0) idx = VESSEL_CACHE_SIZE - 1;   // full: the last record is the least recently used
 
-  // No existing entry — find an empty slot
-  for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
-    if (vesselCache[i].vesselName.length() == 0) {
-      vesselCache[i].vesselName = name;
-      vesselCache[i].count = slotCount;
-      for (uint8_t j = 0; j < slotCount; j++) vesselCache[i].types[j] = slots[j].type;
-      return;
-    }
+  VesselSlotRecord &r = vesselCache[idx];
+  strlcpy(r.name, key, sizeof(r.name));
+  r.count = slotCount;
+  for (uint8_t j = 0; j < slotCount; j++) {
+    r.types[j] = slots[j].type;
+    r.bugs[j]  = slots[j].bug;
   }
+  vesselCacheToFront((uint8_t)idx);
+}
 
-  // Cache full — overwrite the last entry (simple eviction)
-  uint8_t idx = VESSEL_CACHE_SIZE - 1;
-  vesselCache[idx].vesselName = name;
-  vesselCache[idx].count = slotCount;
-  for (uint8_t j = 0; j < slotCount; j++) vesselCache[idx].types[j] = slots[j].type;
+/***************************************************************************************
+   DEFAULT LAYOUT
+****************************************************************************************/
+bool defaultLayoutSet() { return defaultLayout.count > 0; }
+
+void setDefaultLayout() {
+  defaultLayout.name[0] = '\0';
+  defaultLayout.count   = slotCount;
+  for (uint8_t j = 0; j < slotCount; j++) {
+    defaultLayout.types[j] = slots[j].type;
+    defaultLayout.bugs[j]  = slots[j].bug;
+  }
+}
+
+void clearDefaultLayout() {
+  defaultLayout.name[0] = '\0';
+  defaultLayout.count   = 0;
+}
+
+// The current slot types, in order, against the effective default's.
+bool layoutIsDefault() {
+  const ResourceType *types; uint8_t n;
+  if (defaultLayoutSet()) { types = defaultLayout.types; n = defaultLayout.count; }
+  else                    { types = PRESETS[0].types;    n = PRESETS[0].count;    }
+  if (slotCount != n) return false;
+  for (uint8_t j = 0; j < n; j++) if (slots[j].type != types[j]) return false;
+  return true;
 }
 
 // Attempt to recall slot configuration for a given vessel name.
 // Returns true and restores slot types if found; returns false if not in cache.
 // Values are always zeroed — Simpit will repopulate on next message.
 bool recallVesselSlots(const String &name) {
-  for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
-    if (vesselCache[i].vesselName == name && vesselCache[i].count > 0) {
-      for (uint8_t j = 0; j < MAX_SLOTS; j++) slots[j] = ResourceSlot();
-      slotCount = vesselCache[i].count;
-      for (uint8_t j = 0; j < slotCount; j++) {
-        slots[j].type = vesselCache[i].types[j];
-        // values stay at 0.0f — Simpit will populate them
-      }
-      return true;
-    }
+  char key[VESSEL_NAME_LEN];
+  strlcpy(key, name.c_str(), sizeof(key));
+  int8_t idx = vesselCacheFind(key);
+  if (idx < 0 || vesselCache[idx].count == 0) return false;
+  vesselCacheToFront((uint8_t)idx);
+  const VesselSlotRecord &r = vesselCache[0];
+  for (uint8_t j = 0; j < MAX_SLOTS; j++) slots[j] = ResourceSlot();
+  slotCount = r.count;
+  for (uint8_t j = 0; j < slotCount; j++) {
+    slots[j].type = r.types[j];
+    slots[j].bug  = r.bugs[j];
+    // values stay at 0.0f — Simpit will populate them
   }
-  return false;
+  return true;
 }

@@ -5,9 +5,10 @@
    Sidebar buttons (6, top-to-bottom) — decoupled from ScreenType via SB_BTN_SCREEN.
    Multi-mode buttons CYCLE their modes when pressed while already active, and the
    button caption shows the active mode (sbButtonLabel); a first press from another
-   screen goes to the button's context/primary mode. Context auto-select still runs on
-   scene/vessel change; a press latches the manual selection until the vessel or the
-   scene changes (see contextSwitchAllowed()). Title-bar taps no longer switch anything.
+   screen goes to the button's context/primary mode. The context ladder runs every
+   frame; a press latches the manual selection until the situation it was set against
+   passes, or the vessel or scene changes (see AAA_Globals.ino). Title-bar taps do
+   not switch anything.
    On unit 2 the ASC (Ascent Autopilot) button is parked at the bottom, below the
    display-nav cluster, since it is an interactive console rather than a display screen;
    it turns green while the autopilot is armed. Unit 1 carries VEH in that slot.
@@ -30,14 +31,14 @@
    Layout (1024x600):
      Title bar  : 62px (58px text + 4px rule)
      Data rows  : text screens fill the content height evenly
-     Sidebar    : 84px right-hand column, 6 labelled buttons
+     Sidebar    : 84px column on the unit's outboard edge, 6 labelled buttons
 
    Update pattern (mirrors Annunciator):
      Chrome (labels)  : printDispChrome() — called once per screen transition.
      Values           : printValue()      — called only when state != prev.
                         Draws only the right-hand value region, label untouched.
      Colour changes   : tracked via prev colour fields per row.
-     This avoids all unnecessary SPI traffic and eliminates label flicker entirely.
+     Nothing that has not changed is re-rasterised, and labels never flicker.
 ****************************************************************************************/
 #include "KCMk1_InfoDisp.h"
 
@@ -54,7 +55,7 @@ const uint16_t TITLE_TOP = TITLE_H + TITLE_RULE_H;
 const tFont *TITLE_FONT = &Roboto_Black_36;
 const uint16_t ROW_PAD = 2;
 
-const uint16_t COL_LABEL = TFT_WHITE;
+const uint16_t COL_LABEL = KDC_LABEL_COLOR;   // the panel-wide readout label colour (KerbalDisplayCommon)
 const uint16_t COL_VALUE = TFT_DARK_GREEN;
 const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;
@@ -215,7 +216,7 @@ const ButtonLabel btnScreenOn = {
    even if the formatted string is identical.
    Initialised to sentinel values in drawStaticScreen() to force first-draw.
 ****************************************************************************************/
-// RowCache struct defined in KCMk1_InfoDisp.h (shared with TouchEvents.ino)
+// RowCache struct defined in KCMk1_InfoDisp.h
 RowCache rowCache[SCREEN_COUNT][ROW_COUNT];
 PrintState printState[SCREEN_COUNT][ROW_COUNT];
 
@@ -316,6 +317,21 @@ String fmtUnit(float v, const char *unit) {
 }
 String fmtMs(float v) {
   return fmtUnit(v, "m/s");
+}
+
+// Buffer forms, for a screen that formats every row every frame: same text as the
+// String forms above, into the caller's buffer.
+void fmtNumBuf(float v, char *buf, size_t n) {
+  if (fabsf(v) < 0.05f) v = 0.0f;
+  if (v >= 1000.0f || v <= -1000.0f) { formatSepBuf(v, buf, n); return; }
+  char t[16];
+  dtostrf(v, 1, 1, t);
+  strlcpy(buf, t, n);
+}
+void fmtMsBuf(float v, char *buf, size_t n) {
+  char t[24];
+  fmtNumBuf(v, t, sizeof(t));
+  snprintf(buf, n, "%s m/s", t);
 }
 
 // formatTime() removed — formatting improvements merged into library formatTime() (#5C)
@@ -602,7 +618,7 @@ void drawTitleBar(KCM_TFT &tft, const String &title) {
 // Split-column overload (#51) — explicit x, w for left/right half-row cells
 void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
                uint16_t x, uint16_t w,
-               const char *label, String value,
+               const char *label, const String &value,
                uint16_t fg, uint16_t bg,
                const tFont *font, uint8_t nRows) {
   RowCache &c = rowCache[screen][row];
@@ -616,6 +632,26 @@ void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
   c.bg = bg;
 }
 
+// C-string form: the cache compare (String == const char*) allocates nothing, so a row
+// whose value has not changed costs no heap traffic at all. The String is built only
+// for a value that is about to be drawn.
+void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
+               uint16_t x, uint16_t w,
+               const char *label, const char *value,
+               uint16_t fg, uint16_t bg,
+               const tFont *font, uint8_t nRows) {
+  RowCache &c = rowCache[screen][row];
+  if (c.fg == fg && c.bg == bg && c.value == value) return;
+  String v(value);
+  printValue(tft, font,
+             x, rowYFor(row, nRows), w, rowHFor(nRows),
+             label, v, fg, bg, COL_BACK,
+             printState[screen][row]);
+  c.value = v;
+  c.fg = fg;
+  c.bg = bg;
+}
+
 // Right-panel cache-checked draw with an explicit cache `slot` distinct from the
 // geometry `row` (needed by screens whose half-width cells share a Y row but need two
 // cache slots) and an explicit column x/w. Y/H derive from rowYFor/rowHFor(nRows).
@@ -623,7 +659,7 @@ void drawValue(KCM_TFT &tft, uint8_t screen, uint8_t row,
 // the per-screen mnvr/tgt/dock/rp/acft/att value helpers (previously duplicated inline).
 void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
                     uint16_t x, uint16_t w,
-                    const char *label, String value,
+                    const char *label, const String &value,
                     uint16_t fg, uint16_t bg,
                     const tFont *font, uint8_t nRows, bool greyDashes) {
   uint16_t drawFg = (greyDashes && value == "---") ? TFT_DARK_GREY : fg;
@@ -634,6 +670,25 @@ void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
              label, value, drawFg, bg, COL_BACK,
              printState[screen][slot]);
   c.value = value;
+  c.fg = drawFg;
+  c.bg = bg;
+}
+
+// C-string form of drawPanelValue — see drawValue above.
+void drawPanelValue(KCM_TFT &tft, uint8_t screen, uint8_t slot, uint8_t row,
+                    uint16_t x, uint16_t w,
+                    const char *label, const char *value,
+                    uint16_t fg, uint16_t bg,
+                    const tFont *font, uint8_t nRows, bool greyDashes) {
+  uint16_t drawFg = (greyDashes && strcmp(value, "---") == 0) ? TFT_DARK_GREY : fg;
+  RowCache &c = rowCache[screen][slot];
+  if (c.fg == drawFg && c.bg == bg && c.value == value) return;
+  String v(value);
+  printValue(tft, font,
+             x, rowYFor(row, nRows), w, rowHFor(nRows),
+             label, v, drawFg, bg, COL_BACK,
+             printState[screen][slot]);
+  c.value = v;
   c.fg = drawFg;
   c.bg = bg;
 }
@@ -691,23 +746,13 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
   drawSidebar(tft);
   invalidateModeChip();   // the title bar is about to be repainted over the chip
 
-  // Dynamic titles.
-  // ORB/ORBADV and LNDG/LNDGRE are now sibling sidebar screens (no title toggle).
-  // Their mode flags are derived from the active screen so the shared chrome/draw
-  // dispatchers (chromeScreen_ORB/OrbAdv, chromeScreen_LNDG) select the right layout.
-  if (s == screen_ORB) {
-    _orbAdvancedMode = false;
-    drawTitleBar(tft, "ORBIT");
-  } else if (s == screen_ORBADV) {
-    _orbAdvancedMode = true;
-    drawTitleBar(tft, "ORBIT ADVANCED");
-  } else if (s == screen_LNDG) {
-    _lndgReentryMode = false;
-    drawTitleBar(tft, "POWERED DESCENT");
-  } else if (s == screen_LNDGRE) {
-    _lndgReentryMode = true;
-    drawTitleBar(tft, "RE-ENTRY");
-  } else if (s == screen_LNCH) {
+  // LNDG/LNDGRE share one chrome/draw path (chromeScreen_LNDG), selected by a mode
+  // flag derived from the active screen here and re-asserted in updateScreen().
+  if (s == screen_LNDG)        _lndgReentryMode = false;
+  else if (s == screen_LNDGRE) _lndgReentryMode = true;
+
+  // Dynamic titles; everything else takes its title from SCREEN_TITLES.
+  if (s == screen_LNCH) {
     drawTitleBar(tft, _lnchOrbitalMode ? "CIRCULARIZATION" : "ASCENT");
     // The manual-override red dot that used to sit here is gone: the panel-level
     // AUTO/MAN chip (updateModeChip) covers this screen's phase override too, and one
@@ -717,8 +762,6 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     String dockTitle = String("DOCKING [ ") + state.vesselName + " ]";
     drawTitleBar(tft, dockTitle);
   } else {
-    // Mode switching is via the sidebar buttons (see TouchEvents.ino) — the title
-    // bar no longer toggles, so no title-tap indicator is drawn.
     drawTitleBar(tft, s);
   }
 
@@ -761,8 +804,8 @@ void updateScreen(KCM_TFT &tft, ScreenType s) {
     case screen_TGT:    drawScreen_TGT(tft); break;
     case screen_DOCK:   drawScreen_DOCK(tft); break;
     case screen_VEH:    drawScreen_VEH(tft); break;
-    // Re-assert the LNDG mode flag every frame — a vessel switch can reset it
-    // (SimpitHandler) while this screen stays active; keep chrome and draw in sync.
+    // The LNDG mode flag is derived from the screen; asserting it here as well as in
+    // drawStaticScreen() means nothing else can leave chrome and draw disagreeing.
     case screen_LNDG:   _lndgReentryMode = false; drawScreen_LNDG(tft); break;
     case screen_LNDGRE: _lndgReentryMode = true;  drawScreen_LNDG(tft); break;
     case screen_ACFT:   drawScreen_ACFT(tft); break;

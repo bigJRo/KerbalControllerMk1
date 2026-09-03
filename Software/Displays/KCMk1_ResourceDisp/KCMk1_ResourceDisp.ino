@@ -5,7 +5,9 @@
     AAA_Config.ino       -- tunable constants (thresholds, modes, slot config)
     AAA_Globals.ino      -- ResourceSlot struct, display objects, Simpit object, screen state, globals
     Resources.ino        -- resource type definitions, color map, slot initialisation
-    ScreenMain.ino       -- main bar graph screen with 4-button sidebar
+    ScreenMain.ino       -- main tape-meter screen with 4-button sidebar
+    ScreenMainStrip.ino  -- the Main screen's alert strip and propellant balance indicator
+    ScreenEVA.ino        -- the Main screen's EVA layout: 270-degree ring gauges
     ScreenSelect.ino     -- resource selection screen (grid + presets + order panel)
     ScreenDetail.ino     -- numerical resource detail screen (craft/stage values per resource)
     ScreenStandby.ino    -- standby BMP splash screen
@@ -14,6 +16,7 @@
     SimpitHandler.ino    -- KerbalSimpit message handler and channel registration
     I2CSlave.ino         -- I2C slave interface to KCMk1 master (Teensy 4.1) at address 0x11
     Demo.ino             -- demo mode animation (sine-wave resource values, no KSP connection)
+    Sampling.ino         -- per-slot rate/trend sampling shared by the Main and Detail screens
 
   Libraries:
     KerbalDisplayCommon  -- display primitives, BMP loader, fonts, system utils (RA8876/KCM_TFT)
@@ -56,6 +59,7 @@ void setup() {
   setupSD();
   setupTouch();
   setupI2CSlave();
+  persistLoad();   // vessel memory and the TTE toggle from EEPROM (before any screen reads them)
 
   bootSimText(infoDisp);
 
@@ -63,13 +67,13 @@ void setup() {
     if (debugMode) Serial.println(F("ResourceDisp: Demo mode -- Simpit disabled."));
     initDemoMode();
   } else {
-    // Live mode: initDefaultSlots() sets the initial slot TYPE configuration
-    // (which resources appear on the main screen) without implying any resource
-    // is actually present. Values are immediately zeroed so bars start empty.
-    // Simpit will populate values once a flight scene is entered.
-    // The user's slot selection persists across scene changes — only values are
-    // zeroed on SCENE_CHANGE, not the slot type configuration.
-    initDefaultSlots();   // live mode: sets slot TYPES; values already zeroed within
+    // Live mode: initDefaultSlots() loads the default layout (the pilot's stored
+    // one from EEPROM, else the SPCT preset) without implying any resource is
+    // actually present. Values start at zero so bars start empty; Simpit populates
+    // them once a flight scene is entered, and the vessel-name message swaps in the
+    // vessel's own remembered layout if it has one. The slot selection persists
+    // across scene changes — only values are zeroed on SCENE_CHANGE.
+    initDefaultSlots();
     initSimpit();
   }
 
@@ -139,7 +143,7 @@ void loop() {
         drawStaticStandby(infoDisp);
         break;
       case screen_Main:
-        drawStaticMain(infoDisp);   // also resets _prevLevel / _prevStageMode
+        drawStaticMain(infoDisp);   // also sorts the slots and resets the meter draw caches
         break;
       case screen_Select:
         drawStaticSelect(infoDisp);
@@ -180,7 +184,7 @@ void loop() {
     } else {
       memcpy(slots, _evaBackup, sizeof(_evaBackup));
       slotCount = _evaBackupCount;
-      if (!demoMode) simpit.requestMessageOnChannel(0);
+      requestResourceRefresh();
     }
     if (debugMode) {
       Serial.print(F("ResourceDisp: EVA mode -> "));
@@ -188,6 +192,12 @@ void loop() {
     }
     switchToScreen(screen_Main);
   }
+
+  // --- Rate and trend sampling (both modes; every screen reads from it) ---
+  updateAllSampling();
+
+  // --- Persistence: write a settled layout / bug / toggle change to EEPROM ---
+  persistService();
 
   // --- Update display ---
   switch (activeScreen) {

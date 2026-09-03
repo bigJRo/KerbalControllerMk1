@@ -177,7 +177,7 @@ void bootSimText(KCM_TFT &tft, bool sdOK, bool touchOK) {
   // - Real subsystem checks (big) -
   _bs_checkNum(tft, y, BS_BIG, _bs_col2, "1) DISPLAY  RA8876", "OK",                        TFT_GREEN);   y += BIG_ROW;
   _bs_checkNum(tft, y, BS_BIG, _bs_col2, "2) TOUCH  FT5316",    touchOK ? "OK"   : "FAIL",  touchOK ? TFT_GREEN : TFT_RED);    y += BIG_ROW;
-  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "3) SD CARD  eMMC",    sdOK    ? "OK"   : "NONE",  sdOK    ? TFT_GREEN : TFT_YELLOW); y += BIG_ROW;
+  _bs_checkNum(tft, y, BS_BIG, _bs_col2, "3) SD CARD  microSD", sdOK    ? "OK"   : "NONE",  sdOK    ? TFT_GREEN : TFT_YELLOW); y += BIG_ROW;
   _bs_checkNum(tft, y, BS_BIG, _bs_col2, "4) AUDIO  TONE/DFP", "OK",                        TFT_GREEN);   y += BIG_ROW;
   _bs_checkNum(tft, y, BS_BIG, _bs_col2, "5) I2C SLAVE  0x10", "OK",                        TFT_GREEN);   y += BIG_ROW;
   _bs_checkNum(tft, y, BS_BIG, _bs_col2, "6) KSP LINK  SIMPIT",

@@ -44,7 +44,7 @@ struct AppState {
   uint8_t    vesselSituationState = 0x00;         // display bitmask: bit0=DOCKED..bit7=LANDED
   CtrlMode   vehCtrlMode          = ctrl_Spacecraft;
   VesselType vesselType           = type_Ship;
-  String     vesselName           = "TEST CRAFT NAME";  // note: String heap -- low risk on Teensy 4.1
+  String     vesselName           = "";                 // blank until VESSEL_NAME arrives (demo sets its own)
   uint8_t    maxTemp    = 0;
   uint8_t    crewCount  = 0;
   uint8_t    twIndex    = 0;
@@ -52,13 +52,13 @@ struct AppState {
   uint8_t    stage      = 0;
   uint8_t    skinTemp   = 0;    // default 0 (like maxTemp) so a fresh boot doesn't trip HIGH_TEMP before the first TEMP_LIMIT_MESSAGE
   uint8_t    ctrlGrp    = 1;
-  uint8_t    capValue   = 0;                             // "Cap" readout (rev-2 telemetry; source TBD via I2C)
+  uint8_t    capValue   = 0;                             // "Cap" readout, byte 5 of the rev-2 inbound I2C command
   String     gameSOI    = "";                           // note: String heap -- low risk on Teensy 4.1
 
   // Mode/status flags shown in the bottom-right 6x2 grid (rev 2). All 12 bits are
-  // reported by the master controller over I2C; default off until the master
-  // sends them. Bit positions are the MF_* constants below; not all are in the
-  // I2C protocol spec yet (see I2CSlave.ino TODOs).
+  // reported by the master controller over I2C (bytes 3-4 of the rev-2 inbound
+  // command); default off until the master sends them. Bit positions are the MF_*
+  // constants below.
   uint16_t   modeFlags  = 0;
 
   // Action groups
@@ -137,14 +137,6 @@ struct AppState {
 
 
 /***************************************************************************************
-   VESSEL SITUATION DISPLAY BITMASK BIT POSITIONS
-   state.vesselSituationState is a display bitmask assembled in SimpitHandler from
-   Simpit's FLIGHT_STATUS raw situation bits. Named constants here prevent magic
-   literals spreading into ScreenMain and CautionWarning.
-   Bit 0 (DOCKED) is set/cleared by VESSEL_CHANGE_MESSAGE, not FLIGHT_STATUS.
-   Bit 7 (LANDED) is set from the Simpit sit_Landed bit in FLIGHT_STATUS.
-****************************************************************************************/
-/***************************************************************************************
    CELESTIAL-BODY / MEATBALL IMAGE SIZE
    The SOI globe and KASA meatball BMPs are 236x164 (named *_236x164.bmp). Shared
    here so ScreenMain and ScreenSOI centre them identically in their render areas.
@@ -153,6 +145,14 @@ static const uint16_t BODY_IMG_W = 236;
 static const uint16_t BODY_IMG_H = 164;
 
 
+/***************************************************************************************
+   VESSEL SITUATION DISPLAY BITMASK BIT POSITIONS
+   state.vesselSituationState is a display bitmask assembled in SimpitHandler from
+   Simpit's FLIGHT_STATUS raw situation bits. Named constants here prevent magic
+   literals spreading into ScreenMain and CautionWarning.
+   Bit 0 (DOCKED) is set/cleared by VESSEL_CHANGE_MESSAGE, not FLIGHT_STATUS.
+   Bit 7 (LANDED) is set from the Simpit sit_Landed bit in FLIGHT_STATUS.
+****************************************************************************************/
 static const uint8_t VSIT_DOCKED    = 0;
 static const uint8_t VSIT_PRELAUNCH = 1;
 static const uint8_t VSIT_FLIGHT    = 2;
@@ -289,8 +289,8 @@ enum ChuteEnvState : uint8_t {
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 4;  // 3.5.4: target closure sign fixed at ingestion
+static const uint8_t SKETCH_VERSION_MINOR = 7;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.7.0: alarm audio on every screen; ELEC GEN / SRB ACTIVE latch; test harness
 
 
 /***************************************************************************************
@@ -385,7 +385,6 @@ extern volatile bool i2cProceedReceived;
 extern BodyParams    currentBody;
 extern ScreenType    activeScreen;
 extern ScreenType    prevScreen;
-extern bool          firstPassOnMain;
 extern bool          alarmSilenced;
 extern ChuteEnvState chuteEnvState;      // current chute envelope state
 extern ChuteEnvState prevChuteEnvState;  // previous state for dirty tracking
@@ -404,6 +403,10 @@ extern const uint16_t ALARM_LIFE_SUPPORT;
 extern uint16_t        alarmActiveMask;
 void updateAlarmMask(uint16_t condBit, bool on);
 void syncMasterAlarmAudio();
+// Screen-independent audio service: C&W transitions to the master alarm / caution
+// cues and the threshold-crossing chirps, every loop pass, whatever screen is up.
+void serviceAlarmAudio();
+void audioResetService();   // reseed on flight-scene entry / vessel switch
 
 // PrintState instances for flicker-free printDisp/printValue rendering (KDC v2 API).
 // One per logical display slot that uses printDisp() or printValue().
@@ -430,6 +433,6 @@ void switchToScreen(ScreenType s);
 // Test mode (TestMode.ino) -- serial-driven logic and display test framework.
 void initTestMode();
 void runTestMode();
-void resetSitAndPanelState();   // force full redraw of situation column and panel status strip
+void resetSitAndPanelState();   // force full redraw of situation column, mode grid and SPCFT tile
 void forceContactState(bool newContact); // force CONTACT dirty tracker for walk-through
 void forceDockState(bool isDocked);      // force DOCK dirty tracker for walk-through

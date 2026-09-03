@@ -59,9 +59,6 @@ AppState state;
    Always use this function — never set activeScreen directly.
 ****************************************************************************************/
 void switchToScreen(ScreenType s) {
-  // ORB (Apsides) and ORBADV (Advanced Elements) are now separate sidebar screens;
-  // _orbAdvancedMode is derived from the target screen in drawStaticScreen(), so no
-  // navigation-time reset is needed here.
   activeScreen     = s;
   prevScreen       = screen_COUNT;
 }
@@ -70,7 +67,8 @@ void switchToScreen(ScreenType s) {
 /***************************************************************************************
    CONTEXT SCREEN SELECTION
    Returns the most operationally relevant screen for the current vessel state.
-   Called on VESSEL_CHANGE_MESSAGE and on entering a flight scene.
+   Evaluated every frame by updateContextScreen() below, and directly at the
+   vessel-change and flight-scene-entry boundaries in SimpitHandler.ino.
 
    The single-display ladder this replaces interleaved two unrelated questions —
    "what am I flying?" (vessel type) and "what phase am I in?" (mission situation) —
@@ -494,7 +492,7 @@ ScreenType pfdScreenForSel(uint8_t sel) {
 }
 
 // The PFD screen to show when the PFD button is tapped: the manual selection if the
-// pilot has cycled it via title touch, otherwise the context screen.
+// pilot has cycled it on the sidebar, otherwise the context screen.
 ScreenType pfdSelectedScreen() {
   return _pfdManualOverride ? pfdScreenForSel(_pfdManualSel) : pfdContextScreen();
 }

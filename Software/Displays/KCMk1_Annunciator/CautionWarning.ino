@@ -24,13 +24,19 @@
    giving ScreenMain a single dirty-detect signal while chuteEnvState carries the colour.
 
    SRB ACTIVE
-   Tracks solid fuel depletion using a static previous-reading variable.
-   The indicator is ON when SF_stage is below 99% of total AND decreasing.
-   It goes off when SF_stage drops below 0.5% (exhausted) or returns to >99% (new stage).
+   Latched ON by a decreasing solid-fuel reading while the stage is between 0.5% and
+   99% full; OFF when the fuel is exhausted, a new full stage appears, the reading
+   rises, or no decrease has been seen for SRB_HOLD_MS. Simpit sends a resource only
+   when it changes, so a burning SRB is a stream of decreasing readings and a burnt-
+   out one goes quiet at zero. (It used to compare against the previous call rather
+   than the previous READING, and this function runs on every message, so the tile
+   lit for one pass after each SF message and went dark on the next unrelated one.)
 
    ELEC GEN
-   Tracks EC delta between successive calls using a static previous-reading variable.
-   Positive delta = EC increasing = charging. Initialized to current EC on first call.
+   Latched ON by an EC reading that rose by more than the jitter margin; OFF by one
+   that fell, or when no rise has been seen for ELEC_GEN_HOLD_MS (a full battery stops
+   sending, and "charging" should not stick on a full one). Same one-pass defect as
+   SRB ACTIVE before this.
 ****************************************************************************************/
 #include "KCMk1_Annunciator.h"
 #include <cfloat>   // DBL_MAX -- used in CW_Ap_LOW and CW_ORBIT_STABLE soiAlt comparisons
@@ -56,18 +62,31 @@ bool lsYellow        = false;
    first recompute after a switch doesn't compare the new vessel against the old one
    (which produced a one-frame spurious ELEC_GEN / SRB_ACTIVE).
 ****************************************************************************************/
+static const uint32_t ELEC_GEN_HOLD_MS = 5000;   // ELEC GEN stays lit this long after the last rising EC reading
+static const uint32_t SRB_HOLD_MS      = 3000;   // SRB ACTIVE stays lit this long after the last falling SF reading
+static const float    EC_JITTER        = 0.01f;  // EC units: a smaller move is neither charge nor drain
+static const float    SF_JITTER        = 0.0001f;
+
 static bool     _prevThrottleZero = false;
 static uint32_t _throttleUpAt     = 0;
 static float    _prevEC           = -1.0f;
 static bool     _ecInitialized    = false;
+static bool     _ecRising         = false;
+static uint32_t _ecRiseAt         = 0;
 static float    _prevSF           = -1.0f;
+static bool     _srbBurning       = false;
+static uint32_t _srbFallAt        = 0;
 
 void resetCautWarnTrackers() {
   _prevThrottleZero = false;
   _throttleUpAt     = 0;
   _prevEC           = -1.0f;
   _ecInitialized    = false;
+  _ecRising         = false;
+  _ecRiseAt         = 0;
   _prevSF           = -1.0f;
+  _srbBurning       = false;
+  _srbFallAt        = 0;
 }
 
 
@@ -370,18 +389,22 @@ void updateCautionWarningState() {
       bitSet(cw, CW_ORBIT_STABLE);
   }
 
-  // CW_ELEC_GEN: electric charge is actively increasing.
-  // Compares current EC to the previous reading. A positive delta indicates generation
-  // exceeds consumption. Uses a static to persist the previous value between calls.
-  // Initialized to current EC on first call (delta = 0, indicator starts off).
+  // CW_ELEC_GEN: electric charge is actively increasing. Latched by a rising
+  // reading, released by a falling one or by ELEC_GEN_HOLD_MS without a rise (see
+  // the header). The previous reading only advances on a move beyond the jitter
+  // margin, so a slow charge in small steps still counts.
   {
+    uint32_t now = millis();
     if (!_ecInitialized) {
       _prevEC        = state.EC;
       _ecInitialized = true;
+    } else if (state.EC > _prevEC + EC_JITTER) {
+      _ecRising = true; _ecRiseAt = now; _prevEC = state.EC;
+    } else if (state.EC < _prevEC - EC_JITTER) {
+      _ecRising = false; _prevEC = state.EC;
     }
-    if (state.EC > _prevEC + 0.01f)   // 0.01 unit hysteresis to suppress jitter
-      bitSet(cw, CW_ELEC_GEN);
-    _prevEC = state.EC;
+    if (_ecRising && (now - _ecRiseAt) > ELEC_GEN_HOLD_MS) _ecRising = false;
+    if (_ecRising) bitSet(cw, CW_ELEC_GEN);
   }
 
   // CW_CHUTE_ENV: chute deployment envelope state, by dynamic pressure q (Pa).
@@ -406,20 +429,23 @@ void updateCautionWarningState() {
       bitSet(cw, CW_CHUTE_ENV);
   }
 
-  // CW_SRB_ACTIVE: solid rocket booster currently burning.
-  // ON  when SF_stage is below 99% of total AND decreasing from previous reading.
-  // OFF when SF_stage drops below 0.5% (exhausted) or is above 99% (full/new stage).
-  // Uses a static to persist the previous SF_stage value between calls.
+  // CW_SRB_ACTIVE: solid rocket booster currently burning. Latched by a falling
+  // reading while the stage is between 0.5% and 99% full; released when it is
+  // exhausted, a full stage appears, the reading rises, or SRB_HOLD_MS passes with
+  // no further fall (see the header).
   {
-    bool srbBurning = false;
+    uint32_t now = millis();
     if (state.SF_stage_tot > 0.0f) {
       float sfFrac = state.SF_stage / state.SF_stage_tot;
-      if (sfFrac > 0.005f && sfFrac < 0.99f && state.SF_stage < _prevSF - 0.0001f)
-        srbBurning = true;
+      if (_prevSF >= 0.0f && state.SF_stage < _prevSF - SF_JITTER) { _srbBurning = true; _srbFallAt = now; }
+      else if (_prevSF >= 0.0f && state.SF_stage > _prevSF + SF_JITTER) _srbBurning = false;
+      if (sfFrac <= 0.005f || sfFrac >= 0.99f) _srbBurning = false;
+      if (_srbBurning && (now - _srbFallAt) > SRB_HOLD_MS) _srbBurning = false;
+    } else {
+      _srbBurning = false;
     }
-    if (srbBurning)
-      bitSet(cw, CW_SRB_ACTIVE);
     _prevSF = state.SF_stage;
+    if (_srbBurning) bitSet(cw, CW_SRB_ACTIVE);
   }
 
   // CW_EVA_ACTIVE: a Kerbal is currently on EVA.

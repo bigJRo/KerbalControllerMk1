@@ -31,7 +31,7 @@ and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_R
 |------------------|------|
 | `KCMk1_Annunciator/` | Caution & Warning annunciator panel (I2C 0x10) |
 | `KCMk1_InfoDisp/` | Flight information display — 13 telemetry screens (I2C 0x12) |
-| `KCMk1_ResourceDisp/` | Resource display (I2C 0x11) — up to 16 resource bars (9 by default) + EVA mode |
+| `KCMk1_ResourceDisp/` | Resource display (I2C 0x11) — up to 16 resource tape meters (9 by default) + EVA mode |
 | `libraries/KerbalDisplayCommon/` | Shared UI toolkit — drawing, fonts, formatting, threshold colouring |
 | `libraries/KCM_Display`, `KCM_Touch`, `KCMk1_SystemConfig` | Display driver wrapper, touch driver, shared pin map + thresholds |
 | `libraries/KerbalDisplayAudio/` | Master-alarm audio (PAM8302A amp + speaker) + DFPlayer audio |

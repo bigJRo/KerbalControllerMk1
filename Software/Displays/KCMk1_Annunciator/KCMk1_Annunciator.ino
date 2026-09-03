@@ -103,8 +103,6 @@ void loop() {
 
   // --- Screen chrome on transition ---
   if (activeScreen != prevScreen) {
-    if (audioEnabled && prevScreen == screen_Main) audioSilence();
-
     if (debugMode) {
       const char *names[] = { "Standby", "Main", "SOI" };
       Serial.print(F("Annunciator: screen -> "));
@@ -117,12 +115,6 @@ void loop() {
         break;
       case screen_Main:
         drawStaticMain(infoDisp);
-        firstPassOnMain = true;
-        // drawStaticMain() synced prev.cautionWarningState = state, so the update
-        // pass won't see already-active alarm conditions as transitions. Reconcile
-        // the alarm audio with the current C&W state here so an alarm that is
-        // already up on entry (incl. lamp test) sounds instead of staying silent.
-        if (audioEnabled) syncMasterAlarmAudio();
         // drawStaticMain() syncs prev.gameSOI = state.gameSOI to suppress a
         // redundant SOI label redraw, but the SOI body image and lower data
         // fields still need their first draw. Invalidate prev values for
@@ -158,6 +150,9 @@ void loop() {
   } else {
     simpit.update();
   }
+
+  // --- Alarm audio: C&W transitions and crossing chirps, on every screen ---
+  serviceAlarmAudio();
 
   // --- Update display ---
   switch (activeScreen) {

@@ -24,20 +24,20 @@ static void chromeScreen_VEH(KCM_TFT &tft) {
   drawVerticalText(tft, 0, TITLE_TOP + rowH*6, SECT_W, rowH*2, &Roboto_Black_16, "PROP", TFT_LIGHT_GREY, TFT_BLACK);
 
   // Row labels (right of section strip)
-  printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "Vessel:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, "Type:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(2,NR), AW, rowH, "Status:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "VESSEL",    COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, "TYPE",    COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(2,NR), AW, rowH, "STATUS",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
-  printDispChrome(tft, F, AX, rowYFor(3,NR), AW, rowH, "Control:",          COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "Comm:",           COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(3,NR), AW, rowH, "CONTROL",          COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(4,NR), AW, rowH, "COMM",           COL_LABEL, COL_BACK, COL_NO_BDR);
 
-  printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "Crew:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(6,NR), AW, rowH, "\xCE\x94V.Stg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, F, AX, rowYFor(7,NR), AW, rowH, "\xCE\x94V.Tot:", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "CREW", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(6,NR), AW, rowH, "\xCE\x94V.STG", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, F, AX, rowYFor(7,NR), AW, rowH, "\xCE\x94V.TOT", COL_LABEL, COL_BACK, COL_NO_BDR);
 
   // Dividers — drawn LAST, +1 offset to clear printValue fillRect boundary
   uint16_t d1 = TITLE_TOP + rowH*3 + 1;  // after Status  (row2/row3)
-  uint16_t d2 = TITLE_TOP + rowH*6 + 1;  // after Signal  (row5/row6)
+  uint16_t d2 = TITLE_TOP + rowH*6 + 1;  // after Crew    (row5/row6)
   tft.drawLine(0, d1,   CONTENT_W, d1,   TFT_GREY);
   tft.drawLine(0, d1+1, CONTENT_W, d1+1, TFT_GREY);
   tft.drawLine(0, d2,   CONTENT_W, d2,   TFT_GREY);
@@ -57,13 +57,13 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   // vehVal -> drawValue() split overload with AX/AW section geometry (#6B)
   auto vehVal = [&](uint8_t row, const char *label, const String &val,
                     uint16_t fgc, uint16_t bgc) {
-    drawValue(tft, 7, row, AX, AW, label, val, fgc, bgc, F, NR);
+    drawValue(tft, (uint8_t)screen_VEH, row, AX, AW, label, val, fgc, bgc, F, NR);
   };
 
   // ── INFO block (rows 0-2): identity ──
 
   // Row 0 — Vessel name
-  vehVal(0, "Vessel:", state.vesselName, COL_VALUE, COL_BACK);
+  vehVal(0, "VESSEL", state.vesselName, COL_VALUE, COL_BACK);
 
   // Row 1 — Vessel type with colour coding
   const char *typeName;
@@ -96,7 +96,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   const uint16_t TICON_X = AX + AW - TICON_W - 8;                 // right edge = value text margin
   const uint16_t TICON_Y = rowYFor(1, NR) + (rowHFor(NR) - TICON_W) / 2;
   const uint16_t AW_TYPE = (uint16_t)(TICON_X - TICON_GAP - AX + 8);  // cell stops short of the icon
-  drawValue(tft, 7, 1, AX, AW_TYPE, "Type:", typeName, typeColor, TFT_BLACK, F, NR);
+  drawValue(tft, (uint8_t)screen_VEH, 1, AX, AW_TYPE, "TYPE", typeName, typeColor, TFT_BLACK, F, NR);
 
   // The icon is re-read from SD only when the type changes (SD reads are slow);
   // between changes it rides along in the double-buffer's page copy.
@@ -139,7 +139,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   const String statusVal = state.isRecoverable
                              ? String(condName) + " \xB7 RECOVERABLE"
                              : String(condName);
-  vehVal(2, "Status:", statusVal,
+  vehVal(2, "STATUS", statusVal,
          state.isRecoverable ? (uint16_t)TFT_SKY : (uint16_t)TFT_DARK_GREEN, TFT_BLACK);
 
   // ── CREW block (rows 3-5): crew, control, comms ──
@@ -153,7 +153,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
     case 2:  ctrlName = "Limited Manned"; ctrlColor = TFT_DULL_YELLOW; bg = TFT_BLACK; break;
     default: ctrlName = "Full Control";   ctrlColor = TFT_DARK_GREEN;  bg = TFT_BLACK; break;
   }
-  vehVal(3, "Control:", ctrlName, ctrlColor, bg);
+  vehVal(3, "CONTROL", ctrlName, ctrlColor, bg);
 
   // Row 4 — CommNet signal: white-on-red 0%, yellow <50%, green
   {
@@ -163,14 +163,14 @@ static void drawScreen_VEH(KCM_TFT &tft) {
     if      (sig == 0) { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (sig < VEH_SIGNAL_WARN_PCT) { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    vehVal(4, "Comm:", sigStr, fg, bg);
+    vehVal(4, "COMM", sigStr, fg, bg);
   }
 
   // Row 5 — Crew count / capacity
   {
     char crewStr[12];
     snprintf(crewStr, sizeof(crewStr), "%d / %d", state.crewCount, state.crewCapacity);
-    vehVal(5, "Crew:", crewStr, COL_VALUE, COL_BACK);
+    vehVal(5, "CREW", crewStr, COL_VALUE, COL_BACK);
   }
 
   // ── PROP block (rows 6-7): delta-V ──
@@ -185,7 +185,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  stgWarn, TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-  vehVal(6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
+  vehVal(6, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), fg, bg);
 
   // Row 7 — Total ΔV: uses DV_TOT_WARN_MS (higher threshold than stage) since this
   // represents whole-mission reserve. Shown on its own row so different colouring is clear.
@@ -193,5 +193,5 @@ static void drawScreen_VEH(KCM_TFT &tft) {
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-  vehVal(7, "\xCE\x94V.Tot:", fmtMs(state.totalDeltaV), fg, bg);
+  vehVal(7, "\xCE\x94V.TOT", fmtMs(state.totalDeltaV), fg, bg);
 }

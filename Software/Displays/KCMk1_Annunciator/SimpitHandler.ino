@@ -46,7 +46,8 @@
 ****************************************************************************************/
 static void enterFlightScene() {
   flightScene = true;
-  gpwsReset();   // reseed GPWS crossing tracker for the new flight
+  gpwsReset();          // reseed GPWS crossing tracker for the new flight
+  audioResetService();  // reseed the alarm audio references from this flight's state
   switchToScreen(screen_Main);
   // Request immediate refresh on all subscribed channels so static values
   // (full tanks, stable orbit, etc.) populate without waiting for a change event.
@@ -101,6 +102,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       state.gameSOI = "";
       for (uint8_t i = 0; i < msgSize; i++) state.gameSOI += char(msg[i]);
       currentBody = getBodyParams(state.gameSOI);
+      // Pe LOW / Ap LOW / ORBIT STABLE / HIGH Q all read the body's limits, so the
+      // C&W word has to follow the body at once rather than on the next message.
+      updateCautionWarningState();
       break;
 
     case FLIGHT_STATUS_MESSAGE:
@@ -388,6 +392,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // on the new vessel -- without this, C&W bits stay stale until the next
         // change event triggers a recompute.
         updateCautionWarningState();
+        // The audio service reseeds from the new vessel's state on its next pass, so
+        // a condition that is still up on the new vessel sounds again.
+        audioResetService();
         // Request a full telemetry refresh so all display fields repopulate
         // immediately rather than waiting for a change event on each channel.
         simpit.requestMessageOnChannel(0);

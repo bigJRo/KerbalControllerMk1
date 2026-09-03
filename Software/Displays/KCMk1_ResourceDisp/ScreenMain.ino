@@ -1,27 +1,84 @@
 /***************************************************************************************
-   ScreenMain.ino -- Main bar graph screen for Kerbal Controller Mk1 Resource Display
+   ScreenMain.ino -- Main tape-meter screen for Kerbal Controller Mk1 Resource Display
 
-   Layout:
-     Left region  : vertical resource bars, dynamically sized based on slotCount
-     Right region : SIDEBAR_W px button column, 4 buttons edge-to-edge, full height
+   Layout (1024x600):
+     Left  : SIDEBAR_W px button column, 4 keys edge-to-edge, full height
+     Top   : ALERT_H px alert strip across the content -- an EICAS-style message line
+             listing every meter in caution or alarm, worst first ("SF LOW", "CO2
+             HIGH", "MP CAUT", "LF BUG"), "REFRESHING" while a channel refresh is pending, and
+             at its right end the PROPELLANT BALANCE indicator (below)
+     Then  : AXIS_W px shared 0-100% axis
+     Then  : one tape meter per active slot at a FIXED pitch, centred as a row, in
+             subsystem order, with a bracketed group label above each run of
+             same-group meters and a divider between groups
+
+   The alert strip and the propellant balance indicator live in ScreenMainStrip.ino,
+   behind stripReset / stripSetSlot / stripUpdate / stripHitTest. That tab follows
+   this one in the build and uses the layout constants below (SCREEN_W, CONTENT_X,
+   ALERT_H), the same way TouchEvents.ino uses SCREEN_W and SCREEN_H.
 
    Sidebar buttons (top to bottom):
-     0. TOTL / STG  -- toggles stageMode. TOTL=dark green, STG=crimson.
-     1. DFLT        -- resets slots to the STD default group
-     2. SEL         -- navigates to the resource selection screen
-     3. DATA        -- navigates to the numerical resource detail screen
+     0. SEL     -- navigates to the resource selection screen
+     1. DATA    -- navigates to the numerical resource detail screen
+     2. TTE     -- toggles the counter row between percent and time-to-empty
+     3. CLR BUG -- removes every reserve bug on the vessel (two-line legend)
 
-   Button labels are horizontal, centred, using SB_BTN_FONT (Roboto_Black_24).
-   Bottom three buttons (DFLT, SEL, DATA) use a navy background.
+   Visibility: a slot whose resource the vessel does not carry (see resAbsent) draws
+   no meter at all. The meters that do draw are the "visible" slots, numbered 0..
+   _visCount-1 in slot order; _vis[] maps a visible position back to its slot. The
+   pitch follows the visible count, so a preset can carry SF and Ablator for every
+   launch and neither costs a column on a craft without them. Presence changes
+   trigger a full chrome redraw.
 
-   Each bar:
-     - Always drawn in the resource's designated fixed color, regardless of fill
-       level. Low-level warning is conveyed solely by the percentage text color.
-     - Two-fillRect technique: black from top to empty boundary, then color below
-     - Resource label centred below the bar in white (font scales with bar width)
-     - Percentage centred above the bar in white (font scales with bar width)
-     - Percentage color (thresholdColor uses strict <): >=30% white,
-       10-29% yellow (caution), 0-9% red (critical)
+   Each meter, top to bottom:
+     - group label band (shared by a run of same-group meters)
+     - the tape: a narrow thermometer column filled in the resource colour to the
+       vessel TOTAL, with
+         . a limit-band column on its left. The resource's alarm and caution
+           fractions are painted red and yellow on the scale itself, so the limits
+           are visible whether or not the level is in them. This is the Shuttle
+           F7/O3 meter convention, and it is what the filled bars lacked: their only
+           warning was the percentage label changing colour.
+         . for resources with a separate stage channel, the tape is split into two
+           columns, the way the Shuttle PRPLT QTY meter carried its three pointers
+           side by side: the wide left column is the vessel total in the resource
+           colour, the narrow right column is the ACTIVE STAGE in a half-brightness
+           shade of the same colour, and a white line across the whole tape marks
+           the stage level so it reads against the ticks even where the narrow
+           column is only a few pixels wide. Resources without a stage channel get
+           one full-width column, which is itself the cue that there is no stage
+           figure. Both values are always visible; there is no mode to toggle.
+         . tick marks on the right edge: major every 10%, minor every 5%
+       The frame is grey when nominal and takes the caution/alarm colour on breach.
+     - resource short label
+     - counter row: the percent of capacity, or with the TTE key engaged the time
+       to empty at the current rate (time to full for waste-type resources, "---"
+       while steady or filling), with a trend arrow two spaces to its right while
+       the value is moving. Counter, gap and arrow slot are centred in the pitch
+       cell as one group, the arrow slot reserved whether or not an arrow shows,
+       so the number never shifts when the trend changes. Coloured by state
+       (white / yellow / white-on-red, the alarm tile covering the counter only,
+       with the arrow outside it in red)
+     - units counter (raw resource units, compacted to fit the pitch)
+     A slot whose capacity is zero shows an empty tape and "..." in grey while a
+     channel refresh is still pending for it; once the vessel is known not to carry
+     the resource the meter is gone (see Visibility above).
+
+   Touch: a tap anywhere on a meter opens the Detail screen on that resource. A touch
+   HELD still on its tape for BUG_HOLD_MS sets a RESERVE BUG at the level first
+   touched -- a cyan index in the tick zone with a cyan mark on the band, cyan being
+   this project's colour for pilot-entered values -- and when the level crosses it the
+   meter's frame, counter and alert-strip message take the bug colour rather than
+   caution yellow. A touch that lands on an existing bug grabs it: held still it
+   clears the bug, dragged it moves the bug with the finger. Bugs travel with the
+   vessel's slot memory. The gesture logic lives in TouchEvents.ino; this tab only
+   answers geometry questions and edits the slot.
+
+   Spacing: the meters always spread across the full meter area, so the pitch is
+   the area divided by the slot count. What stays fixed is the meter itself: tape
+   width, stage column and fonts come in two classes, standard for up to
+   DEFAULT_SLOT_COUNT meters and compact above that, so a meter reads as the same
+   instrument whether it has the screen to itself or shares it with fifteen others.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -36,32 +93,67 @@ static const uint16_t SIDEBAR_W    = 84;   // px -- width of the nav button colu
 static const tFont   *SB_BTN_FONT  = &Roboto_Black_24;  // nav-button label font (fits 4 chars at 84px)
 
 // The sidebar sits on the LEFT edge. On panel B1 this display is outboard of Info
-// Display 2, whose own sidebar is on its right edge — so putting this one on the left
+// Display 2, whose own sidebar is on its right edge -- so putting this one on the left
 // brings the two button columns together at the boundary between the two screens,
 // where they form a single control cluster near the middle of the panel rather than
 // sitting a full screen-width apart with the far one at B1's outboard corner.
 //
 // Content therefore occupies [CONTENT_X, SCREEN_W): the Y-axis strip first, then the
-// bars. Everything downstream derives from CONTENT_X via barX() and drawAxis(), so
-// this is the only place the offset is stated.
+// meters. Everything downstream derives from METER_X0, so this is the only place the
+// offset is stated.
 static const uint16_t SIDEBAR_X    = 0;
 static const uint16_t CONTENT_X    = SIDEBAR_W;
-static inline uint16_t barRegionW() { return SCREEN_W - SIDEBAR_W; }
-static inline uint16_t barAreaW()   { return barRegionW() - AXIS_W; }
-static const uint16_t LABEL_H      = 44;
-static const uint16_t PERC_H       = 36;
-static const uint16_t BAR_TOP      = PERC_H;
-static const uint16_t BAR_BOTTOM   = SCREEN_H - LABEL_H;
-static const uint16_t BAR_H        = BAR_BOTTOM - BAR_TOP;
-static const uint16_t BAR_PAD      = 14;   // gap between bars — wider for clearer separation
+static const uint16_t METER_X0     = CONTENT_X + AXIS_W;        // 134 -- first meter's left edge
+static const uint16_t METER_AREA_W = SCREEN_W - METER_X0;       // 890 -- the row of meters is centred in this
+
+// Visible slots: the ones that draw a meter. Rebuilt by drawStaticMain(); the update
+// pass compares against a fresh build each frame and redraws the chrome when
+// presence has changed.
+static uint8_t _vis[MAX_SLOTS];
+static uint8_t _visCount = 0;
+
+static uint8_t buildVisible(uint8_t *out) {
+  uint8_t n = 0;
+  for (uint8_t i = 0; i < slotCount; i++) {
+    if (slots[i].type == RES_NONE || resAbsent(slots[i].type)) continue;
+    out[n++] = i;
+  }
+  return n;
+}
+
+// Pitch: the meters spread across the whole area, so this follows the visible
+// count. It only changes through a chrome redraw, so every caller in one frame sees
+// the same value. The remainder of the division is split either side of the row.
+static inline uint16_t meterPitch() {
+  return (_visCount > 0) ? (uint16_t)(METER_AREA_W / _visCount) : METER_AREA_W;
+}
+
+// Vertical bands, top to bottom.
+static const uint16_t ALERT_H      = 24;   // alert strip (Black_16 cap 19)
+static const uint16_t GROUP_Y      = ALERT_H;                   // 24
+static const uint16_t GROUP_H      = 26;   // subsystem label band
+static const uint16_t TAPE_TOP     = GROUP_Y + GROUP_H + 6;     // 56
+static const uint16_t LABEL_H      = 26;   // resource short label (Black_20 cap 24)
+static const uint16_t PERC_H       = 32;   // percent counter + trend arrow (Black_24 cap 29)
+static const uint16_t UNITS_H      = 22;   // units counter (Black_16 cap 19)
+static const uint16_t FOOT_H       = LABEL_H + PERC_H + UNITS_H;  // 80
+static const uint16_t TAPE_BOTTOM  = SCREEN_H - FOOT_H;          // 520
+static const uint16_t TAPE_H       = TAPE_BOTTOM - TAPE_TOP;     // 464
+static const uint16_t TAPE_INNER_H = TAPE_H - 2;                 // 462 -- fill area inside the frame
+static const uint16_t LABEL_Y      = TAPE_BOTTOM;                // 520
+static const uint16_t PERC_Y       = LABEL_Y + LABEL_H;          // 546
+static const uint16_t UNITS_Y      = PERC_Y + PERC_H;            // 578
+
+static const uint16_t BAND_W       = 4;    // limit-band column, left of the tape
+static const uint16_t BUG_TXT_W    = 20;   // room right of the ticks for the bug's percent
+static const uint16_t MARK_H       = 2;    // secondary-value marker line thickness
+static const uint16_t SPLIT_GAP    = 1;    // black gap between the primary and secondary columns
 
 // Sidebar: 4 buttons, no padding, edge-to-edge, full height
 static const uint8_t  SB_BTN_COUNT = 4;
 
-// Sidebar geometry computed at runtime via inline functions so barRegionW()
-// always reflects the current SIDEBAR_W value without duplication. sbX() is the
-// sidebar's left edge; the 1 px divider rule sits on its inboard (right) edge,
-// against the content.
+// Sidebar geometry computed at runtime via inline functions. sbX() is the sidebar's
+// left edge; the 1 px divider rule sits on its inboard (right) edge, against the content.
 static inline uint16_t sbX()    { return SIDEBAR_X; }
 static inline uint16_t sbDivX() { return SIDEBAR_X + SIDEBAR_W - 1; }
 static inline uint16_t sbBtnH() { return SCREEN_H / SB_BTN_COUNT; }
@@ -69,43 +161,94 @@ static inline uint16_t sbBtnY(uint8_t btn) { return btn * sbBtnH(); }
 
 
 /***************************************************************************************
+   METER STYLE -- everything that differs between the two pitch classes
+   (MeterStyle / MeterGeom / MeterCache are defined in KCMk1_ResourceDisp.h: the
+   Arduino build hoists a prototype for every function above the tabs, so a type used
+   in a signature must already be visible from the header.)
+****************************************************************************************/
+static const MeterStyle STYLE_STD = {
+  40, 12, 6, 10, 6,
+  &Roboto_Black_20, &Roboto_Black_24, &Roboto_Black_16, &Roboto_Black_16
+};
+static const MeterStyle STYLE_CMP = {
+  22, 7, 5, 7, 5,
+  &Roboto_Black_16, &Roboto_Black_16, &Roboto_Black_12, &Roboto_Black_12
+};
+
+static inline const MeterStyle &meterStyle() {
+  return (_visCount <= DEFAULT_SLOT_COUNT) ? STYLE_STD : STYLE_CMP;
+}
+
+// Left edge of visible meter k's pitch cell. The few pixels of division remainder
+// are split either side of the row so it stays centred in the area.
+static inline uint16_t pitchX(uint8_t k) {
+  uint16_t pitch = meterPitch();
+  uint16_t rowW  = _visCount * pitch;
+  return METER_X0 + (METER_AREA_W - rowW) / 2 + k * pitch;
+}
+
+
+static MeterGeom meterGeom(const MeterStyle &st, uint8_t i) {
+  MeterGeom g;
+  uint16_t scaleW = BAND_W + 1 + st.tapeW + 1 + st.tickL;
+  g.px    = pitchX(i);
+  g.bandX = g.px + (meterPitch() - scaleW) / 2;
+  g.tapeX = g.bandX + BAND_W + 1;
+  g.tickX = g.tapeX + st.tapeW + 1;
+  return g;
+}
+
+// Half-brightness of an RGB565 colour: each channel shifted down one bit, with the
+// bits that would cross a channel boundary masked off. The library's TFT_DIM_VIOLET
+// and TFT_DIM_NEON_GRN are exactly this of their parents.
+uint16_t dimColor(uint16_t c) {
+  return (c >> 1) & 0x7BEF;
+}
+
+// Screen y of a 0..1 level on the tape's inner scale (0 at the bottom inner row).
+static inline uint16_t levelY(float level) {
+  return (TAPE_BOTTOM - 1) - (uint16_t)(TAPE_INNER_H * level);
+}
+
+
+/***************************************************************************************
    SIDEBAR BUTTON DEFINITIONS
-   The sidebar is chrome, not data, so it is achromatic — white-on-black, grey border —
+   The sidebar is chrome, not data, so it is achromatic -- white-on-black, grey border --
    and shows an engaged state by reverse video. This matches the InfoDisp sidebar and
    the convention bezel-key flight decks use, and it keeps the panel's colour vocabulary
-   (green nominal / yellow caution / red alarm, and the per-resource bar colours) for
-   the telemetry the sidebar frames. See the InfoDisp README for the full rationale.
+   (yellow caution / red alarm, and the per-resource meter colours) for the telemetry
+   the sidebar frames. See the InfoDisp README for the full rationale.
 
-   Previously the mode key filled DARK_GREEN for TOTAL and TFT_CORNELL for STAGE, to
-   distinguish two equally normal display modes. Both are bar identity colours on this
-   very panel — DARK_GREEN is MonoPropellant and TFT_CORNELL is CO2 (see resColor() in
-   Resources.ino) — so the key wore two resources' colours while sitting beside their
-   bars. TFT_CORNELL is also a red (#B51C19), a strong one to park permanently next to
-   percentage labels that turn red below 10%. The three action keys filled navy, which
-   signals nothing.
-
-   The mode key is the one key with state: TOTAL is the default and draws like any other
-   key, STAGE reverse-videos, so the key reads as "changed from the default" as well as
-   naming the mode. The border stays grey on both, since neither is a selection.
+   TTE is the one key with state: percent is the default and the key draws like any
+   other, time-to-empty reverse-videos, so the key reads as "changed from the default"
+   as well as naming the mode. The border stays grey on both, since neither is a
+   selection.
 ****************************************************************************************/
-static const ButtonLabel btnModeTotal = {
-  "TOTL",
+static const ButtonLabel btnTteOff = {
+  "TTE",
   TFT_WHITE, TFT_WHITE,
   TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY
 };
-static const ButtonLabel btnModeStage = {
-  "STG",
+static const ButtonLabel btnTteOn = {
+  "TTE",
   TFT_BLACK, TFT_BLACK,
   TFT_GREY, TFT_GREY,
   TFT_GREY, TFT_GREY
 };
-static const ButtonLabel btnReset = {
-  "DFLT",
-  TFT_WHITE, TFT_WHITE,
-  TFT_BLACK, TFT_BLACK,
-  TFT_GREY, TFT_GREY
-};
+// CLR BUG removes every reserve bug on the vessel. It takes the guard treatment the
+// Select screen's CLEAR key uses -- orange legend and border on off-black -- since it
+// discards pilot-entered state. The legend is two words on two lines in the same
+// font as the other keys; drawButton is single-line, so this key draws itself.
+static void drawClrBugKey(KCM_TFT &tft, uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+  tft.fillRect(x, y, w, h, TFT_OFF_BLACK);
+  tft.drawRect(x, y, w, h, TFT_ORANGE);
+  int16_t  capH = SB_BTN_FONT->cap_height;
+  uint16_t gap  = 8;
+  uint16_t top  = y + (h - (2 * capH + gap)) / 2;
+  textCenter(tft, SB_BTN_FONT, x, top,               w, capH, "CLR", TFT_ORANGE, TFT_OFF_BLACK);
+  textCenter(tft, SB_BTN_FONT, x, top + capH + gap,  w, capH, "BUG", TFT_ORANGE, TFT_OFF_BLACK);
+}
 static const ButtonLabel btnSelect = {
   "SEL",
   TFT_WHITE, TFT_WHITE,
@@ -128,114 +271,353 @@ static void drawSidebar(KCM_TFT &tft) {
   uint16_t bx = sbX();
   uint16_t bw = SIDEBAR_W - 1;
 
-  // Button 0: TOTAL / STAGE mode toggle -- always drawn "on" (illuminated)
-  const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), modeBtn, SB_BTN_FONT, true);
+  // Buttons 0-1: action buttons, drawn "on" so their background colour always shows
+  drawButton(tft, bx, sbBtnY(0), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
+  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
 
-  // Buttons 1-3: action buttons, drawn "on" so their background color always shows
-  drawButton(tft, bx, sbBtnY(1), bw, sbBtnH(), btnReset,  SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), btnSelect, SB_BTN_FONT, true);
-  drawButton(tft, bx, sbBtnY(3), bw, sbBtnH(), btnDetail, SB_BTN_FONT, true);
+  // Button 2: TTE counter-mode toggle
+  const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
+  drawButton(tft, bx, sbBtnY(2), bw, sbBtnH(), tteBtn, SB_BTN_FONT, true);
+
+  // Button 3: CLR BUG
+  drawClrBugKey(tft, bx, sbBtnY(3), bw, sbBtnH());
 }
 
 
 /***************************************************************************************
-   REDRAW MODE BUTTON ONLY
-   Called when stageMode toggles to avoid a full screen redraw.
+   REDRAW TTE BUTTON ONLY
+   Called when tteMode toggles to avoid a full screen redraw.
 ****************************************************************************************/
-void redrawStageModeButton(KCM_TFT &tft) {
-  const ButtonLabel &modeBtn = stageMode ? btnModeStage : btnModeTotal;
-  drawButton(tft, sbX(), sbBtnY(0), SIDEBAR_W - 1, sbBtnH(), modeBtn, SB_BTN_FONT, true);
-}
-
-
-/***************************************************************************************
-   BAR GEOMETRY HELPERS
-   Bars occupy barAreaW() (the bar region minus the left axis strip).
-   barX() offsets all bars to the right of the axis.
-****************************************************************************************/
-static uint16_t barWidth() {
-  if (slotCount == 0) return 0;
-  uint16_t totalPad = BAR_PAD * (slotCount + 1);
-  return (barAreaW() - totalPad) / slotCount;
-}
-
-// Pass the already-computed bar width so the per-bar loop doesn't recompute
-// barWidth() (an integer divide) once per bar per frame.
-static uint16_t barX(uint8_t index, uint16_t bw) {
-  return CONTENT_X + AXIS_W + BAR_PAD + index * (bw + BAR_PAD);
+void redrawTteButton(KCM_TFT &tft) {
+  const ButtonLabel &tteBtn = tteMode ? btnTteOn : btnTteOff;
+  drawButton(tft, sbX(), sbBtnY(2), SIDEBAR_W - 1, sbBtnH(), tteBtn, SB_BTN_FONT, true);
 }
 
 
 /***************************************************************************************
    DRAW Y-AXIS
-   Delegates to the library's drawLabelledAxis(). See KerbalDisplayCommon.h.
+   Delegates to the library's drawLabelledAxis(). The shared axis spans the same rows
+   as every tape, so its labels read against all of them.
 ****************************************************************************************/
 static void drawAxis(KCM_TFT &tft) {
   drawLabelledAxis(tft,
                    CONTENT_X, AXIS_W,
-                   BAR_TOP, BAR_BOTTOM,
+                   TAPE_TOP, TAPE_BOTTOM,
                    &Roboto_Black_16,
                    TFT_LIGHT_GREY, TFT_BLACK);
 }
 
 
 /***************************************************************************************
-   BAR FONT SELECTOR
-   Returns the largest font that fits comfortably within the current bar width.
-   Called on each update pass so font scales automatically as slot count changes.
+   ALERT COLOURS
+   The state itself comes from alertState() in Resources.ino (with hysteresis).
 ****************************************************************************************/
-static const tFont* barFont() {
-  uint16_t bw = barWidth();
-  if (bw >= 60) return &Roboto_Black_20;
-  if (bw >= 40) return &Roboto_Black_16;
-  return &Roboto_Black_12;
+static inline uint16_t stateColor(uint8_t state) {
+  switch (state) {
+    case ALERT_ALARM:   return TFT_RED;
+    case ALERT_CAUTION: return TFT_YELLOW;
+    case ALERT_BUG:     return TFT_CYAN;
+    default:            return TFT_WHITE;
+  }
+}
+
+static inline uint16_t frameColor(uint8_t state) {
+  return (state == ALERT_NOMINAL) ? TFT_GREY : stateColor(state);
+}
+
+
+/***************************************************************************************
+   UNITS COUNTER FORMATTER
+   Raw resource units compacted to fit a pitch cell: 1.23 / 12.3 / 123 / 1234 / 12.3k /
+   123k. Kept local rather than using formatSep(): that keeps two decimals up to 999
+   and adds thousands separators, both too wide for the compact pitch.
+****************************************************************************************/
+void fmtUnits(float v, char *buf, size_t n) {
+  if (v < 0.0f) v = 0.0f;
+  if (v >= 100000.0f) {
+    snprintf(buf, n, "%dk", (int)(v / 1000.0f + 0.5f));
+  } else if (v >= 10000.0f) {
+    dtostrf(v / 1000.0f, 1, 1, buf);
+    strlcat(buf, "k", n);
+  } else if (v >= 100.0f) {
+    snprintf(buf, n, "%d", (int)(v + 0.5f));
+  } else if (v >= 10.0f) {
+    dtostrf(v, 1, 1, buf);
+  } else {
+    dtostrf(v, 1, 2, buf);
+  }
+}
+
+
+/***************************************************************************************
+   METER CHROME -- drawn once per meter by drawStaticMain()
+****************************************************************************************/
+
+// Limit bands: the band column is dark grey over the full tape height, with the
+// caution and alarm fractions painted on it. For a low-is-bad resource red runs from
+// 0 to the alarm fraction and yellow from there to the caution fraction; for a
+// high-is-bad (waste) resource the same two bands sit at the top instead.
+static void drawBands(KCM_TFT &tft, const MeterGeom &g, ResourceType t) {
+  tft.fillRect(g.bandX, TAPE_TOP + 1, BAND_W, TAPE_INNER_H, TFT_DARK_GREY);
+  ResLimits lim = resLimits(t);
+  if (!lim.enabled) return;
+
+  uint16_t yWarn  = levelY(lim.warn);
+  uint16_t yAlarm = levelY(lim.alarm);
+  if (lim.highIsBad) {
+    // Alarm band from the top of the scale down to the alarm fraction, caution band
+    // from there down to the warn fraction (yAlarm is above yWarn on screen).
+    tft.fillRect(g.bandX, TAPE_TOP + 1, BAND_W, yAlarm - (TAPE_TOP + 1) + 1, TFT_RED);
+    tft.fillRect(g.bandX, yAlarm + 1,   BAND_W, yWarn - yAlarm,              TFT_YELLOW);
+  } else {
+    // yAlarm is lower on screen than yWarn
+    tft.fillRect(g.bandX, yWarn,  BAND_W, (TAPE_BOTTOM - 1) - yWarn + 1, TFT_YELLOW);
+    tft.fillRect(g.bandX, yAlarm, BAND_W, (TAPE_BOTTOM - 1) - yAlarm + 1, TFT_RED);
+  }
+}
+
+// Tick marks right of the frame: major every 10%, minor every 5%.
+static void drawTicks(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g) {
+  for (uint8_t pct = 0; pct <= 100; pct += 5) {
+    uint16_t y   = levelY(pct / 100.0f);
+    uint16_t len = (pct % 10 == 0) ? st.tickL : (st.tickL / 2);
+    tft.drawLine(g.tickX, y, g.tickX + len - 1, y, TFT_GREY);
+  }
+}
+
+static void drawFrame(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, uint8_t state) {
+  tft.drawRect(g.tapeX, TAPE_TOP, st.tapeW, TAPE_H, frameColor(state));
+}
+
+// Reserve bug: a cyan index in the tick zone, tip against the frame, its percent in
+// small cyan figures beside it, plus a cyan mark across the band column so it reads
+// on the scale. Redrawing clears the tick zone, the figure area and the band and
+// repaints them, since the old bug sat on all three; all are cheap.
+static void drawBug(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                    ResourceType t, float bug) {
+  tft.fillRect(g.tickX, TAPE_TOP, st.tickL + 1 + BUG_TXT_W, TAPE_H, TFT_BLACK);
+  drawTicks(tft, st, g);
+  drawBands(tft, g, t);
+  if (bug < 0.0f) return;
+  int16_t y  = (int16_t)levelY(bug);
+  int16_t hh = (int16_t)st.tickL;
+  tft.fillTriangle(g.tickX, y, g.tickX + st.tickL, y - hh, g.tickX + st.tickL, y + hh, TFT_CYAN);
+  tft.fillRect(g.bandX, y - 1, BAND_W, 2, TFT_CYAN);
+  char pct[5];
+  snprintf(pct, sizeof(pct), "%d", (int)roundf(bug * 100.0f));
+  int16_t th = Roboto_Black_12.cap_height;
+  int16_t ty = constrain((int16_t)(y - th / 2), (int16_t)TAPE_TOP, (int16_t)(TAPE_BOTTOM - th));
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_CYAN, TFT_BLACK);
+  tft.setCursor(g.tickX + st.tickL + 2, ty);
+  tft.print(pct);
+}
+
+// Group label band and dividers. Runs of same-group meters (slots are already in
+// subsystem order) share one label centred over the run, sitting on a bracket line
+// with a short down-tick at each end; consecutive runs are separated by a 1 px
+// divider through the tape rows.
+static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
+  uint8_t runStart = 0;
+  while (runStart < _visCount) {
+    ResGroup grp = resGroup(slots[_vis[runStart]].type);
+    uint8_t runEnd = runStart;
+    while (runEnd + 1 < _visCount && resGroup(slots[_vis[runEnd + 1]].type) == grp) runEnd++;
+
+    uint16_t x0 = pitchX(runStart);
+    uint16_t x1 = pitchX(runEnd) + meterPitch();   // exclusive
+    uint16_t ly = GROUP_Y + GROUP_H - 3;           // bracket line row
+    tft.drawLine(x0 + 3, ly, x1 - 4, ly, TFT_GREY);
+    tft.drawLine(x0 + 3, ly, x0 + 3, ly + 3, TFT_GREY);
+    tft.drawLine(x1 - 4, ly, x1 - 4, ly + 3, TFT_GREY);
+    // Label drawn last, black-backed, so it breaks the bracket line: -- PROP --
+    textCenter(tft, st.groupFont, x0, GROUP_Y, x1 - x0, GROUP_H,
+               String(" ") + resGroupLabel(grp) + " ", TFT_LIGHT_GREY, TFT_BLACK);
+
+    if (runEnd + 1 < _visCount) {
+      tft.drawLine(x1 - 1, TAPE_TOP, x1 - 1, TAPE_BOTTOM, TFT_DARK_GREY);
+    }
+    runStart = runEnd + 1;
+  }
+}
+
+
+/***************************************************************************************
+   METER DYNAMICS -- redrawn by updateScreenMain() as values change
+****************************************************************************************/
+
+// Fill: flicker-free two-fillRect technique per column -- black from the top down to
+// the level, colour below it. Full repaint each time, so it is robust to the mode-
+// toggle path (which resets the caches WITHOUT clearing the screen); a delta-erase
+// keyed on the previous value would leave stale fill above a column that shrank
+// across the toggle.
+//
+// mark < 0: one full-width column at `level` (the vessel total).
+// mark >= 0: the interior is split -- total column on the left at `level` in the
+// resource colour, stage column (secW wide) on the right at `mark` in the dimmed
+// colour, SPLIT_GAP of black between -- and a white MARK_H line across the whole
+// interior at the stage level, drawn last since it sits on top of both columns.
+static void fillColumn(KCM_TFT &tft, uint16_t x, uint16_t w, float level, uint16_t color) {
+  uint16_t fillH  = (uint16_t)(TAPE_INNER_H * level);
+  uint16_t emptyH = TAPE_INNER_H - fillH;
+  if (emptyH > 0) tft.fillRect(x, TAPE_TOP + 1,          w, emptyH, TFT_BLACK);
+  if (fillH  > 0) tft.fillRect(x, TAPE_TOP + 1 + emptyH, w, fillH,  color);
+}
+
+static void drawFill(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                     float level, float mark, uint16_t color) {
+  uint16_t ix = g.tapeX + 1;
+  uint16_t iw = st.tapeW - 2;
+  if (mark < 0.0f) {
+    fillColumn(tft, ix, iw, level, color);
+    return;
+  }
+  uint16_t priW = iw - st.secW - SPLIT_GAP;
+  fillColumn(tft, ix, priW, level, color);
+  tft.fillRect(ix + priW, TAPE_TOP + 1, SPLIT_GAP, TAPE_INNER_H, TFT_BLACK);
+  fillColumn(tft, ix + priW + SPLIT_GAP, st.secW, mark, dimColor(color));
+
+  int16_t ly = (int16_t)levelY(mark) - (int16_t)MARK_H / 2;
+  if (ly < (int16_t)TAPE_TOP + 1) ly = TAPE_TOP + 1;
+  if (ly + (int16_t)MARK_H > (int16_t)TAPE_BOTTOM - 1) ly = TAPE_BOTTOM - 1 - MARK_H;
+  tft.fillRect(ix, ly, iw, MARK_H, TFT_WHITE);
+}
+
+// Counter row: the percent (or the time-to-empty string in TTE mode), a two-space
+// gap, and the trend arrow slot, laid out as one group centred in the pitch cell.
+// The arrow slot is reserved even when no arrow shows, so the number stays put as
+// the trend comes and goes. Alarm is white on a red tile that hugs the group, the
+// InfoDisp / Annunciator alarm treatment; caution is yellow text; nominal white. A
+// slot with no capacity shows its "..." or "---" in grey. Up = increasing, down =
+// decreasing, no arrow = steady. The alarm tile covers the counter only; the arrow
+// stays outside it on black and takes the alarm colour itself.
+static const uint16_t COUNTER_PAD = 4;   // red tile margin beyond the counter text
+
+static void drawCounterRow(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g,
+                           bool hasData, const char *s, int8_t trend, uint8_t state) {
+  uint16_t pitch  = meterPitch();
+  bool     alarm  = hasData && state == ALERT_ALARM;
+  uint16_t back   = alarm ? TFT_RED : TFT_BLACK;
+  uint16_t fore   = !hasData ? TFT_GREY : alarm ? TFT_WHITE : stateColor(state);
+  int16_t  textW  = getFontStringWidth(st.percFont, s);
+  int16_t  gapW   = getFontStringWidth(st.percFont, "  ");
+  int16_t  groupW = textW + gapW + st.arrowW;
+  int16_t  gx     = g.px + ((int16_t)pitch - groupW) / 2;   // group left edge
+
+  tft.fillRect(g.px, PERC_Y, pitch, PERC_H, TFT_BLACK);
+  if (alarm) tft.fillRect(gx - COUNTER_PAD, PERC_Y + 1, textW + COUNTER_PAD * 2, PERC_H - 2, back);
+  textCenter(tft, st.percFont, gx, PERC_Y, textW, PERC_H, String(s), fore, back);
+
+  if (trend == 0) return;
+  int16_t  cx  = gx + textW + gapW + st.arrowW / 2;
+  int16_t  cy  = PERC_Y + PERC_H / 2;
+  int16_t  hw  = (int16_t)st.arrowW / 2;
+  int16_t  hh  = (int16_t)st.arrowHalfH;
+  uint16_t col = alarm ? TFT_RED : fore;
+  if (trend > 0) tft.fillTriangle(cx, cy - hh, cx - hw, cy + hh, cx + hw, cy + hh, col);
+  else           tft.fillTriangle(cx, cy + hh, cx - hw, cy - hh, cx + hw, cy - hh, col);
+}
+
+static void drawUnits(KCM_TFT &tft, const MeterStyle &st, const MeterGeom &g, const char *s) {
+  uint16_t pitch = meterPitch();
+  tft.fillRect(g.px, UNITS_Y, pitch, UNITS_H, TFT_BLACK);
+  if (s[0] == '\0') return;
+  textCenter(tft, st.unitsFont, g.px, UNITS_Y, pitch, UNITS_H, String(s), TFT_LIGHT_GREY, TFT_BLACK);
+}
+
+
+/***************************************************************************************
+   PER-METER DRAWN-STATE CACHE
+   One entry per slot. Reset by drawStaticMain() (full repaint) and by the TTE toggle
+   in updateScreenMain() (repaint of the dynamics only). Rates and trends come from
+   Sampling.ino and are not touched by either.
+****************************************************************************************/
+static MeterCache _mc[MAX_SLOTS];
+static bool       _prevTteMode = false;
+
+static void resetDrawCaches() {
+  for (uint8_t i = 0; i < MAX_SLOTS; i++) {
+    _mc[i].level      = -1.0f;
+    _mc[i].mark       = -2.0f;
+    _mc[i].state      = 255;
+    _mc[i].hasData    = false;
+    _mc[i].awaiting   = false;
+    _mc[i].timeFlag   = false;
+    _mc[i].bug        = -2.0f;
+    _mc[i].trend      = 127;
+    _mc[i].counter[0] = 1;       // sentinel: matches no real string, forces a redraw
+    _mc[i].counter[1] = '\0';
+    _mc[i].units[0]   = 1;
+    _mc[i].units[1]   = '\0';
+  }
+  _prevTteMode = tteMode;
+  stripReset();
 }
 
 
 /***************************************************************************************
    DRAW STATIC CHROME -- main screen
 ****************************************************************************************/
-static float   _prevLevel[MAX_SLOTS];
-static uint8_t _prevPerc[MAX_SLOTS];   // last integer % drawn per bar; 255 = force repaint
-static bool    _prevStageMode = false;
-
 void drawStaticMain(KCM_TFT &tft) {
+  // Subsystem order is a property of the display, so it is applied here, at the one
+  // point every slot-set change passes through on its way to the screen. Detail and
+  // the Select order list read slots[] afterwards and so agree with the meters.
+  sortSlotsByGroup();
+
   tft.fillScreen(TFT_BLACK);
   drawSidebar(tft);
+  resetDrawCaches();
+
+  // On EVA the gauges take the content area; the sidebar and strip stay ours.
+  if (evaActive) {
+    resetAllSampling();
+    stripResetAll();
+    drawStaticEVA(tft);
+    return;
+  }
   drawAxis(tft);
 
-  // Reset update-pass state so all bars and percentage labels repaint on first pass
-  for (uint8_t i = 0; i < MAX_SLOTS; i++) { _prevLevel[i] = -1.0f; _prevPerc[i] = 255; }
-  _prevStageMode = stageMode;
-
-  const tFont *font = barFont();
-  uint16_t bw = barWidth();
-  for (uint8_t i = 0; i < slotCount; i++) {
-    uint16_t x = barX(i, bw);
-    tft.drawRect(x, BAR_TOP, bw, BAR_H, TFT_GREY);
-    if (slots[i].type != RES_NONE)
-      textCenter(tft, font, x, BAR_BOTTOM, bw, LABEL_H,
-                 resLabel(slots[i].type), TFT_WHITE, TFT_BLACK);
+  // The sampling arrays and the strip's alarm timers are indexed by slot, so they
+  // are only discarded when the slot sequence actually changed (an add, a removal,
+  // the sort moving something). A redraw for a presence change or a vessel-name
+  // message keeps the rate estimate, which takes ten seconds to rebuild.
+  {
+    static ResourceType laid[MAX_SLOTS];
+    static uint8_t      laidCount = 255;   // 255 = never laid out
+    bool changed = (laidCount != slotCount);
+    for (uint8_t i = 0; !changed && i < slotCount; i++) changed = (laid[i] != slots[i].type);
+    if (changed) {
+      resetAllSampling();
+      stripResetAll();
+      for (uint8_t i = 0; i < slotCount; i++) laid[i] = slots[i].type;
+      laidCount = slotCount;
+    }
   }
-}
+  _visCount = buildVisible(_vis);
 
+  if (_visCount == 0) {
+    uint16_t mid = TAPE_TOP + TAPE_H / 2;
+    textCenter(tft, &Roboto_Black_24, METER_X0, mid - 40, METER_AREA_W, 29,
+               slotCount ? "NO SELECTED RESOURCE ABOARD" : "NO RESOURCES SELECTED",
+               TFT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_16, METER_X0, mid + 4, METER_AREA_W, 19,
+               slotCount ? "SEL to change the set" : "SEL to choose resources",
+               TFT_DARK_GREY, TFT_BLACK);
+    return;
+  }
 
-/***************************************************************************************
-   DRAW ONE BAR -- flicker-free two-fillRect technique
-   NOTE: intentionally NOT the library's drawVertBarGraph() delta-erase. This full
-   empty+fill repaint is robust to the mode-toggle path (updateScreenMain resets
-   _prevLevel to -1 WITHOUT clearing the screen); a delta-erase keyed on prevVal would
-   leave stale fill above a bar that shrank across the toggle.
-****************************************************************************************/
-static void drawBar(KCM_TFT &tft, uint16_t x, uint16_t bw, uint16_t fillH, uint16_t color) {
-  uint16_t emptyH = (BAR_H - 2) - fillH;
-  uint16_t innerX = x + 1;
-  uint16_t innerW = bw - 2;
+  const MeterStyle &st = meterStyle();
+  drawGroupBands(tft, st);
 
-  if (emptyH > 0) tft.fillRect(innerX, BAR_TOP + 1,           innerW, emptyH, TFT_BLACK);
-  if (fillH  > 0) tft.fillRect(innerX, BAR_TOP + 1 + emptyH,  innerW, fillH,  color);
-  tft.drawRect(x, BAR_TOP, bw, BAR_H, TFT_GREY);
+  for (uint8_t k = 0; k < _visCount; k++) {
+    uint8_t i = _vis[k];
+    MeterGeom g = meterGeom(st, k);
+    drawBands(tft, g, slots[i].type);
+    drawTicks(tft, st, g);
+    drawFrame(tft, st, g, 0);
+    textCenter(tft, st.labelFont, g.px, LABEL_Y, meterPitch(), LABEL_H,
+               resLabel(slots[i].type), TFT_WHITE, TFT_BLACK);
+  }
 }
 
 
@@ -243,66 +625,186 @@ static void drawBar(KCM_TFT &tft, uint16_t x, uint16_t bw, uint16_t fillH, uint1
    UPDATE PASS
 ****************************************************************************************/
 void updateScreenMain(KCM_TFT &tft) {
-  if (stageMode != _prevStageMode) {
-    _prevStageMode = stageMode;
-    redrawStageModeButton(tft);
-    for (uint8_t i = 0; i < MAX_SLOTS; i++) { _prevLevel[i] = -1.0f; _prevPerc[i] = 255; }
+  if (tteMode != _prevTteMode) {
+    // Counter row changes meaning: every dynamic element repaints, chrome and the
+    // rate estimate stay. (The EVA layout always shows time, so only the key redraws.)
+    if (!evaActive) resetDrawCaches();
+    _prevTteMode = tteMode;
+    redrawTteButton(tft);
   }
+  if (evaActive) { updateScreenEVA(tft); return; }
 
-  uint16_t bw = barWidth();
-  const tFont *font = barFont();
-
-  for (uint8_t i = 0; i < slotCount; i++) {
-    float cur = stageMode ? slots[i].stageCurrent : slots[i].current;
-    float max = stageMode ? slots[i].stageMax     : slots[i].maxVal;
-    float level = (max > 0.0f) ? (cur / max) : 0.0f;
-    level = constrain(level, 0.0f, 1.0f);
-    uint8_t perc = (uint8_t)(level * 100.0f);
-
-    // Redraw the bar fill on any meaningful level change, but redraw the
-    // percentage label ONLY when the integer % actually changes. Decoupling the
-    // two stops the number from being cleared-and-reprinted every frame (the
-    // source of the flicker) while the bar still animates smoothly.
-    bool levelChanged = fabsf(level - _prevLevel[i]) >= BAR_LEVEL_HYSTERESIS;
-    bool percChanged  = (perc != _prevPerc[i]);
-    if (!levelChanged && !percChanged) continue;
-
-    uint16_t x = barX(i, bw);
-
-    if (levelChanged) {
-      _prevLevel[i] = level;
-      uint16_t fillH = (uint16_t)((BAR_H - 2) * level);
-      // Bar always renders in the resource's designated colour, regardless of
-      // fill level. Low-level warning is conveyed by the percentage text colour.
-      drawBar(tft, x, bw, fillH, resColor(slots[i].type));
-    }
-
-    if (percChanged) {
-      _prevPerc[i] = perc;
-
-      char percStr[6];
-      snprintf(percStr, sizeof(percStr), "%d%%", perc);
-
-      // Percentage label colour depends on fill level (thresholdColor: strict <):
-      //   0-9%    : red text    (critical)
-      //  10-29%   : yellow text  (caution)
-      //  30-100%  : white text   (nominal)
-      uint16_t percFore, percBack;
-      thresholdColor((uint16_t)perc,
-                     (uint16_t)10, TFT_RED,    TFT_BLACK,
-                     (uint16_t)30, TFT_YELLOW, TFT_BLACK,
-                                  TFT_WHITE,  TFT_BLACK,
-                     percFore, percBack);
-
-      int16_t fontH = (int16_t)font->cap_height;
-      tft.fillRect(x, 0, bw, PERC_H, percBack);
-      tft.setFont(*font);
-      tft.setTextColor(percFore, percBack);
-      int16_t tw = getFontStringWidth(font, percStr);
-      tft.setCursor(x + (bw - tw) / 2, (PERC_H - fontH) / 2);
-      tft.print(percStr);
+  // Presence changed since the chrome was drawn: the row is laid out again.
+  {
+    uint8_t fresh[MAX_SLOTS];
+    uint8_t n = buildVisible(fresh);
+    if (n != _visCount || memcmp(fresh, _vis, n) != 0) {
+      drawStaticMain(tft);
+      return;
     }
   }
+  if (_visCount == 0) return;
+
+  const MeterStyle &st = meterStyle();
+
+  for (uint8_t k = 0; k < _visCount; k++) {
+    uint8_t i = _vis[k];
+    ResourceSlot &s = slots[i];
+    MeterCache   &c = _mc[i];
+
+    float cur = s.current;
+    float max = s.maxVal;
+
+    bool  hasData = (max > 0.0f);
+    float level   = hasData ? constrain(cur / max, 0.0f, 1.0f) : 0.0f;
+    float mark    = -1.0f;   // no stage column
+    if (hasData && resHasStageData(s.type) && s.stageMax > 0.0f)
+      mark = constrain(s.stageCurrent / s.stageMax, 0.0f, 1.0f);
+
+    bool    awaiting = !hasData && slotAwaiting(i);
+    uint8_t state    = hasData ? alertState(s.type, level, s.bug, c.state) : 0;
+    const SlotSample &smp = sampleTot[i];
+    float   tteS     = hasData ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f;
+    bool    timeFlag = false;
+    if (hasData) state = applyTimeTiers(s.type, tteS, state, c.state, c.timeFlag, timeFlag);
+
+    // Message for the alert strip.
+    uint8_t code = (!hasData || state == ALERT_NOMINAL) ? STRIP_NONE
+                 : (state == ALERT_ALARM)               ? STRIP_ALARM
+                 : (state == ALERT_BUG)                 ? STRIP_BUG
+                 :                                        STRIP_CAUTION;
+    stripSetSlot(i, code, hasData && timeFlag);
+
+    char counter[8];
+    if (!hasData)     strlcpy(counter, awaiting ? "..." : "---", sizeof(counter));
+    else if (tteMode) fmtTte(tteS, counter, sizeof(counter));
+    else              snprintf(counter, sizeof(counter), "%d%%", (int)(level * 100.0f));
+
+    char units[12];
+    if (hasData) fmtUnits(cur, units, sizeof(units));
+    else         units[0] = '\0';
+
+    // Fill redraws on any meaningful level change; the counters only when their
+    // text or colour actually changes. Decoupling them is what stops the number
+    // being cleared-and-reprinted every frame while the tape still moves smoothly.
+    bool levelChanged = fabsf(level - c.level) >= BAR_LEVEL_HYSTERESIS;
+    bool markChanged  = (c.mark < -1.5f) ||                       // forced
+                        ((mark < 0.0f) != (c.mark < 0.0f)) ||     // marker appeared / vanished
+                        (mark >= 0.0f && fabsf(mark - c.mark) >= BAR_LEVEL_HYSTERESIS);
+    bool stateChanged   = (state != c.state) || (hasData != c.hasData) || (awaiting != c.awaiting) ||
+                          (timeFlag != c.timeFlag);
+    bool counterChanged = (strcmp(counter, c.counter) != 0) || stateChanged;
+    bool trendChanged   = (smp.trend != c.trend) || stateChanged;
+    bool unitsChanged   = (strcmp(units, c.units) != 0);
+    bool bugChanged     = (c.bug < -1.5f) || ((s.bug < 0.0f) != (c.bug < 0.0f)) ||
+                          (s.bug >= 0.0f && fabsf(s.bug - c.bug) > 0.0001f);
+
+    if (!levelChanged && !markChanged && !counterChanged && !trendChanged && !unitsChanged && !bugChanged) continue;
+
+    MeterGeom g = meterGeom(st, k);
+
+    if (bugChanged) {
+      c.bug = s.bug;
+      drawBug(tft, st, g, s.type, s.bug);
+    }
+    if (stateChanged) {
+      c.state    = state;
+      c.hasData  = hasData;
+      c.awaiting = awaiting;
+      c.timeFlag = timeFlag;
+      drawFrame(tft, st, g, hasData ? state : 0);
+    }
+    if (levelChanged || markChanged) {
+      c.level = level;
+      c.mark  = mark;
+      drawFill(tft, st, g, level, mark, resColor(s.type));
+    }
+    if (counterChanged || trendChanged) {
+      strlcpy(c.counter, counter, sizeof(c.counter));
+      c.trend = smp.trend;
+      drawCounterRow(tft, st, g, hasData, counter, smp.trend, state);
+    }
+    if (unitsChanged) {
+      strlcpy(c.units, units, sizeof(c.units));
+      drawUnits(tft, st, g, units);
+    }
+  }
+
+  stripUpdate(tft);
+}
+
+
+/***************************************************************************************
+   METER HIT TEST
+   Which meter, and which part of it, a touch landed on. The tape rows give the
+   scale position of the touch so the caller can place a reserve bug; the foot rows
+   (label, counter, units) open the Detail screen on that resource.
+****************************************************************************************/
+int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
+  if (_visCount == 0) return -1;
+  uint16_t x0 = pitchX(0);
+  uint16_t pitch = meterPitch();
+  uint16_t x1 = pitchX(_visCount - 1) + pitch;
+  if (x < x0 || x >= x1) return -1;
+  uint8_t k = (uint8_t)((x - x0) / pitch);
+  if (k >= _visCount) return -1;
+  int8_t i = (int8_t)_vis[k];
+  if (y >= TAPE_TOP && y < TAPE_BOTTOM) {
+    onTape = true;
+    level  = (float)((TAPE_BOTTOM - 1) - y) / (float)TAPE_INNER_H;
+    level  = constrain(level, 0.0f, 1.0f);
+    return i;
+  }
+  if (y >= LABEL_Y && y < SCREEN_H) {
+    onTape = false;
+    level  = 0.0f;
+    return i;
+  }
+  return -1;
+}
+
+
+/***************************************************************************************
+   RESERVE BUG EDITS
+   The update pass sees a change through its cache and redraws the index, so these
+   only touch the slot.
+****************************************************************************************/
+float meterLevelAtY(uint16_t y) {
+  if (y >= TAPE_BOTTOM) return 0.0f;
+  if (y <= TAPE_TOP)    return 1.0f;
+  return constrain((float)((TAPE_BOTTOM - 1) - y) / (float)TAPE_INNER_H, 0.0f, 1.0f);
+}
+
+bool meterBugNear(uint8_t i, float level) {
+  return i < slotCount && slots[i].bug >= 0.0f && fabsf(level - slots[i].bug) <= BUG_GRAB_TOL;
+}
+
+// snapPct is the grid the level lands on: BUG_SNAP_PCT for a hold (the first
+// placement), 1 for a drag (fine adjustment). The Detail screen's keys write the
+// slot directly at 1%.
+void setMeterBug(uint8_t i, float level, uint8_t snapPct) {
+  if (i >= slotCount) return;
+  if (snapPct == 0) snapPct = 1;
+  float pct = roundf(level * 100.0f / snapPct) * snapPct;
+  slots[i].bug = constrain(pct / 100.0f, 0.01f, 0.99f);
+}
+
+void clearMeterBug(uint8_t i) {
+  if (i >= slotCount) return;
+  slots[i].bug = -1.0f;
+  if (debugMode) { Serial.print(F("ResourceDisp: bug cleared on ")); Serial.println(resLabel(slots[i].type)); }
+}
+
+
+/***************************************************************************************
+   LAYOUT-INDEPENDENT TOUCH GEOMETRY -- what TouchEvents.ino calls
+****************************************************************************************/
+int8_t mainHitTest(uint16_t x, uint16_t y, bool &onGauge, float &level) {
+  return evaActive ? evaHitTest(x, y, onGauge, level) : meterHitTest(x, y, onGauge, level);
+}
+
+float mainLevelAt(uint8_t slot, uint16_t x, uint16_t y) {
+  return evaActive ? evaLevelAt(slot, x, y) : meterLevelAtY(y);
 }
 
 

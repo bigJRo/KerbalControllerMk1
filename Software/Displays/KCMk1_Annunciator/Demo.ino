@@ -124,7 +124,7 @@ void stepDemoState() {
     demoLast_vessel = now;
     demoVesselIndex = (demoVesselIndex + 1) % demoVesselCount;
     state.vesselName = demoVesselNames[demoVesselIndex];
-    state.vesselType = (VesselType)((state.vesselType + 1) % 17);
+    state.vesselType = (VesselType)((state.vesselType + 1) % (type_GndPart + 1));
   }
 
   // Vessel situation -- cycle through meaningful states
@@ -308,23 +308,17 @@ void stepDemoState() {
 
 /***************************************************************************************
    INIT DEMO MODE
-   Called from setup() when demoMode is true. Sets the initial state for the demo
-   and starts on the main screen with flightScene active.
-   Note: activeScreen and prevScreen are set directly here rather than via
-   switchToScreen() because invalidateAllState() is called explicitly at the end,
-   making a switchToScreen() call redundant at this point. switchToScreen() is
-   safe to call after initDemoMode() returns (Phase 2B wires this up).
+   Called from setup() when demoMode is true, and again if the master switches demo
+   on at runtime. Seeds the body and vessel name and enters the main screen with
+   flightScene active; switchToScreen() does the invalidation.
 ****************************************************************************************/
 void initDemoMode() {
   flightScene = true;
-  activeScreen  = screen_Main;
-  prevScreen    = screen_COUNT;
   demoBodyIndex = 0;
   state.gameSOI = demoBodyList[demoBodyIndex];
   currentBody   = getBodyParams(state.gameSOI);
   demoVesselIndex  = 0;
   state.vesselName = demoVesselNames[demoVesselIndex];
-  invalidateAllState();
-  // Enter the main screen explicitly (matches the pattern of the other panels).
+  audioResetService();
   switchToScreen(screen_Main);
 }

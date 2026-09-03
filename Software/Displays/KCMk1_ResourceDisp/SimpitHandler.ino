@@ -49,24 +49,85 @@
 
 
 /***************************************************************************************
-   HELPER — update all slots matching a resource type
+   HELPER — apply one resource message to every slot of that type
+   stage=true writes the stage fields; stage=false writes the vessel fields and, for a
+   resource with no stage channel (mirror=true), copies them to the stage fields so
+   the stage side is never left at zero. Every message stamps updatedMs for the
+   refresh tracking in Sampling.ino.
 ****************************************************************************************/
-static void updateSlot(ResourceType t,
-                       float vessel, float vesselMax,
-                       float stage,  float stageMax) {
+static void applyResource(ResourceType t, bool stage, bool mirror, float avail, float total) {
+  uint32_t now = millis();
+  if (!stage) noteResourcePresence(t, avail, total);   // vessel messages decide presence
   for (uint8_t i = 0; i < slotCount; i++) {
-    if (slots[i].type == t) {
-      slots[i].current      = vessel;
-      slots[i].maxVal       = vesselMax;
-      slots[i].stageCurrent = stage;
-      slots[i].stageMax     = stageMax;
+    if (slots[i].type != t) continue;
+    if (stage) {
+      slots[i].stageCurrent = avail;
+      slots[i].stageMax     = total;
+    } else {
+      slots[i].current = avail;
+      slots[i].maxVal  = total;
+      if (mirror) {
+        slots[i].stageCurrent = avail;
+        slots[i].stageMax     = total;
+      }
     }
+    slots[i].updatedMs = now;
   }
 }
 
-// Vessel-only variant — mirrors vessel to stage (no stage channel available)
+// Vessel-only resource — mirrors vessel to stage (no stage channel available)
 static void updateSlotVesselOnly(ResourceType t, float vessel, float vesselMax) {
-  updateSlot(t, vessel, vesselMax, vessel, vesselMax);
+  applyResource(t, false, true, vessel, vesselMax);
+}
+
+
+/***************************************************************************************
+   SINGLE-RESOURCE CHANNEL TABLE
+   Every channel that carries one resourceMessage. The handler walks this before its
+   switch, so adding a native resource is one line here plus a registerChannel().
+****************************************************************************************/
+struct ResChannel {
+  byte         msgType;
+  ResourceType type;
+  bool         stage;    // this message is the stage variant
+  bool         mirror;   // vessel message also fills the stage fields (no stage channel)
+};
+
+static const ResChannel RES_CHANNELS[] = {
+  { LF_MESSAGE,              RES_LIQUID_FUEL, false, false },
+  { LF_STAGE_MESSAGE,        RES_LIQUID_FUEL, true,  false },
+  { OX_MESSAGE,              RES_LIQUID_OX,   false, false },
+  { OX_STAGE_MESSAGE,        RES_LIQUID_OX,   true,  false },
+  { SF_MESSAGE,              RES_SOLID_FUEL,  false, false },
+  { SF_STAGE_MESSAGE,        RES_SOLID_FUEL,  true,  false },
+  { XENON_GAS_MESSAGE,       RES_XENON,       false, false },
+  { XENON_GAS_STAGE_MESSAGE, RES_XENON,       true,  false },
+  { AB_MESSAGE,              RES_ABLATOR,     false, false },
+  { AB_STAGE_MESSAGE,        RES_ABLATOR,     true,  false },
+  { ELECTRIC_MESSAGE,        RES_ELEC_CHARGE, false, true  },
+  { MONO_MESSAGE,            RES_MONO_PROP,   false, true  },
+  { EVA_MESSAGE,             RES_EVA_PROP,    false, true  },
+  { ORE_MESSAGE,             RES_ORE,         false, true  },
+};
+static const uint8_t RES_CHANNEL_COUNT = sizeof(RES_CHANNELS) / sizeof(RES_CHANNELS[0]);
+
+
+/***************************************************************************************
+   REQUEST RESOURCE REFRESH
+   Simpit only sends a resource message when the value changes, so after any slot
+   change the panel asks for every channel again. Stamps the request so Sampling.ino
+   can tell "waiting for the answer" from "not aboard". No-op in demo mode, where
+   there is no Simpit link and the demo generator drives every slot.
+****************************************************************************************/
+void requestResourceRefresh() {
+  if (demoMode) return;
+  refreshPending   = true;
+  refreshRequestMs = millis();
+  // Presence is NOT reset here: the last known answer stands until a new one
+  // arrives, so a refresh after a Select change does not flash absent meters back
+  // as "..." for three seconds. A vessel switch or scene entry resets it, since
+  // the new vessel's answers may differ.
+  simpit.requestMessageOnChannel(0);
 }
 
 
@@ -80,12 +141,15 @@ static void updateSlotVesselOnly(ResourceType t, float vessel, float vesselMax) 
 ****************************************************************************************/
 static void enterFlightScene() {
   flightScene = true;
-  // Zero slots so stale values don't show before Simpit repopulates them
+  // Zero slots so stale values don't show before Simpit repopulates them, and
+  // forget which resources the previous vessel carried.
   zeroAllSlotValues();
+  resetResourcePresence();
+  resetHistory();
   // Request immediate refresh on all subscribed channels. Simpit only sends resource
   // messages when values change — without this, static resources (full tanks, idle
   // engines) won't update until first change.
-  simpit.requestMessageOnChannel(0);
+  requestResourceRefresh();
   switchToScreen(screen_Main);
 }
 
@@ -123,6 +187,18 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     Serial.println(msgName);
   }
 
+  // Single-resource channels: one table lookup covers the native propellants,
+  // their stage variants, and the vessel-only resources.
+  for (uint8_t i = 0; i < RES_CHANNEL_COUNT; i++) {
+    if (RES_CHANNELS[i].msgType != messageType) continue;
+    if (msgSize == sizeof(resourceMessage)) {
+      resourceMessage r = parseMessage<resourceMessage>(msg);
+      applyResource(RES_CHANNELS[i].type, RES_CHANNELS[i].stage, RES_CHANNELS[i].mirror,
+                    r.available, r.total);
+    }
+    return;
+  }
+
   switch (messageType) {
 
     // -------------------------------------------------------------------------
@@ -139,17 +215,21 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (newName != currentVesselName) {
         if (debugMode) { Serial.print(F("ResourceDisp: vessel name = ")); Serial.println(newName); }
         currentVesselName = newName;
-        // Attempt to recall this vessel's last slot configuration.
-        // If not in cache, keep the current slot layout.
-        // On EVA the bar set is fixed (EC/EVA/O2/Food/Water) — skip per-vessel
-        // recall so the EVA Kerbal's name can't override it.
+        // A vessel in memory gets its own layout back; one that is not starts from
+        // the default (the pilot's stored one, else SPCT), so a new craft never
+        // inherits whatever the previous vessel happened to show. On EVA the bar
+        // set is fixed (EC/EVA/O2/Food/Water) — skip both so the EVA Kerbal's name
+        // can't override it.
         if (evaActive) {
           if (debugMode) Serial.println(F("ResourceDisp: EVA active — keeping EVA bar set"));
         } else if (recallVesselSlots(currentVesselName)) {
           if (debugMode) Serial.println(F("ResourceDisp: vessel slot config recalled"));
-          simpit.requestMessageOnChannel(0);
+          layoutRecalled = true;
+          requestResourceRefresh();
         } else {
-          if (debugMode) Serial.println(F("ResourceDisp: vessel not in cache, keeping current layout"));
+          if (debugMode) Serial.println(F("ResourceDisp: vessel not in memory, default layout"));
+          layoutRecalled = false;
+          initDefaultSlots();   // also requests a refresh
         }
         // Request chrome redraw regardless — slot count/types may have changed.
         // needsMainRedraw is checked by loop() after simpit.update() returns,
@@ -159,158 +239,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       break;
     }
 
-    case ELECTRIC_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        updateSlotVesselOnly(RES_ELEC_CHARGE, r.available, r.total);
-      }
-      break;
-
-    case MONO_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        updateSlotVesselOnly(RES_MONO_PROP, r.available, r.total);
-      }
-      break;
-
-    case EVA_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        updateSlotVesselOnly(RES_EVA_PROP, r.available, r.total);
-      }
-      break;
-
-    case ORE_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        updateSlotVesselOnly(RES_ORE, r.available, r.total);
-      }
-      break;
-
-    // -------------------------------------------------------------------------
-    // Resources with separate vessel and stage channels
-    // Vessel message fills current/maxVal; stage message fills stageCurrent/stageMax
-    // -------------------------------------------------------------------------
-
-    case LF_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_LIQUID_FUEL) {
-            slots[i].current = r.available;
-            slots[i].maxVal  = r.total;
-          }
-        }
-      }
-      break;
-
-    case LF_STAGE_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_LIQUID_FUEL) {
-            slots[i].stageCurrent = r.available;
-            slots[i].stageMax     = r.total;
-          }
-        }
-      }
-      break;
-
-    case OX_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_LIQUID_OX) {
-            slots[i].current = r.available;
-            slots[i].maxVal  = r.total;
-          }
-        }
-      }
-      break;
-
-    case OX_STAGE_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_LIQUID_OX) {
-            slots[i].stageCurrent = r.available;
-            slots[i].stageMax     = r.total;
-          }
-        }
-      }
-      break;
-
-    case SF_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_SOLID_FUEL) {
-            slots[i].current = r.available;
-            slots[i].maxVal  = r.total;
-          }
-        }
-      }
-      break;
-
-    case SF_STAGE_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_SOLID_FUEL) {
-            slots[i].stageCurrent = r.available;
-            slots[i].stageMax     = r.total;
-          }
-        }
-      }
-      break;
-
-    case XENON_GAS_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_XENON) {
-            slots[i].current = r.available;
-            slots[i].maxVal  = r.total;
-          }
-        }
-      }
-      break;
-
-    case XENON_GAS_STAGE_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_XENON) {
-            slots[i].stageCurrent = r.available;
-            slots[i].stageMax     = r.total;
-          }
-        }
-      }
-      break;
-
-    case AB_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_ABLATOR) {
-            slots[i].current = r.available;
-            slots[i].maxVal  = r.total;
-          }
-        }
-      }
-      break;
-
-    case AB_STAGE_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage r = parseMessage<resourceMessage>(msg);
-        for (uint8_t i = 0; i < slotCount; i++) {
-          if (slots[i].type == RES_ABLATOR) {
-            slots[i].stageCurrent = r.available;
-            slots[i].stageMax     = r.total;
-          }
-        }
-      }
-      break;
+    // Single-resource channels are handled by the table walk above the switch.
 
     // -------------------------------------------------------------------------
     // TAC Life Support resources (vessel-only, no stage variant)
@@ -379,6 +308,22 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       // while a Kerbal is on EVA. Latch it into evaFlag; loop() reconciles it
       // into evaActive and swaps between the vessel bars and the EVA bar set.
       if (msgSize >= 1) evaFlag = (msg[0] & FLIGHT_IS_EVA) != 0;
+      // Time warp: byte 2 is KSP's warp rate index. KSP only allows physics warp
+      // inside an atmosphere (flag bit 3, FLIGHT_IS_ATMO_TW), so the flag
+      // selects which rate table the index refers to. The sampling windows are
+      // restarted on a change so no window blends two rates.
+      if (msgSize >= 3) {
+        static const float RAILS[8] = { 1, 5, 10, 50, 100, 1000, 10000, 100000 };
+        static const float PHYS[4]  = { 1, 2, 3, 4 };
+        uint8_t idx    = msg[2];
+        bool    inAtmo = (msg[0] & FLIGHT_IS_ATMO_TW) != 0;
+        float   wf     = inAtmo ? PHYS[idx < 4 ? idx : 3] : RAILS[idx < 8 ? idx : 7];
+        if (wf != warpFactor) {
+          warpFactor = wf;
+          resetAllSampling();
+          if (debugMode) { Serial.print(F("ResourceDisp: warp factor ")); Serial.println(warpFactor); }
+        }
+      }
       // Simpit sends FLIGHT_STATUS only from a flight scene, so receiving it while we
       // believe we are not in one means the SCENE_CHANGE that would have told us never
       // arrived — the normal case when a panel boots into a flight already in progress.
@@ -399,8 +344,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       } else {
         flightScene = false;
         if (debugMode) Serial.println(F("ResourceDisp: Simpit leaving flight scene"));
-        // Save current config before leaving flight
-        saveVesselSlots(currentVesselName);
+        // Save current config before leaving flight, and write the memory out now,
+        // while a few milliseconds' hitch costs nothing. On EVA the slots are the
+        // fixed EVA set, not this vessel's layout, so there is nothing to save.
+        if (!evaActive) saveVesselSlots(currentVesselName);
+        persistStoreNow();
         // Clear EVA latch so an EVA that ended off-scene doesn't stay engaged, then
         // zero slots and return to standby.
         evaFlag = evaActive = false;
@@ -413,13 +361,19 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize < 1) break;
       if (msg[0] == 1) {
         if (debugMode) Serial.println(F("ResourceDisp: Simpit vessel switch — saving and zeroing slots"));
-        // Save current config before it's overwritten by the new vessel
-        saveVesselSlots(currentVesselName);
+        // Save current config before it's overwritten by the new vessel, and write
+        // the memory out now. On EVA the slots are the fixed EVA set, not a layout
+        // worth remembering under the Kerbal's name.
+        if (!evaActive) saveVesselSlots(currentVesselName);
+        persistStoreNow();
         currentVesselName = "";  // will be repopulated by VESSEL_NAME_MESSAGE
+        layoutRecalled    = false;
         // Clear the EVA latch — if the new vessel is still an EVA Kerbal, the next
         // FLIGHT_STATUS re-sets evaFlag and loop() reconciles it back on.
         evaFlag = evaActive = false;
         zeroAllSlotValues();
+        resetResourcePresence();   // a different vessel carries different resources
+        resetHistory();
         // Request main screen redraw via flag — loop() will call drawStaticMain()
         // after simpit.update() returns, ensuring the screen is cleared before any
         // subsequent resource messages for the new vessel are drawn.

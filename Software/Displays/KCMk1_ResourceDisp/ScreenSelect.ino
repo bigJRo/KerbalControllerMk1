@@ -5,8 +5,19 @@
      Row 1 (TITLE_H):  "Select Resources" title (large) + slot count + BACK button
      Row 2 (PRESET_H): 6 preset group buttons across grid width, left of BACK
      Left panel (0..GRID_W-1):        5-column resource grid below header rows
-     Right panel (GRID_W+pad..W-1):   selection order list + CLEAR button
+     Right panel (GRID_W+pad..W-1):   selection order list + DFLT and CLEAR buttons
      All backgrounds pure black. Geometry derives from KCM_SCREEN_W/H.
+
+   The preset table itself lives in Resources.ino (PRESETS), shared with the default
+   layout logic. DFLT makes the current selection, with its reserve bugs, the layout
+   every vessel not in memory starts with; it is stored with the vessel memory. The
+   key lights when the selection already is the default. CLEAR then DFLT (an empty
+   set cannot be a default) drops the stored one, back to the SPCT preset.
+
+   CLEAR also forgets: leaving a vessel with an empty set removes it from memory (an
+   empty set is not a layout), and HOLDING CLEAR for MEM_CLEAR_HOLD_MS forgets every
+   vessel, with a countdown in the counter area and a release before the end
+   cancelling. The counter area also shows MEM n/20, how full the memory is.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -63,56 +74,24 @@ static const uint16_t CLEAR_Y = KCM_SCREEN_H - CLEAR_H - SEL_PAD;
 static const uint16_t CLEAR_X = PANEL_X;
 static const uint16_t CLEAR_W = PANEL_W;
 
+// DFLT button, above CLEAR. Cyan is the pilot-entry colour everywhere on the panel,
+// and this key stores a pilot entry. Lit (cyan fill) when the current selection is
+// the default already, so it also reads as a state.
+static const ButtonLabel btnDflt = {
+  "DFLT", TFT_CYAN, TFT_BLACK, TFT_OFF_BLACK, TFT_CYAN, TFT_CYAN, TFT_CYAN
+};
+static const uint16_t DFLT_H = 48;
+static const uint16_t DFLT_Y = CLEAR_Y - DFLT_H - SEL_PAD;
+static const uint16_t DFLT_X = PANEL_X;
+static const uint16_t DFLT_W = PANEL_W;
+
 // Preset group buttons (row 2, across GRID_W only — BACK occupies right side)
-static const uint8_t  PRESET_COUNT = 6;
 static const uint16_t PRESET_BTN_W = (BACK_X - SEL_PAD * (PRESET_COUNT + 1)) / PRESET_COUNT;
 static const uint16_t PRESET_BTN_H = PRESET_H - SEL_PAD * 2;
 static const uint16_t PRESET_Y        = TITLE_H + SEL_PAD;
 static const uint16_t PRESET_TOUCH_Y2 = TITLE_H + PRESET_H;  // bottom of preset touch zone
 // Touch zone starts at y=0 so the full column above each button also registers
 static const uint16_t PRESET_TOUCH_Y1 = 0;
-
-
-/***************************************************************************************
-   PRESET GROUP DEFINITIONS
-****************************************************************************************/
-struct PresetGroup {
-  const char*  label;
-  ResourceType types[MAX_SLOTS];
-  uint8_t      count;
-};
-
-static const PresetGroup PRESETS[PRESET_COUNT] = {
-  { "STD", {   // Standard Resource Group
-      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
-      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
-    }, 9 },
-  { "XPD", {   // Expedition Craft Resource Group
-      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
-      RES_LIQUID_H2, RES_ENRICHED_URANIUM, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
-    }, 9 },
-  { "VEH", {   // Vehicle Resource Group
-      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX,
-      RES_MONO_PROP, RES_SOLID_FUEL, RES_XENON, RES_ORE, RES_ABLATOR,
-      RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,
-      RES_ENRICHED_URANIUM, RES_DEPLETED_URANIUM, RES_FERTILIZER
-    }, 15 },
-  { "LSP", {   // Life Support Resource Group
-      RES_ELEC_CHARGE, RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD,
-      RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE, RES_FERTILIZER
-    }, 8 },
-  { "AIR", {   // Aircraft Resource Group
-      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_INTAKE_AIR,
-      RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
-    }, 8 },
-  { "ADV", {   // Advanced Resource Group
-      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_XENON, RES_ORE,
-      RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,
-      RES_ENRICHED_URANIUM, RES_DEPLETED_URANIUM,
-      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER,
-      RES_LS_CO2, RES_LS_WASTE, RES_LS_LIQUID_WASTE, RES_FERTILIZER
-    }, 16 },
-};
 
 
 /***************************************************************************************
@@ -131,10 +110,12 @@ static bool isSelected(ResourceType t) {
 ****************************************************************************************/
 static bool addResource(ResourceType t) {
   if (t == RES_EVA_PROP && !evaActive) return false;   // EVA fuel only exists on EVA
+  if (resAbsent(t)) return false;                       // the vessel does not carry it
   if (slotCount >= MAX_SLOTS) return false;
   slots[slotCount].type = t;
   initSlotValues(slots[slotCount]);   // 0 live / visible demo values
   slotCount++;
+  sortSlotsByGroup();   // keep the ORDER list showing what the Main screen will draw
   return true;
 }
 
@@ -143,9 +124,6 @@ static bool addResource(ResourceType t) {
    HELPER -- remove a resource from slots[], compact the array.
 ****************************************************************************************/
 static void removeResource(ResourceType t) {
-  // Enforce MIN_SLOTS floor — don't remove if already at the minimum.
-  // (CLEAR bypasses this intentionally by zeroing slotCount directly.)
-  if (slotCount <= MIN_SLOTS) return;
   for (uint8_t i = 0; i < slotCount; i++) {
     if (slots[i].type == t) {
       for (uint8_t j = i; j < slotCount - 1; j++) slots[j] = slots[j + 1];
@@ -166,12 +144,13 @@ static void loadPreset(uint8_t presetIndex) {
   slotCount = 0;
   const PresetGroup &pg = PRESETS[presetIndex];
   for (uint8_t i = 0; i < pg.count && slotCount < MAX_SLOTS; i++) {
+    if (resAbsent(pg.types[i])) continue;   // not aboard this vessel
     slots[slotCount].type = pg.types[i];
     initSlotValues(slots[slotCount]);
     slotCount++;
   }
-  // In live mode, request a Simpit refresh so the new slots populate immediately
-  if (!demoMode) simpit.requestMessageOnChannel(0);
+  sortSlotsByGroup();
+  requestResourceRefresh();
 }
 
 
@@ -198,8 +177,9 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
   btn.text               = resFullName(t);
 
   // On EVA the selection is locked to the EVA bar set — every other resource is
-  // drawn dimmed and inert (tap handler ignores it).
-  if (evaActive && !isEvaResource(t)) {
+  // drawn dimmed and inert (tap handler ignores it). A resource the vessel is known
+  // not to carry is drawn the same way: there is nothing to show for it.
+  if ((evaActive && !isEvaResource(t)) || resAbsent(t)) {
     btn.fontColorOff = btn.fontColorOn = TFT_DARK_GREY;
     btn.backgroundColorOff = btn.backgroundColorOn = TFT_OFF_BLACK;
     btn.borderColorOff = btn.borderColorOn = TFT_DARK_GREY;
@@ -219,20 +199,45 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
 
 
 /***************************************************************************************
-   DRAW SLOT COUNT -- small text in title row, left side
+   DRAW SLOT COUNT -- small text in title row, right of centre
+   "MEM n/20" (how many vessels are remembered, dark grey) then the slot count. Also
+   the screen's one-line feedback: for SEL_FLASH_MS it carries a note beside the
+   count. A tap the limit refuses (adding at MAX_SLOTS) flashes MAX in yellow, so the
+   pilot sees why the grid did not respond; DFLT flashes DFLT SET or DFLT CLR in cyan;
+   a CLEAR hold counts down MEM CLR 3, 2, 1 in orange and ends on MEMORY CLR.
 ****************************************************************************************/
-static void drawSlotCount(KCM_TFT &tft) {
-  char countStr[20];
-  snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
-  int16_t cw = getFontStringWidth(&Roboto_Black_16, countStr);
+static const uint32_t SEL_FLASH_MS = 700;
+static uint32_t _selFlashUntil = 0;   // millis() at which the flash reverts; 0 = idle
+static int8_t   _holdShown     = -1;  // CLEAR-hold countdown value on screen; -1 = none
+
+static void drawSlotCount(KCM_TFT &tft, const char *note, uint16_t noteColor) {
+  char memStr[16], countStr[32];
+  snprintf(memStr, sizeof(memStr), "MEM %d/%d", persistVesselCount(), VESSEL_CACHE_SIZE);
+  if (note) snprintf(countStr, sizeof(countStr), "%d / %d  %s", slotCount, MAX_SLOTS, note);
+  else      snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
+  int16_t gap = getFontStringWidth(&Roboto_Black_16, "    ");
+  int16_t mw  = getFontStringWidth(&Roboto_Black_16, memStr);
+  int16_t cw  = getFontStringWidth(&Roboto_Black_16, countStr);
   uint16_t cx = BACK_X - cw - SEL_PAD * 2;
   uint16_t cy = (TITLE_H - 20) / 2;  // vertically centred in title row (font height ~20px)
-  tft.fillRect(cx - 2, 0, cw + 4, TITLE_H, TFT_BLACK);
+  // Clear the widest strings this cell can hold so a shorter one leaves no ghost.
+  int16_t maxW = getFontStringWidth(&Roboto_Black_16, "MEM 20/20    16 / 16  MEMORY CLR");
+  tft.fillRect(BACK_X - maxW - SEL_PAD * 2 - 2, 0, maxW + 4, TITLE_H, TFT_BLACK);
   tft.setFont(Roboto_Black_16);
-  tft.setTextColor(TFT_GREY, TFT_BLACK);
+  tft.setTextColor(TFT_DARK_GREY, TFT_BLACK);
+  tft.setCursor(cx - gap - mw, cy);
+  tft.print(memStr);
+  tft.setTextColor(note ? noteColor : TFT_GREY, TFT_BLACK);
   tft.setCursor(cx, cy);
   tft.print(countStr);
 }
+
+static void flashNote(KCM_TFT &tft, const char *note, uint16_t color) {
+  _selFlashUntil = millis() + SEL_FLASH_MS;
+  drawSlotCount(tft, note, color);
+}
+
+static void flashSlotLimit(KCM_TFT &tft) { flashNote(tft, "MAX", TFT_YELLOW); }
 
 
 /***************************************************************************************
@@ -260,7 +265,7 @@ static void drawPresetButtons(KCM_TFT &tft) {
    DRAW ORDER PANEL -- right-side list showing selection order
 ****************************************************************************************/
 static void drawOrderPanel(KCM_TFT &tft) {
-  uint16_t listH = CLEAR_Y - TOP_H - SEL_PAD * 2;
+  uint16_t listH = DFLT_Y - TOP_H - SEL_PAD * 2;
   tft.fillRect(PANEL_X, TOP_H, PANEL_W, listH + SEL_PAD, TFT_BLACK);
 
   tft.setFont(Roboto_Black_12);
@@ -270,7 +275,7 @@ static void drawOrderPanel(KCM_TFT &tft) {
 
   uint16_t labelH = 18;
   uint16_t listY  = TOP_H + labelH + SEL_PAD;
-  uint16_t availH = CLEAR_Y - listY - SEL_PAD;
+  uint16_t availH = DFLT_Y - listY - SEL_PAD;
   uint16_t rowH   = availH / MAX_SLOTS;
 
   for (uint8_t i = 0; i < MAX_SLOTS; i++) {
@@ -287,7 +292,9 @@ static void drawOrderPanel(KCM_TFT &tft) {
     tft.print(numStr);
 
     if (filled) {
-      uint16_t col = resColor(slots[i].type);
+      // A selected resource the vessel does not carry keeps its place in the list
+      // but shows dimmed: it draws no meter until the vessel has some.
+      uint16_t col = resAbsent(slots[i].type) ? TFT_DARK_GREY : resColor(slots[i].type);
       tft.fillRect(PANEL_X + 22, ry + 1, PANEL_W - 24, rowH - 3, col);
       tft.setTextColor(TFT_BLACK, col);
       tft.setCursor(PANEL_X + 25, ry + (rowH - 12) / 2);
@@ -295,6 +302,7 @@ static void drawOrderPanel(KCM_TFT &tft) {
     }
   }
 
+  drawButton(tft, DFLT_X,  DFLT_Y,  DFLT_W,  DFLT_H,  btnDflt,  &Roboto_Black_16, layoutIsDefault());
   drawButton(tft, CLEAR_X, CLEAR_Y, CLEAR_W, CLEAR_H, btnClear, &Roboto_Black_16, false);
 }
 
@@ -312,7 +320,9 @@ void drawStaticSelect(KCM_TFT &tft) {
   tft.print("Select Resources");
 
   // Slot count — same line, right-aligned before BACK
-  drawSlotCount(tft);
+  _selFlashUntil = 0;
+  _holdShown     = -1;
+  drawSlotCount(tft, nullptr, TFT_GREY);
 
   // BACK button — tall, spans both rows
   drawButton(tft, BACK_X, BACK_Y, BACK_W, BACK_H, btnBack, &Roboto_Black_20, false);
@@ -337,7 +347,50 @@ void drawStaticSelect(KCM_TFT &tft) {
    UPDATE PASS
 ****************************************************************************************/
 void updateScreenSelect(KCM_TFT &tft) {
-  // No per-frame updates on select screen — all changes are touch-driven redraws.
+  // The only per-frame work is reverting a limit flash once it has been seen.
+  if (_selFlashUntil != 0 && (int32_t)(millis() - _selFlashUntil) >= 0) {
+    _selFlashUntil = 0;
+    drawSlotCount(tft, nullptr, TFT_GREY);
+  }
+}
+
+
+/***************************************************************************************
+   CLEAR HOLD -- forget every vessel
+   TouchEvents arms this on a touch-down that selectHoldTarget() accepts and then calls
+   selectHoldProgress() every pass while the finger stays down, selectHoldFire() when
+   the hold matures, selectHoldCancel() if it lifts first. The countdown is the
+   seconds left, redrawn only when it changes; the tap's own action (clearing the
+   selection) has already happened on touch-down.
+****************************************************************************************/
+bool selectHoldTarget(uint16_t x, uint16_t y) {
+  if (evaActive) return false;   // CLEAR is inert on EVA, so its hold is too
+  return x >= CLEAR_X && x < CLEAR_X + CLEAR_W && y >= CLEAR_Y && y < CLEAR_Y + CLEAR_H;
+}
+
+void selectHoldProgress(uint32_t heldMs) {
+  int8_t left = (int8_t)((MEM_CLEAR_HOLD_MS - heldMs + 999) / 1000);
+  if (left < 1) left = 1;
+  if (left == _holdShown) return;
+  _holdShown = left;
+  char note[12];
+  snprintf(note, sizeof(note), "MEM CLR %d", left);
+  _selFlashUntil = 0;   // a countdown is not a flash; it stays until cancel or fire
+  drawSlotCount(infoDisp, note, TFT_ORANGE);
+}
+
+void selectHoldFire() {
+  _holdShown = -1;
+  clearVesselCache();
+  persistStoreNow();
+  if (debugMode) Serial.println(F("ResourceDisp: CLEAR held -> vessel memory cleared"));
+  flashNote(infoDisp, "MEMORY CLR", TFT_ORANGE);
+}
+
+void selectHoldCancel() {
+  if (_holdShown < 0) return;
+  _holdShown = -1;
+  drawSlotCount(infoDisp, nullptr, TFT_GREY);
 }
 
 
@@ -360,6 +413,20 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
     for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
     slotCount = 0;
     drawStaticSelect(infoDisp);
+    return true;
+  }
+
+  // DFLT button: the current selection becomes the default for vessels not in
+  // memory; an empty selection drops the stored default instead. Written to EEPROM
+  // at once, since this is a deliberate act and a hitch here is invisible.
+  if (x >= DFLT_X && x < DFLT_X + DFLT_W && y >= DFLT_Y && y < DFLT_Y + DFLT_H) {
+    if (slotCount == 0) clearDefaultLayout();
+    else                setDefaultLayout();
+    persistStoreNow();
+    drawButton(infoDisp, DFLT_X, DFLT_Y, DFLT_W, DFLT_H, btnDflt, &Roboto_Black_16, layoutIsDefault());
+    flashNote(infoDisp, slotCount == 0 ? "DFLT CLR" : "DFLT SET", TFT_CYAN);
+    if (debugMode) Serial.println(slotCount == 0 ? F("ResourceDisp: default layout cleared (SPCT)")
+                                                 : F("ResourceDisp: default layout set"));
     return true;
   }
 
@@ -388,21 +455,25 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
         ResourceType t = resTypeByIndex(i);
         if (t == RES_NONE) return false;
         if (t == RES_EVA_PROP) return false;   // EVA Propellant only exists on EVA (grid locked then)
+        if (resAbsent(t)) return false;        // inert: the vessel does not carry it
 
         bool wasSelected = isSelected(t);
         if (wasSelected) {
           removeResource(t);
         } else {
-          if (!addResource(t)) return false;
-          // In live mode, request refresh so the new slot populates immediately
-          if (!demoMode) simpit.requestMessageOnChannel(0);
+          if (!addResource(t)) {
+            if (slotCount >= MAX_SLOTS) flashSlotLimit(infoDisp);
+            return false;
+          }
+          requestResourceRefresh();   // so the new slot populates immediately
         }
 
         // Redraw this button only
         drawSelectButton(infoDisp, i, !wasSelected);
 
         // Refresh slot count in title row
-        drawSlotCount(infoDisp);
+        _selFlashUntil = 0;
+        drawSlotCount(infoDisp, nullptr, TFT_GREY);
 
         // Refresh order panel (preset buttons untouched)
         drawOrderPanel(infoDisp);

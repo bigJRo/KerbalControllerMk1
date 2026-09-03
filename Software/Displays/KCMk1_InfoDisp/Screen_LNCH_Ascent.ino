@@ -271,12 +271,8 @@ static int16_t _lnchAsPrevVVrtFillPx = 0;        // last V.Vrt bar fill height (
 static int16_t _lnchAsPrevVOrbFillPx = 0;        // last V.Orb bar fill height (unsigned, pixels from bottom)
 static float   _lnchAsLastDrawnScaleTop = 0.0f;  // scale top last rendered on screen
 static float   _lnchAsCurrScaleTop      = 0.0f;  // current (grow-only) scale top target (m)
-static bool    _lnchAsPrevVRow3IsOrb    = false; // row 3: true = "V.Orb" label, false = "V.Srf"
 
-// FPA dial state. Arrow tracked by its endpoint pixel so it can be erased
-// cleanly on change. Sentinel -9999 = "arrow not yet drawn" (first frame).
-static int16_t _lnchAsPrevFpaArrowEndX = -9999;
-static int16_t _lnchAsPrevFpaArrowEndY = -9999;
+// FPA dial state.
 static int16_t _lnchAsPrevFpaReadout   = -9999;  // last FPA value shown (integer degrees)
 static int16_t _lnchAsPrevFpaTarget    = -9999;  // last target FPA marker position (integer degrees)
 
@@ -304,7 +300,7 @@ static int8_t  _lnchAsPrevStageActive = -1;
 // prior values (including when string width or background colour changes).
 //
 // Each row is a full-width cell in the right panel; the label is drawn on the
-// left and the value is right-aligned. Labels are short ("V.Srf:", "ΔV.Stg:")
+// left and the value is right-aligned. Labels are short ("V.SRF", "ΔV.STG")
 // and don't carry units since the unit ("m/s") is implicit from KSP convention.
 
 static PrintState _lnchAsPs[LNCH_AS2_NROWS];   // PrintState tracking, one per readout row
@@ -1605,7 +1601,7 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
 // Ascent/Circ velocity readouts use the shared fmtMs() (thousands-separated at
 // >=1000, 1 decimal below) for cross-screen consistency. fmtMs is never wider
 // than the old 1-decimal form here (it drops the decimal and adds a comma at
-// >=1000), so it stays within the tight ~140 px value region for "ΔV.Stg:".
+// >=1000), so it stays within the tight ~140 px value region for "ΔV.STG".
 
 // Reset all ascent-phase change-detection state + PrintState. Called at chrome
 // time to force a full redraw.
@@ -1646,9 +1642,6 @@ static void _lnchAsResetState() {
     _lnchAsPrevVOrbFillPx     = 0;
     _lnchAsCurrScaleTop       = 0.0f;  // forces grow-from-zero on next query
     _lnchAsLastDrawnScaleTop  = 0.0f;
-    _lnchAsPrevVRow3IsOrb     = false; // chrome draws V.Srf initially — match that
-    _lnchAsPrevFpaArrowEndX   = -9999;
-    _lnchAsPrevFpaArrowEndY   = -9999;
     _lnchAsPrevFpaReadout     = -9999;
     _lnchAsPrevFpaTarget      = -9999;
     _lnchAsPrevAtmoTriY       = -1;
@@ -1666,7 +1659,7 @@ static void _lnchAsResetState() {
 // stage, not a countdown of any particular burn. The old label read like a time-to.
 // The circularisation phase uses the same name for the same field.
 static const char *_lnchAsLabels[LNCH_AS2_NROWS] = {
-    "T+Ap:", "Thrtl:", "Q:", "Mach:", "G:", "Stg.Brn:", "\xCE\x94V.Stg:"
+    "T+AP", "THRTL", "Q", "MACH", "G", "STG.BRN", "\xCE\x94V.STG"
 };
 
 // Draw static chrome for the ascent-phase right panel: a border separating

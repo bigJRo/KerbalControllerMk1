@@ -460,25 +460,25 @@ void chromeScreen_NAV(KCM_TFT &tft) {
 
   // Column labels.
   textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
-             "TRK", TFT_WHITE, TFT_BLACK);
+             "TRK", KDC_LABEL_COLOR, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
-             "DRIFT", TFT_WHITE, TFT_BLACK);
+             "DRIFT", KDC_LABEL_COLOR, TFT_BLACK);
   // BRG completes the set: every marker on the card has a number. The nose is HDG in the
   // box above it, the green marker is TRK, the violet one is BRG. Column headings are all
-  // white, like every other heading on the panel -- the legend in the corner is what ties
-  // a name to a marker colour, so the headings do not have to carry it too.
+  // the panel-wide label grey -- the legend in the corner is what ties a name to a marker
+  // colour, so the headings do not have to carry it too.
   textCenter(tft, &Roboto_Black_24, NAV_LCOL_X, NAV_COL_Y + 2 * NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
-             "BRG", TFT_WHITE, TFT_BLACK);
+             "BRG", KDC_LABEL_COLOR, TFT_BLACK);
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y, NAV_COL_W, NAV_LBL_H,
-             "DIST", TFT_WHITE, TFT_BLACK);
+             "DIST", KDC_LABEL_COLOR, TFT_BLACK);
   // V.CLOSE, not V.CLS: this screen's column heads are all-caps, but the token itself is
   // the one SPACECRAFT, DOCKING and TARGET already use for closure rate. Case is a
   // layout choice; a different abbreviation would be a second name.
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
-             "V.CLOSE", TFT_WHITE, TFT_BLACK);
+             "V.CLOSE", KDC_LABEL_COLOR, TFT_BLACK);
   // Third block completes the target group: how far, how fast, how long.
   textCenter(tft, &Roboto_Black_24, NAV_RCOL_X, NAV_COL_Y + 2 * NAV_BLOCK_H, NAV_COL_W, NAV_LBL_H,
-             "T+INT", TFT_WHITE, TFT_BLACK);
+             "T+INT", KDC_LABEL_COLOR, TFT_BLACK);
 
   // Marker legend, under the left column.
   _navKeyRow(tft, NAV_KEY_Y,              TFT_NEON_GREEN, "TRK  GND TRACK");
@@ -617,7 +617,8 @@ void drawScreen_NAV(KCM_TFT &tft) {
 
   // ── V.CLS — closure rate, negative closing (same sign convention as TGT/DOCK) ──────
   {
-    int16_t c = hasTgt ? (int16_t)lroundf(state.tgtVelocity) : -9999;
+    // Keyed on tenths, which is what fmtMs prints; a whole-metre key froze the decimal.
+    int16_t c = hasTgt ? (int16_t)lroundf(state.tgtVelocity * 10.0f) : -9999;
     if (c != _navPrevClose) {
       _navPrevClose = c;
       tft.fillRect(NAV_RCOL_X, NAV_COL_Y + NAV_BLOCK_H + NAV_LBL_H,

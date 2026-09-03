@@ -100,7 +100,7 @@ static const char *const MNVR_RING_LBL[4] = { "5", "10", "15", "20" };
 static const ReticleGeom MNVR_GEOM = {
     (int16_t)MNVR_CX, (int16_t)MNVR_CY, (int16_t)MNVR_R, MNVR_SCALE,
     MNVR_MRK_DS, MNVR_MRK_DS, MNVR_ERASE_R,
-    MNVR_MRK_DS + 2,                // clampMargin — was MNVR_R - MNVR_MRK_DS - 2
+    MNVR_MRK_DS + 2,                // clampMargin
     MNVR_RING_LBL, &Roboto_Black_16
 };
 
@@ -110,6 +110,7 @@ static int16_t _mnvrPrevMrkX    = 9999, _mnvrPrevMrkY = 9999;
 static bool    _mnvrPrevAligned = false;
 static bool    _mnvrPrevPinned  = false;   // marker clamped at the scope boundary
 static float   _mnvrPrevDV      = -999.0f;   // ΔV-bar dedup; reset in chrome on re-entry
+static uint16_t _mnvrPrevBarCol = 0;         // and its colour, which stage ΔV also drives
 
 
 // ── Draw reticle chrome ───────────────────────────────────────────────────────────────
@@ -164,18 +165,18 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
     uint16_t X  = MNVR_RP_X;
     uint16_t W  = MNVR_RP_W;
 
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(0,NR), W, rowHFor(NR), "\xCE\x94V.Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(1,NR), W, rowHFor(NR), "\xCE\x94V.Plan:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(2,NR), W, rowHFor(NR), "\xCE\x94V.Stg:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(0,NR), W, rowHFor(NR), "\xCE\x94V.MNVR",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(1,NR), W, rowHFor(NR), "\xCE\x94V.PLAN",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(2,NR), W, rowHFor(NR), "\xCE\x94V.STG",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider: ΔV block / timing block
     { uint16_t dy = rowYFor(3,NR) - 1;
       tft.drawLine(X, dy,   X+W, dy,   TFT_GREY);
       tft.drawLine(X, dy+1, X+W, dy+1, TFT_GREY); }
 
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(3,NR), W, rowHFor(NR), "T+Ign:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(4,NR), W, rowHFor(NR), "T+Mnvr:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(5,NR), W, rowHFor(NR), "Burn Dur:",COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(3,NR), W, rowHFor(NR), "T+IGN",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(4,NR), W, rowHFor(NR), "T+MNVR",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, MNVR_RP_LBL, X, rowYFor(5,NR), W, rowHFor(NR), "BURN DUR",COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider: timing block / alignment block
     { uint16_t dy = rowYFor(6,NR) - 1;
@@ -185,8 +186,8 @@ static void _mnvrDrawRightChrome(KCM_TFT &tft) {
     // Row 6: Nos.Brg | Nos.Elv split
     {
         uint16_t y = rowYFor(6,NR), h = rowHFor(NR), hw = W / 2;
-        printDispChrome(tft, MNVR_RP_LBL, X,      y, hw - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, MNVR_RP_LBL, X + hw, y, hw - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, MNVR_RP_LBL, X,      y, hw - ROW_PAD, h, "BRG", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, MNVR_RP_LBL, X + hw, y, hw - ROW_PAD, h, "ELV", COL_LABEL, COL_BACK, COL_NO_BDR);
         tft.drawLine(X + hw,     y, X + hw,     y + h - 1, TFT_GREY);
         tft.drawLine(X + hw + 1, y, X + hw + 1, y + h - 1, TFT_GREY);
     }
@@ -266,12 +267,14 @@ static void _mnvrDrawDVBar(KCM_TFT &tft, float dvNode, float dvStage) {
     static const uint16_t barY = MNVR_CY + MNVR_R + 42;
     static const uint16_t lblY = barY - 34;
 
-    if (fabsf(dvNode - _mnvrPrevDV) < 1.0f) return;
-    _mnvrPrevDV = dvNode;
-
     float    maxDV    = fmaxf(dvStage, dvNode);
     bool     tight    = (dvStage < dvNode * MNVR_DV_MARGIN);
     uint16_t barCol   = tight ? TFT_YELLOW : TFT_DARK_GREEN;
+    // The colour depends on stage ΔV as well as the node's, so a staging event with an
+    // unchanged node has to repaint too, or the bar and the ΔV.STG row disagree.
+    if (fabsf(dvNode - _mnvrPrevDV) < 1.0f && barCol == _mnvrPrevBarCol) return;
+    _mnvrPrevDV     = dvNode;
+    _mnvrPrevBarCol = barCol;
     float    fraction = (maxDV > 0.0f) ? fminf(dvNode / maxDV, 1.0f) : 0.0f;
     uint16_t fillW    = (uint16_t)(fraction * (MNVR_BAR_W - 2));
 
@@ -309,13 +312,13 @@ void chromeScreen_MNVR(KCM_TFT &tft) {
     _mnvrPrevAligned = false;
     _mnvrPrevPinned  = false;
     _mnvrPrevDV      = -999.0f;   // force ΔV bar + value to repaint on screen entry
+    _mnvrPrevBarCol = 0;
 
     tft.fillRect(0, TITLE_TOP, MNVR_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
     _mnvrDrawReticleChrome(tft);
     _mnvrDrawRightChrome(tft);
 
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[MNVR_SC][r].value = "\x01";
-    for (uint8_t r = 0; r < ROW_COUNT; r++) printState[MNVR_SC][r] = PrintState{};
+    for (uint8_t r = 0; r < ROW_COUNT; r++) printState[MNVR_SC][r] = PrintState{};   // row cache: drawStaticScreen()
 }
 
 
@@ -369,26 +372,25 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     };
 
     // Row 0 — ΔV.Mnvr
-    mnvrVal(0, 0, "\xCE\x94V.Mnvr:", fmtMs(state.mnvrDeltaV), TFT_DARK_GREEN, TFT_BLACK);
+    mnvrVal(0, 0, "\xCE\x94V.MNVR", fmtMs(state.mnvrDeltaV), TFT_DARK_GREEN, TFT_BLACK);
 
     // Row 1 — ΔV.Plan (total ΔV across all planned nodes; distinct from vessel total)
-    mnvrVal(1, 1, "\xCE\x94V.Plan:", fmtMs(state.mnvrTotalDeltaV), TFT_DARK_GREEN, TFT_BLACK);
+    mnvrVal(1, 1, "\xCE\x94V.PLAN", fmtMs(state.mnvrTotalDeltaV), TFT_DARK_GREEN, TFT_BLACK);
 
     // Row 2 — ΔV.Stg (yellow if stage ΔV is tight relative to node)
     {
         bool tight = (state.stageDeltaV < state.mnvrDeltaV * MNVR_DV_MARGIN);
-        mnvrVal(2, 2, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV),
+        mnvrVal(2, 2, "\xCE\x94V.STG", fmtMs(state.stageDeltaV),
                 tight ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 3 — T+Ign (time to ignition = node time minus half burn duration)
     {
-        if      (tIgn < 0.0f)              { fg = TFT_WHITE;      bg = TFT_RED;   }
-        else if (tIgn < MNVR_TIGN_ALARM_S) { fg = TFT_WHITE;      bg = TFT_RED;   }
+        if      (tIgn < MNVR_TIGN_ALARM_S) { fg = TFT_WHITE;      bg = TFT_RED;   }   // includes a burn already due
         else if (tIgn < MNVR_TIGN_WARN_S)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         String val = (state.mnvrDeltaV > 0.0f) ? formatTimeCompact((int64_t)tIgn) : "---";
-        mnvrVal(3, 3, "T+Ign:", val, fg, bg);
+        mnvrVal(3, 3, "T+IGN", val, fg, bg);
     }
 
     // Row 4 — T+Mnvr (time to the node itself; yellow once burn should have started)
@@ -397,13 +399,13 @@ void drawScreen_MNVR(KCM_TFT &tft) {
         else if (state.mnvrTime < state.mnvrDuration * 0.5f) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                                   { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         String val = (state.mnvrDeltaV > 0.0f) ? formatTimeCompact((int64_t)state.mnvrTime) : "---";
-        mnvrVal(4, 4, "T+Mnvr:", val, fg, bg);
+        mnvrVal(4, 4, "T+MNVR", val, fg, bg);
     }
 
     // Row 5 — Burn dur
     {
         String val = (state.mnvrDuration > 0.0f) ? formatTimeCompact((int64_t)state.mnvrDuration) : "---";
-        mnvrVal(5, 5, "Burn Dur:", val, TFT_DARK_GREEN, TFT_BLACK);
+        mnvrVal(5, 5, "BURN DUR", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 6 — Nos.Brg | Nos.Elv split
@@ -419,7 +421,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
             String sv = buf;
             if (rc.value != sv || rc.fg != fg || rc.bg != bg) {
                 printValue(tft, MNVR_RP_F, X,      y6, hw - ROW_PAD, h6,
-                           "Brg:", sv, fg, bg, COL_BACK, printState[MNVR_SC][6]);
+                           "BRG", sv, fg, bg, COL_BACK, printState[MNVR_SC][6]);
                 rc.value = sv; rc.fg = fg; rc.bg = bg;
             }
         }
@@ -431,7 +433,7 @@ void drawScreen_MNVR(KCM_TFT &tft) {
             String sv = buf;
             if (rc.value != sv || rc.fg != fg || rc.bg != bg) {
                 printValue(tft, MNVR_RP_F, X + hw, y6, hw - ROW_PAD, h6,
-                           "Elv:", sv, fg, bg, COL_BACK, printState[MNVR_SC][7]);
+                           "ELV", sv, fg, bg, COL_BACK, printState[MNVR_SC][7]);
                 rc.value = sv; rc.fg = fg; rc.bg = bg;
             }
         }

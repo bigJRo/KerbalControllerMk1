@@ -1,8 +1,9 @@
 /***************************************************************************************
    Screen_LNDG_Powered.ino -- Powered descent (one of two modes of the LNDG screen).
 
-   Active when _lndgReentryMode is FALSE (default). Pilot can toggle to re-entry
-   mode via tap (handled in TouchEvents.ino).
+   Active when _lndgReentryMode is FALSE: POWERED DESCENT and RE-ENTRY are sibling
+   sidebar screens (a repeat press on the LNDG key cycles them), and the flag is
+   derived from the active screen in AAA_Screens.ino.
 
    LAYOUT (rev-2 rebalance — graphics fill x=0..578, text panel x=580..940):
      - Altitude tape (x=0..70, full height)     — vertical 0-500m / 0-50m altitude scale
@@ -13,7 +14,7 @@
 
    Phase membership (LNDG screen has two modes):
      - POWERED DESCENT (this file)             — default
-     - RE-ENTRY (Screen_LNDG_Reentry.ino)     — pilot toggle
+     - RE-ENTRY (Screen_LNDG_Reentry.ino)     — its own sidebar screen (LNDG key cycle)
 
    Top-level dispatcher Screen_LNDG.ino selects which to draw based on
    _lndgReentryMode.
@@ -22,6 +23,8 @@
      - _lndgChromePowered(tft) — initial chrome (tape, XP, ATT, V.Vrt, panel labels)
      - _lndgDrawPowered(tft)   — per-frame value updates
 ****************************************************************************************/
+
+static const uint8_t LNDG_SC = (uint8_t)screen_LNDG;   // row-cache / print-state index
 
 /***************************************************************************************
    LAYOUT CONSTANTS
@@ -186,7 +189,7 @@ static void _lndgDrawTapeChrome(KCM_TFT &tft, bool lowAlt) {
     tft.setFont(Roboto_Black_12);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
     uint16_t labelStep  = lowAlt ? 5  : 50;
-    uint16_t labelStart = lowAlt ? 0  : 0;    // include 0m (clamped to bottom)
+    uint16_t labelStart = 0;                  // include 0m (clamped to bottom)
     uint16_t labelEnd   = lowAlt ? 50 : 500;  // include 50m/500m (clamped to top)
     for (uint16_t m = labelStart; m <= labelEnd; m += labelStep) {
         char buf[5];  snprintf(buf, sizeof(buf), "%u", m);
@@ -636,9 +639,9 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;                   // 180px — half width for split rows
 
-        printDispChrome(tft, RCF, RX, rowYFor(0,RNR), RW,  rowHFor(RNR), "V.Vrt:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T+Grnd:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RCF, RX, rowYFor(2,RNR), RW,  rowHFor(RNR), "Alt.Rdr:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(0,RNR), RW,  rowHFor(RNR), "V.VRT",   COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(1,RNR), RW,  rowHFor(RNR), "T+GRND",  COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(2,RNR), RW,  rowHFor(RNR), "ALT.RDR", COL_LABEL, COL_BACK, COL_NO_BDR);
         // Stg.Brn, not V.Srf. V.Srf carried no information on this screen: the panel
         // already shows V.Vrt, and Fwd and Lat are the two components of the horizontal
         // speed, which is itself sqrt(V.Srf^2 - V.Vrt^2) -- so V.Srf was fully determined
@@ -646,18 +649,18 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         // Seconds of thrust left is the number a powered descent actually turns on, it
         // has no picture on either panel, and it is the same field and label ASCENT and
         // CIRCULARISATION already use.
-        printDispChrome(tft, RCF, RX, rowYFor(3,RNR), RW,  rowHFor(RNR), "Stg.Brn:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(3,RNR), RW,  rowHFor(RNR), "STG.BRN", COL_LABEL, COL_BACK, COL_NO_BDR);
 
         // Row 4: Fwd | Lat split
         {
             uint16_t y = rowYFor(4, RNR), h = rowHFor(RNR);
-            printDispChrome(tft, RCFS, RX,        y, RHW - ROW_PAD, h, "Fwd:", COL_LABEL, COL_BACK, COL_NO_BDR);
-            printDispChrome(tft, RCFS, RX + RHW,  y, RHW - ROW_PAD, h, "Lat:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX,        y, RHW - ROW_PAD, h, "FWD", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX + RHW,  y, RHW - ROW_PAD, h, "LAT", COL_LABEL, COL_BACK, COL_NO_BDR);
             tft.drawLine(RX + RHW,     y, RX + RHW,     rowYFor(5,RNR) - 1, TFT_GREY);
             tft.drawLine(RX + RHW + 1, y, RX + RHW + 1, rowYFor(5,RNR) - 1, TFT_GREY);
         }
 
-        printDispChrome(tft, RCF, RX, rowYFor(5,RNR), RW, rowHFor(RNR), "\xCE\x94V.Stg:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RCF, RX, rowYFor(5,RNR), RW, rowHFor(RNR), "\xCE\x94V.STG", COL_LABEL, COL_BACK, COL_NO_BDR);
 
         // Divider before VEH section
         uint16_t divY = rowYFor(6, RNR) - 1;
@@ -675,7 +678,7 @@ static void _lndgChromePowered(KCM_TFT &tft) {
         // Row 6: Throttle | RCS split — throttle keeps label, RCS is a button
         {
             uint16_t y = rowYFor(6, RNR), h = rowHFor(RNR);
-            printDispChrome(tft, RCFS, RX, y, RHW - ROW_PAD, h, "Thrtl:", COL_LABEL, COL_BACK, COL_NO_BDR);
+            printDispChrome(tft, RCFS, RX, y, RHW - ROW_PAD, h, "THRTL", COL_LABEL, COL_BACK, COL_NO_BDR);
             tft.drawLine(RX + RHW,     y, RX + RHW,     rowYFor(7,RNR) - 1, TFT_GREY);
             tft.drawLine(RX + RHW + 1, y, RX + RHW + 1, rowYFor(7,RNR) - 1, TFT_GREY);
         }
@@ -716,8 +719,7 @@ static void _lndgChromePowered(KCM_TFT &tft) {
     _lndgPrevVV     = -9999.0f;
     // _lndgLowAltMode is set at the top of this function (before the tape chrome
     // is painted) so the initial background matches the per-frame strip regime.
-    // Clear right panel row caches so values redraw on first update
-    for (uint8_t r = 0; r <= 14; r++) rowCache[6][r].value = "\x01";
+    // (The right-panel row cache is invalidated by drawStaticScreen() after this chrome.)
 }
 
 /***************************************************************************************
@@ -931,18 +933,9 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         static const uint8_t  RNR = 8;
         static const uint16_t RHW = RW / 2;
 
-        // Reuse the frame's time-to-ground (computed once at the top of this
-        // function) so the panel value and the X-Pointer colour stay consistent
+        // The frame's time-to-ground and drift components (computed once at the top
+        // of this function) are reused, so the panel values and the X-Pointer agree
         // and the shared accel filter is advanced only once per frame.
-        float  vSq2     = state.surfaceVel * state.surfaceVel - state.verticalVel * state.verticalVel;
-        float  hSpd2    = (vSq2 > 0.0f) ? sqrtf(vSq2) : 0.0f;
-        float  headRad2 = (state.heading + state.roll) * DEG_TO_RAD;
-        float  svelRad2 = state.srfVelHeading * DEG_TO_RAD;
-        float  dHR2     = svelRad2 - headRad2;
-        float  vFwd2    = -hSpd2 * cosf(dHR2);
-        float  vLat2    = -hSpd2 * sinf(dHR2);
-        if (fabsf(vFwd2) < 0.05f) vFwd2 = 0.0f;
-        if (fabsf(vLat2) < 0.05f) vLat2 = 0.0f;
 
         uint16_t fg, bg;
         char buf[16];
@@ -950,7 +943,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
         // Helper: draw a right-panel value with row-cache
         auto rpVal = [&](uint8_t row, const char *label, const String &val,
                          uint16_t fgc, uint16_t bgc, uint8_t cacheIdx) {
-            drawPanelValue(tft, 6, cacheIdx, row, RX, RW, label, val, fgc, bgc, RF, RNR, false);
+            drawPanelValue(tft, LNDG_SC, cacheIdx, row, RX, RW, label, val, fgc, bgc, RF, RNR, false);
         };
 
         // Row 0: V.Vrt
@@ -958,14 +951,14 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             fg = (state.verticalVel < LNDG_VVRT_ALARM_MS) ? TFT_WHITE  :
                  (state.verticalVel < LNDG_VVRT_WARN_MS)  ? TFT_YELLOW : TFT_DARK_GREEN;
             bg = (state.verticalVel < LNDG_VVRT_ALARM_MS) ? TFT_RED    : TFT_BLACK;
-            rpVal(0, "V.Vrt:", fmtMs(state.verticalVel), fg, bg, 0);
+            rpVal(0, "V.VRT", fmtMs(state.verticalVel), fg, bg, 0);
         }
 
         // Row 1: T.Grnd — colours via the shared hysteresis helper (anti-flicker)
         {
             lndgTGroundColors(tGround, fg, bg);
-            if (tGround >= 0.0f) rpVal(1, "T+Grnd:", formatTimeCompact(tGround), fg, bg, 1);
-            else                 rpVal(1, "T+Grnd:", "---", fg, bg, 1);
+            if (tGround >= 0.0f) rpVal(1, "T+GRND", formatTimeCompact(tGround), fg, bg, 1);
+            else                 rpVal(1, "T+GRND", "---", fg, bg, 1);
         }
 
         // Row 2: Alt.Rdr
@@ -973,7 +966,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
                  (state.radarAlt < LNDG_ALT_RDR_WARN_M) ? TFT_YELLOW : TFT_DARK_GREEN;
             bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
-            rpVal(2, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg, 2);
+            rpVal(2, "ALT.RDR", formatAlt(state.radarAlt), fg, bg, 2);
         }
 
         // Row 3: Stg.Brn — same thresholds as ASCENT's, so a burn-time warning means
@@ -984,34 +977,34 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                            LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                            LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
-            rpVal(3, "Stg.Brn:", formatTimeCompact(state.stageBurnTime), sfg, sbg, 3);
+            rpVal(3, "STG.BRN", formatTimeCompact(state.stageBurnTime), sfg, sbg, 3);
         }
 
         // Row 4: Fwd | Lat (split)
         {
             uint16_t ffg, fbg, lfg, lbg;
-            _lndgHorzColor(vFwd2, tGround, ffg, fbg);
-            _lndgHorzColor(vLat2, tGround, lfg, lbg);
+            _lndgHorzColor(vFwd, tGround, ffg, fbg);
+            _lndgHorzColor(vLat, tGround, lfg, lbg);
             uint16_t y = rowYFor(4,RNR), h = rowHFor(RNR);
             // Always show sign. One decimal for |v|<10, integer for |v|>=10.
             // Roboto_Black_24 used for value font — fits "+99.9 m/s" in split column.
             static const tFont *RFS = &Roboto_Black_24;
             // Clamp to ±99.9 m/s so fmtMs always fits in the split column
-            float vFwdC = constrain(vFwd2, -99.9f, 99.9f);
-            float vLatC = constrain(vLat2, -99.9f, 99.9f);
+            float vFwdC = constrain(vFwd, -99.9f, 99.9f);
+            float vLatC = constrain(vLat, -99.9f, 99.9f);
             {
                 String fs = fmtMs(vFwdC);
-                RowCache &fc = rowCache[6][4];
+                RowCache &fc = rowCache[LNDG_SC][4];
                 if (fc.value != fs || fc.fg != ffg || fc.bg != fbg) {
-                    printValue(tft, RFS, RX, y, RHW-ROW_PAD, h, "Fwd:", fs, ffg, fbg, COL_BACK, printState[6][4]);
+                    printValue(tft, RFS, RX, y, RHW-ROW_PAD, h, "FWD", fs, ffg, fbg, COL_BACK, printState[LNDG_SC][4]);
                     fc.value = fs; fc.fg = ffg; fc.bg = fbg;
                 }
             }
             {
                 String ls = fmtMs(vLatC);
-                RowCache &lc = rowCache[6][5];
+                RowCache &lc = rowCache[LNDG_SC][5];
                 if (lc.value != ls || lc.fg != lfg || lc.bg != lbg) {
-                    printValue(tft, RFS, RX+RHW, y, RHW-ROW_PAD, h, "Lat:", ls, lfg, lbg, COL_BACK, printState[6][5]);
+                    printValue(tft, RFS, RX+RHW, y, RHW-ROW_PAD, h, "LAT", ls, lfg, lbg, COL_BACK, printState[LNDG_SC][5]);
                     lc.value = ls; lc.fg = lfg; lc.bg = lbg;
                 }
             }
@@ -1024,7 +1017,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                            DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                            DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
-            rpVal(5, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), sfg, sbg, 6);
+            rpVal(5, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), sfg, sbg, 6);
         }
 
         // Row 6: Throttle | RCS (split)
@@ -1033,10 +1026,10 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             uint16_t y = rowYFor(6,RNR), h = rowHFor(RNR);
             {
                 String ts = buf;
-                RowCache &tc = rowCache[6][7];
+                RowCache &tc = rowCache[LNDG_SC][7];
                 if (tc.value != ts) {
                     // Thrtl stays at 28 — it shares a half-cell with the RCS button, too tight for 32.
-                    printValue(tft, &Roboto_Black_28, RX, y, RHW-ROW_PAD, h, "Thrtl:", ts, TFT_DARK_GREEN, TFT_BLACK, COL_BACK, printState[6][7]);
+                    printValue(tft, &Roboto_Black_28, RX, y, RHW-ROW_PAD, h, "THRTL", ts, TFT_DARK_GREEN, TFT_BLACK, COL_BACK, printState[LNDG_SC][7]);
                     tc.value = ts; tc.fg = TFT_DARK_GREEN; tc.bg = TFT_BLACK;
                 }
             }
@@ -1044,7 +1037,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             {
                 bool rcsOn = state.rcs_on;
                 String rv = rcsOn ? "ON" : "OFF";
-                RowCache &rc2 = rowCache[6][8];
+                RowCache &rc2 = rowCache[LNDG_SC][8];
                 if (rc2.value != rv) {
                     ButtonLabel btn = rcsOn
                         ? ButtonLabel{ "RCS", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
@@ -1063,7 +1056,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             {
                 bool gearDown = state.gear_on;
                 String gv = gearDown ? "DOWN" : "UP";
-                RowCache &gc = rowCache[6][9];
+                RowCache &gc = rowCache[LNDG_SC][9];
                 if (gc.value != gv) {
                     ButtonLabel btn = gearDown
                         ? ButtonLabel{ "GEAR", TFT_WHITE,     TFT_WHITE,     TFT_DARK_GREEN, TFT_DARK_GREEN, TFT_GREY, TFT_GREY }
@@ -1081,7 +1074,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                     case 2:   sv = "RETR"; sfg = TFT_WHITE;     sbg = TFT_DARK_GREEN; break; // good for landing
                     default:  sv = "SAS";  sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK;  break; // other — neutral
                 }
-                RowCache &sc = rowCache[6][10];
+                RowCache &sc = rowCache[LNDG_SC][10];
                 String ssv = sv;
                 if (sc.value != ssv || sc.fg != sfg || sc.bg != sbg) {
                     ButtonLabel btn = { sv, sfg, sfg, sbg, sbg, TFT_GREY, TFT_GREY };

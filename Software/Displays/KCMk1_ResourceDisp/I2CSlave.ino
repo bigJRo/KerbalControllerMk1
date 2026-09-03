@@ -16,9 +16,13 @@
                  bit 0 = simpitConnected
                  bit 1 = flightScene
                  bit 2 = demoMode
-                 bits 3-7 reserved (0)
+                 bit 3 = cautionActive  -- a selected resource is in caution or across its bug
+                 bit 4 = alarmActive    -- a selected resource is in alarm
+                 bit 5 = timeTierActive -- one of those is a time-remaining tier, not a level
+                 bits 6-7 reserved (0)
      Byte 2  : slotCount  -- number of currently active resource slots (0-16)
-     Byte 3  : reserved (0x00)
+     Byte 3  : worstResource -- ResourceType of the worst alert (first in alarm, else
+                                first in caution); RES_NONE (0) when all nominal
 
    Inbound packet (Master -> ResourceDisp), I2C_CMD_SIZE = 2 bytes:
      Byte 0  : controlByte
@@ -74,14 +78,20 @@ volatile bool i2cProceedReceived = false;
    and the change-detection path in updateI2CState() to avoid duplicated assembly.
 ****************************************************************************************/
 static void fillI2CPacketBuffer(uint8_t *buf) {
+  bool caution, alarm, timeTier;
+  ResourceType worst;
+  alertSummary(caution, alarm, timeTier, worst);
   uint8_t flags = 0;
   if (simpitConnected) flags |= (1 << 0);
   if (flightScene)     flags |= (1 << 1);
   if (demoMode)        flags |= (1 << 2);
+  if (caution)         flags |= (1 << 3);
+  if (alarm)           flags |= (1 << 4);
+  if (timeTier)        flags |= (1 << 5);
   buf[0] = I2C_SYNC_BYTE;
   buf[1] = flags;
   buf[2] = slotCount;
-  buf[3] = 0x00;
+  buf[3] = (uint8_t)worst;
 }
 
 /***************************************************************************************
@@ -97,12 +107,14 @@ static void buildI2CPacket() {
    PROCESS I2C COMMAND
    Called from loop() to apply a received command packet.
    Runs on the main thread -- safe to modify state, globals, and call Serial.
+   Takes a snapshot of the command, copied out of the ISR buffer under noInterrupts by
+   updateI2CState(), so a command arriving mid-read cannot be torn.
 ****************************************************************************************/
 static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE];  // volatile: written in ISR, read on main thread
 static volatile bool i2cCmdReady = false;
 
-static void processI2CCommand() {
-  uint8_t controlByte = i2cCmdBuf[0];
+static void processI2CCommand(const uint8_t *cmd) {
+  uint8_t controlByte = cmd[0];
   // byte 1 reserved for future use
 
   // --- Lower nibble: mode configuration bits ---
@@ -132,7 +144,7 @@ static void processI2CCommand() {
       } else {
         // Simpit already connected — request a full channel refresh so values
         // repopulate immediately without waiting for a change event.
-        simpit.requestMessageOnChannel(0);
+        requestResourceRefresh();
         if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, channel refresh requested"));
       }
     }
@@ -276,11 +288,17 @@ void setupI2CSlave() {
    2. Detect outbound state changes and assert INT when a fresh packet is ready.
 ****************************************************************************************/
 void updateI2CState() {
-  // --- Apply any pending inbound command ---
+  // --- Apply any pending inbound command (snapshot it out of the ISR buffer) ---
+  uint8_t cmd[I2C_CMD_SIZE];
+  bool    haveCmd = false;
+  noInterrupts();
   if (i2cCmdReady) {
+    for (uint8_t i = 0; i < I2C_CMD_SIZE; i++) cmd[i] = i2cCmdBuf[i];
     i2cCmdReady = false;
-    processI2CCommand();
+    haveCmd = true;
   }
+  interrupts();
+  if (haveCmd) processI2CCommand(cmd);
 
   // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {

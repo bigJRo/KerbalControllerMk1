@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.5.4
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.7.0
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -69,7 +69,7 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | ≥ 3.7.2 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
+| KerbalDisplayCommon | ≥ 3.10.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
 | KerbalDisplayAudio | ≥ 1.3.0 | Non-blocking `tone()` audio state machine + bundled `KCM_DFPlayer` driver (DFPlayer Mini BUSY polling for the GPWS function) |
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
@@ -93,7 +93,7 @@ Verbose     = True
 
 ## Configuration
 
-All tunables are in `AAA_Config.ino`. The three operating mode flags can also be set at runtime via the inbound I2C packet from the master.
+All tunables are in `AAA_Config.ino`. `demoMode`, `audioEnabled` and `debugMode` can also be set at runtime via the inbound I2C packet from the master; the standalone, test and lamp-test switches are compile-time only.
 
 | Constant | Default | Description |
 |----------|---------|-------------|
@@ -103,7 +103,7 @@ All tunables are in `AAA_Config.ino`. The three operating mode flags can also be
 | `standaloneMode` | `false` | Bypasses the I2C master handshake on boot. Use for bench testing without the master controller connected. |
 | `standaloneTest` | `false` | Enters serial-driven test mode after boot. Implies `standaloneMode`. Set `demoMode = false` when using this. |
 | `DISPLAY_ROTATION` | `0` | `0` = normal (connector at bottom), `2` = 180° (inverted mounting). |
-| `tempAlarm` | `90` | Temperature % of limit at which C&W shows red and MASTER ALARM triggers. |
+| `tempAlarm` | `90` | Temperature % of limit above which HIGH TEMP shows red and MASTER ALARM triggers. The TMAX / TSKIN cells go red at the same point (yellow from 50). |
 | `CW_ALT_THRESHOLD_M` | `200.0` | Surface altitude (m) below which `CW_ALT` fires. |
 | `CW_GEAR_UP_THRESHOLD_M` | `200.0` | Surface altitude (m) below which `CW_GEAR_UP` fires when gear is up. |
 | `CW_RCS_LOW_FRAC` | `0.20` | MonoProp fraction below which `CW_RCS_LOW` fires (20%). |
@@ -208,9 +208,9 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 - Outer vessel-situation column (x=949, eight 75×50 tiles, top→bottom): CONTACT, PRE-LAUNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, LANDED, SPLASH. CONTACT lights whenever LANDED or SPLASH is set
 - Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, THRTL ENA, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
 - SPCFT/PLN/RVR control-mode tile (row 3, 212×80) with vessel-type icon — text green when the control mode matches the vessel type, red on mismatch
-- Bottom telemetry readouts: vessel name and TimeWarp (left column, 424 wide); STG / Tmax / CREW and COMM / Tskin / CAP (right triple, 200 each); CtrlGrp (212×80)
+- Bottom telemetry readouts: vessel name and TIMEWARP (left column, 424 wide); STG / TMAX / CREW and COMM / TSKIN / CAP (right triple, 200 each); CTRLGRP (212×80)
 
-**SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (40pt, 52px each): Min Safe Alt, SOI Radius, Reentry Alt (atmo bodies), High Atmo Alt (atmo bodies), Low Space Alt (atmo bodies), High Space Alt, Condition, Surface Gravity. Touch anywhere to return to Main.
+**SOI** — celestial body detail screen. Left panel: KASA meatball BMP. Centre: body name. Right: body BMP. Lower rows (40pt, 52px each): MIN SAFE ALT, SOI RADIUS, REENTRY ALT (atmo bodies), HIGH ATMO ALT (atmo bodies), LOW SPACE ALT (atmo bodies), HIGH SPACE ALT, CONDITION, SURF. GRAVITY. Touch anywhere to return to Main. The master alarm and every other audio cue keep working here: the audio is serviced from the loop, not from the Main screen.
 
 ### Screen Transitions
 
@@ -251,14 +251,14 @@ The C&W panel is a 32-bit bitmask (`state.cautionWarningState`) recomputed on ev
 | 18 | Ap LOW | Caution | Apoapsis below atmosphere top (or minSafe for airless bodies) |
 | 19 | HIGH Q | Caution | Dynamic pressure above `currentBody.highQThreshold` (0 = suppressed) |
 | 20 | ORBIT STABLE | Positive | Pe and Ap both above atmosphere, Ap below SOI, situation=ORBIT |
-| 21 | ELEC GEN | Positive | EC increasing (charging) |
+| 21 | ELEC GEN | Positive | EC rose on its last reading; held until a reading falls or 5 s pass without a rise (`ELEC_GEN_HOLD_MS`), so a full battery does not read as charging |
 | 22 | CHUTE ENV | State | Dynamic: green=safe for mains, yellow=drogue only, red=too fast for any chute |
-| 23 | SRB ACTIVE | State | Solid fuel decreasing (SRB burning) |
+| 23 | SRB ACTIVE | State | Stage solid fuel fell on its last reading, between 0.5% and 99% full; held until exhausted, a full stage appears, a reading rises, or 3 s pass without a fall (`SRB_HOLD_MS`) |
 | 24 | EVA ACTIVE | State | Kerbal on EVA |
 
 ⚠ = included in `masterAlarmMask` (illuminates MASTER ALARM, drives audio)
 
-**Audio triggers** (when `audioEnabled` is true):
+**Audio triggers** (when `audioEnabled` is true; serviced by `serviceAlarmAudio()` in `Audio.ino` on every loop pass, so they fire on whichever screen is up):
 - WARNING bits newly set → master alarm starts
 - All WARNING bits cleared → master alarm stops, silence latch reset
 - `CW_ALT` or `CW_IMPACT_IMM` newly set → caution tone
@@ -415,7 +415,7 @@ Audio is gated by `audioEnabled` and the flight scene.
 | `I2CSlave.ino` | I2C slave at 0x10 — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Terminal-aesthetic BIOS POST boot sequence |
 | `Demo.ino` | Demo mode — independent field sweep, calls `updateCautionWarningState()` |
-| `TestMode.ino` | Serial-driven test framework: logic tests (automated pass/fail) and display walk-through (58 steps). Activated by `standaloneTest = true`. |
+| `TestMode.ino` | Serial-driven test framework: logic tests (automated pass/fail) and display walk-through (61 steps: every C&W tile and tier, situation column, regime tiles, the twelve mode-grid tiles, SPCFT states). Activated by `standaloneTest = true`. |
 
 ---
 
@@ -439,6 +439,8 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.7.0** | **Bug sweep, optimisation and cleanup pass.** *Alarm audio on every screen:* the C&W transitions that start the master alarm and the caution cues, and the threshold-crossing chirps, lived in the Main screen's update pass and the alarm was silenced on leaving Main, so on the SOI screen a new warning made no sound and an active alarm went quiet. They now run from `serviceAlarmAudio()` in `Audio.ino` every loop pass with their own references, reseeded on flight-scene entry and vessel switch. *ELEC GEN and SRB ACTIVE latch:* both compared against the previous call rather than the previous reading, and the C&W word is recomputed on every Simpit message, so each tile lit for one pass after its own message and went dark on the next unrelated one; they now latch on a rising / falling reading with a hold. *Consistency:* the TMAX / TSKIN cells go red at `tempAlarm`, where the HIGH TEMP lamp does, not at 85; an SOI change recomputes the C&W word at once (Pe LOW, Ap LOW, ORBIT STABLE and HIGH Q read the body's limits); the SOI label keeps the label-style grey on repaint. *Optimisation:* the bottom-zone border is redrawn only after a bottom-zone tile redraw instead of every pass; the inbound I2C command is snapshotted out of the ISR buffer under `noInterrupts()` so a second write cannot tear the one being applied. *Test harness:* the display walk-through drives the twelve mode-grid tiles from `state.modeFlags` (the rev-1 panel-status indices no longer matched), draws the SPCFT tile, and draws MASTER ALARM at the live font; the tautological "panel status" logic tests are gone and the ELEC GEN / SRB ACTIVE tests check the hold across an unrelated recompute. *Cleanup:* `firstPassOnMain` removed, `vesselName` defaults blank instead of `TEST CRAFT NAME` in live mode, the boot line calls the card a microSD, stale comments on `capValue`, `modeFlags` and demo init corrected, and the header's misordered banner fixed. |
+| **3.6.0** | **Readout labels: grey, uppercase, no colon.** The Main screen's telemetry cells (`SOI`, `TIMEWARP`, `STG`, `TMAX`, `CREW`, `COMM`, `TSKIN`, `CAP`, `CTRLGRP`) and the SOI screen's body rows (`MIN SAFE ALT`, `SOI RADIUS`, `SURF. GRAVITY`, …) follow the KerbalDisplayCommon 3.10.0 "Readout label style" rule shared by the three panels: label in `KDC_LABEL_COLOR` grey, uppercase, no colon, the value carrying the colour. Before this the panel mixed `CAP:` with `Tmax:` and `CtrlGrp:` on one screen. The widest new label, `HIGH SPACE ALT` at the 40 px SOI row font, is well inside its full-width row; `CTRLGRP` at 124 px sits in a 212 px cell. |
 | **3.5.4** | **Target closure is signed at ingestion — a fix that shipped here without a version bump, which is what this entry is really recording.** Simpit's `TargetInfo.cs` sets `velocity = ship_tgtVelocity.magnitude` and never returns a negative, but this panel's `AppState` documented `tgtVelocity` as "negative = closing" and its consumers were written to that contract. `SimpitHandler` now resolves the velocity onto the line of sight (`-|v| · cos θ` between the velocity and bearing unit vectors) so the sign means what everything downstream already assumed. The behaviour changed in the InfoDisp 1.10.19 cycle and this sketch's version string stayed at 3.5.3, so a panel could not be identified from its boot screen — on a controller where three boards are flashed separately that is a real hazard, and it is why `tools/panel_lint.py` was added and why the version now moves. Also picks up **KerbalDisplayCommon 3.7.2**: glyph data out of DTCM into flash (3.7.1), which this sketch benefits from equally, and the `formatSep` rewrite. **Clear the build cache before the next build**, or a stale object will link the old DTCM-resident fonts straight back in. |
 | **3.5.3** | **A panel booting into a running flight no longer sits on standby.** `flightScene` was only ever set by `SCENE_CHANGE_MESSAGE`, which Simpit sends as an *event* — there is no way to ask for the current scene. A panel that boots (or whose USB re-enumerates) while a flight is already running therefore never hears it and sits on the standby screen until the pilot happens to change scene or vessel. Since Simpit sends `FLIGHT_STATUS` only from a flight scene, receiving it while the panel believes it is not in one is proof that the transition was missed, so the panel now adopts the scene there. Both routes go through one new `enterFlightScene()` so they cannot drift apart. The hook sits at the end of the `FLIGHT_STATUS` handler rather than earlier, so the message's own vessel data is already applied, so the caution & warning state is already current when the Main screen comes up. Shared with the InfoDisp and Resource Display, which had the same defect. (The README title line also caught up with the header, which had been at 3.5.x for several releases.) |
 | **3.5.2** | Build fix: forward-declare `struct GpwsRung;` in `KCMk1_Annunciator.h`. The Arduino builder injects `gpwsCrossed()`'s prototype at the top of the combined sketch — above `GPWS.ino`'s `GpwsRung` definition — which otherwise errors with *"'GpwsRung' does not name a type."* No behaviour change. |
@@ -465,6 +467,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 - **`audioEnabled`** defaults to `false` — must be enabled in `AAA_Config.ino` or via I2C from the master. It gates both the `tone()` cues and the GPWS voice callouts.
 - **GPWS voice** (DFPlayer) is separate from the `tone()` master-alarm path and requires numbered clips on the DFPlayer's own microSD card (see the GPWS Function feature section). Without the card / clips the commands are harmless no-ops. GPWS stays silent until the master relays a non-OFF mode (rev-3 I2C command) and a flight scene is active.
 - **`DISPLAY_ROTATION`** — set `2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not needed; the FT5316 reports in screen-native coordinates at rotation 0.
+- **HIGH Q** uses a proxy, `0.5 · P · v²` with `P` the static pressure in Pa, and per-body thresholds calibrated against it. True dynamic pressure `0.5 · ρ · v²` is available (CHUTE ENV uses it) but the thresholds would need recalibrating; left as is.
 - **Demo mode** drives all `AppState` fields at configurable rates. `ctrlMode` and `ctrlGrp` are not cycled — they are owned by the master and preserved as last set via I2C. Switching demo off at runtime connects Simpit if not already connected, or requests a full channel refresh if it is.
 - **String heap usage** — `state.vesselName` and `state.gameSOI` use Arduino `String`. Low risk on Teensy 4.1 (1 MB RAM) but worth noting if porting to a memory-constrained target.
 

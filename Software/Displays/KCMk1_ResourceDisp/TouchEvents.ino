@@ -18,11 +18,21 @@
 
    Gestures:
      screen_Standby -> no touch response in live mode; any touch advances to Main in demo.
-     screen_Main    -> sidebar btn 0 (TOTAL/STAGE) : toggle stageMode
-                    -> sidebar btn 1 (DFLT)        : reset slots to default (STD preset)
-                    -> sidebar btn 2 (SELECT)      : switch to screen_Select
-                    -> sidebar btn 3 (DETAIL)      : switch to screen_Detail
-     screen_Select  -> resource grid / presets / BACK / CLEAR : handled by handleSelectTouch()
+     screen_Main    -> tap on an alert-strip message       : open Detail on that resource
+                    -> tap anywhere on a meter            : open Detail on that resource
+                    -> touch HELD still BUG_HOLD_MS on a tape : set a reserve bug there,
+                       or clear the bug if the touch landed on one
+                    -> touch on a bug, then DRAG            : move the bug with the finger
+                       (a meter touch is deferred until release, the hold matures, or
+                        a drag begins; see the hold state below -- the sidebar keys
+                        still fire on touch-down)
+                    -> sidebar btn 0 (SELECT)      : switch to screen_Select
+                    -> sidebar btn 1 (DETAIL)      : switch to screen_Detail
+                    -> sidebar btn 2 (TTE)         : toggle tteMode (counter row % / time)
+                    -> sidebar btn 3 (CLR BUG)     : remove every reserve bug
+     screen_Select  -> resource grid / presets / BACK / DFLT / CLEAR : handleSelectTouch()
+                    -> CLEAR HELD MEM_CLEAR_HOLD_MS  : forget every vessel (countdown in
+                       the counter area; lifting before the end cancels)
      screen_Detail  -> selector column / BACK      : handled by handleDetailTouch()
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
@@ -36,10 +46,112 @@ static const uint16_t TOUCH_JITTER_MAX   = KCM_TOUCH_JITTER_MAX_PX;   // #3B px 
 static uint32_t _lastTouchTime  = 0;
 static bool     _waitForRelease = false;
 
+// Meter hold state. A confirmed touch on a meter does not act at once: it arms this
+// record and the outcome is decided later -- on release before BUG_HOLD_MS it is a
+// tap (Detail); once the hold matures on a tape it sets the bug at the level FIRST
+// touched, or clears the bug the touch landed on, and the release then does nothing.
+// A touch that landed on a bug and then travels more than BUG_DRAG_MIN_PX becomes a
+// drag: the bug follows the finger until release, and neither hold nor tap fires.
+// That travel threshold is the hysteresis; a twitch during a hold stays a hold.
+//
+// Release is a polled register read over bit-banged I2C, and one read can come back
+// empty (or fail outright) while the finger is still down. A release therefore only
+// counts once it has persisted for TOUCH_RELEASE_MS; a shorter gap is ignored and the
+// hold keeps timing from its original start.
+static const uint32_t TOUCH_RELEASE_MS = 80;
+static uint32_t _releaseSeenMs = 0;    // first untouched read of the current gap; 0 = none
+static bool     _holdActive   = false;
+static bool     _holdFired    = false;
+static bool     _holdOnTape   = false;
+static bool     _holdOnBug    = false;   // touch landed within BUG_GRAB_TOL of a bug
+static bool     _holdDragging = false;   // travel exceeded BUG_DRAG_MIN_PX: bug follows finger
+static uint32_t _holdStartMs  = 0;
+static uint8_t  _holdSlot     = 0;
+static float    _holdLevel    = 0.0f;
+static uint16_t _holdX0       = 0;       // touch-down point, for the drag threshold
+static uint16_t _holdY0       = 0;
+
+// Select-screen key hold (CLEAR held to forget every vessel). The key's tap action
+// fired on touch-down; this only watches how long the finger stays. Same release
+// grace as the meter hold.
+static bool     _keyHoldActive  = false;
+static bool     _keyHoldFired   = false;
+static uint32_t _keyHoldStartMs = 0;
+
 
 void processTouchEvents() {
+  if (_keyHoldActive) {
+    if (activeScreen != screen_Select) {
+      _keyHoldActive = false;                                          // screen changed under it
+    } else if (!isTouched()) {
+      uint32_t t = millis();
+      if (_releaseSeenMs == 0) { _releaseSeenMs = t; return; }        // gap starts
+      if (t - _releaseSeenMs < TOUCH_RELEASE_MS) return;              // may be a glitch
+      if (!_keyHoldFired) selectHoldCancel();
+      _keyHoldActive  = false;
+      _releaseSeenMs  = 0;
+      _waitForRelease = false;
+      return;
+    } else {
+      _releaseSeenMs = 0;
+      uint32_t held = millis() - _keyHoldStartMs;
+      if (!_keyHoldFired) {
+        if (held >= MEM_CLEAR_HOLD_MS) { selectHoldFire(); _keyHoldFired = true; }
+        else                            selectHoldProgress(held);
+      }
+      return;
+    }
+  }
+
   if (!isTouched()) {
+    if (_holdActive) {
+      uint32_t t = millis();
+      if (_releaseSeenMs == 0) { _releaseSeenMs = t; return; }        // gap starts
+      if (t - _releaseSeenMs < TOUCH_RELEASE_MS) return;              // may be a glitch
+      // Release confirmed. A hold that never matured and never dragged is a tap.
+      if (!_holdFired && !_holdDragging) {
+        if (debugMode) Serial.println(F("ResourceDisp: meter tap -> Detail"));
+        setDetailSlot(_holdSlot);
+        switchToScreen(screen_Detail);
+        clearTouchISR();
+      }
+      _holdActive    = false;
+      _releaseSeenMs = 0;
+    }
     _waitForRelease = false;
+    return;
+  }
+
+  // Finger still down on an armed meter. A gap that ended before TOUCH_RELEASE_MS is
+  // forgotten here. A touch that landed on a bug is watched for travel; past the
+  // threshold it becomes a drag and the bug follows every subsequent sample. Only a
+  // touch that has not dragged can mature into a hold.
+  if (_holdActive) {
+    _releaseSeenMs = 0;
+    if (_holdOnTape && _holdOnBug) {
+      TouchResult tr = readTouch();
+      if (tr.count >= 1) {
+        uint16_t x  = tr.points[0].x;
+        uint16_t y  = tr.points[0].y;
+        uint16_t dx = (x > _holdX0) ? x - _holdX0 : _holdX0 - x;
+        uint16_t dy = (y > _holdY0) ? y - _holdY0 : _holdY0 - y;
+        if (!_holdDragging && (dx >= BUG_DRAG_MIN_PX || dy >= BUG_DRAG_MIN_PX)) {
+          _holdDragging = true;
+          if (debugMode) Serial.println(F("ResourceDisp: bug drag started"));
+        }
+        if (_holdDragging) setMeterBug(_holdSlot, mainLevelAt(_holdSlot, x, y), 1);   // drag: 1% steps
+      }
+    }
+    if (!_holdFired && !_holdDragging && _holdOnTape && millis() - _holdStartMs >= BUG_HOLD_MS) {
+      if (_holdOnBug) {
+        if (debugMode) Serial.println(F("ResourceDisp: meter hold matured -> bug cleared"));
+        clearMeterBug(_holdSlot);
+      } else {
+        if (debugMode) Serial.println(F("ResourceDisp: meter hold matured -> bug set"));
+        setMeterBug(_holdSlot, _holdLevel, BUG_SNAP_PCT);   // first placement: 5% grid
+      }
+      _holdFired = true;
+    }
     return;
   }
 
@@ -118,33 +230,54 @@ void processTouchEvents() {
       int8_t btn = sidebarHitTest(x2, y2);
       switch (btn) {
         case 0:
-          stageMode = !stageMode;
-          if (debugMode) Serial.println(stageMode
-            ? F("ResourceDisp: stageMode STAGE")
-            : F("ResourceDisp: stageMode TOTAL"));
-          break;
-        case 1:
-          // DFLT resets to the standard vessel bar set. Disabled on EVA — the EVA
-          // bar set is fixed while a Kerbal is on EVA.
-          if (evaActive) {
-            if (debugMode) Serial.println(F("ResourceDisp: DFLT ignored (EVA active)"));
-          } else {
-            if (debugMode) Serial.println(F("ResourceDisp: reset slots"));
-            initDefaultSlots();
-            switchToScreen(screen_Main);
-          }
-          clearTouchISR();
-          break;
-        case 2:
           switchToScreen(screen_Select);
           clearTouchISR();
           break;
-        case 3:
+        case 1:
           switchToScreen(screen_Detail);
           clearTouchISR();
           break;
-        default:
+        case 2:
+          tteMode = !tteMode;
+          if (debugMode) Serial.println(tteMode
+            ? F("ResourceDisp: counter row TTE")
+            : F("ResourceDisp: counter row PERCENT"));
           break;
+        case 3:
+          clearAllBugs();
+          break;
+        default: {
+          // Not a sidebar key. A strip message opens Detail at once; a meter arms
+          // the hold, and tap or bug is decided later.
+          int8_t sm = stripHitTest(x2, y2);
+          if (sm >= 0) {
+            setDetailSlot((uint8_t)sm);
+            switchToScreen(screen_Detail);
+            clearTouchISR();
+            break;
+          }
+          bool  onTape = false;
+          float level  = 0.0f;
+          int8_t m = mainHitTest(x2, y2, onTape, level);
+          if (m >= 0) {
+            _holdActive    = true;
+            _holdFired     = false;
+            _holdDragging  = false;
+            _holdOnTape    = onTape;
+            _holdOnBug     = onTape && meterBugNear((uint8_t)m, level);
+            _holdStartMs   = millis();
+            _holdSlot      = (uint8_t)m;
+            _holdLevel     = level;
+            _holdX0        = x2;
+            _holdY0        = y2;
+            _releaseSeenMs = 0;
+            if (debugMode) {
+              Serial.print(F("ResourceDisp: meter touch armed slot=")); Serial.print(m);
+              Serial.print(F(" tape=")); Serial.println(onTape);
+            }
+          }
+          break;
+        }
       }
       break;
     }
@@ -152,6 +285,12 @@ void processTouchEvents() {
     case screen_Select:
       handleSelectTouch(x2, y2);
       clearTouchISR();
+      if (selectHoldTarget(x2, y2)) {
+        _keyHoldActive  = true;
+        _keyHoldFired   = false;
+        _keyHoldStartMs = millis();
+        _releaseSeenMs  = 0;
+      }
       break;
 
     case screen_Detail:

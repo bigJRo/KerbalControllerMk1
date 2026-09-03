@@ -77,38 +77,57 @@ const char* resFullName(ResourceType t) {
 
 /***************************************************************************************
    RESOURCE COLOR
-   Fixed color per resource type. Colors match TFT_* palette in KerbalDisplayCommon.
+   Fixed colour per resource type, from the TFT_* palette in KerbalDisplayCommon.
    RES_NONE returns TFT_DARK_GREY (empty slot indicator).
+
+   Rules (3.4.1 audit):
+     - No fill uses an alert colour. TFT_RED is the alarm colour and TFT_YELLOW the
+       caution colour, and a tape sits beside its own red/yellow limit band; a fill in
+       either would read as a condition rather than an identity.
+     - No fill uses a signalling colour: TFT_CYAN is pilot-entered (the reserve bug),
+       white/silver is the stage marker line and the counters.
+     - Every fill must survive half brightness, since the stage column of LF, LOx,
+       SF, Xenon and Ablator draws at dimColor(). Pure blue halved to navy.
+     - One colour family per subsystem group where the palette allows, so a run of
+       meters under one label also reads as one family.
+   TFT_BRICK, TFT_PLUM, TFT_STRAW and TFT_LIME (KerbalDisplayCommon 3.8.0) exist for
+   this table: Solid Fuel needed a red that is not the alarm red, CO2 a bright non-red
+   the life-support family had not used, Liquid Waste a straw yellow, and Stored
+   Charge something beside gold that is neither a yellow nor a magenta. Liquid Methane's
+   ocean is the darkest fill left; it is a rare CRP resource.
+
+   Two of the life-support colours are a joke and are meant to stay one: Waste is
+   brown and Liquid Waste is straw.
 ****************************************************************************************/
 uint16_t resColor(ResourceType t) {
   switch (t) {
     // Power
-    case RES_ELEC_CHARGE:       return TFT_YELLOW;
-    case RES_STORED_CHARGE:     return TFT_AIR_SUP_BLUE;
-    // Propellants
+    case RES_ELEC_CHARGE:       return TFT_GOLD;
+    case RES_STORED_CHARGE:     return TFT_LIME;        // dull yellow sat too close to EC, purple too close to CO2's plum
+    // Propellants -- rocket pair, RCS greens, exotics
     case RES_LIQUID_FUEL:       return TFT_ORANGE;
-    case RES_LIQUID_OX:         return TFT_BLUE;
-    case RES_SOLID_FUEL:        return TFT_RED;
-    case RES_MONO_PROP:         return TFT_DARK_GREEN;
+    case RES_LIQUID_OX:         return TFT_FRENCH_BLUE;
+    case RES_SOLID_FUEL:        return TFT_BRICK;
+    case RES_MONO_PROP:         return TFT_MED_GREEN;
     case RES_EVA_PROP:          return TFT_MINT;
     case RES_XENON:             return TFT_MAGENTA;
-    case RES_LIQUID_H2:         return TFT_FRENCH_BLUE;
-    case RES_LIQUID_METHANE:    return TFT_ROYAL;
-    case RES_LITHIUM:           return TFT_INT_ORANGE;
-    case RES_INTAKE_AIR:        return TFT_AQUA;
-    // Nuclear (CRP mod, KSP1)
+    case RES_LIQUID_H2:         return TFT_SKY;
+    case RES_LIQUID_METHANE:    return TFT_OCEAN;
+    case RES_LITHIUM:           return TFT_ROSE;
+    case RES_INTAKE_AIR:        return TFT_SILVER;
+    // Nuclear (CRP mod, KSP1) -- greens, the waste product dimmer
     case RES_ENRICHED_URANIUM:  return TFT_NEON_GREEN;
     case RES_DEPLETED_URANIUM:  return TFT_SAP_GREEN;
     // Other
-    case RES_ORE:               return TFT_MAROON;
+    case RES_ORE:               return TFT_TAN;
     case RES_ABLATOR:           return TFT_VIOLET;
-    // Life Support
-    case RES_LS_OXYGEN:         return TFT_SILVER;
-    case RES_LS_CO2:            return TFT_CORNELL;
+    // Life Support -- steel blue for O2, aqua for water, earth tones for the rest
+    case RES_LS_OXYGEN:         return TFT_AIR_SUP_BLUE;
+    case RES_LS_CO2:            return TFT_PLUM;
     case RES_LS_FOOD:           return TFT_OLIVE;
     case RES_LS_WASTE:          return TFT_BROWN;
-    case RES_LS_WATER:          return TFT_CYAN;
-    case RES_LS_LIQUID_WASTE:   return TFT_DULL_YELLOW;
+    case RES_LS_WATER:          return TFT_AQUA;
+    case RES_LS_LIQUID_WASTE:   return TFT_STRAW;
     // Agriculture
     case RES_FERTILIZER:        return TFT_UPS_BROWN;
     default:                    return TFT_DARK_GREY;
@@ -155,11 +174,8 @@ ResourceType resTypeByIndex(uint8_t index) {
 
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Matches the STD preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
-   Called by the DFLT sidebar button and on first boot.
-   NOTE: CLEAR on the Select screen bypasses MIN_SLOTS intentionally — this is by
-   design so the user can start fresh from slot 1. removeResource() still enforces
-   MIN_SLOTS for individual tap-removal.
+   Matches the SPCT preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
+   Loaded on first boot; the Select screen's SPCT key loads the same set.
 ****************************************************************************************/
 // Seed one slot's fill values: 0 in live mode (Simpit repopulates on refresh),
 // visible demo values otherwise. Shared by all the slot-loading paths.
@@ -178,20 +194,67 @@ void zeroAllSlotValues() {
   }
 }
 
+/***************************************************************************************
+   MISSION PRESETS
+   The Select screen's preset keys. Everything in a preset should be aboard the craft
+   type it names; a resource the vessel turns out not to carry is skipped at load
+   time (see loadPreset in ScreenSelect.ino) and would draw no meter anyway. Nine or
+   fewer keeps the standard meter class. SPCT, the first, is also the layout a vessel
+   not in memory starts with when the pilot has not set a default of their own.
+****************************************************************************************/
+const PresetGroup PRESETS[PRESET_COUNT] = {
+  { "SPCT", {   // Spacecraft: stock launch-to-orbit set
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
+      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
+    }, 9 },
+  { "XPD", {    // Expedition: nuclear / hydrogen deep-space craft
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
+      RES_LIQUID_H2, RES_ENRICHED_URANIUM, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 9 },
+  { "SRF", {    // Surface: rover, lander, ISRU base
+      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_ORE, RES_LIQUID_FUEL, RES_LIQUID_OX,
+      RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 9 },
+  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPCT plus Intake Air.
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_INTAKE_AIR,
+      RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 7 },
+  { "LSP", {    // Life support: everything TAC-LS
+      RES_ELEC_CHARGE, RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD,
+      RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE, RES_FERTILIZER
+    }, 8 },
+  { "ADV", {   // Advanced Resource Group
+      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_XENON, RES_ORE,
+      RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,
+      RES_ENRICHED_URANIUM, RES_DEPLETED_URANIUM,
+      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER,
+      RES_LS_CO2, RES_LS_WASTE, RES_LS_LIQUID_WASTE, RES_FERTILIZER
+    }, 16 },
+};
+
+// The default layout: the pilot's stored one if set (types and reserve bugs), else
+// the SPCT preset. Used at boot and for a vessel that is not in memory. Values start
+// at zero (or visible demo values); presence is not consulted, since at boot nothing
+// is known yet and an absent resource collapses on the Main screen anyway.
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches STD preset count
-  // STD preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
-  static const ResourceType STD_TYPES[DEFAULT_SLOT_COUNT] = {
-    RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
-    RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
-  };
-  for (uint8_t i = 0; i < DEFAULT_SLOT_COUNT; i++) {
-    slots[i].type = STD_TYPES[i];
-    initSlotValues(slots[i]);
+  if (defaultLayoutSet()) {
+    slotCount = defaultLayout.count;
+    for (uint8_t i = 0; i < slotCount; i++) {
+      slots[i].type = defaultLayout.types[i];
+      initSlotValues(slots[i]);
+      slots[i].bug = defaultLayout.bugs[i];
+    }
+  } else {
+    const PresetGroup &pg = PRESETS[0];
+    slotCount = pg.count;
+    for (uint8_t i = 0; i < slotCount; i++) {
+      slots[i].type = pg.types[i];
+      initSlotValues(slots[i]);
+    }
   }
-  // In live mode, request a Simpit refresh so the new slots populate immediately
-  if (!demoMode) simpit.requestMessageOnChannel(0);
+  sortSlotsByGroup();
+  requestResourceRefresh();
 }
 
 // True for the fixed EVA bar set. When a Kerbal is on EVA the display shows only
@@ -214,23 +277,206 @@ void loadEvaSlots() {
     slots[i].type = EVA_TYPES[i];
     initSlotValues(slots[i]);
   }
-  if (!demoMode) simpit.requestMessageOnChannel(0);
+  requestResourceRefresh();
 }
 
-// DEMO ONLY — loads all available resource types into slots for layout testing.
-// Fills up to MAX_SLOTS (16) slots in display order with sine-wave initial values.
-// Called by initDemoMode() in Demo.ino. Not used in live Simpit mode.
-void initAllSlots() {
-  for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = 0;
-  for (uint8_t i = 0; slotCount < MAX_SLOTS; i++) {
-    ResourceType t = resTypeByIndex(i);
-    if (t == RES_NONE) break;
-    slots[slotCount].type         = t;
-    slots[slotCount].maxVal       = 1.0f;
-    slots[slotCount].stageMax     = 0.4f;
-    slots[slotCount].current      = 0.5f + 0.4f * sinf((float)slotCount * 0.7f);
-    slots[slotCount].stageCurrent = 0.3f + 0.2f * sinf((float)slotCount * 0.7f);
-    slotCount++;
+/***************************************************************************************
+   RESOURCE SUBSYSTEM GROUP
+   Drives the Main screen's meter order and group labels. Same grouping as the
+   Select grid, so a resource sits under the same heading on both screens.
+****************************************************************************************/
+ResGroup resGroup(ResourceType t) {
+  switch (t) {
+    case RES_ELEC_CHARGE:
+    case RES_STORED_CHARGE:     return GRP_POWER;
+    case RES_LIQUID_FUEL:
+    case RES_LIQUID_OX:
+    case RES_SOLID_FUEL:
+    case RES_MONO_PROP:
+    case RES_EVA_PROP:
+    case RES_XENON:
+    case RES_LIQUID_H2:
+    case RES_LIQUID_METHANE:
+    case RES_LITHIUM:
+    case RES_INTAKE_AIR:        return GRP_PROP;
+    case RES_ENRICHED_URANIUM:
+    case RES_DEPLETED_URANIUM:  return GRP_NUCLEAR;
+    case RES_ORE:
+    case RES_ABLATOR:           return GRP_MISC;
+    case RES_LS_OXYGEN:
+    case RES_LS_CO2:
+    case RES_LS_FOOD:
+    case RES_LS_WASTE:
+    case RES_LS_WATER:
+    case RES_LS_LIQUID_WASTE:   return GRP_LIFE;
+    case RES_FERTILIZER:        return GRP_AGRI;
+    default:                    return GRP_MISC;
   }
+}
+
+// Short enough to fit over a single compact-pitch meter in Roboto_Black_12.
+const char* resGroupLabel(ResGroup g) {
+  switch (g) {
+    case GRP_POWER:   return "PWR";
+    case GRP_PROP:    return "PROP";
+    case GRP_NUCLEAR: return "NUC";
+    case GRP_MISC:    return "MISC";
+    case GRP_LIFE:    return "LS";
+    case GRP_AGRI:    return "AGR";
+    default:          return "";
+  }
+}
+
+
+/***************************************************************************************
+   RESOURCE LIMIT BANDS
+   Which resources alert, in which direction, and at what fractions. The two tiers
+   come from AAA_Config.ino (generic: cross-panel aligned with the Annunciator;
+   waste: fraction full).
+     - Consumables (power, propellants, nuclear fuel, ablator, O2/food/water,
+       fertilizer): alert on running LOW.
+     - Waste products (CO2, Waste, Liquid Waste, Depleted Fuel): alert on filling UP.
+     - Ore and Intake Air: no bands. Ore is cargo with no operational floor, and
+       intake air is a flow that tracks airspeed rather than a stock that depletes.
+****************************************************************************************/
+ResLimits resLimits(ResourceType t) {
+  switch (t) {
+    case RES_ORE:
+    case RES_INTAKE_AIR:
+      return { 0.0f, 0.0f, false, false };
+    case RES_LS_CO2:
+    case RES_LS_WASTE:
+    case RES_LS_LIQUID_WASTE:
+    case RES_DEPLETED_URANIUM:
+      return { WASTE_WARN_FRAC, WASTE_ALARM_FRAC, true, true };
+    case RES_NONE:
+      return { 0.0f, 0.0f, false, false };
+    default:
+      return { RES_WARN_FRAC, RES_ALARM_FRAC, false, true };
+  }
+}
+
+
+/***************************************************************************************
+   TIME-REMAINING TIERS
+   Which resources alert on time left, and at what times. See AAA_Config.ino.
+****************************************************************************************/
+ResTimeLimits resTimeLimits(ResourceType t) {
+  switch (t) {
+    case RES_ELEC_CHARGE: return { TIME_WARN_S_EC,   TIME_ALARM_S_EC   };
+    case RES_LS_OXYGEN:   return { TIME_WARN_S_O2,   TIME_ALARM_S_O2   };
+    case RES_LS_WATER:    return { TIME_WARN_S_H2O,  TIME_ALARM_S_H2O  };
+    case RES_LS_FOOD:     return { TIME_WARN_S_FOOD, TIME_ALARM_S_FOOD };
+    default:              return { 0.0f, 0.0f };
+  }
+}
+
+
+/***************************************************************************************
+   ALERT STATE WITH HYSTERESIS
+   0 nominal, 1 caution, 2 alarm, 3 reserve bug crossed. `prev` is the state the caller
+   last drew (255 or 0 for none). Once in a state, the threshold that would leave it is moved
+   ALERT_HYST_FRAC further into the nominal region, so a value resting on a
+   threshold cannot toggle the colour every message. A pilot-set reserve bug (bug >= 0)
+   adds a threshold of its own, below it for a consumable and above it for a waste
+   product, reported as ALERT_BUG so it draws in the bug colour rather than yellow. The
+   fixed limits outrank it: a level inside both a limit band and the bug shows the
+   limit's state.
+****************************************************************************************/
+uint8_t alertState(ResourceType t, float level, float bug, uint8_t prev) {
+  ResLimits lim = resLimits(t);
+  if (prev > ALERT_BUG) prev = ALERT_NOMINAL;
+  float h = ALERT_HYST_FRAC;
+  bool highIsBad = lim.enabled && lim.highIsBad;
+  bool inCaution = (prev == ALERT_CAUTION || prev == ALERT_ALARM);
+  uint8_t state = ALERT_NOMINAL;
+  if (lim.enabled) {
+    if (highIsBad) {
+      float a = lim.alarm - ((prev == ALERT_ALARM) ? h : 0.0f);
+      float w = lim.warn  - (inCaution ? h : 0.0f);
+      if      (level > a) state = ALERT_ALARM;
+      else if (level > w) state = ALERT_CAUTION;
+    } else {
+      float a = lim.alarm + ((prev == ALERT_ALARM) ? h : 0.0f);
+      float w = lim.warn  + (inCaution ? h : 0.0f);
+      if      (level < a) state = ALERT_ALARM;
+      else if (level < w) state = ALERT_CAUTION;
+    }
+  }
+  // The reserve bug: its own threshold in the bad direction, its own state and
+  // colour. It never raises an alarm; the fixed limit table owns red.
+  if (bug >= 0.0f && state == ALERT_NOMINAL) {
+    float b = bug + ((prev == ALERT_BUG) ? (highIsBad ? -h : h) : 0.0f);
+    if (highIsBad ? (level > b) : (level < b)) state = ALERT_BUG;
+  }
+  return state;
+}
+
+
+/***************************************************************************************
+   RESOURCE PRESENCE
+****************************************************************************************/
+uint8_t resPresence[RES_COUNT];
+
+void resetResourcePresence() {
+  for (uint8_t i = 0; i < (uint8_t)RES_COUNT; i++) resPresence[i] = PRES_UNKNOWN;
+}
+
+void noteResourcePresence(ResourceType t, float available, float total) {
+  if (t == RES_NONE || t >= RES_COUNT) return;
+  resPresence[t] = (total > 0.0f || available > 0.0f) ? PRES_PRESENT : PRES_ABSENT;
+}
+
+bool resAbsent(ResourceType t) {
+  if (t == RES_NONE || t >= RES_COUNT) return false;
+  if (demoMode) return demoResourceAbsent(t);   // scripted, see Demo.ino
+  return resPresence[t] == PRES_ABSENT;
+}
+
+
+/***************************************************************************************
+   CANONICAL ORDER
+   A resource's position in the Select grid order, which is also the order meters
+   take within a group: LF always before LOx, whichever was selected first, so a
+   layout is the same on every vessel.
+****************************************************************************************/
+uint8_t resOrderIndex(ResourceType t) {
+  for (uint8_t i = 0; i < RESOURCE_TYPE_COUNT; i++) {
+    if (resTypeByIndex(i) == t) return i;
+  }
+  return RESOURCE_TYPE_COUNT;
+}
+
+
+/***************************************************************************************
+   SORT SLOTS BY GROUP
+   Insertion sort of the active slots by (group rank, canonical order). Values travel
+   with their slot, so this is safe to call whenever the slot set may have changed.
+   Called by drawStaticMain() so every path onto the Main screen lays the meters out
+   the same way, and by the Select screen as slots are added.
+****************************************************************************************/
+static inline uint16_t slotSortKey(ResourceType t) {
+  return ((uint16_t)resGroup(t) << 8) | resOrderIndex(t);
+}
+
+void sortSlotsByGroup() {
+  for (uint8_t i = 1; i < slotCount; i++) {
+    ResourceSlot key = slots[i];
+    uint16_t rank = slotSortKey(key.type);
+    int16_t j = (int16_t)i - 1;
+    while (j >= 0 && slotSortKey(slots[j].type) > rank) {
+      slots[j + 1] = slots[j];
+      j--;
+    }
+    slots[j + 1] = key;
+  }
+}
+
+
+/***************************************************************************************
+   CLEAR ALL BUGS -- the CLR BUG sidebar key
+****************************************************************************************/
+void clearAllBugs() {
+  for (uint8_t i = 0; i < slotCount; i++) slots[i].bug = -1.0f;
+  if (debugMode) Serial.println(F("ResourceDisp: all bugs cleared"));
 }

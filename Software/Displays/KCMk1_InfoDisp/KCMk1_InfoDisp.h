@@ -49,7 +49,7 @@ typedef ILI9341_t3_font_t tFont;
    Thirteen information screens reached via six sidebar buttons (see SB_BTN_SCREEN in
    AAA_Screens.ino, which is per-unit). Several buttons cover more than one screen and
    cycle their modes on a repeat press: PFD covers SCFT/ACFT/ROVR (+VEH on unit 2),
-   ORB covers ORB/ORBADV/MNVR, TGT covers TGT/DOCK, LNDG covers LNDG/LNDGRE. The
+   ORB covers ORB/ORBADV/MNVR, TGT covers TGT/DOCK/NAV, LNDG covers LNDG/LNDGRE. The
    sixth button is LNCHAP (Ascent Autopilot console) on unit 2 and VEH on unit 1.
    screen_COUNT is a sentinel — not a real screen.
 ****************************************************************************************/
@@ -66,7 +66,7 @@ enum ScreenType : uint8_t {
   screen_ROVR   = 9,   // Rover
   screen_ORBADV = 10,  // Orbit — Advanced Elements (text readout)
   screen_LNDGRE = 11,  // Landing — Re-entry
-  screen_LNCHAP = 12,  // Ascent Autopilot (replaces ORB+ sidebar slot; ORB+ via ORB title tap)
+  screen_LNCHAP = 12,  // Ascent Autopilot console (unit 2's sixth key)
   screen_NAV    = 13,  // Navigation display — compass rose, ground track, target bearing
   screen_COUNT  = 14   // sentinel — not a real screen
 };
@@ -98,7 +98,9 @@ static const ScreenType SCREEN_HOME = screen_LNCH;   // mission-phase panel -> L
 // (crossing docking range, a node appearing, an atmosphere transition). This matters
 // more with the two panels split by role than it did on a single display: each panel
 // now has a job, so a screen the pilot parked is a screen they are using.
-// Generalises the per-button _pfdManualOverride / _lnchManualOverride latches.
+// Generalises the per-button _pfdManualOverride latch. The LAUNCH screen's own
+// ASC/CIRC phase override (_lnchManualOverride) is still a plain flag; it is cleared
+// alongside this latch at vessel change and flight-scene entry.
 extern bool       _manualScreenLatch;
 extern ScreenType _latchedAgainst;
 void clearManualScreenLatch();
@@ -159,9 +161,10 @@ static const uint8_t SCREEN_COUNT = (uint8_t)screen_COUNT;
 extern KCM_TFT     infoDisp;
 extern TouchResult lastTouch;
 
-// Hardware double buffer (RA8876 page flip). The loop redraws the whole active
-// screen to the hidden page each frame (Model A) and flips — tear-free and free
-// of single-buffer overdraw artifacts.
+// Hardware double buffer (RA8876 page flip). A screen entry paints the whole screen
+// to the hidden page; every other frame BTE-copies the visible page across, runs only
+// the change-detected updates on it, and flips — tear-free, with nothing drawn on the
+// page being shown. See loop().
 extern KCMDoubleBuffer infoDB;
 
 
@@ -181,11 +184,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.5.0
+   This sketch requires KerbalDisplayCommon >= 3.11.0 (buffer formatters)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 11;
-static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.11.5: a sidebar press no longer undoes itself
+static const uint8_t SKETCH_VERSION_MINOR = 13;  // 1.13.0: bug sweep, optimisation and cleanup pass
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.13.1: VSI tiers on approach only, G bands aliased, heap-free row values
 
 
 /***************************************************************************************
@@ -237,9 +240,9 @@ extern KerbalSimpit simpit;
 
 /***************************************************************************************
    DISPLAY STATE
-   AppState holds all telemetry values shown on screen. In Phase 1 (demo) these are
-   driven by Demo.ino. In Phase 2 (Simpit) they will be populated by SimpitHandler.ino.
-   All float fields default to 0.0f; String fields to "---".
+   AppState holds all telemetry values shown on screen, populated by SimpitHandler.ino
+   in live mode and by Demo.ino in demo mode. All float fields default to 0.0f; String
+   fields to "---".
 ****************************************************************************************/
 struct AppState {
   // Altitude & velocity
@@ -317,13 +320,6 @@ struct AppState {
   float     tgtPitch      = 0.0f;    // degrees — elevation to target
   float     tgtVelHeading = 0.0f;    // degrees — heading of relative velocity vector
   float     tgtVelPitch   = 0.0f;    // degrees — pitch of relative velocity vector
-
-  // Orbit intercepts — KSP2 only (INTERSECTS_MESSAGE not available in KSP1).
-  // Fields retained as stubs for future KSP2 or closest-approach implementation.
-  float     intercept1Dist = -1.0f;
-  float     intercept1Time = -1.0f;
-  float     intercept2Dist = -1.0f;
-  float     intercept2Time = -1.0f;
 
   // RCS state
   bool      rcs_on        = false;   // from ACTIONSTATUS_MESSAGE & RCS_ACTION
@@ -404,8 +400,12 @@ bool compassUpdateMarkerPair(KCM_TFT &tft, const CompassGeom &g,
                              CompassMarkerCache &ca, bool availA, float degA, uint16_t colA,
                              CompassMarkerCache &cb, bool availB, float degB, uint16_t colB,
                              float threshDeg);
-void compassUpdateMarker(KCM_TFT &tft, const CompassGeom &g, CompassMarkerCache &c,
-                         bool available, float screenDeg, uint16_t colour, float threshDeg);
+
+// Screen_ROVR.ino — the ROVER endurance estimate needs a window of charge samples, so
+// it is sampled from loop() on every screen (a screen entry must not restart it) and
+// reset only when the vessel changes.
+void rovrEnduranceService();
+void rovrEnduranceReset();
 
 
 // Re-entry corridor boundaries (metres ASL), used by the RE-ENTRY screen. Declared
@@ -431,11 +431,9 @@ int8_t     _rePeRegime(const ReCorridor &c, float pe);
    LAYOUT CONSTANTS
    Defined here so both Screens.ino and TouchEvents.ino can reference them.
 ****************************************************************************************/
-// PHASE 2 (rev-2 redesign): the shared framework now spans the full 1024x600 panel.
-// The navigation chrome (sidebar, title bar) and text-row screens derive their
-// geometry from these constants and expand automatically. Graphical screens still
-// carry absolute 800x480 coordinates and render top-left-anchored until each is
-// redesigned in its own step.
+// The shared framework spans the full 1024x600 panel: the navigation chrome (sidebar,
+// title bar) and the text-row screens derive their geometry from these constants; the
+// graphical screens lay themselves out in content space (0..CONTENT_W by SCREEN_H).
 static const uint16_t SCREEN_W  = KCM_SCREEN_W;   // 1024
 static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
 static const uint16_t SIDEBAR_W = 84;
@@ -583,7 +581,7 @@ void updateScreen(KCM_TFT &tft, ScreenType s);
 // Standby screen (shown when not in a flight scene)
 void drawStandbyScreen(KCM_TFT &tft);
 
-// Context-dependent screen selection on vessel/scene change. contextScreen() is the
+// Context-dependent screen selection, evaluated every frame. contextScreen() is the
 // entry point every caller uses; it dispatches to the ladder for this unit. Both
 // ladders are declared — and compiled — on both units, so flipping INFO_DISP_UNIT
 // changes only which one runs.
@@ -611,7 +609,8 @@ void initSimpit();
 /***************************************************************************************
    ROW CACHE
    Tracks last-drawn value and colours per screen row for flicker-free updates.
-   Defined here (not Screens.ino) so TouchEvents.ino can reference rowCache[].
+   Defined here so the extern below can name the type before AAA_Screens.ino defines
+   the arrays.
 ****************************************************************************************/
 struct RowCache {
   String   value = "\x01";   // sentinel — never matches a real formatted string
@@ -622,8 +621,8 @@ struct RowCache {
 
 /***************************************************************************************
    CROSS-FILE STATE
-   Variables defined in Screens.ino, accessed by TouchEvents.ino.
-   Declared extern here so TouchEvents doesn't need inline extern declarations.
+   Variables defined in one tab and read by others (the screen tabs, TouchEvents.ino,
+   SimpitHandler.ino), declared extern here in one place.
 ****************************************************************************************/
 extern RowCache    rowCache  [SCREEN_COUNT][ROW_COUNT];   // #32 use named constants
 extern PrintState  printState[SCREEN_COUNT][ROW_COUNT];  // #32 use named constants
@@ -635,7 +634,7 @@ extern bool _lnchManualOverride;
 extern bool _lnchPrelaunchMode;
 extern bool _lnchPrelaunchDismissed;
 
-// PFD button state (SPACECRAFT/AIRCRAFT/ROVER — title-touch cycle)
+// PFD button state (SPACECRAFT/AIRCRAFT/ROVER — sidebar cycle)
 extern bool    _pfdManualOverride;
 extern uint8_t _pfdManualSel;
 
@@ -652,12 +651,11 @@ extern bool _mainCut;
 extern bool _drogueArmedSafe;
 extern bool _mainArmedSafe;
 
-// RNDZ/DOCK chrome state — defined in Screen_RNDZ/DOCK.ino, used by AAA_Screens.ino dispatch
+// TGT/DOCK chrome state — defined in Screen_TGT/DOCK.ino, used by AAA_Screens.ino dispatch
 extern bool _tgtChromDrawn;
 extern bool _dockChromDrawn;
 extern bool _vesselDocked;
 extern uint32_t _dockedTimestamp;
 extern bool _pendingContextSwitch;  // set on vessel change; cleared when FLIGHT_STATUS arrives
 extern bool _pendingDockCheck;      // set after context switch; cleared when TARGETINFO arrives
-extern bool _orbAdvancedMode; // true = ADVANCED ELEMENTS tap-through view, false = APSIDES default
 extern bool _scftPrevOrbMode;  // Screen_SCFT: previous orbital mode (reset on vessel switch)

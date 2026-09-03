@@ -132,21 +132,23 @@ static void buildI2CPacket() {
    PROCESS I2C COMMAND
    Called from loop() to apply a received command packet.
    Runs on the main thread -- safe to modify state, globals, and call Serial.
+   Takes a snapshot of the command, copied out of the ISR buffer under noInterrupts by
+   updateI2CState(), so a command arriving mid-read cannot be torn.
 ****************************************************************************************/
 static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE];
 static volatile bool i2cCmdReady = false;
 
 // Inbound Ascent-AP status push (Master -> InfoDisp). Filled in the Wire ISR,
-// applied on the main thread by processApStatus().
+// snapshotted and applied on the main thread by processApStatus().
 static volatile uint8_t apStatusBuf[I2C_AP_STATUS_SIZE];
 static volatile bool     apStatusReady = false;
 
-static void processI2CCommand() {
-  uint8_t controlByte = i2cCmdBuf[0];
+static void processI2CCommand(const uint8_t *cmd) {
+  uint8_t controlByte = cmd[0];
 
   // --- Ascent-AP command acknowledgement (byte 1) ---
   // Master echoes the apCmdSeq it just executed; pop that command from the AP queue.
-  apAckCommand(i2cCmdBuf[1]);
+  apAckCommand(cmd[1]);
 
   // --- Lower nibble: mode configuration bits ---
   bool newDebug = (controlByte >> 0) & 1;
@@ -197,9 +199,7 @@ static void processI2CCommand() {
       break;
 
     case I2C_REQ_STATUS:
-      buildI2CPacket();
-      i2cPacketReady = true;
-      digitalWriteFast(I2C_INT_PIN, LOW);
+      publishI2CPacket();
       if (debugMode) Serial.println(F("InfoDisp: I2C -- status requested"));
       break;
 
@@ -240,13 +240,29 @@ static void processI2CCommand() {
 
 
 /***************************************************************************************
+   PUBLISH PACKET
+   Assembles the current state into a scratch buffer, then copies it into the live
+   packet under noInterrupts() and asserts INT. The guarded copy is what keeps
+   onI2CRequest() from transmitting a half-written packet: bytes 0-2 sit outside the
+   byte-9 command checksum, so a torn packet would pass the master's framing check.
+   Every path that raises INT goes through here.
+****************************************************************************************/
+static void publishI2CPacket() {
+  uint8_t candidate[I2C_PACKET_SIZE];
+  fillI2CPacketBuffer(candidate);
+  noInterrupts();
+  memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
+  i2cPacketReady = true;
+  interrupts();
+  digitalWriteFast(I2C_INT_PIN, LOW);
+}
+
+/***************************************************************************************
    BUILD PACKET AND ASSERT INT
    Public helper called from setup() after initialisation is complete.
 ****************************************************************************************/
 void buildI2CPacketAndAssert() {
-  buildI2CPacket();
-  i2cPacketReady = true;
-  digitalWriteFast(I2C_INT_PIN, LOW);
+  publishI2CPacket();
   if (debugMode) Serial.println(F("InfoDisp: I2C -- init packet ready, asserting INT"));
 }
 
@@ -277,17 +293,17 @@ static void onI2CReceive(int numBytes) {
    Autopilot screen renders live guidance and confirms accepted parameters. Runs on the
    main thread. Skipped in demo mode (demo drives state.ap* locally).
 ****************************************************************************************/
-static void processApStatus() {
-  if (apStatusBuf[0] != I2C_AP_STATUS_SYNC) return;   // framing guard
+static void processApStatus(const uint8_t *buf) {
+  if (buf[0] != I2C_AP_STATUS_SYNC) return;   // framing guard
 
-  uint8_t fl = apStatusBuf[1];
+  uint8_t fl = buf[1];
   state.apArmed      = (fl & 0x01) != 0;
   state.apSoutherly  = (fl & 0x02) != 0;
   state.apRollEnable = (fl & 0x04) != 0;
-  state.apPhase      = apStatusBuf[2];
+  state.apPhase      = buf[2];
 
   float f[9];
-  memcpy(f, (const void *)&apStatusBuf[4], sizeof(f));   // 9 floats, bytes 4..39
+  memcpy(f, &buf[4], sizeof(f));   // 9 floats, bytes 4..39
   state.apTargetAlt   = f[0];
   state.apInclination = f[1];
   state.apLoft        = f[2];
@@ -335,18 +351,31 @@ void setupI2CSlave() {
    UPDATE I2C STATE
    Call from loop(). Applies pending inbound commands and detects outbound
    state changes, asserting INT when a fresh packet is ready.
+
+   Both inbound buffers are snapshotted under noInterrupts() before use. The Wire ISR
+   can land a new write at any point of a main-thread read; the 40-byte status push
+   in particular would otherwise be read half old, half new, and its floats torn.
 ****************************************************************************************/
 void updateI2CState() {
+  uint8_t cmd[I2C_CMD_SIZE];
+  uint8_t ap[I2C_AP_STATUS_SIZE];
+  bool haveCmd = false, haveAp = false;
+  noInterrupts();
   if (i2cCmdReady) {
+    for (uint8_t i = 0; i < I2C_CMD_SIZE; i++) cmd[i] = i2cCmdBuf[i];
     i2cCmdReady = false;
-    processI2CCommand();
+    haveCmd = true;
   }
+  if (apStatusReady) {
+    for (uint8_t i = 0; i < I2C_AP_STATUS_SIZE; i++) ap[i] = apStatusBuf[i];
+    apStatusReady = false;
+    haveAp = true;
+  }
+  interrupts();
+  if (haveCmd) processI2CCommand(cmd);
 
   // --- Apply inbound Ascent-AP status push (live mode only) ---
-  if (apStatusReady) {
-    apStatusReady = false;
-    if (!demoMode) processApStatus();
-  }
+  if (haveAp && !demoMode) processApStatus(ap);
 
   // --- Ascent-AP outbound command queue: expose next command, retire confirmed edits ---
   apPumpCommandQueue();
@@ -357,13 +386,7 @@ void updateI2CState() {
     uint8_t candidate[I2C_PACKET_SIZE];
     fillI2CPacketBuffer(candidate);
     if (memcmp((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE) != 0) {
-      // Guard the copy against onI2CRequest() firing mid-memcpy and transmitting a
-      // torn packet (bytes 0-2 are outside the byte-9 command checksum).
-      noInterrupts();
-      memcpy((uint8_t *)i2cPacket, candidate, I2C_PACKET_SIZE);
-      i2cPacketReady = true;
-      interrupts();
-      digitalWriteFast(I2C_INT_PIN, LOW);
+      publishI2CPacket();
       if (debugMode) Serial.println(F("InfoDisp: I2C packet ready"));
     }
   }

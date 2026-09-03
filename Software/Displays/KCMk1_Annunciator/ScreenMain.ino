@@ -395,6 +395,7 @@ void updateRegimeColumn(KCM_TFT &tft) {
    MODE/STATUS GRID — 6x2, driven by state.modeFlags (master-reported).
 ****************************************************************************************/
 static uint16_t prevModeFlags = 0xFFFF;  // force full draw on first pass
+static bool     _botDirty     = false;   // a bottom-zone tile redrew: reassert the zone border (see drawBottomZonePerimeter)
 
 void updateModeGrid(KCM_TFT &tft) {
   if (state.modeFlags == prevModeFlags) return;
@@ -409,6 +410,7 @@ void updateModeGrid(KCM_TFT &tft) {
                modeGrid[i], &Roboto_Black_12, bitRead(state.modeFlags, i));
   }
   prevModeFlags = state.modeFlags;
+  _botDirty = true;
 }
 
 
@@ -443,6 +445,7 @@ void updateSpcftTile(KCM_TFT &tft) {
   // with the right R3_H px reserved for the vessel-type icon. Border matches the
   // rest of the bottom grid.
   uint16_t txtColor = ctrlModeColor(state.vehCtrlMode, state.vesselType);
+  _botDirty = true;
   tft.fillRect(SPCFT_X + 1, R3_Y + 1, SPCFT_W - 2, R3_H - 2, TFT_BLACK);
   textLeft(tft, &Roboto_Black_28, SPCFT_X, R3_Y, SPCFT_W - R3_H, R3_H,
            ctrlModeText(state.vehCtrlMode), txtColor, TFT_BLACK);
@@ -478,11 +481,13 @@ void forceDockState(bool isDocked)      { prevDockedState = !isDocked; }
 /***************************************************************************************
    TELEMETRY VALUE HELPERS (bottom zone)
 ****************************************************************************************/
-// Tmax / Tskin: percent where HIGH is bad (green < 50, yellow < 85, red above).
+// Tmax / Tskin: percent where HIGH is bad (green < 50, yellow up to tempAlarm, red
+// above it, the same point at which CW_HIGH_TEMP lights, so the cell and the lamp
+// never disagree).
 static void tempTierColor(uint8_t pct, uint16_t &fc, uint16_t &bc) {
-  thresholdColor((uint16_t)pct, 50, TFT_DARK_GREEN, TFT_BLACK,
-                                 85, TFT_YELLOW,     TFT_BLACK,
-                                     TFT_WHITE,      TFT_RED, fc, bc);
+  thresholdColor((uint16_t)pct, 50,                      TFT_DARK_GREEN, TFT_BLACK,
+                                (uint16_t)tempAlarm + 1, TFT_YELLOW,     TFT_BLACK,
+                                                         TFT_WHITE,      TFT_RED, fc, bc);
 }
 // COM: percent where LOW is bad (red < 25, yellow < 75, green above).
 static void commTierColor(uint8_t pct, uint16_t &fc, uint16_t &bc) {
@@ -494,13 +499,15 @@ static void commTierColor(uint8_t pct, uint16_t &fc, uint16_t &bc) {
 
 /***************************************************************************************
    BOTTOM-ZONE PERIMETER — light border around the whole bottom zone.
-   Redrawn every update pass: bottom-row tiles (SPCFT, mode grid) fill down to the
-   overscan row when they redraw, erasing this line, and their own tile borders land
-   on the invisible last row. Reasserting it here keeps a consistent bottom/side
-   edge under every tile (not just the rarely-redrawn CtrlGrp).
+   Bottom-row tiles (SPCFT, mode grid) fill down to the overscan row when they
+   redraw, erasing this line, and their own tile borders land on the invisible last
+   row. Reasserting it after any bottom-zone redraw keeps a consistent bottom/side
+   edge under every tile. _botDirty is set by the bottom-zone draw paths and cleared
+   here, so the border costs nothing on a pass that drew nothing down there.
 ****************************************************************************************/
 void drawBottomZonePerimeter(KCM_TFT &tft) {
   tft.drawRect(0, BOT_Y, KCM_SCREEN_W, KCM_SCREEN_H - BOT_Y - 1, TFT_GREY);  // -1: keep bottom line off the overscan edge
+  _botDirty = false;
 }
 
 
@@ -545,7 +552,7 @@ void drawStaticMain(KCM_TFT &tft) {
 
   // SOI label chrome + globe border
   printDispChrome(tft, &Roboto_Black_28, SOI_LABEL_X, SOI_LABEL_Y,
-                  SOI_LABEL_W, SOI_LABEL_H, "SOI:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+                  SOI_LABEL_W, SOI_LABEL_H, "SOI", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   tft.drawRect(SOI_GLOBE_X, SOI_GLOBE_Y, SOI_GLOBE_W, SOI_GLOBE_H, TFT_GREY);
 
   // Vessel name (left telemetry, row 1) — green, left-aligned, bordered (#2).
@@ -556,14 +563,14 @@ void drawStaticMain(KCM_TFT &tft) {
 
   // Telemetry labels (chrome) — values drawn in the update pass.
   printDispChrome(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
-                  "TimeWarp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG:",   TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "Tmax:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "CREW:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Tskin:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CtrlGrp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+                  "TIMEWARP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG",   KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "TMAX",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "CREW",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "TSKIN", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CTRLGRP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
 
   // Light perimeter around the whole bottom zone, drawn LAST so its bottom edge
   // sits on top of every tile fill in the zone (#2). Reasserted each update pass
@@ -584,33 +591,16 @@ void updateScreenMain(KCM_TFT &tft) {
     prev.masterAlarmOn = state.masterAlarmOn;
   }
 
-  // --- C&W PANEL --- (alarm-mask + chirp wiring unchanged)
+  // --- C&W PANEL --- (audio is serviceAlarmAudio()'s, in Audio.ino, every pass)
   if (state.cautionWarningState != prev.cautionWarningState ||
       chuteEnvState != prevChuteEnvState ||
       peLowYellow != prevPeLowYellow || propLowYellow != prevPropLowYellow ||
       lsYellow != prevLsYellow) {
-    uint32_t newBits = state.cautionWarningState & ~prev.cautionWarningState;
-    uint32_t clrBits = prev.cautionWarningState  & ~state.cautionWarningState;
-
-    if (audioEnabled) {
-      // Master-alarm mask transitions via the shared CW->ALARM table (Audio.ino).
-      applyAlarmTransitions(newBits, clrBits);
-
-      if (newBits & (1ul << CW_ALT))           audioCautionTone();
-      if (newBits & (1ul << CW_IMPACT_IMM))    audioCautionTone();
-      if (newBits & ((1ul << CW_DESCENT) | (1ul << CW_ATMO) | (1ul << CW_GEAR_UP)))
-        audioCautionChirp();
-    }
-
     updateCautWarnPanel(tft, prev.cautionWarningState, state.cautionWarningState);
     prev.cautionWarningState = state.cautionWarningState;
   }
 
   // --- SITUATION COLUMN ---
-  // Capture the previous situation BEFORE the panel update syncs prev, so the
-  // ORBIT-entry chirp below can still see the transition (the panel block updates
-  // prev.vesselSituationState, which otherwise defeats the chirp edge-detect).
-  uint32_t prevSitForChirp = prev.vesselSituationState;
   if (state.vesselSituationState != prev.vesselSituationState) {
     updateVesselSitPanel(tft, prev.vesselSituationState, state.vesselSituationState);
     prev.vesselSituationState = state.vesselSituationState;
@@ -625,8 +615,8 @@ void updateScreenMain(KCM_TFT &tft) {
   // --- SOI LABEL + GLOBE ---
   if (state.gameSOI != prev.gameSOI) {
     printDisp(tft, &Roboto_Black_28, SOI_LABEL_X, SOI_LABEL_Y,
-              SOI_LABEL_W, SOI_LABEL_H, "SOI:", currentBody.dispName,
-              TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, TFT_GREY, psSOILabel);
+              SOI_LABEL_W, SOI_LABEL_H, "SOI", currentBody.dispName,
+              KDC_LABEL_COLOR, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, TFT_GREY, psSOILabel);
     tft.fillRect(SOI_GLOBE_X + 1, SOI_GLOBE_Y + 1, SOI_GLOBE_W - 2, SOI_GLOBE_H - 2, TFT_BLACK);
     // Body BMP is 236x164; centre it in the 274x176 globe frame.
     drawBMP(tft, currentBody.image, SOI_GLOBE_X + (SOI_GLOBE_W - BODY_IMG_W) / 2,
@@ -643,66 +633,55 @@ void updateScreenMain(KCM_TFT &tft) {
     prev.vesselName = state.vesselName;
   }
 
-  // --- TELEMETRY VALUES ---
+  // --- TELEMETRY VALUES --- (every cell is in the bottom zone)
+  if (state.stage != prev.stage || state.maxTemp != prev.maxTemp || state.crewCount != prev.crewCount ||
+      state.twIndex != prev.twIndex || state.commNet != prev.commNet || state.skinTemp != prev.skinTemp ||
+      state.capValue != prev.capValue || state.ctrlGrp != prev.ctrlGrp || state.vesselName != prev.vesselName)
+    _botDirty = true;
   if (state.stage != prev.stage) {
     printValue(tft, &Roboto_Black_28, TEL_X0, BOT_Y, TEL_W, TEL_ROW_H,
-               "STG:", formatInt(state.stage), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psSTG);
+               "STG", formatInt(state.stage), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psSTG);
     prev.stage = state.stage;
   }
   if (state.maxTemp != prev.maxTemp) {
     uint16_t fc, bc; tempTierColor(state.maxTemp, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0 + TEL_W, BOT_Y, TEL_W, TEL_ROW_H,
-               "Tmax:", formatPerc(state.maxTemp), fc, bc, TFT_BLACK, psTmax);
+               "TMAX", formatPerc(state.maxTemp), fc, bc, TFT_BLACK, psTmax);
     prev.maxTemp = state.maxTemp;
   }
   if (state.crewCount != prev.crewCount) {
     printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H,
-               "CREW:", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
+               "CREW", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
     prev.crewCount = state.crewCount;
   }
   if (state.twIndex != prev.twIndex) {
     printValue(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
-               "TimeWarp:", twString(state.twIndex, physTW), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psTW);
+               "TIMEWARP", twString(state.twIndex, physTW), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psTW);
     prev.twIndex = state.twIndex;
   }
   if (state.commNet != prev.commNet) {
     uint16_t fc, bc; commTierColor(state.commNet, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "COMM:", formatPerc(state.commNet), fc, bc, TFT_BLACK, psCOM);
+               "COMM", formatPerc(state.commNet), fc, bc, TFT_BLACK, psCOM);
     prev.commNet = state.commNet;
   }
   if (state.skinTemp != prev.skinTemp) {
     uint16_t fc, bc; tempTierColor(state.skinTemp, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0 + TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "Tskin:", formatPerc(state.skinTemp), fc, bc, TFT_BLACK, psTskin);
+               "TSKIN", formatPerc(state.skinTemp), fc, bc, TFT_BLACK, psTskin);
     prev.skinTemp = state.skinTemp;
   }
   if (state.capValue != prev.capValue) {
     printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "CAP:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
+               "CAP", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
     prev.capValue = state.capValue;
   }
   if (state.ctrlGrp != prev.ctrlGrp) {
     printValue(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H,
-               "CtrlGrp:", formatInt(state.ctrlGrp), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCtrlGrp);
+               "CTRLGRP", formatInt(state.ctrlGrp), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCtrlGrp);
     prev.ctrlGrp = state.ctrlGrp;
   }
 
-  // --- THRESHOLD CROSSING ALERT CHIRPS (unchanged) ---
-  if (audioEnabled && !firstPassOnMain) {
-    if (state.alt_sl   >= ALERT_ALT_THRESHOLD && prev.alt_sl   < ALERT_ALT_THRESHOLD) audioAlertChirp();
-    if (state.vel_surf >= ALERT_VEL_THRESHOLD && prev.vel_surf < ALERT_VEL_THRESHOLD) audioAlertChirp();
-    if (currentBody.minSafe > 0 &&
-        state.apoapsis >= currentBody.minSafe && prev.apoapsis < currentBody.minSafe) audioAlertChirp();
-    if ((state.vesselSituationState & (1 << VSIT_ORBIT)) &&
-        !(prevSitForChirp & (1 << VSIT_ORBIT))) audioAlertChirp();
-  }
-
-  prev.alt_sl   = state.alt_sl;
-  prev.vel_surf = state.vel_surf;
-  prev.apoapsis = state.apoapsis;
-  firstPassOnMain = false;
-
-  // Reassert the bottom-zone border — bottom-row tile redraws above strip it (#5).
-  drawBottomZonePerimeter(tft);
+  // Reassert the bottom-zone border when a bottom-row tile redraw stripped it (#5).
+  if (_botDirty) drawBottomZonePerimeter(tft);
 }

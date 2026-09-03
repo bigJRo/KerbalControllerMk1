@@ -40,6 +40,7 @@ static void enterFlightScene() {
   // SL/RDR belongs to the flight it was pinned in.
   modeClearOverride(_scftVelRefOverride);
   modeClearOverride(_acftAltRefOverride);
+  _lnchManualOverride = false;   // and the LAUNCH screen's ASC/CIRC phase override
   if (contextSwitchAllowed()) switchToScreen(contextScreen());
   simpit.requestMessageOnChannel(0);
 }
@@ -97,8 +98,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (newSOI != state.gameSOI) {
           state.gameSOI = newSOI;
           currentBody = getBodyParams(state.gameSOI);
-          // ORB screen title includes SOI name — force its title bar to redraw only on change
-          if (activeScreen == screen_ORB) prevScreen = screen_COUNT;
+          // The ORB chrome draws the body itself, so repaint it when the body changes.
+          if (activeScreen == screen_ORB) switchToScreen(screen_ORB);
         }
       }
       break;
@@ -449,8 +450,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         // Non-flight (menus, tracking station, etc.) — show standby splash
         demoMode = false;
         drawStandbyScreen(infoDisp);
-        activeScreen = SCREEN_HOME;   // park on this panel's home screen behind the splash
-        prevScreen   = screen_COUNT;
+        switchToScreen(SCREEN_HOME);   // park on this panel's home screen behind the splash
       }
       break;
 
@@ -466,15 +466,18 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         }
         _pendingDockCheck = false;  // clear any stale dock check from previous switch
         if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
-        // Reset LNDG re-entry row mode and parachute deployment state for new vessel
-        _lndgReentryMode    = false;   // #34 reset re-entry mode on vessel switch
-        _orbAdvancedMode    = false;   // #43 reset ORB advanced mode on vessel switch
-        _scftPrevOrbMode     = false;   // #50 reset ATT orbital-mode state on vessel switch
-        _pfdManualOverride  = false;   // reset PFD title-cycle override; use context for new vessel
+        // Reset per-vessel screen state. (_lndgReentryMode is not touched: it is derived
+        // from the active screen by drawStaticScreen() / updateScreen().)
+        _scftPrevOrbMode    = false;   // #50 reset SCFT orbital-mode state on vessel switch
+        _pfdManualOverride  = false;   // reset the PFD sidebar-cycle override; use context for new vessel
         clearManualScreenLatch();      // new vessel — release the held manual pick
         resetContextRouting();         //   and the routing state with it
         modeClearOverride(_scftVelRefOverride);   // and the held attitude references
         modeClearOverride(_acftAltRefOverride);
+        _lnchManualOverride = false;   // LAUNCH phase override and coast latch belong to
+        _lnchOrbitalMode    = false;   //   the old vessel; the new one re-derives them
+        _lnchCoastLatched   = false;
+        rovrEnduranceReset();          // the charge window is the old vessel's
         _lndgReentryRow0TPe = false;
         _lndgReentryRow1SL  = false;
         _drogueDeployed  = false;

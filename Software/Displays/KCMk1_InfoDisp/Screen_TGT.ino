@@ -3,9 +3,8 @@
 
    LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌─────────────────────────────────┬──────────────────────────────────────┐
-   │                                 │ ALT.SL:         142.8 km             │
-   │   RPOD Scope                    │ V.ORB:         2247.3 m/s            │
-   │   (black disc, R=210, ±60°)     │ DIST:           48.3 km             │
+   │   RPOD Scope                    │ DIST:           48.3 km             │
+   │   (black disc, R=210, ±60°)     │                                      │
    │                                 │ V.CLOSE:         -1.4 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
    │   ○ velocity vector (NEON_GREEN)│ V.BRG:  +14.0° │ V.ELV:  -9.0°      │
@@ -100,6 +99,7 @@ static const uint16_t TGT_BAR_X      = TGT_SCX - TGT_BAR_W / 2;   // 64
 static const uint16_t TGT_BAR_H      = 26;
 static const float    TGT_BAR_MAX_MS = 250.0f;   // full bar = 250 m/s closure
 static float          _tgtPrevBarVC  = -9999.0f; // bar redraw cache (reset on entry)
+static uint16_t       _tgtPrevBarCol = 0;        // and its colour, which range also drives
 
 
 // ── Shared dot-layer geometry + per-screen erase cache ───────────────────────────────
@@ -187,13 +187,15 @@ static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
     static const uint16_t barY = TGT_SCY + TGT_R + 42;
     static const uint16_t lblY = barY - 34;
 
-    if (fabsf(vc - _tgtPrevBarVC) < 0.5f) return;
-    _tgtPrevBarVC = vc;
-
     float    av      = fabsf(vc);
     bool     closing = (vc < 0.0f);
     bool     tooFast = (av > TGT_VCLOSURE_ALARM_MS && dist < RNDZ_DIST_WARN_M);
     uint16_t barCol  = tooFast ? TFT_RED : (!closing ? TFT_YELLOW : TFT_DARK_GREEN);
+    // The colour depends on range as well as closure, so a range crossing at a steady
+    // closure has to repaint too, or the bar and the V.CLOSE row disagree.
+    if (fabsf(vc - _tgtPrevBarVC) < 0.5f && barCol == _tgtPrevBarCol) return;
+    _tgtPrevBarVC  = vc;
+    _tgtPrevBarCol = barCol;
 
     float    fraction = fminf(av / TGT_BAR_MAX_MS, 1.0f);
     uint16_t fillW    = (uint16_t)(fraction * (TGT_BAR_W - 2));
@@ -232,7 +234,8 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
 
     // Reset dot positions — first draw must not try to erase stale coordinates
     _tgtDots = ReticleDotCache{};
-    _tgtPrevBarVC = -9999.0f;   // force the closure bar to redraw on entry
+    _tgtPrevBarVC  = -9999.0f;  // force the closure bar to redraw on entry
+    _tgtPrevBarCol = 0;
 
     // Left panel: clear and draw scope chrome
     tft.fillRect(0, TITLE_TOP, TGT_RP_X, SCREEN_H - TITLE_TOP, TFT_BLACK);
@@ -249,14 +252,14 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     uint16_t HW      = TGT_RP_W / 2;
 
     // Rows 0–1: full-width labels
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(0,NR), TGT_RP_W, rowH, "Dist:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(1,NR), TGT_RP_W, rowH, "V.Close:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(0,NR), TGT_RP_W, rowH, "DIST",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(1,NR), TGT_RP_W, rowH, "V.CLOSE",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Row 2: Brg | Elv split
     {
         uint16_t y = rowYFor(2, NR), h = rowH;
-        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "BRG", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "ELV", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
@@ -264,14 +267,14 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
     // Row 3: V.Brg | V.Elv split (approach-path error about the target axis)
     {
         uint16_t y = rowYFor(3, NR), h = rowH;
-        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "V.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "V.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X,        y, HW - ROW_PAD, h, "V.BRG", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, F, TGT_RP_X + HW,   y, HW - ROW_PAD, h, "V.ELV", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
     }
 
     // Row 4: T+Int full-width
-    printDispChrome(tft, F, TGT_RP_X, rowYFor(4,NR), TGT_RP_W, rowH, "T+Int:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, TGT_RP_X, rowYFor(4,NR), TGT_RP_W, rowH, "T+INT", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Horizontal dividers between rows 1/2 and 3/4 — the two angle pairs are set off
     // from the range/closure block above and the intercept time below.
@@ -284,8 +287,8 @@ static void chromeScreen_TGT(KCM_TFT &tft) {
         tft.drawLine(TGT_RP_X, d2+1, TGT_RP_X + TGT_RP_W, d2+1, TFT_GREY);
     }
 
-    // Invalidate value caches — forces full redraw on first update pass
-    for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[screen_TGT][r].value = "\x01";
+    // Reset the print states — forces a full clear on the first value draw. (The row
+    // cache itself is invalidated by drawStaticScreen() after this chrome.)
     for (uint8_t r = 0; r < ROW_COUNT; r++) printState[screen_TGT][r] = PrintState{};
 }
 
@@ -335,7 +338,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     if      (state.tgtDistance < DOCK_DIST_WARN_M)  { fg = TFT_WHITE;      bg = TFT_DARK_GREEN; }
     else if (state.tgtDistance < RNDZ_DIST_WARN_M)  { fg = TFT_YELLOW;     bg = TFT_BLACK;      }
     else                                            { fg = TFT_DARK_GREEN; bg = TFT_BLACK;      }
-    tgtVal(0, 0, "Dist:", formatAlt(state.tgtDistance), fg, bg);
+    tgtVal(0, 0, "DIST", formatAlt(state.tgtDistance), fg, bg);
 
     // Row 1 — V.Close  (cache slot 1)
     // Speed of closure. Negative = closing (good), positive = opening (bad).
@@ -352,10 +355,10 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         if (tooFast)       { fg = TFT_WHITE;  bg = TFT_RED;   }
         else if (!closing) { fg = TFT_YELLOW; bg = TFT_BLACK; }
         else               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        tgtVal(1, 1, "V.Close:", fmtMs(vc), fg, bg);
+        tgtVal(1, 1, "V.CLOSE", fmtMs(vc), fg, bg);
     }
 
-    // Row 4 — Brg | Elv  (cache slots 4, 5)
+    // Row 2 — Brg | Elv  (cache slots 2, 3)
     // Where the target sits relative to the NOSE — the same quantity MNVR's Brg/Elv
     // shows, and literally where the violet TGT marker is on the scope. This used to
     // print state.tgtHeading wrapped to +/-180 under a comment claiming "positive =
@@ -363,13 +366,13 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // ahead on heading 120 it read +120, not 0.
     {
         snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priRight);
-        tgtValH(2, 2, TGT_RP_X, "Brg:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
+        tgtValH(2, 2, TGT_RP_X, "BRG", String(buf), TFT_DARK_GREEN, TFT_BLACK);
 
         snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priUp);
-        tgtValH(2, 3, TGT_RP_X + HW, "Elv:", String(buf), TFT_DARK_GREEN, TFT_BLACK);
+        tgtValH(2, 3, TGT_RP_X + HW, "ELV", String(buf), TFT_DARK_GREEN, TFT_BLACK);
     }
 
-    // Row 5 — V.Brg | V.Elv  (cache slots 6, 7)
+    // Row 3 — V.Brg | V.Elv  (cache slots 4, 5)
     // Approach-path error about the TARGET axis: how far right and above the approach
     // path the relative velocity actually points. Same quantity DOCK shows under the
     // same labels. Colour bands are the scope rings (green inside 15 deg, yellow to
@@ -385,20 +388,20 @@ static void drawScreen_TGT(KCM_TFT &tft) {
         // when not closing). It also keeps the value inside the half-width cell.
         bool appValid = (sqrtf(ang.appRight*ang.appRight + ang.appUp*ang.appUp) <= 90.0f);
         if (!appValid) {
-            tgtValH(3, 4, TGT_RP_X,      "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
-            tgtValH(3, 5, TGT_RP_X + HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
+            tgtValH(3, 4, TGT_RP_X,      "V.BRG", "---", TFT_DARK_GREY, TFT_BLACK);
+            tgtValH(3, 5, TGT_RP_X + HW, "V.ELV", "---", TFT_DARK_GREY, TFT_BLACK);
         } else {
             errColor(fabsf(ang.appRight), fg, bg);
             snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appRight);
-            tgtValH(3, 4, TGT_RP_X, "V.Brg:", String(buf), fg, bg);
+            tgtValH(3, 4, TGT_RP_X, "V.BRG", String(buf), fg, bg);
 
             errColor(fabsf(ang.appUp), fg, bg);
             snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.appUp);
-            tgtValH(3, 5, TGT_RP_X + HW, "V.Elv:", String(buf), fg, bg);
+            tgtValH(3, 5, TGT_RP_X + HW, "V.ELV", String(buf), fg, bg);
         }
     }
 
-    // Row 6 — T+Int  (cache slot 8)
+    // Row 4 — T+Int  (cache slot 6)
     // Estimated intercept time = distance / |closure rate|.
     // Only meaningful when closing; shows "---" otherwise.
     {
@@ -412,7 +415,7 @@ static void drawScreen_TGT(KCM_TFT &tft) {
             tIntStr = "---";
             fg = TFT_DARK_GREY; bg = TFT_BLACK;
         }
-        tgtVal(4, 6, "T+Int:", tIntStr, fg, bg);
+        tgtVal(4, 6, "T+INT", tIntStr, fg, bg);
     }
 
     // ── Closure-velocity bar (left panel, under the scope) ───────────────────────────
@@ -420,18 +423,16 @@ static void drawScreen_TGT(KCM_TFT &tft) {
 
     // ── Redraw dividers — printValue fillRect can overwrite them ─────────────────────
     {
-        uint16_t d0 = rowYFor(2,NR) - 1;  // V.Orb → Dist
+        uint16_t d0 = rowYFor(2,NR) - 1;  // V.Close → Brg|Elv
         tft.drawLine(TGT_RP_X, d0,   TGT_RP_X + TGT_RP_W, d0,   TFT_GREY);
         tft.drawLine(TGT_RP_X, d0+1, TGT_RP_X + TGT_RP_W, d0+1, TFT_GREY);
-        uint16_t d1 = rowYFor(4,NR) - 1;  // V.Tgt → Brg|Elv
+        uint16_t d1 = rowYFor(4,NR) - 1;  // V.Brg|V.Elv → T+Int
         tft.drawLine(TGT_RP_X, d1,   TGT_RP_X + TGT_RP_W, d1,   TFT_GREY);
         tft.drawLine(TGT_RP_X, d1+1, TGT_RP_X + TGT_RP_W, d1+1, TFT_GREY);
-        uint16_t d2 = rowYFor(6,NR) - 1;
-        tft.drawLine(TGT_RP_X, d2,   TGT_RP_X + TGT_RP_W, d2,   TFT_GREY);
-        tft.drawLine(TGT_RP_X, d2+1, TGT_RP_X + TGT_RP_W, d2+1, TFT_GREY);
     }
-    // Split-row vertical dividers
-    for (uint8_t row = 4; row <= 5; row++) {
+    // Split-row vertical dividers (rows 2 and 3 are the split rows; the loop used to
+    // run over the old seven-row layout's 4..5 and put a line through T+INT)
+    for (uint8_t row = 2; row <= 3; row++) {
         uint16_t y = rowYFor(row, NR), h = rowHFor(NR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(TGT_RP_X + HW + dx, y, TGT_RP_X + HW + dx, y + h - 1, TFT_GREY);
