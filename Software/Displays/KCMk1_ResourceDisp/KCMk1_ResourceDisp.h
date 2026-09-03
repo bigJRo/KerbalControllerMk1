@@ -32,7 +32,7 @@ typedef ILI9341_t3_font_t tFont;
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 14;  // 3.14.0: bug sweep, optimisation and cleanup pass
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.14.1: history time axis in whole minutes
 
 
 /***************************************************************************************

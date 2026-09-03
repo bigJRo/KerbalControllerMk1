@@ -287,6 +287,14 @@ static void drawDetailHistoryChrome(KCM_TFT &tft) {
   _histDrawnSeq = histSeq() - 1;   // force the first trace
 }
 
+// A span of game time for the axis and caption: whole minutes under an hour ("8m",
+// not the counter's "8:00", since the ticks are minutes apart and the seconds say
+// nothing), then the counter's own hours and days forms under warp.
+static void fmtHistSpan(float secs, char *buf, size_t n) {
+  if (secs < 3600.0f) snprintf(buf, n, "%dm", (int)(secs / 60.0f + 0.5f));
+  else                fmtTte(secs, buf, n);
+}
+
 // Time labels: game time back from now at each tick, NOW at the right. A tick the
 // buffer has not reached yet stays blank. Only a label whose text changed is redrawn.
 static void drawDetailHistoryAxis(KCM_TFT &tft) {
@@ -297,7 +305,7 @@ static void drawDetailHistoryAxis(KCM_TFT &tft) {
     uint16_t a = j * DET_HIST_T_STEP;
     char lab[10] = "";
     if (j == 0) strlcpy(lab, "NOW", sizeof(lab));
-    else if (n >= 2 && a <= n) { char d[8]; fmtTte(histGameAgoSamples(a), d, sizeof(d)); snprintf(lab, sizeof(lab), "-%s", d); }
+    else if (n >= 2 && a <= n) { char d[8]; fmtHistSpan(histGameAgoSamples(a), d, sizeof(d)); snprintf(lab, sizeof(lab), "-%s", d); }
     if (strcmp(lab, _histAxis[j]) == 0) continue;
     strlcpy(_histAxis[j], lab, sizeof(_histAxis[j]));
     int16_t tx = histXAgo(a);
@@ -324,7 +332,7 @@ static void drawDetailHistory(KCM_TFT &tft) {
   // Caption: the game time the held samples span.
   char cap[16];
   if (n < 2) strlcpy(cap, "NO HISTORY", sizeof(cap));
-  else { char d[8]; fmtTte(histGameSecs(), d, sizeof(d)); snprintf(cap, sizeof(cap), "LAST %s", d); }
+  else { char d[8]; fmtHistSpan(histGameSecs(), d, sizeof(d)); snprintf(cap, sizeof(cap), "LAST %s", d); }
   if (strcmp(cap, _histCaption) != 0) {
     strlcpy(_histCaption, cap, sizeof(_histCaption));
     tft.fillRect(DET_HIST_BOX_X, DET_HIST_BOX_Y - 22, DET_HIST_BOX_W, 18, TFT_BLACK);
