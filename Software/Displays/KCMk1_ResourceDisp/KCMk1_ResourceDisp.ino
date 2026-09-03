@@ -67,13 +67,13 @@ void setup() {
     if (debugMode) Serial.println(F("ResourceDisp: Demo mode -- Simpit disabled."));
     initDemoMode();
   } else {
-    // Live mode: initDefaultSlots() sets the initial slot TYPE configuration
-    // (which resources appear on the main screen) without implying any resource
-    // is actually present. Values are immediately zeroed so bars start empty.
-    // Simpit will populate values once a flight scene is entered.
-    // The user's slot selection persists across scene changes — only values are
-    // zeroed on SCENE_CHANGE, not the slot type configuration.
-    initDefaultSlots();   // live mode: sets slot TYPES; values already zeroed within
+    // Live mode: initDefaultSlots() loads the default layout (the pilot's stored
+    // one from EEPROM, else the SPCT preset) without implying any resource is
+    // actually present. Values start at zero so bars start empty; Simpit populates
+    // them once a flight scene is entered, and the vessel-name message swaps in the
+    // vessel's own remembered layout if it has one. The slot selection persists
+    // across scene changes — only values are zeroed on SCENE_CHANGE.
+    initDefaultSlots();
     initSimpit();
   }
 

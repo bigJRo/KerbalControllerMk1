@@ -56,7 +56,8 @@ const uint8_t DISPLAY_ROTATION = 0;
 /***************************************************************************************
    SLOT CONFIGURATION
    MAX_SLOTS          -- hard limit on how many meters can be active.
-   DEFAULT_SLOT_COUNT -- how many slots are pre-populated on first boot.
+   DEFAULT_SLOT_COUNT -- the standard meter class holds this many; above it the Main
+                         screen goes compact. Also the SPCT preset's size.
    These are defined as constexpr in KCMk1_ResourceDisp.h so they can be used
    as compile-time array sizes (e.g. in VesselSlotRecord).
 ****************************************************************************************/

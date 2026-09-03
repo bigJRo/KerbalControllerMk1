@@ -2,8 +2,8 @@
    Persist.ino -- EEPROM persistence for KCMk1 Resource Display
 
    What survives a power cycle: the per-vessel slot memory (vesselCache, up to
-   VESSEL_CACHE_SIZE vessels, each its slot types and reserve bugs, keyed by name) and
-   the TTE toggle. Everything else the panel shows comes from KSP or from compile-time
+   VESSEL_CACHE_SIZE vessels, each its slot types and reserve bugs, keyed by name),
+   the pilot-set default layout (defaultLayout, same shape) and the TTE toggle. Everything else the panel shows comes from KSP or from compile-time
    configuration.
 
    Where: the Teensy 4.1's emulated EEPROM, 4284 bytes of wear-levelled flash behind
@@ -13,8 +13,9 @@
    whenever the card was out. The core only programs a byte whose value changes, so a
    store that changes nothing costs nothing in wear.
 
-   Image: a header (magic, schema, the TTE toggle, the number of records), the vessel
-   records in recency order, and a CRC-16 over all of it. Bugs go out as whole
+   Image: a header (magic, schema, the TTE toggle, the number of records), the
+   default layout record, the vessel records in recency order, and a CRC-16 over all
+   of it. Bugs go out as whole
    percent (255 = none), which is lossless since every gesture sets whole percent.
    A block whose magic, schema or CRC does not check out is discarded and a fresh
    empty one written, which is also how a schema bump or PERSIST_WIPE forgets.
@@ -34,7 +35,7 @@
    IMAGE LAYOUT
 ****************************************************************************************/
 static const uint32_t PERSIST_MAGIC  = 0x4B524431UL;   // 'KRD1'
-static const uint16_t PERSIST_SCHEMA = 1;              // bump when the layout below changes
+static const uint16_t PERSIST_SCHEMA = 2;              // bump when the layout below changes
 static const uint8_t  BUG_NONE       = 255;
 
 struct __attribute__((packed)) PersistVessel {
@@ -49,6 +50,7 @@ struct __attribute__((packed)) PersistImage {
   uint16_t      schema;
   uint8_t       tteMode;
   uint8_t       vesselCount;
+  PersistVessel dflt;                // the pilot-set default layout; count 0 = none
   PersistVessel vessels[VESSEL_CACHE_SIZE];
   uint16_t      crc;                 // CRC-16/CCITT over everything above
 };
@@ -63,6 +65,8 @@ static bool         _pending     = false;
 // Explicit prototypes: the IDE hoists one for every function, above the tabs where
 // PersistImage is not yet visible, unless the sketch declares it itself.
 static uint16_t persistCrc(const PersistImage &img);
+static void     persistPack(PersistVessel &v, const VesselSlotRecord &r);
+static void     persistUnpack(VesselSlotRecord &r, const PersistVessel &v);
 static void     persistBuild(PersistImage &img);
 static void     persistWrite(const PersistImage &img);
 
@@ -77,23 +81,39 @@ static uint16_t persistCrc(const PersistImage &img) {
   return crc;
 }
 
-// The live cache and toggle as an image.
+// One record each way. Types are range-checked on the way in, bugs clamped.
+static void persistPack(PersistVessel &v, const VesselSlotRecord &r) {
+  memset(&v, 0, sizeof(v));
+  strlcpy(v.name, r.name, sizeof(v.name));
+  v.count = r.count > MAX_SLOTS ? MAX_SLOTS : r.count;
+  for (uint8_t j = 0; j < MAX_SLOTS; j++) {
+    v.types[j] = (j < v.count) ? (uint8_t)r.types[j] : (uint8_t)RES_NONE;
+    v.bugs[j]  = (j < v.count && r.bugs[j] >= 0.0f) ? (uint8_t)roundf(constrain(r.bugs[j], 0.0f, 1.0f) * 100.0f) : BUG_NONE;
+  }
+}
+
+static void persistUnpack(VesselSlotRecord &r, const PersistVessel &v) {
+  strlcpy(r.name, v.name, sizeof(r.name));          // terminates a full-width name
+  r.count = v.count > MAX_SLOTS ? MAX_SLOTS : v.count;
+  for (uint8_t j = 0; j < MAX_SLOTS; j++) {
+    uint8_t t = v.types[j];
+    r.types[j] = (t < (uint8_t)RES_COUNT) ? (ResourceType)t : RES_NONE;
+    r.bugs[j]  = (v.bugs[j] == BUG_NONE || v.bugs[j] > 100) ? -1.0f : v.bugs[j] / 100.0f;
+  }
+}
+
+// The live cache, default layout and toggle as an image.
 static void persistBuild(PersistImage &img) {
   memset(&img, 0, sizeof(img));
   img.magic   = PERSIST_MAGIC;
   img.schema  = PERSIST_SCHEMA;
   img.tteMode = tteMode ? 1 : 0;
+  persistPack(img.dflt, defaultLayout);
   uint8_t n = 0;
   for (uint8_t i = 0; i < VESSEL_CACHE_SIZE; i++) {
     const VesselSlotRecord &r = vesselCache[i];
     if (r.name[0] == '\0' || r.count == 0) continue;
-    PersistVessel &v = img.vessels[n++];
-    strlcpy(v.name, r.name, sizeof(v.name));
-    v.count = r.count;
-    for (uint8_t j = 0; j < MAX_SLOTS; j++) {
-      v.types[j] = (j < r.count) ? (uint8_t)r.types[j] : (uint8_t)RES_NONE;
-      v.bugs[j]  = (j < r.count && r.bugs[j] >= 0.0f) ? (uint8_t)roundf(constrain(r.bugs[j], 0.0f, 1.0f) * 100.0f) : BUG_NONE;
-    }
+    persistPack(img.vessels[n++], r);
   }
   img.vesselCount = n;
   img.crc = persistCrc(img);
@@ -139,6 +159,7 @@ void persistLoad() {
   bool valid = _img.magic == PERSIST_MAGIC && _img.schema == PERSIST_SCHEMA &&
                _img.vesselCount <= VESSEL_CACHE_SIZE && _img.crc == persistCrc(_img);
   clearVesselCache();
+  clearDefaultLayout();
   if (PERSIST_WIPE || !valid) {
     if (debugMode) Serial.println(PERSIST_WIPE ? F("ResourceDisp: persist: WIPE requested, memory cleared")
                                               : F("ResourceDisp: persist: no valid block, starting empty"));
@@ -146,22 +167,16 @@ void persistLoad() {
     persistWrite(_img);
   } else {
     tteMode = _img.tteMode != 0;
+    persistUnpack(defaultLayout, _img.dflt);
     for (uint8_t i = 0; i < _img.vesselCount; i++) {
-      const PersistVessel &v = _img.vessels[i];
       VesselSlotRecord &r = vesselCache[i];
-      strlcpy(r.name, v.name, sizeof(r.name));          // terminates a full-width name
-      r.count = v.count > MAX_SLOTS ? MAX_SLOTS : v.count;
-      for (uint8_t j = 0; j < MAX_SLOTS; j++) {
-        uint8_t t = v.types[j];
-        r.types[j] = (t < (uint8_t)RES_COUNT) ? (ResourceType)t : RES_NONE;
-        r.bugs[j]  = (v.bugs[j] == BUG_NONE || v.bugs[j] > 100) ? -1.0f : v.bugs[j] / 100.0f;
-      }
+      persistUnpack(r, _img.vessels[i]);
       if (r.name[0] == '\0' || r.count == 0) { r.name[0] = '\0'; r.count = 0; }
     }
     if (debugMode) {
       Serial.print(F("ResourceDisp: persist: loaded "));
       Serial.print(persistVesselCount());
-      Serial.println(F(" vessel(s)"));
+      Serial.println(defaultLayoutSet() ? F(" vessel(s), pilot default layout") : F(" vessel(s), SPCT default"));
     }
   }
   _lastSig = persistSignature();

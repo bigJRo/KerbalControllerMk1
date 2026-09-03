@@ -214,17 +214,19 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (newName != currentVesselName) {
         if (debugMode) { Serial.print(F("ResourceDisp: vessel name = ")); Serial.println(newName); }
         currentVesselName = newName;
-        // Attempt to recall this vessel's last slot configuration.
-        // If not in cache, keep the current slot layout.
-        // On EVA the bar set is fixed (EC/EVA/O2/Food/Water) — skip per-vessel
-        // recall so the EVA Kerbal's name can't override it.
+        // A vessel in memory gets its own layout back; one that is not starts from
+        // the default (the pilot's stored one, else SPCT), so a new craft never
+        // inherits whatever the previous vessel happened to show. On EVA the bar
+        // set is fixed (EC/EVA/O2/Food/Water) — skip both so the EVA Kerbal's name
+        // can't override it.
         if (evaActive) {
           if (debugMode) Serial.println(F("ResourceDisp: EVA active — keeping EVA bar set"));
         } else if (recallVesselSlots(currentVesselName)) {
           if (debugMode) Serial.println(F("ResourceDisp: vessel slot config recalled"));
           requestResourceRefresh();
         } else {
-          if (debugMode) Serial.println(F("ResourceDisp: vessel not in cache, keeping current layout"));
+          if (debugMode) Serial.println(F("ResourceDisp: vessel not in memory, default layout"));
+          initDefaultSlots();   // also requests a refresh
         }
         // Request chrome redraw regardless — slot count/types may have changed.
         // needsMainRedraw is checked by loop() after simpit.update() returns,

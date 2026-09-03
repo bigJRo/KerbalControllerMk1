@@ -93,6 +93,7 @@ bool needsMainRedraw = false;
 ****************************************************************************************/
 VesselSlotRecord vesselCache[VESSEL_CACHE_SIZE];
 String           currentVesselName = "";
+VesselSlotRecord defaultLayout;      // count 0 until the pilot sets one
 
 
 /***************************************************************************************
@@ -147,6 +148,35 @@ void saveVesselSlots(const String &name) {
     r.bugs[j]  = slots[j].bug;
   }
   vesselCacheToFront((uint8_t)idx);
+}
+
+/***************************************************************************************
+   DEFAULT LAYOUT
+****************************************************************************************/
+bool defaultLayoutSet() { return defaultLayout.count > 0; }
+
+void setDefaultLayout() {
+  defaultLayout.name[0] = '\0';
+  defaultLayout.count   = slotCount;
+  for (uint8_t j = 0; j < slotCount; j++) {
+    defaultLayout.types[j] = slots[j].type;
+    defaultLayout.bugs[j]  = slots[j].bug;
+  }
+}
+
+void clearDefaultLayout() {
+  defaultLayout.name[0] = '\0';
+  defaultLayout.count   = 0;
+}
+
+// The current slot types, in order, against the effective default's.
+bool layoutIsDefault() {
+  const ResourceType *types; uint8_t n;
+  if (defaultLayoutSet()) { types = defaultLayout.types; n = defaultLayout.count; }
+  else                    { types = PRESETS[0].types;    n = PRESETS[0].count;    }
+  if (slotCount != n) return false;
+  for (uint8_t j = 0; j < n; j++) if (slots[j].type != types[j]) return false;
+  return true;
 }
 
 // Attempt to recall slot configuration for a given vessel name.

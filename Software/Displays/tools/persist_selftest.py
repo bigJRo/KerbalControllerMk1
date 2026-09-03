@@ -7,7 +7,8 @@ host stubs (tools/host_stubs: a byte-array EEPROM and a settable millis) with a
 harness that supplies the few globals they touch, then runs scenarios: fresh block,
 settle-timer store, reload and recall, whole-percent bug round trip, name truncation,
 recency order and eviction at 20, corrupt-block rejection, demo mode never writing,
-and a change that reverts before settling. Exit status is the harness's.
+the default layout round trip, and a change that reverts before settling. Exit
+status is the harness's.
 
     python3 tools/persist_selftest.py
 """
@@ -32,6 +33,7 @@ const bool     PERSIST_WIPE      = false;
 
 CACHE_CODE
 PERSIST_CODE
+const PresetGroup PRESETS[PRESET_COUNT] = { { "SPCT", { RES_ELEC_CHARGE }, 1 }, {}, {}, {}, {}, {} };
 
 static int fails = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("FAIL: %s\n", msg); fails++; } else printf("  ok: %s\n", msg); } while (0)
@@ -105,7 +107,18 @@ int main() {
   CHECK(stubEepromWrites() == wd, "demo mode writes nothing");
   demoMode = false;
 
-  // 8. A change that reverts before settling is not stored.
+  // 8. The default layout round-trips and clears.
+  setLayout("Any", 3, (int)RES_LIQUID_FUEL, 0.25f);
+  setDefaultLayout(); persistStoreNow();
+  CHECK(layoutIsDefault(), "a set default matches the layout it was set from");
+  clearDefaultLayout(); clearVesselCache(); persistLoad();
+  CHECK(defaultLayoutSet() && defaultLayout.count == 3 && defaultLayout.types[0] == RES_LIQUID_FUEL && fabsf(defaultLayout.bugs[0] - 0.25f) < 0.0001f, "default layout reloads with its bug");
+  clearDefaultLayout(); persistStoreNow(); persistLoad();
+  CHECK(!defaultLayoutSet(), "a cleared default stays cleared");
+  slotCount = 0;
+  CHECK(!layoutIsDefault(), "an empty layout is not the SPCT default");
+
+  // 9. A change that reverts before settling is not stored.
   persistStoreNow(); uint32_t wr = stubEepromWrites();
   setLayout("Kerbal X", 4, (int)RES_ELEC_CHARGE, 0.37f); persistStoreNow(); wr = stubEepromWrites();
   slots[0].bug = 0.50f; tick(5000); slots[0].bug = 0.37f; tick(5000); tick(31000);

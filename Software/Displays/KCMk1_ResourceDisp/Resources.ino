@@ -194,18 +194,66 @@ void zeroAllSlotValues() {
   }
 }
 
+/***************************************************************************************
+   MISSION PRESETS
+   The Select screen's preset keys. Everything in a preset should be aboard the craft
+   type it names; a resource the vessel turns out not to carry is skipped at load
+   time (see loadPreset in ScreenSelect.ino) and would draw no meter anyway. Nine or
+   fewer keeps the standard meter class. SPCT, the first, is also the layout a vessel
+   not in memory starts with when the pilot has not set a default of their own.
+****************************************************************************************/
+const PresetGroup PRESETS[PRESET_COUNT] = {
+  { "SPCT", {   // Spacecraft: stock launch-to-orbit set
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
+      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
+    }, 9 },
+  { "XPD", {    // Expedition: nuclear / hydrogen deep-space craft
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP,
+      RES_LIQUID_H2, RES_ENRICHED_URANIUM, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 9 },
+  { "SRF", {    // Surface: rover, lander, ISRU base
+      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_ORE, RES_LIQUID_FUEL, RES_LIQUID_OX,
+      RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 9 },
+  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPCT plus Intake Air.
+      RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_INTAKE_AIR,
+      RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
+    }, 7 },
+  { "LSP", {    // Life support: everything TAC-LS
+      RES_ELEC_CHARGE, RES_LS_OXYGEN, RES_LS_CO2, RES_LS_FOOD,
+      RES_LS_WASTE, RES_LS_WATER, RES_LS_LIQUID_WASTE, RES_FERTILIZER
+    }, 8 },
+  { "ADV", {   // Advanced Resource Group
+      RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_XENON, RES_ORE,
+      RES_LIQUID_H2, RES_LIQUID_METHANE, RES_LITHIUM,
+      RES_ENRICHED_URANIUM, RES_DEPLETED_URANIUM,
+      RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER,
+      RES_LS_CO2, RES_LS_WASTE, RES_LS_LIQUID_WASTE, RES_FERTILIZER
+    }, 16 },
+};
+
+// The default layout: the pilot's stored one if set (types and reserve bugs), else
+// the SPCT preset. Used at boot and for a vessel that is not in memory. Values start
+// at zero (or visible demo values); presence is not consulted, since at boot nothing
+// is known yet and an absent resource collapses on the Main screen anyway.
 void initDefaultSlots() {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = DEFAULT_SLOT_COUNT;  // 9 — matches SPCT preset count
-  // SPCT preset: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator
-  static const ResourceType STD_TYPES[DEFAULT_SLOT_COUNT] = {
-    RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
-    RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
-  };
-  for (uint8_t i = 0; i < DEFAULT_SLOT_COUNT; i++) {
-    slots[i].type = STD_TYPES[i];
-    initSlotValues(slots[i]);
+  if (defaultLayoutSet()) {
+    slotCount = defaultLayout.count;
+    for (uint8_t i = 0; i < slotCount; i++) {
+      slots[i].type = defaultLayout.types[i];
+      initSlotValues(slots[i]);
+      slots[i].bug = defaultLayout.bugs[i];
+    }
+  } else {
+    const PresetGroup &pg = PRESETS[0];
+    slotCount = pg.count;
+    for (uint8_t i = 0; i < slotCount; i++) {
+      slots[i].type = pg.types[i];
+      initSlotValues(slots[i]);
+    }
   }
+  sortSlotsByGroup();
   requestResourceRefresh();
 }
 

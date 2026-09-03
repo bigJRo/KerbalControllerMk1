@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: vessel memory and TTE toggle persist in EEPROM
+static const uint8_t SKETCH_VERSION_MINOR = 9;   // 3.9.0: pilot-set default layout; unknown vessels get the default
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -415,6 +415,25 @@ extern String           currentVesselName;
 void saveVesselSlots(const String &name);
 bool recallVesselSlots(const String &name);
 void clearVesselCache();
+
+// The pilot-set default layout: what a vessel not in memory starts with, set from the
+// Select screen's DFLT key and persisted with the cache. count 0 = none set, in which
+// case the SPCT preset is the default. (AAA_Globals.ino)
+extern VesselSlotRecord defaultLayout;
+void setDefaultLayout();        // the current slots (types and bugs) become the default
+void clearDefaultLayout();      // back to the SPCT preset
+bool defaultLayoutSet();
+bool layoutIsDefault();         // current slot types match the effective default, in order
+
+// Mission presets (Resources.ino): the Select screen's keys, and PRESETS[0] (SPCT) is
+// the built-in default layout.
+struct PresetGroup {
+  const char*  label;
+  ResourceType types[MAX_SLOTS];
+  uint8_t      count;
+};
+static constexpr uint8_t PRESET_COUNT = 6;
+extern const PresetGroup PRESETS[PRESET_COUNT];
 
 // Persistence (Persist.ino): the vessel cache and the TTE toggle live in the Teensy's
 // emulated EEPROM. persistLoad() at boot, persistService() every loop pass (stores a
