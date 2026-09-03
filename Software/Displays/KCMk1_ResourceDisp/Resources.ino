@@ -280,25 +280,6 @@ void loadEvaSlots() {
   requestResourceRefresh();
 }
 
-// DEMO ONLY — loads all available resource types into slots for layout testing.
-// Fills up to MAX_SLOTS (16) slots in display order with sine-wave initial values.
-// Called by initDemoMode() in Demo.ino. Not used in live Simpit mode.
-void initAllSlots() {
-  for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
-  slotCount = 0;
-  for (uint8_t i = 0; slotCount < MAX_SLOTS; i++) {
-    ResourceType t = resTypeByIndex(i);
-    if (t == RES_NONE) break;
-    slots[slotCount].type         = t;
-    slots[slotCount].maxVal       = 1.0f;
-    slots[slotCount].stageMax     = 0.4f;
-    slots[slotCount].current      = 0.5f + 0.4f * sinf((float)slotCount * 0.7f);
-    slots[slotCount].stageCurrent = 0.3f + 0.2f * sinf((float)slotCount * 0.7f);
-    slotCount++;
-  }
-}
-
-
 /***************************************************************************************
    RESOURCE SUBSYSTEM GROUP
    Drives the Main screen's meter order and group labels. Same grouping as the

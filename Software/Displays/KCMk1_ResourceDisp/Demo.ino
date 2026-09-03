@@ -38,10 +38,15 @@ bool demoResourceAbsent(ResourceType t) {
 
 /***************************************************************************************
    INIT DEMO MODE
-   Called once from setup(). Populates slots with defaults and sets initial levels.
+   Called from setup(), and again if the master switches demo on at runtime. Starts
+   on the same layout the live panel would: the default (the pilot's stored one, else
+   the SPCT preset), with demo values. The sixteen-wide compact case is one tap away
+   on Select, the ADV preset. It used to load every resource type, which made the
+   demo boot on a set no vessel shows and read as a fault once the default layout
+   became a pilot setting.
 ****************************************************************************************/
 void initDemoMode() {
-  initAllSlots();
+  initDefaultSlots();   // demo values via initSlotValues(); the refresh request is a no-op in demo
   // DEMO_EVA: latch the EVA flag as FLIGHT_STATUS would. loop() reconciles it on
   // its first pass, loads the EVA slot set and shows the ring-gauge layout.
   if (DEMO_EVA) evaFlag = true;

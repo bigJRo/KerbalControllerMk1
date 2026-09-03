@@ -32,7 +32,7 @@ typedef ILI9341_t3_font_t tFont;
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 12;  // 3.12.0: level history trace on the Detail screen
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.12.1: trace stays inside its box; game-time scale
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 3.12.2: demo starts on the default layout
 
 
 /***************************************************************************************
@@ -350,7 +350,6 @@ void initDemoMode();
 bool demoResourceAbsent(ResourceType t);   // demo's scripted "not aboard" phases
 void initDefaultSlots();
 void loadEvaSlots();     // load the fixed EVA bar set: EC, EVA Propellant, O2, Food, Water
-void initAllSlots();
 void stepDemoState();
 void initSimpit();
 void bootSimText(KCM_TFT &tft);

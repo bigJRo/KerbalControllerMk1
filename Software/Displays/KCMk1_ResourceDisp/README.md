@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.12.1
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.12.2
 Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -300,7 +300,7 @@ Simpit identifies a vessel by name only, so two craft with the same name share o
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration; single-resource channels are a table, not a case each |
 | `I2CSlave.ino` | I2C slave at 0x11 — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Jurassic Park-themed terminal boot sequence |
-| `Demo.ino` | Demo mode — sine-wave resource values sweeping the full 0–100% range, plus a scripted presence scenario (every 20 s: nothing absent, then SF and Ablator absent, then those plus MP and Xenon) to exercise the collapse; no KSP connection |
+| `Demo.ino` | Demo mode — starts on the default layout (the pilot's stored one, else SPCT; ADV on Select gives the sixteen-wide case), sine-wave resource values sweeping the full 0–100% range, plus a scripted presence scenario (every 20 s: nothing absent, then SF and Ablator absent, then those plus MP and Xenon) to exercise the collapse; no KSP connection |
 
 ---
 
@@ -324,6 +324,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.12.2** | **The demo starts on the default layout.** It used to load every resource type in display order, sixteen meters, a set no vessel shows; with the default layout now a pilot setting that read as a fault. The demo now boots on what the live panel would show for an unknown vessel, the pilot's stored default or SPCT, with demo values. The sixteen-wide compact case is the ADV preset on Select. `initAllSlots()` is gone. |
 | **3.12.1** | **History trace stays in its box, and gets a time scale.** The newest-sample dot was drawn on the box's last interior column with a 3 px radius, so it overhung the border and the interior clear left its far side behind as a ghost. The plot area is now inset from the border by 4 px, the clear takes the whole box and the border is redrawn with it. Five ticks under the box carry a **time scale** labelled in game time back from now at the ends and the middle, computed from the warp recorded with each sample so it stays right across a warp change; a tick with no sample yet is blank until the buffer reaches it. |
 | **3.12.0** | **Level history on the Detail screen.** A column right of the data rows carries a trace of the resource's level over the last ten minutes (`HIST_LEN` samples every `HIST_PERIOD_MS`), on a fixed 0 to 100 percent axis so a night-pass EC dip reads as a shape against the whole tank and the trace never rescales; the caution and alarm fractions are faint lines, the bug a cyan one, and the caption gives the game time spanned, since under warp ten real minutes is hours. The ring is kept per resource type in `Sampling.ino` on every screen, reset on vessel switch and scene entry. Behind `DETAIL_HISTORY`; off, the rows take the full width again. A trial: the rows give up 280 px, which the widest 48 px label and value still clear by 27 px. |
 | **3.11.0** | **Slow drains get a time, the strip names the vessel, the master gets the alert picture.** A second, long rate window (`TTE_LONG_WINDOW_MS`, five minutes) takes over when the ten-second one sees nothing, so food and water on a small crew have a time to empty at 1x and their time tiers, which could only ever fire under warp, now work; the Detail Rate row scales to per minute or per hour rather than printing `0.00/s`, the time formatter has a days form (`4d 3h`, `27d`) instead of stopping at `>99h`, and the Detail time row is labelled **To empty**, or **To full** for a waste resource. The alert strip shows the **vessel name** at its right end, cyan when the layout on screen came from vessel memory and grey when it is the default, the Kerbal's name on EVA. The outbound I2C packet carries an **alert summary**: caution, alarm and time-tier flags and the worst resource's type, evaluated screen-independently, so the master or Annunciator can sound resource alarms. The time-tier logic moved to `Sampling.ino` and is shared by Main, EVA and the summary. Small: a `SEL to choose resources` hint under the empty-set message, a boot-sequence line reporting the vessel memory. The README's eviction note was stale since 3.8.0. |
