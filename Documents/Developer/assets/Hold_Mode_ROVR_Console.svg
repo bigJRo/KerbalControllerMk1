@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="600" viewBox="0 0 1024 600">
+<rect x="0" y="0" width="1024" height="600" fill="#000000" stroke="none" stroke-width="1"/>
+<text x="470" y="30" font-size="36" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >ROVER AUTOPILOT</text>
+<rect x="0" y="58" width="940" height="4" fill="#848284" stroke="none" stroke-width="1"/>
+<line x1="940" y1="0" x2="940" y2="600" stroke="#848284" stroke-width="1"/>
+<rect x="941" y="1" width="82" height="98" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="982" y="50" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >PFD</text>
+<rect x="941" y="101" width="82" height="98" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="982" y="150" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >LNCH</text>
+<rect x="941" y="201" width="82" height="98" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="982" y="250" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >ORB</text>
+<rect x="941" y="301" width="82" height="98" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="982" y="350" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >TGT</text>
+<rect x="941" y="401" width="82" height="98" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="982" y="450" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >LNDG</text>
+<rect x="941" y="501" width="82" height="98" fill="#007D00" stroke="none" stroke-width="1"/>
+<text x="982" y="550" font-size="20" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >RVAP</text>
+<text x="8" y="94" font-size="36" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >CRUISE</text>
+<text x="330" y="94" font-size="24" fill="#FF7D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >SLOPE LIMIT</text>
+<text x="934" y="78" font-size="20" fill="#848284" text-anchor="end" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >MUN  ·  ROVER 3</text>
+<text x="934" y="107" font-size="28" fill="#3AFF10" text-anchor="end" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >ENGAGED</text>
+<rect x="0" y="126" width="940" height="2" fill="#848284" stroke="none" stroke-width="1"/>
+<line x1="314" y1="132" x2="314" y2="590" stroke="#848284"/>
+<line x1="630" y1="132" x2="630" y2="590" stroke="#848284"/>
+<text x="6" y="148" font-size="28" fill="#FFFFFF" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >DRIVE</text>
+<text x="322" y="148" font-size="28" fill="#FFFFFF" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >GUARD LIMITS</text>
+<text x="638" y="148" font-size="28" fill="#FFFFFF" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >DRIVE DATA</text>
+<rect x="8" y="176" width="112" height="50" fill="#007D00" stroke="none" stroke-width="1"/>
+<text x="64" y="201" font-size="24" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >CRUISE</text>
+<rect x="128" y="176" width="174" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="136" y="201" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >12.0 m/s</text>
+<rect x="8" y="234" width="112" height="50" fill="#000000" stroke="#00FFFF" stroke-width="3"/>
+<text x="64" y="259" font-size="24" fill="#00FFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >HDG</text>
+<rect x="128" y="234" width="174" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="136" y="259" font-size="32" fill="#73C2FF" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >045°</text>
+<rect x="8" y="292" width="112" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="64" y="317" font-size="24" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >TGT</text>
+<rect x="128" y="292" width="174" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="136" y="317" font-size="32" fill="#3A3D3A" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >BRG 112°</text>
+<text x="10" y="364" font-size="16" fill="#3A3D3A" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >TGT steers to the target bearing;</text>
+<text x="10" y="384.3" font-size="16" fill="#3A3D3A" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >HDG and TGT are exclusive.</text>
+<rect x="8" y="474" width="92" height="28" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="54" y="488" font-size="14" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >OFF</text>
+<rect x="108" y="474" width="92" height="28" fill="#000000" stroke="#00FFFF" stroke-width="2"/>
+<text x="154" y="488" font-size="14" fill="#00FFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >PENDING</text>
+<rect x="208" y="474" width="92" height="28" fill="#007D00" stroke="#007D00" stroke-width="1"/>
+<text x="254" y="488" font-size="14" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >ENGAGED</text>
+<text x="326" y="201" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >SPEED</text>
+<rect x="444" y="176" width="174" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="452" y="201" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >20.0 m/s</text>
+<text x="326" y="259" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >SLOPE</text>
+<rect x="444" y="234" width="174" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="452" y="259" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >20°</text>
+<text x="326" y="317" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >ROLL</text>
+<rect x="444" y="292" width="174" height="50" fill="#000000" stroke="#848284" stroke-width="1"/>
+<text x="452" y="317" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >25°</text>
+<text x="326" y="364" font-size="16" fill="#3A3D3A" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >Slope guard scales the cruise</text>
+<text x="326" y="384.3" font-size="16" fill="#3A3D3A" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >setpoint; roll guard brakes.</text>
+<rect x="322" y="460" width="298" height="136" fill="#000000" stroke="#848284" stroke-width="3"/>
+<text x="471" y="516" font-size="28" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >A/P OFF</text>
+<text x="471" y="554" font-size="16" fill="#848284" text-anchor="middle" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >disconnect all, brakes stay as set</text>
+<text x="642" y="201" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >SPEED</text>
+<text x="768" y="201" font-size="32" fill="#FF7D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >+9.6 m/s</text>
+<text x="642" y="259" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >HDG</text>
+<text x="768" y="259" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >038°</text>
+<text x="642" y="317" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >TGT BRG</text>
+<text x="768" y="317" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >112°</text>
+<text x="642" y="375" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >PITCH</text>
+<text x="768" y="375" font-size="32" fill="#FF7D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >-14.2°</text>
+<text x="642" y="433" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >ROLL</text>
+<text x="768" y="433" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >+3.1°</text>
+<text x="642" y="491" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >WHL THR</text>
+<text x="768" y="491" font-size="32" fill="#007D00" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >-18 %</text>
+<text x="642" y="549" font-size="24" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >BRAKES</text>
+<text x="768" y="549" font-size="32" fill="#848284" text-anchor="start" dominant-baseline="middle" font-family="Roboto, 'Arial Black', Arial, sans-serif" font-weight="900" >OFF</text>
+</svg>
