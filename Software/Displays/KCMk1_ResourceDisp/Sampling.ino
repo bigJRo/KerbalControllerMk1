@@ -139,6 +139,18 @@ static void histPush(uint32_t now) {
 }
 
 uint16_t histCount()    { return _histCount; }
+
+// Game time from sample k back to the newest: the warp in force at each later
+// sample, times the period. Exact across warp changes, which is why the time scale
+// under the trace is labelled from this rather than assumed linear.
+float histGameAgo(uint16_t k) {
+  float secs = 0.0f;
+  for (uint16_t j = k + 1; j < _histCount; j++) {
+    uint16_t idx = (uint16_t)((_histHead + HIST_LEN - _histCount + j) % HIST_LEN);
+    secs += _histWarp[idx] * (HIST_PERIOD_MS / 1000.0f);
+  }
+  return secs;
+}
 float    histGameSecs() { return _histGame; }
 uint32_t histSeq()      { return _histSeq; }
 
