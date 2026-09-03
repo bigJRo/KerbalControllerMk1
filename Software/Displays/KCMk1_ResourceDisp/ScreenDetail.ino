@@ -7,8 +7,10 @@
        Header (DET_HDR_H=66px): resource name in Roboto_Black_48 white + color accent strip + BACK
        Divider
        [DET_SECT_W=32px vertical "CRAFT" label] + 5 Craft rows:
-           Available / Total / Remaining% / Rate (per game second, minute or hour) /
-       To empty (To full for a waste resource)
+           AVAIL / TOTAL / REM (percent) / RATE (per game second, minute or hour) /
+       TTE (TTF for a waste resource). Short labels so the value gets the width:
+       quantities print with thousands separators and decimals that thin out as the
+       number grows, so the significant figures are the ones on screen.
        Divider
        [DET_SECT_W=32px vertical "STAGE" label] + the same 5 Stage rows
      Rate and Time come from Sampling.ino, the same estimate the Main screen's trend
@@ -178,19 +180,28 @@ static void adjustDetailBug(int8_t stepPct) {
 
 /***************************************************************************************
    ROW LABEL
-   Short label for the left (chrome) side of each data row.
-   Rows share "Available / Total / Remaining" labels — section context comes from the
-   vertical CRAFT/STAGE strip, not the row label itself.
+   Short label for the left (chrome) side of each data row. Both sections share the
+   labels; the vertical CRAFT/STAGE strip gives the context. TTE and TTF are the
+   panel's own vocabulary (the sidebar key, the strip's TIME messages).
 ****************************************************************************************/
 static const char *detRowLabel(uint8_t row) {
   switch (row % DET_SECT_ROWS) {
-    case 0: return "Available:";
-    case 1: return "Total:";
-    case 2: return "Remaining:";
-    case 3: return "Rate:";
-    case 4: return (_detailSlot < slotCount && resLimits(slots[_detailSlot].type).highIsBad) ? "To full:" : "To empty:";
+    case 0: return "AVAIL";
+    case 1: return "TOTAL";
+    case 2: return "REM";
+    case 3: return "RATE";
+    case 4: return (_detailSlot < slotCount && resLimits(slots[_detailSlot].type).highIsBad) ? "TTF" : "TTE";
     default: return "";
   }
+}
+
+// A quantity in units: two decimals under a thousand, one under ten thousand, and
+// whole units with thousands separators above, so the figures shown are the ones
+// that carry meaning at that size.
+static String detFmtQty(float v) {
+  if (v < 1000.0f)  return String(v, 2);
+  if (v < 10000.0f) return String(v, 1);
+  return formatSep(v);
 }
 
 /***************************************************************************************
@@ -208,8 +219,8 @@ static String detRowValue(uint8_t row) {
   const SlotSample &smp = stage ? sampleStg[_detailSlot] : sampleTot[_detailSlot];
   char buf[12];
   switch (row % DET_SECT_ROWS) {
-    case 0: return formatFloat(cur, 2);
-    case 1: return formatFloat(max, 2);
+    case 0: return detFmtQty(cur);
+    case 1: return detFmtQty(max);
     case 2: return formatFloat((max > 0.0f) ? (cur / max * 100.0f) : 0.0f, 1) + "%";
     case 3: fmtRate(smp, buf, sizeof(buf)); return String(buf);
     case 4: fmtTte((max > 0.0f) ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f, buf, sizeof(buf));

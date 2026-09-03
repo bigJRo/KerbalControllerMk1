@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 12;  // 3.12.0: level history trace on the Detail screen
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 3.12.3: history grid, 2 min and 20% markers
+static const uint8_t SKETCH_VERSION_MINOR = 13;  // 3.13.0: short Detail labels, quantities with separators and scaled decimals
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
