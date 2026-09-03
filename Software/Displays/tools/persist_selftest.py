@@ -7,7 +7,8 @@ host stubs (tools/host_stubs: a byte-array EEPROM and a settable millis) with a
 harness that supplies the few globals they touch, then runs scenarios: fresh block,
 settle-timer store, reload and recall, whole-percent bug round trip, name truncation,
 recency order and eviction at 20, corrupt-block rejection, demo mode never writing,
-the default layout round trip, and a change that reverts before settling. Exit
+the default layout round trip, forgetting one vessel and all, and a change that
+reverts before settling. Exit
 status is the harness's.
 
     python3 tools/persist_selftest.py
@@ -118,7 +119,16 @@ int main() {
   slotCount = 0;
   CHECK(!layoutIsDefault(), "an empty layout is not the SPCT default");
 
-  // 9. A change that reverts before settling is not stored.
+  // 9. An empty set at a save point forgets the vessel; a clear forgets all.
+  setLayout("Kerbal X", 4, (int)RES_ELEC_CHARGE, -1.0f); saveVesselSlots(currentVesselName);
+  setLayout("Kerbal Y", 2, (int)RES_ELEC_CHARGE, -1.0f); saveVesselSlots(currentVesselName);
+  CHECK(persistVesselCount() == 2, "two vessels saved");
+  currentVesselName = String("Kerbal X"); slotCount = 0; saveVesselSlots(currentVesselName);
+  CHECK(persistVesselCount() == 1 && !recallVesselSlots(String("Kerbal X")) && recallVesselSlots(String("Kerbal Y")), "an empty set forgets that vessel only");
+  clearVesselCache(); persistStoreNow(); persistLoad();
+  CHECK(persistVesselCount() == 0, "clearing forgets all and persists");
+
+  // 10. A change that reverts before settling is not stored.
   persistStoreNow(); uint32_t wr = stubEepromWrites();
   setLayout("Kerbal X", 4, (int)RES_ELEC_CHARGE, 0.37f); persistStoreNow(); wr = stubEepromWrites();
   slots[0].bug = 0.50f; tick(5000); slots[0].bug = 0.37f; tick(5000); tick(31000);

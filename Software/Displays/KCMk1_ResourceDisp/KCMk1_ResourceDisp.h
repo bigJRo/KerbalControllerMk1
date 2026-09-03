@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 9;   // 3.9.0: pilot-set default layout; unknown vessels get the default
+static const uint8_t SKETCH_VERSION_MINOR = 10;  // 3.10.0: forget a vessel with an empty set, hold CLEAR to forget all, MEM counter
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -412,8 +412,9 @@ extern VesselSlotRecord vesselCache[VESSEL_CACHE_SIZE];
 extern String           currentVesselName;
 
 // Vessel slot cache helpers (AAA_Globals.ino)
-void saveVesselSlots(const String &name);
+void saveVesselSlots(const String &name);   // an empty set forgets the vessel instead
 bool recallVesselSlots(const String &name);
+void forgetVesselSlots(const String &name);
 void clearVesselCache();
 
 // The pilot-set default layout: what a vessel not in memory starts with, set from the
@@ -444,6 +445,15 @@ void    persistStoreNow();
 uint8_t persistVesselCount();
 extern const uint32_t PERSIST_SETTLE_MS;
 extern const bool     PERSIST_WIPE;
+extern const uint32_t MEM_CLEAR_HOLD_MS;
+
+// Select screen key hold (ScreenSelect.ino, driven by TouchEvents.ino): holding CLEAR
+// for MEM_CLEAR_HOLD_MS forgets every vessel. Target says whether a touch-down is on
+// that key; progress draws the countdown; fire and cancel end it either way.
+bool selectHoldTarget(uint16_t x, uint16_t y);
+void selectHoldProgress(uint32_t heldMs);
+void selectHoldFire();
+void selectHoldCancel();
 
 // From AAA_Config.ino — bar update hysteresis
 extern const float BAR_LEVEL_HYSTERESIS;  // minimum level change fraction to trigger redraw

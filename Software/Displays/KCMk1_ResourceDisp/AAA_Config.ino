@@ -43,6 +43,7 @@ const bool STANDALONE_TEST = false;
 ****************************************************************************************/
 const uint32_t PERSIST_SETTLE_MS = 30000;
 const bool     PERSIST_WIPE      = false;
+const uint32_t MEM_CLEAR_HOLD_MS = 3000;    // hold CLEAR on the Select screen this long to forget every vessel
 
 
 /***************************************************************************************

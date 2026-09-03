@@ -13,6 +13,11 @@
    every vessel not in memory starts with; it is stored with the vessel memory. The
    key lights when the selection already is the default. CLEAR then DFLT (an empty
    set cannot be a default) drops the stored one, back to the SPCT preset.
+
+   CLEAR also forgets: leaving a vessel with an empty set removes it from memory (an
+   empty set is not a layout), and HOLDING CLEAR for MEM_CLEAR_HOLD_MS forgets every
+   vessel, with a countdown in the counter area and a release before the end
+   cancelling. The counter area also shows MEM n/20, how full the memory is.
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
 
@@ -195,24 +200,33 @@ static void drawSelectButton(KCM_TFT &tft, uint8_t gridIndex, bool isOn) {
 
 /***************************************************************************************
    DRAW SLOT COUNT -- small text in title row, right of centre
-   Also the screen's one-line feedback: for SEL_FLASH_MS it carries a note beside the
+   "MEM n/20" (how many vessels are remembered, dark grey) then the slot count. Also
+   the screen's one-line feedback: for SEL_FLASH_MS it carries a note beside the
    count. A tap the limit refuses (adding at MAX_SLOTS) flashes MAX in yellow, so the
-   pilot sees why the grid did not respond; DFLT flashes DFLT SET or DFLT CLR in cyan.
+   pilot sees why the grid did not respond; DFLT flashes DFLT SET or DFLT CLR in cyan;
+   a CLEAR hold counts down MEM CLR 3, 2, 1 in orange and ends on MEMORY CLR.
 ****************************************************************************************/
 static const uint32_t SEL_FLASH_MS = 700;
 static uint32_t _selFlashUntil = 0;   // millis() at which the flash reverts; 0 = idle
+static int8_t   _holdShown     = -1;  // CLEAR-hold countdown value on screen; -1 = none
 
 static void drawSlotCount(KCM_TFT &tft, const char *note, uint16_t noteColor) {
-  char countStr[32];
+  char memStr[16], countStr[32];
+  snprintf(memStr, sizeof(memStr), "MEM %d/%d", persistVesselCount(), VESSEL_CACHE_SIZE);
   if (note) snprintf(countStr, sizeof(countStr), "%d / %d  %s", slotCount, MAX_SLOTS, note);
   else      snprintf(countStr, sizeof(countStr), "%d / %d", slotCount, MAX_SLOTS);
-  int16_t cw = getFontStringWidth(&Roboto_Black_16, countStr);
+  int16_t gap = getFontStringWidth(&Roboto_Black_16, "    ");
+  int16_t mw  = getFontStringWidth(&Roboto_Black_16, memStr);
+  int16_t cw  = getFontStringWidth(&Roboto_Black_16, countStr);
   uint16_t cx = BACK_X - cw - SEL_PAD * 2;
   uint16_t cy = (TITLE_H - 20) / 2;  // vertically centred in title row (font height ~20px)
-  // Clear the widest string this cell can hold so a shorter one leaves no ghost.
-  int16_t maxW = getFontStringWidth(&Roboto_Black_16, "16 / 16  DFLT SET");
+  // Clear the widest strings this cell can hold so a shorter one leaves no ghost.
+  int16_t maxW = getFontStringWidth(&Roboto_Black_16, "MEM 20/20    16 / 16  MEMORY CLR");
   tft.fillRect(BACK_X - maxW - SEL_PAD * 2 - 2, 0, maxW + 4, TITLE_H, TFT_BLACK);
   tft.setFont(Roboto_Black_16);
+  tft.setTextColor(TFT_DARK_GREY, TFT_BLACK);
+  tft.setCursor(cx - gap - mw, cy);
+  tft.print(memStr);
   tft.setTextColor(note ? noteColor : TFT_GREY, TFT_BLACK);
   tft.setCursor(cx, cy);
   tft.print(countStr);
@@ -307,6 +321,7 @@ void drawStaticSelect(KCM_TFT &tft) {
 
   // Slot count — same line, right-aligned before BACK
   _selFlashUntil = 0;
+  _holdShown     = -1;
   drawSlotCount(tft, nullptr, TFT_GREY);
 
   // BACK button — tall, spans both rows
@@ -337,6 +352,45 @@ void updateScreenSelect(KCM_TFT &tft) {
     _selFlashUntil = 0;
     drawSlotCount(tft, nullptr, TFT_GREY);
   }
+}
+
+
+/***************************************************************************************
+   CLEAR HOLD -- forget every vessel
+   TouchEvents arms this on a touch-down that selectHoldTarget() accepts and then calls
+   selectHoldProgress() every pass while the finger stays down, selectHoldFire() when
+   the hold matures, selectHoldCancel() if it lifts first. The countdown is the
+   seconds left, redrawn only when it changes; the tap's own action (clearing the
+   selection) has already happened on touch-down.
+****************************************************************************************/
+bool selectHoldTarget(uint16_t x, uint16_t y) {
+  if (evaActive) return false;   // CLEAR is inert on EVA, so its hold is too
+  return x >= CLEAR_X && x < CLEAR_X + CLEAR_W && y >= CLEAR_Y && y < CLEAR_Y + CLEAR_H;
+}
+
+void selectHoldProgress(uint32_t heldMs) {
+  int8_t left = (int8_t)((MEM_CLEAR_HOLD_MS - heldMs + 999) / 1000);
+  if (left < 1) left = 1;
+  if (left == _holdShown) return;
+  _holdShown = left;
+  char note[12];
+  snprintf(note, sizeof(note), "MEM CLR %d", left);
+  _selFlashUntil = 0;   // a countdown is not a flash; it stays until cancel or fire
+  drawSlotCount(infoDisp, note, TFT_ORANGE);
+}
+
+void selectHoldFire() {
+  _holdShown = -1;
+  clearVesselCache();
+  persistStoreNow();
+  if (debugMode) Serial.println(F("ResourceDisp: CLEAR held -> vessel memory cleared"));
+  flashNote(infoDisp, "MEMORY CLR", TFT_ORANGE);
+}
+
+void selectHoldCancel() {
+  if (_holdShown < 0) return;
+  _holdShown = -1;
+  drawSlotCount(infoDisp, nullptr, TFT_GREY);
 }
 
 

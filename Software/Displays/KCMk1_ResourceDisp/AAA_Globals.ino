@@ -121,14 +121,26 @@ void clearVesselCache() {
   }
 }
 
+// Forget one vessel: drop its record and close the gap so recency order holds.
+void forgetVesselSlots(const String &name) {
+  char key[VESSEL_NAME_LEN];
+  strlcpy(key, name.c_str(), sizeof(key));
+  int8_t idx = vesselCacheFind(key);
+  if (idx < 0) return;
+  uint8_t n = VESSEL_CACHE_SIZE - 1 - (uint8_t)idx;
+  if (n) memmove(&vesselCache[idx], &vesselCache[idx + 1], n * sizeof(VesselSlotRecord));
+  vesselCache[VESSEL_CACHE_SIZE - 1].name[0] = '\0';
+  vesselCache[VESSEL_CACHE_SIZE - 1].count   = 0;
+}
+
 // Save the current slot configuration for a given vessel name: overwrite its record
 // if it has one, else take the first empty one, else evict the last. Either way the
-// record ends up at the front.
+// record ends up at the front. An EMPTY set is not a layout: CLEAR is the explicit
+// "forget" for a vessel, so saving one removes the vessel's record instead, and the
+// next visit starts from the default like any vessel not in memory.
 void saveVesselSlots(const String &name) {
-  if (name.length() == 0 || slotCount == 0) return;
-  // NOTE: if the user hit CLEAR (slotCount == 0) before leaving flight, nothing
-  // is saved for this vessel. On next load it will start with the default layout.
-  // This is intentional — CLEAR is an explicit "forget" action.
+  if (name.length() == 0) return;
+  if (slotCount == 0) { forgetVesselSlots(name); return; }
   char key[VESSEL_NAME_LEN];
   strlcpy(key, name.c_str(), sizeof(key));
 

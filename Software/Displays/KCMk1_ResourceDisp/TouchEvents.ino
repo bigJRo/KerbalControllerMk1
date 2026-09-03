@@ -30,7 +30,9 @@
                     -> sidebar btn 1 (DETAIL)      : switch to screen_Detail
                     -> sidebar btn 2 (TTE)         : toggle tteMode (counter row % / time)
                     -> sidebar btn 3 (CLR BUG)     : remove every reserve bug
-     screen_Select  -> resource grid / presets / BACK / CLEAR : handled by handleSelectTouch()
+     screen_Select  -> resource grid / presets / BACK / DFLT / CLEAR : handleSelectTouch()
+                    -> CLEAR HELD MEM_CLEAR_HOLD_MS  : forget every vessel (countdown in
+                       the counter area; lifting before the end cancels)
      screen_Detail  -> selector column / BACK      : handled by handleDetailTouch()
 ****************************************************************************************/
 #include "KCMk1_ResourceDisp.h"
@@ -69,8 +71,38 @@ static float    _holdLevel    = 0.0f;
 static uint16_t _holdX0       = 0;       // touch-down point, for the drag threshold
 static uint16_t _holdY0       = 0;
 
+// Select-screen key hold (CLEAR held to forget every vessel). The key's tap action
+// fired on touch-down; this only watches how long the finger stays. Same release
+// grace as the meter hold.
+static bool     _keyHoldActive  = false;
+static bool     _keyHoldFired   = false;
+static uint32_t _keyHoldStartMs = 0;
+
 
 void processTouchEvents() {
+  if (_keyHoldActive) {
+    if (activeScreen != screen_Select) {
+      _keyHoldActive = false;                                          // screen changed under it
+    } else if (!isTouched()) {
+      uint32_t t = millis();
+      if (_releaseSeenMs == 0) { _releaseSeenMs = t; return; }        // gap starts
+      if (t - _releaseSeenMs < TOUCH_RELEASE_MS) return;              // may be a glitch
+      if (!_keyHoldFired) selectHoldCancel();
+      _keyHoldActive  = false;
+      _releaseSeenMs  = 0;
+      _waitForRelease = false;
+      return;
+    } else {
+      _releaseSeenMs = 0;
+      uint32_t held = millis() - _keyHoldStartMs;
+      if (!_keyHoldFired) {
+        if (held >= MEM_CLEAR_HOLD_MS) { selectHoldFire(); _keyHoldFired = true; }
+        else                            selectHoldProgress(held);
+      }
+      return;
+    }
+  }
+
   if (!isTouched()) {
     if (_holdActive) {
       uint32_t t = millis();
@@ -253,6 +285,12 @@ void processTouchEvents() {
     case screen_Select:
       handleSelectTouch(x2, y2);
       clearTouchISR();
+      if (selectHoldTarget(x2, y2)) {
+        _keyHoldActive  = true;
+        _keyHoldFired   = false;
+        _keyHoldStartMs = millis();
+        _releaseSeenMs  = 0;
+      }
       break;
 
     case screen_Detail:
