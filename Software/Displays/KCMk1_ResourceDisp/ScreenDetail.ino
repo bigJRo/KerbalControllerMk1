@@ -287,9 +287,11 @@ static void drawDetailHistoryChrome(KCM_TFT &tft) {
   _histDrawnSeq = histSeq() - 1;   // force the first trace
 }
 
-// A span of game time for the axis and caption: whole minutes under an hour ("8m",
-// not the counter's "8:00", since the ticks are minutes apart and the seconds say
-// nothing), then the counter's own hours and days forms under warp.
+// A tick's game time for the axis: whole minutes under an hour ("8m", not the
+// counter's "8:00", since the ticks are minutes apart and the seconds say nothing),
+// then the counter's own hours and days forms under warp. The LAST caption keeps the
+// counter's form: it grows a sample at a time while the buffer fills, and the
+// seconds are what show that.
 static void fmtHistSpan(float secs, char *buf, size_t n) {
   if (secs < 3600.0f) snprintf(buf, n, "%dm", (int)(secs / 60.0f + 0.5f));
   else                fmtTte(secs, buf, n);
@@ -332,7 +334,7 @@ static void drawDetailHistory(KCM_TFT &tft) {
   // Caption: the game time the held samples span.
   char cap[16];
   if (n < 2) strlcpy(cap, "NO HISTORY", sizeof(cap));
-  else { char d[8]; fmtHistSpan(histGameSecs(), d, sizeof(d)); snprintf(cap, sizeof(cap), "LAST %s", d); }
+  else { char d[8]; fmtTte(histGameSecs(), d, sizeof(d)); snprintf(cap, sizeof(cap), "LAST %s", d); }
   if (strcmp(cap, _histCaption) != 0) {
     strlcpy(_histCaption, cap, sizeof(_histCaption));
     tft.fillRect(DET_HIST_BOX_X, DET_HIST_BOX_Y - 22, DET_HIST_BOX_W, 18, TFT_BLACK);
