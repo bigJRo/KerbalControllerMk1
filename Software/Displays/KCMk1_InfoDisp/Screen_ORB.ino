@@ -1194,8 +1194,6 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     _orbComputeScene(sc);
     OrbSceneSig sig = _orbSceneSig(sc);
 
-    uint32_t now = millis();
-
     // ── Scene-change gating ──────────────────────────────────────────────────────────
     // Throttle removed (rev-2): repaint as soon as the quantized signature
     // changes — no minimum-interval / 2 Hz cap. The signature bins still give
