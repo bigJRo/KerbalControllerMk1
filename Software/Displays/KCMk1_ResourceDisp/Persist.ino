@@ -3,8 +3,8 @@
 
    What survives a power cycle: the per-vessel slot memory (vesselCache, up to
    VESSEL_CACHE_SIZE vessels, each its slot types and reserve bugs, keyed by name),
-   the pilot-set default layout (defaultLayout, same shape) and the TTE toggle. Everything else the panel shows comes from KSP or from compile-time
-   configuration.
+   the pilot-set default layout (defaultLayout, same shape) and the TTE toggle.
+   Everything else the panel shows comes from KSP or from compile-time configuration.
 
    Where: the Teensy 4.1's emulated EEPROM, 4284 bytes of wear-levelled flash behind
    the EEPROM library. The image below is about 1.5 KB. The SD card was the other
@@ -15,8 +15,8 @@
 
    Image: a header (magic, schema, the TTE toggle, the number of records), the
    default layout record, the vessel records in recency order, and a CRC-16 over all
-   of it. Bugs go out as whole
-   percent (255 = none), which is lossless since every gesture sets whole percent.
+   of it. Bugs go out as whole percent (255 = none), which is lossless since every
+   gesture sets whole percent.
    A block whose magic, schema or CRC does not check out is discarded and a fresh
    empty one written, which is also how a schema bump or PERSIST_WIPE forgets.
 

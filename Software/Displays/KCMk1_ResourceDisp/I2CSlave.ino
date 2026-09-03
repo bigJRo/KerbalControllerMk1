@@ -107,12 +107,14 @@ static void buildI2CPacket() {
    PROCESS I2C COMMAND
    Called from loop() to apply a received command packet.
    Runs on the main thread -- safe to modify state, globals, and call Serial.
+   Takes a snapshot of the command, copied out of the ISR buffer under noInterrupts by
+   updateI2CState(), so a command arriving mid-read cannot be torn.
 ****************************************************************************************/
 static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE];  // volatile: written in ISR, read on main thread
 static volatile bool i2cCmdReady = false;
 
-static void processI2CCommand() {
-  uint8_t controlByte = i2cCmdBuf[0];
+static void processI2CCommand(const uint8_t *cmd) {
+  uint8_t controlByte = cmd[0];
   // byte 1 reserved for future use
 
   // --- Lower nibble: mode configuration bits ---
@@ -286,11 +288,17 @@ void setupI2CSlave() {
    2. Detect outbound state changes and assert INT when a fresh packet is ready.
 ****************************************************************************************/
 void updateI2CState() {
-  // --- Apply any pending inbound command ---
+  // --- Apply any pending inbound command (snapshot it out of the ISR buffer) ---
+  uint8_t cmd[I2C_CMD_SIZE];
+  bool    haveCmd = false;
+  noInterrupts();
   if (i2cCmdReady) {
+    for (uint8_t i = 0; i < I2C_CMD_SIZE; i++) cmd[i] = i2cCmdBuf[i];
     i2cCmdReady = false;
-    processI2CCommand();
+    haveCmd = true;
   }
+  interrupts();
+  if (haveCmd) processI2CCommand(cmd);
 
   // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {

@@ -92,12 +92,13 @@ static const ButtonLabel detBtnBack = {
 };
 
 static uint8_t _detailSlot = 0;
-static String _detValCache[DET_MAX_ROWS];
+static constexpr uint8_t DET_VAL_LEN = 20;        // widest value: "1,234,567,890" / "-12.34/m" / "99d 23h"
+static char _detValCache[DET_MAX_ROWS][DET_VAL_LEN];   // last value drawn per row, "" = none
 static uint16_t _detAbsentSig = 0;   // bit per slot: absent when the selector was drawn
 
 static uint16_t _detAbsentNow() {
   uint16_t sig = 0;
-  for (uint8_t i = 0; i < slotCount && i < 16; i++) if (resAbsent(slots[i].type)) sig |= (1u << i);
+  for (uint8_t i = 0; i < slotCount && i < MAX_SLOTS; i++) if (resAbsent(slots[i].type)) sig |= (1u << i);
   return sig;
 }
 
@@ -197,35 +198,44 @@ static const char *detRowLabel(uint8_t row) {
 
 // A quantity in units: two decimals under a thousand, one under ten thousand, and
 // whole units with thousands separators above, so the figures shown are the ones
-// that carry meaning at that size.
-static String detFmtQty(float v) {
-  if (v < 1000.0f)  return String(v, 2);
-  if (v < 10000.0f) return String(v, 1);
-  return formatSep(v);
+// that carry meaning at that size. Into a caller's buffer: this runs for every row on
+// every pass, and a String per row per pass was the one heap churn in the loop.
+static void detFmtQty(float v, char *buf, size_t n) {
+  if (v < 1000.0f)       { dtostrf(v, 1, 2, buf); return; }
+  if (v < 10000.0f)      { dtostrf(v, 1, 1, buf); return; }
+  uint64_t iv = (uint64_t)(v + 0.5f);
+  char tmp[24];
+  uint8_t p = sizeof(tmp) - 1, digits = 0;
+  tmp[p] = '\0';
+  do {
+    if (digits && digits % 3 == 0) tmp[--p] = ',';
+    tmp[--p] = (char)('0' + iv % 10);
+    iv /= 10;
+    digits++;
+  } while (iv);
+  strlcpy(buf, tmp + p, n);
 }
 
 /***************************************************************************************
    ROW VALUE
-   Computes the formatted value string for a given row from the currently selected slot.
-   Returns "--" if no valid slot is selected.
+   Formats the value for a given row of the currently selected slot into buf.
+   "--" if no valid slot is selected.
    Called every update pass; the cache in drawDetailValues suppresses redundant redraws.
 ****************************************************************************************/
-static String detRowValue(uint8_t row) {
-  if (_detailSlot >= slotCount) return "--";
+static void detRowValue(uint8_t row, char *buf, size_t n) {
+  if (_detailSlot >= slotCount) { strlcpy(buf, "--", n); return; }
   ResourceSlot &s = slots[_detailSlot];
   bool  stage = (row >= DET_SECT_ROWS);
   float cur   = stage ? s.stageCurrent : s.current;
   float max   = stage ? s.stageMax     : s.maxVal;
   const SlotSample &smp = stage ? sampleStg[_detailSlot] : sampleTot[_detailSlot];
-  char buf[12];
   switch (row % DET_SECT_ROWS) {
-    case 0: return detFmtQty(cur);
-    case 1: return detFmtQty(max);
-    case 2: return formatFloat((max > 0.0f) ? (cur / max * 100.0f) : 0.0f, 1) + "%";
-    case 3: fmtRate(smp, buf, sizeof(buf)); return String(buf);
-    case 4: fmtTte((max > 0.0f) ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f, buf, sizeof(buf));
-            return String(buf);
-    default: return "--";
+    case 0: detFmtQty(cur, buf, n); break;
+    case 1: detFmtQty(max, buf, n); break;
+    case 2: dtostrf((max > 0.0f) ? (cur / max * 100.0f) : 0.0f, 1, 1, buf); strlcat(buf, "%", n); break;
+    case 3: fmtRate(smp, buf, n); break;
+    case 4: fmtTte((max > 0.0f) ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f, buf, n); break;
+    default: strlcpy(buf, "--", n); break;
   }
 }
 
@@ -407,7 +417,7 @@ static void drawDetailSelector(KCM_TFT &tft) {
 static void drawDetailChrome(KCM_TFT &tft) {
   tft.fillRect(DET_PNL_X, 0, DET_PNL_W, KCM_SCREEN_H, TFT_BLACK);
   for (uint8_t i = 0; i < DET_MAX_ROWS; i++) {
-    _detValCache[i] = "";   // invalidate every row regardless of row count
+    _detValCache[i][0] = '\0';   // invalidate every row regardless of row count
     psDetailRows[i] = PrintState{};  // reset PrintState sentinel — forces full clear on next draw
   }
 
@@ -480,9 +490,10 @@ static void drawDetailValues(KCM_TFT &tft) {
   uint16_t rowH    = _detRowH();
   const tFont *rowFont = _detRowFont();
   for (uint8_t i = 0; i < rowCount; i++) {
-    String val = detRowValue(i);
-    if (val == _detValCache[i]) continue;
-    _detValCache[i] = val;
+    char val[DET_VAL_LEN];
+    detRowValue(i, val, sizeof(val));
+    if (strcmp(val, _detValCache[i]) == 0) continue;
+    strlcpy(_detValCache[i], val, DET_VAL_LEN);
     printValue(tft, rowFont,
                DET_ROW_X, detRowY(i), DET_ROW_W, rowH,
                detRowLabel(i), val,

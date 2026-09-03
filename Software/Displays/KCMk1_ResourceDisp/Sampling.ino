@@ -140,17 +140,6 @@ static void histPush(uint32_t now) {
 
 uint16_t histCount()    { return _histCount; }
 
-// Game time from sample k back to the newest: the warp in force at each later
-// sample, times the period. Exact across warp changes, which is why the time scale
-// under the trace is labelled from this rather than assumed linear.
-float histGameAgo(uint16_t k) {
-  float secs = 0.0f;
-  for (uint16_t j = k + 1; j < _histCount; j++) {
-    uint16_t idx = (uint16_t)((_histHead + HIST_LEN - _histCount + j) % HIST_LEN);
-    secs += _histWarp[idx] * (HIST_PERIOD_MS / 1000.0f);
-  }
-  return secs;
-}
 float    histGameSecs() { return _histGame; }
 uint32_t histSeq()      { return _histSeq; }
 
@@ -262,10 +251,9 @@ void fmtTte(float secs, char *buf, size_t n) {
   }
 }
 
-// Rate in units per GAME second, signed, "---" when no estimate yet.
 // Signed rate per game second, or per minute or hour when the per-second figure
 // would round to nothing, so a slow life-support drain reads "-0.06/m" rather than
-// "0.00/s".
+// "0.00/s". "---" while there is no estimate.
 void fmtRate(const SlotSample &c, char *buf, size_t n) {
   if (!c.rateValid) { strlcpy(buf, "---", n); return; }
   float r   = c.rate / warpFactor;

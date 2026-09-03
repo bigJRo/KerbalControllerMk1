@@ -316,7 +316,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         static const float RAILS[8] = { 1, 5, 10, 50, 100, 1000, 10000, 100000 };
         static const float PHYS[4]  = { 1, 2, 3, 4 };
         uint8_t idx    = msg[2];
-        bool    inAtmo = (msg[0] & 0x08) != 0;
+        bool    inAtmo = (msg[0] & FLIGHT_IS_ATMO_TW) != 0;
         float   wf     = inAtmo ? PHYS[idx < 4 ? idx : 3] : RAILS[idx < 8 ? idx : 7];
         if (wf != warpFactor) {
           warpFactor = wf;

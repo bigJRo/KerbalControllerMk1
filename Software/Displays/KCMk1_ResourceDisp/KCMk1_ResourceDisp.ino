@@ -143,7 +143,7 @@ void loop() {
         drawStaticStandby(infoDisp);
         break;
       case screen_Main:
-        drawStaticMain(infoDisp);   // also resets _prevLevel / _prevStageMode
+        drawStaticMain(infoDisp);   // also sorts the slots and resets the meter draw caches
         break;
       case screen_Select:
         drawStaticSelect(infoDisp);

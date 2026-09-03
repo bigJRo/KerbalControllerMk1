@@ -181,8 +181,7 @@ static inline const MeterStyle &meterStyle() {
 
 // Left edge of visible meter k's pitch cell. The few pixels of division remainder
 // are split either side of the row so it stays centred in the area.
-static inline uint16_t pitchX(const MeterStyle &st, uint8_t k) {
-  (void)st;
+static inline uint16_t pitchX(uint8_t k) {
   uint16_t pitch = meterPitch();
   uint16_t rowW  = _visCount * pitch;
   return METER_X0 + (METER_AREA_W - rowW) / 2 + k * pitch;
@@ -192,7 +191,7 @@ static inline uint16_t pitchX(const MeterStyle &st, uint8_t k) {
 static MeterGeom meterGeom(const MeterStyle &st, uint8_t i) {
   MeterGeom g;
   uint16_t scaleW = BAND_W + 1 + st.tapeW + 1 + st.tickL;
-  g.px    = pitchX(st, i);
+  g.px    = pitchX(i);
   g.bandX = g.px + (meterPitch() - scaleW) / 2;
   g.tapeX = g.bandX + BAND_W + 1;
   g.tickX = g.tapeX + st.tapeW + 1;
@@ -425,8 +424,8 @@ static void drawGroupBands(KCM_TFT &tft, const MeterStyle &st) {
     uint8_t runEnd = runStart;
     while (runEnd + 1 < _visCount && resGroup(slots[_vis[runEnd + 1]].type) == grp) runEnd++;
 
-    uint16_t x0 = pitchX(st, runStart);
-    uint16_t x1 = pitchX(st, runEnd) + meterPitch();   // exclusive
+    uint16_t x0 = pitchX(runStart);
+    uint16_t x1 = pitchX(runEnd) + meterPitch();   // exclusive
     uint16_t ly = GROUP_Y + GROUP_H - 3;           // bracket line row
     tft.drawLine(x0 + 3, ly, x1 - 4, ly, TFT_GREY);
     tft.drawLine(x0 + 3, ly, x0 + 3, ly + 3, TFT_GREY);
@@ -744,9 +743,9 @@ void updateScreenMain(KCM_TFT &tft) {
 int8_t meterHitTest(uint16_t x, uint16_t y, bool &onTape, float &level) {
   const MeterStyle &st = meterStyle();
   if (_visCount == 0) return -1;
-  uint16_t x0 = pitchX(st, 0);
+  uint16_t x0 = pitchX(0);
   uint16_t pitch = meterPitch();
-  uint16_t x1 = pitchX(st, _visCount - 1) + pitch;
+  uint16_t x1 = pitchX(_visCount - 1) + pitch;
   if (x < x0 || x >= x1) return -1;
   uint8_t k = (uint8_t)((x - x0) / pitch);
   if (k >= _visCount) return -1;

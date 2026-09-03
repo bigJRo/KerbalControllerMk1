@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 13;  // 3.13.0: short Detail labels, quantities with separators and scaled decimals
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.13.1: Detail labels in the panel-wide grey (KDC label style)
+static const uint8_t SKETCH_VERSION_MINOR = 14;  // 3.14.0: bug sweep, optimisation and cleanup pass
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -139,8 +139,9 @@ struct ResTimeLimits {
 
 /***************************************************************************************
    RESOURCE SLOT STRUCT
-   One instance per active bar on the main screen.
-   current and maxVal are 0.0–1.0 floats for demo; will be actual units from Simpit later.
+   One instance per active meter on the main screen. Quantities are in the resource's
+   own units as Simpit reports them (the demo synthesises the same); the meters and
+   percent counters divide by maxVal themselves.
 ****************************************************************************************/
 struct ResourceSlot {
   ResourceType type         = RES_NONE;
@@ -272,7 +273,7 @@ extern KerbalSimpit simpit;
 extern ScreenType   activeScreen;
 extern ScreenType   prevScreen;
 extern ResourceSlot slots[];        // active resource slots (MAX_SLOTS entries)
-extern uint8_t      slotCount;      // number of currently active slots (4-16)
+extern uint8_t      slotCount;      // number of currently active slots (0..MAX_SLOTS)
 extern bool         tteMode;        // false = counter row shows %, true = time-to-empty
 extern float        warpFactor;     // game seconds per real second (from FLIGHT_STATUS warp index)
 extern bool         refreshPending; // a channel refresh has been requested and not all slots answered
@@ -322,7 +323,6 @@ void     resetHistory();                                // vessel switch / scene
 uint16_t histCount();                                   // samples held, 0..HIST_LEN
 uint16_t histLevel(ResourceType t, uint16_t k);         // k = 0 oldest .. histCount()-1 newest; level x1000 or HIST_NONE
 float    histGameSecs();                                // game time the held samples span
-float    histGameAgo(uint16_t k);                       // game seconds between sample k and the newest
 float    histGameAgoSamples(uint16_t a);                // game seconds spanned by the newest a sample periods
 uint32_t histSeq();                                     // bumps on every push or reset
 // Time-remaining tiers on top of a level state, with hysteresis against the state the
@@ -415,10 +415,10 @@ inline bool resHasStageData(ResourceType t) {
 
 /***************************************************************************************
    VESSEL SLOT MEMORY
-   In-RAM cache of per-vessel slot configurations.
-   Persists for the duration of the session (until power cycle or reset).
-   Keyed by vessel name (from VESSEL_NAME_MESSAGE). Up to VESSEL_CACHE_SIZE entries.
-   Slot types and reserve bugs are stored — values are always repopulated from Simpit.
+   Per-vessel slot configurations, keyed by vessel name (from VESSEL_NAME_MESSAGE), up
+   to VESSEL_CACHE_SIZE entries in recency order. Slot types and reserve bugs are
+   stored; values are always repopulated from Simpit. The cache lives in RAM and is
+   mirrored to EEPROM by Persist.ino, so it survives a power cycle.
 ****************************************************************************************/
 static constexpr uint8_t VESSEL_CACHE_SIZE = 20;
 static constexpr uint8_t VESSEL_NAME_LEN   = 40;   // stored name, including the terminator

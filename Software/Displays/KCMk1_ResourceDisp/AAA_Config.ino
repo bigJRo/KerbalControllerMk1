@@ -116,9 +116,10 @@ const uint32_t TTE_LONG_WINDOW_MS = 300000;   // ms per long window, for drains 
    O2, water and food match the Annunciator's TACLS_*_WARN_S / _ALARM_S so the two
    panels agree; there is no shared define yet, keep them in step. EC is this panel's
    own. A tier is left only once the time exceeds its threshold by TIME_HYST_FRAC.
-   Note the estimate's floor: a drain slower than about 5.5 hours to empty reads as
-   no rate (see TTE_WINDOW_MS), so the water and food warn tiers cannot fire from
-   this panel; the Annunciator computes those from consumption rates instead.
+   The short rate window cannot see a drain slower than about 5.5 hours to empty; the
+   long one (TTE_LONG_WINDOW_MS) reaches about a week, which is what lets the water
+   and food tiers fire at 1x. The Annunciator raises the same tiers from consumption
+   rates, so the two panels normally agree.
 ****************************************************************************************/
 const float TIME_WARN_S_EC    = 15.0f * 60.0f;
 const float TIME_ALARM_S_EC   =  5.0f * 60.0f;
