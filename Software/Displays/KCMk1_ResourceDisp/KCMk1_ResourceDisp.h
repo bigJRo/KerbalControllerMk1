@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 11;  // 3.11.0: slow-drain rates, vessel name in the strip, alert summary to the master
+static const uint8_t SKETCH_VERSION_MINOR = 12;  // 3.12.0: level history trace on the Detail screen
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -309,6 +309,20 @@ extern SlotSample sampleStg[];   // per-slot stage-value sample
 void   updateAllSampling();      // once per loop pass
 void   resetAllSampling();       // after any slot reorder or warp change
 bool   slotAwaiting(uint8_t i);  // slot has not answered the current refresh yet
+
+// Level history (Sampling.ino): every HIST_PERIOD_MS the level of every resource
+// aboard is pushed into a ring HIST_LEN deep, keyed by resource type so a layout
+// change does not scramble it. The Detail screen draws it as a trace when
+// DETAIL_HISTORY is on; set it false and the Detail rows take the full width again.
+static constexpr bool     DETAIL_HISTORY = true;
+static constexpr uint16_t HIST_LEN       = 120;    // samples kept (10 min at 5 s)
+static constexpr uint32_t HIST_PERIOD_MS = 5000;   // real ms between samples
+static constexpr uint16_t HIST_NONE      = 0xFFFF; // no data for that resource at that sample
+void     resetHistory();                                // vessel switch / scene entry
+uint16_t histCount();                                   // samples held, 0..HIST_LEN
+uint16_t histLevel(ResourceType t, uint16_t k);         // k = 0 oldest .. histCount()-1 newest; level x1000 or HIST_NONE
+float    histGameSecs();                                // game time the held samples span
+uint32_t histSeq();                                     // bumps on every push or reset
 // Time-remaining tiers on top of a level state, with hysteresis against the state the
 // caller last used; timeFlag reports the tier did it. Shared by Main, EVA and the summary.
 uint8_t applyTimeTiers(ResourceType t, float tteS, uint8_t state, uint8_t prevState, bool prevTime, bool &timeFlag);

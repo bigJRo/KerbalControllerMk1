@@ -145,6 +145,7 @@ static void enterFlightScene() {
   // forget which resources the previous vessel carried.
   zeroAllSlotValues();
   resetResourcePresence();
+  resetHistory();
   // Request immediate refresh on all subscribed channels. Simpit only sends resource
   // messages when values change — without this, static resources (full tanks, idle
   // engines) won't update until first change.
@@ -372,6 +373,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         evaFlag = evaActive = false;
         zeroAllSlotValues();
         resetResourcePresence();   // a different vessel carries different resources
+        resetHistory();
         // Request main screen redraw via flag — loop() will call drawStaticMain()
         // after simpit.update() returns, ensuring the screen is cleared before any
         // subsequent resource messages for the new vessel are drawn.

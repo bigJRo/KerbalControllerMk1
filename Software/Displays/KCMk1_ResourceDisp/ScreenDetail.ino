@@ -17,6 +17,11 @@
        Bug bar (DET_BUG_H, bottom of the right panel): the reserve bug's value in
        cyan, keys -10 / -1 / +1 / +10 to set it to a precise percent, and CLR. The
        first step on a resource without a bug starts one at the caution fraction.
+       History column (DET_HIST_W, right of the rows, when DETAIL_HISTORY): the
+       resource's level over the last HIST_LEN samples as a trace on a fixed 0-100%
+       axis, newest at the right, with the caution and alarm fractions as faint lines
+       and the bug in cyan; captioned with the game time the trace spans. The rows
+       give up that width, which the widest 48 px label and value still clear.
 
    Flicker-free rendering:
      drawDetailChrome() — draws labels, dividers, header once on screen entry or slot switch
@@ -54,7 +59,18 @@ static const char    *DET_BUG_TEXT[DET_BUG_KEYS] = { "-10", "-1", "+1", "+10", "
 // Vertical section label strip (left of data rows)
 static const uint16_t DET_SECT_W = 32;  // wide enough for Roboto_Black_20
 static const uint16_t DET_ROW_X = DET_PNL_X + DET_SECT_W;
-static const uint16_t DET_ROW_W = KCM_SCREEN_W - DET_ROW_X;
+static const uint16_t DET_HIST_W = DETAIL_HISTORY ? 280 : 0;              // history column, right of the rows
+static const uint16_t DET_ROW_W = KCM_SCREEN_W - DET_ROW_X - DET_HIST_W;
+
+// History trace geometry inside the column: axis labels on the left, the box
+// centred vertically in the rows area, the caption above it.
+static const uint16_t DET_HIST_X   = KCM_SCREEN_W - DET_HIST_W;
+static const uint16_t DET_HIST_BOX_X = DET_HIST_X + 38;
+static const uint16_t DET_HIST_BOX_W = DET_HIST_W - 38 - DET_PAD;
+static const uint16_t DET_HIST_BOX_H = 200;
+static const uint16_t DET_HIST_BOX_Y = DET_HDR_H + ((KCM_SCREEN_H - DET_HDR_H - DET_BUG_H) - DET_HIST_BOX_H) / 2;
+static uint32_t _histDrawnSeq = 0;
+static char     _histCaption[16];
 
 // Color accent strip in header — offset a few px from the panel edge
 static const uint16_t DET_ACCENT_X = DET_PNL_X + DET_PAD;
@@ -202,6 +218,78 @@ static String detRowValue(uint8_t row) {
 
 
 /***************************************************************************************
+   HISTORY TRACE
+   Chrome: the box, the 0 / 50 / 100 marks and the caption cell. Trace: cleared and
+   redrawn whole whenever a sample lands (every HIST_PERIOD_MS) or the slot changes;
+   at most HIST_LEN short segments, a few milliseconds on the RA8876. A sample with
+   no data breaks the line. The newest point carries a dot.
+****************************************************************************************/
+static void drawDetailHistoryChrome(KCM_TFT &tft) {
+  if (!DETAIL_HISTORY) return;
+  tft.fillRect(DET_HIST_X, DET_HDR_H + 1, DET_HIST_W, KCM_SCREEN_H - DET_HDR_H - DET_BUG_H - 1, TFT_BLACK);
+  tft.drawRect(DET_HIST_BOX_X, DET_HIST_BOX_Y, DET_HIST_BOX_W, DET_HIST_BOX_H, TFT_DARK_GREY);
+  tft.setFont(Roboto_Black_12);
+  tft.setTextColor(TFT_GREY, TFT_BLACK);
+  const char *marks[3] = { "100", "50", "0" };
+  for (uint8_t m = 0; m < 3; m++) {
+    uint16_t y = DET_HIST_BOX_Y + (DET_HIST_BOX_H - 1) * m / 2;
+    int16_t w = getFontStringWidth(&Roboto_Black_12, marks[m]);
+    tft.setCursor(DET_HIST_BOX_X - 6 - w, y - 7);
+    tft.print(marks[m]);
+    tft.drawFastHLine(DET_HIST_BOX_X - 3, y, 3, TFT_GREY);
+  }
+  _histCaption[0] = '\0';
+  _histDrawnSeq = histSeq() - 1;   // force the first trace
+}
+
+static void drawDetailHistory(KCM_TFT &tft) {
+  if (!DETAIL_HISTORY || slotCount == 0 || _detailSlot >= slotCount) return;
+  if (histSeq() == _histDrawnSeq) return;
+  _histDrawnSeq = histSeq();
+  ResourceType t = slots[_detailSlot].type;
+  uint16_t n = histCount();
+
+  // Caption: the game time the held samples span.
+  char cap[16];
+  if (n < 2) strlcpy(cap, "NO HISTORY", sizeof(cap));
+  else { char d[8]; fmtTte(histGameSecs(), d, sizeof(d)); snprintf(cap, sizeof(cap), "LAST %s", d); }
+  if (strcmp(cap, _histCaption) != 0) {
+    strlcpy(_histCaption, cap, sizeof(_histCaption));
+    tft.fillRect(DET_HIST_BOX_X, DET_HIST_BOX_Y - 22, DET_HIST_BOX_W, 18, TFT_BLACK);
+    tft.setFont(Roboto_Black_12);
+    tft.setTextColor(TFT_GREY, TFT_BLACK);
+    tft.setCursor(DET_HIST_BOX_X, DET_HIST_BOX_Y - 20);
+    tft.print(cap);
+  }
+
+  // Interior: clear, band and bug lines, then the trace.
+  uint16_t x0 = DET_HIST_BOX_X + 1, y0 = DET_HIST_BOX_Y + 1;
+  uint16_t w  = DET_HIST_BOX_W - 2, h = DET_HIST_BOX_H - 2;
+  tft.fillRect(x0, y0, w, h, TFT_BLACK);
+  auto yOf = [&](float frac) -> int16_t { return (int16_t)(y0 + h - 1 - (int16_t)(constrain(frac, 0.0f, 1.0f) * (h - 1))); };
+  ResLimits lim = resLimits(t);
+  if (lim.enabled) {
+    tft.drawFastHLine(x0, yOf(lim.warn),  w, dimColor(TFT_YELLOW));
+    tft.drawFastHLine(x0, yOf(lim.alarm), w, dimColor(TFT_RED));
+  }
+  float bug = slots[_detailSlot].bug;
+  if (bug >= 0.0f) tft.drawFastHLine(x0, yOf(bug), w, TFT_CYAN);
+
+  uint16_t col = resColor(t);
+  int16_t px = -1, py = -1;
+  for (uint16_t k = 0; k < n; k++) {
+    uint16_t lv = histLevel(t, k);
+    if (lv == HIST_NONE) { px = -1; continue; }
+    int16_t x = (int16_t)(x0 + (uint32_t)(HIST_LEN - n + k) * (w - 1) / (HIST_LEN - 1));
+    int16_t y = yOf(lv / 1000.0f);
+    if (px >= 0) drawThickLine(tft, px, py, x, y, 2, col, false);
+    px = x; py = y;
+  }
+  if (px >= 0) tft.fillCircle(px, py, 3, col);
+}
+
+
+/***************************************************************************************
    DRAW SELECTOR COLUMN
 ****************************************************************************************/
 static void drawDetailSelector(KCM_TFT &tft) {
@@ -308,6 +396,7 @@ static void drawDetailChrome(KCM_TFT &tft) {
     tft.drawLine(DET_SEL_W, detRowY(DET_SECT_ROWS), KCM_SCREEN_W, detRowY(DET_SECT_ROWS), TFT_DARK_GREY);
   }
 
+  drawDetailHistoryChrome(tft);
   drawDetailBugBar(tft);
 }
 
@@ -356,6 +445,7 @@ void updateScreenDetail(KCM_TFT &tft) {
     drawDetailSelector(tft);
   }
   drawDetailValues(tft);
+  drawDetailHistory(tft);
 }
 
 bool handleDetailTouch(uint16_t x, uint16_t y) {

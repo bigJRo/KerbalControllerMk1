@@ -101,6 +101,54 @@ static void sampleOne(SlotSample &c, bool hasData, float cur, float max, uint32_
 }
 
 
+/***************************************************************************************
+   LEVEL HISTORY
+   One ring of HIST_LEN sample slots shared by every resource type, so all traces
+   share a timeline; a type not aboard at a sample holds HIST_NONE there. The warp
+   in force at each sample is kept so the span can be reported in game time.
+****************************************************************************************/
+static uint16_t _hist[RES_COUNT][HIST_LEN];
+static float    _histWarp[HIST_LEN];
+static uint16_t _histHead   = 0;     // next slot to write
+static uint16_t _histCount  = 0;
+static uint32_t _histLastMs = 0;
+static uint32_t _histSeq    = 0;
+static float    _histGame   = 0.0f;  // game seconds spanned by the held samples
+
+void resetHistory() {
+  _histHead = _histCount = 0;
+  _histGame = 0.0f;
+  _histLastMs = millis();
+  _histSeq++;
+}
+
+static void histPush(uint32_t now) {
+  if (_histCount == HIST_LEN) _histGame -= _histWarp[_histHead] * (HIST_PERIOD_MS / 1000.0f);   // dropping the oldest
+  for (uint16_t t = 0; t < (uint16_t)RES_COUNT; t++) _hist[t][_histHead] = HIST_NONE;
+  for (uint8_t i = 0; i < slotCount; i++) {
+    const ResourceSlot &s = slots[i];
+    if (s.type == RES_NONE || s.maxVal <= 0.0f) continue;
+    _hist[s.type][_histHead] = (uint16_t)(constrain(s.current / s.maxVal, 0.0f, 1.0f) * 1000.0f);
+  }
+  _histWarp[_histHead] = warpFactor;
+  _histGame += warpFactor * (HIST_PERIOD_MS / 1000.0f);
+  _histHead = (_histHead + 1) % HIST_LEN;
+  if (_histCount < HIST_LEN) _histCount++;
+  _histLastMs = now;
+  _histSeq++;
+}
+
+uint16_t histCount()    { return _histCount; }
+float    histGameSecs() { return _histGame; }
+uint32_t histSeq()      { return _histSeq; }
+
+uint16_t histLevel(ResourceType t, uint16_t k) {
+  if (k >= _histCount || (uint16_t)t >= (uint16_t)RES_COUNT) return HIST_NONE;
+  uint16_t idx = (uint16_t)((_histHead + HIST_LEN - _histCount + k) % HIST_LEN);
+  return _hist[t][idx];
+}
+
+
 void updateAllSampling() {
   uint32_t now = millis();
   for (uint8_t i = 0; i < slotCount; i++) {
@@ -108,6 +156,8 @@ void updateAllSampling() {
     sampleOne(sampleTot[i], s.maxVal   > 0.0f, s.current,      s.maxVal,   now);
     sampleOne(sampleStg[i], s.stageMax > 0.0f, s.stageCurrent, s.stageMax, now);
   }
+
+  if (DETAIL_HISTORY && now - _histLastMs >= HIST_PERIOD_MS) histPush(now);
 
   // A refresh is over when every active slot has answered or the timeout passes.
   if (refreshPending) {
