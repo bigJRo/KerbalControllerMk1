@@ -252,7 +252,7 @@ static void setTestBody() {
 static bool checkBit(uint8_t bit, bool expected, const char *name, const char *tier) {
   bool actual = bitRead(state.cautionWarningState, bit);
   bool pass   = (actual == expected);
-  char detail[48];
+  char detail[80];   // the longest tier caption is 38 chars; the frame around it is 29
   snprintf(detail, sizeof(detail), "bit%d %s: expected %s got %s",
            bit, tier,
            expected ? "SET" : "CLR",
