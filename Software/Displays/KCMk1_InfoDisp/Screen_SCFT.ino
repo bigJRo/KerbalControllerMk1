@@ -147,9 +147,9 @@ static uint8_t _scftRow5Mode() {
 }
 
 static const char *_scftRow5Label(uint8_t mode) {
-    return (mode == SCFT_R5_VVRT)  ? "V.Vrt:"
-         : (mode == SCFT_R5_DVREM) ? "\xCE\x94V.Rem:"
-                                   : "T+Ign:";
+    return (mode == SCFT_R5_VVRT)  ? "V.VRT"
+         : (mode == SCFT_R5_DVREM) ? "\xCE\x94V.REM"
+                                   : "T+IGN";
 }
 
 // The label follows the throttle, so it cannot wait for a full chrome repaint the way
@@ -343,7 +343,7 @@ static const int16_t THR_BAR_W   = 18;
 static const int16_t THR_TICK_X0 = THR_X + THR_BAR_W;      // 20
 static const int16_t THR_LABEL_H = 62;                     // rotated "THR" label at bottom
 static const int16_t THR_TOP_Y   = SCFT_PTAPE_Y + 6;       // 100 — 100% mark sits below the
-                                                           //   "Pitch:" label (bottom y=92)
+                                                           //   "PITCH" label (bottom y=92)
 static const int16_t THR_BOT_Y   = SCREEN_H - THR_LABEL_H - 14; // 524 — 0% mark; range chosen so the
                                                            //   20% ticks bracket (not overlap) the
                                                            //   pitch value box (y 281..319)
@@ -647,12 +647,12 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     tft.drawLine(SCFT_PTAPE_X - 1,                  SCFT_PTAPE_Y + SCFT_PTAPE_H - 1,
                  SCFT_PTAPE_X + SCFT_PTAPE_W - 1,    SCFT_PTAPE_Y + SCFT_PTAPE_H - 1, TFT_LIGHT_GREY);
 
-    // "Pitch:" right-justified to right edge of pitch value box (box widened left
+    // "PITCH" right-justified to right edge of pitch value box (box widened left
     // so the larger _24 label — 75px — fits without clipping the pitch value box)
     textRight(tft, &Roboto_Black_24,
               SCFT_PTAPE_BOX_X - 24, SCFT_PTAPE_Y - 32,
               SCFT_PTAPE_BOX_W + 24, 30,
-              "Pitch:", TFT_WHITE, TFT_BLACK);
+              "PITCH", TFT_WHITE, TFT_BLACK);
 
     // Heading tape border — top (light grey) and two sides (darker), open at bottom
     tft.drawLine(SCFT_HDG_TAPE_X - 1, SCFT_HDG_TAPE_Y - 1,
@@ -662,11 +662,11 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
     tft.drawLine(SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W, SCFT_HDG_TAPE_Y - 1,
                  SCFT_HDG_TAPE_X + SCFT_HDG_TAPE_W, SCFT_HDG_TAPE_Y + SCFT_HDG_TAPE_H, TFT_GREY);
 
-    // "Hdg:" right-justified to same right edge as "Pitch:" label
+    // "HDG" right-justified to same right edge as "PITCH" label
     textRight(tft, &Roboto_Black_24,
               SCFT_PTAPE_BOX_X, SCFT_HDG_BOX_Y + SCFT_HDG_BOX_H / 2 - 15,
               SCFT_PTAPE_BOX_W, 30,
-              "Hdg:", TFT_WHITE, TFT_BLACK);
+              "HDG", TFT_WHITE, TFT_BLACK);
 
     // ── Throttle bar (left) + vitals strip (bottom) — fill the ACFT VSI/slip slots ─────
     _scftDrawThrottleChrome(tft);
@@ -682,13 +682,13 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
 
     // Rows 0-6: single-width rows. Rows 1 and 5 depend on orbMode (see below).
     static const char *panelLabels[] = {
-        "Alt.SL:", nullptr, "ApA:", "PeA:", "T+Ap:", nullptr, "\xCE\x94V.Stg:"
+        "ALT.SL", nullptr, "APA", "PEA", "T+AP", nullptr, "\xCE\x94V.STG"
     };
     // On EVA the same seven rows carry a different set — see _scftEvaMode(). Row 1 is
     // pinned to V.Orb here rather than following orbMode, so that V.Orb and V.Srf are
     // both always on the panel: the pair is how you tell station-keeping from drifting.
     static const char *evaPanelLabels[] = {
-        "Alt.SL:", "V.Orb:", "Alt.Rdr:", "V.Srf:", "Dist:", "V.Close:", "EC:"
+        "ALT.SL", "V.ORB", "ALT.RDR", "V.SRF", "DIST", "V.CLOSE", "EC"
     };
     const bool evaChrome = _scftEvaMode();
     for (uint8_t r = 0; r < 7; r++) {
@@ -706,7 +706,7 @@ static void chromeScreen_SCFT(KCM_TFT &tft) {
         // so it must not simply be dropped. Below the switch a node countdown is close
         // to meaningless and descent rate is the number being flown.
         const char *lbl = evaChrome ? evaPanelLabels[r]
-                        : (r == 1) ? (_scftVelRef() ? "V.Orb:" : "V.Srf:")
+                        : (r == 1) ? (_scftVelRef() ? "V.ORB" : "V.SRF")
                         : (r == 5) ? _scftRow5Label(_scftRow5Mode())
                         : panelLabels[r];
         printDispChrome(tft, PF, SCFT_PANEL_X, rowYFor(r, SCFT_PANEL_NR),
@@ -752,14 +752,14 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
     {
         uint16_t fg = TFT_DARK_GREEN;
         String val = hasOrbit ? formatAlt(state.altitude) : "---";
-        attPanelVal(0, 0, "Alt.SL:", val, fg, TFT_BLACK);
+        attPanelVal(0, 0, "ALT.SL", val, fg, TFT_BLACK);
     }
 
     // Row 1 — V.Orb or V.Srf depending on orbital mode; pinned to V.Orb on EVA, where
     // row 3 carries V.Srf and the two are read as a pair.
     {
         uint16_t fg = TFT_DARK_GREEN;
-        const char *lbl = (evaMode || orbMode) ? "V.Orb:" : "V.Srf:";
+        const char *lbl = (evaMode || orbMode) ? "V.ORB" : "V.SRF";
         float vel = (evaMode || orbMode) ? state.orbitalVel : state.surfaceVel;
         String val = hasOrbit ? fmtMs(vel) : "---";
         attPanelVal(1, 1, lbl, val, fg, TFT_BLACK);
@@ -770,17 +770,17 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
     // they are drawn by the common tail, not duplicated here.
     if (evaMode) {
         // Row 2 — Alt.Rdr. The one altitude that matters when a Kerbal is near a surface.
-        attPanelVal(2, 2, "Alt.Rdr:", formatAlt(state.radarAlt), TFT_DARK_GREEN, TFT_BLACK);
+        attPanelVal(2, 2, "ALT.RDR", formatAlt(state.radarAlt), TFT_DARK_GREEN, TFT_BLACK);
 
         // Row 3 — V.Srf. Beside V.Orb above: station-keeping vs drifting.
-        attPanelVal(3, 3, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
+        attPanelVal(3, 3, "V.SRF", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
 
         // Row 4 — Dist to target, dashed when nothing is selected.
-        attPanelVal(4, 4, "Dist:", hasTgt ? formatAlt(state.tgtDistance) : String("---"),
+        attPanelVal(4, 4, "DIST", hasTgt ? formatAlt(state.tgtDistance) : String("---"),
                     hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 
         // Row 5 — V.Close. Same sign convention as TGT/DOCK: negative is closing.
-        attPanelVal(5, 5, "V.Close:", hasTgt ? fmtMs(state.tgtVelocity) : String("---"),
+        attPanelVal(5, 5, "V.CLOSE", hasTgt ? fmtMs(state.tgtVelocity) : String("---"),
                     hasTgt ? TFT_DARK_GREEN : TFT_DARK_GREY, TFT_BLACK);
 
         // Row 6 — suit charge, on ROVER's thresholds (5% alarm, 20% caution).
@@ -793,7 +793,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                            TFT_DARK_GREEN, TFT_BLACK, fg, bg);
             char buf[8];
             snprintf(buf, sizeof(buf), "%d%%", (int)lroundf(ec));
-            attPanelVal(6, 6, "EC:", String(buf), fg, bg);
+            attPanelVal(6, 6, "EC", String(buf), fg, bg);
         }
     } else {
 
@@ -802,24 +802,24 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
         // Escape trajectory: apoapsis undefined (KSP reports it negative) -> infinity
         bool escape = hasOrbit && (state.apoapsis < 0.0f);
         String val  = !hasOrbit ? String("---") : (escape ? String("\x80") : formatAlt(state.apoapsis));
-        attPanelVal(2, 2, "ApA:", val, TFT_DARK_GREEN, TFT_BLACK);
+        attPanelVal(2, 2, "APA", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 3 — PeA
     {
         // Suborbital periapsis is informational here (not a launch/descent screen) -> neutral
         String val = hasOrbit ? formatAlt(state.periapsis) : "---";
-        attPanelVal(3, 3, "PeA:", val, TFT_DARK_GREEN, TFT_BLACK);
+        attPanelVal(3, 3, "PEA", val, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 4 — T+Ap or T+Pe (whichever is sooner and positive)
     {
         float tAp = state.timeToAp, tPe = state.timeToPe;
         float tNext; const char *lbl;
-        if (!hasOrbit)                        { tNext = -1.0f; lbl = "T+Ap:"; }
-        else if (tAp >= 0.0f && tPe >= 0.0f) { tNext = min(tAp,tPe); lbl = (tAp < tPe) ? "T+Ap:" : "T+Pe:"; }
-        else if (tAp >= 0.0f)                 { tNext = tAp; lbl = "T+Ap:"; }
-        else                                  { tNext = tPe; lbl = "T+Pe:"; }
+        if (!hasOrbit)                        { tNext = -1.0f; lbl = "T+AP"; }
+        else if (tAp >= 0.0f && tPe >= 0.0f) { tNext = min(tAp,tPe); lbl = (tAp < tPe) ? "T+AP" : "T+PE"; }
+        else if (tAp >= 0.0f)                 { tNext = tAp; lbl = "T+AP"; }
+        else                                  { tNext = tPe; lbl = "T+PE"; }
         String val = (tNext >= 0.0f) ? formatTimeCompact((int64_t)tNext) : "---";
         attPanelVal(4, 4, lbl, val, TFT_DARK_GREEN, TFT_BLACK);
     }
@@ -873,7 +873,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                        DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                        DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-        attPanelVal(6, 6, "\xCE\x94V.Stg:", fmtMs(state.stageDeltaV), fg, bg);
+        attPanelVal(6, 6, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), fg, bg);
     }
     }   // end of the non-EVA rows 2-6
 

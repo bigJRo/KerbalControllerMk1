@@ -1,6 +1,6 @@
 # KerbalDisplayCommon
 
-**Kerbal Controller Mk1 — Shared Display Library** · v3.9.0
+**Kerbal Controller Mk1 — Shared Display Library** · v3.10.0
 UI toolkit for LT7683 (RA8876-compatible) touchscreen display panels used in KSP controller builds.
 Part of the KCMk1 controller system.
 
@@ -133,6 +133,17 @@ Three core rendering functions — all other display block functions are built o
 `textRight(tft, font, x0, y0, w, h, value, foreColor, backColor)` — right-justified, vertically centred.
 
 `textCenter(tft, font, x0, y0, w, h, value, foreColor, backColor)` — horizontally and vertically centred.
+
+### Readout label style
+
+Every label-and-value row on every panel follows one rule set, modelled on the Shuttle's DPS pages and on Boeing EICAS / Airbus ECAM, where a caption is told from its value by colour and alignment, never by punctuation:
+
+1. **No colon.** A caption beside a live value carries none. A colon is allowed only inside a one-line status string where caption and value share a run of text, and a space serves there too.
+2. **Label grey, value white or its state colour.** Pass `KDC_LABEL_COLOR` as the label colour to `printDispChrome` / `printDisp`; the value colour is the row's own (nominal white or dark green, caution yellow, alarm white-on-red, pilot entry cyan).
+3. **Uppercase**, keeping each panel's abbreviation scheme (`ALT.SL`, `V.ORB`, `ΔV.STG`, `T+IGN`, `THRTL`). Case is layout, not vocabulary: a panel's one-quantity-one-name rule is unchanged by it.
+4. **Label left, value right-aligned** in what the label leaves, as `printValue` lays it out. Units stay with the value.
+
+Caps are about twelve percent wider than mixed case in Roboto Black; measure a label in its own cell before adding one (see `tools/host_compile.py`'s neighbours for the glyph-width harness used in the 3.10.0 pass).
 
 ### Display Blocks
 
@@ -354,6 +365,7 @@ All colours are RGB565 format with `TFT_` prefix, defined in `KerbalDisplayCommo
 
 | Version | Notes |
 |---------|-------|
+| **3.10.0** | **Readout label style.** `KDC_LABEL_COLOR` (`TFT_GREY`) and a written rule set, above: a caption beside a live value is grey, uppercase and carries no colon; the value's colour tells the two apart. Before this the three panels disagreed: the Info Display used mixed case with a colon on all 83 of its labels, the Annunciator mixed caps and mixed case with colons, and the Resource Display had just moved to caps without. All three adopted the rule in one change, every label measured in its cell first. |
 | **3.9.0** | **`fillArc`: a pixel-exact ring segment.** The RA8876 driver offers circles, ellipses and rounded rectangles but no arc, and the controller's own curve command only draws whole quadrants, so an arc with arbitrary ends is scan-converted here: each row of the annulus is walked and the pixels whose bearing falls inside the sweep (tested with cross products against the start and end rays, no per-pixel `atan2`) go out as horizontal runs. Both edges and both radial ends land on exact pixels at any radius or width, which a chain of dots or thick-line chords cannot manage below about eight pixels of stroke. Added for the ResourceDisp EVA gauges' limit bands. |
 | **3.8.0** | **Four palette entries for the ResourceDisp meter fills**, each filling a gap the existing palette could not. `TFT_BRICK` (0xC285) is a rust red for Solid Fuel that stays clearly off the `TFT_RED` alarm colour when the tape sits beside a red limit band. `TFT_PLUM` (0x91F0) is a muted magenta for CO2, which alerts HIGH against a red band and so cannot be a red, and whose life-support family already used every other earth tone. `TFT_STRAW` (0xEE2E) is a pale straw yellow for Liquid Waste, distinct from the `TFT_GOLD` Electric Charge uses. `TFT_LIME` (0xC7E8) is a yellow-green for Stored Charge, which needed to sit beside gold without reading as it and away from the magentas every other free colour neighboured. |
 | **3.7.2** | **`formatSep` fills its buffer backwards.** The separator insertion built the string front-to-back, re-emitting everything produced so far on each three-digit group: `sprintf(tempBuf, ",%03d%s", current, buf); strcpy(buf, tempBuf)` is two passes over the whole accumulated result per group, so the cost was quadratic in the digit count and carried two 64-byte buffers plus a `printf` invocation per group. That matters here because this is the hottest formatting path on the panel — every `formatAlt()` on every visible distance readout reaches it every frame. Rewritten as a single right-to-left fill into one 28-byte buffer, which is also where the modulus already puts the digits, so no leading group has to be zero-padded and then un-padded. **~7× faster** on the same workload (784 ms → 112 ms over 5.7 M calls), with **byte-identical output across 40,269 differential test values** spanning ±20,000 and the neighbourhood of every power of ten to 10¹⁸. It also retires a known limitation rather than re-documenting it: the old `value = -value` is undefined at `INT64_MIN`, which the comment called "not reachable from any realistic Kerbal value"; negating into an unsigned accumulator is well defined over the entire range and costs nothing. |

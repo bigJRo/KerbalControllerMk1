@@ -289,8 +289,8 @@ enum ChuteEnvState : uint8_t {
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 5;
-static const uint8_t SKETCH_VERSION_PATCH = 4;  // 3.5.4: target closure sign fixed at ingestion
+static const uint8_t SKETCH_VERSION_MINOR = 6;
+static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.6.0: readout labels grey, uppercase, no colon (KDC label style)
 
 
 /***************************************************************************************

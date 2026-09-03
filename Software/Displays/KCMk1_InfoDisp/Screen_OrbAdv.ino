@@ -55,7 +55,7 @@
 // between rows; 7 rows from y=90 span to a last-row bottom of ~571, filling the
 // full 600 px height. Value columns are right-justified to an 8 px inset from
 // each half's edge (left → x=462 at the divider, right → x=930 at the content
-// edge). Widest labels: "SMA:" 91 px (left), "Arg.Pe:" 159 px (right) — both
+// edge). Widest labels: "SMA" 91 px (left), "ARG.PE" 159 px (right) — both
 // clear their value columns.
 static const int16_t ADV_TITLE_TOP  = TITLE_TOP;
 static const int16_t ADV_ROW_PITCH  = 73;
@@ -68,7 +68,7 @@ static const int16_t ADV_L_VALUE_X  = 150;
 static const int16_t ADV_L_VALUE_W  = 320;  // right edge 150+320-8 = 462
 
 static const int16_t ADV_R_LABEL_X  = 480;
-// Value column shifted right so the widest labels ("True Anom:" / "Mean Anom:",
+// Value column shifted right so the widest labels ("TRUE ANOM" / "MEAN ANOM",
 // ~207px, ending ~x=687) clear the value region (regionX = 690+9 = 699). The
 // wide time values (T+Pe/T+Ap) belong to short labels, so they still fit.
 static const int16_t ADV_R_VALUE_X  = 690;
@@ -99,22 +99,22 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
     // Left column labels
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("SMA:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("Ecc:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("PeA:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("ApA:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("Alt.SL:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("V.Orb:");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("Period:");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("SMA");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("ECC");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("PEA");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("APA");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("ALT.SL");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("V.ORB");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("PERIOD");
 
     // Right column labels
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("Inc:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("LAN:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("Arg.Pe:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("True Anom:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("Mean Anom:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("T+Pe:");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("T+Ap:");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("INC");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("LAN");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("ARG.PE");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("TRUE ANOM");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("MEAN ANOM");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("T+PE");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("T+AP");
 }
 
 void drawScreen_OrbAdv(KCM_TFT &tft) {

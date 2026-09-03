@@ -1025,11 +1025,11 @@ void eadiUpdateRollReadout(KCM_TFT &tft, float roll, uint16_t fg, uint16_t bg,
         tft.fillRect(ex - 1, ey, ow + 2, capH, TFT_BLACK);
     }
 
-    // Line 1: "Roll:" — label row, right-justified toward the panel divider
+    // Line 1: "ROLL" — label row, right-justified toward the panel divider
     textRight(tft, &Roboto_Black_24,
               EADI_ROLL_ANCHOR_X, EADI_ROLL_ANCHOR_Y,
               EADI_ROLL_TXT_W, EADI_ROLL_LABEL_H,
-              "Roll:", TFT_WHITE, TFT_BLACK);
+              "ROLL", TFT_WHITE, TFT_BLACK);
 
     // Line 2: signed value — larger font, right-justified in value row
     char buf[8];

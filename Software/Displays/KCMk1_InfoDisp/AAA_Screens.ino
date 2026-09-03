@@ -54,7 +54,7 @@ const uint16_t TITLE_TOP = TITLE_H + TITLE_RULE_H;
 const tFont *TITLE_FONT = &Roboto_Black_36;
 const uint16_t ROW_PAD = 2;
 
-const uint16_t COL_LABEL = TFT_WHITE;
+const uint16_t COL_LABEL = KDC_LABEL_COLOR;   // the panel-wide readout label colour (KerbalDisplayCommon)
 const uint16_t COL_VALUE = TFT_DARK_GREEN;
 const uint16_t COL_BACK = TFT_BLACK;
 const uint16_t COL_NO_BDR = TFT_BLACK;

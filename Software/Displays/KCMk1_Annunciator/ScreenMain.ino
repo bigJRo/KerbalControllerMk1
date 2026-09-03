@@ -545,7 +545,7 @@ void drawStaticMain(KCM_TFT &tft) {
 
   // SOI label chrome + globe border
   printDispChrome(tft, &Roboto_Black_28, SOI_LABEL_X, SOI_LABEL_Y,
-                  SOI_LABEL_W, SOI_LABEL_H, "SOI:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+                  SOI_LABEL_W, SOI_LABEL_H, "SOI", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   tft.drawRect(SOI_GLOBE_X, SOI_GLOBE_Y, SOI_GLOBE_W, SOI_GLOBE_H, TFT_GREY);
 
   // Vessel name (left telemetry, row 1) — green, left-aligned, bordered (#2).
@@ -556,14 +556,14 @@ void drawStaticMain(KCM_TFT &tft) {
 
   // Telemetry labels (chrome) — values drawn in the update pass.
   printDispChrome(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
-                  "TimeWarp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG:",   TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "Tmax:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "CREW:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM:",  TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "Tskin:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP:", TFT_WHITE, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CtrlGrp:", TFT_WHITE, TFT_BLACK, TFT_GREY);
+                  "TIMEWARP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG",   KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "TMAX",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "CREW",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "TSKIN", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CTRLGRP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
 
   // Light perimeter around the whole bottom zone, drawn LAST so its bottom edge
   // sits on top of every tile fill in the zone (#2). Reasserted each update pass
@@ -625,7 +625,7 @@ void updateScreenMain(KCM_TFT &tft) {
   // --- SOI LABEL + GLOBE ---
   if (state.gameSOI != prev.gameSOI) {
     printDisp(tft, &Roboto_Black_28, SOI_LABEL_X, SOI_LABEL_Y,
-              SOI_LABEL_W, SOI_LABEL_H, "SOI:", currentBody.dispName,
+              SOI_LABEL_W, SOI_LABEL_H, "SOI", currentBody.dispName,
               TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, TFT_GREY, psSOILabel);
     tft.fillRect(SOI_GLOBE_X + 1, SOI_GLOBE_Y + 1, SOI_GLOBE_W - 2, SOI_GLOBE_H - 2, TFT_BLACK);
     // Body BMP is 236x164; centre it in the 274x176 globe frame.
@@ -646,45 +646,45 @@ void updateScreenMain(KCM_TFT &tft) {
   // --- TELEMETRY VALUES ---
   if (state.stage != prev.stage) {
     printValue(tft, &Roboto_Black_28, TEL_X0, BOT_Y, TEL_W, TEL_ROW_H,
-               "STG:", formatInt(state.stage), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psSTG);
+               "STG", formatInt(state.stage), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psSTG);
     prev.stage = state.stage;
   }
   if (state.maxTemp != prev.maxTemp) {
     uint16_t fc, bc; tempTierColor(state.maxTemp, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0 + TEL_W, BOT_Y, TEL_W, TEL_ROW_H,
-               "Tmax:", formatPerc(state.maxTemp), fc, bc, TFT_BLACK, psTmax);
+               "TMAX", formatPerc(state.maxTemp), fc, bc, TFT_BLACK, psTmax);
     prev.maxTemp = state.maxTemp;
   }
   if (state.crewCount != prev.crewCount) {
     printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H,
-               "CREW:", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
+               "CREW", formatInt(state.crewCount), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCrew);
     prev.crewCount = state.crewCount;
   }
   if (state.twIndex != prev.twIndex) {
     printValue(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
-               "TimeWarp:", twString(state.twIndex, physTW), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psTW);
+               "TIMEWARP", twString(state.twIndex, physTW), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psTW);
     prev.twIndex = state.twIndex;
   }
   if (state.commNet != prev.commNet) {
     uint16_t fc, bc; commTierColor(state.commNet, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "COMM:", formatPerc(state.commNet), fc, bc, TFT_BLACK, psCOM);
+               "COMM", formatPerc(state.commNet), fc, bc, TFT_BLACK, psCOM);
     prev.commNet = state.commNet;
   }
   if (state.skinTemp != prev.skinTemp) {
     uint16_t fc, bc; tempTierColor(state.skinTemp, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0 + TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "Tskin:", formatPerc(state.skinTemp), fc, bc, TFT_BLACK, psTskin);
+               "TSKIN", formatPerc(state.skinTemp), fc, bc, TFT_BLACK, psTskin);
     prev.skinTemp = state.skinTemp;
   }
   if (state.capValue != prev.capValue) {
     printValue(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "CAP:", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
+               "CAP", formatInt(state.capValue), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCap);
     prev.capValue = state.capValue;
   }
   if (state.ctrlGrp != prev.ctrlGrp) {
     printValue(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H,
-               "CtrlGrp:", formatInt(state.ctrlGrp), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCtrlGrp);
+               "CTRLGRP", formatInt(state.ctrlGrp), TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, psCtrlGrp);
     prev.ctrlGrp = state.ctrlGrp;
   }
 

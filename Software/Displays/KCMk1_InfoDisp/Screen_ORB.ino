@@ -1188,18 +1188,18 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     // dot colours (magenta / blue) as mnemonic colour coding.
     tft.setFont(Roboto_Black_28);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY0); tft.print("SMA:");
-    tft.setCursor(6,   ORB_RDY1); tft.print("Ecc:");
+    tft.setCursor(6,   ORB_RDY0); tft.print("SMA");
+    tft.setCursor(6,   ORB_RDY1); tft.print("ECC");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY2); tft.print("PeA:");
+    tft.setCursor(6,   ORB_RDY2); tft.print("PEA");
     tft.setTextColor(TFT_BLUE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY3); tft.print("ApA:");
+    tft.setCursor(6,   ORB_RDY3); tft.print("APA");
 
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("Inc:");
-    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("Period:");
-    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("Arg.Pe:");
+    tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("INC");
+    tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PERIOD");
+    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("ARG.PE");
     // T+Pe / T+Ap label is drawn on demand from drawScreen_ORB via _lastTLabel cache
 }
 
@@ -1488,7 +1488,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             tft.setFont(*F);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);
             tft.setCursor(INC_LABEL_X, INC_RDY3);
-            tft.print(showPe ? "T+Pe:" : "T+Ap:");
+            tft.print(showPe ? "T+PE" : "T+AP");
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;
@@ -1496,7 +1496,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
     }
 
     // Row 6 (INCL top) — Inc (inclination, degrees)
-    // Label "Inc:" is white chrome (drawn in chromeScreen_ORB). Value is the
+    // Label "INC" is white chrome (drawn in chromeScreen_ORB). Value is the
     // inclination in degrees to 1 decimal place, dark-green like the other
     // readouts.
     {

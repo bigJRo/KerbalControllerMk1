@@ -1,6 +1,6 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.11.5
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.12.0
 Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -397,6 +397,8 @@ The boot screen sequences are seeded from the ARM cycle counter for genuine boot
 
 ## Readout label vocabulary
 
+**Style.** Every label follows the KerbalDisplayCommon "Readout label style" rule (its README): grey (`KDC_LABEL_COLOR`), uppercase, no colon, value right-aligned in what the label leaves. Case is layout, not vocabulary, so the names below are unchanged by it; the widths were re-measured in every cell for the caps forms, which are about twelve percent wider than the mixed case they replaced, less the colon.
+
 One quantity, one name. Every readout label on all fourteen screens was collected and
 compared; where the same value carried two names, the shorter or less standard one was
 renamed. Widths were measured against the real glyph data in each label's actual cell
@@ -405,28 +407,29 @@ font and right-aligns the value in what is left, so a longer label eats the valu
 
 | Quantity | Canonical | Was, and where |
 |---|---|---|
-| Throttle | `Thrtl:` | `Thr:` on ASCENT AUTOPILOT |
-| Inclination | `Inc:` | `Incl:` on ASCENT AUTOPILOT |
-| Dynamic pressure | `Q:` | `q:` on ASCENT AUTOPILOT |
-| Drogue chute | `Drogue:` | `Drog:` on RE-ENTRY |
-| Sideslip | `Slip:` | `Sl:` on the AIRCRAFT panel row — while the slip **ball** on the same screen said `Slip:` |
+| Throttle | `THRTL` | `THR` on ASCENT AUTOPILOT |
+| Inclination | `INC` | `INCL` on ASCENT AUTOPILOT |
+| Dynamic pressure | `Q` | `Q` on ASCENT AUTOPILOT |
+| Drogue chute | `DROGUE` | `DROG` on RE-ENTRY |
+| Sideslip | `SLIP` | `SL` on the AIRCRAFT panel row — while the slip **ball** on the same screen said `SLIP` |
 | Closure rate | `V.Close` | `V.CLS` on NAVIGATION (now `V.CLOSE`, since that screen's column heads are all-caps — case is layout, a different abbreviation is a second name) |
-| Terrain elevation | `Alt.Trn:` | `Elev:` on ROVER, one letter from the `Elv:` that DOCKING / TARGET / MANEUVER use for an elevation **angle** — a different quantity in different units |
+| Terrain elevation | `ALT.TRN` | `ELEV` on ROVER, one letter from the `ELV` that DOCKING / TARGET / MANEUVER use for an elevation **angle** — a different quantity in different units |
 
-**One exception, and it is measured rather than careless.** AIRCRAFT keeps `Ma:` where
-ASCENT and RE-ENTRY say `Mach:`. Its split cells are 180 px; `Mach:` is 101 px at the
+**One exception, and it is measured rather than careless.** AIRCRAFT keeps `MA` where
+ASCENT and RE-ENTRY say `MACH`. Its split cells are 180 px; `MACH` is 101 px at the
 value font against a widest reading of 95, which overflows by 26, and dropping a decimal
 does not save it. The abbreviation is forced by the cell. It is recorded in the code so it
 is not "fixed" later without re-measuring.
 
 Case differences that are purely layout are not renames: NAVIGATION's column heads are
-all-caps (`DIST`, `T+INT`) where the same tokens appear as `Dist:` and `T+Int:` in
+all-caps (`DIST`, `T+INT`) where the same tokens appear as `DIST` and `T+INT` in
 label-and-value rows elsewhere.
 
 ## Version History
 
 | Version | Notes |
 |---------|-------|
+| **1.12.0** | **Readout labels: grey, uppercase, no colon.** All 83 labels now follow the KerbalDisplayCommon 3.10.0 "Readout label style" rule shared by the three panels: `ALT.SL`, `V.ORB`, `ΔV.STG`, `T+IGN`, `THRTL`, in `KDC_LABEL_COLOR` grey with the value carrying the white or state colour, as on the Shuttle's DPS pages and on EICAS/ECAM, where colour and alignment tell a caption from its value rather than punctuation. The abbreviation vocabulary is unchanged; case is layout. Every caps form was measured against the mixed-case one it replaced in the label fonts (24 to 48 px): the growth is 2 to 24 px per label, and the tight cells on record (the AIRCRAFT 180 px halves, the DOCKING halves, the Ascent Autopilot's 122 px label column) all still clear. `MA` stays on AIRCRAFT for the reason `Ma` did. |
 | **1.11.5** | **A sidebar press was undoing itself, and it needed no telemetry to move.** Five mission rules widen their threshold once their screen has been chosen, so the panel does not oscillate on a boundary — DOCKING enters at 200 m and leaves at 250, MANEUVER at 600 s and leaves at 700, POWERED DESCENT at 10 km and 12, TARGET at 200/2000 m and 150/2400, LAUNCH at V.Vrt ≥ 0 and releases at −20. Those bands were keyed on `activeScreen`, which `switchToScreen()` sets — so pressing away from an auto-chosen screen collapsed its own band in the same frame. Parked at 220 m the panel shows DOCKING (inside the 250 m release limit); press PFD; `activeScreen` is no longer `screen_DOCK`; the limit snaps back to 200; 220 no longer qualifies; the ladder's answer changes to ORBIT — which releases the manual latch that the same press had just set *against* DOCKING, and the router switches you to ORBIT on that very pass. Deterministic, reproducible with the telemetry frozen, and every band had such a trap; the widest is LAUNCH's, where anything coasting near apoapsis sits. The bands are now keyed on `_lastContextWant`, the ladder's own previous answer, which makes `contextScreen()` a function of telemetry and its own history and nothing else — where the pilot has navigated cannot perturb it. That also fixes the quieter half of the same bug: under the old test the hysteresis did nothing at all while the pilot was parked on a manually chosen screen, so the ladder's answer could oscillate across a threshold unaided and release latches with no press involved. **Second, a press now carries its own dwell.** The gap was recorded only when the *router* switched, so a manual selection had no floor under it: the instant the latch released for any reason, the time since the last automatic switch was usually already spent and the router fired on the same frame — measured at 100 ms after a press. `MANUAL_DWELL_MS` (10 s) against `CONTEXT_DWELL_MS` (4 s), because a deliberate press outranks an automatic one. The latch still carries the meaning; this is only the floor beneath it. Both pieces of routing state are dropped on a vessel or scene change, alongside the latch they already released. |
 | **1.11.4** | **The PFD geometry stopped being written out three times.** SPACECRAFT, AIRCRAFT and the shared `EADIBall` renderer draw one instrument, so they have to agree pixel for pixel about where the disc, the tapes and the value boxes are — and they used to say so three times over, each re-deriving the whole layout from its own copy of `CX`/`CY`/`R`. Comparing every `EADI_*` constant against its `ACFT_*` and `SCFT_*` counterpart: **84 pairs, 84 identical, zero differing** — equal only because nobody had yet edited one of the three. Forty of them were entirely **dead**: declared, never read, and reading like live geometry, so editing `SCFT_PTAPE_MRK_HW` moved nothing. `EADIBall.ino` is now the single definition and the screens alias it. **Sixty-four dead constants removed** in total, among them a `LNCH_AS_*PANEL_*` block still describing the rev-1 720×480 screen, and a second copy of the ASCENT readout column under a different name in the same file. **Twenty-one stale value-assertion comments fixed**: when the disc was enlarged, fourteen derived comments across ACFT/SCFT kept quoting the pre-enlargement numbers (`// 133` on a constant that evaluates to 76, `// 406` on one that is 514), and two layout decisions in the 1.11 series were made by reading those comments instead of the arithmetic and came out wrong. **`TGT_VCLOSURE_WARN_MS` removed** — documented in three places as a yellow "fast approach" band, read by no code, and the row's yellow already means the opposite thing (closure *negative*, i.e. opening). That is 1.11.1's `STALL_SPEED_MS` defect again, which is why `tools/panel_lint.py` now exists to fail a build on either. **Version discipline**: this pass also found that the closure-sign fix shipped inside 1.10.19 and the DTCM fix inside 1.11.2, neither with a bump — on a panel where three boards are flashed separately, a version string that does not move is a version string that lies. No behaviour change here: every retained geometry value is provably identical and the formatter's output is byte-identical over 40,269 differential test values. |
 | **1.11.3** | **Three readout collisions found on the bench, all invisible to the host harnesses** — which verify what a function draws, never what its neighbours paint over it afterwards. The **SPACECRAFT rate cluster** started at y=96, but the roll readout is right-justified into x 497..583 and paints its value row at y 97..130 — squarely on the "P" label and the top of the pitch bar, so every change in the roll digits erased them. Moved to y=136, bars shortened 100 → 92 so the yaw bar still ends above `TRIM`'s erase rect; both bounds are now measured from real glyph metrics and written into the source. The **IAS trend chevrons** are thicker (3-scanline stroke, height 7, pitch 10) and **magenta** rather than dark green: they are a six-second *prediction*, and magenta is what a glass cockpit reserves for computed guidance as against green for live state. The **ROVER target strip** overlapped its own label at any two-digit minute count — the cells were budgeted for `"59m 30s"` (142 px), but `formatTimeCompact` below one hour is identical to `formatTime`, which emits `"59 m: 30 s"` at 171 px in a 155 px cell, and `textRight` does not clip, it starts further left, so the value walked back over the label. Distance had the same defect and worse, since `formatSep` emits two decimals below 1000. Strip dropped to Roboto_Black_28 and all four cells re-cut so a string *filling* its cell still cannot reach past that cell's left edge. |

@@ -42,8 +42,8 @@ static void _lnchPrelaunchDrawChrome(KCM_TFT &tft) {
     // No section labels — pure status board. 8 rows, all split except rows 0, 1, 5.
     drawTitleBar(tft, "PRE-LAUNCH");  // no toggle indicator
 
-    printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "Vessel:",  COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, "Type:",    COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, AX, rowYFor(0,NR), AW, rowH, "VESSEL",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, F, AX, rowYFor(1,NR), AW, rowH, "TYPE",    COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Split rows 2-7: vertical dividers and left/right labels
     auto plSplit = [&](uint8_t row, const char *lLabel, const char *rLabel) {
@@ -54,12 +54,12 @@ static void _lnchPrelaunchDrawChrome(KCM_TFT &tft) {
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, nextY - 1, TFT_GREY);
     };
-    plSplit(2, "SAS:",      "RCS:");
-    plSplit(3, "Thrtl:", "EC%:");
-    plSplit(4, "Crew:",     "Comm:");
-    printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "\xCE\x94V.Tot:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    plSplit(6, "Drogue:",   "Main:");
-    plSplit(7, "D.Cut:",    "M.Cut:");
+    plSplit(2, "SAS",      "RCS");
+    plSplit(3, "THRTL", "EC%");
+    plSplit(4, "CREW",     "COMM");
+    printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "\xCE\x94V.TOT", COL_LABEL, COL_BACK, COL_NO_BDR);
+    plSplit(6, "DROGUE",   "MAIN");
+    plSplit(7, "D.CUT",    "M.CUT");
 
     // Horizontal dividers between every row — makes board easier to read as a checklist
     for (uint8_t row = 1; row < NR; row++) {
@@ -115,7 +115,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     };
 
     // Row 0 — Vessel name (full width, always dark green)
-    plVal(0, 14, "Vessel:", state.vesselName, TFT_DARK_GREEN, TFT_BLACK);
+    plVal(0, 14, "VESSEL", state.vesselName, TFT_DARK_GREEN, TFT_BLACK);
 
     // Row 1 — Vessel type (full width, always dark green — informational confirmation)
     {
@@ -132,7 +132,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
             case type_EVA:      typeName = "EVA";       break;
             default:            typeName = "Unknown";   break;
         }
-        plVal(1, 15, "Type:", typeName, TFT_DARK_GREEN, TFT_BLACK);
+        plVal(1, 15, "TYPE", typeName, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 2 — SAS (left) | RCS (right)
@@ -152,13 +152,13 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
             }
             fg = TFT_YELLOW; bg = TFT_BLACK;
         }
-        plValL(2, 2, "SAS:", sasStr, fg, bg);
+        plValL(2, 2, "SAS", sasStr, fg, bg);
 
         // RCS: green=OFF, red=ON (no RCS during launch)
         const char *rcsStr = state.rcs_on ? "ON" : "OFF";
         uint16_t rcsFg     = state.rcs_on ? TFT_WHITE     : TFT_DARK_GREEN;
         uint16_t rcsBg     = state.rcs_on ? TFT_RED        : TFT_BLACK;
-        plValR(2, 3, "RCS:", rcsStr, rcsFg, rcsBg);
+        plValR(2, 3, "RCS", rcsStr, rcsFg, rcsBg);
     }
 
     // Row 3 — Throttle (left) | EC% (right)
@@ -168,7 +168,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         String thrStr = formatPerc(thrPct);
         if (thrPct == 0) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else             { fg = TFT_WHITE;       bg = TFT_RED;   }
-        plValL(3, 4, "Thrtl:", thrStr, fg, bg);
+        plValL(3, 4, "THRTL", thrStr, fg, bg);
 
         // EC%: pre-launch readiness — green when topped off, red when not ready.
         uint8_t ecPct = (uint8_t)constrain(state.electricChargePercent, 0.0f, 100.0f);
@@ -176,7 +176,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         if      (ecPct >= EC_PRELAUNCH_READY_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (ecPct >= EC_PRELAUNCH_LOW_PCT)   { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                       { fg = TFT_WHITE;       bg = TFT_RED;   }
-        plValR(3, 5, "EC%:", ecStr, fg, bg);
+        plValR(3, 5, "EC%", ecStr, fg, bg);
     }
 
     // Row 4 — Crew (left) | CommNet (right)
@@ -184,7 +184,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         // Crew: always dark green — pilot reads and confirms count
         char crewBuf[10];
         snprintf(crewBuf, sizeof(crewBuf), "%d / %d", state.crewCount, state.crewCapacity);
-        plValL(4, 6, "Crew:", crewBuf, TFT_DARK_GREEN, TFT_BLACK);
+        plValL(4, 6, "CREW", crewBuf, TFT_DARK_GREEN, TFT_BLACK);
 
         // CommNet: green=>50%, yellow=10-50%, red=<10%
         uint8_t sig = (uint8_t)constrain(state.commNetSignal, 0, 100);
@@ -192,7 +192,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         if      (sig >= VEH_SIGNAL_WARN_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (sig >= 10) { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                { fg = TFT_WHITE;       bg = TFT_RED;   }
-        plValR(4, 7, "CommNet:", sigStr, fg, bg);
+        plValR(4, 7, "COMMNET", sigStr, fg, bg);
     }
 
     // Row 5 — ΔV.Tot (full width) — total mission delta-V at a glance
@@ -201,7 +201,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
                        DV_STG_ALARM_MS, TFT_WHITE, TFT_RED,
                        DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                             TFT_DARK_GREEN, TFT_BLACK, fg, bg);
-        plVal(5, 16, "\xCE\x94V.Tot:", fmtMs(state.totalDeltaV), fg, bg);
+        plVal(5, 16, "\xCE\x94V.TOT", fmtMs(state.totalDeltaV), fg, bg);
     }
 
     // Row 6 — Drogue deploy (CAG 1) | Main deploy (CAG 3)
@@ -210,12 +210,12 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         const char *dStr = state.drogueDeploy ? "ARMED!" : "STOWED";
         uint16_t dFg = state.drogueDeploy ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t dBg = state.drogueDeploy ? TFT_RED   : TFT_BLACK;
-        plValL(6, 10, "Drogue:", dStr, dFg, dBg);
+        plValL(6, 10, "DROGUE", dStr, dFg, dBg);
 
         const char *mStr = state.mainDeploy ? "ARMED!" : "STOWED";
         uint16_t mFg = state.mainDeploy ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t mBg = state.mainDeploy ? TFT_RED   : TFT_BLACK;
-        plValR(6, 11, "Main:", mStr, mFg, mBg);
+        plValR(6, 11, "MAIN", mStr, mFg, mBg);
     }
 
     // Row 7 — Drogue cut (CAG 2) | Main cut (CAG 4)
@@ -224,12 +224,12 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         const char *dcStr = state.drogueCut ? "FIRED!" : "SAFE";
         uint16_t dcFg = state.drogueCut ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t dcBg = state.drogueCut ? TFT_RED   : TFT_BLACK;
-        plValL(7, 12, "D.Cut:", dcStr, dcFg, dcBg);
+        plValL(7, 12, "D.CUT", dcStr, dcFg, dcBg);
 
         const char *mcStr = state.mainCut ? "FIRED!" : "SAFE";
         uint16_t mcFg = state.mainCut ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t mcBg = state.mainCut ? TFT_RED   : TFT_BLACK;
-        plValR(7, 13, "M.Cut:", mcStr, mcFg, mcBg);
+        plValR(7, 13, "M.CUT", mcStr, mcFg, mcBg);
     }
 
     // Redraw horizontal dividers every frame — printValue fillRect overwrites them.

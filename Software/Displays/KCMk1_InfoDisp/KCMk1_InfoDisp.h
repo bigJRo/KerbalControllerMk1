@@ -184,8 +184,8 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.5.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 11;
-static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.11.5: a sidebar press no longer undoes itself
+static const uint8_t SKETCH_VERSION_MINOR = 12;
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // 1.12.0: readout labels grey, uppercase, no colon (KDC label style)
 
 
 /***************************************************************************************

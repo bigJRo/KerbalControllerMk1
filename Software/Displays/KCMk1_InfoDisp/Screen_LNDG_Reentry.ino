@@ -609,14 +609,14 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
 
   const uint16_t RHW = RE_TXT_W / 2;
   // Panel row labels (values filled by the draw pass). Rows 0-5 full width.
-  const char *r0 = _lndgReentryRow0TPe ? "T+Atm:" : "T+Grnd:";
-  const char *r1 = _lndgReentryRow1SL  ? "Alt.SL:" : "Alt.Rdr:";
+  const char *r0 = _lndgReentryRow0TPe ? "T+ATM" : "T+GRND";
+  const char *r1 = _lndgReentryRow1SL  ? "ALT.SL" : "ALT.RDR";
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(0, RE_NR), RE_TXT_W, rowHFor(RE_NR), r0, COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(1, RE_NR), RE_TXT_W, rowHFor(RE_NR), r1, COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Srf:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.Vrt:", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA:",   COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "Mach:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.SRF", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.VRT", COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PEA",   COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "MACH",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
   // Horizontal separator above the Drogue/Main status board.
   tft.drawLine(RE_DIV_X, rowYFor(6, RE_NR) - ROW_PAD, CONTENT_W - 1, rowYFor(6, RE_NR) - ROW_PAD, TFT_GREY);
@@ -629,7 +629,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
-  splitLabels(6, "Drogue:", "Main:");
+  splitLabels(6, "DROGUE", "MAIN");
   // Row 7 buttons are drawn in the update pass; only draw the divider here.
   {
     uint16_t y = rowYFor(7, RE_NR);
@@ -681,30 +681,30 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
   // Row 0: T+Atm (above atmo, Pe below atmo) or T+Grnd
   if (wantTPe) {
     float tAtmo = estimateTimeToAtmosphere();
-    if      (tAtmo >= 0.0f)             reVal(0, "T+Atm:", formatTimeCompact(tAtmo), TFT_DARK_GREEN, TFT_BLACK);
-    else                               reVal(0, "T+Atm:", "---", TFT_DARK_GREY, TFT_BLACK);
+    if      (tAtmo >= 0.0f)             reVal(0, "T+ATM", formatTimeCompact(tAtmo), TFT_DARK_GREEN, TFT_BLACK);
+    else                               reVal(0, "T+ATM", "---", TFT_DARK_GREY, TFT_BLACK);
   } else if (!aboveAtmo) {
     lndgTGroundColors(tGround, fg, bg);
-    if (tGround >= 0.0f) reVal(0, "T+Grnd:", formatTimeCompact(tGround), fg, bg);
-    else                 reVal(0, "T+Grnd:", "---", fg, bg);
+    if (tGround >= 0.0f) reVal(0, "T+GRND", formatTimeCompact(tGround), fg, bg);
+    else                 reVal(0, "T+GRND", "---", fg, bg);
   } else {
     lndgTGroundColors(-1.0f, fg, bg);
-    reVal(0, "T+Grnd:", "---", fg, bg);
+    reVal(0, "T+GRND", "---", fg, bg);
   }
 
   // Row 1: Alt.SL (above atmo) or Alt.Rdr (in atmo, coloured by proximity)
   if (aboveAtmo) {
-    reVal(1, "Alt.SL:", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
+    reVal(1, "ALT.SL", formatAlt(state.altitude), TFT_DARK_GREEN, TFT_BLACK);
   } else {
     fg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_WHITE  :
          (state.radarAlt < ALT_RDR_WARN_M)  ? TFT_YELLOW : TFT_DARK_GREEN;
     bg = (state.radarAlt < ALT_RDR_ALARM_M) ? TFT_RED    : TFT_BLACK;
-    reVal(1, "Alt.Rdr:", formatAlt(state.radarAlt), fg, bg);
+    reVal(1, "ALT.RDR", formatAlt(state.radarAlt), fg, bg);
   }
 
   // Row 2: V.Srf
   // surfaceVel is a magnitude, always >= 0
-  reVal(2, "V.Srf:", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
+  reVal(2, "V.SRF", fmtMs(state.surfaceVel), TFT_DARK_GREEN, TFT_BLACK);
 
   // Row 3: V.Vrt (vertical descent rate). The G load now lives in the graphical G meter.
   // Hazard-coloured (landing thresholds) only near the ground; at altitude a high descent
@@ -718,7 +718,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     } else {
       fg = TFT_DARK_GREEN; bg = TFT_BLACK;
     }
-    reVal(3, "V.Vrt:", fmtMs(vv), fg, bg);
+    reVal(3, "V.VRT", fmtMs(vv), fg, bg);
   }
 
   // Row 4: PeA — coloured by re-entry corridor regime
@@ -727,14 +727,14 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     int8_t reg = _rePeRegime(c, state.periapsis);
     uint16_t pfg = _reRegimeColor(reg);
     if (reg == 0) { pfg = TFT_WHITE; bg = TFT_RED; } else bg = TFT_BLACK;
-    reVal(4, "PeA:", formatAlt(state.periapsis), pfg, bg);
+    reVal(4, "PEA", formatAlt(state.periapsis), pfg, bg);
   }
 
   // Row 5: Mach (transonic band highlighted)
   {
     float m = state.machNumber; snprintf(buf, sizeof(buf), "%.2f", m);
     bool transonic = (m >= 0.85f && m <= 1.2f);
-    reVal(5, "Mach:", String(buf), transonic ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
+    reVal(5, "MACH", String(buf), transonic ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
   }
 
   // ── Chute latch bookkeeping — armed-safe when deployed below the rip q ──
@@ -760,7 +760,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     else                    { cfg = TFT_DARK_GREEN; cbg = TFT_BLACK; }
   };
 
-  // Row 6: Drogue | Main (split values, cached). The "Drog:"/"Main:" labels are chrome;
+  // Row 6: Drogue | Main (split values, cached). The "DROG"/"MAIN" labels are chrome;
   // the status right-aligns in a value sub-cell to the right of the label (empty param —
   // no redundant reservation). This row stays at the RE_VF6 (32pt) tier — the tight
   // half-width sub-cells cannot hold STOW/OPEN at the rows-0-5 36pt value font.
@@ -768,7 +768,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     uint16_t xL = RE_TXT_X, xR = RE_TXT_X + RHW + ROW_PAD;
     uint16_t wL = RHW - ROW_PAD, wR = RHW - ROW_PAD;
     uint16_t xDV = xL + 70, wDV = wL - 70;   // drogue value sub-cell (widened so STOW/OPEN fit the RE_VF6 font — no left-spill ghost)
-    uint16_t xMV = xR + 70, wMV = wR - 70;   // main value sub-cell (right of "Main:")
+    uint16_t xMV = xR + 70, wMV = wR - 70;   // main value sub-cell (right of "MAIN")
     uint16_t y6 = rowYFor(6, RE_NR), h6 = rowHFor(RE_NR);
     const char *dv; uint16_t dfg, dbg;
     chuteState(_drogueDeployed, _drogueCut, _drogueArmedSafe, LNDG_CHUTE_DROGUE_MAX_Q, LNDG_DROGUE_FULL_ALT, dv, dfg, dbg);

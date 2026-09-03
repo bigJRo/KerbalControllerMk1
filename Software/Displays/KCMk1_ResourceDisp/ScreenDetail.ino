@@ -453,7 +453,7 @@ static void drawDetailChrome(KCM_TFT &tft) {
     printDispChrome(tft, rowFont,
                     DET_ROW_X, detRowY(i), DET_ROW_W, rowH,
                     detRowLabel(i),
-                    TFT_WHITE, TFT_BLACK, NO_BORDER);
+                    KDC_LABEL_COLOR, TFT_BLACK, NO_BORDER);
   }
 
   // 1px dividers — below header, and between Craft/Stage sections (if stage shown)

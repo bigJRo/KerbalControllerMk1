@@ -22,7 +22,7 @@
        Target bearing triangle inside ring when state.targetAvailable
 
      TGT STATUS STRIP (within the compass region, along its bottom, y=552..600):
-       "Dist:" label flush-left against the left column, formatted distance value
+       "DIST" label flush-left against the left column, formatted distance value
        flush-right against the right column, shown only when state.targetAvailable
 
      RIGHT COLUMN (x=750..940, 3 stacked boxes):
@@ -78,7 +78,7 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 
 // Target distance readout — shown only when a target is selected (targetAvailable).
 // Status strip along the bottom of the compass region, between the two side
-// columns and below the ring. Label "Dist:" is flush-left against the left column
+// columns and below the ring. Label "DIST" is flush-left against the left column
 // (region left edge x=190) and the formatted distance value is flush-right against
 // the right column (region right edge x=750). The strip sits just below the
 // compass erase region (which ends at y=551), so the two never collide.
@@ -87,12 +87,12 @@ static const int16_t ROVR_TGT_HALF_W     = 12;   // same half-width as nose
 // "59 m: 30 s" -- formatTimeCompact is IDENTICAL to formatTime below one hour, and that is
 // formatTime's minutes form -- which is 171 px against a 155 px cell. textRight aligns to
 // the cell's right edge and simply starts further left when the string overruns, so the
-// value walked backwards into the "T+Tgt:" label and sat on top of it. Distance had the
+// value walked backwards into the "T+TGT" label and sat on top of it. Distance had the
 // same defect and was worse: formatAlt/formatSep emit two decimals below 1000, so a plain
 // "999.00 m" is 119 px and "999.99 km" is 134, with "999,999 km" at 150.
 //
 // Dropping the strip to Roboto_Black_28 fixes both with room to spare. Re-measured
-// against the real glyph data at Black_28: "Dist:" 58, "T+Tgt:" 85, widest distance 150
+// against the real glyph data at Black_28: "DIST" 58, "T+TGT" 85, widest distance 150
 // ("999,999 km"), widest time 131 ("59 m: 30 s"). Each value cell is sized so that even a
 // string filling it cannot reach back past its own left edge -- the label can then never
 // be overwritten, whatever the value formats to.
@@ -367,7 +367,7 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
 }
 
 // Target-distance readout — status strip along the bottom of the compass region.
-// "Dist:" label flush-left against the left column, formatted distance value flush-
+// "DIST" label flush-left against the left column, formatted distance value flush-
 // right against the right column. Both are visible only when a target is selected;
 // when no target, both strips are erased to black.
 //
@@ -392,10 +392,10 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
     if (!_rovrPrevTgtDistAvail) {
         textLeft(tft, ROVR_TGTD_FONT,
                  ROVR_TGTD_LBL_X, ROVR_TGTD_Y, ROVR_TGTD_LBL_W, ROVR_TGTD_H,
-                 "Dist:", TFT_WHITE, TFT_BLACK);
+                 "DIST", TFT_WHITE, TFT_BLACK);
         textLeft(tft, ROVR_TGTD_FONT,
                  ROVR_TGTT_LBL_X, ROVR_TGTD_Y, ROVR_TGTT_LBL_W, ROVR_TGTD_H,
-                 "T+Tgt:", TFT_WHITE, TFT_BLACK);
+                 "T+TGT", TFT_WHITE, TFT_BLACK);
         _rovrPrevTgtDistAvail = true;
         _rovrPrevTgtDistVal   = -1;   // force both values to redraw below
         _rovrPrevTgtTimeVal   = "";
@@ -535,7 +535,7 @@ static void _rovrUpdateThrottle(KCM_TFT &tft) {
     _rovrPrevThrFill = newState;
 }
 
-// Surface velocity readout — "V.Srf:" label over signed speed (m/s) with 1 decimal.
+// Surface velocity readout — "V.SRF" label over signed speed (m/s) with 1 decimal.
 // Label drawn once in chrome. Value updated via cached dirty check. Sign derived
 // from comparing state.srfVelHeading to state.heading (>90° off-nose = reversing).
 //
@@ -564,7 +564,7 @@ static void _rovrDrawVSrfChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrVSrfLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "V.Srf:", TFT_WHITE, TFT_BLACK);
+               "V.SRF", TFT_WHITE, TFT_BLACK);
 }
 
 static void _rovrUpdateVSrf(KCM_TFT &tft) {
@@ -703,7 +703,7 @@ static void _rovrDrawEcChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "Endur:", TFT_WHITE, TFT_BLACK);
+               "ENDUR", TFT_WHITE, TFT_BLACK);
 }
 
 static void _rovrUpdateEc(KCM_TFT &tft) {
@@ -806,9 +806,9 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
 }
 
 // ── Elevation readout ─────────────────────────────────────────────────────────────────
-// "Alt.Trn:" label over integer surface-altitude value in meters. Named for the Alt
-// family (Alt.SL, Alt.Rdr) it belongs to, not "Elev:", which sat one letter away from
-// the "Elv:" that DOCKING, TARGET and MANEUVER use for an elevation ANGLE -- a different
+// "ALT.TRN" label over integer surface-altitude value in meters. Named for the Alt
+// family (Alt.SL, Alt.Rdr) it belongs to, not "ELEV", which sat one letter away from
+// the "ELV" that DOCKING, TARGET and MANEUVER use for an elevation ANGLE -- a different
 // quantity in different units. Terrain elevation is
 // computed as (altitude_ASL - radarAlt_AGL), giving the altitude of the terrain
 // surface below the vessel — i.e. how high up the current terrain is above
@@ -832,7 +832,7 @@ static void _rovrDrawElevChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, _rovrElevLabelY(),
                ROVR_RCOL_W, ROVR_LBL_H,
-               "Alt.Trn:", TFT_WHITE, TFT_BLACK);
+               "ALT.TRN", TFT_WHITE, TFT_BLACK);
 }
 
 static void _rovrUpdateElev(KCM_TFT &tft) {
@@ -1067,7 +1067,7 @@ static void _rovrDrawPitchChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_PITCH_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
-               "Pitch:", TFT_WHITE, TFT_BLACK);
+               "PITCH", TFT_WHITE, TFT_BLACK);
 
     // Horizontal reference lines at silhouette centre Y, inside the box edges
     int16_t refY  = ROVR_PITCH_SIL_CY;
@@ -1086,7 +1086,7 @@ static void _rovrDrawRollChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_RCOL_X, ROVR_ROLL_Y + ROVR_TILT_TOP_PAD,
                ROVR_RCOL_W, ROVR_TILT_LBL_H,
-               "Roll:", TFT_WHITE, TFT_BLACK);
+               "ROLL", TFT_WHITE, TFT_BLACK);
 
     int16_t refY  = ROVR_ROLL_SIL_CY;
     int16_t lxL   = ROVR_RCOL_X + ROVR_TILT_REF_MARGIN;

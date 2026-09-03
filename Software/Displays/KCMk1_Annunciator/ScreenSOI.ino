@@ -46,16 +46,16 @@ void drawSOIBody(KCM_TFT &tft) {
   SOIRow rows[8];
   uint8_t rowCount = 0;
 
-  rows[rowCount++] = { "Min Safe Alt:",   formatAlt(currentBody.minSafe)                   };
-  rows[rowCount++] = { "SOI Radius:",     formatAlt(currentBody.soiAlt)                    };
+  rows[rowCount++] = { "MIN SAFE ALT",   formatAlt(currentBody.minSafe)                   };
+  rows[rowCount++] = { "SOI RADIUS",     formatAlt(currentBody.soiAlt)                    };
   if (currentBody.hasAtmo) {
-    rows[rowCount++] = { "Reentry Alt:",  formatAlt(currentBody.reentryAlt)                };
-    rows[rowCount++] = { "High Atmo Alt:", formatAlt(currentBody.flyHigh)                  };
-    rows[rowCount++] = { "Low Space Alt:", formatAlt(currentBody.lowSpace)                 };
+    rows[rowCount++] = { "REENTRY ALT",  formatAlt(currentBody.reentryAlt)                };
+    rows[rowCount++] = { "HIGH ATMO ALT", formatAlt(currentBody.flyHigh)                  };
+    rows[rowCount++] = { "LOW SPACE ALT", formatAlt(currentBody.lowSpace)                 };
   }
-  rows[rowCount++] = { "High Space Alt:", formatAlt(currentBody.highSpace)                 };
-  rows[rowCount++] = { "Condition:",      String(currentBody.cond)                         };
-  rows[rowCount++] = { "Surf. Gravity:",  String(currentBody.gravity, 2) + " m/s\xb2"     };
+  rows[rowCount++] = { "HIGH SPACE ALT", formatAlt(currentBody.highSpace)                 };
+  rows[rowCount++] = { "CONDITION",      String(currentBody.cond)                         };
+  rows[rowCount++] = { "SURF. GRAVITY",  String(currentBody.gravity, 2) + " m/s\xb2"     };
 
   tft.fillRect(SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H, TFT_BLACK);
   printTitle(tft, &Roboto_Black_72, SOI_NAME_X, 0, SOI_NAME_W, SOI_IMG_H,
@@ -66,7 +66,7 @@ void drawSOIBody(KCM_TFT &tft) {
     uint16_t y = SOI_ROWS_Y + i * SOI_ROW_H;
     printDisp(tft, &Roboto_Black_40, 0, y, SOI_NAME_X + SOI_NAME_W + SOI_IMG_W, SOI_ROW_H,
               rows[i].label, rows[i].value,
-              TFT_WHITE, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, NO_BORDER,
+              KDC_LABEL_COLOR, TFT_DARK_GREEN, TFT_BLACK, TFT_BLACK, NO_BORDER,
               psSOIRows[i]);
   }
 

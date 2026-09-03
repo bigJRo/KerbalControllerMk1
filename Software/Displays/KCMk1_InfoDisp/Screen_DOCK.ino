@@ -201,8 +201,8 @@ static void _dockDrawReticleChrome(KCM_TFT &tft) {
 // ── Draw right-panel chrome (static labels) ───────────────────────────────────────────
 static void _dockDrawRightChrome(KCM_TFT &tft) {
     // Rows 0–1: range and time
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "Dist:",    COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T+Dock:",  COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(0,RP_NR), RP_W, rowHFor(RP_NR), "DIST",    COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(1,RP_NR), RP_W, rowHFor(RP_NR), "T+DOCK",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between T+Dock(1) and V.Close(2)
     { uint16_t dy = rowYFor(2,RP_NR) - 1;
@@ -210,8 +210,8 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Rows 2–3: speed
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.Close:", COL_LABEL, COL_BACK, COL_NO_BDR);
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.Lat:",   COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(2,RP_NR), RP_W, rowHFor(RP_NR), "V.CLOSE", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(3,RP_NR), RP_W, rowHFor(RP_NR), "V.LAT",   COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider between V.Lat(3) and Brg|Elv(4)
     { uint16_t dy = rowYFor(4,RP_NR) - 1;
@@ -225,15 +225,15 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
 
         // Row 4: Brg | Elv — the port relative to the nose (informational, like TGT).
         uint16_t y4 = rowYFor(4, RP_NR);
-        printDispChrome(tft, RP_LBL, RP_X,      y4, hw - ROW_PAD, h, "Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RP_LBL, RP_X + hw, y4, hw - ROW_PAD, h, "Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RP_LBL, RP_X,      y4, hw - ROW_PAD, h, "BRG", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RP_LBL, RP_X + hw, y4, hw - ROW_PAD, h, "ELV", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(RP_X + hw + dx, y4, RP_X + hw + dx, y4 + h - 1, TFT_GREY);
 
         // Row 5: V.Brg | V.Elv — approach-path error about the target axis.
         uint16_t y5 = rowYFor(5, RP_NR);
-        printDispChrome(tft, RP_LBL, RP_X,      y5, hw - ROW_PAD, h, "V.Brg:", COL_LABEL, COL_BACK, COL_NO_BDR);
-        printDispChrome(tft, RP_LBL, RP_X + hw, y5, hw - ROW_PAD, h, "V.Elv:", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RP_LBL, RP_X,      y5, hw - ROW_PAD, h, "V.BRG", COL_LABEL, COL_BACK, COL_NO_BDR);
+        printDispChrome(tft, RP_LBL, RP_X + hw, y5, hw - ROW_PAD, h, "V.ELV", COL_LABEL, COL_BACK, COL_NO_BDR);
         for (int8_t dx = -1; dx <= 1; dx++)
             tft.drawLine(RP_X + hw + dx, y5, RP_X + hw + dx, y5 + h - 1, TFT_GREY);
     }
@@ -244,7 +244,7 @@ static void _dockDrawRightChrome(KCM_TFT &tft) {
       tft.drawLine(RP_X, dy+1, RP_X+RP_W, dy+1, TFT_GREY); }
 
     // Row 6: nose total angular offset from port (combined bearing + elevation)
-    printDispChrome(tft, RP_LBL, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "Nos.Off:", COL_LABEL, COL_BACK, COL_NO_BDR);
+    printDispChrome(tft, RP_LBL, RP_X, rowYFor(6,RP_NR), RP_W, rowHFor(RP_NR), "NOS.OFF", COL_LABEL, COL_BACK, COL_NO_BDR);
 
     // Divider before RCS/SAS button row (row 7)
     { uint16_t dy = rowYFor(7, RP_NR) - 1;
@@ -422,20 +422,20 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     if      (state.tgtDistance < DOCK_DIST_ALARM_M) { fg = TFT_WHITE;     bg = TFT_RED;   }
     else if (state.tgtDistance < DOCK_DIST_WARN_M)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
     else                                              { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-    dockVal(0, 0, "Dist:", formatAlt(state.tgtDistance), fg, bg);
+    dockVal(0, 0, "DIST", formatAlt(state.tgtDistance), fg, bg);
 
     // Row 1 — Time to docking  (cache slot 1)
     {
         float vc = state.tgtVelocity;
         bool closing = (vc < -0.01f);
         if (!closing) {
-            dockVal(1, 1, "T+Dock:", "---", TFT_DARK_GREY, TFT_BLACK);
+            dockVal(1, 1, "T+DOCK", "---", TFT_DARK_GREY, TFT_BLACK);
         } else {
             float tDock = state.tgtDistance / fabsf(vc);
             if      (tDock < 10.0f)  { fg = TFT_WHITE;     bg = TFT_RED;   }
             else if (tDock < 30.0f)  { fg = TFT_YELLOW;    bg = TFT_BLACK; }
             else                     { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-            dockVal(1, 1, "T+Dock:", formatTimeCompact(tDock), fg, bg);
+            dockVal(1, 1, "T+DOCK", formatTimeCompact(tDock), fg, bg);
         }
     }
 
@@ -447,7 +447,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         if (tooFast) { fg = TFT_WHITE; bg = TFT_RED; }
         else         { fg = closing ? TFT_DARK_GREEN : TFT_YELLOW; bg = TFT_BLACK; }
         snprintf(buf, sizeof(buf), "%+.2f m/s", vc);
-        dockVal(2, 2, "V.Close:", buf, fg, bg);
+        dockVal(2, 2, "V.CLOSE", buf, fg, bg);
     }
 
     // Row 3 — V.Lat total lateral drift magnitude  (cache slot 3)
@@ -456,7 +456,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         if      (av >= DOCK_DRIFT_ALARM_MS) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (av >= DOCK_DRIFT_WARN_MS)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        dockVal(3, 3, "V.Lat:", fmtMs(v_lat_mag), fg, bg);
+        dockVal(3, 3, "V.LAT", fmtMs(v_lat_mag), fg, bg);
     }
 
     // Row 4 — Brg | Elv: where the port sits relative to the NOSE (cache slots 4, 5).
@@ -466,9 +466,9 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // +/-180 range has to fit when the port swings behind you.
     {
         snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priRight);
-        dockValH(4, 4, RP_X,         "Brg:", buf, TFT_DARK_GREEN, TFT_BLACK);
+        dockValH(4, 4, RP_X,         "BRG", buf, TFT_DARK_GREEN, TFT_BLACK);
         snprintf(buf, sizeof(buf), "%+.0f\xB0", ang.priUp);
-        dockValH(4, 5, RP_X + RP_HW, "Elv:", buf, TFT_DARK_GREEN, TFT_BLACK);
+        dockValH(4, 5, RP_X + RP_HW, "ELV", buf, TFT_DARK_GREEN, TFT_BLACK);
     }
 
     // Row 5 — V.Brg | V.Elv: approach-path error about the target axis (slots 6, 7).
@@ -476,16 +476,16 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // reticle this is the gap between the green velocity marker and the violet port
     // marker. Zero = flying straight down the approach axis, whatever the nose is doing.
     if (!appValid) {
-        dockValH(5, 6, RP_X,         "V.Brg:", "---", TFT_DARK_GREY, TFT_BLACK);
-        dockValH(5, 7, RP_X + RP_HW, "V.Elv:", "---", TFT_DARK_GREY, TFT_BLACK);
+        dockValH(5, 6, RP_X,         "V.BRG", "---", TFT_DARK_GREY, TFT_BLACK);
+        dockValH(5, 7, RP_X + RP_HW, "V.ELV", "---", TFT_DARK_GREY, TFT_BLACK);
     } else {
         angCol(appRight, fg, bg);
         snprintf(buf, sizeof(buf), "%+.0f\xB0", appRight);
-        dockValH(5, 6, RP_X,         "V.Brg:", buf, fg, bg);
+        dockValH(5, 6, RP_X,         "V.BRG", buf, fg, bg);
 
         angCol(appUp, fg, bg);
         snprintf(buf, sizeof(buf), "%+.0f\xB0", appUp);
-        dockValH(5, 7, RP_X + RP_HW, "V.Elv:", buf, fg, bg);
+        dockValH(5, 7, RP_X + RP_HW, "V.ELV", buf, fg, bg);
     }
 
     // Row 6 — Nos.Off: total angular offset of nose from port (cache slot 10)
@@ -497,7 +497,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
         float noseOff = sqrtf(ang.priRight * ang.priRight + ang.priUp * ang.priUp);
         angCol(noseOff, fg, bg);
         snprintf(buf, sizeof(buf), "%.1f\xB0", noseOff);
-        dockVal(6, 10, "Nos.Off:", buf, fg, bg);
+        dockVal(6, 10, "NOS.OFF", buf, fg, bg);
     }
 
     // Row 7 — RCS | SAS buttons (full height to screen bottom)

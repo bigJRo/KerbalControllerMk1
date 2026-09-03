@@ -20,7 +20,7 @@
 #include "KCMk1_InfoDisp.h"
 
 // ── Palette / fonts ─────────────────────────────────────────────────────────────────
-static const uint16_t AP_LBL = TFT_LIGHT_GREY;
+static const uint16_t AP_LBL = KDC_LABEL_COLOR;
 static const uint16_t AP_VAL = TFT_DARK_GREEN;
 static const uint16_t AP_HDR = TFT_WHITE;
 static const uint16_t AP_BOX = TFT_GREY;
@@ -62,19 +62,19 @@ static const uint8_t AP_BODY_SLOT  = 22;
 
 struct ApCell { int16_t x; uint8_t row; const char *label; bool edit; };
 static const ApCell AP_CELLS[AP_SLOT_COUNT] = {
-  { AP_C1X, 0, "Tgt Ap:", true  },
-  { AP_C1X, 1, "Inc:",    true  },
-  { AP_C1X, 2, "Launch:", true  },
-  { AP_C2X, 0, "Loft:",   true  },
-  { AP_C2X, 1, "Roll:",   true  },
-  { AP_C2X, 2, "Max-G:",  true  },
-  { AP_C3X, 0, "Pitch:",  false },
-  { AP_C3X, 1, "Hdg:",    false },
-  { AP_C3X, 2, "Thrtl:",  false },
-  { AP_C3X, 3, "G:",      false },
-  { AP_C3X, 4, "Q:",      false },
-  { AP_C3X, 5, "ApA:",    false },
-  { AP_C3X, 6, "PeA:",    false },
+  { AP_C1X, 0, "TGT AP", true  },
+  { AP_C1X, 1, "INC",    true  },
+  { AP_C1X, 2, "LAUNCH", true  },
+  { AP_C2X, 0, "LOFT",   true  },
+  { AP_C2X, 1, "ROLL",   true  },
+  { AP_C2X, 2, "MAX-G",  true  },
+  { AP_C3X, 0, "PITCH",  false },
+  { AP_C3X, 1, "HDG",    false },
+  { AP_C3X, 2, "THRTL",  false },
+  { AP_C3X, 3, "G",      false },
+  { AP_C3X, 4, "Q",      false },
+  { AP_C3X, 5, "APA",    false },
+  { AP_C3X, 6, "PEA",    false },
 };
 static inline int16_t apValX(uint8_t slot) { return AP_CELLS[slot].x + AP_COLW - AP_VALW; }
 static inline int16_t apValY(uint8_t slot) { return apRowY(AP_CELLS[slot].row) + 4; }

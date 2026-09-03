@@ -99,7 +99,7 @@ static const float   LNCH_OR_ALIGN_YELLOW_DEG = 15.0f;   // < 15° = close (dot 
 
 // Burn-duration readout: a centered label+value block placed below the ATT
 // disc. Both label and value horizontally-centered around LNCH_OR_ATT_CX.
-//   Label: "Burn Dur:" in Black_20 light grey
+//   Label: "BURN DUR" in Black_20 light grey
 //   Value: formatTimeCompact(mnvrDuration) in Black_24 dark green
 //          ("---" in dark grey when no maneuver node)
 // First left-rail slot, below the ATT disc. Was the burn-duration readout; that moved
@@ -115,7 +115,7 @@ static const int16_t LNCH_OR_ECC_VAL_Y = LNCH_OR_ECC_LBL_Y + 27;           // 24
 // Second left-rail slot. Was the ΔV-to-circularise readout; that moved to the right
 // column with the other two burn numbers, and this slot now carries the apsis gap —
 // the number the orbit diagram directly above it is a picture of.
-static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("Ap-Pe:", Black_20)
+static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("AP-PE", Black_20)
 static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 
 
@@ -623,7 +623,7 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
 // Stg.Brn is stage endurance from Simpit's BURNTIME_MESSAGE: seconds of thrust left in
 // the tank, not a countdown of this burn. It was labelled T.Brn, which read like a
 // time-to/through-burn beside two numbers that genuinely are about this burn.
-static const char *const _lnchOrTpLabels[3] = { "\xCE\x94V.Circ:", "Burn Dur:", "Stg.Brn:" };
+static const char *const _lnchOrTpLabels[3] = { "\xCE\x94V.CIRC", "BURN DUR", "STG.BRN" };
 
 // Row cell geometry. printValue reserves the label's width out of the same x0/w it is
 // handed and does not repaint the label itself, so chrome and value share one cell.
@@ -816,12 +816,12 @@ static void _lnchOrDrawChevron(KCM_TFT &tft, int16_t cx, int16_t cy,
 
 // Draw the maneuver-bar chrome: "ΔV Burn" label above the bar (left-aligned),
 // grey rectangular border, off-black interior background. Also draws the
-// T+Ign row label ("T+Ign:") via printDispChrome. Bar fill, bar ΔV value,
+// T+Ign row label ("T+IGN") via printDispChrome. Bar fill, bar ΔV value,
 // and T+Ign time value are all handled by per-frame update functions with
 // change detection.
 static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
     // "ΔV Burn" label above the bar, left-aligned with the bar's left edge.
-    // Black_20 (24 px) — matches the "ATT" and "Burn Dur:" labels in the
+    // Black_20 (24 px) — matches the "ATT" and "BURN DUR" labels in the
     // left cluster for cluster/screen-wide label-hierarchy consistency.
     tft.setFont(Roboto_Black_24);
     tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
@@ -840,7 +840,7 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
     printDispChrome(tft, &Roboto_Black_28,
                     LNCH_OR_BAR_X, LNCH_OR_TIGN_Y,
                     LNCH_OR_BAR_W, LNCH_OR_TIGN_H,
-                    "T+Ign:", TFT_LIGHT_GREY, TFT_BLACK, COL_NO_BDR);
+                    "T+IGN", TFT_LIGHT_GREY, TFT_BLACK, COL_NO_BDR);
 }
 
 // Estimated ΔV (m/s) to circularize at apoapsis (vis-viva). Returns -1 if the
@@ -1001,7 +1001,7 @@ static void _lnchOrUpdateProgressBar(KCM_TFT &tft) {
 
 // Update the T+Ign (time-to-ignition) countdown row below the bar.
 //
-// The "T+Ign:" label was drawn at chrome time via printDispChrome; this
+// The "T+IGN" label was drawn at chrome time via printDispChrome; this
 // function only updates the time VALUE, using the library printValue helper
 // so region clearing, padding, and right-alignment are all handled
 // consistently with the rest of the app's label+value rows.
@@ -1047,7 +1047,7 @@ static void _lnchOrUpdateTignRow(KCM_TFT &tft) {
     printValue(tft, &Roboto_Black_28,
                LNCH_OR_BAR_X, LNCH_OR_TIGN_Y,
                LNCH_OR_BAR_W, LNCH_OR_TIGN_H,
-               "T+Ign:", val,
+               "T+IGN", val,
                valFg, valBg, TFT_BLACK,
                _lnchOrTignPs);
 
@@ -1131,7 +1131,7 @@ static void _lnchOrUpdateEccReadout(KCM_TFT &tft) {
         snprintf(buf, sizeof(buf), "%.3f", state.eccentricity);
         fg = (state.eccentricity < 0.02f) ? TFT_DARK_GREEN : TFT_YELLOW;
     }
-    _lnchOrRailReadout(tft, LNCH_OR_ECC_LBL_Y, LNCH_OR_ECC_VAL_Y, "Ecc:", String(buf), fg, first);
+    _lnchOrRailReadout(tft, LNCH_OR_ECC_LBL_Y, LNCH_OR_ECC_VAL_Y, "ECC", String(buf), fg, first);
     _lnchOrPrevEccMilli = milli;
 }
 
@@ -1144,7 +1144,7 @@ static void _lnchOrUpdateGapReadout(KCM_TFT &tft) {
     const bool first = (_lnchOrPrevGapM == -9999);
     if (gap == _lnchOrPrevGapM && !first) return;
 
-    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "Ap-Pe:",
+    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "AP-PE",
                        haveOrbit ? _lnchOrAltCompact(state.apoapsis - state.periapsis)
                                  : String("---"),
                        haveOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, first);
@@ -1188,7 +1188,7 @@ static void _lnchOrDrawAttChrome(KCM_TFT &tft) {
     tft.drawLine(CX + gap,   CY, CX + R - 1, CY, TFT_DARK_GREY);
 
     // "ATT" label above the disc, centered horizontally on the disc.
-    // Black_20 (24 px tall) — matches the "Burn Dur:" label below for
+    // Black_20 (24 px tall) — matches the "BURN DUR" label below for
     // cluster-internal label-hierarchy consistency. Offset of 28 px above
     // disc keeps a 4 px gap between label bottom and disc top.
     tft.setFont(Roboto_Black_20);

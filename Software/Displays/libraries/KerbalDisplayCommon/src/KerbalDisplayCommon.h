@@ -2,7 +2,7 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 9
+#define KDC_VERSION_MINOR 10
 #define KDC_VERSION_PATCH 0
 
 /***************************************************************************************
@@ -10,6 +10,12 @@
    A UI toolkit for the RA8876-based 7" touchscreen displays (hardware rev 2) used
    in Kerbal Controller Mk1. Provides button drawing, text rendering, value
    formatting, and threshold coloring.
+
+   v3.10.0 — KDC_LABEL_COLOR and the readout label style rule (README, "Readout label
+            style"): a caption beside a live value is grey, uppercase, and carries no
+            colon; the value's white or state colour is what tells the two apart, as on
+            the Shuttle's DPS pages and on EICAS/ECAM. All three panels adopted it in the
+            same change (InfoDisp 1.12.0, Annunciator 3.6.0, ResourceDisp 3.13.1).
 
    v3.9.0 — fillArc: a pixel-exact annular-sector fill (ring segment, or a pie slice
             with rIn = 0) between two angles. The RA8876 driver has circles, ellipses
@@ -713,6 +719,11 @@ struct PrintState {
   uint16_t prevBg     = 0x0001;  // sentinel: 0x0001 = no previous render
   uint16_t prevHeight = 0;       // font height of last render (0 = no previous render)
 };
+
+// Readout label colour: the caption beside a live value on every panel. The label
+// style rule (README, "Readout label style"): grey, uppercase, no colon; the value
+// carries the white or state colour, which is what tells the two apart.
+static const uint16_t KDC_LABEL_COLOR = TFT_GREY;
 
 // --- Display block functions ---
 

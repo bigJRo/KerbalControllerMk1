@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.13.0
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.13.1
 Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -80,7 +80,7 @@ All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | ≥ 3.9.0 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
+| KerbalDisplayCommon | ≥ 3.10.0 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
 | KCM_Touch | — | FT5316 capacitive touch driver (replaces the rev-1 GSL1680F driver) |
 | TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 16-bit parallel driver + GFX layer — install on the build machine (not vendored) |
 | KerbalDisplayAudio | 1.1.0 | Direct sketch dependency — audio output not used on this panel |
@@ -324,6 +324,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.13.1** | **Detail labels in the panel-wide grey.** The Detail rows' captions take `KDC_LABEL_COLOR` from KerbalDisplayCommon 3.10.0, whose "Readout label style" rule (grey, uppercase, no colon, value carrying the colour) the three panels now share; this panel's labels were already the caps no-colon form. |
 | **3.13.0** | **Short Detail labels, quantities that show their significant figures.** The row labels are AVAIL, TOTAL, REM, RATE and TTE (TTF for a waste resource), the panel's own vocabulary, which frees 93 px of the row for the value. The AVAIL and TOTAL quantities print with thousands separators and decimals that thin out as the number grows (two under a thousand, one under ten thousand, none above), in place of two decimals always and no separators, so a million-unit tank reads `1,234,568` rather than `1234567.89`. |
 | **3.12.3** | **History grid.** Level marks every 20 percent up the side, time marks every two real minutes along the bottom with labels in game time back from now, and faint gridlines at both inside the box. The left edge of the plot is the ten-minute mark, one sample period left of the oldest held sample. |
 | **3.12.2** | **The demo starts on the default layout.** It used to load every resource type in display order, sixteen meters, a set no vessel shows; with the default layout now a pilot setting that read as a fault. The demo now boots on what the live panel would show for an unknown vessel, the pilot's stored default or SPCT, with demo values. The sixteen-wide compact case is the ADV preset on Select. `initAllSlots()` is gone. |
