@@ -305,15 +305,7 @@ void updateScreenEVA(KCM_TFT &tft) {
     const SlotSample &smp = sampleTot[i];
     float tteS = hasData ? sampleTteSeconds(smp, s.type, cur, max) : -1.0f;
     bool  timeFlag = false;
-    if (hasData) {
-      ResTimeLimits tl = resTimeLimits(s.type);
-      if (tl.warn > 0.0f && tteS >= 0.0f) {
-        float alarmT = tl.alarm * ((c.timeFlag && c.state == ALERT_ALARM)   ? 1.0f + TIME_HYST_FRAC : 1.0f);
-        float warnT  = tl.warn  * ((c.timeFlag && c.state == ALERT_CAUTION) ? 1.0f + TIME_HYST_FRAC : 1.0f);
-        if (tteS < alarmT) { timeFlag = (state != ALERT_ALARM); state = ALERT_ALARM; }
-        else if (tteS < warnT && state != ALERT_ALARM && state != ALERT_CAUTION) { timeFlag = true; state = ALERT_CAUTION; }
-      }
-    }
+    if (hasData) state = applyTimeTiers(s.type, tteS, state, c.state, c.timeFlag, timeFlag);
     uint8_t code = (!hasData || state == ALERT_NOMINAL) ? STRIP_NONE
                  : (state == ALERT_ALARM) ? STRIP_ALARM
                  : (state == ALERT_BUG)   ? STRIP_BUG : STRIP_CAUTION;

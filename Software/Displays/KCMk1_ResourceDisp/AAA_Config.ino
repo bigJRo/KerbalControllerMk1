@@ -100,10 +100,13 @@ const float    TREND_MIN_FRAC  = 0.0005f;   // fraction of capacity that counts 
    current rate. The rate is measured over TTE_WINDOW_MS windows (longer than the
    trend window, so slow drains register) and smoothed 50/50 across windows. A move
    of less than TREND_MIN_FRAC of capacity across one window counts as no rate, so
-   the slowest rate the panel will report is TREND_MIN_FRAC per window: with the
-   defaults a drain slower than about 5.5 hours to empty reads "---".
+   the slowest rate the short window will report is TREND_MIN_FRAC per window: with
+   the defaults about 5.5 hours to empty. A second, long window of TTE_LONG_WINDOW_MS
+   takes over when the short one sees nothing, which reaches about a week to empty,
+   so food and water on a small crew get a time and their time tiers work at 1x.
 ****************************************************************************************/
-const uint32_t TTE_WINDOW_MS = 10000;       // ms per rate sample window
+const uint32_t TTE_WINDOW_MS      = 10000;    // ms per rate sample window
+const uint32_t TTE_LONG_WINDOW_MS = 300000;   // ms per long window, for drains the short one cannot see
 
 /***************************************************************************************
    TIME-REMAINING TIERS

@@ -223,9 +223,11 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           if (debugMode) Serial.println(F("ResourceDisp: EVA active — keeping EVA bar set"));
         } else if (recallVesselSlots(currentVesselName)) {
           if (debugMode) Serial.println(F("ResourceDisp: vessel slot config recalled"));
+          layoutRecalled = true;
           requestResourceRefresh();
         } else {
           if (debugMode) Serial.println(F("ResourceDisp: vessel not in memory, default layout"));
+          layoutRecalled = false;
           initDefaultSlots();   // also requests a refresh
         }
         // Request chrome redraw regardless — slot count/types may have changed.
@@ -364,6 +366,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (!evaActive) saveVesselSlots(currentVesselName);
         persistStoreNow();
         currentVesselName = "";  // will be repopulated by VESSEL_NAME_MESSAGE
+        layoutRecalled    = false;
         // Clear the EVA latch — if the new vessel is still an EVA Kerbal, the next
         // FLIGHT_STATUS re-sets evaFlag and loop() reconciles it back on.
         evaFlag = evaActive = false;

@@ -38,6 +38,7 @@
 static const tFont   *STRIP_FONT   = &Roboto_Black_16;
 static const uint16_t STRIP_X      = CONTENT_X + 4;
 static const uint16_t BAL_W        = 270;  // balance indicator cell at the strip's right end
+static const uint16_t NAME_W       = 200;  // vessel name cell, left of the balance (or at the end)
 static const uint16_t BAL_BAR_W    = 100;  // centre-zero bar
 static const uint16_t BAL_BAR_H    = 10;
 static const float    LF_PER_LOX   = 9.0f / 11.0f;   // KSP LF:LOx burn ratio
@@ -56,6 +57,8 @@ static bool     _stripTime[MAX_SLOTS];    // the state came from a time-remainin
 static uint32_t _alarmSince[MAX_SLOTS];   // millis() the slot's tile turned alarm; 0 = not in alarm
 static char     _stripSig[200];           // last drawn line, "\x01" = force
 static bool     _balShown = false;
+static bool     _nameShown = false;
+static char     _nameSig[VESSEL_NAME_LEN + 4];   // name + recalled + balance placement; "\x01" = force
 
 // Where each drawn message sits, so a tap on it can open Detail on that resource
 // and a flashing tile can be repainted in place without disturbing its neighbours.
@@ -73,6 +76,8 @@ static char    _balText[24];       // last drawn counter
 
 void stripReset() {
   _stripSig[0] = 1; _stripSig[1] = '\0';
+  _nameSig[0]  = 1; _nameSig[1]  = '\0';
+  _nameShown   = false;
   _flashSig[0] = '\0';
   _stripHitCount = 0;
   _balShown = false;
@@ -112,7 +117,34 @@ static uint8_t alarmFlashPhase(uint8_t i, uint32_t now) {
 }
 
 static uint16_t stripAvailW() {
-  return (uint16_t)(SCREEN_W - STRIP_X - (_balShown ? BAL_W : 0));
+  return (uint16_t)(SCREEN_W - STRIP_X - (_balShown ? BAL_W : 0) - (_nameShown ? NAME_W : 0));
+}
+
+// Vessel name, right-aligned in its cell: cyan when the layout on screen came from
+// vessel memory (a pilot entry, in the pilot-entry colour), grey when it is the
+// default. On EVA it is the Kerbal's. Redrawn only when the name, its colour or the
+// cell's position (the balance cell comes and goes beside it) changes.
+static void updateVesselName(KCM_TFT &tft) {
+  bool shown = currentVesselName.length() > 0;
+  char sig[sizeof(_nameSig)];
+  snprintf(sig, sizeof(sig), "%c%c%s", shown ? (layoutRecalled ? 'R' : 'D') : '-', _balShown ? 'B' : '-', currentVesselName.c_str());
+  if (strcmp(sig, _nameSig) == 0) return;
+  strlcpy(_nameSig, sig, sizeof(_nameSig));
+  if (shown != _nameShown) { _nameShown = shown; _stripSig[0] = 1; _stripSig[1] = '\0'; }   // width changed: relay the messages
+
+  // The cell sits left of the balance when that is shown, else at the strip's end.
+  // Clear both places it can be, short of the balance cell itself.
+  uint16_t x1 = SCREEN_W - (_balShown ? BAL_W : 0);
+  tft.fillRect(SCREEN_W - BAL_W - NAME_W, 0, x1 - (SCREEN_W - BAL_W - NAME_W), ALERT_H, TFT_BLACK);
+  if (!shown) return;
+  char name[VESSEL_NAME_LEN];
+  strlcpy(name, currentVesselName.c_str(), sizeof(name));
+  int16_t w = getFontStringWidth(STRIP_FONT, name);
+  while (w > NAME_W - 8 && strlen(name) > 1) { name[strlen(name) - 1] = '\0'; w = getFontStringWidth(STRIP_FONT, name); }
+  tft.setFont(*STRIP_FONT);
+  tft.setTextColor(layoutRecalled ? TFT_CYAN : TFT_GREY, TFT_BLACK);
+  tft.setCursor(x1 - 4 - w, (ALERT_H - STRIP_FONT->cap_height) / 2);
+  tft.print(name);
 }
 
 // Append one message to the line; returns false when it would not fit. A message
@@ -345,5 +377,6 @@ static void updateBalance(KCM_TFT &tft) {
 ****************************************************************************************/
 void stripUpdate(KCM_TFT &tft) {
   updateBalance(tft);
+  updateVesselName(tft);
   updateAlertStrip(tft);
 }

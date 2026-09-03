@@ -557,33 +557,6 @@ static void resetDrawCaches() {
 
 
 /***************************************************************************************
-   TIME-REMAINING TIERS
-   Raises the state for a resource whose time to empty (game seconds, already warp
-   corrected) is inside a tier. Leaving a tier needs the time to exceed the threshold
-   by TIME_HYST_FRAC, keyed on whether the previous state came from a time tier.
-   timeFlag reports whether the returned state is the time tier's doing, so the
-   strip can say TIME rather than LOW.
-****************************************************************************************/
-static uint8_t applyTimeTiers(ResourceType t, float tteS, uint8_t state,
-                              uint8_t prevState, bool prevTime, bool &timeFlag) {
-  timeFlag = false;
-  ResTimeLimits tl = resTimeLimits(t);
-  if (tl.warn <= 0.0f || tteS < 0.0f) return state;
-  float alarmT = tl.alarm * ((prevTime && prevState == ALERT_ALARM)   ? 1.0f + TIME_HYST_FRAC : 1.0f);
-  float warnT  = tl.warn  * ((prevTime && prevState == ALERT_CAUTION) ? 1.0f + TIME_HYST_FRAC : 1.0f);
-  if (tteS < alarmT) {
-    timeFlag = (state != ALERT_ALARM);
-    return ALERT_ALARM;
-  }
-  if (tteS < warnT && state != ALERT_ALARM && state != ALERT_CAUTION) {
-    timeFlag = true;
-    return ALERT_CAUTION;
-  }
-  return state;
-}
-
-
-/***************************************************************************************
    DRAW STATIC CHROME -- main screen
 ****************************************************************************************/
 void drawStaticMain(KCM_TFT &tft) {
@@ -624,9 +597,13 @@ void drawStaticMain(KCM_TFT &tft) {
   _visCount = buildVisible(_vis);
 
   if (_visCount == 0) {
-    textCenter(tft, &Roboto_Black_24, METER_X0, TAPE_TOP, METER_AREA_W, TAPE_H,
+    uint16_t mid = TAPE_TOP + TAPE_H / 2;
+    textCenter(tft, &Roboto_Black_24, METER_X0, mid - 40, METER_AREA_W, 29,
                slotCount ? "NO SELECTED RESOURCE ABOARD" : "NO RESOURCES SELECTED",
                TFT_GREY, TFT_BLACK);
+    textCenter(tft, &Roboto_Black_16, METER_X0, mid + 4, METER_AREA_W, 19,
+               slotCount ? "SEL to change the set" : "SEL to choose resources",
+               TFT_DARK_GREY, TFT_BLACK);
     return;
   }
 

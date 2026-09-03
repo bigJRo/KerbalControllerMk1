@@ -47,6 +47,7 @@ bool flightScene      = false;
 bool simpitConnected  = false;
 bool idleState        = false;
 bool evaActive        = false;   // true once the EVA bar set is applied (see loop() reconcile)
+bool layoutRecalled   = false;   // the current layout came from vessel memory (shown in the strip)
 bool evaFlag          = false;   // raw EVA flag from FLIGHT_STATUS_MESSAGE (reconciled in loop())
 
 

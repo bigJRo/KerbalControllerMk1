@@ -7,7 +7,8 @@
        Header (DET_HDR_H=66px): resource name in Roboto_Black_48 white + color accent strip + BACK
        Divider
        [DET_SECT_W=32px vertical "CRAFT" label] + 5 Craft rows:
-           Available / Total / Remaining% / Rate (units per game second) / Time (to empty)
+           Available / Total / Remaining% / Rate (per game second, minute or hour) /
+       To empty (To full for a waste resource)
        Divider
        [DET_SECT_W=32px vertical "STAGE" label] + the same 5 Stage rows
      Rate and Time come from Sampling.ino, the same estimate the Main screen's trend
@@ -169,7 +170,7 @@ static const char *detRowLabel(uint8_t row) {
     case 1: return "Total:";
     case 2: return "Remaining:";
     case 3: return "Rate:";
-    case 4: return "Time:";
+    case 4: return (_detailSlot < slotCount && resLimits(slots[_detailSlot].type).highIsBad) ? "To full:" : "To empty:";
     default: return "";
   }
 }

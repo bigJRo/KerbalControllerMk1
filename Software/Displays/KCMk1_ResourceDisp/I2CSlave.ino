@@ -16,9 +16,13 @@
                  bit 0 = simpitConnected
                  bit 1 = flightScene
                  bit 2 = demoMode
-                 bits 3-7 reserved (0)
+                 bit 3 = cautionActive  -- a selected resource is in caution or across its bug
+                 bit 4 = alarmActive    -- a selected resource is in alarm
+                 bit 5 = timeTierActive -- one of those is a time-remaining tier, not a level
+                 bits 6-7 reserved (0)
      Byte 2  : slotCount  -- number of currently active resource slots (0-16)
-     Byte 3  : reserved (0x00)
+     Byte 3  : worstResource -- ResourceType of the worst alert (first in alarm, else
+                                first in caution); RES_NONE (0) when all nominal
 
    Inbound packet (Master -> ResourceDisp), I2C_CMD_SIZE = 2 bytes:
      Byte 0  : controlByte
@@ -74,14 +78,20 @@ volatile bool i2cProceedReceived = false;
    and the change-detection path in updateI2CState() to avoid duplicated assembly.
 ****************************************************************************************/
 static void fillI2CPacketBuffer(uint8_t *buf) {
+  bool caution, alarm, timeTier;
+  ResourceType worst;
+  alertSummary(caution, alarm, timeTier, worst);
   uint8_t flags = 0;
   if (simpitConnected) flags |= (1 << 0);
   if (flightScene)     flags |= (1 << 1);
   if (demoMode)        flags |= (1 << 2);
+  if (caution)         flags |= (1 << 3);
+  if (alarm)           flags |= (1 << 4);
+  if (timeTier)        flags |= (1 << 5);
   buf[0] = I2C_SYNC_BYTE;
   buf[1] = flags;
   buf[2] = slotCount;
-  buf[3] = 0x00;
+  buf[3] = (uint8_t)worst;
 }
 
 /***************************************************************************************

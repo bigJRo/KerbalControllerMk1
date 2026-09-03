@@ -31,7 +31,7 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 10;  // 3.10.0: forget a vessel with an empty set, hold CLEAR to forget all, MEM counter
+static const uint8_t SKETCH_VERSION_MINOR = 11;  // 3.11.0: slow-drain rates, vessel name in the strip, alert summary to the master
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
@@ -165,6 +165,10 @@ struct SlotSample {
   uint32_t tteRefMs;    // rate window start
   float    rate;        // smoothed rate, units per REAL second, negative = depleting
   bool     rateValid;   // at least one full window has been measured
+  float    longRef;     // value at the start of the long window; < 0 = not started
+  uint32_t longRefMs;   // long window start
+  float    longRate;    // rate over the last full long window, units per REAL second
+  bool     longValid;   // one full long window has been measured
 };
 
 
@@ -278,6 +282,7 @@ extern bool         simpitConnected; // true once Simpit handshake succeeds
 extern bool         idleState;      // true = show standby when not in flight (set by I2C master)
 extern bool         needsMainRedraw; // set by SimpitHandler to request main screen chrome redraw
 extern bool         evaActive;      // true = a Kerbal is on EVA (mode applied); drives the EVA bar set
+extern bool         layoutRecalled; // true = the current layout came from vessel memory, false = default
 extern bool         evaFlag;        // raw latched EVA flag from the last FLIGHT_STATUS_MESSAGE
 
 // Resource type metadata (from Resources.ino)
@@ -304,6 +309,12 @@ extern SlotSample sampleStg[];   // per-slot stage-value sample
 void   updateAllSampling();      // once per loop pass
 void   resetAllSampling();       // after any slot reorder or warp change
 bool   slotAwaiting(uint8_t i);  // slot has not answered the current refresh yet
+// Time-remaining tiers on top of a level state, with hysteresis against the state the
+// caller last used; timeFlag reports the tier did it. Shared by Main, EVA and the summary.
+uint8_t applyTimeTiers(ResourceType t, float tteS, uint8_t state, uint8_t prevState, bool prevTime, bool &timeFlag);
+// Vessel-wide alert summary for the master: any caution, any alarm, any time tier, and
+// the worst resource (RES_NONE when nominal). Screen-independent.
+void   alertSummary(bool &caution, bool &alarm, bool &timeTier, ResourceType &worst);
 float  sampleTteSeconds(const SlotSample &c, ResourceType t, float cur, float max);
 void   fmtTte(float secs, char *buf, size_t n);
 void   fmtRate(const SlotSample &c, char *buf, size_t n);
@@ -446,6 +457,7 @@ uint8_t persistVesselCount();
 extern const uint32_t PERSIST_SETTLE_MS;
 extern const bool     PERSIST_WIPE;
 extern const uint32_t MEM_CLEAR_HOLD_MS;
+extern const uint32_t TTE_LONG_WINDOW_MS;
 
 // Select screen key hold (ScreenSelect.ino, driven by TouchEvents.ino): holding CLEAR
 // for MEM_CLEAR_HOLD_MS forgets every vessel. Target says whether a touch-down is on
