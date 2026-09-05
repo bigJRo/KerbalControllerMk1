@@ -125,10 +125,10 @@ def big_button(x, y, w, h, label, hint, fill=None, stroke=GREY, tc=WHITE):
 def hint(cx, row, s):
     text(cx + 4, row_y(row) + 18, s, 16, DARK_GREY)
 
-def legend(y):
-    # small state legend along the bottom of column 1
+def legend(y, x0=None):
+    # small state legend along the bottom of a column (column 1 by default)
     items = [("OFF", BLACK, GREY, WHITE), ("PENDING", BLACK, CYAN, CYAN), ("ENGAGED", DARK_GREEN, DARK_GREEN, WHITE)]
-    x = C1X + 2
+    x = (C1X + 2) if x0 is None else x0
     for lbl, f, s, t in items:
         rect(x, y, 92, 28, f, s, 2 if s == CYAN else 1)
         text(x + 46, y + 14, lbl, 14, t, "middle")
@@ -228,3 +228,123 @@ out_row(C3X, 5, "WHL THR", "-18 %")
 out_row(C3X, 6, "BRAKES",  "OFF", GREY)
 finish("/home/user/KerbalControllerMk1/Documents/Developer/assets/Hold_Mode_ROVR_Console.svg")
 print("ok")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MISSION AUTOPILOT (Mission_Autopilot.md): ORBITAL and LANDING consoles, and the
+# extended AIRCRAFT / ROVER consoles.
+# ═════════════════════════════════════════════════════════════════════════════
+
+def toggle_row(cx, row, label, value, on):
+    y = row_y(row)
+    text(cx + 4, y + ROW_H // 2, label, 24, GREY)
+    vx = val_x(cx)
+    if on:
+        rect(vx, y + 4, VALW - 2, VALH, DARK_GREEN); text(vx + (VALW - 2) // 2, y + 4 + VALH // 2, value, 24, WHITE, "middle")
+    else:
+        rect(vx, y + 4, VALW - 2, VALH, BLACK, GREY); text(vx + (VALW - 2) // 2, y + 4 + VALH // 2, value, 24, WHITE, "middle")
+
+# ── ORBITAL AUTOPILOT: node burn planned, awaiting EXEC ──────────────────────
+frame("ORBITAL AUTOPILOT", ["PFD", "LNCH", "ORB", "TGT", "LNDG", "ORAP"], 5, active_key_green=True)
+banner("NODE", DARK_GREEN, "KERBIN  ·  MUN TRANSFER 4", "ARMED", NEON_GREEN, reason="ALIGNING")
+columns("BURN", "TARGET / OPTIONS", "PLAN")
+mode_row(C1X, 0, "NODE", "on",  "842 m/s")
+mode_row(C1X, 1, "AP",   "off", "250,000 m", "muted")
+mode_row(C1X, 2, "PE",   "off", "80,000 m",  "muted")
+mode_row(C1X, 3, "INC",  "off", "0.0°",      "muted")
+hint(C1X, 4, "Arm one burn, review the PLAN column,")
+hint(C1X, 4.35, "then EXEC. A/P OFF aborts at any phase.")
+legend(row_y(5) + 12)
+mode_row(C2X, 0, "APPR", "off", "-2.0 m/s", "muted")
+edit_row(C2X, 1, "HOLD AT", "50 m")
+toggle_row(C2X, 2, "WARP",  "AUTO", True)
+toggle_row(C2X, 3, "STAGE", "AUTO", True)
+big_button(C2X, ARM_Y, 145, ARM_H, "EXEC", "start the burn", fill=None, stroke=NEON_GREEN, tc=NEON_GREEN)
+big_button(C2X + 153, ARM_Y, 145, ARM_H, "A/P OFF", "abort / disarm")
+out_row(C3X, 0, "ΔV TOT", "842 m/s")
+out_row(C3X, 1, "ΔV REM", "842 m/s")
+out_row(C3X, 2, "T-IGN",  "-04:12")
+out_row(C3X, 3, "BURN",   "1:38")
+out_row(C3X, 4, "ACCEL",  "8.6 m/s²")
+out_row(C3X, 5, "STG ΔV", "1,204 m/s")
+out_row(C3X, 6, "RANGE",  "---", GREY)
+finish("/home/user/KerbalControllerMk1/Documents/Developer/assets/Mission_ORAP_Console.svg")
+
+# ── LANDING AUTOPILOT: BRAKE armed, DESC rate set, retrograde reference ──────
+frame("LANDING AUTOPILOT", ["PFD", "LNCH", "ORB", "TGT", "LNDG", "LDAP"], 5, active_key_green=True)
+banner("BRAKE  DESC", DARK_GREEN, "MUN  ·  MUN LANDER 2", "ENGAGED", NEON_GREEN, reason="IGN IN 0:41")
+columns("DESCENT", "OPTIONS", "DESCENT DATA")
+mode_row(C1X, 0, "DESC",  "on",  "-4.0 m/s")
+mode_row(C1X, 1, "HOVR",  "off", "50 m", "muted")
+mode_row(C1X, 2, "BRAKE", "on",  "2,140 m")
+mode_row(C1X, 3, "ENTRY", "off", "AOA 8°", "muted")
+hint(C1X, 4, "BRAKE fires at IGN altitude, then")
+hint(C1X, 4.35, "hands the descent to DESC at its rate.")
+legend(row_y(5) + 12)
+toggle_row(C2X, 0, "ATT REF", "RETRO", True)
+edit_row(C2X, 1, "TWR",    "MEAS")
+edit_row(C2X, 2, "MARGIN", "150 m")
+edit_row(C2X, 3, "ROLL",   "0°")
+big_button(C2X, ARM_Y, COLW, ARM_H, "A/P OFF", "disconnect all, throttle stays as set")
+out_row(C3X, 0, "RDR ALT", "4,310 m")
+out_row(C3X, 1, "V/S",     "-118 m/s", ORANGE)
+out_row(C3X, 2, "H SPD",   "23 m/s")
+out_row(C3X, 3, "ACCEL",   "14.2 m/s²")
+out_row(C3X, 4, "IGN ALT", "2,140 m")
+out_row(C3X, 5, "T-IMP",   "0:36", ORANGE)
+out_row(C3X, 6, "THRTL",   "0 %", GREY)
+finish("/home/user/KerbalControllerMk1/Documents/Developer/assets/Mission_LDAP_Console.svg")
+
+# ── AIRCRAFT console, extended: GS (pitch) and NAV (lateral) rows; big buttons
+#    move to the bottom of column 1 ─────────────────────────────────────────────
+frame("AIRCRAFT AUTOPILOT", ["PFD", "LNCH", "ORB", "TGT", "LNDG", "ACAP"], 5, active_key_green=True)
+banner("GS  NAV  IAS", DARK_GREEN, "KERBIN  ·  SPACEPLANE MK2", "ENGAGED", NEON_GREEN)
+columns("PITCH", "LATERAL / THRUST", "FLIGHT DATA")
+mode_row(C1X, 0, "ATT",  "off", "5.0°",   "muted")
+mode_row(C1X, 1, "AOA",  "off", "3.0°",   "muted")
+mode_row(C1X, 2, "V/S",  "off", "+0 m/s", "muted")
+mode_row(C1X, 3, "ALT",  "off", "6,000 m", "muted")
+mode_row(C1X, 4, "GS",   "on",  "3.0°")
+big_button(C1X, ARM_Y + 4, 145, ARM_H - 4, "LVL", "wings level, V/S 0")
+big_button(C1X + 153, ARM_Y + 4, 145, ARM_H - 4, "A/P OFF", "disconnect all")
+mode_row(C2X, 0, "ROLL", "off", "0.0°", "muted")
+mode_row(C2X, 1, "HDG",  "off", "090°", "muted")
+mode_row(C2X, 2, "NAV",  "on",  "BRG 087°")
+mode_row(C2X, 3, "IAS",  "on",  "110 m/s")
+mode_row(C2X, 4, "MACH", "off", "0.85", "muted")
+hint(C2X, 5, "NAV flies to the targeted flag; GS holds")
+hint(C2X, 5.35, "the depression angle to it.")
+legend(row_y(6) + 12, C2X + 2)
+out_row(C3X, 0, "PITCH", "-2.1°")
+out_row(C3X, 1, "ROLL",  "+4.0°")
+out_row(C3X, 2, "HDG",   "086°")
+out_row(C3X, 3, "V/S",   "-5.8 m/s")
+out_row(C3X, 4, "ALT",   "1,240 m")
+out_row(C3X, 5, "DIST",  "8.2 km")
+out_row(C3X, 6, "TGT EL", "-3.1°")
+finish("/home/user/KerbalControllerMk1/Documents/Developer/assets/Mission_ACFT_Console_Ext.svg")
+
+# ── ROVER console, extended: FOLLOW mode and STOP distance ────────────────────
+frame("ROVER AUTOPILOT", ["PFD", "LNCH", "ORB", "TGT", "LNDG", "RVAP"], 5, active_key_green=True)
+banner("CRUISE  TGT", DARK_GREEN, "MUN  ·  ROVER 3", "ENGAGED", NEON_GREEN, reason="STOPPING")
+columns("DRIVE", "GUARD LIMITS", "DRIVE DATA")
+mode_row(C1X, 0, "CRUISE", "on",  "12.0 m/s")
+mode_row(C1X, 1, "HDG",    "off", "045°", "muted")
+mode_row(C1X, 2, "TGT",    "on",  "BRG 112°")
+mode_row(C1X, 3, "FOLLOW", "off", "30 m", "muted")
+hint(C1X, 4, "TGT stops at STOP; FOLLOW holds")
+hint(C1X, 4.35, "range to a moving target.")
+legend(row_y(5) + 12)
+edit_row(C2X, 0, "SPEED", "20.0 m/s")
+edit_row(C2X, 1, "SLOPE", "20°")
+edit_row(C2X, 2, "ROLL",  "25°")
+edit_row(C2X, 3, "STOP", "15 m")
+big_button(C2X, ARM_Y, COLW, ARM_H, "A/P OFF", "disconnect all, brakes stay as set")
+out_row(C3X, 0, "SPEED",   "+6.1 m/s", ORANGE)
+out_row(C3X, 1, "HDG",     "111°")
+out_row(C3X, 2, "TGT BRG", "112°")
+out_row(C3X, 3, "DIST",    "42 m", ORANGE)
+out_row(C3X, 4, "PITCH",   "-2.0°")
+out_row(C3X, 5, "WHL THR", "-30 %")
+out_row(C3X, 6, "BRAKES",  "OFF", GREY)
+finish("/home/user/KerbalControllerMk1/Documents/Developer/assets/Mission_ROVR_Console_Ext.svg")
+print("mission ok")
