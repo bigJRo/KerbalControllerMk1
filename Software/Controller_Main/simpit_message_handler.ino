@@ -17,6 +17,8 @@ void registerInputChannels() {  //Game message that registers the necessary mess
   mySimpit.registerChannel(APSIDESTIME_MESSAGE);  // Time-to-apoapsis for circularization timing (ascent autopilot)
   mySimpit.registerChannel(ORBIT_MESSAGE);        // Inclination for the ascent autopilot azimuth target
   mySimpit.registerChannel(ROTATION_DATA_MESSAGE);// Attitude + surface prograde for the ascent autopilot steering loop
+  mySimpit.registerChannel(TARGETINFO_MESSAGE);   // Target bearing for the rover drive-to-target hold (hold autopilot)
+  mySimpit.registerChannel(MANEUVER_MESSAGE);     // Node time / dV / pointing for the burn autopilot
   mySimpit.registerChannel(DELTAV_MESSAGE);
   mySimpit.registerChannel(BURNTIME_MESSAGE);
   mySimpit.registerChannel(TEMP_LIMIT_MESSAGE);
@@ -46,6 +48,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         lights_on = msg[0] & LIGHT_ACTION;
         RCS_on = msg[0] & RCS_ACTION;
         SAS_on = msg[0] & SAS_ACTION;
+        hpIngestBrakes(brakes_on);  // brakes drop rover cruise (hold autopilot)
       }
       break;
     case CAGSTATUS_MESSAGE:
@@ -96,6 +99,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         vesselSituation = myFlightStatus.vesselSituation;
         isRecoverable = myFlightStatus.isRecoverable();
         vesselCtrlLvl = myFlightStatus.getControlLevel();
+        hpIngestFlightStatus(myFlightStatus.vesselType, myFlightStatus.vesselSituation, myFlightStatus.hasTarget());  // feed hold autopilot
+        lpIngestFlightStatus(myFlightStatus.vesselType, myFlightStatus.vesselSituation);  // feed landing autopilot
       }
       break;
     case SCENE_CHANGE_MESSAGE:
@@ -108,11 +113,15 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         //tftDispMode = 0;
         resetDisplays();
         noTone(AUDIO_PIN);
+        hpVesselChanged();   // leaving the flight scene drops every hold mode, silently
+        bpVesselChanged(); lpVesselChanged();
       }
       break;
     case VESSEL_CHANGE_MESSAGE:
       if (msg[0] == 1) {
         resetDisplays();
+        hpVesselChanged();   // a new vessel starts with no hold modes
+        bpVesselChanged(); lpVesselChanged();
         if (debug) { Serial.println("*******Vessel Change Message*******"); }
       } else if (msg[0] == 2) {
         if (debug) { Serial.println("*******Craft has docked*******"); }
@@ -129,6 +138,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         throttleMessage myThrottle;
         myThrottle = parseMessage<throttleMessage>(msg);
         gameThrottleCmd = map(myThrottle.throttle, 0, INT16_MAX, 0, 1023);
+        hpIngestThrottle((float)myThrottle.throttle / (float)INT16_MAX);  // autothrottle bumpless engage
+        lpIngestThrottle((float)myThrottle.throttle / (float)INT16_MAX);
         Serial.println("********THROTTLE CMD MESSAGE RECEIVED********");
         Serial.print("myThrottle.throttle = ");
         Serial.println(myThrottle.throttle);
@@ -143,6 +154,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         alt_sl = myAltitude.sealevel;
         alt_surf = myAltitude.surface;
         apIngestAltitude(myAltitude.sealevel, myAltitude.surface);  // feed ascent autopilot
+        hpIngestAltitude(myAltitude.sealevel);                      // feed hold autopilot (ALT hold)
+        lpIngestAltitude(myAltitude.sealevel, myAltitude.surface);   // feed landing autopilot (radar altitude)
       }
       break;
     case VELOCITY_MESSAGE:
@@ -153,6 +166,9 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         vel_surf = myVelocity.surface;
         vel_vert = myVelocity.vertical;
         apIngestVelocity(myVelocity.orbital, myVelocity.surface, myVelocity.vertical);  // feed ascent autopilot
+        hpIngestVelocity(myVelocity.surface, myVelocity.vertical);                     // feed hold autopilot (V/S, CRUISE)
+        lpIngestVelocity(myVelocity.surface, myVelocity.vertical);                     // feed landing autopilot
+        bpIngestVelocity(myVelocity.orbital);                                          // feed burn autopilot
       }
       break;
     case AIRSPEED_MESSAGE:
@@ -161,6 +177,9 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myAirspeed = parseMessage<airspeedMessage>(msg);
         gForces = myAirspeed.gForces;
         apIngestGForce(myAirspeed.gForces);  // feed ascent autopilot max-G limiter
+        hpIngestAirspeed(myAirspeed.IAS, myAirspeed.mach);  // feed hold autopilot (IAS / MACH)
+        lpIngestAirspeed(myAirspeed.mach);                  // feed landing autopilot (plane hand-off)
+        aeIngestGForce(myAirspeed.gForces);                 // acceleration estimate (measured during a burn)
       }
       break;
     case APSIDES_MESSAGE:
@@ -170,6 +189,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         periapsis = myApsides.periapsis;
         apoapsis = myApsides.apoapsis;
         apIngestApsides(myApsides.apoapsis, myApsides.periapsis);  // feed ascent autopilot
+        bpIngestApsides(myApsides.apoapsis, myApsides.periapsis);  // feed burn autopilot
       }
       break;
     case APSIDESTIME_MESSAGE:
@@ -177,6 +197,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         apsidesTimeMessage myApsidesTime;
         myApsidesTime = parseMessage<apsidesTimeMessage>(msg);
         apIngestApsidesTime((float)myApsidesTime.apoapsis, (float)myApsidesTime.periapsis);  // feed ascent autopilot
+        bpIngestApsidesTime((float)myApsidesTime.apoapsis, (float)myApsidesTime.periapsis);  // feed burn autopilot
       }
       break;
     case ORBIT_MESSAGE:
@@ -184,6 +205,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         orbitInfoMessage myOrbit;
         myOrbit = parseMessage<orbitInfoMessage>(msg);
         apIngestOrbit(myOrbit.inclination);  // feed ascent autopilot azimuth target
+        bpIngestOrbit(myOrbit.eccentricity, myOrbit.semiMajorAxis, myOrbit.inclination, myOrbit.longAscendingNode,
+                      myOrbit.argPeriapsis, myOrbit.trueAnomaly, myOrbit.period);  // feed burn autopilot planners
       }
       break;
     case ROTATION_DATA_MESSAGE:
@@ -193,6 +216,12 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         apIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
                          myPointing.surfaceVelocityHeading, myPointing.surfaceVelocityPitch,
                          myPointing.orbitalVelocityHeading, myPointing.orbitalVelocityPitch);  // feed ascent autopilot steering
+        hpIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
+                         myPointing.surfaceVelocityHeading, myPointing.surfaceVelocityPitch);  // feed hold autopilot
+        bpIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
+                         myPointing.orbitalVelocityHeading, myPointing.orbitalVelocityPitch);  // feed burn autopilot
+        lpIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
+                         myPointing.orbitalVelocityHeading, myPointing.orbitalVelocityPitch);  // feed landing autopilot (ENTRY)
       }
       break;
     case DELTAV_MESSAGE:
@@ -202,6 +231,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         stageDV = myDV.stageDeltaV;
         totalDV = myDV.totalDeltaV;
         apIngestStageDeltaV(myDV.stageDeltaV);  // feed ascent autopilot auto-staging
+        aeIngestStage(myDV.stageDeltaV, stageBurnTime);  // acceleration estimate + shared auto-stage
       }
       break;
     case BURNTIME_MESSAGE:
@@ -210,6 +240,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myBurn = parseMessage<burnTimeMessage>(msg);
         stageBurnTime = myBurn.stageBurnTime;
         totalBurnTime = myBurn.totalBurnTime;
+        aeIngestStage(stageDV, myBurn.stageBurnTime);
       }
       break;
     case TEMP_LIMIT_MESSAGE:
@@ -231,6 +262,11 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
       }
       bodyBuf[n] = '\0';
       apIngestSOI(bodyBuf);  // feed ascent autopilot body-profile / SoI adaptation
+      {
+        BodyParams b = getBodyParams(bodyBuf);   // shared celestial-body table
+        bpIngestBody(b.radius, b.gravity, bodyBuf);        // mu for the planners; SOI change aborts a burn
+        lpIngestBody(b.gravity, b.flyHigh, bodyBuf);       // ignition altitude; plane hand-off ceiling
+      }
       break;
     }
     case ATMO_CONDITIONS_MESSAGE:
@@ -245,6 +281,36 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         inAtmo = myAtmoConditions.isVesselInAtmosphere();
         apIngestAtmo(myAtmoConditions.airDensity, myAtmoConditions.hasAtmosphere(),
                      myAtmoConditions.isVesselInAtmosphere());  // feed ascent autopilot (max-Q + airless/atmospheric branch)
+        hpIngestAtmo(myAtmoConditions.hasAtmosphere(), myAtmoConditions.isVesselInAtmosphere());  // feed hold autopilot
+        lpIngestAtmo(myAtmoConditions.airDensity, myAtmoConditions.isVesselInAtmosphere());      // feed landing autopilot
+        aeIngestAtmo(myAtmoConditions.isVesselInAtmosphere());                                    // measured accel only in vacuum
+      }
+      break;
+    case TARGETINFO_MESSAGE:
+      if (msgSize == sizeof(targetMessage)) {
+        targetMessage myTarget;
+        myTarget = parseMessage<targetMessage>(msg);
+        // Simpit's target velocity is the unsigned magnitude of the whole relative velocity.
+        // Project it on the line of sight for a signed closing rate (> 0 = opening).
+        float losN, losE, losU, vN, vE, vU;
+        {
+          float p = myTarget.pitch * 0.0174532925199f, h = myTarget.heading * 0.0174532925199f;
+          losN = cosf(p) * cosf(h); losE = cosf(p) * sinf(h); losU = sinf(p);
+          p = myTarget.velocityPitch * 0.0174532925199f; h = myTarget.velocityHeading * 0.0174532925199f;
+          vN = cosf(p) * cosf(h); vE = cosf(p) * sinf(h); vU = sinf(p);
+        }
+        float closing = myTarget.velocity * (losN * vN + losE * vE + losU * vU);
+        hpIngestTarget(hasTarget, myTarget.heading, myTarget.pitch, myTarget.distance, closing);   // NAV / GS / TGT / FOLLOW
+        bpIngestTarget(hasTarget, myTarget.distance, myTarget.velocity, myTarget.heading, myTarget.pitch,
+                       myTarget.velocityHeading, myTarget.velocityPitch);                          // approach-rate hold
+      }
+      break;
+    case MANEUVER_MESSAGE:
+      if (msgSize == sizeof(maneuverMessage)) {
+        maneuverMessage myNode;
+        myNode = parseMessage<maneuverMessage>(msg);
+        bpIngestNode(myNode.timeToNextManeuver, myNode.deltaVNextManeuver, myNode.durationNextManeuver,
+                     myNode.headingNextManeuver, myNode.pitchNextManeuver);   // node executor
       }
       break;
     case VESSEL_NAME_MESSAGE:

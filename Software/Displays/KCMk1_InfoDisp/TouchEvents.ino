@@ -164,6 +164,23 @@ void processTouchEvents() {
     apScreenTouch(touchContentX(x2), y2);
     return;
   }
+  // Hold-mode consoles: mode buttons, setpoint boxes, LVL / A/P OFF, shared keypad.
+  if (activeScreen == screen_ACFTAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    acftApScreenTouch(touchContentX(x2), y2);
+    return;
+  }
+  if (activeScreen == screen_ROVRAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    rovrApScreenTouch(touchContentX(x2), y2);
+    return;
+  }
+  if (activeScreen == screen_ORBTAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    orbtApScreenTouch(touchContentX(x2), y2);
+    return;
+  }
+  if (activeScreen == screen_LNDGAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    lndgApScreenTouch(touchContentX(x2), y2);
+    return;
+  }
 
   // Sidebar hit test — the SIDEBAR_W column on this unit's outboard edge (left on
   // unit 1, right on unit 2), 6 buttons (SB_BTN_SCREEN).
@@ -194,6 +211,11 @@ void processTouchEvents() {
         case SB_LNDG_BTN:
           target = screen_LNDG;           // primary = powered descent (DESC)
           break;
+#if INFO_DISP_IS_MISSION_UNIT
+        case SB_AP_BTN:
+          target = apConsoleContextScreen();   // console for the vessel type
+          break;
+#endif
         default:
           target = SB_BTN_SCREEN[btn];    // LNCH (PRE/ASC/CIRC per flags), ORB, single-mode
           break;
@@ -244,6 +266,13 @@ void processTouchEvents() {
           target = (activeScreen == screen_LNDGRE) ? screen_LNDG : screen_LNDGRE;
           doSwitch = true;
           break;
+#if INFO_DISP_IS_MISSION_UNIT
+        case SB_AP_BTN:
+          // The autopilot consoles, filtered by vessel type (apConsoleNext).
+          target   = apConsoleNext(activeScreen);
+          doSwitch = (target != activeScreen);
+          break;
+#endif
         default:
           doSwitch = false;   // single-mode button already active — nothing to cycle
           break;

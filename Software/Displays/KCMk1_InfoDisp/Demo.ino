@@ -55,6 +55,112 @@ bool apDemoApplyCommand(uint8_t op, float payload) {
 }
 
 
+/***************************************************************************************
+   DEMO-SIDE HOLD-MODE AUTOPILOT
+   Same idea for the AIRCRAFT AP / ROVER AP consoles: the demo plays Controller_Main,
+   applying engage / setpoint commands to a small model and publishing it into
+   state.hp* / state.rv* so the consoles' pending cues close. Engaging captures the
+   demo's live value, as the master does.
+****************************************************************************************/
+static uint8_t _demoHpPitch = 0, _demoHpLat = 0, _demoHpThr = 0;
+static float   _demoHpAtt = 5.0f, _demoHpAoa = 3.0f, _demoHpVs = 0.0f, _demoHpAlt = 6000.0f;
+static float   _demoHpRoll = 0.0f, _demoHpHdg = 90.0f, _demoHpIas = 180.0f, _demoHpMach = 0.85f;
+static uint8_t _demoHpReason = 0; static uint32_t _demoHpReasonMs = 0;
+static bool    _demoRvCruise = false, _demoRvHdg = false, _demoRvTgt = false;
+static float   _demoRvCruiseSp = 12.0f, _demoRvHdgSp = 45.0f;
+static float   _demoRvMaxSpd = 20.0f, _demoRvMaxSlope = 20.0f, _demoRvMaxRoll = 25.0f;
+static uint8_t _demoRvReason = 0; static uint32_t _demoRvReasonMs = 0;
+static float   _demoHpGs = 3.0f, _demoRvFollow = 30.0f, _demoRvStop = 15.0f;
+static bool    _demoRvFollowOn = false;
+// Orbital / landing models (Mission_Autopilot.md)
+static uint8_t _demoObMode = 0, _demoObPhase = 0; static uint32_t _demoObPhaseMs = 0;
+static bool    _demoObAppr = false, _demoObWarp = true, _demoObStage = true;
+static float   _demoObAp = 250000.0f, _demoObPe = 80000.0f, _demoObInc = 0.0f, _demoObRate = -2.0f, _demoObDist = 50.0f;
+static uint8_t _demoObReason = 0; static uint32_t _demoObReasonMs = 0;
+static uint8_t _demoLdMode = 0; static bool _demoLdEntry = false, _demoLdRadial = false;
+static float   _demoLdRate = -4.0f, _demoLdAlt = 50.0f, _demoLdTwr = 0.0f, _demoLdMargin = 150.0f, _demoLdAoa = 8.0f, _demoLdRoll = 0.0f;
+static uint8_t _demoLdReason = 0; static uint32_t _demoLdReasonMs = 0;
+
+bool hpDemoApplyCommand(uint8_t op, float payload) {
+  bool on = (payload != 0.0f);
+  switch (op) {
+    // A/P OFF is everything, as Controller_Main's arbAllOff() is: the ascent autopilot too.
+    // The demo boots armed, so without this the key stayed green after A/P OFF on any console.
+    case HP_CMD_AP_OFF: _demoApArmed = false; _demoHpPitch = _demoHpLat = _demoHpThr = 0; _demoRvCruise = _demoRvHdg = _demoRvTgt = false;
+                        _demoRvFollowOn = false; _demoObMode = 0; _demoObPhase = 0; _demoObAppr = false; _demoLdMode = 0; _demoLdEntry = false; return true;
+    case HP_CMD_LVL:    _demoHpLat = 1; _demoHpRoll = 0.0f; _demoHpPitch = 3; _demoHpVs = 0.0f; return true;
+    case HP_CMD_ENGAGE_ATT:  if (on) { _demoHpPitch = 1; _demoHpAtt = state.pitch; } else if (_demoHpPitch == 1) _demoHpPitch = 0; return true;
+    case HP_CMD_ENGAGE_AOA:  if (on) { _demoHpPitch = 2; _demoHpAoa = state.pitch - state.srfVelPitch; } else if (_demoHpPitch == 2) _demoHpPitch = 0; return true;
+    case HP_CMD_ENGAGE_VS:   if (on) { _demoHpPitch = 3; _demoHpVs = roundf(state.verticalVel); } else if (_demoHpPitch == 3) _demoHpPitch = 0; return true;
+    case HP_CMD_ENGAGE_ALT:  if (on) { _demoHpPitch = 4; _demoHpAlt = roundf(state.altitude / 10.0f) * 10.0f; } else if (_demoHpPitch == 4) _demoHpPitch = 0; return true;
+    case HP_CMD_ENGAGE_ROLL: if (on) { _demoHpLat = 1; _demoHpRoll = state.roll; } else if (_demoHpLat == 1) _demoHpLat = 0; return true;
+    case HP_CMD_ENGAGE_HDG:  if (on) { _demoHpLat = 2; _demoHpHdg = roundf(state.heading); } else if (_demoHpLat == 2) _demoHpLat = 0; return true;
+    case HP_CMD_ENGAGE_IAS:  if (on) { _demoHpThr = 1; _demoHpIas = state.IAS; } else if (_demoHpThr == 1) _demoHpThr = 0; return true;
+    case HP_CMD_ENGAGE_MACH: if (on) { _demoHpThr = 2; _demoHpMach = state.machNumber; } else if (_demoHpThr == 2) _demoHpThr = 0; return true;
+    case HP_CMD_SET_ATT:  _demoHpAtt = payload;  return true;
+    case HP_CMD_SET_AOA:  _demoHpAoa = payload;  return true;
+    case HP_CMD_SET_VS:   _demoHpVs = payload;   return true;
+    case HP_CMD_SET_ALT:  _demoHpAlt = payload;  return true;
+    case HP_CMD_SET_ROLL: _demoHpRoll = payload; return true;
+    case HP_CMD_SET_HDG:  _demoHpHdg = payload;  return true;
+    case HP_CMD_SET_IAS:  _demoHpIas = payload;  return true;
+    case HP_CMD_SET_MACH: _demoHpMach = payload; return true;
+    case HP_CMD_ENGAGE_CRUISE: _demoRvCruise = on; if (on) _demoRvCruiseSp = roundf(state.surfaceVel * 2.0f) * 0.5f; return true;
+    case HP_CMD_ENGAGE_RHDG:   _demoRvHdg = on; if (on) { _demoRvTgt = false; _demoRvHdgSp = roundf(state.heading); } return true;
+    case HP_CMD_ENGAGE_RTGT:
+      if (on && !state.targetAvailable) { _demoRvReason = HP_REASON_REFUSED; _demoRvReasonMs = millis(); return true; }
+      _demoRvTgt = on; if (on) _demoRvHdg = false; return true;
+    case HP_CMD_SET_CRUISE:   _demoRvCruiseSp = payload; return true;
+    case HP_CMD_SET_RHDG:     _demoRvHdgSp = payload;    return true;
+    case HP_CMD_SET_MAXSPD:   _demoRvMaxSpd = payload;   return true;
+    case HP_CMD_SET_MAXSLOPE: _demoRvMaxSlope = payload; return true;
+    case HP_CMD_SET_MAXROLL:  _demoRvMaxRoll = payload;  return true;
+    // ---- mission autopilot ----
+    case HP_CMD_ENGAGE_NAV:  if (on && !state.targetAvailable) { _demoHpReason = HP_REASON_NO_TARGET; _demoHpReasonMs = millis(); return true; }
+                             if (on) _demoHpLat = 3; else if (_demoHpLat == 3) _demoHpLat = 0; return true;
+    case HP_CMD_ENGAGE_GS:   if (on && !state.targetAvailable) { _demoHpReason = HP_REASON_NO_TARGET; _demoHpReasonMs = millis(); return true; }
+                             if (on) _demoHpPitch = 5; else if (_demoHpPitch == 5) _demoHpPitch = 0; return true;
+    case HP_CMD_SET_GS:      _demoHpGs = payload; return true;
+    case HP_CMD_ENGAGE_FOLLOW: _demoRvFollowOn = on; if (on) { _demoRvCruise = false; _demoRvHdg = _demoRvTgt = false; } return true;
+    case HP_CMD_SET_FOLLOW_RANGE: _demoRvFollow = payload; return true;
+    case HP_CMD_SET_STOP_DIST:    _demoRvStop = payload; return true;
+    case OB_CMD_ARM_NODE: case OB_CMD_ARM_AP: case OB_CMD_ARM_PE: case OB_CMD_ARM_INC: {
+      uint8_t m = (uint8_t)(op - OB_CMD_ARM_NODE + 1);
+      if (on) { if (m == 1 && state.mnvrDeltaV <= 0.01f) { _demoObReason = HP_REASON_NO_NODE; _demoObReasonMs = millis(); return true; }
+                _demoObMode = m; _demoObPhase = 1; _demoObAppr = false; }
+      else if (_demoObMode == m) { _demoObMode = 0; _demoObPhase = 0; }
+      return true;
+    }
+    case OB_CMD_ENGAGE_APPR: _demoObAppr = on; if (on) { _demoObMode = 0; _demoObPhase = 0; } return true;
+    case OB_CMD_SET_AP: _demoObAp = payload; return true;
+    case OB_CMD_SET_PE: _demoObPe = payload; return true;
+    case OB_CMD_SET_INC: _demoObInc = payload; return true;
+    case OB_CMD_SET_APPR_RATE: _demoObRate = payload; return true;
+    case OB_CMD_SET_APPR_DIST: _demoObDist = payload; return true;
+    case OB_CMD_SET_WARP: _demoObWarp = on; return true;
+    case OB_CMD_SET_AUTOSTAGE: _demoObStage = on; return true;
+    case OB_CMD_EXEC:
+      if (_demoObPhase == 1) { _demoObPhase = 2; _demoObPhaseMs = millis(); }
+      else if (_demoObPhase == 3 && _demoObWarp) { _demoObPhase = 4; _demoObPhaseMs = millis(); }
+      return true;
+    case LD_CMD_ENGAGE_DESC: case LD_CMD_ENGAGE_HOVR: case LD_CMD_ENGAGE_BRAKE: {
+      uint8_t m = (uint8_t)(op - LD_CMD_ENGAGE_DESC + 1);
+      if (on) _demoLdMode = m; else if (_demoLdMode == m) _demoLdMode = 0;
+      return true;
+    }
+    case LD_CMD_ENGAGE_ENTRY: _demoLdEntry = on; return true;
+    case LD_CMD_SET_DESC_RATE: _demoLdRate = payload; return true;
+    case LD_CMD_SET_HOVR_ALT: _demoLdAlt = payload; return true;
+    case LD_CMD_SET_TWR: _demoLdTwr = payload; return true;
+    case LD_CMD_SET_MARGIN: _demoLdMargin = payload; return true;
+    case LD_CMD_SET_ENTRY_AOA: _demoLdAoa = payload; return true;
+    case LD_CMD_SET_ENTRY_ROLL: _demoLdRoll = payload; return true;
+    case LD_CMD_SET_ATT_REF: _demoLdRadial = on; return true;
+    default: return false;
+  }
+}
+
+
 void initDemoMode() {
   state.vesselName      = "Jeb's Rocket";
   state.vesselType      = type_Ship;
@@ -241,6 +347,81 @@ void stepDemoState() {
     state.apCmdThrottle = (ph == 3) ? 0.0f : (ph == 4) ? 0.6f : 1.0f;
     state.apDynPressure = 18000.0f * sinf(t * 0.5f);
     if (state.apDynPressure < 0.0f) state.apDynPressure = 0.0f;
+  }
+
+  // -----------------------------------------------------------------------
+  // HOLD-MODE AUTOPILOT — publishes the demo's aircraft / rover models
+  // -----------------------------------------------------------------------
+  {
+    bool any = _demoHpPitch || _demoHpLat || _demoHpThr;
+    bool leverDriven = ((millis() / 30000) % 2 == 0);     // exercises the LEVER OFF note
+    state.hpPitchMode = _demoHpPitch; state.hpLatMode = _demoHpLat; state.hpThrMode = _demoHpThr;
+    state.hpFlags = (any ? 0x01 : 0) | (_demoHpThr ? 0x02 : 0) | (leverDriven ? 0x08 : 0) | (_demoApArmed ? 0x10 : 0);
+    state.hpReason = _demoHpReason;
+    state.hpReasonAge = _demoHpReason ? (uint8_t)min((millis() - _demoHpReasonMs) / 1000UL, 255UL) : 255;
+    state.hpAtt = _demoHpAtt; state.hpAoa = _demoHpAoa; state.hpVs = _demoHpVs; state.hpAlt = _demoHpAlt;
+    state.hpRoll = _demoHpRoll; state.hpHdg = _demoHpHdg; state.hpIas = _demoHpIas; state.hpMach = _demoHpMach;
+    state.hpGs = _demoHpGs;
+    state.hpCmdThrottle = state.throttle;
+
+    bool slopeGuard = _demoRvCruise && fabsf(state.pitch) > _demoRvMaxSlope * 0.5f;
+    state.rvFlags = (_demoRvCruise ? 0x01 : 0) | (_demoRvHdg ? 0x02 : 0) | (_demoRvTgt ? 0x04 : 0) |
+                    (state.brakes_on ? 0x08 : 0) | (slopeGuard ? 0x10 : 0) | (state.targetAvailable ? 0x20 : 0) |
+                    (_demoRvFollowOn ? 0x40 : 0);
+    state.rvFollowRange = _demoRvFollow; state.rvStopDist = _demoRvStop;
+    state.rvReason = _demoRvReason;
+    state.rvReasonAge = _demoRvReason ? (uint8_t)min((millis() - _demoRvReasonMs) / 1000UL, 255UL) : 255;
+    state.rvCruise = _demoRvCruiseSp; state.rvHdg = _demoRvHdgSp;
+    state.rvMaxSpeed = _demoRvMaxSpd; state.rvMaxSlope = _demoRvMaxSlope; state.rvMaxRoll = _demoRvMaxRoll;
+    state.rvCmdWheel = (_demoRvCruise || _demoRvFollowOn) ? 0.4f * sinf(_demoPhase * 0.3f) : 0.0f;
+  }
+
+  // -----------------------------------------------------------------------
+  // ORBITAL / LANDING AUTOPILOT — walk a burn through its phases; publish both models
+  // -----------------------------------------------------------------------
+  {
+    uint32_t now = millis();
+    // Burn phases advance on a timer: ALIGN 4 s -> WARP READY (waits for EXEC if WARP on,
+    // else 4 s) -> WARP 4 s -> BURN 8 s -> DONE 5 s -> IDLE.
+    switch (_demoObPhase) {
+      case 2: if (now - _demoObPhaseMs > 4000) { _demoObPhase = 3; _demoObPhaseMs = now; } break;
+      case 3: if (!_demoObWarp && now - _demoObPhaseMs > 4000) { _demoObPhase = 5; _demoObPhaseMs = now; } break;
+      case 4: if (now - _demoObPhaseMs > 4000) { _demoObPhase = 5; _demoObPhaseMs = now; } break;
+      case 5: if (now - _demoObPhaseMs > 8000) { _demoObPhase = 6; _demoObPhaseMs = now; } break;
+      case 6: if (now - _demoObPhaseMs > 5000) { _demoObPhase = 0; _demoObMode = 0; } break;
+      default: break;
+    }
+    bool armed = _demoObMode != 0 && _demoObPhase >= 1 && _demoObPhase <= 5;
+    bool exec  = _demoObPhase >= 2 && _demoObPhase <= 5;
+    state.obFlags = (armed ? 0x01 : 0) | (exec ? 0x02 : 0) | (_demoObWarp ? 0x04 : 0) | (_demoObStage ? 0x08 : 0) |
+                    (state.targetAvailable ? 0x10 : 0) | (state.mnvrDeltaV > 0.01f ? 0x20 : 0) | (_demoObAppr ? 0x40 : 0);
+    state.obMode = _demoObMode; state.obPhase = _demoObPhase;
+    state.obReason = _demoObReason;
+    state.obReasonAge = _demoObReason ? (uint8_t)min((now - _demoObReasonMs) / 1000UL, 255UL) : 255;
+    state.obTargetAp = _demoObAp; state.obTargetPe = _demoObPe; state.obTargetInc = _demoObInc;
+    state.obApprRate = _demoObRate; state.obApprDist = _demoObDist;
+    float dv = (_demoObMode == 1) ? state.mnvrDeltaV : 842.0f;
+    state.obDvTotal = armed ? dv : 0.0f;
+    float burnFrac = (_demoObPhase == 5) ? (now - _demoObPhaseMs) / 8000.0f : 0.0f;
+    state.obDvRemaining = armed ? dv * (1.0f - burnFrac) : 0.0f;
+    state.obTIgnition = armed ? ((_demoObPhase >= 5) ? 0.0f : 252.0f - (now - _demoObPhaseMs) * 0.001f) : 0.0f;
+    state.obBurnDuration = armed ? 98.0f : 0.0f;
+    state.obAccelEst = 8.6f;
+    state.obCmdThrottle = (_demoObPhase == 5) ? 1.0f : 0.0f;
+
+    bool ldEngaged = _demoLdMode != 0 || _demoLdEntry;
+    float ignAlt = 2140.0f + 800.0f * sinf(_demoPhase * 0.2f);
+    bool brakeFiring = (_demoLdMode == 3) && state.radarAlt < ignAlt;
+    state.ldFlags = (ldEngaged ? 0x01 : 0) | ((_demoLdMode == 3 && !brakeFiring) ? 0x02 : 0) | (brakeFiring ? 0x04 : 0) |
+                    (_demoLdRadial ? 0x08 : 0) | (_demoObStage ? 0x10 : 0) | ((millis() / 40000) % 2 ? 0x40 : 0);
+    state.ldMode = _demoLdMode; state.ldEntry = _demoLdEntry ? 1 : 0;
+    state.ldReason = _demoLdReason;
+    state.ldReasonAge = _demoLdReason ? (uint8_t)min((now - _demoLdReasonMs) / 1000UL, 255UL) : 255;
+    state.ldAccelSource = (_demoLdTwr > 0.0f) ? 2 : ((millis() / 20000) % 2);
+    state.ldDescRate = _demoLdRate; state.ldHovrAlt = _demoLdAlt; state.ldTwr = _demoLdTwr; state.ldMargin = _demoLdMargin;
+    state.ldEntryAoa = _demoLdAoa; state.ldEntryRoll = _demoLdRoll;
+    state.ldIgnAlt = ignAlt; state.ldAccelEst = 14.2f;
+    state.ldCmdThrottle = brakeFiring ? 1.0f : (_demoLdMode ? 0.5f + 0.3f * sinf(_demoPhase) : 0.0f);
   }
 
   // -----------------------------------------------------------------------

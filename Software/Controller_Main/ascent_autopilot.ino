@@ -11,6 +11,11 @@
   Written for Jeb's Controller Works.
 ********************************************************************************************************************************/
 #include "ascent_autopilot.h"
+#include "attitude_controller.h"
+#include "hold_autopilot.h"
+#include "burn_autopilot.h"
+#include "landing_autopilot.h"
+#include "control_links.h"
 
 /***************************************************************************************
    KerbalSimpit control-axis scaling.
@@ -37,8 +42,8 @@ static uint32_t g_lastStageMs   = 0;
 static bool     g_sasIsOff       = false;  // we have commanded stock SAS off (active raw steering)
 static bool     g_sasProgradeSet = false;  // we have commanded stock SAS on + prograde hold (coast)
 
-// PID integrator state
-static float g_iPitch = 0.0f, g_iYaw = 0.0f, g_iRoll = 0.0f;
+// Attitude loop state (shared attitude controller — attitude_controller.h)
+static AttState g_att;
 static uint32_t g_lastUpdateMs  = 0;       // wall clock of last apUpdate (for dt)
 
 /***************************************************************************************
@@ -216,9 +221,10 @@ static float apManagedThrottle() {
 static void apSendThrottle(float f) {
   f = apClampf(f, 0.0f, 1.0f);
   g_cmdThrottle = f;
-  throttleMessage msg;
-  msg.throttle = (int16_t)(f * (float)AP_AXIS_FULL);
-  mySimpit.send(THROTTLE_MESSAGE, msg);
+  // Through the throttle link so the Throttle Module's motorised lever rides the
+  // managed throttle (max-Q / max-G / apoapsis taper). A pilot grabbing the lever
+  // disarms the autopilot on the next update (pilotOverrideDetected).
+  thrAutoThrottle(THR_OWNER_ASCENT, f);
 }
 
 /***************************************************************************************
@@ -232,42 +238,23 @@ static void apSteer(float cmdPitch, float cmdHeading, float dt) {
   g_cmdPitch   = cmdPitch;
   g_cmdHeading = cmdHeading;
 
-  // Errors in the navball frame (degrees)
-  float ePitch = cmdPitch - g_tel.pitch;              // + means pitch up
-  float eHead  = apWrap180(cmdHeading - g_tel.heading);
+  AttMeasure m;
+  m.pitch = g_tel.pitch; m.heading = g_tel.heading; m.roll = g_tel.roll;
+  attUpdateRates(g_att, m, dt);
 
-  // Rotate the pitch/heading error into the body frame using current roll.
-  float phi = apDeg2Rad(g_tel.roll);
-  float bodyPitchErr =  ePitch * cosf(phi) + eHead * sinf(phi);
-  float bodyYawErr   = -ePitch * sinf(phi) + eHead * cosf(phi);
+  AttGains g;
+  g.pitchKp = g_cfg.pitchKp; g.pitchKi = g_cfg.pitchKi; g.pitchKd = g_cfg.pitchKd;
+  g.yawKp   = g_cfg.yawKp;   g.yawKi   = g_cfg.yawKi;   g.yawKd   = g_cfg.yawKd;
+  g.rollKp  = g_cfg.rollKp;  g.rollKi  = g_cfg.rollKi;  g.rollKd  = g_cfg.rollKd;
 
-  // Normalise errors to roughly [-1, 1] over a 30 deg error, then PID.
-  const float ERR_NORM = 1.0f / 30.0f;
-  bodyPitchErr *= ERR_NORM;
-  bodyYawErr   *= ERR_NORM;
-
-  g_iPitch = apClampf(g_iPitch + bodyPitchErr * dt, -1.0f, 1.0f);
-  g_iYaw   = apClampf(g_iYaw   + bodyYawErr   * dt, -1.0f, 1.0f);
-
-  float pitchCmd = g_cfg.pitchKp * bodyPitchErr + g_cfg.pitchKi * g_iPitch;
-  float yawCmd   = g_cfg.yawKp   * bodyYawErr   + g_cfg.yawKi   * g_iYaw;
-
-  float rollCmd = 0.0f;
-  if (g_cfg.rollControlEnabled) {
-    float eRoll = apWrap180(g_cfg.targetRoll - g_tel.roll) * ERR_NORM;
-    g_iRoll = apClampf(g_iRoll + eRoll * dt, -1.0f, 1.0f);
-    rollCmd = g_cfg.rollKp * eRoll + g_cfg.rollKi * g_iRoll;
-  }
-
-  float lim = g_cfg.maxControlDeflection;
-  pitchCmd = apClampf(pitchCmd, -lim, lim);
-  yawCmd   = apClampf(yawCmd,   -lim, lim);
-  rollCmd  = apClampf(rollCmd,  -lim, lim);
+  AttCommand c = attSteerRocket(g_att, g, m, cmdPitch, cmdHeading,
+                                g_cfg.rollControlEnabled, g_cfg.targetRoll,
+                                g_cfg.maxControlDeflection, dt);
 
   rotationMessage msg;
-  msg.setPitch((int16_t)(pitchCmd * (float)AP_AXIS_FULL));
-  msg.setYaw((int16_t)(yawCmd  * (float)AP_AXIS_FULL));
-  if (g_cfg.rollControlEnabled) msg.setRoll((int16_t)(rollCmd * (float)AP_AXIS_FULL));
+  msg.setPitch((int16_t)(c.pitch * (float)AP_AXIS_FULL));
+  msg.setYaw((int16_t)(c.yaw  * (float)AP_AXIS_FULL));
+  if (g_cfg.rollControlEnabled) msg.setRoll((int16_t)(c.roll * (float)AP_AXIS_FULL));
   mySimpit.send(ROTATION_MESSAGE, msg);
 }
 
@@ -405,7 +392,9 @@ const char *apCurrentBody() { return g_tel.bodyName; }
 void apArm() {
   g_armed          = true;
   g_phase          = AP_PHASE_VERTICAL;
-  g_iPitch = g_iYaw = g_iRoll = 0.0f;
+  attReset(g_att);
+  arbTakeAttitude(AP_OWNER_ASCENT);   // arming takes the vehicle from any other autopilot (ap_arbiter.ino)
+  arbTakeThrottle(AP_OWNER_ASCENT);
   g_sasIsOff       = false;   // force apReconcileSAS() to command SAS off on the first pass
   g_sasProgradeSet = false;
   g_lastStageMs    = millis();
@@ -426,6 +415,9 @@ void apDisarm() {
   g_armed = false;
   g_phase = AP_PHASE_IDLE;
   apSendThrottle(0.0f);
+  thrAutoRelease(THR_OWNER_ASCENT);
+  arbReleaseAttitude(AP_OWNER_ASCENT);
+  arbReleaseThrottle(AP_OWNER_ASCENT);
   // Zero the control axes so we do not leave the stick deflected.
   rotationMessage msg;
   msg.setPitch(0); msg.setYaw(0); msg.setRoll(0);
@@ -433,6 +425,7 @@ void apDisarm() {
 }
 
 bool        apIsArmed()  { return g_armed; }
+void        apArbiterDrop() { if (g_armed) { apDisarm(); mySimpit.printToKSP("Ascent AP: another autopilot engaged - disarmed", PRINT_TO_SCREEN); } }
 AscentPhase apGetPhase() { return g_phase; }
 
 const char *apPhaseName(AscentPhase phase) {
@@ -518,6 +511,18 @@ void apUpdate() {
     g_phase = AP_PHASE_ABORT;
     g_armed = false;
     return;
+  }
+
+  // The pilot has the vehicle: any input on the rotation stick, the translation stick or
+  // the throttle lever disarms the ascent autopilot (global rule, control_links.h).
+  {
+    uint8_t ovr;
+    if (pilotOverrideDetected(ovr)) {
+      apDisarm();
+      mySimpit.printToKSP(ovr == HP_REASON_LEVER ? "Ascent AP: throttle lever - disarmed"
+                                                  : "Ascent AP: stick input - disarmed", PRINT_TO_SCREEN);
+      return;
+    }
   }
 
   // Keep stock SAS consistent with the current steering mode (off while we send raw
@@ -626,6 +631,9 @@ void apSerialConsole() {
       else if (strncasecmp(buf, "ROLLOFF", 7) == 0) ok = apSetRoll(false, g_cfg.targetRoll);
       else if (strncasecmp(buf, "MAXG ", 5) == 0)   ok = apSetMaxG(atof(buf + 5));
       else if (strncasecmp(buf, "SOUTH ", 6) == 0)  ok = apSetLaunchSoutherly(atoi(buf + 6) != 0);
+      else if (strncasecmp(buf, "HP ", 3) == 0)     ok = hpConsoleLine(buf + 3);   // hold-mode autopilot (hold_autopilot.ino)
+      else if (strncasecmp(buf, "BP ", 3) == 0)     ok = bpConsoleLine(buf + 3);   // burn autopilot (burn_autopilot.ino)
+      else if (strncasecmp(buf, "LP ", 3) == 0)     ok = lpConsoleLine(buf + 3);   // landing autopilot (landing_autopilot.ino)
       else if (strncasecmp(buf, "STATUS", 6) == 0) {
         Serial.print(F("AP armed=")); Serial.print(g_armed);
         Serial.print(F(" phase="));   Serial.print(apPhaseName(g_phase));

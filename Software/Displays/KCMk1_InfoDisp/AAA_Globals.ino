@@ -184,6 +184,14 @@ ScreenType vehicleContextScreen() {
 // Rules 4 and 5 are new for the same reason, and both are bounded rather than bare
 // existence tests — see TGT_CONTEXT_MAX_M / MNVR_CONTEXT_LEAD_S in AAA_Config.ino.
 ScreenType missionContextScreen() {
+  // 0. A console whose autopilot is flying the vehicle (Mission_Autopilot.md §10 q.7):
+  //    the panel comes back to the console doing the work after the pilot has looked
+  //    elsewhere. Never a console with nothing engaged — those are reached by the key.
+  {
+    const ScreenType c = apConsoleEngaged();
+    if (c != screen_COUNT) return c;
+  }
+
   // 1. Pre-launch -> launch screen (shows the pre-launch board). Unlike the old
   //    combined ladder this is reached by planes and rovers too: their vessel-type
   //    routing now happens on the other panel and no longer masks the phase.

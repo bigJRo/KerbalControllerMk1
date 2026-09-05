@@ -3,7 +3,15 @@
 **Byte-level contract between the Information Display (InfoDisp, I2C slave `0x12`) and
 Controller_Main (bus master).** This document is the wiring guide for the ascent
 autopilot that runs on Controller_Main; the InfoDisp side is implemented in
-`Software/Displays/KCMk1_InfoDisp/` (`Screen_LNCH_AscentAP.ino`, `I2CSlave.ino`).
+`Software/Displays/KCMk1_InfoDisp/` (`Screen_LNCH_AscentAP.ino`, `ConsoleShared.ino` for the command
+queue and keypad, `I2CSlave.ino`); the master side is `Software/Controller_Main/infodisp_link.ino`.
+
+**The same transport carries the other four consoles.** Opcodes `0x12`–`0x3A` and the 48-byte
+(sync `0xA6`) aircraft and 36-byte (sync `0xA7`) rover status pushes are specified in
+`Hold_Mode_Autopilot.md` §8; opcodes `0x40`–`0x5E` and the 52-byte (sync `0xA8`) orbital and
+44-byte (sync `0xA9`) landing pushes in `Mission_Autopilot.md` §8. The InfoDisp dispatches every
+inbound push on its sync byte, so the lengths need not be unique. Everything below applies to
+them unchanged.
 
 The Ascent Autopilot screen on the InfoDisp is a **touch console** for the autopilot:
 it presents the mission/vehicle parameters and the live guidance readout, and it lets
@@ -108,6 +116,9 @@ status push (§5). This separation means the console shows *delivered but not ye
 | `0x06` | `SET_MAXG` | g cap, `0.0` = off (float) | `apSetMaxG(v)` |
 | `0x10` | `ARM` | 0 | `apArm()` |
 | `0x11` | `DISARM` | 0 | `apDisarm()` |
+| `0x12`–`0x3A` | *hold-mode autopilot* (aircraft, rover) | see `Hold_Mode_Autopilot.md` §8.1 and `Mission_Autopilot.md` §8 | `hp*()` |
+| `0x40`–`0x4F` | *orbital autopilot* | see `Mission_Autopilot.md` §8 | `bp*()` |
+| `0x50`–`0x5E` | *landing autopilot* | see `Mission_Autopilot.md` §8 | `lp*()` |
 
 **Roll (`0x05`).** The console can either set a roll-hold angle or turn roll hold off. It
 encodes *off* as the sentinel `1e9` (well outside the ±180° range):

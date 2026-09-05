@@ -20,7 +20,11 @@
                   context default: DOCK when near a target, NAV in atmospheric flight)
      4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
      5  per unit  Unit 1: VEH (Vehicle Info, single-mode).
-                  Unit 2: ASC (Ascent Autopilot console).
+                  Unit 2: autopilot consoles — ASC (Ascent), ORAP (Orbital), LDAP
+                  (Landing), ACAP (Aircraft), RVAP (Rover). First press = the console
+                  for the vessel type and situation; a repeat press cycles only the
+                  consoles the vessel type can use (Mission_Autopilot.md §3.1). Green
+                  while any autopilot is armed, engaged or executing.
 
    Button order is identical on both units so one reach serves either panel. PFD is
    pinned to the top: it is the screen a pilot returns to from anywhere, it is unit 1's
@@ -68,8 +72,11 @@ const uint8_t SB_LNCH_BTN    = 1;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (m
 const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB -> ORB+ -> MNVR
 const uint8_t SB_TGTDOCK_BTN = 3;   // TGT/DOCK
 const uint8_t SB_LNDG_BTN    = 4;   // LNDG/ENTR: DESC <-> ENTR
-// Button 5 is single-mode on both units (VEH on unit 1, ASC on unit 2), so it needs
-// no index constant — the tap handler's default branch selects SB_BTN_SCREEN[5].
+// Button 5: VEH on unit 1 (single-mode, no constant needed). On unit 2 it is the
+// autopilot console key and cycles ASC -> ACAP -> RVAP, so it gets a constant.
+#if INFO_DISP_IS_MISSION_UNIT
+const uint8_t SB_AP_BTN      = 5;   // unit 2: A/P at rest; ASC / ORAP / LDAP / ACAP / RVAP on a console
+#endif
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -116,7 +123,7 @@ const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
 #if INFO_DISP_IS_PFD_UNIT
   "VEH"
 #else
-  "ASC"
+  "A/P"    // the autopilot cluster; the console captions replace it while one is on screen
 #endif
 };
 
@@ -133,6 +140,10 @@ uint8_t screenToButton(ScreenType s) {
     case screen_ORB:  case screen_ORBADV: case screen_MNVR:                return SB_ORB_BTN;
     case screen_TGT:  case screen_DOCK: case screen_NAV:                    return SB_TGTDOCK_BTN;
     case screen_LNDG: case screen_LNDGRE:                                  return SB_LNDG_BTN;
+#if INFO_DISP_IS_MISSION_UNIT
+    case screen_LNCHAP: case screen_ACFTAP: case screen_ROVRAP:
+    case screen_ORBTAP: case screen_LNDGAP:                                return SB_AP_BTN;
+#endif
     default: break;
   }
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
@@ -143,7 +154,7 @@ uint8_t screenToButton(ScreenType s) {
 // Sidebar button caption for the current state: the active mode's label when this
 // button owns the active screen, otherwise the base label. Mirrors the labelling
 // rules in the sidebar-nav design (LNCH/PRE/ASC/CIRC, PFD/SPC/ACFT/ROVR/VEH,
-// ORB/ORB+/MNVR, TGT/DOCK, LNDG/DESC/ENTR).
+// ORB/ORB+/MNVR, TGT/DOCK, LNDG/DESC/ENTR, A/P/ASC/ORAP/LDAP/ACAP/RVAP).
 const char *sbButtonLabel(uint8_t i) {
   if (screenToButton(activeScreen) != i) return SB_BTN_IDS[i];
   switch (i) {
@@ -162,9 +173,71 @@ const char *sbButtonLabel(uint8_t i) {
            : (activeScreen == screen_NAV)  ? "NAV" : "TGT";
     case SB_LNDG_BTN:
       return (activeScreen == screen_LNDGRE) ? "ENTR" : "DESC";
+#if INFO_DISP_IS_MISSION_UNIT
+    case SB_AP_BTN:
+      return (activeScreen == screen_ACFTAP) ? "ACAP"
+           : (activeScreen == screen_ROVRAP) ? "RVAP"
+           : (activeScreen == screen_ORBTAP) ? "ORAP"
+           : (activeScreen == screen_LNDGAP) ? "LDAP" : "ASC";
+#endif
     default:
       return SB_BTN_IDS[i];
   }
+}
+
+// The console whose module is flying the vehicle right now (Mission_Autopilot.md §10
+// q.7): the mission ladder routes to it, and only to it — a console with nothing engaged
+// is never surfaced unbidden. screen_COUNT when nothing is engaged.
+ScreenType apConsoleEngaged() {
+  if (state.obFlags & 0x43) return screen_ORBTAP;      // armed / executing / approach hold
+  if (state.ldFlags & 0x01) return screen_LNDGAP;
+  if (state.hpFlags & 0x01) return screen_ACFTAP;
+  if (state.rvFlags & 0x47) return screen_ROVRAP;
+  if (state.apArmed)        return screen_LNCHAP;
+  return screen_COUNT;
+}
+
+// The console the autopilot key lands on from another screen: the one for what is
+// being flown and where it is (Mission_Autopilot.md §3). The descent tests are the
+// mission ladder's own, so the key and the ladder agree about what a descent is.
+ScreenType apConsoleContextScreen() {
+  const bool onGround = (state.situation & (sit_Landed | sit_Splashed)) != 0;
+  if (state.situation & sit_PreLaunch) return screen_LNCHAP;
+  if (state.vesselType == type_Rover && onGround) return screen_ROVRAP;
+  if (state.vesselType == type_Plane && state.inAtmo) return screen_ACFTAP;
+  if (onGround) return screen_LNDGAP;
+  // Descending: the RE-ENTRY corridor test, or low with vertical speed negative.
+  if (currentBody.hasAtmo && state.inAtmo && state.verticalVel < 0.0f) return screen_LNDGAP;
+  if (state.radarAlt < LNDG_CTX_ALT_M && state.verticalVel < -LNDG_CTX_VVERT_MS) return screen_LNDGAP;
+  // Climbing under thrust toward an orbit that does not exist yet: the ascent console.
+  if (state.throttle > 0.02f && state.verticalVel > 0.0f && state.periapsis < 0.0f) return screen_LNCHAP;
+  return screen_ORBTAP;
+}
+
+// The ring a repeat press cycles through is FILTERED BY VESSEL TYPE, so a console a
+// vessel cannot use is never a stop on the way to one it can (Mission_Autopilot.md
+// §3.1, review decision C). Rockets (and anything untyped): ASC -> ORAP -> LDAP. Planes:
+// ACAP -> ORAP -> LDAP. Rovers: RVAP, or RVAP -> ORAP -> LDAP while not landed (a rover
+// still on its lander keeps the flight consoles through delivery). KSP's vessel type is
+// editable in flight, which is the escape hatch for edge cases. Returns the screen after
+// `cur`, or `cur` itself when the ring is one deep.
+ScreenType apConsoleNext(ScreenType cur) {
+  const bool onGround = (state.situation & (sit_Landed | sit_Splashed)) != 0;
+  ScreenType first;
+  switch (state.vesselType) {
+    case type_Rover:
+      if (onGround) return screen_ROVRAP;
+      first = screen_ROVRAP; break;
+    case type_Plane:
+      first = screen_ACFTAP; break;
+    case type_EVA: case type_Flag: case type_Debris: case type_Object:
+      return cur;
+    default:
+      first = screen_LNCHAP; break;
+  }
+  if (cur == first)          return screen_ORBTAP;
+  if (cur == screen_ORBTAP)  return screen_LNDGAP;
+  return first;
 }
 
 const char *const SCREEN_TITLES[SCREEN_COUNT] = {
@@ -181,7 +254,11 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ORBIT ADVANCED",
   "RE-ENTRY",
   "ASCENT AUTOPILOT",
-  "NAVIGATION"
+  "NAVIGATION",
+  "AIRCRAFT AUTOPILOT",
+  "ROVER AUTOPILOT",
+  "ORBITAL AUTOPILOT",
+  "LANDING AUTOPILOT"
 };
 
 /***************************************************************************************
@@ -460,7 +537,7 @@ void drawSidebar(KCM_TFT &tft) {
     // the display-nav cluster. The sidebar draws with isOn=true, so only the ...On
     // fields are overridden; the border is left alone, so it still reads white when
     // this key owns the active screen and grey when it does not.
-    if (SB_BTN_SCREEN[i] == screen_LNCHAP && apArmedAnnunciated()) {
+    if (SB_BTN_SCREEN[i] == screen_LNCHAP && (apArmedAnnunciated() || hpAnyEngagedAnnunciated())) {
       btn.backgroundColorOn = TFT_DARK_GREEN;
       btn.fontColorOn       = TFT_WHITE;
     }
@@ -583,7 +660,7 @@ void updateModeChip(KCM_TFT &tft) {
 void updateSidebar(KCM_TFT &tft) {
 #if INFO_DISP_IS_MISSION_UNIT
   static bool prevArmed = false;
-  const bool armed = apArmedAnnunciated();
+  const bool armed = apArmedAnnunciated() || hpAnyEngagedAnnunciated();   // any autopilot flying the vehicle
   if (armed == prevArmed) return;
   prevArmed = armed;
   drawSidebar(tft);
@@ -786,6 +863,10 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     case screen_ACFT:   chromeScreen_ACFT(tft); break;
     case screen_LNCHAP: chromeScreen_LNCHAP(tft); break;
     case screen_NAV:    chromeScreen_NAV(tft); break;
+    case screen_ACFTAP: chromeScreen_ACFTAP(tft); break;
+    case screen_ROVRAP: chromeScreen_ROVRAP(tft); break;
+    case screen_ORBTAP: chromeScreen_ORBTAP(tft); break;
+    case screen_LNDGAP: chromeScreen_LNDGAP(tft); break;
     default: break;
   }
 
@@ -811,6 +892,10 @@ void updateScreen(KCM_TFT &tft, ScreenType s) {
     case screen_ACFT:   drawScreen_ACFT(tft); break;
     case screen_LNCHAP: drawScreen_LNCHAP(tft); break;
     case screen_NAV:    drawScreen_NAV(tft); break;
+    case screen_ACFTAP: drawScreen_ACFTAP(tft); break;
+    case screen_ROVRAP: drawScreen_ROVRAP(tft); break;
+    case screen_ORBTAP: drawScreen_ORBTAP(tft); break;
+    case screen_LNDGAP: drawScreen_LNDGAP(tft); break;
     default: break;
   }
 }
