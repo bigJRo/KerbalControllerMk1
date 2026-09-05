@@ -233,7 +233,7 @@ a plan the pilot has not seen.
 | Banner | Engaged modes; `IGN IN m:ss` while BRAKE is armed, `FIRING` during the burn, or a reason; body · vessel; `ENGAGED` / `A/P OFF` |
 | Column 1 **DESCENT** | DESC (vertical-speed setpoint, negative), HOVR (radar-altitude setpoint), BRAKE (box shows the computed ignition altitude), ENTRY (angle-of-attack setpoint) |
 | Column 2 **OPTIONS** | ATT REF toggle (RETRO / RADIAL), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
-| Column 3 **DESCENT DATA** | RDR ALT, V/S, H SPD, ACCEL estimate, IGN ALT, T-IMP (radar altitude over descent rate), THRTL |
+| Column 3 **DESCENT DATA** | RDR ALT, V/S, H SPD, ACCEL estimate with its source (`MEAS` / `EST` / `TWR`), IGN ALT (orange when marginal), T-IMP (radar altitude over descent rate), THRTL |
 
 ### 5.2 Behaviour
 
@@ -320,9 +320,16 @@ use the acceleration estimate of §2.
 - **DESC**: throttle PI on vertical-speed error, `Kp` 0.05 per m/s, `Ki` 0.02, integrator initialised
   to the current throttle for a bumpless engage, slew 0.5/s. Output floor 0 and ceiling 1.
 - **HOVR**: `vsCmd = clamp(0.3 · (alt_sp − radarAlt), ±10)` into DESC.
-- **BRAKE**: `h_ign = v²/(2(a − g)) · (1 + 0.15) + MARGIN`, with `v` the total speed, `a` the
-  acceleration estimate or TWR·g, `g` the body's surface gravity. Refused if `a ≤ 1.2 g`. T-IMP is
-  `radarAlt / |vs|`, shown orange under 30 s.
+- **BRAKE**: `h_ign = v²/(2(a − g)) · (1 + k) + |vs| · 2 s + MARGIN`, with `v` the total speed,
+  `a` the acceleration estimate, `g` the body's surface gravity (decided as option C in review,
+  §10 q.4). The safety factor `k` follows the **source of the acceleration number**: 5 % for a
+  pilot-entered TWR, 10 % when measured during a burn on this stage, 25 % for the stage-average
+  estimate. The `|vs| · 2 s` term covers telemetry and throttle-spool latency and is the part that
+  scales with descent speed, where a fixed margin fails. The console shows the source beside ACCEL
+  (`14.2 m/s² MEAS` / `EST` / `TWR`), so a short test burn on the way down visibly upgrades the
+  estimate and lowers the ignition altitude. Refused if `a ≤ 1.2 g`; IGN ALT is shown orange when
+  the current descent would need more than 90 % of `a`. T-IMP is `radarAlt / |vs|`, shown orange
+  under 30 s.
 - **ENTRY**: reference heading = orbital prograde heading + 180°, reference pitch = −orbital
   prograde pitch; commanded pitch = reference + AOA; heading held at the reference; roll held at
   ROLL. Through the rocket entry of the attitude controller.
@@ -426,7 +433,7 @@ unchanged.
 | `0xA6` | AIRCRAFT AP | **48** | as before, `latMode` 3 = NAV, `pitchMode` 5 = GS, float [8] = gs angle, [9] = cmdThrottle |
 | `0xA7` | ROVER AP | **36** | as before plus flags bit6 follow, floats [5] followRange, [6] stopDist, [7] cmdWheel |
 | `0xA8` | ORBITAL | 52 | byte 1 flags: bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 targetAvailable, bit5 nodeAvailable, bit6 apprEngaged; byte 2 mode (0 none, 1 NODE, 2 AP, 3 PE, 4 INC); byte 3 phase (0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP READY, 4 WARPING, 5 BURN, 6 DONE, 7 ABORT, 8 RE-PLANNED); byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] targetAp, [1] targetPe, [2] targetInc, [3] apprRate, [4] apprDist, [5] dvTotal, [6] dvRemaining, [7] tIgnition, [8] burnDuration, [9] accelEst, [10] cmdThrottle |
-| `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed; byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
+| `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed, bit6 brakeMarginal; byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; byte 6 accelSource (0 EST, 1 MEAS, 2 TWR); 7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
 
 Live data shown on the consoles (node ΔV, T-node, radar altitude, vertical speed, target range…)
 comes from the display's own Simpit link as on the other consoles. `AppState` gains the `ob*` and
@@ -464,9 +471,9 @@ In dependency order.
 3. ~~**Warp authority.**~~ **Resolved:** the executor never warps unasked. After ALIGN the EXEC
    button becomes WARP and a second tap warps to ignition minus the lead; a changed plan drops the
    executor back to PLANNED before it will warp (§4.3, §4.4).
-4. **BRAKE safety factor.** 15 % plus MARGIN is a guess; MechJeb uses a similar margin. A wrong
-   acceleration estimate under-brakes, so the estimate's confidence (measured vs stage-average)
-   could be shown.
+4. ~~**BRAKE safety factor.**~~ **Resolved:** the factor follows the acceleration source (5 % TWR,
+   10 % measured, 25 % stage average), a `|vs| · 2 s` latency term is added, the source is shown
+   beside ACCEL, and IGN ALT goes orange when the landing is marginal (§7.2).
 5. **ENTRY disconnect speed.** 250 m/s hands off to the parachute logic; a spaceplane would rather
    hand off to the aircraft console. Vessel type could choose.
 6. **HOLD_AP_OFF scope.** Per-console (as designed) or always everything?
