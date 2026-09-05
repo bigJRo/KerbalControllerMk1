@@ -260,10 +260,9 @@ void processTouchEvents() {
           break;
 #if INFO_DISP_IS_MISSION_UNIT
         case SB_AP_BTN:
-          // ASC -> ACAP -> RVAP -> ASC: the three autopilot consoles.
-          target = (activeScreen == screen_LNCHAP) ? screen_ACFTAP
-                 : (activeScreen == screen_ACFTAP) ? screen_ROVRAP : screen_LNCHAP;
-          doSwitch = true;
+          // The autopilot consoles, filtered by vessel type (apConsoleNext).
+          target   = apConsoleNext(activeScreen);
+          doSwitch = (target != activeScreen);
           break;
 #endif
         default:

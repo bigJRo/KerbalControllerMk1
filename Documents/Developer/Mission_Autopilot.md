@@ -123,10 +123,30 @@ The autopilot key's ring grows from three consoles to five, ordered by mission p
 | 5 | ROVER AUTOPILOT | `RVAP` | a rover |
 
 The first-press context reuses the mission ladder's own tests (`missionContextScreen()` rules 2
-and 3 for LANDING), so the key and the ladder cannot disagree about what a descent is. A repeat
-press cycles in the order above. The key is green while any autopilot is armed, engaged or
-executing. The ring is five deep, which is why the first press is contextual: cycling is the
-fallback, not the normal route.
+and 3 for LANDING), so the key and the ladder cannot disagree about what a descent is. The key is
+green while any autopilot is armed, engaged or executing.
+
+### 3.1 The ring is filtered by vessel type and situation
+
+A repeat press cycles only through the consoles the current vessel can use, in the order above
+(decided as option C in review, §10 q.1). The ring is never deeper than three.
+
+| Vessel type (KSP `vesselType`) | Ring | Situation rule |
+|--------------------------------|------|----------------|
+| Ship, Lander, Probe, Relay, Station, Base, Unknown | ASC → ORAP → LDAP | — |
+| Plane | ACAP → ORAP → LDAP | — |
+| Rover | RVAP | **Not landed or splashed**: RVAP → ORAP → LDAP, so a rover still on its lander or skycrane keeps the orbital and landing consoles through delivery |
+| EVA, Flag, Debris, Space Object | none | the key does nothing |
+
+Consoles a type cannot reach are ones it cannot use: a rocket has no use for airspeed hold, a
+plane none for a vertical gravity turn. Two cases are covered by KSP itself rather than by the
+panel: KSP's vessel type is editable in flight from the rename dialog, so a rocket-typed VTOL that
+wants the aircraft holds, or a skycrane that reads as Lander after the rover separates, is retyped
+by the pilot. The hold autopilot's rocket-steering option for tail-sitters lives on the aircraft
+console and is therefore reached by typing such a vessel as Plane. This goes in the operating guide.
+
+The same rule applies to the three-console ring already in the firmware (ASC / ACAP / RVAP), where
+it collapses to one console per type until the orbital and landing consoles exist.
 
 Two new screen types, `screen_ORBTAP = 16` and `screen_LNDGAP = 17`; `screen_COUNT` becomes 18.
 
@@ -412,9 +432,9 @@ In dependency order.
 
 ## 10. Open questions for review
 
-1. **Key ring depth.** Five consoles on one key relies on the contextual first press. The
-   alternative is to hang ORBITAL off the ORB key and LANDING off the LNDG key, which splits the
-   command consoles across three keys and loses the single green annunciation.
+1. ~~**Key ring depth.**~~ **Resolved:** one key, ring filtered by vessel type with the
+   not-landed rover extension (§3.1). Rejected: splitting the consoles across the ORB and LNDG
+   keys, which would have spread the command channel and the green annunciation over three keys.
 2. **Burn alignment for normal / anti-normal.** No normal vector is telemetered, so alignment is a
    settle timer on the attitude rate estimate. A fixed 8 s settle is the simpler alternative.
 3. **Warp authority.** Should the executor ever warp on its own? WARP defaults to AUTO here; the

@@ -628,6 +628,7 @@ void rovrApScreenTouch(uint16_t x, uint16_t y);
 void hpReconcilePending();         // retire confirmed hold-mode edits (both consoles)
 const char *hpReasonLabel(uint8_t r);
 ScreenType apConsoleContextScreen();   // AAA_Screens.ino — console for the vessel type
+ScreenType apConsoleNext(ScreenType cur); // AAA_Screens.ino — next console in the vessel-type-filtered ring
 
 // Ascent Autopilot (Screen_LNCH_AscentAP.ino) — the armed state as annunciated: what
 // the autopilot itself reports, never a pilot tap Controller_Main has not echoed back.

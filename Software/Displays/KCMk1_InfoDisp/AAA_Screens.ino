@@ -182,11 +182,35 @@ const char *sbButtonLabel(uint8_t i) {
 
 // The console the autopilot key lands on from another screen: the one for what is
 // being flown. A rover gets ROVER AP, a plane in an atmosphere AIRCRAFT AP, anything
-// else the ASCENT console. Cycling the key reaches the other two.
+// else the ASCENT console.
 ScreenType apConsoleContextScreen() {
   if (state.vesselType == type_Rover) return screen_ROVRAP;
   if (state.vesselType == type_Plane && state.inAtmo) return screen_ACFTAP;
   return screen_LNCHAP;
+}
+
+// The ring a repeat press cycles through is FILTERED BY VESSEL TYPE, so a console a
+// vessel cannot use is never a stop on the way to one it can (Mission_Autopilot.md
+// §3.1, review decision C). Rockets (and anything untyped) cycle the ascent console;
+// planes the aircraft console; rovers the rover console. A rover that is not landed or
+// splashed is still being delivered and keeps the flight consoles it needs — today that
+// is the ascent console, and the orbital and landing consoles when they exist. KSP's
+// vessel type is editable in flight, which is the escape hatch for edge cases (a
+// rocket-typed VTOL that wants the aircraft holds). Returns the screen after `cur`, or
+// `cur` itself when the ring is one deep.
+ScreenType apConsoleNext(ScreenType cur) {
+  const bool onGround = (state.situation & (sit_Landed | sit_Splashed)) != 0;
+  switch (state.vesselType) {
+    case type_Rover:
+      if (onGround) return screen_ROVRAP;
+      return (cur == screen_ROVRAP) ? screen_LNCHAP : screen_ROVRAP;
+    case type_Plane:
+      return screen_ACFTAP;
+    case type_EVA: case type_Flag: case type_Debris: case type_Object:
+      return cur;
+    default:
+      return screen_LNCHAP;
+  }
 }
 
 const char *const SCREEN_TITLES[SCREEN_COUNT] = {
