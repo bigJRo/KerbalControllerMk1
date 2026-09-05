@@ -21,10 +21,17 @@
 ****************************************************************************************/
 #include "control_links.h"
 #include "ascent_autopilot.h"
+#include "hold_autopilot.h"     // HP_REASON_* for the override reason
 
 static const uint32_t ROT_POLL_MS   = 20;
 static const uint32_t ROT_SEND_MS   = 20;     // max merged-message rate
 static const float    ROT_PRECISION = 0.3f;   // stick scale in precision mode
+static const float    ROT_OVERRIDE_THRESHOLD = 0.10f;   // |axis| beyond this (module deadzone already applied) ...
+static const uint32_t ROT_OVERRIDE_MS        = 150;     // ... for this long = the pilot wants the vehicle
+
+static float    g_trnX = 0.0f, g_trnY = 0.0f, g_trnZ = 0.0f;   // translation stick, -1..1
+static uint32_t g_trnLastPollMs = 0;
+static uint32_t g_ovrRotSince = 0, g_ovrTrnSince = 0;
 
 static float    g_rotPitch = 0.0f, g_rotYaw = 0.0f, g_rotRoll = 0.0f;   // pilot, -1..1
 static float    g_autoPitch = 0.0f, g_autoYaw = 0.0f, g_autoRoll = 0.0f;
@@ -39,7 +46,43 @@ static inline float   rotNorm(int16_t v)      { float f = (float)v / 32767.0f; r
 
 void rotInit() {
   pinMode(Rotation_INT, INPUT);
-  g_rotLastPollMs = millis();
+  pinMode(Translation_INT, INPUT);
+  g_rotLastPollMs = g_trnLastPollMs = millis();
+}
+
+// Translation joystick (0x29): same KerbalJoystickCore packet. Read only for the pilot
+// override test until translation forwarding is integrated.
+static void trnPoll(uint32_t now) {
+  bool intLow = (digitalRead(Translation_INT) == LOW);
+  if (!intLow && (now - g_trnLastPollMs) < ROT_POLL_MS) return;
+  g_trnLastPollMs = now;
+  uint8_t pkt[KMC_JOYSTICK_PACKET_SIZE];
+  uint8_t got = 0;
+  Wire.requestFrom((uint8_t)Translation_MOD, (uint8_t)KMC_JOYSTICK_PACKET_SIZE);
+  while (Wire.available() && got < KMC_JOYSTICK_PACKET_SIZE) pkt[got++] = Wire.read();
+  if (got < KMC_JOYSTICK_PACKET_SIZE) return;
+  if (pkt[KMC_PKT_TYPEID_OFFSET] != KMC_TYPE_JOYSTICK_TRANS) return;
+  g_trnX = rotNorm(rotBE(&pkt[6]));
+  g_trnY = rotNorm(rotBE(&pkt[8]));
+  g_trnZ = rotNorm(rotBE(&pkt[10]));
+}
+
+static bool ovrHeld(float mag, uint32_t &since, uint32_t now) {
+  if (mag < ROT_OVERRIDE_THRESHOLD) { since = 0; return false; }
+  if (since == 0) { since = now; return false; }
+  return (now - since) >= ROT_OVERRIDE_MS;
+}
+
+bool pilotOverrideDetected(uint8_t &reason) {
+  uint32_t now = millis();
+  float rot = fmaxf(fabsf(g_rotPitch), fmaxf(fabsf(g_rotYaw), fabsf(g_rotRoll)));
+  float trn = fmaxf(fabsf(g_trnX),     fmaxf(fabsf(g_trnY),   fabsf(g_trnZ)));
+  bool stick = ovrHeld(rot, g_ovrRotSince, now);
+  bool trans = ovrHeld(trn, g_ovrTrnSince, now);
+  if (stick || trans) { reason = HP_REASON_STICK; return true; }
+  if (thrOverrideLatched() || thrTakeMovedEvent()) { reason = HP_REASON_LEVER; return true; }
+  reason = HP_REASON_NONE;
+  return false;
 }
 
 static void rotPoll(uint32_t now) {
@@ -80,6 +123,7 @@ float rotPilotRoll()  { return g_rotRoll; }
 void rotService() {
   uint32_t now = millis();
   rotPoll(now);
+  trnPoll(now);
 
   if (apIsArmed()) return;                              // ascent autopilot owns the channel
   if (!g_rotDirty || (now - g_rotLastSendMs) < ROT_SEND_MS) return;

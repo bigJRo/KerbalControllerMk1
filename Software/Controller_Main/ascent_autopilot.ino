@@ -221,7 +221,7 @@ static void apSendThrottle(float f) {
   g_cmdThrottle = f;
   // Through the throttle link so the Throttle Module's motorised lever rides the
   // managed throttle (max-Q / max-G / apoapsis taper). A pilot grabbing the lever
-  // takes the throttle for the rest of the ascent; steering continues.
+  // disarms the autopilot on the next update (pilotOverrideDetected).
   thrAutoThrottle(THR_OWNER_ASCENT, f);
 }
 
@@ -505,6 +505,18 @@ void apUpdate() {
     g_phase = AP_PHASE_ABORT;
     g_armed = false;
     return;
+  }
+
+  // The pilot has the vehicle: any input on the rotation stick, the translation stick or
+  // the throttle lever disarms the ascent autopilot (global rule, control_links.h).
+  {
+    uint8_t ovr;
+    if (pilotOverrideDetected(ovr)) {
+      apDisarm();
+      mySimpit.printToKSP(ovr == HP_REASON_LEVER ? "Ascent AP: throttle lever - disarmed"
+                                                  : "Ascent AP: stick input - disarmed", PRINT_TO_SCREEN);
+      return;
+    }
   }
 
   // Keep stock SAS consistent with the current steering mode (off while we send raw

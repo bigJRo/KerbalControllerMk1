@@ -36,6 +36,7 @@ bool    thrTouched();                               // pilot's hand is on the sl
 bool    thrPrecision();                             // module is in precision (fine) mode
 bool    thrLeverDriven();                           // module enabled and following commands
 bool    thrOverrideLatched();                       // pilot holds the lever against the current owner
+bool    thrTakeMovedEvent();                        // true once after the pilot MOVES the lever (>2 %) while no owner drives it
 float   thrCurrentThrottle();                       // lever position 0..1 (what KSP is being sent)
 uint8_t thrOwner();
 void    thrSetPrecision(bool fine);                 // CMD_SET_PRECISION to the module (STD / FINE switch)
@@ -57,6 +58,18 @@ void    rotClearAutoAxes();
 float   rotPilotPitch();                            // raw pilot demand -1..1, read even while held
 float   rotPilotYaw();
 float   rotPilotRoll();
+
+/***************************************************************************************
+   PILOT INPUT OVERRIDE — the one rule every autopilot obeys (review decision):
+   any pilot input on the rotation stick, the translation stick or the throttle lever
+   disconnects EVERY autopilot. The stick tests are debounced (beyond ROT_OVERRIDE_THRESHOLD
+   for ROT_OVERRIDE_MS) so a bumped stick does not drop a burn; the lever test is the
+   Throttle Module's own touch / button detection (throttle_link). Returns true while an
+   override holds, with the reason (HP_REASON_STICK / HP_REASON_LEVER) for annunciation.
+   The translation joystick is polled here as well, for this test only — its forwarding
+   to KSP is still to be integrated.
+****************************************************************************************/
+bool    pilotOverrideDetected(uint8_t &reason);
 
 /***************************************************************************************
    infodisp_link.ino

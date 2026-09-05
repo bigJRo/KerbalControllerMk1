@@ -68,7 +68,6 @@ static float    hp_cmdPitch = 0.0f, hp_cmdBank = 0.0f;
 static uint8_t  hp_reason = HP_REASON_NONE,      hp_roverReason = HP_REASON_NONE;
 static uint32_t hp_reasonMs = 0,                 hp_roverReasonMs = 0;
 static uint32_t hp_lastUpdateMs = 0;
-static uint32_t hp_stickPitchSince = 0, hp_stickRollSince = 0, hp_stickSteerSince = 0;
 static uint32_t hp_airborneSince = 0, hp_noAtmoSince = 0;
 
 static inline bool hpAircraftEngaged() { return hp_pitchMode != HP_PITCH_OFF || hp_latMode != HP_LAT_OFF || hp_thrMode != HP_THR_OFF; }
@@ -104,8 +103,6 @@ HoldConfig hpDefaultConfig() {
   c.steerKpLow = 0.05f; c.steerKpHigh = 0.02f; c.steerKpSpeed = 20.0f;
   c.steerSign = 1.0f;
 
-  c.stickOverride   = 0.25f;
-  c.stickOverrideMs = 300;
   c.telemetryTimeout = 2000;
   c.airborneMs = 500;
   c.noAtmoMs   = 2000;
@@ -286,7 +283,6 @@ bool hpEngage(HpMode mode, bool on) {
 
   bool holdingAttitude = (hp_pitchMode != HP_PITCH_OFF || hp_latMode != HP_LAT_OFF);
   if (holdingAttitude && !wasHoldingAttitude) attReset(hp_att);
-  hp_stickPitchSince = hp_stickRollSince = hp_stickSteerSince = 0;
   hp_lastUpdateMs = now;
   hpReconcileSAS();
   return true;
@@ -325,13 +321,6 @@ bool hpRoverEngaged()    { return hp_cruise || hp_rhdg || hp_rtgt; }
 /***************************************************************************************
    Loops
 ****************************************************************************************/
-// Stick-override test for one axis: |stick| beyond the threshold for the dwell.
-static bool hpStickHeld(float stick, uint32_t &since, uint32_t now) {
-  if (fabsf(stick) < hp_c.stickOverride) { since = 0; return false; }
-  if (since == 0) { since = now; return false; }
-  return (now - since) >= hp_c.stickOverrideMs;
-}
-
 static float hpVsLoop(float vsCmd, float dt) {
   float err = vsCmd - hp_t.velVertical;
   hp_vsInt = attClampf(hp_vsInt + hp_c.vsKi * err * dt, -hp_c.pitchMax, hp_c.pitchMax);
@@ -345,15 +334,7 @@ static void hpUpdateAircraft(uint32_t now, float dt) {
     else if (now - hp_noAtmoSince >= hp_c.noAtmoMs) { hpDisconnectAircraft(HP_REASON_NO_ATMO); return; }
   } else hp_noAtmoSince = 0;
 
-  if (hp_pitchMode != HP_PITCH_OFF && hpStickHeld(rotPilotPitch(), hp_stickPitchSince, now)) {
-    hp_pitchMode = HP_PITCH_OFF; hpSetReason(HP_REASON_STICK);
-  }
-  if (hp_latMode != HP_LAT_OFF && hpStickHeld(rotPilotRoll(), hp_stickRollSince, now)) {
-    hp_latMode = HP_LAT_OFF; hpSetReason(HP_REASON_STICK);
-  }
-  if (hp_thrMode != HP_THR_OFF && (thrTakeOverrideEvent() || thrOverrideLatched())) {
-    hp_thrMode = HP_THR_OFF; thrAutoRelease(THR_OWNER_HOLD); hpSetReason(HP_REASON_LEVER);
-  }
+  // (Pilot stick / lever input is handled globally in hpUpdate: it drops everything.)
   hpReconcileSAS();
   if (!hpAircraftEngaged()) { rotClearAutoAxes(); return; }
 
@@ -433,9 +414,6 @@ static void hpUpdateRover(uint32_t now, float dt) {
     hpSendWheels(true, 0.0f, false, 0.0f);
     hpSetRoverReason(HP_REASON_BRAKES);
   }
-  if ((hp_rhdg || hp_rtgt) && hpStickHeld(rotPilotYaw(), hp_stickSteerSince, now)) {
-    hp_rhdg = hp_rtgt = false; hpSetRoverReason(HP_REASON_STICK);
-  }
   if (hp_rtgt && !hp_t.hasTarget) { hp_rtgt = false; hpSetRoverReason(HP_REASON_REFUSED); }
   if (!hpRoverEngaged()) return;
 
@@ -488,6 +466,14 @@ void hpUpdate() {
   // Rover: wheel throttle to zero, no brakes.
   if ((now - hp_t.lastMs) > hp_c.telemetryTimeout) {
     hpDisconnectAll(HP_REASON_TELEMETRY);
+    return;
+  }
+
+  // The pilot has the vehicle: any input on the rotation stick, the translation stick or
+  // the throttle lever disconnects every hold mode (rover modes included).
+  uint8_t ovr;
+  if (pilotOverrideDetected(ovr)) {
+    hpDisconnectAll(ovr);
     return;
   }
 

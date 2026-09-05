@@ -85,9 +85,8 @@ struct HoldConfig {
   float    steerKpSpeed;           // m/s at which steerKpHigh applies
   float    steerSign;              // +1 / -1: flip if the rover turns away from the setpoint
 
-  // Disconnect rules
-  float    stickOverride;          // |stick| beyond this ...
-  uint32_t stickOverrideMs;        // ... for this long drops the axis group
+  // Disconnect rules (pilot-input override thresholds live in rotation_link.ino — the rule
+  // is global: any stick, translation or lever input disconnects every autopilot)
   uint32_t telemetryTimeout;       // ms
   uint32_t airborneMs;             // rover: not landed/splashed for this long
   uint32_t noAtmoMs;               // aircraft: out of atmosphere for this long

@@ -33,6 +33,9 @@ static const uint8_t THR_FLAG_MOVING    = 0x08;
 static uint8_t  g_thrOwner        = THR_OWNER_NONE;
 static bool     g_thrOverride     = false;   // pilot holds the lever against the owner
 static bool     g_thrOverrideEvt  = false;   // one-shot for the owner
+static bool     g_thrMovedEvt     = false;   // one-shot: pilot moved the lever with no owner driving it
+static float    g_thrMovedRef     = -1.0f;   // wiper position the movement test is measured from
+static const float THR_MOVED_DEADBAND = 0.02f;
 static bool     g_thrSyncLatch    = false;   // lever not driven: hold last auto value until the wiper passes it
 static float    g_thrSyncValue    = 0.0f;
 
@@ -115,6 +118,19 @@ static void thrPoll(uint32_t now) {
   bool touch = (g_thrFlags & THR_FLAG_TOUCH) != 0;
   if ((touch && !g_thrPrevTouch) || buttons != 0) thrLatchOverride();
   g_thrPrevTouch = touch;
+
+  // Lever MOVEMENT is pilot input even when no owner drives the lever (an attitude-only
+  // hold, a burn aligning). A resting hand is not: the touch flag alone does not count
+  // here, only a change of more than the deadband, or a lever button.
+  if (g_thrOwner == THR_OWNER_NONE || !thrLeverDriven()) {
+    if (g_thrMovedRef < 0.0f) g_thrMovedRef = g_thrLever;
+    if (fabsf(g_thrLever - g_thrMovedRef) > THR_MOVED_DEADBAND || buttons != 0) {
+      g_thrMovedEvt = true;
+      g_thrMovedRef = g_thrLever;
+    }
+  } else {
+    g_thrMovedRef = g_thrLever;    // lever is following the owner: its motion is not the pilot's
+  }
 }
 
 void thrService() {
@@ -162,6 +178,7 @@ void thrAutoRelease(uint8_t owner) {
 }
 
 bool    thrTakeOverrideEvent() { bool e = g_thrOverrideEvt; g_thrOverrideEvt = false; return e; }
+bool    thrTakeMovedEvent()    { bool e = g_thrMovedEvt;    g_thrMovedEvt    = false; return e; }
 bool    thrTouched()           { return (g_thrFlags & THR_FLAG_TOUCH) != 0; }
 bool    thrPrecision()         { return g_thrPrecisionCmd || (g_thrFlags & THR_FLAG_PRECISION) != 0; }
 bool    thrLeverDriven()       { return throttleEn && (g_thrFlags & THR_FLAG_ENABLED) && !thrPrecision(); }
