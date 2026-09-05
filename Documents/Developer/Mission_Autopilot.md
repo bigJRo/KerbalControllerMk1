@@ -164,7 +164,7 @@ Two new screen types, `screen_ORBTAP = 16` and `screen_LNDGAP = 17`; `screen_COU
 |--------|---------|
 | Banner | Armed mode; **phase** in orange (`ALIGNING`, `WARPING`, `BURNING`, `DONE`) or a disconnect reason; body · vessel; `ARMED` / `EXECUTING` / `A/P OFF` |
 | Column 1 **BURN** | NODE (box: node ΔV, or `NO NODE`), AP (target apoapsis), PE (target periapsis), INC (target inclination). Arming one clears the others |
-| Column 2 **TARGET / OPTIONS** | APPR (closing-rate setpoint, negative = closing), HOLD AT (hold distance), WARP toggle, STAGE toggle; **EXEC** and **A/P OFF** side by side |
+| Column 2 **TARGET / OPTIONS** | APPR (closing-rate setpoint, negative = closing), HOLD AT (hold distance), WARP toggle, STAGE toggle; **EXEC** (relabels itself **WARP** when a warp is ready, §4.3) and **A/P OFF** side by side |
 | Column 3 **PLAN** | ΔV TOT, ΔV REM, T-IGN, BURN duration, ACCEL estimate, STG ΔV, RANGE to target |
 
 ### 4.2 Arm, review, execute
@@ -182,9 +182,9 @@ APPR is a hold, not a burn: tapping it engages immediately, as on the other cons
 ### 4.3 Phases
 
 ```
-IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK──▶ WARP ──T-ign reached──▶ BURN ──ΔV rem ≤ cut──▶ DONE
-                                  │                       │                        │
-                                  └── any abort test ─────┴────────────────────────┴──▶ ABORT (throttle 0, SAS stability)
+IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK──▶ WARP READY ──WARP tap──▶ WARPING ──T-ign──▶ BURN ──ΔV rem ≤ cut──▶ DONE
+                                  │                         │  (or wait it out)      │                  │
+                                  └── any abort test ───────┴───────────────────────┴──────────────────┴──▶ ABORT (throttle 0, SAS stability)
 ```
 
 - **ALIGN** sets the SAS mode for the burn and waits until **both** hold: the pointing error is
@@ -196,11 +196,27 @@ IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK─�
   under 2° within 30 s the burn aborts with reason `ALIGN` rather than firing in the wrong
   direction — this catches a craft SAS cannot turn (torque imbalance, no reaction wheels). Decided
   as option C plus the settle backstop in review (§10 q.2).
-- **WARP** (WARP option on) sends a warp-to for ignition minus the align lead. Off, the executor
-  simply waits, and the pilot may warp by hand; it re-checks alignment after any warp.
+- **WARP READY / WARPING.** The panel never warps unasked (decided as option C in review, §10
+  q.3). With the WARP option on, once aligned the banner shows `WARP READY`, the EXEC button
+  relabels itself **WARP**, and a second tap sends a warp-to for ignition minus the align lead —
+  the plugin's warp-to-node / apoapsis / periapsis instants with a negative delay, or a plain time
+  delay for a plane-change node. The pilot commits to the burn once and to the warp once, each with
+  the PLAN column on screen. With no tap the executor simply waits for ignition. With the WARP
+  option off the button stays EXEC-disabled during the wait and the pilot may warp from the Time
+  module; the executor re-runs ALIGN on exit from any warp. The executor refuses to warp if the
+  plan has changed since EXEC (§4.4), so a stale plan cannot warp the craft to the wrong place.
 - **BURN** runs the throttle law of §7.1 and auto-stage if enabled.
 - **DONE** cuts the throttle, returns SAS to stability assist and disarms. The banner holds `DONE`
   for five seconds.
+
+### 4.4 Re-planning
+
+An armed plan is recomputed whenever the orbital elements move by more than a threshold
+(semi-major axis 0.5 %, eccentricity 0.005, inclination 0.1°, or the node's ΔV by 1 m/s) — an
+unplanned burn, a staging event that changed the acceleration estimate, or a new node. The PLAN
+column updates. If this happens after EXEC and before ignition the executor drops back to
+`PLANNED` with the banner reading `RE-PLANNED`, and EXEC must be tapped again; it never warps on
+a plan the pilot has not seen.
 
 ---
 
@@ -388,7 +404,7 @@ The transport is unchanged. New opcodes:
 | `0x48`–`0x4C` | `SET_AP`, `SET_PE`, `SET_INC`, `SET_APPR_RATE`, `SET_APPR_DIST` | m / m / ° / m/s / m | `bpSet*()` |
 | `0x4D` | `SET_WARP` | 1/0 | `bpSetAutoWarp(on)` |
 | `0x4E` | `SET_AUTOSTAGE` | 1/0 | `asSetEnabled(on)` (shared with LANDING) |
-| `0x4F` | `EXEC` | 0 | `bpExecute()` |
+| `0x4F` | `EXEC` | 0 | `bpExecute()` — also the WARP tap when the phase is `WARP READY` |
 | `0x50`–`0x53` | `ENGAGE_DESC`, `ENGAGE_HOVR`, `ENGAGE_BRAKE`, `ENGAGE_ENTRY` | 1/0 | `lpEngage(mode, on)` |
 | `0x58`–`0x5D` | `SET_DESC_RATE`, `SET_HOVR_ALT`, `SET_TWR`, `SET_MARGIN`, `SET_ENTRY_AOA`, `SET_ENTRY_ROLL` | m/s / m / — / m / ° / ° | `lpSet*()` |
 | `0x5E` | `SET_ATT_REF` | 0 retro / 1 radial | `lpSetAttRef(v)` |
@@ -409,7 +425,7 @@ unchanged.
 | `0xA5` | ASCENT | 40 | unchanged |
 | `0xA6` | AIRCRAFT AP | **48** | as before, `latMode` 3 = NAV, `pitchMode` 5 = GS, float [8] = gs angle, [9] = cmdThrottle |
 | `0xA7` | ROVER AP | **36** | as before plus flags bit6 follow, floats [5] followRange, [6] stopDist, [7] cmdWheel |
-| `0xA8` | ORBITAL | 52 | byte 1 flags: bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 targetAvailable, bit5 nodeAvailable, bit6 apprEngaged; byte 2 mode (0 none, 1 NODE, 2 AP, 3 PE, 4 INC); byte 3 phase (0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP, 4 BURN, 5 DONE, 6 ABORT); byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] targetAp, [1] targetPe, [2] targetInc, [3] apprRate, [4] apprDist, [5] dvTotal, [6] dvRemaining, [7] tIgnition, [8] burnDuration, [9] accelEst, [10] cmdThrottle |
+| `0xA8` | ORBITAL | 52 | byte 1 flags: bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 targetAvailable, bit5 nodeAvailable, bit6 apprEngaged; byte 2 mode (0 none, 1 NODE, 2 AP, 3 PE, 4 INC); byte 3 phase (0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP READY, 4 WARPING, 5 BURN, 6 DONE, 7 ABORT, 8 RE-PLANNED); byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] targetAp, [1] targetPe, [2] targetInc, [3] apprRate, [4] apprDist, [5] dvTotal, [6] dvRemaining, [7] tIgnition, [8] burnDuration, [9] accelEst, [10] cmdThrottle |
 | `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed; byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
 
 Live data shown on the consoles (node ΔV, T-node, radar altitude, vertical speed, target range…)
@@ -445,8 +461,9 @@ In dependency order.
 2. ~~**Burn alignment for normal / anti-normal.**~~ **Resolved:** compute the normal from telemetry
    (horizontal, prograde heading ∓ 90°) and test the pointing error like every other burn, with the
    rate-settle test kept as a backstop and a 30 s `ALIGN` abort (§4.3).
-3. **Warp authority.** Should the executor ever warp on its own? WARP defaults to AUTO here; the
-   conservative default is OFF with the pilot warping from the Time module.
+3. ~~**Warp authority.**~~ **Resolved:** the executor never warps unasked. After ALIGN the EXEC
+   button becomes WARP and a second tap warps to ignition minus the lead; a changed plan drops the
+   executor back to PLANNED before it will warp (§4.3, §4.4).
 4. **BRAKE safety factor.** 15 % plus MARGIN is a guess; MechJeb uses a similar margin. A wrong
    acceleration estimate under-brakes, so the estimate's confidence (measured vs stage-average)
    could be shown.
