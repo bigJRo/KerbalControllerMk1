@@ -191,7 +191,7 @@ void switchToScreen(ScreenType s);
    This sketch requires KerbalDisplayCommon >= 3.11.0 (buffer formatters)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 14;  // 1.14.0: Aircraft and Rover Autopilot consoles, shared console queue + keypad
+static const uint8_t SKETCH_VERSION_MINOR = 15;  // 1.15.0: Orbital and Landing Autopilot consoles, five-console key, sync-byte status dispatch
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 

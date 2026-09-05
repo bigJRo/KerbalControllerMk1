@@ -453,11 +453,14 @@ Payload is a little-endian float32 as before. For `ENGAGE_*` opcodes the payload
 ### 8.2 Status frames
 
 The master learns the console on screen from `activeScreen` (outbound byte 2) and pushes **only
-the frame that console needs**, at 5–10 Hz or on change. Frames are dispatched by write length in
-`onI2CReceive()` like the existing 40-byte frame; the three lengths (28, 40, 44) plus the 2-byte
-control write are all distinct.
+the frame that console needs**, at 5–10 Hz or on change. Frames were originally dispatched by
+write length; since `Mission_Autopilot.md` they are dispatched by **sync byte** (any write of 3
+bytes or more), and both frames below have grown — the aircraft frame to **48 bytes** (float [8]
+= glideslope angle, [9] = cmdThrottle; `pitchMode` 5 = GS, `latMode` 3 = NAV) and the rover frame
+to **36 bytes** (flags bit6 follow; floats [5] followRange, [6] stopDist, [7] cmdWheelThrottle).
+The layouts below are the original ones; `Mission_Autopilot.md` §8.1 lists the additions.
 
-**Aircraft status — 44 bytes, sync `0xA6`**
+**Aircraft status — 44 bytes as designed (48 as built), sync `0xA6`**
 
 ```
 Byte 0      : 0xA6
@@ -475,7 +478,7 @@ Bytes 8..43 : nine float32 LE — setpoint echoes and one output:
    [8] cmdThrottle 0..1   (not displayed; kept for the bench console and logging)
 ```
 
-**Rover status — 28 bytes, sync `0xA7`**
+**Rover status — 28 bytes as designed (36 as built), sync `0xA7`**
 
 ```
 Byte 0      : 0xA7
