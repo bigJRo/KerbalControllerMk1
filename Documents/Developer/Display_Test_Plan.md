@@ -13,7 +13,7 @@ This is an in-game run-through of every screen and feature on the three TFT disp
 
 **Test point IDs** are `<session>-<number>`, e.g. `ASC-04`. Each row lists the action, the expected result and the source of truth (threshold or rule) so a disagreement can be traced to the README or config constant rather than argued.
 
-**Recording results.** Copy the tables into a run log (or print them) and mark each row P / F / N/A, with a note on any failure. The defect-log template in §21 collects failures for triage. Record the firmware version strings from each boot screen at the top of the log.
+**Recording results.** The interactive version of this plan, `Display_Test_Plan.html` beside this file (generated from it by `assets/build_test_plan.py`), gives every test point a PASS / FAIL / N/A control and a note, keeps the run in the browser, and builds the run log for you. Otherwise copy the tables into a run log (or print them) and mark each row P / F / N/A, with a note on any failure; the defect-log template in §21 collects failures for triage. Record the firmware version strings from each boot screen at the top of the log.
 
 **Panel names used below.**
 
