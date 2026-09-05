@@ -20,7 +20,10 @@ extern "C" void usb_init(void);
 
 #include "module_packets.h"               // Per-type I2C packet sizing + universal header helpers
 #include "module_variables.h"             // Module Register Definitions
+#include "attitude_controller.h"          // Shared attitude PID (ascent + hold-mode autopilots)
 #include "ascent_autopilot.h"             // Launch-to-orbit ascent autopilot
+#include "hold_autopilot.h"               // Aircraft / rover hold-mode autopilot
+#include "control_links.h"                // Throttle Module, rotation joystick and Info Display 2 links
 #include "C:\Dev\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
 #include "C:\Dev\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
 #include "C:\Dev\KerbalControllerMk1\Software\Common\body_params.h"            // Shared celestial-body table (ascent autopilot)
@@ -31,7 +34,8 @@ extern "C" void usb_init(void);
 ****************************************************************************************/
 #define ANNUN_MC 0x10
 #define RES_MC 0x11   // Resource Display slave (KCM_I2C_ADDR_RESDISP)
-#define INFO_MC 0x12  // Info Display slave    (KCM_I2C_ADDR_INFODISP)
+#define INFO_MC 0x12  // Info Display 1 slave  (KCM_I2C_ADDR_INFODISP)
+#define INFO2_MC 0x13 // Info Display 2 slave  (KCM_I2C_ADDR_INFODISP_2) — autopilot console command source
 
 // I2C module addresses — Module UI Reference / I2C Protocol Specification v2.10 registry.
 #define UI_MOD 0x20           // UI Control          (KMC_TYPE_UI_CONTROL)
@@ -198,10 +202,26 @@ void setup() {
   Serial.println("COMPLETE");
 
   /********************************************************
+    I2C bus + module / display links
+  *********************************************************/
+  Wire.begin();
+  Wire.setClock(400000);
+  thrInit();   // Throttle Module lever link
+  rotInit();   // Rotation joystick link
+
+  /********************************************************
     Initialise the ascent autopilot (loads default config;
     edit via apGetConfig()/apSetTargets() and engage with apArm())
   *********************************************************/
   apInit();
+
+  /********************************************************
+    Initialise the hold-mode autopilot (aircraft / rover hold
+    modes, engaged from the Info Display 2 consoles) and the
+    console link that polls the display and pushes status.
+  *********************************************************/
+  hpInit();
+  idlInit();
 }
 
 
@@ -226,6 +246,7 @@ void loop() {
     if (abortButton.fallingEdge()) {
       mySimpit.activateAction(ABORT_ACTION);
       apDisarm();  // an abort always drops the autopilot back to manual control
+      hpDisconnectAll(HP_REASON_PILOT);
     }
   }
 
@@ -236,6 +257,10 @@ void loop() {
       - apUpdate() runs the guidance loop and emits control to KSP
         only while the autopilot is armed; it is a no-op otherwise.
   *********************************************************/
-  apSerialConsole();
+  thrService();       // Throttle Module: poll lever, forward pilot throttle, drive the lever
+  apSerialConsole();  // bench console (ARM/DISARM/ALT/... and HP <cmd> for the hold autopilot)
   apUpdate();
+  hpUpdate();         // hold-mode autopilot loops (no-op unless a mode is engaged)
+  rotService();       // joystick poll + merged rotation send (silent while the ascent AP is armed)
+  idlService();       // Info Display 2 console: command poll / ACK / status push
 }

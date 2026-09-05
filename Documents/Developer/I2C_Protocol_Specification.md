@@ -566,7 +566,7 @@ At power-on each carrier holds in `setup()` until the master sends `PROCEED` (`S
 |---------|-----------------|-------|
 | Annunciator (0x10) | 3 bytes (legacy), **6 bytes (rev-2 extended)**, or **9 bytes (rev-3)** | Rev-2 appends `modeFlags` (2 bytes) + `capValue` (1 byte). Rev-3 further appends **GPWS config** (1 byte) + **GPWS threshold bug** (int16, big-endian, 2 bytes — an altitude decision height, or a target range in rendezvous mode). `onI2CReceive()` accepts any of the three lengths so the master can be upgraded independently. The GPWS config byte reuses the **GPWS Input Panel (0x0B/0x2A) reported state-byte layout** — bits 1:0 = mode (0=OFF, 1=ACTIVE, 2=PROX), bit 2 = proxAlarm, bit 3 = rdvRadar — so the master relays it straight through to the Annunciator's GPWS voice-callout function. See `KCMk1_Annunciator/README.md`. |
 | Resource Display (0x11) | 2 bytes | controlByte + reserved |
-| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + a 40-byte `AscentStatus` push (sync **0xA5**), dispatched by write length | Byte 1 of the 2-byte command carries the Ascent-AP `ackSeq`. See `Ascent_Autopilot_Interface.md`. |
+| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + status pushes dispatched by write length: 40-byte `AscentStatus` (sync **0xA5**), 44-byte aircraft hold-mode status (sync **0xA6**), 28-byte rover hold-mode status (sync **0xA7**) | Byte 1 of the 2-byte command carries the console `ackSeq`. See `Ascent_Autopilot_Interface.md` and `Hold_Mode_Autopilot.md` §8. The master pushes only the frame for the console on screen. |
 
 The `requestType` nibble values and the boot `PROCEED` handshake are identical on all three implemented carriers; only the payload width and the panel-specific status/command fields differ.
 

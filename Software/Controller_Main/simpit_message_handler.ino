@@ -17,6 +17,7 @@ void registerInputChannels() {  //Game message that registers the necessary mess
   mySimpit.registerChannel(APSIDESTIME_MESSAGE);  // Time-to-apoapsis for circularization timing (ascent autopilot)
   mySimpit.registerChannel(ORBIT_MESSAGE);        // Inclination for the ascent autopilot azimuth target
   mySimpit.registerChannel(ROTATION_DATA_MESSAGE);// Attitude + surface prograde for the ascent autopilot steering loop
+  mySimpit.registerChannel(TARGETINFO_MESSAGE);   // Target bearing for the rover drive-to-target hold (hold autopilot)
   mySimpit.registerChannel(DELTAV_MESSAGE);
   mySimpit.registerChannel(BURNTIME_MESSAGE);
   mySimpit.registerChannel(TEMP_LIMIT_MESSAGE);
@@ -46,6 +47,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         lights_on = msg[0] & LIGHT_ACTION;
         RCS_on = msg[0] & RCS_ACTION;
         SAS_on = msg[0] & SAS_ACTION;
+        hpIngestBrakes(brakes_on);  // brakes drop rover cruise (hold autopilot)
       }
       break;
     case CAGSTATUS_MESSAGE:
@@ -96,6 +98,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         vesselSituation = myFlightStatus.vesselSituation;
         isRecoverable = myFlightStatus.isRecoverable();
         vesselCtrlLvl = myFlightStatus.getControlLevel();
+        hpIngestFlightStatus(myFlightStatus.vesselType, myFlightStatus.vesselSituation, myFlightStatus.hasTarget());  // feed hold autopilot
       }
       break;
     case SCENE_CHANGE_MESSAGE:
@@ -108,11 +111,13 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         //tftDispMode = 0;
         resetDisplays();
         noTone(AUDIO_PIN);
+        hpVesselChanged();   // leaving the flight scene drops every hold mode, silently
       }
       break;
     case VESSEL_CHANGE_MESSAGE:
       if (msg[0] == 1) {
         resetDisplays();
+        hpVesselChanged();   // a new vessel starts with no hold modes
         if (debug) { Serial.println("*******Vessel Change Message*******"); }
       } else if (msg[0] == 2) {
         if (debug) { Serial.println("*******Craft has docked*******"); }
@@ -129,6 +134,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         throttleMessage myThrottle;
         myThrottle = parseMessage<throttleMessage>(msg);
         gameThrottleCmd = map(myThrottle.throttle, 0, INT16_MAX, 0, 1023);
+        hpIngestThrottle((float)myThrottle.throttle / (float)INT16_MAX);  // autothrottle bumpless engage
         Serial.println("********THROTTLE CMD MESSAGE RECEIVED********");
         Serial.print("myThrottle.throttle = ");
         Serial.println(myThrottle.throttle);
@@ -143,6 +149,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         alt_sl = myAltitude.sealevel;
         alt_surf = myAltitude.surface;
         apIngestAltitude(myAltitude.sealevel, myAltitude.surface);  // feed ascent autopilot
+        hpIngestAltitude(myAltitude.sealevel);                      // feed hold autopilot (ALT hold)
       }
       break;
     case VELOCITY_MESSAGE:
@@ -153,6 +160,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         vel_surf = myVelocity.surface;
         vel_vert = myVelocity.vertical;
         apIngestVelocity(myVelocity.orbital, myVelocity.surface, myVelocity.vertical);  // feed ascent autopilot
+        hpIngestVelocity(myVelocity.surface, myVelocity.vertical);                     // feed hold autopilot (V/S, CRUISE)
       }
       break;
     case AIRSPEED_MESSAGE:
@@ -161,6 +169,7 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         myAirspeed = parseMessage<airspeedMessage>(msg);
         gForces = myAirspeed.gForces;
         apIngestGForce(myAirspeed.gForces);  // feed ascent autopilot max-G limiter
+        hpIngestAirspeed(myAirspeed.IAS, myAirspeed.mach);  // feed hold autopilot (IAS / MACH)
       }
       break;
     case APSIDES_MESSAGE:
@@ -193,6 +202,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         apIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
                          myPointing.surfaceVelocityHeading, myPointing.surfaceVelocityPitch,
                          myPointing.orbitalVelocityHeading, myPointing.orbitalVelocityPitch);  // feed ascent autopilot steering
+        hpIngestAttitude(myPointing.heading, myPointing.pitch, myPointing.roll,
+                         myPointing.surfaceVelocityHeading, myPointing.surfaceVelocityPitch);  // feed hold autopilot
       }
       break;
     case DELTAV_MESSAGE:
@@ -245,6 +256,14 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         inAtmo = myAtmoConditions.isVesselInAtmosphere();
         apIngestAtmo(myAtmoConditions.airDensity, myAtmoConditions.hasAtmosphere(),
                      myAtmoConditions.isVesselInAtmosphere());  // feed ascent autopilot (max-Q + airless/atmospheric branch)
+        hpIngestAtmo(myAtmoConditions.hasAtmosphere(), myAtmoConditions.isVesselInAtmosphere());  // feed hold autopilot
+      }
+      break;
+    case TARGETINFO_MESSAGE:
+      if (msgSize == sizeof(targetMessage)) {
+        targetMessage myTarget;
+        myTarget = parseMessage<targetMessage>(msg);
+        hpIngestTarget(myTarget.heading);  // bearing to target — rover drive-to-target hold
       }
       break;
     case VESSEL_NAME_MESSAGE:

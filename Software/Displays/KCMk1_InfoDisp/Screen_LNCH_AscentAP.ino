@@ -129,82 +129,11 @@ static bool apArmPending()  { return apArmOvr >= 0; }
 
 bool apArmedAnnunciated() { return state.apArmed; }
 
-// ── Outbound command channel (InfoDisp -> Controller_Main) ────────────────────────────
-// Pilot edits and ARM/DISARM taps queue here as (opcode, float-payload) commands. The
-// I2C master (Controller_Main) reads the head command from the outbound packet, applies
-// it to the autopilot, then acknowledges it by echoing the command's sequence number in
-// its next inbound packet, which pops the queue. Pending (cyan) values clear separately,
-// in apReconcilePending(), once Controller_Main echoes the accepted value back in the
-// AscentStatus frame — so the UI confirms the round-trip, not merely command delivery.
-// AP_CMD_* opcodes and the roll sentinel are the command contract between this console,
-// I2CSlave.ino and (in demo mode) Demo.ino, so they live in KCMk1_InfoDisp.h — Demo.ino
-// compiles before this tab and could not otherwise see them. Byte-level layout is in
-// Documents/Developer/Ascent_Autopilot_Interface.md.
-
-
-struct ApCmd { uint8_t op; float payload; };
-static const uint8_t AP_CMDQ_LEN = 16;
-static ApCmd   apCmdQ[AP_CMDQ_LEN];
-static uint8_t apCmdHead = 0, apCmdTail = 0;   // ring-buffer indices (empty when equal)
-static uint8_t apCmdCurSeq = 0;                // seq of head command in flight (0 = none)
-static uint8_t apCmdSeqCtr = 0;                // monotonic seq generator, wraps 1..255
-
-// Returns true when the command was actually queued. Callers that show a pending cue
-// must gate it on this: a cue for a command that was never sent would never clear.
-static bool apEnqueueCmd(uint8_t op, float payload) {
-#if INFO_DISP_IS_PFD_UNIT
-  // Only the mission panel (unit 2) owns the autopilot. Unit 1 has no ASC sidebar
-  // button, so it should never reach here — this is the backstop that makes the
-  // single-editor rule a property of the command channel rather than of the
-  // navigation table, so a future sidebar change cannot quietly reopen a second
-  // command source into one autopilot.
-  (void)op; (void)payload;
-  return false;
-#else
-  // No master to drain the queue in demo — the demo applies the command to its own
-  // autopilot model and publishes the result on the next frame, so the console's
-  // round trip closes and its pending cue clears exactly as it does in flight.
-  if (demoMode) return apDemoApplyCommand(op, payload);
-  uint8_t next = (uint8_t)((apCmdTail + 1) % AP_CMDQ_LEN);
-  if (next == apCmdHead) return false;         // full — drop (queue holds 15, never happens)
-  apCmdQ[apCmdTail].op = op;
-  apCmdQ[apCmdTail].payload = payload;
-  apCmdTail = next;
-  return true;
-#endif
-}
-
-// Assign a sequence number to a newly-exposed head command. Main-thread only; called
-// from updateI2CState() before outbound change-detection.
-void apPumpCommandQueue() {
-  if (apCmdCurSeq == 0 && apCmdHead != apCmdTail) {
-    if (++apCmdSeqCtr == 0) apCmdSeqCtr = 1;   // seq is 1..255; 0 means "no command"
-    apCmdCurSeq = apCmdSeqCtr;
-  }
-}
-
-// Write the head command into a 6-byte field: [seq][op][payload float, little-endian].
-// Pure read — safe to call for both the live and candidate packet buffers.
-void apFillOutboundCmd(uint8_t *out6) {
-  if (apCmdCurSeq != 0) {
-    out6[0] = apCmdCurSeq;
-    out6[1] = apCmdQ[apCmdHead].op;
-    memcpy(&out6[2], &apCmdQ[apCmdHead].payload, 4);
-  } else {
-    out6[0] = 0;
-    out6[1] = AP_CMD_NOP;
-    memset(&out6[2], 0, 4);
-  }
-}
-
-// Master acknowledged sequence `ackSeq` (0 = no ack); pop the head if it matches the
-// in-flight command so the next queued command is exposed on the following pump.
-void apAckCommand(uint8_t ackSeq) {
-  if (ackSeq != 0 && ackSeq == apCmdCurSeq) {
-    apCmdHead = (uint8_t)((apCmdHead + 1) % AP_CMDQ_LEN);
-    apCmdCurSeq = 0;
-  }
-}
+// ── Outbound command channel ─────────────────────────────────────────────────────────
+// The command queue (apEnqueueCmd / apPumpCommandQueue / apFillOutboundCmd /
+// apAckCommand) and the numeric keypad moved to ConsoleShared.ino when the AIRCRAFT
+// and ROVER autopilot consoles arrived; all three consoles share one queue and one
+// keypad. Byte-level layout is in Documents/Developer/Ascent_Autopilot_Interface.md.
 
 // Clear pending (cyan) flags once Controller_Main echoes the accepted value back in the
 // AscentStatus frame. Called each loop from updateI2CState().
@@ -223,30 +152,7 @@ void apReconcilePending() {
   if (apArmOvr >= 0 && state.apArmed == (apArmOvr == 1))         apArmOvr = -1;
 }
 
-// ── Keypad state ────────────────────────────────────────────────────────────────────
-static bool    apKpOpen = false;
-static bool    apKpRedraw = false;
-static bool    apScreenRefresh = false;
-static int8_t  apKpEdit = -1;         // index into AP_EDITS
-static char    apKpBuf[12];
-static uint8_t apKpLen = 0;
-
-static const int16_t KP_W = 480, KP_H = 384;
-static const int16_t KP_X = (CONTENT_W - KP_W) / 2;                 // 230
-static const int16_t KP_Y = TITLE_TOP + (SCREEN_H - TITLE_TOP - KP_H) / 2;   // ~139
-static const int16_t KP_HDR_H = 80;
-static const int16_t KAX = KP_X + 6, KAY = KP_Y + KP_HDR_H;
-static const int16_t KAW = KP_W - 12, KAH = KP_H - KP_HDR_H - 6;
-static const int16_t AP_KEY_W = KAW / 4, AP_KEY_H = KAH / 4;
-static const int16_t KP_CX = KP_X + KP_W - 74, KP_CY = KP_Y + 8, KP_CW = 66, KP_CH = 40;  // CANCEL
-
-// Key labels (row-major). "" = disabled slot.
-static const char *const KP_KEYS[4][4] = {
-  { "7",   "8", "9", "DEL" },
-  { "4",   "5", "6", "CLR" },
-  { "1",   "2", "3", "OFF" },
-  { "+/-", "0", ".", "ENT" },
-};
+static bool apScreenRefresh = false;
 
 // ── Phase name / colour ─────────────────────────────────────────────────────────────
 const char *apPhaseName(uint8_t p) {
@@ -285,7 +191,7 @@ static void chromeScreen_LNCHAP(KCM_TFT &tft) {
   // Any full repaint (screen entry, display reset) starts with the keypad closed — the
   // modal is transient and must never persist across a leave/return, or the panel would
   // come back frozen with taps misrouted into a stale keypad.
-  apKpOpen = false; apKpRedraw = false; apKpLen = 0; apKpEdit = -1;
+  kpForceClose();
   tft.fillRect(0, AP_BANNER_Y + AP_BANNER_H, CONTENT_W, 2, TFT_GREY);
   tft.drawLine(AP_DIV1_X, AP_COL_Y, AP_DIV1_X, AP_COL_BOT, TFT_GREY);
   tft.drawLine(AP_DIV2_X, AP_COL_Y, AP_DIV2_X, AP_COL_BOT, TFT_GREY);
@@ -318,65 +224,17 @@ static void apPut(KCM_TFT &tft, uint8_t slot, const char *val, uint16_t fg) {
   apPut(tft, slot, String(val), fg);
 }
 
-// Format the live keypad entry with thousands separators in the integer part,
-// preserving a leading sign and any decimal portion being typed.
-static String apCommaEntry(const char *buf) {
-  String work(buf), sign;
-  if (work.length() && work[0] == '-') { sign = "-"; work = work.substring(1); }
-  int dot = work.indexOf('.');
-  String ip = (dot >= 0) ? work.substring(0, dot) : work;
-  String fp = (dot >= 0) ? work.substring(dot)    : String("");
-  String out; int len = ip.length();
-  for (int i = 0; i < len; i++) {
-    if (i > 0 && (len - i) % 3 == 0) out += ",";
-    out += ip[i];
-  }
-  return sign + out + fp;
-}
-
-// ── KEYPAD draw ─────────────────────────────────────────────────────────────────────
-static void apDrawKeypad(KCM_TFT &tft) {
-  const ApEdit &e = AP_EDITS[apKpEdit];
-  tft.fillRect(KP_X, KP_Y, KP_W, KP_H, TFT_OFF_BLACK);
-  tft.drawRect(KP_X, KP_Y, KP_W, KP_H, TFT_SKY);
-  tft.drawRect(KP_X + 1, KP_Y + 1, KP_W - 2, KP_H - 2, TFT_SKY);
-  // Header: field name, range, live entry
-  textLeft(tft, &Roboto_Black_24, KP_X + 10, KP_Y + 4, KP_W - 90, 28, e.name, TFT_WHITE, TFT_OFF_BLACK);
-  { char r[48];
-    if (e.mx >= 100000.0f) snprintf(r, sizeof(r), "enter in %s (min %g)", e.units, e.mn);
-    else                   snprintf(r, sizeof(r), "range %g to %g %s", e.mn, e.mx, e.units);
-    textLeft(tft, &Roboto_Black_16, KP_X + 10, KP_Y + 34, KP_W - 90, 20, r, TFT_LIGHT_GREY, TFT_OFF_BLACK); }
-  { String ent = (apKpLen ? apCommaEntry(apKpBuf) : String("_")) + " " + e.units;
-    textRight(tft, &Roboto_Black_28, KP_X + 6, KP_Y + 50, KP_W - 12, 28, ent, TFT_SKY, TFT_OFF_BLACK); }
-  // CANCEL
-  tft.fillRect(KP_CX, KP_CY, KP_CW, KP_CH, TFT_OFF_BLACK);
-  tft.drawRect(KP_CX, KP_CY, KP_CW, KP_CH, TFT_RED);
-  textCenter(tft, &Roboto_Black_24, KP_CX, KP_CY, KP_CW, KP_CH, "X", TFT_RED, TFT_OFF_BLACK);
-  // Keys
-  bool offOk = (e.kind == 2 || e.kind == 3);
-  for (uint8_t r = 0; r < 4; r++)
-    for (uint8_t c = 0; c < 4; c++) {
-      const char *k = KP_KEYS[r][c];
-      bool dis = (strcmp(k, "OFF") == 0 && !offOk);
-      int16_t kx = KAX + c * AP_KEY_W, ky = KAY + r * AP_KEY_H;
-      uint16_t kb = dis ? TFT_OFF_BLACK : TFT_GREY;
-      uint16_t kf = dis ? TFT_DARK_GREY : (strcmp(k, "ENT") == 0 ? TFT_NEON_GREEN :
-                    strcmp(k, "OFF") == 0 ? TFT_ORANGE : TFT_WHITE);
-      tft.drawRect(kx, ky, AP_KEY_W - 4, AP_KEY_H - 4, kb);
-      textCenter(tft, &Roboto_Black_28, kx, ky, AP_KEY_W - 4, AP_KEY_H - 4, k, kf, TFT_OFF_BLACK);
-    }
-}
-
 // ── DRAW (dynamic) ──────────────────────────────────────────────────────────────────
 static void drawScreen_LNCHAP(KCM_TFT &tft) {
+  if (kpTakeClosed()) apScreenRefresh = true;   // repaint the panel the modal covered
   if (apScreenRefresh) {
     tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
     chromeScreen_LNCHAP(tft);
     for (uint8_t r = 0; r < ROW_COUNT; r++) rowCache[screen_LNCHAP][r].value = "\x01";
     apScreenRefresh = false;
   }
-  if (apKpOpen) {
-    if (apKpRedraw) { apDrawKeypad(tft); apKpRedraw = false; }
+  if (kpIsOpen()) {
+    kpDraw(tft);
     return;                       // freeze the panel behind the modal while editing
   }
 
@@ -491,17 +349,15 @@ static void drawScreen_LNCHAP(KCM_TFT &tft) {
 }
 
 // ── Keypad open / commit ────────────────────────────────────────────────────────────
-static void apOpenKeypad(int8_t editIdx) {
-  apKpEdit = editIdx; apKpLen = 0; apKpBuf[0] = '\0';
-  apKpOpen = true; apKpRedraw = true;
-}
-static void apCloseKeypad() { apKpOpen = false; apScreenRefresh = true; }
-
-// Commit the entered value into the pending buffer for the current field.
-static void apCommitKeypad() {
-  const ApEdit &e = AP_EDITS[apKpEdit];
-  float v = (apKpLen ? atof(apKpBuf) : 0.0f);
-  if (v < e.mn) v = e.mn; if (v > e.mx) v = e.mx;
+// Commit from the shared keypad: `off` is the OFF key (roll hold / max-G only); the
+// value is already clamped to the field's range.
+static void apKeypadCommit(int8_t idx, float v, bool off) {
+  const ApEdit &e = AP_EDITS[idx];
+  if (off) {
+    if (e.kind == 2)      { apRolEn = false; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); }
+    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f); }
+    return;
+  }
   switch (e.slot) {
     // The pending cue is raised only for a command that was actually queued (see
     // apEnqueueCmd): a cue for one that was not would never clear.
@@ -511,42 +367,17 @@ static void apCommitKeypad() {
     case AP_ROLL:   apRolDeg = v; apRolEn = true; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, v); break;
     case AP_MAXG:   apMxg = v; apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, v);        break;
   }
-  apCloseKeypad();
 }
 
-// ── Touch entry point (called from TouchEvents.ino) ─────────────────────────────────
-static void apKeypadTouch(uint16_t x, uint16_t y) {
-  // CANCEL
-  if (x >= KP_CX && x < KP_CX + KP_CW && y >= KP_CY && y < KP_CY + KP_CH) { apCloseKeypad(); return; }
-  // Key grid
-  if (x < KAX || y < KAY) return;
-  int16_t c = (x - KAX) / AP_KEY_W, r = (y - KAY) / AP_KEY_H;
-  if (c < 0 || c > 3 || r < 0 || r > 3) return;
-  const char *k = KP_KEYS[r][c];
-  const ApEdit &e = AP_EDITS[apKpEdit];
-  if (strcmp(k, "ENT") == 0) { apCommitKeypad(); return; }
-  if (strcmp(k, "CLR") == 0) { apKpLen = 0; apKpBuf[0] = '\0'; apKpRedraw = true; return; }
-  if (strcmp(k, "DEL") == 0) { if (apKpLen) { apKpBuf[--apKpLen] = '\0'; apKpRedraw = true; } return; }
-  if (strcmp(k, "OFF") == 0) {
-    if (e.kind == 2)      { apRolEn = false; apDRol = apEnqueueCmd(AP_CMD_SET_ROLL, AP_ROLL_OFF); apCloseKeypad(); }
-    else if (e.kind == 3) { apMxg = 0.0f;    apDMxg = apEnqueueCmd(AP_CMD_SET_MAXG, 0.0f);        apCloseKeypad(); }
-    return;
-  }
-  if (strcmp(k, "+/-") == 0) {                      // sign toggle
-    if (apKpLen && apKpBuf[0] == '-') { memmove(apKpBuf, apKpBuf + 1, apKpLen); apKpLen--; }
-    else if (apKpLen < sizeof(apKpBuf) - 1) { memmove(apKpBuf + 1, apKpBuf, apKpLen + 1); apKpBuf[0] = '-'; apKpLen++; }
-    apKpRedraw = true; return;
-  }
-  // digit or '.'
-  if (apKpLen < sizeof(apKpBuf) - 1) {
-    if (k[0] == '.' && strchr(apKpBuf, '.')) return;   // one decimal point
-    apKpBuf[apKpLen++] = k[0]; apKpBuf[apKpLen] = '\0'; apKpRedraw = true;
-  }
+static void apOpenKeypad(int8_t editIdx) {
+  const ApEdit &e = AP_EDITS[editIdx];
+  KpField f = { e.name, e.units, e.mn, e.mx, (e.kind == 2 || e.kind == 3), true, 0 };
+  kpOpen(f, editIdx, apKeypadCommit);
 }
 
 // Public: routed here for any content-area tap while the AP screen is active.
 void apScreenTouch(uint16_t x, uint16_t y) {
-  if (apKpOpen) { apKeypadTouch(x, y); return; }
+  if (kpIsOpen()) { kpTouch(x, y); return; }
 
   // ARM / DISARM
   if (x >= AP_ARM_X && x < AP_ARM_X + AP_ARM_W && y >= AP_ARM_Y && y < AP_ARM_Y + AP_ARM_H) {

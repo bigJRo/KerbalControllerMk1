@@ -55,6 +55,15 @@
      Bytes 4-39 : 9 IEEE-754 float32 LE — targetAlt, inclination, loft, rollDeg, maxG,
                   cmdPitch, cmdHeading, cmdThrottle, dynPressure
 
+   Inbound hold-mode status (Master -> InfoDisp), dispatched by length like the above
+   (Documents/Developer/Hold_Mode_Autopilot.md §8.2):
+     44 bytes, sync 0xA6 — aircraft: flags, pitch/lat/thr mode bytes, reason, reasonAge,
+                           then 9 floats (att, aoa, vs, alt, roll, hdg, ias, mach, cmdThrottle)
+     28 bytes, sync 0xA7 — rover: flags, reason, reasonAge, then 6 floats
+                           (cruise, hdg, maxSpeed, maxSlope, maxRoll, cmdWheel)
+   The master pushes only the frame the console on screen needs (activeScreen, byte 2 of
+   the outbound packet). The four inbound lengths — 2, 28, 40, 44 — are all distinct.
+
    Expanding the protocol:
      Outbound: increment I2C_PACKET_SIZE, add fields to fillI2CPacketBuffer().
      Inbound:  add a new packet length + branch in onI2CReceive(), process in loop.
@@ -76,6 +85,10 @@
 #define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp control/ack (panel-specific)
 #define I2C_AP_STATUS_SIZE 40   // inbound:  Master -> InfoDisp Ascent-AP status push
 #define I2C_AP_STATUS_SYNC 0xA5 // framing byte for the AP status push
+#define I2C_HA_STATUS_SIZE 44   // inbound:  Master -> InfoDisp aircraft hold-mode status push
+#define I2C_HA_STATUS_SYNC 0xA6
+#define I2C_RA_STATUS_SIZE 28   // inbound:  Master -> InfoDisp rover hold-mode status push
+#define I2C_RA_STATUS_SYNC 0xA7
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_INFODISP      // #3C from SystemConfig (0xAE, collision fix)
 
 // requestType values (bits 7:4 of controlByte)
@@ -142,6 +155,10 @@ static volatile bool i2cCmdReady = false;
 // snapshotted and applied on the main thread by processApStatus().
 static volatile uint8_t apStatusBuf[I2C_AP_STATUS_SIZE];
 static volatile bool     apStatusReady = false;
+static volatile uint8_t haStatusBuf[I2C_HA_STATUS_SIZE];
+static volatile bool     haStatusReady = false;
+static volatile uint8_t raStatusBuf[I2C_RA_STATUS_SIZE];
+static volatile bool     raStatusReady = false;
 
 static void processI2CCommand(const uint8_t *cmd) {
   uint8_t controlByte = cmd[0];
@@ -281,6 +298,16 @@ static void onI2CReceive(int numBytes) {
       apStatusBuf[i] = KCM_I2C_BUS.read();
     }
     apStatusReady = true;
+  } else if (numBytes == I2C_HA_STATUS_SIZE) {
+    for (int i = 0; i < I2C_HA_STATUS_SIZE; i++) {
+      haStatusBuf[i] = KCM_I2C_BUS.read();
+    }
+    haStatusReady = true;
+  } else if (numBytes == I2C_RA_STATUS_SIZE) {
+    for (int i = 0; i < I2C_RA_STATUS_SIZE; i++) {
+      raStatusBuf[i] = KCM_I2C_BUS.read();
+    }
+    raStatusReady = true;
   } else {
     while (KCM_I2C_BUS.available()) KCM_I2C_BUS.read();
   }
@@ -313,6 +340,39 @@ static void processApStatus(const uint8_t *buf) {
   state.apCmdHeading  = f[6];
   state.apCmdThrottle = f[7];
   state.apDynPressure = f[8];
+}
+
+
+/***************************************************************************************
+   PROCESS HOLD-MODE STATUS (aircraft / rover)
+   Applies the master's HoldStatus pushes into `state` so the AIRCRAFT AUTOPILOT and
+   ROVER AUTOPILOT consoles render modes, setpoint echoes and disconnect reasons.
+   Main thread; skipped in demo mode (Demo.ino drives state.hp* / state.rv* locally).
+****************************************************************************************/
+static void processHaStatus(const uint8_t *buf) {
+  if (buf[0] != I2C_HA_STATUS_SYNC) return;
+  state.hpFlags     = buf[1];
+  state.hpPitchMode = buf[2];
+  state.hpLatMode   = buf[3];
+  state.hpThrMode   = buf[4];
+  state.hpReason    = buf[5];
+  state.hpReasonAge = buf[6];
+  float f[9];
+  memcpy(f, &buf[8], sizeof(f));   // 9 floats, bytes 8..43
+  state.hpAtt = f[0]; state.hpAoa = f[1]; state.hpVs = f[2]; state.hpAlt = f[3];
+  state.hpRoll = f[4]; state.hpHdg = f[5]; state.hpIas = f[6]; state.hpMach = f[7];
+  state.hpCmdThrottle = f[8];
+}
+
+static void processRaStatus(const uint8_t *buf) {
+  if (buf[0] != I2C_RA_STATUS_SYNC) return;
+  state.rvFlags     = buf[1];
+  state.rvReason    = buf[2];
+  state.rvReasonAge = buf[3];
+  float f[6];
+  memcpy(f, &buf[4], sizeof(f));   // 6 floats, bytes 4..27
+  state.rvCruise = f[0]; state.rvHdg = f[1]; state.rvMaxSpeed = f[2];
+  state.rvMaxSlope = f[3]; state.rvMaxRoll = f[4]; state.rvCmdWheel = f[5];
 }
 
 
@@ -359,7 +419,9 @@ void setupI2CSlave() {
 void updateI2CState() {
   uint8_t cmd[I2C_CMD_SIZE];
   uint8_t ap[I2C_AP_STATUS_SIZE];
-  bool haveCmd = false, haveAp = false;
+  uint8_t ha[I2C_HA_STATUS_SIZE];
+  uint8_t ra[I2C_RA_STATUS_SIZE];
+  bool haveCmd = false, haveAp = false, haveHa = false, haveRa = false;
   noInterrupts();
   if (i2cCmdReady) {
     for (uint8_t i = 0; i < I2C_CMD_SIZE; i++) cmd[i] = i2cCmdBuf[i];
@@ -371,15 +433,28 @@ void updateI2CState() {
     apStatusReady = false;
     haveAp = true;
   }
+  if (haStatusReady) {
+    for (uint8_t i = 0; i < I2C_HA_STATUS_SIZE; i++) ha[i] = haStatusBuf[i];
+    haStatusReady = false;
+    haveHa = true;
+  }
+  if (raStatusReady) {
+    for (uint8_t i = 0; i < I2C_RA_STATUS_SIZE; i++) ra[i] = raStatusBuf[i];
+    raStatusReady = false;
+    haveRa = true;
+  }
   interrupts();
   if (haveCmd) processI2CCommand(cmd);
 
   // --- Apply inbound Ascent-AP status push (live mode only) ---
   if (haveAp && !demoMode) processApStatus(ap);
+  if (haveHa && !demoMode) processHaStatus(ha);
+  if (haveRa && !demoMode) processRaStatus(ra);
 
-  // --- Ascent-AP outbound command queue: expose next command, retire confirmed edits ---
+  // --- Console command queue: expose next command, retire confirmed edits ---
   apPumpCommandQueue();
-  apReconcilePending();
+  apReconcilePending();    // ascent console
+  hpReconcilePending();    // aircraft + rover consoles
 
   // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {

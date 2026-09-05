@@ -24,7 +24,9 @@ Files:
 | File | Role |
 |------|------|
 | `ascent_autopilot.h`  | Public API + the `AscentConfig` tuning surface |
-| `ascent_autopilot.ino` | Guidance state machine, PID steering, throttle manager, staging |
+| `ascent_autopilot.ino` | Guidance state machine, throttle manager, staging |
+| `attitude_controller.h/.ino` | The attitude PID (rocket entry) — shared with the hold-mode autopilot |
+| `throttle_link.ino` | Throttle output: KSP + the Throttle Module's motorised lever (see `Hold_Mode_Autopilot.md` §7) |
 | `simpit_message_handler.ino` | Registers the extra channels and feeds `apIngest*()` |
 | `Controller_Main.ino` | `apInit()` in `setup()`, `apUpdate()`/`apSerialConsole()` in `loop()` |
 

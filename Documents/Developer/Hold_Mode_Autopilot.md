@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Hold-Mode Autopilot (Aircraft & Rover Consoles)
 
-**Status:** Draft for review
+**Status:** Implemented on branch — design for review, code in review (see §13)
 **Project:** Kerbal Controller Mk1
 **Organization:** Jeb's Controller Works
 **Author:** J. Rostoker
@@ -54,13 +54,19 @@ ascent autopilot disconnects every hold mode.
 
 | File | Role |
 |------|------|
-| `hold_autopilot.h` | Public API: mode enums, `HoldConfig`, `HoldStatus`, setters, engage/disconnect |
-| `hold_autopilot.ino` | Mode manager, outer loops, autothrottle, cruise control, disconnect logic |
-| `ascent_autopilot.ino` | Attitude loop `apSteer()` factored out so both autopilots share it (§6.1) |
+| `attitude_controller.h/.ino` | The shared attitude PID with rocket and aircraft entry points (§6.1) |
+| `hold_autopilot.h/.ino` | Mode manager, cascades, autothrottle, cruise, steering, guards, disconnect rules, `HoldStatus`, bench console |
+| `control_links.h` | Prototypes for the three link tabs below |
+| `throttle_link.ino` | Throttle Module (0x2C): lever follow, pilot-touch override, pilot throttle forwarding (§7) |
+| `rotation_link.ino` | Rotation joystick (0x28): pilot axes merged with autopilot-held axes, override detection (§6.6) |
+| `infodisp_link.ino` | Info Display 2 (0x13): console command poll / ACK / status push (§8) |
+| `ascent_autopilot.ino` | Steers through the shared attitude controller; throttle through the throttle link |
 | `simpit_message_handler.ino` | Registers `TARGETINFO_MESSAGE`; feeds `hpIngest*()` |
-| `function_definitions.ino` | InfoDisp poll/ack/push wiring; Throttle Module auto-move hook; stick suppression |
+| `Controller_Main.ino` | Includes, `Wire.begin()`, link and autopilot init, loop order |
+| `KCMk1_InfoDisp/ConsoleShared.ino` | Command queue, numeric keypad and grid helpers shared by all three consoles |
 | `KCMk1_InfoDisp/Screen_ACFT_AP.ino`, `Screen_ROVR_AP.ino` | The two consoles (chrome + draw + touch) |
-| `KCMk1_InfoDisp/I2CSlave.ino`, `AAA_Screens.ino`, `TouchEvents.ino` | New status frames, ASC key cycling, new screens |
+| `KCMk1_InfoDisp/Screen_LNCH_AscentAP.ino` | Ascent console, now on the shared queue and keypad |
+| `KCMk1_InfoDisp/I2CSlave.ino`, `AAA_Screens.ino`, `TouchEvents.ino`, `Demo.ino` | New status frames, autopilot key cycling, new screens, demo model |
 
 ---
 
@@ -80,8 +86,8 @@ All inputs are already registered by `registerInputChannels()` except `TARGETINF
 | `TARGETINFO_MESSAGE` | **New on the master.** Target bearing for rover TGT mode |
 | `THROTTLE_CMD_MESSAGE` | Game throttle echo (autothrottle resync) |
 
-Outputs: `ROTATION_MESSAGE` (pitch/yaw/roll), `THROTTLE_MESSAGE`, `WHEEL_THROTTLE_MESSAGE`,
-`WHEEL_STEER_MESSAGE`, `SAS_ACTION` / `BRAKES_ACTION`, and the Throttle Module `CMD_SET_THROTTLE`.
+Outputs: `ROTATION_MESSAGE` (pitch/yaw/roll), `THROTTLE_MESSAGE`, `WHEEL_MESSAGE` (steer + throttle,
+masked per axis), `SAS_ACTION` / `BRAKES_ACTION`, and the Throttle Module `CMD_SET_THROTTLE`.
 
 **Rover speed sign.** `VELOCITY_MESSAGE.surface` is unsigned. Direction is derived from the angle
 between vessel heading and surface-velocity heading: more than 90° apart means reverse. This is the
@@ -178,7 +184,9 @@ Mode buttons are three-state and draw in the panel's existing vocabulary:
 ### 4.4 Engage refusals
 
 The master refuses (does not echo) an aircraft-mode engage when: the vessel has no atmosphere
-around it (`hasAtmosphere == false`), the ascent autopilot is armed, or telemetry is stale. The
+around it (`hasAtmosphere == false`), telemetry is stale, or (thrust modes) the Throttle Module is in
+precision mode. Engaging while the ascent autopilot is armed is not refused: it disarms the ascent
+autopilot (§1.1, §6.3). The
 console keeps showing the pending outline until the pilot taps again or 3 s elapse, after which it
 reverts to off and the banner shows `REFUSED` in orange. This is the same "don't echo a rejected
 value" convention the ascent interface defines.
@@ -257,8 +265,8 @@ ALT ──(ALT→V/S: K_alt, V/S cap ±vsMax)──▶ V/S ──(V/S→pitch: P
 AOA ──(pitch = srfVelPitch + aoa)────────────────────────────────────────────────────▶ ATT ──▶ attitude loop
 HDG ──(HDG→bank: K_hdg, bank cap ±bankMax)──▶ ROLL ─────────────────────────────────▶ attitude loop
 IAS / MACH ──(PI, anti-windup, slew-limited)──▶ throttle 0..1 ──▶ THROTTLE_MESSAGE + Throttle Module
-CRUISE ──(PI on signed speed, slope-scaled setpoint)──▶ wheel throttle −1..1 ──▶ WHEEL_THROTTLE_MESSAGE
-HDG / TGT (rover) ──(P on heading error, speed-scheduled gain)──▶ wheel steer −1..1 ──▶ WHEEL_STEER_MESSAGE
+CRUISE ──(PI on signed speed, slope-scaled setpoint)──▶ wheel throttle −1..1 ──▶ WHEEL_MESSAGE (throttle)
+HDG / TGT (rover) ──(P on heading error, speed-scheduled gain)──▶ wheel steer −1..1 ──▶ WHEEL_MESSAGE (steer)
 ```
 
 Defaults (`HoldConfig`): `vsMax` 30 m/s, `pitchMax` 25°, `bankMax` 30°, `aoaMax` 20°,
@@ -293,7 +301,8 @@ is workable for a plane with SAS off; anything slower will need the plugin's ref
 | Pilot touches the Throttle Module slider (§7) | Drops IAS/MACH | — | `LEVER` |
 | Throttle Module 100 / 0 / UP / DOWN button | Drops IAS/MACH, then the button acts normally | — | `LEVER` |
 | Brakes applied | — | Drops CRUISE | `BRAKES` |
-| Manual wheel-throttle input | — | Drops CRUISE | `STICK` |
+| Manual steer input (rotation stick yaw) | — | Drops HDG/TGT | `STICK` |
+| Manual wheel-throttle input | — | *Not implemented*: the master has no wheel-throttle input source yet (§11 q.3) | — |
 | Vessel situation not landed/splashed for > 500 ms | — | Drops all | `AIRBORNE` |
 | Roll guard | — | Drops all + brakes | `ROLL LIMIT` |
 | Left atmosphere (`inAtmosphere` false > 2 s) | Drops all | — | `NO ATMO` |
@@ -310,8 +319,14 @@ throttle and lets the pilot take over.
 
 While a pitch-group mode is engaged the master stops forwarding the Rotation joystick's pitch axis
 to KSP; likewise roll for the lateral group and yaw is always forwarded. The suppressed axis is
-still *read* for the 25 % override test above. Trim mode and precision mode on the joystick are
-unaffected. The Translation joystick is never suppressed.
+still *read* for the 25 % override test above. The Translation joystick is never suppressed.
+
+Because the Simpit plugin keeps only the *latest* rotation message, the held axes and the pilot's
+axes cannot come from two senders: `rotation_link.ino` composes **one** rotation message per frame
+(autopilot axes where held, pilot axes elsewhere) and is the only sender while a hold mode holds an
+axis. While the ascent autopilot is armed it sends its own rotation and the link stays silent. This
+tab is also the master's first joystick forwarding path; trim and the joystick buttons still need
+their controller-side sequencing.
 
 ### 6.7 SAS
 
@@ -482,21 +497,22 @@ drives all of them from a simple model so the consoles can be laid out without a
 
 ## 9. Master-side work list
 
-In dependency order. Items 1 and 2 are prerequisites the ascent console already needs.
+All items are implemented on the branch (see §13 for what each became and what is still open).
 
-1. **InfoDisp poll / ACK / status push** in `function_definitions.ino` — read `0x13`, verify the
-   frame checksum, dispatch on `cmdSeq` change, ACK on the next control write, push the frame for
-   the active screen. Nothing in Controller_Main does this yet.
-2. **Throttle Module `CMD_SET_THROTTLE` hook** and the touch / button / precision handling of §7.
-3. **Shared attitude controller** factored out of `ascent_autopilot.ino` with rocket and aircraft
-   entry points and per-class gains.
-4. **`hold_autopilot.h/.ino`**: mode manager, cascades, autothrottle, cruise, steering, guards,
-   disconnect rules, `HoldStatus` for the push, bench serial console (`ENG ALT`, `SET IAS 180`,
-   `LVL`, `OFF`, `STATUS`, …) mirroring the ascent one.
-5. **Stick suppression** on held axes in the Rotation joystick forwarding path.
-6. `TARGETINFO_MESSAGE` registration and `hpIngestTarget()`.
-7. Vessel-type routing for the ASC key's first press (needs `vesselType` from
-   `FLIGHT_STATUS_MESSAGE`, already parsed on both boards).
+1. **InfoDisp poll / ACK / status push** — `infodisp_link.ino`: polls `0x13` at 20 Hz, verifies the
+   frame checksum, applies on `cmdSeq` change, ACKs on the next control write, pushes the frame for
+   the active screen at 10 Hz (skipped while the display reports demo mode). Sends PROCEED to both
+   displays at init.
+2. **Throttle Module `CMD_SET_THROTTLE` hook** — `throttle_link.ino`, with the touch / button /
+   precision handling of §7 and an owner model (ascent or hold) for the game throttle.
+3. **Shared attitude controller** — `attitude_controller.h/.ino`, rocket and aircraft entry points,
+   per-class gains, filtered-difference rates for the D term.
+4. **`hold_autopilot.h/.ino`** — as specified. Bench console lines are prefixed `HP ` on the existing
+   serial console: `HP ENG ALT`, `HP ENG IAS 0`, `HP SET IAS 180`, `HP SET MAXSLOPE 25`, `HP LVL`,
+   `HP OFF`, `HP STATUS`.
+5. **Stick suppression / override** — `rotation_link.ino` (§6.6).
+6. `TARGETINFO_MESSAGE` registration and `hpIngestTarget()` — `simpit_message_handler.ino`.
+7. Vessel-type routing for the autopilot key — `apConsoleContextScreen()` in `AAA_Screens.ino`.
 
 ---
 
@@ -543,3 +559,37 @@ In dependency order. Items 1 and 2 are prerequisites the ascent console already 
 The three console mockups are generated by `assets/gen_hold_mode_mockups.py` (Python 3, no
 dependencies) using the InfoDisp palette and the Ascent Autopilot console geometry, so they can be
 regenerated after layout changes. Render with any SVG viewer or headless Chromium.
+
+---
+
+## 13. Implementation notes
+
+What the build turned up, and what a reviewer should look at first.
+
+- **One translation unit.** The Arduino builder concatenates every `.ino` tab, so file-scope
+  `static` names are shared across tabs. The hold autopilot's state uses the `hp_` prefix for that
+  reason (the ascent module already owns `g_`), and the display's new tabs use `kp` / `con` /
+  `ha` / `ra`. A bench syntax check with stub headers (`g++ -fsyntax-only`) caught the first
+  collision; the toolchain is not in the repository.
+- **Tab order on the display.** `ConsoleShared.ino` must compile after `AAA_Screens.ino` (it uses
+  `TITLE_TOP`) and before the `Screen_*` tabs; the name sorts correctly. The shared geometry
+  constants in the header repeat the banner origin as `62` because the header cannot see
+  `TITLE_TOP`.
+- **Rotation channel.** `WHEEL_MESSAGE` is one Simpit message carrying steer and throttle with a
+  per-axis mask; the design text originally named two messages. The master sets only the axes a
+  rover mode owns, so the pilot's wheel input passes through on the other.
+- **Wheel steer sign.** `HoldConfig.steerSign` defaults to +1; flip it if a rover steers away from
+  its heading setpoint. Not verified against KSP's wheel-steer convention on hardware.
+- **Ascent throttle on the lever (§7.5, q.2)** is implemented as designed: `apSendThrottle()` goes
+  through the throttle link with the ascent module as owner, and a lever grab hands the throttle
+  to the pilot for the rest of the ascent while steering continues.
+- **Master integration state.** Controller_Main is still mid-integration: it did not call
+  `Wire.begin()` or the Simpit init, and several telemetry globals the message handler writes are
+  not defined anywhere. This change adds `Wire.begin()` and the link / autopilot calls to
+  `setup()` and `loop()` but does not attempt the rest; the bench check stubs those globals.
+- **Display verification.** Both consoles run under demo mode on the bench with no master
+  (`Demo.ino` plays Controller_Main for the hold-mode opcodes as it already did for the ascent
+  ones), which is the way to review layout and touch behaviour before the I2C link is exercised.
+- **Not yet done.** Manual wheel-throttle disconnect for CRUISE (no master-side wheel input
+  exists), trim / joystick-button sequencing in `rotation_link.ino`, the Dual Encoder binding
+  (q.6), and PID gain tuning on real craft.

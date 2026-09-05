@@ -20,7 +20,9 @@
                   context default: DOCK when near a target, NAV in atmospheric flight)
      4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
      5  per unit  Unit 1: VEH (Vehicle Info, single-mode).
-                  Unit 2: ASC (Ascent Autopilot console).
+                  Unit 2: autopilot consoles — ASC (Ascent) -> ACAP (Aircraft AP) ->
+                  RVAP (Rover AP) (press cycles; first press = console for the vessel
+                  type). Green while any autopilot is armed or engaged.
 
    Button order is identical on both units so one reach serves either panel. PFD is
    pinned to the top: it is the screen a pilot returns to from anywhere, it is unit 1's
@@ -68,8 +70,11 @@ const uint8_t SB_LNCH_BTN    = 1;   // LNCH: PRE (auto on pad) / ASC <-> CIRC (m
 const uint8_t SB_ORB_BTN     = 2;   // ORB:  ORB -> ORB+ -> MNVR
 const uint8_t SB_TGTDOCK_BTN = 3;   // TGT/DOCK
 const uint8_t SB_LNDG_BTN    = 4;   // LNDG/ENTR: DESC <-> ENTR
-// Button 5 is single-mode on both units (VEH on unit 1, ASC on unit 2), so it needs
-// no index constant — the tap handler's default branch selects SB_BTN_SCREEN[5].
+// Button 5: VEH on unit 1 (single-mode, no constant needed). On unit 2 it is the
+// autopilot console key and cycles ASC -> ACAP -> RVAP, so it gets a constant.
+#if INFO_DISP_IS_MISSION_UNIT
+const uint8_t SB_AP_BTN      = 5;   // unit 2: ASC / ACAP / RVAP (autopilot consoles)
+#endif
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
 }
@@ -133,6 +138,9 @@ uint8_t screenToButton(ScreenType s) {
     case screen_ORB:  case screen_ORBADV: case screen_MNVR:                return SB_ORB_BTN;
     case screen_TGT:  case screen_DOCK: case screen_NAV:                    return SB_TGTDOCK_BTN;
     case screen_LNDG: case screen_LNDGRE:                                  return SB_LNDG_BTN;
+#if INFO_DISP_IS_MISSION_UNIT
+    case screen_LNCHAP: case screen_ACFTAP: case screen_ROVRAP:            return SB_AP_BTN;
+#endif
     default: break;
   }
   for (uint8_t i = 0; i < SB_BTN_COUNT; i++)
@@ -162,9 +170,23 @@ const char *sbButtonLabel(uint8_t i) {
            : (activeScreen == screen_NAV)  ? "NAV" : "TGT";
     case SB_LNDG_BTN:
       return (activeScreen == screen_LNDGRE) ? "ENTR" : "DESC";
+#if INFO_DISP_IS_MISSION_UNIT
+    case SB_AP_BTN:
+      return (activeScreen == screen_ACFTAP) ? "ACAP"
+           : (activeScreen == screen_ROVRAP) ? "RVAP" : "ASC";
+#endif
     default:
       return SB_BTN_IDS[i];
   }
+}
+
+// The console the autopilot key lands on from another screen: the one for what is
+// being flown. A rover gets ROVER AP, a plane in an atmosphere AIRCRAFT AP, anything
+// else the ASCENT console. Cycling the key reaches the other two.
+ScreenType apConsoleContextScreen() {
+  if (state.vesselType == type_Rover) return screen_ROVRAP;
+  if (state.vesselType == type_Plane && state.inAtmo) return screen_ACFTAP;
+  return screen_LNCHAP;
 }
 
 const char *const SCREEN_TITLES[SCREEN_COUNT] = {
@@ -181,7 +203,9 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ORBIT ADVANCED",
   "RE-ENTRY",
   "ASCENT AUTOPILOT",
-  "NAVIGATION"
+  "NAVIGATION",
+  "AIRCRAFT AUTOPILOT",
+  "ROVER AUTOPILOT"
 };
 
 /***************************************************************************************
@@ -460,7 +484,7 @@ void drawSidebar(KCM_TFT &tft) {
     // the display-nav cluster. The sidebar draws with isOn=true, so only the ...On
     // fields are overridden; the border is left alone, so it still reads white when
     // this key owns the active screen and grey when it does not.
-    if (SB_BTN_SCREEN[i] == screen_LNCHAP && apArmedAnnunciated()) {
+    if (SB_BTN_SCREEN[i] == screen_LNCHAP && (apArmedAnnunciated() || hpAnyEngagedAnnunciated())) {
       btn.backgroundColorOn = TFT_DARK_GREEN;
       btn.fontColorOn       = TFT_WHITE;
     }
@@ -583,7 +607,7 @@ void updateModeChip(KCM_TFT &tft) {
 void updateSidebar(KCM_TFT &tft) {
 #if INFO_DISP_IS_MISSION_UNIT
   static bool prevArmed = false;
-  const bool armed = apArmedAnnunciated();
+  const bool armed = apArmedAnnunciated() || hpAnyEngagedAnnunciated();   // any autopilot flying the vehicle
   if (armed == prevArmed) return;
   prevArmed = armed;
   drawSidebar(tft);
@@ -786,6 +810,8 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     case screen_ACFT:   chromeScreen_ACFT(tft); break;
     case screen_LNCHAP: chromeScreen_LNCHAP(tft); break;
     case screen_NAV:    chromeScreen_NAV(tft); break;
+    case screen_ACFTAP: chromeScreen_ACFTAP(tft); break;
+    case screen_ROVRAP: chromeScreen_ROVRAP(tft); break;
     default: break;
   }
 
@@ -811,6 +837,8 @@ void updateScreen(KCM_TFT &tft, ScreenType s) {
     case screen_ACFT:   drawScreen_ACFT(tft); break;
     case screen_LNCHAP: drawScreen_LNCHAP(tft); break;
     case screen_NAV:    drawScreen_NAV(tft); break;
+    case screen_ACFTAP: drawScreen_ACFTAP(tft); break;
+    case screen_ROVRAP: drawScreen_ROVRAP(tft); break;
     default: break;
   }
 }
