@@ -14,7 +14,7 @@ central master controller.
 | `Software/Displays/` | Display-panel firmware and shared display libraries (see below) |
 | `Software/Modules/` | Input-module firmware (buttons, switches, joysticks, encoders, 7-segment, etc.) |
 | `Software/Libraries/`, `Software/Common/` | Shared cross-project code |
-| `Documents/Developer/` | Hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface, expansion-module spec |
+| `Documents/Developer/` | Hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface, expansion-module spec, [display test plan](Documents/Developer/Display_Test_Plan.md) |
 | `Documents/User/` | Quick-start guide, panel operating guide, display reference |
 
 ### Display panels (`Software/Displays/`)
