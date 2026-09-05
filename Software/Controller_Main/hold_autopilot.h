@@ -34,8 +34,8 @@
 /***************************************************************************************
    Modes
 ****************************************************************************************/
-enum HpPitchMode : uint8_t { HP_PITCH_OFF = 0, HP_PITCH_ATT, HP_PITCH_AOA, HP_PITCH_VS, HP_PITCH_ALT };
-enum HpLatMode   : uint8_t { HP_LAT_OFF   = 0, HP_LAT_ROLL,  HP_LAT_HDG };
+enum HpPitchMode : uint8_t { HP_PITCH_OFF = 0, HP_PITCH_ATT, HP_PITCH_AOA, HP_PITCH_VS, HP_PITCH_ALT, HP_PITCH_GS };
+enum HpLatMode   : uint8_t { HP_LAT_OFF   = 0, HP_LAT_ROLL,  HP_LAT_HDG, HP_LAT_NAV };
 enum HpThrMode   : uint8_t { HP_THR_OFF   = 0, HP_THR_IAS,   HP_THR_MACH };
 
 // Engage handle — one per mode button on the consoles.
@@ -44,6 +44,8 @@ enum HpMode : uint8_t {
   HP_MODE_ROLL, HP_MODE_HDG,                                 // aircraft lateral group
   HP_MODE_IAS, HP_MODE_MACH,                                 // aircraft thrust group
   HP_MODE_CRUISE, HP_MODE_RHDG, HP_MODE_RTGT,                // rover
+  HP_MODE_NAV, HP_MODE_GS,                                   // aircraft approach to a targeted flag (Mission_Autopilot.md §6)
+  HP_MODE_FOLLOW,                                            // rover: hold range to a moving target
   HP_MODE_COUNT
 };
 
@@ -51,7 +53,10 @@ enum HpMode : uint8_t {
 enum HpReason : uint8_t {
   HP_REASON_NONE = 0, HP_REASON_STICK, HP_REASON_LEVER, HP_REASON_BRAKES, HP_REASON_AIRBORNE,
   HP_REASON_ROLL_LIMIT, HP_REASON_NO_ATMO, HP_REASON_TELEMETRY, HP_REASON_ASCENT, HP_REASON_REFUSED,
-  HP_REASON_PILOT   // A/P OFF tap — not annunciated
+  HP_REASON_PILOT,      // A/P OFF tap — not annunciated (10)
+  // Mission autopilot (shared by the burn and landing modules; Mission_Autopilot.md §7.7)
+  HP_REASON_NO_NODE, HP_REASON_NO_TARGET, HP_REASON_SOI, HP_REASON_FUEL, HP_REASON_LANDED,
+  HP_REASON_OTHER_AP, HP_REASON_FLARE, HP_REASON_ARRIVED, HP_REASON_ALIGN, HP_REASON_HANDOFF, HP_REASON_REPLAN
 };
 
 /***************************************************************************************
@@ -78,8 +83,14 @@ struct HoldConfig {
   float    machKp, machKi;         // throttle per Mach, per Mach per s
   float    throttleSlew;           // throttle units per second
 
+  // Aircraft approach to a targeted flag
+  float    gsKp;                   // (m/s) per m/s of ground speed per deg of glide-slope error
+  float    gsMinRange;             // m — GS drops here (FLARE): the flare is the pilot's
+
   // Rover
   float    cruiseKp, cruiseKi;     // wheel throttle per (m/s), per (m/s) per s
+  float    stopDecel;              // m/s² used for the arrive-and-stop speed cap
+  float    followKp;               // (m/s) per m of range error
   float    wheelSlew;              // wheel-throttle units per second
   float    steerKpLow, steerKpHigh;// steer per deg heading error at 0 m/s and at steerKpSpeed
   float    steerKpSpeed;           // m/s at which steerKpHigh applies
@@ -95,6 +106,7 @@ struct HoldConfig {
   float attMin, attMax, aoaMin, aoaMax, vsMin, vsMaxSp, altMin, altMax, rollMin, rollMax;
   float iasMin, iasMax, machMin, machMax, cruiseMin, cruiseMax;
   float maxSpeedMin, maxSpeedMax, maxSlopeMin, maxSlopeMax, maxRollMin, maxRollMax;
+  float gsMin, gsMax, followMin, followMax, stopMin, stopMax;
 };
 
 /***************************************************************************************
@@ -107,11 +119,12 @@ struct HoldStatus {
   uint8_t reasonAge;                     // s since it was set, saturates at 255
   bool    anyEngaged, thrustEngaged, leverTouched, leverDriven, ascentArmed;
   float   att, aoa, vs, alt, roll, hdg, ias, mach;   // setpoint echoes
+  float   gs;                            // deg  glide-slope (depression angle) setpoint
   float   cmdThrottle;                   // 0..1
   // Rover
-  bool    cruise, rhdg, rtgt, brakes, slopeGuard, targetAvailable;
+  bool    cruise, rhdg, rtgt, follow, brakes, slopeGuard, targetAvailable;
   uint8_t roverReason, roverReasonAge;
-  float   cruiseSp, rhdgSp, maxSpeed, maxSlope, maxRoll;
+  float   cruiseSp, rhdgSp, maxSpeed, maxSlope, maxRoll, followRange, stopDist;
   float   cmdWheel;                      // -1..1
 };
 
@@ -142,6 +155,11 @@ bool        hpSetRoverHdg(float deg);
 bool        hpSetMaxSpeed(float mps);
 bool        hpSetMaxSlope(float deg);
 bool        hpSetMaxRoll(float deg);
+bool        hpSetGs(float deg);
+bool        hpSetFollowRange(float m);
+bool        hpSetStopDist(float m);
+void        hpArbiterDropAttitude();                // another module took attitude (ap_arbiter.ino)
+void        hpArbiterDropThrottle();                // another module took the throttle
 
 bool        hpAnyEngaged();
 bool        hpAttitudeEngaged();                    // a pitch or lateral mode is holding the airframe
@@ -164,7 +182,7 @@ void hpIngestAirspeed(float ias, float mach);
 void hpIngestAttitude(float heading, float pitch, float roll, float srfVelHeading, float srfVelPitch);
 void hpIngestAtmo(bool hasAtmosphere, bool inAtmosphere);
 void hpIngestBrakes(bool on);
-void hpIngestTarget(float bearingDeg);
+void hpIngestTarget(bool available, float bearingDeg, float elevationDeg, float distance, float closingRate);   // closing > 0 = opening
 void hpIngestThrottle(float t01);                   // game throttle echo (THROTTLE_CMD_MESSAGE)
 void hpVesselChanged();                             // vessel / scene change: drop everything silently
 

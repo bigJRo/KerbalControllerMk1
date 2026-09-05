@@ -68,9 +68,11 @@ enum ScreenType : uint8_t {
   screen_LNDGRE = 11,  // Landing — Re-entry
   screen_LNCHAP = 12,  // Ascent Autopilot console (unit 2's sixth key)
   screen_NAV    = 13,  // Navigation display — compass rose, ground track, target bearing
-  screen_ACFTAP = 14,  // Aircraft Autopilot console (unit 2's sixth key, second mode)
-  screen_ROVRAP = 15,  // Rover Autopilot console (unit 2's sixth key, third mode)
-  screen_COUNT  = 16   // sentinel — not a real screen
+  screen_ACFTAP = 14,  // Aircraft Autopilot console (unit 2's autopilot key)
+  screen_ROVRAP = 15,  // Rover Autopilot console
+  screen_ORBTAP = 16,  // Orbital Autopilot console (node / apsis / plane-change burns, approach hold)
+  screen_LNDGAP = 17,  // Landing Autopilot console (descent-rate, hover, suicide burn, re-entry)
+  screen_COUNT  = 18   // sentinel — not a real screen
 };
 
 // RE-ENTRY used to pin itself against automatic switches, because it was manual-only
@@ -383,6 +385,7 @@ struct AppState {
   float     hpHdg          = 0.0f;    // deg
   float     hpIas          = 0.0f;    // m/s
   float     hpMach         = 0.0f;
+  float     hpGs           = 3.0f;    // deg   glide-slope (depression angle to the targeted flag)
   float     hpCmdThrottle  = 0.0f;    // 0..1
   uint8_t   rvFlags        = 0;       // bit0 cruise, bit1 hdg, bit2 tgt, bit3 brakes, bit4 slopeGuard, bit5 targetAvailable
   uint8_t   rvReason       = 0;
@@ -392,7 +395,44 @@ struct AppState {
   float     rvMaxSpeed     = 20.0f;   // m/s
   float     rvMaxSlope     = 20.0f;   // deg
   float     rvMaxRoll      = 25.0f;   // deg
+  float     rvFollowRange  = 30.0f;   // m
+  float     rvStopDist     = 15.0f;   // m
   float     rvCmdWheel     = 0.0f;    // -1..1
+
+  // Orbital autopilot — the 52-byte 0xA8 frame (Mission_Autopilot.md §8.1)
+  uint8_t   obFlags        = 0;       // bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 target, bit5 node, bit6 appr
+  uint8_t   obMode         = 0;       // 0 none, 1 NODE, 2 AP, 3 PE, 4 INC
+  uint8_t   obPhase        = 0;       // 0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP READY, 4 WARP, 5 BURN, 6 DONE, 7 ABORT
+  uint8_t   obReason       = 0;
+  uint8_t   obReasonAge    = 255;
+  float     obTargetAp     = 100000.0f;
+  float     obTargetPe     = 80000.0f;
+  float     obTargetInc    = 0.0f;
+  float     obApprRate     = -2.0f;   // m/s, negative = closing
+  float     obApprDist     = 50.0f;   // m
+  float     obDvTotal      = 0.0f;
+  float     obDvRemaining  = 0.0f;
+  float     obTIgnition    = 0.0f;    // s
+  float     obBurnDuration = 0.0f;    // s
+  float     obAccelEst     = 0.0f;    // m/s²
+  float     obCmdThrottle  = 0.0f;
+
+  // Landing autopilot — the 44-byte 0xA9 frame
+  uint8_t   ldFlags        = 0;       // bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed, bit6 brakeMarginal
+  uint8_t   ldMode         = 0;       // 0 OFF, 1 DESC, 2 HOVR, 3 BRAKE
+  uint8_t   ldEntry        = 0;
+  uint8_t   ldReason       = 0;
+  uint8_t   ldReasonAge    = 255;
+  uint8_t   ldAccelSource  = 0;       // 0 EST, 1 MEAS, 2 TWR
+  float     ldDescRate     = -3.0f;
+  float     ldHovrAlt      = 50.0f;
+  float     ldTwr          = 0.0f;    // 0 = measured / estimated
+  float     ldMargin       = 150.0f;
+  float     ldEntryAoa     = 8.0f;
+  float     ldEntryRoll    = 0.0f;
+  float     ldIgnAlt       = 0.0f;
+  float     ldAccelEst     = 0.0f;
+  float     ldCmdThrottle  = 0.0f;
 };
 
 extern AppState state;
@@ -470,7 +510,7 @@ static const uint16_t SCREEN_H  = KCM_SCREEN_H;   // 600
 static const uint16_t SIDEBAR_W = 84;
 static const uint16_t CONTENT_W = SCREEN_W - SIDEBAR_W;   // 940 (moved here from AAA_Screens.ino
                                                           // so the touch helpers below can see it)
-static const uint8_t  ROW_COUNT = 24;  // max cache slots per screen (Ascent Autopilot uses the most)
+static const uint8_t  ROW_COUNT = 32;  // max cache slots per screen (the AIRCRAFT AP console uses the most)
 
 
 /***************************************************************************************
@@ -539,12 +579,24 @@ enum {
   HP_CMD_SET_ROLL,               HP_CMD_SET_HDG, HP_CMD_SET_IAS, HP_CMD_SET_MACH,
   HP_CMD_ENGAGE_CRUISE   = 0x30, HP_CMD_ENGAGE_RHDG, HP_CMD_ENGAGE_RTGT,
   HP_CMD_SET_CRUISE      = 0x33, HP_CMD_SET_RHDG, HP_CMD_SET_MAXSPD, HP_CMD_SET_MAXSLOPE, HP_CMD_SET_MAXROLL,
+  // Mission autopilot (Mission_Autopilot.md §8.1)
+  HP_CMD_ENGAGE_NAV      = 0x14, HP_CMD_ENGAGE_GS = 0x15, HP_CMD_SET_GS = 0x16,
+  HP_CMD_ENGAGE_FOLLOW   = 0x38, HP_CMD_SET_FOLLOW_RANGE = 0x39, HP_CMD_SET_STOP_DIST = 0x3A,
+  OB_CMD_ARM_NODE        = 0x40, OB_CMD_ARM_AP, OB_CMD_ARM_PE, OB_CMD_ARM_INC, OB_CMD_ENGAGE_APPR = 0x44,
+  OB_CMD_SET_AP          = 0x48, OB_CMD_SET_PE, OB_CMD_SET_INC, OB_CMD_SET_APPR_RATE, OB_CMD_SET_APPR_DIST,
+  OB_CMD_SET_WARP        = 0x4D, OB_CMD_SET_AUTOSTAGE = 0x4E, OB_CMD_EXEC = 0x4F,
+  LD_CMD_ENGAGE_DESC     = 0x50, LD_CMD_ENGAGE_HOVR, LD_CMD_ENGAGE_BRAKE, LD_CMD_ENGAGE_ENTRY,
+  LD_CMD_SET_DESC_RATE   = 0x58, LD_CMD_SET_HOVR_ALT, LD_CMD_SET_TWR, LD_CMD_SET_MARGIN, LD_CMD_SET_ENTRY_AOA, LD_CMD_SET_ENTRY_ROLL,
+  LD_CMD_SET_ATT_REF     = 0x5E,
 };
 
 // Hold-mode disconnect / refusal reasons (status byte values; hold_autopilot.h)
 enum {
   HP_REASON_NONE = 0, HP_REASON_STICK, HP_REASON_LEVER, HP_REASON_BRAKES, HP_REASON_AIRBORNE,
-  HP_REASON_ROLL_LIMIT, HP_REASON_NO_ATMO, HP_REASON_TELEMETRY, HP_REASON_ASCENT, HP_REASON_REFUSED
+  HP_REASON_ROLL_LIMIT, HP_REASON_NO_ATMO, HP_REASON_TELEMETRY, HP_REASON_ASCENT, HP_REASON_REFUSED,
+  HP_REASON_PILOT,   // 10 — never annunciated
+  HP_REASON_NO_NODE, HP_REASON_NO_TARGET, HP_REASON_SOI, HP_REASON_FUEL, HP_REASON_LANDED,
+  HP_REASON_OTHER_AP, HP_REASON_FLARE, HP_REASON_ARRIVED, HP_REASON_ALIGN, HP_REASON_HANDOFF, HP_REASON_REPLAN
 };
 static const float AP_ROLL_OFF = 1.0e9f;   // roll-hold disable sentinel (outside +/-180)
 
@@ -627,8 +679,18 @@ void drawScreen_ROVRAP(KCM_TFT &tft);
 void rovrApScreenTouch(uint16_t x, uint16_t y);
 void hpReconcilePending();         // retire confirmed hold-mode edits (both consoles)
 const char *hpReasonLabel(uint8_t r);
-ScreenType apConsoleContextScreen();   // AAA_Screens.ino — console for the vessel type
+ScreenType apConsoleContextScreen();   // AAA_Screens.ino — console for the vessel type / situation
 ScreenType apConsoleNext(ScreenType cur); // AAA_Screens.ino — next console in the vessel-type-filtered ring
+ScreenType apConsoleEngaged();         // AAA_Screens.ino — the console whose module is flying the vehicle, or screen_COUNT
+
+// Orbital / landing consoles (Screen_ORBT_AP.ino / Screen_LNDG_AP.ino)
+void chromeScreen_ORBTAP(KCM_TFT &tft);
+void drawScreen_ORBTAP(KCM_TFT &tft);
+void orbtApScreenTouch(uint16_t x, uint16_t y);
+void chromeScreen_LNDGAP(KCM_TFT &tft);
+void drawScreen_LNDGAP(KCM_TFT &tft);
+void lndgApScreenTouch(uint16_t x, uint16_t y);
+const char *obPhaseName(uint8_t p);
 
 // Ascent Autopilot (Screen_LNCH_AscentAP.ino) — the armed state as annunciated: what
 // the autopilot itself reports, never a pilot tap Controller_Main has not echoed back.

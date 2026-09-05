@@ -11,9 +11,6 @@
 
 static const int32_t HP_AXIS_FULL = INT16_MAX;   // Simpit axis full-scale (wheel steer/throttle)
 
-// KSP enum values carried by FLIGHT_STATUS_MESSAGE (Vessel.Situations / VesselType)
-static const uint8_t KSP_SIT_LANDED   = 1;
-static const uint8_t KSP_SIT_SPLASHED = 2;
 
 /***************************************************************************************
    Telemetry snapshot
@@ -33,6 +30,9 @@ struct HpTelemetry {
   float    srfVelHeading = 0.0f;
   float    srfVelPitch   = 0.0f;
   float    tgtBearing    = 0.0f;
+  float    tgtElev       = 0.0f;   // deg, negative = below
+  float    tgtDist       = 0.0f;   // m
+  float    tgtClosing    = 0.0f;   // m/s along the line of sight, > 0 = opening
   float    throttle      = 0.0f;   // game throttle echo 0..1
   bool     hasAtmo       = true;
   bool     inAtmo        = true;
@@ -54,6 +54,8 @@ static bool        hp_cruise = false, hp_rhdg = false, hp_rtgt = false;
 static float hp_spAtt = 0.0f, hp_spAoa = 3.0f, hp_spVs = 0.0f, hp_spAlt = 1000.0f;
 static float hp_spRoll = 0.0f, hp_spHdg = 90.0f, hp_spIas = 120.0f, hp_spMach = 0.5f;
 static float hp_spCruise = 5.0f, hp_spRhdg = 0.0f;
+static float hp_spGs = 3.0f, hp_followRange = 30.0f, hp_stopDist = 15.0f;
+static bool  hp_follow = false;
 static float hp_maxSpeed = 20.0f, hp_maxSlope = 20.0f, hp_maxRoll = 25.0f;
 
 static AttState hp_att;
@@ -71,6 +73,7 @@ static uint32_t hp_lastUpdateMs = 0;
 static uint32_t hp_airborneSince = 0, hp_noAtmoSince = 0;
 
 static inline bool hpAircraftEngaged() { return hp_pitchMode != HP_PITCH_OFF || hp_latMode != HP_LAT_OFF || hp_thrMode != HP_THR_OFF; }
+static inline bool hpRoverDriving()    { return hp_cruise || hp_follow; }
 static inline bool hpOnGround()        { return hp_t.situation == KSP_SIT_LANDED || hp_t.situation == KSP_SIT_SPLASHED; }
 
 static void hpSetReason(uint8_t r)      { if (r == HP_REASON_PILOT) r = HP_REASON_NONE; hp_reason = r;      hp_reasonMs = millis(); }
@@ -98,7 +101,9 @@ HoldConfig hpDefaultConfig() {
   c.machKp = 3.00f;   c.machKi = 1.00f;
   c.throttleSlew = 0.25f;
 
+  c.gsKp = 0.10f; c.gsMinRange = 200.0f;
   c.cruiseKp = 0.08f; c.cruiseKi = 0.04f;
+  c.stopDecel = 2.0f; c.followKp = 0.5f;
   c.wheelSlew = 0.5f;
   c.steerKpLow = 0.05f; c.steerKpHigh = 0.02f; c.steerKpSpeed = 20.0f;
   c.steerSign = 1.0f;
@@ -118,6 +123,7 @@ HoldConfig hpDefaultConfig() {
   c.maxSpeedMin = 1.0f;  c.maxSpeedMax = 60.0f;
   c.maxSlopeMin = 5.0f;  c.maxSlopeMax = 45.0f;
   c.maxRollMin  = 5.0f;  c.maxRollMax  = 60.0f;
+  c.gsMin = 1.0f; c.gsMax = 10.0f; c.followMin = 5.0f; c.followMax = 500.0f; c.stopMin = 2.0f; c.stopMax = 200.0f;
   return c;
 }
 
@@ -125,7 +131,7 @@ void hpInit() {
   hp_c = hpDefaultConfig();
   attReset(hp_att);
   hp_pitchMode = HP_PITCH_OFF; hp_latMode = HP_LAT_OFF; hp_thrMode = HP_THR_OFF;
-  hp_cruise = hp_rhdg = hp_rtgt = false;
+  hp_cruise = hp_rhdg = hp_rtgt = hp_follow = false;
   hp_lastUpdateMs = millis();
 }
 
@@ -179,13 +185,28 @@ void hpDisconnectAircraft(uint8_t reason) {
   if (hp_thrMode != HP_THR_OFF) { hp_thrMode = HP_THR_OFF; thrAutoRelease(THR_OWNER_HOLD); }
   rotClearAutoAxes();
   hpReconcileSAS();
+  arbReleaseAttitude(AP_OWNER_HOLD); arbReleaseThrottle(AP_OWNER_HOLD);
   if (was) hpSetReason(reason);
+}
+
+// Another module took a resource (ap_arbiter.ino): drop the modes that used it.
+void hpArbiterDropAttitude() {
+  if (hp_pitchMode == HP_PITCH_OFF && hp_latMode == HP_LAT_OFF) return;
+  hp_pitchMode = HP_PITCH_OFF; hp_latMode = HP_LAT_OFF;
+  rotClearAutoAxes();
+  hp_sasIsOff = false;                // the new owner decides what SAS does
+  hpSetReason(HP_REASON_OTHER_AP);
+}
+void hpArbiterDropThrottle() {
+  if (hp_thrMode == HP_THR_OFF) return;
+  hp_thrMode = HP_THR_OFF; thrAutoRelease(THR_OWNER_HOLD);
+  hpSetReason(HP_REASON_OTHER_AP);
 }
 
 void hpDisconnectRover(uint8_t reason) {
   bool was = hpRoverEngaged();
-  bool hadCruise = hp_cruise;
-  hp_cruise = hp_rhdg = hp_rtgt = false;
+  bool hadCruise = hpRoverDriving();
+  hp_cruise = hp_rhdg = hp_rtgt = hp_follow = false;
   hp_slopeGuard = false;
   hp_wheelOut = hp_wheelInt = 0.0f; hp_steerOut = 0.0f;
   if (hadCruise) hpSendWheels(true, 0.0f, false, 0.0f);   // never leave the motors driving
@@ -201,15 +222,16 @@ void hpVesselChanged() {
   // Silent: a vessel or scene change is not a fault, and the new vessel starts clean.
   hp_pitchMode = HP_PITCH_OFF; hp_latMode = HP_LAT_OFF;
   if (hp_thrMode != HP_THR_OFF) { hp_thrMode = HP_THR_OFF; thrAutoRelease(THR_OWNER_HOLD); }
-  hp_cruise = hp_rhdg = hp_rtgt = false;
+  hp_cruise = hp_rhdg = hp_rtgt = hp_follow = false;
   hp_slopeGuard = false;
   rotClearAutoAxes();
+  arbReleaseAttitude(AP_OWNER_HOLD); arbReleaseThrottle(AP_OWNER_HOLD);
   hp_sasIsOff = false;           // do not touch SAS on a vessel we have not flown
   hp_reason = hp_roverReason = HP_REASON_NONE;
   hp_t.lastMs = millis();
 }
 
-static bool hpIsAircraftMode(HpMode m) { return m <= HP_MODE_MACH; }
+static bool hpIsAircraftMode(HpMode m) { return m <= HP_MODE_MACH || m == HP_MODE_NAV || m == HP_MODE_GS; }
 
 bool hpEngage(HpMode mode, bool on) {
   if (mode >= HP_MODE_COUNT) return false;
@@ -228,10 +250,13 @@ bool hpEngage(HpMode mode, bool on) {
       case HP_MODE_CRUISE: if (hp_cruise) { hp_cruise = false; hp_slopeGuard = false; hp_wheelOut = 0.0f; hpSendWheels(true, 0.0f, false, 0.0f); } break;
       case HP_MODE_RHDG: hp_rhdg = false; break;
       case HP_MODE_RTGT: hp_rtgt = false; break;
+      case HP_MODE_NAV:  if (hp_latMode == HP_LAT_NAV)   hp_latMode   = HP_LAT_OFF;   break;
+      case HP_MODE_GS:   if (hp_pitchMode == HP_PITCH_GS) hp_pitchMode = HP_PITCH_OFF; break;
+      case HP_MODE_FOLLOW: if (hp_follow) { hp_follow = false; hp_wheelOut = 0.0f; hpSendWheels(true, 0.0f, false, 0.0f); } break;
       default: break;
     }
-    if (!hpAircraftEngaged()) rotClearAutoAxes();
-    else if (hp_pitchMode == HP_PITCH_OFF && hp_latMode == HP_LAT_OFF) rotClearAutoAxes();
+    if (hp_pitchMode == HP_PITCH_OFF && hp_latMode == HP_LAT_OFF) { rotClearAutoAxes(); arbReleaseAttitude(AP_OWNER_HOLD); }
+    if (hp_thrMode == HP_THR_OFF) arbReleaseThrottle(AP_OWNER_HOLD);
     hpReconcileSAS();
     return true;
   }
@@ -241,12 +266,17 @@ bool hpEngage(HpMode mode, bool on) {
   if (hpIsAircraftMode(mode)) {
     if (stale || !hp_t.hasAtmo) { hpSetReason(HP_REASON_REFUSED); return false; }
     if ((mode == HP_MODE_IAS || mode == HP_MODE_MACH) && thrPrecision()) { hpSetReason(HP_REASON_REFUSED); return false; }
+    if ((mode == HP_MODE_NAV || mode == HP_MODE_GS) && !hp_t.hasTarget) { hpSetReason(HP_REASON_NO_TARGET); return false; }
   } else {
     if (stale || !hpOnGround()) { hpSetRoverReason(HP_REASON_REFUSED); return false; }
-    if (mode == HP_MODE_RTGT && !hp_t.hasTarget) { hpSetRoverReason(HP_REASON_REFUSED); return false; }
+    if ((mode == HP_MODE_RTGT || mode == HP_MODE_FOLLOW) && !hp_t.hasTarget) { hpSetRoverReason(HP_REASON_NO_TARGET); return false; }
   }
-  // Engaging a hold mode takes the vehicle from the ascent autopilot (design §1.1).
-  if (apIsArmed()) apDisarm();
+  // One attitude owner and one throttle owner at a time (ap_arbiter.ino): engaging takes
+  // the resource from the ascent, burn or landing module.
+  if (hpIsAircraftMode(mode)) {
+    if (mode == HP_MODE_IAS || mode == HP_MODE_MACH) arbTakeThrottle(AP_OWNER_HOLD);
+    else                                             arbTakeAttitude(AP_OWNER_HOLD);
+  }
 
   bool wasHoldingAttitude = (hp_pitchMode != HP_PITCH_OFF || hp_latMode != HP_LAT_OFF);
 
@@ -276,8 +306,13 @@ bool hpEngage(HpMode mode, bool on) {
       hp_cruise = true;
       break;
     }
-    case HP_MODE_RHDG: hp_spRhdg = attWrap360(roundf(hp_t.heading)); hp_rhdg = true; hp_rtgt = false; break;
-    case HP_MODE_RTGT: hp_rtgt = true; hp_rhdg = false; break;
+    case HP_MODE_RHDG: hp_spRhdg = attWrap360(roundf(hp_t.heading)); hp_rhdg = true; hp_rtgt = false; hp_follow = false; break;
+    case HP_MODE_RTGT: hp_rtgt = true; hp_rhdg = false; hp_follow = false; break;
+    // ---- flag approach ----
+    case HP_MODE_NAV:  hp_latMode = HP_LAT_NAV; break;
+    case HP_MODE_GS:   hp_vsInt = hp_t.pitch; hp_pitchMode = HP_PITCH_GS; break;
+    // ---- follow: FOLLOW replaces CRUISE's throttle and steers as TGT ----
+    case HP_MODE_FOLLOW: hp_wheelInt = hp_wheelOut = 0.0f; hp_follow = true; hp_cruise = false; hp_rhdg = hp_rtgt = false; break;
     default: return false;
   }
 
@@ -312,11 +347,14 @@ bool hpSetRoverHdg(float v) { hp_spRhdg = attWrap360(v); return true; }
 bool hpSetMaxSpeed(float v) { if (!hpInRange(v, hp_c.maxSpeedMin, hp_c.maxSpeedMax)) return false; hp_maxSpeed = v; return true; }
 bool hpSetMaxSlope(float v) { if (!hpInRange(v, hp_c.maxSlopeMin, hp_c.maxSlopeMax)) return false; hp_maxSlope = v; return true; }
 bool hpSetMaxRoll(float v)  { if (!hpInRange(v, hp_c.maxRollMin, hp_c.maxRollMax)) return false; hp_maxRoll = v; return true; }
+bool hpSetGs(float v)          { if (!hpInRange(v, hp_c.gsMin, hp_c.gsMax)) return false; hp_spGs = v; return true; }
+bool hpSetFollowRange(float v) { if (!hpInRange(v, hp_c.followMin, hp_c.followMax)) return false; hp_followRange = v; return true; }
+bool hpSetStopDist(float v)    { if (!hpInRange(v, hp_c.stopMin, hp_c.stopMax)) return false; hp_stopDist = v; return true; }
 
 bool hpAnyEngaged()      { return hpAircraftEngaged() || hpRoverEngaged(); }
 bool hpAttitudeEngaged() { return hp_pitchMode != HP_PITCH_OFF || hp_latMode != HP_LAT_OFF; }
 bool hpThrustEngaged()   { return hp_thrMode != HP_THR_OFF; }
-bool hpRoverEngaged()    { return hp_cruise || hp_rhdg || hp_rtgt; }
+bool hpRoverEngaged()    { return hp_cruise || hp_rhdg || hp_rtgt || hp_follow; }
 
 /***************************************************************************************
    Loops
@@ -335,8 +373,14 @@ static void hpUpdateAircraft(uint32_t now, float dt) {
   } else hp_noAtmoSince = 0;
 
   // (Pilot stick / lever input is handled globally in hpUpdate: it drops everything.)
+  if (!hp_t.hasTarget && (hp_latMode == HP_LAT_NAV || hp_pitchMode == HP_PITCH_GS)) {
+    if (hp_latMode == HP_LAT_NAV)   hp_latMode = HP_LAT_OFF;
+    if (hp_pitchMode == HP_PITCH_GS) hp_pitchMode = HP_PITCH_OFF;
+    hpSetReason(HP_REASON_NO_TARGET);
+  }
+  if (hp_pitchMode == HP_PITCH_GS && hp_t.tgtDist < hp_c.gsMinRange) { hp_pitchMode = HP_PITCH_OFF; hpSetReason(HP_REASON_FLARE); }
   hpReconcileSAS();
-  if (!hpAircraftEngaged()) { rotClearAutoAxes(); return; }
+  if (!hpAircraftEngaged()) { rotClearAutoAxes(); arbReleaseAttitude(AP_OWNER_HOLD); return; }
 
   // ---- Pitch group -> commanded pitch ----
   AttMeasure m; m.pitch = hp_t.pitch; m.heading = hp_t.heading; m.roll = hp_t.roll;
@@ -351,6 +395,15 @@ static void hpUpdateAircraft(uint32_t now, float dt) {
       hp_cmdPitch = hpVsLoop(vsCmd, dt);
       break;
     }
+    case HP_PITCH_GS: {
+      // Hold the depression angle to the targeted flag: nominal descent for the glide angle
+      // plus a correction on the angle error, both scaled by ground speed.
+      float vg = hp_t.velSurface;
+      float depression = -hp_t.tgtElev;
+      float vsCmd = -vg * tanf(hp_spGs * 0.0174532925199f) + hp_c.gsKp * vg * (hp_spGs - depression);
+      hp_cmdPitch = hpVsLoop(attClampf(vsCmd, -hp_c.vsMax, hp_c.vsMax), dt);
+      break;
+    }
     default: hp_cmdPitch = hp_t.pitch; break;
   }
 
@@ -358,6 +411,7 @@ static void hpUpdateAircraft(uint32_t now, float dt) {
   switch (hp_latMode) {
     case HP_LAT_ROLL: hp_cmdBank = hp_spRoll; break;
     case HP_LAT_HDG:  hp_cmdBank = attClampf(hp_c.hdgKp * attWrap180(hp_spHdg - hp_t.heading), -hp_c.bankMax, hp_c.bankMax); break;
+    case HP_LAT_NAV:  hp_cmdBank = attClampf(hp_c.hdgKp * attWrap180(hp_t.tgtBearing - hp_t.heading), -hp_c.bankMax, hp_c.bankMax); break;
     default:          hp_cmdBank = hp_t.roll; break;
   }
 
@@ -409,8 +463,8 @@ static void hpUpdateRover(uint32_t now, float dt) {
     mySimpit.activateAction(BRAKES_ACTION);      // stays applied until the pilot releases it
     return;
   }
-  if (hp_cruise && hp_t.brakes) {
-    hp_cruise = false; hp_slopeGuard = false; hp_wheelOut = 0.0f;
+  if (hpRoverDriving() && hp_t.brakes) {
+    hp_cruise = false; hp_follow = false; hp_slopeGuard = false; hp_wheelOut = 0.0f;
     hpSendWheels(true, 0.0f, false, 0.0f);
     hpSetRoverReason(HP_REASON_BRAKES);
   }
@@ -420,9 +474,37 @@ static void hpUpdateRover(uint32_t now, float dt) {
   float speed = hpSignedSpeed();
   bool reversing = speed < -0.3f;
 
-  // ---- Cruise ----
+  // Target lost: drive-to-target and follow have nothing to steer to.
+  if ((hp_rtgt || hp_follow) && !hp_t.hasTarget) {
+    hp_rtgt = false;
+    if (hp_follow) { hp_follow = false; hp_wheelOut = 0.0f; hpSendWheels(true, 0.0f, false, 0.0f); }
+    hpSetRoverReason(HP_REASON_NO_TARGET);
+    if (!hpRoverEngaged()) return;
+  }
+
+  // ---- Speed setpoint: CRUISE (with arrive-and-stop under TGT) or FOLLOW ----
+  bool driving = hpRoverDriving();
+  float sp = 0.0f;
   if (hp_cruise) {
-    float sp = attClampf(hp_spCruise, -hp_maxSpeed, hp_maxSpeed);
+    sp = attClampf(hp_spCruise, -hp_maxSpeed, hp_maxSpeed);
+    if (hp_rtgt) {
+      // Arrive-and-stop: cap the setpoint by the distance left, stop at STOP with the brakes on.
+      float left = hp_t.tgtDist - hp_stopDist;
+      if (left <= 0.0f) {
+        hp_cruise = hp_rtgt = false; hp_wheelOut = hp_wheelInt = 0.0f; hp_slopeGuard = false;
+        hpSendWheels(true, 0.0f, true, 0.0f);
+        mySimpit.activateAction(BRAKES_ACTION);
+        hpSetRoverReason(HP_REASON_ARRIVED);
+        return;
+      }
+      float cap = sqrtf(2.0f * hp_c.stopDecel * left);
+      if (sp > cap) sp = cap;
+    }
+  } else if (hp_follow) {
+    sp = attClampf(hp_c.followKp * (hp_t.tgtDist - hp_followRange) + hp_t.tgtClosing, -hp_maxSpeed, hp_maxSpeed);
+  }
+
+  if (driving) {
     float slope = fabsf(hp_t.pitch);
     float half = hp_maxSlope * 0.5f;
     float scale = 1.0f;
@@ -437,12 +519,13 @@ static void hpUpdateRover(uint32_t now, float dt) {
     float step = hp_c.wheelSlew * dt;
     if      (target > hp_wheelOut + step) hp_wheelOut += step;
     else if (target < hp_wheelOut - step) hp_wheelOut -= step;
-    else                                 hp_wheelOut  = target;
+    else                                  hp_wheelOut  = target;
   }
 
-  // ---- Steering ----
-  if (hp_rhdg || hp_rtgt) {
-    float tgt = hp_rtgt ? hp_t.tgtBearing : hp_spRhdg;
+  // ---- Steering: HDG setpoint, or the target bearing for TGT and FOLLOW ----
+  bool steering = hp_rhdg || hp_rtgt || hp_follow;
+  if (steering) {
+    float tgt = hp_rhdg ? hp_spRhdg : hp_t.tgtBearing;
     float err = attWrap180(tgt - hp_t.heading);
     if (reversing) err = -err;
     float f = attClampf(fabsf(speed) / hp_c.steerKpSpeed, 0.0f, 1.0f);
@@ -450,7 +533,7 @@ static void hpUpdateRover(uint32_t now, float dt) {
     hp_steerOut = attClampf(hp_c.steerSign * kp * err, -1.0f, 1.0f);
   }
 
-  hpSendWheels(hp_cruise, hp_wheelOut, hp_rhdg || hp_rtgt, hp_steerOut);
+  hpSendWheels(driving, hp_wheelOut, steering, hp_steerOut);
 }
 
 void hpUpdate() {
@@ -501,12 +584,14 @@ HoldStatus hpGetStatus() {
   s.ascentArmed  = apIsArmed();
   s.att = hp_spAtt; s.aoa = hp_spAoa; s.vs = hp_spVs; s.alt = hp_spAlt;
   s.roll = hp_spRoll; s.hdg = hp_spHdg; s.ias = hp_spIas; s.mach = hp_spMach;
+  s.gs = hp_spGs;
   s.cmdThrottle = hp_thrOut;
-  s.cruise = hp_cruise; s.rhdg = hp_rhdg; s.rtgt = hp_rtgt;
+  s.cruise = hp_cruise; s.rhdg = hp_rhdg; s.rtgt = hp_rtgt; s.follow = hp_follow;
   s.brakes = hp_t.brakes; s.slopeGuard = hp_slopeGuard; s.targetAvailable = hp_t.hasTarget;
   s.roverReason = hp_roverReason; s.roverReasonAge = hpAgeSeconds(hp_roverReasonMs, hp_roverReason);
   s.cruiseSp = hp_spCruise; s.rhdgSp = hp_spRhdg;
   s.maxSpeed = hp_maxSpeed; s.maxSlope = hp_maxSlope; s.maxRoll = hp_maxRoll;
+  s.followRange = hp_followRange; s.stopDist = hp_stopDist;
   s.cmdWheel = hp_wheelOut;
   return s;
 }
@@ -517,6 +602,7 @@ const char *hpModeName(HpMode m) {
     case HP_MODE_ALT: return "ALT";   case HP_MODE_ROLL: return "ROLL"; case HP_MODE_HDG:  return "HDG";
     case HP_MODE_IAS: return "IAS";   case HP_MODE_MACH: return "MACH";
     case HP_MODE_CRUISE: return "CRUISE"; case HP_MODE_RHDG: return "RHDG"; case HP_MODE_RTGT: return "RTGT";
+    case HP_MODE_NAV: return "NAV"; case HP_MODE_GS: return "GS"; case HP_MODE_FOLLOW: return "FOLLOW";
     default: return "?";
   }
 }
@@ -527,7 +613,13 @@ const char *hpReasonName(uint8_t r) {
     case HP_REASON_BRAKES: return "BRAKES";   case HP_REASON_AIRBORNE: return "AIRBORNE";
     case HP_REASON_ROLL_LIMIT: return "ROLL LIMIT"; case HP_REASON_NO_ATMO: return "NO ATMO";
     case HP_REASON_TELEMETRY: return "TELEMETRY"; case HP_REASON_ASCENT: return "ASCENT";
-    case HP_REASON_REFUSED: return "REFUSED"; default: return "";
+    case HP_REASON_REFUSED: return "REFUSED";
+    case HP_REASON_NO_NODE: return "NO NODE";     case HP_REASON_NO_TARGET: return "NO TARGET";
+    case HP_REASON_SOI: return "SOI";             case HP_REASON_FUEL: return "FUEL";
+    case HP_REASON_LANDED: return "LANDED";       case HP_REASON_OTHER_AP: return "OTHER AP";
+    case HP_REASON_FLARE: return "FLARE";         case HP_REASON_ARRIVED: return "ARRIVED";
+    case HP_REASON_ALIGN: return "ALIGN";         case HP_REASON_HANDOFF: return "HANDOFF";
+    case HP_REASON_REPLAN: return "REPLAN";       default: return "";
   }
 }
 
@@ -559,6 +651,7 @@ bool hpConsoleLine(const char *line) {
     if      (strncasecmp(arg, "MAXSPD", 6) == 0)   return hpSetMaxSpeed(v);
     else if (strncasecmp(arg, "MAXSLOPE", 8) == 0) return hpSetMaxSlope(v);
     else if (strncasecmp(arg, "MAXROLL", 7) == 0)  return hpSetMaxRoll(v);
+    else if (strncasecmp(arg, "STOP", 4) == 0)     return hpSetStopDist(v);
     int8_t m = hpModeFromName(arg);
     switch (m) {
       case HP_MODE_ATT: return hpSetAtt(v);   case HP_MODE_AOA: return hpSetAoa(v);
@@ -566,6 +659,7 @@ bool hpConsoleLine(const char *line) {
       case HP_MODE_ROLL: return hpSetRoll(v); case HP_MODE_HDG: return hpSetHdg(v);
       case HP_MODE_IAS: return hpSetIas(v);   case HP_MODE_MACH: return hpSetMach(v);
       case HP_MODE_CRUISE: return hpSetCruise(v); case HP_MODE_RHDG: return hpSetRoverHdg(v);
+      case HP_MODE_GS: return hpSetGs(v); case HP_MODE_FOLLOW: return hpSetFollowRange(v);
       default: return false;
     }
   }
@@ -609,5 +703,8 @@ void hpIngestAttitude(float heading, float pitch, float roll, float srfVelHeadin
 }
 void hpIngestAtmo(bool hasAtmosphere, bool inAtmosphere) { hp_t.hasAtmo = hasAtmosphere; hp_t.inAtmo = inAtmosphere; hpStamp(); }
 void hpIngestBrakes(bool on)                             { hp_t.brakes = on; }
-void hpIngestTarget(float bearingDeg)                    { hp_t.tgtBearing = attWrap360(bearingDeg); }
+void hpIngestTarget(bool available, float bearingDeg, float elevationDeg, float distance, float closingRate) {
+  hp_t.hasTarget = available; hp_t.tgtBearing = attWrap360(bearingDeg); hp_t.tgtElev = elevationDeg;
+  hp_t.tgtDist = distance; hp_t.tgtClosing = closingRate;
+}
 void hpIngestThrottle(float t01)                         { hp_t.throttle = attClampf(t01, 0.0f, 1.0f); }

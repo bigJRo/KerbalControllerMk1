@@ -20,9 +20,11 @@
                   context default: DOCK when near a target, NAV in atmospheric flight)
      4  LNDG/ENTR Landing — DESC (powered descent) <-> ENTR (re-entry)
      5  per unit  Unit 1: VEH (Vehicle Info, single-mode).
-                  Unit 2: autopilot consoles — ASC (Ascent) -> ACAP (Aircraft AP) ->
-                  RVAP (Rover AP) (press cycles; first press = console for the vessel
-                  type). Green while any autopilot is armed or engaged.
+                  Unit 2: autopilot consoles — ASC (Ascent), ORAP (Orbital), LDAP
+                  (Landing), ACAP (Aircraft), RVAP (Rover). First press = the console
+                  for the vessel type and situation; a repeat press cycles only the
+                  consoles the vessel type can use (Mission_Autopilot.md §3.1). Green
+                  while any autopilot is armed, engaged or executing.
 
    Button order is identical on both units so one reach serves either panel. PFD is
    pinned to the top: it is the screen a pilot returns to from anywhere, it is unit 1's
@@ -139,7 +141,8 @@ uint8_t screenToButton(ScreenType s) {
     case screen_TGT:  case screen_DOCK: case screen_NAV:                    return SB_TGTDOCK_BTN;
     case screen_LNDG: case screen_LNDGRE:                                  return SB_LNDG_BTN;
 #if INFO_DISP_IS_MISSION_UNIT
-    case screen_LNCHAP: case screen_ACFTAP: case screen_ROVRAP:            return SB_AP_BTN;
+    case screen_LNCHAP: case screen_ACFTAP: case screen_ROVRAP:
+    case screen_ORBTAP: case screen_LNDGAP:                                return SB_AP_BTN;
 #endif
     default: break;
   }
@@ -173,44 +176,68 @@ const char *sbButtonLabel(uint8_t i) {
 #if INFO_DISP_IS_MISSION_UNIT
     case SB_AP_BTN:
       return (activeScreen == screen_ACFTAP) ? "ACAP"
-           : (activeScreen == screen_ROVRAP) ? "RVAP" : "ASC";
+           : (activeScreen == screen_ROVRAP) ? "RVAP"
+           : (activeScreen == screen_ORBTAP) ? "ORAP"
+           : (activeScreen == screen_LNDGAP) ? "LDAP" : "ASC";
 #endif
     default:
       return SB_BTN_IDS[i];
   }
 }
 
+// The console whose module is flying the vehicle right now (Mission_Autopilot.md §10
+// q.7): the mission ladder routes to it, and only to it — a console with nothing engaged
+// is never surfaced unbidden. screen_COUNT when nothing is engaged.
+ScreenType apConsoleEngaged() {
+  if (state.obFlags & 0x43) return screen_ORBTAP;      // armed / executing / approach hold
+  if (state.ldFlags & 0x01) return screen_LNDGAP;
+  if (state.hpFlags & 0x01) return screen_ACFTAP;
+  if (state.rvFlags & 0x47) return screen_ROVRAP;
+  if (state.apArmed)        return screen_LNCHAP;
+  return screen_COUNT;
+}
+
 // The console the autopilot key lands on from another screen: the one for what is
-// being flown. A rover gets ROVER AP, a plane in an atmosphere AIRCRAFT AP, anything
-// else the ASCENT console.
+// being flown and where it is (Mission_Autopilot.md §3). The descent tests are the
+// mission ladder's own, so the key and the ladder agree about what a descent is.
 ScreenType apConsoleContextScreen() {
-  if (state.vesselType == type_Rover) return screen_ROVRAP;
+  const bool onGround = (state.situation & (sit_Landed | sit_Splashed)) != 0;
+  if (state.situation & sit_PreLaunch) return screen_LNCHAP;
+  if (state.vesselType == type_Rover && onGround) return screen_ROVRAP;
   if (state.vesselType == type_Plane && state.inAtmo) return screen_ACFTAP;
-  return screen_LNCHAP;
+  if (onGround) return screen_LNDGAP;
+  // Descending: the RE-ENTRY corridor test, or low with vertical speed negative.
+  if (currentBody.hasAtmo && state.inAtmo && state.verticalVel < 0.0f) return screen_LNDGAP;
+  if (state.radarAlt < LNDG_CTX_ALT_M && state.verticalVel < -LNDG_CTX_VVERT_MS) return screen_LNDGAP;
+  // Climbing under thrust toward an orbit that does not exist yet: the ascent console.
+  if (state.throttle > 0.02f && state.verticalVel > 0.0f && state.periapsis < 0.0f) return screen_LNCHAP;
+  return screen_ORBTAP;
 }
 
 // The ring a repeat press cycles through is FILTERED BY VESSEL TYPE, so a console a
 // vessel cannot use is never a stop on the way to one it can (Mission_Autopilot.md
-// §3.1, review decision C). Rockets (and anything untyped) cycle the ascent console;
-// planes the aircraft console; rovers the rover console. A rover that is not landed or
-// splashed is still being delivered and keeps the flight consoles it needs — today that
-// is the ascent console, and the orbital and landing consoles when they exist. KSP's
-// vessel type is editable in flight, which is the escape hatch for edge cases (a
-// rocket-typed VTOL that wants the aircraft holds). Returns the screen after `cur`, or
-// `cur` itself when the ring is one deep.
+// §3.1, review decision C). Rockets (and anything untyped): ASC -> ORAP -> LDAP. Planes:
+// ACAP -> ORAP -> LDAP. Rovers: RVAP, or RVAP -> ORAP -> LDAP while not landed (a rover
+// still on its lander keeps the flight consoles through delivery). KSP's vessel type is
+// editable in flight, which is the escape hatch for edge cases. Returns the screen after
+// `cur`, or `cur` itself when the ring is one deep.
 ScreenType apConsoleNext(ScreenType cur) {
   const bool onGround = (state.situation & (sit_Landed | sit_Splashed)) != 0;
+  ScreenType first;
   switch (state.vesselType) {
     case type_Rover:
       if (onGround) return screen_ROVRAP;
-      return (cur == screen_ROVRAP) ? screen_LNCHAP : screen_ROVRAP;
+      first = screen_ROVRAP; break;
     case type_Plane:
-      return screen_ACFTAP;
+      first = screen_ACFTAP; break;
     case type_EVA: case type_Flag: case type_Debris: case type_Object:
       return cur;
     default:
-      return screen_LNCHAP;
+      first = screen_LNCHAP; break;
   }
+  if (cur == first)          return screen_ORBTAP;
+  if (cur == screen_ORBTAP)  return screen_LNDGAP;
+  return first;
 }
 
 const char *const SCREEN_TITLES[SCREEN_COUNT] = {
@@ -229,7 +256,9 @@ const char *const SCREEN_TITLES[SCREEN_COUNT] = {
   "ASCENT AUTOPILOT",
   "NAVIGATION",
   "AIRCRAFT AUTOPILOT",
-  "ROVER AUTOPILOT"
+  "ROVER AUTOPILOT",
+  "ORBITAL AUTOPILOT",
+  "LANDING AUTOPILOT"
 };
 
 /***************************************************************************************
@@ -836,6 +865,8 @@ void drawStaticScreen(KCM_TFT &tft, ScreenType s) {
     case screen_NAV:    chromeScreen_NAV(tft); break;
     case screen_ACFTAP: chromeScreen_ACFTAP(tft); break;
     case screen_ROVRAP: chromeScreen_ROVRAP(tft); break;
+    case screen_ORBTAP: chromeScreen_ORBTAP(tft); break;
+    case screen_LNDGAP: chromeScreen_LNDGAP(tft); break;
     default: break;
   }
 
@@ -863,6 +894,8 @@ void updateScreen(KCM_TFT &tft, ScreenType s) {
     case screen_NAV:    drawScreen_NAV(tft); break;
     case screen_ACFTAP: drawScreen_ACFTAP(tft); break;
     case screen_ROVRAP: drawScreen_ROVRAP(tft); break;
+    case screen_ORBTAP: drawScreen_ORBTAP(tft); break;
+    case screen_LNDGAP: drawScreen_LNDGAP(tft); break;
     default: break;
   }
 }

@@ -23,6 +23,8 @@ extern "C" void usb_init(void);
 #include "attitude_controller.h"          // Shared attitude PID (ascent + hold-mode autopilots)
 #include "ascent_autopilot.h"             // Launch-to-orbit ascent autopilot
 #include "hold_autopilot.h"               // Aircraft / rover hold-mode autopilot
+#include "burn_autopilot.h"               // Orbital: node / apsis / plane-change burns, approach-rate hold
+#include "landing_autopilot.h"            // Landing: descent-rate hold, hover, suicide burn, re-entry attitude
 #include "control_links.h"                // Throttle Module, rotation joystick and Info Display 2 links
 #include "C:\Dev\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
 #include "C:\Dev\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
@@ -221,6 +223,9 @@ void setup() {
     console link that polls the display and pushes status.
   *********************************************************/
   hpInit();
+  arbInit();   // attitude / throttle ownership across the autopilot modules
+  bpInit();    // burn autopilot (ORBITAL AUTOPILOT console)
+  lpInit();    // landing autopilot (LANDING AUTOPILOT console)
   idlInit();
 }
 
@@ -261,6 +266,8 @@ void loop() {
   apSerialConsole();  // bench console (ARM/DISARM/ALT/... and HP <cmd> for the hold autopilot)
   apUpdate();
   hpUpdate();         // hold-mode autopilot loops (no-op unless a mode is engaged)
+  bpUpdate();         // burn executor / approach hold
+  lpUpdate();         // landing modes
   rotService();       // joystick poll + merged rotation send (silent while the ascent AP is armed)
   idlService();       // Info Display 2 console: command poll / ACK / status push
 }

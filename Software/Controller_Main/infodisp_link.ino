@@ -21,6 +21,8 @@
 #include "control_links.h"
 #include "ascent_autopilot.h"
 #include "hold_autopilot.h"
+#include "burn_autopilot.h"
+#include "landing_autopilot.h"
 
 static const uint32_t IDL_POLL_MS = 50;
 static const uint32_t IDL_PUSH_MS = 100;
@@ -29,14 +31,20 @@ static const uint8_t IDL_SYNC_OUT      = 0xAE;   // InfoDisp -> master framing b
 static const uint8_t IDL_SYNC_ASCENT   = 0xA5;
 static const uint8_t IDL_SYNC_AIRCRAFT = 0xA6;
 static const uint8_t IDL_SYNC_ROVER    = 0xA7;
+static const uint8_t IDL_SYNC_ORBITAL  = 0xA8;
+static const uint8_t IDL_SYNC_LANDING  = 0xA9;
 static const uint8_t IDL_LEN_ASCENT    = 40;
-static const uint8_t IDL_LEN_AIRCRAFT  = 44;
-static const uint8_t IDL_LEN_ROVER     = 28;
+static const uint8_t IDL_LEN_AIRCRAFT  = 48;   // grew from 44: gs angle (Mission_Autopilot.md §8.1)
+static const uint8_t IDL_LEN_ROVER     = 36;   // grew from 28: followRange, stopDist
+static const uint8_t IDL_LEN_ORBITAL   = 52;
+static const uint8_t IDL_LEN_LANDING   = 44;
 
 // InfoDisp ScreenType values for the three consoles (KCMk1_InfoDisp.h)
 static const uint8_t IDL_SCREEN_LNCHAP = 12;
 static const uint8_t IDL_SCREEN_ACFTAP = 14;
 static const uint8_t IDL_SCREEN_ROVRAP = 15;
+static const uint8_t IDL_SCREEN_ORBTAP = 16;
+static const uint8_t IDL_SCREEN_LNDGAP = 17;
 
 // requestType nibble (I2C Protocol Specification §15.3)
 static const uint8_t IDL_REQ_NOP     = 0x0;
@@ -53,7 +61,16 @@ enum {
   IDL_CMD_SET_ATT = 0x28, IDL_CMD_SET_AOA, IDL_CMD_SET_VS, IDL_CMD_SET_ALT,
   IDL_CMD_SET_HROLL, IDL_CMD_SET_HDG, IDL_CMD_SET_IAS, IDL_CMD_SET_MACH,
   IDL_CMD_ENGAGE_CRUISE = 0x30, IDL_CMD_ENGAGE_RHDG, IDL_CMD_ENGAGE_RTGT,
-  IDL_CMD_SET_CRUISE = 0x33, IDL_CMD_SET_RHDG, IDL_CMD_SET_MAXSPD, IDL_CMD_SET_MAXSLOPE, IDL_CMD_SET_MAXROLL
+  IDL_CMD_SET_CRUISE = 0x33, IDL_CMD_SET_RHDG, IDL_CMD_SET_MAXSPD, IDL_CMD_SET_MAXSLOPE, IDL_CMD_SET_MAXROLL,
+  // Mission autopilot (Mission_Autopilot.md §8)
+  IDL_CMD_ENGAGE_NAV = 0x14, IDL_CMD_ENGAGE_GS = 0x15, IDL_CMD_SET_GS = 0x16,
+  IDL_CMD_ENGAGE_FOLLOW = 0x38, IDL_CMD_SET_FOLLOW_RANGE = 0x39, IDL_CMD_SET_STOP_DIST = 0x3A,
+  IDL_CMD_ARM_NODE = 0x40, IDL_CMD_ARM_AP, IDL_CMD_ARM_PE, IDL_CMD_ARM_INC, IDL_CMD_ENGAGE_APPR = 0x44,
+  IDL_CMD_SET_AP = 0x48, IDL_CMD_SET_PE, IDL_CMD_SET_INC, IDL_CMD_SET_APPR_RATE, IDL_CMD_SET_APPR_DIST,
+  IDL_CMD_SET_WARP = 0x4D, IDL_CMD_SET_AUTOSTAGE = 0x4E, IDL_CMD_EXEC = 0x4F,
+  IDL_CMD_ENGAGE_DESC = 0x50, IDL_CMD_ENGAGE_HOVR, IDL_CMD_ENGAGE_BRAKE, IDL_CMD_ENGAGE_ENTRY,
+  IDL_CMD_SET_DESC_RATE = 0x58, IDL_CMD_SET_HOVR_ALT, IDL_CMD_SET_TWR, IDL_CMD_SET_MARGIN, IDL_CMD_SET_ENTRY_AOA, IDL_CMD_SET_ENTRY_ROLL,
+  IDL_CMD_SET_ATT_REF = 0x5E
 };
 
 static uint8_t  g_idlLastSeq    = 0;
@@ -104,7 +121,7 @@ static void idlApply(uint8_t op, float v) {
     case IDL_CMD_ARM:             apArm(); break;
     case IDL_CMD_DISARM:          apDisarm(); break;
     // ---- Hold-mode autopilot ----
-    case IDL_CMD_HOLD_AP_OFF:     hpDisconnectAll(HP_REASON_PILOT); break;
+    case IDL_CMD_HOLD_AP_OFF:     arbAllOff(); break;   // A/P OFF from any console: everything (review q.6)
     case IDL_CMD_HOLD_LVL:        hpLevel(); break;
     case IDL_CMD_ENGAGE_ATT:      hpEngage(HP_MODE_ATT,    v != 0.0f); break;
     case IDL_CMD_ENGAGE_AOA:      hpEngage(HP_MODE_AOA,    v != 0.0f); break;
@@ -130,6 +147,37 @@ static void idlApply(uint8_t op, float v) {
     case IDL_CMD_SET_MAXSPD:      hpSetMaxSpeed(v); break;
     case IDL_CMD_SET_MAXSLOPE:    hpSetMaxSlope(v); break;
     case IDL_CMD_SET_MAXROLL:     hpSetMaxRoll(v); break;
+    // ---- Mission autopilot ----
+    case IDL_CMD_ENGAGE_NAV:      hpEngage(HP_MODE_NAV, v != 0.0f); break;
+    case IDL_CMD_ENGAGE_GS:       hpEngage(HP_MODE_GS,  v != 0.0f); break;
+    case IDL_CMD_SET_GS:          hpSetGs(v); break;
+    case IDL_CMD_ENGAGE_FOLLOW:   hpEngage(HP_MODE_FOLLOW, v != 0.0f); break;
+    case IDL_CMD_SET_FOLLOW_RANGE: hpSetFollowRange(v); break;
+    case IDL_CMD_SET_STOP_DIST:   hpSetStopDist(v); break;
+    case IDL_CMD_ARM_NODE:        bpArm(BP_MODE_NODE, v != 0.0f); break;
+    case IDL_CMD_ARM_AP:          bpArm(BP_MODE_AP,   v != 0.0f); break;
+    case IDL_CMD_ARM_PE:          bpArm(BP_MODE_PE,   v != 0.0f); break;
+    case IDL_CMD_ARM_INC:         bpArm(BP_MODE_INC,  v != 0.0f); break;
+    case IDL_CMD_ENGAGE_APPR:     bpEngageApproach(v != 0.0f); break;
+    case IDL_CMD_SET_AP:          bpSetTargetAp(v); break;
+    case IDL_CMD_SET_PE:          bpSetTargetPe(v); break;
+    case IDL_CMD_SET_INC:         bpSetTargetInc(v); break;
+    case IDL_CMD_SET_APPR_RATE:   bpSetApprRate(v); break;
+    case IDL_CMD_SET_APPR_DIST:   bpSetApprDist(v); break;
+    case IDL_CMD_SET_WARP:        bpSetAutoWarp(v != 0.0f); break;
+    case IDL_CMD_SET_AUTOSTAGE:   asSetEnabled(v != 0.0f); break;
+    case IDL_CMD_EXEC:            bpExecute(); break;
+    case IDL_CMD_ENGAGE_DESC:     lpEngage(LP_MODE_DESC,  v != 0.0f); break;
+    case IDL_CMD_ENGAGE_HOVR:     lpEngage(LP_MODE_HOVR,  v != 0.0f); break;
+    case IDL_CMD_ENGAGE_BRAKE:    lpEngage(LP_MODE_BRAKE, v != 0.0f); break;
+    case IDL_CMD_ENGAGE_ENTRY:    lpEngageEntry(v != 0.0f); break;
+    case IDL_CMD_SET_DESC_RATE:   lpSetDescRate(v); break;
+    case IDL_CMD_SET_HOVR_ALT:    lpSetHovrAlt(v); break;
+    case IDL_CMD_SET_TWR:         lpSetTwr(v); break;
+    case IDL_CMD_SET_MARGIN:      lpSetMargin(v); break;
+    case IDL_CMD_SET_ENTRY_AOA:   lpSetEntryAoa(v); break;
+    case IDL_CMD_SET_ENTRY_ROLL:  lpSetEntryRoll(v); break;
+    case IDL_CMD_SET_ATT_REF:     lpSetAttRef(v != 0.0f); break;
     default: break;
   }
 }
@@ -191,7 +239,7 @@ static void idlPushAircraft() {
           (s.leverDriven ? 0x08 : 0) | (s.ascentArmed ? 0x10 : 0);
   st[2] = s.pitchMode; st[3] = s.latMode; st[4] = s.thrMode;
   st[5] = s.reason;    st[6] = s.reasonAge; st[7] = 0;
-  float f[9] = { s.att, s.aoa, s.vs, s.alt, s.roll, s.hdg, s.ias, s.mach, s.cmdThrottle };
+  float f[10] = { s.att, s.aoa, s.vs, s.alt, s.roll, s.hdg, s.ias, s.mach, s.gs, s.cmdThrottle };
   memcpy(&st[8], f, sizeof(f));
   idlWrite(INFO2_MC, st, IDL_LEN_AIRCRAFT);
 }
@@ -201,11 +249,36 @@ static void idlPushRover() {
   uint8_t st[IDL_LEN_ROVER] = {0};
   st[0] = IDL_SYNC_ROVER;
   st[1] = (s.cruise ? 0x01 : 0) | (s.rhdg ? 0x02 : 0) | (s.rtgt ? 0x04 : 0) | (s.brakes ? 0x08 : 0) |
-          (s.slopeGuard ? 0x10 : 0) | (s.targetAvailable ? 0x20 : 0);
+          (s.slopeGuard ? 0x10 : 0) | (s.targetAvailable ? 0x20 : 0) | (s.follow ? 0x40 : 0);
   st[2] = s.roverReason; st[3] = s.roverReasonAge;
-  float f[6] = { s.cruiseSp, s.rhdgSp, s.maxSpeed, s.maxSlope, s.maxRoll, s.cmdWheel };
+  float f[8] = { s.cruiseSp, s.rhdgSp, s.maxSpeed, s.maxSlope, s.maxRoll, s.followRange, s.stopDist, s.cmdWheel };
   memcpy(&st[4], f, sizeof(f));
   idlWrite(INFO2_MC, st, IDL_LEN_ROVER);
+}
+
+static void idlPushOrbital() {
+  BurnStatus s = bpGetStatus();
+  uint8_t st[IDL_LEN_ORBITAL] = {0};
+  st[0] = IDL_SYNC_ORBITAL;
+  st[1] = (s.armed ? 0x01 : 0) | (s.executing ? 0x02 : 0) | (s.autoWarp ? 0x04 : 0) | (s.autoStage ? 0x08 : 0) |
+          (s.targetAvailable ? 0x10 : 0) | (s.nodeAvailable ? 0x20 : 0) | (s.apprEngaged ? 0x40 : 0);
+  st[2] = s.mode; st[3] = s.phase; st[4] = s.reason; st[5] = s.reasonAge;
+  float f[11] = { s.targetAp, s.targetPe, s.targetInc, s.apprRate, s.apprDist, s.dvTotal, s.dvRemaining,
+                  s.tIgnition, s.burnDuration, s.accelEst, s.cmdThrottle };
+  memcpy(&st[8], f, sizeof(f));
+  idlWrite(INFO2_MC, st, IDL_LEN_ORBITAL);
+}
+
+static void idlPushLanding() {
+  LandingStatus s = lpGetStatus();
+  uint8_t st[IDL_LEN_LANDING] = {0};
+  st[0] = IDL_SYNC_LANDING;
+  st[1] = (s.engaged ? 0x01 : 0) | (s.brakeArmed ? 0x02 : 0) | (s.brakeFiring ? 0x04 : 0) | (s.attRefRadial ? 0x08 : 0) |
+          (s.autoStage ? 0x10 : 0) | (s.landed ? 0x20 : 0) | (s.brakeMarginal ? 0x40 : 0);
+  st[2] = s.mode; st[3] = s.entry ? 1 : 0; st[4] = s.reason; st[5] = s.reasonAge; st[6] = s.accelSource;
+  float f[9] = { s.descRate, s.hovrAlt, s.twrOverride, s.margin, s.entryAoa, s.entryRoll, s.ignitionAlt, s.accelEst, s.cmdThrottle };
+  memcpy(&st[8], f, sizeof(f));
+  idlWrite(INFO2_MC, st, IDL_LEN_LANDING);
 }
 
 void idlService() {
@@ -218,6 +291,8 @@ void idlService() {
       case IDL_SCREEN_LNCHAP: idlPushAscent();   break;
       case IDL_SCREEN_ACFTAP: idlPushAircraft(); break;
       case IDL_SCREEN_ROVRAP: idlPushRover();    break;
+      case IDL_SCREEN_ORBTAP: idlPushOrbital();  break;
+      case IDL_SCREEN_LNDGAP: idlPushLanding();  break;
       default: break;
     }
   }

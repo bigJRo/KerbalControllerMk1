@@ -173,6 +173,14 @@ void processTouchEvents() {
     rovrApScreenTouch(touchContentX(x2), y2);
     return;
   }
+  if (activeScreen == screen_ORBTAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    orbtApScreenTouch(touchContentX(x2), y2);
+    return;
+  }
+  if (activeScreen == screen_LNDGAP && touchInContent(x2) && y2 >= TITLE_TOP) {
+    lndgApScreenTouch(touchContentX(x2), y2);
+    return;
+  }
 
   // Sidebar hit test — the SIDEBAR_W column on this unit's outboard edge (left on
   // unit 1, right on unit 2), 6 buttons (SB_BTN_SCREEN).

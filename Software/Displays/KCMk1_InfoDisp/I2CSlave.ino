@@ -47,7 +47,7 @@
    Inbound Ascent-AP status (Master -> InfoDisp), I2C_AP_STATUS_SIZE = 40 bytes:
      Master pushes the autopilot's AscentStatus so InfoDisp can render live guidance and
      confirm accepted parameters (clearing the pilot's pending "cyan" edits). Dispatched
-     by write length in onI2CReceive(); see processApStatus() for the field layout.
+     by sync byte in processStatusPush(); see processApStatus() for the field layout.
      Byte 0  : 0xA5 sync
      Byte 1  : flags (bit0 armed, bit1 southerly, bit2 rollEnable)
      Byte 2  : phase (0 IDLE .. 6 ABORT)
@@ -55,14 +55,16 @@
      Bytes 4-39 : 9 IEEE-754 float32 LE — targetAlt, inclination, loft, rollDeg, maxG,
                   cmdPitch, cmdHeading, cmdThrottle, dynPressure
 
-   Inbound hold-mode status (Master -> InfoDisp), dispatched by length like the above
-   (Documents/Developer/Hold_Mode_Autopilot.md §8.2):
-     44 bytes, sync 0xA6 — aircraft: flags, pitch/lat/thr mode bytes, reason, reasonAge,
-                           then 9 floats (att, aoa, vs, alt, roll, hdg, ias, mach, cmdThrottle)
-     28 bytes, sync 0xA7 — rover: flags, reason, reasonAge, then 6 floats
-                           (cruise, hdg, maxSpeed, maxSlope, maxRoll, cmdWheel)
+   Inbound autopilot status pushes (Master -> InfoDisp) are DISPATCHED BY SYNC BYTE
+   (Mission_Autopilot.md §8.1): any write of 3 bytes or more lands in one buffer and the
+   main thread looks at byte 0. Lengths are fixed per frame but need not be unique.
+     0xA5  40 bytes  ascent     (Ascent_Autopilot_Interface.md §5)
+     0xA6  48 bytes  aircraft   flags, pitch/lat/thr modes, reason, reasonAge, 10 floats
+     0xA7  36 bytes  rover      flags, reason, reasonAge, 8 floats
+     0xA8  52 bytes  orbital    flags, mode, phase, reason, reasonAge, 11 floats
+     0xA9  44 bytes  landing    flags, mode, entry, reason, reasonAge, accelSource, 9 floats
    The master pushes only the frame the console on screen needs (activeScreen, byte 2 of
-   the outbound packet). The four inbound lengths — 2, 28, 40, 44 — are all distinct.
+   the outbound packet). The 2-byte control write keeps its own path.
 
    Expanding the protocol:
      Outbound: increment I2C_PACKET_SIZE, add fields to fillI2CPacketBuffer().
@@ -85,10 +87,15 @@
 #define I2C_CMD_SIZE     2      // inbound:  Master -> InfoDisp control/ack (panel-specific)
 #define I2C_AP_STATUS_SIZE 40   // inbound:  Master -> InfoDisp Ascent-AP status push
 #define I2C_AP_STATUS_SYNC 0xA5 // framing byte for the AP status push
-#define I2C_HA_STATUS_SIZE 44   // inbound:  Master -> InfoDisp aircraft hold-mode status push
+#define I2C_HA_STATUS_SIZE 48   // inbound:  Master -> InfoDisp aircraft hold-mode status push
 #define I2C_HA_STATUS_SYNC 0xA6
-#define I2C_RA_STATUS_SIZE 28   // inbound:  Master -> InfoDisp rover hold-mode status push
+#define I2C_RA_STATUS_SIZE 36   // inbound:  Master -> InfoDisp rover hold-mode status push
 #define I2C_RA_STATUS_SYNC 0xA7
+#define I2C_OB_STATUS_SIZE 52   // inbound:  Master -> InfoDisp orbital autopilot status push
+#define I2C_OB_STATUS_SYNC 0xA8
+#define I2C_LD_STATUS_SIZE 44   // inbound:  Master -> InfoDisp landing autopilot status push
+#define I2C_LD_STATUS_SYNC 0xA9
+#define I2C_PUSH_MAX       64   // one buffer for every status push; dispatched by sync byte
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_INFODISP      // #3C from SystemConfig (0xAE, collision fix)
 
 // requestType values (bits 7:4 of controlByte)
@@ -151,14 +158,11 @@ static void buildI2CPacket() {
 static volatile uint8_t i2cCmdBuf[I2C_CMD_SIZE];
 static volatile bool i2cCmdReady = false;
 
-// Inbound Ascent-AP status push (Master -> InfoDisp). Filled in the Wire ISR,
-// snapshotted and applied on the main thread by processApStatus().
-static volatile uint8_t apStatusBuf[I2C_AP_STATUS_SIZE];
-static volatile bool     apStatusReady = false;
-static volatile uint8_t haStatusBuf[I2C_HA_STATUS_SIZE];
-static volatile bool     haStatusReady = false;
-static volatile uint8_t raStatusBuf[I2C_RA_STATUS_SIZE];
-static volatile bool     raStatusReady = false;
+// Inbound autopilot status push (Master -> InfoDisp), any console. Filled in the Wire
+// ISR, snapshotted and dispatched on its sync byte by the main thread.
+static volatile uint8_t pushBuf[I2C_PUSH_MAX];
+static volatile uint8_t pushLen = 0;
+static volatile bool    pushReady = false;
 
 static void processI2CCommand(const uint8_t *cmd) {
   uint8_t controlByte = cmd[0];
@@ -293,21 +297,12 @@ static void onI2CReceive(int numBytes) {
       i2cCmdBuf[i] = KCM_I2C_BUS.read();
     }
     i2cCmdReady = true;
-  } else if (numBytes == I2C_AP_STATUS_SIZE) {
-    for (int i = 0; i < I2C_AP_STATUS_SIZE; i++) {
-      apStatusBuf[i] = KCM_I2C_BUS.read();
+  } else if (numBytes >= 3 && numBytes <= I2C_PUSH_MAX) {
+    for (int i = 0; i < numBytes; i++) {
+      pushBuf[i] = KCM_I2C_BUS.read();
     }
-    apStatusReady = true;
-  } else if (numBytes == I2C_HA_STATUS_SIZE) {
-    for (int i = 0; i < I2C_HA_STATUS_SIZE; i++) {
-      haStatusBuf[i] = KCM_I2C_BUS.read();
-    }
-    haStatusReady = true;
-  } else if (numBytes == I2C_RA_STATUS_SIZE) {
-    for (int i = 0; i < I2C_RA_STATUS_SIZE; i++) {
-      raStatusBuf[i] = KCM_I2C_BUS.read();
-    }
-    raStatusReady = true;
+    pushLen = (uint8_t)numBytes;
+    pushReady = true;
   } else {
     while (KCM_I2C_BUS.available()) KCM_I2C_BUS.read();
   }
@@ -350,29 +345,59 @@ static void processApStatus(const uint8_t *buf) {
    Main thread; skipped in demo mode (Demo.ino drives state.hp* / state.rv* locally).
 ****************************************************************************************/
 static void processHaStatus(const uint8_t *buf) {
-  if (buf[0] != I2C_HA_STATUS_SYNC) return;
   state.hpFlags     = buf[1];
   state.hpPitchMode = buf[2];
   state.hpLatMode   = buf[3];
   state.hpThrMode   = buf[4];
   state.hpReason    = buf[5];
   state.hpReasonAge = buf[6];
-  float f[9];
-  memcpy(f, &buf[8], sizeof(f));   // 9 floats, bytes 8..43
+  float f[10];
+  memcpy(f, &buf[8], sizeof(f));   // 10 floats, bytes 8..47
   state.hpAtt = f[0]; state.hpAoa = f[1]; state.hpVs = f[2]; state.hpAlt = f[3];
   state.hpRoll = f[4]; state.hpHdg = f[5]; state.hpIas = f[6]; state.hpMach = f[7];
-  state.hpCmdThrottle = f[8];
+  state.hpGs = f[8]; state.hpCmdThrottle = f[9];
 }
 
 static void processRaStatus(const uint8_t *buf) {
-  if (buf[0] != I2C_RA_STATUS_SYNC) return;
   state.rvFlags     = buf[1];
   state.rvReason    = buf[2];
   state.rvReasonAge = buf[3];
-  float f[6];
-  memcpy(f, &buf[4], sizeof(f));   // 6 floats, bytes 4..27
+  float f[8];
+  memcpy(f, &buf[4], sizeof(f));   // 8 floats, bytes 4..35
   state.rvCruise = f[0]; state.rvHdg = f[1]; state.rvMaxSpeed = f[2];
-  state.rvMaxSlope = f[3]; state.rvMaxRoll = f[4]; state.rvCmdWheel = f[5];
+  state.rvMaxSlope = f[3]; state.rvMaxRoll = f[4]; state.rvFollowRange = f[5];
+  state.rvStopDist = f[6]; state.rvCmdWheel = f[7];
+}
+
+static void processObStatus(const uint8_t *buf) {
+  state.obFlags = buf[1]; state.obMode = buf[2]; state.obPhase = buf[3];
+  state.obReason = buf[4]; state.obReasonAge = buf[5];
+  float f[11];
+  memcpy(f, &buf[8], sizeof(f));   // 11 floats, bytes 8..51
+  state.obTargetAp = f[0]; state.obTargetPe = f[1]; state.obTargetInc = f[2];
+  state.obApprRate = f[3]; state.obApprDist = f[4]; state.obDvTotal = f[5]; state.obDvRemaining = f[6];
+  state.obTIgnition = f[7]; state.obBurnDuration = f[8]; state.obAccelEst = f[9]; state.obCmdThrottle = f[10];
+}
+
+static void processLdStatus(const uint8_t *buf) {
+  state.ldFlags = buf[1]; state.ldMode = buf[2]; state.ldEntry = buf[3];
+  state.ldReason = buf[4]; state.ldReasonAge = buf[5]; state.ldAccelSource = buf[6];
+  float f[9];
+  memcpy(f, &buf[8], sizeof(f));   // 9 floats, bytes 8..43
+  state.ldDescRate = f[0]; state.ldHovrAlt = f[1]; state.ldTwr = f[2]; state.ldMargin = f[3];
+  state.ldEntryAoa = f[4]; state.ldEntryRoll = f[5]; state.ldIgnAlt = f[6]; state.ldAccelEst = f[7]; state.ldCmdThrottle = f[8];
+}
+
+// Dispatch a status push on its sync byte; a length mismatch is a framing error and is dropped.
+static void processStatusPush(const uint8_t *buf, uint8_t len) {
+  switch (buf[0]) {
+    case I2C_AP_STATUS_SYNC: if (len == I2C_AP_STATUS_SIZE) processApStatus(buf); break;
+    case I2C_HA_STATUS_SYNC: if (len == I2C_HA_STATUS_SIZE) processHaStatus(buf); break;
+    case I2C_RA_STATUS_SYNC: if (len == I2C_RA_STATUS_SIZE) processRaStatus(buf); break;
+    case I2C_OB_STATUS_SYNC: if (len == I2C_OB_STATUS_SIZE) processObStatus(buf); break;
+    case I2C_LD_STATUS_SYNC: if (len == I2C_LD_STATUS_SIZE) processLdStatus(buf); break;
+    default: break;
+  }
 }
 
 
@@ -418,38 +443,26 @@ void setupI2CSlave() {
 ****************************************************************************************/
 void updateI2CState() {
   uint8_t cmd[I2C_CMD_SIZE];
-  uint8_t ap[I2C_AP_STATUS_SIZE];
-  uint8_t ha[I2C_HA_STATUS_SIZE];
-  uint8_t ra[I2C_RA_STATUS_SIZE];
-  bool haveCmd = false, haveAp = false, haveHa = false, haveRa = false;
+  uint8_t push[I2C_PUSH_MAX];
+  uint8_t pushN = 0;
+  bool haveCmd = false, havePush = false;
   noInterrupts();
   if (i2cCmdReady) {
     for (uint8_t i = 0; i < I2C_CMD_SIZE; i++) cmd[i] = i2cCmdBuf[i];
     i2cCmdReady = false;
     haveCmd = true;
   }
-  if (apStatusReady) {
-    for (uint8_t i = 0; i < I2C_AP_STATUS_SIZE; i++) ap[i] = apStatusBuf[i];
-    apStatusReady = false;
-    haveAp = true;
-  }
-  if (haStatusReady) {
-    for (uint8_t i = 0; i < I2C_HA_STATUS_SIZE; i++) ha[i] = haStatusBuf[i];
-    haStatusReady = false;
-    haveHa = true;
-  }
-  if (raStatusReady) {
-    for (uint8_t i = 0; i < I2C_RA_STATUS_SIZE; i++) ra[i] = raStatusBuf[i];
-    raStatusReady = false;
-    haveRa = true;
+  if (pushReady) {
+    pushN = pushLen;
+    for (uint8_t i = 0; i < pushN; i++) push[i] = pushBuf[i];
+    pushReady = false;
+    havePush = true;
   }
   interrupts();
   if (haveCmd) processI2CCommand(cmd);
 
   // --- Apply inbound Ascent-AP status push (live mode only) ---
-  if (haveAp && !demoMode) processApStatus(ap);
-  if (haveHa && !demoMode) processHaStatus(ha);
-  if (haveRa && !demoMode) processRaStatus(ra);
+  if (havePush && !demoMode) processStatusPush(push, pushN);
 
   // --- Console command queue: expose next command, retire confirmed edits ---
   apPumpCommandQueue();

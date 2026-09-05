@@ -13,6 +13,8 @@
 #include "ascent_autopilot.h"
 #include "attitude_controller.h"
 #include "hold_autopilot.h"
+#include "burn_autopilot.h"
+#include "landing_autopilot.h"
 #include "control_links.h"
 
 /***************************************************************************************
@@ -391,7 +393,8 @@ void apArm() {
   g_armed          = true;
   g_phase          = AP_PHASE_VERTICAL;
   attReset(g_att);
-  hpDisconnectAll(HP_REASON_ASCENT);   // arming takes the vehicle from any hold mode
+  arbTakeAttitude(AP_OWNER_ASCENT);   // arming takes the vehicle from any other autopilot (ap_arbiter.ino)
+  arbTakeThrottle(AP_OWNER_ASCENT);
   g_sasIsOff       = false;   // force apReconcileSAS() to command SAS off on the first pass
   g_sasProgradeSet = false;
   g_lastStageMs    = millis();
@@ -413,6 +416,8 @@ void apDisarm() {
   g_phase = AP_PHASE_IDLE;
   apSendThrottle(0.0f);
   thrAutoRelease(THR_OWNER_ASCENT);
+  arbReleaseAttitude(AP_OWNER_ASCENT);
+  arbReleaseThrottle(AP_OWNER_ASCENT);
   // Zero the control axes so we do not leave the stick deflected.
   rotationMessage msg;
   msg.setPitch(0); msg.setYaw(0); msg.setRoll(0);
@@ -420,6 +425,7 @@ void apDisarm() {
 }
 
 bool        apIsArmed()  { return g_armed; }
+void        apArbiterDrop() { if (g_armed) { apDisarm(); mySimpit.printToKSP("Ascent AP: another autopilot engaged - disarmed", PRINT_TO_SCREEN); } }
 AscentPhase apGetPhase() { return g_phase; }
 
 const char *apPhaseName(AscentPhase phase) {
@@ -626,6 +632,8 @@ void apSerialConsole() {
       else if (strncasecmp(buf, "MAXG ", 5) == 0)   ok = apSetMaxG(atof(buf + 5));
       else if (strncasecmp(buf, "SOUTH ", 6) == 0)  ok = apSetLaunchSoutherly(atoi(buf + 6) != 0);
       else if (strncasecmp(buf, "HP ", 3) == 0)     ok = hpConsoleLine(buf + 3);   // hold-mode autopilot (hold_autopilot.ino)
+      else if (strncasecmp(buf, "BP ", 3) == 0)     ok = bpConsoleLine(buf + 3);   // burn autopilot (burn_autopilot.ino)
+      else if (strncasecmp(buf, "LP ", 3) == 0)     ok = lpConsoleLine(buf + 3);   // landing autopilot (landing_autopilot.ino)
       else if (strncasecmp(buf, "STATUS", 6) == 0) {
         Serial.print(F("AP armed=")); Serial.print(g_armed);
         Serial.print(F(" phase="));   Serial.print(apPhaseName(g_phase));
