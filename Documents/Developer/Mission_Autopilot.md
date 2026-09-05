@@ -150,6 +150,19 @@ it collapses to one console per type until the orbital and landing consoles exis
 
 Two new screen types, `screen_ORBTAP = 16` and `screen_LNDGAP = 17`; `screen_COUNT` becomes 18.
 
+### 3.2 The mission ladder routes to an engaged console
+
+The mission ladder never puts up a console that has nothing engaged; consoles are opened by the
+pilot (decided as option B in review, §10 q.7). But once a console is flying the vehicle the
+ladder treats it as the screen for that phase: a burn executing routes to ORBITAL, a landing mode
+engaged routes to LANDING, an aircraft or rover mode engaged routes to that console. The rule
+sits at the top of `missionContextScreen()`, above the re-entry and descent rules, and is subject
+to the manual latch like every other rule, so the pilot can still park another screen. The ladder
+learns what is engaged from the status frames the master already pushes, and a console it routes
+to shows nothing it would not show anyway. Routing on readiness — a node coming due, a descent
+beginning — was rejected: a console appearing unbidden is a command surface the pilot did not
+open.
+
 ---
 
 ## 4. Orbital Autopilot console
@@ -492,8 +505,8 @@ In dependency order.
    something is going wrong must not depend on which console holds what; individual mode buttons
    already give the surgical option. A double-tap "all off" gesture was rejected as new and
    accident-prone.
-7. **The mission ladder** could auto-select LANDING AUTOPILOT the way it auto-selects the descent
-   screens. The design keeps consoles manual-only, matching the ascent console.
+7. ~~**The mission ladder.**~~ **Resolved:** the ladder routes to a console only while that
+   console has a mode engaged (§3.2). Routing on readiness was rejected.
 
 ---
 
