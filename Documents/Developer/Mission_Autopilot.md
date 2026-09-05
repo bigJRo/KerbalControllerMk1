@@ -187,9 +187,15 @@ IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK─�
                                   └── any abort test ─────┴────────────────────────┴──▶ ABORT (throttle 0, SAS stability)
 ```
 
-- **ALIGN** sets the SAS mode for the burn and waits until the pointing error is under 2° (measured
-  against the node vector or the prograde vector) or, for normal / anti-normal where no vector is
-  telemetered, until the attitude rate estimate has been under 0.5°/s for 3 s.
+- **ALIGN** sets the SAS mode for the burn and waits until **both** hold: the pointing error is
+  under 2°, and the attitude rate estimate has been under 0.5°/s for 3 s (the settle backstop).
+  The pointing reference is the node vector (maneuver message), the orbital prograde or retrograde
+  vector (rotation data), or the **orbit normal computed from telemetry**: the normal is
+  perpendicular to the radius vector, so it is always horizontal in the navball frame, and its
+  heading is the orbital prograde heading − 90° (anti-normal + 90°). If the error has not fallen
+  under 2° within 30 s the burn aborts with reason `ALIGN` rather than firing in the wrong
+  direction — this catches a craft SAS cannot turn (torque imbalance, no reaction wheels). Decided
+  as option C plus the settle backstop in review (§10 q.2).
 - **WARP** (WARP option on) sends a warp-to for ignition minus the align lead. Off, the executor
   simply waits, and the pilot may warp by hand; it re-checks alignment after any warp.
 - **BURN** runs the throttle law of §7.1 and auto-stage if enabled.
@@ -355,6 +361,7 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 | Node removed | NODE aborts | — | — | — | `NO NODE` |
 | Target lost | APPR drops | — | drop | drop | `NO TARGET` |
 | SOI change | abort | disconnect | — | — | `SOI` |
+| Pointing error not under 2° within 30 s of ALIGN | abort | — | — | — | `ALIGN` |
 | Stage ΔV exhausted, auto-stage off | abort | BRAKE / DESC keep the throttle, annunciate | — | — | `FUEL` |
 | Stick override | burn continues, APPR drops | ENTRY drops | as before | as before | `STICK` |
 | Lever touched | burn aborts | DESC / HOVR / BRAKE drop, attitude stays | — | — | `LEVER` |
@@ -409,7 +416,7 @@ Live data shown on the consoles (node ΔV, T-node, radar altitude, vertical spee
 comes from the display's own Simpit link as on the other consoles. `AppState` gains the `ob*` and
 `ld*` echo fields plus the new aircraft and rover ones.
 
-New reasons: `NO NODE`, `NO TARGET`, `SOI`, `FUEL`, `LANDED`, `OTHER AP`, `FLARE`, `ARRIVED`.
+New reasons: `NO NODE`, `NO TARGET`, `SOI`, `FUEL`, `LANDED`, `OTHER AP`, `FLARE`, `ARRIVED`, `ALIGN`.
 
 ---
 
@@ -435,8 +442,9 @@ In dependency order.
 1. ~~**Key ring depth.**~~ **Resolved:** one key, ring filtered by vessel type with the
    not-landed rover extension (§3.1). Rejected: splitting the consoles across the ORB and LNDG
    keys, which would have spread the command channel and the green annunciation over three keys.
-2. **Burn alignment for normal / anti-normal.** No normal vector is telemetered, so alignment is a
-   settle timer on the attitude rate estimate. A fixed 8 s settle is the simpler alternative.
+2. ~~**Burn alignment for normal / anti-normal.**~~ **Resolved:** compute the normal from telemetry
+   (horizontal, prograde heading ∓ 90°) and test the pointing error like every other burn, with the
+   rate-settle test kept as a backstop and a 30 s `ALIGN` abort (§4.3).
 3. **Warp authority.** Should the executor ever warp on its own? WARP defaults to AUTO here; the
    conservative default is OFF with the pilot warping from the Time module.
 4. **BRAKE safety factor.** 15 % plus MARGIN is a guess; MechJeb uses a similar margin. A wrong
