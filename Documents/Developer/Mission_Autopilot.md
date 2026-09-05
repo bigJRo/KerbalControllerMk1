@@ -248,8 +248,16 @@ a plan the pilot has not seen.
   the vertical speed reaches it. DESC engages automatically at that moment if it was not already.
   Arming BRAKE with no DESC setpoint uses −3 m/s.
 - **ENTRY** holds an angle of attack relative to orbital retrograde plus a roll angle through the
-  attitude controller. It disconnects when surface speed drops below 250 m/s, which is where the
-  descent screens' parachute logic takes over.
+  attitude controller. **Where it hands off depends on the vessel type** (decided as option B in
+  review, §10 q.5):
+  - *Ship, Lander, Probe* and everything else: disconnects at 250 m/s surface speed, leaving stock
+    SAS in stability assist, which is where the descent screens' parachute logic takes over.
+  - *Plane*: hands off when the wings are flying — Mach below 2.5, dynamic pressure above 5 kPa
+    (from air density and surface speed) and altitude below the body's `flyHigh` boundary — and
+    hands off **into the aircraft console**: ATT and ROLL engage there with the current pitch and
+    bank captured, so the airframe is held while the pilot selects modes. The hand-off is the
+    aircraft console's ordinary capture-on-engage, called across modules through the arbiter; the
+    banner shows `HANDOFF` on both consoles for five seconds.
 - **Touchdown**: on landed or splashed the throttle goes to zero and everything disconnects with
   reason `LANDED`.
 
@@ -389,6 +397,7 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 | Stick override | burn continues, APPR drops | ENTRY drops | as before | as before | `STICK` |
 | Lever touched | burn aborts | DESC / HOVR / BRAKE drop, attitude stays | — | — | `LEVER` |
 | Landed / splashed | — | throttle 0, all off | — | — | `LANDED` |
+| ENTRY hand-off reached | — | ENTRY off; plane: ATT + ROLL engage on the aircraft console | — | — | `HANDOFF` |
 | Another autopilot engages | drop | drop | drop | — | `OTHER AP` |
 | Below 200 m range | — | — | GS drops | — | `FLARE` |
 
@@ -474,8 +483,10 @@ In dependency order.
 4. ~~**BRAKE safety factor.**~~ **Resolved:** the factor follows the acceleration source (5 % TWR,
    10 % measured, 25 % stage average), a `|vs| · 2 s` latency term is added, the source is shown
    beside ACCEL, and IGN ALT goes orange when the landing is marginal (§7.2).
-5. **ENTRY disconnect speed.** 250 m/s hands off to the parachute logic; a spaceplane would rather
-   hand off to the aircraft console. Vessel type could choose.
+5. ~~**ENTRY disconnect speed.**~~ **Resolved:** vessel type chooses — rockets hand off at 250 m/s
+   to stability assist, planes hand off into the aircraft console with ATT and ROLL captured when
+   Mach, dynamic pressure and altitude say the wings are flying (§5.2). A pilot-set hand-off speed
+   was rejected as a field most pilots would not change on a console that is already full.
 6. **HOLD_AP_OFF scope.** Per-console (as designed) or always everything?
 7. **The mission ladder** could auto-select LANDING AUTOPILOT the way it auto-selects the descent
    screens. The design keeps consoles manual-only, matching the ascent console.
