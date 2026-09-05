@@ -1,6 +1,6 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.13.1
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.15.1
 Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
