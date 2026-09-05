@@ -84,7 +84,9 @@ static uint8_t _demoLdReason = 0; static uint32_t _demoLdReasonMs = 0;
 bool hpDemoApplyCommand(uint8_t op, float payload) {
   bool on = (payload != 0.0f);
   switch (op) {
-    case HP_CMD_AP_OFF: _demoHpPitch = _demoHpLat = _demoHpThr = 0; _demoRvCruise = _demoRvHdg = _demoRvTgt = false;
+    // A/P OFF is everything, as Controller_Main's arbAllOff() is: the ascent autopilot too.
+    // The demo boots armed, so without this the key stayed green after A/P OFF on any console.
+    case HP_CMD_AP_OFF: _demoApArmed = false; _demoHpPitch = _demoHpLat = _demoHpThr = 0; _demoRvCruise = _demoRvHdg = _demoRvTgt = false;
                         _demoRvFollowOn = false; _demoObMode = 0; _demoObPhase = 0; _demoObAppr = false; _demoLdMode = 0; _demoLdEntry = false; return true;
     case HP_CMD_LVL:    _demoHpLat = 1; _demoHpRoll = 0.0f; _demoHpPitch = 3; _demoHpVs = 0.0f; return true;
     case HP_CMD_ENGAGE_ATT:  if (on) { _demoHpPitch = 1; _demoHpAtt = state.pitch; } else if (_demoHpPitch == 1) _demoHpPitch = 0; return true;

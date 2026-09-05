@@ -75,7 +75,7 @@ const uint8_t SB_LNDG_BTN    = 4;   // LNDG/ENTR: DESC <-> ENTR
 // Button 5: VEH on unit 1 (single-mode, no constant needed). On unit 2 it is the
 // autopilot console key and cycles ASC -> ACAP -> RVAP, so it gets a constant.
 #if INFO_DISP_IS_MISSION_UNIT
-const uint8_t SB_AP_BTN      = 5;   // unit 2: ASC / ACAP / RVAP (autopilot consoles)
+const uint8_t SB_AP_BTN      = 5;   // unit 2: A/P at rest; ASC / ORAP / LDAP / ACAP / RVAP on a console
 #endif
 inline uint16_t sbBtnH() {
   return SCREEN_H / SB_BTN_COUNT;
@@ -123,7 +123,7 @@ const char *const SB_BTN_IDS[SB_BTN_COUNT] = {
 #if INFO_DISP_IS_PFD_UNIT
   "VEH"
 #else
-  "ASC"
+  "A/P"    // the autopilot cluster; the console captions replace it while one is on screen
 #endif
 };
 
@@ -154,7 +154,7 @@ uint8_t screenToButton(ScreenType s) {
 // Sidebar button caption for the current state: the active mode's label when this
 // button owns the active screen, otherwise the base label. Mirrors the labelling
 // rules in the sidebar-nav design (LNCH/PRE/ASC/CIRC, PFD/SPC/ACFT/ROVR/VEH,
-// ORB/ORB+/MNVR, TGT/DOCK, LNDG/DESC/ENTR).
+// ORB/ORB+/MNVR, TGT/DOCK, LNDG/DESC/ENTR, A/P/ASC/ORAP/LDAP/ACAP/RVAP).
 const char *sbButtonLabel(uint8_t i) {
   if (screenToButton(activeScreen) != i) return SB_BTN_IDS[i];
   switch (i) {

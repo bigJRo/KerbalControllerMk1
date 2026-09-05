@@ -566,6 +566,9 @@ both sketches pass a stub syntax check but nothing has run on hardware or agains
   landed rover cycles RVAP only, a plane in atmosphere cycles ACAP → ASC → ORAP → LDAP, and a
   rocket cycles ASC → ORAP → LDAP. The ladder's rule 0 routes to a console only while that
   console has a mode engaged (`apConsoleEngaged()`), as §3.2 decided.
+- **Key caption.** The sixth key reads `A/P` from any screen outside the cluster and the console's
+  own caption (ASC / ORAP / LDAP / ACAP / RVAP) while one is on screen, so at rest it names the
+  cluster rather than one console of five.
 - **Demo mode** models the orbital and landing consoles well enough to lay them out and walk
   every button with no master attached, but it does not integrate orbits; the burn "executes"
   on a timer and the landing "descends" at the commanded rate.
