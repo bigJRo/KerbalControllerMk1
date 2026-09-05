@@ -425,9 +425,10 @@ The transport is unchanged. New opcodes:
 | `0x58`–`0x5D` | `SET_DESC_RATE`, `SET_HOVR_ALT`, `SET_TWR`, `SET_MARGIN`, `SET_ENTRY_AOA`, `SET_ENTRY_ROLL` | m/s / m / — / m / ° / ° | `lpSet*()` |
 | `0x5E` | `SET_ATT_REF` | 0 retro / 1 radial | `lpSetAttRef(v)` |
 
-`HOLD_AP_OFF` (`0x12`) now aborts or disconnects whichever console it is sent from; the master
-applies it to the module that owns the active screen, and to everything if sent from a console that
-owns nothing.
+`HOLD_AP_OFF` (`0x12`) **always drops everything**: every mode in every module (ascent disarmed,
+burns aborted, hold, landing and rover modes disconnected), throttle released to the pilot, stock
+SAS returned to stability assist (decided as option B in review, §10 q.6). A single mode is
+disengaged by tapping its own button. The ascent console's DISARM stays an ascent-only disarm.
 
 ### 8.1 Status frames
 
@@ -487,7 +488,10 @@ In dependency order.
    to stability assist, planes hand off into the aircraft console with ATT and ROLL captured when
    Mach, dynamic pressure and altitude say the wings are flying (§5.2). A pilot-set hand-off speed
    was rejected as a field most pilots would not change on a console that is already full.
-6. **HOLD_AP_OFF scope.** Per-console (as designed) or always everything?
+6. ~~**HOLD_AP_OFF scope.**~~ **Resolved:** always everything. The button a pilot reaches for when
+   something is going wrong must not depend on which console holds what; individual mode buttons
+   already give the surgical option. A double-tap "all off" gesture was rejected as new and
+   accident-prone.
 7. **The mission ladder** could auto-select LANDING AUTOPILOT the way it auto-selects the descent
    screens. The design keeps consoles manual-only, matching the ascent console.
 
