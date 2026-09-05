@@ -295,14 +295,19 @@ is workable for a plane with SAS off; anything slower will need the plugin's ref
 
 ### 6.5 Disconnect rules
 
+**The pilot-input rule is global** (review decision): any input on the rotation stick, the
+translation stick or the throttle lever disconnects **every** autopilot — all hold modes, rover
+modes included, and the ascent autopilot. The stick tests are debounced (beyond 10 % for 150 ms,
+after the module's own deadzone) so a bumped stick does not drop a burn. On the lever, a hand
+resting on it is not an input while nothing drives it; moving it more than 2 %, pressing any lever
+button, or touching it while an autopilot is driving it is. `pilotOverrideDetected()` in
+`rotation_link.ino` is the one implementation every module calls.
+
 | Trigger | Aircraft | Rover | Banner reason |
 |---------|----------|-------|---------------|
-| Pilot stick deflection > 25 % on a held axis for > 300 ms | Drops the modes on that axis group (pitch stick → pitch group; roll stick → lateral group) | Steer input drops HDG/TGT | `STICK` |
-| Pilot touches the Throttle Module slider (§7) | Drops IAS/MACH | — | `LEVER` |
-| Throttle Module 100 / 0 / UP / DOWN button | Drops IAS/MACH, then the button acts normally | — | `LEVER` |
+| Pilot input on the rotation or translation stick | Drops everything | Drops everything | `STICK` |
+| Pilot touches a driven lever, moves an undriven one, or presses a lever button | Drops everything | Drops everything | `LEVER` |
 | Brakes applied | — | Drops CRUISE | `BRAKES` |
-| Manual steer input (rotation stick yaw) | — | Drops HDG/TGT | `STICK` |
-| Manual wheel-throttle input | — | *Not implemented*: the master has no wheel-throttle input source yet (§11 q.3) | — |
 | Vessel situation not landed/splashed for > 500 ms | — | Drops all | `AIRBORNE` |
 | Roll guard | — | Drops all + brakes | `ROLL LIMIT` |
 | Left atmosphere (`inAtmosphere` false > 2 s) | Drops all | — | `NO ATMO` |
@@ -318,8 +323,11 @@ throttle and lets the pilot take over.
 ### 6.6 Stick suppression
 
 While a pitch-group mode is engaged the master stops forwarding the Rotation joystick's pitch axis
-to KSP; likewise roll for the lateral group and yaw is always forwarded. The suppressed axis is
-still *read* for the 25 % override test above. The Translation joystick is never suppressed.
+to KSP; likewise roll for the lateral group and yaw is always forwarded. With the global pilot-input
+rule this suppression only matters for the 150 ms debounce before the disconnect — it stops a
+bumped stick from twitching the surfaces under a hold — but it is what makes the merged rotation
+message correct in that window. The suppressed axis is still read for the override test. The
+Translation joystick is read for the override test only; its forwarding is not yet integrated.
 
 Because the Simpit plugin keeps only the *latest* rotation message, the held axes and the pilot's
 axes cannot come from two senders: `rotation_link.ino` composes **one** rotation message per frame
@@ -361,12 +369,14 @@ While IAS or MACH is engaged, each autothrottle update produces one throttle val
 
 ### 7.2 Pilot takes the lever
 
-- **Touch** (status bit 2 set): the master disconnects IAS/MACH immediately with reason `LEVER`,
-  stops sending `CMD_SET_THROTTLE`, and resumes forwarding the wiper as ordinary pilot throttle. The
-  module has already stopped its motor on its own, so there is no fight even if the master is a poll
-  late.
+- **Touch** (status bit 2 set) while an autopilot is driving the lever: the master disconnects
+  **every** autopilot with reason `LEVER` (global rule, §6.5), stops sending `CMD_SET_THROTTLE`, and
+  resumes forwarding the wiper as ordinary pilot throttle. The module has already stopped its motor
+  on its own, so there is no fight even if the master is a poll late.
+- **Movement** while nothing drives the lever (an attitude-only hold): a change of more than 2 %
+  is pilot input and disconnects everything; a resting hand is not.
 - **Buttons** (100 / 0 / UP / DOWN): same disconnect, then the master applies the button's normal
-  function, so `THRTL_00` while engaged is a one-press "autothrottle off and idle".
+  function, so `THRTL_00` while engaged is a one-press "autopilot off and idle".
 - **Precision mode** (`CMD_SET_PRECISION`): the autothrottle refuses to engage while the module is
   in precision mode, and entering precision mode disconnects it. Precision mode re-centres the
   slider physically, which is incompatible with the lever-follows-command rule.
@@ -390,11 +400,10 @@ mapping question that predates this design; it is listed in §11.
 
 ### 7.5 Ascent autopilot
 
-The ascent autopilot's managed throttle gains the same lever-follow behaviour through the shared
-`throttleOut(t)` helper, so the lever rides up and down with max-Q and apoapsis taper during an
-ascent, and a pilot grabbing the lever during an ascent is a disconnect of the throttle manager
-only (the ascent autopilot continues steering with the pilot's throttle). This is a small change to
-existing behaviour and is called out for review.
+The ascent autopilot's managed throttle gains the same lever-follow behaviour through the throttle
+link, so the lever rides up and down with max-Q and apoapsis taper during an ascent. A pilot
+grabbing the lever, or moving either stick, during an ascent **disarms the ascent autopilot**
+(global rule, §6.5) and prints the reason to KSP; the ascent console shows IDLE / DISARMED.
 
 ---
 
@@ -535,14 +544,13 @@ All items are implemented on the branch (see §13 for what each became and what 
 
 1. **Sidebar captions.** `ASC` / `ACAP` / `RVAP` are placeholders. Alternatives: `ASC` / `A-AP` /
    `R-AP`, or keep the key reading `ASC` in every mode and rely on the title bar.
-2. **Ascent throttle on the lever (§7.5).** Should the lever follow the ascent autopilot's managed
-   throttle, and should grabbing it during an ascent hand the throttle to the pilot while steering
-   continues? Alternative: lever grab during an ascent is a full DISARM.
+2. ~~**Ascent throttle on the lever (§7.5).**~~ **Resolved:** the lever follows the managed
+   throttle, and grabbing it during an ascent is a full disarm (global pilot-input rule).
 3. **Rover wheel throttle source.** Does the Throttle Module lever drive wheel throttle for rovers on
    the master today, or is it the Translation joystick? This decides whether the lever should follow
    CRUISE and whether lever touch should disconnect it (§7.4).
-4. **Stick-override threshold.** 25 % for 300 ms is a first guess; the alternative is "any input
-   beyond the joystick deadband", which is more sensitive to a bumped stick.
+4. ~~**Stick-override threshold.**~~ **Resolved:** any pilot input disconnects every autopilot;
+   the debounce is 10 % for 150 ms after the module deadzone, in `rotation_link.ino`.
 5. **LVL semantics.** As drawn, LVL keeps the thrust group. Should it also engage IAS at the current
    speed so a single tap fully stabilises the aircraft?
 6. **Dual Encoder module.** Binding the two encoders to the active pitch-group and thrust-group
@@ -580,9 +588,10 @@ What the build turned up, and what a reviewer should look at first.
   rover mode owns, so the pilot's wheel input passes through on the other.
 - **Wheel steer sign.** `HoldConfig.steerSign` defaults to +1; flip it if a rover steers away from
   its heading setpoint. Not verified against KSP's wheel-steer convention on hardware.
-- **Ascent throttle on the lever (§7.5, q.2)** is implemented as designed: `apSendThrottle()` goes
-  through the throttle link with the ascent module as owner, and a lever grab hands the throttle
-  to the pilot for the rest of the ascent while steering continues.
+- **Pilot input (§6.5).** `pilotOverrideDetected()` in `rotation_link.ino` is called at the top
+  of `hpUpdate()` and `apUpdate()`; the translation joystick is polled there for this test only,
+  and `throttle_link.ino` raises a lever-moved event for the undriven-lever case. The per-axis
+  override that the first implementation carried is gone.
 - **Master integration state.** Controller_Main is still mid-integration: it did not call
   `Wire.begin()` or the Simpit init, and several telemetry globals the message handler writes are
   not defined anywhere. This change adds `Wire.begin()` and the link / autopilot calls to
@@ -590,6 +599,6 @@ What the build turned up, and what a reviewer should look at first.
 - **Display verification.** Both consoles run under demo mode on the bench with no master
   (`Demo.ino` plays Controller_Main for the hold-mode opcodes as it already did for the ascent
   ones), which is the way to review layout and touch behaviour before the I2C link is exercised.
-- **Not yet done.** Manual wheel-throttle disconnect for CRUISE (no master-side wheel input
-  exists), trim / joystick-button sequencing in `rotation_link.ino`, the Dual Encoder binding
+- **Not yet done.** Translation joystick forwarding to KSP (it is only read for the override
+  test), trim / joystick-button sequencing in `rotation_link.ino`, the Dual Encoder binding
   (q.6), and PID gain tuning on real craft.

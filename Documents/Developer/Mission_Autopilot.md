@@ -399,6 +399,13 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 
 ### 7.7 Disconnect rules
 
+**The pilot-input rule is global** (review decision, applied to every module including the ascent
+autopilot): any input on the rotation stick, the translation stick or the throttle lever
+disconnects everything — a burn aborts, a landing mode drops with the throttle left where it is,
+hold and rover modes disconnect. Stick input is debounced (10 % for 150 ms); a resting hand on an
+undriven lever is not input, moving it or touching a driven lever is. `pilotOverrideDetected()` in
+`rotation_link.ino` is the single implementation.
+
 | Trigger | Burn / APPR | Landing | NAV / GS | TGT / FOLLOW | Reason |
 |---------|-------------|---------|----------|--------------|--------|
 | Telemetry timeout | throttle 0, SAS stability | **throttle unchanged**, SAS unchanged, disconnect | as aircraft rules | wheels 0 | `TELEMETRY` |
@@ -407,8 +414,8 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 | SOI change | abort | disconnect | — | — | `SOI` |
 | Pointing error not under 2° within 30 s of ALIGN | abort | — | — | — | `ALIGN` |
 | Stage ΔV exhausted, auto-stage off | abort | BRAKE / DESC keep the throttle, annunciate | — | — | `FUEL` |
-| Stick override | burn continues, APPR drops | ENTRY drops | as before | as before | `STICK` |
-| Lever touched | burn aborts | DESC / HOVR / BRAKE drop, attitude stays | — | — | `LEVER` |
+| Pilot input on either stick | abort | drop, throttle unchanged | drop | drop | `STICK` |
+| Pilot input on the lever | abort | drop, throttle unchanged | drop | drop | `LEVER` |
 | Landed / splashed | — | throttle 0, all off | — | — | `LANDED` |
 | ENTRY hand-off reached | — | ENTRY off; plane: ATT + ROLL engage on the aircraft console | — | — | `HANDOFF` |
 | Another autopilot engages | drop | drop | drop | — | `OTHER AP` |
