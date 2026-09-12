@@ -17,11 +17,21 @@ class RA8876_t41_p {
   void setBusWidth(int) {}
   void begin(int = 20) {}
   void setRotation(int) {}
+  // Canvas origin and active window. The InfoDisp shifts its drawing origin by
+  // re-pointing the canvas base address (canvasContentRegion(): base + CONTENT_X*2
+  // bytes) and clamps the active window to the content width; every page base is
+  // a multiple of the page size, so the in-page byte offset / 2 is the x origin.
+  // All three double-buffer pages map onto this one framebuffer (the BTE copy
+  // between them is then the identity).
+  static const uint32_t PAGE_BYTES = (uint32_t)W * H * 2;
+  int originX = 0, winX = 0, winY = 0, winW = W, winH = H;
   inline void px(int x, int y, uint16_t c) {
+    if (x < winX || y < winY || x >= winX + winW || y >= winY + winH) return;
+    x += originX;
     if (x < 0 || y < 0 || x >= W || y >= H) return;
     fb[(size_t)y * W + x] = c;
   }
-  void fillScreen(uint16_t c) { for (auto &p : fb) p = c; }
+  void fillScreen(uint16_t c) { fillRect(winX, winY, winW, winH, c); }
   void fillRect(int x, int y, int w, int h, uint16_t c) {
     for (int j = y; j < y + h; j++) for (int i = x; i < x + w; i++) px(i, j, c);
   }
@@ -141,12 +151,12 @@ class RA8876_t41_p {
   void writeRect(int x, int y, int w, int h, const uint16_t *p) {
     for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) px(x + i, y + j, p[(size_t)j * w + i]);
   }
-  void activeWindowXY(int, int) {}
-  void activeWindowWH(int, int) {}
+  void activeWindowXY(int x, int y) { winX = x; winY = y; }
+  void activeWindowWH(int w, int h) { winW = w; winH = h; }
   int  canvasImageWidth() { return W; }
   void canvasImageWidth(int) {}
   void canvasImageWidth(int, int) {}
-  void canvasImageStartAddress(uint32_t) {}
+  void canvasImageStartAddress(uint32_t a) { originX = (int)((a % PAGE_BYTES) / 2); }
   void displayImageStartAddress(uint32_t) {}
   void displayImageWidth(int) {}
   void displayWindowStartXY(int, int) {}

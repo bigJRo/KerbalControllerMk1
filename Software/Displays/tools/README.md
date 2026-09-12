@@ -105,8 +105,29 @@ otherwise wait forever on a clock line the syntax stub holds low), and the build
 
 Annunciator scenarios: `MainOrbit` (nominal), `MainReentry` (master alarm, two-tier
 and chute-envelope colours), `MainLampTest` (every tile lit — a colour key), `SOI`,
-`Standby`. Output is `<Panel>_<Scenario>.png`. Adding a panel is a scenario file for
-it plus its name list in `SCENARIO_NAMES`.
+`Standby`. `KCM_SOI_BODY=<name>` selects the body.
+
+Info Display scenarios are one per screen, each a physically consistent flight state
+(a ship in a 115×125 km Kerbin orbit for the PFD and orbit screens, a jet for AIRCRAFT
+and NAVIGATION, a Mun lander for the descent screens, a capsule at 58 km for RE-ENTRY,
+engaged autopilots for the consoles): `SCFT ACFT ROVR VEH LNCHPRE LNCH LNCHCIRC ORB
+ORBADV MNVR TGT DOCK NAV LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP Standby`. The
+demo stepper runs once to populate every field, the scenario overrides what matters,
+and `millis()` is frozen so the context ladder's answer cannot change; the manual latch
+pins the screen only when the ladder would not choose it itself, so the AUTO / MAN chip
+reads as it would in flight. Build the mission panel with `-D INFO_DISP_UNIT=2`;
+`--suffix` tags the output (`InfoDisp1_SCFT.png`, `InfoDisp2_LNCH.png`):
+
+```
+python3 tools/render_screen.py --sketch KCMk1_InfoDisp --suffix 1 SCFT ACFT ROVR VEH Standby
+python3 tools/render_screen.py --sketch KCMk1_InfoDisp -D INFO_DISP_UNIT=2 --suffix 2 LNCH ORB ...
+```
+
+The framebuffer stub honours the canvas base address and active window, which is how
+unit 1 shifts its drawing origin past the left-hand sidebar (`canvasContentRegion()`).
+
+Output is `<Panel><suffix>_<Scenario>.png`. Adding a panel is a scenario file for it
+plus its name list in `SCENARIO_NAMES`.
 
 ## `../libraries/KerbalDisplayCommon/src/fonts_ili/`
 

@@ -61,6 +61,9 @@ LIB_CPPS = [
 # The scenario names each scenario file accepts (its argv[1] switch).
 SCENARIO_NAMES = {
     "KCMk1_Annunciator": ["MainOrbit", "MainReentry", "MainLampTest", "SOI", "Standby"],
+    "KCMk1_InfoDisp": ["SCFT", "ACFT", "ROVR", "VEH", "LNCHPRE", "LNCH", "LNCHCIRC", "ORB", "ORBADV", "MNVR",
+                       "TGT", "DOCK", "NAV", "LNDG", "LNDGRE", "LNCHAP", "ORBTAP", "LNDGAP", "ACFTAP", "ROVRAP",
+                       "Standby"],
 }
 
 
@@ -84,7 +87,7 @@ def png_from_ppm(ppm_path, png_path):
         f.write(chunk(b"IEND", b""))
 
 
-def build(sketch, out_dir):
+def build(sketch, out_dir, defines=()):
     """Concatenate the sketch like the IDE, append its scenario file, link
     against the framebuffer stubs. Returns the executable path."""
     sketch_dir = os.path.join(hc.DISPLAYS, sketch)
@@ -120,7 +123,7 @@ def build(sketch, out_dir):
     exe = os.path.join(out_dir, "render_" + sketch)
     # -O0: at -O1+ glibc's fortified strlcpy/strlcat collide with the stub's inline
     # ones. Framebuffer stubs first on the path so they shadow host_stubs/.
-    cmd = ["g++", "-std=gnu++17", "-O0", "-w",
+    cmd = ["g++", "-std=gnu++17", "-O0", "-w"] + ["-D" + d for d in defines] + [
            "-I" + out_dir, "-I" + STUBS_FB, "-I" + hc.STUBS] + \
           ["-I" + d for d in hc.library_include_dirs()] + \
           ["-I" + sketch_dir, "-o", exe, cpp] + lib_cpps
@@ -138,6 +141,9 @@ def main():
     ap.add_argument("--sketch", default="KCMk1_Annunciator")
     ap.add_argument("--out", default=DEFAULT_OUT, help="output directory for the PNGs")
     ap.add_argument("--keep", action="store_true", help="keep the generated build directory")
+    ap.add_argument("--define", "-D", action="append", default=[],
+                    help="extra preprocessor define, e.g. -D INFO_DISP_UNIT=2 (may repeat)")
+    ap.add_argument("--suffix", default="", help="tag appended to the panel name in output files")
     args = ap.parse_args()
 
     scenarios = args.scenarios or SCENARIO_NAMES.get(args.sketch, [])
@@ -147,7 +153,7 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     build_dir = tempfile.mkdtemp(prefix="kcm_render_")
     try:
-        exe = build(args.sketch, build_dir)
+        exe = build(args.sketch, build_dir, args.define)
         env = dict(os.environ, KCM_SD_ROOT=ASSETS)
         for sc in scenarios:
             ppm = os.path.join(build_dir, sc + ".ppm")
@@ -155,7 +161,7 @@ def main():
             if r.returncode:
                 sys.stderr.write(r.stderr)
                 sys.exit("== %s: scenario %s FAILED (%d)" % (args.sketch, sc, r.returncode))
-            png = os.path.join(args.out, "%s_%s.png" % (panel, sc))
+            png = os.path.join(args.out, "%s%s_%s.png" % (panel, args.suffix, sc))
             png_from_ppm(ppm, png)
             print("%s -> %s" % (r.stderr.strip(), os.path.relpath(png, REPO)))
         if args.keep:
