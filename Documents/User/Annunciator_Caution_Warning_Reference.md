@@ -196,6 +196,69 @@ Two display quirks worth knowing:
   records as an infinite value. The altitude formatter cannot represent that and the row
   currently prints `-9,223,372,036,854,775,808 Gm`. The other seven Kerbol rows are correct.
 
+## Shared celestial-body table
+
+Every body-dependent number on the Annunciator (the SOI screen rows, the Pe LOW / Ap LOW /
+ORBIT STABLE bounds, the flight-regime boundaries) comes from one table,
+`Software/Common/body_params.h`, which the master controller's autopilots also use.
+Values are from the KSP wiki; the re-entry altitude is an engineering estimate. A dash
+means the field does not apply (airless bodies have no atmosphere boundaries; some
+bodies have no synchronous orbit inside their SOI).
+
+**Altitude boundaries** (above the body's datum; these are what the panel's logic reads)
+
+| Body | Condition | Landable | Min safe alt | High atmo alt | Low space alt (atmo top) | High space alt | Re-entry alt | SOI radius |
+|---|---|---|---|---|---|---|---|---|
+| **Kerbol** | Plasma | no | 1 Mm | 18 km | 600 km | 1 Gm | 600 km | unbounded |
+| **Moho** | Vacuum | yes | 6.9 km | — | — | 80 km | — | 9.6467 Mm |
+| **Eve** | Atmosphere | yes | 7.6 km | 22 km | 90 km | 400 km | 57 km | 85.109 Mm |
+| **Gilly** | Vacuum | yes | 7.5 km | — | — | 6 km | — | 126.12 km |
+| **Kerbin** | Breathable | yes | 6.8 km | 18 km | 70 km | 250 km | 45 km | 84.159 Mm |
+| **Mun** | Vacuum | yes | 7.1 km | — | — | 60 km | — | 2.4296 Mm |
+| **Minmus** | Vacuum | yes | 5.8 km | — | — | 30 km | — | 2.2474 Mm |
+| **Duna** | Atmosphere | yes | 8.3 km | 12 km | 50 km | 140 km | 20 km | 47.922 Mm |
+| **Ike** | Vacuum | yes | 12.8 km | — | — | 50 km | — | 1.0496 Mm |
+| **Dres** | Vacuum | yes | 5.7 km | — | — | 25 km | — | 32.833 Mm |
+| **Jool** | Atmosphere | no | 120 km | 120 km | 200 km | 4 Mm | 150 km | 2.456 Gm |
+| **Laythe** | Breathable | yes | 6.1 km | 10 km | 50 km | 200 km | 38 km | 3.7236 Mm |
+| **Vall** | Vacuum | yes | 8 km | — | — | 90 km | — | 2.4064 Mm |
+| **Tylo** | Vacuum | yes | 13 km | — | — | 250 km | — | 10.857 Mm |
+| **Bop** | Vacuum | yes | 21.8 km | — | — | 25 km | — | 1.2211 Mm |
+| **Pol** | Vacuum | yes | 4.9 km | — | — | 22 km | — | 1.0421 Mm |
+| **Eeloo** | Vacuum | yes | 3.8 km | — | — | 60 km | — | 119.08 Mm |
+
+**Physical and orbital properties**
+
+| Body | Radius | Surface gravity | Escape velocity | Synchronous orbit alt | Synodic period vs Kerbin | Inclination vs Kerbin equator |
+|---|---|---|---|---|---|---|
+| **Kerbol** | 261.6 Mm | 17.10 m/s² | 94,672 m/s | 1.508 Gm | — Kerbin days | 0° |
+| **Moho** | 250 km | 2.70 m/s² | 1,161 m/s | — | 135.1 Kerbin days | 7° |
+| **Eve** | 700 km | 16.70 m/s² | 4,832 m/s | 10.328 Mm | 680.0 Kerbin days | 2.1° |
+| **Gilly** | 13 km | 0.05 m/s² | 36 m/s | 42.138 km | 19.3 Kerbin days | 12° |
+| **Kerbin** | 600 km | 9.81 m/s² | 3,431 m/s | 2.8633 Mm | — Kerbin days | 0° |
+| **Mun** | 200 km | 1.63 m/s² | 807 m/s | — | 6.5 Kerbin days | 0° |
+| **Minmus** | 60 km | 0.49 m/s² | 243 m/s | 357.94 km | 56.5 Kerbin days | 6° |
+| **Duna** | 320 km | 2.94 m/s² | 1,372 m/s | 2.88 Mm | 909.5 Kerbin days | 0.06° |
+| **Ike** | 130 km | 1.10 m/s² | 534 m/s | — | 3.0 Kerbin days | 0.2° |
+| **Dres** | 138 km | 1.13 m/s² | 558 m/s | 732.24 km | 527.4 Kerbin days | 5° |
+| **Jool** | 6 Mm | 7.85 m/s² | 9,704 m/s | 15.01 Mm | 467.2 Kerbin days | 0.05° |
+| **Laythe** | 500 km | 7.85 m/s² | 2,801 m/s | — | 2.5 Kerbin days | 0° |
+| **Vall** | 300 km | 2.31 m/s² | 1,176 m/s | — | 4.9 Kerbin days | 0° |
+| **Tylo** | 600 km | 7.85 m/s² | 3,069 m/s | — | 9.8 Kerbin days | 0.025° |
+| **Bop** | 65 km | 0.59 m/s² | 277 m/s | — | 25.3 Kerbin days | 15° |
+| **Pol** | 44 km | 0.37 m/s² | 181 m/s | — | 42.1 Kerbin days | 4.25° |
+| **Eeloo** | 210 km | 1.69 m/s² | 842 m/s | 683.69 km | 452.6 Kerbin days | 6.15° |
+
+Notes:
+
+- *Condition* is what surrounds a vessel near the surface: Vacuum, Atmosphere (no oxygen),
+  Breathable (oxygen), or Plasma. Kerbol and Jool are not landable; their "min safe"
+  altitude is the plasma / crush altitude instead of a terrain height.
+- *Synodic period* is the time between successive identical alignments with Kerbin, in
+  Kerbin days of 6 hours; for Kerbin's own moons the table carries their orbital period.
+- The table also holds a per-body dynamic-pressure threshold for the HIGH Q tile. It is
+  0 (suppressed) for all seventeen bodies at present, so it is omitted here.
+
 ## Notes for the manual
 
 - Nine tiles feed MASTER ALARM: LOW ΔV, HIGH G, HIGH TEMP, BUS VOLTAGE, ABORT, GROUND PROX,
