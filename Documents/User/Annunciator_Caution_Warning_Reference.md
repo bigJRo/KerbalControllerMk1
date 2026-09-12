@@ -100,6 +100,71 @@ bands are anchored to the same `tempAlarm` setting (default 90 %) that drives th
 TEMP tile, so the readout and the tile can never disagree. The COMM bands are fixed at
 25 % and 75 %.
 
+## Panel condition block (bottom-right 6 × 2 grid)
+
+The twelve small tiles under the readouts report the state of the **controller
+system** rather than the vessel: which panel modes are on, whether the master's inputs
+are live, and whether anything in the chain has failed. They are driven by the
+`modeFlags` word the master sends in bytes 3–4 of its extended I2C command; each tile
+lights when its bit is set. None of them sound an audio cue.
+
+> **Status of this block.** The Annunciator draws all twelve tiles, but the current
+> master firmware only sends the legacy 3-byte command, so in production the whole
+> block stays OFF. The firmware header marks the labels and colours as provisional
+> pending the final master protocol. In the panel's demo mode, DEMO / AUDIO / DEBUG
+> reflect the panel's own settings and the remaining tiles cycle for inspection. The
+> meanings below are the intended ones, matched to the master's state variables.
+
+| Tile | Definition | Colour when lit | Bit |
+|---|---|---|---|
+| **DEMO** (1×1) | The system is running in demo mode — panel values are generated internally rather than taken from KSP. | White on **blue** | 0 |
+| **WARP** (1×2) | Time warp is active (rate above 1×). | Dark grey on **yellow** | 1 |
+| **AUDIO** (1×3) | Audio cues are enabled on the Annunciator (`audioEnabled`). Off means the panel is silent, including the master alarm. | White on **green** | 2 |
+| **THRTL ENA** (1×4) | Throttle input from the throttle module is enabled and being sent to KSP. | White on **green** | 3 |
+| **TRIM** (1×5) | Rotation-stick trim mode is engaged (stick input is being applied as trim). | White on **aqua** | 4 |
+| **AUTOPILOT** (1×6) | An autopilot mode on the master (ascent, hold, burn, landing or mission) is engaged. | White on **green** | 5 |
+| **DEBUG** (2×1) | Serial debug output is enabled on the panel. | White on **purple** | 6 |
+| **SWITCH ERR** (2×2) | A control-mode / switch-state error has been detected by the master (e.g. a switch position the master could not reconcile). | White on **red** | 7 |
+| **SIMPIT LOST** (2×3) | The KerbalSimpit link to KSP has dropped — no telemetry is arriving. | White on **red** | 8 |
+| **THRTL PREC** (2×4) | Throttle module is in precision mode (slider centred, fine authority). | White on **green** | 9 |
+| **INPUT PREC** (2×5) | Precision switch is on for the translation and rotation sticks (precision factor applied). | White on **green** | 10 |
+| **ENG ARM** (2×6) | The ENGINE SAFE / ARM switch is in ARM (throttle module active). SAFE inhibits throttle input. | White on **green** | 11 |
+
+## Vessel situation and flight regime columns (right edge)
+
+The two narrow columns to the right of the C&W grid describe the vessel's situation
+as KSP reports it. They are informational: none trips MASTER ALARM. Column
+positions are given top to bottom.
+
+**Outer column — vessel situation.** One or more can be lit; KSP reports exactly one
+situation, and CONTACT is derived.
+
+| Tile | Definition | Colour when lit | Audio cue |
+|---|---|---|---|
+| **CONTACT** | Vessel is in contact with the surface — lit whenever LANDED or SPLASH is lit. | White on **sky blue** | None |
+| **PRE-LAUNCH** | On the launch pad or runway, not yet released. | White on **jungle green** | None |
+| **FLIGHT** | Flying inside the atmosphere. | White on **jungle green** | None |
+| **SUB-ORBIT** | Sub-orbital trajectory (Ap above the surface, Pe below it). | White on **jungle green** | None |
+| **ORBIT** | In a closed orbit. | White on **jungle green** | Alert chirp on entry |
+| **ESCAPE** | On an escape trajectory out of the current sphere of influence. | White on **jungle green** | None |
+| **LANDED** | Landed on solid ground. | White on **jungle green** | None |
+| **SPLASH** | Splashed down in liquid. | White on **navy** | None |
+
+**Inner column — DOCK and flight regime.** DOCK is independent; the four regime tiles
+are mutually exclusive and are all dark when the vessel is not aloft (pad, landed or
+splashed).
+
+| Tile | Definition | Colour when lit | Audio cue |
+|---|---|---|---|
+| **DOCK** (vertical) | The vessel is docked to another vessel. Set on a docking event, cleared on undocking. | White on **green** | None |
+| **FLYING LOW** | Aloft, inside the atmosphere, below the body's high-atmosphere boundary (18 km at Kerbin). | White on **green** | None |
+| **FLYING HIGH** | Aloft, inside the atmosphere, above the high-atmosphere boundary. | White on **green** | None |
+| **LOW SPACE** | Aloft, outside the atmosphere, below the body's high-space boundary (250 km at Kerbin). | White on **green** | None |
+| **HIGH SPACE** | Aloft, outside the atmosphere, above the high-space boundary. | White on **green** | None |
+
+The regime boundaries are the KSP science-biome altitudes from the shared body table,
+so the lit tile always matches the biome KSP would credit an experiment to.
+
 ## Notes for the manual
 
 - Nine tiles feed MASTER ALARM: LOW ΔV, HIGH G, HIGH TEMP, BUS VOLTAGE, ABORT, GROUND PROX,
