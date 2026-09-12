@@ -79,6 +79,35 @@ reason. Read each hit before believing it.
 evaluator cannot evaluate is skipped rather than guessed at; the header line reports how
 many of the declarations it resolved.
 
+## `render_screen.py`
+
+```
+python3 tools/render_screen.py                       # every Annunciator scenario
+python3 tools/render_screen.py MainOrbit SOI         # just these
+python3 tools/render_screen.py --out /tmp/shots      # default: Documents/User/assets
+```
+
+True renderings of a panel's screens as PNGs, for the user manual. It does the same
+IDE-faithful host build `host_compile.py` does, but **links** it — sketch,
+KerbalDisplayCommon, KCM_Touch, KerbalDisplayAudio — against `host_stubs_fb/`, where
+`RA8876_t41_p` keeps a 1024×600 RGB565 framebuffer and `SD` reads the real art from
+`../assets`. A scenario (`render_scenarios/<sketch>.inc`, appended to the concatenated
+sketch) sets the panel's `AppState`, runs `updateCautionWarningState()` so the C&W
+bits come from the real logic, and then calls the firmware's own `loop()`. Layout,
+fonts, colours, BMPs and indicator logic are therefore the panel's, not a mockup's.
+
+The stub reproduces the ILI9341_t3 glyph renderer (`drawFontChar`) because
+`drawButton()` and `drawVerticalText()` print through the display library; every
+other text path already rasterises in `kcmDrawString()` and blits with `writeRect`.
+Two host-only accommodations: pins read HIGH (the FT5316 software-I2C driver would
+otherwise wait forever on a clock line the syntax stub holds low), and the build is
+`-O0` (glibc's fortified `strlcpy` collides with the stub's inline one above that).
+
+Annunciator scenarios: `MainOrbit` (nominal), `MainReentry` (master alarm, two-tier
+and chute-envelope colours), `MainLampTest` (every tile lit — a colour key), `SOI`,
+`Standby`. Output is `<Panel>_<Scenario>.png`. Adding a panel is a scenario file for
+it plus its name list in `SCENARIO_NAMES`.
+
 ## `../libraries/KerbalDisplayCommon/src/fonts_ili/`
 
 The font pipeline lives with the fonts: `ilifont.py` (parse/decode an ILI9341_t3 `.c`),
