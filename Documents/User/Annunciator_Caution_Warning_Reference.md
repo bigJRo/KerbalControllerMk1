@@ -165,6 +165,37 @@ splashed).
 The regime boundaries are the KSP science-biome altitudes from the shared body table,
 so the lit tile always matches the biome KSP would credit an experiment to.
 
+## SOI detail screen
+
+Touching the SOI label or globe on the Main screen opens the SOI detail screen for the
+body whose sphere of influence the vessel is in; touching anywhere on it returns to Main.
+The screen shows the KASA meatball, the body's name and globe, and up to eight data rows.
+The three atmosphere rows appear only for bodies that have an atmosphere (Kerbin, Eve,
+Duna, Laythe, Jool and Kerbol), so airless bodies show five rows. Values come from the
+shared celestial-body table (`Software/Common/body_params.h`), which is sourced from the
+KSP wiki; altitudes are formatted with a unit that suits their size (m, km, Mm, Gm).
+
+![SOI screen for Kerbin](assets/Annunciator_SOI.png)
+
+| Field name | Full name | What it represents |
+|---|---|---|
+| **MIN SAFE ALT** | Minimum safe altitude | The highest point of the body's terrain above its datum (sea level). An orbit with periapsis above this cannot strike the surface. For Jool it is the crush depth and for Kerbol the plasma altitude, since neither has a landable surface. Used by Pe LOW, Ap LOW and ORBIT STABLE on airless bodies. |
+| **SOI RADIUS** | Sphere-of-influence radius | Distance from the body's centre at which its gravitational influence hands over to its parent body. Above this altitude the vessel has escaped the body. ORBIT STABLE requires apoapsis inside this radius. |
+| **REENTRY ALT** | Committed re-entry altitude | *(Atmospheric bodies only.)* The periapsis altitude below which the atmosphere will capture the vessel on the next pass rather than merely slow it. Pe below this turns Pe LOW red; Pe between this and the atmosphere top is the yellow aerobrake zone. An engineering estimate, not a KSP constant. |
+| **HIGH ATMO ALT** | High-atmosphere boundary | *(Atmospheric bodies only.)* The altitude dividing KSP's "flying low" and "flying high" science biomes. The FLYING LOW / FLYING HIGH regime tiles switch here. |
+| **LOW SPACE ALT** | Atmosphere top / low-space boundary | *(Atmospheric bodies only.)* The altitude at which the atmosphere ends and "in space low" begins. Above it the vessel is in vacuum; Ap LOW and ORBIT STABLE use it as the lower bound for a sustainable orbit on atmospheric bodies. |
+| **HIGH SPACE ALT** | High-space boundary | The altitude dividing KSP's "in space low" and "in space high" science biomes. The LOW SPACE / HIGH SPACE regime tiles switch here. |
+| **CONDITION** | Atmospheric condition | What surrounds a vessel near the surface: **Vacuum** (no atmosphere), **Atmosphere** (air, but no oxygen — jet engines will not run, helmets stay on), **Breathable** (oxygen present — jets work, Kerbals can remove helmets; Kerbin and Laythe), or **Plasma** (Kerbol — no survivable surface). |
+| **SURF. GRAVITY** | Surface gravity | Gravitational acceleration at the body's surface, in m/s². Kerbin is 9.81 m/s²; the value sets how much thrust-to-weight a lander needs and how fast an unpowered descent accelerates. |
+
+Two display quirks worth knowing:
+
+- The SURF. GRAVITY unit is written as m/s² in the firmware, but the panel font has no
+  superscript-two glyph, so the screen shows "m/s".
+- For Kerbol the SOI radius is unbounded (there is no parent body), which the body table
+  records as an infinite value. The altitude formatter cannot represent that and the row
+  currently prints `-9,223,372,036,854,775,808 Gm`. The other seven Kerbol rows are correct.
+
 ## Notes for the manual
 
 - Nine tiles feed MASTER ALARM: LOW ΔV, HIGH G, HIGH TEMP, BUS VOLTAGE, ABORT, GROUND PROX,

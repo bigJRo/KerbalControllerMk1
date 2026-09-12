@@ -12,7 +12,7 @@
 //   MainReentry   Main screen mid re-entry: committed Pe, hot skin, plasma blackout.
 //   MainLampTest  Main screen with every tile lit (Demo.ino's lamp test) — a key to
 //                 every indicator's ON colour.
-//   SOI           SOI detail screen for Kerbin.
+//   SOI           SOI detail screen for Kerbin (KCM_SOI_BODY=<name> selects another body).
 //   Standby       Standby splash.
 
 HardwareSerial Serial, SerialUSB1, Serial1, Serial2, Serial3;
@@ -25,7 +25,8 @@ static void kcmRunFrames(int n) { for (int i = 0; i < n; i++) { loop(); stubMill
 static void kcmNominalOrbit() {
   state.vesselName = "KERBAL X";
   state.vesselType = type_Ship;  state.vehCtrlMode = ctrl_Spacecraft;
-  state.gameSOI = "Kerbin";      currentBody = getBodyParams("Kerbin");
+  const char *body = getenv("KCM_SOI_BODY");           // e.g. KCM_SOI_BODY=Mun for another globe
+  state.gameSOI = body ? body : "Kerbin";  currentBody = getBodyParams(state.gameSOI.c_str());
   state.vesselSituationState = (1 << VSIT_ORBIT);
   inFlight = true; flightScene = true; inAtmo = false; hasO2 = false; inEVA = false;
   state.alt_sl = 120000.0f; state.alt_surf = 120000.0f;
