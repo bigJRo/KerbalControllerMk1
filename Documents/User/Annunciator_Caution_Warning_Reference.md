@@ -231,11 +231,11 @@ bodies have no synchronous orbit inside their SOI).
 
 | Body | Radius | Surface gravity | Escape velocity | Synchronous orbit alt | Synodic period vs Kerbin | Inclination vs Kerbin equator |
 |---|---|---|---|---|---|---|
-| **Kerbol** | 261.6 Mm | 17.10 m/s² | 94,672 m/s | 1.508 Gm | — Kerbin days | 0° |
+| **Kerbol** | 261.6 Mm | 17.10 m/s² | 94,672 m/s | 1.508 Gm | — | 0° |
 | **Moho** | 250 km | 2.70 m/s² | 1,161 m/s | — | 135.1 Kerbin days | 7° |
 | **Eve** | 700 km | 16.70 m/s² | 4,832 m/s | 10.328 Mm | 680.0 Kerbin days | 2.1° |
 | **Gilly** | 13 km | 0.05 m/s² | 36 m/s | 42.138 km | 19.3 Kerbin days | 12° |
-| **Kerbin** | 600 km | 9.81 m/s² | 3,431 m/s | 2.8633 Mm | — Kerbin days | 0° |
+| **Kerbin** | 600 km | 9.81 m/s² | 3,431 m/s | 2.8633 Mm | — | 0° |
 | **Mun** | 200 km | 1.63 m/s² | 807 m/s | — | 6.5 Kerbin days | 0° |
 | **Minmus** | 60 km | 0.49 m/s² | 243 m/s | 357.94 km | 56.5 Kerbin days | 6° |
 | **Duna** | 320 km | 2.94 m/s² | 1,372 m/s | 2.88 Mm | 909.5 Kerbin days | 0.06° |
