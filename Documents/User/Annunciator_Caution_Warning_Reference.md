@@ -75,6 +75,31 @@ Grid position is row × column, reading left to right from the top-left tile.
 | **CHUTE ENV** (5×4) | Parachute deployment envelope (by dynamic pressure, so it is altitude- and body-correct). | Off outside the atmosphere. **Green:** safe for main chutes (below ≈ 250 m/s at Kerbin sea level). **Yellow:** drogue only (≈ 250–500 m/s at Kerbin sea level). **Red:** too fast for any chute. | None |
 | **EVA ACTIVE** (5×5) | A Kerbal is on EVA. | **Orange:** the active vessel is a Kerbal on EVA. | None |
 
+## Telemetry readouts (bottom zone)
+
+The strip under the C&W grid carries the vessel readouts. Labels are grey; the value
+carries the colour. Unless a threshold is listed the value is always green.
+
+![Main screen, nominal orbit](assets/Annunciator_MainOrbit.png)
+
+| Label | Full name / description | Source | Colour thresholds |
+|---|---|---|---|
+| *(vessel name)* | Name of the active vessel, left-aligned in the top-left cell. | KSP vessel name | Green always |
+| **TIMEWARP** | Current time-warp rate. Shows `1x`, `5x`, `10x`, `50x`, `100x`, `1,000x`, `10,000x`, `100,000x` for on-rails warp, or `PHYS-2x` / `PHYS-3x` / `PHYS-4x` for physics warp. | KSP flight status | Green always |
+| **STG** | Current stage number — the stage KSP will fire on the next staging command. | KSP flight status | Green always |
+| **TMAX** | Maximum part temperature, as a percentage of the hottest part's thermal limit. | KSP temperature limits | **Green** 0–49 %. **Yellow** 50–90 %. **White on red** above 90 %, the same point at which the HIGH TEMP tile lights and MASTER ALARM sounds. |
+| **CREW** | Number of Kerbals aboard. | KSP flight status | Green always |
+| **COMM** | CommNet signal strength to the control point, in percent. | KSP flight status | **Red** 0–24 %. **Yellow** 25–74 %. **Green** 75–100 %. (The COMM LOST tile lights only at 0 %.) |
+| **TSKIN** | Maximum skin temperature, as a percentage of the hottest part's skin limit. | KSP temperature limits | Same as TMAX: **green** below 50 %, **yellow** 50–90 %, **white on red** above 90 % (lights HIGH TEMP). |
+| **CAP** | Reserved readout relayed from the master controller (byte 5 of the rev-2 I2C command). | Master controller | Green always. *The current master firmware does not send this byte, so the readout stays at 0.* |
+| **CTRLGRP** | Active custom-action control group, 1–6, as selected by the control-group rotary switch on the master. | Master controller | Green always |
+| **SPCFT / PLN / RVR** | Control mode selected on the master's control-mode switch — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPCFT for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. |
+
+TMAX, TSKIN and COMM use the panel's three-band threshold colouring. The temperature
+bands are anchored to the same `tempAlarm` setting (default 90 %) that drives the HIGH
+TEMP tile, so the readout and the tile can never disagree. The COMM bands are fixed at
+25 % and 75 %.
+
 ## Notes for the manual
 
 - Nine tiles feed MASTER ALARM: LOW ΔV, HIGH G, HIGH TEMP, BUS VOLTAGE, ABORT, GROUND PROX,
