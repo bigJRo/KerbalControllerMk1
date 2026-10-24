@@ -411,13 +411,19 @@ void apArm() {
   }
 }
 
-void apDisarm() {
-  g_armed = false;
-  g_phase = AP_PHASE_IDLE;
-  apSendThrottle(0.0f);
+// Hands the throttle back where it is (no cut): the pilot takes over without a jump.
+// It must not command the throttle either -- A/P OFF calls this with the ascent idle and
+// another autopilot holding the throttle, and a command here would take it over.
+static void apReleaseOwners() {
   thrAutoRelease(THR_OWNER_ASCENT);
   arbReleaseAttitude(AP_OWNER_ASCENT);
   arbReleaseThrottle(AP_OWNER_ASCENT);
+}
+
+void apDisarm() {
+  g_armed = false;
+  g_phase = AP_PHASE_IDLE;
+  apReleaseOwners();
   // Zero the control axes so we do not leave the stick deflected.
   rotationMessage msg;
   msg.setPitch(0); msg.setYaw(0); msg.setRoll(0);
@@ -505,11 +511,11 @@ void apUpdate() {
   g_lastUpdateMs = now;
   if (dt <= 0.0f || dt > 0.5f) dt = 0.02f;   // guard against stalls / first pass
 
-  // --- Failsafe: telemetry loss ---
+  // --- Failsafe: telemetry loss --- hands over with the throttle where it is.
   if ((now - g_tel.lastTelemMs) > g_cfg.telemetryTimeout) {
-    apSendThrottle(0.0f);
     g_phase = AP_PHASE_ABORT;
     g_armed = false;
+    apReleaseOwners();
     return;
   }
 
@@ -594,6 +600,7 @@ void apUpdate() {
       mySimpit.activateAction(SAS_ACTION);
       mySimpit.setSASMode(AP_STABILITYASSIST);
       g_armed = false;
+      apReleaseOwners();
       break;
     }
 

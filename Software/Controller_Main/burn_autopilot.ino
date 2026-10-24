@@ -68,8 +68,9 @@ static void bpThrottle(float t) {
   aeNoteThrottle(bp_thrOut);
 }
 
+// Hands the throttle back where it is: an abort, a re-plan or APPR off never cuts it.
+// Only a completed burn (DONE) cuts, explicitly, before releasing.
 static void bpReleaseVehicle(bool sasStability) {
-  bpThrottle(0.0f);
   thrAutoRelease(THR_OWNER_BURN);
   if (sasStability) { mySimpit.activateAction(SAS_ACTION); mySimpit.setSASMode(AP_STABILITYASSIST); }
   arbReleaseAttitude(AP_OWNER_BURN);
@@ -424,6 +425,7 @@ void bpUpdate() {
       if (rem < taperBand) thr = fmaxf(bp_c.throttleFloor, rem / taperBand);
       bool overshoot = (now - bp_burnStartMs > (uint32_t)(bp_c.minBurnS * 1000)) && (rem > bp_prevRemaining + 0.05f);
       if (rem <= bp_c.cutDv || overshoot) {
+        bpThrottle(0.0f);                 // burn complete: the cut is part of the burn
         bpReleaseVehicle(true);
         bp_phase = BP_PHASE_DONE; bp_doneMs = now; bp_mode = BP_MODE_NONE; bp_plan.valid = false;
         break;

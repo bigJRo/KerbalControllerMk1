@@ -316,8 +316,9 @@ button, or touching it while an autopilot is driving it is. `pilotOverrideDetect
 | Vessel or scene change | Drops all, silently | Drops all, silently | — |
 | A/P OFF tap | Drops all | Drops all | — (pilot action) |
 
-The aircraft telemetry failsafe **does not cut throttle** — the ascent behaviour of throttling to
-zero is wrong for a plane. It hands the airframe to stock SAS stability assist at the current
+The aircraft telemetry failsafe **does not cut throttle**, and neither does any other autopilot
+on a hand-back (the ascent and burn autopilots stopped cutting it too), so the pilot never takes
+over to a jump in thrust. It hands the airframe to stock SAS stability assist at the current
 throttle and lets the pilot take over.
 
 ### 6.6 Stick suppression

@@ -1196,6 +1196,13 @@ its mode. A rejected edit stays sky blue until you enter a value the autopilot a
 autopilot: it disarms the ascent autopilot, drops all aircraft and rover modes, aborts
 any burn or approach hold, and drops all landing modes.
 
+**The throttle stays where it is whenever an autopilot lets go**, whatever the cause:
+A/P OFF, tapping a mode off, DISARM, stick or lever input, the abort button, lost
+telemetry or another autopilot taking over. You take over at the thrust the autopilot was
+using, with no jump. The throttle goes to zero only when a mode's own job calls for it:
+ascent engine cutoff and coast, the end of a completed burn (`DONE`), BRAKE waiting for
+its ignition altitude, and touchdown.
+
 **Pilot input disconnects every autopilot.** Moving the rotation or translation stick
 past 10 % for 150 ms, touching the throttle lever while an autopilot drives it, moving
 an undriven lever more than 2 %, or pressing a lever button disconnects everything. The
@@ -1234,7 +1241,8 @@ ARM / DISARM button controls it; there are no mode buttons.
 2. Tap **ARM**. The banner shows `ARMED`, and the A/P key turns green.
 3. Launch. The banner and button step through VERTICAL, GRAVITY TURN, COAST,
    CIRCULARIZE and COMPLETE.
-4. To stop, tap the button (DISARM), or take the stick or throttle.
+4. To stop, tap the button (DISARM), or take the stick or throttle. The throttle stays
+   where it is.
 
 **Special states.** Phase colours: IDLE grey; VERTICAL and GRAVITY TURN green; COAST
 and CIRCULARIZE cyan; COMPLETE sky blue; ABORT white on red. After a pilot-input
@@ -1273,7 +1281,8 @@ column; **EXEC** starts it. It never time-warps unless you ask.
   (AUTO green, OFF black).
 - **EXEC.** Bright green and live once a burn is PLANNED. In WARP READY with WARP on
   AUTO it reads **WARP**: a tap warps to ignition. Grey otherwise.
-- **A/P OFF.** Aborts and turns everything off.
+- **A/P OFF.** Aborts and turns everything off. A burn in progress keeps its throttle
+  for you to take over; only a completed burn cuts it.
 
 **Operating it.**
 1. For a node burn, create the node in KSP; for AP, PE or INC, enter the target.

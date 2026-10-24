@@ -219,8 +219,10 @@ IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK─�
   module; the executor re-runs ALIGN on exit from any warp. The executor refuses to warp if the
   plan has changed since EXEC (§4.4), so a stale plan cannot warp the craft to the wrong place.
 - **BURN** runs the throttle law of §7.1 and auto-stage if enabled.
-- **DONE** cuts the throttle, returns SAS to stability assist and disarms. The banner holds `DONE`
-  for five seconds.
+- **DONE** cuts the throttle, returns SAS to stability assist and disarms. This is the only
+  throttle cut: an abort (pilot, A/P OFF, telemetry, fuel, SOI, another autopilot), a re-plan
+  or APPR off leaves the throttle where it is for the pilot to take over. The banner holds
+  `DONE` for five seconds.
 
 ### 4.4 Re-planning
 
@@ -423,21 +425,21 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 
 **The pilot-input rule is global** (review decision, applied to every module including the ascent
 autopilot): any input on the rotation stick, the translation stick or the throttle lever
-disconnects everything — a burn aborts, a landing mode drops with the throttle left where it is,
+disconnects everything — a burn aborts and a landing mode drops, both with the throttle left where it is,
 hold and rover modes disconnect. Stick input is debounced (10 % for 150 ms); a resting hand on an
 undriven lever is not input, moving it or touching a driven lever is. `pilotOverrideDetected()` in
 `rotation_link.ino` is the single implementation.
 
 | Trigger | Burn / APPR | Landing | NAV / GS | TGT / FOLLOW | Reason |
 |---------|-------------|---------|----------|--------------|--------|
-| Telemetry timeout | throttle 0, SAS stability | **throttle unchanged**, SAS unchanged, disconnect | as aircraft rules | wheels 0 | `TELEMETRY` |
+| Telemetry timeout | **throttle unchanged**, SAS stability | **throttle unchanged**, SAS unchanged, disconnect | as aircraft rules | wheels 0 | `TELEMETRY` |
 | Node removed | NODE aborts | — | — | — | `NO NODE` |
 | Target lost | APPR drops | — | drop | drop | `NO TARGET` |
 | SOI change | abort | disconnect | — | — | `SOI` |
 | Pointing error not under 2° within 30 s of ALIGN | abort | — | — | — | `ALIGN` |
 | Stage ΔV exhausted, auto-stage off | abort | BRAKE / DESC keep the throttle, annunciate | — | — | `FUEL` |
-| Pilot input on either stick | abort | drop, throttle unchanged | drop | drop | `STICK` |
-| Pilot input on the lever | abort | drop, throttle unchanged | drop | drop | `LEVER` |
+| Pilot input on either stick | abort, throttle unchanged | drop, throttle unchanged | drop | drop | `STICK` |
+| Pilot input on the lever | abort, throttle unchanged | drop, throttle unchanged | drop | drop | `LEVER` |
 | Landed / splashed | — | throttle 0, all off | — | — | `LANDED` |
 | ENTRY hand-off reached | — | ENTRY off; plane: ATT + ROLL engage on the aircraft console | — | — | `HANDOFF` |
 | Another autopilot engages | drop | drop | drop | — | `OTHER AP` |
@@ -468,7 +470,7 @@ The transport is unchanged. New opcodes:
 | `0x5E` | `SET_ATT_REF` | 0 retro / 1 radial | `lpSetAttRef(v)` |
 
 `HOLD_AP_OFF` (`0x12`) **always drops everything**: every mode in every module (ascent disarmed,
-burns aborted, hold, landing and rover modes disconnected), throttle released to the pilot, stock
+burns aborted, hold, landing and rover modes disconnected), throttle released to the pilot where it is (no module commands it on the way out), stock
 SAS returned to stability assist (decided as option B in review, §10 q.6). A single mode is
 disengaged by tapping its own button. The ascent console's DISARM stays an ascent-only disarm.
 
