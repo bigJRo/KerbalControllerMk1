@@ -791,8 +791,8 @@ static void _rovrUpdateGear(KCM_TFT &tft) {
 //   RETR (2)   — dark grey on neon green
 //   NRM (3)    — white on magenta
 //   ANRM (4)   — white on magenta
-//   RAD+ (5)   — dark grey on sky
-//   RAD- (6)   — dark grey on sky
+//   RAD- (5)   — dark grey on sky   (AP_RADIALIN)
+//   RAD+ (6)   — dark grey on sky   (AP_RADIALOUT)
 //   TGT (7)    — white on violet
 //   ATGT (8)   — white on violet
 //   MNVR (9)   — white on blue

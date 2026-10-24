@@ -149,7 +149,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
             switch (state.sasMode) {
                 case 1: sasStr = "PROGRADE"; break; case 2: sasStr = "RETRO";    break;
                 case 3: sasStr = "NORMAL";   break; case 4: sasStr = "ANTI-NRM"; break;
-                case 5: sasStr = "RAD-OUT";  break; case 6: sasStr = "RAD-IN";   break;
+                case 5: sasStr = "RAD-IN";   break; case 6: sasStr = "RAD-OUT";  break;
                 case 7: sasStr = "TARGET";   break; case 8: sasStr = "ANTI-TGT"; break;
                 case 9: sasStr = "MANEUVER"; break; default: sasStr = "OTHER";   break;
             }

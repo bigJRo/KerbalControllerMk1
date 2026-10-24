@@ -807,8 +807,10 @@ void sasNavballLabel(uint8_t mode, const char *&v, uint16_t &fg, uint16_t &bg) {
     case 2:  v = "RETR"; fg = TFT_DARK_GREY; bg = TFT_NEON_GREEN; break;
     case 3:  v = "NRM";  fg = TFT_WHITE;     bg = TFT_MAGENTA;    break;
     case 4:  v = "ANRM"; fg = TFT_WHITE;     bg = TFT_MAGENTA;    break;
-    case 5:  v = "RAD+"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
-    case 6:  v = "RAD-"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
+    // KerbalSimpit AutopilotMode: 5 = AP_RADIALIN, 6 = AP_RADIALOUT. RAD+ is radial OUT
+    // (KSP's navball convention), so it is 6; these were swapped on every screen.
+    case 5:  v = "RAD-"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
+    case 6:  v = "RAD+"; fg = TFT_DARK_GREY; bg = TFT_SKY;        break;
     case 7:  v = "TGT";  fg = TFT_WHITE;     bg = TFT_VIOLET;     break;
     case 8:  v = "ATGT"; fg = TFT_WHITE;     bg = TFT_VIOLET;     break;
     case 9:  v = "MNVR"; fg = TFT_WHITE;     bg = TFT_BLUE;       break;

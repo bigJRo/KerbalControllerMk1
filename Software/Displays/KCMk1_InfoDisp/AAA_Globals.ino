@@ -214,6 +214,21 @@ ScreenType missionContextScreen() {
   //    pilot wants the corridor tape, not after. The speed gate is what keeps it off
   //    an aircraft in level flight, whose periapsis is far underground and therefore
   //    "in the corridor" by the bare test.
+  //
+  //    Once chosen it HOLDS to the ground. The Mach 3 gate used to release it mid-
+  //    descent: a capsule then sat on ORBIT from Mach 3 down to 10 km and spent its whole
+  //    parachute phase on POWERED DESCENT, whose fuel rows read white on red for a
+  //    vessel with no engine, while the chute states it needed were on this screen.
+  //    The hold ends on touchdown, on climbing away (a skip that clearly leaves), on
+  //    leaving the atmosphere, or when the engines thrust -- a powered landing, which
+  //    rule 3 then takes. Planes are excluded: below Mach 3 a spaceplane is an aircraft
+  //    again and wants NAVIGATION (rule 4), as the landing autopilot's ENTRY hands over.
+  if (_lastContextWant == screen_LNDGRE && currentBody.hasAtmo && state.inAtmo &&
+      state.vesselType != type_Plane &&
+      !(state.situation & (sit_Landed | sit_Splashed)) &&
+      state.verticalVel < REENTRY_HOLD_CLIMB_MS &&
+      !(state.throttle > REENTRY_HOLD_THROTTLE && state.stageBurnTime > 0.0f))
+    return screen_LNDGRE;
   if (currentBody.hasAtmo && state.verticalVel < 0.0f) {
     ReCorridor corr = _reCorridor();
     int8_t reg = _rePeRegime(corr, state.periapsis);

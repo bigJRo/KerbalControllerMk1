@@ -837,8 +837,8 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
           case 1:  ss = "PRO";  sfg = TFT_WHITE; sbg = TFT_RED;        break;
           case 3:  ss = "NRM";  sfg = TFT_WHITE; sbg = TFT_RED;        break;
           case 4:  ss = "ANRM"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 5:  ss = "RAD+"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
-          case 6:  ss = "RAD-"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
+          case 5:  ss = "RAD-"; sfg = TFT_WHITE; sbg = TFT_RED;        break;   // AP_RADIALIN
+          case 6:  ss = "RAD+"; sfg = TFT_WHITE; sbg = TFT_RED;        break;   // AP_RADIALOUT
           case 7:  ss = "TGT";  sfg = TFT_WHITE; sbg = TFT_RED;        break;
           case 8:  ss = "ATGT"; sfg = TFT_WHITE; sbg = TFT_RED;        break;
           case 9:  ss = "MNVR"; sfg = TFT_WHITE; sbg = TFT_RED;        break;

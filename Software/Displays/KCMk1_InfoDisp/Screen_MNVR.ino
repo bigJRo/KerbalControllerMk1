@@ -471,8 +471,8 @@ void drawScreen_MNVR(KCM_TFT &tft) {
                 case 2:   v = "RETR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 3:   v = "NRM";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 4:   v = "ANRM"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 5:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 6:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 5:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 6:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 7:   v = "TGT";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 8:   v = "ATGT"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 9:   v = "MNVR"; sasFg = TFT_WHITE;     sasBg = TFT_DARK_GREEN; break;  // correct

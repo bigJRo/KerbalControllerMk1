@@ -169,6 +169,11 @@ const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow — closing
 // wired up: a speed-only middle tier would have fired constantly on any normal
 // rendezvous and taught the pilot to ignore the colour.
 const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast, and close
+// V.CLOSE "holding station" dead band: a closure rate that prints as zero is neither
+// closing nor opening and reads green; only a rate at or above this is "opening" (yellow).
+// Each is the screen's print resolution: TARGET one decimal, DOCKING two.
+const float TGT_VCLOSE_HOLD_MS  = 0.05f;
+const float DOCK_VCLOSE_HOLD_MS = 0.005f;
 
 // Approach alignment error thresholds (degrees absolute)
 // THE RETICLE RINGS ARE THE COLOUR BANDS. Every reticle draws its good zone at
@@ -243,6 +248,12 @@ const float    MNVR_CTX_RELEASE_S    = 700.0f;   // leave MANEUVER past this (en
 // atmosphere. Mach 3 is the same marker the RE-ENTRY screen already uses for its SAS
 // annunciation.
 const float REENTRY_CTX_MACH = 3.0f;
+// Once chosen, RE-ENTRY holds through the rest of the descent (parachutes included)
+// rather than dropping at Mach 3. The hold releases on climbing faster than this ...
+const float REENTRY_HOLD_CLIMB_MS = 50.0f;
+// ... or when the engines are thrusting (throttle above this with a stage that has burn
+// time), which is a powered landing and belongs to POWERED DESCENT.
+const float REENTRY_HOLD_THROTTLE = 0.02f;
 
 // POWERED DESCENT auto-select. The old rule was `type_Lander && sit_SubOrb`, which
 // missed every Ship doing a Mun landing and fired on ascent (sub-orbital is also what
@@ -257,7 +268,7 @@ const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 // 5-8 km; a steep or overpowered climb pushes past that, which is where an airframe
 // starts paying for it. Caution then alarm, so max Q annunciates instead of merely
 // being computable.
-const float LNCH_Q_WARN_KPA  = 20.0f;
+const float LNCH_Q_WARN_KPA  = KCM_HIGH_Q_PA / 1000.0f;   // 20 kPa, = the Annunciator HIGH Q tile
 const float LNCH_Q_ALARM_KPA = 40.0f;
 
 // ASCENT — load factor bands (g): the panel-wide G_WARN_POS / G_ALARM_POS, which are

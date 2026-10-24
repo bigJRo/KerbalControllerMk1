@@ -182,15 +182,16 @@ static void _tgtDrawScopeChrome(KCM_TFT &tft) {
 
 // ── Closure-velocity bar (threshold-gated) ────────────────────────────────────────────
 // Fill proportional to |closure| (full = TGT_BAR_MAX_MS); colour matches the V.Tgt row:
-// green closing, yellow opening, white-on-red when closing too fast at short range.
+// green closing (or holding), yellow opening, white-on-red when closing too fast at
+// short range. The opening test is the row's, dead band included, so the two agree.
 static void _tgtDrawClosureBar(KCM_TFT &tft, float vc, float dist) {
     static const uint16_t barY = TGT_SCY + TGT_R + 42;
     static const uint16_t lblY = barY - 34;
 
     float    av      = fabsf(vc);
-    bool     closing = (vc < 0.0f);
+    bool     opening = (vc >= TGT_VCLOSE_HOLD_MS);
     bool     tooFast = (av > TGT_VCLOSURE_ALARM_MS && dist < RNDZ_DIST_WARN_M);
-    uint16_t barCol  = tooFast ? TFT_RED : (!closing ? TFT_YELLOW : TFT_DARK_GREEN);
+    uint16_t barCol  = tooFast ? TFT_RED : (opening ? TFT_YELLOW : TFT_DARK_GREEN);
     // The colour depends on range as well as closure, so a range crossing at a steady
     // closure has to repaint too, or the bar and the V.CLOSE row disagree.
     if (fabsf(vc - _tgtPrevBarVC) < 0.5f && barCol == _tgtPrevBarCol) return;
@@ -346,14 +347,16 @@ static void drawScreen_TGT(KCM_TFT &tft) {
     // speed. White-on-red means closing fast AND already close; the range gate is what
     // makes the alarm mean something, since 500 m/s of closure is routine at 40 km.
     // There is no "moderate closure" tier: on a rendezvous that is the whole approach.
+    // A rate that PRINTS as zero (fmtNum snaps |v| < 0.05) is holding station, not
+    // opening: green. Colouring by the raw sign made "0.0 m/s" flicker green/yellow.
     {
         float vc  = state.tgtVelocity;
         float avc = fabsf(vc);
-        bool closing = (vc < 0.0f);
+        bool opening = (vc >= TGT_VCLOSE_HOLD_MS);
         bool tooFast = (avc > TGT_VCLOSURE_ALARM_MS &&
                         state.tgtDistance < RNDZ_DIST_WARN_M);
         if (tooFast)       { fg = TFT_WHITE;  bg = TFT_RED;   }
-        else if (!closing) { fg = TFT_YELLOW; bg = TFT_BLACK; }
+        else if (opening)  { fg = TFT_YELLOW; bg = TFT_BLACK; }
         else               { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         tgtVal(1, 1, "V.CLOSE", fmtMs(vc), fg, bg);
     }

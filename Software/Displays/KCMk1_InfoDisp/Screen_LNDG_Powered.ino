@@ -1065,14 +1065,26 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                     gc.value = gv;
                 }
             }
-            // SAS button — landing context: STAB and RETR acceptable, others questionable
+            // SAS button — landing context. Every mode is named, as on DOCKING / MANEUVER /
+            // RE-ENTRY. STAB, RETR and RAD+ (radial out, the Landing Autopilot's vertical
+            // reference) are the landing modes and read green; any other mode is wrong for
+            // a landing and reads white on red. (Other modes used to show as a nameless grey
+            // "SAS", which hid the autopilot's own RAD+ and anything else engaged.)
             {
-                const char *sv; uint16_t sfg, sbg;
+                const char *sv; uint16_t sfg = TFT_WHITE, sbg = TFT_RED;
                 switch (state.sasMode) {
-                    case 255: sv = "SAS";  sfg = TFT_WHITE;     sbg = TFT_RED;        break; // off — alarm
-                    case 0:   sv = "STAB"; sfg = TFT_WHITE;     sbg = TFT_DARK_GREEN; break; // good for landing
-                    case 2:   sv = "RETR"; sfg = TFT_WHITE;     sbg = TFT_DARK_GREEN; break; // good for landing
-                    default:  sv = "SAS";  sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK;  break; // other — neutral
+                    case 255: sv = "SAS";  break;                                  // off — alarm
+                    case 0:   sv = "STAB"; sbg = TFT_DARK_GREEN; break;            // landing
+                    case 1:   sv = "PRO";  break;
+                    case 2:   sv = "RETR"; sbg = TFT_DARK_GREEN; break;            // landing
+                    case 3:   sv = "NRM";  break;
+                    case 4:   sv = "ANRM"; break;
+                    case 5:   sv = "RAD-"; break;                                  // AP_RADIALIN
+                    case 6:   sv = "RAD+"; sbg = TFT_DARK_GREEN; break;            // AP_RADIALOUT — landing
+                    case 7:   sv = "TGT";  break;
+                    case 8:   sv = "ATGT"; break;
+                    case 9:   sv = "MNVR"; break;
+                    default:  sv = "SAS";  sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK; break; // unknown
                 }
                 RowCache &sc = rowCache[LNDG_SC][10];
                 String ssv = sv;

@@ -443,10 +443,12 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // Row 2 — Closure velocity  (cache slot 2)
     {
         float vc = state.tgtVelocity;
-        bool closing = (vc < 0.0f);
+        // Holding station reads green, not as opening: a rate that prints as +/-0.00
+        // (below DOCK_VCLOSE_HOLD_MS) used to flip green/yellow on the sign of noise.
+        bool opening = (vc >= DOCK_VCLOSE_HOLD_MS);
         bool tooFast = fabsf(vc) > DOCK_VCLOSURE_ALARM_MS && state.tgtDistance < DOCK_VCLOSURE_ALARM_DIST_M;
         if (tooFast) { fg = TFT_WHITE; bg = TFT_RED; }
-        else         { fg = closing ? TFT_DARK_GREEN : TFT_YELLOW; bg = TFT_BLACK; }
+        else         { fg = opening ? TFT_YELLOW : TFT_DARK_GREEN; bg = TFT_BLACK; }
         snprintf(buf, sizeof(buf), "%+.2f m/s", vc);
         dockVal(2, 2, "V.CLOSE", buf, fg, bg);
     }
@@ -533,8 +535,8 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
                 case 2:   v = "RETR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 3:   v = "NRM";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 4:   v = "ANRM"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 5:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 6:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 5:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 6:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 7:   v = "TGT";  sasFg = TFT_WHITE;     sasBg = TFT_DARK_GREEN; break;
                 case 8:   v = "ATGT"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 9:   v = "MNVR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
