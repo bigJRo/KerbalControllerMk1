@@ -1068,13 +1068,15 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                 }
             }
             // SAS button — landing context. Every mode is named, as on DOCKING / MANEUVER /
-            // RE-ENTRY. STAB, RETR and RAD+ (radial out, the Landing Autopilot's vertical
-            // reference) are the landing modes and read green; any other mode is wrong for
-            // a landing and reads white on red. (Other modes used to show as a nameless grey
-            // "SAS", which hid the autopilot's own RAD+ and anything else engaged.)
+            // RE-ENTRY. STAB and RETR are the landing modes and read green; any other mode is
+            // wrong for a landing and reads white on red. That includes RAD+: radial out is
+            // up with the velocity removed, so in a vertical descent it lies near the horizon
+            // (#68). SAS off is an alarm, except while the Landing Autopilot's vertical hold
+            // is flying (ldFlags bit 7), which turns SAS off on purpose: then "VERT", green.
             {
                 const char *sv; uint16_t sfg = TFT_WHITE, sbg = TFT_RED;
-                switch (state.sasMode) {
+                if (state.sasMode == 255 && (state.ldFlags & 0x80)) { sv = "VERT"; sbg = TFT_DARK_GREEN; }
+                else switch (state.sasMode) {
                     case 255: sv = "SAS";  break;                                  // off — alarm
                     case 0:   sv = "STAB"; sbg = TFT_DARK_GREEN; break;            // landing
                     case 1:   sv = "PRO";  break;
@@ -1082,7 +1084,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                     case 3:   sv = "NRM";  break;
                     case 4:   sv = "ANRM"; break;
                     case 5:   sv = "RAD-"; break;                                  // AP_RADIALIN
-                    case 6:   sv = "RAD+"; sbg = TFT_DARK_GREEN; break;            // AP_RADIALOUT — landing
+                    case 6:   sv = "RAD+"; break;                                  // AP_RADIALOUT
                     case 7:   sv = "TGT";  break;
                     case 8:   sv = "ATGT"; break;
                     case 9:   sv = "MNVR"; break;

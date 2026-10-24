@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.16.1
+**Applies to:** KCMk1_InfoDisp firmware 1.16.2
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -1036,9 +1036,11 @@ altitude, or when not descending. FWD and LAT are capped at ±99.9 m/s.
 **Buttons.** Indicators only.
 - RCS: white on green when on, dark grey when off.
 - GEAR: white on green when down, dark grey when up.
-- SAS shows the mode's name. STAB, RETR and RAD+ (radial out, the Landing Autopilot's
-  vertical reference) are white on green; any other mode is white on red, wrong for a
-  landing; `SAS` is white on red when SAS is off.
+- SAS shows the mode's name. STAB and RETR are white on green; any other mode is white on
+  red, wrong for a landing. That includes RAD+: radial out is only vertical while moving
+  horizontally, and in a vertical descent it points near the horizon. `SAS` is white on red
+  when SAS is off, except while the Landing Autopilot's vertical hold is flying, which turns
+  SAS off on purpose: then the button reads `VERT` in green.
 
 ### RE-ENTRY (caption ENTR)
 
@@ -1296,7 +1298,7 @@ while BURNING.
 
 ![LANDING AUTOPILOT, descent-rate hold over the Mun](assets/InfoDisp2_LNDGAP.png)
 
-*Holding −4 m/s on descent 310 m over the Mun, radial attitude reference.*
+*Holding −4 m/s on descent 310 m over the Mun, ATT REF on VERT.*
 
 **Purpose.** Four landing modes: **DESC** holds a vertical speed with the throttle,
 **HOVR** holds a radar altitude, **BRAKE** arms a suicide burn that fires at a computed
@@ -1307,8 +1309,14 @@ attack and roll. DESC, HOVR and BRAKE exclude each other; ENTRY is separate.
 - **DESCENT.** DESC (rate, −50 to +20 m/s); HOVR (height above ground, 2–5,000 m);
   BRAKE (box shows the computed ignition altitude, not editable); ENTRY (angle of
   attack, −30 to +40°).
-- **OPTIONS.** ATT REF toggles RETRO (surface retrograde, kills horizontal speed) and
-  RADIAL (straight up, a vertical descent). TWR overrides the thrust-to-weight used for
+- **OPTIONS.** ATT REF toggles RETRO and VERT.
+  - **RETRO** points the lander surface-retrograde with SAS, which in a descent is straight
+    up and leans against any drift to cancel it. Near zero speed (a hover, or just before
+    touchdown, below 1.5 m/s) it hands over to the vertical hold, and takes back above 3 m/s.
+  - **VERT** holds the lander straight up at every speed, for a pure vertical descent; drift
+    is yours to correct.
+  - The vertical hold steers with the autopilot's own attitude loop and turns SAS off; the
+    POWERED DESCENT SAS button then reads `VERT` in green. TWR overrides the thrust-to-weight used for
   BRAKE (0–20, or OFF to use the measured or estimated value, shown MEAS or EST).
   MARGIN adds metres to the ignition altitude (0–5,000). ROLL is the ENTRY roll angle.
 - **A/P OFF.** Disconnects everything; the throttle is left where it is.

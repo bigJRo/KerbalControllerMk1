@@ -51,7 +51,7 @@ displays remain consoles. As before, the panel confirms only what the master ech
 | ORBITAL | **INC** | Burns at the nearer node to reach the target inclination | SAS normal / anti-normal, throttle, warp-to |
 | ORBITAL | **APPR** | Closes on the target at a commanded rate, nulls lateral relative velocity, holds at a distance | SAS target mode, RCS translation |
 | ORBITAL | *WARP*, *STAGE* | Options: automatic warp to ignition; auto-stage during burns | warp-to, stage |
-| LANDING | **DESC** | Holds a vertical speed with the throttle | throttle; SAS surface-retrograde or radial-out |
+| LANDING | **DESC** | Holds a vertical speed with the throttle | throttle; SAS surface-retrograde, or the vertical hold (own attitude loop, SAS off) |
 | LANDING | **HOVR** | Holds a radar altitude (cascaded through DESC) | as DESC |
 | LANDING | **BRAKE** | Arms a suicide burn: fires at the computed ignition altitude, hands off to DESC | throttle, SAS retrograde |
 | LANDING | **ENTRY** | Holds an angle of attack relative to orbital retrograde and a roll angle | attitude loop |
@@ -245,15 +245,33 @@ a plan the pilot has not seen.
 |--------|---------|
 | Banner | Engaged modes; `IGN IN m:ss` while BRAKE is armed, `FIRING` during the burn, or a reason; body · vessel; `ENGAGED` / `A/P OFF` |
 | Column 1 **DESCENT** | DESC (vertical-speed setpoint, negative), HOVR (radar-altitude setpoint), BRAKE (box shows the computed ignition altitude), ENTRY (angle-of-attack setpoint) |
-| Column 2 **OPTIONS** | ATT REF toggle (RETRO / RADIAL), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
+| Column 2 **OPTIONS** | ATT REF toggle (RETRO / VERT), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
 | Column 3 **DESCENT DATA** | RDR ALT, V/S, H SPD, ACCEL estimate with its source (`MEAS` / `EST` / `TWR`), IGN ALT (orange when marginal), T-IMP (radar altitude over descent rate), THRTL |
 
 ### 5.2 Behaviour
 
-- **DESC** holds vertical speed with the throttle (§7.2). Attitude is stock SAS in the ATT REF mode:
-  surface-retrograde kills horizontal velocity on the way down; radial-out is pure vertical. Below
-  1 m/s horizontal speed the reference switches to radial-out automatically, because retrograde
-  swings wildly at low speed.
+- **DESC** holds vertical speed with the throttle (§7.2). Attitude follows ATT REF:
+  - **RETRO** — stock SAS surface-retrograde. In a descent that points straight up and tilts
+    against drift, so it also cancels horizontal velocity. Its direction is undefined when the
+    *total* surface speed is near zero (a hover, the moment before touchdown), so below 1.5 m/s
+    (`vertHoldEnterSpeed`) the vertical hold takes over, handing back above 3 m/s
+    (`vertHoldExitSpeed`).
+  - **VERT** — the vertical hold at every speed: a pure vertical descent, drift left to the pilot.
+  - **The vertical hold** is the autopilot's own attitude loop with SAS off: `attSteerRocket()` driven
+    to pitch 90° with the heading target set to the current heading, as the ascent autopilot's
+    VERTICAL phase holds the pad attitude. The pitch error is the tilt, rotated into the body axes
+    by roll, so a lean is taken out in whatever direction it lies and heading (meaningless when
+    pointing straight up) is never fought; roll is not commanded. The status frame's bit 7
+    (`vertHold`) reports it flying, so the Info Display shows SAS off as intended, not as an alarm.
+  - *Why not SAS RADIAL OUT* (the original design, #68): radial out is "up" with the velocity
+    direction removed, so it is vertical only while moving horizontally. In a vertical descent it
+    lies near the horizon — 0.5 m/s of drift at −4 m/s puts it 83° off vertical, toward the drift —
+    and with no drift it is undefined. The old automatic switch to it (horizontal speed under
+    1 m/s) fired in exactly that case. It also depended on the navball's orbit/surface mode,
+    which the autopilot never sets.
+  - *To confirm in flight:* a Mun DESC at −4 m/s with a little drift (retrograde, then the hold
+    near touchdown), a HOVR (hold from the start), and VERT from altitude with a 10–20° lean.
+    The loop's signs and gains are the ascent autopilot's.
 - **HOVR** holds radar altitude by commanding a vertical speed to DESC (cascade, capped ±10 m/s).
   Engaging captures the current radar altitude.
 - **BRAKE** arms: it points retrograde, computes the ignition altitude continuously and shows it,
@@ -463,7 +481,7 @@ unchanged.
 | `0xA6` | AIRCRAFT AP | **48** | as before, `latMode` 3 = NAV, `pitchMode` 5 = GS, float [8] = gs angle, [9] = cmdThrottle |
 | `0xA7` | ROVER AP | **36** | as before plus flags bit6 follow, floats [5] followRange, [6] stopDist, [7] cmdWheel |
 | `0xA8` | ORBITAL | 52 | byte 1 flags: bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 targetAvailable, bit5 nodeAvailable, bit6 apprEngaged; byte 2 mode (0 none, 1 NODE, 2 AP, 3 PE, 4 INC); byte 3 phase (0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP READY, 4 WARPING, 5 BURN, 6 DONE, 7 ABORT; a re-plan returns to 1 PLANNED with reason REPLAN); byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] targetAp, [1] targetPe, [2] targetInc, [3] apprRate, [4] apprDist, [5] dvTotal, [6] dvRemaining, [7] tIgnition, [8] burnDuration, [9] accelEst, [10] cmdThrottle |
-| `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed, bit6 brakeMarginal; byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; byte 6 accelSource (0 EST, 1 MEAS, 2 TWR); 7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
+| `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefVert (ATT REF = VERT), bit4 autoStage, bit5 landed, bit6 brakeMarginal, bit7 vertHold (the vertical hold is flying; SAS off); byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; byte 6 accelSource (0 EST, 1 MEAS, 2 TWR); 7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
 
 Live data shown on the consoles (node ΔV, T-node, radar altitude, vertical speed, target range…)
 comes from the display's own Simpit link as on the other consoles. `AppState` gains the `ob*` and

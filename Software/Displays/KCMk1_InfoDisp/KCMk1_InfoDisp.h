@@ -193,7 +193,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 16;  // 1.16.0: whole-vessel LF / OX channels; stage readouts neutral with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.16.1: cleanup sweep (#73-#76, #78, #79, #81)
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.16.2: landing autopilot ATT REF VERT; vertHold status bit (#68)
 
 
 /***************************************************************************************
@@ -422,7 +422,7 @@ struct AppState {
   float     obCmdThrottle  = 0.0f;
 
   // Landing autopilot — the 44-byte 0xA9 frame
-  uint8_t   ldFlags        = 0;       // bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed, bit6 brakeMarginal
+  uint8_t   ldFlags        = 0;       // bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefVert (ATT REF = VERT), bit4 autoStage, bit5 landed, bit6 brakeMarginal, bit7 vertHold (flying, SAS off)
   uint8_t   ldMode         = 0;       // 0 OFF, 1 DESC, 2 HOVR, 3 BRAKE
   uint8_t   ldEntry        = 0;
   uint8_t   ldReason       = 0;

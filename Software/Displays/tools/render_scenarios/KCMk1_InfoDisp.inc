@@ -187,7 +187,7 @@ static void scORBTAP() { kcmLKO(); state.mnvrDeltaV = 842.0f; state.mnvrTotalDel
                          state.obTargetInc = 0.0f; state.obApprRate = -2.0f; state.obApprDist = 50.0f;
                          state.obDvTotal = 842.0f; state.obDvRemaining = 842.0f; state.obTIgnition = 185.0f;
                          state.obBurnDuration = 48.0f; state.obAccelEst = 8.6f; state.obCmdThrottle = 0.0f; }
-static void scLNDGAP() { kcmMunDescent(); state.ldMode = 1; state.ldFlags = 0x01 | 0x08 | 0x10; state.ldDescRate = -4.0f;
+static void scLNDGAP() { kcmMunDescent(); state.ldMode = 1; state.ldFlags = 0x01 | 0x08 | 0x10 | 0x80; state.sasMode = 255; state.ldDescRate = -4.0f;   // DESC, ATT REF VERT, vertical hold flying (SAS off)
                          state.ldHovrAlt = 50.0f; state.ldTwr = 0.0f; state.ldMargin = 150.0f; state.ldEntryAoa = 8.0f;
                          state.ldEntryRoll = 0.0f; state.ldAccelSource = 1; state.ldAccelEst = 14.2f; state.ldIgnAlt = 2235.0f;
                          state.ldCmdThrottle = 0.62f; }

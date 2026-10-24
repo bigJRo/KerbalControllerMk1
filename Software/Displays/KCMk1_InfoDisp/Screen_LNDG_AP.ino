@@ -9,7 +9,7 @@
    LAYOUT (the shared console grid — ConsoleShared.ino):
      banner: <engaged modes | A/P OFF>  <IGN IN m:ss / FIRING / reason>  body · vessel  <ENGAGED>
      DESCENT             | OPTIONS              | DESCENT DATA
-     [DESC]  [rate]      | ATT REF [RETRO/RADIAL]| RDR ALT
+     [DESC]  [rate]      | ATT REF [RETRO/VERT]  | RDR ALT
      [HOVR]  [altitude]  | TWR     [MEAS|value] | V/S
      [BRAKE] ign alt     | MARGIN  [m]          | H SPD
      [ENTRY] [AOA]       | ROLL    [entry roll] | ACCEL (+ source)
@@ -49,7 +49,9 @@ static bool     ldScreenRefresh = false;
 
 static bool ldEngaged(uint8_t i)   { return i < 3 ? (state.ldMode == (uint8_t)(i + 1)) : (state.ldEntry != 0); }
 static bool ldCommanded(uint8_t i) { return ldPend[i] >= 0 ? (ldPend[i] == 1) : ldEngaged(i); }
-static bool ldRadial()             { return (state.ldFlags & 0x08) != 0; }
+// ATT REF as the pilot set it: RETRO (retrograde, vertical hold near zero speed) or VERT
+// (vertical hold at every speed). Bit 7, vertHold, says the hold is flying right now.
+static bool ldVert()               { return (state.ldFlags & 0x08) != 0; }
 static float ldEcho(uint8_t i)     { return i == 0 ? state.ldDescRate : i == 1 ? state.ldHovrAlt : state.ldEntryAoa; }
 static float ldOptEcho(uint8_t i)  { return i == 1 ? state.ldTwr : i == 2 ? state.ldMargin : state.ldEntryRoll; }
 
@@ -60,7 +62,7 @@ static void ldReconcile() {
     if (i != 2 && ldDirty[i] && fabsf(ldEcho(i) - ldPendVal[i]) < 0.1f) ldDirty[i] = false;
   }
   for (uint8_t i = 1; i < 4; i++) if (ldOptDirty[i] && fabsf(ldOptEcho(i) - ldOptPend[i]) < 0.05f) ldOptDirty[i] = false;
-  if (ldPendRef >= 0 && (ldRadial() == (ldPendRef == 1) || now - ldPendRefMs > LD_PENDING_TIMEOUT_MS)) ldPendRef = -1;
+  if (ldPendRef >= 0 && (ldVert() == (ldPendRef == 1) || now - ldPendRefMs > LD_PENDING_TIMEOUT_MS)) ldPendRef = -1;
 }
 
 static float ldHorizontalSpeed() {
@@ -160,14 +162,14 @@ void drawScreen_LNDGAP(KCM_TFT &tft) {
 
   // Options
   {
-    bool radial = ldPendRef >= 0 ? (ldPendRef == 1) : ldRadial();
+    bool vert = ldPendRef >= 0 ? (ldPendRef == 1) : ldVert();
     RowCache &rc = rowCache[screen_LNDGAP][LD_SLOT_OPT];
-    char k[8]; snprintf(k, sizeof(k), "%d%d", radial, ldPendRef >= 0);
+    char k[8]; snprintf(k, sizeof(k), "%d%d", vert, ldPendRef >= 0);
     if (rc.value != k) {
       int16_t x = conValX(CON_C2X), y = conRowY(0) + 4, w = CON_VALW - 2, h = CON_VALH;
       tft.fillRect(x, y, w, h, TFT_DARK_GREEN);
       tft.drawRect(x, y, w, h, ldPendRef >= 0 ? TFT_CYAN : TFT_GREY);
-      textCenter(tft, &Roboto_Black_24, x, y, w, h, radial ? "RADIAL" : "RETRO", ldPendRef >= 0 ? TFT_CYAN : TFT_WHITE, TFT_DARK_GREEN);
+      textCenter(tft, &Roboto_Black_24, x, y, w, h, vert ? "VERT" : "RETRO", ldPendRef >= 0 ? TFT_CYAN : TFT_WHITE, TFT_DARK_GREEN);
       rc.value = k;
     }
   }
@@ -238,7 +240,7 @@ void lndgApScreenTouch(uint16_t x, uint16_t y) {
     }
     if (x >= conValX(CON_C2X) && x < conValX(CON_C2X) + CON_VALW) {
       if (r == 0) {
-        bool want = !(ldPendRef >= 0 ? (ldPendRef == 1) : ldRadial());
+        bool want = !(ldPendRef >= 0 ? (ldPendRef == 1) : ldVert());
         if (apEnqueueCmd(LD_CMD_SET_ATT_REF, want ? 1.0f : 0.0f)) { ldPendRef = want ? 1 : 0; ldPendRefMs = now; }
         return;
       }
