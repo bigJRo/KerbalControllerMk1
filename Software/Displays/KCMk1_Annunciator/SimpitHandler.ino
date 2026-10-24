@@ -263,8 +263,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         atmoConditionsMessage a = parseMessage<atmoConditionsMessage>(msg);
         hasO2              = a.hasOxygen();
         inAtmo             = a.isVesselInAtmosphere();
-        state.atmoPressure = a.pressure;   // kPa -- used for HIGH_Q proxy calculation
-        state.airDensity   = a.airDensity; // kg/m3 -- used for CHUTE_ENV dynamic pressure
+        state.atmoPressure = a.pressure;   // kPa (static pressure; HIGH Q uses airDensity)
+        state.airDensity   = a.airDensity; // kg/m3 -- dynamic pressure for CHUTE_ENV and HIGH_Q
         updateCautionWarningState();
       }
       break;

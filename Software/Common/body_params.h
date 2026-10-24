@@ -6,8 +6,8 @@
   autopilot). Header-only (static table + static-inline lookup) so it can be included from independent Arduino sketch trees
   without any separate compilation unit or linker coordination.
 
-  Values sourced from the KSP wiki (canonical). reentryAlt and highQThreshold are engineering estimates — calibrate
-  highQThreshold per body from flight test. synodicPeriod is relative to Kerbin.
+  Values sourced from the KSP wiki (canonical). reentryAlt is an engineering estimate. highQThreshold is
+  retained for layout but unused (see below). synodicPeriod is relative to Kerbin.
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Written for Jeb's Controller Works.
@@ -42,7 +42,8 @@
 // soiAlt == DBL_MAX for Kerbol (root body, no SOI boundary).
 // synchronousOrbit == 0 means no synchronous orbit achievable within SOI.
 // synodicPeriod == 0 for Kerbol (no synodic period relative to itself).
-// highQThreshold == 0 means CW_HIGH_Q is suppressed for this body (airless bodies).
+// highQThreshold is no longer read (all 0): CW_HIGH_Q tests true dynamic pressure against
+// one body-independent limit, KCM_HIGH_Q_PA in KCMk1_SystemConfig.h.
 //   Calibrate empirically per atmospheric body from flight test.
 // reentryAlt == 0 for airless bodies. For atmospheric bodies: Pe below this
 //   altitude triggers committed reentry (red tier). Between reentryAlt and
@@ -74,7 +75,7 @@ struct BodyParams {
   bool        hasO2;            // Atmosphere contains oxygen (jets work, helmets off)
   bool        hasSurface;       // Body has a landable surface
   // --- C&W tuning ---
-  float       highQThreshold;   // Dynamic pressure threshold for CW_HIGH_Q (Pa); 0 = suppressed
+  float       highQThreshold;   // Unused: CW_HIGH_Q now tests true q against KCM_HIGH_Q_PA (all 0)
 };
 
 // Field order per row:

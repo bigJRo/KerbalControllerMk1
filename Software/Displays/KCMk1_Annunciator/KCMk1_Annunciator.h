@@ -287,10 +287,11 @@ enum ChuteEnvState : uint8_t {
      MINOR -- new features or screens added
      PATCH -- bug fixes, threshold tuning, comment/style changes
    This sketch requires KerbalDisplayCommon >= 3.11.1 (the ² in SURF. GRAVITY)
+   and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.7.1: Kerbol SOI radius; LIFE SUPPORT needs TAC-LS data (issues #62, #63)
+static const uint8_t SKETCH_VERSION_PATCH = 2;  // 3.7.2: HIGH Q on true dynamic pressure (#71)
 
 
 /***************************************************************************************

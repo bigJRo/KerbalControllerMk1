@@ -136,6 +136,9 @@ const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowe
 // InfoDisp via KCMk1_SystemConfig.h. q = 0.5 * airDensity * vel_surf^2.
 const float CW_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rip q (Pa)
 const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa)
+// --- High dynamic pressure (q, Pa) --- same q as the chute envelope; one threshold on
+// every body, identical to the Info Display ASCENT screen's Q caution.
+const float CW_HIGH_Q_PA          = KCM_HIGH_Q_PA;           // HIGH Q above this q (Pa)
 
 // GPWS function tunables were moved into GPWS.ino (its TUNABLES block) so the whole
 // aviation-faithful envelope definition (Mode 1/2/3/4/6 boundaries, callout ladders,

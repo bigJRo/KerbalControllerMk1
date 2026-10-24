@@ -458,6 +458,9 @@ static void runLogicTests() {
     // Set all consumables to 10x warn threshold -- safely in the green zone
     state.tacOxygen = (float)(TACLS_OXYGEN_RATE * crew * TACLS_OXYGEN_WARN_S * 10.0);
     state.tacWater  = (float)(TACLS_WATER_RATE  * crew * TACLS_WATER_WARN_S  * 10.0);
+    // Capacities, as TAC-LS always sends them; with all three at 0 the tile reads
+    // "no TAC-LS data" and stays dark (#63).
+    state.tacFood_tot = 1e6f; state.tacWater_tot = 1e6f; state.tacOxygen_tot = 1e6f;
     // Set waste capacity to very large so waste fraction is near zero
     state.tacCO2_tot   = 1e6f; state.tacCO2   = 0.0f;
     state.tacWaste_tot = 1e6f; state.tacWaste  = 0.0f;
@@ -478,6 +481,7 @@ static void runLogicTests() {
     { state.crewCount = 2;
       double crew = 2.0;
       // All resources safe except oxygen which is critically low
+      state.tacFood_tot = 1e6f; state.tacWater_tot = 1e6f; state.tacOxygen_tot = 1e6f;
       state.tacFood   = (float)(TACLS_FOOD_RATE  * crew * TACLS_FOOD_WARN_S  * 10.0);
       state.tacWater  = (float)(TACLS_WATER_RATE  * crew * TACLS_WATER_WARN_S * 10.0);
       state.tacCO2_tot   = 1e6f; state.tacCO2   = 0.0f;
@@ -487,6 +491,16 @@ static void runLogicTests() {
       double o2Rate   = TACLS_OXYGEN_RATE * crew;
       state.tacOxygen = (float)(o2Rate * (TACLS_OXYGEN_ALARM_S - 60.0f)); },
     { state.crewCount = 0; });
+
+  // CW_LIFE_SUPPORT -- no TAC-LS installed: every tac* field 0, crew aboard. Must stay
+  // dark; zero food over a non-zero rate used to read as 0 s left and fire red (#63).
+  {
+    resetTestState();
+    state.crewCount = 3;
+    updateCautionWarningState();
+    bool pass = !bitRead(state.cautionWarningState, CW_LIFE_SUPPORT) && !lsYellow;
+    printResult(pass, "LIFE_SUPPORT no TAC-LS", "off: crew aboard, no TAC-LS data");
+  }
 
   // CW_O2_PRESENT
   TEST_BIT("O2_PRESENT",
@@ -599,21 +613,25 @@ static void runLogicTests() {
     setTestBody();
   }
 
-  // CW_HIGH_Q -- suppressed by default (highQThreshold == 0)
+  // CW_HIGH_Q -- true dynamic pressure against CW_HIGH_Q_PA (20 kPa)
   {
     resetTestState();
     inAtmo = true;
-    state.atmoPressure = 100.0f;
-    state.vel_surf     = 500.0f;
+    state.airDensity = 1.0f;
+    state.vel_surf   = 150.0f;                // q = 11.25 kPa
     updateCautionWarningState();
     bool pass = !bitRead(state.cautionWarningState, CW_HIGH_Q);
-    printResult(pass, "HIGH_Q suppressed", "off: highQThreshold==0 for Kerbin");
+    printResult(pass, "HIGH_Q below limit", "off: q 11 kPa < 20 kPa");
 
-    // Now set a threshold and trigger it
-    currentBody.highQThreshold = 1000.0f;  // low threshold
+    state.vel_surf   = 250.0f;                // q = 31.25 kPa
     updateCautionWarningState();
     pass = bitRead(state.cautionWarningState, CW_HIGH_Q);
-    printResult(pass, "HIGH_Q triggered", "on: threshold set, pressure+vel high");
+    printResult(pass, "HIGH_Q above limit", "on: q 31 kPa > 20 kPa");
+
+    inAtmo = false;                           // same numbers, out of the atmosphere
+    updateCautionWarningState();
+    pass = !bitRead(state.cautionWarningState, CW_HIGH_Q);
+    printResult(pass, "HIGH_Q out of atmosphere", "off: not in atmosphere");
     setTestBody();
   }
 

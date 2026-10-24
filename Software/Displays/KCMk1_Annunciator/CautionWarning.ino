@@ -366,15 +366,14 @@ void updateCautionWarningState() {
       bitSet(cw, CW_Ap_LOW);
   }
 
-  // CW_HIGH_Q: dynamic pressure exceeds body-specific threshold.
-  // Uses currentBody.highQThreshold (Pa). 0 means suppressed for this body.
-  // Proxy: 0.5 * atmoPressure_Pa * vel_surf² approximates dynamic pressure (Pa).
-  // atmoPressure from Simpit is in kPa so multiply by 1000 to convert to Pa.
-  // Threshold is calibrated empirically per body in the BodyParams table.
-  if (currentBody.highQThreshold > 0.0f && inAtmo && state.atmoPressure > 0.0f) {
-    float dynPressProxy = 0.5f * (state.atmoPressure * 1000.0f) *
-                          (state.vel_surf * state.vel_surf);
-    if (dynPressProxy > currentBody.highQThreshold)
+  // CW_HIGH_Q: true dynamic pressure q = 0.5 * airDensity * vel_surf² (Pa) above
+  // CW_HIGH_Q_PA, the same q CW_CHUTE_ENV uses. q is what loads the airframe on any
+  // body, so one threshold serves all of them. This used to be 0.5 * static pressure *
+  // v², which is not a pressure at any scale and needed a per-body calibration that
+  // was never done: every body's highQThreshold was 0, so the tile could not light.
+  if (inAtmo && state.airDensity > 0.0f) {
+    float q = 0.5f * state.airDensity * state.vel_surf * state.vel_surf;
+    if (q > CW_HIGH_Q_PA)
       bitSet(cw, CW_HIGH_Q);
   }
 
