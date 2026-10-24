@@ -208,7 +208,11 @@ ScreenType apConsoleContextScreen() {
   if (onGround) return screen_LNDGAP;
   // Descending: the RE-ENTRY corridor test, or low with vertical speed negative.
   if (currentBody.hasAtmo && state.inAtmo && state.verticalVel < 0.0f) return screen_LNDGAP;
-  if (state.radarAlt < LNDG_CTX_ALT_M && state.verticalVel < -LNDG_CTX_VVERT_MS) return screen_LNDGAP;
+  // (LNDG_CTX_VVERT_MS is already negative; negating it here once made this "not
+  //  climbing faster than 5 m/s", which handed a hovering or slow-climbing craft the
+  //  landing console.)
+  if (state.radarAlt > 0.0f && state.radarAlt < LNDG_CTX_ALT_M &&
+      state.verticalVel < LNDG_CTX_VVERT_MS) return screen_LNDGAP;
   // Climbing under thrust toward an orbit that does not exist yet: the ascent console.
   if (state.throttle > 0.02f && state.verticalVel > 0.0f && state.periapsis < 0.0f) return screen_LNCHAP;
   return screen_ORBTAP;

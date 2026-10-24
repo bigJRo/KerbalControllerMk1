@@ -3,7 +3,7 @@
 
    LAYOUT (1024×600, content area 940×538 below title bar; reticle R=210)
    ┌─────────────────────────────────┬──────────────────────────────────────┐
-   │   RPOD Scope                    │ DIST:           48.3 km             │
+   │   RPOD Scope                    │ DIST:           1,250 m             │
    │   (black disc, R=210, ±60°)     │                                      │
    │                                 │ V.CLOSE:         -1.4 m/s            │
    │   ◆ target (TFT_VIOLET)         │ BRG:  +22.0°  │ ELV:  -14.0°        │
@@ -33,7 +33,7 @@
    MNVR and DOCK reticles.
    Right panel: 360 px at x=580 (matches MNVR/DOCK), labels 28 / values 36
 
-   RIGHT PANEL — 5 rows, rowHFor(5) = 106px each
+   RIGHT PANEL — 5 rows, rowHFor(5) = 107px each
    Row 0  Dist     full-width, colour-coded by range (RNDZ_DIST thresholds)
    Row 1  V.Close  full-width — yellow when OPENING; white-on-red when closing fast and
                     already close (TGT_VCLOSURE_ALARM_MS gated on RNDZ_DIST_WARN_M)
@@ -50,7 +50,7 @@
    Altitude above sea level and orbital speed are not about the target at all.
    Nothing replaces them: the closest-approach fields in AppState are KSP2-only stubs,
    and there is no relative inclination or phase angle in the telemetry. So the height
-   goes to the five rows that are left, 76 px -> 106 px each.
+   goes to the five rows that are left, 76 px -> 107 px each.
 
    DOT UPDATE STRATEGY  (same as DOCK)
    ────────────────────

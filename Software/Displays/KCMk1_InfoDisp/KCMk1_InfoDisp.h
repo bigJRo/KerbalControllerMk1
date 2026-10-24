@@ -188,11 +188,11 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.11.0 (buffer formatters)
+   This sketch requires KerbalDisplayCommon >= 3.11.1 (buffer formatters; the ² glyph)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 15;  // 1.15.0: Orbital and Landing Autopilot consoles, five-console key, sync-byte status dispatch
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.15.1: A/P key caption at rest; demo A/P OFF disarms the ascent autopilot too
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.15.2: bug sweep from the user-manual renders (issues #50-#61, #64)
 
 
 /***************************************************************************************

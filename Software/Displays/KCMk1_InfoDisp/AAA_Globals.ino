@@ -34,6 +34,7 @@ ScreenType prevScreen   = screen_COUNT;  // sentinel -- forces chrome on first l
 bool simpitConnected = false;  // true after Simpit handshake succeeds
 bool _pendingContextSwitch = false;  // set on vessel change; cleared when FLIGHT_STATUS arrives
 bool _pendingDockCheck     = false;  // set after context switch; cleared when TARGETINFO arrives
+uint32_t _lastTargetInfoMs = 0;      // millis() of the last TARGETINFO; 0 = none since vessel switch
 bool flightScene     = false;  // true when KSP is in a flight scene
 bool idleState       = false;  // true when master wants standby when not in flight
 
@@ -183,6 +184,15 @@ ScreenType vehicleContextScreen() {
 //
 // Rules 4 and 5 are new for the same reason, and both are bounded rather than bare
 // existence tests — see TGT_CONTEXT_MAX_M / MNVR_CONTEXT_LEAD_S in AAA_Config.ino.
+// Is there a target? targetAvailable alone is not enough -- KSP can report false while
+// TARGETINFO is still arriving (observed in KSP1) -- and tgtDistance alone is worse: it
+// is never cleared, so a target dropped inside 200 m kept the panel on DOCKING, showing
+// NO TARGET SET, for the rest of the flight. Either signal counts while it is current.
+bool targetPresent() {
+  return state.targetAvailable ||
+         (_lastTargetInfoMs != 0 && millis() - _lastTargetInfoMs < TGT_INFO_FRESH_MS);
+}
+
 ScreenType missionContextScreen() {
   // 0. A console whose autopilot is flying the vehicle (Mission_Autopilot.md §10 q.7):
   //    the panel comes back to the console doing the work after the pilot has looked
@@ -260,12 +270,12 @@ ScreenType missionContextScreen() {
     return screen_NAV;
 
   // 5. Target within docking range -> docking screen.
-  //    Use tgtDistance alone — KSP may report targetAvailable=false even while
-  //    actively sending TARGETINFO with a valid distance (observed in KSP1).
+  //    targetPresent(), not targetAvailable — KSP may report targetAvailable=false even
+  //    while actively sending TARGETINFO with a valid distance (observed in KSP1).
   //    The limit widens once DOCKING owns the screen: holding station at exactly
   //    200 m must not oscillate the panel. Same pattern in rules 7, 8 and 9.
   const float dockLim = (_lastContextWant == screen_DOCK) ? DOCK_CTX_RELEASE_M : DOCK_DIST_WARN_M;
-  if (state.tgtDistance > 0.0f && state.tgtDistance <= dockLim)
+  if (targetPresent() && state.tgtDistance > 0.0f && state.tgtDistance <= dockLim)
     return screen_DOCK;
 
   // 6. On the surface -> TARGET when one is set, otherwise VEHICLE INFO. ORBIT was the

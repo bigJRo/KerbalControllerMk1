@@ -381,12 +381,18 @@ static void _orbComputeScene(OrbScene &sc) {
     sc.useSoiView = isEsc && sc.soi_m > 0.0f
                           && altSL_m >= 0.0f && altSL_m > 2.0f * sc.bodyR_m;
 
-    // Orbit colour
-    bool peInAtmo = !isEsc && ((sc.atmoH_m > 0.0f && PeA_m < sc.atmoH_m) || PeA_m < 0.0f);
-    bool apInAtmo = !isEsc && ((sc.atmoH_m > 0.0f && ApA_m < sc.atmoH_m) || ApA_m < 0.0f);
-    if      (isEsc)                sc.orbitCol = TFT_ORANGE;
-    else if (peInAtmo || apInAtmo) sc.orbitCol = TFT_YELLOW;
-    else                           sc.orbitCol = TFT_DARK_GREEN;
+    // Orbit colour: yellow when either apsis is below the orbit-safe altitude -- the
+    // atmosphere top where there is one, the highest terrain where there is not (the
+    // mission ladder's boundary between an orbit and a trajectory, AAA_Globals.ino rule
+    // 7). Tested on the RAW apsides: PeA_m / ApA_m are clamped to >= 0 for the geometry,
+    // so the old "below sea level" test never fired and an impact trajectory on the Mun
+    // drew as a green orbit.
+    const float safeH = (sc.atmoH_m > 0.0f) ? sc.atmoH_m : currentBody.minSafe;
+    bool peLow = !isEsc && state.periapsis < safeH;
+    bool apLow = !isEsc && state.apoapsis  < safeH;
+    if      (isEsc)          sc.orbitCol = TFT_ORANGE;
+    else if (peLow || apLow) sc.orbitCol = TFT_YELLOW;
+    else                     sc.orbitCol = TFT_DARK_GREEN;
 
     // INCL geometry
     sc.bodyCY = (int16_t)constrain((int)sc.focusY,

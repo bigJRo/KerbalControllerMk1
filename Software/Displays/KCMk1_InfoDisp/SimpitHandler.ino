@@ -334,6 +334,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(targetMessage)) {
         targetMessage t = parseMessage<targetMessage>(msg);
         state.tgtDistance   = t.distance;
+        _lastTargetInfoMs   = millis();
+        if (_lastTargetInfoMs == 0) _lastTargetInfoMs = 1;   // 0 means "none yet"
         state.tgtHeading    = t.heading;
         state.tgtPitch      = t.pitch;
         state.tgtVelHeading = t.velocityHeading;
@@ -465,6 +467,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           _vesselDocked = false;
         }
         _pendingDockCheck = false;  // clear any stale dock check from previous switch
+        _lastTargetInfoMs = 0;      // the old vessel's target is not this one's
         if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
         // Reset per-vessel screen state. (_lndgReentryMode is not touched: it is derived
         // from the active screen by drawStaticScreen() / updateScreen().)

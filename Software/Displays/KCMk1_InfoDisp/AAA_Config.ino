@@ -229,6 +229,10 @@ const uint32_t CONTEXT_DWELL_MS      = 4000;     // min gap between automatic sw
 // releases immediately because the ladder's answer legitimately changed.
 const uint32_t MANUAL_DWELL_MS       = 10000;    // min gap between a press and an auto switch
 const float    DOCK_CTX_RELEASE_M    = 250.0f;   // leave DOCKING past this (enter at 200)
+// A target counts as present while targetAvailable is set OR a TARGETINFO arrived this
+// recently. Simpit sends TARGETINFO only while there is a target, and nothing clears
+// state.tgtDistance, so without an age the last distance outlived its target.
+const uint32_t TGT_INFO_FRESH_MS     = 2000;
 const float    TGT_CTX_RELEASE_MIN_M = 150.0f;   // leave TARGET below this (enter at 200)
 const float    TGT_CTX_RELEASE_MAX_M = 2400.0f;  // leave TARGET above this (enter at 2000)
 const float    MNVR_CTX_RELEASE_S    = 700.0f;   // leave MANEUVER past this (enter at 600)
@@ -374,11 +378,11 @@ const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
 
 // Pitch (slope) thresholds (degrees). Tune per rover — heavier/wider rovers tolerate more.
 const float ROVER_PITCH_WARN_DEG  = 20.0f;   // yellow — getting steep
-const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
+const float ROVER_PITCH_ALARM_DEG = 30.0f;   // red text — rollover risk
 
 // Roll (lateral tilt) thresholds (degrees). Roll is typically the more critical axis.
 const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
-const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
+const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // red text — rollover imminent
 
 // Endurance thresholds (seconds of charge remaining). The ROVER block that used to show
 // EC% now shows time to empty, so it is coloured on TIME, not on percentage -- see the

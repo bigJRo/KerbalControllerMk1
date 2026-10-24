@@ -850,7 +850,8 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
 }
 
 // Estimated ΔV (m/s) to circularize at apoapsis (vis-viva). Returns -1 if the
-// orbit data isn't usable (sub-orbital, no apoapsis, negative result, etc.).
+// orbit data isn't usable (no apoapsis, negative result, etc.). A sub-orbital path is
+// usable: its periapsis is below the surface, but the ellipse is still the vessel's.
 //   μ       = surfGrav × bodyR²        (standard gravitational parameter)
 //   rAp     = apoapsis + bodyR
 //   sma     = (rAp + (periapsis + bodyR)) / 2
@@ -863,12 +864,17 @@ static float _lnchOrCircDvEstimate() {
     if (bodyR <= 0.0f || g <= 0.0f || state.apoapsis <= 0.0f) return -1.0f;
     float mu   = g * bodyR * bodyR;
     float rAp  = state.apoapsis + bodyR;
-    float rPe  = fmaxf(state.periapsis + bodyR, bodyR);   // clamp to surface
+    // The TRUE periapsis radius, floored at the centre rather than the surface. During
+    // the ascent periapsis is far underground, and that is still the ellipse the vessel
+    // is on: clamping it to the surface lengthened the orbit, overstated the speed at
+    // apoapsis and made the burn read low (74 m/s against a 497 m/s node at Ap 82.5 km,
+    // Pe -300 km on Kerbin).
+    float rPe  = fmaxf(state.periapsis + bodyR, 0.0f);
     float sma  = (rAp + rPe) * 0.5f;
     if (sma <= 0.0f || rAp <= 0.0f) return -1.0f;
     float v_circ_sq = mu / rAp;
     float v_curr_sq = mu * (2.0f / rAp - 1.0f / sma);
-    if (v_circ_sq <= 0.0f || v_curr_sq <= 0.0f) return -1.0f;
+    if (v_circ_sq <= 0.0f || v_curr_sq < 0.0f) return -1.0f;   // 0 = straight up: the burn is all of v_circ
     float dvEst = sqrtf(v_circ_sq) - sqrtf(v_curr_sq);
     if (dvEst <= 0.0f || dvEst >= 100000.0f) return -1.0f;   // guard sub-orbital / nonsense
     return dvEst;

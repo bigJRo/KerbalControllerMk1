@@ -53,7 +53,7 @@
    Row 7: RCS | SAS buttons (to screen bottom)
    Rows 4 and 5 mirror TGT exactly, so the same four angles read the same way on both
    screens. The split cells cannot hold a decimal, so both pairs are whole degrees;
-   V.Lat (m/s, two decimals) is the precision instrument at docking range.
+   V.Lat (m/s, one decimal) is the precision instrument at docking range.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ──────────────────────────────────
@@ -313,7 +313,7 @@ static void chromeScreen_DOCK(KCM_TFT &tft) {
         return;
     }
 
-    if (!state.targetAvailable) {
+    if (!targetPresent()) {
         _dockChromDrawn = false;
         tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
         textCenter(tft, &Roboto_Black_72, 0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP,
@@ -353,7 +353,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     if (_vesselDocked) return;
 
     // State transitions
-    if (!state.targetAvailable) {
+    if (!targetPresent()) {
         if (_dockChromDrawn) { _dockChromDrawn = false; switchToScreen(screen_DOCK); }
         return;
     }

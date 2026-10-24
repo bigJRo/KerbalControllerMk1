@@ -342,12 +342,16 @@ static void _reDrawBall(KCM_TFT &tft) {
   // 30° ticks, bezel) — identical style to the MNVR / TGT / DOCK reticles.
   reticleDrawBase(tft, cx, cy, R, 12, 9);
 
-  // Ring degree labels (NE quadrant, just inside each ring) — 10/20/30/40° scale.
+  // Ring degree labels (SE quadrant, just inside each ring) — 10/20/30/40° scale. Down
+  // the LOWER axis because the bank scale and its pointer own the top: at wings level the
+  // pointer sat on the "40". Transparent (one-argument setTextColor), as on TGT/DOCK, so
+  // a label's box does not cut a gap in the ring it names.
   tft.setFont(Roboto_Black_12);
-  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);
+  tft.setTextColor(TFT_LIGHT_GREY);
   static const char *ringL[4] = { "10", "20", "30", "40" };
   const int16_t ringR[4] = { R / 4, R / 2, (R * 3) / 4, R };
-  for (uint8_t i = 0; i < 4; i++) { tft.setCursor(cx + 3, cy - ringR[i] + 2); tft.print(ringL[i]); }
+  for (uint8_t i = 0; i < 4; i++) { tft.setCursor(cx + 3, cy + ringR[i] - 15); tft.print(ringL[i]); }
+  tft.setTextColor(TFT_LIGHT_GREY, TFT_BLACK);   // the title below prints opaque, as before
 
   // Title
   const char *cap = "RETRO ALIGNMENT";
@@ -455,14 +459,17 @@ static void _reDrawEnvelope(KCM_TFT &tft) {
   if (xDrogue > xMain)   tft.fillRect(xMain,   iy, xDrogue - xMain, ih, TFT_DARK_YELLOW);
   if (rEnd    > xDrogue) tft.fillRect(xDrogue, iy, rEnd - xDrogue,  ih, TFT_DARK_RED);
 
-  // Boundary lines + tags above the bar
+  // Boundary lines + tags above the bar, only for a speed that is ON the scale. spdToX
+  // clamps an off-scale speed to the last interior pixel, which the x tests below still
+  // pass, so in thin air both tags were drawn on top of each other at the right end,
+  // implying a ~3000 m/s limit. The zone fills already say "beyond the scale".
   tft.setFont(Roboto_Black_12);
-  if (xMain > RE_CT_X && xMain < RE_CT_RIGHT) {
+  if (vMain < axisMax && xMain > RE_CT_X && xMain < RE_CT_RIGHT) {
     tft.drawLine(xMain, iy, xMain, iy + ih - 1, TFT_NEON_GREEN);
     tft.setTextColor(TFT_NEON_GREEN, TFT_BLACK);
     tft.setCursor(xMain - 14, RE_CT_Y - 28); tft.print("MAIN");
   }
-  if (xDrogue > RE_CT_X && xDrogue < RE_CT_RIGHT) {
+  if (vDrogue < axisMax && xDrogue > RE_CT_X && xDrogue < RE_CT_RIGHT) {
     tft.drawLine(xDrogue, iy, xDrogue, iy + ih - 1, TFT_YELLOW);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setCursor(xDrogue - 12, RE_CT_Y - 28); tft.print("DROG");
@@ -638,7 +645,10 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
     for (int8_t dx = -1; dx <= 1; dx++)
       tft.drawLine(RE_TXT_X + RHW + dx, y, RE_TXT_X + RHW + dx, rowYFor(row + 1, RE_NR) - 1, TFT_GREY);
   };
-  splitLabels(6, "DROGUE", "MAIN");
+  // DROG, not DROGUE: the value sub-cell starts at +70 px and STOW right-aligns into
+  // it from x = 660, so a 78 px DROGUE lost its last 6 px under the value's opaque
+  // background and read "DROGUISTOW". DROG (54 px) is also the CHUTE DEPLOY tag's name.
+  splitLabels(6, "DROG", "MAIN");
   // Row 7 buttons are drawn in the update pass; only draw the divider here.
   {
     uint16_t y = rowYFor(7, RE_NR);

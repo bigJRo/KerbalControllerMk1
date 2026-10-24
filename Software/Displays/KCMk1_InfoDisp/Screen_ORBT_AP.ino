@@ -104,7 +104,7 @@ void chromeScreen_ORBTAP(KCM_TFT &tft) {
   for (uint8_t r = 0; r < 7; r++)
     textLeft(tft, OB_F_LBL, CON_C3X + 4, conRowY(r), CON_COLW - CON_VALW, CON_ROW_H, PLAN_LBL[r], OB_LBL, TFT_BLACK);
   textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 8,  CON_COLW - 8, 20, "Arm one burn, review the PLAN column,", TFT_DARK_GREY, TFT_BLACK);
-  textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 28, CON_COLW - 8, 20, "then EXEC. A/P OFF aborts at any phase.", TFT_DARK_GREY, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 28, CON_COLW - 8, 20, "then EXEC. A/P OFF aborts any phase.", TFT_DARK_GREY, TFT_BLACK);
   int16_t ly = conRowY(5) + 12, lx = CON_C1X + 2;
   tft.drawRect(lx, ly, 92, 28, TFT_GREY);             textCenter(tft, &Roboto_Black_16, lx, ly, 92, 28, "OFF", TFT_WHITE, TFT_BLACK);
   tft.drawRect(lx + 100, ly, 92, 28, TFT_CYAN);       textCenter(tft, &Roboto_Black_16, lx + 100, ly, 92, 28, "PENDING", TFT_CYAN, TFT_BLACK);

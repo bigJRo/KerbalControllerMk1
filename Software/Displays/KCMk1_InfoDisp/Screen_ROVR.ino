@@ -110,8 +110,8 @@ static const int16_t ROVR_TGTD_H         = 44;   // Roboto_Black_28 cap 33, vert
 // Heading readout — single-line boxed value above the nose triangle. The box
 // border is stationary chrome; only the numeric value is redrawn on changes.
 // Format: zero-padded 3-digit heading with ° symbol (e.g. "045°").
-// Box is 38 tall to give the 28pt Roboto Black font (33 px font_height) room
-// to render without the glyph cell's black background overwriting the border.
+// Box is 52 tall to give the Roboto_Black_36 value room to render without the
+// glyph cell's black background overwriting the border.
 static const int16_t ROVR_HDG_BOX_W      = 110;  // widened slightly for the larger font
 static const int16_t ROVR_HDG_BOX_H      = 52;   // Roboto_Black_36 cap 43 + padding
 static const int16_t ROVR_HDG_BOX_X      = ROVR_CX - (ROVR_HDG_BOX_W / 2);
@@ -326,8 +326,8 @@ static inline void _rovrDrawTargetAt(KCM_TFT &tft, float screenDeg, bool erase) 
 
 // Target triangle update — called every frame. Decides whether the target
 // triangle needs to be erased, redrawn, or both. Independent of the main
-// compass redraw because the target triangle sits in an annular band (R=100..
-// 115) that doesn't overlap with the ticks/labels/ring, so it can update on
+// compass redraw because the target triangle sits in an annular band (R=110..
+// 128) that doesn't overlap with the ticks/labels/ring, so it can update on
 // its own cadence.
 //
 // Triggers:
@@ -641,7 +641,7 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
 // spurious rate for the next 48 s. Three cases have to be designed rather than
 // discovered on the bench:
 //   - solar panels can make the net rate POSITIVE. That is "CHG", not a negative time.
-//   - below a floor the figure is not decision-relevant (beyond ~10 h), so it reads
+//   - below a floor the figure is not decision-relevant (beyond ~14 h), so it reads
 //     "---" rather than a fictitious precision.
 //   - parked with nothing drawing, the rate is noise around zero, which the floor
 //     catches for the same reason.
@@ -821,9 +821,7 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
 // surface below the vessel — i.e. how high up the current terrain is above
 // sea level. Same block style as V.Srf on the left side.
 //
-// Clamped to ≥ 0 (negative values would indicate telemetry anomalies, not real
-// terrain below sea level, and KSP bodies don't have meaningful negative
-// elevation in the rover-driving domain).
+// Not clamped: terrain below sea level (a basin floor) prints with its sign.
 static inline int16_t _rovrElevLabelY() {
     int16_t totalContent = ROVR_LBL_H + ROVR_LBL_VAL_GAP + ROVR_VAL_H;
     return ROVR_ELEV_Y + (ROVR_ELEV_H - totalContent) / 2;

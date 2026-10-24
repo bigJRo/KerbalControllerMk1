@@ -205,7 +205,7 @@ void processTouchEvents() {
           break;
         case SB_TGTDOCK_BTN:
           // Context: docking screen when a target is within docking range, else target.
-          target = (state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
+          target = (targetPresent() && state.tgtDistance > 0.0f && state.tgtDistance <= DOCK_DIST_WARN_M)
                      ? screen_DOCK : screen_TGT;
           break;
         case SB_LNDG_BTN:
@@ -226,14 +226,19 @@ void processTouchEvents() {
       switch (btn) {
         case SB_LNCH_BTN:
           if (_lnchPrelaunchMode) {
-            // Dismiss the pre-launch board into the ascent view.
+            // Dismiss the pre-launch board into the ascent view -- exactly as a tap on
+            // the board does, phase override included. Setting the override here (it
+            // used to be set for both branches) outlived the launch: FLIGHT_STATUS
+            // clears it at liftoff only while the board is still up, so a key
+            // dismissal left LAUNCH on MAN and the coast never switched to CIRC.
             _lnchPrelaunchMode      = false;
             _lnchPrelaunchDismissed = true;
             _lnchOrbitalMode        = false;
+            _lnchManualOverride     = false;
           } else {
-            _lnchOrbitalMode = !_lnchOrbitalMode;   // ASC <-> CIRC
+            _lnchOrbitalMode    = !_lnchOrbitalMode;   // ASC <-> CIRC
+            _lnchManualOverride = true;
           }
-          _lnchManualOverride = true;
           target = screen_LNCH; doSwitch = true;
           break;
         case SB_PFD_BTN: {
