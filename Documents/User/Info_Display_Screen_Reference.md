@@ -8,8 +8,8 @@ The controller carries two Info Displays, each a 1024 × 600 touchscreen running
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
 panel*: it always shows an instrument for the vehicle you are flying. **Info Display
 2** (panel B1, sidebar on the right) is the *mission panel*: it follows the mission
-phase, and it alone carries the autopilot consoles. Every screen can be reached from
-either unit; only the sixth sidebar key differs.
+phase, and it alone carries the autopilot consoles. Every other screen can be reached
+from either unit; only the sixth sidebar key differs.
 
 Every picture in this document is a true rendering: the firmware's own drawing code,
 run on a computer against a model of the display controller, in the flight state the
@@ -43,7 +43,7 @@ automatic choice; pressing it again cycles its modes.
 
 | Key | Caption at rest | Screens, in cycle order | First press goes to |
 |---|---|---|---|
-| 1 | PFD | SPACECRAFT → AIRCRAFT → ROVER (Info Display 2 adds VEHICLE INFO) | The PFD that suits the vessel |
+| 1 | PFD | SPACECRAFT → AIRCRAFT → ROVER (Info Display 2 adds VEHICLE INFO) | The PFD that suits the vessel, or the one you last cycled to on this vessel |
 | 2 | LNCH | PRE-LAUNCH (automatic on the pad), then ASCENT ↔ CIRCULARIZATION | The mode that fits the flight phase |
 | 3 | ORB | ORBIT → ORBIT ADVANCED → MANEUVER | ORBIT |
 | 4 | TGT | TARGET → DOCKING → NAVIGATION | DOCKING inside 200 m of a target, else TARGET |
@@ -58,7 +58,7 @@ autopilot consoles.
 
 Each panel re-checks its choice every frame. To stop it flapping, an automatic switch
 waits at least **4 s** after the previous one and at least **10 s** after a sidebar
-press, and every numeric rule has a release band wider than its trigger.
+press, and most numeric rules have a release band wider than their trigger.
 
 **Info Display 1** answers one question, what instrument suits this vehicle:
 
@@ -74,7 +74,7 @@ press, and every numeric rule has a release band wider than its trigger.
 |---|---|---|
 | 0 | An autopilot is armed or engaged | That autopilot's console |
 | 1 | On the pad or runway (pre-launch), any vessel type | PRE-LAUNCH |
-| 2 | Descending with periapsis in the body's re-entry corridor, while still above the atmosphere or faster than Mach 3. Once chosen it holds to touchdown, through the parachute phase, unless the engines thrust (a powered landing) or the vessel is a plane below Mach 3 | RE-ENTRY |
+| 2 | Descending with periapsis below the top of the body's safe re-entry corridor (too steep included), while still above the atmosphere or faster than Mach 3. Once chosen it holds through the rest of the descent, parachutes included, until touchdown; it releases on climbing faster than 50 m/s, on leaving the atmosphere, when the engines thrust (throttle above 2 % with stage burn time left: a powered landing), or for a plane below Mach 3 | RE-ENTRY |
 | 3 | Descending faster than 5 m/s below 10 km radar altitude (not a plane in an atmosphere) | POWERED DESCENT |
 | 4 | A Plane flying in an atmosphere, apoapsis below its top | NAVIGATION |
 | 5 | A target within 200 m | DOCKING |
@@ -99,7 +99,8 @@ KSP reports, so a plane must be typed **Plane** in KSP to get AIRCRAFT and NAVIG
 | White on red | Alarm: act now |
 | Dark grey `---` | No data, or the value does not apply right now |
 | Dark grey value | The value is shown but does not apply right now (see *No propellant* below) |
-| Cyan | A console edit or command sent but not yet confirmed |
+| Sky-blue value | A console setpoint edit sent but not yet confirmed |
+| Cyan outline | A console mode or toggle tap sent but not yet confirmed |
 | Bright green, violet, magenta, cyan, blue markers | KSP navball colours: prograde, target, normal, radial, manoeuvre |
 
 Where a table says "yellow 150–299", the bounds are inclusive of whole units: values are
@@ -118,8 +119,8 @@ colours.
 | Quantity | Format |
 |---|---|
 | Distance, altitude | Two decimals below 1,000 m (`310.00 m`); whole metres with separators to 999,999 m (`124,665 m`); then km, Mm, Gm. ROVER's DIST and ALT.TRN are whole metres throughout (`850 m`) |
-| Speed | One decimal below 1,000 m/s (`842.0 m/s`); whole numbers with separators from 1,000 (`2,200 m/s`). The autopilot consoles show whole numbers throughout (`842 m/s`, `1,450 m/s`) |
-| Time | `48 s`; `15 m: 06 s` under an hour; `1h 09m` from one hour; `3d 04h` from one Kerbin day (6 h). A leading `-` means the moment has passed. Autopilot consoles use the compact `m:ss`. |
+| Speed | One decimal below 1,000 m/s (`842.0 m/s`); whole numbers with separators from 1,000 (`2,200 m/s`). The autopilot consoles show Δv and airspeeds as whole numbers with separators (`842 m/s`, `1,450 m/s`); their setpoint rates and speeds keep one decimal |
+| Time | `48 s`; `15 m: 06 s` under an hour; `1h 09m` from one hour; `3d 04h` from one Kerbin day (6 h). A leading `-` means the moment has passed, except the Orbital Autopilot's T-IGN, which is negative while counting down. Autopilot consoles use the compact `m:ss`. |
 
 ### Standby
 
@@ -269,17 +270,18 @@ for a Plane in an atmosphere and hands back to SPACECRAFT when it leaves.
   right of the flight path. Green up to 5°, yellow above 5°, red above 15°.
 - **IAS trend chevrons** (magenta, beside IAS). One, two or three chevrons predict the
   airspeed change over the next 6 s: one from 2 m/s, two from 6, three from 12.
-- **SL / RDR chip.** Which altitude row 1 shows; see Buttons.
+- **SL / RDR chip.** Which altitude the top row shows; see Buttons.
 
 **Reading the screen.** Fly attitude on the ball and speed on IAS, keep the slip ball
 centred, and treat the AoA arc and AOA row as the stall warning (IAS has no stall
 colour). AoA is nose pitch minus flight-path pitch, so it is most accurate wings-level.
-On approach, lower the gear or descend below 750 m radar altitude: row 1 switches to
-radar altitude and V.VRT and the VSI begin to alarm on landing descent rates. A yellow
+On approach, below 750 m radar altitude the top row switches to radar altitude; that
+height or lowering the gear turns on the landing colours, so V.VRT and the VSI alarm on
+landing descent rates. A yellow
 GEAR button in flight means the gear is down above 160 m/s.
 
 **Special states.**
-- Row 1 switches to **ALT.RDR** below 750 m radar altitude and back to **ALT.SL** above
+- The top row switches to **ALT.RDR** below 750 m radar altitude and back to **ALT.SL** above
   850 m. The gap stops it flickering at one height.
 - The landing bands on V.VRT and the VSI follow the automatic radar test or gear down;
   pinning RDR with the chip does not turn them on.
@@ -413,7 +415,7 @@ can command. A yellow or red COMM means the probe link is weak or lost. Compare
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
 | VESSEL | Vessel name | Green always |
-| TYPE | Vessel type and its icon | Ship green; Probe magenta; Relay violet; Rover olive; Lander navy; Plane sky blue; Station maroon; Base brown; EVA dark green; debris, objects, flags, science and parts dark red |
+| TYPE | Vessel type and its icon | Ship green; Probe magenta; Relay violet; Rover olive; Lander navy; Plane sky blue; Station maroon; Base brown; EVA jungle green; debris, objects, flags, science, parts and unknown mid red |
 | STATUS | PRE-LAUNCH, IN FLIGHT, SUB-ORBITAL, IN ORBIT, ESCAPE ORBIT, LANDED, SPLASHED or DOCKED, with `· RECOVERABLE` when it applies | Sky blue when recoverable; green otherwise |
 | CONTROL | Control level | Full Control green; Limited Manned dull yellow; Limited Probe orange; No Control white on red |
 | COMM | CommNet signal | Green from 50 %; yellow 1–49 %; white on red at 0 % |
@@ -431,9 +433,8 @@ showing, the key's caption is the current mode: **PRE**, **ASC** or **CIRC**.
 1. **PRE-LAUNCH** is armed whenever KSP reports the vessel as pre-launch. Info Display 2
    brings it up automatically; on Info Display 1 press LNCH.
 2. **PRE-LAUNCH → ASCENT** happens at launch, or when you tap the board. Either keeps
-   the screen on AUTO. Pressing the PRE key also moves on, but sets MAN for the whole
-   flight, which stops step 3; tap the board instead. Once dismissed, the board does not
-   return while you stay on the pad.
+   the screen on AUTO. Pressing the PRE key does the same as a tap. Once dismissed, the
+   board does not return while you stay on the pad.
 3. **ASCENT → CIRCULARIZATION** happens by itself when the throttle is at or below 2 %
    *and* apoapsis is at or above the orbit-safe altitude (70 km at Kerbin). The switch
    then latches, so opening the throttle for the circularisation burn does not send the
@@ -456,8 +457,8 @@ clears it.
 **Purpose.** A go / no-go board to read before staging: identity, control state, power,
 crew, comms, total Δv and the parachute action groups. Every value should be green.
 
-**Layout.** Eight full-width rows; rows 3–5 and 7–8 are split into two cells. No
-graphics.
+**Layout.** Eight full-width rows; the fourth to sixth and the last two are split into
+two cells. No graphics.
 
 **Reading the screen.** Scan the right edge of each cell for anything not green.
 White on red is a no-go: SAS off, RCS on, throttle open, EC below 75 %, comms below
@@ -502,7 +503,8 @@ no picture.
   the flight. The filled green **ALT** triangle is your altitude; the hollow yellow
   **Ap** triangle is apoapsis (always hollow by design). A dashed sky-blue **ATM** line
   marks the top of the atmosphere, and a dashed green **TGT ORB** line marks the target
-  orbit (the orbit-safe altitude plus 20 km: 90 km at Kerbin) once the scale reaches it.
+  orbit (the atmosphere top plus 20 km, or the highest terrain if that is higher: 90 km
+  at Kerbin, 20 km at the Mun) once the scale reaches it.
 - **ATMO gauge.** How deep in the atmosphere you are, sea level at the top: sky blue
   (dense), mid blue, then navy, with a dark segment at the bottom for vacuum. The two
   white triangles mark the current depth. It has no number; Q is the atmospheric
@@ -572,7 +574,8 @@ it say whether this stage can finish the burn.
   shows the direction of travel.
 - **ΔV Burn bar (bottom).** With a node placed, the node's remaining Δv, draining as you
   burn. Green, or yellow when the stage has less than 1.1 × the node's Δv. With no node,
-  the bar is empty and the value shows the panel's own estimate in grey (`est 74m/s`).
+  the bar is empty and the value shows the panel's own estimate in grey (for example
+  `est 497m/s`).
 - **T+IGN (bottom row).** Countdown to the start of the burn.
 - **APSIS CONVERGENCE tape (right).** A vertical scale with the cyan **Ap** and magenta
   **Pe** markers and a grey bracket spanning the gap between them. The dashed dark-red
@@ -730,7 +733,7 @@ LAN with ARG.PE fixes the orbit's orientation in space.
 
 ![MANEUVER, aligned with an 842 m/s node](assets/InfoDisp2_MNVR.png)
 
-*An 842 m/s node 3 minutes out, nose within 2° of the burn vector, SAS holding the node.*
+*An 842 m/s node 3 minutes out, nose about 2° off the burn vector, SAS holding the node.*
 
 **Purpose.** Lines you up for and times the next manoeuvre node: a reticle shows the
 burn vector against your nose, and the right-hand panel gives the node's Δv, the stage's
@@ -806,7 +809,7 @@ the markers.
 
 ![TARGET, 1,250 m from the target and closing](assets/InfoDisp2_TGT.png)
 
-*Closing on a target 1,250 m away at 4.2 m/s, nose 3° off and the approach 2° off.*
+*Closing on a target 1,250 m away at 4.2 m/s, nose 3° off and the approach about 3° off.*
 
 **Purpose.** The rendezvous scope for the middle distance: where the target is
 relative to your nose, where your velocity relative to the target is heading, and the
@@ -845,7 +848,7 @@ the total approach error is over 90° (you are moving away from the target).
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
 | DIST | Range to the target | White on green under 200 m (time for DOCKING); yellow under 5,000 m; green otherwise |
-| V.CLOSE | Closure rate; negative is closing | White on red faster than 500 m/s inside 5,000 m; yellow when opening (0.05 m/s or more); green when closing or holding station (reads 0.0) |
+| V.CLOSE | Closure rate; negative is closing | White on red faster than 500 m/s either way inside 5,000 m; yellow when opening (0.05 m/s or more); green when closing or holding station (reads 0.0) |
 | BRG | Target bearing from the nose, right positive | Green always |
 | ELV | Target elevation from the nose, up positive | Green always |
 | V.BRG | Approach-path error left/right: how far right of the target your velocity points | Green under 15°; yellow from 15°; white on red from 30°; `---` past 90° total |
@@ -893,7 +896,8 @@ it with a target 200 m or closer (it holds to 250 m once shown).
 - **DOCKED** fills the screen in white on green when KSP reports a docking. It stays
   until you undock or switch vessel; the focus change KSP makes just after docking does
   not clear it.
-- **NO TARGET SET** fills the screen in white on red while no target is set.
+- **NO TARGET SET** fills the screen in white on red while no target is set. The scope
+  stays up for up to 2 s after the target drops, while target data is still arriving.
 - V.BRG and V.ELV show `---` past 90° of total error. A small negative angle can show
   as `-0°`.
 
@@ -903,7 +907,7 @@ it with a target 200 m or closer (it holds to 250 m once shown).
 |---|---|---|
 | DIST | Range to the target port | White on red under 50 m; yellow under 200 m; green otherwise |
 | T+DOCK | Time to contact, DIST ÷ closure speed | White on red under 10 s; yellow under 30 s; green otherwise; `---` unless closing |
-| V.CLOSE | Closure rate, always signed, two decimals; negative is closing | White on red faster than 2 m/s inside 100 m; yellow when opening (0.005 m/s or more); green when closing or holding station (reads ±0.00) |
+| V.CLOSE | Closure rate, always signed, two decimals; negative is closing | White on red faster than 2 m/s either way inside 100 m; yellow when opening (0.005 m/s or more); green when closing or holding station (reads ±0.00) |
 | V.LAT | Lateral drift: speed across the line to the port, two decimals | Green under 0.10 m/s; yellow from 0.10; white on red from 0.50 (judged on the value as shown) |
 | BRG | Port bearing from the nose, right positive | Green always |
 | ELV | Port elevation from the nose, up positive | Green always |
@@ -913,7 +917,7 @@ it with a target 200 m or closer (it holds to 250 m once shown).
 
 **Buttons.** Indicators only.
 - RCS: white on green when on, dark grey when off.
-- SAS: TGT white on green (the right mode for docking); STAB black on cyan; any other
+- SAS: TGT white on green (the right mode for docking); STAB black on sky blue; any other
   mode white on red; `SAS` white on red when SAS is off.
 
 ### NAVIGATION (caption NAV)
@@ -929,8 +933,9 @@ bearing, range and time to a target. DRIFT appears on no other screen.
 
 **Reaching it.** Key 4: one or two further presses past TARGET (a first press never
 lands here). Info Display 2 selects it for a vessel typed **Plane** that is flying in an
-atmosphere with apoapsis below its top; a spaceplane whose apoapsis has left the
-atmosphere gets ORBIT instead.
+atmosphere with apoapsis below its top. A spaceplane whose apoapsis has left the
+atmosphere falls through to the rest of the ladder: LAUNCH while it climbs toward orbit,
+then ORBIT.
 
 **Layout.**
 - **Compass card.** Rotates so your heading is always at 12 o'clock, under a fixed
@@ -1000,12 +1005,13 @@ atmosphere.
   axis. The vertical needle is left/right drift, the horizontal needle fore/aft (up is
   forward); where they cross is your drift, and the black centre dot is zero. The
   lighter square marks ±2 m/s; dotted lines mark ±5 and ±10 m/s. Needle colour follows
-  the combined drift against the same limits as FWD and LAT.
+  the combined drift, √(FWD² + LAT²) ÷ 1.414, against the same limits as FWD and LAT.
 - **ATT bullseye** (below left): tilt from vertical, the dot's direction following
   roll. Rim 15°, rings at 5° and 10°. Green under 2°, yellow 2°–5°, red from 5°. Centre
   the dot to stand the lander upright.
 - **GND TRK compass** (below right): heading-up rose with the nose at the top; the
-  green arrow shows which way you are moving over the ground. Hidden at 1 m/s or less.
+  green arrow shows which way you are moving over the ground. Hidden at 1 m/s or less
+  of total surface speed.
 - **VERTICAL VELOCITY tape**: descent rate 0–15 m/s, green to 5, yellow 5–8, red 8–15.
   Empty while climbing.
 
@@ -1055,8 +1061,10 @@ airflow, when each parachute is safe to deploy, and part temperatures.
 **Reaching it.** Key 5, a second press. Info Display 2 selects it on a body with an
 atmosphere when you are descending with periapsis below the top of the safe corridor
 and are above the atmosphere or faster than Mach 3. Once up it stays through the rest of
-the descent, parachutes included, until touchdown; thrusting engines hand a powered
-landing to POWERED DESCENT, and a plane goes to NAVIGATION below Mach 3. Only an engaged
+the descent, parachutes included, until touchdown. It lets go earlier on climbing faster
+than 50 m/s or leaving the atmosphere; thrusting engines (throttle above 2 % with stage
+burn time left) hand a powered landing to POWERED DESCENT, and a plane goes to
+NAVIGATION below Mach 3. Only an engaged
 autopilot and PRE-LAUNCH outrank it.
 
 **Layout.**
@@ -1111,7 +1119,7 @@ ALT.RDR inside it. Chute states are remembered until a vessel switch, and CUT is
 | V.VRT | Vertical speed | Below 500 m radar altitude: yellow faster than 5 m/s down, white on red faster than 8 m/s down. Green otherwise |
 | PEA | Periapsis altitude | By corridor band: white on red too steep; green in the corridor; cyan aerobraking; light grey above the atmosphere |
 | MACH | Mach number | Yellow 0.85–1.20 (transonic); green otherwise |
-| DROG | Drogue state: STOW, ARM, OPEN or CUT | STOW: green; yellow from 85 % of the drogue's dynamic-pressure limit; white on red at the limit. ARM (cyan): deployed, but the air is too thin to open it. OPEN: yellow while still partly open above 2,500 m; green below; white on red if opened over the limit. CUT: red |
+| DROG | Drogue state: STOW, ARM, OPEN or CUT | STOW: green; yellow from 85 % of the drogue's dynamic-pressure limit; white on red at the limit. ARM (sky blue): deployed, but the air is too thin to open it. OPEN: yellow while still partly open above 2,500 m; green below; white on red while the dynamic pressure is still at or over the limit. CUT: red |
 | MAIN | Main chute state | As DROG, with the main chute's limit and full opening at 1,000 m |
 
 The chutes are read from custom action groups: 1 deploys the drogue, 2 cuts it, 3
@@ -1141,13 +1149,13 @@ armed, engaged or executing.
   4. Any other vessel that is landed or splashed: LANDING.
   5. Descending inside an atmosphere: LANDING.
   6. Descending faster than 5 m/s below 10 km radar altitude: LANDING.
-  7. Throttle above 2 %, climbing, periapsis below the surface: ASCENT.
+  7. Throttle above 2 %, climbing, periapsis below sea level: ASCENT.
   8. Otherwise: ORBITAL.
 - **Repeat presses** cycle only the consoles the vessel type can use:
   - Rockets and most craft: ASC → ORAP → LDAP.
   - Planes: ACAP → ORAP → LDAP.
   - Rovers on the ground: RVAP only; off the ground, RVAP → ORAP → LDAP.
-  - Kerbals on EVA, flags and debris: no cycle.
+  - Kerbals on EVA, flags, debris and space objects: no cycle.
 - **Automatic return.** With the chip on AUTO, Info Display 2 goes back by itself to the
   console whose autopilot is flying the vessel (priority ORBITAL, LANDING, AIRCRAFT,
   ROVER, ASCENT). A console with nothing engaged never appears on its own.
@@ -1171,16 +1179,18 @@ armed, engaged or executing.
 | PENDING | Black, cyan outline and text | Your tap is sent but not yet confirmed. A second tap reverses it. Drops back after 3 s if the master refuses. |
 | ENGAGED | Green fill | Mode engaged. A tap disengages it. |
 
-Engaging a mode captures the current value as its setpoint, so engagement is bumpless.
-Modes in the same group exclude each other.
+Most modes capture the current value as their setpoint on engage, so engagement is
+bumpless. DESC, ENTRY and GS fly the setpoint already in their box, and NAV flies the
+target bearing. Modes in the same group exclude each other.
 
 **Setpoint boxes and keypad.** Tap a boxed value to open the on-screen keypad; the
 header gives the field and its range. ENT (green) sends the value, clamped to the range;
 the red X cancels; OFF (where offered) disables the function; +/- changes sign where
-the field allows it. A box is grey while its mode is off, green while engaged, and cyan
-while an edit waits for confirmation. You can edit a setpoint at any time; an engaged
-mode retargets to the new value, and setting a box never engages its mode. A rejected
-edit stays cyan until you enter a value the autopilot accepts.
+the field allows it. A box is grey while its mode is off, green while engaged, and sky
+blue while an edit waits for confirmation; option boxes with no mode of their own (the
+rover guard limits, HOLD AT, TWR, MARGIN, ROLL) are always green. You can edit a setpoint
+at any time; an engaged mode retargets to the new value, and setting a box never engages
+its mode. A rejected edit stays sky blue until you enter a value the autopilot accepts.
 
 **A/P OFF** (orbital, landing, aircraft and rover consoles) turns off *every*
 autopilot: it disarms the ascent autopilot, drops all aircraft and rover modes, aborts
@@ -1194,7 +1204,7 @@ the throttle at a time; engaging another takes over and the previous owner drops
 `OTHER AP`.
 
 **Disconnect and refusal reasons** (orange, banner centre): `STICK`, `A/T OFF: LEVER`,
-`BRAKES`, `AIRBORNE`, `ROLL LIMIT`, `NO ATMO`, `TELEMETRY`, `ASCENT ARMED`, `REFUSED`,
+`BRAKES`, `AIRBORNE`, `ROLL LIMIT`, `NO ATMO`, `TELEMETRY`, `REFUSED`,
 `NO NODE`, `NO TARGET`, `SOI CHANGE`, `FUEL`, `LANDED`, `OTHER AP`, `FLARE`, `ARRIVED`,
 `ALIGN`, `HANDOFF`, `REPLANNED`. The meaning of each is given with its console below.
 
@@ -1215,12 +1225,12 @@ ARM / DISARM button controls it; there are no mode buttons.
 - **VEH PROFILE.** LOFT (trajectory shape, 0.5–2.0: below 1 is aggressive, above 1
   lofted); ROLL (roll hold, ±180°, or OFF); MAX-G (acceleration limit, 0–20 g, or OFF).
 - **ARM button.** Disarmed: orange `ARM`. Armed: shows the current phase, filled in the
-  phase colour, with "tap to DISARM". While a tap is pending its border turns cyan and
+  phase colour, with "tap to DISARM". While a tap is pending its border turns sky blue and
   the hint reads `ARMING...` or `DISARMING...`.
 - **GUIDANCE.** Read-only commanded and live values.
 
 **Operating it.**
-1. Set TGT AP, INC and LAUNCH, then the profile. Each value is cyan until confirmed.
+1. Set TGT AP, INC and LAUNCH, then the profile. Each value is sky blue until confirmed.
 2. Tap **ARM**. The banner shows `ARMED`, and the A/P key turns green.
 3. Launch. The banner and button step through VERTICAL, GRAVITY TURN, COAST,
    CIRCULARIZE and COMPLETE.
@@ -1288,7 +1298,7 @@ while BURNING.
 |---|---|---|
 | ΔV TOT | Planned burn Δv | Green with a plan; `---` otherwise |
 | ΔV REM | Δv still to burn | Bright green while burning; green otherwise; `---` with no plan |
-| T-IGN | Time to ignition, counting toward zero, then up after ignition | Orange under 30 s and after ignition; green otherwise; `---` with no plan |
+| T-IGN | Time to ignition: shown negative while counting down (`-3:05`), positive after ignition | Orange under 30 s and after ignition; green otherwise; `---` with no plan |
 | BURN | Burn duration | Green; `---` with no plan |
 | ACCEL | Acceleration estimate, m/s² | Green; `---` with no estimate |
 | STG ΔV | Δv in the current stage | Orange when a plan needs more than the stage has; green otherwise |
@@ -1298,7 +1308,7 @@ while BURNING.
 
 ![LANDING AUTOPILOT, descent-rate hold over the Mun](assets/InfoDisp2_LNDGAP.png)
 
-*Holding −4 m/s on descent 310 m over the Mun, ATT REF on VERT.*
+*DESC set to −4 m/s, 310 m over the Mun and still descending at 6.5 m/s, ATT REF on VERT.*
 
 **Purpose.** Four landing modes: **DESC** holds a vertical speed with the throttle,
 **HOVR** holds a radar altitude, **BRAKE** arms a suicide burn that fires at a computed
@@ -1316,10 +1326,12 @@ attack and roll. DESC, HOVR and BRAKE exclude each other; ENTRY is separate.
   - **VERT** holds the lander straight up at every speed, for a pure vertical descent; drift
     is yours to correct.
   - The vertical hold steers with the autopilot's own attitude loop and turns SAS off; the
-    POWERED DESCENT SAS button then reads `VERT` in green. TWR overrides the thrust-to-weight used for
-  BRAKE (0–20, or OFF to use the measured or estimated value, shown MEAS or EST).
-  MARGIN adds metres to the ignition altitude (0–5,000). ROLL is the ENTRY roll angle.
-- **A/P OFF.** Disconnects everything; the throttle is left where it is.
+    POWERED DESCENT SAS button then reads `VERT` in green.
+- **TWR** overrides the thrust-to-weight used for BRAKE (0–20, or OFF to use the measured
+  or estimated value, shown MEAS or EST). **MARGIN** adds metres to the ignition altitude
+  (0–5,000). **ROLL** is the ENTRY roll angle.
+- **A/P OFF.** Disconnects everything. If DESC, HOVR or BRAKE was flying, the throttle is
+  cut to zero.
 
 **Operating it.**
 1. Set DESC to your touchdown rate (for example −4 m/s) and choose ATT REF.
@@ -1330,12 +1342,13 @@ attack and roll. DESC, HOVR and BRAKE exclude each other; ENTRY is separate.
 4. On touchdown the throttle goes to zero, everything disconnects and the banner shows
    `LANDED`.
 5. For re-entry, set the ENTRY angle and ROLL and tap **ENTRY**. Rockets disconnect at
-   250 m/s; planes hand over to the aircraft autopilot (`HANDOFF`).
+   250 m/s; a plane hands over to the aircraft autopilot's ATT and ROLL holds below
+   Mach 2.5, once dynamic pressure passes 5 kPa below the high-atmosphere altitude. Both
+   show `HANDOFF`.
 
 **Special states.** The BRAKE box and IGN ALT turn orange when the burn is marginal,
 needing more than 90 % of the available acceleration. Reasons: `REFUSED` (on the ground,
-stale telemetry, or less than 1.2 g available for BRAKE); `LANDED`; `HANDOFF`; `FUEL`
-(annunciated, the throttle is kept).
+stale telemetry, or a thrust-to-weight below 1.2 for BRAKE); `LANDED`; `HANDOFF`.
 
 **Readouts (DESCENT DATA column).**
 
@@ -1380,7 +1393,8 @@ is normal cruise. NAV and GS fly an approach to a targeted flag.
 the throttle module in precision mode); `NO TARGET` (NAV or GS without a target);
 `NO ATMO` (out of the atmosphere for more than 2 s); `FLARE`. `LEVER OFF` in grey means
 the autothrottle is engaged but the throttle module is not following it. An attitude
-mode turns stock SAS off; a full disconnect returns SAS to stability assist.
+mode turns stock SAS off; releasing the last attitude mode returns SAS to stability
+assist.
 
 **Readouts (FLIGHT DATA column).**
 
@@ -1418,17 +1432,19 @@ the rover if it rolls too far.
 1. Check the guard limits.
 2. Tap **CRUISE** (it captures your speed) and edit its box for a new speed; tap **HDG**
    to hold your heading.
-3. To drive to a target, set one, engage **TGT** with CRUISE, and set STOP. Inside
-   200 m the banner shows `STOPPING`; at the STOP distance the rover brakes and the
-   banner shows `ARRIVED`.
-4. Engage **FOLLOW** to shadow a moving vessel at its range.
-5. Stop with **A/P OFF**, the brakes (which drop CRUISE with `BRAKES`), or any stick or
-   lever input.
+3. To drive to a target, set one, engage **TGT** with CRUISE, and set STOP. As it nears
+   the target the rover slows; once that slows it below the cruise speed the banner
+   shows `STOPPING`, and at the STOP distance it brakes and the banner shows `ARRIVED`.
+4. Engage **FOLLOW** to shadow a moving vessel at its range. FOLLOW sets its own speed,
+   so it disengages CRUISE.
+5. Stop with **A/P OFF**, the brakes (which drop CRUISE and FOLLOW with `BRAKES`), or any
+   stick or lever input.
 
 **Special states.** `SLOPE LIMIT` while the slope guard is reducing speed. Reasons:
-`ROLL LIMIT` (roll passed the limit; cruise drops and the brakes stay on until you
-release them); `AIRBORNE` (not touching the ground for more than half a second);
-`REFUSED` (engaged off the ground or with stale telemetry, or the target was lost).
+`ROLL LIMIT` (roll passed the limit; every rover mode drops and the brakes stay on until
+you release them); `AIRBORNE` (not touching the ground for more than half a second);
+`NO TARGET` (TGT or FOLLOW engaged without a target, or FOLLOW lost it); `REFUSED`
+(engaged off the ground or with stale telemetry, or the TGT target was lost).
 
 **Readouts (DRIVE DATA column).**
 
