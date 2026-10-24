@@ -1331,7 +1331,9 @@ attack and roll. DESC, HOVR and BRAKE exclude each other; ENTRY is separate.
   or estimated value, shown MEAS or EST). **MARGIN** adds metres to the ignition altitude
   (0–5,000). **ROLL** is the ENTRY roll angle.
 - **A/P OFF.** Disconnects everything. The throttle is left where it is, so a hover
-  handed back to you keeps its thrust.
+  handed back to you keeps its thrust. The same holds for tapping a mode off or switching
+  between modes: only touchdown cuts the throttle. (BRAKE, engaged, holds zero until its
+  ignition altitude.)
 
 **Operating it.**
 1. Set DESC to your touchdown rate (for example −4 m/s) and choose ATT REF.

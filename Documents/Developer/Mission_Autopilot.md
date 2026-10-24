@@ -289,8 +289,12 @@ a plan the pilot has not seen.
     bank captured, so the airframe is held while the pilot selects modes. The hand-off is the
     aircraft console's ordinary capture-on-engage, called across modules through the arbiter; the
     banner shows `HANDOFF` on both consoles for five seconds.
+- **Throttle on a mode change** (#82): no mode change cuts the throttle. Tapping a mode off,
+  A/P OFF, a pilot override, telemetry loss or another autopilot taking over all leave it where
+  it is; switching between DESC and HOVR starts the new loop from the current throttle. BRAKE
+  itself holds zero until its ignition altitude, as it always has.
 - **Touchdown**: on landed or splashed the throttle goes to zero and everything disconnects with
-  reason `LANDED`.
+  reason `LANDED`. This is the only place the landing autopilot cuts the throttle on its way out.
 
 ---
 

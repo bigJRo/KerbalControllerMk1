@@ -105,10 +105,11 @@ static float lpIgnitionAltitude() {
 /***************************************************************************************
    Engage / disconnect
 ****************************************************************************************/
-static void lpDropThrottleModes(uint8_t reason, bool keepThrottle) {
+// Leaves the throttle where it is: no mode change or hand-back cuts it (#82). Touchdown
+// is the one exception and cuts it explicitly (lpUpdate, LANDED).
+static void lpDropThrottleModes(uint8_t reason) {
   if (lp_mode == LP_MODE_OFF) return;
   lp_mode = LP_MODE_OFF; lp_brakeFiring = false;
-  if (!keepThrottle) lpThrottle(0.0f);
   lpReleaseThrottleOwner();
   if (!lp_entry) lpReleaseAttitudeOwner(true);
   lpSetReason(reason);
@@ -122,19 +123,14 @@ static void lpDropEntry(uint8_t reason) {
 }
 
 void lpDisconnectAll(uint8_t reason) {
-  // Keep the throttle where it is on every hand-back to the pilot, A/P OFF (PILOT)
-  // included: cutting it to zero mid-hover drops the lander, and the console promises
-  // "throttle stays as set" (#82). Touchdown cuts it explicitly (lpUpdate, LANDED).
-  bool keep = (reason == HP_REASON_TELEMETRY || reason == HP_REASON_STICK || reason == HP_REASON_LEVER ||
-               reason == HP_REASON_OTHER_AP || reason == HP_REASON_PILOT);
-  lpDropThrottleModes(reason, keep);
+  lpDropThrottleModes(reason);
   lpDropEntry(reason);
 }
-void lpArbiterDropAttitude() { lpDropEntry(HP_REASON_OTHER_AP); lpDropThrottleModes(HP_REASON_OTHER_AP, true); }
-void lpArbiterDropThrottle() { lpDropThrottleModes(HP_REASON_OTHER_AP, true); }
+void lpArbiterDropAttitude() { lpDropEntry(HP_REASON_OTHER_AP); lpDropThrottleModes(HP_REASON_OTHER_AP); }
+void lpArbiterDropThrottle() { lpDropThrottleModes(HP_REASON_OTHER_AP); }
 
 bool lpEngage(uint8_t mode, bool on) {
-  if (!on) { if (lp_mode == mode) lpDropThrottleModes(HP_REASON_PILOT, false); return true; }
+  if (!on) { if (lp_mode == mode) lpDropThrottleModes(HP_REASON_PILOT); return true; }
   if (mode < LP_MODE_DESC || mode > LP_MODE_BRAKE) return false;
   if ((millis() - lp_t.lastMs) > lp_c.telemetryTimeout) { lpSetReason(HP_REASON_REFUSED); return false; }
   if (lpOnGround()) { lpSetReason(HP_REASON_REFUSED); return false; }
@@ -146,6 +142,8 @@ bool lpEngage(uint8_t mode, bool on) {
   if (wasOff) {
     float cur = thrLeverDriven() ? thrCurrentThrottle() : lp_t.throttle;
     lp_thrInt = lp_thrOut = attClampf(cur, 0.0f, 1.0f);
+  } else {
+    lp_thrInt = lp_thrOut;              // switching modes: the new loop starts from the throttle as it is
   }
   switch (mode) {
     case LP_MODE_HOVR:  lp_hovrAlt = attClampf(roundf(lp_t.radarAlt), lp_c.hovrMin, lp_c.hovrMax); break;
