@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.7.1
+**Applies to:** KCMk1_Annunciator firmware 3.7.2
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -68,7 +68,7 @@ Grid position is row × column, reading left to right from the top-left tile.
 | **PROP RATIO** (4×2) | Fuel / oxidizer imbalance on the stage. | **Yellow:** stage LF : OX ratio deviates more than 10 % from the nominal 9 : 11. Only evaluated when the stage carries both. | None |
 | **COMM LOST** (4×3) | No CommNet connection. | **Yellow:** CommNet signal strength 0 % while in flight (not on the pad). Also lights during a re-entry plasma blackout. | None |
 | **Ap LOW** (4×4) | Apoapsis too low for a sustainable orbit. | **Yellow:** sub-orbital or orbital situation with apoapsis below the atmosphere top (70 km at Kerbin) or, on airless bodies, below the minimum safe altitude. Not evaluated in solar orbit. | None |
-| **HIGH Q** (4×5) | Dynamic pressure high. | **Yellow:** dynamic pressure above the body's calibrated threshold. *The threshold is currently 0 (suppressed) for every body in the shared body table, so this tile does not light until thresholds are calibrated from flight test.* | None |
+| **HIGH Q** (4×5) | Dynamic pressure high. | **Yellow:** dynamic pressure q = ½ × air density × surface speed² above 20 kPa, in an atmosphere. The same limit on every body, and the level at which the Info Display's ASCENT Q readout turns yellow. A Kerbin ascent normally peaks near 10–15 kPa. | None |
 | **SRB ACTIVE** (5×1) | A solid rocket stage is burning. | **Orange:** stage solid fuel is decreasing and between 0.5 % and 99 % full. Holds 3 s after the last decrease; clears when exhausted, when a fresh full stage appears, or if the reading rises. | None |
 | **ORBIT STABLE** (5×2) | Orbit clears the atmosphere and stays inside the SOI. | **Green:** situation is ORBIT, both Pe and Ap above the atmosphere top (or minimum safe altitude on airless bodies), and Ap inside the body's sphere of influence. | None (the alert chirp sounds on entering the ORBIT situation) |
 | **ELEC GEN** (5×3) | Batteries are charging. | **Green:** electric charge rose on its last reading. Holds 5 s after the last rise, so a full battery does not read as charging. Clears on a falling reading. | None |
@@ -250,8 +250,8 @@ Notes:
   altitude is the plasma / crush altitude instead of a terrain height.
 - *Synodic period* is the time between successive identical alignments with Kerbin, in
   Kerbin days of 6 hours; for Kerbin's own moons the table carries their orbital period.
-- The table also holds a per-body dynamic-pressure threshold for the HIGH Q tile. It is
-  0 (suppressed) for all seventeen bodies at present, so it is omitted here.
+- The table also holds a per-body dynamic-pressure threshold field. HIGH Q no longer
+  reads it (it uses one 20 kPa limit everywhere), so it is omitted here.
 
 ## Notes for the manual
 

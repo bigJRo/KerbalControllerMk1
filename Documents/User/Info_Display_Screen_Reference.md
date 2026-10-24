@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.15.2
+**Applies to:** KCMk1_InfoDisp firmware 1.15.3
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -74,7 +74,7 @@ press, and every numeric rule has a release band wider than its trigger.
 |---|---|---|
 | 0 | An autopilot is armed or engaged | That autopilot's console |
 | 1 | On the pad or runway (pre-launch), any vessel type | PRE-LAUNCH |
-| 2 | Descending with periapsis in the body's re-entry corridor, while still above the atmosphere or faster than Mach 3 | RE-ENTRY |
+| 2 | Descending with periapsis in the body's re-entry corridor, while still above the atmosphere or faster than Mach 3. Once chosen it holds to touchdown, through the parachute phase, unless the engines thrust (a powered landing) or the vessel is a plane below Mach 3 | RE-ENTRY |
 | 3 | Descending faster than 5 m/s below 10 km radar altitude (not a plane in an atmosphere) | POWERED DESCENT |
 | 4 | A Plane flying in an atmosphere, apoapsis below its top | NAVIGATION |
 | 5 | A target within 200 m | DOCKING |
@@ -816,7 +816,7 @@ target set, and on EVA. Info Display 1 never selects it.
 - **VEL marker** (green, prograde symbol): the direction of your velocity relative to
   the target. It moves the way you thrust.
 - **CLOSURE bar** (under the scope): closure speed, full at 250 m/s, with the signed
-  value at the right of its label. Green while closing, yellow when opening or zero,
+  value at the right of its label. Green while closing or holding station, yellow when opening,
   red when closing faster than 500 m/s inside 5,000 m.
 
 **Reading the screen.**
@@ -836,7 +836,7 @@ the total approach error is over 90° (you are moving away from the target).
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
 | DIST | Range to the target | White on green under 200 m (time for DOCKING); yellow under 5,000 m; green otherwise |
-| V.CLOSE | Closure rate; negative is closing | White on red faster than 500 m/s inside 5,000 m; yellow when zero or opening; green when closing |
+| V.CLOSE | Closure rate; negative is closing | White on red faster than 500 m/s inside 5,000 m; yellow when opening (0.05 m/s or more); green when closing or holding station (reads 0.0) |
 | BRG | Target bearing from the nose, right positive | Green always |
 | ELV | Target elevation from the nose, up positive | Green always |
 | V.BRG | Approach-path error left/right: how far right of the target your velocity points | Green under 15°; yellow from 15°; white on red from 30°; `---` past 90° total |
@@ -894,7 +894,7 @@ it with a target 200 m or closer (it holds to 250 m once shown).
 |---|---|---|
 | DIST | Range to the target port | White on red under 50 m; yellow under 200 m; green otherwise |
 | T+DOCK | Time to contact, DIST ÷ closure speed | White on red under 10 s; yellow under 30 s; green otherwise; `---` unless closing |
-| V.CLOSE | Closure rate, always signed, two decimals; negative is closing | White on red faster than 2 m/s inside 100 m; yellow when zero or opening; green when closing |
+| V.CLOSE | Closure rate, always signed, two decimals; negative is closing | White on red faster than 2 m/s inside 100 m; yellow when opening (0.005 m/s or more); green when closing or holding station (reads ±0.00) |
 | V.LAT | Lateral drift: speed across the line to the port, one decimal | Green under 0.1 m/s; yellow from 0.1; white on red from 0.5 |
 | BRG | Port bearing from the nose, right positive | Green always |
 | ELV | Port elevation from the nose, up positive | Green always |
@@ -1027,8 +1027,9 @@ altitude, or when not descending. FWD and LAT are capped at ±99.9 m/s.
 **Buttons.** Indicators only.
 - RCS: white on green when on, dark grey when off.
 - GEAR: white on green when down, dark grey when up.
-- SAS: STAB or RETR white on green; `SAS` white on red when off; any other mode shows
-  `SAS` in dark grey.
+- SAS shows the mode's name. STAB, RETR and RAD+ (radial out, the Landing Autopilot's
+  vertical reference) are white on green; any other mode is white on red, wrong for a
+  landing; `SAS` is white on red when SAS is off.
 
 ### RE-ENTRY (caption ENTR)
 
@@ -1042,8 +1043,10 @@ airflow, when each parachute is safe to deploy, and part temperatures.
 
 **Reaching it.** Key 5, a second press. Info Display 2 selects it on a body with an
 atmosphere when you are descending with periapsis below the top of the safe corridor
-and are above the atmosphere or faster than Mach 3. Only an engaged autopilot and
-PRE-LAUNCH outrank it.
+and are above the atmosphere or faster than Mach 3. Once up it stays through the rest of
+the descent, parachutes included, until touchdown; thrusting engines hand a powered
+landing to POWERED DESCENT, and a plane goes to NAVIGATION below Mach 3. Only an engaged
+autopilot and PRE-LAUNCH outrank it.
 
 **Layout.**
 - **ALTITUDE (corridor) tape** (far left): altitude above sea level, 0 to 1.3 × the
