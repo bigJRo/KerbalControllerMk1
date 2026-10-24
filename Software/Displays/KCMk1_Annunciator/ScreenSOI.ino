@@ -47,7 +47,11 @@ void drawSOIBody(KCM_TFT &tft) {
   uint8_t rowCount = 0;
 
   rows[rowCount++] = { "MIN SAFE ALT",   formatAlt(currentBody.minSafe)                   };
-  rows[rowCount++] = { "SOI RADIUS",     formatAlt(currentBody.soiAlt)                    };
+  // Kerbol's soiAlt is the DBL_MAX sentinel: float conversion makes it
+  // infinity and the int64 cast in formatSepBuf overflows into garbage
+  // (#62). Show the infinity glyph, as ORB does for an escape apoapsis.
+  rows[rowCount++] = { "SOI RADIUS",     currentBody.soiAlt >= DBL_MAX ? String("\x80")
+                                                                  : formatAlt(currentBody.soiAlt)    };
   if (currentBody.hasAtmo) {
     rows[rowCount++] = { "REENTRY ALT",  formatAlt(currentBody.reentryAlt)                };
     rows[rowCount++] = { "HIGH ATMO ALT", formatAlt(currentBody.flyHigh)                  };
