@@ -85,7 +85,7 @@ static ApTelemetry g_tel;
    (soiName[0] == '\0') and guidance falls back to telemetry-driven behaviour.
 ****************************************************************************************/
 static BodyParams g_curBody = { "", "", "", "", 0, 0, 0, 0, 0, 0.0,
-                                0, 0.0f, 0.0f, 0, 0, 0.0f, false, false, false, 0.0f };
+                                0, 0.0f, 0.0f, 0, 0, 0.0f, false, false, false };
 static bool       g_targetLocked = false;   // pilot has set an explicit target apoapsis
 
 static inline bool apBodyKnown() { return g_curBody.soiName != nullptr && g_curBody.soiName[0] != '\0'; }
