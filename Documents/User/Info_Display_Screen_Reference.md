@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.15
+**Applies to:** KCMk1_InfoDisp firmware 1.15.2
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -148,7 +148,8 @@ hand.
     anti-target in violet (with a target set), and the manoeuvre node in blue (with a
     node). Prograde, normal and radial follow the active velocity reference.
 - **Bank scale and roll pointer (top arc).** Ticks at 0, ±10, ±20, ±30, ±45 and ±60°.
-  The yellow pointer marks roll and stops at ±60°. The **ROLL** value beside it is a
+  The yellow pointer is a sky pointer: it turns with the horizon, so in a left bank it
+  sits right of the top mark, and it stops at ±60°. The **ROLL** value beside it is a
   signed whole number of degrees and is always green on this screen.
 - **PITCH tape (left of the ball).** Signed labels every 10°, with the boxed pitch
   value. Triangles on its edge mark the velocity vector (green), the target (violet)
@@ -581,9 +582,9 @@ it say whether this stage can finish the burn.
    mission panel then hands over to ORBIT.
 
 **Special states.** ECC and AP-PE dash with no apoapsis. ΔV.CIRC dashes when there is no
-usable estimate (no apoapsis, or already circular). **On a suborbital coast ΔV.CIRC reads
-low:** the estimate treats a periapsis below the surface as sea level, so in the picture
-it shows 74 m/s where the node needs 497 m/s. Size the burn from the node.
+usable estimate (no apoapsis, or already circular). On a suborbital coast the estimate
+uses the true ellipse, periapsis below the surface included, so it agrees with a KSP
+circularisation node (497 m/s in the picture).
 
 **Readouts (right column).**
 
@@ -626,8 +627,9 @@ mission panel rests when nothing more urgent is happening.
   eccentricity but its size does not show the orbit's size; read SMA for that.
   - The body is drawn to scale against the orbit, with its atmosphere as a lighter ring
     (Eve, Kerbin, Duna, Jool and Laythe).
-  - **Orbit line colour:** green with both apsides above the atmosphere; yellow with
-    either apsis inside it; orange on an escape trajectory.
+  - **Orbit line colour:** green with both apsides above the orbit-safe altitude (the
+    atmosphere top, or the highest terrain on an airless body); yellow with either
+    apsis below it; orange on an escape trajectory.
   - **Pe** (magenta) and **Ap** (blue) dots with labels. Pe is hidden when periapsis is
     at or below sea level; Ap is hidden on escape.
   - **AN** (cyan) and **DN** (yellow) node dots, drawn when inclination is above 0.5°.
@@ -642,7 +644,8 @@ mission panel rests when nothing more urgent is happening.
 - **Readout strip (bottom):** four rows under each view.
 
 **Reading the screen.** The line colour is the quick check: green is a stable orbit,
-yellow means part of the orbit dips into the atmosphere (it will decay or aerobrake),
+yellow means part of the orbit dips into the atmosphere (it will decay or aerobrake)
+or, on an airless body, below the highest terrain (it may hit the ground),
 orange means you are leaving the sphere of influence. Use the plan view to see where
 Pe and Ap lie relative to the vessel, and the fourth right-hand row for how long until
 the next one. A near-flat line in the inclination view means an equatorial orbit; to
@@ -651,8 +654,7 @@ steps, so during a burn its shape moves in jumps while the numbers change smooth
 
 **Special states.** PEA shows `---` with periapsis at or below sea level on a closed
 orbit; APA and PERIOD show `∞` on escape. The PEA and APA labels are drawn in the
-marker colours (magenta, blue) so each label names its dot. On airless bodies the
-orbit line stays green even when periapsis is below the surface, so check PEA there.
+marker colours (magenta, blue) so each label names its dot.
 
 **Readouts (left half, under the plan view).**
 
@@ -1059,11 +1061,14 @@ PRE-LAUNCH outrank it.
 - **RETRO ALIGNMENT ball**: the marker shows where the airflow comes from (surface
   retrograde). Centred, the nose points retrograde and the heat shield faces the
   airflow. Green under 10°, yellow 10°–30°, red from 30°; AoA under the ball gives the
-  angle. The yellow pointer at the top shows bank.
+  angle. The yellow pointer at the top shows bank; the rings are labelled down the lower
+  axis.
 - **CHUTE DEPLOY bar**: your airspeed against each chute's safe speed, tagged MAIN
   (green) and DROG (yellow). Green zone: main safe; yellow: drogue only; red: neither.
-  The zones slide left as the air thickens (about 250 and 500 m/s at Kerbin sea level).
-  The triangle over your speed takes the same colours.
+  The zones slide left as the air thickens (about 250 and 500 m/s at Kerbin sea level);
+  in thin air a safe speed beyond the end of the scale has no line or tag, and the zone
+  colour alone says which chutes are safe. The triangle over your speed takes the same
+  colours.
 - **SKIN / CORE bars**: the hottest part's temperature as a share of its limit; yellow
   from 75 %, red from 90 %, ticked at both.
 
@@ -1092,8 +1097,8 @@ ALT.RDR inside it. Chute states are remembered until a vessel switch, and CUT is
 | V.VRT | Vertical speed | Below 500 m radar altitude: yellow faster than 5 m/s down, white on red faster than 8 m/s down. Green otherwise |
 | PEA | Periapsis altitude | By corridor band: white on red too steep; green in the corridor; cyan aerobraking; light grey above the atmosphere |
 | MACH | Mach number | Yellow 0.85–1.20 (transonic); green otherwise |
-| DROGUE | Drogue state: STOW, ARM, OPEN or CUT | STOW: green; yellow from 85 % of the drogue's dynamic-pressure limit; white on red at the limit. ARM (cyan): deployed, but the air is too thin to open it. OPEN: yellow while still partly open above 2,500 m; green below; white on red if opened over the limit. CUT: red |
-| MAIN | Main chute state | As DROGUE, with the main chute's limit and full opening at 1,000 m |
+| DROG | Drogue state: STOW, ARM, OPEN or CUT | STOW: green; yellow from 85 % of the drogue's dynamic-pressure limit; white on red at the limit. ARM (cyan): deployed, but the air is too thin to open it. OPEN: yellow while still partly open above 2,500 m; green below; white on red if opened over the limit. CUT: red |
+| MAIN | Main chute state | As DROG, with the main chute's limit and full opening at 1,000 m |
 
 The chutes are read from custom action groups: 1 deploys the drogue, 2 cuts it, 3
 deploys the main and 4 cuts it.
@@ -1121,7 +1126,7 @@ armed, engaged or executing.
   3. A Plane in an atmosphere: AIRCRAFT.
   4. Any other vessel that is landed or splashed: LANDING.
   5. Descending inside an atmosphere: LANDING.
-  6. Below 10 km radar altitude and not climbing faster than 5 m/s: LANDING.
+  6. Descending faster than 5 m/s below 10 km radar altitude: LANDING.
   7. Throttle above 2 %, climbing, periapsis below the surface: ASCENT.
   8. Otherwise: ORBITAL.
 - **Repeat presses** cycle only the consoles the vessel type can use:

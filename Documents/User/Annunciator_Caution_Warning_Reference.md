@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.7.0
+**Applies to:** KCMk1_Annunciator firmware 3.7.1
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -57,7 +57,7 @@ Grid position is row × column, reading left to right from the top-left tile.
 | **GROUND PROX** (2×1) | Impact imminent. | **Red:** airborne and descending with less than 10 s to the surface at the current descent rate. Gear position is deliberately ignored — a powered landing at this rate still warrants the alarm. | Master alarm |
 | **Pe LOW** (2×2) | Periapsis is inside the atmosphere / below terrain. | **Red:** Pe below the body's re-entry altitude (atmospheric bodies, e.g. 45 km at Kerbin) — committed re-entry — or below the body's minimum safe altitude (airless bodies). **Yellow:** atmospheric bodies only — Pe inside the atmosphere but above the re-entry altitude (aerobrake zone). | Master alarm (red tier only) |
 | **PROP LOW** (2×3) | Stage propellant running low. | Monitors the lower of liquid-fuel and oxidizer fraction on the current stage. **Yellow:** below 20 %. **Red:** below 5 %. Suppressed when the stage carries no LF/OX tanks. | Master alarm (red tier only) |
-| **LIFE SUPPORT** (2×4) | Crew consumables or waste capacity at risk (TAC Life Support). | Time remaining per resource at TAC-LS default rates × crew. **Yellow:** food < 72 h, water < 12 h, oxygen < 30 min, or any waste tank (CO₂, waste, waste water) > 80 % full. **Red:** food < 24 h, water < 4 h, oxygen < 10 min, or any waste tank > 95 % full. Worst resource wins. Crewed vessels only. | Master alarm (red tier only) |
+| **LIFE SUPPORT** (2×4) | Crew consumables or waste capacity at risk (TAC Life Support). | Time remaining per resource at TAC-LS default rates × crew. **Yellow:** food < 72 h, water < 12 h, oxygen < 30 min, or any waste tank (CO₂, waste, waste water) > 80 % full. **Red:** food < 24 h, water < 4 h, oxygen < 10 min, or any waste tank > 95 % full. Worst resource wins. Crewed vessels with TAC-LS data only; without the mod the tile stays dark. | Master alarm (red tier only) |
 | **O2 PRESENT** (2×5) | Breathable atmosphere. | **Blue:** inside an atmosphere that contains oxygen (jets work, helmets off). | None |
 | **IMPACT IMM** (3×1) | Impact approaching. | **Yellow:** airborne and descending with less than 60 s to the surface at the current descent rate. Stays lit alongside GROUND PROX in the final 10 s. | Caution tone |
 | **ALT** (3×2) | Low altitude. | **Yellow:** airborne with surface altitude below 200 m. | Caution tone |
@@ -188,13 +188,7 @@ KSP wiki; altitudes are formatted with a unit that suits their size (m, km, Mm, 
 | **CONDITION** | Atmospheric condition | What surrounds a vessel near the surface: **Vacuum** (no atmosphere), **Atmosphere** (air, but no oxygen — jet engines will not run, helmets stay on), **Breathable** (oxygen present — jets work, Kerbals can remove helmets; Kerbin and Laythe), or **Plasma** (Kerbol — no survivable surface). |
 | **SURF. GRAVITY** | Surface gravity | Gravitational acceleration at the body's surface, in m/s². Kerbin is 9.81 m/s²; the value sets how much thrust-to-weight a lander needs and how fast an unpowered descent accelerates. |
 
-Two display quirks worth knowing:
-
-- The SURF. GRAVITY unit is written as m/s² in the firmware, but the panel font has no
-  superscript-two glyph, so the screen shows "m/s".
-- For Kerbol the SOI radius is unbounded (there is no parent body), which the body table
-  records as an infinite value. The altitude formatter cannot represent that and the row
-  currently prints `-9,223,372,036,854,775,808 Gm`. The other seven Kerbol rows are correct.
+For Kerbol the SOI radius is unbounded (there is no parent body), so its row shows `∞`.
 
 ## Shared celestial-body table
 
