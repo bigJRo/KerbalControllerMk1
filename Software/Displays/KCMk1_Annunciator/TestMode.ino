@@ -341,6 +341,23 @@ static void runLogicTests() {
       state.stageDV       = CW_LOW_DV_MS + 100.0f;
       state.stageBurnTime = CW_LOW_BURN_S + 10.0f; });
 
+  // CW_LOW_DV -- no propellant on board (re-entry capsule): suppressed (#72); with LF
+  // reported on board the same numbers still warn (a nuclear tug carries no OX).
+  {
+    resetTestState();
+    inFlight = true;
+    bitClear(state.vesselSituationState, VSIT_PRELAUNCH);
+    state.throttleCmd = 50; state.stageDV = 0.0f; state.stageBurnTime = 0.0f;
+    state.propSeen = true; state.LF_vessel = 0.0f; state.OX_vessel = 0.0f;
+    updateCautionWarningState();
+    bool pass = !bitRead(state.cautionWarningState, CW_LOW_DV);
+    printResult(pass, "LOW_DV no propellant", "off: no LF, no OX on board");
+    state.LF_vessel = 500.0f;
+    updateCautionWarningState();
+    pass = bitRead(state.cautionWarningState, CW_LOW_DV);
+    printResult(pass, "LOW_DV LF only", "on: LF on board, stage dV low");
+  }
+
   // CW_HIGH_G (positive)
   TEST_BIT("HIGH_G pos",
     CW_HIGH_G,

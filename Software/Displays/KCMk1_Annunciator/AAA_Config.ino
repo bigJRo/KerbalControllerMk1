@@ -128,6 +128,10 @@ const float CW_PROP_LOW_ALARM_FRAC  = 0.05f;            // CW_PROP_LOW: red tier
 // Expected LF/OX mass ratio for standard KSP engines (9 LF : 11 OX by mass = 0.8182)
 const float CW_PROP_NOMINAL_RATIO   = 0.8182f;          // CW_PROP_IMBAL: nominal LF/OX ratio
 const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowed deviation (10%)
+// CW_LOW_DV is suppressed on a vessel carrying neither liquid fuel nor oxidizer (a
+// re-entry capsule): stage dV and burn time are 0 there by construction, not low. Same
+// limit as the Info Display's PROP_EMPTY_UNITS, which greys its stage readouts (#72).
+const float CW_PROP_EMPTY_UNITS     = 0.01f;            // LF and OX units, whole vessel
 
 // --- Chute envelope (dynamic pressure q, Pa) ---
 // A chute's structural limit is a q (force) limit, so it is body-independent and its

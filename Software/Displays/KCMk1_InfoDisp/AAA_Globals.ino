@@ -184,6 +184,19 @@ ScreenType vehicleContextScreen() {
 //
 // Rules 4 and 5 are new for the same reason, and both are bounded rather than bare
 // existence tests — see TGT_CONTEXT_MAX_M / MNVR_CONTEXT_LEAD_S in AAA_Config.ino.
+// No propellant on board: neither liquid fuel nor oxidizer anywhere on the vessel. Only
+// once an LF/OX message has arrived for this vessel (KSP1 needs Alternate Resource Panel
+// for those channels), so a setup without the mod behaves exactly as before.
+bool noPropellant() {
+  return state.propSeen && state.lfAmount < PROP_EMPTY_UNITS && state.oxAmount < PROP_EMPTY_UNITS;
+}
+
+// Applied after a stage readout has picked its colour: with no propellant the readout
+// does not apply, so it takes the neutral "not applicable" dark grey and no warning tier.
+void propNeutral(uint16_t &fg, uint16_t &bg) {
+  if (noPropellant()) { fg = TFT_DARK_GREY; bg = TFT_BLACK; }
+}
+
 // Is there a target? targetAvailable alone is not enough -- KSP can report false while
 // TARGETINFO is still arriving (observed in KSP1) -- and tgtDistance alone is worse: it
 // is never cleared, so a target dropped inside 200 m kept the panel on DOCKING, showing

@@ -107,6 +107,11 @@ struct AppState {
   float SF_stage     = 0.0f;   // solid fuel -- current stage (for SRB ACTIVE)
   float SF_stage_tot = 0.0f;
 
+  // Resources -- propellant (whole vessel), for the no-propellant LOW dV suppression
+  float LF_vessel    = 0.0f;   // liquid fuel on board (LF_MESSAGE, available)
+  float OX_vessel    = 0.0f;   // oxidizer on board    (OX_MESSAGE, available)
+  bool  propSeen     = false;  // an LF / OX message has arrived for this vessel (needs ARP)
+
   // Resources -- MonoPropellant (total vessel)
   float mono     = 0.0f;
   float mono_tot = 0.0f;
@@ -290,8 +295,8 @@ enum ChuteEnvState : uint8_t {
    and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 2;  // 3.7.2: HIGH Q on true dynamic pressure (#71)
+static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: whole-vessel LF / OX channels; LOW dV suppressed with no propellant (#72)
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -343,6 +348,7 @@ extern const float  CW_RCS_LOW_FRAC;         // CW_RCS_LOW: MonoProp fraction (0
 extern const float  CW_PROP_LOW_WARN_FRAC;   // CW_PROP_LOW: yellow tier fraction (0.20)
 extern const float  CW_PROP_LOW_ALARM_FRAC;  // CW_PROP_LOW: red tier fraction (0.05)
 extern const float  CW_PROP_IMBAL_TOL;       // CW_PROP_IMBAL: ratio deviation tolerance (0.10)
+extern const float  CW_PROP_EMPTY_UNITS;     // CW_LOW_DV: below this LF and OX on board = no propellant
 extern const float  CW_PROP_NOMINAL_RATIO;   // CW_PROP_IMBAL: expected LF/OX ratio (0.818)
 extern const float  CW_CHUTE_MAIN_MAX_Q;     // CHUTE_ENV: main chute rip dynamic pressure (Pa)
 extern const float  CW_CHUTE_DROGUE_MAX_Q;   // CHUTE_ENV: drogue rip dynamic pressure (Pa)

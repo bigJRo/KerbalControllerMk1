@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.7.2
+**Applies to:** KCMk1_Annunciator firmware 3.8.0
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -49,7 +49,7 @@ Grid position is row × column, reading left to right from the top-left tile.
 
 | Tile | Definition | Colour / triggering condition | Audio cue |
 |---|---|---|---|
-| **LOW ΔV** (1×1) | Current stage is nearly spent. | **Red:** stage ΔV below 150 m/s *or* stage burn time below 60 s, while in flight with the throttle open. Suppressed on the pad, with throttle at zero, and for 1.5 s after throttle-up (burn-time estimate is unreliable at ignition). | Master alarm |
+| **LOW ΔV** (1×1) | Current stage is nearly spent. | **Red:** stage ΔV below 150 m/s *or* stage burn time below 60 s, while in flight with the throttle open. Suppressed on the pad, with throttle at zero, for 1.5 s after throttle-up (burn-time estimate is unreliable at ignition), and on a craft carrying neither liquid fuel nor oxidizer, such as a re-entry capsule (needs the Alternate Resource Panel mod). | Master alarm |
 | **HIGH G** (1×2) | Acceleration outside the safe envelope. | **Red:** g-load above +9 g or below −5 g. | Master alarm |
 | **HIGH TEMP** (1×3) | A part is approaching its thermal limit. | **Red:** hottest part temperature *or* skin temperature above 90 % of its limit. (The TMAX / TSKIN readouts turn yellow from 50 % and red at the same 90 % point.) | Master alarm |
 | **BUS VOLTAGE** (1×4) | Electric charge critically low. | **Red:** electric charge below 5 % of total capacity. Requires the Alternate Resource Panel mod; without it the indicator never fires (and never false-triggers). | Master alarm |

@@ -204,6 +204,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
                        DV_STG_ALARM_MS, TFT_WHITE, TFT_RED,
                        DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                             TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+        propNeutral(fg, bg);
         char dv[32]; fmtMsBuf(state.totalDeltaV, dv, sizeof(dv));
         plVal(5, 16, "\xCE\x94V.TOT", dv, fg, bg);
     }

@@ -1818,6 +1818,7 @@ static void _lnchAs2UpdateTBurn(KCM_TFT &tft, uint8_t row,
                    LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                    LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                         TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+    propNeutral(fg, bg);
 
     if (iTb == prevTB && fg == prevFg && bg == prevBg) return;
 
@@ -1946,6 +1947,7 @@ static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
                    DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                    DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                    TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+    propNeutral(fg, bg);
 
     if (iDv == _lnchAsPrevDVStg &&
         fg == _lnchAsPrevDVStgFg && bg == _lnchAsPrevDVStgBg) return;

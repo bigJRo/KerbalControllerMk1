@@ -76,6 +76,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case BURNTIME_MESSAGE:        msgName = "BURNTIME";        break;
       case ATMO_CONDITIONS_MESSAGE: msgName = "ATMO_CONDITIONS"; break;
       case ELECTRIC_MESSAGE:        msgName = "ELECTRIC";        break;
+      case LF_MESSAGE:              msgName = "LF";              break;
+      case OX_MESSAGE:              msgName = "OX";              break;
       case LF_STAGE_MESSAGE:        msgName = "LF_STAGE";        break;
       case OX_STAGE_MESSAGE:        msgName = "OX_STAGE";        break;
       case SF_STAGE_MESSAGE:        msgName = "SF_STAGE";        break;
@@ -289,6 +291,24 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       }
       break;
 
+    case LF_MESSAGE:   // whole vessel -- LOW dV no-propellant suppression
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseResource(msg);
+        state.LF_vessel = r.available;
+        state.propSeen  = true;
+        updateCautionWarningState();
+      }
+      break;
+
+    case OX_MESSAGE:
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseResource(msg);
+        state.OX_vessel = r.available;
+        state.propSeen  = true;
+        updateCautionWarningState();
+      }
+      break;
+
     case OX_STAGE_MESSAGE:
       if (msgSize == sizeof(resourceMessage)) {
         resourceMessage r = parseResource(msg);
@@ -384,6 +404,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (debugMode) Serial.println(F("Annunciator: Vessel switch"));
         if (audioEnabled) audioSilence();
         gpwsReset();   // flush GPWS callouts/crossing tracker for the new vessel
+        state.propSeen = false;   // the new vessel's LF / OX arrive with the refresh below
         resetDisplays();
         switchToScreen(activeScreen);
         prevScreen = screen_COUNT;
@@ -447,6 +468,8 @@ void initSimpit() {
   simpit.registerChannel(ELECTRIC_MESSAGE);
   simpit.registerChannel(LF_STAGE_MESSAGE);
   simpit.registerChannel(OX_STAGE_MESSAGE);
+  simpit.registerChannel(LF_MESSAGE);        // whole vessel: LOW dV no-propellant suppression
+  simpit.registerChannel(OX_MESSAGE);
   simpit.registerChannel(SF_STAGE_MESSAGE);
   simpit.registerChannel(MONO_MESSAGE);
 

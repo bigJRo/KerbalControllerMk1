@@ -977,6 +977,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                            LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                            LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            propNeutral(sfg, sbg);
             rpVal(3, "STG.BRN", formatTimeCompact(state.stageBurnTime), sfg, sbg, 3);
         }
 
@@ -1017,6 +1018,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                            DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                            DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            propNeutral(sfg, sbg);
             rpVal(5, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), sfg, sbg, 6);
         }
 

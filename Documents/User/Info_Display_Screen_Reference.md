@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.15.3
+**Applies to:** KCMk1_InfoDisp firmware 1.16.0
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -98,11 +98,20 @@ KSP reports, so a plane must be typed **Plane** in KSP to get AIRCRAFT and NAVIG
 | Yellow value | Caution: approaching a limit |
 | White on red | Alarm: act now |
 | Dark grey `---` | No data, or the value does not apply right now |
+| Dark grey value | The value is shown but does not apply right now (see *No propellant* below) |
 | Cyan | A console edit or command sent but not yet confirmed |
 | Bright green, violet, magenta, cyan, blue markers | KSP navball colours: prograde, target, normal, radial, manoeuvre |
 
 Where a table says "yellow 150–299", the bounds are inclusive of whole units: values are
 compared after truncation to whole numbers unless the table gives decimals.
+
+**No propellant.** When the craft carries neither liquid fuel nor oxidizer (a re-entry
+capsule, or a craft whose tanks are empty), every stage Δv, stage burn-time and total Δv
+readout (ΔV.STG, STG.BRN, ΔV.TOT, STG ΔV) is drawn in dark grey with its value, instead of
+the colours in the tables below. A craft with liquid fuel but no oxidizer, such as a
+nuclear or jet craft, keeps its normal colours. This needs the Alternate Resource Panel
+mod, which supplies the fuel totals; without it the readouts always use their normal
+colours.
 
 ### Number formats
 
@@ -1018,7 +1027,7 @@ altitude, or when not descending. FWD and LAT are capped at ±99.9 m/s.
 | V.VRT | Vertical speed; negative is descending | Green; yellow faster than 5 m/s down; white on red faster than 8 m/s down |
 | T+GRND | Estimated time to ground | Green; yellow under 30 s; white on red under 10 s. Colours relax only 3 s clear of a limit (yellow again at 13 s, green at 33 s); `---` when not applicable |
 | ALT.RDR | Radar altitude | Green; yellow under 200 m; white on red under 50 m |
-| STG.BRN | Burn time left in the current stage | Green; yellow under 120 s; white on red under 60 s, including 0 s |
+| STG.BRN | Burn time left in the current stage | Green; yellow under 120 s; white on red under 60 s, including 0 s; dark grey with no propellant on board |
 | FWD | Forward (+) / aft (−) drift | Set by T+GRND. Over 60 s or `---`: yellow from 20 m/s, no red. 30–60 s: yellow from 5, white on red from 15. 10–30 s: yellow from 2, white on red from 8. 10 s or less: yellow from 1, white on red from 2 |
 | LAT | Right (+) / left (−) drift | As FWD |
 | ΔV.STG | Δv left in the current stage | Green; yellow under 300 m/s; white on red under 150 m/s |

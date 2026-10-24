@@ -255,6 +255,13 @@ const float REENTRY_HOLD_CLIMB_MS = 50.0f;
 // time), which is a powered landing and belongs to POWERED DESCENT.
 const float REENTRY_HOLD_THROTTLE = 0.02f;
 
+// NO-PROPELLANT NEUTRAL. A craft carrying neither liquid fuel nor oxidizer -- a re-entry
+// capsule -- reports 0 stage dV and 0 burn time, and every stage readout used to show
+// its low-fuel alarm for a vessel that has no fuel to be low on. Below this many units
+// of BOTH (on the whole vessel) the stage dV / burn-time / total-dV readouts draw in
+// neutral dark grey instead (issue #72). Craft with LF only (nuclear, jets) are unaffected.
+const float PROP_EMPTY_UNITS = 0.01f;
+
 // POWERED DESCENT auto-select. The old rule was `type_Lander && sit_SubOrb`, which
 // missed every Ship doing a Mun landing and fired on ascent (sub-orbital is also what
 // a rocket climbing out looks like). Proximity plus a real descent rate is what the

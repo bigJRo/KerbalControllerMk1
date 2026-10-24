@@ -192,8 +192,8 @@ void switchToScreen(ScreenType s);
    and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 15;  // 1.15.0: Orbital and Landing Autopilot consoles, five-console key, sync-byte status dispatch
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.15.3: radial SAS labels, DESC SAS button, RE-ENTRY hold, V.CLOSE dead band (#66, #67, #69, #70)
+static const uint8_t SKETCH_VERSION_MINOR = 16;  // 1.16.0: whole-vessel LF / OX channels; stage readouts neutral with no propellant (#72)
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
@@ -331,6 +331,9 @@ struct AppState {
 
   // Resources
   float     electricChargePercent = 0.0f;  // 0.0..100.0 — from ELECTRIC_CHARGE resource channel
+  float     lfAmount      = 0.0f;    // whole-vessel liquid fuel on board (LF_MESSAGE, available)
+  float     oxAmount      = 0.0f;    // whole-vessel oxidizer on board    (OX_MESSAGE, available)
+  bool      propSeen      = false;   // an LF or OX message has arrived for this vessel (needs ARP)
 
   // Thermal (from TEMP_LIMIT_MESSAGE)
   uint8_t   coreTempPct  = 0;   // hottest part core temp as % of limit (0–100)

@@ -228,7 +228,8 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
   if (state.obAccelEst > 0.0f) snprintf(buf, sizeof(buf), "%.1f m/s\xB2", state.obAccelEst); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 4, px, conRowY(4) + 4, vw, CON_VALH, buf, state.obAccelEst > 0.0f ? OB_VAL : TFT_DARK_GREY);
   snprintf(buf, sizeof(buf), "%.0f m/s", state.stageDeltaV);
-  conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 5, px, conRowY(5) + 4, vw, CON_VALH, buf, (plan && state.stageDeltaV < state.obDvTotal) ? TFT_ORANGE : OB_VAL);
+  conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 5, px, conRowY(5) + 4, vw, CON_VALH, buf,
+         noPropellant() ? TFT_DARK_GREY : (plan && state.stageDeltaV < state.obDvTotal) ? TFT_ORANGE : OB_VAL);
   if (state.targetAvailable) formatAltBuf(state.tgtDistance, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 6, px, conRowY(6) + 4, vw, CON_VALH, buf, state.targetAvailable ? OB_VAL : TFT_DARK_GREY);
 }

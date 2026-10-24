@@ -124,8 +124,12 @@ void updateCautionWarningState() {
   // ---------------------------------------------------------------------------------
 
   // CW_LOW_DV: stage delta-v or burn time below threshold.
-  // Suppressed during pre-launch, throttle-zero coast, and holdoff window.
-  if (inFlight && !isPreLaunch && !throttleZero && !inThrottleHoldOff &&
+  // Suppressed during pre-launch, throttle-zero coast, and holdoff window, and on a
+  // vessel with no propellant at all (no LF and no OX on board, once ARP has reported
+  // them): a capsule's 0 dV is not "low", and the warning would trip the master alarm.
+  bool noPropellant = state.propSeen && state.LF_vessel < CW_PROP_EMPTY_UNITS &&
+                      state.OX_vessel < CW_PROP_EMPTY_UNITS;
+  if (inFlight && !isPreLaunch && !throttleZero && !inThrottleHoldOff && !noPropellant &&
       (state.stageDV < CW_LOW_DV_MS || state.stageBurnTime < CW_LOW_BURN_S))
     bitSet(cw, CW_LOW_DV);
 

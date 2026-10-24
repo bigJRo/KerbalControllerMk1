@@ -185,6 +185,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  stgWarn, TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+  propNeutral(fg, bg);
   vehVal(6, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), fg, bg);
 
   // Row 7 — Total ΔV: uses DV_TOT_WARN_MS (higher threshold than stage) since this
@@ -193,5 +194,6 @@ static void drawScreen_VEH(KCM_TFT &tft) {
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+  propNeutral(fg, bg);
   vehVal(7, "\xCE\x94V.TOT", fmtMs(state.totalDeltaV), fg, bg);
 }

@@ -693,6 +693,7 @@ static void _lnchOrTapeUpdateRows(KCM_TFT &tft) {
                        LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                        LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+        propNeutral(fg, bg);
         if (iTb != _lnchOrPrevTBurn || fg != _lnchOrPrevTBurnFg || bg != _lnchOrPrevTBurnBg) {
             _lnchOrTapeDrawRowValue(tft, 2, formatTimeCompact(tb), fg, bg);
             _lnchOrPrevTBurn = iTb;

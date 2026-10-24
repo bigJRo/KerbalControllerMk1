@@ -893,6 +893,7 @@ static void _scftUpdatePanel(KCM_TFT &tft, bool orbMode) {
                        DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                        DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+        propNeutral(fg, bg);
         attPanelVal(6, 6, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), fg, bg);
     }
     }   // end of the non-EVA rows 2-6
