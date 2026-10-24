@@ -17,12 +17,14 @@ bits_index is recomputed (appending can push the largest offset past the width t
 file was generated with). Every other glyph is decoded before and after and asserted
 identical, and the new one is decoded back and compared with what was encoded.
 
+A font that already carries the superscript is left untouched, so a rerun is a no-op.
+
 Usage: add_superscript2.py FONTDIR
 """
 import os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ilifont import Font
-from add_middot import BitWriter, encode_glyph
+from add_middot import BitWriter, encode_glyph, put_array
 
 SUP2  = 0xB2
 SCALE = 0.62          # superscript height / full digit height (typographic norm ~0.6)
@@ -71,6 +73,9 @@ def patch(path):
     F = Font(path)
     codes = F.codes()
     assert SUP2 in codes, "0xB2 not inside the font's index ranges"
+    g = F.glyph(SUP2)
+    if g and g['w'] > 0:
+        return None                                  # already has it: leave the file alone
     before = {c: F.glyph(c) for c in codes}
     f = dict(F.f)
 
@@ -85,19 +90,6 @@ def patch(path):
     for o in offs: bw.put(o, bits_index)
     bw.pad()
     index = bw.bytes()
-
-    def contents(buf):
-        return "\n" + "\n".join("  " + " ".join("0x%02X," % b for b in buf[i:i + 16])
-                                 for i in range(0, len(buf), 16))
-
-    def put_array(src, sym, buf):
-        # Replace only what is between the braces, so the declaration -- including the
-        # KCM_FONT_FLASH section attribute between "[]" and "=" -- is kept as it is.
-        pat = re.escape(sym) + r'(\s*\[\s*\]\s*(?:\w+\s*)*=\s*\{)(.*?)(\n\};)'
-        out, n = re.subn(pat, lambda m: sym + m.group(1) + contents(buf) + m.group(3),
-                         src, count=1, flags=re.S)
-        assert n == 1, "array %s not found" % sym
-        return out
 
     src = F.src
     src = put_array(src, F.name + "_data",  data)
@@ -126,6 +118,10 @@ if __name__ == "__main__":
     d = sys.argv[1]
     for fn in sorted(os.listdir(d)):
         if not re.match(r'Roboto_Black_\d+\.c$', fn): continue
-        n, w, h, dl, bi0, bi, rows = patch(os.path.join(d, fn))
+        r = patch(os.path.join(d, fn))
+        if r is None:
+            print("%-22s already has U+00B2 -- unchanged" % fn)
+            continue
+        n, w, h, dl, bi0, bi, rows = r
         print("%-22s %3d glyphs verified | sup2 w=%-2d h=%-2d delta=%-2d | bits_index %d%s"
               % (fn, n, w, h, dl, bi, "" if bi == bi0 else " (was %d)" % bi0))
