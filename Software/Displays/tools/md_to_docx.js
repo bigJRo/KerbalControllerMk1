@@ -4,9 +4,9 @@
   document with real tables and the embedded PNG renders, so the tables can be
   copied straight into the manual.
 
-  Handles the Markdown subset those documents use: # / ## headings, paragraphs
+  Handles the Markdown subset those documents use: # to #### headings, paragraphs
   with **bold**, *italic* and `code`, pipe tables, ![images](relative.png),
-  > blockquotes and - bullet lists. Landscape US Letter so the wide tables fit.
+  > blockquotes, and - bullet / 1. numbered lists two levels deep. Landscape US Letter so the wide tables fit.
 
   Usage:
       npm install docx            (once, anywhere on the NODE_PATH or next to this file)
@@ -101,12 +101,13 @@ function table(rows) {
 
 const children = [];
 let i = 0;
+let listInstance = 0;
 while (i < lines.length) {
   const line = lines[i];
   if (/^\s*$/.test(line)) { i++; continue; }
   let m;
-  if ((m = line.match(/^(#{1,3})\s+(.*)$/))) {
-    const lvl = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3][m[1].length - 1];
+  if ((m = line.match(/^(#{1,4})\s+(.*)$/))) {
+    const lvl = [HeadingLevel.HEADING_1, HeadingLevel.HEADING_2, HeadingLevel.HEADING_3, HeadingLevel.HEADING_4][m[1].length - 1];
     children.push(new Paragraph({ heading: lvl, spacing: { before: 240, after: 120 }, children: inline(m[2]) }));
     i++; continue;
   }
@@ -126,17 +127,28 @@ while (i < lines.length) {
       children: inline(parts.join(" ").replace(/\s+/g, " ")) }));
     continue;
   }
-  if (line.startsWith("- ")) {
-    while (i < lines.length && (lines[i].startsWith("- ") || /^\s{2,}\S/.test(lines[i]))) {
-      let text = lines[i++].replace(/^- /, "");
-      while (i < lines.length && /^\s{2,}\S/.test(lines[i])) text += " " + lines[i++].trim();
-      children.push(new Paragraph({ numbering: { reference: "bullets", level: 0 }, spacing: { after: 60 }, children: inline(text) }));
+  // Lists: "- " bullets and "1. " numbered items, at column 0 (level 0) or indented
+  // 2-4 spaces (level 1). A deeper-indented line that is not an item continues the
+  // previous item. Each run of numbered items restarts at 1.
+  const ITEM = /^( {0,4})(- |\d+\. )(.*)$/;
+  if ((m = line.match(ITEM)) && m[1].length === 0) {
+    const inst = ++listInstance;
+    while (i < lines.length) {
+      const im = lines[i].match(ITEM);
+      if (!im) break;
+      const level = im[1].length >= 2 ? 1 : 0;
+      const numbered = /^\d/.test(im[2]);
+      let text = im[3]; i++;
+      while (i < lines.length && !ITEM.test(lines[i]) && /^\s{2,}\S/.test(lines[i])) text += " " + lines[i++].trim();
+      const numbering = numbered ? { reference: "numbers", level, instance: inst } : { reference: "bullets", level };
+      children.push(new Paragraph({ numbering, spacing: { after: 60 }, children: inline(text) }));
+      while (i < lines.length && /^\s*$/.test(lines[i]) && i + 1 < lines.length && ITEM.test(lines[i + 1]) && lines[i + 1].match(ITEM)[1].length >= 2) i++;
     }
     continue;
   }
   // Paragraph: consecutive non-blank lines; a line ending in two spaces forces a break.
   const parts = [];
-  while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#|\||>|- |!\[)/.test(lines[i])) {
+  while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#|\||>|- |\d+\. |!\[)/.test(lines[i])) {
     const l = lines[i++];
     parts.push(l);
     if (/ {2}$/.test(l)) break;
@@ -148,8 +160,14 @@ while (i < lines.length) {
 }
 
 const doc = new Document({
-  numbering: { config: [{ reference: "bullets", levels: [{ level: 0, format: LevelFormat.BULLET, text: "•", alignment: AlignmentType.LEFT,
-    style: { paragraph: { indent: { left: 567, hanging: 283 } } } }] }] },
+  numbering: { config: [
+    { reference: "bullets", levels: [
+      { level: 0, format: LevelFormat.BULLET, text: "\u2022", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 567, hanging: 283 } } } },
+      { level: 1, format: LevelFormat.BULLET, text: "\u2013", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 1134, hanging: 283 } } } } ] },
+    { reference: "numbers", levels: [
+      { level: 0, format: LevelFormat.DECIMAL, text: "%1.", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 567, hanging: 340 } } } },
+      { level: 1, format: LevelFormat.LOWER_LETTER, text: "%2.", alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 1134, hanging: 340 } } } } ] },
+  ] },
   styles: { default: { document: { run: { font: "Calibri", size: 21 } } } },
   sections: [{
     properties: { page: { size: { width: PAGE_H, height: PAGE_W, orientation: PageOrientation.LANDSCAPE },

@@ -96,9 +96,17 @@ sketch) sets the panel's `AppState`, runs `updateCautionWarningState()` so the C
 bits come from the real logic, and then calls the firmware's own `loop()`. Layout,
 fonts, colours, BMPs and indicator logic are therefore the panel's, not a mockup's.
 
-The stub reproduces the ILI9341_t3 glyph renderer (`drawFontChar`) because
-`drawButton()` and `drawVerticalText()` print through the display library; every
-other text path already rasterises in `kcmDrawString()` and blits with `writeRect`.
+The stub follows the real library (wwatson4506 TeensyRA8876-GFX-Common,
+`RA8876_common.cpp`) wherever it decides what reaches the glass, so a render shows the
+panel's quirks too: coordinates wrap to 16 bits and the controller's 13-bit registers;
+rectangles clamp to the screen and an inverted one draws nothing; lines are dropped when
+their start is off screen; `setTextColor(fg, bg)` prints opaque and `setTextColor(fg)`
+transparent; a glyph the font lacks prints as its first glyph; `print(double)` gives two
+decimals. It reproduces the ILI9341_t3 glyph renderer (`drawFontChar`) because
+`drawButton()`, `drawVerticalText()` and a few screens print through the display
+library; every other text path already rasterises in `kcmDrawString()` and blits with
+`writeRect`. The one behaviour not confirmed on hardware is a zero-size or inverted
+box, which the stub treats as drawing nothing.
 Two host-only accommodations: pins read HIGH (the FT5316 software-I2C driver would
 otherwise wait forever on a clock line the syntax stub holds low), and the build is
 `-O0` (glibc's fortified `strlcpy` collides with the stub's inline one above that).
@@ -108,9 +116,10 @@ and chute-envelope colours), `MainLampTest` (every tile lit — a colour key), `
 `Standby`. `KCM_SOI_BODY=<name>` selects the body.
 
 Info Display scenarios are one per screen, each a physically consistent flight state
-(a ship in a 115×125 km Kerbin orbit for the PFD and orbit screens, a jet for AIRCRAFT
-and NAVIGATION, a Mun lander for the descent screens, a capsule at 58 km for RE-ENTRY,
-engaged autopilots for the consoles): `SCFT ACFT ROVR VEH LNCHPRE LNCH LNCHCIRC ORB
+(a ship in a 115×125 km, 6° Kerbin orbit for the PFD and orbit screens, a jet for
+AIRCRAFT and NAVIGATION, a Mun rover driving to a flag 850 m away, a booster coasting to
+apoapsis with a circularisation node placed for CIRCULARIZATION, a Mun lander for the
+descent screens, a capsule at 58 km for RE-ENTRY, engaged autopilots for the consoles): `SCFT ACFT ROVR VEH LNCHPRE LNCH LNCHCIRC ORB
 ORBADV MNVR TGT DOCK NAV LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP Standby`. The
 demo stepper runs once to populate every field, the scenario overrides what matters,
 and `millis()` is frozen so the context ladder's answer cannot change; the manual latch
@@ -120,7 +129,8 @@ reads as it would in flight. Build the mission panel with `-D INFO_DISP_UNIT=2`;
 
 ```
 python3 tools/render_screen.py --sketch KCMk1_InfoDisp --suffix 1 SCFT ACFT ROVR VEH Standby
-python3 tools/render_screen.py --sketch KCMk1_InfoDisp -D INFO_DISP_UNIT=2 --suffix 2 LNCH ORB ...
+python3 tools/render_screen.py --sketch KCMk1_InfoDisp -D INFO_DISP_UNIT=2 --suffix 2 LNCHPRE LNCH LNCHCIRC ORB ORBADV MNVR TGT DOCK NAV \
+    LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP
 ```
 
 The framebuffer stub honours the canvas base address and active window, which is how

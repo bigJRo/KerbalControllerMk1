@@ -38,17 +38,19 @@ static void kcmBaseShip() {
   state.ldFlags = 0; state.ldMode = 0; state.ldEntry = 0; state.ldReason = 0; state.ldReasonAge = 255;
 }
 
-// 115 x 125 km Kerbin orbit, nose prograde.
+// 115 x 125 km Kerbin orbit, 6 deg inclined, nose prograde. Self-consistent: the vessel
+// is at true anomaly 200 deg (just past apoapsis, heading for periapsis), so radius,
+// speed (vis-viva, mu = 3.5316e12) and the times to each apsis follow from SMA / ECC.
 static void kcmLKO() {
   kcmBaseShip();
   state.situation = sit_Orbit; state.inAtmo = false; state.airDensity = 0.0f;
-  state.altitude = 120000.0f; state.radarAlt = 120000.0f;
+  state.altitude = 124665.0f; state.radarAlt = 124665.0f;
   state.apoapsis = 125000.0f; state.periapsis = 115000.0f;
   state.semiMajorAxis = 720000.0f; state.eccentricity = 0.0069f;
-  state.inclination = 0.5f; state.LAN = 42.0f; state.argOfPe = 118.0f;
-  state.trueAnomaly = 200.0f; state.meanAnomaly = 199.0f; state.orbitalPeriod = 2042.0f;
-  state.timeToAp = 900.0f; state.timeToPe = 1921.0f;
-  state.orbitalVel = 2250.0f; state.surfaceVel = 2076.0f; state.verticalVel = 0.3f;
+  state.inclination = 6.0f; state.LAN = 42.0f; state.argOfPe = 118.0f;
+  state.trueAnomaly = 200.0f; state.meanAnomaly = 200.3f; state.orbitalPeriod = 2043.0f;
+  state.timeToPe = 906.0f; state.timeToAp = 1927.0f;
+  state.orbitalVel = 2200.0f; state.surfaceVel = 1990.0f; state.verticalVel = -7.5f;
   state.heading = 90.0f; state.pitch = 2.0f; state.roll = 0.0f;
   state.orbVelHeading = 90.0f; state.orbVelPitch = 0.2f; state.srfVelHeading = 90.0f; state.srfVelPitch = 0.0f;
   state.machNumber = 0; state.IAS = 0; state.gForce = 0.0f; state.throttle = 0.0f;
@@ -81,6 +83,9 @@ static void kcmRover() {
   state.heading = 45.0f; state.pitch = 3.5f; state.roll = -2.0f;
   state.srfVelHeading = 45.0f; state.srfVelPitch = 2.0f; state.gear_on = true; state.commNetSignal = 64;
   state.stageDeltaV = 0.0f; state.totalDeltaV = 0.0f;
+  // Driving to a flag 850 m away, 15 deg right of the nose, closing at 11.8 m/s.
+  state.targetAvailable = true; state.tgtDistance = 850.0f; state.tgtVelocity = -11.8f;
+  state.tgtHeading = 60.0f; state.tgtPitch = 0.0f;
 }
 
 // Lander in powered descent over the Mun, 310 m up.
@@ -145,15 +150,19 @@ static void scLNCHPRE(){ kcmBaseShip(); state.situation = sit_PreLaunch; state.i
                          state.electricChargePercent = 100.0f; state.gear_on = true; kcmSetLnchPrelaunch(true); }
 static void scLNCH()   { kcmAscent(); kcmSetLnchPrelaunch(false); }
 static void scLNCHCIRC(){ kcmAscent(); kcmSetLnchPrelaunch(false);
-                         // Circularisation burn nearly complete near apoapsis: Pe climbing through 66.5 km,
-                         // on the convergence tape just under the atmosphere floor.
-                         state.inAtmo = false; state.airDensity = 0.0f; state.altitude = 81000.0f; state.radarAlt = 81000.0f;
-                         state.apoapsis = 82500.0f; state.periapsis = 66500.0f; state.timeToAp = 40.0f; state.timeToPe = 1080.0f;
-                         state.semiMajorAxis = 674500.0f; state.eccentricity = 0.0119f;
-                         state.orbitalVel = 2266.0f; state.surfaceVel = 2090.0f; state.verticalVel = 8.0f;
-                         state.throttle = 1.0f; state.machNumber = 0.0f; state.gForce = 1.4f;
-                         state.pitch = 3.0f; state.srfVelPitch = 1.0f; state.orbVelPitch = 0.4f;
-                         state.stageDeltaV = 910.0f; state.stageBurnTime = 85.0f; _lnchCoastLatched = true; }
+                         // Coasting to apoapsis with a circularisation node placed there. Suborbital
+                         // (Pe -300 km); vis-viva gives 497 m/s to circularise at the 82.5 km Ap.
+                         // Ignition is 29 s out (node 55 s, burn 52 s), nose 3 deg above the node.
+                         state.inAtmo = false; state.airDensity = 0.0f; state.altitude = 80000.0f; state.radarAlt = 80000.0f;
+                         state.apoapsis = 82500.0f; state.periapsis = -300000.0f; state.timeToAp = 55.0f; state.timeToPe = 700.0f;
+                         state.semiMajorAxis = 491250.0f; state.eccentricity = 0.389f;
+                         state.orbitalVel = 1788.0f; state.surfaceVel = 1610.0f; state.verticalVel = 60.0f;
+                         state.throttle = 0.0f; state.machNumber = 0.0f; state.gForce = 0.0f;
+                         state.heading = 90.0f; state.pitch = 3.0f; state.srfVelPitch = 2.0f; state.orbVelPitch = 1.9f;
+                         state.mnvrTime = 55.0f; state.mnvrDeltaV = 497.0f; state.mnvrTotalDeltaV = 497.0f;
+                         state.mnvrDuration = 52.0f; state.mnvrHeading = 90.0f; state.mnvrPitch = 0.0f;
+                         state.sasMode = 9;                                          // MANEUVER
+                         state.stageDeltaV = 940.0f; state.stageBurnTime = 85.0f; _lnchCoastLatched = true; }
 static void scORB()    { kcmLKO(); }
 static void scORBADV() { kcmLKO(); }
 static void scMNVR()   { kcmLKO(); state.mnvrTime = 185.0f; state.mnvrDeltaV = 842.0f; state.mnvrTotalDeltaV = 842.0f;
