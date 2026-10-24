@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.16.2
+**Applies to:** KCMk1_InfoDisp firmware 1.16.3
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -1330,8 +1330,8 @@ attack and roll. DESC, HOVR and BRAKE exclude each other; ENTRY is separate.
 - **TWR** overrides the thrust-to-weight used for BRAKE (0–20, or OFF to use the measured
   or estimated value, shown MEAS or EST). **MARGIN** adds metres to the ignition altitude
   (0–5,000). **ROLL** is the ENTRY roll angle.
-- **A/P OFF.** Disconnects everything. If DESC, HOVR or BRAKE was flying, the throttle is
-  cut to zero.
+- **A/P OFF.** Disconnects everything. The throttle is left where it is, so a hover
+  handed back to you keeps its thrust.
 
 **Operating it.**
 1. Set DESC to your touchdown rate (for example −4 m/s) and choose ATT REF.

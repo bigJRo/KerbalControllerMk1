@@ -148,8 +148,12 @@ struct TwoWire {
   void setSCL(int) {}
   void onRequest(void (*)()) {}
   void onReceive(void (*)(int)) {}
-  int  available() { return 0; }
-  int  read() { return 0; }
+  // Receive queue a host harness can fill (stubFeed) before calling a sketch's onReceive
+  // handler; empty, it reads as the old stub did (available 0, read 0).
+  uint8_t rx[64]; int rxN = 0, rxI = 0;
+  void stubFeed(const uint8_t *b, int n) { rxN = n > 64 ? 64 : n; rxI = 0; for (int i = 0; i < rxN; i++) rx[i] = b[i]; }
+  int  available() { return rxN - rxI; }
+  int  read() { return rxI < rxN ? rx[rxI++] : 0; }
   size_t write(uint8_t) { return 1; }
   size_t write(const uint8_t *, size_t n) { return n; }
   void beginTransmission(uint8_t) {}

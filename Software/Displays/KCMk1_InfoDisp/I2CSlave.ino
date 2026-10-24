@@ -63,8 +63,15 @@
      0xA7  36 bytes  rover      flags, reason, reasonAge, 8 floats
      0xA8  52 bytes  orbital    flags, mode, phase, reason, reasonAge, 11 floats
      0xA9  44 bytes  landing    flags, mode, entry, reason, reasonAge, accelSource, 9 floats
-   The master pushes only the frame the console on screen needs (activeScreen, byte 2 of
-   the outbound packet). The 2-byte control write keeps its own path.
+     0xAA   8 bytes  summary    ascent, aircraft, rover, orbital, landing flags; landing
+                                mode; landing entry  (#83)
+   The master pushes the full frame only for the console on screen (activeScreen, byte 2
+   of the outbound packet), and the summary every cycle to BOTH units, so the A/P key,
+   the ladder's return to an engaged console and POWERED DESCENT's VERT indicator stay
+   live off the consoles. The summary lands in its own buffer from the ISR: the master
+   writes it back to back with a full frame, which would otherwise overwrite it in the
+   shared push buffer before the main thread had read it. The 2-byte control write
+   keeps its own path.
 
    Expanding the protocol:
      Outbound: increment I2C_PACKET_SIZE, add fields to fillI2CPacketBuffer().
@@ -95,7 +102,9 @@
 #define I2C_OB_STATUS_SYNC 0xA8
 #define I2C_LD_STATUS_SIZE 44   // inbound:  Master -> InfoDisp landing autopilot status push
 #define I2C_LD_STATUS_SYNC 0xA9
-#define I2C_PUSH_MAX       64   // one buffer for every status push; dispatched by sync byte
+#define I2C_SUM_STATUS_SIZE 8   // inbound:  Master -> InfoDisp autopilot summary, every cycle, both units
+#define I2C_SUM_STATUS_SYNC 0xAA
+#define I2C_PUSH_MAX       64   // one buffer for every full status push; dispatched by sync byte
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_INFODISP      // #3C from SystemConfig (0xAE, collision fix)
 
 // requestType values (bits 7:4 of controlByte)
@@ -163,6 +172,8 @@ static volatile bool i2cCmdReady = false;
 static volatile uint8_t pushBuf[I2C_PUSH_MAX];
 static volatile uint8_t pushLen = 0;
 static volatile bool    pushReady = false;
+static volatile uint8_t sumBuf[I2C_SUM_STATUS_SIZE];   // the summary's own buffer (#83)
+static volatile bool    sumReady = false;
 
 static void processI2CCommand(const uint8_t *cmd) {
   uint8_t controlByte = cmd[0];
@@ -298,11 +309,16 @@ static void onI2CReceive(int numBytes) {
     }
     i2cCmdReady = true;
   } else if (numBytes >= 3 && numBytes <= I2C_PUSH_MAX) {
-    for (int i = 0; i < numBytes; i++) {
-      pushBuf[i] = KCM_I2C_BUS.read();
+    uint8_t tmp[I2C_PUSH_MAX];
+    for (int i = 0; i < numBytes; i++) tmp[i] = KCM_I2C_BUS.read();
+    if (numBytes == I2C_SUM_STATUS_SIZE && tmp[0] == I2C_SUM_STATUS_SYNC) {
+      for (int i = 0; i < I2C_SUM_STATUS_SIZE; i++) sumBuf[i] = tmp[i];   // own buffer (#83)
+      sumReady = true;
+    } else {
+      for (int i = 0; i < numBytes; i++) pushBuf[i] = tmp[i];
+      pushLen = (uint8_t)numBytes;
+      pushReady = true;
     }
-    pushLen = (uint8_t)numBytes;
-    pushReady = true;
   } else {
     while (KCM_I2C_BUS.available()) KCM_I2C_BUS.read();
   }
@@ -388,6 +404,20 @@ static void processLdStatus(const uint8_t *buf) {
   state.ldEntryAoa = f[4]; state.ldEntryRoll = f[5]; state.ldIgnAlt = f[6]; state.ldAccelEst = f[7]; state.ldCmdThrottle = f[8];
 }
 
+// The summary: the flag bytes the panel needs outside the consoles, packed on the master
+// by the same helpers as the full frames, so applying them here agrees with whatever a
+// full frame last wrote. apArmed is the ascent frame's bit 0.
+static void processSummary(const uint8_t *buf) {
+  if (buf[0] != I2C_SUM_STATUS_SYNC) return;   // framing guard
+  state.apArmed = (buf[1] & 0x01) != 0;
+  state.hpFlags = buf[2];
+  state.rvFlags = buf[3];
+  state.obFlags = buf[4];
+  state.ldFlags = buf[5];
+  state.ldMode  = buf[6];
+  state.ldEntry = buf[7];
+}
+
 // Dispatch a status push on its sync byte; a length mismatch is a framing error and is dropped.
 static void processStatusPush(const uint8_t *buf, uint8_t len) {
   switch (buf[0]) {
@@ -444,8 +474,9 @@ void setupI2CSlave() {
 void updateI2CState() {
   uint8_t cmd[I2C_CMD_SIZE];
   uint8_t push[I2C_PUSH_MAX];
+  uint8_t sum[I2C_SUM_STATUS_SIZE];
   uint8_t pushN = 0;
-  bool haveCmd = false, havePush = false;
+  bool haveCmd = false, havePush = false, haveSum = false;
   noInterrupts();
   if (i2cCmdReady) {
     for (uint8_t i = 0; i < I2C_CMD_SIZE; i++) cmd[i] = i2cCmdBuf[i];
@@ -458,11 +489,17 @@ void updateI2CState() {
     pushReady = false;
     havePush = true;
   }
+  if (sumReady) {
+    for (uint8_t i = 0; i < I2C_SUM_STATUS_SIZE; i++) sum[i] = sumBuf[i];
+    sumReady = false;
+    haveSum = true;
+  }
   interrupts();
   if (haveCmd) processI2CCommand(cmd);
 
   // --- Apply inbound Ascent-AP status push (live mode only) ---
   if (havePush && !demoMode) processStatusPush(push, pushN);
+  if (haveSum  && !demoMode) processSummary(sum);   // after the full frame: the newer of the two
 
   // --- Console command queue: expose next command, retire confirmed edits ---
   apPumpCommandQueue();

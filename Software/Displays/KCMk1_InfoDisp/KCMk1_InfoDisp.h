@@ -193,7 +193,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 16;  // 1.16.0: whole-vessel LF / OX channels; stage readouts neutral with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 2;   // 1.16.2: landing autopilot ATT REF VERT; vertHold status bit (#68)
+static const uint8_t SKETCH_VERSION_PATCH = 3;   // 1.16.3: 0xAA autopilot summary frame on both units (#83)
 
 
 /***************************************************************************************

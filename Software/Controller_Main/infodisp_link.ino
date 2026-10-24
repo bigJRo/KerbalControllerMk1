@@ -11,8 +11,16 @@
      ACK   (2-byte control write): controlByte carries the master's mode bits; byte 1 is
                                   the sequence just executed (0 = nothing to ack).
      Push  (every IDL_PUSH_MS)  : the status frame the console on screen needs, chosen by
-                                  the activeScreen byte. Skipped while the display is in
-                                  demo mode (it generates its own status then).
+                                  the activeScreen byte, AND the 8-byte summary (0xAA) to
+                                  BOTH displays. Skipped while the display is in demo mode
+                                  (it generates its own status then).
+
+   Why a summary: the full frames go to Info Display 2 only, for the console on screen,
+   so outside a console the displays' autopilot flags froze -- the green A/P key, the
+   mission ladder's return to the console that is flying, and POWERED DESCENT's VERT
+   indicator all read stale state, and Info Display 1 never had any (#83). The summary
+   carries exactly the flag bytes those need, packed by the same helpers as the full
+   frames, so the two can never disagree.
 
    Info Display 1 (0x12) never carries a command (its console is compiled out), so only
    the mission panel is polled. Both displays are sent PROCEED at init so they leave
@@ -38,6 +46,8 @@ static const uint8_t IDL_LEN_AIRCRAFT  = 48;   // grew from 44: gs angle (Missio
 static const uint8_t IDL_LEN_ROVER     = 36;   // grew from 28: followRange, stopDist
 static const uint8_t IDL_LEN_ORBITAL   = 52;
 static const uint8_t IDL_LEN_LANDING   = 44;
+static const uint8_t IDL_SYNC_SUMMARY  = 0xAA;   // every cycle, both displays (#83)
+static const uint8_t IDL_LEN_SUMMARY   = 8;
 
 // InfoDisp ScreenType values for the three consoles (KCMk1_InfoDisp.h)
 static const uint8_t IDL_SCREEN_LNCHAP = 12;
@@ -218,12 +228,51 @@ static void idlPoll() {
 ****************************************************************************************/
 static void idlPutFloat(uint8_t *dst, float f) { memcpy(dst, &f, 4); }
 
+// Flag bytes, one helper per autopilot, shared by the full frames and the summary.
+static uint8_t idlAscentFlags(const AscentStatus &s, const AscentConfig &c) {
+  return (s.armed ? 0x01 : 0) | (c.launchSoutherly ? 0x02 : 0) | (c.rollControlEnabled ? 0x04 : 0);
+}
+static uint8_t idlAircraftFlags(const HoldStatus &s) {
+  return (s.anyEngaged ? 0x01 : 0) | (s.thrustEngaged ? 0x02 : 0) | (s.leverTouched ? 0x04 : 0) |
+         (s.leverDriven ? 0x08 : 0) | (s.ascentArmed ? 0x10 : 0);
+}
+static uint8_t idlRoverFlags(const HoldStatus &s) {
+  return (s.cruise ? 0x01 : 0) | (s.rhdg ? 0x02 : 0) | (s.rtgt ? 0x04 : 0) | (s.brakes ? 0x08 : 0) |
+         (s.slopeGuard ? 0x10 : 0) | (s.targetAvailable ? 0x20 : 0) | (s.follow ? 0x40 : 0);
+}
+static uint8_t idlOrbitalFlags(const BurnStatus &s) {
+  return (s.armed ? 0x01 : 0) | (s.executing ? 0x02 : 0) | (s.autoWarp ? 0x04 : 0) | (s.autoStage ? 0x08 : 0) |
+         (s.targetAvailable ? 0x10 : 0) | (s.nodeAvailable ? 0x20 : 0) | (s.apprEngaged ? 0x40 : 0);
+}
+static uint8_t idlLandingFlags(const LandingStatus &s) {
+  return (s.engaged ? 0x01 : 0) | (s.brakeArmed ? 0x02 : 0) | (s.brakeFiring ? 0x04 : 0) | (s.attRefVert ? 0x08 : 0) |
+         (s.autoStage ? 0x10 : 0) | (s.landed ? 0x20 : 0) | (s.brakeMarginal ? 0x40 : 0) | (s.vertHold ? 0x80 : 0);
+}
+
+// 8-byte summary: [0] 0xAA, [1] ascent flags, [2] aircraft flags, [3] rover flags,
+// [4] orbital flags, [5] landing flags, [6] landing mode, [7] landing entry.
+static void idlPushSummary() {
+  HoldStatus h = hpGetStatus();
+  LandingStatus l = lpGetStatus();
+  uint8_t st[IDL_LEN_SUMMARY];
+  st[0] = IDL_SYNC_SUMMARY;
+  st[1] = idlAscentFlags(apGetStatus(), apGetConfig());
+  st[2] = idlAircraftFlags(h);
+  st[3] = idlRoverFlags(h);
+  st[4] = idlOrbitalFlags(bpGetStatus());
+  st[5] = idlLandingFlags(l);
+  st[6] = l.mode;
+  st[7] = l.entry ? 1 : 0;
+  idlWrite(INFO_MC,  st, IDL_LEN_SUMMARY);
+  idlWrite(INFO2_MC, st, IDL_LEN_SUMMARY);
+}
+
 static void idlPushAscent() {
   AscentStatus s = apGetStatus();
   AscentConfig &c = apGetConfig();
   uint8_t st[IDL_LEN_ASCENT] = {0};
   st[0] = IDL_SYNC_ASCENT;
-  st[1] = (s.armed ? 0x01 : 0) | (c.launchSoutherly ? 0x02 : 0) | (c.rollControlEnabled ? 0x04 : 0);
+  st[1] = idlAscentFlags(s, c);
   st[2] = (uint8_t)s.phase;
   float f[9] = { c.targetApoapsis, c.targetInclination, c.loft, c.targetRoll, c.maxG,
                  s.cmdPitch, s.cmdHeading, s.cmdThrottle, s.dynPressure };
@@ -235,8 +284,7 @@ static void idlPushAircraft() {
   HoldStatus s = hpGetStatus();
   uint8_t st[IDL_LEN_AIRCRAFT] = {0};
   st[0] = IDL_SYNC_AIRCRAFT;
-  st[1] = (s.anyEngaged ? 0x01 : 0) | (s.thrustEngaged ? 0x02 : 0) | (s.leverTouched ? 0x04 : 0) |
-          (s.leverDriven ? 0x08 : 0) | (s.ascentArmed ? 0x10 : 0);
+  st[1] = idlAircraftFlags(s);
   st[2] = s.pitchMode; st[3] = s.latMode; st[4] = s.thrMode;
   st[5] = s.reason;    st[6] = s.reasonAge; st[7] = 0;
   float f[10] = { s.att, s.aoa, s.vs, s.alt, s.roll, s.hdg, s.ias, s.mach, s.gs, s.cmdThrottle };
@@ -248,8 +296,7 @@ static void idlPushRover() {
   HoldStatus s = hpGetStatus();
   uint8_t st[IDL_LEN_ROVER] = {0};
   st[0] = IDL_SYNC_ROVER;
-  st[1] = (s.cruise ? 0x01 : 0) | (s.rhdg ? 0x02 : 0) | (s.rtgt ? 0x04 : 0) | (s.brakes ? 0x08 : 0) |
-          (s.slopeGuard ? 0x10 : 0) | (s.targetAvailable ? 0x20 : 0) | (s.follow ? 0x40 : 0);
+  st[1] = idlRoverFlags(s);
   st[2] = s.roverReason; st[3] = s.roverReasonAge;
   float f[8] = { s.cruiseSp, s.rhdgSp, s.maxSpeed, s.maxSlope, s.maxRoll, s.followRange, s.stopDist, s.cmdWheel };
   memcpy(&st[4], f, sizeof(f));
@@ -260,8 +307,7 @@ static void idlPushOrbital() {
   BurnStatus s = bpGetStatus();
   uint8_t st[IDL_LEN_ORBITAL] = {0};
   st[0] = IDL_SYNC_ORBITAL;
-  st[1] = (s.armed ? 0x01 : 0) | (s.executing ? 0x02 : 0) | (s.autoWarp ? 0x04 : 0) | (s.autoStage ? 0x08 : 0) |
-          (s.targetAvailable ? 0x10 : 0) | (s.nodeAvailable ? 0x20 : 0) | (s.apprEngaged ? 0x40 : 0);
+  st[1] = idlOrbitalFlags(s);
   st[2] = s.mode; st[3] = s.phase; st[4] = s.reason; st[5] = s.reasonAge;
   float f[11] = { s.targetAp, s.targetPe, s.targetInc, s.apprRate, s.apprDist, s.dvTotal, s.dvRemaining,
                   s.tIgnition, s.burnDuration, s.accelEst, s.cmdThrottle };
@@ -273,8 +319,7 @@ static void idlPushLanding() {
   LandingStatus s = lpGetStatus();
   uint8_t st[IDL_LEN_LANDING] = {0};
   st[0] = IDL_SYNC_LANDING;
-  st[1] = (s.engaged ? 0x01 : 0) | (s.brakeArmed ? 0x02 : 0) | (s.brakeFiring ? 0x04 : 0) | (s.attRefVert ? 0x08 : 0) |
-          (s.autoStage ? 0x10 : 0) | (s.landed ? 0x20 : 0) | (s.brakeMarginal ? 0x40 : 0) | (s.vertHold ? 0x80 : 0);
+  st[1] = idlLandingFlags(s);
   st[2] = s.mode; st[3] = s.entry ? 1 : 0; st[4] = s.reason; st[5] = s.reasonAge; st[6] = s.accelSource;
   float f[9] = { s.descRate, s.hovrAlt, s.twrOverride, s.margin, s.entryAoa, s.entryRoll, s.ignitionAlt, s.accelEst, s.cmdThrottle };
   memcpy(&st[8], f, sizeof(f));
@@ -287,6 +332,7 @@ void idlService() {
   if (now - g_idlLastPushMs >= IDL_PUSH_MS) {
     g_idlLastPushMs = now;
     if (g_idlDemo) return;                       // display drives its own status in demo
+    idlPushSummary();                            // both displays, every cycle (#83)
     switch (g_idlScreen) {
       case IDL_SCREEN_LNCHAP: idlPushAscent();   break;
       case IDL_SCREEN_ACFTAP: idlPushAircraft(); break;
