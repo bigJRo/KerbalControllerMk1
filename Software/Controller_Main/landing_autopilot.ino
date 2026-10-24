@@ -122,7 +122,11 @@ static void lpDropEntry(uint8_t reason) {
 }
 
 void lpDisconnectAll(uint8_t reason) {
-  bool keep = (reason == HP_REASON_TELEMETRY || reason == HP_REASON_STICK || reason == HP_REASON_LEVER || reason == HP_REASON_OTHER_AP);
+  // Keep the throttle where it is on every hand-back to the pilot, A/P OFF (PILOT)
+  // included: cutting it to zero mid-hover drops the lander, and the console promises
+  // "throttle stays as set" (#82). Touchdown cuts it explicitly (lpUpdate, LANDED).
+  bool keep = (reason == HP_REASON_TELEMETRY || reason == HP_REASON_STICK || reason == HP_REASON_LEVER ||
+               reason == HP_REASON_OTHER_AP || reason == HP_REASON_PILOT);
   lpDropThrottleModes(reason, keep);
   lpDropEntry(reason);
 }
