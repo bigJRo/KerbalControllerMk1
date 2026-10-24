@@ -286,11 +286,11 @@ enum ChuteEnvState : uint8_t {
      MAJOR -- incompatible structural changes
      MINOR -- new features or screens added
      PATCH -- bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 3.0.0
+   This sketch requires KerbalDisplayCommon >= 3.11.1 (the ² in SURF. GRAVITY)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.7.0: alarm audio on every screen; ELEC GEN / SRB ACTIVE latch; test harness
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 3.7.1: Kerbol SOI radius; LIFE SUPPORT needs TAC-LS data (issues #62, #63)
 
 
 /***************************************************************************************

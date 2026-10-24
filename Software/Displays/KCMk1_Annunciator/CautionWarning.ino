@@ -211,13 +211,19 @@ void updateCautionWarningState() {
   // Computes time remaining for each consumable and time to full for each waste
   // using fixed TAC-LS consumption rates multiplied by crew count.
   // Fires on worst-case condition across all six resources.
-  // Suppressed when crewCount is 0 (uncrewed vessel, no TAC-LS consumption).
+  // Suppressed when crewCount is 0 (uncrewed vessel, no TAC-LS consumption), and when
+  // there is no TAC-LS data at all: without the mod its channels never send, every
+  // tac* field stays 0, and zero food over a non-zero rate read as "0 s remaining" --
+  // a red tile and the master alarm on every crewed vessel. A vessel under TAC-LS has
+  // capacity for at least one consumable.
   // Note: uses double precision for rate * crew multiplication to avoid float
   //       precision loss on very small rates (e.g. FOOD_RATE = 1.69e-5).
   {
     lsYellow = false;
     bool lsAlarm = false;
-    if (state.crewCount > 0) {
+    const bool tacData = (state.tacFood_tot > 0.0f || state.tacWater_tot > 0.0f ||
+                          state.tacOxygen_tot > 0.0f);
+    if (state.crewCount > 0 && tacData) {
       double crew = (double)state.crewCount;
 
       // Consumables: time remaining = available / (rate * crew)
