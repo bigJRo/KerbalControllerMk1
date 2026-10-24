@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.16.0
+**Applies to:** KCMk1_InfoDisp firmware 1.16.1
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -117,8 +117,8 @@ colours.
 
 | Quantity | Format |
 |---|---|
-| Distance, altitude | Two decimals below 1,000 m (`310.00 m`); whole metres with separators to 999,999 m (`124,665 m`); then km, Mm, Gm |
-| Speed | One decimal below 1,000 m/s (`842.0 m/s`); whole numbers with separators from 1,000 (`2,200 m/s`) |
+| Distance, altitude | Two decimals below 1,000 m (`310.00 m`); whole metres with separators to 999,999 m (`124,665 m`); then km, Mm, Gm. ROVER's DIST and ALT.TRN are whole metres throughout (`850 m`) |
+| Speed | One decimal below 1,000 m/s (`842.0 m/s`); whole numbers with separators from 1,000 (`2,200 m/s`). The autopilot consoles show whole numbers throughout (`842 m/s`, `1,450 m/s`) |
 | Time | `48 s`; `15 m: 06 s` under an hour; `1h 09m` from one hour; `3d 04h` from one Kerbin day (6 h). A leading `-` means the moment has passed. Autopilot consoles use the compact `m:ss`. |
 
 ### Standby
@@ -884,7 +884,7 @@ it with a target 200 m or closer (it holds to 250 m once shown).
 **Reading the screen.**
 1. Put PORT on the cross; NOS.OFF turns green under 5°.
 2. Walk VEL onto PORT with RCS translation; V.BRG and V.ELV turn green under 5°.
-3. Keep V.LAT green (under 0.1 m/s).
+3. Keep V.LAT green (under 0.10 m/s).
 4. Hold V.CLOSE negative: it turns white on red if you close faster than 2 m/s inside
    100 m.
 5. T+DOCK turns yellow at 30 s and white on red at 10 s: contact is imminent.
@@ -904,7 +904,7 @@ it with a target 200 m or closer (it holds to 250 m once shown).
 | DIST | Range to the target port | White on red under 50 m; yellow under 200 m; green otherwise |
 | T+DOCK | Time to contact, DIST ÷ closure speed | White on red under 10 s; yellow under 30 s; green otherwise; `---` unless closing |
 | V.CLOSE | Closure rate, always signed, two decimals; negative is closing | White on red faster than 2 m/s inside 100 m; yellow when opening (0.005 m/s or more); green when closing or holding station (reads ±0.00) |
-| V.LAT | Lateral drift: speed across the line to the port, one decimal | Green under 0.1 m/s; yellow from 0.1; white on red from 0.5 |
+| V.LAT | Lateral drift: speed across the line to the port, two decimals | Green under 0.10 m/s; yellow from 0.10; white on red from 0.50 (judged on the value as shown) |
 | BRG | Port bearing from the nose, right positive | Green always |
 | ELV | Port elevation from the nose, up positive | Green always |
 | V.BRG | Approach-path error left/right | Green under 5°; yellow from 5°; white on red from 10°; `---` past 90° total |
