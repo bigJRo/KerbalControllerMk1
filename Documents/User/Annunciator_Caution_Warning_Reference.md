@@ -250,8 +250,8 @@ Notes:
   altitude is the plasma / crush altitude instead of a terrain height.
 - *Synodic period* is the time between successive identical alignments with Kerbin, in
   Kerbin days of 6 hours; for Kerbin's own moons the table carries their orbital period.
-- The table also holds a per-body dynamic-pressure threshold field. HIGH Q no longer
-  reads it (it uses one 20 kPa limit everywhere), so it is omitted here.
+- There is no per-body HIGH Q threshold: HIGH Q uses one 20 kPa dynamic-pressure limit on
+  every body with an atmosphere.
 
 ## Notes for the manual
 
@@ -263,6 +263,7 @@ Notes:
 - Pe LOW, PROP LOW and LIFE SUPPORT each occupy one tile with two severities. The yellow tier
   is advisory; only the red tier sounds or lights MASTER ALARM.
 - Thresholds shared with the Info Display (ground-proximity time, g limits, low-ΔV and
-  low-burn-time limits, chute limits) are defined once in `KCMk1_SystemConfig.h`, so the
-  Annunciator tile and the Info Display readout always change colour at the same point.
+  low-burn-time limits, chute limits, the 20 kPa HIGH Q limit) are defined once in
+  `KCMk1_SystemConfig.h`, so the Annunciator tile and the Info Display readout always change
+  colour at the same point.
 - All thresholds quoted here are the firmware defaults and are tunable in `AAA_Config.ino`.

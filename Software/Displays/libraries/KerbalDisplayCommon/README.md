@@ -288,7 +288,6 @@ Shared terminal-aesthetic rendering primitives used by all KCMk1 panel boot sequ
 | `hasAtmo` | `bool` | True if body has atmosphere |
 | `hasO2` | `bool` | True if atmosphere is breathable |
 | `hasSurface` | `bool` | True if body has a landable surface |
-| `highQThreshold` | `float` | Dynamic pressure threshold for HIGH_Q warning (Pa); 0 = suppressed |
 
 Bodies in the table: Kerbol, Moho, Eve, Gilly, Kerbin, Mun, Minmus, Duna, Ike, Dres, Jool, Laythe, Vall, Tylo, Bop, Pol, Eeloo (all 17 stock KSP1 bodies with wiki-canonical values).
 
