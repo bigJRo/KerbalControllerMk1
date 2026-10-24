@@ -332,7 +332,8 @@ static const int16_t NAV_KEY_H  = 28;
 static const int16_t NAV_KEY_TRI_W = 13;
 static const int16_t NAV_KEY_TRI_H = 11;
 
-static inline bool _navHasTrack() { return state.surfaceVel >= NAV_TRK_MIN_MS; }
+// Magnitude, as ROVER treats it: a signed feed (the demo) must not hide the track.
+static inline bool _navHasTrack() { return fabsf(state.surfaceVel) >= NAV_TRK_MIN_MS; }
 
 
 // Plan-view aircraft at the card centre. Static: the rose rotates around it, so it is

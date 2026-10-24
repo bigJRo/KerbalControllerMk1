@@ -144,7 +144,7 @@ static void haFmtSetpoint(uint8_t i, float v, char *buf, size_t n) {
     case 3: formatAltBuf(v, buf, n); break;
     case 4: snprintf(buf, n, "%.1f\xB0", v); break;
     case 6: { int16_t h = (int16_t)roundf(v) % 360; if (h < 0) h += 360; snprintf(buf, n, "%03d\xB0", h); break; }
-    case 8: snprintf(buf, n, "%.0f m/s", v); break;
+    case 8: conFmtWhole(v, "m/s", buf, n); break;
     default: snprintf(buf, n, "%.2f", v); break;
   }
 }

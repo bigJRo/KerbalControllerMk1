@@ -184,7 +184,7 @@ void drawScreen_LNDGAP(KCM_TFT &tft) {
   int16_t dx = conValX(CON_C3X) + 6;
   formatAltBuf(state.radarAlt, buf, sizeof(buf));               conPut(tft, screen_LNDGAP, LD_SLOT_DATA + 0, dx, conRowY(0) + 4, vw, CON_VALH, buf, LD_VAL);
   snprintf(buf, sizeof(buf), "%+.0f m/s", state.verticalVel);   conPut(tft, screen_LNDGAP, LD_SLOT_DATA + 1, dx, conRowY(1) + 4, vw, CON_VALH, buf, (tImpact >= 0.0f && tImpact < 30.0f) ? TFT_ORANGE : LD_VAL);
-  snprintf(buf, sizeof(buf), "%.0f m/s", ldHorizontalSpeed());  conPut(tft, screen_LNDGAP, LD_SLOT_DATA + 2, dx, conRowY(2) + 4, vw, CON_VALH, buf, LD_VAL);
+  conFmtWhole(ldHorizontalSpeed(), "m/s", buf, sizeof(buf));  conPut(tft, screen_LNDGAP, LD_SLOT_DATA + 2, dx, conRowY(2) + 4, vw, CON_VALH, buf, LD_VAL);
   { static const char *const SRC[3] = { "EST", "MEAS", "TWR" };
     if (state.ldAccelEst > 0.0f) snprintf(buf, sizeof(buf), "%.1f %s", state.ldAccelEst, SRC[state.ldAccelSource < 3 ? state.ldAccelSource : 0]); else snprintf(buf, sizeof(buf), "---");
     conPut(tft, screen_LNDGAP, LD_SLOT_DATA + 3, dx, conRowY(3) + 4, vw, CON_VALH, buf, state.ldAccelEst > 0.0f ? LD_VAL : TFT_DARK_GREY); }

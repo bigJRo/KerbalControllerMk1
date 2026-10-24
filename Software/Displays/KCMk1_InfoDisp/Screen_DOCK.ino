@@ -454,12 +454,15 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     }
 
     // Row 3 — V.Lat total lateral drift magnitude  (cache slot 3)
+    // Two decimals, the precision this row exists for, and coloured by the value AS
+    // PRINTED: at one decimal 0.06 printed "0.1" in green and 0.10 printed "0.1" in yellow.
     {
-        float av = v_lat_mag;
+        float av = roundf(v_lat_mag * 100.0f) / 100.0f;
         if      (av >= DOCK_DRIFT_ALARM_MS) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (av >= DOCK_DRIFT_WARN_MS)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        dockVal(3, 3, "V.LAT", fmtMs(v_lat_mag), fg, bg);
+        snprintf(buf, sizeof(buf), "%.2f m/s", av);
+        dockVal(3, 3, "V.LAT", buf, fg, bg);
     }
 
     // Row 4 — Brg | Elv: where the port sits relative to the NOSE (cache slots 4, 5).

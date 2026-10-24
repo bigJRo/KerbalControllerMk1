@@ -365,6 +365,15 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
     _rovrPrevTgtScreenDeg = screenDeg;
 }
 
+// Whole metres. DIST and ALT.TRN are rounded to the metre before they are drawn, and
+// formatAlt prints two decimals below 1 km, so both always read ".00" -- a precision
+// that is not there. Below 1 km this prints "850 m"; above, formatAlt's separators and
+// unit scaling as before.
+static String _rovrFmtWholeM(int32_t m) {
+    if (m > -1000 && m < 1000) return String(m) + " m";
+    return formatAlt((float)m);
+}
+
 // Target-distance readout — status strip along the bottom of the compass region.
 // "DIST" label flush-left against the left column, formatted distance value flush-
 // right against the right column. Both are visible only when a target is selected;
@@ -410,7 +419,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
                          ROVR_TGTD_VAL_W, ROVR_TGTD_H, TFT_BLACK);
         textRight(tft, ROVR_TGTD_FONT,
                   ROVR_TGTD_VAL_X, ROVR_TGTD_Y, ROVR_TGTD_VAL_W, ROVR_TGTD_H,
-                  formatAlt((float)iDist), TFT_VIOLET, TFT_BLACK);
+                  _rovrFmtWholeM(iDist), TFT_VIOLET, TFT_BLACK);
         _rovrPrevTgtDistVal = iDist;
     }
 
@@ -853,13 +862,13 @@ static void _rovrUpdateElev(KCM_TFT &tft) {
     // Erase previous value by regenerating its formatted string from the cached int
     // and drawing it black-on-black.
     if (_rovrPrevElev > -90000) {
-        String oldStr = formatAlt((float)_rovrPrevElev);
+        String oldStr = _rovrFmtWholeM(_rovrPrevElev);
         eraseCenteredValue(tft, &Roboto_Black_36,
                                 ROVR_RCOL_X, valueY, ROVR_RCOL_W, ROVR_VAL_H,
                                 oldStr.c_str(), TFT_BLACK);
     }
 
-    String newStr = formatAlt((float)iElev);
+    String newStr = _rovrFmtWholeM(iElev);
     textCenter(tft, &Roboto_Black_36,
                ROVR_RCOL_X, valueY,
                ROVR_RCOL_W, ROVR_VAL_H,

@@ -155,36 +155,35 @@ static const uint16_t INC_RDY3 = 559;  // T+Pe or T+Ap row
 static const uint16_t INC_LABEL_X = 480;
 static const uint16_t INC_VALUE_X = 590;
 
-// ── Body parameters ───────────────────────────────────────────────────────────────────
-// Body colors are NOT stored here — see kspBodyColor() / kspAtmoColor() in
+// ── Bodies ────────────────────────────────────────────────────────────────────────────
+// Names only. The index is this screen's identity for "the body changed" (scene
+// signature, name label). Radius, atmosphere top and SOI come from the shared body table
+// (currentBody, Software/Common/body_params.h), so the two cannot disagree; this used to
+// be a second copy of those numbers, which had already drifted for Kerbol (no atmosphere
+// here, a 600 km one there).
+// Body colors are NOT stored here either — see kspBodyColor() / kspAtmoColor() in
 // AAA_Screens.ino. ORB and LNCH (Circularization) both use those shared lookups,
 // so a body-color tweak only needs to happen in one place.
-struct OrbBody {
-    const char *name;
-    float    radius_m;
-    float    atmo_m;
-    float    soi_m;       // sphere of influence radius (0 = no limit, e.g. Kerbol)
+static const char *const ORB_BODY_NAMES[] = {
+    "Kerbol",    // 0
+    "Moho",      // 1
+    "Eve",       // 2
+    "Gilly",     // 3
+    "Kerbin",    // 4
+    "Mun",       // 5
+    "Minmus",    // 6
+    "Duna",      // 7
+    "Ike",       // 8
+    "Dres",      // 9
+    "Jool",      // 10
+    "Laythe",    // 11
+    "Vall",      // 12
+    "Tylo",      // 13
+    "Bop",       // 14
+    "Pol",       // 15
+    "Eeloo",     // 16
 };
-
-static const OrbBody ORB_BODIES[] = {
-    { "Kerbol",261600000.0f,     0.0f,          0.0f },  // 0
-    { "Moho",    250000.0f,     0.0f,    9646663.0f },  // 1
-    { "Eve",     700000.0f, 90000.0f,   85109365.0f },  // 2
-    { "Gilly",    13000.0f,     0.0f,     126123.0f },  // 3
-    { "Kerbin",  600000.0f, 70000.0f,   84159286.0f },  // 4
-    { "Mun",     200000.0f,     0.0f,    2429559.0f },  // 5
-    { "Minmus",   60000.0f,     0.0f,    2247428.0f },  // 6
-    { "Duna",    320000.0f, 50000.0f,   47921949.0f },  // 7
-    { "Ike",     130000.0f,     0.0f,    1049599.0f },  // 8
-    { "Dres",    138000.0f,     0.0f,   32832840.0f },  // 9
-    { "Jool",   6000000.0f,200000.0f, 2455985200.0f },  // 10
-    { "Laythe",  500000.0f, 50000.0f,    3723645.0f },  // 11
-    { "Vall",    300000.0f,     0.0f,    2406401.0f },  // 12
-    { "Tylo",    600000.0f,     0.0f,   10856518.0f },  // 13
-    { "Bop",      65000.0f,     0.0f,    1221061.0f },  // 14
-    { "Pol",      44000.0f,     0.0f,    1042138.0f },  // 15
-    { "Eeloo",   210000.0f,     0.0f,  119082942.0f },  // 16
-};
+static const uint8_t ORB_BODY_COUNT = sizeof(ORB_BODY_NAMES) / sizeof(ORB_BODY_NAMES[0]);
 
 // ── Tuning constants ──────────────────────────────────────────────────────────────────
 // Scene-signature quantization bin sizes (produce hysteresis).
@@ -286,11 +285,11 @@ static void _orbEscapeShape(float PeA_m, float ecc, float bodyR_m,
     sma_m = rPe / (ecc - 1.0f);
 }
 
-// Body lookup by SOI name. Returns index into ORB_BODIES or 4 (Kerbin) fallback.
+// Body lookup by SOI name. Returns index into ORB_BODY_NAMES or 4 (Kerbin) fallback.
 static uint8_t _orbBodyIdx() {
     const char *soi = state.gameSOI.c_str();
-    for (uint8_t i = 0; i < sizeof(ORB_BODIES)/sizeof(ORB_BODIES[0]); i++) {
-        if (strcmp(ORB_BODIES[i].name, soi) == 0) return i;
+    for (uint8_t i = 0; i < ORB_BODY_COUNT; i++) {
+        if (strcmp(ORB_BODY_NAMES[i], soi) == 0) return i;
     }
     return 4;
 }
@@ -298,17 +297,18 @@ static uint8_t _orbBodyIdx() {
 // Compute the complete scene state from AppState. Returns by out-parameter so
 // drawScreen_ORB can compute once and pass to all draw functions.
 static void _orbComputeScene(OrbScene &sc) {
-    uint8_t          bodyIdx = _orbBodyIdx();
-    const OrbBody   &body    = ORB_BODIES[bodyIdx];
+    uint8_t     bodyIdx = _orbBodyIdx();
+    const char *name    = ORB_BODY_NAMES[bodyIdx];
 
     sc.bodyIdx  = bodyIdx;
-    sc.bodyR_m  = body.radius_m;
-    sc.atmoH_m  = body.atmo_m;
-    sc.soi_m    = body.soi_m;
+    sc.bodyR_m  = currentBody.radius;
+    sc.atmoH_m  = currentBody.hasAtmo ? currentBody.lowSpace : 0.0f;
+    // Kerbol, the root body, has an unbounded SOI (DBL_MAX); 0 here means "no limit".
+    sc.soi_m    = (currentBody.soiAlt >= 1.0e30) ? 0.0f : (float)currentBody.soiAlt;
     // Body colors come from the shared lookups in AAA_Screens.ino so ORB and
     // LNCH (Circularization) cannot drift apart.
-    sc.bodyCol  = kspBodyColor(body.name);
-    sc.atmoCol  = kspAtmoColor(body.name);
+    sc.bodyCol  = kspBodyColor(name);
+    sc.atmoCol  = kspAtmoColor(name);
 
     float ecc   = fmaxf(0.0f, state.eccentricity);
     bool isEsc  = (ecc >= 1.0f) || (state.apoapsis < 0.0f);
@@ -1063,7 +1063,7 @@ static void _orbDrawBodyName(KCM_TFT &tft, uint8_t bodyIdx) {
     tft.fillRect(740, 62, 190, 40, TFT_BLACK);
     textRight(tft, &Roboto_Black_32,
               476, 63, 460, 38,
-              String(ORB_BODIES[bodyIdx].name),
+              String(ORB_BODY_NAMES[bodyIdx]),
               TFT_LIGHT_GREY, TFT_BLACK);
     _lastBodyIdxDrawn = (int16_t)bodyIdx;
 }

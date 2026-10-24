@@ -245,13 +245,16 @@ static const uint16_t LNCH_AS_ATMO_TICK_SKY_COLOR = TFT_DARK_GREY;
 // Alt.SL, ApA, V.Srf and V.Vrt moved onto their gauges, and their caches with them --
 // the gauge windows keep last-drawn strings instead. What is left is the readout
 // column's own seven rows.
-static int32_t _lnchAsPrevTimeToAp   = -1 << 30;  // seconds
+// Cache sentinel: no value drawn yet. Written -(1 << 30) because shifting a negative
+// value (LNCH_AS_NONE) is undefined before C++20.
+static const int32_t LNCH_AS_NONE = -(1 << 30);
+static int32_t _lnchAsPrevTimeToAp   = LNCH_AS_NONE;  // seconds
 static int16_t _lnchAsPrevThrottle   = -1;        // percent (0-100)
-static int32_t _lnchAsPrevQ          = -1 << 30;  // tenths of a kPa
+static int32_t _lnchAsPrevQ          = LNCH_AS_NONE;  // tenths of a kPa
 static int32_t _lnchAsPrevMach       = -9999;     // hundredths, -9999 = "---"
-static int32_t _lnchAsPrevG          = -1 << 30;  // tenths of a g
-static int32_t _lnchAsPrevTBurn      = -1 << 30;  // seconds
-static int32_t _lnchAsPrevDVStg      = -1 << 30;  // m/s (as tenths? or int)
+static int32_t _lnchAsPrevG          = LNCH_AS_NONE;  // tenths of a g
+static int32_t _lnchAsPrevTBurn      = LNCH_AS_NONE;  // seconds
+static int32_t _lnchAsPrevDVStg      = LNCH_AS_NONE;  // m/s (as tenths? or int)
 // Track colors too (threshold changes don't alter the numeric value but still require redraw)
 static uint16_t _lnchAsPrevTimeToApFg= 0xFFFF;
 static uint16_t _lnchAsPrevThrFg     = 0xFFFF; static uint16_t _lnchAsPrevThrBg  = 0xFFFF;
@@ -1606,13 +1609,13 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
 // Reset all ascent-phase change-detection state + PrintState. Called at chrome
 // time to force a full redraw.
 static void _lnchAsResetState() {
-    _lnchAsPrevTimeToAp   = -1 << 30;
+    _lnchAsPrevTimeToAp   = LNCH_AS_NONE;
     _lnchAsPrevThrottle   = -1;
-    _lnchAsPrevQ          = -1 << 30;
+    _lnchAsPrevQ          = LNCH_AS_NONE;
     _lnchAsPrevMach       = -9999;
-    _lnchAsPrevG          = -1 << 30;
-    _lnchAsPrevTBurn      = -1 << 30;
-    _lnchAsPrevDVStg      = -1 << 30;
+    _lnchAsPrevG          = LNCH_AS_NONE;
+    _lnchAsPrevTBurn      = LNCH_AS_NONE;
+    _lnchAsPrevDVStg      = LNCH_AS_NONE;
     _lnchAsPrevTimeToApFg = 0xFFFF;
     _lnchAsPrevThrFg      = 0xFFFF; _lnchAsPrevThrBg  = 0xFFFF;
     _lnchAsPrevQFg        = 0xFFFF; _lnchAsPrevQBg    = 0xFFFF;
@@ -1792,7 +1795,7 @@ static void _lnchAs2UpdateTimeToAp(KCM_TFT &tft, uint8_t row,
     if (suppress) {
         val = "---";
         fg = TFT_DARK_GREY;
-        iTtAp = -1 << 29;
+        iTtAp = -(1 << 29);
     } else {
         if      (ttAp < 0)                   fg = TFT_RED;
         else if (ttAp < LNCH_TOAPO_WARN_S)   fg = TFT_YELLOW;

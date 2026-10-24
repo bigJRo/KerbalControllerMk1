@@ -123,7 +123,10 @@ static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 // ── Orbital (circularization) phase change-detection state ────────────────────────────
 // This was eight rows mirroring the ascent readout. T.Brn is the only one that stayed;
 // the apsis tape further down owns the rest of the column now.
-static int32_t _lnchOrPrevTBurn      = -1 << 30;  // seconds
+// Cache sentinel: no value drawn yet. Written -(1 << 30) because shifting a negative
+// value (LNCH_OR_NONE) is undefined before C++20.
+static const int32_t LNCH_OR_NONE = -(1 << 30);
+static int32_t _lnchOrPrevTBurn      = LNCH_OR_NONE;  // seconds
 
 // T.Brn is the one row that survived the eight-row readout this column used to be; the
 // rest of that panel's change-detection state went with it. See the apsis tape below.
@@ -235,15 +238,15 @@ static bool       _lnchOrTapeDirty = true;   // scale changed -> static layer ne
 static int16_t    _lnchOrTpApY     = -9999;  // last-drawn marker rows (-9999 = never drawn)
 static int16_t    _lnchOrTpPeY     = -9999;
 static bool       _lnchOrTpPeLow   = false;  // periapsis was off the bottom of the scale
-static int32_t    _lnchOrTpApVal   = -1 << 30;
-static int32_t    _lnchOrTpPeVal   = -1 << 30;
+static int32_t    _lnchOrTpApVal   = LNCH_OR_NONE;
+static int32_t    _lnchOrTpPeVal   = LNCH_OR_NONE;
 static PrintState _lnchOrTpPs[3];
 
 
 // Reset all orbital-phase change-detection state + PrintState. Called at
 // chrome time to force a full redraw.
 static void _lnchOrResetState() {
-    _lnchOrPrevTBurn      = -1 << 30;
+    _lnchOrPrevTBurn      = LNCH_OR_NONE;
     _lnchOrPrevTBurnFg    = 0xFFFF; _lnchOrPrevTBurnBg = 0xFFFF;
     _lnchOrPrevEccMilli   = -9999;
     _lnchOrPrevGapM       = -9999;
@@ -254,7 +257,7 @@ static void _lnchOrResetState() {
     _lnchOrTapeDirty  = true;
     _lnchOrTpApY      = -9999;     _lnchOrTpPeY   = -9999;
     _lnchOrTpPeLow    = false;
-    _lnchOrTpApVal    = -1 << 30;  _lnchOrTpPeVal = -1 << 30;
+    _lnchOrTpApVal    = LNCH_OR_NONE;  _lnchOrTpPeVal = LNCH_OR_NONE;
     for (uint8_t i = 0; i < 3; i++) {
         _lnchOrTpPs[i].prevWidth  = 0;
         _lnchOrTpPs[i].prevBg     = 0x0001;
@@ -583,7 +586,7 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
         _lnchOrTapeDrawStatic(tft);
         _lnchOrTapeDirty = false;
         _lnchOrTpApY = _lnchOrTpPeY = -9999;      // markers were wiped with the layer
-        _lnchOrTpApVal = _lnchOrTpPeVal = -1 << 30;
+        _lnchOrTpApVal = _lnchOrTpPeVal = LNCH_OR_NONE;
     }
     if (!_lnchOrTape.valid) return;
 

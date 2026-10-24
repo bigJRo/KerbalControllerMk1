@@ -172,7 +172,16 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
     uint16_t fg;
     if (i == 0) {
       bool node = (state.obFlags & 0x20) != 0 || state.mnvrDeltaV > 0.01f;
-      if (node) snprintf(buf, sizeof(buf), "%.0f m/s", state.mnvrDeltaV); else snprintf(buf, sizeof(buf), "NO NODE");
+      if (node) {
+        conFmtWhole(state.mnvrDeltaV, "m/s", buf, sizeof(buf));
+        // The box holds 163 px of text (printValue right-aligns 8 px in from vx + vw and
+        // the border sits 6 px left of vx). A 10,000+ m/s burn ("10,500 m/s", 167 px)
+        // would cover the border, so it drops the space before the unit (159 px).
+        if (getFontStringWidth(CON_F_VAL, buf) > vw - 3) {
+          char *sp = strchr(buf, ' ');
+          if (sp) memmove(sp, sp + 1, strlen(sp));
+        }
+      } else snprintf(buf, sizeof(buf), "NO NODE");
       fg = obArmedMode(0) ? OB_VAL : TFT_DARK_GREY;
     } else {
       float v = obDirtyTgt[i] ? obPendTgt[i] : obTgtEcho(i);
@@ -217,9 +226,9 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
   // PLAN
   int16_t px = conValX(CON_C3X) + 6;
   bool plan = armed && state.obDvTotal > 0.0f;
-  if (plan) snprintf(buf, sizeof(buf), "%.0f m/s", state.obDvTotal); else snprintf(buf, sizeof(buf), "---");
+  if (plan) conFmtWhole(state.obDvTotal, "m/s", buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 0, px, conRowY(0) + 4, vw, CON_VALH, buf, plan ? OB_VAL : TFT_DARK_GREY);
-  if (plan) snprintf(buf, sizeof(buf), "%.0f m/s", state.obDvRemaining); else snprintf(buf, sizeof(buf), "---");
+  if (plan) conFmtWhole(state.obDvRemaining, "m/s", buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 1, px, conRowY(1) + 4, vw, CON_VALH, buf, plan ? (state.obPhase == 5 ? TFT_NEON_GREEN : OB_VAL) : TFT_DARK_GREY);
   if (plan) obFmtTime(-state.obTIgnition, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 2, px, conRowY(2) + 4, vw, CON_VALH, buf, plan ? (state.obTIgnition < 30.0f ? TFT_ORANGE : OB_VAL) : TFT_DARK_GREY);
@@ -227,7 +236,7 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 3, px, conRowY(3) + 4, vw, CON_VALH, buf, plan ? OB_VAL : TFT_DARK_GREY);
   if (state.obAccelEst > 0.0f) snprintf(buf, sizeof(buf), "%.1f m/s\xB2", state.obAccelEst); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 4, px, conRowY(4) + 4, vw, CON_VALH, buf, state.obAccelEst > 0.0f ? OB_VAL : TFT_DARK_GREY);
-  snprintf(buf, sizeof(buf), "%.0f m/s", state.stageDeltaV);
+  conFmtWhole(state.stageDeltaV, "m/s", buf, sizeof(buf));
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 5, px, conRowY(5) + 4, vw, CON_VALH, buf,
          noPropellant() ? TFT_DARK_GREY : (plan && state.stageDeltaV < state.obDvTotal) ? TFT_ORANGE : OB_VAL);
   if (state.targetAvailable) formatAltBuf(state.tgtDistance, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
