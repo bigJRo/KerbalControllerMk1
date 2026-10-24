@@ -273,8 +273,8 @@ static void idlPushLanding() {
   LandingStatus s = lpGetStatus();
   uint8_t st[IDL_LEN_LANDING] = {0};
   st[0] = IDL_SYNC_LANDING;
-  st[1] = (s.engaged ? 0x01 : 0) | (s.brakeArmed ? 0x02 : 0) | (s.brakeFiring ? 0x04 : 0) | (s.attRefRadial ? 0x08 : 0) |
-          (s.autoStage ? 0x10 : 0) | (s.landed ? 0x20 : 0) | (s.brakeMarginal ? 0x40 : 0);
+  st[1] = (s.engaged ? 0x01 : 0) | (s.brakeArmed ? 0x02 : 0) | (s.brakeFiring ? 0x04 : 0) | (s.attRefVert ? 0x08 : 0) |
+          (s.autoStage ? 0x10 : 0) | (s.landed ? 0x20 : 0) | (s.brakeMarginal ? 0x40 : 0) | (s.vertHold ? 0x80 : 0);
   st[2] = s.mode; st[3] = s.entry ? 1 : 0; st[4] = s.reason; st[5] = s.reasonAge; st[6] = s.accelSource;
   float f[9] = { s.descRate, s.hovrAlt, s.twrOverride, s.margin, s.entryAoa, s.entryRoll, s.ignitionAlt, s.accelEst, s.cmdThrottle };
   memcpy(&st[8], f, sizeof(f));
