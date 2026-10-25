@@ -183,6 +183,8 @@ The board has no active components or protection; every signal passes straight t
 | 9 | Switch Group 1 order | Module UI Reference: B16 MSTR, B17 DISPL, B18 ENGINE, B19 THROTTLE, B20 SCE, B21 UPTLM, B22 LTG, B23 THRTL | B16 MSTR, B17 DISP, B18 SCE, B19 UPTLM, B20 LTG, B21 ENGINE, B22 THROTTLE, B23 THRTL (confirmed by the owner; §7.2) |
 | 10 | 2" display safe switch | Hardware Reference §5.3: the 2.0" carrier "can carry a safe switch via screw terminal" | No terminal on KC-01-1901 V2.0 |
 | 12 | Dual Encoder safe switch | Hardware Reference §12: INT_SAFE on the module connector for the Dual Encoder | Its terminal drives slot pin 16, which no hub connects |
+| 13 | Staging | Module UI Reference: Stability B14 Stage, B15 Stage Enable | Stage button on the B2 Panel Hub safe line; Stability terminals unwired |
+| 14 | Ctrl Mode Toggle | Module UI Reference open item 14: destination undecided; Time Control B12–B15 "not installed" | Time Control B12 / B13 |
 | 11 | Ctrl Module ST7789 | — | The only ST7789 in the system is the 2" Sys Info Display on A2; the Hardware Reference's Ctrl Module entry probably refers to an earlier plan |
 
 ## 7. Panels
@@ -248,7 +250,44 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 - **Free:** Resource Display slot P3 (B_INT_10).
 - **Safe switches:** none wired, so B_INT_SAFE2 is unused. The Dual Encoder's own terminal could not reach the master anyway (§5.8).
 
-To be filled in next: B2.
+### 7.4 B2 — right input panel (Panel Hub on Ctrl Module Extension CN4)
+
+| Slot | Line | Module | Board | Address |
+|---|---|---|---|---|
+| P1 | B_INT_1 | — empty — | | |
+| P2 | B_INT_2 | Pre-Warp Time | 7-Segment (1841) | 0x2B |
+| P3 | B_INT_3 | Time Control | Button (1801) | 0x25 |
+| P4 | B_INT_4 | Vehicle Control | Wide Button (1811) | 0x24 |
+| P5 | B_INT_5 | — empty — | | |
+| P6 | B_INT_6 | Stability Control | Button (1801) | 0x23 |
+| P7 | B_INT_7 | AUX CTRL | Button (1801) | 0x26 |
+| P8 | B_INT_8 | Rotation joystick | Joystick (1831) | 0x28 |
+
+| Panel item | Wired to | Master sees it on |
+|---|---|---|
+| Stage button | Panel Hub safe-switch terminal | B_INT_SAFE (Teensy 35), active-high |
+| Ctrl Mode selector SPC / PLN / RVR | Time Control terminal CN2: B12 (pin 3), B13 (pin 4), +5 V (pins 1–2) | Time Control's packet, B12 / B13 |
+| Switch Group 2 (8 switches) | Vehicle Control terminals U16 / U17 → B16–B23 (below) | Vehicle Control's packet |
+| Rotation stick | Joystick terminal U6 | Rotation's packet |
+
+**Unused:**
+- slots P1 and P5;
+- Stability Control terminals (B12–B15), so the reference's Stage / Stage Enable on B14 / B15 are not wired;
+- Time Control B14 / B15;
+- AUX CTRL terminals.
+
+**Switch Group 2** (Vehicle Control) — layout from Module UI Reference v5.9, *under review*:
+
+| Input | Terminal pin | Switch | Off / on | Type | Reference action |
+|---|---|---|---|---|---|
+| B16 | U16-6 | CHUTE | SAFE / ARM | Latching | Arms the parachute buttons; SAFE resets them |
+| B17 | U16-5 | GEAR | UP / DOWN | Latching | Gear up / down |
+| B18 | U16-4 | BRAKE | REL / LOCK | Latching | Brakes off / on |
+| B19 | U16-3 | EXT LT | OFF / ILLUM | Latching | Lights off / on |
+| B20 | U17-4 | SAS | OFF / ENAB | Latching | SAS off / on |
+| B21 | U17-3 | RCS | OFF / ENAB | Latching | RCS off / on |
+| B22 | U17-2 | THC/RHC | NORM / PREC | Latching | Stick precision |
+| B23 | U17-1 | AUDIO | MUTE / LIVE | Latching | Annunciator audio |
 
 ## 8. Behaviour decisions made during the review
 
