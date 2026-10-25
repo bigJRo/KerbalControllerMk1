@@ -649,10 +649,9 @@ Matches the reference.
 | ENC2 button | Camera reset (Backspace, Hullcam VDS) |
 
 **Control group offset:** every CAG button is offset by the control group (`CAG = base + (group − 1) × 40`), **except Action Control's AG 1–12**, which always send CAG 1–12. The offset therefore applies to:
-- Vehicle Control;
+- Vehicle Control, including the heat-shield and parachute state machines;
 - Function Control;
 - AUX CTRL PRI / ALT;
-- ENGINE-related and state-machine groups;
 - the rotation stick's airbrake.
 
 ## 11. Changes needed outside the master firmware
