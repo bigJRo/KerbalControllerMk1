@@ -32,7 +32,7 @@ typedef ILI9341_t3_font_t tFont;
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 14;  // 3.14.0: bug sweep, optimisation and cleanup pass
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.14.1: history time axis in whole minutes
+static const uint8_t SKETCH_VERSION_PATCH = 3;   // 3.14.3: no limit bands on the TAC-LS waste meters
 
 
 /***************************************************************************************
@@ -120,8 +120,10 @@ enum ResGroup : uint8_t {
 /***************************************************************************************
    RESOURCE LIMIT BANDS
    Caution and alarm fractions a meter paints on its scale and alerts against.
-   highIsBad flips the sense for waste-type resources, which alert on filling up.
-   enabled=false gives a plain scale with no bands (cargo, intake air).
+   highIsBad flips the sense for waste-type resources, which fill up: Depleted Fuel
+   alerts on it; for the TAC-LS waste products it only sets time to full and the
+   reserve bug's direction. enabled=false gives a plain scale with no bands (cargo,
+   intake air, TAC-LS waste).
 ****************************************************************************************/
 struct ResLimits {
   float warn;       // caution fraction
@@ -247,8 +249,8 @@ static constexpr uint8_t MAX_SLOTS          = 16;
 static constexpr uint8_t DEFAULT_SLOT_COUNT = 9;
 extern const float    RES_WARN_FRAC;     // caution band top (fraction of capacity)
 extern const float    RES_ALARM_FRAC;    // alarm band top (fraction of capacity)
-extern const float    WASTE_WARN_FRAC;   // waste-type caution: fraction full
-extern const float    WASTE_ALARM_FRAC;  // waste-type alarm: fraction full
+extern const float    WASTE_WARN_FRAC;   // Depleted Fuel caution: fraction full
+extern const float    WASTE_ALARM_FRAC;  // Depleted Fuel alarm: fraction full
 extern const uint32_t TREND_WINDOW_MS;   // trend arrow sample window
 extern const float    TREND_MIN_FRAC;    // trend arrow deadband, fraction of capacity per window
 extern const uint32_t TTE_WINDOW_MS;     // time-to-empty rate sample window
@@ -445,14 +447,14 @@ void clearVesselCache();
 
 // The pilot-set default layout: what a vessel not in memory starts with, set from the
 // Select screen's DFLT key and persisted with the cache. count 0 = none set, in which
-// case the SPCT preset is the default. (AAA_Globals.ino)
+// case the SPC preset is the default. (AAA_Globals.ino)
 extern VesselSlotRecord defaultLayout;
 void setDefaultLayout();        // the current slots (types and bugs) become the default
-void clearDefaultLayout();      // back to the SPCT preset
+void clearDefaultLayout();      // back to the SPC preset
 bool defaultLayoutSet();
 bool layoutIsDefault();         // current slot types match the effective default, in order
 
-// Mission presets (Resources.ino): the Select screen's keys, and PRESETS[0] (SPCT) is
+// Mission presets (Resources.ino): the Select screen's keys, and PRESETS[0] (SPC) is
 // the built-in default layout.
 struct PresetGroup {
   const char*  label;

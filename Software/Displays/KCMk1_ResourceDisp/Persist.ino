@@ -176,7 +176,7 @@ void persistLoad() {
     if (debugMode) {
       Serial.print(F("ResourceDisp: persist: loaded "));
       Serial.print(persistVesselCount());
-      Serial.println(defaultLayoutSet() ? F(" vessel(s), pilot default layout") : F(" vessel(s), SPCT default"));
+      Serial.println(defaultLayoutSet() ? F(" vessel(s), pilot default layout") : F(" vessel(s), SPC default"));
     }
   }
   _lastSig = persistSignature();

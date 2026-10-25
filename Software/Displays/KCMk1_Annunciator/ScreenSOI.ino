@@ -47,7 +47,11 @@ void drawSOIBody(KCM_TFT &tft) {
   uint8_t rowCount = 0;
 
   rows[rowCount++] = { "MIN SAFE ALT",   formatAlt(currentBody.minSafe)                   };
-  rows[rowCount++] = { "SOI RADIUS",     formatAlt(currentBody.soiAlt)                    };
+  // Kerbol is the root body: its SOI is unbounded (DBL_MAX), which formatAlt's float
+  // and int64 paths turn into a 19-digit overflow. 0x80 is the panel fonts' infinity,
+  // as ORBIT prints for an escape apoapsis.
+  rows[rowCount++] = { "SOI RADIUS",     (currentBody.soiAlt >= 1.0e30) ? String("\x80")
+                                                                 : formatAlt(currentBody.soiAlt) };
   if (currentBody.hasAtmo) {
     rows[rowCount++] = { "REENTRY ALT",  formatAlt(currentBody.reentryAlt)                };
     rows[rowCount++] = { "HIGH ATMO ALT", formatAlt(currentBody.flyHigh)                  };

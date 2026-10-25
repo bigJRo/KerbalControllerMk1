@@ -18,9 +18,11 @@ enum LpMode : uint8_t { LP_MODE_OFF = 0, LP_MODE_DESC, LP_MODE_HOVR, LP_MODE_BRA
 
 struct LandingConfig {
   AttGains entryGains;
+  AttGains vertGains;                      // the vertical hold's attitude loop (SAS off)
   float    descKp, descKi, descSlew;       // throttle per (m/s), per (m/s) per s, units/s
   float    hovrKp, hovrVsCap;              // (m/s) per m, m/s
-  float    radialSwitchSpeed;              // m/s horizontal below which retrograde -> radial-out
+  float    vertHoldEnterSpeed;             // m/s surface speed below which RETRO hands over to the vertical hold
+  float    vertHoldExitSpeed;              // m/s surface speed above which it hands back (hysteresis band)
   float    brakeFactorEst, brakeFactorMeas, brakeFactorTwr;   // safety factor by acceleration source
   float    brakeLatencyS;                  // |vs| * this added to the ignition altitude
   float    brakeMinAccelG;                 // refuse to arm below this many g
@@ -34,7 +36,8 @@ struct LandingConfig {
 
 struct LandingStatus {
   uint8_t mode;                 // LpMode
-  bool    entry, engaged, brakeArmed, brakeFiring, attRefRadial, autoStage, landed, brakeMarginal;
+  bool    entry, engaged, brakeArmed, brakeFiring, attRefVert, autoStage, landed, brakeMarginal;
+  bool    vertHold;             // the vertical hold is flying the attitude (SAS off by design)
   uint8_t reason, reasonAge, accelSource;
   float   descRate, hovrAlt, twrOverride, margin, entryAoa, entryRoll, ignitionAlt, accelEst, cmdThrottle;
 };
@@ -55,7 +58,7 @@ bool  lpSetTwr(float twr);                    // 0 = measured / estimated
 bool  lpSetMargin(float m);
 bool  lpSetEntryAoa(float deg);
 bool  lpSetEntryRoll(float deg);
-void  lpSetAttRef(bool radial);
+void  lpSetAttRef(bool vert);                 // ATT REF: false RETRO, true VERT
 
 bool  lpAnyEngaged();
 LandingStatus lpGetStatus();

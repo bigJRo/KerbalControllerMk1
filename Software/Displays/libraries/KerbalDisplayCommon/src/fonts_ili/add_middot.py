@@ -17,7 +17,8 @@ nothing -- the same behaviour it had when it was out of range. bits_index is
 recomputed, since appending to data[] can push the largest offset past the width
 the file was generated with (Roboto_Black_12 needs this).
 
-Every pre-existing glyph is decoded before and after and asserted identical.
+Every pre-existing glyph is decoded before and after and asserted identical. A font
+that already carries the middot is left untouched, so a rerun is a no-op.
 
 Usage: add_middot.py FONTDIR
 """
@@ -66,14 +67,27 @@ def build_middot(F):
     rows = [[0] * per['w'] for _ in range(top)] + shape
     return per['w'], len(rows), per['delta'], rows
 
-def emit_array(name, buf):
-    lines = []
-    for i in range(0, len(buf), 16):
-        lines.append("  " + " ".join("0x%02X," % b for b in buf[i:i + 16]))
-    return "static const unsigned char %s[] = {\n%s\n};" % (name, "\n".join(lines))
+def _contents(buf):
+    return "\n" + "\n".join("  " + " ".join("0x%02X," % b for b in buf[i:i + 16])
+                             for i in range(0, len(buf), 16))
+
+def put_array(src, sym, buf):
+    """Replace the CONTENTS of `sym[] ... = { ... };` with buf, keeping the declaration
+    as it is -- including the KCM_FONT_FLASH section attribute between "[]" and "=",
+    which a pattern written for "[] = {" silently fails to match. Shared with
+    add_superscript2.py."""
+    pat = re.escape(sym) + r'(\s*\[\s*\]\s*(?:\w+\s*)*=\s*\{)(.*?)(\n\};)'
+    out, n = re.subn(pat, lambda m: sym + m.group(1) + _contents(buf) + m.group(3),
+                     src, count=1, flags=re.S)
+    assert n == 1, "array %s not found" % sym
+    return out
 
 def patch(path):
     F = Font(path)
+    if F.f["index2_last"] >= MIDDOT:
+        g = F.glyph(MIDDOT)
+        if g and g['w'] > 0:
+            return None                              # already has it: leave the file alone
     before = {c: F.glyph(c) for c in F.codes()}
     f = dict(F.f)
 
@@ -94,16 +108,9 @@ def patch(path):
     bw.pad()
     index = bw.bytes()
 
-    def body(name, buf):
-        """Just the `NAME[] = { ... };` part, so the `static const unsigned char`
-        prefix already in the file is kept exactly as it was."""
-        return emit_array(name, buf)[len("static const unsigned char "):]
-
     src = F.src
-    src = re.sub(re.escape(F.name + "_data")  + r'\[\]\s*=\s*\{.*?\n\};',
-                 lambda m: body(F.name + "_data",  data),  src, count=1, flags=re.S)
-    src = re.sub(re.escape(F.name + "_index") + r'\[\]\s*=\s*\{.*?\n\};',
-                 lambda m: body(F.name + "_index", index), src, count=1, flags=re.S)
+    src = put_array(src, F.name + "_data",  data)
+    src = put_array(src, F.name + "_index", index)
     src = re.sub(r'\d+,(\s*//\s*index2_last)', lambda m: "%d,%s" % (MIDDOT, m.group(1)),
                  src, count=1)
     src = re.sub(r'\d+,(\s*//\s*bits_index)',  lambda m: "%d,%s" % (bits_index, m.group(1)),
@@ -132,6 +139,10 @@ if __name__ == "__main__":
     d = sys.argv[1]
     for fn in sorted(os.listdir(d)):
         if not re.match(r'Roboto_Black_\d+\.c$', fn): continue
-        n, w, h, dl, o, nn, bi0, bi = patch(os.path.join(d, fn))
+        r = patch(os.path.join(d, fn))
+        if r is None:
+            print("%-22s already has U+00B7 -- unchanged" % fn)
+            continue
+        n, w, h, dl, o, nn, bi0, bi = r
         print("%-22s %3d glyphs verified | middot w=%-2d h=%-2d delta=%-2d | data %d->%d | bits_index %d%s"
               % (fn, n, w, h, dl, o, nn, bi, "" if bi == bi0 else " (was %d)" % bi0))

@@ -271,6 +271,23 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       }
       break;
 
+    // Whole-vessel liquid fuel and oxidizer, for the no-propellant neutral (noPropellant).
+    case LF_MESSAGE:
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseMessage<resourceMessage>(msg);
+        state.lfAmount = r.available;
+        state.propSeen = true;
+      }
+      break;
+
+    case OX_MESSAGE:
+      if (msgSize == sizeof(resourceMessage)) {
+        resourceMessage r = parseMessage<resourceMessage>(msg);
+        state.oxAmount = r.available;
+        state.propSeen = true;
+      }
+      break;
+
     case TEMP_LIMIT_MESSAGE:
       // tempLimitMessage: byte tempLimitPercentage (internal/core), byte skinTempLimitPercentage.
       // Both are the vessel's hottest part as a % of its temperature limit (0-100).
@@ -334,6 +351,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(targetMessage)) {
         targetMessage t = parseMessage<targetMessage>(msg);
         state.tgtDistance   = t.distance;
+        _lastTargetInfoMs   = millis();
+        if (_lastTargetInfoMs == 0) _lastTargetInfoMs = 1;   // 0 means "none yet"
         state.tgtHeading    = t.heading;
         state.tgtPitch      = t.pitch;
         state.tgtVelHeading = t.velocityHeading;
@@ -465,6 +484,9 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
           _vesselDocked = false;
         }
         _pendingDockCheck = false;  // clear any stale dock check from previous switch
+        _lastTargetInfoMs = 0;      // the old vessel's target is not this one's
+        state.propSeen = false;     // and its propellant: wait for this vessel's LF / OX
+        state.lfAmount = state.oxAmount = 0.0f;
         if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
         // Reset per-vessel screen state. (_lndgReentryMode is not touched: it is derived
         // from the active screen by drawStaticScreen() / updateScreen().)
@@ -549,6 +571,8 @@ void initSimpit() {
   simpit.registerChannel(THROTTLE_CMD_MESSAGE);
   simpit.registerChannel(WHEEL_CMD_MESSAGE);
   simpit.registerChannel(ELECTRIC_MESSAGE);
+  simpit.registerChannel(LF_MESSAGE);      // whole-vessel LF / OX: no-propellant neutral
+  simpit.registerChannel(OX_MESSAGE);
   simpit.registerChannel(TEMP_LIMIT_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);

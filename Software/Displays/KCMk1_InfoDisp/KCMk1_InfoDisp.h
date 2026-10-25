@@ -188,11 +188,12 @@ void switchToScreen(ScreenType s);
      MAJOR — incompatible structural changes (screen layout overhaul, new hardware)
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
-   This sketch requires KerbalDisplayCommon >= 3.11.0 (buffer formatters)
+   This sketch requires KerbalDisplayCommon >= 3.11.1 (buffer formatters; the ² glyph)
+   and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 15;  // 1.15.0: Orbital and Landing Autopilot consoles, five-console key, sync-byte status dispatch
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.15.1: A/P key caption at rest; demo A/P OFF disarms the ascent autopilot too
+static const uint8_t SKETCH_VERSION_MINOR = 16;  // 1.16.0: whole-vessel LF / OX channels; stage readouts neutral with no propellant (#72)
+static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.16.5: one label per quantity across the screens; ORAP T+IGN counts down
 
 
 /***************************************************************************************
@@ -330,6 +331,9 @@ struct AppState {
 
   // Resources
   float     electricChargePercent = 0.0f;  // 0.0..100.0 — from ELECTRIC_CHARGE resource channel
+  float     lfAmount      = 0.0f;    // whole-vessel liquid fuel on board (LF_MESSAGE, available)
+  float     oxAmount      = 0.0f;    // whole-vessel oxidizer on board    (OX_MESSAGE, available)
+  bool      propSeen      = false;   // an LF or OX message has arrived for this vessel (needs ARP)
 
   // Thermal (from TEMP_LIMIT_MESSAGE)
   uint8_t   coreTempPct  = 0;   // hottest part core temp as % of limit (0–100)
@@ -418,7 +422,7 @@ struct AppState {
   float     obCmdThrottle  = 0.0f;
 
   // Landing autopilot — the 44-byte 0xA9 frame
-  uint8_t   ldFlags        = 0;       // bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed, bit6 brakeMarginal
+  uint8_t   ldFlags        = 0;       // bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefVert (ATT REF = VERT), bit4 autoStage, bit5 landed, bit6 brakeMarginal, bit7 vertHold (flying, SAS off)
   uint8_t   ldMode         = 0;       // 0 OFF, 1 DESC, 2 HOVR, 3 BRAKE
   uint8_t   ldEntry        = 0;
   uint8_t   ldReason       = 0;

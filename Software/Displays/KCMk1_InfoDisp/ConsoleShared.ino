@@ -19,10 +19,8 @@
 #include "KCMk1_InfoDisp.h"
 
 // ── Palette (the ascent console's) ────────────────────────────────────────────────────
-static const uint16_t CON_LBL = KDC_LABEL_COLOR;
 static const uint16_t CON_HDR = TFT_WHITE;
 static const uint16_t CON_BOX = TFT_GREY;
-static const uint16_t CON_EDT = TFT_SKY;
 #define CON_F_HDR (&Roboto_Black_28)
 #define CON_F_VAL (&Roboto_Black_32)
 #define CON_F_BTN (&Roboto_Black_24)
@@ -279,6 +277,26 @@ void conDrawModeButton(KCM_TFT &tft, int16_t x, int16_t y, int16_t w, int16_t h,
 // The outlined value box at the right of a row.
 void conDrawValueBox(KCM_TFT &tft, int16_t colX, uint8_t row) {
   tft.drawRect(conValX(colX), conRowY(row) + 4, CON_VALW - 2, CON_VALH, CON_BOX);
+}
+
+// Whole number with thousands separators and a unit ("1,450 m/s"), the panel-wide form
+// for a value of 1,000 or more. The consoles used a bare "%.0f", so they read "1450 m/s"
+// where every other screen reads "1,450 m/s".
+void conFmtWhole(float v, const char *unit, char *buf, size_t n) {
+  long iv = lroundf(v);
+  bool neg = (iv < 0);
+  unsigned long a = neg ? (unsigned long)(-iv) : (unsigned long)iv;
+  char d[16];
+  int len = snprintf(d, sizeof(d), "%lu", a);
+  char s[24];
+  int j = 0;
+  if (neg) s[j++] = '-';
+  for (int i = 0; i < len; i++) {
+    if (i > 0 && (len - i) % 3 == 0) s[j++] = ',';
+    s[j++] = d[i];
+  }
+  s[j] = '\0';
+  snprintf(buf, n, "%s %s", s, unit);
 }
 
 // Cached value draw. The cache compare allocates nothing; the String is built only for

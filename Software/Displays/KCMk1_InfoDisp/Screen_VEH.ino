@@ -122,13 +122,13 @@ static void drawScreen_VEH(KCM_TFT &tft) {
   const char *condName;
   switch (state.situation) {
     case sit_PreLaunch: condName = "PRE-LAUNCH";   break;
-    case sit_Flying:    condName = "IN FLIGHT";    break;
-    case sit_SubOrb:    condName = "SUB-ORBITAL";  break;
-    case sit_Orbit:     condName = "IN ORBIT";     break;
-    case sit_Escaping:  condName = "ESCAPE ORBIT"; break;
+    case sit_Flying:    condName = "FLIGHT";       break;
+    case sit_SubOrb:    condName = "SUB-ORBIT";    break;
+    case sit_Orbit:     condName = "ORBIT";        break;
+    case sit_Escaping:  condName = "ESCAPE";       break;
     case sit_Landed:    condName = "LANDED";       break;
-    case sit_Splashed:  condName = "SPLASHED";     break;
-    case sit_Docked:    condName = "DOCKED";       break;
+    case sit_Splashed:  condName = "SPLASH";       break;
+    case sit_Docked:    condName = "DOCK";         break;
     default:            condName = "---";          break;
   }
   // Sky blue when recoverable, since that is the actionable state; otherwise nominal.
@@ -185,6 +185,7 @@ static void drawScreen_VEH(KCM_TFT &tft) {
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  stgWarn, TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+  propNeutral(fg, bg);
   vehVal(6, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), fg, bg);
 
   // Row 7 — Total ΔV: uses DV_TOT_WARN_MS (higher threshold than stage) since this
@@ -193,5 +194,6 @@ static void drawScreen_VEH(KCM_TFT &tft) {
                  DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                  DV_TOT_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                       TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+  propNeutral(fg, bg);
   vehVal(7, "\xCE\x94V.TOT", fmtMs(state.totalDeltaV), fg, bg);
 }

@@ -95,6 +95,7 @@ The G **alarm** limits are the Annunciator's single HIGH-G warning trip points; 
 
 | Version | Notes |
 |---------|-------|
+| **1.2.0** | Added `KCM_HIGH_Q_PA` (20 kPa): the dynamic-pressure caution shared by the Annunciator's HIGH Q tile and the Info Display's ASCENT Q row (issue #71). |
 | **1.1.0** | Documented the full hardware rev 2 pin map (display data/control lines, touch, audio, SD, Wire2 module bus) that the header actually owns. Added Info Display 2 (`KCM_I2C_ADDR_INFODISP_2` = 0x13) and reserved the System Info Display (`KCM_I2C_ADDR_SYSINFODISP` = 0x14, future work). Removed the dead, misleading `KCM_DEFAULT_DEBUG_MODE` / `KCM_DEFAULT_DEMO_MODE` macros (unused, defaulted to `true` while every sketch uses `false`). Standardized chip naming to LT7683 (RA8876-compatible). |
 | **1.0.0** | Initial release. Extracted from inline sketch definitions during KCMk1 implementation Phase 3. |
 

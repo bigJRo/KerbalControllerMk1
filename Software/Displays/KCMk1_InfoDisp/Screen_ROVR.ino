@@ -110,8 +110,8 @@ static const int16_t ROVR_TGTD_H         = 44;   // Roboto_Black_28 cap 33, vert
 // Heading readout — single-line boxed value above the nose triangle. The box
 // border is stationary chrome; only the numeric value is redrawn on changes.
 // Format: zero-padded 3-digit heading with ° symbol (e.g. "045°").
-// Box is 38 tall to give the 28pt Roboto Black font (33 px font_height) room
-// to render without the glyph cell's black background overwriting the border.
+// Box is 52 tall to give the Roboto_Black_36 value room to render without the
+// glyph cell's black background overwriting the border.
 static const int16_t ROVR_HDG_BOX_W      = 110;  // widened slightly for the larger font
 static const int16_t ROVR_HDG_BOX_H      = 52;   // Roboto_Black_36 cap 43 + padding
 static const int16_t ROVR_HDG_BOX_X      = ROVR_CX - (ROVR_HDG_BOX_W / 2);
@@ -326,8 +326,8 @@ static inline void _rovrDrawTargetAt(KCM_TFT &tft, float screenDeg, bool erase) 
 
 // Target triangle update — called every frame. Decides whether the target
 // triangle needs to be erased, redrawn, or both. Independent of the main
-// compass redraw because the target triangle sits in an annular band (R=100..
-// 115) that doesn't overlap with the ticks/labels/ring, so it can update on
+// compass redraw because the target triangle sits in an annular band (R=110..
+// 128) that doesn't overlap with the ticks/labels/ring, so it can update on
 // its own cadence.
 //
 // Triggers:
@@ -363,6 +363,15 @@ static void _rovrUpdateTarget(KCM_TFT &tft) {
     _rovrDrawTargetAt(tft, _rovrPrevTgtScreenDeg, true);
     _rovrDrawTargetAt(tft, screenDeg, false);
     _rovrPrevTgtScreenDeg = screenDeg;
+}
+
+// Whole metres. DIST and ALT.TRN are rounded to the metre before they are drawn, and
+// formatAlt prints two decimals below 1 km, so both always read ".00" -- a precision
+// that is not there. Below 1 km this prints "850 m"; above, formatAlt's separators and
+// unit scaling as before.
+static String _rovrFmtWholeM(int32_t m) {
+    if (m > -1000 && m < 1000) return String(m) + " m";
+    return formatAlt((float)m);
 }
 
 // Target-distance readout — status strip along the bottom of the compass region.
@@ -410,7 +419,7 @@ static void _rovrUpdateTgtDist(KCM_TFT &tft) {
                          ROVR_TGTD_VAL_W, ROVR_TGTD_H, TFT_BLACK);
         textRight(tft, ROVR_TGTD_FONT,
                   ROVR_TGTD_VAL_X, ROVR_TGTD_Y, ROVR_TGTD_VAL_W, ROVR_TGTD_H,
-                  formatAlt((float)iDist), TFT_VIOLET, TFT_BLACK);
+                  _rovrFmtWholeM(iDist), TFT_VIOLET, TFT_BLACK);
         _rovrPrevTgtDistVal = iDist;
     }
 
@@ -641,7 +650,7 @@ static void _rovrUpdateVSrf(KCM_TFT &tft) {
 // spurious rate for the next 48 s. Three cases have to be designed rather than
 // discovered on the bench:
 //   - solar panels can make the net rate POSITIVE. That is "CHG", not a negative time.
-//   - below a floor the figure is not decision-relevant (beyond ~10 h), so it reads
+//   - below a floor the figure is not decision-relevant (beyond ~14 h), so it reads
 //     "---" rather than a fictitious precision.
 //   - parked with nothing drawing, the rate is noise around zero, which the floor
 //     catches for the same reason.
@@ -711,7 +720,7 @@ static void _rovrDrawEcChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "ENDUR", KDC_LABEL_COLOR, TFT_BLACK);
+               "TTE", KDC_LABEL_COLOR, TFT_BLACK);
 }
 
 static void _rovrUpdateEc(KCM_TFT &tft) {
@@ -791,8 +800,8 @@ static void _rovrUpdateGear(KCM_TFT &tft) {
 //   RETR (2)   — dark grey on neon green
 //   NRM (3)    — white on magenta
 //   ANRM (4)   — white on magenta
-//   RAD+ (5)   — dark grey on sky
-//   RAD- (6)   — dark grey on sky
+//   RAD- (5)   — dark grey on sky   (AP_RADIALIN)
+//   RAD+ (6)   — dark grey on sky   (AP_RADIALOUT)
 //   TGT (7)    — white on violet
 //   ATGT (8)   — white on violet
 //   MNVR (9)   — white on blue
@@ -821,9 +830,7 @@ static void _rovrUpdateSas(KCM_TFT &tft) {
 // surface below the vessel — i.e. how high up the current terrain is above
 // sea level. Same block style as V.Srf on the left side.
 //
-// Clamped to ≥ 0 (negative values would indicate telemetry anomalies, not real
-// terrain below sea level, and KSP bodies don't have meaningful negative
-// elevation in the rover-driving domain).
+// Not clamped: terrain below sea level (a basin floor) prints with its sign.
 static inline int16_t _rovrElevLabelY() {
     int16_t totalContent = ROVR_LBL_H + ROVR_LBL_VAL_GAP + ROVR_VAL_H;
     return ROVR_ELEV_Y + (ROVR_ELEV_H - totalContent) / 2;
@@ -855,13 +862,13 @@ static void _rovrUpdateElev(KCM_TFT &tft) {
     // Erase previous value by regenerating its formatted string from the cached int
     // and drawing it black-on-black.
     if (_rovrPrevElev > -90000) {
-        String oldStr = formatAlt((float)_rovrPrevElev);
+        String oldStr = _rovrFmtWholeM(_rovrPrevElev);
         eraseCenteredValue(tft, &Roboto_Black_36,
                                 ROVR_RCOL_X, valueY, ROVR_RCOL_W, ROVR_VAL_H,
                                 oldStr.c_str(), TFT_BLACK);
     }
 
-    String newStr = formatAlt((float)iElev);
+    String newStr = _rovrFmtWholeM(iElev);
     textCenter(tft, &Roboto_Black_36,
                ROVR_RCOL_X, valueY,
                ROVR_RCOL_W, ROVR_VAL_H,

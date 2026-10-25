@@ -124,8 +124,12 @@ void updateCautionWarningState() {
   // ---------------------------------------------------------------------------------
 
   // CW_LOW_DV: stage delta-v or burn time below threshold.
-  // Suppressed during pre-launch, throttle-zero coast, and holdoff window.
-  if (inFlight && !isPreLaunch && !throttleZero && !inThrottleHoldOff &&
+  // Suppressed during pre-launch, throttle-zero coast, and holdoff window, and on a
+  // vessel with no propellant at all (no LF and no OX on board, once ARP has reported
+  // them): a capsule's 0 dV is not "low", and the warning would trip the master alarm.
+  bool noPropellant = state.propSeen && state.LF_vessel < CW_PROP_EMPTY_UNITS &&
+                      state.OX_vessel < CW_PROP_EMPTY_UNITS;
+  if (inFlight && !isPreLaunch && !throttleZero && !inThrottleHoldOff && !noPropellant &&
       (state.stageDV < CW_LOW_DV_MS || state.stageBurnTime < CW_LOW_BURN_S))
     bitSet(cw, CW_LOW_DV);
 
@@ -208,16 +212,22 @@ void updateCautionWarningState() {
   }
 
   // CW_LIFE_SUPPORT: two-tier TAC-LS resource warning.
-  // Computes time remaining for each consumable and time to full for each waste
-  // using fixed TAC-LS consumption rates multiplied by crew count.
-  // Fires on worst-case condition across all six resources.
-  // Suppressed when crewCount is 0 (uncrewed vessel, no TAC-LS consumption).
+  // Computes time remaining for each consumable (food, water, oxygen) using fixed
+  // TAC-LS consumption rates multiplied by crew count, and fires on the worst case
+  // of the three. The waste resources (CO2, Waste, WasteWater) are not watched.
+  // Suppressed when crewCount is 0 (uncrewed vessel, no TAC-LS consumption), and when
+  // there is no TAC-LS data at all: without the mod its channels never send, every
+  // tac* field stays 0, and zero food over a non-zero rate read as "0 s remaining" --
+  // a red tile and the master alarm on every crewed vessel. A vessel under TAC-LS has
+  // capacity for at least one consumable.
   // Note: uses double precision for rate * crew multiplication to avoid float
   //       precision loss on very small rates (e.g. FOOD_RATE = 1.69e-5).
   {
     lsYellow = false;
     bool lsAlarm = false;
-    if (state.crewCount > 0) {
+    const bool tacData = (state.tacFood_tot > 0.0f || state.tacWater_tot > 0.0f ||
+                          state.tacOxygen_tot > 0.0f);
+    if (state.crewCount > 0 && tacData) {
       double crew = (double)state.crewCount;
 
       // Consumables: time remaining = available / (rate * crew)
@@ -229,37 +239,10 @@ void updateCautionWarningState() {
       float waterRemS = (waterRate > 0.0) ? (float)(state.tacWater / waterRate) : 1e9f;
       float o2RemS    = (o2Rate    > 0.0) ? (float)(state.tacOxygen / o2Rate)   : 1e9f;
 
-      // Waste resources: time to full = space remaining / (rate * crew)
-      double co2Rate = TACLS_CO2_RATE       * crew;
-      double wRate   = TACLS_WASTE_RATE     * crew;
-      double wwRate  = TACLS_WASTEWATER_RATE * crew;
-
-      float co2Space = (state.tacCO2_tot > 0.0f)
-                       ? (state.tacCO2_tot - state.tacCO2) : 1e9f;
-      float wSpace   = (state.tacWaste_tot > 0.0f)
-                       ? (state.tacWaste_tot - state.tacWaste) : 1e9f;
-      float wwSpace  = (state.tacWW_tot > 0.0f)
-                       ? (state.tacWW_tot - state.tacWW) : 1e9f;
-
-      float co2RemS  = (co2Rate > 0.0) ? (float)(co2Space / co2Rate) : 1e9f;
-      float wRemS    = (wRate   > 0.0) ? (float)(wSpace   / wRate)   : 1e9f;
-      float wwRemS   = (wwRate  > 0.0) ? (float)(wwSpace  / wwRate)  : 1e9f;
-
       // Check alarm thresholds (red tier)
       if (foodRemS  < TACLS_FOOD_ALARM_S)   lsAlarm = true;
       if (waterRemS < TACLS_WATER_ALARM_S)  lsAlarm = true;
       if (o2RemS    < TACLS_OXYGEN_ALARM_S) lsAlarm = true;
-      if (co2RemS   < TACLS_OXYGEN_ALARM_S) lsAlarm = true;  // CO2 mirrors O2 window
-      if (wRemS     < TACLS_OXYGEN_ALARM_S) lsAlarm = true;  // Waste mirrors O2 window
-      if (wwRemS    < TACLS_OXYGEN_ALARM_S) lsAlarm = true;  // WasteWater mirrors O2 window
-
-      // Check waste fill fraction thresholds
-      if (state.tacCO2_tot > 0.0f &&
-          (state.tacCO2 / state.tacCO2_tot) > TACLS_WASTE_ALARM_FRAC) lsAlarm = true;
-      if (state.tacWaste_tot > 0.0f &&
-          (state.tacWaste / state.tacWaste_tot) > TACLS_WASTE_ALARM_FRAC) lsAlarm = true;
-      if (state.tacWW_tot > 0.0f &&
-          (state.tacWW / state.tacWW_tot) > TACLS_WASTE_ALARM_FRAC) lsAlarm = true;
 
       if (lsAlarm) {
         bitSet(cw, CW_LIFE_SUPPORT);  // red tier
@@ -268,15 +251,6 @@ void updateCautionWarningState() {
         if (foodRemS  < TACLS_FOOD_WARN_S)   lsYellow = true;
         if (waterRemS < TACLS_WATER_WARN_S)  lsYellow = true;
         if (o2RemS    < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (co2RemS   < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (wRemS     < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (wwRemS    < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (state.tacCO2_tot > 0.0f &&
-            (state.tacCO2 / state.tacCO2_tot) > TACLS_WASTE_WARN_FRAC) lsYellow = true;
-        if (state.tacWaste_tot > 0.0f &&
-            (state.tacWaste / state.tacWaste_tot) > TACLS_WASTE_WARN_FRAC) lsYellow = true;
-        if (state.tacWW_tot > 0.0f &&
-            (state.tacWW / state.tacWW_tot) > TACLS_WASTE_WARN_FRAC) lsYellow = true;
       }
     }
   }
@@ -360,15 +334,14 @@ void updateCautionWarningState() {
       bitSet(cw, CW_Ap_LOW);
   }
 
-  // CW_HIGH_Q: dynamic pressure exceeds body-specific threshold.
-  // Uses currentBody.highQThreshold (Pa). 0 means suppressed for this body.
-  // Proxy: 0.5 * atmoPressure_Pa * vel_surf² approximates dynamic pressure (Pa).
-  // atmoPressure from Simpit is in kPa so multiply by 1000 to convert to Pa.
-  // Threshold is calibrated empirically per body in the BodyParams table.
-  if (currentBody.highQThreshold > 0.0f && inAtmo && state.atmoPressure > 0.0f) {
-    float dynPressProxy = 0.5f * (state.atmoPressure * 1000.0f) *
-                          (state.vel_surf * state.vel_surf);
-    if (dynPressProxy > currentBody.highQThreshold)
+  // CW_HIGH_Q: true dynamic pressure q = 0.5 * airDensity * vel_surf² (Pa) above
+  // CW_HIGH_Q_PA, the same q CW_CHUTE_ENV uses. q is what loads the airframe on any
+  // body, so one threshold serves all of them. This used to be 0.5 * static pressure *
+  // v², which is not a pressure at any scale and needed a per-body calibration that
+  // was never done: every body's highQThreshold was 0, so the tile could not light.
+  if (inAtmo && state.airDensity > 0.0f) {
+    float q = 0.5f * state.airDensity * state.vel_surf * state.vel_surf;
+    if (q > CW_HIGH_Q_PA)
       bitSet(cw, CW_HIGH_Q);
   }
 

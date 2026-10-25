@@ -34,7 +34,7 @@ const bool     PERSIST_WIPE      = false;
 
 CACHE_CODE
 PERSIST_CODE
-const PresetGroup PRESETS[PRESET_COUNT] = { { "SPCT", { RES_ELEC_CHARGE }, 1 }, {}, {}, {}, {}, {} };
+const PresetGroup PRESETS[PRESET_COUNT] = { { "SPC", { RES_ELEC_CHARGE }, 1 }, {}, {}, {}, {}, {} };
 
 static int fails = 0;
 #define CHECK(cond, msg) do { if (!(cond)) { printf("FAIL: %s\n", msg); fails++; } else printf("  ok: %s\n", msg); } while (0)
@@ -117,7 +117,7 @@ int main() {
   clearDefaultLayout(); persistStoreNow(); persistLoad();
   CHECK(!defaultLayoutSet(), "a cleared default stays cleared");
   slotCount = 0;
-  CHECK(!layoutIsDefault(), "an empty layout is not the SPCT default");
+  CHECK(!layoutIsDefault(), "an empty layout is not the SPC default");
 
   // 9. An empty set at a save point forgets the vessel; a clear forgets all.
   setLayout("Kerbal X", 4, (int)RES_ELEC_CHARGE, -1.0f); saveVesselSlots(currentVesselName);

@@ -49,7 +49,7 @@
 // between rows; 7 rows from y=90 span to a last-row bottom of ~571, filling the
 // full 600 px height. Value columns are right-justified to an 8 px inset from
 // each half's edge (left → x=462 at the divider, right → x=930 at the content
-// edge). Widest labels: "SMA" 91 px (left), "ARG.PE" 159 px (right) — both
+// edge). Widest labels: "SMA" (left) and "ARG.Pe" (right) — both
 // clear their value columns.
 static const int16_t ADV_TITLE_TOP  = TITLE_TOP;
 static const int16_t ADV_ROW_PITCH  = 73;
@@ -93,8 +93,8 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
     // Left column labels
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("SMA");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("ECC");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("PEA");
-    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("APA");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("PeA");
+    tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("ApA");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("ALT.SL");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("V.ORB");
     tft.setCursor(ADV_L_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("PERIOD");
@@ -102,11 +102,11 @@ void chromeScreen_OrbAdv(KCM_TFT &tft) {
     // Right column labels
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 0 * ADV_ROW_PITCH); tft.print("INC");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 1 * ADV_ROW_PITCH); tft.print("LAN");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("ARG.PE");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 2 * ADV_ROW_PITCH); tft.print("ARG.Pe");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 3 * ADV_ROW_PITCH); tft.print("TRUE ANOM");
     tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 4 * ADV_ROW_PITCH); tft.print("MEAN ANOM");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("T+PE");
-    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("T+AP");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 5 * ADV_ROW_PITCH); tft.print("T+Pe");
+    tft.setCursor(ADV_R_LABEL_X, ADV_ROW_Y0 + 6 * ADV_ROW_PITCH); tft.print("T+Ap");
 }
 
 void drawScreen_OrbAdv(KCM_TFT &tft) {

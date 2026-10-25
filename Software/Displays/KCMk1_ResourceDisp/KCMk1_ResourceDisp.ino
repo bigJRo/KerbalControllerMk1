@@ -68,7 +68,7 @@ void setup() {
     initDemoMode();
   } else {
     // Live mode: initDefaultSlots() loads the default layout (the pilot's stored
-    // one from EEPROM, else the SPCT preset) without implying any resource is
+    // one from EEPROM, else the SPC preset) without implying any resource is
     // actually present. Values start at zero so bars start empty; Simpit populates
     // them once a flight scene is entered, and the vessel-name message swaps in the
     // vessel's own remembered layout if it has one. The slot selection persists

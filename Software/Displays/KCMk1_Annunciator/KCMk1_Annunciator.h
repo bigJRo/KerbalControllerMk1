@@ -107,6 +107,11 @@ struct AppState {
   float SF_stage     = 0.0f;   // solid fuel -- current stage (for SRB ACTIVE)
   float SF_stage_tot = 0.0f;
 
+  // Resources -- propellant (whole vessel), for the no-propellant LOW dV suppression
+  float LF_vessel    = 0.0f;   // liquid fuel on board (LF_MESSAGE, available)
+  float OX_vessel    = 0.0f;   // oxidizer on board    (OX_MESSAGE, available)
+  bool  propSeen     = false;  // an LF / OX message has arrived for this vessel (needs ARP)
+
   // Resources -- MonoPropellant (total vessel)
   float mono     = 0.0f;
   float mono_tot = 0.0f;
@@ -119,13 +124,6 @@ struct AppState {
   float tacWater_tot   = 0.0f;
   float tacOxygen      = 0.0f;
   float tacOxygen_tot  = 0.0f;
-  // Waste resources: current fill level and total capacity
-  float tacCO2       = 0.0f;
-  float tacCO2_tot   = 0.0f;
-  float tacWaste     = 0.0f;
-  float tacWaste_tot = 0.0f;
-  float tacWW        = 0.0f;   // WasteWater (LiquidWaste in Simpit)
-  float tacWW_tot    = 0.0f;
 
   // Atmosphere
   float atmoPressure = 0.0f;  // kPa   -- for HIGH Q proxy
@@ -286,11 +284,12 @@ enum ChuteEnvState : uint8_t {
      MAJOR -- incompatible structural changes
      MINOR -- new features or screens added
      PATCH -- bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 3.0.0
+   This sketch requires KerbalDisplayCommon >= 3.11.1 (the ² in SURF. GRAVITY)
+   and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 7;
-static const uint8_t SKETCH_VERSION_PATCH = 0;  // 3.7.0: alarm audio on every screen; ELEC GEN / SRB ACTIVE latch; test harness
+static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: whole-vessel LF / OX channels; LOW dV suppressed with no propellant (#72)
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 3.8.2: LIFE SUPPORT watches food, water, oxygen only
 
 
 /***************************************************************************************
@@ -342,6 +341,7 @@ extern const float  CW_RCS_LOW_FRAC;         // CW_RCS_LOW: MonoProp fraction (0
 extern const float  CW_PROP_LOW_WARN_FRAC;   // CW_PROP_LOW: yellow tier fraction (0.20)
 extern const float  CW_PROP_LOW_ALARM_FRAC;  // CW_PROP_LOW: red tier fraction (0.05)
 extern const float  CW_PROP_IMBAL_TOL;       // CW_PROP_IMBAL: ratio deviation tolerance (0.10)
+extern const float  CW_PROP_EMPTY_UNITS;     // CW_LOW_DV: below this LF and OX on board = no propellant
 extern const float  CW_PROP_NOMINAL_RATIO;   // CW_PROP_IMBAL: expected LF/OX ratio (0.818)
 extern const float  CW_CHUTE_MAIN_MAX_Q;     // CHUTE_ENV: main chute rip dynamic pressure (Pa)
 extern const float  CW_CHUTE_DROGUE_MAX_Q;   // CHUTE_ENV: drogue rip dynamic pressure (Pa)
@@ -350,9 +350,6 @@ extern const float  CW_CHUTE_DROGUE_MAX_Q;   // CHUTE_ENV: drogue rip dynamic pr
 extern const double TACLS_FOOD_RATE;
 extern const double TACLS_WATER_RATE;
 extern const double TACLS_OXYGEN_RATE;
-extern const double TACLS_CO2_RATE;
-extern const double TACLS_WASTE_RATE;
-extern const double TACLS_WASTEWATER_RATE;
 
 // From AAA_Config.ino -- TAC-LS warning thresholds
 extern const float  TACLS_FOOD_WARN_S;      // yellow: 72 hours
@@ -361,8 +358,6 @@ extern const float  TACLS_WATER_WARN_S;     // yellow: 12 hours
 extern const float  TACLS_WATER_ALARM_S;    // red:     4 hours
 extern const float  TACLS_OXYGEN_WARN_S;    // yellow: 30 minutes
 extern const float  TACLS_OXYGEN_ALARM_S;   // red:    10 minutes
-extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
-extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
 // GPWS function tunables now live locally in GPWS.ino (TUNABLES block) so the whole
 // envelope definition stays in one place -- no AAA_Config externs needed.

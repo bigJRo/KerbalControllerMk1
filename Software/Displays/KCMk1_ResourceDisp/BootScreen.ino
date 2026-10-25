@@ -89,7 +89,7 @@ void bootSimText(KCM_TFT &tft) {
   {
     char buf[64];
     snprintf(buf, sizeof(buf), "Vessel memory: %d vessel(s), %s default layout",
-             persistVesselCount(), defaultLayoutSet() ? "pilot" : "SPCT");
+             persistVesselCount(), defaultLayoutSet() ? "pilot" : "SPC");
     y = _bs_line(tft, y, buf, TFT_GREY);  _bs_wait(BS_HOLD);
   }
   y += 14;  // slightly tighter blank before Nedry

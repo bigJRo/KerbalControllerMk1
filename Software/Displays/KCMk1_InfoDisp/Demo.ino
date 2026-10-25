@@ -77,7 +77,7 @@ static uint8_t _demoObMode = 0, _demoObPhase = 0; static uint32_t _demoObPhaseMs
 static bool    _demoObAppr = false, _demoObWarp = true, _demoObStage = true;
 static float   _demoObAp = 250000.0f, _demoObPe = 80000.0f, _demoObInc = 0.0f, _demoObRate = -2.0f, _demoObDist = 50.0f;
 static uint8_t _demoObReason = 0; static uint32_t _demoObReasonMs = 0;
-static uint8_t _demoLdMode = 0; static bool _demoLdEntry = false, _demoLdRadial = false;
+static uint8_t _demoLdMode = 0; static bool _demoLdEntry = false, _demoLdVert = false;
 static float   _demoLdRate = -4.0f, _demoLdAlt = 50.0f, _demoLdTwr = 0.0f, _demoLdMargin = 150.0f, _demoLdAoa = 8.0f, _demoLdRoll = 0.0f;
 static uint8_t _demoLdReason = 0; static uint32_t _demoLdReasonMs = 0;
 
@@ -155,7 +155,7 @@ bool hpDemoApplyCommand(uint8_t op, float payload) {
     case LD_CMD_SET_MARGIN: _demoLdMargin = payload; return true;
     case LD_CMD_SET_ENTRY_AOA: _demoLdAoa = payload; return true;
     case LD_CMD_SET_ENTRY_ROLL: _demoLdRoll = payload; return true;
-    case LD_CMD_SET_ATT_REF: _demoLdRadial = on; return true;
+    case LD_CMD_SET_ATT_REF: _demoLdVert = on; return true;
     default: return false;
   }
 }
@@ -413,7 +413,9 @@ void stepDemoState() {
     float ignAlt = 2140.0f + 800.0f * sinf(_demoPhase * 0.2f);
     bool brakeFiring = (_demoLdMode == 3) && state.radarAlt < ignAlt;
     state.ldFlags = (ldEngaged ? 0x01 : 0) | ((_demoLdMode == 3 && !brakeFiring) ? 0x02 : 0) | (brakeFiring ? 0x04 : 0) |
-                    (_demoLdRadial ? 0x08 : 0) | (_demoObStage ? 0x10 : 0) | ((millis() / 40000) % 2 ? 0x40 : 0);
+                    (_demoLdVert ? 0x08 : 0) | (_demoObStage ? 0x10 : 0) | ((millis() / 40000) % 2 ? 0x40 : 0) |
+                    // vertHold, as Controller_Main reports it: VERT, or RETRO near zero speed
+                    ((_demoLdMode != 0 && !_demoLdEntry && (_demoLdVert || state.surfaceVel < 1.5f)) ? 0x80 : 0);
     state.ldMode = _demoLdMode; state.ldEntry = _demoLdEntry ? 1 : 0;
     state.ldReason = _demoLdReason;
     state.ldReasonAge = _demoLdReason ? (uint8_t)min((now - _demoLdReasonMs) / 1000UL, 255UL) : 255;

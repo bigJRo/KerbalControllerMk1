@@ -216,7 +216,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (debugMode) { Serial.print(F("ResourceDisp: vessel name = ")); Serial.println(newName); }
         currentVesselName = newName;
         // A vessel in memory gets its own layout back; one that is not starts from
-        // the default (the pilot's stored one, else SPCT), so a new craft never
+        // the default (the pilot's stored one, else SPC), so a new craft never
         // inherits whatever the previous vessel happened to show. On EVA the bar
         // set is fixed (EC/EVA/O2/Food/Water) — skip both so the EVA Kerbal's name
         // can't override it.

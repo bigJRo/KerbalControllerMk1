@@ -94,7 +94,7 @@ void chromeScreen_ROVRAP(KCM_TFT &tft) {
     textLeft(tft, RA_F_LBL, CON_C2X + 4, conRowY(i), CON_COLW - CON_VALW, CON_ROW_H, RA_GUARD_LBL[i], RA_LBL, TFT_BLACK);
     conDrawValueBox(tft, CON_C2X, i);
   }
-  static const char *const DATA_LBL[7] = { "SPEED", "HDG", "TGT BRG", "DIST", "PITCH", "WHL THR", "BRAKES" };
+  static const char *const DATA_LBL[7] = { "V.SRF", "HDG", "BRG", "DIST", "PITCH", "WHL THR", "BRAKES" };
   for (uint8_t r = 0; r < 7; r++)
     textLeft(tft, RA_F_LBL, CON_C3X + 4, conRowY(r), CON_COLW - CON_VALW, CON_ROW_H, DATA_LBL[r], RA_LBL, TFT_BLACK);
   textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 8,  CON_COLW - 8, 20, "TGT stops at STOP; FOLLOW holds", TFT_DARK_GREY, TFT_BLACK);

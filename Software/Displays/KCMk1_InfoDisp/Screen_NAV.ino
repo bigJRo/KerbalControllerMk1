@@ -20,7 +20,7 @@
        violet marker              target bearing (matches the target colour elsewhere)
      Heading box, above the card  HDG, three digits
      Left column                  TRK (ground track), DRIFT (track minus heading)
-     Right column                 DIST, V.CLS (closure) and T+INT, when a target is set
+     Right column                 DIST, V.CLOSE (closure) and T+INT, when a target is set
 
    Drift is the one number here that appears nowhere else on either panel: the angle
    between where the nose points and where the vessel is going. In an atmosphere that
@@ -332,7 +332,8 @@ static const int16_t NAV_KEY_H  = 28;
 static const int16_t NAV_KEY_TRI_W = 13;
 static const int16_t NAV_KEY_TRI_H = 11;
 
-static inline bool _navHasTrack() { return state.surfaceVel >= NAV_TRK_MIN_MS; }
+// Magnitude, as ROVER treats it: a signed feed (the demo) must not hide the track.
+static inline bool _navHasTrack() { return fabsf(state.surfaceVel) >= NAV_TRK_MIN_MS; }
 
 
 // Plan-view aircraft at the card centre. Static: the rose rotates around it, so it is
@@ -604,7 +605,13 @@ void drawScreen_NAV(KCM_TFT &tft) {
 
   // ── DIST — range to target ─────────────────────────────────────────────────────────
   {
-    int32_t dist = hasTgt ? (int32_t)lroundf(state.tgtDistance) : -1;
+    // Keyed on what formatAlt prints: hundredths below 1,000 m, whole metres above
+    // (offset so the two ranges cannot collide). A whole-metre key froze the decimals,
+    // as it once did for V.CLOSE below.
+    const float d = state.tgtDistance;
+    int32_t dist = !hasTgt     ? -1
+                 : (d < 1000.0f) ? (int32_t)lroundf(d * 100.0f)
+                                 : 200000 + (int32_t)lroundf(d);
     if (dist != _navPrevDist) {
       _navPrevDist = dist;
       tft.fillRect(NAV_RCOL_X, NAV_COL_Y + NAV_LBL_H, NAV_COL_W, NAV_VAL_H, TFT_BLACK);
@@ -615,7 +622,7 @@ void drawScreen_NAV(KCM_TFT &tft) {
     }
   }
 
-  // ── V.CLS — closure rate, negative closing (same sign convention as TGT/DOCK) ──────
+  // ── V.CLOSE — closure rate, negative closing (same sign convention as TGT/DOCK) ──────
   {
     // Keyed on tenths, which is what fmtMs prints; a whole-metre key froze the decimal.
     int16_t c = hasTgt ? (int16_t)lroundf(state.tgtVelocity * 10.0f) : -9999;
@@ -632,7 +639,7 @@ void drawScreen_NAV(KCM_TFT &tft) {
 
   // ── T+INT — time to intercept, distance over closure rate ──────────────────────────
   // The same quantity, the same formula and the same label as TARGET's T+Int row: only
-  // meaningful while actually closing, dashed otherwise. DIST and V.CLS were already
+  // meaningful while actually closing, dashed otherwise. DIST and V.CLOSE were already
   // here and neither answers "how long"; on an approach that is the number being flown
   // to, and it is nowhere on this panel's partner.
   {

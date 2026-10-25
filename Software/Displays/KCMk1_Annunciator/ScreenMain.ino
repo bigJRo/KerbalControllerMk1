@@ -241,7 +241,7 @@ static const char *ctrlModeText(CtrlMode mode) {
   switch (mode) {
     case ctrl_Rover:      return "RVR";
     case ctrl_Plane:      return "PLN";
-    case ctrl_Spacecraft: return "SPCFT";
+    case ctrl_Spacecraft: return "SPC";     // matches the control-mode switch legend (SPC / PLN / RVR)
     default:              return "ERR";
   }
 }
@@ -565,10 +565,10 @@ void drawStaticMain(KCM_TFT &tft) {
   printDispChrome(tft, &Roboto_Black_28, NAME_X, BOT_Y + TEL_ROW_H, NAME_W, TEL_ROW_H,
                   "TIMEWARP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y, TEL_W, TEL_ROW_H, "STG",   KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "TMAX",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y, TEL_W, TEL_ROW_H, "CORE",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y, TEL_W, TEL_ROW_H, "CREW",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0,             BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "COMM",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
-  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "TSKIN", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
+  printDispChrome(tft, &Roboto_Black_28, TEL_X0 + TEL_W,     BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "SKIN",  KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, TEL_X0 + 2 * TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H, "CAP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
   printDispChrome(tft, &Roboto_Black_28, CG_X, R3_Y, CG_W, R3_H, "CTRLGRP", KDC_LABEL_COLOR, TFT_BLACK, TFT_GREY);
 
@@ -646,7 +646,7 @@ void updateScreenMain(KCM_TFT &tft) {
   if (state.maxTemp != prev.maxTemp) {
     uint16_t fc, bc; tempTierColor(state.maxTemp, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0 + TEL_W, BOT_Y, TEL_W, TEL_ROW_H,
-               "TMAX", formatPerc(state.maxTemp), fc, bc, TFT_BLACK, psTmax);
+               "CORE", formatPerc(state.maxTemp), fc, bc, TFT_BLACK, psTmax);
     prev.maxTemp = state.maxTemp;
   }
   if (state.crewCount != prev.crewCount) {
@@ -668,7 +668,7 @@ void updateScreenMain(KCM_TFT &tft) {
   if (state.skinTemp != prev.skinTemp) {
     uint16_t fc, bc; tempTierColor(state.skinTemp, fc, bc);
     printValue(tft, &Roboto_Black_28, TEL_X0 + TEL_W, BOT_Y + TEL_ROW_H, TEL_W, TEL_ROW_H,
-               "TSKIN", formatPerc(state.skinTemp), fc, bc, TFT_BLACK, psTskin);
+               "SKIN", formatPerc(state.skinTemp), fc, bc, TFT_BLACK, psTskin);
     prev.skinTemp = state.skinTemp;
   }
   if (state.capValue != prev.capValue) {

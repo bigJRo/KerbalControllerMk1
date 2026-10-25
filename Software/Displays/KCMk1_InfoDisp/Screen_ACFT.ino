@@ -484,13 +484,13 @@ static void _acftDrawAoAChrome(KCM_TFT &tft) {
     uint8_t zi = (uint8_t)(180 - AOA_ANG_LO);
     tft.drawLine(_aoaIX[zi], _aoaIY[zi], _aoaOX[zi], _aoaOY[zi], TFT_WHITE);
 
-    // "AoA" label centred just below the arc's lower end. The arc spans 155..205°
+    // "AOA" label centred just below the arc's lower end. The arc spans 155..205°
     // at radius R+18, so its lowest point is at y = CY + (R+18)*sin(25°) ≈ CY+92.
     // Place the label ~4px below that, in the clear slot between the pitch tape
     // (right edge 118) and the ball's left rim.
     textCenter(tft, &Roboto_Black_20,
                ACFT_CX - ACFT_R - 25, ACFT_CY + 100, 50, 26,
-               "AoA", TFT_WHITE, TFT_BLACK);
+               "AOA", TFT_WHITE, TFT_BLACK);
 }
 
 // Pointer state — tracked in integer degrees to avoid float drift

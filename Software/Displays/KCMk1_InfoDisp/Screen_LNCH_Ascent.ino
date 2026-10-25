@@ -245,13 +245,16 @@ static const uint16_t LNCH_AS_ATMO_TICK_SKY_COLOR = TFT_DARK_GREY;
 // Alt.SL, ApA, V.Srf and V.Vrt moved onto their gauges, and their caches with them --
 // the gauge windows keep last-drawn strings instead. What is left is the readout
 // column's own seven rows.
-static int32_t _lnchAsPrevTimeToAp   = -1 << 30;  // seconds
+// Cache sentinel: no value drawn yet. Written -(1 << 30) because shifting a negative
+// value (LNCH_AS_NONE) is undefined before C++20.
+static const int32_t LNCH_AS_NONE = -(1 << 30);
+static int32_t _lnchAsPrevTimeToAp   = LNCH_AS_NONE;  // seconds
 static int16_t _lnchAsPrevThrottle   = -1;        // percent (0-100)
-static int32_t _lnchAsPrevQ          = -1 << 30;  // tenths of a kPa
+static int32_t _lnchAsPrevQ          = LNCH_AS_NONE;  // tenths of a kPa
 static int32_t _lnchAsPrevMach       = -9999;     // hundredths, -9999 = "---"
-static int32_t _lnchAsPrevG          = -1 << 30;  // tenths of a g
-static int32_t _lnchAsPrevTBurn      = -1 << 30;  // seconds
-static int32_t _lnchAsPrevDVStg      = -1 << 30;  // m/s (as tenths? or int)
+static int32_t _lnchAsPrevG          = LNCH_AS_NONE;  // tenths of a g
+static int32_t _lnchAsPrevTBurn      = LNCH_AS_NONE;  // seconds
+static int32_t _lnchAsPrevDVStg      = LNCH_AS_NONE;  // m/s (as tenths? or int)
 // Track colors too (threshold changes don't alter the numeric value but still require redraw)
 static uint16_t _lnchAsPrevTimeToApFg= 0xFFFF;
 static uint16_t _lnchAsPrevThrFg     = 0xFFFF; static uint16_t _lnchAsPrevThrBg  = 0xFFFF;
@@ -737,11 +740,11 @@ static void _lnchAsDrawVVrtChrome(KCM_TFT &tft) {
     const int16_t LBL_X0 = LNCH_AS_VVRT_X_LEFT - LNCH_AS_LBL_OVERHANG;
     const int16_t LBL_W  = LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG;
 
-    // Bar name "V.Vrt" (Black_20)
+    // Bar name "V.VRT" (Black_20)
     textCenter(tft, &Roboto_Black_20,
                LBL_X0, LNCH_AS_GAUGE_NAME_Y,
                LBL_W, LNCH_AS_GAUGE_NAME_H,
-               "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
+               "V.VRT", TFT_LIGHT_GREY, TFT_BLACK);
 
     // Endpoint labels (Black_16), a few px clear of the bar top/bottom borders.
     textCenter(tft, &Roboto_Black_16,
@@ -857,11 +860,11 @@ static void _lnchAsDrawVOrbChrome(KCM_TFT &tft) {
     const int16_t LBL_X0 = LNCH_AS_VORB_X_LEFT - LNCH_AS_LBL_OVERHANG;
     const int16_t LBL_W  = LNCH_AS_VORB_W + 2 * LNCH_AS_LBL_OVERHANG;
 
-    // Bar name "V.Orb" (Black_20)
+    // Bar name "V.ORB" (Black_20)
     textCenter(tft, &Roboto_Black_20,
                LBL_X0, LNCH_AS_GAUGE_NAME_Y,
                LBL_W, LNCH_AS_GAUGE_NAME_H,
-               "V.Orb", TFT_LIGHT_GREY, TFT_BLACK);
+               "V.ORB", TFT_LIGHT_GREY, TFT_BLACK);
 
     // Top endpoint label — v_circ at target orbit (body-aware), with unit.
     float vCirc = _lnchAsCircularOrbitVelocity();
@@ -1606,13 +1609,13 @@ static void _lnchAsDrawLeftPanelValues(KCM_TFT &tft) {
 // Reset all ascent-phase change-detection state + PrintState. Called at chrome
 // time to force a full redraw.
 static void _lnchAsResetState() {
-    _lnchAsPrevTimeToAp   = -1 << 30;
+    _lnchAsPrevTimeToAp   = LNCH_AS_NONE;
     _lnchAsPrevThrottle   = -1;
-    _lnchAsPrevQ          = -1 << 30;
+    _lnchAsPrevQ          = LNCH_AS_NONE;
     _lnchAsPrevMach       = -9999;
-    _lnchAsPrevG          = -1 << 30;
-    _lnchAsPrevTBurn      = -1 << 30;
-    _lnchAsPrevDVStg      = -1 << 30;
+    _lnchAsPrevG          = LNCH_AS_NONE;
+    _lnchAsPrevTBurn      = LNCH_AS_NONE;
+    _lnchAsPrevDVStg      = LNCH_AS_NONE;
     _lnchAsPrevTimeToApFg = 0xFFFF;
     _lnchAsPrevThrFg      = 0xFFFF; _lnchAsPrevThrBg  = 0xFFFF;
     _lnchAsPrevQFg        = 0xFFFF; _lnchAsPrevQBg    = 0xFFFF;
@@ -1659,7 +1662,7 @@ static void _lnchAsResetState() {
 // stage, not a countdown of any particular burn. The old label read like a time-to.
 // The circularisation phase uses the same name for the same field.
 static const char *_lnchAsLabels[LNCH_AS2_NROWS] = {
-    "T+AP", "THRTL", "Q", "MACH", "G", "STG.BRN", "\xCE\x94V.STG"
+    "T+Ap", "THRTL", "Q", "MACH", "G", "STG.BRN", "\xCE\x94V.STG"
 };
 
 // Draw static chrome for the ascent-phase right panel: a border separating
@@ -1792,7 +1795,7 @@ static void _lnchAs2UpdateTimeToAp(KCM_TFT &tft, uint8_t row,
     if (suppress) {
         val = "---";
         fg = TFT_DARK_GREY;
-        iTtAp = -1 << 29;
+        iTtAp = -(1 << 29);
     } else {
         if      (ttAp < 0)                   fg = TFT_RED;
         else if (ttAp < LNCH_TOAPO_WARN_S)   fg = TFT_YELLOW;
@@ -1818,6 +1821,7 @@ static void _lnchAs2UpdateTBurn(KCM_TFT &tft, uint8_t row,
                    LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                    LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                         TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+    propNeutral(fg, bg);
 
     if (iTb == prevTB && fg == prevFg && bg == prevBg) return;
 
@@ -1946,6 +1950,7 @@ static void _lnchAsUpdateDVStg(KCM_TFT &tft) {
                    DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                    DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                    TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+    propNeutral(fg, bg);
 
     if (iDv == _lnchAsPrevDVStg &&
         fg == _lnchAsPrevDVStgFg && bg == _lnchAsPrevDVStgBg) return;

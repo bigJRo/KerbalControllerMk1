@@ -53,7 +53,7 @@
    Row 7: RCS | SAS buttons (to screen bottom)
    Rows 4 and 5 mirror TGT exactly, so the same four angles read the same way on both
    screens. The split cells cannot hold a decimal, so both pairs are whole degrees;
-   V.Lat (m/s, two decimals) is the precision instrument at docking range.
+   V.Lat (m/s, one decimal) is the precision instrument at docking range.
 
    RETICLE GEOMETRY (rev-2, 1024×600)
    ──────────────────────────────────
@@ -313,7 +313,7 @@ static void chromeScreen_DOCK(KCM_TFT &tft) {
         return;
     }
 
-    if (!state.targetAvailable) {
+    if (!targetPresent()) {
         _dockChromDrawn = false;
         tft.fillRect(0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP, TFT_BLACK);
         textCenter(tft, &Roboto_Black_72, 0, TITLE_TOP, CONTENT_W, SCREEN_H - TITLE_TOP,
@@ -353,7 +353,7 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     if (_vesselDocked) return;
 
     // State transitions
-    if (!state.targetAvailable) {
+    if (!targetPresent()) {
         if (_dockChromDrawn) { _dockChromDrawn = false; switchToScreen(screen_DOCK); }
         return;
     }
@@ -443,21 +443,26 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
     // Row 2 — Closure velocity  (cache slot 2)
     {
         float vc = state.tgtVelocity;
-        bool closing = (vc < 0.0f);
+        // Holding station reads green, not as opening: a rate that prints as +/-0.00
+        // (below DOCK_VCLOSE_HOLD_MS) used to flip green/yellow on the sign of noise.
+        bool opening = (vc >= DOCK_VCLOSE_HOLD_MS);
         bool tooFast = fabsf(vc) > DOCK_VCLOSURE_ALARM_MS && state.tgtDistance < DOCK_VCLOSURE_ALARM_DIST_M;
         if (tooFast) { fg = TFT_WHITE; bg = TFT_RED; }
-        else         { fg = closing ? TFT_DARK_GREEN : TFT_YELLOW; bg = TFT_BLACK; }
+        else         { fg = opening ? TFT_YELLOW : TFT_DARK_GREEN; bg = TFT_BLACK; }
         snprintf(buf, sizeof(buf), "%+.2f m/s", vc);
         dockVal(2, 2, "V.CLOSE", buf, fg, bg);
     }
 
     // Row 3 — V.Lat total lateral drift magnitude  (cache slot 3)
+    // Two decimals, the precision this row exists for, and coloured by the value AS
+    // PRINTED: at one decimal 0.06 printed "0.1" in green and 0.10 printed "0.1" in yellow.
     {
-        float av = v_lat_mag;
+        float av = roundf(v_lat_mag * 100.0f) / 100.0f;
         if      (av >= DOCK_DRIFT_ALARM_MS) { fg = TFT_WHITE;      bg = TFT_RED;   }
         else if (av >= DOCK_DRIFT_WARN_MS)  { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                 { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
-        dockVal(3, 3, "V.LAT", fmtMs(v_lat_mag), fg, bg);
+        snprintf(buf, sizeof(buf), "%.2f m/s", av);
+        dockVal(3, 3, "V.LAT", buf, fg, bg);
     }
 
     // Row 4 — Brg | Elv: where the port sits relative to the NOSE (cache slots 4, 5).
@@ -533,8 +538,8 @@ static void drawScreen_DOCK(KCM_TFT &tft) {
                 case 2:   v = "RETR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 3:   v = "NRM";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 4:   v = "ANRM"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 5:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 6:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 5:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 6:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 7:   v = "TGT";  sasFg = TFT_WHITE;     sasBg = TFT_DARK_GREEN; break;
                 case 8:   v = "ATGT"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 9:   v = "MNVR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;

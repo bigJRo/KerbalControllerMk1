@@ -7,7 +7,7 @@
 
    LAYOUT (rev-2 rebalance — graphics fill x=0..578, text panel x=580..940):
      - Altitude tape (x=0..70, full height)     — vertical 0-500m / 0-50m altitude scale
-     - X-Pointer square (x=128..488, side 360)  — surface-drift centrepiece (lat/fwd velocity)
+     - X-Pointer square (x=136..468, side 332)  — surface-drift centrepiece (lat/fwd velocity)
      - ATT bullseye (centred under XP, R=50)    — attitude alignment dot in concentric rings
      - V.Vrt bar (x=544..574, full height)      — vertical velocity 0-15 m/s gauge (far right)
      - Right panel (x=580..940, 360px)          — numeric readouts
@@ -29,7 +29,7 @@ static const uint8_t LNDG_SC = (uint8_t)screen_LNDG;   // row-cache / print-stat
 /***************************************************************************************
    LAYOUT CONSTANTS
    Altitude tape:  x=40..70,  y=TITLE_TOP+8..SCREEN_H  (full height = 0-500m / 0-50m)
-   X-Pointer:      360×360,   x=128..488, y=88..448    (surface-drift centrepiece)
+   X-Pointer:      332×332,   x=136..468, y=88..420    (surface-drift centrepiece)
    ATT bullseye:   R=50,      centred under the X-Pointer
    V.Vrt bar:      x=544..574, full height             (descent rate 0-15 m/s)
    Right panel:    x=580..940 (360px, standardized)
@@ -56,7 +56,7 @@ static const uint16_t LNDG_XP_SIDE  = 332;                          // trimmed t
                                                                    //   compasses below more room
 static const uint16_t LNDG_XP_CX    = LNDG_XP_X + LNDG_XP_SIDE / 2;  // 302
 static const uint16_t LNDG_XP_CY    = LNDG_XP_Y + LNDG_XP_SIDE / 2;  // 254
-static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 12 px/(m/s) — ±15 to edge
+static const float    LNDG_XP_SCALE = (float)(LNDG_XP_SIDE / 2) / 15.0f;  // 11.07 px/(m/s) — ±15 to edge
 
 // X-Pointer field colours
 static const uint16_t LNDG_XP_BG    = TFT_DARK_GREY;
@@ -977,6 +977,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                            LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                            LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            propNeutral(sfg, sbg);
             rpVal(3, "STG.BRN", formatTimeCompact(state.stageBurnTime), sfg, sbg, 3);
         }
 
@@ -986,7 +987,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
             _lndgHorzColor(vFwd, tGround, ffg, fbg);
             _lndgHorzColor(vLat, tGround, lfg, lbg);
             uint16_t y = rowYFor(4,RNR), h = rowHFor(RNR);
-            // Always show sign. One decimal for |v|<10, integer for |v|>=10.
+            // One decimal at every magnitude; negative values carry "-", positive no "+".
             // Roboto_Black_24 used for value font — fits "+99.9 m/s" in split column.
             static const tFont *RFS = &Roboto_Black_24;
             // Clamp to ±99.9 m/s so fmtMs always fits in the split column
@@ -1017,6 +1018,7 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                            DV_STG_ALARM_MS, TFT_WHITE,  TFT_RED,
                            DV_STG_WARN_MS,  TFT_YELLOW, TFT_BLACK,
                            TFT_DARK_GREEN, TFT_BLACK, sfg, sbg);
+            propNeutral(sfg, sbg);
             rpVal(5, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), sfg, sbg, 6);
         }
 
@@ -1065,14 +1067,28 @@ static void _lndgDrawPowered(KCM_TFT &tft) {
                     gc.value = gv;
                 }
             }
-            // SAS button — landing context: STAB and RETR acceptable, others questionable
+            // SAS button — landing context. Every mode is named, as on DOCKING / MANEUVER /
+            // RE-ENTRY. STAB and RETR are the landing modes and read green; any other mode is
+            // wrong for a landing and reads white on red. That includes RAD+: radial out is
+            // up with the velocity removed, so in a vertical descent it lies near the horizon
+            // (#68). SAS off is an alarm, except while the Landing Autopilot's vertical hold
+            // is flying (ldFlags bit 7), which turns SAS off on purpose: then "VERT", green.
             {
-                const char *sv; uint16_t sfg, sbg;
-                switch (state.sasMode) {
-                    case 255: sv = "SAS";  sfg = TFT_WHITE;     sbg = TFT_RED;        break; // off — alarm
-                    case 0:   sv = "STAB"; sfg = TFT_WHITE;     sbg = TFT_DARK_GREEN; break; // good for landing
-                    case 2:   sv = "RETR"; sfg = TFT_WHITE;     sbg = TFT_DARK_GREEN; break; // good for landing
-                    default:  sv = "SAS";  sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK;  break; // other — neutral
+                const char *sv; uint16_t sfg = TFT_WHITE, sbg = TFT_RED;
+                if (state.sasMode == 255 && (state.ldFlags & 0x80)) { sv = "VERT"; sbg = TFT_DARK_GREEN; }
+                else switch (state.sasMode) {
+                    case 255: sv = "SAS";  break;                                  // off — alarm
+                    case 0:   sv = "STAB"; sbg = TFT_DARK_GREEN; break;            // landing
+                    case 1:   sv = "PRO";  break;
+                    case 2:   sv = "RETR"; sbg = TFT_DARK_GREEN; break;            // landing
+                    case 3:   sv = "NRM";  break;
+                    case 4:   sv = "ANRM"; break;
+                    case 5:   sv = "RAD-"; break;                                  // AP_RADIALIN
+                    case 6:   sv = "RAD+"; break;                                  // AP_RADIALOUT
+                    case 7:   sv = "TGT";  break;
+                    case 8:   sv = "ATGT"; break;
+                    case 9:   sv = "MNVR"; break;
+                    default:  sv = "SAS";  sfg = TFT_DARK_GREY; sbg = TFT_OFF_BLACK; break; // unknown
                 }
                 RowCache &sc = rowCache[LNDG_SC][10];
                 String ssv = sv;

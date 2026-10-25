@@ -10,7 +10,7 @@
      BURN               | TARGET / OPTIONS     | PLAN
      [NODE] node ΔV     | [APPR] [rate]        | ΔV TOT
      [AP]   [target Ap] | HOLD AT [distance]   | ΔV REM
-     [PE]   [target Pe] | WARP    [AUTO/OFF]   | T-IGN
+     [PE]   [target Pe] | WARP    [AUTO/OFF]   | T+IGN
      [INC]  [target i]  | STAGE   [AUTO/OFF]   | BURN
      hint               |                      | ACCEL
      legend             | [EXEC/WARP] [A/P OFF]| STG ΔV
@@ -30,7 +30,7 @@ static const uint16_t OB_EDT = TFT_SKY;
 
 // Burn modes: 0 NODE, 1 AP, 2 PE, 3 INC (state.obMode 1..4). Approach is mode 4 here.
 static const uint8_t OB_BURNS = 4;
-static const char *const OB_BURN_LBL[OB_BURNS] = { "NODE", "AP", "PE", "INC" };
+static const char *const OB_BURN_LBL[OB_BURNS] = { "NODE", "Ap", "Pe", "INC" };
 static const uint8_t     OB_ARM_OP[OB_BURNS]   = { OB_CMD_ARM_NODE, OB_CMD_ARM_AP, OB_CMD_ARM_PE, OB_CMD_ARM_INC };
 static const uint8_t     OB_SET_OP[OB_BURNS]   = { 0, OB_CMD_SET_AP, OB_CMD_SET_PE, OB_CMD_SET_INC };
 
@@ -100,11 +100,11 @@ void chromeScreen_ORBTAP(KCM_TFT &tft) {
   conDrawValueBox(tft, CON_C2X, 1);
   textLeft(tft, OB_F_LBL, CON_C2X + 4, conRowY(2), CON_COLW - CON_VALW, CON_ROW_H, "WARP", OB_LBL, TFT_BLACK);
   textLeft(tft, OB_F_LBL, CON_C2X + 4, conRowY(3), CON_COLW - CON_VALW, CON_ROW_H, "STAGE", OB_LBL, TFT_BLACK);
-  static const char *const PLAN_LBL[7] = { "\x94V TOT", "\x94V REM", "T-IGN", "BURN", "ACCEL", "STG \x94V", "RANGE" };
+  static const char *const PLAN_LBL[7] = { "\x94V.TOT", "\x94V.REM", "T+IGN", "BURN DUR", "ACCEL", "\x94V.STG", "DIST" };
   for (uint8_t r = 0; r < 7; r++)
     textLeft(tft, OB_F_LBL, CON_C3X + 4, conRowY(r), CON_COLW - CON_VALW, CON_ROW_H, PLAN_LBL[r], OB_LBL, TFT_BLACK);
   textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 8,  CON_COLW - 8, 20, "Arm one burn, review the PLAN column,", TFT_DARK_GREY, TFT_BLACK);
-  textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 28, CON_COLW - 8, 20, "then EXEC. A/P OFF aborts at any phase.", TFT_DARK_GREY, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 28, CON_COLW - 8, 20, "then EXEC. A/P OFF aborts any phase.", TFT_DARK_GREY, TFT_BLACK);
   int16_t ly = conRowY(5) + 12, lx = CON_C1X + 2;
   tft.drawRect(lx, ly, 92, 28, TFT_GREY);             textCenter(tft, &Roboto_Black_16, lx, ly, 92, 28, "OFF", TFT_WHITE, TFT_BLACK);
   tft.drawRect(lx + 100, ly, 92, 28, TFT_CYAN);       textCenter(tft, &Roboto_Black_16, lx + 100, ly, 92, 28, "PENDING", TFT_CYAN, TFT_BLACK);
@@ -172,7 +172,16 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
     uint16_t fg;
     if (i == 0) {
       bool node = (state.obFlags & 0x20) != 0 || state.mnvrDeltaV > 0.01f;
-      if (node) snprintf(buf, sizeof(buf), "%.0f m/s", state.mnvrDeltaV); else snprintf(buf, sizeof(buf), "NO NODE");
+      if (node) {
+        conFmtWhole(state.mnvrDeltaV, "m/s", buf, sizeof(buf));
+        // The box holds 163 px of text (printValue right-aligns 8 px in from vx + vw and
+        // the border sits 6 px left of vx). A 10,000+ m/s burn ("10,500 m/s", 167 px)
+        // would cover the border, so it drops the space before the unit (159 px).
+        if (getFontStringWidth(CON_F_VAL, buf) > vw - 3) {
+          char *sp = strchr(buf, ' ');
+          if (sp) memmove(sp, sp + 1, strlen(sp));
+        }
+      } else snprintf(buf, sizeof(buf), "NO NODE");
       fg = obArmedMode(0) ? OB_VAL : TFT_DARK_GREY;
     } else {
       float v = obDirtyTgt[i] ? obPendTgt[i] : obTgtEcho(i);
@@ -217,18 +226,19 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
   // PLAN
   int16_t px = conValX(CON_C3X) + 6;
   bool plan = armed && state.obDvTotal > 0.0f;
-  if (plan) snprintf(buf, sizeof(buf), "%.0f m/s", state.obDvTotal); else snprintf(buf, sizeof(buf), "---");
+  if (plan) conFmtWhole(state.obDvTotal, "m/s", buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 0, px, conRowY(0) + 4, vw, CON_VALH, buf, plan ? OB_VAL : TFT_DARK_GREY);
-  if (plan) snprintf(buf, sizeof(buf), "%.0f m/s", state.obDvRemaining); else snprintf(buf, sizeof(buf), "---");
+  if (plan) conFmtWhole(state.obDvRemaining, "m/s", buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 1, px, conRowY(1) + 4, vw, CON_VALH, buf, plan ? (state.obPhase == 5 ? TFT_NEON_GREEN : OB_VAL) : TFT_DARK_GREY);
-  if (plan) obFmtTime(-state.obTIgnition, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
+  if (plan) obFmtTime(state.obTIgnition, buf, sizeof(buf));   // T+IGN: counts down to 0, negative once passed else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 2, px, conRowY(2) + 4, vw, CON_VALH, buf, plan ? (state.obTIgnition < 30.0f ? TFT_ORANGE : OB_VAL) : TFT_DARK_GREY);
   if (plan) obFmtTime(state.obBurnDuration, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 3, px, conRowY(3) + 4, vw, CON_VALH, buf, plan ? OB_VAL : TFT_DARK_GREY);
   if (state.obAccelEst > 0.0f) snprintf(buf, sizeof(buf), "%.1f m/s\xB2", state.obAccelEst); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 4, px, conRowY(4) + 4, vw, CON_VALH, buf, state.obAccelEst > 0.0f ? OB_VAL : TFT_DARK_GREY);
-  snprintf(buf, sizeof(buf), "%.0f m/s", state.stageDeltaV);
-  conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 5, px, conRowY(5) + 4, vw, CON_VALH, buf, (plan && state.stageDeltaV < state.obDvTotal) ? TFT_ORANGE : OB_VAL);
+  conFmtWhole(state.stageDeltaV, "m/s", buf, sizeof(buf));
+  conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 5, px, conRowY(5) + 4, vw, CON_VALH, buf,
+         noPropellant() ? TFT_DARK_GREY : (plan && state.stageDeltaV < state.obDvTotal) ? TFT_ORANGE : OB_VAL);
   if (state.targetAvailable) formatAltBuf(state.tgtDistance, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 6, px, conRowY(6) + 4, vw, CON_VALH, buf, state.targetAvailable ? OB_VAL : TFT_DARK_GREY);
 }

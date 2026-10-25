@@ -176,7 +176,14 @@ void eadiDrawBankTick(KCM_TFT &tft, int16_t bankDeg) {
 }
 
 // Update the roll pointer: erase old, redraw any tick/label it covered, draw new.
+//
+// A SKY POINTER: it turns with the horizon, so pointer and horizon always agree about
+// the bank, as on Boeing and Airbus PFDs and on the RE-ENTRY ball. The horizon turns by
+// -state.roll (eadiDrawBall, the KerbalSimpit sign), so the pointer does too. It used to
+// be placed at +roll and so swung the opposite way to the horizon it sits above. Every
+// angle below, the cached one included, is the on-screen pointer angle.
 void eadiUpdateRollIndicator(KCM_TFT &tft, float roll) {
+    roll = -roll;
     if (fabsf(roll - _eadiPrevRollIndicator) < 0.2f) return;
 
     static const int16_t ticks[] = {-60,-45,-30,-20,-10,0,10,20,30,45,60};

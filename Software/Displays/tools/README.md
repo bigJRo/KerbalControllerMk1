@@ -79,6 +79,77 @@ reason. Read each hit before believing it.
 evaluator cannot evaluate is skipped rather than guessed at; the header line reports how
 many of the declarations it resolved.
 
+## `render_screen.py`
+
+```
+python3 tools/render_screen.py                       # every Annunciator scenario
+python3 tools/render_screen.py MainOrbit SOI         # just these
+python3 tools/render_screen.py --out /tmp/shots      # default: Documents/User/assets
+```
+
+True renderings of a panel's screens as PNGs, for the user manual. It does the same
+IDE-faithful host build `host_compile.py` does, but **links** it — sketch,
+KerbalDisplayCommon, KCM_Touch, KerbalDisplayAudio — against `host_stubs_fb/`, where
+`RA8876_t41_p` keeps a 1024×600 RGB565 framebuffer and `SD` reads the real art from
+`../assets`. A scenario (`render_scenarios/<sketch>.inc`, appended to the concatenated
+sketch) sets the panel's `AppState`, runs `updateCautionWarningState()` so the C&W
+bits come from the real logic, and then calls the firmware's own `loop()`. Layout,
+fonts, colours, BMPs and indicator logic are therefore the panel's, not a mockup's.
+
+The stub follows the real library (wwatson4506 TeensyRA8876-GFX-Common,
+`RA8876_common.cpp`) wherever it decides what reaches the glass, so a render shows the
+panel's quirks too: coordinates wrap to 16 bits and the controller's 13-bit registers;
+rectangles clamp to the screen and an inverted one draws nothing; lines are dropped when
+their start is off screen; `setTextColor(fg, bg)` prints opaque and `setTextColor(fg)`
+transparent; a glyph the font lacks prints as its first glyph; `print(double)` gives two
+decimals. It reproduces the ILI9341_t3 glyph renderer (`drawFontChar`) because
+`drawButton()`, `drawVerticalText()` and a few screens print through the display
+library; every other text path already rasterises in `kcmDrawString()` and blits with
+`writeRect`. The one behaviour not confirmed on hardware is a zero-size or inverted
+box, which the stub treats as drawing nothing.
+Two host-only accommodations: pins read HIGH (the FT5316 software-I2C driver would
+otherwise wait forever on a clock line the syntax stub holds low), and the build is
+`-O0` (glibc's fortified `strlcpy` collides with the stub's inline one above that).
+
+Annunciator scenarios: `MainOrbit` (nominal), `MainReentry` (master alarm, two-tier
+and chute-envelope colours), `MainLampTest` (every tile lit — a colour key), `SOI`,
+`Standby`. `KCM_SOI_BODY=<name>` selects the body.
+
+Info Display scenarios are one per screen, each a physically consistent flight state
+(a ship in a 115×125 km, 6° Kerbin orbit for the PFD and orbit screens, a jet for
+AIRCRAFT and NAVIGATION, a Mun rover driving to a flag 850 m away, a booster coasting to
+apoapsis with a circularisation node placed for CIRCULARIZATION, a Mun lander for the
+descent screens, a capsule at 58 km for RE-ENTRY, engaged autopilots for the consoles): `SCFT ACFT ROVR VEH LNCHPRE LNCH LNCHCIRC ORB
+ORBADV MNVR TGT DOCK NAV LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP Standby`. The
+demo stepper runs once to populate every field, the scenario overrides what matters,
+and `millis()` is frozen so the context ladder's answer cannot change; the manual latch
+pins the screen only when the ladder would not choose it itself, so the AUTO / MAN chip
+reads as it would in flight. Build the mission panel with `-D INFO_DISP_UNIT=2`;
+`--suffix` tags the output (`InfoDisp1_SCFT.png`, `InfoDisp2_LNCH.png`):
+
+```
+python3 tools/render_screen.py --sketch KCMk1_InfoDisp --suffix 1 SCFT ACFT ROVR VEH Standby
+python3 tools/render_screen.py --sketch KCMk1_InfoDisp -D INFO_DISP_UNIT=2 --suffix 2 LNCHPRE LNCH LNCHCIRC ORB ORBADV MNVR TGT DOCK NAV \
+    LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP
+```
+
+The framebuffer stub honours the canvas base address and active window, which is how
+unit 1 shifts its drawing origin past the left-hand sidebar (`canvasContentRegion()`).
+
+Resource Display scenarios: `Main` (the SPC set on a ship in orbit: LF past a reserve bug,
+MP in caution, food on its time tier, Solid Fuel not aboard and collapsed), `MainTTE` (the
+same with the TTE key engaged), `EVA` (the ring-gauge layout), `Select`, `Detail` (Liquid Fuel
+after ten minutes of a slow burn, history trace filled) and `Standby`. The scenario feeds the
+slots as the Simpit handler would and runs the panel's own sampling before the frame, so
+trends, time to empty, time tiers and the history come from the real logic:
+
+```
+python3 tools/render_screen.py --sketch KCMk1_ResourceDisp
+```
+
+Output is `<Panel><suffix>_<Scenario>.png`. Adding a panel is a scenario file for it
+plus its name list in `SCENARIO_NAMES`.
+
 ## `../libraries/KerbalDisplayCommon/src/fonts_ili/`
 
 The font pipeline lives with the fonts: `ilifont.py` (parse/decode an ILI9341_t3 `.c`),

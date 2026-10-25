@@ -64,7 +64,7 @@ Outgoing: `ROTATION_MESSAGE` (pitch/yaw/roll), `THROTTLE_MESSAGE`, `STAGE_ACTION
 IDLE ──apArm()──▶ VERTICAL ──alt/vel trigger──▶ GRAVITY_TURN ──Ap≥target──▶ COAST ──t→Ap≤lead──▶ CIRCULARIZE ──Pe≥target──▶ COMPLETE
                                                      ▲                         │
                                                      └───── relight if Ap decays in atmo ─────┘
-   any phase ── telemetry loss > timeout ──▶ ABORT (throttle cut, disarm)
+   any phase ── telemetry loss > timeout ──▶ ABORT (disarm, throttle left as is)
 ```
 
 - **VERTICAL** — full throttle, hold 90° at the launch azimuth until the turn trigger.
@@ -74,7 +74,11 @@ IDLE ──apArm()──▶ VERTICAL ──alt/vel trigger──▶ GRAVITY_TURN
   apoapsis back down inside the atmosphere.
 - **CIRCULARIZE** — prograde burn near apoapsis until periapsis reaches the target.
 - **COMPLETE** — throttle 0; stock SAS enabled in **stability-hold** (attitude hold), control handed back to the pilot.
-- **ABORT** — failsafe throttle cut on telemetry loss.
+- **ABORT** — failsafe disarm on telemetry loss. The throttle is left where it is and handed
+  to the pilot, as on every disarm (DISARM, A/P OFF, stick or lever input, the abort button,
+  another autopilot): the pilot takes over without a jump in thrust. The only throttle cuts
+  are the guidance's own — engine cutoff when apoapsis reaches the target, the coast, and the
+  end of the circularization burn.
 
 While actively steering, stock SAS is switched **off** (raw rotation commands fight SAS); during
 coast/circularization the module hands attitude to stock SAS prograde hold.
@@ -188,7 +192,7 @@ body's default orbit on each SoI change unless you set an explicit target.
 | `circularize` | true | Coast + apoapsis burn to raise Pe to target |
 | `circStartLeadTime` | 10 s | Start the burn when time-to-Ap falls below this |
 | `circPeTolerance` | 1000 m | Stop when Pe is within this of target |
-| `telemetryTimeout` | 2000 ms | Cut throttle + disarm on telemetry loss |
+| `telemetryTimeout` | 2000 ms | Disarm on telemetry loss (throttle left as is) |
 | `useStockSASForCoast` | true | Hold prograde with stock SAS during coast/circ instead of active steering |
 
 ---

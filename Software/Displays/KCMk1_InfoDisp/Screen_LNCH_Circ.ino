@@ -115,7 +115,7 @@ static const int16_t LNCH_OR_ECC_VAL_Y = LNCH_OR_ECC_LBL_Y + 27;           // 24
 // Second left-rail slot. Was the ΔV-to-circularise readout; that moved to the right
 // column with the other two burn numbers, and this slot now carries the apsis gap —
 // the number the orbit diagram directly above it is a picture of.
-static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("AP-PE", Black_20)
+static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("Ap-Pe", Black_20)
 static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 
 
@@ -123,7 +123,10 @@ static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 // ── Orbital (circularization) phase change-detection state ────────────────────────────
 // This was eight rows mirroring the ascent readout. T.Brn is the only one that stayed;
 // the apsis tape further down owns the rest of the column now.
-static int32_t _lnchOrPrevTBurn      = -1 << 30;  // seconds
+// Cache sentinel: no value drawn yet. Written -(1 << 30) because shifting a negative
+// value (LNCH_OR_NONE) is undefined before C++20.
+static const int32_t LNCH_OR_NONE = -(1 << 30);
+static int32_t _lnchOrPrevTBurn      = LNCH_OR_NONE;  // seconds
 
 // T.Brn is the one row that survived the eight-row readout this column used to be; the
 // rest of that panel's change-detection state went with it. See the apsis tape below.
@@ -235,15 +238,15 @@ static bool       _lnchOrTapeDirty = true;   // scale changed -> static layer ne
 static int16_t    _lnchOrTpApY     = -9999;  // last-drawn marker rows (-9999 = never drawn)
 static int16_t    _lnchOrTpPeY     = -9999;
 static bool       _lnchOrTpPeLow   = false;  // periapsis was off the bottom of the scale
-static int32_t    _lnchOrTpApVal   = -1 << 30;
-static int32_t    _lnchOrTpPeVal   = -1 << 30;
+static int32_t    _lnchOrTpApVal   = LNCH_OR_NONE;
+static int32_t    _lnchOrTpPeVal   = LNCH_OR_NONE;
 static PrintState _lnchOrTpPs[3];
 
 
 // Reset all orbital-phase change-detection state + PrintState. Called at
 // chrome time to force a full redraw.
 static void _lnchOrResetState() {
-    _lnchOrPrevTBurn      = -1 << 30;
+    _lnchOrPrevTBurn      = LNCH_OR_NONE;
     _lnchOrPrevTBurnFg    = 0xFFFF; _lnchOrPrevTBurnBg = 0xFFFF;
     _lnchOrPrevEccMilli   = -9999;
     _lnchOrPrevGapM       = -9999;
@@ -254,7 +257,7 @@ static void _lnchOrResetState() {
     _lnchOrTapeDirty  = true;
     _lnchOrTpApY      = -9999;     _lnchOrTpPeY   = -9999;
     _lnchOrTpPeLow    = false;
-    _lnchOrTpApVal    = -1 << 30;  _lnchOrTpPeVal = -1 << 30;
+    _lnchOrTpApVal    = LNCH_OR_NONE;  _lnchOrTpPeVal = LNCH_OR_NONE;
     for (uint8_t i = 0; i < 3; i++) {
         _lnchOrTpPs[i].prevWidth  = 0;
         _lnchOrTpPs[i].prevBg     = 0x0001;
@@ -583,7 +586,7 @@ static void _lnchOrTapeUpdate(KCM_TFT &tft) {
         _lnchOrTapeDrawStatic(tft);
         _lnchOrTapeDirty = false;
         _lnchOrTpApY = _lnchOrTpPeY = -9999;      // markers were wiped with the layer
-        _lnchOrTpApVal = _lnchOrTpPeVal = -1 << 30;
+        _lnchOrTpApVal = _lnchOrTpPeVal = LNCH_OR_NONE;
     }
     if (!_lnchOrTape.valid) return;
 
@@ -693,6 +696,7 @@ static void _lnchOrTapeUpdateRows(KCM_TFT &tft) {
                        LNCH_BURNTIME_ALARM_S, TFT_WHITE,  TFT_RED,
                        LNCH_BURNTIME_WARN_S,  TFT_YELLOW, TFT_BLACK,
                        TFT_DARK_GREEN, TFT_BLACK, fg, bg);
+        propNeutral(fg, bg);
         if (iTb != _lnchOrPrevTBurn || fg != _lnchOrPrevTBurnFg || bg != _lnchOrPrevTBurnBg) {
             _lnchOrTapeDrawRowValue(tft, 2, formatTimeCompact(tb), fg, bg);
             _lnchOrPrevTBurn = iTb;
@@ -850,7 +854,8 @@ static void _lnchOrDrawProgressBarChrome(KCM_TFT &tft) {
 }
 
 // Estimated ΔV (m/s) to circularize at apoapsis (vis-viva). Returns -1 if the
-// orbit data isn't usable (sub-orbital, no apoapsis, negative result, etc.).
+// orbit data isn't usable (no apoapsis, negative result, etc.). A sub-orbital path is
+// usable: its periapsis is below the surface, but the ellipse is still the vessel's.
 //   μ       = surfGrav × bodyR²        (standard gravitational parameter)
 //   rAp     = apoapsis + bodyR
 //   sma     = (rAp + (periapsis + bodyR)) / 2
@@ -863,12 +868,17 @@ static float _lnchOrCircDvEstimate() {
     if (bodyR <= 0.0f || g <= 0.0f || state.apoapsis <= 0.0f) return -1.0f;
     float mu   = g * bodyR * bodyR;
     float rAp  = state.apoapsis + bodyR;
-    float rPe  = fmaxf(state.periapsis + bodyR, bodyR);   // clamp to surface
+    // The TRUE periapsis radius, floored at the centre rather than the surface. During
+    // the ascent periapsis is far underground, and that is still the ellipse the vessel
+    // is on: clamping it to the surface lengthened the orbit, overstated the speed at
+    // apoapsis and made the burn read low (74 m/s against a 497 m/s node at Ap 82.5 km,
+    // Pe -300 km on Kerbin).
+    float rPe  = fmaxf(state.periapsis + bodyR, 0.0f);
     float sma  = (rAp + rPe) * 0.5f;
     if (sma <= 0.0f || rAp <= 0.0f) return -1.0f;
     float v_circ_sq = mu / rAp;
     float v_curr_sq = mu * (2.0f / rAp - 1.0f / sma);
-    if (v_circ_sq <= 0.0f || v_curr_sq <= 0.0f) return -1.0f;
+    if (v_circ_sq <= 0.0f || v_curr_sq < 0.0f) return -1.0f;   // 0 = straight up: the burn is all of v_circ
     float dvEst = sqrtf(v_circ_sq) - sqrtf(v_curr_sq);
     if (dvEst <= 0.0f || dvEst >= 100000.0f) return -1.0f;   // guard sub-orbital / nonsense
     return dvEst;
@@ -1150,7 +1160,7 @@ static void _lnchOrUpdateGapReadout(KCM_TFT &tft) {
     const bool first = (_lnchOrPrevGapM == -9999);
     if (gap == _lnchOrPrevGapM && !first) return;
 
-    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "AP-PE",
+    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "Ap-Pe",
                        haveOrbit ? _lnchOrAltCompact(state.apoapsis - state.periapsis)
                                  : String("---"),
                        haveOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, first);

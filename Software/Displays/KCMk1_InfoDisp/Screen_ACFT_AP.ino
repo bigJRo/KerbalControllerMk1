@@ -144,7 +144,7 @@ static void haFmtSetpoint(uint8_t i, float v, char *buf, size_t n) {
     case 3: formatAltBuf(v, buf, n); break;
     case 4: snprintf(buf, n, "%.1f\xB0", v); break;
     case 6: { int16_t h = (int16_t)roundf(v) % 360; if (h < 0) h += 360; snprintf(buf, n, "%03d\xB0", h); break; }
-    case 8: snprintf(buf, n, "%.0f m/s", v); break;
+    case 8: conFmtWhole(v, "m/s", buf, n); break;
     default: snprintf(buf, n, "%.2f", v); break;
   }
 }
@@ -154,7 +154,7 @@ void chromeScreen_ACFTAP(KCM_TFT &tft) {
   kpForceClose();
   conDrawColumns(tft, "PITCH", "LATERAL / THRUST", "FLIGHT DATA");
   for (uint8_t i = 0; i < HA_MODES; i++) conDrawValueBox(tft, HA[i].x, HA[i].row);
-  static const char *const DATA_LBL[7] = { "PITCH", "ROLL", "HDG", "V/S", "ALT", "DIST", "TGT EL" };
+  static const char *const DATA_LBL[7] = { "PITCH", "ROLL", "HDG", "V.VRT", "ALT.SL", "DIST", "ELV" };
   for (uint8_t r = 0; r < 7; r++)
     textLeft(tft, HA_F_LBL, CON_C3X + 4, conRowY(r), CON_COLW - CON_VALW, CON_ROW_H, DATA_LBL[r], HA_LBL, TFT_BLACK);
   textLeft(tft, &Roboto_Black_16, CON_C2X + 4, conRowY(5) + 8,  CON_COLW - 8, 20, "NAV flies to the targeted flag; GS holds", TFT_DARK_GREY, TFT_BLACK);

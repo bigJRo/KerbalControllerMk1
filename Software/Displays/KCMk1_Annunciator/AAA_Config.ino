@@ -128,6 +128,10 @@ const float CW_PROP_LOW_ALARM_FRAC  = 0.05f;            // CW_PROP_LOW: red tier
 // Expected LF/OX mass ratio for standard KSP engines (9 LF : 11 OX by mass = 0.8182)
 const float CW_PROP_NOMINAL_RATIO   = 0.8182f;          // CW_PROP_IMBAL: nominal LF/OX ratio
 const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowed deviation (10%)
+// CW_LOW_DV is suppressed on a vessel carrying neither liquid fuel nor oxidizer (a
+// re-entry capsule): stage dV and burn time are 0 there by construction, not low. Same
+// limit as the Info Display's PROP_EMPTY_UNITS, which greys its stage readouts (#72).
+const float CW_PROP_EMPTY_UNITS     = 0.01f;            // LF and OX units, whole vessel
 
 // --- Chute envelope (dynamic pressure q, Pa) ---
 // A chute's structural limit is a q (force) limit, so it is body-independent and its
@@ -136,6 +140,9 @@ const float CW_PROP_IMBAL_TOL       = 0.10f;            // CW_PROP_IMBAL: allowe
 // InfoDisp via KCMk1_SystemConfig.h. q = 0.5 * airDensity * vel_surf^2.
 const float CW_CHUTE_MAIN_MAX_Q   = KCM_CHUTE_MAIN_MAX_Q;    // main rip q (Pa)
 const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa)
+// --- High dynamic pressure (q, Pa) --- same q as the chute envelope; one threshold on
+// every body, identical to the Info Display ASCENT screen's Q caution.
+const float CW_HIGH_Q_PA          = KCM_HIGH_Q_PA;           // HIGH Q above this q (Pa)
 
 // GPWS function tunables were moved into GPWS.ino (its TUNABLES block) so the whole
 // aviation-faithful envelope definition (Mode 1/2/3/4/6 boundaries, callout ladders,
@@ -152,9 +159,6 @@ const float CW_CHUTE_DROGUE_MAX_Q = KCM_CHUTE_DROGUE_MAX_Q;  // drogue rip q (Pa
 const double TACLS_FOOD_RATE        = 0.000016927083333; // Food units/s/Kerbal
 const double TACLS_WATER_RATE       = 0.000011188078704; // Water units/s/Kerbal
 const double TACLS_OXYGEN_RATE      = 0.001713537562385; // Oxygen units/s/Kerbal
-const double TACLS_CO2_RATE         = 0.001480128898760; // CO2 units/s/Kerbal (production)
-const double TACLS_WASTE_RATE       = 0.000001539351852; // Waste units/s/Kerbal (production)
-const double TACLS_WASTEWATER_RATE  = 0.000014247685185; // WasteWater units/s/Kerbal (production)
 
 /***************************************************************************************
    TAC LIFE SUPPORT WARNING THRESHOLDS
@@ -163,8 +167,8 @@ const double TACLS_WASTEWATER_RATE  = 0.000014247685185; // WasteWater units/s/K
      Food:   360h window -> warn at 72h, alarm at 24h
      Water:   36h window -> warn at 12h, alarm at  4h
      Oxygen:   2h window -> warn at 30m, alarm at 10m
-   Waste resources use fractional fill thresholds (fraction of total capacity).
-   The indicator fires on the worst-case condition across all resources.
+   The waste resources (CO2, Waste, WasteWater) are not watched.
+   The indicator fires on the worst-case condition across the three consumables.
    Yellow tier: warn threshold breached on any resource.
    Red tier:    alarm threshold breached on any resource (triggers MASTER ALARM).
 ****************************************************************************************/
@@ -174,5 +178,3 @@ const float TACLS_WATER_WARN_S      = 12.0f  * 3600.0f; // 12 hours in seconds
 const float TACLS_WATER_ALARM_S     =  4.0f  * 3600.0f; //  4 hours in seconds
 const float TACLS_OXYGEN_WARN_S     = 30.0f  *   60.0f; // 30 minutes in seconds
 const float TACLS_OXYGEN_ALARM_S    = 10.0f  *   60.0f; // 10 minutes in seconds
-const float TACLS_WASTE_WARN_FRAC   = 0.80f;             // warn when waste 80% full
-const float TACLS_WASTE_ALARM_FRAC  = 0.95f;             // alarm when waste 95% full

@@ -380,8 +380,9 @@ void drawScreen_MNVR(KCM_TFT &tft) {
     // Row 2 — ΔV.Stg (yellow if stage ΔV is tight relative to node)
     {
         bool tight = (state.stageDeltaV < state.mnvrDeltaV * MNVR_DV_MARGIN);
-        mnvrVal(2, 2, "\xCE\x94V.STG", fmtMs(state.stageDeltaV),
-                tight ? TFT_YELLOW : TFT_DARK_GREEN, TFT_BLACK);
+        uint16_t fg = tight ? TFT_YELLOW : TFT_DARK_GREEN, bg = TFT_BLACK;
+        propNeutral(fg, bg);
+        mnvrVal(2, 2, "\xCE\x94V.STG", fmtMs(state.stageDeltaV), fg, bg);
     }
 
     // Row 3 — T+Ign (time to ignition = node time minus half burn duration)
@@ -471,8 +472,8 @@ void drawScreen_MNVR(KCM_TFT &tft) {
                 case 2:   v = "RETR"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 3:   v = "NRM";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 4:   v = "ANRM"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 5:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
-                case 6:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 5:   v = "RAD-"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
+                case 6:   v = "RAD+"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 7:   v = "TGT";  sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 8:   v = "ATGT"; sasFg = TFT_WHITE;     sasBg = TFT_RED;        break;
                 case 9:   v = "MNVR"; sasFg = TFT_WHITE;     sasBg = TFT_DARK_GREEN; break;  // correct

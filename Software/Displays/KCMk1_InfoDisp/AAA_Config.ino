@@ -169,6 +169,11 @@ const float RNDZ_DIST_WARN_M  = 5000.0f;   // yellow — closing
 // wired up: a speed-only middle tier would have fired constantly on any normal
 // rendezvous and taught the pilot to ignore the colour.
 const float TGT_VCLOSURE_ALARM_MS = 500.0f;  // white-on-red — very fast, and close
+// V.CLOSE "holding station" dead band: a closure rate that prints as zero is neither
+// closing nor opening and reads green; only a rate at or above this is "opening" (yellow).
+// Each is the screen's print resolution: TARGET one decimal, DOCKING two.
+const float TGT_VCLOSE_HOLD_MS  = 0.05f;
+const float DOCK_VCLOSE_HOLD_MS = 0.005f;
 
 // Approach alignment error thresholds (degrees absolute)
 // THE RETICLE RINGS ARE THE COLOUR BANDS. Every reticle draws its good zone at
@@ -229,6 +234,10 @@ const uint32_t CONTEXT_DWELL_MS      = 4000;     // min gap between automatic sw
 // releases immediately because the ladder's answer legitimately changed.
 const uint32_t MANUAL_DWELL_MS       = 10000;    // min gap between a press and an auto switch
 const float    DOCK_CTX_RELEASE_M    = 250.0f;   // leave DOCKING past this (enter at 200)
+// A target counts as present while targetAvailable is set OR a TARGETINFO arrived this
+// recently. Simpit sends TARGETINFO only while there is a target, and nothing clears
+// state.tgtDistance, so without an age the last distance outlived its target.
+const uint32_t TGT_INFO_FRESH_MS     = 2000;
 const float    TGT_CTX_RELEASE_MIN_M = 150.0f;   // leave TARGET below this (enter at 200)
 const float    TGT_CTX_RELEASE_MAX_M = 2400.0f;  // leave TARGET above this (enter at 2000)
 const float    MNVR_CTX_RELEASE_S    = 700.0f;   // leave MANEUVER past this (enter at 600)
@@ -239,6 +248,19 @@ const float    MNVR_CTX_RELEASE_S    = 700.0f;   // leave MANEUVER past this (en
 // atmosphere. Mach 3 is the same marker the RE-ENTRY screen already uses for its SAS
 // annunciation.
 const float REENTRY_CTX_MACH = 3.0f;
+// Once chosen, RE-ENTRY holds through the rest of the descent (parachutes included)
+// rather than dropping at Mach 3. The hold releases on climbing faster than this ...
+const float REENTRY_HOLD_CLIMB_MS = 50.0f;
+// ... or when the engines are thrusting (throttle above this with a stage that has burn
+// time), which is a powered landing and belongs to POWERED DESCENT.
+const float REENTRY_HOLD_THROTTLE = 0.02f;
+
+// NO-PROPELLANT NEUTRAL. A craft carrying neither liquid fuel nor oxidizer -- a re-entry
+// capsule -- reports 0 stage dV and 0 burn time, and every stage readout used to show
+// its low-fuel alarm for a vessel that has no fuel to be low on. Below this many units
+// of BOTH (on the whole vessel) the stage dV / burn-time / total-dV readouts draw in
+// neutral dark grey instead (issue #72). Craft with LF only (nuclear, jets) are unaffected.
+const float PROP_EMPTY_UNITS = 0.01f;
 
 // POWERED DESCENT auto-select. The old rule was `type_Lander && sit_SubOrb`, which
 // missed every Ship doing a Mun landing and fired on ascent (sub-orbital is also what
@@ -253,7 +275,7 @@ const float LNDG_CTX_VVERT_MS      = -5.0f;     // descending at least this fast
 // 5-8 km; a steep or overpowered climb pushes past that, which is where an airframe
 // starts paying for it. Caution then alarm, so max Q annunciates instead of merely
 // being computable.
-const float LNCH_Q_WARN_KPA  = 20.0f;
+const float LNCH_Q_WARN_KPA  = KCM_HIGH_Q_PA / 1000.0f;   // 20 kPa, = the Annunciator HIGH Q tile
 const float LNCH_Q_ALARM_KPA = 40.0f;
 
 // ASCENT — load factor bands (g): the panel-wide G_WARN_POS / G_ALARM_POS, which are
@@ -374,11 +396,11 @@ const float ORB_SWITCH_ALT_FRAC_DESC = 0.055f;  // switch back down below this
 
 // Pitch (slope) thresholds (degrees). Tune per rover — heavier/wider rovers tolerate more.
 const float ROVER_PITCH_WARN_DEG  = 20.0f;   // yellow — getting steep
-const float ROVER_PITCH_ALARM_DEG = 30.0f;   // white-on-red — rollover risk
+const float ROVER_PITCH_ALARM_DEG = 30.0f;   // red text — rollover risk
 
 // Roll (lateral tilt) thresholds (degrees). Roll is typically the more critical axis.
 const float ROVER_ROLL_WARN_DEG   = 15.0f;   // yellow — leaning significantly
-const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // white-on-red — rollover imminent
+const float ROVER_ROLL_ALARM_DEG  = 25.0f;   // red text — rollover imminent
 
 // Endurance thresholds (seconds of charge remaining). The ROVER block that used to show
 // EC% now shows time to empty, so it is coloured on TIME, not on percentage -- see the

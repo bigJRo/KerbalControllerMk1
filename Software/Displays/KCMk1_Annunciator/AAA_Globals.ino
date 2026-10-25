@@ -120,12 +120,6 @@ void invalidateAllState() {
   prev.tacWater_tot         = -1.0f;
   prev.tacOxygen            = -1.0f;
   prev.tacOxygen_tot        = -1.0f;
-  prev.tacCO2               = -1.0f;
-  prev.tacCO2_tot           = -1.0f;
-  prev.tacWaste             = -1.0f;
-  prev.tacWaste_tot         = -1.0f;
-  prev.tacWW                = -1.0f;
-  prev.tacWW_tot            = -1.0f;
   prev.atmoPressure         = -1.0f;
   prev.throttleCmd          = state.throttleCmd + 1;
 

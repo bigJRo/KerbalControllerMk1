@@ -2,8 +2,8 @@
 #define KERBAL_DISPLAY_COMMON_H
 
 #define KDC_VERSION_MAJOR 3
-#define KDC_VERSION_MINOR 10
-#define KDC_VERSION_PATCH 0
+#define KDC_VERSION_MINOR 11
+#define KDC_VERSION_PATCH 1
 
 /***************************************************************************************
    KerbalDisplayCommon Library

@@ -193,3 +193,7 @@
 // InfoDisp re-entry chute status + deploy-envelope tape.
 #define KCM_CHUTE_MAIN_MAX_Q     38300.0f  // main rips above this q (Pa)   ~250 m/s @ Kerbin SL
 #define KCM_CHUTE_DROGUE_MAX_Q  153000.0f  // drogue rips above this q (Pa) ~500 m/s @ Kerbin SL
+// High dynamic pressure, same q = 0.5*airDensity*v^2 (Pa) and equally body-independent:
+// what loads an airframe is q, wherever it is flown. A Kerbin ascent peaks near
+// 10-15 kPa. Shared by Annunciator CW_HIGH_Q and the InfoDisp ASCENT Q caution tier.
+#define KCM_HIGH_Q_PA            20000.0f  // CW_HIGH_Q / LNCH_Q_WARN_KPA (x1000)

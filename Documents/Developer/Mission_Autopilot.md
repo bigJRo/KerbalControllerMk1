@@ -46,12 +46,12 @@ displays remain consoles. As before, the panel confirms only what the master ech
 | Console | Mode | Does | Actuators |
 |---------|------|------|-----------|
 | ORBITAL | **NODE** | Executes the next maneuver node: align, warp, burn, cut | SAS maneuver mode, throttle, warp-to, stage |
-| ORBITAL | **AP** | Burns at periapsis to put apoapsis at the setpoint | SAS prograde / retrograde, throttle, warp-to |
-| ORBITAL | **PE** | Burns at apoapsis to put periapsis at the setpoint | as AP |
+| ORBITAL | **Ap** | Burns at periapsis to put apoapsis at the setpoint | SAS prograde / retrograde, throttle, warp-to |
+| ORBITAL | **Pe** | Burns at apoapsis to put periapsis at the setpoint | as Ap |
 | ORBITAL | **INC** | Burns at the nearer node to reach the target inclination | SAS normal / anti-normal, throttle, warp-to |
 | ORBITAL | **APPR** | Closes on the target at a commanded rate, nulls lateral relative velocity, holds at a distance | SAS target mode, RCS translation |
 | ORBITAL | *WARP*, *STAGE* | Options: automatic warp to ignition; auto-stage during burns | warp-to, stage |
-| LANDING | **DESC** | Holds a vertical speed with the throttle | throttle; SAS surface-retrograde or radial-out |
+| LANDING | **DESC** | Holds a vertical speed with the throttle | throttle; SAS surface-retrograde, or the vertical hold (own attitude loop, SAS off) |
 | LANDING | **HOVR** | Holds a radar altitude (cascaded through DESC) | as DESC |
 | LANDING | **BRAKE** | Arms a suicide burn: fires at the computed ignition altitude, hands off to DESC | throttle, SAS retrograde |
 | LANDING | **ENTRY** | Holds an angle of attack relative to orbital retrograde and a roll angle | attitude loop |
@@ -74,7 +74,7 @@ takes it from whichever module has it. Rover modes are independent of all of thi
 | `hold_autopilot.ino` | NAV and GS added to the aircraft groups; FOLLOW and arrive-and-stop added to the rover modes |
 | `stage_helpers.ino` | The shared stage-on-low-ΔV helper and the acceleration estimate, used by ascent, burn and landing modules |
 | `ap_arbiter.ino` | Attitude and throttle ownership across ascent, hold, burn and landing modules |
-| `infodisp_link.ino` | Opcodes `0x14`–`0x16`, `0x38`–`0x3A`, `0x40`–`0x5E`; status frames `0xA8`, `0xA9`; grown `0xA6`, `0xA7` |
+| `infodisp_link.ino` | Opcodes `0x14`–`0x16`, `0x38`–`0x3A`, `0x40`–`0x5E`; status frames `0xA8`, `0xA9`, summary `0xAA`; grown `0xA6`, `0xA7` |
 | `simpit_message_handler.ino` | Registers `MANEUVER_MESSAGE`; feeds the new modules |
 | `KCMk1_InfoDisp/Screen_ORBT_AP.ino`, `Screen_LNDG_AP.ino` | The two new consoles |
 | `KCMk1_InfoDisp/Screen_ACFT_AP.ino`, `Screen_ROVR_AP.ino` | The added rows |
@@ -178,7 +178,7 @@ open.
 | Banner | Armed mode; **phase** in orange (`ALIGNING`, `WARPING`, `BURNING`, `DONE`) or a disconnect reason; body · vessel; `ARMED` / `EXECUTING` / `A/P OFF` |
 | Column 1 **BURN** | NODE (box: node ΔV, or `NO NODE`), AP (target apoapsis), PE (target periapsis), INC (target inclination). Arming one clears the others |
 | Column 2 **TARGET / OPTIONS** | APPR (closing-rate setpoint, negative = closing), HOLD AT (hold distance), WARP toggle, STAGE toggle; **EXEC** (relabels itself **WARP** when a warp is ready, §4.3) and **A/P OFF** side by side |
-| Column 3 **PLAN** | ΔV TOT, ΔV REM, T-IGN, BURN duration, ACCEL estimate, STG ΔV, RANGE to target |
+| Column 3 **PLAN** | ΔV.TOT, ΔV.REM, T+IGN (counts down, negative once passed), BURN DUR, ACCEL estimate, ΔV.STG, DIST to target |
 
 ### 4.2 Arm, review, execute
 
@@ -219,8 +219,10 @@ IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK─�
   module; the executor re-runs ALIGN on exit from any warp. The executor refuses to warp if the
   plan has changed since EXEC (§4.4), so a stale plan cannot warp the craft to the wrong place.
 - **BURN** runs the throttle law of §7.1 and auto-stage if enabled.
-- **DONE** cuts the throttle, returns SAS to stability assist and disarms. The banner holds `DONE`
-  for five seconds.
+- **DONE** cuts the throttle, returns SAS to stability assist and disarms. This is the only
+  throttle cut: an abort (pilot, A/P OFF, telemetry, fuel, SOI, another autopilot), a re-plan
+  or APPR off leaves the throttle where it is for the pilot to take over. The banner holds
+  `DONE` for five seconds.
 
 ### 4.4 Re-planning
 
@@ -245,15 +247,33 @@ a plan the pilot has not seen.
 |--------|---------|
 | Banner | Engaged modes; `IGN IN m:ss` while BRAKE is armed, `FIRING` during the burn, or a reason; body · vessel; `ENGAGED` / `A/P OFF` |
 | Column 1 **DESCENT** | DESC (vertical-speed setpoint, negative), HOVR (radar-altitude setpoint), BRAKE (box shows the computed ignition altitude), ENTRY (angle-of-attack setpoint) |
-| Column 2 **OPTIONS** | ATT REF toggle (RETRO / RADIAL), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
-| Column 3 **DESCENT DATA** | RDR ALT, V/S, H SPD, ACCEL estimate with its source (`MEAS` / `EST` / `TWR`), IGN ALT (orange when marginal), T-IMP (radar altitude over descent rate), THRTL |
+| Column 2 **OPTIONS** | ATT REF toggle (RETR / VERT), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
+| Column 3 **DESCENT DATA** | ALT.RDR, V.VRT, H SPD, ACCEL estimate with its source (`MEAS` / `EST` / `TWR`), IGN ALT (orange when marginal), T+GRND (radar altitude over descent rate), THRTL |
 
 ### 5.2 Behaviour
 
-- **DESC** holds vertical speed with the throttle (§7.2). Attitude is stock SAS in the ATT REF mode:
-  surface-retrograde kills horizontal velocity on the way down; radial-out is pure vertical. Below
-  1 m/s horizontal speed the reference switches to radial-out automatically, because retrograde
-  swings wildly at low speed.
+- **DESC** holds vertical speed with the throttle (§7.2). Attitude follows ATT REF:
+  - **RETR** — stock SAS surface-retrograde. In a descent that points straight up and tilts
+    against drift, so it also cancels horizontal velocity. Its direction is undefined when the
+    *total* surface speed is near zero (a hover, the moment before touchdown), so below 1.5 m/s
+    (`vertHoldEnterSpeed`) the vertical hold takes over, handing back above 3 m/s
+    (`vertHoldExitSpeed`).
+  - **VERT** — the vertical hold at every speed: a pure vertical descent, drift left to the pilot.
+  - **The vertical hold** is the autopilot's own attitude loop with SAS off: `attSteerRocket()` driven
+    to pitch 90° with the heading target set to the current heading, as the ascent autopilot's
+    VERTICAL phase holds the pad attitude. The pitch error is the tilt, rotated into the body axes
+    by roll, so a lean is taken out in whatever direction it lies and heading (meaningless when
+    pointing straight up) is never fought; roll is not commanded. The status frame's bit 7
+    (`vertHold`) reports it flying, so the Info Display shows SAS off as intended, not as an alarm.
+  - *Why not SAS RADIAL OUT* (the original design, #68): radial out is "up" with the velocity
+    direction removed, so it is vertical only while moving horizontally. In a vertical descent it
+    lies near the horizon — 0.5 m/s of drift at −4 m/s puts it 83° off vertical, toward the drift —
+    and with no drift it is undefined. The old automatic switch to it (horizontal speed under
+    1 m/s) fired in exactly that case. It also depended on the navball's orbit/surface mode,
+    which the autopilot never sets.
+  - *To confirm in flight:* a Mun DESC at −4 m/s with a little drift (retrograde, then the hold
+    near touchdown), a HOVR (hold from the start), and VERT from altitude with a 10–20° lean.
+    The loop's signs and gains are the ascent autopilot's.
 - **HOVR** holds radar altitude by commanding a vertical speed to DESC (cascade, capped ±10 m/s).
   Engaging captures the current radar altitude.
 - **BRAKE** arms: it points retrograde, computes the ignition altitude continuously and shows it,
@@ -271,8 +291,12 @@ a plan the pilot has not seen.
     bank captured, so the airframe is held while the pilot selects modes. The hand-off is the
     aircraft console's ordinary capture-on-engage, called across modules through the arbiter; the
     banner shows `HANDOFF` on both consoles for five seconds.
+- **Throttle on a mode change** (#82): no mode change cuts the throttle. Tapping a mode off,
+  A/P OFF, a pilot override, telemetry loss or another autopilot taking over all leave it where
+  it is; switching between DESC and HOVR starts the new loop from the current throttle. BRAKE
+  itself holds zero until its ignition altitude, as it always has.
 - **Touchdown**: on landed or splashed the throttle goes to zero and everything disconnects with
-  reason `LANDED`.
+  reason `LANDED`. This is the only place the landing autopilot cuts the throttle on its way out.
 
 ---
 
@@ -288,7 +312,7 @@ a plan the pilot has not seen.
 - **NAV** joins the lateral group and banks toward the target bearing through the HDG cascade.
   Same target rules.
 - The LVL and A/P OFF buttons move to the foot of the pitch column so both columns take five rows;
-  the hint and legend move under the lateral column. Flight data gains DIST and TGT EL (elevation
+  the hint and legend move under the lateral column. Flight data gains DIST and ELV (elevation
   to target) in place of IAS and MACH, which remain visible as their own setpoint rows.
 
 ![Rover Autopilot console, extended](assets/Mission_ROVR_Console_Ext.svg)
@@ -349,7 +373,7 @@ use the acceleration estimate of §2.
   scales with descent speed, where a fixed margin fails. The console shows the source beside ACCEL
   (`14.2 m/s² MEAS` / `EST` / `TWR`), so a short test burn on the way down visibly upgrades the
   estimate and lowers the ignition altitude. Refused if `a ≤ 1.2 g`; IGN ALT is shown orange when
-  the current descent would need more than 90 % of `a`. T-IMP is `radarAlt / |vs|`, shown orange
+  the current descent would need more than 90 % of `a`. T+GRND is `radarAlt / |vs|`, shown orange
   under 30 s.
 - **ENTRY**: reference heading = orbital prograde heading + 180°, reference pitch = −orbital
   prograde pitch; commanded pitch = reference + AOA; heading held at the reference; roll held at
@@ -401,21 +425,21 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 
 **The pilot-input rule is global** (review decision, applied to every module including the ascent
 autopilot): any input on the rotation stick, the translation stick or the throttle lever
-disconnects everything — a burn aborts, a landing mode drops with the throttle left where it is,
+disconnects everything — a burn aborts and a landing mode drops, both with the throttle left where it is,
 hold and rover modes disconnect. Stick input is debounced (10 % for 150 ms); a resting hand on an
 undriven lever is not input, moving it or touching a driven lever is. `pilotOverrideDetected()` in
 `rotation_link.ino` is the single implementation.
 
 | Trigger | Burn / APPR | Landing | NAV / GS | TGT / FOLLOW | Reason |
 |---------|-------------|---------|----------|--------------|--------|
-| Telemetry timeout | throttle 0, SAS stability | **throttle unchanged**, SAS unchanged, disconnect | as aircraft rules | wheels 0 | `TELEMETRY` |
+| Telemetry timeout | **throttle unchanged**, SAS stability | **throttle unchanged**, SAS unchanged, disconnect | as aircraft rules | wheels 0 | `TELEMETRY` |
 | Node removed | NODE aborts | — | — | — | `NO NODE` |
 | Target lost | APPR drops | — | drop | drop | `NO TARGET` |
 | SOI change | abort | disconnect | — | — | `SOI` |
 | Pointing error not under 2° within 30 s of ALIGN | abort | — | — | — | `ALIGN` |
 | Stage ΔV exhausted, auto-stage off | abort | BRAKE / DESC keep the throttle, annunciate | — | — | `FUEL` |
-| Pilot input on either stick | abort | drop, throttle unchanged | drop | drop | `STICK` |
-| Pilot input on the lever | abort | drop, throttle unchanged | drop | drop | `LEVER` |
+| Pilot input on either stick | abort, throttle unchanged | drop, throttle unchanged | drop | drop | `STICK` |
+| Pilot input on the lever | abort, throttle unchanged | drop, throttle unchanged | drop | drop | `LEVER` |
 | Landed / splashed | — | throttle 0, all off | — | — | `LANDED` |
 | ENTRY hand-off reached | — | ENTRY off; plane: ATT + ROLL engage on the aircraft console | — | — | `HANDOFF` |
 | Another autopilot engages | drop | drop | drop | — | `OTHER AP` |
@@ -446,7 +470,7 @@ The transport is unchanged. New opcodes:
 | `0x5E` | `SET_ATT_REF` | 0 retro / 1 radial | `lpSetAttRef(v)` |
 
 `HOLD_AP_OFF` (`0x12`) **always drops everything**: every mode in every module (ascent disarmed,
-burns aborted, hold, landing and rover modes disconnected), throttle released to the pilot, stock
+burns aborted, hold, landing and rover modes disconnected), throttle released to the pilot where it is (no module commands it on the way out), stock
 SAS returned to stability assist (decided as option B in review, §10 q.6). A single mode is
 disengaged by tapping its own button. The ascent console's DISARM stays an ascent-only disarm.
 
@@ -463,7 +487,15 @@ unchanged.
 | `0xA6` | AIRCRAFT AP | **48** | as before, `latMode` 3 = NAV, `pitchMode` 5 = GS, float [8] = gs angle, [9] = cmdThrottle |
 | `0xA7` | ROVER AP | **36** | as before plus flags bit6 follow, floats [5] followRange, [6] stopDist, [7] cmdWheel |
 | `0xA8` | ORBITAL | 52 | byte 1 flags: bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 targetAvailable, bit5 nodeAvailable, bit6 apprEngaged; byte 2 mode (0 none, 1 NODE, 2 AP, 3 PE, 4 INC); byte 3 phase (0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP READY, 4 WARPING, 5 BURN, 6 DONE, 7 ABORT; a re-plan returns to 1 PLANNED with reason REPLAN); byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] targetAp, [1] targetPe, [2] targetInc, [3] apprRate, [4] apprDist, [5] dvTotal, [6] dvRemaining, [7] tIgnition, [8] burnDuration, [9] accelEst, [10] cmdThrottle |
-| `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefRadial, bit4 autoStage, bit5 landed, bit6 brakeMarginal; byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; byte 6 accelSource (0 EST, 1 MEAS, 2 TWR); 7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
+| `0xAA` | SUMMARY (every screen) | 8 | byte 1 ascent flags (as `0xA5` byte 1), 2 aircraft flags (as `0xA6` byte 1), 3 rover flags (as `0xA7` byte 1), 4 orbital flags (as `0xA8` byte 1), 5 landing flags (as `0xA9` byte 1), 6 landing mode, 7 entryEngaged |
+| `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefVert (ATT REF = VERT), bit4 autoStage, bit5 landed, bit6 brakeMarginal, bit7 vertHold (the vertical hold is flying; SAS off); byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; byte 6 accelSource (0 EST, 1 MEAS, 2 TWR); 7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
+
+**Summary frame (#83).** The full frame goes only to Info Display 2 and only for the console on
+screen, so neither display would otherwise know an autopilot is engaged off its console: the
+mission ladder's rule 0 and the console ring could not see it. Every 100 ms Controller_Main also
+writes the 8-byte `0xAA` summary to **both** Info Displays. Its bytes are the same flag bytes the
+full frames carry, built by the same helpers, so the two can never disagree; a display applies
+the summary after any full frame in the same cycle. Demo mode ignores it.
 
 Live data shown on the consoles (node ΔV, T-node, radar altitude, vertical speed, target range…)
 comes from the display's own Simpit link as on the other consoles. `AppState` gains the `ob*` and

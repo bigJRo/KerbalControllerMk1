@@ -24,7 +24,12 @@ static LandingConfig lp_c;
 static LpMode  lp_mode = LP_MODE_OFF;
 static bool    lp_entry = false;
 static bool    lp_brakeFiring = false;
-static bool    lp_attRefRadial = false, lp_attRefRadialAuto = false;
+static bool    lp_attRefVert = false;   // ATT REF = VERT: the vertical hold at every speed
+static bool    lp_vertAuto   = false;   // RETRO handed over to the vertical hold (near-zero speed)
+// Who is flying the attitude right now, so each hand-over does its set-up once:
+// stock SAS (retrograde), the vertical hold's raw rotation, or ENTRY's raw rotation.
+enum LpAttSrc : uint8_t { LP_ATT_SAS = 0, LP_ATT_VERT, LP_ATT_ENTRY };
+static uint8_t lp_attSrc = LP_ATT_SAS;
 static float   lp_descRate = -3.0f, lp_hovrAlt = 50.0f, lp_twr = 0.0f, lp_margin = 150.0f, lp_entryAoa = 8.0f, lp_entryRoll = 0.0f;
 static float   lp_thrInt = 0.0f, lp_thrOut = 0.0f, lp_ignAlt = 0.0f;
 static bool    lp_brakeMarginal = false;
@@ -35,14 +40,14 @@ static AttState lp_att;
 
 static void lpSetReason(uint8_t r) { if (r == HP_REASON_PILOT) r = HP_REASON_NONE; lp_reason = r; lp_reasonMs = millis(); }
 static inline bool lpOnGround() { return lp_t.situation == KSP_SIT_LANDED || lp_t.situation == KSP_SIT_SPLASHED; }
-static inline float lpHorizontalSpeed() { float h2 = lp_t.velSurface * lp_t.velSurface - lp_t.velVertical * lp_t.velVertical; return h2 > 0.0f ? sqrtf(h2) : 0.0f; }
 
 LandingConfig lpDefaultConfig() {
   LandingConfig c;
   c.entryGains = attRocketGains();
+  c.vertGains  = attRocketGains();   // the ascent autopilot's VERTICAL-phase loop, same gains
   c.descKp = 0.05f; c.descKi = 0.02f; c.descSlew = 0.5f;
   c.hovrKp = 0.3f; c.hovrVsCap = 10.0f;
-  c.radialSwitchSpeed = 1.0f;
+  c.vertHoldEnterSpeed = 1.5f; c.vertHoldExitSpeed = 3.0f;
   c.brakeFactorEst = 0.25f; c.brakeFactorMeas = 0.10f; c.brakeFactorTwr = 0.05f;
   c.brakeLatencyS = 2.0f; c.brakeMinAccelG = 1.2f; c.brakeMarginalFrac = 0.9f;
   c.entryHandoffSpeed = 250.0f; c.entryPlaneMach = 2.5f; c.entryPlaneQ = 5000.0f;
@@ -77,6 +82,7 @@ static void lpReleaseAttitudeOwner(bool sasStability) {
   rotClearAutoAxes();
   if (sasStability) { mySimpit.activateAction(SAS_ACTION); mySimpit.setSASMode(AP_STABILITYASSIST); }
   lp_sasMode = 255;
+  lp_attSrc = LP_ATT_SAS; lp_vertAuto = false;
   arbReleaseAttitude(AP_OWNER_LANDING);
 }
 
@@ -99,10 +105,11 @@ static float lpIgnitionAltitude() {
 /***************************************************************************************
    Engage / disconnect
 ****************************************************************************************/
-static void lpDropThrottleModes(uint8_t reason, bool keepThrottle) {
+// Leaves the throttle where it is: no mode change or hand-back cuts it (#82). Touchdown
+// is the one exception and cuts it explicitly (lpUpdate, LANDED).
+static void lpDropThrottleModes(uint8_t reason) {
   if (lp_mode == LP_MODE_OFF) return;
   lp_mode = LP_MODE_OFF; lp_brakeFiring = false;
-  if (!keepThrottle) lpThrottle(0.0f);
   lpReleaseThrottleOwner();
   if (!lp_entry) lpReleaseAttitudeOwner(true);
   lpSetReason(reason);
@@ -116,15 +123,14 @@ static void lpDropEntry(uint8_t reason) {
 }
 
 void lpDisconnectAll(uint8_t reason) {
-  bool keep = (reason == HP_REASON_TELEMETRY || reason == HP_REASON_STICK || reason == HP_REASON_LEVER || reason == HP_REASON_OTHER_AP);
-  lpDropThrottleModes(reason, keep);
+  lpDropThrottleModes(reason);
   lpDropEntry(reason);
 }
-void lpArbiterDropAttitude() { lpDropEntry(HP_REASON_OTHER_AP); lpDropThrottleModes(HP_REASON_OTHER_AP, true); }
-void lpArbiterDropThrottle() { lpDropThrottleModes(HP_REASON_OTHER_AP, true); }
+void lpArbiterDropAttitude() { lpDropEntry(HP_REASON_OTHER_AP); lpDropThrottleModes(HP_REASON_OTHER_AP); }
+void lpArbiterDropThrottle() { lpDropThrottleModes(HP_REASON_OTHER_AP); }
 
 bool lpEngage(uint8_t mode, bool on) {
-  if (!on) { if (lp_mode == mode) lpDropThrottleModes(HP_REASON_PILOT, false); return true; }
+  if (!on) { if (lp_mode == mode) lpDropThrottleModes(HP_REASON_PILOT); return true; }
   if (mode < LP_MODE_DESC || mode > LP_MODE_BRAKE) return false;
   if ((millis() - lp_t.lastMs) > lp_c.telemetryTimeout) { lpSetReason(HP_REASON_REFUSED); return false; }
   if (lpOnGround()) { lpSetReason(HP_REASON_REFUSED); return false; }
@@ -136,6 +142,8 @@ bool lpEngage(uint8_t mode, bool on) {
   if (wasOff) {
     float cur = thrLeverDriven() ? thrCurrentThrottle() : lp_t.throttle;
     lp_thrInt = lp_thrOut = attClampf(cur, 0.0f, 1.0f);
+  } else {
+    lp_thrInt = lp_thrOut;              // switching modes: the new loop starts from the throttle as it is
   }
   switch (mode) {
     case LP_MODE_HOVR:  lp_hovrAlt = attClampf(roundf(lp_t.radarAlt), lp_c.hovrMin, lp_c.hovrMax); break;
@@ -154,6 +162,7 @@ bool lpEngageEntry(bool on) {
   mySimpit.deactivateAction(SAS_ACTION);   // raw rotation for ENTRY
   lp_sasMode = 255;
   attReset(lp_att);
+  lp_attSrc = LP_ATT_ENTRY;
   lp_entry = true;
   return true;
 }
@@ -165,7 +174,7 @@ bool lpSetTwr(float v)       { if (!lpInRange(v, lp_c.twrMin, lp_c.twrMax)) retu
 bool lpSetMargin(float v)    { if (!lpInRange(v, lp_c.marginMin, lp_c.marginMax)) return false; lp_margin = v; return true; }
 bool lpSetEntryAoa(float v)  { if (!lpInRange(v, lp_c.aoaMin, lp_c.aoaMax)) return false; lp_entryAoa = v; return true; }
 bool lpSetEntryRoll(float v) { if (!lpInRange(v, lp_c.rollMin, lp_c.rollMax)) return false; lp_entryRoll = v; return true; }
-void lpSetAttRef(bool radial) { lp_attRefRadial = radial; }
+void lpSetAttRef(bool vert) { lp_attRefVert = vert; }
 
 bool lpAnyEngaged() { return lp_mode != LP_MODE_OFF || lp_entry; }
 
@@ -182,13 +191,50 @@ static float lpDescLoop(float vsCmd, float dt) {
   return target;
 }
 
+// Vertical hold: nose straight up, whatever the velocity. Stock SAS has no such mode --
+// RADIAL OUT, which this used to use, is "up with the velocity direction removed", so it is
+// vertical only while moving horizontally; in a vertical descent it lies near the horizon
+// (0.5 m/s of drift at -4 m/s puts it 83 deg off vertical, toward the drift) and with no
+// drift it is undefined. Instead the shared attitude loop is driven to pitch 90 with the
+// heading target set to the current heading, as the ascent autopilot's VERTICAL phase does
+// on the pad: the pitch error is the tilt, rotated into the body axes by roll, so the lean
+// is taken out in whatever direction it lies, and heading -- meaningless when pointing
+// straight up -- is never fought. Roll is left alone. SAS is off while this flies.
+static void lpVertHold(float dt) {
+  if (lp_attSrc != LP_ATT_VERT) {
+    mySimpit.deactivateAction(SAS_ACTION);
+    lp_sasMode = 255;
+    attReset(lp_att);
+    lp_attSrc = LP_ATT_VERT;
+  }
+  AttMeasure m; m.pitch = lp_t.pitch; m.heading = lp_t.heading; m.roll = lp_t.roll;
+  attUpdateRates(lp_att, m, dt);
+  AttCommand c = attSteerRocket(lp_att, lp_c.vertGains, m, 90.0f, lp_t.heading,
+                                false, 0.0f, lp_c.maxControlDeflection, dt);
+  rotSetAutoAxes(c.pitch, c.yaw, 0.0f, ROT_AXIS_PITCH | ROT_AXIS_YAW);
+}
+
+// Retrograde through stock SAS. In a descent surface-retrograde points straight up and
+// tilts against any drift, so it also cancels horizontal speed.
+static void lpSasRetro() {
+  if (lp_attSrc != LP_ATT_SAS) { rotClearAutoAxes(); lp_attSrc = LP_ATT_SAS; }
+  lpSas(AP_RETROGRADE);
+}
+
 static void lpUpdateThrottleModes(uint32_t now, float dt) {
   (void)now;
-  // Attitude reference: retrograde kills horizontal velocity; radial-out is pure vertical.
-  // Retrograde swings wildly at low speed, so switch to radial-out automatically.
-  bool radial = lp_attRefRadial || (lpHorizontalSpeed() < lp_c.radialSwitchSpeed);
-  lp_attRefRadialAuto = radial && !lp_attRefRadial;
-  if (!lp_entry) lpSas(radial ? AP_RADIALOUT : AP_RETROGRADE);
+  // Attitude reference. RETRO: retrograde -- until the TOTAL surface speed is too low for
+  // its direction to mean anything (a hover, the last moment before touchdown), when the
+  // vertical hold takes over; it hands back above vertHoldExitSpeed. (The old test was
+  // horizontal speed under 1 m/s, which is every vertical descent, where retrograde is
+  // already exactly vertical.) VERT: the vertical hold at every speed.
+  const float spd = lp_t.velSurface;
+  if (lp_vertAuto) { if (spd > lp_c.vertHoldExitSpeed)  lp_vertAuto = false; }
+  else             { if (spd < lp_c.vertHoldEnterSpeed) lp_vertAuto = true;  }
+  if (!lp_entry) {
+    if (lp_attRefVert || lp_vertAuto) lpVertHold(dt);
+    else                              lpSasRetro();
+  }
 
   lp_ignAlt = lpIgnitionAltitude();
   float a = lpAccel(), g = lp_t.gravity;
@@ -270,7 +316,8 @@ LandingStatus lpGetStatus() {
   LandingStatus s;
   s.mode = lp_mode; s.entry = lp_entry; s.engaged = lpAnyEngaged();
   s.brakeArmed = (lp_mode == LP_MODE_BRAKE && !lp_brakeFiring); s.brakeFiring = lp_brakeFiring;
-  s.attRefRadial = lp_attRefRadial || lp_attRefRadialAuto; s.autoStage = asEnabled(); s.landed = lpOnGround();
+  s.attRefVert = lp_attRefVert; s.autoStage = asEnabled(); s.landed = lpOnGround();
+  s.vertHold = (lp_mode != LP_MODE_OFF && !lp_entry && lp_attSrc == LP_ATT_VERT);
   s.brakeMarginal = lp_brakeMarginal;
   s.reason = lp_reason; uint32_t a = (millis() - lp_reasonMs) / 1000UL; s.reasonAge = (lp_reason == HP_REASON_NONE) ? 255 : (a > 255 ? 255 : (uint8_t)a);
   s.accelSource = lpAccelSource();
@@ -297,7 +344,7 @@ bool lpConsoleLine(const char *line) {
     if (strncasecmp(a, "MARGIN", 6) == 0) return lpSetMargin(v);
     if (strncasecmp(a, "AOA", 3) == 0)    return lpSetEntryAoa(v);
     if (strncasecmp(a, "ROLL", 4) == 0)   return lpSetEntryRoll(v);
-    if (strncasecmp(a, "RADIAL", 6) == 0) { lpSetAttRef(v != 0.0f); return true; }
+    if (strncasecmp(a, "VERT", 4) == 0 || strncasecmp(a, "RADIAL", 6) == 0) { lpSetAttRef(v != 0.0f); return true; }   // RADIAL: old name
     return false;
   }
   if (strncasecmp(line, "OFF", 3) == 0) { lpDisconnectAll(HP_REASON_PILOT); return true; }
@@ -334,6 +381,7 @@ void lpIngestBody(float gravity, float flyHigh, const char *name) {
 void lpIngestThrottle(float t01) { lp_t.throttle = attClampf(t01, 0.0f, 1.0f); }
 void lpVesselChanged() {
   lp_mode = LP_MODE_OFF; lp_entry = false; lp_brakeFiring = false; lp_sasMode = 255;
+  lp_attSrc = LP_ATT_SAS; lp_vertAuto = false;
   rotClearAutoAxes(); arbReleaseAttitude(AP_OWNER_LANDING); arbReleaseThrottle(AP_OWNER_LANDING);
   lp_reason = HP_REASON_NONE; lp_t.lastMs = millis();
 }

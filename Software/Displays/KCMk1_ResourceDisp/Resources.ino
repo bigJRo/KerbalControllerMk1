@@ -174,8 +174,8 @@ ResourceType resTypeByIndex(uint8_t index) {
 
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Matches the SPCT preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
-   Loaded on first boot; the Select screen's SPCT key loads the same set.
+   Matches the SPC preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
+   Loaded on first boot; the Select screen's SPC key loads the same set.
 ****************************************************************************************/
 // Seed one slot's fill values: 0 in live mode (Simpit repopulates on refresh),
 // visible demo values otherwise. Shared by all the slot-loading paths.
@@ -199,11 +199,11 @@ void zeroAllSlotValues() {
    The Select screen's preset keys. Everything in a preset should be aboard the craft
    type it names; a resource the vessel turns out not to carry is skipped at load
    time (see loadPreset in ScreenSelect.ino) and would draw no meter anyway. Nine or
-   fewer keeps the standard meter class. SPCT, the first, is also the layout a vessel
+   fewer keeps the standard meter class. SPC, the first, is also the layout a vessel
    not in memory starts with when the pilot has not set a default of their own.
 ****************************************************************************************/
 const PresetGroup PRESETS[PRESET_COUNT] = {
-  { "SPCT", {   // Spacecraft: stock launch-to-orbit set
+  { "SPC", {    // Spacecraft: stock launch-to-orbit set
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
       RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
     }, 9 },
@@ -215,7 +215,7 @@ const PresetGroup PRESETS[PRESET_COUNT] = {
       RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_ORE, RES_LIQUID_FUEL, RES_LIQUID_OX,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 9 },
-  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPCT plus Intake Air.
+  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPC plus Intake Air.
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_INTAKE_AIR,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 7 },
@@ -233,7 +233,7 @@ const PresetGroup PRESETS[PRESET_COUNT] = {
 };
 
 // The default layout: the pilot's stored one if set (types and reserve bugs), else
-// the SPCT preset. Used at boot and for a vessel that is not in memory. Values start
+// the SPC preset. Used at boot and for a vessel that is not in memory. Values start
 // at zero (or visible demo values); presence is not consulted, since at boot nothing
 // is known yet and an absent resource collapses on the Main screen anyway.
 void initDefaultSlots() {
@@ -332,10 +332,12 @@ const char* resGroupLabel(ResGroup g) {
    RESOURCE LIMIT BANDS
    Which resources alert, in which direction, and at what fractions. The two tiers
    come from AAA_Config.ino (generic: cross-panel aligned with the Annunciator;
-   waste: fraction full).
+   Depleted Fuel: fraction full).
      - Consumables (power, propellants, nuclear fuel, ablator, O2/food/water,
        fertilizer): alert on running LOW.
-     - Waste products (CO2, Waste, Liquid Waste, Depleted Fuel): alert on filling UP.
+     - Depleted Fuel: alerts on filling UP.
+     - The TAC-LS waste products (CO2, Waste, Liquid Waste): no bands, but still
+       high-is-bad, so the counter reads time to full and a reserve bug trips above.
      - Ore and Intake Air: no bands. Ore is cargo with no operational floor, and
        intake air is a flow that tracks airspeed rather than a stock that depletes.
 ****************************************************************************************/
@@ -347,6 +349,7 @@ ResLimits resLimits(ResourceType t) {
     case RES_LS_CO2:
     case RES_LS_WASTE:
     case RES_LS_LIQUID_WASTE:
+      return { 0.0f, 0.0f, true, false };
     case RES_DEPLETED_URANIUM:
       return { WASTE_WARN_FRAC, WASTE_ALARM_FRAC, true, true };
     case RES_NONE:
@@ -387,7 +390,7 @@ uint8_t alertState(ResourceType t, float level, float bug, uint8_t prev) {
   ResLimits lim = resLimits(t);
   if (prev > ALERT_BUG) prev = ALERT_NOMINAL;
   float h = ALERT_HYST_FRAC;
-  bool highIsBad = lim.enabled && lim.highIsBad;
+  bool highIsBad = lim.highIsBad;
   bool inCaution = (prev == ALERT_CAUTION || prev == ALERT_ALARM);
   uint8_t state = ALERT_NOMINAL;
   if (lim.enabled) {

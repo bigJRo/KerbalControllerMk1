@@ -341,6 +341,23 @@ static void runLogicTests() {
       state.stageDV       = CW_LOW_DV_MS + 100.0f;
       state.stageBurnTime = CW_LOW_BURN_S + 10.0f; });
 
+  // CW_LOW_DV -- no propellant on board (re-entry capsule): suppressed (#72); with LF
+  // reported on board the same numbers still warn (a nuclear tug carries no OX).
+  {
+    resetTestState();
+    inFlight = true;
+    bitClear(state.vesselSituationState, VSIT_PRELAUNCH);
+    state.throttleCmd = 50; state.stageDV = 0.0f; state.stageBurnTime = 0.0f;
+    state.propSeen = true; state.LF_vessel = 0.0f; state.OX_vessel = 0.0f;
+    updateCautionWarningState();
+    bool pass = !bitRead(state.cautionWarningState, CW_LOW_DV);
+    printResult(pass, "LOW_DV no propellant", "off: no LF, no OX on board");
+    state.LF_vessel = 500.0f;
+    updateCautionWarningState();
+    pass = bitRead(state.cautionWarningState, CW_LOW_DV);
+    printResult(pass, "LOW_DV LF only", "on: LF on board, stage dV low");
+  }
+
   // CW_HIGH_G (positive)
   TEST_BIT("HIGH_G pos",
     CW_HIGH_G,
@@ -458,10 +475,9 @@ static void runLogicTests() {
     // Set all consumables to 10x warn threshold -- safely in the green zone
     state.tacOxygen = (float)(TACLS_OXYGEN_RATE * crew * TACLS_OXYGEN_WARN_S * 10.0);
     state.tacWater  = (float)(TACLS_WATER_RATE  * crew * TACLS_WATER_WARN_S  * 10.0);
-    // Set waste capacity to very large so waste fraction is near zero
-    state.tacCO2_tot   = 1e6f; state.tacCO2   = 0.0f;
-    state.tacWaste_tot = 1e6f; state.tacWaste  = 0.0f;
-    state.tacWW_tot    = 1e6f; state.tacWW     = 0.0f;
+    // Capacities, as TAC-LS always sends them; with all three at 0 the tile reads
+    // "no TAC-LS data" and stays dark (#63).
+    state.tacFood_tot = 1e6f; state.tacWater_tot = 1e6f; state.tacOxygen_tot = 1e6f;
 
     // Set food to midpoint between warn and alarm thresholds
     double foodRate = TACLS_FOOD_RATE * crew;
@@ -478,15 +494,23 @@ static void runLogicTests() {
     { state.crewCount = 2;
       double crew = 2.0;
       // All resources safe except oxygen which is critically low
+      state.tacFood_tot = 1e6f; state.tacWater_tot = 1e6f; state.tacOxygen_tot = 1e6f;
       state.tacFood   = (float)(TACLS_FOOD_RATE  * crew * TACLS_FOOD_WARN_S  * 10.0);
       state.tacWater  = (float)(TACLS_WATER_RATE  * crew * TACLS_WATER_WARN_S * 10.0);
-      state.tacCO2_tot   = 1e6f; state.tacCO2   = 0.0f;
-      state.tacWaste_tot = 1e6f; state.tacWaste  = 0.0f;
-      state.tacWW_tot    = 1e6f; state.tacWW     = 0.0f;
       // Oxygen below alarm threshold
       double o2Rate   = TACLS_OXYGEN_RATE * crew;
       state.tacOxygen = (float)(o2Rate * (TACLS_OXYGEN_ALARM_S - 60.0f)); },
     { state.crewCount = 0; });
+
+  // CW_LIFE_SUPPORT -- no TAC-LS installed: every tac* field 0, crew aboard. Must stay
+  // dark; zero food over a non-zero rate used to read as 0 s left and fire red (#63).
+  {
+    resetTestState();
+    state.crewCount = 3;
+    updateCautionWarningState();
+    bool pass = !bitRead(state.cautionWarningState, CW_LIFE_SUPPORT) && !lsYellow;
+    printResult(pass, "LIFE_SUPPORT no TAC-LS", "off: crew aboard, no TAC-LS data");
+  }
 
   // CW_O2_PRESENT
   TEST_BIT("O2_PRESENT",
@@ -599,21 +623,25 @@ static void runLogicTests() {
     setTestBody();
   }
 
-  // CW_HIGH_Q -- suppressed by default (highQThreshold == 0)
+  // CW_HIGH_Q -- true dynamic pressure against CW_HIGH_Q_PA (20 kPa)
   {
     resetTestState();
     inAtmo = true;
-    state.atmoPressure = 100.0f;
-    state.vel_surf     = 500.0f;
+    state.airDensity = 1.0f;
+    state.vel_surf   = 150.0f;                // q = 11.25 kPa
     updateCautionWarningState();
     bool pass = !bitRead(state.cautionWarningState, CW_HIGH_Q);
-    printResult(pass, "HIGH_Q suppressed", "off: highQThreshold==0 for Kerbin");
+    printResult(pass, "HIGH_Q below limit", "off: q 11 kPa < 20 kPa");
 
-    // Now set a threshold and trigger it
-    currentBody.highQThreshold = 1000.0f;  // low threshold
+    state.vel_surf   = 250.0f;                // q = 31.25 kPa
     updateCautionWarningState();
     pass = bitRead(state.cautionWarningState, CW_HIGH_Q);
-    printResult(pass, "HIGH_Q triggered", "on: threshold set, pressure+vel high");
+    printResult(pass, "HIGH_Q above limit", "on: q 31 kPa > 20 kPa");
+
+    inAtmo = false;                           // same numbers, out of the atmosphere
+    updateCautionWarningState();
+    pass = !bitRead(state.cautionWarningState, CW_HIGH_Q);
+    printResult(pass, "HIGH_Q out of atmosphere", "off: not in atmosphere");
     setTestBody();
   }
 
@@ -777,7 +805,7 @@ struct DisplayStep {
   float         fcAlt;
   // Mode grid: the MF_* bits to light (state.modeFlags, the master's word)
   uint16_t      modeBits;
-  // Vehicle control mode and type for the SPCFT/PLN/RVR tile
+  // Vehicle control mode and type for the SPC/PLN/RVR tile
   // -1 = no override (use default ctrl_Spacecraft / type_Ship)
   int8_t        psVehCtrl;    // CtrlMode value: 0=ctrl_Rover, 1=ctrl_Plane, 2=ctrl_Spacecraft
   int8_t        psVesselType; // VesselType value (type_Ship=7, type_Plane=8, type_Rover=5)
@@ -861,12 +889,12 @@ static const DisplayStep _displaySteps[] = {
   DS_MODE("MODE: ENG ARM",     1u << MF_ENG_ARM,     "Mode grid: ENG ARM (green)"),
   DS_MODE("MODE: ALL ON",      (uint16_t)((1u << MF_COUNT) - 1), "Mode grid: every tile lit"),
   // --- SPCFT tile: control mode against vessel type ---
-  DS_SPCFT("SPCFT match", ctrl_Spacecraft, type_Ship,  "SPCFT tile: green SPCFT (ctrl_Spacecraft, type_Ship) + ship icon"),
+  DS_SPCFT("SPCFT match", ctrl_Spacecraft, type_Ship,  "SPCFT tile: green SPC (ctrl_Spacecraft, type_Ship) + ship icon"),
   DS_SPCFT("PLN match",   ctrl_Plane,      type_Plane, "SPCFT tile: green PLN (ctrl_Plane, type_Plane) + plane icon"),
   DS_SPCFT("RVR match",   ctrl_Rover,      type_Rover, "SPCFT tile: green RVR (ctrl_Rover, type_Rover) + rover icon"),
   DS_SPCFT("SPCFT err",   ctrl_Plane,      type_Ship,  "SPCFT tile: red PLN (ctrl_Plane but type_Ship -- mismatch)"),
   // --- ALL OFF ---
-  DS_SPCFT("ALL OFF",     ctrl_Spacecraft, type_Ship,  "Everything dark; SPCFT green, mode grid unlit"),
+  DS_SPCFT("ALL OFF",     ctrl_Spacecraft, type_Ship,  "Everything dark; SPC green, mode grid unlit"),
 };
 
 static const uint8_t _displayStepCount =
