@@ -736,7 +736,6 @@ Matches the reference.
 
 - **Annunciator TRIM** lights while a trim offset is set.
 - **The trim clears on a control-mode change** (SPC / PLN / RVR).
-- The pilot-override test uses the raw stick deflection, so a trim offset does not count as pilot input.
 
 **Translation joystick (0x29):**
 
