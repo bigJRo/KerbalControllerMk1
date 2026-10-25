@@ -427,12 +427,14 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 
 ## 9. Future discussion points
 
-1. *(Settled — §8.8, §8.9.)* Demo and debug modes.
-6. **Sys Info Display:** what it shows (no debug), and its protocol (Q6).
-2. *(Settled — §8.7.)* Stability Control B10 = HOLD.
-3. **Function Control B4 (RW DISABLE):** a better function for this button; candidates so far FLAPS, THRUST REV, UNDOCK, DRILL / ISRU, ENG SHUTDOWN, SPARE (§10.5).
-5. **Rotation stick button:** whether it stays Airbrake (CAG 38, same as Function B5).
-4. **AUX CTRL B8:** unassigned on the panel (§10.1); a function can be chosen later.
+| # | Topic | Status |
+|---|---|---|
+| 1 | Demo and debug modes | Settled (§8.8, §8.9) |
+| 2 | Stability Control B10 | Settled: HOLD (§8.7) |
+| 3 | Function Control B4 (RW DISABLE): a better function. Candidates so far: FLAPS, THRUST REV, UNDOCK, DRILL / ISRU, ENG SHUTDOWN, SPARE (§10.5) | Open |
+| 4 | AUX CTRL B8: unassigned on the panel (§10.1) | Open |
+| 5 | Rotation stick button: whether it stays Airbrake (CAG 38, same as Function B5) | Open |
+| 6 | Sys Info Display: what it shows (no debug), and its protocol (Q6) | Open |
 
 ## 10. Button module review
 
