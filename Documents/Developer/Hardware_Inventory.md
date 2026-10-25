@@ -22,6 +22,8 @@
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | 3-axis stick + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | 4-digit display, encoder with push, 3 RGB buttons |
 | 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
+| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | Two encoder inputs + a safe-switch terminal |
+| Encoder | KC-01-1851 | KC-01-1852 | V2.0 | Passive carrier for one PEC11R encoder with push |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
 
@@ -148,6 +150,24 @@ The board has no active components or protection; every signal passes straight t
 - **Power:** its own 12 V → 5 V → 3.3 V regulators.
 - **No safe-switch terminal.**
 
+### 5.8 Dual Encoder (KC-01-1861 V2.0) and Encoder carrier (KC-01-1851 V2.0)
+
+**Dual Encoder:**
+- **Encoder headers** H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder carrier each:
+
+  | Pin | Signal |
+  |---|---|
+  | 1 | +5 V |
+  | 2 | A |
+  | 3 | B |
+  | 4 | Button |
+  | 5 | GND |
+
+- **Safe-switch terminal U4:** the same 6-pin circuit as the hubs (active-high, 10 kΩ / 20 kΩ divider), but its output goes to slot pin 16 (SAFE_INT), **not** to the ATtiny. Every hub leaves slot pin 16 unconnected, so this switch cannot reach the master or the module.
+- **No LEDs.**
+
+**Encoder carrier:** PEC11R-4220F-S0024 with RC-filtered A / B (10 kΩ pull-ups, 10 nF), and the push button active-high with a 10 kΩ pull-down.
+
 ## 6. Differences from older documents
 
 | # | Topic | Older document says | Schematic shows |
@@ -162,6 +182,7 @@ The board has no active components or protection; every signal passes straight t
 | 8 | Throttle panel inputs | Module UI Reference: four buttons | Five terminals; the fifth (THRTL_ENA) is not wired and unused by the firmware |
 | 9 | Switch Group 1 order | Module UI Reference: B16 MSTR, B17 DISPL, B18 ENGINE, B19 THROTTLE, B20 SCE, B21 UPTLM, B22 LTG, B23 THRTL | B16 MSTR, B17 DISP, B18 SCE, B19 UPTLM, B20 LTG, B21 ENGINE, B22 THROTTLE, B23 THRTL (confirmed by the owner; §7.2) |
 | 10 | 2" display safe switch | Hardware Reference §5.3: the 2.0" carrier "can carry a safe switch via screw terminal" | No terminal on KC-01-1901 V2.0 |
+| 12 | Dual Encoder safe switch | Hardware Reference §12: INT_SAFE on the module connector for the Dual Encoder | Its terminal drives slot pin 16, which no hub connects |
 | 11 | Ctrl Module ST7789 | — | The only ST7789 in the system is the 2" Sys Info Display on A2; the Hardware Reference's Ctrl Module entry probably refers to an earlier plan |
 
 ## 7. Panels
@@ -216,7 +237,27 @@ The board has no active components or protection; every signal passes straight t
 
 Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
-To be filled in next: B1, B2.
+### 7.3 B1 — right display panel
+
+| Item | Board | Connects to | Master sees it on |
+|---|---|---|---|
+| Resource Display (0x11) — **panel hub** | 7" TFT Display Driver (1911) | Its CN1 (34-pin) → Ctrl Module Extension **CN4** (*see the note*) | Hub's own line |
+| Information Display 2 (0x13) | 7" TFT Display Driver (1911) | Its P1 → Resource Display slot P2 | Slot P2 line |
+| Dual Encoder (0x2D) | Dual Encoder (1861) + 2 × Encoder (1851) | Its P1 → Resource Display slot P4 | Slot P4 line |
+
+- **Free:** Resource Display slot P3.
+- **Safe-switch terminals:** none wired (Resource Display or Dual Encoder).
+
+**Note: which extension connector?** CN4 is the 8-line connector (B_INT_1–8 + B_INT_SAFE) and CN5 the 4-line one (B_INT_9–12 + B_INT_SAFE2). On the A side the display hub is on the 4-line connector.
+
+| If the Resource Display is on… | B1 lines | B2's Panel Hub is then on… |
+|---|---|---|
+| **CN5** (as on the A side) | hub B_INT_12, P2 B_INT_9, P3 B_INT_10, P4 B_INT_11; safe B_INT_SAFE2 | CN4: all 8 slots have lines |
+| **CN4** | hub B_INT_4, P2 B_INT_1, P3 B_INT_2, P4 B_INT_3; safe B_INT_SAFE; B_INT_5–8 unused | CN5: only slots P1–P4 have lines; P5–P8 have none |
+
+*To confirm.*
+
+To be filled in next: B2.
 
 ## 8. Behaviour decisions made during the review
 
