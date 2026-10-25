@@ -21,6 +21,7 @@
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | Motorised fader, touch sensor, 5 illuminated panel inputs |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | 3-axis stick + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | 4-digit display, encoder with push, 3 RGB buttons |
+| 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
 
@@ -138,6 +139,15 @@ The board has no active components or protection; every signal passes straight t
 - **Controls:** rotary encoder with push button; three buttons, each with an SK6812 LED.
 - **Panel inputs:** none.
 
+### 5.7 2" TFT Display Driver (KC-01-1901 V2.0)
+
+- **Controller:** Seeed XIAO RP2350. The I2C bus and INT go to the XIAO directly at 3.3 V, with no divider or level shifter.
+- **Display:** 2" 240×320 IPS (ST7789) on SPI, with backlight control.
+- **Storage:** microSD card on the same SPI bus.
+- **Slot connector P1:** pin 13 INT; pins 9 (3.3 V), 14 (RST) and 16 not connected. So the master's RST line cannot reboot it.
+- **Power:** its own 12 V → 5 V → 3.3 V regulators.
+- **No safe-switch terminal.**
+
 ## 6. Differences from older documents
 
 | # | Topic | Older document says | Schematic shows |
@@ -149,7 +159,10 @@ The board has no active components or protection; every signal passes straight t
 | 5 | Safe switch terminal V_EN | — | Pins 2, 3, 5 tied to a V_EN net that nothing drives |
 | 6 | Fan headers | — | Pin order 1 PWM, 2 tach / NC, 3 12 V, 4 GND: the reverse of the usual PC fan numbering. Worth checking against the fans' cable |
 | 7 | Throttle Module PCB number | Module UI Reference and the Hardware Reference change log: KC-01-1822 | KC-01-1872 (schematic 1871), as the Hardware Reference table says |
-| 8 | Throttle panel inputs | Module UI Reference: four buttons | Five terminals; the fifth (THRTL_ENA) is unused by the firmware |
+| 8 | Throttle panel inputs | Module UI Reference: four buttons | Five terminals; the fifth (THRTL_ENA) is not wired and unused by the firmware |
+| 9 | Switch Group 1 order | Module UI Reference: B16 MSTR, B17 DISPL, B18 ENGINE, B19 THROTTLE, B20 SCE, B21 UPTLM, B22 LTG, B23 THRTL | B16 MSTR, B17 DISP, B18 SCE, B19 UPTLM, B20 LTG, B21 ENGINE, B22 THROTTLE, B23 THRTL (confirmed by the owner; §7.2) |
+| 10 | 2" display safe switch | Hardware Reference §5.3: the 2.0" carrier "can carry a safe switch via screw terminal" | No terminal on KC-01-1901 V2.0 |
+| 11 | Ctrl Module ST7789 | — | The only ST7789 in the system is the 2" Sys Info Display on A2; the Hardware Reference's Ctrl Module entry probably refers to an earlier plan |
 
 ## 7. Panels
 
@@ -182,11 +195,25 @@ The board has no active components or protection; every signal passes straight t
 | Panel item | Wired to | Master sees it on |
 |---|---|---|
 | Abort button | Panel Hub safe-switch terminal | INT_SAFE (Teensy 31), active-high |
-| Switch Group 1 (8 switches) | Function Control terminals U16 / U17 → B16–B23 | Function Control's packet |
+| Switch Group 1 (8 switches) | Function Control terminals U16 / U17 → B16–B23 (below) | Function Control's packet |
+| Throttle buttons 100 %, UP, DOWN, 0 % | Throttle terminals U7, U8, U10, U11 | Throttle's packet |
 | Translation stick | Joystick terminal U6 | Translation's packet |
 
-**Unused:** Action Control and UI Control terminals (B12–B15); Throttle THRTL_ENA.
+**Unused:** slot P5; Action Control and UI Control terminals (B12–B15); Throttle THRTL_ENA (terminal U5).
 
-**To confirm:** Throttle THRTL_100 / UP / DOWN / 00 (terminals U7, U8, U10, U11).
+**Switch Group 1** (Function Control, confirmed layout):
+
+| Input | Terminal pin | Switch | Meaning |
+|---|---|---|---|
+| B16 | U16-6 | MSTR | Master reset |
+| B17 | U16-5 | DISP | Display clear |
+| B18 | U16-4 | SCE | Simpit reconnect / refresh |
+| B19 | U16-3 | UPTLM | Debug telemetry |
+| B20 | U17-4 | LTG | Bulb test |
+| B21 | U17-3 | ENGINE | SAFE / ARM — *meaning to confirm* |
+| B22 | U17-2 | THROTTLE | INOP / ACT = throttle off / on |
+| B23 | U17-1 | THRTL | STD / FINE = throttle precision |
+
+Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
 To be filled in next: B1, B2.
