@@ -362,9 +362,73 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 
 **Kill rotation was dropped:** with Simpit reporting no angular velocity, it could only engage SAS Stability Assist, which is not useful enough. The AUX CTRL review (§10.1) then removed the docking-port control point altogether.
 
+### 8.8 Demo mode (Switch Group 1 SCE: NORM = off, AUX = on)
+
+**Purpose:** showing the controller off, and bench testing.
+
+**Allowed:** any time the switch is set.
+
+**Nothing reaches KSP.** While in demo, the master sends no Simpit message of any kind, and nothing depends on a Simpit connection: every "is KSP connected / in a flight scene" check is bypassed. Engaged autopilots and HOLD are dropped on entry.
+
+**Panels respond locally:**
+- **Buttons:** every one sits in its default backlit state, and shows its ACTIVE colour while pressed. There is no self-running light pattern in any state.
+- **Switches** show their positions; for example, CHUTE ARM enables the parachute buttons' local response.
+- **7-segment modules and joysticks** respond locally (the 7-segments are module-managed anyway).
+- **Modules** are ENABLEd for the duration, whatever the flight scene.
+
+**Displays:** all four carriers get the demo flag and animate demo data. *Every display follows the master's flag and nothing else:* it enters and leaves demo only when the flag changes. Today the Info Displays clear demo on a scene change, and the Resource Display stops servicing Simpit; both are brought in line (§11).
+
+**Annunciator:** DEMO lit.
+
+**Leaving demo:**
+- Modules return to the lifecycle for the current scene.
+- LEDs return to KSP's state.
+- Switches flipped during demo are not acted on; the usual rule applies, so a switch that now disagrees with the vessel lights SWITCH ERR.
+
+### 8.9 Debug mode (Switch Group 1 UPTLM: INHIB = off, XMIT = on)
+
+**Where:** serial ports only.
+- **The master** writes to its USB serial (`Serial`; KSP's link is `SerialUSB1`).
+- **The debug flag** also switches on every display's own serial debug.
+- **The Sys Info Display shows no debug;** what it shows is a separate discussion (§9).
+
+**Annunciator:** DEBUG lit.
+
+**What the master reports:**
+
+| # | Category | Reported |
+|---|---|---|
+| 1 | Modules | Found / missing, type mismatch, re-probe results |
+| 2 | INT learning | The line learned for each module; differences from the stored / default map |
+| 3 | Module health | Fault bits, missed packets (transaction-counter gaps) |
+| 4 | Switches | The detail behind each SWITCH ERR; switch faults such as both mode-selector inputs on |
+| 5 | KSP link | Connect / disconnect, scene and vessel changes |
+| 6 | Autopilots | Engage / disengage with the reason; HOLD |
+| 7 | INT traffic | Each INT received and the packet that followed (decoded) |
+| 8 | Master state | Every change of a state / config variable (control mode, control group, precision, audio, demo, A/P ARM, ENGINE ARM, trim, …) |
+| 9 | Timing | Loop time (average / worst per second) |
+| 10–17 | *Recommended additions — to confirm* | See the end of this section |
+
+**Recommended additions (to confirm):**
+- **10 — Commands to KSP:** every Simpit message sent, decoded. Axis and throttle messages are logged on change rather than every frame.
+- **11 — KSP inbound health:** messages per channel, and time since the last one on each.
+- **12 — I2C errors:** NACKs, short reads, bus timeouts, bus recovery.
+- **13 — Display carriers:** commands sent (on change); console command / ack traffic.
+- **14 — Ownership:** throttle and attitude owner changes, lever override, ENGINE SAFE / ARM, lever sync after ARM.
+- **15 — Board:** boot banner (firmware version, reset cause including watchdog), supply voltage / current, temperature, fan.
+- **16 — Lifecycle:** every ENABLE / DISABLE / RESET sent to a module.
+- **17 — Keyboard events** sent.
+
+**Format and limits (proposed):**
+- One line per event: timestamp, category tag, message, so a log can be filtered.
+- Errors are always printed; the rest only while XMIT.
+- Rate-limited, with a "*n* suppressed" line, so a flood cannot stall the loop.
+- *Optional:* a small serial command set for bench work, e.g. `status`, `modules`, `intmap`, `simpit`.
+
 ## 9. Future discussion points
 
-1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
+1. *(Settled — §8.8, §8.9.)* Demo and debug modes.
+6. **Sys Info Display:** what it shows (no debug), and its protocol (Q6).
 2. *(Settled — §8.7.)* Stability Control B10 = HOLD.
 3. **Function Control B4 (RW DISABLE):** a better function for this button; candidates so far FLAPS, THRUST REV, UNDOCK, DRILL / ISRU, ENG SHUTDOWN, SPARE (§10.5).
 5. **Rotation stick button:** whether it stays Airbrake (CAG 38, same as Function B5).
@@ -670,4 +734,7 @@ Collected from this review; each is a separate piece of work.
 | 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
+| 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
+| 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
+| 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |
 
