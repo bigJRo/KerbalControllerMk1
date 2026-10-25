@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.7.0
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.8.2
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
