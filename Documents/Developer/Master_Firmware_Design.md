@@ -580,7 +580,7 @@ The STICK / LEVER disconnect reasons go unused. The autopilot design docs are up
 
 | Service | Plan |
 |---|---|
-| **Fan** (EMC2101, 0x4C) | Temperature from the remote diode on H4, falling back to the internal sensor. Duty 30 / 40 / 50 / 70 / 100 % at 25 / 30 / 40 / 50 °C, 1 Hz, 2 °C hysteresis. RPM from the Ctrl Module fan (the Extension fan has no tach) |
+| **Fan** (EMC2101, 0x4C) | Temperature from the EMC2101's **internal** sensor (the board temperature). No external sensor is fitted on H4, so the remote channel is not used and its open-diode fault is ignored. Duty 30 / 40 / 50 / 70 / 100 % at 25 / 30 / 40 / 50 °C, 1 Hz, 2 °C hysteresis. RPM from the Ctrl Module fan (the Extension fan has no tach) |
 | **Power** (INA228, 0x40) | Voltage, current, power at 4 Hz; warning below 11 V |
 | **Display reset** (pin 2) | Normally high; a 10 ms low pulse reboots the four 7" displays (not the Sys Info Display, whose RST is not connected) |
 
