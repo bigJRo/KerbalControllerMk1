@@ -298,6 +298,7 @@ These go into the firmware design once the panel review is finished.
 - **SAFE:**
   - the master sends 0 % throttle to KSP and drives the lever to 0 %;
   - every throttle input is ignored: lever, throttle buttons, and autopilots;
+  - the rover wheel throttle is held at 0 too (stick and autopilot); steering still works;
   - an autopilot that needs the throttle cannot engage, and one already engaged drops with the reason ENG SAFE;
   - if the pilot moves the lever while SAFE, it is driven back to 0 % on release.
 - **ARM:**
@@ -343,33 +344,42 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 - A rising edge sends STAGE, only in a flight scene, with a 1 s lockout so a bounce or double press cannot fire two stages.
 - The arming switch is wired in series, the same way as the Abort button, so a press only reaches the master while armed. The master cannot see the arming switch itself.
 
-### 8.7 HOLD (Stability B10) and KILL ROT (AUX CTRL B11)
+### 8.7 HOLD (Stability B10)
 
-The candidates considered for Stability B10 were: HOLD, controller pointing layer, kill rotation, navball reference, custom action group, SAS mode guard, KSP fine control, RCS hold, A/P DISC and an Info Display shortcut. HOLD was chosen for B10, and kill rotation for AUX CTRL B11.
-
-**HOLD — Stability Control B10.** A temporary hold of the current condition. It is *not* gated by A/P ARM, and A/P INHIB does not drop it.
+HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM, and A/P INHIB does not drop it.
 
 | Control mode | Holds | How |
 |---|---|---|
 | SPC | Attitude | KSP SAS, Stability Assist |
 | PLN | Altitude + heading | Hold autopilot ALT + HDG at the current values; throttle untouched |
-| RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values |
+| RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values. With ENGINE SAFE, heading only (wheel throttle held at 0) |
 
-- **Press again:** releases it.
-- **Stick input:** releases it (the pilot override rule).
-- **A console autopilot engaging:** releases it.
+- **Released by:** a second press, stick input, or a console autopilot engaging.
 - **LED:** ACTIVE while holding.
+- **Annunciator:** AUTOPILOT lights while HOLD is on.
 
-**KILL ROT — AUX CTRL B11** (was CP Docking Port, CAG 37).
-- One press stops the vessel rotating: KSP SAS Stability Assist until the rates settle, then the previous SAS state and mode are restored.
-- It also ends on a second press or on stick input.
-- **LED:** ACTIVE while damping.
-- Simpit reports no angular velocity, so "settled" comes from the navball angles' rate of change.
+The candidates considered for B10 were: HOLD, controller pointing layer, kill rotation, navball reference, custom action group, SAS mode guard, KSP fine control, RCS hold, A/P DISC, Info Display shortcut.
 
-**Control point:** AUX CTRL B10 still cycles Primary / Alternate (CAG 35 / 36). CAG 37 is freed.
+**Kill rotation was dropped:** with Simpit reporting no angular velocity, it could only engage SAS Stability Assist, which is not useful enough. AUX CTRL B11 (CP Docking Port) is still to be repurposed; see §10.
 
 ## 9. Future discussion points
 
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
-2. *(Settled — §8.7.)* Stability Control B10 = HOLD; AUX CTRL B11 = KILL ROT.
+2. *(Settled — §8.7.)* Stability Control B10 = HOLD.
+3. **AUX CTRL B11:** a new function, replacing CP Docking Port (§10).
+
+## 10. Button module review
+
+The Module UI Reference and the module firmware agree with each other, but not with the built panels: for example, both put Cruise Control on AUX CTRL B8, which the panel does not have. Each button module is reviewed against the physical panel labels, one at a time:
+
+| # | Module | Status |
+|---|---|---|
+| 1 | AUX CTRL (0x26) | In review |
+| 2 | Stability Control (0x23) | — |
+| 3 | Vehicle Control (0x24) | — |
+| 4 | Time Control (0x25) | — |
+| 5 | Function Control (0x21) | — |
+| 6 | Action Control (0x22) | — |
+| 7 | UI Control (0x20) | — |
+| 8 | Joystick, 7-segment and Dual Encoder buttons | — |
 
