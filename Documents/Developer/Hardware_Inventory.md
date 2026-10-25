@@ -376,12 +376,27 @@ The Module UI Reference and the module firmware agree with each other, but not w
 |---|---|---|
 | 1 | AUX CTRL (0x26) | Done (§10.1) |
 | 2 | Stability Control (0x23) | Done (§10.2) |
-| 3 | Vehicle Control (0x24) | In review |
-| 4 | Time Control (0x25) | — |
+| 3 | Vehicle Control (0x24) | Done (§10.3) |
+| 4 | Time Control (0x25) | In review |
 | 5 | Function Control (0x21) | — |
 | 6 | Action Control (0x22) | — |
 | 7 | UI Control (0x20) | — |
 | 8 | Joystick, 7-segment and Dual Encoder buttons | — |
+
+**Numbering:** Bn is the module firmware's button index, the same as the schematic net BUTTONnn. It matches the silkscreen: SW12–SW15 on the Button Module, B16–B23 on the Wide Button Module.
+
+**Layout:** confirmed against the panels, viewed from the front.
+
+```
+Button Module (1801), 2 × 6            Wide Button Module (1811), 6 × 2
+      C6   C5   C4   C3   C2   C1             C1    C2
+ R1   B10  B8   B6   B4   B2   B0        R1   B1    B0
+ R2   B11  B9   B7   B5   B3   B1        R2   B3    B2
+                                         R3   B5    B4
+                                         R4   B7    B6
+                                         R5   B9    B8
+                                         R6   B11   B10
+```
 
 Labels: **[GROUP]** is a group label printed on the panel, not on the button; CAPITALS are the exact button label; (…) is the owner's description of the function.
 
@@ -449,4 +464,25 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
   | B7 | Retrograde = 2 |
   | B8 | Stability Assist = 0 |
   | B9 | Maneuver = 9 |
+
+### 10.3 Vehicle Control (0x24) — confirmed
+
+| Input | Label | Action |
+|---|---|---|
+| B0 | BRAKES | Brakes while held; the BRAKE switch dominates (§8.4) |
+| B1 | LIGHTS | Lights toggle |
+| B2 | ANTENNA | CAG 13 |
+| B3 | LANDING GEAR | Gear toggle |
+| B4 | FUEL CELL | CAG 14 |
+| B5 | SOLAR ARRAY | CAG 15 |
+| B6 | CARGO DOOR | CAG 16 |
+| B7 | RADIATOR | CAG 17 |
+| B8 | HEAT SHIELD | State machine: deploy CAG 19, then release CAG 20 |
+| B9 | LADDER | CAG 18 |
+| B10 | [PARACHUTE] MAIN | State machine: deploy CAG 21, then cut CAG 22; needs CHUTE ARM |
+| B11 | [PARACHUTE] DROGUE | State machine: deploy CAG 23, then cut CAG 24; needs CHUTE ARM |
+| B12–B15 | — | Not connected |
+| B16–B23 | Switch Group 2 | §7.4, §8.4 |
+
+Matches the reference; the only change is BRAKES (hold, §8.4).
 
