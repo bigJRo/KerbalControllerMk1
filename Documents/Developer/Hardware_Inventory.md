@@ -378,8 +378,8 @@ The Module UI Reference and the module firmware agree with each other, but not w
 | 2 | Stability Control (0x23) | Done (§10.2) |
 | 3 | Vehicle Control (0x24) | Done (§10.3) |
 | 4 | Time Control (0x25) | Done (§10.4) |
-| 5 | Function Control (0x21) | In review |
-| 6 | Action Control (0x22) | — |
+| 5 | Function Control (0x21) | Done (§10.5) |
+| 6 | Action Control (0x22) | In review |
 | 7 | UI Control (0x20) | — |
 | 8 | Joystick, 7-segment and Dual Encoder buttons | — |
 
@@ -513,13 +513,13 @@ Matches the reference; the only change is BRAKES (hold, §8.4).
 | B0 | [WARP TO] ApA | Warp to apoapsis, less the Pre-Warp lead |
 | B1 | [TIME WARP] STOP | Cancel warp (including a warp-to), back to 1× |
 | B2 | [WARP TO] PeA | Warp to periapsis, less the lead |
-| B3 | [TIME WARP] PHYS | Physics time warp (*how: to confirm*) |
-| B4 | [WARP TO] MNVR | Warp to the maneuver node, less the lead |
+| B3 | [TIME WARP] PHYS | Held as a modifier: PHYS + > / < steps physics warp 1× – 4× |
+| B4 | [WARP TO] MNVR | Warp to the **burn start** of the next node (Simpit `TIMEWARP_TO_NEXT_BURN`, KSP's burn-time estimate), less the lead |
 | B5 | [TIME WARP] > | Warp faster |
 | B6 | [WARP TO] SOI | Warp to the next SOI change, less the lead |
 | B7 | [TIME WARP] < | Warp slower |
 | B8 | [WARP TO] MORN | Warp to the next morning, less the lead |
-| B9 | LOAD | Quick load (F9) |
+| B9 | LOAD | Quick load: F9 held for as long as LOAD is held (KSP needs F9 held) |
 | B10 | PAUSE | Pause menu (Esc) |
 | B11 | SAVE | Quick save (F5) |
 | B12 | Mode selector SPC | §8.5 |
@@ -527,4 +527,37 @@ Matches the reference; the only change is BRAKES (hold, §8.4).
 | B14–B15 | — | Not connected |
 
 Matches the reference.
+
+**WARP TO LEDs:** a button is dark, and its press ignored, when its event does not exist. What Simpit reports (to be checked on the bench):
+
+| Button | Available when | From |
+|---|---|---|
+| ApA | Orbit closed (eccentricity < 1), not landed | `ORBIT`, `APSIDESTIME`, `FLIGHT_STATUS` |
+| PeA | Not landed | `APSIDESTIME`, `FLIGHT_STATUS` |
+| MNVR | A node exists (Δv of the next node > 0) | `MANEUVER` |
+| SOI | Simpit gives no time to the next SOI change; an escape orbit (eccentricity ≥ 1) is detectable, an encounter is not | *Undecided: lit in flight, or only on an escape orbit* |
+| MORN | Landed or splashed | `FLIGHT_STATUS` |
+
+### 10.5 Function Control (0x21) — confirmed
+
+| Input | Label | Function | Base CAG |
+|---|---|---|---|
+| B0 | FAIRING JETT | Jettison fairing | 26 |
+| B1 | LES | Launch escape system | 25 |
+| B2 | LOCK SURFACES | Lock control surfaces | 34 |
+| B3 | AIR INTAKE | Air intakes | 33 |
+| B4 | RW DISABLE | Reaction wheel disable (*function under review*) | 39 |
+| B5 | AIR BRAKE | Air brakes | 38 |
+| B6 | [SCIENCE] COLLECT | Science collect | 28 |
+| B7 | [ENGINE] ALT | Alternate engine mode | 27 |
+| B8 | [SCIENCE] GROUP 1 | Science group 1 | 30 |
+| B9 | [ENGINE] GROUP 1 | Engine group 1 | 29 |
+| B10 | [SCIENCE] GROUP 2 | Science group 2 | 32 |
+| B11 | [ENGINE] GROUP 2 | Engine group 2 | 31 |
+| B12–B15 | — | Not connected | |
+| B16–B23 | Switch Group 1 | §7.2 | |
+
+- **Changes from the reference:** every left / right pair is swapped (e.g. the reference had LES on B0 and Fairing on B1).
+- **CAG numbers stay with the function**, so vessels' action-group setups are unchanged.
+- **Module firmware:** its colour table follows the button index, so it needs the same swap.
 
