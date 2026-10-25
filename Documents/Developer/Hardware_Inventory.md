@@ -354,7 +354,7 @@ HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM,
 | PLN | Altitude + heading | Hold autopilot ALT + HDG at the current values; throttle untouched |
 | RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values. With ENGINE SAFE, heading only (wheel throttle held at 0) |
 
-- **Released by:** a second press, stick input, or a console autopilot engaging.
+- **Released by:** a second press, the A/P disconnect (rotation stick button), or a console autopilot engaging. Stick input does not release it (§8.10).
 - **LED:** ACTIVE while holding.
 - **Annunciator:** AUTOPILOT lights while HOLD is on.
 
@@ -435,6 +435,54 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 
 The master pushes it a new frame while the screen is open (new display firmware and a new I2C frame, §11).
 
+### 8.10 Autopilot authority (replaces the pilot-override rule)
+
+**Stick input no longer disconnects autopilots.** An autopilot (and HOLD) stays engaged until it is disconnected deliberately, by:
+- the A/P disconnect on the rotation stick button (SPC / PLN);
+- A/P INHIB (Switch Group 1);
+- the consoles' A/P OFF;
+- HOLD's own button;
+- ENGINE SAFE, for anything that needs the throttle;
+- the autopilot's own disengage conditions (no node, SOI change, and so on).
+
+**While engaged:**
+- **Sticks:** *to confirm* — the stick is ignored on the axes the autopilot holds, and still flies the axes it does not.
+- **Throttle:** the autopilot always sets it. Lever movement, lever buttons and touch are ignored, and the motor keeps the lever at the autopilot's position (*how: to confirm*, see below).
+
+**What changes elsewhere:**
+- The "any pilot input disconnects every autopilot" rule in `Hold_Mode_Autopilot.md`, `Mission_Autopilot.md` and today's `throttle_link` / `rotation_link` is retired. The STICK / LEVER disconnect reasons go unused.
+- The Throttle Module firmware refuses lever commands while touched (`CMD_SET_THROTTLE` checks `wiperIsTouched()`), so holding the lever against the pilot needs a module firmware change.
+- A motorised fader driven against a hand stalls its motor (L293D, 9 V). The hold needs a stall limit, for example: drive back to position whenever the hand lets go, and push against the hand for at most a short time.
+
+### 8.11 Input test screen (Information Display 1)
+
+- **Where:** a hidden screen on Information Display 1.
+- **Opened and closed by:** a two-finger diagonal pull down from the top-right corner.
+- **Available:** any time.
+- **Shows:** what the master reads (§8.9): sticks, lever, every module's buttons and switches, the mode selector, the safe lines, module presence and INT lines.
+- **Data:** the master pushes it a frame while the screen is open.
+- **Note:** today every display ignores any touch with two or more contacts (single-finger filter). The FT5316 reports up to five points, so the gesture is possible, but it needs its own handling ahead of that filter.
+- **Detailed design:** a later discussion.
+
+### 8.12 Sys Info Display (0x14, A2 P2)
+
+**Screens:**
+
+| Screen | When | Content |
+|---|---|---|
+| **Boot** | From power-on until the master's `setup()` ends | One line per step as it happens: configuring items, each module found and enabled (or missing), each display released, connections established, KSP link attempt, any fault. If a step stalls, the screen stays on it, so the stalled step is visible |
+| **Controller status** | Normal operation | 12 V voltage, current and power; board temperature; fan speed; the KSP link state of **each** microcontroller with its own link (master, Annunciator, Information Displays 1 and 2, Resource Display) |
+| **SWITCH ERR window** | While SWITCH ERR is lit | Sits in front of the status screen and names each switch in error (switch, expected vs actual). It goes away when every error clears |
+
+**Graphics:** small icons and logos (fan, power, thermometer, link, …) stored on its microSD card; set to be chosen.
+
+**What this needs:**
+- **The master** sends boot messages *from the start of `setup()`*. It waits briefly for the Sys Info Display to answer first, and mirrors every line to Serial. Every I2C call during setup has a timeout, so a stuck bus becomes a visible message rather than a hang.
+- **The watchdog** starts only after `setup()`, so it does not reset a stalled boot out of view.
+- **Each display** reports its own Simpit link state to the master (display firmware change, §11).
+- **The I2C protocol for 0x14** is defined with the firmware design (Q6): boot line, status frame, switch-error list.
+- **Note:** the Sys Info Display's RST pin is not connected (§5.7), so the master cannot hard-reset it.
+
 ## 9. Future discussion points
 
 | # | Topic | Status |
@@ -444,7 +492,9 @@ The master pushes it a new frame while the screen is open (new display firmware 
 | 3 | Function Control B4 | Settled: FLAPS (§10.5) |
 | 4 | AUX CTRL B8 | Settled: UNDOCK (§10.1) |
 | 5 | Rotation stick button | Settled: by control mode (§10.8) |
-| 6 | Sys Info Display: what it shows (no debug), and its protocol (Q6) | Open |
+| 6 | Sys Info Display | Settled (§8.12); protocol defined with the firmware design |
+| 7 | Input test screen: detailed design | Open (§8.11) |
+| 8 | Sys Info Display icons / logos | Open (§8.12) |
 
 ## 10. Button module review
 
@@ -746,7 +796,11 @@ Collected from this review; each is a separate piece of work.
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
 | 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
-| 14 | Info Display firmware + I2C spec | Input test screen and its frame (§8.9), *if confirmed* |
+| 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11) |
+| 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10) |
+| 16 | Annunciator, Info Display, Resource Display firmware | Report their own Simpit link state to the master (§8.12) |
+| 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |
+| 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
 | 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
 | 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |
