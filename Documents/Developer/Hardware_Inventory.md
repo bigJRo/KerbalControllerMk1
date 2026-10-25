@@ -210,10 +210,39 @@ The board has no active components or protection; every signal passes straight t
 | B18 | U16-4 | SCE | NORM / AUX | Latching | Demo mode off / on |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching | Debug telemetry |
 | B20 | U17-4 | LTG | NORM / TEST | Momentary | Bulb test |
-| B21 | U17-3 | ENGINE | SAFE / ARM | Latching | Engine group off / on in KSP, through a custom action group |
-| B22 | U17-2 | THROTTLE | INOP / ACT | Latching | Throttle off / on |
+| B21 | U17-3 | A/P | INHIB / ARM | Latching | Autopilot master arm (§8) |
+| B22 | U17-2 | ENGINE | SAFE / ARM | Latching | Throttle interlock (§8). Renamed from THROTTLE INOP / ACT |
 | B23 | U17-1 | THRTL | STD / FINE | Latching | Throttle precision |
 
 Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
 To be filled in next: B1, B2.
+
+## 8. Behaviour decisions made during the review
+
+These go into the firmware design once the panel review is finished.
+
+### 8.1 ENGINE SAFE / ARM (Switch Group 1, B22)
+
+- **SAFE:**
+  - the master sends 0 % throttle to KSP and drives the lever to 0 %;
+  - every throttle input is ignored: lever, throttle buttons, and autopilots;
+  - an autopilot that needs the throttle cannot engage, and one already engaged drops with the reason ENG SAFE;
+  - if the pilot moves the lever while SAFE, it is driven back to 0 % on release.
+- **ARM:**
+  - the master drives the lever to 0 % and sends 0 % again;
+  - once the lever is there, inputs are taken.
+- **Annunciator:** ENG ARM shows the switch.
+- **Hardware note:** the Throttle Module refuses lever commands while disabled or touched, so the module stays enabled in SAFE and the master re-sends the 0 % target until the lever reports it.
+
+### 8.2 A/P INHIB / ARM (Switch Group 1, B21)
+
+- **INHIB:** no autopilot can engage; moving the switch to INHIB disconnects every engaged autopilot (reason A/P INHIB).
+- **ARM:** autopilots can be engaged from the consoles as before.
+
+### 8.3 Autopilots and the physical lever
+
+Whenever an autopilot owns the throttle, the master sends its value to KSP **and** drives the lever to the same position, so the lever always shows the throttle KSP is using. Today's `throttle_link` already does this (1 % deadband, at most one lever command per 200 ms); it carries over.
+
+One gap, found in the module firmware: **in precision (FINE) mode the lever position does not equal the throttle.** The module maps the lever to a narrow band around the point where FINE was selected, but its lever command (`CMD_SET_THROTTLE`) positions the lever as if FINE were off. Proposed: while an autopilot owns the throttle, the master takes the module out of precision mode, and restores it when the autopilot lets go. *To confirm.*
+
