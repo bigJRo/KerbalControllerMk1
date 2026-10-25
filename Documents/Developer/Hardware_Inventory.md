@@ -203,16 +203,16 @@ The board has no active components or protection; every signal passes straight t
 
 **Switch Group 1** (Function Control, confirmed layout):
 
-| Input | Terminal pin | Switch | Meaning |
-|---|---|---|---|
-| B16 | U16-6 | MSTR | Master reset |
-| B17 | U16-5 | DISP | Display clear |
-| B18 | U16-4 | SCE | Simpit reconnect / refresh |
-| B19 | U16-3 | UPTLM | Debug telemetry |
-| B20 | U17-4 | LTG | Bulb test |
-| B21 | U17-3 | ENGINE | SAFE / ARM — *meaning to confirm* |
-| B22 | U17-2 | THROTTLE | INOP / ACT = throttle off / on |
-| B23 | U17-1 | THRTL | STD / FINE = throttle precision |
+| Input | Terminal pin | Switch | Positions (off / on) | Type | Meaning |
+|---|---|---|---|---|---|
+| B16 | U16-6 | MSTR | OPER / RESET | Momentary | Master reset |
+| B17 | U16-5 | DISP | OPER / CLR | Momentary | Display clear |
+| B18 | U16-4 | SCE | NORM / AUX | Latching | Demo mode off / on |
+| B19 | U16-3 | UPTLM | INHIB / XMIT | Latching | Debug telemetry |
+| B20 | U17-4 | LTG | NORM / TEST | Momentary | Bulb test |
+| B21 | U17-3 | ENGINE | SAFE / ARM | Latching | Engine group off / on in KSP, through a custom action group |
+| B22 | U17-2 | THROTTLE | INOP / ACT | Latching | Throttle off / on |
+| B23 | U17-1 | THRTL | STD / FINE | Latching | Throttle precision |
 
 Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
