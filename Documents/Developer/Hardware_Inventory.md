@@ -609,6 +609,7 @@ Matches the reference.
 | Stick button | Airbrake (CAG 38) — *to be re-examined* (§9). On EVA: Left Shift (run) while held |
 
 - **Annunciator TRIM** lights while a trim offset is set.
+- **The trim clears on a control-mode change** (SPC / PLN / RVR).
 - The pilot-override test uses the raw stick deflection, so a trim offset does not count as pilot input.
 
 **Translation joystick (0x29):**
@@ -661,7 +662,7 @@ Collected from this review; each is a separate piece of work.
 | # | Where | Change |
 |---|---|---|
 | 1 | Annunciator firmware | Tile label THRTL ENA → A/P ARM (§8.2) |
-| 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light |
+| 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light. A later real dock / undock event overrides the touch setting |
 | 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day) |
 | 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5) |
 | 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1) |
