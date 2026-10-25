@@ -431,3 +431,22 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 
 **Changes from the reference:** B10 is HOLD (was RCS). B14 / B15 Stage / Stage Enable are gone: staging is the B2 stage button (§8.6).
 
+**SAS buttons (B0–B9):**
+- **SAS switch OFF:** all ten are dark, and presses have no effect.
+- **SAS switch ENAB:** the mode KSP reports is lit, and the other modes are backlit. A mode the vessel cannot use is dark and its press is ignored.
+- **Mode availability comes from Simpit.** `SAS_MODE_INFO` carries the current mode (255 = SAS off) and a bitmask of the available modes (`SASModeAvailability`, bit = `1 << AutopilotMode`). The library notes that KSP ignores a mode it does not allow. *To verify on the bench* that the bitmask tracks pilot / probe level as expected.
+- **Button order vs KSP's mode numbers:**
+
+  | Button | AutopilotMode |
+  |---|---|
+  | B0 | Target = 7 |
+  | B1 | Anti-Target = 8 |
+  | B2 | Radial In = 5 |
+  | B3 | Radial Out = 6 |
+  | B4 | Normal = 3 |
+  | B5 | Anti-Normal = 4 |
+  | B6 | Prograde = 1 |
+  | B7 | Retrograde = 2 |
+  | B8 | Stability Assist = 0 |
+  | B9 | Maneuver = 9 |
+
