@@ -377,8 +377,8 @@ The Module UI Reference and the module firmware agree with each other, but not w
 | 1 | AUX CTRL (0x26) | Done (§10.1) |
 | 2 | Stability Control (0x23) | Done (§10.2) |
 | 3 | Vehicle Control (0x24) | Done (§10.3) |
-| 4 | Time Control (0x25) | In review |
-| 5 | Function Control (0x21) | — |
+| 4 | Time Control (0x25) | Done (§10.4) |
+| 5 | Function Control (0x21) | In review |
 | 6 | Action Control (0x22) | — |
 | 7 | UI Control (0x20) | — |
 | 8 | Joystick, 7-segment and Dual Encoder buttons | — |
@@ -490,7 +490,7 @@ Matches the reference; the only change is BRAKES (hold, §8.4).
 - **CAG buttons, LIGHTS, LANDING GEAR:** lit while KSP reports the group (or lights / gear) active, backlit otherwise.
 - **[PARACHUTE] MAIN / DROGUE:** dark, and presses ignored, while CHUTE is SAFE.
 
-**State machines — proposed (*for review*):** the state comes from KSP's report of the two action groups, not from memory in the master.
+**State machines — decided:** the state comes from KSP's report of the two action groups, not from memory in the master.
 
 | Deploy CAG | Cut / release CAG | State | LED | Press does |
 |---|---|---|---|---|
@@ -502,6 +502,29 @@ Matches the reference; the only change is BRAKES (hold, §8.4).
 - **No reset needed:**
   - On a vessel switch or a new flight, the buttons show that vessel's groups as KSP reports them.
   - CHUTE SAFE → ARM no longer resets anything; a cut chute stays red.
-- **Limit:** a group being active means it was fired, not that the part is deployed. For example, a chute waiting for safe conditions, or one destroyed, still shows DEPLOYED.
-- **Open:** whether to offer a manual reset, e.g. hold the button 2 s with CHUTE ARM to deactivate both groups after a repack.
+- **Limit (accepted):** a group being active means it was fired, not that the part is deployed. For example, a chute waiting for safe conditions, or one destroyed, still shows DEPLOYED.
+- **Reset:** holding the button for 2 s deactivates both of its groups, returning it to READY (e.g. after a repack). For the chutes this needs CHUTE ARM.
+- **Acts on release:** these three buttons act when released, not when pressed. A release before 2 s is a press, as in the table; a 2 s hold is a reset and fires nothing else.
+
+### 10.4 Time Control (0x25) — confirmed
+
+| Input | Label | Action |
+|---|---|---|
+| B0 | [WARP TO] ApA | Warp to apoapsis, less the Pre-Warp lead |
+| B1 | [TIME WARP] STOP | Cancel warp (including a warp-to), back to 1× |
+| B2 | [WARP TO] PeA | Warp to periapsis, less the lead |
+| B3 | [TIME WARP] PHYS | Physics time warp (*how: to confirm*) |
+| B4 | [WARP TO] MNVR | Warp to the maneuver node, less the lead |
+| B5 | [TIME WARP] > | Warp faster |
+| B6 | [WARP TO] SOI | Warp to the next SOI change, less the lead |
+| B7 | [TIME WARP] < | Warp slower |
+| B8 | [WARP TO] MORN | Warp to the next morning, less the lead |
+| B9 | LOAD | Quick load (F9) |
+| B10 | PAUSE | Pause menu (Esc) |
+| B11 | SAVE | Quick save (F5) |
+| B12 | Mode selector SPC | §8.5 |
+| B13 | Mode selector RVR | §8.5 |
+| B14–B15 | — | Not connected |
+
+Matches the reference.
 
