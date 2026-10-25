@@ -486,3 +486,22 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 
 Matches the reference; the only change is BRAKES (hold, §8.4).
 
+**LEDs:**
+- **CAG buttons, LIGHTS, LANDING GEAR:** lit while KSP reports the group (or lights / gear) active, backlit otherwise.
+- **[PARACHUTE] MAIN / DROGUE:** dark, and presses ignored, while CHUTE is SAFE.
+
+**State machines — proposed (*for review*):** the state comes from KSP's report of the two action groups, not from memory in the master.
+
+| Deploy CAG | Cut / release CAG | State | LED | Press does |
+|---|---|---|---|---|
+| inactive | inactive | READY | Backlit | Activate the deploy CAG |
+| active | inactive | DEPLOYED | Green (ACTIVE) | Activate the cut / release CAG |
+| either | active | CUT / RELEASED | Red (CUT) | Nothing |
+
+- **Activate, not toggle:** presses send *activate* (`CAGACTIVATE`), never a toggle. A press can never undo a deploy or switch a group off.
+- **No reset needed:**
+  - On a vessel switch or a new flight, the buttons show that vessel's groups as KSP reports them.
+  - CHUTE SAFE → ARM no longer resets anything; a cut chute stays red.
+- **Limit:** a group being active means it was fired, not that the part is deployed. For example, a chute waiting for safe conditions, or one destroyed, still shows DEPLOYED.
+- **Open:** whether to offer a manual reset, e.g. hold the button 2 s with CHUTE ARM to deactivate both groups after a repack.
+
