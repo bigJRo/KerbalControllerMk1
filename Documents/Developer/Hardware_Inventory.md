@@ -360,13 +360,13 @@ HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM,
 
 The candidates considered for B10 were: HOLD, controller pointing layer, kill rotation, navball reference, custom action group, SAS mode guard, KSP fine control, RCS hold, A/P DISC, Info Display shortcut.
 
-**Kill rotation was dropped:** with Simpit reporting no angular velocity, it could only engage SAS Stability Assist, which is not useful enough. AUX CTRL B11 (CP Docking Port) is still to be repurposed; see §10.
+**Kill rotation was dropped:** with Simpit reporting no angular velocity, it could only engage SAS Stability Assist, which is not useful enough. The AUX CTRL review (§10.1) then removed the docking-port control point altogether.
 
 ## 9. Future discussion points
 
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
 2. *(Settled — §8.7.)* Stability Control B10 = HOLD.
-3. **AUX CTRL B11:** a new function, replacing CP Docking Port (§10).
+3. **AUX CTRL B8:** unassigned on the panel (§10.1); a function can be chosen later.
 
 ## 10. Button module review
 
@@ -374,12 +374,36 @@ The Module UI Reference and the module firmware agree with each other, but not w
 
 | # | Module | Status |
 |---|---|---|
-| 1 | AUX CTRL (0x26) | In review |
-| 2 | Stability Control (0x23) | — |
+| 1 | AUX CTRL (0x26) | Done (§10.1) |
+| 2 | Stability Control (0x23) | In review |
 | 3 | Vehicle Control (0x24) | — |
 | 4 | Time Control (0x25) | — |
 | 5 | Function Control (0x21) | — |
 | 6 | Action Control (0x22) | — |
 | 7 | UI Control (0x20) | — |
 | 8 | Joystick, 7-segment and Dual Encoder buttons | — |
+
+Labels: **[GROUP]** is a group label printed on the panel, not on the button; CAPITALS are the exact button label; (…) is the owner's description of the function.
+
+### 10.1 AUX CTRL (0x26) — confirmed
+
+| Input | Label | Function | Active when | Action |
+|---|---|---|---|---|
+| B0 | [EVA] EVA LIGHTS | EVA lights | EVA | Key U |
+| B1 | [EVA] JET PACK | Jetpack | EVA | Key R |
+| B2 | [EVA] BOARD | Board craft | EVA | Key B |
+| B3 | [EVA] CONST | EVA construction | EVA | Key I |
+| B4 | [EVA] JUMP / LET GO | Jump / let go | EVA | Key Space |
+| B5 | [EVA] GRAB | Grab | EVA | Key F |
+| B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P |
+| B7 | [EVA] HELM | Helmet toggle | EVA | Key O |
+| B8 | — | **Undefined** | — | Dark, ignored |
+| B9 | FLAG | Plant flag | EVA | Key G |
+| B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 |
+| B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 |
+
+**Changes from the reference / firmware:**
+- B8 Cruise Control is removed.
+- B10 is no longer a PRI / ALT toggle; it is PRI only.
+- B11 is ALT (was Docking Port, CAG 37). CAG 37 is freed.
 
