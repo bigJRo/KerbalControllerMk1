@@ -407,9 +407,9 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 | 7 | INT traffic | Each INT received and the packet that followed (decoded) |
 | 8 | Master state | Every change of a state / config variable (control mode, control group, precision, audio, demo, A/P ARM, ENGINE ARM, trim, …) |
 | 9 | Timing | Loop time (average / worst per second) |
-| 10–17 | *Recommended additions — to confirm* | See the end of this section |
+| 10–17 | Additions | Below |
 
-**Recommended additions (to confirm):**
+**Additions (confirmed):**
 - **10 — Commands to KSP:** every Simpit message sent, decoded. Axis and throttle messages are logged on change rather than every frame.
 - **11 — KSP inbound health:** messages per channel, and time since the last one on each.
 - **12 — I2C errors:** NACKs, short reads, bus timeouts, bus recovery.
@@ -423,7 +423,17 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 - One line per event: timestamp, category tag, message, so a log can be filtered.
 - Errors are always printed; the rest only while XMIT.
 - Rate-limited, with a "*n* suppressed" line, so a flood cannot stall the loop.
-- *Optional:* a small serial command set for bench work, e.g. `status`, `modules`, `intmap`, `simpit`.
+- **Serial command set (confirmed)** for bench work: `status`, `modules`, `intmap`, `simpit` (exact list in the design).
+- **Stick positions** are logged while in demo or debug.
+
+**Input test screen (proposed, *to confirm*).** A hidden diagnostics screen on Information Display 1, opened by a gesture, showing what the master reads:
+- both sticks' axes and buttons;
+- the throttle lever;
+- every module's buttons and switches;
+- the mode selector and safe lines;
+- module presence and INT lines.
+
+The master pushes it a new frame while the screen is open (new display firmware and a new I2C frame, §11).
 
 ## 9. Future discussion points
 
@@ -431,9 +441,9 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 |---|---|---|
 | 1 | Demo and debug modes | Settled (§8.8, §8.9) |
 | 2 | Stability Control B10 | Settled: HOLD (§8.7) |
-| 3 | Function Control B4 (RW DISABLE): a better function. Candidates so far: FLAPS, THRUST REV, UNDOCK, DRILL / ISRU, ENG SHUTDOWN, SPARE (§10.5) | Open |
-| 4 | AUX CTRL B8: unassigned on the panel (§10.1) | Open |
-| 5 | Rotation stick button: whether it stays Airbrake (CAG 38, same as Function B5) | Open |
+| 3 | Function Control B4 | Settled: FLAPS (§10.5) |
+| 4 | AUX CTRL B8 | Settled: UNDOCK (§10.1) |
+| 5 | Rotation stick button | Settled: by control mode (§10.8) |
 | 6 | Sys Info Display: what it shows (no debug), and its protocol (Q6) | Open |
 
 ## 10. Button module review
@@ -480,7 +490,7 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 | B5 | [EVA] GRAB | Grab | EVA | Key F |
 | B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P |
 | B7 | [EVA] HELM | Helmet toggle | EVA | Key O |
-| B8 | — | **Undefined** | — | Dark, ignored |
+| B8 | **UNDOCK** (new label) | Undock / decouple docking ports | Always | CAG 37 (the freed docking-port group) |
 | B9 | [EVA] FLAG | Plant flag | EVA | Key G |
 | B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 |
 | B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 |
@@ -614,7 +624,7 @@ Matches the reference.
 | B1 | LES | Launch escape system | 25 |
 | B2 | LOCK SURFACES | Lock control surfaces | 34 |
 | B3 | AIR INTAKE | Air intakes | 33 |
-| B4 | RW DISABLE | Reaction wheel disable (*function under review*) | 39 |
+| B4 | RW DISABLE → **FLAPS** | Flaps (replaces reaction wheel disable; panel label to change) | 39 |
 | B5 | AIR BRAKE | Air brakes | 38 |
 | B6 | [SCIENCE] COLLECT | Science collect | 28 |
 | B7 | [ENGINE] ALT | Alternate engine mode | 27 |
@@ -672,7 +682,7 @@ Matches the reference.
 |---|---|
 | BTN01 | Clear trim: clears the master's trim set by BTN02 (*not* KSP's Alt+X) |
 | BTN02 | Set trim: captures the current stick deflection as a trim offset, added to the stick from then on |
-| Stick button | Airbrake (CAG 38) — *to be re-examined* (§9). On EVA: Left Shift (run) while held |
+| Stick button | By control mode: **SPC and PLN** — A/P disconnect (every autopilot and HOLD); **RVR** — brakes while held (same rule as the BRAKES button: with BRAKE on LOCK the brakes stay on); **EVA** — Left Shift (run) while held. Airbrake stays on Function Control B5 only |
 
 - **Annunciator TRIM** lights while a trim offset is set.
 - **The trim clears on a control-mode change** (SPC / PLN / RVR).
@@ -719,7 +729,6 @@ Matches the reference.
 - Vehicle Control, including the heat-shield and parachute state machines;
 - Function Control;
 - AUX CTRL PRI / ALT;
-- the rotation stick's airbrake.
 
 ## 11. Changes needed outside the master firmware
 
@@ -736,6 +745,8 @@ Collected from this review; each is a separate piece of work.
 | 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
+| 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
+| 14 | Info Display firmware + I2C spec | Input test screen and its frame (§8.9), *if confirmed* |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
 | 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
 | 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |
