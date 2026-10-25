@@ -239,10 +239,13 @@ These go into the firmware design once the panel review is finished.
 
 - **INHIB:** no autopilot can engage; moving the switch to INHIB disconnects every engaged autopilot (reason A/P INHIB).
 - **ARM:** autopilots can be engaged from the consoles as before.
+- **Annunciator:** two lights, both in mode row 0.
+  - **A/P ARM** shows the switch: lit on ARM, dark on INHIB. It replaces THRTL ENA, keeping the same mode-flag bit (bit 3), so only the tile label changes in the Annunciator firmware, along with its references and the user manual.
+  - **AUTOPILOT** (unchanged) is lit while any autopilot is engaged.
 
 ### 8.3 Autopilots and the physical lever
 
 Whenever an autopilot owns the throttle, the master sends its value to KSP **and** drives the lever to the same position, so the lever always shows the throttle KSP is using. Today's `throttle_link` already does this (1 % deadband, at most one lever command per 200 ms); it carries over.
 
-One gap, found in the module firmware: **in precision (FINE) mode the lever position does not equal the throttle.** The module maps the lever to a narrow band around the point where FINE was selected, but its lever command (`CMD_SET_THROTTLE`) positions the lever as if FINE were off. Proposed: while an autopilot owns the throttle, the master takes the module out of precision mode, and restores it when the autopilot lets go. *To confirm.*
+One gap, found in the module firmware: **in precision (FINE) mode the lever position does not equal the throttle.** The module maps the lever to a narrow band around the point where FINE was selected, but its lever command (`CMD_SET_THROTTLE`) positions the lever as if FINE were off. **Decided:** while an autopilot owns the throttle, the master takes the module out of precision mode, and restores it when the autopilot lets go.
 
