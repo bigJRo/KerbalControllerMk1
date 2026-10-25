@@ -265,7 +265,7 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
 | Panel item | Wired to | Master sees it on |
 |---|---|---|
-| Stage button (momentary, with an arming switch) | Panel Hub safe-switch terminal | B_INT_SAFE (Teensy 35), active-high. Arming switch wiring *to confirm* |
+| Stage button (momentary) + arming switch | Panel Hub safe-switch terminal, the arming switch in series (as Abort) | B_INT_SAFE (Teensy 35), active-high; a press only reaches the master while armed |
 | Ctrl Mode selector SPC / PLN / RVR (3-position, PLN in the centre) | Time Control terminal CN2: B12 (pin 3), B13 (pin 4), +5 V (pins 1–2) | Time Control's packet: B12 = SPC, B13 = RVR, neither = PLN |
 | Switch Group 2 (8 switches) | Vehicle Control terminals U16 / U17 → B16–B23 (below) | Vehicle Control's packet |
 | Rotation stick | Joystick terminal U6 | Rotation's packet |
@@ -322,11 +322,15 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 
 ### 8.4 Switch Group 2 and the matching buttons
 
+**General rule for every switch:**
+- A switch acts **when it is flipped**, never by itself.
+- Entering a flight scene or changing vessel **does not enforce** any switch. If a switch disagrees with the vessel then, or at any time in flight, the Annunciator's **SWITCH ERR** lights until they agree again.
+
 | Switch | Rule |
 |---|---|
-| **BRAKE** | The switch is dominant. LOCK: brakes on. REL: Vehicle Control's Brakes button (B0) applies the brakes only while held (no longer a toggle). *To confirm:* whether the master also re-asserts the switch when KSP changes the brakes |
-| **GEAR**, **EXT LT** | The switch sets the state only when flipped. The buttons (B3, B1) still toggle. If KSP's state and the switch disagree, the Annunciator's SWITCH ERR lights |
-| **SAS**, **RCS** | *To confirm* (§9) |
+| **BRAKE** | Acts on its flip and on Vehicle Control's Brakes button (B0). LOCK: brakes on. REL: brakes off. The button applies the brakes while held (no longer a toggle). On release, the brakes come off only if the switch is REL; with the switch on LOCK they stay on |
+| **GEAR**, **EXT LT** | Act on the flip. The buttons (B3, B1) still toggle |
+| **SAS**, **RCS** | Act on the flip. SWITCH ERR is not raised for SAS while Invert (Stability B11, the F key) is held, nor for SAS or RCS while an autopilot that changes them is engaged |
 | **CHUTE**, **THC/RHC**, **AUDIO** | As the reference |
 
 ### 8.5 Ctrl Mode selector
@@ -337,11 +341,10 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 ### 8.6 Stage button
 
 - A rising edge sends STAGE, only in a flight scene, with a 1 s lockout so a bounce or double press cannot fire two stages.
-- The button has an arming switch (wiring *to confirm*).
+- The arming switch is wired in series, the same way as the Abort button, so a press only reaches the master while armed. The master cannot see the arming switch itself.
 
 ## 9. Future discussion points
 
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
 2. **Stability Control B10.** Currently RCS toggle; the RCS switch makes it redundant. Choose a new function.
-3. **SAS / RCS switch rules**, if not settled with §8.4.
 
