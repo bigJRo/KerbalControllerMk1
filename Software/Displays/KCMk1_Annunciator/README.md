@@ -428,7 +428,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 3. Simpit handshake runs (or demo mode initialises) — `simpitConnected` set accordingly
 4. Annunciator builds a status packet and **asserts pin 0 LOW** (INT)
 5. Master detects INT, calls `KCM_I2C_BUS.requestFrom(0x10, 6)` (Wire2), reads the 6-byte status packet
-6. Master inspects state, sends a command packet (3-byte legacy or 6-byte extended) with `requestType = 0x2` (PROCEED) — configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`, and in the extended form `modeFlags`/`capValue`) can be included in the same packet
+6. Master sends a command packet (3-byte legacy, 6-byte extended or 9-byte rev-3; Controller_Main's `annun_link.ino` sends rev-3 every 100 ms) with `requestType = 0x2` (PROCEED) — the configuration flags (`demoMode`, `debugMode`, `audioOn`, `idle_state`, `ctrlMode`, `ctrlGrp`, in the extended forms `modeFlags`/`capValue`, and in rev-3 the GPWS settings) ride in the same packet
 7. Annunciator receives PROCEED, clears the boot screen, enters `loop()`
 
 **Important:** The master should read the status packet (step 5) before sending PROCEED (step 6). If PROCEED is sent before reading, INT will still be asserted since the `onRequest` handler hasn't fired yet.

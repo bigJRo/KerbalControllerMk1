@@ -1,10 +1,11 @@
 /********************************************************************************************************************************
   Control Links — Kerbal Controller Mk1 (Master Teensy 4.1)
 
-  Prototypes for the three master-side link tabs that sit between the autopilots and the hardware:
+  Prototypes for the master-side link tabs that sit between the autopilots and the hardware:
     throttle_link.ino  — Throttle Module (0x2C): motorised lever follow, pilot-touch override, KSP throttle forwarding
     rotation_link.ino  — Rotation joystick (0x28): pilot axis forwarding merged with autopilot-held axes
     infodisp_link.ino  — Info Display 2 (0x13): autopilot console command poll / ACK / status push
+    annun_link.ino     — Annunciator (0x10) and Resource Display (0x11) commands; GPWS Input Panel (0x2A)
 
   They are declared here (rather than left to the Arduino auto-prototype pass) so the autopilot tabs and the bench stub build
   see one contract. Design: Documents/Developer/Hold_Mode_Autopilot.md §6.6, §7, §8.
@@ -42,6 +43,7 @@ bool    thrTakeOverrideEvent();                     // true once after the pilot
 bool    thrTouched();                               // pilot's hand is on the slider (module touch flag)
 bool    thrPrecision();                             // module is in precision (fine) mode
 bool    thrLeverDriven();                           // module enabled and following commands
+bool    thrModuleEnabled();                         // module reports ENABLED (the Annunciator's ENG ARM tile)
 bool    thrOverrideLatched();                       // pilot holds the lever against the current owner
 bool    thrTakeMovedEvent();                        // true once after the pilot MOVES the lever (>2 %) while no owner drives it
 float   thrCurrentThrottle();                       // lever position 0..1 (what KSP is being sent)
@@ -65,6 +67,19 @@ void    rotClearAutoAxes();
 float   rotPilotPitch();                            // raw pilot demand -1..1, read even while held
 float   rotPilotYaw();
 float   rotPilotRoll();
+
+/***************************************************************************************
+   annun_link.ino
+   The Annunciator's rev-3 command (control byte, control mode, control group, mode
+   flags, CAP, relayed GPWS settings) and the Resource Display's control byte, pushed
+   every 100 ms and on change, each carrying PROCEED so a carrier that boots or reboots
+   after the master leaves its boot hold. Also brings up and reads the GPWS Input Panel.
+****************************************************************************************/
+// Control mode as the Annunciator's CtrlMode enum carries it (ctrlMode in Controller_Main).
+static const uint8_t ANL_CTRL_ROVER = 0, ANL_CTRL_PLANE = 1, ANL_CTRL_SPACECRAFT = 2;
+
+void    anlInit();
+void    anlService();
 
 /***************************************************************************************
    PILOT INPUT OVERRIDE — the one rule every autopilot obeys (review decision):

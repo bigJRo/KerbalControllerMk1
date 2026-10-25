@@ -2,7 +2,7 @@
 
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
-**Version:** 1.1
+**Version:** 1.2
 **Firmware covered:** Info Display v1.16.5 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · Controller_Main as of the same merge
 
 ---
@@ -34,18 +34,21 @@ This is an in-game run-through of every screen and feature on the three TFT disp
 
 - KSP1 with **KerbalSimpit** installed and the serial port bound to the controller. All four panels show the standby splash until a flight scene starts.
 - Optional mods that enable specific test points (mark N/A if not installed): **TAC Life Support** (RES life-support meters, C&W LIFE SUPPORT), **Community Resource Pack** (RES XPD / ADV presets), **Alternate Resource Panel** (EC% on the pre-launch board and ROVER screen).
-- On the Annunciator: `audioEnabled` true and the DFPlayer microSD populated with clips 001–034 for the audio and GPWS sessions. Both can be skipped, mark those rows N/A.
+- On the Annunciator: the DFPlayer microSD populated with clips 001–034 for the GPWS session (the master turns audio on; see §2.3). It can be skipped; mark those rows N/A.
 - All panels flashed with `demoMode = false`, `debugMode = false`, `standaloneMode = false`.
 
-### 2.3 Known gap: the master does not command the Annunciator
+### 2.3 Known gaps in the master controller
 
-Controller_Main defines the Annunciator's address (`ANNUN_MC`, 0x10) but never writes to it. Everything the Annunciator takes from the master therefore stays at its power-on default in a production build:
+**Controller_Main is not yet a working build.** It never starts or services its KerbalSimpit link (`initSimpitObject()` and `mySimpit.update()` are never called), and its message handler writes telemetry globals that are not defined, so the sketch does not compile as it stands (#86). Until that is integrated, every row that needs the master to fly or command the vessel cannot run: the ORAP, LDAP, ASCAP, ACAP and RVAP consoles and CTX-09. The display panels themselves run from their own Simpit links.
 
-- **Audio is off.** `audioEnabled` boots `false` and only the master's command turns it on, so the master-alarm tone, caution tones, chirps and GPWS are silent. For the audio rows, flash the Annunciator with `audioEnabled = true` in `AAA_Config.ino`; nothing will overwrite it.
-- **GPWS is off.** The GPWS mode, its options and the bug altitude arrive only in that command, so the GPWS rows cannot be run at all until the master sends it.
-- **The panel condition block stays dark** (DEMO, WARP, AUDIO, THRTL ENA, TRIM, AUTOPILOT, …), the **control-mode tile** never follows the switch, **CTRLGRP** stays at 1 and **CAP** at 0.
+**The Annunciator command.** The master sends the Annunciator its full command and releases it and the Resource Display from the boot hold (`annun_link.ino`). Audio is LIVE and the GPWS settings are relayed from the GPWS Input Panel, so the audio and GPWS rows are ordinary test points. Some fields still have no source on the master:
 
-Rows that depend on it are marked **blocked, §2.3**. Run them anyway and log them as N/A with this reference until Controller_Main sends the command; once it does, they become ordinary test points.
+- The **control-mode tile** always reads `SPC`: the Ctrl Mode Toggle is not wired to the master yet.
+- **CTRLGRP** always reads 1: the control-group encoder (Dual Encoder ENC1) is not read yet.
+- The **AUDIO switch** is not read yet, so audio stays LIVE and cannot be muted from the panel.
+- In the **panel condition block**, THRTL ENA, TRIM and INPUT PREC hold their defaults, because no panel handler sets them. WARP, SWITCH ERR and SIMPIT LOST stay dark, because they have no source. CAP reads 0.
+
+Rows that depend on these are marked **blocked, §2.3**. Log them as N/A with this reference until the master supplies the field.
 
 ### 2.2 Test craft (build these in the VAB/SPH before starting)
 
@@ -119,10 +122,10 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 | PAD-10 | **C&W** bottom readouts | Vessel name, TIMEWARP 1x, STG, CORE, CREW, COMM, SKIN, CAP, CTRLGRP all populated. Labels grey uppercase, values in the state colour. CTRLGRP follows the control-group switch and CAP reads 0 | Readout labels (3.8.1) · **blocked, §2.3** |
 | PAD-11 | **C&W** `ATMO` and `O2 PRESENT` | Both lit on the Kerbin pad | C&W bits 14, 9 |
 | PAD-12 | **C&W** `Ap LOW` | Dark on the pad (it is evaluated only sub-orbital or in orbit); see ASC-20 | Bit 18 |
-| PAD-13 | Press the Abort action | `ABORT` lamp red, MASTER ALARM lights and the tone sounds. Clear abort: lamp clears, tone stops | Bit 4, master mask · **blocked, §2.3** (tone) |
-| PAD-14 | Tap MASTER ALARM while it is lit | Tone silences; lamp remains until the condition clears. A new warning bit restarts the tone | Silence latch (3.1.0) · **blocked, §2.3** |
+| PAD-13 | Press the Abort action | `ABORT` lamp red, MASTER ALARM lights and the tone sounds. Clear abort: lamp clears, tone stops | Bit 4, master mask |
+| PAD-14 | Tap MASTER ALARM while it is lit | Tone silences; lamp remains until the condition clears. A new warning bit restarts the tone | Silence latch (3.1.0) |
 | PAD-15 | Tap the SOI thumbnail on C&W Main | SOI screen: KASA meatball, body name `KERBIN`, body image, rows MIN SAFE ALT, SOI RADIUS, REENTRY ALT, HIGH ATMO ALT, LOW SPACE ALT, HIGH SPACE ALT, CONDITION, SURF. GRAVITY. Tap anywhere returns to Main. (In solar orbit, Kerbol's SOI RADIUS reads `∞`.) | SOI screen (3.7.1) |
-| PAD-16 | Trigger a master alarm (abort) while on the SOI screen | Tone sounds and continues; SOI screen stays up | 3.7.0 alarm audio on every screen · **blocked, §2.3** |
+| PAD-16 | Trigger a master alarm (abort) while on the SOI screen | Tone sounds and continues; SOI screen stays up | 3.7.0 alarm audio on every screen |
 | PAD-17 | **RES** on first flight of T1 | Main shows the SPC default set (EC, LF, LOx, MP, SF, O2, Food, Water, Ablator) collapsed to the resources actually aboard. Vessel name in the alert strip is **grey** (default layout) | Default layout / presence |
 | PAD-18 | **Info 1** press `VEH` | VESSEL, TYPE with icon, STATUS `PRE-LAUNCH` (not `· RECOVERABLE`), CONTROL, COMM, CREW, ΔV.STG, ΔV.TOT | VEH (1.16.5 names) |
 | PAD-19 | **C&W** `LIFE SUPPORT` on a crewed vessel **without** TAC Life Support installed | Tile stays dark; no MASTER ALARM | 3.7.1 #63 |
@@ -151,7 +154,7 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 | ASC-15 | **Info 1** during ascent | SPACECRAFT PFD, row 1 label `V.SRF` in the atmosphere and swapping to `V.ORB` above 36 km (6 % of Kerbin's radius) while climbing. The `SRF` / `ORB` chip at the lower left of the ball follows | Vel ref auto |
 | ASC-16 | C&W `HIGH Q` | Lights yellow when dynamic pressure passes 20 kPa, the same moment ASCENT's Q turns yellow, and clears below it. A normal Kerbin ascent peaks at 10–15 kPa, so fly steep and fast to see it | Bit 19, KCM_HIGH_Q_PA (3.7.2) |
 | ASC-17 | C&W situation column | `FLIGHT` then `SUB-ORBIT` as Ap leaves the atmosphere; regime tiles walk FLYING LOW → FLYING HIGH → LOW SPACE | Situation / regime |
-| ASC-18 | C&W chirps | Alert chirp crossing 3500 m upward, crossing 100 m/s upward, and when Ap crosses the body's min-safe altitude (6.8 km at Kerbin) | Audio triggers · **blocked, §2.3** |
+| ASC-18 | C&W chirps | Alert chirp crossing 3500 m upward, crossing 100 m/s upward, and when Ap crosses the body's min-safe altitude (6.8 km at Kerbin) | Audio triggers |
 | ASC-19 | C&W `ATMO` clears at 70 km | Lamp goes out at atmosphere exit; `DESCENT` off while climbing | Bits 14, 12 |
 | ASC-20 | C&W `Ap LOW` once sub-orbital | Lit yellow while Ap is below 70 km; clears when Ap passes the atmosphere top | Bit 18 |
 
@@ -165,7 +168,7 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 | ORB-02 | Read ORBIT | Plan view and inclination view; left SMA, ECC, PeA, ApA; right INC, PERIOD, ARG.Pe, T+Pe / T+Ap. PeA label magenta, ApA label blue. Orbit line green | ORB |
 | ORB-03 | Press `ORB` → `ORB+` | Text-only Advanced Elements: SMA, ECC, PeA, ApA, ALT.SL, V.ORB, PERIOD / INC, LAN, ARG.Pe, TRUE ANOM, MEAN ANOM, T+Pe, T+Ap. All values live; chip `MAN` | ORB+ |
 | ORB-04 | C&W `ORBIT STABLE` | Lit (Pe and Ap above the atmosphere, Ap inside the SOI, situation ORBIT). `Ap LOW` and `Pe LOW` dark. `ORBIT` situation tile lit, `HIGH SPACE` / `LOW SPACE` regime correct for the altitude | Bits 20, 18, 6 |
-| ORB-05 | Entering orbit for the first time | Alert chirp on the ORBIT bit | Audio triggers · **blocked, §2.3** |
+| ORB-05 | Entering orbit for the first time | Alert chirp on the ORBIT bit | Audio triggers |
 | ORB-06 | **Info 1** SPACECRAFT PFD in orbit | Attitude ball with pitch ladder, fixed gold wing symbol, bank scale with sky pointer, prograde / retrograde markers; PITCH and HDG tapes; P / R / Y rate bars right of the ball; THRTL bar far left; EC / CORE / SKIN bars along the bottom. Right column ALT.SL, V.ORB, ApA, PeA, T+Ap / T+Pe, row 5 `T+IGN` (dashed with no node), ΔV.STG, RCS / SAS indicators | PFD |
 | ORB-07 | Tap the `ORB` / `SRF` chip on the PFD | Chip pins the other reference (markers and row 1 swap) and shows a green outline. Tap again to return to automatic (grey outline) | 1.11.0 |
 | ORB-08 | Step SAS through its modes on the controller | PFD SAS indicator follows: `STAB` white-on-green, `PRO` / `RETR` bright green, `NRM` / `ANRM` magenta, `RAD+` / `RAD-` sky blue, `TGT` / `ATGT` violet, `MNVR` blue. Radial **out** reads `RAD+` and radial **in** `RAD-` | SAS mapping (1.15.3 #66) |
@@ -278,7 +281,7 @@ Requires Controller_Main running the mission autopilot. All annunciations reflec
 |---|---|---|---|
 | ENTR-01 | Burn retrograde to put Pe at ~30 km, still above the atmosphere | Info 2 auto-routes to RE-ENTRY (`ENTR`) before entry interface. The magenta Pe marker sits in the green corridor band and PeA reads green | Rule 2 |
 | ENTR-02 | Read RE-ENTRY | Corridor tape, ATMOSPHERE bar, G METER, RETRO ALIGNMENT ball, CHUTE DEPLOY bar, SKIN / CORE bars; rows T+ATM (above the atmosphere), ALT.SL, V.SRF, V.VRT, PeA, MACH, DROG, MAIN, GEAR / SAS | ENTR layout |
-| ENTR-03 | Cross 70 km | Row 0 toggles T+ATM → T+GRND; row 1 toggles ALT.SL → ALT.RDR; C&W `ATMO` and `DESCENT` light (caution chirp) | Row toggles · **blocked, §2.3** (chirp) |
+| ENTR-03 | Cross 70 km | Row 0 toggles T+ATM → T+GRND; row 1 toggles ALT.SL → ALT.RDR; C&W `ATMO` and `DESCENT` light (caution chirp) | Row toggles |
 | ENTR-04 | Turn SAS off above Mach 3 | SAS button white-on-red; below Mach 3 an off SAS is dark grey | SAS Mach gate |
 | ENTR-05 | Peak heating | C&W `HIGH TEMP` red + MASTER ALARM above 90% of the part limit; C&W CORE / SKIN readouts yellow from 50%, white-on-red above 90%; RE-ENTRY SKIN / CORE bars yellow from 75%, red from 90% | tempAlarm |
 | ENTR-06 | G meter through the pulse | Graphical G meter climbs; C&W `HIGH G` if above 9 g | G meter |
@@ -286,9 +289,9 @@ Requires Controller_Main running the mission autopilot. All annunciations reflec
 | ENTR-08 | C&W `CHUTE ENV` | Red while too fast for any chute, yellow when drogue-safe, green when mains are safe; agrees with the CHUTE DEPLOY bar zone on RE-ENTRY | Bit 22 |
 | ENTR-09 | Fire CAG 1 (drogue) | DROG row `STOW` → `ARM` (sky blue) while the air is too thin → `OPEN`. CAG 2 cuts it: `CUT` in red, final | Chute state machine |
 | ENTR-10 | Fire CAG 3 (main) | MAIN row follows the same states; CAG 4 cuts | Chute CAGs |
-| ENTR-11 | Descending under chutes | `IMPACT IMM` lights under 60 s to impact (caution tone); `ALT` under 200 m (caution tone); `GEAR UP` under 200 m with the gear up (caution chirp); `GROUND PROX` red inside 10 s whatever the gear | Bits 10, 11, 13, 5 · **blocked, §2.3** (sounds) |
+| ENTR-11 | Descending under chutes | `IMPACT IMM` lights under 60 s to impact (caution tone); `ALT` under 200 m (caution tone); `GEAR UP` under 200 m with the gear up (caution chirp); `GROUND PROX` red inside 10 s whatever the gear | Bits 10, 11, 13, 5 |
 | ENTR-12 | **Info 1** during re-entry | SPACECRAFT PFD, row 1 back on `V.SRF` | Vel ref |
-| ENTR-13 | GPWS lander profile with panel GREEN | Metre callouts 2500 / 1000 / 500 / 100 / 50 / 40 / 30 / 20 / 10; SINK RATE only if time-to-impact < 10 s **and** descending faster than 6 m/s | gpwsUpdateLander · **blocked, §2.3** |
+| ENTR-13 | GPWS lander profile with panel GREEN | Metre callouts 2500 / 1000 / 500 / 100 / 50 / 40 / 30 / 20 / 10; SINK RATE only if time-to-impact < 10 s **and** descending faster than 6 m/s | gpwsUpdateLander |
 | ENTR-14 | Splashdown or touchdown | C&W `SPLASH` or `LANDED` and `CONTACT` tiles lit. Info 2 stays on RE-ENTRY to the ground, then routes to VEHICLE INFO (no target) with STATUS `SPLASH` / `LANDED` and the `· RECOVERABLE` qualifier | Rule 2 hold / rule 6 (1.15.3 #69, 1.16.5) |
 | ENTR-15 | Recover the vessel | All panels go to standby | Scene change |
 | ENTR-16 | Re-entry capsule with the service module jettisoned (no LF / LOx aboard, ARP installed), throttle open | C&W `LOW ΔV` stays dark; ΔV.STG / STG.BRN / ΔV.TOT on the Info panels show their values in dark grey instead of alarm colours | 3.8.0 / 1.16.0 #72 |
@@ -307,8 +310,8 @@ Requires Controller_Main running the mission autopilot. All annunciations reflec
 | DESC-05 | Radar altitude under 200 m, then under 50 m | ALT.RDR yellow at 200 m (this screen's tighter tier), white-on-red at 50 m; the ALTITUDE tape rescales to 0–50 m; C&W `ALT` at 200 m | LNDG_ALT_RDR_WARN_M / ALT_RDR_ALARM_M / CW_ALT |
 | DESC-06 | T+GRND under 10 s | T+GRND white-on-red; C&W `GROUND PROX` red + MASTER ALARM. Lowering the gear does **not** clear GROUND PROX (gear is deliberately ignored); it clears only when time to the surface is back above 10 s | LNDG_TGRND_ALARM_S / CW_GROUND_PROX |
 | DESC-07 | Descend faster than 5 m/s, then 8 m/s | V.VRT and the VERTICAL VELOCITY tape yellow past 5 m/s down, white-on-red / red past 8 | Landing tiers |
-| DESC-08 | GPWS lander profile (panel GREEN) | HORIZONTAL SPEED when lateral speed exceeds the altitude-ramped limit under 400 m; RETARD under 15 m with throttle still up; metre ladder callouts | Lander callouts · **blocked, §2.3** |
-| DESC-09 | GPWS bug: set a threshold on the GPWS input panel, cross it gear up | GROUND PROXIMITY (clip 34); gear down → the bug tone | Bug decision tree · **blocked, §2.3** |
+| DESC-08 | GPWS lander profile (panel GREEN) | HORIZONTAL SPEED when lateral speed exceeds the altitude-ramped limit under 400 m; RETARD under 15 m with throttle still up; metre ladder callouts | Lander callouts |
+| DESC-09 | GPWS bug: set a threshold on the GPWS input panel, cross it gear up | GROUND PROXIMITY (clip 34); gear down → the bug tone | Bug decision tree |
 | DESC-10 | Touchdown | C&W `LANDED` + `CONTACT`; Info 2 to VEHICLE INFO; `DESCENT` clears | Rule 6 |
 | DESC-11 | **RES** during the landing burn | LF / LOx stage column drains ahead of the total; alert strip shows any caution worst-first | Stage split |
 
@@ -344,7 +347,7 @@ Requires Controller_Main running the mission autopilot. All annunciations reflec
 | ACFT-06 | Gear up / down, wheel brakes | GEAR and BRAKES buttons follow | Live |
 | ACFT-07 | Cruise descent at −6 m/s with gear up above 750 m radar | V.VRT and the VSI bar stay green (no landing tiers in cruise) | 1.13.1 |
 | ACFT-08 | Same descent with gear down (or below 750 m radar) | V.VRT caution below −5 m/s, alarm below −8 | Approach-only tiers |
-| ACFT-09 | Pull AOA past 10°, then 20° | AOA yellow, then white-on-red; the AOA arc colours the same. GPWS STALL buzzer sounds unbroken at 20° while above the stall minimum speed | KCM_AOA_WARN/STALL · **blocked, §2.3** (buzzer) |
+| ACFT-09 | Pull AOA past 10°, then 20° | AOA yellow, then white-on-red; the AOA arc colours the same. GPWS STALL buzzer sounds unbroken at 20° while above the stall minimum speed | KCM_AOA_WARN/STALL |
 | ACFT-10 | Read NAVIGATION | Compass card with own-ship symbol, green ground-track marker with line, violet target-bearing marker, legend bottom-left; heading box; left TRK, DRIFT, BRG; right DIST, V.CLOSE, T+INT | NAV |
 | ACFT-11 | Fly a crab (rudder) | DRIFT shows the crab angle, yellow past 10° | NAV_DRIFT_WARN_DEG |
 | ACFT-12 | Below 5 m/s (taxi) | TRK and DRIFT dashed | NAV_TRK_MIN_MS |
@@ -358,7 +361,7 @@ Requires Controller_Main running the mission autopilot. All annunciations reflec
 
 ### 16.1 GPWS aircraft profile (audio, C&W panel)
 
-Set the GPWS input panel to GREEN unless stated. **Every row in this block is blocked (§2.3):** the GPWS mode reaches the Annunciator only in the master's command, so GPWS stays off until Controller_Main sends it.
+Set the GPWS input panel to GREEN unless stated. The master relays the panel's mode, options and bug to the Annunciator.
 
 | ID | Action | Expected | Source |
 |---|---|---|---|
