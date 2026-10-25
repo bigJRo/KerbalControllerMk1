@@ -343,21 +343,33 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 - A rising edge sends STAGE, only in a flight scene, with a 1 s lockout so a bounce or double press cannot fire two stages.
 - The arming switch is wired in series, the same way as the Abort button, so a press only reaches the master while armed. The master cannot see the arming switch itself.
 
+### 8.7 HOLD (Stability B10) and KILL ROT (AUX CTRL B11)
+
+The candidates considered for Stability B10 were: HOLD, controller pointing layer, kill rotation, navball reference, custom action group, SAS mode guard, KSP fine control, RCS hold, A/P DISC and an Info Display shortcut. HOLD was chosen for B10, and kill rotation for AUX CTRL B11.
+
+**HOLD — Stability Control B10.** A temporary hold of the current condition. It is *not* gated by A/P ARM, and A/P INHIB does not drop it.
+
+| Control mode | Holds | How |
+|---|---|---|
+| SPC | Attitude | KSP SAS, Stability Assist |
+| PLN | Altitude + heading | Hold autopilot ALT + HDG at the current values; throttle untouched |
+| RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values |
+
+- **Press again:** releases it.
+- **Stick input:** releases it (the pilot override rule).
+- **A console autopilot engaging:** releases it.
+- **LED:** ACTIVE while holding.
+
+**KILL ROT — AUX CTRL B11** (was CP Docking Port, CAG 37).
+- One press stops the vessel rotating: KSP SAS Stability Assist until the rates settle, then the previous SAS state and mode are restored.
+- It also ends on a second press or on stick input.
+- **LED:** ACTIVE while damping.
+- Simpit reports no angular velocity, so "settled" comes from the navball angles' rate of change.
+
+**Control point:** AUX CTRL B10 still cycles Primary / Alternate (CAG 35 / 36). CAG 37 is freed.
+
 ## 9. Future discussion points
 
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
-2. **Stability Control B10.** Currently RCS toggle; the RCS switch makes it redundant. Candidates:
-
-   | # | Name | Does | How | LED | Effort |
-   |---|---|---|---|---|---|
-   | 1 | **HOLD** (quick engage) | One press holds what the vessel is doing now: spacecraft attitude, plane altitude + heading, rover heading + speed. Press again to release | Existing hold autopilot; gated by A/P ARM | ACTIVE while holding | Small |
-   | 2 | **Controller pointing layer** | Latches a second layer: B0–B9 point the vessel with the master's attitude controller instead of KSP's SAS, so prograde etc. work on craft whose pilot / probe core lacks those SAS modes | Existing attitude controller; normal / radial / target need orbit maths | ACTIVE while the layer is on | Large |
-   | 3 | **Kill rotation** | Held or pressed: the master damps all rotation to zero, then lets go | Attitude controller rate loop | ACTIVE while damping | Medium |
-   | 4 | **Navball reference** | Cycles Orbit / Surface / Target, beside the SAS modes it changes (and frees UI Control B5) | Simpit navball mode message | Colour per mode, master-tracked (KSP does not report it) | Small |
-   | 5 | **Custom action group** | Per-vessel user function on the free CAG slot, base 40 (40 / 80 / … / 240) | `toggleCAG` | CAG state from KSP | Small |
-   | 6 | **SAS mode guard** | Locks B0–B9 so a stray press cannot change the SAS mode | Master only | ACTIVE while locked | Small |
-   | 7 | **KSP fine control** | Toggles KSP's own precision control (Caps Lock) | Keyboard | Master-tracked | Small |
-   | 8 | **RCS hold** | RCS on only while held, for docking nudges (mirrors the brake button) | Simpit RCS action | ACTIVE while held | Small |
-   | 9 | **A/P DISC** | Instant disconnect of every autopilot | Arbiter | Momentary | Small |
-   | 10 | **Info Display shortcut** | Jumps Info Display 2 to the attitude / autopilot page | Needs a new carrier command | — | Medium |
+2. *(Settled — §8.7.)* Stability Control B10 = HOLD; AUX CTRL B11 = KILL ROT.
 
