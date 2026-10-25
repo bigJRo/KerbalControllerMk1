@@ -12,7 +12,7 @@
    layout logic. DFLT makes the current selection, with its reserve bugs, the layout
    every vessel not in memory starts with; it is stored with the vessel memory. The
    key lights when the selection already is the default. CLEAR then DFLT (an empty
-   set cannot be a default) drops the stored one, back to the SPCT preset.
+   set cannot be a default) drops the stored one, back to the SPC preset.
 
    CLEAR also forgets: leaving a vessel with an empty set removes it from memory (an
    empty set is not a layout), and HOLDING CLEAR for MEM_CLEAR_HOLD_MS forgets every
@@ -425,7 +425,7 @@ bool handleSelectTouch(uint16_t x, uint16_t y) {
     persistStoreNow();
     drawButton(infoDisp, DFLT_X, DFLT_Y, DFLT_W, DFLT_H, btnDflt, &Roboto_Black_16, layoutIsDefault());
     flashNote(infoDisp, slotCount == 0 ? "DFLT CLR" : "DFLT SET", TFT_CYAN);
-    if (debugMode) Serial.println(slotCount == 0 ? F("ResourceDisp: default layout cleared (SPCT)")
+    if (debugMode) Serial.println(slotCount == 0 ? F("ResourceDisp: default layout cleared (SPC)")
                                                  : F("ResourceDisp: default layout set"));
     return true;
   }

@@ -720,7 +720,7 @@ static void _rovrDrawEcChrome(KCM_TFT &tft) {
     textCenter(tft, &Roboto_Black_24,
                ROVR_LCOL_X, _rovrEcLabelY(),
                ROVR_LCOL_W, ROVR_LBL_H,
-               "ENDUR", KDC_LABEL_COLOR, TFT_BLACK);
+               "TTE", KDC_LABEL_COLOR, TFT_BLACK);
 }
 
 static void _rovrUpdateEc(KCM_TFT &tft) {

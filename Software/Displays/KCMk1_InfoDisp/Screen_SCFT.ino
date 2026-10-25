@@ -341,13 +341,13 @@ static void _scftUpdateHeadingTape(KCM_TFT &tft, float hdg) {
 static const int16_t THR_X       = 2;
 static const int16_t THR_BAR_W   = 18;
 static const int16_t THR_TICK_X0 = THR_X + THR_BAR_W;      // 20
-static const int16_t THR_LABEL_H = 62;                     // rotated "THR" label at bottom
+static const int16_t THR_LABEL_H = 88;                     // rotated "THRTL" at bottom: 5 letters of Black_16 need 87
 static const int16_t THR_TOP_Y   = SCFT_PTAPE_Y + 6;       // 100 — 100% mark sits below the
                                                            //   "PITCH" label (bottom y=92)
-static const int16_t THR_BOT_Y   = SCREEN_H - THR_LABEL_H - 14; // 524 — 0% mark; range chosen so the
+static const int16_t THR_BOT_Y   = SCREEN_H - THR_LABEL_H - 14; // 498 — 0% mark; range chosen so the
                                                            //   20% ticks bracket (not overlap) the
                                                            //   pitch value box (y 281..319)
-static const int16_t THR_TRACK_H = THR_BOT_Y - THR_TOP_Y;       // 424
+static const int16_t THR_TRACK_H = THR_BOT_Y - THR_TOP_Y;       // 398
 static float _scftPrevThrottle   = -9999.0f;
 
 static void _scftDrawThrottleChrome(KCM_TFT &tft) {
@@ -368,9 +368,9 @@ static void _scftDrawThrottleChrome(KCM_TFT &tft) {
             tft.print(lbl);
         }
     }
-    // "THR" label — vertical, at the bottom, matching the Pitch/Hdg label style
+    // "THRTL" label — vertical, at the bottom, matching the Pitch/Hdg label style
     drawVerticalText(tft, THR_X, SCREEN_H - THR_LABEL_H, THR_BAR_W, THR_LABEL_H,
-                     &Roboto_Black_16, "THR", TFT_WHITE, TFT_BLACK);
+                     &Roboto_Black_16, "THRTL", TFT_WHITE, TFT_BLACK);
 }
 
 static void _scftUpdateThrottle(KCM_TFT &tft, float throttle) {

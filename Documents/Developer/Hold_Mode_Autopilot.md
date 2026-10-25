@@ -142,7 +142,7 @@ x = 6 / 322 / 638, 58 px rows from y = 172, 176 × 50 value boxes — so the exi
 | Banner, right | Body · vessel name (small, grey); `ENGAGED` in `TFT_NEON_GREEN` or `A/P OFF` in dark grey. Appends `...` while a tap is unacknowledged, never flips optimistically (same rule as ARMED/DISARMED) |
 | Column 1 **PITCH** | Mode rows ATT, AOA, V/S, ALT: a 112 px mode button + a 176 px setpoint box |
 | Column 2 **LATERAL / THRUST** | Mode rows ROLL, HDG, IAS, MACH; below them the **LVL** and **A/P OFF** buttons side by side (145 × 136 each, in the ARM button's footprint) |
-| Column 3 **FLIGHT DATA** | Read-only PITCH, ROLL, HDG, V/S, ALT, IAS, MACH from the InfoDisp's own Simpit link (as ApA/PeA/G are on the ascent console) |
+| Column 3 **FLIGHT DATA** | Read-only PITCH, ROLL, HDG, V.VRT, ALT.SL, IAS, MACH from the InfoDisp's own Simpit link (as ApA/PeA/G are on the ascent console) |
 
 Commanded throttle is deliberately **not** shown: while the autothrottle is engaged the physical
 lever *is* the throttle readout (§7).
@@ -207,7 +207,7 @@ pending.*
 | Banner | Engaged modes (`CRUISE  HDG`) / `A/P OFF`; guard state or disconnect reason in orange; body · vessel; `ENGAGED` / `A/P OFF` |
 | Column 1 **DRIVE** | Mode rows CRUISE (speed setpoint), HDG (heading setpoint), TGT (no setpoint; box shows the live target bearing, muted when no target) |
 | Column 2 **GUARD LIMITS** | Editable SPEED, SLOPE, ROLL limits; **A/P OFF** button (298 × 136, the ARM footprint) |
-| Column 3 **DRIVE DATA** | Signed SPEED, HDG, TGT BRG, PITCH, ROLL, commanded WHL THR, BRAKES |
+| Column 3 **DRIVE DATA** | Signed V.SRF, HDG, BRG, PITCH, ROLL, commanded WHL THR, BRAKES |
 
 ### 5.2 Fields
 

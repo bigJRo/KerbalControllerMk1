@@ -740,11 +740,11 @@ static void _lnchAsDrawVVrtChrome(KCM_TFT &tft) {
     const int16_t LBL_X0 = LNCH_AS_VVRT_X_LEFT - LNCH_AS_LBL_OVERHANG;
     const int16_t LBL_W  = LNCH_AS_VVRT_W + 2 * LNCH_AS_LBL_OVERHANG;
 
-    // Bar name "V.Vrt" (Black_20)
+    // Bar name "V.VRT" (Black_20)
     textCenter(tft, &Roboto_Black_20,
                LBL_X0, LNCH_AS_GAUGE_NAME_Y,
                LBL_W, LNCH_AS_GAUGE_NAME_H,
-               "V.Vrt", TFT_LIGHT_GREY, TFT_BLACK);
+               "V.VRT", TFT_LIGHT_GREY, TFT_BLACK);
 
     // Endpoint labels (Black_16), a few px clear of the bar top/bottom borders.
     textCenter(tft, &Roboto_Black_16,
@@ -860,11 +860,11 @@ static void _lnchAsDrawVOrbChrome(KCM_TFT &tft) {
     const int16_t LBL_X0 = LNCH_AS_VORB_X_LEFT - LNCH_AS_LBL_OVERHANG;
     const int16_t LBL_W  = LNCH_AS_VORB_W + 2 * LNCH_AS_LBL_OVERHANG;
 
-    // Bar name "V.Orb" (Black_20)
+    // Bar name "V.ORB" (Black_20)
     textCenter(tft, &Roboto_Black_20,
                LBL_X0, LNCH_AS_GAUGE_NAME_Y,
                LBL_W, LNCH_AS_GAUGE_NAME_H,
-               "V.Orb", TFT_LIGHT_GREY, TFT_BLACK);
+               "V.ORB", TFT_LIGHT_GREY, TFT_BLACK);
 
     // Top endpoint label — v_circ at target orbit (body-aware), with unit.
     float vCirc = _lnchAsCircularOrbitVelocity();

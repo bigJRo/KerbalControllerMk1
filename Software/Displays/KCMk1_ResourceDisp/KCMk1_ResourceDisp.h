@@ -32,7 +32,7 @@ typedef ILI9341_t3_font_t tFont;
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 14;  // 3.14.0: bug sweep, optimisation and cleanup pass
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.14.1: history time axis in whole minutes
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 3.14.2: SPC preset (was SPCT)
 
 
 /***************************************************************************************
@@ -445,14 +445,14 @@ void clearVesselCache();
 
 // The pilot-set default layout: what a vessel not in memory starts with, set from the
 // Select screen's DFLT key and persisted with the cache. count 0 = none set, in which
-// case the SPCT preset is the default. (AAA_Globals.ino)
+// case the SPC preset is the default. (AAA_Globals.ino)
 extern VesselSlotRecord defaultLayout;
 void setDefaultLayout();        // the current slots (types and bugs) become the default
-void clearDefaultLayout();      // back to the SPCT preset
+void clearDefaultLayout();      // back to the SPC preset
 bool defaultLayoutSet();
 bool layoutIsDefault();         // current slot types match the effective default, in order
 
-// Mission presets (Resources.ino): the Select screen's keys, and PRESETS[0] (SPCT) is
+// Mission presets (Resources.ino): the Select screen's keys, and PRESETS[0] (SPC) is
 // the built-in default layout.
 struct PresetGroup {
   const char*  label;

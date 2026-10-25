@@ -296,7 +296,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: whole-vessel LF / OX channels; LOW dV suppressed with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.8.1: CORE / SKIN readouts; SPC control-mode legend
 
 
 /***************************************************************************************

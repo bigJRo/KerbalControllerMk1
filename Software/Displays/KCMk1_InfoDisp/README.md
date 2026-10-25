@@ -260,7 +260,7 @@ PFD is pinned to the top key on both units: it is the screen a pilot returns to 
 | 5 | A/P *(unit 2)* | ASCENT / ORBITAL / LANDING / AIRCRAFT / ROVER AUTOPILOT | The five autopilot consoles, parked at the bottom below the display-nav cluster. First press = the console for the situation (a console with a mode engaged wins; else rover → ROVER AP, plane in atmosphere → AIRCRAFT AP, in orbit or with a node → ORBITAL AP, suborbital or descending → LANDING AP, else ASCENT); a repeat press cycles only the consoles the vessel type and situation can use (a landed rover cycles RVAP alone; a plane in atmosphere ACAP → ASC → ORAP → LDAP; a rocket ASC → ORAP → LDAP). Turns green while any autopilot is armed or engaged. On-screen keypad for parameter entry; touch ARM/EXEC or mode buttons. Unit 2 only: it is the sole owner of the autopilot command channel | A/P at rest; ASC / ORAP / LDAP / ACAP / RVAP while a console is on screen |
 | 5 | VEH *(unit 1)* | VEHICLE INFO | Standalone, single-mode. Promoted out of the PFD ring on the vehicle-type panel — it is where the ladder routes a recoverable vessel, and moving it here shortens that panel's PFD ring from four modes to three | VEH |
 
-**LNCH** — *Pre-launch board* (automatic when `sit_PreLaunch`, for every vessel type): vessel name, type, SAS, RCS, throttle, EC%, crew count, CommNet signal, ΔV.Tot, and parachute CAG states. Tap content area or launch to advance to ascent. *Ascent:* left panel — altitude ladder (vessel + apoapsis markers, read against the labelled tick scale), ATMO gauge, V.Vrt bar, V.Orb bar, FPA dial and heading tape. The three bar gauges each carry their **own value** in a boxed window between the name and the top endpoint label, so a bar and its digits read as one instrument. The **atmosphere column is the exception: a name and a bar, no window.** Its bar is the one gauge here whose own quantity is not worth digits — a percentage restates where the triangle already points, and raw density reaches `0.00` around 30 km with the triangle still a quarter of the way up, because the bar plots (ρ/ρ_surface)^0.25 so the thin upper atmosphere stays visible. The sky-to-navy gradient with a triangle on each side reads as "atmosphere, and how deep" without a number under it, and **Q** in the right column is the atmospheric number that does earn digits. The ladder's two markers are labelled **`ALT`** (filled, vessel) and **`Ap`** (hollow, apoapsis). Right column, seven rows, every one a value with no picture anywhere on the screen: **T+Ap, Thrtl, Q, Mach, G, Stg.Brn, ΔV.Stg**.
+**LNCH** — *Pre-launch board* (automatic when `sit_PreLaunch`, for every vessel type): vessel name, type, SAS, RCS, throttle, EC, crew count, CommNet signal, ΔV.Tot, and parachute CAG states. Tap content area or launch to advance to ascent. *Ascent:* left panel — altitude ladder (vessel + apoapsis markers, read against the labelled tick scale), ATMO gauge, V.VRT bar, V.ORB bar, FPA dial and heading tape. The three bar gauges each carry their **own value** in a boxed window between the name and the top endpoint label, so a bar and its digits read as one instrument. The **atmosphere column is the exception: a name and a bar, no window.** Its bar is the one gauge here whose own quantity is not worth digits — a percentage restates where the triangle already points, and raw density reaches `0.00` around 30 km with the triangle still a quarter of the way up, because the bar plots (ρ/ρ_surface)^0.25 so the thin upper atmosphere stays visible. The sky-to-navy gradient with a triangle on each side reads as "atmosphere, and how deep" without a number under it, and **Q** in the right column is the atmospheric number that does earn digits. The ladder's two markers are labelled **`ALT`** (filled, vessel) and **`Ap`** (hollow, apoapsis). Right column, seven rows, every one a value with no picture anywhere on the screen: **T+Ap, Thrtl, Q, Mach, G, Stg.Brn, ΔV.Stg**.
 
 **Q (dynamic pressure)** is `½·ρ·v²` from `airDensity` and `surfaceVel`, in kPa — yellow past `LNCH_Q_WARN_KPA` (20), white-on-red past `LNCH_Q_ALARM_KPA` (40). This is the number the ATMO gauge cannot show: density falls monotonically from the pad, while Q rises to a peak near 5–8 km (10–15 kPa on a typical Kerbin ascent) and then falls, and that peak is the one structural event of an ascent. **G** uses the Annunciator's crew limits so the panels cannot disagree. **Stg.Brn** is stage endurance from `BURNTIME_MESSAGE` — the same field and the same name the circularisation phase uses.
 
@@ -298,7 +298,7 @@ This column was eight numeric rows mirroring the ascent readout — Alt.SL, V.Or
 
 **ACFT** — Full EADI ball (pitch ladder, roll pointer, aircraft symbol, Hdg/Pitch/Roll readouts) plus a right panel: Alt.SL (handing over to Alt.Rdr below `ACFT_ALT_RDR_ON_M`), V.Srf, IAS, V.Vrt, Ma/G split, AoA/Slip split, and GEAR / AIRBRK / BRAKES buttons. V.Vrt and the VSI bar take POWERED DESCENT's landing tiers (caution below 5 m/s down, alarm below 8) only on an approach, with the gear down or below the radar-altimeter handover height; in cruise a descent is reported, not alarmed. The AIRBRK button reads IN (stowed) or OUT (deployed, cyan) from the airbrake CAG (`AIRBRAKE_CAG`, base 38).
 
-**ROVR** — Rotating compass (shared renderer, `Compass.ino`; heading readout, cardinal ring, rover icon, target-bearing triangle when a target is set) with a DIST / T+TGT strip along the bottom. Left column: V.Srf, ENDUR (time to empty at the measured discharge rate, sampled on every screen so it has an answer on entry), and BRAKES / GEAR / SAS buttons. Top corners: FWD / REV drive-state blocks (both muted = NEUTRAL) driven by wheel throttle. Right column: ALT.TRN (terrain elevation, Alt.SL − Alt.Rdr), Pitch and Roll tilt indicators.
+**ROVR** — Rotating compass (shared renderer, `Compass.ino`; heading readout, cardinal ring, rover icon, target-bearing triangle when a target is set) with a DIST / T+TGT strip along the bottom. Left column: V.SRF, TTE (time to empty at the measured discharge rate, sampled on every screen so it has an answer on entry), and BRAKES / GEAR / SAS buttons. Top corners: FWD / REV drive-state blocks (both muted = NEUTRAL) driven by wheel throttle. Right column: ALT.TRN (terrain elevation, Alt.SL − Alt.Rdr), Pitch and Roll tilt indicators.
 
 ### Context Switching
 
@@ -437,10 +437,33 @@ font and right-aligns the value in what is left, so a longer label eats the valu
 | Throttle | `THRTL` | `THR` on ASCENT AUTOPILOT |
 | Inclination | `INC` | `INCL` on ASCENT AUTOPILOT |
 | Dynamic pressure | `Q` | `Q` on ASCENT AUTOPILOT |
-| Drogue chute | `DROGUE` | `DROG` on RE-ENTRY |
+| Drogue chute | `DROG` | `DROGUE` on PRE-LAUNCH (the RE-ENTRY cell only fits `DROG`) |
 | Sideslip | `SLIP` | `SL` on the AIRCRAFT panel row — while the slip **ball** on the same screen said `SLIP` |
 | Closure rate | `V.Close` | `V.CLS` on NAVIGATION (now `V.CLOSE`, since that screen's column heads are all-caps — case is layout, a different abbreviation is a second name) |
 | Terrain elevation | `ALT.TRN` | `ELEV` on ROVER, one letter from the `ELV` that DOCKING / TARGET / MANEUVER use for an elevation **angle** — a different quantity in different units |
+| Throttle (bar) | `THRTL` | `THR` on the SPACECRAFT throttle bar (its vertical label box grew 62 → 88 px to fit five letters) |
+| Radar altitude | `ALT.RDR` | `RDR ALT` on LANDING AUTOPILOT |
+| Sea-level altitude | `ALT.SL` | `ALT` in the AIRCRAFT AUTOPILOT flight data (the `ALT` mode button keeps its name) |
+| Vertical speed | `V.VRT` | `V/S` in the AIRCRAFT and LANDING AUTOPILOT data columns (the `V/S` mode button keeps its name); `V.Vrt` on the ASCENT bar |
+| Orbital speed | `V.ORB` | `V.Orb` on the ASCENT bar |
+| Surface speed | `V.SRF` | `SPEED` in the ROVER AUTOPILOT data column |
+| Stage / total / remaining Δv | `ΔV.STG`, `ΔV.TOT`, `ΔV.REM` | `STG ΔV`, `ΔV TOT`, `ΔV REM` on ORBITAL AUTOPILOT |
+| Time to ignition | `T+IGN` | `T-IGN` on ORBITAL AUTOPILOT, which also counted the other way; it now counts down to zero and goes negative once passed, as every other T+ time |
+| Burn duration | `BURN DUR` | `BURN` on ORBITAL AUTOPILOT |
+| Distance to target | `DIST` | `RANGE` on ORBITAL AUTOPILOT |
+| Time to ground | `T+GRND` | `T-IMP` on LANDING AUTOPILOT |
+| Elevation / bearing to target | `ELV`, `BRG` | `TGT EL` on AIRCRAFT AUTOPILOT, `TGT BRG` on ROVER AUTOPILOT |
+| Electric charge | `EC` | `EC%` on PRE-LAUNCH |
+| Angle of attack | `AOA` | `AoA` on the AIRCRAFT arc |
+| Battery time to empty | `TTE` | `ENDUR` on ROVER (the Resource Display's term) |
+| Chute states | `STOW`, `ARM`, `CUT` | `STOWED`, `ARMED!`, `FIRED!` on PRE-LAUNCH |
+| SAS modes | `PRO` `RETR` `NRM` `ANRM` `RAD+` `RAD-` `TGT` `ATGT` `MNVR` | spelled out on the PRE-LAUNCH SAS row; `RETRO` on the LANDING AUTOPILOT ATT REF toggle |
+| Vessel situation | `FLIGHT` `SUB-ORBIT` `ORBIT` `ESCAPE` `SPLASH` `DOCK` | `IN FLIGHT`, `SUB-ORBITAL`, `IN ORBIT`, `ESCAPE ORBIT`, `SPLASHED`, `DOCKED` on VEHICLE INFO — now the Annunciator's tile names |
+
+**Apoapsis and periapsis are the one case exception.** They read `Ap` and `Pe` in every
+label (`ApA`, `PeA`, `T+Ap`, `T+Pe`, `Ap-Pe`, `ARG.Pe`, `TGT Ap`, the Orbital Autopilot's
+`Ap` / `Pe` buttons), matching the graphic markers and the Annunciator's `Pe LOW` /
+`Ap LOW`, by the owner's decision (1.16.4).
 
 **One exception, and it is measured rather than careless.** AIRCRAFT keeps `MA` where
 ASCENT and RE-ENTRY say `MACH`. Its split cells are 180 px; `MACH` is 101 px at the
@@ -456,6 +479,7 @@ label-and-value rows elsewhere.
 
 | Version | Notes |
 |---------|-------|
+| **1.16.5** | **One name per quantity across the screens.** The readouts that carried a second name now use the flight screens' one (`ALT.RDR`, `ALT.SL`, `V.VRT`, `V.SRF`, `ΔV.STG`, `ΔV.TOT`, `ΔV.REM`, `T+IGN`, `BURN DUR`, `DIST`, `T+GRND`, `ELV`, `BRG`, `THRTL`, `EC`, `AOA`, `V.ORB`, `TTE`); the PRE-LAUNCH SAS row uses the SAS indicator names and its chute rows the RE-ENTRY states (`DROG`, `STOW`, `ARM`, `CUT`); VEHICLE INFO's STATUS uses the Annunciator's situation tile names; the landing console's ATT REF reads `RETR`. The Orbital Autopilot's T+IGN now counts down to zero and goes negative once passed, as every other T+ time. The SPACECRAFT throttle bar's label box grew to fit `THRTL`. See *Readout label vocabulary*. |
 | **1.16.4** | **Apsis labels in mixed case.** Every on-screen abbreviation of apoapsis and periapsis now reads `Ap` / `Pe`, matching the graphic markers and the Annunciator's `Pe LOW` / `Ap LOW` tiles: `ApA` / `PeA` (SPACECRAFT, ORBIT, ORBIT ADVANCED, RE-ENTRY, ASCENT AUTOPILOT), `T+Ap` / `T+Pe` (SPACECRAFT, ASCENT, ORBIT, ORBIT ADVANCED), `Ap-Pe` (CIRCULARIZATION), `ARG.Pe` (ORBIT, ORBIT ADVANCED), `TGT Ap` (ASCENT AUTOPILOT) and the Orbital Autopilot's `Ap` / `Pe` burn buttons. Labels only; no layout or logic change. |
 | **1.16.3** | **Autopilot summary on both units** (#83). Controller_Main pushed autopilot status only for the console on screen and only to unit 2, so off that console the mission ladder's rule 0 and the console ring could not see an engaged autopilot, and unit 1 never could. A new 8-byte `0xAA` summary frame (every console's flag byte plus the landing mode and ENTRY) goes to both units every 100 ms; `I2CSlave.ino` keeps it in its own buffer so it never displaces a full frame, and `processSummary()` applies it after any full frame. Demo mode ignores it. |
 | **1.16.2** | **Landing Autopilot: VERT replaces RADIAL** (#68). Controller_Main no longer flies the landing on SAS RADIAL OUT, which is vertical only while moving horizontally and lies near the horizon in a vertical descent; near zero speed (and always, with ATT REF on VERT) it holds the nose straight up with its own attitude loop, SAS off. The console's ATT REF toggle reads RETRO / VERT (`ldVert()`, bit 3 still the pilot's choice), and the landing frame's new bit 7, `vertHold`, says the hold is flying: POWERED DESCENT's SAS button then reads `VERT` in green rather than alarming on SAS off. RAD+ on that button is now white on red with the other non-landing modes (it was green while it was the autopilot's reference, #67). The demo reports bit 7 as Controller_Main does. |
@@ -544,7 +568,7 @@ label-and-value rows elsewhere.
 - **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm tone (`tone()` → PAM8302A amp) is on pin 29 (amp enable TONE_EN on pin 30) and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
 - **KerbalDisplayCommon ≥ 3.11.0** is required (hardware rev 2 / `KCM_TFT`, `RA8876_t41_p`; 3.5.0 carries the shared reticle marker layer and the `kspBodyAxes` / `kspBoresightAngles` boresight projection). Do not downgrade.
 - **Closure velocity** — the TARGET and DOCKING screens both show closure as a signed **V.Close** value (negative = closing, positive = opening); the intercept-time rows (T+Int / T+Dock) are shown only while closing.
-- **EC%** on the pre-launch board and Rover screen may require the Alternate Resource Panel (ARP) mod in KSP1.
+- **EC** on the pre-launch board and Rover screen may require the Alternate Resource Panel (ARP) mod in KSP1.
 
 Licensed under the GNU General Public License v3.0.
 Final code written by J. Rostoker for Jeb's Controller Works.

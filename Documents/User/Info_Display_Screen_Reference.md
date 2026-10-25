@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.16.4
+**Applies to:** KCMk1_InfoDisp firmware 1.16.5
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -108,7 +108,7 @@ compared after truncation to whole numbers unless the table gives decimals.
 
 **No propellant.** When the craft carries neither liquid fuel nor oxidizer (a re-entry
 capsule, or a craft whose tanks are empty), every stage Δv, stage burn-time and total Δv
-readout (ΔV.STG, STG.BRN, ΔV.TOT, STG ΔV) is drawn in dark grey with its value, instead of
+readout (ΔV.STG, STG.BRN, ΔV.TOT) is drawn in dark grey with its value, instead of
 the colours in the tables below. A craft with liquid fuel but no oxidizer, such as a
 nuclear or jet craft, keeps its normal colours. This needs the Alternate Resource Panel
 mod, which supplies the fuel totals; without it the readouts always use their normal
@@ -120,7 +120,7 @@ colours.
 |---|---|
 | Distance, altitude | Two decimals below 1,000 m (`310.00 m`); whole metres with separators to 999,999 m (`124,665 m`); then km, Mm, Gm. ROVER's DIST and ALT.TRN are whole metres throughout (`850 m`) |
 | Speed | One decimal below 1,000 m/s (`842.0 m/s`); whole numbers with separators from 1,000 (`2,200 m/s`). The autopilot consoles show Δv and airspeeds as whole numbers with separators (`842 m/s`, `1,450 m/s`); their setpoint rates and speeds keep one decimal |
-| Time | `48 s`; `15 m: 06 s` under an hour; `1h 09m` from one hour; `3d 04h` from one Kerbin day (6 h). A leading `-` means the moment has passed, except the Orbital Autopilot's T-IGN, which is negative while counting down. Autopilot consoles use the compact `m:ss`. |
+| Time | `48 s`; `15 m: 06 s` under an hour; `1h 09m` from one hour; `3d 04h` from one Kerbin day (6 h). A leading `-` means the moment has passed. Autopilot consoles use the compact `m:ss`. |
 
 ### Standby
 
@@ -166,7 +166,7 @@ hand.
   and the node (blue); a marker off the scale parks at the end.
 - **HDG tape (below the ball).** About ±34° visible, N in yellow, the boxed heading in
   three digits, and the same three marker triangles.
-- **THR bar (far left).** Throttle, 0–100 %, in orange. It is a control input, so it
+- **THRTL bar (far left).** Throttle, 0–100 %, in orange. It is a control input, so it
   has no colour thresholds.
 - **P / R / Y rate bars (right of the ball).** Pitch, roll and yaw rate, filling white
   from the centre line to ±10 °/s. Up is positive on all three: nose up, roll right,
@@ -263,7 +263,7 @@ for a Plane in an atmosphere and hands back to SPACECRAFT when it leaves.
   climbing upward. In cruise the fill is always green. On an approach (gear down, or
   below the radar-altimeter handover height) it turns yellow below −5 m/s and red below
   −8 m/s.
-- **AoA arc (left edge of the ball).** −25° to +25°, zero at 9 o'clock. Dark grey,
+- **AOA arc (left edge of the ball).** −25° to +25°, zero at 9 o'clock. Dark grey,
   yellow from +10° to +20°, red from +20° to +25°: only stall-side angles are coloured.
   The white pointer is the current angle of attack.
 - **SLIP strip (bottom).** A ball on a ±20° scale that moves right when the nose points
@@ -273,8 +273,8 @@ for a Plane in an atmosphere and hands back to SPACECRAFT when it leaves.
 - **SL / RDR chip.** Which altitude the top row shows; see Buttons.
 
 **Reading the screen.** Fly attitude on the ball and speed on IAS, keep the slip ball
-centred, and treat the AoA arc and AOA row as the stall warning (IAS has no stall
-colour). AoA is nose pitch minus flight-path pitch, so it is most accurate wings-level.
+centred, and treat the AOA arc and AOA row as the stall warning (IAS has no stall
+colour). AOA is nose pitch minus flight-path pitch, so it is most accurate wings-level.
 On approach, below 750 m radar altitude the top row switches to radar altitude; that
 height or lowering the gear turns on the landing colours, so V.VRT and the VSI alarm on
 landing descent rates. A yellow
@@ -339,7 +339,7 @@ vessel is typed Rover.
 - **FWD / REV blocks (top corners).** The wheel-throttle command: FWD white on green
   above +1 %, REV on yellow below −1 %, both muted in neutral. They show the command,
   not the direction you are actually moving.
-- **Left column:** V.SRF, ENDUR, then the BRAKES, GEAR and SAS indicators.
+- **Left column:** V.SRF, TTE, then the BRAKES, GEAR and SAS indicators.
 - **Right column:** ALT.TRN, then the PITCH and ROLL tilt pictures with their values.
   The pictures (side view with the front to the right, and rear view) show the tilt; the
   numbers beneath carry the warning colours. The pictures stop turning at ±45°.
@@ -357,7 +357,7 @@ rollover; roll has the tighter limits.
 **Special states.**
 - With no target, the marker and the whole bottom strip disappear.
 - T+TGT shows `---` when you are not closing on the target faster than 0.5 m/s.
-- ENDUR shows `---` until it has enough samples (about 6 s after boot or a vessel
+- TTE shows `---` until it has enough samples (about 6 s after boot or a vessel
   switch) or while the drain is too small to matter (under 0.002 % per second, more
   than about 14 h at full charge). It shows `CHG` in green while the battery is
   charging. Endurance is sampled on every screen, so it has a value the moment ROVER
@@ -377,9 +377,9 @@ rollover; roll has the tighter limits.
 |---|---|---|
 | Heading box | Vessel heading | Green always |
 | V.SRF | Surface speed with direction sign, ±99.9 m/s | Green moving forward; yellow moving backward; dark grey `+0.0` when stopped |
-| ENDUR | Time to an empty battery at the drain measured over the last ~48 s | Green from 1 h; yellow under 1 h; white on red under 10 min; `CHG` green; `---` dark grey |
+| TTE | Time to an empty battery at the drain measured over the last ~48 s | Green from 1 h; yellow under 1 h; white on red under 10 min; `CHG` green; `---` dark grey |
 | DIST | Distance to the target | Violet |
-| T+TGT | Time to reach the target at the current closing speed | Green with endurance to spare; yellow from 80 % of ENDUR; white on red at or beyond ENDUR; green while ENDUR is `---` or `CHG` |
+| T+TGT | Time to reach the target at the current closing speed | Green with endurance to spare; yellow from 80 % of TTE; white on red at or beyond TTE; green while TTE is `---` or `CHG` |
 
 **Buttons.** Indicators only.
 - BRAKES: white on green when on, dark grey when off.
@@ -416,7 +416,7 @@ can command. A yellow or red COMM means the probe link is weak or lost. Compare
 |---|---|---|
 | VESSEL | Vessel name | Green always |
 | TYPE | Vessel type and its icon | Ship green; Probe magenta; Relay violet; Rover olive; Lander navy; Plane sky blue; Station maroon; Base brown; EVA jungle green; debris, objects, flags, science, parts and unknown mid red |
-| STATUS | PRE-LAUNCH, IN FLIGHT, SUB-ORBITAL, IN ORBIT, ESCAPE ORBIT, LANDED, SPLASHED or DOCKED, with `· RECOVERABLE` when it applies | Sky blue when recoverable; green otherwise |
+| STATUS | PRE-LAUNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, LANDED, SPLASH or DOCK (the Annunciator's situation tile names), with `· RECOVERABLE` when it applies | Sky blue when recoverable; green otherwise |
 | CONTROL | Control level | Full Control green; Limited Manned dull yellow; Limited Probe orange; No Control white on red |
 | COMM | CommNet signal | Green from 50 %; yellow 1–49 %; white on red at 0 % |
 | CREW | Crew aboard / capacity | Green always |
@@ -472,17 +472,17 @@ Percentages are truncated, so 89.9 % EC reads 89 % and shows yellow.
 |---|---|---|
 | VESSEL | Vessel name | Green always |
 | TYPE | KSP vessel type | Green always |
-| SAS | SAS mode: OFF, STAB, PROGRADE, RETRO, NORMAL, ANTI-NRM, RAD-OUT, RAD-IN, TARGET, ANTI-TGT, MANEUVER | STAB green; any other mode yellow; OFF white on red |
+| SAS | SAS mode: OFF, STAB, PRO, RETR, NRM, ANRM, RAD+, RAD-, TGT, ATGT, MNVR (the SAS indicator names) | STAB green; any other mode yellow; OFF white on red |
 | RCS | RCS on or off | OFF green; ON white on red |
 | THRTL | Throttle | 0 % green; anything else white on red |
-| EC% | Electric charge | Green from 90 %; yellow 75–89 %; white on red below 75 % |
+| EC | Electric charge | Green from 90 %; yellow 75–89 %; white on red below 75 % |
 | CREW | Crew aboard / capacity | Green always |
 | COMM | CommNet signal | Green from 50 %; yellow 10–49 %; white on red below 10 % |
 | ΔV.TOT | Total vessel Δv | Green from 500 m/s; yellow 150–499 m/s; white on red below 150 m/s |
-| DROGUE | Drogue-deploy action group (custom group 1) | STOWED green; ARMED! white on red |
-| MAIN | Main-deploy action group (custom group 3) | STOWED green; ARMED! white on red |
-| D.CUT | Drogue-cut action group (custom group 2) | SAFE green; FIRED! white on red |
-| M.CUT | Main-cut action group (custom group 4) | SAFE green; FIRED! white on red |
+| DROG | Drogue-deploy action group (custom group 1) | STOW green; ARM white on red |
+| MAIN | Main-deploy action group (custom group 3) | STOW green; ARM white on red |
+| D.CUT | Drogue-cut action group (custom group 2) | SAFE green; CUT white on red |
+| M.CUT | Main-cut action group (custom group 4) | SAFE green; CUT white on red |
 
 **Buttons.** None; a tap anywhere on the board moves on to ASCENT.
 
@@ -509,10 +509,10 @@ no picture.
   (dense), mid blue, then navy, with a dark segment at the bottom for vacuum. The two
   white triangles mark the current depth. It has no number; Q is the atmospheric
   number to watch.
-- **V.Vrt bar.** Vertical speed, −500 to +500 m/s, filling up in green while climbing
+- **V.VRT bar.** Vertical speed, −500 to +500 m/s, filling up in green while climbing
   and down in red while descending. The box above gives the value, green when climbing,
   red when descending.
-- **V.Orb bar.** Orbital speed, from 0 to the circular-orbit speed at the target orbit
+- **V.ORB bar.** Orbital speed, from 0 to the circular-orbit speed at the target orbit
   (the top label). A full bar means orbital speed. The box above it shows *surface*
   speed below 6 % of the body's radius (36 km at Kerbin) and orbital speed above.
 - **FPA dial.** Flight-path angle: +90° straight up, 0° at the horizon. The green
@@ -1082,8 +1082,8 @@ autopilot and PRE-LAUNCH outrank it.
   +9 g and −5 g, red beyond.
 - **RETRO ALIGNMENT ball**: the marker shows where the airflow comes from (surface
   retrograde). Centred, the nose points retrograde and the heat shield faces the
-  airflow. Green under 10°, yellow 10°–30°, red from 30°; AoA under the ball gives the
-  angle. The yellow pointer at the top shows bank; the rings are labelled down the lower
+  airflow. Green under 10°, yellow 10°–30°, red from 30°; the figure under the ball gives
+  the angle. The yellow pointer at the top shows bank; the rings are labelled down the lower
   axis.
 - **CHUTE DEPLOY bar**: your airspeed against each chute's safe speed, tagged MAIN
   (green) and DROG (yellow). Green zone: main safe; yellow: drogue only; red: neither.
@@ -1288,9 +1288,9 @@ column; **EXEC** starts it. It never time-warps unless you ask.
 1. For a node burn, create the node in KSP; for Ap, Pe or INC, enter the target.
 2. Tap the burn's mode button. When it turns green the banner shows `PLANNED` and the
    PLAN column fills.
-3. Check ΔV TOT, T-IGN, BURN, and STG ΔV against ΔV TOT.
+3. Check ΔV.TOT, T+IGN, BURN DUR, and ΔV.STG against ΔV.TOT.
 4. Tap **EXEC**. The banner shows `ALIGNING`, then `WARP READY` (tap WARP, or wait),
-   then `BURNING`; ΔV REM counts down in bright green and the banner ends on `DONE`.
+   then `BURNING`; ΔV.REM counts down in bright green and the banner ends on `DONE`.
 5. For an approach hold, set the closing rate and HOLD AT, then tap **APPR**.
 
 **Special states.** Phase text in the banner centre: PLANNED, ALIGNING, WARP READY,
@@ -1305,13 +1305,13 @@ while BURNING.
 
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
-| ΔV TOT | Planned burn Δv | Green with a plan; `---` otherwise |
-| ΔV REM | Δv still to burn | Bright green while burning; green otherwise; `---` with no plan |
-| T-IGN | Time to ignition: shown negative while counting down (`-3:05`), positive after ignition | Orange under 30 s and after ignition; green otherwise; `---` with no plan |
-| BURN | Burn duration | Green; `---` with no plan |
+| ΔV.TOT | Planned burn Δv | Green with a plan; `---` otherwise |
+| ΔV.REM | Δv still to burn | Bright green while burning; green otherwise; `---` with no plan |
+| T+IGN | Time to ignition, counting down to zero (`3:05`), negative once ignition has passed | Orange under 30 s and after ignition; green otherwise; `---` with no plan |
+| BURN DUR | Burn duration | Green; `---` with no plan |
 | ACCEL | Acceleration estimate, m/s² | Green; `---` with no estimate |
-| STG ΔV | Δv in the current stage | Orange when a plan needs more than the stage has; green otherwise |
-| RANGE | Distance to the target | Green with a target; `---` without |
+| ΔV.STG | Δv in the current stage | Orange when a plan needs more than the stage has; green otherwise |
+| DIST | Distance to the target | Green with a target; `---` without |
 
 ### LANDING AUTOPILOT (caption LDAP)
 
@@ -1328,8 +1328,8 @@ attack and roll. DESC, HOVR and BRAKE exclude each other; ENTRY is separate.
 - **DESCENT.** DESC (rate, −50 to +20 m/s); HOVR (height above ground, 2–5,000 m);
   BRAKE (box shows the computed ignition altitude, not editable); ENTRY (angle of
   attack, −30 to +40°).
-- **OPTIONS.** ATT REF toggles RETRO and VERT.
-  - **RETRO** points the lander surface-retrograde with SAS, which in a descent is straight
+- **OPTIONS.** ATT REF toggles RETR and VERT.
+  - **RETR** points the lander surface-retrograde with SAS, which in a descent is straight
     up and leans against any drift to cancel it. Near zero speed (a hover, or just before
     touchdown, below 1.5 m/s) it hands over to the vertical hold, and takes back above 3 m/s.
   - **VERT** holds the lander straight up at every speed, for a pure vertical descent; drift
@@ -1365,12 +1365,12 @@ stale telemetry, or a thrust-to-weight below 1.2 for BRAKE); `LANDED`; `HANDOFF`
 
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
-| RDR ALT | Radar altitude | Green always |
-| V/S | Vertical speed | Orange when time to impact is under 30 s; green otherwise |
+| ALT.RDR | Radar altitude | Green always |
+| V.VRT | Vertical speed | Orange when time to ground is under 30 s; green otherwise |
 | H SPD | Horizontal speed | Green always |
 | ACCEL | Acceleration estimate and its source (MEAS, EST or TWR) | Green; `---` with no estimate |
 | IGN ALT | Computed BRAKE ignition altitude | Orange when marginal; green; `---` when unknown |
-| T-IMP | Time to impact at the current descent rate | Orange under 30 s; green; `---` when not descending |
+| T+GRND | Time to ground at the current descent rate | Orange under 30 s; green; `---` when not descending |
 | THRTL | The landing autopilot's commanded throttle | Green while DESC, HOVR or BRAKE is engaged; grey otherwise |
 
 ### AIRCRAFT AUTOPILOT (caption ACAP)
@@ -1414,10 +1414,10 @@ assist.
 | PITCH | Live pitch | Green always |
 | ROLL | Live bank | Green always |
 | HDG | Live heading | Green always |
-| V/S | Live vertical speed | Green always |
-| ALT | Altitude above sea level | Green always |
+| V.VRT | Live vertical speed | Green always |
+| ALT.SL | Altitude above sea level | Green always |
 | DIST | Distance to the target | Green with a target; `---` without |
-| TGT EL | Elevation angle to the target, negative below you | Green with a target; `---` without |
+| ELV | Elevation angle to the target, negative below you | Green with a target; `---` without |
 
 ### ROVER AUTOPILOT (caption RVAP)
 
@@ -1461,9 +1461,9 @@ you release them); `AIRBORNE` (not touching the ground for more than half a seco
 
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
-| SPEED | Signed ground speed; negative when moving backward | Orange while the slope guard acts or while STOPPING; green otherwise |
+| V.SRF | Signed ground speed; negative when moving backward | Orange while the slope guard acts or while STOPPING; green otherwise |
 | HDG | Live heading | Green always |
-| TGT BRG | Bearing to the target | Green with a target; `---` without |
+| BRG | Bearing to the target | Green with a target; `---` without |
 | DIST | Distance to the target | Orange while STOPPING; green with a target; `---` without |
 | PITCH | Live pitch, the slope | Orange while the slope guard acts; green otherwise |
 | WHL THR | Commanded wheel throttle | Green while CRUISE or FOLLOW is engaged; grey otherwise |

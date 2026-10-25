@@ -8,7 +8,7 @@
 // states, hysteresis and the alert strip come from the real logic.
 //
 // Scenarios (argv[1]):
-//   Main      Main screen, SPCT set on a ship in orbit: LF below its reserve bug,
+//   Main      Main screen, SPC set on a ship in orbit: LF below its reserve bug,
 //             MP in caution, food on its time tier, Solid Fuel not aboard (collapsed).
 //   MainTTE   The same with the TTE key engaged: counters show time to empty.
 //   EVA       Main screen on EVA: the ring-gauge layout for the fixed EVA set.
@@ -81,7 +81,7 @@ static void kcmFeed() {
 static void kcmLoadSet(const KcmRes *tab, uint8_t n) {
   for (uint8_t i = 0; i < MAX_SLOTS; i++) slots[i] = ResourceSlot();
   slotCount = 0;
-  // The SPCT preset, as the Select key loads it (Solid Fuel absent on this ship).
+  // The SPC preset, as the Select key loads it (Solid Fuel absent on this ship).
   const PresetGroup &pg = PRESETS[0];
   for (uint8_t i = 0; i < pg.count; i++) { slots[slotCount].type = pg.types[i]; slotCount++; }
   (void)tab; (void)n;

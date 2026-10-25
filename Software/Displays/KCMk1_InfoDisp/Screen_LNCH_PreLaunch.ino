@@ -55,10 +55,10 @@ static void _lnchPrelaunchDrawChrome(KCM_TFT &tft) {
             tft.drawLine(AX + AHW + dx, y, AX + AHW + dx, nextY - 1, TFT_GREY);
     };
     plSplit(2, "SAS",      "RCS");
-    plSplit(3, "THRTL", "EC%");
+    plSplit(3, "THRTL", "EC");
     plSplit(4, "CREW",     "COMM");
     printDispChrome(tft, F, AX, rowYFor(5,NR), AW, rowH, "\xCE\x94V.TOT", COL_LABEL, COL_BACK, COL_NO_BDR);
-    plSplit(6, "DROGUE",   "MAIN");
+    plSplit(6, "DROG",     "MAIN");
     plSplit(7, "D.CUT",    "M.CUT");
 
     // Horizontal dividers between every row — makes board easier to read as a checklist
@@ -147,11 +147,11 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         else {
             // Any other SAS mode — show mode name, yellow
             switch (state.sasMode) {
-                case 1: sasStr = "PROGRADE"; break; case 2: sasStr = "RETRO";    break;
-                case 3: sasStr = "NORMAL";   break; case 4: sasStr = "ANTI-NRM"; break;
-                case 5: sasStr = "RAD-IN";   break; case 6: sasStr = "RAD-OUT";  break;
-                case 7: sasStr = "TARGET";   break; case 8: sasStr = "ANTI-TGT"; break;
-                case 9: sasStr = "MANEUVER"; break; default: sasStr = "OTHER";   break;
+                case 1: sasStr = "PRO";  break; case 2: sasStr = "RETR"; break;
+                case 3: sasStr = "NRM";  break; case 4: sasStr = "ANRM"; break;
+                case 5: sasStr = "RAD-"; break; case 6: sasStr = "RAD+"; break;   // radial in / out
+                case 7: sasStr = "TGT";  break; case 8: sasStr = "ATGT"; break;
+                case 9: sasStr = "MNVR"; break; default: sasStr = "OTHER"; break;
             }
             fg = TFT_YELLOW; bg = TFT_BLACK;
         }
@@ -179,7 +179,7 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
         if      (ecPct >= EC_PRELAUNCH_READY_PCT) { fg = TFT_DARK_GREEN; bg = TFT_BLACK; }
         else if (ecPct >= EC_PRELAUNCH_LOW_PCT)   { fg = TFT_YELLOW;     bg = TFT_BLACK; }
         else                                       { fg = TFT_WHITE;       bg = TFT_RED;   }
-        plValR(3, 5, "EC%", ecStr, fg, bg);
+        plValR(3, 5, "EC", ecStr, fg, bg);
     }
 
     // Row 4 — Crew (left) | CommNet (right)
@@ -212,12 +212,12 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     // Row 6 — Drogue deploy (CAG 1) | Main deploy (CAG 3)
     {
         // Green = STOWED (CAG off), Red = ARMED! (CAG on)
-        const char *dStr = state.drogueDeploy ? "ARMED!" : "STOWED";
+        const char *dStr = state.drogueDeploy ? "ARM" : "STOW";
         uint16_t dFg = state.drogueDeploy ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t dBg = state.drogueDeploy ? TFT_RED   : TFT_BLACK;
-        plValL(6, 10, "DROGUE", dStr, dFg, dBg);
+        plValL(6, 10, "DROG", dStr, dFg, dBg);
 
-        const char *mStr = state.mainDeploy ? "ARMED!" : "STOWED";
+        const char *mStr = state.mainDeploy ? "ARM" : "STOW";
         uint16_t mFg = state.mainDeploy ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t mBg = state.mainDeploy ? TFT_RED   : TFT_BLACK;
         plValR(6, 11, "MAIN", mStr, mFg, mBg);
@@ -226,12 +226,12 @@ static void _lnchPrelaunchDrawValues(KCM_TFT &tft) {
     // Row 7 — Drogue cut (CAG 2) | Main cut (CAG 4)
     {
         // Green = SAFE (CAG off), Red = FIRED! (CAG on)
-        const char *dcStr = state.drogueCut ? "FIRED!" : "SAFE";
+        const char *dcStr = state.drogueCut ? "CUT" : "SAFE";
         uint16_t dcFg = state.drogueCut ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t dcBg = state.drogueCut ? TFT_RED   : TFT_BLACK;
         plValL(7, 12, "D.CUT", dcStr, dcFg, dcBg);
 
-        const char *mcStr = state.mainCut ? "FIRED!" : "SAFE";
+        const char *mcStr = state.mainCut ? "CUT" : "SAFE";
         uint16_t mcFg = state.mainCut ? TFT_WHITE : TFT_DARK_GREEN;
         uint16_t mcBg = state.mainCut ? TFT_RED   : TFT_BLACK;
         plValR(7, 13, "M.CUT", mcStr, mcFg, mcBg);

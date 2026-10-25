@@ -174,8 +174,8 @@ ResourceType resTypeByIndex(uint8_t index) {
 
 /***************************************************************************************
    DEFAULT SLOT CONFIGURATION
-   Matches the SPCT preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
-   Loaded on first boot; the Select screen's SPCT key loads the same set.
+   Matches the SPC preset exactly: EC, LF, LOx, MP, SF, O2, Food, Water, Ablator.
+   Loaded on first boot; the Select screen's SPC key loads the same set.
 ****************************************************************************************/
 // Seed one slot's fill values: 0 in live mode (Simpit repopulates on refresh),
 // visible demo values otherwise. Shared by all the slot-loading paths.
@@ -199,11 +199,11 @@ void zeroAllSlotValues() {
    The Select screen's preset keys. Everything in a preset should be aboard the craft
    type it names; a resource the vessel turns out not to carry is skipped at load
    time (see loadPreset in ScreenSelect.ino) and would draw no meter anyway. Nine or
-   fewer keeps the standard meter class. SPCT, the first, is also the layout a vessel
+   fewer keeps the standard meter class. SPC, the first, is also the layout a vessel
    not in memory starts with when the pilot has not set a default of their own.
 ****************************************************************************************/
 const PresetGroup PRESETS[PRESET_COUNT] = {
-  { "SPCT", {   // Spacecraft: stock launch-to-orbit set
+  { "SPC", {    // Spacecraft: stock launch-to-orbit set
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_LIQUID_OX, RES_MONO_PROP, RES_SOLID_FUEL,
       RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER, RES_ABLATOR
     }, 9 },
@@ -215,7 +215,7 @@ const PresetGroup PRESETS[PRESET_COUNT] = {
       RES_ELEC_CHARGE, RES_STORED_CHARGE, RES_ORE, RES_LIQUID_FUEL, RES_LIQUID_OX,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 9 },
-  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPCT plus Intake Air.
+  { "ACFT", {   // Aircraft: jets breathe air, no oxidizer. A spaceplane is SPC plus Intake Air.
       RES_ELEC_CHARGE, RES_LIQUID_FUEL, RES_INTAKE_AIR,
       RES_MONO_PROP, RES_LS_OXYGEN, RES_LS_FOOD, RES_LS_WATER
     }, 7 },
@@ -233,7 +233,7 @@ const PresetGroup PRESETS[PRESET_COUNT] = {
 };
 
 // The default layout: the pilot's stored one if set (types and reserve bugs), else
-// the SPCT preset. Used at boot and for a vessel that is not in memory. Values start
+// the SPC preset. Used at boot and for a vessel that is not in memory. Values start
 // at zero (or visible demo values); presence is not consulted, since at boot nothing
 // is known yet and an absent resource collapses on the Main screen anyway.
 void initDefaultSlots() {

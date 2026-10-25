@@ -193,7 +193,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 16;  // 1.16.0: whole-vessel LF / OX channels; stage readouts neutral with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 4;   // 1.16.4: apsis labels in mixed case (ApA, PeA, T+Ap, T+Pe, ...)
+static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.16.5: one label per quantity across the screens; ORAP T+IGN counts down
 
 
 /***************************************************************************************

@@ -84,7 +84,7 @@ void chromeScreen_LNDGAP(KCM_TFT &tft) {
     textLeft(tft, LD_F_LBL, CON_C2X + 4, conRowY(i), CON_COLW - CON_VALW, CON_ROW_H, LD_OPT_LBL[i], LD_LBL, TFT_BLACK);
     if (i > 0) conDrawValueBox(tft, CON_C2X, i);
   }
-  static const char *const DATA_LBL[7] = { "RDR ALT", "V/S", "H SPD", "ACCEL", "IGN ALT", "T-IMP", "THRTL" };
+  static const char *const DATA_LBL[7] = { "ALT.RDR", "V.VRT", "H SPD", "ACCEL", "IGN ALT", "T+GRND", "THRTL" };
   for (uint8_t r = 0; r < 7; r++)
     textLeft(tft, LD_F_LBL, CON_C3X + 4, conRowY(r), CON_COLW - CON_VALW, CON_ROW_H, DATA_LBL[r], LD_LBL, TFT_BLACK);
   textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 8,  CON_COLW - 8, 20, "BRAKE fires at IGN altitude, then", TFT_DARK_GREY, TFT_BLACK);
@@ -169,7 +169,7 @@ void drawScreen_LNDGAP(KCM_TFT &tft) {
       int16_t x = conValX(CON_C2X), y = conRowY(0) + 4, w = CON_VALW - 2, h = CON_VALH;
       tft.fillRect(x, y, w, h, TFT_DARK_GREEN);
       tft.drawRect(x, y, w, h, ldPendRef >= 0 ? TFT_CYAN : TFT_GREY);
-      textCenter(tft, &Roboto_Black_24, x, y, w, h, vert ? "VERT" : "RETRO", ldPendRef >= 0 ? TFT_CYAN : TFT_WHITE, TFT_DARK_GREEN);
+      textCenter(tft, &Roboto_Black_24, x, y, w, h, vert ? "VERT" : "RETR", ldPendRef >= 0 ? TFT_CYAN : TFT_WHITE, TFT_DARK_GREEN);
       rc.value = k;
     }
   }

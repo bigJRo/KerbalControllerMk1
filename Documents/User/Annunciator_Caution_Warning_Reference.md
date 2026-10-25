@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.8.0
+**Applies to:** KCMk1_Annunciator firmware 3.8.1
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -51,7 +51,7 @@ Grid position is row × column, reading left to right from the top-left tile.
 |---|---|---|---|
 | **LOW ΔV** (1×1) | Current stage is nearly spent. | **Red:** stage ΔV below 150 m/s *or* stage burn time below 60 s, while in flight with the throttle open. Suppressed on the pad, with throttle at zero, for 1.5 s after throttle-up (burn-time estimate is unreliable at ignition), and on a craft carrying neither liquid fuel nor oxidizer, such as a re-entry capsule (needs the Alternate Resource Panel mod). | Master alarm |
 | **HIGH G** (1×2) | Acceleration outside the safe envelope. | **Red:** g-load above +9 g or below −5 g. | Master alarm |
-| **HIGH TEMP** (1×3) | A part is approaching its thermal limit. | **Red:** hottest part temperature *or* skin temperature above 90 % of its limit. (The TMAX / TSKIN readouts turn yellow from 50 % and red at the same 90 % point.) | Master alarm |
+| **HIGH TEMP** (1×3) | A part is approaching its thermal limit. | **Red:** hottest part temperature *or* skin temperature above 90 % of its limit. (The CORE / SKIN readouts turn yellow from 50 % and red at the same 90 % point.) | Master alarm |
 | **BUS VOLTAGE** (1×4) | Electric charge critically low. | **Red:** electric charge below 5 % of total capacity. Requires the Alternate Resource Panel mod; without it the indicator never fires (and never false-triggers). | Master alarm |
 | **ABORT** (1×5) | Abort action group has been activated. | **Red:** Abort action group active. | Master alarm |
 | **GROUND PROX** (2×1) | Impact imminent. | **Red:** airborne and descending with less than 10 s to the surface at the current descent rate. Gear position is deliberately ignored — a powered landing at this rate still warrants the alarm. | Master alarm |
@@ -87,15 +87,15 @@ carries the colour. Unless a threshold is listed the value is always green.
 | *(vessel name)* | Name of the active vessel, left-aligned in the top-left cell. | KSP vessel name | Green always |
 | **TIMEWARP** | Current time-warp rate. Shows `1x`, `5x`, `10x`, `50x`, `100x`, `1,000x`, `10,000x`, `100,000x` for on-rails warp, or `PHYS-2x` / `PHYS-3x` / `PHYS-4x` for physics warp. | KSP flight status | Green always |
 | **STG** | Current stage number — the stage KSP will fire on the next staging command. | KSP flight status | Green always |
-| **TMAX** | Maximum part temperature, as a percentage of the hottest part's thermal limit. | KSP temperature limits | **Green** 0–49 %. **Yellow** 50–90 %. **White on red** above 90 %, the same point at which the HIGH TEMP tile lights and MASTER ALARM sounds. |
+| **CORE** | Maximum part temperature, as a percentage of the hottest part's thermal limit. | KSP temperature limits | **Green** 0–49 %. **Yellow** 50–90 %. **White on red** above 90 %, the same point at which the HIGH TEMP tile lights and MASTER ALARM sounds. |
 | **CREW** | Number of Kerbals aboard. | KSP flight status | Green always |
 | **COMM** | CommNet signal strength to the control point, in percent. | KSP flight status | **Red** 0–24 %. **Yellow** 25–74 %. **Green** 75–100 %. (The COMM LOST tile lights only at 0 %.) |
-| **TSKIN** | Maximum skin temperature, as a percentage of the hottest part's skin limit. | KSP temperature limits | Same as TMAX: **green** below 50 %, **yellow** 50–90 %, **white on red** above 90 % (lights HIGH TEMP). |
+| **SKIN** | Maximum skin temperature, as a percentage of the hottest part's skin limit. | KSP temperature limits | Same as CORE: **green** below 50 %, **yellow** 50–90 %, **white on red** above 90 % (lights HIGH TEMP). |
 | **CAP** | Reserved readout relayed from the master controller (byte 5 of the rev-2 I2C command). | Master controller | Green always. *The current master firmware does not send this byte, so the readout stays at 0.* |
 | **CTRLGRP** | Active custom-action control group, 1–6, as selected by the control-group rotary switch on the master. | Master controller | Green always |
-| **SPCFT / PLN / RVR** | Control mode selected on the master's control-mode switch — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPCFT for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. |
+| **SPC / PLN / RVR** | Control mode selected on the master's control-mode switch (the switch's own legends) — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPC for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. |
 
-TMAX, TSKIN and COMM use the panel's three-band threshold colouring. The temperature
+CORE, SKIN and COMM use the panel's three-band threshold colouring. The temperature
 bands are anchored to the same `tempAlarm` setting (default 90 %) that drives the HIGH
 TEMP tile, so the readout and the tile can never disagree. The COMM bands are fixed at
 25 % and 75 %.

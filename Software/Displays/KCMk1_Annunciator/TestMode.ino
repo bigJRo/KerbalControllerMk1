@@ -812,7 +812,7 @@ struct DisplayStep {
   float         fcAlt;
   // Mode grid: the MF_* bits to light (state.modeFlags, the master's word)
   uint16_t      modeBits;
-  // Vehicle control mode and type for the SPCFT/PLN/RVR tile
+  // Vehicle control mode and type for the SPC/PLN/RVR tile
   // -1 = no override (use default ctrl_Spacecraft / type_Ship)
   int8_t        psVehCtrl;    // CtrlMode value: 0=ctrl_Rover, 1=ctrl_Plane, 2=ctrl_Spacecraft
   int8_t        psVesselType; // VesselType value (type_Ship=7, type_Plane=8, type_Rover=5)
@@ -896,12 +896,12 @@ static const DisplayStep _displaySteps[] = {
   DS_MODE("MODE: ENG ARM",     1u << MF_ENG_ARM,     "Mode grid: ENG ARM (green)"),
   DS_MODE("MODE: ALL ON",      (uint16_t)((1u << MF_COUNT) - 1), "Mode grid: every tile lit"),
   // --- SPCFT tile: control mode against vessel type ---
-  DS_SPCFT("SPCFT match", ctrl_Spacecraft, type_Ship,  "SPCFT tile: green SPCFT (ctrl_Spacecraft, type_Ship) + ship icon"),
+  DS_SPCFT("SPCFT match", ctrl_Spacecraft, type_Ship,  "SPCFT tile: green SPC (ctrl_Spacecraft, type_Ship) + ship icon"),
   DS_SPCFT("PLN match",   ctrl_Plane,      type_Plane, "SPCFT tile: green PLN (ctrl_Plane, type_Plane) + plane icon"),
   DS_SPCFT("RVR match",   ctrl_Rover,      type_Rover, "SPCFT tile: green RVR (ctrl_Rover, type_Rover) + rover icon"),
   DS_SPCFT("SPCFT err",   ctrl_Plane,      type_Ship,  "SPCFT tile: red PLN (ctrl_Plane but type_Ship -- mismatch)"),
   // --- ALL OFF ---
-  DS_SPCFT("ALL OFF",     ctrl_Spacecraft, type_Ship,  "Everything dark; SPCFT green, mode grid unlit"),
+  DS_SPCFT("ALL OFF",     ctrl_Spacecraft, type_Ship,  "Everything dark; SPC green, mode grid unlit"),
 };
 
 static const uint8_t _displayStepCount =

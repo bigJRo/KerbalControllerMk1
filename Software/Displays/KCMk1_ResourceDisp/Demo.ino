@@ -40,7 +40,7 @@ bool demoResourceAbsent(ResourceType t) {
    INIT DEMO MODE
    Called from setup(), and again if the master switches demo on at runtime. Starts
    on the same layout the live panel would: the default (the pilot's stored one, else
-   the SPCT preset), with demo values. The sixteen-wide compact case is one tap away
+   the SPC preset), with demo values. The sixteen-wide compact case is one tap away
    on Select, the ADV preset. It used to load every resource type, which made the
    demo boot on a set no vessel shows and read as a fault once the default layout
    became a pilot setting.

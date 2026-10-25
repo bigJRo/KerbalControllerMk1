@@ -10,7 +10,7 @@
      BURN               | TARGET / OPTIONS     | PLAN
      [NODE] node ΔV     | [APPR] [rate]        | ΔV TOT
      [AP]   [target Ap] | HOLD AT [distance]   | ΔV REM
-     [PE]   [target Pe] | WARP    [AUTO/OFF]   | T-IGN
+     [PE]   [target Pe] | WARP    [AUTO/OFF]   | T+IGN
      [INC]  [target i]  | STAGE   [AUTO/OFF]   | BURN
      hint               |                      | ACCEL
      legend             | [EXEC/WARP] [A/P OFF]| STG ΔV
@@ -100,7 +100,7 @@ void chromeScreen_ORBTAP(KCM_TFT &tft) {
   conDrawValueBox(tft, CON_C2X, 1);
   textLeft(tft, OB_F_LBL, CON_C2X + 4, conRowY(2), CON_COLW - CON_VALW, CON_ROW_H, "WARP", OB_LBL, TFT_BLACK);
   textLeft(tft, OB_F_LBL, CON_C2X + 4, conRowY(3), CON_COLW - CON_VALW, CON_ROW_H, "STAGE", OB_LBL, TFT_BLACK);
-  static const char *const PLAN_LBL[7] = { "\x94V TOT", "\x94V REM", "T-IGN", "BURN", "ACCEL", "STG \x94V", "RANGE" };
+  static const char *const PLAN_LBL[7] = { "\x94V.TOT", "\x94V.REM", "T+IGN", "BURN DUR", "ACCEL", "\x94V.STG", "DIST" };
   for (uint8_t r = 0; r < 7; r++)
     textLeft(tft, OB_F_LBL, CON_C3X + 4, conRowY(r), CON_COLW - CON_VALW, CON_ROW_H, PLAN_LBL[r], OB_LBL, TFT_BLACK);
   textLeft(tft, &Roboto_Black_16, CON_C1X + 4, conRowY(4) + 8,  CON_COLW - 8, 20, "Arm one burn, review the PLAN column,", TFT_DARK_GREY, TFT_BLACK);
@@ -230,7 +230,7 @@ void drawScreen_ORBTAP(KCM_TFT &tft) {
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 0, px, conRowY(0) + 4, vw, CON_VALH, buf, plan ? OB_VAL : TFT_DARK_GREY);
   if (plan) conFmtWhole(state.obDvRemaining, "m/s", buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 1, px, conRowY(1) + 4, vw, CON_VALH, buf, plan ? (state.obPhase == 5 ? TFT_NEON_GREEN : OB_VAL) : TFT_DARK_GREY);
-  if (plan) obFmtTime(-state.obTIgnition, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
+  if (plan) obFmtTime(state.obTIgnition, buf, sizeof(buf));   // T+IGN: counts down to 0, negative once passed else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 2, px, conRowY(2) + 4, vw, CON_VALH, buf, plan ? (state.obTIgnition < 30.0f ? TFT_ORANGE : OB_VAL) : TFT_DARK_GREY);
   if (plan) obFmtTime(state.obBurnDuration, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ORBTAP, OB_SLOT_PLAN + 3, px, conRowY(3) + 4, vw, CON_VALH, buf, plan ? OB_VAL : TFT_DARK_GREY);

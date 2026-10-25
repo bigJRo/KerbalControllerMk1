@@ -178,7 +178,7 @@ open.
 | Banner | Armed mode; **phase** in orange (`ALIGNING`, `WARPING`, `BURNING`, `DONE`) or a disconnect reason; body · vessel; `ARMED` / `EXECUTING` / `A/P OFF` |
 | Column 1 **BURN** | NODE (box: node ΔV, or `NO NODE`), AP (target apoapsis), PE (target periapsis), INC (target inclination). Arming one clears the others |
 | Column 2 **TARGET / OPTIONS** | APPR (closing-rate setpoint, negative = closing), HOLD AT (hold distance), WARP toggle, STAGE toggle; **EXEC** (relabels itself **WARP** when a warp is ready, §4.3) and **A/P OFF** side by side |
-| Column 3 **PLAN** | ΔV TOT, ΔV REM, T-IGN, BURN duration, ACCEL estimate, STG ΔV, RANGE to target |
+| Column 3 **PLAN** | ΔV.TOT, ΔV.REM, T+IGN (counts down, negative once passed), BURN DUR, ACCEL estimate, ΔV.STG, DIST to target |
 
 ### 4.2 Arm, review, execute
 
@@ -247,13 +247,13 @@ a plan the pilot has not seen.
 |--------|---------|
 | Banner | Engaged modes; `IGN IN m:ss` while BRAKE is armed, `FIRING` during the burn, or a reason; body · vessel; `ENGAGED` / `A/P OFF` |
 | Column 1 **DESCENT** | DESC (vertical-speed setpoint, negative), HOVR (radar-altitude setpoint), BRAKE (box shows the computed ignition altitude), ENTRY (angle-of-attack setpoint) |
-| Column 2 **OPTIONS** | ATT REF toggle (RETRO / VERT), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
-| Column 3 **DESCENT DATA** | RDR ALT, V/S, H SPD, ACCEL estimate with its source (`MEAS` / `EST` / `TWR`), IGN ALT (orange when marginal), T-IMP (radar altitude over descent rate), THRTL |
+| Column 2 **OPTIONS** | ATT REF toggle (RETR / VERT), TWR (override; `MEAS` when 0), MARGIN (metres added to the ignition altitude), ROLL (ENTRY roll hold); **A/P OFF** |
+| Column 3 **DESCENT DATA** | ALT.RDR, V.VRT, H SPD, ACCEL estimate with its source (`MEAS` / `EST` / `TWR`), IGN ALT (orange when marginal), T+GRND (radar altitude over descent rate), THRTL |
 
 ### 5.2 Behaviour
 
 - **DESC** holds vertical speed with the throttle (§7.2). Attitude follows ATT REF:
-  - **RETRO** — stock SAS surface-retrograde. In a descent that points straight up and tilts
+  - **RETR** — stock SAS surface-retrograde. In a descent that points straight up and tilts
     against drift, so it also cancels horizontal velocity. Its direction is undefined when the
     *total* surface speed is near zero (a hover, the moment before touchdown), so below 1.5 m/s
     (`vertHoldEnterSpeed`) the vertical hold takes over, handing back above 3 m/s
@@ -312,7 +312,7 @@ a plan the pilot has not seen.
 - **NAV** joins the lateral group and banks toward the target bearing through the HDG cascade.
   Same target rules.
 - The LVL and A/P OFF buttons move to the foot of the pitch column so both columns take five rows;
-  the hint and legend move under the lateral column. Flight data gains DIST and TGT EL (elevation
+  the hint and legend move under the lateral column. Flight data gains DIST and ELV (elevation
   to target) in place of IAS and MACH, which remain visible as their own setpoint rows.
 
 ![Rover Autopilot console, extended](assets/Mission_ROVR_Console_Ext.svg)
@@ -373,7 +373,7 @@ use the acceleration estimate of §2.
   scales with descent speed, where a fixed margin fails. The console shows the source beside ACCEL
   (`14.2 m/s² MEAS` / `EST` / `TWR`), so a short test burn on the way down visibly upgrades the
   estimate and lowers the ignition altitude. Refused if `a ≤ 1.2 g`; IGN ALT is shown orange when
-  the current descent would need more than 90 % of `a`. T-IMP is `radarAlt / |vs|`, shown orange
+  the current descent would need more than 90 % of `a`. T+GRND is `radarAlt / |vs|`, shown orange
   under 30 s.
 - **ENTRY**: reference heading = orbital prograde heading + 180°, reference pitch = −orbital
   prograde pitch; commanded pitch = reference + AOA; heading held at the reference; roll held at
