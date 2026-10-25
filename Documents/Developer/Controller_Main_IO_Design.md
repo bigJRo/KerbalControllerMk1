@@ -2,7 +2,7 @@
 
 **Document type:** Developer / Design for approval
 **Location:** `Documents/Developer/Controller_Main_IO_Design.md`
-**Status:** Draft 1, for review. Nothing in this document is implemented yet.
+**Status:** Draft 2, for review. Nothing in this document is implemented yet. Draft 2 adds the rev-2 Ctrl Module pin map from schematic KC-01-1701 V2.0 (Appendix A) and what follows from it.
 **Scope:** the master's I/O layer: `Controller_Main.ino`, the pre-v5 legacy behind it (`function_definitions.ino`, `module_variables.h`), every input module, and the master's own hardware. The autopilots and the newer link tabs keep their code and interfaces; they gain inputs, not rewrites.
 
 ---
@@ -25,13 +25,13 @@
 | Power monitor | Code drives an **INA219 at 0x44**; the Ctrl Module carries an **INA228 at 0x40** (Hardware Reference §6.4) |
 | Watchdog | `WDT_T4` declared, never started |
 | Sys Info Display (0x14) | Nothing; its protocol is not defined yet (I2C spec §15.1 "future work") |
-| Pin map | `Controller_Main.ino` carries the **rev-1** pin list (`PanelCtrl_INT`, `EVA_INT`, `Switch_INT`, analog joystick pins …). No document gives the rev-2 Ctrl Module's GPIO assignment for the INT lines (see Q1) |
+| Pin map | `Controller_Main.ino` carries the **rev-1** pin list. On the rev-2 Ctrl Module (Appendix A) those numbers land on other signals, so the links that work on the bench read the wrong lines: throttle INT 32 is EXT_INT_2 (the expansion output), rotation 33 is EXT_INT_1, translation 31 is INT_SAFE, GPWS 38 is B_INT_10, staging 30 is INT_8, abort 37 is B_INT_11. None of them sees its module's INT on rev-2 hardware |
 
 ## 2. Goals
 
 1. **Every input module integrated** to Module UI Reference v5.9: each button, switch, encoder and axis does what the reference says, with LED feedback from KSP state.
 2. **One architecture** for all modules: a table-driven module bus driver, one small tab per module, the same pattern as the link tabs that already work.
-3. **Hardware services:** fan, power monitor, watchdog, status outputs.
+3. **Hardware services:** fan, power monitor, watchdog, global display reset.
 4. **Checkable on the host:** every stage passes `tools/host_compile.py` (stand-in and real Simpit) and an extended `tools/master_selftest.py` that simulates modules on the bus.
 5. **No behaviour change for what already works** (autopilots, display links, throttle) unless a stage says so.
 
@@ -61,7 +61,7 @@ Controller_Main/
   annun_link.ino           0x10 / 0x11 — unchanged except its GPWS read moves onto module_bus
   infodisp_link.ino        0x12 / 0x13 — unchanged
   sysinfo_link.ino         0x14 — when its protocol exists (Q6)
-  hw_services.ino          fan, power monitor, watchdog, status / ALIVE outputs
+  hw_services.ino          fan, power monitor, watchdog, global display reset (RST)
   simpit_message_handler.ino   unchanged role; also feeds master_state for LED feedback
   (autopilot tabs unchanged)
 ```
@@ -76,12 +76,14 @@ One table describes every ATtiny816 module:
 struct ModuleDef {
   uint8_t  addr;        // 0x20..0x2D
   uint8_t  typeId;      // KMC_TYPE_* expected in the header
-  uint8_t  intPin;      // dedicated INT GPIO (master_config.h), or NO_PIN to poll
+  uint8_t  intPin;      // INT GPIO: learned at start-up (below), else master_config.h, else NO_PIN to poll
   uint8_t  flags;       // enabled-in-flight, enabled-on-EVA, has-LEDs, ...
   void   (*onPacket)(const uint8_t *pkt, uint8_t n);   // the panel tab's handler
   void   (*onLifecycle)(uint8_t state);                // optional
 };
 ```
+
+**INT line learning.** Which hub slot a module plugs into decides its INT line, and that is cabling, not firmware. So the driver learns it: at power-on every module holds INT low in BOOT_READY until read (I2C spec §3), so reading one module at a time and watching which of the 26 INT inputs (Appendix A) goes high gives that module's line. Display carriers are learned the same way with a STATUS request (§15.3), which asserts their INT. The learned map is kept in EEPROM, so a master that restarts on its own (modules already initialised, INT high) uses it; a default map in `master_config.h` covers a first boot; a module with no known line is polled every 20 ms. Differences between learned, stored and default are reported once on Serial. Pins are read with `digitalReadFast` each pass; no pin interrupts.
 
 **Start-up** (I2C spec §12.1), for each module: `CMD_RESET`, `CMD_GET_IDENTITY` (type and capability flags checked against the table; a mismatch or no answer marks the module absent and is reported once on Serial), all LEDs OFF, `CMD_DISABLE`. Absent modules are skipped thereafter and re-probed every few seconds, so a panel plugged in late comes up.
 
@@ -158,7 +160,9 @@ With this design every field of its command has a source: control mode (toggle),
 | Fan (EMC2101, 0x4C) | `begin()` at start-up; the existing temperature → duty curve (30 / 40 / 50 / 70 / 100 % at 25 / 30 / 40 / 50 °C), evaluated at 1 Hz with 2 °C hysteresis **(design)**; RPM and temperature kept for the Sys Info Display |
 | Power (INA228, 0x40) | Replace the INA219 code; bus voltage, current, power at 4 Hz; kept for the Sys Info Display; Serial warning if the 12 V rail sags below 11 V **(design)** |
 | Watchdog (WDT_T4) | Started at the end of `setup()`, fed every loop pass, 1 s timeout **(design)**. The Simpit handshake attempt (≈1 s) is the longest blocking call; the timeout must clear it (or the attempt moves before the watchdog starts) |
-| Status outputs | Whatever the rev-2 Ctrl Module actually carries (Q1); the rev-1 RESET / IDLE / DEMO / DEBUG state pins are not carried over unless they still exist |
+| Status outputs | None. The rev-2 Ctrl Module has no master-driven LEDs or state pins (its LEDs are rail indicators); the rev-1 ALIVE / RESET / IDLE / DEMO / DEBUG pins go |
+| Display reset (RST, pin 2) | Held high. Pulsed low (10 ms) to reboot every Teensy display carrier at once; used by MSTR RESET (Q12). Not used at start-up: the carriers come up on their own and wait for PROCEED |
+| Fan temperature | The EMC2101's remote diode input (header H4, DP / DN) is wired; the curve uses the remote temperature and falls back to the internal sensor if the diode reads open |
 | Sys Info Display (0x14) | `sysinfo_link` pushes power / fan / temperature / link status once its protocol is defined (Q6) |
 
 ## 8. Verification
@@ -170,11 +174,11 @@ With this design every field of its command has a source: control mode (toggle),
 
 ## 9. Stages (one PR each)
 
-1. **Foundation.** `master_config.h` / `master_state`, `module_bus` (start-up, INT reads, events, LEDs, lifecycle), the new `loop()`; legacy files removed; selftest module simulator. No panel does anything yet except come up and go dark / backlit with the flight scene.
+1. **Foundation.** `master_config.h` (rev-2 pin map) / `master_state`, `module_bus` (start-up, INT learning, INT reads, events, LEDs, lifecycle), the existing throttle / joystick / GPWS links moved onto it so they see their INT on rev-2 hardware, the new `loop()`; legacy files removed; selftest module simulator. No panel does anything yet except come up and go dark / backlit with the flight scene.
 2. **Flight controls.** Vehicle Control (+ SG2, state machines), Stability Control (+ staging), Action Control, CAG map, Dual Encoder control group. Annunciator audio / control group / precision fields live.
 3. **Everything else on the panels.** UI Control, Function Control (+ SG1), Time Control + Pre-Warp, AUX CTRL, Dual Encoder cameras.
 4. **Sticks.** Rotation control-mode mapping, EVA keys and buttons; translation forwarding, camera mode, EVA jetpack.
-5. **Hardware services.** Fan, INA228, watchdog, status outputs; Sys Info Display link if its protocol is ready.
+5. **Hardware services.** Fan, INA228, watchdog, display reset; Sys Info Display link if its protocol is ready.
 
 Each stage updates the Module UI Reference / test plan where behaviour is decided, and closes the corresponding part of #89.
 
@@ -182,15 +186,60 @@ Each stage updates the Module UI Reference / test plan where behaviour is decide
 
 | # | Question | Needed by | Proposed default |
 |---|---|---|---|
-| Q1 | **Rev-2 Ctrl Module pin map.** Which master GPIO is each module's INT line (Module Hub INT_1–8 per hub, B_INT_1–12, INT_SAFE / B_INT_SAFE / B_INT_SAFE2), and which status / ALIVE outputs exist? No document carries it; `Controller_Main.ino` has the rev-1 list | Stage 1 | One table in `master_config.h`; until filled, modules are polled on a 20 ms timer instead of INT (works, costs bus time) |
-| Q2 | **Staging and abort.** The reference puts Stage / Stage Enable on Stability Control B14 / B15 and has no abort input. Are the two direct-wired buttons (pins 30 / 37) gone? Where is ABORT? Are the safe-switch INT lines (INT_SAFE) the stage / abort covers? | Stage 2 | Staging from Stability B14 / B15; abort kept on a direct pin until told otherwise |
-| Q3 | **Ctrl Mode Toggle wiring** (Module UI Reference open item 14). Two master GPIOs for the 3-position switch? | Stage 2 | Two inputs with pull-ups: SPC = both high, PLN = A low, RVR = B low |
+| Q1 | ~~Rev-2 Ctrl Module pin map~~ **Resolved** from schematic KC-01-1701 V2.0: Appendix A | — | — |
+| Q13 | **Hub slot per module.** The schematic gives the master pin of each hub line, not which module sits on which line (Panel Hub / Display Hub cabling) | Stage 1 | INT line learning (§4), so no slot table is needed; send the slot list if you have it and it becomes the `master_config.h` default |
+| Q14 | **What the four safe lines carry.** INT_SAFE (A2 hub), INT_SAFE2 (A1 hub), B_INT_SAFE, B_INT_SAFE2 (B hubs) are raw lines to the master, fed from a module connector's INT_SAFE pin (Hardware Reference §12) | Stage 2 | INT_SAFE = ABORT (the Abort button is on A2), B_INT_SAFE = STAGE (the staging button is on B2), both active-low, debounced 10 ms; the other two unused |
+| Q2 | **Staging and abort.** The reference puts Stage / Stage Enable on Stability Control B14 / B15 and has no abort input. The rev-2 board has no dedicated stage / abort pins; only the safe lines (Q14) could carry them | Stage 2 | Staging from Stability B14 / B15 (B15 as the enable); ABORT from INT_SAFE |
+| Q3 | **Ctrl Mode Toggle wiring** (Module UI Reference open item 14). The rev-2 board routes no spare GPIO to any connector (Teensy 0, 1, 3, 11–13 and 24 are unconnected), so a 3-position switch has no path to the master except a safe line (one bit, not three positions) or a module input | Stage 2 | A module input: two of the free discrete inputs on a 24-input module, or a free button pair on AUX / Stability. Until wired, control mode follows the vessel type in Simpit's FLIGHT_STATUS (`vesselType` Plane → PLN, Rover → RVR, else SPC) |
 | Q4 | **EVA lifecycle.** I2C spec §11 says DISABLE modules on EVA, but AUX CTRL's EVA buttons need the module live | Stage 1 | Keep all ACTIVE on EVA; tabs gate their actions |
 | Q5 | **Game pause / SLEEP.** Simpit sends no pause state | Stage 1 | SLEEP unused |
 | Q6 | **Sys Info Display protocol** (0x14). Define it now (fields, cadence) or later? | Stage 5 | Later; stage 5 does fan / power / watchdog without it |
-| Q7 | **Power monitor:** INA228 at 0x40 per the Hardware Reference (the code has an INA219 at 0x44) | Stage 5 | INA228 |
+| Q7 | ~~Power monitor~~ **Resolved:** INA228 at 0x40 (U3, A0 / A1 to GND) on SDA_BUS | — | — |
 | Q8 | **Switch Group 1 throttle switches.** B18 ENGINE SAFE/ARM ("throttle input disabled"), B19 THROTTLE INOP/ACT (reference says it toggles throttle-module precision), B23 THRTL STD/FINE (reference says joystick precision). B19 and B23 read as swapped, and SG2 B22 THC/RHC is already joystick precision | Stage 3 | B18 ENGINE ARM → engine arm (throttle module enabled / ENG ARM tile); B19 THROTTLE ACT → throttle input enabled (THRTL ENA tile); B23 THRTL FINE → throttle-module precision (THRTL PREC tile); B22 THC/RHC PREC → joystick precision (INPUT PREC tile) |
 | Q9 | **AUX B8 Cruise Control** ("controller-side hold"). The Rover Autopilot already has CRUISE | Stage 3 | B8 engages the Rover Autopilot's CRUISE at the current speed (same as the console), and disengages it |
 | Q10 | **Dual Encoder ENC1 button** ("docked flag toggle for TFT display sync") — the master no longer has a TFT | Stage 2 | Reset the control group to 1 |
 | Q11 | **UI Control LEDs.** All twelve are momentary keyboard actions with no KSP state to reflect | Stage 3 | ENABLED at rest, ACTIVE for 150 ms on press |
-| Q12 | **SCE AUX** ("Simpit reset and data fetch") and **MSTR RESET** scope: should MSTR RESET also soft-reset the display carriers (`DISPLAY_RESET`) and the master's own autopilots? | Stage 3 | MSTR RESET: `CMD_RESET` all modules + `DISPLAY_RESET` to the four carriers + A/P OFF. SCE AUX: Simpit re-handshake and a full channel refresh |
+| Q12 | **SCE AUX** ("Simpit reset and data fetch") and **MSTR RESET** scope: should MSTR RESET also reset the display carriers and the master's own autopilots? The board can hard-reboot all carriers at once on RST (pin 2) | Stage 3 | MSTR RESET: `CMD_RESET` all modules + `DISPLAY_RESET` to the four carriers + A/P OFF (soft; RST is kept for a carrier that stops answering). SCE AUX: Simpit re-handshake and a full channel refresh |
+
+## Appendix A. Ctrl Module pin map (KC-01-1701 V2.0)
+
+From the schematic, sheet 1 (Teensy 4.1 U4 on headers H2 / H3). This replaces the rev-1 list in `Controller_Main.ino`.
+
+### A.1 Teensy pins
+
+| Teensy | Net | Dir | Goes to |
+|---|---|---|---|
+| 2 | RST | out | Global display reset, through R13 47 Ω; every hub and the 50-pin interboard |
+| 9, 10, 25–30 | INT_1 … INT_8 (9 = INT_1, 10 = INT_2, 25 = INT_3 … 30 = INT_8) | in | Hub connector carrying 8 lines: **A2** (the left input panel, 7 modules) |
+| 31 | INT_SAFE | in | A2 hub, INT_SAFE |
+| 4, 5, 6, 7 | INT_9 … INT_12 | in | Hub connector carrying 4 lines: **A1** (the left display panel) |
+| 8 | INT_SAFE2 | in | A1 hub, INT_SAFE |
+| 23, 22, 21, 20 | B_INT_1 … B_INT_4 | in | 50-pin interboard → Ctrl Ext Module → B1 / B2 hubs |
+| 15, 14 | B_INT_5, B_INT_6 | in | ″ |
+| 41, 40, 39, 38, 37, 36 | B_INT_7 … B_INT_12 | in | ″ |
+| 35 | B_INT_SAFE | in | ″ |
+| 34 | B_INT_SAFE2 | in | ″ |
+| 33 | EXT_INT_1 | in | Expansion → master, through R15 47 Ω, R14 4.7 kΩ pull-up to 3.3 V |
+| 32 | EXT_INT_2 | out | Master → expansion |
+| 18 / 19 | SDA_BUS / SCL_BUS | I2C | `Wire`: every module and display carrier; LTC4311 U6; INA228 U3; EMC2101 U5 |
+| 17 / 16 | SDA_EXT / SCL_EXT | I2C | `Wire1`: expansion bus; LTC4311 U7 |
+| 0, 1, 3, 11, 12, 13, 24 | — | — | Not connected (24 is wired only between the two header footprints) |
+
+Which connector is A1 and which A2 follows from the line count: the A2 panel carries UI, Function, Action, Translation, GPWS, Throttle and the Sys Info Display (7), so it is on the 8-line connector; A1 (two 7" displays and the power button) is on the 4-line one. The B side carries 9 (Stability, Vehicle, Time, AUX, Rotation, Pre-Warp on B2; Info Display 2, Resource Display, Dual Encoder on B1) on 12 lines.
+
+### A.2 On-board devices
+
+| Device | Bus / pins | Notes |
+|---|---|---|
+| INA228 (U3) | `Wire`, 0x40 | A0 / A1 to GND |
+| EMC2101 (U5) | `Wire`, 0x4C | Drives FAN_PWM (4-pin fan CN1 and interboard pin 1), reads FAN_TACH; remote diode on header H4 (DP / DN) |
+| LTC4311 ×2 (U6, U7) | — | Bus accelerators on BUS and EXT |
+| USB hub | — | Two CH334F cascaded: one USB-C upstream, six Micro-USB and one expansion USB-C downstream. No firmware involvement |
+| Status LEDs | — | Rail indicators, hardware only |
+
+### A.3 Differences from the Hardware Reference (for the hardware owner)
+
+These do not change the firmware, but the documents and the board disagree:
+
+1. **ST7789 status display.** Hardware Reference §5.1 lists one on the Ctrl Module. The schematic has none (the SPI pins 11–13 are unconnected). The design above assumes there is no master display.
+2. **EXT_INT series resistor.** Hardware Reference §5.1 / §8.4 put the 47 Ω series resistor on the EXT_INT_2 *output* and only a pull-up on EXT_INT_1. The schematic puts R15 47 Ω on EXT_INT_1, between the pull-up and Teensy pin 33, and nothing on EXT_INT_2. Worth checking before the expansion unit is built: the 47 Ω on an input is harmless, but EXT_INT_2 leaves the box unprotected.
