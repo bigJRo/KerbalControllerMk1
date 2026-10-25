@@ -558,7 +558,7 @@ JS = r"""
     const done = tot.P + tot.F + tot.NA;
     lines.push('# Display test run — ' + new Date().toISOString().slice(0,10));
     lines.push('');
-    lines.push('Firmware: Info Display v1.15.1 · Annunciator v3.7.0 · Resource Display v3.14.1');
+    lines.push('Firmware: @@FW_LONG@@');
     lines.push('Result: ' + done + ' of ' + POINTS.length + ' run — ' + tot.P + ' pass, ' + tot.F + ' fail, ' + tot.NA + ' n/a');
     lines.push('');
     const fails = POINTS.filter(p => get(p.id).s === 'F');
@@ -637,7 +637,7 @@ def build():
     body.append(CSS)
     body.append(
         '<div class="topbar"><div class="topbar-in">'
-        '<div class="brand"><h1>KCMk1 Display Test Run</h1><small>INFO 1.15.1 · C&amp;W 3.7.0 · RES 3.14.1 · plan v1.0</small></div>'
+        '<div class="brand"><h1>KCMk1 Display Test Run</h1><small>@@FW_SHORT@@</small></div>'
         '<div class="progress"><div class="pbar" aria-hidden="true"><i class="p" id="bar-p"></i><i class="f" id="bar-f"></i><i class="n" id="bar-n"></i></div>'
         '<div class="pstats"><span><b id="st-done">0</b> run</span>'
         '<span><span class="dot" style="background:var(--pass)"></span><b id="st-p">0</b> pass</span>'
@@ -670,6 +670,13 @@ def build():
     body.append('<script>window.__POINTS__=' + json.dumps(points, ensure_ascii=False) + ';window.__GROUPS__=' + json.dumps(group_ids) + ';</script>')
     body.append(JS)
     fragment = "\n".join(body)
+    # Firmware versions come from the plan's own header, so the page never disagrees with it.
+    ver = lambda pat: (re.search(pat, md) or [None, "?"])[1]
+    info, cw, res = ver(r"Info Display v([\d.]+)"), ver(r"Annunciator v([\d.]+)"), ver(r"Resource Display v([\d.]+)")
+    plan = ver(r"\*\*Version:\*\* ([\d.]+)")
+    fragment = (fragment
+                .replace("@@FW_LONG@@", f"Info Display v{info} · Annunciator v{cw} · Resource Display v{res}")
+                .replace("@@FW_SHORT@@", f"INFO {info} · C&amp;W {cw} · RES {res} · plan v{plan}"))
 
     full = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
