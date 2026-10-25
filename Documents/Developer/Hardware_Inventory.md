@@ -366,7 +366,8 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
 2. *(Settled — §8.7.)* Stability Control B10 = HOLD.
-3. **AUX CTRL B8:** unassigned on the panel (§10.1); a function can be chosen later.
+3. **Function Control B4 (RW DISABLE):** a better function for this button; candidates so far FLAPS, THRUST REV, UNDOCK, DRILL / ISRU, ENG SHUTDOWN, SPARE (§10.5).
+4. **AUX CTRL B8:** unassigned on the panel (§10.1); a function can be chosen later.
 
 ## 10. Button module review
 
@@ -379,8 +380,8 @@ The Module UI Reference and the module firmware agree with each other, but not w
 | 3 | Vehicle Control (0x24) | Done (§10.3) |
 | 4 | Time Control (0x25) | Done (§10.4) |
 | 5 | Function Control (0x21) | Done (§10.5) |
-| 6 | Action Control (0x22) | In review |
-| 7 | UI Control (0x20) | — |
+| 6 | Action Control (0x22) | Done (§10.6) |
+| 7 | UI Control (0x20) | In review |
 | 8 | Joystick, 7-segment and Dual Encoder buttons | — |
 
 **Numbering:** Bn is the module firmware's button index, the same as the schematic net BUTTONnn. It matches the silkscreen: SW12–SW15 on the Button Module, B16–B23 on the Wide Button Module.
@@ -535,7 +536,7 @@ Matches the reference.
 | ApA | Orbit closed (eccentricity < 1), not landed | `ORBIT`, `APSIDESTIME`, `FLIGHT_STATUS` |
 | PeA | Not landed | `APSIDESTIME`, `FLIGHT_STATUS` |
 | MNVR | A node exists (Δv of the next node > 0) | `MANEUVER` |
-| SOI | Simpit gives no time to the next SOI change; an escape orbit (eccentricity ≥ 1) is detectable, an encounter is not | *Undecided: lit in flight, or only on an escape orbit* |
+| SOI | Escape orbit: eccentricity ≥ 1, not landed (owner decision). Simpit gives no time to the next SOI change. *Note:* an encounter reached on an elliptical orbit (e.g. a Mun transfer from Kerbin orbit, e < 1) leaves the button dark | `ORBIT`, `FLIGHT_STATUS` |
 | MORN | Landed or splashed | `FLIGHT_STATUS` |
 
 ### 10.5 Function Control (0x21) — confirmed
@@ -560,4 +561,18 @@ Matches the reference.
 - **Changes from the reference:** every left / right pair is swapped (e.g. the reference had LES on B0 and Fairing on B1).
 - **CAG numbers stay with the function**, so vessels' action-group setups are unchanged.
 - **Module firmware:** its colour table follows the button index, so it needs the same swap.
+
+### 10.6 Action Control (0x22) — confirmed
+
+| Input | Label | Group | | Input | Label | Group |
+|---|---|---|---|---|---|---|
+| B0 | AG 6 | CAG 6 | | B1 | AG 12 | CAG 12 |
+| B2 | AG 5 | CAG 5 | | B3 | AG 11 | CAG 11 |
+| B4 | AG 4 | CAG 4 | | B5 | AG 10 | CAG 10 |
+| B6 | AG 3 | CAG 3 | | B7 | AG 9 | CAG 9 |
+| B8 | AG 2 | CAG 2 | | B9 | AG 8 | CAG 8 |
+| B10 | AG 1 | CAG 1 | | B11 | AG 7 | CAG 7 |
+
+- B12–B15: not connected.
+- Matches the reference. Each button's group is offset by the active control group (§7.1 of the firmware design).
 
