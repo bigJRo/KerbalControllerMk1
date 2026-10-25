@@ -496,9 +496,9 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 | B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 |
 
 **Changes from the reference / firmware:**
-- B8 Cruise Control is removed.
+- B8 Cruise Control is removed; B8 becomes UNDOCK.
 - B10 is no longer a PRI / ALT toggle; it is PRI only.
-- B11 is ALT (was Docking Port, CAG 37). CAG 37 is freed.
+- B11 is ALT (was Docking Port, CAG 37). CAG 37 moves to UNDOCK on B8.
 
 **Behaviour:**
 - **EVA group (B0–B7, B9):** dark outside EVA, and presses ignored.
