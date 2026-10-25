@@ -182,6 +182,7 @@ bool    thrTakeMovedEvent()    { bool e = g_thrMovedEvt;    g_thrMovedEvt    = f
 bool    thrTouched()           { return (g_thrFlags & THR_FLAG_TOUCH) != 0; }
 bool    thrPrecision()         { return g_thrPrecisionCmd || (g_thrFlags & THR_FLAG_PRECISION) != 0; }
 bool    thrLeverDriven()       { return throttleEn && (g_thrFlags & THR_FLAG_ENABLED) && !thrPrecision(); }
+bool    thrModuleEnabled()     { return (g_thrFlags & THR_FLAG_ENABLED) != 0; }
 bool    thrOverrideLatched()   { return g_thrOverride; }
 float   thrCurrentThrottle()   { return (g_thrOwner != THR_OWNER_NONE && !g_thrOverride && g_thrLastKsp >= 0.0f) ? g_thrLastKsp : g_thrLever; }
 uint8_t thrOwner()             { return g_thrOwner; }

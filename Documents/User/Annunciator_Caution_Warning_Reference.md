@@ -91,9 +91,9 @@ carries the colour. Unless a threshold is listed the value is always green.
 | **CREW** | Number of Kerbals aboard. | KSP flight status | Green always |
 | **COMM** | CommNet signal strength to the control point, in percent. | KSP flight status | **Red** 0–24 %. **Yellow** 25–74 %. **Green** 75–100 %. (The COMM LOST tile lights only at 0 %.) |
 | **SKIN** | Maximum skin temperature, as a percentage of the hottest part's skin limit. | KSP temperature limits | Same as CORE: **green** below 50 %, **yellow** 50–90 %, **white on red** above 90 % (lights HIGH TEMP). |
-| **CAP** | Reserved readout relayed from the master controller (byte 5 of the rev-2 I2C command). | Master controller | Green always. *The current master firmware does not send this byte, so the readout stays at 0.* |
+| **CAP** | Reserved readout relayed from the master controller (byte 5 of the rev-2 I2C command). | Master controller | Green always. *The master sends the byte but has no source for it yet, so the readout reads 0.* |
 | **CTRLGRP** | Active custom-action control group, 1–6, as selected by the control-group rotary switch on the master. | Master controller | Green always |
-| **SPC / PLN / RVR** | Control mode selected on the master's control-mode switch (the switch's own legends) — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPC for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. |
+| **SPC / PLN / RVR** | Control mode selected on the master's control-mode switch (the switch's own legends) — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPC for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. *The master sends SPC until the control-mode switch is wired to it, and control group 1 until the control-group encoder is read.* |
 
 CORE, SKIN and COMM use the panel's three-band threshold colouring. The temperature
 bands are anchored to the same `tempAlarm` setting (default 90 %) that drives the HIGH
@@ -108,12 +108,13 @@ are live, and whether anything in the chain has failed. They are driven by the
 `modeFlags` word the master sends in bytes 3–4 of its extended I2C command; each tile
 lights when its bit is set. None of them sound an audio cue.
 
-> **Status of this block.** The Annunciator draws all twelve tiles, but the current
-> master firmware only sends the legacy 3-byte command, so in production the whole
-> block stays OFF. The firmware header marks the labels and colours as provisional
-> pending the final master protocol. In the panel's demo mode, DEMO / AUDIO / DEBUG
-> reflect the panel's own settings and the remaining tiles cycle for inspection. The
-> meanings below are the intended ones, matched to the master's state variables.
+> **Status of this block.** The master sends `modeFlags` in its rev-3 command
+> (`annun_link.ino`), but it does not yet read every switch behind them. DEMO, AUDIO,
+> AUTOPILOT, DEBUG, THRTL PREC and ENG ARM follow live master state. THRTL ENA, TRIM and
+> INPUT PREC follow master variables that no panel handler sets yet, so they stay at
+> their defaults. WARP, SWITCH ERR and SIMPIT LOST have no master source yet and stay
+> OFF. In the panel's demo mode, DEMO / AUDIO / DEBUG reflect the panel's own settings
+> and the remaining tiles cycle for inspection.
 
 | Tile | Definition | Colour when lit | Bit |
 |---|---|---|---|

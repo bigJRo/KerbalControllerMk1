@@ -25,7 +25,7 @@ extern "C" void usb_init(void);
 #include "hold_autopilot.h"               // Aircraft / rover hold-mode autopilot
 #include "burn_autopilot.h"               // Orbital: node / apsis / plane-change burns, approach-rate hold
 #include "landing_autopilot.h"            // Landing: descent-rate hold, hover, suicide burn, re-entry attitude
-#include "control_links.h"                // Throttle Module, rotation joystick and Info Display 2 links
+#include "control_links.h"                // Throttle Module, rotation joystick, Info Display, Annunciator / Resource Display links
 #include "C:\Dev\KerbalControllerMk1\Software\Common\custom_action_grp_def.h"  // Custom Action Group Definitions
 #include "C:\Dev\KerbalControllerMk1\Software\Common\keyboard_def.h"           // Keyboard Code Definitions
 #include "C:\Dev\KerbalControllerMk1\Software\Common\body_params.h"            // Shared celestial-body table (ascent autopilot)
@@ -169,12 +169,15 @@ float alt_surf;
 bool demo = false;          // use without needing to be connected to simpit or the MST Arduino
 bool debug = false;         // debug sends data to the serial monitor
 bool throttleEn = false;    // Throttle Input is enabled
-bool audioEn = false;       // indicates audio mode enables.
+bool audioEn = true;        // Annunciator audio. Follows the AUDIO switch (Vehicle Control B23,
+                            // MUTE / LIVE) once that panel is read; LIVE until then.
 bool idleMode = false;      // controls whether the idle screen is set
 bool mstrMCActive = false;  //active when mstrMCActive is on
 bool trimMode = false;      //used to activate trim mode for rotation stick
 bool mapRevMode = false;    //used to properly cycle key-pressed when the request is cycle map backward TODO: Need to check need for this
 bool camCtrlSet = false;    //used to activate the camera control mode for the translation joystick
+uint8_t ctrlMode = ANL_CTRL_SPACECRAFT;  // Ctrl Mode Toggle (SPC / PLN / RVR) as the Annunciator shows it.
+                            // The switch's wiring is still open (Module UI Reference item 14).
 
 
 /***************************************************************************************
@@ -227,6 +230,7 @@ void setup() {
   bpInit();    // burn autopilot (ORBITAL AUTOPILOT console)
   lpInit();    // landing autopilot (LANDING AUTOPILOT console)
   idlInit();
+  anlInit();   // Annunciator + Resource Display: release the boot hold, then the periodic command
 }
 
 
@@ -270,4 +274,5 @@ void loop() {
   lpUpdate();         // landing modes
   rotService();       // joystick poll + merged rotation send (silent while the ascent AP is armed)
   idlService();       // Info Display 2 console: command poll / ACK / status push
+  anlService();       // Annunciator / Resource Display command, GPWS Input Panel relay
 }

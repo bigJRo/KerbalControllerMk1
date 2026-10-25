@@ -581,6 +581,7 @@ void handleVehCtrlPanel(uint8_t i2c_addr) {
     // module_variables.h button bit layout predates the v5.x Vehicle Control
     // panel; remap the B0-B11 actions when the handler is reworked.
     newSwitchGrp2 = vehInputs;
+    audioEn = (newSwitchGrp2 & pSG2_AUDIO) != 0;   // AUDIO switch: MUTE / LIVE (Annunciator audio)
     newButtonVehCtrl = (uint16_t)(vehInputs & 0xFFFF);
     if (debug) {
       Serial.print("newButtonVehCtrl = ");
