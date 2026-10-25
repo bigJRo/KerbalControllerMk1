@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.8.1
+**Applies to:** KCMk1_Annunciator firmware 3.8.2
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -57,7 +57,7 @@ Grid position is row × column, reading left to right from the top-left tile.
 | **GROUND PROX** (2×1) | Impact imminent. | **Red:** airborne and descending with less than 10 s to the surface at the current descent rate. Gear position is deliberately ignored — a powered landing at this rate still warrants the alarm. | Master alarm |
 | **Pe LOW** (2×2) | Periapsis is inside the atmosphere / below terrain. | **Red:** Pe below the body's re-entry altitude (atmospheric bodies, e.g. 45 km at Kerbin) — committed re-entry — or below the body's minimum safe altitude (airless bodies). **Yellow:** atmospheric bodies only — Pe inside the atmosphere but above the re-entry altitude (aerobrake zone). | Master alarm (red tier only) |
 | **PROP LOW** (2×3) | Stage propellant running low. | Monitors the lower of liquid-fuel and oxidizer fraction on the current stage. **Yellow:** below 20 %. **Red:** below 5 %. Suppressed when the stage carries no LF/OX tanks. | Master alarm (red tier only) |
-| **LIFE SUPPORT** (2×4) | Crew consumables or waste capacity at risk (TAC Life Support). | Time remaining per resource at TAC-LS default rates × crew. **Yellow:** food < 72 h, water < 12 h, oxygen < 30 min, or any waste tank (CO₂, waste, waste water) > 80 % full. **Red:** food < 24 h, water < 4 h, oxygen < 10 min, or any waste tank > 95 % full. Worst resource wins. Crewed vessels with TAC-LS data only; without the mod the tile stays dark. | Master alarm (red tier only) |
+| **LIFE SUPPORT** (2×4) | Crew consumables running out (TAC Life Support). | Time remaining per consumable at TAC-LS default rates × crew. **Yellow:** food < 72 h, water < 12 h or oxygen < 30 min. **Red:** food < 24 h, water < 4 h or oxygen < 10 min. Worst resource wins. The waste resources (CO₂, waste, waste water) are not watched. Crewed vessels with TAC-LS data only; without the mod the tile stays dark. | Master alarm (red tier only) |
 | **O2 PRESENT** (2×5) | Breathable atmosphere. | **Blue:** inside an atmosphere that contains oxygen (jets work, helmets off). | None |
 | **IMPACT IMM** (3×1) | Impact approaching. | **Yellow:** airborne and descending with less than 60 s to the surface at the current descent rate. Stays lit alongside GROUND PROX in the final 10 s. | Caution tone |
 | **ALT** (3×2) | Low altitude. | **Yellow:** airborne with surface altitude below 200 m. | Caution tone |

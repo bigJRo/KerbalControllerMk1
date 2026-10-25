@@ -74,9 +74,8 @@ const uint8_t DISPLAY_ROTATION = 0;
    meter here goes yellow at the same fraction the Annunciator lights PROP LOW / RCS
    LOW, and red at the fraction it lights BUS VOLTAGE / the propellant red tier.
 
-   Waste-type resources (CO2, Waste, Liquid Waste, Depleted Fuel) alert on FILLING
-   rather than emptying. Their fractions match the Annunciator's TACLS_WASTE_WARN_FRAC
-   / TACLS_WASTE_ALARM_FRAC, which have no shared define yet; keep them in step.
+   Depleted Fuel alerts on FILLING rather than emptying, at the WASTE_* fractions.
+   The TAC-LS waste products (CO2, Waste, Liquid Waste) have no bands.
 ****************************************************************************************/
 const float RES_WARN_FRAC    = KCM_RES_LOW_WARN_FRAC;   // caution below this fraction of capacity
 const float RES_ALARM_FRAC   = KCM_EC_LOW_ALARM_FRAC;   // alarm below this fraction of capacity

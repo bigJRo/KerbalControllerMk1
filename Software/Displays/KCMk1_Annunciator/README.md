@@ -238,7 +238,7 @@ The C&W panel is a 32-bit bitmask (`state.cautionWarningState`) recomputed on ev
 | 5 | GROUND PROX ⚠ | Warning | Descending, T.Grnd < `CW_GROUND_PROX_S` |
 | 6 | Pe LOW ⚠ | Warning/Yellow | Red: Pe below reentry alt (atmo) or minSafe (airless). Yellow companion: Pe in aerobrake zone |
 | 7 | PROP LOW ⚠ | Warning/Yellow | Red: stage prop < 5%. Yellow companion: stage prop < 20% |
-| 8 | LIFE SUPP ⚠ | Warning/Yellow | Red: TAC-LS resource critical. Yellow companion: resource caution |
+| 8 | LIFE SUPP ⚠ | Warning/Yellow | Red: TAC-LS food, water or oxygen critical. Yellow companion: consumable caution |
 | 9 | O2 PRESENT | Info | Breathable atmosphere present |
 | 10 | IMPACT IMM | Caution | T.Impact < `CW_IMPACT_IMM_S` (60 s) |
 | 11 | ALT | Caution | Surface altitude < `CW_ALT_THRESHOLD_M` (200 m) |
@@ -439,6 +439,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.8.2** | **LIFE SUPPORT watches the consumables only.** The tile assesses food, water and oxygen time remaining; the three waste resources (CO2, Waste, Waste Water) no longer light it at 80 % / 95 % full, nor on their time to full. The `TACLS_WASTE` channel is no longer registered, and the waste rates, fill thresholds and state fields are gone. |
 | **3.8.1** | **Readout names shared with the other panels.** The part-temperature readouts are `CORE` and `SKIN` (were `TMAX` and `TSKIN`), the names the Information Display uses for the same two values, and the control-mode cell reads `SPC` for Spacecraft (was `SPCFT`) to match the control-mode switch legend (SPC / PLN / RVR). Labels only. |
 | **3.8.0** | **LOW ΔV is suppressed on a craft with no propellant** (#72). A re-entry capsule's stage ΔV and burn time are 0 by construction, so with the throttle open LOW ΔV fired and tripped the master alarm. The panel registers KerbalSimpit's whole-vessel `LF_MESSAGE` / `OX_MESSAGE` (`LF_vessel` / `OX_vessel`, Alternate Resource Panel in KSP1) and suppresses LOW ΔV while the vessel carries neither (below `CW_PROP_EMPTY_UNITS`), matching the Info Display, which greys its stage readouts on the same test. No suppression until an LF/OX message has arrived for the vessel. PROP LOW and PROP IMBAL already switch off for a stage with no tanks. Logic tests added: suppressed with no LF/OX, still warns with LF on board. |
 | **3.7.2** | **HIGH Q can light** (#71). The tile tested `0.5 · static pressure · v²`, which is not a pressure at any scale, against a per-body threshold that was 0 on all seventeen bodies, so it never fired. It now tests true dynamic pressure `0.5 · ρ · v²` (the q CHUTE ENV already uses) against one body-independent limit, `KCM_HIGH_Q_PA` (20 kPa) from KCMk1_SystemConfig 1.2.0, shared with the Info Display's ASCENT Q caution. The logic tests cover below / above the limit and out of the atmosphere. *Test fix:* the LIFE SUPPORT tests did not set the consumable capacities TAC-LS always sends, so 3.7.1's no-TAC-LS gate (#63) failed them; they now do, and a new test checks the tile stays dark with crew and no TAC-LS. |

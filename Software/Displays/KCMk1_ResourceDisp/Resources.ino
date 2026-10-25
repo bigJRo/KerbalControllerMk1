@@ -332,10 +332,12 @@ const char* resGroupLabel(ResGroup g) {
    RESOURCE LIMIT BANDS
    Which resources alert, in which direction, and at what fractions. The two tiers
    come from AAA_Config.ino (generic: cross-panel aligned with the Annunciator;
-   waste: fraction full).
+   Depleted Fuel: fraction full).
      - Consumables (power, propellants, nuclear fuel, ablator, O2/food/water,
        fertilizer): alert on running LOW.
-     - Waste products (CO2, Waste, Liquid Waste, Depleted Fuel): alert on filling UP.
+     - Depleted Fuel: alerts on filling UP.
+     - The TAC-LS waste products (CO2, Waste, Liquid Waste): no bands, but still
+       high-is-bad, so the counter reads time to full and a reserve bug trips above.
      - Ore and Intake Air: no bands. Ore is cargo with no operational floor, and
        intake air is a flow that tracks airspeed rather than a stock that depletes.
 ****************************************************************************************/
@@ -347,6 +349,7 @@ ResLimits resLimits(ResourceType t) {
     case RES_LS_CO2:
     case RES_LS_WASTE:
     case RES_LS_LIQUID_WASTE:
+      return { 0.0f, 0.0f, true, false };
     case RES_DEPLETED_URANIUM:
       return { WASTE_WARN_FRAC, WASTE_ALARM_FRAC, true, true };
     case RES_NONE:
@@ -387,7 +390,7 @@ uint8_t alertState(ResourceType t, float level, float bug, uint8_t prev) {
   ResLimits lim = resLimits(t);
   if (prev > ALERT_BUG) prev = ALERT_NOMINAL;
   float h = ALERT_HYST_FRAC;
-  bool highIsBad = lim.enabled && lim.highIsBad;
+  bool highIsBad = lim.highIsBad;
   bool inCaution = (prev == ALERT_CAUTION || prev == ALERT_ALARM);
   uint8_t state = ALERT_NOMINAL;
   if (lim.enabled) {

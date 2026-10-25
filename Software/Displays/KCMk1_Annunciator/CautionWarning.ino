@@ -212,9 +212,9 @@ void updateCautionWarningState() {
   }
 
   // CW_LIFE_SUPPORT: two-tier TAC-LS resource warning.
-  // Computes time remaining for each consumable and time to full for each waste
-  // using fixed TAC-LS consumption rates multiplied by crew count.
-  // Fires on worst-case condition across all six resources.
+  // Computes time remaining for each consumable (food, water, oxygen) using fixed
+  // TAC-LS consumption rates multiplied by crew count, and fires on the worst case
+  // of the three. The waste resources (CO2, Waste, WasteWater) are not watched.
   // Suppressed when crewCount is 0 (uncrewed vessel, no TAC-LS consumption), and when
   // there is no TAC-LS data at all: without the mod its channels never send, every
   // tac* field stays 0, and zero food over a non-zero rate read as "0 s remaining" --
@@ -239,37 +239,10 @@ void updateCautionWarningState() {
       float waterRemS = (waterRate > 0.0) ? (float)(state.tacWater / waterRate) : 1e9f;
       float o2RemS    = (o2Rate    > 0.0) ? (float)(state.tacOxygen / o2Rate)   : 1e9f;
 
-      // Waste resources: time to full = space remaining / (rate * crew)
-      double co2Rate = TACLS_CO2_RATE       * crew;
-      double wRate   = TACLS_WASTE_RATE     * crew;
-      double wwRate  = TACLS_WASTEWATER_RATE * crew;
-
-      float co2Space = (state.tacCO2_tot > 0.0f)
-                       ? (state.tacCO2_tot - state.tacCO2) : 1e9f;
-      float wSpace   = (state.tacWaste_tot > 0.0f)
-                       ? (state.tacWaste_tot - state.tacWaste) : 1e9f;
-      float wwSpace  = (state.tacWW_tot > 0.0f)
-                       ? (state.tacWW_tot - state.tacWW) : 1e9f;
-
-      float co2RemS  = (co2Rate > 0.0) ? (float)(co2Space / co2Rate) : 1e9f;
-      float wRemS    = (wRate   > 0.0) ? (float)(wSpace   / wRate)   : 1e9f;
-      float wwRemS   = (wwRate  > 0.0) ? (float)(wwSpace  / wwRate)  : 1e9f;
-
       // Check alarm thresholds (red tier)
       if (foodRemS  < TACLS_FOOD_ALARM_S)   lsAlarm = true;
       if (waterRemS < TACLS_WATER_ALARM_S)  lsAlarm = true;
       if (o2RemS    < TACLS_OXYGEN_ALARM_S) lsAlarm = true;
-      if (co2RemS   < TACLS_OXYGEN_ALARM_S) lsAlarm = true;  // CO2 mirrors O2 window
-      if (wRemS     < TACLS_OXYGEN_ALARM_S) lsAlarm = true;  // Waste mirrors O2 window
-      if (wwRemS    < TACLS_OXYGEN_ALARM_S) lsAlarm = true;  // WasteWater mirrors O2 window
-
-      // Check waste fill fraction thresholds
-      if (state.tacCO2_tot > 0.0f &&
-          (state.tacCO2 / state.tacCO2_tot) > TACLS_WASTE_ALARM_FRAC) lsAlarm = true;
-      if (state.tacWaste_tot > 0.0f &&
-          (state.tacWaste / state.tacWaste_tot) > TACLS_WASTE_ALARM_FRAC) lsAlarm = true;
-      if (state.tacWW_tot > 0.0f &&
-          (state.tacWW / state.tacWW_tot) > TACLS_WASTE_ALARM_FRAC) lsAlarm = true;
 
       if (lsAlarm) {
         bitSet(cw, CW_LIFE_SUPPORT);  // red tier
@@ -278,15 +251,6 @@ void updateCautionWarningState() {
         if (foodRemS  < TACLS_FOOD_WARN_S)   lsYellow = true;
         if (waterRemS < TACLS_WATER_WARN_S)  lsYellow = true;
         if (o2RemS    < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (co2RemS   < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (wRemS     < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (wwRemS    < TACLS_OXYGEN_WARN_S) lsYellow = true;
-        if (state.tacCO2_tot > 0.0f &&
-            (state.tacCO2 / state.tacCO2_tot) > TACLS_WASTE_WARN_FRAC) lsYellow = true;
-        if (state.tacWaste_tot > 0.0f &&
-            (state.tacWaste / state.tacWaste_tot) > TACLS_WASTE_WARN_FRAC) lsYellow = true;
-        if (state.tacWW_tot > 0.0f &&
-            (state.tacWW / state.tacWW_tot) > TACLS_WASTE_WARN_FRAC) lsYellow = true;
       }
     }
   }

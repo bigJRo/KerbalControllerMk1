@@ -478,10 +478,6 @@ static void runLogicTests() {
     // Capacities, as TAC-LS always sends them; with all three at 0 the tile reads
     // "no TAC-LS data" and stays dark (#63).
     state.tacFood_tot = 1e6f; state.tacWater_tot = 1e6f; state.tacOxygen_tot = 1e6f;
-    // Set waste capacity to very large so waste fraction is near zero
-    state.tacCO2_tot   = 1e6f; state.tacCO2   = 0.0f;
-    state.tacWaste_tot = 1e6f; state.tacWaste  = 0.0f;
-    state.tacWW_tot    = 1e6f; state.tacWW     = 0.0f;
 
     // Set food to midpoint between warn and alarm thresholds
     double foodRate = TACLS_FOOD_RATE * crew;
@@ -501,9 +497,6 @@ static void runLogicTests() {
       state.tacFood_tot = 1e6f; state.tacWater_tot = 1e6f; state.tacOxygen_tot = 1e6f;
       state.tacFood   = (float)(TACLS_FOOD_RATE  * crew * TACLS_FOOD_WARN_S  * 10.0);
       state.tacWater  = (float)(TACLS_WATER_RATE  * crew * TACLS_WATER_WARN_S * 10.0);
-      state.tacCO2_tot   = 1e6f; state.tacCO2   = 0.0f;
-      state.tacWaste_tot = 1e6f; state.tacWaste  = 0.0f;
-      state.tacWW_tot    = 1e6f; state.tacWW     = 0.0f;
       // Oxygen below alarm threshold
       double o2Rate   = TACLS_OXYGEN_RATE * crew;
       state.tacOxygen = (float)(o2Rate * (TACLS_OXYGEN_ALARM_S - 60.0f)); },

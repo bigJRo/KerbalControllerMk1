@@ -124,13 +124,6 @@ struct AppState {
   float tacWater_tot   = 0.0f;
   float tacOxygen      = 0.0f;
   float tacOxygen_tot  = 0.0f;
-  // Waste resources: current fill level and total capacity
-  float tacCO2       = 0.0f;
-  float tacCO2_tot   = 0.0f;
-  float tacWaste     = 0.0f;
-  float tacWaste_tot = 0.0f;
-  float tacWW        = 0.0f;   // WasteWater (LiquidWaste in Simpit)
-  float tacWW_tot    = 0.0f;
 
   // Atmosphere
   float atmoPressure = 0.0f;  // kPa   -- for HIGH Q proxy
@@ -296,7 +289,7 @@ enum ChuteEnvState : uint8_t {
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
 static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: whole-vessel LF / OX channels; LOW dV suppressed with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 3.8.1: CORE / SKIN readouts; SPC control-mode legend
+static const uint8_t SKETCH_VERSION_PATCH = 2;   // 3.8.2: LIFE SUPPORT watches food, water, oxygen only
 
 
 /***************************************************************************************
@@ -357,9 +350,6 @@ extern const float  CW_CHUTE_DROGUE_MAX_Q;   // CHUTE_ENV: drogue rip dynamic pr
 extern const double TACLS_FOOD_RATE;
 extern const double TACLS_WATER_RATE;
 extern const double TACLS_OXYGEN_RATE;
-extern const double TACLS_CO2_RATE;
-extern const double TACLS_WASTE_RATE;
-extern const double TACLS_WASTEWATER_RATE;
 
 // From AAA_Config.ino -- TAC-LS warning thresholds
 extern const float  TACLS_FOOD_WARN_S;      // yellow: 72 hours
@@ -368,8 +358,6 @@ extern const float  TACLS_WATER_WARN_S;     // yellow: 12 hours
 extern const float  TACLS_WATER_ALARM_S;    // red:     4 hours
 extern const float  TACLS_OXYGEN_WARN_S;    // yellow: 30 minutes
 extern const float  TACLS_OXYGEN_ALARM_S;   // red:    10 minutes
-extern const float  TACLS_WASTE_WARN_FRAC;  // yellow: waste capacity 80% full
-extern const float  TACLS_WASTE_ALARM_FRAC; // red:    waste capacity 95% full
 
 // GPWS function tunables now live locally in GPWS.ino (TUNABLES block) so the whole
 // envelope definition stays in one place -- no AAA_Config externs needed.

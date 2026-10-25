@@ -13,7 +13,7 @@
      ELECTRIC,
      LF_STAGE, OX_STAGE, SF_STAGE,
      MONO,
-     TACLS_RESOURCE, TACLS_WASTE,
+     TACLS_RESOURCE,
      THROTTLE_CMD,
      SCENE_CHANGE, VESSEL_CHANGE
 
@@ -25,8 +25,8 @@
      zero totals to prevent false triggers.
 
    TAC-LS dependency note:
-     TACLS_RESOURCE and TACLS_WASTE require both ARP and the TAC Life Support
-     mod in KSP1. Without TAC-LS the channels never send and tac* fields remain 0.
+     TACLS_RESOURCE requires both ARP and the TAC Life Support mod in KSP1.
+     Without TAC-LS the channel never sends and tac* fields remain 0.
      CW_LIFE_SUPPORT is suppressed when crewCount is 0 and will not false-trigger
      when TAC-LS resources are absent.
 ****************************************************************************************/
@@ -83,7 +83,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       case SF_STAGE_MESSAGE:        msgName = "SF_STAGE";        break;
       case MONO_MESSAGE:            msgName = "MONO";            break;
       case TACLS_RESOURCE_MESSAGE:  msgName = "TACLS_RESOURCE";  break;
-      case TACLS_WASTE_MESSAGE:     msgName = "TACLS_WASTE";     break;
       case THROTTLE_CMD_MESSAGE:    msgName = "THROTTLE_CMD";    break;
       case SCENE_CHANGE_MESSAGE:    msgName = "SCENE_CHANGE";    break;
       case VESSEL_CHANGE_MESSAGE:   msgName = "VESSEL_CHANGE";   break;
@@ -339,9 +338,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     // --- TAC Life Support resources (require ARP + TAC-LS mods in KSP1) ---
     // TACLSResourceMessage contains three resourceMessage sub-structs:
     //   .food, .water, .oxygen -- each with .available and .total fields.
-    // TACLSWasteMessage contains three resourceMessage sub-structs:
-    //   .co2, .waste, .wasteWater -- each with .available and .total fields.
-    // If TAC-LS is absent these channels never send and tac* fields stay at 0.
+    // The waste resources (TACLS_WASTE) are not watched, so that channel is not
+    // registered. If TAC-LS is absent this channel never sends and tac* fields stay 0.
 
     case TACLS_RESOURCE_MESSAGE:
       if (msgSize == sizeof(TACLSResourceMessage)) {
@@ -352,19 +350,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.tacWater_tot   = t.maxWater;
         state.tacOxygen      = t.currentOxygen;
         state.tacOxygen_tot  = t.maxOxygen;
-        updateCautionWarningState();
-      }
-      break;
-
-    case TACLS_WASTE_MESSAGE:
-      if (msgSize == sizeof(TACLSWasteMessage)) {
-        TACLSWasteMessage t = parseMessage<TACLSWasteMessage>(msg);
-        state.tacCO2       = t.currentCO2;
-        state.tacCO2_tot   = t.maxCO2;
-        state.tacWaste     = t.currentWaste;
-        state.tacWaste_tot = t.maxWaste;
-        state.tacWW        = t.currentLiquidWaste;
-        state.tacWW_tot    = t.maxLiquidWaste;
         updateCautionWarningState();
       }
       break;
@@ -475,5 +460,4 @@ void initSimpit() {
 
   // TAC Life Support (requires ARP + TAC-LS mods in KSP1)
   simpit.registerChannel(TACLS_RESOURCE_MESSAGE);
-  simpit.registerChannel(TACLS_WASTE_MESSAGE);
 }

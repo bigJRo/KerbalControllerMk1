@@ -159,9 +159,6 @@ const float CW_HIGH_Q_PA          = KCM_HIGH_Q_PA;           // HIGH Q above thi
 const double TACLS_FOOD_RATE        = 0.000016927083333; // Food units/s/Kerbal
 const double TACLS_WATER_RATE       = 0.000011188078704; // Water units/s/Kerbal
 const double TACLS_OXYGEN_RATE      = 0.001713537562385; // Oxygen units/s/Kerbal
-const double TACLS_CO2_RATE         = 0.001480128898760; // CO2 units/s/Kerbal (production)
-const double TACLS_WASTE_RATE       = 0.000001539351852; // Waste units/s/Kerbal (production)
-const double TACLS_WASTEWATER_RATE  = 0.000014247685185; // WasteWater units/s/Kerbal (production)
 
 /***************************************************************************************
    TAC LIFE SUPPORT WARNING THRESHOLDS
@@ -170,8 +167,8 @@ const double TACLS_WASTEWATER_RATE  = 0.000014247685185; // WasteWater units/s/K
      Food:   360h window -> warn at 72h, alarm at 24h
      Water:   36h window -> warn at 12h, alarm at  4h
      Oxygen:   2h window -> warn at 30m, alarm at 10m
-   Waste resources use fractional fill thresholds (fraction of total capacity).
-   The indicator fires on the worst-case condition across all resources.
+   The waste resources (CO2, Waste, WasteWater) are not watched.
+   The indicator fires on the worst-case condition across the three consumables.
    Yellow tier: warn threshold breached on any resource.
    Red tier:    alarm threshold breached on any resource (triggers MASTER ALARM).
 ****************************************************************************************/
@@ -181,5 +178,3 @@ const float TACLS_WATER_WARN_S      = 12.0f  * 3600.0f; // 12 hours in seconds
 const float TACLS_WATER_ALARM_S     =  4.0f  * 3600.0f; //  4 hours in seconds
 const float TACLS_OXYGEN_WARN_S     = 30.0f  *   60.0f; // 30 minutes in seconds
 const float TACLS_OXYGEN_ALARM_S    = 10.0f  *   60.0f; // 10 minutes in seconds
-const float TACLS_WASTE_WARN_FRAC   = 0.80f;             // warn when waste 80% full
-const float TACLS_WASTE_ALARM_FRAC  = 0.95f;             // alarm when waste 95% full
