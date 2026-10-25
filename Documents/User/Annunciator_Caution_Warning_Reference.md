@@ -191,6 +191,81 @@ KSP wiki; altitudes are formatted with a unit that suits their size (m, km, Mm, 
 
 For Kerbol the SOI radius is unbounded (there is no parent body), so its row shows `∞`.
 
+## GPWS voice callouts
+
+The Annunciator runs a Ground Proximity Warning System that speaks through its DFPlayer
+module, on a separate path from the master-alarm tone, so a callout and the alarm can
+sound together. It is set up on the **GPWS Input Panel** (panel A2), not on this screen;
+the master relays the panel's settings to the Annunciator. Callouts need the numbered
+clips on the DFPlayer's own microSD card, and audio enabled.
+
+**What the panel selects**
+
+| GPWS panel state | What you hear |
+|---|---|
+| **OFF** | Nothing |
+| **GREEN** (ACTIVE) | Everything: the warnings, the altitude callouts, RETARD and the threshold-bug call |
+| **AMBER + proximity alarm** | Altitude callouts, RETARD and the bug call only; no warnings |
+| **AMBER + rendezvous radar** | Target *distance* callouts and the bug tone only |
+
+The two amber options exclude each other.
+
+**The threshold bug.** The panel's encoder sets a bug from 0 to 9,999 m (the encoder
+button returns it to 200 m). What you hear when you descend through it depends on the
+gear, the vessel type and how high the bug is:
+
+| Situation | At the bug |
+|---|---|
+| Gear **up** (aircraft or lander) | "GROUND PROXIMITY" |
+| Gear **down**, aircraft, bug **300 m or higher** | A plain tone: a high bug is just a level marker |
+| Gear **down**, aircraft, bug **below 300 m** | A decision height: "APPROACHING MINIMUMS" about 30 m (100 ft) above, then "MINIMUMS" at the bug |
+| Gear **down**, lander | A plain tone, at any bug height |
+| Rendezvous radar | The bug is a *range*: closing through it plays the tone |
+
+The numeric callout at the bug altitude is always suppressed, so it never doubles with
+what the bug itself plays.
+
+**Two profiles.** A vessel typed **Plane** gets the full aircraft suite; **every other
+vessel** (rockets, landers, probes) gets the lander profile. Only one callout sounds at a
+time; the higher one in each table wins.
+
+*Aircraft profile, highest priority first*
+
+| Callout | Sounds when |
+|---|---|
+| STALL | Airborne in an atmosphere with the angle of attack above 20° (the AIRCRAFT AOA alarm). A continuous buzzer |
+| WHOOP WHOOP PULL UP / TERRAIN, TERRAIN | Descending too fast for the height below about 750 m (2,450 ft), or terrain rising under the aircraft too fast. With the gear down a less sensitive envelope is used, so a normal approach over rising ground stays quiet |
+| TERRAIN, TERRAIN *(after the warning)* | Repeats after PULL UP ends while the clearance is still shrinking |
+| Bug tone / MINIMUMS | The threshold bug, as above (MINIMUMS with the gear down only) |
+| TOO LOW, TERRAIN | Gear up below about 300 m (1,000 ft) at speed, or sinking below 75 % of the highest height reached since takeoff |
+| RETARD | Descending with the gear down, below about 6 m (20 ft), with the throttle still open. Stops at idle |
+| Altitude callouts | 2500, 1000, 500, 400, 300, 200, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 and 5 ft |
+| TOO LOW, GEAR | Airborne below about 150 m (500 ft) with the gear up; silent for the first 15 s after liftoff |
+| SINK RATE | Descending too fast for the height; a normal flare stays quiet |
+| DON'T SINK | Losing height after takeoff. Said twice, then again only if the loss grows by a further 20 % |
+| BANK ANGLE | Bank beyond a limit that grows with height: 10° at 30 ft, 40° by 150 ft, 55° from 2,450 ft |
+| V1 / ROTATE | On the takeoff roll at 55 and 65 m/s. These are fixed speeds in the firmware; set them for the aircraft you fly |
+| GEAR UP | A reminder about 6 s after liftoff while climbing with the gear still down |
+
+*Lander profile.* Every warning needs the vessel airborne and descending, so a parked or
+rolling craft is silent.
+
+| Callout | Sounds when |
+|---|---|
+| SINK RATE | Under 10 s to the surface *and* descending faster than 6 m/s. The 10 s is the GROUND PROX limit, so the voice and the tile agree; stock legs survive about 12 m/s, so a gentle touchdown stays quiet |
+| HORIZONTAL SPEED | Sideways speed too high for the height, below 400 m: tip-over and skid risk |
+| Bug tone / GROUND PROXIMITY | The threshold bug: gear down / gear up |
+| RETARD | Throttle still open below 15 m |
+| Altitude callouts | In **metres**: 2500, 1000, 500, 100, 50, 40, 30, 20 and 10 m |
+
+The lander profile has no terrain, don't-sink, bank-angle, stall or minimums callouts:
+none of them describe a vertical landing.
+
+**Not modelled.** Below-glideslope and windshear warnings need data KSP does not provide,
+and there is no look-ahead terrain: terrain warnings come from how fast the radar
+altitude is shrinking, which catches ground rising under you but cannot see a ridge
+ahead.
+
 ## Shared celestial-body table
 
 Every body-dependent number on the Annunciator (the SOI screen rows, the Pe LOW / Ap LOW /
@@ -254,6 +329,18 @@ Notes:
 - There is no per-body HIGH Q threshold: HIGH Q uses one 20 kPa dynamic-pressure limit on
   every body with an atmosphere.
 
+## Quick troubleshooting
+
+| Symptom | Look at |
+|---|---|
+| Panel stays on its boot screen | The master has not released it (it sends PROCEED on every command). Check the I2C loom to the master |
+| Standby splash during a flight | The panel's own KerbalSimpit link to KSP is not up |
+| BUS VOLTAGE never lights | Needs the Alternate Resource Panel mod |
+| LIFE SUPPORT never lights | Needs TAC Life Support and a crew aboard |
+| No sound at all | The AUDIO tile in the condition block is dark: audio is off |
+| Tones work but no voice callouts | The GPWS panel is OFF, or the DFPlayer card is missing its clips |
+| Control-mode tile is red | The control-mode switch does not suit the vessel type, so the sticks are mapped for another vehicle |
+
 ## Notes for the manual
 
 - Nine tiles feed MASTER ALARM: LOW ΔV, HIGH G, HIGH TEMP, BUS VOLTAGE, ABORT, GROUND PROX,
@@ -267,4 +354,25 @@ Notes:
   low-burn-time limits, chute limits, the 20 kPa HIGH Q limit) are defined once in
   `KCMk1_SystemConfig.h`, so the Annunciator tile and the Info Display readout always change
   colour at the same point.
+
+**Shared limits.** These thresholds are defined once in `KCMk1_SystemConfig.h` and used by
+every panel, so a tile here and a readout on an Info Display or the Resource Display
+change at the same point.
+
+| Quantity | Caution (yellow) | Alarm (white on red) | Where |
+|---|---|---|---|
+| Time to ground | 30 s (Info Displays) | 10 s | GROUND PROX; T+GRND on POWERED DESCENT and RE-ENTRY; GPWS lander SINK RATE |
+| G load | +4 g / −2 g (Info Displays) | +9 g / −5 g | HIGH G; G on ASCENT, AIRCRAFT; RE-ENTRY G meter |
+| Stage Δv | 300 m/s (Info Displays) | 150 m/s | LOW ΔV; ΔV.STG |
+| Stage burn time | 120 s (Info Displays) | 60 s | LOW ΔV; STG.BRN |
+| Part temperature | 50 % here; above 75 % on the Info Display bars | above 90 % | HIGH TEMP; CORE / SKIN |
+| Electric charge | 20 % | 5 % | BUS VOLTAGE; EC on the Info Displays; the Resource Display EC meter |
+| Propellant / monopropellant | 20 % | 5 % | PROP LOW (both tiers), RCS LOW (caution only); the Resource Display meters |
+| Dynamic pressure | 20 kPa | 40 kPa (ASCENT only) | HIGH Q; Q on ASCENT |
+| Angle of attack | 10° | 20° | AOA on AIRCRAFT; GPWS STALL |
+| Main chute | — | q above 38,300 Pa (about 250 m/s at Kerbin sea level) | CHUTE ENV; RE-ENTRY chute rows and CHUTE DEPLOY bar |
+| Drogue chute | — | q above 153,000 Pa (about 500 m/s at Kerbin sea level) | As above |
+
+The chute limits are dynamic pressure rather than speed, because that is what tears a
+canopy; the safe deploy speed therefore rises with altitude.
 - All thresholds quoted here are the firmware defaults and are tunable in `AAA_Config.ino`.
