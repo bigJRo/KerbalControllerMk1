@@ -89,4 +89,17 @@ The board has no active components or protection; every signal passes straight t
 
 ## 6. Panels
 
-To be filled in panel by panel: A1, A2, B1, B2.
+### 6.1 A1 — left display panel
+
+| Item | Board | Connects to | Master sees it on |
+|---|---|---|---|
+| Information Display 1 (0x12) — **panel hub** | 7" TFT Display Driver (1911) | Its CN1 (34-pin) → Ctrl Module CN4 | INT_12 (its own line) |
+| Annunciator (0x10) | 7" TFT Display Driver (1911) | Its P1 (16-pin) → a module slot on Information Display 1 (P2, P3 or P4: *to confirm*) | INT_9, INT_10 or INT_11, by slot |
+| Power button | — | Ctrl Module H1 (power switch header, soft-latch circuit) | Nothing: the latch is analog and has no Teensy pin |
+
+- **Free:** two of Information Display 1's three module slots.
+- **Safe switch:** nothing wired to Information Display 1's terminal, so INT_SAFE2 is idle (*to confirm*).
+- **The Annunciator's own terminal** goes nowhere. A driver plugged in through its 16-pin P1 has no safe-switch path, because P1 pin 16 is not connected.
+- **No power-off from the master.** The master cannot switch the controller off or see the power button.
+
+To be filled in next: A2, B1, B2.
