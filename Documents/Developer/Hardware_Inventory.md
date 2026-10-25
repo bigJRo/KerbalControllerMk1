@@ -446,8 +446,8 @@ The master pushes it a new frame while the screen is open (new display firmware 
 - the autopilot's own disengage conditions (no node, SOI change, and so on).
 
 **While engaged:**
-- **Sticks:** *to confirm* — the stick is ignored on the axes the autopilot holds, and still flies the axes it does not.
-- **Throttle:** the autopilot always sets it. Lever movement, lever buttons and touch are ignored, and the motor keeps the lever at the autopilot's position (*how: to confirm*, see below).
+- **Sticks:** ignored completely (every axis and the translation stick), whatever the autopilot holds. Only the A/P disconnect gives control back. Stick buttons keep working.
+- **Throttle:** the autopilot always sets it. Lever movement, the lever buttons and touch are ignored, and KSP keeps the autopilot's value. The motor pushes back against a hand for at most about 0.5 s (stall protection), then returns the lever to the autopilot's position as soon as it is released (decided).
 
 **What changes elsewhere:**
 - The "any pilot input disconnects every autopilot" rule in `Hold_Mode_Autopilot.md`, `Mission_Autopilot.md` and today's `throttle_link` / `rotation_link` is retired. The STICK / LEVER disconnect reasons go unused.
@@ -470,9 +470,15 @@ The master pushes it a new frame while the screen is open (new display firmware 
 
 | Screen | When | Content |
 |---|---|---|
-| **Boot** | From power-on until the master's `setup()` ends | One line per step as it happens: configuring items, each module found and enabled (or missing), each display released, connections established, KSP link attempt, any fault. If a step stalls, the screen stays on it, so the stalled step is visible |
+| **Boot** | From power-on **until KSP connects or demo mode is switched on** | One line per step as it happens: configuring items, each module found and enabled (or missing), each display released, connections established, waiting for KSP, any fault. If a step stalls, the screen stays on it, so the stalled step is visible |
 | **Controller status** | Normal operation | 12 V voltage, current and power; board temperature; fan speed; the KSP link state of **each** microcontroller with its own link (master, Annunciator, Information Displays 1 and 2, Resource Display) |
 | **SWITCH ERR window** | While SWITCH ERR is lit | Sits in front of the status screen and names each switch in error (switch, expected vs actual). It goes away when every error clears |
+
+**Boot hold and stalls (proposed, *to confirm*):**
+- **The master does not block.** `setup()` finishes, and the panels, displays and switches work as usual. Only the Sys Info Display stays on the boot screen, with a "Waiting for KSP" line (elapsed time, retry count), until the master's Simpit link connects or SCE is set to AUX (demo).
+- **Every boot step has a timeout.** A step that times out is shown in red with what it was waiting on, and boot carries on (missing module, display not answering, sensor missing).
+- **Waiting for KSP has no timeout,** but after 60 s a hint line is added (KSP running? Simpit COM port? USB cable?).
+- **A master that hangs cannot report itself,** so the Sys Info Display has its own timeout. If it hears nothing from the master for 5 s during boot, it shows *MASTER NOT RESPONDING* with the last step received.
 
 **Graphics:** small icons and logos (fan, power, thermometer, link, …) stored on its microSD card; set to be chosen.
 
