@@ -15,7 +15,7 @@ central master controller.
 | `Software/Modules/` | Input-module firmware (buttons, switches, joysticks, encoders, 7-segment, etc.) |
 | `Software/Libraries/`, `Software/Common/` | Shared cross-project code |
 | `Documents/Developer/` | Hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface, expansion-module spec, [display test plan](Documents/Developer/Display_Test_Plan.md) |
-| `Documents/User/` | Quick-start guide, panel operating guide, display reference |
+| `Documents/User/` | [Quick-start guide](Documents/User/Quick_Start_Guide.md), panel operating guide, and the display references: [Annunciator](Documents/User/Annunciator_Caution_Warning_Reference.md), [Information Displays](Documents/User/Info_Display_Screen_Reference.md), [Resource Display](Documents/User/Resource_Display_Reference.md) (each also as `.docx`) |
 
 ### Display panels (`Software/Displays/`)
 
