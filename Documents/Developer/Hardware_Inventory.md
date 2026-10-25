@@ -346,5 +346,18 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 ## 9. Future discussion points
 
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
-2. **Stability Control B10.** Currently RCS toggle; the RCS switch makes it redundant. Choose a new function.
+2. **Stability Control B10.** Currently RCS toggle; the RCS switch makes it redundant. Candidates:
+
+   | # | Name | Does | How | LED | Effort |
+   |---|---|---|---|---|---|
+   | 1 | **HOLD** (quick engage) | One press holds what the vessel is doing now: spacecraft attitude, plane altitude + heading, rover heading + speed. Press again to release | Existing hold autopilot; gated by A/P ARM | ACTIVE while holding | Small |
+   | 2 | **Controller pointing layer** | Latches a second layer: B0–B9 point the vessel with the master's attitude controller instead of KSP's SAS, so prograde etc. work on craft whose pilot / probe core lacks those SAS modes | Existing attitude controller; normal / radial / target need orbit maths | ACTIVE while the layer is on | Large |
+   | 3 | **Kill rotation** | Held or pressed: the master damps all rotation to zero, then lets go | Attitude controller rate loop | ACTIVE while damping | Medium |
+   | 4 | **Navball reference** | Cycles Orbit / Surface / Target, beside the SAS modes it changes (and frees UI Control B5) | Simpit navball mode message | Colour per mode, master-tracked (KSP does not report it) | Small |
+   | 5 | **Custom action group** | Per-vessel user function on the free CAG slot, base 40 (40 / 80 / … / 240) | `toggleCAG` | CAG state from KSP | Small |
+   | 6 | **SAS mode guard** | Locks B0–B9 so a stray press cannot change the SAS mode | Master only | ACTIVE while locked | Small |
+   | 7 | **KSP fine control** | Toggles KSP's own precision control (Caps Lock) | Keyboard | Master-tracked | Small |
+   | 8 | **RCS hold** | RCS on only while held, for docking nudges (mirrors the brake button) | Simpit RCS action | ACTIVE while held | Small |
+   | 9 | **A/P DISC** | Instant disconnect of every autopilot | Arbiter | Momentary | Small |
+   | 10 | **Info Display shortcut** | Jumps Info Display 2 to the attitude / autopilot page | Needs a new carrier command | — | Medium |
 
