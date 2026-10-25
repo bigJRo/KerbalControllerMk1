@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.16.3
+**Applies to:** KCMk1_InfoDisp firmware 1.16.4
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -194,13 +194,13 @@ hand.
 - **Velocity reference.** The panel uses orbital velocity (V.ORB) above 6 % of the
   body's radius while climbing or level, or above 5.5 % while descending (36 km and
   33 km at Kerbin), and surface velocity (V.SRF) below. The swap redraws the screen.
-- **Row 4** shows **T+AP** or **T+PE**, whichever apsis comes sooner.
+- **Row 4** shows **T+Ap** or **T+Pe**, whichever apsis comes sooner.
 - **Row 5** has three modes: **V.VRT** below the switch altitude, **T+IGN** above it,
   and **ΔV.REM** while a node burn is running (node set, throttle above 1 %, ignition
   time passed). Pinning the reference chip does not change row 5.
-- **Dashes.** ALT.SL, V.ORB / V.SRF, APA, PEA and T+AP dash out when KSP sends neither
+- **Dashes.** ALT.SL, V.ORB / V.SRF, ApA, PeA and T+Ap dash out when KSP sends neither
   a positive apoapsis nor a positive periapsis. T+IGN dashes with no node.
-- **Escape trajectory.** APA shows `∞`.
+- **Escape trajectory.** ApA shows `∞`.
 - **EVA.** With a Kerbal on EVA, rows 2–6 become ALT.RDR, V.SRF, DIST, V.CLOSE and EC,
   and row 1 always shows V.ORB, so orbital and surface speed are both on screen: the
   pair tells station-keeping from drifting.
@@ -211,9 +211,9 @@ hand.
 |---|---|---|
 | ALT.SL | Altitude above sea level | Green always |
 | V.ORB / V.SRF | Orbital or surface speed, following the velocity reference | Green always |
-| APA | Apoapsis altitude | Green always; `∞` on escape |
-| PEA | Periapsis altitude; negative while suborbital | Green always |
-| T+AP / T+PE | Time to whichever apsis comes sooner | Green always |
+| ApA | Apoapsis altitude | Green always; `∞` on escape |
+| PeA | Periapsis altitude; negative while suborbital | Green always |
+| T+Ap / T+Pe | Time to whichever apsis comes sooner | Green always |
 | V.VRT | Vertical speed, signed (row 5, low altitude) | Green always: reported, never alarmed here |
 | T+IGN | Time to ignition: node time minus half the burn duration (row 5, high altitude) | Green at 60 s or more; yellow under 60 s; white on red once ignition time has passed; `---` with no node |
 | ΔV.REM | Δv the node still needs (row 5, during the burn) | Green always |
@@ -529,11 +529,11 @@ no picture.
 **Reading the screen.** Keep the green FPA needle on the yellow target triangle. Watch
 the hollow Ap triangle climb toward the TGT ORB line. Back off the throttle if Q goes
 yellow (20 kPa) or red (40 kPa); it peaks around 5–8 km. STG.BRN and ΔV.STG warn of
-staging before the STAGE light does. T+AP turning yellow means apoapsis is less than
+staging before the STAGE light does. T+Ap turning yellow means apoapsis is less than
 30 s away. Cut the throttle once apoapsis is above the atmosphere; the screen moves to
 CIRCULARIZATION by itself.
 
-**Special states.** T+AP dashes with no apoapsis, on the pad or landed. Q and MACH dash
+**Special states.** T+Ap dashes with no apoapsis, on the pad or landed. Q and MACH dash
 outside the atmosphere. A closed throttle shows white on red here, because during the
 ascent it is an event; CIRCULARIZATION has no throttle alarm.
 
@@ -541,7 +541,7 @@ ascent it is an event; CIRCULARIZATION has no throttle alarm.
 
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
-| T+AP | Time to apoapsis | Green from 30 s; yellow under 30 s; red if negative; `---` with no apoapsis |
+| T+Ap | Time to apoapsis | Green from 30 s; yellow under 30 s; red if negative; `---` with no apoapsis |
 | THRTL | Throttle | Green above 0 %; white on red at 0 % |
 | Q | Dynamic pressure, ½ρv² | Green below 20 kPa; yellow 20–39.9 kPa; white on red from 40 kPa; `---` outside the atmosphere |
 | MACH | Mach number | Green always; `---` outside the atmosphere |
@@ -565,7 +565,7 @@ it say whether this stage can finish the burn.
 - **ATT disc (top left).** How far your nose is from the manoeuvre node's burn
   direction. The dot shows where to point: green within 5°, yellow from 5° to 15°, red
   beyond. It stops at the 15° ring, and is grey and centred with no node.
-- **ECC and AP-PE (left rail).** The orbit's eccentricity and the height difference
+- **ECC and Ap-Pe (left rail).** The orbit's eccentricity and the height difference
   between apoapsis and periapsis.
 - **Orbit diagram (centre).** The body, its atmosphere ring, a dashed circle at the
   target orbit, and your orbit, compressed so its shape reads clearly. The orbit line is
@@ -593,7 +593,7 @@ it say whether this stage can finish the burn.
 5. You are done when ECC turns green (below 0.020) and the orbit line is green. The
    mission panel then hands over to ORBIT.
 
-**Special states.** ECC and AP-PE dash with no apoapsis. ΔV.CIRC dashes when there is no
+**Special states.** ECC and Ap-Pe dash with no apoapsis. ΔV.CIRC dashes when there is no
 usable estimate (no apoapsis, or already circular). On a suborbital coast the estimate
 uses the true ellipse, periapsis below the surface included, so it agrees with a KSP
 circularisation node (497 m/s in the picture).
@@ -613,7 +613,7 @@ circularisation node (497 m/s in the picture).
 | Label | Description | Colour coding / thresholds |
 |---|---|---|
 | ECC | Eccentricity, three decimals | Green below 0.020; yellow from 0.020; `---` with no apoapsis |
-| AP-PE | Apoapsis minus periapsis | Green always; `---` with no apoapsis |
+| Ap-Pe | Apoapsis minus periapsis | Green always; `---` with no apoapsis |
 | ΔV Burn value | The node's remaining Δv, or `est` and the panel's estimate with no node | Node: green, or yellow when stage Δv is below 1.1 × the node's; estimate grey |
 | T+IGN | Node time minus half the burn duration | Green from 60 s; yellow 10–59 s; white on red under 10 s, including once ignition has passed; `---` with no node |
 
@@ -664,8 +664,8 @@ the next one. A near-flat line in the inclination view means an equatorial orbit
 change plane, burn as the vessel dot crosses the body. The diagram redraws in small
 steps, so during a burn its shape moves in jumps while the numbers change smoothly.
 
-**Special states.** PEA shows `---` with periapsis at or below sea level on a closed
-orbit; APA and PERIOD show `∞` on escape. The PEA and APA labels are drawn in the
+**Special states.** PeA shows `---` with periapsis at or below sea level on a closed
+orbit; ApA and PERIOD show `∞` on escape. The PeA and ApA labels are drawn in the
 marker colours (magenta, blue) so each label names its dot.
 
 **Readouts (left half, under the plan view).**
@@ -674,8 +674,8 @@ marker colours (magenta, blue) so each label names its dot.
 |---|---|---|
 | SMA | Semi-major axis; negative on escape | Green always |
 | ECC | Eccentricity, four decimals; 1 or more on escape | Green always |
-| PEA | Periapsis altitude | Green; label magenta; `---` at or below sea level |
-| APA | Apoapsis altitude | Green; label blue; `∞` on escape |
+| PeA | Periapsis altitude | Green; label magenta; `---` at or below sea level |
+| ApA | Apoapsis altitude | Green; label blue; `∞` on escape |
 
 **Readouts (right half, under the inclination view).**
 
@@ -683,8 +683,8 @@ marker colours (magenta, blue) so each label names its dot.
 |---|---|---|
 | INC | Inclination | Green always |
 | PERIOD | Orbital period | Green; `∞` on escape |
-| ARG.PE | Argument of periapsis | Green always |
-| T+PE / T+AP | Time to the next apsis; the label follows whichever comes next | Green; `---` when not available |
+| ARG.Pe | Argument of periapsis | Green always |
+| T+Pe / T+Ap | Time to the next apsis; the label follows whichever comes next | Green; `---` when not available |
 
 **Buttons.** None.
 
@@ -695,13 +695,13 @@ marker colours (magenta, blue) so each label names its dot.
 *The same orbit as the ORBIT picture.*
 
 **Purpose.** All fourteen orbital elements as text, for detailed planning: shape and
-size on the left, orientation and position on the right. SMA, ECC, PEA, APA and PERIOD
+size on the left, orientation and position on the right. SMA, ECC, PeA, ApA and PERIOD
 use the same names and formats as ORBIT, so the two screens compare directly.
 
 **Reaching it.** Press ORB on ORBIT. The panel never chooses it, so it shows MAN.
 
 **Reading the screen.** True and mean anomaly give the vessel's position on the orbit;
-LAN with ARG.PE fixes the orbit's orientation in space.
+LAN with ARG.Pe fixes the orbit's orientation in space.
 
 **Readouts (left column).**
 
@@ -709,8 +709,8 @@ LAN with ARG.PE fixes the orbit's orientation in space.
 |---|---|---|
 | SMA | Semi-major axis | Green always |
 | ECC | Eccentricity | Green always |
-| PEA | Periapsis altitude | Green; `---` below sea level |
-| APA | Apoapsis altitude | Green; `∞` on escape |
+| PeA | Periapsis altitude | Green; `---` below sea level |
+| ApA | Apoapsis altitude | Green; `∞` on escape |
 | ALT.SL | Current altitude above sea level | Green always |
 | V.ORB | Orbital speed | Green always |
 | PERIOD | Orbital period | Green; `∞` on escape |
@@ -721,11 +721,11 @@ LAN with ARG.PE fixes the orbit's orientation in space.
 |---|---|---|
 | INC | Inclination | Green always |
 | LAN | Longitude of the ascending node | Green always |
-| ARG.PE | Argument of periapsis | Green always |
+| ARG.Pe | Argument of periapsis | Green always |
 | TRUE ANOM | True anomaly | Green always |
 | MEAN ANOM | Mean anomaly | Green always |
-| T+PE | Time to periapsis | Green; `---` when not available |
-| T+AP | Time to apoapsis | Green; `∞` on escape; `---` when not available |
+| T+Pe | Time to periapsis | Green; `---` when not available |
+| T+Ap | Time to apoapsis | Green; `∞` on escape; `---` when not available |
 
 **Buttons.** None.
 
@@ -1095,7 +1095,7 @@ autopilot and PRE-LAUNCH outrank it.
   from 75 %, red from 90 %, ticked at both.
 
 **Reading the screen.**
-1. Before entry, put the magenta Pe marker in the green band; PEA reads green. Red is
+1. Before entry, put the magenta Pe marker in the green band; PeA reads green. Red is
    too steep; cyan means you will only aerobrake.
 2. Hold the retrograde marker inside the green ring; SAS RETR shows green.
 3. Watch the G meter and SKIN/CORE for loads and heating.
@@ -1117,7 +1117,7 @@ ALT.RDR inside it. Chute states are remembered until a vessel switch, and CUT is
 | ALT.RDR | Radar altitude (row 1, inside the atmosphere) | Green; yellow under 500 m; white on red under 50 m |
 | V.SRF | Surface speed | Green always |
 | V.VRT | Vertical speed | Below 500 m radar altitude: yellow faster than 5 m/s down, white on red faster than 8 m/s down. Green otherwise |
-| PEA | Periapsis altitude | By corridor band: white on red too steep; green in the corridor; cyan aerobraking; light grey above the atmosphere |
+| PeA | Periapsis altitude | By corridor band: white on red too steep; green in the corridor; cyan aerobraking; light grey above the atmosphere |
 | MACH | Mach number | Yellow 0.85–1.20 (transonic); green otherwise |
 | DROG | Drogue state: STOW, ARM, OPEN or CUT | STOW: green; yellow from 85 % of the drogue's dynamic-pressure limit; white on red at the limit. ARM (sky blue): deployed, but the air is too thin to open it. OPEN: yellow while still partly open above 2,500 m; green below; white on red while the dynamic pressure is still at or over the limit. CUT: red |
 | MAIN | Main chute state | As DROG, with the main chute's limit and full opening at 1,000 m |
@@ -1227,7 +1227,7 @@ rise, gravity turn, coast and circularisation burn, then hands control back. One
 ARM / DISARM button controls it; there are no mode buttons.
 
 **Layout.**
-- **MISSION.** TGT AP (target apoapsis, m); INC (target inclination, 0–180°); LAUNCH
+- **MISSION.** TGT Ap (target apoapsis, m); INC (target inclination, 0–180°); LAUNCH
   (NORTH or SOUTH, toggled by a tap).
 - **VEH PROFILE.** LOFT (trajectory shape, 0.5–2.0: below 1 is aggressive, above 1
   lofted); ROLL (roll hold, ±180°, or OFF); MAX-G (acceleration limit, 0–20 g, or OFF).
@@ -1237,7 +1237,7 @@ ARM / DISARM button controls it; there are no mode buttons.
 - **GUIDANCE.** Read-only commanded and live values.
 
 **Operating it.**
-1. Set TGT AP, INC and LAUNCH, then the profile. Each value is sky blue until confirmed.
+1. Set TGT Ap, INC and LAUNCH, then the profile. Each value is sky blue until confirmed.
 2. Tap **ARM**. The banner shows `ARMED`, and the A/P key turns green.
 3. Launch. The banner and button step through VERTICAL, GRAVITY TURN, COAST,
    CIRCULARIZE and COMPLETE.
@@ -1258,8 +1258,8 @@ gives the body name only.
 | THRTL | Commanded throttle, bar and percentage | Green always |
 | G | Current load factor | Green; with MAX-G set, yellow from 90 % of MAX-G and red at MAX-G |
 | Q | Dynamic pressure, Pa below 1,000, kPa above | Green always |
-| APA | Current apoapsis | Light grey always |
-| PEA | Current periapsis, negative while suborbital | Light grey always |
+| ApA | Current apoapsis | Light grey always |
+| PeA | Current periapsis, negative while suborbital | Light grey always |
 
 ### ORBITAL AUTOPILOT (caption ORAP)
 
@@ -1273,7 +1273,7 @@ approach-rate hold. Burns take two steps: arming plans the burn and fills the PL
 column; **EXEC** starts it. It never time-warps unless you ask.
 
 **Layout.**
-- **BURN.** NODE (box shows the node's Δv, or `NO NODE`), AP and PE (target altitudes,
+- **BURN.** NODE (box shows the node's Δv, or `NO NODE`), Ap and Pe (target altitudes,
   m), INC (target inclination). Only one burn can be armed.
 - **TARGET / OPTIONS.** APPR engages the approach hold at once (it is not a burn); its
   box is the closing-rate setpoint, −20 to +5 m/s, negative closing. HOLD AT is the
@@ -1285,7 +1285,7 @@ column; **EXEC** starts it. It never time-warps unless you ask.
   for you to take over; only a completed burn cuts it.
 
 **Operating it.**
-1. For a node burn, create the node in KSP; for AP, PE or INC, enter the target.
+1. For a node burn, create the node in KSP; for Ap, Pe or INC, enter the target.
 2. Tap the burn's mode button. When it turns green the banner shows `PLANNED` and the
    PLAN column fills.
 3. Check ΔV TOT, T-IGN, BURN, and STG ΔV against ΔV TOT.
@@ -1298,7 +1298,7 @@ WARPING, BURNING and ABORT in orange, DONE in sky blue. Reasons: `NO NODE` (no n
 it was removed); `REFUSED` (no valid plan, stale telemetry, or closing too fast for the
 range); `FUEL` (the burn needs more Δv than the stage has with auto-stage off, or the
 stage ran dry); `NO TARGET`; `ALIGN` (not pointed within 2° after 30 s); `REPLANNED`
-(the orbit changed after EXEC; tap EXEC again). The AP, PE and INC boxes cannot be edited
+(the orbit changed after EXEC; tap EXEC again). The Ap, Pe and INC boxes cannot be edited
 while BURNING.
 
 **Readouts (PLAN column).**

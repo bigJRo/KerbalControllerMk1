@@ -30,7 +30,7 @@ static const uint16_t OB_EDT = TFT_SKY;
 
 // Burn modes: 0 NODE, 1 AP, 2 PE, 3 INC (state.obMode 1..4). Approach is mode 4 here.
 static const uint8_t OB_BURNS = 4;
-static const char *const OB_BURN_LBL[OB_BURNS] = { "NODE", "AP", "PE", "INC" };
+static const char *const OB_BURN_LBL[OB_BURNS] = { "NODE", "Ap", "Pe", "INC" };
 static const uint8_t     OB_ARM_OP[OB_BURNS]   = { OB_CMD_ARM_NODE, OB_CMD_ARM_AP, OB_CMD_ARM_PE, OB_CMD_ARM_INC };
 static const uint8_t     OB_SET_OP[OB_BURNS]   = { 0, OB_CMD_SET_AP, OB_CMD_SET_PE, OB_CMD_SET_INC };
 

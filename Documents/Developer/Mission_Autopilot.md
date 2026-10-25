@@ -46,8 +46,8 @@ displays remain consoles. As before, the panel confirms only what the master ech
 | Console | Mode | Does | Actuators |
 |---------|------|------|-----------|
 | ORBITAL | **NODE** | Executes the next maneuver node: align, warp, burn, cut | SAS maneuver mode, throttle, warp-to, stage |
-| ORBITAL | **AP** | Burns at periapsis to put apoapsis at the setpoint | SAS prograde / retrograde, throttle, warp-to |
-| ORBITAL | **PE** | Burns at apoapsis to put periapsis at the setpoint | as AP |
+| ORBITAL | **Ap** | Burns at periapsis to put apoapsis at the setpoint | SAS prograde / retrograde, throttle, warp-to |
+| ORBITAL | **Pe** | Burns at apoapsis to put periapsis at the setpoint | as Ap |
 | ORBITAL | **INC** | Burns at the nearer node to reach the target inclination | SAS normal / anti-normal, throttle, warp-to |
 | ORBITAL | **APPR** | Closes on the target at a commanded rate, nulls lateral relative velocity, holds at a distance | SAS target mode, RCS translation |
 | ORBITAL | *WARP*, *STAGE* | Options: automatic warp to ignition; auto-stage during burns | warp-to, stage |

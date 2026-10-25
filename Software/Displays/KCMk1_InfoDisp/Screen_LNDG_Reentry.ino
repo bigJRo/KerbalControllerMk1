@@ -631,7 +631,7 @@ static void _lndgChromeReentry(KCM_TFT &tft) {
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(1, RE_NR), RE_TXT_W, rowHFor(RE_NR), r1, COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(2, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.SRF", COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(3, RE_NR), RE_TXT_W, rowHFor(RE_NR), "V.VRT", COL_LABEL, COL_BACK, COL_NO_BDR);
-  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PEA",   COL_LABEL, COL_BACK, COL_NO_BDR);
+  printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(4, RE_NR), RE_TXT_W, rowHFor(RE_NR), "PeA",   COL_LABEL, COL_BACK, COL_NO_BDR);
   printDispChrome(tft, RE_LF, RE_TXT_X, rowYFor(5, RE_NR), RE_TXT_W, rowHFor(RE_NR), "MACH",  COL_LABEL, COL_BACK, COL_NO_BDR);
 
   // Horizontal separator above the Drogue/Main status board.
@@ -746,7 +746,7 @@ static void _lndgDrawReentry(KCM_TFT &tft) {
     int8_t reg = _rePeRegime(c, state.periapsis);
     uint16_t pfg = _reRegimeColor(reg);
     if (reg == 0) { pfg = TFT_WHITE; bg = TFT_RED; } else bg = TFT_BLACK;
-    reVal(4, "PEA", formatAlt(state.periapsis), pfg, bg);
+    reVal(4, "PeA", formatAlt(state.periapsis), pfg, bg);
   }
 
   // Row 5: Mach (transonic band highlighted)

@@ -1180,15 +1180,15 @@ static void chromeScreen_ORB(KCM_TFT &tft) {
     tft.setCursor(6,   ORB_RDY0); tft.print("SMA");
     tft.setCursor(6,   ORB_RDY1); tft.print("ECC");
     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY2); tft.print("PEA");
+    tft.setCursor(6,   ORB_RDY2); tft.print("PeA");
     tft.setTextColor(TFT_BLUE, TFT_BLACK);
-    tft.setCursor(6,   ORB_RDY3); tft.print("APA");
+    tft.setCursor(6,   ORB_RDY3); tft.print("ApA");
 
     // INCL readout labels — Inc (top), PRD, Arg.Pe. T+Pe/T+Ap is dynamic.
     tft.setTextColor(KDC_LABEL_COLOR, TFT_BLACK);
     tft.setCursor(INC_LABEL_X, INC_RDY0); tft.print("INC");
     tft.setCursor(INC_LABEL_X, INC_RDY1); tft.print("PERIOD");
-    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("ARG.PE");
+    tft.setCursor(INC_LABEL_X, INC_RDY2); tft.print("ARG.Pe");
     // T+Pe / T+Ap label is drawn on demand from drawScreen_ORB via _lastTLabel cache
 }
 
@@ -1474,7 +1474,7 @@ static void drawScreen_ORB(KCM_TFT &tft) {
             tft.setFont(*F);
             tft.setTextColor(KDC_LABEL_COLOR, TFT_BLACK);
             tft.setCursor(INC_LABEL_X, INC_RDY3);
-            tft.print(showPe ? "T+PE" : "T+AP");
+            tft.print(showPe ? "T+Pe" : "T+Ap");
             _lastTLabel = nowLabel;
         }
         float t = showPe ? rawPe : rawAp;

@@ -115,7 +115,7 @@ static const int16_t LNCH_OR_ECC_VAL_Y = LNCH_OR_ECC_LBL_Y + 27;           // 24
 // Second left-rail slot. Was the ΔV-to-circularise readout; that moved to the right
 // column with the other two burn numbers, and this slot now carries the apsis gap —
 // the number the orbit diagram directly above it is a picture of.
-static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("AP-PE", Black_20)
+static const int16_t LNCH_OR_GAP_LBL_Y = 372;   // label row ("Ap-Pe", Black_20)
 static const int16_t LNCH_OR_GAP_VAL_Y = 400;   // value row (Black_28)
 
 
@@ -1160,7 +1160,7 @@ static void _lnchOrUpdateGapReadout(KCM_TFT &tft) {
     const bool first = (_lnchOrPrevGapM == -9999);
     if (gap == _lnchOrPrevGapM && !first) return;
 
-    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "AP-PE",
+    _lnchOrRailReadout(tft, LNCH_OR_GAP_LBL_Y, LNCH_OR_GAP_VAL_Y, "Ap-Pe",
                        haveOrbit ? _lnchOrAltCompact(state.apoapsis - state.periapsis)
                                  : String("---"),
                        haveOrbit ? TFT_DARK_GREEN : TFT_DARK_GREY, first);

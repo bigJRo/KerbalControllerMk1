@@ -1662,7 +1662,7 @@ static void _lnchAsResetState() {
 // stage, not a countdown of any particular burn. The old label read like a time-to.
 // The circularisation phase uses the same name for the same field.
 static const char *_lnchAsLabels[LNCH_AS2_NROWS] = {
-    "T+AP", "THRTL", "Q", "MACH", "G", "STG.BRN", "\xCE\x94V.STG"
+    "T+Ap", "THRTL", "Q", "MACH", "G", "STG.BRN", "\xCE\x94V.STG"
 };
 
 // Draw static chrome for the ascent-phase right panel: a border separating
