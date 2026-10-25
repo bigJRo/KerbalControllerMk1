@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
-| **Status** | Draft 3, for review. Nothing here is implemented yet |
+| **Status** | Draft 4, for review. Nothing here is implemented yet. Draft 4 adds the Panel Hub and 7" TFT Display Driver wiring (Appendix B) |
 | **Supersedes** | `Controller_Main_IO_Design.md` (drafts 1–2, which planned an overhaul of the existing sketch) |
 
 ---
@@ -24,8 +24,8 @@ We are replacing the master firmware (`Software/Controller_Main`) with a **new s
 2. **Three hardware answers**, needed by stage 3. Each has a default that gets built if there is no answer (§12):
    - **Q2 — Staging:** from Stability Control B14 / B15, or from the B2 staging button?
    - **Q3 — Ctrl Mode Toggle:** which module inputs will it be wired to?
-   - **Q14 — Safe lines:** what is connected to INT_SAFE, INT_SAFE2, B_INT_SAFE and B_INT_SAFE2?
-3. **The remaining schematics**, if available: Ctrl Ext Module (KC-01-1711), Panel Hub (KC-01-1731), Display Hub (KC-01-1721).
+   - **Q14 — Safe switches:** what is each of the four safe switches for? (Each panel has one switch terminal; Appendix B.3)
+3. **One remaining schematic**, if available: the Ctrl Ext Module (KC-01-1711), to confirm which B line goes to B1 and which to B2. And a yes / no: is the Display Hub (KC-01-1721) retired, now that the 7" display driver doubles as the display panel's hub (Appendix B.1)?
 
 ---
 
@@ -44,7 +44,8 @@ We are replacing the master firmware (`Software/Controller_Main`) with a **new s
 11. [Stages](#11-stages)
 12. [Open questions](#12-open-questions)
 - [Appendix A — Ctrl Module pin map](#appendix-a--ctrl-module-pin-map-kc-01-1701-v20)
-- [Appendix B — Glossary](#appendix-b--glossary)
+- [Appendix B — Panel wiring](#appendix-b--panel-wiring)
+- [Appendix C — Glossary](#appendix-c--glossary)
 
 ---
 
@@ -61,8 +62,8 @@ We are replacing the master firmware (`Software/Controller_Main`) with a **new s
 Where two sources disagree, the higher one wins.
 
 1. **Schematics.**
-   - In hand: Ctrl Module KC-01-1701 V2.0 (Appendix A).
-   - Still wanted: Ctrl Ext Module (KC-01-1711), Panel Hub (KC-01-1731), Display Hub (KC-01-1721), and any module board where a safe line or the Ctrl Mode Toggle is wired.
+   - In hand: Ctrl Module KC-01-1701 V2.0 (Appendix A); Panel Hub KC-01-1731 V2.0 and 7" TFT Display Driver KC-01-1911 V2.1 (Appendix B); Ctrl Ext Module fabrication drawing KC-01-1712 V2.0 (connector placement only, no nets).
+   - Still wanted: the Ctrl Ext Module schematic (KC-01-1711).
 2. **I2C Protocol Specification v2.14:** module packets, lifecycle, commands, and the display protocol (§15).
 3. **Module UI Reference v5.9:** what every button, switch, encoder and stick does.
 4. **Display firmware and READMEs:** what the Annunciator, Info Displays and Resource Display expect. Their commands are fixed; the new master sends exactly what the current one does.
@@ -185,6 +186,8 @@ Which interrupt line a module uses depends on which hub slot it is plugged into.
 3. The INT line that goes high after each read belongs to that module.
 
 The display panels are found the same way: a STATUS request makes them signal.
+
+This matters more than it first looks: on the display panels the 7" display driver is itself the hub, and a second display or the Dual Encoder plugs into one of its module slots (Appendix B.1). Which line a display ends up on depends on which board is cabled as the hub.
 
 - **Restarts:** the result is saved in EEPROM, so the map survives a master that restarts on its own, when the modules are already up and not signalling.
 - **First boot:** a default map in `config.h` is used.
@@ -459,15 +462,23 @@ Each question has a **default** that gets built if there is no other answer. The
 - **Why it is open:** no spare Teensy pin reaches a connector, so the 3-position switch can only reach the master through a module input.
 - **Default:** two spare inputs on a 24-input module. Until it is wired, control mode follows the vessel type KSP reports: plane → Plane, rover → Rover, anything else → Spacecraft.
 
-**Q14 — The four safe lines**
-- **Question:** what is wired to INT_SAFE, INT_SAFE2, B_INT_SAFE and B_INT_SAFE2?
-- **Why it is open:** they are raw switch lines straight to the master. The Ctrl Module schematic shows where they go but not what drives them.
-- **Default:**
-  - INT_SAFE = ABORT (the Abort button is on A2);
-  - B_INT_SAFE = STAGE button (B2), unless staging comes from Stability (Q2);
-  - INT_SAFE2 and B_INT_SAFE2 unused.
+**Q14 — The four safe switches**
+- **What the schematics settle:** each panel has one switch terminal (a 6-pin screw terminal on its Panel Hub or display driver), and its line reaches the master directly. The line is **active-high**: closed = 3.3 V, open = 0 V through a pull-down (Appendix B.3). So there are four single on / off switches, one per panel:
 
-  All are active-low and debounced 10 ms.
+  | Line | Panel | Terminal on |
+  |---|---|---|
+  | INT_SAFE | A2 | Panel Hub |
+  | INT_SAFE2 | A1 | 7" display driver |
+  | B_INT_SAFE | B2 (assumed) | Panel Hub |
+  | B_INT_SAFE2 | B1 (assumed) | 7" display driver |
+
+- **Question:** what is each switch for, and is it a button or a latching switch?
+- **Default:**
+  - INT_SAFE (A2) = ABORT (the Abort button is on A2);
+  - B_INT_SAFE (B2) = STAGE button, unless staging comes from Stability (Q2);
+  - INT_SAFE2 and B_INT_SAFE2 unused, but read and reported on Serial so they can be tested.
+
+  All read active-high, without the Teensy's pull-up, debounced 10 ms.
 
 ### Behaviour — defaults proposed
 
@@ -480,7 +491,7 @@ Each question has a **default** that gets built if there is no other answer. The
 | Q9 | AUX B8 cruise control: the rover autopilot already has cruise | B8 engages / disengages rover cruise at the current speed | 5 |
 | Q10 | ENC1 button was "sync the master's TFT", but there is no TFT | Reset the control group to 1 | 3 |
 | Q12 | What MSTR RESET and SCE AUX reset | MSTR RESET: reset all modules and displays, all autopilots off. SCE AUX: reconnect to KSP and refresh | 5 |
-| Q13 | Which hub slot each module is in | Not needed: the master learns it (§5.2). A slot list, if you have one, becomes the default | 2 |
+| Q13 | Which hub slot each module is in | Not needed: the master learns it (§5.2, Appendix B). A slot list, if you have one, becomes the default | 2 |
 | Q15 | Sketch name | `Software/KCMk1_Master/` | 1 |
 
 **Resolved:** Q1 (rev-2 pin map, Appendix A); Q7 (power monitor is an INA228 at 0x40); Q11 (UI Control LEDs, now in §7.2).
@@ -505,9 +516,10 @@ From the schematic, sheet 1. This is the pin map `config.h` will carry.
 | B_INT_SAFE | 35 | B1 / B2 |
 | B_INT_SAFE2 | 34 | B1 / B2 |
 
-**Why A2 is the 8-line connector:** A2 has 7 modules (UI, Function, Action, Translation, GPWS, Throttle, Sys Info Display). A1 has only the two 7" displays and the power button, so it is on the 4-line connector. The B side has 12 lines for 9 modules:
-- **B2:** Stability, Vehicle, Time, AUX, Rotation, Pre-Warp;
-- **B1:** Info Display 2, Resource Display, Dual Encoder.
+**What is on each connector** (Appendix B):
+- **A2 — CN3, 8 lines:** a Panel Hub with eight module slots, for UI, Function, Action, Translation, GPWS, Throttle and the Sys Info Display.
+- **A1 — CN4, 4 lines:** a 7" display driver acting as the hub. INT_12 is that display's own line, and INT_9–INT_11 are its three module slots (the second A1 display plugs into one).
+- **B side, 12 lines:** the same pair again through the Ctrl Ext Module, most likely B2 on 8 lines (Stability, Vehicle, Time, AUX, Rotation, Pre-Warp) and B1 on 4 (Info Display 2, Resource Display, Dual Encoder). The Ctrl Ext schematic would confirm the split.
 
 ### A.2 Other pins
 
@@ -538,10 +550,67 @@ For the hardware owner; the firmware follows the schematic.
 
 1. **ST7789 status display.** The Hardware Reference lists one on the Ctrl Module. The schematic has none (the SPI pins are not connected).
 2. **EXT_INT series resistor.** The Hardware Reference puts the 47 Ω resistor on the EXT_INT_2 *output*. The schematic puts it on the EXT_INT_1 *input* and leaves EXT_INT_2 unprotected. **Check before the expansion unit is built.**
+3. **Display Hub.** The Hardware Reference has a Display Hub (KC-01-1722) for A1 and B1. The Ctrl Module's A1 connector matches the 7" display driver's main connector pin for pin, so the display driver appears to have taken that role (Appendix B.1).
+4. **Safe switch on the module connector.** Hardware Reference §12 puts INT_SAFE on the 16-pin module connector for modules with a safe switch. On both the Panel Hub and the display driver, pin 16 is not connected; the safe switch has its own screw terminal instead (Appendix B.3). The "\*Safe Switch Connection" note beside slot P1 (Panel Hub) and P2 (display driver) looks left over from that design.
 
 ---
 
-## Appendix B — Glossary
+## Appendix B — Panel wiring
+
+From the Panel Hub KC-01-1731 V2.0, the 7" TFT Display Driver KC-01-1911 V2.1, and the Ctrl Ext Module fabrication drawing KC-01-1712 V2.0.
+
+### B.1 Topology
+
+```
+                          ┌── CN3 (8 lines + INT_SAFE) ──── A2 Panel Hub ──── 8 module slots (P1–P8)
+                          │
+  Ctrl Module ────────────┼── CN4 (4 lines + INT_SAFE2) ─── A1 7" display driver
+  (Teensy 4.1 master)     │                                   ├── its own display     (INT_12)
+                          │                                   └── 3 module slots P2–P4 (INT_9–INT_11)
+                          │                                        e.g. the second A1 display, via its P1
+                          │
+                          └── 50-pin interboard ─── Ctrl Ext Module ──┬── B2 Panel Connection (34-pin)
+                                                                      ├── B1 Panel Connection (34-pin)
+                                                                      ├── expansion terminal (EXT bus, RST, EXT_INT_1/2, power)
+                                                                      └── fan header
+```
+
+- **Panel Hub:** one 34-pin main connector (CN1), eight 16-pin module slots (P1–P8, slot *n* on INT_*n*), the safe-switch terminal, and its own 12 V → 5 V → 3.3 V regulators.
+- **7" display driver:** the same 34-pin main connector (CN1), but only INT_1–INT_3 go to its three module slots (P2–P4). Its own interrupt is on the hub's INT_4 position (pin 24); pins 25–28 are unused. It also has a 16-pin *Panel Control Connector* (P1) with its interrupt on the slot pin, so a display driver can instead plug into a hub slot like any module. It carries its own safe-switch terminal and the master-alarm audio and DFPlayer for the Annunciator.
+- **Ctrl Ext Module:** passive. It splits the 50-pin interboard cable into the B2 and B1 panel connectors, an expansion terminal (SDA_EXT, SCL_EXT, RST, INT_1, INT_2, power) and a fan header.
+
+### B.2 16-pin module slot
+
+The same on the Panel Hub (P1–P8) and the display driver (P2–P4):
+
+| Pins | Signal |
+|---|---|
+| 1–4 | V_IN (12 V) |
+| 5–8, 10, 15 | GND |
+| 9 | 3.3 V (from the hub) |
+| 11 / 12 | SDA_BUS / SCL_BUS |
+| 13 | INT (the slot's own line) |
+| 14 | RST |
+| 16 | Not connected |
+
+### B.3 Safe switch input
+
+Each Panel Hub (U4) and display driver (U3) has a 6-pin screw terminal (DB127S-5.08-6P):
+
+| Terminal pin | Net |
+|---|---|
+| 1 | 5 V (hub) |
+| 2, 3, 5 | V_EN (tied together; connects to nothing else on the board) |
+| 4 | GND |
+| 6 | Switch output → 10 kΩ / 20 kΩ divider → INT_SAFE |
+
+**For the firmware:** a switch between pins 1 and 6 gives 3.3 V on the safe line when closed. When open, the 20 kΩ pulls the line to 0 V. So the line is **active-high**, and the Teensy pin must be a plain input with no pull-up.
+
+**For the hardware owner:** V_EN is a named net on pins 2, 3 and 5 that nothing drives. If it is meant to light an illuminated switch, or to be switched by the master, it is not connected.
+
+---
+
+## Appendix C — Glossary
 
 | Term | Meaning |
 |---|---|
@@ -549,7 +618,7 @@ For the hardware owner; the firmware follows the schematic.
 | **Module** | An ATtiny816 input panel (buttons, switches, sticks, encoders, 7-segment displays) on the I2C bus |
 | **Carrier / display panel** | A Teensy 4.1 driving a screen: Annunciator, Info Displays 1 / 2, Resource Display, Sys Info Display |
 | **INT line** | A module's own wire to the master, pulled low when it has something new to report |
-| **Safe line** | A raw switch wire to the master (INT_SAFE etc.), not a module interrupt |
+| **Safe switch / safe line** | One on / off switch per panel, on a screw terminal on its hub, wired straight to the master (INT_SAFE etc.). Active-high; not a module interrupt |
 | **Simpit** | KerbalSimpit, the KSP plugin and library the master uses to talk to the game |
 | **AG / CAG** | Action group / custom action group (from the AGX mod), toggled by number |
 | **Control group** | Which of six sets of custom action groups the buttons fire (ENC1) |
