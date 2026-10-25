@@ -241,21 +241,12 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
 | Item | Board | Connects to | Master sees it on |
 |---|---|---|---|
-| Resource Display (0x11) — **panel hub** | 7" TFT Display Driver (1911) | Its CN1 (34-pin) → Ctrl Module Extension **CN4** (*see the note*) | Hub's own line |
-| Information Display 2 (0x13) | 7" TFT Display Driver (1911) | Its P1 → Resource Display slot P2 | Slot P2 line |
-| Dual Encoder (0x2D) | Dual Encoder (1861) + 2 × Encoder (1851) | Its P1 → Resource Display slot P4 | Slot P4 line |
+| Resource Display (0x11) — **panel hub** | 7" TFT Display Driver (1911) | Its CN1 (34-pin) → Ctrl Module Extension CN5 | B_INT_12 (its own line) |
+| Information Display 2 (0x13) | 7" TFT Display Driver (1911) | Its P1 → Resource Display slot P2 | B_INT_9 |
+| Dual Encoder (0x2D) | Dual Encoder (1861) + 2 × Encoder (1851) | Its P1 → Resource Display slot P4 | B_INT_11 |
 
-- **Free:** Resource Display slot P3.
-- **Safe-switch terminals:** none wired (Resource Display or Dual Encoder).
-
-**Note: which extension connector?** CN4 is the 8-line connector (B_INT_1–8 + B_INT_SAFE) and CN5 the 4-line one (B_INT_9–12 + B_INT_SAFE2). On the A side the display hub is on the 4-line connector.
-
-| If the Resource Display is on… | B1 lines | B2's Panel Hub is then on… |
-|---|---|---|
-| **CN5** (as on the A side) | hub B_INT_12, P2 B_INT_9, P3 B_INT_10, P4 B_INT_11; safe B_INT_SAFE2 | CN4: all 8 slots have lines |
-| **CN4** | hub B_INT_4, P2 B_INT_1, P3 B_INT_2, P4 B_INT_3; safe B_INT_SAFE; B_INT_5–8 unused | CN5: only slots P1–P4 have lines; P5–P8 have none |
-
-*To confirm.*
+- **Free:** Resource Display slot P3 (B_INT_10).
+- **Safe switches:** none wired, so B_INT_SAFE2 is unused. The Dual Encoder's own terminal could not reach the master anyway (§5.8).
 
 To be filled in next: B2.
 
