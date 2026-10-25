@@ -57,7 +57,8 @@ inline void delayMicroseconds(uint32_t) {}
 inline void pinMode(int, int) {}
 inline void digitalWrite(int, int) {}
 inline void digitalWriteFast(int, int) {}
-inline int  digitalRead(int) { return 0; }
+inline int &stubPin(int p) { static int v[64]; return v[p & 63]; }   // settable input level
+inline int  digitalRead(int p) { return stubPin(p); }
 inline int  digitalReadFast(int) { return 0; }
 inline void analogWrite(int, int) {}
 inline int  analogRead(int) { return 0; }
@@ -154,10 +155,17 @@ struct TwoWire {
   void stubFeed(const uint8_t *b, int n) { rxN = n > 64 ? 64 : n; rxI = 0; for (int i = 0; i < rxN; i++) rx[i] = b[i]; }
   int  available() { return rxN - rxI; }
   int  read() { return rxI < rxN ? rx[rxI++] : 0; }
-  size_t write(uint8_t) { return 1; }
-  size_t write(const uint8_t *, size_t n) { return n; }
-  void beginTransmission(uint8_t) {}
-  uint8_t endTransmission(bool = true) { return 0; }
-  uint8_t requestFrom(uint8_t, uint8_t, bool = true) { return 0; }
+  // Transmissions a host harness can inspect: each endTransmission() appends the
+  // address and bytes to log[] (the oldest 64 are kept).
+  struct Rec { uint8_t addr; uint8_t b[64]; int n; };
+  Rec log[64]; int logN = 0; uint8_t txAddr = 0, tx[64]; int txN = 0;
+  size_t write(uint8_t v) { if (txN < 64) tx[txN++] = v; return 1; }
+  size_t write(const uint8_t *b, size_t n) { for (size_t i = 0; i < n; i++) write(b[i]); return n; }
+  void beginTransmission(uint8_t a) { txAddr = a; txN = 0; }
+  uint8_t endTransmission(bool = true) {
+    if (logN < 64) { Rec &r = log[logN++]; r.addr = txAddr; r.n = txN; for (int i = 0; i < txN; i++) r.b[i] = tx[i]; }
+    return 0;
+  }
+  uint8_t requestFrom(uint8_t, uint8_t n, bool = true) { int a = rxN - rxI; return (uint8_t)(a < n ? a : n); }
 };
 extern TwoWire Wire, Wire1, Wire2;

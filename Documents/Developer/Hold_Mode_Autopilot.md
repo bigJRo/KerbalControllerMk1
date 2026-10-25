@@ -600,6 +600,10 @@ What the build turned up, and what a reviewer should look at first.
   `Wire.begin()` or the Simpit init, and several telemetry globals the message handler writes are
   not defined anywhere. This change adds `Wire.begin()` and the link / autopilot calls to
   `setup()` and `loop()` but does not attempt the rest; the bench check stubs those globals.
+  *Since resolved (#86):* the master builds against KerbalSimpit 2.4.0, starts its Simpit link
+  without blocking and services it every loop, and `tools/host_compile.py` /
+  `tools/master_selftest.py` check the whole sketch on the host. The input-module handlers
+  (button and switch panels, dual encoder) are still not called.
 - **Display verification.** Both consoles run under demo mode on the bench with no master
   (`Demo.ino` plays Controller_Main for the hold-mode opcodes as it already did for the ascent
   ones), which is the way to review layout and touch behaviour before the I2C link is exercised.

@@ -1,4 +1,32 @@
 /***************************************************************************************
+   simpit_message_handler.ino — the master's KerbalSimpit link.
+
+   The master has its own Simpit connection (SerialUSB1); each display panel has another.
+   This tab registers the channels the master needs, feeds every message to the
+   autopilots' ingest functions, keeps the panel-LED state the module handlers read
+   (action-group and CAG status), and keeps the little cross-message state below.
+
+   Start-up does not block: initSimpitObject() makes one handshake attempt (the library
+   gives up after about a second without KSP), and simpitService(), called every loop,
+   retries every SIMPIT_RETRY_MS until KSP answers, then runs mySimpit.update(). The
+   I2C links keep running while KSP is not up.
+****************************************************************************************/
+static const uint32_t SIMPIT_RETRY_MS = 2000;
+
+static bool     g_simpitConnected = false;
+static uint32_t g_simpitLastTryMs = 0;
+static bool     g_simpitFlightScene = false;
+static bool     g_simpitHasTarget   = false;   // FLIGHT_STATUS, used with TARGETINFO
+static uint8_t  g_simpitTwIndex     = 0;       // time-warp index, 0 = 1x
+static float    g_simpitStageDV     = 0.0f;    // DELTAV and BURNTIME arrive separately; the
+static float    g_simpitStageBurn   = 0.0f;    // acceleration estimate needs both
+
+bool simpitConnected()   { return g_simpitConnected; }
+bool simpitFlightScene() { return g_simpitFlightScene; }
+bool simpitWarping()     { return g_simpitTwIndex > 0; }
+
+
+/***************************************************************************************
    SIMPIT REGISTER INPUT CHANNELS
    Contains simpit register channel objections for all the items that are required by
    this microcontroller
@@ -25,9 +53,6 @@ void registerInputChannels() {  //Game message that registers the necessary mess
   mySimpit.registerChannel(SOI_MESSAGE);
   mySimpit.registerChannel(THROTTLE_CMD_MESSAGE);
   mySimpit.registerChannel(ATMO_CONDITIONS_MESSAGE);
-  mySimpit.registerChannel(VESSEL_NAME_MESSAGE);
-  mySimpit.registerChannel(ELECTRIC_MESSAGE);
-  mySimpit.registerChannel(EVA_MESSAGE);
   mySimpit.registerChannel(SCENE_CHANGE_MESSAGE);
   mySimpit.registerChannel(VESSEL_CHANGE_MESSAGE);
 }
@@ -79,79 +104,53 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
         SASInfoMessage sasMode;
         sasMode = parseMessage<SASInfoMessage>(msg);
         SAS_mode = sasMode.currentSASMode;
-        break;
       }
+      break;
     case FLIGHT_STATUS_MESSAGE:
       if (msgSize == sizeof(flightStatusMessage)) {
         flightStatusMessage myFlightStatus;
         myFlightStatus = parseMessage<flightStatusMessage>(msg);
-        inFlight = myFlightStatus.isInFlight();
         apIngestFlightStatus(myFlightStatus.isInFlight());  // feed ascent autopilot
-        inEVA = myFlightStatus.isInEVA();
-        physTW = myFlightStatus.isInAtmoTW();
-        hasTarget = myFlightStatus.hasTarget();
-        stage = myFlightStatus.currentStage;
-        crewCount = myFlightStatus.crewCount;
-        crewCapacity = myFlightStatus.crewCapacity;
-        commNet = myFlightStatus.commNetSignalStrenghPercentage;
-        twIndex = myFlightStatus.currentTWIndex;
-        vesselType = myFlightStatus.vesselType;
-        vesselSituation = myFlightStatus.vesselSituation;
-        isRecoverable = myFlightStatus.isRecoverable();
-        vesselCtrlLvl = myFlightStatus.getControlLevel();
+        g_simpitHasTarget = myFlightStatus.hasTarget();
+        g_simpitTwIndex   = myFlightStatus.currentTWIndex;  // the Annunciator's WARP tile
         hpIngestFlightStatus(myFlightStatus.vesselType, myFlightStatus.vesselSituation, myFlightStatus.hasTarget());  // feed hold autopilot
         lpIngestFlightStatus(myFlightStatus.vesselType, myFlightStatus.vesselSituation);  // feed landing autopilot
       }
       break;
     case SCENE_CHANGE_MESSAGE:
-      flightScene = !msg[0];
-      if (flightScene) {
+      g_simpitFlightScene = !msg[0];
+      if (g_simpitFlightScene) {
         if (debug) { Serial.println("***In the flight scene***"); }
-        tftDispMode = 1;
       } else {
-        if (debug) { Serial.println("***Leaving the fight scene***"); }
-        //tftDispMode = 0;
-        resetDisplays();
-        noTone(AUDIO_PIN);
+        if (debug) { Serial.println("***Leaving the flight scene***"); }
+        g_simpitTwIndex = 0;
         hpVesselChanged();   // leaving the flight scene drops every hold mode, silently
         bpVesselChanged(); lpVesselChanged();
       }
       break;
     case VESSEL_CHANGE_MESSAGE:
       if (msg[0] == 1) {
-        resetDisplays();
         hpVesselChanged();   // a new vessel starts with no hold modes
         bpVesselChanged(); lpVesselChanged();
         if (debug) { Serial.println("*******Vessel Change Message*******"); }
       } else if (msg[0] == 2) {
         if (debug) { Serial.println("*******Craft has docked*******"); }
-        docked = true;
-        dockUpdate = true;
       } else if (msg[0] == 3) {
         if (debug) { Serial.println("*******Craft has un-docked*******"); }
-        docked = false;
-        dockUpdate = true;
       }
       break;
     case THROTTLE_CMD_MESSAGE:
       if (msgSize == sizeof(throttleMessage)) {
         throttleMessage myThrottle;
         myThrottle = parseMessage<throttleMessage>(msg);
-        gameThrottleCmd = map(myThrottle.throttle, 0, INT16_MAX, 0, 1023);
         hpIngestThrottle((float)myThrottle.throttle / (float)INT16_MAX);  // autothrottle bumpless engage
         lpIngestThrottle((float)myThrottle.throttle / (float)INT16_MAX);
-        Serial.println("********THROTTLE CMD MESSAGE RECEIVED********");
-        Serial.print("myThrottle.throttle = ");
-        Serial.println(myThrottle.throttle);
-        Serial.print("gameThrottleCmd = ");
-        Serial.println(gameThrottleCmd);
       }
       break;
     case ALTITUDE_MESSAGE:
       if (msgSize == sizeof(altitudeMessage)) {
         altitudeMessage myAltitude;
         myAltitude = parseMessage<altitudeMessage>(msg);
-        alt_sl = myAltitude.sealevel;
         alt_surf = myAltitude.surface;
         apIngestAltitude(myAltitude.sealevel, myAltitude.surface);  // feed ascent autopilot
         hpIngestAltitude(myAltitude.sealevel);                      // feed hold autopilot (ALT hold)
@@ -162,9 +161,6 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(velocityMessage)) {
         velocityMessage myVelocity;
         myVelocity = parseMessage<velocityMessage>(msg);
-        vel_orb = myVelocity.orbital;
-        vel_surf = myVelocity.surface;
-        vel_vert = myVelocity.vertical;
         apIngestVelocity(myVelocity.orbital, myVelocity.surface, myVelocity.vertical);  // feed ascent autopilot
         hpIngestVelocity(myVelocity.surface, myVelocity.vertical);                     // feed hold autopilot (V/S, CRUISE)
         lpIngestVelocity(myVelocity.surface, myVelocity.vertical);                     // feed landing autopilot
@@ -175,7 +171,6 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(airspeedMessage)) {
         airspeedMessage myAirspeed;
         myAirspeed = parseMessage<airspeedMessage>(msg);
-        gForces = myAirspeed.gForces;
         apIngestGForce(myAirspeed.gForces);  // feed ascent autopilot max-G limiter
         hpIngestAirspeed(myAirspeed.IAS, myAirspeed.mach);  // feed hold autopilot (IAS / MACH)
         lpIngestAirspeed(myAirspeed.mach);                  // feed landing autopilot (plane hand-off)
@@ -186,8 +181,6 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(apsidesMessage)) {
         apsidesMessage myApsides;
         myApsides = parseMessage<apsidesMessage>(msg);
-        periapsis = myApsides.periapsis;
-        apoapsis = myApsides.apoapsis;
         apIngestApsides(myApsides.apoapsis, myApsides.periapsis);  // feed ascent autopilot
         bpIngestApsides(myApsides.apoapsis, myApsides.periapsis);  // feed burn autopilot
       }
@@ -228,36 +221,30 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(deltaVMessage)) {
         deltaVMessage myDV;
         myDV = parseMessage<deltaVMessage>(msg);
-        stageDV = myDV.stageDeltaV;
-        totalDV = myDV.totalDeltaV;
+        g_simpitStageDV = myDV.stageDeltaV;
         apIngestStageDeltaV(myDV.stageDeltaV);  // feed ascent autopilot auto-staging
-        aeIngestStage(myDV.stageDeltaV, stageBurnTime);  // acceleration estimate + shared auto-stage
+        aeIngestStage(myDV.stageDeltaV, g_simpitStageBurn);  // acceleration estimate + shared auto-stage
       }
       break;
     case BURNTIME_MESSAGE:
       if (msgSize == sizeof(burnTimeMessage)) {
         burnTimeMessage myBurn;
         myBurn = parseMessage<burnTimeMessage>(msg);
-        stageBurnTime = myBurn.stageBurnTime;
-        totalBurnTime = myBurn.totalBurnTime;
-        aeIngestStage(stageDV, myBurn.stageBurnTime);
+        g_simpitStageBurn = myBurn.stageBurnTime;
+        aeIngestStage(g_simpitStageDV, myBurn.stageBurnTime);
       }
       break;
     case TEMP_LIMIT_MESSAGE:
       if (msgSize == sizeof(tempLimitMessage)) {
         tempLimitMessage myTemp;
         myTemp = parseMessage<tempLimitMessage>(msg);
-        maxTemp = myTemp.tempLimitPercentage;
-        skinTemp = myTemp.skinTempLimitPercentage;
         apIngestSkinTemp(myTemp.skinTempLimitPercentage / 100.0f);  // feed ascent autopilot heat limiter
       }
       break;
     case SOI_MESSAGE: {
-      strSOI = "";
       char bodyBuf[24];
       uint8_t n = 0;
       for (uint8_t i = 0; i < msgSize; i++) {
-        strSOI += char(msg[i]);
         if (n < sizeof(bodyBuf) - 1) bodyBuf[n++] = char(msg[i]);
       }
       bodyBuf[n] = '\0';
@@ -273,12 +260,6 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
       if (msgSize == sizeof(atmoConditionsMessage)) {
         atmoConditionsMessage myAtmoConditions;
         myAtmoConditions = parseMessage<atmoConditionsMessage>(msg);
-        airDensity = myAtmoConditions.airDensity;
-        airTemp = myAtmoConditions.temperature;
-        airPressure = myAtmoConditions.pressure;
-        hasAtmo = myAtmoConditions.hasAtmosphere();
-        hasO2 = myAtmoConditions.hasOxygen();
-        inAtmo = myAtmoConditions.isVesselInAtmosphere();
         apIngestAtmo(myAtmoConditions.airDensity, myAtmoConditions.hasAtmosphere(),
                      myAtmoConditions.isVesselInAtmosphere());  // feed ascent autopilot (max-Q + airless/atmospheric branch)
         hpIngestAtmo(myAtmoConditions.hasAtmosphere(), myAtmoConditions.isVesselInAtmosphere());  // feed hold autopilot
@@ -300,8 +281,8 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
           vN = cosf(p) * cosf(h); vE = cosf(p) * sinf(h); vU = sinf(p);
         }
         float closing = myTarget.velocity * (losN * vN + losE * vE + losU * vU);
-        hpIngestTarget(hasTarget, myTarget.heading, myTarget.pitch, myTarget.distance, closing);   // NAV / GS / TGT / FOLLOW
-        bpIngestTarget(hasTarget, myTarget.distance, myTarget.velocity, myTarget.heading, myTarget.pitch,
+        hpIngestTarget(g_simpitHasTarget, myTarget.heading, myTarget.pitch, myTarget.distance, closing);   // NAV / GS / TGT / FOLLOW
+        bpIngestTarget(g_simpitHasTarget, myTarget.distance, myTarget.velocity, myTarget.heading, myTarget.pitch,
                        myTarget.velocityHeading, myTarget.velocityPitch);                          // approach-rate hold
       }
       break;
@@ -313,44 +294,34 @@ void messageHandler(byte messageType, byte msg[], byte msgSize) {
                      myNode.headingNextManeuver, myNode.pitchNextManeuver);   // node executor
       }
       break;
-    case VESSEL_NAME_MESSAGE:
-      gameVesselName = "";
-      for (uint8_t i = 0; i < msgSize; i++) {
-        gameVesselName += char(msg[i]);
-      }
-      break;
-    case ELECTRIC_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage myEC;
-        myEC = parseResource(msg);
-        EC = myEC.available;
-        EC_total = myEC.total;
-      }
-      break;
-    case EVA_MESSAGE:
-      if (msgSize == sizeof(resourceMessage)) {
-        resourceMessage myEVA;
-        myEVA = parseResource(msg);
-        eva_fuel = myEVA.available;
-        eva_fuel_total = myEVA.total;
-      }
-      break;
   }
 }
 
 
 /***************************************************************************************
-   Initialize SIMPIT OBJECT
-   Executes the simpit object, registers input channels and establishes the Simpit
-   message handler
-   - No inputs
-   - No outputs
+   START / SERVICE THE SIMPIT LINK
+   initSimpitObject(): one handshake attempt (about a second at most without KSP).
+   simpitService(): every loop -- retry every SIMPIT_RETRY_MS until connected, then
+   mySimpit.update(), which dispatches inbound messages to messageHandler().
 ****************************************************************************************/
-void initSimpitObject() {
-  mySimpit.init();                                              //Init Simpit Object
-  mySimpit.printToKSP("Connected Master MC", PRINT_TO_SCREEN);  // Display a message in KSP to indicate handshaking is complete.
-  mySimpit.inboundHandler(messageHandler);                      // Sets our callback function. The KerbalSimpit library will call this function every time a packet is received
-  registerInputChannels();                                      // Register the required channels with Simpit
+bool initSimpitObject() {
+  g_simpitLastTryMs = millis();
+  if (!mySimpit.init()) {
+    if (debug) { Serial.println("Simpit: no answer from KSP, will retry"); }
+    return false;
+  }
+  g_simpitConnected = true;
+  mySimpit.printToKSP("Connected Master MC", PRINT_TO_SCREEN);  // handshake complete
+  mySimpit.inboundHandler(messageHandler);  // the library calls this for every inbound packet
+  registerInputChannels();
+  if (debug) { Serial.println("Simpit: connected"); }
+  return true;
+}
 
-  tft.println("  Kerbal Simpit Object Initialized");
+void simpitService() {
+  if (g_simpitConnected) {
+    mySimpit.update();
+    return;
+  }
+  if (millis() - g_simpitLastTryMs >= SIMPIT_RETRY_MS) initSimpitObject();
 }

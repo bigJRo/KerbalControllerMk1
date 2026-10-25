@@ -136,6 +136,10 @@ const uint8_t pThrottle0 = 0b00001000;     //Throttle to Off button
 uint16_t ledActCtrl = 0;
 uint16_t prevButtonActCtrl;
 uint16_t newButtonActCtrl;
+// AG1..AG10 activation as KSP reports it (CAGSTATUS_MESSAGE, offset by the control group),
+// for the Action Control button LEDs
+bool action1_on = false, action2_on = false, action3_on = false, action4_on = false, action5_on = false;
+bool action6_on = false, action7_on = false, action8_on = false, action9_on = false, action10_on = false;
 const uint16_t pAG1 = 0b0000000000000001;   //Action Group 1; Custom Action Group 1
 const uint16_t pAG2 = 0b0000000000000010;   //Action Group 2; Custom Action Group 2
 const uint16_t pAG3 = 0b0000000000000100;   //Action Group 3; Custom Action Group 3

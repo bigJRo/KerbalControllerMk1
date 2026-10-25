@@ -109,10 +109,10 @@ are live, and whether anything in the chain has failed. They are driven by the
 lights when its bit is set. None of them sound an audio cue.
 
 > **Status of this block.** The master sends `modeFlags` in its rev-3 command
-> (`annun_link.ino`), but it does not yet read every switch behind them. DEMO, AUDIO,
-> AUTOPILOT, DEBUG, THRTL PREC and ENG ARM follow live master state. THRTL ENA, TRIM and
-> INPUT PREC follow master variables that no panel handler sets yet, so they stay at
-> their defaults. WARP, SWITCH ERR and SIMPIT LOST have no master source yet and stay
+> (`annun_link.ino`), but it does not yet read every switch behind them. DEMO, WARP,
+> AUDIO, AUTOPILOT, DEBUG, THRTL PREC and ENG ARM follow live master state. THRTL ENA,
+> TRIM and INPUT PREC follow master variables that no panel handler sets yet, so they
+> stay at their defaults. SWITCH ERR and SIMPIT LOST have no master source yet and stay
 > OFF. In the panel's demo mode, DEMO / AUDIO / DEBUG reflect the panel's own settings
 > and the remaining tiles cycle for inspection.
 
