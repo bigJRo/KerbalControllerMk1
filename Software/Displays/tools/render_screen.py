@@ -64,6 +64,7 @@ SCENARIO_NAMES = {
     "KCMk1_InfoDisp": ["SCFT", "ACFT", "ROVR", "VEH", "LNCHPRE", "LNCH", "LNCHCIRC", "ORB", "ORBADV", "MNVR",
                        "TGT", "DOCK", "NAV", "LNDG", "LNDGRE", "LNCHAP", "ORBTAP", "LNDGAP", "ACFTAP", "ROVRAP",
                        "Standby"],
+    "KCMk1_ResourceDisp": ["Main", "MainTTE", "EVA", "Select", "Detail", "Standby"],
 }
 
 

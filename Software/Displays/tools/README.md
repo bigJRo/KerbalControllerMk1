@@ -136,6 +136,17 @@ python3 tools/render_screen.py --sketch KCMk1_InfoDisp -D INFO_DISP_UNIT=2 --suf
 The framebuffer stub honours the canvas base address and active window, which is how
 unit 1 shifts its drawing origin past the left-hand sidebar (`canvasContentRegion()`).
 
+Resource Display scenarios: `Main` (the SPCT set on a ship in orbit: LF past a reserve bug,
+MP in caution, food on its time tier, Solid Fuel not aboard and collapsed), `MainTTE` (the
+same with the TTE key engaged), `EVA` (the ring-gauge layout), `Select`, `Detail` (Liquid Fuel
+after ten minutes of a slow burn, history trace filled) and `Standby`. The scenario feeds the
+slots as the Simpit handler would and runs the panel's own sampling before the frame, so
+trends, time to empty, time tiers and the history come from the real logic:
+
+```
+python3 tools/render_screen.py --sketch KCMk1_ResourceDisp
+```
+
 Output is `<Panel><suffix>_<Scenario>.png`. Adding a panel is a scenario file for it
 plus its name list in `SCENARIO_NAMES`.
 
