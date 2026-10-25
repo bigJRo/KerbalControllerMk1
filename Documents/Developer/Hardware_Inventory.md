@@ -381,8 +381,8 @@ The Module UI Reference and the module firmware agree with each other, but not w
 | 4 | Time Control (0x25) | Done (§10.4) |
 | 5 | Function Control (0x21) | Done (§10.5) |
 | 6 | Action Control (0x22) | Done (§10.6) |
-| 7 | UI Control (0x20) | In review |
-| 8 | Joystick, 7-segment and Dual Encoder buttons | — |
+| 7 | UI Control (0x20) | Done (§10.7) |
+| 8 | Joystick, 7-segment and Dual Encoder buttons | In review |
 
 **Numbering:** Bn is the module firmware's button index, the same as the schematic net BUTTONnn. It matches the silkscreen: SW12–SW15 on the Button Module, B16–B23 on the Wide Button Module.
 
@@ -536,7 +536,7 @@ Matches the reference.
 | ApA | Orbit closed (eccentricity < 1), not landed | `ORBIT`, `APSIDESTIME`, `FLIGHT_STATUS` |
 | PeA | Not landed | `APSIDESTIME`, `FLIGHT_STATUS` |
 | MNVR | A node exists (Δv of the next node > 0) | `MANEUVER` |
-| SOI | Escape orbit: eccentricity ≥ 1, not landed (owner decision). Simpit gives no time to the next SOI change. *Note:* an encounter reached on an elliptical orbit (e.g. a Mun transfer from Kerbin orbit, e < 1) leaves the button dark | `ORBIT`, `FLIGHT_STATUS` |
+| SOI | In flight and outside the atmosphere. Simpit gives no time to the next SOI change, and an encounter can come from an elliptical orbit (e.g. a Mun transfer), so the button cannot know whether one is ahead; KSP ignores the press when there is none | `FLIGHT_STATUS`, `ATMO_CONDITIONS` |
 | MORN | Landed or splashed | `FLIGHT_STATUS` |
 
 ### 10.5 Function Control (0x21) — confirmed
@@ -575,4 +575,25 @@ Matches the reference.
 
 - B12–B15: not connected.
 - Matches the reference. Each button's group is offset by the active control group (§7.1 of the firmware design).
+
+### 10.7 UI Control (0x20) — confirmed
+
+| Input | Label | Function | Action |
+|---|---|---|---|
+| B0 | SCREEN SHOT | Screenshot without the UI | Macro: F2, F1, F2 |
+| B1 | DEBUG | KSP debug console | Alt+F12 |
+| B2 | UI | Toggle UI | F2 |
+| B3 | NAV BALL | Toggle the navball | Numpad `.` |
+| B4 | [MAP] RESET | Map view reset | `'` |
+| B5 | CYCLE NAV | Cycle navball mode | Simpit navball mode message |
+| B6 | [MAP] > | Map focus forward | Tab |
+| B7 | [SHIP] > | Next vessel | `]` |
+| B8 | [MAP] < | Map focus back | Shift+Tab |
+| B9 | [SHIP] < | Previous vessel | `[` |
+| B10 | [MAP] ENA | Map view on / off | M |
+| B11 | IVA | IVA view | C |
+| B12–B15 | — | Not connected | |
+
+- **Matches the reference.**
+- **LEDs:** backlit; ACTIVE for 150 ms on a press. KSP reports none of these states (map view, UI hidden, navball mode).
 
