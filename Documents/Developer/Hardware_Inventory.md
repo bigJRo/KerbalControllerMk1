@@ -265,8 +265,8 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
 | Panel item | Wired to | Master sees it on |
 |---|---|---|
-| Stage button | Panel Hub safe-switch terminal | B_INT_SAFE (Teensy 35), active-high |
-| Ctrl Mode selector SPC / PLN / RVR | Time Control terminal CN2: B12 (pin 3), B13 (pin 4), +5 V (pins 1–2) | Time Control's packet, B12 / B13 |
+| Stage button (momentary, with an arming switch) | Panel Hub safe-switch terminal | B_INT_SAFE (Teensy 35), active-high. Arming switch wiring *to confirm* |
+| Ctrl Mode selector SPC / PLN / RVR (3-position, PLN in the centre) | Time Control terminal CN2: B12 (pin 3), B13 (pin 4), +5 V (pins 1–2) | Time Control's packet: B12 = SPC, B13 = RVR, neither = PLN |
 | Switch Group 2 (8 switches) | Vehicle Control terminals U16 / U17 → B16–B23 (below) | Vehicle Control's packet |
 | Rotation stick | Joystick terminal U6 | Rotation's packet |
 
@@ -276,7 +276,7 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 - Time Control B14 / B15;
 - AUX CTRL terminals.
 
-**Switch Group 2** (Vehicle Control) — layout from Module UI Reference v5.9, *under review*:
+**Switch Group 2** (Vehicle Control) — order confirmed by the owner (same as Module UI Reference v5.9):
 
 | Input | Terminal pin | Switch | Off / on | Type | Reference action |
 |---|---|---|---|---|---|
@@ -319,4 +319,29 @@ These go into the firmware design once the panel review is finished.
 Whenever an autopilot owns the throttle, the master sends its value to KSP **and** drives the lever to the same position, so the lever always shows the throttle KSP is using. Today's `throttle_link` already does this (1 % deadband, at most one lever command per 200 ms); it carries over.
 
 One gap, found in the module firmware: **in precision (FINE) mode the lever position does not equal the throttle.** The module maps the lever to a narrow band around the point where FINE was selected, but its lever command (`CMD_SET_THROTTLE`) positions the lever as if FINE were off. **Decided:** while an autopilot owns the throttle, the master takes the module out of precision mode, and restores it when the autopilot lets go.
+
+### 8.4 Switch Group 2 and the matching buttons
+
+| Switch | Rule |
+|---|---|
+| **BRAKE** | The switch is dominant. LOCK: brakes on. REL: Vehicle Control's Brakes button (B0) applies the brakes only while held (no longer a toggle). *To confirm:* whether the master also re-asserts the switch when KSP changes the brakes |
+| **GEAR**, **EXT LT** | The switch sets the state only when flipped. The buttons (B3, B1) still toggle. If KSP's state and the switch disagree, the Annunciator's SWITCH ERR lights |
+| **SAS**, **RCS** | *To confirm* (§9) |
+| **CHUTE**, **THC/RHC**, **AUDIO** | As the reference |
+
+### 8.5 Ctrl Mode selector
+
+- **Decoding:** B12 = SPC, neither = PLN (centre), B13 = RVR.
+- **B12 and B13 both on** cannot happen on a healthy switch. It is reported as a **debug message**, not SWITCH ERR (the panel would show no visible discrepancy, and the light alone would not say what is wrong). While it lasts, the last good mode is kept.
+
+### 8.6 Stage button
+
+- A rising edge sends STAGE, only in a flight scene, with a 1 s lockout so a bounce or double press cannot fire two stages.
+- The button has an arming switch (wiring *to confirm*).
+
+## 9. Future discussion points
+
+1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
+2. **Stability Control B10.** Currently RCS toggle; the RCS switch makes it redundant. Choose a new function.
+3. **SAS / RCS switch rules**, if not settled with §8.4.
 
