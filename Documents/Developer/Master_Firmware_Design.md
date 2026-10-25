@@ -5,7 +5,7 @@
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Status** | Draft 5, for review. Nothing here is implemented yet |
-| **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and a watchdog design (§12.3, for review) |
+| **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and the watchdog design (§12.3) |
 | **Supersedes** | Drafts 1–4, and `Controller_Main_IO_Design.md` |
 
 ---
@@ -21,8 +21,7 @@ We are replacing the master firmware (`Software/Controller_Main`) with a **new s
 
 ### Before work starts
 
-1. **Approval of this plan.**
-2. **A review of the watchdog design** (§12.3), which is new in this draft.
+1. **Approval of this plan.** The watchdog design (§12.3) has been reviewed and settled.
 
 ---
 
@@ -589,34 +588,30 @@ The STICK / LEVER disconnect reasons go unused. The autopilot design docs are up
 
 There are none: the board's LEDs are power indicators only.
 
-### 12.3 Watchdog — *for review*
+### 12.3 Watchdog
 
-The old sketch declares a watchdog but never starts it. This is the proposed design.
+The old sketch declares a watchdog but never starts it. This is the design (settled).
 
-**Why it matters in flight.** KSP keeps the last control message it received. A master that hangs with a stick deflected, or with an autopilot's throttle applied, leaves that input on until something changes it. The watchdog limits how long that can last.
+**Why it matters in flight.** KSP keeps the last control message it received. A master that hangs with a stick deflected, or with an autopilot's throttle applied, leaves that input on until something changes it. The watchdog limits how long that can last: at most the 5 s timeout, plus the restart and Simpit reconnect.
 
-| Item | Proposal |
+| Item | Design |
 |---|---|
 | **Hardware** | Teensy 4.1 WDOG1, through the `WDT_T4` library (already used) |
 | **During `setup()`** | Off, so a stalled boot stays visible (§5). The Sys Info Display's own 5 s timeout reports a hung master |
 | **Start** | The last step of `setup()` |
-| **Timeout** | **2 s.** The longest blocking call in the loop is the Simpit handshake attempt (about 1 s), which still fits |
+| **Timeout** | **5 s.** The longest blocking call in the loop is the Simpit handshake attempt (about 1 s), well inside it |
 | **Feeding** | Once per loop pass, at one place only (§4.2 step 1); never from an interrupt or inside a wait |
-| **Early warning** | The library's trigger callback, 0.5 s before the reset, stores the breadcrumb (§4.2) and prints a line |
+| **Early warning** | The library's trigger callback, 0.5 s before the reset (at 4.5 s), stores the breadcrumb (§4.2) and prints a line |
 | **After a reset** | The boot banner reports `RESET: WATCHDOG during <call> (<module>)` (reset cause from `SRC_SRSR`, breadcrumb from no-init RAM), on the Sys Info boot screen in red and on Serial |
 | **Restart in flight** | See below |
-| **Reboot-loop guard** | Three watchdog resets within 60 s: the master stops on the boot screen with the error and does not start the watchdog, so the fault stays visible |
+| **Reboot-loop guard** | Three watchdog resets within 60 s: the master stops on the boot screen with the error and does not start the watchdog, so the fault stays visible. The count and times are kept in no-init RAM |
+| **Where it is reported** | The Sys Info boot screen and Serial only; nothing on the Annunciator |
 
 **Restart in flight:**
 - Modules are **not** reset; their state is read back.
 - The stored INT map is used.
 - After the Simpit link reconnects, the first messages sent are neutral rotation, translation and wheel. The throttle follows the lever, under the ENGINE switch.
 - Autopilots and HOLD come back disengaged, and this is logged.
-
-**To decide:**
-1. Is a 2 s timeout right?
-2. Do you want the reboot-loop guard?
-3. Should a watchdog restart also light something on the Annunciator, or is the Sys Info boot screen enough?
 
 ## 13. Display carriers
 
@@ -715,12 +710,11 @@ From Inventory §11:
 
 | # | Item | Needed by |
 |---|---|---|
-| 1 | Watchdog review (§12.3) | Stage 1 |
-| 2 | Sys Info Display frame layouts (§14) | Stage 1 |
-| 3 | Sys Info Display icons / logos | Its firmware |
-| 4 | Input test screen: layout and frame (§13.1) | Its firmware |
-| 5 | WARP TO availability, checked against Simpit on the bench (§8.8) | Stage 6 |
-| 6 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |
+| 1 | Sys Info Display frame layouts (§14) | Stage 1 |
+| 2 | Sys Info Display icons / logos | Its firmware |
+| 3 | Input test screen: layout and frame (§13.1) | Its firmware |
+| 4 | WARP TO availability, checked against Simpit on the bench (§8.8) | Stage 6 |
+| 5 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |
 
 ---
 
