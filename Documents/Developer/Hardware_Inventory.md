@@ -367,6 +367,7 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 1. **Demo and debug modes.** How the master handles SCE (demo) and UPTLM (debug), what each mode does on every panel, and where debug messages go (Serial, the Sys Info Display, both).
 2. *(Settled — §8.7.)* Stability Control B10 = HOLD.
 3. **Function Control B4 (RW DISABLE):** a better function for this button; candidates so far FLAPS, THRUST REV, UNDOCK, DRILL / ISRU, ENG SHUTDOWN, SPARE (§10.5).
+5. **Rotation stick button:** whether it stays Airbrake (CAG 38, same as Function B5).
 4. **AUX CTRL B8:** unassigned on the panel (§10.1); a function can be chosen later.
 
 ## 10. Button module review
@@ -382,7 +383,7 @@ The Module UI Reference and the module firmware agree with each other, but not w
 | 5 | Function Control (0x21) | Done (§10.5) |
 | 6 | Action Control (0x22) | Done (§10.6) |
 | 7 | UI Control (0x20) | Done (§10.7) |
-| 8 | Joystick, 7-segment and Dual Encoder buttons | In review |
+| 8 | Joystick, 7-segment and Dual Encoder buttons | Done (§10.8) |
 
 **Numbering:** Bn is the module firmware's button index, the same as the schematic net BUTTONnn. It matches the silkscreen: SW12–SW15 on the Button Module, B16–B23 on the Wide Button Module.
 
@@ -574,7 +575,7 @@ Matches the reference.
 | B10 | AG 1 | CAG 1 | | B11 | AG 7 | CAG 7 |
 
 - B12–B15: not connected.
-- Matches the reference. Each button's group is offset by the active control group (§7.1 of the firmware design).
+- Matches the reference, except that **AG 1–12 are not offset by the control group**: these buttons always send CAG 1–12 (§10.8).
 
 ### 10.7 UI Control (0x20) — confirmed
 
@@ -596,4 +597,77 @@ Matches the reference.
 
 - **Matches the reference.**
 - **LEDs:** backlit; ACTIVE for 150 ms on a press. KSP reports none of these states (map view, UI hidden, navball mode).
+
+### 10.8 Joystick, 7-segment and Dual Encoder controls — confirmed
+
+**Rotation joystick (0x28):**
+
+| Control | Function |
+|---|---|
+| BTN01 | Clear trim: clears the master's trim set by BTN02 (*not* KSP's Alt+X) |
+| BTN02 | Set trim: captures the current stick deflection as a trim offset, added to the stick from then on |
+| Stick button | Airbrake (CAG 38) — *to be re-examined* (§9). On EVA: Left Shift (run) while held |
+
+- **Annunciator TRIM** lights while a trim offset is set.
+- The pilot-override test uses the raw stick deflection, so a trim offset does not count as pilot input.
+
+**Translation joystick (0x29):**
+
+| Control | Function |
+|---|---|
+| BTN01 | Cycle camera mode (auto / free / orbital / chase) |
+| BTN02 | Camera reset |
+| Stick button | Held: the stick moves the camera instead of translating |
+
+**GPWS (0x2A)** — module-managed; the master relays its state and threshold to the Annunciator:
+
+| Control | Function |
+|---|---|
+| Display + encoder | Altitude threshold 0–9999 m |
+| Encoder button | Reset threshold to 200 m |
+| BTN01 | OFF → full GPWS → proximity tone only |
+| BTN02 | Proximity alarm on / off |
+| BTN03 | Rendezvous radar on / off |
+
+**Pre-Warp (0x2B)** — module-managed; the master reads the minutes:
+
+| Control | Function |
+|---|---|
+| Display + encoder | Lead time 0–9999 minutes |
+| Encoder button | Reset to 0 |
+| BTN01 | Preset 5 min |
+| BTN02 | Preset 1 hour |
+| BTN03 | Preset **1 Kerbin day = 6 h = 360 min**. The module firmware has 1440, an Earth day |
+
+**Dual Encoder (0x2D):**
+
+| Control | Function |
+|---|---|
+| ENC1 | Control group 1–6, wraps |
+| ENC1 button | Reset the control group to 1 |
+| ENC2 | Next / previous external camera (`-` / `=`, Hullcam VDS) |
+| ENC2 button | Camera reset (Backspace, Hullcam VDS) |
+
+**Control group offset:** every CAG button is offset by the control group (`CAG = base + (group − 1) × 40`), **except Action Control's AG 1–12**, which always send CAG 1–12. The offset therefore applies to:
+- Vehicle Control;
+- Function Control;
+- AUX CTRL PRI / ALT;
+- ENGINE-related and state-machine groups;
+- the rotation stick's airbrake.
+
+## 11. Changes needed outside the master firmware
+
+Collected from this review; each is a separate piece of work.
+
+| # | Where | Change |
+|---|---|---|
+| 1 | Annunciator firmware | Tile label THRTL ENA → A/P ARM (§8.2) |
+| 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light |
+| 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day) |
+| 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5) |
+| 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1) |
+| 6 | Stability Control module firmware | B10 HOLD colour (was RCS) |
+| 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
+| 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
+| 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
 
