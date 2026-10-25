@@ -375,8 +375,8 @@ The Module UI Reference and the module firmware agree with each other, but not w
 | # | Module | Status |
 |---|---|---|
 | 1 | AUX CTRL (0x26) | Done (§10.1) |
-| 2 | Stability Control (0x23) | In review |
-| 3 | Vehicle Control (0x24) | — |
+| 2 | Stability Control (0x23) | Done (§10.2) |
+| 3 | Vehicle Control (0x24) | In review |
 | 4 | Time Control (0x25) | — |
 | 5 | Function Control (0x21) | — |
 | 6 | Action Control (0x22) | — |
@@ -398,7 +398,7 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 | B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P |
 | B7 | [EVA] HELM | Helmet toggle | EVA | Key O |
 | B8 | — | **Undefined** | — | Dark, ignored |
-| B9 | FLAG | Plant flag | EVA | Key G |
+| B9 | [EVA] FLAG | Plant flag | EVA | Key G |
 | B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 |
 | B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 |
 
@@ -406,4 +406,28 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 - B8 Cruise Control is removed.
 - B10 is no longer a PRI / ALT toggle; it is PRI only.
 - B11 is ALT (was Docking Port, CAG 37). CAG 37 is freed.
+
+**Behaviour:**
+- **EVA group (B0–B7, B9):** dark outside EVA, and presses ignored.
+- **PRI / ALT:** pressing one switches to that control point. It deactivates the other's CAG first, then activates its own, and its LED stays lit to show which is active. Pressing the one already active does nothing.
+
+### 10.2 Stability Control (0x23) — confirmed
+
+| Input | Label | Action |
+|---|---|---|
+| B0 | [SAS] TARGET | SAS mode Target |
+| B1 | [SAS] ANTI-TARGET | SAS mode Anti-Target |
+| B2 | [SAS] RADIAL IN | SAS mode Radial In |
+| B3 | [SAS] RADIAL OUT | SAS mode Radial Out |
+| B4 | [SAS] NORMAL | SAS mode Normal |
+| B5 | [SAS] ANTI-NORMAL | SAS mode Anti-Normal |
+| B6 | [SAS] PROGRADE | SAS mode Prograde |
+| B7 | [SAS] RETROGRADE | SAS mode Retrograde |
+| B8 | [SAS] STABILITY ASSIST | SAS mode Stability Assist |
+| B9 | [SAS] MANEUVER | SAS mode Maneuver |
+| B10 | HOLD | HOLD (§8.7) |
+| B11 | INVERT | Holds F while held |
+| B12–B15 | — | Not connected |
+
+**Changes from the reference:** B10 is HOLD (was RCS). B14 / B15 Stage / Stage Enable are gone: staging is the B2 stage button (§8.6).
 
