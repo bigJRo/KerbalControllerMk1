@@ -263,9 +263,7 @@ bool bpExecute() {
   }
   if (bp_phase == BP_PHASE_WARP_READY && bp_autoWarp) {
     if (!arbCanWarp(AP_OWNER_BURN)) return false;
-    timewarpToMessage w;
-    w.instant = bp_plan.warpInstant;
-    w.delay   = bp_plan.warpDelay;
+    timewarpToMessage w(bp_plan.warpInstant, bp_plan.warpDelay);   // Simpit 2.4.0 has no default constructor
     mySimpit.send(TIMEWARP_TO_MESSAGE, w);
     bp_phase = BP_PHASE_WARP;
     return true;

@@ -90,7 +90,7 @@ static void lpReleaseAttitudeOwner(bool sasStability) {
    Ignition altitude (Mission_Autopilot.md §7.2, review decision q.4)
 ****************************************************************************************/
 static float lpAccel() { return (lp_twr > 0.0f) ? lp_twr * lp_t.gravity : aeAccel(); }
-static uint8_t lpAccelSource() { return (lp_twr > 0.0f) ? AE_SRC_TWR : aeSource(); }
+static uint8_t lpAccelSource() { return (lp_twr > 0.0f) ? (uint8_t)AE_SRC_TWR : aeSource(); }
 
 static float lpIgnitionAltitude() {
   float a = lpAccel(), g = lp_t.gravity;

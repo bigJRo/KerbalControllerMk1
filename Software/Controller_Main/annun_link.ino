@@ -30,8 +30,8 @@
    runs; the state byte and display value of every packet are kept and relayed.
 
    Mode-flag sources. Bits with no master source yet are sent as 0 and stay dark on the
-   Annunciator: WARP and SIMPIT LOST (the master's Simpit link is not integrated) and
-   SWITCH ERR (nothing detects one).
+   Annunciator: SIMPIT LOST (the link carries no heartbeat to time out on) and SWITCH ERR
+   (nothing detects one). WARP follows the time-warp index in FLIGHT_STATUS.
 ****************************************************************************************/
 #include "control_links.h"
 #include "ascent_autopilot.h"
@@ -78,6 +78,7 @@ static uint8_t anlControlByte() {
 static uint16_t anlModeFlags() {
   uint16_t f = 0;
   if (demo)                                f |= (1u << ANL_MF_DEMO);
+  if (simpitWarping())                     f |= (1u << ANL_MF_WARP);
   if (audioEn)                             f |= (1u << ANL_MF_AUDIO);
   if (throttleEn)                          f |= (1u << ANL_MF_THRTL_ENA);
   if (trimMode)                            f |= (1u << ANL_MF_TRIM);

@@ -231,6 +231,14 @@ void setup() {
   lpInit();    // landing autopilot (LANDING AUTOPILOT console)
   idlInit();
   anlInit();   // Annunciator + Resource Display: release the boot hold, then the periodic command
+  anlService();       // first command now, so the carriers leave their boot hold before KSP is up
+
+  /********************************************************
+    KerbalSimpit link to KSP (SerialUSB1). One attempt here;
+    simpitService() retries from loop() until KSP answers,
+    so the I2C links keep running in the meantime.
+  *********************************************************/
+  initSimpitObject();
 }
 
 
@@ -238,6 +246,8 @@ void setup() {
 Arduino Loop Function
 ****************************************************************************************/
 void loop() {
+
+  simpitService();    // KerbalSimpit: inbound messages to the autopilots, or a reconnect attempt
 
   /********************************************************
     Process Staging Button

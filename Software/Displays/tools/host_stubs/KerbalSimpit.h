@@ -23,6 +23,24 @@ enum OutboundPackets : byte {
   HYDROGEN_STAGE_MESSAGE = 54, URANIUM_MESSAGE = 55, ADVANCED_ACTIONSTATUS_MESSAGE = 56,
   ADVANCED_CAGSTATUS_MESSAGE = 57, INTERSECTS_MESSAGE = 60
 };
+// Packets to KSP (the master's commands). Separate enum in the library: the ids overlap.
+enum InboundPackets : byte {
+  ROTATION_MESSAGE = 16, TRANSLATION_MESSAGE = 17, WHEEL_MESSAGE = 18, THROTTLE_MESSAGE = 19,
+  SAS_MODE_MESSAGE = 20, CAMERA_CONTROL_MODE = 21, CAMERA_ROTATION_MESSAGE = 22,
+  TIMEWARP_MESSAGE = 24, CUSTOM_LOG = 25, KEYBOARD_EMULATOR = 26, CUSTOM_AXIS_MESSAGE = 27,
+  NAVBALLMODE_MESSAGE = 28, TIMEWARP_TO_MESSAGE = 30, SETSINGLE_AG_MESSAGE = 58,
+  SETSINGLE_CAG_MESSAGE = 59
+};
+enum TimewarpTo {
+  TIMEWARP_TO_NOW = 0, TIMEWARP_TO_NEXT_MANEUVER = 1, TIMEWARP_TO_NEXT_BURN = 2,
+  TIMEWARP_TO_NEXT_SOI = 3, TIMEWARP_TO_APOAPSIS = 4, TIMEWARP_TO_PERIAPSIS = 5,
+  TIMEWARP_TO_NEXT_MORNING = 6
+};
+enum CustomLogStatus { VERBOSE_ONLY = 1, PRINT_TO_SCREEN = 2, NO_HEADER = 4 };
+enum KeyboardEmulatorModifier { SHIFT_MOD = 1, CTRL_MOD = 2, ALT_MOD = 4, KEY_DOWN_MOD = 8, KEY_UP_MOD = 16 };
+enum RotationAxes { PITCH_ROT = 1, ROLL_ROT = 2, YAW_ROT = 4, ZOOM_ROT = 8 };
+enum TranslationAxes { X_TRANS = 1, Y_TRANS = 2, Z_TRANS = 4 };
+enum WheelAxes { STEER_WHEEL = 1, THROTTLE_WHEEL = 2 };
 enum FligthStatusFlags : byte {
   FLIGHT_IN_FLIGHT = 1, FLIGHT_IS_EVA = 2, FLIGHT_IS_RECOVERABLE = 4, FLIGHT_IS_ATMO_TW = 8,
   FLIGHT_CONTROL_LEVEL_0 = 16, FLIGHT_CONTROL_LEVEL_1 = 32, FLIGHT_HAS_TARGET = 64
@@ -76,25 +94,68 @@ struct deltaVMessage          { float stageDeltaV, totalDeltaV; };
 struct deltaVEnvMessage       { float stageDeltaVASL, totalDeltaVASL, stageDeltaVVac, totalDeltaVVac; };
 struct burnTimeMessage        { float stageBurnTime, totalBurnTime; };
 struct tempLimitMessage       { byte tempLimitPercentage, skinTempLimitPercentage; };
-struct wheelMessage           { int16_t steer, throttle; byte mask; };
 struct throttleMessage        { int16_t throttle; };
 struct SASInfoMessage         { byte currentSASMode; int16_t SASModeAvailability; };
 struct cagStatusMessage       { byte status[32]; bool is_action_activated(byte i) { return (status[i / 8] >> (i % 8)) & 1; } };
+
+// Command payloads, with the library's constructors (no default constructor where it has none).
+struct rotationMessage {
+  int16_t pitch = 0, roll = 0, yaw = 0; byte mask = 0;
+  void setPitch(int16_t v) { pitch = v; mask |= PITCH_ROT; }
+  void setRoll(int16_t v)  { roll = v;  mask |= ROLL_ROT; }
+  void setYaw(int16_t v)   { yaw = v;   mask |= YAW_ROT; }
+  void setPitchRollYaw(int16_t p, int16_t r, int16_t y) { setPitch(p); setRoll(r); setYaw(y); }
+} __attribute__((packed));
+struct translationMessage {
+  int16_t X = 0, Y = 0, Z = 0; byte mask = 0;
+  void setX(int16_t v) { X = v; mask |= X_TRANS; }
+  void setY(int16_t v) { Y = v; mask |= Y_TRANS; }
+  void setZ(int16_t v) { Z = v; mask |= Z_TRANS; }
+  void setXYZ(int16_t x, int16_t y, int16_t z) { setX(x); setY(y); setZ(z); }
+} __attribute__((packed));
+struct wheelMessage {
+  int16_t steer = 0, throttle = 0; byte mask = 0;
+  void setSteer(int16_t v)    { steer = v;    mask |= STEER_WHEEL; }
+  void setThrottle(int16_t v) { throttle = v; mask |= THROTTLE_WHEEL; }
+  void setSteerThrottle(int16_t s, int16_t t) { setSteer(s); setThrottle(t); }
+} __attribute__((packed));
+struct timewarpToMessage {
+  byte instant; float delay;
+  timewarpToMessage(byte i, float d) : instant(i), delay(d) {}
+} __attribute__((packed));
+struct keyboardEmulatorMessage {
+  byte modifier; int16_t keyCode;
+  keyboardEmulatorMessage(int16_t k) : modifier(0), keyCode(k) {}
+  keyboardEmulatorMessage(int16_t k, byte m) : modifier(m), keyCode(k) {}
+} __attribute__((packed));
 
 template <class T> T parseMessage(byte *msg) { T t; memcpy(&t, msg, sizeof(T)); return t; }
 inline resourceMessage  parseResource(byte *m)        { return parseMessage<resourceMessage>(m); }
 inline SASInfoMessage   parseSASInfoMessage(byte *m)  { return parseMessage<SASInfoMessage>(m); }
 inline cagStatusMessage parseCAGStatusMessage(byte *m){ return parseMessage<cagStatusMessage>(m); }
 
+// Host harness hooks: whether init() finds KSP, and counters a selftest can read.
+struct StubSimpit { bool kspUp = true; int initCalls = 0, updateCalls = 0, registered = 0;
+                    void (*handler)(byte, byte *, byte) = nullptr; };
+inline StubSimpit &stubSimpit() { static StubSimpit s; return s; }
+
 class KerbalSimpit {
  public:
   KerbalSimpit(Stream &) {}
-  bool init() { return true; }
-  void update() {}
-  void inboundHandler(void (*)(byte, byte *, byte)) {}
-  void registerChannel(byte) {}
+  bool init() { stubSimpit().initCalls++; return stubSimpit().kspUp; }
+  void update() { stubSimpit().updateCalls++; }
+  void inboundHandler(void (*h)(byte, byte *, byte)) { stubSimpit().handler = h; }
+  void registerChannel(byte) { stubSimpit().registered++; }
   void deregisterChannel(byte) {}
   void requestMessageOnChannel(byte) {}
   void printToKSP(String, byte = 0) {}
   template <class T> void send(byte, T &) {}
+  template <class T> void send(byte, T &, byte) {}
+  void activateCAG(byte) {}
+  void deactivateCAG(byte) {}
+  void toggleCAG(byte) {}
+  void activateAction(byte) {}
+  void deactivateAction(byte) {}
+  void toggleAction(byte) {}
+  void setSASMode(byte) {}
 };

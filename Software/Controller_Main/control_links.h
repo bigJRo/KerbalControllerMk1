@@ -82,6 +82,18 @@ void    anlInit();
 void    anlService();
 
 /***************************************************************************************
+   simpit_message_handler.ino
+   The master's own KerbalSimpit link: a non-blocking start (one handshake attempt in
+   setup, retried from loop), the message handler that feeds the autopilots, and the
+   few values other tabs read.
+****************************************************************************************/
+bool    initSimpitObject();                         // one handshake attempt; true once connected
+void    simpitService();                            // every loop: update() when connected, else retry
+bool    simpitConnected();
+bool    simpitFlightScene();                        // KSP reports a flight scene
+bool    simpitWarping();                            // time warp above 1x (FLIGHT_STATUS currentTWIndex)
+
+/***************************************************************************************
    PILOT INPUT OVERRIDE — the one rule every autopilot obeys (review decision):
    any pilot input on the rotation stick, the translation stick or the throttle lever
    disconnects EVERY autopilot. The stick tests are debounced (beyond ROT_OVERRIDE_THRESHOLD

@@ -2,7 +2,7 @@
 
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
-**Version:** 1.2
+**Version:** 1.3
 **Firmware covered:** Info Display v1.16.5 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · Controller_Main as of the same merge
 
 ---
@@ -39,14 +39,14 @@ This is an in-game run-through of every screen and feature on the three TFT disp
 
 ### 2.3 Known gaps in the master controller
 
-**Controller_Main is not yet a working build.** It never starts or services its KerbalSimpit link (`initSimpitObject()` and `mySimpit.update()` are never called), and its message handler writes telemetry globals that are not defined, so the sketch does not compile as it stands (#86). Until that is integrated, every row that needs the master to fly or command the vessel cannot run: the ORAP, LDAP, ASCAP, ACAP and RVAP consoles and CTX-09. The display panels themselves run from their own Simpit links.
+**The master's own panel inputs.** Controller_Main builds and runs its KerbalSimpit link, the autopilot consoles, the throttle lever, the rotation joystick, the staging and abort buttons, and the display links (#86). Its handlers for the other input modules (the button and switch panels, the dual encoder) are not called yet, and the translation joystick is read only for the pilot-override test, so translation, SAS, RCS, gear, lights, action groups and time warp come from KSP's keyboard during the run, not from the controller panels; PAD-03 and PAD-04 can be checked that way.
 
 **The Annunciator command.** The master sends the Annunciator its full command and releases it and the Resource Display from the boot hold (`annun_link.ino`). Audio is LIVE and the GPWS settings are relayed from the GPWS Input Panel, so the audio and GPWS rows are ordinary test points. Some fields still have no source on the master:
 
 - The **control-mode tile** always reads `SPC`: the Ctrl Mode Toggle is not wired to the master yet.
 - **CTRLGRP** always reads 1: the control-group encoder (Dual Encoder ENC1) is not read yet.
 - The **AUDIO switch** is not read yet, so audio stays LIVE and cannot be muted from the panel.
-- In the **panel condition block**, THRTL ENA, TRIM and INPUT PREC hold their defaults, because no panel handler sets them. WARP, SWITCH ERR and SIMPIT LOST stay dark, because they have no source. CAP reads 0.
+- In the **panel condition block**, THRTL ENA, TRIM and INPUT PREC hold their defaults, because no panel handler sets them. SWITCH ERR and SIMPIT LOST stay dark, because they have no source. CAP reads 0. WARP follows time warp.
 
 Rows that depend on these are marked **blocked, §2.3**. Log them as N/A with this reference until the master supplies the field.
 
@@ -175,7 +175,7 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 | ORB-09 | Fire an RCS pulse in pitch | The P rate bar deflects and returns to its centre line; ball follows | Rate bars |
 | ORB-10 | Pitch past ±30° | Red chevrons appear on the ladder above 32°, clear below 28° | 1.11.1 |
 | ORB-11 | Hold roll at 90° and pitch up | Ball and every marker move in body axes (screen-up is the craft roof) | 1.0.4 |
-| ORB-12 | Time-warp | C&W TIMEWARP readout shows the rate; RES TTE estimates stay in game time. The C&W `WARP` tile lights | warp correction; WARP tile · **blocked, §2.3** |
+| ORB-12 | Time-warp | C&W TIMEWARP readout shows the rate; RES TTE estimates stay in game time. The C&W `WARP` tile lights | warp correction; WARP tile (bit 1) |
 | ORB-13 | Solar panels charging | C&W `ELEC GEN` lit while EC rises; clears within 5 s of a full battery | Bit 21 |
 | ORB-14 | Point panels away until EC falls under 5% | C&W `BUS VOLTAGE` red + MASTER ALARM (needs ARP). RES EC meter frame red, `EC LOW` white-on-red in the alert strip, counter red. PFD EC bar red | Bit 3 / RES_ALARM_FRAC |
 | ORB-15 | Lower Pe into the aerobrake band then below re-entry altitude | `Pe LOW` yellow companion in the aerobrake zone, red (and MASTER ALARM) below re-entry altitude; ORBIT STABLE goes dark | Bit 6 |
