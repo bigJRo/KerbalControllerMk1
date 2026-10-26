@@ -51,6 +51,25 @@ bool kspKey(int16_t vk, uint8_t modifier) {
   return kspSend(KEYBOARD_EMULATOR, m);
 }
 
+bool kspTimewarp(uint8_t command) {
+  byte c = command;
+  dbg(DBG_TOKSP, "TIMEWARP %u", command);
+  return kspSend(TIMEWARP_MESSAGE, c);
+}
+
+bool kspTimewarpTo(uint8_t instant, float delayS) {
+  timewarpToMessage m(instant, delayS);
+  dbg(DBG_TOKSP, "TIMEWARP_TO %u, %ld s", instant, (long)delayS);
+  return kspSend(TIMEWARP_TO_MESSAGE, m);
+}
+
+bool kspNavballCycle() {
+  if (!kspAllowed()) { kspNoteSuppressed(NAVBALLMODE_MESSAGE); return false; }
+  simpitClient().cycleNavBallMode();
+  kspNoteSent(NAVBALLMODE_MESSAGE, 0);
+  return true;
+}
+
 void kspNoteSuppressed(byte type) {
   g_suppressed++;
   dbg(DBG_TOKSP, "not sent type %u (%s)", type, g_master.demo ? "demo" : "KSP link down");

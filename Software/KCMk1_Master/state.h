@@ -26,6 +26,12 @@ struct VesselState {
   uint8_t  sasMode;         // SAS_MODE_INFO: AutopilotMode, 255 = SAS off
   uint16_t sasAvail;        // bit (1 << mode) = mode available
   bool     sasValid;
+  float    eccentricity;    // ORBIT
+  bool     orbitValid;
+  float    nodeDv;          // MANEUVER: Δv of the next node (0 = none)
+  bool     nodeValid;
+  bool     inAtmosphere;    // ATMO_CONDITIONS
+  bool     atmoValid;
   uint32_t lastRxMs;        // millis() of the last inbound Simpit message
   uint32_t rxCount;
 };

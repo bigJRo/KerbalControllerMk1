@@ -143,6 +143,8 @@ struct ModuleSim : SimDevice {
   uint16_t thrPos = 0;                     // throttle: lever position (0..INT16_MAX)
   bool thrPrec = false, touched = false;   // throttle: precision mode, pilot touching
   int16_t value = -1;                      // display modules: last CMD_SET_VALUE
+  uint8_t dispState = 0;                   // display modules: state byte (packet byte 5)
+  uint16_t dispValue = 0;                  // display modules: value (bytes 6..7)
   int8_t enc[2] = { 0, 0 };                // dual encoder: deltas since the last read
   uint8_t led[8] = { 0 };
   int ledWrites = 0;
@@ -166,7 +168,7 @@ struct ModuleSim : SimDevice {
         if (n >= 3 && life == KMC_STATUS_ACTIVE && !touched) { thrPos = (uint16_t)(b[1] << 8 | b[2]); signal(); }
         break;
       case KMC_CMD_SET_PRECISION: if (n >= 2) { thrPrec = b[1] != 0; signal(); } break;
-      case KMC_CMD_SET_VALUE: if (n >= 3) value = (int16_t)(b[1] << 8 | b[2]); break;
+      case KMC_CMD_SET_VALUE: if (n >= 3) { value = (int16_t)(b[1] << 8 | b[2]); dispValue = (uint16_t)value; } break;
       case KMC_CMD_ACK_FAULT: fault = false; break;
       case KMC_CMD_RESET: life = KMC_STATUS_ACTIVE; setInt(false); break;
     }
@@ -191,7 +193,7 @@ struct ModuleSim : SimDevice {
         p[3] = (uint8_t)(state & change); p[4] = (uint8_t)change; p[5] = (uint8_t)state;
         for (int i = 0; i < 3; i++) { p[6 + 2 * i] = (uint8_t)((uint16_t)axes[i] >> 8); p[7 + 2 * i] = (uint8_t)axes[i]; }
         break;
-      case KIND_DISPLAY:  p[3] = events; p[4] = events; break;
+      case KIND_DISPLAY:  p[3] = events; p[4] = events; p[5] = dispState; p[6] = (uint8_t)(dispValue >> 8); p[7] = (uint8_t)dispValue; break;
       case KIND_THROTTLE:
         p[3] = (uint8_t)((life == KMC_STATUS_ACTIVE ? 1 : 0) | (thrPrec ? 2 : 0) | (touched ? 4 : 0));
         p[4] = events; p[5] = (uint8_t)(thrPos >> 8); p[6] = (uint8_t)thrPos;

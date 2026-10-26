@@ -25,6 +25,8 @@
    Stage 5 (sticks and throttle): the per-frame control channels and the autopilot
    interface (ksp_frame), stick mapping, trim, camera, EVA keys, the lever and its
    buttons.
+   Stage 6 (remaining panels): UI Control, Function Control, Time Control with the
+   Pre-Warp lead, the GPWS relay.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.

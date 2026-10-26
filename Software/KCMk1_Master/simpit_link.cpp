@@ -26,6 +26,7 @@ static void onScene(const byte *msg) {
   if (flight != g_vessel.flightScene) dbg(DBG_KSP, "scene: %s", flight ? "flight" : "not flight");
   g_vessel.flightScene = flight;
   g_vessel.actionsValid = g_vessel.cagValid = g_vessel.sasValid = false;   // each scene starts afresh
+  g_vessel.orbitValid = g_vessel.nodeValid = g_vessel.atmoValid = false;
   if (!flight) { g_vessel.twIndex = 0; g_vessel.inFlight = false; g_vessel.eva = false; return; }
   // The plugin sends these on a change; ask for them now, so SWITCH ERR and the panel
   // LEDs are right from the start of the scene. (Requests, not commands: ksp_out's gate
@@ -33,6 +34,7 @@ static void onScene(const byte *msg) {
   g_simpit.requestMessageOnChannel(ACTIONSTATUS_MESSAGE);
   g_simpit.requestMessageOnChannel(CAGSTATUS_MESSAGE);
   g_simpit.requestMessageOnChannel(SAS_MODE_INFO_MESSAGE);
+  g_simpit.requestMessageOnChannel(MANEUVER_MESSAGE);
 }
 
 static void onActionStatus(const byte *msg) {
@@ -69,6 +71,29 @@ static void onSasInfo(const byte *msg) {
   g_vessel.sasValid = true;
 }
 
+static void onOrbit(const byte *msg) {
+  orbitInfoMessage m;
+  memcpy(&m, msg, sizeof m);
+  g_vessel.eccentricity = m.eccentricity;
+  g_vessel.orbitValid = true;
+}
+
+static void onManeuver(const byte *msg) {
+  maneuverMessage m;
+  memcpy(&m, msg, sizeof m);
+  bool had = g_vessel.nodeValid && g_vessel.nodeDv > 0;
+  g_vessel.nodeDv = m.deltaVNextManeuver;
+  g_vessel.nodeValid = true;
+  if (had != (m.deltaVNextManeuver > 0)) dbg(DBG_KSP, "maneuver node %s", m.deltaVNextManeuver > 0 ? "set" : "none");
+}
+
+static void onAtmo(const byte *msg) {
+  atmoConditionsMessage m;
+  memcpy(&m, msg, sizeof m);
+  g_vessel.inAtmosphere = (m.atmoCharacteristics & IS_IN_ATMOSPHERE) != 0;
+  g_vessel.atmoValid = true;
+}
+
 static void onVesselChange(const byte *msg) {
   static const char *const kind[] = { "?", "switched", "docked", "undocked" };
   dbg(DBG_KSP, "vessel %s", msg[0] < 4 ? kind[msg[0]] : "?");
@@ -83,6 +108,9 @@ static const InboundRow kInbound[] = {
   { ACTIONSTATUS_MESSAGE,  1,                           onActionStatus, "ACTIONSTATUS" },
   { CAGSTATUS_MESSAGE,     sizeof(cagStatusMessage),    onCagStatus,    "CAGSTATUS" },
   { SAS_MODE_INFO_MESSAGE, sizeof(SASInfoMessage),      onSasInfo,      "SAS_MODE_INFO" },
+  { ORBIT_MESSAGE,         sizeof(orbitInfoMessage),    onOrbit,        "ORBIT" },
+  { MANEUVER_MESSAGE,      sizeof(maneuverMessage),     onManeuver,     "MANEUVER" },
+  { ATMO_CONDITIONS_MESSAGE, sizeof(atmoConditionsMessage), onAtmo,     "ATMO_CONDITIONS" },
 };
 static const uint8_t kInboundN = sizeof kInbound / sizeof kInbound[0];
 static uint32_t g_rxCount[kInboundN], g_rxBad[kInboundN], g_rxLastMs[kInboundN];
@@ -140,6 +168,7 @@ bool simpitAttempt() {
   g_master.kspConnected = true;
   g_vessel.lastRxMs = millis();
   g_vessel.actionsValid = g_vessel.cagValid = g_vessel.sasValid = false;
+  g_vessel.orbitValid = g_vessel.nodeValid = g_vessel.atmoValid = false;
   g_simpit.inboundHandler(inbound);
   registerChannels();
   dbg(DBG_KSP, "connected (attempt %lu)", (unsigned long)g_attempts);

@@ -38,3 +38,6 @@ bool kspCag(CagOp op, uint8_t group);
 bool kspActionToggle(uint8_t action);     // AGTOGGLE (LIGHTS, LANDING GEAR buttons)
 bool kspSasMode(uint8_t mode);            // AutopilotMode
 bool kspKey(int16_t vk, uint8_t modifier = 0);   // KEYBOARD_EMULATOR (keys.h tracks held keys)
+bool kspTimewarp(uint8_t command);        // TIMEWARP (Timewarp enum)
+bool kspTimewarpTo(uint8_t instant, float delayS);   // TIMEWARP_TO (TimewarpTo enum), delay < 0 = before
+bool kspNavballCycle();                   // NAVBALLMODE
