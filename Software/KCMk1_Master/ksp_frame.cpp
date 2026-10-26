@@ -20,8 +20,8 @@ static float g_pRot[3], g_pTrn[3], g_pWheel[2], g_cam[3], g_pThr;
 static bool  g_camOn;
 
 // Autopilot inputs
-static float   g_aRot[3], g_aWheel[2], g_aThr;
-static uint8_t g_aRotMask, g_aWheelMask, g_thrOwner;
+static float   g_aRot[3], g_aWheel[2], g_aTrn[3], g_aThr;
+static uint8_t g_aRotMask, g_aWheelMask, g_aTrnMask, g_thrOwner;
 
 // What was sent, per channel
 struct Chan { int16_t v[4]; uint8_t mask; bool sent, dirty; uint32_t lastMs; };
@@ -86,6 +86,13 @@ void wheelSetAuto(float s, float t, uint8_t mask) {
 }
 void wheelClearAuto() { if (g_aWheelMask) g_ch[CH_WHEEL].dirty = true; g_aWheelMask = 0; }
 
+void trnSetAuto(float x, float y, float z, uint8_t mask) {
+  g_aTrn[0] = x; g_aTrn[1] = y; g_aTrn[2] = z;
+  if (mask != g_aTrnMask) g_ch[CH_TRN].dirty = true;
+  g_aTrnMask = mask & 0x07;
+}
+void trnClearAuto() { if (g_aTrnMask) g_ch[CH_TRN].dirty = true; g_aTrnMask = 0; }
+
 /*--------------------------------------------------------------------------------------
   Sending
 --------------------------------------------------------------------------------------*/
@@ -120,7 +127,8 @@ static void sendRotation(uint32_t now, bool engaged, bool pilotHere) {
 static void sendTranslation(uint32_t now, bool engaged, bool eva) {
   int16_t v[3];
   bool pilot = !engaged && !eva && !g_camOn;
-  for (uint8_t i = 0; i < 3; i++) v[i] = axis(pilot ? g_pTrn[i] : 0.0f);
+  for (uint8_t i = 0; i < 3; i++)
+    v[i] = axis((g_aTrnMask & (1u << i)) ? g_aTrn[i] : pilot ? g_pTrn[i] : 0.0f);
   if (!due(g_ch[CH_TRN], v, 3, 0x07, FRAME_AXIS_NOISE, now)) return;
   translationMessage m;
   m.setX(v[0]); m.setY(v[1]); m.setZ(v[2]);
@@ -201,13 +209,15 @@ static void cmdFrame(const char *) {
     if (!c.sent) { conPrintf("  %-11s not sent this flight", kChName[i]); continue; }
     conPrintf("  %-11s %6d %6d %6d  %lu ms ago", kChName[i], c.v[0], c.v[1], c.v[2], (unsigned long)(millis() - c.lastMs));
   }
-  conPrintf("  throttle owner %u, autopilot axes rot %02X wheel %02X", g_thrOwner, g_aRotMask, g_aWheelMask);
+  conPrintf("  throttle owner %u, autopilot axes rot %02X wheel %02X translation %02X", g_thrOwner, g_aRotMask,
+            g_aWheelMask, g_aTrnMask);
 }
 
 void frameInit() {
   memset(g_ch, 0, sizeof g_ch);
   memset(g_pRot, 0, sizeof g_pRot); memset(g_pTrn, 0, sizeof g_pTrn); memset(g_pWheel, 0, sizeof g_pWheel);
   memset(g_cam, 0, sizeof g_cam); memset(g_aRot, 0, sizeof g_aRot); memset(g_aWheel, 0, sizeof g_aWheel);
+  memset(g_aTrn, 0, sizeof g_aTrn); g_aTrnMask = 0;
   g_pThr = g_aThr = 0; g_camOn = false;
   g_aRotMask = g_aWheelMask = g_thrOwner = 0;
   g_wasReady = g_wasAuto = g_wasEva = false; g_wasMode = 0xFF;

@@ -41,3 +41,4 @@ bool kspKey(int16_t vk, uint8_t modifier = 0);   // KEYBOARD_EMULATOR (keys.h tr
 bool kspTimewarp(uint8_t command);        // TIMEWARP (Timewarp enum)
 bool kspTimewarpTo(uint8_t instant, float delayS);   // TIMEWARP_TO (TimewarpTo enum), delay < 0 = before
 bool kspNavballCycle();                   // NAVBALLMODE
+void kspPrint(const char *text);          // a message on KSP's screen (the autopilots' notices)

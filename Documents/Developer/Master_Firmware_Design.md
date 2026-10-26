@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
-| **Status** | Draft 5, approved. Stages 1–6 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
+| **Status** | Draft 5, approved. Stages 1–7 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
 | **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and the watchdog design (§12.3) |
 | **Supersedes** | Drafts 1–4, and `Controller_Main_IO_Design.md` |
 
@@ -118,7 +118,7 @@ The same order every pass, with nothing blocking:
 | 3 | `safeLinesService()` | ABORT / STAGE debounce and edges |
 | 4 | `moduleBusService()` | Reads every module that is signalling (and polls the switch modules while they are not ACTIVE); its panel handler acts at once |
 | 5 | `switchesService()`, `interlockService()` | Switch Groups 1 and 2, mode selector, SWITCH ERR; ENGINE SAFE / ARM and the lever, A/P INHIB |
-| 6 | `autopilotService()` | Autopilots, HOLD and the arbiter |
+| 6 | `autopilotsService()` | Autopilots, the arbiter and the Info Display 2 consoles (HOLD's button is a panel tab) |
 | 7 | `panelsService()`, `frameService()` | Each panel tab sets its LEDs and the sticks their pilot values; then the control channels (rotation, translation, wheel, camera, throttle) are merged and sent on a change, at most every 20 ms each; nothing in demo |
 | 8 | `moduleBusFlushLeds()` | LED changes, at most every 50 ms per module |
 | 9 | `carrierService()` | Display commands every 100 ms and on change; consoles; input test frame |
@@ -169,7 +169,12 @@ Software/KCMk1_Master/
 ├─ sysinfo.h/.cpp       Sys Info Display (§14)
 ├─ debug.h/.cpp         debug log and serial command console (§10.2)
 ├─ board.h/.cpp         fan, power, watchdog, display reset
-├─ ap_*.cpp / .h        the ported autopilots (§11)
+├─ autopilots.h/.cpp    runs and feeds the ported autopilots; the master's rules on them (§11)
+├─ ascent_autopilot, hold_autopilot, burn_autopilot, landing_autopilot,
+│  attitude_controller, ap_arbiter, stage_helpers   the ported autopilots (.cpp / .h)
+├─ control_links.h      their contract with the master
+├─ infodisp_link.h/.cpp the Info Display 2 consoles
+├─ body_params.h        copy of Software/Common/body_params.h (the config check compares them)
 │
 └─ tools/               host build, selftest, simulated devices (see README.md)
 ```
@@ -653,6 +658,40 @@ While engaged:
 
 The STICK / LEVER disconnect reasons go unused. The autopilot design docs are updated to match (§17).
 
+### 11.4 As built *(stage 7)*
+
+- **Port:**
+  - The files were moved with `git mv` in their own commit, then edited. The second commit's diff is the port.
+  - `Controller_Main` no longer builds after the move; it is deleted at cutover (stage 8).
+- **What changed in the autopilot code:**
+  - Every Simpit call goes through `ksp_out`.
+  - The ascent autopilot's rotation, the hold autopilot's wheels and the burn approach's translation are autopilot axes on the frame channels (`rotSetAutoAxes`, `wheelSetAuto`, `trnSetAuto`).
+  - The `pilotOverrideDetected()` checks are removed.
+  - The hold autopilot no longer refuses IAS / MACH in FINE. The master drops FINE while an autopilot owns the throttle.
+  - The bench consoles are the `ap`, `hp`, `bp` and `lp` console commands.
+  - Floats are printed with `fstr()`.
+- **Telemetry:**
+  - `simpit_link` passes every inbound message to `autopilotsIngest()`. It feeds the same ingest functions with the same messages as `Controller_Main`'s handler did, and registers the extra channels the autopilots need.
+  - The autopilots run only in a flight scene with the link up and demo off. Otherwise anything engaged is dropped silently.
+- **The engage rules** are applied in `infodisp_link.cpp`, before a console command runs:
+  - under A/P INHIB nothing engages or arms;
+  - unless the ENGINE is ARMED, nothing that uses the throttle (or the rover's wheel throttle) engages;
+  - a refusal is logged and shown on KSP's screen;
+  - an allowed engage releases HOLD.
+- **Drop notices** (`autopilots.cpp`):
+  - A/P INHIB drops every console autopilot, but not HOLD's own hold modes.
+  - ENGINE SAFE drops the throttle-using modes: the ascent, a planned or running burn, IAS / MACH, CRUISE / FOLLOW, and the landing DESC / HOVR / BRAKE. Attitude modes stay.
+  - The A/P disconnect drops everything.
+  - Demo and MSTR RESET drop everything silently.
+- **New reasons** appended to `HpReason`, so the existing values keep their meaning on the wire: 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC. The Info Displays need their names (§17).
+- **HOLD through the hold autopilot:**
+  - PLN engages its ALT + HDG at the current values.
+  - RVR engages RHDG, plus CRUISE when the ENGINE is ARMED; ENGINE SAFE later drops CRUISE and HOLD stays on heading.
+  - Engaging HOLD first drops any console autopilot (OTHER AP).
+  - HOLD releases when the hold autopilot lets go by itself.
+  - If the hold autopilot refuses (no atmosphere, not on the ground, stale telemetry), HOLD does not engage.
+- **AUTOPILOT light and SWITCH ERR:** the Annunciator's AUTOPILOT is lit while any autopilot or HOLD is engaged, and SWITCH ERR does not check SAS meanwhile.
+
 ## 12. Board services and the watchdog
 
 ### 12.1 Services
@@ -747,7 +786,7 @@ One PR per stage.
 | 4 | **Flight panels** | Vehicle (state machines), Stability (SAS, HOLD), Action, AUX, Dual Encoder, CAG map | §8.4, §8.5, §8.9 pass. **Built** (HOLD in PLN / RVR waits for stage 7) |
 | 5 | **Sticks and throttle** | `ksp_out` arbitration, stick mapping, trim, camera, EVA keys, lever, throttle buttons, FINE handling | §7, §8.7 pass. **Built** |
 | 6 | **Remaining panels** | UI, Function, Time + Pre-Warp (availability), GPWS | All of §8 covered. **Built** |
-| 7 | **Autopilots** | Port (§11), authority rule, Info Display 2 consoles | Autopilot checks pass; consoles engage / disengage |
+| 7 | **Autopilots** | Port (§11), authority rule, Info Display 2 consoles | Autopilot checks pass; consoles engage / disengage. **Built** |
 | 8 | **Board and cutover** | Fan, INA228, Sys Info status frame; delete `Controller_Main`; rewrite the Hardware Reference and Module UI Reference; update the test plan; close #89 | Nothing refers to `Controller_Main` |
 
 The work outside the master (§17) runs alongside and is needed for full bench tests:
@@ -775,6 +814,7 @@ From Inventory §11:
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
 | 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
+| 16 | Info Display firmware | Names for the new disconnect reasons 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC (§11.4) |
 | 15 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` as the spec says (§5.2): 0x01 starts and 0x00 stops, no timeout, without blocking. Today each runs a fixed 2 s test with `delay()` inside its I2C receive handler, so LTG TEST cannot be held and the module is deaf meanwhile (the master keeps off the bus for 2.1 s, §6.4) |
 
 ## 18. Open items
@@ -795,6 +835,7 @@ From Inventory §11:
 | 12 | Bench: each stick axis's sign (pitch, yaw, roll, translation, steering, wheel throttle, camera) and the EVA keys' directions | Stage 5 bench test |
 | 13 | Bench: the lever follows an autopilot's throttle, and goes back after a touch; the buttons step it | Stage 5 bench test |
 | 14 | Bench: the screenshot macro's spacing (150 ms) is enough for KSP to hide the UI before F1 | Stage 6 bench test |
+| 15 | Bench: each console (ascent, aircraft, rover, orbital, landing) engages and disengages, shows its frame, and the 52-byte orbital frame reaches Info Display 2 whole (Teensy Wire buffer) | Stage 7 bench test |
 
 ---
 

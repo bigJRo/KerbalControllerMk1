@@ -6,7 +6,8 @@
    (at most every FRAME_MIN_MS per channel), or when forced:
      ROTATION     pilot (SPC / PLN, not EVA) — or the autopilot's held axes; while any
                   autopilot or HOLD is engaged the stick is ignored (axes not held: 0)
-     TRANSLATION  pilot (not EVA, not camera mode); 0 while engaged
+     TRANSLATION  pilot (not EVA, not camera mode) — or the autopilot's held axes (the
+                  approach hold); 0 while engaged
      WHEEL        pilot (RVR, not EVA) — or the autopilot's held axes; 0 while engaged;
                   the wheel throttle is 0 unless the ENGINE is ARMED
      CAMERA       the translation stick while its button is held (also under autopilot)
@@ -68,3 +69,7 @@ float   rotPilotRoll();
 enum { WHEEL_AXIS_STEER = 0x01, WHEEL_AXIS_THROTTLE = 0x02 };
 void    wheelSetAuto(float steer, float throttle, uint8_t heldMask);
 void    wheelClearAuto();
+
+enum { TRN_AXIS_X = 0x01, TRN_AXIS_Y = 0x02, TRN_AXIS_Z = 0x04 };
+void    trnSetAuto(float x, float y, float z, uint8_t heldMask);   // the burn executor's approach hold
+void    trnClearAuto();

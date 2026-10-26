@@ -1,5 +1,5 @@
 /***************************************************************************************
-   hold_autopilot.ino — Hold-mode autopilot: mode manager, cascades, autothrottle,
+   hold_autopilot.cpp — Hold-mode autopilot: mode manager, cascades, autothrottle,
    rover cruise / steering / guards, disconnect rules, status, bench console.
    Contract and design notes in hold_autopilot.h; design document in
    Documents/Developer/Hold_Mode_Autopilot.md.
@@ -7,9 +7,13 @@
 #include "hold_autopilot.h"
 #include "attitude_controller.h"
 #include "control_links.h"
+#include "debug.h"
+#include <math.h>
+#include <string.h>
+#include <strings.h>
+#include <stdlib.h>
 #include "ascent_autopilot.h"
 
-static const int32_t HP_AXIS_FULL = INT16_MAX;   // Simpit axis full-scale (wheel steer/throttle)
 
 
 /***************************************************************************************
@@ -140,11 +144,14 @@ HoldConfig &hpGetConfig() { return hp_c; }
 /***************************************************************************************
    Outputs
 ****************************************************************************************/
+// The wheels go to the wheel channel as autopilot axes (ksp_frame.h): an axis is held
+// from the first time it is set until the rover modes all disengage (hpUpdate).
+static float   hp_wSteer, hp_wThr;
+static uint8_t hp_wMask;
 static void hpSendWheels(bool setThrottle, float thr, bool setSteer, float steer) {
-  wheelMessage w;
-  if (setThrottle) w.setThrottle((int16_t)(attClampf(thr,   -1.0f, 1.0f) * (float)HP_AXIS_FULL));
-  if (setSteer)    w.setSteer   ((int16_t)(attClampf(steer, -1.0f, 1.0f) * (float)HP_AXIS_FULL));
-  mySimpit.send(WHEEL_MESSAGE, w);
+  if (setThrottle) { hp_wThr = attClampf(thr, -1.0f, 1.0f);     hp_wMask |= WHEEL_AXIS_THROTTLE; }
+  if (setSteer)    { hp_wSteer = attClampf(steer, -1.0f, 1.0f); hp_wMask |= WHEEL_AXIS_STEER; }
+  wheelSetAuto(hp_wSteer, hp_wThr, hp_wMask);
 }
 
 // Stock SAS fights raw rotation: off while we hold an attitude axis, back to stability
@@ -152,11 +159,11 @@ static void hpSendWheels(bool setThrottle, float thr, bool setSteer, float steer
 static void hpReconcileSAS() {
   bool holding = (hp_pitchMode != HP_PITCH_OFF || hp_latMode != HP_LAT_OFF);
   if (holding && !hp_sasIsOff) {
-    mySimpit.deactivateAction(SAS_ACTION);
+    kspActionGroup(SAS_ACTION, false);
     hp_sasIsOff = true;
   } else if (!holding && hp_sasIsOff) {
-    mySimpit.activateAction(SAS_ACTION);
-    mySimpit.setSASMode(AP_STABILITYASSIST);
+    kspActionGroup(SAS_ACTION, true);
+    kspSasMode(AP_STABILITYASSIST);
     hp_sasIsOff = false;
   }
 }
@@ -174,11 +181,6 @@ static float hpSignedSpeed() {
 /***************************************************************************************
    Engage / disconnect
 ****************************************************************************************/
-static void hpDropAircraftOutputs() {
-  rotClearAutoAxes();
-  if (hp_thrMode != HP_THR_OFF) thrAutoRelease(THR_OWNER_HOLD);
-}
-
 void hpDisconnectAircraft(uint8_t reason) {
   bool was = hpAircraftEngaged();
   hp_pitchMode = HP_PITCH_OFF; hp_latMode = HP_LAT_OFF;
@@ -189,7 +191,7 @@ void hpDisconnectAircraft(uint8_t reason) {
   if (was) hpSetReason(reason);
 }
 
-// Another module took a resource (ap_arbiter.ino): drop the modes that used it.
+// Another module took a resource (ap_arbiter.cpp): drop the modes that used it.
 void hpArbiterDropAttitude() {
   if (hp_pitchMode == HP_PITCH_OFF && hp_latMode == HP_LAT_OFF) return;
   hp_pitchMode = HP_PITCH_OFF; hp_latMode = HP_LAT_OFF;
@@ -265,13 +267,12 @@ bool hpEngage(HpMode mode, bool on) {
   bool stale = (now - hp_t.lastMs) > hp_c.telemetryTimeout;
   if (hpIsAircraftMode(mode)) {
     if (stale || !hp_t.hasAtmo) { hpSetReason(HP_REASON_REFUSED); return false; }
-    if ((mode == HP_MODE_IAS || mode == HP_MODE_MACH) && thrPrecision()) { hpSetReason(HP_REASON_REFUSED); return false; }
     if ((mode == HP_MODE_NAV || mode == HP_MODE_GS) && !hp_t.hasTarget) { hpSetReason(HP_REASON_NO_TARGET); return false; }
   } else {
     if (stale || !hpOnGround()) { hpSetRoverReason(HP_REASON_REFUSED); return false; }
     if ((mode == HP_MODE_RTGT || mode == HP_MODE_FOLLOW) && !hp_t.hasTarget) { hpSetRoverReason(HP_REASON_NO_TARGET); return false; }
   }
-  // One attitude owner and one throttle owner at a time (ap_arbiter.ino): engaging takes
+  // One attitude owner and one throttle owner at a time (ap_arbiter.cpp): engaging takes
   // the resource from the ascent, burn or landing module.
   if (hpIsAircraftMode(mode)) {
     if (mode == HP_MODE_IAS || mode == HP_MODE_MACH) arbTakeThrottle(AP_OWNER_HOLD);
@@ -460,7 +461,7 @@ static void hpUpdateRover(uint32_t now, float dt) {
 
   if (fabsf(hp_t.roll) > hp_maxRoll) {
     hpDisconnectRover(HP_REASON_ROLL_LIMIT);
-    mySimpit.activateAction(BRAKES_ACTION);      // stays applied until the pilot releases it
+    kspActionGroup(BRAKES_ACTION, true);      // stays applied until the pilot releases it
     return;
   }
   if (hpRoverDriving() && hp_t.brakes) {
@@ -493,7 +494,7 @@ static void hpUpdateRover(uint32_t now, float dt) {
       if (left <= 0.0f) {
         hp_cruise = hp_rtgt = false; hp_wheelOut = hp_wheelInt = 0.0f; hp_slopeGuard = false;
         hpSendWheels(true, 0.0f, true, 0.0f);
-        mySimpit.activateAction(BRAKES_ACTION);
+        kspActionGroup(BRAKES_ACTION, true);
         hpSetRoverReason(HP_REASON_ARRIVED);
         return;
       }
@@ -542,6 +543,7 @@ void hpUpdate() {
   hp_lastUpdateMs = now;
   if (dt <= 0.0f || dt > 0.5f) dt = 0.02f;
 
+  if (!hpRoverEngaged() && hp_wMask) { hp_wMask = 0; wheelClearAuto(); }   // the pilot's wheels again
   if (!hpAnyEngaged()) return;
 
   // Failsafe: telemetry loss. Aircraft: hand the airframe to stability assist at the
@@ -549,14 +551,6 @@ void hpUpdate() {
   // Rover: wheel throttle to zero, no brakes.
   if ((now - hp_t.lastMs) > hp_c.telemetryTimeout) {
     hpDisconnectAll(HP_REASON_TELEMETRY);
-    return;
-  }
-
-  // The pilot has the vehicle: any input on the rotation stick, the translation stick or
-  // the throttle lever disconnects every hold mode (rover modes included).
-  uint8_t ovr;
-  if (pilotOverrideDetected(ovr)) {
-    hpDisconnectAll(ovr);
     return;
   }
 
@@ -619,12 +613,14 @@ const char *hpReasonName(uint8_t r) {
     case HP_REASON_LANDED: return "LANDED";       case HP_REASON_OTHER_AP: return "OTHER AP";
     case HP_REASON_FLARE: return "FLARE";         case HP_REASON_ARRIVED: return "ARRIVED";
     case HP_REASON_ALIGN: return "ALIGN";         case HP_REASON_HANDOFF: return "HANDOFF";
-    case HP_REASON_REPLAN: return "REPLAN";       default: return "";
+    case HP_REASON_REPLAN: return "REPLAN";
+    case HP_REASON_AP_INHIB: return "A/P INHIB";  case HP_REASON_ENG_SAFE: return "ENG SAFE";
+    case HP_REASON_AP_DISC: return "A/P DISC";       default: return "";
   }
 }
 
 /***************************************************************************************
-   Bench console — lines arrive from apSerialConsole() with the "HP " prefix stripped:
+   Bench console — the `hp` command on the master's serial console (autopilots.cpp):
      ENG <MODE> [0|1]   engage (default) / disengage a mode by name
      SET <MODE> <v>     setpoint (MODE also accepts MAXSPD, MAXSLOPE, MAXROLL)
      LVL | OFF | STATUS
@@ -667,20 +663,10 @@ bool hpConsoleLine(const char *line) {
   if (strncasecmp(line, "OFF", 3) == 0)  { hpDisconnectAll(HP_REASON_PILOT); return true; }
   if (strncasecmp(line, "STATUS", 6) == 0) {
     HoldStatus s = hpGetStatus();
-    Serial.print(F("HP pitch=")); Serial.print(s.pitchMode);
-    Serial.print(F(" lat="));     Serial.print(s.latMode);
-    Serial.print(F(" thr="));     Serial.print(s.thrMode);
-    Serial.print(F(" reason="));  Serial.print(hpReasonName(s.reason));
-    Serial.print(F(" att="));     Serial.print(s.att, 1);
-    Serial.print(F(" vs="));      Serial.print(s.vs, 1);
-    Serial.print(F(" alt="));     Serial.print(s.alt, 0);
-    Serial.print(F(" hdg="));     Serial.print(s.hdg, 0);
-    Serial.print(F(" ias="));     Serial.print(s.ias, 0);
-    Serial.print(F(" thrOut="));  Serial.print(s.cmdThrottle, 2);
-    Serial.print(F(" | cruise=")); Serial.print(s.cruise);
-    Serial.print(F(" sp="));      Serial.print(s.cruiseSp, 1);
-    Serial.print(F(" wheel="));   Serial.print(s.cmdWheel, 2);
-    Serial.print(F(" rreason=")); Serial.println(hpReasonName(s.roverReason));
+    conPrintf("HP pitch=%u lat=%u thr=%u reason=%s att=%s vs=%s alt=%s hdg=%s ias=%s thrOut=%s | cruise=%d sp=%s wheel=%s rreason=%s",
+              s.pitchMode, s.latMode, s.thrMode, hpReasonName(s.reason), fstr(s.att, 1), fstr(s.vs, 1), fstr(s.alt, 0),
+              fstr(s.hdg, 0), fstr(s.ias, 0), fstr(s.cmdThrottle, 2), s.cruise, fstr(s.cruiseSp, 1), fstr(s.cmdWheel, 2),
+              hpReasonName(s.roverReason));
     return true;
   }
   return false;

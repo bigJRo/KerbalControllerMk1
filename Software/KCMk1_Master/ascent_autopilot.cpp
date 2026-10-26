@@ -4,8 +4,8 @@
   Runs a launch-to-orbit guidance loop over the master controller's KerbalSimpit link. See ascent_autopilot.h for the public
   API and the tunable AscentConfig surface.
 
-  Because all sketch .ino files compile as a single translation unit, this file references the global `mySimpit` object and the
-  KerbalSimpit message types / action constants declared in Controller_Main.ino directly.
+  Ported from Controller_Main (design §11): the guidance is unchanged. Its rotation now goes to ksp_frame as autopilot axes
+  (rotSetAutoAxes), its commands through ksp_out's gate, and the stick / lever no longer disarm it (control_links.h).
 
   Licensed under the GNU General Public License v3.0 (GPL-3.0).
   Written for Jeb's Controller Works.
@@ -16,13 +16,12 @@
 #include "burn_autopilot.h"
 #include "landing_autopilot.h"
 #include "control_links.h"
-
-/***************************************************************************************
-   KerbalSimpit control-axis scaling.
-   Rotation axes are int16 with full deflection at +/-INT16_MAX; throttle is 0..INT16_MAX.
-   If a particular Simpit build uses a different full-scale, adjust AP_AXIS_FULL only.
-****************************************************************************************/
-static const int32_t AP_AXIS_FULL = INT16_MAX;
+#include "debug.h"
+#include "body_params.h"
+#include <strings.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
 
 /***************************************************************************************
    Module state
@@ -112,13 +111,6 @@ static float apBodyMinSafeOrbit() {
 static inline float apClampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 static inline float apDeg2Rad(float d) { return d * 0.0174532925199f; }
 static inline float apRad2Deg(float r) { return r * 57.2957795131f; }
-
-// Wrap an angle error into [-180, 180]
-static float apWrap180(float a) {
-  while (a > 180.0f)  a -= 360.0f;
-  while (a < -180.0f) a += 360.0f;
-  return a;
-}
 
 // Wrap a heading into [0, 360)
 static float apWrap360(float a) {
@@ -251,11 +243,10 @@ static void apSteer(float cmdPitch, float cmdHeading, float dt) {
                                 g_cfg.rollControlEnabled, g_cfg.targetRoll,
                                 g_cfg.maxControlDeflection, dt);
 
-  rotationMessage msg;
-  msg.setPitch((int16_t)(c.pitch * (float)AP_AXIS_FULL));
-  msg.setYaw((int16_t)(c.yaw  * (float)AP_AXIS_FULL));
-  if (g_cfg.rollControlEnabled) msg.setRoll((int16_t)(c.roll * (float)AP_AXIS_FULL));
-  mySimpit.send(ROTATION_MESSAGE, msg);
+  // The axes go to the rotation channel like every autopilot's (ksp_frame.h); roll only
+  // when roll control is on.
+  uint8_t mask = ROT_AXIS_PITCH | ROT_AXIS_YAW | (g_cfg.rollControlEnabled ? ROT_AXIS_ROLL : 0);
+  rotSetAutoAxes(c.pitch, c.yaw, c.roll, mask);
 }
 
 // Command the vehicle to hold orbital prograde (used during coast / circularization
@@ -281,14 +272,14 @@ static bool apActiveSteering() {
 static void apReconcileSAS() {
   if (apActiveSteering()) {
     if (!g_sasIsOff) {
-      mySimpit.deactivateAction(SAS_ACTION);
+      kspActionGroup(SAS_ACTION, false);
       g_sasIsOff = true;
       g_sasProgradeSet = false;
     }
   } else {
     if (!g_sasProgradeSet) {
-      mySimpit.activateAction(SAS_ACTION);
-      mySimpit.setSASMode(AP_PROGRADE);
+      kspActionGroup(SAS_ACTION, true);
+      kspSasMode(AP_PROGRADE);
       g_sasProgradeSet = true;
       g_sasIsOff = false;
     }
@@ -303,7 +294,7 @@ static void apMaybeStage() {
   if (!g_cfg.autoStage) return;
   uint32_t now = millis();
   if (g_tel.stageDV < g_cfg.stageDVThreshold && (now - g_lastStageMs) > g_cfg.stageMinInterval) {
-    mySimpit.activateAction(STAGE_ACTION);
+    kspActionGroup(STAGE_ACTION, true);
     g_lastStageMs = now;
   }
 }
@@ -393,7 +384,7 @@ void apArm() {
   g_armed          = true;
   g_phase          = AP_PHASE_VERTICAL;
   attReset(g_att);
-  arbTakeAttitude(AP_OWNER_ASCENT);   // arming takes the vehicle from any other autopilot (ap_arbiter.ino)
+  arbTakeAttitude(AP_OWNER_ASCENT);   // arming takes the vehicle from any other autopilot (ap_arbiter.cpp)
   arbTakeThrottle(AP_OWNER_ASCENT);
   g_sasIsOff       = false;   // force apReconcileSAS() to command SAS off on the first pass
   g_sasProgradeSet = false;
@@ -403,10 +394,10 @@ void apArm() {
   float minSafe = apBodyMinSafeOrbit();
   if (g_cfg.enforceMinSafeAltitude && minSafe > 0.0f && g_cfg.targetApoapsis < minSafe) {
     g_cfg.targetApoapsis = minSafe;
-    mySimpit.printToKSP("Ascent AP: target raised to min safe altitude", PRINT_TO_SCREEN);
+    kspPrint("Ascent AP: target raised to min safe altitude");
   }
   if (g_cfg.autoLaunch) {
-    mySimpit.activateAction(STAGE_ACTION);   // ignite first stage
+    kspActionGroup(STAGE_ACTION, true);   // ignite first stage
     g_lastStageMs = millis();
   }
 }
@@ -424,14 +415,12 @@ void apDisarm() {
   g_armed = false;
   g_phase = AP_PHASE_IDLE;
   apReleaseOwners();
-  // Zero the control axes so we do not leave the stick deflected.
-  rotationMessage msg;
-  msg.setPitch(0); msg.setYaw(0); msg.setRoll(0);
-  mySimpit.send(ROTATION_MESSAGE, msg);
+  // Give the rotation channel back (it sends the pilot's stick, neutral at worst).
+  rotClearAutoAxes();
 }
 
 bool        apIsArmed()  { return g_armed; }
-void        apArbiterDrop() { if (g_armed) { apDisarm(); mySimpit.printToKSP("Ascent AP: another autopilot engaged - disarmed", PRINT_TO_SCREEN); } }
+void        apArbiterDrop() { if (g_armed) { apDisarm(); kspPrint("Ascent AP: another autopilot engaged - disarmed"); } }
 AscentPhase apGetPhase() { return g_phase; }
 
 const char *apPhaseName(AscentPhase phase) {
@@ -519,18 +508,6 @@ void apUpdate() {
     return;
   }
 
-  // The pilot has the vehicle: any input on the rotation stick, the translation stick or
-  // the throttle lever disarms the ascent autopilot (global rule, control_links.h).
-  {
-    uint8_t ovr;
-    if (pilotOverrideDetected(ovr)) {
-      apDisarm();
-      mySimpit.printToKSP(ovr == HP_REASON_LEVER ? "Ascent AP: throttle lever - disarmed"
-                                                  : "Ascent AP: stick input - disarmed", PRINT_TO_SCREEN);
-      return;
-    }
-  }
-
   // Keep stock SAS consistent with the current steering mode (off while we send raw
   // rotation; on + prograde while we defer to it during coast/circularization).
   apReconcileSAS();
@@ -597,8 +574,8 @@ void apUpdate() {
     case AP_PHASE_COMPLETE: {
       apSendThrottle(0.0f);
       // Hand back to the pilot with stock SAS enabled in stability-hold (attitude hold).
-      mySimpit.activateAction(SAS_ACTION);
-      mySimpit.setSASMode(AP_STABILITYASSIST);
+      kspActionGroup(SAS_ACTION, true);
+      kspSasMode(AP_STABILITYASSIST);
       g_armed = false;
       apReleaseOwners();
       break;
@@ -612,52 +589,34 @@ void apUpdate() {
 }
 
 /***************************************************************************************
-   Optional bench-test console (primary Serial). Line-oriented, whitespace-separated.
+   Bench console: the `ap` command on the master's serial console (autopilots.cpp).
    Mirrors the console-facing setters so a bench session exercises the same guarded path
    a panel would use:
      ARM | DISARM | STATUS
      ALT <meters> | INC <deg> | LOFT <x> | ROLL <deg> | ROLLOFF | MAXG <g> | SOUTH <0|1>
    Setters apply only while DISARMED and print "(armed - ignored)" otherwise.
 ****************************************************************************************/
-void apSerialConsole() {
-  static char buf[48];
-  static uint8_t len = 0;
-  while (Serial.available()) {
-    char ch = (char)Serial.read();
-    if (ch == '\r') continue;
-    if (ch == '\n' || len >= sizeof(buf) - 1) {
-      buf[len] = '\0';
-      len = 0;
-      bool ok = true;
-      if      (strncasecmp(buf, "ARM", 3) == 0)     apArm();
-      else if (strncasecmp(buf, "DISARM", 6) == 0)  apDisarm();
-      else if (strncasecmp(buf, "ALT ", 4) == 0)    ok = apSetTargetAltitude(atof(buf + 4));
-      else if (strncasecmp(buf, "INC ", 4) == 0)    ok = apSetTargetInclination(atof(buf + 4));
-      else if (strncasecmp(buf, "LOFT ", 5) == 0)   ok = apSetLoft(atof(buf + 5));
-      else if (strncasecmp(buf, "ROLL ", 5) == 0)   ok = apSetRoll(true, atof(buf + 5));
-      else if (strncasecmp(buf, "ROLLOFF", 7) == 0) ok = apSetRoll(false, g_cfg.targetRoll);
-      else if (strncasecmp(buf, "MAXG ", 5) == 0)   ok = apSetMaxG(atof(buf + 5));
-      else if (strncasecmp(buf, "SOUTH ", 6) == 0)  ok = apSetLaunchSoutherly(atoi(buf + 6) != 0);
-      else if (strncasecmp(buf, "HP ", 3) == 0)     ok = hpConsoleLine(buf + 3);   // hold-mode autopilot (hold_autopilot.ino)
-      else if (strncasecmp(buf, "BP ", 3) == 0)     ok = bpConsoleLine(buf + 3);   // burn autopilot (burn_autopilot.ino)
-      else if (strncasecmp(buf, "LP ", 3) == 0)     ok = lpConsoleLine(buf + 3);   // landing autopilot (landing_autopilot.ino)
-      else if (strncasecmp(buf, "STATUS", 6) == 0) {
-        Serial.print(F("AP armed=")); Serial.print(g_armed);
-        Serial.print(F(" phase="));   Serial.print(apPhaseName(g_phase));
-        Serial.print(F(" body="));    Serial.print(g_tel.bodyName[0] ? g_tel.bodyName : "?");
-        Serial.print(F(" tgtAp="));   Serial.print(g_cfg.targetApoapsis, 0);
-        Serial.print(F(" Ap="));      Serial.print(g_tel.apoapsis, 0);
-        Serial.print(F(" Pe="));      Serial.print(g_tel.periapsis, 0);
-        Serial.print(F(" pitch="));   Serial.print(g_cmdPitch, 1);
-        Serial.print(F(" hdg="));     Serial.print(g_cmdHeading, 1);
-        Serial.print(F(" thr="));     Serial.print(g_cmdThrottle, 2);
-        Serial.print(F(" g="));       Serial.println(g_tel.gForce, 1);
-      }
-      if (!ok) Serial.println(F("(armed - ignored)"));
-    } else {
-      buf[len++] = ch;
-    }
+bool apConsoleLine(const char *buf) {
+  bool ok = true;
+  if      (strncasecmp(buf, "ARM", 3) == 0)     apArm();
+  else if (strncasecmp(buf, "DISARM", 6) == 0)  apDisarm();
+  else if (strncasecmp(buf, "ALT ", 4) == 0)    ok = apSetTargetAltitude(atof(buf + 4));
+  else if (strncasecmp(buf, "INC ", 4) == 0)    ok = apSetTargetInclination(atof(buf + 4));
+  else if (strncasecmp(buf, "LOFT ", 5) == 0)   ok = apSetLoft(atof(buf + 5));
+  else if (strncasecmp(buf, "ROLL ", 5) == 0)   ok = apSetRoll(true, atof(buf + 5));
+  else if (strncasecmp(buf, "ROLLOFF", 7) == 0) ok = apSetRoll(false, g_cfg.targetRoll);
+  else if (strncasecmp(buf, "MAXG ", 5) == 0)   ok = apSetMaxG(atof(buf + 5));
+  else if (strncasecmp(buf, "SOUTH ", 6) == 0)  ok = apSetLaunchSoutherly(atoi(buf + 6) != 0);
+  else if (strncasecmp(buf, "STATUS", 6) == 0 || !*buf) {
+    conPrintf("AP armed=%d phase=%s body=%s tgtAp=%s Ap=%s Pe=%s pitch=%s hdg=%s thr=%s g=%s", g_armed,
+              apPhaseName(g_phase), g_tel.bodyName[0] ? g_tel.bodyName : "?", fstr(g_cfg.targetApoapsis, 0),
+              fstr(g_tel.apoapsis, 0), fstr(g_tel.periapsis, 0), fstr(g_cmdPitch, 1), fstr(g_cmdHeading, 1),
+              fstr(g_cmdThrottle, 2), fstr(g_tel.gForce, 1));
+  } else {
+    return false;
   }
+  if (!ok) conPrintf("(armed - ignored)");
+  return true;
 }
 
 /***************************************************************************************

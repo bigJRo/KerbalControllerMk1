@@ -1,5 +1,5 @@
 /***************************************************************************************
-   ap_arbiter.ino — attitude and throttle ownership across the autopilot modules.
+   ap_arbiter.cpp — attitude and throttle ownership across the autopilot modules.
    Contract in control_links.h. Holds only the two owner ids; the modules do the work.
 
    Taking a resource from another module calls that module's arbiter-drop hook, which
@@ -58,10 +58,12 @@ bool arbCanWarp(uint8_t owner) {
 }
 
 // A/P OFF on any console drops everything in every module (review decision, q.6).
-void arbAllOff() {
+void arbAllOff() { arbAllOffReason(HP_REASON_PILOT); }
+
+void arbAllOffReason(uint8_t reason) {
   apDisarm();
-  hpDisconnectAll(HP_REASON_PILOT);
-  bpAbort(HP_REASON_PILOT);
-  lpDisconnectAll(HP_REASON_PILOT);
+  hpDisconnectAll(reason);
+  bpAbort(reason);
+  lpDisconnectAll(reason);
   arb_att = arb_thr = AP_OWNER_NONE;
 }

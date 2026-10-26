@@ -7,7 +7,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (Sys Info Display: §15.4) |
-| **Status** | Stages 1–6 of 8: skeleton and boot; module bus; switches and interlocks; flight panels; sticks and throttle; remaining panels |
+| **Status** | Stages 1–7 of 8: skeleton and boot; module bus; switches and interlocks; flight panels; sticks and throttle; remaining panels; autopilots |
 
 ## Building
 
@@ -49,7 +49,10 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | Time Control | `panel_time.cpp` | WARP TO ApA / PeA / MNVR (burn start) / SOI / MORN less the Pre-Warp lead, dark when not available; STOP, > / <, PHYS + > / < (physics 1×–4×), LOAD (F9 held), PAUSE, SAVE |
 | GPWS | `panel_gpws.cpp` | Its state and threshold relayed to the Annunciator |
 
-Still to come: autopilots (7), board services and cutover (8).
+| Autopilots (stage 7) | `autopilots.*`, `{ascent,hold,burn,landing}_autopilot.*`, `attitude_controller.*`, `ap_arbiter.cpp`, `stage_helpers.cpp`, `control_links.h` | Ported from Controller_Main, control laws unchanged; fed by every inbound Simpit message; their axes on the frame channels; no stick / lever disconnect; A/P INHIB, ENGINE SAFE, A/P disconnect rules; HOLD in PLN / RVR through the hold autopilot |
+| Consoles | `infodisp_link.*` | Info Display 2 consoles: one command at a time with ACK, the frame for the console on screen, the summary to both Info Displays |
+
+Still to come: board services and cutover (8).
 
 ## Serial console
 
@@ -65,6 +68,7 @@ Open the first serial port at any baud rate and type a command:
 | `switches` | Every switch: position, the vessel's state, SWITCH ERR; the mode selector |
 | `interlocks` | ENGINE state, the lever (position, touch, precision), A/P, drop listeners |
 | `frame` | Each control channel's last values sent; the throttle owner and autopilot axes |
+| `ap` / `hp` / `bp` / `lp` | The ascent / hold / burn / landing autopilot's bench line: `STATUS`, `ARM`, `ENG ALT`, `SET IAS 180`, `OFF`, … |
 | `log` | Debug categories; `log <cat\|all> on\|off\|auto` |
 | `debug on\|off` | Debug output, until the next UPTLM flip |
 | `wdtest yes` | Hangs the loop, so the watchdog resets the master in 5 s (bench test) |
@@ -127,6 +131,7 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
     - translation and the camera buttons; EVA keys with hysteresis, released when the EVA ends;
     - the lever and its buttons (FINE, ENGINE SAFE); an autopilot owning the throttle (lever driven, pilot ignored, FINE dropped and restored, ENGINE SAFE wins); autopilot rotation axes;
     - demo; the `frame` console command.
+  - autopilots (stage 7): a console command engages the hold autopilot, ACKed once, its frame and the summary pushed; sticks ignored and nothing disconnects on stick input; ENGINE SAFE refuses and drops IAS (ALT stays); A/P INHIB disconnects and refuses; the A/P disconnect, A/P OFF, telemetry loss, leaving the flight; HOLD in PLN and RVR through the hold autopilot (INHIB leaves it, a console engage releases it, ENGINE SAFE leaves heading only); the ascent's axes and its ENGINE SAFE drop; the bench consoles.
   - remaining panels (stage 6): UI keys, modifiers, navball, the spaced screenshot macro; Function CAGs and offset; Time warp-to with the lead and each availability rule, STOP, warp up / down, PHYS steps, LOAD held, PAUSE, SAVE; the GPWS relay.
 
 Run it after every change.
@@ -150,3 +155,4 @@ These can only be confirmed on the hardware (design §18):
 13. **Stick directions (stage 5):** in SPC, PLN and RVR each axis moves the vessel the expected way (pitch, yaw, roll, translation, steering, wheel throttle), camera mode turns the camera, and on EVA the keys walk the expected way. Fix any wrong sign with `STICK_SIGN` in `panel_sticks.cpp`.
 14. **Lever (stage 5):** the 100 % / UP / DOWN / 0 % buttons move the lever; with ENGINE SAFE the throttle stays at 0 % in KSP.
 15. **Time Control (stage 6):** each WARP TO stops the Pre-Warp lead short of its event; the buttons go dark as their events disappear (landed, no node, in the atmosphere, escape); the screenshot macro hides the UI in the picture.
+16. **Autopilots (stage 7):** each Info Display 2 console engages and disengages its modes and shows them; A/P INHIB and ENGINE SAFE refuse with a message on KSP's screen; the rotation stick button disconnects; HOLD holds altitude and heading in PLN, heading and speed in RVR.

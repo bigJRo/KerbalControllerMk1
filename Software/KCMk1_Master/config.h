@@ -11,9 +11,9 @@
 #pragma once
 #include <Arduino.h>
 
-#define KCM_MASTER_VERSION "0.6.0"
+#define KCM_MASTER_VERSION "0.7.0"
 static const uint8_t KCM_MASTER_VERSION_MAJOR = 0;
-static const uint8_t KCM_MASTER_VERSION_MINOR = 6;
+static const uint8_t KCM_MASTER_VERSION_MINOR = 7;
 
 /***************************************************************************************
    Pins — Teensy 4.1 on the Ctrl Module (Inventory §2–§3, design Appendix A)

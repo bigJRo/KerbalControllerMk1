@@ -33,7 +33,7 @@ enum SwitchId : uint8_t {
 };
 
 // Who is asking SWITCH ERR to look away from a switch (several can at once).
-enum : uint8_t { SUPP_INVERT = 0x01, SUPP_AUTOPILOT = 0x02, SUPP_BRAKE_HELD = 0x04 };
+enum : uint8_t { SUPP_INVERT = 0x01, SUPP_AUTOPILOT = 0x02, SUPP_BRAKE_HELD = 0x04, SUPP_CONSOLE_AP = 0x08 };
 
 static const uint32_t SWITCH_ERR_SETTLE_MS = 1000;
 

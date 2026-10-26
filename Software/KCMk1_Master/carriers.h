@@ -33,4 +33,5 @@ void     carrierService();
 uint16_t carrierModeFlags();               // the Annunciator mode flags as sent
 void     carrierSetGpws(uint8_t cfg, int16_t thresholdM);   // from the GPWS panel (stage 6)
 void     carrierDisplayReset();            // requestType DISPLAY_RESET to all four, once
+uint8_t  carrierInfoDispControl(uint8_t requestType);   // an Info Display's control byte (consoles' ACK)
 const char *carrierName(CarrierId c);

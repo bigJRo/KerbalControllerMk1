@@ -44,6 +44,10 @@ void dbgErr(DbgCat cat, const char *fmt, ...);       // always printed
 void dbgLoopTime(uint32_t us);                       // one loop pass, for the timing line
 const char *dbgCatName(DbgCat cat);
 
+// A float as text with `dp` decimals, for log and console lines (no float printf needed).
+// Eight rotating buffers: up to eight fstr() results in one call are safe.
+const char *fstr(float v, uint8_t dp);
+
 // Console output: always printed, not rate-limited (the user asked for it).
 void conPrintf(const char *fmt, ...);
 typedef void (*ConsoleFn)(const char *args);

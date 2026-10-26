@@ -47,6 +47,8 @@ static uint8_t controlByte(bool bit2, uint8_t req = REQ_PROCEED) {
   return b;
 }
 
+uint8_t carrierInfoDispControl(uint8_t requestType) { return controlByte(g_panel.trim, requestType); }
+
 uint16_t carrierModeFlags() {
   uint16_t f = 0;
   if (g_master.demo)        f |= 1u << MF_DEMO;

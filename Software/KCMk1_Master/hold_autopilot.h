@@ -56,7 +56,9 @@ enum HpReason : uint8_t {
   HP_REASON_PILOT,      // A/P OFF tap — not annunciated (10)
   // Mission autopilot (shared by the burn and landing modules; Mission_Autopilot.md §7.7)
   HP_REASON_NO_NODE, HP_REASON_NO_TARGET, HP_REASON_SOI, HP_REASON_FUEL, HP_REASON_LANDED,
-  HP_REASON_OTHER_AP, HP_REASON_FLARE, HP_REASON_ARRIVED, HP_REASON_ALIGN, HP_REASON_HANDOFF, HP_REASON_REPLAN
+  HP_REASON_OTHER_AP, HP_REASON_FLARE, HP_REASON_ARRIVED, HP_REASON_ALIGN, HP_REASON_HANDOFF, HP_REASON_REPLAN,
+  // KCMk1_Master interlocks (design §8.2, §11.3): appended, so every value above keeps its meaning on the wire
+  HP_REASON_AP_INHIB, HP_REASON_ENG_SAFE, HP_REASON_AP_DISC
 };
 
 /***************************************************************************************
@@ -158,7 +160,7 @@ bool        hpSetMaxRoll(float deg);
 bool        hpSetGs(float deg);
 bool        hpSetFollowRange(float m);
 bool        hpSetStopDist(float m);
-void        hpArbiterDropAttitude();                // another module took attitude (ap_arbiter.ino)
+void        hpArbiterDropAttitude();                // another module took attitude (ap_arbiter.cpp)
 void        hpArbiterDropThrottle();                // another module took the throttle
 
 bool        hpAnyEngaged();
