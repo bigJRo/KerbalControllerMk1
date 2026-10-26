@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <strings.h>
+#include <string.h>
 
 static const uint16_t DBG_LINES_PER_S = 200;   // non-error lines per second before suppressing
 static const uint8_t  CON_MAX_CMDS    = 16;
@@ -193,4 +194,21 @@ void dbgService() {
       g_line[g_lineLen++] = (char)c;
     }
   }
+}
+
+const char *fstr(float v, uint8_t dp) {
+  static char buf[8][16];
+  static uint8_t slot;
+  char *b = buf[slot++ & 7];
+  if (v != v) { strcpy(b, "nan"); return b; }
+  if (dp > 4) dp = 4;
+  bool neg = v < 0;
+  if (neg) v = -v;
+  uint32_t scale = 1;
+  for (uint8_t i = 0; i < dp; i++) scale *= 10;
+  if (v > 2.0e9f / scale) { snprintf(b, 16, "%s>2e9", neg ? "-" : ""); return b; }
+  uint32_t n = (uint32_t)(v * scale + 0.5f);
+  if (dp) snprintf(b, 16, "%s%lu.%0*lu", neg ? "-" : "", (unsigned long)(n / scale), dp, (unsigned long)(n % scale));
+  else    snprintf(b, 16, "%s%lu", neg ? "-" : "", (unsigned long)n);
+  return b;
 }

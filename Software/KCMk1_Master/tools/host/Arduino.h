@@ -28,6 +28,9 @@ typedef bool boolean;
 #define bitRead(v, b) (((v) >> (b)) & 0x01)
 #define bitSet(v, b) ((v) |= (1UL << (b)))
 #define bitClear(v, b) ((v) &= ~(1UL << (b)))
+#ifndef PI
+#define PI 3.1415926535897932384626433832795
+#endif
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define constrain(x, l, h) ((x) < (l) ? (l) : ((x) > (h) ? (h) : (x)))

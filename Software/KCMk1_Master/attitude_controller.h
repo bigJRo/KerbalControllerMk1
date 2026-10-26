@@ -2,7 +2,7 @@
   Attitude Controller — Kerbal Controller Mk1 (Master Teensy 4.1)
 
   The one attitude loop both autopilots steer through. The ascent autopilot used to own this as apSteer(); it is factored out
-  so the hold-mode autopilot (hold_autopilot.ino) can drive the same PID with a different outer loop.
+  so the hold-mode autopilot (hold_autopilot.cpp) can drive the same PID with a different outer loop.
 
   Two entry points, one per vehicle class:
     attSteerRocket()   — heading error is corrected with YAW (a rocket turns its nose). The original apSteer() behaviour.

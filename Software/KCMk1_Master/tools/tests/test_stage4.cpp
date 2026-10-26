@@ -174,9 +174,9 @@ static void testStability(Bench &b) {
   b.m(MOD_TIME).release(TIME_SPC); runFor(20);      // to PLN
   CHECK(!holdEngaged(), "control-mode change releases it");
   runFor(100);
-  CHECK(s.ledOf(10) == KMC_LED_OFF, "PLN: HOLD dark until the hold autopilot (stage 7)");
+  CHECK(s.ledOf(10) == KMC_LED_ENABLED, "PLN: HOLD available (the hold autopilot, stage 7)");
   tap(s, 1u << 10);
-  CHECK(!holdEngaged(), "and not engaged");
+  CHECK(!holdEngaged(), "without flight telemetry the hold autopilot refuses, so HOLD does not engage");
   b.m(MOD_TIME).press(TIME_SPC); runFor(20);
   tap(s, 1u << 10);
   b.m(MOD_FUNCTION).press(SG1_MSTR); b.m(MOD_FUNCTION).release(SG1_MSTR); runFor(30);

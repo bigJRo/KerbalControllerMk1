@@ -27,6 +27,9 @@
    buttons.
    Stage 6 (remaining panels): UI Control, Function Control, Time Control with the
    Pre-Warp lead, the GPWS relay.
+   Stage 7 (autopilots): ascent, hold, burn and landing ported from Controller_Main, the
+   Info Display 2 consoles, the A/P INHIB / ENGINE SAFE / disconnect rules, HOLD in PLN
+   and RVR.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -47,6 +50,7 @@
 #include "panel_safe.h"
 #include "panels.h"
 #include "ksp_frame.h"
+#include "autopilots.h"
 #include <strings.h>
 
 static void cmdStatus(const char *) {
@@ -106,6 +110,7 @@ void setup() {
   switchesInit();
   panelsInit();
   frameInit();
+  autopilotsInit();
   simpitInit();
   bootSequence();
   safeLinesInit();                  // after boot step 1 set the pins up; the level now is no edge
@@ -123,6 +128,7 @@ void loop() {
   wdtCrumb(LS_BOARD_FAST); safeLinesService();
   wdtCrumb(LS_MODULES);    moduleBusService();
   wdtCrumb(LS_INTERLOCKS); switchesService(); interlockService();
+  wdtCrumb(LS_AUTOPILOT);  autopilotsService();
   wdtCrumb(LS_KSP_OUT);    panelsService(); frameService();
   wdtCrumb(LS_LEDS);       moduleBusFlushLeds();
   wdtCrumb(LS_CARRIERS);   carrierService();

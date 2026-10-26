@@ -7,6 +7,7 @@ void runStage3();
 void runStage4();
 void runStage5();
 void runStage6();
+void runStage7();
 
 int main() {
   runStage1();
@@ -15,6 +16,7 @@ int main() {
   runStage4();
   runStage5();
   runStage6();
+  runStage7();
   int f = g_failsRef(), c = g_checksRef();
   printf(f ? "selftest: %d of %d checks FAILED\n" : "selftest: all %d checks passed\n", f ? f : c, c);
   return f != 0;

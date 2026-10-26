@@ -1,5 +1,5 @@
 /***************************************************************************************
-   stage_helpers.ino — auto-stage and the acceleration estimate.
+   stage_helpers.cpp — auto-stage and the acceleration estimate.
 
    Auto-stage: fire STAGE_ACTION when the current throttle owner is above 10 % throttle,
    the stage's delta-V is spent, and the owner still has delta-V to deliver; 2 s lockout.
@@ -12,6 +12,11 @@
      TWR  — a pilot-entered thrust-to-weight override bypasses both.
 ****************************************************************************************/
 #include "control_links.h"
+#include "debug.h"
+#include <math.h>
+#include <string.h>
+#include <strings.h>
+#include <stdlib.h>
 
 static bool     as_enabled     = true;
 static uint32_t as_lastStageMs = 0;
@@ -37,7 +42,7 @@ void asMaybeStage(bool enabled, float throttle, float remainingDv) {
   if (ae_stageDv > AS_STAGE_DV_MIN || remainingDv < AS_STAGE_DV_MIN) return;
   uint32_t now = millis();
   if (now - as_lastStageMs < AS_LOCKOUT_MS) return;
-  mySimpit.activateAction(STAGE_ACTION);
+  kspActionGroup(STAGE_ACTION, true);
   as_lastStageMs = now;
 }
 

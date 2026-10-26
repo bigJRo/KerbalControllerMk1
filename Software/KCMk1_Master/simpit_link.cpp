@@ -6,6 +6,7 @@
 #include "state.h"
 #include "debug.h"
 #include "hold.h"
+#include "autopilots.h"
 
 static KerbalSimpit g_simpit(SerialUSB1);
 static uint32_t g_lastTryMs;
@@ -119,6 +120,7 @@ static void inbound(byte type, byte msg[], byte size) {
   uint32_t now = millis();
   g_vessel.lastRxMs = now;
   g_vessel.rxCount++;
+  autopilotsIngest(type, msg, size);              // the autopilots' telemetry (their own size checks)
   for (uint8_t i = 0; i < kInboundN; i++) {
     if (kInbound[i].type != type) continue;
     if (size != kInbound[i].size) {
@@ -133,8 +135,11 @@ static void inbound(byte type, byte msg[], byte size) {
   }
 }
 
+static void registerOne(byte channel) { g_simpit.registerChannel(channel); }
+
 static void registerChannels() {
-  for (uint8_t i = 0; i < kInboundN; i++) g_simpit.registerChannel(kInbound[i].type);
+  for (uint8_t i = 0; i < kInboundN; i++) registerOne(kInbound[i].type);
+  autopilotsChannels(registerOne);
 }
 
 static void cmdSimpit(const char *) {

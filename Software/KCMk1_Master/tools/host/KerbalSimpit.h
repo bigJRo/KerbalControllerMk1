@@ -94,7 +94,7 @@ struct atmoConditionsMessage {
   bool hasAtmosphere()        { return atmoCharacteristics & HAS_ATMOSPHERE; }
   bool hasOxygen()            { return atmoCharacteristics & HAS_OXYGEN; }
   bool isVesselInAtmosphere() { return atmoCharacteristics & IS_IN_ATMOSPHERE; }
-};
+} __attribute__((packed));
 struct velocityMessage        { float orbital, surface, vertical; };
 struct targetMessage          { float distance, velocity, heading, pitch, velocityHeading, velocityPitch; };
 struct intersectsMessage      { float distanceAtIntersect1; int32_t timeToIntersect1; float velocityAtIntersect1;

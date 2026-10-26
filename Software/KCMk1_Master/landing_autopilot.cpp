@@ -1,13 +1,17 @@
 /***************************************************************************************
-   landing_autopilot.ino — DESC / HOVR / BRAKE / ENTRY.
+   landing_autopilot.cpp — DESC / HOVR / BRAKE / ENTRY.
    Contract in landing_autopilot.h; design in Mission_Autopilot.md §5, §7.2, §7.7.
 ****************************************************************************************/
 #include "landing_autopilot.h"
 #include "attitude_controller.h"
 #include "control_links.h"
+#include "debug.h"
+#include <math.h>
+#include <string.h>
+#include <strings.h>
+#include <stdlib.h>
 #include "hold_autopilot.h"
 
-static const int32_t LP_AXIS_FULL = INT16_MAX;
 
 struct LpTelemetry {
   uint8_t vesselType = 0, situation = 0;
@@ -72,15 +76,15 @@ static void lpThrottle(float t) {
 
 static void lpSas(uint8_t mode) {
   if (lp_sasMode == mode) return;
-  mySimpit.activateAction(SAS_ACTION);
-  mySimpit.setSASMode(mode);
+  kspActionGroup(SAS_ACTION, true);
+  kspSasMode(mode);
   lp_sasMode = mode;
 }
 
 static void lpReleaseThrottleOwner() { thrAutoRelease(THR_OWNER_LANDING); arbReleaseThrottle(AP_OWNER_LANDING); }
 static void lpReleaseAttitudeOwner(bool sasStability) {
   rotClearAutoAxes();
-  if (sasStability) { mySimpit.activateAction(SAS_ACTION); mySimpit.setSASMode(AP_STABILITYASSIST); }
+  if (sasStability) { kspActionGroup(SAS_ACTION, true); kspSasMode(AP_STABILITYASSIST); }
   lp_sasMode = 255;
   lp_attSrc = LP_ATT_SAS; lp_vertAuto = false;
   arbReleaseAttitude(AP_OWNER_LANDING);
@@ -159,7 +163,7 @@ bool lpEngageEntry(bool on) {
   if (!on) { lpDropEntry(HP_REASON_PILOT); return true; }
   if ((millis() - lp_t.lastMs) > lp_c.telemetryTimeout || lpOnGround()) { lpSetReason(HP_REASON_REFUSED); return false; }
   arbTakeAttitude(AP_OWNER_LANDING);
-  mySimpit.deactivateAction(SAS_ACTION);   // raw rotation for ENTRY
+  kspActionGroup(SAS_ACTION, false);   // raw rotation for ENTRY
   lp_sasMode = 255;
   attReset(lp_att);
   lp_attSrc = LP_ATT_ENTRY;
@@ -202,7 +206,7 @@ static float lpDescLoop(float vsCmd, float dt) {
 // straight up -- is never fought. Roll is left alone. SAS is off while this flies.
 static void lpVertHold(float dt) {
   if (lp_attSrc != LP_ATT_VERT) {
-    mySimpit.deactivateAction(SAS_ACTION);
+    kspActionGroup(SAS_ACTION, false);
     lp_sasMode = 255;
     attReset(lp_att);
     lp_attSrc = LP_ATT_VERT;
@@ -301,8 +305,6 @@ void lpUpdate() {
 
   // Failsafe: telemetry loss keeps the throttle where it is and hands over.
   if ((now - lp_t.lastMs) > lp_c.telemetryTimeout) { lpDisconnectAll(HP_REASON_TELEMETRY); return; }
-  uint8_t ovr;
-  if (pilotOverrideDetected(ovr)) { lpDisconnectAll(ovr); return; }
   if (lpOnGround()) { lpThrottle(0.0f); lpDisconnectAll(HP_REASON_LANDED); lpThrottle(0.0f); return; }
 
   if (lp_mode != LP_MODE_OFF) lpUpdateThrottleModes(now, dt);
@@ -350,10 +352,8 @@ bool lpConsoleLine(const char *line) {
   if (strncasecmp(line, "OFF", 3) == 0) { lpDisconnectAll(HP_REASON_PILOT); return true; }
   if (strncasecmp(line, "STATUS", 6) == 0) {
     LandingStatus s = lpGetStatus();
-    Serial.print(F("LP mode=")); Serial.print(s.mode); Serial.print(F(" entry=")); Serial.print(s.entry);
-    Serial.print(F(" ign=")); Serial.print(s.ignitionAlt, 0); Serial.print(F(" a=")); Serial.print(s.accelEst, 2);
-    Serial.print(F(" src=")); Serial.print(s.accelSource); Serial.print(F(" thr=")); Serial.print(s.cmdThrottle, 2);
-    Serial.print(F(" reason=")); Serial.println(hpReasonName(s.reason));
+    conPrintf("LP mode=%u entry=%d ign=%s a=%s src=%u thr=%s reason=%s", s.mode, s.entry, fstr(s.ignitionAlt, 0),
+              fstr(s.accelEst, 2), s.accelSource, fstr(s.cmdThrottle, 2), hpReasonName(s.reason));
     return true;
   }
   return false;

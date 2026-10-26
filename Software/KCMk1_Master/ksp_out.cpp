@@ -70,6 +70,12 @@ bool kspNavballCycle() {
   return true;
 }
 
+void kspPrint(const char *text) {
+  dbg(DBG_TOKSP, "print: %s", text);
+  if (!kspAllowed()) return;
+  simpitClient().printToKSP(String(text), PRINT_TO_SCREEN);
+}
+
 void kspNoteSuppressed(byte type) {
   g_suppressed++;
   dbg(DBG_TOKSP, "not sent type %u (%s)", type, g_master.demo ? "demo" : "KSP link down");

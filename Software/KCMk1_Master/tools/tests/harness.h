@@ -61,16 +61,32 @@ struct CarrierSim : SimDevice {
   uint8_t sync, len, flags = 0;
   int line = -1;                           // INT line index, when the test wires one
   std::vector<std::vector<uint8_t>> cmds;
+  // Info Display console (Ascent_Autopilot_Interface.md §2–§3): the screen on view and
+  // one command in flight until the master ACKs it.
+  uint8_t screen = 0xFF, seq = 0, op = 0, nextSeq = 1;
+  float val = 0;
+  int acked = 0;
   CarrierSim(uint8_t s, uint8_t l) : sync(s), len(l) {}
+  void command(uint8_t o, float v) { op = o; val = v; seq = nextSeq++; if (!nextSeq) nextSeq = 1; }
   bool onWrite(const uint8_t *b, int n, bool) override {
     cmds.push_back(std::vector<uint8_t>(b, b + n));
     if (line >= 0 && n >= 1 && (b[0] >> 4) == 0x1) stubPin(PIN_INT_LINE[line]) = LOW;   // STATUS: assert INT
+    if (n == 2 && seq && b[1] == seq) { seq = 0; acked++; }
     return true;
   }
   int onRead(uint8_t *b, int n) override {
     if (line >= 0) stubPin(PIN_INT_LINE[line]) = HIGH;
     uint8_t p[10] = { sync, flags };
+    if (len == 10) {
+      p[2] = screen; p[3] = seq; p[4] = seq ? op : 0;
+      if (seq) memcpy(p + 5, &val, 4);
+      for (int i = 3; i < 9; i++) p[9] ^= p[i];
+    }
     int k = n < len ? n : len; memcpy(b, p, k); return k;
+  }
+  const std::vector<uint8_t> *lastFrame(uint8_t s) const {
+    for (auto it = cmds.rbegin(); it != cmds.rend(); ++it) if (it->size() > 2 && (*it)[0] == s) return &*it;
+    return nullptr;
   }
 };
 

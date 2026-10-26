@@ -144,7 +144,7 @@ const char  *apPhaseName(AscentPhase phase);           // Human-readable phase l
 void         apArm();                      // Engage the autopilot from the current state
 void         apDisarm();                   // Hand control back to the pilot (zeroes commands)
 bool         apIsArmed();
-void         apArbiterDrop();              // another autopilot took attitude or throttle (ap_arbiter.ino)
+void         apArbiterDrop();              // another autopilot took attitude or throttle (ap_arbiter.cpp)
 AscentPhase  apGetPhase();
 AscentStatus apGetStatus();                // Full readout for a console/display panel
 
@@ -153,7 +153,7 @@ void         apUpdate();                    // Run guidance + emit commands — 
 // Optional bench-test console: parses simple commands on the primary Serial port
 // (ARM, DISARM, STATUS, ALT <m>, INC <deg>, LOFT <x>, ROLL <deg>, ROLLOFF, MAXG <g>,
 // SOUTH <0|1>). Exercises the same guarded setters a panel uses. Call from loop().
-void         apSerialConsole();
+bool         apConsoleLine(const char *line);   // bench console (`ap` command); false = not understood
 
 /***************************************************************************************
    Telemetry ingest — call these from the Simpit message handler as packets arrive.

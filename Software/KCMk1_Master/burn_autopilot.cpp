@@ -1,14 +1,17 @@
 /***************************************************************************************
-   burn_autopilot.ino — burn executor, planners and approach-rate hold.
+   burn_autopilot.cpp — burn executor, planners and approach-rate hold.
    Contract in burn_autopilot.h; design in Mission_Autopilot.md §4, §7.1, §7.3, §7.7.
 ****************************************************************************************/
 #include "burn_autopilot.h"
 #include "attitude_controller.h"
 #include "control_links.h"
+#include "debug.h"
+#include <math.h>
+#include <string.h>
+#include <strings.h>
+#include <stdlib.h>
 #include "hold_autopilot.h"     // HP_REASON_* shared reason codes
 
-static const int32_t BP_AXIS_FULL = INT16_MAX;
-static const float   BP_G0 = 9.81f;
 
 struct BpTelemetry {
   bool  nodeAvailable = false; float nodeTimeTo = 0, nodeDv = 0, nodeDuration = 0, nodeHeading = 0, nodePitch = 0;
@@ -72,7 +75,7 @@ static void bpThrottle(float t) {
 // Only a completed burn (DONE) cuts, explicitly, before releasing.
 static void bpReleaseVehicle(bool sasStability) {
   thrAutoRelease(THR_OWNER_BURN);
-  if (sasStability) { mySimpit.activateAction(SAS_ACTION); mySimpit.setSASMode(AP_STABILITYASSIST); }
+  if (sasStability) { kspActionGroup(SAS_ACTION, true); kspSasMode(AP_STABILITYASSIST); }
   arbReleaseAttitude(AP_OWNER_BURN);
   arbReleaseThrottle(AP_OWNER_BURN);
 }
@@ -254,8 +257,8 @@ bool bpExecute() {
   if (bp_phase == BP_PHASE_PLANNED) {
     if (!bp_plan.valid) return false;
     arbTakeAttitude(AP_OWNER_BURN); arbTakeThrottle(AP_OWNER_BURN);
-    mySimpit.activateAction(SAS_ACTION);
-    mySimpit.setSASMode(bp_plan.sasMode);
+    kspActionGroup(SAS_ACTION, true);
+    kspSasMode(bp_plan.sasMode);
     attReset(bp_att);
     bp_planAtExec = bp_plan;
     bp_phase = BP_PHASE_ALIGN; bp_alignStartMs = now; bp_settledSince = 0;
@@ -263,8 +266,7 @@ bool bpExecute() {
   }
   if (bp_phase == BP_PHASE_WARP_READY && bp_autoWarp) {
     if (!arbCanWarp(AP_OWNER_BURN)) return false;
-    timewarpToMessage w(bp_plan.warpInstant, bp_plan.warpDelay);   // Simpit 2.4.0 has no default constructor
-    mySimpit.send(TIMEWARP_TO_MESSAGE, w);
+    kspTimewarpTo(bp_plan.warpInstant, bp_plan.warpDelay);
     bp_phase = BP_PHASE_WARP;
     return true;
   }
@@ -286,8 +288,8 @@ bool bpEngageApproach(bool on) {
   if (!bp_t.tgtAvailable) { bpSetReason(HP_REASON_NO_TARGET); return false; }
   if (bp_phase != BP_PHASE_IDLE) { bp_mode = BP_MODE_NONE; bp_phase = BP_PHASE_IDLE; bp_plan.valid = false; }
   arbTakeAttitude(AP_OWNER_BURN);
-  mySimpit.activateAction(SAS_ACTION);
-  mySimpit.setSASMode(AP_TARGET);
+  kspActionGroup(SAS_ACTION, true);
+  kspSasMode(AP_TARGET);
   bp_appr = true;
   return true;
 }
@@ -350,11 +352,8 @@ static void bpUpdateApproach(float dt) {
   if (fabsf(eAlong) < bp_c.apprDeadband) cmdFwd = 0.0f;
   if (fabsf(bpDot(vLat, right)) < bp_c.apprDeadband) cmdRight = 0.0f;
   if (fabsf(bpDot(vLat, up)) < bp_c.apprDeadband) cmdUp = 0.0f;
-  translationMessage t;
-  t.setX((int16_t)(cmdRight * bp_c.trnSignX * (float)BP_AXIS_FULL));
-  t.setY((int16_t)(cmdUp    * bp_c.trnSignY * (float)BP_AXIS_FULL));
-  t.setZ((int16_t)(cmdFwd   * bp_c.trnSignZ * (float)BP_AXIS_FULL));
-  mySimpit.send(TRANSLATION_MESSAGE, t);
+  // The translation channel holds these axes while the approach is engaged (ksp_frame.h).
+  trnSetAuto(cmdRight * bp_c.trnSignX, cmdUp * bp_c.trnSignY, cmdFwd * bp_c.trnSignZ, TRN_AXIS_X | TRN_AXIS_Y | TRN_AXIS_Z);
 }
 
 /***************************************************************************************
@@ -367,11 +366,10 @@ void bpUpdate() {
   if (dt <= 0.0f || dt > 0.5f) dt = 0.02f;
 
   if ((bp_phase == BP_PHASE_DONE || bp_phase == BP_PHASE_ABORT) && now - bp_doneMs > 5000) bp_phase = BP_PHASE_IDLE;
+  if (!bp_appr) trnClearAuto();                     // the approach hold has let go
   if (!bpAnyEngaged()) return;
 
   if ((now - bp_t.lastMs) > bp_c.telemetryTimeout) { bpAbort(HP_REASON_TELEMETRY); return; }
-  uint8_t ovr;
-  if (pilotOverrideDetected(ovr)) { bpAbort(ovr); return; }
 
   if (bp_appr) { bpUpdateApproach(dt); if (!bpArmed()) return; }
 
@@ -488,10 +486,9 @@ bool bpConsoleLine(const char *line) {
   if (strncasecmp(line, "OFF", 3) == 0) { bpAbort(HP_REASON_PILOT); return true; }
   if (strncasecmp(line, "STATUS", 6) == 0) {
     BurnStatus s = bpGetStatus();
-    Serial.print(F("BP mode=")); Serial.print(s.mode); Serial.print(F(" phase=")); Serial.print(bpPhaseName(s.phase));
-    Serial.print(F(" dv=")); Serial.print(s.dvTotal, 1); Serial.print(F(" rem=")); Serial.print(s.dvRemaining, 1);
-    Serial.print(F(" tign=")); Serial.print(s.tIgnition, 0); Serial.print(F(" dur=")); Serial.print(s.burnDuration, 0);
-    Serial.print(F(" a=")); Serial.print(s.accelEst, 2); Serial.print(F(" reason=")); Serial.println(hpReasonName(s.reason));
+    conPrintf("BP mode=%u phase=%s dv=%s rem=%s tign=%s dur=%s a=%s reason=%s", s.mode, bpPhaseName(s.phase),
+              fstr(s.dvTotal, 1), fstr(s.dvRemaining, 1), fstr(s.tIgnition, 0), fstr(s.burnDuration, 0),
+              fstr(s.accelEst, 2), hpReasonName(s.reason));
     return true;
   }
   return false;

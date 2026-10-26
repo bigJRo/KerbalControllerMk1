@@ -1,8 +1,9 @@
 /***************************************************************************************
-   attitude_controller.ino — shared attitude PID for the ascent and hold-mode autopilots.
+   attitude_controller.cpp — shared attitude PID for the ascent and hold-mode autopilots.
    See attitude_controller.h for the contract.
 ****************************************************************************************/
 #include "attitude_controller.h"
+#include <math.h>
 
 static const float ATT_RATE_TAU_S = 0.25f;   // rate estimate low-pass time constant
 

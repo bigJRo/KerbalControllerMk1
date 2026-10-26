@@ -1,5 +1,10 @@
 /***************************************************************************************
-   infodisp_link.ino — Info Display 2 (0x13) autopilot console link for the master.
+   infodisp_link.cpp — Info Display 2 (0x13) autopilot console link for the master.
+   Ported from Controller_Main (design §11): the protocol is unchanged; it now goes
+   through the master's I2C layer, takes its control byte from carriers.cpp (which also
+   releases both displays from their boot hold), and applies the master's engage rules
+   (idlApply): nothing engages under A/P INHIB, nothing that uses the throttle engages
+   unless the ENGINE is ARMED, and a console autopilot engaging releases HOLD.
 
    Byte-level contract: Documents/Developer/Ascent_Autopilot_Interface.md (transport,
    ascent opcodes, 40-byte ascent status) and Hold_Mode_Autopilot.md §8 (hold-mode
@@ -23,14 +28,22 @@
    frames, so the two can never disagree.
 
    Info Display 1 (0x12) never carries a command (its console is compiled out), so only
-   the mission panel is polled. Both displays are sent PROCEED at init so they leave
-   their boot hold; the rest of the display-carrier handshake is still to be integrated.
+   the mission panel is polled.
 ****************************************************************************************/
 #include "control_links.h"
 #include "ascent_autopilot.h"
 #include "hold_autopilot.h"
 #include "burn_autopilot.h"
 #include "landing_autopilot.h"
+#include "config.h"
+#include "state.h"
+#include "debug.h"
+#include "i2c_bus.h"
+#include "carriers.h"
+#include "interlocks.h"
+#include "hold.h"
+#include "infodisp_link.h"
+#include <string.h>
 
 static const uint32_t IDL_POLL_MS = 50;
 static const uint32_t IDL_PUSH_MS = 100;
@@ -57,7 +70,6 @@ static const uint8_t IDL_SCREEN_ORBTAP = 16;
 static const uint8_t IDL_SCREEN_LNDGAP = 17;
 
 // requestType nibble (I2C Protocol Specification §15.3)
-static const uint8_t IDL_REQ_NOP     = 0x0;
 static const uint8_t IDL_REQ_PROCEED = 0x2;
 
 // Command opcodes (Ascent_Autopilot_Interface.md §4, Hold_Mode_Autopilot.md §8.1)
@@ -89,37 +101,76 @@ static uint8_t  g_idlScreen     = 0xFF;
 static bool     g_idlDemo       = false;
 static uint32_t g_idlLastPollMs = 0, g_idlLastPushMs = 0;
 
-static uint8_t idlControlByte(uint8_t reqType) {
-  uint8_t b = (uint8_t)(reqType << 4);
-  if (debug)    b |= 0x01;
-  if (demo)     b |= 0x02;
-  if (trimMode) b |= 0x04;
-  if (idleMode) b |= 0x08;
-  return b;
-}
+static void idlWrite(uint8_t addr, const uint8_t *buf, uint8_t n) { busWrite(addr, buf, n); }
 
-static void idlWrite(uint8_t addr, const uint8_t *buf, uint8_t n) {
-  Wire.beginTransmission(addr);
-  Wire.write(buf, n);
-  Wire.endTransmission();
-}
-
+// The ACK rides on the display's ordinary 2-byte control write (with PROCEED, which a
+// display past its boot hold ignores), so it goes out at once.
 static void idlSendControl(uint8_t addr, uint8_t reqType, uint8_t ackSeq) {
-  uint8_t c[2] = { idlControlByte(reqType), ackSeq };
+  uint8_t c[2] = { carrierInfoDispControl(reqType), ackSeq };
   idlWrite(addr, c, 2);
 }
 
 void idlInit() {
-  // Release both display carriers from their boot hold.
-  idlSendControl(INFO_MC,  IDL_REQ_PROCEED, 0);
-  idlSendControl(INFO2_MC, IDL_REQ_PROCEED, 0);
+  g_idlLastSeq = g_idlAckPending = 0;
+  g_idlScreen = 0xFF;
+  g_idlDemo = false;
   g_idlLastPollMs = g_idlLastPushMs = millis();
+}
+
+uint8_t idlScreen() { return g_idlScreen; }
+
+/***************************************************************************************
+   The master's engage rules (design §8.2, §11.3)
+****************************************************************************************/
+// Commands that engage or arm something (a disengage is always allowed).
+static bool idlEngages(uint8_t op, float v) {
+  switch (op) {
+    case IDL_CMD_ARM: case IDL_CMD_HOLD_LVL: case IDL_CMD_EXEC: return true;
+    case IDL_CMD_ENGAGE_ATT: case IDL_CMD_ENGAGE_AOA: case IDL_CMD_ENGAGE_VS: case IDL_CMD_ENGAGE_ALT:
+    case IDL_CMD_ENGAGE_ROLL: case IDL_CMD_ENGAGE_HDG: case IDL_CMD_ENGAGE_IAS: case IDL_CMD_ENGAGE_MACH:
+    case IDL_CMD_ENGAGE_CRUISE: case IDL_CMD_ENGAGE_RHDG: case IDL_CMD_ENGAGE_RTGT:
+    case IDL_CMD_ENGAGE_NAV: case IDL_CMD_ENGAGE_GS: case IDL_CMD_ENGAGE_FOLLOW:
+    case IDL_CMD_ARM_NODE: case IDL_CMD_ARM_AP: case IDL_CMD_ARM_PE: case IDL_CMD_ARM_INC: case IDL_CMD_ENGAGE_APPR:
+    case IDL_CMD_ENGAGE_DESC: case IDL_CMD_ENGAGE_HOVR: case IDL_CMD_ENGAGE_BRAKE: case IDL_CMD_ENGAGE_ENTRY:
+      return v != 0.0f;
+  }
+  return false;
+}
+
+// Modes that drive the throttle (or the rover's wheel throttle).
+static bool idlUsesThrottle(uint8_t op) {
+  switch (op) {
+    case IDL_CMD_ARM: case IDL_CMD_EXEC: case IDL_CMD_ENGAGE_IAS: case IDL_CMD_ENGAGE_MACH:
+    case IDL_CMD_ENGAGE_CRUISE: case IDL_CMD_ENGAGE_FOLLOW:
+    case IDL_CMD_ARM_NODE: case IDL_CMD_ARM_AP: case IDL_CMD_ARM_PE: case IDL_CMD_ARM_INC:
+    case IDL_CMD_ENGAGE_DESC: case IDL_CMD_ENGAGE_HOVR: case IDL_CMD_ENGAGE_BRAKE:
+      return true;
+  }
+  return false;
+}
+
+static bool idlAllowed(uint8_t op, float v) {
+  if (!idlEngages(op, v)) return true;
+  if (!g_panel.apArm) {
+    dbg(DBG_AP, "console command %02X refused: A/P INHIB", op);
+    kspPrint("A/P INHIB: autopilot not engaged");
+    return false;
+  }
+  if (idlUsesThrottle(op) && !interlockThrottleLive()) {
+    dbg(DBG_AP, "console command %02X refused: ENGINE SAFE", op);
+    kspPrint("ENGINE SAFE: autopilot not engaged");
+    return false;
+  }
+  holdRelease("a console autopilot engaged");
+  return true;
 }
 
 /***************************************************************************************
    Apply one console command
 ****************************************************************************************/
 static void idlApply(uint8_t op, float v) {
+  if (!idlAllowed(op, v)) return;
+  dbg(DBG_AP, "console command %02X %s", op, fstr(v, 2));
   switch (op) {
     // ---- Ascent autopilot ----
     case IDL_CMD_SET_TARGET_ALT:  apSetTargetAltitude(v); break;
@@ -197,10 +248,7 @@ static void idlApply(uint8_t op, float v) {
 ****************************************************************************************/
 static void idlPoll() {
   uint8_t buf[10];
-  uint8_t got = 0;
-  Wire.requestFrom((uint8_t)INFO2_MC, (uint8_t)10);
-  while (Wire.available() && got < 10) buf[got++] = Wire.read();
-  if (got < 10 || buf[0] != IDL_SYNC_OUT) return;
+  if (busRead(ADDR_INFODISP_2, buf, 10) != BUS_OK || buf[0] != IDL_SYNC_OUT) return;
 
   g_idlDemo   = (buf[1] & 0x04) != 0;
   g_idlScreen = buf[2];
@@ -218,7 +266,7 @@ static void idlPoll() {
     }
   }
   if (g_idlAckPending) {
-    idlSendControl(INFO2_MC, IDL_REQ_NOP, g_idlAckPending);
+    idlSendControl(ADDR_INFODISP_2, IDL_REQ_PROCEED, g_idlAckPending);
     g_idlAckPending = 0;
   }
 }
@@ -226,8 +274,6 @@ static void idlPoll() {
 /***************************************************************************************
    Status pushes
 ****************************************************************************************/
-static void idlPutFloat(uint8_t *dst, float f) { memcpy(dst, &f, 4); }
-
 // Flag bytes, one helper per autopilot, shared by the full frames and the summary.
 static uint8_t idlAscentFlags(const AscentStatus &s, const AscentConfig &c) {
   return (s.armed ? 0x01 : 0) | (c.launchSoutherly ? 0x02 : 0) | (c.rollControlEnabled ? 0x04 : 0);
@@ -263,8 +309,8 @@ static void idlPushSummary() {
   st[5] = idlLandingFlags(l);
   st[6] = l.mode;
   st[7] = l.entry ? 1 : 0;
-  idlWrite(INFO_MC,  st, IDL_LEN_SUMMARY);
-  idlWrite(INFO2_MC, st, IDL_LEN_SUMMARY);
+  idlWrite(ADDR_INFODISP_1,  st, IDL_LEN_SUMMARY);
+  idlWrite(ADDR_INFODISP_2, st, IDL_LEN_SUMMARY);
 }
 
 static void idlPushAscent() {
@@ -277,7 +323,7 @@ static void idlPushAscent() {
   float f[9] = { c.targetApoapsis, c.targetInclination, c.loft, c.targetRoll, c.maxG,
                  s.cmdPitch, s.cmdHeading, s.cmdThrottle, s.dynPressure };
   memcpy(&st[4], f, sizeof(f));
-  idlWrite(INFO2_MC, st, IDL_LEN_ASCENT);
+  idlWrite(ADDR_INFODISP_2, st, IDL_LEN_ASCENT);
 }
 
 static void idlPushAircraft() {
@@ -289,7 +335,7 @@ static void idlPushAircraft() {
   st[5] = s.reason;    st[6] = s.reasonAge; st[7] = 0;
   float f[10] = { s.att, s.aoa, s.vs, s.alt, s.roll, s.hdg, s.ias, s.mach, s.gs, s.cmdThrottle };
   memcpy(&st[8], f, sizeof(f));
-  idlWrite(INFO2_MC, st, IDL_LEN_AIRCRAFT);
+  idlWrite(ADDR_INFODISP_2, st, IDL_LEN_AIRCRAFT);
 }
 
 static void idlPushRover() {
@@ -300,7 +346,7 @@ static void idlPushRover() {
   st[2] = s.roverReason; st[3] = s.roverReasonAge;
   float f[8] = { s.cruiseSp, s.rhdgSp, s.maxSpeed, s.maxSlope, s.maxRoll, s.followRange, s.stopDist, s.cmdWheel };
   memcpy(&st[4], f, sizeof(f));
-  idlWrite(INFO2_MC, st, IDL_LEN_ROVER);
+  idlWrite(ADDR_INFODISP_2, st, IDL_LEN_ROVER);
 }
 
 static void idlPushOrbital() {
@@ -312,7 +358,7 @@ static void idlPushOrbital() {
   float f[11] = { s.targetAp, s.targetPe, s.targetInc, s.apprRate, s.apprDist, s.dvTotal, s.dvRemaining,
                   s.tIgnition, s.burnDuration, s.accelEst, s.cmdThrottle };
   memcpy(&st[8], f, sizeof(f));
-  idlWrite(INFO2_MC, st, IDL_LEN_ORBITAL);
+  idlWrite(ADDR_INFODISP_2, st, IDL_LEN_ORBITAL);
 }
 
 static void idlPushLanding() {
@@ -323,7 +369,7 @@ static void idlPushLanding() {
   st[2] = s.mode; st[3] = s.entry ? 1 : 0; st[4] = s.reason; st[5] = s.reasonAge; st[6] = s.accelSource;
   float f[9] = { s.descRate, s.hovrAlt, s.twrOverride, s.margin, s.entryAoa, s.entryRoll, s.ignitionAlt, s.accelEst, s.cmdThrottle };
   memcpy(&st[8], f, sizeof(f));
-  idlWrite(INFO2_MC, st, IDL_LEN_LANDING);
+  idlWrite(ADDR_INFODISP_2, st, IDL_LEN_LANDING);
 }
 
 void idlService() {
