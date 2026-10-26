@@ -7,7 +7,9 @@
      3  banner: firmware version, reset cause (and where a watchdog reset happened)
      4  board devices: INA228, EMC2101
      5  INT map: stored (EEPROM) or default
-     6  modules: identify, learn INT lines, LEDs off, DISABLE (module_bus)
+     6  modules: identify, learn INT lines, LEDs off, DISABLE (module_bus); then the
+        switch modules are read, so demo, the interlocks and the control mode are
+        known before KSP is tried (switches)
      7  display carriers: PROCEED to each, wait for its status; learn their INT lines
      8  first Simpit handshake attempt
      9  start the watchdog (skipped, and the master halts, if the reboot-loop guard tripped)
@@ -21,6 +23,7 @@
 #include "carriers.h"
 #include "simpit_link.h"
 #include "module_bus.h"
+#include "switches.h"
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -105,6 +108,8 @@ void bootSequence() {
   stepBanner();                                                     // 3
   stepDevices();                                                    // 4
   moduleBusBoot();                                                  // 5, 6
+  moduleBusReadSwitches();
+  switchesBoot();
   carriersBoot();                                                   // 7
   moduleBusLearnCarriers();
   const ResetInfo &r = boardResetInfo();

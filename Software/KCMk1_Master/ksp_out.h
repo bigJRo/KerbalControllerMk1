@@ -26,3 +26,9 @@ template <class T> bool kspSend(byte type, T &msg) {
   kspNoteSent(type, (uint8_t)sizeof(T));
   return true;
 }
+
+// Standard action groups (*_ACTION bits): AGACTIVATE / AGDEACTIVATE.
+bool kspActionGroup(uint8_t action, bool on);
+// Main throttle, 0..INT16_MAX. Stage 5 adds the per-frame owner merge; until then only
+// the ENGINE interlock sends it (0 %).
+bool kspThrottle(int16_t value);

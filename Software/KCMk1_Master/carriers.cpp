@@ -11,6 +11,7 @@
 
 static const uint8_t REQ_STATUS     = 0x1;
 static const uint8_t REQ_PROCEED    = 0x2;
+static const uint8_t REQ_DISPLAY_RESET = 0x4;
 static const uint8_t ANN_CMD_LEN    = 9;
 static const int16_t GPWS_DEFAULT_M = 200;
 
@@ -29,10 +30,13 @@ static uint8_t  g_lastCtrl[CAR_COUNT];
 static bool     g_sent;
 static uint32_t g_lastPushMs, g_lastStatusMs;
 static bool     g_answering[CAR_COUNT];
+static bool     g_resetPending;                // DISPLAY_RESET on the next push
 
 const char *carrierName(CarrierId c) { return c < CAR_COUNT ? kCar[c].name : "?"; }
 
 void carrierSetGpws(uint8_t cfg, int16_t thresholdM) { g_gpwsCfg = cfg & 0x0F; g_gpwsThr = thresholdM; }
+
+void carrierDisplayReset() { g_resetPending = true; }
 
 static uint8_t controlByte(bool bit2, uint8_t req = REQ_PROCEED) {
   uint8_t b = (uint8_t)(req << 4);
@@ -79,10 +83,15 @@ static void push(bool force) {
   uint8_t ann[ANN_CMD_LEN];
   buildAnnunciator(ann);
   uint8_t ctrl[CAR_COUNT];
+  // DISPLAY_RESET (MSTR RESET, DISP CLR) takes the place of PROCEED for one push: the
+  // carriers are past their boot hold by then, and the next push repeats PROCEED.
+  uint8_t req = g_resetPending ? REQ_DISPLAY_RESET : REQ_PROCEED;
+  if (g_resetPending) { force = true; ann[0] = (uint8_t)((ann[0] & 0x0F) | (req << 4)); }
+  g_resetPending = false;
   ctrl[CAR_ANNUNCIATOR] = ann[0];
-  ctrl[CAR_INFODISP_1]  = controlByte(g_panel.trim);
-  ctrl[CAR_INFODISP_2]  = controlByte(g_panel.trim);
-  ctrl[CAR_RESDISP]     = controlByte(false);
+  ctrl[CAR_INFODISP_1]  = controlByte(g_panel.trim, req);
+  ctrl[CAR_INFODISP_2]  = controlByte(g_panel.trim, req);
+  ctrl[CAR_RESDISP]     = controlByte(false, req);
 
   uint32_t now = millis();
   bool changed = !g_sent || memcmp(ann, g_lastAnn, ANN_CMD_LEN) != 0 || memcmp(ctrl, g_lastCtrl, CAR_COUNT) != 0;
@@ -146,6 +155,7 @@ void carriersInit() {
   g_gpwsCfg = 0;
   g_gpwsThr = GPWS_DEFAULT_M;
   g_sent = false;
+  g_resetPending = false;
   g_master.displayLinks = g_master.displaysKnown = 0;
   memset(g_answering, 0, sizeof g_answering);
   g_lastPushMs = g_lastStatusMs = millis();

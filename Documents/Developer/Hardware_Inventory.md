@@ -806,6 +806,7 @@ Collected from this review; each is a separate piece of work.
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
 | 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |
 | 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
+| 19 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` per the I2C spec: start / stop, no timeout, not blocking. Today a fixed 2 s `delay()` inside the I2C handler (found while building stage 3 of the master) |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
 | 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
 | 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |

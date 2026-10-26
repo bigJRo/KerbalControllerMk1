@@ -12,6 +12,15 @@
      - sends LED changes, at most every MODBUS_LED_MIN_MS per module;
      - re-probes absent modules every MODBUS_REPROBE_MS.
 
+   Panel switches (stage 3): a module that is not ACTIVE asserts no INT but still answers
+   a read with its current inputs (KerbalButtonCore keeps debouncing). The three modules
+   that carry switches (Function: Switch Group 1, Vehicle: Switch Group 2, Time: the mode
+   selector) are polled every MODBUS_SWITCH_POLL_MS while not ACTIVE, so demo, debug and
+   the interlocks follow their switches in any scene. moduleInputs() gives the levels from
+   the last packet of any module (whatever its lifecycle), moduleTakePressed() the presses
+   since last taken (so a quick flick of a momentary switch between two reads is not lost).
+   Events (ModHandler) are still only delivered while a module is ACTIVE.
+
    INT line learning (§6.2): at power-on every module holds INT low until its first data
    read, so reading the modules one at a time shows which line each one is on. The
    display carriers are learned the same way after they are released: a STATUS request
@@ -39,6 +48,8 @@ static const uint32_t MODBUS_LED_MIN_MS  = 50;
 static const uint32_t MODBUS_POLL_MS     = 20;     // module with no known INT line
 static const uint32_t MODBUS_REPROBE_MS  = 5000;
 static const uint32_t MODBUS_HOLD_MS     = 2000;   // a "held" event (state-machine reset)
+static const uint32_t MODBUS_SWITCH_POLL_MS = 100;  // switch modules while not ACTIVE
+static const uint32_t MODBUS_BULB_QUIET_MS  = 2100; // after a bulb-test start (moduleBulbTest)
 
 // What a handler gets for each packet (and for a hold, with only `held` set).
 struct ModEvent {
@@ -56,6 +67,7 @@ typedef void (*ModHandler)(const ModEvent &e);
 void     moduleBusInit();
 void     moduleBusBoot();                       // boot steps 5–6: INT map, discovery and learning
 void     moduleBusLearnCarriers();              // after the carriers are released (boot step 7)
+void     moduleBusReadSwitches();               // boot: one read of each switch module
 void     moduleBusService();
 void     moduleBusFlushLeds();
 void     moduleBusSetHandler(ModId id, ModHandler h);
@@ -71,6 +83,14 @@ void     moduleSetLed(ModId id, uint8_t button, uint8_t state);   // KMC_LED_*
 uint8_t  moduleLed(ModId id, uint8_t button);
 void     moduleSetAllLeds(ModId id, uint8_t state);
 void     moduleBulbTest(bool on);
+void     moduleResetAll();                      // CMD_RESET to every module (MSTR RESET)
+void     moduleRequestRead(ModId id);           // read it on the next pass
+
+// Inputs, whatever the lifecycle (see above). moduleInputs() is false while the levels
+// are unknown; `epoch` changes each time they were lost, so a reader can re-baseline.
+bool     moduleInputs(ModId id, uint32_t *levels, uint8_t *epoch = nullptr);
+uint32_t moduleTakePressed(ModId id, uint32_t mask);
+uint8_t  moduleLastPacket(ModId id, uint8_t *buf, uint32_t *ms = nullptr);   // its length, 0 if none
 bool     moduleCommand(ModId id, uint8_t cmd, const uint8_t *payload = nullptr, uint8_t n = 0);
 
 uint8_t  intLineOwner(uint8_t line);            // line index 0..23 → owner

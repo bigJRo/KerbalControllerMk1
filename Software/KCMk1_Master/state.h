@@ -19,19 +19,25 @@ struct VesselState {
   uint8_t  twIndex;         // time-warp index, 0 = 1x
   uint8_t  situation;
   uint8_t  vesselType;
+  uint8_t  actions;         // ACTIONSTATUS: *_ACTION bits (gear, lights, RCS, SAS, brakes, …)
+  bool     actionsValid;    // an ACTIONSTATUS arrived since this flight scene began
   uint32_t lastRxMs;        // millis() of the last inbound Simpit message
   uint32_t rxCount;
 };
 
+// Switch positions are written by switches.cpp; until a switch is read it keeps the
+// safe value below (ENGINE SAFE, A/P INHIB, CHUTE SAFE).
 struct PanelState {
-  uint8_t ctrlMode;         // CTRL_MODE_* (mode selector, stage 3)
+  uint8_t ctrlMode;         // CTRL_MODE_* (mode selector)
   uint8_t ctrlGrp;          // 1..6 (Dual Encoder ENC1, stage 4)
-  bool    audio;            // AUDIO switch (stage 3); LIVE until read
+  bool    audio;            // AUDIO switch; LIVE until read
   bool    apArm;            // A/P INHIB / ARM
-  bool    engArm;           // ENGINE SAFE / ARM
+  bool    engArm;           // ENGINE SAFE / ARM (the switch; interlocks.h has the lever sync)
   bool    trim;             // master trim set
-  bool    thrPrec;          // THRTL STD / FINE
+  bool    thrPrec;          // THRTL STD / FINE (the switch)
   bool    inputPrec;        // THC / RHC PREC
+  bool    chuteArm;         // CHUTE SAFE / ARM
+  bool    brakeLock;        // BRAKE REL / LOCK
   bool    switchErr;        // any switch disagreeing with the vessel
   bool    autopilot;        // any autopilot or HOLD engaged
 };
@@ -45,8 +51,8 @@ enum BootPhase : uint8_t {
 
 struct MasterState {
   BootPhase bootPhase;
-  bool     demo;            // SCE AUX (stage 3)
-  bool     debug;           // UPTLM XMIT (stage 3), or the console
+  bool     demo;            // SCE AUX
+  bool     debug;           // UPTLM XMIT, or the console until the next flip
   bool     idle;            // display idle_state bit
   bool     kspConnected;    // the master's own Simpit handshake succeeded
   bool     simpitLost;      // connected, in flight, nothing inbound for SIMPIT_LOST_MS

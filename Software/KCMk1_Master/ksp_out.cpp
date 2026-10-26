@@ -13,6 +13,19 @@ void kspNoteSent(byte type, uint8_t size) {
   dbg(DBG_TOKSP, "sent type %u, %u bytes", type, size);
 }
 
+bool kspActionGroup(uint8_t action, bool on) {
+  byte a = action;
+  dbg(DBG_TOKSP, "%s %02X", on ? "AGACTIVATE" : "AGDEACTIVATE", action);
+  return kspSend(on ? AGACTIVATE_MESSAGE : AGDEACTIVATE_MESSAGE, a);
+}
+
+bool kspThrottle(int16_t value) {
+  throttleMessage m;
+  m.throttle = value;
+  dbg(DBG_TOKSP, "THROTTLE %d", value);
+  return kspSend(THROTTLE_MESSAGE, m);
+}
+
 void kspNoteSuppressed(byte type) {
   g_suppressed++;
   dbg(DBG_TOKSP, "not sent type %u (%s)", type, g_master.demo ? "demo" : "KSP link down");

@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
-| **Status** | Draft 5, for review. Nothing here is implemented yet |
+| **Status** | Draft 5, approved. Stages 1–3 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
 | **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and the watchdog design (§12.3) |
 | **Supersedes** | Drafts 1–4, and `Controller_Main_IO_Design.md` |
 
@@ -18,10 +18,6 @@ We are replacing the master firmware (`Software/Controller_Main`) with a **new s
 - **Built from:** the hardware inventory, made from the schematics and confirmed panel by panel. It covers every board, connector, slot, switch and button label.
 - **Kept:** the autopilots' control laws and consoles. They are ported, with one behaviour change agreed in the review: sticks no longer disconnect them (§11).
 - **How:** eight stages, one PR each, every one checked on the host before it merges (§16). Display and module firmware changes are a separate list (§17).
-
-### Before work starts
-
-1. **Approval of this plan.** The watchdog design (§12.3) has been reviewed and settled.
 
 ---
 
@@ -119,9 +115,9 @@ The same order every pass, with nothing blocking:
 |---|---|---|
 | 1 | `wdtFeed()` | The single watchdog feed point (§12.3) |
 | 2 | `simpitService()` | Inbound KSP messages; retries the connection while it is down |
-| 3 | `boardServiceFast()` | Safe-line debounce, mode selector, console input |
-| 4 | `moduleBusService()` | Reads every module that is signalling; its panel handler acts at once |
-| 5 | `interlockService()` | ENGINE SAFE / ARM, A/P INHIB, SWITCH ERR evaluation |
+| 3 | `safeLinesService()` | ABORT / STAGE debounce and edges |
+| 4 | `moduleBusService()` | Reads every module that is signalling (and polls the switch modules while they are not ACTIVE); its panel handler acts at once |
+| 5 | `switchesService()`, `interlockService()` | Switch Groups 1 and 2, mode selector, SWITCH ERR; ENGINE SAFE / ARM and the lever, A/P INHIB |
 | 6 | `autopilotService()` | Autopilots, HOLD and the arbiter |
 | 7 | `kspOutService()` | Merged stick / throttle message (every 20 ms or on an owner change) and queued commands; nothing in demo |
 | 8 | `moduleBusFlushLeds()` | LED changes, at most every 50 ms per module |
@@ -147,16 +143,17 @@ Software/KCMk1_Master/
 ├─ simpit_link.h/.cpp   KSP connection, inbound messages
 ├─ module_bus.h/.cpp    module driver (§6)
 ├─ ksp_out.h/.cpp       the only sender to KSP (§7)
-├─ interlocks.h/.cpp    ENGINE, A/P, SWITCH ERR (§8.2, §8.3)
+├─ switches.h/.cpp     Switch Groups 1 and 2, mode selector, SWITCH ERR (§8.2, §8.3, §8.6)
+├─ interlocks.h/.cpp    ENGINE SAFE / ARM and the lever, A/P INHIB, drop notices (§8.2)
 ├─ cag.h/.cpp           action-group numbering
 ├─ keys.h/.cpp          keyboard shortcuts and macros
 │
 ├─ panel_ui.cpp         UI Control            0x20
-├─ panel_function.cpp   Function Control      0x21  + Switch Group 1
+├─ panel_function.cpp   Function Control      0x21
 ├─ panel_action.cpp     Action Control        0x22
 ├─ panel_stability.cpp  Stability Control     0x23  (SAS, HOLD, INVERT)
-├─ panel_vehicle.cpp    Vehicle Control       0x24  + Switch Group 2, state machines
-├─ panel_time.cpp       Time Control          0x25  + mode selector, Pre-Warp 0x2B
+├─ panel_vehicle.cpp    Vehicle Control       0x24  state machines
+├─ panel_time.cpp       Time Control          0x25  + Pre-Warp 0x2B
 ├─ panel_aux.cpp        AUX CTRL              0x26
 ├─ panel_sticks.cpp     Rotation / Translation 0x28 / 0x29, trim
 ├─ panel_gpws.cpp       GPWS Input Panel      0x2A
@@ -184,7 +181,7 @@ Software/KCMk1_Master/
 | 3 | Boot banner: firmware version, reset cause (§12.3) | `KCMk1 MASTER vX.Y  RESET: …` | — |
 | 4 | Board devices: INA228, EMC2101 | `POWER MON OK` / `FAN CTRL OK` or MISSING | 100 ms each |
 | 5 | Load the stored INT map (EEPROM) | `INT MAP: STORED / DEFAULT` | — |
-| 6 | Module discovery and INT learning (§6.2) | one line per module: `0x24 VEHICLE  B_INT_4  OK` / MISSING / WRONG TYPE | 50 ms per module |
+| 6 | Module discovery and INT learning (§6.2), then one read of the switch modules | one line per module: `0x24 VEHICLE  B_INT_4  OK` / MISSING / WRONG TYPE; `SW GRP 1  ENGINE … A/P …`, `CTRL MODE …` | 50 ms per module |
 | 7 | Display carriers: PROCEED to each, wait for its status | one line per display: `ANNUNCIATOR  OK` / NO ANSWER | 500 ms each |
 | 8 | First Simpit handshake attempt | `KSP: CONNECTING …` | about 1 s (library) |
 | 9 | Start the watchdog (§12.3) | `WATCHDOG ON` | — |
@@ -244,6 +241,8 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 - **Unknown line:** a module with no known line is polled every 20 ms. Button modules return their full current state on every read, so polling works, at the cost of bus time.
 - **Mismatches** between the learned, stored and default maps go to the boot screen and the debug log.
 
+**Switch modules while not ACTIVE** *(stage 3)*. A DISABLED module asserts no INT, but a read still returns its current inputs (KerbalButtonCore keeps debouncing; I2C spec §11). Function, Vehicle and Time Control carry the switches, so they are polled every 100 ms while not ACTIVE. Demo, debug, the interlocks and the control mode therefore follow their switches in any scene. The bus keeps each module's levels and presses from every packet; events still go to the panel handlers only while ACTIVE.
+
 ### 6.3 Start-up per module
 
 1. **Identity:** check the type against the table.
@@ -274,6 +273,7 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 
 - **Act on press or on release.** Most handlers act on *pressed or tapped*. The heat-shield and parachute buttons act on *release*, so that a 2 s hold can be a reset without first firing the button (§8.5).
 - **LEDs:** handlers set the wanted state per button; the bus sends only changes, at most every 50 ms per module. LTG TEST overrides everything while held.
+- **Bulb test** *(stage 3)*: the spec's start / stop. Today's button, joystick and throttle firmware runs a fixed 2 s test that blocks inside its I2C handler instead (§17), so after a start the master sends nothing to the modules for 2.1 s, and sends the stop after that.
 
 ### 6.5 Module lifecycle
 
@@ -326,8 +326,8 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 
 | Input | Switch | Type | Does |
 |---|---|---|---|
-| B16 | MSTR OPER / RESET | Momentary | Master reset: `CMD_RESET` all modules, `DISPLAY_RESET` to the displays, all autopilots and HOLD off. RST is kept for a display that stops answering |
-| B17 | DISP OPER / CLR | Momentary | Zero the GPWS and Pre-Warp displays; reset the screens to default |
+| B16 | MSTR OPER / RESET | Momentary | Master reset: `CMD_RESET` all modules (then each is returned to the wanted lifecycle and LEDs), requestType `DISPLAY_RESET` to the four 7" displays, all autopilots and HOLD off. RST is kept for a display that stops answering |
+| B17 | DISP OPER / CLR | Momentary | Zero the GPWS and Pre-Warp displays (`CMD_SET_VALUE` 0); reset the screens to default (`DISPLAY_RESET`) |
 | B18 | SCE NORM / AUX | Latching | Demo mode off / on (§10.1) |
 | B19 | UPTLM INHIB / XMIT | Latching | Debug mode off / on (§10.2) |
 | B20 | LTG NORM / TEST | Momentary | Bulb test while held |
@@ -341,6 +341,13 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 |---|---|
 | **SAFE** | Sends 0 % throttle to KSP and drives the lever to 0 %. Every throttle input is ignored: lever, lever buttons, autopilots. The rover wheel throttle is held at 0; steering still works. A throttle-using autopilot cannot engage, and one engaged drops (reason ENG SAFE). If the lever is moved, it is driven back to 0 % on release. The module stays enabled, and the master re-sends 0 % until the lever reports it |
 | **ARM** | Drives the lever to 0 % and sends 0 % again; once the lever is there, inputs are taken |
+
+*(stage 3)*
+- **Before Switch Group 1 is read,** the engine is SAFE and the A/P INHIB.
+- **A switch already on ARM when first read** (power-on, a restart in flight) is ARMED at once: the lever is where the pilot left it (§12.3).
+- **No lever command while the pilot touches the lever:** the module would refuse it. The command is sent again once the lever is released.
+- **THRTL FINE reaches the module only while ARMED.** In FINE the lever position is not the throttle, so the master drives the lever with FINE off. The Annunciator's THRTL PREC still shows the switch.
+- **Until stage 5,** the 0 % is sent once on SAFE, on ARM and on entering a flight scene. Stage 5's per-frame throttle sends it continuously while not ARMED.
 
 **A/P INHIB / ARM (B21):**
 - **INHIB:** no console autopilot can engage, and switching to INHIB disconnects every engaged one (reason A/P INHIB).
@@ -366,6 +373,14 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 - Whenever a switch disagrees with the vessel, **SWITCH ERR** lights until they agree. The Sys Info Display names the switches (§14).
 
 **Exceptions:** no SWITCH ERR for SAS while INVERT is held, or for SAS / RCS while an autopilot or HOLD that changes them is engaged.
+
+*(stage 3)*
+- **Settle time:** a switch must disagree for 1 s before SWITCH ERR lights, so KSP's reply to a flip does not flash it.
+- **When it is checked:** only in a flight scene, with the link up, not in demo and not on EVA, once KSP has sent the action-group status for this scene. On EVA the vessel is the kerbal, whose gear, brakes and SAS are all off.
+- **One more exception:** BRAKE while the BRAKES button or the RVR stick button holds the brakes on (stage 4 and 5 set it).
+- **How exceptions are set:** the code that causes one sets it (`switchErrSuppress()`).
+- **A flip that cannot act** (not in flight, link down, demo) is logged, and nothing is sent.
+- **Sys Info frame:** for each switch in error the SWITCH_ERR frame gives the switch id, its position and the vessel's state.
 
 ### 8.4 Stability Control: SAS, HOLD, INVERT
 
@@ -412,7 +427,7 @@ The state comes from KSP's report of the two action groups, not from memory in t
 | **B_INT_SAFE (B2): STAGE** | Rising edge → STAGE, flight scene only, 1 s lockout. Arming switch in series |
 | **Mode selector (Time Control B12 / B13)** | B12 = SPC, neither = PLN (centre), B13 = RVR. Both on is reported as a debug message (not SWITCH ERR), and the last good mode is kept |
 
-Safe lines read active-high, as plain inputs (no pull-up), debounced 10 ms.
+Safe lines read active-high, as plain inputs (no pull-up), debounced 10 ms. A line already high at start-up is not a press. ABORT goes out whatever the scene; like everything else, nothing is sent in demo or with the link down. *(stage 3)*
 
 ### 8.7 Sticks
 
@@ -550,6 +565,7 @@ The availability rules are checked against Simpit on the bench.
 | `intmap` | Learned / stored / default map |
 | `simpit` | Channels, rates, last message ages |
 | `switches` | Every switch position vs the vessel |
+| `interlocks` | ENGINE state, the lever, A/P |
 | `log <cat> on/off` | One category on or off |
 
 ## 11. Autopilots
@@ -678,9 +694,9 @@ One PR per stage.
 
 | # | Stage | Builds | Done when |
 |---|---|---|---|
-| 1 | **Skeleton and boot** | `config.h`, state, `simpit_link`, display commands, boot sequence (§5), Sys Info protocol (master side), debug log and console, watchdog, host tools | Boots against the simulator with modules missing; boot lines correct; displays released before KSP; 2 s reconnect; watchdog report after a forced hang |
-| 2 | **Module bus** | Table, INT learning + EEPROM, events (incl. hold / release), LEDs, lifecycle, demo enable | Every module comes up, follows the scene, is found after re-cabling |
-| 3 | **Switches and interlocks** | Switch Groups 1 and 2, SWITCH ERR, ENGINE SAFE / ARM, A/P INHIB, mode selector, safe lines (ABORT, STAGE), demo / debug | All §8.2, §8.3, §8.6 rules pass in the selftest |
+| 1 | **Skeleton and boot** | `config.h`, state, `simpit_link`, display commands, boot sequence (§5), Sys Info protocol (master side), debug log and console, watchdog, host tools | Boots against the simulator with modules missing; boot lines correct; displays released before KSP; 2 s reconnect; watchdog report after a forced hang. **Built** |
+| 2 | **Module bus** | Table, INT learning + EEPROM, events (incl. hold / release), LEDs, lifecycle, demo enable | Every module comes up, follows the scene, is found after re-cabling. **Built** |
+| 3 | **Switches and interlocks** | Switch Groups 1 and 2, SWITCH ERR, ENGINE SAFE / ARM, A/P INHIB, mode selector, safe lines (ABORT, STAGE), demo / debug | All §8.2, §8.3, §8.6 rules pass in the selftest. **Built** |
 | 4 | **Flight panels** | Vehicle (state machines), Stability (SAS, HOLD), Action, AUX, Dual Encoder, CAG map | §8.4, §8.5, §8.9 pass |
 | 5 | **Sticks and throttle** | `ksp_out` arbitration, stick mapping, trim, camera, EVA keys, lever, throttle buttons, FINE handling | §7, §8.7 pass |
 | 6 | **Remaining panels** | UI, Function, Time + Pre-Warp (availability), GPWS | All of §8 covered |
@@ -712,6 +728,7 @@ From Inventory §11:
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
 | 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
+| 15 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` as the spec says (§5.2): 0x01 starts and 0x00 stops, no timeout, without blocking. Today each runs a fixed 2 s test with `delay()` inside its I2C receive handler, so LTG TEST cannot be held and the module is deaf meanwhile (the master keeps off the bus for 2.1 s, §6.4) |
 
 ## 18. Open items
 
@@ -723,6 +740,9 @@ From Inventory §11:
 | 4 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |
 | 5 | Bench: the SNVS general-purpose registers keep the breadcrumb through a WDOG1 reset, and `SRC_SRSR` reports the watchdog (§12.3) | Stage 1 bench test |
 | 6 | Bench: a parked vessel still produces inbound Simpit traffic, so SIMPIT LOST (5 s) and the re-handshake (10 s) do not trip falsely (§9) | Stage 1 bench test |
+| 7 | Bench: a DISABLED button module answers a read with its current inputs, so the switches work in the menus (§6.2) | Stage 3 bench test |
+| 8 | Bench: KSP's GEAR action group reads active with the gear down, and each Switch Group 2 switch's "on" position matches its group (§8.3) | Stage 3 bench test |
+| 9 | Bench: the Throttle module's touch flag and the lever drive back to 0 % after a touch while SAFE (§8.2) | Stage 3 bench test |
 
 ---
 

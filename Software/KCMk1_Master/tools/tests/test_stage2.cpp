@@ -3,70 +3,18 @@
 // frames, packet checks, reboot recovery, re-probe, polling, the console.
 #include "harness.h"
 
-#define L_INT(n)  ((uint8_t)((n) - 1))
-#define L_BINT(n) ((uint8_t)(12 + (n) - 1))
-
-struct Bench {
-  Rig rig;
-  ModuleSim mods[MOD_COUNT] = {
-    { 0x20, KMC_TYPE_UI_CONTROL,        KMC_BUTTON_PACKET_SIZE,   L_INT(4),   KIND_BUTTONS },
-    { 0x21, KMC_TYPE_FUNCTION_CONTROL,  KMC_BUTTON24_PACKET_SIZE, L_INT(8),   KIND_BUTTONS },
-    { 0x22, KMC_TYPE_ACTION_CONTROL,    KMC_BUTTON_PACKET_SIZE,   L_INT(1),   KIND_BUTTONS },
-    { 0x23, KMC_TYPE_STABILITY_CONTROL, KMC_BUTTON_PACKET_SIZE,   L_BINT(6),  KIND_BUTTONS },
-    { 0x24, KMC_TYPE_VEHICLE_CONTROL,   KMC_BUTTON24_PACKET_SIZE, L_BINT(4),  KIND_BUTTONS },
-    { 0x25, KMC_TYPE_TIME_CONTROL,      KMC_BUTTON_PACKET_SIZE,   L_BINT(3),  KIND_BUTTONS },
-    { 0x26, KMC_TYPE_AUX_CTRL,          KMC_BUTTON_PACKET_SIZE,   L_BINT(7),  KIND_BUTTONS },
-    { 0x28, KMC_TYPE_JOYSTICK_ROTATION, KMC_JOYSTICK_PACKET_SIZE, L_BINT(8),  KIND_JOYSTICK },
-    { 0x29, KMC_TYPE_JOYSTICK_TRANS,    KMC_JOYSTICK_PACKET_SIZE, L_INT(7),   KIND_JOYSTICK },
-    { 0x2A, KMC_TYPE_GPWS_INPUT,        KMC_DISPLAY_PACKET_SIZE,  L_INT(6),   KIND_DISPLAY },
-    { 0x2B, KMC_TYPE_PRE_WARP_TIME,     KMC_DISPLAY_PACKET_SIZE,  L_BINT(2),  KIND_DISPLAY },
-    { 0x2C, KMC_TYPE_THROTTLE,          KMC_THROTTLE_PACKET_SIZE, L_INT(3),   KIND_THROTTLE },
-    { 0x2D, KMC_TYPE_DUAL_ENCODER,      KMC_BUTTON_PACKET_SIZE,   L_BINT(11), KIND_ENCODER },
-  };
-  void attachAll() {
-    rig.attachAll();
-    for (auto &m : mods) Wire.attach(m.addr, &m);
-    rig.ann.line = L_INT(9); rig.id1.line = L_INT(12); rig.id2.line = L_BINT(9); rig.res.line = L_BINT(12);
-  }
-  void powerOnAll() { for (auto &m : mods) { m.cmds.clear(); m.powerOn(); } }
-  ModuleSim &m(ModId id) { return mods[id]; }
-};
-
 // Events seen by the test handler.
 static std::vector<ModEvent> g_ev;
 static void recordEvent(const ModEvent &e) { ModEvent c = e; c.pkt = nullptr; g_ev.push_back(c); }
 static void hookAll() { for (uint8_t i = 0; i < MOD_COUNT; i++) moduleBusSetHandler((ModId)i, recordEvent); }
 
-// A full power-on: modules in BOOT_READY, master boots, KSP not running.
-static void powerOnBoot(Bench &b, uint32_t srsr = 1) {
-  b.attachAll();
-  b.rig.si.frames.clear();
-  stubSimpit().kspUp = false;
-  resetStubs();
-  b.powerOnAll();
-  stubSrsr() = srsr;
-  setup();
-  hookAll();
-}
-
-static void enterFlight() {
-  stubSimpit().kspUp = true;
-  runFor(2100);
-  byte scene = 0;
-  if (stubSimpit().handler) stubSimpit().handler(SCENE_CHANGE_MESSAGE, &scene, 1);
-  runFor(20);
-}
-
-static void leaveFlight() {
-  byte scene = 1;
-  if (stubSimpit().handler) stubSimpit().handler(SCENE_CHANGE_MESSAGE, &scene, 1);
-  runFor(20);
-}
+// powerOnBoot() with every module's events recorded.
+static void boot2(Bench &b, uint32_t srsr = 1) { powerOnBoot(b, srsr); hookAll(); }
 
 static void testDiscovery(Bench &b) {
   printf("modules: discovery and INT learning at power-on\n");
   stubEepromReset();
-  powerOnBoot(b);
+  boot2(b);
   CHECK(b.rig.si.shows("INT MAP: DEFAULT"), "no stored map on a fresh EEPROM");
   CHECK(b.rig.si.shows("MODULES  13 OF 13"), "all 13 found");
   CHECK(b.rig.si.sevOf("24 VEHICLE") == SEV_OK && b.rig.si.shows("B_INT_4"), "vehicle OK on B_INT_4");
@@ -92,7 +40,7 @@ static void testRecable(Bench &b) {
   printf("modules: re-cabled slots are learned and stored\n");
   b.m(MOD_VEHICLE).moveTo(L_BINT(1));      // Vehicle moved from P4 to P1
   b.m(MOD_TIME).moveTo(L_BINT(5));         // Time moved from P3 to P5
-  powerOnBoot(b);
+  boot2(b);
   CHECK(b.rig.si.shows("INT MAP: STORED"), "stored map loaded");
   CHECK(intLineOf(MOD_VEHICLE) == L_BINT(1) && intLineOf(MOD_TIME) == L_BINT(5), "new lines learned");
   CHECK(intLineOwner(L_BINT(4)) == OWNER_NONE && intLineOwner(L_BINT(3)) == OWNER_NONE, "old lines freed");
@@ -106,13 +54,13 @@ static void testRecable(Bench &b) {
   CHECK(b.rig.si.sevOf("24 VEHICLE") == SEV_OK, "no re-learning needed");
   // Put the cabling back for the rest of the tests.
   b.m(MOD_VEHICLE).moveTo(L_BINT(4)); b.m(MOD_TIME).moveTo(L_BINT(3));
-  powerOnBoot(b);
+  boot2(b);
   CHECK(intLineOf(MOD_VEHICLE) == L_BINT(4), "cabling restored");
 }
 
 static void testLifecycle(Bench &b) {
   printf("modules: lifecycle follows the flight scene and demo\n");
-  powerOnBoot(b);
+  boot2(b);
   runFor(100);
   CHECK(b.m(MOD_VEHICLE).life == KMC_STATUS_DISABLED, "disabled with KSP down");
   enterFlight();
@@ -209,7 +157,17 @@ static void testLeds(Bench &b) {
   moduleBulbTest(true);
   bool all = true; for (auto &m : b.mods) if (m.countCmd(KMC_CMD_BULB_TEST) < 1) all = false;
   CHECK(all, "bulb test to every module");
+  // Today's modules block for 2 s on a start: the master leaves them alone meanwhile,
+  // and sends the stop after.
+  size_t c0 = a.cmds.size();
+  moduleSetLed(MOD_AUX, 3, KMC_LED_ACTIVE);
   moduleBulbTest(false);
+  runFor(1000);
+  CHECK(a.cmds.size() == c0, "no module traffic during the bulb test");
+  runFor(1200);
+  CHECK(a.cmds.size() > c0 && a.countCmd(KMC_CMD_BULB_TEST) == 2 && a.cmds[c0][0] == KMC_CMD_BULB_TEST &&
+        a.cmds[c0].size() == 2 && a.cmds[c0][1] == 0, "stop sent once the modules are free");
+  CHECK(kmcLedPackGet(a.led, 3) == KMC_LED_ACTIVE, "LED changes sent after it");
 }
 
 static void testHealth(Bench &b) {
@@ -271,12 +229,12 @@ static void testReprobe(Bench &b) {
   g_ev.clear(); s.state |= 1; s.change |= 1; s.cnt++;    // a press with no INT
   runFor(30);
   CHECK(countEv(MOD_STABILITY, &ModEvent::pressed, 1) == 1, "polled press seen");
-  powerOnBoot(b);                                         // relearn for the next tests
+  boot2(b);                                         // relearn for the next tests
 }
 
 static void testWatchdogRestart(Bench &b) {
   printf("modules: watchdog restart in flight does not reset the modules\n");
-  powerOnBoot(b);
+  boot2(b);
   enterFlight();
   for (auto &m : b.mods) m.cmds.clear();
   b.attachAll(); b.rig.si.frames.clear(); resetStubs(); stubSrsr() = 1u << 4;

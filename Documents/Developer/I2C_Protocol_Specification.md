@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.16  
+**Version:** 2.17  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
@@ -430,7 +430,7 @@ kmcLedPackSet(payload, N, state);
 | State | Description |
 |-------|-------------|
 | BOOT_READY | Module just powered on. INT asserted. Waits for master to read, then receive CMD_DISABLE |
-| DISABLED | No game context. All outputs dark. Inputs suppressed. State reset to defaults |
+| DISABLED | No game context. All outputs dark. Input changes do not assert INT. State reset to defaults. A data read still returns the current inputs (button modules keep debouncing while DISABLED); the KCMk1 master polls its switch modules this way |
 | ACTIVE | Normal operation. Sketch running. Pilot can interact |
 | SLEEPING | State frozen exactly as-is. No visual change. INT suppressed |
 
@@ -588,7 +588,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 0xB1 | BOOT_LINE | 4 + len | `[B1, seq, attr, len, text…]`. `seq` increments per line; `len` ≤ 40, ASCII. `attr` bits 1:0 severity (0 info, 1 OK, 2 warning, 3 error); bit 7 REPLACE — overwrite the previous line instead of adding one (the live WAITING FOR KSP line) |
 | 0xB2 | BOOT_DONE | 1 | `[B2]`: leave the boot screen for the status screen |
 | 0xB3 | STATUS | 13 | `[B3, valid, vbus u16 (0.01 V), current i16 (mA), power u16 (0.1 W), temp i8 (°C), fan u16 (rpm), links u8, known u8]`. `valid` bit 0 power, bit 1 temperature, bit 2 fan. `links` / `known`: a bit per board with its own Simpit link — bit 0 master, 1 Annunciator, 2 Info Display 1, 3 Info Display 2, 4 Resource Display; `known` = answered its last status read. Sent every 500 ms after BOOT_DONE |
-| 0xB4 | SWITCH_ERR | 2 + 3n | `[B4, n, {id, expected, actual} × n]`, n ≤ 10; n = 0 closes the window. Switch ids: 1–8 = Switch Group 1 B16–B23, 9–16 = Switch Group 2 B16–B23 |
+| 0xB4 | SWITCH_ERR | 2 + 3n | `[B4, n, {id, expected, actual} × n]`, n ≤ 10; n = 0 closes the window. Switch ids: 1–8 = Switch Group 1 B16–B23, 9–16 = Switch Group 2 B16–B23. `expected` = the switch's position, `actual` = the vessel's state (1 = the switch's second position, e.g. GEAR DOWN) |
 
 **System Info Display → master** (4-byte read): `[0xAF, flags, fwMajor, fwMinor]`; flags bit 0 ready, bit 1 SD card OK, bit 2 boot screen showing.
 
@@ -623,6 +623,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
+| 2.17 | 2026-10-26 | §11: DISABLED reads return the current inputs (only the INT is suppressed), which the KCMk1 master relies on to read its switch modules in any scene. §15.4: SWITCH_ERR `expected` / `actual` defined. No packet formats changed. |
 | 2.16 | 2026-10-26 | §10.1: LED nibble order corrected to match `kmcLedPackSet()` and every module library (low nibble = even button index); joystick LED positions noted. §11: modules stay ACTIVE on EVA. §12.1: the KCMk1 master's start-up sequence (no CMD_RESET, so the boot INT can be used to learn the module's INT line). No packet formats changed. |
 | 2.15 | 2026-10-25 | §15.4: **System Info Display (0x14) protocol** defined (sync 0xAF): CONTROL heartbeat, BOOT_LINE (with REPLACE), BOOT_DONE, STATUS, SWITCH_ERR frames, and its 4-byte status read. §15.3: master-side note for the new `KCMk1_Master`. No module-side packet formats changed. |
 | 2.14 | 2026-10-25 | §15.3: master side documented. Controller_Main now sends the Annunciator (0x10) the rev-3 command and the Resource Display (0x11) its control byte, both repeating `PROCEED` (until now neither carrier was ever written to, so both held in `setup()`), and relays the GPWS Input Panel (0x2A) to the Annunciator. No packet formats changed. |
