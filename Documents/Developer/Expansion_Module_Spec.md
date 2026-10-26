@@ -12,7 +12,7 @@
 
 This document specifies the architecture, connectivity, power, and board topology for the KCMk1 Expansion Module — a self-contained autopilot input and display panel. It connects to the main KCMk1 controller via a GX16-10 signal connector and a USB-C panel mount connector, drawing 12V power, I2C, interrupt, and reset signals through the GX16-10, and USB 2.0 data through the USB-C connection.
 
-This document covers the expansion unit only. The main controller hardware is unchanged; expansion connectivity is already allocated in the existing design (SDA_EXT/SCL_EXT, EXT_INT_1/EXT_INT_2, RST, V_12 on the 50-pin IDC connector, and the USBC2 expansion USB-C port). Signal protection and conditioning architecture for the external interface is defined in Hardware Reference §8.4 and §9.4.
+This document covers the expansion unit only. The main controller hardware is unchanged; expansion connectivity is already allocated in the existing design (SDA_EXT/SCL_EXT, EXT_INT_1/EXT_INT_2, RST, V_12 on the 50-pin IDC connector, and the USBC2 expansion USB-C port). Signal protection and conditioning architecture for the external interface is defined in Hardware Reference §8.4 and §10.
 
 ---
 
@@ -50,11 +50,11 @@ A GX16-10 (10-pin, 16mm thread) aviation connector carries 12V power, I2C, inter
 | 5 | SDA_EXT | Bidirectional | I2C data — LTC4311 + pull-ups on Ctrl Module only; passive at expansion end |
 | 6 | SCL_EXT | Bidirectional | I2C clock — LTC4311 + pull-ups on Ctrl Module only; passive at expansion end |
 | 7 | EXT_INT_1 | Expansion → Main | Active-low — 47Ω series at expansion end; 4.7kΩ pull-up at Ctrl Module |
-| 8 | EXT_INT_2 | Main → Expansion | Active-low — 47Ω series at Ctrl Module; 4.7kΩ pull-up at expansion end |
+| 8 | EXT_INT_2 | Main → Expansion | Active-low — 4.7kΩ pull-up at expansion end. The V2.0 Ctrl Module has no 47Ω source resistor on EXT_INT_2 (Hardware Reference §8.4, §15) |
 | 9 | RST | Main → Expansion | Active-low — 47Ω series at Ctrl Module; 10kΩ pull-up + 100Ω + 100nF RC filter at expansion end |
 | 10 | SPARE | — | Reserved for future use |
 
-All signal protection components are on the respective PCBs, not in the cable. See Hardware Reference §8.4 for full signal architecture.
+All signal protection components are on the respective PCBs, not in the cable. See Hardware Reference §8.4 for full signal architecture, and Hardware Reference §9.2 for the 50-pin interboard pinout (corrected from the V2.0 schematics in Hardware Reference v2.0).
 
 ### 3.2 USB-C Panel Mount Connector
 
