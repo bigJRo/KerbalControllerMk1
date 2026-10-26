@@ -18,6 +18,8 @@
    and console, the watchdog.
    Stage 2 (module bus): module table, INT line learning, start-up, reads and events,
    LEDs, lifecycle.
+   Stage 3 (switches and interlocks): Switch Groups 1 and 2, SWITCH ERR, ENGINE SAFE /
+   ARM, A/P INHIB / ARM, the mode selector, ABORT and STAGE, demo and debug.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -33,6 +35,9 @@
 #include "simpit_link.h"
 #include "ksp_out.h"
 #include "module_bus.h"
+#include "switches.h"
+#include "interlocks.h"
+#include "panel_safe.h"
 #include <strings.h>
 
 static void cmdStatus(const char *) {
@@ -40,6 +45,10 @@ static void cmdStatus(const char *) {
   conPrintf("KCMk1 master v%s, up %lu s, %s", KCM_MASTER_VERSION, (unsigned long)(millis() / 1000),
             phase[g_master.bootPhase & 3]);
   conPrintf("  reset %s, watchdog %s", boardResetCause(), wdtRunning() ? "on" : "off");
+  conPrintf("  control mode %s, ENGINE %s, A/P %s, SWITCH ERR %s",
+            g_panel.ctrlMode == CTRL_MODE_SPC ? "SPC" : g_panel.ctrlMode == CTRL_MODE_PLN ? "PLN" : "RVR",
+            interlockEngineState() == ENG_ARMED ? "ARMED" : interlockEngineState() == ENG_ARMING ? "ARMING" : "SAFE",
+            g_panel.apArm ? "ARM" : "INHIB", g_panel.switchErr ? "on" : "off");
   conPrintf("  demo %d, debug %d, KSP %s%s, displays known %02X links %02X, Sys Info %s",
             g_master.demo, g_master.debug, g_master.kspConnected ? "connected" : "down",
             g_master.simpitLost ? " (LOST)" : "", g_master.displaysKnown, g_master.displayLinks,
@@ -55,7 +64,7 @@ static void cmdStatus(const char *) {
             (unsigned long)kspSuppressed(), (unsigned long)dbgDropped());
 }
 
-// Bench: `debug on|off` without the UPTLM switch (Switch Group 1 is read from stage 3).
+// Bench: `debug on|off` without the UPTLM switch; the next UPTLM flip takes over again.
 static void cmdDebug(const char *args) {
   while (*args == ' ') args++;
   if (strncasecmp(args, "on", 2) == 0) g_master.debug = true;
@@ -79,13 +88,16 @@ void setup() {
   boardEarly();                     // reset cause and breadcrumb, before anything overwrites them
   dbgInit();
   consoleRegister("status", "modes, links, bus and send counters", cmdStatus);
-  consoleRegister("debug", "debug on|off (until the UPTLM switch is read)", cmdDebug);
+  consoleRegister("debug", "debug on|off (until the next UPTLM flip)", cmdDebug);
   consoleRegister("wdtest", "wdtest yes — hang the loop to test the watchdog", cmdWdTest);
   siInit();
   carriersInit();
   moduleBusInit();
+  interlocksInit();
+  switchesInit();
   simpitInit();
   bootSequence();
+  safeLinesInit();                  // after boot step 1 set the pins up; the level now is no edge
 }
 
 void loop() {
@@ -97,7 +109,9 @@ void loop() {
     return;
   }
   wdtCrumb(LS_SIMPIT);     simpitService();
+  wdtCrumb(LS_BOARD_FAST); safeLinesService();
   wdtCrumb(LS_MODULES);    moduleBusService();
+  wdtCrumb(LS_INTERLOCKS); switchesService(); interlockService();
   wdtCrumb(LS_LEDS);       moduleBusFlushLeds();
   wdtCrumb(LS_CARRIERS);   carrierService();
   wdtCrumb(LS_SYSINFO);    bootService(); siService();

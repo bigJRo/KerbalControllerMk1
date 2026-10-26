@@ -139,13 +139,16 @@ struct ModuleSim : SimDevice {
   uint32_t state = 0, change = 0;          // buttons / persistent joystick state
   uint8_t events = 0;                      // rising-edge kinds (display, throttle, encoder)
   int16_t axes[3] = { 0, 0, 0 };
+  uint16_t thrPos = 0;                     // throttle: lever position (0..INT16_MAX)
+  bool thrPrec = false, touched = false;   // throttle: precision mode, pilot touching
+  int16_t value = -1;                      // display modules: last CMD_SET_VALUE
   uint8_t led[8] = { 0 };
   int ledWrites = 0;
   std::vector<std::vector<uint8_t>> cmds;
   ModuleSim(uint8_t a, uint8_t t, uint8_t l, uint8_t ln, ModKind k) : addr(a), type(t), len(l), line(ln), kind(k) {}
   int pin() const { return PIN_INT_LINE[line]; }
   void setInt(bool low) { intLow = low; stubPin(pin()) = low ? LOW : HIGH; }
-  void powerOn() { life = KMC_STATUS_BOOT_READY; cnt = 0; state = change = 0; events = 0; setInt(true); }
+  void powerOn() { life = KMC_STATUS_BOOT_READY; cnt = 0; state = change = 0; events = 0; thrPos = 0; thrPrec = touched = false; setInt(true); }
   void moveTo(uint8_t newLine) { stubPin(pin()) = HIGH; line = newLine; stubPin(pin()) = intLow ? LOW : HIGH; }
   int countCmd(uint8_t c) const { int n = 0; for (auto &v : cmds) if (!v.empty() && v[0] == c) n++; return n; }
   uint8_t lastCmd() const { return cmds.empty() ? 0 : cmds.back()[0]; }
@@ -156,7 +159,12 @@ struct ModuleSim : SimDevice {
       case KMC_CMD_GET_IDENTITY: identPending = true; break;
       case KMC_CMD_SET_LED_STATE: if (n >= 9) { memcpy(led, b + 1, 8); ledWrites++; } break;
       case KMC_CMD_ENABLE:  life = KMC_STATUS_ACTIVE; break;
-      case KMC_CMD_DISABLE: life = KMC_STATUS_DISABLED; setInt(false); break;
+      case KMC_CMD_DISABLE: life = KMC_STATUS_DISABLED; setInt(false); if (kind == KIND_THROTTLE) thrPos = 0; break;
+      case KMC_CMD_SET_THROTTLE:      // refused while disabled or touched (I2C spec §9.4)
+        if (n >= 3 && life == KMC_STATUS_ACTIVE && !touched) { thrPos = (uint16_t)(b[1] << 8 | b[2]); signal(); }
+        break;
+      case KMC_CMD_SET_PRECISION: if (n >= 2) { thrPrec = b[1] != 0; signal(); } break;
+      case KMC_CMD_SET_VALUE: if (n >= 3) value = (int16_t)(b[1] << 8 | b[2]); break;
       case KMC_CMD_ACK_FAULT: fault = false; break;
       case KMC_CMD_RESET: life = KMC_STATUS_ACTIVE; setInt(false); break;
     }
@@ -182,7 +190,10 @@ struct ModuleSim : SimDevice {
         for (int i = 0; i < 3; i++) { p[6 + 2 * i] = (uint8_t)((uint16_t)axes[i] >> 8); p[7 + 2 * i] = (uint8_t)axes[i]; }
         break;
       case KIND_DISPLAY:  p[3] = events; p[4] = events; break;
-      case KIND_THROTTLE: p[4] = events; break;
+      case KIND_THROTTLE:
+        p[3] = (uint8_t)((life == KMC_STATUS_ACTIVE ? 1 : 0) | (thrPrec ? 2 : 0) | (touched ? 4 : 0));
+        p[4] = events; p[5] = (uint8_t)(thrPos >> 8); p[6] = (uint8_t)thrPos;
+        break;
       case KIND_ENCODER:  p[3] = events; p[4] = events; break;
     }
     change = 0; events = 0;
@@ -194,3 +205,63 @@ struct ModuleSim : SimDevice {
   void release(uint32_t bits) { state &= ~bits; change |= bits; signal(); }
   void edge(uint8_t bits)     { events |= bits; signal(); }
 };
+
+/*------------------------------------------------------------------------------------
+  The whole controller: the stage 1 rig plus the 13 input modules on their default
+  slots (Inventory §7), and helpers to boot it and take KSP into and out of a flight.
+------------------------------------------------------------------------------------*/
+#define L_INT(n)  ((uint8_t)((n) - 1))
+#define L_BINT(n) ((uint8_t)(12 + (n) - 1))
+
+struct Bench {
+  Rig rig;
+  ModuleSim mods[MOD_COUNT] = {
+    { 0x20, KMC_TYPE_UI_CONTROL,        KMC_BUTTON_PACKET_SIZE,   L_INT(4),   KIND_BUTTONS },
+    { 0x21, KMC_TYPE_FUNCTION_CONTROL,  KMC_BUTTON24_PACKET_SIZE, L_INT(8),   KIND_BUTTONS },
+    { 0x22, KMC_TYPE_ACTION_CONTROL,    KMC_BUTTON_PACKET_SIZE,   L_INT(1),   KIND_BUTTONS },
+    { 0x23, KMC_TYPE_STABILITY_CONTROL, KMC_BUTTON_PACKET_SIZE,   L_BINT(6),  KIND_BUTTONS },
+    { 0x24, KMC_TYPE_VEHICLE_CONTROL,   KMC_BUTTON24_PACKET_SIZE, L_BINT(4),  KIND_BUTTONS },
+    { 0x25, KMC_TYPE_TIME_CONTROL,      KMC_BUTTON_PACKET_SIZE,   L_BINT(3),  KIND_BUTTONS },
+    { 0x26, KMC_TYPE_AUX_CTRL,          KMC_BUTTON_PACKET_SIZE,   L_BINT(7),  KIND_BUTTONS },
+    { 0x28, KMC_TYPE_JOYSTICK_ROTATION, KMC_JOYSTICK_PACKET_SIZE, L_BINT(8),  KIND_JOYSTICK },
+    { 0x29, KMC_TYPE_JOYSTICK_TRANS,    KMC_JOYSTICK_PACKET_SIZE, L_INT(7),   KIND_JOYSTICK },
+    { 0x2A, KMC_TYPE_GPWS_INPUT,        KMC_DISPLAY_PACKET_SIZE,  L_INT(6),   KIND_DISPLAY },
+    { 0x2B, KMC_TYPE_PRE_WARP_TIME,     KMC_DISPLAY_PACKET_SIZE,  L_BINT(2),  KIND_DISPLAY },
+    { 0x2C, KMC_TYPE_THROTTLE,          KMC_THROTTLE_PACKET_SIZE, L_INT(3),   KIND_THROTTLE },
+    { 0x2D, KMC_TYPE_DUAL_ENCODER,      KMC_BUTTON_PACKET_SIZE,   L_BINT(11), KIND_ENCODER },
+  };
+  void attachAll() {
+    rig.attachAll();
+    for (auto &m : mods) Wire.attach(m.addr, &m);
+    rig.ann.line = L_INT(9); rig.id1.line = L_INT(12); rig.id2.line = L_BINT(9); rig.res.line = L_BINT(12);
+  }
+  void powerOnAll() { for (auto &m : mods) { m.cmds.clear(); m.powerOn(); } }
+  ModuleSim &m(ModId id) { return mods[id]; }
+};
+
+// A full power-on: modules in BOOT_READY, master boots, KSP not running. `preset` runs
+// after the modules power on and before setup() (switch positions, pins, …).
+inline void powerOnBoot(Bench &b, uint32_t srsr = 1, void (*preset)(Bench &) = nullptr) {
+  b.attachAll();
+  b.rig.si.frames.clear();
+  stubSimpit().kspUp = false;
+  resetStubs();
+  b.powerOnAll();
+  if (preset) preset(b);
+  stubSrsr() = srsr;
+  setup();
+}
+
+inline void enterFlight() {
+  stubSimpit().kspUp = true;
+  runFor(2100);
+  byte scene = 0;
+  inbound(SCENE_CHANGE_MESSAGE, &scene, 1);
+  runFor(20);
+}
+
+inline void leaveFlight() {
+  byte scene = 1;
+  inbound(SCENE_CHANGE_MESSAGE, &scene, 1);
+  runFor(20);
+}

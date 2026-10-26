@@ -24,7 +24,18 @@ static void onScene(const byte *msg) {
   bool flight = msg[0] == 0;                     // 0 = entering flight
   if (flight != g_vessel.flightScene) dbg(DBG_KSP, "scene: %s", flight ? "flight" : "not flight");
   g_vessel.flightScene = flight;
-  if (!flight) { g_vessel.twIndex = 0; g_vessel.inFlight = false; g_vessel.eva = false; }
+  g_vessel.actionsValid = false;                 // each flight scene starts without a status
+  if (!flight) { g_vessel.twIndex = 0; g_vessel.inFlight = false; g_vessel.eva = false; return; }
+  // The plugin sends the action groups on a change; ask for them now, so SWITCH ERR can
+  // be checked from the start of the scene. (A request, not a command: ksp_out's gate is
+  // for commands, and the link is up whenever this runs.)
+  g_simpit.requestMessageOnChannel(ACTIONSTATUS_MESSAGE);
+}
+
+static void onActionStatus(const byte *msg) {
+  if (!g_vessel.actionsValid || msg[0] != g_vessel.actions) dbg(DBG_KSP, "action groups %02X", msg[0]);
+  g_vessel.actions = msg[0];
+  g_vessel.actionsValid = true;
 }
 
 static void onFlightStatus(const byte *msg) {
@@ -51,6 +62,7 @@ static const InboundRow kInbound[] = {
   { SCENE_CHANGE_MESSAGE,  1,                           onScene,        "SCENE_CHANGE" },
   { FLIGHT_STATUS_MESSAGE, sizeof(flightStatusMessage), onFlightStatus, "FLIGHT_STATUS" },
   { VESSEL_CHANGE_MESSAGE, 1,                           onVesselChange, "VESSEL_CHANGE" },
+  { ACTIONSTATUS_MESSAGE,  1,                           onActionStatus, "ACTIONSTATUS" },
 };
 static const uint8_t kInboundN = sizeof kInbound / sizeof kInbound[0];
 static uint32_t g_rxCount[kInboundN], g_rxBad[kInboundN], g_rxLastMs[kInboundN];
@@ -107,6 +119,7 @@ bool simpitAttempt() {
   if (!g_simpit.init()) return false;
   g_master.kspConnected = true;
   g_vessel.lastRxMs = millis();
+  g_vessel.actionsValid = false;
   g_simpit.inboundHandler(inbound);
   registerChannels();
   dbg(DBG_KSP, "connected (attempt %lu)", (unsigned long)g_attempts);

@@ -22,24 +22,25 @@ struct ModuleDef {
   uint8_t addr, type, len, defLine;
   ModKind kind;
   bool    leds;              // takes CMD_SET_LED_STATE
+  bool    switches;          // carries panel switches: polled while not ACTIVE (see the header)
   const char *name;          // boot line / console (≤ 11 characters)
 };
 
 // Inventory §7: the default slot map (A2: INT_1–8, B2: B_INT_1–8, …).
 static const ModuleDef kMod[MOD_COUNT] = {
-  { 0x20, KMC_TYPE_UI_CONTROL,        KMC_BUTTON_PACKET_SIZE,   L_INT(4),   KIND_BUTTONS,  true,  "UI" },
-  { 0x21, KMC_TYPE_FUNCTION_CONTROL,  KMC_BUTTON24_PACKET_SIZE, L_INT(8),   KIND_BUTTONS,  true,  "FUNCTION" },
-  { 0x22, KMC_TYPE_ACTION_CONTROL,    KMC_BUTTON_PACKET_SIZE,   L_INT(1),   KIND_BUTTONS,  true,  "ACTION" },
-  { 0x23, KMC_TYPE_STABILITY_CONTROL, KMC_BUTTON_PACKET_SIZE,   L_BINT(6),  KIND_BUTTONS,  true,  "STABILITY" },
-  { 0x24, KMC_TYPE_VEHICLE_CONTROL,   KMC_BUTTON24_PACKET_SIZE, L_BINT(4),  KIND_BUTTONS,  true,  "VEHICLE" },
-  { 0x25, KMC_TYPE_TIME_CONTROL,      KMC_BUTTON_PACKET_SIZE,   L_BINT(3),  KIND_BUTTONS,  true,  "TIME" },
-  { 0x26, KMC_TYPE_AUX_CTRL,          KMC_BUTTON_PACKET_SIZE,   L_BINT(7),  KIND_BUTTONS,  true,  "AUX" },
-  { 0x28, KMC_TYPE_JOYSTICK_ROTATION, KMC_JOYSTICK_PACKET_SIZE, L_BINT(8),  KIND_JOYSTICK, true,  "ROTATION" },
-  { 0x29, KMC_TYPE_JOYSTICK_TRANS,    KMC_JOYSTICK_PACKET_SIZE, L_INT(7),   KIND_JOYSTICK, true,  "TRANSLATION" },
-  { 0x2A, KMC_TYPE_GPWS_INPUT,        KMC_DISPLAY_PACKET_SIZE,  L_INT(6),   KIND_DISPLAY,  false, "GPWS" },
-  { 0x2B, KMC_TYPE_PRE_WARP_TIME,     KMC_DISPLAY_PACKET_SIZE,  L_BINT(2),  KIND_DISPLAY,  false, "PRE-WARP" },
-  { 0x2C, KMC_TYPE_THROTTLE,          KMC_THROTTLE_PACKET_SIZE, L_INT(3),   KIND_THROTTLE, false, "THROTTLE" },
-  { 0x2D, KMC_TYPE_DUAL_ENCODER,      KMC_BUTTON_PACKET_SIZE,   L_BINT(11), KIND_ENCODER,  false, "DUAL ENC" },
+  { 0x20, KMC_TYPE_UI_CONTROL,        KMC_BUTTON_PACKET_SIZE,   L_INT(4),   KIND_BUTTONS,  true,  false, "UI" },
+  { 0x21, KMC_TYPE_FUNCTION_CONTROL,  KMC_BUTTON24_PACKET_SIZE, L_INT(8),   KIND_BUTTONS,  true,  true,  "FUNCTION" },
+  { 0x22, KMC_TYPE_ACTION_CONTROL,    KMC_BUTTON_PACKET_SIZE,   L_INT(1),   KIND_BUTTONS,  true,  false, "ACTION" },
+  { 0x23, KMC_TYPE_STABILITY_CONTROL, KMC_BUTTON_PACKET_SIZE,   L_BINT(6),  KIND_BUTTONS,  true,  false, "STABILITY" },
+  { 0x24, KMC_TYPE_VEHICLE_CONTROL,   KMC_BUTTON24_PACKET_SIZE, L_BINT(4),  KIND_BUTTONS,  true,  true,  "VEHICLE" },
+  { 0x25, KMC_TYPE_TIME_CONTROL,      KMC_BUTTON_PACKET_SIZE,   L_BINT(3),  KIND_BUTTONS,  true,  true,  "TIME" },
+  { 0x26, KMC_TYPE_AUX_CTRL,          KMC_BUTTON_PACKET_SIZE,   L_BINT(7),  KIND_BUTTONS,  true,  false, "AUX" },
+  { 0x28, KMC_TYPE_JOYSTICK_ROTATION, KMC_JOYSTICK_PACKET_SIZE, L_BINT(8),  KIND_JOYSTICK, true,  false, "ROTATION" },
+  { 0x29, KMC_TYPE_JOYSTICK_TRANS,    KMC_JOYSTICK_PACKET_SIZE, L_INT(7),   KIND_JOYSTICK, true,  false, "TRANSLATION" },
+  { 0x2A, KMC_TYPE_GPWS_INPUT,        KMC_DISPLAY_PACKET_SIZE,  L_INT(6),   KIND_DISPLAY,  false, false, "GPWS" },
+  { 0x2B, KMC_TYPE_PRE_WARP_TIME,     KMC_DISPLAY_PACKET_SIZE,  L_BINT(2),  KIND_DISPLAY,  false, false, "PRE-WARP" },
+  { 0x2C, KMC_TYPE_THROTTLE,          KMC_THROTTLE_PACKET_SIZE, L_INT(3),   KIND_THROTTLE, false, false, "THROTTLE" },
+  { 0x2D, KMC_TYPE_DUAL_ENCODER,      KMC_BUTTON_PACKET_SIZE,   L_BINT(11), KIND_ENCODER,  false, false, "DUAL ENC" },
 };
 
 struct CarrierLine { uint8_t owner, defLine; CarrierId id; };
@@ -57,6 +58,7 @@ static const uint8_t MAX_INPUTS = 24;
 
 struct ModRt {
   bool     present, wrongType;
+  bool     readNow;          // read on the next pass (after a start or an ENABLE, which assert no INT)
   uint8_t  fwMaj, fwMin, caps;
   uint8_t  life;             // last reported lifecycle
   uint8_t  lifeSent;         // last lifecycle command sent (KMC_STATUS_*), 0xFF none
@@ -64,6 +66,11 @@ struct ModRt {
   bool     haveCnt;
   uint32_t down, heldDone;
   uint32_t downSince[MAX_INPUTS];
+  uint32_t inputs, pressAcc; // levels and presses from every packet, whatever the lifecycle
+  bool     inputsValid;
+  uint8_t  inputsEpoch;      // +1 each time the levels become unknown (module gone, rebooted)
+  uint8_t  pkt[MAX_PKT];     // the last packet read
+  uint32_t pktMs;            // when (0 = none yet)
   uint8_t  led[KMC_LED_PAYLOAD_SIZE], ledSent[KMC_LED_PAYLOAD_SIZE];
   bool     ledValid;         // ledSent reflects the module
   uint32_t lastLedMs, lastPollMs;
@@ -77,7 +84,8 @@ static ModRt     g_rt[MOD_COUNT];
 static uint8_t   g_owner[INT_LINE_COUNT];
 static MapSource g_src[INT_LINE_COUNT];
 static uint32_t  g_lastReprobeMs;
-static bool      g_bulb;
+static bool      g_bulb, g_bulbStopPending;
+static uint32_t  g_bulbQuietUntil;          // see moduleBulbTest()
 
 /***************************************************************************************
    INT map: defaults, EEPROM copy, owner lookups
@@ -165,6 +173,7 @@ static int8_t onlyBit(uint32_t m) {
 
 static void cmdModules(const char *);
 static void cmdIntmap(const char *);
+static void handlePacket(ModId id, const uint8_t *pkt);
 
 /***************************************************************************************
    Accessors
@@ -175,6 +184,36 @@ uint8_t     moduleAddr(ModId id)      { return id < MOD_COUNT ? kMod[id].addr : 
 const char *moduleName(ModId id)      { return id < MOD_COUNT ? kMod[id].name : "?"; }
 uint8_t     moduleLifecycle(ModId id) { return id < MOD_COUNT ? g_rt[id].life : 0; }
 void        moduleBusSetHandler(ModId id, ModHandler h) { if (id < MOD_COUNT) g_rt[id].handler = h; }
+void        moduleRequestRead(ModId id) { if (id < MOD_COUNT) g_rt[id].readNow = true; }
+
+bool moduleInputs(ModId id, uint32_t *levels, uint8_t *epoch) {
+  if (id >= MOD_COUNT) return false;
+  const ModRt &r = g_rt[id];
+  if (epoch) *epoch = r.inputsEpoch;
+  if (!r.present || !r.inputsValid) return false;
+  if (levels) *levels = r.inputs;
+  return true;
+}
+
+uint32_t moduleTakePressed(ModId id, uint32_t mask) {
+  if (id >= MOD_COUNT) return 0;
+  uint32_t p = g_rt[id].pressAcc & mask;
+  g_rt[id].pressAcc &= ~mask;
+  return p;
+}
+
+uint8_t moduleLastPacket(ModId id, uint8_t *buf, uint32_t *ms) {
+  if (id >= MOD_COUNT || !g_rt[id].present || !g_rt[id].pktMs) return 0;
+  memcpy(buf, g_rt[id].pkt, kMod[id].len);
+  if (ms) *ms = g_rt[id].pktMs;
+  return kMod[id].len;
+}
+
+static void inputsLost(ModRt &r) {
+  if (r.inputsValid) r.inputsEpoch++;
+  r.inputsValid = false;
+  r.pressAcc = 0;
+}
 
 bool moduleWantActive() { return g_master.demo || (g_master.kspConnected && g_vessel.flightScene); }
 
@@ -186,12 +225,16 @@ static bool noteBus(ModId id, bool ok) {
   if (r.present && ++r.busFails >= MAX_BUS_FAILS) {
     r.present = false;
     r.busFails = 0;
+    inputsLost(r);
     dbgErr(DBG_MODULES, "0x%02X %s stopped answering", kMod[id].addr, kMod[id].name);
   }
   return false;
 }
 
+static bool bulbQuiet() { return (int32_t)(millis() - g_bulbQuietUntil) < 0; }
+
 bool moduleCommand(ModId id, uint8_t cmd, const uint8_t *payload, uint8_t n) {
+  if (bulbQuiet() && cmd != KMC_CMD_BULB_TEST) return false;   // see moduleBulbTest()
   uint8_t b[1 + KMC_LED_PAYLOAD_SIZE];
   if (n > KMC_LED_PAYLOAD_SIZE) n = KMC_LED_PAYLOAD_SIZE;
   b[0] = cmd;
@@ -211,12 +254,40 @@ void moduleSetAllLeds(ModId id, uint8_t state) {
   for (uint8_t b = 0; b < 16; b++) moduleSetLed(id, b, state);
 }
 
+static void bulbSend(uint8_t p) {
+  for (uint8_t m = 0; m < MOD_COUNT; m++) if (g_rt[m].present) moduleCommand((ModId)m, KMC_CMD_BULB_TEST, &p, 1);
+}
+
+// Spec §5.2: 0x01 starts, 0x00 stops, no timeout. Today's button, joystick and throttle
+// firmware instead runs a fixed 2 s test that blocks inside its I2C handler (design
+// §17), so after a start the master leaves the modules alone for MODBUS_BULB_QUIET_MS
+// and sends the stop only after that.
 void moduleBulbTest(bool on) {
   if (on == g_bulb) return;
   g_bulb = on;
-  uint8_t p = on ? 1 : 0;
-  for (uint8_t m = 0; m < MOD_COUNT; m++) if (g_rt[m].present) moduleCommand((ModId)m, KMC_CMD_BULB_TEST, &p, 1);
   dbg(DBG_LIFE, "bulb test %s", on ? "on" : "off");
+  if (on) {
+    g_bulbStopPending = false;
+    bulbSend(1);
+    g_bulbQuietUntil = millis() + MODBUS_BULB_QUIET_MS;
+  } else {
+    g_bulbStopPending = true;
+  }
+}
+
+void moduleResetAll() {
+  for (uint8_t m = 0; m < MOD_COUNT; m++) {
+    ModRt &r = g_rt[m];
+    if (!r.present) continue;
+    if (!moduleCommand((ModId)m, KMC_CMD_RESET)) continue;
+    r.life = KMC_STATUS_ACTIVE;               // CMD_RESET leaves a module ACTIVE and backlit
+    r.lifeSent = 0xFF;                        // the next pass sends the lifecycle the master wants
+    r.ledValid = false;
+    r.down = r.inputsValid ? r.inputs : 0;
+    r.heldDone = r.down;
+    r.readNow = true;
+  }
+  dbg(DBG_LIFE, "CMD_RESET to every module");
 }
 
 /***************************************************************************************
@@ -238,8 +309,10 @@ static void sendLifecycle(ModId id, uint8_t life) {
   if (!moduleCommand(id, cmd)) return;
   ModRt &r = g_rt[id];
   r.lifeSent = life;
-  r.down = r.heldDone = 0;
+  r.down = r.inputsValid ? r.inputs : 0;      // what is already down is not a new press
+  r.heldDone = r.down;
   r.ledValid = false;                         // an ENABLE re-lights; resend the wanted LEDs
+  r.readNow = true;                           // an ENABLE asserts no INT: read the state now
   if (life != KMC_STATUS_ACTIVE) memset(r.ledSent, 0, sizeof r.ledSent);
   dbg(DBG_LIFE, "%s %s", kMod[id].name, life == KMC_STATUS_ACTIVE ? "ENABLE" : "DISABLE");
 }
@@ -256,6 +329,7 @@ static void startModule(ModId id, uint8_t reported, bool keepActive) {
   if (keepActive && reported == KMC_STATUS_ACTIVE) {
     r.lifeSent = KMC_STATUS_ACTIVE;           // after a watchdog restart: do not reset it
     r.ledValid = false;
+    r.readNow = true;                         // its INT is idle: read its inputs now
   } else {
     sendLifecycle(id, KMC_STATUS_DISABLED);
   }
@@ -305,7 +379,8 @@ static bool probe(ModId id, bool learn, bool keepActive, int8_t *learnedLine) {
 void moduleBusInit() {
   for (uint8_t m = 0; m < MOD_COUNT; m++) { g_rt[m].handler = nullptr; resetRt((ModId)m); }
   mapDefaults();
-  g_bulb = false;
+  g_bulb = g_bulbStopPending = false;
+  g_bulbQuietUntil = millis();
   g_lastReprobeMs = millis();
   consoleRegister("modules", "each module: present, firmware, line, lifecycle, counters", cmdModules);
   consoleRegister("intmap", "intmap [clear] — INT line owners", cmdIntmap);
@@ -339,6 +414,15 @@ void moduleBusBoot() {
   }
   mapSave();
   bootLine(present == MOD_COUNT ? SEV_OK : SEV_WARN, "MODULES  %u OF %u", present, (unsigned)MOD_COUNT);
+}
+
+void moduleBusReadSwitches() {
+  for (uint8_t m = 0; m < MOD_COUNT; m++) {
+    if (!kMod[m].switches || !g_rt[m].present) continue;
+    uint8_t pkt[MAX_PKT];
+    if (readPacket((ModId)m, pkt)) handlePacket((ModId)m, pkt);
+    g_rt[m].lastPollMs = millis();
+  }
 }
 
 void moduleBusLearnCarriers() {
@@ -385,6 +469,19 @@ static uint32_t plane(const uint8_t *p, uint8_t n) {
   return v;
 }
 
+// The levels (current state plane) of a button or joystick packet, and its change plane.
+static bool levelsOf(const ModuleDef &d, const uint8_t *pkt, uint32_t *now, uint32_t *chg) {
+  switch (d.kind) {
+    case KIND_BUTTONS: {
+      uint8_t n = (d.len == KMC_BUTTON24_PACKET_SIZE) ? 3 : 2;
+      *now = plane(pkt + 3, n); *chg = plane(pkt + 3 + n, n);
+      return true;
+    }
+    case KIND_JOYSTICK: *now = pkt[5]; *chg = pkt[4]; return true;   // byte 5 = persistent button state
+    default: return false;
+  }
+}
+
 static void handlePacket(ModId id, const uint8_t *pkt) {
   ModRt &r = g_rt[id];
   const ModuleDef &d = kMod[id];
@@ -395,11 +492,25 @@ static void handlePacket(ModId id, const uint8_t *pkt) {
   }
   uint8_t status = pkt[0], life = status & KMC_STATUS_LIFECYCLE_MASK, cnt = pkt[2];
   r.life = life;
+  memcpy(r.pkt, pkt, d.len);
+  r.pktMs = millis() | 1;
   if (life == KMC_STATUS_BOOT_READY) {          // the module rebooted
     dbgErr(DBG_HEALTH, "%s rebooted (BOOT_READY)", d.name);
     r.haveCnt = true; r.lastCnt = cnt;
+    inputsLost(r);
     startModule(id, life, false);
     return;
+  }
+  // Levels and presses are kept from every packet: a DISABLED module still reports its
+  // inputs when read (it only stops asserting INT), and the panel switches need them.
+  uint32_t lv, lchg;
+  if (levelsOf(d, pkt, &lv, &lchg)) {
+    if (r.inputsValid) {
+      uint32_t c = lchg | (lv ^ r.inputs);
+      r.pressAcc |= (c & lv) | (c & ~lv & ~r.inputs);   // presses, re-presses and taps
+    }
+    r.inputs = lv;
+    r.inputsValid = true;
   }
   if (status & KMC_STATUS_FAULT) {
     r.faults++;
@@ -420,17 +531,12 @@ static void handlePacket(ModId id, const uint8_t *pkt) {
   memset(&e, 0, sizeof e);
   e.id = id; e.pkt = pkt; e.len = d.len;
   uint32_t now = 0, chg = 0;
-  bool persistent = true;                       // the packet carries the current state
+  bool persistent = levelsOf(d, pkt, &now, &chg);   // the packet carries the current state
   switch (d.kind) {
-    case KIND_BUTTONS: {
-      uint8_t n = (d.len == KMC_BUTTON24_PACKET_SIZE) ? 3 : 2;
-      now = plane(pkt + 3, n); chg = plane(pkt + 3 + n, n);
-      break;
-    }
-    case KIND_JOYSTICK: now = pkt[5]; chg = pkt[4]; break;   // byte 5 = persistent button state
-    case KIND_DISPLAY:  e.pressed = pkt[3] & pkt[4]; persistent = false; break;   // rising edges
-    case KIND_THROTTLE: e.pressed = pkt[4]; persistent = false; break;
-    case KIND_ENCODER:  e.pressed = pkt[3]; persistent = false; break;
+    case KIND_DISPLAY:  e.pressed = pkt[3] & pkt[4]; break;   // rising edges
+    case KIND_THROTTLE: e.pressed = pkt[4]; break;
+    case KIND_ENCODER:  e.pressed = pkt[3]; break;
+    default: break;
   }
   if (persistent) {
     uint32_t prev = r.down;
@@ -471,6 +577,8 @@ static void checkHolds(ModId id) {
 ****************************************************************************************/
 void moduleBusService() {
   uint32_t ms = millis();
+  if (bulbQuiet()) return;                      // modules busy with the bulb test
+  if (g_bulbStopPending) { g_bulbStopPending = false; bulbSend(0); }
   uint8_t want = moduleWantActive() ? KMC_STATUS_ACTIVE : KMC_STATUS_DISABLED;
   for (uint8_t m = 0; m < MOD_COUNT; m++) {
     ModId id = (ModId)m;
@@ -481,6 +589,12 @@ void moduleBusService() {
     bool read;
     if (line < INT_LINE_COUNT) read = digitalReadFast(PIN_INT_LINE[line]) == LOW;
     else { read = ms - r.lastPollMs >= MODBUS_POLL_MS; if (read) r.lastPollMs = ms; }
+    // A switch module that is not ACTIVE asserts no INT, so its switches are polled.
+    if (kMod[m].switches && r.lifeSent != KMC_STATUS_ACTIVE && ms - r.lastPollMs >= MODBUS_SWITCH_POLL_MS) {
+      read = true;
+      r.lastPollMs = ms;
+    }
+    if (r.readNow) { read = true; r.readNow = false; }
     if (read) {
       uint8_t pkt[MAX_PKT];
       if (readPacket(id, pkt)) {
@@ -504,6 +618,7 @@ void moduleBusService() {
 
 void moduleBusFlushLeds() {
   uint32_t ms = millis();
+  if (bulbQuiet()) return;
   for (uint8_t m = 0; m < MOD_COUNT; m++) {
     ModRt &r = g_rt[m];
     if (!r.present || !kMod[m].leds || r.lifeSent != KMC_STATUS_ACTIVE) continue;
