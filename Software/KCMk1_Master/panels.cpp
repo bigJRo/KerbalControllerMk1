@@ -53,12 +53,17 @@ void panelsInit() {
   panelEncodersInit();
   panelSticksInit();
   panelThrottleInit();
+  panelUiInit();
+  panelFunctionInit();
+  panelTimeInit();
+  panelGpwsInit();
 }
 
 void panelsService() {
   bool live = panelLive();
   if (g_wasLive && !live) keysReleaseAll();       // no key stays down past a flight
   g_wasLive = live;
+  keysService();
   if (!g_enabled) return;
   for (uint8_t m = 0; m < MOD_COUNT; m++) if (moduleLifecycle((ModId)m) != KMC_STATUS_ACTIVE) g_down[m] = 0;
   panelVehicleService();
@@ -66,4 +71,8 @@ void panelsService() {
   panelActionService();
   panelAuxService();
   panelSticksService();
+  panelUiService();
+  panelFunctionService();
+  panelTimeService();
+  panelGpwsService();
 }

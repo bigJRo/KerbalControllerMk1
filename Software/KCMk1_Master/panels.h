@@ -17,6 +17,7 @@
        press (panelFlash()).
    Stage 4 tabs: Vehicle, Stability (with HOLD), Action, AUX, Dual Encoder.
    Stage 5 tabs: the two joysticks, the Throttle Module.
+   Stage 6 tabs: UI, Function, Time (with the Pre-Warp lead), GPWS (relay).
 ****************************************************************************************/
 #pragma once
 #include <Arduino.h>
@@ -51,6 +52,11 @@ void panelAuxInit();       void panelAuxService();
 void panelEncodersInit();
 void panelSticksInit();    void panelSticksService();     // before the frame (ksp_frame.h)
 void panelThrottleInit();
+void panelUiInit();        void panelUiService();
+void panelFunctionInit();  void panelFunctionService();
+void panelTimeInit();      void panelTimeService();
+void panelGpwsInit();      void panelGpwsService();
+uint16_t timePreWarpMinutes();                           // the Pre-Warp lead
 
 // Vehicle: brakes held by a button (BRAKES, or the RVR stick button from stage 5).
 // While any source holds them the brakes are on; when the last lets go they come off

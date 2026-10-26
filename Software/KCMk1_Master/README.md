@@ -7,7 +7,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (Sys Info Display: §15.4) |
-| **Status** | Stages 1–5 of 8: skeleton and boot; module bus; switches and interlocks; flight panels; sticks and throttle |
+| **Status** | Stages 1–6 of 8: skeleton and boot; module bus; switches and interlocks; flight panels; sticks and throttle; remaining panels |
 
 ## Building
 
@@ -44,7 +44,12 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | Sticks | `panel_sticks.cpp` | Mapping by control mode (SPC / PLN / RVR), THC / RHC PREC, trim (BTN02 / BTN01), stick button (A/P disconnect, RVR brakes, EVA run), camera mode and buttons, EVA keys |
 | Throttle | `panel_throttle.cpp` | The lever's state and command; 100 % / UP / DOWN / 0 % move the lever |
 
-Still to come: the other panels (6), autopilots (7), board services and cutover (8).
+| UI Control (stage 6) | `panel_ui.cpp` | Keys (F2, Alt+F12, numpad ., ', Tab, Shift+Tab, [ ], M, C), the screenshot macro (F2 F1 F2, 150 ms apart), navball cycle |
+| Function Control | `panel_function.cpp` | CAG 25–39 buttons with the control-group offset |
+| Time Control | `panel_time.cpp` | WARP TO ApA / PeA / MNVR (burn start) / SOI / MORN less the Pre-Warp lead, dark when not available; STOP, > / <, PHYS + > / < (physics 1×–4×), LOAD (F9 held), PAUSE, SAVE |
+| GPWS | `panel_gpws.cpp` | Its state and threshold relayed to the Annunciator |
+
+Still to come: autopilots (7), board services and cutover (8).
 
 ## Serial console
 
@@ -122,6 +127,7 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
     - translation and the camera buttons; EVA keys with hysteresis, released when the EVA ends;
     - the lever and its buttons (FINE, ENGINE SAFE); an autopilot owning the throttle (lever driven, pilot ignored, FINE dropped and restored, ENGINE SAFE wins); autopilot rotation axes;
     - demo; the `frame` console command.
+  - remaining panels (stage 6): UI keys, modifiers, navball, the spaced screenshot macro; Function CAGs and offset; Time warp-to with the lead and each availability rule, STOP, warp up / down, PHYS steps, LOAD held, PAUSE, SAVE; the GPWS relay.
 
 Run it after every change.
 
@@ -143,3 +149,4 @@ These can only be confirmed on the hardware (design §18):
 12. **Action groups (stage 4):** each CAG button lights with its group in KSP, in control groups 1 and 2; a parachute deploys and cuts from MAIN, and a 2 s hold resets it after a repack.
 13. **Stick directions (stage 5):** in SPC, PLN and RVR each axis moves the vessel the expected way (pitch, yaw, roll, translation, steering, wheel throttle), camera mode turns the camera, and on EVA the keys walk the expected way. Fix any wrong sign with `STICK_SIGN` in `panel_sticks.cpp`.
 14. **Lever (stage 5):** the 100 % / UP / DOWN / 0 % buttons move the lever; with ENGINE SAFE the throttle stays at 0 % in KSP.
+15. **Time Control (stage 6):** each WARP TO stops the Pre-Warp lead short of its event; the buttons go dark as their events disappear (landed, no node, in the atmosphere, escape); the screenshot macro hides the UI in the picture.

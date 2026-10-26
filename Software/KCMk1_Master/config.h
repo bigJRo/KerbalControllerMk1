@@ -11,9 +11,9 @@
 #pragma once
 #include <Arduino.h>
 
-#define KCM_MASTER_VERSION "0.5.0"
+#define KCM_MASTER_VERSION "0.6.0"
 static const uint8_t KCM_MASTER_VERSION_MAJOR = 0;
-static const uint8_t KCM_MASTER_VERSION_MINOR = 5;
+static const uint8_t KCM_MASTER_VERSION_MINOR = 6;
 
 /***************************************************************************************
    Pins — Teensy 4.1 on the Ctrl Module (Inventory §2–§3, design Appendix A)
@@ -86,6 +86,9 @@ static const float    WDT_WARN_BEFORE_S      = 0.5f;   // trigger callback this 
 static const uint8_t  WDT_LOOP_GUARD_COUNT   = 3;      // this many watchdog resets …
 static const uint32_t WDT_LOOP_GUARD_S       = 60;     // … within this many seconds → halt
 static const uint32_t WDT_STREAK_CLEAR_MS    = 60000;  // a clean run this long clears the streak
+
+// KSP Vessel.Situations bits, as FLIGHT_STATUS carries them
+static const uint8_t KSP_SIT_LANDED = 0x01, KSP_SIT_SPLASHED = 0x02, KSP_SIT_PRELAUNCH = 0x04;
 
 // Annunciator control mode (its CtrlMode enum)
 static const uint8_t CTRL_MODE_RVR = 0, CTRL_MODE_PLN = 1, CTRL_MODE_SPC = 2;

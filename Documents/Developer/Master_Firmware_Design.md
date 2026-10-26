@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
-| **Status** | Draft 5, approved. Stages 1–5 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
+| **Status** | Draft 5, approved. Stages 1–6 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
 | **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and the watchdog design (§12.3) |
 | **Supersedes** | Drafts 1–4, and `Controller_Main_IO_Design.md` |
 
@@ -160,7 +160,7 @@ Software/KCMk1_Master/
 ├─ panel_time.cpp       Time Control          0x25  + Pre-Warp 0x2B
 ├─ panel_aux.cpp        AUX CTRL              0x26
 ├─ panel_sticks.cpp     Rotation / Translation 0x28 / 0x29, trim, camera, EVA keys
-├─ panel_gpws.cpp       GPWS Input Panel      0x2A
+├─ panel_gpws.cpp       GPWS Input Panel      0x2A  (relay to the Annunciator)
 ├─ panel_throttle.cpp   Throttle Module       0x2C
 ├─ panel_encoders.cpp   Dual Encoder          0x2D
 ├─ panel_safe.cpp       safe lines: ABORT, STAGE
@@ -524,15 +524,23 @@ Safe lines read active-high, as plain inputs (no pull-up), debounced 10 ms. A li
 
 The availability rules are checked against Simpit on the bench.
 
+*(stage 6)*
+- **Lead:** the Pre-Warp display's value, in minutes, sent as a negative delay.
+- **Before KSP has reported** what a rule needs (orbit, atmosphere), the button counts as available, since KSP ignores a warp it cannot do. MNVR is the exception: it needs a node reported, and the master asks for MANEUVER on entering a flight.
+- **"Landed"** includes splashed and pre-launch.
+- **STOP** sends cancel-autowarp, then 1×.
+- **PHYS + > / <:** the next physics rate is worked out from the rate index KSP reports.
+- **LEDs:** PHYS is lit while held, LOAD while F9 is held; the others flash on a press.
+
 ### 8.9 Other panels
 
 | Panel | Behaviour |
 |---|---|
 | **AUX CTRL** | **[EVA] group** (B0–B7, B9): EVA keys, dark outside EVA. **B8 UNDOCK:** CAG 37. **B10 PRI / B11 ALT:** control points (CAG 35 / 36), mutually exclusive; the LED shows the active one, and pressing the active one does nothing |
 | **Function Control** | CAG buttons per Inventory §10.5. **B4 = FLAPS** (CAG 39) |
-| **UI Control** | Keyboard and Simpit navball cycle per Inventory §10.7 |
+| **UI Control** | Keyboard and Simpit navball cycle per Inventory §10.7. *(stage 6)* The screenshot macro's three keys go out 150 ms apart |
 | **Throttle** | Lever, 100 % / UP / DOWN / 0 % buttons, all under the ENGINE and autopilot rules. **FINE** is dropped while an autopilot owns the throttle and restored after. *(stage 5)* The module only reports its buttons; the master moves the lever (100 % / 0 %, UP / DOWN 10 %), and the throttle follows the lever. The buttons are ignored in FINE, where a lever target is not the throttle |
-| **GPWS, Pre-Warp** | Module-managed. The master relays GPWS state to the Annunciator and reads the Pre-Warp minutes |
+| **GPWS, Pre-Warp** | Module-managed. The master relays GPWS state to the Annunciator and reads the Pre-Warp minutes. *(stage 6)* GPWS: state byte bits 3:0 and the value (metres) to the Annunciator's GPWS bytes, on every change |
 | **Dual Encoder** | **ENC1:** control group 1–6 (wraps), also in demo. **ENC1 button:** resets it to 1. **ENC2:** camera next / previous: clockwise = next = `-`, `=` = previous (the Hullcam defaults), one key per detent, at most 5 per read. **ENC2 button:** camera reset (Backspace) |
 
 ## 9. Annunciator fields
@@ -738,7 +746,7 @@ One PR per stage.
 | 3 | **Switches and interlocks** | Switch Groups 1 and 2, SWITCH ERR, ENGINE SAFE / ARM, A/P INHIB, mode selector, safe lines (ABORT, STAGE), demo / debug | All §8.2, §8.3, §8.6 rules pass in the selftest. **Built** |
 | 4 | **Flight panels** | Vehicle (state machines), Stability (SAS, HOLD), Action, AUX, Dual Encoder, CAG map | §8.4, §8.5, §8.9 pass. **Built** (HOLD in PLN / RVR waits for stage 7) |
 | 5 | **Sticks and throttle** | `ksp_out` arbitration, stick mapping, trim, camera, EVA keys, lever, throttle buttons, FINE handling | §7, §8.7 pass. **Built** |
-| 6 | **Remaining panels** | UI, Function, Time + Pre-Warp (availability), GPWS | All of §8 covered |
+| 6 | **Remaining panels** | UI, Function, Time + Pre-Warp (availability), GPWS | All of §8 covered. **Built** |
 | 7 | **Autopilots** | Port (§11), authority rule, Info Display 2 consoles | Autopilot checks pass; consoles engage / disengage |
 | 8 | **Board and cutover** | Fan, INA228, Sys Info status frame; delete `Controller_Main`; rewrite the Hardware Reference and Module UI Reference; update the test plan; close #89 | Nothing refers to `Controller_Main` |
 
@@ -786,6 +794,7 @@ From Inventory §11:
 | 11 | Bench: CAGSTATUS bit n is custom action group n, and a requested CAGSTATUS / SAS_MODE_INFO arrives on entering a flight | Stage 4 bench test |
 | 12 | Bench: each stick axis's sign (pitch, yaw, roll, translation, steering, wheel throttle, camera) and the EVA keys' directions | Stage 5 bench test |
 | 13 | Bench: the lever follows an autopilot's throttle, and goes back after a touch; the buttons step it | Stage 5 bench test |
+| 14 | Bench: the screenshot macro's spacing (150 ms) is enough for KSP to hide the UI before F1 | Stage 6 bench test |
 
 ---
 
