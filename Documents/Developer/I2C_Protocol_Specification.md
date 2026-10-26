@@ -1,11 +1,11 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.13  
+**Version:** 2.15  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Date:** 2026-10-24
+**Date:** 2026-10-25
 
 ---
 
@@ -528,7 +528,7 @@ The Teensy 4.1 display carriers (Annunciator, Resource Display, Info Display 1/2
 | 0x11 | `KCM_I2C_ADDR_RESDISP` | Resource Display | 0xAD (`KCM_I2C_SYNC_RESDISP`) | Implemented |
 | 0x12 | `KCM_I2C_ADDR_INFODISP` | Info Display 1 | 0xAE (`KCM_I2C_SYNC_INFODISP`) | Implemented |
 | 0x13 | `KCM_I2C_ADDR_INFODISP_2` | Info Display 2 | 0xAE (shared with Info 1) | Implemented (same firmware, `INFO_DISP_UNIT`; sole Ascent-AP command source) |
-| 0x14 | `KCM_I2C_ADDR_SYSINFODISP` | System Info Display | — | **Future work** (separate board, not yet coded) |
+| 0x14 | `KCM_I2C_ADDR_SYSINFODISP` | System Info Display (2" XIAO RP2350 carrier, KC-01-1901) | 0xAF | Protocol defined (§15.4); firmware to come |
 
 Info Display 1 and 2 run the **same** firmware image; the target address is selected at compile time by `INFO_DISP_UNIT` in `KCMk1_InfoDisp.h` (1 → 0x12, 2 → 0x13). Both use sync byte 0xAE. The unit also selects the panel's role — Info Display 1 is the vehicle-type display, Info Display 2 the mission-phase display and the sole owner of the Ascent Autopilot command channel, so an Ascent-AP command frame is only ever non-zero from 0x13. See the InfoDisp README.
 
@@ -570,7 +570,28 @@ At power-on each carrier holds in `setup()` until the master sends `PROCEED` (`S
 
 The `requestType` nibble values and the boot `PROCEED` handshake are identical on all three implemented carriers; only the payload width and the panel-specific status/command fields differ.
 
-**Master side.** `infodisp_link.ino` releases both Info Displays at init. `annun_link.ino` sends the Annunciator its rev-3 9-byte command and the Resource Display its 2-byte command every 100 ms and at once on a change, with `requestType = PROCEED` on every write. A carrier treats PROCEED as "leave the boot hold" and nothing else, so repeating it is harmless, and it releases a carrier that powers up after the master or reboots on its own. The Annunciator's GPWS bytes are the GPWS Input Panel's state byte and display value, read by the master when the panel asserts INT; the master answers the panel's BOOT_READY / DISABLED report with `CMD_DISABLE` / `CMD_ENABLE` (§5).
+**Master side.** The new master (`Software/KCMk1_Master`, `carriers.cpp`) sends all four carriers their command every 100 ms and at once on a change, with `requestType = PROCEED` on every write, and reads each carrier's status packet every 500 ms (bit 0 of every carrier's flags byte is its own Simpit link, shown on the System Info Display). The old `Controller_Main`: `infodisp_link.ino` releases both Info Displays at init. `annun_link.ino` sends the Annunciator its rev-3 9-byte command and the Resource Display its 2-byte command every 100 ms and at once on a change, with `requestType = PROCEED` on every write. A carrier treats PROCEED as "leave the boot hold" and nothing else, so repeating it is harmless, and it releases a carrier that powers up after the master or reboots on its own. The Annunciator's GPWS bytes are the GPWS Input Panel's state byte and display value, read by the master when the panel asserts INT; the master answers the panel's BOOT_READY / DISABLED report with `CMD_DISABLE` / `CMD_ENABLE` (§5).
+
+### 15.4 System Info Display (0x14)
+
+The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 240×320 ST7789, microSD). It shows the master's boot progress, then the controller status, and a window naming the switches in SWITCH ERR (`Master_Firmware_Design.md` §14). Unlike the 7" carriers it has **no boot hold** (no PROCEED handshake) and no RST connection, and it does not use its INT line in this protocol. Every master write is one frame; byte 0 is the frame id. Multi-byte fields are **little-endian**.
+
+**Master → System Info Display:**
+
+| Id | Frame | Bytes | Layout |
+|---|---|---|---|
+| 0xB0 | CONTROL | 2 | `[B0, ctrl]`. ctrl bit 0 debug, bit 1 demo; bits 7:2 reserved (0). Sent every 500 ms: the heartbeat |
+| 0xB1 | BOOT_LINE | 4 + len | `[B1, seq, attr, len, text…]`. `seq` increments per line; `len` ≤ 40, ASCII. `attr` bits 1:0 severity (0 info, 1 OK, 2 warning, 3 error); bit 7 REPLACE — overwrite the previous line instead of adding one (the live WAITING FOR KSP line) |
+| 0xB2 | BOOT_DONE | 1 | `[B2]`: leave the boot screen for the status screen |
+| 0xB3 | STATUS | 13 | `[B3, valid, vbus u16 (0.01 V), current i16 (mA), power u16 (0.1 W), temp i8 (°C), fan u16 (rpm), links u8, known u8]`. `valid` bit 0 power, bit 1 temperature, bit 2 fan. `links` / `known`: a bit per board with its own Simpit link — bit 0 master, 1 Annunciator, 2 Info Display 1, 3 Info Display 2, 4 Resource Display; `known` = answered its last status read. Sent every 500 ms after BOOT_DONE |
+| 0xB4 | SWITCH_ERR | 2 + 3n | `[B4, n, {id, expected, actual} × n]`, n ≤ 10; n = 0 closes the window. Switch ids: 1–8 = Switch Group 1 B16–B23, 9–16 = Switch Group 2 B16–B23 |
+
+**System Info Display → master** (4-byte read): `[0xAF, flags, fwMajor, fwMinor]`; flags bit 0 ready, bit 1 SD card OK, bit 2 boot screen showing.
+
+**Behaviour:**
+- **Boot screen** from power-on until BOOT_DONE. Lines are added (or, with REPLACE, overwrite the last one) as they arrive.
+- **No frame for 5 s while the boot screen is up:** show `MASTER NOT RESPONDING` and keep the last line visible.
+- **Late start:** the master keeps the boot lines it sent before the display answered and replays them when it does, so a display that starts late still shows the boot from the top.
 
 ---
 
@@ -598,6 +619,7 @@ The `requestType` nibble values and the boot `PROCEED` handshake are identical o
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
+| 2.15 | 2026-10-25 | §15.4: **System Info Display (0x14) protocol** defined (sync 0xAF): CONTROL heartbeat, BOOT_LINE (with REPLACE), BOOT_DONE, STATUS, SWITCH_ERR frames, and its 4-byte status read. §15.3: master-side note for the new `KCMk1_Master`. No module-side packet formats changed. |
 | 2.14 | 2026-10-25 | §15.3: master side documented. Controller_Main now sends the Annunciator (0x10) the rev-3 command and the Resource Display (0x11) its control byte, both repeating `PROCEED` (until now neither carrier was ever written to, so both held in `setup()`), and relays the GPWS Input Panel (0x2A) to the Annunciator. No packet formats changed. |
 | 2.13 | 2026-10-24 | §15.3: Info Display (0x12/0x13) gains an 8-byte autopilot **summary** push (sync **0xAA**) written to both displays every 100 ms: each console's flag byte plus the landing mode and ENTRY, so a display can see an engaged autopilot off its console (#83). Layout in `Mission_Autopilot.md` §8.1. No module-side packet formats changed. |
 | 2.12 | 2026-09-05 | §15.3: Info Display (0x12/0x13) inbound status pushes are now dispatched by **sync byte** rather than write length. The aircraft frame (0xA6) grows 44 → 48 bytes and the rover frame (0xA7) 28 → 36; two new frames, **0xA8** orbital (52 bytes) and **0xA9** landing (44 bytes), carry the mission autopilot consoles. Opcodes `0x14`–`0x16`, `0x38`–`0x3A`, `0x40`–`0x5E` added to the console command frame. Layouts in `Mission_Autopilot.md` §8. No module-side packet formats changed. |

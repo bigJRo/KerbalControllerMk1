@@ -10,11 +10,12 @@ central master controller.
 
 | Path | Contents |
 |------|----------|
-| `Software/Controller_Main/` | Master controller firmware — I2C bus master, coordinates all panels and modules |
+| [`Software/KCMk1_Master/`](Software/KCMk1_Master/README.md) | New master controller firmware, being built in stages ([design](Documents/Developer/Master_Firmware_Design.md)). Replaces `Controller_Main` at cutover |
+| `Software/Controller_Main/` | Current master controller firmware — kept as a reference until the new master replaces it |
 | `Software/Displays/` | Display-panel firmware and shared display libraries (see below) |
 | `Software/Modules/` | Input-module firmware (buttons, switches, joysticks, encoders, 7-segment, etc.) |
 | `Software/Libraries/`, `Software/Common/` | Shared cross-project code |
-| `Documents/Developer/` | Hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface, expansion-module spec, [display test plan](Documents/Developer/Display_Test_Plan.md) |
+| `Documents/Developer/` | [Hardware inventory](Documents/Developer/Hardware_Inventory.md) (from the schematics; supersedes the Hardware Reference where they differ), [master firmware design](Documents/Developer/Master_Firmware_Design.md), hardware reference, I2C protocol spec, power budget, module/UI reference, ascent-autopilot interface, expansion-module spec, [display test plan](Documents/Developer/Display_Test_Plan.md) |
 | `Documents/User/` | [Quick-start guide](Documents/User/Quick_Start_Guide.md), panel operating guide, and the display references: [Annunciator](Documents/User/Annunciator_Caution_Warning_Reference.md), [Information Displays](Documents/User/Info_Display_Screen_Reference.md), [Resource Display](Documents/User/Resource_Display_Reference.md) (each also as `.docx`) |
 
 ### Display panels (`Software/Displays/`)
