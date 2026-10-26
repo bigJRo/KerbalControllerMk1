@@ -26,6 +26,8 @@ enum : uint8_t {
 };
 
 void     carriersInit();
+bool     carrierRequestStatus(CarrierId c);   // its command with requestType STATUS (asserts its INT)
+bool     carrierReadStatus(CarrierId c);      // read its status packet now
 void     carriersBoot();                   // boot step 7: release each, wait for its status
 void     carrierService();
 uint16_t carrierModeFlags();               // the Annunciator mode flags as sent

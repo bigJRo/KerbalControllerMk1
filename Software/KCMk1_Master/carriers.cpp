@@ -9,6 +9,7 @@
 #include "boot.h"
 #include "sysinfo.h"
 
+static const uint8_t REQ_STATUS     = 0x1;
 static const uint8_t REQ_PROCEED    = 0x2;
 static const uint8_t ANN_CMD_LEN    = 9;
 static const int16_t GPWS_DEFAULT_M = 200;
@@ -33,8 +34,8 @@ const char *carrierName(CarrierId c) { return c < CAR_COUNT ? kCar[c].name : "?"
 
 void carrierSetGpws(uint8_t cfg, int16_t thresholdM) { g_gpwsCfg = cfg & 0x0F; g_gpwsThr = thresholdM; }
 
-static uint8_t controlByte(bool bit2) {
-  uint8_t b = (uint8_t)(REQ_PROCEED << 4);
+static uint8_t controlByte(bool bit2, uint8_t req = REQ_PROCEED) {
+  uint8_t b = (uint8_t)(req << 4);
   if (g_master.debug) b |= 0x01;
   if (g_master.demo)  b |= 0x02;
   if (bit2)           b |= 0x04;
@@ -123,6 +124,22 @@ static bool readStatus(CarrierId c) {
   }
   g_answering[c] = ok;
   return ok;
+}
+
+bool carrierReadStatus(CarrierId c) { return c < CAR_COUNT && readStatus(c); }
+
+// The same command the carrier gets every 100 ms, with requestType STATUS instead of
+// PROCEED, so nothing else about it changes. Used to learn its INT line.
+bool carrierRequestStatus(CarrierId c) {
+  if (c >= CAR_COUNT) return false;
+  if (c == CAR_ANNUNCIATOR) {
+    uint8_t ann[ANN_CMD_LEN];
+    buildAnnunciator(ann);
+    ann[0] = (uint8_t)((ann[0] & 0x0F) | (REQ_STATUS << 4));
+    return busWrite(ADDR_ANNUNCIATOR, ann, ANN_CMD_LEN) == BUS_OK;
+  }
+  uint8_t two[2] = { controlByte(c == CAR_RESDISP ? false : g_panel.trim, REQ_STATUS), 0 };
+  return busWrite(kCar[c].addr, two, 2) == BUS_OK;
 }
 
 void carriersInit() {

@@ -1,12 +1,14 @@
 /***************************************************************************************
    boot.cpp — the boot sequence.
 
-   Steps (design §5). The module steps (INT map, discovery) arrive with stage 2.
+   Steps (design §5):
      1  Serial, Wire at 400 kHz, pins
      2  wait for the Sys Info Display (SYSINFO_PROBE_MS)
      3  banner: firmware version, reset cause (and where a watchdog reset happened)
      4  board devices: INA228, EMC2101
-     7  display carriers: PROCEED to each, wait for its status
+     5  INT map: stored (EEPROM) or default
+     6  modules: identify, learn INT lines, LEDs off, DISABLE (module_bus)
+     7  display carriers: PROCEED to each, wait for its status; learn their INT lines
      8  first Simpit handshake attempt
      9  start the watchdog (skipped, and the master halts, if the reboot-loop guard tripped)
 ****************************************************************************************/
@@ -18,6 +20,7 @@
 #include "board.h"
 #include "carriers.h"
 #include "simpit_link.h"
+#include "module_bus.h"
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -101,7 +104,9 @@ void bootSequence() {
   else dbgErr(DBG_DISPLAY, "Sys Info Display not answering; boot report on Serial only");
   stepBanner();                                                     // 3
   stepDevices();                                                    // 4
+  moduleBusBoot();                                                  // 5, 6
   carriersBoot();                                                   // 7
+  moduleBusLearnCarriers();
   const ResetInfo &r = boardResetInfo();
   if (r.guardTripped) {
     bootLine(SEV_ERROR, "%u WATCHDOG RESETS IN %lu S: HALTED", r.streak, (unsigned long)WDT_LOOP_GUARD_S);

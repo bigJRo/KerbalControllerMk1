@@ -32,6 +32,7 @@ HERE     = os.path.dirname(os.path.abspath(__file__))
 SKETCH   = os.path.dirname(HERE)
 SOFTWARE = os.path.dirname(SKETCH)
 HOST     = os.path.join(HERE, "host")
+KMC      = os.path.join(SOFTWARE, "Modules", "libraries", "KerbalModuleCommon", "src")
 TESTS    = os.path.join(HERE, "tests")
 SYSCFG   = os.path.join(SOFTWARE, "Displays", "libraries", "KCMk1_SystemConfig", "src", "KCMk1_SystemConfig.h")
 
@@ -45,7 +46,7 @@ def sketch_sources():
 
 
 def includes(simpit):
-    dirs = ([simpit] if simpit else []) + [HOST, SKETCH]
+    dirs = ([simpit] if simpit else []) + [HOST, SKETCH, KMC]
     return ["-I" + d for d in dirs]
 
 

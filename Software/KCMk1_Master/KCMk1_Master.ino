@@ -7,7 +7,8 @@
 
    Board settings: Teensy 4.1, USB Type "Dual Serial" (Serial = debug console,
    SerialUSB1 = KerbalSimpit), CPU 600 MHz.
-   Libraries: KerbalSimpit 2.4.0, WDT_T4 (Teensyduino).
+   Libraries: KerbalSimpit 2.4.0, WDT_T4 and EEPROM (Teensyduino), KerbalModuleCommon
+   (Software/Modules/libraries).
 
    This tab holds setup() and loop() only. Each part of the firmware is its own
    .cpp / .h pair; nothing relies on the IDE's prototype generation.
@@ -15,6 +16,8 @@
    Stage 1 (skeleton and boot): state, I2C, boot sequence and the Sys Info Display link,
    the four display carriers, the master's Simpit link, the KSP send gate, the debug log
    and console, the watchdog.
+   Stage 2 (module bus): module table, INT line learning, start-up, reads and events,
+   LEDs, lifecycle.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -29,6 +32,7 @@
 #include "carriers.h"
 #include "simpit_link.h"
 #include "ksp_out.h"
+#include "module_bus.h"
 #include <strings.h>
 
 static void cmdStatus(const char *) {
@@ -79,6 +83,7 @@ void setup() {
   consoleRegister("wdtest", "wdtest yes — hang the loop to test the watchdog", cmdWdTest);
   siInit();
   carriersInit();
+  moduleBusInit();
   simpitInit();
   bootSequence();
 }
@@ -92,6 +97,8 @@ void loop() {
     return;
   }
   wdtCrumb(LS_SIMPIT);     simpitService();
+  wdtCrumb(LS_MODULES);    moduleBusService();
+  wdtCrumb(LS_LEDS);       moduleBusFlushLeds();
   wdtCrumb(LS_CARRIERS);   carrierService();
   wdtCrumb(LS_SYSINFO);    bootService(); siService();
   wdtCrumb(LS_BOARD_SLOW); boardService();
