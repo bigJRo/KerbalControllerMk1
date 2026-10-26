@@ -5,7 +5,7 @@
 #include "ksp_out.h"
 #include "debug.h"
 
-static const uint8_t MAX_HELD = 6;
+static const uint8_t MAX_HELD = 12;
 static int16_t g_held[MAX_HELD];
 static uint8_t g_heldN;
 

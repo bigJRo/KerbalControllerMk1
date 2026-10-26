@@ -7,7 +7,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (Sys Info Display: §15.4) |
-| **Status** | Stages 1–4 of 8: skeleton and boot; module bus; switches and interlocks; flight panels |
+| **Status** | Stages 1–5 of 8: skeleton and boot; module bus; switches and interlocks; flight panels; sticks and throttle |
 
 ## Building
 
@@ -40,7 +40,11 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | AUX CTRL | `panel_aux.cpp` | EVA keys (dark outside EVA), UNDOCK, PRI / ALT control points |
 | Dual Encoder | `panel_encoders.cpp` | Control group 1–6, camera next / previous / reset |
 
-Still to come: sticks and throttle (5), the other panels (6), autopilots (7), board services and cutover (8).
+| Control channels (stage 5) | `ksp_frame.*`, `lever.h` | Rotation, translation, wheel, camera and throttle merged every pass and sent on a change; neutral first in each flight; sticks ignored under an autopilot or HOLD; throttle 0 unless ENGINE ARMED, else the autopilot owner (lever driven to match) or the lever; the autopilot interface (`thrAutoThrottle`, `rotSetAutoAxes`, `wheelSetAuto`, …) |
+| Sticks | `panel_sticks.cpp` | Mapping by control mode (SPC / PLN / RVR), THC / RHC PREC, trim (BTN02 / BTN01), stick button (A/P disconnect, RVR brakes, EVA run), camera mode and buttons, EVA keys |
+| Throttle | `panel_throttle.cpp` | The lever's state and command; 100 % / UP / DOWN / 0 % move the lever |
+
+Still to come: the other panels (6), autopilots (7), board services and cutover (8).
 
 ## Serial console
 
@@ -55,6 +59,7 @@ Open the first serial port at any baud rate and type a command:
 | `intmap [clear]` | Each INT line: level now, owner, source (default / stored / learned); `clear` erases the stored map |
 | `switches` | Every switch: position, the vessel's state, SWITCH ERR; the mode selector |
 | `interlocks` | ENGINE state, the lever (position, touch, precision), A/P, drop listeners |
+| `frame` | Each control channel's last values sent; the throttle owner and autopilot axes |
 | `log` | Debug categories; `log <cat\|all> on\|off\|auto` |
 | `debug on\|off` | Debug output, until the next UPTLM flip |
 | `wdtest yes` | Hangs the loop, so the watchdog resets the master in 5 s (bench test) |
@@ -109,6 +114,14 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
     - Stability: SAS modes with the switch and availability, INVERT and SWITCH ERR, HOLD (engage, restore SAS, A/P INHIB, mode change, PLN, MSTR RESET);
     - Action: no offset; AUX: EVA keys, flash, UNDOCK, PRI / ALT; Dual Encoder: group wrap, camera keys;
     - held keys released when the flight ends; demo LEDs.
+  - sticks and throttle (stage 5):
+    - neutral channels on entering a flight, nothing sent while nothing moves;
+    - SPC / PLN / RVR mapping, precision, trim (set, hold, clear, cleared on a mode change);
+    - wheel throttle 0 under ENGINE SAFE; the RVR stick button's brakes;
+    - sticks ignored under HOLD, camera mode still working, the A/P disconnect;
+    - translation and the camera buttons; EVA keys with hysteresis, released when the EVA ends;
+    - the lever and its buttons (FINE, ENGINE SAFE); an autopilot owning the throttle (lever driven, pilot ignored, FINE dropped and restored, ENGINE SAFE wins); autopilot rotation axes;
+    - demo; the `frame` console command.
 
 Run it after every change.
 
@@ -128,3 +141,5 @@ These can only be confirmed on the hardware (design §18):
 10. **LTG TEST (stage 3):** today's modules run a fixed 2 s test (design §17); check nothing else on the bus misbehaves during it.
 11. **Keyboard (stage 4):** on EVA the AUX keys work; INVERT holds F (SAS inverts while held); ENC2 changes the Hullcam camera. KSP must have focus.
 12. **Action groups (stage 4):** each CAG button lights with its group in KSP, in control groups 1 and 2; a parachute deploys and cuts from MAIN, and a 2 s hold resets it after a repack.
+13. **Stick directions (stage 5):** in SPC, PLN and RVR each axis moves the vessel the expected way (pitch, yaw, roll, translation, steering, wheel throttle), camera mode turns the camera, and on EVA the keys walk the expected way. Fix any wrong sign with `STICK_SIGN` in `panel_sticks.cpp`.
+14. **Lever (stage 5):** the 100 % / UP / DOWN / 0 % buttons move the lever; with ENGINE SAFE the throttle stays at 0 % in KSP.

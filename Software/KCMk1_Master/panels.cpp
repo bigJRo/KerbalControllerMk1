@@ -51,6 +51,8 @@ void panelsInit() {
   panelActionInit();
   panelAuxInit();
   panelEncodersInit();
+  panelSticksInit();
+  panelThrottleInit();
 }
 
 void panelsService() {
@@ -63,4 +65,5 @@ void panelsService() {
   panelStabilityService();
   panelActionService();
   panelAuxService();
+  panelSticksService();
 }

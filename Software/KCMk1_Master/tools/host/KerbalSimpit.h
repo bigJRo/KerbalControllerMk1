@@ -42,6 +42,11 @@ enum TimewarpTo {
 enum CustomLogStatus { VERBOSE_ONLY = 1, PRINT_TO_SCREEN = 2, NO_HEADER = 4 };
 enum KeyboardEmulatorModifier { SHIFT_MOD = 1, CTRL_MOD = 2, ALT_MOD = 4, KEY_DOWN_MOD = 8, KEY_UP_MOD = 16 };
 enum RotationAxes { PITCH_ROT = 1, ROLL_ROT = 2, YAW_ROT = 4, ZOOM_ROT = 8 };
+enum CameraControlMode {
+  CAMERA_MODE_FLIGHT = 1, FLIGHT_CAMERA_AUTO = 2, FLIGHT_CAMERA_FREE = 3, FLIGHT_CAMERA_ORBITAL = 4,
+  FLIGHT_CAMERA_CHASE = 5, FLIGHT_CAMERA_LOCKED = 6,
+  CAMERA_NEXT = 50, CAMERA_PREVIOUS = 51, CAMERA_NEXT_MODE = 52, CAMERA_PREVIOUS_MODE = 53
+};
 enum TranslationAxes { X_TRANS = 1, Y_TRANS = 2, Z_TRANS = 4 };
 enum WheelAxes { STEER_WHEEL = 1, THROTTLE_WHEEL = 2 };
 enum FligthStatusFlags : byte {
@@ -121,6 +126,13 @@ struct wheelMessage {
   void setSteer(int16_t v)    { steer = v;    mask |= STEER_WHEEL; }
   void setThrottle(int16_t v) { throttle = v; mask |= THROTTLE_WHEEL; }
   void setSteerThrottle(int16_t s, int16_t t) { setSteer(s); setThrottle(t); }
+} __attribute__((packed));
+struct cameraRotationMessage {
+  int16_t cameraPitch = 0, cameraRoll = 0, cameraYaw = 0, cameraZoom = 0; byte mask = 0;
+  void setPitch(int16_t v) { cameraPitch = v; mask |= PITCH_ROT; }
+  void setRoll(int16_t v)  { cameraRoll = v;  mask |= ROLL_ROT; }
+  void setYaw(int16_t v)   { cameraYaw = v;   mask |= YAW_ROT; }
+  void setZoom(int16_t v)  { cameraZoom = v;  mask |= ZOOM_ROT; }
 } __attribute__((packed));
 struct timewarpToMessage {
   byte instant; float delay;

@@ -22,6 +22,9 @@
    ARM, A/P INHIB / ARM, the mode selector, ABORT and STAGE, demo and debug.
    Stage 4 (flight panels): Vehicle, Stability (SAS modes, HOLD, INVERT), Action, AUX,
    Dual Encoder; the CAG numbering and keyboard events.
+   Stage 5 (sticks and throttle): the per-frame control channels and the autopilot
+   interface (ksp_frame), stick mapping, trim, camera, EVA keys, the lever and its
+   buttons.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -41,6 +44,7 @@
 #include "interlocks.h"
 #include "panel_safe.h"
 #include "panels.h"
+#include "ksp_frame.h"
 #include <strings.h>
 
 static void cmdStatus(const char *) {
@@ -99,6 +103,7 @@ void setup() {
   interlocksInit();
   switchesInit();
   panelsInit();
+  frameInit();
   simpitInit();
   bootSequence();
   safeLinesInit();                  // after boot step 1 set the pins up; the level now is no edge
@@ -116,7 +121,8 @@ void loop() {
   wdtCrumb(LS_BOARD_FAST); safeLinesService();
   wdtCrumb(LS_MODULES);    moduleBusService();
   wdtCrumb(LS_INTERLOCKS); switchesService(); interlockService();
-  wdtCrumb(LS_LEDS);       panelsService(); moduleBusFlushLeds();
+  wdtCrumb(LS_KSP_OUT);    panelsService(); frameService();
+  wdtCrumb(LS_LEDS);       moduleBusFlushLeds();
   wdtCrumb(LS_CARRIERS);   carrierService();
   wdtCrumb(LS_SYSINFO);    bootService(); siService();
   wdtCrumb(LS_BOARD_SLOW); boardService();

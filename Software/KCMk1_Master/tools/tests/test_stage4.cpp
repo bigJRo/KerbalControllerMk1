@@ -228,8 +228,8 @@ static void testActionAux(Bench &b) {
   de.edge(0x01); runFor(20);
   stubSimpit().sent.clear();
   de.turn(1, 2); runFor(20); de.turn(1, -1); runFor(20); de.edge(0x02); runFor(20);
-  CHECK(keys(VK_OEM_PLUS, 0) == 2 && keys(VK_OEM_MINUS, 0) == 1 && keys(VK_BACKSPACE, 0) == 1,
-        "ENC2: '=' twice, '-' once; button: Backspace");
+  CHECK(keys(VK_OEM_MINUS, 0) == 2 && keys(VK_OEM_PLUS, 0) == 1 && keys(VK_BACKSPACE, 0) == 1,
+        "ENC2: next ('-') twice, previous ('=') once; button: Backspace");
 }
 
 static void testDemoAndKeys(Bench &b) {

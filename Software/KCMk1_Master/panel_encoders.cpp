@@ -3,8 +3,8 @@
 
      ENC1         control group 1–6, wrapping (the Annunciator shows it); works in demo
      ENC1 button  control group back to 1
-     ENC2         next / previous external camera: '=' / '-' (Hullcam VDS), one key per
-                  detent, at most ENC_KEYS_MAX per read
+     ENC2         next / previous external camera: '-' / '=' (Hullcam VDS defaults),
+                  clockwise = next, one key per detent, at most ENC_KEYS_MAX per read
      ENC2 button  camera reset: Backspace (Hullcam VDS)
    Packet (I2C spec §9.5): [3] button rising edges (bit 0 ENC1, bit 1 ENC2), [5] ENC1
    delta, [6] ENC2 delta (signed, accumulated since the last read).
@@ -36,7 +36,7 @@ static void onEvent(const ModEvent &e) {
   if (!panelLive()) return;                        // the camera keys go to KSP
   uint8_t n = (uint8_t)(d2 < 0 ? -d2 : d2);
   if (n > ENC_KEYS_MAX) n = ENC_KEYS_MAX;
-  for (uint8_t i = 0; i < n; i++) keyTap(d2 > 0 ? VK_OEM_PLUS : VK_OEM_MINUS);
+  for (uint8_t i = 0; i < n; i++) keyTap(d2 > 0 ? VK_OEM_MINUS : VK_OEM_PLUS);
   if (e.pressed & 0x02) keyTap(VK_BACKSPACE);
 }
 
