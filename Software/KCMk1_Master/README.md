@@ -7,7 +7,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (Sys Info Display: §15.4) |
-| **Status** | Stages 1–3 of 8: skeleton and boot; module bus; switches and interlocks |
+| **Status** | Stages 1–4 of 8: skeleton and boot; module bus; switches and interlocks; flight panels |
 
 ## Building
 
@@ -33,7 +33,14 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | Interlocks (stage 3) | `interlocks.*` | ENGINE SAFE / ARMING / ARMED: 0 % to KSP, the lever driven to 0 % (not while touched), FINE only while ARMED; A/P INHIB; drop notices for HOLD and the autopilots |
 | ABORT, STAGE (stage 3) | `panel_safe.*` | Safe lines debounced 10 ms; ABORT action group; STAGE in a flight scene with a 1 s lockout |
 
-Still to come: flight panels (4), sticks and throttle (5), the other panels (6), autopilots (7), board services and cutover (8).
+| Panels (stage 4) | `panels.*`, `cag.*`, `keys.*` | Shared rules: LEDs set every pass from the current state (dark = unusable, lit = KSP reports it on, demo = ACTIVE while held); presses act only in a flight; CAG numbers with the control-group offset; keyboard taps and held keys (released when a flight ends) |
+| Vehicle Control | `panel_vehicle.cpp` | BRAKES held (with the BRAKE switch rule), LIGHTS and GEAR toggles, CAG 13–18, HEAT SHIELD / MAIN / DROGUE state machines from KSP's group states (act on release, 2 s hold resets; chutes need CHUTE ARM) |
+| Stability Control | `panel_stability.cpp`, `hold.*` | SAS modes (dark with SAS OFF or when unavailable), HOLD (SPC: SAS stability assist; PLN / RVR from stage 7), INVERT (F held) |
+| Action Control | `panel_action.cpp` | AG 1–12 = CAG 1–12, no offset |
+| AUX CTRL | `panel_aux.cpp` | EVA keys (dark outside EVA), UNDOCK, PRI / ALT control points |
+| Dual Encoder | `panel_encoders.cpp` | Control group 1–6, camera next / previous / reset |
+
+Still to come: sticks and throttle (5), the other panels (6), autopilots (7), board services and cutover (8).
 
 ## Serial console
 
@@ -97,6 +104,11 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
     - ABORT and STAGE: debounce, lockout, flight only, a line high at start-up;
     - MSTR RESET, DISP CLR, LTG TEST (including the bulb-test quiet window);
     - a watchdog restart in flight with switches on.
+  - flight panels (stage 4):
+    - Vehicle: CAG buttons and the control-group offset, toggles, LEDs from KSP, BRAKES with REL and LOCK, the state machines (deploy, cut, nothing, 2 s reset, CHUTE SAFE);
+    - Stability: SAS modes with the switch and availability, INVERT and SWITCH ERR, HOLD (engage, restore SAS, A/P INHIB, mode change, PLN, MSTR RESET);
+    - Action: no offset; AUX: EVA keys, flash, UNDOCK, PRI / ALT; Dual Encoder: group wrap, camera keys;
+    - held keys released when the flight ends; demo LEDs.
 
 Run it after every change.
 
@@ -114,3 +126,5 @@ These can only be confirmed on the hardware (design §18):
 8. **Switch polarity (stage 3):** in flight, each Switch Group 2 switch's "on" position (GEAR DOWN, BRAKE LOCK, EXT LT ILLUM, SAS ENAB, RCS ENAB) turns its function on, and `switches` shows the vessel agreeing.
 9. **ENGINE SAFE (stage 3):** move the lever while SAFE: it goes back to 0 % when released; flip to ARM with the lever held up: inputs are taken only once it is back at 0 %.
 10. **LTG TEST (stage 3):** today's modules run a fixed 2 s test (design §17); check nothing else on the bus misbehaves during it.
+11. **Keyboard (stage 4):** on EVA the AUX keys work; INVERT holds F (SAS inverts while held); ENC2 changes the Hullcam camera. KSP must have focus.
+12. **Action groups (stage 4):** each CAG button lights with its group in KSP, in control groups 1 and 2; a parachute deploys and cuts from MAIN, and a 2 s hold resets it after a repack.

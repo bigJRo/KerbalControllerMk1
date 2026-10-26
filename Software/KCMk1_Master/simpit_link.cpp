@@ -5,6 +5,7 @@
 #include "config.h"
 #include "state.h"
 #include "debug.h"
+#include "hold.h"
 
 static KerbalSimpit g_simpit(SerialUSB1);
 static uint32_t g_lastTryMs;
@@ -24,12 +25,14 @@ static void onScene(const byte *msg) {
   bool flight = msg[0] == 0;                     // 0 = entering flight
   if (flight != g_vessel.flightScene) dbg(DBG_KSP, "scene: %s", flight ? "flight" : "not flight");
   g_vessel.flightScene = flight;
-  g_vessel.actionsValid = false;                 // each flight scene starts without a status
+  g_vessel.actionsValid = g_vessel.cagValid = g_vessel.sasValid = false;   // each scene starts afresh
   if (!flight) { g_vessel.twIndex = 0; g_vessel.inFlight = false; g_vessel.eva = false; return; }
-  // The plugin sends the action groups on a change; ask for them now, so SWITCH ERR can
-  // be checked from the start of the scene. (A request, not a command: ksp_out's gate is
-  // for commands, and the link is up whenever this runs.)
+  // The plugin sends these on a change; ask for them now, so SWITCH ERR and the panel
+  // LEDs are right from the start of the scene. (Requests, not commands: ksp_out's gate
+  // is for commands, and the link is up whenever this runs.)
   g_simpit.requestMessageOnChannel(ACTIONSTATUS_MESSAGE);
+  g_simpit.requestMessageOnChannel(CAGSTATUS_MESSAGE);
+  g_simpit.requestMessageOnChannel(SAS_MODE_INFO_MESSAGE);
 }
 
 static void onActionStatus(const byte *msg) {
@@ -52,9 +55,24 @@ static void onFlightStatus(const byte *msg) {
   g_vessel.vesselType = fs.vesselType;
 }
 
+static void onCagStatus(const byte *msg) {
+  memcpy(g_vessel.cag, msg, sizeof g_vessel.cag);
+  g_vessel.cagValid = true;
+}
+
+static void onSasInfo(const byte *msg) {
+  SASInfoMessage m;
+  memcpy(&m, msg, sizeof m);
+  if (!g_vessel.sasValid || m.currentSASMode != g_vessel.sasMode) dbg(DBG_KSP, "SAS mode %u", m.currentSASMode);
+  g_vessel.sasMode  = m.currentSASMode;
+  g_vessel.sasAvail = (uint16_t)m.SASModeAvailability;
+  g_vessel.sasValid = true;
+}
+
 static void onVesselChange(const byte *msg) {
   static const char *const kind[] = { "?", "switched", "docked", "undocked" };
   dbg(DBG_KSP, "vessel %s", msg[0] < 4 ? kind[msg[0]] : "?");
+  holdNoteVesselChange();
 }
 
 struct InboundRow { byte type; byte size; InboundFn fn; const char *name; };
@@ -63,6 +81,8 @@ static const InboundRow kInbound[] = {
   { FLIGHT_STATUS_MESSAGE, sizeof(flightStatusMessage), onFlightStatus, "FLIGHT_STATUS" },
   { VESSEL_CHANGE_MESSAGE, 1,                           onVesselChange, "VESSEL_CHANGE" },
   { ACTIONSTATUS_MESSAGE,  1,                           onActionStatus, "ACTIONSTATUS" },
+  { CAGSTATUS_MESSAGE,     sizeof(cagStatusMessage),    onCagStatus,    "CAGSTATUS" },
+  { SAS_MODE_INFO_MESSAGE, sizeof(SASInfoMessage),      onSasInfo,      "SAS_MODE_INFO" },
 };
 static const uint8_t kInboundN = sizeof kInbound / sizeof kInbound[0];
 static uint32_t g_rxCount[kInboundN], g_rxBad[kInboundN], g_rxLastMs[kInboundN];
@@ -119,7 +139,7 @@ bool simpitAttempt() {
   if (!g_simpit.init()) return false;
   g_master.kspConnected = true;
   g_vessel.lastRxMs = millis();
-  g_vessel.actionsValid = false;
+  g_vessel.actionsValid = g_vessel.cagValid = g_vessel.sasValid = false;
   g_simpit.inboundHandler(inbound);
   registerChannels();
   dbg(DBG_KSP, "connected (attempt %lu)", (unsigned long)g_attempts);

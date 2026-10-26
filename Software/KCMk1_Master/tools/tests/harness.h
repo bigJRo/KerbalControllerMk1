@@ -17,6 +17,7 @@
 #include "debug.h"
 #include "boot.h"
 #include "module_bus.h"
+#include "panels.h"
 #include <KerbalModuleCommon.h>
 
 void setup();
@@ -142,6 +143,7 @@ struct ModuleSim : SimDevice {
   uint16_t thrPos = 0;                     // throttle: lever position (0..INT16_MAX)
   bool thrPrec = false, touched = false;   // throttle: precision mode, pilot touching
   int16_t value = -1;                      // display modules: last CMD_SET_VALUE
+  int8_t enc[2] = { 0, 0 };                // dual encoder: deltas since the last read
   uint8_t led[8] = { 0 };
   int ledWrites = 0;
   std::vector<std::vector<uint8_t>> cmds;
@@ -194,7 +196,7 @@ struct ModuleSim : SimDevice {
         p[3] = (uint8_t)((life == KMC_STATUS_ACTIVE ? 1 : 0) | (thrPrec ? 2 : 0) | (touched ? 4 : 0));
         p[4] = events; p[5] = (uint8_t)(thrPos >> 8); p[6] = (uint8_t)thrPos;
         break;
-      case KIND_ENCODER:  p[3] = events; p[4] = events; break;
+      case KIND_ENCODER:  p[3] = events; p[4] = events; p[5] = (uint8_t)enc[0]; p[6] = (uint8_t)enc[1]; enc[0] = enc[1] = 0; break;
     }
     change = 0; events = 0;
     setInt(false);
@@ -204,6 +206,8 @@ struct ModuleSim : SimDevice {
   void press(uint32_t bits)   { state |= bits;  change |= bits; signal(); }
   void release(uint32_t bits) { state &= ~bits; change |= bits; signal(); }
   void edge(uint8_t bits)     { events |= bits; signal(); }
+  void turn(int i, int8_t d)  { enc[i] = (int8_t)(enc[i] + d); signal(); }
+  uint8_t ledOf(uint8_t b) const { return kmcLedPackGet(led, b); }
 };
 
 /*------------------------------------------------------------------------------------

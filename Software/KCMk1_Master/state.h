@@ -21,6 +21,11 @@ struct VesselState {
   uint8_t  vesselType;
   uint8_t  actions;         // ACTIONSTATUS: *_ACTION bits (gear, lights, RCS, SAS, brakes, …)
   bool     actionsValid;    // an ACTIONSTATUS arrived since this flight scene began
+  uint8_t  cag[32];         // CAGSTATUS: bit n = custom action group n active
+  bool     cagValid;
+  uint8_t  sasMode;         // SAS_MODE_INFO: AutopilotMode, 255 = SAS off
+  uint16_t sasAvail;        // bit (1 << mode) = mode available
+  bool     sasValid;
   uint32_t lastRxMs;        // millis() of the last inbound Simpit message
   uint32_t rxCount;
 };
