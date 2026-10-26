@@ -92,7 +92,12 @@ struct CarrierSim : SimDevice {
 
 struct RegDevice : SimDevice {
   std::map<uint8_t, std::vector<uint8_t>> regs; uint8_t ptr = 0;
-  bool onWrite(const uint8_t *b, int n, bool) override { if (n >= 1) ptr = b[0]; return true; }
+  std::vector<std::vector<uint8_t>> writes;     // register writes (pointer + data)
+  bool onWrite(const uint8_t *b, int n, bool) override {
+    if (n >= 1) ptr = b[0];
+    if (n >= 2) { regs[b[0]] = std::vector<uint8_t>(b + 1, b + n); writes.push_back(std::vector<uint8_t>(b, b + n)); }
+    return true;
+  }
   int onRead(uint8_t *b, int n) override {
     auto it = regs.find(ptr); if (it == regs.end()) return 0;
     int k = n < (int)it->second.size() ? n : (int)it->second.size(); memcpy(b, it->second.data(), k); return k;
@@ -106,6 +111,7 @@ struct Rig {
   Rig() {
     ina.regs[0x3E] = { 0x54, 0x49 }; ina.regs[0x3F] = { 0x22, 0x81 };
     emc.regs[0xFE] = { 0x5D }; emc.regs[0xFD] = { 0x16 };
+    emc.regs[0x03] = { 0x00 }; emc.regs[0x4A] = { 0x00 };   // CONFIG, FAN_CONFIG at their reset values
   }
   void attachAll() {
     for (int a = 0; a < 128; a++) Wire.detach(a);

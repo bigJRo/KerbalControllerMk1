@@ -4,9 +4,12 @@
 **Project:** Kerbal Controller Mk1
 **Organization:** Jeb's Controller Works
 **Author:** J. Rostoker
-**Runs on:** Master controller (Teensy 4.1), `Software/Controller_Main`
+**Runs on:** Master controller (Teensy 4.1), `Software/KCMk1_Master` (ported from `Controller_Main`, now deleted)
 **Controlled from:** Info Display 2 (I2C `0x13`), the autopilot console key
 **Builds on:** `Hold_Mode_Autopilot.md` (implemented), `Ascent_Autopilot.md`, `Ascent_Autopilot_Interface.md`
+
+
+> **Port to `KCMk1_Master` (2026-10-26).** The burn and landing autopilots, the arbiter and the stage helpers now run in `Software/KCMk1_Master` (`burn_autopilot.cpp`, `landing_autopilot.cpp`, `ap_arbiter.cpp`, `stage_helpers.cpp`; `Master_Firmware_Design.md` §11), with their control laws unchanged. **The global pilot-input rule (§7.7) is retired:** stick and lever input disconnect nothing. Engaged modes keep authority until the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (throttle-using modes) or their own rules. The STICK / LEVER rows of §7.7 no longer apply; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new reasons. The approach hold's translation goes out on the master's translation channel.
 
 ---
 
@@ -69,13 +72,13 @@ takes it from whichever module has it. Rover modes are independent of all of thi
 
 | File | Role |
 |------|------|
-| `burn_autopilot.h/.ino` | Burn executor (align → warp → burn → cut) and the three planners: node, apsis, plane change; approach-rate hold |
-| `landing_autopilot.h/.ino` | DESC / HOVR / BRAKE / ENTRY, acceleration estimate, ignition-altitude computation |
-| `hold_autopilot.ino` | NAV and GS added to the aircraft groups; FOLLOW and arrive-and-stop added to the rover modes |
-| `stage_helpers.ino` | The shared stage-on-low-ΔV helper and the acceleration estimate, used by ascent, burn and landing modules |
-| `ap_arbiter.ino` | Attitude and throttle ownership across ascent, hold, burn and landing modules |
-| `infodisp_link.ino` | Opcodes `0x14`–`0x16`, `0x38`–`0x3A`, `0x40`–`0x5E`; status frames `0xA8`, `0xA9`, summary `0xAA`; grown `0xA6`, `0xA7` |
-| `simpit_message_handler.ino` | Registers `MANEUVER_MESSAGE`; feeds the new modules |
+| `burn_autopilot.h/.cpp` | Burn executor (align → warp → burn → cut) and the three planners: node, apsis, plane change; approach-rate hold |
+| `landing_autopilot.h/.cpp` | DESC / HOVR / BRAKE / ENTRY, acceleration estimate, ignition-altitude computation |
+| `hold_autopilot.cpp` | NAV and GS added to the aircraft groups; FOLLOW and arrive-and-stop added to the rover modes |
+| `stage_helpers.cpp` | The shared stage-on-low-ΔV helper and the acceleration estimate, used by ascent, burn and landing modules |
+| `ap_arbiter.cpp` | Attitude and throttle ownership across ascent, hold, burn and landing modules |
+| `infodisp_link.cpp` | Opcodes `0x14`–`0x16`, `0x38`–`0x3A`, `0x40`–`0x5E`; status frames `0xA8`, `0xA9`, summary `0xAA`; grown `0xA6`, `0xA7` |
+| `autopilots.cpp` | Feeds the modules (MANEUVER and the rest), runs them, drop notices |
 | `KCMk1_InfoDisp/Screen_ORBT_AP.ino`, `Screen_LNDG_AP.ino` | The two new consoles |
 | `KCMk1_InfoDisp/Screen_ACFT_AP.ino`, `Screen_ROVR_AP.ino` | The added rows |
 | `KCMk1_InfoDisp/I2CSlave.ino`, `AAA_Screens.ino`, `TouchEvents.ino`, `Demo.ino` | Frame dispatch by sync byte, five-console key ring, demo models |
@@ -423,6 +426,8 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 
 ### 7.7 Disconnect rules
 
+*Superseded in the KCMk1 master: stick and lever input disconnect nothing; the STICK and LEVER rows below no longer apply (port note at the top).*
+
 **The pilot-input rule is global** (review decision, applied to every module including the ascent
 autopilot): any input on the rotation stick, the translation stick or the throttle lever
 disconnects everything — a burn aborts and a landing mode drops, both with the throttle left where it is,
@@ -492,7 +497,7 @@ unchanged.
 
 **Summary frame (#83).** The full frame goes only to Info Display 2 and only for the console on
 screen, so neither display would otherwise know an autopilot is engaged off its console: the
-mission ladder's rule 0 and the console ring could not see it. Every 100 ms Controller_Main also
+mission ladder's rule 0 and the console ring could not see it. Every 100 ms the master also
 writes the 8-byte `0xAA` summary to **both** Info Displays. Its bytes are the same flag bytes the
 full frames carry, built by the same helpers, so the two can never disagree; a display applies
 the summary after any full frame in the same cycle. Demo mode ignores it.
@@ -569,7 +574,7 @@ both sketches pass a stub syntax check but nothing has run on hardware or agains
 - **One translation unit, four prefixes.** Burn state is `bp_`, landing state is `lp_`, the
   arbiter is `arb_`, staging and acceleration are `as_` / `ae_`. `KSP_SIT_LANDED` and
   `KSP_SIT_SPLASHED` moved to `control_links.h` so the hold and landing tabs share one definition.
-- **The global pilot-input rule** is one detector, `pilotOverrideDetected()` in
+- **The global pilot-input rule** *(retired in the KCMk1 master, see the port note)* was one detector, `pilotOverrideDetected()` in
   `rotation_link.ino`, polled at the top of every module's update: stick or translation input
   above 10 % for 150 ms, or a throttle-lever touch or move while the lever is not being driven.
   Any hit runs `arbAllOff()`, which disarms the ascent autopilot, disconnects every hold mode,

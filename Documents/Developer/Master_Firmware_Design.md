@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
-| **Status** | Draft 5, approved. Stages 1–7 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
+| **Status** | Draft 5, approved. All eight stages are built in `Software/KCMk1_Master` (§16) and `Controller_Main` is deleted (cutover done). Rules settled while building are marked *(stage n)* |
 | **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and the watchdog design (§12.3) |
 | **Supersedes** | Drafts 1–4, and `Controller_Main_IO_Design.md` |
 
@@ -48,7 +48,7 @@ We are replacing the master firmware (`Software/Controller_Main`) with a **new s
 
 ## 1. Decisions
 
-- **New sketch, from the ground up**, in `Software/KCMk1_Master/`. `Controller_Main` gets no further changes apart from a fix that blocks bench testing. It is deleted at cutover.
+- **New sketch, from the ground up**, in `Software/KCMk1_Master/`. `Controller_Main` got no further changes and was deleted at cutover (stage 8), after its autopilots were ported (stage 7).
 - **The autopilots are ported, not rewritten.** Their control laws, state machines and console protocol carry over. The interfaces they use to reach the rest of the master are re-pointed, and the pilot-override rule is replaced (§11).
 - **Hardware truth is `Hardware_Inventory.md`.** It was made from the schematics and confirmed against the panels. The Hardware Reference and the Module UI Reference are rewritten from it at cutover.
 - **Plan first.** This document is approved before stage 1 starts.
@@ -700,6 +700,19 @@ The STICK / LEVER disconnect reasons go unused. The autopilot design docs are up
 |---|---|
 | **Fan** (EMC2101, 0x4C) | Temperature from the EMC2101's **internal** sensor (the board temperature). No external sensor is fitted on H4, so the remote channel is not used and its open-diode fault is ignored. Duty 30 / 40 / 50 / 70 / 100 % at 25 / 30 / 40 / 50 °C, 1 Hz, 2 °C hysteresis. RPM from the Ctrl Module fan (the Extension fan has no tach) |
 | **Power** (INA228, 0x40) | Voltage, current, power at 4 Hz; warning below 11 V |
+
+*(stage 8)* **As built** (`board.cpp`):
+- **INA228:**
+  - SHUNT_CAL = 3750, for the 15 mΩ shunt in the old Hardware Reference and a 10 A full scale (current LSB 10 A / 2¹⁹). The shunt value is a bench check (§18).
+  - It reads VBUS, CURRENT and POWER.
+  - The warning below 11 V goes to Serial (always printed), once per dip.
+- **EMC2101:**
+  - TACH input on (CONFIG bit 2), direct fan setting (FAN_CONFIG bit 5, LUT off), PWM_F = 0x1F.
+  - Duty is written as setting = duty × 63 / 100.
+  - rpm = 5 400 000 / tach count; a count of 0xFFFF means stopped or no tach.
+  - The curve goes up at 25 / 30 / 40 / 50 °C and down only 2 °C below each threshold.
+- **Sys Info STATUS frame:** every 500 ms after BOOT_DONE, from these readings. A device that is missing, or a reading that fails, clears its valid bit.
+- **Console:** the `board` command.
 | **Display reset** (pin 2) | Normally high; a 10 ms low pulse reboots the four 7" displays (not the Sys Info Display, whose RST is not connected) |
 
 ### 12.2 Status outputs
@@ -787,7 +800,7 @@ One PR per stage.
 | 5 | **Sticks and throttle** | `ksp_out` arbitration, stick mapping, trim, camera, EVA keys, lever, throttle buttons, FINE handling | §7, §8.7 pass. **Built** |
 | 6 | **Remaining panels** | UI, Function, Time + Pre-Warp (availability), GPWS | All of §8 covered. **Built** |
 | 7 | **Autopilots** | Port (§11), authority rule, Info Display 2 consoles | Autopilot checks pass; consoles engage / disengage. **Built** |
-| 8 | **Board and cutover** | Fan, INA228, Sys Info status frame; delete `Controller_Main`; rewrite the Hardware Reference and Module UI Reference; update the test plan; close #89 | Nothing refers to `Controller_Main` |
+| 8 | **Board and cutover** | Fan, INA228, Sys Info status frame; delete `Controller_Main`; rewrite the Hardware Reference and Module UI Reference; update the test plan; close #89 | Nothing refers to `Controller_Main`. **Built** |
 
 The work outside the master (§17) runs alongside and is needed for full bench tests:
 - the Sys Info Display firmware, by stage 1's bench test;
@@ -836,6 +849,7 @@ From Inventory §11:
 | 13 | Bench: the lever follows an autopilot's throttle, and goes back after a touch; the buttons step it | Stage 5 bench test |
 | 14 | Bench: the screenshot macro's spacing (150 ms) is enough for KSP to hide the UI before F1 | Stage 6 bench test |
 | 15 | Bench: each console (ascent, aircraft, rover, orbital, landing) engages and disengages, shows its frame, and the 52-byte orbital frame reaches Info Display 2 whole (Teensy Wire buffer) | Stage 7 bench test |
+| 16 | Bench: the INA228 shunt is 15 mΩ (KC-01-1701) and its readings match a meter; the EMC2101 duty setting and rpm match the fan | Stage 8 bench test |
 
 ---
 

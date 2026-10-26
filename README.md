@@ -10,8 +10,7 @@ central master controller.
 
 | Path | Contents |
 |------|----------|
-| [`Software/KCMk1_Master/`](Software/KCMk1_Master/README.md) | New master controller firmware, being built in stages ([design](Documents/Developer/Master_Firmware_Design.md)). Replaces `Controller_Main` at cutover |
-| `Software/Controller_Main/` | Current master controller firmware — kept as a reference until the new master replaces it |
+| [`Software/KCMk1_Master/`](Software/KCMk1_Master/README.md) | Master controller firmware (Teensy 4.1 on the Ctrl Module) ([design](Documents/Developer/Master_Firmware_Design.md)). It replaced `Controller_Main`, deleted at the cutover |
 | `Software/Displays/` | Display-panel firmware and shared display libraries (see below) |
 | `Software/Modules/` | Input-module firmware (buttons, switches, joysticks, encoders, 7-segment, etc.) |
 | `Software/Libraries/`, `Software/Common/` | Shared cross-project code |

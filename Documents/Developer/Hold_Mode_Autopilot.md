@@ -4,9 +4,17 @@
 **Project:** Kerbal Controller Mk1
 **Organization:** Jeb's Controller Works
 **Author:** J. Rostoker
-**Runs on:** Master controller (Teensy 4.1), `Software/Controller_Main`
+**Runs on:** Master controller (Teensy 4.1), `Software/KCMk1_Master` (ported from `Controller_Main`, now deleted)
 **Controlled from:** Info Display 2 (I2C `0x13`) — the panel that hosts the Ascent Autopilot console
 **Companion documents:** `Ascent_Autopilot.md`, `Ascent_Autopilot_Interface.md`, `I2C_Protocol_Specification.md` §15
+
+> **Port to `KCMk1_Master` (2026-10-26).** The hold autopilot now runs in the new master, `Software/KCMk1_Master` (`hold_autopilot.cpp`; `Master_Firmware_Design.md` §11). Its control laws, modes and console protocol are unchanged. Superseded here:
+> - **The pilot-input rule (§6.5) is retired.** Stick and lever input disconnect nothing. An engaged mode keeps authority until it is disconnected deliberately: the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (thrust and rover drive modes), or its own rules below. Reasons `STICK` and `LEVER` stay in the enum but are never set; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new.
+> - **Sticks (§6.6):** while any mode is engaged the master ignores both sticks completely, except camera mode and the stick buttons.
+> - **Lever (§7.2):** under the autothrottle the lever is driven to match, and the pilot's lever, its buttons and touch are ignored. The Throttle Module is to hold the lever against the pilot (module firmware change).
+> - **FINE:** the master drops it while the autothrottle owns the throttle and restores it after, so IAS / MACH no longer refuse in FINE.
+> - **Paths:** the link tabs (`throttle_link`, `rotation_link`) are the master's control channels (`ksp_frame.cpp`); the telemetry feed is `autopilots.cpp`; the console link is `infodisp_link.cpp`.
+> - **HOLD:** the Stability Control HOLD button engages ALT + HDG (PLN) or RHDG + CRUISE (RVR) through this module.
 
 ---
 
@@ -54,15 +62,22 @@ ascent autopilot disconnects every hold mode.
 
 | File | Role |
 |------|------|
-| `attitude_controller.h/.ino` | The shared attitude PID with rocket and aircraft entry points (§6.1) |
-| `hold_autopilot.h/.ino` | Mode manager, cascades, autothrottle, cruise, steering, guards, disconnect rules, `HoldStatus`, bench console |
-| `control_links.h` | Prototypes for the three link tabs below |
-| `throttle_link.ino` | Throttle Module (0x2C): lever follow, pilot-touch override, pilot throttle forwarding (§7) |
-| `rotation_link.ino` | Rotation joystick (0x28): pilot axes merged with autopilot-held axes, override detection (§6.6) |
-| `infodisp_link.ino` | Info Display 2 (0x13): console command poll / ACK / status push (§8) |
-| `ascent_autopilot.ino` | Steers through the shared attitude controller; throttle through the throttle link |
-| `simpit_message_handler.ino` | Registers `TARGETINFO_MESSAGE`; feeds `hpIngest*()` |
-| `Controller_Main.ino` | Includes, `Wire.begin()`, link and autopilot init, loop order |
+Master side, in `Software/KCMk1_Master`:
+
+| File | Role |
+|------|------|
+| `attitude_controller.h/.cpp` | The shared attitude PID with rocket and aircraft entry points (§6.1) |
+| `hold_autopilot.h/.cpp` | Mode manager, cascades, autothrottle, cruise, steering, guards, disconnect rules, `HoldStatus`, bench console (`hp`) |
+| `control_links.h` | The autopilots' contract with the master |
+| `ksp_frame.h/.cpp` | The control channels: held axes merged with the pilot's, throttle owner, lever follow (§6.6, §7) |
+| `infodisp_link.h/.cpp` | Info Display 2 (0x13): console command poll / ACK / status push (§8), engage rules |
+| `autopilots.h/.cpp` | Telemetry feed (`hpIngest*()`), loop, drop notices |
+| `hold.h/.cpp` | The Stability Control HOLD button (uses this module in PLN / RVR) |
+
+Display side:
+
+| File | Role |
+|------|------|
 | `KCMk1_InfoDisp/ConsoleShared.ino` | Command queue, numeric keypad and grid helpers shared by all three consoles |
 | `KCMk1_InfoDisp/Screen_ACFT_AP.ino`, `Screen_ROVR_AP.ino` | The two consoles (chrome + draw + touch) |
 | `KCMk1_InfoDisp/Screen_LNCH_AscentAP.ino` | Ascent console, now on the shared queue and keypad |
@@ -242,7 +257,7 @@ box to edit at any time, A/P OFF drops everything. Guard-limit boxes are plain e
 
 ---
 
-## 6. Mode logic on Controller_Main
+## 6. Mode logic on the master
 
 ### 6.1 Shared attitude loop
 
@@ -294,6 +309,8 @@ it is optional and off by default. The Simpit plugin refresh interval bounds all
 is workable for a plane with SAS off; anything slower will need the plugin's refresh setting lowered.
 
 ### 6.5 Disconnect rules
+
+*Superseded in the KCMk1 master: stick and lever input disconnect nothing (see the port note at the top). The `STICK` and `LEVER` rows below no longer apply. The text is kept as the original design.*
 
 **The pilot-input rule is global** (review decision): any input on the rotation stick, the
 translation stick or the throttle lever disconnects **every** autopilot — all hold modes, rover
@@ -370,6 +387,8 @@ While IAS or MACH is engaged, each autothrottle update produces one throttle val
 
 ### 7.2 Pilot takes the lever
 
+*Superseded in the KCMk1 master: under the autothrottle the pilot's lever, its buttons and touch are ignored, and the lever is driven back to the commanded value (port note at the top).*
+
 - **Touch** (status bit 2 set) while an autopilot is driving the lever: the master disconnects
   **every** autopilot with reason `LEVER` (global rule, §6.5), stops sending `CMD_SET_THROTTLE`, and
   resumes forwarding the wiper as ordinary pilot throttle. The module has already stopped its motor
@@ -408,7 +427,7 @@ grabbing the lever, or moving either stick, during an ascent **disarms the ascen
 
 ---
 
-## 8. I2C contract (Info Display 2 ⇄ Controller_Main)
+## 8. I2C contract (Info Display 2 ⇄ master)
 
 The transport in `Ascent_Autopilot_Interface.md` is reused unchanged: the 10-byte outbound packet
 with its 7-byte command frame, the 2-byte control/ACK write, one command in flight, execute on
@@ -596,7 +615,7 @@ What the build turned up, and what a reviewer should look at first.
   of `hpUpdate()` and `apUpdate()`; the translation joystick is polled there for this test only,
   and `throttle_link.ino` raises a lever-moved event for the undriven-lever case. The per-axis
   override that the first implementation carried is gone.
-- **Master integration state.** Controller_Main is still mid-integration: it did not call
+- **Master integration state** *(historical; the module now runs in `KCMk1_Master`, see the port note)*. Controller_Main was still mid-integration: it did not call
   `Wire.begin()` or the Simpit init, and several telemetry globals the message handler writes are
   not defined anywhere. This change adds `Wire.begin()` and the link / autopilot calls to
   `setup()` and `loop()` but does not attempt the rest; the bench check stubs those globals.
@@ -605,7 +624,7 @@ What the build turned up, and what a reviewer should look at first.
   `tools/master_selftest.py` check the whole sketch on the host. The input-module handlers
   (button and switch panels, dual encoder) are still not called.
 - **Display verification.** Both consoles run under demo mode on the bench with no master
-  (`Demo.ino` plays Controller_Main for the hold-mode opcodes as it already did for the ascent
+  (`Demo.ino` plays the master for the hold-mode opcodes as it already did for the ascent
   ones), which is the way to review layout and touch behaviour before the I2C link is exercised.
 - **Not yet done.** Translation joystick forwarding to KSP (it is only read for the override
   test), trim / joystick-button sequencing in `rotation_link.ino`, the Dual Encoder binding
