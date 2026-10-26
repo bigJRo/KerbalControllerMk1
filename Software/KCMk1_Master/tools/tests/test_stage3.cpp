@@ -311,6 +311,7 @@ static void testWatchdogRestart(Bench &b) {
   boot3(b, SG1_ENGINE | SG1_AP, SG2_GEAR | SG2_BRAKE);
   enterFlight();
   actions(GEAR_ACTION | BRAKES_ACTION); runFor(20);
+  b.m(MOD_THROTTLE).thrPos = 12000;                 // the pilot's lever, mid-flight
   b.attachAll(); b.rig.si.frames.clear(); resetStubs(); stubSrsr() = 1u << 4;
   stubRetain()[0] = stubRetain()[1] = stubRetain()[2] = 0;
   stubSimpit().kspUp = true;
@@ -320,7 +321,9 @@ static void testWatchdogRestart(Bench &b) {
   actions(GEAR_ACTION | BRAKES_ACTION);
   runFor(300);
   CHECK(sentType(AGACTIVATE_MESSAGE) + sentType(AGDEACTIVATE_MESSAGE) == 0, "no switch enforced");
-  CHECK(interlockEngineState() == ENG_ARMED && sentThrottleZero() == 0, "ENGINE ARM: armed, throttle not cut");
+  bool lever = false;
+  for (auto &s : stubSimpit().sent) if (s.type == THROTTLE_MESSAGE && s.b.size() == 2 && (s.b[0] | s.b[1] << 8) == 12000) lever = true;
+  CHECK(interlockEngineState() == ENG_ARMED && sentThrottleZero() == 0 && lever, "ENGINE ARM: armed, the throttle follows the lever");
   CHECK(!g_panel.switchErr && g_panel.apArm, "switches read back");
 }
 

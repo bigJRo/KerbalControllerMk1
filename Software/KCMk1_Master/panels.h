@@ -16,6 +16,7 @@
      - Buttons whose state KSP does not report flash ACTIVE for PANEL_FLASH_MS on a
        press (panelFlash()).
    Stage 4 tabs: Vehicle, Stability (with HOLD), Action, AUX, Dual Encoder.
+   Stage 5 tabs: the two joysticks, the Throttle Module.
 ****************************************************************************************/
 #pragma once
 #include <Arduino.h>
@@ -48,6 +49,8 @@ void panelStabilityInit(); void panelStabilityService();
 void panelActionInit();    void panelActionService();
 void panelAuxInit();       void panelAuxService();
 void panelEncodersInit();
+void panelSticksInit();    void panelSticksService();     // before the frame (ksp_frame.h)
+void panelThrottleInit();
 
 // Vehicle: brakes held by a button (BRAKES, or the RVR stick button from stage 5).
 // While any source holds them the brakes are on; when the last lets go they come off

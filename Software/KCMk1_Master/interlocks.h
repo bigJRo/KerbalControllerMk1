@@ -13,10 +13,14 @@
    Until Switch Group 1 is read the engine is SAFE. A switch already on ARM when it is
    first read (power-on, or a restart in flight) goes straight to ARMED: the lever is
    where the pilot left it and the throttle follows it (design §12.3).
-   THRTL FINE (B23) is passed to the Throttle module only while ARMED: in precision mode
-   the lever position is not the throttle, so the master drives the lever with FINE off.
+   THRTL FINE (B23) is passed to the Throttle module only while ARMED and no autopilot
+   owns the throttle: in precision mode the lever position is not the throttle, so the
+   master drives the lever with FINE off.
+   The 0 % itself goes out on the throttle channel (ksp_frame.h), which sends 0 whenever
+   the engine is not ARMED; SAFE and ARM flips make it send again.
 
    A/P (B21): INHIB drops every console autopilot (DROP_AP_INHIB); HOLD ignores it.
+   A/P disconnect (rotation stick button, SPC / PLN): DROP_AP_DISC, everything drops.
 
    Drop notices: HOLD (stage 4) and the autopilots (stage 7) register a listener and
    decide for themselves whether a reason applies to them.
@@ -24,7 +28,7 @@
 #pragma once
 #include <Arduino.h>
 
-enum DropReason : uint8_t { DROP_AP_INHIB = 0, DROP_ENG_SAFE, DROP_DEMO, DROP_MSTR_RESET };
+enum DropReason : uint8_t { DROP_AP_INHIB = 0, DROP_ENG_SAFE, DROP_DEMO, DROP_MSTR_RESET, DROP_AP_DISC };
 typedef void (*DropFn)(DropReason why);
 
 enum EngineState : uint8_t { ENG_SAFE = 0, ENG_ARMING, ENG_ARMED };
