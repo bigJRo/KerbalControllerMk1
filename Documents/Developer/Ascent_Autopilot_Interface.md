@@ -1,10 +1,10 @@
 # Kerbal Controller Mk1 — Ascent Autopilot I2C Interface
 
 **Byte-level contract between the Information Display (InfoDisp, I2C slave `0x12`) and
-Controller_Main (bus master).** This document is the wiring guide for the ascent
-autopilot that runs on Controller_Main; the InfoDisp side is implemented in
+the master (`KCMk1_Master`, bus master).** This document is the wiring guide for the ascent
+autopilot that runs on the master; the InfoDisp side is implemented in
 `Software/Displays/KCMk1_InfoDisp/` (`Screen_LNCH_AscentAP.ino`, `ConsoleShared.ino` for the command
-queue and keypad, `I2CSlave.ino`); the master side is `Software/Controller_Main/infodisp_link.ino`.
+queue and keypad, `I2CSlave.ino`); the master side is `Software/KCMk1_Master/infodisp_link.cpp`.
 
 **The same transport carries the other four consoles.** Opcodes `0x12`–`0x3A` and the 48-byte
 (sync `0xA6`) aircraft and 36-byte (sync `0xA7`) rover status pushes are specified in
@@ -16,12 +16,12 @@ them unchanged.
 The Ascent Autopilot screen on the InfoDisp is a **touch console** for the autopilot:
 it presents the mission/vehicle parameters and the live guidance readout, and it lets
 the pilot edit parameters and ARM/DISARM by touch. The autopilot logic itself lives on
-Controller_Main. This interface carries two things:
+the master. This interface carries two things:
 
-1. **Commands, InfoDisp → Controller_Main** — the pilot's edits and ARM/DISARM taps,
+1. **Commands, InfoDisp → the master** — the pilot's edits and ARM/DISARM taps,
    embedded in the InfoDisp's normal outbound status packet (`0x12` responds to a master
    read). One command in flight at a time, with a sequence/acknowledge handshake.
-2. **Status, Controller_Main → InfoDisp** — the autopilot's `AscentStatus`, pushed as a
+2. **Status, the master → InfoDisp** — the autopilot's `AscentStatus`, pushed as a
    dedicated I2C write so the console can render live guidance and confirm that edited
    parameters were accepted.
 
@@ -128,7 +128,7 @@ if (payload >= 1.0e8f) apSetRoll(/*enable=*/false, 0.0f);   // roll hold OFF
 else                   apSetRoll(/*enable=*/true,  payload); // hold at `payload` degrees
 ```
 
-Adapt the call to whatever `apSetRoll` signature Controller_Main uses; the contract is
+Adapt the call to whatever `apSetRoll` signature the master uses; the contract is
 only that `payload >= 1e8` means "disable roll hold."
 
 **Max-G (`0x06`).** `0.0` means "no G limit." Pass it straight through — the autopilot
@@ -143,7 +143,7 @@ values as pre-validated but should still range-check defensively.
 ## 5. Status push (Master → InfoDisp), 40 bytes
 
 Whenever the autopilot's `AscentStatus` changes (or on a fixed cadence, e.g. 5–10 Hz),
-Controller_Main writes 40 bytes to `0x12`:
+the master writes 40 bytes to `0x12`:
 
 ```
 Byte 0 : 0xA5          sync / framing byte
@@ -218,7 +218,7 @@ write_infodisp(st, 40);
 
 `apply_ap_command` maps opcode → autopilot API per §4. `AscentStatus` field names above
 (`s.targetApoapsis`, `s.cmdPitch`, …) follow the `apGetStatus()` structure; adjust to the
-actual accessor names on Controller_Main.
+actual accessor names on the master.
 
 ---
 
@@ -257,6 +257,6 @@ command with a new `cmdSeq` and keeps the field cyan until the *latest* value is
 - **Parameters editable at any time.** The console does not gate edits on ARM state; the
   autopilot is expected to accept `apSet*` whenever it can and echo the result. If a
   setter must be rejected in a given mode, decline it and skip the echo (§5).
-- **Endianness.** Payload and status floats are little-endian. If Controller_Main is ever
+- **Endianness.** Payload and status floats are little-endian. If the master is ever
   built big-endian, byte-swap the 4-byte groups.
 ```

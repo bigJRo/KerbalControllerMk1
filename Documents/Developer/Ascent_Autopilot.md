@@ -4,7 +4,10 @@
 **Project:** Kerbal Controller Mk1
 **Organization:** Jeb's Controller Works
 **Author:** J. Rostoker
-**Runs on:** Master controller (Teensy 4.1), `Software/Controller_Main`
+**Runs on:** Master controller (Teensy 4.1), `Software/KCMk1_Master` (ported from `Controller_Main`, now deleted)
+
+
+> **Port to `KCMk1_Master` (2026-10-26).** The ascent autopilot now runs in `Software/KCMk1_Master` (`ascent_autopilot.cpp`; `Master_Firmware_Design.md` §11), with its guidance unchanged. Its rotation goes out as autopilot axes on the master's rotation channel. Stick and lever input no longer disarm it: disarming is the A/P disconnect, A/P INHIB, a console's DISARM / A/P OFF, ENGINE SAFE, or its own rules. Its bench console is the `ap` command.
 
 ---
 
@@ -24,11 +27,11 @@ Files:
 | File | Role |
 |------|------|
 | `ascent_autopilot.h`  | Public API + the `AscentConfig` tuning surface |
-| `ascent_autopilot.ino` | Guidance state machine, throttle manager, staging |
-| `attitude_controller.h/.ino` | The attitude PID (rocket entry) — shared with the hold-mode autopilot |
-| `throttle_link.ino` | Throttle output: KSP + the Throttle Module's motorised lever (see `Hold_Mode_Autopilot.md` §7) |
-| `simpit_message_handler.ino` | Registers the extra channels and feeds `apIngest*()` |
-| `Controller_Main.ino` | `apInit()` in `setup()`, `apUpdate()`/`apSerialConsole()` in `loop()` |
+| `ascent_autopilot.cpp` | Guidance state machine, throttle manager, staging, bench console (`ap`) |
+| `attitude_controller.h/.cpp` | The attitude PID (rocket entry) — shared with the hold-mode autopilot |
+| `ksp_frame.cpp` | Throttle and rotation channels: KSP + the Throttle Module's motorised lever (see `Hold_Mode_Autopilot.md` §7) |
+| `autopilots.cpp` | Registers the extra channels and feeds `apIngest*()` |
+| `autopilots.cpp` | `apInit()` at start-up, `apUpdate()` every loop pass in a flight |
 
 The module keeps its **own telemetry snapshot**, fed by `apIngest*()` from the Simpit message
 handler; it does not depend on the master's other telemetry globals.
@@ -254,5 +257,4 @@ Controls: `apArm()`, `apDisarm()`, `apIsArmed()`. Readout for the display: `apGe
   airless bodies. Unknown/modded bodies fall back to telemetry (atmosphere flag) with the target apoapsis
   you set. `launchLatitude` is not available from telemetry — set it for non-KSC sites.
 - PID gains are conservative starting values and will want tuning per craft / control authority.
-- The master `Controller_Main` sketch is still mid-integration; this module is self-contained and
-  compiles independently, but a full sketch build depends on that ongoing work.
+- The module runs in `KCMk1_Master` and is checked by its host build and selftest (`tools/host_build.py`).

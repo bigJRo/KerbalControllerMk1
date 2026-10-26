@@ -133,7 +133,8 @@ static void sendStatus() {
   f[0] = SI_FRAME_STATUS;
   f[1] = (uint8_t)((g_status.powerValid ? 1 : 0) | (g_status.tempValid ? 2 : 0) | (g_status.fanValid ? 4 : 0));
   put16(f + 2, (uint16_t)(g_status.busV * 100.0f + 0.5f));
-  put16(f + 4, (uint16_t)(int16_t)(g_status.currentA * 1000.0f));
+  float mA = g_status.currentA * 1000.0f;
+  put16(f + 4, (uint16_t)(int16_t)(mA + (mA < 0 ? -0.5f : 0.5f)));   // rounded, not truncated
   put16(f + 6, (uint16_t)(g_status.powerW * 10.0f + 0.5f));
   f[8] = (uint8_t)g_status.tempC;
   put16(f + 9, g_status.fanRpm);

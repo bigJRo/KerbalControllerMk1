@@ -43,4 +43,15 @@ bool        boardProbeDevices();             // boot step 4: INA228, EMC2101 pre
 bool        boardHasPowerMon();
 bool        boardHasFanCtrl();
 void        boardDisplayReset();             // 10 ms low pulse on RST (7" displays)
-void        boardService();                  // clears the watchdog streak after a clean run
+void        boardService();                  // power (4 Hz), fan (1 Hz), the watchdog streak
+
+// Power monitor and fan (design §12.1), as also sent to the Sys Info Display.
+struct BoardStatus {
+  bool     powerValid, tempValid, fanValid;
+  float    busV, currentA, powerW;
+  int8_t   tempC;                            // EMC2101 internal sensor (the board)
+  uint8_t  fanDuty;                          // %
+  uint16_t fanRpm;
+};
+void        boardServicesInit();             // before boardProbeDevices()
+const BoardStatus &boardStatus();

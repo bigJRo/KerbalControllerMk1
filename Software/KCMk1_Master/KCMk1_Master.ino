@@ -30,6 +30,8 @@
    Stage 7 (autopilots): ascent, hold, burn and landing ported from Controller_Main, the
    Info Display 2 consoles, the A/P INHIB / ENGINE SAFE / disconnect rules, HOLD in PLN
    and RVR.
+   Stage 8 (board): the 12 V power monitor, the fan from the board temperature, the Sys
+   Info Display's status screen.
 
    Licensed under the GNU General Public License v3.0 (GPL-3.0).
    Written for Jeb's Controller Works.
@@ -100,6 +102,7 @@ void setup() {
   Serial.begin(115200);
   boardEarly();                     // reset cause and breadcrumb, before anything overwrites them
   dbgInit();
+  boardServicesInit();
   consoleRegister("status", "modes, links, bus and send counters", cmdStatus);
   consoleRegister("debug", "debug on|off (until the next UPTLM flip)", cmdDebug);
   consoleRegister("wdtest", "wdtest yes — hang the loop to test the watchdog", cmdWdTest);

@@ -3,7 +3,7 @@
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
 **Version:** 1.3
-**Firmware covered:** Info Display v1.16.5 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · Controller_Main as of the same merge
+**Firmware covered:** Info Display v1.16.5 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · KCMk1_Master v0.8.0
 
 ---
 
@@ -37,18 +37,16 @@ This is an in-game run-through of every screen and feature on the three TFT disp
 - On the Annunciator: the DFPlayer microSD populated with clips 001–034 for the GPWS session (the master turns audio on; see §2.3). It can be skipped; mark those rows N/A.
 - All panels flashed with `demoMode = false`, `debugMode = false`, `standaloneMode = false`.
 
-### 2.3 Known gaps in the master controller
+### 2.3 The master controller
 
-**The master's own panel inputs.** Controller_Main builds and runs its KerbalSimpit link, the autopilot consoles, the throttle lever, the rotation joystick, the staging and abort buttons, and the display links (#86). Its handlers for the other input modules (the button and switch panels, the dual encoder) are not called yet, and the translation joystick is read only for the pilot-override test, so translation, SAS, RCS, gear, lights, action groups and time warp come from KSP's keyboard during the run, not from the controller panels; PAD-03 and PAD-04 can be checked that way.
+The master is `Software/KCMk1_Master` (it replaced `Controller_Main`; design `Master_Firmware_Design.md`). It handles every input module, so translation, SAS, RCS, gear, lights, action groups and time warp come from the controller panels. Its own bench checks are in `Software/KCMk1_Master/README.md`. It feeds every Annunciator field:
 
-**The Annunciator command.** The master sends the Annunciator its full command and releases it and the Resource Display from the boot hold (`annun_link.ino`). Audio is LIVE and the GPWS settings are relayed from the GPWS Input Panel, so the audio and GPWS rows are ordinary test points. Some fields still have no source on the master:
-
-- The **control-mode tile** always reads `SPC`: the Ctrl Mode Toggle is not wired to the master yet.
-- **CTRLGRP** always reads 1: the control-group encoder (Dual Encoder ENC1) is not read yet.
-- The **AUDIO switch** is not read yet, so audio stays LIVE and cannot be muted from the panel.
-- In the **panel condition block**, THRTL ENA, TRIM and INPUT PREC hold their defaults, because no panel handler sets them. SWITCH ERR and SIMPIT LOST stay dark, because they have no source. CAP reads 0. WARP follows time warp.
-
-Rows that depend on these are marked **blocked, §2.3**. Log them as N/A with this reference until the master supplies the field.
+- **Control-mode tile:** the SPC / PLN / RVR selector on Time Control.
+- **CTRLGRP:** Dual Encoder ENC1.
+- **AUDIO:** the AUDIO switch (Switch Group 2).
+- **Panel condition block:** TRIM (rotation stick BTN02), INPUT PREC (THC / RHC PREC), THRTL PREC (THRTL FINE), ENG ARM (ENGINE SAFE / ARM), SWITCH ERR (a switch disagreeing with the vessel) and SIMPIT LOST (no KSP traffic for 5 s in flight).
+- **Bit 3** is now **A/P ARM** (the A/P INHIB / ARM switch). The Annunciator's tile still reads `THRTL ENA` until its firmware changes (`Master_Firmware_Design.md` §17).
+- **CAP** reads 0.
 
 ### 2.2 Test craft (build these in the VAB/SPH before starting)
 
@@ -117,9 +115,9 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 | PAD-05 | Tap the content area of the pre-launch board | Board dismisses into ASCENT with the chip still `AUTO`; it does not come back while still on the pad | Tap-to-advance |
 | PAD-06 | Press `PRE` (the LNCH key) while the pre-launch board is up | Same as PAD-05: ASCENT, chip `AUTO`. After launch the screen still moves to CIRC by itself at the coast | Btn 1 (1.15.2 #59) |
 | PAD-07 | **C&W** situation column | `PRE-LAUNCH` lit, nothing else in the outer column. The regime column (FLYING LOW … HIGH SPACE) is dark on the pad | Vessel situation |
-| PAD-08 | **C&W** panel condition block | `AUDIO` tile matches audioEnabled, `DEMO` dark, `SIMPIT LOST` dark, `THRTL ENA` follows the throttle enable switch, `TRIM` / `THRTL PREC` / `INPUT PREC` / `ENG ARM` follow their controller switches | modeFlags · **blocked, §2.3** |
-| PAD-09 | **C&W** control-mode tile | `SPC` in green with the vessel-type icon when the mode switch is on Spacecraft; turns red if the switch is moved to Plane or Rover while flying T1 | Mode mismatch (3.8.1) · **blocked, §2.3** |
-| PAD-10 | **C&W** bottom readouts | Vessel name, TIMEWARP 1x, STG, CORE, CREW, COMM, SKIN, CAP, CTRLGRP all populated. Labels grey uppercase, values in the state colour. CTRLGRP follows the control-group switch and CAP reads 0 | Readout labels (3.8.1) · **blocked, §2.3** |
+| PAD-08 | **C&W** panel condition block | `AUDIO` tile matches audioEnabled, `DEMO` dark, `SIMPIT LOST` dark, `THRTL ENA` (A/P ARM until the tile is relabelled, §2.3) follows the A/P INHIB / ARM switch, `TRIM` / `THRTL PREC` / `INPUT PREC` / `ENG ARM` follow their controller switches | modeFlags |
+| PAD-09 | **C&W** control-mode tile | `SPC` in green with the vessel-type icon when the mode switch is on Spacecraft; turns red if the switch is moved to Plane or Rover while flying T1 | Mode mismatch (3.8.1) |
+| PAD-10 | **C&W** bottom readouts | Vessel name, TIMEWARP 1x, STG, CORE, CREW, COMM, SKIN, CAP, CTRLGRP all populated. Labels grey uppercase, values in the state colour. CTRLGRP follows the control-group switch and CAP reads 0 | Readout labels (3.8.1) |
 | PAD-11 | **C&W** `ATMO` and `O2 PRESENT` | Both lit on the Kerbin pad | C&W bits 14, 9 |
 | PAD-12 | **C&W** `Ap LOW` | Dark on the pad (it is evaluated only sub-orbital or in orbit); see ASC-20 | Bit 18 |
 | PAD-13 | Press the Abort action | `ABORT` lamp red, MASTER ALARM lights and the tone sounds. Clear abort: lamp clears, tone stops | Bit 4, master mask |
@@ -203,7 +201,7 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 
 ## 9. Session ORAP — Orbital Autopilot console (Info 2 only)
 
-Requires Controller_Main running the mission autopilot. All annunciations reflect the **master's echoed state**: a tap shows a cyan pending cue and only turns green when the master confirms.
+Requires the master (KCMk1_Master) running the mission autopilot. All annunciations reflect the **master's echoed state**: a tap shows a cyan pending cue and only turns green when the master confirms.
 
 | ID | Action | Expected | Source |
 |---|---|---|---|
@@ -355,7 +353,7 @@ Requires Controller_Main running the mission autopilot. All annunciations reflec
 | ACFT-14 | Fly toward the flag to 1.5 km, then 150 m | Info 2 **stays on NAVIGATION** (NAV outranks TARGET and DOCKING for an aircraft) | Rule 4 above 5/9 |
 | ACFT-15 | Climb so Ap exceeds 70 km (spaceplane) | Info 2 leaves NAV for LAUNCH / ORBIT; Info 1 leaves AIRCRAFT for SPACECRAFT once out of the atmosphere | Ap gate |
 | ACFT-16 | Land and roll out | Info 2 to VEHICLE INFO on the surface; Info 1 keeps AIRCRAFT | Rule 6 / vehicle rule |
-| ACFT-17 | Set the control-mode switch to Plane | C&W control-mode tile `PLN` green with the plane icon; red if left on Spacecraft | Mode tile · **blocked, §2.3** |
+| ACFT-17 | Set the control-mode switch to Plane | C&W control-mode tile `PLN` green with the plane icon; red if left on Spacecraft | Mode tile |
 | ACFT-18 | **RES** press SEL, tap ACFT preset | Set becomes EC, LF, Intake Air, MP, O2, Food, Water (collapsed to those aboard) | ACFT preset |
 | ACFT-19 | Type the same plane as Probe (control test) | Info 1 shows SPACECRAFT, Info 2 ORBIT — expected by design | Type rule |
 
@@ -396,7 +394,7 @@ Set the GPWS input panel to GREEN unless stated. The master relays the panel's m
 | ROVR-06 | Climb / traverse a slope | PITCH and ROLL tilt pictures follow (PITCH yellow from 20°, red from 30°; ROLL yellow from 15°, red from 25°); ALT.TRN equals ALT.SL − ALT.RDR in whole metres | Tilt |
 | ROVR-07 | Brakes, SAS | Buttons follow controller state | Live |
 | ROVR-08 | **Info 2** from VEHICLE INFO, set a target 1.5 km away | Stays on VEHICLE INFO / TARGET per rule 6 (surface rule outranks the approach window) | Rule 6 |
-| ROVR-09 | C&W control-mode tile with the switch on Rover | `RVR` green with the rover icon | Mode tile · **blocked, §2.3** |
+| ROVR-09 | C&W control-mode tile with the switch on Rover | `RVR` green with the rover icon | Mode tile |
 | ROVR-10 | Crest a hill | Info 2 does **not** flip to LAUNCH while briefly climbing | Rover exclusion |
 | ROVR-11 | **RES** press SEL, tap SRF preset | EC, Stored Charge, Ore, LF, LOx, MP, O2, Food, Water (collapsed to those aboard) | SRF preset |
 
@@ -523,7 +521,7 @@ These confirm the ladder guards. Tick them as the situations occur.
 | CTX-06 | Manual screen held, then the ladder's answer changes (e.g. node comes due) | `MAN` latch releases and the new automatic screen appears | Latch release on ladder change |
 | CTX-07 | Circularisation node planned during the LAUNCH arc | Info 2 stays on LAUNCH / CIRC, not MANEUVER | Rule 7 above rule 8 |
 | CTX-08 | Spaceplane on the runway | Pre-launch board appears (vessel type does not mask it) | Rule 1 |
-| CTX-09 | Any autopilot letting go for any reason (A/P OFF, DISARM, mode tapped off, stick, lever, abort, lost telemetry, another autopilot) | The throttle stays at its last commanded value; no step to zero. The only cuts are the mode's own: ascent coast / COMPLETE, a completed burn (`DONE`), BRAKE before ignition, touchdown | Controller_Main throttle hand-back |
+| CTX-09 | Any autopilot letting go for any reason (A/P OFF, DISARM, mode tapped off, the A/P disconnect, A/P INHIB, abort, lost telemetry, another autopilot) | The throttle stays at its last commanded value; no step to zero. The only cuts are the mode's own: ascent coast / COMPLETE, a completed burn (`DONE`), BRAKE before ignition, touchdown | Master throttle hand-back |
 
 ---
 
