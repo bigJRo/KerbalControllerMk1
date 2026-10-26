@@ -1,118 +1,7 @@
 // Stage 1 selftest: boot sequence and reporting, Sys Info Display link, display
 // carriers, Simpit link, the KSP send gate, watchdog and the reboot-loop guard, the
 // console. Runs setup() / loop() against simulated devices (tools/host/Arduino.h).
-#include <Arduino.h>
-#include <KerbalSimpit.h>
-#include <Watchdog_t4.h>
-#include <map>
-#include <string>
-#include "config.h"
-#include "state.h"
-#include "sysinfo.h"
-#include "carriers.h"
-#include "ksp_out.h"
-#include "board.h"
-#include "debug.h"
-#include "boot.h"
-
-void setup();
-void loop();
-
-static int g_fails = 0, g_checks = 0;
-#define CHECK(c, ...) do { g_checks++; if (!(c)) { g_fails++; printf("  FAIL: "); printf(__VA_ARGS__); printf("  (%s:%d)\n", __FILE__, __LINE__); } } while (0)
-
-/*------------------------------------------------------------------------------------
-  Simulated devices
-------------------------------------------------------------------------------------*/
-struct SysInfoSim : SimDevice {
-  std::vector<std::vector<uint8_t>> frames;
-  bool onWrite(const uint8_t *b, int n, bool) override { frames.push_back(std::vector<uint8_t>(b, b + n)); return true; }
-  int onRead(uint8_t *b, int n) override {
-    const uint8_t p[4] = { SYNC_SYSINFO, 0x01, 0, 1 };
-    int k = n < 4 ? n : 4; memcpy(b, p, k); return k;
-  }
-  // Boot screen as the display would show it (REPLACE overwrites the previous line).
-  std::vector<std::pair<int, std::string>> screen() const {
-    std::vector<std::pair<int, std::string>> s;
-    for (auto &f : frames) {
-      if (f.empty() || f[0] != SI_FRAME_BOOT_LINE || f.size() < 4) continue;
-      std::string t((const char *)f.data() + 4, f[3]);
-      if ((f[2] & 0x80) && !s.empty()) s.back() = { f[2] & 3, t };
-      else s.push_back({ f[2] & 3, t });
-    }
-    return s;
-  }
-  int count(uint8_t id) const { int c = 0; for (auto &f : frames) if (!f.empty() && f[0] == id) c++; return c; }
-  const std::vector<uint8_t> *last(uint8_t id) const {
-    for (auto it = frames.rbegin(); it != frames.rend(); ++it) if (!it->empty() && (*it)[0] == id) return &*it;
-    return nullptr;
-  }
-  bool shows(const char *text) const { for (auto &l : screen()) if (l.second.find(text) != std::string::npos) return true; return false; }
-  int sevOf(const char *text) const { for (auto &l : screen()) if (l.second.find(text) != std::string::npos) return l.first; return -1; }
-};
-
-struct CarrierSim : SimDevice {
-  uint8_t sync, len, flags = 0;
-  std::vector<std::vector<uint8_t>> cmds;
-  CarrierSim(uint8_t s, uint8_t l) : sync(s), len(l) {}
-  bool onWrite(const uint8_t *b, int n, bool) override { cmds.push_back(std::vector<uint8_t>(b, b + n)); return true; }
-  int onRead(uint8_t *b, int n) override {
-    uint8_t p[10] = { sync, flags };
-    int k = n < len ? n : len; memcpy(b, p, k); return k;
-  }
-};
-
-struct RegDevice : SimDevice {
-  std::map<uint8_t, std::vector<uint8_t>> regs; uint8_t ptr = 0;
-  bool onWrite(const uint8_t *b, int n, bool) override { if (n >= 1) ptr = b[0]; return true; }
-  int onRead(uint8_t *b, int n) override {
-    auto it = regs.find(ptr); if (it == regs.end()) return 0;
-    int k = n < (int)it->second.size() ? n : (int)it->second.size(); memcpy(b, it->second.data(), k); return k;
-  }
-};
-
-struct Rig {
-  SysInfoSim si;
-  CarrierSim ann{ SYNC_ANNUNCIATOR, 6 }, id1{ SYNC_INFODISP, 10 }, id2{ SYNC_INFODISP, 10 }, res{ SYNC_RESDISP, 4 };
-  RegDevice ina, emc;
-  Rig() {
-    ina.regs[0x3E] = { 0x54, 0x49 }; ina.regs[0x3F] = { 0x22, 0x81 };
-    emc.regs[0xFE] = { 0x5D }; emc.regs[0xFD] = { 0x16 };
-  }
-  void attachAll() {
-    for (int a = 0; a < 128; a++) Wire.detach(a);
-    Wire.attach(ADDR_SYSINFO, &si);
-    Wire.attach(ADDR_ANNUNCIATOR, &ann); Wire.attach(ADDR_INFODISP_1, &id1);
-    Wire.attach(ADDR_INFODISP_2, &id2); Wire.attach(ADDR_RESDISP, &res);
-    Wire.attach(ADDR_INA228, &ina); Wire.attach(ADDR_EMC2101, &emc);
-  }
-};
-
-static void resetStubs() {
-  Serial.out.clear(); Serial.in.clear(); Serial.inPos = 0;
-  Wire.log.clear();
-  StubSimpit &s = stubSimpit();
-  s.initCalls = s.updateCalls = 0; s.registered.clear(); s.sent.clear(); s.handler = nullptr; s.onInit = nullptr;
-  stubWdt() = StubWdt();
-  for (int p = 0; p < 64; p++) stubPin(p) = HIGH;     // idle INT lines, free bus
-  stubPin(PIN_SAFE_ABORT) = stubPin(PIN_SAFE_STAGE) = LOW;
-}
-
-static void boot(uint32_t srsr) {
-  resetStubs();
-  stubSrsr() = srsr;
-  setup();
-}
-
-static void runFor(uint32_t ms, uint32_t step = 5) {
-  for (uint32_t t = 0; t < ms; t += step) { stubMillis() += step; loop(); }
-}
-
-static void inbound(byte type, const void *p, byte n) {
-  if (stubSimpit().handler) stubSimpit().handler(type, (byte *)p, n);
-}
-
-static bool serialHas(const char *s) { return Serial.out.find(s) != std::string::npos; }
+#include "harness.h"
 
 /*------------------------------------------------------------------------------------
   Tests
@@ -422,7 +311,7 @@ static void testWatchdog(Rig &r) {
   CHECK(boardResetInfo().streak == 0 && !boardResetInfo().watchdog, "power-on clears the streak");
 }
 
-int main() {
+void runStage1() {
   Rig r;
   testNormalBoot(r);
   testCarrierBytes(r);
@@ -438,7 +327,4 @@ int main() {
   testDemoBoot(r);
   testBusRecovery(r);
   testWatchdog(r);
-  printf(g_fails ? "selftest: %d of %d checks FAILED\n" : "selftest: all %d checks passed\n",
-         g_fails ? g_fails : g_checks, g_checks);
-  return g_fails != 0;
 }

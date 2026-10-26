@@ -1,11 +1,11 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.15  
+**Version:** 2.16  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Date:** 2026-10-25
+**Date:** 2026-10-26
 
 ---
 
@@ -359,14 +359,16 @@ Encoder deltas accumulate between reads so no detents are lost; they are cleared
 
 ### 10.1 Standard LED Payload (all modules except display modules)
 
-`CMD_SET_LED_STATE` payload is 8 bytes, nibble-packed, one nibble per button position. Two buttons per byte, high nibble = lower button index:
+`CMD_SET_LED_STATE` payload is 8 bytes, nibble-packed, one nibble per button position. Two buttons per byte, **low nibble = even (lower) button index**, as `kmcLedPackSet()` / `kmcLedPackGet()` pack it and every module library unpacks it:
 
 ```
-Payload Byte 0:  Button 0  [7:4]  |  Button 1  [3:0]
-Payload Byte 1:  Button 2  [7:4]  |  Button 3  [3:0]
+Payload Byte 0:  Button 1  [7:4]  |  Button 0  [3:0]
+Payload Byte 1:  Button 3  [7:4]  |  Button 2  [3:0]
 ...
-Payload Byte 7:  Button 14 [7:4]  |  Button 15 [3:0]
+Payload Byte 7:  Button 15 [7:4]  |  Button 14 [3:0]
 ```
+
+(Before 2.16 this section showed the nibbles the other way round; the libraries were always as above.) On the joystick modules the LED positions are BTN01 = 0 and BTN02 = 1, not the button-event bit order (§9.2).
 
 Total on wire: 9 bytes (command byte + 8 payload bytes).
 
@@ -438,7 +440,7 @@ Transitions:
 - **DISABLED → ACTIVE:** Master sends CMD_ENABLE when flight scene loads
 - **ACTIVE → SLEEPING:** Master sends CMD_SLEEP on game pause
 - **SLEEPING → ACTIVE:** Master sends CMD_WAKE on game resume
-- **ACTIVE → DISABLED:** Master sends CMD_DISABLE on scene exit, serial loss, or EVA
+- **ACTIVE → DISABLED:** Master sends CMD_DISABLE on scene exit or serial loss. Modules stay ACTIVE during EVA (the AUX CTRL EVA buttons need them live; each master panel handler decides what works on EVA)
 - **Any → ACTIVE (same):** CMD_RESET clears state but lifecycle stays ACTIVE
 
 ---
@@ -446,6 +448,8 @@ Transitions:
 ## 12. Transaction Examples
 
 ### 12.1 Startup Sequence
+
+The sequence below is the generic one. The KCMk1 master (`Software/KCMk1_Master`, `module_bus.cpp`) leaves out step 1: a `CMD_RESET` deasserts the boot INT, and the master uses that INT to learn which line each module is on (it reads the boot packet and watches which line goes high). Its sequence is identity → boot-packet read (INT learning) → all LEDs OFF → `CMD_DISABLE`.
 
 ```
 For each address 0x20 – 0x2E:
@@ -619,6 +623,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
+| 2.16 | 2026-10-26 | §10.1: LED nibble order corrected to match `kmcLedPackSet()` and every module library (low nibble = even button index); joystick LED positions noted. §11: modules stay ACTIVE on EVA. §12.1: the KCMk1 master's start-up sequence (no CMD_RESET, so the boot INT can be used to learn the module's INT line). No packet formats changed. |
 | 2.15 | 2026-10-25 | §15.4: **System Info Display (0x14) protocol** defined (sync 0xAF): CONTROL heartbeat, BOOT_LINE (with REPLACE), BOOT_DONE, STATUS, SWITCH_ERR frames, and its 4-byte status read. §15.3: master-side note for the new `KCMk1_Master`. No module-side packet formats changed. |
 | 2.14 | 2026-10-25 | §15.3: master side documented. Controller_Main now sends the Annunciator (0x10) the rev-3 command and the Resource Display (0x11) its control byte, both repeating `PROCEED` (until now neither carrier was ever written to, so both held in `setup()`), and relays the GPWS Input Panel (0x2A) to the Annunciator. No packet formats changed. |
 | 2.13 | 2026-10-24 | §15.3: Info Display (0x12/0x13) gains an 8-byte autopilot **summary** push (sync **0xAA**) written to both displays every 100 ms: each console's flag byte plus the landing mode and ENTRY, so a display can see an engaged autopilot off its console (#83). Layout in `Mission_Autopilot.md` §8.1. No module-side packet formats changed. |

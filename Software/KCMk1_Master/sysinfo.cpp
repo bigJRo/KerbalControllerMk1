@@ -11,7 +11,7 @@
 #include "i2c_bus.h"
 #include "debug.h"
 
-static const uint8_t SI_REPLAY = 16;
+static const uint8_t SI_REPLAY = 48;   // a whole boot, with every module listed
 
 struct SiLine { uint8_t attr; char text[SI_TEXT_MAX + 1]; };
 

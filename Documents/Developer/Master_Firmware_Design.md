@@ -247,10 +247,18 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 ### 6.3 Start-up per module
 
 1. **Identity:** check the type against the table.
-2. **LEDs off.**
-3. **DISABLED.**
+2. **Boot packet read:** the INT line that goes high is the module's (§6.2). No `CMD_RESET` first, because that would release the INT before it could be seen.
+3. **LEDs off.**
+4. **DISABLED.**
 
-A module that does not answer, or reports the wrong type, is marked absent and re-checked every 5 s, so a panel plugged in late comes up. After a watchdog restart the modules are **not** reset; their state is read back instead (§12.3).
+**Absent modules:** a module that does not answer, or reports the wrong type, is marked absent and re-checked every 5 s, so a panel plugged in late comes up. A present module that fails five transactions in a row is treated as gone and re-checked the same way.
+
+**Watchdog restart:** after a watchdog restart the modules are **not** reset; their state is read back instead (§12.3).
+
+**Stored map (EEPROM):**
+- **Layout:** bytes 0–27 are `'K' 'I'`, version 1, one owner byte per INT line (module id, display 0x40–0x44, or 0xFF), then a checksum.
+- **Writes:** `EEPROM.update` writes only changed bytes.
+- **Console:** `intmap clear` erases it.
 
 ### 6.4 Reading a module
 
@@ -278,7 +286,14 @@ A module that does not answer, or reports the wrong type, is marked absent and r
 | Game paused | No change (Simpit has no pause signal) |
 | **Demo on** | All ENABLEd for the duration, whatever the scene |
 
-The I2C spec's "disable on EVA" is updated to match (§17).
+The I2C spec's lifecycle section says the same since 2.16.
+
+**LEDs:**
+- **Default wanted state:** backlit (ENABLED), which is what a module shows by itself on ENABLE, until a panel handler sets its own states.
+- **On ENABLE:** the wanted LEDs are sent again.
+- **While DISABLED:** nothing is sent.
+
+**Nibble order:** low nibble = even button index, as `kmcLedPackSet()` packs it (I2C spec §10.1 corrected in 2.16).
 
 ## 7. Outputs to KSP
 
@@ -693,7 +708,7 @@ From Inventory §11:
 | 8 | AUX CTRL module | B8 UNDOCK; B10 PRI, B11 ALT |
 | 9 | Stability Control module | B10 HOLD |
 | 10 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 UNDOCK |
-| 11 | I2C Protocol Specification | Input test frame; EVA lifecycle (the Sys Info protocol is in, §15.4) |
+| 11 | I2C Protocol Specification | Input test frame (the Sys Info protocol is in, §15.4; EVA lifecycle, LED nibble order and the master's start-up sequence in 2.16) |
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
 | 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
