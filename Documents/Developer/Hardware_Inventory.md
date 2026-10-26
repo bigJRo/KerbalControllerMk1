@@ -485,7 +485,7 @@ The master pushes it a new frame while the screen is open (new display firmware 
 **What this needs:**
 - **The master** sends boot messages *from the start of `setup()`*. It waits briefly for the Sys Info Display to answer first, and mirrors every line to Serial. Every I2C call during setup has a timeout, so a stuck bus becomes a visible message rather than a hang.
 - **The watchdog** starts only after `setup()`, so it does not reset a stalled boot out of view.
-- **Each display** reports its own Simpit link state to the master (display firmware change, §11).
+- **Each display** already reports its own Simpit link state (bit 0 of its status flags), which the master reads.
 - **The I2C protocol for 0x14** is defined with the firmware design (Q6): boot line, status frame, switch-error list.
 - **Note:** the Sys Info Display's RST pin is not connected (§5.7), so the master cannot hard-reset it.
 
@@ -803,7 +803,7 @@ Collected from this review; each is a separate piece of work.
 | 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
 | 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11) |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10) |
-| 16 | Annunciator, Info Display, Resource Display firmware | Report their own Simpit link state to the master (§8.12) |
+| 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
 | 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |
 | 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |

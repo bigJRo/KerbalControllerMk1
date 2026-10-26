@@ -108,7 +108,7 @@ The Module UI Reference v5.9 is **superseded** for button maps and switch groups
    - `vessel` is written by `simpit_link`;
    - `panel` (switch positions, control mode, control group, trim, precision) by the panel handlers;
    - `master` (lifecycle, demo / debug, link health, faults) by the master core.
-3. **Every tab has a header**, so the host build and the IDE see the same code without the IDE's prototype generation.
+3. **Every part is a `.cpp` / `.h` pair**, and the `.ino` holds only `setup()` and `loop()`. The IDE compiles each `.cpp` on its own, so the host build and the IDE see the same code, and nothing relies on the IDE's prototype generation.
 4. **Demo is one gate in the outputs.** In demo, `ksp_out` sends nothing, and every "KSP connected / in flight" check reads as true (§10.1). Nothing above the outputs needs a demo special case except the LEDs, which show local state.
 
 ### 4.2 Main loop
@@ -140,36 +140,37 @@ Software/KCMk1_Master/
 │
 ├─ KCMk1_Master.ino      setup() and loop() only
 ├─ config.h              pin map, addresses, timings — all in one place
-├─ state.h/.ino          vessel, panel and master state
-├─ boot.h/.ino           start-up sequence and boot reporting (§5)
+├─ state.h/.cpp         vessel, panel and master state
+├─ boot.h/.cpp          start-up sequence and boot reporting (§5)
 │
-├─ simpit_link.h/.ino    KSP connection, inbound messages
-├─ module_bus.h/.ino     module driver (§6)
-├─ ksp_out.h/.ino        the only sender to KSP (§7)
-├─ interlocks.h/.ino     ENGINE, A/P, SWITCH ERR (§8.2, §8.3)
-├─ cag.h/.ino            action-group numbering
-├─ keys.h/.ino           keyboard shortcuts and macros
+├─ i2c_bus.h/.cpp       every I2C transaction: counted, logged, bus recovery
+├─ simpit_link.h/.cpp   KSP connection, inbound messages
+├─ module_bus.h/.cpp    module driver (§6)
+├─ ksp_out.h/.cpp       the only sender to KSP (§7)
+├─ interlocks.h/.cpp    ENGINE, A/P, SWITCH ERR (§8.2, §8.3)
+├─ cag.h/.cpp           action-group numbering
+├─ keys.h/.cpp          keyboard shortcuts and macros
 │
-├─ panel_ui.ino          UI Control            0x20
-├─ panel_function.ino    Function Control      0x21  + Switch Group 1
-├─ panel_action.ino      Action Control        0x22
-├─ panel_stability.ino   Stability Control     0x23  (SAS, HOLD, INVERT)
-├─ panel_vehicle.ino     Vehicle Control       0x24  + Switch Group 2, state machines
-├─ panel_time.ino        Time Control          0x25  + mode selector, Pre-Warp 0x2B
-├─ panel_aux.ino         AUX CTRL              0x26
-├─ panel_sticks.ino      Rotation / Translation 0x28 / 0x29, trim
-├─ panel_gpws.ino        GPWS Input Panel      0x2A
-├─ panel_throttle.ino    Throttle Module       0x2C
-├─ panel_encoders.ino    Dual Encoder          0x2D
-├─ panel_safe.ino        safe lines: ABORT, STAGE
+├─ panel_ui.cpp         UI Control            0x20
+├─ panel_function.cpp   Function Control      0x21  + Switch Group 1
+├─ panel_action.cpp     Action Control        0x22
+├─ panel_stability.cpp  Stability Control     0x23  (SAS, HOLD, INVERT)
+├─ panel_vehicle.cpp    Vehicle Control       0x24  + Switch Group 2, state machines
+├─ panel_time.cpp       Time Control          0x25  + mode selector, Pre-Warp 0x2B
+├─ panel_aux.cpp        AUX CTRL              0x26
+├─ panel_sticks.cpp     Rotation / Translation 0x28 / 0x29, trim
+├─ panel_gpws.cpp       GPWS Input Panel      0x2A
+├─ panel_throttle.cpp   Throttle Module       0x2C
+├─ panel_encoders.cpp   Dual Encoder          0x2D
+├─ panel_safe.cpp       safe lines: ABORT, STAGE
 │
-├─ carriers.h/.ino       Annunciator, Resource Display, Info Displays
-├─ sysinfo.h/.ino        Sys Info Display (§14)
-├─ debug.h/.ino          debug log and serial command console (§10.2)
-├─ board.h/.ino          fan, power, watchdog, display reset
-├─ ap_*.ino / .h         the ported autopilots (§11)
+├─ carriers.h/.cpp      Annunciator, Resource Display, Info Displays
+├─ sysinfo.h/.cpp       Sys Info Display (§14)
+├─ debug.h/.cpp         debug log and serial command console (§10.2)
+├─ board.h/.cpp         fan, power, watchdog, display reset
+├─ ap_*.cpp / .h        the ported autopilots (§11)
 │
-└─ tools/                host build, selftest, module simulator
+└─ tools/               host build, selftest, simulated devices (see README.md)
 ```
 
 ## 5. Start-up and boot reporting
@@ -623,7 +624,7 @@ The old sketch declares a watchdog but never starts it. This is the design (sett
 | **Info Display 2 0x13** | Control bytes; autopilot console frames and summary (unchanged protocol) | — |
 | **Sys Info Display 0x14** | §14 | New |
 
-**Every display reports its own Simpit link state** in its status packet, so the Sys Info Display can show it. Display firmware change (§17).
+**Every display already reports its own Simpit link state:** bit 0 of the flags byte in its status packet (I2C spec §15.2). The master reads each display's status every 500 ms and passes the link bits to the Sys Info Display. No display change is needed for this.
 
 ### 13.1 Input test screen (Info Display 1)
 
@@ -642,16 +643,7 @@ The old sketch declares a watchdog but never starts it. This is the design (sett
 | **SWITCH ERR window** | While SWITCH ERR is lit | In front of the status screen, naming each switch in error (switch, expected, actual) until all clear |
 
 - **Graphics:** small icons and logos from its microSD card (set to be chosen, §18).
-- **Protocol (0x14), outline.** The detailed layouts are part of stage 1:
-
-  | Frame | Content |
-  |---|---|
-  | Boot line | Severity + text (≤ 40 characters) |
-  | Boot done | Switch to the status screen |
-  | Status | Voltage, current, power, temperature, fan RPM, link bitmap, every 500 ms |
-  | Switch-error list | Switch ids with expected / actual, on change |
-
-  Plus the usual PROCEED / control byte and a status packet back.
+- **Protocol (0x14):** I2C Protocol Specification §15.4 (sync 0xAF). Frames: CONTROL (heartbeat), BOOT_LINE (with REPLACE for the live waiting line), BOOT_DONE, STATUS, SWITCH_ERR; and a 4-byte status read. The master keeps the boot lines it sent before the display answered and replays them when it does.
 
 ## 15. Verification
 
@@ -691,9 +683,9 @@ From Inventory §11:
 
 | # | Where | Change |
 |---|---|---|
-| 1 | Annunciator | Tile THRTL ENA → A/P ARM; touch DOCK to toggle (a real dock / undock event overrides it); demo follows the flag only; report its Simpit link state |
-| 2 | Info Displays | Demo follows the flag only; report link state; Info Display 1: input test screen, two-finger gesture, its frame |
-| 3 | Resource Display | Demo follows the flag only; report link state |
+| 1 | Annunciator | Tile THRTL ENA → A/P ARM; touch DOCK to toggle (a real dock / undock event overrides it); demo follows the flag only |
+| 2 | Info Displays | Demo follows the flag only; Info Display 1: input test screen, two-finger gesture, its frame |
+| 3 | Resource Display | Demo follows the flag only |
 | 4 | Sys Info Display | New firmware: boot, status and SWITCH ERR screens; microSD icons; its protocol |
 | 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release |
 | 6 | Pre-Warp module | BTN03 preset 1440 → 360 min (1 Kerbin day) |
@@ -701,7 +693,7 @@ From Inventory §11:
 | 8 | AUX CTRL module | B8 UNDOCK; B10 PRI, B11 ALT |
 | 9 | Stability Control module | B10 HOLD |
 | 10 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 UNDOCK |
-| 11 | I2C Protocol Specification | Sys Info protocol; input test frame; display link-status bit; EVA lifecycle |
+| 11 | I2C Protocol Specification | Input test frame; EVA lifecycle (the Sys Info protocol is in, §15.4) |
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
 | 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
@@ -710,11 +702,12 @@ From Inventory §11:
 
 | # | Item | Needed by |
 |---|---|---|
-| 1 | Sys Info Display frame layouts (§14) | Stage 1 |
-| 2 | Sys Info Display icons / logos | Its firmware |
-| 3 | Input test screen: layout and frame (§13.1) | Its firmware |
-| 4 | WARP TO availability, checked against Simpit on the bench (§8.8) | Stage 6 |
-| 5 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |
+| 1 | Sys Info Display icons / logos | Its firmware |
+| 2 | Input test screen: layout and frame (§13.1) | Its firmware |
+| 3 | WARP TO availability, checked against Simpit on the bench (§8.8) | Stage 6 |
+| 4 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |
+| 5 | Bench: the SNVS general-purpose registers keep the breadcrumb through a WDOG1 reset, and `SRC_SRSR` reports the watchdog (§12.3) | Stage 1 bench test |
+| 6 | Bench: a parked vessel still produces inbound Simpit traffic, so SIMPIT LOST (5 s) and the re-handshake (10 s) do not trip falsely (§9) | Stage 1 bench test |
 
 ---
 
