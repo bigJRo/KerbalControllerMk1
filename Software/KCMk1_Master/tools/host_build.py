@@ -14,7 +14,9 @@ Serial and the I2C bus.
   python3 tools/host_build.py --all [--simpit DIR]   # both, plus the config check
 
 The config check compares the display addresses and sync bytes in config.h with
-Software/Displays/libraries/KCMk1_SystemConfig, so the two cannot drift apart.
+Software/Displays/libraries/KCMk1_SystemConfig, and the sketch's copy of body_params.h
+with Software/Common/body_params.h (the IDE cannot include outside the sketch), so
+neither can drift apart.
 
 Exit status 0 when everything passes.
 """
@@ -35,6 +37,8 @@ HOST     = os.path.join(HERE, "host")
 KMC      = os.path.join(SOFTWARE, "Modules", "libraries", "KerbalModuleCommon", "src")
 TESTS    = os.path.join(HERE, "tests")
 SYSCFG   = os.path.join(SOFTWARE, "Displays", "libraries", "KCMk1_SystemConfig", "src", "KCMk1_SystemConfig.h")
+COMMON   = os.path.join(SOFTWARE, "Common")
+COPIES   = ["body_params.h"]                 # sketch copies of Software/Common headers
 
 FLAGS = ["-std=gnu++17", "-Wall", "-Wextra", "-Werror", "-Wno-unused-parameter",
          "-Wno-format-truncation", "-DKCM_HOST=1"]
@@ -121,7 +125,11 @@ def config_check():
         if not a or not b or int(a.group(1), 16) != int(b.group(1), 16):
             print("  config mismatch: %s %s vs %s %s" % (mine, a and a.group(1), theirs, b and b.group(1)))
             ok = False
-    print("== config check (vs KCMk1_SystemConfig): %s" % ("OK" if ok else "FAILED"))
+    for name in COPIES:
+        if open(os.path.join(SKETCH, name)).read() != open(os.path.join(COMMON, name)).read():
+            print("  %s differs from Software/Common/%s: copy it again" % (name, name))
+            ok = False
+    print("== config check (vs KCMk1_SystemConfig, Software/Common): %s" % ("OK" if ok else "FAILED"))
     return ok
 
 
