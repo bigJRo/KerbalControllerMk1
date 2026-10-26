@@ -32,3 +32,9 @@ bool kspActionGroup(uint8_t action, bool on);
 // Main throttle, 0..INT16_MAX. Stage 5 adds the per-frame owner merge; until then only
 // the ENGINE interlock sends it (0 %).
 bool kspThrottle(int16_t value);
+// Custom action groups 1..255: CAGACTIVATE / CAGDEACTIVATE / CAGTOGGLE.
+enum CagOp : uint8_t { CAG_ACTIVATE, CAG_DEACTIVATE, CAG_TOGGLE };
+bool kspCag(CagOp op, uint8_t group);
+bool kspActionToggle(uint8_t action);     // AGTOGGLE (LIGHTS, LANDING GEAR buttons)
+bool kspSasMode(uint8_t mode);            // AutopilotMode
+bool kspKey(int16_t vk, uint8_t modifier = 0);   // KEYBOARD_EMULATOR (keys.h tracks held keys)

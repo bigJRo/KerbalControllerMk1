@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Master_Firmware_Design.md` |
-| **Status** | Draft 5, approved. Stages 1–3 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
+| **Status** | Draft 5, approved. Stages 1–4 are built in `Software/KCMk1_Master` (§16); rules settled while building are marked *(stage n)* |
 | **Draft 5** | Rebuilt from the board-by-board and panel-by-panel review recorded in `Hardware_Inventory.md`. Adds the start-up / boot reporting design, demo and debug modes, the new autopilot authority rule, the Sys Info Display, and the watchdog design (§12.3) |
 | **Supersedes** | Drafts 1–4, and `Controller_Main_IO_Design.md` |
 
@@ -120,7 +120,7 @@ The same order every pass, with nothing blocking:
 | 5 | `switchesService()`, `interlockService()` | Switch Groups 1 and 2, mode selector, SWITCH ERR; ENGINE SAFE / ARM and the lever, A/P INHIB |
 | 6 | `autopilotService()` | Autopilots, HOLD and the arbiter |
 | 7 | `kspOutService()` | Merged stick / throttle message (every 20 ms or on an owner change) and queued commands; nothing in demo |
-| 8 | `moduleBusFlushLeds()` | LED changes, at most every 50 ms per module |
+| 8 | `panelsService()`, `moduleBusFlushLeds()` | Each panel tab sets its LEDs from the current state; the bus sends the changes, at most every 50 ms per module |
 | 9 | `carrierService()` | Display commands every 100 ms and on change; consoles; input test frame |
 | 10 | `sysInfoService()` | Sys Info Display: boot lines, status frame, switch-error list |
 | 11 | `boardServiceSlow()` | Fan (1 Hz), power monitor (4 Hz), loop timing |
@@ -151,7 +151,9 @@ Software/KCMk1_Master/
 ├─ panel_ui.cpp         UI Control            0x20
 ├─ panel_function.cpp   Function Control      0x21
 ├─ panel_action.cpp     Action Control        0x22
+├─ panels.h/.cpp       the shared panel rules (§8.1) and the tab list
 ├─ panel_stability.cpp  Stability Control     0x23  (SAS, HOLD, INVERT)
+├─ hold.h/.cpp          HOLD (§8.4)
 ├─ panel_vehicle.cpp    Vehicle Control       0x24  state machines
 ├─ panel_time.cpp       Time Control          0x25  + Pre-Warp 0x2B
 ├─ panel_aux.cpp        AUX CTRL              0x26
@@ -322,6 +324,15 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
   - **dark when it is not usable**, and its press is then ignored. That covers EVA buttons outside EVA, SAS modes with SAS off or unavailable, chutes with CHUTE SAFE, and WARP TO buttons whose event does not exist.
 - **Momentary-only buttons** (UI Control, etc.) flash ACTIVE for 150 ms; KSP reports none of their states.
 
+*(stage 4)*
+- **One tab per module.** Each tab handles its module's events and sets all its LEDs every pass from the current state, so a LED never shows a stale state. The bus sends only the changes.
+- **Presses act on KSP** only in a flight scene with the link up and demo off. Most act on the press (a tap between two reads included). The state machines act on release.
+- **Demo LEDs:** a usable button is backlit and ACTIVE while held. A switch still darkens the buttons it gates: CHUTE SAFE the chutes, SAS OFF the SAS modes. The EVA group is backlit in demo.
+- **CAG buttons send CAGTOGGLE;** the state machines send only CAGACTIVATE (and CAGDEACTIVATE for the 2 s reset).
+- **Before KSP reports the groups** in a flight scene, every CAG button shows backlit. The master asks for CAGSTATUS, ACTIONSTATUS and SAS_MODE_INFO on entering a flight.
+- **The control-group offset applies to UNDOCK too:** CAG 37 + offset, like every CAG button but Action Control's.
+- **Held keys** (INVERT's F) are released when the flight ends, the link drops or demo starts.
+
 ### 8.2 Switch Group 1 (Function Control B16–B23)
 
 | Input | Switch | Type | Does |
@@ -404,7 +415,14 @@ Current mode and availability come from Simpit `SAS_MODE_INFO` (mode 255 = SAS o
 - **Released by:** a second press, A/P disconnect, or a console autopilot engaging.
 - **While holding:** the LED is ACTIVE and the Annunciator's AUTOPILOT lights.
 
-**INVERT (B11):** holds F while held.
+**INVERT (B11):** holds F while held. *(stage 4)* Dark and ignored on EVA, where F is GRAB.
+
+*(stage 4)* **HOLD as built:**
+- **SPC:** turns SAS on and sets Stability Assist. On release SAS goes back to what it was: off, or its previous mode.
+- **PLN and RVR need the hold autopilot,** ported in stage 7. Until then HOLD is dark in those modes and its press is ignored.
+- **Also released by:** leaving the flight or the link dropping, EVA, a vessel change, a control-mode change, demo, and MSTR RESET. Not released by A/P INHIB or ENGINE SAFE.
+- **While engaged,** SWITCH ERR does not check SAS.
+- **A/P disconnect:** the rotation stick button (stage 5) calls `holdRelease()`.
 
 ### 8.5 Vehicle Control state machines (HEAT SHIELD, MAIN, DROGUE)
 
@@ -494,7 +512,7 @@ The availability rules are checked against Simpit on the bench.
 | **UI Control** | Keyboard and Simpit navball cycle per Inventory §10.7 |
 | **Throttle** | Lever, 100 % / UP / DOWN / 0 % buttons, all under the ENGINE and autopilot rules. **FINE** is dropped while an autopilot owns the throttle and restored after |
 | **GPWS, Pre-Warp** | Module-managed. The master relays GPWS state to the Annunciator and reads the Pre-Warp minutes |
-| **Dual Encoder** | **ENC1:** control group 1–6 (wraps). **ENC1 button:** resets it to 1. **ENC2:** camera next / previous. **ENC2 button:** camera reset |
+| **Dual Encoder** | **ENC1:** control group 1–6 (wraps), also in demo. **ENC1 button:** resets it to 1. **ENC2:** camera next / previous, one `=` / `-` key per detent, at most 5 per read. **ENC2 button:** camera reset (Backspace) |
 
 ## 9. Annunciator fields
 
@@ -697,7 +715,7 @@ One PR per stage.
 | 1 | **Skeleton and boot** | `config.h`, state, `simpit_link`, display commands, boot sequence (§5), Sys Info protocol (master side), debug log and console, watchdog, host tools | Boots against the simulator with modules missing; boot lines correct; displays released before KSP; 2 s reconnect; watchdog report after a forced hang. **Built** |
 | 2 | **Module bus** | Table, INT learning + EEPROM, events (incl. hold / release), LEDs, lifecycle, demo enable | Every module comes up, follows the scene, is found after re-cabling. **Built** |
 | 3 | **Switches and interlocks** | Switch Groups 1 and 2, SWITCH ERR, ENGINE SAFE / ARM, A/P INHIB, mode selector, safe lines (ABORT, STAGE), demo / debug | All §8.2, §8.3, §8.6 rules pass in the selftest. **Built** |
-| 4 | **Flight panels** | Vehicle (state machines), Stability (SAS, HOLD), Action, AUX, Dual Encoder, CAG map | §8.4, §8.5, §8.9 pass |
+| 4 | **Flight panels** | Vehicle (state machines), Stability (SAS, HOLD), Action, AUX, Dual Encoder, CAG map | §8.4, §8.5, §8.9 pass. **Built** (HOLD in PLN / RVR waits for stage 7) |
 | 5 | **Sticks and throttle** | `ksp_out` arbitration, stick mapping, trim, camera, EVA keys, lever, throttle buttons, FINE handling | §7, §8.7 pass |
 | 6 | **Remaining panels** | UI, Function, Time + Pre-Warp (availability), GPWS | All of §8 covered |
 | 7 | **Autopilots** | Port (§11), authority rule, Info Display 2 consoles | Autopilot checks pass; consoles engage / disengage |
@@ -743,6 +761,8 @@ From Inventory §11:
 | 7 | Bench: a DISABLED button module answers a read with its current inputs, so the switches work in the menus (§6.2) | Stage 3 bench test |
 | 8 | Bench: KSP's GEAR action group reads active with the gear down, and each Switch Group 2 switch's "on" position matches its group (§8.3) | Stage 3 bench test |
 | 9 | Bench: the Throttle module's touch flag and the lever drive back to 0 % after a touch while SAFE (§8.2) | Stage 3 bench test |
+| 10 | Bench: Simpit's keyboard emulator reaches KSP for the EVA keys, INVERT's held F and the Hullcam keys (KSP must have focus) | Stage 4 bench test |
+| 11 | Bench: CAGSTATUS bit n is custom action group n, and a requested CAGSTATUS / SAS_MODE_INFO arrives on entering a flight | Stage 4 bench test |
 
 ---
 

@@ -98,7 +98,7 @@ struct deltaVEnvMessage       { float stageDeltaVASL, totalDeltaVASL, stageDelta
 struct burnTimeMessage        { float stageBurnTime, totalBurnTime; };
 struct tempLimitMessage       { byte tempLimitPercentage, skinTempLimitPercentage; };
 struct throttleMessage        { int16_t throttle; };
-struct SASInfoMessage         { byte currentSASMode; int16_t SASModeAvailability; };
+struct SASInfoMessage         { byte currentSASMode; int16_t SASModeAvailability; } __attribute__((packed));
 struct cagStatusMessage       { byte status[32]; bool is_action_activated(byte i) { return (status[i / 8] >> (i % 8)) & 1; } };
 
 // Command payloads, with the library's constructors (no default constructor where it has none).

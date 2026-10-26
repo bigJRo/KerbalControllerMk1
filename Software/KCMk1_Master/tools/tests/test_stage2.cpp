@@ -8,8 +8,9 @@ static std::vector<ModEvent> g_ev;
 static void recordEvent(const ModEvent &e) { ModEvent c = e; c.pkt = nullptr; g_ev.push_back(c); }
 static void hookAll() { for (uint8_t i = 0; i < MOD_COUNT; i++) moduleBusSetHandler((ModId)i, recordEvent); }
 
-// powerOnBoot() with every module's events recorded.
-static void boot2(Bench &b, uint32_t srsr = 1) { powerOnBoot(b, srsr); hookAll(); }
+// powerOnBoot() with every module's events recorded, and the panel tabs out of the way
+// (they would set the LEDs this file sets by hand).
+static void boot2(Bench &b, uint32_t srsr = 1) { powerOnBoot(b, srsr); hookAll(); panelsSetEnabled(false); }
 
 static void testDiscovery(Bench &b) {
   printf("modules: discovery and INT learning at power-on\n");
@@ -49,7 +50,7 @@ static void testRecable(Bench &b) {
   for (auto &m : b.mods) { m.cmds.clear(); m.life = KMC_STATUS_DISABLED; m.setInt(false); }
   b.attachAll(); b.rig.si.frames.clear();
   resetStubs(); stubSrsr() = 1u << 1;      // software reset
-  setup(); hookAll();
+  setup(); hookAll(); panelsSetEnabled(false);
   CHECK(intLineOf(MOD_VEHICLE) == L_BINT(1) && intLineSource(L_BINT(1)) == SRC_STORED, "restart uses the stored map");
   CHECK(b.rig.si.sevOf("24 VEHICLE") == SEV_OK, "no re-learning needed");
   // Put the cabling back for the rest of the tests.
@@ -188,7 +189,7 @@ static void testHealth(Bench &b) {
   ModuleSim wrong(0x25, KMC_TYPE_UI_CONTROL, KMC_BUTTON_PACKET_SIZE, L_BINT(3), KIND_BUTTONS);
   b.attachAll(); Wire.attach(0x25, &wrong);
   b.rig.si.frames.clear(); resetStubs(); b.powerOnAll(); wrong.powerOn(); stubSrsr() = 1;
-  setup(); hookAll();
+  setup(); hookAll(); panelsSetEnabled(false);
   CHECK(b.rig.si.sevOf("25 TIME") == SEV_ERROR && b.rig.si.shows("WRONG TYPE"), "wrong module type reported");
   CHECK(!modulePresent(MOD_TIME), "wrong module not used");
 }
@@ -198,7 +199,7 @@ static void testReprobe(Bench &b) {
   b.attachAll(); Wire.detach(0x2B);
   b.rig.si.frames.clear(); resetStubs(); b.powerOnAll(); stubSrsr() = 1;
   stubSimpit().kspUp = false;
-  setup(); hookAll();
+  setup(); hookAll(); panelsSetEnabled(false);
   CHECK(b.rig.si.sevOf("2B PRE-WARP") == SEV_ERROR && !modulePresent(MOD_PREWARP), "missing at boot");
   Wire.attach(0x2B, &b.m(MOD_PREWARP));
   runFor(5100);
@@ -222,7 +223,7 @@ static void testReprobe(Bench &b) {
   ModuleSim &s = b.m(MOD_STABILITY);
   for (auto &m : b.mods) { m.cmds.clear(); m.life = KMC_STATUS_DISABLED; m.setInt(false); }
   b.attachAll(); b.rig.si.frames.clear(); resetStubs(); stubSrsr() = 1;
-  setup(); hookAll();
+  setup(); hookAll(); panelsSetEnabled(false);
   CHECK(intLineOf(MOD_STABILITY) == 0xFF && b.rig.si.shows("POLLED"), "no line: polled");
   enterFlight();
   s.setInt(false);
@@ -239,7 +240,7 @@ static void testWatchdogRestart(Bench &b) {
   for (auto &m : b.mods) m.cmds.clear();
   b.attachAll(); b.rig.si.frames.clear(); resetStubs(); stubSrsr() = 1u << 4;
   stubRetain()[0] = stubRetain()[1] = stubRetain()[2] = 0;
-  setup(); hookAll();
+  setup(); hookAll(); panelsSetEnabled(false);
   bool noDisable = true; for (auto &m : b.mods) if (m.countCmd(KMC_CMD_DISABLE) || m.life != KMC_STATUS_ACTIVE) noDisable = false;
   CHECK(noDisable, "modules left ACTIVE");
 }
