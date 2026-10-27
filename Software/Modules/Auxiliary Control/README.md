@@ -1,8 +1,8 @@
 # KCMk1_Auxiliary_Control
 
 **Module:** Auxiliary Control (AUX CTRL)  
-**Version:** 1.1  
-**Date:** 2026-06-28  
+**Version:** 2.0  
+**Date:** 2026-10-27  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1802 Button Module Base v1.1  
@@ -12,7 +12,7 @@
 
 ## Overview
 
-The Auxiliary Control module (AUX CTRL) provides twelve mixed-function buttons for Kerbal Space Program: EVA kerbal controls, rover cruise control, and vessel control-point selection. The functions are grouped by game context — most buttons act only during EVA, one is rover-specific, and the control-point buttons work in all modes.
+The Auxiliary Control module (AUX CTRL) provides twelve mixed-function buttons for Kerbal Space Program: EVA kerbal controls, undocking, and vessel control-point selection. The functions are grouped by game context — most buttons act only during EVA, and UNDOCK and the two control-point buttons (PRI, ALT) work in all modes (Module UI Reference v6.0 §9.7).
 
 This module replaces the former standalone 6-button EVA module (PCB KC-01-1852). It is now a standard 12-button KerbalButtonCore module built on the KC-01-1802 Button Module Base, identical in form to Action Control and UI Control.
 
@@ -48,13 +48,13 @@ Physical panel orientation: 2 rows × 6 columns. Column 6 is leftmost, Column 1 
             (left)                                                          (right)
           +-----------+-----------+-----------+-----------+-----------+-----------+
  Row 1    |    B10    |    B8     |    B6     |    B4     |    B2     |    B0     |
-          | CP Toggle | Cruise    | EVA Chute | Jump /    | Board     | EVA       |
-          |  (ROSE)   | Control   | (AMBER)   | Let Go    | Craft     | Lights    |
-          |           | (GOLD)    |           |(CHARTREUSE)| (GREEN)  | (MINT)    |
+          | CTRL PT   | UNDOCK    | EVA Chute | Jump /    | Board     | EVA       |
+          | PRI       | (GOLD)    | (AMBER)   | Let Go    | Craft     | Lights    |
+          | (ROSE)    |           |           |(CHARTREUSE)| (GREEN)  | (MINT)    |
           +-----------+-----------+-----------+-----------+-----------+-----------+
  Row 2    |    B11    |    B9     |    B7     |    B5     |    B3     |    B1     |
-          | CP Docking| Plant Flag| Helmet    | Grab      | EVA       | Jetpack   |
-          | Port      | (SEAFOAM) | Toggle    | (SEAFOAM) | Construct.| Enable    |
+          | CTRL PT   | Plant Flag| Helmet    | Grab      | EVA       | Jetpack   |
+          | ALT       | (SEAFOAM) | Toggle    | (SEAFOAM) | Construct.| Enable    |
           | (PINK)    |           | (SKY)     |           | (TEAL)    | (LIME)    |
           +-----------+-----------+-----------+-----------+-----------+-----------+
 ```
@@ -79,52 +79,52 @@ The function is resolved controller-side; the module reports button events only.
 | B5 | BUTTON06 | Grab | SEAFOAM | isEVA | KEYBOARD_EMULATOR F |
 | B6 | BUTTON07 | EVA Chute | AMBER | isEVA | KEYBOARD_EMULATOR P |
 | B7 | BUTTON08 | Helmet Toggle | SKY | isEVA | KEYBOARD_EMULATOR O |
-| B8 | BUTTON09 | Cruise Control | GOLD | rover mode | Controller-side hold — press to set wheel throttle, press again to release |
+| B8 | BUTTON09 | UNDOCK | GOLD | all modes | Toggles base CAG 37; lit while KSP reports the group active |
 | B9 | BUTTON10 | Plant Flag | SEAFOAM | isEVA | KEYBOARD_EMULATOR G (controller flashes briefly on press, returns to ENABLED) |
-| B10 | BUTTON11 | CP Toggle (PRI/ALT) | ROSE (Primary) / CORAL (Alternate) | all modes | Cycles base CAG 35/36 (mutually exclusive) |
-| B11 | BUTTON12 | CP Docking Port | PINK | all modes | Base CAG 37 (deactivates PRI/ALT) |
+| B10 | BUTTON11 | Control point PRI | ROSE | all modes | Base CAG 35 (deactivates ALT, then activates PRI) |
+| B11 | BUTTON12 | Control point ALT | PINK | all modes | Base CAG 36 (deactivates PRI, then activates ALT) |
 
 KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 
 #### Context Notes
 
-- **EVA buttons (B0–B7, B9)** act only when the controller has `isEVA = true`. With no kerbal on EVA the controller leaves these in the ENABLED (dim white) state and ignores presses.
-- **Cruise Control (B8)** is a rover-mode function. It is a controller-side hold: the first press sets the wheel throttle, the next press releases it.
+- **EVA buttons (B0–B7, B9)** act only when the controller has `isEVA = true`. With no kerbal on EVA the master leaves these dark (OFF) and ignores presses (Module UI Reference §9.7).
+- **UNDOCK (B8)** works in all modes. Each press toggles base CAG 37 (undock / decouple docking ports); the LED is lit while KSP reports the group active. The panel has no UNDOCK label yet (Module UI Reference §15).
 - **Control-Point buttons (B10/B11)** work in all modes (see Control Point Logic below).
+- **UNDOCK, PRI and ALT** carry the control-group offset: CAG = base + (control group − 1) × 40 (Module UI Reference §4).
 - **Plant Flag (B9)** is momentary — the controller flashes the button briefly on press, then returns it to ENABLED.
 
 ### Color Design Notes
 
 - **EVA cluster (B0–B7, B9)** — each EVA action carries a distinct hue so the active kerbal action is identifiable at a glance: EVA Lights (MINT), Jetpack Enable (LIME), Board Craft (GREEN), EVA Construction (TEAL), Jump / Let Go (CHARTREUSE), Grab (SEAFOAM), EVA Chute (AMBER), Helmet Toggle (SKY), Plant Flag (SEAFOAM). Grab and Plant Flag share SEAFOAM as paired "interact with the world" actions.
-- **Cruise Control (GOLD)** — gold marks the rover throttle hold, consistent with power/throttle-adjacent gold elsewhere on the controller.
-- **Control Point (ROSE / CORAL / PINK)** — the control-point cluster shares the warm rose/pink family. ROSE is Primary, CORAL is Alternate, PINK is the Docking-Port control point. See Control Point Logic.
+- **UNDOCK (GOLD)** — the colour this position already had as Cruise Control, kept for UNDOCK.
+- **Control Point (ROSE / PINK)** — the two control-point buttons share the warm rose/pink family. ROSE is PRI (B10), PINK is ALT (B11). See Control Point Logic.
 
 ### Control Point Logic
 
-B10 (CP Toggle) and B11 (CP Docking Port) select the vessel control point. The three states are **mutually exclusive** and are managed controller-side via base Custom Action Groups (CAGs) 35, 36, and 37, adjusted by the active control-group offset:
+B10 (PRI) and B11 (ALT) select the vessel control point. They are two separate buttons, managed controller-side via base Custom Action Groups (CAGs) 35 and 36, adjusted by the active control-group offset (Module UI Reference §9.7):
 
-| State | Source Button | Base CAG | Active Color |
+| Control point | Button | Base CAG | Active Color |
 |---|---|---|---|
-| Primary | B10 (press once) | 35 | ROSE |
-| Alternate | B10 (press again) | 36 | CORAL |
-| Docking Port | B11 | 37 | PINK |
+| Primary (PRI) | B10 | 35 | ROSE |
+| Alternate (ALT) | B11 | 36 | PINK |
 
-- **B10 CP Toggle** cycles between Primary (CAG 35) and Alternate (CAG 36). Selecting either deactivates the Docking-Port control point.
-- **B11 CP Docking Port** selects CAG 37 and deactivates both Primary and Alternate.
-- B10 renders **ROSE** (Primary) via `KBC_LED_ACTIVE` and **CORAL** (Alternate) via `KBC_LED_ACTIVE_ALT` — the Alternate colour is supplied by the sketch's `altColors` array (KerbalButtonCore v2.2). The controller drives the mutually-exclusive PRI / ALT / Docking-Port logic by sending the appropriate LED state per button; a deactivated control point returns to ENABLED. (`KBC_LED_ACTIVE_ALT` is a core rendering feature and does not require extended states.)
+- **Pressing one switches to that control point.** The controller deactivates the other's CAG first, then activates its own.
+- **Its LED stays lit (ACTIVE)** to show which control point is active.
+- **Pressing the one already active does nothing.**
+- Each button has a single ACTIVE colour; the module uses no alternate colours.
 
 ---
 
 ## LED States
 
-This module uses core LED states plus the alternate active colour for the CP Toggle. It has no flash/extended states.
+This module uses core LED states only. It has no alternate colours and no flash/extended states.
 
 | State | NeoPixel Behavior |
 |---|---|
 | OFF | Unlit |
 | ENABLED | Dim white backlight |
-| ACTIVE | Full brightness, primary button color (B10 = ROSE) |
-| ACTIVE_ALT | Full brightness, alternate color — B10 only (CORAL) |
+| ACTIVE | Full brightness, button color |
 
 The module powers on dark (BOOT_READY → DISABLED). On `CMD_ENABLE` from the controller, all 12 NeoPixel buttons illuminate to the ENABLED (dim white) state. The controller then drives individual buttons to ACTIVE as game context dictates.
 
@@ -146,10 +146,10 @@ PCB connectors P2/P3/P4 map BUTTON01–BUTTON12 to KBC indices 0–11 in order.
 | P3 | BUTTON06 | 5 | Grab |
 | P3 | BUTTON07 | 6 | EVA Chute |
 | P3 | BUTTON08 | 7 | Helmet Toggle |
-| P4 | BUTTON09 | 8 | Cruise Control |
+| P4 | BUTTON09 | 8 | UNDOCK |
 | P4 | BUTTON10 | 9 | Plant Flag |
-| P4 | BUTTON11 | 10 | CP Toggle (PRI/ALT) |
-| P4 | BUTTON12 | 11 | CP Docking Port |
+| P4 | BUTTON11 | 10 | Control point PRI |
+| P4 | BUTTON12 | 11 | Control point ALT |
 
 KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 
@@ -238,3 +238,4 @@ Module Type ID 0x07 · firmware major/minor · capability flags 0x00
 |---|---|---|
 | 1.0 | 2026-06-28 | Initial release. Replaces the former standalone 6-button EVA module (KC-01-1852) with a standard 12-button KerbalButtonCore module on the KC-01-1802 Button Module Base. Adds Cruise Control (B8) and the control-point cluster (B10 CP Toggle PRI/ALT, B11 CP Docking Port). KerbalButtonCore v2.1.0, I2C protocol v2.6; core LED states only (no extended states). |
 | 1.1 | 2026-06-28 | CP Toggle (B10) now renders the canonical CORAL Alternate colour via the new `KBC_LED_ACTIVE_ALT` state (KerbalButtonCore v2.2 / KerbalModuleCommon v1.6), using the sketch's `altColors` array — ROSE for Primary (`ACTIVE`), CORAL for Alternate (`ACTIVE_ALT`). No longer ROSE-only. |
+| 2.0 | 2026-10-27 | B8 is UNDOCK (GOLD, base CAG 37 toggle, all modes), replacing Cruise Control. B10 is control point PRI (ROSE, base CAG 35) and B11 control point ALT (PINK, base CAG 36), two separate buttons replacing the CP Toggle PRI / ALT and CP Docking Port scheme (Module UI Reference v6.0 §9.7). The CORAL alternate colour, the `altColors` array and the use of `KBC_LED_ACTIVE_ALT` are removed. |

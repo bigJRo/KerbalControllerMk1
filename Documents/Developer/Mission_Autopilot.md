@@ -492,13 +492,13 @@ unchanged.
 | `0xA6` | AIRCRAFT AP | **48** | as before, `latMode` 3 = NAV, `pitchMode` 5 = GS, float [8] = gs angle, [9] = cmdThrottle |
 | `0xA7` | ROVER AP | **36** | as before plus flags bit6 follow, floats [5] followRange, [6] stopDist, [7] cmdWheel |
 | `0xA8` | ORBITAL | 52 | byte 1 flags: bit0 armed, bit1 executing, bit2 autoWarp, bit3 autoStage, bit4 targetAvailable, bit5 nodeAvailable, bit6 apprEngaged; byte 2 mode (0 none, 1 NODE, 2 AP, 3 PE, 4 INC); byte 3 phase (0 IDLE, 1 PLANNED, 2 ALIGN, 3 WARP READY, 4 WARPING, 5 BURN, 6 DONE, 7 ABORT; a re-plan returns to 1 PLANNED with reason REPLAN); byte 4 reason; byte 5 reasonAge; 6–7 reserved; floats [0] targetAp, [1] targetPe, [2] targetInc, [3] apprRate, [4] apprDist, [5] dvTotal, [6] dvRemaining, [7] tIgnition, [8] burnDuration, [9] accelEst, [10] cmdThrottle |
-| `0xAA` | SUMMARY (every screen) | 8 | byte 1 ascent flags (as `0xA5` byte 1), 2 aircraft flags (as `0xA6` byte 1), 3 rover flags (as `0xA7` byte 1), 4 orbital flags (as `0xA8` byte 1), 5 landing flags (as `0xA9` byte 1), 6 landing mode, 7 entryEngaged |
+| `0xAA` | SUMMARY (every screen) | 9 | byte 1 ascent flags (as `0xA5` byte 1), 2 aircraft flags (as `0xA6` byte 1), 3 rover flags (as `0xA7` byte 1), 4 orbital flags (as `0xA8` byte 1), 5 landing flags (as `0xA9` byte 1), 6 landing mode, 7 entryEngaged, 8 the master's control group 1–6 (for the CAG indicators; added 2026-10-27) |
 | `0xA9` | LANDING | 44 | byte 1 flags: bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefVert (ATT REF = VERT), bit4 autoStage, bit5 landed, bit6 brakeMarginal, bit7 vertHold (the vertical hold is flying; SAS off); byte 2 mode (0 OFF, 1 DESC, 2 HOVR, 3 BRAKE); byte 3 entryEngaged; byte 4 reason; byte 5 reasonAge; byte 6 accelSource (0 EST, 1 MEAS, 2 TWR); 7 reserved; floats [0] descRate, [1] hovrAlt, [2] twrOverride, [3] margin, [4] entryAoa, [5] entryRoll, [6] ignitionAlt, [7] accelEst, [8] cmdThrottle |
 
 **Summary frame (#83).** The full frame goes only to Info Display 2 and only for the console on
 screen, so neither display would otherwise know an autopilot is engaged off its console: the
 mission ladder's rule 0 and the console ring could not see it. Every 100 ms the master also
-writes the 8-byte `0xAA` summary to **both** Info Displays. Its bytes are the same flag bytes the
+writes the 9-byte `0xAA` summary to **both** Info Displays. Its bytes are the same flag bytes the
 full frames carry, built by the same helpers, so the two can never disagree; a display applies
 the summary after any full frame in the same cycle. Demo mode ignores it.
 

@@ -1,13 +1,13 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.0 | 2026-10-26
+**Jeb's Controller Works** | v6.1 | 2026-10-27
 
 | | |
 |---|---|
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.8.0, all eight stages built) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.8.1) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -64,7 +64,7 @@ KerbalSimpit is the link to KSP. Simpit's keyboard emulator only reaches KSP whi
 
 ### 2.1 Input numbering
 
-**Bn** is the module firmware's input index, the same as the schematic net `BUTTONnn`. It matches the silkscreen (SW12–SW15 on the Button Module, B16–B23 on the Wide Button Module).
+**Bn** is the module firmware's input index. The schematic nets count from 1: Bn is net `BUTTON`(n + 1), so B0 = `BUTTON01`. It matches the silkscreen (SW12–SW15 on the Button Module, B16–B23 on the Wide Button Module).
 
 | Board | B0–B11 | B12–B15 | B16–B23 |
 |---|---|---|---|
@@ -254,7 +254,7 @@ The Annunciator shows the current group.
 - **State-machine pairs** use consecutive bases: deploy is the lower number, cut / release the higher.
 - **Base 1–12 in groups 2–6** (41–52, 81–92, …) are not used, because Action Control is not offset.
 - **Highest number used:** 239.
-- **Info Display AIRBRK indicator:** the AIRCRAFT screen shows the air brake from CAG `AIRBRAKE_CAG` (default 38, in the InfoDisp `AAA_Config.ino`; 0 turns it off). It reads that number as it is, without the control-group offset (§16).
+- **Info Display AIRBRK indicator:** the AIRCRAFT screen shows the air brake from CAG `AIRBRAKE_CAG` (default 38, in the InfoDisp `AAA_Config.ino`; 0 turns it off), with the same control-group offset as the AIR BRAKE button. The master sends the control group in byte 8 of the Info Display summary frame (InfoDisp v1.17).
 
 ---
 
@@ -512,7 +512,7 @@ An engaged autopilot or HOLD keeps full authority until it is disconnected delib
 |---|---|
 | A/P disconnect (rotation stick button, SPC / PLN) | Every autopilot and HOLD (reason A/P DISC) |
 | A/P INHIB | Every console autopilot; not HOLD |
-| A console's A/P OFF | Every console autopilot (and HOLD in PLN / RVR, which uses the hold autopilot; see §16) |
+| A console's A/P OFF | Every console autopilot and HOLD, in every mode |
 | HOLD's own button | HOLD |
 | ENGINE SAFE | Throttle-using modes: the ascent autopilot, a planned or running burn, IAS / MACH, CRUISE / FOLLOW, landing DESC / HOVR / BRAKE. Attitude modes stay |
 | The autopilot's own conditions | No node, SOI change, and so on |
@@ -573,7 +573,7 @@ Each module section gives the panel view, then every input. **LED** gives what t
 | B1 | LES | Launch escape system | 25 | RED |
 | B2 | LOCK SURFACES | Lock control surfaces | 34 | SKY |
 | B3 | AIR INTAKE | Air intakes | 33 | TEAL |
-| B4 | FLAPS | Flaps | 39 | Not chosen |
+| B4 | FLAPS | Flaps | 39 | SEAFOAM |
 | B5 | AIR BRAKE | Air brakes | 38 | CYAN |
 | B6 | [SCIENCE] COLLECT | Science collect | 28 | PURPLE |
 | B7 | [ENGINE] ALT | Alternate engine mode | 27 | ORANGE |
@@ -586,7 +586,7 @@ Each module section gives the panel view, then every input. **LED** gives what t
 
 - **Action:** each button toggles its CAG, with the control-group offset.
 - **LEDs:** lit while KSP reports the group active, backlit otherwise.
-- **Colours:** the column shows each function's colour as the module firmware has it today. The firmware's colour table still follows the old button order, so on the panel today each left / right pair shows the other's colour, and B4 / B5 show the old Airbrake (CYAN) / RW Disable (AMBER) colours. See §15.
+- **Colours:** each colour stays with its function (Function Control firmware v2.1). FLAPS is SEAFOAM, next to the other aero controls (SKY, TEAL, CYAN).
 
 ### 9.3 Action Control (0x22)
 
@@ -631,7 +631,7 @@ Each module section gives the panel view, then every input. **LED** gives what t
 | B7 | [SAS] RETROGRADE | SAS mode | Retrograde = 2 | GREEN |
 | B8 | [SAS] STABILITY ASSIST | SAS mode | Stability Assist = 0 | GREEN |
 | B9 | [SAS] MANEUVER | SAS mode | Maneuver = 9 | GREEN |
-| B10 | HOLD | HOLD on / off (§8.1) | — | Not chosen (firmware still has RCS's GREEN, §15) |
+| B10 | HOLD | HOLD on / off (§8.1) | — | MAGENTA (the usual autopilot colour; Stability Control firmware v2.1) |
 | B11 | INVERT | Holds F while held (KSP's SAS invert) | — | AMBER |
 | B12–B15 | — | Not connected | | |
 
@@ -766,10 +766,10 @@ All CAG numbers carry the control-group offset.
 | B5 | [EVA] GRAB | Grab | EVA | Key F | As B0 | SEAFOAM |
 | B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P | As B0 | AMBER |
 | B7 | [EVA] HELM | Helmet toggle | EVA | Key O | As B0 | SKY |
-| B8 | UNDOCK (new label) | Undock / decouple docking ports | Always | CAG 37 toggle | Lit while the group is active | GOLD (left from Cruise; to change) |
+| B8 | UNDOCK (new label) | Undock / decouple docking ports | Always | CAG 37 toggle | Lit while the group is active | GOLD |
 | B9 | [EVA] FLAG | Plant flag | EVA | Key G | As B0 | SEAFOAM |
 | B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 (below) | Lit while active | ROSE |
-| B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 (below) | Lit while active | PINK (left from Docking Port; to change) |
+| B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 (below) | Lit while active | PINK |
 | B12–B15 | — | Not connected | | | | |
 
 - **EVA group (B0–B7, B9):** dark outside EVA, and presses ignored. On EVA each press taps its key; KSP reports none of these states, so each flashes.
@@ -829,10 +829,10 @@ The module inverts AXIS2 itself (`KJC_AXIS2_INVERT`), so the master uses its val
 |---|---|---|---|
 | BTN01 | Cycle camera mode (auto / free / orbital / chase): `CAMERA_NEXT_MODE` | Backlit; flash | MAGENTA |
 | BTN02 | Camera reset: sends the auto camera mode | Backlit; flash | GREEN |
-| Stick button | Held: the stick moves the camera instead of translating | — | — |
+| Stick button | Held: the stick moves the camera instead of translating (on EVA, instead of the EVA keys) | — | — |
 
 - **Camera mode keeps working under an autopilot or HOLD.** Translation does not.
-- **Camera mode is not used on EVA:** there the stick drives the EVA keys.
+- **Camera mode works on EVA too.** While the button is held the stick moves the camera and its EVA keys (W A S D, Left Shift / Left Ctrl) are released; the rotation stick's EVA keys keep working.
 
 ### 10.3 Shared stick rules
 
@@ -909,7 +909,7 @@ A motorised 10 kΩ slide pot with an L293D H-bridge on its own 9 V supply, a cap
 
 ### 12.2 Rules
 
-- **The buttons move the lever, and the throttle follows the lever** like any pilot input. The master sends the lever command (design §8.9, *stage 5*).
+- **The buttons move the lever, and the throttle follows the lever** like any pilot input. The module only reports its buttons (Throttle firmware v2.1); the master sends the lever command (design §8.9, *stage 5*).
 - **The buttons are ignored** while the ENGINE is not ARMED, while an autopilot owns the throttle, and in FINE (a lever target is not the throttle there). In demo they move the lever (still subject to ENGINE and FINE).
 - **ENGINE SAFE:** 0 % to KSP, lever driven to 0 % (§6.3).
 - **Under an autopilot:** the autopilot sets the throttle and the master drives the lever to the same position (1 % band, at most one command per 200 ms), so the lever always shows the throttle KSP is using. The lever, its buttons and touch are ignored. While the pilot holds the lever, it is not driven; it goes back to the autopilot's position when released. (The confirmed design also has the motor push back against a hand for up to about 0.5 s: a Throttle firmware change, §15.)
@@ -977,18 +977,18 @@ The confirmed behaviour is what this document describes. These items do not matc
 
 | # | Where | Today | Confirmed | Source |
 |---|---|---|---|---|
-| 1 | Function Control module firmware | Colour table follows the old button order: B0 RED (LES), B1 AMBER (Fairing), B2 TEAL, B3 SKY, B4 CYAN (Airbrake), B5 AMBER (RW Disable), B6 ORANGE, B7 PURPLE, B8 YELLOW, B9 INDIGO, B10 CHARTREUSE, B11 BLUE | Swapped to the confirmed layout, so each colour stays with its function (§9.2). FLAPS colour to be chosen | Inventory §11 #4 |
+| 1 | Function Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: colour table in the old button order | Each colour with its function (§9.2); FLAPS SEAFOAM | Inventory §11 #4 |
 | 2 | Function Control panel label | B4 reads RW DISABLE | FLAPS | Inventory §11 #13 |
-| 3 | AUX CTRL module firmware | B8 GOLD (Cruise Control); B10 ROSE with a CORAL alternate (PRI / ALT toggle); B11 PINK (Docking Port) | B8 UNDOCK; B10 PRI; B11 ALT. Colours to be chosen; the B10 alternate colour is no longer used | Inventory §11 #5 |
+| 3 | AUX CTRL module firmware | **Fixed in v2.1 (2026-10-27).** Was: B8 Cruise Control, B10 PRI / ALT toggle with a CORAL alternate, B11 Docking Port | B8 UNDOCK GOLD; B10 PRI ROSE; B11 ALT PINK; no alternate colour | Inventory §11 #5 |
 | 4 | AUX CTRL panel label | B8 has no label | UNDOCK | Inventory §11 #13 |
-| 5 | Stability Control module firmware | B10 GREEN (RCS); comments and inputs still describe B14 / B15 as Stage / Stage Enable | B10 HOLD colour. B14 / B15 are unwired and the master ignores them | Inventory §11 #6 |
+| 5 | Stability Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: B10 GREEN (RCS); B14 / B15 described as Stage / Stage Enable | B10 HOLD MAGENTA. B14 / B15 are unwired and the master ignores them | Inventory §11 #6 |
 | 6 | Pre-Warp module firmware | BTN03 preset 1440 min (an Earth day) | 360 min (1 Kerbin day) | Inventory §11 #3 |
 | 7 | Button, joystick and throttle firmware | `CMD_BULB_TEST` runs a fixed 2 s test with `delay()` inside the I2C handler; the Throttle Module ignores the stop. The master keeps off the bus for 2.1 s, then sends the stop | Start / stop, no timeout, not blocking: LTG TEST lights for as long as it is held | Inventory §11 #19, design §6.4 |
 | 8 | Throttle module firmware | Refuses lever commands while touched, so the lever cannot be held against the pilot | Under an autopilot, push back against a hand for at most about 0.5 s (stall limit), then return the lever on release | Inventory §11 #15, design §11.3 |
-| 9 | Throttle module firmware | **Acts on its own buttons:** 100 % / 0 %, and UP / DOWN by about 5 % (51 ADC counts), whenever it is ENABLED and not touched — including in ENGINE SAFE, in FINE and under an autopilot. The master then also sends its own 10 % target from the last reported position | The module only reports its buttons; the master moves the lever, and ignores the buttons in SAFE, FINE and under an autopilot (§12.2). In SAFE the lever is driven back to 0 % anyway | Found for v6.0: module `I2C.cpp` `i2cSyncINT()` vs design §8.9 *(stage 5)* and `panel_throttle.cpp`. Not yet in Inventory §11 |
+| 9 | Throttle module firmware | **Fixed in v2.1 (2026-10-27).** Was: the module moved the lever on its own buttons (100 % / 0 %, ±5 %), even in ENGINE SAFE, in FINE and under an autopilot | The module only reports its buttons; the master moves the lever (§12.2) | Found for v6.0; Inventory §11 #20 |
 | 10 | Annunciator firmware | Tile THRTL ENA | A/P ARM (same bit 3) | Inventory §11 #1 |
 | 11 | Info Display and Resource Display firmware | Info Displays clear demo on a scene change; the Resource Display stops servicing Simpit in demo | Every display enters and leaves demo only on the master's flag | Inventory §11 #10–#12 |
-| 12 | Module READMEs and sketch comments | Several still describe the old layouts (for example the Throttle README's 5 % step, the Rotation BTN01 "Alt+X" note, AUX Cruise Control, the Function Control order) | As this document | — |
+| 12 | Module READMEs and sketch comments | Some still describe the old layouts (for example the Rotation BTN01 "Alt+X" note). Throttle, Function Control, Stability Control and AUX CTRL were brought up to date in v6.1 | As this document | — |
 
 ---
 
@@ -996,12 +996,12 @@ The confirmed behaviour is what this document describes. These items do not matc
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Throttle Module acts on its own buttons (§15 #9). Decide: remove the local handling in the module firmware (design intent), or change the design. Add it to Inventory §11 | Open |
-| 2 | Colours for Function Control FLAPS, Stability HOLD, AUX UNDOCK and AUX ALT (§15 #1, #3, #5) | Open |
-| 3 | HOLD and the console's A/P OFF. Inventory §8.10 lists A/P OFF among the deliberate disconnects for "an autopilot (and HOLD)"; design §8.4 does not list it for HOLD. In the code, A/P OFF disconnects the hold autopilot, so HOLD in PLN / RVR releases; HOLD in SPC (SAS Stability Assist) does not. This document describes the code. Confirm which is wanted | Open |
+| 1 | Throttle Module acts on its own buttons (§15 #9). **Decided:** the master owns the lever; the module only reports its buttons (Throttle v2.1) | Closed (v6.1) |
+| 2 | Colours for Function Control FLAPS, Stability HOLD, AUX UNDOCK and AUX ALT (§15 #1, #3, #5). **Decided:** FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK | Closed (v6.1) |
+| 3 | HOLD and the console's A/P OFF. **Decided:** A/P OFF releases HOLD in every mode, SPC included, like the stick's A/P disconnect (Inventory §8.10). Master v0.8.1 | Closed (v6.1) |
 | 4 | SWITCH ERR autopilot exception. Inventory §8.4 and design §8.3: "SAS or RCS while an autopilot that changes them is engaged". The code skips SAS while any autopilot or HOLD is engaged, and always checks RCS (no autopilot changes RCS). Same effect today; noted in case an autopilot ever uses RCS | Noted |
-| 5 | Camera mode on EVA. Design §8.7 does not say; the code does not use camera mode on EVA (the translation stick drives the EVA keys). This document describes the code | Confirm |
-| 6 | Info Display AIRBRK indicator reads CAG 38 as a fixed number, so it does not follow the control group the AIR BRAKE button uses (§4.3) | Open (display firmware) |
+| 5 | Camera mode on EVA. **Decided:** camera mode works on EVA too; the translation stick's EVA keys pause while its button is held (§10.2). Master v0.8.1 | Closed (v6.1) |
+| 6 | Info Display AIRBRK indicator read CAG 38 as a fixed number. **Decided:** it follows the control group; the master sends the group in the summary frame (byte 8) and InfoDisp v1.17 offsets the CAG (§4.3) | Closed (v6.1) |
 | 7 | Hullcam VDS keys: check that `-` / `=` / Backspace match the in-game bindings, and that Simpit's keyboard emulator reaches KSP for the EVA keys, INVERT's F and the camera keys | Bench (design §18 #10) |
 | 8 | SAS availability bitmask tracks pilot / probe level as expected | Bench (design §18 #4) |
 | 9 | WARP TO availability rules against Simpit | Bench (design §18 #3) |
@@ -1060,4 +1060,5 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 5.7 | 2026-06-28 | Retired 0x2E module removed from the codebase |
 | 5.8 | 2026-06-28 | AUX CTRL 12-button firmware; `KMC_SEAFOAM` added |
 | 5.9 | 2026-06-28 | `ACTIVE_ALT` LED state added for the AUX CTRL CP toggle |
-| **6.0** | **2026-10-26** | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |
+| **6.1** | **2026-10-27** | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
+| 6.0 | 2026-10-26 | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |

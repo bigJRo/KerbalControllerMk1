@@ -156,6 +156,12 @@ static void testEva(Bench &b) {
   stick(t, 0, 0, -25000);
   CHECK(!keyHeld(VK_LSHIFT) && keyHeld(VK_LCONTROL), "Z down: Left Ctrl");
   stick(t, 0, 0, 0);
+  t.press(JB_STICK); stick(t, 25000, 5000, 25000);
+  const SimpitSent *c = last(CAMERA_ROTATION_MESSAGE);
+  CHECK(c && near(i16(c, 4), 25000) && near(i16(c, 0), 5000), "translation button held on EVA: camera mode");
+  CHECK(!keyHeld(VK_D) && !keyHeld(VK_LSHIFT), "and the translation stick's EVA keys wait");
+  t.release(JB_STICK); stick(t, 0, 0, 0);
+  CHECK(!keyHeld(VK_D) && !keyHeld(VK_LSHIFT), "released at centre: no keys");
   r.press(JB_STICK); runFor(30);
   CHECK(keyHeld(VK_LSHIFT), "stick button on EVA: run (Left Shift)");
   stick(r, 0, -25000, 0);

@@ -223,7 +223,7 @@ Byte 3: Capability flags
 KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors, altColors);
 ```
 
-`ACTIVE` uses `activeColors[i]`; `ACTIVE_ALT` uses `altColors[i]` (falling back to `activeColors[i]` if no alt array was supplied). This drives two-colour buttons that are not a red terminal — e.g. Auxiliary Control's CP Toggle: ROSE (Primary) via `ACTIVE`, CORAL (Alternate) via `ACTIVE_ALT`. It is a core rendering feature and does not require `KBC_CAP_EXTENDED_STATES`.
+`ACTIVE` uses `activeColors[i]`; `ACTIVE_ALT` uses `altColors[i]` (falling back to `activeColors[i]` if no alt array was supplied). This drives two-colour buttons that are not a red terminal — No module uses it today (Auxiliary Control's CP Toggle did, before PRI and ALT became separate buttons). It is a core rendering feature and does not require `KBC_CAP_EXTENDED_STATES`.
 
 #### Choosing between `CUT` and `ACTIVE_ALT`
 
@@ -265,6 +265,7 @@ All named colors are defined in `KBC_Colors.h`.
 | `KBC_CORAL`       | 255, 100, 54   | IVA                            |
 | `KBC_ROSE`        | 255, 80, 120   | Control points                 |
 | `KBC_PINK`        | 236, 72, 153   | Antenna / comms                |
+| `KBC_MAGENTA`     | 255, 0, 255    | HOLD (Stability Control B10)   |
 | `KBC_WHITE_COOL`  | 255, 255, 255  | ENABLED backlight              |
 | `KBC_WHITE_WARM`  | 255, 200, 150  | Warp rate                      |
 | `KBC_WHITE_SOFT`  | 180, 184, 204  | Low-light environments         |

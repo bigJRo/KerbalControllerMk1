@@ -70,6 +70,10 @@ static void testConsole(Bench &b) {
   const auto *f = b.rig.id2.lastFrame(0xA6);
   CHECK(f && f->size() == 48 && (*f)[2] == HP_PITCH_ALT, "aircraft frame (48 bytes) pushed for the console on screen");
   CHECK(b.rig.id1.lastFrame(0xAA) && b.rig.id2.lastFrame(0xAA), "summary to both Info Displays");
+  g_panel.ctrlGrp = 3; fly(150);
+  f = b.rig.id1.lastFrame(0xAA);
+  CHECK(f && f->size() == 9 && (*f)[8] == 3, "the summary carries the control group (for the CAG indicators)");
+  g_panel.ctrlGrp = 1; fly(150);
   CHECK(g_panel.autopilot, "AUTOPILOT lit");
   console(b, OP_ENG_HDG, 1.0f);
   CHECK(hpGetStatus().latMode == HP_LAT_HDG, "ENGAGE HDG");
@@ -159,6 +163,11 @@ static void testHold(Bench &b) {
 static void testAscent(Bench &b) {
   printf("autopilots: ascent arms, flies its axes, drops on ENGINE SAFE\n");
   b.m(MOD_TIME).press(TIME_SPC); fly(200);
+  printf("HOLD: SPC, released by the console's A/P OFF\n");
+  b.m(MOD_STABILITY).press(1u << 10); b.m(MOD_STABILITY).release(1u << 10); fly(100);
+  CHECK(holdEngaged() && g_panel.autopilot, "SPC HOLD engaged");
+  console(b, OP_AP_OFF, 0.0f);
+  CHECK(!holdEngaged() && !g_panel.autopilot, "the console's A/P OFF releases it too");
   stubSimpit().sent.clear();
   console(b, OP_ARM, 0.0f);
   CHECK(apIsArmed() && g_panel.autopilot && thrOwner() == THR_OWNER_ASCENT, "armed: AUTOPILOT, owns the throttle");

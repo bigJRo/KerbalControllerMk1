@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.1.0
+ * @date        2026-10-27
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -172,12 +172,6 @@
  *        ADC counts of the target.
  */
 #define THR_SLOWDOWN_ZONE       50
-
-/**
- * @brief Step size for THRTL_UP / THRTL_DOWN buttons (ADC counts).
- *        5% of ADC range = 51 counts.
- */
-#define THR_STEP_ADC            51
 
 /**
  * @brief Precision mode output range as fraction of INT16_MAX.

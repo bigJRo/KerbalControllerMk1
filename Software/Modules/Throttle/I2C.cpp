@@ -1,7 +1,7 @@
 /**
  * @file        I2C.cpp
- * @version     2.0.0
- * @date        2026-04-08
+ * @version     2.1.0
+ * @date        2026-10-27
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -323,7 +323,7 @@ void i2cBegin() {
 //  Called every loop. Responsible for:
 //    - Touch while enabled: stop motor immediately
 //    - Touch while disabled: re-assert motor target at 0 to resist
-//    - Button events: translate to motor targets
+//    - Button events: cached for the packet (the master acts on them)
 //    - INT pin: assert or deassert based on pending state
 //
 //  motorUpdate() is NOT called here. It is called once per loop()
@@ -352,26 +352,9 @@ void i2cSyncINT() {
             // multiple times before the controller reads the packet.
             uint8_t events = buttonsGetEvents();
             _pendingEvents |= events;
-
-            if (events & (1 << THR_BIT_100)) {
-                motorSetTarget(THR_ADC_MAX, true);
-            }
-            if (events & (1 << THR_BIT_00)) {
-                motorSetTarget(THR_ADC_MIN, true);
-            }
-            if (events & (1 << THR_BIT_UP)) {
-                uint16_t current = wiperGetRaw();
-                uint16_t next = current + THR_STEP_ADC;
-                if (next > THR_ADC_MAX || next < current) next = THR_ADC_MAX;
-                motorSetTarget(next, false);
-            }
-            if (events & (1 << THR_BIT_DOWN)) {
-                uint16_t current = wiperGetRaw();
-                uint16_t next = (THR_STEP_ADC > current)
-                               ? THR_ADC_MIN
-                               : current - THR_STEP_ADC;
-                motorSetTarget(next, false);
-            }
+            // The buttons are only reported. The master decides what they do and
+            // moves the lever itself (it ignores them in ENGINE SAFE, in FINE and
+            // under an autopilot): Module UI Reference §12.2.
         }
     } else {
         // DISABLED or BOOT_READY — re-assert target at 0 on touch to

@@ -449,8 +449,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         state.mainDeploy   = cag->is_action_activated(MAIN_DEPLOY_CAG);
       if (MAIN_CUT_CAG     >= 1)
         state.mainCut      = cag->is_action_activated(MAIN_CUT_CAG);
-      if (AIRBRAKE_CAG     >= 1)
-        state.airbrake_on  = cag->is_action_activated(AIRBRAKE_CAG);
+      memcpy(state.cagStatus, cag->status, sizeof(state.cagStatus));
+      refreshCagIndicators();
       break;
     }
 
@@ -576,4 +576,19 @@ void initSimpit() {
   simpit.registerChannel(TEMP_LIMIT_MESSAGE);
   simpit.registerChannel(SCENE_CHANGE_MESSAGE);
   simpit.registerChannel(VESSEL_CHANGE_MESSAGE);
+}
+
+/***************************************************************************************
+   Control-group CAG indicators: the airbrake's group moves with the master's control
+   group (summary byte 8), so it is re-read from the kept CAGSTATUS when either changes.
+****************************************************************************************/
+uint8_t airbrakeCag() {
+  if (AIRBRAKE_CAG < 1) return 0;
+  uint8_t g = (state.ctrlGroup >= 1 && state.ctrlGroup <= CAG_GROUPS) ? state.ctrlGroup : 1;
+  return (uint8_t)(AIRBRAKE_CAG + (g - 1) * CAG_GROUP_STRIDE);
+}
+
+void refreshCagIndicators() {
+  uint8_t n = airbrakeCag();
+  state.airbrake_on = n >= 1 && ((state.cagStatus[n / 8] >> (n % 8)) & 1);
 }

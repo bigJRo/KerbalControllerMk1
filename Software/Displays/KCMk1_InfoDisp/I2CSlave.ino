@@ -63,8 +63,9 @@
      0xA7  36 bytes  rover      flags, reason, reasonAge, 8 floats
      0xA8  52 bytes  orbital    flags, mode, phase, reason, reasonAge, 11 floats
      0xA9  44 bytes  landing    flags, mode, entry, reason, reasonAge, accelSource, 9 floats
-     0xAA   8 bytes  summary    ascent, aircraft, rover, orbital, landing flags; landing
-                                mode; landing entry  (#83)
+     0xAA   9 bytes  summary    ascent, aircraft, rover, orbital, landing flags; landing
+                                mode; landing entry  (#83); control group 1–6 (an
+                                8-byte summary from an older master reads as group 1)
    The master pushes the full frame only for the console on screen (activeScreen, byte 2
    of the outbound packet), and the summary every cycle to BOTH units, so the A/P key,
    the ladder's return to an engaged console and POWERED DESCENT's VERT indicator stay
@@ -102,7 +103,8 @@
 #define I2C_OB_STATUS_SYNC 0xA8
 #define I2C_LD_STATUS_SIZE 44   // inbound:  Master -> InfoDisp landing autopilot status push
 #define I2C_LD_STATUS_SYNC 0xA9
-#define I2C_SUM_STATUS_SIZE 8   // inbound:  Master -> InfoDisp autopilot summary, every cycle, both units
+#define I2C_SUM_STATUS_SIZE 9   // inbound:  Master -> InfoDisp autopilot summary, every cycle, both units
+#define I2C_SUM_STATUS_OLD  8   //           the 8-byte summary before byte 8 (control group) was added
 #define I2C_SUM_STATUS_SYNC 0xAA
 #define I2C_PUSH_MAX       64   // one buffer for every full status push; dispatched by sync byte
 #define I2C_SYNC_BYTE    KCM_I2C_SYNC_INFODISP      // #3C from SystemConfig (0xAE, collision fix)
@@ -311,7 +313,8 @@ static void onI2CReceive(int numBytes) {
   } else if (numBytes >= 3 && numBytes <= I2C_PUSH_MAX) {
     uint8_t tmp[I2C_PUSH_MAX];
     for (int i = 0; i < numBytes; i++) tmp[i] = KCM_I2C_BUS.read();
-    if (numBytes == I2C_SUM_STATUS_SIZE && tmp[0] == I2C_SUM_STATUS_SYNC) {
+    if ((numBytes == I2C_SUM_STATUS_SIZE || numBytes == I2C_SUM_STATUS_OLD) && tmp[0] == I2C_SUM_STATUS_SYNC) {
+      if (numBytes == I2C_SUM_STATUS_OLD) tmp[I2C_SUM_STATUS_OLD] = 1;      // older master: group 1
       for (int i = 0; i < I2C_SUM_STATUS_SIZE; i++) sumBuf[i] = tmp[i];   // own buffer (#83)
       sumReady = true;
     } else {
@@ -416,6 +419,8 @@ static void processSummary(const uint8_t *buf) {
   state.ldFlags = buf[5];
   state.ldMode  = buf[6];
   state.ldEntry = buf[7];
+  uint8_t g = (buf[8] >= 1 && buf[8] <= CAG_GROUPS) ? buf[8] : 1;
+  if (g != state.ctrlGroup) { state.ctrlGroup = g; refreshCagIndicators(); }
 }
 
 // Dispatch a status push on its sync byte; a length mismatch is a framing error and is dropped.

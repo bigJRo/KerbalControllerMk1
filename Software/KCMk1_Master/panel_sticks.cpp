@@ -9,7 +9,7 @@
      RVR  steering / wheel throttle (AXIS1 / AXIS2)
      EVA  W A S D Q E held while deflected
    Translation stick: X / Y / Z translation; while its button is held, the camera
-   (yaw / pitch / zoom); on EVA, W A S D and Left Shift / Left Ctrl.
+   (yaw / pitch / zoom), on EVA too; on EVA, otherwise, W A S D and Left Shift / Left Ctrl.
    THC / RHC PREC scales both sticks by STICK_PREC_SCALE (not the trim).
    While any autopilot or HOLD is engaged the sticks are ignored (ksp_frame.cpp), except
    camera mode and the buttons.
@@ -135,12 +135,12 @@ static const EvaKey kEva[] = {
 };
 static const int16_t kEvaKeys[] = { VK_W, VK_A, VK_S, VK_D, VK_Q, VK_E, VK_LSHIFT, VK_LCONTROL };
 
-static void evaKeys(bool on) {
+static void evaKeys(bool on, bool trnCamera) {   // trnCamera: the translation stick is on the camera
   for (int16_t vk : kEvaKeys) {
     bool want = false;
     if (on) {
       for (const EvaKey &k : kEva) {
-        if (k.vk != vk) continue;
+        if (k.vk != vk || (trnCamera && k.stick == STK_TRN)) continue;
         float v = g_raw[k.stick][k.axis] * k.sign;
         if (v > EVA_KEY_ON || (keyHeld(vk) && v > EVA_KEY_OFF)) want = true;
       }
@@ -177,10 +177,10 @@ void panelSticksService() {
   else                                  frameSetPilotRotation(s[1], s[2], s[0]);   // PLN (and RVR: unused)
   frameSetPilotWheel(s[0], s[1]);
   frameSetPilotTranslation(g_raw[STK_TRN][0] * k, g_raw[STK_TRN][1] * k, g_raw[STK_TRN][2] * k);
-  bool cam = panelLive() && (g_btn[STK_TRN] & JB_STICK) && !g_vessel.eva;
+  bool cam = panelLive() && (g_btn[STK_TRN] & JB_STICK);
   frameSetCamera(cam, g_raw[STK_TRN][1], g_raw[STK_TRN][0], g_raw[STK_TRN][2]);
 
-  evaKeys(panelLive() && g_vessel.eva);
+  evaKeys(panelLive() && g_vessel.eva, cam);
   logSticks(now);
 
   // LEDs (BTN01 = 0, BTN02 = 1): rotation BTN02 lit while the trim is set.

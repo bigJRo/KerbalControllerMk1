@@ -961,8 +961,9 @@ static void _acftUpdatePanel(KCM_TFT &tft) {
                 gc.value = gs; gc.fg = gfg; gc.bg = gbg;
             }
         }
-        // Airbrake (slot 9) — Custom Action Group AIRBRAKE_CAG (base 38, Function Control B4;
-        // see Documents/Developer/Module_UI_Reference.md). Cyan when deployed, grey when stowed.
+        // Airbrake (slot 9) — custom action group airbrakeCag(): base 38 (Function Control B5
+        // AIR BRAKE) offset by the master's control group, as the button is; see
+        // Documents/Developer/Module_UI_Reference.md §4. Cyan when deployed, grey when stowed.
         {
             uint16_t afg, abg;
             if (state.airbrake_on) { afg = TFT_DARK_GREY; abg = TFT_CYAN; }

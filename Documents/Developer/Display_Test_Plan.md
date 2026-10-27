@@ -3,7 +3,7 @@
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
 **Version:** 1.3
-**Firmware covered:** Info Display v1.16.5 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · KCMk1_Master v0.8.0
+**Firmware covered:** Info Display v1.17.0 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · KCMk1_Master v0.8.1
 
 ---
 
@@ -341,7 +341,8 @@ Requires the master (KCMk1_Master) running the mission autopilot. All annunciati
 | ACFT-02 | Take off and climb | **Info 1** AIRCRAFT; **Info 2** NAVIGATION once flying with Ap below 70 km. Dismissing the pre-launch board by tap also works | Vehicle rule 2 / Mission rule 4 |
 | ACFT-03 | Read AIRCRAFT | Attitude ball, aircraft symbol, VSI bar, AOA arc, SLIP strip; right column ALT.SL (ALT.RDR under 750 m, `RDR` / `SL` chip), V.SRF, IAS with 1–3 chevron trend, V.VRT, MA / G split, AOA / SLIP split; GEAR / AIRBRK / BRAKES / SAS indicators | ACFT layout |
 | ACFT-04 | Tap the `RDR` / `SL` chip | Pins the other altitude reference; tap again for automatic | Ref chip |
-| ACFT-05 | Toggle CAG 38 | AIRBRK reads `OUT` on cyan, `IN` dark grey when stowed | AIRBRAKE_CAG |
+| ACFT-05 | Toggle CAG 38 (control group 1) | AIRBRK reads `OUT` on cyan, `IN` dark grey when stowed | AIRBRAKE_CAG |
+| ACFT-05a | Airbrakes also on CAG 78. Set control group 2 (ENC1), press AIR BRAKE (CAG 78) | AIRBRK follows CAG 78, not 38; back to group 1 it shows CAG 38 again at once | 1.17.0 |
 | ACFT-06 | Gear up / down, wheel brakes | GEAR and BRAKES buttons follow | Live |
 | ACFT-07 | Cruise descent at −6 m/s with gear up above 750 m radar | V.VRT and the VSI bar stay green (no landing tiers in cruise) | 1.13.1 |
 | ACFT-08 | Same descent with gear down (or below 750 m radar) | V.VRT caution below −5 m/s, alarm below −8 | Approach-only tiers |

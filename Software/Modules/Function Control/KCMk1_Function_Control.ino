@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Function_Control.ino
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.1.0
+ * @date        2026-10-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -26,29 +26,31 @@
  *
  *              NeoPixel Layout (6 rows × 2 columns):
  *
+ *              Confirmed layout (Module UI Reference v6.0 §9.2). The panel's
+ *              columns are seen from the front; Bn is the KBC index.
  *                        Col 1 (left)          Col 2 (right)
- *                Row 1:  B0 LES                B1 Fairing Jettison
+ *                Row 1:  B1 LES                B0 Fairing Jettison
  *                        RED                   AMBER
- *                Row 2:  B2 Air Intake         B3 Lock Surfaces
+ *                Row 2:  B3 Air Intake         B2 Lock Surfaces
  *                        TEAL                  SKY
- *                Row 3:  B4 Airbrake           B5 Reaction Wheel Disable
- *                        CYAN                  AMBER
- *                Row 4:  B6 Engine Alt Mode    B7 Science Collect
+ *                Row 3:  B5 Air Brake          B4 Flaps
+ *                        CYAN                  SEAFOAM
+ *                Row 4:  B7 Engine Alt Mode    B6 Science Collect
  *                        ORANGE                PURPLE
- *                Row 5:  B8 Engine Group 1     B9 Science Group 1
+ *                Row 5:  B9 Engine Group 1     B8 Science Group 1
  *                        YELLOW                INDIGO
- *                Row 6:  B10 Engine Group 2    B11 Science Group 2
+ *                Row 6:  B11 Engine Group 2    B10 Science Group 2
  *                        CHARTREUSE            BLUE
  *
  *              Switch Group 1 — discrete inputs (no LED), reported in the
  *              button-event payload bytes for inputs 16-23:
  *                KBC index 16 → MSTR     (OPER / RESET)
- *                KBC index 17 → DISPL    (OPER / CLR)
- *                KBC index 18 → ENGINE   (SAFE / ARM)
- *                KBC index 19 → THROTTLE (INOP / ACT)
- *                KBC index 20 → SCE      (NORM / AUX)
- *                KBC index 21 → UPTLM    (INHIB / XMIT)
- *                KBC index 22 → LTG      (NORM / TEST)
+ *                KBC index 17 → DISP     (OPER / CLR)
+ *                KBC index 18 → SCE      (NORM / AUX)
+ *                KBC index 19 → UPTLM    (INHIB / XMIT)
+ *                KBC index 20 → LTG      (NORM / TEST)
+ *                KBC index 21 → A/P      (INHIB / ARM)
+ *                KBC index 22 → ENGINE   (SAFE / ARM)
  *                KBC index 23 → THRTL    (STD / FINE)
  *              Switch semantics and controller actions are resolved on the
  *              main controller; this module reports raw input state only.
@@ -102,24 +104,24 @@
 //  Color family reference:
 //    Science family    : PURPLE → INDIGO → BLUE (collect to group 2)
 //    Engine family     : ORANGE → YELLOW → CHARTREUSE (alt to group 2)
-//    Atmosphere family : TEAL (intake), CYAN (airbrake)
+//    Atmosphere family : TEAL (intake), CYAN (air brake), SEAFOAM (flaps)
 //    Irreversible      : RED (LES)
-//    Awareness         : AMBER (fairing jettison, RW disable), SKY (lock surfaces)
+//    Awareness         : AMBER (fairing jettison), SKY (lock surfaces)
 // ============================================================
 
 const RGBColor activeColors[KBC_BUTTON_COUNT] = {
-    KBC_RED,         // B0  — LES                  (Col 1, Row 1) — irreversible
-    KBC_AMBER,       // B1  — Fairing Jettison     (Col 2, Row 1) — awareness
-    KBC_TEAL,        // B2  — Air Intake           (Col 1, Row 2) — atmosphere family
-    KBC_SKY,         // B3  — Lock Surfaces        (Col 2, Row 2) — awareness
-    KBC_CYAN,        // B4  — Airbrake             (Col 1, Row 3) — atmosphere family
-    KBC_AMBER,       // B5  — Reaction Wheel Disable (Col 2, Row 3) — awareness
-    KBC_ORANGE,      // B6  — Engine Alt Mode      (Col 1, Row 4) — engine family
-    KBC_PURPLE,      // B7  — Science Collect      (Col 2, Row 4) — science family
-    KBC_YELLOW,      // B8  — Engine Group 1       (Col 1, Row 5) — engine family
-    KBC_INDIGO,      // B9  — Science Group 1      (Col 2, Row 5) — science family
-    KBC_CHARTREUSE,  // B10 — Engine Group 2       (Col 1, Row 6) — engine family
-    KBC_BLUE,        // B11 — Science Group 2      (Col 2, Row 6) — science family
+    KBC_AMBER,       // B0  — Fairing Jettison     (Col 2, Row 1) — awareness
+    KBC_RED,         // B1  — LES                  (Col 1, Row 1) — irreversible
+    KBC_SKY,         // B2  — Lock Surfaces        (Col 2, Row 2) — awareness
+    KBC_TEAL,        // B3  — Air Intake           (Col 1, Row 2) — atmosphere family
+    KBC_SEAFOAM,     // B4  — Flaps                (Col 2, Row 3) — atmosphere family
+    KBC_CYAN,        // B5  — Air Brake            (Col 1, Row 3) — atmosphere family
+    KBC_PURPLE,      // B6  — Science Collect      (Col 2, Row 4) — science family
+    KBC_ORANGE,      // B7  — Engine Alt Mode      (Col 1, Row 4) — engine family
+    KBC_INDIGO,      // B8  — Science Group 1      (Col 2, Row 5) — science family
+    KBC_YELLOW,      // B9  — Engine Group 1       (Col 1, Row 5) — engine family
+    KBC_BLUE,        // B10 — Science Group 2      (Col 2, Row 6) — science family
+    KBC_CHARTREUSE,  // B11 — Engine Group 2       (Col 1, Row 6) — engine family
     KBC_OFF,         // B12 — No-connect (PCB)
     KBC_OFF,         // B13 — No-connect (PCB)
     KBC_OFF,         // B14 — No-connect (PCB)
