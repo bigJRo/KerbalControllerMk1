@@ -82,6 +82,7 @@ static const RGBColor KBC_VIOLET        = KMC_VIOLET;
 static const RGBColor KBC_CORAL         = KMC_CORAL;
 static const RGBColor KBC_ROSE          = KMC_ROSE;
 static const RGBColor KBC_PINK          = KMC_PINK;
+static const RGBColor KBC_MAGENTA       = KMC_MAGENTA;
 
 // ============================================================
 //  KBC_scaleColor() — backward-compatible alias

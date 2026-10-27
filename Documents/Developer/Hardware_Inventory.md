@@ -354,7 +354,7 @@ HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM,
 | PLN | Altitude + heading | Hold autopilot ALT + HDG at the current values; throttle untouched |
 | RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values. With ENGINE SAFE, heading only (wheel throttle held at 0) |
 
-- **Released by:** a second press, the A/P disconnect (rotation stick button), or a console autopilot engaging. Stick input does not release it (§8.10).
+- **Released by:** a second press, the A/P disconnect (rotation stick button), a console's A/P OFF (in every mode), or a console autopilot engaging. Stick input does not release it (§8.10).
 - **LED:** ACTIVE while holding.
 - **Annunciator:** AUTOPILOT lights while HOLD is on.
 
@@ -794,9 +794,9 @@ Collected from this review; each is a separate piece of work.
 | 1 | Annunciator firmware | Tile label THRTL ENA → A/P ARM (§8.2) |
 | 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light. A later real dock / undock event overrides the touch setting |
 | 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day) |
-| 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5) |
-| 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1) |
-| 6 | Stability Control module firmware | B10 HOLD colour (was RCS) |
+| 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5); FLAPS SEAFOAM. **Done** (v2.1, 2026-10-27) |
+| 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1): UNDOCK GOLD, PRI ROSE, ALT PINK, no alternate colour. **Done** (v2.1, 2026-10-27) |
+| 6 | Stability Control module firmware | B10 HOLD colour (was RCS): MAGENTA. **Done** (v2.1, 2026-10-27) |
 | 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
@@ -810,4 +810,6 @@ Collected from this review; each is a separate piece of work.
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
 | 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
 | 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |
+| 20 | Throttle Module firmware | Stop acting on its own buttons: it drove the lever to 100 % / 0 % and stepped it ±5 %, even in ENGINE SAFE, in FINE and under an autopilot. The master owns the lever (§10, Module UI Reference §12.2). Found for Module UI Reference v6.0. **Done** (v2.1, 2026-10-27) |
+| 21 | Info Display firmware + I2C spec | AIRBRK follows the control group: the master sends the group in byte 8 of the summary frame (now 9 bytes) and the display offsets `AIRBRAKE_CAG` like the button. **Done** (InfoDisp v1.17, master v0.8.1, I2C spec v2.18, 2026-10-27) |
 

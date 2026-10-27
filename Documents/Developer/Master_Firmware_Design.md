@@ -426,7 +426,7 @@ Current mode and availability come from Simpit `SAS_MODE_INFO` (mode 255 = SAS o
 | PLN | Altitude + heading | Hold autopilot ALT + HDG at the current values |
 | RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values; heading only while ENGINE is SAFE |
 
-- **Released by:** a second press, A/P disconnect, or a console autopilot engaging.
+- **Released by:** a second press, A/P disconnect, a console's A/P OFF (in every mode, SPC included), or a console autopilot engaging. *(decided 2026-10-27)*
 - **While holding:** the LED is ACTIVE and the Annunciator's AUTOPILOT lights.
 
 **INVERT (B11):** holds F while held. *(stage 4)* Dark and ignored on EVA, where F is GRAB.
@@ -488,7 +488,7 @@ Safe lines read active-high, as plain inputs (no pull-up), debounced 10 ms. A li
 
 **Translation:**
 - **Stick:** translation X / Y / Z.
-- **Button held:** camera mode.
+- **Button held:** camera mode, on EVA too *(decided 2026-10-27)*.
 - **BTN01:** camera mode cycle.
 - **BTN02:** camera reset.
 - **EVA:** W / A / S / D + Left Shift / Left Ctrl.
@@ -503,7 +503,8 @@ Safe lines read active-high, as plain inputs (no pull-up), debounced 10 ms. A li
   - rotation stick: X → D / A, Y → W / S, twist → E / Q;
   - translation stick: X → D / A, Y → W / S, Z → Left Shift / Left Ctrl;
   - the rotation stick button → Left Shift;
-  - a key goes down past 50 % deflection and up below 30 %, and all are released when the EVA ends.
+  - a key goes down past 50 % deflection and up below 30 %, and all are released when the EVA ends;
+  - while the translation stick's button is held (camera mode) its keys are released and the stick moves the camera; the rotation stick's keys keep working.
 - **The stick button's action** is chosen by the mode when it is pressed. Its brake or Shift ends on a mode change or when the flight ends.
 - **Axis signs** are as the modules report them (`STICK_SIGN` in `panel_sticks.cpp`), to be checked on the bench (§18).
 
@@ -817,17 +818,17 @@ From Inventory §11:
 | 2 | Info Displays | Demo follows the flag only; Info Display 1: input test screen, two-finger gesture, its frame |
 | 3 | Resource Display | Demo follows the flag only |
 | 4 | Sys Info Display | New firmware: boot, status and SWITCH ERR screens; microSD icons; its protocol |
-| 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release |
+| 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release. (Its buttons are now only reported: v2.1 no longer moves the lever on them. **Done**, 2026-10-27) |
 | 6 | Pre-Warp module | BTN03 preset 1440 → 360 min (1 Kerbin day) |
-| 7 | Function Control module | Colour table to the confirmed layout; B4 FLAPS |
-| 8 | AUX CTRL module | B8 UNDOCK; B10 PRI, B11 ALT |
-| 9 | Stability Control module | B10 HOLD |
+| 7 | Function Control module | Colour table to the confirmed layout; B4 FLAPS SEAFOAM. **Done** (v2.1) |
+| 8 | AUX CTRL module | B8 UNDOCK GOLD; B10 PRI ROSE, B11 ALT PINK. **Done** (v2.1) |
+| 9 | Stability Control module | B10 HOLD MAGENTA. **Done** (v2.1) |
 | 10 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 UNDOCK |
 | 11 | I2C Protocol Specification | Input test frame (the Sys Info protocol is in, §15.4; EVA lifecycle, LED nibble order and the master's start-up sequence in 2.16) |
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
 | 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
-| 16 | Info Display firmware | Names for the new disconnect reasons 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC (§11.4) |
+| 16 | Info Display firmware | Names for the new disconnect reasons 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC (§11.4). (AIRBRK follows the control group from the summary frame's byte 8: **done**, InfoDisp v1.17) |
 | 15 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` as the spec says (§5.2): 0x01 starts and 0x00 stops, no timeout, without blocking. Today each runs a fixed 2 s test with `delay()` inside its I2C receive handler, so LTG TEST cannot be held and the module is deaf meanwhile (the master keeps off the bus for 2.1 s, §6.4) |
 
 ## 18. Open items

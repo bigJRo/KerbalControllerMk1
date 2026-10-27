@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Auxiliary_Control.ino
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.1.0
+ * @date        2026-10-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -19,11 +19,10 @@
  *              module only reports button events and renders LED states:
  *                - EVA functions (B0-B7, B9) are active only when the
  *                  controller has isEVA = true (KEYBOARD_EMULATOR keys).
- *                - Cruise Control (B8) is a controller-side hold for rover
- *                  mode.
- *                - Control-Point selection (B10 CP Toggle PRI/ALT, B11 CP
- *                  Docking Port) fires custom action groups (base CAG 35/36
- *                  /37) and is active in all modes.
+ *                - UNDOCK (B8) toggles base CAG 37; the control points
+ *                  PRI (B10) and ALT (B11) are base CAG 35 / 36. All
+ *                  three are active in every mode (Module UI Reference
+ *                  v6.0 §9.7).
  *
  *              I2C Address: 0x26
  *              Module Type: KBC_TYPE_AUX_CTRL (0x07)
@@ -34,20 +33,14 @@
  *
  *                Col:  6(left)    5        4        3        2        1(right)
  *                Row1: B10        B8       B6       B4       B2       B0
- *                      CP Toggle  Cruise   EVA      Jump/    Board    EVA
- *                                 Control  Chute    Let Go   Craft    Lights
- *                      ROSE*      GOLD     AMBER    CHARTRSE GREEN    MINT
+ *                      CTRL PT    UNDOCK   EVA      Jump/    Board    EVA
+ *                      PRI                 Chute    Let Go   Craft    Lights
+ *                      ROSE       GOLD     AMBER    CHARTRSE GREEN    MINT
  *
  *                Row2: B11        B9       B7       B5       B3       B1
- *                      CP Dock    Plant    Helmet   Grab     EVA      Jetpack
- *                      Port       Flag     Toggle            Constr.  Enable
+ *                      CTRL PT    Plant    Helmet   Grab     EVA      Jetpack
+ *                      ALT        Flag     Toggle            Constr.  Enable
  *                      PINK       SEAFOAM  SKY      SEAFOAM  TEAL     LIME
- *
- *                * B10 CP Toggle: KBC_LED_ACTIVE renders ROSE (Primary);
- *                  the controller sends KBC_LED_ACTIVE_ALT to render CORAL
- *                  (Alternate) via the altColors array below. CP Docking
- *                  Port (B11) is a separate button. See README for the
- *                  mutually-exclusive PRI/ALT/Docking-Port logic.
  *
  *                B12-B15 are no-connects on the PCB (not installed).
  *
@@ -61,10 +54,10 @@
  *                BUTTON06 (PCB) -> KBC index 5  -> Grab
  *                BUTTON07 (PCB) -> KBC index 6  -> EVA Chute
  *                BUTTON08 (PCB) -> KBC index 7  -> Helmet Toggle
- *                BUTTON09 (PCB) -> KBC index 8  -> Cruise Control
+ *                BUTTON09 (PCB) -> KBC index 8  -> UNDOCK
  *                BUTTON10 (PCB) -> KBC index 9  -> Plant Flag
- *                BUTTON11 (PCB) -> KBC index 10 -> CP Toggle (PRI/ALT)
- *                BUTTON12 (PCB) -> KBC index 11 -> CP Docking Port
+ *                BUTTON11 (PCB) -> KBC index 10 -> Control point PRI
+ *                BUTTON12 (PCB) -> KBC index 11 -> Control point ALT
  *                BUTTON13-16    -> KBC index 12-15 -> Not installed
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
@@ -108,10 +101,10 @@
 //  B5  Grab             - SEAFOAM
 //  B6  EVA Chute        - AMBER
 //  B7  Helmet Toggle    - SKY
-//  B8  Cruise Control   - GOLD
+//  B8  UNDOCK           - GOLD                                            CAG 37
 //  B9  Plant Flag       - SEAFOAM (controller flashes briefly on press)
-//  B10 CP Toggle        - ROSE  (Primary; controller uses CORAL for Alt)  CAG 35/36
-//  B11 CP Docking Port  - PINK                                            CAG 37
+//  B10 Ctrl point PRI   - ROSE                                            CAG 35
+//  B11 Ctrl point ALT   - PINK                                            CAG 36
 //  B12-B15              - OFF (no-connect on the PCB)
 // ============================================================
 
@@ -124,10 +117,10 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_SEAFOAM,     // B5  - Grab             (Col 3, Row 2)
     KBC_AMBER,       // B6  - EVA Chute        (Col 4, Row 1)
     KBC_SKY,         // B7  - Helmet Toggle    (Col 4, Row 2)
-    KBC_GOLD,        // B8  - Cruise Control   (Col 5, Row 1)
+    KBC_GOLD,        // B8  - UNDOCK           (Col 5, Row 1)
     KBC_SEAFOAM,     // B9  - Plant Flag       (Col 5, Row 2)
-    KBC_ROSE,        // B10 - CP Toggle (PRI)  (Col 6, Row 1)
-    KBC_PINK,        // B11 - CP Docking Port  (Col 6, Row 2)
+    KBC_ROSE,        // B10 - Ctrl point PRI   (Col 6, Row 1)
+    KBC_PINK,        // B11 - Ctrl point ALT   (Col 6, Row 2)
     KBC_OFF,         // B12 - Not installed
     KBC_OFF,         // B13 - Not installed
     KBC_OFF,         // B14 - Not installed
@@ -135,41 +128,14 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
 };
 
 // ============================================================
-//  Per-button ALTERNATE active colors (KBC_LED_ACTIVE_ALT)
-//
-//  Only B10 (CP Toggle) uses a second active colour: CORAL for the
-//  Alternate control point. ACTIVE renders ROSE (Primary); the
-//  controller sends KBC_LED_ACTIVE_ALT to switch B10 to CORAL. All
-//  other positions are unused here (KBC_OFF).
-// ============================================================
-
-const RGBColor altColors[KBC_BUTTON_COUNT] = {
-    KBC_OFF,         // B0
-    KBC_OFF,         // B1
-    KBC_OFF,         // B2
-    KBC_OFF,         // B3
-    KBC_OFF,         // B4
-    KBC_OFF,         // B5
-    KBC_OFF,         // B6
-    KBC_OFF,         // B7
-    KBC_OFF,         // B8
-    KBC_OFF,         // B9
-    KBC_CORAL,       // B10 - CP Toggle ALTERNATE control point
-    KBC_OFF,         // B11
-    KBC_OFF,         // B12
-    KBC_OFF,         // B13
-    KBC_OFF,         // B14
-    KBC_OFF,         // B15
-};
-
-// ============================================================
 //  Library instantiation
 //
-//  No extended states — capability flags = 0. The altColors array
-//  supplies the CP Toggle Alternate colour (KBC_LED_ACTIVE_ALT, B10).
+//  No extended states — capability flags = 0. No alternate colours:
+//  PRI and ALT are separate buttons (the CORAL alternate on B10 that
+//  v2.0 used for the Alternate control point is gone).
 // ============================================================
 
-KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors, altColors);
+KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors);
 
 // ============================================================
 //  setup()

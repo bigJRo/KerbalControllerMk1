@@ -1,8 +1,8 @@
 # KCMk1_Throttle_Module
 
 **Module:** Throttle Module  
-**Version:** 1.0  
-**Date:** 2026-04-08  
+**Version:** 2.1  
+**Date:** 2026-10-27  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1861/1862 Throttle Module v1.1  
@@ -11,7 +11,7 @@
 
 ## Overview
 
-The Throttle Module provides motorized throttle control for Kerbal Space Program. A 10k motorized slide potentiometer provides physical position control and feedback. A capacitive touch sensor (AT42QT1010) detects pilot contact, stopping the motor immediately when the pilot grabs the slider. Four discrete LED buttons set throttle to 100%, 0%, or step up/down in 5% increments. The module must be explicitly enabled by the system controller before it becomes active.
+The Throttle Module provides motorized throttle control for Kerbal Space Program. A 10k motorized slide potentiometer provides physical position control and feedback. A capacitive touch sensor (AT42QT1010) detects pilot contact, stopping the motor immediately when the pilot grabs the slider. Four discrete LED buttons (100%, UP, DOWN, 0%) are reported to the master; the module does not act on them itself. The master moves the lever (100%, 0%, or a 10% step) and ignores the buttons in ENGINE SAFE, in FINE and under an autopilot (Module UI Reference §12.2). The module must be explicitly enabled by the system controller before it becomes active.
 
 This is a standalone sketch with tab-based organisation. It is not a KerbalButtonCore or library-based module.
 
@@ -41,12 +41,12 @@ This is a standalone sketch with tab-based organisation. It is not a KerbalButto
 
 ## Button Reference
 
-| Button | Pin | Function | Step |
-|---|---|---|---|
-| THRTL_100 | PA6 | Drive to 100% throttle | Full range |
-| THRTL_UP | PB2 | Step up ~5% | +51 ADC counts |
-| THRTL_DOWN | PC1 | Step down ~5% | -51 ADC counts |
-| THRTL_00 | PC3 | Drive to 0% throttle | Full range |
+| Button | Pin | Master's action (the module only reports the press) |
+|---|---|---|
+| THRTL_100 | PA6 | Drive to 100% throttle |
+| THRTL_UP | PB2 | Step up 10% |
+| THRTL_DOWN | PC1 | Step down 10% |
+| THRTL_00 | PC3 | Drive to 0% throttle |
 
 ### LED Reference
 
@@ -275,3 +275,4 @@ After flashing all LEDs should be OFF (module starts disabled). Send `CMD_ENABLE
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
 | 2.0 | 2026-06-28 | Data packet is now 7 bytes (3-byte universal header + 4-byte payload) under I2C protocol v2.x |
+| 2.1 | 2026-10-27 | The module no longer moves the lever on its own buttons (it used to drive to 100% / 0% and step ±51 ADC counts, even in ENGINE SAFE, in FINE and under an autopilot). The buttons are only reported; the master acts on them. `THR_STEP_ADC` removed |

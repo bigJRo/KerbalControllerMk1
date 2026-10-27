@@ -192,8 +192,8 @@ void switchToScreen(ScreenType s);
    and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 16;  // 1.16.0: whole-vessel LF / OX channels; stage readouts neutral with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 5;   // 1.16.5: one label per quantity across the screens; ORAP T+IGN counts down
+static const uint8_t SKETCH_VERSION_MINOR = 17;  // 1.17.0: AIRBRK follows the master's control group (summary byte 8)
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // (1.16.5: one label per quantity across the screens; ORAP T+IGN counts down)
 
 
 /***************************************************************************************
@@ -304,7 +304,9 @@ struct AppState {
 
   // Action groups
   bool      gear_on       = false;
-  bool      airbrake_on   = false;   // airbrake CAG (AIRBRAKE_CAG) is ON — AIRCRAFT screen
+  bool      airbrake_on   = false;   // airbrake CAG (airbrakeCag()) is ON — AIRCRAFT screen
+  uint8_t   ctrlGroup     = 1;       // master's control group 1–6 (summary byte 8); offsets airbrakeCag()
+  uint8_t   cagStatus[32] = {0};     // last CAGSTATUS, kept so a control-group change re-reads it
   bool      trimEnabled   = false;   // trim-hold enabled (from master, I2C controlByte bit 2) — SCFT/ACFT
   bool      brakes_on     = false;
   bool      drogueDeploy  = false;   // drogue deploy CAG is ON

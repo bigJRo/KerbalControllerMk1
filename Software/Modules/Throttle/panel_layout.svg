@@ -72,6 +72,6 @@
   <text x="260" y="388" font-size="7" fill="#3b82f6" text-anchor="middle">All OFF when disabled</text>
 
   <!-- Footer -->
-  <text x="16" y="412" font-size="7.5" fill="#9ca3af">Step: ±51 ADC (~5%) · Precision: ±10% INT16_MAX around anchor · +5V logic · +12V→+9V motor</text>
+  <text x="16" y="412" font-size="7.5" fill="#9ca3af">Buttons reported to the master (10% steps) · Precision: ±10% INT16_MAX around anchor · +5V logic · +12V→+9V motor</text>
   <text x="16" y="424" font-size="7.5" fill="#9ca3af">KC-01-1861/1862 v1.1 · Jeb's Controller Works</text>
 </svg>

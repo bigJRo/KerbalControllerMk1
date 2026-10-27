@@ -16,7 +16,7 @@
      ACK   (2-byte control write): controlByte carries the master's mode bits; byte 1 is
                                   the sequence just executed (0 = nothing to ack).
      Push  (every IDL_PUSH_MS)  : the status frame the console on screen needs, chosen by
-                                  the activeScreen byte, AND the 8-byte summary (0xAA) to
+                                  the activeScreen byte, AND the 9-byte summary (0xAA) to
                                   BOTH displays. Skipped while the display is in demo mode
                                   (it generates its own status then).
 
@@ -42,6 +42,7 @@
 #include "carriers.h"
 #include "interlocks.h"
 #include "hold.h"
+#include "cag.h"
 #include "infodisp_link.h"
 #include <string.h>
 
@@ -60,7 +61,7 @@ static const uint8_t IDL_LEN_ROVER     = 36;   // grew from 28: followRange, sto
 static const uint8_t IDL_LEN_ORBITAL   = 52;
 static const uint8_t IDL_LEN_LANDING   = 44;
 static const uint8_t IDL_SYNC_SUMMARY  = 0xAA;   // every cycle, both displays (#83)
-static const uint8_t IDL_LEN_SUMMARY   = 8;
+static const uint8_t IDL_LEN_SUMMARY   = 9;
 
 // InfoDisp ScreenType values for the three consoles (KCMk1_InfoDisp.h)
 static const uint8_t IDL_SCREEN_LNCHAP = 12;
@@ -182,7 +183,7 @@ static void idlApply(uint8_t op, float v) {
     case IDL_CMD_ARM:             apArm(); break;
     case IDL_CMD_DISARM:          apDisarm(); break;
     // ---- Hold-mode autopilot ----
-    case IDL_CMD_HOLD_AP_OFF:     arbAllOff(); break;   // A/P OFF from any console: everything (review q.6)
+    case IDL_CMD_HOLD_AP_OFF:     holdRelease("console A/P OFF"); arbAllOff(); break;   // everything, HOLD in every mode too
     case IDL_CMD_HOLD_LVL:        hpLevel(); break;
     case IDL_CMD_ENGAGE_ATT:      hpEngage(HP_MODE_ATT,    v != 0.0f); break;
     case IDL_CMD_ENGAGE_AOA:      hpEngage(HP_MODE_AOA,    v != 0.0f); break;
@@ -295,8 +296,9 @@ static uint8_t idlLandingFlags(const LandingStatus &s) {
          (s.autoStage ? 0x10 : 0) | (s.landed ? 0x20 : 0) | (s.brakeMarginal ? 0x40 : 0) | (s.vertHold ? 0x80 : 0);
 }
 
-// 8-byte summary: [0] 0xAA, [1] ascent flags, [2] aircraft flags, [3] rover flags,
-// [4] orbital flags, [5] landing flags, [6] landing mode, [7] landing entry.
+// 9-byte summary: [0] 0xAA, [1] ascent flags, [2] aircraft flags, [3] rover flags,
+// [4] orbital flags, [5] landing flags, [6] landing mode, [7] landing entry,
+// [8] control group 1–6 (the displays offset their CAG indicators by it, cag.h).
 static void idlPushSummary() {
   HoldStatus h = hpGetStatus();
   LandingStatus l = lpGetStatus();
@@ -309,6 +311,7 @@ static void idlPushSummary() {
   st[5] = idlLandingFlags(l);
   st[6] = l.mode;
   st[7] = l.entry ? 1 : 0;
+  st[8] = (g_panel.ctrlGrp >= 1 && g_panel.ctrlGrp <= CAG_GROUPS) ? g_panel.ctrlGrp : 1;
   idlWrite(ADDR_INFODISP_1,  st, IDL_LEN_SUMMARY);
   idlWrite(ADDR_INFODISP_2, st, IDL_LEN_SUMMARY);
 }

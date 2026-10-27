@@ -11,10 +11,10 @@
   <text x="8" y="100" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,100)">Row 1</text>
   <text x="8" y="163" font-size="8" fill="#9ca3af" text-anchor="middle" transform="rotate(-90,8,163)">Row 2</text>
 
-  <!-- B10 RCS — GREEN -->
-  <rect x="18" y="52" width="88" height="60" rx="6" fill="#22c55e18" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="62" y="78" font-size="9" font-weight="500" fill="#166534" text-anchor="middle">RCS</text>
-  <text x="62" y="91" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
+  <!-- B10 HOLD — MAGENTA -->
+  <rect x="18" y="52" width="88" height="60" rx="6" fill="#d946ef18" stroke="#d946ef" stroke-width="1.5"/>
+  <text x="62" y="78" font-size="9" font-weight="500" fill="#86198f" text-anchor="middle">HOLD</text>
+  <text x="62" y="91" font-size="8" fill="#d946ef" text-anchor="middle">● MAGENTA</text>
   <text x="62" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
 
   <!-- B8 Stab Assist GREEN -->
@@ -83,5 +83,5 @@
   <text x="562" y="151" font-size="8" fill="#22c55e" text-anchor="middle">● GREEN</text>
   <text x="562" y="171" font-size="7.5" fill="#9ca3af" text-anchor="middle">B1 · BUTTON02</text>
 
-  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · B12–B13 no-connect · B14/B15 discrete staging (input + interlock LED) not shown · KerbalButtonCore v2.0.0 · Jeb's Controller Works</text>
+  <text x="18" y="192" font-size="7.5" fill="#9ca3af">ACTIVE state colors shown · ENABLED = dim white · B12–B15 not wired (master ignores them) · KerbalButtonCore v2.0.0 · Jeb's Controller Works</text>
 </svg>

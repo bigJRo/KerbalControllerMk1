@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Throttle_Module.ino
- * @version     2.0.0
- * @date        2026-04-08
+ * @version     2.1.0
+ * @date        2026-10-27
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -11,8 +11,9 @@
  *              Provides motorized throttle control for Kerbal Space
  *              Program. A motorized 10k slide potentiometer provides
  *              position feedback and physical control. A capacitive
- *              touch sensor detects pilot contact. Four buttons set
- *              throttle to 100%, 0%, or step up/down.
+ *              touch sensor detects pilot contact. Four buttons are
+ *              reported to the master, which sets the throttle (100%,
+ *              0%, or a step up / down) and moves the lever itself.
  *
  *              I2C Address:    0x2C
  *              Module Type ID: 0x0D
