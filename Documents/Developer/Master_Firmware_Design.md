@@ -778,7 +778,7 @@ Built (Info Display v1.18.0, master v0.9.0); the full design is in Inventory §8
 | **Controller status** | Normal running | 12 V voltage, current, power; board temperature; fan speed; KSP link state of the master and each display |
 | **SWITCH ERR window** | While SWITCH ERR is lit | In front of the status screen, naming each switch in error (switch, expected, actual) until all clear |
 
-- **Graphics:** small icons and logos from its microSD card (set to be chosen, §18).
+- **Graphics and layout:** designed in `Sys_Info_Display_Design.md` (Draft 2, for review): icons built in, the microSD card only for an optional splash, and every string at least 2.8 mm tall on the ER-TFTM020-2.
 - **Protocol (0x14):** I2C Protocol Specification §15.4 (sync 0xAF). Frames: CONTROL (heartbeat), BOOT_LINE (with REPLACE for the live waiting line), BOOT_DONE, STATUS, SWITCH_ERR; and a 4-byte status read. The master keeps the boot lines it sent before the display answered and replays them when it does.
 
 ## 15. Verification
@@ -840,7 +840,7 @@ From Inventory §11:
 
 | # | Item | Needed by |
 |---|---|---|
-| 1 | Sys Info Display icons / logos | Its firmware |
+| 1 | Sys Info Display icons / logos | **Decided:** built in, optional splash on the card (`Sys_Info_Display_Design.md` D1) |
 | 2 | Input test screen: layout and frame (§13.1) | **Decided** by its firmware (Info Display v1.18.0, master v0.9.0; I2C spec §15.3) |
 | 3 | WARP TO availability, checked against Simpit on the bench (§8.8) | Stage 6 |
 | 4 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |

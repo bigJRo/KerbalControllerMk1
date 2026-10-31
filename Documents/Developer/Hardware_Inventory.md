@@ -498,7 +498,7 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 - **Waiting for KSP has no timeout,** but after 60 s a hint line is added (KSP running? Simpit COM port? USB cable?).
 - **A master that hangs cannot report itself,** so the Sys Info Display has its own timeout. If it hears nothing from the master for 5 s during boot, it shows *MASTER NOT RESPONDING* with the last step received.
 
-**Graphics:** small icons and logos (fan, power, thermometer, link, …) stored on its microSD card; set to be chosen.
+**Graphics:** icons (power, thermometer, fan, link, modules) built into the firmware; the microSD card only holds an optional power-on splash. Layout and readability on the ER-TFTM020-2: `Sys_Info_Display_Design.md`.
 
 **What this needs:**
 - **The master** sends boot messages *from the start of `setup()`*. It waits briefly for the Sys Info Display to answer first, and mirrors every line to Serial. Every I2C call during setup has a timeout, so a stuck bus becomes a visible message rather than a hang.
@@ -518,7 +518,7 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 | 5 | Rotation stick button | Settled: by control mode (§10.8) |
 | 6 | Sys Info Display | Settled (§8.12); protocol defined with the firmware design |
 | 7 | Input test screen: detailed design | Settled (§8.11), as built in Info Display v1.18.0 and master v0.9.0 |
-| 8 | Sys Info Display icons / logos | Open (§8.12) |
+| 8 | Sys Info Display icons / logos | Settled: built in (`Sys_Info_Display_Design.md` D1) |
 
 ## 10. Button module review
 
