@@ -16,7 +16,8 @@
 // Scenarios: SCFT ACFT ROVR VEH  LNCHPRE LNCH LNCHCIRC  ORB ORBADV MNVR  TGT DOCK NAV
 //            LNDG LNDGRE  LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP  Standby
 //            INPUT  (the input test screen, Info Display 1: a bench state with a few
-//                   inputs down, the throttle touched, the Pre-Warp module missing)
+//                   inputs down, the throttle touched, the Pre-Warp module missing, TIME
+//                   reporting a FAULT, the four displays' status)
 
 HardwareSerial Serial, SerialUSB1, Serial1, Serial2, Serial3;
 TwoWire Wire, Wire1, Wire2;
@@ -231,9 +232,9 @@ int main(int argc, char **argv) {
   } else if (sc == "INPUT") {
     demoMode = false; flightScene = true;
     uint8_t f0[40] = { 0xAB, 0 };
-    uint16_t present = 0x1FFF & ~(1u << 10), active = present & ~(1u << 12);   // PRE-WARP missing, DUAL ENC disabled
+    uint16_t present = 0x1FFF & ~(1u << 10), fault = 1u << 5;   // PRE-WARP missing; TIME reports a FAULT
     f0[2] = (uint8_t)present; f0[3] = (uint8_t)(present >> 8);
-    f0[4] = (uint8_t)active;  f0[5] = (uint8_t)(active >> 8);
+    f0[4] = (uint8_t)fault;   f0[5] = (uint8_t)(fault >> 8);
     f0[6] = f0[2]; f0[7] = f0[3];
     f0[8] = 0x04;                                   // UI B2
     f0[10] = 0x00; f0[11] = 0x00; f0[12] = 0x67;    // FUNCTION switches: MSTR..: SCE, UPTLM, A/P, ENGINE, THRTL
@@ -247,11 +248,18 @@ int main(int argc, char **argv) {
     f0[34] = 62;  f0[35] = 0x01 | 0x04 | 0x20;      // lever 62 %, touched, active, UP just pressed
     f0[36] = 0x30; f0[37] = (uint8_t)-4;            // control group 3, ENC2 -4
     f0[38] = 2;   f0[39] = 0x00;                    // SPC, safe lines open
-    uint8_t f1[20] = { 0xAB, 1, 3, 7, 0, 17, 15, 14, 18, 19, 6, 5, 13, 2, 22, 0x2C, 0x01, 0, 0, 0 };
+    uint8_t f1[24] = { 0xAB, 1, 3, 7, 0, 17, 15, 14, 18, 19, 6, 5, 13, 2, 22, 0x2C, 0x01, 0, 0 };
     f1[2 + 10] = 0xFF;                              // PRE-WARP: no line
+    uint32_t life = (2u << (2 * 12)) | (1u << (2 * 8));   // DUAL ENC DISABLED, TRANSLATION SLEEPING, rest ACTIVE
+    for (int i = 0; i < 4; i++) f1[19 + i] = (uint8_t)(life >> (8 * i));
+    uint8_t f2[24] = { 0xAB, 2, 0x0F };             // all four displays answering
+    f2[3] = 0x03; f2[4] = 0x21; f2[5] = 0x00;       // Annunciator: link, flight; two C&W lit
+    f2[8] = 0x03; f2[9] = 18;                       // Info 1: link, flight, on this screen
+    f2[10] = 0x03; f2[11] = 12;                     // Info 2: link, flight, ascent console
+    f2[12] = 0x0B; f2[13] = 9;                      // Resource: link, flight, caution, 9 bars
     inputTestTouch(2, 900, 60, 980, 110); stubMillis() += 50;
     inputTestTouch(2, 700, 260, 780, 310);          // the gesture opens it
-    inputTestFrame(f0, 40); inputTestFrame(f1, 20);
+    inputTestFrame(f0, 40); inputTestFrame(f1, 24); inputTestFrame(f2, 24);
     inputTestService(infoDisp);
   } else {
     const KcmScenario *pick = nullptr;

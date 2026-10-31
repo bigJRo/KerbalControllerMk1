@@ -32,6 +32,7 @@ static bool     g_sent;
 static uint32_t g_lastPushMs, g_lastStatusMs;
 static bool     g_answering[CAR_COUNT];
 static uint8_t  g_id1Screen = 0xFF;    // Info Display 1's screen, status byte 2 (0xFF unknown)
+static uint8_t  g_status[CAR_COUNT][10];   // each display's last good status packet
 static bool     g_resetPending;                // DISPLAY_RESET on the next push
 
 const char *carrierName(CarrierId c) { return c < CAR_COUNT ? kCar[c].name : "?"; }
@@ -128,6 +129,7 @@ static bool readStatus(CarrierId c) {
     if (link) g_master.displayLinks |= d.linkBit; else g_master.displayLinks &= ~d.linkBit;
     if (link != was) dbg(DBG_DISPLAY, "%s KSP link %s", d.name, link ? "up" : "down");
     if (c == CAR_INFODISP_1) g_id1Screen = b[2];
+    memcpy(g_status[c], b, d.statusLen);
   } else {
     if (c == CAR_INFODISP_1) g_id1Screen = 0xFF;
     g_master.displaysKnown &= ~d.linkBit;
@@ -182,6 +184,8 @@ void carrierSetBacklight(uint8_t flightPct, uint8_t standbyPct) {
 }
 uint8_t carrierBacklightFlight()  { return g_blFlight; }
 uint8_t carrierInfoDisp1Screen()  { return g_id1Screen; }
+bool    carrierAnswering(CarrierId c) { return c < CAR_COUNT && g_answering[c]; }
+const uint8_t *carrierLastStatus(CarrierId c) { return c < CAR_COUNT ? g_status[c] : nullptr; }
 uint8_t carrierBacklightStandby() { return g_blStandby; }
 
 static void cmdBacklight(const char *a) {
@@ -205,6 +209,7 @@ void carriersInit() {
   g_master.displayLinks = g_master.displaysKnown = 0;
   memset(g_answering, 0, sizeof g_answering);
   g_id1Screen = 0xFF;
+  memset(g_status, 0, sizeof g_status);
   g_lastPushMs = g_lastStatusMs = millis();
 }
 

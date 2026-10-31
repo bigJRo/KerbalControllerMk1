@@ -2,8 +2,10 @@
    InputTest.ino -- the input test screen (Information Display 1 only).
 
    A hidden full-panel screen showing what the master reads from every module, raw
-   (Hardware Inventory §8.11): each module's presence, lifecycle, INT line and inputs,
-   both sticks, the lever, the mode selector, the safe lines and the control group.
+   (Hardware Inventory §8.11): each module's presence, lifecycle, FAULT flag, INT line
+   and inputs (the button modules' state words as sent), both sticks, the lever, the
+   mode selector, the safe lines, the control group, and what the Annunciator, both
+   Information Displays and the Resource Display report in their status packets.
 
    Opened and closed by a two-finger diagonal pull down from the top-right corner:
    both fingers land in the corner zone (IT_ZONE_W x IT_ZONE_H) and their midpoint
@@ -14,8 +16,9 @@
 
    While open, this panel reports screen INPUT_TEST_SCREEN (18) in byte 2 of its status
    packet; the master then pushes two frames (sync 0xAB, I2C spec §15.3; layout in
-   KCMk1_Master/input_test.h): page 0, the inputs, every 100 ms; page 1, the INT lines
-   and the display modules' values, every 500 ms. Frames are taken in demo too. The
+   KCMk1_Master/input_test.h): page 0, the inputs, every 100 ms; page 1 (the INT lines,
+   the display modules' values and every module's lifecycle) and page 2 (the four 7"
+   displays' status) every 500 ms. Frames are taken in demo too. The
    overlay is repainted whole (its own page, then a flip) when a frame arrives and at
    least every IT_REDRAW_MS. Closing it repaints the screen underneath, or the standby
    splash.
@@ -28,7 +31,8 @@
 static const uint8_t  IT_SCREEN_ID   = 18;     // status byte 2 while open (master INPUT_TEST_SCREEN)
 static const uint8_t  IT_SYNC        = 0xAB;   // both pages
 static const uint8_t  IT_INPUTS_LEN  = 40;
-static const uint8_t  IT_MODULES_LEN = 20;
+static const uint8_t  IT_MODULES_LEN = 24;
+static const uint8_t  IT_DISPLAYS_LEN = 24;
 static const uint16_t IT_ZONE_W      = 320;    // the top-right corner zone the two fingers start in
 static const uint16_t IT_ZONE_H      = 220;
 static const uint16_t IT_PULL_PX     = 140;    // midpoint travel, left and down
@@ -42,7 +46,8 @@ static int32_t  _itX0 = 0, _itY0 = 0;
 static uint32_t _itT0 = 0;
 static uint8_t  _itIn[IT_INPUTS_LEN];
 static uint8_t  _itMod[IT_MODULES_LEN];
-static bool     _itHaveIn = false, _itHaveMod = false, _itDirty = false;
+static uint8_t  _itDsp[IT_DISPLAYS_LEN];
+static bool     _itHaveIn = false, _itHaveMod = false, _itHaveDsp = false, _itDirty = false;
 static uint32_t _itInMs = 0, _itDrawMs = 0;
 
 bool    inputTestIsOpen()   { return _itOpen; }
@@ -98,6 +103,8 @@ void inputTestFrame(const uint8_t *buf, uint8_t len) {
     memcpy(_itIn, buf, IT_INPUTS_LEN); _itHaveIn = true; _itInMs = millis(); _itDirty = true;
   } else if (buf[1] == 1 && len == IT_MODULES_LEN) {
     memcpy(_itMod, buf, IT_MODULES_LEN); _itHaveMod = true; _itDirty = true;
+  } else if (buf[1] == 2 && len == IT_DISPLAYS_LEN) {
+    memcpy(_itDsp, buf, IT_DISPLAYS_LEN); _itHaveDsp = true; _itDirty = true;
   }
 }
 
@@ -157,7 +164,7 @@ static void itStick(KCM_TFT &tft, uint16_t x, uint16_t y, const char *name, cons
   if (w > 0) tft.fillRect(x + S / 2, by + 2, w, 8, TFT_GREEN);
   else if (w < 0) tft.fillRect(x + S / 2 + w, by + 2, -w, 8, TFT_GREEN);
   char b[24];
-  snprintf(b, sizeof b, "%+4d %+4d %+4d", ax, ay, az);
+  snprintf(b, sizeof b, "X:%+d  Y:%+d  Z:%+d", ax, ay, az);
   textLeft(tft, &Roboto_Black_12, x, by + 16, S, 16, b, TFT_LIGHT_GREY, TFT_BLACK);
   static const char *const kBtn[3] = { "STK", "B1", "B2" };
   for (uint8_t i = 0; i < 3; i++) {
@@ -173,6 +180,49 @@ static void itChip(KCM_TFT &tft, uint16_t x, uint16_t y, uint16_t w, const char 
   tft.fillRect(x, y, w, 30, on ? onColor : TFT_OFF_BLACK);
   tft.drawRect(x, y, w, 30, TFT_DARK_GREY);
   textCenter(tft, &Roboto_Black_16, x, y, w, 30, t, on ? TFT_BLACK : TFT_GREY, on ? onColor : TFT_OFF_BLACK);
+}
+
+// The four 7" displays, as their status packets report them (page 2).
+static const char *itScreenName(uint8_t s) {
+  static const char *const kNames[] = { "LNCH", "ORB", "SCFT", "MNVR", "TGT", "DOCK", "LNDG", "VEH", "ACFT",
+                                        "ROVR", "ORB ADV", "RE-ENTRY", "ASC AP", "NAV", "ACFT AP", "ROVR AP",
+                                        "ORBT AP", "LNDG AP", "INPUT" };
+  return s < sizeof kNames / sizeof kNames[0] ? kNames[s] : "?";
+}
+
+static void inputTestDrawDisplays(KCM_TFT &tft, uint16_t y0) {
+  textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 4, y0, 200, 22, "DISPLAYS", TFT_LIGHT_GREY, TFT_BLACK);
+  static const char *const kName[4] = { "ANNUNC", "INFO 1", "INFO 2", "RESOURCE" };
+  const uint8_t *d = _itDsp;
+  for (uint8_t c = 0; c < 4; c++) {
+    uint16_t y = (uint16_t)(y0 + 24 + c * 30);
+    textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 4, y, 92, 28, kName[c], TFT_WHITE, TFT_BLACK);
+    if (!_itHaveDsp) { textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 98, y, 240, 28, "--", TFT_GREY, TFT_BLACK); continue; }
+    if (!((d[2] >> c) & 1)) {
+      textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 98, y, 240, 28, "NO ANSWER", TFT_RED, TFT_BLACK);
+      continue;
+    }
+    // flags and the per-display extras (I2C spec §15.2; KCMk1_Master input_test.h page 2)
+    uint8_t fl = c == 0 ? d[3] : c == 1 ? d[8] : c == 2 ? d[10] : d[12];
+    textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 98, y, 62, 28, (fl & 1) ? "LINK" : "NO LINK", (fl & 1) ? TFT_GREEN : TFT_RED, TFT_BLACK);
+    textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 160, y, 56, 28, (fl & 2) ? "FLIGHT" : "STBY", (fl & 2) ? TFT_WHITE : TFT_GREY, TFT_BLACK);
+    char e[32] = "";
+    uint16_t ec = TFT_LIGHT_GREY;
+    if (c == 0) {
+      uint32_t cw = (uint32_t)(d[4] | d[5] << 8 | (uint32_t)d[6] << 16 | (uint32_t)d[7] << 24) & 0x01FFFFFFUL;
+      uint8_t n = 0;
+      for (uint8_t i = 0; i < 25; i++) n += (cw >> i) & 1;
+      snprintf(e, sizeof e, "%sC&W %u", (fl & 4) ? "ALARM  " : "", n);
+      if (fl & 4) ec = TFT_RED;
+    } else if (c == 1 || c == 2) {
+      snprintf(e, sizeof e, "%s%s", (fl & 4) ? "DEMO  " : "", itScreenName(c == 1 ? d[9] : d[11]));
+    } else {
+      snprintf(e, sizeof e, "%s%s%u bars", (fl & 4) ? "DEMO  " : "",
+               (fl & 16) ? "ALARM  " : (fl & 8) ? "CAUTION  " : "", d[13]);
+      if (fl & 16) ec = TFT_RED; else if (fl & 8) ec = TFT_YELLOW;
+    }
+    textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 218, y, 128, 28, e, ec, TFT_BLACK);
+  }
 }
 
 static void inputTestDraw(KCM_TFT &tft) {
@@ -193,26 +243,38 @@ static void inputTestDraw(KCM_TFT &tft) {
   textLeft(tft, &Roboto_Black_12, IT_COL_ADDR, hy, 50, 20, "ADDR", TFT_GREY, TFT_BLACK);
   textLeft(tft, &Roboto_Black_12, IT_COL_LINE, hy, 60, 20, "LINE", TFT_GREY, TFT_BLACK);
   textLeft(tft, &Roboto_Black_12, IT_COL_STATE, hy, 86, 20, "STATE", TFT_GREY, TFT_BLACK);
-  textLeft(tft, &Roboto_Black_12, IT_COL_IN, hy, 300, 20, "INPUTS (lit = down)", TFT_GREY, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_12, IT_COL_IN, hy, 300, 20, "INPUTS (lit = bit set)     red STATE = FAULT", TFT_GREY, TFT_BLACK);
 
   uint16_t present = live ? (uint16_t)(_itIn[2] | _itIn[3] << 8) : 0;
-  uint16_t active  = live ? (uint16_t)(_itIn[4] | _itIn[5] << 8) : 0;
+  uint16_t fault   = live ? (uint16_t)(_itIn[4] | _itIn[5] << 8) : 0;
   uint16_t known   = live ? (uint16_t)(_itIn[6] | _itIn[7] << 8) : 0;
+  uint32_t life    = _itHaveMod ? (uint32_t)(_itMod[19] | _itMod[20] << 8 | (uint32_t)_itMod[21] << 16 |
+                                             (uint32_t)_itMod[22] << 24) : 0;
   for (uint8_t m = 0; m < 13; m++) {
     const ItModule &d = IT_MODS[m];
     uint16_t y = (uint16_t)(IT_ROW_Y0 + m * IT_ROW_H);
     if (m & 1) tft.fillRect(0, y, IT_RIGHT_X - 10, IT_ROW_H, TFT_OFF_BLACK);
     uint16_t bg = (m & 1) ? TFT_OFF_BLACK : TFT_BLACK;
-    bool pr = (present >> m) & 1, ac = (active >> m) & 1, kn = (known >> m) & 1;
+    bool pr = (present >> m) & 1, fl = (fault >> m) & 1, kn = (known >> m) & 1;
     char b[24];
     textLeft(tft, &Roboto_Black_16, IT_COL_NAME, y, 140, IT_ROW_H, d.name, pr ? TFT_WHITE : TFT_GREY, bg);
     snprintf(b, sizeof b, "%02X", d.addr);
     textLeft(tft, &Roboto_Black_16, IT_COL_ADDR, y, 50, IT_ROW_H, b, TFT_LIGHT_GREY, bg);
     itLineName(_itHaveMod ? _itMod[2 + m] : 0xFF, b, sizeof b);
     textLeft(tft, &Roboto_Black_16, IT_COL_LINE, y, 64, IT_ROW_H, b, TFT_LIGHT_GREY, bg);
-    const char *st = !live ? "--" : !pr ? "MISSING" : ac ? "ACTIVE" : "DISABLED";
-    uint16_t sc = !live ? TFT_GREY : !pr ? TFT_RED : ac ? TFT_GREEN : TFT_YELLOW;
-    textLeft(tft, &Roboto_Black_16, IT_COL_STATE, y, 88, IT_ROW_H, st, sc, bg);
+    // Lifecycle as the module reports it (KMC_STATUS_*: 0 ACTIVE, 1 SLEEPING, 2 DISABLED,
+    // 3 BOOT_READY); a FAULT bit turns the cell red.
+    static const char *const kLife[4] = { "ACTIVE", "SLEEPING", "DISABLED", "BOOT RDY" };
+    static const uint16_t kLifeCol[4] = { TFT_GREEN, TFT_SKY, TFT_YELLOW, TFT_MAGENTA };
+    uint8_t lc = (uint8_t)((life >> (2 * m)) & 3);
+    const char *st = !live ? "--" : !pr ? "MISSING" : !_itHaveMod ? "..." : kLife[lc];
+    uint16_t sc = !live ? TFT_GREY : !pr ? TFT_RED : !_itHaveMod ? TFT_GREY : kLifeCol[lc];
+    if (live && pr && fl) {
+      tft.fillRect(IT_COL_STATE - 4, y + 4, 90, IT_ROW_H - 8, TFT_RED);
+      textLeft(tft, &Roboto_Black_16, IT_COL_STATE, y + 4, 84, IT_ROW_H - 8, st, TFT_WHITE, TFT_RED);
+    } else {
+      textLeft(tft, &Roboto_Black_16, IT_COL_STATE, y, 88, IT_ROW_H, st, sc, bg);
+    }
     if (!live || !pr || !kn) continue;
     uint16_t by = (uint16_t)(y + (IT_ROW_H - IT_BOX - 6) / 2);
     switch (d.kind) {
@@ -255,37 +317,41 @@ static void inputTestDraw(KCM_TFT &tft) {
     }
   }
 
-  // Right-hand column
+  // Right-hand column: the sticks, then the lever with the mode selector, safe lines and
+  // control group, then the four displays.
   tft.drawLine(IT_RIGHT_X - 6, IT_TITLE_H + 2, IT_RIGHT_X - 6, SCREEN_H - 1, TFT_DARK_GREY);
   static const uint8_t ZERO4[4] = { 0, 0, 0, 0 };
-  itStick(tft, IT_RIGHT_X + 4, IT_TITLE_H + 32, "ROTATION", live ? &_itIn[24] : ZERO4);
-  itStick(tft, IT_RIGHT_X + 176, IT_TITLE_H + 32, "TRANSLATION", live ? &_itIn[28] : ZERO4);
+  itStick(tft, IT_RIGHT_X + 4, IT_TITLE_H + 32, "TRANSLATION", live ? &_itIn[28] : ZERO4);
+  itStick(tft, IT_RIGHT_X + 176, IT_TITLE_H + 32, "ROTATION", live ? &_itIn[24] : ZERO4);
+  tft.drawLine(IT_RIGHT_X, 296, SCREEN_W - 1, 296, TFT_DARK_GREY);
 
-  uint16_t ly = IT_TITLE_H + 292;
-  textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 4, ly - 26, 120, 24, "LEVER", TFT_LIGHT_GREY, TFT_BLACK);
-  tft.drawRect(IT_RIGHT_X + 4, ly, 44, 200, TFT_GREY);
+  const uint16_t ly = 324, LH = 120;
+  textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 4, ly - 24, 120, 22, "LEVER", TFT_LIGHT_GREY, TFT_BLACK);
+  tft.drawRect(IT_RIGHT_X + 4, ly, 44, LH, TFT_GREY);
   uint8_t lever = live ? _itIn[34] : 0xFF;
   if (lever <= 100) {
-    uint16_t h = (uint16_t)(lever * 196 / 100);
-    tft.fillRect(IT_RIGHT_X + 6, ly + 198 - h, 40, h, (_itIn[35] & 1) ? TFT_YELLOW : TFT_GREEN);
+    uint16_t h = (uint16_t)(lever * (LH - 4) / 100);
+    tft.fillRect(IT_RIGHT_X + 6, ly + LH - 2 - h, 40, h, (_itIn[35] & 1) ? TFT_BLUE : TFT_GREEN);   // blue while touched
   }
-  char b[16];
+  char b[24];
   if (lever <= 100) snprintf(b, sizeof b, "%u %%", lever); else snprintf(b, sizeof b, "--");
-  textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 54, ly + 170, 70, 30, b, TFT_LIGHT_GREY, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 52, ly + LH - 24, 70, 24, b, TFT_LIGHT_GREY, TFT_BLACK);
 
   uint16_t cx = IT_RIGHT_X + 130;
-  textLeft(tft, &Roboto_Black_16, cx, ly - 26, 200, 24, "MODE SELECTOR", TFT_LIGHT_GREY, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_16, cx, ly - 24, 200, 22, "MODE SELECTOR", TFT_LIGHT_GREY, TFT_BLACK);
   uint8_t mode = live ? _itIn[38] : 0xFF;                  // CTRL_MODE_RVR 0, PLN 1, SPC 2
   itChip(tft, cx,       ly, 66, "SPC", mode == 2, TFT_GREEN);
   itChip(tft, cx + 70,  ly, 66, "PLN", mode == 1, TFT_GREEN);
   itChip(tft, cx + 140, ly, 66, "RVR", mode == 0, TFT_GREEN);
-  textLeft(tft, &Roboto_Black_16, cx, ly + 46, 200, 24, "SAFE LINES", TFT_LIGHT_GREY, TFT_BLACK);
+  textLeft(tft, &Roboto_Black_16, cx, ly + 34, 200, 22, "SAFE LINES", TFT_LIGHT_GREY, TFT_BLACK);
   uint8_t safe = live ? _itIn[39] : 0;
-  itChip(tft, cx,       ly + 72, 100, "ABORT", safe & 1, TFT_RED);
-  itChip(tft, cx + 106, ly + 72, 100, "STAGE", safe & 2, TFT_ORANGE);
-  textLeft(tft, &Roboto_Black_16, cx, ly + 118, 200, 24, "CONTROL GROUP", TFT_LIGHT_GREY, TFT_BLACK);
-  snprintf(b, sizeof b, "%u", live ? (_itIn[36] >> 4) : 0);
-  textLeft(tft, &Roboto_Black_24, cx, ly + 142, 80, 36, live ? b : "--", TFT_WHITE, TFT_BLACK);
+  itChip(tft, cx,       ly + 58, 100, "ABORT", safe & 1, TFT_RED);
+  itChip(tft, cx + 106, ly + 58, 100, "STAGE", safe & 2, TFT_ORANGE);
+  snprintf(b, sizeof b, "CONTROL GROUP  %u", live ? (_itIn[36] >> 4) : 0);
+  textLeft(tft, &Roboto_Black_16, cx, ly + 94, 210, 26, live ? b : "CONTROL GROUP  --", TFT_LIGHT_GREY, TFT_BLACK);
+  tft.drawLine(IT_RIGHT_X, 452, SCREEN_W - 1, 452, TFT_DARK_GREY);
+
+  inputTestDrawDisplays(tft, 456);
 }
 
 /***************************************************************************************

@@ -44,6 +44,15 @@ int main(int, char **) {
   ctl(ST_PROCEED); frames(2);
   uint8_t bad[40] = { 0xAB, 0 }; bad[34] = 99; inputTestFrame(bad, 39); frames(1);
   CHECK(_itIn[34] == 77, "a frame of the wrong length is dropped");
+  uint8_t f1[24] = { 0xAB, 1 }; f1[19] = 0x08;   // module 1 (FUNCTION) DISABLED
+  inputTestFrame(f1, 24); frames(1);
+  CHECK(_itHaveMod && _itMod[19] == 0x08, "page 1 (24 bytes, with the lifecycles) is taken");
+  uint8_t f1old[20] = { 0xAB, 1 }; f1old[2] = 0x33;
+  inputTestFrame(f1old, 20); frames(1);
+  CHECK(_itMod[2] != 0x33, "the old 20-byte page 1 is dropped");
+  uint8_t f2[24] = { 0xAB, 2, 0x0B }; f2[12] = 0x09; f2[13] = 7;
+  inputTestFrame(f2, 24); frames(1);
+  CHECK(_itHaveDsp && _itDsp[2] == 0x0B && _itDsp[13] == 7, "page 2 (the four displays) is taken");
   tap(60, 100);
   CHECK(inputTestIsOpen() && activeScreen == before, "a tap while open does nothing");
   pull(700, 60, 780, 110, 200);

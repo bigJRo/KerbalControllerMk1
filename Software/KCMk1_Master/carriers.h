@@ -39,6 +39,8 @@ void     carrierDisplayReset();            // requestType DISPLAY_RESET to all f
 void     carrierSetBacklight(uint8_t flightPct, uint8_t standbyPct);   // BACKLIGHT frame (I2C spec §15.3)
 uint8_t  carrierBacklightFlight();
 uint8_t  carrierInfoDisp1Screen();          // its status byte 2, read every CARRIER_STATUS_MS (0xFF unknown)
+bool     carrierAnswering(CarrierId c);     // its last status read succeeded
+const uint8_t *carrierLastStatus(CarrierId c);   // its last good status packet (sync, flags, …)
 uint8_t  carrierBacklightStandby();
 uint8_t  carrierInfoDispControl(uint8_t requestType);   // an Info Display's control byte (consoles' ACK)
 const char *carrierName(CarrierId c);

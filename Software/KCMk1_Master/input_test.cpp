@@ -36,26 +36,29 @@ static uint8_t lastPacket(ModId id, uint8_t *p, uint8_t pressByte, uint8_t *rece
 void inputTestBuildInputs(uint8_t *f) {
   memset(f, 0, INPUT_TEST_INPUTS_LEN);
   f[0] = SYNC_INPUT_TEST; f[1] = 0;
-  uint16_t present = 0, active = 0, known = 0;
+  uint16_t present = 0, fault = 0, known = 0;
   for (uint8_t m = 0; m < MOD_COUNT; m++) {
     uint8_t p[16];
+    uint8_t n = moduleLastPacket((ModId)m, p);
     if (modulePresent((ModId)m)) present |= (uint16_t)(1u << m);
-    if (moduleLifecycle((ModId)m) == KMC_STATUS_ACTIVE) active |= (uint16_t)(1u << m);
-    if (moduleInputs((ModId)m, nullptr) || moduleLastPacket((ModId)m, p) > 0) known |= (uint16_t)(1u << m);
+    if (n > 0) known |= (uint16_t)(1u << m);
+    if (n > 0 && (p[0] & KMC_STATUS_FAULT)) fault |= (uint16_t)(1u << m);   // status byte bit 2, as sent
   }
   f[2] = (uint8_t)present; f[3] = (uint8_t)(present >> 8);
-  f[4] = (uint8_t)active;  f[5] = (uint8_t)(active >> 8);
+  f[4] = (uint8_t)fault;   f[5] = (uint8_t)(fault >> 8);
   f[6] = (uint8_t)known;   f[7] = (uint8_t)(known >> 8);
 
+  // Button modules: the state word exactly as the module sent it (packet bytes 3..,
+  // I2C spec §9.1), not the master's processed levels.
   static const struct { ModId id; uint8_t bytes; } kButtons[] = {
     { MOD_UI, 2 }, { MOD_FUNCTION, 3 }, { MOD_ACTION, 2 }, { MOD_STABILITY, 2 },
     { MOD_VEHICLE, 3 }, { MOD_TIME, 2 }, { MOD_AUX, 2 },
   };
   uint8_t o = 8;
   for (auto &b : kButtons) {
-    uint32_t lv = 0;
-    moduleInputs(b.id, &lv);
-    for (uint8_t i = 0; i < b.bytes; i++) f[o++] = (uint8_t)(lv >> (8 * i));
+    uint8_t p[16];
+    bool have = moduleLastPacket(b.id, p) >= 3 + 2 * b.bytes;
+    for (uint8_t i = 0; i < b.bytes; i++) f[o++] = have ? p[3 + i] : 0;
   }
 
   static const ModId kSticks[2] = { MOD_ROTATION, MOD_TRANSLATION };
@@ -99,6 +102,23 @@ void inputTestBuildModules(uint8_t *f) {
     uint16_t v = moduleLastPacket(kDisp[d], p) >= KMC_DISPLAY_PACKET_SIZE ? (uint16_t)(p[6] << 8 | p[7]) : 0;
     f[15 + 2 * d] = (uint8_t)v; f[16 + 2 * d] = (uint8_t)(v >> 8);
   }
+  uint32_t life = 0;                                 // 2 bits per module, KMC_STATUS_* as last reported
+  for (uint8_t m = 0; m < MOD_COUNT; m++) life |= (uint32_t)(moduleLifecycle((ModId)m) & 0x03) << (2 * m);
+  for (uint8_t i = 0; i < 4; i++) f[19 + i] = (uint8_t)(life >> (8 * i));
+}
+
+void inputTestBuildDisplays(uint8_t *f) {
+  memset(f, 0, INPUT_TEST_DISPLAYS_LEN);
+  f[0] = SYNC_INPUT_TEST; f[1] = 2;
+  for (uint8_t c = 0; c < CAR_COUNT; c++) if (carrierAnswering((CarrierId)c)) f[2] |= (uint8_t)(1u << c);
+  const uint8_t *a = carrierLastStatus(CAR_ANNUNCIATOR);   // [sync, flags, C&W 0..3]
+  f[3] = a[1]; memcpy(&f[4], &a[2], 4);
+  const uint8_t *i1 = carrierLastStatus(CAR_INFODISP_1);   // [sync, flags, screen, …]
+  f[8] = i1[1]; f[9] = i1[2];
+  const uint8_t *i2 = carrierLastStatus(CAR_INFODISP_2);
+  f[10] = i2[1]; f[11] = i2[2];
+  const uint8_t *r = carrierLastStatus(CAR_RESDISP);       // [sync, flags, bar count, worst resource]
+  f[12] = r[1]; f[13] = r[2]; f[14] = r[3];
 }
 
 // ENC2 count: the encoder's deltas are cleared on every read, so add up each new packet's.
@@ -125,6 +145,9 @@ void inputTestService() {
     uint8_t f[INPUT_TEST_MODULES_LEN];
     inputTestBuildModules(f);
     busWrite(ADDR_INFODISP_1, f, INPUT_TEST_MODULES_LEN);
+    uint8_t g[INPUT_TEST_DISPLAYS_LEN];
+    inputTestBuildDisplays(g);
+    busWrite(ADDR_INFODISP_1, g, INPUT_TEST_DISPLAYS_LEN);
   }
 }
 
