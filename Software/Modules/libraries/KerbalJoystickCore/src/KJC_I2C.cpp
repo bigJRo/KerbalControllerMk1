@@ -142,7 +142,9 @@ static void _dispatch() {
             break;
 
         case KJC_CMD_BULB_TEST:
-            buttonsBulbTest(2000);
+            // 0x01 (or no payload) starts, 0x00 stops; persistent, not blocking (spec §5.2)
+            buttonsSetBulbTest(!(_cmdLen >= 2 && _cmdBuf[1] == 0x00));
+            _renderPending = true;
             break;
 
         case KJC_CMD_SLEEP:

@@ -30,6 +30,7 @@ KBCLEDControl::KBCLEDControl()
     , _altColors(nullptr)
     , _brightness(KBC_ENABLED_BRIGHTNESS)
     , _flashOn(true)
+    , _bulb(false)
     , _flashLastToggle(0)
 {
     memset(_pixelBuffer, 0, sizeof(_pixelBuffer));
@@ -142,8 +143,8 @@ void KBCLEDControl::render() {
     // switch inputs with no LEDs on the KC-01-1801/1811 boards, so there is
     // nothing to drive for them.
     for (uint8_t i = 0; i < KBC_NEO_COUNT; i++) {
-        RGBColor color = _resolveColor(i, _flashOn);
-        _setNeoPixel(i, color);
+        if (_bulb) _pixels.setPixelColor(i, 255, 255, 255);   // bulb test: full white
+        else       _setNeoPixel(i, _resolveColor(i, _flashOn));
     }
     _pixels.show();
 }
@@ -171,20 +172,11 @@ bool KBCLEDControl::hasExtendedState() const {
 }
 
 // ============================================================
-//  bulbTest()
+//  setBulbTest()
 // ============================================================
 
-void KBCLEDControl::bulbTest(uint16_t durationMs) {
-    // Set all NeoPixels to full white
-    for (uint8_t i = 0; i < KBC_NEO_COUNT; i++) {
-        _pixels.setPixelColor(i, 255, 255, 255);
-    }
-    _pixels.show();
-
-    delay(durationMs);
-
-    // Restore previous state
-    render();
+void KBCLEDControl::setBulbTest(bool on) {
+    _bulb = on;
 }
 
 // ============================================================

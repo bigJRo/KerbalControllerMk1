@@ -33,6 +33,9 @@ static const char *const kChName[CH_COUNT] = { "rotation", "translation", "wheel
 static bool    g_wasReady, g_wasAuto, g_wasEva;
 static uint8_t g_wasMode;
 static uint32_t g_lastLeverMs;
+static uint16_t g_lastLeverSent;          // the last lever target sent
+static int8_t   g_holdSent;               // CMD_SET_LEVER_HOLD as last sent (-1 = not yet)
+static uint32_t g_holdMs;
 
 void frameSetPilotRotation(float p, float y, float r) { g_pRot[0] = p; g_pRot[1] = y; g_pRot[2] = r; }
 void frameSetPilotTranslation(float x, float y, float z) { g_pTrn[0] = x; g_pTrn[1] = y; g_pTrn[2] = z; }
@@ -169,12 +172,18 @@ static void throttleFrame(uint32_t now) {
   int16_t v = axis(t);
   if (v < 0) v = 0;
 
-  // Under an autopilot the lever is driven to its value (design §11.3, Inventory §8.3).
-  if (g_thrOwner && interlockThrottleLive() && l.known && l.active && !l.precision && !l.touched &&
-      now - g_lastLeverMs >= FRAME_LEVER_MIN_MS) {
-    int32_t d = (int32_t)v - (int32_t)l.pos;
+  // Under an autopilot the lever is driven to its value and held there (design §11.3,
+  // Inventory §8.10): CMD_SET_LEVER_HOLD tells the module to keep the target against a
+  // hand (stall-limited) and to drive back on release. While a hand is on it, the lever
+  // reads the hand, so a new target goes out only when the autopilot's value moves.
+  bool hold = g_thrOwner && interlockThrottleLive() && l.known && l.active && !l.precision;
+  if (l.known && l.active && ((int8_t)hold != g_holdSent || now - g_holdMs >= FRAME_LEVER_HOLD_MS)) {
+    if (leverHold(hold)) { g_holdSent = (int8_t)hold; g_holdMs = now; }
+  }
+  if (hold && now - g_lastLeverMs >= FRAME_LEVER_MIN_MS) {
+    int32_t d = (int32_t)v - (int32_t)(l.touched ? g_lastLeverSent : l.pos);
     if (d > (int32_t)FRAME_LEVER_BAND || d < -(int32_t)FRAME_LEVER_BAND) {
-      if (leverCommand((uint16_t)v)) g_lastLeverMs = now;
+      if (leverCommand((uint16_t)v)) { g_lastLeverMs = now; g_lastLeverSent = (uint16_t)v; }
     }
   }
   if (!due(g_ch[CH_THR], &v, 1, 0x01, FRAME_THR_NOISE, now)) return;
@@ -222,5 +231,8 @@ void frameInit() {
   g_aRotMask = g_aWheelMask = g_thrOwner = 0;
   g_wasReady = g_wasAuto = g_wasEva = false; g_wasMode = 0xFF;
   g_lastLeverMs = 0;
+  g_lastLeverSent = 0;
+  g_holdSent = -1;
+  g_holdMs = 0;
   consoleRegister("frame", "control channels: last values sent to KSP", cmdFrame);
 }

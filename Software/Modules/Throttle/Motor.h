@@ -60,6 +60,12 @@ void motorUpdate(uint16_t currentADC);
 void motorStop();
 
 /**
+ * @brief Stop the motor and drop the target, so motorUpdate() does not
+ *        drive again until the next motorSetTarget().
+ */
+void motorCancel();
+
+/**
  * @brief Returns true if motor is actively seeking a target.
  */
 bool motorIsMoving();

@@ -301,7 +301,7 @@ static void testMomentary(Bench &b) {
   f.press(SG1_LTG); runFor(150);
   all = true; for (auto &m : b.mods) if (m.countCmd(KMC_CMD_BULB_TEST) != 1 || m.cmds[0][1] != 1) all = false;
   CHECK(all, "LTG TEST: bulb test on every module");
-  f.release(SG1_LTG); runFor(2200);
+  f.release(SG1_LTG); runFor(MODBUS_BULB_MIN_MS + 100);
   all = true; for (auto &m : b.mods) if (m.countCmd(KMC_CMD_BULB_TEST) != 2) all = false;
   CHECK(all, "LTG NORM: bulb test stopped");
 }

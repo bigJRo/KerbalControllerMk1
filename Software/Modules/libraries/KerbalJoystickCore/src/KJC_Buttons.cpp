@@ -50,6 +50,7 @@ static uint8_t  _debounceCandidate[KJC_BUTTON_COUNT] = {0};
 // ============================================================
 
 static uint8_t  _ledState[KJC_NEO_COUNT]  = {KJC_LED_OFF, KJC_LED_OFF};
+static volatile bool _bulb               = false;   // bulb test on (set from the I2C receive handler)
 static uint8_t  _brightness               = KJC_ENABLED_BRIGHTNESS;
 static RGBColor _activeColors[KJC_NEO_COUNT];
 
@@ -227,6 +228,7 @@ void buttonsClearLEDs() {
 
 void buttonsRender() {
     for (uint8_t i = 0; i < KJC_NEO_COUNT; i++) {
+        if (_bulb) { _pixels.setPixelColor(i, 255, 255, 255); continue; }   // bulb test: full white
         RGBColor color = KJC_OFF;
 
         switch (_ledState[i]) {
@@ -266,16 +268,11 @@ void buttonsRender() {
 }
 
 // ============================================================
-//  buttonsBulbTest()
+//  buttonsSetBulbTest()
 // ============================================================
 
-void buttonsBulbTest(uint16_t durationMs) {
-    for (uint8_t i = 0; i < KJC_NEO_COUNT; i++) {
-        _pixels.setPixelColor(i, 255, 255, 255);
-    }
-    _pixels.show();
-    delay(durationMs);
-    buttonsRender();
+void buttonsSetBulbTest(bool on) {
+    _bulb = on;
 }
 
 // ============================================================

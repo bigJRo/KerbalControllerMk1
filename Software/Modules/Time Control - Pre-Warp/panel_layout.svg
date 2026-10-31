@@ -39,7 +39,7 @@
   <rect x="200" y="256" width="82" height="82" rx="6" fill="#ffa00018" stroke="#ffa000" stroke-width="1.5"/>
   <text x="241" y="284" font-size="10" font-weight="500" fill="#854d0e" text-anchor="middle">1 day</text>
   <text x="241" y="301" font-size="7" fill="#ffa000" text-anchor="middle">● GOLD flash</text>
-  <text x="241" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">→ sets value to 1440</text>
+  <text x="241" y="316" font-size="6.5" fill="#9ca3af" text-anchor="middle">→ sets value to 360</text>
   <text x="241" y="330" font-size="6.5" fill="#9ca3af" text-anchor="middle">BTN03 · PC1</text>
 
   <!-- Legend -->

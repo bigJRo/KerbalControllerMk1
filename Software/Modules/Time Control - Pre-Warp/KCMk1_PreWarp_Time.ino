@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_PreWarp_Time.ino
- * @version     2.0.0
- * @date        2026-04-28
+ * @version     2.1.0
+ * @date        2026-10-31
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -21,7 +21,8 @@
  *              Button behaviour:
  *                BTN01 — 5 min preset  — flashes GOLD 150ms, sets value to 5
  *                BTN02 — 1 hour preset — flashes GOLD 150ms, sets value to 60
- *                BTN03 — 1 day preset  — flashes GOLD 150ms, sets value to 1440
+ *                BTN03 — 1 day preset  — flashes GOLD 150ms, sets value to 360
+ *                                         (1 Kerbin day = 6 h = 360 min)
  *                BTN_EN — Resets value to 0
  *
  *              All buttons return to BACKLIT after flash. No persistent
@@ -71,7 +72,7 @@
 // ── Preset values (minutes) ───────────────────────────────────
 #define PRESET_5MIN     5
 #define PRESET_1HOUR    60
-#define PRESET_1DAY     1440
+#define PRESET_1DAY     360     // 1 Kerbin day (6 h), not an Earth day
 
 // ── Flash duration for preset buttons ─────────────────────────
 #define FLASH_MS        150

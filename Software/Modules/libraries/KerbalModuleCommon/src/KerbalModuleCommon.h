@@ -34,6 +34,18 @@ struct RGBColor {
     uint8_t b;  ///< Blue  (0-255)
 };
 
+/**
+ * @brief Scale a colour by a brightness factor (0 = off, 255 = unchanged).
+ *        Used for the ENABLED backlight level (CMD_SET_BRIGHTNESS) by
+ *        KerbalButtonCore (KBC_scaleColor) and KerbalJoystickCore
+ *        (kjcScaleColor), which call it by this name.
+ */
+inline RGBColor scaleColor(RGBColor c, uint8_t brightness) {
+    return { (uint8_t)((uint16_t)c.r * brightness / 255),
+             (uint8_t)((uint16_t)c.g * brightness / 255),
+             (uint8_t)((uint16_t)c.b * brightness / 255) };
+}
+
 // ============================================================
 //  System palette — canonical RGB values
 //
@@ -228,6 +240,7 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 #define KMC_CMD_SET_THROTTLE     0x0B   // throttle: set target position (2-byte BE)
 #define KMC_CMD_SET_PRECISION    0x0C   // throttle: precision mode (1 byte 0/1)
 #define KMC_CMD_SET_VALUE        0x0D
+#define KMC_CMD_SET_LEVER_HOLD   0x0E   // throttle: the master owns the lever (1 byte 0/1), I2C spec §9.4
 
 // ============================================================
 //  Canonical packet sizes

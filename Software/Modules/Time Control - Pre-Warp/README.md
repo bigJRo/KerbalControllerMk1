@@ -1,7 +1,7 @@
 # KCMk1_PreWarp_Time
 
 **Module:** Pre-Warp Time  
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Date:** 2026-04-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
@@ -43,7 +43,7 @@ The Pre-Warp Time module allows the pilot to set a pre-warp duration in minutes 
 |---|---|---|---|---|
 | BTN01 | PA1 | 5 min preset | GOLD flash 150ms | 5 |
 | BTN02 | PC2 | 1 hour preset | GOLD flash 150ms | 60 |
-| BTN03 | PC1 | 1 day preset | GOLD flash 150ms | 1440 |
+| BTN03 | PC1 | 1 Kerbin day preset (6 h) | GOLD flash 150ms | 360 |
 | BTN_EN | PB3 | Reset | Momentary — no LED | 0 |
 
 All three preset buttons flash GOLD for 150ms on press then return to BACKLIT. The display jumps to the preset value immediately. There is no persistent toggle state — all three are the same action type.
@@ -164,7 +164,7 @@ No action. State persists across vessel switches — pilot configures as needed.
 
 ### Verify Operation
 
-After flashing: display shows `0`, all three buttons backlit dim warm. Press BTN01 — display jumps to 5 with a brief GOLD flash. Press BTN02 — display shows 60. Press BTN03 — display shows 1440. Press BTN_EN — display returns to 0. Turn encoder — value increments/decrements.
+After flashing: display shows `0`, all three buttons backlit dim warm. Press BTN01 — display jumps to 5 with a brief GOLD flash. Press BTN02 — display shows 60. Press BTN03 — display shows 360. Press BTN_EN — display returns to 0. Turn encoder — value increments/decrements.
 
 ---
 
@@ -172,6 +172,7 @@ After flashing: display shows `0`, all three buttons backlit dim warm. Press BTN
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.1.0 | 2026-10-31 | BTN03 preset 1440 → 360 min: one Kerbin day (6 h), not an Earth day. |
 | 2.0.0 | 2026-04-28 | Rewritten for Kerbal7SegmentCore v2.0.0. All application logic in sketch. Click-count encoder acceleration. Universal 3-byte packet header. Pin assignments corrected to match KC-01-1880 v2.0 hardware. Clock corrected to 20 MHz. |
 | 1.0 | 2026-04-08 | Initial release |
 

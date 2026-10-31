@@ -158,17 +158,23 @@ static void testLeds(Bench &b) {
   moduleBulbTest(true);
   bool all = true; for (auto &m : b.mods) if (m.countCmd(KMC_CMD_BULB_TEST) < 1) all = false;
   CHECK(all, "bulb test to every module");
-  // Today's modules block for 2 s on a start: the master leaves them alone meanwhile,
-  // and sends the stop after.
-  size_t c0 = a.cmds.size();
+  // The modules do not block: LED changes still go out during the test, and the stop
+  // follows the release once the test has shown for MODBUS_BULB_MIN_MS.
   moduleSetLed(MOD_AUX, 3, KMC_LED_ACTIVE);
+  runFor(100);
+  CHECK(kmcLedPackGet(a.led, 3) == KMC_LED_ACTIVE, "LED changes sent during the test");
   moduleBulbTest(false);
-  runFor(1000);
-  CHECK(a.cmds.size() == c0, "no module traffic during the bulb test");
-  runFor(1200);
-  CHECK(a.cmds.size() > c0 && a.countCmd(KMC_CMD_BULB_TEST) == 2 && a.cmds[c0][0] == KMC_CMD_BULB_TEST &&
-        a.cmds[c0].size() == 2 && a.cmds[c0][1] == 0, "stop sent once the modules are free");
-  CHECK(kmcLedPackGet(a.led, 3) == KMC_LED_ACTIVE, "LED changes sent after it");
+  runFor(100);
+  CHECK(a.countCmd(KMC_CMD_BULB_TEST) == 1, "a quick release: the test still shows for its minimum");
+  runFor(MODBUS_BULB_MIN_MS);
+  const std::vector<uint8_t> *lastBulb = nullptr;
+  for (auto &c : a.cmds) if (c[0] == KMC_CMD_BULB_TEST) lastBulb = &c;
+  CHECK(a.countCmd(KMC_CMD_BULB_TEST) == 2 && lastBulb && lastBulb->size() == 2 && (*lastBulb)[1] == 0,
+        "then the stop (0x00)");
+  moduleBulbTest(true); runFor(20); moduleBulbTest(false); moduleBulbTest(true); runFor(MODBUS_BULB_MIN_MS + 100);
+  CHECK(a.countCmd(KMC_CMD_BULB_TEST) == 3, "on, off and on again before the stop: one start, no stop");
+  moduleBulbTest(false); runFor(MODBUS_BULB_MIN_MS + 100);
+  CHECK(a.countCmd(KMC_CMD_BULB_TEST) == 4, "and the stop on the final release");
 }
 
 static void testHealth(Bench &b) {

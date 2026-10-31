@@ -1,6 +1,6 @@
 # KerbalJoystickCore
 
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  

@@ -878,7 +878,7 @@ static const DisplayStep _displaySteps[] = {
   DS_MODE("MODE: DEMO",        1u << MF_DEMO,        "Mode grid: DEMO (blue)"),
   DS_MODE("MODE: WARP",        1u << MF_WARP,        "Mode grid: WARP (yellow)"),
   DS_MODE("MODE: AUDIO",       1u << MF_AUDIO,       "Mode grid: AUDIO (green)"),
-  DS_MODE("MODE: THRTL ENA",   1u << MF_THRTL_ENA,   "Mode grid: THRTL ENA (green)"),
+  DS_MODE("MODE: A/P ARM",     1u << MF_AP_ARM,      "Mode grid: A/P ARM (green)"),
   DS_MODE("MODE: TRIM",        1u << MF_TRIM,        "Mode grid: TRIM (aqua)"),
   DS_MODE("MODE: AUTOPILOT",   1u << MF_AUTOPILOT,   "Mode grid: AUTOPILOT (green)"),
   DS_MODE("MODE: DEBUG",       1u << MF_DEBUG,       "Mode grid: DEBUG (purple)"),

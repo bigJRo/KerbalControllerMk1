@@ -1,6 +1,6 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.17.0
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.17.1
 Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -479,6 +479,7 @@ label-and-value rows elsewhere.
 
 | Version | Notes |
 |---------|-------|
+| **1.17.1** | **Names for the master's interlock reasons.** The `KCMk1_Master` autopilots report three new disconnect reasons — 22 A/P INHIB (the A/P INHIB / ARM switch), 23 ENG SAFE (ENGINE SAFE dropped a throttle mode), 24 A/P DISC (the stick's A/P disconnect) — which the consoles showed as a blank note. They now read `A/P INHIB`, `ENG SAFE` and `A/P DISC`. |
 | **1.17.0** | **AIRBRK follows the control group.** The indicator read CAG 38 whatever the control group, so in groups 2–6 it showed group 1's air brake while the AIR BRAKE button toggled another group. The master now sends its control group in byte 8 of the summary frame (9 bytes; an 8-byte summary still reads as group 1); the display keeps the last CAGSTATUS and re-reads the indicator when the group changes (`airbrakeCag()`, `refreshCagIndicators()`). |
 | **1.16.5** | **One name per quantity across the screens.** The readouts that carried a second name now use the flight screens' one (`ALT.RDR`, `ALT.SL`, `V.VRT`, `V.SRF`, `ΔV.STG`, `ΔV.TOT`, `ΔV.REM`, `T+IGN`, `BURN DUR`, `DIST`, `T+GRND`, `ELV`, `BRG`, `THRTL`, `EC`, `AOA`, `V.ORB`, `TTE`); the PRE-LAUNCH SAS row uses the SAS indicator names and its chute rows the RE-ENTRY states (`DROG`, `STOW`, `ARM`, `CUT`); VEHICLE INFO's STATUS uses the Annunciator's situation tile names; the landing console's ATT REF reads `RETR`. The Orbital Autopilot's T+IGN now counts down to zero and goes negative once passed, as every other T+ time. The SPACECRAFT throttle bar's label box grew to fit `THRTL`. See *Readout label vocabulary*. |
 | **1.16.4** | **Apsis labels in mixed case.** Every on-screen abbreviation of apoapsis and periapsis now reads `Ap` / `Pe`, matching the graphic markers and the Annunciator's `Pe LOW` / `Ap LOW` tiles: `ApA` / `PeA` (SPACECRAFT, ORBIT, ORBIT ADVANCED, RE-ENTRY, ASCENT AUTOPILOT), `T+Ap` / `T+Pe` (SPACECRAFT, ASCENT, ORBIT, ORBIT ADVANCED), `Ap-Pe` (CIRCULARIZATION), `ARG.Pe` (ORBIT, ORBIT ADVANCED), `TGT Ap` (ASCENT AUTOPILOT) and the Orbital Autopilot's `Ap` / `Pe` burn buttons. Labels only; no layout or logic change. |

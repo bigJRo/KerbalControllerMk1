@@ -116,7 +116,9 @@ const char *hpReasonLabel(uint8_t r) {
     case HP_REASON_LANDED: return "LANDED"; case HP_REASON_OTHER_AP: return "OTHER AP";
     case HP_REASON_FLARE: return "FLARE"; case HP_REASON_ARRIVED: return "ARRIVED";
     case HP_REASON_ALIGN: return "ALIGN"; case HP_REASON_HANDOFF: return "HANDOFF";
-    case HP_REASON_REPLAN: return "REPLANNED"; default: return "";
+    case HP_REASON_REPLAN: return "REPLANNED";
+    case HP_REASON_AP_INHIB: return "A/P INHIB"; case HP_REASON_ENG_SAFE: return "ENG SAFE";
+    case HP_REASON_AP_DISC: return "A/P DISC"; default: return "";
   }
 }
 

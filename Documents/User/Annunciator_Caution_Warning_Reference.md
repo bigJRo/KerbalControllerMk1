@@ -108,20 +108,17 @@ are live, and whether anything in the chain has failed. They are driven by the
 `modeFlags` word the master sends in bytes 3–4 of its extended I2C command; each tile
 lights when its bit is set. None of them sound an audio cue.
 
-> **Status of this block.** The master sends `modeFlags` in its rev-3 command
-> (`annun_link.ino`), but it does not yet read every switch behind them. DEMO, WARP,
-> AUDIO, AUTOPILOT, DEBUG, THRTL PREC and ENG ARM follow live master state. THRTL ENA,
-> TRIM and INPUT PREC follow master variables that no panel handler sets yet, so they
-> stay at their defaults. SWITCH ERR and SIMPIT LOST have no master source yet and stay
-> OFF. In the panel's demo mode, DEMO / AUDIO / DEBUG reflect the panel's own settings
-> and the remaining tiles cycle for inspection.
+> **Source.** The master (`Software/KCMk1_Master`, `carriers.cpp`) sets every bit from
+> live state: its switches, the trim, the autopilots, SWITCH ERR and the Simpit link. In
+> the panel's demo mode, DEMO / AUDIO / DEBUG reflect the panel's own settings and the
+> remaining tiles cycle for inspection.
 
 | Tile | Definition | Colour when lit | Bit |
 |---|---|---|---|
 | **DEMO** (1×1) | The system is running in demo mode — panel values are generated internally rather than taken from KSP. | White on **blue** | 0 |
 | **WARP** (1×2) | Time warp is active (rate above 1×). | Dark grey on **yellow** | 1 |
 | **AUDIO** (1×3) | Audio cues are enabled on the Annunciator (`audioEnabled`). Off means the panel is silent, including the master alarm. | White on **green** | 2 |
-| **THRTL ENA** (1×4) | Throttle input from the throttle module is enabled and being sent to KSP. | White on **green** | 3 |
+| **A/P ARM** (1×4) | The A/P INHIB / ARM switch is at ARM: autopilots may engage. At INHIB nothing engages and engaged console autopilots drop. (Tile read THRTL ENA before v3.9.) | White on **green** | 3 |
 | **TRIM** (1×5) | Rotation-stick trim mode is engaged (stick input is being applied as trim). | White on **aqua** | 4 |
 | **AUTOPILOT** (1×6) | An autopilot mode on the master (ascent, hold, burn, landing or mission) is engaged. | White on **green** | 5 |
 | **DEBUG** (2×1) | Serial debug output is enabled on the panel. | White on **purple** | 6 |

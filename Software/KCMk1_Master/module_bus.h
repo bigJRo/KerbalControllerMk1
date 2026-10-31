@@ -49,7 +49,7 @@ static const uint32_t MODBUS_POLL_MS     = 20;     // module with no known INT l
 static const uint32_t MODBUS_REPROBE_MS  = 5000;
 static const uint32_t MODBUS_HOLD_MS     = 2000;   // a "held" event (state-machine reset)
 static const uint32_t MODBUS_SWITCH_POLL_MS = 100;  // switch modules while not ACTIVE
-static const uint32_t MODBUS_BULB_QUIET_MS  = 2100; // after a bulb-test start (moduleBulbTest)
+static const uint32_t MODBUS_BULB_MIN_MS    = 500;  // shortest bulb test, so a flick of LTG still shows
 
 // What a handler gets for each packet (and for a hold, with only `held` set).
 struct ModEvent {

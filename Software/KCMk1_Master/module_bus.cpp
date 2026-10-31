@@ -85,7 +85,7 @@ static uint8_t   g_owner[INT_LINE_COUNT];
 static MapSource g_src[INT_LINE_COUNT];
 static uint32_t  g_lastReprobeMs;
 static bool      g_bulb, g_bulbStopPending;
-static uint32_t  g_bulbQuietUntil;          // see moduleBulbTest()
+static uint32_t  g_bulbStartMs;             // see moduleBulbTest()
 
 /***************************************************************************************
    INT map: defaults, EEPROM copy, owner lookups
@@ -231,10 +231,7 @@ static bool noteBus(ModId id, bool ok) {
   return false;
 }
 
-static bool bulbQuiet() { return (int32_t)(millis() - g_bulbQuietUntil) < 0; }
-
 bool moduleCommand(ModId id, uint8_t cmd, const uint8_t *payload, uint8_t n) {
-  if (bulbQuiet() && cmd != KMC_CMD_BULB_TEST) return false;   // see moduleBulbTest()
   uint8_t b[1 + KMC_LED_PAYLOAD_SIZE];
   if (n > KMC_LED_PAYLOAD_SIZE) n = KMC_LED_PAYLOAD_SIZE;
   b[0] = cmd;
@@ -258,18 +255,16 @@ static void bulbSend(uint8_t p) {
   for (uint8_t m = 0; m < MOD_COUNT; m++) if (g_rt[m].present) moduleCommand((ModId)m, KMC_CMD_BULB_TEST, &p, 1);
 }
 
-// Spec §5.2: 0x01 starts, 0x00 stops, no timeout. Today's button, joystick and throttle
-// firmware instead runs a fixed 2 s test that blocks inside its I2C handler (design
-// §17), so after a start the master leaves the modules alone for MODBUS_BULB_QUIET_MS
-// and sends the stop only after that.
+// Spec §5.2: 0x01 starts, 0x00 stops, no timeout; the modules keep their LED states
+// underneath and do not block. The stop goes out from moduleBusService() once the test
+// has been on for MODBUS_BULB_MIN_MS, so a flick of LTG TEST between two reads shows.
 void moduleBulbTest(bool on) {
   if (on == g_bulb) return;
   g_bulb = on;
   dbg(DBG_LIFE, "bulb test %s", on ? "on" : "off");
   if (on) {
-    g_bulbStopPending = false;
-    bulbSend(1);
-    g_bulbQuietUntil = millis() + MODBUS_BULB_QUIET_MS;
+    if (!g_bulbStopPending) { bulbSend(1); g_bulbStartMs = millis(); }
+    g_bulbStopPending = false;                   // on again before its stop went out: carry on
   } else {
     g_bulbStopPending = true;
   }
@@ -380,7 +375,7 @@ void moduleBusInit() {
   for (uint8_t m = 0; m < MOD_COUNT; m++) { g_rt[m].handler = nullptr; resetRt((ModId)m); }
   mapDefaults();
   g_bulb = g_bulbStopPending = false;
-  g_bulbQuietUntil = millis();
+  g_bulbStartMs = millis();
   g_lastReprobeMs = millis();
   consoleRegister("modules", "each module: present, firmware, line, lifecycle, counters", cmdModules);
   consoleRegister("intmap", "intmap [clear] — INT line owners", cmdIntmap);
@@ -577,8 +572,7 @@ static void checkHolds(ModId id) {
 ****************************************************************************************/
 void moduleBusService() {
   uint32_t ms = millis();
-  if (bulbQuiet()) return;                      // modules busy with the bulb test
-  if (g_bulbStopPending) { g_bulbStopPending = false; bulbSend(0); }
+  if (g_bulbStopPending && ms - g_bulbStartMs >= MODBUS_BULB_MIN_MS) { g_bulbStopPending = false; bulbSend(0); }
   uint8_t want = moduleWantActive() ? KMC_STATUS_ACTIVE : KMC_STATUS_DISABLED;
   for (uint8_t m = 0; m < MOD_COUNT; m++) {
     ModId id = (ModId)m;
@@ -618,7 +612,6 @@ void moduleBusService() {
 
 void moduleBusFlushLeds() {
   uint32_t ms = millis();
-  if (bulbQuiet()) return;
   for (uint8_t m = 0; m < MOD_COUNT; m++) {
     ModRt &r = g_rt[m];
     if (!r.present || !kMod[m].leds || r.lifeSent != KMC_STATUS_ACTIVE) continue;

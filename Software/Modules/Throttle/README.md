@@ -1,8 +1,8 @@
 # KCMk1_Throttle_Module
 
 **Module:** Throttle Module  
-**Version:** 2.1  
-**Date:** 2026-10-27  
+**Version:** 2.2  
+**Date:** 2026-10-31  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1861/1862 Throttle Module v1.1  
@@ -97,10 +97,14 @@ The AT42QT1010 capacitive sensor detects pilot contact with the slider:
 
 | State | Touch detected | Behavior |
 |---|---|---|
-| Enabled | Yes | Motor stops immediately, module follows wiper position |
+| Enabled | Yes | Motor stops immediately (also mid-seek), module follows wiper position |
 | Enabled | No | Motor seeks commanded target normally |
-| Disabled | Yes | Motor resists — drives to 0% and holds |
-| Disabled | No | Motor holds at 0% |
+| Enabled, lever hold on | Yes | Motor pushes back toward the master's target for at most `THR_PUSH_MAX_MS` (500 ms) per touch, then lets go; new targets are kept |
+| Enabled, lever hold on | Released | Motor drives back to the master's latest target |
+| Disabled | Yes | Motor resists — drives to 0% — for at most 500 ms per touch, then lets go |
+| Disabled | No | Motor holds at 0% (drives back on release) |
+
+The 500 ms limit is stall protection: a fader motor driven against a hand stalls, and the L293D and motor heat up.
 
 ---
 
@@ -164,7 +168,7 @@ INT asserts on any button press or throttle value change exceeding THR_WIPER_CHA
 | CMD_GET_IDENTITY | `0x01` | None | Standard identity response |
 | CMD_SET_LED_STATE | `0x02` | 8 bytes | Accepted, ignored |
 | CMD_SET_BRIGHTNESS | `0x03` | 1 byte | Accepted, ignored |
-| CMD_BULB_TEST | `0x04` | None | Flashes all LEDs for 2 seconds |
+| CMD_BULB_TEST | `0x04` | 1 byte (1=start, 0=stop) | All five lamps on until the stop; no timeout, not blocking |
 | CMD_SLEEP | `0x05` | None | Same as CMD_DISABLE |
 | CMD_WAKE | `0x06` | None | Same as CMD_ENABLE |
 | CMD_RESET | `0x07` | None | Disable, clear all state |
@@ -173,8 +177,9 @@ INT asserts on any button press or throttle value change exceeding THR_WIPER_CHA
 | CMD_DISABLE | `0x0A` | None | Motor to 0, hold, LEDs off |
 | CMD_SET_THROTTLE | `0x0B` | 2 bytes (uint16 BE) | Drive motor to position |
 | CMD_SET_PRECISION | `0x0C` | 1 byte (0=off, 1=on) | Toggle precision mode |
+| CMD_SET_LEVER_HOLD | `0x0E` | 1 byte (0=off, 1=on) | The master owns the lever (an autopilot): hold it at the target against a hand, stall-limited. Cleared by CMD_DISABLE and CMD_RESET |
 
-`CMD_SET_THROTTLE` is ignored if the module is disabled or the pilot is touching the slider.
+`CMD_SET_THROTTLE` is ignored if the module is disabled, or if the pilot is touching the slider and the lever hold is off. Under the hold, a target that arrives during a touch is kept and driven to on release.
 
 ---
 
@@ -275,4 +280,5 @@ After flashing all LEDs should be OFF (module starts disabled). Send `CMD_ENABLE
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
 | 2.0 | 2026-06-28 | Data packet is now 7 bytes (3-byte universal header + 4-byte payload) under I2C protocol v2.x |
+| 2.2 | 2026-10-31 | **Lever hold** (`CMD_SET_LEVER_HOLD`, 0x0E): while an autopilot owns the throttle the module keeps the master's target against a hand for at most 500 ms per touch (`THR_PUSH_MAX_MS`), lets go, and drives back on release. The same limit now applies to DISABLED's resist at 0, which pushed without one. A touch now really stops the motor: before, `motorUpdate()` drove again straight after `motorStop()` while a seek was pending (`motorCancel()` added). **Bulb test** start / stop as the spec says: lamps on until the stop, no 2 s `delay()` in the I2C handler. |
 | 2.1 | 2026-10-27 | The module no longer moves the lever on its own buttons (it used to drive to 100% / 0% and step ±51 ADC counts, even in ENGINE SAFE, in FINE and under an autopilot). The buttons are only reported; the master acts on them. `THR_STEP_ADC` removed |

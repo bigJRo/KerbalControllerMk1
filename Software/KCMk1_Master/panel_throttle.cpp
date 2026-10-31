@@ -40,6 +40,11 @@ bool leverCommand(uint16_t pos) {
   return moduleCommand(MOD_THROTTLE, KMC_CMD_SET_THROTTLE, b, 2);
 }
 
+bool leverHold(bool on) {
+  uint8_t b = on ? 1 : 0;
+  return moduleCommand(MOD_THROTTLE, KMC_CMD_SET_LEVER_HOLD, &b, 1);
+}
+
 static void onEvent(const ModEvent &e) {
   panelNoteEvent(e);
   if (!panelsEnabled() || !(panelLive() || panelDemo())) return;

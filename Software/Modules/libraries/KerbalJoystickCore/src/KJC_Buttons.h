@@ -119,10 +119,12 @@ void buttonsClearLEDs();
 void buttonsRender();
 
 /**
- * @brief Light all NeoPixels full white for bulb test then restore.
- * @param durationMs  Duration in milliseconds.
+ * @brief Start or stop the bulb test (CMD_BULB_TEST 0x01 / 0x00). While on,
+ *        buttonsRender() lights every NeoPixel full white; the LED states are
+ *        kept, so stopping restores them. No timeout, no blocking. Does not
+ *        render — the caller sets its render-pending flag.
  */
-void buttonsBulbTest(uint16_t durationMs);
+void buttonsSetBulbTest(bool on);
 
 /**
  * @brief Get current LED state nibble for a NeoPixel button.
