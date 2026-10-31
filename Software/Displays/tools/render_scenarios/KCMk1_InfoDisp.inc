@@ -15,6 +15,8 @@
 //
 // Scenarios: SCFT ACFT ROVR VEH  LNCHPRE LNCH LNCHCIRC  ORB ORBADV MNVR  TGT DOCK NAV
 //            LNDG LNDGRE  LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP  Standby
+//            INPUT  (the input test screen, Info Display 1: a bench state with a few
+//                   inputs down, the throttle touched, the Pre-Warp module missing)
 
 HardwareSerial Serial, SerialUSB1, Serial1, Serial2, Serial3;
 TwoWire Wire, Wire1, Wire2;
@@ -226,6 +228,31 @@ int main(int argc, char **argv) {
   if (sc == "Standby") {
     demoMode = false; flightScene = false;
     drawStandbyScreen(infoDisp);
+  } else if (sc == "INPUT") {
+    demoMode = false; flightScene = true;
+    uint8_t f0[40] = { 0xAB, 0 };
+    uint16_t present = 0x1FFF & ~(1u << 10), active = present & ~(1u << 12);   // PRE-WARP missing, DUAL ENC disabled
+    f0[2] = (uint8_t)present; f0[3] = (uint8_t)(present >> 8);
+    f0[4] = (uint8_t)active;  f0[5] = (uint8_t)(active >> 8);
+    f0[6] = f0[2]; f0[7] = f0[3];
+    f0[8] = 0x04;                                   // UI B2
+    f0[10] = 0x00; f0[11] = 0x00; f0[12] = 0x67;    // FUNCTION switches: MSTR..: SCE, UPTLM, A/P, ENGINE, THRTL
+    f0[13] = 0x00; f0[14] = 0x02;                   // ACTION B9
+    f0[15] = 0x00; f0[16] = 0x04;                   // STABILITY B10 (HOLD)
+    f0[17] = 0x01; f0[18] = 0x00; f0[19] = 0x3E;    // VEHICLE BRAKES; Switch Group 2
+    f0[20] = 0x00; f0[21] = 0x10;                   // TIME B12 (selector SPC)
+    f0[24] = 0x02; f0[25] = 35;  f0[26] = (uint8_t)-60; f0[27] = 12;   // rotation: BTN01, deflected
+    f0[28] = 0x00; f0[29] = 0;   f0[30] = 0;   f0[31] = (uint8_t)-25;
+    f0[32] = 0x15;                                  // GPWS: state 1, BTN01 just pressed
+    f0[34] = 62;  f0[35] = 0x01 | 0x04 | 0x20;      // lever 62 %, touched, active, UP just pressed
+    f0[36] = 0x30; f0[37] = (uint8_t)-4;            // control group 3, ENC2 -4
+    f0[38] = 2;   f0[39] = 0x00;                    // SPC, safe lines open
+    uint8_t f1[20] = { 0xAB, 1, 3, 7, 0, 17, 15, 14, 18, 19, 6, 5, 13, 2, 22, 0x2C, 0x01, 0, 0, 0 };
+    f1[2 + 10] = 0xFF;                              // PRE-WARP: no line
+    inputTestTouch(2, 900, 60, 980, 110); stubMillis() += 50;
+    inputTestTouch(2, 700, 260, 780, 310);          // the gesture opens it
+    inputTestFrame(f0, 40); inputTestFrame(f1, 20);
+    inputTestService(infoDisp);
   } else {
     const KcmScenario *pick = nullptr;
     for (const KcmScenario &k : kcmScenarios) if (sc == k.name) pick = &k;

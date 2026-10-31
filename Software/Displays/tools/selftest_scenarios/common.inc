@@ -39,3 +39,27 @@ static void vesselChange(uint8_t v) { feed(VESSEL_CHANGE_MESSAGE, &v, 1); }   //
 static const uint8_t ST_PROCEED = 0x20, ST_DEMO = 0x02;
 // A tap: touch, a few frames, release, a few frames (past the debounce).
 static void tap(uint16_t x, uint16_t y) { touchAt(x, y); frames(2); untouch(); frames(10); }   // 600 ms: past the 500 ms debounce
+
+// ---- Backlight checks, shared by the three panels ----------------------------------
+// onStandby(): put the panel on its standby screen; inFlight(): off it.
+static void blFrame(uint8_t flight, uint8_t standby) { uint8_t b[4] = { KCM_I2C_SYNC_BACKLIGHT, flight, standby, 0 }; blLatch(b); }
+static void backlightChecks(void (*onStandby)(), void (*inFlight)()) {
+  SECTION("backlight");
+  inFlight(); frames(10);
+  CHECK(kcmBacklightPct() == KCM_BL_BRIGHTNESS_PCT, "before any frame: the configured flight level");
+  onStandby(); frames(10);
+  CHECK(kcmBacklightPct() == KCM_BL_STANDBY_PCT, "standby screen: the configured standby level");
+  inFlight(); frames(10);
+  blFrame(40, 10); frames(1);
+  uint8_t mid = kcmBacklightPct();
+  CHECK(mid < KCM_BL_BRIGHTNESS_PCT && mid > 40, "a new level ramps, it does not step");
+  frames(10);
+  CHECK(kcmBacklightPct() == 40, "the master's flight level, within the ramp time");
+  onStandby(); frames(10);
+  CHECK(kcmBacklightPct() == 10, "and its standby level on the standby screen");
+  blFrame(0, 0); frames(10);
+  CHECK(kcmBacklightPct() == KCM_BL_MIN_PCT, "0 % is clamped to the floor: never black");
+  blFrame(250, 250); inFlight(); frames(10);
+  CHECK(kcmBacklightPct() == 100, "over 100 % is clamped to 100");
+  blFrame(KCM_BL_BRIGHTNESS_PCT, KCM_BL_STANDBY_PCT); frames(10);
+}

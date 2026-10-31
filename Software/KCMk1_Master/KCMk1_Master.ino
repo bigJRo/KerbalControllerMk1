@@ -43,6 +43,7 @@
 #include "board.h"
 #include "boot.h"
 #include "sysinfo.h"
+#include "input_test.h"
 #include "carriers.h"
 #include "simpit_link.h"
 #include "ksp_out.h"
@@ -108,6 +109,7 @@ void setup() {
   consoleRegister("wdtest", "wdtest yes — hang the loop to test the watchdog", cmdWdTest);
   siInit();
   carriersInit();
+  inputTestInit();
   moduleBusInit();
   interlocksInit();
   switchesInit();
@@ -134,7 +136,7 @@ void loop() {
   wdtCrumb(LS_AUTOPILOT);  autopilotsService();
   wdtCrumb(LS_KSP_OUT);    panelsService(); frameService();
   wdtCrumb(LS_LEDS);       moduleBusFlushLeds();
-  wdtCrumb(LS_CARRIERS);   carrierService();
+  wdtCrumb(LS_CARRIERS);   carrierService(); inputTestService();
   wdtCrumb(LS_SYSINFO);    bootService(); siService();
   wdtCrumb(LS_BOARD_SLOW); boardService();
   wdtCrumb(LS_DEBUG);      dbgService();

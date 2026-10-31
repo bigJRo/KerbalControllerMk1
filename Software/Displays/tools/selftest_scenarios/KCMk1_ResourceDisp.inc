@@ -9,6 +9,8 @@ static bool layoutIs(const ResourceType *t, uint8_t n) {
   }
   return true;
 }
+static void blStandby_() { scene(1); }
+static void blFlight_() { scene(0); }
 int main(int, char **) {
   simpitConnected = true;
   scene(0); frames(2);
@@ -32,5 +34,6 @@ int main(int, char **) {
   CHECK(layoutIs(mine, 3), "demo off: the vessel's own layout recalled, not demo's");
   ctl(0x20 | 0x02); frames(3); scene(1); frames(2); ctl(0x20); frames(2);
   CHECK(!demoMode && !flightScene && activeScreen == screen_Standby, "demo off out of flight: Standby");
+  backlightChecks(blStandby_, blFlight_);
   return stDone();
 }

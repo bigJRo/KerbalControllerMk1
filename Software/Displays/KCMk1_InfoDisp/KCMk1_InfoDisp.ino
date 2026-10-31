@@ -87,15 +87,22 @@ void loop() {
   // --- Touch input (active in both modes, ignored when on standby) ---
   // #6 process touch before Simpit so a tap on a new screen lands on the correct
   // screen rather than the previous one (matches Annunciator/ResourceDisp order)
-  if (flightScene || demoMode) processTouchEvents();
+  processTouchEvents();   // any time: the input test gesture works on standby too (taps only in flight / demo)
 
   // --- I2C slave state update ---
   updateI2CState();
+
+  // --- Backlight: the standby level while the standby splash is up, the flight level otherwise ---
+  kcmBacklightStandby(!flightScene && !demoMode);
+  kcmBacklightService();
 
   // --- Simpit: serviced in demo too, so the link stays up and the scene and vessel stay
   //     known; onSimpitMessage() takes only the lifecycle while in demo (§8.8). A bench
   //     unit booted in demo has no link until the master clears the flag. ---
   if (simpitConnected) simpit.update();
+
+  // --- Input test screen (Info Display 1): drawn instead of everything else while open ---
+  if (inputTestIsOpen()) { inputTestService(infoDisp); return; }
 
   // --- Standby state: splash already presented; nothing to redraw ---
   if (!flightScene && !demoMode) return;

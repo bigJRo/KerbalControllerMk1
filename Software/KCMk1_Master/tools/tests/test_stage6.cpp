@@ -2,6 +2,8 @@
 // navball), Function Control (CAG buttons), Time Control (warp-to with the Pre-Warp
 // lead and availability, warp, physics warp, LOAD / PAUSE / SAVE), the GPWS relay.
 #include "harness.h"
+#include "input_test.h"
+#include "module_bus.h"
 #include "keys.h"
 #include "cag.h"
 
@@ -142,6 +144,41 @@ static void testGpws(Bench &b) {
   CHECK(c2[6] == 0x09 && (c2[7] << 8 | c2[8]) == 1500, "and follows it");
 }
 
+static void testInputTest(Bench &b) {
+  printf("input test screen (Info Display 1)\n");
+  b.rig.id1.cmds.clear(); runFor(600);
+  CHECK(!b.rig.id1.lastFrame(SYNC_INPUT_TEST), "nothing while the screen is closed");
+  b.rig.id1.screen = INPUT_TEST_SCREEN; runFor(600);
+  CHECK(inputTestOpen(), "the master sees it open (status byte 2)");
+  int n0 = 0, n1 = 0;
+  for (auto &c : b.rig.id1.cmds) if (c.size() >= 2 && c[0] == SYNC_INPUT_TEST) (c[1] == 0 ? n0 : n1)++;
+  CHECK(n0 >= 3 && n1 >= 1, "page 0 every 100 ms, page 1 every 500 ms (%d, %d)", n0, n1);
+  b.m(MOD_ACTION).press(1u << 3); b.m(MOD_VEHICLE).press(1u << 20);
+  ModuleSim &r = b.m(MOD_ROTATION); r.axes[0] = 16384; r.axes[1] = -32767; r.press(0x02);
+  b.m(MOD_THROTTLE).thrPos = 16383; b.m(MOD_THROTTLE).touched = true; b.m(MOD_THROTTLE).signal();
+  b.m(MOD_DUALENC).enc[1] = 3; b.m(MOD_DUALENC).signal();
+  stubPin(PIN_SAFE_STAGE) = HIGH;
+  runFor(250);
+  std::vector<uint8_t> p0, p1;
+  for (auto &c : b.rig.id1.cmds) if (c.size() >= 2 && c[0] == SYNC_INPUT_TEST) (c[1] == 0 ? p0 : p1) = c;
+  CHECK(p0.size() == INPUT_TEST_INPUTS_LEN && p1.size() == INPUT_TEST_MODULES_LEN, "sizes 40 and 20");
+  uint16_t present = (uint16_t)(p0[2] | p0[3] << 8);
+  CHECK(present == (1u << MOD_COUNT) - 1, "every module present (%04X)", present);
+  CHECK(p0[13] == 0x08 && p0[19] == 0x10, "a button (ACTION B3) and a switch (VEHICLE B20) down");
+  CHECK(p0[24] == 0x02 && (int8_t)p0[25] == 50 && (int8_t)p0[26] == -100, "rotation BTN01, axes 50 %% and -100 %%");
+  CHECK(p0[34] == 49 || p0[34] == 50, "lever 50 %% (%u)", p0[34]);
+  CHECK(p0[35] & 0x01, "lever touched");
+  CHECK((int8_t)p0[37] == 3, "ENC2 count from its deltas");
+  CHECK(p0[39] == 0x02, "STAGE line closed, ABORT open");
+  CHECK(p1[2 + MOD_ACTION] == intLineOf(MOD_ACTION) && p1[2 + MOD_ACTION] != 0xFF, "page 1: INT line per module");
+  stubPin(PIN_SAFE_STAGE) = LOW;
+  b.m(MOD_ACTION).release(1u << 3); b.m(MOD_VEHICLE).release(1u << 20); r.release(0x02);
+  r.axes[0] = r.axes[1] = 0; r.signal(); b.m(MOD_THROTTLE).touched = false; b.m(MOD_THROTTLE).signal();
+  b.rig.id1.screen = 0; runFor(600);
+  b.rig.id1.cmds.clear(); runFor(600);
+  CHECK(!b.rig.id1.lastFrame(SYNC_INPUT_TEST) && !inputTestOpen(), "closed: the frames stop");
+}
+
 void runStage6() {
   static Bench b;
   stubEepromReset();
@@ -149,5 +186,6 @@ void runStage6() {
   testFunction(b);
   testTime(b);
   testGpws(b);
+  testInputTest(b);
   for (int a = 0; a < 128; a++) Wire.detach(a);
 }

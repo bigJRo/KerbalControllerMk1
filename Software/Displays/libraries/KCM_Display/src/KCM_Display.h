@@ -62,6 +62,57 @@ inline void kcmDisplayBegin(KCM_TFT &tft, uint16_t backColor,
 
 
 /***************************************************************************************
+   BACKLIGHT (GitHub #47) — one implementation for every 7" panel.
+   Two levels: the flight level, and the standby level used while the panel shows its
+   standby screen. Both default to KCMk1_SystemConfig and are replaced by the master's
+   BACKLIGHT frame. Every level is clamped to KCM_BL_MIN_PCT..100, and the duty ramps
+   toward its target (KCM_BL_RAMP_MS for the full range) instead of stepping.
+
+     kcmBacklightSetLevels(flight, standby)   from the master's frame
+     kcmBacklightStandby(on)                  the panel is (not) on its standby screen
+     kcmBacklightService()                    every loop() pass: ramps and writes the PWM
+****************************************************************************************/
+struct KCMBacklight {
+  uint8_t  flight   = KCM_BL_BRIGHTNESS_PCT;
+  uint8_t  standby  = KCM_BL_STANDBY_PCT;
+  bool     onStandby = false;
+  uint16_t cur10    = KCM_BL_BRIGHTNESS_PCT * 10;   // current duty, tenths of a percent
+  uint32_t lastMs   = 0;
+  int16_t  written  = -1;                            // last PWM value written (-1: none)
+};
+inline KCMBacklight &kcmBacklight() { static KCMBacklight b; return b; }
+
+inline uint8_t kcmBacklightClamp(uint8_t pct) {
+  return pct < KCM_BL_MIN_PCT ? (uint8_t)KCM_BL_MIN_PCT : (pct > 100 ? (uint8_t)100 : pct);
+}
+inline void kcmBacklightSetLevels(uint8_t flightPct, uint8_t standbyPct) {
+  kcmBacklight().flight  = kcmBacklightClamp(flightPct);
+  kcmBacklight().standby = kcmBacklightClamp(standbyPct);
+}
+inline void kcmBacklightStandby(bool on) { kcmBacklight().onStandby = on; }
+inline uint8_t kcmBacklightTarget() {
+  const KCMBacklight &b = kcmBacklight();
+  return b.onStandby ? b.standby : b.flight;
+}
+inline uint8_t kcmBacklightPct() { return (uint8_t)((kcmBacklight().cur10 + 5) / 10); }   // as now driven
+
+inline void kcmBacklightService() {
+  KCMBacklight &b = kcmBacklight();
+  uint32_t now = millis();
+  uint32_t dt = now - b.lastMs;
+  b.lastMs = now;
+  uint16_t target10 = (uint16_t)kcmBacklightTarget() * 10;
+  // 1000 tenths over KCM_BL_RAMP_MS; at least one tenth per pass so it always arrives.
+  uint32_t step = dt * 1000UL / KCM_BL_RAMP_MS;
+  if (step < 1) step = 1;
+  if (b.cur10 < target10)      b.cur10 = (uint16_t)((uint32_t)(target10 - b.cur10) <= step ? target10 : b.cur10 + step);
+  else if (b.cur10 > target10) b.cur10 = (uint16_t)((uint32_t)(b.cur10 - target10) <= step ? target10 : b.cur10 - step);
+  int16_t pwm = (int16_t)((uint32_t)b.cur10 * 255UL / 1000UL);
+  if (pwm != b.written) { analogWrite(KCM_TFT_BL, pwm); b.written = pwm; }
+}
+
+
+/***************************************************************************************
    DOUBLE BUFFERING — RA8876 hardware page flip
    The RA8876 has up to 16MB SDRAM; a 1024x600 RGB565 frame is 1,228,800 bytes, so
    two full pages fit with ~13x room to spare. Two independent pointers control it:

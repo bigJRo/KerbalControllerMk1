@@ -51,13 +51,21 @@ void processTouchEvents() {
   if (!isTouched()) {
     _waitForRelease  = false;
     _bootReleaseSeen = true;   // panel seen untouched — real taps now allowed
+    inputTestTouch(0, 0, 0, 0, 0);
     return;
   }
   if (!_bootReleaseSeen) return;   // ignore boot/settling phantom until first release
 
   // First read
   lastTouch = readTouch();
-  if (lastTouch.count == 0) return;
+  if (lastTouch.count == 0) { inputTestTouch(0, 0, 0, 0, 0); return; }
+
+  // The input test screen's two-finger gesture (InputTest.ino) runs ahead of the
+  // single-finger filter; a touch it claims goes no further. While the screen is open,
+  // or outside a flight scene and demo, single taps do nothing.
+  if (inputTestTouch(lastTouch.count, lastTouch.points[0].x, lastTouch.points[0].y,
+                     lastTouch.points[1].x, lastTouch.points[1].y)) return;
+  if (inputTestIsOpen() || !(flightScene || demoMode)) return;
 
   // Count filter — real single-button presses are always count=1
   if (lastTouch.count != 1) {

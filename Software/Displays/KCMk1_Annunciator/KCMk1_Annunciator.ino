@@ -101,6 +101,10 @@ void loop() {
   // --- I2C slave state update ---
   updateI2CState();
 
+  // --- Backlight: the standby level on the standby screen, the flight level otherwise ---
+  kcmBacklightStandby(activeScreen == screen_Standby);
+  kcmBacklightService();
+
   // --- Screen chrome on transition ---
   if (activeScreen != prevScreen) {
     if (debugMode) {

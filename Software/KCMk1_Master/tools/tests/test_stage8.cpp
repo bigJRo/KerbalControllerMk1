@@ -3,6 +3,7 @@
 // the board temperature with its hysteresis, rpm from the tach, the Sys Info STATUS frame,
 // the `board` console command.
 #include "harness.h"
+#include "carriers.h"
 
 static void ina(RegDevice &d, float v, float a, float w) {
   const float lsb = 10.0f / 524288.0f;
@@ -70,6 +71,25 @@ void runStage8() {
   printf("board: console\n");
   Serial.out.clear(); Serial.stubType("board\n"); runFor(10);
   CHECK(serialHas("12.00 V") && serialHas("rpm"), "board command");
+
+  printf("displays: backlight levels (GitHub #47)\n");
+  {
+    CarrierSim *cs[4] = { &rig.ann, &rig.id1, &rig.id2, &rig.res };
+    bool all = true;
+    for (CarrierSim *c : cs) { const auto *f = c->lastFrame(SYNC_BACKLIGHT);
+      if (!f || f->size() != BACKLIGHT_LEN || (*f)[1] != BL_FLIGHT_PCT || (*f)[2] != BL_STANDBY_PCT) all = false; }
+    CHECK(all, "every 7\" display gets [0xB8, %u, %u, 0]", BL_FLIGHT_PCT, BL_STANDBY_PCT);
+    auto n = [&](CarrierSim &c) { int k = 0; for (auto &f : c.cmds) if (f.size() == BACKLIGHT_LEN && f[0] == SYNC_BACKLIGHT) k++; return k; };
+    int k0 = n(rig.res);
+    runFor(CARRIER_BACKLIGHT_MS + 100);
+    CHECK(n(rig.res) == k0 + 1, "repeated every %u ms", (unsigned)CARRIER_BACKLIGHT_MS);
+    Serial.out.clear(); Serial.stubType("backlight 35 8\n"); runFor(150);
+    const auto *f = rig.id2.lastFrame(SYNC_BACKLIGHT);
+    CHECK(f && (*f)[1] == 35 && (*f)[2] == 8 && n(rig.res) == k0 + 2, "console: new levels sent at once");
+    Serial.out.clear(); Serial.stubType("backlight 140\n"); runFor(50);
+    CHECK(serialHas("0..100") && carrierBacklightFlight() == 35, "an out-of-range level is refused");
+    carrierSetBacklight(BL_FLIGHT_PCT, BL_STANDBY_PCT); runFor(150);
+  }
 
   printf("board: devices missing\n");
   for (int a = 0; a < 128; a++) Wire.detach(a);

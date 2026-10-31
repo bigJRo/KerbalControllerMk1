@@ -1,4 +1,6 @@
 static void ctl(uint8_t cb) { uint8_t c[3] = { cb, 0, 0 }; processI2CCommand(c, 3); }
+static void blStandby_() { scene(1); }
+static void blFlight_() { scene(0); }
 int main(int, char **) {
   SECTION("demo follows the master's flag");
   simpitConnected = true;
@@ -29,5 +31,6 @@ int main(int, char **) {
   scene(1); frames(3);
   tap(DOCK_X + DOCK_W / 2, DOCK_Y + DOCK_H / 2);
   CHECK(!bitRead(state.vesselSituationState, VSIT_DOCKED), "no effect out of flight");
+  backlightChecks(blStandby_, blFlight_);
   return stDone();
 }

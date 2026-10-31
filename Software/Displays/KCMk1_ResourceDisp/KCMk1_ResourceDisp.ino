@@ -120,6 +120,10 @@ void loop() {
   // --- I2C slave state update ---
   updateI2CState();
 
+  // --- Backlight: the standby level on the standby screen, the flight level otherwise ---
+  kcmBacklightStandby(activeScreen == screen_Standby);
+  kcmBacklightService();
+
   // Snapshot the current (non-EVA) slot config each frame so it can be restored
   // when EVA ends. Taken before simpit.update() so it reflects the settled vessel
   // layout rather than a transient mid-transition state.
