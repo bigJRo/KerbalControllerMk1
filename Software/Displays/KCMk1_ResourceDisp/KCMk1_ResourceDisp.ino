@@ -120,6 +120,10 @@ void loop() {
   // --- I2C slave state update ---
   updateI2CState();
 
+  // --- Backlight: the standby level on the standby screen, the flight level otherwise ---
+  kcmBacklightStandby(activeScreen == screen_Standby);
+  kcmBacklightService();
+
   // Snapshot the current (non-EVA) slot config each frame so it can be restored
   // when EVA ends. Taken before simpit.update() so it reflects the settled vessel
   // layout rather than a transient mid-transition state.
@@ -157,11 +161,13 @@ void loop() {
     prevScreen = activeScreen;
   }
 
-  // --- Update resource values ---
+  // --- Update resource values. Simpit is serviced in demo too, so the link stays up and
+  //     the scene stays known; onSimpitMessage() takes only the lifecycle while in demo
+  //     (§8.8). A bench unit booted in demo has no link until the master clears the flag.
+  if (simpitConnected) simpit.update();
   if (demoMode) {
     stepDemoState();
   } else {
-    simpit.update();
     // Handle deferred main screen redraws requested by SimpitHandler.
     // Checked here, after simpit.update() has fully processed all pending messages,
     // so the screen is cleared with the final slot state — not mid-message-batch.

@@ -8,6 +8,7 @@
 #include "debug.h"
 #include "boot.h"
 #include "sysinfo.h"
+#include <stdio.h>
 
 static const uint8_t REQ_STATUS     = 0x1;
 static const uint8_t REQ_PROCEED    = 0x2;
@@ -30,6 +31,8 @@ static uint8_t  g_lastCtrl[CAR_COUNT];
 static bool     g_sent;
 static uint32_t g_lastPushMs, g_lastStatusMs;
 static bool     g_answering[CAR_COUNT];
+static uint8_t  g_id1Screen = 0xFF;    // Info Display 1's screen, status byte 2 (0xFF unknown)
+static uint8_t  g_status[CAR_COUNT][10];   // each display's last good status packet
 static bool     g_resetPending;                // DISPLAY_RESET on the next push
 
 const char *carrierName(CarrierId c) { return c < CAR_COUNT ? kCar[c].name : "?"; }
@@ -125,7 +128,10 @@ static bool readStatus(CarrierId c) {
     bool was = (g_master.displayLinks & d.linkBit) != 0;
     if (link) g_master.displayLinks |= d.linkBit; else g_master.displayLinks &= ~d.linkBit;
     if (link != was) dbg(DBG_DISPLAY, "%s KSP link %s", d.name, link ? "up" : "down");
+    if (c == CAR_INFODISP_1) g_id1Screen = b[2];
+    memcpy(g_status[c], b, d.statusLen);
   } else {
+    if (c == CAR_INFODISP_1) g_id1Screen = 0xFF;
     g_master.displaysKnown &= ~d.linkBit;
     g_master.displayLinks &= ~d.linkBit;
   }
@@ -153,13 +159,57 @@ bool carrierRequestStatus(CarrierId c) {
   return busWrite(kCar[c].addr, two, 2) == BUS_OK;
 }
 
+/***************************************************************************************
+   Backlight (GitHub #47): the BACKLIGHT frame to the four 7" displays, at once on a
+   change and every CARRIER_BACKLIGHT_MS (a display that restarted gets it again).
+****************************************************************************************/
+static uint8_t  g_blFlight, g_blStandby;
+static bool     g_blChanged;
+static uint32_t g_lastBlMs;
+
+static void pushBacklight(uint32_t now) {
+  if (!g_blChanged && now - g_lastBlMs < CARRIER_BACKLIGHT_MS) return;
+  uint8_t f[BACKLIGHT_LEN] = { SYNC_BACKLIGHT, g_blFlight, g_blStandby, 0 };
+  for (uint8_t c = 0; c < CAR_COUNT; c++) busWrite(kCar[c].addr, f, BACKLIGHT_LEN);
+  if (g_blChanged) dbg(DBG_DISPLAY, "backlight: flight %u %%, standby %u %%", g_blFlight, g_blStandby);
+  g_blChanged = false;
+  g_lastBlMs = now;
+}
+
+void carrierSetBacklight(uint8_t flightPct, uint8_t standbyPct) {
+  if (flightPct > 100) flightPct = 100;
+  if (standbyPct > 100) standbyPct = 100;
+  if (flightPct == g_blFlight && standbyPct == g_blStandby) return;
+  g_blFlight = flightPct; g_blStandby = standbyPct; g_blChanged = true;
+}
+uint8_t carrierBacklightFlight()  { return g_blFlight; }
+uint8_t carrierInfoDisp1Screen()  { return g_id1Screen; }
+bool    carrierAnswering(CarrierId c) { return c < CAR_COUNT && g_answering[c]; }
+const uint8_t *carrierLastStatus(CarrierId c) { return c < CAR_COUNT ? g_status[c] : nullptr; }
+uint8_t carrierBacklightStandby() { return g_blStandby; }
+
+static void cmdBacklight(const char *a) {
+  int f = -1, s = -1;
+  int n = sscanf(a, "%d %d", &f, &s);
+  if (n >= 1 && f >= 0 && f <= 100) carrierSetBacklight((uint8_t)f, (n >= 2 && s >= 0 && s <= 100) ? (uint8_t)s : g_blStandby);
+  else if (n >= 1) { conPrintf("backlight: levels are 0..100 %%"); return; }
+  conPrintf("backlight: flight %u %%, standby %u %% (displays clamp to their floor)", g_blFlight, g_blStandby);
+}
+
 void carriersInit() {
+  g_blFlight = BL_FLIGHT_PCT;
+  g_blStandby = BL_STANDBY_PCT;
+  g_blChanged = true;
+  g_lastBlMs = millis();
+  consoleRegister("backlight", "backlight [flight %] [standby %] — the 7\" displays' levels", cmdBacklight);
   g_gpwsCfg = 0;
   g_gpwsThr = GPWS_DEFAULT_M;
   g_sent = false;
   g_resetPending = false;
   g_master.displayLinks = g_master.displaysKnown = 0;
   memset(g_answering, 0, sizeof g_answering);
+  g_id1Screen = 0xFF;
+  memset(g_status, 0, sizeof g_status);
   g_lastPushMs = g_lastStatusMs = millis();
 }
 
@@ -182,6 +232,7 @@ void carriersBoot() {
 void carrierService() {
   push(false);
   uint32_t now = millis();
+  pushBacklight(now);
   if (now - g_lastStatusMs >= CARRIER_STATUS_MS) {
     g_lastStatusMs = now;
     for (uint8_t c = 0; c < CAR_COUNT; c++) readStatus((CarrierId)c);

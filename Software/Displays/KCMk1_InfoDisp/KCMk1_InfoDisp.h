@@ -189,11 +189,12 @@ void switchToScreen(ScreenType s);
      MINOR — new features added (new screen, new data source, new display element)
      PATCH — bug fixes, tuning, colour/label tweaks
    This sketch requires KerbalDisplayCommon >= 3.11.1 (buffer formatters; the ² glyph)
-   and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
+   and KCMk1_SystemConfig >= 1.3.0 (KCM_HIGH_Q_PA; the backlight levels and BACKLIGHT frame),
+   and KCM_Display >= 1.1.0 (kcmBacklight*)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 17;  // 1.17.0: AIRBRK follows the master's control group (summary byte 8)
-static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.17.1: names for the master's interlock reasons (A/P INHIB, ENG SAFE, A/P DISC)
+static const uint8_t SKETCH_VERSION_MINOR = 18;  // 1.18.0: input test screen (unit 1); demo follows the master's flag only; backlight dimming
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************

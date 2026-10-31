@@ -9,7 +9,7 @@
 #include <string.h>
 
 static const uint16_t DBG_LINES_PER_S = 200;   // non-error lines per second before suppressing
-static const uint8_t  CON_MAX_CMDS    = 16;
+static const uint8_t  CON_MAX_CMDS    = 24;   // 17 registered today; a full table is reported, not silent
 static const uint8_t  CON_LINE_MAX    = 64;
 
 static const char *const kCatName[DBG_COUNT] = {
@@ -111,7 +111,10 @@ void dbgLoopTime(uint32_t us) {
    Console
 ****************************************************************************************/
 bool consoleRegister(const char *name, const char *help, ConsoleFn fn) {
-  if (g_cmdCount >= CON_MAX_CMDS) return false;
+  if (g_cmdCount >= CON_MAX_CMDS) {
+    Serial.print("console: no room for '"); Serial.print(name); Serial.println("' (raise CON_MAX_CMDS)");
+    return false;
+  }
   g_cmds[g_cmdCount++] = { name, help, fn };
   return true;
 }

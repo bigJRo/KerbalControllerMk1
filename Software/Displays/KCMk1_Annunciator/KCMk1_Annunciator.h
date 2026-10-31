@@ -285,11 +285,12 @@ enum ChuteEnvState : uint8_t {
      MINOR -- new features or screens added
      PATCH -- bug fixes, threshold tuning, comment/style changes
    This sketch requires KerbalDisplayCommon >= 3.11.1 (the ² in SURF. GRAVITY)
-   and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
+   and KCMk1_SystemConfig >= 1.3.0 (KCM_HIGH_Q_PA; the backlight levels and BACKLIGHT frame),
+   and KCM_Display >= 1.1.0 (kcmBacklight*)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 9;   // 3.9.0: mode tile 3 reads A/P ARM (was THRTL ENA, same bit)
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // (3.8.2: LIFE SUPPORT watches food, water, oxygen only)
+static const uint8_t SKETCH_VERSION_MINOR = 10;  // 3.10.0: demo follows the master's flag only; DOCK tile touch; backlight dimming
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************

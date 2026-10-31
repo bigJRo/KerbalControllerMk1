@@ -4,9 +4,10 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | | |
 |---|---|
+| **Version** | 0.9.0 (`KCM_MASTER_VERSION`, `config.h`) |
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
-| **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (Sys Info Display: §15.4) |
+| **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (display carriers, BACKLIGHT and input test frames: §15.3; Sys Info Display: §15.4) |
 | **Status** | All eight stages built (design §16); `Controller_Main` deleted. Not yet run on hardware: the bench checks below come next |
 
 ## Building
@@ -21,7 +22,8 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 |---|---|---|
 | Boot | `boot.*` | Runs the start-up steps. Each step reports a line to the Sys Info Display and to Serial; a step that times out shows in red and start-up carries on. The Sys Info Display stays on its boot screen until KSP connects or demo is on |
 | Sys Info Display | `sysinfo.*` | Boot lines (kept and replayed if the display answers late), heartbeat, status frame, switch-error window |
-| Displays | `carriers.*` | The four 7" displays' commands every 100 ms with PROCEED, byte for byte as the old master; status reads every 500 ms (each display's own KSP link) |
+| Displays | `carriers.*` | The four 7" displays' commands every 100 ms with PROCEED, byte for byte as the old master; status reads every 500 ms (each display's own KSP link, and Info Display 1's screen; the last good packet of each is kept for the input test screen). The BACKLIGHT frame `[0xB8, flight %, standby %, 0]` to all four at once on a change and every 2 s; levels from `BL_FLIGHT_PCT` 70 / `BL_STANDBY_PCT` 20, changed with `backlight` (GitHub #47) |
+| Input test | `input_test.*` | While Info Display 1 reports screen 18 (its input test screen, design §13.1), page 0 (every input, 40 bytes, sync 0xAB: presence, FAULT, the button modules' state words as sent) every 100 ms, and page 1 (INT lines, GPWS / Pre-Warp values, lifecycles, 24 bytes) and page 2 (the four 7" displays' last status, 24 bytes) every 500 ms; byte layout in `input_test.h`. Adds up the ENC2 count since boot |
 | KSP link | `simpit_link.*` | Non-blocking handshake every 2 s while KSP is down; inbound dispatch by table; SIMPIT LOST after 5 s of silence in flight, re-handshake after 10 s |
 | KSP send gate | `ksp_out.*` | The only way to send to KSP; sends nothing in demo or while the link is down |
 | I2C | `i2c_bus.*` | Every transaction counted and logged; a bus held low is clocked free |
@@ -69,6 +71,7 @@ Open the first serial port at any baud rate and type a command:
 | `ap` / `hp` / `bp` / `lp` | The ascent / hold / burn / landing autopilot's bench line: `STATUS`, `ARM`, `ENG ALT`, `SET IAS 180`, `OFF`, … |
 | `log` | Debug categories; `log <cat\|all> on\|off\|auto` |
 | `debug on\|off` | Debug output, until the next UPTLM flip |
+| `backlight [flight %] [standby %]` | The 7" displays' backlight levels; with values (0–100) sends new levels to all four at once, until a restart. The displays clamp to their 5 % floor |
 | `wdtest yes` | Hangs the loop, so the watchdog resets the master in 5 s (bench test) |
 
 ## Host tools
@@ -80,7 +83,8 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
 
 - **Compile:** every file, with `-Wall -Wextra -Werror`, against the stand-ins in `tools/host/`.
 - **`--simpit`:** compiles against a clone of `Simpit-team/KerbalSimpitRevamped-Arduino` instead, so every message id and payload is checked against the real library.
-- **Config check:** compares the display addresses and sync bytes in `config.h` with `KCMk1_SystemConfig`.
+- **Config check:** compares the display addresses and sync bytes in `config.h` with `KCMk1_SystemConfig`, and the BACKLIGHT sync, length and default levels (`BL_FLIGHT_PCT` / `BL_STANDBY_PCT` against `KCM_BL_BRIGHTNESS_PCT` / `KCM_BL_STANDBY_PCT`).
+- **Console table:** 24 entries (`CON_MAX_CMDS`); a command that does not fit is reported on Serial at start-up rather than dropped silently.
 - **Selftest** (`tools/tests/`): runs `setup()` and `loop()` against simulated devices: Sys Info Display, four displays, INA228, EMC2101, KSP. It checks:
   - boot lines, order and colours;
   - PROCEED before KSP is tried;
@@ -129,9 +133,9 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
     - translation and the camera buttons; EVA keys with hysteresis, released when the EVA ends;
     - the lever and its buttons (FINE, ENGINE SAFE); an autopilot owning the throttle (lever driven, pilot ignored, FINE dropped and restored, ENGINE SAFE wins); autopilot rotation axes;
     - demo; the `frame` console command.
-  - board (stage 8): the INA228 and EMC2101 set up at boot, readings, the Sys Info STATUS frame, the fan curve and its hysteresis, the low-supply warning, the `board` command, devices missing.
+  - board (stage 8): the INA228 and EMC2101 set up at boot, readings, the Sys Info STATUS frame, the fan curve and its hysteresis, the low-supply warning, the `board` command, devices missing; the BACKLIGHT frame to all four displays, its 2 s repeat, the `backlight` command and an out-of-range level refused.
   - autopilots (stage 7): a console command engages the hold autopilot, ACKed once, its frame and the summary pushed; sticks ignored and nothing disconnects on stick input; ENGINE SAFE refuses and drops IAS (ALT stays); A/P INHIB disconnects and refuses; the A/P disconnect, A/P OFF, telemetry loss, leaving the flight; HOLD in PLN and RVR through the hold autopilot (INHIB leaves it, a console engage releases it, ENGINE SAFE leaves heading only); the ascent's axes and its ENGINE SAFE drop; the bench consoles.
-  - remaining panels (stage 6): UI keys, modifiers, navball, the spaced screenshot macro; Function CAGs and offset; Time warp-to with the lead and each availability rule, STOP, warp up / down, PHYS steps, LOAD held, PAUSE, SAVE; the GPWS relay.
+  - remaining panels (stage 6): UI keys, modifiers, navball, the spaced screenshot macro; Function CAGs and offset; Time warp-to with the lead and each availability rule, STOP, warp up / down, PHYS steps, LOAD held, PAUSE, SAVE; the GPWS relay; the input test frames (none while closed, all three pages and their sizes while Info Display 1 reports screen 18, the raw state words of a button and a switch, a module's FAULT bit, axes, lever, touch, ENC2 count, safe lines, INT lines, each module's lifecycle, the displays answering, their flags and Info Display 2's screen, and the frames stopping on close).
 
 Run it after every change.
 
@@ -157,3 +161,5 @@ These can only be confirmed on the hardware (design §18):
 15. **Time Control (stage 6):** each WARP TO stops the Pre-Warp lead short of its event; the buttons go dark as their events disappear (landed, no node, in the atmosphere, escape); the screenshot macro hides the UI in the picture.
 16. **Autopilots (stage 7):** each Info Display 2 console engages and disengages its modes and shows them; A/P INHIB and ENGINE SAFE refuse with a message on KSP's screen; the rotation stick button disconnects; HOLD holds altitude and heading in PLN, heading and speed in RVR.
 17. **Board (stage 8):** the Sys Info status screen shows the 12 V supply as a meter reads it (this checks the 15 mΩ shunt); the fan speeds up as the board warms, and its rpm is plausible.
+18. **Backlight:** `backlight 70 20` dims each 7" display to 20 % on its standby screen and back to 70 % in flight, with a smooth ramp; step down with `backlight 10 5` and `backlight 5 5` and check for flicker at low duty and whether the 5 % floor (`KCM_BL_MIN_PCT`) is still readable. Change the floor in KCMk1_SystemConfig if not.
+19. **Input test screen:** on Information Display 1, a two-finger pull down from the top-right corner opens it (LIVE in the title) and the same pull closes it. Press buttons, flip switches, move both sticks and the lever, turn ENC2, close ABORT / STAGE and turn the mode selector: each shows on the screen (the button boxes are the state words as the modules send them). Unplug a module: it reads MISSING. Outside a flight scene the modules read DISABLED. The DISPLAYS rows show each 7" display's LINK and FLIGHT; unplug one and it reads NO ANSWER; Info 2's screen name follows its console.

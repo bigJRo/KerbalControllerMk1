@@ -13,10 +13,10 @@
                            Use for bench testing without KSP running.
                    false = live mode: Simpit connects via SerialUSB1 and populates slots
                            from KSP telemetry. Set this before deploying with KSP.
-                   NOTE: demo mode can only be turned OFF at runtime by the I2C master
-                   (see I2CSlave.ino). Simpit messages cannot clear it — while demoMode
-                   is true the loop runs stepDemoState() and never services Simpit, so
-                   onSimpitMessage()/SCENE_CHANGE never fires.
+                   NOTE: demo follows the I2C master's flag and nothing else (see
+                   I2CSlave.ino; Hardware Inventory §8.8). Simpit stays serviced in
+                   demo so the link and the scene stay current, but a Simpit message
+                   never changes demoMode.
 ****************************************************************************************/
 bool debugMode = false;  // set true to enable Serial debug output during development
 bool demoMode  = false;  // set true for bench testing without KSP; false for production

@@ -179,18 +179,9 @@ static void processI2CCommand(const uint8_t *cmd, uint8_t len) {
       initDemoMode();
       if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode on, demo state reinitialised"));
     } else {
-      // Switching into live mode — connect Simpit if not already connected.
-      // This handles the case where the unit booted in demo mode and the master
-      // is now enabling live telemetry without a hardware reset.
-      if (!simpitConnected) {
-        initSimpit();
-        if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode off, Simpit initialised"));
-      } else {
-        // Simpit already connected — request a full channel refresh so all
-        // display fields repopulate immediately without waiting for change events.
-        simpit.requestMessageOnChannel(0);
-        if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode off, channel refresh requested"));
-      }
+      // Back to live: onto the scene and vessel KSP has now (SimpitHandler.ino).
+      leaveDemoMode();
+      if (debugMode) Serial.println(F("Annunciator: I2C -- demoMode off, back to live"));
     }
   }
   if (newIdle != idleState) {
@@ -298,6 +289,18 @@ void buildI2CPacketAndAssert() {
    Copies bytes into the command buffer -- processing deferred to loop().
    Must complete quickly -- runs in interrupt context.
 ****************************************************************************************/
+// BACKLIGHT frame (master -> panel, I2C spec §15.3): [0xB8, flight %, standby %, 0].
+// Latched in the receive ISR, applied by updateI2CState() on the main thread.
+static volatile uint8_t blFlight = 0, blStandby = 0;
+static volatile bool    blReady  = false;
+static inline void blLatch(const uint8_t *b) { blFlight = b[1]; blStandby = b[2]; blReady = true; }
+static inline void blApply() {
+  noInterrupts();
+  bool r = blReady; uint8_t f = blFlight, s = blStandby; blReady = false;
+  interrupts();
+  if (r) kcmBacklightSetLevels(f, s);
+}
+
 static void onI2CReceive(int numBytes) {
   // Accept the legacy 3-byte command, the rev-2 6-byte extended command, or the
   // rev-3 9-byte command (adds relayed GPWS config).
@@ -308,6 +311,10 @@ static void onI2CReceive(int numBytes) {
     }
     i2cCmdLen   = (uint8_t)numBytes;
     i2cCmdReady = true;
+  } else if (numBytes == KCM_I2C_BACKLIGHT_LEN) {
+    uint8_t b[KCM_I2C_BACKLIGHT_LEN];
+    for (int i = 0; i < numBytes; i++) b[i] = KCM_I2C_BUS.read();
+    if (b[0] == KCM_I2C_SYNC_BACKLIGHT) blLatch(b);
   } else {
     // Drain unexpected bytes
     while (KCM_I2C_BUS.available()) KCM_I2C_BUS.read();
@@ -366,6 +373,7 @@ void updateI2CState() {
   }
   interrupts();
   if (len) processI2CCommand(cmd, len);
+  blApply();
 
   // --- Detect outbound state changes (#21) ---
   if (!i2cPacketReady) {

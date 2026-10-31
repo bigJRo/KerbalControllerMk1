@@ -117,12 +117,14 @@ def config_check():
         "ADDR_INFODISP_1": "KCM_I2C_ADDR_INFODISP", "ADDR_INFODISP_2": "KCM_I2C_ADDR_INFODISP_2",
         "ADDR_SYSINFO": "KCM_I2C_ADDR_SYSINFODISP", "SYNC_ANNUNCIATOR": "KCM_I2C_SYNC_ANNUNCIATOR",
         "SYNC_RESDISP": "KCM_I2C_SYNC_RESDISP", "SYNC_INFODISP": "KCM_I2C_SYNC_INFODISP",
+        "SYNC_BACKLIGHT": "KCM_I2C_SYNC_BACKLIGHT", "BACKLIGHT_LEN": "KCM_I2C_BACKLIGHT_LEN",
+        "BL_FLIGHT_PCT": "KCM_BL_BRIGHTNESS_PCT", "BL_STANDBY_PCT": "KCM_BL_STANDBY_PCT",
     }
     ok = True
     for mine, theirs in pairs.items():
-        a = re.search(r"\b%s\s*=\s*(0x[0-9A-Fa-f]+)" % mine, cfg)
-        b = re.search(r"#define\s+%s\s+(0x[0-9A-Fa-f]+)" % theirs, sc)
-        if not a or not b or int(a.group(1), 16) != int(b.group(1), 16):
+        a = re.search(r"\b%s\s*=\s*(0x[0-9A-Fa-f]+|\d+)" % mine, cfg)
+        b = re.search(r"#define\s+%s\s+(0x[0-9A-Fa-f]+|\d+)" % theirs, sc)
+        if not a or not b or int(a.group(1), 0) != int(b.group(1), 0):
             print("  config mismatch: %s %s vs %s %s" % (mine, a and a.group(1), theirs, b and b.group(1)))
             ok = False
     for name in COPIES:

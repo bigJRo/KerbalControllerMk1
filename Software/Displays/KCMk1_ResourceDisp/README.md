@@ -1,6 +1,6 @@
 # KCMk1_ResourceDisp
 
-**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.14.3
+**Kerbal Controller Mk1 — Resource Display Panel Sketch** · v3.15.0
 Teensy 4.1 firmware for the KSP resource monitoring display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -83,6 +83,8 @@ All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig
 | Library | Version | Notes |
 |---------|---------|-------|
 | KerbalDisplayCommon | ≥ 3.10.0 | Display primitives, fonts, BMP loader, system utils; pulls in KCM_Display (`KCM_TFT`) + SystemConfig |
+| KCM_Display | ≥ 1.1.0 | `KCM_TFT` display type and the `kcmBacklight*()` backlight helper (this repo) |
+| KCMk1_SystemConfig | ≥ 1.3.0 | Shared pin map, thresholds, the backlight defaults and the BACKLIGHT frame constants (this repo) |
 | KCM_Touch | — | FT5316 capacitive touch driver (replaces the rev-1 GSL1680F driver) |
 | TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 16-bit parallel driver + GFX layer — install on the build machine (not vendored) |
 | KerbalDisplayAudio | ≥ 1.3.0 | Direct sketch dependency — audio output not used on this panel |
@@ -131,7 +133,7 @@ Operating-mode tunables are in `AAA_Config.ino`; the slot/cache sizing constants
 | Constant | Location | Default | Description |
 |----------|----------|---------|-------------|
 | `debugMode` | `AAA_Config.ino` | `false` | Enables Serial debug output (touch coordinates, screen transitions, Simpit messages). |
-| `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master. |
+| `demoMode` | `AAA_Config.ino` | `false` | `true` = sine-wave demo values, no KSP connection. Can also be toggled at runtime by the I2C master, and only by it: see **Demo Mode**. |
 | `DEMO_EVA` | `AAA_Config.ino` | `false` | With `demoMode`, start the demo on EVA: the fixed EVA slot set and the ring-gauge layout. Bench switch for the EVA screen; no effect in live mode. |
 | `PERSIST_SETTLE_MS` | `AAA_Config.ino` | `30000` | How long a layout, bug or TTE-toggle change must hold still before it is written to EEPROM. A vessel switch or leaving the flight scene writes at once. |
 | `PERSIST_WIPE` | `AAA_Config.ino` | `false` | `true` erases the stored vessel memory and default layout at boot and logs it. Flash, boot once, set it back to `false`. |
@@ -205,6 +207,10 @@ Size: **2 bytes**. Sent by master at any time via `KCM_I2C_BUS.beginTransmission
 | `0x3` | MCU_RESET | Soft reboot the ResourceDisp (USB disconnect then ARM AIRCR reset) |
 | `0x4` | DISPLAY_RESET | Reset display state and force full redraw of current screen |
 
+### Inbound BACKLIGHT Frame — Master → ResourceDisp
+
+Size: **4 bytes** (`KCM_I2C_BACKLIGHT_LEN`), told apart from the 2-byte command by its length: `[0xB8, flight %, standby %, 0]` (`KCM_I2C_SYNC_BACKLIGHT`; I2C spec §15.3, GitHub #47). `onI2CReceive()` latches the two levels and `updateI2CState()` hands them to `kcmBacklightSetLevels()` (KCM_Display) on the main thread. The KCMk1 master sends it to all four 7" displays at once on a change and every 2 s. See **Backlight**.
+
 ### Expanding the Protocol
 
 - **Outbound:** increment `I2C_PACKET_SIZE` and add fields to `fillI2CPacketBuffer()` in `I2CSlave.ino`
@@ -276,9 +282,22 @@ Slot configurations, with their reserve bugs, are saved per vessel name in `vess
 
 **Forgetting.** An empty set at a save point (leaving the scene, switching vessel, or the settle timer) removes the vessel's record rather than saving nothing, so CLEAR then leave is "forget this vessel". Holding CLEAR on the Select screen forgets them all at once. `PERSIST_WIPE` at compile time forgets everything, default included.
 
-**Persistence.** The cache, the default layout and the TTE toggle survive a power cycle: they live in the Teensy 4.1's emulated EEPROM (`Persist.ino`), about 1.5 KB of a 4 KB wear-levelled block, with a magic, a schema number and a CRC-16 so a bad or outdated block is discarded rather than loaded. Writes happen on a vessel switch and on leaving the flight scene, where a few milliseconds' hitch cannot be seen, and otherwise once a change (a bug dragged, a layout built, the toggle pressed) has held still for `PERSIST_SETTLE_MS`, so a power cut mid-flight loses at most that long of edits. Only bytes that differ are programmed. Demo mode never writes. `PERSIST_WIPE` forgets everything at the next boot. Bugs are stored as whole percent, which is lossless since every gesture sets whole percent. The SD card was considered and passed over: a card can be absent or corrupt, FAT writes stall, and the bench would then behave differently from the installed unit.
+**Persistence.** The cache, the default layout and the TTE toggle survive a power cycle: they live in the Teensy 4.1's emulated EEPROM (`Persist.ino`), about 1.5 KB of a 4 KB wear-levelled block, with a magic, a schema number and a CRC-16 so a bad or outdated block is discarded rather than loaded. Writes happen on a vessel switch and on leaving the flight scene, where a few milliseconds' hitch cannot be seen, and otherwise once a change (a bug dragged, a layout built, the toggle pressed) has held still for `PERSIST_SETTLE_MS`, so a power cut mid-flight loses at most that long of edits. Only bytes that differ are programmed. Demo mode never writes (entering it saves the vessel's layout first, while still live; see **Demo Mode**). `PERSIST_WIPE` forgets everything at the next boot. Bugs are stored as whole percent, which is lossless since every gesture sets whole percent. The SD card was considered and passed over: a card can be absent or corrupt, FAT writes stall, and the bench would then behave differently from the installed unit.
 
 Simpit identifies a vessel by name only, so two craft with the same name share one record and a renamed vessel starts afresh.
+
+### Demo Mode
+
+Demo follows the master's I2C flag and nothing else (Hardware Inventory §8.8); no Simpit message turns it on or off.
+
+- **Entering demo** (`enterDemoMode()`, from `processI2CCommand()` before the flag is set): in a flight scene and not on EVA, the vessel's current layout is saved under its name and the store is written at once, while persistence is still live. Then `Demo.ino` replaces the bars with its own set.
+- **In demo** `simpit.update()` still runs whenever `simpitConnected`, so the link stays up, but `onSimpitMessage()` hands every message to `demoLifecycle()`, which keeps `flightScene` current from `SCENE_CHANGE` and `FLIGHT_STATUS`; the resource telemetry (and `VESSEL_NAME`) is dropped, and nothing is written to EEPROM.
+- **Leaving demo** (`leaveDemoMode()`) is a fresh start on what KSP has now: Simpit is started if the unit booted in demo, the EVA flags are cleared, and the vessel name is forgotten, so the next `VESSEL_NAME` recalls that vessel's layout (or the default) instead of keeping demo's bars and saving them under its name. Then the flight scene is entered (values zeroed, presence and history forgotten, refresh, Main) or the values are zeroed and Standby is shown.
+- A bench unit booted with `demoMode = true` has no Simpit link until the master clears the flag.
+
+### Backlight
+
+The backlight (pin 9, `KCM_TFT_BL`) is driven by the shared `kcmBacklight*()` helper in KCM_Display (GitHub #47): the **standby level** while the Standby screen is up, the **flight level** on every other screen. Both start at the KCMk1_SystemConfig defaults (`KCM_BL_BRIGHTNESS_PCT` 70 %, `KCM_BL_STANDBY_PCT` 20 %) and are replaced by the master's BACKLIGHT frame. Every level is clamped to `KCM_BL_MIN_PCT` (5 %) … 100 %, and the duty ramps to a new level (`KCM_BL_RAMP_MS`, 300 ms for the full range). Still to check on the real panel: flicker at low duty and the usable floor.
 
 ---
 
@@ -326,6 +345,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 
 | Version | Notes |
 |---------|-------|
+| **3.15.0** | **Demo follows the master's flag only, and keeps the vessel's layout; backlight dimming.** *Demo* (Hardware Inventory §8.8, §11 #11): Simpit is serviced in demo too (`simpit.update()` whenever `simpitConnected`) and `demoLifecycle()` takes only the scene from it, so the link stays up and the scene is known when demo ends. *Layout bug fixed:* demo's default bars used to be saved over the vessel's remembered layout. Entering demo (`enterDemoMode()`) now saves the vessel's layout while persistence is live, and leaving it (`leaveDemoMode()`) forgets the vessel name, so the next `VESSEL_NAME` recalls the vessel's own layout; then the flight scene is entered again or Standby is shown. *Backlight* (GitHub #47): the 4-byte BACKLIGHT frame from the master; the standby level on the Standby screen, the flight level otherwise, clamped to 5 % and ramped over 300 ms (KCM_Display 1.1.0, KCMk1_SystemConfig 1.3.0). Checked on the host by `tools/behaviour_selftest.py`. |
 | **3.14.3** | **The TAC-LS waste meters have no limit bands.** CO2, Waste and Liquid Waste no longer go yellow at 80 % full or red at 95 %, and raise no `HIGH` message on the alert strip; their scale is plain, as Ore's and Intake Air's are. They still count time to full under TTE (TTF on Detail), and a reserve bug on one still trips above it. Depleted Fuel keeps its 80 % / 95 % bands. The Annunciator's LIFE SUPPORT tile stops watching the same three resources in 3.8.2. |
 | **3.14.2** | **The spacecraft preset is `SPC`.** It was `SPCT`; the Information Display's key 1 caption and the Annunciator's control-mode legend both say `SPC`, so the three panels now share one name for the vehicle class. Label only. |
 | **3.14.1** | **History time axis in whole minutes.** The tick labels borrowed the counter's time formatter, so at 1x they read `-8:00`; the ticks are minutes apart and the seconds said nothing. They now read `-10m`, `-8m` ... `-2m`, rounded to the minute, and keep the hours and days forms under warp. The `LAST` caption keeps the `m:ss` form: it grows a sample at a time while the buffer fills, and the seconds are what show that. |
@@ -362,7 +382,7 @@ The ResourceDisp follows the same deterministic startup handshake as the other K
 ## Notes
 
 - **`debugMode`** defaults to `false`. Set `true` during development for touch coordinates and Simpit message logging.
-- **`demoMode`** defaults to `false` (live Simpit). Set `true` for bench testing without KSP.
+- **`demoMode`** defaults to `false` (live Simpit). Set `true` for bench testing without KSP. At runtime only the master's flag changes it.
 - **ARP mod** is required for most resource channels. Without it, meters show `---` (no capacity reported).
 - **Stage data** is only available for resources with dedicated Simpit stage channels (LF, LOx, SF, Xenon, Ablator). All others mirror vessel totals in the STAGE section and suppress it on the Detail screen.
 - **Vessel cache eviction** — the cache is kept in recency order (a save or recall moves its record to the front), so when `VESSEL_CACHE_SIZE` is exceeded the vessel longest unused is the one forgotten. See Per-Vessel Configuration Memory.

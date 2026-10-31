@@ -2,8 +2,8 @@
 
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
-**Version:** 1.3
-**Firmware covered:** Info Display v1.17.0 (both units) · Annunciator v3.9.0 · Resource Display v3.14.3 · KCMk1_Master v0.8.1
+**Version:** 1.4
+**Firmware covered:** Info Display v1.18.0 (both units) · Annunciator v3.10.0 · Resource Display v3.15.0 · KCMk1_Master v0.9.0 · KCM_Display 1.1.0 · KCMk1_SystemConfig 1.3.0
 
 ---
 
@@ -13,7 +13,7 @@ This is an in-game run-through of every screen and feature on the three TFT disp
 
 **Test point IDs** are `<session>-<number>`, e.g. `ASC-04`. Each row lists the action, the expected result and the source of truth (threshold or rule) so a disagreement can be traced to the README or config constant rather than argued. Readout names are written as the screens print them (`ALT.RDR`, `ΔV.STG`, `T+IGN`); the per-screen detail is in `Documents/User/Info_Display_Screen_Reference.md` and `Documents/User/Annunciator_Caution_Warning_Reference.md`.
 
-**Recording results.** The interactive version of this plan, `Display_Test_Plan.html` beside this file (generated from it by `assets/build_test_plan.py`), gives every test point a PASS / FAIL / N/A control and a note, keeps the run in the browser, and builds the run log for you. Otherwise copy the tables into a run log (or print them) and mark each row P / F / N/A, with a note on any failure; the defect-log template in §21 collects failures for triage. Record the firmware version strings from each boot screen at the top of the log.
+**Recording results.** The interactive version of this plan, `Display_Test_Plan.html` beside this file (generated from it by `assets/build_test_plan.py`), gives every test point a PASS / FAIL / N/A control and a note, keeps the run in the browser, and builds the run log for you. Otherwise copy the tables into a run log (or print them) and mark each row P / F / N/A, with a note on any failure; the defect-log template in §24 collects failures for triage. Record the firmware version strings from each boot screen at the top of the log.
 
 **Panel names used below.**
 
@@ -47,6 +47,8 @@ The master is `Software/KCMk1_Master` (it replaced `Controller_Main`; design `Ma
 - **Panel condition block:** TRIM (rotation stick BTN02), INPUT PREC (THC / RHC PREC), THRTL PREC (THRTL FINE), ENG ARM (ENGINE SAFE / ARM), SWITCH ERR (a switch disagreeing with the vessel) and SIMPIT LOST (no KSP traffic for 5 s in flight).
 - **Bit 3** is **A/P ARM** (the A/P INHIB / ARM switch); the tile reads `A/P ARM` from Annunciator v3.9.
 - **CAP** reads 0.
+- **Backlight:** the master sends every 7" panel its flight and standby levels (70 % / 20 % by default); the `backlight` console command changes them (session BKLT).
+- **Input test screen:** the master feeds Info 1's input test screen while it is open (session INPUT).
 
 ### 2.2 Test craft (build these in the VAB/SPH before starting)
 
@@ -71,7 +73,7 @@ Power the controller on with KSP at the main menu.
 |---|---|---|---|
 | BOOT-01 | Watch all four panels power up | Each shows a boot screen with its firmware version in the header. Info panels show one of three random KSP-themed sequences (Mission Log / Loading Tips / Pre-Flight Checklist) that varies from boot to boot | README Boot Sequence |
 | BOOT-02 | Wait for the master handshake | Every panel leaves the boot screen once the master sends PROCEED; none hangs on boot | I2C boot handshake |
-| BOOT-03 | Observe panels with KSP at the main menu | All four show the full-screen standby splash. Touch does nothing on Info 1 / Info 2 / C&W (RES only advances on touch in demo mode) | Standby screen |
+| BOOT-03 | Observe panels with KSP at the main menu | All four show the full-screen standby splash, at the dimmer standby backlight. A tap does nothing on Info 1 / Info 2 / C&W (RES only advances on touch in demo mode; Info 1's two-finger input test gesture still works, session INPUT) | Standby screen |
 | BOOT-04 | Load a save and go to flight with T1 on the pad | All four leave standby automatically. Info 1 on SPACECRAFT PFD, Info 2 on the LAUNCH pre-launch board, C&W on Main, RES on Main | Scene change → flight |
 | BOOT-05 | Return to the Space Center | All four return to standby | Scene change → non-flight |
 | BOOT-06 | With a flight already running, power-cycle the controller | After boot, panels come up on the live flight screens rather than sitting on standby | InfoDisp 1.2.1 / C&W 3.5.3 |
@@ -254,6 +256,9 @@ Requires the master (KCMk1_Master) running the mission autopilot. All annunciati
 | DOCK-10 | Undock | DOCKED splash clears; C&W `DOCK` clears; the deferred dock-check re-runs the ladder once target distance arrives | Deferred dock check |
 | DOCK-11 | Switch vessel with `]` at close range | Info 2 re-routes to DOCKING for the new active vessel once TARGETINFO arrives | Deferred dock check |
 | DOCK-12 | **RES** after docking | Layout for the new vessel name loads (default if unseen); tapes re-collapse for the resources aboard the combined craft | Per-vessel memory |
+| DOCK-13 | **C&W**: docked, tap the `DOCK` tile; tap it again | First tap clears DOCK, the second lights it again; no screen change and no SOI screen | C&W 3.10.0 DOCK touch |
+| DOCK-14 | Undocked, tap `DOCK` to light it, then dock and undock for real | The real dock leaves DOCK lit, the real undock clears it: the next real event overrides the tap | C&W 3.10.0 DOCK touch |
+| DOCK-15 | Tap just beside the `DOCK` tile; and on standby (Space Center), tap where the tile would be | Nothing changes either time (touch only on the tile, flight scene only) | `TouchEvents.ino` |
 
 ---
 
@@ -526,7 +531,68 @@ These confirm the ladder guards. Tick them as the situations occur.
 
 ---
 
-## 21. Defect log template
+## 21. Session DEMO — demo mode round trip (SCE switch on Switch Group 1)
+
+Demo follows the master's flag and nothing else (Hardware Inventory §8.8). Start in flight with T1, with a RES layout of your own saved for it (vessel name cyan on the alert strip), and the Sys Info Display in view.
+
+| ID | Action | Expected | Source |
+|---|---|---|---|
+| DEMO-01 | Flip SCE to AUX in flight | All four panels animate demo data; C&W `DEMO` lit; RES shows demo's own bars; nothing reaches KSP | Inventory §8.8 |
+| DEMO-02 | While in demo, check the Sys Info Display | Each display's KSP link stays up through demo (the displays keep servicing Simpit) | InfoDisp 1.18.0 / C&W 3.10.0 / RES 3.15.0 |
+| DEMO-03 | While in demo, go to the Space Center, then back to flight | No panel leaves demo or drops to standby on either scene change; each keeps animating | Demo follows the flag only |
+| DEMO-04 | Flip SCE to NORM in flight | Each panel starts afresh on the live flight: Info 1 / Info 2 on their context screens for the real vessel (`AUTO`), C&W Main with live tiles (no master alarm unless a real warning), RES Main with live values | `leaveDemoMode()` |
+| DEMO-05 | **RES** after DEMO-04 | The vessel's own saved layout is back (cyan name), not demo's bars. Power-cycle the controller and reload: still the vessel's layout | RES 3.15.0 layout fix |
+| DEMO-06 | In demo, dock (or undock) T1 using KSP's own controls, then flip SCE to NORM | C&W `DOCK` matches the real state after leaving demo | C&W 3.10.0 |
+| DEMO-07 | At the Space Center, flip SCE to AUX then back to NORM | In demo all four animate; back on NORM all four show the standby splash | `leaveDemoMode()` |
+
+---
+
+## 22. Session BKLT — backlight dimming (all four 7" panels)
+
+Uses the master's serial console (first USB port). Run at the Space Center and in any flight.
+
+| ID | Action | Expected | Source |
+|---|---|---|---|
+| BKLT-01 | KSP at the Space Center, then enter a flight | On standby all four panels sit at the dimmer standby level; on entering the flight each brightens to the flight level with a short smooth ramp (about 0.3 s), not a step | `KCM_BL_STANDBY_PCT` 20 / `KCM_BL_BRIGHTNESS_PCT` 70 / `KCM_BL_RAMP_MS` |
+| BKLT-02 | Type `backlight` | Prints the current levels (`flight 70 %, standby 20 %` by default) | Master console |
+| BKLT-03 | Type `backlight 40 10` in flight, then go to the Space Center | All four panels dim to 40 % at once in flight, and to 10 % on standby | BACKLIGHT frame (I2C spec §15.3) |
+| BKLT-04 | Type `backlight 0 0`, then `backlight 140` | 0 %: every panel stays visibly lit at its floor, never black. 140: refused with `levels are 0..100 %`, levels unchanged | `KCM_BL_MIN_PCT` 5 |
+| BKLT-05 | With `backlight 40 10` set, reset one display (or power-cycle it alone) | Within about 2 s of it leaving its boot screen it is at 40 % / 10 % again, not its 70 / 20 default | `CARRIER_BACKLIGHT_MS` |
+| BKLT-06 | **Bench:** step down with `backlight 20 20`, `10 10`, `5 5`; look at each panel directly and through a phone camera | No visible flicker at any level; note the lowest level that is still readable. If 5 % flickers or is unreadable, raise `KCM_BL_MIN_PCT` | Bench item (master README) |
+| BKLT-07 | Type `backlight 70 20` | Back to the defaults | — |
+
+---
+
+## 23. Session INPUT — input test screen (Info 1)
+
+Needs the master, the modules and the other three 7" displays. The screen shows what the master reads, raw (Hardware Inventory §8.11).
+
+| ID | Action | Expected | Source |
+|---|---|---|---|
+| INPUT-01 | On Info 1, put two fingers in the top-right corner and pull both diagonally down and to the left (at least 140 px each way, under 1.5 s) | The INPUT TEST screen covers the whole panel, sidebar included; the title reads `LIVE` in green; a row per module; on the right TRANSLATION then ROTATION, the lever, mode selector, safe lines and control group, and DISPLAYS at the bottom | InfoDisp 1.18.0 |
+| INPUT-02 | Do the same pull again; lift the fingers one at a time | The screen closes and the screen underneath comes back in full; the lifting fingers are not taken as a tap | InfoDisp 1.18.0 |
+| INPUT-03 | Try two fingers starting outside the corner, a short pull, a slow pull (over 1.5 s), one finger; and the full pull on Info 2 | Nothing opens in any of these | Gesture rules |
+| INPUT-04 | Open it on standby (Space Center) and in demo; close it on standby | Opens both times; closing on standby shows the splash again | Available any time |
+| INPUT-05 | With it open, tap where the sidebar keys are | Nothing happens; the screen stays up | Taps ignored while open |
+| INPUT-06 | Read the module rows; then unplug one module | Each fitted module shows its address and INT line (as `intmap` reports them) and ACTIVE in green in flight (DISABLED in amber in the menus); the unplugged one reads MISSING in red. No STATE cell is red (red = the module reports a FAULT) | Page 0 / page 1 frames |
+| INPUT-07 | Press every button and flip every switch on the button modules | Its box lights while it is down (the boxes are the bits of the state word as the module sends it); FUNCTION and VEHICLE show their switches as the last eight boxes, after a gap | Page 0 bytes 8–23 |
+| INPUT-08 | Move each stick axis to both ends; press each stick's button, BTN01, BTN02 | TRANSLATION is the left box, ROTATION the right. The dot and twist bar follow, the values (`X:` `Y:` `Z:`) reach about ±100; `STK` / `B1` / `B2` light while held | Page 0 bytes 24–31 |
+| INPUT-09 | Move the lever; touch it; turn on FINE; press 100 % / UP / DOWN / 0 % | The lever bar and % follow; touched: bar blue and `TOUCH`; `FINE` shows; each button's box flashes on the press | Page 0 bytes 34–35 |
+| INPUT-10 | GPWS and Pre-Warp: press their buttons, turn their encoders, change the GPWS mode | Boxes flash on the presses; `value` follows the displayed number; `state` changes with the mode | Page 0 bytes 32–33, page 1 |
+| INPUT-11 | Dual Encoder: turn ENC1, turn ENC2 both ways, press both buttons | Control group follows ENC1 (row, and `CONTROL GROUP n` in the right column); the ENC2 count goes up and down; the boxes flash on the presses | Page 0 bytes 36–37 |
+| INPUT-12 | Turn the mode selector through SPC / PLN / RVR; close the ABORT and STAGE lines | The matching chip lights; ABORT (red) and STAGE (orange) light while their line is closed | Page 0 bytes 38–39 |
+| INPUT-13 | With the screen open, unplug Info 1's I2C loom from the master | Within about 1.5 s the title reads `NO DATA` in red and the states read `--`; it returns to `LIVE` when frames resume | `IT_STALE_MS` |
+| INPUT-14 | Unplug one module and plug it back in (or reset it) while watching its row | MISSING, then ACTIVE again once the master has re-enabled it (it may show `BOOT RDY` in magenta for a moment first) | Page 1 bytes 19–22 |
+| INPUT-15 | Read the DISPLAYS rows in flight with KSP connected | ANNUNC, INFO 1, INFO 2 and RESOURCE each read `LINK` in green and `FLIGHT`; INFO 1 shows `INPUT`; INFO 2 shows the screen it is on; ANNUNC shows `C&W n` with *n* the number of lit C&W tiles; RESOURCE shows `n bars` matching its bars | Page 2 |
+| INPUT-16 | Go to the Space Center | Every display row reads `STBY` and still answers | Page 2 flags bit 1 |
+| INPUT-17 | Back in flight, change Info 2's screen a few times | The INFO 2 row follows within about 1 s, by its short name (e.g. `ORB`, `MNVR`, `ASC AP`) | Page 2 byte 11 |
+| INPUT-18 | Turn demo on, then off | INFO 1, INFO 2 and RESOURCE show `DEMO` while it is on | Page 2 flags bit 2 |
+| INPUT-19 | Bring on a master alarm; then let a resource fall into caution, then alarm | ANNUNC shows `ALARM` in red with the alarm; RESOURCE shows `CAUTION` in yellow, then `ALARM` in red | Page 2 bytes 3, 12 |
+| INPUT-20 | Unplug the Resource Display's (or another display's) I2C loom | Its row reads `NO ANSWER` in red within about 1 s; the others are unchanged; plugged back in it reads as before | Page 2 byte 2 |
+
+---
+
+## 24. Defect log template
 
 | ID | Panel / screen | Firmware | Test point | Observed | Expected | Repro steps | Severity |
 |---|---|---|---|---|---|---|---|
@@ -577,3 +643,4 @@ These confirm the ladder guards. Tick them as the situations occur.
 6. ACFT, GPWS, ACAP (T4)
 7. ROVR, RVAP (T5)
 8. CTX rows as they come up across all of the above
+9. DEMO, BKLT, INPUT (any flight and the Space Center; BKLT-06 and INPUT need the panels on the bench or in view of the console)

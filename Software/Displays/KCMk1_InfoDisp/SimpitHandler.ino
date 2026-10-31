@@ -31,7 +31,6 @@
 ****************************************************************************************/
 static void enterFlightScene() {
   flightScene = true;
-  demoMode    = false;
   // Entering a flight scene is a fresh start — release any held manual pick so the
   // panel opens on its context screen rather than wherever it was parked.
   clearManualScreenLatch();
@@ -42,6 +41,95 @@ static void enterFlightScene() {
   modeClearOverride(_acftAltRefOverride);
   _lnchManualOverride = false;   // and the LAUNCH screen's ASC/CIRC phase override
   if (contextSwitchAllowed()) switchToScreen(contextScreen());
+  simpit.requestMessageOnChannel(0);
+}
+
+
+/***************************************************************************************
+   PER-VESSEL RESET
+   What a vessel switch clears: the old vessel's screen state, latches and caches. Also
+   run on leaving demo in a flight scene, since demo overwrote state with made-up
+   values and the vessel may have changed meanwhile.
+****************************************************************************************/
+static void resetForVesselSwitch() {
+    _pendingDockCheck = false;  // clear any stale dock check from previous switch
+    _lastTargetInfoMs = 0;      // the old vessel's target is not this one's
+    state.propSeen = false;     // and its propellant: wait for this vessel's LF / OX
+    state.lfAmount = state.oxAmount = 0.0f;
+    if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
+    // Reset per-vessel screen state. (_lndgReentryMode is not touched: it is derived
+    // from the active screen by drawStaticScreen() / updateScreen().)
+    _scftPrevOrbMode    = false;   // #50 reset SCFT orbital-mode state on vessel switch
+    _pfdManualOverride  = false;   // reset the PFD sidebar-cycle override; use context for new vessel
+    clearManualScreenLatch();      // new vessel — release the held manual pick
+    resetContextRouting();         //   and the routing state with it
+    modeClearOverride(_scftVelRefOverride);   // and the held attitude references
+    modeClearOverride(_acftAltRefOverride);
+    _lnchManualOverride = false;   // LAUNCH phase override and coast latch belong to
+    _lnchOrbitalMode    = false;   //   the old vessel; the new one re-derives them
+    _lnchCoastLatched   = false;
+    rovrEnduranceReset();          // the charge window is the old vessel's
+    _lndgReentryRow0TPe = false;
+    _lndgReentryRow1SL  = false;
+    _drogueDeployed  = false;
+    _mainDeployed    = false;
+    _drogueCut       = false;
+    _mainCut         = false;
+    _drogueArmedSafe = false;
+    _mainArmedSafe   = false;
+    // Invalidate all row caches so everything redraws on the new vessel
+    invalidateAllRowCache();
+    // Don't call contextScreen() here — state.vesselType is still the OLD vessel's
+    // type at this point. FLIGHT_STATUS_MESSAGE with the new vessel's type will
+    // arrive shortly; set a flag and do the context switch when it does.
+}
+
+
+/***************************************************************************************
+   DEMO: LIFECYCLE ONLY
+   Demo mode follows the master's flag and nothing else (Hardware Inventory §8.8). The
+   Simpit link keeps running meanwhile, so this panel stays connected and knows the
+   scene and vessel when demo ends, but only the lifecycle is taken: no screen changes,
+   and the telemetry is dropped (the demo generator owns state).
+****************************************************************************************/
+static bool _demoVesselChanged = false;   // a vessel switch arrived during demo
+
+static void demoLifecycle(byte messageType, byte msg[], byte msgSize) {
+  switch (messageType) {
+    case SCENE_CHANGE_MESSAGE:
+      if (msgSize >= 1) flightScene = (msg[0] == 0);
+      break;
+    case FLIGHT_STATUS_MESSAGE:            // Simpit sends it only from a flight scene
+      flightScene = true;
+      break;
+    case VESSEL_CHANGE_MESSAGE:
+      if (msgSize < 1) break;
+      if (msg[0] == 1) _demoVesselChanged = true;
+      else if (msg[0] == 2) { _vesselDocked = true; _dockedTimestamp = millis(); }
+      else if (msg[0] == 3) _vesselDocked = false;
+      break;
+    default:
+      break;
+  }
+}
+
+/***************************************************************************************
+   LEAVING DEMO (called from the I2C control byte when the master clears the flag)
+   In a flight scene: a fresh start on the vessel KSP is flying now. The per-vessel
+   reset, the flight-scene entry, and the context screen once FLIGHT_STATUS reports the
+   real vessel type. Otherwise the standby splash. Then a full telemetry refresh.
+****************************************************************************************/
+void leaveDemoMode() {
+  if (!simpitConnected) initSimpit();      // booted in demo (bench): connect now
+  if (flightScene) {
+    resetForVesselSwitch();
+    enterFlightScene();
+    _pendingContextSwitch = true;           // route on the real vessel, not demo's
+  } else {
+    drawStandbyScreen(infoDisp);
+    switchToScreen(SCREEN_HOME);
+  }
+  _demoVesselChanged = false;
   simpit.requestMessageOnChannel(0);
 }
 
@@ -81,6 +169,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     Serial.print(F("InfoDisp: Simpit msg="));
     Serial.println(n);
   }
+
+  if (demoMode) { demoLifecycle(messageType, msg, msgSize); return; }   // lifecycle only (§8.8)
 
   switch (messageType) {
 
@@ -467,7 +557,6 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
       } else {
         flightScene = false;
         // Non-flight (menus, tracking station, etc.) — show standby splash
-        demoMode = false;
         drawStandbyScreen(infoDisp);
         switchToScreen(SCREEN_HOME);   // park on this panel's home screen behind the splash
       }
@@ -483,36 +572,7 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
         if (!recentDock) {
           _vesselDocked = false;
         }
-        _pendingDockCheck = false;  // clear any stale dock check from previous switch
-        _lastTargetInfoMs = 0;      // the old vessel's target is not this one's
-        state.propSeen = false;     // and its propellant: wait for this vessel's LF / OX
-        state.lfAmount = state.oxAmount = 0.0f;
-        if (debugMode) Serial.println(F("InfoDisp: Vessel switch"));
-        // Reset per-vessel screen state. (_lndgReentryMode is not touched: it is derived
-        // from the active screen by drawStaticScreen() / updateScreen().)
-        _scftPrevOrbMode    = false;   // #50 reset SCFT orbital-mode state on vessel switch
-        _pfdManualOverride  = false;   // reset the PFD sidebar-cycle override; use context for new vessel
-        clearManualScreenLatch();      // new vessel — release the held manual pick
-        resetContextRouting();         //   and the routing state with it
-        modeClearOverride(_scftVelRefOverride);   // and the held attitude references
-        modeClearOverride(_acftAltRefOverride);
-        _lnchManualOverride = false;   // LAUNCH phase override and coast latch belong to
-        _lnchOrbitalMode    = false;   //   the old vessel; the new one re-derives them
-        _lnchCoastLatched   = false;
-        rovrEnduranceReset();          // the charge window is the old vessel's
-        _lndgReentryRow0TPe = false;
-        _lndgReentryRow1SL  = false;
-        _drogueDeployed  = false;
-        _mainDeployed    = false;
-        _drogueCut       = false;
-        _mainCut         = false;
-        _drogueArmedSafe = false;
-        _mainArmedSafe   = false;
-        // Invalidate all row caches so everything redraws on the new vessel
-        invalidateAllRowCache();
-        // Don't call contextScreen() here — state.vesselType is still the OLD vessel's
-        // type at this point. FLIGHT_STATUS_MESSAGE with the new vessel's type will
-        // arrive shortly; set a flag and do the context switch when it does.
+        resetForVesselSwitch();
         _pendingContextSwitch = true;
         // Request a full telemetry refresh so all fields repopulate immediately
         simpit.requestMessageOnChannel(0);

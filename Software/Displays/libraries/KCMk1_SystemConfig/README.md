@@ -1,6 +1,6 @@
 # KCMk1_SystemConfig
 
-**Kerbal Controller Mk1 — Shared System Configuration** · v1.1.0
+**Kerbal Controller Mk1 — Shared System Configuration** · v1.3.0
 Shared hardware pin map and cross-panel thresholds for all KCMk1 display panels.
 Part of the KCMk1 controller system.
 
@@ -35,10 +35,12 @@ Place the `KCMk1_SystemConfig` folder in your Arduino `libraries/` directory alo
 | Resolution | `KCM_SCREEN_W` (1024), `KCM_SCREEN_H` (600) |
 | Data bus (FlexIO3, driver-owned) | `KCM_TFT_DB0`..`KCM_TFT_DB15` (pins 19,18,14,15,40,41,17,16,22,23,20,21,38,39,26,27) |
 | Control lines (plain GPIO) | `KCM_TFT_CS` (34), `KCM_TFT_RESET` (35), `KCM_TFT_WR` (36), `KCM_TFT_RD` (37), `KCM_TFT_RS` (33), `KCM_TFT_WAIT` (32), `KCM_TFT_INT` (31) |
-| Backlight | `KCM_TFT_BL` (9), `KCM_BL_BRIGHTNESS_PCT` (70) |
+| Backlight | `KCM_TFT_BL` (9); `KCM_BL_BRIGHTNESS_PCT` (70, the flight level), `KCM_BL_STANDBY_PCT` (20, the standby-screen level), `KCM_BL_MIN_PCT` (5, the floor every level is clamped to), `KCM_BL_RAMP_MS` (300, the ramp time for the full range) |
 | Timing / bus | `KCM_FRAME_PERIOD_US` (20000), `KCM_TFT_BUS_SPEED_MHZ` (20), `KCM_TFT_BUS_WIDTH` (16) |
 
 The data bus, `/WR`, and `/RD` are owned by the FlexIO3 driver — those defines are documentation. Only `/CS`, `RS`, and `/RESET` are passed to the driver as plain GPIO.
+
+The backlight constants are the defaults for the `kcmBacklight*()` helper in KCM_Display (GitHub #47): a panel uses the flight level, or the standby level while it shows its standby screen, until the master's BACKLIGHT frame replaces both. `KCM_BL_MIN_PCT` keeps a bad value from blacking a panel out; whether 5 % is the usable floor, and free of flicker, is still to be checked on the real panel. The master's `BL_FLIGHT_PCT` / `BL_STANDBY_PCT` are checked against `KCM_BL_BRIGHTNESS_PCT` / `KCM_BL_STANDBY_PCT` by its host build.
 
 ### Touch, audio, SD, serial
 
@@ -56,6 +58,7 @@ The data bus, `/WR`, and `/RD` are owned by the FlexIO3 driver — those defines
 | Bus / pins | `KCM_I2C_BUS` (Wire2, SCL2=24 / SDA2=25), `KCM_I2C_INT_PIN` (0), `KCM_I2C_RST_PIN` (1) |
 | Slave addresses | `KCM_I2C_ADDR_ANNUNCIATOR` (0x10), `KCM_I2C_ADDR_RESDISP` (0x11), `KCM_I2C_ADDR_INFODISP` (0x12), `KCM_I2C_ADDR_INFODISP_2` (0x13), `KCM_I2C_ADDR_SYSINFODISP` (0x14 — **future work**) |
 | Sync / framing bytes | `KCM_I2C_SYNC_ANNUNCIATOR` (0xAC), `KCM_I2C_SYNC_RESDISP` (0xAD), `KCM_I2C_SYNC_INFODISP` (0xAE — shared by Info Display 1 & 2) |
+| BACKLIGHT frame (master → each 7" display) | `KCM_I2C_SYNC_BACKLIGHT` (0xB8), `KCM_I2C_BACKLIGHT_LEN` (4): `[0xB8, flight %, standby %, 0]`, a length no display uses for its command (I2C spec §15.3) |
 
 Info Display 1 (0x12) and Info Display 2 (0x13) run the **same** InfoDisp firmware; the target board is chosen at compile time by `INFO_DISP_UNIT` in the InfoDisp `KCMk1_InfoDisp.h`, which also selects the panel's role (vehicle-type vs mission-phase) and sidebar side. The System Info Display (0x14) is separate hardware and is not yet coded — see `Documents/Developer/Hardware_Reference.md`.
 
@@ -95,6 +98,7 @@ The G **alarm** limits are the Annunciator's single HIGH-G warning trip points; 
 
 | Version | Notes |
 |---------|-------|
+| **1.3.0** | Backlight dimming (GitHub #47): added `KCM_BL_STANDBY_PCT` (20), `KCM_BL_MIN_PCT` (5) and `KCM_BL_RAMP_MS` (300) beside `KCM_BL_BRIGHTNESS_PCT`, now the flight level; added the master's BACKLIGHT frame constants `KCM_I2C_SYNC_BACKLIGHT` (0xB8) and `KCM_I2C_BACKLIGHT_LEN` (4). Used by KCM_Display 1.1.0. |
 | **1.2.0** | Added `KCM_HIGH_Q_PA` (20 kPa): the dynamic-pressure caution shared by the Annunciator's HIGH Q tile and the Info Display's ASCENT Q row (issue #71). |
 | **1.1.0** | Documented the full hardware rev 2 pin map (display data/control lines, touch, audio, SD, Wire2 module bus) that the header actually owns. Added Info Display 2 (`KCM_I2C_ADDR_INFODISP_2` = 0x13) and reserved the System Info Display (`KCM_I2C_ADDR_SYSINFODISP` = 0x14, future work). Removed the dead, misleading `KCM_DEFAULT_DEBUG_MODE` / `KCM_DEFAULT_DEMO_MODE` macros (unused, defaulted to `true` while every sketch uses `false`). Standardized chip naming to LT7683 (RA8876-compatible). |
 | **1.0.0** | Initial release. Extracted from inline sketch definitions during KCMk1 implementation Phase 3. |

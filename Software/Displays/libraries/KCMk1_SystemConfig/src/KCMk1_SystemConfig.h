@@ -71,8 +71,15 @@
 #define KCM_TFT_BL      9    // BL_CTRL backlight enable / PWM
 
 // Backlight brightness as a PWM duty cycle (0-100%). Driven via analogWrite() on
-// KCM_TFT_BL. Lowered from full-on to save power / reduce heat.
+// KCM_TFT_BL. Lowered from full-on to save power / reduce heat. This is the flight
+// level until the master sends one (BACKLIGHT frame, I2C spec §15.3); the standby
+// level applies while the panel shows its standby screen. Every level is clamped to
+// KCM_BL_MIN_PCT so a bad value cannot black a panel out, and changes ramp over
+// KCM_BL_RAMP_MS (full range) rather than stepping. KCM_Display.h, kcmBacklight*().
 #define KCM_BL_BRIGHTNESS_PCT  70
+#define KCM_BL_STANDBY_PCT     20
+#define KCM_BL_MIN_PCT          5   // floor: to confirm on the real panel (flicker, visibility)
+#define KCM_BL_RAMP_MS        300
 
 // One display frame period in microseconds, used by the double-buffer layer to let
 // a page flip take effect (the LT7683 latches the scan-out base at the frame
@@ -132,6 +139,10 @@
 #define KCM_I2C_SYNC_ANNUNCIATOR  0xAC
 #define KCM_I2C_SYNC_RESDISP      0xAD
 #define KCM_I2C_SYNC_INFODISP     0xAE   // was 0xAD — collision fix (item #3); shared by Info Display 1 & 2
+// Master -> each 7" display: BACKLIGHT frame [0xB8, flight %, standby %, 0] (I2C spec §15.3).
+// Four bytes, a length no display uses for its command, so every panel can tell it apart.
+#define KCM_I2C_SYNC_BACKLIGHT    0xB8
+#define KCM_I2C_BACKLIGHT_LEN     4
 
 // =============================================================================
 // SD CARD — Teensy 4.1 on-board socket (SDIO, not SPI)

@@ -1,13 +1,13 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.2 | 2026-10-31
+**Jeb's Controller Works** | v6.3 | 2026-10-31
 
 | | |
 |---|---|
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.8.2) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.9.0) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -959,15 +959,16 @@ Switch Group 1 SCE: NORM = off, AUX = on (Inventory §8.8, design §10.1). For s
 | **Dual Encoder** | ENC1 changes the control group. ENC2 sends nothing |
 | **Throttle** | The lever buttons move the lever (ENGINE and FINE rules still apply) |
 | **ABORT, STAGE** | Nothing sent |
-| **Displays** | All four carriers get the demo flag and animate demo data. The Sys Info Display leaves its boot screen |
+| **Displays** | All four carriers get the demo flag and animate demo data. Each keeps its own Simpit link up but takes only the scene, flight status and dock / undock from it. The Sys Info Display leaves its boot screen |
 | **Annunciator** | DEMO lit |
 
 **Leaving demo:**
 - Modules return to the lifecycle for the current scene.
 - LEDs return to KSP's state.
 - Switches flipped during demo are not acted on. The usual rule applies, so a switch that now disagrees with the vessel lights SWITCH ERR.
+- Each display starts afresh on the scene KSP has then: the flight scene again with a full refresh, or its standby screen. The Resource Display gets the vessel's own bar layout back; the Annunciator applies a dock / undock seen during demo.
 
-**Displays follow the master's flag only.** Today the Info Displays clear demo on a scene change and the Resource Display stops servicing Simpit; both are being brought in line (§15).
+**Displays follow the master's flag only.** A scene change never turns demo on or off on a display (§15 #11).
 
 ---
 
@@ -987,7 +988,7 @@ The confirmed behaviour is what this document describes. These items do not matc
 | 8 | Throttle module firmware | **Fixed in v2.2 (2026-10-31)** with `CMD_SET_LEVER_HOLD`. Was: refused lever commands while touched, so the lever could not be held against the pilot | Under an autopilot, push back against a hand for at most about 0.5 s (stall limit), then return the lever on release | Inventory §11 #15, design §11.3 |
 | 9 | Throttle module firmware | **Fixed in v2.1 (2026-10-27).** Was: the module moved the lever on its own buttons (100 % / 0 %, ±5 %), even in ENGINE SAFE, in FINE and under an autopilot | The module only reports its buttons; the master moves the lever (§12.2) | Found for v6.0; Inventory §11 #20 |
 | 10 | Annunciator firmware | **Fixed in v3.9 (2026-10-31).** Was: tile THRTL ENA | A/P ARM (same bit 3) | Inventory §11 #1 |
-| 11 | Info Display and Resource Display firmware | Info Displays clear demo on a scene change; the Resource Display stops servicing Simpit in demo | Every display enters and leaves demo only on the master's flag | Inventory §11 #10–#12 |
+| 11 | Info Display, Resource Display and Annunciator firmware | **Fixed (Info Display v1.18.0, Resource Display v3.15.0, Annunciator v3.10.0; 2026-10-31).** Was: the Info Displays cleared demo on a scene change; the Resource Display and Annunciator stopped servicing Simpit in demo, and the Resource Display saved demo's bars over the vessel's layout | Every display enters and leaves demo only on the master's flag | Inventory §11 #10–#12 |
 | 12 | Module READMEs and sketch comments | Some still describe the old layouts (for example the Rotation BTN01 "Alt+X" note). Throttle, Function Control, Stability Control and AUX CTRL were brought up to date in v6.1 | As this document | — |
 
 ---
@@ -1032,7 +1033,7 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | Function Control order with LES on B0 | Every left / right pair swapped (B0 FAIRING JETT, B1 LES, …); CAG numbers kept with the function |
 | Rotation stick button: air brake (CAG 38 duplicate) | By control mode (§10.1) |
 | Rotation BTN01: KSP trim reset (Alt+X) | Clears the master's own trim |
-| Dual Encoder ENC1 button: docked-flag toggle | Resets the control group to 1. Docking state is the Annunciator DOCK tile |
+| Dual Encoder ENC1 button: docked-flag toggle | Resets the control group to 1. Docking state is the Annunciator DOCK tile; tap the tile to correct it (Annunciator v3.10.0) |
 | Action Control AG 1–12 offset by the control group | Always CAG 1–12 |
 | Vehicle BRAKES toggle | Brakes while held; the BRAKE switch dominates |
 | Parachute state reset by CHUTE SAFE | State from KSP's report; reset by a 2 s hold |
@@ -1062,4 +1063,5 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 5.9 | 2026-06-28 | `ACTIVE_ALT` LED state added for the AUX CTRL CP toggle |
 | 6.0 | 2026-10-26 | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |
 | 6.1 | 2026-10-27 | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
-| **6.2** | **2026-10-31** | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |
+| 6.2 | 2026-10-31 | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |
+| **6.3** | **2026-10-31** | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |

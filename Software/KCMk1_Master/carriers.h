@@ -11,6 +11,9 @@
      Info Display 0x12 / 0x13   [ctrl (bit 2 = trim hold), ackSeq 0]
    ctrl = requestType << 4 | idle 0x08 | audio-or-trim 0x04 | demo 0x02 | debug 0x01.
 
+   Backlight: [0xB8, flight %, standby %, 0] to all four at once on a change and every
+   CARRIER_BACKLIGHT_MS; the `backlight` console command sets the levels (GitHub #47).
+
    Every CARRIER_STATUS_MS each display's status packet is read (sync byte checked); bit
    0 of its flags byte is that display's own Simpit link, shown on the Sys Info Display.
 ****************************************************************************************/
@@ -33,5 +36,11 @@ void     carrierService();
 uint16_t carrierModeFlags();               // the Annunciator mode flags as sent
 void     carrierSetGpws(uint8_t cfg, int16_t thresholdM);   // from the GPWS panel (stage 6)
 void     carrierDisplayReset();            // requestType DISPLAY_RESET to all four, once
+void     carrierSetBacklight(uint8_t flightPct, uint8_t standbyPct);   // BACKLIGHT frame (I2C spec §15.3)
+uint8_t  carrierBacklightFlight();
+uint8_t  carrierInfoDisp1Screen();          // its status byte 2, read every CARRIER_STATUS_MS (0xFF unknown)
+bool     carrierAnswering(CarrierId c);     // its last status read succeeded
+const uint8_t *carrierLastStatus(CarrierId c);   // its last good status packet (sync, flags, …)
+uint8_t  carrierBacklightStandby();
 uint8_t  carrierInfoDispControl(uint8_t requestType);   // an Info Display's control byte (consoles' ACK)
 const char *carrierName(CarrierId c);

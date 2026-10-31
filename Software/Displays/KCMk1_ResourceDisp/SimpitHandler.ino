@@ -2,8 +2,8 @@
    SimpitHandler.ino -- KerbalSimpit integration for Kerbal Controller Mk1 Resource Display
 
    Subscribes to resource channels and populates slots[] with live KSP data.
-   When demoMode is true this file is dormant — stepDemoState() drives the values instead.
-   When demoMode is false, simpit.update() is called from loop() and this handler fires.
+   simpit.update() runs whenever the link is up, demo or not. In demo only the scene is
+   taken (demoLifecycle()); stepDemoState() drives the values.
 
    Channel mapping (KSP1 + ARP mod required for most resource channels):
      Native KSP1 with stage variants:  LF, LOx, SF, Xenon, Ablator
@@ -154,6 +154,44 @@ static void enterFlightScene() {
 }
 
 
+/***************************************************************************************
+   DEMO: LIFECYCLE ONLY
+   Demo mode follows the master's flag and nothing else (Hardware Inventory §8.8). The
+   Simpit link keeps running meanwhile, so this panel stays connected and knows the
+   scene when demo ends; only the scene is taken, the resource telemetry is dropped
+   (the demo generator owns the slots).
+****************************************************************************************/
+static void demoLifecycle(byte messageType, byte msg[], byte msgSize) {
+  if (messageType == SCENE_CHANGE_MESSAGE && msgSize >= 1) flightScene = (msg[0] == 0);
+  else if (messageType == FLIGHT_STATUS_MESSAGE)           flightScene = true;   // sent only in flight
+}
+
+/***************************************************************************************
+   ENTERING / LEAVING DEMO (called from the I2C control byte)
+   Demo replaces the bars with its own set, so the vessel's layout is saved first, while
+   persistence is still live. Leaving demo is a fresh start on whatever KSP has now:
+   the vessel name is forgotten, so the next VESSEL_NAME recalls that vessel's layout
+   (or the default) instead of keeping demo's bars and saving them under its name.
+****************************************************************************************/
+void enterDemoMode() {
+  if (flightScene && !evaActive) saveVesselSlots(currentVesselName);
+  persistStoreNow();
+}
+
+void leaveDemoMode() {
+  if (!simpitConnected) initSimpit();      // booted in demo (bench): connect now
+  evaFlag = evaActive = false;             // the next FLIGHT_STATUS sets it again
+  currentVesselName = "";
+  layoutRecalled    = false;
+  if (flightScene) {
+    enterFlightScene();                    // zero, forget presence and history, refresh, Main
+  } else {
+    zeroAllSlotValues();
+    switchToScreen(screen_Standby);
+  }
+}
+
+
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
   if (debugMode) {
@@ -186,6 +224,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     Serial.print(F("ResourceDisp: Simpit msg="));
     Serial.println(msgName);
   }
+
+  if (demoMode) { demoLifecycle(messageType, msg, msgSize); return; }   // lifecycle only (§8.8)
 
   // Single-resource channels: one table lookup covers the native propellants,
   // their stage variants, and the vessel-only resources.

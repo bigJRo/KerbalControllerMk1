@@ -55,6 +55,43 @@ static void enterFlightScene() {
 }
 
 
+/***************************************************************************************
+   DEMO: LIFECYCLE ONLY
+   Demo mode follows the master's flag and nothing else (Hardware Inventory §8.8). The
+   Simpit link keeps running meanwhile, so this panel stays connected and knows the
+   scene when demo ends; only the lifecycle is taken, the telemetry is dropped (the demo
+   generator owns state). A dock / undock is kept for the exit.
+****************************************************************************************/
+static uint8_t _demoDock = 0;   // 0 none, 2 docked, 3 undocked: the last seen during demo
+
+static void demoLifecycle(byte messageType, byte msg[], byte msgSize) {
+  if (messageType == SCENE_CHANGE_MESSAGE && msgSize >= 1) flightScene = (msg[0] == 0);
+  else if (messageType == FLIGHT_STATUS_MESSAGE)           flightScene = true;   // sent only in flight
+  else if (messageType == VESSEL_CHANGE_MESSAGE && msgSize >= 1 && (msg[0] == 2 || msg[0] == 3))
+    _demoDock = msg[0];
+}
+
+/***************************************************************************************
+   LEAVING DEMO (called from the I2C control byte when the master clears the flag)
+   A fresh start on whatever KSP has now: the demo state is dropped, then the flight
+   scene is entered (refresh, Main) or the standby screen is shown.
+****************************************************************************************/
+void leaveDemoMode() {
+  if (!simpitConnected) initSimpit();      // booted in demo (bench): connect now
+  if (audioEnabled) audioSilence();
+  gpwsReset();
+  resetDisplays();
+  if (_demoDock == 2) bitSet(state.vesselSituationState, VSIT_DOCKED);
+  if (_demoDock == 3) bitClear(state.vesselSituationState, VSIT_DOCKED);
+  _demoDock = 0;
+  if (flightScene) {
+    enterFlightScene();                    // GPWS and audio reseeded, Main, full refresh
+  } else {
+    switchToScreen(screen_Standby);
+  }
+}
+
+
 void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
 
   // Debug: log every incoming message by name so the Serial Monitor is readable.
@@ -91,6 +128,8 @@ void onSimpitMessage(byte messageType, byte msg[], byte msgSize) {
     Serial.print(F("Annunciator: Simpit msg="));
     Serial.println(msgName);
   }
+
+  if (demoMode) { demoLifecycle(messageType, msg, msgSize); return; }   // lifecycle only (§8.8)
 
   switch (messageType) {
 

@@ -143,7 +143,7 @@ static void fillI2CPacketBuffer(uint8_t *buf) {
   if (demoMode)        flags |= (1 << 2);
   buf[0] = I2C_SYNC_BYTE;
   buf[1] = flags;
-  buf[2] = (uint8_t)activeScreen;
+  buf[2] = inputTestIsOpen() ? inputTestScreenId() : (uint8_t)activeScreen;   // 18 while the input test screen is up
   apFillOutboundCmd(&buf[3]);            // bytes 3..8 : [seq][op][payload float LE]
   uint8_t xsum = 0;
   for (uint8_t i = 3; i < 9; i++) xsum ^= buf[i];
@@ -204,13 +204,7 @@ static void processI2CCommand(const uint8_t *cmd) {
       if (debugMode) Serial.println(F("InfoDisp: I2C -- demoMode on"));
     } else {
       if (debugMode) Serial.println(F("InfoDisp: I2C -- demoMode off"));
-      // #24 runtime demo->live: connect Simpit if not already connected
-      if (!simpitConnected) {
-        initSimpit();
-      } else {
-        simpit.requestMessageOnChannel(0);
-      }
-      // Standby splash drawn by loop() _wasDemo transition block
+      leaveDemoMode();   // onto the scene and vessel KSP has now (SimpitHandler.ino)
     }
   }
 
@@ -304,6 +298,18 @@ void buildI2CPacketAndAssert() {
 /***************************************************************************************
    ON RECEIVE HANDLER -- interrupt context, keep short
 ****************************************************************************************/
+// BACKLIGHT frame (master -> panel, I2C spec §15.3): [0xB8, flight %, standby %, 0].
+// Latched in the receive ISR, applied by updateI2CState() on the main thread.
+static volatile uint8_t blFlight = 0, blStandby = 0;
+static volatile bool    blReady  = false;
+static inline void blLatch(const uint8_t *b) { blFlight = b[1]; blStandby = b[2]; blReady = true; }
+static inline void blApply() {
+  noInterrupts();
+  bool r = blReady; uint8_t f = blFlight, s = blStandby; blReady = false;
+  interrupts();
+  if (r) kcmBacklightSetLevels(f, s);
+}
+
 static void onI2CReceive(int numBytes) {
   if (numBytes == I2C_CMD_SIZE) {
     for (int i = 0; i < I2C_CMD_SIZE; i++) {
@@ -313,7 +319,9 @@ static void onI2CReceive(int numBytes) {
   } else if (numBytes >= 3 && numBytes <= I2C_PUSH_MAX) {
     uint8_t tmp[I2C_PUSH_MAX];
     for (int i = 0; i < numBytes; i++) tmp[i] = KCM_I2C_BUS.read();
-    if ((numBytes == I2C_SUM_STATUS_SIZE || numBytes == I2C_SUM_STATUS_OLD) && tmp[0] == I2C_SUM_STATUS_SYNC) {
+    if (numBytes == KCM_I2C_BACKLIGHT_LEN && tmp[0] == KCM_I2C_SYNC_BACKLIGHT) {
+      blLatch(tmp);
+    } else if ((numBytes == I2C_SUM_STATUS_SIZE || numBytes == I2C_SUM_STATUS_OLD) && tmp[0] == I2C_SUM_STATUS_SYNC) {
       if (numBytes == I2C_SUM_STATUS_OLD) tmp[I2C_SUM_STATUS_OLD] = 1;      // older master: group 1
       for (int i = 0; i < I2C_SUM_STATUS_SIZE; i++) sumBuf[i] = tmp[i];   // own buffer (#83)
       sumReady = true;
@@ -501,9 +509,11 @@ void updateI2CState() {
   }
   interrupts();
   if (haveCmd) processI2CCommand(cmd);
+  blApply();
 
   // --- Apply inbound Ascent-AP status push (live mode only) ---
-  if (havePush && !demoMode) processStatusPush(push, pushN);
+  if (havePush && push[0] == 0xAB) inputTestFrame(push, pushN);   // the input test frames, demo or not
+  else if (havePush && !demoMode) processStatusPush(push, pushN);
   if (haveSum  && !demoMode) processSummary(sum);   // after the full frame: the newer of the two
 
   // --- Console command queue: expose next command, retire confirmed edits ---

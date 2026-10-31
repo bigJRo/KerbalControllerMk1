@@ -11,9 +11,9 @@
 #pragma once
 #include <Arduino.h>
 
-#define KCM_MASTER_VERSION "0.8.2"
+#define KCM_MASTER_VERSION "0.9.0"
 static const uint8_t KCM_MASTER_VERSION_MAJOR = 0;
-static const uint8_t KCM_MASTER_VERSION_MINOR = 8;
+static const uint8_t KCM_MASTER_VERSION_MINOR = 9;
 
 /***************************************************************************************
    Pins — Teensy 4.1 on the Ctrl Module (Inventory §2–§3, design Appendix A)
@@ -64,6 +64,25 @@ static const uint8_t SYNC_ANNUNCIATOR = 0xAC;
 static const uint8_t SYNC_RESDISP     = 0xAD;
 static const uint8_t SYNC_INFODISP    = 0xAE;
 static const uint8_t SYNC_SYSINFO     = 0xAF;
+static const uint8_t SYNC_BACKLIGHT   = 0xB8;   // BACKLIGHT frame to each 7" display (I2C spec §15.3)
+static const uint8_t BACKLIGHT_LEN    = 4;      // [0xB8, flight %, standby %, 0]
+
+// Input test screen (Info Display 1, I2C spec §15.3): while its status byte 2 reports
+// INPUT_TEST_SCREEN the master pushes the two frames below to it.
+static const uint8_t  INPUT_TEST_SCREEN     = 18;
+static const uint8_t  SYNC_INPUT_TEST       = 0xAB;
+static const uint8_t  INPUT_TEST_INPUTS_LEN = 40;    // page 0: every input
+static const uint8_t  INPUT_TEST_MODULES_LEN = 24;   // page 1: INT lines, display-module values, lifecycles
+static const uint8_t  INPUT_TEST_DISPLAYS_LEN = 24;  // page 2: the four 7" displays' status
+static const uint32_t INPUT_TEST_INPUTS_MS  = 100;
+static const uint32_t INPUT_TEST_MODULES_MS = 500;
+static const uint32_t INPUT_TEST_RECENT_MS  = 300;   // a press event stays lit this long
+
+// Backlight levels sent to the 7" displays: the flight level, and the standby level
+// they use on their standby screens. The displays clamp to their own floor (5 %) and
+// ramp between levels. The `backlight` console command changes them until a restart.
+static const uint8_t BL_FLIGHT_PCT    = 70;
+static const uint8_t BL_STANDBY_PCT   = 20;
 
 static const uint32_t I2C_CLOCK_HZ    = 400000;
 
@@ -74,6 +93,7 @@ static const uint32_t SIMPIT_RETRY_MS        = 2000;   // handshake retry while 
 static const uint32_t SIMPIT_LOST_MS         = 5000;   // in flight, no inbound message → SIMPIT LOST
 static const uint32_t CARRIER_PUSH_MS        = 100;    // display commands
 static const uint32_t CARRIER_STATUS_MS      = 500;    // display status reads (link state)
+static const uint32_t CARRIER_BACKLIGHT_MS   = 2000;   // BACKLIGHT frame repeat (a display may have restarted)
 static const uint32_t SYSINFO_PROBE_MS       = 3000;   // boot: wait this long for the Sys Info Display
 static const uint32_t SYSINFO_STATUS_MS      = 500;    // status frame / heartbeat
 static const uint32_t SYSINFO_REPROBE_MS     = 5000;   // re-check an absent Sys Info Display

@@ -1,6 +1,6 @@
 # Display sketch tools
 
-Static checks and font utilities for the KCMk1 display firmware. Everything here is
+Static checks, host renders and behaviour tests, and font utilities for the KCMk1 display firmware. Everything here is
 plain Python 3 with no third-party dependencies, so it runs anywhere the repo is
 checked out.
 
@@ -120,7 +120,11 @@ Info Display scenarios are one per screen, each a physically consistent flight s
 AIRCRAFT and NAVIGATION, a Mun rover driving to a flag 850 m away, a booster coasting to
 apoapsis with a circularisation node placed for CIRCULARIZATION, a Mun lander for the
 descent screens, a capsule at 58 km for RE-ENTRY, engaged autopilots for the consoles): `SCFT ACFT ROVR VEH LNCHPRE LNCH LNCHCIRC ORB
-ORBADV MNVR TGT DOCK NAV LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP Standby`. The
+ORBADV MNVR TGT DOCK NAV LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP Standby`, plus
+`INPUT`: the input test screen (unit 1), a bench state with a few inputs down, the
+throttle touched, the Pre-Warp module missing, TIME reporting a FAULT, Translation
+sleeping, the Dual Encoder disabled and the four displays answering, opened by the real
+two-finger gesture and fed one frame of each of the three pages. The
 demo stepper runs once to populate every field, the scenario overrides what matters,
 and `millis()` is frozen so the context ladder's answer cannot change; the manual latch
 pins the screen only when the ladder would not choose it itself, so the AUTO / MAN chip
@@ -149,6 +153,38 @@ python3 tools/render_screen.py --sketch KCMk1_ResourceDisp
 
 Output is `<Panel><suffix>_<Scenario>.png`. Adding a panel is a scenario file for it
 plus its name list in `SCENARIO_NAMES`.
+
+## `behaviour_selftest.py`
+
+```
+python3 tools/behaviour_selftest.py                       # all three panels
+python3 tools/behaviour_selftest.py KCMk1_Annunciator     # just one
+```
+
+Host behaviour tests for the three display sketches. Each panel is built the way
+`render_screen.py` builds it (the IDE's tab concatenation and prototype hoisting, the
+real in-repo libraries, the framebuffer stubs), with `selftest_scenarios/common.inc` and
+the panel's own `selftest_scenarios/<sketch>.inc` appended so the tests reach every
+tab's globals. `KCM_Touch.cpp` is left out of the link and faked in `common.inc`, so a
+test can put one or two fingers on the glass. The tests feed Simpit messages, the
+master's I2C control byte, BACKLIGHT and input test frames and touches, run the panel's
+own `loop()` (each frame advances the stubbed `millis()` by 50 ms), and check its state.
+It prints one `ok` / `FAIL` line per check and exits non-zero if a check or a build
+fails. Run it after changing demo, touch, backlight or I2C handling.
+
+What it covers (63 checks):
+
+| Panel | Checks |
+|---|---|
+| All three | **Demo follows the master's flag only** (Hardware Inventory §8.8): a scene change in demo is tracked but does not end demo or change the screen; clearing the flag in flight re-enters the flight screen, and out of flight shows standby. **Backlight**: the configured flight and standby levels before any frame; a new level ramps rather than steps and arrives within the ramp time; the master's standby level on the standby screen; 0 % clamped to the 5 % floor, over 100 % to 100 % |
+| Annunciator (17) | A dock seen during demo is applied on leaving it. **DOCK tile touch**: a tap sets DOCK, a second clears it, a real undock overrides a tap, a tap beside the tile does nothing, no effect out of flight |
+| Info Display (31) | Leaving demo in flight waits for the real vessel's context screen; out of flight it parks on the home screen. **Input test screen**: the two-finger pull from the top-right opens it, status byte 2 reads 18, the screen underneath is kept; a page 0 frame is taken, in demo too through the I2C receive buffer; a wrong-length frame is dropped; page 1 is taken at 24 bytes with the lifecycles and the old 20-byte page 1 is dropped; page 2 (the four displays) is taken, and its rows go to "--" when it stops for 1.5 s; a tap while open does nothing; fingers outside the corner zone, or too short a pull, do nothing; the same pull closes it, the lifting fingers are not taken as a tap, and the screen underneath is repainted; it opens on standby too; NO DATA after 1.5 s without frames |
+| Resource Display (15) | The vessel's own bar layout survives demo: demo shows its own bars and ignores `VESSEL_NAME`, and after demo the next `VESSEL_NAME` recalls the vessel's layout, not demo's |
+
+To add a test, add a `CHECK(condition, "message")` to the panel's `.inc`; `SECTION()`
+prints a heading. The helpers in `common.inc` (`frames()`, `feed()`, `scene()`,
+`vesselChange()`, `tap()`, `touch2()`, `untouch()`, `backlightChecks()`) cover the common
+moves.
 
 ## `../libraries/KerbalDisplayCommon/src/fonts_ili/`
 
