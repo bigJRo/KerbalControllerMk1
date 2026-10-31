@@ -128,6 +128,7 @@ static void processI2CCommand(const uint8_t *cmd) {
     if (debugMode) Serial.println(F("ResourceDisp: I2C -- debugMode on"));
   }
   if (newDemo != demoMode) {
+    if (newDemo) enterDemoMode();   // save the vessel's layout while persistence is live
     demoMode = newDemo;
     if (demoMode) {
       // Switching into demo mode — reinitialise demo state so bars animate
@@ -135,18 +136,9 @@ static void processI2CCommand(const uint8_t *cmd) {
       initDemoMode();
       if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode on, demo state reinitialised"));
     } else {
-      // Switching into live mode — connect Simpit if not already connected.
-      // This handles the case where the unit booted in demo mode and the master
-      // is now enabling live telemetry without a hardware reset.
-      if (!simpitConnected) {
-        initSimpit();
-        if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, Simpit initialised"));
-      } else {
-        // Simpit already connected — request a full channel refresh so values
-        // repopulate immediately without waiting for a change event.
-        requestResourceRefresh();
-        if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, channel refresh requested"));
-      }
+      // Back to live: onto the scene and vessel KSP has now (SimpitHandler.ino).
+      leaveDemoMode();
+      if (debugMode) Serial.println(F("ResourceDisp: I2C -- demoMode off, back to live"));
     }
   }
   if (newIdle != idleState) {

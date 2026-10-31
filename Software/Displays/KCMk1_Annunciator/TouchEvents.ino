@@ -16,6 +16,8 @@
    Gestures:
      1-finger on Main -> x < MASTER_W, y < MASTER_H  : silence master alarm audio
                       -> x < MASTER_W, y >= MASTER_H : switch to SOI screen
+                      -> the DOCK tile               : toggle DOCK (a later real dock /
+                                                       undock event overrides it)
      1-finger on SOI  -> anywhere: return to Main screen
      Any touch outside flightScene is ignored.
 ****************************************************************************************/
@@ -127,6 +129,13 @@ void processTouchEvents() {
         // Bounded to the top zone so taps on the bottom telemetry block don't fire.
         switchToScreen(screen_SOI);
         clearTouchISR();
+      } else if (x2 >= DOCK_X && x2 < DOCK_X + DOCK_W && y2 >= DOCK_Y && y2 < DOCK_Y + DOCK_H) {
+        // DOCK tile — the pilot's correction. Docking is detected from Simpit's
+        // VESSEL_CHANGE dock / undock events, which can be missed (e.g. after a vessel
+        // switch); the next real event sets the light again, overriding this tap.
+        state.vesselSituationState ^= (1 << VSIT_DOCKED);
+        if (debugMode) Serial.println(bitRead(state.vesselSituationState, VSIT_DOCKED)
+                                      ? F("Annunciator: DOCK set by touch") : F("Annunciator: DOCK cleared by touch"));
       }
       break;
 

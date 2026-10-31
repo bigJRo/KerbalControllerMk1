@@ -143,12 +143,14 @@ void loop() {
   }
 
   // --- Update state ---
+  // Simpit is serviced in demo too, so the link stays up and the scene stays known;
+  // onSimpitMessage() takes only the lifecycle while in demo (§8.8). A bench unit
+  // booted in demo has no link until the master clears the flag.
   if (standaloneTest) {
     runTestMode();
-  } else if (demoMode) {
-    stepDemoState();
   } else {
-    simpit.update();
+    if (simpitConnected) simpit.update();
+    if (demoMode) stepDemoState();
   }
 
   // --- Alarm audio: C&W transitions and crossing chirps, on every screen ---

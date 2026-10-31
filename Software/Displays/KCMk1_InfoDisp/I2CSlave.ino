@@ -204,13 +204,7 @@ static void processI2CCommand(const uint8_t *cmd) {
       if (debugMode) Serial.println(F("InfoDisp: I2C -- demoMode on"));
     } else {
       if (debugMode) Serial.println(F("InfoDisp: I2C -- demoMode off"));
-      // #24 runtime demo->live: connect Simpit if not already connected
-      if (!simpitConnected) {
-        initSimpit();
-      } else {
-        simpit.requestMessageOnChannel(0);
-      }
-      // Standby splash drawn by loop() _wasDemo transition block
+      leaveDemoMode();   // onto the scene and vessel KSP has now (SimpitHandler.ino)
     }
   }
 
