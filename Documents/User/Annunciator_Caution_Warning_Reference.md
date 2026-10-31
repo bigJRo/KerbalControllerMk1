@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.8.2
+**Applies to:** KCMk1_Annunciator firmware 3.10.0
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -154,11 +154,16 @@ splashed).
 
 | Tile | Definition | Colour when lit | Audio cue |
 |---|---|---|---|
-| **DOCK** (vertical) | The vessel is docked to another vessel. Set on a docking event, cleared on undocking. | White on **green** | None |
+| **DOCK** (vertical) | The vessel is docked to another vessel. Set on a docking event, cleared on undocking. Tap the tile to toggle it (see below). | White on **green** | None |
 | **FLYING LOW** | Aloft, inside the atmosphere, below the body's high-atmosphere boundary (18 km at Kerbin). | White on **green** | None |
 | **FLYING HIGH** | Aloft, inside the atmosphere, above the high-atmosphere boundary. | White on **green** | None |
 | **LOW SPACE** | Aloft, outside the atmosphere, below the body's high-space boundary (250 km at Kerbin). | White on **green** | None |
 | **HIGH SPACE** | Aloft, outside the atmosphere, above the high-space boundary. | White on **green** | None |
+
+**Correcting DOCK by touch.** DOCK follows KSP's dock and undock events, and one can be
+missed, for example after switching vessel. If the light is wrong, tap the DOCK tile on
+the Main screen: each tap toggles it. The next real dock or undock event sets the light
+again and overrides the tap. Taps work only in a flight scene.
 
 The regime boundaries are the KSP science-biome altitudes from the shared body table,
 so the lit tile always matches the biome KSP would credit an experiment to.
@@ -336,6 +341,7 @@ Notes:
 | LIFE SUPPORT never lights | Needs TAC Life Support and a crew aboard |
 | No sound at all | The AUDIO tile in the condition block is dark: audio is off |
 | Tones work but no voice callouts | The GPWS panel is OFF, or the DFPlayer card is missing its clips |
+| DOCK lit (or dark) when it should not be | A dock or undock event was missed. Tap the DOCK tile to correct it |
 | Control-mode tile is red | The control-mode switch does not suit the vessel type, so the sticks are mapped for another vehicle |
 
 ## Notes for the manual

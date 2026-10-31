@@ -376,7 +376,7 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 - **7-segment modules and joysticks** respond locally (the 7-segments are module-managed anyway).
 - **Modules** are ENABLEd for the duration, whatever the flight scene.
 
-**Displays:** all four carriers get the demo flag and animate demo data. *Every display follows the master's flag and nothing else:* it enters and leaves demo only when the flag changes. Today the Info Displays clear demo on a scene change, and the Resource Display stops servicing Simpit; both are brought in line (§11).
+**Displays:** all four carriers get the demo flag and animate demo data. *Every display follows the master's flag and nothing else:* it enters and leaves demo only when the flag changes. In demo each display keeps servicing its own Simpit link, so the link stays up, but it takes only the lifecycle from it (scene change, flight status, dock / undock) and drops the telemetry. Leaving demo is a fresh start on whatever KSP has then: the flight scene is entered again with a full refresh, or the standby screen is shown. The Resource Display saves the vessel's bar layout on entering demo and recalls it after (demo's own bars are never saved over it); the Annunciator resets its alarm audio, GPWS and display state, and applies a dock / undock seen during demo. (Annunciator v3.10.0, Info Display v1.18.0, Resource Display v3.15.0; §11 #10–#12.)
 
 **Annunciator:** DEMO lit.
 
@@ -426,14 +426,14 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 - **Serial command set (confirmed)** for bench work: `status`, `modules`, `intmap`, `simpit` (exact list in the design).
 - **Stick positions** are logged while in demo or debug.
 
-**Input test screen (proposed, *to confirm*).** A hidden diagnostics screen on Information Display 1, opened by a gesture, showing what the master reads:
+**Input test screen (built; design in §8.11).** A hidden diagnostics screen on Information Display 1, opened by a gesture, showing what the master reads:
 - both sticks' axes and buttons;
 - the throttle lever;
 - every module's buttons and switches;
 - the mode selector and safe lines;
 - module presence and INT lines.
 
-The master pushes it a new frame while the screen is open (new display firmware and a new I2C frame, §11).
+The master pushes it frames while the screen is open (Info Display v1.18.0, master v0.9.0, I2C spec §15.3; §11 #14).
 
 ### 8.10 Autopilot authority (replaces the pilot-override rule)
 
@@ -460,9 +460,20 @@ The master pushes it a new frame while the screen is open (new display firmware 
 - **Opened and closed by:** a two-finger diagonal pull down from the top-right corner.
 - **Available:** any time.
 - **Shows:** what the master reads (§8.9): sticks, lever, every module's buttons and switches, the mode selector, the safe lines, module presence and INT lines.
-- **Data:** the master pushes it a frame while the screen is open.
-- **Note:** today every display ignores any touch with two or more contacts (single-finger filter). The FT5316 reports up to five points, so the gesture is possible, but it needs its own handling ahead of that filter.
-- **Detailed design:** a later discussion.
+- **Data:** the master pushes it frames while the screen is open.
+
+**Design (as built: Info Display v1.18.0, master v0.9.0):**
+- **The screen** is a full-panel overlay, sidebar included, drawn over whatever the panel shows; the screen underneath is kept and repainted on closing (or the standby splash, out of a flight scene).
+- **The gesture:** both fingers start in the top-right corner zone (320 × 220 px), then their midpoint moves at least 140 px left **and** at least 140 px down within 1.5 s. The same pull closes the screen. It works in flight, on standby and in demo. The gesture has its own handling ahead of the single-finger filter, and a touch it has taken never reaches the tap handling, even as the fingers lift one at a time. Info Display 2 ignores it.
+- **While open,** taps do nothing, and the display reports **screen 18** in byte 2 of its status packet.
+- **The frames:** while the master reads screen 18 it writes two frames to Information Display 1, both sync 0xAB (I2C spec §15.3; exact layout in `KCMk1_Master/input_test.h`): page 0, the inputs, 40 bytes every 100 ms; page 1, the INT lines and the display modules' values, 20 bytes every 500 ms. The display takes them in demo too. If no page 0 arrives for 1.5 s the title shows **NO DATA**, otherwise **LIVE**.
+- **What it shows:**
+  - a row per module (the 13 in the master's order): name, address, INT line, lifecycle state (**ACTIVE**, **DISABLED** or **MISSING**), and its inputs as lit boxes (lit = down): every button and switch level on the button modules; the stick buttons and axis percentages on the joysticks; recent presses, module state and display value on GPWS and Pre-Warp; recent presses, TOUCH, FINE and NOT ACTIVE on the throttle; recent presses, control group and the ENC2 count on the Dual Encoder;
+  - both sticks as a position dot, a twist bar, the three axis values and the stick / BTN01 / BTN02 buttons;
+  - the lever as a bar with its percentage (yellow while touched);
+  - the mode selector (SPC / PLN / RVR), the ABORT and STAGE safe lines, and the control group.
+- **"Recent presses"** are rising edges in a module packet the master read in the last 300 ms. The ENC2 count is added up by the master since boot.
+- **A render** of the screen: `Documents/User/assets/InfoDisp1_INPUT.png`, from `Software/Displays/tools/render_screen.py`, scenario `INPUT` (unit 1).
 
 ### 8.12 Sys Info Display (0x14, A2 P2)
 
@@ -499,7 +510,7 @@ The master pushes it a new frame while the screen is open (new display firmware 
 | 4 | AUX CTRL B8 | Settled: UNDOCK (§10.1) |
 | 5 | Rotation stick button | Settled: by control mode (§10.8) |
 | 6 | Sys Info Display | Settled (§8.12); protocol defined with the firmware design |
-| 7 | Input test screen: detailed design | Open (§8.11) |
+| 7 | Input test screen: detailed design | Settled (§8.11), as built in Info Display v1.18.0 and master v0.9.0 |
 | 8 | Sys Info Display icons / logos | Open (§8.12) |
 
 ## 10. Button module review
@@ -792,24 +803,24 @@ Collected from this review; each is a separate piece of work.
 | # | Where | Change |
 |---|---|---|
 | 1 | Annunciator firmware | Tile label THRTL ENA → A/P ARM (§8.2). **Done** (v3.9, 2026-10-31) |
-| 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light. A later real dock / undock event overrides the touch setting |
+| 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light. A later real dock / undock event overrides the touch setting. **Done** (v3.10.0, 2026-10-31): flight scene only |
 | 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day). **Done** (v2.1, 2026-10-31) |
 | 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5); FLAPS SEAFOAM. **Done** (v2.1, 2026-10-27) |
 | 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1): UNDOCK GOLD, PRI ROSE, ALT PINK, no alternate colour. **Done** (v2.1, 2026-10-27) |
 | 6 | Stability Control module firmware | B10 HOLD colour (was RCS): MAGENTA. **Done** (v2.1, 2026-10-27) |
 | 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
-| 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
+| 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch. **Done** (Caution & Warning Reference for v3.10.0, 2026-10-31; A/P ARM done earlier with v3.9) |
 | 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
-| 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11) |
+| 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): two frames, sync 0xAB, while the display reports screen 18 |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
 | 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |
 | 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
 | 19 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` per the I2C spec: start / stop, no timeout, not blocking (was a fixed 2 s `delay()` inside the I2C handler, found while building stage 3 of the master). **Done** (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2, 2026-10-31) |
-| 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
-| 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
-| 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |
+| 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8). **Done** (v1.18.0, 2026-10-31) |
+| 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8). **Done** (v3.15.0, 2026-10-31): Simpit serviced in demo, and the vessel's bar layout is kept across demo |
+| 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8). **Done** (v3.10.0, 2026-10-31): Simpit serviced in demo; audio, GPWS and display state reset on leaving it |
 | 20 | Throttle Module firmware | Stop acting on its own buttons: it drove the lever to 100 % / 0 % and stepped it ±5 %, even in ENGINE SAFE, in FINE and under an autopilot. The master owns the lever (§10, Module UI Reference §12.2). Found for Module UI Reference v6.0. **Done** (v2.1, 2026-10-27) |
 | 21 | Info Display firmware + I2C spec | AIRBRK follows the control group: the master sends the group in byte 8 of the summary frame (now 9 bytes) and the display offsets `AIRBRAKE_CAG` like the button. **Done** (InfoDisp v1.17, master v0.8.1, I2C spec v2.18, 2026-10-27) |
 

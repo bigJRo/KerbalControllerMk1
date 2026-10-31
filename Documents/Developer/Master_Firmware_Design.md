@@ -121,7 +121,7 @@ The same order every pass, with nothing blocking:
 | 6 | `autopilotsService()` | Autopilots, the arbiter and the Info Display 2 consoles (HOLD's button is a panel tab) |
 | 7 | `panelsService()`, `frameService()` | Each panel tab sets its LEDs and the sticks their pilot values; then the control channels (rotation, translation, wheel, camera, throttle) are merged and sent on a change, at most every 20 ms each; nothing in demo |
 | 8 | `moduleBusFlushLeds()` | LED changes, at most every 50 ms per module |
-| 9 | `carrierService()` | Display commands every 100 ms and on change; consoles; input test frame |
+| 9 | `carrierService()`, `inputTestService()` | Display commands every 100 ms and on change; the BACKLIGHT frame on a change and every 2 s; consoles; the input test frames while Info Display 1 shows that screen (§13.1) |
 | 10 | `sysInfoService()` | Sys Info Display: boot lines, status frame, switch-error list |
 | 11 | `boardServiceSlow()` | Fan (1 Hz), power monitor (4 Hz), loop timing |
 
@@ -165,7 +165,8 @@ Software/KCMk1_Master/
 ├─ panel_encoders.cpp   Dual Encoder          0x2D
 ├─ panel_safe.cpp       safe lines: ABORT, STAGE
 │
-├─ carriers.h/.cpp      Annunciator, Resource Display, Info Displays
+├─ carriers.h/.cpp      Annunciator, Resource Display, Info Displays; the backlight levels
+├─ input_test.h/.cpp    the input test screen's frames to Info Display 1 (§13.1)
 ├─ sysinfo.h/.cpp       Sys Info Display (§14)
 ├─ debug.h/.cpp         debug log and serial command console (§10.2)
 ├─ board.h/.cpp         fan, power, watchdog, display reset
@@ -577,7 +578,7 @@ The availability rules are checked against Simpit on the bench.
 
 - **Nothing goes to KSP.** `ksp_out` is silent, every "KSP connected / in flight" check passes, and autopilots and HOLD drop on entry.
 - **Panels respond locally.** Buttons sit backlit and show ACTIVE while pressed; switches act on their own panel (e.g. CHUTE ARM enables the chute buttons); joysticks and 7-segments respond. There are no light patterns.
-- **Displays:** all get the demo flag. Every display follows the master's flag and nothing else (display changes, §17).
+- **Displays:** all get the demo flag. Every display follows the master's flag and nothing else (§17 #1–#3, done): in demo it keeps servicing its own Simpit link but takes only the lifecycle from it (scene, flight status, dock / undock) and drops the telemetry; leaving demo is a fresh start on the scene KSP has then (the flight scene again, or standby).
 - **Leaving demo:** modules return to the current scene's lifecycle, and LEDs to KSP's state. Switches flipped during demo are not acted on, so a mismatch lights SWITCH ERR.
 
 ### 10.2 Debug (UPTLM XMIT) and the serial console
@@ -620,6 +621,7 @@ The availability rules are checked against Simpit on the bench.
 | `switches` | Every switch position vs the vessel |
 | `interlocks` | ENGINE state, the lever, A/P |
 | `log <cat> on/off` | One category on or off |
+| `backlight [flight %] [standby %]` | The 7" displays' backlight levels; with values, sets them until a restart (§13) |
 
 ## 11. Autopilots
 
@@ -749,21 +751,24 @@ The old sketch declares a watchdog but never starts it. This is the design (sett
 
 | Display | Master sends | New in this design |
 |---|---|---|
-| **Annunciator 0x10** | The rev-3 9-byte command, every 100 ms and on change, with PROCEED; the GPWS bytes | Fields per §9; demo / debug flags |
-| **Resource Display 0x11** | Its 2-byte command | Demo / debug flags |
-| **Info Display 1 0x12** | Control bytes; console summary | **Input test screen frame** while that screen is open (§13.1) |
-| **Info Display 2 0x13** | Control bytes; autopilot console frames and summary (unchanged protocol) | — |
+| **Annunciator 0x10** | The rev-3 9-byte command, every 100 ms and on change, with PROCEED; the GPWS bytes | Fields per §9; demo / debug flags; BACKLIGHT frame |
+| **Resource Display 0x11** | Its 2-byte command | Demo / debug flags; BACKLIGHT frame |
+| **Info Display 1 0x12** | Control bytes; console summary | **Input test screen frames** while that screen is open (§13.1); BACKLIGHT frame |
+| **Info Display 2 0x13** | Control bytes; autopilot console frames and summary (unchanged protocol) | BACKLIGHT frame |
 | **Sys Info Display 0x14** | §14 | New |
+
+**Backlight** (GitHub #47). The master sends each of the four 7" displays a 4-byte BACKLIGHT frame, `[0xB8, flight %, standby %, 0]` (I2C spec §15.3), to all four at once on a change and every 2 s (`CARRIER_BACKLIGHT_MS`), so a display that restarted gets it again. The levels start at `BL_FLIGHT_PCT` 70 % and `BL_STANDBY_PCT` 20 % (`config.h`; the host build checks them against `KCM_BL_BRIGHTNESS_PCT` / `KCM_BL_STANDBY_PCT` in KCMk1_SystemConfig), and the `backlight` console command changes them until a restart. A display uses the standby level while it shows its standby screen, clamps every level to its 5 % floor and ramps between levels over 300 ms. The Annunciator dims like the others.
 
 **Every display already reports its own Simpit link state:** bit 0 of the flags byte in its status packet (I2C spec §15.2). The master reads each display's status every 500 ms and passes the link bits to the Sys Info Display. No display change is needed for this.
 
 ### 13.1 Input test screen (Info Display 1)
 
-- **Opened and closed by:** a two-finger diagonal pull down from the top-right corner.
-- **Available:** any time.
-- **Shows:** sticks, the lever, every module's buttons and switches, the mode selector, safe lines, module presence and INT lines.
-- **Data:** the display tells the master the screen is open, and the master then pushes a frame about 10 times a second.
-- **Detailed design** (layout, frame format) is an open item (§18).
+Built (Info Display v1.18.0, master v0.9.0); the full design is in Inventory §8.11.
+
+- **Opened and closed by:** a two-finger diagonal pull down from the top-right corner. Both fingers start in the 320 × 220 px corner zone, and their midpoint moves at least 140 px left and 140 px down within 1.5 s.
+- **Available:** any time (flight, standby, demo). It is a full-panel overlay; taps do nothing while it is open.
+- **Shows:** per module its presence, lifecycle (ACTIVE / DISABLED / MISSING), INT line and button / switch levels; both sticks' axes and buttons; the recent presses on the display modules, the throttle and the encoders; the GPWS and Pre-Warp state and values; the lever %, touch and FINE; the mode selector; the ABORT and STAGE safe lines; the control group; the ENC2 count.
+- **Data:** while open, the display reports screen 18 in byte 2 of its status packet. `input_test.cpp` sees it in the 500 ms status read and pushes page 0 (inputs, 40 bytes, sync 0xAB) every 100 ms and page 1 (INT lines and display-module values, 20 bytes) every 500 ms; the layout is in `input_test.h` and the I2C spec §15.3. The display takes the frames in demo too, and shows NO DATA after 1.5 s without page 0.
 
 ## 14. Sys Info Display
 
@@ -786,7 +791,7 @@ The old sketch declares a watchdog but never starts it. This is the design (sett
   - the display and Sys Info frames;
   - interlocks (ENGINE SAFE, A/P INHIB, CHUTE, SAS), SWITCH ERR, demo silence, and the boot sequence with missing modules.
 - **Autopilots:** checked through the same harness with scripted telemetry.
-- **On the bench:** a master section in the test plan, written as each stage lands. It includes using the input test screen once it exists.
+- **On the bench:** a master section in the test plan, written as each stage lands. It includes using the input test screen (§13.1).
 
 ## 16. Stages
 
@@ -814,9 +819,9 @@ From Inventory §11:
 
 | # | Where | Change |
 |---|---|---|
-| 1 | Annunciator | Tile THRTL ENA → A/P ARM (**done**, v3.9); touch DOCK to toggle (a real dock / undock event overrides it); demo follows the flag only |
-| 2 | Info Displays | Demo follows the flag only; Info Display 1: input test screen, two-finger gesture, its frame |
-| 3 | Resource Display | Demo follows the flag only |
+| 1 | Annunciator | Tile THRTL ENA → A/P ARM (**done**, v3.9); touch DOCK to toggle (a real dock / undock event overrides it); demo follows the flag only (both **done**, v3.10.0, 2026-10-31) |
+| 2 | Info Displays | Demo follows the flag only; Info Display 1: input test screen, two-finger gesture, its frame. **Done** (v1.18.0, 2026-10-31) |
+| 3 | Resource Display | Demo follows the flag only. **Done** (v3.15.0, 2026-10-31), and the vessel's bar layout is kept across demo |
 | 4 | Sys Info Display | New firmware: boot, status and SWITCH ERR screens; microSD icons; its protocol |
 | 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release: `CMD_SET_LEVER_HOLD`, at most 0.5 s per touch (**done**, v2.2, 2026-10-31). Its buttons are only reported (v2.1) |
 | 6 | Pre-Warp module | BTN03 preset 1440 → 360 min (1 Kerbin day). **Done** (v2.1) |
@@ -824,10 +829,10 @@ From Inventory §11:
 | 8 | AUX CTRL module | B8 UNDOCK GOLD; B10 PRI ROSE, B11 ALT PINK. **Done** (v2.1) |
 | 9 | Stability Control module | B10 HOLD MAGENTA. **Done** (v2.1) |
 | 10 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 UNDOCK |
-| 11 | I2C Protocol Specification | Input test frame (the Sys Info protocol is in, §15.4; EVA lifecycle, LED nibble order and the master's start-up sequence in 2.16) |
+| 11 | I2C Protocol Specification | Input test frame: **done** (2.20, with the BACKLIGHT frame). The Sys Info protocol is in, §15.4; EVA lifecycle, LED nibble order and the master's start-up sequence in 2.16 |
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
-| 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
+| 14 | Annunciator reference, user manual | A/P ARM, DOCK touch (**done**, Caution & Warning Reference for v3.10.0), switch rules |
 | 16 | Info Display firmware | Names for the new disconnect reasons 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC (§11.4): **done**, v1.17.1. (AIRBRK follows the control group: **done**, v1.17.0) |
 | 15 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` as the spec says (§5.2): 0x01 starts and 0x00 stops, no timeout, without blocking. **Done** (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); the master's 2.1 s quiet window is gone (§6.4) |
 
@@ -836,7 +841,7 @@ From Inventory §11:
 | # | Item | Needed by |
 |---|---|---|
 | 1 | Sys Info Display icons / logos | Its firmware |
-| 2 | Input test screen: layout and frame (§13.1) | Its firmware |
+| 2 | Input test screen: layout and frame (§13.1) | **Decided** by its firmware (Info Display v1.18.0, master v0.9.0; I2C spec §15.3) |
 | 3 | WARP TO availability, checked against Simpit on the bench (§8.8) | Stage 6 |
 | 4 | SAS availability bitmask, checked on the bench (§8.4) | Stage 4 |
 | 5 | Bench: the SNVS general-purpose registers keep the breadcrumb through a WDOG1 reset, and `SRC_SRSR` reports the watchdog (§12.3) | Stage 1 bench test |
@@ -851,6 +856,8 @@ From Inventory §11:
 | 14 | Bench: the screenshot macro's spacing (150 ms) is enough for KSP to hide the UI before F1 | Stage 6 bench test |
 | 15 | Bench: each console (ascent, aircraft, rover, orbital, landing) engages and disengages, shows its frame, and the 52-byte orbital frame reaches Info Display 2 whole (Teensy Wire buffer) | Stage 7 bench test |
 | 16 | Bench: the INA228 shunt is 15 mΩ (KC-01-1701) and its readings match a meter; the EMC2101 duty setting and rpm match the fan | Stage 8 bench test |
+| 17 | Bench: the displays' backlight shows no flicker at low duty, and the 5 % floor (`KCM_BL_MIN_PCT`) is still readable on the real panel; the standby level dims each display on its standby screen (§13) | Display bench test |
+| 18 | Bench: the input test screen opens and closes with the gesture on Info Display 1 and follows every input (§13.1) | Display bench test |
 
 ---
 

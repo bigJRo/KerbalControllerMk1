@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.9.0
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.10.0
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -69,7 +69,9 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 
 | Library | Version | Notes |
 |---------|---------|-------|
-| KerbalDisplayCommon | ≥ 3.10.0 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
+| KerbalDisplayCommon | ≥ 3.11.1 | Display primitives (`KCM_TFT`/`KCM_Display`), fonts, BMP loader, touch driver, system utils. Rev-2 (LT7683 / Teensy 4.1) requires ≥ 3.0.0 |
+| KCM_Display | ≥ 1.1.0 | `KCM_TFT` display type and the `kcmBacklight*()` backlight helper (this repo) |
+| KCMk1_SystemConfig | ≥ 1.3.0 | Shared pin map, I2C addresses / sync bytes, thresholds, the backlight defaults and the BACKLIGHT frame constants (this repo) |
 | KerbalDisplayAudio | ≥ 1.3.0 | Non-blocking `tone()` audio state machine + bundled `KCM_DFPlayer` driver (DFPlayer Mini BUSY polling for the GPWS function) |
 | TeensyRA8876-8080 (RA8876_t41_p) | latest | RA8876 16-bit 8080 parallel display driver (wwatson4506) — replaces the rev-1 PaulStoffregen RA8875 library |
 | TeensyRA8876-GFX-Common | latest | GFX common layer for the RA8876 driver |
@@ -97,7 +99,7 @@ All tunables are in `AAA_Config.ino`. `demoMode`, `audioEnabled` and `debugMode`
 
 | Constant | Default | Description |
 |----------|---------|-------------|
-| `demoMode` | `false` | `false` = live Simpit (production). `true` = bench testing without KSP (Simpit disabled; state driven internally). Can also be toggled at runtime by the I2C master. |
+| `demoMode` | `false` | `false` = live Simpit (production). `true` = bench testing without KSP (Simpit not started at boot; state driven internally). Can also be toggled at runtime by the I2C master, and only by it: see **Demo Mode** below. |
 | `audioEnabled` | `false` | Enables all audio feedback (alarms, chirps, tones). Can also be set via I2C. |
 | `debugMode` | `false` | Enables Serial debug output (touch coords, screen transitions, C&W changes, I2C traffic). |
 | `standaloneMode` | `false` | Bypasses the I2C master handshake on boot. Use for bench testing without the master controller connected. |
@@ -171,7 +173,7 @@ Bytes 3–5 are applied only when a 6-byte (or longer) command is received; byte
 | 7:4 | `requestType` | Command code — see table below |
 | 3 | `idle_state` | `1` = switch to Standby when not in a flight scene |
 | 2 | `audioOn` | `1` = enable audio feedback |
-| 1 | `demoMode` | `1` = enable demo mode (disables Simpit) |
+| 1 | `demoMode` | `1` = enable demo mode (telemetry ignored; see **Demo Mode**) |
 | 0 | `debugMode` | `1` = enable Serial debug output |
 
 **Request type codes (`controlByte` bits 7:4):**
@@ -183,6 +185,10 @@ Bytes 3–5 are applied only when a 6-byte (or longer) command is received; byte
 | `0x2` | PROCEED | Release boot hold — Annunciator clears screen and enters main loop |
 | `0x3` | MCU_RESET | Soft reboot the Annunciator (USB disconnect then ARM AIRCR reset) |
 | `0x4` | DISPLAY_RESET | Reset display state and force full redraw of current screen |
+
+### Inbound BACKLIGHT Frame — Master → Annunciator
+
+Size: **4 bytes** (`KCM_I2C_BACKLIGHT_LEN`), a length the command never uses: `[0xB8, flight %, standby %, 0]` (`KCM_I2C_SYNC_BACKLIGHT`; I2C spec §15.3, GitHub #47). `onI2CReceive()` latches the two levels and `updateI2CState()` hands them to `kcmBacklightSetLevels()` (KCM_Display) on the main thread. The KCMk1 master sends it to all four 7" displays at once on a change and every 2 s. See **Backlight** below.
 
 ### Expanding the Protocol
 
@@ -204,7 +210,7 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 - MASTER ALARM button (top-left, 274×176 px) — illuminates red when any master-alarm-mask C&W bit is set. Touch to silence audio.
 - Caution & Warning panel (25 annunciator buttons, 5 rows × 5 columns, 120×80 px each) at x=274
 - SOI label (274×48) and body thumbnail/globe (274×176) in the left column below MASTER ALARM — touch to open the SOI screen
-- Inner regime column (x=874, 75 px wide): DOCK vertical-text indicator (75×100) at the top, then four regime tiles (75×75) — FLYING LOW, FLYING HIGH, LOW SPACE, HIGH SPACE — with only the single active regime lit
+- Inner regime column (x=874, 75 px wide): DOCK vertical-text indicator (75×100) at the top, then four regime tiles (75×75) — FLYING LOW, FLYING HIGH, LOW SPACE, HIGH SPACE — with only the single active regime lit. Touch DOCK to toggle it (see **Vessel Situation**)
 - Outer vessel-situation column (x=949, eight 75×50 tiles, top→bottom): CONTACT, PRE-LAUNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, LANDED, SPLASH. CONTACT lights whenever LANDED or SPLASH is set
 - Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, A/P ARM, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
 - SPC/PLN/RVR control-mode tile (row 3, 212×80) with vessel-type icon — text green when the control mode matches the vessel type, red on mismatch
@@ -221,6 +227,8 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 | I2C `idle_state` asserted + not in flight | Switch to Standby immediately |
 | Touch on SOI label/globe area (Main, left column below MASTER ALARM) | Switch to SOI |
 | Touch anywhere on SOI | Return to Main |
+| Touch on the DOCK tile (Main) | Toggle DOCK; no screen change |
+| I2C demo flag cleared | Fresh start: Main (with a refresh) in a flight scene, else Standby |
 | Vessel switch | Full redraw of current screen + `updateCautionWarningState()` + Simpit channel refresh |
 | EVA state change | Full redraw of current screen |
 
@@ -284,6 +292,20 @@ The Annunciator assembles its own vessel situation display bitmask from the raw 
 | 7 | `VSIT_LANDED` | `sit_Landed` |
 
 Bit 0 (DOCKED) is set/cleared by `VESSEL_CHANGE_MESSAGE`; all other bits are assembled from the raw `FLIGHT_STATUS` situation in `SimpitHandler.ino`. On the outer situation column, LANDED is shown above SPLASH (display order `sitRowToArr`), and both drive the CONTACT tile. Named constants are defined in `KCMk1_Annunciator.h`.
+
+**DOCK by touch.** The dock / undock events can be missed (for example after a vessel switch), so a tap on the DOCK tile (`DOCK_X`/`DOCK_Y`/`DOCK_W`/`DOCK_H`) on the Main screen toggles `VSIT_DOCKED`: the pilot's correction. The next real dock / undock event sets the bit again and overrides the tap. Like every touch, it is ignored outside a flight scene (`TouchEvents.ino`).
+
+### Demo Mode
+
+Demo follows the master's I2C flag and nothing else (Hardware Inventory §8.8); no Simpit message turns it on or off.
+
+- **In demo** `Demo.ino` drives the panel state. `simpit.update()` still runs whenever `simpitConnected`, so the link stays up, but `onSimpitMessage()` hands every message to `demoLifecycle()`, which takes only the lifecycle: `SCENE_CHANGE` and `FLIGHT_STATUS` keep `flightScene` current, and a dock / undock (`VESSEL_CHANGE` 2 / 3) is remembered. All telemetry is dropped.
+- **Leaving demo** (`leaveDemoMode()`, from `processI2CCommand()`) is a fresh start on what KSP has now: Simpit is started if the unit booted in demo, the alarm audio is silenced, GPWS and the display state are reset, a dock / undock seen during demo is applied to DOCK, and then the flight scene is entered (GPWS and audio reseeded, Main, full channel refresh) or Standby is shown.
+- A bench unit booted with `demoMode = true` has no Simpit link until the master clears the flag.
+
+### Backlight
+
+The backlight (pin 9, `KCM_TFT_BL`) is driven by the shared `kcmBacklight*()` helper in KCM_Display (GitHub #47): the **standby level** while the Standby screen is up, the **flight level** on every other screen. Both start at the KCMk1_SystemConfig defaults (`KCM_BL_BRIGHTNESS_PCT` 70 %, `KCM_BL_STANDBY_PCT` 20 %) and are replaced by the master's BACKLIGHT frame. Every level is clamped to `KCM_BL_MIN_PCT` (5 %) … 100 %, and the duty ramps to a new level (`KCM_BL_RAMP_MS`, 300 ms for the full range) rather than stepping. `loop()` calls `kcmBacklightStandby()` and `kcmBacklightService()` every pass. The Annunciator dims like the other panels. Still to check on the real panel: flicker at low duty and the usable floor.
 
 ### GPWS Function (voice callouts)
 
@@ -439,6 +461,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.10.0** | **Demo follows the master's flag only; DOCK tile touch; backlight dimming.** *Demo:* Simpit is serviced in demo too (`simpit.update()` whenever `simpitConnected`) and `demoLifecycle()` takes only the scene, flight status and dock / undock from it, so the link stays up and the scene is known when demo ends. Leaving demo (`leaveDemoMode()`) is a fresh start: alarm audio silenced, GPWS and the display state reset, a dock / undock seen during demo applied, then Main with a refresh in a flight scene or Standby (Hardware Inventory §8.8, §11 #12). *DOCK touch:* a tap on the DOCK tile toggles DOCK, the pilot's correction for a missed dock / undock event; the next real event overrides it (§11 #2). *Backlight* (GitHub #47): the 4-byte BACKLIGHT frame `[0xB8, flight %, standby %, 0]` from the master; the standby level on the Standby screen, the flight level otherwise, clamped to 5 % and ramped over 300 ms (KCM_Display 1.1.0, KCMk1_SystemConfig 1.3.0). Checked on the host by `tools/behaviour_selftest.py`. |
 | **3.9.0** | **Mode tile 3 reads A/P ARM.** The bit the master sets there is the A/P INHIB / ARM switch (bit 3, unchanged); the tile said THRTL ENA. `MF_THRTL_ENA` is renamed `MF_AP_ARM`. Label only. |
 | **3.8.2** | **LIFE SUPPORT watches the consumables only.** The tile assesses food, water and oxygen time remaining; the three waste resources (CO2, Waste, Waste Water) no longer light it at 80 % / 95 % full, nor on their time to full. The `TACLS_WASTE` channel is no longer registered, and the waste rates, fill thresholds and state fields are gone. |
 | **3.8.1** | **Readout names shared with the other panels.** The part-temperature readouts are `CORE` and `SKIN` (were `TMAX` and `TSKIN`), the names the Information Display uses for the same two values, and the control-mode cell reads `SPC` for Spacecraft (was `SPCFT`) to match the control-mode switch legend (SPC / PLN / RVR). Labels only. |
@@ -474,7 +497,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 - **GPWS voice** (DFPlayer) is separate from the `tone()` master-alarm path and requires numbered clips on the DFPlayer's own microSD card (see the GPWS Function feature section). Without the card / clips the commands are harmless no-ops. GPWS stays silent until the master relays a non-OFF mode (rev-3 I2C command) and a flight scene is active.
 - **`DISPLAY_ROTATION`** — set `2` for inverted bench mounting, `0` for production. Touch coordinate remapping is not needed; the FT5316 reports in screen-native coordinates at rotation 0.
 - **HIGH Q** uses true dynamic pressure `0.5 · ρ · v²`, as CHUTE ENV does, against one body-independent limit (`KCM_HIGH_Q_PA`, 20 kPa, shared with the Info Display's ASCENT Q row). There is no per-body threshold; the former `highQThreshold` column was removed from `body_params.h`.
-- **Demo mode** drives all `AppState` fields at configurable rates. `ctrlMode` and `ctrlGrp` are not cycled — they are owned by the master and preserved as last set via I2C. Switching demo off at runtime connects Simpit if not already connected, or requests a full channel refresh if it is.
+- **Demo mode** drives all `AppState` fields at configurable rates. `ctrlMode` and `ctrlGrp` are not cycled — they are owned by the master and preserved as last set via I2C. Switching demo off at runtime is a fresh start on the current scene (see **Demo Mode**).
 - **String heap usage** — `state.vesselName` and `state.gameSOI` use Arduino `String`. Low risk on Teensy 4.1 (1 MB RAM) but worth noting if porting to a memory-constrained target.
 
 Licensed under the GNU General Public License v3.0.

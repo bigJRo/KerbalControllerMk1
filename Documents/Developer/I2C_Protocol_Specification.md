@@ -1,11 +1,11 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.19  
+**Version:** 2.20  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Date:** 2026-10-26
+**Date:** 2026-10-31
 
 ---
 
@@ -577,9 +577,58 @@ At power-on each carrier holds in `setup()` until the master sends `PROCEED` (`S
 |---------|-----------------|-------|
 | Annunciator (0x10) | 3 bytes (legacy), **6 bytes (rev-2 extended)**, or **9 bytes (rev-3)** | Rev-2 appends `modeFlags` (2 bytes) + `capValue` (1 byte). Rev-3 further appends **GPWS config** (1 byte) + **GPWS threshold bug** (int16, big-endian, 2 bytes — an altitude decision height, or a target range in rendezvous mode). `onI2CReceive()` accepts any of the three lengths so the master can be upgraded independently. The GPWS config byte reuses the **GPWS Input Panel (0x0B/0x2A) reported state-byte layout** — bits 1:0 = mode (0=OFF, 1=ACTIVE, 2=PROX), bit 2 = proxAlarm, bit 3 = rdvRadar — so the master relays it straight through to the Annunciator's GPWS voice-callout function. See `KCMk1_Annunciator/README.md`. |
 | Resource Display (0x11) | 2 bytes | controlByte + reserved |
-| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + status pushes dispatched by **sync byte** (any write ≥ 3 bytes): 40-byte `AscentStatus` (sync **0xA5**), 48-byte aircraft (sync **0xA6**), 36-byte rover (sync **0xA7**), 52-byte orbital (sync **0xA8**), 44-byte landing (sync **0xA9**), 9-byte summary (sync **0xAA**; byte 8 is the master's control group 1–6, for the CAG indicators — a display also accepts the older 8-byte summary as group 1) | Byte 1 of the 2-byte command carries the console `ackSeq`. See `Ascent_Autopilot_Interface.md`, `Hold_Mode_Autopilot.md` §8 and `Mission_Autopilot.md` §8. The master pushes the full frame only for the console on screen, to Info Display 2; the summary goes to both displays every 100 ms. |
+| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + status pushes dispatched by **sync byte** (any write ≥ 3 bytes): 40-byte `AscentStatus` (sync **0xA5**), 48-byte aircraft (sync **0xA6**), 36-byte rover (sync **0xA7**), 52-byte orbital (sync **0xA8**), 44-byte landing (sync **0xA9**), 9-byte summary (sync **0xAA**; byte 8 is the master's control group 1–6, for the CAG indicators — a display also accepts the older 8-byte summary as group 1), and on Info Display 1 the input test frames (sync **0xAB**, 40 and 20 bytes; below) | Byte 1 of the 2-byte command carries the console `ackSeq`. See `Ascent_Autopilot_Interface.md`, `Hold_Mode_Autopilot.md` §8 and `Mission_Autopilot.md` §8. The master pushes the full frame only for the console on screen, to Info Display 2; the summary goes to both displays every 100 ms. |
 
 The `requestType` nibble values and the boot `PROCEED` handshake are identical on all three implemented carriers; only the payload width and the panel-specific status/command fields differ.
+
+**BACKLIGHT frame (all four 7" carriers).** A second write, separate from the command above, sets the backlight levels (GitHub #47):
+
+| Byte | Field | Notes |
+|------|-------|-------|
+| 0 | Sync **0xB8** | `KCM_I2C_SYNC_BACKLIGHT` |
+| 1 | Flight level, % | 0–100 |
+| 2 | Standby level, % | 0–100; used while the panel shows its standby screen |
+| 3 | Reserved | 0 |
+
+The frame is 4 bytes (`KCM_I2C_BACKLIGHT_LEN`), a length none of the carriers uses for its command, so each one can tell it apart; the Info Display also checks the sync byte before its status-push dispatch. A carrier latches the two levels in its receive handler and applies them on the main thread. It clamps each level to `KCM_BL_MIN_PCT` (5 %) … 100 % and ramps the PWM toward the new level (`KCM_BL_RAMP_MS`, 300 ms for the full range) instead of stepping. Until the first frame arrives it uses the `KCMk1_SystemConfig` defaults (`KCM_BL_BRIGHTNESS_PCT` 70 %, `KCM_BL_STANDBY_PCT` 20 %). The standby level applies on the Annunciator's and Resource Display's standby screen, and on an Info Display while it is neither in a flight scene nor in demo. The master sends the frame to all four 7" carriers at once on a change and every 2 s (`CARRIER_BACKLIGHT_MS`), so a carrier that restarts gets it again; its levels start at `BL_FLIGHT_PCT` / `BL_STANDBY_PCT` (checked against the SystemConfig defaults by the master's host build) and the console command `backlight [flight %] [standby %]` changes them until a restart.
+
+**Input test frames (Info Display 1, 0x12).** Info Display 1 has a hidden input test screen (Hardware Inventory §8.11). While it is open the display reports **screen 18** in byte 2 of its status packet (§15.2) instead of the screen underneath. The master reads that byte every 500 ms with the status read, and while it reads 18 it writes two frames to 0x12, both with sync **0xAB**. Multi-byte fields are little-endian. The display accepts them in demo too.
+
+Page 0, the inputs: 40 bytes, every 100 ms.
+
+| Byte | Field |
+|------|-------|
+| 0 | Sync 0xAB |
+| 1 | Page 0 |
+| 2–3 | Present: a bit per module, in the master's `ModId` order (UI, FUNCTION, ACTION, STABILITY, VEHICLE, TIME, AUX, ROTATION, TRANSLATION, GPWS, PRE-WARP, THROTTLE, DUAL ENC) |
+| 4–5 | ACTIVE (lifecycle): a bit per module |
+| 6–7 | Inputs known: a bit per module |
+| 8–23 | Button levels: UI 2, FUNCTION 3, ACTION 2, STABILITY 2, VEHICLE 3, TIME 2, AUX 2 bytes (FUNCTION / VEHICLE bits 16–23 are the switches) |
+| 24 | ROTATION buttons: bit 0 stick, bit 1 BTN01, bit 2 BTN02 |
+| 25–27 | ROTATION AXIS1..3, int8 % |
+| 28 | TRANSLATION buttons |
+| 29–31 | TRANSLATION AXIS1..3, int8 % |
+| 32 | GPWS: low nibble recent presses (BTN01..03, EN), high nibble module state |
+| 33 | PRE-WARP: the same |
+| 34 | Lever, 0–100 % (0xFF unknown) |
+| 35 | Throttle: bit 0 touched, bit 1 precision (FINE), bit 2 ACTIVE; high nibble recent presses (100 %, UP, DOWN, 0 %) |
+| 36 | Dual Encoder: low nibble recent presses (ENC1, ENC2), high nibble control group |
+| 37 | ENC2 count, int8 (added up by the master since boot) |
+| 38 | Control mode (`CTRL_MODE_*`: 0 RVR, 1 PLN, 2 SPC) |
+| 39 | Safe lines: bit 0 ABORT, bit 1 STAGE |
+
+Page 1, the modules: 20 bytes, every 500 ms.
+
+| Byte | Field |
+|------|-------|
+| 0 | Sync 0xAB |
+| 1 | Page 1 |
+| 2–14 | INT line of each module, `ModId` order: 0–11 INT_1..12, 12–23 B_INT_1..12, 0xFF none |
+| 15–16 | GPWS display value, uint16 little-endian |
+| 17–18 | Pre-Warp display value, uint16 little-endian |
+| 19 | 0 |
+
+"Recent" means a rising edge in a module packet read within the last 300 ms (`INPUT_TEST_RECENT_MS`). A frame of the wrong length for its page is dropped. If no page 0 arrives for 1.5 s the screen shows NO DATA. When the screen closes the status byte reports the real screen again and the frames stop. The master's layout is in `KCMk1_Master/input_test.h`.
 
 **Master side.** The new master (`Software/KCMk1_Master`, `carriers.cpp`) sends all four carriers their command every 100 ms and at once on a change, with `requestType = PROCEED` on every write, and reads each carrier's status packet every 500 ms (bit 0 of every carrier's flags byte is its own Simpit link, shown on the System Info Display). A carrier treats PROCEED as "leave the boot hold" and nothing else, so repeating it is harmless, and it releases a carrier that powers up after the master or reboots on its own. The Annunciator's GPWS bytes are the GPWS Input Panel's state byte and display value, read by the master when the panel asserts INT; the master answers the panel's BOOT_READY / DISABLED report with `CMD_DISABLE` / `CMD_ENABLE` (§5).
 
@@ -630,6 +679,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
+| 2.20 | 2026-10-31 | §15.3: **BACKLIGHT frame** `[0xB8, flight %, standby %, 0]` to all four 7" carriers (GitHub #47; KCMk1_SystemConfig 1.3.0, KCM_Display 1.1.0, master v0.9.0), and the Info Display 1 **input test frames** (sync 0xAB, page 0 40 bytes every 100 ms, page 1 20 bytes every 500 ms) sent while the display reports screen 18 in status byte 2 (InfoDisp v1.18.0). No module-side packet formats changed. |
 | 2.19 | 2026-10-31 | §9.4: `CMD_SET_LEVER_HOLD` (0x0E) for the Throttle Module, and the touch rules with and without it (500 ms stall limit). §5.2's start / stop bulb test is now what every module does (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2). |
 | 2.18 | 2026-10-27 | §15.3: the Info Display summary (0xAA) grows to 9 bytes; byte 8 carries the master's control group 1–6 so the AIRBRK indicator follows it (InfoDisp v1.17, master v0.8.1). An 8-byte summary still reads as group 1. |
 | 2.17 | 2026-10-26 | §11: DISABLED reads return the current inputs (only the INT is suppressed), which the KCMk1 master relies on to read its switch modules in any scene. §15.4: SWITCH_ERR `expected` / `actual` defined. No packet formats changed. |

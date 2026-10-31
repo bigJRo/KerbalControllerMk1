@@ -1,6 +1,6 @@
 # KCMk1_InfoDisp
 
-**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.17.1
+**Kerbal Controller Mk1 — Information Display Panel Sketch** · v1.18.0
 Teensy 4.1 firmware for the KSP flight information display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -88,9 +88,9 @@ All pins are defined in `KCMk1_SystemConfig.h` (hardware rev 2: Teensy 4.1 + LT7
 | Library | Version | Notes |
 |---------|---------|-------|
 | KerbalDisplayCommon | ≥ 3.11.0 | Display primitives, fonts, value formatting (String and buffer forms), threshold colouring, the shared readout label colour (pulls in KCM_Display) |
-| KCM_Display | — | `KCM_TFT` display type = `RA8876_t41_p` + shared resolution/pins (this repo) |
+| KCM_Display | ≥ 1.1.0 | `KCM_TFT` display type = `RA8876_t41_p` + shared resolution/pins; the `kcmBacklight*()` backlight helper (this repo) |
 | KCM_Touch | — | FT5316 5-point capacitive touch driver (this repo) |
-| KCMk1_SystemConfig | — | Shared hardware pin map + cross-panel threshold constants (this repo) |
+| KCMk1_SystemConfig | ≥ 1.3.0 | Shared hardware pin map + cross-panel threshold constants; the backlight defaults and the BACKLIGHT frame constants (this repo) |
 | TeensyRA8876-8080 (`RA8876_t41_p`) + TeensyRA8876-GFX-Common | — | RA8876 8080-parallel display driver (wwatson4506) |
 | ILI9341_fonts (PaulStoffregen) | — | ILI9341_t3 font format used by KerbalDisplayCommon |
 | KerbalDisplayAudio | — | Master-alarm audio (`tone()`, pin 29 → PAM8302A amp) + DFPlayer support |
@@ -119,7 +119,7 @@ All tunables are in `AAA_Config.ino`. Cross-panel aligned thresholds are sourced
 |----------|---------|-------------|
 | `INFO_DISP_UNIT` | `1` | **In `KCMk1_InfoDisp.h`, not this file.** `1` = Info Display 1 (0x12, vehicle-type role, left sidebar), `2` = Info Display 2 (0x13, mission-phase role, right sidebar, owns the Ascent Autopilot). Set before flashing each board. It lives in the header because the layout constants and sidebar tables are compile-time conditional on it. |
 | `debugMode` | `false` | Serial debug output. Set `false` for production. |
-| `demoMode` | `false` | `true` = sine-wave demo, no KSP. `false` = live Simpit. In demo the panel also stands in for the master on the Ascent Autopilot console: ARM/DISARM and parameter edits are applied to a demo-side autopilot model and echoed back, so the console's round trip closes on the bench. The demo boots armed; DISARM parks the ascent at IDLE and ARM resumes it. A full demo ascent runs about 53 s. |
+| `demoMode` | `false` | `true` = sine-wave demo, no KSP. `false` = live Simpit. In demo the panel also stands in for the master on the Ascent Autopilot console: ARM/DISARM and parameter edits are applied to a demo-side autopilot model and echoed back, so the console's round trip closes on the bench. The demo boots armed; DISARM parks the ascent at IDLE and ARM resumes it. A full demo ascent runs about 53 s. At runtime only the master's I2C flag turns demo on or off: see **Demo Mode**. |
 | `DISPLAY_ROTATION` | `0` | `0` = normal, `2` = 180° inverted. |
 
 ### Parachute CAG Assignments
@@ -178,7 +178,7 @@ Size: **10 bytes** (`I2C_PACKET_SIZE`). Sent in response to `KCM_I2C_BUS.request
 |------|-------|-------------|
 | 0 | Sync | `0xAE` (`KCM_I2C_SYNC_INFODISP`) — framing validation |
 | 1 | Flags | Bit 0: `simpitConnected`  Bit 1: `flightScene`  Bit 2: `demoMode`  Bits 3–7: reserved (0) |
-| 2 | `activeScreen` | Current `ScreenType` enum value (0–17) — the master pushes the status frame for the console on screen |
+| 2 | `activeScreen` | Current `ScreenType` enum value (0–17) — the master pushes the status frame for the console on screen. **18** while the input test screen is open (unit 1; `inputTestScreenId()`), whatever screen is underneath |
 | 3 | `cmdSeq` | Ascent-AP command sequence (0 = none; else 1–255, unique per queued command) |
 | 4 | `cmdOp` | Ascent-AP command opcode (`AP_CMD_*`) |
 | 5–8 | `cmdPayload` | IEEE-754 float32, little-endian (command argument) |
@@ -203,7 +203,7 @@ Size: **40 bytes** (`I2C_AP_STATUS_SIZE`), sync `0xA5` (dispatched by sync byte 
 
 ### Inbound Autopilot Status Pushes — Master → InfoDisp
 
-`onI2CReceive()` copies any inbound write of 3 bytes or more into one 64-byte buffer and the main thread's `processStatusPush()` dispatches on **byte 0, the sync byte**. Lengths are fixed per frame but need not be unique. The master pushes the full frame only for the console on screen (`activeScreen`), at 5–10 Hz or on change; every 100 ms it also writes the 8-byte `0xAA` summary to both units, so the mission ladder and the console ring see an engaged autopilot from any screen (#83).
+`onI2CReceive()` takes any inbound write of 3 to 64 bytes. A 4-byte write with sync `0xB8` is the BACKLIGHT frame and a `0xAA` write the summary, each latched on its own; anything else goes into one 64-byte buffer, which the main thread dispatches on **byte 0, the sync byte**: `0xAB` to `inputTestFrame()` (demo or not, below), the rest to `processStatusPush()` (live only). Lengths are fixed per frame but need not be unique. The master pushes the full frame only for the console on screen (`activeScreen`), at 5–10 Hz or on change; every 100 ms it also writes the 9-byte `0xAA` summary to both units, so the mission ladder and the console ring see an engaged autopilot from any screen (#83).
 
 | Sync | Length | Console | Layout |
 |------|--------|---------|--------|
@@ -215,6 +215,21 @@ Size: **40 bytes** (`I2C_AP_STATUS_SIZE`), sync `0xA5` (dispatched by sync byte 
 | `0xA9` | 44 | LANDING AUTOPILOT (17) | flags (bit0 engaged, bit1 brakeArmed, bit2 brakeFiring, bit3 attRefVert, bit4 autoStage, bit5 landed, bit6 brakeMarginal, bit7 vertHold), mode, entryEngaged, reason, reasonAge, accelSource, then nine float32 (descRate, hovrAlt, twrOverride, margin, entryAoa, entryRoll, ignitionAlt, accelEst, cmdThrottle) |
 
 Full layouts and opcodes: `Documents/Developer/Hold_Mode_Autopilot.md` §8 (aircraft, rover) and `Documents/Developer/Mission_Autopilot.md` §8 (orbital, landing).
+
+### Inbound Input Test Frames — Master → Info Display 1
+
+Sync `0xAB`, sent by the master only while this panel reports screen 18 in status byte 2 (I2C spec §15.3; byte layout in `Software/KCMk1_Master/input_test.h`):
+
+| Byte 1 (page) | Length | Rate | Carries |
+|---|---|---|---|
+| `0` | 40 | every 100 ms | Module presence / ACTIVE / inputs-known bits, every button module's levels, both sticks (buttons, three axes as int8 %), GPWS and Pre-Warp recent presses and state, lever %, throttle touch / FINE / ACTIVE and recent presses, Dual Encoder recent presses, control group and ENC2 count, control mode, ABORT / STAGE safe lines |
+| `1` | 20 | every 500 ms | Each module's INT line (0xFF none), the GPWS and Pre-Warp display values |
+
+`inputTestFrame()` takes a frame only at its page's exact length, in demo too. See **Input Test Screen**.
+
+### Inbound BACKLIGHT Frame — Master → InfoDisp
+
+**4 bytes** (`KCM_I2C_BACKLIGHT_LEN`): `[0xB8, flight %, standby %, 0]` (`KCM_I2C_SYNC_BACKLIGHT`; I2C spec §15.3, GitHub #47). Latched in `onI2CReceive()` and applied on the main thread by `kcmBacklightSetLevels()` (KCM_Display). The master sends it to all four 7" displays at once on a change and every 2 s. See **Backlight**.
 
 **`controlByte` bit map:**
 
@@ -363,6 +378,28 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `CW_LOW_DV` — stage ΔV < 150 m/s | ΔV.Stg white-on-red at same value | ✓ Exact |
 | `CW_ALT` — alt < 200 m | Alt.Rdr yellow at 500 m, white-on-red at 50 m | Related (different thresholds) |
 
+### Input Test Screen (Info Display 1)
+
+A hidden full-panel screen, sidebar included, showing what the master reads from every module, raw (Hardware Inventory §8.11). `InputTest.ino`; unit 1 only (unit 2 ignores the gesture).
+
+- **Open and close:** a two-finger diagonal pull down from the top-right corner. Both fingers must land in the corner zone (`IT_ZONE_W` × `IT_ZONE_H`, 320 × 220 px), then their midpoint must move at least `IT_PULL_PX` (140 px) left **and** 140 px down within `IT_PULL_MS` (1.5 s). The same pull closes it. Available any time: flight, standby or demo. `processTouchEvents()` now runs on standby too, and hands every touch to `inputTestTouch()` before the single-finger filter; a touch the gesture has claimed never reaches the tap handling, even as the fingers lift one at a time.
+- **While open:** taps do nothing; status byte 2 reads 18; `loop()` services only the overlay. The screen underneath is kept, and closing repaints it in full (or the standby splash, out of a flight scene and demo).
+- **Data:** the master's two `0xAB` frames (above). The overlay is repainted when a frame arrives and at least every 250 ms. The title shows **LIVE**, or **NO DATA** when no page 0 has arrived for 1.5 s.
+- **Layout:** a row per module (UI, FUNCTION, ACTION, STABILITY, VEHICLE, TIME, AUX, ROTATION, TRANSLATION, GPWS, PRE-WARP, THROTTLE, DUAL ENC) with its address, INT line, state (ACTIVE green, DISABLED yellow, MISSING red) and inputs (lit boxes = down; button levels and switches; stick buttons and axis %; recent presses with the module state and value on GPWS / Pre-Warp; recent presses, TOUCH, FINE, NOT ACTIVE on the throttle; recent presses, control group and ENC2 count on the Dual Encoder). The right column has both sticks (position dot, twist bar, values, STK / B1 / B2), the lever bar and % (yellow while touched), the mode selector (SPC / PLN / RVR), the ABORT / STAGE safe lines and the control group.
+- **Render:** `Documents/User/assets/InfoDisp1_INPUT.png`, made with `python3 tools/render_screen.py --sketch KCMk1_InfoDisp --suffix 1 INPUT` (in `Software/Displays`).
+
+### Demo Mode
+
+Demo follows the master's I2C flag and nothing else (Hardware Inventory §8.8). A scene change no longer clears it (the `demoMode = false` in `enterFlightScene()` and on leaving flight is gone).
+
+- **In demo** `Demo.ino` drives `state`. `simpit.update()` still runs whenever `simpitConnected`, so the link stays up, but `onSimpitMessage()` hands every message to `demoLifecycle()`: `SCENE_CHANGE` and `FLIGHT_STATUS` keep `flightScene` current and a dock / undock keeps the docked flag; no screen changes, and the telemetry is dropped.
+- **Leaving demo** (`leaveDemoMode()`, from `processI2CCommand()`) is a fresh start. In a flight scene: `resetForVesselSwitch()` (the per-vessel reset a vessel switch runs, now one function), `enterFlightScene()`, and the context switch once `FLIGHT_STATUS` reports the real vessel type. Otherwise the standby splash on the home screen. Then a full telemetry refresh. Simpit is started first if the unit booted in demo.
+- A bench unit booted with `demoMode = true` has no Simpit link until the master clears the flag.
+
+### Backlight
+
+The backlight (pin 9, `KCM_TFT_BL`) is driven by the shared `kcmBacklight*()` helper in KCM_Display (GitHub #47): the **standby level** while the standby splash is up (`!flightScene && !demoMode`), the **flight level** otherwise. Both start at the KCMk1_SystemConfig defaults (`KCM_BL_BRIGHTNESS_PCT` 70 %, `KCM_BL_STANDBY_PCT` 20 %) and are replaced by the master's BACKLIGHT frame. Every level is clamped to `KCM_BL_MIN_PCT` (5 %) … 100 %, and the duty ramps to a new level (`KCM_BL_RAMP_MS`, 300 ms for the full range). Still to check on the real panel: flicker at low duty and the usable floor.
+
 ---
 
 ## Tab Structure
@@ -398,11 +435,12 @@ A deferred dock-check fires on the next `TARGETINFO` message after a vessel swit
 | `Screen_ROVR.ino` | Rover — compass, FWD/REV drive-state blocks, tilt indicators (screen index 9) |
 | `Screen_NAV.ino` | Navigation display — compass rose, ground track, target bearing (screen index 13) |
 | `Compass.ino` | Shared rotating compass card renderer (ROVER and NAVIGATION) |
-| `TouchEvents.ino` | Touch debounce and sidebar dispatch (mode cycling / screen switch) |
+| `TouchEvents.ino` | Touch debounce and sidebar dispatch (mode cycling / screen switch); hands every touch to the input test gesture first |
 | `SimpitHandler.ino` | KerbalSimpit message handler and channel registration |
 | `I2CSlave.ino` | I2C slave at 0x12/0x13 (`INFO_DISP_UNIT`, set in `KCMk1_InfoDisp.h`) — packet build/fill, command processing, boot handshake |
 | `BootScreen.ino` | Randomised KSP-themed boot sequences (B: Mission Log, C: Loading Tips, E: Pre-Flight Checklist) |
 | `Demo.ino` | Demo mode — sine-wave `AppState` animation; stands in for the master for the ascent and hold-mode console commands |
+| `InputTest.ino` | Input test screen (unit 1): the two-finger gesture tracker, the master's `0xAB` frames, the full-panel overlay (status byte 2 = 18 while open) |
 
 **Tab naming note:** The `AAA_` prefix ensures `AAA_Screens.ino` compiles before all `Screen_*.ino` tabs. The `Screen_LNCH_*.ino` and `Screen_LNDG_*.ino` files are mode-specific sub-files dispatched by `Screen_LNCH.ino` and `Screen_LNDG.ino` respectively. Filename `Screen_SCFT.ino` corresponds to the SPACECRAFT screen (sidebar label PFD, screen index 2).
 
@@ -479,6 +517,7 @@ label-and-value rows elsewhere.
 
 | Version | Notes |
 |---------|-------|
+| **1.18.0** | **Input test screen (unit 1); demo follows the master's flag only; backlight dimming.** *Input test screen* (Hardware Inventory §8.11, §11 #14): a hidden full-panel overlay opened and closed by a two-finger diagonal pull down from the top-right corner (both fingers in the 320 × 220 px corner zone, midpoint ≥ 140 px left and down within 1.5 s), any time; status byte 2 reads 18 while open and the master pushes two `0xAB` frames (40 bytes every 100 ms, 20 bytes every 500 ms), taken in demo too; NO DATA after 1.5 s without page 0. New tab `InputTest.ino`; render scenario `INPUT`. *Demo* (§8.8, §11 #10): the leftover `demoMode = false` on scene changes is removed; Simpit is serviced in demo and `demoLifecycle()` takes only the lifecycle; leaving demo (`leaveDemoMode()`) re-enters the flight scene with the per-vessel reset (`resetForVesselSwitch()`, factored out of the vessel-switch handler) or shows standby. *Backlight* (GitHub #47): the 4-byte BACKLIGHT frame; standby level on the standby splash, clamped to 5 %, ramped over 300 ms (KCM_Display 1.1.0, KCMk1_SystemConfig 1.3.0). Checked on the host by `tools/behaviour_selftest.py`. |
 | **1.17.1** | **Names for the master's interlock reasons.** The `KCMk1_Master` autopilots report three new disconnect reasons — 22 A/P INHIB (the A/P INHIB / ARM switch), 23 ENG SAFE (ENGINE SAFE dropped a throttle mode), 24 A/P DISC (the stick's A/P disconnect) — which the consoles showed as a blank note. They now read `A/P INHIB`, `ENG SAFE` and `A/P DISC`. |
 | **1.17.0** | **AIRBRK follows the control group.** The indicator read CAG 38 whatever the control group, so in groups 2–6 it showed group 1's air brake while the AIR BRAKE button toggled another group. The master now sends its control group in byte 8 of the summary frame (9 bytes; an 8-byte summary still reads as group 1); the display keeps the last CAGSTATUS and re-reads the indicator when the group changes (`airbrakeCag()`, `refreshCagIndicators()`). |
 | **1.16.5** | **One name per quantity across the screens.** The readouts that carried a second name now use the flight screens' one (`ALT.RDR`, `ALT.SL`, `V.VRT`, `V.SRF`, `ΔV.STG`, `ΔV.TOT`, `ΔV.REM`, `T+IGN`, `BURN DUR`, `DIST`, `T+GRND`, `ELV`, `BRG`, `THRTL`, `EC`, `AOA`, `V.ORB`, `TTE`); the PRE-LAUNCH SAS row uses the SAS indicator names and its chute rows the RE-ENTRY states (`DROG`, `STOW`, `ARM`, `CUT`); VEHICLE INFO's STATUS uses the Annunciator's situation tile names; the landing console's ATT REF reads `RETR`. The Orbital Autopilot's T+IGN now counts down to zero and goes negative once passed, as every other T+ time. The SPACECRAFT throttle bar's label box grew to fit `THRTL`. See *Readout label vocabulary*. |
@@ -565,9 +604,9 @@ label-and-value rows elsewhere.
 ## Notes
 
 - **`debugMode`** defaults to `false`. Set `true` only during development.
-- **`demoMode`** defaults to `false` (live Simpit telemetry). Set `true` for the sine-wave demo without KSP.
+- **`demoMode`** defaults to `false` (live Simpit telemetry). Set `true` for the sine-wave demo without KSP. At runtime only the master's flag changes it.
 - **Display rotation** — `DISPLAY_ROTATION = 2` for inverted mounting, `0` for production.
-- **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM at `KCM_BL_BRIGHTNESS_PCT`); the master-alarm tone (`tone()` → PAM8302A amp) is on pin 29 (amp enable TONE_EN on pin 30) and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
+- **Backlight** is on pin 9 (`KCM_TFT_BL`, PWM from the master's BACKLIGHT levels, `KCM_BL_BRIGHTNESS_PCT` / `KCM_BL_STANDBY_PCT` until the first frame; see **Backlight**); the master-alarm tone (`tone()` → PAM8302A amp) is on pin 29 (amp enable TONE_EN on pin 30) and the DFPlayer on Serial2 — all defined in `KCMk1_SystemConfig.h`.
 - **KerbalDisplayCommon ≥ 3.11.0** is required (hardware rev 2 / `KCM_TFT`, `RA8876_t41_p`; 3.5.0 carries the shared reticle marker layer and the `kspBodyAxes` / `kspBoresightAngles` boresight projection). Do not downgrade.
 - **Closure velocity** — the TARGET and DOCKING screens both show closure as a signed **V.Close** value (negative = closing, positive = opening); the intercept-time rows (T+Int / T+Dock) are shown only while closing.
 - **EC** on the pre-launch board and Rover screen may require the Alternate Resource Panel (ARP) mod in KSP1.

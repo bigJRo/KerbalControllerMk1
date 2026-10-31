@@ -28,7 +28,8 @@ typedef ILI9341_t3_font_t tFont;
      MAJOR — incompatible structural changes
      MINOR — new features or screens added
      PATCH — bug fixes, threshold tuning, comment/style changes
-   This sketch requires KerbalDisplayCommon >= 3.0.0
+   This sketch requires KerbalDisplayCommon >= 3.0.0, KCMk1_SystemConfig >= 1.3.0
+   (the backlight levels and BACKLIGHT frame) and KCM_Display >= 1.1.0 (kcmBacklight*)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
 static const uint8_t SKETCH_VERSION_MINOR = 15;  // 3.15.0: demo follows the master's flag only (and keeps the vessel's layout); backlight dimming
