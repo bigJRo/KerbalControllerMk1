@@ -431,7 +431,8 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 - the throttle lever;
 - every module's buttons and switches;
 - the mode selector and safe lines;
-- module presence and INT lines.
+- module presence, lifecycle, FAULT flag and INT lines;
+- what the Annunciator, both Information Displays and the Resource Display report in their status packets.
 
 The master pushes it frames while the screen is open (Info Display v1.18.0, master v0.9.0, I2C spec §15.3; §11 #14).
 
@@ -459,19 +460,25 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 - **Where:** a hidden screen on Information Display 1.
 - **Opened and closed by:** a two-finger diagonal pull down from the top-right corner.
 - **Available:** any time.
-- **Shows:** what the master reads (§8.9): sticks, lever, every module's buttons and switches, the mode selector, the safe lines, module presence and INT lines.
+- **Shows:** what the master reads (§8.9): sticks, lever, every module's buttons and switches, the mode selector, the safe lines, module presence, lifecycle and INT lines, and the four 7" displays' status.
 - **Data:** the master pushes it frames while the screen is open.
 
 **Design (as built: Info Display v1.18.0, master v0.9.0):**
 - **The screen** is a full-panel overlay, sidebar included, drawn over whatever the panel shows; the screen underneath is kept and repainted on closing (or the standby splash, out of a flight scene).
 - **The gesture:** both fingers start in the top-right corner zone (320 × 220 px), then their midpoint moves at least 140 px left **and** at least 140 px down within 1.5 s. The same pull closes the screen. It works in flight, on standby and in demo. The gesture has its own handling ahead of the single-finger filter, and a touch it has taken never reaches the tap handling, even as the fingers lift one at a time. Info Display 2 ignores it.
 - **While open,** taps do nothing, and the display reports **screen 18** in byte 2 of its status packet.
-- **The frames:** while the master reads screen 18 it writes two frames to Information Display 1, both sync 0xAB (I2C spec §15.3; exact layout in `KCMk1_Master/input_test.h`): page 0, the inputs, 40 bytes every 100 ms; page 1, the INT lines and the display modules' values, 20 bytes every 500 ms. The display takes them in demo too. If no page 0 arrives for 1.5 s the title shows **NO DATA**, otherwise **LIVE**.
+- **The frames:** while the master reads screen 18 it writes three frames to Information Display 1, all sync 0xAB (I2C spec §15.3; exact layout in `KCMk1_Master/input_test.h`): page 0, the inputs, 40 bytes every 100 ms; page 1, the INT lines, the display modules' values and every module's lifecycle, 24 bytes every 500 ms; page 2, the four 7" displays' status, 24 bytes every 500 ms. The master keeps each display's last good status packet for page 2. The display takes them in demo too. If no page 0 arrives for 1.5 s the title shows **NO DATA**, otherwise **LIVE**.
 - **What it shows:**
-  - a row per module (the 13 in the master's order): name, address, INT line, lifecycle state (**ACTIVE**, **DISABLED** or **MISSING**), and its inputs as lit boxes (lit = down): every button and switch level on the button modules; the stick buttons and axis percentages on the joysticks; recent presses, module state and display value on GPWS and Pre-Warp; recent presses, TOUCH, FINE and NOT ACTIVE on the throttle; recent presses, control group and the ENC2 count on the Dual Encoder;
-  - both sticks as a position dot, a twist bar, the three axis values and the stick / BTN01 / BTN02 buttons;
-  - the lever as a bar with its percentage (yellow while touched);
-  - the mode selector (SPC / PLN / RVR), the ABORT and STAGE safe lines, and the control group.
+  - a row per module (the 13 in the master's order): name, address, INT line, state, and its inputs as lit boxes (lit = bit set);
+  - the state is the lifecycle the module reports: **ACTIVE** (green), **SLEEPING** (sky), **DISABLED** (amber) or **BOOT RDY** (magenta), or **MISSING** (red) when it is not present; "..." until page 1 arrives. If the module's last packet had the FAULT bit (status byte bit 2) the state cell is red;
+  - the inputs: on the button modules, every bit of the state word exactly as the module sent it (packet bytes 3 onward, I2C spec §9.1), not the master's processed levels; the stick buttons and axis percentages on the joysticks; recent presses, module state and display value on GPWS and Pre-Warp; recent presses, TOUCH, FINE and NOT ACTIVE on the throttle; recent presses, control group and the ENC2 count on the Dual Encoder;
+  - both sticks, TRANSLATION on the left and ROTATION on the right, each as a position dot, a twist bar, the three axis values (X: Y: Z:) and the stick / BTN01 / BTN02 buttons;
+  - the lever as a bar with its percentage (blue while touched);
+  - the mode selector (SPC / PLN / RVR), the ABORT and STAGE safe lines, and the control group on one line;
+  - **DISPLAYS**, a row each for the Annunciator, Info Display 1, Info Display 2 and the Resource Display: **NO ANSWER** (red) if it is not answering, otherwise LINK or NO LINK and FLIGHT or STBY, then:
+    - Annunciator: **ALARM** (red) while the master alarm is on, and "C&W *n*", the number of lit tiles;
+    - Info Displays: DEMO, and the screen on view (a short name; INPUT for this screen);
+    - Resource Display: DEMO, **CAUTION** (yellow) or **ALARM** (red), and the number of bars.
 - **"Recent presses"** are rising edges in a module packet the master read in the last 300 ms. The ENC2 count is added up by the master since boot.
 - **A render** of the screen: `Documents/User/assets/InfoDisp1_INPUT.png`, from `Software/Displays/tools/render_screen.py`, scenario `INPUT` (unit 1).
 
@@ -812,7 +819,7 @@ Collected from this review; each is a separate piece of work.
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch. **Done** (Caution & Warning Reference for v3.10.0, 2026-10-31; A/P ARM done earlier with v3.9) |
 | 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
-| 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): two frames, sync 0xAB, while the display reports screen 18 |
+| 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): three frames, sync 0xAB (inputs, modules, displays), while the display reports screen 18 |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
 | 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |

@@ -565,23 +565,30 @@ Uses the master's serial console (first USB port). Run at the Space Center and i
 
 ## 23. Session INPUT — input test screen (Info 1)
 
-Needs the master and the modules. The screen shows what the master reads, raw (Hardware Inventory §8.11).
+Needs the master, the modules and the other three 7" displays. The screen shows what the master reads, raw (Hardware Inventory §8.11).
 
 | ID | Action | Expected | Source |
 |---|---|---|---|
-| INPUT-01 | On Info 1, put two fingers in the top-right corner and pull both diagonally down and to the left (at least 140 px each way, under 1.5 s) | The INPUT TEST screen covers the whole panel, sidebar included; the title reads `LIVE` in green; a row per module and the stick / lever / mode column | InfoDisp 1.18.0 |
+| INPUT-01 | On Info 1, put two fingers in the top-right corner and pull both diagonally down and to the left (at least 140 px each way, under 1.5 s) | The INPUT TEST screen covers the whole panel, sidebar included; the title reads `LIVE` in green; a row per module; on the right TRANSLATION then ROTATION, the lever, mode selector, safe lines and control group, and DISPLAYS at the bottom | InfoDisp 1.18.0 |
 | INPUT-02 | Do the same pull again; lift the fingers one at a time | The screen closes and the screen underneath comes back in full; the lifting fingers are not taken as a tap | InfoDisp 1.18.0 |
 | INPUT-03 | Try two fingers starting outside the corner, a short pull, a slow pull (over 1.5 s), one finger; and the full pull on Info 2 | Nothing opens in any of these | Gesture rules |
 | INPUT-04 | Open it on standby (Space Center) and in demo; close it on standby | Opens both times; closing on standby shows the splash again | Available any time |
 | INPUT-05 | With it open, tap where the sidebar keys are | Nothing happens; the screen stays up | Taps ignored while open |
-| INPUT-06 | Read the module rows; then unplug one module | Each fitted module shows its address and INT line (as `intmap` reports them) and ACTIVE in flight (DISABLED in the menus); the unplugged one reads MISSING in red | Page 0 / page 1 frames |
-| INPUT-07 | Press every button and flip every switch on the button modules | Its box lights while it is down; FUNCTION and VEHICLE show their switches as the last eight boxes, after a gap | Page 0 bytes 8–23 |
-| INPUT-08 | Move each stick axis to both ends; press each stick's button, BTN01, BTN02 | The dot and twist bar follow, the values reach about ±100; `STK` / `B1` / `B2` light while held | Page 0 bytes 24–31 |
-| INPUT-09 | Move the lever; touch it; turn on FINE; press 100 % / UP / DOWN / 0 % | The lever bar and % follow; touched: bar yellow and `TOUCH`; `FINE` shows; each button's box flashes on the press | Page 0 bytes 34–35 |
+| INPUT-06 | Read the module rows; then unplug one module | Each fitted module shows its address and INT line (as `intmap` reports them) and ACTIVE in green in flight (DISABLED in amber in the menus); the unplugged one reads MISSING in red. No STATE cell is red (red = the module reports a FAULT) | Page 0 / page 1 frames |
+| INPUT-07 | Press every button and flip every switch on the button modules | Its box lights while it is down (the boxes are the bits of the state word as the module sends it); FUNCTION and VEHICLE show their switches as the last eight boxes, after a gap | Page 0 bytes 8–23 |
+| INPUT-08 | Move each stick axis to both ends; press each stick's button, BTN01, BTN02 | TRANSLATION is the left box, ROTATION the right. The dot and twist bar follow, the values (`X:` `Y:` `Z:`) reach about ±100; `STK` / `B1` / `B2` light while held | Page 0 bytes 24–31 |
+| INPUT-09 | Move the lever; touch it; turn on FINE; press 100 % / UP / DOWN / 0 % | The lever bar and % follow; touched: bar blue and `TOUCH`; `FINE` shows; each button's box flashes on the press | Page 0 bytes 34–35 |
 | INPUT-10 | GPWS and Pre-Warp: press their buttons, turn their encoders, change the GPWS mode | Boxes flash on the presses; `value` follows the displayed number; `state` changes with the mode | Page 0 bytes 32–33, page 1 |
-| INPUT-11 | Dual Encoder: turn ENC1, turn ENC2 both ways, press both buttons | Control group follows ENC1 (row and right column); the ENC2 count goes up and down; the boxes flash on the presses | Page 0 bytes 36–37 |
+| INPUT-11 | Dual Encoder: turn ENC1, turn ENC2 both ways, press both buttons | Control group follows ENC1 (row, and `CONTROL GROUP n` in the right column); the ENC2 count goes up and down; the boxes flash on the presses | Page 0 bytes 36–37 |
 | INPUT-12 | Turn the mode selector through SPC / PLN / RVR; close the ABORT and STAGE lines | The matching chip lights; ABORT (red) and STAGE (orange) light while their line is closed | Page 0 bytes 38–39 |
 | INPUT-13 | With the screen open, unplug Info 1's I2C loom from the master | Within about 1.5 s the title reads `NO DATA` in red and the states read `--`; it returns to `LIVE` when frames resume | `IT_STALE_MS` |
+| INPUT-14 | Unplug one module and plug it back in (or reset it) while watching its row | MISSING, then ACTIVE again once the master has re-enabled it (it may show `BOOT RDY` in magenta for a moment first) | Page 1 bytes 19–22 |
+| INPUT-15 | Read the DISPLAYS rows in flight with KSP connected | ANNUNC, INFO 1, INFO 2 and RESOURCE each read `LINK` in green and `FLIGHT`; INFO 1 shows `INPUT`; INFO 2 shows the screen it is on; ANNUNC shows `C&W n` with *n* the number of lit C&W tiles; RESOURCE shows `n bars` matching its bars | Page 2 |
+| INPUT-16 | Go to the Space Center | Every display row reads `STBY` and still answers | Page 2 flags bit 1 |
+| INPUT-17 | Back in flight, change Info 2's screen a few times | The INFO 2 row follows within about 1 s, by its short name (e.g. `ORB`, `MNVR`, `ASC AP`) | Page 2 byte 11 |
+| INPUT-18 | Turn demo on, then off | INFO 1, INFO 2 and RESOURCE show `DEMO` while it is on | Page 2 flags bit 2 |
+| INPUT-19 | Bring on a master alarm; then let a resource fall into caution, then alarm | ANNUNC shows `ALARM` in red with the alarm; RESOURCE shows `CAUTION` in yellow, then `ALARM` in red | Page 2 bytes 3, 12 |
+| INPUT-20 | Unplug the Resource Display's (or another display's) I2C loom | Its row reads `NO ANSWER` in red within about 1 s; the others are unchanged; plugged back in it reads as before | Page 2 byte 2 |
 
 ---
 

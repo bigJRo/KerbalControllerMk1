@@ -48,7 +48,7 @@ static uint8_t  _itIn[IT_INPUTS_LEN];
 static uint8_t  _itMod[IT_MODULES_LEN];
 static uint8_t  _itDsp[IT_DISPLAYS_LEN];
 static bool     _itHaveIn = false, _itHaveMod = false, _itHaveDsp = false, _itDirty = false;
-static uint32_t _itInMs = 0, _itDrawMs = 0;
+static uint32_t _itInMs = 0, _itDspMs = 0, _itDrawMs = 0;
 
 bool    inputTestIsOpen()   { return _itOpen; }
 uint8_t inputTestScreenId() { return IT_SCREEN_ID; }
@@ -104,7 +104,7 @@ void inputTestFrame(const uint8_t *buf, uint8_t len) {
   } else if (buf[1] == 1 && len == IT_MODULES_LEN) {
     memcpy(_itMod, buf, IT_MODULES_LEN); _itHaveMod = true; _itDirty = true;
   } else if (buf[1] == 2 && len == IT_DISPLAYS_LEN) {
-    memcpy(_itDsp, buf, IT_DISPLAYS_LEN); _itHaveDsp = true; _itDirty = true;
+    memcpy(_itDsp, buf, IT_DISPLAYS_LEN); _itHaveDsp = true; _itDspMs = millis(); _itDirty = true;
   }
 }
 
@@ -194,10 +194,11 @@ static void inputTestDrawDisplays(KCM_TFT &tft, uint16_t y0) {
   textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 4, y0, 200, 22, "DISPLAYS", TFT_LIGHT_GREY, TFT_BLACK);
   static const char *const kName[4] = { "ANNUNC", "INFO 1", "INFO 2", "RESOURCE" };
   const uint8_t *d = _itDsp;
+  bool fresh = _itHaveDsp && millis() - _itDspMs < IT_STALE_MS;   // page 2 stopped: show "--", not old status
   for (uint8_t c = 0; c < 4; c++) {
     uint16_t y = (uint16_t)(y0 + 24 + c * 30);
     textLeft(tft, &Roboto_Black_16, IT_RIGHT_X + 4, y, 92, 28, kName[c], TFT_WHITE, TFT_BLACK);
-    if (!_itHaveDsp) { textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 98, y, 240, 28, "--", TFT_GREY, TFT_BLACK); continue; }
+    if (!fresh) { textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 98, y, 240, 28, "--", TFT_GREY, TFT_BLACK); continue; }
     if (!((d[2] >> c) & 1)) {
       textLeft(tft, &Roboto_Black_12, IT_RIGHT_X + 98, y, 240, 28, "NO ANSWER", TFT_RED, TFT_BLACK);
       continue;
@@ -265,7 +266,7 @@ static void inputTestDraw(KCM_TFT &tft) {
     // Lifecycle as the module reports it (KMC_STATUS_*: 0 ACTIVE, 1 SLEEPING, 2 DISABLED,
     // 3 BOOT_READY); a FAULT bit turns the cell red.
     static const char *const kLife[4] = { "ACTIVE", "SLEEPING", "DISABLED", "BOOT RDY" };
-    static const uint16_t kLifeCol[4] = { TFT_GREEN, TFT_SKY, TFT_YELLOW, TFT_MAGENTA };
+    static const uint16_t kLifeCol[4] = { TFT_GREEN, TFT_SKY, TFT_ORANGE, TFT_MAGENTA };   // DISABLED amber, apart from CAUTION's yellow
     uint8_t lc = (uint8_t)((life >> (2 * m)) & 3);
     const char *st = !live ? "--" : !pr ? "MISSING" : !_itHaveMod ? "..." : kLife[lc];
     uint16_t sc = !live ? TFT_GREY : !pr ? TFT_RED : !_itHaveMod ? TFT_GREY : kLifeCol[lc];

@@ -223,13 +223,13 @@ Modules: UI Control, Function Control, Action Control, Stability Control, Vehicl
 Byte 0:  Status byte       (see §4)
 Byte 1:  Module Type ID
 Byte 2:  Transaction counter
-Byte 3:  Button events HI  — rising edge bitmask (bit0=button0 … bit7=button7)
-Byte 4:  Button events LO  — rising edge bitmask (bit0=button8 … bit7=button15)
-Byte 5:  Change mask HI    — change bitmask      (bit0=button0 … bit7=button7)
-Byte 6:  Change mask LO    — change bitmask      (bit0=button8 … bit7=button15)
+Byte 3:  Button state 0    — current pressed state (bit0=button0 … bit7=button7)
+Byte 4:  Button state 1    — current pressed state (bit0=button8 … bit7=button15)
+Byte 5:  Change mask 0     — changed since the last read (bit0=button0 … bit7=button7)
+Byte 6:  Change mask 1     — changed since the last read (bit0=button8 … bit7=button15)
 ```
 
-AND the events bytes with the change mask to identify which buttons changed and what state they changed to.
+The state plane is the inputs as latched at the read (1 = pressed / switch on), lowest inputs in the first byte. AND it with the change mask to see which inputs changed and what they changed to. (Earlier revisions called bytes 3–4 "events HI / LO, rising edge"; the firmware has always sent the current state, KerbalButtonCore `buildPayload()`.)
 
 #### 9.1.1 Switch-group variant (24 inputs, 6-byte payload)
 
@@ -239,9 +239,9 @@ Function Control (0x21) and Vehicle Control (0x24) add a third shift register (U
 Byte 0:  Status byte       (see §4)
 Byte 1:  Module Type ID
 Byte 2:  Transaction counter
-Byte 3:  Button events  0  — rising-state bitmask (bit0=input0 … bit7=input7)
-Byte 4:  Button events  1  — (bit0=input8 … bit7=input15)
-Byte 5:  Button events  2  — (bit0=input16 … bit7=input23)   ← switch group
+Byte 3:  Button state  0   — current state (bit0=input0 … bit7=input7)
+Byte 4:  Button state  1   — (bit0=input8 … bit7=input15)
+Byte 5:  Button state  2   — (bit0=input16 … bit7=input23)   ← switch group
 Byte 6:  Change mask    0  — (bit0=input0 … bit7=input7)
 Byte 7:  Change mask    1  — (bit0=input8 … bit7=input15)
 Byte 8:  Change mask    2  — (bit0=input16 … bit7=input23)    ← switch group
@@ -577,7 +577,7 @@ At power-on each carrier holds in `setup()` until the master sends `PROCEED` (`S
 |---------|-----------------|-------|
 | Annunciator (0x10) | 3 bytes (legacy), **6 bytes (rev-2 extended)**, or **9 bytes (rev-3)** | Rev-2 appends `modeFlags` (2 bytes) + `capValue` (1 byte). Rev-3 further appends **GPWS config** (1 byte) + **GPWS threshold bug** (int16, big-endian, 2 bytes — an altitude decision height, or a target range in rendezvous mode). `onI2CReceive()` accepts any of the three lengths so the master can be upgraded independently. The GPWS config byte reuses the **GPWS Input Panel (0x0B/0x2A) reported state-byte layout** — bits 1:0 = mode (0=OFF, 1=ACTIVE, 2=PROX), bit 2 = proxAlarm, bit 3 = rdvRadar — so the master relays it straight through to the Annunciator's GPWS voice-callout function. See `KCMk1_Annunciator/README.md`. |
 | Resource Display (0x11) | 2 bytes | controlByte + reserved |
-| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + status pushes dispatched by **sync byte** (any write ≥ 3 bytes): 40-byte `AscentStatus` (sync **0xA5**), 48-byte aircraft (sync **0xA6**), 36-byte rover (sync **0xA7**), 52-byte orbital (sync **0xA8**), 44-byte landing (sync **0xA9**), 9-byte summary (sync **0xAA**; byte 8 is the master's control group 1–6, for the CAG indicators — a display also accepts the older 8-byte summary as group 1), and on Info Display 1 the input test frames (sync **0xAB**, 40 and 20 bytes; below) | Byte 1 of the 2-byte command carries the console `ackSeq`. See `Ascent_Autopilot_Interface.md`, `Hold_Mode_Autopilot.md` §8 and `Mission_Autopilot.md` §8. The master pushes the full frame only for the console on screen, to Info Display 2; the summary goes to both displays every 100 ms. |
+| Info Display 1/2 (0x12/0x13) | 2 bytes control/ack + status pushes dispatched by **sync byte** (any write ≥ 3 bytes): 40-byte `AscentStatus` (sync **0xA5**), 48-byte aircraft (sync **0xA6**), 36-byte rover (sync **0xA7**), 52-byte orbital (sync **0xA8**), 44-byte landing (sync **0xA9**), 9-byte summary (sync **0xAA**; byte 8 is the master's control group 1–6, for the CAG indicators — a display also accepts the older 8-byte summary as group 1), and on Info Display 1 the input test frames (sync **0xAB**, 40 and 24 bytes; below) | Byte 1 of the 2-byte command carries the console `ackSeq`. See `Ascent_Autopilot_Interface.md`, `Hold_Mode_Autopilot.md` §8 and `Mission_Autopilot.md` §8. The master pushes the full frame only for the console on screen, to Info Display 2; the summary goes to both displays every 100 ms. |
 
 The `requestType` nibble values and the boot `PROCEED` handshake are identical on all three implemented carriers; only the payload width and the panel-specific status/command fields differ.
 
@@ -592,7 +592,7 @@ The `requestType` nibble values and the boot `PROCEED` handshake are identical o
 
 The frame is 4 bytes (`KCM_I2C_BACKLIGHT_LEN`), a length none of the carriers uses for its command, so each one can tell it apart; the Info Display also checks the sync byte before its status-push dispatch. A carrier latches the two levels in its receive handler and applies them on the main thread. It clamps each level to `KCM_BL_MIN_PCT` (5 %) … 100 % and ramps the PWM toward the new level (`KCM_BL_RAMP_MS`, 300 ms for the full range) instead of stepping. Until the first frame arrives it uses the `KCMk1_SystemConfig` defaults (`KCM_BL_BRIGHTNESS_PCT` 70 %, `KCM_BL_STANDBY_PCT` 20 %). The standby level applies on the Annunciator's and Resource Display's standby screen, and on an Info Display while it is neither in a flight scene nor in demo. The master sends the frame to all four 7" carriers at once on a change and every 2 s (`CARRIER_BACKLIGHT_MS`), so a carrier that restarts gets it again; its levels start at `BL_FLIGHT_PCT` / `BL_STANDBY_PCT` (checked against the SystemConfig defaults by the master's host build) and the console command `backlight [flight %] [standby %]` changes them until a restart.
 
-**Input test frames (Info Display 1, 0x12).** Info Display 1 has a hidden input test screen (Hardware Inventory §8.11). While it is open the display reports **screen 18** in byte 2 of its status packet (§15.2) instead of the screen underneath. The master reads that byte every 500 ms with the status read, and while it reads 18 it writes two frames to 0x12, both with sync **0xAB**. Multi-byte fields are little-endian. The display accepts them in demo too.
+**Input test frames (Info Display 1, 0x12).** Info Display 1 has a hidden input test screen (Hardware Inventory §8.11). While it is open the display reports **screen 18** in byte 2 of its status packet (§15.2) instead of the screen underneath. The master reads that byte every 500 ms with the status read, and while it reads 18 it writes three frames to 0x12, all with sync **0xAB**. Multi-byte fields are little-endian. The display accepts them in demo too.
 
 Page 0, the inputs: 40 bytes, every 100 ms.
 
@@ -601,9 +601,9 @@ Page 0, the inputs: 40 bytes, every 100 ms.
 | 0 | Sync 0xAB |
 | 1 | Page 0 |
 | 2–3 | Present: a bit per module, in the master's `ModId` order (UI, FUNCTION, ACTION, STABILITY, VEHICLE, TIME, AUX, ROTATION, TRANSLATION, GPWS, PRE-WARP, THROTTLE, DUAL ENC) |
-| 4–5 | ACTIVE (lifecycle): a bit per module |
-| 6–7 | Inputs known: a bit per module |
-| 8–23 | Button levels: UI 2, FUNCTION 3, ACTION 2, STABILITY 2, VEHICLE 3, TIME 2, AUX 2 bytes (FUNCTION / VEHICLE bits 16–23 are the switches) |
+| 4–5 | FAULT: a bit per module, set when its last packet had the FAULT bit (status byte bit 2, §4) |
+| 6–7 | A packet seen: a bit per module |
+| 8–23 | Button state words exactly as each module sent them (packet bytes 3 onward, §9.1): UI 2, FUNCTION 3, ACTION 2, STABILITY 2, VEHICLE 3, TIME 2, AUX 2 bytes (FUNCTION / VEHICLE bits 16–23 are the switches); 0 until a packet is seen |
 | 24 | ROTATION buttons: bit 0 stick, bit 1 BTN01, bit 2 BTN02 |
 | 25–27 | ROTATION AXIS1..3, int8 % |
 | 28 | TRANSLATION buttons |
@@ -617,7 +617,7 @@ Page 0, the inputs: 40 bytes, every 100 ms.
 | 38 | Control mode (`CTRL_MODE_*`: 0 RVR, 1 PLN, 2 SPC) |
 | 39 | Safe lines: bit 0 ABORT, bit 1 STAGE |
 
-Page 1, the modules: 20 bytes, every 500 ms.
+Page 1, the modules: 24 bytes, every 500 ms.
 
 | Byte | Field |
 |------|-------|
@@ -626,7 +626,28 @@ Page 1, the modules: 20 bytes, every 500 ms.
 | 2–14 | INT line of each module, `ModId` order: 0–11 INT_1..12, 12–23 B_INT_1..12, 0xFF none |
 | 15–16 | GPWS display value, uint16 little-endian |
 | 17–18 | Pre-Warp display value, uint16 little-endian |
-| 19 | 0 |
+| 19–22 | Lifecycle, 2 bits per module as last reported (module *m* at bits 2*m*+1:2*m*, `ModId` order): 0 ACTIVE, 1 SLEEPING, 2 DISABLED, 3 BOOT_READY (`KMC_STATUS_*`) |
+| 23 | 0 |
+
+Page 2, the four 7" displays: 24 bytes, every 500 ms, sent after page 1. The master takes these from the status packets it reads every 500 ms (§15.2).
+
+| Byte | Field |
+|------|-------|
+| 0 | Sync 0xAB |
+| 1 | Page 2 |
+| 2 | Answering: bit 0 Annunciator, bit 1 Info Display 1, bit 2 Info Display 2, bit 3 Resource Display |
+| 3 | Annunciator flags: bit 0 KSP link, bit 1 flight scene, bit 2 master alarm |
+| 4–7 | Annunciator C&W bits, little-endian (25 used) |
+| 8 | Info Display 1 flags: bit 0 KSP link, bit 1 flight scene, bit 2 demo |
+| 9 | Info Display 1 screen (status byte 2) |
+| 10 | Info Display 2 flags (as byte 8) |
+| 11 | Info Display 2 screen |
+| 12 | Resource Display flags: bit 0 KSP link, bit 1 flight scene, bit 2 demo, bit 3 caution, bit 4 alarm, bit 5 time tier |
+| 13 | Resource Display bar count |
+| 14 | Resource Display worst resource (`ResourceType`) |
+| 15–23 | 0 |
+
+These bytes are copied from each display's status packet (bytes 1 onward). A display that stops answering keeps its last good status here; byte 2 says which ones are current.
 
 "Recent" means a rising edge in a module packet read within the last 300 ms (`INPUT_TEST_RECENT_MS`). A frame of the wrong length for its page is dropped. If no page 0 arrives for 1.5 s the screen shows NO DATA. When the screen closes the status byte reports the real screen again and the frames stop. The master's layout is in `KCMk1_Master/input_test.h`.
 
@@ -679,7 +700,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
-| 2.20 | 2026-10-31 | §15.3: **BACKLIGHT frame** `[0xB8, flight %, standby %, 0]` to all four 7" carriers (GitHub #47; KCMk1_SystemConfig 1.3.0, KCM_Display 1.1.0, master v0.9.0), and the Info Display 1 **input test frames** (sync 0xAB, page 0 40 bytes every 100 ms, page 1 20 bytes every 500 ms) sent while the display reports screen 18 in status byte 2 (InfoDisp v1.18.0). No module-side packet formats changed. |
+| 2.20 | 2026-10-31 | §15.3: **BACKLIGHT frame** `[0xB8, flight %, standby %, 0]` to all four 7" carriers (GitHub #47; KCMk1_SystemConfig 1.3.0, KCM_Display 1.1.0, master v0.9.0), and the Info Display 1 **input test frames** (sync 0xAB; page 0, 40 bytes every 100 ms: presence, FAULT, packet-seen masks and the button modules' raw state words; page 1, 24 bytes every 500 ms: INT lines, display-module values and 2-bit lifecycles; page 2, 24 bytes every 500 ms: the four 7" displays' status) sent while the display reports screen 18 in status byte 2 (InfoDisp v1.18.0). No module-side packet formats changed. |
 | 2.19 | 2026-10-31 | §9.4: `CMD_SET_LEVER_HOLD` (0x0E) for the Throttle Module, and the touch rules with and without it (500 ms stall limit). §5.2's start / stop bulb test is now what every module does (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2). |
 | 2.18 | 2026-10-27 | §15.3: the Info Display summary (0xAA) grows to 9 bytes; byte 8 carries the master's control group 1–6 so the AIRBRK indicator follows it (InfoDisp v1.17, master v0.8.1). An 8-byte summary still reads as group 1. |
 | 2.17 | 2026-10-26 | §11: DISABLED reads return the current inputs (only the INT is suppressed), which the KCMk1 master relies on to read its switch modules in any scene. §15.4: SWITCH_ERR `expected` / `actual` defined. No packet formats changed. |

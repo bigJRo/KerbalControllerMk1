@@ -53,6 +53,8 @@ int main(int, char **) {
   uint8_t f2[24] = { 0xAB, 2, 0x0B }; f2[12] = 0x09; f2[13] = 7;
   inputTestFrame(f2, 24); frames(1);
   CHECK(_itHaveDsp && _itDsp[2] == 0x0B && _itDsp[13] == 7, "page 2 (the four displays) is taken");
+  frames(40);
+  CHECK(_itHaveDsp && stubMillis() - _itDspMs >= 1500, "no page 2 for 1.5 s: the DISPLAYS rows go to \"--\"");
   tap(60, 100);
   CHECK(inputTestIsOpen() && activeScreen == before, "a tap while open does nothing");
   pull(700, 60, 780, 110, 200);

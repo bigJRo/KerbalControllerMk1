@@ -122,8 +122,9 @@ apoapsis with a circularisation node placed for CIRCULARIZATION, a Mun lander fo
 descent screens, a capsule at 58 km for RE-ENTRY, engaged autopilots for the consoles): `SCFT ACFT ROVR VEH LNCHPRE LNCH LNCHCIRC ORB
 ORBADV MNVR TGT DOCK NAV LNDG LNDGRE LNCHAP ORBTAP LNDGAP ACFTAP ROVRAP Standby`, plus
 `INPUT`: the input test screen (unit 1), a bench state with a few inputs down, the
-throttle touched and the Pre-Warp module missing, opened by the real two-finger gesture
-and fed one frame of each page. The
+throttle touched, the Pre-Warp module missing, TIME reporting a FAULT, Translation
+sleeping, the Dual Encoder disabled and the four displays answering, opened by the real
+two-finger gesture and fed one frame of each of the three pages. The
 demo stepper runs once to populate every field, the scenario overrides what matters,
 and `millis()` is frozen so the context ladder's answer cannot change; the manual latch
 pins the screen only when the ladder would not choose it itself, so the AUTO / MAN chip
@@ -171,13 +172,13 @@ own `loop()` (each frame advances the stubbed `millis()` by 50 ms), and check it
 It prints one `ok` / `FAIL` line per check and exits non-zero if a check or a build
 fails. Run it after changing demo, touch, backlight or I2C handling.
 
-What it covers (59 checks):
+What it covers (63 checks):
 
 | Panel | Checks |
 |---|---|
 | All three | **Demo follows the master's flag only** (Hardware Inventory §8.8): a scene change in demo is tracked but does not end demo or change the screen; clearing the flag in flight re-enters the flight screen, and out of flight shows standby. **Backlight**: the configured flight and standby levels before any frame; a new level ramps rather than steps and arrives within the ramp time; the master's standby level on the standby screen; 0 % clamped to the 5 % floor, over 100 % to 100 % |
 | Annunciator (17) | A dock seen during demo is applied on leaving it. **DOCK tile touch**: a tap sets DOCK, a second clears it, a real undock overrides a tap, a tap beside the tile does nothing, no effect out of flight |
-| Info Display (27) | Leaving demo in flight waits for the real vessel's context screen; out of flight it parks on the home screen. **Input test screen**: the two-finger pull from the top-right opens it, status byte 2 reads 18, the screen underneath is kept; a page 0 frame is taken, in demo too through the I2C receive buffer; a wrong-length frame is dropped; a tap while open does nothing; fingers outside the corner zone, or too short a pull, do nothing; the same pull closes it, the lifting fingers are not taken as a tap, and the screen underneath is repainted; it opens on standby too; NO DATA after 1.5 s without frames |
+| Info Display (31) | Leaving demo in flight waits for the real vessel's context screen; out of flight it parks on the home screen. **Input test screen**: the two-finger pull from the top-right opens it, status byte 2 reads 18, the screen underneath is kept; a page 0 frame is taken, in demo too through the I2C receive buffer; a wrong-length frame is dropped; page 1 is taken at 24 bytes with the lifecycles and the old 20-byte page 1 is dropped; page 2 (the four displays) is taken, and its rows go to "--" when it stops for 1.5 s; a tap while open does nothing; fingers outside the corner zone, or too short a pull, do nothing; the same pull closes it, the lifting fingers are not taken as a tap, and the screen underneath is repainted; it opens on standby too; NO DATA after 1.5 s without frames |
 | Resource Display (15) | The vessel's own bar layout survives demo: demo shows its own bars and ignores `VESSEL_NAME`, and after demo the next `VESSEL_NAME` recalls the vessel's layout, not demo's |
 
 To add a test, add a `CHECK(condition, "message")` to the panel's `.inc`; `SECTION()`
