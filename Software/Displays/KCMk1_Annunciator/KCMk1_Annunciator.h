@@ -288,8 +288,8 @@ enum ChuteEnvState : uint8_t {
    and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 9;   // 3.9.0: mode tile 3 reads A/P ARM (was THRTL ENA, same bit)
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // (3.8.2: LIFE SUPPORT watches food, water, oxygen only)
+static const uint8_t SKETCH_VERSION_MINOR = 10;  // 3.10.0: demo follows the master's flag only; DOCK tile touch; backlight dimming
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************

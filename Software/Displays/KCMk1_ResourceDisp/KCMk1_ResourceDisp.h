@@ -31,8 +31,8 @@ typedef ILI9341_t3_font_t tFont;
    This sketch requires KerbalDisplayCommon >= 3.0.0
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;   // rev-2: RA8876/Teensy 4.1, 1024x600 relayout
-static const uint8_t SKETCH_VERSION_MINOR = 14;  // 3.14.0: bug sweep, optimisation and cleanup pass
-static const uint8_t SKETCH_VERSION_PATCH = 3;   // 3.14.3: no limit bands on the TAC-LS waste meters
+static const uint8_t SKETCH_VERSION_MINOR = 15;  // 3.15.0: demo follows the master's flag only (and keeps the vessel's layout); backlight dimming
+static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 
 /***************************************************************************************
