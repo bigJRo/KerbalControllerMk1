@@ -1,6 +1,6 @@
 # KCMk1_Annunciator
 
-**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.8.2
+**Kerbal Controller Mk1 — Annunciator Panel Sketch** · v3.9.0
 Teensy 4.1 firmware for the KSP annunciator display module.
 Part of the KCMk1 controller system. Operates as an I2C slave under a Teensy 4.1 master.
 
@@ -206,7 +206,7 @@ Three screens are available. Transitions are managed by `switchToScreen()` in `A
 - SOI label (274×48) and body thumbnail/globe (274×176) in the left column below MASTER ALARM — touch to open the SOI screen
 - Inner regime column (x=874, 75 px wide): DOCK vertical-text indicator (75×100) at the top, then four regime tiles (75×75) — FLYING LOW, FLYING HIGH, LOW SPACE, HIGH SPACE — with only the single active regime lit
 - Outer vessel-situation column (x=949, eight 75×50 tiles, top→bottom): CONTACT, PRE-LAUNCH, FLIGHT, SUB-ORBIT, ORBIT, ESCAPE, LANDED, SPLASH. CONTACT lights whenever LANDED or SPLASH is set
-- Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, THRTL ENA, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
+- Mode/status grid (6 columns × 2 rows, twelve 100×40 tiles) driven by `state.modeFlags` (`MF_*` bits reported by the master): DEMO, WARP, AUDIO, A/P ARM, TRIM, AUTOPILOT / DEBUG, SWITCH ERR, SIMPIT LOST, THRTL PREC, INPUT PREC, ENG ARM
 - SPC/PLN/RVR control-mode tile (row 3, 212×80) with vessel-type icon — text green when the control mode matches the vessel type, red on mismatch
 - Bottom telemetry readouts: vessel name and TIMEWARP (left column, 424 wide); STG / CORE / CREW and COMM / SKIN / CAP (right triple, 200 each); CTRLGRP (212×80)
 
@@ -439,6 +439,7 @@ The Annunciator follows a deterministic startup handshake with the master before
 
 | Version | Notes |
 |---------|-------|
+| **3.9.0** | **Mode tile 3 reads A/P ARM.** The bit the master sets there is the A/P INHIB / ARM switch (bit 3, unchanged); the tile said THRTL ENA. `MF_THRTL_ENA` is renamed `MF_AP_ARM`. Label only. |
 | **3.8.2** | **LIFE SUPPORT watches the consumables only.** The tile assesses food, water and oxygen time remaining; the three waste resources (CO2, Waste, Waste Water) no longer light it at 80 % / 95 % full, nor on their time to full. The `TACLS_WASTE` channel is no longer registered, and the waste rates, fill thresholds and state fields are gone. |
 | **3.8.1** | **Readout names shared with the other panels.** The part-temperature readouts are `CORE` and `SKIN` (were `TMAX` and `TSKIN`), the names the Information Display uses for the same two values, and the control-mode cell reads `SPC` for Spacecraft (was `SPCFT`) to match the control-mode switch legend (SPC / PLN / RVR). Labels only. |
 | **3.8.0** | **LOW ΔV is suppressed on a craft with no propellant** (#72). A re-entry capsule's stage ΔV and burn time are 0 by construction, so with the throttle open LOW ΔV fired and tripped the master alarm. The panel registers KerbalSimpit's whole-vessel `LF_MESSAGE` / `OX_MESSAGE` (`LF_vessel` / `OX_vessel`, Alternate Resource Panel in KSP1) and suppresses LOW ΔV while the vessel carries neither (below `CW_PROP_EMPTY_UNITS`), matching the Info Display, which greys its stage readouts on the same test. No suppression until an LF/OX message has arrived for the vessel. PROP LOW and PROP IMBAL already switch off for a stage with no tanks. Logic tests added: suppressed with no LF/OX, still warns with LF on board. |

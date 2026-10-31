@@ -31,6 +31,7 @@ static const int16_t  FRAME_AXIS_NOISE    = 160;   // resend an axis after this 
 static const int16_t  FRAME_THR_NOISE     = 66;    // 0.2 %
 static const uint16_t FRAME_LEVER_BAND    = 328;   // 1 %: lever-follow deadband
 static const uint32_t FRAME_LEVER_MIN_MS  = 200;
+static const uint32_t FRAME_LEVER_HOLD_MS = 1000;  // CMD_SET_LEVER_HOLD repeated this often (a module may have restarted)
 
 // Pilot inputs, -1..1 (0..1 for the throttle), already mapped, scaled and trimmed by
 // the stick and throttle tabs.

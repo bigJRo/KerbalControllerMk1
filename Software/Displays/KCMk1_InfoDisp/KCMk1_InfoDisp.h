@@ -193,7 +193,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 17;  // 1.17.0: AIRBRK follows the master's control group (summary byte 8)
-static const uint8_t SKETCH_VERSION_PATCH = 0;   // (1.16.5: one label per quantity across the screens; ORAP T+IGN counts down)
+static const uint8_t SKETCH_VERSION_PATCH = 1;   // 1.17.1: names for the master's interlock reasons (A/P INHIB, ENG SAFE, A/P DISC)
 
 
 /***************************************************************************************
@@ -602,7 +602,9 @@ enum {
   HP_REASON_ROLL_LIMIT, HP_REASON_NO_ATMO, HP_REASON_TELEMETRY, HP_REASON_ASCENT, HP_REASON_REFUSED,
   HP_REASON_PILOT,   // 10 — never annunciated
   HP_REASON_NO_NODE, HP_REASON_NO_TARGET, HP_REASON_SOI, HP_REASON_FUEL, HP_REASON_LANDED,
-  HP_REASON_OTHER_AP, HP_REASON_FLARE, HP_REASON_ARRIVED, HP_REASON_ALIGN, HP_REASON_HANDOFF, HP_REASON_REPLAN
+  HP_REASON_OTHER_AP, HP_REASON_FLARE, HP_REASON_ARRIVED, HP_REASON_ALIGN, HP_REASON_HANDOFF, HP_REASON_REPLAN,
+  // KCMk1_Master interlocks (master design §11.4): 22, 23, 24
+  HP_REASON_AP_INHIB, HP_REASON_ENG_SAFE, HP_REASON_AP_DISC
 };
 static const float AP_ROLL_OFF = 1.0e9f;   // roll-hold disable sentinel (outside +/-180)
 

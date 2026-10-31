@@ -28,7 +28,7 @@
  *                0x01 CMD_GET_IDENTITY   — identity response
  *                0x02 CMD_SET_LED_STATE  — accepted, ignored (no NeoPixels)
  *                0x03 CMD_SET_BRIGHTNESS — accepted, ignored
- *                0x04 CMD_BULB_TEST      — flashes the shared switch backlight
+ *                0x04 CMD_BULB_TEST      — 1 byte: 0x01 lamps on, 0x00 back as they were
  *                0x05 CMD_SLEEP          — freeze state (SLEEPING), motor holds
  *                0x06 CMD_WAKE           — resume from SLEEPING to ACTIVE
  *                0x07 CMD_RESET          — reset to defaults, stay ACTIVE
@@ -37,6 +37,9 @@
  *                0x0A CMD_DISABLE        — disable (DISABLED), motor to 0, LEDs off
  *                0x0B CMD_SET_THROTTLE   — 2 bytes: uint16 target position
  *                0x0C CMD_SET_PRECISION  — 1 byte: 0x00=normal, 0x01=precision
+ *                0x0E CMD_SET_LEVER_HOLD — 1 byte: 0x01=the master owns the lever
+ *                                          (an autopilot): hold it at the target
+ *                                          against a hand, 0x00=the pilot owns it
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html

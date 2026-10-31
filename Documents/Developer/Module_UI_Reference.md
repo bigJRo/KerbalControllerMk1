@@ -1,13 +1,13 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.1 | 2026-10-27
+**Jeb's Controller Works** | v6.2 | 2026-10-31
 
 | | |
 |---|---|
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.8.1) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.8.2) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -386,7 +386,7 @@ CHUTE, THC/RHC, AUDIO and Switch Group 1 have no vessel state, so they never rai
 | B17 | U16-5 | DISP | OPER / CLR | Momentary | **Display clear:** GPWS and Pre-Warp values to 0 (`CMD_SET_VALUE` 0); the screens back to their defaults (`DISPLAY_RESET`) |
 | B18 | U16-4 | SCE | NORM / AUX | Latching | **Demo mode** off / on (§14) |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching | **Debug** off / on: the master's log on USB serial, and every display's own debug output |
-| B20 | U17-4 | LTG | NORM / TEST | Momentary | **Bulb test** while held (today a fixed 2 s, §15) |
+| B20 | U17-4 | LTG | NORM / TEST | Momentary | **Bulb test** while held (at least 0.5 s, so a flick shows) |
 | B21 | U17-3 | A/P | INHIB / ARM | Latching | **Autopilot master arm** (§6.4) |
 | B22 | U17-2 | ENGINE | SAFE / ARM | Latching | **Throttle interlock** (§6.3) |
 | B23 | U17-1 | THRTL | STD / FINE | Latching | **Throttle precision** (§12.3) |
@@ -417,7 +417,7 @@ The master tracks three states: SAFE, ARMING and ARMED. Throttle inputs are take
 
 - **HOLD is not affected:** it is not gated by A/P ARM, and A/P INHIB does not drop it (§9.4).
 - **Before Switch Group 1 is read,** the A/P is INHIB.
-- **Annunciator:** A/P ARM shows the switch (the tile was THRTL ENA; label change pending, §15). AUTOPILOT is lit while any autopilot or HOLD is engaged.
+- **Annunciator:** A/P ARM shows the switch (the tile was THRTL ENA before Annunciator v3.9). AUTOPILOT is lit while any autopilot or HOLD is engaged.
 
 ### 6.5 Switch Group 2 (Vehicle Control B16–B23, panel B2)
 
@@ -882,7 +882,7 @@ Both are the 7-Segment Display Module (1841 / 1842, Kerbal7SegmentCore): a 4-dig
 | Encoder button | Reset to 0 | — |
 | BTN01 | Preset 5 min | GOLD flash (150 ms), then backlit |
 | BTN02 | Preset 1 hour (60 min) | GOLD flash, then backlit |
-| BTN03 | Preset 1 Kerbin day: **6 h = 360 min** (firmware today: 1440, §15) | GOLD flash, then backlit |
+| BTN03 | Preset 1 Kerbin day: **6 h = 360 min** | GOLD flash, then backlit |
 
 - **Every Time Control WARP TO** button warps to its event less this lead (§9.6).
 - **The value persists** across vessel switches. DISP CLR sets it to 0.
@@ -900,7 +900,7 @@ A motorised 10 kΩ slide pot with an L293D H-bridge on its own 9 V supply, a cap
 | Control | Terminal | Function |
 |---|---|---|
 | Lever | — | Throttle. KSP's throttle follows the lever while the ENGINE is ARMED and no autopilot owns it |
-| Touch sensor | — | Detects the pilot's hand. While touched, the motor stops and the module refuses lever commands |
+| Touch sensor | — | Detects the pilot's hand. While touched, the motor stops and the module refuses lever commands, except under an autopilot (§12.2) |
 | THRTL_100 (100 %) | U7 | Lever to 100 % |
 | THRTL_UP (UP) | U8 | Lever up 10 % |
 | THRTL_DOWN (DOWN) | U10 | Lever down 10 % |
@@ -912,7 +912,7 @@ A motorised 10 kΩ slide pot with an L293D H-bridge on its own 9 V supply, a cap
 - **The buttons move the lever, and the throttle follows the lever** like any pilot input. The module only reports its buttons (Throttle firmware v2.1); the master sends the lever command (design §8.9, *stage 5*).
 - **The buttons are ignored** while the ENGINE is not ARMED, while an autopilot owns the throttle, and in FINE (a lever target is not the throttle there). In demo they move the lever (still subject to ENGINE and FINE).
 - **ENGINE SAFE:** 0 % to KSP, lever driven to 0 % (§6.3).
-- **Under an autopilot:** the autopilot sets the throttle and the master drives the lever to the same position (1 % band, at most one command per 200 ms), so the lever always shows the throttle KSP is using. The lever, its buttons and touch are ignored. While the pilot holds the lever, it is not driven; it goes back to the autopilot's position when released. (The confirmed design also has the motor push back against a hand for up to about 0.5 s: a Throttle firmware change, §15.)
+- **Under an autopilot:** the autopilot sets the throttle and the master drives the lever to the same position (1 % band, at most one command per 200 ms), so the lever always shows the throttle KSP is using. The lever, its buttons and touch are ignored. The master tells the module it holds the lever (`CMD_SET_LEVER_HOLD`): against a hand the motor pushes back for at most 0.5 s per touch (stall protection), then lets go, and drives the lever back to the autopilot's position when released (Throttle v2.2).
 - **Lamps:** all five share one enable. They are on while the module is ENABLED and off while DISABLED; they do not show button state.
 
 ### 12.3 Precision (THRTL STD / FINE)
@@ -982,11 +982,11 @@ The confirmed behaviour is what this document describes. These items do not matc
 | 3 | AUX CTRL module firmware | **Fixed in v2.1 (2026-10-27).** Was: B8 Cruise Control, B10 PRI / ALT toggle with a CORAL alternate, B11 Docking Port | B8 UNDOCK GOLD; B10 PRI ROSE; B11 ALT PINK; no alternate colour | Inventory §11 #5 |
 | 4 | AUX CTRL panel label | B8 has no label | UNDOCK | Inventory §11 #13 |
 | 5 | Stability Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: B10 GREEN (RCS); B14 / B15 described as Stage / Stage Enable | B10 HOLD MAGENTA. B14 / B15 are unwired and the master ignores them | Inventory §11 #6 |
-| 6 | Pre-Warp module firmware | BTN03 preset 1440 min (an Earth day) | 360 min (1 Kerbin day) | Inventory §11 #3 |
-| 7 | Button, joystick and throttle firmware | `CMD_BULB_TEST` runs a fixed 2 s test with `delay()` inside the I2C handler; the Throttle Module ignores the stop. The master keeps off the bus for 2.1 s, then sends the stop | Start / stop, no timeout, not blocking: LTG TEST lights for as long as it is held | Inventory §11 #19, design §6.4 |
-| 8 | Throttle module firmware | Refuses lever commands while touched, so the lever cannot be held against the pilot | Under an autopilot, push back against a hand for at most about 0.5 s (stall limit), then return the lever on release | Inventory §11 #15, design §11.3 |
+| 6 | Pre-Warp module firmware | **Fixed in v2.1 (2026-10-31).** Was: BTN03 preset 1440 min (an Earth day) | 360 min (1 Kerbin day) | Inventory §11 #3 |
+| 7 | Button, joystick and throttle firmware | **Fixed (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2; 2026-10-31).** Was: a fixed 2 s test with `delay()` inside the I2C handler, and the master kept off the bus for 2.1 s | Start / stop, no timeout, not blocking: LTG TEST lights for as long as it is held | Inventory §11 #19, design §6.4 |
+| 8 | Throttle module firmware | **Fixed in v2.2 (2026-10-31)** with `CMD_SET_LEVER_HOLD`. Was: refused lever commands while touched, so the lever could not be held against the pilot | Under an autopilot, push back against a hand for at most about 0.5 s (stall limit), then return the lever on release | Inventory §11 #15, design §11.3 |
 | 9 | Throttle module firmware | **Fixed in v2.1 (2026-10-27).** Was: the module moved the lever on its own buttons (100 % / 0 %, ±5 %), even in ENGINE SAFE, in FINE and under an autopilot | The module only reports its buttons; the master moves the lever (§12.2) | Found for v6.0; Inventory §11 #20 |
-| 10 | Annunciator firmware | Tile THRTL ENA | A/P ARM (same bit 3) | Inventory §11 #1 |
+| 10 | Annunciator firmware | **Fixed in v3.9 (2026-10-31).** Was: tile THRTL ENA | A/P ARM (same bit 3) | Inventory §11 #1 |
 | 11 | Info Display and Resource Display firmware | Info Displays clear demo on a scene change; the Resource Display stops servicing Simpit in demo | Every display enters and leaves demo only on the master's flag | Inventory §11 #10–#12 |
 | 12 | Module READMEs and sketch comments | Some still describe the old layouts (for example the Rotation BTN01 "Alt+X" note). Throttle, Function Control, Stability Control and AUX CTRL were brought up to date in v6.1 | As this document | — |
 
@@ -1060,5 +1060,6 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 5.7 | 2026-06-28 | Retired 0x2E module removed from the codebase |
 | 5.8 | 2026-06-28 | AUX CTRL 12-button firmware; `KMC_SEAFOAM` added |
 | 5.9 | 2026-06-28 | `ACTIVE_ALT` LED state added for the AUX CTRL CP toggle |
-| **6.1** | **2026-10-27** | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
 | 6.0 | 2026-10-26 | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |
+| 6.1 | 2026-10-27 | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
+| **6.2** | **2026-10-31** | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |

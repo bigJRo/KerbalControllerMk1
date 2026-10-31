@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     2.1.0
- * @date        2026-10-27
+ * @version     2.2.0
+ * @date        2026-10-31
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -46,6 +46,7 @@
 #define CMD_DISABLE             KMC_CMD_DISABLE
 #define CMD_SET_THROTTLE        KMC_CMD_SET_THROTTLE
 #define CMD_SET_PRECISION       KMC_CMD_SET_PRECISION
+#define CMD_SET_LEVER_HOLD      KMC_CMD_SET_LEVER_HOLD
 
 // ============================================================
 //  Packet
@@ -206,8 +207,11 @@
  */
 #define THR_WIPER_CHANGE_MIN    4
 
-// ============================================================
-//  Bulb test duration
-// ============================================================
+/**
+ * @brief Longest the motor pushes against a hand, per touch (stall
+ *        protection for the L293D and the fader motor). After this the
+ *        motor lets go until the hand does, then drives back. Applies to
+ *        the lever hold (CMD_SET_LEVER_HOLD) and to DISABLED's resist at 0.
+ */
+#define THR_PUSH_MAX_MS         500
 
-#define THR_BULB_TEST_MS        2000

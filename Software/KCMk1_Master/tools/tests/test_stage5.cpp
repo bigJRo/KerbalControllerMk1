@@ -194,6 +194,8 @@ static void testThrottle(Bench &b) {
   CHECK(th.thrPos == 0 && thr() == 0, "ENGINE SAFE: buttons ignored, throttle 0");
   f.press(SG1_ENGINE); runFor(300);
 
+  runFor(1100);
+  CHECK(!th.thrHold && th.countCmd(KMC_CMD_SET_LEVER_HOLD) >= 1, "the pilot's lever: the module told not to hold it");
   printf("throttle: an autopilot owns it\n");
   th.thrPos = 8000; th.signal(); runFor(40);
   f.press(SG1_THRTL); runFor(300);
@@ -202,8 +204,15 @@ static void testThrottle(Bench &b) {
   runFor(500);
   CHECK(!th.thrPrec, "FINE dropped while it owns the throttle");
   CHECK(near(th.thrPos, 16383, 40), "the lever driven to match (%u)", th.thrPos);
+  CHECK(th.thrHold, "the module told to hold the lever (CMD_SET_LEVER_HOLD)");
   th.touched = true; th.thrPos = 30000; th.signal(); runFor(300);
   CHECK(near(thr(), 16383), "the pilot's lever is ignored");
+  int lc = th.countCmd(KMC_CMD_SET_THROTTLE);
+  runFor(600);
+  CHECK(th.countCmd(KMC_CMD_SET_THROTTLE) == lc, "no lever commands while the hand stays and the value does not move");
+  thrAutoThrottle(THR_OWNER_HOLD, 0.55f); runFor(300);
+  CHECK(near(th.thrTarget, 18022, 40) && th.thrPos == 30000, "a new value while touched: the module keeps it as its target");
+  thrAutoThrottle(THR_OWNER_HOLD, 0.5f); runFor(300);
   th.touched = false; th.signal(); runFor(300);
   CHECK(near(th.thrPos, 16383, 40), "and put back once released");
   th.edge(0x08); runFor(40);
@@ -212,6 +221,7 @@ static void testThrottle(Bench &b) {
   CHECK(near(thr(), 19660), "follows the owner");
   thrAutoRelease(THR_OWNER_HOLD); runFor(300);
   CHECK(thrOwner() == THR_OWNER_NONE && near(thr(), th.thrPos, 70) && th.thrPrec, "released: the lever again, FINE back");
+  CHECK(!th.thrHold, "and the hold released");
   f.press(SG1_ENGINE); f.release(SG1_THRTL); runFor(300);
   thrAutoThrottle(THR_OWNER_HOLD, 0.9f);
   f.release(SG1_ENGINE); runFor(40);

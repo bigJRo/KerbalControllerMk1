@@ -1,6 +1,6 @@
 # KerbalModuleCommon
 
-**Version:** 1.6.0  
+**Version:** 1.8.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 
@@ -111,6 +111,7 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1841 v2.0, NEO_GRB mode).
 | `KMC_CMD_SET_THROTTLE` | 0x0B | 2 bytes BE uint16 | Throttle: set target position |
 | `KMC_CMD_SET_PRECISION` | 0x0C | 1 byte (0/1) | Throttle: precision mode off/on |
 | `KMC_CMD_SET_VALUE` | 0x0D | 2 bytes BE int16 | Set display/encoder value |
+| `KMC_CMD_SET_LEVER_HOLD` | 0x0E | 1 byte (0/1) | Throttle: the master owns the lever — hold it at the target against a hand, stall-limited (1.8.0) |
 
 ---
 
@@ -180,6 +181,10 @@ Used with `KMC_CMD_SET_LED_STATE` and `kmcLedPackGet()` / `kmcLedPackSet()` help
 ---
 
 ## Changelog
+
+### v1.8.0 (2026-10-31)
+- `KMC_CMD_SET_LEVER_HOLD` (0x0E) added — Throttle Module lever hold (I2C spec §9.4)
+- `scaleColor(RGBColor, brightness)` restored. v1.1.0 removed it, but KerbalButtonCore and KerbalJoystickCore still call it (`KBC_scaleColor`, `kjcScaleColor`), so neither library compiled against this header
 
 ### v1.1.0 (2026-04-27)
 - `GRBWColor`, `toGRBW()`, `KMC_WHITE_ONLY()`, `scaleColor()` removed — all hardware uses NEO_GRB 3-byte

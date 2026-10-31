@@ -3,7 +3,7 @@
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
 **Version:** 1.3
-**Firmware covered:** Info Display v1.17.0 (both units) · Annunciator v3.8.2 · Resource Display v3.14.3 · KCMk1_Master v0.8.1
+**Firmware covered:** Info Display v1.17.0 (both units) · Annunciator v3.9.0 · Resource Display v3.14.3 · KCMk1_Master v0.8.1
 
 ---
 
@@ -45,7 +45,7 @@ The master is `Software/KCMk1_Master` (it replaced `Controller_Main`; design `Ma
 - **CTRLGRP:** Dual Encoder ENC1.
 - **AUDIO:** the AUDIO switch (Switch Group 2).
 - **Panel condition block:** TRIM (rotation stick BTN02), INPUT PREC (THC / RHC PREC), THRTL PREC (THRTL FINE), ENG ARM (ENGINE SAFE / ARM), SWITCH ERR (a switch disagreeing with the vessel) and SIMPIT LOST (no KSP traffic for 5 s in flight).
-- **Bit 3** is now **A/P ARM** (the A/P INHIB / ARM switch). The Annunciator's tile still reads `THRTL ENA` until its firmware changes (`Master_Firmware_Design.md` §17).
+- **Bit 3** is **A/P ARM** (the A/P INHIB / ARM switch); the tile reads `A/P ARM` from Annunciator v3.9.
 - **CAP** reads 0.
 
 ### 2.2 Test craft (build these in the VAB/SPH before starting)
@@ -115,7 +115,7 @@ Run on the pad or in a stable orbit. Repeat every row on **both** Info panels; n
 | PAD-05 | Tap the content area of the pre-launch board | Board dismisses into ASCENT with the chip still `AUTO`; it does not come back while still on the pad | Tap-to-advance |
 | PAD-06 | Press `PRE` (the LNCH key) while the pre-launch board is up | Same as PAD-05: ASCENT, chip `AUTO`. After launch the screen still moves to CIRC by itself at the coast | Btn 1 (1.15.2 #59) |
 | PAD-07 | **C&W** situation column | `PRE-LAUNCH` lit, nothing else in the outer column. The regime column (FLYING LOW … HIGH SPACE) is dark on the pad | Vessel situation |
-| PAD-08 | **C&W** panel condition block | `AUDIO` tile matches audioEnabled, `DEMO` dark, `SIMPIT LOST` dark, `THRTL ENA` (A/P ARM until the tile is relabelled, §2.3) follows the A/P INHIB / ARM switch, `TRIM` / `THRTL PREC` / `INPUT PREC` / `ENG ARM` follow their controller switches | modeFlags |
+| PAD-08 | **C&W** panel condition block | `AUDIO` tile matches audioEnabled, `DEMO` dark, `SIMPIT LOST` dark, `A/P ARM` follows the A/P INHIB / ARM switch, `TRIM` / `THRTL PREC` / `INPUT PREC` / `ENG ARM` follow their controller switches | modeFlags |
 | PAD-09 | **C&W** control-mode tile | `SPC` in green with the vessel-type icon when the mode switch is on Spacecraft; turns red if the switch is moved to Plane or Rover while flying T1 | Mode mismatch (3.8.1) |
 | PAD-10 | **C&W** bottom readouts | Vessel name, TIMEWARP 1x, STG, CORE, CREW, COMM, SKIN, CAP, CTRLGRP all populated. Labels grey uppercase, values in the state colour. CTRLGRP follows the control-group switch and CAP reads 0 | Readout labels (3.8.1) |
 | PAD-11 | **C&W** `ATMO` and `O2 PRESENT` | Both lit on the Kerbin pad | C&W bits 14, 9 |

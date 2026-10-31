@@ -8,7 +8,10 @@
            [4] button rising edges bit 0 100 %, bit 1 UP, bit 2 DOWN, bit 3 0 %;
            [5..6] value, big-endian 0..INT16_MAX (in precision mode the module's fine
            output, not the lever position).
-   The module refuses CMD_SET_THROTTLE while DISABLED or touched.
+   The module refuses CMD_SET_THROTTLE while DISABLED, and while touched unless the
+   master holds the lever (CMD_SET_LEVER_HOLD: an autopilot owns the throttle). Under
+   the hold the module keeps the target, pushes back against a hand for at most
+   0.5 s, and drives back to the target on release (Throttle v2.2).
 ****************************************************************************************/
 #pragma once
 #include <Arduino.h>
@@ -25,3 +28,4 @@ struct LeverState {
 
 LeverState leverState();
 bool       leverCommand(uint16_t pos);             // CMD_SET_THROTTLE; false if not sent
+bool       leverHold(bool on);                     // CMD_SET_LEVER_HOLD; false if not sent

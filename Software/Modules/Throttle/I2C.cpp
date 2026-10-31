@@ -1,7 +1,7 @@
 /**
  * @file        I2C.cpp
- * @version     2.1.0
- * @date        2026-10-27
+ * @version     2.2.0
+ * @date        2026-10-31
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -31,6 +31,20 @@
 static bool _enabled     = false;
 static bool _precision   = false;
 static bool _intAsserted = false;
+static bool _bulb        = false;   // bulb test on: LEDs held on until the stop
+
+// Lever hold (CMD_SET_LEVER_HOLD): while the master owns the lever, the last
+// CMD_SET_THROTTLE target is kept and the lever is held there against a hand for
+// at most THR_PUSH_MAX_MS per touch, then driven back when the hand lets go.
+static volatile bool     _hold       = false;
+static volatile uint16_t _holdTarget = 0;
+static volatile bool     _holdValid  = false;   // a target has arrived since the hold began
+static bool     _wasTouched = false;
+static uint32_t _touchMs    = 0;
+
+static bool _isLimit(uint16_t adc) {
+    return (adc <= THR_DEADZONE_HARD) || (adc >= THR_ADC_MAX - THR_DEADZONE_HARD);
+}
 
 // Local throttle-enable state. In the schematic this was a panel switch
 // (THRTL_ENA); in the final build that switch is not wired, so the local
@@ -97,7 +111,8 @@ static void _enable() {
 static void _disable() {
     _enabled   = false;
     _precision = false;
-    buttonsLEDsOff();
+    _hold      = false;
+    if (!_bulb) buttonsLEDsOff();       // a bulb test keeps them on until its stop
     wiperExitPrecision();
     // Drive motor to 0 and hold there
     motorSetTarget(THR_ADC_MIN, true);
@@ -173,13 +188,12 @@ static void _dispatch() {
             break;
 
         case CMD_BULB_TEST:
-            // Spec: 1-byte payload, 0x01 = start, 0x00 = stop. This module's
-            // bulb test is timed (shared switch backlight as user-visible proxy), so a
-            // 0x00 "stop" is a no-op — it must NOT retrigger the flash.
-            if (_cmdLen >= 2 && _cmdBuf[1] == 0x00) break;
-            buttonsLEDsOn();
-            delay(THR_BULB_TEST_MS);
-            if (!_enabled) buttonsLEDsOff();
+            // Spec §5.2: 0x01 (or no payload) starts, 0x00 stops. Persistent, no
+            // timeout, not blocking. The five lamps share one enable, so the test
+            // turns them all on; the stop puts them back as the lifecycle has them.
+            _bulb = !(_cmdLen >= 2 && _cmdBuf[1] == 0x00);
+            if (_bulb || _enabled) buttonsLEDsOn();
+            else                   buttonsLEDsOff();
             break;
 
         case CMD_DISABLE:
@@ -218,6 +232,7 @@ static void _dispatch() {
             buttonsClearAll();
             wiperReset();
             _precision       = false;
+            _hold            = false;
             _pendingEvents   = 0;
             _lifecycle       = KMC_STATUS_ACTIVE;
             _enable();
@@ -230,16 +245,27 @@ static void _dispatch() {
             break;
 
         case CMD_SET_THROTTLE:
-            // Controller commands a specific throttle position
-            if (_cmdLen >= 3 && _enabled && !wiperIsTouched()) {
+            // Controller commands a specific throttle position. Refused while
+            // touched, unless the master holds the lever: then the target is
+            // kept, and i2cSyncINT() decides whether to push or wait.
+            if (_cmdLen >= 3 && _enabled && (_hold || !wiperIsTouched())) {
                 uint16_t target16 = ((uint16_t)_cmdBuf[1] << 8) | _cmdBuf[2];
                 // Convert from INT16 space back to ADC space
                 uint16_t targetADC = (uint16_t)map((long)target16,
                                                     0L, (long)INT16_MAX,
                                                     0L, 1023L);
-                bool isLimit = (targetADC <= THR_DEADZONE_HARD) ||
-                               (targetADC >= THR_ADC_MAX - THR_DEADZONE_HARD);
-                motorSetTarget(targetADC, isLimit);
+                if (_hold) { _holdTarget = targetADC; _holdValid = true; }
+                if (!wiperIsTouched()) motorSetTarget(targetADC, _isLimit(targetADC));
+            }
+            break;
+
+        case CMD_SET_LEVER_HOLD:
+            // 0x01: an autopilot owns the throttle and the master drives the
+            // lever; hold it against a hand (stall-limited). 0x00: the pilot's.
+            if (_cmdLen >= 2) {
+                bool on = (_cmdBuf[1] == 0x01) && _enabled;
+                if (on && !_hold) _holdValid = false;   // wait for the first target
+                _hold = on;
             }
             break;
 
@@ -341,27 +367,35 @@ void i2cSyncINT() {
     }
 
     bool touched = wiperIsTouched();
+    uint32_t now = millis();
+    if (touched && !_wasTouched) _touchMs = now;
 
-    if (_lifecycle == KMC_STATUS_ACTIVE) {
-        if (touched) {
-            // Pilot is touching — stop motor and let wiper run free
-            motorStop();
-        } else {
-            // Read and cache button events.
-            // OR-accumulate so events aren't lost if i2cSyncINT() runs
-            // multiple times before the controller reads the packet.
-            uint8_t events = buttonsGetEvents();
-            _pendingEvents |= events;
-            // The buttons are only reported. The master decides what they do and
-            // moves the lever itself (it ignores them in ENGINE SAFE, in FINE and
-            // under an autopilot): Module UI Reference §12.2.
-        }
-    } else {
-        // DISABLED or BOOT_READY — re-assert target at 0 on touch to
-        // resist pilot input.
-        if (touched) {
-            motorSetTarget(THR_ADC_MIN, true);
-        }
+    // Where the lever belongs when nobody holds it: 0 while DISABLED (or
+    // BOOT_READY), the master's target while it holds the lever, otherwise
+    // nowhere (the pilot owns it and a touch frees it).
+    bool     haveHome = false;
+    uint16_t home     = THR_ADC_MIN;
+    if (_lifecycle != KMC_STATUS_ACTIVE) { haveHome = true; }
+    else if (_hold && _holdValid)        { haveHome = true; home = _holdTarget; }
+
+    if (touched) {
+        // Push back for at most THR_PUSH_MAX_MS per touch, then let go.
+        if (haveHome && (now - _touchMs) < THR_PUSH_MAX_MS) motorSetTarget(home, _isLimit(home));
+        else                                                 motorCancel();
+    } else if (_wasTouched && haveHome) {
+        motorSetTarget(home, _isLimit(home));             // the hand let go: drive back
+    }
+    _wasTouched = touched;
+
+    if (_lifecycle == KMC_STATUS_ACTIVE && !touched) {
+        // Read and cache button events.
+        // OR-accumulate so events aren't lost if i2cSyncINT() runs
+        // multiple times before the controller reads the packet.
+        uint8_t events = buttonsGetEvents();
+        _pendingEvents |= events;
+        // The buttons are only reported. The master decides what they do and
+        // moves the lever itself (it ignores them in ENGINE SAFE, in FINE and
+        // under an autopilot): Module UI Reference §12.2.
     }
 
     // Input-driven INT only asserts in ACTIVE. In BOOT_READY the INT is held

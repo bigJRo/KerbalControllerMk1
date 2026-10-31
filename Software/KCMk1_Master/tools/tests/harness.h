@@ -164,6 +164,7 @@ struct ModuleSim : SimDevice {
   int16_t axes[3] = { 0, 0, 0 };
   uint16_t thrPos = 0;                     // throttle: lever position (0..INT16_MAX)
   bool thrPrec = false, touched = false;   // throttle: precision mode, pilot touching
+  bool thrHold = false; uint16_t thrTarget = 0;   // throttle: CMD_SET_LEVER_HOLD, last target accepted
   int16_t value = -1;                      // display modules: last CMD_SET_VALUE
   uint8_t dispState = 0;                   // display modules: state byte (packet byte 5)
   uint16_t dispValue = 0;                  // display modules: value (bytes 6..7)
@@ -174,7 +175,7 @@ struct ModuleSim : SimDevice {
   ModuleSim(uint8_t a, uint8_t t, uint8_t l, uint8_t ln, ModKind k) : addr(a), type(t), len(l), line(ln), kind(k) {}
   int pin() const { return PIN_INT_LINE[line]; }
   void setInt(bool low) { intLow = low; stubPin(pin()) = low ? LOW : HIGH; }
-  void powerOn() { life = KMC_STATUS_BOOT_READY; cnt = 0; state = change = 0; events = 0; thrPos = 0; thrPrec = touched = false; setInt(true); }
+  void powerOn() { life = KMC_STATUS_BOOT_READY; cnt = 0; state = change = 0; events = 0; thrPos = 0; thrPrec = touched = thrHold = false; setInt(true); }
   void moveTo(uint8_t newLine) { stubPin(pin()) = HIGH; line = newLine; stubPin(pin()) = intLow ? LOW : HIGH; }
   int countCmd(uint8_t c) const { int n = 0; for (auto &v : cmds) if (!v.empty() && v[0] == c) n++; return n; }
   uint8_t lastCmd() const { return cmds.empty() ? 0 : cmds.back()[0]; }
@@ -185,10 +186,14 @@ struct ModuleSim : SimDevice {
       case KMC_CMD_GET_IDENTITY: identPending = true; break;
       case KMC_CMD_SET_LED_STATE: if (n >= 9) { memcpy(led, b + 1, 8); ledWrites++; } break;
       case KMC_CMD_ENABLE:  life = KMC_STATUS_ACTIVE; break;
-      case KMC_CMD_DISABLE: life = KMC_STATUS_DISABLED; setInt(false); if (kind == KIND_THROTTLE) thrPos = 0; break;
-      case KMC_CMD_SET_THROTTLE:      // refused while disabled or touched (I2C spec §9.4)
-        if (n >= 3 && life == KMC_STATUS_ACTIVE && !touched) { thrPos = (uint16_t)(b[1] << 8 | b[2]); signal(); }
+      case KMC_CMD_DISABLE: life = KMC_STATUS_DISABLED; setInt(false); if (kind == KIND_THROTTLE) { thrPos = 0; thrHold = false; } break;
+      case KMC_CMD_SET_THROTTLE:      // refused while disabled, or touched without the hold (I2C spec §9.4)
+        if (n >= 3 && life == KMC_STATUS_ACTIVE && (!touched || thrHold)) {
+          thrTarget = (uint16_t)(b[1] << 8 | b[2]);
+          if (!touched) { thrPos = thrTarget; signal(); }
+        }
         break;
+      case KMC_CMD_SET_LEVER_HOLD: if (n >= 2) thrHold = b[1] == 1 && life == KMC_STATUS_ACTIVE; break;
       case KMC_CMD_SET_PRECISION: if (n >= 2) { thrPrec = b[1] != 0; signal(); } break;
       case KMC_CMD_SET_VALUE: if (n >= 3) { value = (int16_t)(b[1] << 8 | b[2]); dispValue = (uint16_t)value; } break;
       case KMC_CMD_ACK_FAULT: fault = false; break;

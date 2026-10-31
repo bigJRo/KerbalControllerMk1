@@ -282,7 +282,7 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 
 - **Act on press or on release.** Most handlers act on *pressed or tapped*. The heat-shield and parachute buttons act on *release*, so that a 2 s hold can be a reset without first firing the button (§8.5).
 - **LEDs:** handlers set the wanted state per button; the bus sends only changes, at most every 50 ms per module. LTG TEST overrides everything while held.
-- **Bulb test** *(stage 3)*: the spec's start / stop. Today's button, joystick and throttle firmware runs a fixed 2 s test that blocks inside its I2C handler instead (§17), so after a start the master sends nothing to the modules for 2.1 s, and sends the stop after that.
+- **Bulb test** *(stage 3; reworked 2026-10-31)*: the spec's start / stop. LTG TEST sends the start; its release sends the stop once the test has shown for at least 0.5 s (`MODBUS_BULB_MIN_MS`), so a flick between two reads still shows. The modules no longer block (button / joystick libraries and Throttle, §17), so the bus carries on as normal during the test.
 
 ### 6.5 Module lifecycle
 
@@ -558,7 +558,7 @@ The availability rules are checked against Simpit on the bench.
 | DEMO | SCE |
 | WARP | Simpit |
 | AUDIO | AUDIO switch |
-| **A/P ARM** (bit 3, was THRTL ENA) | A/P INHIB / ARM switch. The tile label changes in the Annunciator firmware (§17) |
+| **A/P ARM** (bit 3, was THRTL ENA) | A/P INHIB / ARM switch (tile relabelled in Annunciator v3.9) |
 | TRIM | Master trim set |
 | AUTOPILOT | Any autopilot or HOLD engaged |
 | DEBUG | UPTLM |
@@ -654,7 +654,7 @@ While engaged:
 - **Throttle:**
   - the autopilot sets it, and the lever is driven to match;
   - the lever, its buttons and touch are ignored;
-  - the throttle module pushes back against a hand for at most about 0.5 s (stall protection), then returns the lever when released (Throttle firmware change, §17);
+  - the master sends `CMD_SET_LEVER_HOLD` while an autopilot owns the throttle; the throttle module then keeps the target against a hand for at most 0.5 s per touch (stall protection), lets go, and drives the lever back when released (Throttle v2.2, I2C spec §9.4);
   - FINE is dropped while the autopilot owns the throttle and restored after.
 
 The STICK / LEVER disconnect reasons go unused. The autopilot design docs are updated to match (§17).
@@ -814,12 +814,12 @@ From Inventory §11:
 
 | # | Where | Change |
 |---|---|---|
-| 1 | Annunciator | Tile THRTL ENA → A/P ARM; touch DOCK to toggle (a real dock / undock event overrides it); demo follows the flag only |
+| 1 | Annunciator | Tile THRTL ENA → A/P ARM (**done**, v3.9); touch DOCK to toggle (a real dock / undock event overrides it); demo follows the flag only |
 | 2 | Info Displays | Demo follows the flag only; Info Display 1: input test screen, two-finger gesture, its frame |
 | 3 | Resource Display | Demo follows the flag only |
 | 4 | Sys Info Display | New firmware: boot, status and SWITCH ERR screens; microSD icons; its protocol |
-| 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release. (Its buttons are now only reported: v2.1 no longer moves the lever on them. **Done**, 2026-10-27) |
-| 6 | Pre-Warp module | BTN03 preset 1440 → 360 min (1 Kerbin day) |
+| 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release: `CMD_SET_LEVER_HOLD`, at most 0.5 s per touch (**done**, v2.2, 2026-10-31). Its buttons are only reported (v2.1) |
+| 6 | Pre-Warp module | BTN03 preset 1440 → 360 min (1 Kerbin day). **Done** (v2.1) |
 | 7 | Function Control module | Colour table to the confirmed layout; B4 FLAPS SEAFOAM. **Done** (v2.1) |
 | 8 | AUX CTRL module | B8 UNDOCK GOLD; B10 PRI ROSE, B11 ALT PINK. **Done** (v2.1) |
 | 9 | Stability Control module | B10 HOLD MAGENTA. **Done** (v2.1) |
@@ -828,8 +828,8 @@ From Inventory §11:
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |
 | 14 | Annunciator reference, user manual | A/P ARM, DOCK touch, switch rules |
-| 16 | Info Display firmware | Names for the new disconnect reasons 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC (§11.4). (AIRBRK follows the control group from the summary frame's byte 8: **done**, InfoDisp v1.17) |
-| 15 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` as the spec says (§5.2): 0x01 starts and 0x00 stops, no timeout, without blocking. Today each runs a fixed 2 s test with `delay()` inside its I2C receive handler, so LTG TEST cannot be held and the module is deaf meanwhile (the master keeps off the bus for 2.1 s, §6.4) |
+| 16 | Info Display firmware | Names for the new disconnect reasons 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC (§11.4): **done**, v1.17.1. (AIRBRK follows the control group: **done**, v1.17.0) |
+| 15 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` as the spec says (§5.2): 0x01 starts and 0x00 stops, no timeout, without blocking. **Done** (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); the master's 2.1 s quiet window is gone (§6.4) |
 
 ## 18. Open items
 

@@ -43,7 +43,7 @@ static void kcmNominalOrbit() {
   state.maxTemp = 12; state.skinTemp = 8; state.crewCount = 3; state.stage = 2;
   state.twIndex = 0; physTW = false; state.commNet = 100; state.ctrlGrp = 1; state.capValue = 0;
   state.gear_on = false; state.abort_on = false;
-  state.modeFlags = (1u << MF_AUDIO) | (1u << MF_THRTL_ENA);
+  state.modeFlags = (1u << MF_AUDIO) | (1u << MF_AP_ARM);
 }
 
 // The same ship 22 km up on a committed re-entry, in the plasma blackout.

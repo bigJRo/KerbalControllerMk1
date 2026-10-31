@@ -451,7 +451,7 @@ The master pushes it a new frame while the screen is open (new display firmware 
 
 **What changes elsewhere:**
 - The "any pilot input disconnects every autopilot" rule in `Hold_Mode_Autopilot.md`, `Mission_Autopilot.md` and today's `throttle_link` / `rotation_link` is retired. The STICK / LEVER disconnect reasons go unused.
-- The Throttle Module firmware refuses lever commands while touched (`CMD_SET_THROTTLE` checks `wiperIsTouched()`), so holding the lever against the pilot needs a module firmware change.
+- The Throttle Module firmware refused lever commands while touched (`CMD_SET_THROTTLE` checks `wiperIsTouched()`), so holding the lever against the pilot needed a module firmware change: `CMD_SET_LEVER_HOLD` (Throttle v2.2).
 - A motorised fader driven against a hand stalls its motor (L293D, 9 V). The hold needs a stall limit, for example: drive back to position whenever the hand lets go, and push against the hand for at most a short time.
 
 ### 8.11 Input test screen (Information Display 1)
@@ -769,7 +769,7 @@ Matches the reference.
 | Encoder button | Reset to 0 |
 | BTN01 | Preset 5 min |
 | BTN02 | Preset 1 hour |
-| BTN03 | Preset **1 Kerbin day = 6 h = 360 min**. The module firmware has 1440, an Earth day |
+| BTN03 | Preset **1 Kerbin day = 6 h = 360 min** (module firmware 1440 before v2.1) |
 
 **Dual Encoder (0x2D):**
 
@@ -791,9 +791,9 @@ Collected from this review; each is a separate piece of work.
 
 | # | Where | Change |
 |---|---|---|
-| 1 | Annunciator firmware | Tile label THRTL ENA → A/P ARM (§8.2) |
+| 1 | Annunciator firmware | Tile label THRTL ENA → A/P ARM (§8.2). **Done** (v3.9, 2026-10-31) |
 | 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light. A later real dock / undock event overrides the touch setting |
-| 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day) |
+| 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day). **Done** (v2.1, 2026-10-31) |
 | 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5); FLAPS SEAFOAM. **Done** (v2.1, 2026-10-27) |
 | 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1): UNDOCK GOLD, PRI ROSE, ALT PINK, no alternate colour. **Done** (v2.1, 2026-10-27) |
 | 6 | Stability Control module firmware | B10 HOLD colour (was RCS): MAGENTA. **Done** (v2.1, 2026-10-27) |
@@ -802,11 +802,11 @@ Collected from this review; each is a separate piece of work.
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch |
 | 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
 | 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11) |
-| 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10) |
+| 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
 | 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |
 | 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
-| 19 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` per the I2C spec: start / stop, no timeout, not blocking. Today a fixed 2 s `delay()` inside the I2C handler (found while building stage 3 of the master) |
+| 19 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` per the I2C spec: start / stop, no timeout, not blocking (was a fixed 2 s `delay()` inside the I2C handler, found while building stage 3 of the master). **Done** (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2, 2026-10-31) |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8) |
 | 11 | Resource Display firmware | Demo follows the master's flag; same entry / exit rule as the other displays (§8.8) |
 | 12 | Annunciator firmware | Check its demo handling against the same rule (§8.8) |

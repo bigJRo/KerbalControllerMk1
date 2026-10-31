@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.18  
+**Version:** 2.19  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
@@ -134,6 +134,7 @@ All commands are initiated by the controller as I2C write transactions. The comm
 | `CMD_ENABLE` | 0x09 | — | Enter ACTIVE lifecycle state |
 | `CMD_DISABLE` | 0x0A | — | Enter DISABLED lifecycle state |
 | `CMD_SET_VALUE` | 0x0D | 2 bytes | Signed int16 big-endian — set display value (display modules only) |
+| `CMD_SET_LEVER_HOLD` | 0x0E | 1 byte | Throttle Module only: 0x01 the master holds the lever, 0x00 releases it (§9.4). `CMD_SET_THROTTLE` 0x0B and `CMD_SET_PRECISION` 0x0C are also Throttle-only (§9.4) |
 
 ### 5.2 Command Semantics
 
@@ -326,7 +327,7 @@ Byte 6:  Value LO
 
 Button events (byte 4) are rising-edge only — cleared after each read. The throttle value represents current slider position regardless of how it was set.
 
-The module starts DISABLED. The controller must send `CMD_ENABLE` to activate motor control and LED illumination. When disabled, the motor drives to 0% and holds, resisting pilot touch.
+The module starts DISABLED. The controller must send `CMD_ENABLE` to activate motor control and LED illumination. When disabled, the motor drives to 0% and holds, resisting pilot touch for at most 500 ms (see below).
 
 Module-specific commands:
 
@@ -334,6 +335,12 @@ Module-specific commands:
 |---------|-------|---------|-------------|
 | `CMD_SET_THROTTLE` | 0x0B | 2 bytes uint16 BE | Command a specific throttle position (0 to INT16_MAX) |
 | `CMD_SET_PRECISION` | 0x0C | 1 byte | 0x01 = enter precision mode, 0x00 = exit |
+| `CMD_SET_LEVER_HOLD` | 0x0E | 1 byte | 0x01 = the master owns the lever (an autopilot owns the throttle), 0x00 = the pilot does. Cleared by `CMD_DISABLE` and `CMD_RESET` |
+
+**Touch and the lever hold** (Throttle v2.2):
+- **Hold off:** a touch stops the motor at once, and `CMD_SET_THROTTLE` is refused while touched.
+- **Hold on:** `CMD_SET_THROTTLE` is accepted while touched and kept as the target. Against a hand the motor pushes back toward the target for at most 500 ms per touch (stall protection), then lets go; when the hand lets go, it drives back to the latest target.
+- **DISABLED:** the motor resists a touch toward 0 % for at most 500 ms, then lets go, and drives back to 0 % on release.
 
 INT asserts on any button press or throttle value change exceeding the minimum change threshold (4 ADC counts).
 
@@ -623,6 +630,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
+| 2.19 | 2026-10-31 | §9.4: `CMD_SET_LEVER_HOLD` (0x0E) for the Throttle Module, and the touch rules with and without it (500 ms stall limit). §5.2's start / stop bulb test is now what every module does (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2). |
 | 2.18 | 2026-10-27 | §15.3: the Info Display summary (0xAA) grows to 9 bytes; byte 8 carries the master's control group 1–6 so the AIRBRK indicator follows it (InfoDisp v1.17, master v0.8.1). An 8-byte summary still reads as group 1. |
 | 2.17 | 2026-10-26 | §11: DISABLED reads return the current inputs (only the INT is suppressed), which the KCMk1 master relies on to read its switch modules in any scene. §15.4: SWITCH_ERR `expected` / `actual` defined. No packet formats changed. |
 | 2.16 | 2026-10-26 | §10.1: LED nibble order corrected to match `kmcLedPackSet()` and every module library (low nibble = even button index); joystick LED positions noted. §11: modules stay ACTIVE on EVA. §12.1: the KCMk1 master's start-up sequence (no CMD_RESET, so the boot INT can be used to learn the module's INT line). No packet formats changed. |

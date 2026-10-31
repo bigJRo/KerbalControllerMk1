@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Throttle_Module.ino
- * @version     2.1.0
- * @date        2026-10-27
+ * @version     2.2.0
+ * @date        2026-10-31
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works

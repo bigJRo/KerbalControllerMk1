@@ -164,7 +164,7 @@ static const uint8_t VSIT_LANDED    = 7;
 /***************************************************************************************
    MODE/STATUS FLAG BIT INDICES (bottom-right 6x2 grid, rev 2)
    state.modeFlags bit positions, row-major to match the grid draw order:
-     Row 0: DEMO  WARP  AUDIO  THRTL_ENA  TRIM  AUTOPILOT
+     Row 0: DEMO  WARP  AUDIO  AP_ARM  TRIM  AUTOPILOT
      Row 1: DEBUG SWITCH_ERR  SIMPIT_LOST  THRTL_PREC  INPUT_PREC  ENG_ARM
    All driven by the master over I2C (default off). Labels/colours in ScreenMain.
    NOTE: the exact label/colour/source for each tile is provisional — confirm
@@ -177,7 +177,7 @@ static const uint8_t VSIT_LANDED    = 7;
 static const uint8_t MF_DEMO        =  0;
 static const uint8_t MF_WARP        =  1;
 static const uint8_t MF_AUDIO       =  2;
-static const uint8_t MF_THRTL_ENA   =  3;
+static const uint8_t MF_AP_ARM      =  3;   // A/P INHIB / ARM switch (was THRTL ENA, same bit)
 static const uint8_t MF_TRIM        =  4;
 static const uint8_t MF_AUTOPILOT   =  5;
 static const uint8_t MF_DEBUG       =  6;
@@ -288,8 +288,8 @@ enum ChuteEnvState : uint8_t {
    and KCMk1_SystemConfig >= 1.2.0 (KCM_HIGH_Q_PA)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 3;
-static const uint8_t SKETCH_VERSION_MINOR = 8;   // 3.8.0: whole-vessel LF / OX channels; LOW dV suppressed with no propellant (#72)
-static const uint8_t SKETCH_VERSION_PATCH = 2;   // 3.8.2: LIFE SUPPORT watches food, water, oxygen only
+static const uint8_t SKETCH_VERSION_MINOR = 9;   // 3.9.0: mode tile 3 reads A/P ARM (was THRTL ENA, same bit)
+static const uint8_t SKETCH_VERSION_PATCH = 0;   // (3.8.2: LIFE SUPPORT watches food, water, oxygen only)
 
 
 /***************************************************************************************

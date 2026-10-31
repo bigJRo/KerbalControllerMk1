@@ -192,13 +192,14 @@ public:
     // --------------------------------------------------------
 
     /**
-     * @brief  Illuminate all LEDs at full white for bulb test.
-     *         Blocks for durationMs milliseconds then restores
-     *         previous state and renders.
-     *
-     * @param  durationMs  Duration of bulb test in milliseconds.
+     * @brief  Start or stop the bulb test (CMD_BULB_TEST 0x01 / 0x00).
+     *         While on, render() lights every LED full white; the
+     *         button states are kept, so stopping restores them. No
+     *         timeout and no blocking: the master decides how long.
+     *         Does not render — call render() after this.
      */
-    void bulbTest(uint16_t durationMs = 2000);
+    void setBulbTest(bool on);
+    bool bulbTestActive() const { return _bulb; }
 
 private:
 
@@ -236,6 +237,7 @@ private:
 
     /** @brief Current flash phase: true = ON, false = OFF. */
     bool _flashOn;
+    volatile bool _bulb;   // bulb test on (set from the I2C receive handler)
 
     /** @brief millis() timestamp of last flash toggle. */
     uint32_t _flashLastToggle;

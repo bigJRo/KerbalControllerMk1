@@ -1,6 +1,6 @@
 # KerbalButtonCore
 
-**Version:** 2.2.0  
+**Version:** 2.3.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
@@ -139,7 +139,7 @@ That's the complete sketch. All I2C communication, button debouncing, LED update
 | CMD_GET_IDENTITY     | `0x01` | none            |
 | CMD_SET_LED_STATE    | `0x02` | 8 bytes         |
 | CMD_SET_BRIGHTNESS   | `0x03` | 1 byte (0–255)  |
-| CMD_BULB_TEST        | `0x04` | 0/1 byte        |
+| CMD_BULB_TEST        | `0x04` | 0/1 byte (1 or none = start, 0 = stop; no timeout, not blocking, since 2.3.0) |
 | CMD_SLEEP            | `0x05` | none            |
 | CMD_WAKE             | `0x06` | none            |
 | CMD_RESET            | `0x07` | none            |
