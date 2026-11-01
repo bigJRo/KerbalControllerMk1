@@ -43,6 +43,7 @@ struct SysInfoSim : SimDevice {
     for (auto &f : frames) {
       if (f.empty() || f[0] != SI_FRAME_BOOT_LINE || f.size() < 4) continue;
       std::string t((const char *)f.data() + 4, f[3]);
+      if (f[2] & 0x40) s.clear();                       // REPLAY: the display starts again
       if ((f[2] & 0x80) && !s.empty()) s.back() = { f[2] & 3, t };
       else s.push_back({ f[2] & 3, t });
     }

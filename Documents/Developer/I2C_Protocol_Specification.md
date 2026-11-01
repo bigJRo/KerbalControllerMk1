@@ -1,11 +1,11 @@
 # Kerbal Controller Mk1 — I2C Protocol Specification
 
-**Version:** 2.20  
+**Version:** 2.21  
 **Status:** Released  
 **Project:** Kerbal Controller Mk1  
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Date:** 2026-10-31
+**Date:** 2026-11-01
 
 ---
 
@@ -655,24 +655,47 @@ These bytes are copied from each display's status packet (bytes 1 onward). A dis
 
 ### 15.4 System Info Display (0x14)
 
-The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 240×320 ST7789, microSD). It shows the master's boot progress, then the controller status, and a window naming the switches in SWITCH ERR (`Master_Firmware_Design.md` §14). Unlike the 7" carriers it has **no boot hold** (no PROCEED handshake) and no RST connection, and it does not use its INT line in this protocol. Every master write is one frame; byte 0 is the frame id. Multi-byte fields are **little-endian**.
+The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, ER-TFTM020-2 240×320 ST7789 in portrait, microSD); firmware `Software/Displays/KCMk1_SysInfo` (v1.0.0), design `Sys_Info_Display_Design.md`. It shows the master's boot progress, then the controller status, and SWITCH ERR (`Master_Firmware_Design.md` §14). Unlike the 7" carriers it has **no boot hold** (no PROCEED handshake) and no RST connection, and it does not use its INT line in this protocol (it holds it high). It is `Wire1` on the RP2350 (I2C1, GPIO 6 / 7). Every master write is one frame; byte 0 is the frame id. Multi-byte fields are **little-endian**.
 
 **Master → System Info Display:**
 
 | Id | Frame | Bytes | Layout |
 |---|---|---|---|
-| 0xB0 | CONTROL | 2 | `[B0, ctrl]`. ctrl bit 0 debug, bit 1 demo; bits 7:2 reserved (0). Sent every 500 ms: the heartbeat |
-| 0xB1 | BOOT_LINE | 4 + len | `[B1, seq, attr, len, text…]`. `seq` increments per line; `len` ≤ 40, ASCII. `attr` bits 1:0 severity (0 info, 1 OK, 2 warning, 3 error); bit 7 REPLACE — overwrite the previous line instead of adding one (the live WAITING FOR KSP line) |
+| 0xB0 | CONTROL | 2 | `[B0, ctrl]`. ctrl bit 0 debug, bit 1 demo, bit 2 **flight scene** (the master's SCENE_CHANGE state; from v2.21); bits 7:3 reserved (0). Sent every 500 ms: the heartbeat |
+| 0xB1 | BOOT_LINE | 4 + len | `[B1, seq, attr, len, text…]`. `seq` increments per line; `len` ≤ 40, ASCII. `attr` bits 1:0 severity (0 info, 1 OK, 2 warning, 3 error); bit 6 **REPLAY** — the first line of a replay: clear the boot log first (from v2.21); bit 7 REPLACE — overwrite the previous line instead of adding one (the live `KSP WAIT n S` line). From master v0.10.0 the text is each line's **short form**, written to fit two rows of the display's Roboto Black 32; Serial keeps the long form (`Sys_Info_Display_Design.md` §8.2) |
 | 0xB2 | BOOT_DONE | 1 | `[B2]`: leave the boot screen for the status screen |
-| 0xB3 | STATUS | 13 | `[B3, valid, vbus u16 (0.01 V), current i16 (mA), power u16 (0.1 W), temp i8 (°C), fan u16 (rpm), links u8, known u8]`. `valid` bit 0 power, bit 1 temperature, bit 2 fan. `links` / `known`: a bit per board with its own Simpit link — bit 0 master, 1 Annunciator, 2 Info Display 1, 3 Info Display 2, 4 Resource Display; `known` = answered its last status read. Sent every 500 ms after BOOT_DONE |
+| 0xB3 | STATUS | 27 (13) | See below. Sent every 500 ms after BOOT_DONE. A display accepts the 13-byte form of v2.15–v2.20 and shows the module and service items as unknown |
 | 0xB4 | SWITCH_ERR | 2 + 3n | `[B4, n, {id, expected, actual} × n]`, n ≤ 10; n = 0 closes the window. Switch ids: 1–8 = Switch Group 1 B16–B23, 9–16 = Switch Group 2 B16–B23. `expected` = the switch's position, `actual` = the vessel's state (1 = the switch's second position, e.g. GEAR DOWN) |
+| 0xB8 | BACKLIGHT | 4 | `[B8, flight %, standby %, 0]`, the frame the 7" carriers take (§15.3), sent with them every 2 s and at once on a change (from v2.21). Levels clamped to `KCM_BL_MIN_PCT`, 300 ms ramp. The display uses the flight level in a flight scene and on any alert, the standby level on its status screen otherwise |
 
-**System Info Display → master** (4-byte read): `[0xAF, flags, fwMajor, fwMinor]`; flags bit 0 ready, bit 1 SD card OK, bit 2 boot screen showing.
+**STATUS (0xB3), 27 bytes:**
+
+| Byte | Field | Notes |
+|---|---|---|
+| 0 | 0xB3 | |
+| 1 | valid | bit 0 power, bit 1 temperature, bit 2 fan |
+| 2–3 | bus voltage, u16 | 0.01 V |
+| 4–5 | current, i16 | mA |
+| 6–7 | power, u16 | 0.1 W |
+| 8 | board temperature, i8 | °C |
+| 9–10 | fan, u16 | rpm |
+| 11 | links | a bit per board with its own Simpit link: bit 0 master (up and not SIMPIT LOST), 1 Annunciator, 2 Info Display 1, 3 Info Display 2, 4 Resource Display |
+| 12 | known | the same bits: answered its last status read (bit 0 always set) |
+| 13 | fan duty, % | from v2.21: bytes 13–26 |
+| 14 | module count | 13 (`MOD_COUNT`) |
+| 15–16 | present, u16 | bit n = module n answering, in the master's order: UI, FUNCTION, ACTION, STABILITY, VEHICLE, TIME, AUX, ROTATION, TRANSLATION, GPWS, PRE-WARP, THROTTLE, DUAL ENC |
+| 17–18 | FAULT, u16 | status byte bit 2 in the module's last packet |
+| 19–20 | I2C errors, u16 | NACKs, short reads and other bus errors since the master started, saturating |
+| 21–24 | master uptime, u32 | seconds |
+| 25–26 | master version | major, minor |
+
+**System Info Display → master** (4-byte read): `[0xAF, flags, fwMajor, fwMinor]`; flags bit 0 ready, bit 1 microSD card mounted (a card is optional: clear is not an error), bit 2 boot screen showing.
 
 **Behaviour:**
-- **Boot screen** from power-on until BOOT_DONE. Lines are added (or, with REPLACE, overwrite the last one) as they arrive.
-- **No frame for 5 s while the boot screen is up:** show `MASTER NOT RESPONDING` and keep the last line visible.
-- **Late start:** the master keeps the boot lines it sent before the display answered and replays them when it does, so a display that starts late still shows the boot from the top.
+- **Splash** at power-on for at least 2 s and until the first BOOT_LINE, never more than 5 s (built in, or `/KCMK1/SPLASH.BMP` from the card). Frames received meanwhile are kept.
+- **Boot screen** from then until BOOT_DONE: the newest line, the counts of OK / warning / error lines on show, and the newest problem. A STATUS frame also ends the boot screen (a display that missed BOOT_DONE).
+- **No frame for 5 s,** on the boot or the status screen: `MASTER / SILENT n S`, with the last values kept in grey (the status screen part from v2.21).
+- **Late start:** the master keeps the boot lines it sent before the display answered and replays them when it does, the first with REPLAY set and none with REPLACE, so a display that starts late still shows the boot from the top and never counts a line twice.
 
 ---
 
@@ -700,6 +723,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
+| 2.21 | 2026-11-01 | §15.4: the **Sys Info Display** firmware is built (`KCMk1_SysInfo` v1.0.0, master v0.10.0). CONTROL gains bit 2 (flight scene); BOOT_LINE gains attr bit 6 REPLAY and carries each line's short form; STATUS grows 13 → 27 bytes (fan duty, module count, present and FAULT masks, I2C errors, uptime, master version; the 13-byte form still accepted); the BACKLIGHT frame (0xB8) now goes to 0x14 too; the 5 s silence rule covers the status screen; read flag bit 1 = card mounted. Full STATUS byte table added. No module-side packet formats changed. |
 | 2.20 | 2026-10-31 | §15.3: **BACKLIGHT frame** `[0xB8, flight %, standby %, 0]` to all four 7" carriers (GitHub #47; KCMk1_SystemConfig 1.3.0, KCM_Display 1.1.0, master v0.9.0), and the Info Display 1 **input test frames** (sync 0xAB; page 0, 40 bytes every 100 ms: presence, FAULT, packet-seen masks and the button modules' raw state words; page 1, 24 bytes every 500 ms: INT lines, display-module values and 2-bit lifecycles; page 2, 24 bytes every 500 ms: the four 7" displays' status) sent while the display reports screen 18 in status byte 2 (InfoDisp v1.18.0). No module-side packet formats changed. |
 | 2.19 | 2026-10-31 | §9.4: `CMD_SET_LEVER_HOLD` (0x0E) for the Throttle Module, and the touch rules with and without it (500 ms stall limit). §5.2's start / stop bulb test is now what every module does (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2). |
 | 2.18 | 2026-10-27 | §15.3: the Info Display summary (0xAA) grows to 9 bytes; byte 8 carries the master's control group 1–6 so the AIRBRK indicator follows it (InfoDisp v1.17, master v0.8.1). An 8-byte summary still reads as group 1. |

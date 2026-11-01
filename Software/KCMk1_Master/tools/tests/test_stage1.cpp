@@ -16,16 +16,18 @@ static void testNormalBoot(Rig &r) {
   stubMillis() = 0; stubRetain()[0] = stubRetain()[1] = stubRetain()[2] = 0;
   resetStubs(); stubSimpit().onInit = captureFirstInit; stubSrsr() = 1;
   setup();
-  CHECK(r.si.shows("CONFIG"), "CONFIG line");
-  CHECK(r.si.shows("KCMk1 MASTER v" KCM_MASTER_VERSION), "banner with version");
+  CHECK(r.si.shows("I2C 400 kHz") && serialHas("CONFIG  I2C 400 kHz"), "CONFIG line (short on Sys Info, long on Serial)");
+  CHECK(r.si.shows("MASTER v" KCM_MASTER_VERSION) && serialHas("KCMk1 MASTER v" KCM_MASTER_VERSION), "banner with version");
   CHECK(r.si.shows("RESET: POWER ON"), "reset cause power on");
-  CHECK(r.si.sevOf("INA228   OK") == SEV_OK && r.si.sevOf("EMC2101  OK") == SEV_OK, "board devices OK");
-  CHECK(r.si.shows("ANNUNCIATOR") && r.si.shows("INFO DISPLAY 1") && r.si.shows("INFO DISPLAY 2") &&
-        r.si.shows("RESOURCE DISPLAY"), "a line per display");
+  CHECK(r.si.sevOf("POWER MON OK") == SEV_OK && r.si.sevOf("FAN CTRL OK") == SEV_OK, "board devices OK");
+  CHECK(serialHas("INA228   OK") && serialHas("EMC2101  OK"), "board devices on Serial, long form");
+  CHECK(r.si.shows("ANNUNCIATOR OK KSP") && r.si.shows("INFO DISP 1 OK") && r.si.shows("INFO DISP 2 OK") &&
+        r.si.shows("RES DISP OK"), "a line per display");
+  CHECK(serialHas("RESOURCE DISPLAY"), "display names in full on Serial");
   CHECK(r.si.sevOf("ANNUNCIATOR") == SEV_OK, "annunciator OK");
-  CHECK(r.si.shows("KSP: NOT RUNNING"), "first KSP attempt reported");
-  CHECK(r.si.shows("WATCHDOG ON"), "watchdog line");
-  CHECK(r.si.shows("WAITING FOR KSP"), "waiting line");
+  CHECK(r.si.shows("KSP NOT RUNNING"), "first KSP attempt reported");
+  CHECK(r.si.shows("WATCHDOG 5 S"), "watchdog line");
+  CHECK(r.si.shows("KSP WAIT 0 S"), "waiting line");
   CHECK(stubWdt().started && fabs(stubWdt().timeout - 5.0) < 1e-3 && fabs(stubWdt().trigger - 0.5) < 1e-3,
         "watchdog 5 s, warning 0.5 s before");
   CHECK(stubWdt().callback != nullptr, "watchdog warning callback set");
@@ -65,13 +67,14 @@ static void testWaitingForKsp(Rig &r) {
   runFor(4200);
   CHECK(stubSimpit().initCalls - tries0 == 2, "retry every 2 s (%d)", stubSimpit().initCalls - tries0);
   auto scr = r.si.screen();
-  CHECK(!scr.empty() && scr.back().second.find("WAITING FOR KSP") == 0, "waiting line is the last line");
-  CHECK(!scr.empty() && scr.back().second.find(" S  TRY") != std::string::npos, "waiting line counts time and tries");
+  CHECK(!scr.empty() && scr.back().second.find("KSP WAIT ") == 0, "waiting line is the last line");
+  CHECK(!scr.empty() && scr.back().second.find(" S") != std::string::npos && serialHas(" S  TRY"),
+        "waiting line counts time (and tries, on Serial)");
   size_t lines = scr.size();
   runFor(2000);
   CHECK(r.si.screen().size() == lines, "waiting line replaced in place, not appended");
   runFor(60000, 20);
-  CHECK(r.si.shows("KSP RUNNING?"), "hint after 60 s");
+  CHECK(r.si.shows("CHECK KSP, SIMPIT, USB") && serialHas("KSP RUNNING?"), "hint after 60 s");
   CHECK(r.si.count(SI_FRAME_BOOT_DONE) == 0, "still holding");
   CHECK(r.si.count(SI_FRAME_CONTROL) > 100, "heartbeat while holding");
 }
@@ -204,12 +207,12 @@ static void testAbsentParts(Rig &r) {
   stubSimpit().kspUp = false;
   boot(1);
   CHECK(r.si.sevOf("ANNUNCIATOR") == SEV_ERROR && r.si.shows("NO ANSWER"), "missing display in red");
-  CHECK(r.si.sevOf("INA228") == SEV_ERROR && r.si.shows("MISSING"), "missing INA228 in red");
-  CHECK(r.si.shows("WATCHDOG ON"), "boot carries on");
+  CHECK(r.si.sevOf("POWER MON MISSING") == SEV_ERROR, "missing INA228 in red");
+  CHECK(r.si.shows("WATCHDOG 5 S"), "boot carries on");
   r.emc.regs[0xFD] = { 0x99 };
   r.attachAll(); r.si.frames.clear();
   boot(1);
-  CHECK(r.si.sevOf("EMC2101") == SEV_ERROR, "wrong part ID is not OK");
+  CHECK(r.si.sevOf("FAN CTRL MISSING") == SEV_ERROR, "wrong part ID is not OK");
   r.emc.regs[0xFD] = { 0x16 };
 }
 
@@ -222,7 +225,18 @@ static void testSysInfoLate(Rig &r) {
   CHECK(r.si.frames.empty() && serialHas("WAITING FOR KSP"), "boot on Serial only");
   Wire.attach(ADDR_SYSINFO, &r.si);
   runFor(5200);
-  CHECK(r.si.shows("KCMk1 MASTER") && r.si.shows("WAITING FOR KSP"), "boot lines replayed when it answers");
+  CHECK(r.si.shows("MASTER v") && r.si.shows("KSP WAIT"), "boot lines replayed when it answers");
+  { const std::vector<uint8_t> *first = nullptr;
+    for (auto &f : r.si.frames) if (!f.empty() && f[0] == SI_FRAME_BOOT_LINE) { first = &f; break; }
+    CHECK(first && ((*first)[2] & SI_ATTR_REPLAY) && !((*first)[2] & SI_ATTR_REPLACE), "the replay's first line says so");
+    int replace = 0, n = 0;                       // the replay: the first unbroken run of lines
+    bool in = false;
+    for (auto &f : r.si.frames) {
+      bool isLine = !f.empty() && f[0] == SI_FRAME_BOOT_LINE;
+      if (isLine) { in = true; n++; if (f[2] & SI_ATTR_REPLACE) replace++; }
+      else if (in) break;
+    }
+    CHECK(n > 5 && replace == 0, "replayed lines are plain lines (%d of %d with REPLACE)", replace, n); }
 }
 
 static void testDemoBoot(Rig &r) {
@@ -235,8 +249,8 @@ static void testDemoBoot(Rig &r) {
   CHECK(g_master.kspConnected, "connected at boot");
   runFor(20);
   CHECK(r.si.count(SI_FRAME_BOOT_DONE) == 1, "released on connect");
-  int connected = 0; for (auto &l : r.si.screen()) if (l.second == "KSP: CONNECTED") connected++;
-  CHECK(connected == 1, "KSP: CONNECTED shown once (%d)", connected);
+  int connected = 0; for (auto &l : r.si.screen()) if (l.second == "KSP CONNECTED") connected++;
+  CHECK(connected == 1, "KSP CONNECTED shown once (%d)", connected);
   // Demo before KSP: no handshake attempts at all.
   r.si.frames.clear(); stubSimpit().kspUp = false;
   resetStubs(); stubSrsr() = 1;
@@ -274,8 +288,8 @@ static void testWatchdog(Rig &r) {
   // Reset #1
   r.si.frames.clear(); stubRtc() += 8;
   boot(1u << 4);
-  CHECK(r.si.shows("RESET: WATCHDOG (1 IN A ROW)"), "watchdog reset reported");
-  CHECK(r.si.shows("HUNG IN carrierService @0x13"), "where it hung");
+  CHECK(r.si.shows("RESET: WATCHDOG x1") && serialHas("RESET: WATCHDOG (1 IN A ROW)"), "watchdog reset reported");
+  CHECK(r.si.shows("HUNG IN carrierService @13") && serialHas("HUNG IN carrierService @0x13"), "where it hung");
   CHECK(stubWdt().started && !boardResetInfo().guardTripped, "runs normally after one reset");
   // Reset #2 and #3 within 60 s
   wdtCrumb(LS_SIMPIT); r.si.frames.clear(); stubRtc() += 8;

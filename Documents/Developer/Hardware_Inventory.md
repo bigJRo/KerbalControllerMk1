@@ -498,7 +498,7 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 - **Waiting for KSP has no timeout,** but after 60 s a hint line is added (KSP running? Simpit COM port? USB cable?).
 - **A master that hangs cannot report itself,** so the Sys Info Display has its own timeout. If it hears nothing from the master for 5 s during boot, it shows *MASTER NOT RESPONDING* with the last step received.
 
-**Graphics:** small icons and logos (fan, power, thermometer, link, …) stored on its microSD card; set to be chosen.
+**Graphics:** icons (power, thermometer, fan, link, modules) built into the firmware; the microSD card only holds an optional power-on splash. Layout and readability on the ER-TFTM020-2: `Sys_Info_Display_Design.md`.
 
 **What this needs:**
 - **The master** sends boot messages *from the start of `setup()`*. It waits briefly for the Sys Info Display to answer first, and mirrors every line to Serial. Every I2C call during setup has a timeout, so a stuck bus becomes a visible message rather than a hang.
@@ -518,7 +518,7 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 | 5 | Rotation stick button | Settled: by control mode (§10.8) |
 | 6 | Sys Info Display | Settled (§8.12); protocol defined with the firmware design |
 | 7 | Input test screen: detailed design | Settled (§8.11), as built in Info Display v1.18.0 and master v0.9.0 |
-| 8 | Sys Info Display icons / logos | Open (§8.12) |
+| 8 | Sys Info Display icons / logos | Settled: built in (`Sys_Info_Display_Design.md` D1) |
 
 ## 10. Button module review
 
@@ -822,7 +822,7 @@ Collected from this review; each is a separate piece of work.
 | 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): three frames, sync 0xAB (inputs, modules, displays), while the display reports screen 18 |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |
-| 17 | Sys Info Display firmware | New: boot, status and SWITCH ERR screens; microSD icons (§8.12) |
+| 17 | Sys Info Display firmware | **Built:** `Software/Displays/KCMk1_SysInfo` v1.0.0 — boot, status and SWITCH ERR screens, icons built in, optional splash on the card (§8.12, `Sys_Info_Display_Design.md`) |
 | 18 | Autopilot design docs | Retire the pilot-input disconnect rule (§8.10) |
 | 19 | Button, joystick and throttle module firmware | `CMD_BULB_TEST` per the I2C spec: start / stop, no timeout, not blocking (was a fixed 2 s `delay()` inside the I2C handler, found while building stage 3 of the master). **Done** (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2, 2026-10-31) |
 | 10 | Info Display firmware | Demo follows the master's flag only: stop clearing it on a scene change (§8.8). **Done** (v1.18.0, 2026-10-31) |

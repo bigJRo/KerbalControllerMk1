@@ -383,7 +383,7 @@ void moduleBusInit() {
 
 void moduleBusBoot() {
   bool stored = mapLoad();
-  bootLine(SEV_INFO, "INT MAP: %s", stored ? "STORED" : "DEFAULT");
+  bootLineS(SEV_INFO, stored ? "INT MAP STORED" : "INT MAP DEFAULT", "INT MAP: %s", stored ? "STORED" : "DEFAULT");
   bool keepActive = boardResetInfo().watchdog;
   uint8_t present = 0;
   for (uint8_t m = 0; m < MOD_COUNT; m++) {
@@ -391,24 +391,27 @@ void moduleBusBoot() {
     int8_t learned;
     uint8_t mapped = intLineOf(m);
     if (!probe(id, true, keepActive, &learned)) {
-      if (g_rt[id].wrongType) bootLine(SEV_ERROR, "%02X %-11s WRONG TYPE", kMod[m].addr, kMod[m].name);
-      else                    bootLine(SEV_ERROR, "%02X %-11s MISSING", kMod[m].addr, kMod[m].name);
+      if (g_rt[id].wrongType) bootLineS(SEV_ERROR, bootFmt("%s WRONG TYPE", kMod[m].name), "%02X %-11s WRONG TYPE", kMod[m].addr, kMod[m].name);
+      else                    bootLineS(SEV_ERROR, bootFmt("%s MISSING", kMod[m].name), "%02X %-11s MISSING", kMod[m].addr, kMod[m].name);
       continue;
     }
     present++;
     if (learned >= 0 && (uint8_t)learned != mapped) {
       assignLine(m, (uint8_t)learned);
-      bootLine(SEV_WARN, "%02X %-11s %-8s LEARNED", kMod[m].addr, kMod[m].name, INT_LINE_NAME[learned]);
+      bootLineS(SEV_WARN, bootFmt("%s INT LEARNED", kMod[m].name),
+                "%02X %-11s %-8s LEARNED", kMod[m].addr, kMod[m].name, INT_LINE_NAME[learned]);
       dbg(DBG_INTMAP, "%s on %s (map had %s)", kMod[m].name, INT_LINE_NAME[learned],
           mapped < INT_LINE_COUNT ? INT_LINE_NAME[mapped] : "none");
     } else {
       if (learned >= 0) g_src[learned] = SRC_LEARNED;
       uint8_t l = intLineOf(m);
-      bootLine(SEV_OK, "%02X %-11s %-8s OK", kMod[m].addr, kMod[m].name, l < INT_LINE_COUNT ? INT_LINE_NAME[l] : "POLLED");
+      bootLineS(SEV_OK, bootFmt("%s OK", kMod[m].name),
+                "%02X %-11s %-8s OK", kMod[m].addr, kMod[m].name, l < INT_LINE_COUNT ? INT_LINE_NAME[l] : "POLLED");
     }
   }
   mapSave();
-  bootLine(present == MOD_COUNT ? SEV_OK : SEV_WARN, "MODULES  %u OF %u", present, (unsigned)MOD_COUNT);
+  bootLineS(present == MOD_COUNT ? SEV_OK : SEV_WARN, bootFmt("MODULES %u/%u", present, (unsigned)MOD_COUNT),
+            "MODULES  %u OF %u", present, (unsigned)MOD_COUNT);
 }
 
 void moduleBusReadSwitches() {
@@ -439,7 +442,7 @@ void moduleBusLearnCarriers() {
     }
   }
   mapSave();
-  bootLine(learnedN == 4 ? SEV_OK : SEV_INFO, "DISPLAY INT LINES  %u OF 4 SEEN", learnedN);
+  bootLineS(learnedN == 4 ? SEV_OK : SEV_INFO, bootFmt("DISP INT %u/4", learnedN), "DISPLAY INT LINES  %u OF 4 SEEN", learnedN);
 }
 
 /***************************************************************************************

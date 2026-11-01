@@ -10,6 +10,8 @@
 #include "state.h"
 #include "i2c_bus.h"
 #include "debug.h"
+#include "module_bus.h"
+#include <KerbalModuleCommon.h>
 
 static const uint8_t SI_REPLAY = 48;   // a whole boot, with every module listed
 
@@ -46,7 +48,7 @@ static uint8_t textLen(const char *t) {
   return n;
 }
 
-static void sendLine(uint8_t attr, const char *text) {
+static void sendLine(uint8_t attr, const char *text) {   // attr may carry SI_ATTR_REPLAY
   uint8_t len = textLen(text);
   uint8_t f[4 + SI_TEXT_MAX];
   f[0] = SI_FRAME_BOOT_LINE; f[1] = ++g_seq; f[2] = attr; f[3] = len;
@@ -58,6 +60,7 @@ static void sendControl() {
   uint8_t ctrl = 0;
   if (g_master.debug) ctrl |= 0x01;
   if (g_master.demo)  ctrl |= 0x02;
+  if (g_vessel.flightScene) ctrl |= SI_CTRL_FLIGHT;
   uint8_t f[2] = { SI_FRAME_CONTROL, ctrl };
   siWrite(f, 2);
 }
@@ -77,9 +80,16 @@ void siInit() {
   g_lastCtlMs = g_lastStatusMs = g_lastProbeMs = millis();
 }
 
+// The first line sent carries REPLAY, so a display that already has some of the boot
+// (it stopped answering for a moment) starts again rather than counting lines twice.
 static void replay() {
-  if (g_replayOverflow) sendLine(SEV_WARN, "(earlier boot lines dropped)");
-  for (uint8_t i = 0; i < g_replayN && g_present; i++) sendLine(g_replay[i].attr, g_replay[i].text);
+  uint8_t first = SI_ATTR_REPLAY;
+  if (g_replayOverflow) { sendLine(SEV_WARN | first, "EARLIER LINES DROPPED"); first = 0; }
+  for (uint8_t i = 0; i < g_replayN && g_present; i++) {
+    // a kept line already replaced the one before it in g_replay: send it as a plain line
+    sendLine((uint8_t)((g_replay[i].attr & ~SI_ATTR_REPLACE) | first), g_replay[i].text);
+    first = 0;
+  }
 }
 
 bool siProbeBoot(uint32_t timeoutMs) {
@@ -140,6 +150,26 @@ static void sendStatus() {
   put16(f + 9, g_status.fanRpm);
   f[11] = (uint8_t)((g_master.kspConnected && !g_master.simpitLost ? SI_LINK_MASTER : 0) | g_master.displayLinks);
   f[12] = (uint8_t)(SI_LINK_MASTER | g_master.displaysKnown);
+  // module health, I2C errors, uptime, version (Sys Info design §7.2)
+  f[13] = g_status.fanDuty;
+  f[14] = MOD_COUNT;
+  uint16_t present = 0, fault = 0;
+  for (uint8_t m = 0; m < MOD_COUNT; m++) {
+    uint8_t p[16];
+    uint8_t n = moduleLastPacket((ModId)m, p);
+    if (modulePresent((ModId)m)) present |= (uint16_t)(1u << m);
+    if (n > 0 && (p[0] & KMC_STATUS_FAULT)) fault |= (uint16_t)(1u << m);   // status byte bit 2, as sent
+  }
+  put16(f + 15, present);
+  put16(f + 17, fault);
+  const BusStats &bs = busStats();
+  uint32_t errs = bs.nackAddr + bs.nackData + bs.other + bs.shortReads;
+  put16(f + 19, (uint16_t)(errs > 0xFFFF ? 0xFFFF : errs));
+  uint32_t up = millis() / 1000;
+  put16(f + 21, (uint16_t)(up & 0xFFFF));
+  put16(f + 23, (uint16_t)(up >> 16));
+  f[25] = KCM_MASTER_VERSION_MAJOR;
+  f[26] = KCM_MASTER_VERSION_MINOR;
   siWrite(f, SI_STATUS_LEN);
 }
 
@@ -151,6 +181,8 @@ static void sendSwitchErrors() {
   }
   if (siWrite(f, (uint8_t)(2 + 3 * g_swErrN))) g_swErrDirty = false;
 }
+
+void siSendBacklight(const uint8_t *frame, uint8_t n) { siWrite(frame, n); }
 
 void siService() {
   uint32_t now = millis();

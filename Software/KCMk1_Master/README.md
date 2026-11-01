@@ -4,7 +4,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | | |
 |---|---|
-| **Version** | 0.9.0 (`KCM_MASTER_VERSION`, `config.h`) |
+| **Version** | 0.10.0 (`KCM_MASTER_VERSION`, `config.h`) |
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (display carriers, BACKLIGHT and input test frames: §15.3; Sys Info Display: §15.4) |
@@ -20,8 +20,8 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | Part | Files | Does |
 |---|---|---|
-| Boot | `boot.*` | Runs the start-up steps. Each step reports a line to the Sys Info Display and to Serial; a step that times out shows in red and start-up carries on. The Sys Info Display stays on its boot screen until KSP connects or demo is on |
-| Sys Info Display | `sysinfo.*` | Boot lines (kept and replayed if the display answers late), heartbeat, status frame, switch-error window |
+| Boot | `boot.*` | Runs the start-up steps. Each step reports a line to the Sys Info Display (a short form that fits two rows, `bootLineS()`) and to Serial (the long form); a step that times out shows in red and start-up carries on. The Sys Info Display stays on its boot screen until KSP connects or demo is on |
+| Sys Info Display | `sysinfo.*` | Boot lines (short forms; kept and replayed if the display answers late, the first marked REPLAY), heartbeat with the flight-scene bit, the 27-byte status frame (supply, fan, links, module present / FAULT masks, I2C errors, uptime, version), the switch-error list, the backlight frame. Display firmware: `Software/Displays/KCMk1_SysInfo` |
 | Displays | `carriers.*` | The four 7" displays' commands every 100 ms with PROCEED, byte for byte as the old master; status reads every 500 ms (each display's own KSP link, and Info Display 1's screen; the last good packet of each is kept for the input test screen). The BACKLIGHT frame `[0xB8, flight %, standby %, 0]` to all four at once on a change and every 2 s; levels from `BL_FLIGHT_PCT` 70 / `BL_STANDBY_PCT` 20, changed with `backlight` (GitHub #47) |
 | Input test | `input_test.*` | While Info Display 1 reports screen 18 (its input test screen, design §13.1), page 0 (every input, 40 bytes, sync 0xAB: presence, FAULT, the button modules' state words as sent) every 100 ms, and page 1 (INT lines, GPWS / Pre-Warp values, lifecycles, 24 bytes) and page 2 (the four 7" displays' last status, 24 bytes) every 500 ms; byte layout in `input_test.h`. Adds up the ENC2 count since boot |
 | KSP link | `simpit_link.*` | Non-blocking handshake every 2 s while KSP is down; inbound dispatch by table; SIMPIT LOST after 5 s of silence in flight, re-handshake after 10 s |
@@ -94,7 +94,7 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
   - SIMPIT LOST and the re-handshake;
   - display link bits;
   - missing parts;
-  - a late Sys Info Display;
+  - a late Sys Info Display (the replay marked REPLAY, no REPLACE in it);
   - bus recovery;
   - the send gate in demo;
   - the console and the debug rate limit;
@@ -133,7 +133,7 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
     - translation and the camera buttons; EVA keys with hysteresis, released when the EVA ends;
     - the lever and its buttons (FINE, ENGINE SAFE); an autopilot owning the throttle (lever driven, pilot ignored, FINE dropped and restored, ENGINE SAFE wins); autopilot rotation axes;
     - demo; the `frame` console command.
-  - board (stage 8): the INA228 and EMC2101 set up at boot, readings, the Sys Info STATUS frame, the fan curve and its hysteresis, the low-supply warning, the `board` command, devices missing; the BACKLIGHT frame to all four displays, its 2 s repeat, the `backlight` command and an out-of-range level refused.
+  - board (stage 8): the INA228 and EMC2101 set up at boot, readings, the Sys Info STATUS frame, the fan curve and its hysteresis, the low-supply warning, the `board` command, devices missing; the BACKLIGHT frame to all four displays and the Sys Info Display, its 2 s repeat, the `backlight` command and an out-of-range level refused; the Sys Info STATUS frame's module, I2C, uptime and version bytes, and the CONTROL flight-scene bit.
   - autopilots (stage 7): a console command engages the hold autopilot, ACKed once, its frame and the summary pushed; sticks ignored and nothing disconnects on stick input; ENGINE SAFE refuses and drops IAS (ALT stays); A/P INHIB disconnects and refuses; the A/P disconnect, A/P OFF, telemetry loss, leaving the flight; HOLD in PLN and RVR through the hold autopilot (INHIB leaves it, a console engage releases it, ENGINE SAFE leaves heading only); the ascent's axes and its ENGINE SAFE drop; the bench consoles.
   - remaining panels (stage 6): UI keys, modifiers, navball, the spaced screenshot macro; Function CAGs and offset; Time warp-to with the lead and each availability rule, STOP, warp up / down, PHYS steps, LOAD held, PAUSE, SAVE; the GPWS relay; the input test frames (none while closed, all three pages and their sizes while Info Display 1 reports screen 18, the raw state words of a button and a switch, a module's FAULT bit, axes, lever, touch, ENC2 count, safe lines, INT lines, each module's lifecycle, the displays answering, their flags and Info Display 2's screen, and the frames stopping on close).
 

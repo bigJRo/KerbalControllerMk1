@@ -206,7 +206,7 @@ static void pushStatus() {
   SiStatus s = {};
   s.powerValid = g_bs.powerValid; s.tempValid = g_bs.tempValid; s.fanValid = g_bs.fanValid;
   s.busV = g_bs.busV; s.currentA = g_bs.currentA; s.powerW = g_bs.powerW;
-  s.tempC = g_bs.tempC; s.fanRpm = g_bs.fanRpm;
+  s.tempC = g_bs.tempC; s.fanRpm = g_bs.fanRpm; s.fanDuty = g_bs.fanDuty;
   siSetStatus(s);
 }
 
