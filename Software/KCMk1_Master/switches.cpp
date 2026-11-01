@@ -232,12 +232,14 @@ void switchesService() {
 void switchesBoot() {
   switchesService();
   if (g_grp[0].known)
-    bootLine(SEV_OK, "SW GRP 1  ENGINE %s  A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ARM" : "INHIB");
+    bootLineS(SEV_OK, bootFmt("ENGINE %s A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ARM" : "INHIB"),
+              "SW GRP 1  ENGINE %s  A/P %s", g_panel.engArm ? "ARM" : "SAFE", g_panel.apArm ? "ARM" : "INHIB");
   else
-    bootLine(SEV_WARN, "SW GRP 1  NOT READ: ENGINE SAFE");
-  if (!g_grp[1].known) bootLine(SEV_WARN, "SW GRP 2  NOT READ");
-  if (g_modeSel.known) bootLine(SEV_OK, "CTRL MODE  %s", kModeName[g_panel.ctrlMode]);
-  else                 bootLine(SEV_WARN, "CTRL MODE  NOT READ: %s", kModeName[g_panel.ctrlMode]);
+    bootLineS(SEV_WARN, "SW GRP 1 NOT READ", "SW GRP 1  NOT READ: ENGINE SAFE");
+  if (!g_grp[1].known) bootLineS(SEV_WARN, "SW GRP 2 NOT READ", "SW GRP 2  NOT READ");
+  if (g_modeSel.known) bootLineS(SEV_OK, bootFmt("CTRL MODE %s", kModeName[g_panel.ctrlMode]), "CTRL MODE  %s", kModeName[g_panel.ctrlMode]);
+  else                 bootLineS(SEV_WARN, bootFmt("MODE NOT READ: %s", kModeName[g_panel.ctrlMode]),
+                                 "CTRL MODE  NOT READ: %s", kModeName[g_panel.ctrlMode]);
 }
 
 static void cmdSwitches(const char *) {

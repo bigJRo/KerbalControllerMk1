@@ -4,10 +4,10 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Sys_Info_Display_Design.md` |
-| **Status** | Draft 3: the review questions are answered (D6–D11). Nothing is built yet. The master side of the link exists (`Software/KCMk1_Master/sysinfo.cpp`, I2C spec §15.4); the display firmware does not |
+| **Status** | Draft 3, approved and **built** (2026-11-01): `Software/Displays/KCMk1_SysInfo` v1.0.0 and master v0.10.0 (I2C spec v2.21). Notes marked *(built)* record where the build settled a detail. Bench checks are in §9.3 |
 | **Board** | 2" TFT Display Driver, KC-01-1901 / 1902 V2.0: XIAO RP2350, **ER-TFTM020-2** 240×320 IPS (ST7789), microSD. Panel A2 slot P2, I2C 0x14 |
 | **Builds on** | `Master_Firmware_Design.md` §5 and §14; `Hardware_Inventory.md` §5.7 and §8.12; `I2C_Protocol_Specification.md` §15.4; the ER-TFTM020-2 datasheet (Eastrising, rev 1.0, 2023-07-07) |
-| **Mockups** | `assets/sysinfo/*.png` (1:1) and `*_x3.png` (3×), from `assets/gen_sysinfo_mockups.py`. They are drawn with the panels' own fonts. The script refuses any text below the size rule of §1.1 |
+| **Mockups** | `assets/sysinfo/*.png` (1:1) and `*_x3.png` (3×), from `assets/gen_sysinfo_mockups.py`. They are drawn with the panels' own fonts. The script refuses any text below the size rule of §1.1. **Firmware renders** of the same scenarios, drawn by the sketch itself: `Documents/User/assets/sysinfo/` (`tools/sysinfo_host.py render`) |
 
 ---
 
@@ -38,7 +38,7 @@ Decided in the review of 2026-10-31:
 | D1 | **Icons are built into the firmware.** The microSD card is optional and only replaces the power-on splash; a missing card is not an error |
 | D2 | **The status screen adds module health:** modules present / missing / in FAULT, I2C error count, master uptime and firmware version. The STATUS frame grows to carry it (§7.2) |
 | D3 | **The backlight follows the master,** as the four 7" displays do (#47): the same BACKLIGHT frame, flight and standby levels, 5 % floor, 300 ms ramp (§6) |
-| D4 | **Everything must be readable on the ER-TFTM020-2** (owner, 2026-10-31): the size rule of §1.1, applied to every string by the mockup script and, later, by `panel_lint.py` |
+| D4 | **Everything must be readable on the ER-TFTM020-2** (owner, 2026-10-31): the size rule of §1.1, applied to every string by the mockup script and by the firmware itself: `Gfx.ino` counts any string below the rule or outside the margins, and the host tests fail on either *(built)* |
 | D5 | **Portrait orientation,** 240 wide × 320 tall (owner, 2026-10-31), matching the A2 window. The ST7789 runs in a portrait rotation (0 or 2), chosen on the bench so the image is upright as mounted (§9.3 #1) |
 
 Answered in the review of 2026-10-31 (§10):
@@ -160,7 +160,7 @@ From the KC-01-1901 V2.0 schematic. GPIO numbers are from Seeed's XIAO RP2350 pi
 
 ### 2.3 Run loop
 
-- **I2C callbacks** run in interrupt context. They only copy each frame (≤ 44 bytes) into an 8-deep queue; a full queue drops the oldest frame. The request callback answers from a status word the loop keeps.
+- **I2C callbacks** run in interrupt context. They only copy each frame (≤ 48 bytes) into a 32-deep queue; a full queue drops the new frame and counts it *(built: 32 deep, since a burst of boot lines can arrive during one 20 ms push; dropping the new frame keeps the queue single-producer safe)*. The request callback answers from a status word the loop keeps.
 - **`loop()`:**
   1. drain the queue;
   2. check the 5 s silence timer;
@@ -208,7 +208,7 @@ The status screen can sit unchanged for hours, the case the datasheet warns abou
 
 ### 3.4 Splash (optional)
 
-- At power-on the display shows a splash for 2 s, or until the first BOOT_LINE, whichever comes later. Lines that arrive meanwhile are queued, not lost.
+- At power-on the display shows a splash for 2 s, or until the first BOOT_LINE, whichever comes later, and never more than 5 s *(built: the cap, so a master that never speaks still gets MASTER SILENT)*. Frames that arrive meanwhile still update the model.
 - The built-in splash is the `KCMk1` wordmark in Roboto Black 48.
 - If a card mounts and holds `/KCMK1/SPLASH.BMP` (240 × 320, uncompressed 16- or 24-bit), that is shown instead. The card is read once, then left alone. Status read flag bit 1 = *card mounted*; a clear bit is not an error.
 
@@ -408,9 +408,11 @@ The replay buffer in `sysinfo.cpp` keeps the short forms, as they are what the d
 ### 9.1 Host checks (no hardware)
 
 These follow `Software/Displays/tools`:
-- **`host_compile.py`:** builds the sketch against host stubs (`Wire1`, `SPI`, `SD`, and an `Adafruit_ST7789` that captures the frame buffer).
-- **`render_screen.py`:** a scenario for each mockup here, drawn by the firmware's own code. The renders replace these mockups in the user docs.
-- **`behaviour_selftest.py`:** frames in, model and screen state out. It covers:
+*(built)* One tool, `tools/sysinfo_host.py`, since this is not a Teensy / RA8876 sketch:
+- **fonts:** the sketch's copies in `src/fonts/` are byte-identical to `fonts_ili`;
+- **build:** the tabs concatenated as the IDE does, prototypes hoisted, `-Wall -Wextra -Werror`, against `tools/host_stubs_sysinfo/` (arduino-pico core, `Wire1`, `SPI`, `SD`, and an `Adafruit_ST7789` that captures the pushed frame);
+- **renders:** a scenario for each mockup here, drawn by the firmware's own code, to `Documents/User/assets/sysinfo/`;
+- **tests:** frames in, model and screen state out. They cover:
   - REPLACE, the counts and wrapping;
   - the 5 s silence on both screens, and recovery;
   - a 13-byte STATUS;
@@ -421,7 +423,8 @@ These follow `Software/Displays/tools`:
   - demo: the KSP row on the DEMO blue;
   - the current caution and warning;
   - a full frame queue.
-- **`panel_lint.py`:** extended to this sketch. A new hard check: no font below the 22 px cap rule, and no string wider than its box at the fonts' real widths.
+- **The size rule and margins** on every string of every test and render (`Gfx.ino`'s counters).
+- **`panel_lint.py KCMk1_SysInfo`:** stale comments and dead constants, as the other sketches.
 
 ### 9.2 Master host tests
 
@@ -465,3 +468,4 @@ Nothing in the design is still open. The remaining checks are on the bench (§9.
 | 1 | 2026-10-31 | First draft: hardware map from KC-01-1901, three screens with mockups, D1–D3, protocol v2.21 proposal |
 | 2 | 2026-10-31 | **Redesigned for readability on the ER-TFTM020-2** (D4); portrait confirmed (D5). Draft 1's text was 1.2–1.8 mm tall (7–10′ at 600 mm). New size rule: a 22 px (2.8 mm, 16′) minimum, so Roboto Black 32 / 48 only. Boot screen: the newest line, counts and newest problem, in place of a log. Status: six large rows and a rotating message area, in place of a dense list. SWITCH ERR takes the whole screen and pages. From the datasheet: active area 30.00 × 40.80 mm, image-sticking measures (no thin lines, a 2 px shift every 10 min, a screen saver), not sunlight-readable, backlight on BLK. The mockup script enforces the size rule and the margins |
 | 3 | 2026-10-31 | Review answers D6–D11: 600 mm; current caution > 7 A and warning > 8 A; 50 / 60 °C; no screen saver; short boot lines (full table, §8.2); demo keeps the screen live, with the KSP row on the Annunciator's DEMO blue (white on `TFT_BLUE`) in place of the magenta border. New mockups: current caution / warning, demo |
+| 3 (built) | 2026-11-01 | Built: `KCMk1_SysInfo` v1.0.0, master v0.10.0, I2C spec v2.21. The frame queue is 32 deep and drops new frames when full; the size rule is checked by the firmware's own counters and `tools/sysinfo_host.py`; replayed boot lines carry REPLAY and never REPLACE. Firmware renders in `Documents/User/assets/sysinfo/` |

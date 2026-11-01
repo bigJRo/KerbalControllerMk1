@@ -61,6 +61,31 @@ how you tell the separately flashed boards apart.
 A panel that stays on its boot screen has not been released by the master; see
 [Troubleshooting](#7-troubleshooting).
 
+### The Sys Info Display (Panel A2)
+
+The small portrait screen on Panel A2 follows the master's start-up. Its boot screen shows:
+- the newest step;
+- how many steps were OK, warnings or errors;
+- the newest warning or error.
+
+It stays there, with `KSP WAIT n S`, until the master's own link to KSP is up or SCE is
+set to AUX (demo). After 60 s it adds `CHECK KSP, SIMPIT, USB`.
+
+Then it changes to the status screen, which it keeps showing from then on, demo included:
+
+| Row | Shows |
+|---|---|
+| Voltage | The 12 V supply: green, yellow below 11.5 V, red below 11.0 V |
+| Current, power | White; yellow above 7 A, red above 8 A |
+| Temperature, fan | Board temperature (yellow from 50 °C, red from 60 °C) and fan rpm (`STOP` if it has stalled) |
+| KSP | Links up of 5: the master and the four 7" displays. In demo the row is on blue, like the Annunciator's DEMO tile |
+| MOD | Modules answering, of 13 |
+| Messages | Each problem in turn, worst first, for 2.5 s each; with none, `ALL SYSTEMS NOMINAL` and then uptime, versions, fan duty and I2C errors |
+
+While any switch disagrees with the vessel, SWITCH ERR takes the whole screen. It lists
+each switch and the state the vessel is in, so you can move the switch to match. Renders
+of every screen are in `assets/sysinfo/`.
+
 ### Standby
 
 Outside a flight scene, and until a panel's own KerbalSimpit link to KSP is up, every
@@ -96,6 +121,8 @@ and read it from the glass.
 | Symptom | Likely cause |
 |---|---|
 | A display stays on its boot screen | The master has not released it (it sends PROCEED with every command). Check the I2C loom to the master and that the master is running |
+| The Sys Info Display shows `MASTER / SILENT n S` | Nothing has come from the master for 5 s: the master has stopped, or the I2C loom to Panel A2 is loose |
+| The Sys Info Display stays on its boot screen at `KSP WAIT` | The master's own link to KSP is not up: KSP running, the Simpit COM port, the USB cable. SCE AUX (demo) also releases it |
 | A display shows standby during a flight | That panel's KerbalSimpit link to KSP is not up. Check its USB connection and the Simpit plugin |
 | BUS VOLTAGE never lights | Needs the Alternate Resource Panel mod |
 | LIFE SUPPORT never lights | Needs TAC Life Support, and a crew aboard |
@@ -108,4 +135,5 @@ and read it from the glass.
 Each panel's own reference covers its screens in detail:
 [Annunciator](Annunciator_Caution_Warning_Reference.md),
 [Information Displays](Info_Display_Screen_Reference.md),
-[Resource Display](Resource_Display_Reference.md).
+[Resource Display](Resource_Display_Reference.md);
+the Sys Info Display is covered by `Documents/Developer/Sys_Info_Display_Design.md`.

@@ -171,6 +171,7 @@ static void pushBacklight(uint32_t now) {
   if (!g_blChanged && now - g_lastBlMs < CARRIER_BACKLIGHT_MS) return;
   uint8_t f[BACKLIGHT_LEN] = { SYNC_BACKLIGHT, g_blFlight, g_blStandby, 0 };
   for (uint8_t c = 0; c < CAR_COUNT; c++) busWrite(kCar[c].addr, f, BACKLIGHT_LEN);
+  siSendBacklight(f, BACKLIGHT_LEN);             // and the Sys Info Display (a no-op while absent)
   if (g_blChanged) dbg(DBG_DISPLAY, "backlight: flight %u %%, standby %u %%", g_blFlight, g_blStandby);
   g_blChanged = false;
   g_lastBlMs = now;
@@ -222,9 +223,10 @@ void carriersBoot() {
       ok = readStatus((CarrierId)c);
       if (!ok) delay(50);
     } while (!ok && millis() - t0 < CARRIER_BOOT_WAIT_MS);
-    if (ok) bootLine(SEV_OK, "%-16s OK  KSP %s", kCar[c].name,
-                     (g_master.displayLinks & kCar[c].linkBit) ? "UP" : "DOWN");
-    else    bootLine(SEV_ERROR, "%-16s NO ANSWER", kCar[c].name);
+    static const char *const kShort[CAR_COUNT] = { "ANNUNCIATOR", "INFO DISP 1", "INFO DISP 2", "RES DISP" };
+    const char *ksp = (g_master.displayLinks & kCar[c].linkBit) ? "UP" : "DOWN";
+    if (ok) bootLineS(SEV_OK, bootFmt("%s OK KSP %s", kShort[c], ksp), "%-16s OK  KSP %s", kCar[c].name, ksp);
+    else    bootLineS(SEV_ERROR, bootFmt("%s NO ANSWER", kShort[c]), "%-16s NO ANSWER", kCar[c].name);
   }
   g_lastStatusMs = millis();
 }

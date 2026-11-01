@@ -186,6 +186,40 @@ prints a heading. The helpers in `common.inc` (`frames()`, `feed()`, `scene()`,
 `vesselChange()`, `tap()`, `touch2()`, `untouch()`, `backlightChecks()`) cover the common
 moves.
 
+## `sysinfo_host.py`
+
+```
+python3 tools/sysinfo_host.py                     # fonts, build, every test, every render
+python3 tools/sysinfo_host.py test [NAME ...]     # behaviour tests only
+python3 tools/sysinfo_host.py render [NAME ...]   # renders only -> Documents/User/assets/sysinfo/
+```
+
+The Sys Info Display (`KCMk1_SysInfo`, XIAO RP2350 + ER-TFTM020-2) is not a Teensy /
+RA8876 sketch, so `host_compile.py`, `render_screen.py` and `behaviour_selftest.py` do not
+cover it; this does all three for it. The tabs are concatenated and the prototypes hoisted
+as the IDE does (`host_compile.py`'s code), then built with `-Wall -Wextra -Werror` against
+`host_stubs_sysinfo/` (arduino-pico core, `Wire1`, `SPI`, `SD`, an `Adafruit_ST7789` that
+keeps the pushed frame) and the real `KCMk1_SystemConfig.h`. `sysinfo_host.inc` plays the
+master: it writes CONTROL, BOOT_LINE, BOOT_DONE, STATUS, SWITCH_ERR and BACKLIGHT frames
+through the `Wire1` stub and reads the 4-byte status back.
+
+It checks, and exits non-zero on any failure:
+- **fonts:** the sketch's `src/fonts/` copies are byte-identical to `fonts_ili` (the sketch
+  cannot use KerbalDisplayCommon, which is Teensy-only);
+- **build:** no warnings;
+- **tests (16):** splash timing; boot counts with REPLACE and REPLAY; word wrap; every
+  short boot line of the design's §8.2 in two rows; MASTER SILENT on both screens and its
+  recovery; STATUS parsing (13 and 27 bytes, bad frames); message order, rotation, the 7 / 8 A
+  current edges, demo and the I2C-errors entry; SWITCH ERR paging and unknown ids; the
+  backlight levels, floor and ramp; the anti-sticking shift; no screen saver over an hour;
+  a push only when the frame changes; a full queue; the status read and pins; the demo KSP
+  row on the DEMO blue; and a worst-case layout run;
+- **the readability rule on every string** of every test and render: `Gfx.ino` counts any
+  font whose capital H is under 22 px (2.8 mm on this panel) and any string outside the
+  2 px margins, and the run fails if either is non-zero;
+- **renders (14):** `SysInfo_<SCENARIO>.png`, 240 × 320, the design's mockups drawn by the
+  firmware.
+
 ## `../libraries/KerbalDisplayCommon/src/fonts_ili/`
 
 The font pipeline lives with the fonts: `ilifont.py` (parse/decode an ILI9341_t3 `.c`),

@@ -16,9 +16,9 @@ static void testDiscovery(Bench &b) {
   printf("modules: discovery and INT learning at power-on\n");
   stubEepromReset();
   boot2(b);
-  CHECK(b.rig.si.shows("INT MAP: DEFAULT"), "no stored map on a fresh EEPROM");
-  CHECK(b.rig.si.shows("MODULES  13 OF 13"), "all 13 found");
-  CHECK(b.rig.si.sevOf("24 VEHICLE") == SEV_OK && b.rig.si.shows("B_INT_4"), "vehicle OK on B_INT_4");
+  CHECK(b.rig.si.shows("INT MAP DEFAULT"), "no stored map on a fresh EEPROM");
+  CHECK(b.rig.si.shows("MODULES 13/13"), "all 13 found");
+  CHECK(b.rig.si.sevOf("VEHICLE OK") == SEV_OK && serialHas("24 VEHICLE     B_INT_4  OK"), "vehicle OK on B_INT_4");
   bool allLearned = true, allDisabled = true, ledsOff = true, intsHigh = true;
   for (uint8_t i = 0; i < MOD_COUNT; i++) {
     uint8_t l = intLineOf(i);
@@ -33,7 +33,7 @@ static void testDiscovery(Bench &b) {
   CHECK(intsHigh, "every boot INT released");
   CHECK(intLineOf(OWNER_ANNUNCIATOR) == L_INT(9) && intLineSource(L_INT(9)) == SRC_LEARNED, "annunciator line learned");
   CHECK(intLineOf(OWNER_INFODISP_2) == L_BINT(9) && intLineOf(OWNER_RESDISP) == L_BINT(12), "display lines learned");
-  CHECK(b.rig.si.shows("DISPLAY INT LINES  4 OF 4"), "display learning reported");
+  CHECK(b.rig.si.shows("DISP INT 4/4"), "display learning reported");
   CHECK(EEPROM.read(0) == 'K' && EEPROM.read(1) == 'I', "map stored in EEPROM");
 }
 
@@ -42,17 +42,17 @@ static void testRecable(Bench &b) {
   b.m(MOD_VEHICLE).moveTo(L_BINT(1));      // Vehicle moved from P4 to P1
   b.m(MOD_TIME).moveTo(L_BINT(5));         // Time moved from P3 to P5
   boot2(b);
-  CHECK(b.rig.si.shows("INT MAP: STORED"), "stored map loaded");
+  CHECK(b.rig.si.shows("INT MAP STORED"), "stored map loaded");
   CHECK(intLineOf(MOD_VEHICLE) == L_BINT(1) && intLineOf(MOD_TIME) == L_BINT(5), "new lines learned");
   CHECK(intLineOwner(L_BINT(4)) == OWNER_NONE && intLineOwner(L_BINT(3)) == OWNER_NONE, "old lines freed");
-  CHECK(b.rig.si.sevOf("24 VEHICLE") == SEV_WARN && b.rig.si.shows("LEARNED"), "re-cabling shown");
+  CHECK(b.rig.si.sevOf("VEHICLE INT LEARNED") == SEV_WARN, "re-cabling shown");
   // Master restarts on its own: modules running, INT high — the stored map is used.
   for (auto &m : b.mods) { m.cmds.clear(); m.life = KMC_STATUS_DISABLED; m.setInt(false); }
   b.attachAll(); b.rig.si.frames.clear();
   resetStubs(); stubSrsr() = 1u << 1;      // software reset
   setup(); hookAll(); panelsSetEnabled(false);
   CHECK(intLineOf(MOD_VEHICLE) == L_BINT(1) && intLineSource(L_BINT(1)) == SRC_STORED, "restart uses the stored map");
-  CHECK(b.rig.si.sevOf("24 VEHICLE") == SEV_OK, "no re-learning needed");
+  CHECK(b.rig.si.sevOf("VEHICLE OK") == SEV_OK, "no re-learning needed");
   // Put the cabling back for the rest of the tests.
   b.m(MOD_VEHICLE).moveTo(L_BINT(4)); b.m(MOD_TIME).moveTo(L_BINT(3));
   boot2(b);
@@ -196,7 +196,7 @@ static void testHealth(Bench &b) {
   b.attachAll(); Wire.attach(0x25, &wrong);
   b.rig.si.frames.clear(); resetStubs(); b.powerOnAll(); wrong.powerOn(); stubSrsr() = 1;
   setup(); hookAll(); panelsSetEnabled(false);
-  CHECK(b.rig.si.sevOf("25 TIME") == SEV_ERROR && b.rig.si.shows("WRONG TYPE"), "wrong module type reported");
+  CHECK(b.rig.si.sevOf("TIME WRONG TYPE") == SEV_ERROR, "wrong module type reported");
   CHECK(!modulePresent(MOD_TIME), "wrong module not used");
 }
 
@@ -206,7 +206,7 @@ static void testReprobe(Bench &b) {
   b.rig.si.frames.clear(); resetStubs(); b.powerOnAll(); stubSrsr() = 1;
   stubSimpit().kspUp = false;
   setup(); hookAll(); panelsSetEnabled(false);
-  CHECK(b.rig.si.sevOf("2B PRE-WARP") == SEV_ERROR && !modulePresent(MOD_PREWARP), "missing at boot");
+  CHECK(b.rig.si.sevOf("PRE-WARP MISSING") == SEV_ERROR && !modulePresent(MOD_PREWARP), "missing at boot");
   Wire.attach(0x2B, &b.m(MOD_PREWARP));
   runFor(5100);
   CHECK(modulePresent(MOD_PREWARP) && b.m(MOD_PREWARP).life == KMC_STATUS_DISABLED, "found by the re-probe");
@@ -230,7 +230,7 @@ static void testReprobe(Bench &b) {
   for (auto &m : b.mods) { m.cmds.clear(); m.life = KMC_STATUS_DISABLED; m.setInt(false); }
   b.attachAll(); b.rig.si.frames.clear(); resetStubs(); stubSrsr() = 1;
   setup(); hookAll(); panelsSetEnabled(false);
-  CHECK(intLineOf(MOD_STABILITY) == 0xFF && b.rig.si.shows("POLLED"), "no line: polled");
+  CHECK(intLineOf(MOD_STABILITY) == 0xFF && b.rig.si.shows("STABILITY OK") && serialHas("POLLED"), "no line: polled");
   enterFlight();
   s.setInt(false);
   g_ev.clear(); s.state |= 1; s.change |= 1; s.cnt++;    // a press with no INT

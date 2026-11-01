@@ -34,21 +34,36 @@ static bool     g_connectedAtBoot;
 
 bool bootHalted() { return g_halted; }
 
-static void vline(BootSev sev, bool replace, const char *fmt, va_list ap) {
+// shortText: what the Sys Info Display shows (nullptr = the same as Serial).
+static void vline(BootSev sev, bool replace, const char *shortText, const char *fmt, va_list ap) {
   char text[SI_TEXT_MAX + 1];
   vsnprintf(text, sizeof text, fmt, ap);
   static const char *const tag[] = { "    ", " OK ", "WARN", "ERR " };
   conPrintf("[%6lu.%03lu] BOOT   %s %s", (unsigned long)(millis() / 1000), (unsigned long)(millis() % 1000),
             tag[sev & 3], text);
-  siBootLine(sev, replace, text);
+  siBootLine(sev, replace, shortText ? shortText : text);
 }
 
 void bootLine(BootSev sev, const char *fmt, ...) {
-  va_list ap; va_start(ap, fmt); vline(sev, false, fmt, ap); va_end(ap);
+  va_list ap; va_start(ap, fmt); vline(sev, false, nullptr, fmt, ap); va_end(ap);
 }
 
 void bootReplace(BootSev sev, const char *fmt, ...) {
-  va_list ap; va_start(ap, fmt); vline(sev, true, fmt, ap); va_end(ap);
+  va_list ap; va_start(ap, fmt); vline(sev, true, nullptr, fmt, ap); va_end(ap);
+}
+
+void bootLineS(BootSev sev, const char *shortText, const char *fmt, ...) {
+  va_list ap; va_start(ap, fmt); vline(sev, false, shortText, fmt, ap); va_end(ap);
+}
+
+void bootReplaceS(BootSev sev, const char *shortText, const char *fmt, ...) {
+  va_list ap; va_start(ap, fmt); vline(sev, true, shortText, fmt, ap); va_end(ap);
+}
+
+const char *bootFmt(const char *fmt, ...) {
+  static char b[SI_TEXT_MAX + 1];
+  va_list ap; va_start(ap, fmt); vsnprintf(b, sizeof b, fmt, ap); va_end(ap);
+  return b;
 }
 
 static void stepConfig() {
@@ -63,16 +78,18 @@ static void stepConfig() {
   pinMode(PIN_EXT_INT_2, INPUT);
   busInit();
   const BusStats &st = busStats();
-  if (st.recoveries) bootLine(SEV_WARN, "I2C BUS WAS HELD LOW: RECOVERED");
-  bootLine(SEV_OK, "CONFIG  I2C %lu kHz", (unsigned long)(I2C_CLOCK_HZ / 1000));
+  if (st.recoveries) bootLineS(SEV_WARN, "I2C BUS RECOVERED", "I2C BUS WAS HELD LOW: RECOVERED");
+  bootLineS(SEV_OK, bootFmt("I2C %lu kHz", (unsigned long)(I2C_CLOCK_HZ / 1000)),
+            "CONFIG  I2C %lu kHz", (unsigned long)(I2C_CLOCK_HZ / 1000));
 }
 
 static void stepBanner() {
   const ResetInfo &r = boardResetInfo();
-  bootLine(SEV_INFO, "KCMk1 MASTER v%s", KCM_MASTER_VERSION);
+  bootLineS(SEV_INFO, bootFmt("MASTER v%s", KCM_MASTER_VERSION), "KCMk1 MASTER v%s", KCM_MASTER_VERSION);
   if (r.watchdog) {
-    bootLine(SEV_ERROR, "RESET: WATCHDOG (%u IN A ROW)", r.streak);
-    if (r.crumbAddr) bootLine(SEV_ERROR, "HUNG IN %s @0x%02X", loopStageName(r.crumbStage), r.crumbAddr);
+    bootLineS(SEV_ERROR, bootFmt("RESET: WATCHDOG x%u", r.streak), "RESET: WATCHDOG (%u IN A ROW)", r.streak);
+    if (r.crumbAddr) bootLineS(SEV_ERROR, bootFmt("HUNG IN %s @%02X", loopStageName(r.crumbStage), r.crumbAddr),
+                               "HUNG IN %s @0x%02X", loopStageName(r.crumbStage), r.crumbAddr);
     else             bootLine(SEV_ERROR, "HUNG IN %s", loopStageName(r.crumbStage));
   } else {
     bootLine(SEV_INFO, "RESET: %s", boardResetCause());
@@ -83,18 +100,18 @@ static void stepBanner() {
 
 static void stepDevices() {
   boardProbeDevices();
-  if (boardHasPowerMon()) bootLine(SEV_OK, "POWER MON  INA228   OK");
-  else                    bootLine(SEV_ERROR, "POWER MON  INA228   MISSING");
-  if (boardHasFanCtrl())  bootLine(SEV_OK, "FAN CTRL   EMC2101  OK");
-  else                    bootLine(SEV_ERROR, "FAN CTRL   EMC2101  MISSING");
+  if (boardHasPowerMon()) bootLineS(SEV_OK, "POWER MON OK", "POWER MON  INA228   OK");
+  else                    bootLineS(SEV_ERROR, "POWER MON MISSING", "POWER MON  INA228   MISSING");
+  if (boardHasFanCtrl())  bootLineS(SEV_OK, "FAN CTRL OK", "FAN CTRL   EMC2101  OK");
+  else                    bootLineS(SEV_ERROR, "FAN CTRL MISSING", "FAN CTRL   EMC2101  MISSING");
 }
 
 static void stepSimpit() {
-  if (g_master.demo) { bootLine(SEV_INFO, "KSP: NOT CONTACTED (DEMO)"); return; }
-  bootLine(SEV_INFO, "KSP: CONNECTING ...");
+  if (g_master.demo) { bootLineS(SEV_INFO, "KSP: DEMO", "KSP: NOT CONTACTED (DEMO)"); return; }
+  bootLineS(SEV_INFO, "KSP CONNECTING", "KSP: CONNECTING ...");
   g_connectedAtBoot = simpitAttempt();
-  if (g_connectedAtBoot) bootReplace(SEV_OK, "KSP: CONNECTED");
-  else                   bootReplace(SEV_WARN, "KSP: NOT RUNNING, RETRYING");
+  if (g_connectedAtBoot) bootReplaceS(SEV_OK, "KSP CONNECTED", "KSP: CONNECTED");
+  else                   bootReplaceS(SEV_WARN, "KSP NOT RUNNING", "KSP: NOT RUNNING, RETRYING");
 }
 
 void bootSequence() {
@@ -114,8 +131,9 @@ void bootSequence() {
   moduleBusLearnCarriers();
   const ResetInfo &r = boardResetInfo();
   if (r.guardTripped) {
-    bootLine(SEV_ERROR, "%u WATCHDOG RESETS IN %lu S: HALTED", r.streak, (unsigned long)WDT_LOOP_GUARD_S);
-    bootLine(SEV_ERROR, "FIX THE FAULT, THEN POWER CYCLE");
+    bootLineS(SEV_ERROR, bootFmt("HALTED: %u WDT RESETS", r.streak),
+              "%u WATCHDOG RESETS IN %lu S: HALTED", r.streak, (unsigned long)WDT_LOOP_GUARD_S);
+    bootLineS(SEV_ERROR, "FIX, THEN POWER CYCLE", "FIX THE FAULT, THEN POWER CYCLE");
     dbgErr(DBG_BOARD, "reboot-loop guard tripped: halted, watchdog not started");
     g_halted = true;
     g_master.bootPhase = BOOT_PHASE_HALT;
@@ -123,11 +141,11 @@ void bootSequence() {
   }
   stepSimpit();                                                     // 8
   wdtStart();                                                       // 9
-  bootLine(SEV_OK, "WATCHDOG ON  %u S", (unsigned)WDT_TIMEOUT_S);
+  bootLineS(SEV_OK, bootFmt("WATCHDOG %u S", (unsigned)WDT_TIMEOUT_S), "WATCHDOG ON  %u S", (unsigned)WDT_TIMEOUT_S);
   g_master.setupDoneMs = millis();
   g_waitStartMs = g_lastWaitLineMs = millis();
   g_master.bootPhase = BOOT_PHASE_WAIT_KSP;
-  if (!g_master.kspConnected && !g_master.demo) bootLine(SEV_INFO, "WAITING FOR KSP  0 S");
+  if (!g_master.kspConnected && !g_master.demo) bootLineS(SEV_INFO, "KSP WAIT 0 S", "WAITING FOR KSP  0 S");
 }
 
 void bootService() {
@@ -135,7 +153,7 @@ void bootService() {
   uint32_t now = millis();
   if (g_master.kspConnected || g_master.demo) {
     if (!g_master.kspConnected) bootLine(SEV_OK, "DEMO MODE");
-    else if (!g_connectedAtBoot) bootLine(SEV_OK, "KSP: CONNECTED");
+    else if (!g_connectedAtBoot) bootLineS(SEV_OK, "KSP CONNECTED", "KSP: CONNECTED");
     siBootDone();
     g_master.bootPhase = BOOT_PHASE_RUN;
     dbg(DBG_BOARD, "boot screen released (%s)", g_master.kspConnected ? "KSP connected" : "demo");
@@ -146,9 +164,11 @@ void bootService() {
   uint32_t s = (now - g_waitStartMs) / 1000;
   if (!g_hintShown && now - g_waitStartMs >= BOOT_KSP_HINT_MS) {
     g_hintShown = true;
-    bootLine(SEV_WARN, "KSP RUNNING? SIMPIT COM PORT? USB?");
-    bootLine(SEV_INFO, "WAITING FOR KSP  %lu S  TRY %lu", (unsigned long)s, (unsigned long)simpitAttempts());
+    bootLineS(SEV_WARN, "CHECK KSP, SIMPIT, USB", "KSP RUNNING? SIMPIT COM PORT? USB?");
+    bootLineS(SEV_INFO, bootFmt("KSP WAIT %lu S", (unsigned long)s),
+              "WAITING FOR KSP  %lu S  TRY %lu", (unsigned long)s, (unsigned long)simpitAttempts());
     return;
   }
-  bootReplace(SEV_INFO, "WAITING FOR KSP  %lu S  TRY %lu", (unsigned long)s, (unsigned long)simpitAttempts());
+  bootReplaceS(SEV_INFO, bootFmt("KSP WAIT %lu S", (unsigned long)s),
+               "WAITING FOR KSP  %lu S  TRY %lu", (unsigned long)s, (unsigned long)simpitAttempts());
 }

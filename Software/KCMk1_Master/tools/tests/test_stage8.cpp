@@ -4,6 +4,8 @@
 // the `board` console command.
 #include "harness.h"
 #include "carriers.h"
+#include "i2c_bus.h"
+#include "module_bus.h"
 
 static void ina(RegDevice &d, float v, float a, float w) {
   const float lsb = 10.0f / 524288.0f;
@@ -47,6 +49,26 @@ void runStage8() {
   const auto *f = rig.si.last(SI_FRAME_STATUS);
   CHECK(f && f->size() == SI_STATUS_LEN && (*f)[1] == 0x07 && le16(*f, 2) == 1200 && le16(*f, 4) == 1500 &&
         le16(*f, 6) == 180 && (*f)[8] == 22 && le16(*f, 9) >= 1799, "STATUS frame: 12.00 V, 1500 mA, 18.0 W, 22 C, rpm");
+  if (f && f->size() == SI_STATUS_LEN) {        // the extended frame (Sys Info design §7.2)
+    uint16_t present = 0;
+    for (uint8_t m = 0; m < MOD_COUNT; m++) if (modulePresent((ModId)m)) present |= (uint16_t)(1u << m);
+    const BusStats &bst = busStats();
+    uint32_t errs = bst.nackAddr + bst.nackData + bst.other + bst.shortReads;
+    uint32_t up = (uint32_t)le16(*f, 21) | ((uint32_t)le16(*f, 23) << 16);
+    CHECK((*f)[13] == 30 && (*f)[14] == MOD_COUNT, "STATUS: fan duty 30 %%, %u modules", (unsigned)MOD_COUNT);
+    CHECK(le16(*f, 15) == present && le16(*f, 17) == 0, "STATUS: present mask %04X, no FAULT", present);
+    CHECK(le16(*f, 19) == (errs > 0xFFFF ? 0xFFFF : errs), "STATUS: I2C errors %lu", (unsigned long)errs);
+    CHECK(up <= millis() / 1000 && up + 1 >= millis() / 1000, "STATUS: uptime %lu s", (unsigned long)up);
+    CHECK((*f)[25] == KCM_MASTER_VERSION_MAJOR && (*f)[26] == KCM_MASTER_VERSION_MINOR, "STATUS: version");
+  }
+  {
+    const auto *c = rig.si.last(SI_FRAME_CONTROL);
+    CHECK(c && c->size() == 2 && !((*c)[1] & SI_CTRL_FLIGHT), "CONTROL: not in a flight scene");
+    g_vessel.flightScene = true; runFor(600);
+    c = rig.si.last(SI_FRAME_CONTROL);
+    CHECK(c && ((*c)[1] & SI_CTRL_FLIGHT), "CONTROL: bit 2 in a flight scene");
+    g_vessel.flightScene = false; runFor(600);
+  }
 
   printf("board: the fan curve and its hysteresis\n");
   emc(rig.emc, 35, 2400); runFor(1100);
@@ -86,6 +108,9 @@ void runStage8() {
     Serial.out.clear(); Serial.stubType("backlight 35 8\n"); runFor(150);
     const auto *f = rig.id2.lastFrame(SYNC_BACKLIGHT);
     CHECK(f && (*f)[1] == 35 && (*f)[2] == 8 && n(rig.res) == k0 + 2, "console: new levels sent at once");
+    const auto *si = rig.si.last(SYNC_BACKLIGHT);
+    CHECK(si && si->size() == BACKLIGHT_LEN && (*si)[1] == 35 && (*si)[2] == 8 && (*si)[3] == 0,
+          "the Sys Info Display gets the same BACKLIGHT frame");
     Serial.out.clear(); Serial.stubType("backlight 140\n"); runFor(50);
     CHECK(serialHas("0..100") && carrierBacklightFlight() == 35, "an out-of-range level is refused");
     carrierSetBacklight(BL_FLIGHT_PCT, BL_STANDBY_PCT); runFor(150);

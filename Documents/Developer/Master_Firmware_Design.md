@@ -772,14 +772,25 @@ Built (Info Display v1.18.0, master v0.9.0); the full design is in Inventory §8
 
 ## 14. Sys Info Display
 
+Firmware `Software/Displays/KCMk1_SysInfo` (v1.0.0); design `Sys_Info_Display_Design.md` (Draft 3, built).
+
 | Screen | When | Content |
 |---|---|---|
-| **Boot** | Power-on until KSP connects or demo is on | The boot lines of §5, a `WAITING FOR KSP` line, and the 60 s hint. `MASTER NOT RESPONDING` plus the last line if nothing arrives for 5 s |
-| **Controller status** | Normal running | 12 V voltage, current, power; board temperature; fan speed; KSP link state of the master and each display |
-| **SWITCH ERR window** | While SWITCH ERR is lit | In front of the status screen, naming each switch in error (switch, expected, actual) until all clear |
+| **Boot** | Power-on until KSP connects or demo is on | The newest boot line of §5 (its short form), the counts of OK / warning / error lines, and the newest problem; `KSP WAIT n S` while waiting, and the 60 s hint. `MASTER / SILENT n S` if nothing arrives for 5 s |
+| **Controller status** | Normal running, demo included | 12 V voltage, current (yellow above 7 A, red above 8 A) and power; board temperature and fan; KSP links up of 5 (on the DEMO blue in demo); modules present of 13; a rotating message area naming each problem, or `ALL SYSTEMS NOMINAL` and service items (uptime, versions, fan duty, I2C errors) |
+| **SWITCH ERR** | While SWITCH ERR is lit | Takes the whole screen: each switch in error and the vessel's state, five a page, until all clear |
 
-- **Graphics and layout:** designed in `Sys_Info_Display_Design.md` (Draft 2, for review): icons built in, the microSD card only for an optional splash, and every string at least 2.8 mm tall on the ER-TFTM020-2.
-- **Protocol (0x14):** I2C Protocol Specification §15.4 (sync 0xAF). Frames: CONTROL (heartbeat), BOOT_LINE (with REPLACE for the live waiting line), BOOT_DONE, STATUS, SWITCH_ERR; and a 4-byte status read. The master keeps the boot lines it sent before the display answered and replays them when it does.
+- **Readability:** every string is Roboto Black 32 or 48, at least 2.8 mm tall on the ER-TFTM020-2 (16 arcmin at 600 mm), in portrait.
+- **Protocol (0x14):** I2C Protocol Specification §15.4 (sync 0xAF, v2.21). Frames:
+  - CONTROL: the heartbeat, with debug, demo and the flight scene;
+  - BOOT_LINE: short forms, with REPLACE for the live waiting line and REPLAY on a replay's first line;
+  - BOOT_DONE;
+  - STATUS: 27 bytes, with fan duty, module present / FAULT masks, I2C errors, uptime and version;
+  - SWITCH_ERR;
+  - BACKLIGHT: the 7" displays' frame.
+
+  There is also a 4-byte status read. The master keeps the boot lines it sent before the display answered and replays them when it does.
+- **Short boot lines:** `bootLineS()` sends the display a short form that fits two rows and Serial the long form (`boot.h`; table in the Sys Info design §8.2).
 
 ## 15. Verification
 
@@ -858,6 +869,7 @@ From Inventory §11:
 | 16 | Bench: the INA228 shunt is 15 mΩ (KC-01-1701) and its readings match a meter; the EMC2101 duty setting and rpm match the fan | Stage 8 bench test |
 | 17 | Bench: the displays' backlight shows no flicker at low duty, and the 5 % floor (`KCM_BL_MIN_PCT`) is still readable on the real panel; the standby level dims each display on its standby screen (§13) | Display bench test |
 | 18 | Bench: the input test screen opens and closes with the gesture on Info Display 1 and follows every input (§13.1) | Display bench test |
+| 19 | Bench: the Sys Info Display: pin map, ST7789 at 62.5 MHz, upright in portrait, readable at the eye distance, backlight floor, splash card, power-on order, watchdog, image sticking, power draw (`Sys_Info_Display_Design.md` §9.3) | Display bench test |
 
 ---
 

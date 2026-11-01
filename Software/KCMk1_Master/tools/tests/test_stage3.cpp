@@ -56,7 +56,7 @@ static void testFirstRead(Bench &b) {
   CHECK(interlockEngineState() == ENG_ARMED, "ENGINE already on ARM is armed straight away");
   CHECK(g_panel.audio && !g_panel.chuteArm && !g_master.demo, "AUDIO LIVE, CHUTE SAFE, demo off");
   CHECK(g_panel.ctrlMode == CTRL_MODE_RVR, "control mode RVR");
-  CHECK(b.rig.si.shows("SW GRP 1  ENGINE ARM  A/P ARM") && b.rig.si.shows("CTRL MODE  RVR"), "boot lines");
+  CHECK(b.rig.si.shows("ENGINE ARM A/P ARM") && b.rig.si.shows("CTRL MODE RVR"), "boot lines");
   enterFlight();
   actions(0);                                    // gear up, SAS off: both disagree
   runFor(20);
@@ -230,7 +230,7 @@ static void testEngine(Bench &b) {
   stubSimpit().kspUp = false; stubSrsr() = 1; setup();
   runFor(200);
   CHECK(!g_panel.engArm && !g_panel.apArm && interlockEngineState() == ENG_SAFE, "ENGINE SAFE and A/P INHIB until read");
-  CHECK(b.rig.si.sevOf("SW GRP 1  NOT READ") == SEV_WARN, "boot line");
+  CHECK(b.rig.si.sevOf("SW GRP 1 NOT READ") == SEV_WARN, "boot line");
 }
 
 static void testSafeLines(Bench &b) {
