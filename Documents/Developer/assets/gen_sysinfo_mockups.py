@@ -29,7 +29,8 @@ def c565(v):
 
 BLACK, OFFB, DGREY, GREY, LGREY, WHITE = map(c565, (0x0000, 0x2104, 0x39E7, 0x8410, 0xBDF7, 0xFFFF))
 GREEN, RED, DRED = map(c565, (0x07E0, 0xF800, 0x6000))
-YELLOW, ORANGE, SKY, NAVY, MAGENTA = map(c565, (0xFDC2, 0xFBE0, 0x761F, 0x000F, 0xF81F))
+YELLOW, ORANGE, SKY, NAVY, MAGENTA, BLUE = map(c565, (0xFDC2, 0xFBE0, 0x761F, 0x000F, 0xF81F, 0x001F))
+DEMO_BG = BLUE              # the Annunciator's lit DEMO tile: white on TFT_BLUE (ScreenMain.ino modeGrid)
 
 _fc, _cap = {}, {}
 def font(name):
@@ -178,8 +179,9 @@ def status(name, v=12.08, a=1.84, w=22.3, t=38, rpm=2140, ksp=(5, 5), mods=(13, 
     vc = GREY if g else GREEN if v >= 11.5 else YELLOW if v >= 11.0 else RED
     s.icon(M, 8, ICON["bolt"], vc)
     s.text(W - M, -4, R48, "%.2fV" % v, vc, "r")
-    s.text(M, 46, R32, "%.2fA" % a, GREY if g else WHITE)
-    s.text(W - M, 46, R32, "%.1fW" % w, GREY if g else WHITE, "r")
+    ac = GREY if g else RED if a > 8.0 else YELLOW if a > 7.0 else WHITE
+    s.text(M, 46, R32, "%.2fA" % a, ac)
+    s.text(W - M, 46, R32, "%.1fW" % w, ac, "r")
     tc = GREY if g else GREEN if t < 50 else YELLOW if t < 60 else RED
     s.icon(M, 98, ICON["therm"], tc)
     s.text(36, 92, R32, "%dC" % t, tc)
@@ -187,6 +189,9 @@ def status(name, v=12.08, a=1.84, w=22.3, t=38, rpm=2140, ksp=(5, 5), mods=(13, 
     s.icon(112, 98, ICON["fan"], fc)
     s.text(W - M, 92, R32, "%d" % rpm if rpm else "STOP", fc, "r")
     kc = GREY if g else GREEN if ksp[0] == ksp[1] else ORANGE
+    if demo and not g:      # demo: the KSP row is drawn as the Annunciator's DEMO tile
+        s.rect(0, 136, W, 40, DEMO_BG)
+        kc = WHITE
     s.icon(M, 144, ICON["link"], kc)
     s.text(40, 138, R32, "KSP", kc)
     s.text(W - M, 138, R32, "%d/%d" % ksp, kc, "r")
@@ -199,11 +204,11 @@ def status(name, v=12.08, a=1.84, w=22.3, t=38, rpm=2140, ksp=(5, 5), mods=(13, 
         s.text(W // 2, 236, R32, "MASTER", WHITE, "c")
         s.text(W // 2, 276, R32, "SILENT %d S" % stale, WHITE, "c")
     else:
-        l1, l2, c = msg
+        l1, l2, c = msg[:3]
+        if len(msg) > 3:    # an entry on a block (DEMO MODE: white on the DEMO tile blue)
+            s.rect(0, 226, W, 72, msg[3])
         s.text(M, 228, TXT, l1, c)
         s.text(M, 228 + PITCH, TXT, l2, c)
-    if demo:   # demo: a magenta frame round the whole screen
-        s.frame(0, 0, W, H, MAGENTA, 3)
     s.save(name)
 
 # ---------------------------------------------------------------- SWITCH ERR
@@ -225,16 +230,18 @@ def swerr(name, errs, page=None):
 os.makedirs(OUT, exist_ok=True)
 for f in os.listdir(OUT):
     if f.endswith(".png"): os.remove(os.path.join(OUT, f))
-boot("SysInfo_BOOT", (1, "29 TRANSLATION INT_7 OK"), (9, 0, 0), None, elapsed="2 S")
-boot("SysInfo_BOOT_WAIT", (0, "WAITING FOR KSP  74 S  TRY 15"), (24, 3, 2),
-     (3, "RESOURCE DISPLAY NO ANSWER"), elapsed="81 S")
-boot("SysInfo_BOOT_HUNG", (1, "22 ACTION INT_1 OK"), (8, 0, 0), None, silent=12, elapsed="14 S")
+boot("SysInfo_BOOT", (1, "TRANSLATION OK"), (9, 0, 0), None, elapsed="2 S")
+boot("SysInfo_BOOT_WAIT", (0, "KSP WAIT 74 S"), (24, 3, 2),
+     (3, "RES DISP NO ANSWER"), elapsed="81 S")
+boot("SysInfo_BOOT_HUNG", (1, "ACTION OK"), (8, 0, 0), None, silent=12, elapsed="14 S")
 status("SysInfo_STATUS")
 status("SysInfo_STATUS_SERVICE", msg=("UPTIME", "01:23:45", LGREY))
-status("SysInfo_STATUS_FAULTS", v=10.84, a=3.02, w=32.7, t=52, rpm=0, ksp=(3, 5), mods=(12, 13),
-       msg=("SUPPLY LOW", "10.84 V", RED), demo=True)
-status("SysInfo_STATUS_FAULTS_2", v=10.84, a=3.02, w=32.7, t=52, rpm=0, ksp=(3, 5), mods=(12, 13),
-       msg=("RESOURCE", "NO ANSWER", RED), demo=True)
+status("SysInfo_STATUS_FAULTS", v=10.84, a=8.31, w=90.1, t=52, rpm=0, ksp=(3, 5), mods=(12, 13),
+       msg=("CURRENT", "HIGH 8.31 A", RED))
+status("SysInfo_STATUS_FAULTS_2", v=11.32, a=7.24, w=82.0, t=52, rpm=0, ksp=(3, 5), mods=(12, 13),
+       msg=("RESOURCE", "NO ANSWER", RED))
+status("SysInfo_STATUS_DEMO", ksp=(4, 5), msg=("DEMO MODE", "ON", WHITE, DEMO_BG), demo=True)
+status("SysInfo_STATUS_DEMO_2", ksp=(4, 5), msg=("ALL SYSTEMS", "NOMINAL", GREEN), demo=True)
 status("SysInfo_STATUS_STALE", stale=7)
 swerr("SysInfo_SWITCH_ERR", [("GEAR", "UP"), ("SAS", "OFF"), ("BRAKE", "REL")])
 swerr("SysInfo_SWITCH_ERR_PAGED", [("CHUTE", "SAFE"), ("GEAR", "UP"), ("BRAKE", "REL"), ("EXT LT", "OFF"),

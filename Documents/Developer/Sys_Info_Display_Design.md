@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Sys_Info_Display_Design.md` |
-| **Status** | Draft 2, for review. Nothing is built yet. The master side of the link exists (`Software/KCMk1_Master/sysinfo.cpp`, I2C spec §15.4); the display firmware does not |
+| **Status** | Draft 3: the review questions are answered (D6–D11). Nothing is built yet. The master side of the link exists (`Software/KCMk1_Master/sysinfo.cpp`, I2C spec §15.4); the display firmware does not |
 | **Board** | 2" TFT Display Driver, KC-01-1901 / 1902 V2.0: XIAO RP2350, **ER-TFTM020-2** 240×320 IPS (ST7789), microSD. Panel A2 slot P2, I2C 0x14 |
 | **Builds on** | `Master_Firmware_Design.md` §5 and §14; `Hardware_Inventory.md` §5.7 and §8.12; `I2C_Protocol_Specification.md` §15.4; the ER-TFTM020-2 datasheet (Eastrising, rev 1.0, 2023-07-07) |
 | **Mockups** | `assets/sysinfo/*.png` (1:1) and `*_x3.png` (3×), from `assets/gen_sysinfo_mockups.py`. They are drawn with the panels' own fonts. The script refuses any text below the size rule of §1.1 |
@@ -41,7 +41,16 @@ Decided in the review of 2026-10-31:
 | D4 | **Everything must be readable on the ER-TFTM020-2** (owner, 2026-10-31): the size rule of §1.1, applied to every string by the mockup script and, later, by `panel_lint.py` |
 | D5 | **Portrait orientation,** 240 wide × 320 tall (owner, 2026-10-31), matching the A2 window. The ST7789 runs in a portrait rotation (0 or 2), chosen on the bench so the image is upright as mounted (§9.3 #1) |
 
-Everything else in this draft is a **proposal** to confirm. The questions are collected in §10.
+Answered in the review of 2026-10-31 (§10):
+
+| # | Decision |
+|---|---|
+| D6 | **Design eye distance 600 mm** (§1.1) |
+| D7 | **Current caution above 7 A (yellow), warning above 8 A (red)** (§4.2) |
+| D8 | **Temperature caution 50 °C, warning 60 °C** (§4.2) |
+| D9 | **No screen saver:** the screen always shows its information (§2.4) |
+| D10 | **Shorter boot lines** from the master, each fitting two rows, with the long forms kept on Serial (§8.2) |
+| D11 | **Demo mode:** the status screen works as normal. The KSP row is drawn in the Annunciator's DEMO colour: white on `TFT_BLUE`, as its lit DEMO tile (`ScreenMain.ino` `modeGrid`) (§4.1) |
 
 ---
 
@@ -77,7 +86,7 @@ From the ER-TFTM020-2 datasheet:
 | Supply | 3.0–3.5 V, up to 90 mA | For `Power_Budget.md` |
 | Image sticking | A fixed image held for more than 2 h can leave a ghost. Advice: block patterns rather than thin lines; shift borders now and then; black or mid-grey backgrounds | §2.4 |
 
-**Size rule.** The common legibility guidance (ANSI/HFES 100, ISO 9241-303) asks for a capital letter to subtend at least **16 minutes of arc**, and 20–22′ is preferred. The design viewing distance is **600 mm** (an arm's length to Panel A2; §10 Q1). That gives:
+**Size rule.** The common legibility guidance (ANSI/HFES 100, ISO 9241-303) asks for a capital letter to subtend at least **16 minutes of arc**, and 20–22′ is preferred. The design viewing distance is **600 mm** (an arm's length to Panel A2; D6). That gives:
 
 | | Cap height | Pixels (0.1275 mm) |
 |---|---|---|
@@ -168,13 +177,13 @@ The status screen can sit unchanged for hours, the case the datasheet warns abou
 - **Black background,** as the datasheet advises for long-held images.
 - **Shift:** every 10 minutes the whole image moves to the next of five positions: centre, then 2 px up, right, down, left. Every layout keeps a 2 px margin, so nothing is cut off. The move is too small to notice.
 - **The message area changes** every 2.5 s (§4.3), so its block is never held.
-- **Screen saver** outside a flight scene (§10 Q5): after 10 minutes with no alert and no change in the link or module counts, the screen goes black. It wakes on entering a flight scene, on any alert, or on any change to KSP or MOD.
+- **No screen saver** (D9): the screen always shows its information. The shift, the black background and the changing message area are the measures against sticking. Bench check #8 looks for a ghost after a day.
 
 ## 3. Boot screen
 
 ![Boot screen, waiting for KSP](assets/sysinfo/SysInfo_BOOT_WAIT_x3.png) ![Boot screen, master silent](assets/sysinfo/SysInfo_BOOT_HUNG_x3.png)
 
-*Left: a boot with warnings and errors, now waiting for KSP. Right: the master stopped sending 12 s ago, after its last step.*
+*Left: a boot with warnings and errors, now waiting for KSP (short boot lines, §8.2). Right: the master stopped sending 12 s ago, after its last step.*
 
 ### 3.1 Layout
 
@@ -189,7 +198,7 @@ The status screen can sit unchanged for hours, the case the datasheet warns abou
 
 - **Severity colours** (BOOT_LINE `attr` bits 1:0): info light grey, OK green, warning yellow, error red.
 - **REPLACE** (attr bit 7) overwrites the newest line: this is the live `WAITING FOR KSP  74 S  TRY 15`. A replaced line does not count again.
-- **Wrapping** is by pixel width at word breaks; runs of spaces collapse. A line longer than 3 rows is cut. The master's lines need no change, but §8.2 proposes shorter ones that fit in two rows.
+- **Wrapping** is by pixel width at word breaks; runs of spaces collapse. A line longer than 3 rows is cut. The master sends a short form of each line that fits in two rows (§8.2, D10); a line that still runs longer is cut at 3 rows.
 - **Full log:** the whole boot is on the master's Serial (unchanged) and is replayed to a display that starts late.
 
 ### 3.3 Master silent
@@ -214,8 +223,12 @@ BOOT_DONE switches to the status screen, unchanged from today. A display that st
 *Left to right:*
 1. *normal;*
 2. *the message area on a service item;*
-3. *low supply, hot board with the fan stopped, two displays down, a module missing, demo on (magenta border);*
+3. *low supply, current above 8 A, hot board with the fan stopped, two displays down, a module missing;*
 4. *no frame for 7 s.*
+
+![Supply caution, current caution](assets/sysinfo/SysInfo_STATUS_FAULTS_2_x3.png) ![Demo mode, message entry](assets/sysinfo/SysInfo_STATUS_DEMO_x3.png) ![Demo mode, all well](assets/sysinfo/SysInfo_STATUS_DEMO_2_x3.png)
+
+*Left: supply and current both in caution (yellow), a display not answering. Middle and right: demo mode. The KSP row is on the DEMO tile's blue; the message area shows `DEMO MODE / ON` on the same blue once per rotation.*
 
 ### 4.1 Layout
 
@@ -228,14 +241,14 @@ BOOT_DONE switches to the status screen, unchanged from today. A display that st
 | Modules | 180–214 | Chip icon, `MOD`, **present / 13** | 32 |
 | Messages | 228–296 | Two lines (§4.3) | 32 |
 
-Demo mode puts a 3 px **magenta border** round the whole screen. That is the only way to show it without small text, and it reads as a frame, not a value.
+**Demo mode** (D11): the status screen keeps working, and every reading is live. The KSP row is drawn as the Annunciator's lit DEMO tile: a `TFT_BLUE` band behind white icon and text. It still shows the links up, since the displays keep their own Simpit links in demo. Blue *text* on black is not used: pure blue is too dark to read on this panel. White on a blue block reads well and matches the tile.
 
-### 4.2 Colours and thresholds (proposed)
+### 4.2 Colours and thresholds
 
 | Row | Green | Yellow | Orange | Red |
 |---|---|---|---|---|
 | Voltage | ≥ 11.5 V | 11.0–11.5 V | | < 11.0 V (the master's `POWER_LOW_V`) |
-| Current, power | white: no limit proposed (§10 Q3) | | | |
+| Current, power | white, ≤ 7 A | > 7 A | | > 8 A (D7). Power takes the current's colour |
 | Temperature | < 50 °C | 50–59 °C | | ≥ 60 °C. The fan reaches 100 % at 50 °C (`board.cpp`) |
 | Fan rpm | white | | | `STOP`, when the duty is above 0 and the rpm reads 0 |
 | KSP | 5 / 5 | | fewer | |
@@ -252,6 +265,7 @@ Two lines of Roboto Black 32, about 11 characters each. The firmware keeps a lis
 |---|---|---|---|
 | Master silent | (replaced by the red block, §4.4) | | |
 | Supply low | `SUPPLY LOW` | `10.84 V` | red / yellow |
+| Current high | `CURRENT` | `HIGH 8.31 A` | red / yellow |
 | Board hot | `BOARD TEMP` | `62 C` | red / yellow |
 | Fan stopped | `FAN STOPPED` | `DUTY 100 %` | red |
 | A sensor missing | `POWER MON` / `FAN CTRL` | `NO READING` | yellow |
@@ -261,7 +275,7 @@ Two lines of Roboto Black 32, about 11 characters each. The firmware keeps a lis
 | A module missing | `GPWS` (the master's short name) | `MISSING` | red |
 | A module in FAULT | `THROTTLE` | `FAULT` | orange |
 | I2C errors rising | `I2C BUS` | `17 ERRORS` | yellow (shown while the count rose in the last minute) |
-| Demo | `DEMO MODE` | `ON` | magenta |
+| Demo | `DEMO MODE` | `ON` | white on the DEMO blue block |
 | Debug | `DEBUG` | `ON` | sky |
 | *All well* | `ALL SYSTEMS` | `NOMINAL` | green |
 | *Service* | `UPTIME` / `MASTER FW` / `SYSINFO FW` / `FAN DUTY` / `I2C ERRORS` | `01:23:45` / `v0.10.0` / `v1.0.0` / `40 %` / `0` | light grey |
@@ -305,7 +319,7 @@ As the 7" displays (#47; `KCM_Display.h` `kcmBacklight*`):
 - **Levels:** flight % and standby % from the master's BACKLIGHT frame. Defaults before the first frame are 70 / 20 %. Floor 5 % (`KCM_BL_MIN_PCT`), 300 ms ramp (`KCM_BL_RAMP_MS`). PWM on D0 to the panel's BLK input.
 - **Standby level:** the status screen while the master is not in a flight scene (new CONTROL bit 2, §7.1). This matches the 7" panels, which dim on their standby screens.
 - **Flight level:** in a flight scene, and always on the boot screen, SWITCH ERR, MASTER SILENT, or any red value. An alert is never shown dimmed.
-- **Off:** while the screen saver is on (§2.4).
+- **Never off:** there is no screen saver (D9).
 - **The panel is not sunlight-readable** (datasheet), so the standby level and the 5 % floor are checked on the real panel under the room's lighting (§9.3).
 
 ## 7. Protocol changes
@@ -351,20 +365,43 @@ The display also keeps the master's module short names, in the same order, for t
 | `carriers.cpp` | `pushBacklight()` also writes 0x14, through `sysinfo`, so an absent display is not written |
 | `board.cpp` | Passes `fanDuty` into `SiStatus` |
 | `tools/tests` | The new STATUS layout, CONTROL bit 2, and the backlight frame to 0x14 |
+| `boot.cpp`, `module_bus.cpp`, `carriers.cpp`, `switches.cpp` | The short boot lines (§8.2) |
 | `config.h` | Version 0.10.0 |
 
-### 8.2 Proposed: boot lines that fit two rows
+### 8.2 Short boot lines (D10)
 
-Each of today's lines fits in three rows; many would fit in two if shortened. For example:
+`bootLine()` gains a short form. Each call gives both: Serial prints the long line as today, and the Sys Info Display gets the short one. Every short form below fits in two rows of Roboto Black 32 (236 px), measured on the real font widths. A value too long for its row (an unknown stage name, say) is cut at 3 rows.
 
-| Today | Proposed |
+| Today (Serial) | To the Sys Info Display |
 |---|---|
-| `WAITING FOR KSP  74 S  TRY 15` | `WAIT KSP 74 S` (the try count goes to Serial only) |
+| `KCMk1 MASTER v0.10.0` | `MASTER v0.10.0` |
+| `RESET: POWER ON` (`WATCHDOG`, `OVER TEMPERATURE`, …) | unchanged |
+| `RESET: WATCHDOG (3 IN A ROW)` | `RESET: WATCHDOG x3` |
+| `HUNG IN MODULES @0x2C` | `HUNG IN MODULES @2C` |
+| `I2C BUS WAS HELD LOW: RECOVERED` | `I2C BUS RECOVERED` |
+| `CONFIG  I2C 400 kHz` | `I2C 400 kHz` |
+| `POWER MON  INA228   OK` / `MISSING` | `POWER MON OK` / `POWER MON MISSING` |
+| `FAN CTRL   EMC2101  OK` / `MISSING` | `FAN CTRL OK` / `FAN CTRL MISSING` |
+| `INT MAP: STORED` / `DEFAULT` | `INT MAP STORED` / `INT MAP DEFAULT` |
+| `29 TRANSLATION INT_7    OK` | `TRANSLATION OK` (address and INT line on Serial) |
+| `2C THROTTLE    INT_5    LEARNED` | `THROTTLE INT LEARNED` |
+| `2A GPWS        MISSING` / `WRONG TYPE` | `GPWS MISSING` / `GPWS WRONG TYPE` |
+| `MODULES  12 OF 13` | `MODULES 12/13` |
+| `ANNUNCIATOR      OK  KSP UP` | `ANNUNCIATOR OK KSP UP` (`INFO DISP 1`, `INFO DISP 2`, `RES DISP`) |
 | `RESOURCE DISPLAY NO ANSWER` | `RES DISP NO ANSWER` |
-| `KSP RUNNING? SIMPIT COM PORT? USB?` | `CHECK KSP / SIMPIT / USB` |
-| `2C THROTTLE    INT_5    LEARNED` | `THROTTLE INT_5 LEARNED` |
+| `DISPLAY INT LINES  3 OF 4 SEEN` | `DISP INT 3/4` |
+| `SW GRP 1  ENGINE SAFE  A/P INHIB` | `ENGINE SAFE A/P INHIB` |
+| `SW GRP 1  NOT READ: ENGINE SAFE` / `SW GRP 2  NOT READ` | `SW GRP 1 NOT READ` / `SW GRP 2 NOT READ` |
+| `CTRL MODE  SPC` / `CTRL MODE  NOT READ: SPC` | `CTRL MODE SPC` / `MODE NOT READ: SPC` |
+| `WATCHDOG ON  2 S` | `WATCHDOG 2 S` |
+| `KSP: CONNECTING ...` / `KSP: NOT CONTACTED (DEMO)` | `KSP CONNECTING` / `KSP: DEMO` |
+| `WAITING FOR KSP  74 S  TRY 15` | `KSP WAIT 74 S` (the try count on Serial) |
+| `KSP RUNNING? SIMPIT COM PORT? USB?` | `CHECK KSP, SIMPIT, USB` |
+| `KSP: CONNECTED` / `DEMO MODE` | `KSP CONNECTED` / `DEMO MODE` |
+| `3 WATCHDOG RESETS IN 60 S: HALTED` | `HALTED: 3 WDT RESETS` |
+| `FIX THE FAULT, THEN POWER CYCLE` | `FIX, THEN POWER CYCLE` |
 
-Serial keeps the long forms. This is optional (§10 Q6).
+The replay buffer in `sysinfo.cpp` keeps the short forms, as they are what the display shows.
 
 ## 9. Verification
 
@@ -380,7 +417,9 @@ These follow `Software/Displays/tools`:
   - SWITCH_ERR open, close, paging and an unknown id;
   - message order and rotation;
   - backlight level by screen, flight bit and alert;
-  - the shift and the screen saver;
+  - the shift, and that nothing ever blanks the screen;
+  - demo: the KSP row on the DEMO blue;
+  - the current caution and warning;
   - a full frame queue.
 - **`panel_lint.py`:** extended to this sketch. A new hard check: no font below the 22 px cap rule, and no string wider than its box at the fonts' real widths.
 
@@ -402,17 +441,20 @@ These follow `Software/Displays/tools`:
 | 8 | Image sticking: a day on the status screen leaves no ghost on the next screen |
 | 9 | Power draw of the board (the panel is up to 90 mA), for `Power_Budget.md` |
 
-## 10. Questions for review
+## 10. Review answers
 
-| # | Question | Proposal |
+The questions of Draft 2, answered by the owner on 2026-10-31:
+
+| # | Question | Answer |
 |---|---|---|
-| Q1 | Design eye distance to Panel A2 | 600 mm. At 500 mm, Roboto Black 28 would pass and allow 13 characters a line; at 700 mm, 32 is just under the 16′ minimum (14.4′) |
-| Q2 | Status rows: voltage, current / power, thermal, KSP, MOD, two message lines | As proposed |
-| Q3 | A current warning? | None. The supply's fuse protects; add yellow at 8 A if wanted |
-| Q4 | Temperature thresholds | 50 / 60 °C |
-| Q5 | Screen saver outside flight after 10 min (datasheet §8.3) | Yes |
-| Q6 | Shorter master boot lines (§8.2) | Yes, with the long forms kept on Serial |
-| Q7 | Demo shown as a magenta border plus a message entry | Yes |
+| Q1 | Design eye distance to Panel A2 | **600 mm** (D6) |
+| Q2 | A current warning? | **Yellow above 7 A, red above 8 A** (D7) |
+| Q3 | Temperature thresholds 50 / 60 °C | **As proposed** (D8) |
+| Q4 | Screen saver outside flight | **No:** the screen always shows its information (D9) |
+| Q5 | Shorter master boot lines | **Yes** (D10, §8.2) |
+| Q6 | How to show demo mode | **The screen stays active, with the KSP row in the Annunciator's DEMO colour** (D11). The magenta border is dropped |
+
+Nothing in the design is still open. The remaining checks are on the bench (§9.3).
 
 ---
 
@@ -422,3 +464,4 @@ These follow `Software/Displays/tools`:
 |---|---|---|
 | 1 | 2026-10-31 | First draft: hardware map from KC-01-1901, three screens with mockups, D1–D3, protocol v2.21 proposal |
 | 2 | 2026-10-31 | **Redesigned for readability on the ER-TFTM020-2** (D4); portrait confirmed (D5). Draft 1's text was 1.2–1.8 mm tall (7–10′ at 600 mm). New size rule: a 22 px (2.8 mm, 16′) minimum, so Roboto Black 32 / 48 only. Boot screen: the newest line, counts and newest problem, in place of a log. Status: six large rows and a rotating message area, in place of a dense list. SWITCH ERR takes the whole screen and pages. From the datasheet: active area 30.00 × 40.80 mm, image-sticking measures (no thin lines, a 2 px shift every 10 min, a screen saver), not sunlight-readable, backlight on BLK. The mockup script enforces the size rule and the margins |
+| 3 | 2026-10-31 | Review answers D6–D11: 600 mm; current caution > 7 A and warning > 8 A; 50 / 60 °C; no screen saver; short boot lines (full table, §8.2); demo keeps the screen live, with the KSP row on the Annunciator's DEMO blue (white on `TFT_BLUE`) in place of the magenta border. New mockups: current caution / warning, demo |
