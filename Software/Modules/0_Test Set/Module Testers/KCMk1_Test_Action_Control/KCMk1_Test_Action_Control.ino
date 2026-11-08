@@ -10,7 +10,7 @@
  *              run on the KC-01-9001 v2.0 Module Tester (XIAO RA4M1).
  *
  *              Module: 12 momentary NeoPixel buttons AG1-AG12, all GREEN when
- *              ACTIVE. KerbalButtonCore firmware, identity fw 2.2, caps 0x00.
+ *              ACTIVE. KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x00.
  *              Inputs 12-15 are not connected and must stay 0.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk,

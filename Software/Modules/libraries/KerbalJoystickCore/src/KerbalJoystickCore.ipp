@@ -1,5 +1,5 @@
 /**
- * @file        KerbalJoystickCore.cpp
+ * @file        KerbalJoystickCore.ipp
  * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1

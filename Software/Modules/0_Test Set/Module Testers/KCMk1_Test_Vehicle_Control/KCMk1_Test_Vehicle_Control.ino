@@ -14,7 +14,7 @@
  *              are not connected. 24-input build: 9-byte packet. Reports
  *              EXTENDED_STATES (caps 0x01): WARNING, ALERT, ARMED, PARTIAL_DEPLOY
  *              and CUT are checked as well.
- *              KerbalButtonCore firmware, identity fw 2.2, caps 0x01.
+ *              KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x01.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, switch walk,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on

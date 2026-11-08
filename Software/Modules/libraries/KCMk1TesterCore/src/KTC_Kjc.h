@@ -6,7 +6,7 @@
  * @organization Jeb's Controller Works
  *
  * @brief       Checks for the KerbalJoystickCore modules (Joystick Rotation
- *              0x28, Joystick Translation 0x29). Identity fw 2.0, caps 0x08.
+ *              0x28, Joystick Translation 0x29). Identity fw 2.2, caps 0x08.
  *
  *              Packet (12 bytes): header, events (= change AND state),
  *              change, state, then AXIS1..AXIS3 as signed big-endian int16.
@@ -28,7 +28,7 @@
 #include "KTC_Steps.h"
 
 #define KTC_KJC_FW_MAJOR   2
-#define KTC_KJC_FW_MINOR   0
+#define KTC_KJC_FW_MINOR   2
 
 extern const KtcBootCfg    ktcKjcBoot;
 extern const KtcVisualSeq  ktcKjcStates;      // LED states, brightness and bulb test

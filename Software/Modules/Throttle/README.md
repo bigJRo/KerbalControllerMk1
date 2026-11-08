@@ -1,7 +1,7 @@
 # KCMk1_Throttle_Module
 
 **Module:** Throttle Module  
-**Version:** 2.2  
+**Version:** 2.3  
 **Date:** 2026-10-31  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
@@ -280,5 +280,6 @@ After flashing all LEDs should be OFF (module starts disabled). Send `CMD_ENABLE
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
 | 2.0 | 2026-06-28 | Data packet is now 7 bytes (3-byte universal header + 4-byte payload) under I2C protocol v2.x |
-| 2.2 | 2026-10-31 | **Lever hold** (`CMD_SET_LEVER_HOLD`, 0x0E): while an autopilot owns the throttle the module keeps the master's target against a hand for at most 500 ms per touch (`THR_PUSH_MAX_MS`), lets go, and drives back on release. The same limit now applies to DISABLED's resist at 0, which pushed without one. A touch now really stops the motor: before, `motorUpdate()` drove again straight after `motorStop()` while a seek was pending (`motorCancel()` added). **Bulb test** start / stop as the spec says: lamps on until the stop, no 2 s `delay()` in the I2C handler. |
 | 2.1 | 2026-10-27 | The module no longer moves the lever on its own buttons (it used to drive to 100% / 0% and step ±51 ADC counts, even in ENGINE SAFE, in FINE and under an autopilot). The buttons are only reported; the master acts on them. `THR_STEP_ADC` removed |
+| 2.2 | 2026-10-31 | **Lever hold** (`CMD_SET_LEVER_HOLD`, 0x0E): while an autopilot owns the throttle the module keeps the master's target against a hand for at most 500 ms per touch (`THR_PUSH_MAX_MS`), lets go, and drives back on release. The same limit now applies to DISABLED's resist at 0, which pushed without one. A touch now really stops the motor: before, `motorUpdate()` drove again straight after `motorStop()` while a seek was pending (`motorCancel()` added). **Bulb test** start / stop as the spec says: lamps on until the stop, no 2 s `delay()` in the I2C handler. |
+| 2.3 | 2026-11-08 | A button press raises INT again: `i2cSyncINT` tested the buttons' INT-pending flag right after `buttonsGetEvents()` had cleared it, so a press with the lever still was never signalled (the master reads the throttle only on INT). INT now follows the collected, unread events, which also ends a repeated INT while the lever was held. Identity firmware 2.3 (was 2.0). |

@@ -1,6 +1,6 @@
 # KCMk1 Module Tester
 
-**Version:** 2.0.0
+**Version:** 2.0.1
 **Date:** 2026-06-28
 **Author:** J. Rostoker — Jeb's Controller Works
 **License:** GNU General Public License v3.0 (GPL-3.0)
@@ -182,3 +182,4 @@ been compiled or run on hardware here**. On first bring-up, verify:
 |---|---|---|
 | 1.0 | 2026-04-18 | Serial-menu tester for the KC-01-9001 v1.0 board (XIAO SAMD21). |
 | 2.0 | 2026-06-28 | Ground-up rewrite for KC-01-9001 v2.0 (XIAO RA4M1): capacitive touchscreen UI (LovyanGFX), INA228 power telemetry, current protocol (v2.9) via KerbalModuleCommon, all current module types. |
+| 2.0.1 | 2026-11-08 | Module catalog brought in line with the module firmware: Function Control button order, colours and Switch Group 1 names; Stability Control HOLD (MAGENTA) instead of RCS, and the removed Stage inputs dropped; Time Control mode selector inputs (SPC, RVR) added; Auxiliary Control Undock / CP Pri / CP Alt; UI Control Cycle Nav; GPWS and Pre-Warp keycap names. |

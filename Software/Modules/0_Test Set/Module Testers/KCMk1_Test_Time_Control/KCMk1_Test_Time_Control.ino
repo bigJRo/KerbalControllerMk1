@@ -13,7 +13,7 @@
  *              plus the 3-position control-mode selector on the CN2 terminal:
  *              input 12 = SPC, input 13 = RVR, neither = PLN (centre). Both at
  *              once is a wiring fault. Inputs 14-15 are not connected.
- *              KerbalButtonCore firmware, identity fw 2.2, caps 0x00.
+ *              KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x00.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, mode selector,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on

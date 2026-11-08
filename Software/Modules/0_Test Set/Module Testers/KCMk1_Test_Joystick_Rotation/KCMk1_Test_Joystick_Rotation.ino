@@ -12,7 +12,7 @@
  *              Module: Rotation hand controller (RHC): three axes (AXIS1 right/left,
  *              AXIS2 forward/back, AXIS3 twist), the stick button, and two
  *              NeoPixel buttons RESET TRIM (GREEN) and TRIM SET (AMBER).
- *              KerbalJoystickCore firmware, identity fw 2.0, caps 0x08.
+ *              KerbalJoystickCore 2.2 firmware, identity fw 2.2, caps 0x08.
  *
  *              Steps: identity, boot handshake (hands off: the module samples
  *              its centre at power-on), enable + INT, buttons, centre and
@@ -21,10 +21,10 @@
  *              bulb test, lifecycle, supply current. Results show on screen
  *              and print to USB serial at 115200 baud.
  *
- * @note        Enable + INT expects exactly two packets for one press and
- *              release. KerbalJoystickCore 2.x re-arms the change mask on the
- *              read after each edge, so it may report every edge twice; that
- *              shows here as "4 packets".
+ * @note        Needs KerbalJoystickCore 2.2 or later on the module (identity
+ *              fw 2.2). Earlier versions reported every button edge twice
+ *              ("4 packets" in Enable and INT) and, on the Translation stick,
+ *              did not apply the AXIS2 inversion.
  *
  * @note        Board: Seeed XIAO RA4M1. Libraries: KCMk1TesterCore,
  *              KerbalModuleCommon, Adafruit GFX, Adafruit ST7735 and ST7789,

@@ -118,13 +118,13 @@
 //    4. CLK_EN LOW   — enable clock
 //    5. Read bits    — ShiftIn library handles clocking
 //
-//  Bit-to-KBC-index mapping, 16-input (see KBC_ShiftReg.cpp). ShiftIn
+//  Bit-to-KBC-index mapping, 16-input (see KBC_ShiftReg.ipp). ShiftIn
 //  places the first-clocked bit in the MSB, and the near register clocks
 //  out first, so it occupies the HIGH byte:
 //    shift.state(15..8) → near register BUTTON00-07 → KBC index 7..0
 //    shift.state(7..0)  → far register  BUTTON08-15 → KBC index 15..8
 //    Within each byte, H is first-out (MSB) and A is last (LSB).
-//    Full remap handled by KBC_SR_BUTTON_MAP in KBC_ShiftReg.cpp.
+//    Full remap handled by KBC_SR_BUTTON_MAP in KBC_ShiftReg.ipp.
 // ============================================================
 
 /** @brief Shift register parallel load pin, active low (ATtiny816 pin 8). */
@@ -313,8 +313,9 @@
 /** @brief Library firmware version — major. Bumped to 2 for protocol v2.4. */
 #define KBC_FIRMWARE_MAJOR          2
 
-/** @brief Library firmware version — minor. Bumped to 2 for KBC_LED_CUT. */
-#define KBC_FIRMWARE_MINOR          2
+/** @brief Library firmware version — minor. Tracks the library minor version
+ *         (2.4: compiled inside the sketch, so 24-input builds work). */
+#define KBC_FIRMWARE_MINOR          4
 
 // ============================================================
 //  Compile-time validation

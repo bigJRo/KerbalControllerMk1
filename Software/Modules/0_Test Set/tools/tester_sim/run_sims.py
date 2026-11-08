@@ -28,10 +28,8 @@ STUBS = os.path.join(HERE, "stubs")
 
 KBC, KJC, K7SC = "KerbalButtonCore", "KerbalJoystickCore", "Kerbal7SegmentCore"
 
-# name: (tester sketch, module folder, module library, INT pin, runs[, options])
-# options: libdefs = #defines also given to the module's library .cpp files. The
-# Arduino IDE does NOT do this, so a module that sets library options in its
-# sketch is built both ways (see the "-ide" entries).
+# name: (tester sketch, module folder, module library, INT pin, runs)
+# A run may add a list of regular expressions that the serial report must match.
 # runs: list of (label, [--opt ...], expected summary verdict, steps expected to FAIL)
 MODULE_TABLE = {
     "action": ("KCMk1_Test_Action_Control", "Action Control", KBC, 1, [
@@ -44,36 +42,24 @@ MODULE_TABLE = {
     "function":  ("KCMk1_Test_Function_Control", "Function Control", KBC, 1, [
         ("normal", [], "PASS", []),
         ("SCE switch dead", ["kbc_dead=0x40000"], "FAIL", ["Switches"]),
-    ], {"libdefs": ["KBC_INPUT_COUNT=24", "KBC_SHIFTREG_COUNT=3"]}),
-    # As the Arduino IDE builds it: the library .cpp files never see the
-    # sketch's KBC_INPUT_COUNT 24, so they run the 16-input layout.
-    "function-ide": ("KCMk1_Test_Function_Control", "Function Control", KBC, 1, [
-        ("IDE build", [], "FAIL", ["Buttons", "Switches"]),
     ]),
     "stability": ("KCMk1_Test_Stability_Control", "Stability Control", KBC, 1, [("normal", [], "PASS", [])]),
     "vehicle":   ("KCMk1_Test_Vehicle_Control", "Vehicle Control", KBC, 1, [
         ("normal", [], "PASS", []),
         ("CHUTE switch left ON", ["kbc_stuck=0x10000"], "FAIL", ["Buttons", "Switches"]),
-    ], {"libdefs": ["KBC_INPUT_COUNT=24", "KBC_SHIFTREG_COUNT=3"]}),
-    "vehicle-ide": ("KCMk1_Test_Vehicle_Control", "Vehicle Control", KBC, 1, [
-        ("IDE build", [], "FAIL", ["Buttons", "Switches"]),
     ]),
     "time":      ("KCMk1_Test_Time_Control", "Time Control", KBC, 1, [
         ("normal", [], "PASS", []),
         ("selector RVR dead", ["kbc_dead=0x2000"], "FAIL", ["Mode selector"]),
     ]),
     "aux":       ("KCMk1_Test_Auxiliary_Control", "Auxiliary Control", KBC, 1, [("normal", [], "PASS", [])]),
-    # KerbalJoystickCore 2.x reports every button edge twice (KJC_Buttons.cpp
-    # buttonsGetChangeMask re-arms the change mask on the read after an edge),
-    # so "Enable and INT" counts 4 packets for one press + release.
+    # The serial report must show the axis signs: the Translation sketch inverts
+    # AXIS2, so pushing forward gives the opposite sign to the Rotation stick.
     "rotation":  ("KCMk1_Test_Joystick_Rotation", "Rotation", KJC, 1, [
-        ("current firmware", [], "FAIL", ["Enable and INT"])]),
+        ("normal", [], "PASS", [], [r"AXIS2 fwd/back +PASS forward=\+"])]),
     "translation": ("KCMk1_Test_Joystick_Translation", "Translation", KJC, 1, [
-        ("current firmware", [], "FAIL", ["Enable and INT"])]),
-    # Throttle 2.2 clears the button INT-pending flag when it collects the
-    # events (I2C.cpp i2cSyncINT), so a press with the lever still raises no INT.
-    "throttle":  ("KCMk1_Test_Throttle", "Throttle", None, 5, [
-        ("current firmware", [], "FAIL", ["Enable and INT"])]),
+        ("normal", [], "PASS", [], [r"AXIS2 fwd/back +PASS forward=-", r"AXIS1 right/left +PASS right=\+"])]),
+    "throttle":  ("KCMk1_Test_Throttle", "Throttle", None, 5, [("normal", [], "PASS", [])]),
     "gpws":      ("KCMk1_Test_GPWS", "GPWS", K7SC, 16, [
         ("normal", [], "PASS", []),
         ("PROX switch dead", ["dead_pin=18"], "FAIL", ["PROX and RNDZ"]),
@@ -150,8 +136,6 @@ def compile_obj(src, out, incs, defs=(), extra=(), ino=False):
 
 def build(name, work):
     tester, modfolder, modlib, intpin = MODULE_TABLE[name][:4]
-    opts = MODULE_TABLE[name][5] if len(MODULE_TABLE[name]) > 5 else {}
-    libdefs = opts.get("libdefs", [])
     font = os.path.join(work, "sim_font.h")
     if not os.path.exists(font):
         sh([pil_python(), os.path.join(HERE, "make_font.py"), font])
@@ -173,7 +157,7 @@ def build(name, work):
     srcs.append(os.path.join(HERE, "module_shim.cpp"))
     for i, s in enumerate(srcs):
         o = os.path.join(work, "mod_%d.o" % i)
-        compile_obj(s, o, incs, libdefs, extra=pic)
+        compile_obj(s, o, incs, extra=pic)
         objs.append(o)
     so = os.path.join(work, "module.so")
     sh(CXX + ["-shared", "-Wl,-Bsymbolic", "-o", so] + objs)
@@ -210,7 +194,9 @@ def run(name, shots, keep):
     ok = True
     try:
         exe, so, intpin = build(name, work)
-        for label, opts, want, wantFail in MODULE_TABLE[name][4]:
+        for run_ in MODULE_TABLE[name][4]:
+            label, opts, want, wantFail = run_[:4]
+            texts = run_[4] if len(run_) > 4 else []
             args = [exe, so, name.split("-")[0], "--int-pin", str(intpin)]
             shotdir = None
             if shots and label == "normal":
@@ -226,6 +212,10 @@ def run(name, shots, keep):
             got = m.group(1) if m else "NO-SUMMARY"
             failed = re.findall(r"STEP FAILED: (.*?) --", out)
             good = (got == want) and sorted(failed) == sorted(wantFail)
+            missing = [t for t in texts if not re.search(t, out)]
+            good = good and not missing
+            if missing:
+                print("  report lacks: %s" % missing)
             ok &= good
             print("%-10s %-22s %-12s %s" % (name, label, got, "ok" if good else "UNEXPECTED (want %s, fails %s, got fails %s)" % (want, wantFail, failed)))
             if not good or keep:

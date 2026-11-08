@@ -12,7 +12,7 @@
  *              Module (KC-01-1871/1872): motorised fader with a capacitive
  *              touch sensor (AT42QT1010), four throttle buttons (100%, UP,
  *              DOWN, 0%) and one shared backlight output for the five panel
- *              switches. Identity fw 2.0, caps 0x20 (MOTORIZED).
+ *              switches. Identity fw 2.3, caps 0x20 (MOTORIZED).
  *
  *              Packet (7 bytes): header, flags (bit 0 ENABLED, 1 PRECISION,
  *              2 TOUCH, 3 MOTOR_MOVING), button events (rising edges only:
@@ -29,11 +29,9 @@
  *              lever unless a step asks for it. A seek that does not arrive
  *              within 4 s is stopped by the tester.
  *
- * @note        Throttle firmware 2.2 (I2C.cpp i2cSyncINT) clears the button
- *              INT-pending flag when it collects the events, so a button press
- *              with the lever still raises no INT. "Enable and INT" fails on
- *              that firmware with "no INT after the input"; the button walk
- *              still checks the buttons by polling.
+ * @note        Needs Throttle firmware 2.3 or later (identity fw 2.3).
+ *              Earlier versions raised no INT for a button press with the
+ *              lever still, which fails Enable and INT.
  *
  * @note        Board: Seeed XIAO RA4M1. Libraries: KCMk1TesterCore,
  *              KerbalModuleCommon, Adafruit GFX, Adafruit ST7735 and ST7789,
@@ -429,7 +427,7 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Throttle", "KC-01-1871/1872 throttle board",
     KMC_TYPE_THROTTLE, 0x2C, KMC_THROTTLE_PACKET_SIZE,
-    2, 0, KMC_CAP_MOTORIZED,
+    2, 3, KMC_CAP_MOTORIZED,
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     cleanup, live,
 };

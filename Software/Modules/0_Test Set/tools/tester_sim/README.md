@@ -18,4 +18,6 @@ Needs g++ and Python 3 with Pillow (font generation and screenshots).
 - **The operator** (`sim_core.cpp`, `scenarios.cpp`) reads the text on the tester's screen and works the simulated hardware: presses buttons, moves switches, sticks and the throttle lever (simple lever physics driven by the module's motor outputs), turns encoders, unplugs and reconnects the module. Visual checks are answered from the simulated LEDs and display, so a wrong command in a test step fails the run.
 - **Fault runs** (`--opt`): `kbc_dead`, `kbc_stuck` (input masks), `dead_pin`, `rst_dead`, `enc_reversed`, `enc_extra`. Each fault run lists the steps expected to fail.
 
-The table in `run_sims.py` records the expected result of every run, including the failures the current module firmware causes (see the Module Testers README).
+The table in `run_sims.py` records the expected result of every run. A run can also require text in the serial report (the joystick runs check that AXIS2 forward has opposite signs on the Rotation and Translation sticks).
+
+The simulation found four module-firmware problems when the testers were first run (24-input button modules, joystick double edges and AXIS2 inversion, throttle button INT); they are fixed in the firmware versions the testers now expect.

@@ -392,7 +392,7 @@ static void stepValueDelta() {
     // GPWS reports the encoder only once GPWS mode is engaged (BTN01), so
     // remind the operator to turn it on before expecting value changes.
     const char* instr = (_info->typeId == KMC_TYPE_GPWS_INPUT)
-                            ? "Press GPWS Enable, then turn encoder"
+                            ? "Press ENA, then turn the knob"
                             : "Turn encoder up then down";
     ctRender(hdr, instr, _linePtr, 2, CTB_FAIL | CTB_ABORT);
     if (_vUp && _vDown) { finishStep(true); return; }

@@ -86,17 +86,19 @@ Result: PASS   pass 10  fail 0  skip 0
 
 ---
 
-## Firmware problems these testers report
+## Firmware these testers expect
 
-Running the testers against the current module firmware (in the simulation below) shows these problems. They are firmware issues, not tester faults. Each tester's header comment repeats the one that applies to it.
+The testers were written against the module firmware in this repository and check its identity version. A module running older firmware fails **Identity** ("fw 2.2, tester expects 2.4") — reflash it first.
 
-| Module | What the tester shows | Cause |
+| Module | Identity fw | Fixed in that version (found by these testers) |
 |---|---|---|
-| Function Control, Vehicle Control | Buttons and Switches fail | The sketch sets `KBC_INPUT_COUNT 24` before including KerbalButtonCore. The Arduino IDE compiles the library's `.cpp` files without the sketch's `#define`s, so the library runs the 16-input layout while the sketch expects 24 (mismatched class layout and a 7-byte packet). |
-| Joystick Rotation, Translation | Enable and INT: "4 packets for one press+release, expected 2" | KerbalJoystickCore re-arms the change mask on the read after an edge (`buttonsGetChangeMask`), so every edge is reported twice. |
-| Joystick Translation | AXIS2 forward gives the same sign as on the Rotation stick | Same build issue as above: `KJC_AXIS2_INVERT -1` in the sketch never reaches `KJC_ADC.cpp`. |
-| Joysticks | Axis note "-32768 sent without INT" (step still passes) | Full negative deflection equals the `KJC_AXIS_SUPPRESS` sentinel, so that sample raises no INT. |
-| Throttle | Enable and INT: "no INT after the input" | `i2cSyncINT` collects the button events (which clears the INT-pending flag) before it checks for pending data, so a press with the lever still raises no INT. The button walk still checks the buttons by polling. |
+| Button modules (KerbalButtonCore) | 2.4 | Library compiled inside the sketch. Before, the Arduino IDE built the library without the sketch's `KBC_INPUT_COUNT 24`, so Function and Vehicle Control ran a 16-input library (Buttons and Switches failed). |
+| Joysticks (KerbalJoystickCore) | 2.2 | Each button edge reported once (Enable and INT counted 4 packets). Library compiled inside the sketch, so the Translation stick's `KJC_AXIS2_INVERT -1` takes effect (AXIS2 forward now gives the opposite sign to the Rotation stick). |
+| Throttle | 2.3 | A button press raises INT with the lever still (Enable and INT reported "no INT after the input"). |
+| GPWS, Pre-Warp Time (Kerbal7SegmentCore) | 1.0 | — |
+| Dual Encoder | 2.0 | — |
+
+Still open, reported as a note only: on the joysticks, full negative deflection (-32768) equals the `KJC_AXIS_SUPPRESS` sentinel, so that sample raises no INT; the axis step notes "-32768 sent without INT".
 
 ---
 

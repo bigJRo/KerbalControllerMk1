@@ -12,7 +12,7 @@
  *              Module: 12 NeoPixel buttons (inputs 0-11) and Switch Group 1 (inputs 16-23,
  *              one bit per switch, 1 = ON position). Inputs 12-15 are not
  *              connected. 24-input build: 9-byte packet.
- *              KerbalButtonCore firmware, identity fw 2.2, caps 0x00.
+ *              KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x00.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, switch walk,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on

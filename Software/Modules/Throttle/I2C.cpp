@@ -1,7 +1,7 @@
 /**
  * @file        I2C.cpp
- * @version     2.2.0
- * @date        2026-10-31
+ * @version     2.3.0
+ * @date        2026-11-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -402,7 +402,12 @@ void i2cSyncINT() {
     // from i2cBegin() until the boot packet is read; in DISABLED inputs are
     // suppressed.
     if (_lifecycle == KMC_STATUS_ACTIVE) {
-        bool pending = buttonsIsIntPending() || wiperIsValueChanged();
+        // Pending = events collected above and not yet read, or a new lever
+        // value. (Testing buttonsIsIntPending() here missed every press made
+        // with the lever still: buttonsGetEvents() above has just cleared that
+        // flag. It also re-raised INT on every loop while the lever was
+        // touched, for an edge whose events are only collected after release.)
+        bool pending = (_pendingEvents != 0) || wiperIsValueChanged();
         if (pending) {
             _pendingResponse = RESP_DATA;
             if (!_intAsserted) _assertINT();

@@ -1,6 +1,6 @@
 /**
  * @file        ModuleCatalog.cpp
- * @version     2.0.0
+ * @version     2.0.1
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -79,7 +79,7 @@ static const uint16_t CLR_WHITE_WARM = rgb565(KMC_WHITE_WARM);
 
 static const char* const labels_UI[] = {
     "Screenshot", "Debug", "UI Toggle", "Nav Ball",
-    "Map Reset", "Navball Cyc", "Map Fwd", "Ship Fwd",
+    "Map Reset", "Cycle Nav", "Map Fwd", "Ship Fwd",
     "Map Back", "Ship Back", "Map Enable", "IVA"
 };
 static const uint16_t colors_UI[] = {
@@ -89,17 +89,17 @@ static const uint16_t colors_UI[] = {
 };
 
 static const char* const labels_Function[] = {
-    "LES", "Fairing Jett", "Air Intake", "Lock Surf",
-    "Airbrake", "RW Disable", "Eng Alt Mode", "Sci Collect",
-    "Eng Group 1", "Sci Group 1", "Eng Group 2", "Sci Group 2",
+    "Fairing Jett", "LES", "Lock Surf", "Air Intake",
+    "Flaps", "Airbrake", "Sci Collect", "Eng Alt Mode",
+    "Sci Group 1", "Eng Group 1", "Sci Group 2", "Eng Group 2",
     "", "", "", "",
-    "SG1 MSTR", "SG1 DISPL", "SG1 ENGINE", "SG1 THROTTLE",
-    "SG1 SCE", "SG1 UPTLM", "SG1 LTG", "SG1 THRTL"
+    "SG1 MSTR", "SG1 DISP", "SG1 SCE", "SG1 UPTLM",
+    "SG1 LTG", "SG1 A/P", "SG1 ENGINE", "SG1 THRTL"
 };
 static const uint16_t colors_Function[] = {
-    CLR_RED,    CLR_AMBER,  CLR_TEAL,       CLR_SKY,
-    CLR_CYAN,   CLR_AMBER,  CLR_ORANGE,     CLR_PURPLE,
-    CLR_YELLOW, CLR_INDIGO, CLR_CHARTREUSE, CLR_BLUE,
+    CLR_AMBER,  CLR_RED,        CLR_SKY,    CLR_TEAL,
+    CLR_SEAFOAM, CLR_CYAN,      CLR_PURPLE, CLR_ORANGE,
+    CLR_INDIGO, CLR_YELLOW,     CLR_BLUE,   CLR_CHARTREUSE,
     0, 0, 0, 0,                    // no-connect
     0, 0, 0, 0, 0, 0, 0, 0        // Switch Group 1 — no LEDs
 };
@@ -118,18 +118,14 @@ static const uint16_t colors_Action[] = {
 static const char* const labels_Stability[] = {
     "SAS Target", "SAS A-Target", "SAS Rad In", "SAS Rad Out",
     "SAS Normal", "SAS A-Normal", "SAS Prograde", "SAS Retro",
-    "SAS Stab", "SAS Maneuver", "RCS", "Invert",
-    "", "", "Stage", "Stage Ena"
+    "SAS Stab", "SAS Maneuver", "Hold", "Invert"
 };
 static const uint16_t colors_Stability[] = {
     CLR_GREEN, CLR_GREEN, CLR_GREEN, CLR_GREEN,
     CLR_GREEN, CLR_GREEN, CLR_GREEN, CLR_GREEN,
     CLR_GREEN, CLR_GREEN,           // 10x SAS
-    CLR_GREEN,                      // RCS
-    CLR_AMBER,                      // Invert
-    0, 0,                           // no-connect
-    0,                              // Stage (discrete LED)
-    0                               // Stage Ena (discrete LED)
+    CLR_MAGENTA,                    // Hold
+    CLR_AMBER                       // Invert
 };
 
 static const char* const labels_Vehicle[] = {
@@ -154,18 +150,20 @@ static const uint16_t colors_Vehicle[] = {
 static const char* const labels_Time[] = {
     "Warp ApA", "Warp Stop", "Warp PeA", "Phys Warp",
     "Warp Mnvr", "Warp Fwd", "Warp SOI", "Warp Back",
-    "Warp Morn", "Quick Load", "Pause", "Quick Save"
+    "Warp Morn", "Quick Load", "Pause", "Quick Save",
+    "Mode SPC", "Mode RVR"          // control-mode selector (CN2), PLN = neither
 };
 static const uint16_t colors_Time[] = {
     CLR_YELLOW, CLR_AMBER,      CLR_YELLOW, CLR_CHARTREUSE,
     CLR_YELLOW, CLR_WHITE_WARM, CLR_YELLOW, CLR_WHITE_WARM,
-    CLR_YELLOW, CLR_MINT,       CLR_AMBER,  CLR_LIME
+    CLR_YELLOW, CLR_MINT,       CLR_AMBER,  CLR_LIME,
+    0, 0                            // selector — no LED
 };
 
 static const char* const labels_Aux[] = {
     "EVA Lights", "Jetpack", "Board Craft", "EVA Constr",
     "Jump/LetGo", "Grab", "EVA Chute", "Helmet",
-    "Cruise Ctrl", "Plant Flag", "CP Toggle", "CP Dock"
+    "Undock", "Plant Flag", "CP Pri", "CP Alt"
 };
 static const uint16_t colors_Aux[] = {
     CLR_MINT,       CLR_LIME,    CLR_GREEN, CLR_TEAL,
@@ -190,7 +188,7 @@ static const uint16_t colors_JoyTranslation[] = {
 };
 
 static const char* const labels_Gpws[] = {
-    "GPWS Enable", "Proximity", "Rndzv Radar", "Reset (Enc)"
+    "ENA", "PROX", "RNDZ", "Knob push"
 };
 static const uint16_t colors_Gpws[] = {
     CLR_GREEN, CLR_GREEN, CLR_GREEN,
@@ -198,7 +196,7 @@ static const uint16_t colors_Gpws[] = {
 };
 
 static const char* const labels_PreWarp[] = {
-    "5 min", "1 hour", "1 day", "Reset (Enc)"
+    "5 MIN", "1 HR", "1 DAY", "Knob push"
 };
 static const uint16_t colors_PreWarp[] = {
     CLR_GOLD, CLR_GOLD, CLR_GOLD,
@@ -226,9 +224,9 @@ static const ModuleInfo kCatalog[] = {
     { KMC_TYPE_UI_CONTROL,        "UI Control",      0x20, MK_BUTTON12,     12, labels_UI,             colors_UI },
     { KMC_TYPE_FUNCTION_CONTROL,  "Function Ctrl",   0x21, MK_BUTTON24,     24, labels_Function,       colors_Function },
     { KMC_TYPE_ACTION_CONTROL,    "Action Ctrl",     0x22, MK_BUTTON12,     12, labels_Action,         colors_Action },
-    { KMC_TYPE_STABILITY_CONTROL, "Stability Ctrl",  0x23, MK_BUTTON12,     16, labels_Stability,      colors_Stability },
+    { KMC_TYPE_STABILITY_CONTROL, "Stability Ctrl",  0x23, MK_BUTTON12,     12, labels_Stability,      colors_Stability },
     { KMC_TYPE_VEHICLE_CONTROL,   "Vehicle Ctrl",    0x24, MK_BUTTON24,     24, labels_Vehicle,        colors_Vehicle },
-    { KMC_TYPE_TIME_CONTROL,      "Time Control",    0x25, MK_BUTTON12,     12, labels_Time,           colors_Time },
+    { KMC_TYPE_TIME_CONTROL,      "Time Control",    0x25, MK_BUTTON12,     14, labels_Time,           colors_Time },
     { KMC_TYPE_AUX_CTRL,          "Aux Control",     0x26, MK_BUTTON12,     12, labels_Aux,            colors_Aux },
     { KMC_TYPE_JOYSTICK_ROTATION, "Joy Rotation",    0x28, MK_JOYSTICK,      3, labels_JoyRotation,    colors_JoyRotation },
     { KMC_TYPE_JOYSTICK_TRANS,    "Joy Translation", 0x29, MK_JOYSTICK,      3, labels_JoyTranslation, colors_JoyTranslation },

@@ -91,3 +91,21 @@ void kjcBegin(uint8_t typeId, uint8_t capFlags,
  *          4. INT pin sync with Option E hybrid strategy
  */
 void kjcUpdate();
+
+// ============================================================
+//  Implementation
+//
+//  The library is compiled inside the sketch, from the .ipp files
+//  included below, so that the sketch's configuration #defines
+//  (KJC_AXISn_INVERT, deadzone, timing) reach the library code. The Arduino IDE compiles
+//  a library's .cpp files on their own, without the sketch's #defines:
+//  KJC_AXIS2_INVERT -1 in the Translation sketch never reached
+//  KJC_ADC, so its AXIS2 was not inverted.
+//
+//  Include this header from ONE file of the sketch only (the main
+//  .ino); a second including .cpp would define everything twice.
+// ============================================================
+#include "KJC_ADC.ipp"
+#include "KJC_Buttons.ipp"
+#include "KJC_I2C.ipp"
+#include "KerbalJoystickCore.ipp"
