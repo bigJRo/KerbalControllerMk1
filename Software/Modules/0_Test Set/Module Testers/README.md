@@ -6,6 +6,8 @@
 
 One bench-test sketch for each ATtiny816 module. Each sketch knows its module's inputs, LEDs, colours and behaviour, and walks the operator through a full test. Results appear on the touchscreen and are printed to the USB serial port as a report.
 
+To check a freshly built board before its real firmware is loaded, flash the stand-alone firmware in `../Construction Tests/` instead: it needs only power.
+
 The universal `KCMk1_Module_Tester` sketch is still the quick way to look at any module (scan, live view, construction test). Use these per-module sketches to sign off a built module.
 
 ---

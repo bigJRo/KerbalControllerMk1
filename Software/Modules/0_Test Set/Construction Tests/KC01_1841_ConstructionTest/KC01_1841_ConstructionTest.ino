@@ -1,16 +1,19 @@
 /**
- * @file        KC01_1880_ConstructionTest.ino
- * @version     2.0.0
- * @date        2026-04-28
+ * @file        KC01_1841_ConstructionTest.ino
+ * @version     2.1.0
+ * @date        2026-11-08
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
- * @target      ATtiny816 — flash to KC-01-1880 module under test
+ * @target      ATtiny816 on the 7-Segment Display Module (KC-01-1841/1842)
  *
- * @brief       KC-01-1880 standalone construction test.
+ * @brief       Stand-alone construction test for the 7-segment board (GPWS
+ *              and Pre-Warp Time modules). Flash the module's real firmware
+ *              afterwards.
  *
  *              Tests wiring, components, and soldering without any
- *              host controller. Only power (3.3V + GND) is required.
+ *              host controller. Only power is required (12 V on the slot
+ *              connector, or the Module Tester).
  *
  *              PHASE 1 — Automatic (no interaction)
  *                1a  All display segments on (8888)
@@ -27,10 +30,11 @@
  *
  *              RESULT
  *                PASS  All NeoPixels green, display 0, flashes 5x
- *                FAIL  Failed LEDs red, display shows fail code (1-6, 9)
- *                      Fail code 9 = visual issue flagged by technician
+ *                FAIL  Failed LEDs red, display shows fail code (1-6)
+ *              The result stays on until power-off.
  *
- * @note        Hardware:  KC-01-1880 v2.0 (ATtiny816)
+ * @note        Hardware:  KC-01-1841/1842 v2.0 (ATtiny816); formerly
+ *              KC01_1880_ConstructionTest
  *              Library:   Kerbal7SegmentCore v2.0.0
  *              No host controller required — power only.
  *              IDE settings:
@@ -47,7 +51,6 @@
 #define DIGIT_STEP_MS        120
 #define PIXEL_STEP_MS        300
 #define INPUT_TIMEOUT_MS   15000
-#define RESULT_HOLD_MS      5000
 
 // ── Test results ──────────────────────────────────────────────
 static bool _btn01Ok  = false;
@@ -215,8 +218,6 @@ static void showResult() {
         }
         displaySetValue(code);
     }
-
-    delay(RESULT_HOLD_MS);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -248,7 +249,6 @@ void setup() {
 }
 
 void loop() {
-    // Idle heartbeat — power-cycle or re-flash to rerun
-    allLEDs(KMC_OFF); displayShutdown(); delay(900);
-    setLED(0, KMC_DISCRETE_ON); buttonsShow(); delay(100);
+    // The result stays on the display and LEDs; power-cycle to run again.
+    delay(100);
 }

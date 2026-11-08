@@ -426,7 +426,10 @@ struct K7Scenario : Scenario {
     }
 };
 
+Scenario* make_ct_scenario(const std::string& name);
+
 Scenario* make_scenario(const std::string& name) {
+    if (Scenario* ct = make_ct_scenario(name)) return ct;
     if (name == "action") return actionControl();
     if (name == "ui") return kbc_ui();
     if (name == "function") return kbc_function();

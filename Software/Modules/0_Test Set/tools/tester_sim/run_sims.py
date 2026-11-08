@@ -75,6 +75,32 @@ MODULE_TABLE = {
         ("encoder wired backwards", ["enc_reversed=1"], "FAIL", ["ENC1 count", "ENC2 count"]),
         ("operator miscounts", ["enc_extra=1"], "FAIL", ["ENC1 count", "ENC2 count"]),
     ]),
+    # ---- Construction-test firmware (Construction Tests/): the module runs on
+    # its own, a simulated technician works it and checks what it shows. A
+    # fault run passes when the fault is indicated as the firmware documents.
+    "ct1801": (None, "0_Test Set/Construction Tests/KC01_1801_ConstructionTest", KBC, 1, [
+        ("healthy board", [], "PASS", [], [r"CT NOTE: all inputs seen"]),
+        ("dead button B2", ["kbc_dead=0x4"], "PASS", [], [r"CT NOTE: dead input 2 stays unseen"]),
+        ("terminal B13 stuck", ["kbc_stuck=0x2000"], "PASS", [], [r"CT NOTE: stuck input flashing on LED 2"]),
+    ]),
+    "ct1811": (None, "0_Test Set/Construction Tests/KC01_1811_ConstructionTest", KBC, 1, [
+        ("healthy board", [], "PASS", [], [r"CT NOTE: all inputs seen"]),
+        ("dead switch B19", ["kbc_dead=0x80000"], "PASS", [], [r"CT NOTE: dead input 19 stays unseen"]),
+        ("unconnected B13 reads closed", ["kbc_stuck=0x2000"], "PASS", [], [r"CT NOTE: unconnected input flashing on LED 10"]),
+    ]),
+    "ct1831": (None, "0_Test Set/Construction Tests/KC01_1831_ConstructionTest", KJC, 1, [
+        ("healthy board", [], "PASS", [], [r"CT NOTE: all inputs seen"]),
+        ("stick off centre", ["joy_offcentre=1"], "PASS", [], [r"CT NOTE: off-centre axis flagged AMBER"]),
+    ]),
+    "ct1841": (None, "0_Test Set/Construction Tests/KC01_1841_ConstructionTest", K7SC, 16, [
+        ("healthy board", [], "PASS", [], [r"CT NOTE: all six inputs passed"]),
+        ("dead BTN02", ["dead_pin=18"], "PASS", [], [r"CT NOTE: dead BTN02 reported as fail code 2"]),
+    ]),
+    "ct1871": (None, "0_Test Set/Construction Tests/KC01_1871_ConstructionTest", None, 5, [
+        ("healthy board", [], "PASS", [], [r"CT NOTE: lamps, motor, touch and buttons ok"]),
+        ("motor reversed", ["thr_reversed=1"], "PASS", [], [r"CT NOTE: fault code 4 shown"]),
+        ("no motor supply", ["thr_nomotor=1"], "PASS", [], [r"CT NOTE: fault code 5 shown"]),
+    ]),
 }
 
 CXX = ["g++", "-std=gnu++17", "-O1", "-w"]
@@ -162,17 +188,18 @@ def build(name, work):
     so = os.path.join(work, "module.so")
     sh(CXX + ["-shared", "-Wl,-Bsymbolic", "-o", so] + objs)
 
-    # ---- tester executable ----
-    tdir = os.path.join(TESTERS, tester)
+    # ---- tester executable (or an empty stand-in for construction tests) ----
+    tdir = os.path.join(TESTERS, tester) if tester else HERE
     tincs = [STUBS, work, HERE, os.path.join(LIBS, "KerbalModuleCommon", "src"),
              os.path.join(LIBS, "KCMk1TesterCore", "src"), tdir]
     tobjs = []
     o = os.path.join(work, "tester_ino.o")
-    compile_obj(os.path.join(tdir, tester + ".ino"), o, tincs,
+    compile_obj(os.path.join(tdir, (tester or "null_tester") + ".ino"), o, tincs,
                 ["setup=tester_setup", "loop=tester_loop"], ino=True)
     tobjs.append(o)
     tsrcs = glob.glob(os.path.join(LIBS, "KCMk1TesterCore", "src", "*.cpp"))
-    tsrcs += [os.path.join(HERE, "sim_core.cpp"), os.path.join(HERE, "scenarios.cpp")]
+    tsrcs += [os.path.join(HERE, "sim_core.cpp"), os.path.join(HERE, "scenarios.cpp"),
+              os.path.join(HERE, "ct_scenarios.cpp")]
     for i, s in enumerate(tsrcs):
         o = os.path.join(work, "t_%d.o" % i)
         compile_obj(s, o, tincs)

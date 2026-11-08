@@ -19,6 +19,7 @@
 #include <regex>
 #include <algorithm>
 #include <sys/stat.h>
+#include <unistd.h>
 
 // ------------------------------------------------------------
 //  Global state
@@ -109,19 +110,28 @@ static void operatorTick();
 static void scenarioTick();
 
 static uint64_t g_lastOp = 0, g_lastPhys = 0;
-static void advance(uint64_t us, bool runOthers) {
+enum { ADV_TIME, ADV_ALL, ADV_SCENARIO };
+// ADV_ALL: the tester waits, the module and the operator run.
+// ADV_SCENARIO: the module waits inside delay(); the operator's physical
+// actions and checks still run (a construction test does most of its work in
+// setup()), but not the module loop or the tester.
+static bool g_done = false;
+static bool g_finished = false, g_finishOk = false;
+static std::string g_finishMsg;
+static void advance(uint64_t us, int mode) {
     uint64_t end = g_us + us;
-    while (g_us < end) {
+    while (g_us < end && !g_done) {
         uint64_t step = std::min<uint64_t>(100, end - g_us);
         g_us += step;
-        if (!runOthers) continue;
-        runModuleLoop();
+        if (mode == ADV_TIME) continue;
+        if (mode == ADV_ALL) runModuleLoop();
         if (g_us - g_lastPhys >= 1000) { g_lastPhys = g_us; scenarioTick(); }
-        if (g_us - g_lastOp >= 20000) { g_lastOp = g_us; operatorTick(); }
+        if (mode == ADV_ALL && g_us - g_lastOp >= 20000) { g_lastOp = g_us; operatorTick(); }
     }
+    if (g_done && g_us < end) g_us = end;
 }
-void delay(uint32_t ms) { advance((uint64_t)ms * 1000, g_cpu == CPU_TESTER); }
-void delayMicroseconds(uint32_t us) { advance(us, false); }
+void delay(uint32_t ms) { advance((uint64_t)ms * 1000, g_cpu == CPU_TESTER ? ADV_ALL : ADV_SCENARIO); }
+void delayMicroseconds(uint32_t us) { advance(us, ADV_TIME); }
 void cli() {}
 void sei() {}
 
@@ -571,6 +581,19 @@ void sim::enc_click(uint8_t a, uint8_t b, int dir) {
 }
 void sim::at(uint32_t ms, sim::ActFn fn, int arg) { g_acts.push_back({g_us + (uint64_t)ms * 1000, fn, arg}); }
 bool sim::busy() { return !g_acts.empty(); }
+void sim::finish(bool ok, const std::string& msg) {
+    if (g_done) return;
+    g_done = true;
+    g_finished = true;
+    g_finishOk = ok;
+    g_finishMsg = msg;
+    sim::log("construction test %s%s%s", ok ? "PASS" : "FAIL", msg.empty() ? "" : ": ", msg.c_str());
+    // Exit now: the module firmware may be inside a wait loop of its own.
+    printf("SUMMARY %s\n", ok ? "PASS" : "FAIL");
+    if (!msg.empty()) printf("CT %s: %s\n", ok ? "NOTE" : "FAIL", msg.c_str());
+    fflush(stdout);
+    _exit(ok ? 0 : 1);
+}
 
 static void scenarioTick() {
     for (size_t i = 0; i < g_acts.size();) {
@@ -583,7 +606,7 @@ static void scenarioTick() {
 // ------------------------------------------------------------
 //  Generic operator
 // ------------------------------------------------------------
-static bool g_started = false, g_done = false;
+static bool g_started = false;
 static std::string g_lastKey;
 static uint64_t g_lastAct = 0;
 static int g_shotN = 0;
@@ -747,14 +770,19 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 22; i++) g_mAnalog[i] = 512;
     g_sc = make_scenario(scen);
     if (!g_sc) { fprintf(stderr, "unknown scenario %s\n", scen.c_str()); return 2; }
+    g_sc->begin();          // inputs at power-on (stick centred, lever position ...)
     moduleLoad();
-    g_sc->begin();
     g_cpu = CPU_TESTER;
     tester_setup();
     while (!g_done && g_us < (uint64_t)(limit * 1e6)) {
-        advance(100, true);
+        advance(100, ADV_ALL);
         g_cpu = CPU_TESTER;
         tester_loop();
+    }
+    if (g_finished) {
+        printf("SUMMARY %s\n", g_finishOk ? "PASS" : "FAIL");
+        if (!g_finishMsg.empty()) printf("CT %s: %s\n", g_finishOk ? "NOTE" : "FAIL", g_finishMsg.c_str());
+        return g_finishOk ? 0 : 1;
     }
     if (!g_shotDir.empty()) sim::screenshot("final");
     if (!g_shotDir.empty()) {

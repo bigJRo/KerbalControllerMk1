@@ -51,6 +51,9 @@ std::string opt(const char* key, const char* dflt = "");
 int  opt_int(const char* key, int dflt);
 
 void log(const char* fmt, ...);
+
+// end a run without a tester screen (construction tests): result + reason
+void finish(bool ok, const std::string& msg = "");
 }
 
 // One per module: the simulated operator. The core reads the screen and calls
