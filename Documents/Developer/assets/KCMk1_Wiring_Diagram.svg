@@ -110,6 +110,26 @@
 <text x="340.0" y="124.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">ANNUNCIATOR</text>
 <text x="340.0" y="140.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">0x10 · 7" TFT Display Driver</text>
 <text x="340.0" y="153.4" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1910 (Teensy 4.1)</text>
+<polyline points="274.0,208.0 274.0,286.0" fill="none" stroke="#00838f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="252.0" y="192.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="274.0" y="204.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">SPKR1</text>
+<rect x="250.4" y="232.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#00838f" stroke-width="1.1"/>
+<text x="274.0" y="243.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#00838f">2-pin</text>
+<text x="274.0" y="254.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="237.0" y="286.0" width="74.0" height="50.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="274.0" y="302.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SPEAKER 1</text>
+<text x="274.0" y="315.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">alarm tones</text>
+<text x="274.0" y="327.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 Ω</text>
+<polyline points="354.0,208.0 354.0,286.0" fill="none" stroke="#00838f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="332.0" y="192.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="354.0" y="204.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">SPKR2</text>
+<rect x="330.4" y="232.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#00838f" stroke-width="1.1"/>
+<text x="354.0" y="243.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#00838f">2-pin</text>
+<text x="354.0" y="254.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="317.0" y="286.0" width="74.0" height="50.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="354.0" y="302.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SPEAKER 2</text>
+<text x="354.0" y="315.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">GPWS voice</text>
+<text x="354.0" y="327.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 Ω</text>
 <rect x="520.0" y="212.0" width="280.0" height="108.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
 <text x="660.0" y="244.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">INFORMATION DISPLAY 1</text>
 <text x="660.0" y="260.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">0x12 · 7" TFT Display Driver</text>
@@ -140,9 +160,9 @@
 <text x="400.0" y="204.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
 <rect x="381.6" y="412.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="400.0" y="424.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB2</text>
-<rect x="355.1" y="286.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="400.0" y="297.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
-<text x="400.0" y="308.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="355.1" y="378.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="400.0" y="389.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<text x="400.0" y="400.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <polyline points="580.0,320.0 580.0,420.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="565.2" y="312.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="580.0" y="324.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN1</text>
@@ -500,9 +520,11 @@
 <text x="1280.0" y="1164.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">Fan cable (4-pin)</text>
 <line x1="110" y1="1182" x2="150" y2="1182" stroke="#6a1b9a" stroke-width="2.4" stroke-dasharray="7 4" stroke-linecap="round"/>
 <text x="160.0" y="1186.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">Expansion (reserved, no unit fitted)</text>
-<rect x="698.4" y="1168.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#37474f" stroke-width="1.1"/>
-<text x="722.0" y="1179.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#37474f">N-pin</text>
-<text x="722.0" y="1190.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
-<text x="760.0" y="1186.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">Cable tag: connector pin count, cable part number (to be assigned)</text>
+<line x1="670" y1="1182" x2="710" y2="1182" stroke="#00838f" stroke-width="2.2" stroke-linecap="round"/>
+<text x="720.0" y="1186.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">Speaker lead (2-pin)</text>
+<rect x="1258.4" y="1168.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#37474f" stroke-width="1.1"/>
+<text x="1282.0" y="1179.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#37474f">N-pin</text>
+<text x="1282.0" y="1190.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<text x="1320.0" y="1186.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">Cable tag: connector pin count, cable part number (to be assigned)</text>
 <text x="30.0" y="1226.0" font-size="10.5" font-weight="normal" text-anchor="start" fill="#607d8b">Shaded boards are panel hubs. Each hub slot carries 12 V, the I2C bus, RST and one INT line. Module boxes: I2C address · INT line, then the assembly part number (KC-01-XXX0). Sources: Hardware Inventory §2–§7, Hardware Reference §3.6, §5, §7, §10.</text>
 </svg>

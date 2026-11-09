@@ -31,6 +31,7 @@ KIND = {
     "wire":  ("#2e7d32", 2.2, None,  "Panel switch wiring to screw terminals"),
     "fan":   ("#e65100", 2.2, "7 4", "Fan cable (4-pin)"),
     "exp":   ("#6a1b9a", 2.4, "7 4", "Expansion (reserved, no unit fitted)"),
+    "spk":   ("#00838f", 2.2, None,  "Speaker lead (2-pin)"),
 }
 
 out = []
@@ -213,6 +214,13 @@ def build():
     # ---------------------------------------------------------------- Panel A1 (left to right as on the panel)
     item(40, 112, 190, 172, ["POWER button", "momentary", "(on / hold 3 s off)"], size=11)
     board(230, 100, 450, 200, "ANNUNCIATOR", ["0x10 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"], ty=24)
+    # Annunciator audio: SPKR1 on the PAM8302A master-alarm amplifier, SPKR2 on the DFPlayer
+    for x, n, rows in ((274, "SPKR1", ["SPEAKER 1", "alarm tones", "8 \u03a9"]),
+                       (354, "SPKR2", ["SPEAKER 2", "GPWS voice", "8 \u03a9"])):
+        wire([(x, 208), (x, 286)], "spk")
+        tab(x, 200, n, "bottom")
+        ctag(x, 246, ["2-pin", TBD], "spk")
+        item(x - 37, 286, x + 37, 336, rows, size=10)
     board(520, 212, 800, 320, "INFORMATION DISPLAY 1", ["0x12 · 7\" TFT Display Driver", "KC-01-1910 · panel hub (A1)"],
           hub=True, ty=32)
     t(660, 306, "safe terminal: not used", size=10, fill="#78909c", italic=True)
@@ -232,7 +240,7 @@ def build():
     wire([(400, 200), (400, CY0)], "usb")
     tab(400, 200, "USB", "bottom")
     tab(400, CY0, "USB2", "top")
-    ctag(400, 300, ["5-pin Micro-USB", TBD], "usb")
+    ctag(400, 392, ["5-pin Micro-USB", TBD], "usb")
     # CN4 -> Info 1 CN1, USB3 -> Info 1
     wire([(580, 320), (580, CY0)], "idc")
     tab(580, 320, "CN1", "bottom")
@@ -347,7 +355,7 @@ def build():
     # ---------------------------------------------------------------- legend
     lx, ly = 30, 1142
     t(lx, ly, "LEGEND", size=12.5, weight="bold", anchor="start", fill="#37474f")
-    keys = ["idc", "slot", "usb", "pwr", "wire", "fan", "exp"]
+    keys = ["idc", "slot", "usb", "pwr", "wire", "fan", "exp", "spk"]
     colw = [600, 600]
     for i, k in enumerate(keys):
         col, row = i % 3, i // 3
@@ -358,8 +366,8 @@ def build():
         out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="%s"%s stroke-linecap="round"/>'
                    % (x, y, x + 40, y, c, w, d))
         t(x + 50, y + 4, txt, size=11.5, anchor="start")
-    ctag(lx + 80 + 560 + 52, ly + 40, ["N-pin", TBD], "idc")
-    t(lx + 80 + 560 + 90, ly + 44, "Cable tag: connector pin count, cable part number (to be assigned)",
+    ctag(lx + 80 + 1120 + 52, ly + 40, ["N-pin", TBD], "idc")
+    t(lx + 80 + 1120 + 90, ly + 44, "Cable tag: connector pin count, cable part number (to be assigned)",
       size=11.5, anchor="start")
     t(lx, ly + 84, "Shaded boards are panel hubs. Each hub slot carries 12 V, the I2C bus, RST and one INT line. "
                    "Module boxes: I2C address · INT line, then the assembly part number (KC-01-XXX0). "

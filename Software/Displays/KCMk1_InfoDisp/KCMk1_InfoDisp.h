@@ -194,7 +194,7 @@ void switchToScreen(ScreenType s);
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
 static const uint8_t SKETCH_VERSION_MINOR = 19;  // 1.19.0: rover art on the ROVER screen (SD /Rover/)
-static const uint8_t SKETCH_VERSION_PATCH = 0;
+static const uint8_t SKETCH_VERSION_PATCH = 1;  // 1.19.1: ROVER AUTOPILOT DIST in whole metres
 
 
 /***************************************************************************************
