@@ -393,7 +393,7 @@ Set the GPWS input panel to GREEN unless stated. The master relays the panel's m
 | ID | Action | Expected | Source |
 |---|---|---|---|
 | ROVR-01 | Load T5 on Kerbin | **Info 1** ROVER (recoverable does not override it); **Info 2** VEHICLE INFO on the surface (TARGET if a target is set) | Vehicle rule 1 / 1.4.1 |
-| ROVR-02 | Read ROVER | Compass card with heading box, rover icon, violet target triangle when a target is set; DIST / T+TGT strip along the bottom; left V.SRF, TTE, BRAKES / GEAR / SAS; top corners FWD / REV; right ALT.TRN, PITCH, ROLL tilt pictures | ROVR (1.16.5 TTE) |
+| ROVR-02 | Read ROVER | Compass card with heading box, rover art at the centre, violet target triangle when a target is set; DIST / T+TGT strip along the bottom; left V.SRF, TTE, BRAKES / GEAR / SAS; top corners FWD / REV; right ALT.TRN, PITCH, ROLL tilt pictures | ROVR (1.16.5 TTE) |
 | ROVR-03 | Drive forward, then reverse, then coast | FWD lit, then REV lit, both muted at neutral | Wheel throttle |
 | ROVR-04 | Drive on batteries with no generation | TTE shows time to empty (`---` for about 6 s after a switch, and while the drain is negligible); `CHG` in green while gaining | 1.11.2 / 1.16.5 |
 | ROVR-05 | Target the flag | Bearing triangle on the card; DIST (whole metres) and T+TGT in the strip (T+TGT only while closing). T+TGT yellow when the trip uses more than 80 % of TTE, white-on-red when the battery runs out first | Target strip |
@@ -403,6 +403,7 @@ Set the GPWS input panel to GREEN unless stated. The master relays the panel's m
 | ROVR-09 | C&W control-mode tile with the switch on Rover | `RVR` green with the rover icon | Mode tile |
 | ROVR-10 | Crest a hill | Info 2 does **not** flip to LAUNCH while briefly climbing | Rover exclusion |
 | ROVR-11 | **RES** press SEL, tap SRF preset | EC, Stored Charge, Ore, LF, LOx, MP, O2, Food, Water (collapsed to those aboard) | SRF preset |
+| ROVR-12 | Drive over rough ground; then remove the SD card's `Rover` folder and re-enter ROVER | The rover art (top view in the compass, side and rear views in PITCH / ROLL) tilts smoothly in 1° steps with no flicker or trails; without the folder, plain grey vector rovers draw instead and the screen still works | 1.19.0 rover art |
 
 ### 17.1 Rover Autopilot console (Info 2)
 

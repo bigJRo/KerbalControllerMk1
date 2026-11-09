@@ -236,3 +236,19 @@ width = sum(f.glyph(ord(c))['delta'] for c in "T+Tgt:")
 Do this before sizing any value cell. Guessing a string width is how `T+Tgt` came to
 overlap its own label: the cell was budgeted for `"59m 30s"` at 142 px, but
 `formatTimeCompact` below one hour emits `formatTime`'s `"59 m: 30 s"`, which is 171.
+
+## rover_art.py
+
+Draws the ROVER screen's rover (an original near-future pressurised rover) and writes
+the SD art to `../assets/Rover/`: the top view for the compass centre and the side and
+rear views pre-rotated for every whole degree from −45° to +45° for the PITCH and ROLL
+boxes. Drawn at 8× and downsampled, so the edges are anti-aliased; rotated before the
+downsample, so every frame is as clean as the level one. Needs Pillow.
+
+```
+python3 tools/rover_art.py                      # regenerate assets/Rover
+python3 tools/rover_art.py --out /tmp/rv --sheet /tmp/rv/sheet.png   # plus a preview sheet
+```
+
+Frame sizes are tied to `ROVR_ART_*` in `KCMk1_InfoDisp/Screen_ROVR.ino`; change both
+together.

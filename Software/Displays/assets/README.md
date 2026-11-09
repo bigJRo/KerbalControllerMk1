@@ -40,6 +40,18 @@ The sketches centre it via `BODY_IMG_W`/`BODY_IMG_H` (KCMk1_Annunciator.h): in t
 274×176 Main globe frame and in the 240×168 SOI image slots. To fill the Main
 globe edge-to-edge instead, supply 274×176 art and bump those constants.
 
+Rover art (Info Display ROVER screen) — copy the whole **`Rover` folder** to the
+card root, so the files sit at `/Rover/...`:
+```
+Rover/Top.bmp                 top view, 116×164, compass centre
+Rover/Pm45.bmp .. Pp45.bmp    side view tilted for pitch −45..+45° (124×124, 91 files)
+Rover/Rm45.bmp .. Rp45.bmp    rear view tilted for roll −45..+45° (124×124, 91 files)
+```
+`p` is plus and `m` minus; 0° is `Pp00` / `Rp00`. Pitch +N lifts the nose (the art faces
+right); roll +N lowers the right side. All are generated, over black, by
+`../tools/rover_art.py` (needs Pillow) — edit the drawing there and rerun it rather than
+editing the BMPs. Without these files the screen draws its old vector rover.
+
 ## Also included (alternates / spares — not wired to code)
 
 These ship on the card for convenience but no sketch loads them yet:
