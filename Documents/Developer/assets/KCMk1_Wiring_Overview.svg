@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="1000" viewBox="0 0 860 1000" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="430.0" y="24.0" font-size="15" font-weight="bold" text-anchor="middle" fill="#263238">INTERNAL WIRING — OVERVIEW</text>
+<rect x="10.0" y="38.0" width="412.0" height="224.0" rx="12" fill="#f7f9fb" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="24.0" y="60.0" font-size="15" font-weight="bold" text-anchor="start" fill="#37474f">PANEL A1</text>
+<text x="116.8" y="60.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">left display</text>
+<rect x="438.0" y="38.0" width="412.0" height="224.0" rx="12" fill="#f7f9fb" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="452.0" y="60.0" font-size="15" font-weight="bold" text-anchor="start" fill="#37474f">PANEL B1</text>
+<text x="544.8" y="60.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">right display</text>
+<rect x="24.0" y="78.0" width="92.0" height="50.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="70.0" y="97.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">POWER</text>
+<text x="70.0" y="113.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">button</text>
+<rect x="130.0" y="78.0" width="140.0" height="76.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="200.0" y="97.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">ANNUNCIATOR</text>
+<text x="200.0" y="113.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">0x10 · KC-01-1910</text>
+<text x="200.0" y="126.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">2 speakers</text>
+<rect x="284.0" y="150.0" width="126.0" height="76.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
+<text x="347.0" y="169.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">INFO DISPLAY 1</text>
+<text x="347.0" y="185.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">0x12 · panel hub</text>
+<text x="347.0" y="198.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">slots P2–P4</text>
+<rect x="452.0" y="150.0" width="126.0" height="76.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="515.0" y="169.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">INFO DISPLAY 2</text>
+<text x="515.0" y="185.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">0x13 · KC-01-1910</text>
+<rect x="592.0" y="150.0" width="126.0" height="76.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
+<text x="655.0" y="169.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">RESOURCE DISP.</text>
+<text x="655.0" y="185.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">0x11 · panel hub</text>
+<text x="655.0" y="198.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">slots P2–P4</text>
+<rect x="732.0" y="150.0" width="108.0" height="76.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="786.0" y="169.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">DUAL ENC.</text>
+<text x="786.0" y="185.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">0x2D</text>
+<text x="786.0" y="198.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">+ 2 encoders</text>
+<polyline points="270.0,116.0 330.0,116.0 330.0,150.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="578.0,188.0 592.0,188.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="718.0,210.0 732.0,210.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="300.0" y="108.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin</text>
+<rect x="60.0" y="330.0" width="340.0" height="120.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="230.0" y="349.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">CONTROL MODULE</text>
+<text x="230.0" y="365.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1700 · master Teensy 4.1</text>
+<text x="230.0" y="378.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">power latch · USB hub · fan control</text>
+<rect x="460.0" y="330.0" width="340.0" height="120.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="630.0" y="349.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">CONTROL MODULE EXTENSION</text>
+<text x="630.0" y="365.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1710 · passive</text>
+<text x="630.0" y="378.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">B-side panels, fan 2, expansion</text>
+<polyline points="400.0,400.0 460.0,400.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="430.0" y="392.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#37474f">50-pin</text>
+<polyline points="300.0,226.0 300.0,330.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="294.0" y="318.0" font-size="11" font-weight="bold" text-anchor="end" fill="#37474f">34-pin IDC</text>
+<polyline points="655.0,226.0 655.0,330.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="661.0" y="318.0" font-size="11" font-weight="bold" text-anchor="start" fill="#37474f">34-pin IDC</text>
+<polyline points="200.0,330.0 200.0,154.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="194.0" y="300.0" font-size="11" font-weight="bold" text-anchor="end" fill="#1565c0">USB2</text>
+<polyline points="360.0,330.0 360.0,226.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="354.0" y="250.0" font-size="11" font-weight="bold" text-anchor="end" fill="#1565c0">USB3</text>
+<polyline points="374.0,330.0 374.0,292.0 515.0,292.0 515.0,226.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="521.0" y="252.0" font-size="11" font-weight="bold" text-anchor="start" fill="#1565c0">USB4</text>
+<polyline points="388.0,330.0 388.0,306.0 630.0,306.0 630.0,226.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="624.0" y="252.0" font-size="11" font-weight="bold" text-anchor="end" fill="#1565c0">USB5</text>
+<polyline points="80.0,128.0 80.0,330.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="86.0" y="230.0" font-size="11" font-weight="bold" text-anchor="start" fill="#c62828">H1</text>
+<rect x="10.0" y="480.0" width="840.0" height="80.0" rx="8" fill="#fbe9e7" stroke="#8d6e63" stroke-width="1.4"/>
+<text x="24.0" y="498.0" font-size="12.5" font-weight="bold" text-anchor="start" fill="#5d4037">REAR PANEL</text>
+<rect x="30.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="72.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">12 V DC IN</text>
+<text x="72.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">barrel jack</text>
+<polyline points="72.0,508.0 72.0,450.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="76.0" y="470.0" font-size="9.5" font-weight="normal" text-anchor="start" fill="#c62828">DC1</text>
+<rect x="118.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="160.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">USB-C HOST</text>
+<text x="160.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">to PC</text>
+<polyline points="160.0,508.0 160.0,450.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="164.0" y="470.0" font-size="9.5" font-weight="normal" text-anchor="start" fill="#1565c0">USBC1</text>
+<rect x="206.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="248.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">USB-C EXP</text>
+<text x="248.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">reserved</text>
+<polyline points="248.0,508.0 248.0,450.0" fill="none" stroke="#6a1b9a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<text x="252.0" y="470.0" font-size="9.5" font-weight="normal" text-anchor="start" fill="#6a1b9a">USBC2</text>
+<rect x="294.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="336.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">FAN 1</text>
+<text x="336.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">PWM + tach</text>
+<polyline points="336.0,508.0 336.0,450.0" fill="none" stroke="#e65100" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<text x="340.0" y="470.0" font-size="9.5" font-weight="normal" text-anchor="start" fill="#e65100">CN1</text>
+<rect x="503.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="545.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">BLANK PLUG</text>
+<text x="545.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">unused</text>
+<rect x="598.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="640.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">GX16-10</text>
+<text x="640.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">expansion</text>
+<polyline points="640.0,508.0 640.0,450.0" fill="none" stroke="#6a1b9a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<text x="644.0" y="470.0" font-size="9.5" font-weight="normal" text-anchor="start" fill="#6a1b9a">CN2</text>
+<rect x="693.0" y="508.0" width="84.0" height="44.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="735.0" y="526.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">FAN 2</text>
+<text x="735.0" y="539.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">PWM</text>
+<polyline points="735.0,508.0 735.0,450.0" fill="none" stroke="#e65100" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<text x="739.0" y="470.0" font-size="9.5" font-weight="normal" text-anchor="start" fill="#e65100">CN3</text>
+<rect x="10.0" y="590.0" width="412.0" height="190.0" rx="12" fill="#f7f9fb" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="24.0" y="612.0" font-size="15" font-weight="bold" text-anchor="start" fill="#37474f">PANEL A2</text>
+<text x="116.8" y="612.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">left input</text>
+<rect x="438.0" y="590.0" width="412.0" height="190.0" rx="12" fill="#f7f9fb" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="452.0" y="612.0" font-size="15" font-weight="bold" text-anchor="start" fill="#37474f">PANEL B2</text>
+<text x="544.8" y="612.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">right input</text>
+<rect x="30.0" y="630.0" width="372.0" height="50.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
+<text x="216.0" y="649.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">PANEL HUB · KC-01-1730</text>
+<text x="216.0" y="665.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">8 slots: 7 modules + Sys Info Display</text>
+<rect x="458.0" y="630.0" width="372.0" height="50.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
+<text x="644.0" y="649.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">PANEL HUB · KC-01-1730</text>
+<text x="644.0" y="665.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">8 slots: 6 modules (P1, P5 free)</text>
+<text x="216.0" y="704.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">Action, Sys Info, Throttle, UI, GPWS,</text>
+<text x="216.0" y="718.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">Translation stick, Function (16-pin IDC)</text>
+<text x="216.0" y="732.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">ABORT, throttle buttons, THC, Switch Group 1</text>
+<text x="644.0" y="704.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">Pre-Warp, Time, Vehicle, Stability, AUX,</text>
+<text x="644.0" y="718.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">Rotation stick (16-pin IDC)</text>
+<text x="644.0" y="732.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">STAGE, controller mode selector, SG 2, RHC</text>
+<polyline points="385.0,450.0 385.0,630.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="475.0,450.0 475.0,630.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="379.0" y="577.0" font-size="11" font-weight="bold" text-anchor="end" fill="#37474f">34-pin IDC (Ctrl CN3)</text>
+<text x="481.0" y="577.0" font-size="11" font-weight="bold" text-anchor="start" fill="#37474f">34-pin IDC (Ext CN4)</text>
+<text x="16.0" y="812.0" font-size="12.5" font-weight="bold" text-anchor="start" fill="#37474f">LEGEND</text>
+<line x1="16" y1="834" x2="56" y2="834" stroke="#37474f" stroke-width="5.0" stroke-linecap="round"/>
+<text x="66.0" y="838.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Ribbon cable, IDC (50-pin interboard, 34-pin panel)</text>
+<line x1="436" y1="834" x2="476" y2="834" stroke="#78909c" stroke-width="3.0" stroke-linecap="round"/>
+<text x="486.0" y="838.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Module in a hub slot (16-pin IDC)</text>
+<line x1="16" y1="858" x2="56" y2="858" stroke="#1565c0" stroke-width="2.4" stroke-linecap="round"/>
+<text x="66.0" y="862.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">USB (Micro-USB to each Teensy 4.1; USB-C at the rear)</text>
+<line x1="436" y1="858" x2="476" y2="858" stroke="#c62828" stroke-width="2.6" stroke-linecap="round"/>
+<text x="486.0" y="862.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">12 V power / power-button wiring</text>
+<line x1="16" y1="882" x2="56" y2="882" stroke="#2e7d32" stroke-width="2.2" stroke-linecap="round"/>
+<text x="66.0" y="886.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Panel switch wiring to screw terminals</text>
+<line x1="436" y1="882" x2="476" y2="882" stroke="#e65100" stroke-width="2.2" stroke-dasharray="7 4" stroke-linecap="round"/>
+<text x="486.0" y="886.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Fan cable (4-pin)</text>
+<line x1="16" y1="906" x2="56" y2="906" stroke="#6a1b9a" stroke-width="2.4" stroke-dasharray="7 4" stroke-linecap="round"/>
+<text x="66.0" y="910.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Expansion (reserved, no unit fitted)</text>
+<line x1="436" y1="906" x2="476" y2="906" stroke="#00838f" stroke-width="2.2" stroke-linecap="round"/>
+<text x="486.0" y="910.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Speaker lead (2-pin)</text>
+<rect x="12.4" y="924.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#37474f" stroke-width="1.1"/>
+<text x="36.0" y="935.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#37474f">N-pin</text>
+<text x="36.0" y="946.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<text x="66.0" y="942.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Cable tag (Figures 23‑2, 23‑3): connector pin count, cable part number (to be assigned)</text>
+<rect x="16.0" y="956.0" width="40.0" height="20.0" rx="4" fill="#eceff1" stroke="#78909c" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="66.0" y="970.0" font-size="11" font-weight="normal" text-anchor="start" fill="#212121">Cable continued in the other side figure</text>
+<text x="16.0" y="994.0" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">Shaded boards are panel hubs; each hub slot carries 12 V, the I2C bus, RST and one INT line. Module boxes: I2C address · INT line, then the assembly part number (KC-01-XXX0).</text>
+</svg>

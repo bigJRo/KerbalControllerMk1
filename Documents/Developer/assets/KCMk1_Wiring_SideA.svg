@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="1000" viewBox="0 0 860 1000" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="430.0" y="24.0" font-size="15" font-weight="bold" text-anchor="middle" fill="#263238">SIDE A — PANELS A1 AND A2, CONTROL MODULE</text>
+<rect x="10.0" y="38.0" width="840.0" height="262.0" rx="12" fill="#f7f9fb" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="24.0" y="60.0" font-size="15" font-weight="bold" text-anchor="start" fill="#37474f">PANEL A1</text>
+<text x="116.8" y="60.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">KC-01-1020 · left display panel</text>
+<rect x="10.0" y="592.0" width="840.0" height="400.0" rx="12" fill="#f7f9fb" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="24.0" y="614.0" font-size="15" font-weight="bold" text-anchor="start" fill="#37474f">PANEL A2</text>
+<text x="116.8" y="614.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">KC-01-1030 · left input panel</text>
+<rect x="24.0" y="84.0" width="146.0" height="60.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="97.0" y="104.4" font-size="11" font-weight="normal" text-anchor="middle" fill="#212121">POWER button</text>
+<text x="97.0" y="118.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#212121">momentary</text>
+<text x="97.0" y="131.6" font-size="11" font-weight="normal" text-anchor="middle" fill="#212121">(on / hold 3 s off)</text>
+<rect x="196.0" y="72.0" width="240.0" height="100.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="316.0" y="94.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">ANNUNCIATOR</text>
+<text x="316.0" y="110.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">0x10 · 7" TFT Display Driver</text>
+<text x="316.0" y="123.4" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1910 (Teensy 4.1)</text>
+<polyline points="242.0,180.0 242.0,238.0" fill="none" stroke="#00838f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="220.0" y="164.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="242.0" y="176.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">SPKR1</text>
+<rect x="218.4" y="194.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#00838f" stroke-width="1.1"/>
+<text x="242.0" y="205.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#00838f">2-pin</text>
+<text x="242.0" y="216.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="205.0" y="238.0" width="74.0" height="52.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="242.0" y="255.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SPEAKER 1</text>
+<text x="242.0" y="268.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">alarm tones</text>
+<text x="242.0" y="280.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 Ω</text>
+<polyline points="322.0,180.0 322.0,238.0" fill="none" stroke="#00838f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="300.0" y="164.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="322.0" y="176.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">SPKR2</text>
+<rect x="298.4" y="194.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#00838f" stroke-width="1.1"/>
+<text x="322.0" y="205.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#00838f">2-pin</text>
+<text x="322.0" y="216.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="285.0" y="238.0" width="74.0" height="52.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="322.0" y="255.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SPEAKER 2</text>
+<text x="322.0" y="268.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">GPWS voice</text>
+<text x="322.0" y="280.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 Ω</text>
+<rect x="520.0" y="186.0" width="316.0" height="104.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
+<text x="678.0" y="216.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">INFORMATION DISPLAY 1</text>
+<text x="678.0" y="232.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">0x12 · 7" TFT Display Driver</text>
+<text x="678.0" y="245.4" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1910 · panel hub (A1)</text>
+<rect x="557.0" y="178.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="570.0" y="190.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P2</text>
+<rect x="637.0" y="178.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="650.0" y="190.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P3</text>
+<rect x="717.0" y="178.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="730.0" y="190.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P4</text>
+<text x="650.0" y="168.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#90a4ae" font-style="italic">free</text>
+<text x="730.0" y="168.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#90a4ae" font-style="italic">free</text>
+<polyline points="436.0,122.0 570.0,122.0 570.0,178.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="423.0" y="114.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="436.0" y="126.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P1</text>
+<rect x="471.4" y="108.3" width="63.2" height="27.4" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="503.0" y="119.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="503.0" y="130.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="236.0" y="360.0" width="484.0" height="200.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="478.0" y="396.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">CONTROL MODULE</text>
+<text x="478.0" y="412.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1700 · power latch · INA228 · EMC2101</text>
+<text x="478.0" y="425.4" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">USB hub (2 × CH334F)</text>
+<rect x="470.0" y="448.0" width="230.0" height="68.0" rx="5" fill="#fff8e1" stroke="#8d6e63" stroke-width="1.3"/>
+<text x="585.0" y="470.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">Master Teensy 4.1</text>
+<text x="585.0" y="487.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#5d4037">I2C master · Simpit host link</text>
+<text x="585.0" y="502.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#5d4037">reads INT / safe lines, drives RST</text>
+<rect x="311.6" y="474.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="330.0" y="486.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB1</text>
+<polyline points="347.0,482.0 470.0,482.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="363.1" y="468.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="408.0" y="479.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<text x="408.0" y="490.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<text x="330.0" y="536.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c" font-style="italic">USB6: spare</text>
+<text x="585.0" y="548.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c">LEDs: 3.3 V (red), 12 V (green)</text>
+<polyline points="97.0,144.0 97.0,332.0 290.0,332.0 290.0,360.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="277.0" y="352.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="290.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">H1</text>
+<rect x="73.4" y="216.3" width="47.2" height="27.4" rx="3" fill="#ffffff" stroke="#c62828" stroke-width="1.1"/>
+<text x="97.0" y="227.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#c62828">4-pin</text>
+<text x="97.0" y="238.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<polyline points="400.0,180.0 400.0,360.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="385.2" y="164.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="400.0" y="176.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
+<rect x="381.6" y="352.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="400.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB2</text>
+<rect x="355.1" y="312.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="400.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<text x="400.0" y="334.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<polyline points="575.0,290.0 575.0,360.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="560.2" y="282.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="575.0" y="294.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN1</text>
+<rect x="560.2" y="352.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="575.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN4</text>
+<rect x="543.4" y="312.3" width="63.2" height="27.4" rx="3" fill="#ffffff" stroke="#37474f" stroke-width="1.1"/>
+<text x="575.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#37474f">34-pin IDC</text>
+<text x="575.0" y="334.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<polyline points="700.0,290.0 700.0,360.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="685.2" y="282.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="700.0" y="294.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
+<rect x="681.6" y="352.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="700.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB3</text>
+<rect x="655.1" y="312.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="700.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<text x="700.0" y="334.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="10.0" y="362.0" width="136.0" height="210.0" rx="8" fill="#fbe9e7" stroke="#8d6e63" stroke-width="1.4"/>
+<text x="78.0" y="380.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#5d4037">REAR PANEL</text>
+<rect x="18.0" y="388.0" width="120.0" height="40.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="78.0" y="405.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">12 V DC IN</text>
+<text x="78.0" y="418.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">2.5 mm barrel jack</text>
+<polyline points="138.0,408.0 236.0,408.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="221.2" y="400.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="236.0" y="412.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">DC1</text>
+<rect x="153.8" y="394.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#c62828" stroke-width="1.1"/>
+<text x="184.0" y="405.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#c62828">2-pin 12 V</text>
+<text x="184.0" y="416.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="18.0" y="436.0" width="120.0" height="40.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="78.0" y="453.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">USB-C · HOST</text>
+<text x="78.0" y="466.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">panel mount</text>
+<polyline points="138.0,456.0 236.0,456.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="214.0" y="448.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="236.0" y="460.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USBC1</text>
+<rect x="148.8" y="442.9" width="70.5" height="26.2" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="184.0" y="453.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#1565c0">24-pin USB-C</text>
+<text x="184.0" y="464.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="18.0" y="484.0" width="120.0" height="40.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="78.0" y="501.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">USB-C · EXP</text>
+<text x="78.0" y="514.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">reserved</text>
+<polyline points="138.0,504.0 236.0,504.0" fill="none" stroke="#6a1b9a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<rect x="214.0" y="496.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="236.0" y="508.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USBC2</text>
+<rect x="148.8" y="490.9" width="70.5" height="26.2" rx="3" fill="#ffffff" stroke="#6a1b9a" stroke-width="1.1"/>
+<text x="184.0" y="501.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#6a1b9a">24-pin USB-C</text>
+<text x="184.0" y="512.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="18.0" y="532.0" width="120.0" height="40.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
+<text x="78.0" y="549.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">FAN 1</text>
+<text x="78.0" y="562.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">PWM + tach</text>
+<polyline points="138.0,552.0 236.0,552.0" fill="none" stroke="#e65100" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 4"/>
+<rect x="221.2" y="544.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="236.0" y="556.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN1</text>
+<rect x="156.3" y="538.9" width="55.4" height="26.2" rx="3" fill="#ffffff" stroke="#e65100" stroke-width="1.1"/>
+<text x="184.0" y="549.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#e65100">4-pin fan</text>
+<text x="184.0" y="560.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<polyline points="720.0,396.0 742.0,396.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="701.6" y="388.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="720.0" y="400.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB4</text>
+<rect x="742.0" y="379.0" width="108.0" height="34.0" rx="4" fill="#eceff1" stroke="#78909c" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="796.0" y="393.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">to Information</text>
+<text x="796.0" y="406.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">Display 2 · Fig. 23‑3</text>
+<polyline points="720.0,436.0 742.0,436.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="701.6" y="428.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="720.0" y="440.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB5</text>
+<rect x="742.0" y="419.0" width="108.0" height="34.0" rx="4" fill="#eceff1" stroke="#78909c" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="796.0" y="433.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">to Resource</text>
+<text x="796.0" y="446.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">Display · Fig. 23‑3</text>
+<polyline points="720.0,500.0 742.0,500.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="705.2" y="492.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="720.0" y="504.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN2</text>
+<rect x="742.0" y="483.0" width="108.0" height="34.0" rx="4" fill="#eceff1" stroke="#78909c" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="796.0" y="497.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">50-pin to Extension</text>
+<text x="796.0" y="510.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#455a64">CN1 · Fig. 23‑3</text>
+<rect x="68.0" y="638.0" width="772.0" height="58.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
+<text x="454.0" y="658.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">PANEL HUB  ·  KC-01-1730</text>
+<text x="454.0" y="674.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">CN1 34-pin · 8 module slots · safe-switch terminal U4</text>
+<polyline points="575.0,560.0 575.0,638.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="560.2" y="630.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="575.0" y="642.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN1</text>
+<rect x="560.2" y="552.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="575.0" y="564.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">CN3</text>
+<rect x="543.4" y="587.3" width="63.2" height="27.4" rx="3" fill="#ffffff" stroke="#37474f" stroke-width="1.1"/>
+<text x="575.0" y="598.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#37474f">34-pin IDC</text>
+<text x="575.0" y="609.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="108.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="121.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P1</text>
+<polyline points="121.5,704.0 121.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="91.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="121.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="121.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="79.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="121.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Action</text>
+<text x="121.5" y="789.5" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Control</text>
+<text x="121.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x22 · INT_1</text>
+<text x="121.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1800</text>
+<rect x="203.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="216.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P2</text>
+<polyline points="216.5,704.0 216.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="186.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="216.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="216.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="174.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="216.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Sys Info</text>
+<text x="216.5" y="789.5" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Display</text>
+<text x="216.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x14 · INT_2</text>
+<text x="216.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1900</text>
+<rect x="298.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="311.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P3</text>
+<polyline points="311.5,704.0 311.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="281.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="311.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="311.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="269.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="311.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Throttle</text>
+<text x="311.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x2C · INT_3</text>
+<text x="311.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1870</text>
+<rect x="393.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="406.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P4</text>
+<polyline points="406.5,704.0 406.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="376.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="406.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="406.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="364.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="406.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">UI</text>
+<text x="406.5" y="789.5" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Control</text>
+<text x="406.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x20 · INT_4</text>
+<text x="406.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1800</text>
+<rect x="488.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="501.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P5</text>
+<rect x="459.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#fafafa" stroke="#b0bec5" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="501.5" y="802.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#90a4ae" font-style="italic">empty</text>
+<text x="501.5" y="816.0" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#90a4ae">INT_5</text>
+<rect x="583.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="596.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P6</text>
+<polyline points="596.5,704.0 596.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="566.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="596.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="596.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="554.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="596.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">GPWS</text>
+<text x="596.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x2A · INT_6</text>
+<text x="596.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1840</text>
+<rect x="678.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="691.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P7</text>
+<polyline points="691.5,704.0 691.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="661.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="691.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="691.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="649.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="691.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Translation</text>
+<text x="691.5" y="789.5" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">joystick</text>
+<text x="691.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x29 · INT_7</text>
+<text x="691.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1830</text>
+<rect x="773.5" y="688.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="786.5" y="700.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">P8</text>
+<polyline points="786.5,704.0 786.5,760.0" fill="none" stroke="#78909c" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="756.3" y="718.9" width="60.4" height="26.2" rx="3" fill="#ffffff" stroke="#78909c" stroke-width="1.1"/>
+<text x="786.5" y="729.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#78909c">16-pin IDC</text>
+<text x="786.5" y="740.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="744.5" y="760.0" width="84.0" height="88.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="786.5" y="776.0" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Function</text>
+<text x="786.5" y="789.5" font-size="11.5" font-weight="bold" text-anchor="middle" fill="#212121">Control</text>
+<text x="786.5" y="826.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">0x21 · INT_8</text>
+<text x="786.5" y="840.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#37474f">KC-01-1810</text>
+<rect x="55.0" y="659.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
+<text x="68.0" y="671.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">U4</text>
+<polyline points="54.0,667.0 34.0,667.0 34.0,956.0 44.0,956.0" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="11.4" y="875.9" width="45.3" height="26.2" rx="3" fill="#ffffff" stroke="#2e7d32" stroke-width="1.1"/>
+<text x="34.0" y="886.4" font-size="9" font-weight="bold" text-anchor="middle" fill="#2e7d32">6-pin</text>
+<text x="34.0" y="897.0" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="44.0" y="930.0" width="104.0" height="52.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="96.0" y="953.2" font-size="11" font-weight="normal" text-anchor="middle" fill="#212121">ABORT button</text>
+<text x="96.0" y="966.8" font-size="11" font-weight="normal" text-anchor="middle" fill="#212121">+ arming switch</text>
+<text x="154.0" y="978.0" font-size="10" font-weight="normal" text-anchor="start" fill="#2e7d32">→ INT_SAFE</text>
+<polyline points="311.5,930.0 311.5,848.0" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="273.7" y="870.6" width="75.5" height="36.9" rx="3" fill="#ffffff" stroke="#2e7d32" stroke-width="1.1"/>
+<text x="311.5" y="881.1" font-size="9" font-weight="bold" text-anchor="middle" fill="#2e7d32">U7 U8 U10 U11</text>
+<text x="311.5" y="891.7" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">4 × 4-pin</text>
+<text x="311.5" y="902.3" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="266.5" y="930.0" width="90.0" height="52.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="311.5" y="947.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">FULL · THRTL +</text>
+<text x="311.5" y="960.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">THRTL − · IDLE</text>
+<text x="311.5" y="972.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">(lamps: LED_ENA)</text>
+<polyline points="691.5,930.0 691.5,848.0" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="668.9" y="870.6" width="45.3" height="36.9" rx="3" fill="#ffffff" stroke="#2e7d32" stroke-width="1.1"/>
+<text x="691.5" y="881.1" font-size="9" font-weight="bold" text-anchor="middle" fill="#2e7d32">U6</text>
+<text x="691.5" y="891.7" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">6-pin</text>
+<text x="691.5" y="902.3" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="649.5" y="930.0" width="84.0" height="52.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="691.5" y="953.8" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">THC stick</text>
+<text x="691.5" y="966.2" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">3 axes + button</text>
+<polyline points="786.5,930.0 786.5,848.0" fill="none" stroke="#2e7d32" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="758.8" y="870.6" width="55.4" height="36.9" rx="3" fill="#ffffff" stroke="#2e7d32" stroke-width="1.1"/>
+<text x="786.5" y="881.1" font-size="9" font-weight="bold" text-anchor="middle" fill="#2e7d32">U16 U17</text>
+<text x="786.5" y="891.7" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">2 × 6-pin</text>
+<text x="786.5" y="902.3" font-size="9" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
+<rect x="744.5" y="930.0" width="84.0" height="52.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
+<text x="786.5" y="947.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SWITCH GRP 1</text>
+<text x="786.5" y="960.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 switches</text>
+<text x="786.5" y="972.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">B16–B23</text>
+</svg>
