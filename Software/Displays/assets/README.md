@@ -1,5 +1,9 @@
 # KCMk1 Display Assets (SD card)
 
+> **Loading a card?** Use `../SD_Cards/<firmware>/` instead: one ready-to-copy folder
+> per display firmware with exactly the files it reads. This folder is the source those
+> are built from (`../tools/make_sd_cards.py`), and also holds spares no sketch loads.
+
 The display panels load artwork from the **root of the SD card** as 24-bit
 uncompressed BMPs via `drawBMP()` in `KerbalDisplayCommon`. Assets are **not**
 compiled into the firmware — they live on the microSD card the Teensy 4.1 reads
@@ -50,7 +54,8 @@ Rover/Rm45.bmp .. Rp45.bmp    rear view tilted for roll −45..+45° (124×124, 
 `p` is plus and `m` minus; 0° is `Pp00` / `Rp00`. Pitch +N lifts the nose (the art faces
 right); roll +N lowers the right side. All are generated, over black, by
 `../tools/rover_art.py` (needs Pillow) — edit the drawing there and rerun it rather than
-editing the BMPs. Without these files the screen draws its old vector rover.
+editing the BMPs, then rerun `../tools/make_sd_cards.py`. Without these files the screen
+draws its old vector rover.
 
 ## Also included (alternates / spares — not wired to code)
 

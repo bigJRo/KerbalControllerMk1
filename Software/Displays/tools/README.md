@@ -251,4 +251,19 @@ python3 tools/rover_art.py --out /tmp/rv --sheet /tmp/rv/sheet.png   # plus a pr
 ```
 
 Frame sizes are tied to `ROVR_ART_*` in `KCMk1_InfoDisp/Screen_ROVR.ino`; change both
-together.
+together. Then run `make_sd_cards.py` to copy the new frames to the card folder.
+
+## make_sd_cards.py
+
+Builds `../SD_Cards/<firmware>/`, one ready-to-copy SD card folder per display firmware
+(Annunciator, Info Display, Resource Display), from `../assets/`. `--check` verifies each
+folder is complete and in sync, and that every literal `"/....bmp"` path in each sketch
+is on its card. See `../SD_Cards/README.md`.
+
+```
+python3 tools/make_sd_cards.py
+python3 tools/make_sd_cards.py --check
+```
+
+`render_screen.py --sd SD_Cards/<sketch>` renders with a card folder as the SD root, to
+confirm a panel draws everything from its own card.
