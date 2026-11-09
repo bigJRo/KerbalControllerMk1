@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Info_Display_Screen_Reference.md`
-**Applies to:** KCMk1_InfoDisp firmware 1.16.5
+**Applies to:** KCMk1_InfoDisp firmware 1.19.1
 
 The controller carries two Info Displays, each a 1024 × 600 touchscreen running the
 same firmware. **Info Display 1** (panel A1, sidebar on the left) is the *vehicle
@@ -1201,21 +1201,24 @@ autopilot: it disarms the ascent autopilot, drops all aircraft and rover modes, 
 any burn or approach hold, and drops all landing modes.
 
 **The throttle stays where it is whenever an autopilot lets go**, whatever the cause:
-A/P OFF, tapping a mode off, DISARM, stick or lever input, the abort button, lost
-telemetry or another autopilot taking over. You take over at the thrust the autopilot was
-using, with no jump. The throttle goes to zero only when a mode's own job calls for it:
+A/P OFF, tapping a mode off, DISARM, the A/P disconnect, A/P set to INHIB, the abort
+button, lost telemetry or another autopilot taking over. You take over at the thrust the
+autopilot was using, with no jump. The exception is ENGINE set to SAFE, which holds the
+throttle at 0. Otherwise the throttle goes to zero only when a mode's own job calls for it:
 ascent engine cutoff and coast, the end of a completed burn (`DONE`), BRAKE waiting for
 its ignition altitude, and touchdown.
 
-**Pilot input disconnects every autopilot.** Moving the rotation or translation stick
-past 10 % for 150 ms, touching the throttle lever while an autopilot drives it, moving
-an undriven lever more than 2 %, or pressing a lever button disconnects everything. The
-banner shows `STICK` or `A/T OFF: LEVER`. Only one autopilot can steer and one drive
+**Stick and lever input do not disconnect an autopilot.** While one is engaged the sticks
+are ignored and the lever is driven to its setting. Everything disconnects on the RHC
+stick button (A/P disconnect, SPC and PLN modes; banner `A/P DISC`), on A/P set to INHIB
+(`A/P INHIB`) or on A/P OFF; ENGINE set to SAFE drops the modes that use the throttle
+(`ENG SAFE`). With A/P on INHIB an autopilot cannot be engaged, and with ENGINE on SAFE
+the modes that use the throttle are refused. Only one autopilot can steer and one drive
 the throttle at a time; engaging another takes over and the previous owner drops with
 `OTHER AP`.
 
-**Disconnect and refusal reasons** (orange, banner centre): `STICK`, `A/T OFF: LEVER`,
-`BRAKES`, `AIRBORNE`, `ROLL LIMIT`, `NO ATMO`, `TELEMETRY`, `REFUSED`,
+**Disconnect and refusal reasons** (orange, banner centre): `A/P DISC`, `A/P INHIB`,
+`ENG SAFE`, `BRAKES`, `AIRBORNE`, `ROLL LIMIT`, `NO ATMO`, `TELEMETRY`, `REFUSED`,
 `NO NODE`, `NO TARGET`, `SOI CHANGE`, `FUEL`, `LANDED`, `OTHER AP`, `FLARE`, `ARRIVED`,
 `ALIGN`, `HANDOFF`, `REPLANNED`. The meaning of each is given with its console below.
 
@@ -1245,8 +1248,8 @@ ARM / DISARM button controls it; there are no mode buttons.
 2. Tap **ARM**. The banner shows `ARMED`, and the A/P key turns green.
 3. Launch. The banner and button step through VERTICAL, GRAVITY TURN, COAST,
    CIRCULARIZE and COMPLETE.
-4. To stop, tap the button (DISARM), or take the stick or throttle. The throttle stays
-   where it is.
+4. To stop, tap the button (DISARM), press the RHC stick button (A/P disconnect), or set
+   A/P to INHIB. The throttle stays where it is.
 
 **Special states.** Phase colours: IDLE grey; VERTICAL and GRAVITY TURN green; COAST
 and CIRCULARIZE cyan; COMPLETE sky blue; ABORT white on red. After a pilot-input
@@ -1402,7 +1405,7 @@ is normal cruise. NAV and GS fly an approach to a targeted flag.
 2. To change a target, tap its box and enter the new value.
 3. For an approach, target a flag and engage **NAV** and **GS**. GS drops at 200 m range
    (`FLARE`); the flare is yours.
-4. Tap **LVL** to recover, **A/P OFF** or any stick or lever input to hand back.
+4. Tap **LVL** to recover; **A/P OFF** or the RHC stick button (A/P disconnect) hands back.
 
 **Special states.** Reasons: `REFUSED` (no atmosphere, stale telemetry, or IAS/MACH with
 the throttle module in precision mode); `NO TARGET` (NAV or GS without a target);
@@ -1452,8 +1455,7 @@ the rover if it rolls too far.
    shows `STOPPING`, and at the STOP distance it brakes and the banner shows `ARRIVED`.
 4. Engage **FOLLOW** to shadow a moving vessel at its range. FOLLOW sets its own speed,
    so it disengages CRUISE.
-5. Stop with **A/P OFF**, the brakes (which drop CRUISE and FOLLOW with `BRAKES`), or any
-   stick or lever input.
+5. Stop with **A/P OFF** or the brakes (which drop CRUISE and FOLLOW with `BRAKES`).
 
 **Special states.** `SLOPE LIMIT` while the slope guard is reducing speed. Reasons:
 `ROLL LIMIT` (roll passed the limit; every rover mode drops and the brakes stay on until

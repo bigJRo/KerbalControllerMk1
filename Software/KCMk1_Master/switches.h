@@ -14,8 +14,8 @@
        SWITCH_ERR_SETTLE_MS lights SWITCH ERR until they agree. The settle time covers
        KSP's reply to a flip. The Sys Info Display names each one (I2C spec §15.4).
      - Exceptions are set by the code that causes them, with switchErrSuppress():
-       INVERT held (SAS), an autopilot or HOLD that changes SAS / RCS, the BRAKES button
-       or the RVR stick button held (BRAKE).
+       INVERT held (SAS), an autopilot or HOLD engaged (SAS), the BRAKES button or the
+       RVR stick button held (BRAKE). RCS has no exception.
      - Mode selector: B12 = SPC, neither = PLN (centre), B13 = RVR. Both on is a switch
        fault: a debug message, and the last good mode is kept.
      - MSTR RESET, DISP CLR and LTG TEST are momentary: MSTR and DISP act on the press
