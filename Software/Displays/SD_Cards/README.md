@@ -7,7 +7,7 @@ One folder for each firmware that reads a microSD card. Each folder holds exactl
 | `KCMk1_Annunciator/` | `KCMk1_Annunciator` | Annunciator (0x10) | Teensy 4.1 built-in slot | 17 SOI body globes (`*-Display_236x164.bmp`), `KASA_Meatball_236x164.bmp`, `StandbySplash_1024x600.bmp`, vessel icons `VIcon_00`–`VIcon_16.bmp` (72×72) |
 | `KCMk1_InfoDisp/` | `KCMk1_InfoDisp` | Information Display 1 (0x12) **and** Information Display 2 (0x13): one card each, same contents | Teensy 4.1 built-in slot | `StandbySplash_1024x600.bmp`, vessel icons `VIcon60_00`–`VIcon60_16.bmp` (60×60, VEH screen), the `Rover/` folder (ROVER screen art: `Top.bmp` and the pitch / roll frames) |
 | `KCMk1_ResourceDisp/` | `KCMk1_ResourceDisp` | Resource Display (0x11) | Teensy 4.1 built-in slot | `StandbySplash_1024x600.bmp` |
-| `KCMk1_Annunciator_DFPlayer/` | `KCMk1_Annunciator` (GPWS voice) | Annunciator's DFPlayer Mini | The DFPlayer's own microSD slot | `01/001.mp3`–`034.mp3`, the GPWS voice clips. **Not in the repository yet**; the folder's README gives the track list and layout |
+| `KCMk1_Annunciator_DFPlayer/` | `KCMk1_Annunciator` (GPWS voice) | Annunciator's DFPlayer Mini | The DFPlayer's own microSD slot | `01/001_PULL_UP.mp3` … `01/034_GROUND_PROX.mp3`: the 34 GPWS voice clips (0.5 MB). The folder's README gives the track list |
 
 The Annunciator therefore takes **two** cards: one in the Teensy, one in the DFPlayer.
 
@@ -32,7 +32,7 @@ Nothing stops working. A missing file is skipped and logged to Serial when debug
 
 ## Keeping the folders up to date
 
-`make_sd_cards.py` manages the three display folders; the DFPlayer folder is kept by hand.
+`make_sd_cards.py` builds the three display folders. The DFPlayer folder holds recorded clips, so it is kept by hand, but `--check` also confirms it has exactly one clip for every number the GPWS firmware plays.
 
 The art is generated and edited in `../assets/` (see its README). That is the only source: these folders are copies made by
 

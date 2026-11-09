@@ -28,6 +28,8 @@ DISPLAYS = os.path.normpath(os.path.join(HERE, ".."))
 ASSETS = os.path.join(DISPLAYS, "assets")
 CARDS = os.path.join(DISPLAYS, "SD_Cards")
 BODY_PARAMS = os.path.normpath(os.path.join(DISPLAYS, "..", "Common", "body_params.h"))
+DFP_CARD = os.path.join(CARDS, "KCMk1_Annunciator_DFPlayer")
+GPWS_INO = os.path.join(DISPLAYS, "KCMk1_Annunciator", "GPWS.ino")
 
 
 def body_images():
@@ -107,11 +109,34 @@ def check(man):
         for p in sorted(sketch_paths(card)):
             if p not in files and not p.startswith("Rover/"):
                 print("%s: the sketch reads /%s, which is not on its card" % (card, p)); bad += 1
+    bad += check_dfplayer()
     # the shared library's standby splash
     for card in man:
         if "StandbySplash_1024x600.bmp" not in man[card]:
             print("%s: no standby splash" % card); bad += 1
     print("check: %s" % ("OK" if not bad else "%d problem(s)" % bad))
+    return bad
+
+
+def check_dfplayer():
+    """The GPWS voice card (kept by hand, not built from assets/): exactly one MP3 or WAV in
+    01/ for every GPWS_CLIP_* number in GPWS.ino. The DFPlayer picks a track by the file
+    name's three leading digits, so anything after them is free text."""
+    bad = 0
+    folder = int(re.search(r"#define\s+GPWS_FOLDER\s+(\d+)", open(GPWS_INO).read()).group(1))
+    clips = sorted(set(int(n) for n in re.findall(r"#define\s+GPWS_CLIP_\w+\s+(\d+)", open(GPWS_INO).read())))
+    d = os.path.join(DFP_CARD, "%02d" % folder)
+    files = os.listdir(d) if os.path.isdir(d) else []
+    for n in clips:
+        hits = [f for f in files if f[:3] == "%03d" % n and f.lower().endswith((".mp3", ".wav"))]
+        if len(hits) != 1:
+            print("DFPlayer: %02d/%03d: %s" % (folder, n, "missing" if not hits else "%d files" % len(hits)))
+            bad += 1
+    extra = [f for f in files if not (f[:3].isdigit() and int(f[:3]) in clips)]
+    for f in extra:
+        print("DFPlayer: %02d/%s is not a GPWS clip" % (folder, f)); bad += 1
+    if not bad:
+        print("DFPlayer card: %d clips, %02d/%03d..%03d" % (len(clips), folder, clips[0], clips[-1]))
     return bad
 
 

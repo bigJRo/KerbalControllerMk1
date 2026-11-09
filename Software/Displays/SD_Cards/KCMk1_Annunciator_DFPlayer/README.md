@@ -1,15 +1,12 @@
 # Annunciator DFPlayer card (GPWS voice)
 
-This card goes in the **DFPlayer Mini's own microSD slot** on the Annunciator, not in the Teensy (that card is `../KCMk1_Annunciator/`). The GPWS plays its voice callouts from folder `01` (`GPWS.ino`, `GPWS_FOLDER 1`), and nothing else uses this card.
+This folder is the card for the **DFPlayer Mini's own microSD slot** on the Annunciator, not the Teensy's slot (that card is `../KCMk1_Annunciator/`). The GPWS plays its voice callouts from folder `01` (`GPWS.ino`, `GPWS_FOLDER 1`), and nothing else uses this card.
 
-**The clips are not in the repository yet.** Record or obtain them, then lay the card out like this (FAT32, file names exactly as shown):
+Copy the `01` folder to the root of the DFPlayer's card (FAT32), so the clips sit at `/01/001_PULL_UP.mp3` … `/01/034_GROUND_PROX.mp3`.
 
-```
-01/001.mp3
-01/002.mp3
- ...
-01/034.mp3
-```
+The DFPlayer picks a track by the **three leading digits** of the file name; the text after them is only a label. MP3 and WAV both play: 012 ROTATE and 032 GEAR UP are WAV, the rest MP3. 34 clips, about 0.5 MB.
+
+What each track says:
 
 | Track | Spoken | | Track | Spoken |
 |-------|--------|---|-------|--------|
@@ -33,4 +30,4 @@ This card goes in the **DFPlayer Mini's own microSD slot** on the Annunciator, n
 
 The full callout logic, which clip plays when, is in `KCMk1_Annunciator/README.md` (GPWS section). Without the clips the master-alarm tones still work; only the voice is silent.
 
-When the clips exist, put them in `01/` here, and this folder becomes ready to copy like the others.
+To replace a clip, keep its three-digit number and remove the old file: two files with the same number confuse the DFPlayer. `python3 tools/make_sd_cards.py --check` confirms there is exactly one MP3 or WAV in `01/` for every `GPWS_CLIP_*` number in `GPWS.ino`, and nothing else.

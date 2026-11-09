@@ -257,8 +257,9 @@ together. Then run `make_sd_cards.py` to copy the new frames to the card folder.
 
 Builds `../SD_Cards/<firmware>/`, one ready-to-copy SD card folder per display firmware
 (Annunciator, Info Display, Resource Display), from `../assets/`. `--check` verifies each
-folder is complete and in sync, and that every literal `"/....bmp"` path in each sketch
-is on its card. See `../SD_Cards/README.md`.
+folder is complete and in sync, that every literal `"/....bmp"` path in each sketch
+is on its card, and that the hand-kept DFPlayer card has one clip for every
+`GPWS_CLIP_*` number. See `../SD_Cards/README.md`.
 
 ```
 python3 tools/make_sd_cards.py
