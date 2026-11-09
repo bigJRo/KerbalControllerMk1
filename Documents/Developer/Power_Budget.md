@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 1.2  
-**Date:** 2026-06-27  
+**Version:** 1.3  
+**Date:** 2026-11-09  
 **Location:** `Documents/Developer/Power_Budget.md`
 
 *12V supply: 10A rated · MPM3610 converter efficiency: ~88% · All currents in mA*
@@ -17,6 +17,7 @@
 | 1.0 | — | Initial release — per-module and per-panel power budget, system rollup, supply headroom. |
 | 1.1 | 2026-06-06 | Main display carriers updated from Teensy 4.0 + RA8875 5" 800×480 to Teensy 4.1 + LT7683 7" 1024×600 (ER-TFT070A2-6-5633): 450/500 mA → 480/520 mA @ 5V (227/246 mA @ 12V input). Recomputed A1, B1, A+B subtotal/total, A+B+C total, and supply headroom. Added per-carrier MPM3610 headroom note. Panel C displays left at the 5" assumption pending decision. |
 | 1.2 | 2026-06-27 | Enclosure panel redesign reconciliation. GPWS Module relocated A1→A2; Abort Button relocated B1→A2; Status Indicator Display (XIAO RA4M1, B2) removed from design; mode select switch added to B2 (passive, negligible). Sys Info Display re-spec'd from XIAO RA4M1 + 1.9" 320×170 to XIAO RP2350 + 2.0" 240×320 (ER-TFTM020-2) + microSD — **power not yet measured**; A2 row and all dependent system totals/headroom flagged TBD with interim placeholder figures. Recomputed A1, B1, B2 panel totals. |
+| 1.3 | 2026-11-09 | Throttle motor supply corrected: the L293D runs from the Throttle Module's own 9V MPM3610, fed from 12V, not from 12V directly. Figures unchanged; the 12V-direct entry is now noted as a conservative upper bound (~470 / 940 mA at the 12V input through the converter). |
 
 ---
 
@@ -82,7 +83,7 @@ All figures derived from measured data and component datasheets. Panel C is a po
 
 > † The A2 Sys Info Display (XIAO RP2350 + 2.0" 240×320 ST7789, ER-TFTM020-2, + microSD) power figure is **not yet measured** — all A2 and system totals depending on it are flagged TBD. The former RA4M1 1.9" estimate (180/240 mA @ 5V, ±50%) is retained only as an interim placeholder for headroom.
 
-> ‡ Throttle motor peak assumes L293D stall at 500 mA. Actual stall current depends on motorized pot specification.
+> ‡ Throttle motor peak assumes L293D stall at 500 mA. Actual stall current depends on motorized pot specification. The motor is supplied at 9V by the Throttle Module's MPM3610 (from 12V); the 12V-direct figures are a conservative upper bound (see §4).
 
 > § Peak assumes all PB26-13M NeoPixel buttons at full white simultaneously — a conservative worst case.
 
@@ -130,7 +131,7 @@ All figures derived from measured data and component datasheets. Panel C is a po
 - 7" TFT displays (Teensy 4.1 + LT7683 1024×600, ER-TFT070A2-6-5633): 480 mA typical / 520 mA peak @ 5V (datasheet §4.6 max 520 mA @ 5V; typical estimated with backlight below full). Panel VDD on the 5V rail only — never 3.3V (730 mA @ 3.3V exceeds the carrier AP2112K). VDDIO 3.3V; Teensy 4.1 interfaces directly, no level shifters.
 - **Per-carrier MPM3610 headroom (5V):** each display carrier sources its full 5V load from one local MPM3610 (1.2 A rated): ~660 mA typ / ~760 mA peak (panel 480/520 + Teensy 4.1 ~100/120 + 3.3V logic via AP2112K ~80/120 reflected to the 5V input). Peak headroom ~440 mA (37%). One MPM3610 per carrier is adequate; do not share one MPM3610 across two displays. Continuous load is higher than the former 5" carriers (~760 mA vs ~550 mA) — size MPM3610 thermal copper accordingly.
 - ST7789 2.0" Sys Info Display (XIAO RP2350, A2): **figure not yet measured** — interim placeholder 180 mA typ / 240 mA peak @ 5V carried from the former RA4M1 1.9" carrier; update when measured. Status Indicator Display (formerly B2) removed from design.
-- L293D H-bridge (Throttle): 60 mA logic quiescent on 5V; 550 mA typical / 1,100 mA peak on 12V motor supply.
+- L293D H-bridge (Throttle): 60 mA logic quiescent on 5V. The motor runs from the Throttle Module's own 9V MPM3610, fed from the 12V input (Hardware Reference §5.4). Its 550 mA typical / 1,100 mA peak is carried in the "12V direct" columns as a conservative stand-in: the same load at 9V, through the converter at ~88%, draws about 470 / 940 mA from the 12V input. The totals keep the conservative figure until the motor is measured.
 - GPWS and Time Ctrl Dial 7-segment displays assumed always-on.
 - Control circuit overhead fixed at 50 mA on 12V (master controller, soft-latch, miscellaneous).
 - Switch groups (Switch Group 1 on A2 via Func. Ctrl, Switch Group 2 on B2 via Vehicle Ctrl): passive inputs only, negligible power addition.

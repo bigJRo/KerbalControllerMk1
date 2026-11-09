@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="585" viewBox="0 0 650 585" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<defs>
+<marker id="ahk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#263238"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#c62828"/></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1565c0"/></marker>
+<marker id="ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6a1b9a"/></marker>
+<marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#00838f"/></marker>
+<marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<rect x="10.0" y="8.0" width="630.0" height="38.0" rx="0" fill="#ffffff" stroke="#263238" stroke-width="2.2"/>
+<text x="325.0" y="33.0" font-size="15" font-weight="bold" text-anchor="middle" fill="#263238">PANEL BUTTONS DARK</text>
+<polyline points="185.0,46.0 185.0,65.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<polygon points="40.0,90.0 54.0,66.0 316.0,66.0 330.0,90.0 316.0,114.0 54.0,114.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="90.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="94.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">1</text>
+<text x="185.0" y="93.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">All panel buttons dark?</text>
+<polyline points="330.0,90.0 369.0,90.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="85.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="64.1" width="270.0" height="51.8" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="81.2" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Modules are enabled only in a flight scene</text>
+<text x="379.0" y="93.8" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">with the KSP link up, or in demo mode.</text>
+<text x="379.0" y="106.4" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Enter a flight. SIMPIT LOST lit: Section 8.8.</text>
+<text x="634.0" y="110.9" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,114.0 185.0,137.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="130.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,162.0 54.0,138.0 316.0,138.0 330.0,162.0 316.0,186.0 54.0,186.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="162.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="166.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">2</text>
+<text x="185.0" y="165.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Only the SAS mode buttons dark?</text>
+<polyline points="330.0,162.0 369.0,162.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="157.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="136.1" width="270.0" height="51.8" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="153.2" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">B2 SAS – ENAB. With SAS on, a dark mode</text>
+<text x="379.0" y="165.8" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">is not available: check the target, the</text>
+<text x="379.0" y="178.4" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">node or the pilot level.</text>
+<text x="634.0" y="182.9" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,186.0 185.0,209.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="202.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,234.0 54.0,210.0 316.0,210.0 330.0,234.0 316.0,258.0 54.0,258.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="234.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="238.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">3</text>
+<text x="185.0" y="237.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">MAIN and DROGUE dark?</text>
+<polyline points="330.0,234.0 369.0,234.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="229.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="220.7" width="270.0" height="26.6" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="237.8" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">B2 CHUTE – ARM.</text>
+<text x="634.0" y="242.3" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,258.0 185.0,281.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="274.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,306.0 54.0,282.0 316.0,282.0 330.0,306.0 316.0,330.0 54.0,330.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="306.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="310.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">4</text>
+<text x="185.0" y="309.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">EVA buttons (AUX) dark?</text>
+<polyline points="330.0,306.0 369.0,306.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="301.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="286.4" width="270.0" height="39.2" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="303.5" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Normal: they work only while a Kerbal</text>
+<text x="379.0" y="316.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">is on EVA.</text>
+<text x="634.0" y="320.6" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,330.0 185.0,353.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="346.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,378.0 54.0,354.0 316.0,354.0 330.0,378.0 316.0,402.0 54.0,402.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="378.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="382.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">5</text>
+<text x="185.0" y="381.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">A WARP TO button dark?</text>
+<polyline points="330.0,378.0 369.0,378.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="373.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="358.4" width="270.0" height="39.2" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="375.5" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Normal: its event does not exist</text>
+<text x="379.0" y="388.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">(Table 3‑16).</text>
+<text x="634.0" y="392.6" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,402.0 185.0,425.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="418.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,450.0 54.0,426.0 316.0,426.0 330.0,450.0 316.0,474.0 54.0,474.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="450.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="454.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">6</text>
+<text x="185.0" y="447.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">A module MISSING on the Systems</text>
+<text x="185.0" y="460.1" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Information Display?</text>
+<polyline points="330.0,450.0 369.0,450.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="445.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="430.4" width="270.0" height="39.2" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="447.5" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Turn the controller off, reseat that</text>
+<text x="379.0" y="460.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">module's 16-pin cable, turn it on.</text>
+<text x="634.0" y="464.6" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,474.0 185.0,497.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="490.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<rect x="20.0" y="498.0" width="620.0" height="41.2" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="29.0" y="516.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Check the module on the input test screen (Section 10.3). FAULT: A2 MSTR – RESET. Hold</text>
+<text x="29.0" y="528.7" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">A2 LTG – TEST: every button LED and 7-segment display lights; one still dark has a fault.</text>
+<text x="634.0" y="534.2" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<text x="10.0" y="559.2" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">Number: decision · YES: do the action on the right · NO: go down to the next step.</text>
+<text x="10.0" y="573.2" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">&gt;&gt;  End of procedure. If the symptom remains, return to that step and take its NO branch.</text>
+</svg>

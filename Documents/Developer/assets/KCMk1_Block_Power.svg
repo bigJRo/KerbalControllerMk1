@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="730" viewBox="0 0 650 730" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<defs>
+<marker id="ahk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#263238"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#c62828"/></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1565c0"/></marker>
+<marker id="ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6a1b9a"/></marker>
+<marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#00838f"/></marker>
+<marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="325.0" y="22.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#263238">POWER DISTRIBUTION — FUNCTIONAL BLOCK DIAGRAM</text>
+<text x="325.0" y="37.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#607d8b">Figures beside each load: 12 V input current in mA, typical / peak (Power Budget v1.2)</text>
+<rect x="10.0" y="50.0" width="94.0" height="74.0" rx="5" fill="#fafafa" stroke="#263238" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="57.0" y="65.5" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">12 V DC SUPPLY</text>
+<text x="57.0" y="79.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">external</text>
+<text x="57.0" y="91.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">10 A rated</text>
+<text x="57.0" y="104.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">(120 W)</text>
+<rect x="120.0" y="50.0" width="106.0" height="74.0" rx="5" fill="#fbe9e7" stroke="#8d6e63" stroke-width="1.4"/>
+<text x="173.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">12 V DC IN</text>
+<text x="173.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">rear panel · DC1</text>
+<text x="173.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">2.5 mm barrel</text>
+<text x="173.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">jack</text>
+<rect x="242.0" y="50.0" width="178.0" height="74.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="331.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">SOFT-LATCH SWITCH</text>
+<text x="331.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">Control Module</text>
+<text x="331.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">IRF9540N P-MOSFET load switch</text>
+<text x="331.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">analog RC hold-to-off timing</text>
+<text x="331.0" y="117.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">no Teensy pin (master cannot see it)</text>
+<rect x="436.0" y="50.0" width="204.0" height="74.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="538.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">INA228 POWER MONITOR</text>
+<text x="538.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">Control Module · I2C 0x40</text>
+<text x="538.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">15 mΩ shunt, latch output → 12 V bus</text>
+<text x="538.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">read by the master 4 times a second</text>
+<polyline points="104.0,87.0 119.0,87.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<polyline points="226.0,87.0 241.0,87.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<polyline points="420.0,87.0 435.0,87.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="256.0" y="144.0" width="150.0" height="50.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="331.0" y="160.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">POWER BUTTON (A1)</text>
+<text x="331.0" y="173.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">momentary, to Ctrl Module H1</text>
+<text x="331.0" y="186.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">short press ON · hold 3 s OFF</text>
+<polyline points="331.0,144.0 331.0,125.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="458.0" y="144.0" width="182.0" height="62.0" rx="5" fill="#fffde7" stroke="#f9a825" stroke-width="1.4"/>
+<text x="549.0" y="160.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">SUPPLY LIMITS (INA228)</text>
+<text x="549.0" y="173.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">on the Systems Information Display</text>
+<text x="549.0" y="186.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">CAUTION: below 11.5 V or above 7 A</text>
+<text x="549.0" y="198.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">WARNING: below 11.0 V or above 8 A</text>
+<text x="549.0" y="220.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#607d8b">The master also warns below 11.0 V</text>
+<rect x="10.0" y="144.0" width="216.0" height="62.0" rx="5" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.4"/>
+<text x="118.0" y="160.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">USB: DATA ONLY, NO POWER</text>
+<text x="118.0" y="173.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">VBUS not connected on USBC1 (host)</text>
+<text x="118.0" y="186.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">and USBC2; Micro-USB VCC not connected.</text>
+<text x="118.0" y="198.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">Every board runs from the 12 V bus.</text>
+<polyline points="446.0,124.0 446.0,238.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round"/>
+<polyline points="18.0,238.0 634.0,238.0" fill="none" stroke="#c62828" stroke-width="4.0" stroke-linejoin="round"/>
+<text x="18.0" y="232.0" font-size="11" font-weight="bold" text-anchor="start" fill="#c62828">V_12 MAIN BUS · 12 V</text>
+<text x="260.0" y="232.0" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">12 V LED (green) on the Control Module</text>
+<rect x="30.0" y="252.0" width="288.0" height="112.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="38.0" y="267.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">PANEL A1 · Ctrl Module CN4 (34-pin)</text>
+<text x="38.0" y="280.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">7" TFT Display Driver, each: MPM3610 5 V (1.2 A) →</text>
+<text x="38.0" y="292.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">TFT panel VDD, Teensy 4.1; AP2112K 3.3 V → logic</text>
+<text x="38.0" y="308.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Information Display 1 (panel hub)</text>
+<text x="310.0" y="308.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">227 / 246</text>
+<text x="38.0" y="320.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Annunciator (slot P2)</text>
+<text x="310.0" y="320.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">227 / 246</text>
+<text x="38.0" y="333.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">  PAM8302A amp → SPEAKER 1 · DFPlayer → SPEAKER 2</text>
+<text x="38.0" y="345.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Power button</text>
+<text x="310.0" y="345.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">negligible</text>
+<text x="38.0" y="358.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">A1 total</text>
+<text x="310.0" y="358.0" font-size="10" font-weight="bold" text-anchor="end" fill="#263238">454 / 492</text>
+<polyline points="18.0,272.0 29.0,272.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="30.0" y="370.0" width="288.0" height="152.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="38.0" y="385.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">PANEL A2 · Ctrl Module CN3 (34-pin)</text>
+<text x="38.0" y="398.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Panel Hub: MPM3610 5 V + AP2112K 3.3 V (slot V_3P3,</text>
+<text x="38.0" y="410.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">safe switch). Each ATtiny816 module makes its own 5 V.</text>
+<text x="38.0" y="426.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Action Control</text>
+<text x="166.0" y="426.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">192 / 419</text>
+<text x="180.0" y="426.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">UI Control</text>
+<text x="310.0" y="426.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">192 / 419</text>
+<text x="38.0" y="438.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Function Control</text>
+<text x="166.0" y="438.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">197 / 424</text>
+<text x="180.0" y="438.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">GPWS</text>
+<text x="310.0" y="438.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">112 / 228</text>
+<text x="38.0" y="451.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Translation (THC)</text>
+<text x="166.0" y="451.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">27 / 57</text>
+<text x="180.0" y="451.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">ABORT lamp</text>
+<text x="310.0" y="451.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">7 / 12</text>
+<text x="38.0" y="463.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Throttle</text>
+<text x="166.0" y="463.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">608 / 1,147</text>
+<text x="180.0" y="463.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Sys Info Display</text>
+<text x="310.0" y="463.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">TBD</text>
+<text x="38.0" y="479.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Throttle: own MPM3610 9 V → L293D → motorized lever</text>
+<text x="38.0" y="491.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Sys Info Display (XIAO RP2350): own 12 → 5 → 3.3 V,</text>
+<text x="38.0" y="503.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">not yet measured</text>
+<text x="38.0" y="516.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">A2 total</text>
+<text x="310.0" y="516.0" font-size="10" font-weight="bold" text-anchor="end" fill="#263238">TBD</text>
+<polyline points="18.0,390.0 29.0,390.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="30.0" y="528.0" width="288.0" height="64.0" rx="5" fill="#fff8e1" stroke="#8d6e63" stroke-width="1.3"/>
+<text x="38.0" y="543.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">CONTROL MODULE · local 5 V and 3.3 V</text>
+<text x="38.0" y="556.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Master Teensy 4.1 · USB hub (2 × CH334F, V5 pin)</text>
+<text x="38.0" y="568.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">LTC4311 I2C accelerators · 3.3 V LED (red)</text>
+<text x="38.0" y="582.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Overhead: master, soft latch, misc.</text>
+<text x="310.0" y="582.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">50 / 50</text>
+<polyline points="18.0,548.0 29.0,548.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="30.0" y="598.0" width="288.0" height="40.0" rx="5" fill="#ffffff" stroke="#e65100" stroke-width="1.3"/>
+<text x="38.0" y="613.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">FAN 1 · Ctrl Module CN1 · 12 V direct</text>
+<text x="38.0" y="627.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">PWM + tach. EMC2101 (0x4C) drives FAN_PWM to both fans</text>
+<polyline points="18.0,618.0 29.0,618.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<polyline points="18.0,238.0 18.0,618.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round"/>
+<polyline points="342.0,238.0 342.0,256.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round"/>
+<rect x="338.0" y="256.0" width="302.0" height="42.0" rx="5" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="346.0" y="271.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">50-PIN INTERBOARD → CTRL MODULE EXTENSION</text>
+<text x="346.0" y="286.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">CN2 → CN1 · V_12 on pins 39–50 · passive, straight through</text>
+<rect x="352.0" y="310.0" width="288.0" height="88.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="360.0" y="325.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">PANEL B1 · Extension CN5 (34-pin)</text>
+<text x="360.0" y="338.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">7" drivers regulate as on Panel A1</text>
+<text x="360.0" y="354.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Resource Display (panel hub)</text>
+<text x="632.0" y="354.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">227 / 246</text>
+<text x="360.0" y="366.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Information Display 2 (slot P2)</text>
+<text x="632.0" y="366.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">227 / 246</text>
+<text x="360.0" y="379.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Dual Encoder (slot P4)</text>
+<text x="632.0" y="379.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">10 / 14</text>
+<text x="360.0" y="391.5" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">B1 total</text>
+<text x="632.0" y="391.5" font-size="10" font-weight="bold" text-anchor="end" fill="#263238">464 / 506</text>
+<polyline points="342.0,330.0 351.0,330.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="352.0" y="408.0" width="288.0" height="116.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="360.0" y="423.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">PANEL B2 · Extension CN4 (34-pin)</text>
+<text x="360.0" y="436.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Panel Hub and modules regulate as on Panel A2</text>
+<text x="360.0" y="452.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Stability Control</text>
+<text x="488.0" y="452.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">192 / 419</text>
+<text x="502.0" y="452.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Time Control</text>
+<text x="632.0" y="452.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">192 / 419</text>
+<text x="360.0" y="464.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Vehicle Control</text>
+<text x="488.0" y="464.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">197 / 424</text>
+<text x="502.0" y="464.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">AUX Control</text>
+<text x="632.0" y="464.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">192 / 419</text>
+<text x="360.0" y="477.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Pre-Warp Time</text>
+<text x="488.0" y="477.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">100 / 201</text>
+<text x="502.0" y="477.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Rotation (RHC)</text>
+<text x="632.0" y="477.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">27 / 57</text>
+<text x="360.0" y="489.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">STAGE lamp</text>
+<text x="488.0" y="489.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">7 / 12</text>
+<text x="360.0" y="514.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">B2 total</text>
+<text x="632.0" y="514.0" font-size="10" font-weight="bold" text-anchor="end" fill="#263238">907 / 1,951</text>
+<polyline points="342.0,428.0 351.0,428.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="352.0" y="534.0" width="288.0" height="40.0" rx="5" fill="#ffffff" stroke="#e65100" stroke-width="1.3"/>
+<text x="360.0" y="549.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">FAN 2 · Extension CN3 · 12 V direct</text>
+<text x="360.0" y="563.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">PWM only (FAN_PWM on 50-pin pin 1), no tach</text>
+<polyline points="342.0,554.0 351.0,554.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<rect x="352.0" y="584.0" width="288.0" height="40.0" rx="5" fill="#fafafa" stroke="#6a1b9a" stroke-width="1.3" stroke-dasharray="5 3"/>
+<text x="360.0" y="599.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">EXPANSION · Extension CN2 → GX16-10</text>
+<text x="360.0" y="613.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">V_12 on GX16-10 pins 1–2 · reserved, no unit fitted</text>
+<polyline points="342.0,604.0 351.0,604.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#ahr)"/>
+<polyline points="342.0,298.0 342.0,604.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round"/>
+<polyline points="342.0,238.0 342.0,256.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round"/>
+<rect x="10.0" y="650.0" width="630.0" height="74.0" rx="5" fill="#f7f9fb" stroke="#263238" stroke-width="1.4"/>
+<text x="18.0" y="666.0" font-size="11" font-weight="bold" text-anchor="start" fill="#263238">SYSTEM LOAD AT 12 V · Panels A1 + A2 + B1 + B2 (interim)</text>
+<text x="240.0" y="680.0" font-size="10" font-weight="bold" text-anchor="end" fill="#263238">Typical</text>
+<text x="360.0" y="680.0" font-size="10" font-weight="bold" text-anchor="end" fill="#263238">Peak</text>
+<text x="18.0" y="693.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Load</text>
+<text x="240.0" y="693.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">3.30 A · 39.5 W</text>
+<text x="360.0" y="693.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">5.82 A · 69.8 W</text>
+<text x="18.0" y="705.5" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Supply rating</text>
+<text x="240.0" y="705.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">10.0 A · 120 W</text>
+<text x="360.0" y="705.5" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">10.0 A · 120 W</text>
+<text x="18.0" y="718.0" font-size="10" font-weight="normal" text-anchor="start" fill="#455a64">Headroom</text>
+<text x="240.0" y="718.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">6.70 A · 80.5 W</text>
+<text x="360.0" y="718.0" font-size="10" font-weight="normal" text-anchor="end" fill="#455a64">4.18 A · 50.2 W</text>
+<text x="380.0" y="680.0" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">Interim: the Sys Info Display is not yet</text>
+<text x="380.0" y="692.5" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">measured; its former RA4M1 figure is</text>
+<text x="380.0" y="705.0" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">used. Fans are not itemized.</text>
+</svg>

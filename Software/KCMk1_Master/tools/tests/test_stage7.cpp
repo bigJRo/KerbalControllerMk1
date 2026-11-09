@@ -180,6 +180,10 @@ static void testAscent(Bench &b) {
   b.m(MOD_FUNCTION).press(SG1_ENGINE); fly(400);
   console(b, OP_ARM, 0.0f);
   CHECK(apIsArmed(), "armed again");
+  { byte one = 1; inbound(VESSEL_CHANGE_MESSAGE, &one, 1); fly(100); }
+  CHECK(!apIsArmed() && thrOwner() != THR_OWNER_ASCENT, "switching vessel disarms it and releases the throttle");
+  console(b, OP_ARM, 0.0f);
+  CHECK(apIsArmed(), "armed again after the switch");
   leaveFlight();
   CHECK(!apIsArmed() && !g_panel.autopilot, "leaving the flight disarms it (no flight, no autopilot)");
   enterFlight();

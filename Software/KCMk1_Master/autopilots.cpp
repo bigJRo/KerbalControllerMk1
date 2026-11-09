@@ -76,10 +76,10 @@ void autopilotsIngest(byte type, const byte *msg, byte size) {
       break;
     }
     case SCENE_CHANGE_MESSAGE:
-      if (size >= 1 && msg[0] != 0) { hpVesselChanged(); bpVesselChanged(); lpVesselChanged(); }   // leaving flight
+      if (size >= 1 && msg[0] != 0) { apVesselChanged(); hpVesselChanged(); bpVesselChanged(); lpVesselChanged(); }   // leaving flight
       break;
     case VESSEL_CHANGE_MESSAGE:
-      if (size >= 1 && msg[0] == 1) { hpVesselChanged(); bpVesselChanged(); lpVesselChanged(); }   // switched vessel
+      if (size >= 1 && msg[0] == 1) { apVesselChanged(); hpVesselChanged(); bpVesselChanged(); lpVesselChanged(); }   // switched vessel
       break;
     case THROTTLE_CMD_MESSAGE: {
       throttleMessage m;

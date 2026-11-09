@@ -4,7 +4,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | | |
 |---|---|
-| **Version** | 0.10.0 (`KCM_MASTER_VERSION`, `config.h`) |
+| **Version** | 0.10.1 (`KCM_MASTER_VERSION`, `config.h`). 0.10.1: the ascent autopilot disarms on a vessel or scene change, like the other autopilots |
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (display carriers, BACKLIGHT and input test frames: §15.3; Sys Info Display: §15.4) |
