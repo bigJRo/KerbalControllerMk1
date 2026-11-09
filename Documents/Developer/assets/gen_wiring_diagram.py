@@ -10,7 +10,7 @@ expansion connectors and the discrete panel wiring. Sources: Hardware Inventory
 
 Writes KCMk1_Wiring_Diagram.svg next to this script, and with --png also a
 PNG rendered by the pre-installed Chromium (Playwright) at --scale (default 3,
-about 300 dpi across a 6.5 in page width at 1700 px).
+5400 x 3750 px).
 
     python3 gen_wiring_diagram.py            # SVG only
     python3 gen_wiring_diagram.py --png      # SVG + PNG
@@ -19,7 +19,7 @@ import argparse
 import os
 from xml.sax.saxutils import escape
 
-W, H = 1700, 1150
+W, H = 1800, 1250
 FONT = "Liberation Sans, Arial, Helvetica, sans-serif"
 
 # Cable / wire classes: colour, width, dash, legend text
@@ -104,19 +104,6 @@ def panel(x0, y0, x1, y1, name, desc, tint):
     t(x0 + 14 + 10.6 * len(name) + 8, y0 + 22, desc, size=12, anchor="start", fill="#607d8b")
 
 
-def module(cx, y0, lines_, empty=False, w=86, h=66):
-    x0, x1 = cx - w / 2, cx + w / 2
-    if empty:
-        rect(x0, y0, x1, y0 + h, fill="#fafafa", stroke="#b0bec5", sw=1.2, dash="4 3")
-        t(cx, y0 + h / 2 + 4, "empty", size=11, fill="#90a4ae", italic=True)
-        return
-    rect(x0, y0, x1, y0 + h, fill="#ffffff")
-    name = lines_[0]
-    for i, s in enumerate(name):
-        t(cx, y0 + 17 + i * 13.5, s, size=11.5, weight="bold")
-    t(cx, y0 + h - 8, lines_[1], size=10.5, fill="#455a64")
-
-
 def item(x0, y0, x1, y1, rows, size=11):
     rect(x0, y0, x1, y1, fill="#f1f8e9", stroke="#558b2f", sw=1.3, r=5)
     n = len(rows)
@@ -124,212 +111,258 @@ def item(x0, y0, x1, y1, rows, size=11):
     lines((x0 + x1) / 2, cy, rows, size=size, gap=size * 1.24)
 
 
+def ctag(x, y, rows, kind, size=9.5):
+    """Cable tag centred on (x, y): pin count / part number, in the cable's colour."""
+    col = KIND[kind][0]
+    wpx = max(len(r) for r in rows) * size * 0.56 + 10
+    hpx = len(rows) * size * 1.18 + 5
+    rect(x - wpx / 2, y - hpx / 2, x + wpx / 2, y + hpx / 2, fill="#ffffff", stroke=col, sw=1.1, r=3)
+    y0 = y - hpx / 2 + size + 1.5
+    for i, r in enumerate(rows):
+        t(x, y0 + i * size * 1.18, r, size=size, weight="bold" if i == 0 else "normal",
+          fill=col if i == 0 else "#546e7a")
+
+
+TBD = "P/N TBD"
+
+
+def module(cx, y0, name, addr, pn, empty=False, w=86, h=88):
+    x0, x1 = cx - w / 2, cx + w / 2
+    if empty:
+        rect(x0, y0, x1, y0 + h, fill="#fafafa", stroke="#b0bec5", sw=1.2, dash="4 3")
+        t(cx, y0 + h / 2 - 2, "empty", size=11, fill="#90a4ae", italic=True)
+        t(cx, y0 + h / 2 + 12, addr, size=9.5, fill="#90a4ae")
+        return
+    rect(x0, y0, x1, y0 + h, fill="#ffffff")
+    for i, s in enumerate(name):
+        t(cx, y0 + 16 + i * 13.5, s, size=11.5, weight="bold")
+    t(cx, y0 + h - 22, addr, size=10, fill="#455a64")
+    t(cx, y0 + h - 8, pn, size=10, weight="bold", fill="#37474f")
+
+
 def build():
     out.append('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" '
                'font-family="%s">' % (W, H, W, H, FONT))
     out.append('<rect width="100%" height="100%" fill="#ffffff"/>')
-
-    # ---------------------------------------------------------------- panels
-    AX0, AX1, BX0, BX1 = 18, 832, 868, 1682
-    panel(AX0, 52, AX1, 330, "PANEL A1", "left display panel", "#f7f9fb")
-    panel(BX0, 52, BX1, 330, "PANEL B1", "right display panel", "#f7f9fb")
-    panel(AX0, 634, AX1, 1040, "PANEL A2", "left input panel", "#f7f9fb")
-    panel(BX0, 634, BX1, 1040, "PANEL B2", "right input panel", "#f7f9fb")
     t(W / 2, 30, "KERBAL CONTROLLER Mk1 — INTERNAL WIRING", size=17, weight="bold", fill="#263238")
 
+    # ---------------------------------------------------------------- panels
+    AX0, AX1, BX0, BX1 = 18, 882, 918, 1782
+    panel(AX0, 52, AX1, 350, "PANEL A1", "KC-01-1020 · left display panel", "#f7f9fb")
+    panel(BX0, 52, BX1, 350, "PANEL B1", "KC-01-1040 · right display panel", "#f7f9fb")
+    panel(AX0, 680, AX1, 1112, "PANEL A2", "KC-01-1030 · left input panel", "#f7f9fb")
+    panel(BX0, 680, BX1, 1112, "PANEL B2", "KC-01-1050 · right input panel", "#f7f9fb")
+
     # ---------------------------------------------------------------- Ctrl Module
-    CX0, CY0, CX1, CY1 = 262, 390, 722, 604
-    board(CX0, CY0, CX1, CY1, "CONTROL MODULE", ["KC-01-1701 · power latch · INA228 · EMC2101 · USB hub (2 × CH334F)"],
-          ty=34)
-    # Master Teensy inside, on USB1
-    rect(436, 470, 658, 540, fill="#fff8e1", stroke="#8d6e63", sw=1.3, r=5)
-    t(547, 494, "Master Teensy 4.1", size=12.5, weight="bold")
-    t(547, 512, "I2C master · Simpit host link", size=10.5, fill="#5d4037")
-    t(547, 528, "reads the INT and safe lines, drives RST", size=10.5, fill="#5d4037")
-    tab(360, 505, "USB1", "left")
-    wire([(377, 505), (436, 505)], "usb")
-    t(360, 560, "USB6: spare", size=10.5, fill="#78909c", italic=True)
-    t(547, 590, "LEDs: 3.3 V (red), 12 V (green)", size=10.5, fill="#78909c")
+    CX0, CY0, CX1, CY1 = 300, 420, 800, 640
+    board(CX0, CY0, CX1, CY1, "CONTROL MODULE", ["KC-01-1700 · power latch · INA228 · EMC2101",
+                                                 "USB hub (2 × CH334F)"], ty=36)
+    rect(560, 520, 772, 590, fill="#fff8e1", stroke="#8d6e63", sw=1.3, r=5)
+    t(666, 544, "Master Teensy 4.1", size=12.5, weight="bold")
+    t(666, 562, "I2C master · Simpit host link", size=10.5, fill="#5d4037")
+    t(666, 578, "reads INT / safe lines, drives RST", size=10.5, fill="#5d4037")
+    tab(400, 555, "USB1", "left")
+    wire([(417, 555), (560, 555)], "usb")
+    ctag(488, 555, ["5-pin Micro-USB", TBD], "usb")
+    t(400, 610, "USB6: spare", size=10.5, fill="#78909c", italic=True)
+    t(666, 626, "LEDs: 3.3 V (red), 12 V (green)", size=10.5, fill="#78909c")
 
     # ---------------------------------------------------------------- Extension
-    EX0, EY0, EX1, EY1 = 1000, 412, 1440, 578
-    board(EX0, EY0, EX1, EY1, "CONTROL MODULE EXTENSION", ["KC-01-1711 · passive, every signal straight through"],
-          ty=32)
-    lines((EX0 + EX1) / 2, 506, ["Carries the B-side lines: B_INT_1–12, B_INT_SAFE(2), I2C bus,",
+    EX0, EY0, EX1, EY1 = 1080, 440, 1520, 640
+    board(EX0, EY0, EX1, EY1, "CONTROL MODULE EXTENSION", ["KC-01-1710 · passive, every signal straight through"],
+          ty=34)
+    lines((EX0 + EX1) / 2, 600, ["Carries the B-side lines: B_INT_1–12, B_INT_SAFE(2), I2C bus,",
                                  "RST, the expansion bus (SDA/SCL_EXT, EXT_INT_1/2), FAN_PWM, 12 V"],
           size=10.5, fill="#78909c")
-    wire([(CX1, 486), (EX0, 486)], "idc", "50-pin interboard", off=(0, -12))
-    tab(CX1, 486, "CN2", "right")
-    tab(EX0, 486, "CN1", "left")
+    wire([(CX1, 560), (EX0, 560)], "idc")
+    tab(CX1, 560, "CN2", "right")
+    tab(EX0, 560, "CN1", "left")
+    ctag(940, 560, ["50-pin IDC", "interboard", TBD], "idc")
 
     # ---------------------------------------------------------------- Rear panel (flanks)
-    rect(30, 372, 214, 622, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
-    t(122, 392, "REAR PANEL", size=13, weight="bold", fill="#5d4037")
-    rect(1500, 400, 1670, 590, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
-    t(1585, 420, "REAR PANEL", size=13, weight="bold", fill="#5d4037")
+    rect(22, 408, 182, 652, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
+    t(102, 428, "REAR PANEL", size=13, weight="bold", fill="#5d4037")
+    rect(1640, 470, 1780, 640, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
+    t(1710, 490, "REAR PANEL", size=13, weight="bold", fill="#5d4037")
 
     def rp(x0, x1, y, rows):
         rect(x0, y - 20, x1, y + 20, fill="#ffffff", stroke="#8d6e63", sw=1.2, r=4)
-        lines((x0 + x1) / 2, y - 3 if len(rows) > 1 else y + 4, rows, size=11, gap=13)
+        lines((x0 + x1) / 2, y - 3, rows, size=10.5, gap=13)
 
-    rp(42, 202, 428, ["12 V DC IN", ("2.5 mm barrel, ≥10 A", {"fill": "#6d4c41"})])
-    rp(42, 202, 480, ["USB-C · HOST PC", ("panel mount", {"fill": "#6d4c41"})])
-    rp(42, 202, 532, ["USB-C · EXPANSION", ("panel mount, reserved", {"fill": "#6d4c41"})])
-    rp(42, 202, 584, ["FAN 1", ("120 mm PWM, tach", {"fill": "#6d4c41"})])
-    wire([(202, 428), (CX0, 428)], "pwr")
-    tab(CX0, 428, "DC1", "left")
-    wire([(202, 480), (CX0, 480)], "usb")
-    tab(CX0, 480, "USBC1", "left")
-    wire([(202, 532), (CX0, 532)], "exp")
-    tab(CX0, 532, "USBC2", "left")
-    wire([(202, 584), (CX0, 584)], "fan")
-    tab(CX0, 584, "CN1", "left")
+    rp(30, 174, 460, ["12 V DC IN", ("2.5 mm barrel, ≥10 A", {"fill": "#6d4c41"})])
+    rp(30, 174, 512, ["USB-C · HOST PC", ("panel mount", {"fill": "#6d4c41"})])
+    rp(30, 174, 564, ["USB-C · EXPANSION", ("panel mount, reserved", {"fill": "#6d4c41"})])
+    rp(30, 174, 616, ["FAN 1", ("120 mm PWM, tach", {"fill": "#6d4c41"})])
+    for y, kind, name, tag in ((460, "pwr", "DC1", ["2-pin 12 V", TBD]),
+                               (512, "usb", "USBC1", ["24-pin USB-C", TBD]),
+                               (564, "exp", "USBC2", ["24-pin USB-C", TBD]),
+                               (616, "fan", "CN1", ["4-pin fan", TBD])):
+        wire([(174, y), (CX0, y)], kind)
+        tab(CX0, y, name, "left")
+        ctag(232, y, tag, kind)
 
-    rp(1514, 1656, 458, ["FAN 2", ("120 mm PWM, no tach", {"fill": "#6d4c41"})])
-    rp(1514, 1656, 540, ["GX16-10", ("expansion, reserved", {"fill": "#6d4c41"})])
-    wire([(EX1, 458), (1514, 458)], "fan", "PWM", off=(0, -6))
-    tab(EX1, 458, "CN3", "right")
-    wire([(EX1, 540), (1514, 540)], "exp", "10-wire", off=(0, -6))
-    tab(EX1, 540, "CN2", "right")
-    t(1477, 568, "cross-mapped", size=10, fill=KIND["exp"][0])
+    rp(1650, 1770, 520, ["FAN 2", ("120 mm PWM", {"fill": "#6d4c41"})])
+    rp(1650, 1770, 596, ["GX16-10", ("expansion, reserved", {"fill": "#6d4c41"})])
+    wire([(EX1, 520), (1650, 520)], "fan")
+    tab(EX1, 520, "CN3", "right")
+    ctag(1585, 520, ["4-pin fan", TBD], "fan")
+    wire([(EX1, 596), (1650, 596)], "exp")
+    tab(EX1, 596, "CN2", "right")
+    ctag(1585, 596, ["10-pin", "cross-mapped", TBD], "exp")
 
-    # ---------------------------------------------------------------- Panel A1
-    # Annunciator (left), Information Display 1 (hub, centre), power button (right)
-    board(46, 92, 262, 186, "ANNUNCIATOR", ["0x10 · 7\" TFT Display Driver", "KC-01-1911 (Teensy 4.1)"])
-    board(300, 200, 580, 308, "INFORMATION DISPLAY 1", ["0x12 · 7\" TFT Display Driver", "KC-01-1911 · panel hub (A1)"],
+    # ---------------------------------------------------------------- Panel A1 (left to right as on the panel)
+    item(40, 112, 190, 172, ["POWER button", "momentary", "(on / hold 3 s off)"], size=11)
+    board(230, 100, 450, 200, "ANNUNCIATOR", ["0x10 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"], ty=24)
+    board(520, 212, 800, 320, "INFORMATION DISPLAY 1", ["0x12 · 7\" TFT Display Driver", "KC-01-1910 · panel hub (A1)"],
           hub=True, ty=32)
-    t(440, 268 + 26, "safe terminal: not used", size=10, fill="#78909c", italic=True)
-    # slots on the top edge
-    for x, n in ((360, "P2"), (440, "P3"), (520, "P4")):
-        tab(x, 200, n, "top")
-    t(440, 182, "free", size=10.5, fill="#90a4ae", italic=True)
-    t(520, 182, "free", size=10.5, fill="#90a4ae", italic=True)
-    wire([(262, 140), (360, 140), (360, 192)], "slot", "16-pin", at=0, off=(0, -6))
-    tab(262, 140, "P1", "right")
-    # power button
-    item(632, 214, 812, 264, ["POWER button", "momentary (on / hold 3 s off)"], size=11)
-
-    # Ctrl top-edge connectors
-    # USB2 -> Annunciator, CN4 -> Info 1, USB3 -> Info 1, H1 -> power button, USB4/5 -> B1
-    wire([(120, 186), (120, 350), (292, 350), (292, CY0)], "usb", "USB2", at=1, off=(0, -6))
-    tab(120, 186, "USB", "bottom")
-    tab(292, CY0, "USB2", "top")
-    wire([(352, 308), (352, CY0)], "idc", "34-pin IDC", off=(9, -14))
-    tab(352, 308, "CN1", "bottom")
-    tab(352, CY0, "CN4", "top")
-    wire([(450, 308), (450, CY0)], "usb", "USB3", off=(8, -6))
-    tab(450, 308, "USB", "bottom")
-    tab(450, CY0, "USB3", "top")
-    wire([(540, CY0), (540, 344), (722, 344), (722, 264)], "pwr", "soft latch", at=2, off=(7, 0))
-    tab(540, CY0, "H1", "top")
+    t(660, 306, "safe terminal: not used", size=10, fill="#78909c", italic=True)
+    for x, n in ((570, "P2"), (650, "P3"), (730, "P4")):
+        tab(x, 212, n, "top")
+    t(650, 194, "free", size=10.5, fill="#90a4ae", italic=True)
+    t(730, 194, "free", size=10.5, fill="#90a4ae", italic=True)
+    # Annunciator P1 -> Info 1 P2
+    wire([(450, 150), (570, 150), (570, 204)], "slot")
+    tab(450, 150, "P1", "right")
+    ctag(512, 150, ["16-pin IDC", TBD], "slot")
+    # power button -> H1
+    wire([(115, 172), (115, 380), (330, 380), (330, CY0)], "pwr")
+    tab(330, CY0, "H1", "top")
+    ctag(115, 270, ["4-pin", TBD], "pwr")
+    # Annunciator USB -> USB2
+    wire([(400, 200), (400, CY0)], "usb")
+    tab(400, 200, "USB", "bottom")
+    tab(400, CY0, "USB2", "top")
+    ctag(400, 300, ["5-pin Micro-USB", TBD], "usb")
+    # CN4 -> Info 1 CN1, USB3 -> Info 1
+    wire([(580, 320), (580, CY0)], "idc")
+    tab(580, 320, "CN1", "bottom")
+    tab(580, CY0, "CN4", "top")
+    ctag(580, 352, ["34-pin IDC", TBD], "idc")
+    wire([(700, 320), (700, CY0)], "usb")
+    tab(700, 320, "USB", "bottom")
+    tab(700, CY0, "USB3", "top")
+    ctag(700, 386, ["5-pin Micro-USB", TBD], "usb")
 
     # ---------------------------------------------------------------- Panel B1
-    board(896, 196, 1112, 300, "INFORMATION DISPLAY 2", ["0x13 · 7\" TFT Display Driver", "KC-01-1911 (Teensy 4.1)"],
+    board(945, 200, 1165, 310, "INFORMATION DISPLAY 2", ["0x13 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"],
           tsize=12.5, ty=32)
-    board(1150, 200, 1430, 308, "RESOURCE DISPLAY", ["0x11 · 7\" TFT Display Driver", "KC-01-1911 · panel hub (B1)"],
+    board(1210, 212, 1490, 320, "RESOURCE DISPLAY", ["0x11 · 7\" TFT Display Driver", "KC-01-1910 · panel hub (B1)"],
           hub=True, ty=32)
-    t(1290, 294, "safe terminal: not used", size=10, fill="#78909c", italic=True)
-    for x, n in ((1200, "P2"), (1280, "P3"), (1360, "P4")):
-        tab(x, 200, n, "top")
-    t(1280, 182, "free", size=10.5, fill="#90a4ae", italic=True)
-    wire([(1064, 196), (1064, 160), (1200, 160), (1200, 192)], "slot", "16-pin", at=1, off=(0, -6))
-    tab(1064, 196, "P1", "top")
-    board(1458, 214, 1664, 300, "DUAL ENCODER", ["0x2D · KC-01-1861", "safe terminal: no path"], ty=32)
-    wire([(1360, 192), (1360, 176), (1444, 176), (1444, 268), (1458, 268)], "slot", "16-pin", at=1, off=(0, -6))
-    tab(1458, 268, "P1", "left")
-    item(1462, 92, 1556, 150, ["ENC1 · CTRL GRP", "Encoder carrier", "KC-01-1851"], size=10)
-    item(1566, 92, 1660, 150, ["ENC2 · EXT CAM", "Encoder carrier", "KC-01-1851"], size=10)
-    wire([(1509, 150), (1509, 214)], "wire", "5-pin", off=(6, -4))
-    wire([(1613, 150), (1613, 214)], "wire", "5-pin", off=(6, -4))
-    tab(1509, 214, "H1", "top")
-    tab(1613, 214, "H2", "top")
-
-    wire([(640, CY0), (640, 356), (980, 356), (980, 300)], "usb", "USB4", at=1, off=(80, -6))
-    tab(980, 300, "USB", "bottom")
-    tab(640, CY0, "USB4", "top")
-    wire([(690, CY0), (690, 370), (1196, 370), (1196, 308)], "usb", "USB5", at=1, off=(150, -6))
-    tab(1196, 308, "USB", "bottom")
-    tab(690, CY0, "USB5", "top")
-    wire([(1300, 308), (1300, EY0)], "idc", "34-pin IDC", off=(9, -14))
-    tab(1300, 308, "CN1", "bottom")
-    tab(1300, EY0, "CN5", "top")
+    t(1350, 306, "safe terminal: not used", size=10, fill="#78909c", italic=True)
+    for x, n in ((1260, "P2"), (1340, "P3"), (1420, "P4")):
+        tab(x, 212, n, "top")
+    t(1340, 194, "free", size=10.5, fill="#90a4ae", italic=True)
+    wire([(1000, 200), (1000, 166), (1260, 166), (1260, 204)], "slot")
+    tab(1000, 200, "P1", "top")
+    ctag(1130, 166, ["16-pin IDC", TBD], "slot")
+    board(1560, 232, 1762, 320, "DUAL ENCODER", ["0x2D · KC-01-1860", "safe terminal: no path"], ty=32)
+    wire([(1420, 204), (1420, 182), (1540, 182), (1540, 290), (1560, 290)], "slot")
+    tab(1560, 290, "P1", "left")
+    ctag(1480, 182, ["16-pin IDC", TBD], "slot")
+    item(1556, 84, 1656, 148, ["ENC1 · CTRL GRP", "Encoder", "KC-01-1850"], size=10)
+    item(1664, 84, 1764, 148, ["ENC2 · EXT CAM", "Encoder", "KC-01-1850"], size=10)
+    for x, n in ((1610, "H1"), (1714, "H2")):
+        wire([(x, 148), (x, 232)], "wire")
+        tab(x, 232, n, "top")
+        ctag(x, 190, ["5-pin", TBD], "wire")
+    # USB4 / USB5 leave the Ctrl Module's right edge and climb through the gap between the panels
+    wire([(CX1, 455), (892, 455), (892, 370), (1110, 370), (1110, 310)], "usb")
+    tab(CX1, 455, "USB4", "right")
+    tab(1110, 310, "USB", "bottom")
+    ctag(1000, 370, ["5-pin Micro-USB", TBD], "usb")
+    wire([(CX1, 485), (908, 485), (908, 404), (1260, 404), (1260, 320)], "usb")
+    tab(CX1, 485, "USB5", "right")
+    tab(1260, 320, "USB", "bottom")
+    ctag(1185, 404, ["5-pin Micro-USB", TBD], "usb")
+    # CN5 -> Resource CN1
+    wire([(1390, 320), (1390, EY0)], "idc")
+    tab(1390, 320, "CN1", "bottom")
+    tab(1390, EY0, "CN5", "top")
+    ctag(1390, 380, ["34-pin IDC", TBD], "idc")
 
     # ---------------------------------------------------------------- input panels
-    def input_panel(x0, x1, cn_x, cy_top, mods, tag, safe_rows, items):
-        HY0, HY1 = 680, 740
-        hx0, hx1 = x0 + 66, x1 - 18
-        board(hx0, HY0, hx1, HY1, "PANEL HUB  ·  KC-01-1731", ["CN1 34-pin · 8 module slots · safe-switch terminal U4"],
-              hub=True)
-        wire([(cn_x, cy_top), (cn_x, HY0)], "idc", "34-pin IDC", off=(9, -34))
+    def input_panel(x0, x1, cn_x, cy_top, src_cn, mods, tag, safe_rows, items):
+        HY0, HY1 = 730, 790
+        hx0, hx1 = x0 + 74, x1 - 18
+        board(hx0, HY0, hx1, HY1, "PANEL HUB  ·  KC-01-1730",
+              ["CN1 34-pin · 8 module slots · safe-switch terminal U4"], hub=True)
+        wire([(cn_x, cy_top), (cn_x, HY0)], "idc")
         tab(cn_x, HY0, "CN1", "top")
-        # slots and modules
+        tab(cn_x, cy_top, src_cn, "bottom")
+        ctag(cn_x, 662, ["34-pin IDC", TBD], "idc")
         n = 8
-        pitch = (hx1 - hx0 - 20) / n
-        cxs = [hx0 + 10 + pitch * (i + 0.5) for i in range(n)]
+        pitch = (hx1 - hx0 - 16) / n
+        cxs = [hx0 + 8 + pitch * (i + 0.5) for i in range(n)]
+        MY = 862
         for i, (cx, m) in enumerate(zip(cxs, mods)):
             tab(cx, HY1, "P%d" % (i + 1), "bottom")
+            intn = "%sINT_%d" % (tag, i + 1)
             if m is None:
-                module(cx, 784, None, empty=True)
+                module(cx, MY, None, intn, None, empty=True)
             else:
-                wire([(cx, HY1 + 8), (cx, 784)], "slot")
-                module(cx, 784, m)
-            t(cx + 6, 770, "%sINT_%d" % (tag, i + 1), size=9.5, anchor="start", fill="#78909c")
-        # safe switch on the hub's left edge
-        sy = 712
+                wire([(cx, HY1 + 8), (cx, MY)], "slot")
+                ctag(cx, 826, ["16-pin IDC", TBD], "slot", size=9)
+                module(cx, MY, m[0], "%s · %s" % (m[1], intn), m[2])
+        # safe switch from the hub's left edge
+        sy = 760
+        sx = x0 + 34
         tab(hx0, sy, "U4", "left")
-        wire([(hx0 - 14, sy), (x0 + 30, sy), (x0 + 30, 960), (x0 + 42, 960)], "wire", None)
-        item(x0 + 42, 932, x0 + 42 + 112, 990, safe_rows, size=11)
-        t(x0 + 36, 1010, "→ %sINT_SAFE (active-high)" % tag, size=10, anchor="start", fill="#2e7d32")
-        # panel items under their modules
-        for (slot, term, rows, w) in items:
+        wire([(hx0 - 14, sy), (sx, sy), (sx, 1062), (x0 + 50, 1062)], "wire")
+        ctag(sx, 900, ["6-pin", TBD], "wire", size=9)
+        item(x0 + 50, 1034, x0 + 50 + 112, 1090, safe_rows, size=11)
+        t(x0 + 168, 1080, "→ %sINT_SAFE" % tag, size=10, anchor="start", fill="#2e7d32")
+        for (slot, rows_tag, rows, w) in items:
             cx = cxs[slot - 1]
-            wire([(cx, 932), (cx, 850)], "wire", term, off=(6, -2))
-            item(cx - w / 2, 932, cx + w / 2, 990, rows, size=10)
-        return cxs
+            wire([(cx, 1034), (cx, MY + 88)], "wire")
+            ctag(cx, 992, rows_tag + [TBD], "wire", size=9)
+            item(cx - w / 2, 1034, cx + w / 2, 1090, rows, size=10)
 
-    input_panel(AX0, AX1, 352, CY1,
-                [(["Action", "Control"], "0x22 · 1801"),
-                 (["Sys Info", "Display"], "0x14 · 1901"),
-                 (["Throttle"], "0x2C · 1871"),
-                 (["UI", "Control"], "0x20 · 1801"),
+    input_panel(AX0, AX1, 580, CY1, "CN3",
+                [(["Action", "Control"], "0x22", "KC-01-1800"),
+                 (["Sys Info", "Display"], "0x14", "KC-01-1900"),
+                 (["Throttle"], "0x2C", "KC-01-1870"),
+                 (["UI", "Control"], "0x20", "KC-01-1800"),
                  None,
-                 (["GPWS"], "0x2A · 1841"),
-                 (["Translation", "joystick"], "0x29 · 1831"),
-                 (["Function", "Control"], "0x21 · 1811")],
+                 (["GPWS"], "0x2A", "KC-01-1840"),
+                 (["Translation", "joystick"], "0x29", "KC-01-1830"),
+                 (["Function", "Control"], "0x21", "KC-01-1810")],
                 "", ["ABORT button", "+ arming switch"],
-                [(3, "U7 U8 U10 U11", ["FULL · THRTL +", "THRTL − · IDLE", "(lamps: LED_ENA)"], 112),
-                 (7, "U6", ["THC stick", "3 axes + button", "(6-wire)"], 84),
-                 (8, "U16 U17", ["SWITCH GRP 1", "8 switches", "B16–B23"], 84)])
-    input_panel(BX0, BX1, 1300, EY1,
+                [(3, ["U7 U8 U10 U11", "4 × 4-pin"], ["FULL · THRTL +", "THRTL − · IDLE", "(lamps: LED_ENA)"], 90),
+                 (7, ["U6", "6-pin"], ["THC stick", "3 axes + button"], 86),
+                 (8, ["U16 U17", "2 × 6-pin"], ["SWITCH GRP 1", "8 switches", "B16–B23"], 86)])
+    input_panel(BX0, BX1, 1390, EY1, "CN4",
                 [None,
-                 (["Pre-Warp", "Time"], "0x2B · 1841"),
-                 (["Time", "Control"], "0x25 · 1801"),
-                 (["Vehicle", "Control"], "0x24 · 1811"),
+                 (["Pre-Warp", "Time"], "0x2B", "KC-01-1840"),
+                 (["Time", "Control"], "0x25", "KC-01-1800"),
+                 (["Vehicle", "Control"], "0x24", "KC-01-1810"),
                  None,
-                 (["Stability", "Control"], "0x23 · 1801"),
-                 (["AUX", "Control"], "0x26 · 1801"),
-                 (["Rotation", "joystick"], "0x28 · 1831")],
+                 (["Stability", "Control"], "0x23", "KC-01-1800"),
+                 (["AUX", "Control"], "0x26", "KC-01-1800"),
+                 (["Rotation", "joystick"], "0x28", "KC-01-1830")],
                 "B_", ["STAGE button", "+ arming switch"],
-                [(3, "CN2", ["CTRL MODE", "SPC · PLN · RVR", "B12 / B13"], 84),
-                 (4, "U16 U17", ["SWITCH GRP 2", "8 switches", "B16–B23"], 84),
-                 (8, "U6", ["RHC stick", "3 axes + button", "(6-wire)"], 84)])
+                [(3, ["CN2", "4-pin"], ["CTRL MODE", "SPC · PLN · RVR", "B12 / B13"], 86),
+                 (4, ["U16 U17", "2 × 6-pin"], ["SWITCH GRP 2", "8 switches", "B16–B23"], 86),
+                 (8, ["U6", "6-pin"], ["RHC stick", "3 axes + button"], 86)])
 
     # ---------------------------------------------------------------- legend
-    lx, ly = 30, 1068
+    lx, ly = 30, 1142
     t(lx, ly, "LEGEND", size=12.5, weight="bold", anchor="start", fill="#37474f")
     keys = ["idc", "slot", "usb", "pwr", "wire", "fan", "exp"]
-    colw = [560, 560, 560]
+    colw = [600, 600]
     for i, k in enumerate(keys):
         col, row = i % 3, i // 3
-        x = lx + 80 + sum(colw[:col])
+        x = lx + 80 + col * 560
         y = ly - 4 + row * 22
         c, w, dash, txt = KIND[k]
         d = ' stroke-dasharray="%s"' % dash if dash else ""
         out.append('<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="%s" stroke-width="%s"%s stroke-linecap="round"/>'
                    % (x, y, x + 40, y, c, w, d))
         t(x + 50, y + 4, txt, size=11.5, anchor="start")
-    t(lx, ly + 66, "Shaded boards are panel hubs. Each hub slot carries 12 V, the I2C bus, RST and one INT line "
-                   "(the INT name is under each slot). Addresses and board numbers: 0xNN · KC-01-NNNN. "
+    ctag(lx + 80 + 560 + 52, ly + 40, ["N-pin", TBD], "idc")
+    t(lx + 80 + 560 + 90, ly + 44, "Cable tag: connector pin count, cable part number (to be assigned)",
+      size=11.5, anchor="start")
+    t(lx, ly + 84, "Shaded boards are panel hubs. Each hub slot carries 12 V, the I2C bus, RST and one INT line. "
+                   "Module boxes: I2C address · INT line, then the assembly part number (KC-01-XXX0). "
                    "Sources: Hardware Inventory §2–§7, Hardware Reference §3.6, §5, §7, §10.",
       size=10.5, anchor="start", fill="#607d8b")
 
