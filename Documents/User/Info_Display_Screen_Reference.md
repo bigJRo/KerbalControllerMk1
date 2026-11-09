@@ -340,9 +340,13 @@ vessel is typed Rover.
   above +1 %, REV on yellow below −1 %, both muted in neutral. They show the command,
   not the direction you are actually moving.
 - **Left column:** V.SRF, TTE, then the BRAKES, GEAR and SAS indicators.
+- **Rover (compass centre).** The rover seen from above, front up. It does not turn; the
+  card turns around it.
 - **Right column:** ALT.TRN, then the PITCH and ROLL tilt pictures with their values.
-  The pictures (side view with the front to the right, and rear view) show the tilt; the
-  numbers beneath carry the warning colours. The pictures stop turning at ±45°.
+  The pictures (the same rover from the side with the front to the right, and from
+  behind) tilt with the vehicle in 1° steps; the numbers beneath carry the warning
+  colours. The pictures stop turning at ±45°. The rover pictures come from the SD card
+  (folder `Rover`); without them the screen draws plain grey outlines instead.
 - **DIST / T+TGT strip (bottom).** Range and time to the target, shown while a target
   is set.
 

@@ -193,7 +193,7 @@ void switchToScreen(ScreenType s);
    and KCM_Display >= 1.1.0 (kcmBacklight*)
 ****************************************************************************************/
 static const uint8_t SKETCH_VERSION_MAJOR = 1;
-static const uint8_t SKETCH_VERSION_MINOR = 18;  // 1.18.0: input test screen (unit 1); demo follows the master's flag only; backlight dimming
+static const uint8_t SKETCH_VERSION_MINOR = 19;  // 1.19.0: rover art on the ROVER screen (SD /Rover/)
 static const uint8_t SKETCH_VERSION_PATCH = 0;
 
 

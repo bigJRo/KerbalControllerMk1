@@ -145,6 +145,9 @@ def main():
     ap.add_argument("--define", "-D", action="append", default=[],
                     help="extra preprocessor define, e.g. -D INFO_DISP_UNIT=2 (may repeat)")
     ap.add_argument("--suffix", default="", help="tag appended to the panel name in output files")
+    ap.add_argument("--sd", default=ASSETS,
+                    help="folder the SD stub reads as the card root (default ../assets; "
+                         "SD_Cards/<sketch> checks a card folder on its own)")
     args = ap.parse_args()
 
     scenarios = args.scenarios or SCENARIO_NAMES.get(args.sketch, [])
@@ -155,7 +158,7 @@ def main():
     build_dir = tempfile.mkdtemp(prefix="kcm_render_")
     try:
         exe = build(args.sketch, build_dir, args.define)
-        env = dict(os.environ, KCM_SD_ROOT=ASSETS)
+        env = dict(os.environ, KCM_SD_ROOT=os.path.abspath(args.sd))
         for sc in scenarios:
             ppm = os.path.join(build_dir, sc + ".ppm")
             r = subprocess.run([exe, sc, ppm], env=env, capture_output=True, text=True)

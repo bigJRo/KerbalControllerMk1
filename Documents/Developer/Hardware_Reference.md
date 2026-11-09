@@ -125,6 +125,8 @@ Ctrl Module (KC-01-1701 / 1702)
 
 The A and B sides are wired the same way: an 8-line connector for the input panel's Panel Hub, and a 4-line connector for the display panel's hub driver. Modules plug into the hubs' 16-pin slots (§12).
 
+Every internal cable (panels, slots, USB, power, fans, expansion and the panel switch wiring) is drawn in one figure: `assets/KCMk1_Wiring_Diagram.svg` (PNG alongside, for the Technical Information Manual's Wiring Diagram chapter). Regenerate it with `python3 assets/gen_wiring_diagram.py --png` after a wiring change.
+
 ---
 
 ## 4. Panel Layout

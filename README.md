@@ -35,6 +35,7 @@ and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_R
 | `libraries/KerbalDisplayCommon/` | Shared UI toolkit — drawing, fonts, formatting, threshold colouring |
 | `libraries/KCM_Display`, `KCM_Touch`, `KCMk1_SystemConfig` | Display driver wrapper, touch driver, shared pin map + thresholds |
 | `libraries/KerbalDisplayAudio/` | Master-alarm audio (PAM8302A amp + speaker) + DFPlayer audio |
+| [`SD_Cards/`](Software/Displays/SD_Cards/README.md) | Ready-to-copy microSD card contents, one folder per display firmware (built from `assets/`) |
 
 Each panel sketch has its own README with per-panel wiring, dependencies, and
 screen documentation.
