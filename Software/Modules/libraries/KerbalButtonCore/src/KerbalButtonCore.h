@@ -216,4 +216,23 @@ private:
     uint32_t _lastSleepPollTime;
 };
 
+// ============================================================
+//  Implementation
+//
+//  The library is compiled inside the sketch, from the .ipp files
+//  included below, so that the sketch's configuration #defines
+//  (KBC_INPUT_COUNT, KBC_SHIFTREG_COUNT, timing,
+//  colours) reach the library code. The Arduino IDE compiles
+//  a library's .cpp files on their own, without the sketch's #defines:
+//  a 24-input module (KBC_INPUT_COUNT 24) then ran a
+//  16-input library, with a class layout that did not match the sketch's.
+//
+//  Include this header from ONE file of the sketch only (the main
+//  .ino); a second including .cpp would define everything twice.
+// ============================================================
+#include "KBC_ShiftReg.ipp"
+#include "KBC_LEDControl.ipp"
+#include "KBC_I2C.ipp"
+#include "KerbalButtonCore.ipp"
+
 #endif // KERBAL_BUTTON_CORE_H

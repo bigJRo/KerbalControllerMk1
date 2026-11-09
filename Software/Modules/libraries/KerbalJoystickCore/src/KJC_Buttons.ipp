@@ -1,5 +1,5 @@
 /**
- * @file        KJC_Buttons.cpp
+ * @file        KJC_Buttons.ipp
  * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1
@@ -158,15 +158,15 @@ uint8_t buttonsGetState() {
 // ============================================================
 
 uint8_t buttonsGetChangeMask() {
-    uint8_t mask = _changeMask;
-    _changeMask  = 0;
-    _intPending  = false;
-
-    // Re-assert if state changed again during this read
-    if (_state != _latchedState) {
-        _changeMask = _state ^ _latchedState;
-        _intPending = true;
-    }
+    // The mask already holds every edge since the previous read, so the
+    // read consumes it and latches the current state. Edges after this
+    // read are picked up by the next buttonsPoll(). (Earlier versions
+    // re-armed the mask here from _state ^ _latchedState, where
+    // _latchedState was the state at the PREVIOUS read, so every edge
+    // was reported a second time.)
+    uint8_t mask  = _changeMask;
+    _changeMask   = 0;
+    _intPending   = false;
     _latchedState = _state;
     return mask;
 }
@@ -247,7 +247,7 @@ void buttonsRender() {
                 // would require a timer in kjcUpdate() similar to KBC_LEDControl.
                 // Joystick buttons are not expected to use WARNING/ALERT states
                 // in normal operation. If this changes, implement a flash timer
-                // in KerbalJoystickCore.cpp alongside the poll interval timer.
+                // in KerbalJoystickCore.ipp alongside the poll interval timer.
                 color = KJC_AMBER;
                 break;
             case KJC_LED_ALERT:

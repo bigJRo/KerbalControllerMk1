@@ -1,5 +1,5 @@
 /**
- * @file        KBC_ShiftReg.cpp
+ * @file        KBC_ShiftReg.ipp
  * @version     2.0.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1

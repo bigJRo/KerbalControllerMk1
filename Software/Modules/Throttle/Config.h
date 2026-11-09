@@ -1,7 +1,7 @@
 /**
  * @file        Config.h
- * @version     2.2.0
- * @date        2026-10-31
+ * @version     2.3.0
+ * @date        2026-11-08
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -25,7 +25,7 @@
 #define THR_I2C_ADDRESS         0x2C
 #define THR_MODULE_TYPE_ID      KMC_TYPE_THROTTLE
 #define THR_FIRMWARE_MAJOR      2
-#define THR_FIRMWARE_MINOR      0
+#define THR_FIRMWARE_MINOR      3   // tracks the sketch minor version
 
 /** @brief Capability flag — motorized position control. */
 #define THR_CAP_MOTORIZED       KMC_CAP_MOTORIZED

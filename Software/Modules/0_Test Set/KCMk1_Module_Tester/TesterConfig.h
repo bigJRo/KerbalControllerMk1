@@ -31,8 +31,8 @@
 // ============================================================
 #define TESTER_VERSION_MAJOR   2
 #define TESTER_VERSION_MINOR   0
-#define TESTER_VERSION_PATCH   0
-#define TESTER_VERSION_STR     "2.0.0"
+#define TESTER_VERSION_PATCH   1
+#define TESTER_VERSION_STR     "2.0.1"
 
 // ============================================================
 //  XIAO RA4M1 pin map (see schematic page P1, "Microcontroller")

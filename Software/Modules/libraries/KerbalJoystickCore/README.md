@@ -1,6 +1,6 @@
 # KerbalJoystickCore
 
-**Version:** 2.1.0  
+**Version:** 2.2.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
@@ -174,16 +174,29 @@ KerbalJoystickCore/
 ├── README.md
 ├── library.properties
 ├── src/
-│   ├── KerbalJoystickCore.h/.cpp  — top-level include and update loop
+│   ├── KerbalJoystickCore.h/.ipp  — top-level include and update loop
 │   ├── KJC_Config.h               — pins, constants, thresholds
 │   ├── KJC_Colors.h               — RGB palette and helpers
-│   ├── KJC_ADC.h/.cpp             — analog axis reading and processing
-│   ├── KJC_Buttons.h/.cpp         — button input and NeoPixel LED control
-│   └── KJC_I2C.h/.cpp             — I2C target and INT management
+│   ├── KJC_ADC.h/.ipp             — analog axis reading and processing
+│   ├── KJC_Buttons.h/.ipp         — button input and NeoPixel LED control
+│   └── KJC_I2C.h/.ipp             — I2C target and INT management
 └── examples/
     ├── BasicJoystickModule/       — minimal sketch template
     └── DiagnosticDump/            — serial debug and hardware verification
 ```
+
+The `.ipp` files hold the implementation. `KerbalJoystickCore.h` includes them
+at its end, so the library is compiled inside the sketch together with the
+sketch's configuration `#define`s (for example `KJC_AXIS2_INVERT -1` in the
+Translation sketch). Include `KerbalJoystickCore.h` from the main `.ino` only.
+
+---
+
+## Version history
+
+| Version | Date | Notes |
+|---|---|---|
+| 2.2.0 | 2026-11-08 | Each button edge is reported once (`buttonsGetChangeMask` no longer re-arms the mask from the state latched at the previous read, which reported every edge twice). Sources renamed `.cpp` → `.ipp` and included from `KerbalJoystickCore.h`, so a sketch's `KJC_AXISn_INVERT` reaches the library (the Translation stick's AXIS2 was not inverted). Identity firmware 2.2 (was 2.0). |
 
 ---
 

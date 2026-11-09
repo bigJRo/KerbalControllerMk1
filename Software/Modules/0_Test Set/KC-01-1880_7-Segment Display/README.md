@@ -5,6 +5,8 @@
 
 ---
 
+> **Superseded for GPWS and Pre-Warp Time:** use the touchscreen testers `Module Testers/KCMk1_Test_GPWS` and `Module Testers/KCMk1_Test_PreWarp_Time` on the KC-01-9001 v2.0 tester. The serial testers below predate the current module firmware and the v2.0 tester wiring. The stand-alone construction test has moved to `Construction Tests/KC01_1841_ConstructionTest`.
+
 ## Overview
 
 Two separate testers serve different purposes:

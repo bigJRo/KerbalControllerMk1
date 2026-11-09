@@ -1,5 +1,5 @@
 /**
- * @file        KJC_I2C.cpp
+ * @file        KJC_I2C.ipp
  * @version     2.0.0
  * @date        2026-04-08
  * @project     Kerbal Controller Mk1

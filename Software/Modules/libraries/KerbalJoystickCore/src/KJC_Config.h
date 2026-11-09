@@ -40,7 +40,7 @@
 // ============================================================
 
 #define KJC_FIRMWARE_MAJOR      2
-#define KJC_FIRMWARE_MINOR      0
+#define KJC_FIRMWARE_MINOR      2   // tracks the library minor version
 
 // ============================================================
 //  Button and LED counts

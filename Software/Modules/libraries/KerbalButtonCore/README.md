@@ -1,6 +1,6 @@
 # KerbalButtonCore
 
-**Version:** 2.3.0  
+**Version:** 2.4.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
@@ -322,7 +322,12 @@ This widens the input data path and the response packet to a 6-byte payload
 is unchanged: `activeColors[KBC_BUTTON_COUNT]` is still 16 positions, since
 indices 16–23 have no LED hardware. The U16 bit→index mapping mirrors the
 U14/U15 order and is a hardware assumption to confirm against the schematic
-(see `KBC_SR_BUTTON_MAP` in `KBC_ShiftReg.cpp`).
+(see `KBC_SR_BUTTON_MAP` in `KBC_ShiftReg.ipp`).
+
+The library is compiled inside the sketch (see *File Structure*), which is
+what lets these `#define`s reach it. Before 2.4 the library sources were
+`.cpp` files, which the Arduino IDE compiles on their own without the
+sketch's `#define`s: a 24-input module then ran a 16-input library.
 
 ---
 
@@ -352,18 +357,31 @@ KerbalButtonCore/
 ├── library.properties
 ├── src/
 │   ├── KerbalButtonCore.h      — top-level include (sketches use this only)
-│   ├── KerbalButtonCore.cpp
+│   ├── KerbalButtonCore.ipp
 │   ├── KBC_Config.h            — pin definitions and timing constants
 │   ├── KBC_Protocol.h          — I2C protocol constants and packet structs
 │   ├── KBC_Colors.h            — RGB color palette and helpers
-│   ├── KBC_ShiftReg.h/.cpp     — 74HC165 shift register abstraction
-│   ├── KBC_LEDControl.h/.cpp   — LED state machine
-│   └── KBC_I2C.h/.cpp          — I2C target command handler
+│   ├── KBC_ShiftReg.h/.ipp     — 74HC165 shift register abstraction
+│   ├── KBC_LEDControl.h/.ipp   — LED state machine
+│   └── KBC_I2C.h/.ipp          — I2C target command handler
 └── examples/
     ├── BasicModule/            — minimal core-states-only module sketch
     ├── ExtendedModule/         — module with WARNING/ALERT/ARMED states
     └── DiagnosticDump/         — serial debug output of button and LED state
 ```
+
+The `.ipp` files hold the implementation. `KerbalButtonCore.h` includes them
+at its end, so the library is compiled inside the sketch together with the
+sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
+`.ino` only; a second `.cpp` that includes it would define everything twice.
+
+---
+
+## Version history
+
+| Version | Date | Notes |
+|---|---|---|
+| 2.4.0 | 2026-11-08 | Sources renamed `.cpp` → `.ipp` and included from `KerbalButtonCore.h`, so the sketch's `KBC_INPUT_COUNT` / `KBC_SHIFTREG_COUNT` reach the library. Before, Function and Vehicle Control (24 inputs) ran a 16-input library with a class layout that did not match the sketch. Identity firmware 2.4 (was 2.2). |
 
 ---
 
