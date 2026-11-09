@@ -14,6 +14,10 @@ PNG rendered by the pre-installed Chromium (Playwright) at --scale (default 3,
 
     python3 gen_wiring_diagram.py            # SVG only
     python3 gen_wiring_diagram.py --png      # SVG + PNG
+
+This single sheet is for viewing on screen. The print figures in the TIM (overview,
+Side A, Side B) are drawn by gen_wiring_figures.py from the same helpers; change
+both when the wiring changes.
 """
 import argparse
 import os
@@ -267,8 +271,8 @@ def build():
     wire([(1420, 204), (1420, 182), (1540, 182), (1540, 290), (1560, 290)], "slot")
     tab(1560, 290, "P1", "left")
     ctag(1480, 182, ["16-pin IDC", TBD], "slot")
-    item(1556, 84, 1656, 148, ["ENC1 · CTRL GRP", "Encoder", "KC-01-1850"], size=10)
-    item(1664, 84, 1764, 148, ["ENC2 · EXT CAM", "Encoder", "KC-01-1850"], size=10)
+    item(1556, 84, 1656, 148, ["CONTROL GROUP", "SELECTOR · ENC1", "KC-01-1850"], size=10)
+    item(1664, 84, 1764, 148, ["EXT CAM", "ENCODER · ENC2", "KC-01-1850"], size=10)
     for x, n in ((1610, "H1"), (1714, "H2")):
         wire([(x, 148), (x, 232)], "wire")
         tab(x, 232, n, "top")
@@ -348,7 +352,7 @@ def build():
                  (["AUX", "Control"], "0x26", "KC-01-1800"),
                  (["Rotation", "joystick"], "0x28", "KC-01-1830")],
                 "B_", ["STAGE button", "+ arming switch"],
-                [(3, ["CN2", "4-pin"], ["CTRL MODE", "SPC · PLN · RVR", "B12 / B13"], 86),
+                [(3, ["CN2", "4-pin"], ["CONTROLLER", "MODE SELECTOR", "SPC · PLN · RVR"], 92),
                  (4, ["U16 U17", "2 × 6-pin"], ["SWITCH GRP 2", "8 switches", "B16–B23"], 86),
                  (8, ["U6", "6-pin"], ["RHC stick", "3 axes + button"], 86)])
 
