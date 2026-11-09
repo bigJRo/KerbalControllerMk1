@@ -419,6 +419,10 @@ void apDisarm() {
   rotClearAutoAxes();
 }
 
+// Vessel or scene change: the ascent belongs to the vessel it was armed on, so disarm
+// silently (as the other autopilots do), releasing the throttle where it is.
+void        apVesselChanged() { if (g_armed) { apDisarm(); kspPrint("Ascent AP: vessel or scene changed - disarmed"); } }
+
 bool        apIsArmed()  { return g_armed; }
 void        apArbiterDrop() { if (g_armed) { apDisarm(); kspPrint("Ascent AP: another autopilot engaged - disarmed"); } }
 AscentPhase apGetPhase() { return g_phase; }
