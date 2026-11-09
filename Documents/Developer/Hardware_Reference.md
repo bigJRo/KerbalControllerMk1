@@ -346,10 +346,10 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 |-----------|-------|
 | Input voltage | 12V DC |
 | Rated current | 10A |
-| Typical system load | see Power Budget (interim ~3.1A / 37W @ 12V) |
-| Peak system load | see Power Budget (interim ~4.7A / 57W @ 12V) |
+| Typical system load | see Power Budget (interim ~3.30A / 39.5W @ 12V) |
+| Peak system load | see Power Budget (interim ~5.82A / 69.8W @ 12V) |
 
-> System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.2). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the last full-system estimate and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
+> System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.2). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the A+B interim figures from Power Budget §3, which use the previous Sys Info Display draw as a placeholder, and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
 
 ### 6.2 Power On/Off
 

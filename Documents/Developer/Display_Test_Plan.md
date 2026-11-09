@@ -333,7 +333,7 @@ Requires the master (KCMk1_Master) running the mission autopilot. All annunciati
 | LDAP-07 | Set TWR override, MARGIN | Boxes accept keypad values, sky blue until echoed | Options |
 | LDAP-08 | On a Kerbin re-entry, tap [ENTRY] with an AOA and ROLL | Re-entry attitude hold engages | ENTRY |
 | LDAP-09 | Tap [A/P OFF] during a hover | Every mode cleared, banner `A/P OFF`, sidebar key achromatic. **The throttle stays where it was**, so the hover keeps its thrust. Switching between DESC and HOVR likewise leaves it alone | Abort / throttle hand-back |
-| LDAP-10 | Move the stick while a mode is engaged | Every autopilot disconnects with an orange reason in the banner (`STICK`) for ~5 s; throttle stays where it was | Disconnect reason |
+| LDAP-10 | Move the stick while a mode is engaged, then press the RHC stick button (A/P disconnect) | Stick input does nothing while the mode is engaged. The button disconnects every autopilot with `A/P DISC` in orange in the banner for ~5 s; the throttle stays where it was | Disconnect reason |
 | LDAP-11 | Touch down under DESC | Throttle goes to zero, every mode disconnects, banner `LANDED` | Touchdown cut |
 
 ---
@@ -447,7 +447,7 @@ Set the GPWS input panel to GREEN unless stated. The master relays the panel's m
 | ACAP-05 | Tap [HDG], enter a heading; [IAS], enter a speed | Both hold; `LEVER OFF` in grey if the physical throttle is not following the autothrottle | Autothrottle |
 | ACAP-06 | Tap [LVL] | Wings level, V/S 0 | LVL |
 | ACAP-07 | Target a flag, tap [NAV] then [GS] | NAV banks to the bearing, GS holds the depression angle; DIST and ELV live. GS drops at 200 m range with `FLARE` | Approach modes |
-| ACAP-08 | Move the stick; separately, move the throttle lever while IAS drives it | Every mode disconnects; banner shows `STICK` or `A/T OFF: LEVER` in orange for ~5 s; the throttle stays where it was | Disconnect reason |
+| ACAP-08 | Move the stick and the throttle lever while IAS drives it; then set A/P to INHIB | Stick and lever input do not disconnect anything (the lever is driven back). A/P INHIB disconnects every mode with `A/P INHIB` in orange for ~5 s; the throttle stays where it was | Disconnect reason |
 | ACAP-09 | Climb out of the atmosphere with IAS engaged | Disconnect reason `NO ATMO` (after 2 s out) | Reason |
 | ACAP-10 | Tap [A/P OFF] | All modes clear | Abort |
 
