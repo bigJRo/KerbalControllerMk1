@@ -18,7 +18,8 @@
  *                   <= KJC_CHANGE_THRESHOLD, suppress output
  *                4. Apply split map to convert to INT16:
  *                     if raw >= center: map(raw, center, 1023, 0, 32767)
- *                     if raw <  center: map(raw, 0, center, -32768, 0)
+ *                     if raw <  center: map(raw, 0, center, -32767, 0)
+ *                   (-32767, not -32768: INT16_MIN is KJC_AXIS_SUPPRESS)
  *                5. Return scaled INT16 value and update tracking state
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)

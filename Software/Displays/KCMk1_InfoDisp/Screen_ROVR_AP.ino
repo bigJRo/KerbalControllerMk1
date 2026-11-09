@@ -189,7 +189,11 @@ void drawScreen_ROVRAP(KCM_TFT &tft) {
   raHdgBuf(state.heading, buf, sizeof(buf));                  conPut(tft, screen_ROVRAP, RA_SLOT_DATA + 1, dx, conRowY(1) + 4, vw, CON_VALH, buf, RA_VAL);
   if (state.targetAvailable) raHdgBuf(state.tgtHeading, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ROVRAP, RA_SLOT_DATA + 2, dx, conRowY(2) + 4, vw, CON_VALH, buf, state.targetAvailable ? RA_VAL : TFT_DARK_GREY);
-  if (state.targetAvailable) formatAltBuf(state.tgtDistance, buf, sizeof(buf)); else snprintf(buf, sizeof(buf), "---");
+  if (state.targetAvailable) {                                  // whole metres below 1 km, as ROVER's DIST (#75)
+    int32_t m = (int32_t)roundf(state.tgtDistance);
+    if (m > -1000 && m < 1000) snprintf(buf, sizeof(buf), "%ld m", (long)m);
+    else formatAltBuf((float)m, buf, sizeof(buf));
+  } else snprintf(buf, sizeof(buf), "---");
   conPut(tft, screen_ROVRAP, RA_SLOT_DATA + 3, dx, conRowY(3) + 4, vw, CON_VALH, buf, !state.targetAvailable ? TFT_DARK_GREY : stopping ? TFT_ORANGE : RA_VAL);
   snprintf(buf, sizeof(buf), "%+.1f\xB0", state.pitch);       conPut(tft, screen_ROVRAP, RA_SLOT_DATA + 4, dx, conRowY(4) + 4, vw, CON_VALH, buf, slopeGuard ? TFT_ORANGE : RA_VAL);
   snprintf(buf, sizeof(buf), "%+.0f %%", state.rvCmdWheel * 100.0f);

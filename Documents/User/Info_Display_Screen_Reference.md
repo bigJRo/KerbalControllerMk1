@@ -118,7 +118,7 @@ colours.
 
 | Quantity | Format |
 |---|---|
-| Distance, altitude | Two decimals below 1,000 m (`310.00 m`); whole metres with separators to 999,999 m (`124,665 m`); then km, Mm, Gm. ROVER's DIST and ALT.TRN are whole metres throughout (`850 m`) |
+| Distance, altitude | Two decimals below 1,000 m (`310.00 m`); whole metres with separators to 999,999 m (`124,665 m`); then km, Mm, Gm. ROVER's DIST and ALT.TRN, and ROVER AUTOPILOT's DIST, are whole metres throughout (`850 m`) |
 | Speed | One decimal below 1,000 m/s (`842.0 m/s`); whole numbers with separators from 1,000 (`2,200 m/s`). The autopilot consoles show Δv and airspeeds as whole numbers with separators (`842 m/s`, `1,450 m/s`); their setpoint rates and speeds keep one decimal |
 | Time | `48 s`; `15 m: 06 s` under an hour; `1h 09m` from one hour; `3d 04h` from one Kerbin day (6 h). A leading `-` means the moment has passed. Autopilot consoles use the compact `m:ss`. |
 

@@ -40,7 +40,7 @@
 // ============================================================
 
 #define KJC_FIRMWARE_MAJOR      2
-#define KJC_FIRMWARE_MINOR      2   // tracks the library minor version
+#define KJC_FIRMWARE_MINOR      3   // tracks the library minor version
 
 // ============================================================
 //  Button and LED counts
@@ -296,10 +296,10 @@
 /**
  * @brief Sentinel returned by axis processing when the value
  *        has not changed enough to report. INT16_MIN is used
- *        because it cannot be a valid mapped joystick output
- *        (valid range is -32768 to +32767 but split map from
- *        a non-center ADC reading will never produce exactly
- *        INT16_MIN except at hardware rail).
+ *        because it is never a mapped joystick output: the split
+ *        map produces -32767 to +32767, so even a reading at the
+ *        negative rail (ADC 0) is reported (GitHub #114; before
+ *        2.3.0 the rail mapped to -32768 and was dropped).
  *
  *        Callers must check against KJC_AXIS_SUPPRESS before
  *        treating the return value as valid axis data.

@@ -6,7 +6,7 @@
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
-**Library:** KerbalJoystickCore v2.0.0  
+**Library:** KerbalJoystickCore v2.3.0 or later  
 
 ---
 
@@ -57,9 +57,9 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 
 | Axis | Pin | ADC Channel | Function | Output Range |
 |---|---|---|---|---|
-| AXIS1 | PA5 | AIN5 | X axis | -32768 to +32767 |
-| AXIS2 | PA6 | AIN6 | Y axis | -32768 to +32767 |
-| AXIS3 | PA7 | AIN7 | Z axis | -32768 to +32767 |
+| AXIS1 | PA5 | AIN5 | X axis | -32767 to +32767 |
+| AXIS2 | PA6 | AIN6 | Y axis | -32767 to +32767 |
+| AXIS3 | PA7 | AIN7 | Z axis | -32767 to +32767 |
 
 All axis values are signed INT16, centered at zero. Center position is calibrated at startup. Do not touch the joystick during the first ~80ms after power-on.
 
@@ -76,9 +76,9 @@ Byte 2:    Transaction counter (increments per INT assertion, wraps 255→0)
 Byte 3:    Button events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
 Byte 4:    Change mask   (same bit layout)
 Byte 5:    Button state  (persistent; same bit layout)
-Byte 6-7:  AXIS1         (int16, big-endian, -32768 to +32767)
-Byte 8-9:  AXIS2         (int16, big-endian, -32768 to +32767)
-Byte 10-11:AXIS3         (int16, big-endian, -32768 to +32767)
+Byte 6-7:  AXIS1         (int16, big-endian, -32767 to +32767)
+Byte 8-9:  AXIS2         (int16, big-endian, -32767 to +32767)
+Byte 10-11:AXIS3         (int16, big-endian, -32767 to +32767)
 ```
 
 ### INT Assertion Strategy

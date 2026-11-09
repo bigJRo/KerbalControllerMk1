@@ -16,7 +16,8 @@
  *              Axis pipeline (KerbalJoystickCore 2.x source): the centre is
  *              sampled once at power-on (keep hands off for ~0.5 s), a raw
  *              deadzone of +-32 reports 0, and the ends are fixed at raw
- *              0 / 1023 -> -32768 / +32767.
+ *              0 / 1023 -> -32767 / +32767 (2.3: -32768 is the "no change"
+ *              sentinel, so the rail used to raise no INT, #114).
  *
  *              LED states: OFF, ENABLED (white scaled by brightness, default
  *              32), ACTIVE, WARNING (steady amber), ALERT (steady red), ARMED
@@ -28,7 +29,7 @@
 #include "KTC_Steps.h"
 
 #define KTC_KJC_FW_MAJOR   2
-#define KTC_KJC_FW_MINOR   2
+#define KTC_KJC_FW_MINOR   3   // 2.3: full negative deflection raises INT (#114)
 
 extern const KtcBootCfg    ktcKjcBoot;
 extern const KtcVisualSeq  ktcKjcStates;      // LED states, brightness and bulb test
