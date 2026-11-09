@@ -35,7 +35,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1831/1832 v1.0 (ATtiny816)
- *              Library:   KerbalJoystickCore v2.0.0
+ *              Library:   KerbalJoystickCore v2.3.0 or later (full-deflection INT fix, #114)
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher

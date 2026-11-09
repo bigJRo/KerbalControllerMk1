@@ -95,12 +95,12 @@ The testers were written against the module firmware in this repository and chec
 | Module | Identity fw | Fixed in that version (found by these testers) |
 |---|---|---|
 | Button modules (KerbalButtonCore) | 2.4 | Library compiled inside the sketch. Before, the Arduino IDE built the library without the sketch's `KBC_INPUT_COUNT 24`, so Function and Vehicle Control ran a 16-input library (Buttons and Switches failed). |
-| Joysticks (KerbalJoystickCore) | 2.2 | Each button edge reported once (Enable and INT counted 4 packets). Library compiled inside the sketch, so the Translation stick's `KJC_AXIS2_INVERT -1` takes effect (AXIS2 forward now gives the opposite sign to the Rotation stick). |
+| Joysticks (KerbalJoystickCore) | 2.3 | 2.2: each button edge reported once (Enable and INT counted 4 packets); library compiled inside the sketch, so the Translation stick's `KJC_AXIS2_INVERT -1` takes effect (AXIS2 forward now gives the opposite sign to the Rotation stick). 2.3: full negative deflection raises INT (#114); the axes now run -32767 to +32767. |
 | Throttle | 2.3 | A button press raises INT with the lever still (Enable and INT reported "no INT after the input"). |
 | GPWS, Pre-Warp Time (Kerbal7SegmentCore) | 1.0 | — |
 | Dual Encoder | 2.0 | — |
 
-Still open, reported as a note only: on the joysticks, full negative deflection (-32768) equals the `KJC_AXIS_SUPPRESS` sentinel, so that sample raises no INT; the axis step notes "-32768 sent without INT".
+If a joystick axis step passes with the note "full negative seen only on a poll", the module did not raise INT at the negative end of travel: the KerbalJoystickCore defect fixed in 2.3 (#114). With 2.3 firmware it should not appear.
 
 ---
 

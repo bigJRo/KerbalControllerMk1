@@ -1,6 +1,6 @@
 # KerbalJoystickCore
 
-**Version:** 2.2.0  
+**Version:** 2.3.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v1.0  
@@ -71,9 +71,9 @@ Byte 2:    Transaction counter (increments per INT assertion, wraps 255→0)
 Byte 3:    Button events (rising edges; bit0=BTN_JOY, bit1=BTN01, bit2=BTN02)
 Byte 4:    Change mask   (same bit layout)
 Byte 5:    Button state  (persistent; same bit layout)
-Byte 6-7:  AXIS1         (int16, big-endian, -32768 to +32767)
-Byte 8-9:  AXIS2         (int16, big-endian, -32768 to +32767)
-Byte 10-11:AXIS3         (int16, big-endian, -32768 to +32767)
+Byte 6-7:  AXIS1         (int16, big-endian, -32767 to +32767)
+Byte 8-9:  AXIS2         (int16, big-endian, -32767 to +32767)
+Byte 10-11:AXIS3         (int16, big-endian, -32767 to +32767)
 ```
 
 The module powers on in BOOT_READY (INT asserted, held until the controller
@@ -101,7 +101,7 @@ All threshold comparisons happen in raw ADC counts before map() is called:
 3. Change threshold: if |raw - lastSentRaw| <= KJC_CHANGE_THRESHOLD → suppress
 4. Split map to INT16:
      raw >= center: map(raw, center, 1023,  0,      32767)
-     raw <  center: map(raw, 0,      center, -32768, 0    )
+     raw <  center: map(raw, 0,      center, -32767, 0    )   (never -32768: that is KJC_AXIS_SUPPRESS)
 5. Store lastSentRaw and return scaled INT16
 ```
 
@@ -196,6 +196,7 @@ Translation sketch). Include `KerbalJoystickCore.h` from the main `.ino` only.
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.3.0 | 2026-11-09 | Full negative deflection raises INT (GitHub #114). The low side of the split map ran to -32768, which is `INT16_MIN`, the `KJC_AXIS_SUPPRESS` sentinel, so a sample at the negative rail was treated as "no change": it raised no INT and reached the master only with the next packet something else triggered. The map now runs -32767 to +32767, symmetric, so the sentinel is never a real value. Identity firmware 2.3. |
 | 2.2.0 | 2026-11-08 | Each button edge is reported once (`buttonsGetChangeMask` no longer re-arms the mask from the state latched at the previous read, which reported every edge twice). Sources renamed `.cpp` → `.ipp` and included from `KerbalJoystickCore.h`, so a sketch's `KJC_AXISn_INVERT` reaches the library (the Translation stick's AXIS2 was not inverted). Identity firmware 2.2 (was 2.0). |
 
 ---

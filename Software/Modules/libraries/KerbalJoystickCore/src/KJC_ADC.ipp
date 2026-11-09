@@ -103,13 +103,16 @@ static int16_t _processAxis(uint8_t axisIdx) {
     if (raw >= center) {
         scaled = (int16_t)map((long)raw, (long)center, 1023L, 0L, 32767L);
     } else {
-        scaled = (int16_t)map((long)raw, 0L, (long)center, -32768L, 0L);
+        // -32767, not -32768: INT16_MIN is KJC_AXIS_SUPPRESS, so a full
+        // negative deflection mapped to it would be dropped as "no change"
+        // and raise no INT (GitHub #114). The range is symmetric, +-32767.
+        scaled = (int16_t)map((long)raw, 0L, (long)center, -32767L, 0L);
     }
 
     // Apply per-axis invert (1 = normal, -1 = inverted).
     // Configured via KJC_AXIS*_INVERT in Config.h or sketch override.
-    // INT16_MIN (-32768) is clamped to -32767 on inversion to avoid
-    // overflow when negating (negating INT16_MIN is undefined behavior).
+    // The range is +-32767, so negating never overflows; the INT16_MIN
+    // guard stays as a belt-and-braces check.
     static const int8_t _invert[KJC_AXIS_COUNT] = {
         KJC_AXIS1_INVERT,
         KJC_AXIS2_INVERT,

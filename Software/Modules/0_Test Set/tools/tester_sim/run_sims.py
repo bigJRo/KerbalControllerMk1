@@ -31,6 +31,8 @@ KBC, KJC, K7SC = "KerbalButtonCore", "KerbalJoystickCore", "Kerbal7SegmentCore"
 # name: (tester sketch, module folder, module library, INT pin, runs)
 # A run may add a list of regular expressions that the serial report must match.
 # runs: list of (label, [--opt ...], expected summary verdict, steps expected to FAIL)
+KJC_FULL_TRAVEL = [r"\] AXIS%d [a-z/]+ +PASS [a-z]+=[+-], -32767\.\.32767\n" % n for n in (1, 2, 3)]
+
 MODULE_TABLE = {
     "action": ("KCMk1_Test_Action_Control", "Action Control", KBC, 1, [
         ("normal", [], "PASS", []),
@@ -55,10 +57,13 @@ MODULE_TABLE = {
     "aux":       ("KCMk1_Test_Auxiliary_Control", "Auxiliary Control", KBC, 1, [("normal", [], "PASS", [])]),
     # The serial report must show the axis signs: the Translation sketch inverts
     # AXIS2, so pushing forward gives the opposite sign to the Rotation stick.
+    # Each axis must also reach -32767..32767 with no "seen only on a poll"
+    # note: full negative deflection raises INT (KerbalJoystickCore 2.3, #114).
     "rotation":  ("KCMk1_Test_Joystick_Rotation", "Rotation", KJC, 1, [
-        ("normal", [], "PASS", [], [r"AXIS2 fwd/back +PASS forward=\+"])]),
+        ("normal", [], "PASS", [], [r"AXIS2 fwd/back +PASS forward=\+"] + KJC_FULL_TRAVEL)]),
     "translation": ("KCMk1_Test_Joystick_Translation", "Translation", KJC, 1, [
-        ("normal", [], "PASS", [], [r"AXIS2 fwd/back +PASS forward=-", r"AXIS1 right/left +PASS right=\+"])]),
+        ("normal", [], "PASS", [], [r"AXIS2 fwd/back +PASS forward=-", r"AXIS1 right/left +PASS right=\+"]
+                                   + KJC_FULL_TRAVEL)]),
     "throttle":  ("KCMk1_Test_Throttle", "Throttle", None, 5, [("normal", [], "PASS", [])]),
     "gpws":      ("KCMk1_Test_GPWS", "GPWS", K7SC, 16, [
         ("normal", [], "PASS", []),

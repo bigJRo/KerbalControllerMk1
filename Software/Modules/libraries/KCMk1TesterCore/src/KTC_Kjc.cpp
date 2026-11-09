@@ -175,8 +175,11 @@ KtcVerdict ktcStepKjcAxis(KtcCtx& c) {
                 if (a->expect && c.v[0] != a->expect)
                     return ktcFail(c, "%s gives %s values", a->posName, c.v[0] > 0 ? "positive" : "negative");
                 long mn = c.v[2] < c.v[3] ? c.v[2] : c.v[3];
+                // Full negative travel seen only on a polled read: the module
+                // did not raise INT for it (the KJC < 2.3 defect, #114), or the
+                // poll happened to read it first. A note, not a failure.
                 if (c.v[3] <= -32767 && c.v[2] > -32767)
-                    return ktcPass(c, "%s=%c, %ld..%ld, -32768 sent without INT", a->posName,
+                    return ktcPass(c, "%s=%c, %ld..%ld, full negative seen only on a poll", a->posName,
                                    c.v[0] > 0 ? '+' : '-', mn, (long)c.v[4]);
                 return ktcPass(c, "%s=%c, %ld..%ld", a->posName, c.v[0] > 0 ? '+' : '-', mn, (long)c.v[4]);
             }
