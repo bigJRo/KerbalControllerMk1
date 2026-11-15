@@ -3,7 +3,7 @@
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
 **Version:** 1.4
-**Firmware covered:** Info Display v1.19.1 (both units) · Annunciator v3.10.0 · Resource Display v3.15.0 · KCMk1_Master v0.10.1 · KCM_Display 1.1.0 · KCMk1_SystemConfig 1.3.0
+**Firmware covered:** Info Display v1.19.1 (both units) · Annunciator v3.10.0 · Resource Display v3.15.0 · KCMk1_Master v0.10.2 · KCM_Display 1.1.0 · KCMk1_SystemConfig 1.3.0
 
 ---
 

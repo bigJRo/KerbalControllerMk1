@@ -204,7 +204,7 @@ Then `loop()` starts. The panels, displays and switches all work, and **the mast
 
 **Stalls:**
 - **Every I2C transaction is bounded,** so a stuck bus is reported, not hung on. A bus held low gets a recovery attempt (SCL clocked to free it) and a red line.
-- **A master that hangs cannot report itself.** The Sys Info Display shows `MASTER NOT RESPONDING` and the last line received if it hears nothing for 5 s during boot (§14).
+- **A master that hangs cannot report itself.** The Sys Info Display shows `MASTER SILENT n S` (a red block, on either screen) if it hears nothing for 5 s, and keeps the last line received on the boot screen (§14).
 - **The watchdog does not run during `setup()`,** so a stalled boot stays on screen rather than rebooting out of view.
 
 ## 6. Module bus
@@ -398,7 +398,7 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 - Entering a flight scene or changing vessel **never enforces** a switch.
 - Whenever a switch disagrees with the vessel, **SWITCH ERR** lights until they agree. The Sys Info Display names the switches (§14).
 
-**Exceptions:** no SWITCH ERR for SAS while INVERT is held, or for SAS / RCS while an autopilot or HOLD that changes them is engaged.
+**Exceptions:** no SWITCH ERR for SAS while INVERT is held or while an autopilot or HOLD is engaged, or for BRAKE while the BRAKES button or the RHC stick button (RVR mode) holds the brakes on.
 
 *(stage 3)*
 - **Settle time:** a switch must disagree for 1 s before SWITCH ERR lights, so KSP's reply to a flip does not flash it.
@@ -546,7 +546,7 @@ The availability rules are checked against Simpit on the bench.
 | **AUX CTRL** | **[EVA] group** (B0–B7, B9): EVA keys, dark outside EVA. **B8 UN DOCK:** CAG 37. **B10 PRI / B11 ALT:** control points (CAG 35 / 36), mutually exclusive; the LED shows the active one, and pressing the active one does nothing |
 | **Function Control** | CAG buttons per Inventory §10.5. **B4 = FLAPS** (CAG 39) |
 | **UI Control** | Keyboard and Simpit navball cycle per Inventory §10.7. *(stage 6)* The screenshot macro's three keys go out 150 ms apart |
-| **Throttle** | Lever, 100 % / UP / DOWN / 0 % buttons, all under the ENGINE and autopilot rules. **FINE** is dropped while an autopilot owns the throttle and restored after. *(stage 5)* The module only reports its buttons; the master moves the lever (100 % / 0 %, UP / DOWN 10 %), and the throttle follows the lever. The buttons are ignored in FINE, where a lever target is not the throttle |
+| **Throttle** | Lever, FULL / THRTL + / THRTL − / IDLE buttons, all under the ENGINE and autopilot rules. **FINE** is dropped while an autopilot owns the throttle and restored after. *(stage 5)* The module only reports its buttons; the master moves the lever (FULL to 100 %, IDLE to 0 %, THRTL + / THRTL − by 10 %), and the throttle follows the lever. The buttons are ignored in FINE, where a lever target is not the throttle |
 | **GPWS, Pre-Warp** | Module-managed. The master relays GPWS state to the Annunciator and reads the Pre-Warp minutes. *(stage 6)* GPWS: state byte bits 3:0 and the value (metres) to the Annunciator's GPWS bytes, on every change |
 | **Dual Encoder** | **ENC1:** control group 1–6 (wraps), also in demo. **ENC1 button:** resets it to 1. **ENC2:** camera next / previous: clockwise = next = `-`, `=` = previous (the Hullcam defaults), one key per detent, at most 5 per read. **ENC2 button:** camera reset (Backspace) |
 
@@ -620,7 +620,12 @@ The availability rules are checked against Simpit on the bench.
 | `simpit` | Channels, rates, last message ages |
 | `switches` | Every switch position vs the vessel |
 | `interlocks` | ENGINE state, the lever, A/P |
-| `log <cat> on/off` | One category on or off |
+| `board` | 12 V supply, board temperature, fan |
+| `frame` | Control channels: the last values sent to KSP |
+| `ap` / `hp` / `bp` / `lp` | The ascent, hold, burn and landing autopilot bench consoles (§11.4) |
+| `debug on/off` | Debug output on or off, until the next UPTLM flip |
+| `wdtest yes` | Hangs the loop to test the watchdog |
+| `log <cat\|all> on/off/auto` | One category, or all, on, off or back to automatic |
 | `backlight [flight %] [standby %]` | The 7" displays' backlight levels; with values, sets them until a restart (§13) |
 
 ## 11. Autopilots
@@ -649,6 +654,7 @@ An engaged autopilot (or HOLD) keeps full authority until it is disconnected del
 - a console's A/P OFF;
 - HOLD's own button;
 - ENGINE SAFE (throttle-using modes);
+- a vessel switch, including going EVA, or a scene change (0.10.1);
 - its own disengage conditions.
 
 While engaged:
@@ -686,6 +692,7 @@ The STICK / LEVER disconnect reasons go unused. The autopilot design docs are up
   - ENGINE SAFE drops the throttle-using modes: the ascent, a planned or running burn, IAS / MACH, CRUISE / FOLLOW, and the landing DESC / HOVR / BRAKE. Attitude modes stay.
   - The A/P disconnect drops everything.
   - Demo and MSTR RESET drop everything silently.
+  - A vessel switch, including going EVA, or a scene change drops every autopilot silently and disarms the ascent autopilot (`SCENE_CHANGE` and `VESSEL_CHANGE` messages, 0.10.1).
 - **New reasons** appended to `HpReason`, so the existing values keep their meaning on the wire: 22 A/P INHIB, 23 ENG SAFE, 24 A/P DISC. The Info Displays need their names (§17).
 - **HOLD through the hold autopilot:**
   - PLN engages its ALT + HDG at the current values.
@@ -736,7 +743,7 @@ The old sketch declares a watchdog but never starts it. This is the design (sett
 | **Timeout** | **5 s.** The longest blocking call in the loop is the Simpit handshake attempt (about 1 s), well inside it |
 | **Feeding** | Once per loop pass, at one place only (§4.2 step 1); never from an interrupt or inside a wait |
 | **Early warning** | The library's trigger callback, 0.5 s before the reset (at 4.5 s), stores the breadcrumb (§4.2) and prints a line |
-| **After a reset** | The boot banner reports `RESET: WATCHDOG during <call> (<module>)` (reset cause from `SRC_SRSR`, breadcrumb from no-init RAM), on the Sys Info boot screen in red and on Serial |
+| **After a reset** | The boot banner reports `RESET: WATCHDOG xN` (N resets in a row) and `HUNG IN <stage>`, with the I2C address when the stage was on the bus (reset cause from `SRC_SRSR`, breadcrumb from no-init RAM), on the Sys Info boot screen in red and on Serial |
 | **Restart in flight** | See below |
 | **Reboot-loop guard** | Three watchdog resets within 60 s: the master stops on the boot screen with the error and does not start the watchdog, so the fault stays visible. The count and times are kept in no-init RAM |
 | **Where it is reported** | The Sys Info boot screen and Serial only; nothing on the Annunciator |

@@ -7,7 +7,7 @@
 **Runs on:** Master controller (Teensy 4.1), `Software/KCMk1_Master` (ported from `Controller_Main`, now deleted)
 
 
-> **Port to `KCMk1_Master` (2026-10-26).** The ascent autopilot now runs in `Software/KCMk1_Master` (`ascent_autopilot.cpp`; `Master_Firmware_Design.md` §11), with its guidance unchanged. Its rotation goes out as autopilot axes on the master's rotation channel. Stick and lever input no longer disarm it: disarming is the A/P disconnect, A/P INHIB, a console's DISARM / A/P OFF, ENGINE SAFE, or its own rules. Its bench console is the `ap` command.
+> **Port to `KCMk1_Master` (2026-10-26).** The ascent autopilot now runs in `Software/KCMk1_Master` (`ascent_autopilot.cpp`; `Master_Firmware_Design.md` §11), with its guidance unchanged. Its rotation goes out as autopilot axes on the master's rotation channel. Stick and lever input no longer disarm it: disarming is the A/P disconnect, A/P INHIB, a console's DISARM / A/P OFF, ENGINE SAFE, a vessel switch, including going EVA, or scene change, or its own rules. Its bench console is the `ap` command.
 
 ---
 
@@ -78,10 +78,10 @@ IDLE ──apArm()──▶ VERTICAL ──alt/vel trigger──▶ GRAVITY_TURN
 - **CIRCULARIZE** — prograde burn near apoapsis until periapsis reaches the target.
 - **COMPLETE** — throttle 0; stock SAS enabled in **stability-hold** (attitude hold), control handed back to the pilot.
 - **ABORT** — failsafe disarm on telemetry loss. The throttle is left where it is and handed
-  to the pilot, as on every disarm (DISARM, A/P OFF, stick or lever input, the abort button,
-  another autopilot): the pilot takes over without a jump in thrust. The only throttle cuts
-  are the guidance's own — engine cutoff when apoapsis reaches the target, the coast, and the
-  end of the circularization burn.
+  to the pilot, as on every disarm (DISARM, A/P OFF, the A/P disconnect, A/P INHIB, another
+  autopilot, a vessel switch, including going EVA, or scene change): the pilot takes over
+  without a jump in thrust. The only throttle cuts are the guidance's own — engine cutoff
+  when apoapsis reaches the target, the coast, and the end of the circularization burn.
 
 While actively steering, stock SAS is switched **off** (raw rotation commands fight SAS); during
 coast/circularization the module hands attitude to stock SAS prograde hold.

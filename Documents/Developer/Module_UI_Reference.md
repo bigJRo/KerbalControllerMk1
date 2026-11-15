@@ -7,7 +7,7 @@
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.9.0) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.10.2) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -292,7 +292,7 @@ Panel Hub on Ctrl Module CN3.
 |---|---|---|
 | ABORT button (arming switch in series) | Panel Hub safe-switch terminal → INT_SAFE | §7 |
 | Switch Group 1 (8 switches) | Function Control U16 / U17 → B16–B23 | §6.2 |
-| Throttle buttons 100 %, UP, DOWN, 0 % | Throttle terminals U7, U8, U10, U11 | §12 |
+| Throttle buttons FULL, THRTL +, THRTL −, IDLE | Throttle terminals U7, U8, U10, U11 | §12 |
 | Translation stick | Translation joystick terminal U6 | §10.2 |
 
 **Unused:** slot P5; the Action Control and UI Control terminals (B12–B15); Throttle THRTL_ENA (terminal U5).
@@ -515,6 +515,7 @@ An engaged autopilot or HOLD keeps full authority until it is disconnected delib
 | A console's A/P OFF | Every console autopilot and HOLD, in every mode |
 | HOLD's own button | HOLD |
 | ENGINE SAFE | Throttle-using modes: the ascent autopilot, a planned or running burn, IAS / MACH, CRUISE / FOLLOW, landing DESC / HOVR / BRAKE. Attitude modes stay |
+| A vessel switch, including going EVA, or a scene change | Every autopilot and HOLD, silently; the ascent autopilot disarms (master 0.10.1) |
 | The autopilot's own conditions | No node, SOI change, and so on |
 
 **While anything is engaged:**
@@ -562,7 +563,7 @@ Each module section gives the panel view, then every input. **LED** gives what t
 |---|---|---|
 | **R1** | LES | FAIRING JETT |
 | **R2** | AIR INTAKE | LOCK SURFACES |
-| **R3** | AIR BRAKE | FLAPS (panel label still RW DISABLE, §15) |
+| **R3** | AIR BRAKE | FLAPS (artwork made, to be fitted; panel label still RW DISABLE, §15) |
 | **R4** | [ENGINE] ALT | [SCIENCE] COLLECT |
 | **R5** | [ENGINE] GROUP 1 | [SCIENCE] GROUP 1 |
 | **R6** | [ENGINE] GROUP 2 | [SCIENCE] GROUP 2 |
@@ -766,7 +767,7 @@ All CAG numbers carry the control-group offset.
 | B5 | [EVA] GRAB | Grab | EVA | Key F | As B0 | SEAFOAM |
 | B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P | As B0 | AMBER |
 | B7 | [EVA] HELM | Helmet toggle | EVA | Key O | As B0 | SKY |
-| B8 | UN DOCK (new label) | Undock / decouple docking ports | Always | CAG 37 toggle | Lit while the group is active | GOLD |
+| B8 | UN DOCK (new label; artwork made, to be fitted) | Undock / decouple docking ports | Always | CAG 37 toggle | Lit while the group is active | GOLD |
 | B9 | [EVA] FLAG | Plant flag | EVA | Key G | As B0 | SEAFOAM |
 | B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 (below) | Lit while active | ROSE |
 | B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 (below) | Lit while active | PINK |
@@ -859,15 +860,16 @@ Both are the 7-Segment Display Module (1841 / 1842, Kerbal7SegmentCore): a 4-dig
 
 | Control | Function | LED |
 |---|---|---|
-| Display | Altitude threshold, 0–9999 m. On only while GPWS is on (full or proximity) | — |
+| Display | Altitude threshold, 0–9999 m. On only while GPWS is on (green or amber) | — |
 | Encoder | Adjust the threshold (only while GPWS is on) | — |
-| Encoder button | Threshold back to 200 m | — |
-| BTN01 | GPWS mode: OFF → full GPWS → proximity tone only → OFF. Turning it OFF also clears BTN02 and BTN03 | OFF backlit; full GPWS GREEN; proximity AMBER |
+| Encoder button | Threshold back to 200 m, also while GPWS is OFF | — |
+| BTN01 | GPWS mode: OFF → full GPWS → callouts only → OFF. Turning it OFF also clears BTN02 and BTN03 | OFF backlit; full GPWS GREEN; callouts only AMBER |
 | BTN02 | Proximity alarm on / off | GREEN while on, backlit otherwise |
 | BTN03 | Rendezvous radar on / off | GREEN while on, backlit otherwise |
 
-- **BTN02 and BTN03** are the two proximity sub-modes and exclude each other. Pressing either while GPWS is full switches it to proximity (amber). Both do nothing while GPWS is OFF.
-- **While GPWS is OFF,** only BTN01 reports to the master.
+- **Amber is callouts only:** altitude callouts, minimums, RETARD and the bug tone, with no warnings. With BTN03 (rendezvous radar) on, target-distance callouts and the bug tone instead.
+- **BTN02 and BTN03** are the two amber sub-modes and exclude each other. Pressing either while GPWS is full switches it to amber. Both do nothing while GPWS is OFF.
+- **While GPWS is OFF,** only BTN01 and the encoder button report to the master. Encoder rotation is ignored.
 - **Relay:** the master passes the state byte (bits 1:0 mode, bit 2 proximity alarm, bit 3 rendezvous radar) and the threshold to the Annunciator's GPWS bytes on every change.
 - **DISP CLR** sets the threshold to 0.
 
@@ -901,10 +903,10 @@ A motorised 10 kΩ slide pot with an L293D H-bridge on its own 9 V supply, a cap
 |---|---|---|
 | Lever | — | Throttle. KSP's throttle follows the lever while the ENGINE is ARMED and no autopilot owns it |
 | Touch sensor | — | Detects the pilot's hand. While touched, the motor stops and the module refuses lever commands, except under an autopilot (§12.2) |
-| THRTL_100 (100 %) | U7 | Lever to 100 % |
-| THRTL_UP (UP) | U8 | Lever up 10 % |
-| THRTL_DOWN (DOWN) | U10 | Lever down 10 % |
-| THRTL_00 (0 %) | U11 | Lever to 0 % |
+| THRTL_100 (FULL) | U7 | Lever to 100 % |
+| THRTL_UP (THRTL +) | U8 | Lever up 10 % |
+| THRTL_DOWN (THRTL −) | U10 | Lever down 10 % |
+| THRTL_00 (IDLE) | U11 | Lever to 0 % |
 | THRTL_ENA | U5 | Not wired; unused |
 
 ### 12.2 Rules
@@ -979,14 +981,14 @@ The confirmed behaviour is what this document describes. These items do not matc
 | # | Where | Today | Confirmed | Source |
 |---|---|---|---|---|
 | 1 | Function Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: colour table in the old button order | Each colour with its function (§9.2); FLAPS SEAFOAM | Inventory §11 #4 |
-| 2 | Function Control panel label | B4 reads RW DISABLE | FLAPS | Inventory §11 #13 |
+| 2 | Function Control panel label | B4 reads RW DISABLE. FLAPS artwork made, to be fitted (`Documents/Labels/A2`) | FLAPS | Inventory §11 #13 |
 | 3 | AUX CTRL module firmware | **Fixed in v2.1 (2026-10-27).** Was: B8 Cruise Control, B10 PRI / ALT toggle with a CORAL alternate, B11 Docking Port | B8 UN DOCK GOLD; B10 PRI ROSE; B11 ALT PINK; no alternate colour | Inventory §11 #5 |
-| 4 | AUX CTRL panel label | B8 has no label | UN DOCK | Inventory §11 #13 |
+| 4 | AUX CTRL panel label | B8 has no label. UN DOCK artwork made, to be fitted (`Documents/Labels/B2`) | UN DOCK | Inventory §11 #13 |
 | 5 | Stability Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: B10 GREEN (RCS); B14 / B15 described as Stage / Stage Enable | B10 HOLD MAGENTA. B14 / B15 are unwired and the master ignores them | Inventory §11 #6 |
 | 6 | Pre-Warp module firmware | **Fixed in v2.1 (2026-10-31).** Was: BTN03 preset 1440 min (an Earth day) | 360 min (1 Kerbin day) | Inventory §11 #3 |
 | 7 | Button, joystick and throttle firmware | **Fixed (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2; 2026-10-31).** Was: a fixed 2 s test with `delay()` inside the I2C handler, and the master kept off the bus for 2.1 s | Start / stop, no timeout, not blocking: LTG TEST lights for as long as it is held | Inventory §11 #19, design §6.4 |
 | 8 | Throttle module firmware | **Fixed in v2.2 (2026-10-31)** with `CMD_SET_LEVER_HOLD`. Was: refused lever commands while touched, so the lever could not be held against the pilot | Under an autopilot, push back against a hand for at most about 0.5 s (stall limit), then return the lever on release | Inventory §11 #15, design §11.3 |
-| 9 | Throttle module firmware | **Fixed in v2.1 (2026-10-27).** Was: the module moved the lever on its own buttons (100 % / 0 %, ±5 %), even in ENGINE SAFE, in FINE and under an autopilot | The module only reports its buttons; the master moves the lever (§12.2) | Found for v6.0; Inventory §11 #20 |
+| 9 | Throttle module firmware | **Fixed in v2.1 (2026-10-27).** Was: the module moved the lever on its own buttons (FULL / IDLE, ±5 %), even in ENGINE SAFE, in FINE and under an autopilot | The module only reports its buttons; the master moves the lever (§12.2) | Found for v6.0; Inventory §11 #20 |
 | 10 | Annunciator firmware | **Fixed in v3.9 (2026-10-31).** Was: tile THRTL ENA | A/P ARM (same bit 3) | Inventory §11 #1 |
 | 11 | Info Display, Resource Display and Annunciator firmware | **Fixed (Info Display v1.18.0, Resource Display v3.15.0, Annunciator v3.10.0; 2026-10-31).** Was: the Info Displays cleared demo on a scene change; the Resource Display and Annunciator stopped servicing Simpit in demo, and the Resource Display saved demo's bars over the vessel's layout | Every display enters and leaves demo only on the master's flag | Inventory §11 #10–#12 |
 | 12 | Module READMEs and sketch comments | Some still describe the old layouts (for example the Rotation BTN01 "Alt+X" note). Throttle, Function Control, Stability Control and AUX CTRL were brought up to date in v6.1 | As this document | — |

@@ -49,6 +49,7 @@ LandingConfig &lpGetConfig();
 bool  lpEngage(uint8_t mode, bool on);        // LP_MODE_DESC / HOVR / BRAKE
 bool  lpEngageEntry(bool on);
 void  lpDisconnectAll(uint8_t reason);
+void  lpDropThrottleModesReason(uint8_t reason);   // DESC / HOVR / BRAKE off (ENTRY stays)
 void  lpArbiterDropAttitude();
 void  lpArbiterDropThrottle();
 

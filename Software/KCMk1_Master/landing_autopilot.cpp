@@ -130,6 +130,7 @@ void lpDisconnectAll(uint8_t reason) {
   lpDropThrottleModes(reason);
   lpDropEntry(reason);
 }
+void lpDropThrottleModesReason(uint8_t reason) { lpDropThrottleModes(reason); }
 void lpArbiterDropAttitude() { lpDropEntry(HP_REASON_OTHER_AP); lpDropThrottleModes(HP_REASON_OTHER_AP); }
 void lpArbiterDropThrottle() { lpDropThrottleModes(HP_REASON_OTHER_AP); }
 
