@@ -101,8 +101,8 @@ The motor runs from the board's own 9 V supply. The panel lamps (one shared outp
 | Input | What happens |
 |---|---|
 | Touch the fader knob | Lamps go off while it is touched |
-| 100% / 0% | Lever drives to the top / bottom |
-| UP / DOWN | Lever steps 10 % up / down |
+| FULL / IDLE | Lever drives to the top / bottom |
+| THRTL + / THRTL − | Lever steps 10 % up / down |
 
 Touching the lever stops the motor. When all four buttons and the touch sensor have been seen, the lamps blink quickly 5 times.
 

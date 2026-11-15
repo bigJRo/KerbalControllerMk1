@@ -5,14 +5,14 @@
 **Date:** 2026-04-08  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1831/1832 Joystick Module v1.0  
+**Hardware:** KC-01-1831/1832 Joystick Module v2.0  
 **Library:** KerbalJoystickCore v2.3.0 or later  
 
 ---
 
 ## Overview
 
-The Joystick Rotation module provides three-axis rotational input for Kerbal Space Program vessel control. Axis data is calibrated at startup, filtered through a deadzone and change threshold, and delivered to the system controller as signed INT16 values via I2C. Two NeoPixel RGB buttons provide trim reset and trim set functions. The joystick pushbutton reports the Airbrake toggle (spacecraft/airplane/rover) / Run hold (EVA) function (the actual action is sequenced controller-side; the module only reports the button).
+The Joystick Rotation module provides three-axis rotational input for Kerbal Space Program vessel control. Axis data is calibrated at startup, filtered through a deadzone and change threshold, and delivered to the system controller as signed INT16 values via I2C. Two NeoPixel RGB buttons provide trim reset and trim set functions. The joystick pushbutton is the A/P disconnect in SPC and PLN, the brakes while held in RVR, and Left Shift (run) while held on EVA (the actual action is sequenced controller-side; the module only reports the button).
 
 This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoystickCore library and communicates via the Kerbal Controller Mk1 I2C protocol using a device-specific 12-byte data packet.
 
@@ -45,13 +45,13 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 | Button | Pin | Function | Active Color | Notes |
 |---|---|---|---|---|
 | BTN01 | PC0 | Reset Trim | GREEN | Resets all trim to zero |
-| BTN02 | PB3 | Trim Set | AMBER | Sets current position as trim reference |
+| BTN02 | PB3 | Trim Set | AMBER | Adds the current stick deflection to the trim; each press adds to the trim already set |
 
 ### Joystick Button
 
 | Button | Pin | Function | LED | Notes |
 |---|---|---|---|---|
-| BTN_JOY | PB5 | Airbrake toggle (spacecraft/airplane/rover) / Run hold (EVA) | None | Active high, hardware pull-down. Intentional duplicate of Function Control B4 (Base CAG 38). Action sequenced controller-side. |
+| BTN_JOY | PB5 | A/P disconnect (SPC / PLN) / Brakes while held (RVR) / Run hold, Left Shift (EVA) | None | Active high, hardware pull-down. Action sequenced controller-side by control mode. |
 
 ### Analog Axes
 

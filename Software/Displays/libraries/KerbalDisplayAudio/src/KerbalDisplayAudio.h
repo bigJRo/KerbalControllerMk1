@@ -10,8 +10,8 @@
    State machine (priority high → low):
      AUDIO_MASTER_ALARM          — two-tone alternating loop, started/stopped by the sketch
      AUDIO_MASTER_ALARM_SILENCED — alarm latched but muted (tone off, crew acknowledged)
-     AUDIO_CAUTION_TONE          — single constant tone, fixed duration
-     AUDIO_CHIRP                 — two-note ascending or descending sequence, plays once
+     AUDIO_CAUTION_TONE          — single constant tone, fixed duration    } same priority:
+     AUDIO_CHIRP                 — two-note sequence, plays once           } a newer cue replaces the one playing
      AUDIO_IDLE                  — silent
 
    Master alarm condition tracking (which warnings are active, silence latch,
@@ -173,15 +173,15 @@ void setupAudio();
 // Fast-returns immediately if audio is idle.
 void updateAudio();
 
-// Alert chirp — 2 ascending notes. Suppressed if master alarm is active.
+// Alert chirp — 2 ascending notes. Suppressed only while the master alarm is sounding (not once silenced).
 // Call when a positive threshold is crossed (altitude, velocity, orbital insertion).
 void audioAlertChirp();
 
-// Caution chirp — 2 descending notes (tritone). Suppressed if master alarm is active.
+// Caution chirp — 2 descending notes (tritone). Suppressed only while the master alarm is sounding (not once silenced).
 // Call when a caution condition is newly set (descent, entering atmosphere).
 void audioCautionChirp();
 
-// Caution constant tone — fixed duration. Suppressed if master alarm is active.
+// Caution constant tone — fixed duration. Suppressed only while the master alarm is sounding (not once silenced).
 // Call when ALT caution indicator is newly set.
 void audioCautionTone();
 
@@ -195,8 +195,8 @@ void audioStopAlarm();
 
 // Silence the master alarm tone without clearing the latch.
 // Transitions AUDIO_MASTER_ALARM -> AUDIO_MASTER_ALARM_SILENCED. Chirps and
-// caution tones remain suppressed so non-critical audio doesn't play while
-// alarm conditions are still active. Call audioStopAlarm() when conditions
+// caution tones are no longer suppressed: they play while silenced and return
+// to the silenced state when they finish. Call audioStopAlarm() when conditions
 // actually clear, or audioStartAlarm() to resume the tone.
 // Has no effect unless the master alarm is currently active.
 void audioSilence();

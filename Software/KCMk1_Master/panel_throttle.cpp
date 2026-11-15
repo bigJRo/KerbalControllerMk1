@@ -2,8 +2,8 @@
    panel_throttle.cpp — Throttle Module (0x2C): the lever (lever.h) and its four buttons
    (Inventory §7.2, design §8.9).
 
-     100 %  lever to full          UP    lever up THR_BUTTON_STEP
-     0 %    lever to 0             DOWN  lever down THR_BUTTON_STEP
+     FULL   lever to full          THRTL +  lever up THR_BUTTON_STEP
+     IDLE   lever to 0             THRTL -  lever down THR_BUTTON_STEP
    The buttons move the lever (the module reports them; it does not act on them); the
    throttle channel then follows the lever like any pilot input (ksp_frame.cpp). They
    are ignored while the ENGINE is not ARMED, while an autopilot owns the throttle, and

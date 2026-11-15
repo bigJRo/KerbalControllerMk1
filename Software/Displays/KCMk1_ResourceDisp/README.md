@@ -95,17 +95,27 @@ All display, touch, SD and I2C pins are defined centrally in `KCMk1_SystemConfig
 Location: `KSP/GameData/KerbalSimpit/PluginData/Settings.cfg`
 
 ```
-PortName    = COM5       # SerialUSB1 — the second USB COM port (Teensy dual serial)
-BaudRate    = 115200
-RefreshRate = 125
-Verbose     = True
+KerbalSimpit
+{
+    RefreshRate = 125
+    Verbose = False
+    SerialPort
+    {
+        PortName = COM5        // SerialUSB1 — the second USB COM port (Teensy dual serial)
+        BaudRate = 115200
+    }
+    // ... one SerialPort block for each of the five Kerbal Simpit ports
+    // Only with the Community Resource Pack: the two CustomResourceMessages blocks below
+}
 ```
+
+Check the layout against the Kerbal Simpit version installed; the example shows its structure, not the port numbers of a particular computer.
 
 **ARP requirement:** Most resource channels require the **Alternate Resource Panel (ARP)** mod in KSP1. Without ARP, the corresponding Simpit channels are never sent and affected resource slots will remain at zero.
 
 **TAC Life Support resources** (Food, Water, Oxygen, Waste, Liquid Waste, CO2) additionally require the **TAC Life Support** mod.
 
-**CRP custom resources** (Stored Charge, Enriched Uranium, Depleted Fuel, Fertilizer, Intake Air, Liquid Hydrogen, Liquid Methane, Lithium) require **Community Resource Pack (CRP)** and the following two blocks added to `Settings.cfg`:
+**CRP custom resources** (Stored Charge, Enriched Uranium, Depleted Fuel, Fertilizer, Intake Air, Liquid Hydrogen, Liquid Methane, Lithium) require **Community Resource Pack (CRP)** and the following two blocks added inside the `KerbalSimpit` block of `Settings.cfg`:
 
 ```
 CustomResourceMessages

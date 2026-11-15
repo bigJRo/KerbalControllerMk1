@@ -83,11 +83,35 @@ The display controller is the **LT7683** (the physical part on the BuyDisplay ER
 Location: `KSP/GameData/KerbalSimpit/PluginData/Settings.cfg`
 
 ```
-PortName    = COM5       # SerialUSB1 — the second USB COM port (Teensy dual serial)
-BaudRate    = 115200
-RefreshRate = 125
-Verbose     = True
+KerbalSimpit
+{
+    RefreshRate = 125
+    Verbose = False
+    SerialPort
+    {
+        PortName = COM5        // SerialUSB1 — the second USB COM port (Teensy dual serial)
+        BaudRate = 115200
+    }
+    // ... one SerialPort block for each of the five Kerbal Simpit ports
+    // Only with the Community Resource Pack
+    CustomResourceMessages
+    {
+        resourceName1 = StoredCharge
+        resourceName2 = EnrichedUranium
+        resourceName3 = DepletedFuel
+        resourceName4 = Fertilizer
+    }
+    CustomResourceMessages
+    {
+        resourceName1 = IntakeAir
+        resourceName2 = LqdHydrogen
+        resourceName3 = LqdMethane
+        resourceName4 = Lithium
+    }
+}
 ```
+
+Check the layout against the Kerbal Simpit version installed; the example shows its structure, not the port numbers of a particular computer.
 
 **Note:** `CW_BUS_VOLTAGE` (EC low warning) requires the **Alternate Resource Panel (ARP)** mod in KSP1. Without ARP, `ELECTRIC_MESSAGE` is never sent and the bus voltage alarm will not fire. It will not false-trigger — the `EC_total > 0` guard prevents that.
 
@@ -156,7 +180,7 @@ Size: **3 bytes (legacy)**, **6 bytes (rev-2 extended)**, or **9 bytes (rev-3, a
 |------|-------|-------------|
 | 0 | `controlByte` | See bit map below |
 | 1 | `ctrlModeByte` | `CtrlMode` enum: `0`=Rover, `1`=Plane, `2`=Spacecraft |
-| 2 | `ctrlGrpByte` | Active control group, 1-based (1–10) |
+| 2 | `ctrlGrpByte` | Active control group, 1-based (1–6) |
 | 3 | `modeFlags` low | `state.modeFlags` bits 7:0 (`MF_*` — drives the whole mode/status grid) — *rev-2+* |
 | 4 | `modeFlags` high | `state.modeFlags` bits 11:8 — *rev-2+* |
 | 5 | `capValue` | "Cap" readout (`state.capValue`) — *rev-2+* |

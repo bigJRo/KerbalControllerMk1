@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Resource_Display_Reference.md`
-**Applies to:** KCMk1_ResourceDisp firmware 3.14.3
+**Applies to:** KCMk1_ResourceDisp firmware 3.15.0
 
 Every picture in this document is a true rendering: the firmware's own drawing code, run
 on a computer against a model of the display controller, in the flight state the caption

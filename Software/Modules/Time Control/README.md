@@ -16,7 +16,7 @@ The Time Control module provides time warp control, warp target selection, physi
 
 The panel uses a yellow family color theme reflecting the unusual and consequential nature of time manipulation. All five warp target buttons share YELLOW, warp rate controls use WARM WHITE, physics warp uses CHARTREUSE to distinguish it from standard warp, and game state actions use AMBER (pause/stop), LIME (save), and MINT (load).
 
-This module uses 12 NeoPixel RGB button positions (KBC indices 0-11). The four discrete LED button positions (KBC indices 12-15) are not populated.
+This module uses 12 NeoPixel RGB button positions (KBC indices 0-11). Inputs B12 and B13 (terminal CN2) carry the SPC / PLN / RVR control-mode selector, which the master decodes. B14 and B15 are not connected. None of B12-B15 has an LED.
 
 ---
 
@@ -59,7 +59,8 @@ Active state colors shown. All buttons illuminate dim white in the ENABLED state
 | B9 | BUTTON10 | Load | MINT | Restoration | Load quicksave |
 | B10 | BUTTON11 | Pause | AMBER | Awareness | Pause game |
 | B11 | BUTTON12 | Save | LIME | Positive | Quicksave |
-| B12-B15 | — | Not installed | — | — | — |
+| B12, B13 | Terminal CN2 | Control-mode selector | — | — | B12 = SPC, B13 = RVR, neither = PLN. No LED |
+| B14, B15 | — | Not connected | — | — | — |
 
 ### Color Design Notes
 
@@ -100,7 +101,8 @@ This module uses core LED states only. No extended states (WARNING, ALERT, ARMED
 | P4 | BUTTON10 | 9 | Load |
 | P4 | BUTTON11 | 10 | Pause |
 | P4 | BUTTON12 | 11 | Save |
-| P5 | BUTTON13-16 | 12-15 | Not connected |
+| CN2 (terminal) | B12, B13 | 12-13 | Control-mode selector (SPC / PLN / RVR) |
+| CN1 (terminal) | B14, B15 | 14-15 | Not connected |
 
 ---
 

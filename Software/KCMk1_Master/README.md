@@ -44,7 +44,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | Control channels (stage 5) | `ksp_frame.*`, `lever.h` | Rotation, translation, wheel, camera and throttle merged every pass and sent on a change; neutral first in each flight; sticks ignored under an autopilot or HOLD; throttle 0 unless ENGINE ARMED, else the autopilot owner (lever driven to match) or the lever; the autopilot interface (`thrAutoThrottle`, `rotSetAutoAxes`, `wheelSetAuto`, …) |
 | Sticks | `panel_sticks.cpp` | Mapping by control mode (SPC / PLN / RVR), THC / RHC PREC, trim (BTN02 / BTN01), stick button (A/P disconnect, RVR brakes, EVA run), camera mode and buttons, EVA keys |
-| Throttle | `panel_throttle.cpp` | The lever's state and command; 100 % / UP / DOWN / 0 % move the lever |
+| Throttle | `panel_throttle.cpp` | The lever's state and command; FULL / THRTL + / THRTL − / IDLE move the lever |
 
 | UI Control (stage 6) | `panel_ui.cpp` | Keys (F2, Alt+F12, numpad ., ', Tab, Shift+Tab, [ ], M, C), the screenshot macro (F2 F1 F2, 150 ms apart), navball cycle |
 | Function Control | `panel_function.cpp` | CAG 25–39 buttons with the control-group offset |
@@ -157,7 +157,7 @@ These can only be confirmed on the hardware (design §18):
 11. **Keyboard (stage 4):** on EVA the AUX keys work; INVERT holds F (SAS inverts while held); ENC2 changes the Hullcam camera. KSP must have focus.
 12. **Action groups (stage 4):** each CAG button lights with its group in KSP, in control groups 1 and 2; a parachute deploys and cuts from MAIN, and a 2 s hold resets it after a repack.
 13. **Stick directions (stage 5):** in SPC, PLN and RVR each axis moves the vessel the expected way (pitch, yaw, roll, translation, steering, wheel throttle), camera mode turns the camera, and on EVA the keys walk the expected way. Fix any wrong sign with `STICK_SIGN` in `panel_sticks.cpp`.
-14. **Lever (stage 5):** the 100 % / UP / DOWN / 0 % buttons move the lever; with ENGINE SAFE the throttle stays at 0 % in KSP.
+14. **Lever (stage 5):** the FULL / THRTL + / THRTL − / IDLE buttons move the lever; with ENGINE SAFE the throttle stays at 0 % in KSP.
 15. **Time Control (stage 6):** each WARP TO stops the Pre-Warp lead short of its event; the buttons go dark as their events disappear (landed, no node, in the atmosphere, escape); the screenshot macro hides the UI in the picture.
 16. **Autopilots (stage 7):** each Info Display 2 console engages and disengages its modes and shows them; A/P INHIB and ENGINE SAFE refuse with a message on KSP's screen; the rotation stick button disconnects; HOLD holds altitude and heading in PLN, heading and speed in RVR.
 17. **Board (stage 8):** the Sys Info status screen shows the 12 V supply as a meter reads it (this checks the 15 mΩ shunt); the fan speeds up as the board warms, and its rpm is plausible.

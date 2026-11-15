@@ -14,19 +14,16 @@
    - Panel A2 — UI control, function control, action control, throttle, translation joystick, GPWS input, Sys Info Display
    - Panel B1 — Resource Display + Info Display 2, dual encoder
    - Panel B2 — stability control, vehicle control, time control, auxiliary control, rotation joystick, pre-warp time, staging button, control-mode select switch
-2. Button LED states (the seven `KMC_LED_*` states — see I2C Protocol Specification §10.2)
+2. Button LED states (the `KMC_LED_*` states the master uses — see I2C Protocol Specification §10.2)
    - Off (system unavailable)
    - Enabled (dim warm-white — system available/backlit)
    - Active (full-brightness colored — system engaged)
-   - Warning (amber, 500 ms flash)
-   - Alert (red, 150 ms flash)
-   - Armed (cyan, full-brightness static)
-   - Partial Deploy (amber, full-brightness static)
+   - Cut (red, full-brightness static — HEAT SHIELD, MAIN and DROGUE after cut / release)
 3. Panel A1 controls
 4. Panel A2 controls
 5. Panel B1 controls
 6. Panel B2 controls
-7. Control mode switching (Spacecraft / Aircraft / Rover / EVA)
+7. Control mode switching (SPC / PLN / RVR selector; EVA follows the vessel)
 8. Custom action groups — what each does
 9. Joystick axis reference
 10. Encoder functions

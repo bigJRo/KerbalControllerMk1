@@ -30,8 +30,9 @@ and [`Documents/Developer/Hardware_Reference.md`](Documents/Developer/Hardware_R
 | Sketch / library | Role |
 |------------------|------|
 | `KCMk1_Annunciator/` | Caution & Warning annunciator panel (I2C 0x10) |
-| `KCMk1_InfoDisp/` | Flight information display — 13 telemetry screens (I2C 0x12) |
+| `KCMk1_InfoDisp/` | Flight information displays — Information Display 1 (I2C 0x12) and Information Display 2 (I2C 0x13), one sketch for both — 15 flight screens plus 5 autopilot consoles |
 | `KCMk1_ResourceDisp/` | Resource display (I2C 0x11) — up to 16 resource tape meters (9 by default) + EVA mode |
+| `KCMk1_SysInfo/` | Sys Info Display (I2C 0x14) — the 2″ portrait status screen on Panel A2 (XIAO RP2350, not a 7″ panel) |
 | `libraries/KerbalDisplayCommon/` | Shared UI toolkit — drawing, fonts, formatting, threshold colouring |
 | `libraries/KCM_Display`, `KCM_Touch`, `KCMk1_SystemConfig` | Display driver wrapper, touch driver, shared pin map + thresholds |
 | `libraries/KerbalDisplayAudio/` | Master-alarm audio (PAM8302A amp + speaker) + DFPlayer audio |

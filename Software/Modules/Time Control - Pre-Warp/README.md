@@ -5,7 +5,7 @@
 **Date:** 2026-04-28  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1880 v2.0 (ATtiny816)  
+**Hardware:** KC-01-1841 v2.0 (ATtiny816)  
 **Library:** Kerbal7SegmentCore v2.0.0  
 
 ---

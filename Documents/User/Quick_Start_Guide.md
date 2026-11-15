@@ -34,7 +34,7 @@ showing a false alarm.
 | Mod | What needs it |
 |---|---|
 | **KerbalSimpit** (2.4.0) | Everything: it is the telemetry link for every panel |
-| **AGX** (Action Groups Extended) | Every custom action group the controller fires (the controller uses AGX groups 1–238 across its six control groups) |
+| **AGX** (Action Groups Extended) | Every custom action group the controller fires (the controller uses AGX groups 1–239 across its six control groups) |
 | **Alternate Resource Panel (ARP)** | Most Resource Display channels; the Annunciator's BUS VOLTAGE tile; the electric-charge readouts on the Info Displays; the "no propellant" handling of the stage Δv readouts and LOW ΔV |
 | **TAC Life Support** | The Resource Display's Oxygen, Food, Water, CO2, Waste and Liquid Waste meters; the Annunciator's LIFE SUPPORT tile |
 | **Community Resource Pack (CRP)** | The Resource Display's Liquid Hydrogen, Liquid Methane, Lithium, Intake Air, Enriched Uranium, Depleted Fuel, Fertilizer and Stored Charge meters. These also need two blocks added to KerbalSimpit's `Settings.cfg`; see the Resource Display README |

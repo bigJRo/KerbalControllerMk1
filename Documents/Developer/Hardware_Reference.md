@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.0  
-**Date:** 2026-10-26  
+**Version:** 2.1  
+**Date:** 2026-11-15  
 **Document type:** Developer — Hardware
 
 ---
@@ -24,6 +24,7 @@
 | 1.9 | 2026-08-03 | Documentation audit reconciliation. §6.1 system-load figures pointed to Power Budget as authoritative (interim placeholders retained) since the RP2350 Sys Info Display draw is not yet measured. §8.3 device map: clarified 0x2E (Switch Panel — hardware TBD) and 0x2F (was Indicator Module — removed) to match the Module UI Reference. §14 Related Documents: corrected cross-referenced versions (I2C Protocol v2.4→v2.6, Module UI v5.3→v5.4, Power Budget v1.1→v1.2), added the Ascent Autopilot Interface row, and corrected the `docs/developer/` paths to `Documents/Developer/`. Chip naming standardized to LT7683 (RA8876-compatible) in §14. |
 | 1.10 | 2026-08-08 | §5.4: corrected the Throttle Module board designator from KC-01-1822 to KC-01-1872, matching the released drawing set (KC-01-1870 assembly / KC-01-1871 schematic / KC-01-1872 board / KC-01-1873 BOM / KC-01-1874 placement). Throttle row note updated: the five illuminated panel switches share a single backlight-enable output (not per-switch LEDs). §14 Related Documents: bumped the I2C Protocol Specification cross-reference to v2.10 (the two parallel v2.6/v2.9 spec lineages were reconciled into a single v2.10 document). |
 | 2.0 | 2026-10-26 | Rebuilt from `Hardware_Inventory.md` (the V2.0 schematics, confirmed panel by panel) and `Master_Firmware_Design.md`; every difference in Inventory §6 resolved. **Boards:** Display Hub (KC-01-1721/1722) retired — on A1 and B1 one 7" TFT Display Driver (KC-01-1911/1912) is the panel hub (Info Display 1 → Ctrl Module CN4; Resource Display → Extension CN5); Panel Hub (KC-01-1731/1732) on A2 (Ctrl CN3) and B2 (Extension CN4). Schematic and PCB numbers both listed. "Carrier" boards renamed to "Display Driver"; Ctrl Ext Module renamed Ctrl Module Extension. Removed the Ctrl Module ST7789 status display (not fitted; SPI pins unconnected). 2" display driver has no safe-switch terminal. Dual Encoder safe-switch terminal cannot reach the master. Throttle THRTL_ENA terminal unwired. **§3:** new §3.6 board interconnection. **§4:** rewritten per panel (slots, INT lines, safe switches, mode selector, Switch Groups 1 / 2 wiring). **§6:** power button has no Teensy pin; INA228 data shown on the Sys Info Display; new §6.6 fan and temperature (EMC2101 internal sensor only, nothing fitted on H4; fan header pin order). **§8:** I2C level shifter (not a divider) on ATtiny modules; safe lines documented as active-high; device map gains board / slot / INT columns, 0x2E marked retired; EXT_INT protection corrected (47 Ω + 4.7 kΩ both on EXT_INT_1 at the Ctrl Module, nothing on EXT_INT_2); new §8.5 master pin map from `KCMk1_Master/config.h`. **§9:** 50-pin pinout corrected to the V2.0 schematics. **§10:** Extension CN2 expansion terminal pinout added. **§11:** renamed Panel 34-Pin IDC Connector; line mapping and display-driver use of the four lines added. **§12 / §13:** slot pin 16 not connected on any hub; safe switches use the hub's own terminal; RST not connected on the 2" driver. **§14:** added Hardware Inventory and Master Firmware Design; I2C Protocol v2.17; Module UI Reference v6.0 (rewritten alongside this revision); master firmware is now `Software/KCMk1_Master` (the old `Software/Controller_Main` is deleted). New §15 Open Items. |
+| 2.1 | 2026-11-15 | Brought in line with the Technical Information Manual and the firmware. **§2:** Alternate Resource Panel added to the required mods. **§3.6:** wiring diagram (`assets/KCMk1_Wiring_Diagram.svg`) and its three print figures referenced. **§4.3, §5.4:** throttle buttons named as engraved: FULL, THRTL +, THRTL −, IDLE (firmware names THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00 kept). **§6.1:** interim system-load figures updated to Power Budget v1.3. **§6.3:** V_12 feeds the converters and the fans; new 9V row for the Throttle Module's own MPM3610 motor supply (Power Budget v1.3). **§10:** the GX16-10 and the expansion USB-C are fitted on the enclosure but reserved (unused). **§4, §14, §15:** cross-references updated to I2C Protocol v2.21, Module UI Reference v6.3 and Power Budget v1.3. |
 
 ---
 
@@ -66,6 +67,7 @@ Version 2.0 was rebuilt from `Documents/Developer/Hardware_Inventory.md`, the wo
 | KerbalSimpit | v2.4.0 | Serial communication between KSP and the master controller |
 | AGX (Action Groups Extended) | Current | Expands custom action groups to 256 (required for full button mapping) |
 | Hullcam VDS Continued | Current | Camera cycling support for ENC2 encoder |
+| Alternate Resource Panel (ARP) | Current | Most Resource Display resources and the BUS VOLTAGE warning |
 
 ---
 
@@ -141,7 +143,7 @@ Every internal cable (panels, slots, USB, power, speakers, fans, expansion and t
 | B2 | Right Input Panel | Vehicle controls (Switch Group 2), stability controls, staging button, control mode selector, auxiliary controls, time controls, pre-warp time, rotation input | Panel Hub | Ctrl Module Extension CN4 | B_INT_1–B_INT_8, B_INT_SAFE |
 | C (planned) | Extension unit | Additional displays and button panels — future expansion | TBD | Expansion interface (§10) | EXT_INT_1 / EXT_INT_2 |
 
-Button maps, labels and functions are in `Documents/Developer/Module_UI_Reference.md` (v6.0) and `Hardware_Inventory.md` §10. This section covers what is plugged in where and how it is wired.
+Button maps, labels and functions are in `Documents/Developer/Module_UI_Reference.md` (v6.3) and `Hardware_Inventory.md` §10. This section covers what is plugged in where and how it is wired.
 
 ### 4.2 Panel A1 — Left Display Panel
 
@@ -172,7 +174,7 @@ Button maps, labels and functions are in `Documents/Developer/Module_UI_Referenc
 |------------|----------|-------------------|
 | Abort button + arming switch | Panel Hub safe-switch terminal, arming switch in series | INT_SAFE (Teensy 31), active-high; a press only reaches the master while armed |
 | Switch Group 1 (8 switches) | Function Control terminals U16 / U17 → B16–B23 (§4.6) | Function Control's packet |
-| Throttle buttons 100 %, UP, DOWN, 0 % | Throttle terminals U7, U8, U10, U11 | Throttle's packet |
+| Throttle buttons FULL, THRTL +, THRTL −, IDLE | Throttle terminals U7, U8, U10, U11 | Throttle's packet |
 | Translation stick | Joystick terminal U6 | Translation's packet |
 
 **Unused:** slot P5; Action Control and UI Control terminals (B12–B15); Throttle THRTL_ENA (terminal U5).
@@ -310,7 +312,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 |-------|-----------|-----|-----|-----------------|---------------|--------------|-------|
 | Button Module | KC-01-1801 | KC-01-1802 | V2.0 | ATtiny816 | 12 | 4 | B0–B11 on-board RGB buttons (one NeoPixel chain). B12, B13 on terminal CN2 (1–2 +5 V, 3 B12, 4 B13); B14, B15 on terminal CN1 (1 B15, 2 B14, 3–4 +5 V). Used for UI, Action, Stability, Time and AUX Control |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.0 | ATtiny816 | 12 | 8 | B0–B11 on-board RGB buttons; B12–B15 not connected. B16–B19 on terminal U16 (1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16); B20–B23 on terminal U17 (1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V); DB127S-5.08-6P terminals. Used for Function and Vehicle Control (Switch Groups 1 / 2) |
-| Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs. Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100, U8 THRTL_UP, U10 THRTL_DOWN, U11 THRTL_00. All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
+| Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs. Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | ATtiny816 | 2 encoder pushes | None reachable | Encoder headers H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder carrier each (§5.5). No LEDs. Safe-switch terminal U4 (same circuit as the hubs) drives slot pin 16, not the ATtiny; no hub connects slot pin 16, so this switch cannot reach the master or the module |
@@ -359,9 +361,10 @@ A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A si
 
 | Rail | Voltage | Source | Consumers |
 |------|---------|--------|-----------|
-| V_12 | 12V | Main input bus | MPM3610 converters on each board, 12V direct loads (fans, motors) |
+| V_12 | 12V | Main input bus | MPM3610 converters on each board; the fans (direct) |
 | V_5 | 5V | MPM3610 DC-DC (per board) | ATtiny816 modules, Teensy VIN, display panel VDD, logic supply |
 | V_3P3 | 3.3V | AP2112K LDO (per board, as required) | Teensy 4.1 logic, display VDDIO / touch / glue logic, XIAO modules. Display panel VDD is NOT on this rail — it is supplied from V_5 |
+| 9V (Throttle) | 9V | MPM3610 DC-DC on the Throttle Module, fed from V_12 | L293D throttle motor drive only (Power Budget v1.3) |
 | VDD33_HUBn | 3.3V | CH334F internal LDO (per hub IC) | CH334F internal logic only — isolated net, not shared |
 
 ### 6.4 Power Monitoring
@@ -740,7 +743,7 @@ Pinout from the V2.0 schematics (KC-01-1701 CN2 and KC-01-1711 CN1, which agree)
 
 ## 10. External Expansion Interface
 
-The expansion unit connects to the main controller via two panel-mounted connectors on each enclosure: a GX16-10 circular aviation connector for power and signals, and a USB-C panel mount connector for USB 2.0 data. Signal protection and conditioning architecture for all signals crossing this interface is defined in §8.4. The expansion unit is a planned design (`Expansion_Module_Spec.md`); on the main controller only the Ctrl Module Extension's CN2 terminal is built.
+The expansion unit connects to the main controller via two panel-mounted connectors on each enclosure: a GX16-10 circular aviation connector for power and signals, and a USB-C panel mount connector for USB 2.0 data. Signal protection and conditioning architecture for all signals crossing this interface is defined in §8.4. The expansion unit is a planned design (`Expansion_Module_Spec.md`). On the main controller the GX16-10 and the expansion USB-C are fitted on the enclosure but reserved (unused), and the Ctrl Module Extension's CN2 terminal is built.
 
 ### 10.1 Overview
 
@@ -749,7 +752,7 @@ The expansion unit connects to the main controller via two panel-mounted connect
 | GX16-10 panel socket | 12V power, I2C, interrupts, reset | GX16-10 female-to-female, 3ft (1m) |
 | USB-C panel mount | USB 2.0 High Speed data | USB-C to USB-C, 3ft (1m) |
 
-Both connectors are fitted on each enclosure panel. Internal wiring runs from each connector to a terminal block on the respective routing board inside each enclosure — no signals are soldered directly to panel connectors.
+Both connectors are fitted on each enclosure panel. On the main controller they are reserved (unused) until the expansion unit is built. Internal wiring runs from each connector to a terminal block on the respective routing board inside each enclosure — no signals are soldered directly to panel connectors.
 
 ### 10.2 GX16-10 Signal Connector
 
@@ -1063,8 +1066,8 @@ Capability flags not listed above are reserved and must be set to 0.
 | Hardware Inventory | `Documents/Developer/Hardware_Inventory.md` | Working source for this document — every board, connector, slot, switch and button label, from the V2.0 schematics, confirmed panel by panel. Wins over this document where they disagree |
 | Master Firmware Design | `Documents/Developer/Master_Firmware_Design.md` | Design of the master firmware `Software/KCMk1_Master`: module bus, INT learning, board services (INA228, EMC2101, display reset), Sys Info Display, pin map (Appendix A) |
 | Master firmware configuration | `Software/KCMk1_Master/config.h` | The pins, I2C addresses, sync bytes and timings the master firmware uses |
-| I2C Protocol Specification | `Documents/Developer/I2C_Protocol_Specification.md` | v2.17 — packet formats for all module types, addresses, command/response structure, lifecycle state machine, interrupt signalling, hardware reset, display-carrier protocol (including the Sys Info Display, §15.4) |
-| Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v6.0 (rewritten from the inventory alongside this revision) — per-module button assignments, switch groups, CAG table, axis mappings, firmware implementation detail |
+| I2C Protocol Specification | `Documents/Developer/I2C_Protocol_Specification.md` | v2.21 — packet formats for all module types, addresses, command/response structure, lifecycle state machine, interrupt signalling, hardware reset, display-carrier protocol (including the Sys Info Display, §15.4) |
+| Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v6.3 (v6.0 was rewritten from the inventory alongside revision 2.0) — per-module button assignments, switch groups, CAG table, axis mappings, firmware implementation detail |
 | Power Budget | `Documents/Developer/Power_Budget.md` | v1.3 — per-module and per-panel power consumption, supply headroom analysis |
 | Ascent Autopilot Interface | `Documents/Developer/Ascent_Autopilot_Interface.md` | Info Display ↔ master byte-level contract for the Simpit ascent autopilot command/status frames |
 | Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.3 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
@@ -1086,6 +1089,6 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 | 4 | **EXT_INT protection.** On the Ctrl Module, EXT_INT_1 has 47 Ω + 4.7 kΩ and EXT_INT_2 has nothing, while `Expansion_Module_Spec.md` v0.3 expects a 47 Ω source resistor on EXT_INT_2 at the Ctrl Module. Decide whether the expansion side adds protection on EXT_INT_2 or a later Ctrl Module revision does, and update the expansion spec (§8.4) | Inventory §6 #2 |
 | 5 | **Expansion harness.** The Extension CN2 terminal order differs from the planned GX16-10 pin assignment from pin 5 on; the harness cross-maps them (§10.4). The GX16-10 assignment itself is still the planned v1.x design, with no drawing | Inventory §4 |
 | 6 | **Dual Encoder safe-switch terminal.** It drives slot pin 16, which no hub connects, so it cannot be used. Either retire the terminal or connect pin 16 on a future hub revision | Inventory §5.8, §6 #12 |
-| 7 | **Sys Info Display power draw** not yet measured, so the system load in §6.1 is still interim | Power Budget v1.2 |
+| 7 | **Sys Info Display power draw** not yet measured, so the system load in §6.1 is still interim | Power Budget v1.3 |
 | 8 | **Module Tester (KC-01-9002)** is not in the inventory and has no drawings in the repository; §5.6 is carried over from v1.10 unverified | — |
 | 9 | **7" TFT Display Driver revision.** The schematic drawing is V2.1 and the PCB, BOM and placement drawings are V2.0. Confirm whether the board itself changed in V2.1 | `Documents/Drawings/` |

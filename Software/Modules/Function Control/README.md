@@ -65,7 +65,7 @@ Active state colors shown. All buttons illuminate dim white in the ENABLED state
 | B11 | BUTTON12 | Engine Group 2 | 31 | CHARTREUSE | Engine family |
 | B12–B15 | — | No-connect (PCB) | — | — | — |
 
-Each button toggles its CAG (base + (control group − 1) × 40). The CAG numbers stay with the function, so the swap to the confirmed layout does not change vessels' action-group setups. The B4 panel label still reads RW DISABLE until the label is replaced with FLAPS (Module UI Reference §15).
+Each button toggles its CAG (base + (control group − 1) × 40). The CAG numbers stay with the function, so the swap to the confirmed layout does not change vessels' action-group setups. The B4 panel label still reads RW DISABLE until the FLAPS label is fitted; the artwork is made (`Documents/Labels`, Module UI Reference §15).
 
 ### Switch Group 1 (KBC indices 16–23, discrete inputs, no LED)
 

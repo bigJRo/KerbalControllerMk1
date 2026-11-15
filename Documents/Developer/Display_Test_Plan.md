@@ -3,7 +3,7 @@
 **Document type:** Developer / Verification
 **Location:** `Documents/Developer/Display_Test_Plan.md`
 **Version:** 1.4
-**Firmware covered:** Info Display v1.18.0 (both units) · Annunciator v3.10.0 · Resource Display v3.15.0 · KCMk1_Master v0.9.0 · KCM_Display 1.1.0 · KCMk1_SystemConfig 1.3.0
+**Firmware covered:** Info Display v1.19.1 (both units) · Annunciator v3.10.0 · Resource Display v3.15.0 · KCMk1_Master v0.10.1 · KCM_Display 1.1.0 · KCMk1_SystemConfig 1.3.0
 
 ---
 
@@ -324,7 +324,7 @@ Requires the master (KCMk1_Master) running the mission autopilot. All annunciati
 
 | ID | Action | Expected | Source |
 |---|---|---|---|
-| LDAP-01 | Suborbital or descending at the Mun, press `A/P` | Lands on LANDING AUTOPILOT, key caption `LDAP` | Situation pick |
+| LDAP-01 | At the Mun, descending faster than 5 m/s below 10 km radar altitude (or landed), press `A/P` | Lands on LANDING AUTOPILOT, key caption `LDAP`. Higher up, or not descending, the key picks another console (usually ORBITAL AUTOPILOT) | Situation pick |
 | LDAP-02 | Read the grid | DESCENT [DESC] [HOVR] [BRAKE] [ENTRY] with rate / altitude / ign alt / AOA boxes; OPTIONS ATT REF, TWR, MARGIN, ROLL; DESCENT DATA ALT.RDR, V.VRT, H SPD, ACCEL, IGN ALT, T+GRND, THRTL | Screen_LNDG_AP (1.16.5 names) |
 | LDAP-03 | Tap [DESC], enter a rate | Descent-rate hold engages (green after echo); V.VRT holds at the setpoint; banner lists `DESC` and `ENGAGED` | DESC hold |
 | LDAP-04 | Tap [HOVR], enter an altitude | Radar-altitude hold; ALT.RDR settles at the setpoint | HOVR |
@@ -335,6 +335,7 @@ Requires the master (KCMk1_Master) running the mission autopilot. All annunciati
 | LDAP-09 | Tap [A/P OFF] during a hover | Every mode cleared, banner `A/P OFF`, sidebar key achromatic. **The throttle stays where it was**, so the hover keeps its thrust. Switching between DESC and HOVR likewise leaves it alone | Abort / throttle hand-back |
 | LDAP-10 | Move the stick while a mode is engaged, then press the RHC stick button (A/P disconnect) | Stick input does nothing while the mode is engaged. The button disconnects every autopilot with `A/P DISC` in orange in the banner for ~5 s; the throttle stays where it was | Disconnect reason |
 | LDAP-11 | Touch down under DESC | Throttle goes to zero, every mode disconnects, banner `LANDED` | Touchdown cut |
+| LDAP-12 | With a mode engaged, make a vessel switch (`[` / `]`), including going EVA, or a scene change (leave flight and come back) | Every autopilot drops with no reason in the banner, banner `A/P OFF`, sidebar key achromatic; an armed ascent autopilot disarms. Nothing re-engages on return | Vessel / scene change (master 0.10.1) |
 
 ---
 
@@ -578,7 +579,7 @@ Needs the master, the modules and the other three 7" displays. The screen shows 
 | INPUT-06 | Read the module rows; then unplug one module | Each fitted module shows its address and INT line (as `intmap` reports them) and ACTIVE in green in flight (DISABLED in amber in the menus); the unplugged one reads MISSING in red. No STATE cell is red (red = the module reports a FAULT) | Page 0 / page 1 frames |
 | INPUT-07 | Press every button and flip every switch on the button modules | Its box lights while it is down (the boxes are the bits of the state word as the module sends it); FUNCTION and VEHICLE show their switches as the last eight boxes, after a gap | Page 0 bytes 8–23 |
 | INPUT-08 | Move each stick axis to both ends; press each stick's button, BTN01, BTN02 | TRANSLATION is the left box, ROTATION the right. The dot and twist bar follow, the values (`X:` `Y:` `Z:`) reach about ±100; `STK` / `B1` / `B2` light while held | Page 0 bytes 24–31 |
-| INPUT-09 | Move the lever; touch it; turn on FINE; press 100 % / UP / DOWN / 0 % | The lever bar and % follow; touched: bar blue and `TOUCH`; `FINE` shows; each button's box flashes on the press | Page 0 bytes 34–35 |
+| INPUT-09 | Move the lever; touch it; turn on FINE; press FULL / THRTL + / THRTL − / IDLE | The lever bar and % follow; touched: bar blue and `TOUCH`; `FINE` shows; each button's box flashes on the press | Page 0 bytes 34–35 |
 | INPUT-10 | GPWS and Pre-Warp: press their buttons, turn their encoders, change the GPWS mode | Boxes flash on the presses; `value` follows the displayed number; `state` changes with the mode | Page 0 bytes 32–33, page 1 |
 | INPUT-11 | Dual Encoder: turn ENC1, turn ENC2 both ways, press both buttons | Control group follows ENC1 (row, and `CONTROL GROUP n` in the right column); the ENC2 count goes up and down; the boxes flash on the presses | Page 0 bytes 36–37 |
 | INPUT-12 | Turn the mode selector through SPC / PLN / RVR; close the ABORT and STAGE lines | The matching chip lights; ABORT (red) and STAGE (orange) light while their line is closed | Page 0 bytes 38–39 |
@@ -619,7 +620,7 @@ Needs the master, the modules and the other three 7" displays. The screen shows 
 | Target context window | 200–2000 m (release 150 / 2400) | — | Mission rule 9 |
 | Maneuver context | T+IGN < 600 s (release 700) | — | Mission rule 8 |
 | Powered-descent context | < 10 km radar, faster than −5 m/s (release 12 km) | — | Mission rule 3 |
-| Re-entry context | Pe in atmosphere and above it or Mach > 3 | — | Mission rule 2 |
+| Re-entry context | Descending, Pe below the top of the safe corridor, and above the atmosphere or Mach > 3 | — | Mission rule 2 |
 | Radar altitude | 500 m (200 m on POWERED DESCENT) | 50 m | ALT.RDR on DESC / ENTR / ACFT |
 | Surface altitude | 200 m | — | C&W ALT / GEAR UP |
 | Impact imminent | 60 s | — | C&W IMPACT IMM |

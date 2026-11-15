@@ -5,7 +5,7 @@
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
- * @target      ATtiny816 — flash to KC-01-1880 module
+ * @target      ATtiny816 — flash to KC-01-1841 module
  *
  * @brief       Pre-Warp Time module firmware.
  *
@@ -54,7 +54,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware:  KC-01-1880 v2.0 (ATtiny816)
+ * @note        Hardware:  KC-01-1841 v2.0 (ATtiny816)
  *              Library:   Kerbal7SegmentCore v2.0.0
  *              IDE settings:
  *                Board:        ATtiny816 (megaTinyCore)

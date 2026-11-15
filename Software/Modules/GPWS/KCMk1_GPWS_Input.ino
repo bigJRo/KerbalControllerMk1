@@ -5,7 +5,7 @@
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
- * @target      ATtiny816 — flash to KC-01-1880 module
+ * @target      ATtiny816 — flash to KC-01-1841 module
  *
  * @brief       GPWS Input Panel module firmware.
  *
@@ -22,7 +22,7 @@
  *                BTN01 — GPWS Enable — 3-state cycle
  *                           State 0 (BACKLIT): GPWS off, display blank
  *                           State 1 (GREEN):   Full GPWS active
- *                           State 2 (AMBER):   Proximity tone only
+ *                           State 2 (AMBER):   Callouts only (no warnings)
  *                BTN02 — Proximity Alarm — amber submode (BACKLIT ↔ GREEN)
  *                           Pressing forces BTN01→PROX (amber) and sets proximity
  *                           alarm active. Mutually exclusive with BTN03 (rendezvous
@@ -62,7 +62,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware:  KC-01-1880 v2.0 (ATtiny816)
+ * @note        Hardware:  KC-01-1841 v2.0 (ATtiny816)
  *              Library:   Kerbal7SegmentCore v2.0.0
  *              IDE settings:
  *                Board:        ATtiny816 (megaTinyCore)

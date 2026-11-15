@@ -1,7 +1,7 @@
 # Porting the KCMk1 Displays to the 7" TFT Driver (hardware rev 2)
 
 Branch: `claude/display-7inch-tft-upgrade-yvadv7`
-Board: **KC-01-1911 / KC-01-1912 "7\" TFT Display Driver"** (schematic V2.0, J. Rostoker)
+Board: **KC-01-1911 / KC-01-1912 "7\" TFT Display Driver"** (schematic V2.1, J. Rostoker)
 
 This document is the source of truth for moving the Annunciator, Info, and
 Resource panels from the rev-1 display stack to the new 7" TFT carrier board.

@@ -93,7 +93,7 @@ carries the colour. Unless a threshold is listed the value is always green.
 | **SKIN** | Maximum skin temperature, as a percentage of the hottest part's skin limit. | KSP temperature limits | Same as CORE: **green** below 50 %, **yellow** 50–90 %, **white on red** above 90 % (lights HIGH TEMP). |
 | **CAP** | Reserved readout relayed from the master controller (byte 5 of the rev-2 I2C command). | Master controller | Green always. *The master sends the byte but has no source for it yet, so the readout reads 0.* |
 | **CTRLGRP** | Active custom-action control group, 1–6, as selected by the control-group rotary switch on the master. | Master controller | Green always |
-| **SPC / PLN / RVR** | Control mode selected on the master's control-mode switch (the switch's own legends) — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPC for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. *The master sends SPC until the control-mode switch is wired to it, and control group 1 until the control-group encoder is read.* |
+| **SPC / PLN / RVR** | Control mode selected on the master's control-mode switch (the switch's own legends) — Spacecraft, Plane or Rover — with the active vessel's type icon beside it. | Master controller + KSP vessel type | **Green** when the mode suits the vessel type: SPC for probe, relay, lander, ship or station; PLN for a plane; RVR for a rover. **Red** when it does not (e.g. PLN selected while flying a ship). Other vessel types (debris, EVA, flag, base, parts) never flag a mismatch. *The master reads both live; until its first read at boot it sends SPC and control group 1.* |
 
 CORE, SKIN and COMM use the panel's three-band threshold colouring. The temperature
 bands are anchored to the same `tempAlarm` setting (default 90 %) that drives the HIGH
@@ -119,12 +119,12 @@ lights when its bit is set. None of them sound an audio cue.
 | **WARP** (1×2) | Time warp is active (rate above 1×). | Dark grey on **yellow** | 1 |
 | **AUDIO** (1×3) | Audio cues are enabled on the Annunciator (`audioEnabled`). Off means the panel is silent, including the master alarm. | White on **green** | 2 |
 | **A/P ARM** (1×4) | The A/P INHIB / ARM switch is at ARM: autopilots may engage. At INHIB nothing engages and engaged console autopilots drop. (Tile read THRTL ENA before v3.9.) | White on **green** | 3 |
-| **TRIM** (1×5) | Rotation-stick trim mode is engaged (stick input is being applied as trim). | White on **aqua** | 4 |
+| **TRIM** (1×5) | A rotation-stick trim offset is set (TRIM SET); it is added to the stick until it is cleared. | White on **aqua** | 4 |
 | **AUTOPILOT** (1×6) | An autopilot mode on the master (ascent, hold, burn, landing or mission) is engaged. | White on **green** | 5 |
 | **DEBUG** (2×1) | Serial debug output is enabled on the panel. | White on **purple** | 6 |
 | **SWITCH ERR** (2×2) | A control-mode / switch-state error has been detected by the master (e.g. a switch position the master could not reconcile). | White on **red** | 7 |
 | **SIMPIT LOST** (2×3) | The KerbalSimpit link to KSP has dropped — no telemetry is arriving. | White on **red** | 8 |
-| **THRTL PREC** (2×4) | Throttle module is in precision mode (slider centred, fine authority). | White on **green** | 9 |
+| **THRTL PREC** (2×4) | Throttle module is in precision mode (THRTL switch set to FINE). | White on **green** | 9 |
 | **INPUT PREC** (2×5) | Precision switch is on for the translation and rotation sticks (precision factor applied). | White on **green** | 10 |
 | **ENG ARM** (2×6) | The ENGINE SAFE / ARM switch is in ARM (throttle module active). SAFE inhibits throttle input. | White on **green** | 11 |
 
