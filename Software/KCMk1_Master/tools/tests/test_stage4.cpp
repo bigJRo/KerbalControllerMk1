@@ -1,6 +1,6 @@
 // Stage 4 selftest: the flight panels — Vehicle (BRAKES, toggles, CAG buttons with the
 // control-group offset, the state machines), Stability (SAS modes, HOLD, INVERT),
-// Action, AUX (EVA keys, UNDOCK, control points), Dual Encoder, demo, and keys released
+// Action, AUX (EVA keys, UN DOCK, control points), Dual Encoder, demo, and keys released
 // when a flight ends.
 #include "harness.h"
 #include "switches.h"
@@ -211,7 +211,7 @@ static void testActionAux(Bench &b) {
   eva(false); runFor(20);
   stubSimpit().sent.clear();
   tap(x, 1u << 8);
-  CHECK(sent(CAGTOGGLE_MESSAGE, 37) == 1, "UNDOCK: CAG 37");
+  CHECK(sent(CAGTOGGLE_MESSAGE, 37) == 1, "UN DOCK: CAG 37");
   cags({ 36 }); runFor(20);
   stubSimpit().sent.clear();
   tap(x, 1u << 10);

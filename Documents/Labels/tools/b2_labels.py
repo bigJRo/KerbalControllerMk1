@@ -31,7 +31,7 @@ MODULES = [
     6: ["SOI"], 7: "<", 8: ["MORN"], 9: ["LOAD"], 10: ["PAUSE"], 11: ["SAVE"]}),
   ("AUX_CTRL_0x26", SQUARE, GRID_1801, {
     0: ["EVA", "LIGHTS"], 1: ["JET", "PACK"], 2: ["BOARD"], 3: ["CONST"], 4: ["JUMP /", "LET GO"],
-    5: ["GRAB"], 6: ["EVA", "CHUTE"], 7: ["HELMET"], 8: ["UN", "DOCK"], 9: ["FLAG"], 10: ["PRI"], 11: ["ALT"]}),
+    5: ["GRAB"], 6: ["EVA", "CHUTE"], 7: ["HELM"], 8: ["UN", "DOCK"], 9: ["FLAG"], 10: ["PRI"], 11: ["ALT"]}),
   ("Vehicle_Control_0x24", WIDE, GRID_1811, {
     0: ["BRAKES"], 1: ["LIGHTS"], 2: ["ANTENNA"], 3: ["LANDING", "GEAR"], 4: ["FUEL", "CELL"],
     5: ["SOLAR", "ARRAY"], 6: ["CARGO", "DOOR"], 7: ["RADIATOR"], 8: ["HEAT", "SHIELD"],
