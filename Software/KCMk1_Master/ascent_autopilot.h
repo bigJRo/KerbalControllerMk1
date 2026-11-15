@@ -143,6 +143,7 @@ const char  *apPhaseName(AscentPhase phase);           // Human-readable phase l
 
 void         apArm();                      // Engage the autopilot from the current state
 void         apDisarm();                   // Hand control back to the pilot (zeroes commands)
+void         apVesselChanged();            // vessel / scene change: disarm silently
 bool         apIsArmed();
 void         apArbiterDrop();              // another autopilot took attitude or throttle (ap_arbiter.cpp)
 AscentPhase  apGetPhase();

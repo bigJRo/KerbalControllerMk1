@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="597" viewBox="0 0 650 597" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<defs>
+<marker id="ahk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#263238"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#c62828"/></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1565c0"/></marker>
+<marker id="ahp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6a1b9a"/></marker>
+<marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#00838f"/></marker>
+<marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<rect x="10.0" y="8.0" width="630.0" height="38.0" rx="0" fill="#ffffff" stroke="#263238" stroke-width="2.2"/>
+<text x="325.0" y="33.0" font-size="15" font-weight="bold" text-anchor="middle" fill="#263238">STICKS DO NOTHING</text>
+<polyline points="185.0,46.0 185.0,65.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<polygon points="40.0,90.0 54.0,66.0 316.0,66.0 330.0,90.0 316.0,114.0 54.0,114.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="90.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="94.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">1</text>
+<text x="185.0" y="87.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Annunciator AUTOPILOT lit</text>
+<text x="185.0" y="100.1" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">(autopilot or HOLD engaged)?</text>
+<polyline points="330.0,90.0 369.0,90.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="85.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="57.8" width="270.0" height="64.4" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="74.9" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Sticks are ignored while engaged.</text>
+<text x="379.0" y="87.5" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">SPC, PLN: press the RHC stick button</text>
+<text x="379.0" y="100.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">(A/P disconnect). RVR: press B2 HOLD</text>
+<text x="379.0" y="112.7" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">again, or A/P OFF on the console.</text>
+<text x="634.0" y="117.2" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,114.0 185.0,137.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="130.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,162.0 54.0,138.0 316.0,138.0 330.0,162.0 316.0,186.0 54.0,186.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="162.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="166.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">2</text>
+<text x="185.0" y="165.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Kerbal on EVA?</text>
+<polyline points="330.0,162.0 369.0,162.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="157.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="136.1" width="270.0" height="51.8" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="153.2" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Normal: on EVA the RHC and THC hold the</text>
+<text x="379.0" y="165.8" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">movement keys (W A S D, Q E, Shift, Ctrl)</text>
+<text x="379.0" y="178.4" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">to move the Kerbal (Figure 3‑12).</text>
+<text x="634.0" y="182.9" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,186.0 185.0,209.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="202.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,234.0 54.0,210.0 316.0,210.0 330.0,234.0 316.0,258.0 54.0,258.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="234.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="238.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">3</text>
+<text x="185.0" y="237.8" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Only translation (THC) dead?</text>
+<polyline points="330.0,234.0 369.0,234.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="229.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="208.1" width="270.0" height="51.8" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="225.2" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">B2 RCS – ENAB (KSP translates only with</text>
+<text x="379.0" y="237.8" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">RCS on). Release the THC stick button:</text>
+<text x="379.0" y="250.4" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">while it is held the THC moves the camera.</text>
+<text x="634.0" y="254.9" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,258.0 185.0,281.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="274.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,306.0 54.0,282.0 316.0,282.0 330.0,306.0 316.0,330.0 54.0,330.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="306.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="310.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">4</text>
+<text x="185.0" y="303.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Rotation axes wrong, or the RHC</text>
+<text x="185.0" y="316.1" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">steers the wheels?</text>
+<polyline points="330.0,306.0 369.0,306.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="301.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="280.1" width="270.0" height="51.8" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="297.2" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Set the controller mode selector to the</text>
+<text x="379.0" y="309.8" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">vessel type (SPC, PLN, RVR). The Annunciator</text>
+<text x="379.0" y="322.4" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">mode tile is green when they match.</text>
+<text x="634.0" y="326.9" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,330.0 185.0,353.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="346.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,378.0 54.0,354.0 316.0,354.0 330.0,378.0 316.0,402.0 54.0,402.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="378.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="382.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">5</text>
+<text x="185.0" y="375.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Response weak</text>
+<text x="185.0" y="388.1" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">(Annunciator INPUT PREC lit)?</text>
+<polyline points="330.0,378.0 369.0,378.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="373.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="358.4" width="270.0" height="39.2" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="375.5" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">B2 THC/RHC – NORM.</text>
+<text x="379.0" y="388.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">PREC scales both sticks to 30 %.</text>
+<text x="634.0" y="392.6" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,402.0 185.0,425.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="418.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<polygon points="40.0,450.0 54.0,426.0 316.0,426.0 330.0,450.0 316.0,474.0 54.0,474.0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<circle cx="20.0" cy="450.0" r="10" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
+<text x="20.0" y="454.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">6</text>
+<text x="185.0" y="447.5" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">Out of a flight scene, or Annunciator</text>
+<text x="185.0" y="460.1" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#263238">SIMPIT LOST or DEMO lit?</text>
+<polyline points="330.0,450.0 369.0,450.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="350.0" y="445.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#263238">YES</text>
+<rect x="370.0" y="417.8" width="270.0" height="64.4" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="379.0" y="434.9" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Enter a flight scene.</text>
+<text x="379.0" y="447.5" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">SIMPIT LOST lit: reconnect (Section 8.8).</text>
+<text x="379.0" y="460.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">DEMO lit: A2 SCE – NORM (in demo mode</text>
+<text x="379.0" y="472.7" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">nothing is sent to KSP).</text>
+<text x="634.0" y="477.2" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<polyline points="185.0,474.0 185.0,497.0" fill="none" stroke="#263238" stroke-width="1.6" stroke-linejoin="round" marker-end="url(#ahk)"/>
+<text x="191.0" y="490.0" font-size="10" font-weight="bold" text-anchor="start" fill="#263238">NO</text>
+<rect x="20.0" y="498.0" width="620.0" height="53.8" rx="0" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
+<text x="29.0" y="516.1" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">Open the input test screen on Information Display 1 (Section 10.3). Do the TRANSLATION and</text>
+<text x="29.0" y="528.7" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">ROTATION dots and X: Y: Z: values follow the sticks? Row MISSING: turn the controller off and</text>
+<text x="29.0" y="541.3" font-size="10.5" font-weight="normal" text-anchor="start" fill="#263238">reseat that joystick module's 16-pin cable.</text>
+<text x="634.0" y="546.8" font-size="10.5" font-weight="bold" text-anchor="end" fill="#263238">&gt;&gt;</text>
+<text x="10.0" y="571.8" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">Number: decision · YES: do the action on the right · NO: go down to the next step.</text>
+<text x="10.0" y="585.8" font-size="10" font-weight="normal" text-anchor="start" fill="#607d8b">&gt;&gt;  End of procedure. If the symptom remains, return to that step and take its NO branch.</text>
+</svg>

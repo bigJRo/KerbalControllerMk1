@@ -349,7 +349,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 | Typical system load | see Power Budget (interim ~3.30A / 39.5W @ 12V) |
 | Peak system load | see Power Budget (interim ~5.82A / 69.8W @ 12V) |
 
-> System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.2). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the A+B interim figures from Power Budget §3, which use the previous Sys Info Display draw as a placeholder, and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
+> System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.3). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the A+B interim figures from Power Budget §3, which use the previous Sys Info Display draw as a placeholder, and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
 
 ### 6.2 Power On/Off
 
@@ -1065,7 +1065,7 @@ Capability flags not listed above are reserved and must be set to 0.
 | Master firmware configuration | `Software/KCMk1_Master/config.h` | The pins, I2C addresses, sync bytes and timings the master firmware uses |
 | I2C Protocol Specification | `Documents/Developer/I2C_Protocol_Specification.md` | v2.17 — packet formats for all module types, addresses, command/response structure, lifecycle state machine, interrupt signalling, hardware reset, display-carrier protocol (including the Sys Info Display, §15.4) |
 | Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v6.0 (rewritten from the inventory alongside this revision) — per-module button assignments, switch groups, CAG table, axis mappings, firmware implementation detail |
-| Power Budget | `Documents/Developer/Power_Budget.md` | v1.2 — per-module and per-panel power consumption, supply headroom analysis |
+| Power Budget | `Documents/Developer/Power_Budget.md` | v1.3 — per-module and per-panel power consumption, supply headroom analysis |
 | Ascent Autopilot Interface | `Documents/Developer/Ascent_Autopilot_Interface.md` | Info Display ↔ master byte-level contract for the Simpit ascent autopilot command/status frames |
 | Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.3 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
 | Drawings | `Documents/Drawings/` | Assembly, schematic, PCB, BOM and placement drawings for each board (KC-01-xxx0 to xxx4) |
