@@ -142,6 +142,7 @@ void        hpLevel();                              // LVL: ROLL 0 + V/S 0, thru
 void        hpDisconnectAll(uint8_t reason);        // aircraft + rover, SAS to stability assist
 void        hpDisconnectAircraft(uint8_t reason);
 void        hpDisconnectRover(uint8_t reason);
+void        hpDropThrottleModes(uint8_t reason);  // IAS / MACH / CRUISE / FOLLOW off, reason on each console that lost one
 
 // Setpoints — apply engaged or not; return false only if out of range.
 bool        hpSetAtt(float deg);

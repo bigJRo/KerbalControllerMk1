@@ -159,8 +159,9 @@ void audioStopAlarm() {
 // audioSilence() — immediately stops the tone but keeps the master alarm latch
 // held by transitioning AUDIO_MASTER_ALARM -> AUDIO_MASTER_ALARM_SILENCED.
 // Use when the crew acknowledges an active alarm without conditions clearing.
-// Chirps/tones remain suppressed. Call audioStopAlarm() when conditions actually
-// clear, or audioStartAlarm() to resume the audible alarm.
+// Chirps/tones may play while silenced (see _alarmAudible()). Call
+// audioStopAlarm() when conditions actually clear, or audioStartAlarm() to
+// resume the audible alarm.
 // Has no effect unless the master alarm is currently audible.
 void audioSilence() {
   if (_audioState == AUDIO_MASTER_ALARM) {

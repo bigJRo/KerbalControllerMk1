@@ -9,7 +9,7 @@
 **Builds on:** `Hold_Mode_Autopilot.md` (implemented), `Ascent_Autopilot.md`, `Ascent_Autopilot_Interface.md`
 
 
-> **Port to `KCMk1_Master` (2026-10-26).** The burn and landing autopilots, the arbiter and the stage helpers now run in `Software/KCMk1_Master` (`burn_autopilot.cpp`, `landing_autopilot.cpp`, `ap_arbiter.cpp`, `stage_helpers.cpp`; `Master_Firmware_Design.md` §11), with their control laws unchanged. **The global pilot-input rule (§7.7) is retired:** stick and lever input disconnect nothing. Engaged modes keep authority until the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (throttle-using modes) or their own rules. The STICK / LEVER rows of §7.7 no longer apply; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new reasons. The approach hold's translation goes out on the master's translation channel.
+> **Port to `KCMk1_Master` (2026-10-26).** The burn and landing autopilots, the arbiter and the stage helpers now run in `Software/KCMk1_Master` (`burn_autopilot.cpp`, `landing_autopilot.cpp`, `ap_arbiter.cpp`, `stage_helpers.cpp`; `Master_Firmware_Design.md` §11), with their control laws unchanged. **The global pilot-input rule (§7.7) is retired:** stick and lever input disconnect nothing. Engaged modes keep authority until the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (throttle-using modes), a vessel switch, including going EVA, or scene change, or their own rules. The STICK / LEVER rows of §7.7 no longer apply; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new reasons. The approach hold's translation goes out on the master's translation channel.
 
 ---
 
@@ -200,7 +200,7 @@ APPR is a hold, not a burn: tapping it engages immediately, as on the other cons
 ```
 IDLE ──arm──▶ PLANNED ──EXEC──▶ ALIGN ──pointing OK──▶ WARP READY ──WARP tap──▶ WARPING ──T-ign──▶ BURN ──ΔV rem ≤ cut──▶ DONE
                                   │                         │  (or wait it out)      │                  │
-                                  └── any abort test ───────┴───────────────────────┴──────────────────┴──▶ ABORT (throttle 0, SAS stability)
+                                  └── any abort test ───────┴───────────────────────┴──────────────────┴──▶ ABORT (throttle unchanged, SAS stability)
 ```
 
 - **ALIGN** sets the SAS mode for the burn and waits until **both** hold: the pointing error is
@@ -295,9 +295,9 @@ a plan the pilot has not seen.
     aircraft console's ordinary capture-on-engage, called across modules through the arbiter; the
     banner shows `HANDOFF` on both consoles for five seconds.
 - **Throttle on a mode change** (#82): no mode change cuts the throttle. Tapping a mode off,
-  A/P OFF, a pilot override, telemetry loss or another autopilot taking over all leave it where
-  it is; switching between DESC and HOVR starts the new loop from the current throttle. BRAKE
-  itself holds zero until its ignition altitude, as it always has.
+  A/P OFF, the A/P disconnect, A/P INHIB, telemetry loss or another autopilot taking over all
+  leave it where it is; switching between DESC and HOVR starts the new loop from the current
+  throttle. BRAKE itself holds zero until its ignition altitude, as it always has.
 - **Touchdown**: on landed or splashed the throttle goes to zero and everything disconnects with
   reason `LANDED`. This is the only place the landing autopilot cuts the throttle on its way out.
 
@@ -426,14 +426,10 @@ The arbiter is a small tab that the modules call on engage; it holds nothing its
 
 ### 7.7 Disconnect rules
 
-*Superseded in the KCMk1 master: stick and lever input disconnect nothing; the STICK and LEVER rows below no longer apply (port note at the top).*
-
-**The pilot-input rule is global** (review decision, applied to every module including the ascent
-autopilot): any input on the rotation stick, the translation stick or the throttle lever
-disconnects everything — a burn aborts and a landing mode drops, both with the throttle left where it is,
-hold and rover modes disconnect. Stick input is debounced (10 % for 150 ms); a resting hand on an
-undriven lever is not input, moving it or touching a driven lever is. `pilotOverrideDetected()` in
-`rotation_link.ino` is the single implementation.
+**Stick and lever input disconnect nothing** in the KCMk1 master (port note at the top). The
+original global pilot-input rule, where any stick or lever input disconnected everything, is
+retired; reasons `STICK` and `LEVER` are never set. A burn abort or a landing-mode drop leaves the
+throttle where it is, except on ENGINE SAFE, which holds it at 0.
 
 | Trigger | Burn / APPR | Landing | NAV / GS | TGT / FOLLOW | Reason |
 |---------|-------------|---------|----------|--------------|--------|
@@ -443,8 +439,10 @@ undriven lever is not input, moving it or touching a driven lever is. `pilotOver
 | SOI change | abort | disconnect | — | — | `SOI` |
 | Pointing error not under 2° within 30 s of ALIGN | abort | — | — | — | `ALIGN` |
 | Stage ΔV exhausted, auto-stage off | abort | BRAKE / DESC keep the throttle, annunciate | — | — | `FUEL` |
-| Pilot input on either stick | abort, throttle unchanged | drop, throttle unchanged | drop | drop | `STICK` |
-| Pilot input on the lever | abort, throttle unchanged | drop, throttle unchanged | drop | drop | `LEVER` |
+| A/P disconnect (rotation stick button, SPC and PLN) | abort | drop | drop | drop | `A/P DISC` |
+| A/P set to INHIB | abort | drop | drop | drop | `A/P INHIB` |
+| ENGINE set to SAFE | a planned or running burn aborts | DESC / HOVR / BRAKE drop | — | FOLLOW drops | `ENG SAFE` |
+| Vessel switch, including going EVA, or scene change | all off, silently | all off, silently | all off, silently | all off, silently | — |
 | Landed / splashed | — | throttle 0, all off | — | — | `LANDED` |
 | ENTRY hand-off reached | — | ENTRY off; plane: ATT + ROLL engage on the aircraft console | — | — | `HANDOFF` |
 | Another autopilot engages | drop | drop | drop | — | `OTHER AP` |
@@ -600,7 +598,7 @@ both sketches pass a stub syntax check but nothing has run on hardware or agains
   at `+ 90°`), which is exact only for a circular orbit; the planner burns at the node where the
   approximation is smallest, and the residual is within the 2° alignment tolerance for e < 0.1.
 - **The console key ring** is filtered by vessel type and situation (`apConsoleNext()`), so a
-  landed rover cycles RVAP only, a plane in atmosphere cycles ACAP → ASC → ORAP → LDAP, and a
+  landed rover cycles RVAP only, a plane cycles ACAP → ORAP → LDAP, and a
   rocket cycles ASC → ORAP → LDAP. The ladder's rule 0 routes to a console only while that
   console has a mode engaged (`apConsoleEngaged()`), as §3.2 decided.
 - **Key caption.** The sixth key reads `A/P` from any screen outside the cluster and the console's

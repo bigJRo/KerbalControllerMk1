@@ -114,10 +114,10 @@ The board has no active components or protection; every signal passes straight t
 - **Fader:** motorised 10 kΩ slide pot (wiper to the ATtiny), L293D H-bridge on its own 9 V supply, AT42QT1010 touch sensor on the fader track, direction LEDs.
 - **Panel inputs:** five 4-pin terminals, each pin 1 +5 V, pin 2 input, pin 3 +5 V (lamp), pin 4 lamp return:
   - U5: THRTL_ENA;
-  - U7: THRTL_100;
-  - U8: THRTL_UP;
-  - U10: THRTL_DOWN;
-  - U11: THRTL_00.
+  - U7: THRTL_100 (FULL);
+  - U8: THRTL_UP (THRTL +);
+  - U10: THRTL_DOWN (THRTL −);
+  - U11: THRTL_00 (IDLE).
 - **Lamps:** all five share one enable (LED_ENA).
 - **THRTL_ENA** is not used by the module firmware ("not wired in the final build").
 
@@ -219,7 +219,7 @@ The board has no active components or protection; every signal passes straight t
 |---|---|---|
 | Abort button | Panel Hub safe-switch terminal | INT_SAFE (Teensy 31), active-high |
 | Switch Group 1 (8 switches) | Function Control terminals U16 / U17 → B16–B23 (below) | Function Control's packet |
-| Throttle buttons 100 %, UP, DOWN, 0 % | Throttle terminals U7, U8, U10, U11 | Throttle's packet |
+| Throttle buttons FULL, THRTL +, THRTL −, IDLE | Throttle terminals U7, U8, U10, U11 | Throttle's packet |
 | Translation stick | Joystick terminal U6 | Translation's packet |
 
 **Unused:** slot P5; Action Control and UI Control terminals (B12–B15); Throttle THRTL_ENA (terminal U5).
@@ -280,7 +280,7 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 
 | Input | Terminal pin | Switch | Off / on | Type | Reference action |
 |---|---|---|---|---|---|
-| B16 | U16-6 | CHUTE | SAFE / ARM | Latching | Arms the parachute buttons; SAFE resets them |
+| B16 | U16-6 | CHUTE | SAFE / ARM | Latching | Arms the parachute buttons. SAFE does not reset them; a 2 s hold on the button does |
 | B17 | U16-5 | GEAR | UP / DOWN | Latching | Gear up / down |
 | B18 | U16-4 | BRAKE | REL / LOCK | Latching | Brakes off / on |
 | B19 | U16-3 | EXT LT | OFF / ILLUM | Latching | Lights off / on |
@@ -313,7 +313,7 @@ These go into the firmware design once the panel review is finished.
 - **ARM:** autopilots can be engaged from the consoles as before.
 - **Annunciator:** two lights, both in mode row 0.
   - **A/P ARM** shows the switch: lit on ARM, dark on INHIB. It replaces THRTL ENA, keeping the same mode-flag bit (bit 3), so only the tile label changes in the Annunciator firmware, along with its references and the user manual.
-  - **AUTOPILOT** (unchanged) is lit while any autopilot is engaged.
+  - **AUTOPILOT** (unchanged) is lit while any autopilot or HOLD is engaged.
 
 ### 8.3 Autopilots and the physical lever
 
@@ -331,7 +331,7 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 |---|---|
 | **BRAKE** | Acts on its flip and on Vehicle Control's Brakes button (B0). LOCK: brakes on. REL: brakes off. The button applies the brakes while held (no longer a toggle). On release, the brakes come off only if the switch is REL; with the switch on LOCK they stay on |
 | **GEAR**, **EXT LT** | Act on the flip. The buttons (B3, B1) still toggle |
-| **SAS**, **RCS** | Act on the flip. SWITCH ERR is not raised for SAS while Invert (Stability B11, the F key) is held, nor for SAS or RCS while an autopilot that changes them is engaged |
+| **SAS**, **RCS** | Act on the flip. SWITCH ERR is not raised for SAS while Invert (Stability B11, the F key) is held, nor while an autopilot or HOLD is engaged. RCS has no exception |
 | **CHUTE**, **THC/RHC**, **AUDIO** | As the reference |
 
 ### 8.5 Ctrl Mode selector
@@ -354,7 +354,7 @@ HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM,
 | PLN | Altitude + heading | Hold autopilot ALT + HDG at the current values; throttle untouched |
 | RVR | Heading + speed | Hold autopilot RHDG + CRUISE at the current values. With ENGINE SAFE, heading only (wheel throttle held at 0) |
 
-- **Released by:** a second press, the A/P disconnect (rotation stick button), a console's A/P OFF (in every mode), or a console autopilot engaging. Stick input does not release it (§8.10).
+- **Released by:** a second press, the A/P disconnect (rotation stick button), a console's A/P OFF (in every mode), a console autopilot engaging, a control-mode change, or a vessel switch, including going EVA, or scene change. Stick input does not release it (§8.10).
 - **LED:** ACTIVE while holding.
 - **Annunciator:** AUTOPILOT lights while HOLD is on.
 
@@ -444,6 +444,7 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 - the consoles' A/P OFF;
 - HOLD's own button;
 - ENGINE SAFE, for anything that needs the throttle;
+- a vessel switch, including going EVA, or a scene change (master 0.10.1);
 - the autopilot's own disengage conditions (no node, SOI change, and so on).
 
 **While engaged:**
@@ -488,15 +489,16 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 
 | Screen | When | Content |
 |---|---|---|
+| **Splash** | At power-on, for 2 to 5 s | Controller name and firmware version, or an image from the microSD card |
 | **Boot** | From power-on **until KSP connects or demo mode is switched on** | One line per step as it happens: configuring items, each module found and enabled (or missing), each display released, connections established, waiting for KSP, any fault. If a step stalls, the screen stays on it, so the stalled step is visible |
 | **Controller status** | Normal operation | 12 V voltage, current and power; board temperature; fan speed; the KSP link state of **each** microcontroller with its own link (master, Annunciator, Information Displays 1 and 2, Resource Display) |
-| **SWITCH ERR window** | While SWITCH ERR is lit | Sits in front of the status screen and names each switch in error (switch, expected vs actual). It goes away when every error clears |
+| **SWITCH ERR** | While SWITCH ERR is lit | Takes the whole screen and names each switch in error and the state the vessel reports, five per page. It goes away when every error clears |
 
 **Boot hold and stalls (proposed, *to confirm*):**
 - **The master does not block.** `setup()` finishes, and the panels, displays and switches work as usual. Only the Sys Info Display stays on the boot screen, with a "Waiting for KSP" line (elapsed time, retry count), until the master's Simpit link connects or SCE is set to AUX (demo).
 - **Every boot step has a timeout.** A step that times out is shown in red with what it was waiting on, and boot carries on (missing module, display not answering, sensor missing).
 - **Waiting for KSP has no timeout,** but after 60 s a hint line is added (KSP running? Simpit COM port? USB cable?).
-- **A master that hangs cannot report itself,** so the Sys Info Display has its own timeout. If it hears nothing from the master for 5 s during boot, it shows *MASTER NOT RESPONDING* with the last step received.
+- **A master that hangs cannot report itself,** so the Sys Info Display has its own timeout. If it hears nothing from the master for 5 s, it shows a red **MASTER SILENT *n* S** block on either screen (boot or status), with the time since the last message.
 
 **Graphics:** icons (power, thermometer, fan, link, modules) built into the firmware; the microSD card only holds an optional power-on splash. Layout and readability on the ER-TFTM020-2: `Sys_Info_Display_Design.md`.
 
@@ -698,7 +700,7 @@ Matches the reference.
 | B1 | LES | Launch escape system | 25 |
 | B2 | LOCK SURFACES | Lock control surfaces | 34 |
 | B3 | AIR INTAKE | Air intakes | 33 |
-| B4 | RW DISABLE → **FLAPS** | Flaps (replaces reaction wheel disable; panel label to change) | 39 |
+| B4 | RW DISABLE → **FLAPS** | Flaps (replaces reaction wheel disable; label artwork made, to be fitted) | 39 |
 | B5 | AIR BRAKE | Air brakes | 38 |
 | B6 | [SCIENCE] COLLECT | Science collect | 28 |
 | B7 | [ENGINE] ALT | Alternate engine mode | 27 |
@@ -774,10 +776,10 @@ Matches the reference.
 | Control | Function |
 |---|---|
 | Display + encoder | Altitude threshold 0–9999 m |
-| Encoder button | Reset threshold to 200 m |
-| BTN01 | OFF → full GPWS → proximity tone only |
-| BTN02 | Proximity alarm on / off |
-| BTN03 | Rendezvous radar on / off |
+| Encoder button | Reset threshold to 200 m (also while OFF; turning is ignored while OFF) |
+| BTN01 | OFF → full GPWS (green) → callouts only (amber) |
+| BTN02 | Proximity callouts on / off (amber: altitude callouts, minimums, RETARD and the threshold tone, no warnings) |
+| BTN03 | Rendezvous radar on / off (amber: target distance callouts and the threshold tone) |
 
 **Pre-Warp (0x2B)** — module-managed; the master reads the minutes:
 
@@ -801,7 +803,7 @@ Matches the reference.
 **Control group offset:** every CAG button is offset by the control group (`CAG = base + (group − 1) × 40`), **except Action Control's AG 1–12**, which always send CAG 1–12. The offset therefore applies to:
 - Vehicle Control, including the heat-shield and parachute state machines;
 - Function Control;
-- AUX CTRL PRI / ALT;
+- AUX CTRL UN DOCK, PRI and ALT;
 
 ## 11. Changes needed outside the master firmware
 
@@ -818,7 +820,7 @@ Collected from this review; each is a separate piece of work.
 | 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch. **Done** (Caution & Warning Reference for v3.10.0, 2026-10-31; A/P ARM done earlier with v3.9) |
-| 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UN DOCK |
+| 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UN DOCK. Artwork made (`Documents/Labels`), to be fitted |
 | 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): three frames, sync 0xAB (inputs, modules, displays), while the display reports screen 18 |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |

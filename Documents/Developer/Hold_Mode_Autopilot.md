@@ -9,7 +9,7 @@
 **Companion documents:** `Ascent_Autopilot.md`, `Ascent_Autopilot_Interface.md`, `I2C_Protocol_Specification.md` §15
 
 > **Port to `KCMk1_Master` (2026-10-26).** The hold autopilot now runs in the new master, `Software/KCMk1_Master` (`hold_autopilot.cpp`; `Master_Firmware_Design.md` §11). Its control laws, modes and console protocol are unchanged. Superseded here:
-> - **The pilot-input rule (§6.5) is retired.** Stick and lever input disconnect nothing. An engaged mode keeps authority until it is disconnected deliberately: the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (thrust and rover drive modes), or its own rules below. Reasons `STICK` and `LEVER` stay in the enum but are never set; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new.
+> - **The pilot-input rule (§6.5) is retired.** Stick and lever input disconnect nothing. An engaged mode keeps authority until it is disconnected deliberately: the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (thrust and rover drive modes), a vessel switch, including going EVA, or scene change, or its own rules below. Reasons `STICK` and `LEVER` stay in the enum but are never set; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new.
 > - **Sticks (§6.6):** while any mode is engaged the master ignores both sticks completely, except camera mode and the stick buttons.
 > - **Lever (§7.2):** under the autothrottle the lever is driven to match, and the pilot's lever, its buttons and touch are ignored. The Throttle Module is to hold the lever against the pilot (module firmware change).
 > - **FINE:** the master drops it while the autothrottle owns the throttle and restores it after, so IAS / MACH no longer refuse in FINE.
@@ -31,9 +31,9 @@ touch consoles on Info Display 2, **AIRCRAFT AUTOPILOT** and **ROVER AUTOPILOT**
 Ascent Autopilot console's chrome, keypad, pending/confirmed colouring, and I2C command channel.
 
 The autothrottle is also wired to the **Throttle Module's motorised slider** (§7): when an
-airspeed hold is engaged the physical lever follows the commanded throttle, and the pilot grabbing
-the lever disconnects the autothrottle. There is never a moment where the lever position and the
-game throttle disagree.
+airspeed hold is engaged the physical lever follows the commanded throttle. The pilot's hand on the
+lever disconnects nothing: the master ignores it and drives the lever back to the commanded
+throttle on release.
 
 ### 1.1 Mode summary
 
@@ -55,8 +55,9 @@ game throttle disagree.
 
 Modes within a group are **mutually exclusive**: engaging ALT drops V/S, engaging HDG drops ROLL,
 engaging MACH drops IAS. Modes in different groups combine freely (ALT + HDG + IAS is the normal
-cruise configuration). Engaging any hold mode **disarms the ascent autopilot**, and arming the
-ascent autopilot disconnects every hold mode.
+cruise configuration). Engaging any aircraft hold mode **disarms the ascent autopilot**, and arming
+the ascent autopilot disconnects every aircraft hold mode (reason `OTHER AP`). Rover modes are
+independent of the ascent autopilot.
 
 ### 1.2 Files
 
@@ -115,20 +116,20 @@ attitude samples at the Simpit refresh rate (§6.4).
 
 ## 3. Navigation on Info Display 2
 
-The **ASC** sidebar key (button 5) becomes a three-mode key, following the same cycling rule as PFD,
-ORB, TGT and LNDG:
+The autopilot sidebar key (button 5, caption `A/P`) is a multi-mode key, following the same cycling
+rule as PFD, ORB, TGT and LNDG. Since `Mission_Autopilot.md` it carries five consoles (§3 there):
 
 | Press | Behaviour |
 |-------|-----------|
-| First press from another screen | Context console by vessel type: rocket / lander → ASCENT AUTOPILOT, plane → AIRCRAFT AUTOPILOT, rover → ROVER AUTOPILOT |
-| Repeat press | Cycles ASCENT → AIRCRAFT AP → ROVER AP |
-| Key caption | `ASC` / `ACAP` / `RVAP` (four characters, as the other mode captions) — **naming open for review, §11** |
+| First press from another screen | Context console for the vessel and situation (`apConsoleContextScreen()`): on the pad → ASCENT AUTOPILOT, a rover on the ground → ROVER AUTOPILOT, a plane in an atmosphere → AIRCRAFT AUTOPILOT; otherwise LANDING, ASCENT or ORBITAL by flight phase |
+| Repeat press | Cycles only the consoles the vessel type can use: rockets ASC → ORAP → LDAP, planes ACAP → ORAP → LDAP, rovers RVAP (RVAP → ORAP → LDAP while not landed); EVA, flags and debris do not cycle |
+| Key caption | `ASC` / `ACAP` / `RVAP` / `ORAP` / `LDAP` while a console is on screen (four characters, as the other mode captions) |
 | Key colour | `TFT_DARK_GREEN` while **any** autopilot is armed or engaged (extends the existing armed annunciation) |
 
 Two new screen types, `screen_ACFTAP = 14` and `screen_ROVRAP = 15`, are appended after
 `screen_NAV`; `screen_COUNT` becomes 16. The manual-selection latch behaves as on every other
-screen. Neither console is ever auto-selected by the mission ladder: like the ascent console, they
-are reached only by the pilot's key press.
+screen. The mission ladder never selects a console with nothing engaged; once a mode is engaged,
+it routes back to the console that is flying the vehicle (`Mission_Autopilot.md` §3.2).
 
 Unit 1 compiles both consoles out exactly as it compiles out the ascent console
 (`apEnqueueCmd()` returns `false`): **Info Display 2 remains the single command source**.
@@ -139,11 +140,11 @@ Unit 1 compiles both consoles out exactly as it compiles out the ascent console
 
 ![Aircraft Autopilot console](assets/Hold_Mode_ACFT_Console.svg)
 
-*ALT, HDG and IAS engaged; the pilot has just dialled a new IAS setpoint (cyan, awaiting echo).*
+*ALT, HDG and IAS engaged; the pilot has just dialled a new IAS setpoint (sky blue, awaiting echo).*
 
 ![Aircraft Autopilot console — autothrottle disconnect](assets/Hold_Mode_ACFT_Console_Disconnect.svg)
 
-*The pilot grabbed the throttle lever: IAS dropped to OFF and the banner carries the reason.*
+*An autothrottle disconnect: IAS dropped to OFF and the banner carries the reason. The mockup shows the retired lever reason (`A/T OFF: LEVER`); the lever no longer disconnects. The same picture now reads `OTHER AP` when another autopilot takes the throttle.*
 
 ### 4.1 Layout
 
@@ -157,7 +158,7 @@ x = 6 / 322 / 638, 58 px rows from y = 172, 176 × 50 value boxes — so the exi
 | Banner, right | Body · vessel name (small, grey); `ENGAGED` in `TFT_NEON_GREEN` or `A/P OFF` in dark grey. Appends `...` while a tap is unacknowledged, never flips optimistically (same rule as ARMED/DISARMED) |
 | Column 1 **PITCH** | Mode rows ATT, AOA, V/S, ALT: a 112 px mode button + a 176 px setpoint box |
 | Column 2 **LATERAL / THRUST** | Mode rows ROLL, HDG, IAS, MACH; below them the **LVL** and **A/P OFF** buttons side by side (145 × 136 each, in the ARM button's footprint) |
-| Column 3 **FLIGHT DATA** | Read-only PITCH, ROLL, HDG, V.VRT, ALT.SL, IAS, MACH from the InfoDisp's own Simpit link (as ApA/PeA/G are on the ascent console) |
+| Column 3 **FLIGHT DATA** | Read-only PITCH, ROLL, HDG, V.VRT, ALT.SL, DIST and ELV (distance and elevation to the target) from the InfoDisp's own Simpit link (as ApA/PeA/G are on the ascent console) |
 
 Commanded throttle is deliberately **not** shown: while the autothrottle is engaged the physical
 lever *is* the throttle readout (§7).
@@ -198,13 +199,14 @@ Mode buttons are three-state and draw in the panel's existing vocabulary:
 
 ### 4.4 Engage refusals
 
-The master refuses (does not echo) an aircraft-mode engage when: the vessel has no atmosphere
-around it (`hasAtmosphere == false`), telemetry is stale, or (thrust modes) the Throttle Module is in
-precision mode. Engaging while the ascent autopilot is armed is not refused: it disarms the ascent
-autopilot (§1.1, §6.3). The
+The master refuses (does not echo) an aircraft-mode engage when the vessel has no atmosphere
+around it (`hasAtmosphere == false`) or telemetry is stale. Engaging while the ascent autopilot is
+armed is not refused: it disarms the ascent autopilot (§1.1, §6.3). The
 console keeps showing the pending outline until the pilot taps again or 3 s elapse, after which it
 reverts to off and the banner shows `REFUSED` in orange. This is the same "don't echo a rejected
-value" convention the ascent interface defines.
+value" convention the ascent interface defines. The master also refuses any engage with A/P on
+INHIB, and IAS / MACH with the ENGINE not ARMED; those reasons are printed to the KSP screen, and
+the console shows no reason.
 
 ---
 
@@ -293,12 +295,13 @@ throttle slew 0.25/s, cruise wheel-throttle slew 0.5/s.
   before the loop runs, so engagement is bumpless. The captured value is echoed in the next status
   push and becomes the box's confirmed value.
 - **Setpoints apply while engaged.** Unlike the ascent setters, `hpSet*()` is never gated on
-  engagement. The reconcile-by-echo rule clears the cyan state either way.
+  engagement. The reconcile-by-echo rule clears the sky-blue state either way.
 - **Group exclusion** is enforced on the master: engaging a mode clears its group siblings in the
   same update, and the status push reflects all of it at once so the console never shows two
   greens in one group.
-- **Ascent exclusion.** `hpEngage()` calls `apDisarm()` if the ascent autopilot is armed;
-  `apArm()` calls `hpDisconnectAll(REASON_ASCENT)`.
+- **Ascent exclusion.** Through the arbiter (`ap_arbiter.cpp`): an aircraft mode engaging takes
+  the attitude or the throttle, which disarms the ascent autopilot; `apArm()` takes both, which
+  drops the aircraft modes with reason `OTHER AP`.
 
 ### 6.4 Damping and rates
 
@@ -310,27 +313,23 @@ is workable for a plane with SAS off; anything slower will need the plugin's ref
 
 ### 6.5 Disconnect rules
 
-*Superseded in the KCMk1 master: stick and lever input disconnect nothing (see the port note at the top). The `STICK` and `LEVER` rows below no longer apply. The text is kept as the original design.*
-
-**The pilot-input rule is global** (review decision): any input on the rotation stick, the
-translation stick or the throttle lever disconnects **every** autopilot — all hold modes, rover
-modes included, and the ascent autopilot. The stick tests are debounced (beyond 10 % for 150 ms,
-after the module's own deadzone) so a bumped stick does not drop a burn. On the lever, a hand
-resting on it is not an input while nothing drives it; moving it more than 2 %, pressing any lever
-button, or touching it while an autopilot is driving it is. `pilotOverrideDetected()` in
-`rotation_link.ino` is the one implementation every module calls.
+**Stick and lever input disconnect nothing** in the KCMk1 master (port note at the top). The
+original global pilot-input rule, where any stick or lever input dropped every autopilot, is
+retired; reasons `STICK` and `LEVER` are never set. An engaged mode keeps authority until one of
+these events:
 
 | Trigger | Aircraft | Rover | Banner reason |
 |---------|----------|-------|---------------|
-| Pilot input on the rotation or translation stick | Drops everything | Drops everything | `STICK` |
-| Pilot touches a driven lever, moves an undriven one, or presses a lever button | Drops everything | Drops everything | `LEVER` |
+| A/P disconnect (rotation stick button, SPC and PLN) | Drops all | Drops all | `A/P DISC` |
+| A/P set to INHIB | Drops all; modes engaged by the HOLD button stay | Drops all; modes engaged by the HOLD button stay | `A/P INHIB` |
+| ENGINE set to SAFE | Drops IAS / MACH | Drops CRUISE / FOLLOW | `ENG SAFE` |
 | Brakes applied | — | Drops CRUISE | `BRAKES` |
 | Vessel situation not landed/splashed for > 500 ms | — | Drops all | `AIRBORNE` |
 | Roll guard | — | Drops all + brakes | `ROLL LIMIT` |
 | Left atmosphere (`inAtmosphere` false > 2 s) | Drops all | — | `NO ATMO` |
 | Telemetry timeout (2 000 ms) | Drops all, SAS stability assist, **throttle left as is** | Drops all, wheel throttle 0, no brakes | `TELEMETRY` |
-| Ascent autopilot armed | Drops all | Drops all | `ASCENT` |
-| Vessel or scene change | Drops all, silently | Drops all, silently | — |
+| Another autopilot takes the attitude or throttle (for example, the ascent autopilot armed) | Drops the modes that used it | — | `OTHER AP` |
+| Vessel switch, including going EVA, or scene change | Drops all, silently | Drops all, silently | — |
 | A/P OFF tap | Drops all | Drops all | — (pilot action) |
 
 The aircraft telemetry failsafe **does not cut throttle**, and neither does any other autopilot
@@ -341,11 +340,9 @@ throttle and lets the pilot take over.
 ### 6.6 Stick suppression
 
 While a pitch-group mode is engaged the master stops forwarding the Rotation joystick's pitch axis
-to KSP; likewise roll for the lateral group and yaw is always forwarded. With the global pilot-input
-rule this suppression only matters for the 150 ms debounce before the disconnect — it stops a
-bumped stick from twitching the surfaces under a hold — but it is what makes the merged rotation
-message correct in that window. The suppressed axis is still read for the override test. The
-Translation joystick is read for the override test only; its forwarding is not yet integrated.
+to KSP; likewise roll for the lateral group and yaw is always forwarded. *Superseded in the KCMk1
+master: while any mode is engaged both sticks are ignored completely, except camera mode and the
+stick buttons (port note at the top).*
 
 Because the Simpit plugin keeps only the *latest* rotation message, the held axes and the pilot's
 axes cannot come from two senders: `rotation_link.ino` composes **one** rotation message per frame
@@ -367,8 +364,9 @@ pilot has it.
 
 The Throttle Module (`0x2C`) has a motorised slider driven by `CMD_SET_THROTTLE` (uint16 BE,
 0 … `INT16_MAX`), a capacitive touch sensor reported as status flag bit 2, a *motor moving* flag
-(bit 3), and four buttons (100 / UP / DOWN / 0) reported as rising-edge events. `CMD_SET_THROTTLE`
-is ignored by the module while the pilot is touching the slider or while it is disabled.
+(bit 3), and four buttons (FULL / THRTL + / THRTL − / IDLE) reported as rising-edge events.
+`CMD_SET_THROTTLE` is ignored by the module while the pilot is touching the slider or while it is
+disabled.
 
 ### 7.1 Autothrottle output path
 
@@ -387,7 +385,7 @@ While IAS or MACH is engaged, each autothrottle update produces one throttle val
 
 ### 7.2 Pilot takes the lever
 
-*Superseded in the KCMk1 master: under the autothrottle the pilot's lever, its buttons and touch are ignored, and the lever is driven back to the commanded value (port note at the top).*
+*Superseded in the KCMk1 master: under the autothrottle the pilot's lever, its buttons and touch are ignored, and the lever is driven back to the commanded value (port note at the top). The touch, movement and button rules below are the original design and no longer apply.*
 
 - **Touch** (status bit 2 set) while an autopilot is driving the lever: the master disconnects
   **every** autopilot with reason `LEVER` (global rule, §6.5), stops sending `CMD_SET_THROTTLE`, and
@@ -395,11 +393,12 @@ While IAS or MACH is engaged, each autothrottle update produces one throttle val
   on its own, so there is no fight even if the master is a poll late.
 - **Movement** while nothing drives the lever (an attitude-only hold): a change of more than 2 %
   is pilot input and disconnects everything; a resting hand is not.
-- **Buttons** (100 / 0 / UP / DOWN): same disconnect, then the master applies the button's normal
-  function, so `THRTL_00` while engaged is a one-press "autopilot off and idle".
-- **Precision mode** (`CMD_SET_PRECISION`): the autothrottle refuses to engage while the module is
-  in precision mode, and entering precision mode disconnects it. Precision mode re-centres the
-  slider physically, which is incompatible with the lever-follows-command rule.
+- **Buttons** (FULL / IDLE / THRTL + / THRTL −): same disconnect, then the master applies the
+  button's normal function, so `THRTL_00` (IDLE) while engaged is a one-press "autopilot off and idle".
+- **Precision mode** (`CMD_SET_PRECISION`, THRTL FINE): the master turns precision mode off while
+  an autopilot owns the throttle and restores it after, so the autothrottle is not refused in
+  FINE. Precision mode re-centres the slider physically, which is incompatible with the
+  lever-follows-command rule.
 - **Module disabled** (`CMD_DISABLE`, or `throttleEn` false on the master): the autothrottle still
   runs the game throttle but the lever is not driven; the console banner shows `LEVER OFF` in grey
   as a reminder that the lever will not be in sync on disconnect. On disconnect in this state the
@@ -422,8 +421,11 @@ mapping question that predates this design; it is listed in §11.
 
 The ascent autopilot's managed throttle gains the same lever-follow behaviour through the throttle
 link, so the lever rides up and down with max-Q and apoapsis taper during an ascent. A pilot
-grabbing the lever, or moving either stick, during an ascent **disarms the ascent autopilot**
-(global rule, §6.5) and prints the reason to KSP; the ascent console shows IDLE / DISARMED.
+grabbing the lever, or moving either stick, during an ascent disconnects nothing: the input is
+ignored and the lever is driven back. The ascent autopilot disarms only on a deliberate
+disconnect, such as the A/P disconnect, A/P INHIB, ENGINE SAFE, DISARM or A/P OFF on a console,
+another autopilot engaging, or a vessel switch, including going EVA, or scene change. The ascent
+console then shows IDLE / DISARMED, with no reason line.
 
 ---
 
@@ -568,7 +570,8 @@ All items are implemented on the branch (see §13 for what each became and what 
 1. **Sidebar captions.** `ASC` / `ACAP` / `RVAP` are placeholders. Alternatives: `ASC` / `A-AP` /
    `R-AP`, or keep the key reading `ASC` in every mode and rely on the title bar.
 2. ~~**Ascent throttle on the lever (§7.5).**~~ **Resolved:** the lever follows the managed
-   throttle, and grabbing it during an ascent is a full disarm (global pilot-input rule).
+   throttle. Grabbing it during an ascent was a full disarm under the global pilot-input rule; in
+   the KCMk1 master the touch is ignored (§7.5).
 3. **Rover wheel throttle source.** Does the Throttle Module lever drive wheel throttle for rovers on
    the master today, or is it the Translation joystick? This decides whether the lever should follow
    CRUISE and whether lever touch should disconnect it (§7.4).

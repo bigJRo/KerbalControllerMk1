@@ -71,17 +71,17 @@ All frequency and timing constants are overrideable. Define them before the `#in
 
 ### State Machine
 
-The audio state machine has five states, serviced in priority order (high to low):
+The audio state machine has five states:
 
 | Priority | State | Description |
 |----------|-------|-------------|
 | 1 | `AUDIO_MASTER_ALARM` | Two-tone alternating loop — runs until all conditions clear or silenced |
-| 1 | `AUDIO_MASTER_ALARM_SILENCED` | Alarm latched but muted — `noTone()` called, latch held (crew acknowledged) |
+| — | `AUDIO_MASTER_ALARM_SILENCED` | Alarm latched but muted — `noTone()` called, latch held (crew acknowledged). Does not block other cues |
 | 2 | `AUDIO_CAUTION_TONE` | Constant tone for a fixed duration |
-| 3 | `AUDIO_CHIRP` | Two-note sequence (ascending or descending), plays once |
-| 4 | `AUDIO_IDLE` | Silent |
+| 2 | `AUDIO_CHIRP` | Two-note sequence (ascending or descending), plays once |
+| — | `AUDIO_IDLE` | Silent |
 
-Lower-priority sounds are suppressed while a higher-priority state is active. Chirps and caution tones are suppressed whenever the state machine is in `AUDIO_MASTER_ALARM` or `AUDIO_MASTER_ALARM_SILENCED`. A silenced alarm sits in the distinct `AUDIO_MASTER_ALARM_SILENCED` state: the tone is off but the latch is held, so it has not returned to `AUDIO_IDLE`.
+Chirps and caution tones are suppressed only while the master alarm is sounding (`AUDIO_MASTER_ALARM`). They share one priority: a new chirp or caution tone replaces the one playing. A silenced alarm sits in the distinct `AUDIO_MASTER_ALARM_SILENCED` state: the tone is off but the latch is held, so it has not returned to `AUDIO_IDLE`. Chirps and caution tones still play while silenced, and return to `AUDIO_MASTER_ALARM_SILENCED` when they finish. `audioStartAlarm()` cuts off any chirp or caution tone.
 
 ### Master Alarm
 
@@ -100,11 +100,11 @@ The sketch is responsible for:
 
 `updateAudio()` — services all audio timing. Call every `loop()` iteration. Returns immediately if audio is idle.
 
-`audioAlertChirp()` — plays a two-note ascending sequence (A5 → C#6). Signals a positive event such as an altitude or velocity threshold crossing, or orbital insertion. Suppressed if master alarm is active.
+`audioAlertChirp()` — plays a two-note ascending sequence (A5 → C#6). Signals a positive event such as an altitude or velocity threshold crossing, or orbital insertion. Suppressed while the master alarm is sounding (not when it is silenced); replaces a chirp or caution tone already playing.
 
-`audioCautionChirp()` — plays a two-note descending sequence (tritone interval). Signals a newly-set caution condition such as entering atmosphere or beginning descent. Suppressed if master alarm is active.
+`audioCautionChirp()` — plays a two-note descending sequence (tritone interval). Signals a newly-set caution condition such as entering atmosphere or beginning descent. Suppressed while the master alarm is sounding (not when it is silenced); replaces a chirp or caution tone already playing.
 
-`audioCautionTone()` — plays a constant 1000 Hz tone for 1200 ms. Used for the ALT caution condition. Suppressed if master alarm is active.
+`audioCautionTone()` — plays a constant 1000 Hz tone for 1200 ms. Used for the ALT caution condition. Suppressed while the master alarm is sounding (not when it is silenced); replaces a chirp or caution tone already playing.
 
 `audioStartAlarm()` — starts the two-tone master alarm loop. Has no effect if already running. Call when the sketch's alarm condition mask transitions from 0 to non-zero.
 
@@ -180,8 +180,8 @@ void loop() {
 ## Notes
 
 - **Condition tracking is the sketch's responsibility** — the library only drives the tone. The sketch must maintain the active condition bitmask, the silence latch, and all re-trigger logic. See `Audio.ino` in the KCMk1 Annunciator for the reference implementation.
-- **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In KCMk1 sketches this is done in `ScreenMain.ino`; `audioSilence()` is called unconditionally on scene change and vessel switch regardless of the flag.
-- **Single output pin** — all audio is multiplexed through one `tone()` pin. Only one sound plays at a time; the state machine priority order determines which.
+- **`audioEnabled` gating** — the library has no internal enable/disable flag. The calling sketch is responsible for gating calls behind its own `audioEnabled` flag. In the KCMk1 Annunciator this is done in `Audio.ino`; `audioSilence()` is called on scene change and vessel switch when audio is enabled, and when the master turns audio off.
+- **Single output pin** — all audio is multiplexed through one `tone()` pin. Only one sound plays at a time: the master alarm overrides chirps and caution tones, and a new chirp or caution tone replaces the one playing.
 - **No blocking** — `updateAudio()` never calls `delay()`. All timing is `millis()`-based. The function is a no-op when idle.
 - **`tone()` on Teensy 4.1** — `tone()` is timer-driven (it toggles the pin from an interrupt), so `AUDIO_PIN` can be any digital output pin; it does not need to be PWM-capable. On V2.1 it is pin 29.
 

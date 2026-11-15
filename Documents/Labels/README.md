@@ -24,7 +24,7 @@ graphics are on black), at the finished size of the label.
 
 - **B2 sets:** named by the module's button input, `B00`–`B11` (Hardware Inventory §10), or `BTN01` / `BTN02` on the joystick. `_layout.png` in each folder is a preview of the labels in their panel positions.
 - **A2 sets:** numbered in panel order, row by row, left to right as seen from the front (for example `01_ENA` … `06_SCREEN_SHOT` on the top row of UI Control).
-- **7-segment graphics:** `GPWS_7seg_200.png` and `PreWarp_7seg_60.png` show the default values. `GPWS_7seg_8888_fit.png` shows `8.8.8.8.` to check that every digit and decimal point fits the window; it serves both modules.
+- **7-segment graphics:** `GPWS_7seg_200.png` shows the GPWS default (200 m). `PreWarp_7seg_60.png` shows 60 (the 1 hour preset); the Pre-Warp default is 0. `GPWS_7seg_8888_fit.png` shows `8.8.8.8.` to check that every digit and decimal point fits the window; it serves both modules.
 
 The Action Control set replaces an earlier set labelled "AP", and the Stability Control icons replace an earlier text-only set.
 

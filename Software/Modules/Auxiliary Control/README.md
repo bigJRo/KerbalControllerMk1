@@ -89,7 +89,7 @@ KBC indices 12–15 (BUTTON13–16) are no-connects on the PCB.
 #### Context Notes
 
 - **EVA buttons (B0–B7, B9)** act only when the controller has `isEVA = true`. With no kerbal on EVA the master leaves these dark (OFF) and ignores presses (Module UI Reference §9.7).
-- **UN DOCK (B8)** works in all modes. Each press toggles base CAG 37 (undock / decouple docking ports); the LED is lit while KSP reports the group active. The panel has no UN DOCK label yet (Module UI Reference §15).
+- **UN DOCK (B8)** works in all modes. Each press toggles base CAG 37 (undock / decouple docking ports); the LED is lit while KSP reports the group active. The UN DOCK label artwork is made (`Documents/Labels`) but not yet fitted to the panel (Module UI Reference §15).
 - **Control-Point buttons (B10/B11)** work in all modes (see Control Point Logic below).
 - **UN DOCK, PRI and ALT** carry the control-group offset: CAG = base + (control group − 1) × 40 (Module UI Reference §4).
 - **Plant Flag (B9)** is momentary — the controller flashes the button briefly on press, then returns it to ENABLED.

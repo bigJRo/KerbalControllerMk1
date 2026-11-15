@@ -5,13 +5,13 @@
 **Date:** 2026-10-31  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1861/1862 Throttle Module v1.1  
+**Hardware:** KC-01-1871/1872 Throttle Module v2.0  
 
 ---
 
 ## Overview
 
-The Throttle Module provides motorized throttle control for Kerbal Space Program. A 10k motorized slide potentiometer provides physical position control and feedback. A capacitive touch sensor (AT42QT1010) detects pilot contact, stopping the motor immediately when the pilot grabs the slider. Four discrete LED buttons (100%, UP, DOWN, 0%) are reported to the master; the module does not act on them itself. The master moves the lever (100%, 0%, or a 10% step) and ignores the buttons in ENGINE SAFE, in FINE and under an autopilot (Module UI Reference §12.2). The module must be explicitly enabled by the system controller before it becomes active.
+The Throttle Module provides motorized throttle control for Kerbal Space Program. A 10k motorized slide potentiometer provides physical position control and feedback. A capacitive touch sensor (AT42QT1010) detects pilot contact, stopping the motor immediately when the pilot grabs the slider. Four discrete LED buttons (FULL, THRTL +, THRTL −, IDLE) are reported to the master; the module does not act on them itself. The master moves the lever (100%, 0%, or a 10% step) and ignores the buttons in ENGINE SAFE, in FINE and under an autopilot (Module UI Reference §12.2). The module must be explicitly enabled by the system controller before it becomes active.
 
 This is a standalone sketch with tab-based organisation. It is not a KerbalButtonCore or library-based module.
 
@@ -43,10 +43,10 @@ This is a standalone sketch with tab-based organisation. It is not a KerbalButto
 
 | Button | Pin | Master's action (the module only reports the press) |
 |---|---|---|
-| THRTL_100 | PA6 | Drive to 100% throttle |
-| THRTL_UP | PB2 | Step up 10% |
-| THRTL_DOWN | PC1 | Step down 10% |
-| THRTL_00 | PC3 | Drive to 0% throttle |
+| THRTL_100 (FULL) | PA6 | Drive to 100% throttle |
+| THRTL_UP (THRTL +) | PB2 | Step up 10% |
+| THRTL_DOWN (THRTL −) | PC1 | Step down 10% |
+| THRTL_00 (IDLE) | PC3 | Drive to 0% throttle |
 
 ### LED Reference
 
@@ -187,11 +187,11 @@ INT asserts on any button press or throttle value change exceeding THR_WIPER_CHA
 
 | Rail | Source | Used For |
 |---|---|---|
-| +5V VCC | Main board connector | ATtiny816 logic, button pull-ups |
-| +12V | Panel bus | Input to CJ7809 LDO regulator |
-| +9V | CJ7809 output | L293D motor supply |
+| +12V | Slot connector (12 V slot supply) | Input to the on-board 5 V converter and the MPM3610 |
+| +5V VCC | On-board converter, from +12V | ATtiny816 logic, button pull-ups |
+| +9V | MPM3610 DC-DC, from +12V | L293D motor supply |
 
-The +12V bus must be present for motor operation. Logic functions (I2C, button reading, position reporting) work on +5V alone when motor power is absent.
+Both the +5V logic supply and the +9V motor supply are made on the board from the 12 V slot supply (Power Budget v1.3).
 
 ---
 
@@ -202,17 +202,17 @@ The +12V bus must be present for motor operation. Logic functions (I2C, button r
 | MTR_FWD | PB4 (pin 10) | Motor forward direction |
 | MTR_REV | PB5 (pin 9) | Motor reverse direction |
 | SPEED | PB3 (pin 11) | Motor PWM speed |
-| THRTL_100_LED | PA7 (pin 8) | 100% button LED |
-| THRTL_100 | PA6 (pin 7) | 100% button input |
+| THRTL_100_LED | PA7 (pin 8) | FULL button LED |
+| THRTL_100 | PA6 (pin 7) | FULL button input |
 | INT | PA5 (pin 6) | Interrupt output (active low) |
 | TOUCH_IND | PA3 (pin 2) | Touch sensor output |
 | WIPER | PA2 (pin 1) | Potentiometer analog input |
-| THRTL_UP | PB2 (pin 12) | UP button input |
-| THRTL_UP_LED | PC0 (pin 15) | UP button LED |
-| THRTL_DOWN | PC1 (pin 16) | DOWN button input |
-| THRTL_DOWN_LED | PC2 (pin 17) | DOWN button LED |
-| THRTL_00 | PC3 (pin 18) | 0% button input |
-| THRTL_00_LED | PA1 (pin 20) | 0% button LED |
+| THRTL_UP | PB2 (pin 12) | THRTL + button input |
+| THRTL_UP_LED | PC0 (pin 15) | THRTL + button LED |
+| THRTL_DOWN | PC1 (pin 16) | THRTL − button input |
+| THRTL_DOWN_LED | PC2 (pin 17) | THRTL − button LED |
+| THRTL_00 | PC3 (pin 18) | IDLE button input |
+| THRTL_00_LED | PA1 (pin 20) | IDLE button LED |
 | SCL | PB0 (pin 14) | I2C clock |
 | SDA | PB1 (pin 13) | I2C data |
 

@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Ascent Autopilot I2C Interface
 
-**Byte-level contract between the Information Display (InfoDisp, I2C slave `0x12`) and
+**Byte-level contract between Information Display 2 (InfoDisp, I2C slave `0x13`) and
 the master (`KCMk1_Master`, bus master).** This document is the wiring guide for the ascent
 autopilot that runs on the master; the InfoDisp side is implemented in
 `Software/Displays/KCMk1_InfoDisp/` (`Screen_LNCH_AscentAP.ino`, `ConsoleShared.ino` for the command
@@ -19,7 +19,7 @@ the pilot edit parameters and ARM/DISARM by touch. The autopilot logic itself li
 the master. This interface carries two things:
 
 1. **Commands, InfoDisp → the master** — the pilot's edits and ARM/DISARM taps,
-   embedded in the InfoDisp's normal outbound status packet (`0x12` responds to a master
+   embedded in the InfoDisp's normal outbound status packet (`0x13` responds to a master
    read). One command in flight at a time, with a sequence/acknowledge handshake.
 2. **Status, the master → InfoDisp** — the autopilot's `AscentStatus`, pushed as a
    dedicated I2C write so the console can render live guidance and confirm that edited
@@ -35,7 +35,7 @@ straight into a `float`).
 
 | Direction | Trigger | Length | Sync | Purpose |
 |-----------|---------|--------|------|---------|
-| InfoDisp → Master | master read of `0x12` | 10 bytes | `0xAE` (byte 0) | status + head command |
+| InfoDisp → Master | master read of `0x13` | 10 bytes | `0xAE` (byte 0) | status + head command |
 | Master → InfoDisp | master write, 2 bytes | 2 bytes | — | control byte + command ACK |
 | Master → InfoDisp | master write, 40 bytes | 40 bytes | `0xA5` (byte 0) | `AscentStatus` push |
 
@@ -44,14 +44,14 @@ The 2-byte inbound control packet is the pre-existing InfoDisp command channel
 command **ACK** for this interface — no new transaction type is required to acknowledge a
 command; any control write the master already sends can carry the ACK.
 
-The 40-byte inbound write is new and is dispatched **by length** in the InfoDisp receive
-ISR, so it does not collide with the 2-byte control packet.
+The 40-byte inbound write is new. The InfoDisp dispatches it **by its sync byte** (`0xA5`),
+as every push of 3 bytes or more, so it does not collide with the 2-byte control packet.
 
 ---
 
 ## 2. Outbound packet (InfoDisp → Master), 10 bytes
 
-Returned whenever the master reads `0x12`. Bytes 0–2 are the standard InfoDisp status
+Returned whenever the master reads `0x13`. Bytes 0–2 are the standard InfoDisp status
 header; bytes 3–9 are the ascent-autopilot **command frame**.
 
 ```
@@ -97,9 +97,9 @@ queue untouched — safe to send on every ordinary control write when nothing is
 acknowledged.
 
 The ACK only advances the InfoDisp command queue. It does **not** clear the pilot's
-pending (cyan) edit on screen — that happens when the accepted value is echoed back in the
+pending (sky blue) edit on screen — that happens when the accepted value is echoed back in the
 status push (§5). This separation means the console shows *delivered but not yet confirmed*
-(cyan) versus *confirmed by the autopilot* (green) correctly.
+(sky blue) versus *confirmed by the autopilot* (green) correctly.
 
 ---
 
@@ -143,7 +143,7 @@ values as pre-validated but should still range-check defensively.
 ## 5. Status push (Master → InfoDisp), 40 bytes
 
 Whenever the autopilot's `AscentStatus` changes (or on a fixed cadence, e.g. 5–10 Hz),
-the master writes 40 bytes to `0x12`:
+the master writes 40 bytes to `0x13`:
 
 ```
 Byte 0 : 0xA5          sync / framing byte
@@ -167,12 +167,12 @@ Apoapsis, periapsis, and g-force shown on the console come from the InfoDisp's o
 telemetry link and are **not** carried here — do not duplicate them in the push.
 
 **Parameter echoes (floats [0]–[4]) are what clear the pilot's pending edits.** When the
-pilot edits a parameter, the console shows it in cyan and queues the matching command. The
-console clears the cyan state (returns the field to green) only when the corresponding
+pilot edits a parameter, the console shows it in sky blue and queues the matching command. The
+console clears the sky-blue state (returns the field to green) only when the corresponding
 echo field in this push matches the pending value (within a small tolerance). So the
 autopilot should reflect an accepted `apSet*` into the next status push. If a value is
 rejected (out of range, wrong mode), simply don't echo it — the console will keep showing
-the pilot's entry in cyan, which correctly signals "not yet confirmed."
+the pilot's entry in sky blue, which correctly signals "not yet confirmed."
 
 `phase` drives the banner and the ARM button colour (IDLE grey, VERTICAL/GRAVITY TURN
 green, COAST/CIRCULARIZE cyan, COMPLETE sky, ABORT red). `flags.armed` drives the
@@ -184,7 +184,7 @@ pending ARM state.
 ## 6. Master-side wiring (pseudocode)
 
 ```c
-// ---- once per poll of the InfoDisp (read 10 bytes from 0x12) ----
+// ---- once per poll of the InfoDisp (read 10 bytes from 0x13) ----
 uint8_t buf[10] = read_infodisp();
 if (buf[0] != 0xAE) { /* framing error, skip */ }
 else {
@@ -200,12 +200,12 @@ else {
     }
 }
 
-// ---- when acknowledging (any control write to 0x12) ----
+// ---- when acknowledging (any control write to 0x13) ----
 uint8_t ctrl[2] = { control_byte, g_ackPending };   // g_ackPending = 0 when nothing to ack
 write_infodisp(ctrl, 2);
 g_ackPending = 0;
 
-// ---- on AscentStatus change / periodic (write 40 bytes to 0x12) ----
+// ---- on AscentStatus change / periodic (write 40 bytes to 0x13) ----
 uint8_t st[40] = {0};
 st[0] = 0xA5;
 st[1] = (s.armed?1:0) | (s.southerly?2:0) | (s.rollEnable?4:0);
@@ -226,22 +226,22 @@ actual accessor names on the master.
 
 ```
 Pilot taps "Tgt Ap", enters 90,000 m, presses ENT.
-  InfoDisp: field → cyan (pending); queues {op=0x01, payload=90000.0}, cmdSeq=7.
+  InfoDisp: field → sky blue (pending); queues {op=0x01, payload=90000.0}, cmdSeq=7.
 
-Master poll → read 0x12:
+Master poll → read 0x13:
   buf = AE .. .. 07 01 <90000.0 LE> <xsum>
   seq 7 is new, xsum OK → apSetTargetAltitude(90000); lastCmdSeq=7; ackPending=7.
 
-Master control write → 0x12: ctrl = {NOP, 7}
+Master control write → 0x13: ctrl = {NOP, 7}
   InfoDisp: pops command 7; next read shows cmdSeq=0 (queue empty).
 
 Autopilot accepts 90 km; next status push carries targetAlt=90000.
-Master status write → 0x12 (40 bytes, targetAlt echo = 90000).
+Master status write → 0x13 (40 bytes, targetAlt echo = 90000).
   InfoDisp: pending target matches echo → field → green (confirmed).
 ```
 
 If the pilot changes the value again before the echo arrives, InfoDisp queues a second
-command with a new `cmdSeq` and keeps the field cyan until the *latest* value is echoed.
+command with a new `cmdSeq` and keeps the field sky blue until the *latest* value is echoed.
 
 ---
 

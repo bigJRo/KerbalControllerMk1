@@ -5,7 +5,7 @@
 **Date:** 2026-04-08  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1831/1832 Joystick Module v1.0  
+**Hardware:** KC-01-1831/1832 Joystick Module v2.0  
 **Library:** KerbalJoystickCore v2.3.0 or later  
 
 ---

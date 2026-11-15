@@ -25,7 +25,7 @@ The controller owns all game state and situational logic. Target modules own onl
 
 > **Conformance note:** As of v2.6, **all module firmware is conformant** with this document. The **KerbalButtonCore (v2.0)**, **KerbalJoystickCore (v2.0)** libraries and the standalone **Throttle (v2.0)** and **Dual Encoder (v2.0)** firmware join the original **Kerbal7SegmentCore** reference implementation — closing issues KBC-001–006, KJC-001–005, and THR-001–004 and the standalone-firmware items. Every module emits the universal 3-byte header, increments the transaction counter on each INT assertion, and implements the full BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING lifecycle with `CMD_ENABLE`/`CMD_DISABLE`.
 
-> **Display carriers (0x10–0x14):** The Teensy 4.1 display carriers (Annunciator 0x10, Resource Display 0x11, Info Display 1 0x12, Info Display 2 0x13, and the future System Info Display 0x14) sit outside the 0x20–0x2E module range and use **panel-specific** point-to-point protocols rather than the universal packet format defined for modules above. Their shared framing (bus, address block, sync bytes, and the requestType command scheme) is defined in **§15**; per-display packet layouts live in each display's `README.md`, and the Info Display's Ascent Autopilot command/status frames are specified in **`Ascent_Autopilot_Interface.md`**.
+> **Display carriers (0x10–0x14):** The display carriers (the Teensy 4.1 Annunciator 0x10, Resource Display 0x11, Info Display 1 0x12 and Info Display 2 0x13, and the XIAO RP2350 System Info Display 0x14, firmware `KCMk1_SysInfo` v1.0.0) sit outside the 0x20–0x2D module range and use **panel-specific** point-to-point protocols rather than the universal packet format defined for modules above. Their shared framing (bus, address block, sync bytes, and the requestType command scheme) is defined in **§15**; per-display packet layouts live in each display's `README.md`, and the Info Display's Ascent Autopilot command/status frames are specified in **`Ascent_Autopilot_Interface.md`**.
 
 ---
 
@@ -33,11 +33,11 @@ The controller owns all game state and situational logic. Target modules own onl
 
 | Parameter | Value |
 |-----------|-------|
-| Speed | 100 kHz (standard) or 400 kHz (fast) |
+| Speed | 400 kHz (fast), with the LTC4311 bus accelerator on the Ctrl Module |
 | Voltage | 3.3V |
 | Pull-ups | 4.7kΩ to 3.3V on SDA and SCL |
-| Address range | 0x20 – 0x2E |
-| Max modules | 15 |
+| Address range | 0x20 – 0x2D (0x2E retired, §8) |
+| Max modules | 14 |
 
 Addresses are assigned sequentially from 0x20. Each module sketch hardcodes its assigned address. Type ID and I2C address are independent — the address defines where a module sits on the bus; the Type ID defines what it is.
 
@@ -184,7 +184,7 @@ Bitmask in identity packet byte 3. Defined in `KerbalModuleCommon.h` as `KMC_CAP
 
 Total packet size = 3-byte header + payload size. The controller must read the full total packet size on each INT-triggered read.
 
-| Type ID | Constant | Module | I2C Address | Payload | Total | Cap Flags | Conformant |
+| Type ID | Constant | Module | I2C Address | Payload | Total | Cap Flags | First conformant |
 |---------|----------|--------|-------------|---------|-------|-----------|------------|
 | 0x01 | `KMC_TYPE_UI_CONTROL` | UI Control | 0x20 | 4 bytes | 7 bytes | 0x00 | ✓ KerbalButtonCore v2.0 |
 | 0x02 | `KMC_TYPE_FUNCTION_CONTROL` | Function Control | 0x21 | 6 bytes | 9 bytes | 0x00 | ✓ KerbalButtonCore v2.0 (24-input) |
@@ -201,6 +201,8 @@ Total packet size = 3-byte header + payload size. The controller must read the f
 | 0x0D | `KMC_TYPE_THROTTLE` | Throttle Module | 0x2C | 4 bytes | 7 bytes | 0x20 | ✓ Throttle fw v2.0 |
 | 0x0E | `KMC_TYPE_DUAL_ENCODER` | Dual Encoder | 0x2D | 4 bytes | 7 bytes | 0x04 | ✓ Dual Encoder fw v2.0 |
 
+> **Note:** The last column gives the first conformant version. Current versions: KerbalButtonCore 2.4, KerbalJoystickCore 2.3, Kerbal7SegmentCore 2.0, Throttle 2.3, Dual Encoder 2.0.
+>
 > **Note:** Type ID 0x0F / address 0x2E (formerly the Switch Panel) is retired — the single-module design was superseded by Switch Groups 1/2 on Function and Vehicle Control. Both the type ID and the address are now unused.
 >
 > **Note:** The Dual Encoder ships self-contained firmware (its own `I2C.cpp`) rather than the KerbalButtonCore library, but is equally conformant; it uses the device-specific payload defined in §9.5. (Auxiliary Control at 0x26 — formerly the standalone EVA module — is now a standard KerbalButtonCore button module.)
@@ -459,7 +461,7 @@ Transitions:
 The sequence below is the generic one. The KCMk1 master (`Software/KCMk1_Master`, `module_bus.cpp`) leaves out step 1: a `CMD_RESET` deasserts the boot INT, and the master uses that INT to learn which line each module is on (it reads the boot packet and watches which line goes high). Its sequence is identity → boot-packet read (INT learning) → all LEDs OFF → `CMD_DISABLE`.
 
 ```
-For each address 0x20 – 0x2E:
+For each address 0x20 – 0x2D:
   1. Controller sends CMD_RESET        [ADDR+W] [0x07]
   2. Controller sends CMD_GET_IDENTITY [ADDR+W] [0x01]
   3. Controller reads identity         [ADDR+R] → [TYPE] [MAJ] [MIN] [FLAGS]
@@ -523,7 +525,7 @@ Vessel switch behaviour is module-specific and determined by each module's contr
 
 ## 15. Display-Carrier I2C Protocol
 
-The Teensy 4.1 display carriers (Annunciator, Resource Display, Info Display 1/2, and the future System Info Display) are I2C **targets** on the same bus as the modules but occupy a distinct address block (0x10–0x14) and use **panel-specific** point-to-point packets rather than the universal 3-byte-header module packet (§4). They do not implement the module lifecycle state machine, capability flags, or the module command set (§5); instead they share the lightweight framing and command scheme below. INT signalling (§3, active-low push-pull, 3.3V direct) and the optional hardware RST line (§3.1) apply to the carriers exactly as to modules.
+The display carriers (the Teensy 4.1 Annunciator, Resource Display and Info Display 1/2, and the XIAO RP2350 System Info Display) are I2C **targets** on the same bus as the modules but occupy a distinct address block (0x10–0x14) and use **panel-specific** point-to-point packets rather than the universal 3-byte-header module packet (§4). They do not implement the module lifecycle state machine, capability flags, or the module command set (§5); instead they share the lightweight framing and command scheme below. INT signalling (§3, active-low push-pull, 3.3V direct) and the optional hardware RST line (§3.1) apply to the carriers exactly as to modules.
 
 ### 15.1 Bus and Address Block
 
@@ -539,7 +541,7 @@ The Teensy 4.1 display carriers (Annunciator, Resource Display, Info Display 1/2
 | 0x11 | `KCM_I2C_ADDR_RESDISP` | Resource Display | 0xAD (`KCM_I2C_SYNC_RESDISP`) | Implemented |
 | 0x12 | `KCM_I2C_ADDR_INFODISP` | Info Display 1 | 0xAE (`KCM_I2C_SYNC_INFODISP`) | Implemented |
 | 0x13 | `KCM_I2C_ADDR_INFODISP_2` | Info Display 2 | 0xAE (shared with Info 1) | Implemented (same firmware, `INFO_DISP_UNIT`; sole Ascent-AP command source) |
-| 0x14 | `KCM_I2C_ADDR_SYSINFODISP` | System Info Display (2" XIAO RP2350 carrier, KC-01-1901) | 0xAF | Protocol defined (§15.4); firmware to come |
+| 0x14 | `KCM_I2C_ADDR_SYSINFODISP` | System Info Display (2" XIAO RP2350 carrier, KC-01-1901) | 0xAF | Implemented (§15.4; `KCMk1_SysInfo` v1.0.0) |
 
 Info Display 1 and 2 run the **same** firmware image; the target address is selected at compile time by `INFO_DISP_UNIT` in `KCMk1_InfoDisp.h` (1 → 0x12, 2 → 0x13). Both use sync byte 0xAE. The unit also selects the panel's role — Info Display 1 is the vehicle-type display, Info Display 2 the mission-phase display and the sole owner of the Ascent Autopilot command channel, so an Ascent-AP command frame is only ever non-zero from 0x13. See the InfoDisp README.
 
@@ -611,7 +613,7 @@ Page 0, the inputs: 40 bytes, every 100 ms.
 | 32 | GPWS: low nibble recent presses (BTN01..03, EN), high nibble module state |
 | 33 | PRE-WARP: the same |
 | 34 | Lever, 0–100 % (0xFF unknown) |
-| 35 | Throttle: bit 0 touched, bit 1 precision (FINE), bit 2 ACTIVE; high nibble recent presses (100 %, UP, DOWN, 0 %) |
+| 35 | Throttle: bit 0 touched, bit 1 precision (FINE), bit 2 ACTIVE; high nibble recent presses (FULL, THRTL +, THRTL −, IDLE) |
 | 36 | Dual Encoder: low nibble recent presses (ENC1, ENC2), high nibble control group |
 | 37 | ENC2 count, int8 (added up by the master since boot) |
 | 38 | Control mode (`CTRL_MODE_*`: 0 RVR, 1 PLN, 2 SPC) |

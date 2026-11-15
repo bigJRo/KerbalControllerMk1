@@ -278,7 +278,7 @@ Two lines of Roboto Black 32, about 11 characters each. The firmware keeps a lis
 | Demo | `DEMO MODE` | `ON` | white on the DEMO blue block |
 | Debug | `DEBUG` | `ON` | sky |
 | *All well* | `ALL SYSTEMS` | `NOMINAL` | green |
-| *Service* | `UPTIME` / `MASTER FW` / `SYSINFO FW` / `FAN DUTY` / `I2C ERRORS` | `01:23:45` / `v0.10.0` / `v1.0.0` / `40 %` / `0` | light grey |
+| *Service* | `UPTIME` / `MASTER FW` / `SYSINFO FW` / `FAN DUTY` / `I2C ERRORS` | `01:23:45` / `v0.10` / `v1.0.0` / `40 %` / `0` | light grey |
 
 The longest fixed string, `ANNUNCIATOR`, is 225 px of the 236 available.
 
@@ -374,7 +374,7 @@ The display also keeps the master's module short names, in the same order, for t
 
 | Today (Serial) | To the Sys Info Display |
 |---|---|
-| `KCMk1 MASTER v0.10.0` | `MASTER v0.10.0` |
+| `KCMk1 MASTER v0.10.1` | `MASTER v0.10.1` |
 | `RESET: POWER ON` (`WATCHDOG`, `OVER TEMPERATURE`, …) | unchanged |
 | `RESET: WATCHDOG (3 IN A ROW)` | `RESET: WATCHDOG x3` |
 | `HUNG IN MODULES @0x2C` | `HUNG IN MODULES @2C` |
@@ -393,7 +393,7 @@ The display also keeps the master's module short names, in the same order, for t
 | `SW GRP 1  ENGINE SAFE  A/P INHIB` | `ENGINE SAFE A/P INHIB` |
 | `SW GRP 1  NOT READ: ENGINE SAFE` / `SW GRP 2  NOT READ` | `SW GRP 1 NOT READ` / `SW GRP 2 NOT READ` |
 | `CTRL MODE  SPC` / `CTRL MODE  NOT READ: SPC` | `CTRL MODE SPC` / `MODE NOT READ: SPC` |
-| `WATCHDOG ON  2 S` | `WATCHDOG 2 S` |
+| `WATCHDOG ON  5 S` | `WATCHDOG 5 S` |
 | `KSP: CONNECTING ...` / `KSP: NOT CONTACTED (DEMO)` | `KSP CONNECTING` / `KSP: DEMO` |
 | `WAITING FOR KSP  74 S  TRY 15` | `KSP WAIT 74 S` (the try count on Serial) |
 | `KSP RUNNING? SIMPIT COM PORT? USB?` | `CHECK KSP, SIMPIT, USB` |

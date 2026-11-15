@@ -29,14 +29,9 @@ bool autopilotsEngaged() { return apIsArmed() || hpAnyEngaged() || bpAnyEngaged(
 ****************************************************************************************/
 static void dropThrottleModes() {
   if (apIsArmed()) { apDisarm(); kspPrint("Ascent AP: ENGINE SAFE - disarmed"); }
-  hpEngage(HP_MODE_IAS, false);
-  hpEngage(HP_MODE_MACH, false);
-  hpEngage(HP_MODE_CRUISE, false);
-  hpEngage(HP_MODE_FOLLOW, false);
+  hpDropThrottleModes(HP_REASON_ENG_SAFE);         // every console that loses a mode shows ENG SAFE
   if (bpArmed() || bpExecuting()) bpAbort(HP_REASON_ENG_SAFE);
-  lpEngage(LP_MODE_DESC, false);
-  lpEngage(LP_MODE_HOVR, false);
-  lpEngage(LP_MODE_BRAKE, false);
+  lpDropThrottleModesReason(HP_REASON_ENG_SAFE);
 }
 
 static void onDrop(DropReason why) {

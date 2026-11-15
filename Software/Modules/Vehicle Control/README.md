@@ -16,7 +16,7 @@ The Vehicle Control module provides vehicle systems management including brakes,
 
 This module reads **24 inputs** via three daisy-chained 74HC165 shift registers: the 12 NeoPixel buttons at KBC indices 0–11, and the eight **Switch Group 2** panel switches at KBC indices 16–23. KBC indices 12–15 are no-connects (the former parking-brake / parachutes-armed / lights-lock / gear-lock discrete inputs were removed — those switches are now Switch Group 2 as of v2.0). The 24-input variant is selected in the sketch via `#define KBC_INPUT_COUNT 24` / `KBC_SHIFTREG_COUNT 3`.
 
-This module declares `KBC_CAP_EXTENDED_STATES` — the system controller uses WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states on the state-machine buttons (B8/B10/B11) to communicate deploy / cut-release status. Layout follows Module UI Reference v5.4 (canonical).
+This module declares `KBC_CAP_EXTENDED_STATES`. On the state-machine buttons (B8/B10/B11) the master uses only ENABLED (ready), ACTIVE (deployed) and CUT (cut / released) to show deploy / cut-release status; the parachute buttons are OFF while CHUTE is on SAFE. Layout follows Module UI Reference v5.4 (canonical).
 
 ---
 
@@ -41,7 +41,7 @@ Physical panel orientation: 6 rows x 2 columns. Column 1 is leftmost, Column 2 i
 
 ![Vehicle Control Panel Layout](panel_layout.svg)
 
-Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. The state-machine buttons (B8 Heat Shield, B10 Main Chute, B11 Drogue Chute) also support WARNING, ALERT, ARMED, and PARTIAL_DEPLOY states. Switch Group 2 inputs (B16–B23) are outside the NeoPixel grid and not shown.
+Active state colors shown. All NeoPixel buttons illuminate dim white in the ENABLED state. The state-machine buttons (B8 Heat Shield, B10 Main Chute, B11 Drogue Chute) show ENABLED, ACTIVE or CUT. Switch Group 2 inputs (B16–B23) are outside the NeoPixel grid and not shown.
 
 ---
 
@@ -92,7 +92,7 @@ Reported in the button-event payload (inputs 16–23). Switch semantics and cont
 
 ## Extended LED States — State-Machine Buttons (B8 / B10 / B11)
 
-The Heat Shield (B8), Main Chute (B10), and Drogue Chute (B11) buttons support the full extended state set. The system controller uses these to communicate deploy / cut-release status. All flash timing and visual behavior is handled by the module.
+The Heat Shield (B8), Main Chute (B10), and Drogue Chute (B11) buttons support the full extended state set. The KCMk1 master uses only ENABLED, ACTIVE and CUT to communicate deploy / cut-release status; the other states are supported but not used. All flash timing and visual behavior is handled by the module.
 
 | State | Color | Behavior | Meaning |
 |---|---|---|---|

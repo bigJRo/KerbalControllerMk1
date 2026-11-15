@@ -98,6 +98,7 @@ static void testConsole(Bench &b) {
   s = hpGetStatus();
   CHECK(s.thrMode == HP_THR_OFF && s.pitchMode == HP_PITCH_ALT && thrOwner() == THR_OWNER_NONE,
         "ENGINE SAFE drops IAS; ALT stays");
+  CHECK(s.reason == HP_REASON_ENG_SAFE, "the aircraft console shows ENG SAFE");
   fn.press(SG1_ENGINE); fly(400);
 
   printf("autopilots: A/P INHIB\n");
@@ -155,6 +156,7 @@ static void testHold(Bench &b) {
   fn.release(SG1_ENGINE); fly(150);
   s = hpGetStatus();
   CHECK(holdEngaged() && s.rhdg && !s.cruise, "ENGINE SAFE: heading only, HOLD stays");
+  CHECK(s.roverReason == HP_REASON_ENG_SAFE, "the rover console shows ENG SAFE");
   st.press(1u << 10); st.release(1u << 10); fly(100);
   CHECK(!holdEngaged() && !hpRoverEngaged(), "released");
   fn.press(SG1_ENGINE); b.m(MOD_TIME).release(TIME_RVR); g_rover = false; fly(400);
@@ -189,6 +191,16 @@ static void testAscent(Bench &b) {
   enterFlight();
 }
 
+static void testLandingEngSafe(Bench &b) {
+  printf("autopilots: landing DESC drops on ENGINE SAFE with reason ENG SAFE\n");
+  fly(300);
+  CHECK(lpEngage(LP_MODE_DESC, true) && lpGetStatus().mode == LP_MODE_DESC, "DESC engages in flight");
+  b.m(MOD_FUNCTION).release(SG1_ENGINE); fly(150);
+  LandingStatus l = lpGetStatus();
+  CHECK(l.mode == LP_MODE_OFF && l.reason == HP_REASON_ENG_SAFE, "ENGINE SAFE drops DESC; the landing console shows ENG SAFE");
+  b.m(MOD_FUNCTION).press(SG1_ENGINE); fly(400);
+}
+
 static void testConsoles() {
   printf("autopilots: bench consoles\n");
   Serial.out.clear(); Serial.stubType("hp STATUS\n"); runFor(10);
@@ -209,6 +221,7 @@ void runStage7() {
   testConsole(b);
   testHold(b);
   testAscent(b);
+  testLandingEngSafe(b);
   testConsoles();
   for (int a = 0; a < 128; a++) Wire.detach(a);
 }

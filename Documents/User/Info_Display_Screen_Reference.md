@@ -1201,21 +1201,22 @@ autopilot: it disarms the ascent autopilot, drops all aircraft and rover modes, 
 any burn or approach hold, and drops all landing modes.
 
 **The throttle stays where it is whenever an autopilot lets go**, whatever the cause:
-A/P OFF, tapping a mode off, DISARM, the A/P disconnect, A/P set to INHIB, the abort
-button, lost telemetry or another autopilot taking over. You take over at the thrust the
-autopilot was using, with no jump. The exception is ENGINE set to SAFE, which holds the
-throttle at 0. Otherwise the throttle goes to zero only when a mode's own job calls for it:
-ascent engine cutoff and coast, the end of a completed burn (`DONE`), BRAKE waiting for
-its ignition altitude, and touchdown.
+A/P OFF, tapping a mode off, DISARM, the A/P disconnect, A/P set to INHIB, lost telemetry
+or another autopilot taking over. You take over at the thrust the autopilot was using, with
+no jump. The exception is ENGINE set to SAFE, which holds the throttle at 0. Otherwise the
+throttle goes to zero only when a mode's own job calls for it: ascent engine cutoff and
+coast, the end of a completed burn (`DONE`), BRAKE waiting for its ignition altitude, and
+touchdown.
 
 **Stick and lever input do not disconnect an autopilot.** While one is engaged the sticks
 are ignored and the lever is driven to its setting. Everything disconnects on the RHC
 stick button (A/P disconnect, SPC and PLN modes; banner `A/P DISC`), on A/P set to INHIB
 (`A/P INHIB`) or on A/P OFF; ENGINE set to SAFE drops the modes that use the throttle
-(`ENG SAFE`). With A/P on INHIB an autopilot cannot be engaged, and with ENGINE on SAFE
-the modes that use the throttle are refused. Only one autopilot can steer and one drive
-the throttle at a time; engaging another takes over and the previous owner drops with
-`OTHER AP`.
+(`ENG SAFE`). A vessel switch, including going EVA, or a scene change drops every
+autopilot, with no reason shown. With A/P on INHIB an autopilot cannot be engaged, and
+with ENGINE on SAFE the modes that use the throttle are refused. Only one autopilot can
+steer and one drive the throttle at a time; engaging another takes over and the previous
+owner drops with `OTHER AP`.
 
 **Disconnect and refusal reasons** (orange, banner centre): `A/P DISC`, `A/P INHIB`,
 `ENG SAFE`, `BRAKES`, `AIRBORNE`, `ROLL LIMIT`, `NO ATMO`, `TELEMETRY`, `REFUSED`,
@@ -1252,7 +1253,7 @@ ARM / DISARM button controls it; there are no mode buttons.
    A/P to INHIB. The throttle stays where it is.
 
 **Special states.** Phase colours: IDLE grey; VERTICAL and GRAVITY TURN green; COAST
-and CIRCULARIZE cyan; COMPLETE sky blue; ABORT white on red. After a pilot-input
+and CIRCULARIZE cyan; COMPLETE sky blue; ABORT white on red. After any
 disconnect the console simply shows IDLE / DISARMED, with no reason line. The banner
 gives the body name only.
 
@@ -1407,12 +1408,11 @@ is normal cruise. NAV and GS fly an approach to a targeted flag.
    (`FLARE`); the flare is yours.
 4. Tap **LVL** to recover; **A/P OFF** or the RHC stick button (A/P disconnect) hands back.
 
-**Special states.** Reasons: `REFUSED` (no atmosphere, stale telemetry, or IAS/MACH with
-the throttle module in precision mode); `NO TARGET` (NAV or GS without a target);
-`NO ATMO` (out of the atmosphere for more than 2 s); `FLARE`. `LEVER OFF` in grey means
-the autothrottle is engaged but the throttle module is not following it. An attitude
-mode turns stock SAS off; releasing the last attitude mode returns SAS to stability
-assist.
+**Special states.** Reasons: `REFUSED` (no atmosphere or stale telemetry); `NO TARGET`
+(NAV or GS without a target); `NO ATMO` (out of the atmosphere for more than 2 s);
+`FLARE`. `LEVER OFF` in grey means the autothrottle is engaged but the throttle module is
+not following it. An attitude mode turns stock SAS off; releasing the last attitude mode
+returns SAS to stability assist.
 
 **Readouts (FLIGHT DATA column).**
 

@@ -14,7 +14,7 @@
 
 The Action Control module provides twelve custom action group toggles (AG1–AG12) for Kerbal Space Program. All twelve positions are uniform GREEN action-group buttons.
 
-This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC indices 12–15 are no-connects on the PCB. (As of v2.0 the former CP PRI / CP ALT control-point buttons at B10/B11 are action groups — the control-point functions moved to the AUX CTRL module — and the CTRL_MODE discrete inputs moved to the direct-wired Ctrl Mode Toggle on the joystick.)
+This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC indices 12–15 (terminals CN1 / CN2) are not wired on this panel. (As of v2.0 the former CP PRI / CP ALT control-point buttons at B10/B11 are action groups — the control-point functions moved to the AUX CTRL module — and the CTRL_MODE inputs moved to the SPC / PLN / RVR control-mode selector, wired to Time Control B12 / B13.)
 
 ---
 

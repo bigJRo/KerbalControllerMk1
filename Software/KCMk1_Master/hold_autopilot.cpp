@@ -215,6 +215,19 @@ void hpDisconnectRover(uint8_t reason) {
   if (was) hpSetRoverReason(reason);
 }
 
+// ENGINE SAFE: drop only the modes that drive the throttle or the wheel throttle, and
+// show the reason on the console that lost one (attitude and steering modes stay).
+void hpDropThrottleModes(uint8_t reason) {
+  bool air = (hp_thrMode != HP_THR_OFF);
+  bool rov = hp_cruise || hp_follow;
+  hpEngage(HP_MODE_IAS, false);
+  hpEngage(HP_MODE_MACH, false);
+  hpEngage(HP_MODE_CRUISE, false);
+  hpEngage(HP_MODE_FOLLOW, false);
+  if (air) hpSetReason(reason);
+  if (rov) hpSetRoverReason(reason);
+}
+
 void hpDisconnectAll(uint8_t reason) {
   hpDisconnectAircraft(reason);
   hpDisconnectRover(reason);

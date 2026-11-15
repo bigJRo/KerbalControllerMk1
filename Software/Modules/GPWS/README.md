@@ -1,11 +1,11 @@
 # KCMk1_GPWS_Input
 
 **Module:** GPWS Input Panel  
-**Version:** 2.0.0  
-**Date:** 2026-04-28  
+**Version:** 2.1.0  
+**Date:** 2026-08-16  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
-**Hardware:** KC-01-1880 7-Segment Display Module v2.0  
+**Hardware:** KC-01-1841 7-Segment Display Module v2.0  
 **Library:** Kerbal7SegmentCore v2.0.0  
 
 ---
@@ -52,17 +52,17 @@ The GPWS Input Panel allows the pilot to configure ground proximity warning syst
 |---|---|---|
 | 0 | BACKLIT (dim warm) | GPWS disabled — display blank |
 | 1 | GREEN | Full GPWS active — warning at threshold |
-| 2 | AMBER | Proximity tone only |
+| 2 | AMBER | Callouts only, no warnings: altitude callouts, MINIMUMS, RETARD and the threshold tone (target-distance callouts and the tone with Rendezvous Radar) |
 
 ### BTN02 / BTN03 Special Behaviour — amber submodes
 
 Proximity Alarm (BTN02) and Rendezvous Radar (BTN03) are the two **mutually-exclusive amber submodes**. Pressing either while BTN01 is GREEN (full GPWS) forces BTN01 to state 2 (AMBER) and activates that flag while clearing the other; pressing it again while amber clears the flag (bare amber). Turning one on always clears the other. All affected changes are reported in the same packet (both BTN02 and BTN03 change bits set).
 
-On the annunciator these select the amber audio profile: **Proximity Alarm → altitude callouts + MINIMUMS + threshold tone**; **Rendezvous Radar → target-distance callouts + threshold tone** (the encoder threshold is read as a target range in metres instead of an altitude). GREEN remains full GPWS: all warning modes plus the altitude callouts.
+On the annunciator these select the amber audio profile: **Proximity Alarm → altitude callouts + MINIMUMS + RETARD + threshold tone**; **Rendezvous Radar → target-distance callouts + threshold tone** (the encoder threshold is read as a target range in metres instead of an altitude). GREEN remains full GPWS: all warning modes plus the altitude callouts.
 
 ### INT Suppression
 
-When BTN01 is in state 0 (GPWS off), BTN02, BTN03, and encoder events are silently discarded — no INT is asserted for them. BTN01 itself always reports since it is the only way to exit the suppressed state.
+When BTN01 is in state 0 (GPWS off), BTN02, BTN03 and encoder rotation are silently discarded — no INT is asserted for them. BTN01 itself always reports since it is the only way to exit the suppressed state. The encoder press (BTN_EN) still resets the threshold to 200 m and reports.
 
 ---
 

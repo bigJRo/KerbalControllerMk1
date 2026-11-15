@@ -16,12 +16,12 @@ Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment di
 - Rotary encoder with click-count-based acceleration (sketch-implemented)
 - Three SK6812MINI-EA NeoPixel buttons
 - Encoder pushbutton (BTN_EN)
-- I2C target communication (Kerbal Controller Mk1 protocol v2.0)
+- I2C target communication (I2C_Protocol_Specification.md v2.21)
 - INT pin assertion for event-driven controller polling
 
 **Design philosophy:** The library is a hardware interface layer only. All application logic — lifecycle, LED state, button behaviour, value tracking — belongs in the sketch. The library reports what the hardware did via `inputState` and `cmdState`. The sketch decides what it means and what to do about it.
 
-**Dependency:** KerbalModuleCommon v1.1.0 (colour palette, command constants, type IDs)
+**Dependency:** KerbalModuleCommon v1.8.0 (colour palette, command constants, type IDs)
 
 ---
 
@@ -60,7 +60,7 @@ The SK6812MINI-EA on this board responds to **NEO_GRB 3-byte** framing only. The
 
 ## Dependencies
 
-- **KerbalModuleCommon v1.1.0** — colour palette, `KMC_CMD_*` constants, `KMC_TYPE_*` IDs
+- **KerbalModuleCommon v1.8.0** — colour palette, `KMC_CMD_*` constants, `KMC_TYPE_*` IDs
 - **tinyNeoPixel** — bundled with megaTinyCore, no separate install needed
 - **Wire** — bundled with megaTinyCore
 
@@ -70,7 +70,7 @@ The SK6812MINI-EA on this board responds to **NEO_GRB 3-byte** framing only. The
 
 ## Installation
 
-1. Install **KerbalModuleCommon v1.1.0** from zip (Sketch → Include Library → Add .ZIP)
+1. Install **KerbalModuleCommon v1.8.0** from zip (Sketch → Include Library → Add .ZIP)
 2. Install **Kerbal7SegmentCore v2.0.0** from zip
 3. Arduino IDE settings:
    - Board: `ATtiny816` (megaTinyCore)
