@@ -195,7 +195,7 @@ These apply to every panel unless its section says otherwise (design §8.1).
 **`CAG = base + (control group − 1) × 40`**, with the control group 1–6 from Dual Encoder ENC1 (§13).
 
 - **Exception: Action Control's AG 1–12 are never offset.** They always send CAG 1–12, whatever the control group.
-- **Everything else is offset:** Vehicle Control (including the heat-shield and parachute state machines), Function Control, and AUX CTRL's UNDOCK, PRI and ALT.
+- **Everything else is offset:** Vehicle Control (including the heat-shield and parachute state machines), Function Control, and AUX CTRL's UN DOCK, PRI and ALT.
 - **In code:** `cagNumber(base)` applies the offset and `cagFixed(n)` does not (`cag.h`).
 
 ### 4.2 Control groups
@@ -245,7 +245,7 @@ The Annunciator shows the current group.
 | 34 | LOCK SURFACES | Function Control | B2 | 34 | 74 | 114 | 154 | 194 | 234 |
 | 35 | [CTRL PT] PRI | AUX CTRL | B10 | 35 | 75 | 115 | 155 | 195 | 235 |
 | 36 | [CTRL PT] ALT | AUX CTRL | B11 | 36 | 76 | 116 | 156 | 196 | 236 |
-| 37 | UNDOCK | AUX CTRL | B8 | 37 | 77 | 117 | 157 | 197 | 237 |
+| 37 | UN DOCK | AUX CTRL | B8 | 37 | 77 | 117 | 157 | 197 | 237 |
 | 38 | AIR BRAKE | Function Control | B5 | 38 | 78 | 118 | 158 | 198 | 238 |
 | 39 | FLAPS | Function Control | B4 | 39 | 79 | 119 | 159 | 199 | 239 |
 
@@ -753,7 +753,7 @@ All CAG numbers carry the control-group offset.
 
 | | C6 | C5 | C4 | C3 | C2 | C1 |
 |---|---|---|---|---|---|---|
-| **R1** | [CTRL PT] PRI | UNDOCK | [EVA] EVA CHUTE | [EVA] JUMP / LET GO | [EVA] BOARD | [EVA] EVA LIGHTS |
+| **R1** | [CTRL PT] PRI | UN DOCK | [EVA] EVA CHUTE | [EVA] JUMP / LET GO | [EVA] BOARD | [EVA] EVA LIGHTS |
 | **R2** | [CTRL PT] ALT | [EVA] FLAG | [EVA] HELM | [EVA] GRAB | [EVA] CONST | [EVA] JET PACK |
 
 | Input | Label | Function | Active when | Action | LED | Colour today |
@@ -766,7 +766,7 @@ All CAG numbers carry the control-group offset.
 | B5 | [EVA] GRAB | Grab | EVA | Key F | As B0 | SEAFOAM |
 | B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P | As B0 | AMBER |
 | B7 | [EVA] HELM | Helmet toggle | EVA | Key O | As B0 | SKY |
-| B8 | UNDOCK (new label) | Undock / decouple docking ports | Always | CAG 37 toggle | Lit while the group is active | GOLD |
+| B8 | UN DOCK (new label) | Undock / decouple docking ports | Always | CAG 37 toggle | Lit while the group is active | GOLD |
 | B9 | [EVA] FLAG | Plant flag | EVA | Key G | As B0 | SEAFOAM |
 | B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 (below) | Lit while active | ROSE |
 | B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 (below) | Lit while active | PINK |
@@ -774,7 +774,7 @@ All CAG numbers carry the control-group offset.
 
 - **EVA group (B0–B7, B9):** dark outside EVA, and presses ignored. On EVA each press taps its key; KSP reports none of these states, so each flashes.
 - **PRI / ALT:** pressing one switches to that control point. It deactivates the other's CAG first, then activates its own. Its LED stays lit to show which is active. Pressing the one already active does nothing.
-- **UNDOCK, PRI and ALT** carry the control-group offset.
+- **UN DOCK, PRI and ALT** carry the control-group offset.
 
 ---
 
@@ -980,8 +980,8 @@ The confirmed behaviour is what this document describes. These items do not matc
 |---|---|---|---|---|
 | 1 | Function Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: colour table in the old button order | Each colour with its function (§9.2); FLAPS SEAFOAM | Inventory §11 #4 |
 | 2 | Function Control panel label | B4 reads RW DISABLE | FLAPS | Inventory §11 #13 |
-| 3 | AUX CTRL module firmware | **Fixed in v2.1 (2026-10-27).** Was: B8 Cruise Control, B10 PRI / ALT toggle with a CORAL alternate, B11 Docking Port | B8 UNDOCK GOLD; B10 PRI ROSE; B11 ALT PINK; no alternate colour | Inventory §11 #5 |
-| 4 | AUX CTRL panel label | B8 has no label | UNDOCK | Inventory §11 #13 |
+| 3 | AUX CTRL module firmware | **Fixed in v2.1 (2026-10-27).** Was: B8 Cruise Control, B10 PRI / ALT toggle with a CORAL alternate, B11 Docking Port | B8 UN DOCK GOLD; B10 PRI ROSE; B11 ALT PINK; no alternate colour | Inventory §11 #5 |
+| 4 | AUX CTRL panel label | B8 has no label | UN DOCK | Inventory §11 #13 |
 | 5 | Stability Control module firmware | **Fixed in v2.1 (2026-10-27).** Was: B10 GREEN (RCS); B14 / B15 described as Stage / Stage Enable | B10 HOLD MAGENTA. B14 / B15 are unwired and the master ignores them | Inventory §11 #6 |
 | 6 | Pre-Warp module firmware | **Fixed in v2.1 (2026-10-31).** Was: BTN03 preset 1440 min (an Earth day) | 360 min (1 Kerbin day) | Inventory §11 #3 |
 | 7 | Button, joystick and throttle firmware | **Fixed (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2; 2026-10-31).** Was: a fixed 2 s test with `delay()` inside the I2C handler, and the master kept off the bus for 2.1 s | Start / stop, no timeout, not blocking: LTG TEST lights for as long as it is held | Inventory §11 #19, design §6.4 |
@@ -998,7 +998,7 @@ The confirmed behaviour is what this document describes. These items do not matc
 | # | Item | Status |
 |---|---|---|
 | 1 | Throttle Module acts on its own buttons (§15 #9). **Decided:** the master owns the lever; the module only reports its buttons (Throttle v2.1) | Closed (v6.1) |
-| 2 | Colours for Function Control FLAPS, Stability HOLD, AUX UNDOCK and AUX ALT (§15 #1, #3, #5). **Decided:** FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK | Closed (v6.1) |
+| 2 | Colours for Function Control FLAPS, Stability HOLD, AUX UN DOCK and AUX ALT (§15 #1, #3, #5). **Decided:** FLAPS SEAFOAM, HOLD MAGENTA, UN DOCK GOLD, ALT PINK | Closed (v6.1) |
 | 3 | HOLD and the console's A/P OFF. **Decided:** A/P OFF releases HOLD in every mode, SPC included, like the stick's A/P disconnect (Inventory §8.10). Master v0.8.1 | Closed (v6.1) |
 | 4 | SWITCH ERR autopilot exception. Inventory §8.4 and design §8.3: "SAS or RCS while an autopilot that changes them is engaged". The code skips SAS while any autopilot or HOLD is engaged, and always checks RCS (no autopilot changes RCS). Same effect today; noted in case an autopilot ever uses RCS | Noted |
 | 5 | Camera mode on EVA. **Decided:** camera mode works on EVA too; the translation stick's EVA keys pause while its button is held (§10.2). Master v0.8.1 | Closed (v6.1) |
@@ -1025,7 +1025,7 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 
 | Removed | Now |
 |---|---|
-| AUX CTRL B8 Cruise Control | B8 UNDOCK (CAG 37). Rover speed hold is HOLD in RVR (§8.1) |
+| AUX CTRL B8 Cruise Control | B8 UN DOCK (CAG 37). Rover speed hold is HOLD in RVR (§8.1) |
 | AUX CTRL B10 PRI / ALT toggle; B11 Docking Port control point | B10 PRI (CAG 35), B11 ALT (CAG 36); the docking-port control point is gone |
 | Stability Control B10 RCS | B10 HOLD. RCS is the Switch Group 2 RCS switch |
 | Stability Control B14 Stage, B15 Stage Enable | STAGE on the B2 safe line, with a hardware arming switch (§7) |
@@ -1062,6 +1062,6 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 5.8 | 2026-06-28 | AUX CTRL 12-button firmware; `KMC_SEAFOAM` added |
 | 5.9 | 2026-06-28 | `ACTIVE_ALT` LED state added for the AUX CTRL CP toggle |
 | 6.0 | 2026-10-26 | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |
-| 6.1 | 2026-10-27 | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UNDOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
+| 6.1 | 2026-10-27 | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UN DOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
 | 6.2 | 2026-10-31 | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |
 | **6.3** | **2026-10-31** | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |

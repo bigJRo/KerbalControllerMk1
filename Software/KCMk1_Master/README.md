@@ -39,7 +39,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 | Vehicle Control | `panel_vehicle.cpp` | BRAKES held (with the BRAKE switch rule), LIGHTS and GEAR toggles, CAG 13–18, HEAT SHIELD / MAIN / DROGUE state machines from KSP's group states (act on release, 2 s hold resets; chutes need CHUTE ARM) |
 | Stability Control | `panel_stability.cpp`, `hold.*` | SAS modes (dark with SAS OFF or when unavailable), HOLD (SPC: SAS stability assist; PLN / RVR from stage 7), INVERT (F held) |
 | Action Control | `panel_action.cpp` | AG 1–12 = CAG 1–12, no offset |
-| AUX CTRL | `panel_aux.cpp` | EVA keys (dark outside EVA), UNDOCK, PRI / ALT control points |
+| AUX CTRL | `panel_aux.cpp` | EVA keys (dark outside EVA), UN DOCK, PRI / ALT control points |
 | Dual Encoder | `panel_encoders.cpp` | Control group 1–6, camera next / previous / reset |
 
 | Control channels (stage 5) | `ksp_frame.*`, `lever.h` | Rotation, translation, wheel, camera and throttle merged every pass and sent on a change; neutral first in each flight; sticks ignored under an autopilot or HOLD; throttle 0 unless ENGINE ARMED, else the autopilot owner (lever driven to match) or the lever; the autopilot interface (`thrAutoThrottle`, `rotSetAutoAxes`, `wheelSetAuto`, …) |
@@ -123,7 +123,7 @@ python3 tools/host_build.py --all --simpit PATH/src       # also compile against
   - flight panels (stage 4):
     - Vehicle: CAG buttons and the control-group offset, toggles, LEDs from KSP, BRAKES with REL and LOCK, the state machines (deploy, cut, nothing, 2 s reset, CHUTE SAFE);
     - Stability: SAS modes with the switch and availability, INVERT and SWITCH ERR, HOLD (engage, restore SAS, A/P INHIB, mode change, PLN, MSTR RESET);
-    - Action: no offset; AUX: EVA keys, flash, UNDOCK, PRI / ALT; Dual Encoder: group wrap, camera keys;
+    - Action: no offset; AUX: EVA keys, flash, UN DOCK, PRI / ALT; Dual Encoder: group wrap, camera keys;
     - held keys released when the flight ends; demo LEDs.
   - sticks and throttle (stage 5):
     - neutral channels on entering a flight, nothing sent while nothing moves;

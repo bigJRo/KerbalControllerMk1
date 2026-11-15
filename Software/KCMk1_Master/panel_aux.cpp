@@ -4,7 +4,7 @@
      [EVA] B0 LIGHTS U, B1 JET PACK R, B2 BOARD B, B3 CONST I, B4 JUMP / LET GO Space,
            B5 GRAB F, B6 EVA CHUTE P, B7 HELM O, B9 FLAG G: a key tap each; dark outside
            EVA, and ignored. KSP reports none of them, so each flashes on a press.
-     B8    UNDOCK: CAG 37 toggle, lit while active.
+     B8    UN DOCK: CAG 37 toggle, lit while active.
      B10   [CTRL PT] PRI: CAG 35 } mutually exclusive: a press deactivates the other's
      B11   [CTRL PT] ALT: CAG 36 } group, then activates its own; the active one is lit,
                                    and pressing it does nothing.

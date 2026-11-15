@@ -19,7 +19,7 @@
  *              module only reports button events and renders LED states:
  *                - EVA functions (B0-B7, B9) are active only when the
  *                  controller has isEVA = true (KEYBOARD_EMULATOR keys).
- *                - UNDOCK (B8) toggles base CAG 37; the control points
+ *                - UN DOCK (B8) toggles base CAG 37; the control points
  *                  PRI (B10) and ALT (B11) are base CAG 35 / 36. All
  *                  three are active in every mode (Module UI Reference
  *                  v6.0 §9.7).
@@ -33,7 +33,7 @@
  *
  *                Col:  6(left)    5        4        3        2        1(right)
  *                Row1: B10        B8       B6       B4       B2       B0
- *                      CTRL PT    UNDOCK   EVA      Jump/    Board    EVA
+ *                      CTRL PT    UN DOCK  EVA      Jump/    Board    EVA
  *                      PRI                 Chute    Let Go   Craft    Lights
  *                      ROSE       GOLD     AMBER    CHARTRSE GREEN    MINT
  *
@@ -54,7 +54,7 @@
  *                BUTTON06 (PCB) -> KBC index 5  -> Grab
  *                BUTTON07 (PCB) -> KBC index 6  -> EVA Chute
  *                BUTTON08 (PCB) -> KBC index 7  -> Helmet Toggle
- *                BUTTON09 (PCB) -> KBC index 8  -> UNDOCK
+ *                BUTTON09 (PCB) -> KBC index 8  -> UN DOCK
  *                BUTTON10 (PCB) -> KBC index 9  -> Plant Flag
  *                BUTTON11 (PCB) -> KBC index 10 -> Control point PRI
  *                BUTTON12 (PCB) -> KBC index 11 -> Control point ALT
@@ -101,7 +101,7 @@
 //  B5  Grab             - SEAFOAM
 //  B6  EVA Chute        - AMBER
 //  B7  Helmet Toggle    - SKY
-//  B8  UNDOCK           - GOLD                                            CAG 37
+//  B8  UN DOCK          - GOLD                                            CAG 37
 //  B9  Plant Flag       - SEAFOAM (controller flashes briefly on press)
 //  B10 Ctrl point PRI   - ROSE                                            CAG 35
 //  B11 Ctrl point ALT   - PINK                                            CAG 36
@@ -117,7 +117,7 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
     KBC_SEAFOAM,     // B5  - Grab             (Col 3, Row 2)
     KBC_AMBER,       // B6  - EVA Chute        (Col 4, Row 1)
     KBC_SKY,         // B7  - Helmet Toggle    (Col 4, Row 2)
-    KBC_GOLD,        // B8  - UNDOCK           (Col 5, Row 1)
+    KBC_GOLD,        // B8  - UN DOCK          (Col 5, Row 1)
     KBC_SEAFOAM,     // B9  - Plant Flag       (Col 5, Row 2)
     KBC_ROSE,        // B10 - Ctrl point PRI   (Col 6, Row 1)
     KBC_PINK,        // B11 - Ctrl point ALT   (Col 6, Row 2)

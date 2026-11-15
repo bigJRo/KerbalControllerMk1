@@ -142,7 +142,7 @@ static Scenario* kbc_time() {
 }
 static Scenario* kbc_aux() {
     return new KbcScenario({
-        {"EVA LIGHTS", 0}, {"JET PACK", 1}, {"BOARD", 2}, {"CONST", 3}, {"JUMP", 4}, {"GRAB", 5}, {"EVA CHUTE", 6}, {"HELMET", 7}, {"UNDOCK", 8}, {"FLAG", 9}, {"CP PRI", 10}, {"CP ALT", 11}},
+        {"EVA LIGHTS", 0}, {"JET PACK", 1}, {"BOARD", 2}, {"CONST", 3}, {"JUMP", 4}, {"GRAB", 5}, {"EVA CHUTE", 6}, {"HELM", 7}, {"UN DOCK", 8}, {"FLAG", 9}, {"CP PRI", 10}, {"CP ALT", 11}},
         {{100, 255, 160}, {132, 204, 22}, {0, 255, 0}, {20, 184, 166}, {163, 230, 53}, {80, 200, 160}, {255, 80, 0}, {14, 165, 233}, {255, 160, 0}, {80, 200, 160}, {255, 80, 120}, {236, 72, 153}});
 }
 

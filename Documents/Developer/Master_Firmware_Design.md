@@ -345,7 +345,7 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 - **Demo LEDs:** a usable button is backlit and ACTIVE while held. A switch still darkens the buttons it gates: CHUTE SAFE the chutes, SAS OFF the SAS modes. The EVA group is backlit in demo.
 - **CAG buttons send CAGTOGGLE;** the state machines send only CAGACTIVATE (and CAGDEACTIVATE for the 2 s reset).
 - **Before KSP reports the groups** in a flight scene, every CAG button shows backlit. The master asks for CAGSTATUS, ACTIONSTATUS and SAS_MODE_INFO on entering a flight.
-- **The control-group offset applies to UNDOCK too:** CAG 37 + offset, like every CAG button but Action Control's.
+- **The control-group offset applies to UN DOCK too:** CAG 37 + offset, like every CAG button but Action Control's.
 - **Held keys** (INVERT's F) are released when the flight ends, the link drops or demo starts.
 
 ### 8.2 Switch Group 1 (Function Control B16–B23)
@@ -543,7 +543,7 @@ The availability rules are checked against Simpit on the bench.
 
 | Panel | Behaviour |
 |---|---|
-| **AUX CTRL** | **[EVA] group** (B0–B7, B9): EVA keys, dark outside EVA. **B8 UNDOCK:** CAG 37. **B10 PRI / B11 ALT:** control points (CAG 35 / 36), mutually exclusive; the LED shows the active one, and pressing the active one does nothing |
+| **AUX CTRL** | **[EVA] group** (B0–B7, B9): EVA keys, dark outside EVA. **B8 UN DOCK:** CAG 37. **B10 PRI / B11 ALT:** control points (CAG 35 / 36), mutually exclusive; the LED shows the active one, and pressing the active one does nothing |
 | **Function Control** | CAG buttons per Inventory §10.5. **B4 = FLAPS** (CAG 39) |
 | **UI Control** | Keyboard and Simpit navball cycle per Inventory §10.7. *(stage 6)* The screenshot macro's three keys go out 150 ms apart |
 | **Throttle** | Lever, 100 % / UP / DOWN / 0 % buttons, all under the ENGINE and autopilot rules. **FINE** is dropped while an autopilot owns the throttle and restored after. *(stage 5)* The module only reports its buttons; the master moves the lever (100 % / 0 %, UP / DOWN 10 %), and the throttle follows the lever. The buttons are ignored in FINE, where a lever target is not the throttle |
@@ -837,9 +837,9 @@ From Inventory §11:
 | 5 | Throttle module | Hold the lever against the pilot with a stall limit; return it on release: `CMD_SET_LEVER_HOLD`, at most 0.5 s per touch (**done**, v2.2, 2026-10-31). Its buttons are only reported (v2.1) |
 | 6 | Pre-Warp module | BTN03 preset 1440 → 360 min (1 Kerbin day). **Done** (v2.1) |
 | 7 | Function Control module | Colour table to the confirmed layout; B4 FLAPS SEAFOAM. **Done** (v2.1) |
-| 8 | AUX CTRL module | B8 UNDOCK GOLD; B10 PRI ROSE, B11 ALT PINK. **Done** (v2.1) |
+| 8 | AUX CTRL module | B8 UN DOCK GOLD; B10 PRI ROSE, B11 ALT PINK. **Done** (v2.1) |
 | 9 | Stability Control module | B10 HOLD MAGENTA. **Done** (v2.1) |
-| 10 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 UNDOCK |
+| 10 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 UN DOCK |
 | 11 | I2C Protocol Specification | Input test frame: **done** (2.20, with the BACKLIGHT frame). The Sys Info protocol is in, §15.4; EVA lifecycle, LED nibble order and the master's start-up sequence in 2.16 |
 | 12 | Autopilot design docs | Authority rule (§11.3) |
 | 13 | Module UI Reference, Hardware Reference | Rewritten from the inventory |

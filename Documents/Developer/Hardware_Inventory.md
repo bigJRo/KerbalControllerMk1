@@ -514,7 +514,7 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 | 1 | Demo and debug modes | Settled (§8.8, §8.9) |
 | 2 | Stability Control B10 | Settled: HOLD (§8.7) |
 | 3 | Function Control B4 | Settled: FLAPS (§10.5) |
-| 4 | AUX CTRL B8 | Settled: UNDOCK (§10.1) |
+| 4 | AUX CTRL B8 | Settled: UN DOCK (§10.1) |
 | 5 | Rotation stick button | Settled: by control mode (§10.8) |
 | 6 | Sys Info Display | Settled (§8.12); protocol defined with the firmware design |
 | 7 | Input test screen: detailed design | Settled (§8.11), as built in Info Display v1.18.0 and master v0.9.0 |
@@ -564,15 +564,15 @@ Labels: **[GROUP]** is a group label printed on the panel, not on the button; CA
 | B5 | [EVA] GRAB | Grab | EVA | Key F |
 | B6 | [EVA] EVA CHUTE | EVA parachute | EVA | Key P |
 | B7 | [EVA] HELM | Helmet toggle | EVA | Key O |
-| B8 | **UNDOCK** (new label) | Undock / decouple docking ports | Always | CAG 37 (the freed docking-port group) |
+| B8 | **UN DOCK** (new label) | Undock / decouple docking ports | Always | CAG 37 (the freed docking-port group) |
 | B9 | [EVA] FLAG | Plant flag | EVA | Key G |
 | B10 | [CTRL PT] PRI | Primary control point | Always | CAG 35 |
 | B11 | [CTRL PT] ALT | Alternate control point | Always | CAG 36 |
 
 **Changes from the reference / firmware:**
-- B8 Cruise Control is removed; B8 becomes UNDOCK.
+- B8 Cruise Control is removed; B8 becomes UN DOCK.
 - B10 is no longer a PRI / ALT toggle; it is PRI only.
-- B11 is ALT (was Docking Port, CAG 37). CAG 37 moves to UNDOCK on B8.
+- B11 is ALT (was Docking Port, CAG 37). CAG 37 moves to UN DOCK on B8.
 
 **Behaviour:**
 - **EVA group (B0–B7, B9):** dark outside EVA, and presses ignored.
@@ -813,12 +813,12 @@ Collected from this review; each is a separate piece of work.
 | 2 | Annunciator firmware | **Touch the DOCK tile to toggle it.** Docking is detected from Simpit's vessel-change events (dock / undock), which are missed, for example after switching vessel, so the pilot needs a way to correct the light. A later real dock / undock event overrides the touch setting. **Done** (v3.10.0, 2026-10-31): flight scene only |
 | 3 | Pre-Warp module firmware | BTN03 preset 1440 → 360 min (1 Kerbin day). **Done** (v2.1, 2026-10-31) |
 | 4 | Function Control module firmware | Colour table swapped to the confirmed layout (§10.5); FLAPS SEAFOAM. **Done** (v2.1, 2026-10-27) |
-| 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1): UNDOCK GOLD, PRI ROSE, ALT PINK, no alternate colour. **Done** (v2.1, 2026-10-27) |
+| 5 | AUX CTRL module firmware | B8 cleared (no Cruise); B10 PRI, B11 ALT colours (§10.1): UN DOCK GOLD, PRI ROSE, ALT PINK, no alternate colour. **Done** (v2.1, 2026-10-27) |
 | 6 | Stability Control module firmware | B10 HOLD colour (was RCS): MAGENTA. **Done** (v2.1, 2026-10-27) |
 | 7 | Module UI Reference | Rewritten from this inventory: Switch Groups 1 / 2, every button map, mode selector, staging, safe switches, PCB numbers |
 | 8 | Hardware Reference | Rewritten from this inventory (§6 lists the differences) |
 | 9 | Annunciator reference and user manual | A/P ARM tile, DOCK touch. **Done** (Caution & Warning Reference for v3.10.0, 2026-10-31; A/P ARM done earlier with v3.9) |
-| 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UNDOCK |
+| 13 | Panel labels | Function B4 RW DISABLE → FLAPS; AUX B8 new label UN DOCK |
 | 14 | Info Display 1 firmware + I2C spec | Input test screen, its two-finger gesture and its frame (§8.11). **Done** (InfoDisp v1.18.0, master v0.9.0, I2C spec v2.20, 2026-10-31): three frames, sync 0xAB (inputs, modules, displays), while the display reports screen 18 |
 | 15 | Throttle Module firmware | Hold the lever at the autopilot's position against the pilot, with a stall limit (§8.10). **Done** (v2.2, 2026-10-31): new `CMD_SET_LEVER_HOLD` (0x0E), at most 0.5 s per touch, back to the target on release; the same limit now applies to DISABLED's resist at 0 |
 | 16 | ~~Annunciator, Info Display, Resource Display firmware~~ | ~~Report their own Simpit link state~~: not needed, every display already reports it (status flags bit 0) |

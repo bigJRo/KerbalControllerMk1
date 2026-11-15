@@ -27,9 +27,9 @@
   <text x="62" y="85" font-size="8" fill="#ff5078" text-anchor="middle">● ROSE</text>
   <text x="62" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B10 · BUTTON11</text>
 
-  <!-- B8 UNDOCK — GOLD -->
+  <!-- B8 UN DOCK — GOLD -->
   <rect x="118" y="52" width="88" height="60" rx="6" fill="#ffc80018" stroke="#ffc800" stroke-width="1.5"/>
-  <text x="162" y="72" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">UNDOCK</text>
+  <text x="162" y="72" font-size="9" font-weight="500" fill="#854d0e" text-anchor="middle">UN DOCK</text>
   <text x="162" y="85" font-size="8" fill="#ffc800" text-anchor="middle">● GOLD</text>
   <text x="162" y="105" font-size="7.5" fill="#9ca3af" text-anchor="middle">B8 · BUTTON09</text>
 
