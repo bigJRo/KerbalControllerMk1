@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
 <rect width="100%" height="100%" fill="#ffffff"/>
 <text x="30.0" y="30.0" font-size="19" font-weight="bold" text-anchor="start" fill="#212121">KCMk1 Expansion Module: keypad layout</text>
-<text x="30.0" y="50.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">Expansion Module Specification v0.5, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.</text>
+<text x="30.0" y="50.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">Expansion Module Specification v0.6, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.</text>
 <rect x="150.0" y="156.4" width="728.0" height="495.2" rx="10" fill="#f5f7f8" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
 <text x="202.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 1</text>
 <text x="202.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_0</text>
