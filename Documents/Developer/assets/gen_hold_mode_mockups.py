@@ -175,7 +175,7 @@ finish("/home/user/KerbalControllerMk1/Documents/Developer/assets/Hold_Mode_ACFT
 # grabbed the throttle lever; pitch/lateral modes still engaged)
 # ─────────────────────────────────────────────────────────────────────────────
 frame("AIRCRAFT AUTOPILOT", ["PFD", "LNCH", "ORB", "TGT", "LNDG", "ACAP"], 5, active_key_green=True)
-banner("ALT  HDG", DARK_GREEN, "KERBIN  ·  SPACEPLANE MK2", "ENGAGED", NEON_GREEN, reason="A/T OFF: LEVER")
+banner("ALT  HDG", DARK_GREEN, "KERBIN  ·  SPACEPLANE MK2", "ENGAGED", NEON_GREEN, reason="ENG SAFE")
 columns("PITCH", "LATERAL / THRUST", "FLIGHT DATA")
 mode_row(C1X, 0, "ATT",  "off", "5.0°",   "muted")
 mode_row(C1X, 1, "AOA",  "off", "3.0°",   "muted")

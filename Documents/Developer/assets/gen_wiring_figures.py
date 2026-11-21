@@ -299,7 +299,7 @@ def overview():
 
     # Rear panel (the A2 / B2 ribbons pass through the gaps at x 385 and 475)
     rect(10, 480, 850, 560, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
-    t(24, 498, "REAR PANEL", size=12.5, weight="bold", anchor="start", fill="#5d4037")
+    t(838, 498, "REAR PANEL", size=12.5, weight="bold", anchor="end", fill="#5d4037")   # clear of the DC1 lead
     rp = [(72, "12 V DC IN", "barrel jack", "pwr", "DC1"),
           (160, "USB-C HOST", "to PC", "usb", "USBC1"),
           (248, "USB-C EXP", "reserved", "exp", "USBC2"),
@@ -316,7 +316,7 @@ def overview():
 
     # Input panels
     panel(10, 590, 422, 780, "PANEL A2", "left input", "#f7f9fb")
-    panel(438, 590, 850, 780, "PANEL B2", "right input", "#f7f9fb")
+    panel(438, 590, 850, 780, "PANEL B2", "right input", "#f7f9fb", tx=52)   # heading clear of the Ext CN4 ribbon
     blk(30, 630, 402, 680, "PANEL HUB \u00b7 KC-01-1730", ["8 slots: 7 modules + Sys Info Display"], hub=True)
     blk(458, 630, 830, 680, "PANEL HUB \u00b7 KC-01-1730", ["8 slots: 6 modules (P1, P5 free)"], hub=True)
     lines(216, 704, ["Action, Sys Info, Throttle, UI, GPWS,", "Translation stick, Function (16-pin IDC)",

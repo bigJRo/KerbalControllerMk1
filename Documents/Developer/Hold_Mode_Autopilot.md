@@ -11,7 +11,7 @@
 > **Port to `KCMk1_Master` (2026-10-26).** The hold autopilot now runs in the new master, `Software/KCMk1_Master` (`hold_autopilot.cpp`; `Master_Firmware_Design.md` §11). Its control laws, modes and console protocol are unchanged. Superseded here:
 > - **The pilot-input rule (§6.5) is retired.** Stick and lever input disconnect nothing. An engaged mode keeps authority until it is disconnected deliberately: the A/P disconnect (rotation stick button), A/P INHIB, a console's A/P OFF, ENGINE SAFE (thrust and rover drive modes), a vessel switch, including going EVA, or scene change, or its own rules below. Reasons `STICK` and `LEVER` stay in the enum but are never set; `A/P INHIB` (22), `ENG SAFE` (23) and `A/P DISC` (24) are new.
 > - **Sticks (§6.6):** while any mode is engaged the master ignores both sticks completely, except camera mode and the stick buttons.
-> - **Lever (§7.2):** under the autothrottle the lever is driven to match, and the pilot's lever, its buttons and touch are ignored. The Throttle Module is to hold the lever against the pilot (module firmware change).
+> - **Lever (§7.2):** under the autothrottle the lever is driven to match, and the pilot's lever, its buttons and touch are ignored. The Throttle Module holds the lever against the pilot while the master owns it (`CMD_SET_LEVER_HOLD`, I2C spec §9.4).
 > - **FINE:** the master drops it while the autothrottle owns the throttle and restores it after, so IAS / MACH no longer refuse in FINE.
 > - **Paths:** the link tabs (`throttle_link`, `rotation_link`) are the master's control channels (`ksp_frame.cpp`); the telemetry feed is `autopilots.cpp`; the console link is `infodisp_link.cpp`.
 > - **HOLD:** the Stability Control HOLD button engages ALT + HDG (PLN) or RHDG + CRUISE (RVR) through this module.
@@ -144,7 +144,7 @@ Unit 1 compiles both consoles out exactly as it compiles out the ascent console
 
 ![Aircraft Autopilot console — autothrottle disconnect](assets/Hold_Mode_ACFT_Console_Disconnect.svg)
 
-*An autothrottle disconnect: IAS dropped to OFF and the banner carries the reason. The mockup shows the retired lever reason (`A/T OFF: LEVER`); the lever no longer disconnects. The same picture now reads `OTHER AP` when another autopilot takes the throttle.*
+*An autothrottle disconnect: ENGINE set to SAFE dropped IAS to OFF, ALT and HDG stay engaged, and the banner carries the reason (`ENG SAFE`). The same picture reads `OTHER AP` when another autopilot takes the throttle.*
 
 ### 4.1 Layout
 
@@ -567,8 +567,8 @@ All items are implemented on the branch (see §13 for what each became and what 
 
 ## 11. Open questions for review
 
-1. **Sidebar captions.** `ASC` / `ACAP` / `RVAP` are placeholders. Alternatives: `ASC` / `A-AP` /
-   `R-AP`, or keep the key reading `ASC` in every mode and rely on the title bar.
+1. ~~**Sidebar captions.**~~ **Resolved:** the sidebar key reads `A/P` and the consoles are titled
+   `ASC`, `ACAP`, `RVAP`, `ORAP` and `LDAP` (§3; the Technical Information Manual uses the same names).
 2. ~~**Ascent throttle on the lever (§7.5).**~~ **Resolved:** the lever follows the managed
    throttle. Grabbing it during an ascent was a full disarm under the global pilot-input rule; in
    the KCMk1 master the touch is ignored (§7.5).

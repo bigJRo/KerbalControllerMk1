@@ -490,11 +490,11 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 | Screen | When | Content |
 |---|---|---|
 | **Splash** | At power-on, for 2 to 5 s | Controller name and firmware version, or an image from the microSD card |
-| **Boot** | From power-on **until KSP connects or demo mode is switched on** | One line per step as it happens: configuring items, each module found and enabled (or missing), each display released, connections established, waiting for KSP, any fault. If a step stalls, the screen stays on it, so the stalled step is visible |
+| **Boot** | From the end of the splash **until KSP connects or demo mode is switched on** | The newest boot line, the counts of OK, warning and error lines so far, and the newest problem. The master sends a line per step as it happens: each module found and enabled (or missing), each display released, connections established, the watchdog, waiting for KSP, any fault. If a step stalls, it stays the newest line, so the stalled step is visible |
 | **Controller status** | Normal operation | 12 V voltage, current and power; board temperature; fan speed; the KSP link state of **each** microcontroller with its own link (master, Annunciator, Information Displays 1 and 2, Resource Display) |
 | **SWITCH ERR** | While SWITCH ERR is lit | Takes the whole screen and names each switch in error and the state the vessel reports, five per page. It goes away when every error clears |
 
-**Boot hold and stalls (proposed, *to confirm*):**
+**Boot hold and stalls (as built, master 0.10):**
 - **The master does not block.** `setup()` finishes, and the panels, displays and switches work as usual. Only the Sys Info Display stays on the boot screen, with a "Waiting for KSP" line (elapsed time, retry count), until the master's Simpit link connects or SCE is set to AUX (demo).
 - **Every boot step has a timeout.** A step that times out is shown in red with what it was waiting on, and boot carries on (missing module, display not answering, sensor missing).
 - **Waiting for KSP has no timeout,** but after 60 s a hint line is added (KSP running? Simpit COM port? USB cable?).
@@ -502,11 +502,11 @@ The master pushes it frames while the screen is open (Info Display v1.18.0, mast
 
 **Graphics:** icons (power, thermometer, fan, link, modules) built into the firmware; the microSD card only holds an optional power-on splash. Layout and readability on the ER-TFTM020-2: `Sys_Info_Display_Design.md`.
 
-**What this needs:**
-- **The master** sends boot messages *from the start of `setup()`*. It waits briefly for the Sys Info Display to answer first, and mirrors every line to Serial. Every I2C call during setup has a timeout, so a stuck bus becomes a visible message rather than a hang.
+**How it is built:**
+- **The master** sends boot lines *from the start of `setup()`* and mirrors every line to Serial. It keeps the lines sent before the Sys Info Display answered and replays them when it does, so a display that starts late still shows the boot from the top. Every I2C call during setup has a timeout, so a stuck bus becomes a visible message rather than a hang.
 - **The watchdog** starts only after `setup()`, so it does not reset a stalled boot out of view.
 - **Each display** already reports its own Simpit link state (bit 0 of its status flags), which the master reads.
-- **The I2C protocol for 0x14** is defined with the firmware design (Q6): boot line, status frame, switch-error list.
+- **The I2C protocol for 0x14** is in I2C Protocol Specification §15.4: boot line, boot done, status frame, switch-error list, backlight.
 - **Note:** the Sys Info Display's RST pin is not connected (§5.7), so the master cannot hard-reset it.
 
 ## 9. Future discussion points
