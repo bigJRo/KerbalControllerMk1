@@ -23,7 +23,7 @@ Signal protection on the external interface is defined in Hardware Reference §8
 The expansion module provides:
 
 - **A DSKY-style keypad**: 25 keys (Kailh Choc V1, SK6812MINI-EA per-key RGB backlight) and one rotary encoder (§7).
-- **Two 7" 1024×600 capacitive touch displays**, each on a standard 7" TFT Display Driver (KC-01-1911), the same board as the main controller's four displays (§8).
+- **Two 7" 1024×600 capacitive touch displays, in portrait (600 × 1024)**, each on a standard 7" TFT Display Driver (KC-01-1911), the same board as the main controller's four displays (§8).
 - **The autopilot interface.** The keypad and the right display operate the master's autopilots: ascent, aircraft and rover hold, orbital (burn) and landing (§4.3). Once the expansion passes its bench checks, the autopilot consoles move off Information Display 2 (§4.4).
 - **Its own programs**: planning, calculators and data pages that do not fly the vessel (§4.5).
 - **An internal USB hub** (CH334F). It shares the single expansion USB-C connection between the expansion Teensy and the two display drivers.
@@ -40,6 +40,8 @@ The **expansion Teensy 4.1** scans the keypad and encoder, drives the key backli
 | D4 | **The expansion Teensy has its own Kerbal Simpit link** for its programs' flight data. About 210–240 bytes per update (≈ 2–2.5 kB/s at the 125 ms refresh rate) is not forwarded over EXT | — |
 | D5 | **The autopilot interface moves entirely to the expansion.** The Information Display 2 consoles stay until the expansion's autopilot pages pass their bench checks, and are then removed from Information Display 2 and the manual | Not covered |
 | D6 | **Autopilots are operated with keys plus console pages.** The right display shows the selected autopilot's page (modes, setpoints, status), like today's consoles. The keys do the work; touch is secondary | Verb / noun entry |
+| D7 | **Panel layout A, portrait.** Both 7" displays stand in portrait (600 × 1024) side by side, with the keypad centred below them. The panel is about 260 × 305 mm | Not covered |
+| D8 | **No A/P OFF on the expansion.** Autopilots are switched off from the main controller: the A/P switch, or the RHC stick button. The expansion engages, sets and disengages individual modes only | The consoles' A/P OFF button |
 
 ---
 
@@ -123,6 +125,7 @@ The master keeps every autopilot: its control laws, the arbiter, the interlocks 
 - **Commands up.** A key action becomes the same command the Information Display 2 consoles send today: engage or disengage a mode, set a setpoint, A/P OFF, ARM / DISARM. It reaches the master as a short command frame on EXT. The master applies the same rules as for the consoles: refusals are printed on the KSP screen, and a refused command is never echoed.
 - **State down.** The master sends the expansion the status frames it sends Information Display 2 today: ascent 0xA5, aircraft 0xA6, rover 0xA7, orbital 0xA8, landing 0xA9 and the 8-byte summary 0xAA. The expansion Teensy relays them to the right display, which draws the page.
 - **Interlocks and HOLD are unchanged.** The panel switches and the HOLD button work as they do now, with or without the expansion.
+- **No A/P OFF on the expansion (D8).** Switching every autopilot off stays on the main controller: the A/P switch to INHIB, or the RHC stick button. The expansion disengages one mode at a time (PRO on an engaged mode).
 
 ### 4.4 Migration from Information Display 2
 
@@ -190,7 +193,7 @@ Three USB devices make the hub necessary, so open item E-09 (bypass the hub) is 
 
 ### 7.1 Physical Layout
 
-The keyboard follows the Apollo DSKY layout, with a function row added at the top. All keys are **Kailh Choc V1** switches (tactile) with **MBK shine-through keycaps** on a **21 mm** grid.
+The keyboard follows the Apollo DSKY layout, with a function row added at the top. All keys are **Kailh Choc V1** switches (tactile) with **MBK keycaps** with custom legends (FKcaps) on a **21 mm** grid (E-17).
 
 ```
 Col:   1       2      3      4      5      6      7
@@ -211,7 +214,7 @@ Col:   1       2      3      4      5      6      7
 | 0–9, +, − | Numeric and sign entry |
 | CLR | Clear the current entry |
 | ENTR | Enter: confirm a value |
-| PRO | Proceed: engage the selected mode, or execute the current verb |
+| PRO | Proceed: engage or disengage the highlighted mode, ARM / DISARM, EXEC a planned burn, or execute the current verb |
 | KEY REL | Key release: dismiss the current prompt |
 | RSET | Reset: clear a fault or alarm shown on the expansion |
 | HOLD | Pause an expansion program and keep its state. Not the panel HOLD button |
@@ -300,6 +303,8 @@ Both displays use the main controller's standard 7" display: a KC-01-1911 driver
 
 On the local bus, each driver is a display carrier (I2C spec §15). It answers status reads, raises its INT line for a touch event, and takes control bytes and content frames from the expansion Teensy. The expansion Teensy can reset both drivers through RST on the display slots.
 
+Both displays run in portrait (D7). The display library already sets the panel rotation at start-up (`kcmDisplayBegin`), so the expansion firmware selects a portrait rotation and maps the touch coordinates to match. The panel's best viewing direction changes when it is turned on its side, which should be checked on the bench (E-18).
+
 ### 8.2 Roles
 
 | Display | Role |
@@ -355,10 +360,13 @@ The protocol follows the display-carrier pattern (I2C spec §15). The frames are
 | E-09 | Closed: three USB devices keep the hub (§6) | — |
 | E-10 | EXT frame definitions and the master-side EXT service (`Wire1`, EXT_INT_1 / 2); a new I2C spec section | Firmware |
 | E-11 | Key mapping for the autopilots: PROG numbers, mode selection, setpoint entry and engage (D6) | Firmware / UI |
-| E-12 | Enclosure: layout and size for two 7" displays and the 147 × 100 mm keypad; whether EX10 and EX23 merge into one board | Mechanical |
+| E-12 | Enclosure for layout A (D7): two portrait 7" displays over the keypad, about 260 × 305 mm; depth; whether EX10 and EX23 merge into one board | Mechanical |
 | E-13 | EXT bus speed over the ≈ 1 m GX16-10 cable: confirm 400 kHz with the LTC4311, or fall back to 100 kHz | Bench check |
 | E-14 | Kerbal Simpit with eight ports: KSP-side load, and the `Settings.cfg` layout | Bench check |
 | E-15 | The expansion program list | Design |
+| E-17 | MBK keycaps with custom legends (FKcaps): legend method and whether a legend can shine through for the per-key RGB; key spacing (MBK caps are sized for 18 × 17 mm Choc spacing; the keyboard PCB uses a 21 mm grid) | Hardware |
+| E-18 | Portrait viewing angle of the 7" panel; touch coordinate rotation | Bench check |
+| E-19 | Program numbers for the autopilots and the expansion programs | Design |
 | E-16 | Retire the Information Display 2 consoles after the expansion's bench checks (§4.4): InfoDisp firmware, display references, TIM | Firmware / docs |
 
 ---
@@ -380,4 +388,4 @@ In scope later, when the firmware is designed: the master's EXT service (E-10) a
 | 0.1 | 2026-05-23 | Initial draft: architecture, connectivity, board topology, open items |
 | 0.2 | 2026-05-23 | Major revision. Display processors changed from Teensy 4.0 to RP2040; display driver from RA8875 to SSD1963; keyboard from ATtiny816 shift-register modules to a direct Teensy 4.1 GPIO matrix; keypad reduced from 28 to 25 keys plus 1 encoder; external interface from 50-pin IDC to GX16-10 plus USB-C panel mount; expansion Teensy 4.1 made I2C master on SDA_EXT; TUSB212 USB signal conditioner added; LTC4311 on SDA_EXT / SCL_EXT at both ends; series resistors and RST RC filter documented. Board designators assigned (KC-01-EX10 to EX31); keyboard PCB BOM finalized; display roles confirmed (left graphical, right data / program); DSKY layout finalized with the function row. Open items E-01, E-03, E-04 and E-08 closed |
 | 0.3 | 2026-05-23 | Signal architecture corrections. A single LTC4311 on SDA_EXT / SCL_EXT, on the Ctrl Module only; the I2C lines are passive at the expansion end. Pull-ups placed: 4.7 kΩ on EXT_INT_1 at the Ctrl Module, 4.7 kΩ on EXT_INT_2 and 10 kΩ on RST at the Expansion Routing Board. The full signal path is documented per signal |
-| 0.4 | 2026-11-21 | Brought in line with the controller as built (decisions D1–D6, §2.1). The master keeps all autopilot logic, and the expansion is its autopilot interface and runs its own non-flying programs. The master is I2C master on EXT, the expansion a target at 0x15 (proposed), with EXT_INT_1 as "poll me". The displays are two standard 7" TFT Display Drivers (KC-01-1911); EX30 and EX31 retired. The expansion Teensy and both display drivers each have a Simpit link (eight Simpit ports in all). Autopilot consoles move from Information Display 2 to the expansion after its bench checks; keys plus console pages. Power re-estimated (≈ 0.6 A typical, ≈ 1.0 A peak at 12 V). Open items E-05, E-07 and E-09 closed; E-10 to E-16 added |
+| 0.4 | 2026-11-21 | Brought in line with the controller as built (decisions D1–D6, §2.1). The master keeps all autopilot logic, and the expansion is its autopilot interface and runs its own non-flying programs. The master is I2C master on EXT, the expansion a target at 0x15 (proposed), with EXT_INT_1 as "poll me". The displays are two standard 7" TFT Display Drivers (KC-01-1911); EX30 and EX31 retired. The expansion Teensy and both display drivers each have a Simpit link (eight Simpit ports in all). Autopilot consoles move from Information Display 2 to the expansion after its bench checks; keys plus console pages. Power re-estimated (≈ 0.6 A typical, ≈ 1.0 A peak at 12 V). Open items E-05, E-07 and E-09 closed; E-10 to E-16 added. Then, from the mockup review: layout A with portrait displays (D7), no A/P OFF on the expansion (D8), MBK keycaps from FKcaps; E-17 to E-19 added |
