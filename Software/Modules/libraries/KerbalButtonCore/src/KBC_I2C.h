@@ -1,6 +1,6 @@
 /**
  * @file        KBC_I2C.h
- * @version     2.0.0
+ * @version     2.4.0
  * @date        2026-06-28
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

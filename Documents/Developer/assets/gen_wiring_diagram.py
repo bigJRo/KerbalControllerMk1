@@ -103,10 +103,11 @@ def board(x0, y0, x1, y1, title, sub=None, hub=False, extra=None, tsize=13.5, ty
         extra(cx)
 
 
-def panel(x0, y0, x1, y1, name, desc, tint):
+def panel(x0, y0, x1, y1, name, desc, tint, tx=14):
+    """tx: inset of the heading from the left edge (move it clear of a cable)"""
     rect(x0, y0, x1, y1, fill=tint, stroke="#90a4ae", sw=1.4, r=12, dash="8 5")
-    t(x0 + 14, y0 + 22, name, size=15, weight="bold", anchor="start", fill="#37474f")
-    t(x0 + 14 + 10.6 * len(name) + 8, y0 + 22, desc, size=12, anchor="start", fill="#607d8b")
+    t(x0 + tx, y0 + 22, name, size=15, weight="bold", anchor="start", fill="#37474f")
+    t(x0 + tx + 10.6 * len(name) + 8, y0 + 22, desc, size=12, anchor="start", fill="#607d8b")
 
 
 def item(x0, y0, x1, y1, rows, size=11):

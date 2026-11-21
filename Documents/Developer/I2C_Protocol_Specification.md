@@ -76,6 +76,7 @@ RST and `CMD_RESET` are distinct and serve different purposes:
 RST is **optional** and module-class-specific:
 
 - **Teensy display carriers (KC-01-1912):** RST is connected. The master asserts RST low to command a full carrier reboot. The carrier firmware treats the RST input as a reset-command signal and performs a full software-initiated system reset on assertion. Receiving-end protection (10kΩ pull-up + 100Ω series + 100nF to GND) is applied per Hardware Reference §8.4 for carriers fed RST over the external interface.
+- **System Info Display (XIAO RP2350, §15.4):** RST is not used. The master does not reset it; its own watchdog restarts it.
 - **ATtiny816 modules:** RST is no-connect (not used). Reset for these modules is via `CMD_RESET` over I2C only.
 
 A module is conformant whether or not it implements RST; the line is available on the IDC for modules that need a master-commanded hardware reboot.
@@ -531,9 +532,9 @@ The display carriers (the Teensy 4.1 Annunciator, Resource Display and Info Disp
 
 | Parameter | Value |
 |-----------|-------|
-| Bus (carrier side) | `KCM_I2C_BUS` = Wire2 (Teensy 4.1 SCL2=24 / SDA2=25) |
-| INT line | `KCM_I2C_INT_PIN` = pin 0, active-low push-pull, one per carrier |
-| Hardware RST | `KCM_I2C_RST_PIN` = pin 1 (shared reset from master; see §3.1) |
+| Bus (carrier side) | 7" Teensy carriers (0x10–0x13): `KCM_I2C_BUS` = Wire2 (Teensy 4.1 SCL2=24 / SDA2=25). System Info Display (0x14): Wire1 on the XIAO's D4 (SDA) / D5 (SCL) |
+| INT line | 7" carriers: `KCM_I2C_INT_PIN` = pin 0, active-low push-pull, one per carrier. System Info Display: D6, held high (not used; the master polls it) |
+| Hardware RST | 7" carriers: `KCM_I2C_RST_PIN` = pin 1 (shared reset from master; see §3.1). System Info Display: not used (its D3 is the panel's own reset) |
 
 | I2C Address | Constant | Carrier | Outbound sync byte | Status |
 |-------------|----------|---------|--------------------|--------|

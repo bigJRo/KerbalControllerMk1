@@ -1,6 +1,6 @@
 /**
  * @file        KBC_LEDControl.ipp
- * @version     2.0.0
+ * @version     2.4.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
