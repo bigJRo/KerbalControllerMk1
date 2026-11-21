@@ -364,10 +364,10 @@ The protocol follows the display-carrier pattern (I2C spec §15). The frames are
 | E-13 | EXT bus speed over the ≈ 1 m GX16-10 cable: confirm 400 kHz with the LTC4311, or fall back to 100 kHz | Bench check |
 | E-14 | Kerbal Simpit with eight ports: KSP-side load, and the `Settings.cfg` layout | Bench check |
 | E-15 | The expansion program list | Design |
+| E-16 | Retire the Information Display 2 consoles after the expansion's bench checks (§4.4): InfoDisp firmware, display references, TIM | Firmware / docs |
 | E-17 | MBK keycaps with custom legends (FKcaps): legend method and whether a legend can shine through for the per-key RGB; key spacing (MBK caps are sized for 18 × 17 mm Choc spacing; the keyboard PCB uses a 21 mm grid) | Hardware |
 | E-18 | Portrait viewing angle of the 7" panel; touch coordinate rotation | Bench check |
 | E-19 | Program numbers for the autopilots and the expansion programs | Design |
-| E-16 | Retire the Information Display 2 consoles after the expansion's bench checks (§4.4): InfoDisp firmware, display references, TIM | Firmware / docs |
 
 ---
 
