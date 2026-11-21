@@ -181,7 +181,9 @@ The keyboard follows the Apollo DSKY layout, with a function row added at the to
 
 *Figure 7-1: Keypad layout, seen from the front. The function row is on top and the DSKY rows below. Each key shows its matrix row and column and its place in the LED chain. Drawn by `assets/gen_expansion_diagrams.py`.*
 
-**Key count:** 25 switches and 1 rotary encoder. The encoder takes column 7 of row 0. Row 3 has no key in columns 1 and 7.
+**Key count:** 25 switches and 1 rotary encoder. The encoder takes column 7 of row 0.
+
+**DSKY arrangement:** as on the Apollo DSKY keyboard, VERB and NOUN (column 1) and ENTR and RSET (column 7) sit half a key pitch (10.5 mm) lower than the digit rows, so VERB and ENTR fall between the + and − rows, and NOUN and RSET between the − and 0 rows. In the matrix they stay on ROW_1 and ROW_2; only their position on the board moves.
 
 **Key functions.** The functions below follow D6. The detailed mapping, including which keys select a mode and how a setpoint is chosen, is open item E-11.
 

@@ -217,7 +217,7 @@ def keypad():
     P = 104          # 21 mm grid pitch, ≈ 4.95 px per mm
     CAP = 90         # keycap face (MBK caps are 17.5 × 16.5 mm; drawn square for clarity)
     X0, Y0 = 150, 196
-    s = Svg(1200, 720)
+    s = Svg(1200, 740)
     s.t(30, 30, "KCMk1 Expansion Module: keypad layout", size=19, weight="bold", anchor="start")
     s.t(30, 50, "Expansion Module Specification v0.5, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
         size=12, anchor="start", fill="#607d8b")
@@ -240,6 +240,8 @@ def keypad():
     for row, col, leg, g in KEYS:
         x = X0 + (col - 1) * P + (P - CAP) / 2
         y = Y0 + row * P + (P - CAP) / 2
+        if col in (1, 7) and row in (1, 2):   # DSKY stagger: VERB / NOUN and ENTR / RSET sit half a key lower
+            y += P / 2
         bg, fg, _ = GROUP[g]
         s.rect(x, y, x + CAP, y + CAP, fill=bg, stroke="#263238", sw=1.4, r=9)
         size = 30 if len(leg[0]) == 1 else (18 if len(leg) == 1 else 16)
@@ -260,12 +262,6 @@ def keypad():
     s.t(ex, ey + 56, "turn + push", size=10, fill="#455a64")
 
     # Empty positions on row 3
-    for col in (1, 7):
-        x = X0 + (col - 1) * P + (P - CAP) / 2
-        y = Y0 + 3 * P + (P - CAP) / 2
-        s.rect(x, y, x + CAP, y + CAP, fill="none", stroke="#b0bec5", sw=1.2, r=9, dash="5 4")
-        s.t(x + CAP / 2, y + CAP / 2 + 4, "no key", size=11, fill="#90a4ae")
-
     # Dimension: 21 mm pitch
     dy = by0 + bh + 26
     s.o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#607d8b" stroke-width="1.2"/>' % (X0, dy, X0 + P, dy))
@@ -283,6 +279,13 @@ def keypad():
         s.rect(lx, yy, lx + 24, yy + 24, fill=bg, stroke="#263238", sw=1.2, r=4)
         s.t(lx + 34, yy + 17, name, size=12.5, anchor="start", fill="#37474f")
     notes = [
+        ("Arrangement", True),
+        ("As on the Apollo DSKY: VERB / NOUN", False),
+        ("and ENTR / RSET sit half a key", False),
+        ("(10.5 mm) lower than the digit rows.", False),
+        ("Electrically they stay on ROW_1", False),
+        ("and ROW_2.", False),
+        ("", False),
         ("Matrix", True),
         ("One 1N4148W diode per key.", False),
         ("Columns driven low by the Teensy;", False),
@@ -299,7 +302,7 @@ def keypad():
         ("(FKcaps). Spacing check: E-17.", False),
         ("Encoder role: E-20.", False),
     ]
-    yy = by0 + 196
+    yy = by0 + 176
     for text, head in notes:
         if text:
             s.t(lx, yy, text, size=13 if head else 12, weight="bold" if head else "normal",
