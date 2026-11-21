@@ -85,29 +85,9 @@ VBUS is not connected at either panel mount; the expansion is powered from V_12 
 
 ### 4.1 Block Diagram
 
-```
-GX16-10 ──► Expansion Routing Board (KC-01-EX10)
-  ├─ V_12 (×2) ─┬─ MPM3610 → 5 V (expansion Teensy, hub, keypad LEDs) → AP2112K → 3.3 V
-  │             └─ V_12 to the display slot (the display driver regulates its own)
-  ├─ SDA_EXT / SCL_EXT ── passive ──► Expansion Teensy: I2C target (EXT)
-  ├─ EXT_INT_1 ◄── 47 Ω ── Expansion Teensy output ("poll me")
-  ├─ EXT_INT_2 ── 4.7 kΩ pull-up ──► Expansion Teensy input ("state changed")
-  └─ RST ── 10 kΩ pull-up, 100 Ω + 100 nF ──► Expansion Teensy reset
+![Figure 4-1: Expansion Module block diagram. Enclosure connectors, routing board, Teensy carrier, display, keyboard and encoder, with the power, I2C, USB and signal paths](assets/Expansion_Block_Diagram.png)
 
-USB-C panel mount ── TUSB212 ── CH334F hub
-                                  ├─ Port 1 → Expansion Teensy 4.1   (Simpit link)
-                                  ├─ Port 2 → Display driver         (Simpit link)
-                                  ├─ Port 3 → spare
-                                  └─ Port 4 → spare
-
-Expansion Teensy 4.1 (Expansion Teensy Carrier, KC-01-EX23)
-  ├─ I2C target on EXT (from the master)
-  ├─ I2C master on the local bus ──── slot S1 (16-pin) → Display driver (KC-01-1911)
-  ├─ INT in from the display driver, RST out to it
-  ├─ Keypad matrix, 4 rows × 7 columns (25 keys) ── Keyboard Matrix PCB (KC-01-EX21)
-  ├─ Encoder A / B / push ── Encoder PCB (KC-01-EX22)
-  └─ NeoPixel data → 25 × SK6812MINI-EA key backlights
-```
+*Figure 4-1: Expansion Module block diagram. Power is red, I2C purple, USB blue, discrete signals green and the module slot grey. Drawn by `assets/gen_expansion_diagrams.py`; the SVG is alongside.*
 
 The display slot S1 uses the standard 16-pin module connector (Hardware Reference §12): 12 V, GND, 3.3 V, local SDA / SCL, INT and RST. The display driver plugs in through its own P1, as the Annunciator and Information Display 2 do in the main controller.
 
@@ -197,13 +177,9 @@ Two USB devices share the one upstream link, so the hub stays and open item E-09
 
 The keyboard follows the Apollo DSKY layout, with a function row added at the top. All keys are **Kailh Choc V1** switches (tactile) with **MBK keycaps** with custom legends (FKcaps) on a **21 mm** grid (E-17).
 
-```
-Col:   1       2      3      4      5      6      7
-     [PROG]  [HOLD] [MENU] [INFO] [MARK] [PAGE] [ENC↕]  ← Function row (row 0)
-     [VERB]  [ + ]  [ 7 ]  [ 8 ]  [ 9 ]  [CLR] [ENTR]  ← DSKY rows
-     [NOUN]  [ - ]  [ 4 ]  [ 5 ]  [ 6 ]  [PRO] [RSET]
-             [ 0 ]  [ 1 ]  [ 2 ]  [ 3 ]  [KYRL]
-```
+![Figure 7-1: Keypad layout. 25 keys and the encoder on the 21 mm grid, with matrix rows and columns and the LED chain order](assets/Expansion_Keypad_Layout.png)
+
+*Figure 7-1: Keypad layout, seen from the front. The function row is on top and the DSKY rows below. Each key shows its matrix row and column and its place in the LED chain. Drawn by `assets/gen_expansion_diagrams.py`.*
 
 **Key count:** 25 switches and 1 rotary encoder. The encoder takes column 7 of row 0. Row 3 has no key in columns 1 and 7.
 
@@ -412,4 +388,4 @@ In scope later, when the firmware is designed: the master's EXT service (E-10), 
 | 0.2 | 2026-05-23 | Major revision. Display processors changed from Teensy 4.0 to RP2040; display driver from RA8875 to SSD1963; keyboard from ATtiny816 shift-register modules to a direct Teensy 4.1 GPIO matrix; keypad reduced from 28 to 25 keys plus 1 encoder; external interface from 50-pin IDC to GX16-10 plus USB-C panel mount; expansion Teensy 4.1 made I2C master on SDA_EXT; TUSB212 USB signal conditioner added; LTC4311 on SDA_EXT / SCL_EXT at both ends; series resistors and RST RC filter documented. Board designators assigned (KC-01-EX10 to EX31); keyboard PCB BOM finalized; display roles confirmed (left graphical, right data / program); DSKY layout finalized with the function row. Open items E-01, E-03, E-04 and E-08 closed |
 | 0.3 | 2026-05-23 | Signal architecture corrections. A single LTC4311 on SDA_EXT / SCL_EXT, on the Ctrl Module only; the I2C lines are passive at the expansion end. Pull-ups placed: 4.7 kΩ on EXT_INT_1 at the Ctrl Module, 4.7 kΩ on EXT_INT_2 and 10 kΩ on RST at the Expansion Routing Board. The full signal path is documented per signal |
 | 0.4 | 2026-11-21 | Brought in line with the controller as built (decisions D1–D6, §2.1). The master keeps all autopilot logic, and the expansion is its autopilot interface and runs its own non-flying programs. The master is I2C master on EXT, the expansion a target at 0x15 (proposed), with EXT_INT_1 as "poll me". The displays are two standard 7" TFT Display Drivers (KC-01-1911); EX30 and EX31 retired. The expansion Teensy and both display drivers each have a Simpit link (eight Simpit ports in all). Autopilot consoles move from Information Display 2 to the expansion after its bench checks; keys plus console pages. Power re-estimated (≈ 0.6 A typical, ≈ 1.0 A peak at 12 V). Open items E-05, E-07 and E-09 closed; E-10 to E-16 added. Then, from the mockup review: layout A with portrait displays (D7), no A/P OFF on the expansion (D8), MBK keycaps from FKcaps; E-17 to E-19 added |
-| 0.5 | 2026-11-21 | Single-screen concept from the mockup review. One 7" display in landscape over the keypad, about 205 × 240 mm (D7 revised), on one KC-01-1911. The autopilot flight graphics move to the Information Displays (D9, §8.4): ASCENT redesign with a trajectory profile, horizontal atmosphere bar and STAGE overlay; DESCENT braking profile and BRAKE IGN; ORBIT planned orbit; NAVIGATION heading bug and AUTOPILOT box; AIRCRAFT targets on Info Display 1; a new ROVER MAP screen on Info Display 2's key 6. The master keeps sending Info Display 2 the autopilot frames after the consoles retire. Hub ports: Teensy and display, two spare; seven Simpit ports. Power re-estimated (≈ 0.37 A typical, ≈ 0.75 A peak at 12 V). E-18 closed; E-20 to E-23 added |
+| 0.5 | 2026-11-21 | Single-screen concept from the mockup review. One 7" display in landscape over the keypad, about 205 × 240 mm (D7 revised), on one KC-01-1911. The autopilot flight graphics move to the Information Displays (D9, §8.4): ASCENT redesign with a trajectory profile, horizontal atmosphere bar and STAGE overlay; DESCENT braking profile and BRAKE IGN; ORBIT planned orbit; NAVIGATION heading bug and AUTOPILOT box; AIRCRAFT targets on Info Display 1; a new ROVER MAP screen on Info Display 2's key 6. The master keeps sending Info Display 2 the autopilot frames after the consoles retire. Hub ports: Teensy and display, two spare; seven Simpit ports. Power re-estimated (≈ 0.37 A typical, ≈ 0.75 A peak at 12 V). E-18 closed; E-20 to E-23 added. Figures 4-1 (block diagram) and 7-1 (keypad layout) replace the text diagrams |
