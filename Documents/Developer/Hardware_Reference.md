@@ -551,7 +551,7 @@ The master detects INT_BUS going low on the dedicated interrupt line for each mo
 
 ### 8.4 External Interface Signal Architecture
 
-Signals routed over the external expansion cable (§10) require additional protection and conditioning not needed for internal IDC runs. The following requirements apply to all signals crossing the GX16 external connector interface. The main-controller side below is as built (Ctrl Module V2.0, Extension V2.0). The expansion-unit side is the planned design in `Expansion_Module_Spec.md` (v0.3, draft); no expansion hardware has been built.
+Signals routed over the external expansion cable (§10) require additional protection and conditioning not needed for internal IDC runs. The following requirements apply to all signals crossing the GX16 external connector interface. The main-controller side below is as built (Ctrl Module V2.0, Extension V2.0). The expansion-unit side is the planned design in `Expansion_Module_Spec.md` (v0.5, draft); no expansion hardware has been built.
 
 **Full Signal Path**
 
@@ -1070,7 +1070,7 @@ Capability flags not listed above are reserved and must be set to 0.
 | Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v6.3 (v6.0 was rewritten from the inventory alongside revision 2.0) — per-module button assignments, switch groups, CAG table, axis mappings, firmware implementation detail |
 | Power Budget | `Documents/Developer/Power_Budget.md` | v1.3 — per-module and per-panel power consumption, supply headroom analysis |
 | Ascent Autopilot Interface | `Documents/Developer/Ascent_Autopilot_Interface.md` | Info Display ↔ master byte-level contract for the Simpit ascent autopilot command/status frames |
-| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.3 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
+| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.5 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem, Information Display changes |
 | Drawings | `Documents/Drawings/` | Assembly, schematic, PCB, BOM and placement drawings for each board (KC-01-xxx0 to xxx4) |
 | KC-01-1912 Pin Assignment | `Software/Displays/libraries/KCMk1_SystemConfig/src/KCMk1_SystemConfig.h` | Authoritative Teensy 4.1 ↔ LT7683 (RA8876-compatible) 7" display-driver pin map (`KCM_TFT_*`, touch, audio, I2C bus defines) |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |
