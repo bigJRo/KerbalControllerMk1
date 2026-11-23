@@ -631,10 +631,18 @@ def main():
     a = ap.parse_args()
     cdir = os.path.dirname(os.path.abspath(a.config))
     cfg = json.load(open(a.config, encoding="utf-8"))
-    for k in ("sch_pdf", "gerber_dir", "bom_csv", "pnp_csv"):
+    for k in ("sch_pdf", "gerber_dir", "gerber_zip", "bom_csv", "pnp_csv"):
         if k in cfg and not os.path.isabs(cfg[k]):
             cfg[k] = os.path.normpath(os.path.join(cdir, cfg[k]))
     os.makedirs(a.out, exist_ok=True)
+    if "gerber_zip" in cfg and "gerber_dir" not in cfg:   # the fab zip as exported: unpack it for this run
+        import zipfile
+        gdir = tempfile.mkdtemp(prefix="kc_gerber_", dir=a.out)
+        with zipfile.ZipFile(cfg["gerber_zip"]) as z:
+            for m in z.namelist():
+                if "/" not in m and ".." not in m:
+                    z.extract(m, gdir)
+        cfg["gerber_dir"] = gdir
     builders = {"1": doc_sch, "2": doc_pwb, "3": doc_bom, "4": doc_place}
     for d in a.docs.split(","):
         work = tempfile.mkdtemp(prefix=f"kc_{d}_", dir=a.out)
