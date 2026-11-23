@@ -403,9 +403,10 @@ def doc_place(cfg, work):
     return sheets
 
 
-SCH_K = 0.37            # mm per schematic pt: one scale for every block on every sheet
-SCH_INSET = 1.5          # pt trimmed from each block edge
-SCH_BAND = 5.0          # mm label band under each block
+SCH_K = 0.50            # mm per schematic pt (config "sch_scale"): one scale on every sheet
+SCH_BAND = 5.0          # mm label band at the bottom of each block
+SCH_GAP = 2.0           # mm clearance to the frame, revision block and title block
+SCH_DASH = (2.5, 1.5)   # separator dash pattern, mm
 SCH_LABEL = "#a10000"   # label colour (EasyEDA symbol red)
 
 
@@ -427,48 +428,88 @@ def _sch_page_body(cfg, page, work, cache={}):
     return body
 
 
+def _dashed_segments(s, boxes):
+    """Draw the edges of all boxes once each: shared edges are merged, and the dash
+    pattern is phased to absolute position so collinear runs line up."""
+    runs = {}
+    for x0, y0, x1, y1 in boxes:
+        for key, a, b in ((("h", round(y0, 2)), x0, x1), (("h", round(y1, 2)), x0, x1),
+                          (("v", round(x0, 2)), y0, y1), (("v", round(x1, 2)), y0, y1)):
+            runs.setdefault(key, []).append((a, b))
+    period = sum(SCH_DASH)
+    for (axis, c), segs in runs.items():
+        segs.sort()
+        merged = [list(segs[0])]
+        for a, b in segs[1:]:
+            if a <= merged[-1][1] + 1e-6:
+                merged[-1][1] = max(merged[-1][1], b)
+            else:
+                merged.append([a, b])
+        for a, b in merged:
+            x1, y1, x2, y2 = (a, c, b, c) if axis == "h" else (c, a, c, b)
+            s.add(f'<line x1="{x1:.3f}" y1="{y1:.3f}" x2="{x2:.3f}" y2="{y2:.3f}" stroke="#7a7a7a" '
+                  f'stroke-width="0.25" stroke-dasharray="{SCH_DASH[0]} {SCH_DASH[1]}" '
+                  f'stroke-dashoffset="{a % period:.3f}"/>')
+
+
 def doc_sch(cfg, work):
-    """Each sheet is a set of blocks cut from the EasyEDA pages. Every block is drawn at
-    the same scale (SCH_K), separated by thin dashed lines, with its label in a band at
-    its bottom left. Block: {page, src:[x0,y0,x1,y1] in page pt (top-down), label,
-    at:[x,y] optional position in the sheet's own pt layout (default: same as src)}."""
+    """Schematic sheets built from blocks cut out of the EasyEDA pages.
+
+    Each sheet is {"rows": [row, ...]}; a row is a list of columns and a column is a list of
+    blocks stacked top to bottom. Block: {page, crop:[x0,y0,x1,y1] in page pt (top-down), label}.
+    Every block is drawn at one scale (sch_scale, mm per pt) on every sheet. Rows are stretched
+    to the full drawing width, columns to the row height, and each circuit is centred in its
+    box with its label at the bottom left. The block group is centred vertically between the
+    revision block and the title block."""
+    k = cfg.get("sch_scale", SCH_K)
     sheets = []
     total = len(cfg["sch_sheets"])
     for n, spec in enumerate(cfg["sch_sheets"], 1):
         s = Sheet()
         a = frame(s, fields(cfg, "1", n, total, "NTS"))
-        blocks = []
-        for b in spec["blocks"]:
-            x0, y0, x1, y1 = b["src"]
-            vx, vy = b.get("at", (x0, y0))
-            blocks.append((b, (vx, vy, vx + (x1 - x0), vy + (y1 - y0))))
-        bottoms = sorted({round(v[3], 2) for _, v in blocks})
+        ax0, ax1 = a["x0"] + SCH_GAP, a["x1"] - SCH_GAP
+        ay0, ay1 = a["rev_y"] + SCH_GAP, a["tb_y"] - SCH_GAP
 
-        def M(y):
-            return y * SCH_K + SCH_BAND * sum(1 for bb in bottoms if bb <= round(y, 2) + 1e-6)
-        minx = min(v[0] for _, v in blocks)
-        maxx = max(v[2] for _, v in blocks)
-        miny = min(v[1] for _, v in blocks)
-        width = (maxx - minx) * SCH_K
-        ax0, ax1 = M_IN + 4, W - M_IN - 4
-        ox = ax0 + ((ax1 - ax0) - width) / 2 - minx * SCH_K
-        oy = a["rev_y"] + 4 - M(miny)
-        pages = sorted({b["page"] for b, _ in blocks})
+        def nat(b):
+            x0, y0, x1, y1 = b["crop"]
+            return (x1 - x0) * k, (y1 - y0) * k + SCH_BAND
+        rows = []
+        for row in spec["rows"]:
+            cols = [(max(nat(b)[0] for b in col), sum(nat(b)[1] for b in col)) for col in row]
+            rows.append((row, cols, max(h for _, h in cols)))
+        total_h = sum(r[2] for r in rows)
+        if total_h > ay1 - ay0 + 1e-6:
+            raise SystemExit(f"SCH sheet {n}: blocks need {total_h:.1f} mm of height, "
+                             f"{ay1 - ay0:.1f} mm available; lower sch_scale")
+        y = ay0 + ((ay1 - ay0) - total_h) / 2
+        boxes = []
+        pages = sorted({b["page"] for row in spec["rows"] for col in row for b in col})
         defs = "".join(f'<g id="sch-page-{pg}">{_sch_page_body(cfg, pg, work)}</g>' for pg in pages)
         s.add(f"<defs>{defs}</defs>")
-        for b, (vx0, vy0, vx1, vy1) in blocks:
-            sx0, sy0, sx1, sy1 = b["src"]
-            X, Y = ox + vx0 * SCH_K, oy + M(vy0)
-            w, h = (vx1 - vx0) * SCH_K, (vy1 - vy0) * SCH_K
-            Yb = oy + M(vy1)
-            i = SCH_INSET  # crop inside the dashed box so the source page's frame ticks drop out
-            s.add(f'<svg x="{X + i * SCH_K:.3f}" y="{Y + i * SCH_K:.3f}" width="{w - 2 * i * SCH_K:.3f}" '
-                  f'height="{h - 2 * i * SCH_K:.3f}" viewBox="{sx0 + i} {sy0 + i} {sx1 - sx0 - 2 * i} '
-                  f'{sy1 - sy0 - 2 * i}" overflow="hidden">'
-                  f'<use href="#sch-page-{b["page"]}" xlink:href="#sch-page-{b["page"]}"/></svg>')
-            s.add(f'<rect x="{X:.3f}" y="{Y:.3f}" width="{w:.3f}" height="{Yb - Y:.3f}" fill="none" '
-                  f'stroke="#7a7a7a" stroke-width="0.25" stroke-dasharray="2.5 1.5"/>')
-            s.text(X + 2.0, Yb - 1.7, b["label"], size=3.0, c=SCH_LABEL)
+        for row, cols, rh in rows:
+            nat_w = sum(w for w, _ in cols)
+            if nat_w > ax1 - ax0 + 1e-6:
+                raise SystemExit(f"SCH sheet {n}: a row needs {nat_w:.1f} mm of width, "
+                                 f"{ax1 - ax0:.1f} mm available; lower sch_scale")
+            x = ax0
+            for col, (cw, ch) in zip(row, cols):
+                cw *= (ax1 - ax0) / nat_w            # stretch columns to the full width
+                by = y
+                for b in col:
+                    bw, bh = nat(b)
+                    bh *= rh / ch                    # stretch blocks to the row height
+                    boxes.append((x, by, x + cw, by + bh))
+                    x0, y0, x1, y1 = b["crop"]
+                    w, h = (x1 - x0) * k, (y1 - y0) * k
+                    cx, cy = x + (cw - w) / 2, by + (bh - SCH_BAND - h) / 2
+                    s.add(f'<svg x="{cx:.3f}" y="{cy:.3f}" width="{w:.3f}" height="{h:.3f}" '
+                          f'viewBox="{x0} {y0} {x1 - x0} {y1 - y0}" overflow="hidden">'
+                          f'<use href="#sch-page-{b["page"]}" xlink:href="#sch-page-{b["page"]}"/></svg>')
+                    s.text(x + 2.0, by + bh - 1.7, b["label"], size=3.0, c=SCH_LABEL)
+                    by += bh
+                x += cw
+            y += rh
+        _dashed_segments(s, boxes)
         sheets.append(s)
     return sheets
 
