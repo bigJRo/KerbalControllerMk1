@@ -25,7 +25,7 @@
 | 1.10 | 2026-08-08 | §5.4: corrected the Throttle Module board designator from KC-01-1822 to KC-01-1872, matching the released drawing set (KC-01-1870 assembly / KC-01-1871 schematic / KC-01-1872 board / KC-01-1873 BOM / KC-01-1874 placement). Throttle row note updated: the five illuminated panel switches share a single backlight-enable output (not per-switch LEDs). §14 Related Documents: bumped the I2C Protocol Specification cross-reference to v2.10 (the two parallel v2.6/v2.9 spec lineages were reconciled into a single v2.10 document). |
 | 2.0 | 2026-10-26 | Rebuilt from `Hardware_Inventory.md` (the V2.0 schematics, confirmed panel by panel) and `Master_Firmware_Design.md`; every difference in Inventory §6 resolved. **Boards:** Display Hub (KC-01-1721/1722) retired — on A1 and B1 one 7" TFT Display Driver (KC-01-1911/1912) is the panel hub (Info Display 1 → Ctrl Module CN4; Resource Display → Extension CN5); Panel Hub (KC-01-1731/1732) on A2 (Ctrl CN3) and B2 (Extension CN4). Schematic and PCB numbers both listed. "Carrier" boards renamed to "Display Driver"; Ctrl Ext Module renamed Ctrl Module Extension. Removed the Ctrl Module ST7789 status display (not fitted; SPI pins unconnected). 2" display driver has no safe-switch terminal. Dual Encoder safe-switch terminal cannot reach the master. Throttle THRTL_ENA terminal unwired. **§3:** new §3.6 board interconnection. **§4:** rewritten per panel (slots, INT lines, safe switches, mode selector, Switch Groups 1 / 2 wiring). **§6:** power button has no Teensy pin; INA228 data shown on the Sys Info Display; new §6.6 fan and temperature (EMC2101 internal sensor only, nothing fitted on H4; fan header pin order). **§8:** I2C level shifter (not a divider) on ATtiny modules; safe lines documented as active-high; device map gains board / slot / INT columns, 0x2E marked retired; EXT_INT protection corrected (47 Ω + 4.7 kΩ both on EXT_INT_1 at the Ctrl Module, nothing on EXT_INT_2); new §8.5 master pin map from `KCMk1_Master/config.h`. **§9:** 50-pin pinout corrected to the V2.0 schematics. **§10:** Extension CN2 expansion terminal pinout added. **§11:** renamed Panel 34-Pin IDC Connector; line mapping and display-driver use of the four lines added. **§12 / §13:** slot pin 16 not connected on any hub; safe switches use the hub's own terminal; RST not connected on the 2" driver. **§14:** added Hardware Inventory and Master Firmware Design; I2C Protocol v2.17; Module UI Reference v6.0 (rewritten alongside this revision); master firmware is now `Software/KCMk1_Master` (the old `Software/Controller_Main` is deleted). New §15 Open Items. |
 | 2.1 | 2026-11-15 | Brought in line with the Technical Information Manual and the firmware. **§2:** Alternate Resource Panel added to the required mods. **§3.6:** wiring diagram (`assets/KCMk1_Wiring_Diagram.svg`) and its three print figures referenced. **§4.3, §5.4:** throttle buttons named as engraved: FULL, THRTL +, THRTL −, IDLE (firmware names THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00 kept). **§6.1:** interim system-load figures updated to Power Budget v1.3. **§6.3:** V_12 feeds the converters and the fans; new 9V row for the Throttle Module's own MPM3610 motor supply (Power Budget v1.3). **§10:** the GX16-10 and the expansion USB-C are fitted on the enclosure but reserved (unused). **§4, §14, §15:** cross-references updated to I2C Protocol v2.21, Module UI Reference v6.3 and Power Budget v1.3. |
-| 2.2 | 2026-11-23 | **§8.4, §10:** the TUSB212 USB signal conditioner is dropped from the expansion path. The link starts at a Ctrl Module hub port, and the ≈ 2 m run to the expansion's Teensy is well inside USB 2.0's 5 m; the internal leads are shielded twisted-pair USB cable, with a bench check and a Full Speed firmware fallback. Expansion Module Spec referenced at v0.7. |
+| 2.2 | 2026-11-23 | **§8.4, §10:** the TUSB212 USB signal conditioner is dropped from the expansion path. The link starts at a Ctrl Module hub port, and the ≈ 2 m run to the expansion's Teensy is well inside USB 2.0's 5 m; the internal leads are shielded twisted-pair USB cable, with a bench check and a Full Speed firmware fallback. Expansion Module Spec referenced at v0.9. **§10.4:** expansion-side terminal is CN1 on the Expansion Main Board (KC-01-2702); its pinout is added. |
 
 ---
 
@@ -552,7 +552,7 @@ The master detects INT_BUS going low on the dedicated interrupt line for each mo
 
 ### 8.4 External Interface Signal Architecture
 
-Signals routed over the external expansion cable (§10) require additional protection and conditioning not needed for internal IDC runs. The following requirements apply to all signals crossing the GX16 external connector interface. The main-controller side below is as built (Ctrl Module V2.0, Extension V2.0). The expansion-unit side is the planned design in `Expansion_Module_Spec.md` (v0.8, draft); no expansion hardware has been built.
+Signals routed over the external expansion cable (§10) require additional protection and conditioning not needed for internal IDC runs. The following requirements apply to all signals crossing the GX16 external connector interface. The main-controller side below is as built (Ctrl Module V2.0, Extension V2.0). The expansion-unit side is the planned design in `Expansion_Module_Spec.md` (v0.9, draft); no expansion hardware has been built.
 
 **Full Signal Path**
 
@@ -798,7 +798,7 @@ Between each panel connector and the respective routing board, point-to-point in
 | Segment | From | To | Wire spec |
 |---------|------|----|-----------|
 | Main controller side | GX16-10 panel socket (main enclosure) | Terminal block CN2 on Ctrl Module Extension | 24AWG signal, 20AWG power |
-| Expansion side | GX16-10 panel socket (expansion enclosure) | Terminal block on Expansion Routing Board | 24AWG signal, 20AWG power |
+| Expansion side | GX16-10 panel socket (expansion enclosure) | Terminal block CN1 on the Expansion Main Board (KC-01-2702) | 24AWG signal, 20AWG power |
 | Main USB-C | USB-C panel mount (main enclosure) | USBC2 on Ctrl Module (§7.7) | USB 2.0 rated cable assembly |
 | Expansion USB-C | USB-C panel mount (expansion enclosure) | Expansion Teensy 4.1 Micro-USB (Expansion Main Board) | USB 2.0 rated cable assembly, shielded, VBUS not connected |
 
@@ -818,6 +818,23 @@ Between each panel connector and the respective routing board, point-to-point in
 | 10 | Not connected | 10 (SPARE) |
 
 > **Note:** From pin 5 on, the terminal order differs from the GX16-10 pin order, so the main-side harness must cross-map pins 5–9 as shown. Wire by signal name, not by pin number.
+
+**Expansion Main Board CN1 (10-pin DB125-3.81 terminal):**
+
+| Terminal pin | Signal | GX16-10 pin |
+|:------------:|--------|:-----------:|
+| 10 | V_12 | 1 |
+| 9 | V_12 | 2 |
+| 8 | GND | 3 |
+| 7 | GND | 4 |
+| 6 | EXT_INT_2 | 8 |
+| 5 | EXT_INT_1 | 7 |
+| 4 | RST | 9 |
+| 3 | SDA_EXT | 5 |
+| 2 | SCL_EXT | 6 |
+| 1 | Not connected | 10 (SPARE) |
+
+> **Note:** The expansion terminal's order differs from both the GX16-10 and the main side's CN2, so the two harnesses are not alike. Wire each by signal name (Expansion Module Spec §3.1).
 
 ---
 
@@ -1061,7 +1078,7 @@ Capability flags not listed above are reserved and must be set to 0.
 | Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v6.3 (v6.0 was rewritten from the inventory alongside revision 2.0) — per-module button assignments, switch groups, CAG table, axis mappings, firmware implementation detail |
 | Power Budget | `Documents/Developer/Power_Budget.md` | v1.3 — per-module and per-panel power consumption, supply headroom analysis |
 | Ascent Autopilot Interface | `Documents/Developer/Ascent_Autopilot_Interface.md` | Info Display ↔ master byte-level contract for the Simpit ascent autopilot command/status frames |
-| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.8 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem, Information Display changes |
+| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.9 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem, Information Display changes |
 | Drawings | `Documents/Drawings/` | Assembly, schematic, PCB, BOM and placement drawings for each board (KC-01-xxx0 to xxx4) |
 | KC-01-1912 Pin Assignment | `Software/Displays/libraries/KCMk1_SystemConfig/src/KCMk1_SystemConfig.h` | Authoritative Teensy 4.1 ↔ LT7683 (RA8876-compatible) 7" display-driver pin map (`KCM_TFT_*`, touch, audio, I2C bus defines) |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |

@@ -96,7 +96,7 @@ class Svg:
 def block_diagram():
     s = Svg(1400, 890)
     s.t(30, 30, "KCMk1 Expansion Module: block diagram", size=19, weight="bold", anchor="start")
-    s.t(30, 50, "Expansion Module Specification v0.8, §4.1. One board, one Teensy 4.1: it draws the 7\" display, reads the keypad and is the master's EXT target.",
+    s.t(30, 50, "Expansion Module Specification v0.9, §4.1. One board, one Teensy 4.1: it draws the 7\" display, reads the keypad and is the master's EXT target.",
         size=12, anchor="start", fill="#607d8b")
 
     # Enclosure panel connectors
@@ -119,7 +119,7 @@ def block_diagram():
     s.t(125, 688, "VBUS not connected", size=11, fill="#455a64")
 
     # Expansion Main Board
-    s.board(266, 96, 1112, 800, "Expansion Main Board", "KC-01-2XXX (number to be assigned)", fill="#e3f2fd")
+    s.board(266, 96, 1112, 800, "Expansion Main Board", "KC-01-2701 (schematic) / 2702 (board)", fill="#e3f2fd")
     s.item(286, 150, 520, 262, ["Power", "Input: SS34 + polyfuse", "MPM3610 A: 5 V display, Teensy",
                                 "MPM3610 B: 5 V key LEDs", "AP2112K: 3.3 V logic"], size=11)
     s.item(286, 268, 520, 318, ["SDA_EXT / SCL_EXT: passive", "pull-ups on the Ctrl Module"], size=11)
@@ -171,7 +171,7 @@ def block_diagram():
     s.t(1270, 238, "controller's four displays", size=11, fill="#37474f")
     s.wire([(1092, 185), (1160, 185)], "bus")
 
-    s.board(1160, 330, 1380, 520, "Keyboard Matrix PCB", "KC-01-EX21")
+    s.board(1160, 330, 1380, 520, "Keyboard Matrix PCB", "KC-01-2711 / 2712")
     for k, line in enumerate(["25 × Kailh Choc V1", "25 × 1N4148W (anode on row)", "25 × SK6812MINI-EA",
                               "4 × 7 matrix, 21 mm grid", "100 µF bulk at the connector"]):
         s.t(1270, 400 + k * 18, line, size=11, fill="#37474f")
@@ -212,10 +212,10 @@ def keypad():
     X0, Y0 = 150, 196
     s = Svg(1200, 740)
     s.t(30, 30, "KCMk1 Expansion Module: keypad layout", size=19, weight="bold", anchor="start")
-    s.t(30, 50, "Expansion Module Specification v0.8, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
+    s.t(30, 50, "Expansion Module Specification v0.9, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
         size=12, anchor="start", fill="#607d8b")
 
-    # Board outline (KC-01-EX21, 147 × 100 mm, drawn to the same scale as the grid)
+    # Board outline (KC-01-2712, 147 × 100 mm, drawn to the same scale as the grid)
     bw, bh = 147 * P / 21, 100 * P / 21
     by0 = Y0 + 2 * P - bh / 2
     s.rect(X0, by0, X0 + bw, by0 + bh, fill="#f5f7f8", stroke="#90a4ae", sw=1.4, r=10, dash="8 5")
@@ -261,7 +261,7 @@ def keypad():
     for xx in (X0, X0 + P):
         s.o.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#607d8b" stroke-width="1.2"/>' % (xx, dy - 6, xx, dy + 6))
     s.t(X0 + P / 2, dy + 18, "21 mm", size=11, fill="#607d8b", weight="bold")
-    s.t(X0 + bw / 2, dy + 18, "Keyboard Matrix PCB KC-01-EX21, 147 × 100 mm (dashed)", size=11, fill="#607d8b")
+    s.t(X0 + bw / 2, dy + 18, "Keyboard Matrix PCB KC-01-2712, 147 × 100 mm (dashed)", size=11, fill="#607d8b")
 
     # Legend and notes
     lx = X0 + bw + 50

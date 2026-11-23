@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 0.8 (Draft)  
+**Version:** 0.9 (Draft)  
 **Date:** 2026-11-21  
 **Document type:** Developer — Hardware Design Specification
 
@@ -46,7 +46,7 @@ Everything runs on **one Teensy 4.1** on the Expansion Main Board (D10). It draw
 | D7 | **One landscape screen over the keypad.** A single 7" display (1024 × 600) stands above the keypad. The panel is about 205 × 240 mm | Layout A: two 7" displays in portrait, about 260 × 305 mm (v0.4 draft) |
 | D8 | **No A/P OFF on the expansion.** Autopilots are switched off from the main controller: the A/P switch, or the RHC stick button. The expansion engages, sets and disengages individual modes only | The consoles' A/P OFF button |
 | D9 | **Autopilot flight graphics go on the Information Displays.** The expansion screen shows the page you work with: the program, its modes, setpoints and registers. What the autopilot is doing to the flight (targets, predicted paths, bugs) is drawn on the existing Information Display screens (§8.4) | A graphical left display on the expansion (v0.4 draft) |
-| D10 | **One microcontroller and one main board.** The Expansion Main Board (KC-01-2XXX, number to be assigned) carries the Teensy 4.1, the display circuit, a TCA8418 keypad scanner, the encoder and LED connections, the GX16-10 signal protection and the power supplies. The keyboard PCB has only switches, diodes and LEDs | An expansion Teensy on a carrier board (EX23), a separate display driver, a routing board (EX10) and a USB hub (v0.5) |
+| D10 | **One microcontroller and one main board.** The Expansion Main Board (KC-01-2701 / 2702) carries the Teensy 4.1, the display circuit, a TCA8418 keypad scanner, the encoder and LED connections, the GX16-10 signal protection and the power supplies. The keyboard PCB has only switches, diodes and LEDs | An expansion Teensy on a carrier board (EX23), a separate display driver, a routing board (EX10) and a USB hub (v0.5) |
 
 ---
 
@@ -70,6 +70,21 @@ Both enclosure panels mount a **female socket with male pins**. The cable has **
 | 8 | EXT_INT_2 | Main → Expansion | Spare in v0.6 (§9.2). 4.7 kΩ pull-up at the expansion end, wired to Teensy pin 11 so a later use needs firmware only; no source resistor on the V2.0 Ctrl Module (Hardware Reference §8.4, §15). Master pin 32 |
 | 9 | RST | Main → Expansion | Active-low. 47 Ω series at the Ctrl Module; 10 kΩ pull-up and 100 Ω + 100 nF RC filter at the expansion end |
 | 10 | SPARE | — | Reserved |
+
+**Expansion terminal CN1** (on the Expansion Main Board, 10-pin DB125-3.81). Its order differs from both the GX16-10 and the Ctrl Module Extension's CN2, so the expansion-side harness is wired by signal name:
+
+| CN1 pin | Signal | GX16-10 pin |
+|:-:|---|:-:|
+| 10 | V_12 | 1 |
+| 9 | V_12 | 2 |
+| 8 | GND | 3 |
+| 7 | GND | 4 |
+| 6 | EXT_INT_2 | 8 |
+| 5 | EXT_INT_1 (through 47 Ω on the board) | 7 |
+| 4 | RST (RST_EXT) | 9 |
+| 3 | SDA_EXT | 5 |
+| 2 | SCL_EXT | 6 |
+| 1 | Not connected | 10 (SPARE) |
 
 All signal protection components are on the boards, not in the cable. The Ctrl Module Extension's CN2 terminal order differs from the GX16-10 order from pin 5 on, so the main-side harness cross-maps them (Hardware Reference §10.4).
 
@@ -145,8 +160,8 @@ Programs that compute or display but do not fly the vessel run on the expansion 
 
 | Board | Designator | Description |
 |-------|------------|-------------|
-| Expansion Main Board | KC-01-2XXX (number to be assigned) | **New; schematic complete (2026-11-23).** Teensy 4.1 on headers (H1, H2); the display circuit of the KC-01-1911 V2.1 (40-pin panel header H3 for the LT7683 bus, backlight and touch; 10 kΩ pull-up on /RESET; 10 kΩ local I2C pull-ups); TCA8418 keypad scanner with 1 µF + 100 nF decoupling and 10 kΩ pull-ups on INT, RESET and the seven unused keypad pins; SN74AHCT1G125 LED data level shifter on 5V_LED with a 470 Ω series resistor; 34-pin keyboard connector CN2; 5-pin encoder header H4. GX16-10 wiring terminal CN1 (10-pin DB125-3.81, in the same order as the Ctrl Module Extension's CN2, so both harnesses are wired alike); 47 Ω series on EXT_INT_1; 4.7 kΩ pull-up on EXT_INT_2; RST through a 10 kΩ pull-up, then 100 Ω in series with 100 nF to ground at the Teensy; no LTC4311 and no I2C pull-ups on EXT (the Ctrl Module has them). Power: SS34 + polyfuse input protection, MPM3610 A (5 V for the panel and Teensy), MPM3610 B (5V_LED for the key LEDs and the level shifter), AP2112K (3.3 V) |
-| Keyboard Matrix PCB | KC-01-EX21 | Switches, diodes and LEDs only (§7.4); headers unchanged |
+| Expansion Main Board | KC-01-2701 (schematic) / 2702 (board) | **New; schematic complete (2026-11-23).** Teensy 4.1 on headers (H1, H2); the display circuit of the KC-01-1911 V2.1 (40-pin panel header H3 for the LT7683 bus, backlight and touch; 10 kΩ pull-up on /RESET; 10 kΩ local I2C pull-ups); TCA8418 keypad scanner with 1 µF + 100 nF decoupling and 10 kΩ pull-ups on INT, RESET and the seven unused keypad pins; SN74AHCT1G125 LED data level shifter on 5V_LED with a 470 Ω series resistor; 34-pin keyboard connector CN2; 5-pin encoder header H4. GX16-10 wiring terminal CN1 (10-pin DB125-3.81; its pin order differs from the Ctrl Module Extension's CN2, so each harness is wired by signal name, §3.1); 47 Ω series on EXT_INT_1; 4.7 kΩ pull-up on EXT_INT_2; RST through a 10 kΩ pull-up, then 100 Ω in series with 100 nF to ground at the Teensy; no LTC4311 and no I2C pull-ups on EXT (the Ctrl Module has them). Power: SS34 + polyfuse input protection, MPM3610 A (5 V for the panel and Teensy), MPM3610 B (5V_LED for the key LEDs and the level shifter), AP2112K (3.3 V) |
+| Keyboard Matrix PCB | KC-01-2711 (schematic) / 2712 (board) | Switches, diodes and LEDs only, plus the bulk capacitor (§7.4) |
 | Encoder Carrier | KC-01-1851 / 1852 | The main controller's existing encoder board (§7.5), on header H4 |
 | 7" panel | ER-TFT070A2-6-5633 | The main displays' panel and capacitive touch, on the main board's panel header |
 
@@ -238,7 +253,7 @@ The 25 switches are wired as a 4-row × 7-column matrix with one diode per key (
 
 One SK6812MINI-EA (LCSC C5378731) per key sits reverse-mounted on the back of the keyboard PCB and shines through a cutout into the Choc V1 housing. The LEDs are daisy-chained DOUT → DIN from LED_0 (PROG), left to right and top to bottom. LED_DIN comes in from the Expansion Main Board on the keyboard connector (pin 33), from the SN74AHCT1G125 level shifter through 470 Ω (the LEDs run at 5 V and need a 5 V data level); LED_DOUT returns on pin 2 and is not used. A 100 µF capacitor at the connector holds up the 5 V rail against the LEDs' switching current. Each LED has a 100 nF decoupling capacitor (C1525) placed close to VDD.
 
-### 7.4 Keyboard PCB (KC-01-EX21)
+### 7.4 Keyboard PCB (KC-01-2711 / 2712)
 
 | Parameter | Value |
 |-----------|-------|
@@ -379,7 +394,7 @@ The protocol follows the display-carrier pattern (I2C spec §15). The frames are
 | E-21 | Information Display firmware for §8.4: the ASCENT redesign, the DESCENT braking profile and BRAKE IGN, the ORBIT planned orbit, the NAVIGATION heading bug and AUTOPILOT box, the AIRCRAFT targets, and the new ROVER MAP screen; display references and TIM | Firmware / docs |
 | E-22 | The MARK path: a short command from the expansion to the master, forwarded to Information Display 2 for the ROVER MAP | Firmware |
 | E-23 | Autopilot data for Information Display 1: the aircraft frame 0xA6, or a short targets frame, from the master | Firmware |
-| E-24 | Expansion Main Board (KC-01-2XXX) and keyboard PCB layout. Schematics complete and reviewed (2026-11-23). At layout: check that 5V and 5V_LED stay separate nets (both converter sub-sheets name their output port "+5V"); confirm the resistor values in the BOM; assign the board number | Hardware |
+| E-24 | Expansion Main Board (KC-01-2702) and keyboard PCB (KC-01-2712) layout. Schematics complete and reviewed (2026-11-23). At layout: check that 5V and 5V_LED stay separate nets (both converter sub-sheets name their output port "+5V"); confirm the resistor values in the BOM | Hardware |
 | E-25 | Closed: the TCA8418 data sheet confirms pulled-up rows and driven columns; the keyboard diodes have their anodes on the row lines (§7.2) | — |
 | E-26 | USB bench check: the expansion link at High Speed over the real path (Ctrl Module lead, external cable, expansion lead); the Full Speed firmware fallback if it is marginal | Bench check |
 
@@ -406,4 +421,5 @@ In scope later, when the firmware is designed: the master's EXT service (E-10), 
 | 0.5 | 2026-11-21 | Single-screen concept from the mockup review. One 7" display in landscape over the keypad, about 205 × 240 mm (D7 revised), on one KC-01-1911. The autopilot flight graphics move to the Information Displays (D9, §8.4): ASCENT redesign with a trajectory profile, horizontal atmosphere bar and STAGE overlay; DESCENT braking profile and BRAKE IGN; ORBIT planned orbit; NAVIGATION heading bug and AUTOPILOT box; AIRCRAFT targets on Info Display 1; a new ROVER MAP screen on Info Display 2's key 6. The master keeps sending Info Display 2 the autopilot frames after the consoles retire. Hub ports: Teensy and display, two spare; seven Simpit ports. Power re-estimated (≈ 0.37 A typical, ≈ 0.75 A peak at 12 V). E-18 closed; E-20 to E-23 added. Figures 4-1 (block diagram) and 7-1 (keypad layout) replace the text diagrams |
 | 0.6 | 2026-11-21 | One microcontroller (D10). A new Expansion Main Board (KC-01-EX11 / EX12) carries one Teensy 4.1 with the KC-01-1911 V2.1 display circuit and pin map (D3 revised), a TCA8418 keypad scanner, the encoder and LED connections (with a 74AHCT1G125 level shifter), an optional tone amplifier for a key click, the GX16-10 signal protection, the TUSB212 and the power supplies (a second MPM3610 for the key LEDs). The expansion Teensy, its carrier EX23, the routing board EX10 and the USB hub are retired. One Simpit link (six ports in all); EXT_INT_2 spare, wired to pin 11. §7.2 diode direction corrected (anode on the row). Power re-estimated (≈ 0.30 A typical, ≈ 0.76 A peak at 12 V). Figure 4-1 redrawn. E-06 closed, E-09 closed again; E-24 and E-25 added |
 | 0.7 | 2026-11-23 | TUSB212 USB signal conditioner dropped: the link starts at a Ctrl Module hub port, and the ≈ 2 m run to the Teensy is well inside USB 2.0's 5 m. The internal leads are shielded twisted-pair USB cable, the panel mount's lead goes straight to the Teensy, and a bench check with a Full Speed fallback is added (E-26). Figure 4-1 updated |
-| 0.8 | 2026-11-23 | Aligned with the completed schematics (main board KC-01-2XXX and keyboard). Pin map: EXT_INT_1 on pin 0 through 47 Ω, TCA8418 RESET on 7, encoder on 30 / 29 / 10, LED data on 28; pins 8, 12, 13 spare. The tone amplifier is dropped. RST filter as built (10 kΩ pull-up, 100 Ω + 100 nF). The encoder is the existing Encoder Carrier KC-01-1851 / 1852 (EX22 retired). The keyboard has one 34-pin connector instead of J1 / J2, and a 100 µF bulk capacitor. Diode direction confirmed against the TCA8418 data sheet; E-25 closed, E-24 updated. Figure 4-1 updated |
+| 0.8 | 2026-11-23 | Aligned with the completed schematics (main board and keyboard). Pin map: EXT_INT_1 on pin 0 through 47 Ω, TCA8418 RESET on 7, encoder on 30 / 29 / 10, LED data on 28; pins 8, 12, 13 spare. The tone amplifier is dropped. RST filter as built (10 kΩ pull-up, 100 Ω + 100 nF). The encoder is the existing Encoder Carrier KC-01-1851 / 1852 (EX22 retired). The keyboard has one 34-pin connector instead of J1 / J2, and a 100 µF bulk capacitor. Diode direction confirmed against the TCA8418 data sheet; E-25 closed, E-24 updated. Figure 4-1 updated |
+| 0.9 | 2026-11-23 | Board numbers assigned: Expansion Main Board KC-01-2701 / 2702, keyboard KC-01-2711 / 2712. The expansion terminal CN1 pinout is recorded (§3.1); its order differs from the main side's CN2, so the harness is wired by signal name. Figure 4-1 updated |
