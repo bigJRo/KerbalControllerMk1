@@ -5,7 +5,7 @@ gen_expansion_diagrams.py -- figures for the Expansion Module Specification.
 Draws two figures for Documents/Developer/Expansion_Module_Spec.md:
 
   Expansion_Block_Diagram   §4.1: the enclosure connectors, the Expansion Main
-                            Board, the 7" panel, keyboard, encoder and speaker,
+                            Board, the 7" panel, keyboard and encoder,
                             and every power, I2C, USB and signal path between them
   Expansion_Keypad_Layout   §7.1: the 25 keys and the encoder on the 21 mm grid,
                             with matrix rows / columns and the LED chain order
@@ -96,7 +96,7 @@ class Svg:
 def block_diagram():
     s = Svg(1400, 890)
     s.t(30, 30, "KCMk1 Expansion Module: block diagram", size=19, weight="bold", anchor="start")
-    s.t(30, 50, "Expansion Module Specification v0.7, §4.1. One board, one Teensy 4.1: it draws the 7\" display, reads the keypad and is the master's EXT target.",
+    s.t(30, 50, "Expansion Module Specification v0.8, §4.1. One board, one Teensy 4.1: it draws the 7\" display, reads the keypad and is the master's EXT target.",
         size=12, anchor="start", fill="#607d8b")
 
     # Enclosure panel connectors
@@ -119,7 +119,7 @@ def block_diagram():
     s.t(125, 688, "VBUS not connected", size=11, fill="#455a64")
 
     # Expansion Main Board
-    s.board(266, 96, 1112, 800, "Expansion Main Board", "KC-01-EX11 (schematic) / EX12 (board)", fill="#e3f2fd")
+    s.board(266, 96, 1112, 800, "Expansion Main Board", "KC-01-2XXX (number to be assigned)", fill="#e3f2fd")
     s.item(286, 150, 520, 262, ["Power", "Input: SS34 + polyfuse", "MPM3610 A: 5 V display, Teensy",
                                 "MPM3610 B: 5 V key LEDs", "AP2112K: 3.3 V logic"], size=11)
     s.item(286, 268, 520, 318, ["SDA_EXT / SCL_EXT: passive", "pull-ups on the Ctrl Module"], size=11)
@@ -131,18 +131,17 @@ def block_diagram():
     s.item(596, 150, 812, 724, ["Teensy 4.1", "Display: 8080 16-bit bus", "to the LT7683 (as the 1911)",
                                 "Touch + keypad: software", "I2C on pins 4 / 5",
                                 "EXT target on Wire2", "(pins 24 / 25), 0x15",
-                                "INT_BUS pin 0, RST pin 1", "EXT_INT_2 pin 11 (spare)",
-                                "Keypad INT pin 2", "Encoder pins 10, 12, 28", "LED data pin 13",
-                                "Tone pins 29, 30", "microSD: assets",
+                                "EXT_INT_1 pin 0, RST pin 1", "EXT_INT_2 pin 11 (spare)",
+                                "Keypad INT pin 2, RESET pin 7", "Encoder pins 30, 29, 10", "LED data pin 28",
+                                "microSD: assets",
                                 "Pages, programs, DSKY UI", "Own Kerbal Simpit link"],
            size=11, fill="#fff8e1", stroke="#f9a825")
 
     s.item(872, 150, 1092, 220, ["Panel header", "LT7683 bus, backlight,", "touch I2C"], size=10.5, fill="#eceff1", stroke="#455a64")
     s.item(872, 248, 1092, 318, ["TCA8418", "keypad scanner, 0x34", "debounce, event FIFO"], size=10.5)
-    s.item(872, 350, 1092, 420, ["J1 / J2", "to the keyboard PCB", "rows, columns, LED, 5 V B"], size=10.5, fill="#eceff1", stroke="#455a64")
-    s.item(872, 450, 1092, 510, ["74AHCT1G125", "LED data 3.3 V → 5 V"], size=10.5)
-    s.item(872, 538, 1092, 592, ["Encoder header", "A, B, push"], size=10.5, fill="#eceff1", stroke="#455a64")
-    s.item(872, 620, 1092, 680, ["PAM8302A tone amp", "key click (optional fit)"], size=10.5)
+    s.item(872, 350, 1092, 420, ["CN2, 34-pin", "to the keyboard PCB", "rows, columns, LED, 5V_LED"], size=10.5, fill="#eceff1", stroke="#455a64")
+    s.item(872, 450, 1092, 510, ["SN74AHCT1G125 + 470 Ω", "LED data 3.3 V → 5 V"], size=10.5)
+    s.item(872, 538, 1092, 592, ["Encoder header H4", "3V3, A, B, push, GND"], size=10.5, fill="#eceff1", stroke="#455a64")
 
     # Enclosure → board
     s.wire([(208, 206), (286, 206)], "pwr"); s.lbl(240, 199, "12 V", "pwr", size=10)
@@ -162,7 +161,6 @@ def block_diagram():
     s.wire([(812, 480), (872, 480)], "sig"); s.lbl(842, 473, "LED", "sig", size=10.5)
     s.wire([(982, 450), (982, 420)], "sig")
     s.wire([(812, 565), (872, 565)], "sig"); s.lbl(842, 558, "ENC", "sig", size=10.5)
-    s.wire([(812, 650), (872, 650)], "sig"); s.lbl(842, 643, "TONE", "sig", size=10.5)
 
     # Outside parts
     s.board(1160, 96, 1380, 300, "7\" panel", "ER-TFT070A2-6-5633")
@@ -174,17 +172,15 @@ def block_diagram():
     s.wire([(1092, 185), (1160, 185)], "bus")
 
     s.board(1160, 330, 1380, 520, "Keyboard Matrix PCB", "KC-01-EX21")
-    for k, line in enumerate(["25 × Kailh Choc V1", "25 × 1N4148W diodes", "25 × SK6812MINI-EA",
-                              "4 × 7 matrix, 21 mm grid", "No active parts besides LEDs"]):
+    for k, line in enumerate(["25 × Kailh Choc V1", "25 × 1N4148W (anode on row)", "25 × SK6812MINI-EA",
+                              "4 × 7 matrix, 21 mm grid", "100 µF bulk at the connector"]):
         s.t(1270, 400 + k * 18, line, size=11, fill="#37474f")
     s.wire([(1092, 385), (1160, 385)], "sig"); s.lbl(1136, 378, "ribbon", "sig", size=10)
 
-    s.board(1160, 545, 1380, 640, "Encoder PCB", "KC-01-EX22")
+    s.board(1160, 545, 1380, 640, "Encoder Carrier", "KC-01-1851 / 1852 (existing)")
     s.t(1270, 612, "PEC11R, 24 detents, push", size=11, fill="#37474f")
     s.wire([(1092, 565), (1160, 565)], "sig")
 
-    s.board(1160, 670, 1380, 760, "Speaker", "2-pin, as on the 7\" displays")
-    s.wire([(1092, 650), (1128, 650), (1128, 715), (1160, 715)], "sig")
 
     s.legend(30, 860, ["pwr", "i2c", "usb", "sig", "bus"])
     return s.finish()
@@ -216,7 +212,7 @@ def keypad():
     X0, Y0 = 150, 196
     s = Svg(1200, 740)
     s.t(30, 30, "KCMk1 Expansion Module: keypad layout", size=19, weight="bold", anchor="start")
-    s.t(30, 50, "Expansion Module Specification v0.7, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
+    s.t(30, 50, "Expansion Module Specification v0.8, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
         size=12, anchor="start", fill="#607d8b")
 
     # Board outline (KC-01-EX21, 147 × 100 mm, drawn to the same scale as the grid)
