@@ -384,71 +384,130 @@ def doc_bom(cfg, work):
     return [s]
 
 
+PLACE_K = 1.75          # placement views scale (7:4), one board side per sheet
+REFDES = "#1f4e9a"      # reference designator colour
+PIN1 = "#c0392b"        # pin 1 marker colour
+
+
+def _mm(v):
+    return float(v.strip('"').replace("mm", ""))
+
+
+def _pnp_rows(cfg):
+    rows = []
+    for p in read_utf16_tsv(cfg["pnp_csv"]):
+        q = {k: v.strip('"') for k, v in p.items()}
+        q["x"], q["y"] = _mm(q["Mid X"]), _mm(q["Mid Y"])
+        q["px"], q["py"] = _mm(q["Pad X"]), _mm(q["Pad Y"])
+        q["rot"] = float(q["Rotation"] or 0)
+        q["pins"] = int(q.get("Pins") or 0)
+        rows.append(q)
+    return rows
+
+
+def _des_key(d):
+    m = re.match(r"([A-Z]+)(\d+)", d)
+    return (m.group(1), int(m.group(2))) if m else (d, 0)
+
+
 def doc_place(cfg, work):
+    """Placement drawing: one sheet per board side that carries parts, at PLACE_K, then a
+    placement table. Views show the solder mask openings (pads) and silkscreen, the drilled
+    holes, reference designators along each part's axis, and a pin 1 marker on every part
+    with more than two pins and on polarised two-pin parts (config place_polarised)."""
     gdir = cfg["gerber_dir"]
     ol = outline_info(gdir)
     (bx0, by0), (bx1, by1) = ol["bounds"]
     holes = drills(gdir)
     r = ol["radius"]
+    k = cfg.get("place_scale", PLACE_K)
+    pnp = _pnp_rows(cfg)
+    polar = set(cfg.get("place_polarised", []))
+    sides = [("B", "BOTTOM SIDE", "viewed from the bottom (board flipped left to right)", True),
+             ("T", "TOP SIDE", "viewed from the top", False)]
+    sides = [sd for sd in sides if any(p["Layer"] == sd[0] for p in pnp)]
+    total = len(sides) + 1
     sheets = []
-    s = Sheet()
-    a = frame(s, fields(cfg, "4", 1, 2, "1:1"))
-    views = [("BOTTOM SIDE  ·  VIEWED FROM THE BOTTOM", "b", True, 24, 46), ("TOP SIDE  ·  VIEWED FROM THE TOP", "t", False, 220, 46)]
-    pnp = read_utf16_tsv(cfg["pnp_csv"])
-    for title, side, mirror, vx, vy in views:
-        mask = glob.glob(os.path.join(gdir, "*.GTS" if side == "t" else "*.GBS"))[0]
-        silk = glob.glob(os.path.join(gdir, "*.GTO" if side == "t" else "*.GBO"))[0]
-        bx, by_, bw, bh = place_layer(s, mask, ol["bounds"], vx, vy, 1.0, "#bec4cc", mirror=mirror)
-        place_layer(s, silk, ol["bounds"], vx, vy, 1.0, "#141414", bg="white", mirror=mirror)
-        s.text(vx, vy - 3, title, size=3.0, weight="bold")
-        ox = vx + (bx0 - bx)
-        oyy = vy + (by_ - by1)
-        s.rect(ox, oyy, ol["w"], ol["h"], sw=0.4, rx=r)
+    for n, (side, name, how, mirror) in enumerate(sides, 1):
+        s = Sheet()
+        a = frame(s, fields(cfg, "4", n, total, _ratio(k)))
+        pad = 1.0
+        ww, wh = (ol["w"] + 2 * pad) * k, (ol["h"] + 2 * pad) * k
+        vx = a["x0"] + (a["x1"] - a["x0"] - ww) / 2
+        vy = a["rev_y"] + 2 + ((a["tb_y"] - 2) - (a["rev_y"] + 2) - wh) / 2
+        on_side = [p for p in pnp if p["Layer"] == side]
+        s.text(a["x0"] + 6, a["y0"] + 8, f"{name}  ·  {how.upper()}", size=3.4, weight="bold")
+        s.text(a["x0"] + 6, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. {len(on_side)} part"
+               f"{'s' if len(on_side) != 1 else ''} on this side. Pads (solder mask openings) grey, silkscreen black, "
+               f"reference designators blue, pin 1 red.", size=2.3, c=GREY)
+        mask = glob.glob(os.path.join(gdir, "*.GTS" if side == "T" else "*.GBS"))[0]
+        silk = glob.glob(os.path.join(gdir, "*.GTO" if side == "T" else "*.GBO"))[0]
+        bx, by_, _, _ = place_layer(s, mask, ol["bounds"], vx, vy, k, "#bec4cc", mirror=mirror)
+        place_layer(s, silk, ol["bounds"], vx, vy, k, "#141414", bg="white", mirror=mirror)
+
+        def P(x, y):
+            u = (x - bx) * k
+            return (vx + (ww - u) if mirror else vx + u), vy + (by_ - y) * k
+        ox, oy = P(bx0, by1)
+        s.rect(min(ox, ox + (-1 if mirror else 1) * ol["w"] * k), oy, ol["w"] * k, ol["h"] * k, sw=0.4, rx=r * k)
         for hl in holes:
-            hx = hl["x"] - bx0
-            if mirror:
-                hx = ol["w"] - hx
-            s.circle(ox + hx, oyy + (by1 - hl["y"]), hl["d"] / 2, 0.1, fill="#fff", c="#555")
-        on_side = [p for p in pnp if p["Layer"].strip('"') == side.upper()]
+            hx, hy = P(hl["x"], hl["y"])
+            s.circle(hx, hy, hl["dt"] / 2 * k, 0.1, fill="#fff", c="#555")
+        size = 1.6
         for p in on_side:
-            px_ = float(p["Mid X"].strip('"').replace("mm", "")) - bx0
-            py_ = by1 - float(p["Mid Y"].strip('"').replace("mm", ""))
-            if mirror:
-                px_ = ol["w"] - px_
-            s.text(ox + px_, oyy + py_ + 0.6, p["Designator"].strip('"'), size=1.7, anchor="middle", weight="bold", c="#1f4e9a")
-        n = len(on_side)
-        s.text(vx, vy + ol["h"] + 6, f"{n} part{'s' if n != 1 else ''} on this side. Reference designators in blue."
-               + (" Board shown flipped left to right." if mirror else ""), size=2.3, c=GREY)
-        # datum marker at the board origin (top-left in the top view)
-        dxs = ox + (ol["w"] if mirror else 0)
-        s.circle(dxs, oyy, 1.2, 0.25)
-        s.line(dxs - 2, oyy, dxs + 2, oyy, 0.25)
-        s.line(dxs, oyy - 2, dxs, oyy + 2, 0.25)
-        s.text(dxs - 2.5, oyy - 2.6, "DATUM 0,0", size=2.0, anchor="end")
-    notes_box(s, M_IN + 4, a["tb_y"], 196, H - M_IN - a["tb_y"], cfg["place_notes"])
-    sheets.append(s)
+            x, y = P(p["x"], p["y"])
+            d = p["Designator"]
+            if p["pins"] > 2 or d in polar:
+                qx, qy = P(p["px"], p["py"])
+                s.circle(qx, qy, 0.55, 0.15, fill=PIN1, c="white")
+            vert = round(p["rot"]) % 180 == 90 and p["pins"] <= 2
+            if vert:
+                s.text(x + size * 0.36, y, d, size=size, anchor="middle", weight="bold", c=REFDES, rot=-90)
+            else:
+                s.text(x, y + size * 0.36, d, size=size, anchor="middle", weight="bold", c=REFDES)
+        # datum: board top-left corner in the top view
+        dx, dy = P(bx0, by1)
+        s.circle(dx, dy, 1.4, 0.25)
+        s.line(dx - 2.6, dy, dx + 2.6, dy, 0.25)
+        s.line(dx, dy - 2.6, dx, dy + 2.6, 0.25)
+        s.text(dx + (2.8 if mirror else -2.8), dy - 2.8, "DATUM 0,0", size=2.2, anchor="start" if mirror else "end")
+        notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["place_notes"])
+        sheets.append(s)
 
-    # sheet 2: placement table
+    # placement table
     s = Sheet()
-    a = frame(s, fields(cfg, "4", 2, 2, "NTS"))
-    s.text(M_IN + 6, M_IN + 9, "PLACEMENT TABLE", size=3.4, weight="bold")
-    s.text(M_IN + 6, M_IN + 14, "X, Y: part centre from the datum (board top-left corner, top view), mm; Y is negative into the board.", size=2.3, c=GREY)
-    s.text(M_IN + 6, M_IN + 18, "Rotation in degrees as exported by EasyEDA Pro (machine-ready pick-and-place file of the same revision).", size=2.3, c=GREY)
-
-    def key(p):
-        d = p["Designator"].strip('"')
-        m = re.match(r"([A-Z]+)(\d+)", d)
-        return (m.group(1), int(m.group(2))) if m else (d, 0)
-    rows = [[p["Designator"].strip('"'), re.sub(r"[^\x00-\x7f]+", "", p["Device"].strip('"')), p["Footprint"].strip('"').split("_")[0],
-             "Top" if p["Layer"].strip('"') == "T" else "Bottom", p["Mid X"].strip('"').replace("mm", ""),
-             p["Mid Y"].strip('"').replace("mm", ""), p["Rotation"].strip('"'), "SMT" if p["SMD"].strip('"') == "Yes" else "Hand"]
-            for p in sorted(pnp, key=key)]
-    cols = [("REF", 12, "start"), ("PART", 40, "start"), ("PKG", 26, "start"), ("SIDE", 14, "middle"),
-            ("X", 17, "end"), ("Y", 17, "end"), ("ROT", 11, "end"), ("ASSY", 12, "middle")]
-    top = a["rev_y"] + 5
-    per = int((a["tb_y"] - 6 - top - 5.2) / 4.6)
-    for c, chunk in enumerate([rows[i:i + per] for i in range(0, len(rows), per)][:2]):
-        s.table(M_IN + 6 + c * 200, top, cols, chunk, rh=4.6, size=2.2)
+    a = frame(s, fields(cfg, "4", total, total, "NTS"))
+    s.text(a["x0"] + 6, a["y0"] + 8, "PLACEMENT TABLE", size=3.4, weight="bold")
+    s.text(a["x0"] + 6, a["y0"] + 13, "X, Y: part centre from the datum (board top-left corner, top view), mm; "
+           "Y is negative into the board.", size=2.3, c=GREY)
+    s.text(a["x0"] + 6, a["y0"] + 17, f"Rotation in degrees as in the EasyEDA Pro pick-and-place file of the same "
+           f"revision. Part numbers and packages from {cfg['base']}3 BOM.", size=2.3, c=GREY)
+    bom = {}
+    lib = _parts_library(cfg)
+    for b in read_utf16_tsv(cfg["bom_csv"]):
+        for d in b["Designator"].split(","):
+            bom[d.strip()] = b
+    rows = []
+    for p in sorted(pnp, key=lambda q: _des_key(q["Designator"])):
+        d = p["Designator"]
+        b = bom.get(d, {})
+        lp = lib.get(b.get("Supplier Part", "")) or lib.get(d) or {}
+        mpn = lp.get("mpn") or re.sub(r"[^\x00-\x7f]+", "", b.get("Manufacturer Part", "") or p["Device"]).strip()
+        pkg = lp.get("pkg") or p["Footprint"].split("_")[0]
+        rows.append([d, mpn, pkg, "Top" if p["Layer"] == "T" else "Bottom", f"{p['x']:.3f}", f"{p['y']:.3f}",
+                     f"{p['rot']:g}", "SMT" if p["SMD"] == "Yes" else "THT"])
+    base = [("REF", 13, "start"), ("PART", 44, "start"), ("PKG", 24, "start"), ("SIDE", 16, "middle"),
+            ("X", 20, "end"), ("Y", 20, "end"), ("ROT", 13, "end"), ("PROCESS", 18, "middle")]
+    gap = 8
+    tw = (a["x1"] - a["x0"] - 4 - gap) / 2
+    f = tw / sum(c[1] for c in base)
+    cols = [(t, w * f, al) for t, w, al in base]
+    per = (len(rows) + 1) // 2
+    top = a["rev_y"] + 6
+    for c, chunk in enumerate([rows[:per], rows[per:]]):
+        yb = s.table(a["x0"] + 2 + c * (tw + gap), top, cols, chunk, rh=6.6, hh=6.4, size=2.75, hsize=2.5)
+        if yb > a["tb_y"] - 2:
+            raise SystemExit("placement table runs into the title block")
     sheets.append(s)
     return sheets
 
