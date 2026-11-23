@@ -17,11 +17,11 @@ Source files for the released Rev - board drawings of the Expansion Main Board
 Part descriptions, packages and JLCPCB part classes for the BOM come from
 `Documents/Drawings/tools/parts.json`, keyed by LCSC number.
 
-## Known differences between the files
+## Export history
 
-- The `.epro2` project and the pick-and-place file were exported before H4 was given
-  its part (XFCN PZ254V-11-05P, C492404). The BOM export and the drawings include it.
-  Placement data is unaffected because the layout did not change.
+- The BOM, pick-and-place and `.epro2` files were re-exported after H4 was given its
+  part (XFCN PZ254V-11-05P, C492404). Part positions did not change. The fabrication zip,
+  netlist, DRC report and schematic are from the first export of the same day.
 
 ## Regenerating the drawings
 
