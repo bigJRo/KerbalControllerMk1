@@ -62,79 +62,37 @@ def png_href(img, path):
 
 # --------------------------------------------------------------------------- Gerber rendering
 
-
-def _arc_pts(p1, p2, cw, c, step):
-    a1 = math.atan2(p1[1] - c[1], p1[0] - c[0])
-    a2 = math.atan2(p2[1] - c[1], p2[0] - c[0])
-    r = math.hypot(p1[0] - c[0], p1[1] - c[1])
-    if abs(p1[0] - p2[0]) < 1e-9 and abs(p1[1] - p2[1]) < 1e-9:
-        a2 = a1 + (-2 * math.pi if cw else 2 * math.pi)
-    elif cw:
-        if a2 >= a1:
-            a2 -= 2 * math.pi
-    elif a2 <= a1:
-        a2 += 2 * math.pi
-    n = max(2, int(abs(a2 - a1) * r / step) + 1)
-    return [(c[0] + r * math.cos(a1 + (a2 - a1) * k / n), c[1] + r * math.sin(a1 + (a2 - a1) * k / n))
-            for k in range(1, n + 1)]
+_LAYER_N = [0]
 
 
-def _poly(prim, step=0.03):
-    # gerbonara's arc "clockwise" flag is in y-down (SVG) terms; Gerber data here is y-up
-    ap = prim if hasattr(prim, "outline") else prim.to_arc_poly()
-    out = list(ap.outline)
-    ac = list(ap.arc_centers) if ap.arc_centers else [None] * len(out)
-    pts = [out[0]]
-    for k in range(len(out)):
-        p1, p2 = out[k], out[(k + 1) % len(out)]
-        seg = ac[k] if k < len(ac) else None
-        if seg:
-            pts += _arc_pts(p1, p2, not seg[0], seg[1], step)
-        else:
-            pts.append(p2)
-    return pts
+def layer_svg(path, bounds, fg, bg="white", pad=1.0):
+    """A Gerber layer as an inline SVG fragment (vector), drawn by gerbonara.
+    Returns (svg_body_with_unique_ids, (x0, y_top, width, height)) in board mm, y up."""
+    from gerbonara import GerberFile
+    from gerbonara.utils import MM
+    (x0, y0), (x1, y1) = bounds
+    fb = ((x0 - pad, y0 - pad), (x1 + pad, y1 + pad))
+    svg = str(GerberFile.open(path).to_svg(force_bounds=fb, fg=fg, bg=bg, arg_unit=MM, svg_unit=MM))
+    _LAYER_N[0] += 1
+    pre = f"g{_LAYER_N[0]}-"
+    body = svg[svg.index(">", svg.index("<svg")) + 1: svg.rindex("</svg>")]
+    body = re.sub(r'id="([^"]+)"', lambda m: f'id="{pre}{m.group(1)}"', body)
+    body = re.sub(r'(xlink:href|href)="#([^"]+)"', lambda m: f'{m.group(1)}="#{pre}{m.group(2)}"', body)
+    body = re.sub(r"url\(#([^)]+)\)", lambda m: f"url(#{pre}{m.group(1)})", body)
+    vb = re.search(r'viewBox="([^"]+)"', svg).group(1)
+    return body, vb, (x0 - pad, y1 + pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad)
 
 
-class Raster:
-    """Rasterise Gerber layers into a window that covers the board (mm, y up)."""
-
-    def __init__(self, bounds, res=0.05, pad=1.0):
-        (self.x0, self.y0), (x1, y1) = bounds
-        self.x0 -= pad
-        self.y1 = y1 + pad
-        self.res = res
-        self.nx = int((x1 + pad - self.x0) / res) + 1
-        self.ny = int((self.y1 - (self.y0 - pad)) / res) + 1
-
-    def layer(self, path):
-        from gerbonara import GerberFile
-        from gerbonara.utils import MM
-        from skimage.draw import polygon as skpoly
-        a = np.zeros((self.ny, self.nx), dtype=bool)
-        for obj in GerberFile.open(path).objects:
-            for prim in obj.to_primitives(MM):
-                pts = _poly(prim)
-                if len(pts) < 3:
-                    continue
-                xs = np.array([(p[0] - self.x0) / self.res for p in pts]) - 0.5
-                ys = np.array([(self.y1 - p[1]) / self.res for p in pts]) - 0.5
-                rr, cc = skpoly(ys, xs, shape=a.shape)
-                a[rr, cc] = bool(prim.polarity_dark)
-        return a
-
-    def mm_box(self):
-        """(x, y_top, width, height) of the raster in board mm (y up)."""
-        return self.x0, self.y1, self.nx * self.res, self.ny * self.res
-
-
-def colorize(layers, bg=(255, 255, 255)):
-    """layers: list of (bool array, (r,g,b)) painted in order."""
-    h, w = layers[0][0].shape
-    img = np.zeros((h, w, 3), dtype=np.uint8)
-    img[:] = bg
-    for a, col in layers:
-        img[a] = col
-    return Image.fromarray(img)
+def place_layer(s, path, bounds, x, y, k, fg, bg="white", mirror=False):
+    """Draw a Gerber layer on the sheet with its window's top-left at (x, y), scale k."""
+    body, vb, (wx, wy, ww, wh) = layer_svg(path, bounds, fg, bg)
+    w, h = ww * k, wh * k
+    inner = f'<svg x="0" y="0" width="{w:.3f}" height="{h:.3f}" viewBox="{vb}" overflow="hidden">{body}</svg>'
+    if mirror:
+        s.add(f'<g transform="translate({x + w:.3f} {y:.3f}) scale(-1 1)">{inner}</g>')
+    else:
+        s.add(f'<g transform="translate({x:.3f} {y:.3f})">{inner}</g>')
+    return wx, wy, ww, wh
 
 # --------------------------------------------------------------------------- board data
 
@@ -324,17 +282,12 @@ def doc_pwb(cfg, work):
     a = frame(s, fields(cfg, "2", 2, 2, "3:4"))
     s.text(M_IN + 6, M_IN + 9, "COPPER LAYERS AND PLANES (TOP VIEW, LOOKING DOWN THROUGH THE BOARD)", size=3.4, weight="bold")
     s.text(M_IN + 6, M_IN + 14, "Copper shown grey. Planes are drawn as made: clearances (anti-pads) are the white rings.", size=2.3, c=GREY)
-    R = Raster(ol["bounds"], res=0.05)
     k = 0.75
     pos = [(24, 50), (176, 50), (24, 140), (176, 140)]
     for (lx, ly), lay in zip(pos, cfg["layers"]):
-        arr = R.layer(os.path.join(gdir, lay["file"]))
-        img = colorize([(arr, (130, 133, 138))])
-        bx, by_, bw, bh = R.mm_box()
-        href = png_href(img, os.path.join(work, f"layer_{lay['file']}.png"))
+        bx, by_, bw, bh = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, "#82858a")
         s.text(lx, ly - 3, f"{lay['layer']}  ·  {lay['name']}", size=3.0, weight="bold")
         s.text(lx + bw * k, ly - 3, lay.get("net", ""), size=2.4, anchor="end", c=GREY)
-        s.image(lx, ly, bw * k, bh * k, href)
         s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.3, rx=r * k)
     # plane table on the right
     px, py = 330, 50
@@ -386,10 +339,6 @@ def doc_place(cfg, work):
     ol = outline_info(gdir)
     (bx0, by0), (bx1, by1) = ol["bounds"]
     holes = drills(gdir)
-    R = Raster(ol["bounds"], res=0.05)
-    gl = {k: R.layer(glob.glob(os.path.join(gdir, f"*{ext}"))[0]) for k, ext in
-          (("ts", ".GTS"), ("bs", ".GBS"), ("to", ".GTO"), ("bo", ".GBO"))}
-    bx, by_, bw, bh = R.mm_box()
     r = ol["radius"]
     sheets = []
     s = Sheet()
@@ -397,12 +346,11 @@ def doc_place(cfg, work):
     views = [("BOTTOM SIDE  ·  VIEWED FROM THE BOTTOM", "b", True, 24, 46), ("TOP SIDE  ·  VIEWED FROM THE TOP", "t", False, 220, 46)]
     pnp = read_utf16_tsv(cfg["pnp_csv"])
     for title, side, mirror, vx, vy in views:
-        img = colorize([(gl[side + "s"], (190, 196, 204)), (gl[side + "o"], (20, 20, 20))])
-        if mirror:
-            img = img.transpose(Image.FLIP_LEFT_RIGHT)
-        href = png_href(img, os.path.join(work, f"place_{side}.png"))
+        mask = glob.glob(os.path.join(gdir, "*.GTS" if side == "t" else "*.GBS"))[0]
+        silk = glob.glob(os.path.join(gdir, "*.GTO" if side == "t" else "*.GBO"))[0]
+        bx, by_, bw, bh = place_layer(s, mask, ol["bounds"], vx, vy, 1.0, "#bec4cc", mirror=mirror)
+        place_layer(s, silk, ol["bounds"], vx, vy, 1.0, "#141414", bg="white", mirror=mirror)
         s.text(vx, vy - 3, title, size=3.0, weight="bold")
-        s.image(vx, vy, bw, bh, href)
         ox = vx + (bx0 - bx)
         oyy = vy + (by_ - by1)
         s.rect(ox, oyy, ol["w"], ol["h"], sw=0.4, rx=r)
