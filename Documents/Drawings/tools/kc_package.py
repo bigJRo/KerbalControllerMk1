@@ -191,7 +191,7 @@ def dim_v(s, y1, y2, x, label, ext_from=None, size=2.6):
 
 def fields(cfg, d, sheet, sheets, scale):
     return dict(dwg_no=cfg["base"] + d, rev=cfg.get("rev", "-"), title=cfg["title"], subtitle=cfg["subtitle"],
-                doc_type=DOC_TYPES[d][1], status=cfg.get("status", "DRAFT"), created_by=cfg["created_by"],
+                doc_type=DOC_TYPES[d][1], status=cfg.get("doc_status", {}).get(d, cfg.get("status", "DRAFT")), created_by=cfg["created_by"],
                 approved_by=cfg["approved_by"], date=cfg["date"], board_version=cfg["board_version"],
                 scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"))
 
