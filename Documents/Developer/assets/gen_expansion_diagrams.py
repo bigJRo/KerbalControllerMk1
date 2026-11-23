@@ -96,7 +96,7 @@ class Svg:
 def block_diagram():
     s = Svg(1400, 890)
     s.t(30, 30, "KCMk1 Expansion Module: block diagram", size=19, weight="bold", anchor="start")
-    s.t(30, 50, "Expansion Module Specification v0.6, §4.1. One board, one Teensy 4.1: it draws the 7\" display, reads the keypad and is the master's EXT target.",
+    s.t(30, 50, "Expansion Module Specification v0.7, §4.1. One board, one Teensy 4.1: it draws the 7\" display, reads the keypad and is the master's EXT target.",
         size=12, anchor="start", fill="#607d8b")
 
     # Enclosure panel connectors
@@ -125,8 +125,8 @@ def block_diagram():
     s.item(286, 268, 520, 318, ["SDA_EXT / SCL_EXT: passive", "pull-ups on the Ctrl Module"], size=11)
     s.item(286, 336, 520, 434, ["Signal conditioning", "EXT_INT_1: 47 Ω series", "EXT_INT_2: 4.7 kΩ pull-up",
                                 "RST: 10 kΩ pull-up, 100 Ω + 100 nF"], size=11)
-    s.item(286, 620, 440, 690, ["TUSB212", "USB 2.0 signal", "conditioner"], size=11)
-    s.t(403, 730, "No USB hub: one USB device", size=11, fill="#455a64", italic=True)
+    s.t(403, 700, "USB: no hub, no conditioner", size=11, fill="#455a64", italic=True)
+    s.t(403, 716, "(≈ 2 m from the Ctrl Module hub port)", size=11, fill="#455a64", italic=True)
 
     s.item(596, 150, 812, 724, ["Teensy 4.1", "Display: 8080 16-bit bus", "to the LT7683 (as the 1911)",
                                 "Touch + keypad: software", "I2C on pins 4 / 5",
@@ -148,13 +148,12 @@ def block_diagram():
     s.wire([(208, 206), (286, 206)], "pwr"); s.lbl(240, 199, "12 V", "pwr", size=10)
     s.wire([(208, 278), (286, 278)], "i2c"); s.lbl(240, 271, "I2C", "i2c", size=10)
     s.wire([(208, 370), (286, 370)], "sig"); s.lbl(240, 363, "INT, RST", "sig", size=9.5)
-    s.wire([(208, 655), (286, 655)], "usb"); s.lbl(240, 648, "USB", "usb", size=10)
 
     # Column 1 → Teensy
     s.wire([(520, 196), (596, 196)], "pwr"); s.lbl(558, 189, "5 V, 3.3 V", "pwr", size=10.5)
     s.wire([(520, 293), (596, 293)], "i2c"); s.lbl(558, 286, "EXT I2C", "i2c", size=10.5)
     s.wire([(520, 385), (596, 385)], "sig"); s.lbl(558, 378, "INT, RST", "sig", size=10.5)
-    s.wire([(440, 655), (596, 655)], "usb"); s.lbl(518, 648, "Micro-USB cable", "usb", size=10.5)
+    s.wire([(208, 655), (596, 655)], "usb"); s.lbl(403, 648, "Shielded USB lead to the Teensy's Micro-USB", "usb", size=10.5)
 
     # Teensy → column 3
     s.wire([(812, 185), (872, 185)], "bus"); s.lbl(842, 178, "8080", "bus", size=10.5)
@@ -217,7 +216,7 @@ def keypad():
     X0, Y0 = 150, 196
     s = Svg(1200, 740)
     s.t(30, 30, "KCMk1 Expansion Module: keypad layout", size=19, weight="bold", anchor="start")
-    s.t(30, 50, "Expansion Module Specification v0.6, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
+    s.t(30, 50, "Expansion Module Specification v0.7, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.",
         size=12, anchor="start", fill="#607d8b")
 
     # Board outline (KC-01-EX21, 147 × 100 mm, drawn to the same scale as the grid)
