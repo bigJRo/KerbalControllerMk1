@@ -411,14 +411,22 @@ def doc_place(cfg, work):
             if mirror:
                 hx = ol["w"] - hx
             s.circle(ox + hx, oyy + (by1 - hl["y"]), hl["d"] / 2, 0.1, fill="#fff", c="#555")
-        n = sum(1 for p in pnp if p["Layer"].strip('"') == side.upper())
-        s.text(vx, vy + ol["h"] + 6, f"{n} parts on this side." + (" Board shown flipped left to right." if mirror else ""), size=2.3, c=GREY)
+        on_side = [p for p in pnp if p["Layer"].strip('"') == side.upper()]
+        for p in on_side:
+            px_ = float(p["Mid X"].strip('"').replace("mm", "")) - bx0
+            py_ = by1 - float(p["Mid Y"].strip('"').replace("mm", ""))
+            if mirror:
+                px_ = ol["w"] - px_
+            s.text(ox + px_, oyy + py_ + 0.6, p["Designator"].strip('"'), size=1.7, anchor="middle", weight="bold", c="#1f4e9a")
+        n = len(on_side)
+        s.text(vx, vy + ol["h"] + 6, f"{n} part{'s' if n != 1 else ''} on this side. Reference designators in blue."
+               + (" Board shown flipped left to right." if mirror else ""), size=2.3, c=GREY)
         # datum marker at the board origin (top-left in the top view)
         dxs = ox + (ol["w"] if mirror else 0)
         s.circle(dxs, oyy, 1.2, 0.25)
         s.line(dxs - 2, oyy, dxs + 2, oyy, 0.25)
         s.line(dxs, oyy - 2, dxs, oyy + 2, 0.25)
-        s.text(dxs + (-2.5 if mirror else 2.5), oyy + 4.6, "DATUM 0,0", size=2.0, anchor="end" if mirror else "start")
+        s.text(dxs - 2.5, oyy - 2.6, "DATUM 0,0", size=2.0, anchor="end")
     notes_box(s, M_IN + 4, a["tb_y"], 196, H - M_IN - a["tb_y"], cfg["place_notes"])
     sheets.append(s)
 
