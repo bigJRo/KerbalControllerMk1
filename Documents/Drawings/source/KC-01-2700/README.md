@@ -20,8 +20,10 @@ Part descriptions, packages and JLCPCB part classes for the BOM come from
 ## Export history
 
 - The BOM, pick-and-place and `.epro2` files were re-exported after H4 was given its
-  part (XFCN PZ254V-11-05P, C492404). Part positions did not change. The fabrication zip,
-  netlist, DRC report and schematic are from the first export of the same day.
+  part (XFCN PZ254V-11-05P, C492404). Part positions did not change.
+- The fabrication zip was re-exported from the updated project. Every layer and all 411
+  holes are geometrically identical to the first export; only aperture numbering and file
+  headers differ. The netlist, DRC report and schematic are from the first export.
 
 ## Regenerating the drawings
 
