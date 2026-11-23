@@ -170,7 +170,7 @@ def drills(gdir):
         via = "via" in os.path.basename(f).lower()
         for o in ExcellonFile.open(f).objects:
             if hasattr(o, "x"):
-                d = round(o.tool.diameter, 2)
+                d = round(round(o.tool.diameter * 20) / 20, 2)
                 holes.append({"x": o.x, "y": o.y, "d": d, "plated": o.tool.plated is not False, "via": via})
     return holes
 
@@ -261,7 +261,13 @@ def doc_pwb(cfg, work):
     sym = {t: SYMS[k % len(SYMS)] for k, t in enumerate(tools)}
     for hl in holes:
         x, y = P(hl["x"], hl["y"])
+        if hl["d"] >= 2.0:
+            s.circle(x, y, hl["d"] / 2, 0.2)
         symbol(s, sym[(hl["d"], hl["plated"])], x, y, r=0.55 if hl["d"] < 0.5 else 0.9, sw=0.15)
+    s.circle(x0s, y0s, 1.3, 0.25)
+    s.line(x0s - 2.4, y0s, x0s + 2.4, y0s, 0.25)
+    s.line(x0s, y0s - 2.4, x0s, y0s + 2.4, 0.25)
+    s.text(x0s - 2.0, y0s - 2.6, "DATUM 0,0", size=2.0, anchor="end")
     # overall dimensions
     dim_h(s, x0s, x0s + ol["w"], y0s - 5, y0s - 6.2, f"{ol['w']:.2f}", ext_from=y0s)
     dim_v(s, y0s, y0s + ol["h"], x0s - 6, f"{ol['h']:.2f}", ext_from=x0s)
@@ -412,7 +418,7 @@ def doc_place(cfg, work):
         s.circle(dxs, oyy, 1.2, 0.25)
         s.line(dxs - 2, oyy, dxs + 2, oyy, 0.25)
         s.line(dxs, oyy - 2, dxs, oyy + 2, 0.25)
-        s.text(dxs + (-2.5 if mirror else 2.5), oyy - 2.2, "DATUM 0,0", size=2.0, anchor="end" if mirror else "start")
+        s.text(dxs + (-2.5 if mirror else 2.5), oyy + 4.6, "DATUM 0,0", size=2.0, anchor="end" if mirror else "start")
     notes_box(s, M_IN + 4, a["tb_y"], 196, H - M_IN - a["tb_y"], cfg["place_notes"])
     sheets.append(s)
 
@@ -420,22 +426,23 @@ def doc_place(cfg, work):
     s = Sheet()
     a = frame(s, fields(cfg, "4", 2, 2, "NTS"))
     s.text(M_IN + 6, M_IN + 9, "PLACEMENT TABLE", size=3.4, weight="bold")
-    s.text(M_IN + 6, M_IN + 14, "X, Y: part centre from the datum (board top-left corner), mm, Y negative into the board. "
-                                "Rotation in degrees as exported by EasyEDA; bottom-side rotation is as viewed from the top.", size=2.3, c=GREY)
+    s.text(M_IN + 6, M_IN + 14, "X, Y: part centre from the datum (board top-left corner, top view), mm; Y is negative into the board.", size=2.3, c=GREY)
+    s.text(M_IN + 6, M_IN + 18, "Rotation in degrees as exported by EasyEDA Pro (machine-ready pick-and-place file of the same revision).", size=2.3, c=GREY)
 
     def key(p):
         d = p["Designator"].strip('"')
         m = re.match(r"([A-Z]+)(\d+)", d)
         return (m.group(1), int(m.group(2))) if m else (d, 0)
-    rows = [[p["Designator"].strip('"'), p["Device"].strip('"'), p["Footprint"].strip('"').split("_")[0],
+    rows = [[p["Designator"].strip('"'), re.sub(r"[^\x00-\x7f]+", "", p["Device"].strip('"')), p["Footprint"].strip('"').split("_")[0],
              "Top" if p["Layer"].strip('"') == "T" else "Bottom", p["Mid X"].strip('"').replace("mm", ""),
              p["Mid Y"].strip('"').replace("mm", ""), p["Rotation"].strip('"'), "SMT" if p["SMD"].strip('"') == "Yes" else "Hand"]
             for p in sorted(pnp, key=key)]
     cols = [("REF", 12, "start"), ("PART", 40, "start"), ("PKG", 26, "start"), ("SIDE", 14, "middle"),
             ("X", 17, "end"), ("Y", 17, "end"), ("ROT", 11, "end"), ("ASSY", 12, "middle")]
-    per = 36
+    top = a["rev_y"] + 5
+    per = int((a["tb_y"] - 6 - top - 5.2) / 4.6)
     for c, chunk in enumerate([rows[i:i + per] for i in range(0, len(rows), per)][:2]):
-        s.table(M_IN + 6 + c * 200, M_IN + 20, cols, chunk, rh=4.6, size=2.2)
+        s.table(M_IN + 6 + c * 200, top, cols, chunk, rh=4.6, size=2.2)
     sheets.append(s)
     return sheets
 
@@ -471,8 +478,11 @@ def doc_sch(cfg, work):
             if c.get("title"):
                 s.text(x0, y0 + 3.2, c["title"], size=3.0, weight="bold")
                 y0 += 5
-            s.add(f'<svg x="{x0:.2f}" y="{y0:.2f}" width="{x1 - x0:.2f}" height="{y1 - y0:.2f}" '
-                  f'viewBox="{cx} {cy} {cw} {ch}" preserveAspectRatio="xMidYMid meet">{body}</svg>')
+            k = min((x1 - x0) / cw, (y1 - y0) / ch)
+            fw, fh = cw * k, ch * k
+            fx, fy = x0 + ((x1 - x0) - fw) / 2, y0 + ((y1 - y0) - fh) / 2
+            s.add(f'<svg x="{fx:.2f}" y="{fy:.2f}" width="{fw:.2f}" height="{fh:.2f}" '
+                  f'viewBox="{cx} {cy} {cw} {ch}" overflow="hidden">{body}</svg>')
         sheets.append(s)
     return sheets
 
