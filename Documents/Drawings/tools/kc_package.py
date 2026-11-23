@@ -31,7 +31,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from kc_frame import (DOC_TYPES, GREY, HI, H, INK, M_IN, W, Sheet, esc, file_name,  # noqa: E402
+from kc_frame import (DOC_TYPES, GREY, HI, H, INK, M_IN, PAPER, W, Sheet, esc, file_name,  # noqa: E402
                       frame, notes_box, wrap_text)
 
 # --------------------------------------------------------------------------- printing
@@ -198,6 +198,7 @@ def fields(cfg, d, sheet, sheets, scale):
 
 PWB_K = 1.5             # sheet 1 board view scale (3:2)
 LAYER_K = 1.75          # copper layer sheets scale (7:4), one layer per sheet
+LAYER_COLOURS = ["#c0392b", "#d68910", "#1e8449", "#2e5fa8"]  # top red, inner 1 amber, inner 2 green, bottom blue
 
 
 def _ratio(k):
@@ -227,7 +228,7 @@ def doc_pwb(cfg, work):
     def P(x, y):                               # board mm (y up) -> sheet mm
         return ox + (x - bx0) * k, oy + (by1 - y) * k
     s.text(ox - 10, a["y0"] + 8, "BOARD OUTLINE AND HOLES (TOP VIEW)", size=3.4, weight="bold")
-    s.text(ox - 10, a["y0"] + 13, f"Scale {_ratio(k)}. Datum: board corner at top left. All holes are drilled "
+    s.text(ox - 10, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. Datum: board corner at top left. All holes are drilled "
            f"from the top. Corners R{r:.2f} (4 places). Outline tolerance ±0.2.", size=2.3, c=GREY)
     s.rect(ox, oy, bw, bh, sw=0.5, rx=r * k)
     tools = sorted({(h["d"], h["plated"]) for h in holes})
@@ -304,9 +305,11 @@ def doc_pwb(cfg, work):
         ly = a["rev_y"] + 2 + ((a["tb_y"] - 2) - (a["rev_y"] + 2) - wh) / 2
         s.text(a["x0"] + 6, a["y0"] + 8, f"COPPER LAYER {lay['layer']} OF {len(layers)}  ·  {lay['name'].upper()}  "
                f"(TOP VIEW, LOOKING DOWN THROUGH THE BOARD)", size=3.4, weight="bold")
-        s.text(a["x0"] + 6, a["y0"] + 13, f"Scale {_ratio(k)}. Copper shown grey; clearances, anti-pads and "
-               f"gaps are white. {lay.get('net', '')}.", size=2.3, c=GREY)
-        bx, by_, _, _ = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, "#82858a")
+        colour = lay.get("color", LAYER_COLOURS[(n - 2) % len(LAYER_COLOURS)])
+        s.rect(a["x0"] + 6, a["y0"] + 10.6, 6, 3.2, sw=0.2, fill=colour)
+        s.text(a["x0"] + 14, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. Layer {lay['layer']} copper is shown in "
+               f"this colour; clearances, anti-pads and gaps are white. {lay.get('net', '')}.", size=2.3, c=GREY)
+        bx, by_, _, _ = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, colour)
         s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.35, rx=r * k)
         notes = [f"1. Layer {lay['layer']} of {len(layers)}, {lay['name']}, {lay.get('copper', '')} copper: "
                  f"{lay.get('net', '')}."]

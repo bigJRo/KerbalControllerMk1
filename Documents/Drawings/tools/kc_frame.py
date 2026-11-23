@@ -19,6 +19,7 @@ import html
 import os
 
 W, H = 420.0, 297.0          # A3 landscape, mm
+PAPER = "A3"                 # sheet size shown in the title block; scales are true at this size
 M_OUT, M_IN = 5.0, 10.0      # outer trim line, inner frame (zone strip between)
 COLS, ROWS = 8, 6
 FONT = "Liberation Sans, Arial, Helvetica, sans-serif"
@@ -199,11 +200,12 @@ def frame(s, f):
     # title block, bottom right
     tw, th = TB_W, TB_H
     tx, ty = W - M_IN - tw, H - M_IN - th
-    s.cell(tx, ty, 30, 9, "Project", f.get("project_short", "KCMk1"), vsize=2.8)
-    s.cell(tx + 30, ty, 30, 9, "Scale / Units", f"{f.get('scale', 'NTS')}  ·  mm", vsize=2.8)
-    s.cell(tx + 60, ty, 65, 9, "Created by", f.get("created_by", ""), vsize=2.8)
-    s.text(tx + 123.5, ty + 7.2, f.get("created_date", f.get("date", "")), size=2.5, anchor="end")
-    s.cell(tx + 125, ty, 65, 9, "Approved by", f.get("approved_by", ""), vsize=2.8)
+    s.cell(tx, ty, 24, 9, "Project", f.get("project_short", "KCMk1"), vsize=2.8)
+    s.cell(tx + 24, ty, 14, 9, "Size", PAPER, vsize=2.8, vweight="bold")
+    s.cell(tx + 38, ty, 28, 9, "Scale / Units", f"{f.get('scale', 'NTS')}  ·  mm", vsize=2.8)
+    s.cell(tx + 66, ty, 62, 9, "Created by", f.get("created_by", ""), vsize=2.8)
+    s.text(tx + 126.5, ty + 7.2, f.get("created_date", f.get("date", "")), size=2.5, anchor="end")
+    s.cell(tx + 128, ty, 62, 9, "Approved by", f.get("approved_by", ""), vsize=2.8)
     if f.get("status") == "RELEASED":
         s.text(tx + 188.5, ty + 7.2, f.get("approved_date", f.get("date", "")), size=2.5, anchor="end")
     lx, ly, lw, lh = tx, ty + 9, 62, th - 9
