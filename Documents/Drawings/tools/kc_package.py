@@ -352,7 +352,9 @@ def doc_bom(cfg, work):
         p = lib.get(lcsc) or lib.get(first) or {}
         smd = pnp.get(first, {}).get("SMD", "").strip('"')
         side = pnp.get(first, {}).get("Layer", "").strip('"')
-        asm = ("SMT" if smd == "Yes" else "Hand") + (f" ({'top' if side == 'T' else 'bottom'})" if side else "")
+        asm = ("SMT" if smd == "Yes" else "THT") + (f" ({'top' if side == 'T' else 'bottom'})" if side else "")
+        later = set(cfg.get("after_delivery", []))
+        by = "After delivery" if any(d.strip() in later for d in des.split(",")) else cfg.get("assembler", "JLCPCB")
         desc = p.get("desc") or r.get("Secondary Category") or r.get("Primary Category", "")
         mpn = p.get("mpn") or re.sub(r"[^\x00-\x7f]+", "", r.get("Manufacturer Part", "")).strip() or "-"
         mfr = p.get("mfr") or r.get("Manufacturer", "").split("(")[0] or "-"
@@ -360,7 +362,7 @@ def doc_bom(cfg, work):
         val = re.sub(r"^([\d.]+)\s*([pnuµkM]?)(F|Ω|H)$", lambda m: f"{m.group(1)} {m.group(2).replace('u', 'µ')}{m.group(3)}",
                      r.get("Value", "")) or p.get("value", "") or "-"
         rows.append([str(k), r["Quantity"], des.replace(",", ", "), val, pkg, desc, mfr, mpn,
-                     lcsc or "-", (r.get("JLCPCB Part Class", "") or "-").replace(" Part", ""), asm])
+                     lcsc or p.get("lcsc", "-"), (r.get("JLCPCB Part Class", "") or "-").replace(" Part", ""), asm, by])
     s = Sheet()
     a = frame(s, fields(cfg, "3", 1, 1, "NTS"))
     x = a["x0"] + 2
@@ -368,8 +370,9 @@ def doc_bom(cfg, work):
     s.text(x, a["y0"] + 13, f"Board {cfg['base']}2 {cfg['board_version']}. Quantities per assembled card. "
            f"{len(rows)} line items, {sum(int(r[1]) for r in rows)} parts.", size=2.3, c=GREY)
     base = [("ITEM", 10, "middle"), ("QTY", 9, "middle"), ("DESIGNATORS", 62, "start"), ("VALUE", 16, "start"),
-            ("PACKAGE", 21, "start"), ("DESCRIPTION", 98, "start"), ("MANUFACTURER", 27, "start"),
-            ("MFR PART No.", 44, "start"), ("LCSC", 18, "start"), ("CLASS", 16, "middle"), ("ASSEMBLY", 25, "start")]
+            ("PACKAGE", 21, "start"), ("DESCRIPTION", 86, "start"), ("MANUFACTURER", 27, "start"),
+            ("MFR PART No.", 44, "start"), ("LCSC", 18, "start"), ("CLASS", 16, "middle"), ("PROCESS", 22, "start"),
+            ("INSTALLED BY", 24, "start")]
     tw = a["x1"] - 2 - x
     f = tw / sum(c[1] for c in base)
     cols = [(t, w * f, al) for t, w, al in base]
