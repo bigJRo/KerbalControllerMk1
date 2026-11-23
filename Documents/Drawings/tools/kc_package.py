@@ -129,7 +129,8 @@ def drills(gdir):
         for o in ExcellonFile.open(f).objects:
             if hasattr(o, "x"):
                 d = round(round(o.tool.diameter * 20) / 20, 2)
-                holes.append({"x": o.x, "y": o.y, "d": d, "plated": o.tool.plated is not False, "via": via})
+                holes.append({"x": o.x, "y": o.y, "d": d, "dt": o.tool.diameter,
+                              "plated": o.tool.plated is not False, "via": via})
     return holes
 
 # --------------------------------------------------------------------------- symbols
@@ -250,7 +251,8 @@ def doc_pwb(cfg, work):
         hx, hy = P(mh[0]["x"], mh[0]["y"])
         dx, dy = mh[0]["x"] - bx0, by1 - mh[0]["y"]
         s.line(hx + 1.5, hy + 1.2, hx + 16, hy + 11, 0.15)
-        s.text(hx + 16.5, hy + 11.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}", size=2.6)
+        s.text(hx + 16.5, hy + 11.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}"
+               + (f", {cfg['mount_hole_note']}" if cfg.get("mount_hole_note") else ""), size=2.6)
         s.text(hx + 16.5, hy + 15.2, f"{dx:.2f} from the side edges, {dy:.2f} from the top and bottom edges",
                size=2.3, c=GREY)
         xs = sorted({round(h["x"], 2) for h in mh})
@@ -311,9 +313,19 @@ def doc_pwb(cfg, work):
                f"this colour; clearances, anti-pads and gaps are white. {lay.get('net', '')}.", size=2.3, c=GREY)
         bx, by_, _, _ = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, colour)
         s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.35, rx=r * k)
+        # drilled holes on top of the copper: white = no material. Plated: solid outline; NPTH: dashed.
+        for hl in holes:
+            hx, hy = lx + (hl["x"] - bx) * k, ly + (by_ - hl["y"]) * k
+            dash = "" if hl["plated"] else ' stroke-dasharray="0.6 0.4"'
+            s.add(f'<circle cx="{hx:.3f}" cy="{hy:.3f}" r="{hl["dt"] / 2 * k:.3f}" fill="white" '
+                  f'stroke="{INK}" stroke-width="0.1"{dash}/>')
+        has_npth = any(not h["plated"] for h in holes)
         notes = [f"1. Layer {lay['layer']} of {len(layers)}, {lay['name']}, {lay.get('copper', '')} copper: "
                  f"{lay.get('net', '')}."]
         notes += [f"{i}. {t}" for i, t in enumerate(lay.get("notes", []), 2)]
+        notes.append(f"{len(notes) + 1}. Drilled holes are drawn white over the copper, from the drill files: "
+                     + ("solid outline = plated, dashed outline = non-plated." if has_npth
+                        else f"all {len(holes)} holes are plated (solid outline)."))
         notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, notes,
                   title="LAYER NOTES")
         sheets.append(s)
