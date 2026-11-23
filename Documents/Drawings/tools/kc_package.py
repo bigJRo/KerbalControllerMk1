@@ -196,63 +196,77 @@ def fields(cfg, d, sheet, sheets, scale):
                 scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"))
 
 
+PWB_K = 1.5             # sheet 1 board view scale (3:2)
+LAYER_K = 1.75          # copper layer sheets scale (7:4), one layer per sheet
+
+
+def _ratio(k):
+    from fractions import Fraction
+    f = Fraction(k).limit_denominator(8)
+    return f"{f.numerator}:{f.denominator}"
+
+
 def doc_pwb(cfg, work):
     gdir = cfg["gerber_dir"]
     ol = outline_info(gdir)
     holes = drills(gdir)
     (bx0, by0), (bx1, by1) = ol["bounds"]
+    layers = cfg["layers"]
+    total = 1 + len(layers)
     sheets = []
 
     # ---- sheet 1: outline, holes, drill chart, stackup, notes
+    k = cfg.get("pwb_scale", PWB_K)
     s = Sheet()
-    a = frame(s, fields(cfg, "2", 1, 2, "1:1"))
-    ox, oy = 34.0, 58.0           # sheet position of the board's top-left corner (1:1)
-
-    def P(x, y):                  # board mm (y up, origin top-left) -> sheet mm
-        return ox + (x - bx0), oy + (by1 - y)
-    s.text(ox, oy - 15, "BOARD OUTLINE AND HOLES (TOP VIEW)", size=3.4, weight="bold")
-    s.text(ox, oy - 10.5, f"Scale 1:1. Datum: board corner at top left. All holes are drilled from the top.", size=2.3, c=GREY)
+    a = frame(s, fields(cfg, "2", 1, total, _ratio(k)))
     r = ol["radius"]
-    x0s, y0s = P(bx0, by1)
-    s.rect(x0s, y0s, ol["w"], ol["h"], sw=0.5, rx=r)
+    bw, bh = ol["w"] * k, ol["h"] * k
+    ox = a["x0"] + 16.0                        # board top-left on the sheet
+    oy = a["rev_y"] + 21.0
+
+    def P(x, y):                               # board mm (y up) -> sheet mm
+        return ox + (x - bx0) * k, oy + (by1 - y) * k
+    s.text(ox - 10, a["y0"] + 8, "BOARD OUTLINE AND HOLES (TOP VIEW)", size=3.4, weight="bold")
+    s.text(ox - 10, a["y0"] + 13, f"Scale {_ratio(k)}. Datum: board corner at top left. All holes are drilled "
+           f"from the top. Corners R{r:.2f} (4 places). Outline tolerance ±0.2.", size=2.3, c=GREY)
+    s.rect(ox, oy, bw, bh, sw=0.5, rx=r * k)
     tools = sorted({(h["d"], h["plated"]) for h in holes})
-    sym = {t: SYMS[k % len(SYMS)] for k, t in enumerate(tools)}
+    sym = {t: SYMS[n % len(SYMS)] for n, t in enumerate(tools)}
     for hl in holes:
         x, y = P(hl["x"], hl["y"])
         if hl["d"] >= 2.0:
-            s.circle(x, y, hl["d"] / 2, 0.2)
-        symbol(s, sym[(hl["d"], hl["plated"])], x, y, r=0.55 if hl["d"] < 0.5 else 0.9, sw=0.15)
-    s.circle(x0s, y0s, 1.3, 0.25)
-    s.line(x0s - 2.4, y0s, x0s + 2.4, y0s, 0.25)
-    s.line(x0s, y0s - 2.4, x0s, y0s + 2.4, 0.25)
-    s.text(x0s - 2.0, y0s - 2.6, "DATUM 0,0", size=2.0, anchor="end")
-    # overall dimensions
-    dim_h(s, x0s, x0s + ol["w"], y0s - 5, y0s - 6.2, f"{ol['w']:.2f}", ext_from=y0s)
-    dim_v(s, y0s, y0s + ol["h"], x0s - 6, f"{ol['h']:.2f}", ext_from=x0s)
-    # mounting holes (largest tool)
+            s.circle(x, y, hl["d"] / 2 * k, 0.2)
+        symbol(s, sym[(hl["d"], hl["plated"])], x, y, r=0.75 if hl["d"] < 0.5 else 1.2, sw=0.18)
+    s.circle(ox, oy, 1.6, 0.25)
+    s.line(ox - 3, oy, ox + 3, oy, 0.25)
+    s.line(ox, oy - 3, ox, oy + 3, 0.25)
+    s.text(ox - 2.4, oy - 3.0, "DATUM 0,0", size=2.2, anchor="end")
+    dim_h(s, ox, ox + bw, oy - 6, oy - 7.2, f"{ol['w']:.2f}", ext_from=oy)
+    dim_v(s, oy, oy + bh, ox - 7, f"{ol['h']:.2f}", ext_from=ox)
     big = max(h["d"] for h in holes)
     mh = sorted([h for h in holes if h["d"] == big], key=lambda h: (-h["y"], h["x"]))
     if mh:
         hx, hy = P(mh[0]["x"], mh[0]["y"])
         dx, dy = mh[0]["x"] - bx0, by1 - mh[0]["y"]
-        s.line(hx, hy, hx + 14, hy + 9, 0.15)
-        s.text(hx + 14.5, hy + 9.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}", size=2.4)
-        s.text(hx + 14.5, hy + 12.8, f"{dx:.2f} from the side edges, {dy:.2f} from the top and bottom edges", size=2.2, c=GREY)
-        if len(mh) > 1:
-            xs = sorted({round(h["x"], 2) for h in mh})
-            ys = sorted({round(h["y"], 2) for h in mh})
-            if len(xs) > 1:
-                ax, _ = P(xs[0], 0)
-                bx_, _ = P(xs[-1], 0)
-                dim_h(s, ax, bx_, y0s + ol["h"] + 6, y0s + ol["h"] + 10.2, f"{xs[-1] - xs[0]:.2f}", ext_from=y0s + ol["h"] - 3)
-            if len(ys) > 1:
-                _, ay = P(0, ys[-1])
-                _, by_ = P(0, ys[0])
-                dim_v(s, ay, by_, x0s + ol["w"] + 6, f"{ys[-1] - ys[0]:.2f}", ext_from=x0s + ol["w"] - 3)
-    s.text(x0s + 2, y0s + ol["h"] + 16.5, f"Corners R{r:.2f} (4 places).  Outline tolerance ±0.2.", size=2.4)
+        s.line(hx + 1.5, hy + 1.2, hx + 16, hy + 11, 0.15)
+        s.text(hx + 16.5, hy + 11.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}", size=2.6)
+        s.text(hx + 16.5, hy + 15.2, f"{dx:.2f} from the side edges, {dy:.2f} from the top and bottom edges",
+               size=2.3, c=GREY)
+        xs = sorted({round(h["x"], 2) for h in mh})
+        ys = sorted({round(h["y"], 2) for h in mh})
+        if len(xs) > 1:
+            ax_, _ = P(xs[0], 0)
+            bx_, _ = P(xs[-1], 0)
+            dim_h(s, ax_, bx_, oy + bh + 7, oy + bh + 11.2, f"{xs[-1] - xs[0]:.2f}", ext_from=oy + bh - 4)
+        if len(ys) > 1:
+            _, ay_ = P(0, ys[-1])
+            _, by_ = P(0, ys[0])
+            dim_v(s, ay_, by_, ox + bw + 7, f"{ys[-1] - ys[0]:.2f}", ext_from=ox + bw - 4)
 
-    # drill chart
-    tx, ty = 248.0, a["rev_y"] + 8
+    # drill chart and stackup, right of the board
+    tx = ox + bw + 16
+    tw = a["x1"] - 2 - tx
+    ty = a["rev_y"] + 9
     s.text(tx, ty - 2, "DRILL CHART", size=3.0, weight="bold")
     rows = []
     for t in tools:
@@ -260,48 +274,46 @@ def doc_pwb(cfg, work):
         vias = sum(1 for h in holes if (h["d"], h["plated"]) == t and h["via"])
         kind = "Via" if vias == n else ("Component / via" if vias else ("Mounting" if t[0] == big else "Component"))
         rows.append(["", f"{t[0]:.2f}", "PTH" if t[1] else "NPTH", str(n), kind])
-    cols = [("SYM", 12, "middle"), ("DIA (mm)", 22, "middle"), ("PLATING", 20, "middle"), ("QTY", 14, "middle"), ("USE", 52, "start")]
+    f = tw / 90
+    cols = [("SYM", 9 * f, "middle"), ("DIA (mm)", 15 * f, "middle"), ("PLATING", 15 * f, "middle"),
+            ("QTY", 11 * f, "middle"), ("USE", 40 * f, "start")]
     yb = s.table(tx, ty, cols, rows, rh=5.0)
-    for k, t in enumerate(tools):
-        symbol(s, sym[t], tx + 6, ty + 5.2 + 5.0 * k + 2.5, r=1.1, sw=0.2)
-    s.text(tx, yb + 4, f"Total holes: {len(holes)}.  Finished hole sizes; tolerance ±0.08.", size=2.3, c=GREY)
-
-    # stackup
-    sy = yb + 12
+    for n, t in enumerate(tools):
+        symbol(s, sym[t], tx + 4.5 * f, ty + 5.2 + 5.0 * n + 2.5, r=1.1, sw=0.2)
+    s.text(tx, yb + 4, f"Total holes: {len(holes)}.  Finished hole sizes; tolerance ±0.08.", size=2.2, c=GREY)
+    sy = yb + 13
     s.text(tx, sy - 2, "LAYER STACKUP", size=3.0, weight="bold")
     srows = [[l["layer"], l["name"], l["material"], l["thickness"], l.get("use", "")] for l in cfg["stackup"]]
-    scols = [("LAYER", 18, "middle"), ("NAME", 24, "start"), ("MATERIAL", 34, "start"), ("THK (mm)", 16, "middle"), ("USE", 66, "start")]
+    scols = [("No.", 8 * f, "middle"), ("NAME", 18 * f, "start"), ("MATERIAL", 21 * f, "start"),
+             ("THK (mm)", 13 * f, "middle"), ("USE", 30 * f, "start")]
     yb2 = s.table(tx, sy, scols, srows, rh=4.6, size=2.2, wrap=wrap_text)
-    s.text(tx, yb2 + 4, cfg.get("stackup_note", ""), size=2.2, c=GREY)
+    for n, part in enumerate(wrap_text(cfg.get("stackup_note", ""), tw, 2.2)):
+        s.text(tx, yb2 + 4 + 3 * n, part, size=2.2, c=GREY)
 
-    notes_box(s, M_IN + 4, a["tb_y"], 196, H - M_IN - a["tb_y"], cfg["fab_notes"])
+    notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["fab_notes"])
     sheets.append(s)
 
-    # ---- sheet 2: copper layers and planes
-    s = Sheet()
-    a = frame(s, fields(cfg, "2", 2, 2, "3:4"))
-    s.text(M_IN + 6, M_IN + 9, "COPPER LAYERS AND PLANES (TOP VIEW, LOOKING DOWN THROUGH THE BOARD)", size=3.4, weight="bold")
-    s.text(M_IN + 6, M_IN + 14, "Copper shown grey. Planes are drawn as made: clearances (anti-pads) are the white rings.", size=2.3, c=GREY)
-    k = 0.75
-    pos = [(24, 50), (176, 50), (24, 140), (176, 140)]
-    for (lx, ly), lay in zip(pos, cfg["layers"]):
-        bx, by_, bw, bh = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, "#82858a")
-        s.text(lx, ly - 3, f"{lay['layer']}  ·  {lay['name']}", size=3.0, weight="bold")
-        s.text(lx + bw * k, ly - 3, lay.get("net", ""), size=2.4, anchor="end", c=GREY)
-        s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.3, rx=r * k)
-    # plane table on the right
-    px, py = 330, 50
-    s.text(px, py - 3, "LAYERS", size=3.0, weight="bold")
-    trows = [[l["layer"], l["name"], l.get("net", ""), l.get("copper", "")] for l in cfg["layers"]]
-    tcols = [("No.", 9, "middle"), ("NAME", 21, "start"), ("NET / USE", 30, "start"), ("Cu", 12, "middle")]
-    yb = s.table(px, py, tcols, trows, rh=5.2, size=2.2, wrap=wrap_text)
-    yy = yb + 6
-    for n in cfg.get("plane_notes", []):
-        for part in wrap_text(n, 72, 2.2):
-            s.text(px, yy, part, size=2.2)
-            yy += 3.0
-        yy += 1.2
-    sheets.append(s)
+    # ---- sheets 2..: one copper layer per sheet
+    k = cfg.get("layer_scale", LAYER_K)
+    for n, lay in enumerate(layers, 2):
+        s = Sheet()
+        a = frame(s, fields(cfg, "2", n, total, _ratio(k)))
+        pad = 1.0
+        ww, wh = (ol["w"] + 2 * pad) * k, (ol["h"] + 2 * pad) * k
+        lx = a["x0"] + (a["x1"] - a["x0"] - ww) / 2
+        ly = a["rev_y"] + 2 + ((a["tb_y"] - 2) - (a["rev_y"] + 2) - wh) / 2
+        s.text(a["x0"] + 6, a["y0"] + 8, f"COPPER LAYER {lay['layer']} OF {len(layers)}  ·  {lay['name'].upper()}  "
+               f"(TOP VIEW, LOOKING DOWN THROUGH THE BOARD)", size=3.4, weight="bold")
+        s.text(a["x0"] + 6, a["y0"] + 13, f"Scale {_ratio(k)}. Copper shown grey; clearances, anti-pads and "
+               f"gaps are white. {lay.get('net', '')}.", size=2.3, c=GREY)
+        bx, by_, _, _ = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, "#82858a")
+        s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.35, rx=r * k)
+        notes = [f"1. Layer {lay['layer']} of {len(layers)}, {lay['name']}, {lay.get('copper', '')} copper: "
+                 f"{lay.get('net', '')}."]
+        notes += [f"{i}. {t}" for i, t in enumerate(lay.get("notes", []), 2)]
+        notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, notes,
+                  title="LAYER NOTES")
+        sheets.append(s)
     return sheets
 
 
