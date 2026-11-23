@@ -403,42 +403,72 @@ def doc_place(cfg, work):
     return sheets
 
 
+SCH_K = 0.37            # mm per schematic pt: one scale for every block on every sheet
+SCH_INSET = 1.5          # pt trimmed from each block edge
+SCH_BAND = 5.0          # mm label band under each block
+SCH_LABEL = "#a10000"   # label colour (EasyEDA symbol red)
+
+
+def _sch_page_body(cfg, page, work, cache={}):
+    """EasyEDA page as SVG, with EasyEDA's heavy black block borders removed."""
+    if page in cache:
+        return cache[page]
+    svgp = os.path.join(work, f"sch_p{page}.svg")
+    subprocess.run(["pdftocairo", "-svg", "-f", str(page), "-l", str(page), cfg["sch_pdf"], svgp],
+                   check=True, stderr=subprocess.DEVNULL)
+    svg = open(svgp, encoding="utf-8").read()
+    body = svg[svg.index(">", svg.index("<svg")) + 1: svg.rindex("</svg>")]
+    body = re.sub(r'<path(?=[^>]*stroke="rgb\(0%, 0%, 0%\)")(?=[^>]*stroke-width="1\.44")[^>]*/>', "", body)
+    pre = f"p{page}-"
+    body = re.sub(r'id="([^"]+)"', lambda m: f'id="{pre}{m.group(1)}"', body)
+    body = re.sub(r'(xlink:href|href)="#([^"]+)"', lambda m: f'{m.group(1)}="#{pre}{m.group(2)}"', body)
+    body = re.sub(r"url\(#([^)]+)\)", lambda m: f"url(#{pre}{m.group(1)})", body)
+    cache[page] = body
+    return body
+
+
 def doc_sch(cfg, work):
-    """Each EasyEDA page is converted to SVG and its drawing area (without EasyEDA's
-    title block) is placed in the frame. cfg['sch_sheets'] lists the sheets: each is a
-    list of {page, crop:[x,y,w,h] in pt, title}."""
+    """Each sheet is a set of blocks cut from the EasyEDA pages. Every block is drawn at
+    the same scale (SCH_K), separated by thin dashed lines, with its label in a band at
+    its bottom left. Block: {page, src:[x0,y0,x1,y1] in page pt (top-down), label,
+    at:[x,y] optional position in the sheet's own pt layout (default: same as src)}."""
     sheets = []
     total = len(cfg["sch_sheets"])
     for n, spec in enumerate(cfg["sch_sheets"], 1):
         s = Sheet()
         a = frame(s, fields(cfg, "1", n, total, "NTS"))
-        area = (M_IN + 4, a["rev_y"] + 3, W - M_IN - 4, a["tb_y"] - 3)
-        cells = spec["pages"]
-        if len(cells) == 1:
-            boxes = [area]
-        else:
-            ax0, ay0, ax1, ay1 = area
-            mx, my = (ax0 + ax1) / 2, (ay0 + ay1) / 2
-            boxes = [(ax0, ay0, mx - 2, my - 2), (mx + 2, ay0, ax1, my - 2), (ax0, my + 2, mx - 2, ay1), (mx + 2, my + 2, ax1, ay1)]
-        for (x0, y0, x1, y1), c in zip(boxes, cells):
-            svgp = os.path.join(work, f"sch_p{c['page']}.svg")
-            subprocess.run(["pdftocairo", "-svg", "-f", str(c["page"]), "-l", str(c["page"]), cfg["sch_pdf"], svgp],
-                           check=True, stderr=subprocess.DEVNULL)
-            body = open(svgp, encoding="utf-8").read()
-            body = body[body.index(">", body.index("<svg")) + 1: body.rindex("</svg>")]
-            pre = f"p{c['page']}-"
-            body = re.sub(r'id="([^"]+)"', lambda m: f'id="{pre}{m.group(1)}"', body)
-            body = re.sub(r'(xlink:href|href)="#([^"]+)"', lambda m: f'{m.group(1)}="#{pre}{m.group(2)}"', body)
-            body = re.sub(r"url\(#([^)]+)\)", lambda m: f"url(#{pre}{m.group(1)})", body)
-            cx, cy, cw, ch = c["crop"]
-            if c.get("title"):
-                s.text(x0, y0 + 3.2, c["title"], size=3.0, weight="bold")
-                y0 += 5
-            k = min((x1 - x0) / cw, (y1 - y0) / ch)
-            fw, fh = cw * k, ch * k
-            fx, fy = x0 + ((x1 - x0) - fw) / 2, y0 + ((y1 - y0) - fh) / 2
-            s.add(f'<svg x="{fx:.2f}" y="{fy:.2f}" width="{fw:.2f}" height="{fh:.2f}" '
-                  f'viewBox="{cx} {cy} {cw} {ch}" overflow="hidden">{body}</svg>')
+        blocks = []
+        for b in spec["blocks"]:
+            x0, y0, x1, y1 = b["src"]
+            vx, vy = b.get("at", (x0, y0))
+            blocks.append((b, (vx, vy, vx + (x1 - x0), vy + (y1 - y0))))
+        bottoms = sorted({round(v[3], 2) for _, v in blocks})
+
+        def M(y):
+            return y * SCH_K + SCH_BAND * sum(1 for bb in bottoms if bb <= round(y, 2) + 1e-6)
+        minx = min(v[0] for _, v in blocks)
+        maxx = max(v[2] for _, v in blocks)
+        miny = min(v[1] for _, v in blocks)
+        width = (maxx - minx) * SCH_K
+        ax0, ax1 = M_IN + 4, W - M_IN - 4
+        ox = ax0 + ((ax1 - ax0) - width) / 2 - minx * SCH_K
+        oy = a["rev_y"] + 4 - M(miny)
+        pages = sorted({b["page"] for b, _ in blocks})
+        defs = "".join(f'<g id="sch-page-{pg}">{_sch_page_body(cfg, pg, work)}</g>' for pg in pages)
+        s.add(f"<defs>{defs}</defs>")
+        for b, (vx0, vy0, vx1, vy1) in blocks:
+            sx0, sy0, sx1, sy1 = b["src"]
+            X, Y = ox + vx0 * SCH_K, oy + M(vy0)
+            w, h = (vx1 - vx0) * SCH_K, (vy1 - vy0) * SCH_K
+            Yb = oy + M(vy1)
+            i = SCH_INSET  # crop inside the dashed box so the source page's frame ticks drop out
+            s.add(f'<svg x="{X + i * SCH_K:.3f}" y="{Y + i * SCH_K:.3f}" width="{w - 2 * i * SCH_K:.3f}" '
+                  f'height="{h - 2 * i * SCH_K:.3f}" viewBox="{sx0 + i} {sy0 + i} {sx1 - sx0 - 2 * i} '
+                  f'{sy1 - sy0 - 2 * i}" overflow="hidden">'
+                  f'<use href="#sch-page-{b["page"]}" xlink:href="#sch-page-{b["page"]}"/></svg>')
+            s.add(f'<rect x="{X:.3f}" y="{Y:.3f}" width="{w:.3f}" height="{Yb - Y:.3f}" fill="none" '
+                  f'stroke="#7a7a7a" stroke-width="0.25" stroke-dasharray="2.5 1.5"/>')
+            s.text(X + 2.0, Yb - 1.7, b["label"], size=3.0, c=SCH_LABEL)
         sheets.append(s)
     return sheets
 
