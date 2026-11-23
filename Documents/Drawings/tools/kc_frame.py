@@ -106,7 +106,7 @@ class Sheet:
             for v, (_, w, al) in zip(r, cols):
                 parts = wrap(str(v), w, size) if wrap else [str(v)]
                 for li, part in enumerate(parts):
-                    ty = yy + rh - 1.4 + li * size * 1.15
+                    ty = yy + (rh + size * 0.7) / 2 + li * size * 1.15
                     if al == "middle":
                         self.text(cx + w / 2, ty, part, size=size, anchor="middle")
                     elif al == "end":

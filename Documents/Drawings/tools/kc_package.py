@@ -332,32 +332,52 @@ def doc_pwb(cfg, work):
     return sheets
 
 
+def _parts_library(cfg):
+    lib = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts.json"), encoding="utf-8"))
+    lib.update(cfg.get("bom_parts", {}))      # board overrides, keyed by LCSC number or first designator
+    return lib
+
+
 def doc_bom(cfg, work):
+    """Bill of materials. Descriptions, packages and values come from parts.json (keyed by LCSC
+    number) where present, so each line states its ratings instead of a supplier category."""
     rows_in = read_utf16_tsv(cfg["bom_csv"])
     pnp = {r["Designator"].strip('"'): r for r in read_utf16_tsv(cfg["pnp_csv"])}
+    lib = _parts_library(cfg)
     rows = []
     for k, r in enumerate(rows_in, 1):
         des = r["Designator"]
         first = des.split(",")[0]
+        lcsc = r.get("Supplier Part", "")
+        p = lib.get(lcsc) or lib.get(first) or {}
         smd = pnp.get(first, {}).get("SMD", "").strip('"')
         side = pnp.get(first, {}).get("Layer", "").strip('"')
         asm = ("SMT" if smd == "Yes" else "Hand") + (f" ({'top' if side == 'T' else 'bottom'})" if side else "")
-        desc = r.get("Secondary Category") or r.get("Primary Category", "")
-        mpn = re.sub(r"[^\x00-\x7f]+", "", r.get("Manufacturer Part", "")).strip()
-        pkg = r.get("Footprint", "").split("_")[0]
-        rows.append([str(k), r["Quantity"], des.replace(",", ", "), r.get("Value", ""), pkg, desc,
-                     r.get("Manufacturer", "").split("(")[0], mpn,
-                     r.get("Supplier Part", "") or "-", (r.get("JLCPCB Part Class", "") or "-").replace(" Part", ""), asm])
+        desc = p.get("desc") or r.get("Secondary Category") or r.get("Primary Category", "")
+        mpn = p.get("mpn") or re.sub(r"[^\x00-\x7f]+", "", r.get("Manufacturer Part", "")).strip() or "-"
+        mfr = p.get("mfr") or r.get("Manufacturer", "").split("(")[0] or "-"
+        pkg = p.get("pkg") or r.get("Footprint", "").split("_")[0]
+        val = re.sub(r"^([\d.]+)\s*([pnuµkM]?)(F|Ω|H)$", lambda m: f"{m.group(1)} {m.group(2).replace('u', 'µ')}{m.group(3)}",
+                     r.get("Value", "")) or p.get("value", "") or "-"
+        rows.append([str(k), r["Quantity"], des.replace(",", ", "), val, pkg, desc, mfr, mpn,
+                     lcsc or "-", (r.get("JLCPCB Part Class", "") or "-").replace(" Part", ""), asm])
     s = Sheet()
     a = frame(s, fields(cfg, "3", 1, 1, "NTS"))
-    x, y = M_IN + 6, M_IN + 9
-    s.text(x, y, "BILL OF MATERIALS  ·  PRINTED CIRCUIT CARD ASSEMBLY", size=3.4, weight="bold")
-    s.text(x, y + 5, f"Board {cfg['base']}2 {cfg['board_version']}. Quantities per assembled card. Generated from the EasyEDA BOM export.", size=2.3, c=GREY)
-    cols = [("ITEM", 10, "middle"), ("QTY", 9, "middle"), ("DESIGNATORS", 78, "start"), ("VALUE", 16, "start"),
-            ("PACKAGE", 26, "start"), ("DESCRIPTION", 78, "start"), ("MANUFACTURER", 32, "start"),
-            ("MFR PART No.", 46, "start"), ("LCSC", 20, "start"), ("CLASS", 15, "middle"), ("ASSEMBLY", 24, "start")]
-    yb = s.table(x, a["rev_y"] + 5, cols, rows, rh=4.6, size=2.2, wrap=wrap_text)
-    notes_box(s, M_IN + 4, a["tb_y"], 196, H - M_IN - a["tb_y"], cfg["bom_notes"])
+    x = a["x0"] + 2
+    s.text(x, a["y0"] + 8, "BILL OF MATERIALS  ·  PRINTED CIRCUIT CARD ASSEMBLY", size=3.4, weight="bold")
+    s.text(x, a["y0"] + 13, f"Board {cfg['base']}2 {cfg['board_version']}. Quantities per assembled card. "
+           f"{len(rows)} line items, {sum(int(r[1]) for r in rows)} parts.", size=2.3, c=GREY)
+    base = [("ITEM", 10, "middle"), ("QTY", 9, "middle"), ("DESIGNATORS", 62, "start"), ("VALUE", 16, "start"),
+            ("PACKAGE", 21, "start"), ("DESCRIPTION", 98, "start"), ("MANUFACTURER", 27, "start"),
+            ("MFR PART No.", 44, "start"), ("LCSC", 18, "start"), ("CLASS", 16, "middle"), ("ASSEMBLY", 25, "start")]
+    tw = a["x1"] - 2 - x
+    f = tw / sum(c[1] for c in base)
+    cols = [(t, w * f, al) for t, w, al in base]
+    size, rh = 2.75, 6.6
+    yb = s.table(x, a["rev_y"] + 6, cols, rows, rh=rh, hh=6.4, size=size, hsize=2.5, wrap=wrap_text)
+    if yb > a["tb_y"] - 2:
+        raise SystemExit(f"BOM table runs into the title block ({yb:.1f} > {a['tb_y'] - 2:.1f}); reduce rh")
+    notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["bom_notes"])
     return [s]
 
 
