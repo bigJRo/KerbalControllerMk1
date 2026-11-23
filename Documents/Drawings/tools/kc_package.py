@@ -362,7 +362,7 @@ def doc_bom(cfg, work):
         val = re.sub(r"^([\d.]+)\s*([pnuµkM]?)(F|Ω|H)$", lambda m: f"{m.group(1)} {m.group(2).replace('u', 'µ')}{m.group(3)}",
                      r.get("Value", "")) or p.get("value", "") or "-"
         rows.append([str(k), r["Quantity"], des.replace(",", ", "), val, pkg, desc, mfr, mpn,
-                     lcsc or p.get("lcsc", "-"), (r.get("JLCPCB Part Class", "") or "-").replace(" Part", ""), asm, by])
+                     lcsc or p.get("lcsc", "-"), (r.get("JLCPCB Part Class", "") or p.get("class", "-")).replace(" Part", ""), asm, by])
     s = Sheet()
     a = frame(s, fields(cfg, "3", 1, 1, "NTS"))
     x = a["x0"] + 2

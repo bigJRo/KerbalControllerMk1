@@ -22,5 +22,6 @@
   "C51118":   {"desc": "Regulator, LDO, 3.3 V, 600 mA", "pkg": "SOT-23-5", "value": "3.3 V"},
   "C5183856": {"desc": "Power module, step-down, 4.5–21 V in, 1.2 A, adjustable", "pkg": "QFN-20 5×3", "value": "5 V"},
   "C138713":  {"desc": "Keypad scan controller, I²C, 8×10 matrix", "pkg": "WQFN-24 4×4"},
+  "C492404":  {"desc": "Pin header, male, 1×5, 2.54 mm pitch, vertical", "pkg": "THT", "mfr": "XFCN", "mpn": "PZ254V-11-05P", "class": "Extended"},
   "C7484":    {"desc": "Buffer, single, 3-state, TTL inputs (3.3 V to 5 V level shift)", "pkg": "SOT-23-5"}
 }
