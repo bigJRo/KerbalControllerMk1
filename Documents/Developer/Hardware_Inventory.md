@@ -16,7 +16,7 @@
 | Ctrl Module Extension | KC-01-1711 | KC-01-1712 | V2.0 | Passive: splits the 50-pin interboard cable to the B side, fan, expansion terminal |
 | Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | Input-panel hub: 8 module slots + safe switch |
 | 7" TFT Display Driver | KC-01-1911 | KC-01-1912 | V2.1 | One 7" display. On each display panel one driver also acts as the hub: 3 module slots + safe switch |
-| Button Module | KC-01-1801 | KC-01-1802 | V2.0 | 12 RGB buttons + 4 panel inputs |
+| Button Module | KC-01-1801 | KC-01-1802 | V2.1 | 12 RGB buttons + 4 panel inputs |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.0 | 12 RGB buttons + 8 panel inputs |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | Motorised fader, touch sensor, 5 illuminated panel inputs |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | 3-axis stick + stick button (terminal), 2 RGB buttons |
@@ -92,7 +92,9 @@ The board has no active components or protection; every signal passes straight t
 - **No address pins.** The I2C address and role are set by the firmware flashed (UPDI header H1). For example, UI Control and Action Control are the same board (1801) with different firmware.
 - **Panel inputs** (screw terminals) are active-high. Each terminal has a +5 V pin, and each input a 10 kΩ pull-down: a switch from +5 V to the input reads 1 when closed.
 
-### 5.2 Button Module (KC-01-1801 V2.0)
+### 5.2 Button Module (KC-01-1801 V2.1)
+
+V2.1 adds the 200 kΩ pull-up on the PCA9306 VREF2/EN node (Hardware Reference §15 item 10).
 
 | Inputs | Where |
 |---|---|
