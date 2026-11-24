@@ -23,6 +23,7 @@
   "C5183856": {"desc": "Power module, step-down, 4.5–21 V in, 1.2 A, adjustable", "pkg": "QFN-20 5×3", "value": "5 V", "class": "Extended"},
   "C138713": {"desc": "Keypad scan controller, I²C, 8×10 matrix", "pkg": "WQFN-24 4×4", "class": "Extended"},
   "C492401": {"desc": "Pin header, male, 1×2, 2.54 mm pitch, vertical", "pkg": "THT", "mfr": "XFCN", "mpn": "PZ254V-11-02P", "class": "Extended"},
+  "C2937625": {"desc": "Pin header, male, 1×3, 2.54 mm pitch, vertical", "pkg": "THT", "mfr": "XFCN", "mpn": "PZ254V-11-03P", "class": "Extended"},
   "C492404": {"desc": "Pin header, male, 1×5, 2.54 mm pitch, vertical", "pkg": "THT", "mfr": "XFCN", "mpn": "PZ254V-11-05P", "class": "Extended"},
   "C7484": {"desc": "Buffer, single, 3-state, TTL inputs (3.3 V to 5 V level shift)", "pkg": "SOT-23-5", "class": "Extended"},
   "C3347": {"desc": "Capacitor, aluminium electrolytic, 100 µF ±20 %, 10 V", "pkg": "SMD 5×5.3", "class": "Extended"},
