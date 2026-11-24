@@ -282,7 +282,8 @@ def doc_pwb(cfg, work):
     holes = drills(gdir)
     (bx0, by0), (bx1, by1) = ol["bounds"]
     layers = cfg["layers"]
-    total = 1 + len(layers)
+    sep = bool(cfg.get("pwb_tables_sheet"))     # drill chart and stackup on a sheet of their own
+    total = 1 + sep + len(layers)
     sheets = []
 
     # ---- sheet 1: outline, holes, drill chart, stackup, notes
@@ -350,9 +351,13 @@ def doc_pwb(cfg, work):
                + (f", {cfg['mount_hole_note']}" if cfg.get("mount_hole_note") else ""), size=2.6)
         s.text(hx + 16.5, hy + 15.2, "Positions in the mounting hole table", size=2.3, c=GREY)
     if mh and grid:
-        hx, hy = P(mh[0]["x"], mh[0]["y"])
+        mc = cfg.get("mount_callout", {})
+        hsel = mh[mc.get("index", 1) - 1]
+        hx, hy = P(hsel["x"], hsel["y"])
         dx, dy = mh[0]["x"] - bx0, by1 - mh[0]["y"]
-        s.line(hx + 1.5, hy + 1.2, hx + 16, hy + 11, 0.15)
+        ddx, ddy = mc.get("dx", 16), mc.get("dy", 11)
+        s.line(hx + 1.5, hy + 1.2, hx + ddx, hy + ddy, 0.15)
+        hx, hy = hx + ddx - 16, hy + ddy - 11
         s.text(hx + 16.5, hy + 11.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}"
                + (f", {cfg['mount_hole_note']}" if cfg.get("mount_hole_note") else ""), size=2.6)
         s.text(hx + 16.5, hy + 15.2, f"{dx:.2f} from the side edges, {dy:.2f} from the top and bottom edges",
@@ -368,11 +373,24 @@ def doc_pwb(cfg, work):
             _, by_ = P(0, ys[0])
             dim_v(s, ay_, by_, ox + bw + 7, f"{ys[-1] - ys[0]:.2f}", ext_from=ox + bw - 4)
 
-    # drill chart and stackup, right of the board
-    tx = ox + bw + 16
-    tw = a["x1"] - 2 - tx
-    ty = a["rev_y"] + 9
-    s.text(tx, ty - 2, "DRILL CHART", size=3.0, weight="bold")
+    # drill chart and stackup: right of the board, or on their own sheet for a wide board
+    if sep:
+        ts = Sheet()
+        a2 = frame(ts, fields(cfg, "2", 2, total, "NTS"))
+        ts.text(a2["x0"] + 6, a2["y0"] + 8, "DRILL CHART AND LAYER STACKUP", size=3.4, weight="bold")
+        ts.text(a2["x0"] + 6, a2["y0"] + 13, "Hole positions: sheet 1 and the drill files. Plane and pour use per layer: "
+                "the copper layer sheets.", size=2.3, c=GREY)
+        tx = a2["x0"] + 2
+        tw = (a2["x1"] - a2["x0"] - 14) / 2
+        ty = a2["rev_y"] + 9
+        sx2 = tx + tw + 10
+    else:
+        ts = s
+        tx = ox + bw + 16
+        tw = a["x1"] - 2 - tx
+        ty = a["rev_y"] + 9
+        sx2 = tx
+    ts.text(tx, ty - 2, "DRILL CHART", size=3.0, weight="bold")
     rows = []
     for t in tools:
         n = sum(1 for h in holes if tool_of(h) == t)
@@ -384,25 +402,25 @@ def doc_pwb(cfg, work):
     f = tw / 90
     cols = [("SYM", 9 * f, "middle"), ("DIA (mm)", 15 * f, "middle"), ("PLATING", 15 * f, "middle"),
             ("QTY", 11 * f, "middle"), ("USE", 40 * f, "start")]
-    yb = s.table(tx, ty, cols, rows, rh=5.0)
+    yb = ts.table(tx, ty, cols, rows, rh=5.0)
     for n, t in enumerate(tools):
-        symbol(s, sym[t], tx + 4.5 * f, ty + 5.2 + 5.0 * n + 2.5, r=1.1, sw=0.2)
-    s.text(tx, yb + 4, f"Total holes: {len(holes)}.  Finished hole sizes; tolerance ±0.08.", size=2.2, c=GREY)
-    sy = yb + 13
-    s.text(tx, sy - 2, "LAYER STACKUP", size=3.0, weight="bold")
+        symbol(ts, sym[t], tx + 4.5 * f, ty + 5.2 + 5.0 * n + 2.5, r=1.1, sw=0.2)
+    ts.text(tx, yb + 4, f"Total holes: {len(holes)}.  Finished hole sizes; tolerance ±0.08.", size=2.2, c=GREY)
+    sy = (ty if sep else yb + 13)
+    ts.text(sx2, sy - 2, "LAYER STACKUP", size=3.0, weight="bold")
     srows = [[l["layer"], l["name"], l["material"], l["thickness"], l.get("use", "")] for l in cfg["stackup"]]
     scols = [("No.", 8 * f, "middle"), ("NAME", 18 * f, "start"), ("MATERIAL", 21 * f, "start"),
              ("THK (mm)", 13 * f, "middle"), ("USE", 30 * f, "start")]
-    yb2 = s.table(tx, sy, scols, srows, rh=4.6, size=2.2, wrap=wrap_text)
+    yb2 = ts.table(sx2, sy, scols, srows, rh=4.6, size=2.2, wrap=wrap_text)
     note_lines = wrap_text(cfg.get("stackup_note", ""), tw, 2.2)
     for n, part in enumerate(note_lines):
-        s.text(tx, yb2 + 4 + 3 * n, part, size=2.2, c=GREY)
+        ts.text(sx2, yb2 + 4 + 3 * n, part, size=2.2, c=GREY)
     if mh and not grid:                        # holes not on a simple rectangle: list them
         my = yb2 + 4 + 3 * len(note_lines) + 9
-        s.text(tx, my - 2, "MOUNTING HOLES", size=3.0, weight="bold")
+        ts.text(sx2, my - 2, "MOUNTING HOLES", size=3.0, weight="bold")
         mrows = [[f"M{i}", f"{h['x'] - bx0:.2f}", f"{h['y'] - by1:.2f}", f"Ø{h['d']:.2f} {'PTH' if h['plated'] else 'NPTH'}"]
                  for i, h in enumerate(sorted(mh, key=lambda h: (-h["y"], h["x"])), 1)]
-        s.table(tx, my, [("No.", 12 * f, "middle"), ("X", 24 * f, "end"), ("Y", 24 * f, "end"), ("HOLE", 30 * f, "start")],
+        ts.table(sx2, my, [("No.", 12 * f, "middle"), ("X", 24 * f, "end"), ("Y", 24 * f, "end"), ("HOLE", 30 * f, "start")],
                 mrows, rh=4.6, size=2.2)
         for i, h in enumerate(sorted(mh, key=lambda h: (-h["y"], h["x"])), 1):
             hx, hy = P(h["x"], h["y"])
@@ -417,10 +435,12 @@ def doc_pwb(cfg, work):
 
     notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["fab_notes"])
     sheets.append(s)
+    if sep:
+        sheets.append(ts)
 
-    # ---- sheets 2..: one copper layer per sheet
+    # ---- then one copper layer per sheet
     k = cfg.get("layer_scale", LAYER_K)
-    for n, lay in enumerate(layers, 2):
+    for n, lay in enumerate(layers, 2 + sep):
         s = Sheet()
         a = frame(s, fields(cfg, "2", n, total, _ratio(k)))
         pad = 1.0
@@ -429,7 +449,7 @@ def doc_pwb(cfg, work):
         ly = a["rev_y"] + 2 + ((a["tb_y"] - 2) - (a["rev_y"] + 2) - wh) / 2
         s.text(a["x0"] + 6, a["y0"] + 8, f"COPPER LAYER {lay['layer']} OF {len(layers)}  ·  {lay['name'].upper()}  "
                f"(TOP VIEW, LOOKING DOWN THROUGH THE BOARD)", size=3.4, weight="bold")
-        colour = lay.get("color", LAYER_COLOURS[(n - 2) % len(LAYER_COLOURS)])
+        colour = lay.get("color", LAYER_COLOURS[(n - 2 - sep) % len(LAYER_COLOURS)])
         s.rect(a["x0"] + 6, a["y0"] + 10.6, 6, 3.2, sw=0.2, fill=colour)
         s.text(a["x0"] + 14, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. Layer {lay['layer']} copper is shown in "
                f"this colour; clearances, anti-pads and gaps are white. {lay.get('net', '')}.", size=2.3, c=GREY)
@@ -492,25 +512,42 @@ def doc_bom(cfg, work):
         rows.append([str(len(rows) + 1), str(e["qty"]), e["designators"], e.get("value", "-"), e.get("pkg", "-"),
                      e["desc"], e.get("mfr", "-"), e.get("mpn", "-"), e.get("lcsc", "-"), e.get("class", "-"),
                      e.get("process", "-"), e.get("by", "After delivery")])
-    s = Sheet()
-    a = frame(s, fields(cfg, "3", 1, 1, "NTS"))
-    x = a["x0"] + 2
-    s.text(x, a["y0"] + 8, "BILL OF MATERIALS  ·  PRINTED CIRCUIT CARD ASSEMBLY", size=3.4, weight="bold")
-    s.text(x, a["y0"] + 13, f"Board {cfg['base']}2 {cfg['board_version']}. Quantities per assembled card. "
-           f"{len(rows)} line items, {sum(int(r[1]) for r in rows)} parts.", size=2.3, c=GREY)
     base = [("ITEM", 10, "middle"), ("QTY", 9, "middle"), ("DESIGNATORS", 62, "start"), ("VALUE", 16, "start"),
             ("PACKAGE", 21, "start"), ("DESCRIPTION", 86, "start"), ("MANUFACTURER", 27, "start"),
             ("MFR PART No.", 44, "start"), ("LCSC", 18, "start"), ("CLASS", 16, "middle"), ("PROCESS", 22, "start"),
             ("INSTALLED BY", 24, "start")]
-    tw = a["x1"] - 2 - x
+    size, rh, hh = 2.75, 6.6, 6.4
+    probe = frame(Sheet(), fields(cfg, "3", 1, 1, "NTS"))
+    x = probe["x0"] + 2
+    tw = probe["x1"] - 2 - x
     f = tw / sum(c[1] for c in base)
     cols = [(t, w * f, al) for t, w, al in base]
-    size, rh = 2.75, 6.6
-    yb = s.table(x, a["rev_y"] + 6, cols, rows, rh=rh, hh=6.4, size=size, hsize=2.5, wrap=wrap_text)
-    if yb > a["tb_y"] - 2:
-        raise SystemExit(f"BOM table runs into the title block ({yb:.1f} > {a['tb_y'] - 2:.1f}); reduce rh")
-    notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["bom_notes"])
-    return [s]
+    room = probe["tb_y"] - 2 - (probe["rev_y"] + 6) - hh
+
+    def row_h(r):                               # as Sheet.table lays a wrapped row out
+        lines = max(len(wrap_text(str(v), w, size)) for v, (_, w, _) in zip(r, cols))
+        return rh + (lines - 1) * size * 1.15
+    pages, cur, used = [], [], 0.0
+    for r in rows:                              # as many sheets as the rows need
+        h = row_h(r)
+        if cur and used + h > room:
+            pages.append(cur); cur, used = [], 0.0
+        cur.append(r); used += h
+    pages.append(cur)
+    sheets = []
+    for n, chunk in enumerate(pages, 1):
+        s = Sheet()
+        a = frame(s, fields(cfg, "3", n, len(pages), "NTS"))
+        s.text(x, a["y0"] + 8, "BILL OF MATERIALS  ·  PRINTED CIRCUIT CARD ASSEMBLY"
+               + (f"  ({n} of {len(pages)})" if len(pages) > 1 else ""), size=3.4, weight="bold")
+        s.text(x, a["y0"] + 13, f"Board {cfg['base']}2 {cfg['board_version']}. Quantities per assembled card. "
+               f"{len(rows)} line items, {sum(int(r[1]) for r in rows)} parts.", size=2.3, c=GREY)
+        yb = s.table(x, a["rev_y"] + 6, cols, chunk, rh=rh, hh=hh, size=size, hsize=2.5, wrap=wrap_text)
+        if yb > a["tb_y"] - 2:
+            raise SystemExit(f"BOM table runs into the title block ({yb:.1f} > {a['tb_y'] - 2:.1f})")
+        notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["bom_notes"])
+        sheets.append(s)
+    return sheets
 
 
 PLACE_K = 1.75          # placement views scale (7:4), one board side per sheet
@@ -558,35 +595,44 @@ def doc_place(cfg, work):
     probe = frame(Sheet(), fields(cfg, "4", 1, 1, "NTS"))        # frame geometry for the table sizing
     cap = int((probe["tb_y"] - 2 - (probe["rev_y"] + 6) - 6.4) / 6.6)     # rows per table column
     n_tab = max(1, math.ceil(len(pnp) / (2 * cap)))
-    total = len(sides) + n_tab
+    segs = cfg.get("place_segments") or [None]      # a wide board can be shown in parts, [x0, x1] in board mm
+    views = [(sd, i, sg) for sd in sides for i, sg in enumerate(segs)]
+    total = len(views) + n_tab
     sheets = []
-    for n, (side, name, how, mirror) in enumerate(sides, 1):
+    for n, ((side, name, how, mirror), si, sg) in enumerate(views, 1):
         s = Sheet()
         a = frame(s, fields(cfg, "4", n, total, _ratio(k)))
         pad = 1.0
-        ww, wh = (ol["w"] + 2 * pad) * k, (ol["h"] + 2 * pad) * k
+        wb = ((max(sg[0], bx0), by0), (min(sg[1], bx1), by1)) if sg else ol["bounds"]
+        ww, wh = (wb[1][0] - wb[0][0] + 2 * pad) * k, (ol["h"] + 2 * pad) * k
         vx = a["x0"] + (a["x1"] - a["x0"] - ww) / 2
         vy = a["rev_y"] + 2 + ((a["tb_y"] - 2) - (a["rev_y"] + 2) - wh) / 2
         on_side = [p for p in pnp if p["Layer"] == side]
+        n_side = len(on_side)
+        if sg:
+            on_side = [p for p in on_side if wb[0][0] - 0.5 <= p["x"] <= wb[1][0] + 0.5]
+            how += f" · part {si + 1} of {len(segs)}, X {wb[0][0] - bx0:.0f} to {wb[1][0] - bx0:.0f} mm"
         s.text(a["x0"] + 6, a["y0"] + 8, f"{name}  ·  {how.upper()}", size=3.4, weight="bold")
-        s.text(a["x0"] + 6, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. {len(on_side)} part"
-               f"{'s' if len(on_side) != 1 else ''} on this side. Pads (solder mask openings) grey, silkscreen black, "
+        s.text(a["x0"] + 6, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. {n_side} part"
+               f"{'s' if n_side != 1 else ''} on this side" + (f", {len(on_side)} in this part" if sg else "") + ". Pads (solder mask openings) grey, silkscreen black, "
                f"reference designators blue, pin 1 red.", size=2.3, c=GREY)
         mask = glob.glob(os.path.join(gdir, "*.GTS" if side == "T" else "*.GBS"))[0]
         silk = glob.glob(os.path.join(gdir, "*.GTO" if side == "T" else "*.GBO"))[0]
-        bx, by_, _, _ = place_layer(s, mask, ol["bounds"], vx, vy, k, "#bec4cc", mirror=mirror)
-        place_layer(s, silk, ol["bounds"], vx, vy, k, "#141414", bg="white", mirror=mirror)
+        bx, by_, _, _ = place_layer(s, mask, wb, vx, vy, k, "#bec4cc", mirror=mirror)
+        place_layer(s, silk, wb, vx, vy, k, "#141414", bg="white", mirror=mirror)
 
         def P(x, y):
             u = (x - bx) * k
             return (vx + (ww - u) if mirror else vx + u), vy + (by_ - y) * k
         ox, oy = P(bx0, by1)
-        if cfg.get("pwb_outline_layer"):
-            place_layer(s, glob.glob(os.path.join(gdir, "*.GKO"))[0], ol["bounds"], vx, vy, k, INK, bg="none",
+        if cfg.get("pwb_outline_layer") or sg:
+            place_layer(s, glob.glob(os.path.join(gdir, "*.GKO"))[0], wb, vx, vy, k, INK, bg="none",
                         mirror=mirror)
         else:
             s.rect(min(ox, ox + (-1 if mirror else 1) * ol["w"] * k), oy, ol["w"] * k, ol["h"] * k, sw=0.4, rx=r * k)
         for hl in holes:
+            if sg and not (wb[0][0] - pad <= hl["x"] <= wb[1][0] + pad):
+                continue
             hx, hy = P(hl["x"], hl["y"])
             hx2, hy2 = P(hl["x2"], hl["y2"]) if hl.get("slot") else (hx, hy)
             s.add(hole_svg(hx, hy, hx2, hy2, hl["dt"] * k, "#fff", "#555", 0.1))
@@ -603,11 +649,12 @@ def doc_place(cfg, work):
             else:
                 s.text(x, y + size * 0.36, d, size=size, anchor="middle", weight="bold", c=REFDES)
         # datum: board top-left corner in the top view
-        dx, dy = P(bx0, by1)
-        s.circle(dx, dy, 1.4, 0.25)
-        s.line(dx - 2.6, dy, dx + 2.6, dy, 0.25)
-        s.line(dx, dy - 2.6, dx, dy + 2.6, 0.25)
-        s.text(dx + (2.8 if mirror else -2.8), dy - 2.8, "DATUM 0,0", size=2.2, anchor="start" if mirror else "end")
+        if not sg or wb[0][0] <= bx0 + 1e-6:
+            dx, dy = P(bx0, by1)
+            s.circle(dx, dy, 1.4, 0.25)
+            s.line(dx - 2.6, dy, dx + 2.6, dy, 0.25)
+            s.line(dx, dy - 2.6, dx, dy + 2.6, 0.25)
+            s.text(dx + (2.8 if mirror else -2.8), dy - 2.8, "DATUM 0,0", size=2.2, anchor="start" if mirror else "end")
         notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["place_notes"])
         sheets.append(s)
 
@@ -632,7 +679,7 @@ def doc_place(cfg, work):
             ("X", 20, "end"), ("Y", 20, "end"), ("ROT", 13, "end"), ("PROCESS", 18, "middle")]
     for t in range(n_tab):
         s = Sheet()
-        a = frame(s, fields(cfg, "4", len(sides) + 1 + t, total, "NTS"))
+        a = frame(s, fields(cfg, "4", len(views) + 1 + t, total, "NTS"))
         s.text(a["x0"] + 6, a["y0"] + 8, "PLACEMENT TABLE" + (f"  ({t + 1} of {n_tab})" if n_tab > 1 else ""),
                size=3.4, weight="bold")
         s.text(a["x0"] + 6, a["y0"] + 13, "X, Y: part centre from the datum (board top-left corner, top view), mm; "
@@ -840,7 +887,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--docs", default="0,1,2,3,4")
+    ap.add_argument("--docs", default=None, help="e.g. 1,2 (default: the package's documents)")
     a = ap.parse_args()
     cdir = os.path.dirname(os.path.abspath(a.config))
     cfg = json.load(open(a.config, encoding="utf-8"))
@@ -857,7 +904,8 @@ def main():
                     z.extract(m, gdir)
         cfg["gerber_dir"] = gdir
     builders = {"0": doc_assy, "1": doc_sch, "2": doc_pwb, "3": doc_bom, "4": doc_place}
-    for d in a.docs.split(","):
+    docs = a.docs.split(",") if a.docs else list(cfg.get("package_docs") or "01234")
+    for d in docs:
         work = tempfile.mkdtemp(prefix=f"kc_{d}_", dir=a.out)
         sheets = builders[d](cfg, work)
         f = {"dwg_no": cfg["base"] + d, "rev": cfg.get("rev", "-")}

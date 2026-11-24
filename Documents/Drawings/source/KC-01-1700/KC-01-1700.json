@@ -1,0 +1,511 @@
+{
+  "base": "KC-01-170",
+  "name": "Control Module",
+  "title": "Control Module",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "B",
+  "board_version": "V2.0",
+  "date": "2026-11-24",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "doc_status": {},
+  "revisions": [
+    [
+      "A",
+      "Initial release (V2.0 drawings)",
+      "2026-06-20",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "Redrawn in the KC drawing frame; H4 and TP1 fitted",
+      "2026-11-24",
+      "J. Kerman"
+    ]
+  ],
+  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-23.pdf",
+  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-23.zip",
+  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-23.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-23.csv",
+  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-06-20.pdf",
+  "doc_title": {
+    "0": "Control Module Complete"
+  },
+  "doc_name": {
+    "0": "Control Module Complete"
+  },
+  "sch_sheets": [
+    {
+      "scale": 0.38,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                23.8,
+                36.8,
+                900.8,
+                248.8
+              ],
+              "label": "Power input, soft-latch power switch (Q1, Q2), current and voltage monitor (U3), status LEDs and test port (TP1)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                900.0,
+                78.8,
+                1061.6,
+                203.8
+              ],
+              "label": "Regulator sub-sheets"
+            }
+          ],
+          [
+            {
+              "page": 2,
+              "crop": [
+                83.0,
+                81.0,
+                512.5,
+                239.0
+              ],
+              "label": "5 V converter (U1)"
+            }
+          ],
+          [
+            {
+              "page": 3,
+              "crop": [
+                112.4,
+                118.3,
+                528.0,
+                203.3
+              ],
+              "label": "3.3 V regulator (U2)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.48,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                13.8,
+                288.9,
+                488.3,
+                511.9
+              ],
+              "label": "Microcontroller (Teensy 4.1 on H2 / H3)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                975.1,
+                285.4,
+                1173.6,
+                490.9
+              ],
+              "label": "Interboard connector to the Extension (CN2)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                540.4,
+                310.4,
+                915.9,
+                455.9
+              ],
+              "label": "Panel connectors: A2 (CN3) and A1 (CN4)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.48,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                13.8,
+                526.1,
+                456.3,
+                694.6
+              ],
+              "label": "Fan controller and temperature sensor (U5); remote sensor header (H4)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                492.9,
+                526.1,
+                826.9,
+                673.6
+              ],
+              "label": "I2C bus accelerator, panel bus (U6)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                842.3,
+                526.1,
+                1175.3,
+                673.6
+              ],
+              "label": "I2C bus accelerator, expansion bus (U7)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                1095.1,
+                105.3,
+                1174.6,
+                176.8
+              ],
+              "label": "Fan connector (CN1)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.38,
+      "rows": [
+        [
+          [
+            {
+              "page": 4,
+              "crop": [
+                111.1,
+                123.3,
+                1108.6,
+                580.3
+              ],
+              "label": "USB hubs (U8, U9): upstream USBC1; downstream USB1–USB6 and USBC2"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "pwb_scale": 1,
+  "layer_scale": 1,
+  "pwb_tables_sheet": true,
+  "pwb_outline_layer": true,
+  "place_scale": 2,
+  "place_segments": [
+    [
+      -1,
+      170
+    ],
+    [
+      160,
+      331
+    ]
+  ],
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Components, signals, GND pour"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "3313",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "GND PL 1",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "Ground plane (GND)"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "3",
+      "name": "3P3V PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "3.3 V plane (V_3P3)"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "-",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "4",
+      "name": "GND PL 2",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "Ground plane (GND)"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "5",
+      "name": "12V PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "12 V plane (V_12)"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "3313",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "6",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Signals, GND pour"
+    }
+  ],
+  "stackup_note": "JLCPCB JLC06161H-3313: dielectric materials and thicknesses as that stackup. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Components, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#c0392b"
+    },
+    {
+      "layer": "2",
+      "name": "GND PL 1",
+      "file": "Gerber_InnerLayer1.G1",
+      "net": "Ground plane (GND)",
+      "copper": "0.5 oz",
+      "color": "#1e8449"
+    },
+    {
+      "layer": "3",
+      "name": "3P3V PL",
+      "file": "Gerber_InnerLayer2.G2",
+      "net": "3.3 V plane (V_3P3)",
+      "copper": "0.5 oz",
+      "color": "#d68910"
+    },
+    {
+      "layer": "4",
+      "name": "GND PL 2",
+      "file": "Gerber_InnerLayer3.G3",
+      "net": "Ground plane (GND)",
+      "copper": "0.5 oz",
+      "color": "#16a085"
+    },
+    {
+      "layer": "5",
+      "name": "12V PL",
+      "file": "Gerber_InnerLayer4.G4",
+      "net": "12 V plane (V_12)",
+      "copper": "0.5 oz",
+      "color": "#8e44ad"
+    },
+    {
+      "layer": "6",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Signals, GND pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8"
+    }
+  ],
+  "mount_hole_d": 3.5,
+  "mount_hole_note": "Ø6.00 pads, no net (isolated)",
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 6 layers, JLCPCB JLC06161H-3313 stackup (sheet 2 table).",
+    "2. Copper: 1 oz outer, 0.5 oz inner. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Plated slots for the USB, USB-C and DC jack tabs are routed; sizes in the drill chart (sheet 2).",
+    "8. No controlled impedance, castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The Teensy 4.1 (on H2 / H3) is fitted at module level, see KC-01-1700.",
+    "4. Substitutes need the approval of the design authority."
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [
+    "D1",
+    "LED1",
+    "LED2",
+    "LED3",
+    "C6"
+  ],
+  "place_label_size": 1.4,
+  "place_notes": [
+    "1. All parts are on the top side. The board is shown in two overlapping parts.",
+    "2. Red dot = pin 1: on every part with more than two pins, on D1, on LED1–LED3 (pin 1 = anode) and on C6 (pin 1 = +). These match the silkscreen marks.",
+    "3. TP1 order is pin 1 V_12, pin 2 V_3P3, pin 3 GND: do not bridge pins 1 and 2.",
+    "4. Part centres, rotations and part numbers are in the placement table (last sheets), measured from the datum (top view)."
+  ],
+  "assy_sheets": [
+    {
+      "scale": 1.0,
+      "notes": true,
+      "views": [
+        {
+          "page": 1,
+          "src": [
+            89.4,
+            52.3,
+            103.4,
+            109.2
+          ],
+          "at": [
+            18.0,
+            38.6
+          ],
+          "k": 1.66667,
+          "label": "LEFT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            182.9,
+            52.3,
+            383.3,
+            109.2
+          ],
+          "at": [
+            51.33,
+            38.6
+          ],
+          "k": 1.66667,
+          "label": "TOP VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            182.9,
+            163.3,
+            383.3,
+            177.3
+          ],
+          "at": [
+            51.33,
+            140.43
+          ],
+          "k": 1.66667,
+          "label": "FRONT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            39.6,
+            147.6,
+            183.5,
+            273.0
+          ],
+          "at": [
+            300.0,
+            164.0
+          ],
+          "k": 0.4306,
+          "label": "ISOMETRIC VIEW",
+          "sublabel": "Not to scale"
+        }
+      ]
+    },
+    {
+      "scale": null,
+      "parts_list": true,
+      "views": [
+        {
+          "page": 2,
+          "src": [
+            129.0,
+            68.0,
+            314.0,
+            208.0
+          ],
+          "at": [
+            110.0,
+            78.0
+          ],
+          "k": 1.05
+        }
+      ]
+    }
+  ],
+  "assy_parts": [
+    {
+      "qty": 1,
+      "pn": "KC-01-1702",
+      "name": "Control Module",
+      "desc": "Custom PWB; Mfr: JLCPCB"
+    },
+    {
+      "qty": 1,
+      "pn": "TEENSY41_NE_PINS",
+      "name": "Teensy 4.1 (With Headers)",
+      "desc": "Teensy USB Board, Version 4.1, Without Ethernet Chip, ARM Cortex-M7 at 600 MHz Microcontroller, 7936K Flash, 1024K RAM (512K tightly coupled), 4K EEPROM (emulated), Native SDIO SD Card port"
+    }
+  ],
+  "assy_notes": [
+    "1. Item 1 is the KC-01-1702 card as assembled by JLCPCB to KC-01-1701 to KC-01-1704.",
+    "2. The Teensy 4.1 (item 2) plugs into H2 and H3.",
+    "3. H4 (EMC2101 remote temperature sensor) is fitted; nothing plugs into it yet and the firmware reads the internal sensor.",
+    "4. Orthographic views at 1:1 on A3; isometric views not to scale. Parts list on sheet 2."
+  ],
+  "mount_callout": {
+    "index": 3,
+    "dx": 14,
+    "dy": 22
+  }
+}
