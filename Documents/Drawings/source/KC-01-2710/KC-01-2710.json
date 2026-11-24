@@ -150,7 +150,7 @@
   "fab_notes": [
     "1. Material: FR-4, 1.6 mm, 2 layers, JLCPCB standard (sheet 1 table).",
     "2. Copper: 1 oz both sides. Surface finish: lead-free HASL.",
-    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "3. Solder mask black, silkscreen white, both sides. Vias tented.",
     "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
     "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
     "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
