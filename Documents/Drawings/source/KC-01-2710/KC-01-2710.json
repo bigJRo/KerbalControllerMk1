@@ -9,7 +9,13 @@
   "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
-  "doc_status": {},
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
+  },
   "sch_pdf": "SCH_KC-01-2711_Expansion_Keyboard_2026-11-23.pdf",
   "gerber_zip": "Gerber_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.zip",
   "bom_csv": "BOM_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.csv",

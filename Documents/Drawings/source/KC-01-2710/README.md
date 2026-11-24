@@ -1,7 +1,7 @@
 # KC-01-2710 Expansion Keyboard: drawing sources
 
 Source files for the Expansion Keyboard drawings (assembly KC-01-2710, schematic KC-01-2711, PCB KC-01-2712).
-Released PDFs go in `Documents/Drawings`.
+The released PDFs are in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
