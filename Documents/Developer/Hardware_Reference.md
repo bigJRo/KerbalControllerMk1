@@ -316,7 +316,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs. Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
-| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | ATtiny816 | 2 encoder pushes | None reachable | Encoder headers H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder carrier each (§5.5). No LEDs. Safe-switch terminal U4 (same circuit as the hubs) drives slot pin 16, not the ATtiny; no hub connects slot pin 16, so this switch cannot reach the master or the module |
+| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | ATtiny816 | 2 encoder pushes | None reachable | Encoder headers H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder board each (§5.5). No LEDs. Safe-switch terminal U4 (same circuit as the hubs) drives slot pin 16, not the ATtiny; no hub connects slot pin 16, so this switch cannot reach the master or the module |
 
 **Common to every ATtiny816 module:**
 
@@ -325,7 +325,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 - **No address pins:** the address and role are set by the firmware flashed through the UPDI header H1 (§3.5).
 - **Panel inputs** (screw terminals) are active-high. Each terminal has a +5 V pin, and each input a 10 kΩ pull-down: a switch from +5 V to the input reads 1 when closed.
 
-### 5.5 Encoder Carrier Board
+### 5.5 Encoder Board
 
 | Board | Schematic | PCB | Rev | Function |
 |-------|-----------|-----|-----|----------|

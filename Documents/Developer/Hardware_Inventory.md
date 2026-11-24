@@ -150,10 +150,10 @@ The board has no active components or protection; every signal passes straight t
 - **Power:** its own 12 V → 5 V → 3.3 V regulators.
 - **No safe-switch terminal.**
 
-### 5.8 Dual Encoder (KC-01-1861 V2.0) and Encoder carrier (KC-01-1851 V2.0)
+### 5.8 Dual Encoder (KC-01-1861 V2.0) and Encoder (KC-01-1851 V2.0)
 
 **Dual Encoder:**
-- **Encoder headers** H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder carrier each:
+- **Encoder headers** H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder board each:
 
   | Pin | Signal |
   |---|---|
@@ -166,7 +166,7 @@ The board has no active components or protection; every signal passes straight t
 - **Safe-switch terminal U4:** the same 6-pin circuit as the hubs (active-high, 10 kΩ / 20 kΩ divider), but its output goes to slot pin 16 (SAFE_INT), **not** to the ATtiny. Every hub leaves slot pin 16 unconnected, so this switch cannot reach the master or the module.
 - **No LEDs.**
 
-**Encoder carrier:** PEC11R-4220F-S0024 with RC-filtered A / B (10 kΩ pull-ups, 10 nF), and the push button active-high with a 10 kΩ pull-down.
+**Encoder board:** PEC11R-4220F-S0024 with RC-filtered A / B (10 kΩ pull-ups, 10 nF), and the push button active-high with a 10 kΩ pull-down.
 
 ## 6. Differences from older documents
 

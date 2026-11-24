@@ -130,26 +130,75 @@ def outline_info(gdir):
     return {"bounds": ((x0, y0), (x1, y1)), "w": x1 - x0, "h": y1 - y0, "radius": r}
 
 
+def _read_excellon(path):
+    """EasyEDA Excellon (metric, decimal coordinates): yields (tool_dia, plated_flag, x, y, x2, y2);
+    x2/y2 are the far end of a routed slot (G85) or None for a drilled hole."""
+    tools, cur, plated = {}, None, None
+    for raw in open(path, encoding="utf-8", errors="replace"):
+        ln = raw.strip()
+        if not ln:
+            continue
+        if ln.startswith(";"):
+            if "TYPE=NON_PLATED" in ln.upper():
+                plated = False
+            elif "TYPE=PLATED" in ln.upper():
+                plated = True
+            continue
+        m = re.fullmatch(r"T(\d+)C([\d.]+)", ln)
+        if m:
+            tools[int(m.group(1))] = float(m.group(2)); continue
+        m = re.fullmatch(r"T(\d+)", ln)
+        if m:
+            cur = tools.get(int(m.group(1))); continue
+        m = re.fullmatch(r"X(-?[\d.]+)Y(-?[\d.]+)(?:G85X(-?[\d.]+)Y(-?[\d.]+))?", ln)
+        if m:
+            if "." not in m.group(1) + m.group(2):
+                raise SystemExit(f"{path}: coordinates without a decimal point are not supported: {ln}")
+            x2 = float(m.group(3)) if m.group(3) else None
+            y2 = float(m.group(4)) if m.group(4) else None
+            yield cur, plated, float(m.group(1)), float(m.group(2)), x2, y2
+            continue
+        if ln in ("M48", "%", "G05", "G90", "M30", "M95") or ln.startswith(("METRIC", "INCH", "FMAT", "G93")):
+            if ln.startswith("INCH"):
+                raise SystemExit(f"{path}: inch drill files are not supported")
+            continue
+        raise SystemExit(f"{path}: unrecognised drill file line: {ln}")
+
+
 def drills(gdir):
-    """All drilled holes. A hole listed in two drill files (EasyEDA can repeat vias in the
-    PTH file and the via file) is counted once, as a via if either file says so."""
-    from gerbonara import ExcellonFile
-    import warnings
-    warnings.simplefilter("ignore")
+    """All drilled holes and routed slots. A hole listed in two drill files (EasyEDA can repeat
+    vias in the PTH file and the via file) is counted once, as a via if either file says so.
+    A slot has "slot" = its overall length and "x2"/"y2" = the far end of its centreline."""
     found = {}
     for f in sorted(glob.glob(os.path.join(gdir, "*.DRL"))):
         via = "via" in os.path.basename(f).lower()
         npth = "npth" in os.path.basename(f).lower()
-        for o in ExcellonFile.open(f).objects:
-            if hasattr(o, "x"):
-                d = round(round(o.tool.diameter * 20) / 20, 2)
-                key = (round(o.x, 3), round(o.y, 3), round(o.tool.diameter, 3))
-                if key in found:
-                    found[key]["via"] |= via
-                    continue
-                found[key] = {"x": o.x, "y": o.y, "d": d, "dt": o.tool.diameter,
-                              "plated": o.tool.plated is not False and not npth, "via": via}
+        for dt, pl, x, y, x2, y2 in _read_excellon(f):
+            d = round(round(dt * 20) / 20, 2)
+            key = (round(x, 3), round(y, 3), round(dt, 3))
+            if key in found:
+                found[key]["via"] |= via
+                continue
+            h = {"x": x, "y": y, "d": d, "dt": dt, "plated": pl is not False and not npth, "via": via, "slot": 0.0}
+            if x2 is not None:
+                h.update(x2=x2, y2=y2, slot=round(math.hypot(x2 - x, y2 - y) + dt, 2))
+            found[key] = h
     return list(found.values())
+
+
+def tool_of(h):
+    return (h["d"], h["plated"], h.get("slot", 0.0))
+
+
+def hole_svg(x1, y1, x2, y2, w, fill, stroke, sw, dash=""):
+    """A drilled hole (x2, y2 = x1, y1) or a slot, drawn at width w with an outline."""
+    if (x1, y1) == (x2, y2):
+        return (f'<circle cx="{x1:.3f}" cy="{y1:.3f}" r="{w / 2:.3f}" fill="{fill}" stroke="{stroke}" '
+                f'stroke-width="{sw}"{dash}/>')
+    line = f'x1="{x1:.3f}" y1="{y1:.3f}" x2="{x2:.3f}" y2="{y2:.3f}" stroke-linecap="round"'
+    return (f'<line {line} stroke="{stroke}" stroke-width="{w + sw:.3f}"/>'
+            f'<line {line} stroke="{fill}" stroke-width="{max(w - sw, 0.01):.3f}"/>')
+
 
 # --------------------------------------------------------------------------- symbols
 
@@ -212,7 +261,8 @@ def fields(cfg, d, sheet, sheets, scale):
     return dict(dwg_no=cfg["base"] + d, rev=cfg.get("rev", "-"), title=cfg.get("doc_title", {}).get(d, cfg["title"]), subtitle=cfg["subtitle"],
                 doc_type=DOC_TYPES[d][1], status=cfg.get("doc_status", {}).get(d, cfg.get("status", "DRAFT")), created_by=cfg["created_by"],
                 approved_by=cfg["approved_by"], date=cfg["date"], board_version=cfg["board_version"],
-                scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"))
+                scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"),
+                package_docs=cfg.get("package_docs"))
 
 
 PWB_K = 1.5             # sheet 1 board view scale (3:2)
@@ -248,19 +298,24 @@ def doc_pwb(cfg, work):
         return ox + (x - bx0) * k, oy + (by1 - y) * k
     s.text(ox - 10, a["y0"] + 8, "BOARD OUTLINE AND HOLES (TOP VIEW)", size=3.4, weight="bold")
     s.text(ox - 10, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. Datum: board corner at top left. All holes are drilled "
-           f"from the top. {cfg.get('corner_note', f'Corners R{r:.2f} (4 places)')}. Outline tolerance ±0.2.", size=2.3, c=GREY)
+           f"from the top. {cfg.get('corner_note', f'Corners R{r:.2f} (4 places)' if r > 0 else 'Square corners')}. "
+           f"Outline tolerance ±0.2.", size=2.3, c=GREY)
     if cfg.get("pwb_outline_layer"):            # draw the outline Gerber itself: internal cutouts included
         gko = glob.glob(os.path.join(gdir, "*.GKO"))[0]
         place_layer(s, gko, ol["bounds"], ox - 1.0 * k, oy - 1.0 * k, k, INK, bg="none")
     else:
         s.rect(ox, oy, bw, bh, sw=0.5, rx=r * k)
-    tools = sorted({(h["d"], h["plated"]) for h in holes})
+    tools = sorted({tool_of(h) for h in holes})
     sym = {t: SYMS[n % len(SYMS)] for n, t in enumerate(tools)}
     for hl in holes:
         x, y = P(hl["x"], hl["y"])
-        if hl["d"] >= 2.0:
+        if hl.get("slot"):
+            x2, y2 = P(hl["x2"], hl["y2"])
+            s.add(hole_svg(x, y, x2, y2, hl["dt"] * k, "white", INK, 0.2))
+            x, y = (x + x2) / 2, (y + y2) / 2
+        elif hl["d"] >= 2.0:
             s.circle(x, y, hl["d"] / 2 * k, 0.2)
-        symbol(s, sym[(hl["d"], hl["plated"])], x, y, r=0.75 if hl["d"] < 0.5 else 1.2, sw=0.18)
+        symbol(s, sym[tool_of(hl)], x, y, r=0.75 if hl["d"] < 0.5 else 1.2, sw=0.18)
     s.circle(ox, oy, 1.6, 0.25)
     s.line(ox - 3, oy, ox + 3, oy, 0.25)
     s.line(ox, oy - 3, ox, oy + 3, 0.25)
@@ -278,7 +333,7 @@ def doc_pwb(cfg, work):
             _, yb_ = P(0, dm["v"][1])
             xl = ox + bw + 7 + 7 * (dm.get("tier", 1) - 1)
             dim_v(s, ya, yb_, xl, f"{abs(dm['v'][1] - dm['v'][0]):.2f}", ext_from=P(dm.get("ext_x", bx1), 0)[0])
-    big = cfg.get("mount_hole_d") or max(h["d"] for h in holes)
+    big = cfg["mount_hole_d"] if "mount_hole_d" in cfg else max(h["d"] for h in holes)
     mh = sorted([h for h in holes if h["d"] == big and (h["plated"] or "mount_hole_d" not in cfg)],
                 key=lambda h: (-h["y"], h["x"]))
     xs_ = sorted({round(h["x"], 2) for h in mh})
@@ -320,11 +375,12 @@ def doc_pwb(cfg, work):
     s.text(tx, ty - 2, "DRILL CHART", size=3.0, weight="bold")
     rows = []
     for t in tools:
-        n = sum(1 for h in holes if (h["d"], h["plated"]) == t)
-        vias = sum(1 for h in holes if (h["d"], h["plated"]) == t and h["via"])
+        n = sum(1 for h in holes if tool_of(h) == t)
+        vias = sum(1 for h in holes if tool_of(h) == t and h["via"])
         kind = "Via" if vias == n else ("Component / via" if vias else ("Mounting" if t[0] == big else "Component"))
-        kind = cfg.get("drill_use", {}).get(f"{t[0]:.2f} {'PTH' if t[1] else 'NPTH'}", kind)
-        rows.append(["", f"{t[0]:.2f}", "PTH" if t[1] else "NPTH", str(n), kind])
+        tkey = f"{t[0]:.2f} {'PTH' if t[1] else 'NPTH'}" + (" SLOT" if t[2] else "")
+        kind = cfg.get("drill_use", {}).get(tkey, kind)
+        rows.append(["", f"{t[0]:.2f}" + (f" × {t[2]:.2f} slot" if t[2] else ""), "PTH" if t[1] else "NPTH", str(n), kind])
     f = tw / 90
     cols = [("SYM", 9 * f, "middle"), ("DIA (mm)", 15 * f, "middle"), ("PLATING", 15 * f, "middle"),
             ("QTY", 11 * f, "middle"), ("USE", 40 * f, "start")]
@@ -385,9 +441,9 @@ def doc_pwb(cfg, work):
         # drilled holes on top of the copper: white = no material. Plated: solid outline; NPTH: dashed.
         for hl in holes:
             hx, hy = lx + (hl["x"] - bx) * k, ly + (by_ - hl["y"]) * k
+            hx2, hy2 = (lx + (hl["x2"] - bx) * k, ly + (by_ - hl["y2"]) * k) if hl.get("slot") else (hx, hy)
             dash = "" if hl["plated"] else ' stroke-dasharray="0.6 0.4"'
-            s.add(f'<circle cx="{hx:.3f}" cy="{hy:.3f}" r="{hl["dt"] / 2 * k:.3f}" fill="white" '
-                  f'stroke="{INK}" stroke-width="0.1"{dash}/>')
+            s.add(hole_svg(hx, hy, hx2, hy2, hl["dt"] * k, "white", INK, 0.1, dash))
         has_npth = any(not h["plated"] for h in holes)
         notes = [f"1. Layer {lay['layer']} of {len(layers)}, {lay['name']}, {lay.get('copper', '')} copper: "
                  f"{lay.get('net', '')}."]
@@ -532,14 +588,15 @@ def doc_place(cfg, work):
             s.rect(min(ox, ox + (-1 if mirror else 1) * ol["w"] * k), oy, ol["w"] * k, ol["h"] * k, sw=0.4, rx=r * k)
         for hl in holes:
             hx, hy = P(hl["x"], hl["y"])
-            s.circle(hx, hy, hl["dt"] / 2 * k, 0.1, fill="#fff", c="#555")
-        size = 1.6
+            hx2, hy2 = P(hl["x2"], hl["y2"]) if hl.get("slot") else (hx, hy)
+            s.add(hole_svg(hx, hy, hx2, hy2, hl["dt"] * k, "#fff", "#555", 0.1))
+        size = cfg.get("place_label_size", 1.6)
         for p in on_side:
             x, y = P(p["x"], p["y"])
             d = p["Designator"]
             if p["pins"] > 2 or d in polar:
                 qx, qy = P(p["px"], p["py"])
-                s.circle(qx, qy, 0.55, 0.15, fill=PIN1, c="white")
+                s.circle(qx, qy, 0.55 * size / 1.6, 0.15, fill=PIN1, c="white")
             vert = round(p["rot"]) % 180 == 90 and p["pins"] <= 2
             if vert:
                 s.text(x + size * 0.36, y, d, size=size, anchor="middle", weight="bold", c=REFDES, rot=-90)

@@ -162,7 +162,7 @@ Programs that compute or display but do not fly the vessel run on the expansion 
 |-------|------------|-------------|
 | Expansion Main Board | KC-01-2701 (schematic) / 2702 (board) | **New; schematic complete (2026-11-23).** Teensy 4.1 on headers (H1, H2); the display circuit of the KC-01-1911 V2.1 (40-pin panel header H3 for the LT7683 bus, backlight and touch; 10 kΩ pull-up on /RESET; 10 kΩ local I2C pull-ups); TCA8418 keypad scanner with 1 µF + 100 nF decoupling and 10 kΩ pull-ups on INT, RESET and the seven unused keypad pins; SN74AHCT1G125 LED data level shifter on 5V_LED with a 470 Ω series resistor; 34-pin keyboard connector CN2; 5-pin encoder header H4. GX16-10 wiring terminal CN1 (10-pin DB125-3.81; its pin order differs from the Ctrl Module Extension's CN2, so each harness is wired by signal name, §3.1); 47 Ω series on EXT_INT_1; 4.7 kΩ pull-up on EXT_INT_2; RST through a 10 kΩ pull-up, then 100 Ω in series with 100 nF to ground at the Teensy; no LTC4311 and no I2C pull-ups on EXT (the Ctrl Module has them). Power: SS34 + polyfuse input protection, MPM3610 A (5 V for the panel and Teensy), MPM3610 B (5V_LED for the key LEDs and the level shifter), AP2112K (3.3 V) |
 | Keyboard Matrix PCB | KC-01-2711 (schematic) / 2712 (board) | Switches, diodes and LEDs only, plus the bulk capacitor (§7.4) |
-| Encoder Carrier | KC-01-1851 / 1852 | The main controller's existing encoder board (§7.5), on header H4 |
+| Encoder | KC-01-1851 / 1852 | The main controller's existing encoder board (§7.5), on header H4 |
 | 7" panel | ER-TFT070A2-6-5633 | The main displays' panel and capacitive touch, on the main board's panel header |
 
 **Retired:** the Expansion Routing Board (KC-01-EX10) and the Expansion Teensy Carrier (KC-01-EX23), merged into the main board in v0.6; KC-01-EX30 and EX31 (v0.3 display boards); KC-01-EX22 (v0.3 encoder board), replaced by the existing Encoder Carrier in v0.8. No KC-01-1911 is used in the expansion.
@@ -288,9 +288,9 @@ One SK6812MINI-EA (LCSC C5378731) per key sits reverse-mounted on the back of th
 | C2–C26 | 100 nF 16 V X7R 0402 | C1525 | 25 | SMT (JLCPCB) |
 | CN1 | 2 × 17 IDC box header, 2.54 mm | C20920 | 1 | THT (JLCPCB) |
 
-### 7.5 Encoder Carrier (KC-01-1851 / 1852)
+### 7.5 Encoder (KC-01-1851 / 1852)
 
-The expansion uses the main controller's existing Encoder Carrier. Its outputs are RC-filtered, and the push switch is active high (a pull-down on BTN_EN, the switch to VCC). It connects to the main board's header H4: 1 3V3, 2 ENC_A, 3 ENC_B, 4 BTN_EN, 5 GND.
+The expansion uses the main controller's existing Encoder board. Its outputs are RC-filtered, and the push switch is active high (a pull-down on BTN_EN, the switch to VCC). It connects to the main board's header H4: 1 3V3, 2 ENC_A, 3 ENC_B, 4 BTN_EN, 5 GND.
 
 | Parameter | Value |
 |-----------|-------|

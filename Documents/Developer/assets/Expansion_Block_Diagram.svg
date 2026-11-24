@@ -126,7 +126,7 @@
 <polyline points="1092.0,385.0 1160.0,385.0" fill="none" stroke="#2e7d32" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="1136.0" y="378.0" font-size="10" font-weight="bold" text-anchor="middle" fill="#2e7d32">ribbon</text>
 <rect x="1160.0" y="545.0" width="220.0" height="95.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
-<text x="1174.0" y="567.0" font-size="14" font-weight="bold" text-anchor="start" fill="#212121">Encoder Carrier</text>
+<text x="1174.0" y="567.0" font-size="14" font-weight="bold" text-anchor="start" fill="#212121">Encoder</text>
 <text x="1174.0" y="584.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#455a64">KC-01-1851 / 1852 (existing)</text>
 <text x="1270.0" y="612.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#37474f">PEC11R, 24 detents, push</text>
 <polyline points="1092.0,565.0 1160.0,565.0" fill="none" stroke="#2e7d32" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>

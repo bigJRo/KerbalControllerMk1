@@ -177,7 +177,7 @@ def block_diagram():
         s.t(1270, 400 + k * 18, line, size=11, fill="#37474f")
     s.wire([(1092, 385), (1160, 385)], "sig"); s.lbl(1136, 378, "ribbon", "sig", size=10)
 
-    s.board(1160, 545, 1380, 640, "Encoder Carrier", "KC-01-1851 / 1852 (existing)")
+    s.board(1160, 545, 1380, 640, "Encoder", "KC-01-1851 / 1852 (existing)")
     s.t(1270, 612, "PEC11R, 24 detents, push", size=11, fill="#37474f")
     s.wire([(1092, 565), (1160, 565)], "sig")
 

@@ -1,0 +1,144 @@
+{
+  "base": "KC-01-185",
+  "name": "Encoder",
+  "title": "Encoder",
+  "subtitle": "Kerbal Controller Mk1 · Encoder board",
+  "rev": "A",
+  "board_version": "V2.0",
+  "date": "2026-11-24",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "doc_status": {},
+  "package_docs": "1234",
+  "revisions": [
+    [
+      "A",
+      "Supersedes the V2.0 drawings; redrawn in the KC drawing frame",
+      "2026-11-24",
+      "J. Kerman"
+    ]
+  ],
+  "sch_pdf": "SCH_KC-01-1851_Encoder_2026-11-23.pdf",
+  "gerber_zip": "Gerber_KC-01-1852_Encoder_PCB_2026-11-23.zip",
+  "bom_csv": "BOM_KC-01-1852_Encoder_PCB_2026-11-23.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1852_Encoder_PCB_2026-11-23.csv",
+  "sch_scale": 0.9,
+  "sch_sheets": [
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                62.5,
+                58.5,
+                361.5,
+                254.5
+              ],
+              "label": "Encoder with A/B pull-ups, RC filters and push-switch pull-down (SW1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                422.0,
+                102.0,
+                513.0,
+                190.0
+              ],
+              "label": "Header (H1)"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "pwb_scale": 7,
+  "layer_scale": 8,
+  "place_scale": 8,
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Encoder, signals, VCC pour"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "1.53",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Components, signals, GND pour"
+    }
+  ],
+  "stackup_note": "JLCPCB standard 2-layer. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Encoder, signals, VCC pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "The encoder (SW1) solders to this side."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Components, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "Component side: the resistors, capacitors and header H1."
+      ]
+    }
+  ],
+  "mount_hole_d": null,
+  "drill_use": {
+    "0.30 PTH": "Via",
+    "1.10 PTH": "H1 header",
+    "1.20 PTH": "Encoder pins (A, B, C, switch)",
+    "1.80 PTH SLOT": "Encoder mounting tabs"
+  },
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 2 layers, JLCPCB standard (sheet 1 table).",
+    "2. Copper: 1 oz both sides. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. Two plated slots 1.80 × 2.80 mm for the encoder mounting tabs, routed and plated.",
+    "9. No mounting holes; the board hangs from the encoder. No controlled impedance, castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The knob is fitted in the next assembly.",
+    "4. Substitutes need the approval of the design authority."
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [],
+  "place_notes": [
+    "1. The encoder SW1 is on the top side; the resistors, capacitors and header H1 are on the bottom side.",
+    "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
+    "3. Red dot = pin 1 of every part with more than two pins (SW1, H1). These match the silkscreen marks.",
+    "4. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
+  ],
+  "place_label_size": 3.2
+}

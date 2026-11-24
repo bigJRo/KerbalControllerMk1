@@ -243,9 +243,9 @@ def frame(s, f):
     s.text(tx + 10, py + 3.0, "DRAWING", size=2.0, anchor="middle", weight="bold")
     s.text(tx + 10, py + 5.6, "PACKAGE", size=2.0, anchor="middle", weight="bold")
     base = f.get("dwg_no", "KC-01-0000")[:-1]
-    cw5 = (tw - 20) / 5
-    for k in range(5):
-        d = str(k)
+    docs = f.get("package_docs") or "01234"     # a package may have no assembly drawing
+    cw5 = (tw - 20) / len(docs)
+    for k, d in enumerate(docs):
         code, name = DOC_TYPES[d]
         cur = f.get("dwg_no", "").endswith(d)
         cx = tx + 20 + k * cw5
