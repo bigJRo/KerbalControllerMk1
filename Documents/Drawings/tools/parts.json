@@ -74,5 +74,6 @@
   "C25104": {"desc": "Resistor, 330 Ω ±1 %, 1/16 W", "pkg": "0402", "class": "Basic"},
   "C2974912": {"desc": "Terminal block, screw, 4-way, 3.81 mm pitch", "pkg": "THT", "class": "Extended"},
   "C43420": {"desc": "Shift register, 8-bit, parallel in, serial out", "pkg": "TSSOP-16", "class": "Extended"},
-  "C49257": {"desc": "Pin header, male, 1×3, 2.54 mm pitch, vertical", "pkg": "THT", "mpn": "2.54-1*3P male", "class": "Extended"}
+  "C49257": {"desc": "Pin header, male, 1×3, 2.54 mm pitch, vertical", "pkg": "THT", "mpn": "2.54-1*3P male", "class": "Extended"},
+  "C25764": {"desc": "Resistor, 200 kΩ ±1 %, 1/16 W", "pkg": "0402", "class": "Basic"}
 }
