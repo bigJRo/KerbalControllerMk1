@@ -163,7 +163,7 @@
     "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
     "2. PROCESS gives the assembly process and the side the part is on.",
     "3. The key switches (SW1–SW25) are self-sourced and soldered after delivery; they are not in the EasyEDA BOM.",
-    "4. Keycaps and the cable to the main board are fitted at module level, see KC-01-2710.",
+    "4. The keycaps (KC-01-2715) are fitted at module level, see KC-01-2710.",
     "5. Substitutes need the approval of the design authority."
   ],
   "bom_extra": [
@@ -172,7 +172,7 @@
       "qty": 25,
       "value": "-",
       "pkg": "THT",
-      "desc": "Key switch, Kailh Choc V1, low profile, tactile",
+      "desc": "Key switch, Kailh Choc V1 White, clicky, low profile",
       "mfr": "Kailh",
       "mpn": "CPG135001D03",
       "lcsc": "-",
@@ -241,5 +241,158 @@
     "index": 3,
     "dx": 14,
     "dy": 14
-  }
+  },
+  "assy_pdf": "Fusion_KC-01-2710_Expansion_Keyboard_2026-11-24.pdf",
+  "doc_title": {
+    "0": "Expansion Keyboard Complete"
+  },
+  "doc_name": {
+    "0": "Expansion Keyboard Complete"
+  },
+  "assy_sheets": [
+    {
+      "scale": 1.3333333333333333,
+      "notes": true,
+      "views": [
+        {
+          "page": 1,
+          "src": [
+            110.3,
+            34.8,
+            133.6,
+            137.0
+          ],
+          "at": [
+            18.0,
+            38.6
+          ],
+          "label": "LEFT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            207.5,
+            34.8,
+            356.9,
+            137.1
+          ],
+          "at": [
+            59.07,
+            38.6
+          ],
+          "label": "TOP VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            207.5,
+            173.0,
+            356.9,
+            196.6
+          ],
+          "at": [
+            59.07,
+            182.0
+          ],
+          "label": "FRONT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            22.0,
+            136.6,
+            142.0,
+            284.0
+          ],
+          "at": [
+            268.27,
+            45.0
+          ],
+          "k": 1.1311,
+          "label": "ISOMETRIC VIEW",
+          "sublabel": "Not to scale",
+          "clip": [
+            [
+              22,
+              136.6
+            ],
+            [
+              142,
+              136.6
+            ],
+            [
+              142,
+              284
+            ],
+            [
+              22,
+              284
+            ],
+            [
+              22,
+              151
+            ],
+            [
+              26.5,
+              151
+            ],
+            [
+              26.5,
+              146
+            ],
+            [
+              22,
+              146
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scale": null,
+      "parts_list": true,
+      "views": [
+        {
+          "page": 2,
+          "src": [
+            98.0,
+            84.0,
+            298.0,
+            224.0
+          ],
+          "at": [
+            110.0,
+            86.0
+          ],
+          "k": 1.0
+        }
+      ]
+    }
+  ],
+  "assy_parts": [
+    {
+      "qty": 1,
+      "pn": "KC-01-2712",
+      "name": "Expansion Keyboard",
+      "desc": "Custom PWB; Mfr: JLCPCB"
+    },
+    {
+      "qty": 25,
+      "pn": "CPG135001D03",
+      "name": "PG1350 Choc V1",
+      "desc": "Kailh Choc V1 Low Profile Switches, White - Clicky - Operation force 50±10gf, tactile force 60±10gf - nylon bottom/PC top, POM stem"
+    },
+    {
+      "qty": 25,
+      "pn": "KC-01-2715",
+      "name": "Keycap - MBK, custom legend",
+      "desc": "MBK low-profile keycap for Kailh Choc V1 with a custom legend for its key position (FKcaps); legends per Expansion Module spec §7 and E-17"
+    }
+  ],
+  "assy_notes": [
+    "1. Item 1 is the KC-01-2712 card as assembled by JLCPCB to KC-01-2711 to KC-01-2714.",
+    "2. Solder the key switches (item 2) into SW1–SW25 on the top of the card after delivery; the LEDs light them through the cutouts.",
+    "3. Fit a keycap (item 3, KC-01-2715) to each switch in its legend position. The views show a placeholder key top.",
+    "4. Orthographic views at 4:3 on A3; isometric views not to scale. Parts list on sheet 2."
+  ]
 }

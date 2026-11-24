@@ -1,11 +1,12 @@
 # KC-01-2710 Expansion Keyboard: drawing sources
 
-Source files for the Expansion Keyboard drawings (schematic KC-01-2711, PCB KC-01-2712).
+Source files for the Expansion Keyboard drawings (assembly KC-01-2710, schematic KC-01-2711, PCB KC-01-2712).
 Released PDFs go in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
 | `KC-01-2710.json` | Drawing package config: titles, revisions, release status, notes, schematic block layout and per-sheet scales, layer colours, extra BOM lines | all drawings |
+| `Fusion_KC-01-2710_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list). Its key tops are a placeholder; the 2710 parts list shows the KC-01-2715 keycaps | 2710 ASSY |
 | `SCH_KC-01-2711_..._2026-11-23.pdf` | EasyEDA Pro schematic export | 2711 SCH |
 | `Gerber_KC-01-2712_..._2026-11-23.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files (PTH, NPTH, vias), probe-test data | 2712 PWB, 2714 PLACE |
 | `IPC-D-356A_KC-01-2712_..._2026-11-23.356a` | IPC-D-356A netlist (copper connectivity check, pad and net data) | reference |
@@ -30,8 +31,7 @@ and its Chromium; `pdftocairo` (Poppler).
 
 ```
 python Documents/Drawings/tools/kc_package.py \
-    Documents/Drawings/source/KC-01-2710/KC-01-2710.json --out <output folder> --docs 1,2,3,4
+    Documents/Drawings/source/KC-01-2710/KC-01-2710.json --out <output folder>
 ```
 
-Add `0` to `--docs` once the KC-01-2710 assembly drawing's Fusion export is in this folder
-and in the config (`assy_pdf`, `assy_sheets`, `assy_parts`, `assy_notes`).
+`--docs 0,1,2,3,4` limits the run to the assembly, schematic, PWB, BOM or PLACE drawing.
