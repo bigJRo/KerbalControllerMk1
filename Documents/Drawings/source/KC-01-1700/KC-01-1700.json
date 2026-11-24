@@ -9,7 +9,13 @@
   "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
-  "doc_status": {},
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
+  },
   "revisions": [
     [
       "A",
