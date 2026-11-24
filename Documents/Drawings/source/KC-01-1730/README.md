@@ -38,4 +38,6 @@ for each run.
   the V2.1 files. Netlist, BOM and placement are otherwise identical to the first export.
 - The EasyEDA design rule check passes on V2.1 (reported by the owner; no report file in
   the export). The netlist is in inch units, like the Extension's.
-- The silkscreen still reads "Panel Hub V2.0".
+- A second V2.1 export changed only the bottom silkscreen (now "Panel Hub V2.1") and removed a
+  stale "*Safe Switch Connection" note from the schematic. The schematic, fabrication zip and
+  project file are from that export; the netlist, BOM and placement files were unchanged by it.
