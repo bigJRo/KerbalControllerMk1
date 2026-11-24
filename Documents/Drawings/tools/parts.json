@@ -60,5 +60,9 @@
   "C9002": {"desc": "Crystal, 12 MHz", "pkg": "3225"},
   "C3406": {"desc": "Box header (IDC), 2×8, 2.54 mm pitch, straight", "pkg": "THT", "mpn": "2.54-2*8P straight", "class": "Extended"},
   "C25765": {"desc": "Resistor, 20 kΩ ±1 %, 1/16 W", "pkg": "0402", "class": "Basic"},
-  "C2997523": {"desc": "Terminal block, screw, 6-way, 5.08 mm pitch", "pkg": "THT", "class": "Extended"}
+  "C2997523": {"desc": "Terminal block, screw, 6-way, 5.08 mm pitch", "pkg": "THT", "class": "Extended"},
+  "C393941": {"desc": "microSD (TF) card socket, push-push, card-detect", "pkg": "SMD", "mfr": "SHOU HAN", "class": "Extended"},
+  "C2480": {"desc": "Diode, Schottky, 1 A, 40 V", "pkg": "SMA", "value": "1 A 40 V", "class": "Basic"},
+  "C2832270": {"desc": "Pin header, male, 1×7, 2.54 mm pitch, vertical", "pkg": "THT", "mfr": "XFCN", "mpn": "PM254V-11-07-H85", "class": "Extended"},
+  "C27438": {"desc": "Socket header, female, 1×8, 2.54 mm pitch, vertical", "pkg": "THT", "mpn": "2.54-1*8P female", "class": "Extended"}
 }
