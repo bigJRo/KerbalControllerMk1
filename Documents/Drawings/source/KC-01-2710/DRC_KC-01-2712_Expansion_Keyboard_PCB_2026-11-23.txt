@@ -1,0 +1,117 @@
+No.
+	
+Display
+	
+Error Type
+	
+Error Object
+	
+Rule Name
+	
+Object 1
+	
+Object 2
+	
+Layer
+	
+Explanation
+1	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED1_3	Slot Region : e130e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+2	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (LED_DIN): LED1_4	Slot Region : e130e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+3	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED1_1	Slot Region : e130e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+4	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7320): LED1_2	Slot Region : e130e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+5	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED2_3	Slot Region : e131e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+6	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7320): LED2_4	Slot Region : e131e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+7	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED2_1	Slot Region : e131e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+8	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7324): LED2_2	Slot Region : e131e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+9	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED3_3	Slot Region : e132e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+10	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7324): LED3_4	Slot Region : e132e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+11	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED3_1	Slot Region : e132e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+12	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7328): LED3_2	Slot Region : e132e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+13	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED4_3	Slot Region : e133e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+14	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7328): LED4_4	Slot Region : e133e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+15	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7332): LED4_2	Slot Region : e133e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+16	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED4_1	Slot Region : e133e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+17	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7332): LED5_4	Slot Region : e134e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+18	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED5_3	Slot Region : e134e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+19	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7336): LED5_2	Slot Region : e134e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+20	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED5_1	Slot Region : e134e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+21	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7336): LED6_4	Slot Region : e135e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+22	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED6_3	Slot Region : e135e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+23	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7340): LED6_2	Slot Region : e135e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+24	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED6_1	Slot Region : e135e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+25	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N7340): LED7_4	Slot Region : e136e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+26	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED7_3	Slot Region : e136e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+27	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N8191): LED7_2	Slot Region : e136e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+28	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED7_1	Slot Region : e136e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+29	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED8_3	Slot Region : e137e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+30	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N8191): LED8_4	Slot Region : e137e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+31	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N8146): LED8_2	Slot Region : e137e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+32	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED8_1	Slot Region : e137e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+33	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N8146): LED9_4	Slot Region : e138e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+34	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED9_3	Slot Region : e138e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+35	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N10369): LED9_2	Slot Region : e138e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+36	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED9_1	Slot Region : e138e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+37	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED10_3	Slot Region : e139e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+38	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N10369): LED10_4	Slot Region : e139e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+39	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED10_1	Slot Region : e139e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+40	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N9205): LED10_2	Slot Region : e139e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+41	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N9205): LED11_4	Slot Region : e140e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+42	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED11_3	Slot Region : e140e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+43	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N9209): LED11_2	Slot Region : e140e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+44	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED11_1	Slot Region : e140e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+45	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED12_3	Slot Region : e141e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+46	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N9209): LED12_4	Slot Region : e141e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+47	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N9213): LED12_2	Slot Region : e141e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+48	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (5V): LED12_1	Slot Region : e141e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+49	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N9213): LED13_4	Slot Region : e142e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm
+50	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED13_3	Slot Region : e142e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 0.1mm, should be >= 0.152mm

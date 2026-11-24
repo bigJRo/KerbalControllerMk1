@@ -104,34 +104,52 @@ def read_utf16_tsv(path):
 
 
 def outline_info(gdir):
+    """Board outline: bounds from the outline's centrelines (independent of the aperture), corner
+    radius from its arcs, or, for an outline exported as short segments, from where the straight
+    top edge starts."""
     from gerbonara import GerberFile
     from gerbonara.utils import MM
     g = GerberFile.open(glob.glob(os.path.join(gdir, "*.GKO"))[0])
-    (x0, y0), (x1, y1) = g.bounding_box(MM)
-    ap = 0.0
-    radii = []
+    pts, radii = [], []
     for o in g.objects:
-        if type(o).__name__ == "Line":
-            ap = o.aperture.diameter
-        if type(o).__name__ == "Arc":
+        n = type(o).__name__
+        if n in ("Line", "Arc"):
+            pts += [(o.x1, o.y1), (o.x2, o.y2)]
+        if n == "Arc":
             radii.append(round(math.hypot(o.cx, o.cy), 3))
-    x0 += ap / 2; y0 += ap / 2; x1 -= ap / 2; y1 -= ap / 2
-    return {"bounds": ((x0, y0), (x1, y1)), "w": x1 - x0, "h": y1 - y0, "radius": max(radii) if radii else 0.0}
+    if pts:
+        x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
+        y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
+    else:
+        (x0, y0), (x1, y1) = g.bounding_box(MM)
+    if radii:
+        r = max(radii)
+    else:
+        top = [p[0] for p in pts if abs(p[1] - y1) < 1e-3]
+        r = round(min(top) - x0, 2) if top else 0.0
+    return {"bounds": ((x0, y0), (x1, y1)), "w": x1 - x0, "h": y1 - y0, "radius": r}
 
 
 def drills(gdir):
+    """All drilled holes. A hole listed in two drill files (EasyEDA can repeat vias in the
+    PTH file and the via file) is counted once, as a via if either file says so."""
     from gerbonara import ExcellonFile
     import warnings
     warnings.simplefilter("ignore")
-    holes = []
+    found = {}
     for f in sorted(glob.glob(os.path.join(gdir, "*.DRL"))):
         via = "via" in os.path.basename(f).lower()
+        npth = "npth" in os.path.basename(f).lower()
         for o in ExcellonFile.open(f).objects:
             if hasattr(o, "x"):
                 d = round(round(o.tool.diameter * 20) / 20, 2)
-                holes.append({"x": o.x, "y": o.y, "d": d, "dt": o.tool.diameter,
-                              "plated": o.tool.plated is not False, "via": via})
-    return holes
+                key = (round(o.x, 3), round(o.y, 3), round(o.tool.diameter, 3))
+                if key in found:
+                    found[key]["via"] |= via
+                    continue
+                found[key] = {"x": o.x, "y": o.y, "d": d, "dt": o.tool.diameter,
+                              "plated": o.tool.plated is not False and not npth, "via": via}
+    return list(found.values())
 
 # --------------------------------------------------------------------------- symbols
 
@@ -230,8 +248,12 @@ def doc_pwb(cfg, work):
         return ox + (x - bx0) * k, oy + (by1 - y) * k
     s.text(ox - 10, a["y0"] + 8, "BOARD OUTLINE AND HOLES (TOP VIEW)", size=3.4, weight="bold")
     s.text(ox - 10, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. Datum: board corner at top left. All holes are drilled "
-           f"from the top. Corners R{r:.2f} (4 places). Outline tolerance ±0.2.", size=2.3, c=GREY)
-    s.rect(ox, oy, bw, bh, sw=0.5, rx=r * k)
+           f"from the top. {cfg.get('corner_note', f'Corners R{r:.2f} (4 places)')}. Outline tolerance ±0.2.", size=2.3, c=GREY)
+    if cfg.get("pwb_outline_layer"):            # draw the outline Gerber itself: internal cutouts included
+        gko = glob.glob(os.path.join(gdir, "*.GKO"))[0]
+        place_layer(s, gko, ol["bounds"], ox - 1.0 * k, oy - 1.0 * k, k, INK, bg="none")
+    else:
+        s.rect(ox, oy, bw, bh, sw=0.5, rx=r * k)
     tools = sorted({(h["d"], h["plated"]) for h in holes})
     sym = {t: SYMS[n % len(SYMS)] for n, t in enumerate(tools)}
     for hl in holes:
@@ -245,9 +267,34 @@ def doc_pwb(cfg, work):
     s.text(ox - 2.4, oy - 3.0, "DATUM 0,0", size=2.2, anchor="end")
     dim_h(s, ox, ox + bw, oy - 6, oy - 7.2, f"{ol['w']:.2f}", ext_from=oy)
     dim_v(s, oy, oy + bh, ox - 7, f"{ol['h']:.2f}", ext_from=ox)
-    big = max(h["d"] for h in holes)
-    mh = sorted([h for h in holes if h["d"] == big], key=lambda h: (-h["y"], h["x"]))
-    if mh:
+    for dm in cfg.get("pwb_dims", []):          # extra dimensions (board mm), e.g. an outline notch
+        if "h" in dm:
+            xa, _ = P(dm["h"][0], 0)
+            xb, _ = P(dm["h"][1], 0)
+            yl = oy - 6 - 7 * (dm.get("tier", 2) - 1)
+            dim_h(s, xa, xb, yl, yl - 1.2, f"{abs(dm['h'][1] - dm['h'][0]):.2f}", ext_from=P(0, dm.get("ext_y", by1))[1])
+        else:
+            _, ya = P(0, dm["v"][0])
+            _, yb_ = P(0, dm["v"][1])
+            xl = ox + bw + 7 + 7 * (dm.get("tier", 1) - 1)
+            dim_v(s, ya, yb_, xl, f"{abs(dm['v'][1] - dm['v'][0]):.2f}", ext_from=P(dm.get("ext_x", bx1), 0)[0])
+    big = cfg.get("mount_hole_d") or max(h["d"] for h in holes)
+    mh = sorted([h for h in holes if h["d"] == big and (h["plated"] or "mount_hole_d" not in cfg)],
+                key=lambda h: (-h["y"], h["x"]))
+    xs_ = sorted({round(h["x"], 2) for h in mh})
+    ys_ = sorted({round(h["y"], 2) for h in mh})
+    grid = len(mh) == 4 and len(xs_) == 2 and len(ys_) == 2
+    if mh and not grid:
+        mc = cfg.get("mount_callout", {})
+        hsel = mh[mc.get("index", 1) - 1]
+        hx, hy = P(hsel["x"], hsel["y"])
+        ddx, ddy = mc.get("dx", 14.5), mc.get("dy", 9.8)
+        s.line(hx + 1.5, hy + 1.2, hx + ddx, hy + ddy, 0.15)
+        hx, hy = hx + ddx - 16, hy + ddy - 11
+        s.text(hx + 16.5, hy + 11.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}"
+               + (f", {cfg['mount_hole_note']}" if cfg.get("mount_hole_note") else ""), size=2.6)
+        s.text(hx + 16.5, hy + 15.2, "Positions in the mounting hole table", size=2.3, c=GREY)
+    if mh and grid:
         hx, hy = P(mh[0]["x"], mh[0]["y"])
         dx, dy = mh[0]["x"] - bx0, by1 - mh[0]["y"]
         s.line(hx + 1.5, hy + 1.2, hx + 16, hy + 11, 0.15)
@@ -276,6 +323,7 @@ def doc_pwb(cfg, work):
         n = sum(1 for h in holes if (h["d"], h["plated"]) == t)
         vias = sum(1 for h in holes if (h["d"], h["plated"]) == t and h["via"])
         kind = "Via" if vias == n else ("Component / via" if vias else ("Mounting" if t[0] == big else "Component"))
+        kind = cfg.get("drill_use", {}).get(f"{t[0]:.2f} {'PTH' if t[1] else 'NPTH'}", kind)
         rows.append(["", f"{t[0]:.2f}", "PTH" if t[1] else "NPTH", str(n), kind])
     f = tw / 90
     cols = [("SYM", 9 * f, "middle"), ("DIA (mm)", 15 * f, "middle"), ("PLATING", 15 * f, "middle"),
@@ -290,8 +338,26 @@ def doc_pwb(cfg, work):
     scols = [("No.", 8 * f, "middle"), ("NAME", 18 * f, "start"), ("MATERIAL", 21 * f, "start"),
              ("THK (mm)", 13 * f, "middle"), ("USE", 30 * f, "start")]
     yb2 = s.table(tx, sy, scols, srows, rh=4.6, size=2.2, wrap=wrap_text)
-    for n, part in enumerate(wrap_text(cfg.get("stackup_note", ""), tw, 2.2)):
+    note_lines = wrap_text(cfg.get("stackup_note", ""), tw, 2.2)
+    for n, part in enumerate(note_lines):
         s.text(tx, yb2 + 4 + 3 * n, part, size=2.2, c=GREY)
+    if mh and not grid:                        # holes not on a simple rectangle: list them
+        my = yb2 + 4 + 3 * len(note_lines) + 9
+        s.text(tx, my - 2, "MOUNTING HOLES", size=3.0, weight="bold")
+        mrows = [[f"M{i}", f"{h['x'] - bx0:.2f}", f"{h['y'] - by1:.2f}", f"Ø{h['d']:.2f} {'PTH' if h['plated'] else 'NPTH'}"]
+                 for i, h in enumerate(sorted(mh, key=lambda h: (-h["y"], h["x"])), 1)]
+        s.table(tx, my, [("No.", 12 * f, "middle"), ("X", 24 * f, "end"), ("Y", 24 * f, "end"), ("HOLE", 30 * f, "start")],
+                mrows, rh=4.6, size=2.2)
+        for i, h in enumerate(sorted(mh, key=lambda h: (-h["y"], h["x"])), 1):
+            hx, hy = P(h["x"], h["y"])
+            s.text(hx + h["d"] / 2 * k + 1.0, hy - h["d"] / 2 * k - 0.6, f"M{i}", size=2.4, weight="bold")
+    for c in cfg.get("pwb_callouts", []):     # leader + note at a board point (board mm, y up)
+        cx, cy = P(*c["at"])
+        ex, ey = cx + c.get("dx", 14), cy + c.get("dy", 10)
+        s.line(cx, cy, ex, ey, 0.15)
+        s.text(ex + 0.6, ey + 0.9, c["text"], size=2.6)
+        if c.get("sub"):
+            s.text(ex + 0.6, ey + 4.3, c["sub"], size=2.3, c=GREY)
 
     notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["fab_notes"])
     sheets.append(s)
@@ -312,7 +378,10 @@ def doc_pwb(cfg, work):
         s.text(a["x0"] + 14, a["y0"] + 13, f"Scale {_ratio(k)} at {PAPER}. Layer {lay['layer']} copper is shown in "
                f"this colour; clearances, anti-pads and gaps are white. {lay.get('net', '')}.", size=2.3, c=GREY)
         bx, by_, _, _ = place_layer(s, os.path.join(gdir, lay["file"]), ol["bounds"], lx, ly, k, colour)
-        s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.35, rx=r * k)
+        if cfg.get("pwb_outline_layer"):
+            place_layer(s, glob.glob(os.path.join(gdir, "*.GKO"))[0], ol["bounds"], lx, ly, k, INK, bg="none")
+        else:
+            s.rect(lx + (bx0 - bx) * k, ly + (by_ - by1) * k, ol["w"] * k, ol["h"] * k, sw=0.35, rx=r * k)
         # drilled holes on top of the copper: white = no material. Plated: solid outline; NPTH: dashed.
         for hl in holes:
             hx, hy = lx + (hl["x"] - bx) * k, ly + (by_ - hl["y"]) * k
@@ -363,6 +432,10 @@ def doc_bom(cfg, work):
                      r.get("Value", "")) or p.get("value", "") or "-"
         rows.append([str(k), r["Quantity"], des.replace(",", ", "), val, pkg, desc, mfr, mpn,
                      lcsc or p.get("lcsc", "-"), (r.get("JLCPCB Part Class", "") or p.get("class", "-")).replace(" Part", ""), asm, by])
+    for e in cfg.get("bom_extra", []):          # board parts the EDA BOM leaves out (e.g. self-sourced)
+        rows.append([str(len(rows) + 1), str(e["qty"]), e["designators"], e.get("value", "-"), e.get("pkg", "-"),
+                     e["desc"], e.get("mfr", "-"), e.get("mpn", "-"), e.get("lcsc", "-"), e.get("class", "-"),
+                     e.get("process", "-"), e.get("by", "After delivery")])
     s = Sheet()
     a = frame(s, fields(cfg, "3", 1, 1, "NTS"))
     x = a["x0"] + 2
@@ -426,7 +499,10 @@ def doc_place(cfg, work):
     sides = [("B", "BOTTOM SIDE", "viewed from the bottom (board flipped left to right)", True),
              ("T", "TOP SIDE", "viewed from the top", False)]
     sides = [sd for sd in sides if any(p["Layer"] == sd[0] for p in pnp)]
-    total = len(sides) + 1
+    probe = frame(Sheet(), fields(cfg, "4", 1, 1, "NTS"))        # frame geometry for the table sizing
+    cap = int((probe["tb_y"] - 2 - (probe["rev_y"] + 6) - 6.4) / 6.6)     # rows per table column
+    n_tab = max(1, math.ceil(len(pnp) / (2 * cap)))
+    total = len(sides) + n_tab
     sheets = []
     for n, (side, name, how, mirror) in enumerate(sides, 1):
         s = Sheet()
@@ -449,7 +525,11 @@ def doc_place(cfg, work):
             u = (x - bx) * k
             return (vx + (ww - u) if mirror else vx + u), vy + (by_ - y) * k
         ox, oy = P(bx0, by1)
-        s.rect(min(ox, ox + (-1 if mirror else 1) * ol["w"] * k), oy, ol["w"] * k, ol["h"] * k, sw=0.4, rx=r * k)
+        if cfg.get("pwb_outline_layer"):
+            place_layer(s, glob.glob(os.path.join(gdir, "*.GKO"))[0], ol["bounds"], vx, vy, k, INK, bg="none",
+                        mirror=mirror)
+        else:
+            s.rect(min(ox, ox + (-1 if mirror else 1) * ol["w"] * k), oy, ol["w"] * k, ol["h"] * k, sw=0.4, rx=r * k)
         for hl in holes:
             hx, hy = P(hl["x"], hl["y"])
             s.circle(hx, hy, hl["dt"] / 2 * k, 0.1, fill="#fff", c="#555")
@@ -474,14 +554,7 @@ def doc_place(cfg, work):
         notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["place_notes"])
         sheets.append(s)
 
-    # placement table
-    s = Sheet()
-    a = frame(s, fields(cfg, "4", total, total, "NTS"))
-    s.text(a["x0"] + 6, a["y0"] + 8, "PLACEMENT TABLE", size=3.4, weight="bold")
-    s.text(a["x0"] + 6, a["y0"] + 13, "X, Y: part centre from the datum (board top-left corner, top view), mm; "
-           "Y is negative into the board.", size=2.3, c=GREY)
-    s.text(a["x0"] + 6, a["y0"] + 17, f"Rotation in degrees as in the EasyEDA Pro pick-and-place file of the same "
-           f"revision. Part numbers and packages from {cfg['base']}3 BOM.", size=2.3, c=GREY)
+    # placement table: two columns per sheet, as many sheets as needed
     bom = {}
     lib = _parts_library(cfg)
     for b in read_utf16_tsv(cfg["bom_csv"]):
@@ -496,19 +569,29 @@ def doc_place(cfg, work):
         pkg = lp.get("pkg") or p["Footprint"].split("_")[0]
         rows.append([d, mpn, pkg, "Top" if p["Layer"] == "T" else "Bottom", f"{p['x']:.3f}", f"{p['y']:.3f}",
                      f"{p['rot']:g}", "SMT" if p["SMD"] == "Yes" else "THT"])
+    per = (len(rows) + 1) // 2 if n_tab == 1 else cap
+    chunks = [rows[i:i + per] for i in range(0, len(rows), per)]
     base = [("REF", 13, "start"), ("PART", 44, "start"), ("PKG", 24, "start"), ("SIDE", 16, "middle"),
             ("X", 20, "end"), ("Y", 20, "end"), ("ROT", 13, "end"), ("PROCESS", 18, "middle")]
-    gap = 8
-    tw = (a["x1"] - a["x0"] - 4 - gap) / 2
-    f = tw / sum(c[1] for c in base)
-    cols = [(t, w * f, al) for t, w, al in base]
-    per = (len(rows) + 1) // 2
-    top = a["rev_y"] + 6
-    for c, chunk in enumerate([rows[:per], rows[per:]]):
-        yb = s.table(a["x0"] + 2 + c * (tw + gap), top, cols, chunk, rh=6.6, hh=6.4, size=2.75, hsize=2.5)
-        if yb > a["tb_y"] - 2:
-            raise SystemExit("placement table runs into the title block")
-    sheets.append(s)
+    for t in range(n_tab):
+        s = Sheet()
+        a = frame(s, fields(cfg, "4", len(sides) + 1 + t, total, "NTS"))
+        s.text(a["x0"] + 6, a["y0"] + 8, "PLACEMENT TABLE" + (f"  ({t + 1} of {n_tab})" if n_tab > 1 else ""),
+               size=3.4, weight="bold")
+        s.text(a["x0"] + 6, a["y0"] + 13, "X, Y: part centre from the datum (board top-left corner, top view), mm; "
+               "Y is negative into the board.", size=2.3, c=GREY)
+        s.text(a["x0"] + 6, a["y0"] + 17, f"Rotation in degrees as in the EasyEDA Pro pick-and-place file of the same "
+               f"revision. Part numbers and packages from {cfg['base']}3 BOM.", size=2.3, c=GREY)
+        gap = 8
+        tw = (a["x1"] - a["x0"] - 4 - gap) / 2
+        f = tw / sum(c[1] for c in base)
+        cols = [(tt, w * f, al) for tt, w, al in base]
+        top = a["rev_y"] + 6
+        for c, chunk in enumerate(chunks[2 * t:2 * t + 2]):
+            yb = s.table(a["x0"] + 2 + c * (tw + gap), top, cols, chunk, rh=6.6, hh=6.4, size=2.75, hsize=2.5)
+            if yb > a["tb_y"] - 2:
+                raise SystemExit("placement table runs into the title block")
+        sheets.append(s)
     return sheets
 
 
@@ -570,12 +653,17 @@ def doc_sch(cfg, work):
     to the full drawing width, columns to the row height, and each circuit is centred in its
     box with its label at the bottom left. The block group is centred vertically between the
     revision block and the title block."""
-    k = cfg.get("sch_scale", SCH_K)
+    base_k = cfg.get("sch_scale", SCH_K)
     sheets = []
     total = len(cfg["sch_sheets"])
+    mixed = len({sp.get("scale", base_k) for sp in cfg["sch_sheets"]}) > 1
     for n, spec in enumerate(cfg["sch_sheets"], 1):
+        k = spec.get("scale", base_k)          # a sheet may have its own scale; it is then stated on it
         s = Sheet()
         a = frame(s, fields(cfg, "1", n, total, "NTS"))
+        if mixed:
+            s.text(a["x0"] + 6, a["y0"] + 8, f"Drawn at {k / (25.4 / 72) * 100:.0f} % of the EasyEDA schematic "
+                   f"({k:.2f} mm per point). Symbol sizes differ between sheets of this drawing.", size=2.6, c=GREY)
         ax0, ax1 = a["x0"] + SCH_GAP, a["x1"] - SCH_GAP
         ay0, ay1 = a["rev_y"] + SCH_GAP, a["tb_y"] - SCH_GAP
 

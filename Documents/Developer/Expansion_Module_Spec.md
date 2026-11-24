@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 0.9 (Draft)  
+**Version:** 0.10 (Draft)  
 **Date:** 2026-11-21  
 **Document type:** Developer — Hardware Design Specification
 
@@ -283,9 +283,9 @@ One SK6812MINI-EA (LCSC C5378731) per key sits reverse-mounted on the back of th
 | SW1–SW25 | Kailh Choc V1 tactile (CPG135001D03) | Self-source | 25 | Hand solder |
 | D1–D25 | 1N4148W SOD-123, anode on the row line | C81598 | 25 | SMT (JLCPCB) |
 | LED1–LED25 | SK6812MINI-EA | C5378731 | 25 | SMT (JLCPCB) |
-| C1–C25 | 100 nF 16 V X7R 0402 | C1525 | 25 | SMT (JLCPCB) |
-| C26 | 100 µF 10 V electrolytic (RVT1A101M0505) | C3347 | 1 | SMT (JLCPCB) |
-| CN1 | 2 × 17 IDC box header, 2.54 mm | — | 1 | Hand solder |
+| C1 | 100 µF 10 V electrolytic (RVT1A101M0505) | C3347 | 1 | SMT (JLCPCB) |
+| C2–C26 | 100 nF 16 V X7R 0402 | C1525 | 25 | SMT (JLCPCB) |
+| CN1 | 2 × 17 IDC box header, 2.54 mm | C20920 | 1 | THT (JLCPCB) |
 
 ### 7.5 Encoder Carrier (KC-01-1851 / 1852)
 
@@ -423,3 +423,4 @@ In scope later, when the firmware is designed: the master's EXT service (E-10), 
 | 0.7 | 2026-11-23 | TUSB212 USB signal conditioner dropped: the link starts at a Ctrl Module hub port, and the ≈ 2 m run to the Teensy is well inside USB 2.0's 5 m. The internal leads are shielded twisted-pair USB cable, the panel mount's lead goes straight to the Teensy, and a bench check with a Full Speed fallback is added (E-26). Figure 4-1 updated |
 | 0.8 | 2026-11-23 | Aligned with the completed schematics (main board and keyboard). Pin map: EXT_INT_1 on pin 0 through 47 Ω, TCA8418 RESET on 7, encoder on 30 / 29 / 10, LED data on 28; pins 8, 12, 13 spare. The tone amplifier is dropped. RST filter as built (10 kΩ pull-up, 100 Ω + 100 nF). The encoder is the existing Encoder Carrier KC-01-1851 / 1852 (EX22 retired). The keyboard has one 34-pin connector instead of J1 / J2, and a 100 µF bulk capacitor. Diode direction confirmed against the TCA8418 data sheet; E-25 closed, E-24 updated. Figure 4-1 updated |
 | 0.9 | 2026-11-23 | Board numbers assigned: Expansion Main Board KC-01-2701 / 2702, keyboard KC-01-2711 / 2712. The expansion terminal CN1 pinout is recorded (§3.1); its order differs from the main side's CN2, so the harness is wired by signal name. Figure 4-1 updated |
+| 0.10 | 2026-11-24 | Keyboard BOM (§7.4) matches the layout export of 2026-11-23: C1 is the 100 µF bulk capacitor, C2–C26 the 100 nF LED decoupling, and CN1 (C20920) is fitted by JLCPCB |

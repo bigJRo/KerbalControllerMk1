@@ -1,0 +1,245 @@
+{
+  "base": "KC-01-271",
+  "name": "Expansion Keyboard",
+  "title": "Expansion Keyboard",
+  "subtitle": "Kerbal Controller Mk1 · Expansion Module",
+  "rev": "-",
+  "board_version": "V1.0",
+  "date": "2026-11-24",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "doc_status": {},
+  "sch_pdf": "SCH_KC-01-2711_Expansion_Keyboard_2026-11-23.pdf",
+  "gerber_zip": "Gerber_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.zip",
+  "bom_csv": "BOM_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.csv",
+  "pnp_csv": "PickAndPlace_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.csv",
+  "sch_sheets": [
+    {
+      "scale": 0.48,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                104,
+                80,
+                300,
+                232
+              ],
+              "label": "Keyboard connector (CN1)"
+            },
+            {
+              "page": 1,
+              "crop": [
+                320,
+                42,
+                377,
+                117
+              ],
+              "label": "5 V bulk capacitor (C1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                466,
+                14,
+                1072,
+                378
+              ],
+              "label": "Key matrix (SW1–SW25, D1–D25)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.37,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                70,
+                377,
+                1110,
+                707
+              ],
+              "label": "Key LEDs (LED1–LED25) and their decoupling (C2–C26)"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Switch pins, signals, 5V pour"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "1.53",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Components, signals, GND pour"
+    }
+  ],
+  "stackup_note": "JLCPCB standard 2-layer. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Switch pins, signals, 5V pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "The key switches solder to this side; the 5V pour fills the open area."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Components, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "Component side: all SMT parts and the reverse-mounted LEDs over their cutouts."
+      ]
+    }
+  ],
+  "pwb_outline_layer": true,
+  "mount_hole_d": 3.2,
+  "mount_hole_note": "Ø4.80 pads, no net (isolated)",
+  "drill_use": {
+    "3.50 NPTH": "Switch centre post",
+    "2.00 NPTH": "Switch locating pegs",
+    "1.20 PTH": "Switch pins",
+    "1.00 PTH": "CN1 connector",
+    "0.55 PTH": "Via",
+    "0.30 PTH": "Via"
+  },
+  "pwb_callouts": [
+    {
+      "at": [
+        73.5,
+        -78.6
+      ],
+      "dx": 12,
+      "dy": 40,
+      "text": "25× LED cutout 3.60 × 3.20, R0.40 corners, routed",
+      "sub": "LED pads 0.10 from the cutout edge by design (note 8)"
+    }
+  ],
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 2 layers, JLCPCB standard (sheet 1 table).",
+    "2. Copper: 1 oz both sides. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. 25 routed LED cutouts, 3.60 × 3.20 mm. The LED pads sit 0.10 mm from the cutout edge by design (SK6812MINI-EA reverse mount); keep the pads full size.",
+    "9. The 5 plated mounting holes (M1–M5) are not connected to any net; keep them isolated on both layers.",
+    "10. No controlled impedance, slots (other than the LED cutouts), castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The key switches (SW1–SW25) are self-sourced and soldered after delivery; they are not in the EasyEDA BOM.",
+    "4. Keycaps and the cable to the main board are fitted at module level, see KC-01-2710.",
+    "5. Substitutes need the approval of the design authority."
+  ],
+  "bom_extra": [
+    {
+      "designators": "SW1–SW25",
+      "qty": 25,
+      "value": "-",
+      "pkg": "THT",
+      "desc": "Key switch, Kailh Choc V1, low profile, tactile",
+      "mfr": "Kailh",
+      "mpn": "CPG135001D03",
+      "lcsc": "-",
+      "class": "-",
+      "process": "THT (top)",
+      "by": "After delivery"
+    }
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [
+    "C1",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7",
+    "D8",
+    "D9",
+    "D10",
+    "D11",
+    "D12",
+    "D13",
+    "D14",
+    "D15",
+    "D16",
+    "D17",
+    "D18",
+    "D19",
+    "D20",
+    "D21",
+    "D22",
+    "D23",
+    "D24",
+    "D25"
+  ],
+  "place_notes": [
+    "1. All SMT parts and CN1 are on the bottom side. The key switches SW1–SW25 are the only top-side parts.",
+    "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
+    "3. Red dot = pin 1: every LED and CN1, the cathode of each diode D1–D25, and the + terminal of C1. These match the silkscreen marks.",
+    "4. The LEDs mount reverse, body through the cutout, so they light the switch from below.",
+    "5. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
+  ],
+  "corner_note": "Outer corners R4.23 (4 places), notch corners R3.00 (3 places)",
+  "pwb_dims": [
+    {
+      "h": [
+        127.0,
+        147.0
+      ],
+      "tier": 2,
+      "ext_y": -40.0
+    },
+    {
+      "v": [
+        0.0,
+        -40.0
+      ],
+      "tier": 1,
+      "ext_x": 127.0
+    }
+  ],
+  "mount_callout": {
+    "index": 3,
+    "dx": 14,
+    "dy": 14
+  }
+}
