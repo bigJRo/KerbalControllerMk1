@@ -17,7 +17,7 @@
 | Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | Input-panel hub: 8 module slots + safe switch |
 | 7" TFT Display Driver | KC-01-1911 | KC-01-1912 | V2.1 | One 7" display. On each display panel one driver also acts as the hub: 3 module slots + safe switch |
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | 12 RGB buttons + 4 panel inputs |
-| Wide Button Module | KC-01-1811 | KC-01-1812 | V2.0 | 12 RGB buttons + 8 panel inputs |
+| Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | 12 RGB buttons + 8 panel inputs |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | Motorised fader, touch sensor, 5 illuminated panel inputs |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | 3-axis stick + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | 4-digit display, encoder with push, 3 RGB buttons |
@@ -102,7 +102,9 @@ V2.1 adds the 200 kΩ pull-up on the PCA9306 VREF2/EN node (Hardware Reference �
 | B12, B13 | Terminal CN2 (4-pin): 1–2 +5 V, 3 B12, 4 B13 |
 | B14, B15 | Terminal CN1 (4-pin): 1 B15, 2 B14, 3–4 +5 V |
 
-### 5.3 Wide Button Module (KC-01-1811 V2.0)
+### 5.3 Wide Button Module (KC-01-1811 V2.1)
+
+V2.1 adds the 200 kΩ pull-up on the PCA9306 VREF2/EN node (Hardware Reference §15 item 10) and leaves U19 pin 7 (/QH) unconnected; V2.0 had it grounded with the unused inputs.
 
 | Inputs | Where |
 |---|---|

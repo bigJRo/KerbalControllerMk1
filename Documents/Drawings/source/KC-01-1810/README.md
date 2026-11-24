@@ -27,7 +27,8 @@ with the board number corrected to KC-01-1812.
 - Shift register U19 uses only inputs A–D; E–H (pins 3–6) are grounded. The first V2.1 export
   also grounded pin 7 (/QH, an output), shorting it whenever QH was low. These files are the
   corrected export: pin 7 is unconnected, and only the bottom copper there changed.
-- The silkscreen reads "Button Module V2.1".
+- The silkscreen reads "Wide Button Module V2.1" (fabrication zip and project re-exported for
+  that change only; netlist, BOM and placement files unchanged).
 - The assembly includes a Panel Hub (item 5), listed as KC-01-1732.
 
 Part descriptions, packages and JLCPCB part classes for the BOM come from
