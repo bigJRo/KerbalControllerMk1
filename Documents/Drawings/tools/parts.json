@@ -64,5 +64,15 @@
   "C393941": {"desc": "microSD (TF) card socket, push-push, card-detect", "pkg": "SMD", "mfr": "SHOU HAN", "class": "Extended"},
   "C2480": {"desc": "Diode, Schottky, 1 A, 40 V", "pkg": "SMA", "value": "1 A 40 V", "class": "Basic"},
   "C2832270": {"desc": "Pin header, male, 1×7, 2.54 mm pitch, vertical", "pkg": "THT", "mfr": "XFCN", "mpn": "PM254V-11-07-H85", "class": "Extended"},
-  "C27438": {"desc": "Socket header, female, 1×8, 2.54 mm pitch, vertical", "pkg": "THT", "mpn": "2.54-1*8P female", "class": "Extended"}
+  "C27438": {"desc": "Socket header, female, 1×8, 2.54 mm pitch, vertical", "pkg": "THT", "mpn": "2.54-1*8P female", "class": "Extended"},
+  "C114581": {"desc": "LED driver, RGB, 3-channel constant current, single-wire serial data", "pkg": "SOP-8", "mfr": "Worldsemi", "class": "Extended"},
+  "C123752": {"desc": "I²C level translator, 2-bit, bidirectional", "pkg": "VSSOP-8 (DCT)", "class": "Extended"},
+  "C1546": {"desc": "Capacitor, ceramic, 100 pF ±5 %, 50 V, C0G", "pkg": "0402", "class": "Basic"},
+  "C15525": {"desc": "Capacitor, ceramic, 10 µF ±20 %, 6.3 V, X5R", "pkg": "0402", "class": "Basic"},
+  "C2052778": {"desc": "Microcontroller, AVR, 8 KB flash, 512 B SRAM, 20 MHz", "pkg": "VQFN-20 3×3", "class": "Extended"},
+  "C2135": {"desc": "Diode, Schottky, dual common cathode, 200 mA, 30 V", "pkg": "SOT-23", "class": "Extended"},
+  "C25104": {"desc": "Resistor, 330 Ω ±1 %, 1/16 W", "pkg": "0402", "class": "Basic"},
+  "C2974912": {"desc": "Terminal block, screw, 4-way, 3.81 mm pitch", "pkg": "THT", "class": "Extended"},
+  "C43420": {"desc": "Shift register, 8-bit, parallel in, serial out", "pkg": "TSSOP-16", "class": "Extended"},
+  "C49257": {"desc": "Pin header, male, 1×3, 2.54 mm pitch, vertical", "pkg": "THT", "mpn": "2.54-1*3P male", "class": "Extended"}
 }
