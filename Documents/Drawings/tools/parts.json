@@ -57,5 +57,8 @@
   "C5187527": {"desc": "USB 2.0 hub controller, 4-port", "pkg": "QFN-24 4×4"},
   "C404969": {"desc": "Connector, micro-USB B receptacle", "pkg": "SMD"},
   "C165948": {"desc": "Connector, USB Type-C receptacle, 16-pin", "pkg": "SMD"},
-  "C9002": {"desc": "Crystal, 12 MHz", "pkg": "3225"}
+  "C9002": {"desc": "Crystal, 12 MHz", "pkg": "3225"},
+  "C3406": {"desc": "Box header (IDC), 2×8, 2.54 mm pitch, straight", "pkg": "THT", "mpn": "2.54-2*8P straight", "class": "Extended"},
+  "C25765": {"desc": "Resistor, 20 kΩ ±1 %, 1/16 W", "pkg": "0402", "class": "Basic"},
+  "C2997523": {"desc": "Terminal block, screw, 6-way, 5.08 mm pitch", "pkg": "THT", "class": "Extended"}
 }
