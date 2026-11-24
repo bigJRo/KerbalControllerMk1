@@ -360,8 +360,12 @@ def doc_pwb(cfg, work):
         hx, hy = hx + ddx - 16, hy + ddy - 11
         s.text(hx + 16.5, hy + 11.8, f"{len(mh)}× Ø{big:.2f} {'PTH' if mh[0]['plated'] else 'NPTH'}"
                + (f", {cfg['mount_hole_note']}" if cfg.get("mount_hole_note") else ""), size=2.6)
-        s.text(hx + 16.5, hy + 15.2, f"{dx:.2f} from the side edges, {dy:.2f} from the top and bottom edges",
-               size=2.3, c=GREY)
+        dx2, dy2 = bx1 - mh[-1]["x"], mh[-1]["y"] - by0
+        sides = (f"{dx:.2f} from the side edges" if abs(dx - dx2) < 0.01
+                 else f"{dx:.2f} from the left edge, {dx2:.2f} from the right edge")
+        ends = (f"{dy:.2f} from the top and bottom edges" if abs(dy - dy2) < 0.01
+                else f"{dy:.2f} from the top edge, {dy2:.2f} from the bottom edge")
+        s.text(hx + 16.5, hy + 15.2, f"{sides}, {ends}", size=2.3, c=GREY)
         xs = sorted({round(h["x"], 2) for h in mh})
         ys = sorted({round(h["y"], 2) for h in mh})
         if len(xs) > 1:

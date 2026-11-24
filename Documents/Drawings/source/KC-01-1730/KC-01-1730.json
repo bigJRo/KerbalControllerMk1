@@ -1,0 +1,259 @@
+{
+  "base": "KC-01-173",
+  "name": "Panel Hub",
+  "title": "Panel Hub",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "A",
+  "board_version": "V2.1",
+  "date": "2026-11-24",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "1234",
+  "revisions": [
+    [
+      "A",
+      "Supersedes V2.0; board V2.1 (U4 pin 1 to +5V); KC drawing frame",
+      "2026-11-24",
+      "J. Kerman"
+    ]
+  ],
+  "sch_pdf": "SCH_KC-01-1731_Panel_Hub_2026-11-23.pdf",
+  "gerber_zip": "Gerber_KC-01-1732_Panel_Hub_PCB_2026-11-23.zip",
+  "bom_csv": "BOM_KC-01-1732_Panel_Hub_PCB_2026-11-23.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1732_Panel_Hub_PCB_2026-11-23.csv",
+  "sch_scale": 0.45,
+  "sch_sheets": [
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                80,
+                22,
+                263,
+                169
+              ],
+              "label": "Panel connector (CN1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                116,
+                286,
+                261,
+                451
+              ],
+              "label": "Safe-switch terminal (U4) and INT_SAFE divider (R3, R4)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                38,
+                206,
+                308,
+                263
+              ],
+              "label": "Power: 12 V to 5 V (U1) to 3.3 V (U2)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 2,
+              "crop": [
+                80,
+                78,
+                515,
+                240
+              ],
+              "label": "5 V converter (U1)"
+            }
+          ],
+          [
+            {
+              "page": 3,
+              "crop": [
+                109,
+                114,
+                516,
+                204
+              ],
+              "label": "3.3 V regulator (U2)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                394,
+                33,
+                792,
+                439
+              ],
+              "label": "Module slots P1 to P8"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "pwb_scale": 1.25,
+  "layer_scale": 1.5,
+  "pwb_tables_sheet": true,
+  "pwb_outline_layer": true,
+  "place_scale": 1.5,
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Signals, GND pour"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "7628",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "PWR_PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "12 V plane (V_IN)"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "3",
+      "name": "GND_PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "Ground plane (GND)"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "7628",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "4",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "All parts, signals, V_3P3 pour"
+    }
+  ],
+  "stackup_note": "JLCPCB JLC04161H-7628: dielectric materials and thicknesses as that stackup. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Signals, GND pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "Solder side of the through-hole connectors; the GND pour fills the open area."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "PWR_PL",
+      "file": "Gerber_InnerLayer1.G1",
+      "net": "12 V plane (V_IN)",
+      "copper": "0.5 oz",
+      "color": "#8e44ad"
+    },
+    {
+      "layer": "3",
+      "name": "GND_PL",
+      "file": "Gerber_InnerLayer2.G2",
+      "net": "Ground plane (GND)",
+      "copper": "0.5 oz",
+      "color": "#1e8449"
+    },
+    {
+      "layer": "4",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "All parts, signals, V_3P3 pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "Component side: every part mounts on this side, the SMT parts and the through-hole connectors."
+      ]
+    }
+  ],
+  "mount_hole_d": 3.2,
+  "mount_hole_note": "Ø4.80 pads, no net (isolated)",
+  "drill_use": {
+    "3.20 PTH": "Mounting holes",
+    "1.40 PTH": "U4 terminal block",
+    "1.10 PTH": "P1–P8 slot headers",
+    "1.00 PTH": "CN1 34-pin header",
+    "0.30 PTH": "Via"
+  },
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 4 layers, JLCPCB JLC04161H-7628 stackup (sheet 2 table).",
+    "2. Copper: 1 oz outer, 0.5 oz inner. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. The 4 plated mounting holes (M1–M4) are not connected to any net; keep them isolated on all layers.",
+    "9. No controlled impedance, slots, castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The panel's safe switch and arming switch wire to U4; they are part of the panel, not this board.",
+    "4. Substitutes need the approval of the design authority."
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [],
+  "place_label_size": 1.4,
+  "place_notes": [
+    "1. Every part is on the bottom side: the SMT parts U1, U2, C1–C5, R1–R4 and the through-hole connectors CN1, P1–P8 and U4 (soldered from the top). The top side has no parts.",
+    "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
+    "3. Red dot = pin 1 of every part with more than two pins. These match the silkscreen marks.",
+    "4. U4 (silkscreen names): 1 SW_P = +5V, 2 SW_N = V_EN, 3 LED_P = V_EN, 4 LED_N = GND, 5 BTN_P = V_EN, 6 BTN_N = input to INT_SAFE through R3 / R4. Arming switch across SW_P / SW_N, its lamp across LED_P / LED_N, push-button across BTN_P / BTN_N.",
+    "5. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
+  ],
+  "mount_callout": {
+    "index": 2,
+    "dx": 14,
+    "dy": 12
+  },
+  "doc_status": {
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
+  }
+}
