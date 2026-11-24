@@ -191,7 +191,7 @@ def dim_v(s, y1, y2, x, label, ext_from=None, size=2.6):
 
 
 def fields(cfg, d, sheet, sheets, scale):
-    return dict(dwg_no=cfg["base"] + d, rev=cfg.get("rev", "-"), title=cfg["title"], subtitle=cfg["subtitle"],
+    return dict(dwg_no=cfg["base"] + d, rev=cfg.get("rev", "-"), title=cfg.get("doc_title", {}).get(d, cfg["title"]), subtitle=cfg["subtitle"],
                 doc_type=DOC_TYPES[d][1], status=cfg.get("doc_status", {}).get(d, cfg.get("status", "DRAFT")), created_by=cfg["created_by"],
                 approved_by=cfg["approved_by"], date=cfg["date"], board_version=cfg["board_version"],
                 scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"))
@@ -623,15 +623,83 @@ def doc_sch(cfg, work):
     return sheets
 
 
+PT = 72 / 25.4           # pt per mm
+
+
+def _pdf_page_body(pdf, page, work, tag):
+    """One PDF page as an SVG fragment with unique ids, and its size in pt."""
+    svgp = os.path.join(work, f"{tag}_p{page}.svg")
+    subprocess.run(["pdftocairo", "-svg", "-f", str(page), "-l", str(page), pdf, svgp],
+                   check=True, stderr=subprocess.DEVNULL)
+    svg = open(svgp, encoding="utf-8").read()
+    body = svg[svg.index(">", svg.index("<svg")) + 1: svg.rindex("</svg>")]
+    pre = f"{tag}{page}-"
+    body = re.sub(r'id="([^"]+)"', lambda m: f'id="{pre}{m.group(1)}"', body)
+    body = re.sub(r'(xlink:href|href)="#([^"]+)"', lambda m: f'{m.group(1)}="#{pre}{m.group(2)}"', body)
+    body = re.sub(r"url\(#([^)]+)\)", lambda m: f"url(#{pre}{m.group(1)})", body)
+    return body
+
+
+def doc_assy(cfg, work):
+    """CCA assembly drawing from a Fusion drawing PDF. Each view is a crop of a Fusion page
+    (src: [x0, y0, x1, y1] in mm on that page, top-down) placed at sheet position at:[x, y]
+    (top-left, mm) and drawn at the sheet's scale k (Fusion views are drawn at 1:1) or at its
+    own fit width w for not-to-scale views. Sheets: {"scale": k or null, "views": [...],
+    "parts_list": bool, "notes": bool}."""
+    pdf = cfg["assy_pdf"]
+    sheets_cfg = cfg["assy_sheets"]
+    total = len(sheets_cfg)
+    sheets = []
+    for n, sc in enumerate(sheets_cfg, 1):
+        k = sc.get("scale")
+        s = Sheet()
+        a = frame(s, fields(cfg, "0", n, total, _ratio(k) if k else "NTS"))
+        pages = sorted({v["page"] for v in sc["views"]})
+        s.add("<defs>" + "".join(f'<g id="assy-page-{pg}">{_pdf_page_body(pdf, pg, work, "assy")}</g>'
+                                 for pg in pages) + "</defs>")
+        if sc.get("parts_list"):
+            rows = [[str(i), str(p["qty"]), p["pn"], p["name"], p["desc"]] for i, p in enumerate(cfg["assy_parts"], 1)]
+            x = a["x0"] + 2
+            tw = a["x1"] - 2 - x
+            base = [("ITEM", 11, "middle"), ("QTY", 10, "middle"), ("PART NUMBER", 42, "start"),
+                    ("PART NAME", 62, "start"), ("DESCRIPTION", 155, "start")]
+            f = tw / sum(c[1] for c in base)
+            s.text(x, a["rev_y"] + 4, "PARTS LIST", size=3.0, weight="bold")
+            yb = s.table(x, a["rev_y"] + 6, [(t, w * f, al) for t, w, al in base], rows, rh=6.6, hh=6.4,
+                         size=2.75, hsize=2.5, wrap=wrap_text)
+            sc.setdefault("_top", yb)
+        for v in sc["views"]:
+            x0, y0, x1, y1 = v["src"]
+            vk = v.get("k", k)
+            w, h = (x1 - x0) * vk, (y1 - y0) * vk
+            X, Y = v["at"]
+            use = f'<use href="#assy-page-{v["page"]}" xlink:href="#assy-page-{v["page"]}"/>'
+            if v.get("clip"):          # polygon on the source page (mm) to leave out neighbouring views
+                cid = f"assy-clip-{n}-{len(s.o)}"
+                pts = " ".join(f"{px * PT:.2f},{py * PT:.2f}" for px, py in v["clip"])
+                use = f'<clipPath id="{cid}"><polygon points="{pts}"/></clipPath><g clip-path="url(#{cid})">{use}</g>'
+            s.add(f'<svg x="{X:.3f}" y="{Y:.3f}" width="{w:.3f}" height="{h:.3f}" '
+                  f'viewBox="{x0 * PT:.3f} {y0 * PT:.3f} {(x1 - x0) * PT:.3f} {(y1 - y0) * PT:.3f}" overflow="hidden">'
+                  f'{use}</svg>')
+            if v.get("label"):
+                s.text(X + w / 2, Y + h + 5, v["label"], size=2.8, anchor="middle", weight="bold")
+                if v.get("sublabel"):
+                    s.text(X + w / 2, Y + h + 8.6, v["sublabel"], size=2.3, anchor="middle", c=GREY)
+        if sc.get("notes"):
+            notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["assy_notes"])
+        sheets.append(s)
+    return sheets
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--docs", default="1,2,3,4")
+    ap.add_argument("--docs", default="0,1,2,3,4")
     a = ap.parse_args()
     cdir = os.path.dirname(os.path.abspath(a.config))
     cfg = json.load(open(a.config, encoding="utf-8"))
-    for k in ("sch_pdf", "gerber_dir", "gerber_zip", "bom_csv", "pnp_csv"):
+    for k in ("sch_pdf", "assy_pdf", "gerber_dir", "gerber_zip", "bom_csv", "pnp_csv"):
         if k in cfg and not os.path.isabs(cfg[k]):
             cfg[k] = os.path.normpath(os.path.join(cdir, cfg[k]))
     os.makedirs(a.out, exist_ok=True)
@@ -643,12 +711,12 @@ def main():
                 if "/" not in m and ".." not in m:
                     z.extract(m, gdir)
         cfg["gerber_dir"] = gdir
-    builders = {"1": doc_sch, "2": doc_pwb, "3": doc_bom, "4": doc_place}
+    builders = {"0": doc_assy, "1": doc_sch, "2": doc_pwb, "3": doc_bom, "4": doc_place}
     for d in a.docs.split(","):
         work = tempfile.mkdtemp(prefix=f"kc_{d}_", dir=a.out)
         sheets = builders[d](cfg, work)
         f = {"dwg_no": cfg["base"] + d, "rev": cfg.get("rev", "-")}
-        out = os.path.join(a.out, file_name(f, cfg["name"]))
+        out = os.path.join(a.out, file_name(f, cfg.get("doc_name", {}).get(d, cfg["name"])))
         print_pdf(sheets, out, work)
         print("wrote", out, f"({len(sheets)} sheet{'s' if len(sheets) > 1 else ''})")
 

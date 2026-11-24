@@ -343,5 +343,196 @@
   "place_polarised": [
     "D1"
   ],
-  "gerber_zip": "Gerber_KC-01-2702_7in_TFT_Expansion_Unit_PCB_2026-11-23.zip"
+  "gerber_zip": "Gerber_KC-01-2702_7in_TFT_Expansion_Unit_PCB_2026-11-23.zip",
+  "assy_pdf": "Fusion_KC-01-2700_7in_TFT_Expansion_Unit_2026-11-24.pdf",
+  "doc_title": {
+    "0": "7\" TFT Expansion Unit Complete"
+  },
+  "doc_name": {
+    "0": "7in TFT Expansion Unit Complete"
+  },
+  "assy_sheets": [
+    {
+      "scale": 1.25,
+      "notes": true,
+      "views": [
+        {
+          "page": 1,
+          "src": [
+            98.8,
+            30.2,
+            134.9,
+            136.6
+          ],
+          "at": [
+            18.0,
+            38.6
+          ],
+          "label": "LEFT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            184.2,
+            30.2,
+            366.3,
+            136.6
+          ],
+          "at": [
+            73.13,
+            38.6
+          ],
+          "label": "TOP VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            184.2,
+            162.1,
+            366.3,
+            197.8
+          ],
+          "at": [
+            73.13,
+            178.6
+          ],
+          "label": "FRONT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            21.0,
+            110.0,
+            167.0,
+            284.0
+          ],
+          "at": [
+            310.0,
+            48.0
+          ],
+          "k": 0.6438,
+          "label": "ISOMETRIC VIEW",
+          "sublabel": "Not to scale",
+          "clip": [
+            [
+              21,
+              110
+            ],
+            [
+              97.5,
+              110
+            ],
+            [
+              97.5,
+              137.5
+            ],
+            [
+              136.5,
+              137.5
+            ],
+            [
+              136.5,
+              110
+            ],
+            [
+              167,
+              110
+            ],
+            [
+              167,
+              284
+            ],
+            [
+              21,
+              284
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scale": null,
+      "parts_list": true,
+      "views": [
+        {
+          "page": 2,
+          "src": [
+            65.0,
+            98.0,
+            340.0,
+            263.0
+          ],
+          "at": [
+            40.0,
+            92.0
+          ],
+          "k": 1.0,
+          "clip": [
+            [
+              65,
+              98
+            ],
+            [
+              340,
+              98
+            ],
+            [
+              340,
+              235
+            ],
+            [
+              226,
+              235
+            ],
+            [
+              226,
+              263
+            ],
+            [
+              65,
+              263
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "assy_parts": [
+    {
+      "qty": 1,
+      "pn": "KC-01-2702",
+      "name": "7\" TFT Expansion Unit",
+      "desc": "Custom PWB; Mfr: JLCPCB"
+    },
+    {
+      "qty": 4,
+      "pn": "94868A720",
+      "name": "Standoff - M3 - 11mm x 4.5mm",
+      "desc": "Female Threaded Hex Standoff, 18-8 Stainless Steel, 4.5mm Hex, 11mm Long, M3 x 0.5mm Thread"
+    },
+    {
+      "qty": 8,
+      "pn": "92000A114",
+      "name": "Screw - M3 - 5mm",
+      "desc": "Passivated 18-8 Stainless Steel Pan Head Phillips Screws, M3 x 0.5mm Thread, 5mm Long"
+    },
+    {
+      "qty": 1,
+      "pn": "ER-TFT070A2-6-5633",
+      "name": "ER-TFT070A2-6",
+      "desc": "7 inch 1024x600 IPS TFT Touch Display Module with I2C SPI for Arduino; Pin Header-8080; 5V; Capacitive Touch Panel"
+    },
+    {
+      "qty": 1,
+      "pn": "TEENSY41_NE_PINS",
+      "name": "Teensy 4.1 (With Headers)",
+      "desc": "Teensy USB Board, Version 4.1, Without Ethernet Chip, ARM Cortex-M7 at 600 MHz Microcontroller, 7936K Flash, 1024K RAM (512K tightly coupled), 4K EEPROM (emulated), Native SDIO SD Card port"
+    }
+  ],
+  "assy_notes": [
+    "1. Item 1 is the KC-01-2702 card as assembled by JLCPCB to KC-01-2701 to KC-01-2704.",
+    "2. The Teensy 4.1 (item 5) plugs into H1 and H2 on the bottom of the card; the display (item 4) plugs into H3 on the top.",
+    "3. Four standoffs (item 2) join the card and the display, with an M3 screw (item 3) at each end.",
+    "4. Orthographic views at 5:4 on A3; isometric views not to scale. Parts list on sheet 2."
+  ]
 }
