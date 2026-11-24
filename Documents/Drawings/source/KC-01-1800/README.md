@@ -7,7 +7,7 @@ PDFs are in `Documents/Drawings`.
 | File | What it is | Feeds |
 |---|---|---|
 | `KC-01-1800.json` | Drawing package config: titles, revisions, release status, notes, schematic blocks, assembly views and parts list, layer colours | all drawings |
-| `Fusion_KC-01-1800_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list); views as Rev A; its parts list lost its properties ("----"), so the drawing's list comes from the config | 1800 ASSY |
+| `Fusion_KC-01-1800_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list); views as Rev A | 1800 ASSY |
 | `SCH_KC-01-1801_..._2026-11-24.pdf` | EasyEDA Pro schematic export | 1801 SCH |
 | `Gerber_KC-01-1802_..._2026-11-24.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files, probe-test data | 1802 PWB, 1804 PLACE |
 | `IPC-D-356A_KC-01-1802_..._2026-11-24.356a` | IPC-D-356A netlist (copper connectivity check) | reference |
