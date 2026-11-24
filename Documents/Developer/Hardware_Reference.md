@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.2  
-**Date:** 2026-11-23  
+**Version:** 2.3  
+**Date:** 2026-11-24  
 **Document type:** Developer — Hardware
 
 ---
@@ -26,6 +26,7 @@
 | 2.0 | 2026-10-26 | Rebuilt from `Hardware_Inventory.md` (the V2.0 schematics, confirmed panel by panel) and `Master_Firmware_Design.md`; every difference in Inventory §6 resolved. **Boards:** Display Hub (KC-01-1721/1722) retired — on A1 and B1 one 7" TFT Display Driver (KC-01-1911/1912) is the panel hub (Info Display 1 → Ctrl Module CN4; Resource Display → Extension CN5); Panel Hub (KC-01-1731/1732) on A2 (Ctrl CN3) and B2 (Extension CN4). Schematic and PCB numbers both listed. "Carrier" boards renamed to "Display Driver"; Ctrl Ext Module renamed Ctrl Module Extension. Removed the Ctrl Module ST7789 status display (not fitted; SPI pins unconnected). 2" display driver has no safe-switch terminal. Dual Encoder safe-switch terminal cannot reach the master. Throttle THRTL_ENA terminal unwired. **§3:** new §3.6 board interconnection. **§4:** rewritten per panel (slots, INT lines, safe switches, mode selector, Switch Groups 1 / 2 wiring). **§6:** power button has no Teensy pin; INA228 data shown on the Sys Info Display; new §6.6 fan and temperature (EMC2101 internal sensor only, nothing fitted on H4; fan header pin order). **§8:** I2C level shifter (not a divider) on ATtiny modules; safe lines documented as active-high; device map gains board / slot / INT columns, 0x2E marked retired; EXT_INT protection corrected (47 Ω + 4.7 kΩ both on EXT_INT_1 at the Ctrl Module, nothing on EXT_INT_2); new §8.5 master pin map from `KCMk1_Master/config.h`. **§9:** 50-pin pinout corrected to the V2.0 schematics. **§10:** Extension CN2 expansion terminal pinout added. **§11:** renamed Panel 34-Pin IDC Connector; line mapping and display-driver use of the four lines added. **§12 / §13:** slot pin 16 not connected on any hub; safe switches use the hub's own terminal; RST not connected on the 2" driver. **§14:** added Hardware Inventory and Master Firmware Design; I2C Protocol v2.17; Module UI Reference v6.0 (rewritten alongside this revision); master firmware is now `Software/KCMk1_Master` (the old `Software/Controller_Main` is deleted). New §15 Open Items. |
 | 2.1 | 2026-11-15 | Brought in line with the Technical Information Manual and the firmware. **§2:** Alternate Resource Panel added to the required mods. **§3.6:** wiring diagram (`assets/KCMk1_Wiring_Diagram.svg`) and its three print figures referenced. **§4.3, §5.4:** throttle buttons named as engraved: FULL, THRTL +, THRTL −, IDLE (firmware names THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00 kept). **§6.1:** interim system-load figures updated to Power Budget v1.3. **§6.3:** V_12 feeds the converters and the fans; new 9V row for the Throttle Module's own MPM3610 motor supply (Power Budget v1.3). **§10:** the GX16-10 and the expansion USB-C are fitted on the enclosure but reserved (unused). **§4, §14, §15:** cross-references updated to I2C Protocol v2.21, Module UI Reference v6.3 and Power Budget v1.3. |
 | 2.2 | 2026-11-23 | **§8.4, §10:** the TUSB212 USB signal conditioner is dropped from the expansion path. The link starts at a Ctrl Module hub port, and the ≈ 2 m run to the expansion's Teensy is well inside USB 2.0's 5 m; the internal leads are shielded twisted-pair USB cable, with a bench check and a Full Speed firmware fallback. Expansion Module Spec referenced at v0.9. **§10.4:** expansion-side terminal is CN1 on the Expansion Main Board (KC-01-2702); its pinout is added. |
+| 2.3 | 2026-11-24 | **§5.2:** Panel Hub is now V2.1. The V2.0 board left safe-switch terminal pin 1 unconnected (its "5V" symbol was not the +5V net); V2.1 puts it on +5V. The terminal wiring (SW, LED and BTN pairs, V_EN as the switched +5V node) is recorded. **§15:** open item 2 rewritten: the V_EN use is now known; the hub display drivers and the Dual Encoder, which use the same circuit, still need the pin 1 check. |
 
 ---
 
@@ -281,14 +282,27 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 
 | Board | Schematic | PCB | Rev | Used on | Function |
 |-------|-----------|-----|-----|---------|----------|
-| Panel Hub | KC-01-1731 | KC-01-1732 | V2.0 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit |
+| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit |
 | 7" TFT Display Driver (as hub) | KC-01-1911 | KC-01-1912 | V2.1 | A1 (Info Display 1), B1 (Resource Display) | A 7" display (§5.3) that also acts as its panel's hub: CN1 34-pin panel connector (4 lines), 3 module slots P2–P4 (16-pin), one safe-switch terminal |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
 
 On a display driver acting as hub, the four lines of its panel connector are used like this: pins 21–23 go to its slots P2, P3 and P4; pin 24 is the driver's own interrupt (§11.4). Its own P1 is a 16-pin module connector, used when the driver sits in another driver's slot (the Annunciator and Info Display 2).
 
-The safe-switch terminal on each hub feeds that panel connector's safe line (INT_SAFE, INT_SAFE2, B_INT_SAFE or B_INT_SAFE2) through a 10kΩ / 20kΩ divider (§8.2). Pins 2, 3 and 5 of the terminal are tied to a V_EN net that nothing drives (§15).
+The safe-switch terminal on each hub feeds that panel connector's safe line (INT_SAFE, INT_SAFE2, B_INT_SAFE or B_INT_SAFE2) through a 10kΩ / 20kΩ divider (§8.2).
+
+**Panel Hub safe-switch terminal U4 (V2.1):**
+
+| Pin | Silkscreen | Net | Wire to |
+|:---:|------------|-----|---------|
+| 1 | SW_P | +5V | Arming switch |
+| 2 | SW_N | V_EN | Arming switch |
+| 3 | LED_P | V_EN | Armed lamp + |
+| 4 | LED_N | GND | Armed lamp − |
+| 5 | BTN_P | V_EN | Push-button |
+| 6 | BTN_N | Safe line, through the 10kΩ / 20kΩ divider | Push-button |
+
+V_EN joins pins 2, 3 and 5 on the board only: the arming switch connects it to +5V, which lights the lamp and powers the push-button. The V2.0 Panel Hub left pin 1 unconnected, so the switch had no supply; V2.1 corrects this. The hub display drivers use the same terminal (§15).
 
 ### 5.3 Display Driver Boards
 
@@ -1092,7 +1106,7 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 | # | Item | Source |
 |---|------|--------|
 | 1 | **Fan header pin order.** Both fan headers are numbered 1 PWM, 2 tach / NC, 3 12 V, 4 GND, the reverse of the usual PC fan numbering. Check against the fans' cable before connecting (§6.6) | Inventory §6 #6 |
-| 2 | **Safe-switch terminal V_EN.** Pins 2, 3 and 5 of the hubs' safe-switch terminal are tied to a V_EN net that nothing drives. Its intended use is not recorded (§5.2) | Inventory §6 #5 |
+| 2 | **Safe-switch terminal pin 1.** On the V2.0 Panel Hub, terminal pin 1 (SW_P) was not connected to +5V, so the arming switch had no supply; V2.1 fixes it (§5.2). V_EN (pins 2, 3, 5) is the arming switch's switched +5V node. The 7" TFT Display Driver and the Dual Encoder use the same terminal and still need checking for the same fault | Panel Hub KC-01-1731 V2.1; Inventory §6 #5 |
 | 3 | **50-pin pinout.** §9.2 is taken from the V2.0 schematics (Ctrl Module CN2, Extension CN1), which agree with each other but not with the v1.x table. The inventory says only "same pinout as Ctrl Module CN2"; the owner should confirm the pinout and add it to the inventory | Schematics KC-01-1701, KC-01-1711 |
 | 4 | **EXT_INT protection.** On the Ctrl Module, EXT_INT_1 has 47 Ω + 4.7 kΩ and EXT_INT_2 has nothing, while `Expansion_Module_Spec.md` v0.3 expects a 47 Ω source resistor on EXT_INT_2 at the Ctrl Module. Decide whether the expansion side adds protection on EXT_INT_2 or a later Ctrl Module revision does, and update the expansion spec (§8.4) | Inventory §6 #2 |
 | 5 | **Expansion harness.** The Extension CN2 terminal order differs from the planned GX16-10 pin assignment from pin 5 on; the harness cross-maps them (§10.4). The GX16-10 assignment itself is still the planned v1.x design, with no drawing | Inventory §4 |

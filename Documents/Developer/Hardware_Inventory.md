@@ -14,7 +14,7 @@
 |---|---|---|---|---|
 | Ctrl Module | KC-01-1701 | KC-01-1702 | V2.0 | Master Teensy 4.1, power latch, INA228, EMC2101, I2C accelerators, USB hub |
 | Ctrl Module Extension | KC-01-1711 | KC-01-1712 | V2.0 | Passive: splits the 50-pin interboard cable to the B side, fan, expansion terminal |
-| Panel Hub | KC-01-1731 | KC-01-1732 | V2.0 | Input-panel hub: 8 module slots + safe switch |
+| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | Input-panel hub: 8 module slots + safe switch |
 | 7" TFT Display Driver | KC-01-1911 | KC-01-1912 | V2.1 | One 7" display. On each display panel one driver also acts as the hub: 3 module slots + safe switch |
 | Button Module | KC-01-1801 | KC-01-1802 | V2.0 | 12 RGB buttons + 4 panel inputs |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.0 | 12 RGB buttons + 8 panel inputs |
@@ -175,8 +175,8 @@ The board has no active components or protection; every signal passes straight t
 | 1 | ST7789 status display | Hardware Reference §5.1: on the Ctrl Module | None; SPI pins unconnected |
 | 2 | EXT_INT protection | 47 Ω on the EXT_INT_2 output; pull-up on EXT_INT_1 | 47 Ω and pull-up both on EXT_INT_1; nothing on EXT_INT_2, on either board |
 | 3 | Display Hub | KC-01-1722 for A1 / B1 | Retired; the 7" display driver is the hub (confirmed) |
-| 4 | Safe switch on the 16-pin module slot | Hardware Reference §12: INT_SAFE on the slot | Slot pin 16 not connected; the safe switch has its own screw terminal. The "*Safe Switch Connection" notes beside slot P1 (Panel Hub) and P2 (display driver) are left over |
-| 5 | Safe switch terminal V_EN | — | Pins 2, 3, 5 tied to a V_EN net that nothing drives |
+| 4 | Safe switch on the 16-pin module slot | Hardware Reference §12: INT_SAFE on the slot | Slot pin 16 not connected; the safe switch has its own screw terminal. The "*Safe Switch Connection" note beside slot P2 (display driver) is left over; the one beside Panel Hub slot P1 is removed in V2.1 |
+| 5 | Safe switch terminal V_EN | — | Pins 2, 3, 5 tied to V_EN, the switched +5V node: the external arming switch connects it to +5V (pin 1). Panel Hub V2.0 left pin 1 unconnected; fixed in V2.1 |
 | 6 | Fan headers | — | Pin order 1 PWM, 2 tach / NC, 3 12 V, 4 GND: the reverse of the usual PC fan numbering. Worth checking against the fans' cable |
 | 7 | Throttle Module PCB number | Module UI Reference and the Hardware Reference change log: KC-01-1822 | KC-01-1872 (schematic 1871), as the Hardware Reference table says |
 | 8 | Throttle panel inputs | Module UI Reference: four buttons | Five terminals; the fifth (THRTL_ENA) is not wired and unused by the firmware |
