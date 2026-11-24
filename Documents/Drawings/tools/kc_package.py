@@ -600,6 +600,7 @@ def doc_place(cfg, work):
     cap = int((probe["tb_y"] - 2 - (probe["rev_y"] + 6) - 6.4) / 6.6)     # rows per table column
     n_tab = max(1, math.ceil(len(pnp) / (2 * cap)))
     segs = cfg.get("place_segments") or [None]      # a wide board can be shown in parts, [x0, x1] in board mm
+    ysplit = cfg.get("place_split_axis") == "y"     # or a tall one, [y0, y1] in mm down from the top edge
     views = [(sd, i, sg) for sd in sides for i, sg in enumerate(segs)]
     total = len(views) + n_tab
     sheets = []
@@ -607,13 +608,19 @@ def doc_place(cfg, work):
         s = Sheet()
         a = frame(s, fields(cfg, "4", n, total, _ratio(k)))
         pad = 1.0
-        wb = ((max(sg[0], bx0), by0), (min(sg[1], bx1), by1)) if sg else ol["bounds"]
-        ww, wh = (wb[1][0] - wb[0][0] + 2 * pad) * k, (ol["h"] + 2 * pad) * k
+        if sg and ysplit:
+            wb = ((bx0, max(by1 - sg[1], by0)), (bx1, min(by1 - sg[0], by1)))
+        else:
+            wb = ((max(sg[0], bx0), by0), (min(sg[1], bx1), by1)) if sg else ol["bounds"]
+        ww, wh = (wb[1][0] - wb[0][0] + 2 * pad) * k, (wb[1][1] - wb[0][1] + 2 * pad) * k
         vx = a["x0"] + (a["x1"] - a["x0"] - ww) / 2
         vy = a["rev_y"] + 2 + ((a["tb_y"] - 2) - (a["rev_y"] + 2) - wh) / 2
         on_side = [p for p in pnp if p["Layer"] == side]
         n_side = len(on_side)
-        if sg:
+        if sg and ysplit:
+            on_side = [p for p in on_side if wb[0][1] - 0.5 <= p["y"] <= wb[1][1] + 0.5]
+            how += f" · part {si + 1} of {len(segs)}, Y {by1 - wb[1][1]:.0f} to {by1 - wb[0][1]:.0f} mm down"
+        elif sg:
             on_side = [p for p in on_side if wb[0][0] - 0.5 <= p["x"] <= wb[1][0] + 0.5]
             how += f" · part {si + 1} of {len(segs)}, X {wb[0][0] - bx0:.0f} to {wb[1][0] - bx0:.0f} mm"
         s.text(a["x0"] + 6, a["y0"] + 8, f"{name}  ·  {how.upper()}", size=3.4, weight="bold")
@@ -635,7 +642,7 @@ def doc_place(cfg, work):
         else:
             s.rect(min(ox, ox + (-1 if mirror else 1) * ol["w"] * k), oy, ol["w"] * k, ol["h"] * k, sw=0.4, rx=r * k)
         for hl in holes:
-            if sg and not (wb[0][0] - pad <= hl["x"] <= wb[1][0] + pad):
+            if sg and not (wb[0][0] - pad <= hl["x"] <= wb[1][0] + pad and wb[0][1] - pad <= hl["y"] <= wb[1][1] + pad):
                 continue
             hx, hy = P(hl["x"], hl["y"])
             hx2, hy2 = P(hl["x2"], hl["y2"]) if hl.get("slot") else (hx, hy)
@@ -653,7 +660,7 @@ def doc_place(cfg, work):
             else:
                 s.text(x, y + size * 0.36, d, size=size, anchor="middle", weight="bold", c=REFDES)
         # datum: board top-left corner in the top view
-        if not sg or wb[0][0] <= bx0 + 1e-6:
+        if not sg or (wb[1][1] >= by1 - 1e-6 if ysplit else wb[0][0] <= bx0 + 1e-6):
             dx, dy = P(bx0, by1)
             s.circle(dx, dy, 1.4, 0.25)
             s.line(dx - 2.6, dy, dx + 2.6, dy, 0.25)
