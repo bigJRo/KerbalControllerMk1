@@ -6,7 +6,7 @@ Released PDFs go in `Documents/Drawings`.
 | File | What it is | Feeds |
 |---|---|---|
 | `KC-01-2710.json` | Drawing package config: titles, revisions, release status, notes, schematic block layout and per-sheet scales, layer colours, extra BOM lines | all drawings |
-| `Fusion_KC-01-2710_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list). Its key tops are a placeholder; the 2710 parts list shows the KC-01-2715 keycaps | 2710 ASSY |
+| `Fusion_KC-01-2710_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list). Item 3 (90000001) is the MBK keycap; the model's key top is a placeholder shape | 2710 ASSY |
 | `SCH_KC-01-2711_..._2026-11-23.pdf` | EasyEDA Pro schematic export | 2711 SCH |
 | `Gerber_KC-01-2712_..._2026-11-23.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files (PTH, NPTH, vias), probe-test data | 2712 PWB, 2714 PLACE |
 | `IPC-D-356A_KC-01-2712_..._2026-11-23.356a` | IPC-D-356A netlist (copper connectivity check, pad and net data) | reference |

@@ -206,7 +206,7 @@ The key LEDs have their own MPM3610, so their peak (≈ 1.1 A at 5 V) does not s
 
 ### 7.1 Physical Layout
 
-The keyboard follows the Apollo DSKY layout, with a function row added at the top. All keys are **Kailh Choc V1 White** switches (clicky, CPG135001D03) with **MBK keycaps** with custom legends (FKcaps, part KC-01-2715) on a **21 mm** grid (E-17).
+The keyboard follows the Apollo DSKY layout, with a function row added at the top. All keys are **Kailh Choc V1 White** switches (clicky, CPG135001D03) with **MBK keycaps** with custom legends (FKcaps, part number 90000001) on a **21 mm** grid (E-17).
 
 ![Figure 7-1: Keypad layout. 25 keys and the encoder on the 21 mm grid, with matrix rows and columns and the LED chain order](assets/Expansion_Keypad_Layout.png)
 
@@ -387,7 +387,7 @@ The protocol follows the display-carrier pattern (I2C spec §15). The frames are
 | E-14 | Kerbal Simpit with six ports: KSP-side load, and the `Settings.cfg` layout | Bench check |
 | E-15 | The expansion program list | Design |
 | E-16 | Retire the Information Display 2 consoles after the expansion's bench checks (§4.4): InfoDisp firmware, display references, TIM | Firmware / docs |
-| E-17 | MBK keycaps with custom legends (FKcaps), part KC-01-2715 (25 per keyboard): legend method and whether a legend can shine through for the per-key RGB; key spacing (MBK caps are sized for 18 × 17 mm Choc spacing; the keyboard PCB uses a 21 mm grid) | Hardware |
+| E-17 | MBK keycaps with custom legends (FKcaps), part number 90000001 (25 per keyboard): legend method and whether a legend can shine through for the per-key RGB; key spacing (MBK caps are sized for 18 × 17 mm Choc spacing; the keyboard PCB uses a 21 mm grid) | Hardware |
 | E-18 | Closed by D7: the display is in landscape, its native orientation (§8.1) | — |
 | E-19 | Program numbers for the autopilots and the expansion programs | Design |
 | E-20 | The encoder's role now that the screen has touch: keep it to move the highlight and adjust the selected value, or drop it for a 26th key | Design |
@@ -423,4 +423,4 @@ In scope later, when the firmware is designed: the master's EXT service (E-10), 
 | 0.7 | 2026-11-23 | TUSB212 USB signal conditioner dropped: the link starts at a Ctrl Module hub port, and the ≈ 2 m run to the Teensy is well inside USB 2.0's 5 m. The internal leads are shielded twisted-pair USB cable, the panel mount's lead goes straight to the Teensy, and a bench check with a Full Speed fallback is added (E-26). Figure 4-1 updated |
 | 0.8 | 2026-11-23 | Aligned with the completed schematics (main board and keyboard). Pin map: EXT_INT_1 on pin 0 through 47 Ω, TCA8418 RESET on 7, encoder on 30 / 29 / 10, LED data on 28; pins 8, 12, 13 spare. The tone amplifier is dropped. RST filter as built (10 kΩ pull-up, 100 Ω + 100 nF). The encoder is the existing Encoder Carrier KC-01-1851 / 1852 (EX22 retired). The keyboard has one 34-pin connector instead of J1 / J2, and a 100 µF bulk capacitor. Diode direction confirmed against the TCA8418 data sheet; E-25 closed, E-24 updated. Figure 4-1 updated |
 | 0.9 | 2026-11-23 | Board numbers assigned: Expansion Main Board KC-01-2701 / 2702, keyboard KC-01-2711 / 2712. The expansion terminal CN1 pinout is recorded (§3.1); its order differs from the main side's CN2, so the harness is wired by signal name. Figure 4-1 updated |
-| 0.10 | 2026-11-24 | Keyboard BOM (§7.4) matches the layout export of 2026-11-23: C1 is the 100 µF bulk capacitor, C2–C26 the 100 nF LED decoupling, and CN1 (C20920) is fitted by JLCPCB. The switches are the Choc V1 White (clicky); the text said tactile. The keycaps get part number KC-01-2715 |
+| 0.10 | 2026-11-24 | Keyboard BOM (§7.4) matches the layout export of 2026-11-23: C1 is the 100 µF bulk capacitor, C2–C26 the 100 nF LED decoupling, and CN1 (C20920) is fitted by JLCPCB. The switches are the Choc V1 White (clicky); the text said tactile. The keycaps are part number 90000001 |

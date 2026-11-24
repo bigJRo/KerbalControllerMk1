@@ -163,7 +163,7 @@
     "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
     "2. PROCESS gives the assembly process and the side the part is on.",
     "3. The key switches (SW1–SW25) are self-sourced and soldered after delivery; they are not in the EasyEDA BOM.",
-    "4. The keycaps (KC-01-2715) are fitted at module level, see KC-01-2710.",
+    "4. The keycaps (90000001) are fitted at module level, see KC-01-2710.",
     "5. Substitutes need the approval of the design authority."
   ],
   "bom_extra": [
@@ -384,7 +384,7 @@
     },
     {
       "qty": 25,
-      "pn": "KC-01-2715",
+      "pn": "90000001",
       "name": "Keycap - MBK, custom legend",
       "desc": "MBK low-profile keycap for Kailh Choc V1 with a custom legend for its key position (FKcaps); legends per Expansion Module spec §7 and E-17"
     }
@@ -392,7 +392,7 @@
   "assy_notes": [
     "1. Item 1 is the KC-01-2712 card as assembled by JLCPCB to KC-01-2711 to KC-01-2714.",
     "2. Solder the key switches (item 2) into SW1–SW25 on the top of the card after delivery; the LEDs light them through the cutouts.",
-    "3. Fit a keycap (item 3, KC-01-2715) to each switch in its legend position. The views show a placeholder key top.",
+    "3. Fit a keycap (item 3, 90000001) to each switch in its legend position. The views show a placeholder key top.",
     "4. Orthographic views at 4:3 on A3; isometric views not to scale. Parts list on sheet 2."
   ]
 }
