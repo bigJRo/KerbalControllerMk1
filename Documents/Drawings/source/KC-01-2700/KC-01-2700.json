@@ -334,7 +334,8 @@
     "1": "RELEASED",
     "2": "RELEASED",
     "3": "RELEASED",
-    "4": "RELEASED"
+    "4": "RELEASED",
+    "0": "RELEASED"
   },
   "mount_hole_note": "Ø5.20 pads, no net (isolated)",
   "bom_parts": {},
