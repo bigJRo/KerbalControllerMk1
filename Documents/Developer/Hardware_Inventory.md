@@ -18,7 +18,7 @@
 | 7" TFT Display Driver | KC-01-1911 | KC-01-1912 | V2.1 | One 7" display. On each display panel one driver also acts as the hub: 3 module slots + safe switch |
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | 12 RGB buttons + 4 panel inputs |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | 12 RGB buttons + 8 panel inputs |
-| Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | Motorised fader, touch sensor, 5 illuminated panel inputs |
+| Throttle Module | KC-01-1871 | KC-01-1872 | V2.1 | Motorised fader, touch sensor, 5 illuminated panel inputs |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | 3-axis stick + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | 4-digit display, encoder with push, 3 RGB buttons |
 | 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
@@ -113,7 +113,9 @@ V2.1 adds the 200 kΩ pull-up on the PCA9306 VREF2/EN node (Hardware Reference �
 | B16–B19 | Terminal U16 (6-pin): 1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16 |
 | B20–B23 | Terminal U17 (6-pin): 1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V |
 
-### 5.4 Throttle Module (KC-01-1871 V2.0)
+### 5.4 Throttle Module (KC-01-1871 V2.1)
+
+V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R23) with C2 (100 pF) on that node.
 
 - **Fader:** motorised 10 kΩ slide pot (wiper to the ATtiny), L293D H-bridge on its own 9 V supply, AT42QT1010 touch sensor on the fader track, direction LEDs.
 - **Panel inputs:** five 4-pin terminals, each pin 1 +5 V, pin 2 input, pin 3 +5 V (lamp), pin 4 lamp return:
@@ -174,7 +176,7 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that no
 | 1 | ST7789 status display | Hardware Reference §5.1: on the Ctrl Module | None; SPI pins unconnected |
 | 2 | EXT_INT protection | 47 Ω on the EXT_INT_2 output; pull-up on EXT_INT_1 | 47 Ω and pull-up both on EXT_INT_1; nothing on EXT_INT_2, on either board |
 | 3 | Display Hub | KC-01-1722 for A1 / B1 | Retired; the 7" display driver is the hub (confirmed) |
-| 4 | Safe switch on the 16-pin module slot | Hardware Reference §12: INT_SAFE on the slot | Slot pin 16 not connected; the safe switch has its own screw terminal. The "*Safe Switch Connection" note beside slot P2 (display driver) is left over; the one beside Panel Hub slot P1 is removed in V2.1 |
+| 4 | Safe switch on the 16-pin module slot | Hardware Reference §12: INT_SAFE on the slot | Slot pin 16 not connected; the safe switch has its own screw terminal. The left-over "*Safe Switch Connection" notes are removed in V2.1 (beside Panel Hub slot P1 and display driver slot P2) |
 | 5 | Safe switch terminal V_EN | — | Pins 2, 3, 5 tied to V_EN, the switched +5V node: the external arming switch connects it to +5V (pin 1). Panel Hub V2.0 left pin 1 unconnected; fixed in V2.1 |
 | 6 | Fan headers | — | Pin order 1 PWM, 2 tach / NC, 3 12 V, 4 GND: the reverse of the usual PC fan numbering. Worth checking against the fans' cable |
 | 7 | Throttle Module PCB number | Module UI Reference and the Hardware Reference change log: KC-01-1822 | KC-01-1872 (schematic 1871), as the Hardware Reference table says |

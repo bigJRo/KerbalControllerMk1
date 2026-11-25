@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.7  
+**Version:** 2.8  
 **Date:** 2026-11-25  
 **Document type:** Developer — Hardware
 
@@ -31,6 +31,7 @@
 | 2.5 | 2026-11-25 | **§5.4:** Joystick Module is now V2.1: PCA9306 pull-up, and R13 (10 kΩ) pulls BUTTON_JOY low, so the stick button is wired from U6 pin 6 (+5 V) to pin 2. BUTTON01 is on PC2 (KerbalJoystickCore 2.3.1; earlier versions read PC0). 7-Segment Display Module is now V2.1 (PCA9306 pull-up). **§15:** open item 10 updated. |
 | 2.6 | 2026-11-25 | **§4.4, §5.4, §5.5, §12:** Dual Encoder is now V2.1: both encoders on the module (RC-filtered A / B, push pull-downs), no Encoder boards, no safe-switch terminal, PCA9306 pull-up. The Encoder board remains in use on the expansion. **§15:** open item 6 closed; items 2 and 10 updated. |
 | 2.7 | 2026-11-25 | **§5.3:** 7" TFT Display Driver drawings released at Rev B for board V2.1 (schematic and PCB). Its safe-switch terminal U3 checked: pin 1 on 5V, wired as on the Panel Hub V2.1. **§15:** open items 2 and 9 closed. |
+| 2.8 | 2026-11-25 | **§5.4:** Throttle Module drawings released at Rev B for board V2.1 (200 kΩ PCA9306 VREF2/EN pull-up R23, 100 pF C2). **§8:** every ATtiny816 module now has the pull-up. **§15:** open item 10 closed. |
 
 ---
 
@@ -331,7 +332,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 |-------|-----------|-----|-----|-----------------|---------------|--------------|-------|
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | ATtiny816 | 12 | 4 | B0–B11 on-board RGB buttons (one NeoPixel chain). B12, B13 on terminal CN2 (1–2 +5 V, 3 B12, 4 B13); B14, B15 on terminal CN1 (1 B15, 2 B14, 3–4 +5 V). Used for UI, Action, Stability, Time and AUX Control |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | ATtiny816 | 12 | 8 | B0–B11 on-board RGB buttons; B12–B15 not connected. B16–B19 on terminal U16 (1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16); B20–B23 on terminal U17 (1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V); DB127S-5.08-6P terminals. Used for Function and Vehicle Control (Switch Groups 1 / 2) |
-| Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs. Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
+| Throttle Module | KC-01-1871 | KC-01-1872 | V2.1 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs. Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND. Stick button from pin 6 (+5 V) to pin 2; R13 10 kΩ pull-down. BTN01 on PC2, BTN02 on PB3 |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.1 | ATtiny816 | 2 encoder pushes | N/A | Two PEC11R-4220F-S0024 encoders on the board (SW1 ENC1, SW2 ENC2): A / B RC-filtered (10 kΩ pull-ups, 10 nF), pushes active-high with 10 kΩ pull-downs. No LEDs, no safe-switch terminal. V2.0 used two Encoder boards (§5.5) on 5-pin headers and had a terminal driving slot pin 16 |
@@ -506,7 +507,7 @@ Differential pair routing: 6.5mil traces, 8mil separation, 90Ω differential imp
 | Bus accelerator | LTC4311 on Ctrl Module |
 | Pull-up voltage | 3.3V (master side) |
 | Module voltage | 5V (ATtiny816 modules); 3.3V (Teensy 4.1 and XIAO RP2350 display drivers) |
-| Level shifting | I2C: a PCA9306 level shifter on each ATtiny816 module between the 3.3V bus (VREF1 = slot V_3P3) and the 5V ATtiny. VREF2 and EN are joined and pulled up to +5V through 200 kΩ, with 100 pF on VREF2 (TI SCPS113O §10); fitted on the V2.1 Button, Wide Button, Joystick, 7-Segment Display and Dual Encoder Modules, open item 10 for the Throttle Module. INT: passive resistor divider on each ATtiny816 module — see §8.2. Display drivers connect directly at 3.3V |
+| Level shifting | I2C: a PCA9306 level shifter on each ATtiny816 module between the 3.3V bus (VREF1 = slot V_3P3) and the 5V ATtiny. VREF2 and EN are joined and pulled up to +5V through 200 kΩ, with 100 pF on VREF2 (TI SCPS113O §10); fitted on every V2.1 ATtiny816 module (Button, Wide Button, Throttle, Joystick, 7-Segment Display, Dual Encoder). INT: passive resistor divider on each ATtiny816 module — see §8.2. Display drivers connect directly at 3.3V |
 | Master pins | `Wire` SDA 18 / SCL 19 (BUS); `Wire1` SDA 17 / SCL 16 (EXT) |
 
 The main controller provides two I2C buses:
@@ -1118,4 +1119,4 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 | 7 | **Sys Info Display power draw** not yet measured, so the system load in §6.1 is still interim | Power Budget v1.3 |
 | 8 | **Module Tester (KC-01-9002)** is not in the inventory and has no drawings in the repository; §5.6 is carried over from v1.10 unverified | — |
 | 9 | ~~**7" TFT Display Driver revision.**~~ **Closed.** Schematic and PCB are both V2.1 (Rev B drawings, 2026-11-25); V2.1 wires the DFPlayer BUSY line to the Teensy (pin 11) | KC-01-1911 / 1912 V2.1 |
-| 10 | **PCA9306 VREF2/EN pull-up.** The V2.0 ATtiny modules tie the level shifter's VREF2 and EN straight to +5V. TI requires a 200 kΩ pull-up instead: without it the reference FET passes current from +5V into the slot's V_3P3, which the hub LDO cannot sink, so V_3P3 and the 3.3 V bus side can rise toward 4.4 V (SCPS113O §8.1.2, §8.1.7, §10). Fixed on the Button, Wide Button, Joystick, 7-Segment Display and Dual Encoder Modules (V2.1: 200 kΩ on VREF2/EN, 100 pF on VREF2); check and fix the Throttle Module | TI PCA9306 datasheet; KC-01-1801 V2.1 |
+| 10 | ~~**PCA9306 VREF2/EN pull-up.**~~ **Closed.** The V2.0 ATtiny modules tie the level shifter's VREF2 and EN straight to +5V; TI requires a 200 kΩ pull-up, otherwise the reference FET can drive the slot's V_3P3 and the 3.3 V bus side toward 4.4 V (SCPS113O §8.1.2, §8.1.7, §10). Fixed in V2.1 of every ATtiny816 module: Button, Wide Button, Throttle, Joystick, 7-Segment Display and Dual Encoder (200 kΩ on VREF2/EN, 100 pF on VREF2) | TI PCA9306 datasheet; KC-01-1801 … 1871 V2.1 |
