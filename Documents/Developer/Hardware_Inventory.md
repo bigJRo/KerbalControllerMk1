@@ -20,7 +20,7 @@
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | 12 RGB buttons + 8 panel inputs |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | Motorised fader, touch sensor, 5 illuminated panel inputs |
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | 3-axis stick + stick button (terminal), 2 RGB buttons |
-| 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | 4-digit display, encoder with push, 3 RGB buttons |
+| 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | 4-digit display, encoder with push, 3 RGB buttons |
 | 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | Two encoder inputs + a safe-switch terminal |
 | Encoder | KC-01-1851 | KC-01-1852 | V2.0 | Passive carrier for one PEC11R encoder with push |
@@ -141,7 +141,9 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up and R13 (10 kΩ) from BUTTON_JOY 
   | 2 | BUTTON_JOY |
   | 1 | GND |
 
-### 5.6 7-Segment Display Module (KC-01-1841 V2.0)
+### 5.6 7-Segment Display Module (KC-01-1841 V2.1)
+
+V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that node.
 
 - **Display:** 4-digit 7-segment (FJ4401AG), driven by a MAX7219.
 - **Controls:** rotary encoder with push button; three buttons, each with an SK6812 LED.
