@@ -19,7 +19,7 @@
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | 12 RGB buttons + 4 panel inputs |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | 12 RGB buttons + 8 panel inputs |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | Motorised fader, touch sensor, 5 illuminated panel inputs |
-| Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | 3-axis stick + stick button (terminal), 2 RGB buttons |
+| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | 3-axis stick + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | 4-digit display, encoder with push, 3 RGB buttons |
 | 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | Two encoder inputs + a safe-switch terminal |
@@ -125,7 +125,9 @@ V2.1 adds the 200 kΩ pull-up on the PCA9306 VREF2/EN node (Hardware Reference �
 - **Lamps:** all five share one enable (LED_ENA).
 - **THRTL_ENA** is not used by the module firmware ("not wired in the final build").
 
-### 5.5 Joystick Module (KC-01-1831 V2.0)
+### 5.5 Joystick Module (KC-01-1831 V2.1)
+
+V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up and R13 (10 kΩ) from BUTTON_JOY to GND; wire the stick button from U6 pin 6 (+5 V) to pin 2. BTN01 is on PC2 (pin 17), BTN02 on PB3.
 
 - **On the board:** BTN01, BTN02 (RGB buttons).
 - **Stick, on terminal U6 (6-pin):**
