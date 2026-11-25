@@ -25,7 +25,7 @@ their sources are in git history. The released PDFs are in `Documents/Drawings`.
 - USB1–USB6 are vertical USB-A receptacles (C456015), numbered left to right under the silkscreen labels "USB 1" to "USB 6": hub 1 (U8) ports 1–3, then hub 2 (U9) ports 1–3 (nets D1–D6). VBUS is not connected, as on V2.0; each downstream Teensy runs from its own board.
 - The shells of USB1–USB6, USBC1 and USBC2 are on GND (V2.0: not connected).
 - USB-A pin order (1 VBUS, 2 D−, 3 D+, 4 GND) checked by the owner against the part's pinout (2026-11-25). The SHOU HAN drawing gives the 2.50 / 2.00 / 2.50 mm pin pitch, Ø0.95 mm pins and the pin row 2.30 mm from the shell legs, all matched by the footprint, but does not number the pins. Its shell legs are 12.90 ± 0.15 mm apart in 0.80 × 2.30 mm slots; the footprint has 13.10 mm and 0.80 × 2.20 mm.
-- The connector bodies of USB1–USB6 reach about 1 mm past the top board edge (footprint outline); the pads stay on the board.
+- The connector bodies of USB1–USB6 reach about 1 mm past the top board edge (footprint outline); the pads stay on the board. Enclosure clearance for the ports, plugs and cables confirmed by the owner (2026-11-25).
 - H4 (EMC2101 remote sensor header) is fitted; nothing plugs into it yet.
 - Fan header CN1 is numbered 1 PWM, 2 TACH, 3 12 V, 4 GND, but its key ramp covers pins 2–4 with PWM outside, so a standard fan plug mates correctly (Hardware Reference §6.6).
 - No fuse on the 12 V input, by decision (Hardware Reference §6.1).
