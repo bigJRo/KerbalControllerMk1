@@ -79,5 +79,14 @@
   "C29718": {"desc": "Resistor array, 4 × 10 kΩ ±5 %, 1/16 W, isolated", "pkg": "0603 × 4", "class": "Basic"},
   "C19186": {"desc": "LED display, 7-segment, 4 digits, 0.4 in, common cathode", "pkg": "THT 12-pin"},
   "C9964": {"desc": "LED display driver, 8 digits, serial interface", "pkg": "SOIC-24 (wide)"},
-  "C96273": {"desc": "Resistor, 9.53 kΩ ±1 %, 1/16 W", "pkg": "0402"}
+  "C96273": {"desc": "Resistor, 9.53 kΩ ±1 %, 1/16 W", "pkg": "0402"},
+  "C32949": {"desc": "Capacitor, ceramic, 10 pF ±5 %, 50 V, C0G", "pkg": "0402"},
+  "C1532": {"desc": "Capacitor, ceramic, 22 nF ±10 %, 50 V, X7R", "pkg": "0402"},
+  "C2887276": {"desc": "Capacitor, aluminium electrolytic, 100 µF, 16 V", "pkg": "SMD 6.3 × 6.6"},
+  "C125094": {"desc": "LED, green, 0603", "pkg": "0603"},
+  "C18536": {"desc": "Transistor, NPN, 40 V, 200 mA", "pkg": "SOT-23"},
+  "C21190": {"desc": "Resistor, 1 kΩ ±1 %, 1/10 W", "pkg": "0603"},
+  "C74512": {"desc": "Touch sensor controller, 1 key, capacitive", "pkg": "SOT-23-6"},
+  "C21610": {"desc": "Motor driver, quad half-H bridge, 600 mA per channel", "pkg": "SOP-20"},
+  "C470594": {"desc": "Slide potentiometer, motorized, 100 mm travel, 10 kΩ, touch sense track", "pkg": "THT"}
 }
