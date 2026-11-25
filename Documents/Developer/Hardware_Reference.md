@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.9  
+**Version:** 2.10  
 **Date:** 2026-11-25  
 **Document type:** Developer — Hardware
 
@@ -33,6 +33,7 @@
 | 2.7 | 2026-11-25 | **§5.3:** 7" TFT Display Driver drawings released at Rev B for board V2.1 (schematic and PCB). Its safe-switch terminal U3 checked: pin 1 on 5V, wired as on the Panel Hub V2.1. **§15:** open items 2 and 9 closed. |
 | 2.8 | 2026-11-25 | **§5.4:** Throttle Module drawings released at Rev B for board V2.1 (200 kΩ PCA9306 VREF2/EN pull-up R23, 100 pF C2). **§8:** every ATtiny816 module now has the pull-up. **§15:** open item 10 closed. |
 | 2.9 | 2026-11-25 | **§9.2:** 50-pin pinout confirmed pin for pin against both board netlists (Ctrl Module CN2, Extension CN1, V2.0). **§15:** open item 3 closed. |
+| 2.10 | 2026-11-25 | **§6.1:** no fuse on the 12V input, by decision: the supply's own overcurrent protection covers short circuits; every ATtiny module and display driver has its own reverse diode and 1.5 A polyfuse. **§6.5:** VIN (yellow) indicator added to the status LED table. **§6.6:** fan headers checked against the board artwork: a standard 4-pin PC fan plug mates correctly; only the pin numbering is reversed. **§15:** open item 1 closed. |
 
 ---
 
@@ -371,6 +372,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 | Rated current | 10A |
 | Typical system load | see Power Budget (interim ~3.30A / 39.5W @ 12V) |
 | Peak system load | see Power Budget (interim ~5.82A / 69.8W @ 12V) |
+| Input protection | None on the Ctrl Module: no fuse between DC1 and the power latch, by decision. The supply's own overcurrent protection limits a short. Each ATtiny module and display driver has an SS34 reverse diode and a 1.5 A polyfuse on its input; the Panel Hubs, Ctrl Module and Extension do not. Use a supply with short-circuit protection |
 
 > System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.3). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the A+B interim figures from Power Budget §3, which use the previous Sys Info Display draw as a placeholder, and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
 
@@ -398,6 +400,7 @@ An INA228 high-side current/power monitor on the Ctrl Module measures the 12V ra
 |-----|-------|-----------|----------------|----------------|
 | Power indicator | Red | KT-0603R | 3.3V rail | 270Ω (C22966) |
 | 12V indicator | Green | KT-0805G | 12V rail | 2.0kΩ (C22975) |
+| Input indicator | Yellow | KT-0805Y | VIN (DC jack, before the power latch) | 2.0kΩ (C22975) |
 
 These are power indicators only; the master has no status LED outputs.
 
@@ -411,7 +414,7 @@ These are power indicators only; the master has no status LED outputs.
 | Extension fan, CN3 | 4-pin: 1 FAN_PWM (via 50-pin pin 1), 2 not connected, 3 V_12, 4 GND. No tach |
 | Control (firmware) | 1 Hz, duty 30 / 40 / 50 / 70 / 100 % at 25 / 30 / 40 / 50 °C, 2 °C hysteresis (`Master_Firmware_Design.md` §12.1) |
 
-> **Note:** The fan header pin order (1 PWM, 2 tach, 3 12 V, 4 GND) is the reverse of the usual PC fan numbering (1 GND, 2 12 V, 3 tach, 4 PWM). Check it against the fans' cable before connecting (§15).
+> **Note:** The fan headers are numbered 1 PWM, 2 tach, 3 12 V, 4 GND, the reverse of the usual PC fan numbering (1 GND, 2 12 V, 3 tach, 4 PWM). The pins themselves are where a PC fan expects them: the key ramp covers pins 2–4 and PWM is outside it, so a standard 4-pin (or 3-pin) fan plug mates correctly. Only the numbering differs (checked on the CN1 and CN3 artwork, 2026-11-25).
 
 ---
 
@@ -1111,7 +1114,7 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 
 | # | Item | Source |
 |---|------|--------|
-| 1 | **Fan header pin order.** Both fan headers are numbered 1 PWM, 2 tach / NC, 3 12 V, 4 GND, the reverse of the usual PC fan numbering. Check against the fans' cable before connecting (§6.6) | Inventory §6 #6 |
+| 1 | ~~**Fan header pin order.**~~ **Closed.** Both fan headers are numbered from the PWM end (1 PWM … 4 GND), the reverse of PC numbering, but the board artwork puts the pins where a PC fan plug expects them: ramp over pins 2–4, PWM outside. A standard fan plugs in correctly (§6.6) | KC-01-1702 CN1, KC-01-1712 CN3 artwork |
 | 2 | ~~**Safe-switch terminal pin 1.**~~ **Closed.** The V2.0 Panel Hub left terminal pin 1 (SW_P) off +5V; V2.1 fixes it (§5.2). The 7" TFT Display Driver V2.1 terminal U3 is correct (pin 1 on 5V), and the V2.1 Dual Encoder has no terminal. V_EN (pins 2, 3, 5) is the arming switch's switched +5V node | Panel Hub KC-01-1731 V2.1; KC-01-1911 V2.1 |
 | 3 | ~~**50-pin pinout.**~~ **Closed.** §9.2 matches the netlists of both boards pin for pin (Ctrl Module CN2 and Extension CN1, checked 2026-11-25); the v1.x table is superseded | KC-01-1702, KC-01-1712 IPC netlists |
 | 4 | **EXT_INT protection.** On the Ctrl Module, EXT_INT_1 has 47 Ω + 4.7 kΩ and EXT_INT_2 has nothing, while `Expansion_Module_Spec.md` v0.3 expects a 47 Ω source resistor on EXT_INT_2 at the Ctrl Module. Decide whether the expansion side adds protection on EXT_INT_2 or a later Ctrl Module revision does, and update the expansion spec (§8.4) | Inventory §6 #2 |

@@ -178,7 +178,7 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that no
 | 3 | Display Hub | KC-01-1722 for A1 / B1 | Retired; the 7" display driver is the hub (confirmed) |
 | 4 | Safe switch on the 16-pin module slot | Hardware Reference §12: INT_SAFE on the slot | Slot pin 16 not connected; the safe switch has its own screw terminal. The left-over "*Safe Switch Connection" notes are removed in V2.1 (beside Panel Hub slot P1 and display driver slot P2) |
 | 5 | Safe switch terminal V_EN | — | Pins 2, 3, 5 tied to V_EN, the switched +5V node: the external arming switch connects it to +5V (pin 1). Panel Hub V2.0 left pin 1 unconnected; fixed in V2.1 |
-| 6 | Fan headers | — | Pin order 1 PWM, 2 tach / NC, 3 12 V, 4 GND: the reverse of the usual PC fan numbering. Worth checking against the fans' cable |
+| 6 | Fan headers | — | Numbered 1 PWM, 2 tach / NC, 3 12 V, 4 GND: the reverse of the usual PC fan numbering. The artwork is right for a standard fan plug (ramp over pins 2–4, PWM outside); only the numbering differs (Hardware Reference §6.6) |
 | 7 | Throttle Module PCB number | Module UI Reference and the Hardware Reference change log: KC-01-1822 | KC-01-1872 (schematic 1871), as the Hardware Reference table says |
 | 8 | Throttle panel inputs | Module UI Reference: four buttons | Five terminals; the fifth (THRTL_ENA) is not wired and unused by the firmware |
 | 9 | Switch Group 1 order | Module UI Reference: B16 MSTR, B17 DISPL, B18 ENGINE, B19 THROTTLE, B20 SCE, B21 UPTLM, B22 LTG, B23 THRTL | B16 MSTR, B17 DISP, B18 SCE, B19 UPTLM, B20 LTG, B21 ENGINE, B22 THROTTLE, B23 THRTL (confirmed by the owner; §7.2) |
