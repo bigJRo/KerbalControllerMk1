@@ -3,18 +3,18 @@
   "name": "Throttle Module",
   "title": "Throttle Module",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "V2.1",
   "date": "2026-11-25",
-  "status": "RELEASED",
+  "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "RELEASED",
-    "1": "RELEASED",
-    "2": "RELEASED",
-    "3": "RELEASED",
-    "4": "RELEASED"
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
   },
   "revisions": [
     [
@@ -28,12 +28,18 @@
       "Board V2.1: 200 kΩ pull-up on PCA9306 VREF2/EN; KC drawing frame",
       "2026-11-25",
       "J. Kerman"
+    ],
+    [
+      "C",
+      "Motor LED resistors R15, R16 10 kΩ (were 1 kΩ)",
+      "2026-11-25",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1871_Throttle_Module_2026-11-24.pdf",
-  "gerber_zip": "Gerber_KC-01-1872_Throttle_Module_PCB_2026-11-24.zip",
-  "bom_csv": "BOM_KC-01-1872_Throttle_Module_PCB_2026-11-24.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1872_Throttle_Module_PCB_2026-11-24.csv",
+  "sch_pdf": "SCH_KC-01-1871_Throttle_Module_2026-11-25.pdf",
+  "gerber_zip": "Gerber_KC-01-1872_Throttle_Module_PCB_2026-11-25.zip",
+  "bom_csv": "BOM_KC-01-1872_Throttle_Module_PCB_2026-11-25.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1872_Throttle_Module_PCB_2026-11-25.csv",
   "assy_pdf": "Fusion_KC-01-1870_Throttle_Module_2026-11-24.pdf",
   "doc_title": {
     "0": "Throttle Module Complete"

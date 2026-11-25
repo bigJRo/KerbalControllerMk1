@@ -1,6 +1,6 @@
 # KC-01-1870 Throttle Module: drawing sources
 
-Source files for the Rev B drawings of the Throttle Module, board V2.1 (assembly KC-01-1870,
+Source files for the Rev C drawings of the Throttle Module, board V2.1 (assembly KC-01-1870,
 schematic KC-01-1871, PCB KC-01-1872, BOM KC-01-1873, placement KC-01-1874). The released
 PDFs are in `Documents/Drawings`.
 
@@ -8,12 +8,12 @@ PDFs are in `Documents/Drawings`.
 |---|---|---|
 | `KC-01-1870.json` | Drawing package config: titles, revisions, release status, notes, schematic blocks, assembly views and parts list, layer colours | all drawings |
 | `Fusion_KC-01-1870_..._2026-11-24.pdf` | Fusion 360 assembly drawing (views and parts list); views as Rev A | 1870 ASSY |
-| `SCH_KC-01-1871_..._2026-11-24.pdf` | EasyEDA Pro schematic export | 1871 SCH |
-| `Gerber_KC-01-1872_..._2026-11-24.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files, probe-test data | 1872 PWB, 1874 PLACE |
-| `IPC-D-356A_KC-01-1872_..._2026-11-24.356a` | IPC-D-356A netlist (copper connectivity check) | reference |
-| `BOM_KC-01-1872_..._2026-11-24.csv` | EasyEDA BOM export (UTF-16, tab separated) | 1873 BOM, 1874 PLACE |
-| `PickAndPlace_KC-01-1872_..._2026-11-24.csv` | EasyEDA pick-and-place export (UTF-16, tab separated) | 1874 PLACE |
-| `ProPrj_KC-01-1870_..._2026-11-24.epro2` | EasyEDA Pro project | reference |
+| `SCH_KC-01-1871_..._2026-11-25.pdf` | EasyEDA Pro schematic export | 1871 SCH |
+| `Gerber_KC-01-1872_..._2026-11-25.zip` | Fabrication zip as sent to JLCPCB: Gerbers, drill files, probe-test data | 1872 PWB, 1874 PLACE |
+| `IPC-D-356A_KC-01-1872_..._2026-11-25.356a` | IPC-D-356A netlist (copper connectivity check) | reference |
+| `BOM_KC-01-1872_..._2026-11-25.csv` | EasyEDA BOM export (UTF-16, tab separated) | 1873 BOM, 1874 PLACE |
+| `PickAndPlace_KC-01-1872_..._2026-11-25.csv` | EasyEDA pick-and-place export (UTF-16, tab separated) | 1874 PLACE |
+| `ProPrj_KC-01-1870_..._2026-11-25.epro2` | EasyEDA Pro project | reference |
 
 The EasyEDA design rule check passes (reported by the owner; no report file in the export).
 The assembly parts list is written in the config (`assy_parts`), from the Rev A Fusion list
@@ -26,7 +26,9 @@ with the board number corrected to KC-01-1872.
 - Every ATtiny816 pin the firmware uses matches `Software/Modules/Throttle/Config.h`.
   THRTL_ENA (terminal U5) reaches PB5 with a pull-down; the firmware does not read it.
 - The motor runs from U12 (MPM3610, R21 / R22 set 8.8 V) through U9 (L293DD, both halves
-  paralleled). LED1 (red) and LED2 (green) are anti-parallel across the motor.
+  paralleled). LED1 (red) and LED2 (green) are anti-parallel across the motor, each through
+  its own 10 kΩ resistor (R16, R15) for about 0.4 mA. Rev B had 1 kΩ (about 4 mA); Rev C
+  changes only those two values, and R16 moved 0.13 mm (copper otherwise identical).
 - The motorized fader VR1 is in the EasyEDA BOM but is fitted after delivery (owner, 2026-11-25).
 - No mounting holes. The Fusion list carries the board as "10-1872"; the drawing uses KC-01-1872.
 
