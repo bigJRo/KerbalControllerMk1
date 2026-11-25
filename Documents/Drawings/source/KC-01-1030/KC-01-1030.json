@@ -1,0 +1,642 @@
+{
+  "base": "KC-01-103",
+  "name": "Panel A2",
+  "title": "Panel A2",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "B",
+  "board_version": "A2",
+  "version_label": "Panel",
+  "date": "2026-11-25",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "01",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ],
+    "1": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ]
+  },
+  "doc_title": {
+    "0": "Panel A2 Complete",
+    "1": "Panel A2 Base"
+  },
+  "doc_name": {
+    "0": "Panel A2 Complete",
+    "1": "Panel A2 Base"
+  },
+  "doc_status": {
+    "0": "DRAFT",
+    "1": "DRAFT"
+  },
+  "revisions": [
+    [
+      "A",
+      "Initial release (Fusion drawings)",
+      "2026-06-21",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "KC frame; Switch Group 1 and section titles re-engraved; base module types",
+      "2026-11-25",
+      "J. Kerman"
+    ]
+  ],
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1030_Panel_A2_Complete_2026-11-25.pdf",
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                202.8,
+                15.7,
+                373.8,
+                126.1
+              ],
+              "at": [
+                222,
+                44
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW"
+            },
+            {
+              "page": 1,
+              "src": [
+                96.9,
+                15.7,
+                146.9,
+                126.1
+              ],
+              "at": [
+                165,
+                44
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "masks": [
+                [
+                  135.8,
+                  120.0,
+                  138.2,
+                  122.6
+                ]
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                202.8,
+                174.3,
+                375.1,
+                224.3
+              ],
+              "at": [
+                222,
+                165
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "masks": [
+                [
+                  365.0,
+                  184.5,
+                  375.1,
+                  191.5
+                ]
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                27.2,
+                100.0,
+                153.3,
+                263.4
+              ],
+              "at": [
+                18,
+                58
+              ],
+              "k": 1.0,
+              "label": "ISOMETRIC VIEW",
+              "masks": [
+                [
+                  [
+                    95,
+                    99
+                  ],
+                  [
+                    148,
+                    99
+                  ],
+                  [
+                    148,
+                    155
+                  ],
+                  [
+                    127.5,
+                    155
+                  ],
+                  [
+                    127.5,
+                    131
+                  ],
+                  [
+                    95,
+                    131
+                  ]
+                ],
+                [
+                  [
+                    127,
+                    252
+                  ],
+                  [
+                    153.8,
+                    267.4
+                  ],
+                  [
+                    153.8,
+                    288
+                  ],
+                  [
+                    127,
+                    288
+                  ]
+                ],
+                [
+                  107.5,
+                  240.5,
+                  112.8,
+                  245.0
+                ],
+                [
+                  113.2,
+                  250.9,
+                  115.0,
+                  252.4
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                205.1,
+                15.0,
+                376.6,
+                123.6
+              ],
+              "at": [
+                222,
+                44
+              ],
+              "k": 1.0,
+              "label": "REAR VIEW"
+            },
+            {
+              "page": 2,
+              "src": [
+                131.7,
+                15.0,
+                182.0,
+                123.6
+              ],
+              "at": [
+                165,
+                44
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "masks": [
+                [
+                  140.8,
+                  117.2,
+                  142.8,
+                  119.5
+                ]
+              ]
+            },
+            {
+              "page": 2,
+              "src": [
+                204.0,
+                170.8,
+                376.6,
+                220.8
+              ],
+              "at": [
+                222,
+                165
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "masks": [
+                [
+                  204.0,
+                  203.0,
+                  215.8,
+                  209.5
+                ]
+              ]
+            },
+            {
+              "page": 2,
+              "src": [
+                39.3,
+                104.0,
+                165.7,
+                271.3
+              ],
+              "at": [
+                18,
+                58
+              ],
+              "k": 1.0,
+              "label": "ISOMETRIC VIEW (REAR)",
+              "masks": [
+                [
+                  [
+                    128,
+                    103
+                  ],
+                  [
+                    166,
+                    103
+                  ],
+                  [
+                    166,
+                    175
+                  ],
+                  [
+                    152,
+                    163
+                  ],
+                  [
+                    128,
+                    151
+                  ]
+                ],
+                [
+                  [
+                    38.0,
+                    205
+                  ],
+                  [
+                    38.0,
+                    212
+                  ],
+                  [
+                    62,
+                    222
+                  ],
+                  [
+                    62,
+                    243
+                  ],
+                  [
+                    38.0,
+                    243
+                  ]
+                ],
+                [
+                  76.0,
+                  244.0,
+                  86.0,
+                  257.0
+                ],
+                [
+                  81.5,
+                  231.0,
+                  84.0,
+                  233.6
+                ],
+                [
+                  78.0,
+                  235.4,
+                  80.6,
+                  238.0
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": 0.25,
+          "parts_list": true,
+          "views": [
+            {
+              "page": 3,
+              "src": [
+                49.2,
+                176.1,
+                188.8,
+                278.6
+              ],
+              "at": [
+                30,
+                172
+              ],
+              "k": 1.0,
+              "masks": [
+                [
+                  142.0,
+                  256.0,
+                  169.0,
+                  269.5
+                ],
+                [
+                  126.4,
+                  251.3,
+                  128.4,
+                  253.0
+                ],
+                [
+                  124.3,
+                  259.3,
+                  126.0,
+                  261.0
+                ],
+                [
+                  127.7,
+                  262.7,
+                  129.4,
+                  264.4
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": 0.25,
+          "notes": true,
+          "views": [
+            {
+              "page": 4,
+              "src": [
+                56.1,
+                168.8,
+                207.8,
+                274.6
+              ],
+              "at": [
+                30,
+                52
+              ],
+              "k": 1.0,
+              "relabel": [
+                {
+                  "at": [
+                    176.0,
+                    175.7
+                  ],
+                  "r": 3.6,
+                  "text": "13",
+                  "size": 5.4
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1031",
+          "name": "Panel A2 Base",
+          "desc": "Acrylic, Stone, 3.00 mm; laser cut and engraved; Mfr: Ponoko"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1830",
+          "name": "Joystick Module",
+          "desc": "Translation (0x29): stick on terminal U6, 2× RGB buttons; ATtiny816"
+        },
+        {
+          "qty": 22,
+          "pn": "92000A118",
+          "name": "Screw - M3 - 8mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 8 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "JH-DX400B-R4",
+          "name": "Joystick - D400B-M4",
+          "desc": "4-axis 10 kΩ panel-mount joystick potentiometer; three axes used"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1840",
+          "name": "7-Segment Display Module",
+          "desc": "GPWS (0x2A): 4-digit display (MAX7219), rotary encoder, 3 push buttons; ATtiny816"
+        },
+        {
+          "qty": 4,
+          "pn": "92000A114",
+          "name": "Screw - M3 - 5mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 5 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "90000001",
+          "name": "Button Cover - 22mm",
+          "desc": "Push button transparent cover guard, 22 mm, no spring"
+        },
+        {
+          "qty": 1,
+          "pn": "LA38-11DS-R",
+          "name": "Push Button Illuminated - 22mm - RED",
+          "desc": "Zhrivoer LA38-11DS, 22 mm flat head, momentary, with light; 10 A 440 V AC/DC, 6 V lamp (ABORT)"
+        },
+        {
+          "qty": 1,
+          "pn": "11000001",
+          "name": "Toggle Switch Cover - Red",
+          "desc": "Omval toggle switch flip cover, 12 mm, red (abort arming switch)"
+        },
+        {
+          "qty": 9,
+          "pn": "10000001",
+          "name": "Switch - SPST On/Off Toggle",
+          "desc": "Omval 12 mm fixed toggle switch, 2 pin, SPST (Switch Group 1 and abort arming)"
+        },
+        {
+          "qty": 8,
+          "pn": "PDM-005",
+          "name": "Switch Guard",
+          "desc": "Hard-anodized A356-T6 aluminum, 1.18″ wide, 0.90″ × 1.04″; Space Shuttle replica"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1810",
+          "name": "Wide Button Module",
+          "desc": "Function Control (0x21): 12× RGB buttons, 8 switch inputs (Switch Group 1); ATtiny816. Panel Hub (KC-01-1732) mounted behind"
+        },
+        {
+          "qty": 2,
+          "pn": "KC-01-1800",
+          "name": "Button Module",
+          "desc": "Action Control (0x22) and UI Control (0x20): 12× RGB buttons, 4 switch inputs; ATtiny816"
+        },
+        {
+          "qty": 4,
+          "pn": "B079FKG8B1",
+          "name": "Push Button - 16mm - Metal LED BLUE",
+          "desc": "Rugged metal momentary push button with white LED ring, 16 mm, blue (FULL, THRTL +, THRTL −, IDLE)"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1900",
+          "name": "2in TFT Display Driver",
+          "desc": "Sys Info Display (0x14): 2.0″ ST7789 IPS display, XIAO RP2350, microSD"
+        },
+        {
+          "qty": 4,
+          "pn": "92000A120",
+          "name": "Screw - M3 - 10mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 10 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1870",
+          "name": "Throttle Module",
+          "desc": "Throttle (0x2C): RSA0N11M9A0J motorized 10 kΩ fader, L293DD drive on 9 V, touch sense, 5 panel-button inputs; ATtiny816"
+        },
+        {
+          "qty": 2,
+          "pn": "91223QA412",
+          "name": "Screw - M3 - 6mm ULP",
+          "desc": "316 stainless steel ultra-low-profile socket head screw, M3 × 0.5 mm thread, 6 mm long"
+        }
+      ],
+      "notes": [
+        "1. Item 1 is cut and engraved from the KC-01-1031 production file of the same revision.",
+        "2. Items 2, 5, 12, 13, 15 and 17 are complete modules to their own drawing packages; their button labels are in Documents/Labels/A2.",
+        "3. The Panel Hub mounts behind the Wide Button Module (KC-01-1810). Slots: P1 Action Control, P2 Sys Info, P3 Throttle, P4 UI Control, P5 empty, P6 GPWS, P7 Translation, P8 Function Control.",
+        "4. Sheets 1 and 2 at 2:5, sheets 3 and 4 at 1:4, on A3. Parts list on sheet 3."
+      ]
+    },
+    "1": {
+      "pdf": "Fusion_KC-01-1031_Panel_A2_Base_2026-11-25.pdf",
+      "sheets": [
+        {
+          "scale": 0.4,
+          "notes": true,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                175.4,
+                26.6,
+                375.6,
+                161.7
+              ],
+              "at": [
+                205,
+                46
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW"
+            },
+            {
+              "page": 1,
+              "src": [
+                96.2,
+                14.6,
+                149.7,
+                138.6
+              ],
+              "at": [
+                150,
+                35.1
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW"
+            },
+            {
+              "page": 1,
+              "src": [
+                201.5,
+                196.0,
+                375.6,
+                203.0
+              ],
+              "at": [
+                220,
+                196
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW"
+            },
+            {
+              "page": 1,
+              "src": [
+                33.2,
+                121.3,
+                158.4,
+                282.0
+              ],
+              "at": [
+                18,
+                52
+              ],
+              "k": 1.0,
+              "label": "ISOMETRIC VIEW",
+              "masks": [
+                [
+                  100.0,
+                  120.0,
+                  112.0,
+                  142.0
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "pdf": "Panel_A2_Production_2026-11-25.ai",
+              "page": 1,
+              "src": [
+                235.0,
+                112.0,
+                665.0,
+                388.0
+              ],
+              "at": [
+                30,
+                50
+              ],
+              "k": 0.4,
+              "label": "PRODUCTION FILE (Panel_A2_Production.ai): RED = CUT, BLUE = ENGRAVE"
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, Stone, 3.00 mm. Supplier: Ponoko.",
+        "2. Cut and engrave from the production file of the same revision (sheet 2; archived with the drawing sources as Panel_A2_Production_2026-11-25.ai, at 1:1). Red = cut, blue = engrave.",
+        "3. Outline 425.00 × 270.00 mm. Holes and engraving as the production file.",
+        "4. Views at 2:5 on A3."
+      ]
+    }
+  }
+}

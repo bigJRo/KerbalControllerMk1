@@ -48,8 +48,8 @@ def print_pdf(sheets, out_pdf, work):
         '.pg:last-child{page-break-after:auto}</style></head><body>' + body + '</body></html>')
     js = """const { chromium } = require('playwright');
 (async () => { const b = await chromium.launch(); const p = await b.newPage();
-await p.goto('file://' + process.argv[2], {waitUntil: 'load'});
-await p.pdf({path: process.argv[3], width: '420mm', height: '297mm', printBackground: true});
+await p.goto('file://' + process.argv[2], {waitUntil: 'load', timeout: 0});
+await p.pdf({path: process.argv[3], width: '420mm', height: '297mm', printBackground: true, timeout: 0});
 await b.close(); })();"""
     jp = os.path.join(work, "print.js")
     open(jp, "w").write(js)
@@ -871,9 +871,11 @@ def doc_assy(cfg, work, d="0", vd=None):
         k = sc.get("scale")
         s = Sheet()
         a = frame(s, fields(cfg, d, n, total, _ratio(k) if k else "NTS"))
-        pages = sorted({v["page"] for v in sc["views"]})
-        s.add("<defs>" + "".join(f'<g id="assy-page-{pg}">{_pdf_page_body(pdf, pg, work, "assy")}</g>'
-                                 for pg in pages) + "</defs>")
+        # each view may come from its own file (e.g. a cut file) and page
+        srcs = sorted({(v.get("pdf", pdf), v["page"]) for v in sc["views"]})
+        sid = {src: f"assy-{d}-{n}-src{i}" for i, src in enumerate(srcs)}
+        s.add("<defs>" + "".join(f'<g id="{sid[src]}">{_pdf_page_body(src[0], src[1], work, f"assy{d}s{n}x{i}")}</g>'
+                                 for i, src in enumerate(srcs)) + "</defs>")
         if sc.get("parts_list"):
             rows = [[str(i), str(p["qty"]), p["pn"], p["name"], p["desc"]] for i, p in enumerate(vd["parts"], 1)]
             x = a["x0"] + 2
@@ -890,7 +892,8 @@ def doc_assy(cfg, work, d="0", vd=None):
             vk = v.get("k", k)
             w, h = (x1 - x0) * vk, (y1 - y0) * vk
             X, Y = v["at"]
-            use = f'<use href="#assy-page-{v["page"]}" xlink:href="#assy-page-{v["page"]}"/>'
+            ref = sid[(v.get("pdf", pdf), v["page"])]
+            use = f'<use href="#{ref}" xlink:href="#{ref}"/>'
             if v.get("clip"):          # polygon on the source page (mm) to leave out neighbouring views
                 cid = f"assy-clip-{n}-{len(s.o)}"
                 pts = " ".join(f"{px * PT:.2f},{py * PT:.2f}" for px, py in v["clip"])
@@ -898,6 +901,19 @@ def doc_assy(cfg, work, d="0", vd=None):
             s.add(f'<svg x="{X:.3f}" y="{Y:.3f}" width="{w:.3f}" height="{h:.3f}" '
                   f'viewBox="{x0 * PT:.3f} {y0 * PT:.3f} {(x1 - x0) * PT:.3f} {(y1 - y0) * PT:.3f}" overflow="hidden">'
                   f'{use}</svg>')
+            def to_sheet(px, py):
+                return X + (px - x0) * vk, Y + (py - y0) * vk
+            for poly in v.get("masks", []):    # white-out stray parts (polygon or [x0, y0, x1, y1], source mm)
+                if len(poly) == 4 and not isinstance(poly[0], list):
+                    a0, b0, a1, b1 = poly
+                    poly = [[a0, b0], [a1, b0], [a1, b1], [a0, b1]]
+                pts = " ".join(f"{qx:.3f},{qy:.3f}" for qx, qy in (to_sheet(px, py) for px, py in poly))
+                s.add(f'<polygon points="{pts}" fill="#ffffff" stroke="none"/>')
+            for rl in v.get("relabel", []):     # re-number a balloon: {"at": [x, y], "r": mm, "text", "size"}
+                cx, cy = to_sheet(*rl["at"])
+                s.add(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{rl.get("r", 3.0) * vk:.3f}" fill="#ffffff" stroke="none"/>')
+                fs = rl.get("size", 3.6) * vk
+                s.text(cx, cy + fs * 0.36, rl["text"], size=fs, anchor="middle")
             if v.get("label"):
                 s.text(X + w / 2, Y + h + 5, v["label"], size=2.8, anchor="middle", weight="bold")
                 if v.get("sublabel"):
@@ -922,6 +938,10 @@ def main():
     for vd in (cfg.get("view_docs") or {}).values():
         if not os.path.isabs(vd["pdf"]):
             vd["pdf"] = os.path.normpath(os.path.join(cdir, vd["pdf"]))
+        for sh in vd["sheets"]:
+            for v in sh["views"]:
+                if "pdf" in v and not os.path.isabs(v["pdf"]):
+                    v["pdf"] = os.path.normpath(os.path.join(cdir, v["pdf"]))
     os.makedirs(a.out, exist_ok=True)
     if "gerber_zip" in cfg and "gerber_dir" not in cfg:   # the fab zip as exported: unpack it for this run
         import zipfile
