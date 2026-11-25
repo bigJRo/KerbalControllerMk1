@@ -25,6 +25,9 @@ in git history. The released PDFs are in `Documents/Drawings`.
   several views; the config masks them (`masks`, in source-page mm).
 - Switch Group 1 is engraved MSTR · DISPL · SCE · UPTLM / LTG · A/P · ENGINE · THRTL (B16–B23).
   DISPL and RST are the panel abbreviations of DISP and RESET (Module UI Reference §6.2).
+- The 22 mm cover over the ABORT button is part 90000002 (Fusion listed 90000001, which is the MBK keycap
+  on the 7-Segment modules and the Expansion Keyboard).
+- The A/P switch is engraved INHIB / ENAB (renamed from ARM, 2026-11-25).
 - The stick is the JH-DX400B-R4 (4-axis, three axes used). The fasteners in the parts list are
   complete (owner).
 - Sheet 2 of the base drawing is drawn from the archived production file, not from the Fusion
