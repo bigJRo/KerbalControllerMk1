@@ -830,13 +830,20 @@ def doc_sch(cfg, work):
 PT = 72 / 25.4           # pt per mm
 
 
-def _pdf_page_body(pdf, page, work, tag):
-    """One PDF page as an SVG fragment with unique ids, and its size in pt."""
+def _pdf_page_body(pdf, page, work, tag, lw=1.0, keep=None):
+    """One PDF page as an SVG fragment with unique ids. lw scales every stroke width (Fusion
+    exports its visible lines at 0.5 mm, too heavy for engraved text at 2:5); keep, a regex,
+    keeps only the <path> elements whose attributes match it (e.g. the cut layer of a
+    production file) and drops everything else drawn on the page."""
     svgp = os.path.join(work, f"{tag}_p{page}.svg")
     subprocess.run(["pdftocairo", "-svg", "-f", str(page), "-l", str(page), pdf, svgp],
                    check=True, stderr=subprocess.DEVNULL)
     svg = open(svgp, encoding="utf-8").read()
     body = svg[svg.index(">", svg.index("<svg")) + 1: svg.rindex("</svg>")]
+    if keep:
+        body = "\n".join(m.group(0) for m in re.finditer(r"<path [^>]*/>", body) if re.search(keep, m.group(0)))
+    if lw != 1.0:
+        body = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m.group(1)) * lw:.4g}"', body)
     pre = f"{tag}{page}-"
     body = re.sub(r'id="([^"]+)"', lambda m: f'id="{pre}{m.group(1)}"', body)
     body = re.sub(r'(xlink:href|href)="#([^"]+)"', lambda m: f'{m.group(1)}="#{pre}{m.group(2)}"', body)
@@ -872,27 +879,39 @@ def doc_assy(cfg, work, d="0", vd=None):
         s = Sheet()
         a = frame(s, fields(cfg, d, n, total, _ratio(k) if k else "NTS"))
         # each view may come from its own file (e.g. a cut file) and page
-        srcs = sorted({(v.get("pdf", pdf), v["page"]) for v in sc["views"]})
+        def src_key(v):
+            return (v.get("pdf", pdf), v["page"], v.get("line_scale", vd.get("line_scale", 1.0)), v.get("keep_paths"))
+        srcs = sorted({src_key(v) for v in sc["views"]}, key=str)
         sid = {src: f"assy-{d}-{n}-src{i}" for i, src in enumerate(srcs)}
-        s.add("<defs>" + "".join(f'<g id="{sid[src]}">{_pdf_page_body(src[0], src[1], work, f"assy{d}s{n}x{i}")}</g>'
+        s.add("<defs>" + "".join(f'<g id="{sid[src]}">{_pdf_page_body(src[0], src[1], work, f"assy{d}s{n}x{i}", src[2], src[3])}</g>'
                                  for i, src in enumerate(srcs)) + "</defs>")
         if sc.get("parts_list"):
+            # true: full width under the revision block; or {"at": [x, y], "w": mm, "size": pt}
+            pl = sc["parts_list"] if isinstance(sc["parts_list"], dict) else {}
             rows = [[str(i), str(p["qty"]), p["pn"], p["name"], p["desc"]] for i, p in enumerate(vd["parts"], 1)]
-            x = a["x0"] + 2
-            tw = a["x1"] - 2 - x
-            base = [("ITEM", 11, "middle"), ("QTY", 10, "middle"), ("PART NUMBER", 42, "start"),
-                    ("PART NAME", 62, "start"), ("DESCRIPTION", 155, "start")]
+            x, ty = pl.get("at", [a["x0"] + 2, a["rev_y"] + 6])
+            tw = pl.get("w", a["x1"] - 2 - x)
+            base = pl.get("cols", [11, 10, 42, 62, 155])
+            base = [("ITEM", base[0], "middle"), ("QTY", base[1], "middle"), ("PART NUMBER", base[2], "start"),
+                    ("PART NAME", base[3], "start"), ("DESCRIPTION", base[4], "start")]
             f = tw / sum(c[1] for c in base)
-            s.text(x, a["rev_y"] + 4, "PARTS LIST", size=3.0, weight="bold")
-            yb = s.table(x, a["rev_y"] + 6, [(t, w * f, al) for t, w, al in base], rows, rh=6.6, hh=6.4,
-                         size=2.75, hsize=2.5, wrap=wrap_text)
+            fs = pl.get("size", 2.75)
+            s.text(x, ty - 2, "PARTS LIST", size=3.0, weight="bold")
+            yb = s.table(x, ty, [(t, w * f, al) for t, w, al in base], rows, rh=fs * 2.4, hh=6.4,
+                         size=fs, hsize=2.5, wrap=wrap_text)
             sc.setdefault("_top", yb)
+        for tb in sc.get("tables", []):       # extra tables: {"at", "title", "cols": [[title, w, align]], "rows", "size"}
+            tx, ty = tb["at"]
+            fs = tb.get("size", 2.3)
+            if tb.get("title"):
+                s.text(tx, ty - 2, tb["title"], size=3.0, weight="bold")
+            s.table(tx, ty, [tuple(c) for c in tb["cols"]], tb["rows"], rh=fs * 1.9, hh=5.2, size=fs, hsize=2.2)
         for v in sc["views"]:
             x0, y0, x1, y1 = v["src"]
             vk = v.get("k", k)
             w, h = (x1 - x0) * vk, (y1 - y0) * vk
             X, Y = v["at"]
-            ref = sid[(v.get("pdf", pdf), v["page"])]
+            ref = sid[src_key(v)]
             use = f'<use href="#{ref}" xlink:href="#{ref}"/>'
             if v.get("clip"):          # polygon on the source page (mm) to leave out neighbouring views
                 cid = f"assy-clip-{n}-{len(s.o)}"
@@ -914,6 +933,21 @@ def doc_assy(cfg, work, d="0", vd=None):
                 s.add(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{rl.get("r", 3.0) * vk:.3f}" fill="#ffffff" stroke="none"/>')
                 fs = rl.get("size", 3.6) * vk
                 s.text(cx, cy + fs * 0.36, rl["text"], size=fs, anchor="middle")
+            for tg in v.get("tags", []):        # hole tags: {"at": [x, y] source mm, "r": hole radius mm, "text"}
+                cx, cy = to_sheet(*tg["at"])
+                o = tg.get("r", 1.5) * vk + 0.5
+                s.add(f'<text x="{cx + o:.3f}" y="{cy - o:.3f}" font-size="{tg.get("size", 1.9)}" fill="{INK}" '
+                      f'stroke="#ffffff" stroke-width="0.6" paint-order="stroke" font-weight="bold">{esc(tg["text"])}</text>')
+            if v.get("datum"):                  # X/Y datum arrows at a source point: {"at": [x, y], "len": mm}
+                cx, cy = to_sheet(*v["datum"]["at"])
+                ln = v["datum"].get("len", 10)
+                for x2, y2, t, tx, ty in ((cx + ln, cy, "X", cx + ln + 1.2, cy + 1.0), (cx, cy - ln, "Y", cx - 1.0, cy - ln - 1.2)):
+                    s.line(cx, cy, x2, y2, 0.3, "#c0392b")
+                    ang = 0 if y2 == cy else -90
+                    s.add(f'<polygon points="0,0 -1.8,-0.6 -1.8,0.6" fill="#c0392b" transform="translate({x2:.3f} {y2:.3f}) rotate({ang})"/>')
+                    s.text(tx, ty, t, size=2.4, weight="bold", c="#c0392b")
+                s.circle(cx, cy, 0.7, sw=0.3, c="#c0392b")
+                s.text(cx - 1.4, cy + 3.2, "0,0", size=2.0, anchor="end", c="#c0392b")
             if v.get("label"):
                 s.text(X + w / 2, Y + h + 5, v["label"], size=2.8, anchor="middle", weight="bold")
                 if v.get("sublabel"):

@@ -6,10 +6,10 @@ in git history. The released PDFs are in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
-| `KC-01-1030.json` | Package config: document types, titles, revisions, release status, view crops, masks over stray parts, balloon relabels, parts list and notes | both drawings |
+| `KC-01-1030.json` | Package config: document types, titles, revisions, release status, view crops and placement, line weight, masks over stray parts, balloon relabels, parts list, hole table and notes | both drawings |
 | `Fusion_KC-01-1030_Panel_A2_Complete_2026-11-25.pdf` | Fusion assembly drawing export (4 sheets): views, balloons and the Fusion parts list | 1030 ASSY |
 | `Fusion_KC-01-1031_Panel_A2_Base_2026-11-25.pdf` | Fusion base plate drawing export (2 sheets): views and overall dimensions | 1031 PART sheet 1 |
-| `Panel_A2_Production_2026-11-25.ai` | Ponoko production (cut and engrave) file, Illustrator, artwork at 1:1 (red = cut, blue = engrave) | 1031 PART sheet 2; fabrication |
+| `Panel_A2_Production_2026-11-25.ai` | Ponoko production (cut and engrave) file, Illustrator, artwork at 1:1 (red = cut, blue = engrave) | 1031 PART sheets 2 (preview) and 3 (hole table); fabrication |
 
 ## Review notes (2026-11-25)
 
@@ -22,7 +22,15 @@ in git history. The released PDFs are in `Documents/Drawings`.
   1870) and names the role in the description. The two Button Modules are one line, item 13,
   qty 2; balloon 19 on sheet 4 is relabelled 13.
 - The Fusion views carry stray single parts (label inserts and similar) below and to the right of
-  several views; the config masks them (`masks`, in source-page mm).
+  several views. `tools/kc_strays.py` finds them and writes white-out `masks` (source-page mm)
+  into the views marked `auto_masks`; strays too close to a leader are in `extra_masks`.
+- Fusion exports its visible lines at 0.5 mm, which fills in the engraved legends at 2:5; the
+  drawings scale every Fusion stroke by `line_scale` 0.35.
+- Front, side and top views keep Fusion's projection alignment: each is moved by the same
+  offset along its shared axis, with the gaps closed up.
+- The hole table (1031 sheet 3) is built from the cut layer of the production file by
+  `tools/kc_holes.py`: round holes up to Ø8, tagged by size (A Ø2.5, B Ø3, C Ø3.2, D Ø3.6,
+  E Ø3.8, F Ø7.6), positions from the lower-left corner of the outline.
 - Switch Group 1 is engraved MSTR · DISPL · SCE · UPTLM / LTG · A/P · ENGINE · THRTL (B16–B23).
   DISPL and RST are the panel abbreviations of DISP and RESET (Module UI Reference §6.2).
 - The 22 mm cover over the ABORT button is part 90000002 (Fusion listed 90000001, which is the MBK keycap
@@ -36,6 +44,11 @@ in git history. The released PDFs are in `Documents/Drawings`.
 ## Regenerating the drawings
 
 ```
+python Documents/Drawings/tools/kc_strays.py Documents/Drawings/source/KC-01-1030/KC-01-1030.json --write
+python Documents/Drawings/tools/kc_holes.py  Documents/Drawings/source/KC-01-1030/KC-01-1030.json --doc 1 --write
 python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1030/KC-01-1030.json --out <output folder>
 ```
+
+Run the first two after a new Fusion export or production file; they rewrite the masks, hole
+tags and hole table in the config.
