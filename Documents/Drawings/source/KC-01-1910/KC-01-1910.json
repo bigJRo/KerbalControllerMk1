@@ -1,0 +1,598 @@
+{
+  "base": "KC-01-191",
+  "name": "7in TFT Display Driver",
+  "title": "7in TFT Display Driver",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "B",
+  "board_version": "V2.1",
+  "date": "2026-11-25",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "doc_status": {
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
+  },
+  "revisions": [
+    [
+      "A",
+      "Initial release (V2.0 / V2.1 drawings)",
+      "2026-06-20",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "Board V2.1 throughout; redrawn in the KC drawing frame",
+      "2026-11-25",
+      "J. Kerman"
+    ]
+  ],
+  "sch_pdf": "SCH_KC-01-1911_7in_TFT_Display_Driver_2026-11-24.pdf",
+  "gerber_zip": "Gerber_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-24.zip",
+  "bom_csv": "BOM_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-24.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-24.csv",
+  "assy_pdf": "Fusion_KC-01-1910_7in_TFT_Display_Driver_2026-11-24.pdf",
+  "doc_title": {
+    "0": "7in TFT Display Driver Complete"
+  },
+  "doc_name": {
+    "0": "7in TFT Display Driver Complete"
+  },
+  "sch_scale": 0.45,
+  "sch_sheets": [
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                55,
+                36,
+                399,
+                237
+              ],
+              "label": "Microcontroller (Teensy 4.1 on H1 / H2), all logic at 3.3 V"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                405,
+                36,
+                486,
+                107
+              ],
+              "label": "5 V decoupling"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                520,
+                82,
+                832,
+                200
+              ],
+              "label": "Power: 12 V input to 5 V (U2) to 3.3 V (U1)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                12,
+                320,
+                192,
+                410
+              ],
+              "label": "Module connector (P1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                198,
+                312,
+                332,
+                400
+              ],
+              "label": "Touch I²C pull-ups"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                335,
+                300,
+                472,
+                452
+              ],
+              "label": "Safe-switch terminal (U3), INT_SAFE divider"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                487,
+                284,
+                822,
+                440
+              ],
+              "label": "Tone amplifier U5 (PAM8302A), volume R10, speaker SPKR1"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 5,
+              "crop": [
+                60,
+                70,
+                272,
+                236
+              ],
+              "label": "Display connector (H3), /RESET pull-up R12"
+            }
+          ],
+          [
+            {
+              "page": 5,
+              "crop": [
+                345,
+                81,
+                523,
+                225
+              ],
+              "label": "Panel connector (CN1)"
+            }
+          ],
+          [
+            {
+              "page": 5,
+              "crop": [
+                537,
+                42,
+                834,
+                272
+              ],
+              "label": "Module slots P2–P4"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 5,
+              "crop": [
+                63,
+                335,
+                628,
+                425
+              ],
+              "label": "Audio module (DFPlayer Mini on P5 / P6), speaker SPKR2, 3.3 V bulk C12"
+            }
+          ],
+          [
+            {
+              "page": 5,
+              "crop": [
+                670,
+                302,
+                834,
+                446
+              ],
+              "label": "Audio busy LED (Q1, LED1)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 2,
+              "crop": [
+                144,
+                138,
+                448,
+                181
+              ],
+              "label": "12 V input protection (D1, F1)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 3,
+              "crop": [
+                83,
+                80,
+                512,
+                238
+              ],
+              "label": "5 V converter (U2)"
+            }
+          ],
+          [
+            {
+              "page": 4,
+              "crop": [
+                108,
+                112,
+                517,
+                206
+              ],
+              "label": "3.3 V regulator (U1)"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "pwb_scale": 1.5,
+  "layer_scale": 1.5,
+  "pwb_tables_sheet": true,
+  "pwb_outline_layer": true,
+  "place_scale": 1.5,
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Components, signals, GND pour"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "3313",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "GND PL 1",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "Ground plane (GND)"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "3",
+      "name": "3P3V PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "3.3 V plane (V_3P3)"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "-",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "4",
+      "name": "GND PL 2",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "Ground plane (GND)"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "5",
+      "name": "12V PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "12 V plane (V_12)"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "3313",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "6",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Signals, GND pour"
+    }
+  ],
+  "stackup_note": "JLCPCB JLC06161H-3313: dielectric materials and thicknesses as that stackup. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Display header, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "Display side: only the display header H3 mounts here."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "5V_PL",
+      "file": "Gerber_InnerLayer1.G1",
+      "net": "5 V plane (5V)",
+      "copper": "0.5 oz",
+      "color": "#8e44ad"
+    },
+    {
+      "layer": "3",
+      "name": "GND_PL",
+      "file": "Gerber_InnerLayer2.G2",
+      "net": "Ground plane (GND)",
+      "copper": "0.5 oz",
+      "color": "#1e8449"
+    },
+    {
+      "layer": "4",
+      "name": "VIN_PL",
+      "file": "Gerber_InnerLayer3.G3",
+      "net": "12 V plane (V_IN)",
+      "copper": "0.5 oz",
+      "color": "#d68910"
+    },
+    {
+      "layer": "5",
+      "name": "GND2_PL",
+      "file": "Gerber_InnerLayer4.G4",
+      "net": "Ground plane (GND)",
+      "copper": "0.5 oz",
+      "color": "#16a085"
+    },
+    {
+      "layer": "6",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Components, signals, 3V3 pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "Component side: every part except H3, connectors included."
+      ]
+    }
+  ],
+  "mount_hole_d": 3.4,
+  "mount_hole_note": "Ø5.20 pads, no net (isolated)",
+  "drill_use": {
+    "3.40 PTH": "Mounting holes",
+    "1.40 PTH": "U3 safe-switch terminal",
+    "1.10 PTH": "H1, H2 (Teensy), P1–P4 slot headers, P5, P6",
+    "1.00 PTH": "H3 display header, CN1 panel connector",
+    "0.90 PTH": "SPKR1, SPKR2",
+    "0.75 PTH": "R10 trimmer",
+    "0.30 PTH": "Via"
+  },
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 6 layers, JLCPCB JLC06161H-3313 stackup (sheet 2 table).",
+    "2. Copper: 1 oz outer, 0.5 oz inner. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. The 4 plated mounting holes are not connected to any net; keep them isolated on all layers.",
+    "9. No slots, controlled impedance, castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The Teensy 4.1 (on H1 / H2) and the display (on H3) are fitted at module level, see KC-01-1910. P5 / P6 take the DFPlayer Mini audio module; SPKR1 / SPKR2 the speakers.",
+    "4. Substitutes need the approval of the design authority."
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [
+    "D1",
+    "LED1",
+    "C12"
+  ],
+  "place_label_size": 1.0,
+  "place_notes": [
+    "1. All parts are on the bottom side except the display header H3, which is on the top side.",
+    "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
+    "3. Red dot = pin 1 of every part with more than two pins, the cathode of D1, the anode of LED1 and the + terminal of C12. These match the silkscreen marks.",
+    "4. U3 (safe switch): 1 SW_P = +5V, 2 / 3 / 5 V_EN, 4 GND, 6 input to INT_SAFE; wired as on the Panel Hub.",
+    "5. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
+  ],
+  "mount_callout": {
+    "index": 4,
+    "dx": 22,
+    "dy": 8
+  },
+  "assy_parts": [
+    {
+      "qty": 1,
+      "pn": "KC-01-1912",
+      "name": "7in TFT Display Driver",
+      "desc": "Custom PWB; Mfr: JLCPCB"
+    },
+    {
+      "qty": 4,
+      "pn": "94868A720",
+      "name": "Standoff - M3 - 11mm x 4.5mm",
+      "desc": "Female Threaded Hex Standoff, 18-8 Stainless Steel, 4.5mm Hex, 11mm Long, M3 x 0.5mm Thread"
+    },
+    {
+      "qty": 4,
+      "pn": "92000A114",
+      "name": "Screw - M3 - 5mm",
+      "desc": "Passivated 18-8 Stainless Steel Pan Head Phillips Screws, M3 x 0.5mm Thread, 5mm Long"
+    },
+    {
+      "qty": 1,
+      "pn": "ER-TFT070A2-6-5633",
+      "name": "ER-TFT070A2-6",
+      "desc": "7 inch 1024x600 IPS TFT Touch Display Module with I2C SPI for Arduino; Pin Header-8080; 5V; Capacitive Touch Panel"
+    },
+    {
+      "qty": 4,
+      "pn": "93657A205",
+      "name": "Spacer - M3 - Nylon - 4mm",
+      "desc": "Nylon Unthreaded Spacer, 4.5 mm OD, Off-White, 4 mm Long, for M3 Screw Size"
+    },
+    {
+      "qty": 1,
+      "pn": "TEENSY41_NE_PINS",
+      "name": "Teensy 4.1 (With Headers)",
+      "desc": "Teensy USB Board, Version 4.1, Without Ethernet Chip, ARM Cortex-M7 at 600 MHz Microcontroller, 7936K Flash, 1024K RAM (512K tightly coupled), 4K EEPROM (emulated), Native SDIO SD Card port"
+    }
+  ],
+  "assy_notes": [
+    "1. Item 1 is the KC-01-1912 card as assembled by JLCPCB to KC-01-1911 to KC-01-1914.",
+    "2. The Teensy 4.1 (item 6) plugs into H1 and H2. The display (item 4) plugs into H3 and is held on the standoffs (item 2) with the spacers (item 5) and screws (item 3).",
+    "3. Orthographic views at 1:1 on A3; isometric views not to scale. Parts list on sheet 2."
+  ],
+  "assy_sheets": [
+    {
+      "scale": 1.0,
+      "notes": true,
+      "views": [
+        {
+          "page": 1,
+          "src": [
+            108.0,
+            40.0,
+            136.0,
+            115.0
+          ],
+          "at": [
+            25.0,
+            42.0
+          ],
+          "k": 1.5,
+          "label": "LEFT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            227.0,
+            40.0,
+            352.0,
+            115.0
+          ],
+          "at": [
+            72.0,
+            42.0
+          ],
+          "k": 1.5,
+          "label": "TOP VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            227.0,
+            168.0,
+            352.0,
+            196.0
+          ],
+          "at": [
+            72.0,
+            168.0
+          ],
+          "k": 1.5,
+          "label": "FRONT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            81.0,
+            143.0,
+            180.0,
+            258.0
+          ],
+          "at": [
+            272.0,
+            42.0
+          ],
+          "k": 1.0,
+          "label": "ISOMETRIC VIEW",
+          "sublabel": "Not to scale"
+        }
+      ]
+    },
+    {
+      "scale": null,
+      "parts_list": true,
+      "views": [
+        {
+          "page": 2,
+          "src": [
+            115.0,
+            108.0,
+            332.0,
+            240.0
+          ],
+          "at": [
+            95.0,
+            112.0
+          ],
+          "k": 0.88,
+          "clip": [
+            [
+              115,
+              108
+            ],
+            [
+              332,
+              108
+            ],
+            [
+              332,
+              230
+            ],
+            [
+              226,
+              230
+            ],
+            [
+              226,
+              240
+            ],
+            [
+              115,
+              240
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

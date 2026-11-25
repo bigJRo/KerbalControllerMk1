@@ -88,5 +88,12 @@
   "C21190": {"desc": "Resistor, 1 kΩ ±1 %, 1/10 W", "pkg": "0603"},
   "C74512": {"desc": "Touch sensor controller, 1 key, capacitive", "pkg": "SOT-23-6"},
   "C21610": {"desc": "Motor driver, quad half-H bridge, 600 mA per channel", "pkg": "SOP-20"},
-  "C470594": {"desc": "Slide potentiometer, motorized, 100 mm travel, 10 kΩ, touch sense track", "pkg": "THT"}
+  "C470594": {"desc": "Slide potentiometer, motorized, 100 mm travel, 10 kΩ, touch sense track", "pkg": "THT"},
+  "C3347": {"desc": "Capacitor, aluminium electrolytic, 100 µF, 10 V", "pkg": "SMD 5 × 5.3"},
+  "C8542": {"desc": "Transistor, PNP, 25 V, 1.5 A", "pkg": "SOT-23"},
+  "C22775": {"desc": "Resistor, 100 Ω ±1 %, 1/10 W", "pkg": "0603"},
+  "C22807": {"desc": "Resistor, 150 kΩ ±1 %, 1/10 W", "pkg": "0603"},
+  "C118956": {"desc": "Trimmer potentiometer, 10 kΩ, single turn, top adjust", "pkg": "THT"},
+  "C265016": {"desc": "Connector, wire-to-board header, 2-way, 2.0 mm pitch, side entry", "pkg": "THT"},
+  "C113367": {"desc": "Audio amplifier, class D, mono, 2.5 W", "pkg": "MSOP-8"}
 }
