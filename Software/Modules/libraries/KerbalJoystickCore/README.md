@@ -1,6 +1,6 @@
 # KerbalJoystickCore
 
-**Version:** 2.3.0  
+**Version:** 2.3.1  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v2.0  
@@ -46,13 +46,13 @@ This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire pro
 | PB0 (pin 14) | SCL | I2C clock |
 | PB1 (pin 13) | SDA | I2C data |
 | PB3 (pin 11) | BUTTON02 | NeoPixel button 2 |
-| PB5 (pin 9) | BUTTON_JOY | Joystick pushbutton (active high) |
-| PC0 (pin 15) | BUTTON01 | NeoPixel button 1 |
+| PB5 (pin 9) | BUTTON_JOY | Joystick pushbutton (active high, R13 10 kΩ pull-down) |
 | PC1 (pin 16) | NEOPIX_CMD | NeoPixel data output |
+| PC2 (pin 17) | BUTTON01 | NeoPixel button 1 |
 
-### Extension Connector (U4)
+### Extension Connector (U6)
 
-The 6-pin screw terminal exposes AXIS1, AXIS2, AXIS3, BUTTON_JOY, VCC, and GND for the physical joystick connection.
+The 6-pin screw terminal exposes AXIS1, AXIS2, AXIS3, BUTTON_JOY, +5 V and GND for the physical joystick connection. Wire the stick's push button between pin 6 (+5 V) and pin 2 (BUTTON_JOY); R13 (10 kΩ) holds the input low when it is open.
 
 ---
 
@@ -196,6 +196,7 @@ Translation sketch). Include `KerbalJoystickCore.h` from the main `.ino` only.
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.3.1 | 2026-11-25 | BUTTON01 is on PC2 (pin 17), as wired on the Joystick Module board; the library read PC0 (pin 15), which is not connected, so BTN01 never registered. Pin tables corrected; the stick terminal is U6. Identity firmware stays 2.3. |
 | 2.3.0 | 2026-11-09 | Full negative deflection raises INT (GitHub #114). The low side of the split map ran to -32768, which is `INT16_MIN`, the `KJC_AXIS_SUPPRESS` sentinel, so a sample at the negative rail was treated as "no change": it raised no INT and reached the master only with the next packet something else triggered. The map now runs -32767 to +32767, symmetric, so the sentinel is never a real value. Identity firmware 2.3. |
 | 2.2.0 | 2026-11-08 | Each button edge is reported once (`buttonsGetChangeMask` no longer re-arms the mask from the state latched at the previous read, which reported every edge twice). Sources renamed `.cpp` → `.ipp` and included from `KerbalJoystickCore.h`, so a sketch's `KJC_AXISn_INVERT` reaches the library (the Translation stick's AXIS2 was not inverted). Identity firmware 2.2 (was 2.0). |
 

@@ -186,8 +186,8 @@ struct CtJoystick : Timed {
         t += 400;
         at(t, [=]() { sim::pin_set(PIN_PB5, true); }); at(t + 80, [=]() { expect2({255, 0, 255}, {255, 0, 255}, "stick button"); });
         at(t + 100, [=]() { sim::pin_set(PIN_PB5, false); });
-        at(t + 200, [=]() { sim::pin_set(PIN_PC0, true); });  at(t + 280, [=]() { expect2(W, O, "BTN01"); });
-        at(t + 300, [=]() { sim::pin_set(PIN_PC0, false); });
+        at(t + 200, [=]() { sim::pin_set(PIN_PC2, true); });  at(t + 280, [=]() { expect2(W, O, "BTN01"); });
+        at(t + 300, [=]() { sim::pin_set(PIN_PC2, false); });
         // BTN02 is the last input: the completion flash replaces its white.
         at(t + 400, [=]() { sim::pin_set(PIN_PB3, true); }); at(t + 480, [=]() { expect2(G, G, "completion flash"); });
         at(t + 500, [=]() { sim::pin_set(PIN_PB3, false); });
