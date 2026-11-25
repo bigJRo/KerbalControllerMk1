@@ -1,0 +1,208 @@
+{
+  "base": "KC-01-171",
+  "name": "Control Module Extension",
+  "title": "Control Module Extension",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "A",
+  "board_version": "V2.0",
+  "date": "2026-11-24",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "1234",
+  "revisions": [
+    [
+      "A",
+      "Supersedes the V2.0 drawings; redrawn in the KC drawing frame",
+      "2026-11-24",
+      "J. Kerman"
+    ]
+  ],
+  "sch_pdf": "SCH_KC-01-1711_Control_Module_Extension_2026-11-23.pdf",
+  "gerber_zip": "Gerber_KC-01-1712_Control_Module_Extension_PCB_2026-11-23.zip",
+  "bom_csv": "BOM_KC-01-1712_Control_Module_Extension_PCB_2026-11-23.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1712_Control_Module_Extension_PCB_2026-11-23.csv",
+  "sch_scale": 0.49,
+  "sch_sheets": [
+    {
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                118,
+                33,
+                323,
+                244
+              ],
+              "label": "Interboard connector from the Control Module (CN1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                491,
+                101,
+                575,
+                179
+              ],
+              "label": "Fan header (CN3): PWM only, no tach"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                674,
+                87,
+                780,
+                188
+              ],
+              "label": "Expansion terminal (CN2)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                183,
+                288,
+                375,
+                440
+              ],
+              "label": "B2 panel connector (CN4)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                460,
+                288,
+                655,
+                440
+              ],
+              "label": "B1 panel connector (CN5)"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "pwb_scale": 1,
+  "layer_scale": 1,
+  "pwb_outline_layer": true,
+  "pwb_tables_sheet": true,
+  "place_scale": 2,
+  "place_segments": [
+    [
+      -1,
+      170
+    ],
+    [
+      160,
+      331
+    ]
+  ],
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Connectors, signals, GND pour"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "1.53",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Signals, V_12 pour"
+    }
+  ],
+  "stackup_note": "JLCPCB standard 2-layer. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Connectors, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "All connectors are on this side; the GND pour fills the open area."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Signals, V_12 pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "The V_12 pour carries the 12 V feed from CN1 to CN2, CN3, CN4 and CN5."
+      ]
+    }
+  ],
+  "mount_hole_d": 3.5,
+  "mount_hole_note": "Ø6.00 pads, no net (isolated)",
+  "drill_use": {
+    "3.50 PTH": "Mounting holes",
+    "1.40 PTH": "CN2 terminal block",
+    "1.15 PTH": "CN3 fan header",
+    "1.10 PTH": "CN1 50-pin header",
+    "1.00 PTH": "CN4, CN5 34-pin headers",
+    "0.30 PTH": "Via"
+  },
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 2 layers, JLCPCB standard (sheet 2 table).",
+    "2. Copper: 1 oz both sides. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. The 4 plated mounting holes (M1–M4) are not connected to any net; keep them isolated on both layers.",
+    "9. No controlled impedance, slots, castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The board is passive: connectors only, every signal passes straight through.",
+    "4. Substitutes need the approval of the design authority."
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [],
+  "place_label_size": 1.4,
+  "place_notes": [
+    "1. All parts are through-hole on the top side. The board is shown in two overlapping parts.",
+    "2. Red dot = pin 1 of every connector. These match the silkscreen marks.",
+    "3. CN3 (fan) is pin 1 FAN_PWM, pin 2 not connected, pin 3 V_12, pin 4 GND.",
+    "4. CN2 terminal order differs from the GX16-10 pin order from pin 5 on; wire the harness by signal name (Hardware Reference §10.4). The silkscreen marks V_12 as VCC.",
+    "5. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
+  ],
+  "mount_callout": {
+    "index": 3,
+    "dx": 14,
+    "dy": 22
+  },
+  "doc_status": {
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
+  }
+}

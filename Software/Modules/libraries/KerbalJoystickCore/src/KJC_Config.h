@@ -1,7 +1,7 @@
 /**
  * @file        KJC_Config.h
- * @version     2.3.0
- * @date        2026-04-08
+ * @version     2.3.1
+ * @date        2026-11-25
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -19,7 +19,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Hardware: KC-01-1831/1832 Joystick Module v1.0
+ * @note        Hardware: KC-01-1831/1832 Joystick Module V2.1
  *              Target:   ATtiny816-MNR (megaTinyCore)
  */
 
@@ -91,11 +91,11 @@
 /** @brief AXIS3 (Z / twist) analog input — PA7, ADC channel AIN7. */
 #define KJC_PIN_AXIS3           PIN_PA7
 
-/** @brief Joystick pushbutton — PB5, active high, hardware pull-down. */
+/** @brief Joystick pushbutton — PB5, active high, hardware pull-down (R13, 10 kΩ). */
 #define KJC_PIN_BTN_JOY         PIN_PB5
 
-/** @brief BUTTON01 NeoPixel button — PC0. */
-#define KJC_PIN_BTN01           PIN_PC0
+/** @brief BUTTON01 NeoPixel button — PC2 (pin 17). */
+#define KJC_PIN_BTN01           PIN_PC2
 
 /** @brief BUTTON02 NeoPixel button — PB3. */
 #define KJC_PIN_BTN02           PIN_PB3

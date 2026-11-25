@@ -1,0 +1,558 @@
+{
+  "base": "KC-01-187",
+  "name": "Throttle Module",
+  "title": "Throttle Module",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "C",
+  "board_version": "V2.1",
+  "date": "2026-11-25",
+  "status": "RELEASED",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
+  },
+  "revisions": [
+    [
+      "A",
+      "Initial release (V2.0 drawings)",
+      "2026-06-21",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "Board V2.1: 200 kΩ pull-up on PCA9306 VREF2/EN; KC drawing frame",
+      "2026-11-25",
+      "J. Kerman"
+    ],
+    [
+      "C",
+      "Motor LED resistors R15, R16 10 kΩ (were 1 kΩ)",
+      "2026-11-25",
+      "J. Kerman"
+    ]
+  ],
+  "sch_pdf": "SCH_KC-01-1871_Throttle_Module_2026-11-25.pdf",
+  "gerber_zip": "Gerber_KC-01-1872_Throttle_Module_PCB_2026-11-25.zip",
+  "bom_csv": "BOM_KC-01-1872_Throttle_Module_PCB_2026-11-25.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1872_Throttle_Module_PCB_2026-11-25.csv",
+  "assy_pdf": "Fusion_KC-01-1870_Throttle_Module_2026-11-24.pdf",
+  "doc_title": {
+    "0": "Throttle Module Complete"
+  },
+  "doc_name": {
+    "0": "Throttle Module Complete"
+  },
+  "sch_sheets": [
+    {
+      "scale": 0.45,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                21,
+                65,
+                629,
+                201
+              ],
+              "label": "Microcontroller (U3 ATtiny816), programming supply OR (D2)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                656,
+                112,
+                836,
+                190
+              ],
+              "label": "Module slot connector (P1)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                30,
+                317,
+                145,
+                405
+              ],
+              "label": "UPDI header (H1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                185,
+                345,
+                323,
+                398
+              ],
+              "label": "Motor supply 12 V to 9 V (U12)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                375,
+                331,
+                612,
+                398
+              ],
+              "label": "I²C level converter (sheet 4)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                670,
+                305,
+                818,
+                446
+              ],
+              "label": "Power: 12 V to 5 V (U2)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.45,
+      "rows": [
+        [
+          [
+            {
+              "page": 6,
+              "crop": [
+                32,
+                21,
+                269,
+                357
+              ],
+              "label": "Panel inputs U5 (THRTL_ENA), U7 (100 %), U8 (UP): pull-downs, lamp drivers Q1–Q3 on LED_ENA"
+            }
+          ],
+          [
+            {
+              "page": 6,
+              "crop": [
+                32,
+                357,
+                269,
+                590
+              ],
+              "label": "Panel inputs U10 (DOWN), U11 (0 %): pull-downs, lamp drivers Q4, Q5"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.45,
+      "rows": [
+        [
+          [
+            {
+              "page": 6,
+              "crop": [
+                342,
+                22,
+                800,
+                198
+              ],
+              "label": "Motorized fader VR1 (wiper, motor, touch track) and touch sensor U6"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 6,
+              "crop": [
+                355,
+                262,
+                630,
+                432
+              ],
+              "label": "Motor driver U9 (L293DD, both halves paralleled), +9V decoupling"
+            }
+          ],
+          [
+            {
+              "page": 6,
+              "crop": [
+                662,
+                296,
+                840,
+                384
+              ],
+              "label": "Motor direction LEDs LED1, LED2 (anti-parallel)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.45,
+      "rows": [
+        [
+          [
+            {
+              "page": 3,
+              "crop": [
+                144,
+                138,
+                448,
+                181
+              ],
+              "label": "12 V input protection (D1, F1)"
+            }
+          ],
+          [
+            {
+              "page": 5,
+              "crop": [
+                83,
+                73,
+                497,
+                224
+              ],
+              "label": "I²C level converter (U1 PCA9306, R23 200 kΩ on VREF2/EN, C2 100 pF)"
+            }
+          ]
+        ],
+        [
+          [
+            {
+              "page": 2,
+              "crop": [
+                83,
+                80,
+                512,
+                238
+              ],
+              "label": "5 V converter (U2)"
+            }
+          ],
+          [
+            {
+              "page": 4,
+              "crop": [
+                83,
+                80,
+                512,
+                238
+              ],
+              "label": "9 V motor converter (U12, R21 / R22 set 8.8 V)"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "pwb_scale": 1,
+  "layer_scale": 1,
+  "pwb_tables_sheet": true,
+  "pwb_outline_layer": true,
+  "place_scale": 2,
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Encoders, signals, GND pour"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "7628",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "PWR_PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "5 V plane (+5V)"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "3",
+      "name": "GND_PL",
+      "material": "Copper 0.5 oz",
+      "thickness": "0.015",
+      "use": "Ground plane (GND)"
+    },
+    {
+      "layer": "",
+      "name": "Prepreg",
+      "material": "7628",
+      "thickness": "-",
+      "use": ""
+    },
+    {
+      "layer": "4",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Components, signals, GND pour"
+    }
+  ],
+  "stackup_note": "JLCPCB JLC04161H-7628: dielectric materials and thicknesses as that stackup. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Encoders, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "Encoder side: only the two encoders SW1, SW2 mount here."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "PWR_PL",
+      "file": "Gerber_InnerLayer1.G1",
+      "net": "5 V plane (+5V)",
+      "copper": "0.5 oz",
+      "color": "#8e44ad"
+    },
+    {
+      "layer": "3",
+      "name": "GND_PL",
+      "file": "Gerber_InnerLayer2.G2",
+      "net": "Ground plane (GND)",
+      "copper": "0.5 oz",
+      "color": "#1e8449"
+    },
+    {
+      "layer": "4",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Components, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "Component side: all SMT parts, the slot connector P1 and the programming header H1."
+      ]
+    }
+  ],
+  "mount_hole_d": null,
+  "mount_hole_note": "Ø4.80 pads, no net (isolated)",
+  "drill_use": {
+    "2.00 PTH": "VR1 mounting lugs",
+    "1.50 PTH": "VR1 pins",
+    "1.30 PTH": "U5, U7, U8, U10, U11 terminal blocks",
+    "1.20 PTH": "H1 programming header",
+    "1.10 PTH": "P1 slot header",
+    "0.30 PTH": "Via"
+  },
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 4 layers, JLCPCB JLC04161H-7628 stackup (sheet 2 table).",
+    "2. Copper: 1 oz outer, 0.5 oz inner. Surface finish: lead-free HASL.",
+    "3. Solder mask green, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. No mounting holes, slots, controlled impedance, castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The motorized fader VR1 is fitted after delivery (KC-01-1870 item 2), and the handle at module level.",
+    "4. U5, U7, U8, U10 and U11 are the panel switch terminal blocks.",
+    "5. Substitutes need the approval of the design authority."
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [
+    "VR1"
+  ],
+  "place_polarised": [
+    "D1",
+    "C14"
+  ],
+  "place_label_size": 1.2,
+  "place_notes": [
+    "1. VR1 (fader) is on the top side; every other part is on the bottom side. Each side is shown in two overlapping parts, top half and bottom half.",
+    "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
+    "3. Red dot = pin 1 of every part with more than two pins, the cathode (pin 1) of D1 and the + terminal (pin 1) of C14. These match the silkscreen marks.",
+    "4. LED1 (red) and LED2 (green) are anti-parallel across the motor; fit them to the silkscreen polarity marks.",
+    "5. Terminals U5, U7, U8, U10, U11: 1 and 3 +5V, 2 switch input, 4 lamp return (switched by Q1–Q5).",
+    "6. Part centres, rotations and part numbers are in the placement table (last sheets), measured from the datum (top view)."
+  ],
+  "assy_parts": [
+    {
+      "qty": 1,
+      "pn": "KC-01-1872",
+      "name": "Throttle Module",
+      "desc": "Custom PWB; Mfr: JLCPCB"
+    },
+    {
+      "qty": 1,
+      "pn": "RSA0N11M9A0J",
+      "name": "Slide Potentiometer - Motorized",
+      "desc": "Slide Potentiometers Single Unit, 100mm Vrtcl W/Touch Sensor, 10kOhm (VR1)"
+    },
+    {
+      "qty": 1,
+      "pn": "04D44FD",
+      "name": "Throttle Handle",
+      "desc": "3D Printed Custom Handle; Mfr: Xometry"
+    }
+  ],
+  "assy_notes": [
+    "1. Item 1 is the KC-01-1872 card as assembled by JLCPCB to KC-01-1871 to KC-01-1874, without VR1.",
+    "2. Solder the motorized fader (item 2) at VR1, top side, and fit the handle (item 3) to its lever.",
+    "3. Orthographic views at 1:1 on A3; isometric views not to scale. Parts list on sheet 2."
+  ],
+  "assy_sheets": [
+    {
+      "scale": 1.0,
+      "notes": true,
+      "views": [
+        {
+          "page": 1,
+          "src": [
+            140.0,
+            26.0,
+            203.0,
+            149.0
+          ],
+          "at": [
+            25.0,
+            40.0
+          ],
+          "k": 1.25,
+          "label": "LEFT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            274.0,
+            26.0,
+            330.0,
+            149.0
+          ],
+          "at": [
+            112.0,
+            40.0
+          ],
+          "k": 1.25,
+          "label": "TOP VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            274.0,
+            165.0,
+            330.0,
+            229.0
+          ],
+          "at": [
+            195.0,
+            40.0
+          ],
+          "k": 1.25,
+          "label": "FRONT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            61.0,
+            137.0,
+            134.0,
+            257.0
+          ],
+          "at": [
+            285.0,
+            40.0
+          ],
+          "k": 1.0,
+          "label": "ISOMETRIC VIEW",
+          "sublabel": "Not to scale"
+        }
+      ]
+    },
+    {
+      "scale": null,
+      "parts_list": true,
+      "views": [
+        {
+          "page": 2,
+          "src": [
+            101.0,
+            82.0,
+            302.0,
+            242.0
+          ],
+          "at": [
+            95.0,
+            72.0
+          ],
+          "k": 0.95,
+          "clip": [
+            [
+              101,
+              82
+            ],
+            [
+              302,
+              82
+            ],
+            [
+              302,
+              230
+            ],
+            [
+              226,
+              230
+            ],
+            [
+              226,
+              242
+            ],
+            [
+              101,
+              242
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "place_split_axis": "y",
+  "place_segments": [
+    [
+      -1,
+      77
+    ],
+    [
+      71,
+      149
+    ]
+  ]
+}

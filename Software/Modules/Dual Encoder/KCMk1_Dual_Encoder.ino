@@ -17,9 +17,10 @@
  *              Module Type ID: 0x0E
  *              Capability:     0x04 (encoder data in packet)
  *
- *              Hardware: KC-01-1862 Dual Encoder Module v2.0
- *              Both encoders: PEC11R-4220F-S0024 on KC-01-1852 carrier
- *              boards with hardware RC debounce (10nF caps on A/B channels).
+ *              Hardware: KC-01-1862 Dual Encoder Module V2.1
+ *              Both encoders: PEC11R-4220F-S0024 on the module board, with
+ *              hardware RC debounce (10nF caps on A/B channels). V2.0 used
+ *              KC-01-1852 carrier boards; the pin map is the same.
  *
  *              Tab structure:
  *                Config.h         — pins, constants, commands

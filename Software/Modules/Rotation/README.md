@@ -44,7 +44,7 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 
 | Button | Pin | Function | Active Color | Notes |
 |---|---|---|---|---|
-| BTN01 | PC0 | Reset Trim | GREEN | Resets all trim to zero |
+| BTN01 | PC2 | Reset Trim | GREEN | Resets all trim to zero |
 | BTN02 | PB3 | Trim Set | AMBER | Adds the current stick deflection to the trim; each press adds to the trim already set |
 
 ### Joystick Button
@@ -110,14 +110,14 @@ Default thresholds (all in raw ADC counts):
 | AXIS2 | PA6 (pin 7) | Joystick Y via extension connector |
 | AXIS3 | PA7 (pin 8) | Joystick Z-rotation via extension connector |
 | BTN_JOY | PB5 (pin 9) | Joystick pushbutton via extension connector |
-| BTN01 | PC0 (pin 15) | NeoPixel button 1 |
+| BTN01 | PC2 (pin 17) | NeoPixel button 1 |
 | BTN02 | PB3 (pin 11) | NeoPixel button 2 |
 | NEOPIX_CMD | PC1 (pin 16) | NeoPixel data output |
 | INT | PA1 (pin 20) | Interrupt output (active low) |
 | SCL | PB0 (pin 14) | I2C clock |
 | SDA | PB1 (pin 13) | I2C data |
 
-### Extension Connector (U4)
+### Extension Connector (U6)
 
 The 6-pin screw terminal (DB127S-5.08-6P) carries the physical joystick signals:
 

@@ -23,7 +23,7 @@
  *                AXIS3 (PA7) — Z axis
  *
  *              Buttons:
- *                BTN01 (PC0) — Cycle Camera Mode — MAGENTA — NeoPixel
+ *                BTN01 (PC2) — Cycle Camera Mode — MAGENTA — NeoPixel
  *                BTN02 (PB3) — Camera Reset      — GREEN   — NeoPixel
  *                BTN_JOY(PB5)— Camera Control mode (held) — no LED — GPIO
  *

@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" font-family="Liberation Sans, Arial, Helvetica, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="30.0" y="30.0" font-size="19" font-weight="bold" text-anchor="start" fill="#212121">KCMk1 Expansion Module: keypad layout</text>
+<text x="30.0" y="50.0" font-size="12" font-weight="normal" text-anchor="start" fill="#607d8b">Expansion Module Specification v0.9, §7.1. Seen from the front. 25 Kailh Choc V1 keys and one encoder on a 21 mm grid.</text>
+<rect x="150.0" y="156.4" width="728.0" height="495.2" rx="10" fill="#f5f7f8" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="202.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 1</text>
+<text x="202.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_0</text>
+<text x="306.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 2</text>
+<text x="306.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_1</text>
+<text x="410.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 3</text>
+<text x="410.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_2</text>
+<text x="514.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 4</text>
+<text x="514.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_3</text>
+<text x="618.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 5</text>
+<text x="618.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_4</text>
+<text x="722.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 6</text>
+<text x="722.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_5</text>
+<text x="826.0" y="122.4" font-size="12" font-weight="bold" text-anchor="middle" fill="#37474f">Col 7</text>
+<text x="826.0" y="140.4" font-size="11" font-weight="bold" text-anchor="middle" fill="#2e7d32">COL_6</text>
+<text x="130.0" y="246.0" font-size="12" font-weight="bold" text-anchor="end" fill="#37474f">Row 0</text>
+<text x="130.0" y="262.0" font-size="11" font-weight="bold" text-anchor="end" fill="#2e7d32">ROW_0</text>
+<text x="130.0" y="350.0" font-size="12" font-weight="bold" text-anchor="end" fill="#37474f">Row 1</text>
+<text x="130.0" y="366.0" font-size="11" font-weight="bold" text-anchor="end" fill="#2e7d32">ROW_1</text>
+<text x="130.0" y="454.0" font-size="12" font-weight="bold" text-anchor="end" fill="#37474f">Row 2</text>
+<text x="130.0" y="470.0" font-size="11" font-weight="bold" text-anchor="end" fill="#2e7d32">ROW_2</text>
+<text x="130.0" y="558.0" font-size="12" font-weight="bold" text-anchor="end" fill="#37474f">Row 3</text>
+<text x="130.0" y="574.0" font-size="11" font-weight="bold" text-anchor="end" fill="#2e7d32">ROW_3</text>
+<rect x="157.0" y="203.0" width="90.0" height="90.0" rx="9" fill="#37474f" stroke="#263238" stroke-width="1.4"/>
+<text x="202.0" y="250.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">PROG</text>
+<text x="241.0" y="286.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 0</text>
+<rect x="261.0" y="203.0" width="90.0" height="90.0" rx="9" fill="#37474f" stroke="#263238" stroke-width="1.4"/>
+<text x="306.0" y="250.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">HOLD</text>
+<text x="345.0" y="286.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 1</text>
+<rect x="365.0" y="203.0" width="90.0" height="90.0" rx="9" fill="#37474f" stroke="#263238" stroke-width="1.4"/>
+<text x="410.0" y="250.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">MENU</text>
+<text x="449.0" y="286.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 2</text>
+<rect x="469.0" y="203.0" width="90.0" height="90.0" rx="9" fill="#37474f" stroke="#263238" stroke-width="1.4"/>
+<text x="514.0" y="250.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">INFO</text>
+<text x="553.0" y="286.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 3</text>
+<rect x="573.0" y="203.0" width="90.0" height="90.0" rx="9" fill="#37474f" stroke="#263238" stroke-width="1.4"/>
+<text x="618.0" y="250.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">MARK</text>
+<text x="657.0" y="286.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 4</text>
+<rect x="677.0" y="203.0" width="90.0" height="90.0" rx="9" fill="#37474f" stroke="#263238" stroke-width="1.4"/>
+<text x="722.0" y="250.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">PAGE</text>
+<text x="761.0" y="286.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 5</text>
+<rect x="157.0" y="359.0" width="90.0" height="90.0" rx="9" fill="#1565c0" stroke="#263238" stroke-width="1.4"/>
+<text x="202.0" y="406.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">VERB</text>
+<text x="241.0" y="442.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 6</text>
+<rect x="261.0" y="307.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="306.0" y="358.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">+</text>
+<text x="345.0" y="390.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 7</text>
+<rect x="365.0" y="307.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="410.0" y="358.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">7</text>
+<text x="449.0" y="390.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 8</text>
+<rect x="469.0" y="307.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="514.0" y="358.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">8</text>
+<text x="553.0" y="390.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 9</text>
+<rect x="573.0" y="307.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="618.0" y="358.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">9</text>
+<text x="657.0" y="390.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 10</text>
+<rect x="677.0" y="307.0" width="90.0" height="90.0" rx="9" fill="#ffe0b2" stroke="#263238" stroke-width="1.4"/>
+<text x="722.0" y="354.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#4e342e">CLR</text>
+<text x="761.0" y="390.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 11</text>
+<rect x="781.0" y="359.0" width="90.0" height="90.0" rx="9" fill="#ffe0b2" stroke="#263238" stroke-width="1.4"/>
+<text x="826.0" y="406.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#4e342e">ENTR</text>
+<text x="865.0" y="442.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 12</text>
+<rect x="157.0" y="463.0" width="90.0" height="90.0" rx="9" fill="#1565c0" stroke="#263238" stroke-width="1.4"/>
+<text x="202.0" y="510.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#ffffff">NOUN</text>
+<text x="241.0" y="546.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#b0bec5">LED 13</text>
+<rect x="261.0" y="411.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="306.0" y="462.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">−</text>
+<text x="345.0" y="494.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 14</text>
+<rect x="365.0" y="411.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="410.0" y="462.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">4</text>
+<text x="449.0" y="494.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 15</text>
+<rect x="469.0" y="411.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="514.0" y="462.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">5</text>
+<text x="553.0" y="494.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 16</text>
+<rect x="573.0" y="411.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="618.0" y="462.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">6</text>
+<text x="657.0" y="494.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 17</text>
+<rect x="677.0" y="411.0" width="90.0" height="90.0" rx="9" fill="#ffe0b2" stroke="#263238" stroke-width="1.4"/>
+<text x="722.0" y="458.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#4e342e">PRO</text>
+<text x="761.0" y="494.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 18</text>
+<rect x="781.0" y="463.0" width="90.0" height="90.0" rx="9" fill="#ffe0b2" stroke="#263238" stroke-width="1.4"/>
+<text x="826.0" y="510.5" font-size="18" font-weight="bold" text-anchor="middle" fill="#4e342e">RSET</text>
+<text x="865.0" y="546.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 19</text>
+<rect x="261.0" y="515.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="306.0" y="566.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">0</text>
+<text x="345.0" y="598.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 20</text>
+<rect x="365.0" y="515.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="410.0" y="566.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">1</text>
+<text x="449.0" y="598.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 21</text>
+<rect x="469.0" y="515.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="514.0" y="566.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">2</text>
+<text x="553.0" y="598.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 22</text>
+<rect x="573.0" y="515.0" width="90.0" height="90.0" rx="9" fill="#eceff1" stroke="#263238" stroke-width="1.4"/>
+<text x="618.0" y="566.8" font-size="30" font-weight="bold" text-anchor="middle" fill="#212121">3</text>
+<text x="657.0" y="598.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 23</text>
+<rect x="677.0" y="515.0" width="90.0" height="90.0" rx="9" fill="#ffe0b2" stroke="#263238" stroke-width="1.4"/>
+<text x="722.0" y="552.0" font-size="16" font-weight="bold" text-anchor="middle" fill="#4e342e">KEY</text>
+<text x="722.0" y="572.0" font-size="16" font-weight="bold" text-anchor="middle" fill="#4e342e">REL</text>
+<text x="761.0" y="598.0" font-size="9.5" font-weight="normal" text-anchor="end" fill="#78909c">LED 24</text>
+<circle cx="826.0" cy="248.0" r="40.0" fill="#cfd8dc" stroke="#263238" stroke-width="1.6"/>
+<circle cx="826.0" cy="248.0" r="26.0" fill="#78909c" stroke="#455a64" stroke-width="1.2"/>
+<text x="826.0" y="253.0" font-size="14" font-weight="bold" text-anchor="middle" fill="#ffffff">ENC</text>
+<text x="826.0" y="304.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">turn + push</text>
+<line x1="150.0" y1="677.6" x2="254.0" y2="677.6" stroke="#607d8b" stroke-width="1.2"/>
+<line x1="150.0" y1="671.6" x2="150.0" y2="683.6" stroke="#607d8b" stroke-width="1.2"/>
+<line x1="254.0" y1="671.6" x2="254.0" y2="683.6" stroke="#607d8b" stroke-width="1.2"/>
+<text x="202.0" y="695.6" font-size="11" font-weight="bold" text-anchor="middle" fill="#607d8b">21 mm</text>
+<text x="514.0" y="695.6" font-size="11" font-weight="normal" text-anchor="middle" fill="#607d8b">Keyboard Matrix PCB KC-01-2712, 147 × 100 mm (dashed)</text>
+<text x="928.0" y="160.4" font-size="14" font-weight="bold" text-anchor="start" fill="#212121">Key groups</text>
+<rect x="928.0" y="180.4" width="24.0" height="24.0" rx="4" fill="#37474f" stroke="#263238" stroke-width="1.2"/>
+<text x="962.0" y="197.4" font-size="12.5" font-weight="normal" text-anchor="start" fill="#37474f">Function row</text>
+<rect x="928.0" y="214.4" width="24.0" height="24.0" rx="4" fill="#1565c0" stroke="#263238" stroke-width="1.2"/>
+<text x="962.0" y="231.4" font-size="12.5" font-weight="normal" text-anchor="start" fill="#37474f">VERB / NOUN</text>
+<rect x="928.0" y="248.4" width="24.0" height="24.0" rx="4" fill="#eceff1" stroke="#263238" stroke-width="1.2"/>
+<text x="962.0" y="265.4" font-size="12.5" font-weight="normal" text-anchor="start" fill="#37474f">Digits and sign</text>
+<rect x="928.0" y="282.4" width="24.0" height="24.0" rx="4" fill="#ffe0b2" stroke="#263238" stroke-width="1.2"/>
+<text x="962.0" y="299.4" font-size="12.5" font-weight="normal" text-anchor="start" fill="#37474f">Entry and action keys</text>
+<text x="928.0" y="332.4" font-size="13" font-weight="bold" text-anchor="start" fill="#212121">Arrangement</text>
+<text x="928.0" y="350.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">As on the Apollo DSKY: VERB / NOUN</text>
+<text x="928.0" y="368.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">and ENTR / RSET sit half a key</text>
+<text x="928.0" y="386.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">(10.5 mm) lower than the digit rows.</text>
+<text x="928.0" y="404.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">Electrically they stay on ROW_1</text>
+<text x="928.0" y="422.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">and ROW_2.</text>
+<text x="928.0" y="458.4" font-size="13" font-weight="bold" text-anchor="start" fill="#212121">Matrix</text>
+<text x="928.0" y="476.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">One 1N4148W diode per key.</text>
+<text x="928.0" y="494.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">Columns driven low by the Teensy;</text>
+<text x="928.0" y="512.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">rows read with pull-ups (§7.2).</text>
+<text x="928.0" y="548.4" font-size="13" font-weight="bold" text-anchor="start" fill="#212121">Backlight</text>
+<text x="928.0" y="566.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">SK6812MINI-EA per key, reverse</text>
+<text x="928.0" y="584.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">mounted. Chained LED_0 (PROG) to</text>
+<text x="928.0" y="602.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">LED_24 (KEY REL), left to right,</text>
+<text x="928.0" y="620.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">top to bottom (§7.3).</text>
+<text x="928.0" y="656.4" font-size="13" font-weight="bold" text-anchor="start" fill="#212121">Keycaps</text>
+<text x="928.0" y="674.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">MBK caps with custom legends</text>
+<text x="928.0" y="692.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">(FKcaps). Spacing check: E-17.</text>
+<text x="928.0" y="710.4" font-size="12" font-weight="normal" text-anchor="start" fill="#455a64">Encoder role: E-20.</text>
+</svg>

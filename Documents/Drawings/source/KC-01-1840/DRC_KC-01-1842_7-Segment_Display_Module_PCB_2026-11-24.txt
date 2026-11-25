@@ -1,0 +1,41 @@
+No.
+	
+Display
+	
+Error Type
+	
+Error Object
+	
+Rule Name
+	
+Object 1
+	
+Object 2
+	
+Layer
+	
+Explanation
+1	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N11758): LED1_4	Slot Region : e501e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+2	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED1_3	Slot Region : e501e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+3	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (+5V): LED1_1	Slot Region : e501e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+4	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N12276): LED1_2	Slot Region : e501e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+5	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED2_3	Slot Region : e502e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+6	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N12276): LED2_4	Slot Region : e502e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+7	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N15416): LED2_2	Slot Region : e502e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+8	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (+5V): LED2_1	Slot Region : e502e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+9	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad ($1N15416): LED3_4	Slot Region : e503e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+10	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (GND): LED3_3	Slot Region : e503e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+11	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad (+5V): LED3_1	Slot Region : e503e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil
+12	
+	Clearance Error in the same footprint	SMD Pad to Slot Region	copperThickness1oz	SMD Pad : LED3_2	Slot Region : e503e16	Bottom Layer	Object 1 to object 2 in the same footprint distance is 3.9mil, should be >= 6mil

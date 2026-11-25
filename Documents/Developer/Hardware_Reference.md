@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.1  
-**Date:** 2026-11-15  
+**Version:** 2.11  
+**Date:** 2026-11-25  
 **Document type:** Developer — Hardware
 
 ---
@@ -25,6 +25,16 @@
 | 1.10 | 2026-08-08 | §5.4: corrected the Throttle Module board designator from KC-01-1822 to KC-01-1872, matching the released drawing set (KC-01-1870 assembly / KC-01-1871 schematic / KC-01-1872 board / KC-01-1873 BOM / KC-01-1874 placement). Throttle row note updated: the five illuminated panel switches share a single backlight-enable output (not per-switch LEDs). §14 Related Documents: bumped the I2C Protocol Specification cross-reference to v2.10 (the two parallel v2.6/v2.9 spec lineages were reconciled into a single v2.10 document). |
 | 2.0 | 2026-10-26 | Rebuilt from `Hardware_Inventory.md` (the V2.0 schematics, confirmed panel by panel) and `Master_Firmware_Design.md`; every difference in Inventory §6 resolved. **Boards:** Display Hub (KC-01-1721/1722) retired — on A1 and B1 one 7" TFT Display Driver (KC-01-1911/1912) is the panel hub (Info Display 1 → Ctrl Module CN4; Resource Display → Extension CN5); Panel Hub (KC-01-1731/1732) on A2 (Ctrl CN3) and B2 (Extension CN4). Schematic and PCB numbers both listed. "Carrier" boards renamed to "Display Driver"; Ctrl Ext Module renamed Ctrl Module Extension. Removed the Ctrl Module ST7789 status display (not fitted; SPI pins unconnected). 2" display driver has no safe-switch terminal. Dual Encoder safe-switch terminal cannot reach the master. Throttle THRTL_ENA terminal unwired. **§3:** new §3.6 board interconnection. **§4:** rewritten per panel (slots, INT lines, safe switches, mode selector, Switch Groups 1 / 2 wiring). **§6:** power button has no Teensy pin; INA228 data shown on the Sys Info Display; new §6.6 fan and temperature (EMC2101 internal sensor only, nothing fitted on H4; fan header pin order). **§8:** I2C level shifter (not a divider) on ATtiny modules; safe lines documented as active-high; device map gains board / slot / INT columns, 0x2E marked retired; EXT_INT protection corrected (47 Ω + 4.7 kΩ both on EXT_INT_1 at the Ctrl Module, nothing on EXT_INT_2); new §8.5 master pin map from `KCMk1_Master/config.h`. **§9:** 50-pin pinout corrected to the V2.0 schematics. **§10:** Extension CN2 expansion terminal pinout added. **§11:** renamed Panel 34-Pin IDC Connector; line mapping and display-driver use of the four lines added. **§12 / §13:** slot pin 16 not connected on any hub; safe switches use the hub's own terminal; RST not connected on the 2" driver. **§14:** added Hardware Inventory and Master Firmware Design; I2C Protocol v2.17; Module UI Reference v6.0 (rewritten alongside this revision); master firmware is now `Software/KCMk1_Master` (the old `Software/Controller_Main` is deleted). New §15 Open Items. |
 | 2.1 | 2026-11-15 | Brought in line with the Technical Information Manual and the firmware. **§2:** Alternate Resource Panel added to the required mods. **§3.6:** wiring diagram (`assets/KCMk1_Wiring_Diagram.svg`) and its three print figures referenced. **§4.3, §5.4:** throttle buttons named as engraved: FULL, THRTL +, THRTL −, IDLE (firmware names THRTL_100, THRTL_UP, THRTL_DOWN, THRTL_00 kept). **§6.1:** interim system-load figures updated to Power Budget v1.3. **§6.3:** V_12 feeds the converters and the fans; new 9V row for the Throttle Module's own MPM3610 motor supply (Power Budget v1.3). **§10:** the GX16-10 and the expansion USB-C are fitted on the enclosure but reserved (unused). **§4, §14, §15:** cross-references updated to I2C Protocol v2.21, Module UI Reference v6.3 and Power Budget v1.3. |
+| 2.2 | 2026-11-23 | **§8.4, §10:** the TUSB212 USB signal conditioner is dropped from the expansion path. The link starts at a Ctrl Module hub port, and the ≈ 2 m run to the expansion's Teensy is well inside USB 2.0's 5 m; the internal leads are shielded twisted-pair USB cable, with a bench check and a Full Speed firmware fallback. Expansion Module Spec referenced at v0.9. **§10.4:** expansion-side terminal is CN1 on the Expansion Main Board (KC-01-2702); its pinout is added. |
+| 2.3 | 2026-11-24 | **§5.2:** Panel Hub is now V2.1. The V2.0 board left safe-switch terminal pin 1 unconnected (its "5V" symbol was not the +5V net); V2.1 puts it on +5V. The terminal wiring (SW, LED and BTN pairs, V_EN as the switched +5V node) is recorded. **§15:** open item 2 rewritten: the V_EN use is now known; the hub display drivers and the Dual Encoder, which use the same circuit, still need the pin 1 check. |
+| 2.4 | 2026-11-24 | **§5.4:** Button and Wide Button Modules are now V2.1 (Wide Button: also U19 /QH no longer grounded). **§8:** the PCA9306 I2C level shifter needs VREF2 and EN pulled up to 5 V through 200 kΩ (TI datasheet SCPS113O §8.1.2, §10); the V2.0 ATtiny modules tie them straight to +5V. Button Module V2.1 adds the resistor. **§15:** new open item 10 tracks the other modules. |
+| 2.5 | 2026-11-25 | **§5.4:** Joystick Module is now V2.1: PCA9306 pull-up, and R13 (10 kΩ) pulls BUTTON_JOY low, so the stick button is wired from U6 pin 6 (+5 V) to pin 2. BUTTON01 is on PC2 (KerbalJoystickCore 2.3.1; earlier versions read PC0). 7-Segment Display Module is now V2.1 (PCA9306 pull-up). **§15:** open item 10 updated. |
+| 2.6 | 2026-11-25 | **§4.4, §5.4, §5.5, §12:** Dual Encoder is now V2.1: both encoders on the module (RC-filtered A / B, push pull-downs), no Encoder boards, no safe-switch terminal, PCA9306 pull-up. The Encoder board remains in use on the expansion. **§15:** open item 6 closed; items 2 and 10 updated. |
+| 2.7 | 2026-11-25 | **§5.3:** 7" TFT Display Driver drawings released at Rev B for board V2.1 (schematic and PCB). Its safe-switch terminal U3 checked: pin 1 on 5V, wired as on the Panel Hub V2.1. **§15:** open items 2 and 9 closed. |
+| 2.8 | 2026-11-25 | **§5.4:** Throttle Module drawings released at Rev B for board V2.1 (200 kΩ PCA9306 VREF2/EN pull-up R23, 100 pF C2). **§8:** every ATtiny816 module now has the pull-up. **§15:** open item 10 closed. |
+| 2.9 | 2026-11-25 | **§9.2:** 50-pin pinout confirmed pin for pin against both board netlists (Ctrl Module CN2, Extension CN1, V2.0). **§15:** open item 3 closed. |
+| 2.10 | 2026-11-25 | **§6.1:** no fuse on the 12V input, by decision: the supply's own overcurrent protection covers short circuits; every ATtiny module and display driver has its own reverse diode and 1.5 A polyfuse. **§6.5:** VIN (yellow) indicator added to the status LED table. **§6.6:** fan headers checked against the board artwork: a standard 4-pin PC fan plug mates correctly; only the pin numbering is reversed. **§15:** open item 1 closed. |
+| 2.11 | 2026-11-25 | **§5.1:** Ctrl Module is now V2.1 (drawings Rev C): vertical USB-A downstream ports, 1×5 test port TP1, a blue +5V status LED, all status LEDs dimmed to about 0.5 mA, USB connector shells on GND; resistors renumbered (RST series now R14, EXT_INT_1 pull-up R15 and series R16). **§5.4:** Throttle drawings Rev C: motor-direction LED resistors R15 / R16 are 10 kΩ (were 1 kΩ). **§6.5:** status LED table and test port. **§7.3, §7.5, §7.6:** USB-A ports and shell grounding. **§8.4:** designators updated. |
 
 ---
 
@@ -185,10 +195,10 @@ Button maps, labels and functions are in `Documents/Developer/Module_UI_Referenc
 |------|-------|-------------|-------------------|
 | Resource Display (0x11) — **panel hub** | 7" TFT Display Driver | Its CN1 (34-pin) → Ctrl Module Extension CN5 | B_INT_12 (its own line) |
 | Info Display 2 (0x13) | 7" TFT Display Driver | Its P1 → Resource Display slot P2 | B_INT_9 |
-| Dual Encoder (0x2D) | Dual Encoder + 2 × Encoder | Its P1 → Resource Display slot P4 | B_INT_11 |
+| Dual Encoder (0x2D) | Dual Encoder (encoders on board) | Its P1 → Resource Display slot P4 | B_INT_11 |
 
 - **Free:** Resource Display slot P3 (B_INT_10).
-- **Safe switches:** none wired, so B_INT_SAFE2 is unused. The Dual Encoder's own safe-switch terminal could not reach the master anyway (§5.4).
+- **Safe switches:** none wired, so B_INT_SAFE2 is unused.
 
 ### 4.5 Panel B2 — Right Input Panel (Panel Hub on Ctrl Module Extension CN4)
 
@@ -250,7 +260,7 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 
 | Board | Schematic | PCB | Rev | Microcontroller | Function |
 |-------|-----------|-----|-----|-----------------|----------|
-| Ctrl Module | KC-01-1701 | KC-01-1702 | V2.0 | Teensy 4.1 | Master controller, soft latch power, INA228 power monitor, EMC2101 fan controller, 2× LTC4311 (one for SDA_BUS, one for SDA_EXT, each with 4.7kΩ pull-ups to 3.3V), USB Hub [2× CH334F cascaded, single upstream USB-C, 6 downstream Micro-USB + 1 expansion USB-C]. 47Ω series (R13) on the RST output; 47Ω series (R15) and 4.7kΩ pull-up to 3.3V (R14) on EXT_INT_1; EXT_INT_2 has no series resistor or pull-up. No status display is fitted (the Teensy SPI pins are not connected) |
+| Ctrl Module | KC-01-1701 | KC-01-1702 | V2.1 | Teensy 4.1 | Master controller, soft latch power, INA228 power monitor, EMC2101 fan controller, 2× LTC4311 (one for SDA_BUS, one for SDA_EXT, each with 4.7kΩ pull-ups to 3.3V), USB Hub [2× CH334F cascaded, single upstream USB-C, 6 downstream vertical USB-A + 1 expansion USB-C]. 47Ω series (R14) on the RST output; 47Ω series (R16) and 4.7kΩ pull-up to 3.3V (R15) on EXT_INT_1; EXT_INT_2 has no series resistor or pull-up. No status display is fitted (the Teensy SPI pins are not connected). Four power LEDs and a 1×5 test port TP1 (§6.5) |
 | Ctrl Module Extension | KC-01-1711 | KC-01-1712 | V2.0 | N/A | Passive: splits the 50-pin interboard cable to the B side (B1, B2 panel connectors), a second fan header, and the expansion terminal. No active components or protection; every signal passes straight through |
 
 **Ctrl Module connectors:**
@@ -280,14 +290,27 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 
 | Board | Schematic | PCB | Rev | Used on | Function |
 |-------|-----------|-----|-----|---------|----------|
-| Panel Hub | KC-01-1731 | KC-01-1732 | V2.0 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit |
+| Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | A2, B2 | Input-panel hub: CN1 34-pin panel connector (8 lines), 8 module slots P1–P8 (16-pin), one safe-switch terminal (U4). Local MPM3610 (5V) + AP2112K (3.3V) for the slots' V_3P3 pin and the safe-switch circuit |
 | 7" TFT Display Driver (as hub) | KC-01-1911 | KC-01-1912 | V2.1 | A1 (Info Display 1), B1 (Resource Display) | A 7" display (§5.3) that also acts as its panel's hub: CN1 34-pin panel connector (4 lines), 3 module slots P2–P4 (16-pin), one safe-switch terminal |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
 
 On a display driver acting as hub, the four lines of its panel connector are used like this: pins 21–23 go to its slots P2, P3 and P4; pin 24 is the driver's own interrupt (§11.4). Its own P1 is a 16-pin module connector, used when the driver sits in another driver's slot (the Annunciator and Info Display 2).
 
-The safe-switch terminal on each hub feeds that panel connector's safe line (INT_SAFE, INT_SAFE2, B_INT_SAFE or B_INT_SAFE2) through a 10kΩ / 20kΩ divider (§8.2). Pins 2, 3 and 5 of the terminal are tied to a V_EN net that nothing drives (§15).
+The safe-switch terminal on each hub feeds that panel connector's safe line (INT_SAFE, INT_SAFE2, B_INT_SAFE or B_INT_SAFE2) through a 10kΩ / 20kΩ divider (§8.2).
+
+**Panel Hub safe-switch terminal U4 (V2.1):**
+
+| Pin | Silkscreen | Net | Wire to |
+|:---:|------------|-----|---------|
+| 1 | SW_P | +5V | Arming switch |
+| 2 | SW_N | V_EN | Arming switch |
+| 3 | LED_P | V_EN | Armed lamp + |
+| 4 | LED_N | GND | Armed lamp − |
+| 5 | BTN_P | V_EN | Push-button |
+| 6 | BTN_N | Safe line, through the 10kΩ / 20kΩ divider | Push-button |
+
+V_EN joins pins 2, 3 and 5 on the board only: the arming switch connects it to +5V, which lights the lamp and powers the push-button. The V2.0 Panel Hub left pin 1 unconnected, so the switch had no supply; V2.1 corrects this. The hub display drivers use the same terminal (§15).
 
 ### 5.3 Display Driver Boards
 
@@ -310,12 +333,12 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 
 | Board | Schematic | PCB | Rev | Microcontroller | Button Inputs | Panel Inputs | Notes |
 |-------|-----------|-----|-----|-----------------|---------------|--------------|-------|
-| Button Module | KC-01-1801 | KC-01-1802 | V2.0 | ATtiny816 | 12 | 4 | B0–B11 on-board RGB buttons (one NeoPixel chain). B12, B13 on terminal CN2 (1–2 +5 V, 3 B12, 4 B13); B14, B15 on terminal CN1 (1 B15, 2 B14, 3–4 +5 V). Used for UI, Action, Stability, Time and AUX Control |
-| Wide Button Module | KC-01-1811 | KC-01-1812 | V2.0 | ATtiny816 | 12 | 8 | B0–B11 on-board RGB buttons; B12–B15 not connected. B16–B19 on terminal U16 (1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16); B20–B23 on terminal U17 (1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V); DB127S-5.08-6P terminals. Used for Function and Vehicle Control (Switch Groups 1 / 2) |
-| Throttle Module | KC-01-1871 | KC-01-1872 | V2.0 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs. Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
-| Joystick Module | KC-01-1831 | KC-01-1832 | V2.0 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND |
-| 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.0 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
-| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | ATtiny816 | 2 encoder pushes | None reachable | Encoder headers H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder carrier each (§5.5). No LEDs. Safe-switch terminal U4 (same circuit as the hubs) drives slot pin 16, not the ATtiny; no hub connects slot pin 16, so this switch cannot reach the master or the module |
+| Button Module | KC-01-1801 | KC-01-1802 | V2.1 | ATtiny816 | 12 | 4 | B0–B11 on-board RGB buttons (one NeoPixel chain). B12, B13 on terminal CN2 (1–2 +5 V, 3 B12, 4 B13); B14, B15 on terminal CN1 (1 B15, 2 B14, 3–4 +5 V). Used for UI, Action, Stability, Time and AUX Control |
+| Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | ATtiny816 | 12 | 8 | B0–B11 on-board RGB buttons; B12–B15 not connected. B16–B19 on terminal U16 (1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16); B20–B23 on terminal U17 (1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V); DB127S-5.08-6P terminals. Used for Function and Vehicle Control (Switch Groups 1 / 2) |
+| Throttle Module | KC-01-1871 | KC-01-1872 | V2.1 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs (10 kΩ each, about 0.4 mA). Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
+| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND. Stick button from pin 6 (+5 V) to pin 2; R13 10 kΩ pull-down. BTN01 on PC2, BTN02 on PB3 |
+| 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
+| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.1 | ATtiny816 | 2 encoder pushes | N/A | Two PEC11R-4220F-S0024 encoders on the board (SW1 ENC1, SW2 ENC2): A / B RC-filtered (10 kΩ pull-ups, 10 nF), pushes active-high with 10 kΩ pull-downs. No LEDs, no safe-switch terminal. V2.0 used two Encoder boards (§5.5) on 5-pin headers and had a terminal driving slot pin 16 |
 
 **Common to every ATtiny816 module:**
 
@@ -324,11 +347,11 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 - **No address pins:** the address and role are set by the firmware flashed through the UPDI header H1 (§3.5).
 - **Panel inputs** (screw terminals) are active-high. Each terminal has a +5 V pin, and each input a 10 kΩ pull-down: a switch from +5 V to the input reads 1 when closed.
 
-### 5.5 Encoder Carrier Board
+### 5.5 Encoder Board
 
 | Board | Schematic | PCB | Rev | Function |
 |-------|-----------|-----|-----|----------|
-| Encoder | KC-01-1851 | KC-01-1852 | V2.0 | Passive carrier for one PEC11R-4220F-S0024 rotary encoder with push. A / B RC-filtered (10 kΩ pull-ups, 10 nF); push button active-high with a 10 kΩ pull-down. 5-pin header to the Dual Encoder: 1 +5 V, 2 A, 3 B, 4 Button, 5 GND |
+| Encoder | KC-01-1851 | KC-01-1852 | V2.0 | Passive carrier for one PEC11R-4220F-S0024 rotary encoder with push. A / B RC-filtered (10 kΩ pull-ups, 10 nF); push button active-high with a 10 kΩ pull-down. 5-pin header: 1 +5 V, 2 A, 3 B, 4 Button, 5 GND. Used on the expansion (header H4); the V2.1 Dual Encoder mounts its encoders directly |
 
 ### 5.6 Test & Programming Fixtures
 
@@ -350,6 +373,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 | Rated current | 10A |
 | Typical system load | see Power Budget (interim ~3.30A / 39.5W @ 12V) |
 | Peak system load | see Power Budget (interim ~5.82A / 69.8W @ 12V) |
+| Input protection | None on the Ctrl Module: no fuse between DC1 and the power latch, by decision. The supply's own overcurrent protection limits a short. Each ATtiny module and display driver has an SS34 reverse diode and a 1.5 A polyfuse on its input; the Panel Hubs, Ctrl Module and Extension do not. Use a supply with short-circuit protection |
 
 > System-load figures are maintained authoritatively in `Documents/Developer/Power_Budget.md` (v1.3). As of that revision the A2 / System Info Display (XIAO RP2350) draw is **not yet measured**, so the system totals and headroom are flagged TBD with interim placeholders; the values above are the A+B interim figures from Power Budget §3, which use the previous Sys Info Display draw as a placeholder, and will be reconciled once the RP2350 row is measured. The 12V / 10A supply rating is fixed hardware.
 
@@ -371,14 +395,18 @@ A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A si
 
 An INA228 high-side current/power monitor on the Ctrl Module measures the 12V rail. It sits in series with a 15mΩ 2512 shunt resistor between the soft latch output and the 12V distribution bus. Results are reported to the master Teensy 4.1 via I2C (address 0x40), read at 4 Hz, and shown on the Sys Info Display's controller status screen (voltage, current, power). The master warns below 11 V (`Master_Firmware_Design.md` §12.1).
 
-### 6.5 Status LEDs
+### 6.5 Status LEDs and Test Port
 
 | LED | Color | LCSC Part | Rail Monitored | Series Resistor |
 |-----|-------|-----------|----------------|----------------|
-| Power indicator | Red | KT-0603R | 3.3V rail | 270Ω (C22966) |
-| 12V indicator | Green | KT-0805G | 12V rail | 2.0kΩ (C22975) |
+| LED1 | Green | KT-0805G (C2297) | V_12 (after the power latch) | 20kΩ (R7, C4184) |
+| LED2 | Blue | KT-0805B (C2293) | +5V | 4.7kΩ (R8, C23162) |
+| LED3 | Red | KT-0805R (C2295) | V_3P3 | 2.7kΩ (R9, C13167) |
+| LED4 | Yellow | KT-0805Y (C2296) | VIN (DC jack, before the power latch) | 20kΩ (R10, C4184) |
 
-These are power indicators only; the master has no status LED outputs.
+All four are 0805 and run at about 0.5 mA, as dim indicators (V2.0 ran three of them at about 5 mA). They are power indicators only; the master has no status LED outputs.
+
+**Test port TP1** (1×5 male header, 2.54 mm, C492404): pin 1 V_12, 2 GND, 3 +5V, 4 GND, 5 V_3P3, so no two rails are adjacent and each has a ground beside it. The rails are labelled on the silkscreen, with LED1, LED2 and LED3 below their pins. The pins connect straight to the rails, with no series resistors.
 
 ### 6.6 Fan and Temperature
 
@@ -390,7 +418,7 @@ These are power indicators only; the master has no status LED outputs.
 | Extension fan, CN3 | 4-pin: 1 FAN_PWM (via 50-pin pin 1), 2 not connected, 3 V_12, 4 GND. No tach |
 | Control (firmware) | 1 Hz, duty 30 / 40 / 50 / 70 / 100 % at 25 / 30 / 40 / 50 °C, 2 °C hysteresis (`Master_Firmware_Design.md` §12.1) |
 
-> **Note:** The fan header pin order (1 PWM, 2 tach, 3 12 V, 4 GND) is the reverse of the usual PC fan numbering (1 GND, 2 12 V, 3 tach, 4 PWM). Check it against the fans' cable before connecting (§15).
+> **Note:** The fan headers are numbered 1 PWM, 2 tach, 3 12 V, 4 GND, the reverse of the usual PC fan numbering (1 GND, 2 12 V, 3 tach, 4 PWM). The pins themselves are where a PC fan expects them: the key ramp covers pins 2–4 and PWM is outside it, so a standard 4-pin (or 3-pin) fan plug mates correctly. Only the numbering differs (checked on the CN1 and CN3 artwork, 2026-11-25).
 
 ---
 
@@ -418,7 +446,7 @@ A single USB-C cable connects the controller to the host PC. All USB traffic is 
 
 VBUS on the upstream USB-C connector is left completely unconnected at the PCB level. The CH334F V5 pin (pin 15) is powered from the internal +5V rail, not from USB VBUS. This guarantees no current path exists between the host PC power rail and the controller power supply under any condition.
 
-> **Note:** The downstream Micro-USB connector VCC pins are also left unconnected. Downstream devices (Teensys) are powered from the controller's 5V rail via their own board regulators.
+> **Note:** The downstream USB-A connector VBUS pins are also left unconnected. Downstream devices (Teensys) are powered from the controller's 5V rail via their own board regulators. The connector shells (USB1–USB6, USBC1, USBC2) are on GND; GND already joins the PC through the cable's ground wire, so the shield adds no new ground path.
 
 ### 7.4 Upstream Connector (USB-C)
 
@@ -437,19 +465,21 @@ VBUS on the upstream USB-C connector is left completely unconnected at the PCB l
 | Hub | IC | Upstream Source | Downstream Ports |
 |-----|----|----------------|-----------------|
 | Hub 1 | CH334F | Upstream USB-C connector | Port 1 → Teensy 4.1 (master), Port 2 → Teensy 4.1 display 1, Port 3 → Teensy 4.1 display 2, Port 4 → Hub 2 upstream |
-| Hub 2 | CH334F | Hub 1 Port 4 (DP4/DM4) | Port 1 → Teensy 4.1 display 3, Port 2 → Teensy 4.1 display 4, Port 3 → Spare micro USB, Port 4 → Expansion USB-C |
+| Hub 2 | CH334F | Hub 1 Port 4 (DP4/DM4) | Port 1 → Teensy 4.1 display 3, Port 2 → Teensy 4.1 display 4, Port 3 → Spare (USB6), Port 4 → Expansion USB-C |
 
 ### 7.6 Downstream Connectors
 
-| Connector | Type | Device | VCC Pin |
-|-----------|------|--------|---------|
-| USB1 | Micro-USB-B SMD | Teensy 4.1 (master controller) | No connect |
-| USB2 | Micro-USB-B SMD | Teensy 4.1 — Annunciator display | No connect |
-| USB3 | Micro-USB-B SMD | Teensy 4.1 — Info Display 1 | No connect |
-| USB4 | Micro-USB-B SMD | Teensy 4.1 — Info Display 2 | No connect |
-| USB5 | Micro-USB-B SMD | Teensy 4.1 — Resource display | No connect |
-| USB6 | Micro-USB-B SMD | Spare | No connect |
-| USBC2 | USB-C (TYPE-C-31-M-12) | Expansion port — panel USB-C or future extension module | No connect |
+| Connector | Type | Hub port | Device | VBUS Pin |
+|-----------|------|----------|--------|---------|
+| USB1 | USB-A, vertical (C456015) | Hub 1 Port 1 | Teensy 4.1 (master controller) | No connect |
+| USB2 | USB-A, vertical (C456015) | Hub 1 Port 2 | Teensy 4.1 — Annunciator display | No connect |
+| USB3 | USB-A, vertical (C456015) | Hub 1 Port 3 | Teensy 4.1 — Info Display 1 | No connect |
+| USB4 | USB-A, vertical (C456015) | Hub 2 Port 1 | Teensy 4.1 — Info Display 2 | No connect |
+| USB5 | USB-A, vertical (C456015) | Hub 2 Port 2 | Teensy 4.1 — Resource display | No connect |
+| USB6 | USB-A, vertical (C456015) | Hub 2 Port 3 | Spare | No connect |
+| USBC2 | USB-C (TYPE-C-31-M-12) | Hub 2 Port 4 | Expansion port — panel USB-C or future extension module | No connect |
+
+USB1–USB6 run left to right along the top edge, under the silkscreen labels "USB 1" to "USB 6". Any Teensy works on any port; the assignment above is the cabling convention. Each display Teensy connects with a standard USB-A to micro-B cable.
 
 ### 7.7 Expansion USB-C (USBC2)
 
@@ -487,7 +517,7 @@ Differential pair routing: 6.5mil traces, 8mil separation, 90Ω differential imp
 | Bus accelerator | LTC4311 on Ctrl Module |
 | Pull-up voltage | 3.3V (master side) |
 | Module voltage | 5V (ATtiny816 modules); 3.3V (Teensy 4.1 and XIAO RP2350 display drivers) |
-| Level shifting | I2C: a level shifter on each ATtiny816 module between the 3.3V bus and the 5V ATtiny. INT: passive resistor divider on each ATtiny816 module — see §8.2. Display drivers connect directly at 3.3V |
+| Level shifting | I2C: a PCA9306 level shifter on each ATtiny816 module between the 3.3V bus (VREF1 = slot V_3P3) and the 5V ATtiny. VREF2 and EN are joined and pulled up to +5V through 200 kΩ, with 100 pF on VREF2 (TI SCPS113O §10); fitted on every V2.1 ATtiny816 module (Button, Wide Button, Throttle, Joystick, 7-Segment Display, Dual Encoder). INT: passive resistor divider on each ATtiny816 module — see §8.2. Display drivers connect directly at 3.3V |
 | Master pins | `Wire` SDA 18 / SCL 19 (BUS); `Wire1` SDA 17 / SCL 16 (EXT) |
 
 The main controller provides two I2C buses:
@@ -551,7 +581,7 @@ The master detects INT_BUS going low on the dedicated interrupt line for each mo
 
 ### 8.4 External Interface Signal Architecture
 
-Signals routed over the external expansion cable (§10) require additional protection and conditioning not needed for internal IDC runs. The following requirements apply to all signals crossing the GX16 external connector interface. The main-controller side below is as built (Ctrl Module V2.0, Extension V2.0). The expansion-unit side is the planned design in `Expansion_Module_Spec.md` (v0.3, draft); no expansion hardware has been built.
+Signals routed over the external expansion cable (§10) require additional protection and conditioning not needed for internal IDC runs. The following requirements apply to all signals crossing the GX16 external connector interface. The main-controller side below is as built (Ctrl Module V2.1, Extension V2.0). The expansion-unit side is the planned design in `Expansion_Module_Spec.md` (v0.9, draft); no expansion hardware has been built.
 
 **Full Signal Path**
 
@@ -587,8 +617,8 @@ The LTC4311 actively drives rising edges, compensating for the total capacitive 
 | Segment | Component | Location |
 |---------|-----------|----------|
 | Source protection (planned) | 47Ω series resistor | Expansion Routing Board, between Teensy 4.1 GPIO output and terminal block |
-| Receiver series (as built) | 47Ω series resistor (R15) | Ctrl Module PCB, between 50-pin IDC pin and Teensy 4.1 GPIO input (pin 33) |
-| Receiver pull-up (as built) | 4.7kΩ to 3.3V (R14) | Ctrl Module PCB, on the same line |
+| Receiver series (as built) | 47Ω series resistor (R16) | Ctrl Module PCB, between 50-pin IDC pin and Teensy 4.1 GPIO input (pin 33) |
+| Receiver pull-up (as built) | 4.7kΩ to 3.3V (R15) | Ctrl Module PCB, on the same line |
 
 Signal path: Expansion Teensy 4.1 → 47Ω → terminal block → GX16 cable → terminal block → 50-pin IDC → 4.7kΩ pull-up + 47Ω series → Ctrl Module Teensy 4.1 GPIO input.
 
@@ -601,13 +631,13 @@ Signal path: Expansion Teensy 4.1 → 47Ω → terminal block → GX16 cable →
 
 Signal path: Ctrl Module Teensy 4.1 → 50-pin IDC → GX16 cable → terminal block → 4.7kΩ pull-up → Expansion Teensy 4.1 GPIO input.
 
-The v1.x design called for a 47Ω source resistor on EXT_INT_2 at the Ctrl Module; the V2.0 board does not have one (§15). No RC filter is required at the expansion receiver — a spurious interrupt is recoverable in firmware. The 4.7kΩ physical pull-up is sufficient receiving-end protection.
+The v1.x design called for a 47Ω source resistor on EXT_INT_2 at the Ctrl Module; the V2.0 and V2.1 boards do not have one (§15). No RC filter is required at the expansion receiver — a spurious interrupt is recoverable in firmware. The 4.7kΩ physical pull-up is sufficient receiving-end protection.
 
 **RST (Main Controller → Expansion)**
 
 | Segment | Component | Location |
 |---------|-----------|----------|
-| Source protection (as built) | 47Ω series resistor (R13) | Ctrl Module PCB, between Teensy 4.1 pin 2 and the IDC connectors |
+| Source protection (as built) | 47Ω series resistor (R14) | Ctrl Module PCB, between Teensy 4.1 pin 2 and the IDC connectors |
 | Receiver pull-up (planned) | 10kΩ to 3.3V | Expansion Routing Board, between terminal block and RC filter input |
 | Receiver RC filter (planned) | 100Ω series + 100nF to GND | Expansion Routing Board, between pull-up node and Teensy 4.1 RST pin |
 
@@ -624,19 +654,9 @@ The RC filter (τ = 10µs) rejects transients shorter than ~50µs while passing 
 | EXT_INT_2 | Main → Expansion | None | 4.7kΩ pull-up to 3.3V (receiver) |
 | RST | Main → Expansion | 47Ω series (source) | 10kΩ pull-up + 100Ω + 100nF RC filter (receiver) |
 
-**USB Signal Conditioning — TUSB212**
+**USB Signal Path**
 
-The expansion USB-C port (§7.7) feeds a 3ft external cable plus internal wiring in both enclosures, totalling approximately 6–7ft of conductor path through multiple connector junctions. A TUSB212RWBR USB 2.0 High Speed signal conditioner must be fitted on the expansion routing board between the panel USB-C connector and the internal expansion hub (CH334F). The TUSB212 regenerates the High Speed differential signal, resetting the effective cable length budget.
-
-| Parameter | Value |
-|-----------|-------|
-| IC | TUSB212RWBR (TI) |
-| LCSC # | C702372 |
-| Supply voltage | 3.3V |
-| Placement | Expansion Routing Board, between panel USB-C and internal CH334F hub |
-| Boost setting | Set per cable length — refer to TUSB212 datasheet Table 1 for resistor value |
-
-The TUSB212 is transparent to all USB speeds — Low Speed and Full Speed signals pass through unmodified; High Speed signals are actively conditioned.
+The expansion USB-C port (§7.7) is a downstream port of the Ctrl Module's Hub 2, and a hub port starts a fresh USB 2.0 cable budget (5 m to the device). The run from Hub 2 Port 4 to the expansion's Teensy is about 2 m: the Ctrl Module's internal lead to the rear USB-C, the external cable (1 m maximum) and the expansion's internal lead. No signal conditioner is fitted. The internal leads are shielded USB cable with the D+ / D− pair twisted and the shield grounded at the panel mounts, kept short, because the connector junctions, not the length, are the risk. The link is bench-checked at High Speed with the real cables; if it is marginal, the expansion Teensy can be forced to Full Speed (12 Mbit/s) in firmware, which is ample for its Simpit link (Expansion Module Spec E-26).
 
 ### 8.5 Master Pin Map
 
@@ -795,10 +815,10 @@ A USB-C panel mount bulkhead connector (female-to-female feedthrough) on each en
 |-----------|-------|
 | Connector | USB-C panel mount, female bulkhead feedthrough |
 | Cable | Standard USB-C to USB-C, 3ft (1m) maximum |
-| Signal conditioning | TUSB212RWBR on Expansion Routing Board (§8.4) |
+| Signal conditioning | None: about 2 m from the hub port, well inside USB 2.0's 5 m (§8.4) |
 | VBUS | Not connected at either panel mount — expansion powered via GX16 V_12 |
 
-> **Note:** The USB-C panel mount on the main controller side connects directly to USBC2 (§7.7) with no signal conditioning — the TUSB212 is placed on the expansion unit side only, after the full cable run.
+> **Note:** The USB-C panel mount on the main controller side connects directly to USBC2 (§7.7). Neither side has a signal conditioner; the internal leads are shielded twisted-pair USB cable (§8.4).
 
 ### 10.4 Internal Wiring
 
@@ -807,9 +827,9 @@ Between each panel connector and the respective routing board, point-to-point in
 | Segment | From | To | Wire spec |
 |---------|------|----|-----------|
 | Main controller side | GX16-10 panel socket (main enclosure) | Terminal block CN2 on Ctrl Module Extension | 24AWG signal, 20AWG power |
-| Expansion side | GX16-10 panel socket (expansion enclosure) | Terminal block on Expansion Routing Board | 24AWG signal, 20AWG power |
+| Expansion side | GX16-10 panel socket (expansion enclosure) | Terminal block CN1 on the Expansion Main Board (KC-01-2702) | 24AWG signal, 20AWG power |
 | Main USB-C | USB-C panel mount (main enclosure) | USBC2 on Ctrl Module (§7.7) | USB 2.0 rated cable assembly |
-| Expansion USB-C | USB-C panel mount (expansion enclosure) | TUSB212 input on Expansion Routing Board | USB 2.0 rated cable assembly |
+| Expansion USB-C | USB-C panel mount (expansion enclosure) | Expansion Teensy 4.1 Micro-USB (Expansion Main Board) | USB 2.0 rated cable assembly, shielded, VBUS not connected |
 
 **Ctrl Module Extension CN2 (10-pin DB125-3.81 terminal):**
 
@@ -827,6 +847,23 @@ Between each panel connector and the respective routing board, point-to-point in
 | 10 | Not connected | 10 (SPARE) |
 
 > **Note:** From pin 5 on, the terminal order differs from the GX16-10 pin order, so the main-side harness must cross-map pins 5–9 as shown. Wire by signal name, not by pin number.
+
+**Expansion Main Board CN1 (10-pin DB125-3.81 terminal):**
+
+| Terminal pin | Signal | GX16-10 pin |
+|:------------:|--------|:-----------:|
+| 10 | V_12 | 1 |
+| 9 | V_12 | 2 |
+| 8 | GND | 3 |
+| 7 | GND | 4 |
+| 6 | EXT_INT_2 | 8 |
+| 5 | EXT_INT_1 | 7 |
+| 4 | RST | 9 |
+| 3 | SDA_EXT | 5 |
+| 2 | SCL_EXT | 6 |
+| 1 | Not connected | 10 (SPARE) |
+
+> **Note:** The expansion terminal's order differs from both the GX16-10 and the main side's CN2, so the two harnesses are not alike. Wire each by signal name (Expansion Module Spec §3.1).
 
 ---
 
@@ -918,7 +955,7 @@ Each IO or Display module connects to a slot on its panel's hub via a 16-pin 2×
 | SDA_BUS / SCL_BUS | I2C | Main internal I2C bus — connects to Ctrl Module |
 | RST | Signal | Global reset — active low. Used by the 7" display drivers (driver firmware performs a full reboot on assertion); no-connect on ATtiny816 modules (reset via CMD_RESET over I2C) and on the 2" display driver. Optional per module class — see §13.1 |
 | INT | Interrupt | Individual active-low interrupt line for this module |
-| NC (pin 16) | — | Not connected on any hub (Panel Hub or hub display driver). The v1.x design put INT_SAFE here; safe switches now wire to the hub's own safe-switch terminal (§5.2, §8.2). The Dual Encoder still drives this pin from its safe-switch terminal, so that terminal has no path to the master |
+| NC (pin 16) | — | Not connected on any hub (Panel Hub or hub display driver). The v1.x design put INT_SAFE here; safe switches now wire to the hub's own safe-switch terminal (§5.2, §8.2). The V2.0 Dual Encoder drove this pin from a safe-switch terminal; V2.1 has no terminal |
 
 > **Note:** The "*Safe Switch Connection" notes beside slot P1 on the Panel Hub schematic and slot P2 on the 7" display driver schematic are left over from the v1.x design. No slot carries a safe-switch signal.
 
@@ -1070,7 +1107,7 @@ Capability flags not listed above are reserved and must be set to 0.
 | Module UI Reference | `Documents/Developer/Module_UI_Reference.md` | v6.3 (v6.0 was rewritten from the inventory alongside revision 2.0) — per-module button assignments, switch groups, CAG table, axis mappings, firmware implementation detail |
 | Power Budget | `Documents/Developer/Power_Budget.md` | v1.3 — per-module and per-panel power consumption, supply headroom analysis |
 | Ascent Autopilot Interface | `Documents/Developer/Ascent_Autopilot_Interface.md` | Info Display ↔ master byte-level contract for the Simpit ascent autopilot command/status frames |
-| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.3 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem |
+| Expansion Module Specification | `Documents/Developer/Expansion_Module_Spec.md` | v0.9 (draft) — expansion unit architecture, board topology, GX16 interface, keyboard subsystem, display subsystem, Information Display changes |
 | Drawings | `Documents/Drawings/` | Assembly, schematic, PCB, BOM and placement drawings for each board (KC-01-xxx0 to xxx4) |
 | KC-01-1912 Pin Assignment | `Software/Displays/libraries/KCMk1_SystemConfig/src/KCMk1_SystemConfig.h` | Authoritative Teensy 4.1 ↔ LT7683 (RA8876-compatible) 7" display-driver pin map (`KCM_TFT_*`, touch, audio, I2C bus defines) |
 | Library READMEs | Per library in source tree | KerbalButtonCore, KerbalJoystickCore, Kerbal7SegmentCore, KerbalModuleCommon, KerbalDisplayCommon, KerbalDisplayAudio |
@@ -1083,12 +1120,13 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 
 | # | Item | Source |
 |---|------|--------|
-| 1 | **Fan header pin order.** Both fan headers are numbered 1 PWM, 2 tach / NC, 3 12 V, 4 GND, the reverse of the usual PC fan numbering. Check against the fans' cable before connecting (§6.6) | Inventory §6 #6 |
-| 2 | **Safe-switch terminal V_EN.** Pins 2, 3 and 5 of the hubs' safe-switch terminal are tied to a V_EN net that nothing drives. Its intended use is not recorded (§5.2) | Inventory §6 #5 |
-| 3 | **50-pin pinout.** §9.2 is taken from the V2.0 schematics (Ctrl Module CN2, Extension CN1), which agree with each other but not with the v1.x table. The inventory says only "same pinout as Ctrl Module CN2"; the owner should confirm the pinout and add it to the inventory | Schematics KC-01-1701, KC-01-1711 |
+| 1 | ~~**Fan header pin order.**~~ **Closed.** Both fan headers are numbered from the PWM end (1 PWM … 4 GND), the reverse of PC numbering, but the board artwork puts the pins where a PC fan plug expects them: ramp over pins 2–4, PWM outside. A standard fan plugs in correctly (§6.6) | KC-01-1702 CN1, KC-01-1712 CN3 artwork |
+| 2 | ~~**Safe-switch terminal pin 1.**~~ **Closed.** The V2.0 Panel Hub left terminal pin 1 (SW_P) off +5V; V2.1 fixes it (§5.2). The 7" TFT Display Driver V2.1 terminal U3 is correct (pin 1 on 5V), and the V2.1 Dual Encoder has no terminal. V_EN (pins 2, 3, 5) is the arming switch's switched +5V node | Panel Hub KC-01-1731 V2.1; KC-01-1911 V2.1 |
+| 3 | ~~**50-pin pinout.**~~ **Closed.** §9.2 matches the netlists of both boards pin for pin (Ctrl Module CN2 and Extension CN1, checked 2026-11-25); the v1.x table is superseded | KC-01-1702, KC-01-1712 IPC netlists |
 | 4 | **EXT_INT protection.** On the Ctrl Module, EXT_INT_1 has 47 Ω + 4.7 kΩ and EXT_INT_2 has nothing, while `Expansion_Module_Spec.md` v0.3 expects a 47 Ω source resistor on EXT_INT_2 at the Ctrl Module. Decide whether the expansion side adds protection on EXT_INT_2 or a later Ctrl Module revision does, and update the expansion spec (§8.4) | Inventory §6 #2 |
 | 5 | **Expansion harness.** The Extension CN2 terminal order differs from the planned GX16-10 pin assignment from pin 5 on; the harness cross-maps them (§10.4). The GX16-10 assignment itself is still the planned v1.x design, with no drawing | Inventory §4 |
-| 6 | **Dual Encoder safe-switch terminal.** It drives slot pin 16, which no hub connects, so it cannot be used. Either retire the terminal or connect pin 16 on a future hub revision | Inventory §5.8, §6 #12 |
+| 6 | ~~**Dual Encoder safe-switch terminal.** It drives slot pin 16, which no hub connects~~. **Closed:** the V2.1 Dual Encoder has no safe-switch terminal | Inventory §5.8, §6 #12; KC-01-1861 V2.1 |
 | 7 | **Sys Info Display power draw** not yet measured, so the system load in §6.1 is still interim | Power Budget v1.3 |
 | 8 | **Module Tester (KC-01-9002)** is not in the inventory and has no drawings in the repository; §5.6 is carried over from v1.10 unverified | — |
-| 9 | **7" TFT Display Driver revision.** The schematic drawing is V2.1 and the PCB, BOM and placement drawings are V2.0. Confirm whether the board itself changed in V2.1 | `Documents/Drawings/` |
+| 9 | ~~**7" TFT Display Driver revision.**~~ **Closed.** Schematic and PCB are both V2.1 (Rev B drawings, 2026-11-25); V2.1 wires the DFPlayer BUSY line to the Teensy (pin 11) | KC-01-1911 / 1912 V2.1 |
+| 10 | ~~**PCA9306 VREF2/EN pull-up.**~~ **Closed.** The V2.0 ATtiny modules tie the level shifter's VREF2 and EN straight to +5V; TI requires a 200 kΩ pull-up, otherwise the reference FET can drive the slot's V_3P3 and the 3.3 V bus side toward 4.4 V (SCPS113O §8.1.2, §8.1.7, §10). Fixed in V2.1 of every ATtiny816 module: Button, Wide Button, Throttle, Joystick, 7-Segment Display and Dual Encoder (200 kΩ on VREF2/EN, 100 pF on VREF2) | TI PCA9306 datasheet; KC-01-1801 … 1871 V2.1 |

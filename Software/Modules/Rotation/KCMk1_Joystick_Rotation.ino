@@ -23,7 +23,7 @@
  *                AXIS3 (PA7) — Z rotation
  *
  *              Buttons:
- *                BTN01 (PC0) — Reset Trim    — GREEN  — NeoPixel
+ *                BTN01 (PC2) — Reset Trim    — GREEN  — NeoPixel
  *                BTN02 (PB3) — Trim Set      — AMBER  — NeoPixel
  *                BTN_JOY(PB5)— Airbrake toggle / Run hold (EVA) — no LED — GPIO
  *

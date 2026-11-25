@@ -157,7 +157,7 @@ struct KjcScenario : Scenario {
     KjcScenario(const char* a, Rgb ca, const char* b, Rgb cb) : b1(a), b2(b), c1(ca), c2(cb) {}
     int pinOf(const std::string& l) {
         if (l == "STICK BTN") return PIN_PB5;
-        if (l == b1) return PIN_PC0;
+        if (l == b1) return PIN_PC2;           // BUTTON01, U5 pin 17 on the board
         if (l == b2) return PIN_PB3;
         return -1;
     }

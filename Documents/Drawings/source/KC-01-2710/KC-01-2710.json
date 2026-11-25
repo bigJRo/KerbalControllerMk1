@@ -1,0 +1,404 @@
+{
+  "base": "KC-01-271",
+  "name": "Expansion Keyboard",
+  "title": "Expansion Keyboard",
+  "subtitle": "Kerbal Controller Mk1 · Expansion Module",
+  "rev": "-",
+  "board_version": "V1.0",
+  "date": "2026-11-24",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "doc_status": {
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
+  },
+  "sch_pdf": "SCH_KC-01-2711_Expansion_Keyboard_2026-11-23.pdf",
+  "gerber_zip": "Gerber_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.zip",
+  "bom_csv": "BOM_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.csv",
+  "pnp_csv": "PickAndPlace_KC-01-2712_Expansion_Keyboard_PCB_2026-11-23.csv",
+  "sch_sheets": [
+    {
+      "scale": 0.48,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                104,
+                80,
+                300,
+                232
+              ],
+              "label": "Keyboard connector (CN1)"
+            },
+            {
+              "page": 1,
+              "crop": [
+                320,
+                42,
+                377,
+                117
+              ],
+              "label": "5 V bulk capacitor (C1)"
+            }
+          ],
+          [
+            {
+              "page": 1,
+              "crop": [
+                466,
+                14,
+                1072,
+                378
+              ],
+              "label": "Key matrix (SW1–SW25, D1–D25)"
+            }
+          ]
+        ]
+      ]
+    },
+    {
+      "scale": 0.37,
+      "rows": [
+        [
+          [
+            {
+              "page": 1,
+              "crop": [
+                70,
+                377,
+                1110,
+                707
+              ],
+              "label": "Key LEDs (LED1–LED25) and their decoupling (C2–C26)"
+            }
+          ]
+        ]
+      ]
+    }
+  ],
+  "stackup": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Switch pins, signals, 5V pour"
+    },
+    {
+      "layer": "",
+      "name": "Core",
+      "material": "FR-4",
+      "thickness": "1.53",
+      "use": ""
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "material": "Copper 1 oz",
+      "thickness": "0.035",
+      "use": "Components, signals, GND pour"
+    }
+  ],
+  "stackup_note": "JLCPCB standard 2-layer. Finished thickness 1.6 mm ±10 %.",
+  "layers": [
+    {
+      "layer": "1",
+      "name": "Top Layer",
+      "file": "Gerber_TopLayer.GTL",
+      "net": "Switch pins, signals, 5V pour",
+      "copper": "1 oz",
+      "color": "#c0392b",
+      "notes": [
+        "The key switches solder to this side; the 5V pour fills the open area."
+      ]
+    },
+    {
+      "layer": "2",
+      "name": "Bottom Layer",
+      "file": "Gerber_BottomLayer.GBL",
+      "net": "Components, signals, GND pour",
+      "copper": "1 oz",
+      "color": "#2e5fa8",
+      "notes": [
+        "Component side: all SMT parts and the reverse-mounted LEDs over their cutouts."
+      ]
+    }
+  ],
+  "pwb_outline_layer": true,
+  "mount_hole_d": 3.2,
+  "mount_hole_note": "Ø4.80 pads, no net (isolated)",
+  "drill_use": {
+    "3.50 NPTH": "Switch centre post",
+    "2.00 NPTH": "Switch locating pegs",
+    "1.20 PTH": "Switch pins",
+    "1.00 PTH": "CN1 connector",
+    "0.55 PTH": "Via",
+    "0.30 PTH": "Via"
+  },
+  "pwb_callouts": [
+    {
+      "at": [
+        73.5,
+        -78.6
+      ],
+      "dx": 12,
+      "dy": 40,
+      "text": "25× LED cutout 3.60 × 3.20, R0.40 corners, routed",
+      "sub": "LED pads 0.10 from the cutout edge by design (note 8)"
+    }
+  ],
+  "fab_notes": [
+    "1. Material: FR-4, 1.6 mm, 2 layers, JLCPCB standard (sheet 1 table).",
+    "2. Copper: 1 oz both sides. Surface finish: lead-free HASL.",
+    "3. Solder mask black, silkscreen white, both sides. Vias tented.",
+    "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
+    "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
+    "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
+    "7. Minimum trace width 0.20 mm. Smallest hole Ø0.30 (vias) on Ø0.61 pads: 0.15 mm annular ring.",
+    "8. 25 routed LED cutouts, 3.60 × 3.20 mm. The LED pads sit 0.10 mm from the cutout edge by design (SK6812MINI-EA reverse mount); keep the pads full size.",
+    "9. The 5 plated mounting holes (M1–M5) are not connected to any net; keep them isolated on both layers.",
+    "10. No controlled impedance, slots (other than the LED cutouts), castellations, edge plating or gold fingers."
+  ],
+  "bom_notes": [
+    "1. INSTALLED BY: JLCPCB = fitted by the JLCPCB assemblers (SMT and through-hole) before delivery; After delivery = fitted by the builder.",
+    "2. PROCESS gives the assembly process and the side the part is on.",
+    "3. The key switches (SW1–SW25) are self-sourced and soldered after delivery; they are not in the EasyEDA BOM.",
+    "4. The keycaps (90000001) are fitted at module level, see KC-01-2710.",
+    "5. Substitutes need the approval of the design authority."
+  ],
+  "bom_extra": [
+    {
+      "designators": "SW1–SW25",
+      "qty": 25,
+      "value": "-",
+      "pkg": "THT",
+      "desc": "Key switch, Kailh Choc V1 White, clicky, low profile",
+      "mfr": "Kailh",
+      "mpn": "CPG135001D03",
+      "lcsc": "-",
+      "class": "-",
+      "process": "THT (top)",
+      "by": "After delivery"
+    }
+  ],
+  "assembler": "JLCPCB",
+  "after_delivery": [],
+  "place_polarised": [
+    "C1",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6",
+    "D7",
+    "D8",
+    "D9",
+    "D10",
+    "D11",
+    "D12",
+    "D13",
+    "D14",
+    "D15",
+    "D16",
+    "D17",
+    "D18",
+    "D19",
+    "D20",
+    "D21",
+    "D22",
+    "D23",
+    "D24",
+    "D25"
+  ],
+  "place_notes": [
+    "1. All SMT parts and CN1 are on the bottom side. The key switches SW1–SW25 are the only top-side parts.",
+    "2. The bottom view is drawn as seen holding the board bottom side up (flipped left to right), so the datum is at the top right.",
+    "3. Red dot = pin 1: every LED and CN1, the cathode of each diode D1–D25, and the + terminal of C1. These match the silkscreen marks.",
+    "4. The LEDs mount reverse, body through the cutout, so they light the switch from below.",
+    "5. Part centres, rotations and part numbers are in the placement table (last sheet), measured from the datum (top view)."
+  ],
+  "corner_note": "Outer corners R4.23 (4 places), notch corners R3.00 (3 places)",
+  "pwb_dims": [
+    {
+      "h": [
+        127.0,
+        147.0
+      ],
+      "tier": 2,
+      "ext_y": -40.0
+    },
+    {
+      "v": [
+        0.0,
+        -40.0
+      ],
+      "tier": 1,
+      "ext_x": 127.0
+    }
+  ],
+  "mount_callout": {
+    "index": 3,
+    "dx": 14,
+    "dy": 14
+  },
+  "assy_pdf": "Fusion_KC-01-2710_Expansion_Keyboard_2026-11-24.pdf",
+  "doc_title": {
+    "0": "Expansion Keyboard Complete"
+  },
+  "doc_name": {
+    "0": "Expansion Keyboard Complete"
+  },
+  "assy_sheets": [
+    {
+      "scale": 1.3333333333333333,
+      "notes": true,
+      "views": [
+        {
+          "page": 1,
+          "src": [
+            110.3,
+            34.8,
+            133.6,
+            137.0
+          ],
+          "at": [
+            18.0,
+            38.6
+          ],
+          "label": "LEFT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            207.5,
+            34.8,
+            356.9,
+            137.1
+          ],
+          "at": [
+            59.07,
+            38.6
+          ],
+          "label": "TOP VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            207.5,
+            173.0,
+            356.9,
+            196.6
+          ],
+          "at": [
+            59.07,
+            182.0
+          ],
+          "label": "FRONT VIEW"
+        },
+        {
+          "page": 1,
+          "src": [
+            22.0,
+            136.6,
+            142.0,
+            284.0
+          ],
+          "at": [
+            268.27,
+            45.0
+          ],
+          "k": 1.1311,
+          "label": "ISOMETRIC VIEW",
+          "sublabel": "Not to scale",
+          "clip": [
+            [
+              22,
+              136.6
+            ],
+            [
+              142,
+              136.6
+            ],
+            [
+              142,
+              284
+            ],
+            [
+              22,
+              284
+            ],
+            [
+              22,
+              151
+            ],
+            [
+              26.5,
+              151
+            ],
+            [
+              26.5,
+              146
+            ],
+            [
+              22,
+              146
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "scale": null,
+      "parts_list": true,
+      "views": [
+        {
+          "page": 2,
+          "src": [
+            98.0,
+            84.0,
+            298.0,
+            224.0
+          ],
+          "at": [
+            110.0,
+            86.0
+          ],
+          "k": 1.0
+        }
+      ]
+    }
+  ],
+  "assy_parts": [
+    {
+      "qty": 1,
+      "pn": "KC-01-2712",
+      "name": "Expansion Keyboard",
+      "desc": "Custom PWB; Mfr: JLCPCB"
+    },
+    {
+      "qty": 25,
+      "pn": "CPG135001D03",
+      "name": "PG1350 Choc V1",
+      "desc": "Kailh Choc V1 Low Profile Switches, White - Clicky - Operation force 50±10gf, tactile force 60±10gf - nylon bottom/PC top, POM stem"
+    },
+    {
+      "qty": 25,
+      "pn": "90000001",
+      "name": "Keycap - MBK, custom legend",
+      "desc": "MBK low-profile keycap for Kailh Choc V1 with a custom legend for its key position (FKcaps); legends per Expansion Module spec §7 and E-17"
+    }
+  ],
+  "assy_notes": [
+    "1. Item 1 is the KC-01-2712 card as assembled by JLCPCB to KC-01-2711 to KC-01-2714.",
+    "2. Solder the key switches (item 2) into SW1–SW25 on the top of the card after delivery; the LEDs light them through the cutouts.",
+    "3. Fit a keycap (item 3, 90000001) to each switch in its legend position. The views show a placeholder key top.",
+    "4. Orthographic views at 4:3 on A3; isometric views not to scale. Parts list on sheet 2."
+  ]
+}

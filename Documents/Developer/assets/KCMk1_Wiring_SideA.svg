@@ -64,11 +64,11 @@
 <rect x="311.6" y="474.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="330.0" y="486.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB1</text>
 <polyline points="347.0,482.0 470.0,482.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<rect x="363.1" y="468.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="408.0" y="479.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="360.4" y="468.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="408.0" y="479.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="408.0" y="490.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <text x="330.0" y="536.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c" font-style="italic">USB6: spare</text>
-<text x="585.0" y="548.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c">LEDs: 3.3 V (red), 12 V (green)</text>
+<text x="585.0" y="548.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c">LEDs: VIN, 12 V, 5 V, 3.3 V · test port TP1</text>
 <polyline points="97.0,144.0 97.0,332.0 290.0,332.0 290.0,360.0" fill="none" stroke="#c62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="277.0" y="352.0" width="26.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="290.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">H1</text>
@@ -80,8 +80,8 @@
 <text x="400.0" y="176.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
 <rect x="381.6" y="352.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="400.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB2</text>
-<rect x="355.1" y="312.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="400.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="352.4" y="312.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="400.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="400.0" y="334.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <polyline points="575.0,290.0 575.0,360.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="560.2" y="282.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
@@ -96,8 +96,8 @@
 <text x="700.0" y="294.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
 <rect x="681.6" y="352.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="700.0" y="364.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB3</text>
-<rect x="655.1" y="312.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="700.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="652.4" y="312.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="700.0" y="323.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="700.0" y="334.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <rect x="10.0" y="362.0" width="136.0" height="210.0" rx="8" fill="#fbe9e7" stroke="#8d6e63" stroke-width="1.4"/>
 <text x="78.0" y="380.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#5d4037">REAR PANEL</text>

@@ -30,7 +30,7 @@ FONT = "Liberation Sans, Arial, Helvetica, sans-serif"
 KIND = {
     "idc":   ("#37474f", 5.0, None,  "Ribbon cable, IDC (50-pin interboard, 34-pin panel)"),
     "slot":  ("#78909c", 3.0, None,  "Module in a hub slot (16-pin IDC)"),
-    "usb":   ("#1565c0", 2.4, None,  "USB (Micro-USB to each Teensy 4.1; USB-C at the rear)"),
+    "usb":   ("#1565c0", 2.4, None,  "USB (USB-A to micro-B to each Teensy 4.1; USB-C at the rear)"),
     "pwr":   ("#c62828", 2.6, None,  "12 V power / power-button wiring"),
     "wire":  ("#2e7d32", 2.2, None,  "Panel switch wiring to screw terminals"),
     "fan":   ("#e65100", 2.2, "7 4", "Fan cable (4-pin)"),
@@ -169,9 +169,9 @@ def build():
     t(666, 578, "reads INT / safe lines, drives RST", size=10.5, fill="#5d4037")
     tab(400, 555, "USB1", "left")
     wire([(417, 555), (560, 555)], "usb")
-    ctag(488, 555, ["5-pin Micro-USB", TBD], "usb")
+    ctag(488, 555, ["USB-A to micro-B", TBD], "usb")
     t(400, 610, "USB6: spare", size=10.5, fill="#78909c", italic=True)
-    t(666, 626, "LEDs: 3.3 V (red), 12 V (green)", size=10.5, fill="#78909c")
+    t(666, 626, "LEDs: VIN, 12 V, 5 V, 3.3 V · test port TP1", size=10.5, fill="#78909c")
 
     # ---------------------------------------------------------------- Extension
     EX0, EY0, EX1, EY1 = 1080, 440, 1520, 640
@@ -245,7 +245,7 @@ def build():
     wire([(400, 200), (400, CY0)], "usb")
     tab(400, 200, "USB", "bottom")
     tab(400, CY0, "USB2", "top")
-    ctag(400, 392, ["5-pin Micro-USB", TBD], "usb")
+    ctag(400, 392, ["USB-A to micro-B", TBD], "usb")
     # CN4 -> Info 1 CN1, USB3 -> Info 1
     wire([(580, 320), (580, CY0)], "idc")
     tab(580, 320, "CN1", "bottom")
@@ -254,7 +254,7 @@ def build():
     wire([(700, 320), (700, CY0)], "usb")
     tab(700, 320, "USB", "bottom")
     tab(700, CY0, "USB3", "top")
-    ctag(700, 386, ["5-pin Micro-USB", TBD], "usb")
+    ctag(700, 386, ["USB-A to micro-B", TBD], "usb")
 
     # ---------------------------------------------------------------- Panel B1
     board(945, 200, 1165, 310, "INFORMATION DISPLAY 2", ["0x13 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"],
@@ -282,11 +282,11 @@ def build():
     wire([(CX1, 455), (892, 455), (892, 370), (1110, 370), (1110, 310)], "usb")
     tab(CX1, 455, "USB4", "right")
     tab(1110, 310, "USB", "bottom")
-    ctag(1000, 370, ["5-pin Micro-USB", TBD], "usb")
+    ctag(1000, 370, ["USB-A to micro-B", TBD], "usb")
     wire([(CX1, 485), (908, 485), (908, 404), (1260, 404), (1260, 320)], "usb")
     tab(CX1, 485, "USB5", "right")
     tab(1260, 320, "USB", "bottom")
-    ctag(1185, 404, ["5-pin Micro-USB", TBD], "usb")
+    ctag(1185, 404, ["USB-A to micro-B", TBD], "usb")
     # CN5 -> Resource CN1
     wire([(1390, 320), (1390, EY0)], "idc")
     tab(1390, 320, "CN1", "bottom")

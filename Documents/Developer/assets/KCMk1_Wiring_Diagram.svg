@@ -24,11 +24,11 @@
 <rect x="381.6" y="547.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="400.0" y="559.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB1</text>
 <polyline points="417.0,555.0 560.0,555.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-<rect x="443.1" y="541.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="488.0" y="552.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="440.4" y="541.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="488.0" y="552.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="488.0" y="563.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <text x="400.0" y="610.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c" font-style="italic">USB6: spare</text>
-<text x="666.0" y="626.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c">LEDs: 3.3 V (red), 12 V (green)</text>
+<text x="666.0" y="626.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#78909c">LEDs: VIN, 12 V, 5 V, 3.3 V · test port TP1</text>
 <rect x="1080.0" y="440.0" width="440.0" height="200.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
 <text x="1300.0" y="474.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">CONTROL MODULE EXTENSION</text>
 <text x="1300.0" y="490.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">KC-01-1710 · passive, every signal straight through</text>
@@ -160,8 +160,8 @@
 <text x="400.0" y="204.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
 <rect x="381.6" y="412.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="400.0" y="424.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB2</text>
-<rect x="355.1" y="378.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="400.0" y="389.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="352.4" y="378.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="400.0" y="389.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="400.0" y="400.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <polyline points="580.0,320.0 580.0,420.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="565.2" y="312.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
@@ -176,8 +176,8 @@
 <text x="700.0" y="324.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
 <rect x="681.6" y="412.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="700.0" y="424.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB3</text>
-<rect x="655.1" y="372.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="700.0" y="383.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="652.4" y="372.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="700.0" y="383.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="700.0" y="394.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <rect x="945.0" y="200.0" width="220.0" height="110.0" rx="6" fill="#ffffff" stroke="#263238" stroke-width="1.6"/>
 <text x="1055.0" y="232.0" font-size="12.5" font-weight="bold" text-anchor="middle" fill="#212121">INFORMATION DISPLAY 2</text>
@@ -236,16 +236,16 @@
 <text x="800.0" y="459.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB4</text>
 <rect x="1095.2" y="302.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="1110.0" y="314.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
-<rect x="955.1" y="356.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="1000.0" y="367.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="952.4" y="356.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="1000.0" y="367.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="1000.0" y="378.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <polyline points="800.0,485.0 908.0,485.0 908.0,404.0 1260.0,404.0 1260.0,320.0" fill="none" stroke="#1565c0" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="781.6" y="477.0" width="36.8" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="800.0" y="489.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB5</text>
 <rect x="1245.2" y="312.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="1260.0" y="324.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">USB</text>
-<rect x="1140.1" y="390.3" width="89.8" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
-<text x="1185.0" y="401.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">5-pin Micro-USB</text>
+<rect x="1137.4" y="390.3" width="95.1" height="27.4" rx="3" fill="#ffffff" stroke="#1565c0" stroke-width="1.1"/>
+<text x="1185.0" y="401.3" font-size="9.5" font-weight="bold" text-anchor="middle" fill="#1565c0">USB-A to micro-B</text>
 <text x="1185.0" y="412.5" font-size="9.5" font-weight="normal" text-anchor="middle" fill="#546e7a">P/N TBD</text>
 <polyline points="1390.0,320.0 1390.0,440.0" fill="none" stroke="#37474f" stroke-width="5.0" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="1375.2" y="312.0" width="29.6" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
@@ -511,7 +511,7 @@
 <line x1="670" y1="1138" x2="710" y2="1138" stroke="#78909c" stroke-width="3.0" stroke-linecap="round"/>
 <text x="720.0" y="1142.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">Module in a hub slot (16-pin IDC)</text>
 <line x1="1230" y1="1138" x2="1270" y2="1138" stroke="#1565c0" stroke-width="2.4" stroke-linecap="round"/>
-<text x="1280.0" y="1142.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">USB (Micro-USB to each Teensy 4.1; USB-C at the rear)</text>
+<text x="1280.0" y="1142.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">USB (USB-A to micro-B to each Teensy 4.1; USB-C at the rear)</text>
 <line x1="110" y1="1160" x2="150" y2="1160" stroke="#c62828" stroke-width="2.6" stroke-linecap="round"/>
 <text x="160.0" y="1164.0" font-size="11.5" font-weight="normal" text-anchor="start" fill="#212121">12 V power / power-button wiring</text>
 <line x1="670" y1="1160" x2="710" y2="1160" stroke="#2e7d32" stroke-width="2.2" stroke-linecap="round"/>
