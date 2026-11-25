@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.11  
+**Version:** 2.12  
 **Date:** 2026-11-25  
 **Document type:** Developer — Hardware
 
@@ -35,6 +35,7 @@
 | 2.9 | 2026-11-25 | **§9.2:** 50-pin pinout confirmed pin for pin against both board netlists (Ctrl Module CN2, Extension CN1, V2.0). **§15:** open item 3 closed. |
 | 2.10 | 2026-11-25 | **§6.1:** no fuse on the 12V input, by decision: the supply's own overcurrent protection covers short circuits; every ATtiny module and display driver has its own reverse diode and 1.5 A polyfuse. **§6.5:** VIN (yellow) indicator added to the status LED table. **§6.6:** fan headers checked against the board artwork: a standard 4-pin PC fan plug mates correctly; only the pin numbering is reversed. **§15:** open item 1 closed. |
 | 2.11 | 2026-11-25 | **§5.1:** Ctrl Module is now V2.1 (drawings Rev C): vertical USB-A downstream ports, 1×5 test port TP1, a blue +5V status LED, all status LEDs dimmed to about 0.5 mA, USB connector shells on GND; resistors renumbered (RST series now R14, EXT_INT_1 pull-up R15 and series R16). **§5.4:** Throttle drawings Rev C: motor-direction LED resistors R15 / R16 are 10 kΩ (were 1 kΩ). **§6.5:** status LED table and test port. **§7.3, §7.5, §7.6:** USB-A ports and shell grounding. **§8.4:** designators updated. |
+| 2.12 | 2026-11-25 | **§5.4:** the panel joystick is the JH-DX400B-R4 (4-axis), as fitted on panels A2 and B2; three axes are wired to terminal U6 and the fourth is not used (was given as JH-D202X-R4, 3-axis). |
 
 ---
 
@@ -336,7 +337,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 | Button Module | KC-01-1801 | KC-01-1802 | V2.1 | ATtiny816 | 12 | 4 | B0–B11 on-board RGB buttons (one NeoPixel chain). B12, B13 on terminal CN2 (1–2 +5 V, 3 B12, 4 B13); B14, B15 on terminal CN1 (1 B15, 2 B14, 3–4 +5 V). Used for UI, Action, Stability, Time and AUX Control |
 | Wide Button Module | KC-01-1811 | KC-01-1812 | V2.1 | ATtiny816 | 12 | 8 | B0–B11 on-board RGB buttons; B12–B15 not connected. B16–B19 on terminal U16 (1–2 +5 V, 3 B19, 4 B18, 5 B17, 6 B16); B20–B23 on terminal U17 (1 B23, 2 B22, 3 B21, 4 B20, 5–6 +5 V); DB127S-5.08-6P terminals. Used for Function and Vehicle Control (Switch Groups 1 / 2) |
 | Throttle Module | KC-01-1871 | KC-01-1872 | V2.1 | ATtiny816 | N/A | 5 (4 used) | RSA0N11M9A0J 10k motorized slide potentiometer (wiper to the ATtiny), L293D H-bridge on its own 9V supply (MPM3610), AT42QT1010 touch sensor on the fader track, direction LEDs (10 kΩ each, about 0.4 mA). Five 4-pin illuminated-switch terminals (pin 1 +5 V, 2 input, 3 +5 V lamp, 4 lamp return): U5 THRTL_ENA, U7 THRTL_100 (FULL), U8 THRTL_UP (THRTL +), U10 THRTL_DOWN (THRTL −), U11 THRTL_00 (IDLE). All five lamps share one enable (LED_ENA). THRTL_ENA is not wired in the final build and is unused by the firmware |
-| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-D202X-R4 3-axis stick on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND. Stick button from pin 6 (+5 V) to pin 2; R13 10 kΩ pull-down. BTN01 on PC2, BTN02 on PB3 |
+| Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | ATtiny816 | 2 + stick button | N/A | 2× NeoPixel RGB buttons (BTN01, BTN02). JH-DX400B-R4 4-axis stick (three axes used; the fourth is not wired) on 6-pin terminal U6: 6 +5 V, 5 AXIS1, 4 AXIS2, 3 AXIS3, 2 BUTTON_JOY, 1 GND. Stick button from pin 6 (+5 V) to pin 2; R13 10 kΩ pull-down. BTN01 on PC2, BTN02 on PB3 |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | ATtiny816 | 3 + encoder push | N/A | MAX7219 + FJ4401AG 4-digit display; rotary encoder with push button; three buttons, each with an SK6812 LED. Used for GPWS and Pre-Warp Time |
 | Dual Encoder | KC-01-1861 | KC-01-1862 | V2.1 | ATtiny816 | 2 encoder pushes | N/A | Two PEC11R-4220F-S0024 encoders on the board (SW1 ENC1, SW2 ENC2): A / B RC-filtered (10 kΩ pull-ups, 10 nF), pushes active-high with 10 kΩ pull-downs. No LEDs, no safe-switch terminal. V2.0 used two Encoder boards (§5.5) on 5-pin headers and had a terminal driving slot pin 16 |
 

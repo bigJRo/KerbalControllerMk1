@@ -1,13 +1,13 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.3 | 2026-10-31
+**Jeb's Controller Works** | v6.4 | 2026-11-25
 
 | | |
 |---|---|
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.10.2) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.10.3) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -781,7 +781,7 @@ All CAG numbers carry the control-group offset.
 
 ## 10. Joysticks
 
-Both joysticks are the Joystick Module (1831 / 1832, KerbalJoystickCore): a 3-axis stick with its own button on terminal U6, plus two RGB buttons BTN01 and BTN02 on the board. Master: `panel_sticks.cpp`.
+Both joysticks are the Joystick Module (1831 / 1832, KerbalJoystickCore): a JH-DX400B-R4 stick (4-axis; three axes are wired) with its own button on terminal U6, plus two RGB buttons BTN01 and BTN02 on the board. Master: `panel_sticks.cpp`.
 
 **Do not touch a stick for about 80 ms after power-on.** The module reads its centre position then.
 
@@ -1066,4 +1066,5 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 6.0 | 2026-10-26 | **Rewritten from the confirmed panel review (`Hardware_Inventory.md` §7, §8, §10, §11), `Master_Firmware_Design.md` §8–§11 and the master firmware in `Software/KCMk1_Master`.** New: per-panel slot maps (A1, A2, B1, B2); confirmed button layouts and labels for every module; Switch Group 1 in its confirmed order with A/P INHIB / ARM and ENGINE SAFE / ARM; the switch rule and SWITCH ERR; the mode selector; ABORT and STAGE on the safe lines; control modes, HOLD per mode and autopilot authority; sticks (trim, stick button by mode, camera, EVA keys, precision); the throttle rules; the Dual Encoder control group; demo mode; CAG numbering with Action Control fixed; firmware and label gaps; open items. Removed: Cruise Control, Stage / Stage Enable on Stability, RW DISABLE, the RCS button, the pilot-input autopilot override, and the other superseded content listed in §17. Board numbers corrected (Throttle 1871 / 1872) |
 | 6.1 | 2026-10-27 | **Open items 1, 2, 3, 5 and 6 decided.** The Throttle Module only reports its buttons; the master moves the lever (§12.2, Throttle v2.1). Colours: FLAPS SEAFOAM, HOLD MAGENTA, UN DOCK GOLD, ALT PINK; the Function Control colours follow the confirmed layout and AUX's CORAL alternate is gone (Function / Stability / AUX v2.1). A console's A/P OFF releases HOLD in every mode (§8.2). Camera mode works on EVA (§10.2). The AIRBRK indicator follows the control group (§4.3, InfoDisp v1.17). §15 #1, #3, #5, #9 fixed. Master v0.8.1 |
 | 6.2 | 2026-10-31 | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |
-| **6.3** | **2026-10-31** | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |
+| 6.3 | 2026-10-31 | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |
+| **6.4** | **2026-11-25** | **Joystick part corrected (§10):** both sticks are the JH-DX400B-R4, 4-axis; three axes are wired to terminal U6. Master firmware reference v0.10.3. |
