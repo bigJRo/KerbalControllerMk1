@@ -29,7 +29,6 @@ with the board number corrected to KC-01-1872.
   paralleled). LED1 (red) and LED2 (green) are anti-parallel across the motor.
 - The motorized fader VR1 is in the EasyEDA BOM but is fitted after delivery (owner, 2026-11-25).
 - No mounting holes. The Fusion list carries the board as "10-1872"; the drawing uses KC-01-1872.
-- The EasyEDA design rule check passes (reported by the owner; no report file in the export).
 
 Part descriptions, packages and JLCPCB part classes for the BOM come from
 `Documents/Drawings/tools/parts.json`, keyed by LCSC number.
