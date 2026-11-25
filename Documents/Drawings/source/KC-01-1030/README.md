@@ -34,6 +34,9 @@ in git history. The released PDFs are in `Documents/Drawings`.
 - Outline: the production file's 425 × 270 mm is correct (owner, 2026-11-25). The Fusion model
   body is about 429.7 × 274.7 mm, about 2.3 mm oversize all round, with the holes in the right
   places; the views are left as exported until the Fusion body is fixed.
+- The outline is drawn in dark grey in the production file and is cut as it stands (owner).
+- The Ø3.8 mounting holes (E) are offset on purpose: 10.5 mm from the left edge, 19.6 mm and
+  22.5 mm from the right, to suit the enclosure (owner).
 - Switch Group 1 is engraved MSTR · DISPL · SCE · UPTLM / LTG · A/P · ENGINE · THRTL (B16–B23).
   DISPL and RST are the panel abbreviations of DISP and RESET (Module UI Reference §6.2).
 - The 22 mm cover over the ABORT button is part 90000002 (Fusion listed 90000001, which is the MBK keycap
