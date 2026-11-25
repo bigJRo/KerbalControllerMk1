@@ -168,7 +168,7 @@ def power():
 
     # USB isolation note
     block(10, 144, 226, 206, "USB: DATA ONLY, NO POWER", ["VBUS not connected on USBC1 (host)",
-                                                          "and USBC2; Micro-USB VCC not connected.",
+                                                          "and USBC2; USB-A VBUS not connected.",
                                                           "Every board runs from the 12 V bus."],
           stroke=KIND["usb"][0], fill="#e3f2fd", size=10)
 

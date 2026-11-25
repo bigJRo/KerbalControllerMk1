@@ -12,7 +12,7 @@
 
 | Board | Schematic | PCB | Revision | Role |
 |---|---|---|---|---|
-| Ctrl Module | KC-01-1701 | KC-01-1702 | V2.0 | Master Teensy 4.1, power latch, INA228, EMC2101, I2C accelerators, USB hub |
+| Ctrl Module | KC-01-1701 | KC-01-1702 | V2.1 | Master Teensy 4.1, power latch, INA228, EMC2101, I2C accelerators, USB hub (6 vertical USB-A ports), 4 power LEDs, 1×5 test port |
 | Ctrl Module Extension | KC-01-1711 | KC-01-1712 | V2.0 | Passive: splits the 50-pin interboard cable to the B side, fan, expansion terminal |
 | Panel Hub | KC-01-1731 | KC-01-1732 | V2.1 | Input-panel hub: 8 module slots + safe switch |
 | 7" TFT Display Driver | KC-01-1911 | KC-01-1912 | V2.1 | One 7" display. On each display panel one driver also acts as the hub: 3 module slots + safe switch |

@@ -1,7 +1,7 @@
 /***************************************************************************************
    config.h — KCMk1 Master: pins, addresses and timings, all in one place.
 
-   Hardware truth: Documents/Developer/Hardware_Inventory.md (from the KC-01-1701 V2.0
+   Hardware truth: Documents/Developer/Hardware_Inventory.md (from the KC-01-1701 V2.1
    Ctrl Module and KC-01-1711 V2.0 Extension schematics). Design:
    Documents/Developer/Master_Firmware_Design.md.
 

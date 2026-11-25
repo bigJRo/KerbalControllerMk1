@@ -143,9 +143,9 @@ def side_a():
     t(585, 502, "reads INT / safe lines, drives RST", size=10.5, fill="#5d4037")
     tab(330, 482, "USB1", "left")
     wire([(347, 482), (470, 482)], "usb")
-    ctag(408, 482, ["5-pin Micro-USB", TBD], "usb")
+    ctag(408, 482, ["USB-A to micro-B", TBD], "usb")
     t(330, 536, "USB6: spare", size=10.5, fill="#78909c", italic=True)
-    t(585, 548, "LEDs: 3.3 V (red), 12 V (green)", size=10.5, fill="#78909c")
+    t(585, 548, "LEDs: VIN, 12 V, 5 V, 3.3 V · test port TP1", size=10.5, fill="#78909c")
 
     # power button -> H1, Annunciator USB -> USB2, Info 1 -> CN4 / USB3
     wire([(97, 144), (97, 332), (290, 332), (290, CY0)], "pwr")
@@ -154,7 +154,7 @@ def side_a():
     wire([(400, 180), (400, CY0)], "usb")
     tab(400, 172, "USB", "bottom")
     tab(400, CY0, "USB2", "top")
-    ctag(400, 326, ["5-pin Micro-USB", TBD], "usb")
+    ctag(400, 326, ["USB-A to micro-B", TBD], "usb")
     wire([(575, 290), (575, CY0)], "idc")
     tab(575, 290, "CN1", "bottom")
     tab(575, CY0, "CN4", "top")
@@ -162,7 +162,7 @@ def side_a():
     wire([(700, 290), (700, CY0)], "usb")
     tab(700, 290, "USB", "bottom")
     tab(700, CY0, "USB3", "top")
-    ctag(700, 326, ["5-pin Micro-USB", TBD], "usb")
+    ctag(700, 326, ["USB-A to micro-B", TBD], "usb")
 
     # Rear panel, left
     rect(10, 362, 146, 572, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
@@ -219,11 +219,11 @@ def side_b():
     flag(10, 312, 120, 346, ["from Control Module", "USB4 · Fig. 23‑2"])
     wire([(120, 329), (200, 329), (200, 264)], "usb")
     tab(200, 256, "USB", "bottom")
-    ctag(200, 296, ["5-pin Micro-USB", TBD], "usb")
+    ctag(200, 296, ["USB-A to micro-B", TBD], "usb")
     flag(10, 362, 120, 396, ["from Control Module", "USB5 · Fig. 23‑2"])
     wire([(120, 379), (340, 379), (340, 274)], "usb")
     tab(340, 266, "USB", "bottom")
-    ctag(340, 312, ["5-pin Micro-USB", TBD], "usb")
+    ctag(340, 312, ["USB-A to micro-B", TBD], "usb")
 
     EX0, EY0, EX1, EY1 = 256, 420, 620, 560
     board(EX0, EY0, EX1, EY1, "CONTROL MODULE EXTENSION", ["KC-01-1710 · passive, every signal", "straight through"], ty=34)
