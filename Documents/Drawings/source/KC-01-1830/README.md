@@ -1,6 +1,6 @@
 # KC-01-1830 Joystick Module: drawing sources
 
-Source files for the Rev B drawings of the Joystick Module, board V2.1 (assembly KC-01-1830,
+Source files for the Rev C drawings of the Joystick Module, board V2.1 (assembly KC-01-1830,
 schematic KC-01-1831, PCB KC-01-1832, BOM KC-01-1833, placement KC-01-1834). The released
 PDFs are in `Documents/Drawings`.
 
@@ -20,6 +20,8 @@ The assembly parts list is written in the config (`assy_parts`), from the Rev A 
 with the board number corrected to KC-01-1832.
 
 ## Board V2.1
+
+- Rev C (2026-11-25) only corrects the stick in the notes to the JH-DX400B-R4 (4-axis; three axes wired to U6), as fitted on panels A2 and B2. Sources unchanged from Rev B.
 
 - The PCA9306 level converter is the reusable sub-sheet "I2C Level Converter v2": VREF2 and
   EN joined and pulled up to +5V through R3$CBB15 (200 kΩ), with C2$CBB15 (100 pF) on that
