@@ -46,7 +46,7 @@ Both encoders are identical hardware. Functions are assigned by the main control
 | ENC1 | PC3 | PC2 | PC1 | +CW / -CCW |
 | ENC2 | PA7 | PB5 | PB4 | +CW / -CCW |
 
-Both encoders are PEC11R-4220F-S0024 mounted on KC-01-1852 passive carrier boards (5-pin header per encoder) with hardware RC debounce (10nF capacitors on A and B channels) and 10k pull-up resistors. Decoding is interrupt-driven — a rising-edge interrupt on each channel A samples channel B for direction — giving exactly ±1 per detent with no aliasing or direction reversal at high turn speed.
+Both encoders are PEC11R-4220F-S0024 mounted on the module board (KC-01-1862 V2.1) with hardware RC debounce (10nF capacitors on A and B channels), 10k pull-up resistors and 10k pull-downs on the pushes. (V2.0 boards used two KC-01-1852 Encoder boards on 5-pin headers; the pin map is the same.) Decoding is interrupt-driven — a rising-edge interrupt on each channel A samples channel B for direction — giving exactly ±1 per detent with no aliasing or direction reversal at high turn speed.
 
 Pushbutton switches have hardware pull-down resistors — active high.
 

@@ -22,7 +22,7 @@
 | Joystick Module | KC-01-1831 | KC-01-1832 | V2.1 | 3-axis stick + stick button (terminal), 2 RGB buttons |
 | 7-Segment Display Module | KC-01-1841 | KC-01-1842 | V2.1 | 4-digit display, encoder with push, 3 RGB buttons |
 | 2" TFT Display Driver | KC-01-1901 | KC-01-1902 | V2.0 | XIAO RP2350, 2" 240×320 ST7789 IPS, microSD |
-| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.0 | Two encoder inputs + a safe-switch terminal |
+| Dual Encoder | KC-01-1861 | KC-01-1862 | V2.1 | Two encoders on the board |
 | Encoder | KC-01-1851 | KC-01-1852 | V2.0 | Passive carrier for one PEC11R encoder with push |
 
 **Retired:** Display Hub (KC-01-1721 / 1722). Its job is done by the 7" TFT Display Driver.
@@ -158,23 +158,14 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that no
 - **Power:** its own 12 V → 5 V → 3.3 V regulators.
 - **No safe-switch terminal.**
 
-### 5.8 Dual Encoder (KC-01-1861 V2.0) and Encoder (KC-01-1851 V2.0)
+### 5.8 Dual Encoder (KC-01-1861 V2.1) and Encoder (KC-01-1851 V2.0)
 
-**Dual Encoder:**
-- **Encoder headers** H1 (ENC1) and H2 (ENC2), 5-pin, to an Encoder board each:
+**Dual Encoder (V2.1):**
+- **Encoders on the board:** SW1 (ENC1) and SW2 (ENC2), PEC11R-4220F-S0024, each with RC-filtered A / B (10 kΩ pull-ups, 10 nF) and the push active-high with a 10 kΩ pull-down. ATtiny816: ENC1 A / B / push on PC3 / PC2 / PC1, ENC2 on PA7 / PB5 / PB4.
+- **No safe-switch terminal and no LEDs.** V2.0 used two Encoder boards on 5-pin headers H1 / H2, and its safe-switch terminal U4 drove slot pin 16, which no hub connects.
+- **PCA9306 VREF2/EN pull-up:** R1, 200 kΩ, with C1 (100 pF).
 
-  | Pin | Signal |
-  |---|---|
-  | 1 | +5 V |
-  | 2 | A |
-  | 3 | B |
-  | 4 | Button |
-  | 5 | GND |
-
-- **Safe-switch terminal U4:** the same 6-pin circuit as the hubs (active-high, 10 kΩ / 20 kΩ divider), but its output goes to slot pin 16 (SAFE_INT), **not** to the ATtiny. Every hub leaves slot pin 16 unconnected, so this switch cannot reach the master or the module.
-- **No LEDs.**
-
-**Encoder board:** PEC11R-4220F-S0024 with RC-filtered A / B (10 kΩ pull-ups, 10 nF), and the push button active-high with a 10 kΩ pull-down.
+**Encoder board:** PEC11R-4220F-S0024 with RC-filtered A / B (10 kΩ pull-ups, 10 nF), and the push button active-high with a 10 kΩ pull-down. Now used on the expansion only.
 
 ## 6. Differences from older documents
 
@@ -190,7 +181,7 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that no
 | 8 | Throttle panel inputs | Module UI Reference: four buttons | Five terminals; the fifth (THRTL_ENA) is not wired and unused by the firmware |
 | 9 | Switch Group 1 order | Module UI Reference: B16 MSTR, B17 DISPL, B18 ENGINE, B19 THROTTLE, B20 SCE, B21 UPTLM, B22 LTG, B23 THRTL | B16 MSTR, B17 DISP, B18 SCE, B19 UPTLM, B20 LTG, B21 ENGINE, B22 THROTTLE, B23 THRTL (confirmed by the owner; §7.2) |
 | 10 | 2" display safe switch | Hardware Reference §5.3: the 2.0" carrier "can carry a safe switch via screw terminal" | No terminal on KC-01-1901 V2.0 |
-| 12 | Dual Encoder safe switch | Hardware Reference §12: INT_SAFE on the module connector for the Dual Encoder | Its terminal drives slot pin 16, which no hub connects |
+| 12 | Dual Encoder safe switch | Hardware Reference §12: INT_SAFE on the module connector for the Dual Encoder | V2.0: its terminal drove slot pin 16, which no hub connects. V2.1: no terminal |
 | 13 | Staging | Module UI Reference: Stability B14 Stage, B15 Stage Enable | Stage button on the B2 Panel Hub safe line; Stability terminals unwired |
 | 14 | Ctrl Mode Toggle | Module UI Reference open item 14: destination undecided; Time Control B12–B15 "not installed" | Time Control B12 / B13 |
 | 11 | Ctrl Module ST7789 | — | The only ST7789 in the system is the 2" Sys Info Display on A2; the Hardware Reference's Ctrl Module entry probably refers to an earlier plan |
@@ -253,10 +244,10 @@ Each switch closes from a +5 V pin (U16-1/2, U17-5/6) to its input.
 |---|---|---|---|
 | Resource Display (0x11) — **panel hub** | 7" TFT Display Driver (1911) | Its CN1 (34-pin) → Ctrl Module Extension CN5 | B_INT_12 (its own line) |
 | Information Display 2 (0x13) | 7" TFT Display Driver (1911) | Its P1 → Resource Display slot P2 | B_INT_9 |
-| Dual Encoder (0x2D) | Dual Encoder (1861) + 2 × Encoder (1851) | Its P1 → Resource Display slot P4 | B_INT_11 |
+| Dual Encoder (0x2D) | Dual Encoder (1861 V2.1, encoders on board) | Its P1 → Resource Display slot P4 | B_INT_11 |
 
 - **Free:** Resource Display slot P3 (B_INT_10).
-- **Safe switches:** none wired, so B_INT_SAFE2 is unused. The Dual Encoder's own terminal could not reach the master anyway (§5.8).
+- **Safe switches:** none wired, so B_INT_SAFE2 is unused.
 
 ### 7.4 B2 — right input panel (Panel Hub on Ctrl Module Extension CN4)
 
