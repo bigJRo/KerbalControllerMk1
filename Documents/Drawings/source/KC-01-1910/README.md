@@ -29,6 +29,8 @@ as "KC_01_1912" and no descriptions, so the descriptions come from the Rev A dra
   10 kΩ / 20 kΩ divider, as on the Panel Hub V2.1.
 - Six layers, JLCPCB JLC06161H-3313 stackup: GND pour top, 5V / GND / V_IN / GND planes, 3V3 pour
   bottom.
+- The schematic PDF and project were re-exported once to remove a stale "*Safe Switch
+  Connection" note beside slot P2; nothing else changed.
 
 Part descriptions, packages and JLCPCB part classes for the BOM come from
 `Documents/Drawings/tools/parts.json`, keyed by LCSC number.

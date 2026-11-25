@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.6  
+**Version:** 2.7  
 **Date:** 2026-11-25  
 **Document type:** Developer — Hardware
 
@@ -30,6 +30,7 @@
 | 2.4 | 2026-11-24 | **§5.4:** Button and Wide Button Modules are now V2.1 (Wide Button: also U19 /QH no longer grounded). **§8:** the PCA9306 I2C level shifter needs VREF2 and EN pulled up to 5 V through 200 kΩ (TI datasheet SCPS113O §8.1.2, §10); the V2.0 ATtiny modules tie them straight to +5V. Button Module V2.1 adds the resistor. **§15:** new open item 10 tracks the other modules. |
 | 2.5 | 2026-11-25 | **§5.4:** Joystick Module is now V2.1: PCA9306 pull-up, and R13 (10 kΩ) pulls BUTTON_JOY low, so the stick button is wired from U6 pin 6 (+5 V) to pin 2. BUTTON01 is on PC2 (KerbalJoystickCore 2.3.1; earlier versions read PC0). 7-Segment Display Module is now V2.1 (PCA9306 pull-up). **§15:** open item 10 updated. |
 | 2.6 | 2026-11-25 | **§4.4, §5.4, §5.5, §12:** Dual Encoder is now V2.1: both encoders on the module (RC-filtered A / B, push pull-downs), no Encoder boards, no safe-switch terminal, PCA9306 pull-up. The Encoder board remains in use on the expansion. **§15:** open item 6 closed; items 2 and 10 updated. |
+| 2.7 | 2026-11-25 | **§5.3:** 7" TFT Display Driver drawings released at Rev B for board V2.1 (schematic and PCB). Its safe-switch terminal U3 checked: pin 1 on 5V, wired as on the Panel Hub V2.1. **§15:** open items 2 and 9 closed. |
 
 ---
 
@@ -1109,12 +1110,12 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 | # | Item | Source |
 |---|------|--------|
 | 1 | **Fan header pin order.** Both fan headers are numbered 1 PWM, 2 tach / NC, 3 12 V, 4 GND, the reverse of the usual PC fan numbering. Check against the fans' cable before connecting (§6.6) | Inventory §6 #6 |
-| 2 | **Safe-switch terminal pin 1.** On the V2.0 Panel Hub, terminal pin 1 (SW_P) was not connected to +5V, so the arming switch had no supply; V2.1 fixes it (§5.2). V_EN (pins 2, 3, 5) is the arming switch's switched +5V node. The 7" TFT Display Driver uses the same terminal and still needs checking for the same fault; the V2.1 Dual Encoder has no terminal | Panel Hub KC-01-1731 V2.1; Inventory §6 #5 |
+| 2 | ~~**Safe-switch terminal pin 1.**~~ **Closed.** The V2.0 Panel Hub left terminal pin 1 (SW_P) off +5V; V2.1 fixes it (§5.2). The 7" TFT Display Driver V2.1 terminal U3 is correct (pin 1 on 5V), and the V2.1 Dual Encoder has no terminal. V_EN (pins 2, 3, 5) is the arming switch's switched +5V node | Panel Hub KC-01-1731 V2.1; KC-01-1911 V2.1 |
 | 3 | **50-pin pinout.** §9.2 is taken from the V2.0 schematics (Ctrl Module CN2, Extension CN1), which agree with each other but not with the v1.x table. The inventory says only "same pinout as Ctrl Module CN2"; the owner should confirm the pinout and add it to the inventory | Schematics KC-01-1701, KC-01-1711 |
 | 4 | **EXT_INT protection.** On the Ctrl Module, EXT_INT_1 has 47 Ω + 4.7 kΩ and EXT_INT_2 has nothing, while `Expansion_Module_Spec.md` v0.3 expects a 47 Ω source resistor on EXT_INT_2 at the Ctrl Module. Decide whether the expansion side adds protection on EXT_INT_2 or a later Ctrl Module revision does, and update the expansion spec (§8.4) | Inventory §6 #2 |
 | 5 | **Expansion harness.** The Extension CN2 terminal order differs from the planned GX16-10 pin assignment from pin 5 on; the harness cross-maps them (§10.4). The GX16-10 assignment itself is still the planned v1.x design, with no drawing | Inventory §4 |
 | 6 | ~~**Dual Encoder safe-switch terminal.** It drives slot pin 16, which no hub connects~~. **Closed:** the V2.1 Dual Encoder has no safe-switch terminal | Inventory §5.8, §6 #12; KC-01-1861 V2.1 |
 | 7 | **Sys Info Display power draw** not yet measured, so the system load in §6.1 is still interim | Power Budget v1.3 |
 | 8 | **Module Tester (KC-01-9002)** is not in the inventory and has no drawings in the repository; §5.6 is carried over from v1.10 unverified | — |
-| 9 | **7" TFT Display Driver revision.** The schematic drawing is V2.1 and the PCB, BOM and placement drawings are V2.0. Confirm whether the board itself changed in V2.1 | `Documents/Drawings/` |
+| 9 | ~~**7" TFT Display Driver revision.**~~ **Closed.** Schematic and PCB are both V2.1 (Rev B drawings, 2026-11-25); V2.1 wires the DFPlayer BUSY line to the Teensy (pin 11) | KC-01-1911 / 1912 V2.1 |
 | 10 | **PCA9306 VREF2/EN pull-up.** The V2.0 ATtiny modules tie the level shifter's VREF2 and EN straight to +5V. TI requires a 200 kΩ pull-up instead: without it the reference FET passes current from +5V into the slot's V_3P3, which the hub LDO cannot sink, so V_3P3 and the 3.3 V bus side can rise toward 4.4 V (SCPS113O §8.1.2, §8.1.7, §10). Fixed on the Button, Wide Button, Joystick, 7-Segment Display and Dual Encoder Modules (V2.1: 200 kΩ on VREF2/EN, 100 pF on VREF2); check and fix the Throttle Module | TI PCA9306 datasheet; KC-01-1801 V2.1 |

@@ -10,11 +10,11 @@
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "DRAFT",
-    "1": "DRAFT",
-    "2": "DRAFT",
-    "3": "DRAFT",
-    "4": "DRAFT"
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
   },
   "revisions": [
     [
@@ -142,10 +142,10 @@
             {
               "page": 5,
               "crop": [
-                60,
-                70,
-                272,
-                236
+                58,
+                68,
+                250,
+                244
               ],
               "label": "Display connector (H3), /RESET pull-up R12"
             }
@@ -168,7 +168,7 @@
               "crop": [
                 537,
                 42,
-                834,
+                836,
                 272
               ],
               "label": "Module slots P2–P4"
@@ -181,8 +181,8 @@
               "page": 5,
               "crop": [
                 63,
-                335,
-                628,
+                334,
+                639,
                 425
               ],
               "label": "Audio module (DFPlayer Mini on P5 / P6), speaker SPKR2, 3.3 V bulk C12"
@@ -192,9 +192,9 @@
             {
               "page": 5,
               "crop": [
-                670,
+                641,
                 302,
-                834,
+                828,
                 446
               ],
               "label": "Audio busy LED (Q1, LED1)"
