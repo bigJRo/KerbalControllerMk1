@@ -4,7 +4,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | | |
 |---|---|
-| **Version** | 0.10.2 (`KCM_MASTER_VERSION`, `config.h`). 0.10.2: ENGINE SAFE shows the ENG SAFE reason on the aircraft, rover and landing consoles too, not only the orbital one. 0.10.1: the ascent autopilot disarms on a vessel or scene change, like the other autopilots |
+| **Version** | 0.10.3 (`KCM_MASTER_VERSION`, `config.h`). 0.10.3: the INT lines have the Teensy's 100 kΩ pull-down, so an empty slot's line no longer floats during INT learning; EXT_INT_2 has the pull-up. 0.10.2: ENGINE SAFE shows the ENG SAFE reason on the aircraft, rover and landing consoles too, not only the orbital one. 0.10.1: the ascent autopilot disarms on a vessel or scene change, like the other autopilots |
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (display carriers, BACKLIGHT and input test frames: §15.3; Sys Info Display: §15.4) |
@@ -147,7 +147,7 @@ These can only be confirmed on the hardware (design §18):
 2. **SIMPIT LOST:** a parked vessel still sends inbound Simpit traffic, so SIMPIT LOST and the re-handshake do not trip falsely.
 3. **Boot order:** the boot screen shows each step, and a missing display or sensor shows in red without stopping start-up.
 4. **INT learning (stage 2):** after a power cycle every module's line shows LEARNED in `intmap`, matching the slot it is in; after moving one module to another slot and power-cycling, its new line is learned.
-5. **Empty slots:** an empty slot's INT line is not driven. `intmap` should show its level, and the master ignores it. Check that no floating line confuses the learning (it would show as "lines rose at once" in the log).
+5. **Empty slots:** an empty slot's INT line is held low by the Teensy's pull-down. `intmap` should show it LOW with no owner, and the master ignores it. Check that the log never shows "lines rose at once" during learning.
 6. **LED order:** a known LED frame lights the expected buttons (low nibble = even button).
 7. **Switches in the menus (stage 3):** with KSP at the main menu, flip SCE to AUX: demo comes on (Annunciator DEMO, modules lit). This relies on a DISABLED module answering a read with its current inputs.
 8. **Switch polarity (stage 3):** in flight, each Switch Group 2 switch's "on" position (GEAR DOWN, BRAKE LOCK, EXT LT ILLUM, SAS ENAB, RCS ENAB) turns its function on, and `switches` shows the vessel agreeing.

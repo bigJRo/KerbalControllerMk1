@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.8  
+**Version:** 2.9  
 **Date:** 2026-11-25  
 **Document type:** Developer — Hardware
 
@@ -32,6 +32,7 @@
 | 2.6 | 2026-11-25 | **§4.4, §5.4, §5.5, §12:** Dual Encoder is now V2.1: both encoders on the module (RC-filtered A / B, push pull-downs), no Encoder boards, no safe-switch terminal, PCA9306 pull-up. The Encoder board remains in use on the expansion. **§15:** open item 6 closed; items 2 and 10 updated. |
 | 2.7 | 2026-11-25 | **§5.3:** 7" TFT Display Driver drawings released at Rev B for board V2.1 (schematic and PCB). Its safe-switch terminal U3 checked: pin 1 on 5V, wired as on the Panel Hub V2.1. **§15:** open items 2 and 9 closed. |
 | 2.8 | 2026-11-25 | **§5.4:** Throttle Module drawings released at Rev B for board V2.1 (200 kΩ PCA9306 VREF2/EN pull-up R23, 100 pF C2). **§8:** every ATtiny816 module now has the pull-up. **§15:** open item 10 closed. |
+| 2.9 | 2026-11-25 | **§9.2:** 50-pin pinout confirmed pin for pin against both board netlists (Ctrl Module CN2, Extension CN1, V2.0). **§15:** open item 3 closed. |
 
 ---
 
@@ -1112,7 +1113,7 @@ Items the sources do not settle. Each needs the owner's decision or a bench chec
 |---|------|--------|
 | 1 | **Fan header pin order.** Both fan headers are numbered 1 PWM, 2 tach / NC, 3 12 V, 4 GND, the reverse of the usual PC fan numbering. Check against the fans' cable before connecting (§6.6) | Inventory §6 #6 |
 | 2 | ~~**Safe-switch terminal pin 1.**~~ **Closed.** The V2.0 Panel Hub left terminal pin 1 (SW_P) off +5V; V2.1 fixes it (§5.2). The 7" TFT Display Driver V2.1 terminal U3 is correct (pin 1 on 5V), and the V2.1 Dual Encoder has no terminal. V_EN (pins 2, 3, 5) is the arming switch's switched +5V node | Panel Hub KC-01-1731 V2.1; KC-01-1911 V2.1 |
-| 3 | **50-pin pinout.** §9.2 is taken from the V2.0 schematics (Ctrl Module CN2, Extension CN1), which agree with each other but not with the v1.x table. The inventory says only "same pinout as Ctrl Module CN2"; the owner should confirm the pinout and add it to the inventory | Schematics KC-01-1701, KC-01-1711 |
+| 3 | ~~**50-pin pinout.**~~ **Closed.** §9.2 matches the netlists of both boards pin for pin (Ctrl Module CN2 and Extension CN1, checked 2026-11-25); the v1.x table is superseded | KC-01-1702, KC-01-1712 IPC netlists |
 | 4 | **EXT_INT protection.** On the Ctrl Module, EXT_INT_1 has 47 Ω + 4.7 kΩ and EXT_INT_2 has nothing, while `Expansion_Module_Spec.md` v0.3 expects a 47 Ω source resistor on EXT_INT_2 at the Ctrl Module. Decide whether the expansion side adds protection on EXT_INT_2 or a later Ctrl Module revision does, and update the expansion spec (§8.4) | Inventory §6 #2 |
 | 5 | **Expansion harness.** The Extension CN2 terminal order differs from the planned GX16-10 pin assignment from pin 5 on; the harness cross-maps them (§10.4). The GX16-10 assignment itself is still the planned v1.x design, with no drawing | Inventory §4 |
 | 6 | ~~**Dual Encoder safe-switch terminal.** It drives slot pin 16, which no hub connects~~. **Closed:** the V2.1 Dual Encoder has no safe-switch terminal | Inventory §5.8, §6 #12; KC-01-1861 V2.1 |

@@ -11,7 +11,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define KCM_MASTER_VERSION "0.10.2"
+#define KCM_MASTER_VERSION "0.10.3"
 static const uint8_t KCM_MASTER_VERSION_MAJOR = 0;
 static const uint8_t KCM_MASTER_VERSION_MINOR = 10;
 
@@ -46,7 +46,7 @@ static const uint8_t PIN_RST         = 2;    // global reset to the 7" displays 
 static const uint8_t PIN_SDA_BUS     = 18;   // Wire  (BUS)
 static const uint8_t PIN_SCL_BUS     = 19;
 static const uint8_t PIN_EXT_INT_1   = 33;   // expansion — reserved, left as input
-static const uint8_t PIN_EXT_INT_2   = 32;   // expansion — reserved, left as input
+static const uint8_t PIN_EXT_INT_2   = 32;   // expansion — reserved, input with pull-up
 
 /***************************************************************************************
    I2C addresses and display sync bytes. The display values mirror

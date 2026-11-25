@@ -248,6 +248,7 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 
 - **Storage:** the learned map is saved in EEPROM and used when the master restarts on its own (modules already up, not signalling).
 - **First boot:** the default map above covers a first boot.
+- **Empty slots:** the INT pins use the Teensy's 100 kΩ pull-down, so a line with nothing on it sits steady low, like a slot whose module is unpowered. It never changes during learning and has no owner, so it is ignored.
 - **Unknown line:** a module with no known line is polled every 20 ms. Button modules return their full current state on every read, so polling works, at the cost of bus time.
 - **Mismatches** between the learned, stored and default maps go to the boot screen and the debug log.
 

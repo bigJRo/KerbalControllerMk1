@@ -69,13 +69,16 @@ const char *bootFmt(const char *fmt, ...) {
 static void stepConfig() {
   pinMode(PIN_RST, OUTPUT);
   digitalWrite(PIN_RST, HIGH);                   // displays run
-  for (uint8_t i = 0; i < INT_LINE_COUNT; i++) pinMode(PIN_INT_LINE[i], INPUT);   // push-pull INT, no pull
+  // INT lines: active-low, driven push-pull by each module (10k / 20k divider, 20k to GND).
+  // The 100k pull-down holds an empty slot's line steady low, like a slot whose module is
+  // unpowered, so a floating line cannot spoil INT learning; a driven high still reads ~3.1 V.
+  for (uint8_t i = 0; i < INT_LINE_COUNT; i++) pinMode(PIN_INT_LINE[i], INPUT_PULLDOWN);
   pinMode(PIN_SAFE_ABORT, INPUT);                // active-high safe lines: plain inputs
   pinMode(PIN_SAFE_A1, INPUT);
   pinMode(PIN_SAFE_STAGE, INPUT);
   pinMode(PIN_SAFE_B1, INPUT);
-  pinMode(PIN_EXT_INT_1, INPUT);                 // expansion: reserved
-  pinMode(PIN_EXT_INT_2, INPUT);
+  pinMode(PIN_EXT_INT_1, INPUT);                 // expansion: reserved (4.7k pull-up on the Ctrl Module)
+  pinMode(PIN_EXT_INT_2, INPUT_PULLUP);          // expansion: reserved; idles high (pull-up at the expansion end)
   busInit();
   const BusStats &st = busStats();
   if (st.recoveries) bootLineS(SEV_WARN, "I2C BUS RECOVERED", "I2C BUS WAS HELD LOW: RECOVERED");
