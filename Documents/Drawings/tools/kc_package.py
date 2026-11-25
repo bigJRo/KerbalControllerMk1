@@ -31,7 +31,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from kc_frame import (DOC_TYPES, GREY, HI, H, INK, M_IN, PAPER, W, Sheet, esc, file_name,  # noqa: E402
+from kc_frame import (DOC_TYPES, doc_types, GREY, HI, H, INK, M_IN, PAPER, W, Sheet, esc, file_name,  # noqa: E402
                       frame, notes_box, wrap_text)
 
 # --------------------------------------------------------------------------- printing
@@ -259,10 +259,11 @@ def dim_v(s, y1, y2, x, label, ext_from=None, size=2.6):
 
 def fields(cfg, d, sheet, sheets, scale):
     return dict(dwg_no=cfg["base"] + d, rev=cfg.get("rev", "-"), title=cfg.get("doc_title", {}).get(d, cfg["title"]), subtitle=cfg["subtitle"],
-                doc_type=DOC_TYPES[d][1], status=cfg.get("doc_status", {}).get(d, cfg.get("status", "DRAFT")), created_by=cfg["created_by"],
+                doc_type=doc_types(cfg)[d][1], status=cfg.get("doc_status", {}).get(d, cfg.get("status", "DRAFT")), created_by=cfg["created_by"],
                 approved_by=cfg["approved_by"], date=cfg["date"], board_version=cfg["board_version"],
                 scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"),
-                package_docs=cfg.get("package_docs"))
+                package_docs=cfg.get("package_docs"), doc_types=cfg.get("doc_types"),
+                version_label=cfg.get("version_label"))
 
 
 PWB_K = 1.5             # sheet 1 board view scale (3:2)
@@ -843,25 +844,38 @@ def _pdf_page_body(pdf, page, work, tag):
     return body
 
 
-def doc_assy(cfg, work):
+def doc_views(cfg, work, d):
+    """A drawing made of Fusion views: the package's `view_docs[d]` entry ({"pdf", "sheets",
+    "parts", "notes"}), or for the assembly drawing "0" the assy_* keys. Used for the CCA
+    assembly drawing and for mechanical assembly and part drawings."""
+    vd = (cfg.get("view_docs") or {}).get(d)
+    if vd is None:
+        vd = {"pdf": cfg["assy_pdf"], "sheets": cfg["assy_sheets"], "parts": cfg.get("assy_parts", []),
+              "notes": cfg.get("assy_notes", [])}
+    return doc_assy(cfg, work, d, vd)
+
+
+def doc_assy(cfg, work, d="0", vd=None):
     """CCA assembly drawing from a Fusion drawing PDF. Each view is a crop of a Fusion page
     (src: [x0, y0, x1, y1] in mm on that page, top-down) placed at sheet position at:[x, y]
     (top-left, mm) and drawn at the sheet's scale k (Fusion views are drawn at 1:1) or at its
     own fit width w for not-to-scale views. Sheets: {"scale": k or null, "views": [...],
     "parts_list": bool, "notes": bool}."""
-    pdf = cfg["assy_pdf"]
-    sheets_cfg = cfg["assy_sheets"]
+    vd = vd or {"pdf": cfg["assy_pdf"], "sheets": cfg["assy_sheets"], "parts": cfg.get("assy_parts", []),
+                "notes": cfg.get("assy_notes", [])}
+    pdf = vd["pdf"]
+    sheets_cfg = vd["sheets"]
     total = len(sheets_cfg)
     sheets = []
     for n, sc in enumerate(sheets_cfg, 1):
         k = sc.get("scale")
         s = Sheet()
-        a = frame(s, fields(cfg, "0", n, total, _ratio(k) if k else "NTS"))
+        a = frame(s, fields(cfg, d, n, total, _ratio(k) if k else "NTS"))
         pages = sorted({v["page"] for v in sc["views"]})
         s.add("<defs>" + "".join(f'<g id="assy-page-{pg}">{_pdf_page_body(pdf, pg, work, "assy")}</g>'
                                  for pg in pages) + "</defs>")
         if sc.get("parts_list"):
-            rows = [[str(i), str(p["qty"]), p["pn"], p["name"], p["desc"]] for i, p in enumerate(cfg["assy_parts"], 1)]
+            rows = [[str(i), str(p["qty"]), p["pn"], p["name"], p["desc"]] for i, p in enumerate(vd["parts"], 1)]
             x = a["x0"] + 2
             tw = a["x1"] - 2 - x
             base = [("ITEM", 11, "middle"), ("QTY", 10, "middle"), ("PART NUMBER", 42, "start"),
@@ -889,7 +903,7 @@ def doc_assy(cfg, work):
                 if v.get("sublabel"):
                     s.text(X + w / 2, Y + h + 8.6, v["sublabel"], size=2.3, anchor="middle", c=GREY)
         if sc.get("notes"):
-            notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, cfg["assy_notes"])
+            notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, vd["notes"])
         sheets.append(s)
     return sheets
 
@@ -905,6 +919,9 @@ def main():
     for k in ("sch_pdf", "assy_pdf", "gerber_dir", "gerber_zip", "bom_csv", "pnp_csv"):
         if k in cfg and not os.path.isabs(cfg[k]):
             cfg[k] = os.path.normpath(os.path.join(cdir, cfg[k]))
+    for vd in (cfg.get("view_docs") or {}).values():
+        if not os.path.isabs(vd["pdf"]):
+            vd["pdf"] = os.path.normpath(os.path.join(cdir, vd["pdf"]))
     os.makedirs(a.out, exist_ok=True)
     if "gerber_zip" in cfg and "gerber_dir" not in cfg:   # the fab zip as exported: unpack it for this run
         import zipfile
@@ -914,12 +931,14 @@ def main():
                 if "/" not in m and ".." not in m:
                     z.extract(m, gdir)
         cfg["gerber_dir"] = gdir
-    builders = {"0": doc_assy, "1": doc_sch, "2": doc_pwb, "3": doc_bom, "4": doc_place}
+    builders = {"0": lambda c, w: doc_views(c, w, "0"), "1": doc_sch, "2": doc_pwb, "3": doc_bom, "4": doc_place}
+    for vd_key in (cfg.get("view_docs") or {}):          # documents drawn from Fusion views
+        builders[vd_key] = (lambda key: lambda c, w: doc_views(c, w, key))(vd_key)
     docs = a.docs.split(",") if a.docs else list(cfg.get("package_docs") or "01234")
     for d in docs:
         work = tempfile.mkdtemp(prefix=f"kc_{d}_", dir=a.out)
         sheets = builders[d](cfg, work)
-        f = {"dwg_no": cfg["base"] + d, "rev": cfg.get("rev", "-")}
+        f = {"dwg_no": cfg["base"] + d, "rev": cfg.get("rev", "-"), "doc_types": cfg.get("doc_types")}
         out = os.path.join(a.out, file_name(f, cfg.get("doc_name", {}).get(d, cfg["name"])))
         print_pdf(sheets, out, work)
         print("wrote", out, f"({len(sheets)} sheet{'s' if len(sheets) > 1 else ''})")
