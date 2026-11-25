@@ -3,18 +3,18 @@
   "name": "Control Module",
   "title": "Control Module",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
-  "board_version": "V2.0",
-  "date": "2026-11-24",
+  "rev": "C",
+  "board_version": "V2.1",
+  "date": "2026-11-25",
   "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "RELEASED",
-    "1": "RELEASED",
-    "2": "RELEASED",
-    "3": "RELEASED",
-    "4": "RELEASED"
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
   },
   "revisions": [
     [
@@ -28,13 +28,19 @@
       "Redrawn in the KC drawing frame; H4 and TP1 fitted",
       "2026-11-24",
       "J. Kerman"
+    ],
+    [
+      "C",
+      "Board V2.1: USB-A ports, 5-pin TP1, +5V LED, dimmer LEDs",
+      "2026-11-25",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-23.pdf",
-  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-23.zip",
-  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-23.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-23.csv",
-  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-06-20.pdf",
+  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-25.pdf",
+  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-25.zip",
+  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-25.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-25.csv",
+  "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-11-25.pdf",
   "doc_title": {
     "0": "Control Module Complete"
   },
@@ -391,13 +397,14 @@
     "LED1",
     "LED2",
     "LED3",
+    "LED4",
     "C6"
   ],
   "place_label_size": 1.4,
   "place_notes": [
     "1. All parts are on the top side. The board is shown in two overlapping parts.",
-    "2. Red dot = pin 1: on every part with more than two pins, on D1, on LED1–LED3 (pin 1 = anode) and on C6 (pin 1 = +). These match the silkscreen marks.",
-    "3. TP1 order is pin 1 V_12, pin 2 V_3P3, pin 3 GND: do not bridge pins 1 and 2.",
+    "2. Red dot = pin 1: on every part with more than two pins, on D1, on LED1–LED4 (pin 1 = anode) and on C6 (pin 1 = +). These match the silkscreen marks.",
+    "3. TP1 order is pin 1 V_12, 2 GND, 3 +5V, 4 GND, 5 V_3P3. LED1 (12 V), LED2 (5 V) and LED3 (3.3 V) sit below their TP1 pins.",
     "4. Part centres, rotations and part numbers are in the placement table (last sheets), measured from the datum (top view)."
   ],
   "assy_sheets": [
@@ -475,13 +482,13 @@
         {
           "page": 2,
           "src": [
-            129.0,
+            95.0,
             68.0,
             314.0,
             208.0
           ],
           "at": [
-            110.0,
+            90.0,
             78.0
           ],
           "k": 1.05
