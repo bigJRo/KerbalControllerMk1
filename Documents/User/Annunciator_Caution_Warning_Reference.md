@@ -2,7 +2,7 @@
 
 **Document type:** User
 **Location:** `Documents/User/Annunciator_Caution_Warning_Reference.md`
-**Applies to:** KCMk1_Annunciator firmware 3.10.0
+**Applies to:** KCMk1_Annunciator firmware 3.10.1
 
 The Caution & Warning (C&W) panel is the 5 × 5 grid of indicator tiles on the Annunciator's
 Main screen, to the right of the MASTER ALARM button. Every tile is evaluated continuously
@@ -118,7 +118,7 @@ lights when its bit is set. None of them sound an audio cue.
 | **DEMO** (1×1) | The system is running in demo mode — panel values are generated internally rather than taken from KSP. | White on **blue** | 0 |
 | **WARP** (1×2) | Time warp is active (rate above 1×). | Dark grey on **yellow** | 1 |
 | **AUDIO** (1×3) | Audio cues are enabled on the Annunciator (`audioEnabled`). Off means the panel is silent, including the master alarm. | White on **green** | 2 |
-| **A/P ARM** (1×4) | The A/P INHIB / ARM switch is at ARM: autopilots may engage. At INHIB nothing engages and engaged console autopilots drop. (Tile read THRTL ENA before v3.9.) | White on **green** | 3 |
+| **A/P ENAB** (1×4) | The A/P INHIB / ENAB switch is at ENAB: autopilots may engage. At INHIB nothing engages and engaged console autopilots drop. (Tile read THRTL ENA before v3.9 and A/P ARM before v3.10.1.) | White on **green** | 3 |
 | **TRIM** (1×5) | A rotation-stick trim offset is set (TRIM SET); it is added to the stick until it is cleared. | White on **aqua** | 4 |
 | **AUTOPILOT** (1×6) | An autopilot mode on the master (ascent, hold, burn, landing or mission) is engaged. | White on **green** | 5 |
 | **DEBUG** (2×1) | Serial debug output is enabled on the panel. | White on **purple** | 6 |

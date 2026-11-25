@@ -122,7 +122,7 @@ static Scenario* kbc_ui() {
 }
 static Scenario* kbc_function() {
     return new KbcScenario({
-        {"LES", 1}, {"FAIRING", 0}, {"AIR INTAKE", 3}, {"LOCK SURF", 2}, {"AIR BRAKE", 5}, {"FLAPS", 4}, {"ENGINE ALT", 7}, {"SCI COLLECT", 6}, {"ENG GROUP 1", 9}, {"SCI GROUP 1", 8}, {"ENG GROUP 2", 11}, {"SCI GROUP 2", 10}, {"MSTR", 16, "RESET", "OPER", true}, {"DISP", 17, "CLR", "OPER", true}, {"SCE", 18, "AUX", "NORM", false}, {"UPTLM", 19, "XMIT", "INHIB", false}, {"LTG", 20, "TEST", "NORM", true}, {"A/P", 21, "ARM", "INHIB", false}, {"ENGINE", 22, "ARM", "SAFE", false}, {"THRTL", 23, "FINE", "STD", false}},
+        {"LES", 1}, {"FAIRING", 0}, {"AIR INTAKE", 3}, {"LOCK SURF", 2}, {"AIR BRAKE", 5}, {"FLAPS", 4}, {"ENGINE ALT", 7}, {"SCI COLLECT", 6}, {"ENG GROUP 1", 9}, {"SCI GROUP 1", 8}, {"ENG GROUP 2", 11}, {"SCI GROUP 2", 10}, {"MSTR", 16, "RESET", "OPER", true}, {"DISP", 17, "CLR", "OPER", true}, {"SCE", 18, "AUX", "NORM", false}, {"UPTLM", 19, "XMIT", "INHIB", false}, {"LTG", 20, "TEST", "NORM", true}, {"A/P", 21, "ENAB", "INHIB", false}, {"ENGINE", 22, "ARM", "SAFE", false}, {"THRTL", 23, "FINE", "STD", false}},
         {{255, 80, 0}, {255, 0, 0}, {14, 165, 233}, {20, 184, 166}, {80, 200, 160}, {6, 182, 212}, {120, 0, 220}, {255, 60, 0}, {60, 0, 200}, {234, 179, 8}, {0, 0, 255}, {163, 230, 53}});
 }
 static Scenario* kbc_stability() {

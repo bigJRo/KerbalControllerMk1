@@ -1,5 +1,5 @@
 /***************************************************************************************
-   interlocks.h — ENGINE SAFE / ARM and A/P INHIB / ARM (design §8.2), and the "drop"
+   interlocks.h — ENGINE SAFE / ARM and A/P INHIB / ENAB (design §8.2), and the "drop"
    notices that tell HOLD and the autopilots to disengage.
 
    ENGINE (Switch Group 1 B22):

@@ -358,7 +358,7 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 | B18 | SCE NORM / AUX | Latching | Demo mode off / on (§10.1) |
 | B19 | UPTLM INHIB / XMIT | Latching | Debug mode off / on (§10.2) |
 | B20 | LTG NORM / TEST | Momentary | Bulb test while held |
-| B21 | A/P INHIB / ARM | Latching | Autopilot master arm |
+| B21 | A/P INHIB / ENAB | Latching | Autopilot master arm |
 | B22 | ENGINE SAFE / ARM | Latching | Throttle interlock |
 | B23 | THRTL STD / FINE | Latching | Throttle-module precision |
 
@@ -376,9 +376,9 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 - **THRTL FINE reaches the module only while ARMED.** In FINE the lever position is not the throttle, so the master drives the lever with FINE off. The Annunciator's THRTL PREC still shows the switch.
 - **Until stage 5,** the 0 % is sent once on SAFE, on ARM and on entering a flight scene. Stage 5's per-frame throttle sends it continuously while not ARMED.
 
-**A/P INHIB / ARM (B21):**
+**A/P INHIB / ENAB (B21):**
 - **INHIB:** no console autopilot can engage, and switching to INHIB disconnects every engaged one (reason A/P INHIB).
-- **ARM:** consoles work as normal.
+- **ENAB:** consoles work as normal.
 - **HOLD is not affected** by this switch (§8.4).
 
 ### 8.3 Switch Group 2 (Vehicle Control B16–B23) and SWITCH ERR
@@ -420,7 +420,7 @@ The button maps, labels and layouts are in **Inventory §10** and are not repeat
 
 Current mode and availability come from Simpit `SAS_MODE_INFO` (mode 255 = SAS off; `SASModeAvailability` bitmask).
 
-**HOLD (B10):** a temporary hold of the current condition. It is not gated by A/P ARM, and A/P INHIB does not drop it.
+**HOLD (B10):** a temporary hold of the current condition. It is not gated by A/P ENAB, and A/P INHIB does not drop it.
 
 | Control mode | Holds | How |
 |---|---|---|
@@ -560,7 +560,7 @@ The availability rules are checked against Simpit on the bench.
 | DEMO | SCE |
 | WARP | Simpit |
 | AUDIO | AUDIO switch |
-| **A/P ARM** (bit 3, was THRTL ENA) | A/P INHIB / ARM switch (tile relabelled in Annunciator v3.9) |
+| **A/P ENAB** (bit 3, was THRTL ENA, then A/P ARM) | A/P INHIB / ENAB switch (tile relabelled in Annunciator v3.9 and v3.10.1) |
 | TRIM | Master trim set |
 | AUTOPILOT | Any autopilot or HOLD engaged |
 | DEBUG | UPTLM |

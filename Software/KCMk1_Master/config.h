@@ -11,7 +11,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define KCM_MASTER_VERSION "0.10.3"
+#define KCM_MASTER_VERSION "0.10.4"
 static const uint8_t KCM_MASTER_VERSION_MAJOR = 0;
 static const uint8_t KCM_MASTER_VERSION_MINOR = 10;
 

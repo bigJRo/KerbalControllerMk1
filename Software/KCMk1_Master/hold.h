@@ -1,6 +1,6 @@
 /***************************************************************************************
    hold.h — HOLD (Stability Control B10): a temporary hold of the current condition
-   (design §8.4, Inventory §8.7). Not gated by A/P ARM; A/P INHIB does not drop it.
+   (design §8.4, Inventory §8.7). Not gated by A/P ENAB; A/P INHIB does not drop it.
 
      SPC  attitude: KSP SAS on, mode Stability Assist. On release SAS goes back to what
           it was (off, or its previous mode).

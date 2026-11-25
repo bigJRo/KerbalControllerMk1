@@ -49,7 +49,7 @@
  *                KBC index 18 → SCE      (NORM / AUX)
  *                KBC index 19 → UPTLM    (INHIB / XMIT)
  *                KBC index 20 → LTG      (NORM / TEST)
- *                KBC index 21 → A/P      (INHIB / ARM)
+ *                KBC index 21 → A/P      (INHIB / ENAB)
  *                KBC index 22 → ENGINE   (SAFE / ARM)
  *                KBC index 23 → THRTL    (STD / FINE)
  *              Switch semantics and controller actions are resolved on the

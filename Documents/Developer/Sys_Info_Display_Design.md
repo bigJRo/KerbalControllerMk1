@@ -309,7 +309,7 @@ This is new: today's spec covers only the boot screen (§7.4).
 | 3 | SCE | NORM | AUX | | 11 | BRAKE | REL | LOCK |
 | 4 | UPTLM | INHIB | XMIT | | 12 | EXT LT | OFF | ILLUM |
 | 5 | LTG | NORM | TEST | | 13 | SAS | OFF | ENAB |
-| 6 | A/P | INHIB | ARM | | 14 | RCS | OFF | ENAB |
+| 6 | A/P | INHIB | ENAB | | 14 | RCS | OFF | ENAB |
 | 7 | ENGINE | SAFE | ARM | | 15 | THC/RHC | NORM | PREC |
 | 8 | THRTL | STD | FINE | | 16 | AUDIO | MUTE | LIVE |
 

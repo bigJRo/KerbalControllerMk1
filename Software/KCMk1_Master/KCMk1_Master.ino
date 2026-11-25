@@ -19,7 +19,7 @@
    Stage 2 (module bus): module table, INT line learning, start-up, reads and events,
    LEDs, lifecycle.
    Stage 3 (switches and interlocks): Switch Groups 1 and 2, SWITCH ERR, ENGINE SAFE /
-   ARM, A/P INHIB / ARM, the mode selector, ABORT and STAGE, demo and debug.
+   ARM, A/P INHIB / ENAB, the mode selector, ABORT and STAGE, demo and debug.
    Stage 4 (flight panels): Vehicle, Stability (SAS modes, HOLD, INVERT), Action, AUX,
    Dual Encoder; the CAG numbering and keyboard events.
    Stage 5 (sticks and throttle): the per-frame control channels and the autopilot

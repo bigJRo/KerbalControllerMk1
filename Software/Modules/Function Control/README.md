@@ -78,7 +78,7 @@ Reported in the button-event payload (inputs 16–23). Switch semantics and cont
 | B18 | SCE | NORM / AUX |
 | B19 | UPTLM | INHIB / XMIT |
 | B20 | LTG | NORM / TEST |
-| B21 | A/P | INHIB / ARM |
+| B21 | A/P | INHIB / ENAB |
 | B22 | ENGINE | SAFE / ARM |
 | B23 | THRTL | STD / FINE |
 

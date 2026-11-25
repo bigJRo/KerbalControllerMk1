@@ -4,7 +4,7 @@ The small portrait screen on Panel A2 (I2C 0x14, slot P2). It has no touch and n
 
 | | |
 |---|---|
-| **Version** | 1.0.0 (`SYSINFO_VERSION`, `KCMk1_SysInfo.h`) |
+| **Version** | 1.0.1 (`SYSINFO_VERSION`, `KCMk1_SysInfo.h`). 1.0.1: the A/P switch reads INHIB / ENAB (was ARM) |
 | **Board** | 2" TFT Display Driver KC-01-1901 / 1902 V2.0: Seeed XIAO RP2350, ER-TFTM020-2 240 × 320 IPS (ST7789) used in portrait, microSD on the same SPI bus |
 | **Design** | `Documents/Developer/Sys_Info_Display_Design.md` (Draft 3, built) |
 | **Protocol** | `Documents/Developer/I2C_Protocol_Specification.md` §15.4 (v2.21); master side `Software/KCMk1_Master/sysinfo.*` (v0.10.0 or later) |

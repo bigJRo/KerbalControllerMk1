@@ -26,7 +26,7 @@ extern "C" {
 /***************************************************************************************
    SKETCH VERSION (MAJOR.MINOR.PATCH), reported in the status read
 ****************************************************************************************/
-#define SYSINFO_VERSION "1.0.0"
+#define SYSINFO_VERSION "1.0.1"
 static const uint8_t SYSINFO_VERSION_MAJOR = 1;
 static const uint8_t SYSINFO_VERSION_MINOR = 0;
 

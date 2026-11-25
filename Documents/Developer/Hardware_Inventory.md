@@ -234,7 +234,7 @@ V2.1 adds the 200 kΩ PCA9306 VREF2/EN pull-up (R19) with C2 (100 pF) on that no
 | B18 | U16-4 | SCE | NORM / AUX | Latching | Demo mode off / on |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching | Debug telemetry |
 | B20 | U17-4 | LTG | NORM / TEST | Momentary | Bulb test |
-| B21 | U17-3 | A/P | INHIB / ARM | Latching | Autopilot master arm (§8) |
+| B21 | U17-3 | A/P | INHIB / ENAB | Latching | Autopilot master arm (§8) |
 | B22 | U17-2 | ENGINE | SAFE / ARM | Latching | Throttle interlock (§8). Renamed from THROTTLE INOP / ACT |
 | B23 | U17-1 | THRTL | STD / FINE | Latching | Throttle precision |
 
@@ -308,12 +308,12 @@ These go into the firmware design once the panel review is finished.
 - **Annunciator:** ENG ARM shows the switch.
 - **Hardware note:** the Throttle Module refuses lever commands while disabled or touched, so the module stays enabled in SAFE and the master re-sends the 0 % target until the lever reports it.
 
-### 8.2 A/P INHIB / ARM (Switch Group 1, B21)
+### 8.2 A/P INHIB / ENAB (Switch Group 1, B21)
 
 - **INHIB:** no autopilot can engage; moving the switch to INHIB disconnects every engaged autopilot (reason A/P INHIB).
-- **ARM:** autopilots can be engaged from the consoles as before.
+- **ENAB:** autopilots can be engaged from the consoles as before. (Called ARM until 2026-11-25; renamed so it does not repeat ENGINE SAFE / ARM beside it.)
 - **Annunciator:** two lights, both in mode row 0.
-  - **A/P ARM** shows the switch: lit on ARM, dark on INHIB. It replaces THRTL ENA, keeping the same mode-flag bit (bit 3), so only the tile label changes in the Annunciator firmware, along with its references and the user manual.
+  - **A/P ENAB** shows the switch: lit on ENAB, dark on INHIB. It replaces THRTL ENA, keeping the same mode-flag bit (bit 3), so only the tile label changes in the Annunciator firmware, along with its references and the user manual.
   - **AUTOPILOT** (unchanged) is lit while any autopilot or HOLD is engaged.
 
 ### 8.3 Autopilots and the physical lever
@@ -347,7 +347,7 @@ One gap, found in the module firmware: **in precision (FINE) mode the lever posi
 
 ### 8.7 HOLD (Stability B10)
 
-HOLD is a temporary hold of the current condition. It is *not* gated by A/P ARM, and A/P INHIB does not drop it.
+HOLD is a temporary hold of the current condition. It is *not* gated by A/P ENAB, and A/P INHIB does not drop it.
 
 | Control mode | Holds | How |
 |---|---|---|
@@ -406,7 +406,7 @@ The candidates considered for B10 were: HOLD, controller pointing layer, kill ro
 | 5 | KSP link | Connect / disconnect, scene and vessel changes |
 | 6 | Autopilots | Engage / disengage with the reason; HOLD |
 | 7 | INT traffic | Each INT received and the packet that followed (decoded) |
-| 8 | Master state | Every change of a state / config variable (control mode, control group, precision, audio, demo, A/P ARM, ENGINE ARM, trim, …) |
+| 8 | Master state | Every change of a state / config variable (control mode, control group, precision, audio, demo, A/P ENAB, ENGINE ARM, trim, …) |
 | 9 | Timing | Loop time (average / worst per second) |
 | 10–17 | Additions | Below |
 

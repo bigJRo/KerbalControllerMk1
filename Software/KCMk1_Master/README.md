@@ -4,7 +4,7 @@ The new master firmware for the Kerbal Controller Mk1: Teensy 4.1 on the Ctrl Mo
 
 | | |
 |---|---|
-| **Version** | 0.10.3 (`KCM_MASTER_VERSION`, `config.h`). 0.10.3: the INT lines have the Teensy's 100 kΩ pull-down, so an empty slot's line no longer floats during INT learning; EXT_INT_2 has the pull-up. 0.10.2: ENGINE SAFE shows the ENG SAFE reason on the aircraft, rover and landing consoles too, not only the orbital one. 0.10.1: the ascent autopilot disarms on a vessel or scene change, like the other autopilots |
+| **Version** | 0.10.4 (`KCM_MASTER_VERSION`, `config.h`). 0.10.4: the A/P switch's on position is named ENAB (was ARM) on the boot screen, console and log, matching the panel engraving. 0.10.3: the INT lines have the Teensy's 100 kΩ pull-down, so an empty slot's line no longer floats during INT learning; EXT_INT_2 has the pull-up. 0.10.2: ENGINE SAFE shows the ENG SAFE reason on the aircraft, rover and landing consoles too, not only the orbital one. 0.10.1: the ascent autopilot disarms on a vessel or scene change, like the other autopilots |
 | **Design** | `Documents/Developer/Master_Firmware_Design.md` |
 | **Hardware** | `Documents/Developer/Hardware_Inventory.md` |
 | **Protocols** | `Documents/Developer/I2C_Protocol_Specification.md` (display carriers, BACKLIGHT and input test frames: §15.3; Sys Info Display: §15.4) |

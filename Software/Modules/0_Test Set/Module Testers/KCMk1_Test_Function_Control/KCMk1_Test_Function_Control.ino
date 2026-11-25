@@ -52,7 +52,7 @@ static const KtcWalkItem SWITCHES[] = {
     { "SCE", 18, nullptr, false, "Return SCE to NORM", "Set SCE to AUX" },
     { "UPTLM", 19, nullptr, false, "Return UPTLM to INHIB", "Set UPTLM to XMIT" },
     { "LTG", 20, nullptr, false, "Release LTG to NORM", "Hold LTG at TEST" },   // momentary
-    { "A/P", 21, nullptr, false, "Return A/P to INHIB", "Set A/P to ARM" },
+    { "A/P", 21, nullptr, false, "Return A/P to INHIB", "Set A/P to ENAB" },
     { "ENGINE", 22, nullptr, false, "Return ENGINE to SAFE", "Set ENGINE to ARM" },
     { "THRTL", 23, nullptr, false, "Return THRTL to STD", "Set THRTL to FINE" },
 };

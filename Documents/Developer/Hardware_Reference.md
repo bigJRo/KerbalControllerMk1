@@ -236,7 +236,7 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 | B18 | U16-4 | SCE | NORM / AUX | Latching |
 | B19 | U16-3 | UPTLM | INHIB / XMIT | Latching |
 | B20 | U17-4 | LTG | NORM / TEST | Momentary |
-| B21 | U17-3 | A/P | INHIB / ARM | Latching |
+| B21 | U17-3 | A/P | INHIB / ENAB | Latching |
 | B22 | U17-2 | ENGINE | SAFE / ARM | Latching |
 | B23 | U17-1 | THRTL | STD / FINE | Latching |
 
