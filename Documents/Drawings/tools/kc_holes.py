@@ -14,9 +14,12 @@ datum (lower-left corner of the panel outline, X right, Y up), tags the holes by
 
 The view's "hole_view" settings: {"max_dia": 8, "at": [x, y] (sheet mm, top-left of the
 tables), "split": 2 (hole table columns), "gap": 6, "summary_at": [x, y] (the size summary;
-default below the hole table)}. The outline is the largest closed path on
-the page; Illustrator's PDF layer carries a uniform scale (about 0.9995) on every path, which
-is divided out so positions are in the design's mm.
+default below the hole table)}. Tags and tables made by hand go in the view's "extra_tags" and
+the sheet's "extra_tables"; they are added to what this writes.
+
+The outline is the largest closed path on the page; Illustrator's PDF layer carries a uniform
+scale (about 0.9995) on every path, which is divided out so positions are in the design's mm.
+A plate with no production file can be read from a cut file made by kc_step2d.py.
 """
 import argparse
 import json
@@ -59,7 +62,10 @@ def holes(pdf, page, max_dia):
         w, h = x1 - x0, y1 - y0
         if p["red"] and p["curves"] == 4 and p["lines"] == 0 and abs(w - h) < 0.05 and w <= max_dia:
             cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
-            found.append(dict(dia=round(w / f, 1), x=round((cx - ox0) / f, 2), y=round((oy1 - cy) / f, 2),
+            d = round(w / f, 2)
+            if abs(d - round(d, 1)) < 0.015:      # a round size (3.2) stays round; 4.76 keeps its hundredths
+                d = round(d, 1)
+            found.append(dict(dia=d, x=round((cx - ox0) / f, 2), y=round((oy1 - cy) / f, 2),
                               src=[round(cx, 3), round(cy, 3)], r=w / 2))
     size = (round((ox1 - ox0) / f, 2), round((oy1 - oy0) / f, 2))
     return found, [round(ox0, 3), round(oy1, 3)], size
@@ -98,7 +104,7 @@ def main():
                   + ", ".join(f"{letter[d]} Ø{fmt(d)} x{sum(1 for h in found if h['dia'] == d)}" for d in dias))
             if not a.write:
                 continue
-            v["tags"] = tags
+            v["tags"] = tags + v.get("extra_tags", [])            # hand-placed tags are kept
             v["datum"] = {"at": datum, "len": hv.get("datum_len", 10)}
             split, gap = hv.get("split", 2), hv.get("gap", 6)
             cols = [["TAG", 10, "middle"], ["X", 16, "end"], ["Y", 16, "end"], ["SIZE", 14, "middle"]]
@@ -116,7 +122,7 @@ def main():
             tables.append({"at": hv.get("summary_at", [x, ys]), "title": "HOLE SIZES",
                            "cols": [["TAG", 10, "middle"], ["SIZE", 30, "start"], ["QTY", 12, "middle"]],
                            "rows": summary, "size": hv.get("size", 2.2)})
-            sh["tables"] = tables
+            sh["tables"] = tables + sh.get("extra_tables", [])     # and so are hand-made tables
     if a.write:
         json.dump(cfg, open(a.config, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
         open(a.config, "a").write("\n")

@@ -948,6 +948,30 @@ def doc_assy(cfg, work, d="0", vd=None):
                     s.text(tx, ty, t, size=2.4, weight="bold", c="#c0392b")
                 s.circle(cx, cy, 0.7, sw=0.3, c="#c0392b")
                 s.text(cx - 1.4, cy + 3.2, "0,0", size=2.0, anchor="end", c="#c0392b")
+            for dm in v.get("dims", []):
+                # {"h": [x1, x2, y]} or {"v": [y1, y2, x]} in source mm, "off": sheet mm from the
+                # feature to the dimension line (negative = up / left), "text": the value shown
+                off = dm.get("off", -6)
+                if "h" in dm:
+                    x1, x2, yy = dm["h"]
+                    (X1, Yr), (X2, _) = to_sheet(x1, yy), to_sheet(x2, yy)
+                    yd = Yr + off
+                    dim_h(s, X1, X2, yd, yd - 1.0 if off < 0 else yd + 3.4, dm["text"], ext_from=Yr, size=dm.get("size", 2.6))
+                else:
+                    y1, y2, xx = dm["v"]
+                    (Xr, Y1), (_, Y2) = to_sheet(xx, y1), to_sheet(xx, y2)
+                    dim_v(s, Y1, Y2, Xr + off, dm["text"], ext_from=Xr, size=dm.get("size", 2.6))
+            for co in v.get("callouts", []):
+                # {"at": [x, y] source mm, "to": [dx, dy] sheet mm, "text": str or [lines]}
+                px, py = to_sheet(*co["at"])
+                dx, dy = co["to"]
+                s.line(px, py, px + dx, py + dy, 0.18)
+                s.circle(px, py, 0.35, sw=0, fill=INK)
+                lines = co["text"] if isinstance(co["text"], list) else [co["text"]]
+                fs = co.get("size", 2.5)
+                for i, ln in enumerate(lines):
+                    s.text(px + dx + (0.8 if dx >= 0 else -0.8), py + dy + fs * 0.35 + i * fs * 1.3, ln,
+                           size=fs, anchor="start" if dx >= 0 else "end")
             if v.get("label"):
                 s.text(X + w / 2, Y + h + 5, v["label"], size=2.8, anchor="middle", weight="bold")
                 if v.get("sublabel"):

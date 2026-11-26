@@ -9,7 +9,9 @@ history. The released PDFs are in `Documents/Drawings`.
 |---|---|---|
 | `KC-01-1060.json` | Package config: document types, titles, revisions, release status, view crops and placement, line weight, parts list and notes | both drawings |
 | `Fusion_KC-01-1060_Top_Panel_Complete_2026-11-25.pdf` | Fusion assembly drawing export (4 sheets): views, balloons and the Fusion parts list | 1060 ASSY |
-| `Fusion_KC-01-1061_Top_Cover_Plate_2026-11-25.pdf` | Fusion plate drawing export (2 sheets): views, overall dimensions, hole locations and hole table | 1061 PART |
+| `Fusion_KC-01-1061_Top_Cover_Plate_2026-11-25.pdf` | Fusion plate drawing export (2 sheets): views, overall dimensions, hole locations and hole table | 1061 PART sheet 1 (views) |
+| `Top_Cover_Plate_2026-11-25.step` | The plate model (owner): the plate and the two grilles, each grille a separate body in its opening | the cut file |
+| `Top_Cover_Plate_Cut_2026-11-26.pdf` | The plate's top face flattened to 1:1 by `tools/kc_step2d.py`: outline, cuts in red (like a production file's cut layer), grille openings as grey reference | 1061 PART sheet 2 (hole locations, hole table, detail A) |
 
 ## Review notes (2026-11-26)
 
@@ -31,18 +33,33 @@ history. The released PDFs are in `Documents/Drawings`.
   - It is screwed down (owner, 2026-11-25), not glued: the 2022 note "all edges machined for
     gluing" is dropped.
   - The six Ø4.76 bracket holes are unchanged.
-- **Hole table:** the plate's hole table is Fusion's own, cropped from its sheet 2. Fusion
-  gives depths of 6.00 and 10.00 mm; both mean through the 6 mm plate.
-- **Open: speaker grilles.** The two obround perforated grilles are not dimensioned in either
-  Fusion drawing (pattern size, hole size and pitch). Note 3 of the plate drawing refers to the
-  model until they are defined.
+- **Hole table:**
+  - Generated like the panels' (owner, 2026-11-26), by `tools/kc_holes.py` from the cut file.
+  - A Ø3.4 × 8 (speaker screws) and B Ø4.76 × 6 (enclosure brackets).
+  - Datum: the lower-left corner, as in the model.
+- **Speaker grilles:**
+  - The grilles are cut in one piece with the plate (owner, 2026-11-26), although the model
+    has each as its own body.
+  - Each is a 55.00 × 29.00 obround (R14.50) centred at X 349.00 / 513.00, Y 45.13: the
+    centres of the speaker screw patterns.
+  - In it are 100 diamond holes (squares at 45°, 4.00 across corners), at alternate positions
+    of a 2.475 mm square grid centred on the grille. Every position whose diamond lies inside
+    the obround is cut.
+  - The webs between diamonds are about 0.67 mm.
+  - Detail A on sheet 2 gives the grille. The pattern centre is 0.02 mm off the obround centre
+    in the model, which is within tolerance.
+- **Dimensions:** overall 862.00 × 78.27 × 6.00 on sheet 1, and again on the hole locations
+  view.
 - **Line weight:** the drawings scale every Fusion stroke by `line_scale` 0.35, as on the
   panels.
 
 ## Regenerating the drawings
 
 ```
+python Documents/Drawings/tools/kc_step2d.py Documents/Drawings/source/KC-01-1060/Top_Cover_Plate_2026-11-25.step \
+    Documents/Drawings/source/KC-01-1060/Top_Cover_Plate_Cut_2026-11-26.pdf
 python Documents/Drawings/tools/kc_strays.py Documents/Drawings/source/KC-01-1060/KC-01-1060.json --write
+python Documents/Drawings/tools/kc_holes.py  Documents/Drawings/source/KC-01-1060/KC-01-1060.json --doc 1 --write
 python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1060/KC-01-1060.json --out <output folder>
 ```

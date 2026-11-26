@@ -298,6 +298,26 @@
               "at": [
                 112,
                 52
+              ],
+              "dims": [
+                {
+                  "h": [
+                    114.98,
+                    402.39,
+                    63.02
+                  ],
+                  "off": -7,
+                  "text": "862.00"
+                },
+                {
+                  "v": [
+                    63.02,
+                    89.18,
+                    114.98
+                  ],
+                  "off": -11,
+                  "text": "78.27"
+                }
               ]
             },
             {
@@ -311,8 +331,19 @@
               "k": 1.0,
               "label": "SIDE VIEW",
               "at": [
-                92.7,
+                80.7,
                 52.0
+              ],
+              "dims": [
+                {
+                  "h": [
+                    65.27,
+                    67.3,
+                    63.02
+                  ],
+                  "off": -7,
+                  "text": "6.00"
+                }
               ]
             },
             {
@@ -368,35 +399,549 @@
           "scale": 0.3333333333333333,
           "views": [
             {
-              "page": 2,
+              "pdf": "Top_Cover_Plate_Cut_2026-11-26.pdf",
+              "page": 1,
               "src": [
-                48.4,
-                32.4,
-                362.4,
-                83.5
+                7.0,
+                6.5,
+                875.0,
+                92.0
               ],
-              "k": 1.0,
-              "label": "HOLE LOCATIONS",
-              "sublabel": "Datum: lower-left corner. X right, Y up. Dimensions in mm.",
+              "k": 0.3333333333333333,
+              "line_scale": 1.0,
+              "keep_paths": "fill=\"none\"",
+              "label": "HOLE LOCATIONS (TOP FACE, FROM THE MODEL)",
+              "sublabel": "Datum: lower-left corner. X right, Y up. Dimensions in mm. Grilles G1 and G2: detail A.",
+              "dims": [
+                {
+                  "h": [
+                    10.0,
+                    872.0,
+                    10.159999999999997
+                  ],
+                  "off": -6,
+                  "text": "862.00"
+                },
+                {
+                  "v": [
+                    10.159999999999997,
+                    88.425,
+                    10.0
+                  ],
+                  "off": -8,
+                  "text": "78.27"
+                }
+              ],
+              "extra_tags": [
+                {
+                  "at": [
+                    353.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G1",
+                  "size": 2.2
+                },
+                {
+                  "at": [
+                    517.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G2",
+                  "size": 2.2
+                }
+              ],
+              "hole_view": {
+                "max_dia": 8,
+                "at": [
+                  252,
+                  110
+                ],
+                "split": 1,
+                "gap": 6,
+                "summary_at": [
+                  316,
+                  110
+                ]
+              },
               "at": [
-                53.0,
-                48
-              ]
+                65.3,
+                52
+              ],
+              "tags": [
+                {
+                  "at": [
+                    327.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A1"
+                },
+                {
+                  "at": [
+                    391.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A2"
+                },
+                {
+                  "at": [
+                    491.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A3"
+                },
+                {
+                  "at": [
+                    555.0,
+                    31.292
+                  ],
+                  "r": 1.7,
+                  "text": "A4"
+                },
+                {
+                  "at": [
+                    327.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A5"
+                },
+                {
+                  "at": [
+                    391.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A6"
+                },
+                {
+                  "at": [
+                    491.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A7"
+                },
+                {
+                  "at": [
+                    555.0,
+                    55.292
+                  ],
+                  "r": 1.7,
+                  "text": "A8"
+                },
+                {
+                  "at": [
+                    46.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B1"
+                },
+                {
+                  "at": [
+                    296.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B2"
+                },
+                {
+                  "at": [
+                    586.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B3"
+                },
+                {
+                  "at": [
+                    836.0,
+                    26.66
+                  ],
+                  "r": 2.38,
+                  "text": "B4"
+                },
+                {
+                  "at": [
+                    26.5,
+                    65.161
+                  ],
+                  "r": 2.38,
+                  "text": "B5"
+                },
+                {
+                  "at": [
+                    855.5,
+                    65.161
+                  ],
+                  "r": 2.38,
+                  "text": "B6"
+                },
+                {
+                  "at": [
+                    353.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G1",
+                  "size": 2.2
+                },
+                {
+                  "at": [
+                    517.0,
+                    40.925
+                  ],
+                  "r": 0.0,
+                  "text": "G2",
+                  "size": 2.2
+                }
+              ],
+              "datum": {
+                "at": [
+                  10.0,
+                  88.425
+                ],
+                "len": 10
+              }
             },
             {
-              "page": 2,
+              "pdf": "Top_Cover_Plate_Cut_2026-11-26.pdf",
+              "page": 1,
               "src": [
-                45.2,
-                108.0,
-                199.2,
-                234.3
+                329.5,
+                24.425,
+                388.5,
+                62.425
               ],
-              "k": 1.0,
+              "k": 2.0,
+              "line_scale": 1.0,
+              "keep_paths": "fill=\"none\"",
               "at": [
                 30,
-                114
+                116
               ],
-              "label": "HOLE TABLE"
+              "label": "DETAIL A: SPEAKER GRILLE G1 (2:1)",
+              "sublabel": "G2 is the same, 164.00 to the right.",
+              "dims": [
+                {
+                  "h": [
+                    331.5,
+                    386.5,
+                    28.792
+                  ],
+                  "off": -11,
+                  "text": "55.00"
+                },
+                {
+                  "v": [
+                    28.792,
+                    57.792,
+                    386.5
+                  ],
+                  "off": 9,
+                  "text": "29.00"
+                },
+                {
+                  "h": [
+                    358.976,
+                    361.451,
+                    28.792
+                  ],
+                  "off": -4,
+                  "text": "2.475",
+                  "size": 2.3
+                },
+                {
+                  "v": [
+                    43.292,
+                    40.817,
+                    331.5
+                  ],
+                  "off": -7,
+                  "text": "2.475",
+                  "size": 2.3
+                }
+              ],
+              "callouts": [
+                {
+                  "at": [
+                    335.747,
+                    33.039
+                  ],
+                  "to": [
+                    -6,
+                    -12
+                  ],
+                  "text": "R14.50 (2×)"
+                },
+                {
+                  "at": [
+                    375.826,
+                    45.767
+                  ],
+                  "to": [
+                    40,
+                    22
+                  ],
+                  "text": [
+                    "100 × ◇ 4.00 across corners THRU,",
+                    "square at 45°; grid 2.475 × 2.475, alternate",
+                    "positions, centred on the grille; every",
+                    "diamond inside the obround (webs ≈ 0.67)"
+                  ],
+                  "size": 2.2
+                }
+              ]
+            }
+          ],
+          "extra_tables": [
+            {
+              "at": [
+                252,
+                184
+              ],
+              "title": "GRILLES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "FEATURE",
+                  62,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "G1",
+                  "349.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ],
+                [
+                  "G2",
+                  "513.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ]
+              ],
+              "size": 2.2
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                252,
+                110
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  14,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "317",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A2",
+                  "381",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A3",
+                  "481",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A4",
+                  "545",
+                  "57.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A5",
+                  "317",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A6",
+                  "381",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A7",
+                  "481",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "A8",
+                  "545",
+                  "33.13",
+                  "Ø3.4"
+                ],
+                [
+                  "B1",
+                  "36",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B2",
+                  "286",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B3",
+                  "576",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B4",
+                  "826",
+                  "61.77",
+                  "Ø4.76"
+                ],
+                [
+                  "B5",
+                  "16.5",
+                  "23.26",
+                  "Ø4.76"
+                ],
+                [
+                  "B6",
+                  "845.5",
+                  "23.26",
+                  "Ø4.76"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                316,
+                110
+              ],
+              "title": "HOLE SIZES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "SIZE",
+                  30,
+                  "start"
+                ],
+                [
+                  "QTY",
+                  12,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A",
+                  "Ø3.4 THRU",
+                  "8"
+                ],
+                [
+                  "B",
+                  "Ø4.76 THRU",
+                  "6"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                252,
+                184
+              ],
+              "title": "GRILLES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "FEATURE",
+                  62,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "G1",
+                  "349.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ],
+                [
+                  "G2",
+                  "513.00",
+                  "45.13",
+                  "55.00 × 29.00 obround grille, detail A"
+                ]
+              ],
+              "size": 2.2
             }
           ]
         }
@@ -404,9 +949,9 @@
       "parts": [],
       "notes": [
         "1. Material: acrylic, opaque black, 6.00 mm. Supplier: TAP Plastics.",
-        "2. Outline 862.00 × 78.27 mm. All edges machined.",
-        "3. Holes as the hole table (sheet 2): A1–A6 Ø4.76 for the enclosure brackets, B1–B8 Ø3.4 for the speaker screws. Speaker grilles as the model.",
-        "4. Sheets at 1:3 on A3; isometric view not to scale."
+        "2. Outline 862.00 × 78.27 × 6.00 mm. All edges machined.",
+        "3. Holes as the hole table (sheet 2): A Ø3.4 for the speaker screws, B Ø4.76 for the enclosure brackets. Speaker grilles G1 and G2 as detail A, cut through in one piece with the plate.",
+        "4. Sheet 1 at 1:3 (isometric view not to scale); sheet 2 at 1:3, detail A at 2:1, on A3."
       ]
     }
   }
