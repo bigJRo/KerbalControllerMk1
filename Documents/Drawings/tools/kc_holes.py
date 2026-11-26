@@ -13,7 +13,8 @@ datum (lower-left corner of the panel outline, X right, Y up), tags the holes by
     python3 kc_holes.py CONFIG [--doc 1] [--write]
 
 The view's "hole_view" settings: {"max_dia": 8, "at": [x, y] (sheet mm, top-left of the
-tables), "split": 2 (hole table columns), "gap": 6}. The outline is the largest closed path on
+tables), "split": 2 (hole table columns), "gap": 6, "summary_at": [x, y] (the size summary;
+default below the hole table)}. The outline is the largest closed path on
 the page; Illustrator's PDF layer carries a uniform scale (about 0.9995) on every path, which
 is divided out so positions are in the design's mm.
 """
@@ -112,7 +113,7 @@ def main():
                                    "cols": cols, "rows": part, "size": hv.get("size", 2.2)})
             rh = hv.get("size", 2.2) * 1.9
             ys = y + 5.2 + per * rh + 12
-            tables.append({"at": [x, ys], "title": "HOLE SIZES",
+            tables.append({"at": hv.get("summary_at", [x, ys]), "title": "HOLE SIZES",
                            "cols": [["TAG", 10, "middle"], ["SIZE", 30, "start"], ["QTY", 12, "middle"]],
                            "rows": summary, "size": hv.get("size", 2.2)})
             sh["tables"] = tables

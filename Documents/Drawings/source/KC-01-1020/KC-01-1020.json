@@ -1,0 +1,726 @@
+{
+  "base": "KC-01-102",
+  "name": "Panel A1",
+  "title": "Panel A1",
+  "subtitle": "Kerbal Controller Mk1 · Main enclosure",
+  "rev": "B",
+  "board_version": "A1",
+  "version_label": "Panel",
+  "date": "2026-11-26",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "01",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ],
+    "1": [
+      "PART",
+      "Part Control Drawing",
+      ""
+    ]
+  },
+  "doc_title": {
+    "0": "Panel A1 Complete",
+    "1": "Panel A1 Base"
+  },
+  "doc_name": {
+    "0": "Panel A1 Complete",
+    "1": "Panel A1 Base"
+  },
+  "doc_status": {
+    "0": "DRAFT",
+    "1": "DRAFT"
+  },
+  "revisions": [
+    [
+      "A",
+      "Initial release (Fusion drawings)",
+      "2026-06-21",
+      "J. Kerman"
+    ],
+    [
+      "B",
+      "KC frame; base module types; hole table",
+      "2026-11-26",
+      "J. Kerman"
+    ]
+  ],
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1020_Panel_A1_Complete_2026-11-25.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                203.9,
+                39.3,
+                377.4,
+                88.7
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW",
+              "auto_masks": true,
+              "at": [
+                226,
+                50
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                112.4,
+                39.3,
+                131.7,
+                88.7
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "auto_masks": true,
+              "at": [
+                194.7,
+                50.0
+              ],
+              "masks": [
+                [
+                  119.13,
+                  86.67,
+                  120.66,
+                  89.2
+                ]
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                204.0,
+                161.0,
+                377.4,
+                180.3
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "auto_masks": true,
+              "at": [
+                226.1,
+                113.4
+              ],
+              "masks": []
+            },
+            {
+              "page": 1,
+              "src": [
+                68.7,
+                144.3,
+                193.1,
+                254.7
+              ],
+              "k": 1.0,
+              "at": [
+                22,
+                50
+              ],
+              "label": "ISOMETRIC VIEW",
+              "auto_masks": true,
+              "masks": []
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 2,
+              "src": [
+                199.9,
+                55.2,
+                373.4,
+                104.5
+              ],
+              "k": 1.0,
+              "label": "REAR VIEW",
+              "auto_masks": true,
+              "at": [
+                226,
+                50
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                104.0,
+                55.2,
+                123.3,
+                104.5
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "auto_masks": true,
+              "at": [
+                194.7,
+                50.0
+              ],
+              "masks": [
+                [
+                  115.18,
+                  102.57,
+                  116.7,
+                  104.98
+                ]
+              ]
+            },
+            {
+              "page": 2,
+              "src": [
+                199.9,
+                163.2,
+                373.2,
+                182.4
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "auto_masks": true,
+              "at": [
+                226.0,
+                113.3
+              ],
+              "masks": []
+            },
+            {
+              "page": 2,
+              "src": [
+                55.2,
+                142.5,
+                179.6,
+                253.1
+              ],
+              "k": 1.0,
+              "at": [
+                22,
+                50
+              ],
+              "label": "ISOMETRIC VIEW (REAR)",
+              "auto_masks": true,
+              "masks": []
+            }
+          ]
+        },
+        {
+          "scale": 0.4,
+          "parts_list": true,
+          "views": [
+            {
+              "page": 3,
+              "src": [
+                60.2,
+                87.2,
+                345.0,
+                206.6
+              ],
+              "k": 0.6666666666666666,
+              "at": [
+                18,
+                100
+              ],
+              "label": "FRONT",
+              "auto_masks": true,
+              "body": [
+                84.3,
+                113.3,
+                340.5,
+                183.6
+              ],
+              "gap": 0.2,
+              "relabel": [
+                {
+                  "at": [
+                    264.75,
+                    93.05
+                  ],
+                  "r": 3.9,
+                  "text": "3",
+                  "size": 5.0
+                }
+              ],
+              "masks": [
+                [
+                  302.52,
+                  183.85,
+                  304.42,
+                  187.15
+                ]
+              ]
+            },
+            {
+              "page": 4,
+              "src": [
+                83.3,
+                79.0,
+                341.7,
+                211.5
+              ],
+              "k": 0.6666666666666666,
+              "at": [
+                218,
+                100
+              ],
+              "label": "REAR",
+              "auto_masks": true,
+              "body": [
+                84.3,
+                114.9,
+                340.5,
+                185.3
+              ],
+              "gap": 0.2,
+              "relabel": [
+                {
+                  "at": [
+                    127.0,
+                    101.75
+                  ],
+                  "r": 3.9,
+                  "text": "3",
+                  "size": 5.0
+                }
+              ],
+              "masks": []
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1021",
+          "name": "Panel A1 Base",
+          "desc": "Acrylic, Stone, 3.00 mm; laser cut; Mfr: Ponoko"
+        },
+        {
+          "qty": 1,
+          "pn": "32000001",
+          "name": "Push Button - 22mm - Metal LED PWR White",
+          "desc": "Metallic momentary self-reset push button, flat head, 3–6 V LED, 22 mm, white, power symbol (POWER: Ctrl Module H1, soft latch)"
+        },
+        {
+          "qty": 2,
+          "pn": "KC-01-1910",
+          "name": "7in TFT Display Driver",
+          "desc": "Annunciator (0x10) and Info Display 1 (0x12, panel hub): 7″ 1024×600 IPS with capacitive touch, LT7683 (RA8876-compatible); Teensy 4.1"
+        },
+        {
+          "qty": 8,
+          "pn": "90116A160",
+          "name": "Screw - M3 - 14mm",
+          "desc": "316 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 14 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "DFR0299",
+          "name": "DFPlayer Mini",
+          "desc": "DFRobot DFPlayer Mini MP3 player module (Annunciator audio)"
+        }
+      ],
+      "notes": [
+        "1. Item 1 is cut from the KC-01-1021 production file of the same revision.",
+        "2. Item 3 is two complete 7in TFT Display Drivers to their own drawing package (KC-01-1910). Info Display 1 is the panel hub: its CN1 goes to Ctrl Module CN4 and the Annunciator plugs into its slot P2 (Hardware Reference §4.2).",
+        "3. The power button (item 2) is wired to Ctrl Module H1 (soft latch); the master cannot see it.",
+        "4. The DFPlayer (item 5) plugs into the DFPlayer socket of the Annunciator's display driver.",
+        "5. All sheets at 2:5 on A3. Parts list on sheet 3."
+      ]
+    },
+    "1": {
+      "pdf": "Fusion_KC-01-1021_Panel_A1_Base_2026-11-25.pdf",
+      "line_scale": 0.35,
+      "sheets": [
+        {
+          "scale": 0.4,
+          "views": [
+            {
+              "page": 1,
+              "src": [
+                193.9,
+                53.2,
+                367.4,
+                102.7
+              ],
+              "k": 1.0,
+              "label": "FRONT VIEW",
+              "at": [
+                226,
+                56
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                99.3,
+                53.2,
+                103.7,
+                102.7
+              ],
+              "k": 1.0,
+              "label": "SIDE VIEW",
+              "at": [
+                203.6,
+                56.0
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                193.9,
+                172.9,
+                367.4,
+                177.4
+              ],
+              "k": 1.0,
+              "label": "TOP VIEW",
+              "at": [
+                226.0,
+                119.5
+              ]
+            },
+            {
+              "page": 1,
+              "src": [
+                54.2,
+                148.7,
+                178.7,
+                259.1
+              ],
+              "k": 1.0,
+              "at": [
+                22,
+                52
+              ],
+              "label": "ISOMETRIC VIEW",
+              "auto_masks": true,
+              "masks": []
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": 0.8,
+          "views": [
+            {
+              "pdf": "Panel_A1_Production_2026-11-26.ai",
+              "page": 1,
+              "src": [
+                234.5,
+                189.3,
+                665.2,
+                310.4
+              ],
+              "at": [
+                22,
+                46
+              ],
+              "k": 0.8,
+              "line_scale": 1.0,
+              "label": "PRODUCTION FILE (Panel_A1_Production.ai): RED = CUT",
+              "sublabel": "Scale 4:5"
+            },
+            {
+              "pdf": "Panel_A1_Production_2026-11-26.ai",
+              "page": 1,
+              "src": [
+                234.5,
+                189.3,
+                665.2,
+                310.4
+              ],
+              "at": [
+                22,
+                166
+              ],
+              "k": 0.5,
+              "line_scale": 1.0,
+              "keep_paths": "fill=\"none\"",
+              "label": "HOLE LOCATIONS (CUT LAYER)",
+              "sublabel": "Scale 1:2. Datum: lower-left corner of the outline. X right, Y up. Dimensions in mm.",
+              "hole_view": {
+                "max_dia": 8,
+                "at": [
+                  262,
+                  166
+                ],
+                "split": 1,
+                "gap": 6,
+                "summary_at": [
+                  330,
+                  166
+                ]
+              },
+              "tags": [
+                {
+                  "at": [
+                    274.529,
+                    199.304
+                  ],
+                  "r": 1.8,
+                  "text": "A1"
+                },
+                {
+                  "at": [
+                    448.446,
+                    199.304
+                  ],
+                  "r": 1.8,
+                  "text": "A2"
+                },
+                {
+                  "at": [
+                    456.643,
+                    199.304
+                  ],
+                  "r": 1.8,
+                  "text": "A3"
+                },
+                {
+                  "at": [
+                    630.559,
+                    199.304
+                  ],
+                  "r": 1.8,
+                  "text": "A4"
+                },
+                {
+                  "at": [
+                    274.529,
+                    297.256
+                  ],
+                  "r": 1.8,
+                  "text": "A5"
+                },
+                {
+                  "at": [
+                    448.446,
+                    297.256
+                  ],
+                  "r": 1.8,
+                  "text": "A6"
+                },
+                {
+                  "at": [
+                    456.643,
+                    297.256
+                  ],
+                  "r": 1.8,
+                  "text": "A7"
+                },
+                {
+                  "at": [
+                    630.559,
+                    297.256
+                  ],
+                  "r": 1.8,
+                  "text": "A8"
+                },
+                {
+                  "at": [
+                    247.952,
+                    202.802
+                  ],
+                  "r": 1.9,
+                  "text": "B1"
+                },
+                {
+                  "at": [
+                    642.663,
+                    202.802
+                  ],
+                  "r": 1.9,
+                  "text": "B2"
+                },
+                {
+                  "at": [
+                    642.663,
+                    280.465
+                  ],
+                  "r": 1.9,
+                  "text": "B3"
+                },
+                {
+                  "at": [
+                    247.952,
+                    296.956
+                  ],
+                  "r": 1.9,
+                  "text": "B4"
+                }
+              ],
+              "datum": {
+                "at": [
+                  237.457,
+                  307.451
+                ],
+                "len": 10
+              }
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                262,
+                166
+              ],
+              "title": "HOLE TABLE",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "X",
+                  16,
+                  "end"
+                ],
+                [
+                  "Y",
+                  16,
+                  "end"
+                ],
+                [
+                  "SIZE",
+                  14,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A1",
+                  "37.09",
+                  "108.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A2",
+                  "211.09",
+                  "108.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A3",
+                  "219.29",
+                  "108.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A4",
+                  "393.29",
+                  "108.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A5",
+                  "37.09",
+                  "10.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A6",
+                  "211.09",
+                  "10.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A7",
+                  "219.29",
+                  "10.2",
+                  "Ø3.6"
+                ],
+                [
+                  "A8",
+                  "393.29",
+                  "10.2",
+                  "Ø3.6"
+                ],
+                [
+                  "B1",
+                  "10.5",
+                  "104.7",
+                  "Ø3.8"
+                ],
+                [
+                  "B2",
+                  "405.4",
+                  "104.7",
+                  "Ø3.8"
+                ],
+                [
+                  "B3",
+                  "405.4",
+                  "27",
+                  "Ø3.8"
+                ],
+                [
+                  "B4",
+                  "10.5",
+                  "10.5",
+                  "Ø3.8"
+                ]
+              ],
+              "size": 2.2
+            },
+            {
+              "at": [
+                330,
+                166
+              ],
+              "title": "HOLE SIZES",
+              "cols": [
+                [
+                  "TAG",
+                  10,
+                  "middle"
+                ],
+                [
+                  "SIZE",
+                  30,
+                  "start"
+                ],
+                [
+                  "QTY",
+                  12,
+                  "middle"
+                ]
+              ],
+              "rows": [
+                [
+                  "A",
+                  "Ø3.6 THRU",
+                  "8"
+                ],
+                [
+                  "B",
+                  "Ø3.8 THRU",
+                  "4"
+                ]
+              ],
+              "size": 2.2
+            }
+          ]
+        }
+      ],
+      "parts": [],
+      "notes": [
+        "1. Material: acrylic, Stone, 3.00 mm. Supplier: Ponoko.",
+        "2. Cut from the production file of the same revision (sheet 2; archived with the drawing sources as Panel_A1_Production_2026-11-26.ai, at 1:1). Red = cut; no engraving.",
+        "3. Outline 425.00 × 115.20 mm. Holes and cut-outs as the production file; hole positions and sizes on sheet 2.",
+        "4. Sheet 1 at 2:5; sheet 2 at 4:5 (production file) and 1:2 (hole locations), on A3."
+      ]
+    }
+  }
+}
