@@ -3,11 +3,11 @@
   "name": "Panel A1",
   "title": "Panel A1",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "A1",
   "version_label": "Panel",
   "date": "2026-11-26",
-  "status": "RELEASED",
+  "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "01",
@@ -31,7 +31,7 @@
     "1": "Panel A1 Base"
   },
   "doc_status": {
-    "0": "RELEASED",
+    "0": "DRAFT",
     "1": "RELEASED"
   },
   "revisions": [
@@ -44,6 +44,12 @@
     [
       "B",
       "KC frame; base module types; hole table",
+      "2026-11-26",
+      "J. Kerman"
+    ],
+    [
+      "C",
+      "POWER button: 12 V lamp; part number and source corrected",
       "2026-11-26",
       "J. Kerman"
     ]
@@ -351,9 +357,9 @@
         },
         {
           "qty": 1,
-          "pn": "32000001",
+          "pn": "AE 3256807837994773",
           "name": "Push Button - 22mm - Metal LED PWR White",
-          "desc": "Metallic momentary self-reset push button, flat head, 3–6 V LED, 22 mm, white, power symbol (POWER: Ctrl Module H1, soft latch)"
+          "desc": "Metallic momentary self-reset push button, flat head, 22 mm, white, power symbol, 12 V LED, lit from the switched 12 V (POWER: Ctrl Module H1, soft latch); Hanhai Electric Appliances and Accessories Store, AliExpress item, power symbol 12 V variant; was 32000001"
         },
         {
           "qty": 2,
@@ -766,5 +772,24 @@
         "4. Sheet 1 at 2:5; sheet 2 at 4:5 (production file) and 1:2 (hole locations), on A3."
       ]
     }
+  },
+  "doc_rev": {
+    "1": "B"
+  },
+  "doc_revisions": {
+    "1": [
+      [
+        "A",
+        "Initial release (Fusion drawings)",
+        "2026-06-21",
+        "J. Kerman"
+      ],
+      [
+        "B",
+        "KC frame; base module types; hole table",
+        "2026-11-26",
+        "J. Kerman"
+      ]
+    ]
   }
 }

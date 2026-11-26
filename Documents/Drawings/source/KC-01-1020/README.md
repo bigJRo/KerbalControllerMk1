@@ -1,6 +1,6 @@
 # KC-01-1020 Panel A1: drawing sources
 
-Source files for the Rev B drawings of Panel A1, the left display panel: assembly KC-01-1020 and
+Source files for the drawings of Panel A1, the left display panel: assembly KC-01-1020 and
 base plate KC-01-1021 (part control drawing). Rev B supersedes the Rev A Fusion PDFs, which are
 in git history. The released PDFs are in `Documents/Drawings`.
 
@@ -45,11 +45,13 @@ python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1020/KC-01-1020.json --out <output folder>
 ```
 
-## To correct at the next revision
+## Rev C (2026-11-26, draft)
+
+The base plate KC-01-1021 is not changed and stays at Rev B (`doc_rev`, `doc_revisions`).
 
 - **POWER button lamp (owner, 2026-11-26):** the lamp is lit from the switched 12 V on Control
-  Module H1 (pin 2), so the fitted button is the 12 V LED variant. The parts list's "3–6 V LED"
-  for 32000001 is wrong.
-- **Part number:** 32000001 becomes AE 3256807837994773, the power-symbol 12 V variant of that
-  AliExpress listing, under the AliExpress part-number rule. The
+  Module H1 (pin 2), so the fitted button is the 12 V LED variant. The Rev B description's
+  "3–6 V LED" for item 2 was wrong.
+- **Part number:** item 2, 32000001, becomes AE 3256807837994773, the power-symbol 12 V variant
+  of that AliExpress listing, under the AliExpress part-number rule (Panel A2 Rev C). The
   manufacturer is Hanhai Electric Appliances and Accessories Store.

@@ -1,6 +1,6 @@
 # KC-01-1050 Panel B2: drawing sources
 
-Source files for the Rev B drawings of Panel B2, the right input panel: assembly KC-01-1050 and
+Source files for the drawings of Panel B2, the right input panel: assembly KC-01-1050 and
 base plate KC-01-1051 (part control drawing). Rev B supersedes the Rev A Fusion PDFs, which are
 in git history. The released PDFs are in `Documents/Drawings`.
 
@@ -50,15 +50,19 @@ python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1050/KC-01-1050.json --out <output folder>
 ```
 
-## To correct at the next revision
+## Rev C (2026-11-26, draft)
 
-These are the owner's part decisions of 2026-11-26. Panel A2 Rev C already applies them.
+These are the owner's part decisions of 2026-11-26, as Panel A2 Rev C applies them. The base
+plate KC-01-1051 is not changed and stays at Rev B (`doc_rev`, `doc_revisions`).
 
-| Item | Part | Now | Becomes |
+| Item | Part | Was | Now |
 |---|---|---|---|
+| 7 | Joystick | JH-DX400B-R4 | JH-D400X-R4, SaiDian (Amazon B08CGYGMJL) |
+| 10 | STAGE push button, 22 mm green | 31000001 (Benkpak) | AE 3256807837994773, Hanhai Electric Appliances and Accessories Store, 22 mm green 3–6 V variant (lit from +5 V) |
 | 11 | Toggle switch cover, green | 11000002 (Omval) | AE 3256805484145709, HC Electrical Store, green variant |
 | 12 | 9 toggle switches | 10000001 (Omval) | FLP12-FJ-1021P-L, FILN 12 mm SPST latching, 15 A 250 V |
-| 10 | STAGE push button, 22 mm green | 31000001 | AE 3256807837994773, Hanhai Electric Appliances and Accessories Store, 22 mm green 3–6 V variant (lit from +5 V) |
-| 7 | Joystick | JH-DX400B-R4 | JH-D400X-R4, SaiDian (Amazon B08CGYGMJL) |
 
-None of the nine B2 toggles is momentary (owner, 2026-11-26).
+- **Toggles:** none of the nine B2 toggles is momentary (owner, 2026-11-26). Item 12 now names
+  them: CHUTE, GEAR, BRAKE, EXT LT, SAS, RCS, THC/RHC, AUDIO (Switch Group 2) and the stage
+  arming switch.
+- The views and balloons are not changed.

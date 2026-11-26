@@ -3,11 +3,11 @@
   "name": "Panel B2",
   "title": "Panel B2",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "B2",
   "version_label": "Panel",
   "date": "2026-11-26",
-  "status": "RELEASED",
+  "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "01",
@@ -31,7 +31,7 @@
     "1": "Panel B2 Base"
   },
   "doc_status": {
-    "0": "RELEASED",
+    "0": "DRAFT",
     "1": "RELEASED"
   },
   "revisions": [
@@ -44,6 +44,12 @@
     [
       "B",
       "KC frame; base module types; hole table",
+      "2026-11-26",
+      "J. Kerman"
+    ],
+    [
+      "C",
+      "Part numbers and sources corrected: toggles, switch cover, STAGE button, joystick",
       "2026-11-26",
       "J. Kerman"
     ]
@@ -674,9 +680,9 @@
         },
         {
           "qty": 1,
-          "pn": "JH-DX400B-R4",
-          "name": "Joystick - D400B-M4",
-          "desc": "4-axis 10 kΩ panel-mount joystick potentiometer; three axes used"
+          "pn": "JH-D400X-R4",
+          "name": "Joystick - 4-Axis",
+          "desc": "SaiDian JH-D400X-R4 4-axis 10 kΩ joystick potentiometer, three axes used; Amazon B08CGYGMJL"
         },
         {
           "qty": 1,
@@ -692,21 +698,21 @@
         },
         {
           "qty": 1,
-          "pn": "31000001",
+          "pn": "AE 3256807837994773",
           "name": "Metal Momentary Push - 22mm - GREEN",
-          "desc": "Benkpak metallic momentary self-reset push button, flat head, 3–6 V LED, 22 mm, green (STAGE)"
+          "desc": "Metallic momentary self-reset push button, flat head, 22 mm, green, 3–6 V LED, lit from +5 V (STAGE); Hanhai Electric Appliances and Accessories Store, AliExpress item, 22 mm green 3–6 V variant; was 31000001"
         },
         {
           "qty": 1,
-          "pn": "11000002",
+          "pn": "AE 3256805484145709",
           "name": "Toggle Switch Cover - Green",
-          "desc": "Omval toggle switch flip cover, 12 mm, green (stage arming switch)"
+          "desc": "Toggle switch flip cover, 12 mm, green (stage arming switch); HC Electrical Store, AliExpress item, green variant; was 11000002"
         },
         {
           "qty": 9,
-          "pn": "10000001",
+          "pn": "FLP12-FJ-1021P-L",
           "name": "Switch - SPST On/Off Toggle",
-          "desc": "Omval 12 mm fixed toggle switch, 2 pin, SPST (Switch Group 2 and stage arming)"
+          "desc": "FILN FLP12-FJ 12 mm toggle switch, SPST on/off, latching, 2 solder pins, 15 A 250 V (CHUTE, GEAR, BRAKE, EXT LT, SAS, RCS, THC/RHC, AUDIO and the stage arming switch); AliExpress item 2251832731902430"
         },
         {
           "qty": 8,
@@ -1604,5 +1610,24 @@
         "4. Sheet 1 at 2:5, sheet 2 at 2:3, sheet 3 at 1:2, on A3."
       ]
     }
+  },
+  "doc_rev": {
+    "1": "B"
+  },
+  "doc_revisions": {
+    "1": [
+      [
+        "A",
+        "Initial release (Fusion drawings)",
+        "2026-06-21",
+        "J. Kerman"
+      ],
+      [
+        "B",
+        "KC frame; base module types; hole table",
+        "2026-11-26",
+        "J. Kerman"
+      ]
+    ]
   }
 }
