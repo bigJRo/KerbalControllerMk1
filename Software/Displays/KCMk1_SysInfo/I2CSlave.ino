@@ -6,7 +6,7 @@
    Receive (interrupt context): every master write is one frame; it is copied into the
    frame queue (Frames.ino) and handled by loop().
 
-   Request -> 4 bytes [0xAF, flags, fwMajor, fwMinor]:
+   Request -> 5 bytes [0xAF, flags, fwMajor, fwMinor, fwPatch] (4, no patch, before 1.1.0):
      flags bit 0 ready (setup() done), bit 1 card mounted, bit 2 boot screen showing.
    The master probes with this read and ignores the display until byte 0 is 0xAF.
 ****************************************************************************************/
@@ -24,8 +24,8 @@ static void onI2CReceive(int n) {
 }
 
 static void onI2CRequest() {
-  uint8_t r[4] = { SI_SYNC, g_readFlags, SYSINFO_VERSION_MAJOR, SYSINFO_VERSION_MINOR };
-  Wire1.write(r, 4);
+  uint8_t r[SI_READ_LEN] = { SI_SYNC, g_readFlags, SYSINFO_VERSION_MAJOR, SYSINFO_VERSION_MINOR, SYSINFO_VERSION_PATCH };
+  Wire1.write(r, SI_READ_LEN);
 }
 
 // The flags the next read reports; refreshed by renderFrame() via i2cUpdateFlags().

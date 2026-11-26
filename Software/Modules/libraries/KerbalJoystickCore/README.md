@@ -1,11 +1,11 @@
 # KerbalJoystickCore
 
-**Version:** 2.3.1  
+**Version:** 2.4.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v2.0  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.21 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.22 (conformant)  
 
 ---
 
@@ -23,7 +23,7 @@ The library manages:
 - Option E hybrid INT assertion strategy
 - 2 NeoPixel RGB buttons (WS2811, tinyNeoPixel_Static) on PC1
 - 1 joystick pushbutton (direct GPIO, no LED)
-- I2C target communication, conformant with I2C Protocol v2.21 (universal
+- I2C target communication, conformant with I2C Protocol v2.22 (universal
   3-byte header, transaction counter, lifecycle state machine)
 
 This is **not** a KerbalButtonCore (KBC) module. It shares the same I2C wire protocol but uses a device-specific 12-byte data packet (3-byte header + 9-byte joystick payload).
@@ -60,7 +60,8 @@ The 6-pin screw terminal exposes AXIS1, AXIS2, AXIS3, BUTTON_JOY, +5 V and GND f
 
 **Address:** Set per sketch (0x28 = Rotation, 0x29 = Translation)  
 **Speed:** 400 kHz recommended  
-**Packet format:** Device-specific, 12 bytes (see Section 9.2 of protocol spec)
+**Packet format:** Device-specific, 12 bytes (see Section 9.2 of protocol spec)  
+**Identity:** 5 bytes (spec §6): type ID, firmware major, minor, capability flags, patch. The version is the library's (`KJC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KJC_Config.h`), 2.4.0 for this release, the same on both sticks.
 
 ### Data Packet (module → controller, 12 bytes)
 
@@ -196,6 +197,7 @@ Translation sketch). Include `KerbalJoystickCore.h` from the main `.ino` only.
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.4.0 | 2026-11-26 | The identity response is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6), so a module reports the full library version, 2.4.0 (`KJC_FIRMWARE_PATCH` added). 2.3.1 had reported 2.3. Needs KerbalModuleCommon 1.9.0. |
 | 2.3.1 | 2026-11-25 | BUTTON01 is on PC2 (pin 17), as wired on the Joystick Module board; the library read PC0 (pin 15), which is not connected, so BTN01 never registered. Pin tables corrected; the stick terminal is U6. Identity firmware stays 2.3. |
 | 2.3.0 | 2026-11-09 | Full negative deflection raises INT (GitHub #114). The low side of the split map ran to -32768, which is `INT16_MIN`, the `KJC_AXIS_SUPPRESS` sentinel, so a sample at the negative rail was treated as "no change": it raised no INT and reached the master only with the next packet something else triggered. The map now runs -32767 to +32767, symmetric, so the sentinel is never a real value. Identity firmware 2.3. |
 | 2.2.0 | 2026-11-08 | Each button edge is reported once (`buttonsGetChangeMask` no longer re-arms the mask from the state latched at the previous read, which reported every edge twice). Sources renamed `.cpp` → `.ipp` and included from `KerbalJoystickCore.h`, so a sketch's `KJC_AXISn_INVERT` reaches the library (the Translation stick's AXIS2 was not inverted). Identity firmware 2.2 (was 2.0). |

@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Test_Joystick_Rotation.ino
- * @version     1.0.0
- * @date        2026-11-08
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -12,7 +12,7 @@
  *              Module: Rotation hand controller (RHC): three axes (AXIS1 right/left,
  *              AXIS2 forward/back, AXIS3 twist), the stick button, and two
  *              NeoPixel buttons RESET TRIM (GREEN) and TRIM SET (AMBER).
- *              KerbalJoystickCore 2.2 firmware, identity fw 2.2, caps 0x08.
+ *              KerbalJoystickCore 2.4 firmware, identity fw 2.4.0, caps 0x08.
  *
  *              Steps: identity, boot handshake (hands off: the module samples
  *              its centre at power-on), enable + INT, buttons, centre and
@@ -21,8 +21,8 @@
  *              bulb test, lifecycle, supply current. Results show on screen
  *              and print to USB serial at 115200 baud.
  *
- * @note        Needs KerbalJoystickCore 2.2 or later on the module (identity
- *              fw 2.2). Earlier versions reported every button edge twice
+ * @note        Needs KerbalJoystickCore 2.4.0 or later on the module (identity
+ *              fw 2.4.0, 5 bytes). Versions before 2.2 reported every button edge twice
  *              ("4 packets" in Enable and INT) and, on the Translation stick,
  *              did not apply the AXIS2 inversion.
  *
@@ -70,7 +70,7 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Joystick Rotation", "KC-01-1831/1832 joystick board",
     KMC_TYPE_JOYSTICK_ROTATION, 0x28, KMC_JOYSTICK_PACKET_SIZE,
-    KTC_KJC_FW_MAJOR, KTC_KJC_FW_MINOR, KMC_CAP_JOYSTICK,
+    KTC_KJC_FW_MAJOR, KTC_KJC_FW_MINOR, KTC_KJC_FW_PATCH, KMC_CAP_JOYSTICK,
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKjcCleanup, ktcKjcLive,
 };

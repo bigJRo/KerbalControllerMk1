@@ -22,6 +22,9 @@ struct BusStats {
 void        busInit();                                         // Wire.begin + clock; recovers a stuck bus first
 BusResult   busWrite(uint8_t addr, const uint8_t *buf, uint8_t n);
 BusResult   busRead(uint8_t addr, uint8_t *buf, uint8_t n);    // exactly n bytes, or BUS_SHORT / NACK
+// Asks for n bytes and accepts at least `min` (a reply with an optional tail, e.g. the
+// 4-byte identity of older module firmware); *got = the bytes stored.
+BusResult   busReadAtLeast(uint8_t addr, uint8_t *buf, uint8_t n, uint8_t min, uint8_t *got);
 BusResult   busReadReg(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t n);   // pointer write, repeated start, read
 bool        busProbe(uint8_t addr);                            // an empty write the address ACKs
 bool        busRecover();                                      // SDA held low: clock SCL free, re-init

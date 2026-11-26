@@ -1,8 +1,8 @@
 # KCMk1_Throttle_Module
 
 **Module:** Throttle Module  
-**Version:** 2.3  
-**Date:** 2026-10-31  
+**Version:** 2.4  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1871/1872 Throttle Module v2.0  
@@ -24,6 +24,7 @@ This is a standalone sketch with tab-based organisation. It is not a KerbalButto
 | I2C Address | `0x2C` |
 | Module Type ID | `0x0D` |
 | Capability Flags | `0x20` (THR_CAP_MOTORIZED, bit 5) |
+| Identity | 5 bytes (I2C spec §6): type `0x0D`, firmware major, minor, caps `0x20`, patch. Reports the sketch version, 2.4.0 (`THR_FIRMWARE_*` in `Config.h`) |
 | Data Packet Size | 7 bytes (3-byte header + 4-byte payload) |
 | Buttons | 4 discrete (active high, hardware pull-downs) |
 | LEDs | 4 discrete (2N3904 NPN switched, on/off only) |
@@ -165,7 +166,7 @@ INT asserts on any button press or throttle value change exceeding THR_WIPER_CHA
 
 | Command | Byte | Payload | Notes |
 |---|---|---|---|
-| CMD_GET_IDENTITY | `0x01` | None | Standard identity response |
+| CMD_GET_IDENTITY | `0x01` | None | Standard 5-byte identity response: type `0x0D`, firmware 2.4.0 (major, minor, caps `0x20`, patch; `THR_FIRMWARE_*` in `Config.h`) |
 | CMD_SET_LED_STATE | `0x02` | 8 bytes | Accepted, ignored |
 | CMD_SET_BRIGHTNESS | `0x03` | 1 byte | Accepted, ignored |
 | CMD_BULB_TEST | `0x04` | 1 byte (1=start, 0=stop) | All five lamps on until the stop; no timeout, not blocking |
@@ -283,3 +284,4 @@ After flashing all LEDs should be OFF (module starts disabled). Send `CMD_ENABLE
 | 2.1 | 2026-10-27 | The module no longer moves the lever on its own buttons (it used to drive to 100% / 0% and step ±51 ADC counts, even in ENGINE SAFE, in FINE and under an autopilot). The buttons are only reported; the master acts on them. `THR_STEP_ADC` removed |
 | 2.2 | 2026-10-31 | **Lever hold** (`CMD_SET_LEVER_HOLD`, 0x0E): while an autopilot owns the throttle the module keeps the master's target against a hand for at most 500 ms per touch (`THR_PUSH_MAX_MS`), lets go, and drives back on release. The same limit now applies to DISABLED's resist at 0, which pushed without one. A touch now really stops the motor: before, `motorUpdate()` drove again straight after `motorStop()` while a seek was pending (`motorCancel()` added). **Bulb test** start / stop as the spec says: lamps on until the stop, no 2 s `delay()` in the I2C handler. |
 | 2.3 | 2026-11-08 | A button press raises INT again: `i2cSyncINT` tested the buttons' INT-pending flag right after `buttonsGetEvents()` had cleared it, so a press with the lever still was never signalled (the master reads the throttle only on INT). INT now follows the collected, unread events, which also ends a repeated INT while the lever was held. Identity firmware 2.3 (was 2.0). |
+| 2.4 | 2026-11-26 | The identity response is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6), so the module reports its full sketch version, 2.4.0 (`THR_FIRMWARE_PATCH` added). Needs KerbalModuleCommon 1.9.0. |

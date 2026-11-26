@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Test_Function_Control.ino
- * @version     1.0.0
- * @date        2026-11-08
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -12,7 +12,7 @@
  *              Module: 12 NeoPixel buttons (inputs 0-11) and Switch Group 1 (inputs 16-23,
  *              one bit per switch, 1 = ON position). Inputs 12-15 are not
  *              connected. 24-input build: 9-byte packet.
- *              KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x00.
+ *              KerbalButtonCore 2.5 firmware, identity fw 2.5.0, caps 0x00.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, switch walk,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on
@@ -95,7 +95,7 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Function Control", "KC-01-1811/1812 wide button board",
     KMC_TYPE_FUNCTION_CONTROL, 0x21, KMC_BUTTON24_PACKET_SIZE,
-    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, 0x00,
+    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, KTC_KBC_FW_PATCH, 0x00,
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKbcCleanup, ktcKbcLive24,
 };

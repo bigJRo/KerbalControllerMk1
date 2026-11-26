@@ -1,7 +1,7 @@
 /**
  * @file        KBC_Config.h
- * @version     2.4.0
- * @date        2026-04-07
+ * @version     2.5.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -305,17 +305,22 @@
 // ============================================================
 //  Firmware version
 //
-//  Reported in the identity response packet via CMD_GET_IDENTITY.
-//  Increment MINOR for backward-compatible changes.
-//  Increment MAJOR and reset MINOR for breaking protocol changes.
+//  The library version, MAJOR.MINOR.PATCH: the single source of the
+//  firmware version every KerbalButtonCore module reports in its
+//  identity response (CMD_GET_IDENTITY, I2C spec §6). Keep the @version
+//  headers, library.properties and README in step with it.
+//  Increment PATCH for fixes, MINOR (PATCH = 0) for backward-compatible
+//  changes, MAJOR for breaking protocol changes.
 // ============================================================
 
 /** @brief Library firmware version — major. Bumped to 2 for protocol v2.4. */
 #define KBC_FIRMWARE_MAJOR          2
 
-/** @brief Library firmware version — minor. Tracks the library minor version
- *         (2.4: compiled inside the sketch, so 24-input builds work). */
-#define KBC_FIRMWARE_MINOR          4
+/** @brief Library firmware version — minor (2.5: the identity reports X.Y.Z). */
+#define KBC_FIRMWARE_MINOR          5
+
+/** @brief Library firmware version — patch, identity byte 4 (I2C spec v2.22). */
+#define KBC_FIRMWARE_PATCH          0
 
 // ============================================================
 //  Compile-time validation

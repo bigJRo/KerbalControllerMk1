@@ -227,7 +227,8 @@ Values for the B12–B15 nibbles are accepted but ignored (no LED hardware)
 
 Identity response (controller → module, `CMD_GET_IDENTITY`):
 ```
-Module Type ID 0x07 · firmware major/minor · capability flags 0x00
+Module Type ID 0x07 · firmware major/minor · capability flags 0x00 · firmware patch
+(5 bytes, I2C spec §6; the firmware is the KerbalButtonCore version, 2.5.0)
 ```
 
 ---

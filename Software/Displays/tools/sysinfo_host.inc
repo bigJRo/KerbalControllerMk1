@@ -32,7 +32,7 @@ static void put16(std::vector<uint8_t> &f, uint16_t v) { f.push_back(v & 0xFF); 
 struct St {
   uint8_t valid = 7; uint16_t cV = 1208; int16_t mA = 1840; uint16_t dW = 223; int8_t t = 38; uint16_t rpm = 2140;
   uint8_t links = 0x1F, known = 0x1F; uint8_t duty = 40, mods = 13; uint16_t present = 0x1FFF, fault = 0, i2c = 0;
-  uint32_t up = 5025; uint8_t maj = 0, min = 10; bool ext = true;
+  uint32_t up = 5025; uint8_t maj = 0, min = 10, pat = 5; bool ext = true, patch = true;   // patch: the 28-byte form
 };
 static void status(const St &s) {
   std::vector<uint8_t> f = { SI_FRAME_STATUS, s.valid };
@@ -42,6 +42,7 @@ static void status(const St &s) {
     f.push_back(s.duty); f.push_back(s.mods); put16(f, s.present); put16(f, s.fault); put16(f, s.i2c);
     for (int k = 0; k < 4; k++) f.push_back((uint8_t)(s.up >> (8 * k)));
     f.push_back(s.maj); f.push_back(s.min);
+    if (s.patch) f.push_back(s.pat);
   }
   send(f);
 }
@@ -220,6 +221,9 @@ static std::vector<std::pair<std::string, std::function<void()>>> tests() {
         status(x); run(10);
         CHECK(g_m.st.ext && g_m.st.modCount == 13 && g_m.st.present == 0x1F7F && g_m.st.fault == 0x0800);
         CHECK(g_m.st.i2cErr == 3 && g_m.st.uptimeS == 123456 && g_m.st.fwMajor == 2 && g_m.st.fwMinor == 7);
+        CHECK(g_m.st.fwPatch == 5);                     // the 28-byte form: version X.Y.Z
+        x.patch = false; status(x); run(10);            // the 27-byte form of masters before v0.10.5
+        CHECK(g_m.st.ext && g_m.st.fwMajor == 2 && g_m.st.fwMinor == 7 && g_m.st.fwPatch == SI_PATCH_UNKNOWN);
         CHECK(modsPresent() == 12);
         uint32_t bad = g_m.bad;
         send({ SI_FRAME_STATUS, 7, 1, 2 }); run(10);    // too short
@@ -228,6 +232,20 @@ static std::vector<std::pair<std::string, std::function<void()>>> tests() {
         // a STATUS without a BOOT_DONE (a display that missed it) still leaves the boot screen
         start(); run(100); status(St()); run(10);
         CHECK(g_m.bootDone);
+      } },
+    { "master_fw_three_place", [] {      // MASTER FW: X.Y.Z from the 28-byte STATUS, X.Y from the 27-byte one
+        auto fw = []() -> std::string {
+          Msg list[SI_MSG_MAX];
+          uint8_t n = msgBuild(list, now());
+          for (uint8_t i = 0; i < n; i++) if (strcmp(list[i].l1, "MASTER FW") == 0) return list[i].l2;
+          return "";
+        };
+        booted();
+        CHECK(fw() == "v0.10.5");
+        St o; o.patch = false; status(o); run(10);
+        CHECK(fw() == "v0.10");
+        St w; w.maj = 12; w.min = 255; w.pat = 255 - 1; status(w); run(10);
+        CHECK(fw() == "v12.255.254");
       } },
     { "messages_order_and_rotation", [] {
         St s = faults(); s.fault = 1u << 11;          // THROTTLE in FAULT too
@@ -352,8 +370,10 @@ static std::vector<std::pair<std::string, std::function<void()>>> tests() {
     { "status_read", [] {
         start(); run(100);
         std::vector<uint8_t> r = Wire1.hostRead();
-        CHECK(r.size() == 4 && r[0] == 0xAF && (r[1] & 0x01) && (r[1] & 0x04) && !(r[1] & 0x02));
-        CHECK(r[2] == SYSINFO_VERSION_MAJOR && r[3] == SYSINFO_VERSION_MINOR);
+        CHECK(r.size() == 5 && r[0] == 0xAF && (r[1] & 0x01) && (r[1] & 0x04) && !(r[1] & 0x02));
+        CHECK(r[2] == SYSINFO_VERSION_MAJOR && r[3] == SYSINFO_VERSION_MINOR && r[4] == SYSINFO_VERSION_PATCH);
+        char v[16]; snprintf(v, sizeof v, "%u.%u.%u", r[2], r[3], r[4]);
+        CHECK(strcmp(v, SYSINFO_VERSION) == 0);         // the string is the numbers
         line(SEV_OK, "X"); run(2000); bootDone(); status(St()); run(200);
         r = Wire1.hostRead();
         CHECK(!(r[1] & 0x04));

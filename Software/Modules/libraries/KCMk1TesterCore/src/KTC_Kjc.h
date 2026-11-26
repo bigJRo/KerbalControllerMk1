@@ -1,12 +1,12 @@
 /**
  * @file        KTC_Kjc.h
- * @version     1.0.0
+ * @version     1.1.0
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
  *
  * @brief       Checks for the KerbalJoystickCore modules (Joystick Rotation
- *              0x28, Joystick Translation 0x29). Identity fw 2.2, caps 0x08.
+ *              0x28, Joystick Translation 0x29). Identity fw 2.4.0, caps 0x08.
  *
  *              Packet (12 bytes): header, events (= change AND state),
  *              change, state, then AXIS1..AXIS3 as signed big-endian int16.
@@ -28,8 +28,9 @@
 #pragma once
 #include "KTC_Steps.h"
 
-#define KTC_KJC_FW_MAJOR   2
-#define KTC_KJC_FW_MINOR   3   // 2.3: full negative deflection raises INT (#114)
+#define KTC_KJC_FW_MAJOR   2   // KerbalJoystickCore 2.4.0 (KJC_FIRMWARE_* in KJC_Config.h);
+#define KTC_KJC_FW_MINOR   4   // 2.3 and later: full negative deflection raises INT (#114)
+#define KTC_KJC_FW_PATCH   0
 
 extern const KtcBootCfg    ktcKjcBoot;
 extern const KtcVisualSeq  ktcKjcStates;      // LED states, brightness and bulb test

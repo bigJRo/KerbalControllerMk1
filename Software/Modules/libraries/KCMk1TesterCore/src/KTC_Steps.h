@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Steps.h
- * @version     1.0.0
+ * @version     1.1.0
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -41,7 +41,7 @@ void ktcDecodeRiseB0(const KtcCtx& c, KtcInputs& in);
 void ktcDecodeRiseB1(const KtcCtx& c, KtcInputs& in);
 
 // ============================================================
-//  Identity — type, firmware (major equal, minor >= expected), caps
+//  Identity — type, firmware X.Y.Z (major equal, minor.patch >= expected), caps
 // ============================================================
 KtcVerdict ktcStepIdentity(KtcCtx& c);           // arg: none
 

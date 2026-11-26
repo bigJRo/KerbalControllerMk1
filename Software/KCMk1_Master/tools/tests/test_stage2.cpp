@@ -2,6 +2,7 @@
 // lifecycle, events (press / release / tap / re-press / hold), every packet kind, LED
 // frames, packet checks, reboot recovery, re-probe, polling, the console.
 #include "harness.h"
+#include "i2c_bus.h"
 
 // Events seen by the test handler.
 static std::vector<ModEvent> g_ev;
@@ -18,7 +19,7 @@ static void testDiscovery(Bench &b) {
   boot2(b);
   CHECK(b.rig.si.shows("INT MAP DEFAULT"), "no stored map on a fresh EEPROM");
   CHECK(b.rig.si.shows("MODULES 13/13"), "all 13 found");
-  CHECK(b.rig.si.sevOf("VEHICLE OK") == SEV_OK && serialHas("24 VEHICLE     B_INT_4  OK"), "vehicle OK on B_INT_4");
+  CHECK(b.rig.si.sevOf("VEHICLE OK") == SEV_OK && serialHas("24 VEHICLE     B_INT_4  OK  v1.2.3"), "vehicle OK on B_INT_4, fw X.Y.Z on Serial");
   bool allLearned = true, allDisabled = true, ledsOff = true, intsHigh = true;
   for (uint8_t i = 0; i < MOD_COUNT; i++) {
     uint8_t l = intLineOf(i);
@@ -251,10 +252,39 @@ static void testWatchdogRestart(Bench &b) {
   CHECK(noDisable, "modules left ACTIVE");
 }
 
+// I2C spec §6 (v2.22): the 5-byte identity, and the 4-byte form of older firmware, whose
+// patch is unknown (missing, or 0xFF from the idle bus) and is shown as X.Y.
+static void testIdentityForms(Bench &b) {
+  printf("modules: identity X.Y.Z, and the old 4-byte form\n");
+  b.m(MOD_ACTION).identLen = KMC_IDENTITY_SIZE_V1;           // no patch byte
+  b.m(MOD_ROTATION).fwPatch = KMC_FW_PATCH_UNKNOWN;          // 0xFF where the patch would be
+  b.m(MOD_THROTTLE).fwMaj = 2; b.m(MOD_THROTTLE).fwMin = 10; b.m(MOD_THROTTLE).fwPatch = 12;
+  boot2(b);
+  uint32_t shortReads = busStats().shortReads;
+  CHECK(b.rig.si.shows("MODULES 13/13") && modulePresent(MOD_ACTION) && modulePresent(MOD_ROTATION), "both forms accepted");
+  CHECK(shortReads == 0, "a 4-byte identity is not a short read (%lu)", (unsigned long)shortReads);
+  char fw[12];
+  CHECK(strcmp(moduleFwText(MOD_ACTION, fw, sizeof fw), "1.2") == 0, "4-byte form: X.Y (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_ROTATION, fw, sizeof fw), "1.2") == 0, "patch 0xFF: X.Y (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_THROTTLE, fw, sizeof fw), "2.10.12") == 0, "5-byte form: X.Y.Z (%s)", fw);
+  CHECK(strcmp(moduleFwText(MOD_UI, fw, sizeof fw), "1.2.3") == 0, "5-byte form: X.Y.Z (%s)", fw);
+  CHECK(serialHas("22 ACTION      INT_1    OK  v1.2") && serialHas("2C THROTTLE    ") && serialHas("OK  v2.10.12"),
+        "versions on the boot lines' Serial form");
+  Serial.out.clear(); Serial.stubType("modules\n"); runFor(10);
+  CHECK(Serial.out.find("ACTION      fw 1.2 ") != std::string::npos &&
+        Serial.out.find("THROTTLE    fw 2.10.12") != std::string::npos &&
+        Serial.out.find("UI          fw 1.2.3 ") != std::string::npos, "console: X.Y.Z, X.Y when unknown");
+  b.m(MOD_ACTION).identLen = KMC_IDENTITY_SIZE;
+  b.m(MOD_ROTATION).fwPatch = 3;
+  b.m(MOD_THROTTLE).fwMaj = 1; b.m(MOD_THROTTLE).fwMin = 2; b.m(MOD_THROTTLE).fwPatch = 3;
+  boot2(b);
+}
+
 static void testModuleConsole() {
   printf("modules: console\n");
   Serial.out.clear(); Serial.stubType("modules\n"); runFor(10);
   CHECK(Serial.out.find("VEHICLE") != std::string::npos && Serial.out.find("B_INT_4") != std::string::npos, "modules table");
+  CHECK(Serial.out.find("VEHICLE     fw 1.2.3") != std::string::npos, "modules table: firmware X.Y.Z");
   Serial.out.clear(); Serial.stubType("intmap\n"); runFor(10);
   CHECK(Serial.out.find("B_INT_12") != std::string::npos && Serial.out.find("RESOURCE") != std::string::npos, "intmap table");
   Serial.stubType("intmap clear\n"); runFor(10);
@@ -271,6 +301,7 @@ void runStage2() {
   testHealth(b);
   testReprobe(b);
   testWatchdogRestart(b);
+  testIdentityForms(b);
   testModuleConsole();
   for (int a = 0; a < 128; a++) Wire.detach(a);
 }

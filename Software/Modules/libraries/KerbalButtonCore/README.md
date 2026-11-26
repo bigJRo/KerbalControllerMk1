@@ -1,11 +1,11 @@
 # KerbalButtonCore
 
-**Version:** 2.4.0  
+**Version:** 2.5.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
 **Target MCU:** ATtiny816 (megaTinyCore)  
-**Protocol:** I2C_Protocol_Specification.md v2.21 (conformant)  
+**Protocol:** I2C_Protocol_Specification.md v2.22 (conformant)  
 
 ---
 
@@ -19,7 +19,7 @@ The library manages:
   (or 24 inputs via three registers — see *24-input switch-group modules*)
 - 12 RGB NeoPixel buttons (WS2811, tinyNeoPixel_Static)
 - 4 discrete LED outputs (2N3904 NPN switched, on/off only)
-- I2C target communication, fully conformant with system I2C Protocol v2.21
+- I2C target communication, fully conformant with system I2C Protocol v2.22
   (universal 3-byte header, transaction counter, lifecycle state machine)
 - Dual-buffer button state latching with guaranteed edge detection
 - Per-button LED state machine with core and extended states
@@ -184,14 +184,17 @@ Two buttons per byte, high nibble first. Nibble values:
 | `0x7` | CUT            | Static red (state-machine terminal) |
 | `0x8` | ACTIVE_ALT     | Second per-button active color (alt-color array) |
 
-### Identity Response (4 bytes)
+### Identity Response (5 bytes)
 
 ```
 Byte 0: Module Type ID
 Byte 1: Firmware major
 Byte 2: Firmware minor
 Byte 3: Capability flags
+Byte 4: Firmware patch
 ```
+
+The version is the library's own (`KBC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KBC_Config.h`), the same on every button module: 2.5.0 for this release.
 
 ---
 
@@ -381,6 +384,7 @@ sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.5.0 | 2026-11-26 | The identity response is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6), so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added). Needs KerbalModuleCommon 1.9.0. |
 | 2.4.0 | 2026-11-08 | Sources renamed `.cpp` → `.ipp` and included from `KerbalButtonCore.h`, so the sketch's `KBC_INPUT_COUNT` / `KBC_SHIFTREG_COUNT` reach the library. Before, Function and Vehicle Control (24 inputs) ran a 16-input library with a class layout that did not match the sketch. Identity firmware 2.4 (was 2.2). |
 
 ---

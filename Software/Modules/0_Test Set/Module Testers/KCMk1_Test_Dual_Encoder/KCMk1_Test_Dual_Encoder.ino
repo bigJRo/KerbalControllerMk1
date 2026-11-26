@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Test_Dual_Encoder.ino
- * @version     1.0.0
- * @date        2026-11-08
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -11,7 +11,7 @@
  *
  *              Module (KC-01-1861/1862 with two KC-01-1851/1852 encoder
  *              carriers): two PEC11R encoders with push switches, no LEDs.
- *              Identity fw 2.0, caps 0x04 (ENCODERS).
+ *              Identity fw 2.3.0, caps 0x04 (ENCODERS).
  *
  *              Packet (7 bytes): header, events (rising edges, latched until
  *              read: bit 0 ENC1 push, bit 1 ENC2 push), change (press and
@@ -117,7 +117,7 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Dual Encoder", "KC-01-1861/1862 + 2 x KC-01-1851/1852",
     KMC_TYPE_DUAL_ENCODER, 0x2D, KMC_BUTTON_PACKET_SIZE,
-    2, 0, KMC_CAP_ENCODERS,
+    2, 3, 0, KMC_CAP_ENCODERS,         // Dual Encoder sketch 2.3.0 (DEC_FIRMWARE_* in Config.h)
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     nullptr, live,
 };

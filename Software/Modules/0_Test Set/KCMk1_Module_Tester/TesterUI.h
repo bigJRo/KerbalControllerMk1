@@ -1,6 +1,6 @@
 /**
  * @file        TesterUI.h
- * @version     2.0.0
+ * @version     2.1.0
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -91,10 +91,12 @@ int uiScanTouch(uint8_t count);
 // ------------------------------------------------------------
 
 /** @brief Draw the static dashboard chrome for a selected module.
- *         fwMajor/fwMinor/caps (from the identity reply) are shown in the
- *         title bar; pass zeros if unknown. */
+ *         fwMajor/fwMinor/fwPatch/caps (from the identity reply) are shown
+ *         in the title bar as X.Y.Z (X.Y if the patch is KMC_FW_PATCH_UNKNOWN);
+ *         pass zeros if unknown. */
 void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
-                      uint8_t fwMajor = 0, uint8_t fwMinor = 0, uint8_t caps = 0);
+                      uint8_t fwMajor = 0, uint8_t fwMinor = 0, uint8_t fwPatch = 0,
+                      uint8_t caps = 0);
 
 /** @brief Refresh the dynamic header (lifecycle / fault / tx counter). */
 void uiDashboardHeader(const ModuleState& st);

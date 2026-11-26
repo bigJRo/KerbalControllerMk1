@@ -11,9 +11,17 @@
 #pragma once
 #include <Arduino.h>
 
-#define KCM_MASTER_VERSION "0.10.4"
-static const uint8_t KCM_MASTER_VERSION_MAJOR = 0;
-static const uint8_t KCM_MASTER_VERSION_MINOR = 10;
+// The master version, MAJOR.MINOR.PATCH: the one place it is set. The string is built
+// from the numbers, so the banner, the console and the Sys Info STATUS frame
+// (bytes 25–27, I2C spec §15.4) cannot disagree.
+#define KCM_MASTER_VERSION_MAJOR 0
+#define KCM_MASTER_VERSION_MINOR 10
+#define KCM_MASTER_VERSION_PATCH 5
+#define KCM_VERSION_STR_(x) #x
+#define KCM_VERSION_STR(x)  KCM_VERSION_STR_(x)
+#define KCM_MASTER_VERSION KCM_VERSION_STR(KCM_MASTER_VERSION_MAJOR) "." \
+                           KCM_VERSION_STR(KCM_MASTER_VERSION_MINOR) "." \
+                           KCM_VERSION_STR(KCM_MASTER_VERSION_PATCH)
 
 /***************************************************************************************
    Pins — Teensy 4.1 on the Ctrl Module (Inventory §2–§3, design Appendix A)

@@ -1,7 +1,7 @@
 /**
  * @file        KC01_1880_Tester.ino
- * @version     2.0.0
- * @date        2026-04-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -50,7 +50,7 @@
 // ── I2C ──────────────────────────────────────────────────────
 #define MODULE_ADDR     0x2A
 #define PACKET_SIZE     8       // 3-byte header + 5-byte payload
-#define IDENTITY_SIZE   4
+#define IDENTITY_SIZE   KMC_IDENTITY_SIZE   // 5: type, major, minor, caps, patch (I2C spec §6)
 
 // ── INT pin ───────────────────────────────────────────────────
 #define PIN_INT         6       // Xiao D6, active LOW
@@ -207,9 +207,11 @@ void testIdentity() {
     delay(IDENTITY_DELAY_MS);
     uint8_t buf[IDENTITY_SIZE] = {0};
     uint8_t got = readBytes(buf, IDENTITY_SIZE);
-    if (got != IDENTITY_SIZE) { printFail("Wrong byte count"); return; }
+    if (got != IDENTITY_SIZE) { printFail("Wrong byte count (5 expected; 4 is firmware before I2C spec v2.22)"); return; }
     Serial.print(F("  Type ID  : 0x")); Serial.println(buf[0], HEX);
-    Serial.print(F("  FW       : ")); Serial.print(buf[1]); Serial.print('.'); Serial.println(buf[2]);
+    Serial.print(F("  FW       : ")); Serial.print(buf[1]); Serial.print('.'); Serial.print(buf[2]);
+    Serial.print('.'); Serial.println(buf[4]);
+    buf[4] != KMC_FW_PATCH_UNKNOWN ? printPass("FW patch byte present") : printFail("FW patch byte 0xFF");
     Serial.print(F("  Caps     : 0b")); Serial.println(buf[3], BIN);
     buf[0] == KMC_TYPE_GPWS_INPUT  ? printPass("Type ID correct")    : printFail("Type ID wrong");
     buf[3] & KMC_CAP_DISPLAY       ? printPass("CAP_DISPLAY set")    : printFail("CAP_DISPLAY missing");

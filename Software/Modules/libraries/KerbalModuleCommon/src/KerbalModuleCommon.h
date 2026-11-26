@@ -1,7 +1,7 @@
 /**
  * @file        KerbalModuleCommon.h
- * @version     1.8.0
- * @date        2026-10-31
+ * @version     1.9.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -253,8 +253,26 @@ static const RGBColor KMC_MAGENTA       = { 255,   0, 255 };
 /** @brief Universal data-packet header: status byte, type ID, tx counter. */
 #define KMC_HEADER_SIZE          3
 
-/** @brief Identity response: type ID, fw major, fw minor, capability flags. */
-#define KMC_IDENTITY_SIZE        4
+/** @brief Identity response (I2C spec §6, v2.22): type ID, fw major, fw minor,
+ *         capability flags, fw patch. The patch is appended so the capability
+ *         flags stay at byte 3 for a reader of the old form. */
+#define KMC_IDENTITY_SIZE        5
+
+/** @brief The identity response before I2C spec v2.22: no patch byte. A reader
+ *         accepts this many bytes and treats the patch as unknown. */
+#define KMC_IDENTITY_SIZE_V1     4
+
+/** @brief Identity byte offsets (I2C spec §6). */
+#define KMC_IDENT_TYPE           0
+#define KMC_IDENT_FW_MAJOR       1
+#define KMC_IDENT_FW_MINOR       2
+#define KMC_IDENT_CAPS           3
+#define KMC_IDENT_FW_PATCH       4
+
+/** @brief Patch value meaning "not reported": the 4-byte form sent no patch
+ *         byte, or the byte read 0xFF (an idle bus after a 4-byte reply).
+ *         Show such a version as X.Y. A module never reports patch 255. */
+#define KMC_FW_PATCH_UNKNOWN     0xFF
 
 /** @brief CMD_SET_LED_STATE payload: 16 positions × 4-bit nibble = 8 bytes. */
 #define KMC_LED_PAYLOAD_SIZE     8

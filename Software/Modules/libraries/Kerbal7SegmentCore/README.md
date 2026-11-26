@@ -1,6 +1,6 @@
 # Kerbal7SegmentCore
 
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1841/1842 7-Segment Display Module v2.0  
@@ -16,7 +16,7 @@ Kerbal7SegmentCore is the Arduino library for Kerbal Controller Mk1 7-segment di
 - Rotary encoder with click-count-based acceleration (sketch-implemented)
 - Three SK6812MINI-EA NeoPixel buttons
 - Encoder pushbutton (BTN_EN)
-- I2C target communication (I2C_Protocol_Specification.md v2.21)
+- I2C target communication (I2C_Protocol_Specification.md v2.22)
 - INT pin assertion for event-driven controller polling
 
 **Design philosophy:** The library is a hardware interface layer only. All application logic — lifecycle, LED state, button behaviour, value tracking — belongs in the sketch. The library reports what the hardware did via `inputState` and `cmdState`. The sketch decides what it means and what to do about it.
@@ -250,7 +250,7 @@ The sketch detects transitions by comparing `cmdState.lifecycle` to its previous
 
 Content and length are module-specific. The library treats the payload as opaque bytes.
 
-### Identity packet (4 bytes, on GET_IDENTITY)
+### Identity packet (5 bytes, on GET_IDENTITY)
 
 | Byte | Content |
 |---|---|
@@ -258,6 +258,9 @@ Content and length are module-specific. The library treats the payload as opaque
 | 1 | Firmware major |
 | 2 | Firmware minor |
 | 3 | Capability flags |
+| 4 | Firmware patch |
+
+The version is the library's (`K7SC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `K7SC_Config.h`): 2.1.0 for this release, on both the GPWS Input Panel and Pre-Warp Time (I2C spec v2.22 §6).
 
 ---
 
@@ -296,6 +299,11 @@ All `#ifndef`-guarded in `K7SC_Config.h`:
 ---
 
 ## Changelog
+
+### v2.1.0 (2026-11-26)
+- The identity packet is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6)
+- The identity reports the library's real version, 2.1.0. Until now `K7SC_FIRMWARE_MAJOR` / `_MINOR` were still 1.0, so a 2.0.0 module reported 1.0
+- `K7SC_FIRMWARE_PATCH` added; `K7SC_IDENTITY_SIZE` is `KMC_IDENTITY_SIZE` (needs KerbalModuleCommon 1.9.0)
 
 ### v2.0.0 (2026-04-28)
 

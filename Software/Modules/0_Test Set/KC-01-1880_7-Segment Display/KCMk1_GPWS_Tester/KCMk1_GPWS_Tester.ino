@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_GPWS_Controller.ino
- * @version     2.0.0
- * @date        2026-04-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -49,7 +49,7 @@
 // ── Module ───────────────────────────────────────────────────
 #define GPWS_ADDR        0x2A
 #define PACKET_SIZE      8
-#define IDENTITY_SIZE    4
+#define IDENTITY_SIZE    KMC_IDENTITY_SIZE   // 5: type, major, minor, caps, patch (I2C spec §6)
 #define PIN_INT          6
 
 // ── Timing ───────────────────────────────────────────────────
@@ -219,10 +219,13 @@ static void queryIdentity() {
     sendCmd(KMC_CMD_GET_IDENTITY);
     delay(50);  // ATtiny816 needs time to process and queue response
     uint8_t buf[IDENTITY_SIZE] = {0};
-    readPacket(buf, IDENTITY_SIZE);
+    uint8_t got = readPacket(buf, IDENTITY_SIZE);
     Serial.println(F("\n─── Module Identity ──────────────────────────"));
     Serial.print(F("  Type ID    : 0x")); Serial.println(buf[0], HEX);
-    Serial.print(F("  FW version : ")); Serial.print(buf[1]); Serial.print(F(".")); Serial.println(buf[2]);
+    // X.Y.Z; X.Y from a module that sends the 4-byte form (no patch, or 0xFF)
+    Serial.print(F("  FW version : ")); Serial.print(buf[1]); Serial.print('.'); Serial.print(buf[2]);
+    if (got >= KMC_IDENTITY_SIZE && buf[4] != KMC_FW_PATCH_UNKNOWN) { Serial.print('.'); Serial.print(buf[4]); }
+    Serial.println();
     Serial.print(F("  Cap flags  : 0b")); Serial.println(buf[3], BIN);
     Serial.println(F("──────────────────────────────────────────────"));
 }

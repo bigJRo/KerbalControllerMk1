@@ -1,7 +1,7 @@
 /**
  * @file        KBC_Tester_Controller.ino
- * @version     1.0.0
- * @date        2026-04-09
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — KBC Library Test Suite
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -62,12 +62,16 @@
 
 #define TARGET_ADDR         0x20
 #define TARGET_TYPE_ID      0x01   // KMC_TYPE_UI_CONTROL
-#define TARGET_FW_MAJOR     1
-#define TARGET_FW_MINOR     0
+// The identity reports the KerbalButtonCore library version (KBC_FIRMWARE_*
+// in KBC_Config.h), X.Y.Z since I2C spec v2.22.
+#define TARGET_FW_MAJOR     2
+#define TARGET_FW_MINOR     5
+#define TARGET_FW_PATCH     0
 #define TARGET_CAP_FLAGS    0x01   // KMC_CAP_EXTENDED_STATES
 
 #define KBC_PACKET_SIZE     4
-#define KBC_IDENTITY_SIZE   4
+#define KBC_IDENTITY_SIZE   5      // type, major, minor, caps, patch (I2C spec §6)
+#define KBC_IDENTITY_SIZE_V1 4     // the form before spec v2.22: no patch
 #define KBC_LED_PAYLOAD     8
 
 // ============================================================
@@ -135,8 +139,10 @@ static bool _readIdentity(uint8_t* buf) {
     _send(CMD_GET_IDENTITY);
     delay(2);
     uint8_t n = Wire.requestFrom((uint8_t)TARGET_ADDR, (uint8_t)KBC_IDENTITY_SIZE);
-    if (n != KBC_IDENTITY_SIZE) return false;
-    for (uint8_t i = 0; i < KBC_IDENTITY_SIZE; i++) buf[i] = Wire.read();
+    if (n < KBC_IDENTITY_SIZE_V1) return false;
+    buf[4] = 0xFF;                               // patch unknown in the 4-byte form
+    for (uint8_t i = 0; i < n && i < KBC_IDENTITY_SIZE; i++) buf[i] = Wire.read();
+    while (Wire.available()) Wire.read();
     return true;
 }
 
@@ -261,6 +267,7 @@ void testIdentity() {
     _infof("FW Major:  ", buf[1]);
     _infof("FW Minor:  ", buf[2]);
     _infof("Cap flags: ", buf[3]);
+    _infof("FW Patch:  ", buf[4]);   // 0xFF: not reported (4-byte form)
 
     buf[0] == TARGET_TYPE_ID
         ? _pass("Type ID matches")
@@ -273,6 +280,10 @@ void testIdentity() {
     buf[2] == TARGET_FW_MINOR
         ? _pass("FW minor matches")
         : _fail("FW minor");
+
+    buf[4] == TARGET_FW_PATCH
+        ? _pass("FW patch matches")
+        : _fail("FW patch", "0xFF = no patch byte (firmware before I2C spec v2.22)");
 
     buf[3] == TARGET_CAP_FLAGS
         ? _pass("Capability flags match")

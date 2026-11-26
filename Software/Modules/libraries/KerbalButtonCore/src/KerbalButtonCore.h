@@ -1,6 +1,6 @@
 /**
  * @file        KerbalButtonCore.h
- * @version     2.4.0
+ * @version     2.5.0
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

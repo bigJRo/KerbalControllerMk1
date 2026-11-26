@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Module_Tester.ino
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -54,7 +54,7 @@ static uint8_t            _foundCount = 0;
 static const ModuleInfo*  _sel     = nullptr;
 static uint8_t            _selAddr = 0;
 static uint8_t            _selPkt  = 0;   // expected packet size
-static ModuleIdentity     _selId   = {0, 0, 0, 0, false};
+static ModuleIdentity     _selId   = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
 static bool               _bootAcked = false;  // CMD_DISABLE sent for BOOT_READY
 static bool               _bulbOn    = false;  // dashboard bulb-test toggle state
 
@@ -300,7 +300,7 @@ void loop() {
                     _bulbOn    = false;
                     _state   = ST_DASHBOARD;
                     uiDashboardBegin(_sel, _selAddr,
-                                     _selId.fwMajor, _selId.fwMinor, _selId.caps);
+                                     _selId.fwMajor, _selId.fwMinor, _selId.fwPatch, _selId.caps);
                     _tInput = 0;
                 } else {
                     uiToast("Unknown module type");
@@ -347,7 +347,7 @@ void loop() {
                 // Test finished or aborted — return to the dashboard.
                 _state = ST_DASHBOARD;
                 uiDashboardBegin(_sel, _selAddr,
-                                 _selId.fwMajor, _selId.fwMinor, _selId.caps);
+                                 _selId.fwMajor, _selId.fwMinor, _selId.fwPatch, _selId.caps);
                 _tInput = 0;
                 _ledCycleState = 0;
             }

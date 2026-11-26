@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Test_Time_Control.ino
- * @version     1.0.0
- * @date        2026-11-08
+ * @version     1.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -13,7 +13,7 @@
  *              plus the 3-position control-mode selector on the CN2 terminal:
  *              input 12 = SPC, input 13 = RVR, neither = PLN (centre). Both at
  *              once is a wiring fault. Inputs 14-15 are not connected.
- *              KerbalButtonCore 2.4 firmware, identity fw 2.4, caps 0x00.
+ *              KerbalButtonCore 2.5 firmware, identity fw 2.5.0, caps 0x00.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, mode selector,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on
@@ -90,7 +90,7 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Time Control", "KC-01-1801/1802 button board",
     KMC_TYPE_TIME_CONTROL, 0x25, KMC_BUTTON_PACKET_SIZE,
-    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, 0x00,
+    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, KTC_KBC_FW_PATCH, 0x00,
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKbcCleanup, ktcKbcLive16,
 };

@@ -4,7 +4,7 @@
 |---|---|
 | **Document type** | Developer — design for approval |
 | **Location** | `Documents/Developer/Sys_Info_Display_Design.md` |
-| **Status** | Draft 3, approved and **built** (2026-11-01): `Software/Displays/KCMk1_SysInfo` v1.0.0 and master v0.10.0 (I2C spec v2.21). Notes marked *(built)* record where the build settled a detail. Bench checks are in §9.3 |
+| **Status** | Draft 3, approved and **built** (2026-11-01): `Software/Displays/KCMk1_SysInfo` v1.0.0 and master v0.10.0 (I2C spec v2.21); three-place versions on the bus from SysInfo v1.1.0 and master v0.10.5 (I2C spec v2.22, 2026-11-26). Notes marked *(built)* record where the build settled a detail. Bench checks are in §9.3 |
 | **Board** | 2" TFT Display Driver, KC-01-1901 / 1902 V2.0: XIAO RP2350, **ER-TFTM020-2** 240×320 IPS (ST7789), microSD. Panel A2 slot P2, I2C 0x14 |
 | **Builds on** | `Master_Firmware_Design.md` §5 and §14; `Hardware_Inventory.md` §5.7 and §8.12; `I2C_Protocol_Specification.md` §15.4; the ER-TFTM020-2 datasheet (Eastrising, rev 1.0, 2023-07-07) |
 | **Mockups** | `assets/sysinfo/*.png` (1:1) and `*_x3.png` (3×), from `assets/gen_sysinfo_mockups.py`. They are drawn with the panels' own fonts. The script refuses any text below the size rule of §1.1. **Firmware renders** of the same scenarios, drawn by the sketch itself: `Documents/User/assets/sysinfo/` (`tools/sysinfo_host.py render`) |
@@ -149,7 +149,7 @@ From the KC-01-1901 V2.0 schematic. GPIO numbers are from Seeed's XIAO RP2350 pi
 |---|---|
 | `KCMk1_SysInfo.ino` | `setup()`, `loop()`, version |
 | `AAA_Config.ino` | Pins, thresholds, timings, colours, icons (text art, `#` = lit) |
-| `I2CSlave.ino` | `Wire1` slave at 0x14: the receive callback queues whole frames; the request callback answers the 4-byte status |
+| `I2CSlave.ino` | `Wire1` slave at 0x14: the receive callback queues whole frames; the request callback answers the status read (4 bytes; 5 from v1.1.0, I2C spec v2.22) |
 | `Frames.ino` | Takes frames off the queue and updates the model |
 | `Gfx.ino` | Frame buffer, fills, text, icons, the anti-sticking shift, push to the panel |
 | `Screen_Boot.ino` | Boot screen |
@@ -278,7 +278,7 @@ Two lines of Roboto Black 32, about 11 characters each. The firmware keeps a lis
 | Demo | `DEMO MODE` | `ON` | white on the DEMO blue block |
 | Debug | `DEBUG` | `ON` | sky |
 | *All well* | `ALL SYSTEMS` | `NOMINAL` | green |
-| *Service* | `UPTIME` / `MASTER FW` / `SYSINFO FW` / `FAN DUTY` / `I2C ERRORS` | `01:23:45` / `v0.10` / `v1.0.0` / `40 %` / `0` | light grey |
+| *Service* | `UPTIME` / `MASTER FW` / `SYSINFO FW` / `FAN DUTY` / `I2C ERRORS` | `01:23:45` / `v0.10.5` / `v1.1.0` / `40 %` / `0` | light grey. Both versions X.Y.Z from SysInfo 1.1.0 and master v0.10.5; MASTER FW is X.Y from a 27-byte STATUS (the mockups show the two-place form of Draft 3) |
 
 The longest fixed string, `ANNUNCIATOR`, is 225 px of the 236 available.
 
@@ -343,6 +343,7 @@ Bytes 0–12 unchanged. Appended:
 | 19–20 | I2C errors, u16 | NACKs, short reads and other errors since boot (`busStats()`), saturating |
 | 21–24 | master uptime, u32 s | `millis() / 1000` |
 | 25–26 | master version | major, minor |
+| 27 | master version patch | from I2C spec v2.22 (master v0.10.5): STATUS is 28 bytes. A display shows a 27-byte frame's version as X.Y |
 
 The display also keeps the master's module short names, in the same order, for the message area. A 13-byte STATUS (an older master) shows `MOD --` in grey and leaves out the module and service entries.
 
@@ -353,7 +354,7 @@ The display also keeps the master's module short names, in the same order, for t
 ### 7.4 Behaviour
 
 - **MASTER SILENT** applies on the status screen too (§4.4), not only during boot.
-- **Status read** `[0xAF, flags, fwMajor, fwMinor]`: flag bit 1 means *card mounted*. A card is optional (D1).
+- **Status read** `[0xAF, flags, fwMajor, fwMinor]`: flag bit 1 means *card mounted*. A card is optional (D1). From I2C spec v2.22 (SysInfo 1.1.0) it is 5 bytes, `[0xAF, flags, fwMajor, fwMinor, fwPatch]`; the master accepts 4 and shows that version as X.Y.
 
 ## 8. Master changes
 
@@ -469,3 +470,4 @@ Nothing in the design is still open. The remaining checks are on the bench (§9.
 | 2 | 2026-10-31 | **Redesigned for readability on the ER-TFTM020-2** (D4); portrait confirmed (D5). Draft 1's text was 1.2–1.8 mm tall (7–10′ at 600 mm). New size rule: a 22 px (2.8 mm, 16′) minimum, so Roboto Black 32 / 48 only. Boot screen: the newest line, counts and newest problem, in place of a log. Status: six large rows and a rotating message area, in place of a dense list. SWITCH ERR takes the whole screen and pages. From the datasheet: active area 30.00 × 40.80 mm, image-sticking measures (no thin lines, a 2 px shift every 10 min, a screen saver), not sunlight-readable, backlight on BLK. The mockup script enforces the size rule and the margins |
 | 3 | 2026-10-31 | Review answers D6–D11: 600 mm; current caution > 7 A and warning > 8 A; 50 / 60 °C; no screen saver; short boot lines (full table, §8.2); demo keeps the screen live, with the KSP row on the Annunciator's DEMO blue (white on `TFT_BLUE`) in place of the magenta border. New mockups: current caution / warning, demo |
 | 3 (built) | 2026-11-01 | Built: `KCMk1_SysInfo` v1.0.0, master v0.10.0, I2C spec v2.21. The frame queue is 32 deep and drops new frames when full; the size rule is checked by the firmware's own counters and `tools/sysinfo_host.py`; replayed boot lines carry REPLAY and never REPLACE. Firmware renders in `Documents/User/assets/sysinfo/` |
+| 3 (built), rev 1 | 2026-11-26 | Versions three-place on the bus (I2C spec v2.22): STATUS byte 27 carries the master version's patch (28 bytes, master v0.10.5), the status read appends the display's patch (5 bytes, `KCMk1_SysInfo` v1.1.0), and MASTER FW / SYSINFO FW show X.Y.Z. §2.2, §4.3, §7.2 and §7.4 note the change; the Draft 3 mockups are not redrawn |

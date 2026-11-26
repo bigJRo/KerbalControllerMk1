@@ -1,7 +1,7 @@
 /**
  * @file        KJC_I2C.ipp
- * @version     2.3.0
- * @date        2026-04-08
+ * @version     2.4.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -110,6 +110,7 @@ static void _sendIdentityPacket() {
     buf[1] = KJC_FIRMWARE_MAJOR;
     buf[2] = KJC_FIRMWARE_MINOR;
     buf[3] = _capFlags;
+    buf[4] = KJC_FIRMWARE_PATCH;
     Wire.write(buf, KJC_IDENTITY_SIZE);
 }
 

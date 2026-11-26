@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Bus.h
- * @version     1.0.0
+ * @version     1.1.0
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -15,11 +15,15 @@
 #include <Arduino.h>
 #include <KerbalModuleCommon.h>
 
+/** @brief A CMD_GET_IDENTITY reply (I2C spec §6). fwPatch is
+ *         KMC_FW_PATCH_UNKNOWN when the module sent the 4-byte form of
+ *         spec v2.21 and earlier (no patch byte, or 0xFF from the idle bus). */
 struct KtcIdentity {
     uint8_t typeId;
     uint8_t fwMajor;
     uint8_t fwMinor;
     uint8_t caps;
+    uint8_t fwPatch;
     bool    valid;
 };
 
@@ -45,8 +49,11 @@ bool ktcProbe(uint8_t addr);
 /** @brief Scan 0x20-0x2E (skipping the on-board 0x38/0x40). Returns count. */
 uint8_t ktcScan(uint8_t* out, uint8_t maxAddrs);
 
-/** @brief CMD_GET_IDENTITY, one retry. */
+/** @brief CMD_GET_IDENTITY, one retry. Asks for 5 bytes, accepts the 4-byte form. */
 KtcIdentity ktcIdentify(uint8_t addr);
+
+/** @brief "X.Y.Z" into buf, or "X.Y" when patch is KMC_FW_PATCH_UNKNOWN. */
+void ktcFmtVersion(char* buf, uint8_t n, uint8_t major, uint8_t minor, uint8_t patch);
 
 /** @brief Send a command with an optional payload. Returns the Wire status (0 = ACK). */
 uint8_t ktcCommand(uint8_t addr, uint8_t cmd, const uint8_t* payload = nullptr, uint8_t len = 0);

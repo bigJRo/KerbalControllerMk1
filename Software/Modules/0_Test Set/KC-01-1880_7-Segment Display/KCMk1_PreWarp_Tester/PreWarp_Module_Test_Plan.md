@@ -1,10 +1,12 @@
 # Pre-Warp Time Module Test Plan
 
-**Firmware:** KCMk1_PreWarp_Time v2.0.0 / Kerbal7SegmentCore v2.0.0  
+**Firmware:** KCMk1_PreWarp_Time v2.0.0 / Kerbal7SegmentCore v2.1.0  
 **Controller:** KCMk1_PreWarp_Controller / Xiao RA4M1  
 **Date:** ___________  
 **Tester:** ___________
 
+> **Identity (2026-11-26):** from Kerbal7SegmentCore 2.1.0 the identity is 5 bytes and the FW reads `2.1.0` (the library's version; it read `1.0` before). The results recorded below were taken with Kerbal7SegmentCore 2.0.0, which printed `1.0`.
+>
 > **How to use:** Work through each phase in order. Mark each item ✅ PASS, ❌ FAIL, or ⚠️ PARTIAL. Note any unexpected behaviour in the Notes field. Send `E` to enable the module at the start of each phase unless otherwise noted.
 
 ---
@@ -13,7 +15,7 @@
 
 **T1.1 — Power on both boards**
 
-- [x] Controller prints identity: Type `0xC`, FW `1.0`, Caps `0b10000`
+- [x] Controller prints identity: Type `0xC`, FW `2.1.0`, Caps `0b10000`
 - [x] Controller prints `[BOOT] Module BOOT_READY — sending DISABLE`
 - [x] Module is completely dark — no LEDs, no display
 - [x] Controller prints `[INIT] Module disabled — send E when in flight scene`
@@ -23,7 +25,7 @@ Notes: ✅ PASS
 **T1.2 — Query identity manually**
 
 - Send: `I`
-- [x] Identity printed correctly (Type `0xC`, FW `1.0`, Caps `0b10000`)
+- [x] Identity printed correctly (Type `0xC`, FW `2.1.0`, Caps `0b10000`)
 - [x] Module visually unaffected
 
 Notes: ✅ PASS

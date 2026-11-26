@@ -110,6 +110,52 @@ MODULE_TABLE = {
 
 CXX = ["g++", "-std=gnu++17", "-O1", "-w"]
 
+# ---- Firmware versions (I2C spec v2.22 §6: the identity reports X.Y.Z) ----
+# The version constants are the single source of what a module reports: the
+# library's for a library-based module, the sketch's for Throttle / Dual Encoder.
+LIB_VERSION = {KBC: ("KBC_Config.h", "KBC"), KJC: ("KJC_Config.h", "KJC"), K7SC: ("K7SC_Config.h", "K7SC")}
+SKETCH_VERSION = {"Throttle": "THR", "Dual Encoder": "DEC"}
+
+
+def fw_constants(path, prefix):
+    text = open(path, encoding="utf-8").read()
+    v = []
+    for part in ("MAJOR", "MINOR", "PATCH"):
+        m = re.search(r"#define\s+%s_FIRMWARE_%s\s+(\d+)" % (prefix, part), text)
+        if not m:
+            raise SystemExit("%s: no %s_FIRMWARE_%s" % (path, prefix, part))
+        v.append(int(m.group(1)))
+    return tuple(v)
+
+
+def module_fw(modfolder, modlib):
+    """The X.Y.Z a module reports, read from the firmware source."""
+    if modlib:
+        fname, prefix = LIB_VERSION[modlib]
+        return fw_constants(os.path.join(LIBS, modlib, "src", fname), prefix)
+    return fw_constants(os.path.join(MODULES, modfolder, "Config.h"), SKETCH_VERSION[modfolder])
+
+
+def check_versions():
+    """Each library's library.properties and each sketch's @version header agree with
+    the constants the identity reports."""
+    ok = True
+    for lib, (fname, prefix) in LIB_VERSION.items():
+        v = "%d.%d.%d" % fw_constants(os.path.join(LIBS, lib, "src", fname), prefix)
+        props = open(os.path.join(LIBS, lib, "library.properties"), encoding="utf-8").read()
+        m = re.search(r"^version=(\S+)", props, re.M)
+        good = bool(m) and m.group(1) == v
+        ok &= good
+        print("%-10s %-22s %-12s %s" % ("version", lib, v, "ok" if good else "UNEXPECTED (library.properties %s)" % (m and m.group(1))))
+    for folder, prefix in SKETCH_VERSION.items():
+        cfg = os.path.join(MODULES, folder, "Config.h")
+        v = "%d.%d.%d" % fw_constants(cfg, prefix)
+        m = re.search(r"@version\s+(\S+)", open(cfg, encoding="utf-8").read())
+        good = bool(m) and m.group(1) == v
+        ok &= good
+        print("%-10s %-22s %-12s %s" % ("version", folder, v, "ok" if good else "UNEXPECTED (Config.h @version %s)" % (m and m.group(1))))
+    return ok
+
 
 def pil_python():
     """A Python that can import Pillow (font generation, PNG screenshots)."""
@@ -224,11 +270,17 @@ def to_png(shotdir):
 def run(name, shots, keep):
     work = tempfile.mkdtemp(prefix="ktcsim_")
     ok = True
+    tester, modfolder, modlib = MODULE_TABLE[name][:3]
+    # A tester run must see the module's real X.Y.Z, and the tester must expect
+    # exactly that ("newer than tester" would mean its expectation is stale).
+    ident = []
+    if tester:
+        ident = [r"\] Identity +PASS type 0x[0-9A-F]+ fw %d\.%d\.%d caps" % module_fw(modfolder, modlib)]
     try:
         exe, so, intpin = build(name, work)
         for run_ in MODULE_TABLE[name][4]:
             label, opts, want, wantFail = run_[:4]
-            texts = run_[4] if len(run_) > 4 else []
+            texts = (run_[4] if len(run_) > 4 else []) + ident
             args = [exe, so, name.split("-")[0], "--int-pin", str(intpin)]
             shotdir = None
             if shots and label == "normal":
@@ -271,7 +323,7 @@ def main():
     ap.add_argument("--keep", action="store_true")
     a = ap.parse_args()
     names = a.modules or list(MODULE_TABLE)
-    ok = True
+    ok = check_versions()
     for n in names:
         ok &= run(n, a.shots, a.keep)
     sys.exit(0 if ok else 1)

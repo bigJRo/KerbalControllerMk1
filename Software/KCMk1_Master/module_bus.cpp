@@ -59,7 +59,7 @@ static const uint8_t MAX_INPUTS = 24;
 struct ModRt {
   bool     present, wrongType;
   bool     readNow;          // read on the next pass (after a start or an ENABLE, which assert no INT)
-  uint8_t  fwMaj, fwMin, caps;
+  uint8_t  fwMaj, fwMin, fwPatch, caps;   // identity; fwPatch KMC_FW_PATCH_UNKNOWN = not sent
   uint8_t  life;             // last reported lifecycle
   uint8_t  lifeSent;         // last lifecycle command sent (KMC_STATUS_*), 0xFF none
   uint8_t  lastCnt;
@@ -288,9 +288,24 @@ void moduleResetAll() {
 /***************************************************************************************
    Identity and start-up
 ****************************************************************************************/
+// The 5-byte identity (I2C spec §6, v2.22): type, major, minor, caps, patch. A module
+// with older firmware sends 4 bytes (no patch): accepted, with the patch unknown. On the
+// real bus the fifth byte of such a reply reads 0xFF (nobody drives SDA), which is
+// KMC_FW_PATCH_UNKNOWN too.
 static bool readIdentity(ModId id, uint8_t *ident) {
   if (!moduleCommand(id, KMC_CMD_GET_IDENTITY)) return false;
-  return busRead(kMod[id].addr, ident, KMC_IDENTITY_SIZE) == BUS_OK;
+  uint8_t got = 0;
+  if (busReadAtLeast(kMod[id].addr, ident, KMC_IDENTITY_SIZE, KMC_IDENTITY_SIZE_V1, &got) != BUS_OK) return false;
+  if (got < KMC_IDENTITY_SIZE) ident[KMC_IDENT_FW_PATCH] = KMC_FW_PATCH_UNKNOWN;
+  return true;
+}
+
+const char *moduleFwText(ModId id, char *buf, uint8_t n) {
+  if (id >= MOD_COUNT || !g_rt[id].present) { snprintf(buf, n, "-"); return buf; }
+  const ModRt &r = g_rt[id];
+  if (r.fwPatch == KMC_FW_PATCH_UNKNOWN) snprintf(buf, n, "%u.%u", r.fwMaj, r.fwMin);
+  else                                   snprintf(buf, n, "%u.%u.%u", r.fwMaj, r.fwMin, r.fwPatch);
+  return buf;
 }
 
 static bool readPacket(ModId id, uint8_t *pkt) {
@@ -354,7 +369,8 @@ static bool probe(ModId id, bool learn, bool keepActive, int8_t *learnedLine) {
     return false;
   }
   r.wrongType = false;
-  r.fwMaj = ident[1]; r.fwMin = ident[2]; r.caps = ident[3];
+  r.fwMaj = ident[KMC_IDENT_FW_MAJOR]; r.fwMin = ident[KMC_IDENT_FW_MINOR];
+  r.fwPatch = ident[KMC_IDENT_FW_PATCH]; r.caps = ident[KMC_IDENT_CAPS];
 
   uint32_t before = sampleLines();
   uint8_t pkt[MAX_PKT];
@@ -398,15 +414,19 @@ void moduleBusBoot() {
     present++;
     if (learned >= 0 && (uint8_t)learned != mapped) {
       assignLine(m, (uint8_t)learned);
+      char fw[12];
       bootLineS(SEV_WARN, bootFmt("%s INT LEARNED", kMod[m].name),
-                "%02X %-11s %-8s LEARNED", kMod[m].addr, kMod[m].name, INT_LINE_NAME[learned]);
+                "%02X %-11s %-8s LEARNED v%s", kMod[m].addr, kMod[m].name, INT_LINE_NAME[learned],
+                moduleFwText(id, fw, sizeof fw));
       dbg(DBG_INTMAP, "%s on %s (map had %s)", kMod[m].name, INT_LINE_NAME[learned],
           mapped < INT_LINE_COUNT ? INT_LINE_NAME[mapped] : "none");
     } else {
       if (learned >= 0) g_src[learned] = SRC_LEARNED;
       uint8_t l = intLineOf(m);
+      char fw[12];
       bootLineS(SEV_OK, bootFmt("%s OK", kMod[m].name),
-                "%02X %-11s %-8s OK", kMod[m].addr, kMod[m].name, l < INT_LINE_COUNT ? INT_LINE_NAME[l] : "POLLED");
+                "%02X %-11s %-8s OK  v%s", kMod[m].addr, kMod[m].name, l < INT_LINE_COUNT ? INT_LINE_NAME[l] : "POLLED",
+                moduleFwText(id, fw, sizeof fw));
     }
   }
   mapSave();
@@ -607,7 +627,8 @@ void moduleBusService() {
       if (g_rt[m].present) continue;
       if (probe((ModId)m, false, false, nullptr)) {
         g_rt[m].ledValid = false;
-        dbgErr(DBG_MODULES, "%s now present", kMod[m].name);
+        char fw[12];
+        dbgErr(DBG_MODULES, "%s now present, fw %s", kMod[m].name, moduleFwText((ModId)m, fw, sizeof fw));
       }
     }
   }
@@ -638,8 +659,9 @@ static void cmdModules(const char *) {
     const ModRt &r = g_rt[m];
     uint8_t l = intLineOf(m);
     if (!r.present) { conPrintf("  %02X %-11s %s", kMod[m].addr, kMod[m].name, r.wrongType ? "WRONG TYPE" : "missing"); continue; }
-    conPrintf("  %02X %-11s fw %u.%u  %-8s %-8s reads %lu missed %lu faults %lu", kMod[m].addr, kMod[m].name,
-              r.fwMaj, r.fwMin, l < INT_LINE_COUNT ? INT_LINE_NAME[l] : "polled", lifeName[r.life & 3],
+    char fw[12];
+    conPrintf("  %02X %-11s fw %-7s %-8s %-8s reads %lu missed %lu faults %lu", kMod[m].addr, kMod[m].name,
+              moduleFwText((ModId)m, fw, sizeof fw), l < INT_LINE_COUNT ? INT_LINE_NAME[l] : "polled", lifeName[r.life & 3],
               (unsigned long)r.reads, (unsigned long)r.missed, (unsigned long)r.faults);
   }
 }

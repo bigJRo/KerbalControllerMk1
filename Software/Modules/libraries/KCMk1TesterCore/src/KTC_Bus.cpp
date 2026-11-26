@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Bus.cpp
- * @version     1.0.0
+ * @version     1.1.0
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -82,22 +82,30 @@ uint8_t ktcScan(uint8_t* out, uint8_t maxAddrs) {
 }
 
 static KtcIdentity _identifyOnce(uint8_t addr) {
-    KtcIdentity id = {0, 0, 0, 0, false};
+    KtcIdentity id = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
     Wire.beginTransmission(addr);
     Wire.write(KMC_CMD_GET_IDENTITY);
     if (Wire.endTransmission() != 0) return id;
     delayMicroseconds(200);
+    // 5 bytes since I2C spec v2.22 (patch at byte 4); the 4-byte form of
+    // older firmware is still read, with the patch unknown.
     uint8_t got = Wire.requestFrom((int)addr, (int)KMC_IDENTITY_SIZE);
-    if (got >= KMC_IDENTITY_SIZE) {
+    if (got >= KMC_IDENTITY_SIZE_V1) {
         id.typeId  = Wire.read();
         id.fwMajor = Wire.read();
         id.fwMinor = Wire.read();
         id.caps    = Wire.read();
+        if (got >= KMC_IDENTITY_SIZE) id.fwPatch = Wire.read();   // 0xFF: also unknown
         // A floating bus reads 0xFF, a silent target 0x00: neither is a module.
         id.valid   = (id.typeId != 0x00 && id.typeId != 0xFF);
     }
     while (Wire.available()) Wire.read();
     return id;
+}
+
+void ktcFmtVersion(char* buf, uint8_t n, uint8_t major, uint8_t minor, uint8_t patch) {
+    if (patch == KMC_FW_PATCH_UNKNOWN) snprintf(buf, n, "%u.%u", major, minor);
+    else                               snprintf(buf, n, "%u.%u.%u", major, minor, patch);
 }
 
 KtcIdentity ktcIdentify(uint8_t addr) {

@@ -1,7 +1,7 @@
 # KCMk1TesterCore
 
-**Version:** 1.0.0
-**Date:** 2026-11-08
+**Version:** 1.1.0
+**Date:** 2026-11-26
 **Board:** KC-01-9001 v2.0 / KC-01-9002 Module Tester (Seeed XIAO RA4M1)
 
 Shared runtime for the per-module tester sketches in `Software/Modules/0_Test Set/Module Testers/`. A sketch describes its module and lists its test steps; the library does the rest: bus access, INA228 power readings, the touchscreen, the step runner with results and a serial report, and the steps that most modules share.
@@ -20,7 +20,8 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Action Control", "KC-01-1801/1802 button board",
     KMC_TYPE_ACTION_CONTROL, 0x22, KMC_BUTTON_PACKET_SIZE,
-    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, 0x00,          // expected identity
+    KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, KTC_KBC_FW_PATCH,   // expected firmware X.Y.Z
+    0x00,                                              // expected caps
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKbcCleanup, ktcKbcLive16,                       // optional
 };
@@ -67,3 +68,14 @@ static KtcVerdict stepExample(KtcCtx& c) {
 ## Dependencies
 
 KerbalModuleCommon, Adafruit GFX Library, Adafruit ST7735 and ST7789 Library, Adafruit FT6206 Library.
+
+## Identity check
+
+`ktcStepIdentity` asks for the 5-byte identity of I2C spec v2.22 (type, major, minor, caps, patch) and checks the type, the caps, no fault flag, and the firmware as X.Y.Z: the same major as the sketch's `KtcModuleDef`, and minor.patch at least the one the tester was written for. A newer firmware passes with "(newer than tester)". A module that sends the old 4-byte form (no patch) fails: it runs firmware from before v2.22. Versions are shown as X.Y.Z, or X.Y when the patch is unknown.
+
+## Version history
+
+| Version | Date | Notes |
+|---|---|---|
+| 1.1.0 | 2026-11-26 | Identity is read as 5 bytes, the version checked and shown as X.Y.Z (I2C spec v2.22). `KtcModuleDef` gains `fwPatch` after `fwMinor`, `KtcIdentity` gains `fwPatch`, `ktcFmtVersion()` added. Expected firmware: KerbalButtonCore 2.5.0 (`KTC_KBC_FW_*`), KerbalJoystickCore 2.4.0 (`KTC_KJC_FW_*`). Needs KerbalModuleCommon 1.9.0. |
+| 1.0.0 | 2026-11-08 | First release. |

@@ -1,6 +1,6 @@
 # KerbalModuleCommon
 
-**Version:** 1.8.0  
+**Version:** 1.9.0  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 
@@ -98,7 +98,7 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1841 v2.0, NEO_GRB mode).
 
 | Constant | Value | Payload | Description |
 |---|---|---|---|
-| `KMC_CMD_GET_IDENTITY` | 0x01 | — | Query module identity (4-byte response) |
+| `KMC_CMD_GET_IDENTITY` | 0x01 | — | Query module identity (5-byte response, see *Identity Response*) |
 | `KMC_CMD_SET_LED_STATE` | 0x02 | 1 byte | Module-specific LED state byte |
 | `KMC_CMD_SET_BRIGHTNESS` | 0x03 | 1 byte | Display intensity — top nibble → MAX7219 (0–15) |
 | `KMC_CMD_BULB_TEST` | 0x04 | 1 byte | 0x01 = start, 0x00 = stop |
@@ -112,6 +112,22 @@ All colours hardware-validated on SK6812MINI-EA (KC-01-1841 v2.0, NEO_GRB mode).
 | `KMC_CMD_SET_PRECISION` | 0x0C | 1 byte (0/1) | Throttle: precision mode off/on |
 | `KMC_CMD_SET_VALUE` | 0x0D | 2 bytes BE int16 | Set display/encoder value |
 | `KMC_CMD_SET_LEVER_HOLD` | 0x0E | 1 byte (0/1) | Throttle: the master owns the lever — hold it at the target against a hand, stall-limited (1.8.0) |
+
+---
+
+## Identity Response
+
+The reply to `KMC_CMD_GET_IDENTITY` (I2C spec §6, v2.22), `KMC_IDENTITY_SIZE` = 5 bytes:
+
+| Byte | Constant | Content |
+|---|---|---|
+| 0 | `KMC_IDENT_TYPE` | Module Type ID (`KMC_TYPE_*`) |
+| 1 | `KMC_IDENT_FW_MAJOR` | Firmware version major |
+| 2 | `KMC_IDENT_FW_MINOR` | Firmware version minor |
+| 3 | `KMC_IDENT_CAPS` | Capability flags (`KMC_CAP_*`) |
+| 4 | `KMC_IDENT_FW_PATCH` | Firmware version patch |
+
+The version is the full X.Y.Z of the firmware that answers: the library's for a library-based module, the sketch's for a standalone one. Before v2.22 the reply was 4 bytes (`KMC_IDENTITY_SIZE_V1`) with no patch. A reader asks for 5 bytes, accepts 4, and treats a missing patch byte, or one that reads 0xFF (`KMC_FW_PATCH_UNKNOWN`, an idle bus after a 4-byte reply), as unknown: it shows that version as X.Y.
 
 ---
 
@@ -181,6 +197,10 @@ Used with `KMC_CMD_SET_LED_STATE` and `kmcLedPackGet()` / `kmcLedPackSet()` help
 ---
 
 ## Changelog
+
+### v1.9.0 (2026-11-26)
+- `KMC_IDENTITY_SIZE` 4 → 5: the identity response appends the firmware patch at byte 4 (I2C spec v2.22 §6), so every module reports X.Y.Z
+- `KMC_IDENTITY_SIZE_V1` (4, the old form), `KMC_IDENT_*` byte offsets and `KMC_FW_PATCH_UNKNOWN` (0xFF) added
 
 ### v1.8.0 (2026-10-31)
 - `KMC_CMD_SET_LEVER_HOLD` (0x0E) added — Throttle Module lever hold (I2C spec §9.4)

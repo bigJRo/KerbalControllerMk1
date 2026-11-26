@@ -32,10 +32,11 @@ inline int &g_checksRef() { static int c = 0; return c; }
 ------------------------------------------------------------------------------------*/
 struct SysInfoSim : SimDevice {
   std::vector<std::vector<uint8_t>> frames;
+  int readLen = 5;                         // the status read: 5 bytes, 4 for Sys Info firmware before 1.1.0
   bool onWrite(const uint8_t *b, int n, bool) override { frames.push_back(std::vector<uint8_t>(b, b + n)); return true; }
   int onRead(uint8_t *b, int n) override {
-    const uint8_t p[4] = { SYNC_SYSINFO, 0x01, 0, 1 };
-    int k = n < 4 ? n : 4; memcpy(b, p, k); return k;
+    const uint8_t p[5] = { SYNC_SYSINFO, 0x01, 1, 1, 0 };
+    int k = n < readLen ? n : readLen; memcpy(b, p, k); return k;
   }
   // Boot screen as the display would show it (REPLACE overwrites the previous line).
   std::vector<std::pair<int, std::string>> screen() const {
@@ -153,13 +154,15 @@ inline bool serialHas(const char *s) { return Serial.out.find(s) != std::string:
 /*------------------------------------------------------------------------------------
   Input module simulator (ATtiny816 modules, I2C spec §4–§11). Holds INT low from
   power-on (BOOT_READY) until its first data read; in ACTIVE asserts INT on a change;
-  answers CMD_GET_IDENTITY with the next read; logs every command it receives.
+  answers CMD_GET_IDENTITY with the next read (5 bytes, I2C spec §6; identLen 4 for the
+  old form with no patch); logs every command it receives.
 ------------------------------------------------------------------------------------*/
 struct ModuleSim : SimDevice {
   uint8_t addr, type, len, line;
   ModKind kind;
   uint8_t life = KMC_STATUS_BOOT_READY, cnt = 0;
   bool identPending = false, fault = false, intLow = false;
+  uint8_t fwMaj = 1, fwMin = 2, fwPatch = 3, identLen = KMC_IDENTITY_SIZE;   // identity reply
   uint32_t state = 0, change = 0;          // buttons / persistent joystick state
   uint8_t events = 0;                      // rising-edge kinds (display, throttle, encoder)
   int16_t axes[3] = { 0, 0, 0 };
@@ -205,8 +208,8 @@ struct ModuleSim : SimDevice {
   int onRead(uint8_t *b, int n) override {
     if (identPending) {
       identPending = false;
-      uint8_t id[4] = { type, 1, 2, 0 };
-      int k = n < 4 ? n : 4; memcpy(b, id, k); return k;
+      uint8_t id[KMC_IDENTITY_SIZE] = { type, fwMaj, fwMin, 0, fwPatch };
+      int k = n < identLen ? n : identLen; memcpy(b, id, k); return k;
     }
     uint8_t p[16] = { 0 };
     p[0] = (uint8_t)(life | (fault ? KMC_STATUS_FAULT : 0) | KMC_STATUS_DATA_CHANGED);

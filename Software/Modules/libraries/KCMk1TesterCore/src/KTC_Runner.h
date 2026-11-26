@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Runner.h
- * @version     1.0.0
+ * @version     1.1.0
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -51,8 +51,9 @@ struct KtcModuleDef {
     uint8_t        typeId;      // KMC_TYPE_*
     uint8_t        addr;        // I2C address
     uint8_t        pktSize;     // KMC_*_PACKET_SIZE
-    uint8_t        fwMajor;     // firmware the steps were written against
+    uint8_t        fwMajor;     // firmware the steps were written against (X.Y.Z)
     uint8_t        fwMinor;
+    uint8_t        fwPatch;
     uint8_t        caps;        // expected KMC_CAP_* flags
     const KtcStep* steps;
     uint8_t        stepCount;   // at most KTC_MAX_STEPS

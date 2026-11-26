@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Steps.cpp
- * @version     1.0.0
+ * @version     1.1.0
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -76,16 +76,25 @@ KtcVerdict ktcStepIdentity(KtcCtx& c) {
     ktcShow(c, "Reading the identity reply (CMD_GET_IDENTITY).", 0);
     KtcIdentity id = ktcIdentify(c.addr);
     if (!id.valid) return ktcFail(c, "no identity reply");
+    char got[12], want[12];
+    ktcFmtVersion(got, sizeof(got), id.fwMajor, id.fwMinor, id.fwPatch);
+    ktcFmtVersion(want, sizeof(want), m.fwMajor, m.fwMinor, m.fwPatch);
     ktcUiRowf(0, KTC_C_TEXT, "Type      0x%02X   expected 0x%02X", id.typeId, m.typeId);
-    ktcUiRowf(1, KTC_C_TEXT, "Firmware  %u.%u    expected %u.%u", id.fwMajor, id.fwMinor, m.fwMajor, m.fwMinor);
+    ktcUiRowf(1, KTC_C_TEXT, "Firmware  %-7s expected %s", got, want);
     ktcUiRowf(2, KTC_C_TEXT, "Caps      0x%02X   expected 0x%02X", id.caps, m.caps);
     if (id.typeId != m.typeId) return ktcFail(c, "type 0x%02X, not 0x%02X", id.typeId, m.typeId);
     if (id.caps & KMC_CAP_FAULT) return ktcFail(c, "fault flag set in caps (0x%02X)", id.caps);
     if (id.caps != m.caps) return ktcFail(c, "caps 0x%02X, expected 0x%02X", id.caps, m.caps);
-    if (id.fwMajor != m.fwMajor || id.fwMinor < m.fwMinor)
-        return ktcFail(c, "fw %u.%u, tester expects %u.%u", id.fwMajor, id.fwMinor, m.fwMajor, m.fwMinor);
-    if (id.fwMinor > m.fwMinor) return ktcPass(c, "fw %u.%u (newer than tester)", id.fwMajor, id.fwMinor);
-    return ktcPass(c, "type 0x%02X fw %u.%u caps 0x%02X", id.typeId, id.fwMajor, id.fwMinor, id.caps);
+    // X.Y.Z: the same major, and minor.patch at least the tester's. A 4-byte
+    // reply (no patch, firmware before I2C spec v2.22) is older than any
+    // tester of this version.
+    if (id.fwPatch == KMC_FW_PATCH_UNKNOWN)
+        return ktcFail(c, "fw %s, no patch byte (old firmware), tester expects %s", got, want);
+    uint16_t have = (uint16_t)(id.fwMinor << 8 | id.fwPatch), need = (uint16_t)(m.fwMinor << 8 | m.fwPatch);
+    if (id.fwMajor != m.fwMajor || have < need)
+        return ktcFail(c, "fw %s, tester expects %s", got, want);
+    if (have > need) return ktcPass(c, "fw %s (newer than tester)", got);
+    return ktcPass(c, "type 0x%02X fw %s caps 0x%02X", id.typeId, got, id.caps);
 }
 
 // ============================================================

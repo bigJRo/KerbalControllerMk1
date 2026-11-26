@@ -1,7 +1,7 @@
 /**
  * @file        TesterConfig.h
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -30,9 +30,9 @@
 //  Firmware version
 // ============================================================
 #define TESTER_VERSION_MAJOR   2
-#define TESTER_VERSION_MINOR   0
-#define TESTER_VERSION_PATCH   1
-#define TESTER_VERSION_STR     "2.0.1"
+#define TESTER_VERSION_MINOR   1
+#define TESTER_VERSION_PATCH   0
+#define TESTER_VERSION_STR     "2.1.0"
 
 // ============================================================
 //  XIAO RA4M1 pin map (see schematic page P1, "Microcontroller")

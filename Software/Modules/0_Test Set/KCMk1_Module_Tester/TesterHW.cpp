@@ -1,6 +1,6 @@
 /**
  * @file        TesterHW.cpp
- * @version     2.0.0
+ * @version     2.1.0
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -123,19 +123,22 @@ uint8_t hwScanModules(uint8_t* outAddrs, uint8_t maxAddrs) {
 //  hwIdentify()
 // ============================================================
 ModuleIdentity hwIdentify(uint8_t addr) {
-    ModuleIdentity id = {0, 0, 0, 0, false};
+    ModuleIdentity id = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
     Wire.beginTransmission(addr);
     Wire.write(KMC_CMD_GET_IDENTITY);
     if (Wire.endTransmission() != 0) return id;
     delayMicroseconds(200);
+    // 5 bytes (patch at byte 4); the 4-byte form of older firmware is still read.
     uint8_t got = Wire.requestFrom((int)addr, (int)KMC_IDENTITY_SIZE);
-    if (got >= KMC_IDENTITY_SIZE) {
+    if (got >= KMC_IDENTITY_SIZE_V1) {
         id.typeId  = Wire.read();
         id.fwMajor = Wire.read();
         id.fwMinor = Wire.read();
         id.caps    = Wire.read();
+        if (got >= KMC_IDENTITY_SIZE) id.fwPatch = Wire.read();   // 0xFF: also unknown
         id.valid   = true;
     }
+    while (Wire.available()) Wire.read();
     return id;
 }
 

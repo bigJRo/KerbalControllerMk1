@@ -11,20 +11,21 @@
                             bit 7 REPLACE — overwrite the previous line
                       text: the line's short form (boot.h bootLineS())
      0xB2 BOOT_DONE   [B2]                                leave the boot screen
-     0xB3 STATUS      27 bytes, little-endian:
+     0xB3 STATUS      28 bytes, little-endian:
                       [B3, valid, vbus u16 cV, current i16 mA, power u16 dW,
                        temp i8 °C, fan u16 rpm, links u8, known u8,
                        fan duty %, module count, present u16, FAULT u16,
-                       I2C errors u16, uptime u32 s, version major, minor]
+                       I2C errors u16, uptime u32 s, version major, minor, patch]
+                      (27 bytes, no patch, before master v0.10.5)
                       valid: bit 0 power, bit 1 temperature, bit 2 fan
                       links / known: bit per board with its own KSP link (SI_LINK_*)
                       present / FAULT: bit per module in ModId order
      0xB4 SWITCH_ERR  [B4, n, {id, expected, actual} × n]  n ≤ 10; n = 0 closes the window
      0xB8 BACKLIGHT   [B8, flight %, standby %, 0]        as the 7" displays (carriers.cpp)
 
-   Sys Info Display → master (4-byte read):
-     [0xAF, flags, fwMajor, fwMinor]   flags: bit 0 ready, bit 1 SD card OK,
-                                        bit 2 boot screen showing
+   Sys Info Display → master (5-byte read; 4 bytes, no patch, from SysInfo before 1.1.0):
+     [0xAF, flags, fwMajor, fwMinor, fwPatch]   flags: bit 0 ready, bit 1 SD card OK,
+                                                 bit 2 boot screen showing
    The Sys Info Display shows MASTER NOT RESPONDING if no frame arrives for 5 s while
    its boot screen is up; the CONTROL heartbeat keeps that from tripping.
 ****************************************************************************************/
@@ -45,8 +46,9 @@ enum BootSev : uint8_t { SEV_INFO = 0, SEV_OK = 1, SEV_WARN = 2, SEV_ERROR = 3 }
 
 static const uint8_t SI_TEXT_MAX      = 40;
 static const uint8_t SI_SWERR_MAX     = 10;
-static const uint8_t SI_STATUS_LEN    = 27;   // 13 before master v0.10.0
-static const uint8_t SI_READ_LEN      = 4;
+static const uint8_t SI_STATUS_LEN    = 28;   // 13 before master v0.10.0, 27 before v0.10.5
+static const uint8_t SI_READ_LEN      = 5;    // the display's status read
+static const uint8_t SI_READ_LEN_V1   = 4;    // Sys Info firmware before 1.1.0: no patch
 
 struct SiStatus {
   bool powerValid, tempValid, fanValid;
@@ -67,3 +69,4 @@ void siSetStatus(const SiStatus &s);                      // board services (sta
 void siSetSwitchErrors(const SiSwitchErr *list, uint8_t n);   // interlocks (stage 3)
 void siSendBacklight(const uint8_t *frame, uint8_t n);   // carriers.cpp's BACKLIGHT frame, to 0x14 too
 bool siPresent();
+const char *siFirmware();                                 // its version from the last status read, "X.Y.Z" ("-" none yet)

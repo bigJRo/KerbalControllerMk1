@@ -1,7 +1,7 @@
 /**
  * @file        I2C.cpp
- * @version     2.3.0
- * @date        2026-11-08
+ * @version     2.4.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -165,6 +165,7 @@ static void _sendIdentityPacket() {
     buf[1] = THR_FIRMWARE_MAJOR;
     buf[2] = THR_FIRMWARE_MINOR;
     buf[3] = THR_CAP_MOTORIZED;
+    buf[4] = THR_FIRMWARE_PATCH;
     Wire.write(buf, THR_IDENTITY_SIZE);
 }
 

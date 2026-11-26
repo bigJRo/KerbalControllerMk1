@@ -73,6 +73,10 @@ void     moduleBusFlushLeds();
 void     moduleBusSetHandler(ModId id, ModHandler h);
 
 bool     modulePresent(ModId id);
+// The firmware version from the module's identity (I2C spec §6) as "X.Y.Z"; "X.Y" for a
+// module that sent the 4-byte form of spec v2.21 and earlier (no patch, or 0xFF); "-"
+// for a module that is not present. Returns buf.
+const char *moduleFwText(ModId id, char *buf, uint8_t n);
 bool     moduleHasLeds(ModId id);
 uint8_t  moduleAddr(ModId id);
 const char *moduleName(ModId id);

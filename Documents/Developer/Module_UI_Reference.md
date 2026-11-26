@@ -1,13 +1,13 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.5 | 2026-11-25
+**Jeb's Controller Works** | v6.6 | 2026-11-26
 
 | | |
 |---|---|
 | **Document type** | Developer reference |
 | **Location** | `Documents/Developer/Module_UI_Reference.md` |
 | **Covers** | Every control on every panel: what each button, switch, stick, encoder and display does, its LED, and where it sits |
-| **Master firmware** | `Software/KCMk1_Master` (v0.10.4) |
+| **Master firmware** | `Software/KCMk1_Master` (v0.10.5) |
 | **Module firmware** | `Software/Modules/` |
 
 ---
@@ -349,6 +349,8 @@ Panel Hub on Ctrl Module Extension CN4.
 | 0x2B | Pre-Warp Time | 0x0C | B2 P2 | 7-Segment 1841 / 1842 | Kerbal7SegmentCore |
 | 0x2C | Throttle | 0x0D | A2 P3 | Throttle 1871 / 1872 | Standalone |
 | 0x2D | Dual Encoder | 0x0E | B1 (Resource Display P4) | Dual Encoder 1861 / 1862 | Standalone |
+
+Each module's identity (I2C spec §6) reports its firmware as X.Y.Z: the library's version on a library module, the sketch's on a standalone one. Today: KerbalButtonCore **2.5.0**, KerbalJoystickCore **2.4.0**, Kerbal7SegmentCore **2.1.0**, Throttle **2.4.0**, Dual Encoder **2.3.0**. The master's `modules` console command lists them.
 
 0x27, 0x2E and 0x2F are not used. The displays (0x10–0x14) are covered by their own references.
 
@@ -1068,4 +1070,5 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 6.2 | 2026-10-31 | **Module firmware gaps closed (§15 #6, #7, #8, #10).** Pre-Warp BTN03 360 min (v2.1). Annunciator tile A/P ARM (v3.9). The bulb test is start / stop and does not block (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2); LTG TEST lights for as long as it is held, at least 0.5 s. The Throttle holds the lever under an autopilot (`CMD_SET_LEVER_HOLD`, at most 0.5 s against a hand, back on release). The Info Displays name reasons 22–24. Master v0.8.2 |
 | 6.3 | 2026-10-31 | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |
 | 6.4 | 2026-11-25 | **Joystick part corrected (§10):** both sticks are the JH-DX400B-R4, 4-axis; three axes are wired to terminal U6. Master firmware reference v0.10.3. |
-| **6.5** | **2026-11-25** | **A/P switch renamed INHIB / ENAB (§6.2, §6.4)**, was INHIB / ARM, so it does not repeat ENGINE SAFE / ARM next to it on panel A2. Annunciator tile A/P ENAB (v3.10.1); master v0.10.4; Sys Info v1.0.1. |
+| 6.5 | 2026-11-25 | **A/P switch renamed INHIB / ENAB (§6.2, §6.4)**, was INHIB / ARM, so it does not repeat ENGINE SAFE / ARM next to it on panel A2. Annunciator tile A/P ENAB (v3.10.1); master v0.10.4; Sys Info v1.0.1. |
+| **6.6** | **2026-11-26** | **Firmware versions three-place (§5.5):** each module's identity reports X.Y.Z (I2C spec v2.22): KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (reported 1.0 before), Throttle 2.4.0, Dual Encoder 2.3.0. Master v0.10.5; Sys Info v1.1.0. |

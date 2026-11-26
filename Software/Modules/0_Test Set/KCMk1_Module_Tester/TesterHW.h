@@ -1,6 +1,6 @@
 /**
  * @file        TesterHW.h
- * @version     2.0.0
+ * @version     2.1.0
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -45,13 +45,16 @@ struct ModuleState {
 };
 
 // ============================================================
-//  Identity (CMD_GET_IDENTITY response, 4 bytes)
+//  Identity (CMD_GET_IDENTITY response, 5 bytes since I2C spec v2.22:
+//  type, major, minor, caps, patch). fwPatch is KMC_FW_PATCH_UNKNOWN for
+//  the 4-byte form of older firmware (no patch byte, or 0xFF).
 // ============================================================
 struct ModuleIdentity {
     uint8_t typeId;
     uint8_t fwMajor;
     uint8_t fwMinor;
     uint8_t caps;
+    uint8_t fwPatch;
     bool    valid;
 };
 

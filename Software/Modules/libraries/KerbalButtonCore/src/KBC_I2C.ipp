@@ -1,7 +1,7 @@
 /**
  * @file        KBC_I2C.ipp
- * @version     2.4.0
- * @date        2026-04-07
+ * @version     2.5.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -364,6 +364,7 @@ void KBCi2C::_sendIdentityPacket() {
     pkt.firmwareMajor   = KBC_FIRMWARE_MAJOR;
     pkt.firmwareMinor   = KBC_FIRMWARE_MINOR;
     pkt.capabilityFlags = _capFlags;
+    pkt.firmwarePatch   = KBC_FIRMWARE_PATCH;
 
     uint8_t buf[KBC_IDENTITY_PACKET_SIZE];
     KBC_serializeIdentityPacket(&pkt, buf);

@@ -12,7 +12,8 @@
                                           (first line of a replay: clear first),
                                           bit 7 REPLACE (overwrite the newest line)
      0xB2 BOOT_DONE   [B2]
-     0xB3 STATUS      13 bytes, or 27 with fan duty, modules, I2C errors, uptime, version
+     0xB3 STATUS      13 bytes, 27 with fan duty, modules, I2C errors, uptime, version X.Y,
+                      or 28 with the version's patch (byte 27)
      0xB4 SWITCH_ERR  [B4, n, {id, expected, actual} x n]
      0xB8 BACKLIGHT   [B8, flight %, standby %, 0]
    Any of these resets the MASTER SILENT timer; anything else is counted and ignored.
@@ -104,6 +105,7 @@ static bool frameStatus(const uint8_t *f, uint8_t n, uint32_t now) {
     s.uptimeS = rd32(f + 21);
     s.fwMajor = f[25];
     s.fwMinor = f[26];
+    s.fwPatch = n >= SI_STATUS_EXT2 ? f[27] : SI_PATCH_UNKNOWN;
   }
   s.have = true;
   g_m.bootDone = true;      // STATUS is only sent after BOOT_DONE (a display that missed it)

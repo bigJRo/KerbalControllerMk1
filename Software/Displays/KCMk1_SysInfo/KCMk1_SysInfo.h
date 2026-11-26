@@ -24,11 +24,15 @@ extern "C" {
 }
 
 /***************************************************************************************
-   SKETCH VERSION (MAJOR.MINOR.PATCH), reported in the status read
+   SKETCH VERSION (MAJOR.MINOR.PATCH), reported in the status read (all three from 1.1.0)
+   The numbers are the one place it is set; the string is built from them.
 ****************************************************************************************/
-#define SYSINFO_VERSION "1.0.1"
-static const uint8_t SYSINFO_VERSION_MAJOR = 1;
-static const uint8_t SYSINFO_VERSION_MINOR = 0;
+#define SYSINFO_VERSION_MAJOR 1
+#define SYSINFO_VERSION_MINOR 1
+#define SYSINFO_VERSION_PATCH 0
+#define SI_STR_(x) #x
+#define SI_STR(x)  SI_STR_(x)
+#define SYSINFO_VERSION SI_STR(SYSINFO_VERSION_MAJOR) "." SI_STR(SYSINFO_VERSION_MINOR) "." SI_STR(SYSINFO_VERSION_PATCH)
 
 /***************************************************************************************
    SCREEN
@@ -72,7 +76,10 @@ enum BootSev : uint8_t { SEV_INFO = 0, SEV_OK = 1, SEV_WARN = 2, SEV_ERROR = 3 }
 static const uint8_t SI_TEXT_MAX      = 40;
 static const uint8_t SI_SWERR_MAX     = 10;
 static const uint8_t SI_STATUS_LEN    = 13;   // the original STATUS frame
-static const uint8_t SI_STATUS_EXT    = 27;   // with fan duty, modules, I2C errors, uptime, version
+static const uint8_t SI_STATUS_EXT    = 27;   // with fan duty, modules, I2C errors, uptime, version X.Y
+static const uint8_t SI_STATUS_EXT2   = 28;   // and the master version's patch (master v0.10.5)
+static const uint8_t SI_READ_LEN      = 5;    // the status read: sync, flags, version X.Y.Z
+static const uint8_t SI_PATCH_UNKNOWN = 0xFF; // a 27-byte STATUS: the master sent no patch
 static const uint8_t SI_FRAME_MAX     = 48;
 static const uint8_t SI_LINK_COUNT    = 5;    // master, Annunciator, Info 1, Info 2, Resource
 static const uint8_t SI_MOD_MAX       = 16;
@@ -103,7 +110,7 @@ struct StatusModel {
   uint8_t  fanDuty, modCount;
   uint16_t present, fault, i2cErr;
   uint32_t uptimeS;
-  uint8_t  fwMajor, fwMinor;
+  uint8_t  fwMajor, fwMinor, fwPatch;   // the master's version; fwPatch SI_PATCH_UNKNOWN from a 27-byte frame
 };
 
 struct SwErr { uint8_t id, expected, actual; };

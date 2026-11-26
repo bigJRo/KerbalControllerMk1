@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_I2C.cpp
- * @version     2.0.0
- * @date        2026-04-27
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -62,6 +62,7 @@ static void _sendIdentity() {
     Wire.write(K7SC_FIRMWARE_MAJOR);
     Wire.write(K7SC_FIRMWARE_MINOR);
     Wire.write(_capFlags);
+    Wire.write(K7SC_FIRMWARE_PATCH);
 }
 
 // ── Data packet ───────────────────────────────────────────────

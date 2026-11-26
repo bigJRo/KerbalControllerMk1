@@ -1,7 +1,7 @@
 /**
  * @file        I2C.cpp
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.3.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Dual Encoder Module
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -89,6 +89,7 @@ static void _sendIdentityPacket() {
     buf[1] = DEC_FIRMWARE_MAJOR;
     buf[2] = DEC_FIRMWARE_MINOR;
     buf[3] = DEC_CAP_ENCODERS;
+    buf[4] = DEC_FIRMWARE_PATCH;
     Wire.write(buf, DEC_IDENTITY_SIZE);
 }
 

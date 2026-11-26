@@ -78,15 +78,20 @@ BusResult busWrite(uint8_t addr, const uint8_t *buf, uint8_t n) {
   return res;
 }
 
-BusResult busRead(uint8_t addr, uint8_t *buf, uint8_t n) {
+BusResult busReadAtLeast(uint8_t addr, uint8_t *buf, uint8_t n, uint8_t min, uint8_t *gotOut) {
   g_stats.reads++;
   uint8_t got = Wire.requestFrom(addr, n);
   uint8_t i = 0;
   while (Wire.available() && i < n) buf[i++] = (uint8_t)Wire.read();
   while (Wire.available()) Wire.read();
+  if (gotOut) *gotOut = i;
   if (got == 0 && i == 0) { countError(BUS_NACK_ADDR, addr, "read"); return BUS_NACK_ADDR; }
-  if (i < n) { countError(BUS_SHORT, addr, "read"); return BUS_SHORT; }
+  if (i < min) { countError(BUS_SHORT, addr, "read"); return BUS_SHORT; }
   return BUS_OK;
+}
+
+BusResult busRead(uint8_t addr, uint8_t *buf, uint8_t n) {
+  return busReadAtLeast(addr, buf, n, n, nullptr);
 }
 
 BusResult busReadReg(uint8_t addr, uint8_t reg, uint8_t *buf, uint8_t n) {

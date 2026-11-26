@@ -188,10 +188,10 @@ Software/KCMk1_Master/
 |---|---|---|---|
 | 1 | Serial, Wire (BUS) at 400 kHz, pins | `CONFIG  …` | — |
 | 2 | Wait for the Sys Info Display to answer | (first line it shows) | 3 s, then carry on without it |
-| 3 | Boot banner: firmware version, reset cause (§12.3) | `KCMk1 MASTER vX.Y  RESET: …` | — |
+| 3 | Boot banner: firmware version X.Y.Z (`KCM_MASTER_VERSION`), reset cause (§12.3) | `KCMk1 MASTER vX.Y.Z  RESET: …` | — |
 | 4 | Board devices: INA228, EMC2101 | `POWER MON OK` / `FAN CTRL OK` or MISSING | 100 ms each |
 | 5 | Load the stored INT map (EEPROM) | `INT MAP: STORED / DEFAULT` | — |
-| 6 | Module discovery and INT learning (§6.2), then one read of the switch modules | one line per module: `0x24 VEHICLE  B_INT_4  OK` / MISSING / WRONG TYPE; `SW GRP 1  ENGINE … A/P …`, `CTRL MODE …` | 50 ms per module |
+| 6 | Module discovery and INT learning (§6.2), then one read of the switch modules | one line per module: `0x24 VEHICLE  B_INT_4  OK` / MISSING / WRONG TYPE (Serial adds the module's firmware, `OK  v2.5.0`, from master v0.10.5); `SW GRP 1  ENGINE … A/P …`, `CTRL MODE …` | 50 ms per module |
 | 7 | Display carriers: PROCEED to each, wait for its status | one line per display: `ANNUNCIATOR  OK` / NO ANSWER | 500 ms each |
 | 8 | First Simpit handshake attempt | `KSP: CONNECTING …` | about 1 s (library) |
 | 9 | Start the watchdog (§12.3) | `WATCHDOG ON` | — |
@@ -256,7 +256,7 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 
 ### 6.3 Start-up per module
 
-1. **Identity:** check the type against the table.
+1. **Identity:** check the type against the table, and keep the firmware version. The identity is 5 bytes (I2C spec §6, v2.22: type, major, minor, caps, patch); a module with older firmware sends 4, accepted with the patch unknown (missing, or 0xFF from the idle bus). Versions are shown X.Y.Z, or X.Y when the patch is unknown: on the boot line's Serial form, in `modules` and in the re-probe log line *(master v0.10.5)*.
 2. **Boot packet read:** the INT line that goes high is the module's (§6.2). No `CMD_RESET` first, because that would release the INT before it could be seen.
 3. **LEDs off.**
 4. **DISABLED.**
@@ -616,7 +616,7 @@ The availability rules are checked against Simpit on the bench.
 |---|---|
 | `help` | The command list |
 | `status` | Modes, interlocks, owners, link state |
-| `modules` | Each module: present, type, line, faults |
+| `modules` | Each module: present, firmware (X.Y.Z, or X.Y from a module that sends the old 4-byte identity), line, lifecycle, counters |
 | `intmap` | Learned / stored / default map |
 | `simpit` | Channels, rates, last message ages |
 | `switches` | Every switch position vs the vessel |
@@ -789,15 +789,15 @@ Firmware `Software/Displays/KCMk1_SysInfo` (v1.0.0); design `Sys_Info_Display_De
 | **SWITCH ERR** | While SWITCH ERR is lit | Takes the whole screen: each switch in error and the vessel's state, five a page, until all clear |
 
 - **Readability:** every string is Roboto Black 32 or 48, at least 2.8 mm tall on the ER-TFTM020-2 (16 arcmin at 600 mm), in portrait.
-- **Protocol (0x14):** I2C Protocol Specification §15.4 (sync 0xAF, v2.21). Frames:
+- **Protocol (0x14):** I2C Protocol Specification §15.4 (sync 0xAF, v2.22). Frames:
   - CONTROL: the heartbeat, with debug, demo and the flight scene;
   - BOOT_LINE: short forms, with REPLACE for the live waiting line and REPLAY on a replay's first line;
   - BOOT_DONE;
-  - STATUS: 27 bytes, with fan duty, module present / FAULT masks, I2C errors, uptime and version;
+  - STATUS: 28 bytes, with fan duty, module present / FAULT masks, I2C errors, uptime and the master version X.Y.Z (bytes 25–27; 27 bytes and X.Y before master v0.10.5);
   - SWITCH_ERR;
   - BACKLIGHT: the 7" displays' frame.
 
-  There is also a 4-byte status read. The master keeps the boot lines it sent before the display answered and replays them when it does.
+  There is also a status read, 5 bytes from Sys Info v1.1.0 with the display's version X.Y.Z (the master accepts the 4-byte form and logs that version as X.Y). The master keeps the boot lines it sent before the display answered and replays them when it does.
 - **Short boot lines:** `bootLineS()` sends the display a short form that fits two rows and Serial the long form (`boot.h`; table in the Sys Info design §8.2).
 
 ## 15. Verification

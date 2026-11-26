@@ -1,7 +1,7 @@
 /**
  * @file        K7SC_Config.h
- * @version     2.0.0
- * @date        2026-04-27
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -35,10 +35,18 @@
 
 // ============================================================
 //  Firmware version
+//
+//  The library version, MAJOR.MINOR.PATCH: the single source of the
+//  firmware version every display module (GPWS, Pre-Warp Time) reports
+//  in its identity response (CMD_GET_IDENTITY, I2C spec §6; the patch
+//  is byte 4 from spec v2.22). Keep the @version headers,
+//  library.properties and README in step with it. (Before 2.1.0 these
+//  read 1.0 while the library was 2.0.0.)
 // ============================================================
 
-#define K7SC_FIRMWARE_MAJOR     1
-#define K7SC_FIRMWARE_MINOR     0
+#define K7SC_FIRMWARE_MAJOR     2
+#define K7SC_FIRMWARE_MINOR     1
+#define K7SC_FIRMWARE_PATCH     0
 
 // ============================================================
 //  Button counts and bitmask indices
@@ -244,7 +252,7 @@
 // ============================================================
 
 #define K7SC_HEADER_SIZE        3
-#define K7SC_IDENTITY_SIZE      4
+#define K7SC_IDENTITY_SIZE      KMC_IDENTITY_SIZE   // 5: type, major, minor, caps, patch
 
 // ============================================================
 //  MAX7219 register addresses

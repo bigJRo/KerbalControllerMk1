@@ -1,6 +1,6 @@
 /**
  * @file        TesterUI.cpp
- * @version     2.0.0
+ * @version     2.1.0
  * @project     Kerbal Controller Mk1 — Module Tester
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -500,16 +500,18 @@ int uiScanTouch(uint8_t count) {
 //  Dashboard screen
 // ============================================================
 void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
-                      uint8_t fwMajor, uint8_t fwMinor, uint8_t caps) {
+                      uint8_t fwMajor, uint8_t fwMinor, uint8_t fwPatch, uint8_t caps) {
     tft.fillScreen(C_BG);
 
     // Title bar: module name + address + firmware version + capability
-    // flags from the identity reply (e.g. "GPWS Input 0x2A fw2.0 c:10").
+    // flags from the identity reply (e.g. "GPWS Input 0x2A fw2.1.0 c:10").
     char t[41];
     if (fwMajor || fwMinor || caps) {
-        snprintf(t, sizeof(t), "%s 0x%02X fw%u.%u c:%02X",
-                 (info && info->name) ? info->name : "Module", addr,
-                 fwMajor, fwMinor, caps);
+        char v[12];
+        if (fwPatch == KMC_FW_PATCH_UNKNOWN) snprintf(v, sizeof(v), "%u.%u", fwMajor, fwMinor);
+        else                                 snprintf(v, sizeof(v), "%u.%u.%u", fwMajor, fwMinor, fwPatch);
+        snprintf(t, sizeof(t), "%s 0x%02X fw%s c:%02X",
+                 (info && info->name) ? info->name : "Module", addr, v, caps);
     } else {
         snprintf(t, sizeof(t), "%s 0x%02X",
                  (info && info->name) ? info->name : "Module", addr);

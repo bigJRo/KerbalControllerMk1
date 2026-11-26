@@ -1,7 +1,7 @@
 /**
  * @file        KJC_Config.h
- * @version     2.3.1
- * @date        2026-11-25
+ * @version     2.4.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -37,10 +37,17 @@
 
 // ============================================================
 //  Firmware version
+//
+//  The library version, MAJOR.MINOR.PATCH: the single source of the
+//  firmware version every joystick module reports in its identity
+//  response (CMD_GET_IDENTITY, I2C spec §6; the patch is byte 4 from
+//  spec v2.22). Keep the @version headers, library.properties and
+//  README in step with it.
 // ============================================================
 
 #define KJC_FIRMWARE_MAJOR      2
-#define KJC_FIRMWARE_MINOR      3   // tracks the library minor version
+#define KJC_FIRMWARE_MINOR      4   // 2.4: the identity reports X.Y.Z
+#define KJC_FIRMWARE_PATCH      0
 
 // ============================================================
 //  Button and LED counts
@@ -249,7 +256,7 @@
  */
 #define KJC_PACKET_SIZE         12
 
-/** @brief Identity response packet size. */
+/** @brief Identity response packet size (5 bytes: type, major, minor, caps, patch). */
 #define KJC_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 /** @brief LED state payload size (nibble-packed). */

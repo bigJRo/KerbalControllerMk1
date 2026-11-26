@@ -123,7 +123,7 @@ void bootSequence() {
   g_connectedAtBoot = false;
   wdtCrumb(LS_SETUP);
   stepConfig();                                                     // 1
-  if (siProbeBoot(SYSINFO_PROBE_MS)) dbg(DBG_DISPLAY, "Sys Info Display answered");   // 2
+  if (siProbeBoot(SYSINFO_PROBE_MS)) dbg(DBG_DISPLAY, "Sys Info Display answered, fw %s", siFirmware());   // 2
   else dbgErr(DBG_DISPLAY, "Sys Info Display not answering; boot report on Serial only");
   stepBanner();                                                     // 3
   stepDevices();                                                    // 4

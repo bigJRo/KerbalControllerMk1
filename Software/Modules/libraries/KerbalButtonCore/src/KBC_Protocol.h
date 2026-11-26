@@ -1,7 +1,7 @@
 /**
  * @file        KBC_Protocol.h
- * @version     2.4.0
- * @date        2026-06-28
+ * @version     2.5.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -189,13 +189,16 @@
 
 /**
  * @struct KBCIdentityPacket
- * @brief  Identity response packet (target → controller, 4 bytes).
+ * @brief  Identity response packet (target → controller, 5 bytes,
+ *         I2C spec §6). The patch follows the capability flags, so the
+ *         flags stay at byte 3.
  */
 struct KBCIdentityPacket {
     uint8_t typeId;          ///< Module Type ID (KBC_TYPE_*)
     uint8_t firmwareMajor;   ///< Firmware version major
     uint8_t firmwareMinor;   ///< Firmware version minor
     uint8_t capabilityFlags; ///< Capability flags bitmask (KBC_CAP_*)
+    uint8_t firmwarePatch;   ///< Firmware version patch
 };
 
 // ============================================================
@@ -223,7 +226,7 @@ inline void KBC_ledPackSet(uint8_t* payload, uint8_t button, uint8_t state) {
 }
 
 /**
- * @brief  Serialize a KBCIdentityPacket into a 4-byte array for transmission.
+ * @brief  Serialize a KBCIdentityPacket into a 5-byte array for transmission.
  * @param  pkt  Source packet
  * @param  buf  Destination byte array (must be at least KBC_IDENTITY_PACKET_SIZE bytes)
  */
@@ -232,6 +235,7 @@ inline void KBC_serializeIdentityPacket(const KBCIdentityPacket* pkt, uint8_t* b
     buf[1] = pkt->firmwareMajor;
     buf[2] = pkt->firmwareMinor;
     buf[3] = pkt->capabilityFlags;
+    buf[4] = pkt->firmwarePatch;
 }
 
 #endif // KBC_PROTOCOL_H

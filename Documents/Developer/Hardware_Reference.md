@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.12  
-**Date:** 2026-11-25  
+**Version:** 2.13  
+**Date:** 2026-11-26  
 **Document type:** Developer — Hardware
 
 ---
@@ -36,6 +36,7 @@
 | 2.10 | 2026-11-25 | **§6.1:** no fuse on the 12V input, by decision: the supply's own overcurrent protection covers short circuits; every ATtiny module and display driver has its own reverse diode and 1.5 A polyfuse. **§6.5:** VIN (yellow) indicator added to the status LED table. **§6.6:** fan headers checked against the board artwork: a standard 4-pin PC fan plug mates correctly; only the pin numbering is reversed. **§15:** open item 1 closed. |
 | 2.11 | 2026-11-25 | **§5.1:** Ctrl Module is now V2.1 (drawings Rev C): vertical USB-A downstream ports, 1×5 test port TP1, a blue +5V status LED, all status LEDs dimmed to about 0.5 mA, USB connector shells on GND; resistors renumbered (RST series now R14, EXT_INT_1 pull-up R15 and series R16). **§5.4:** Throttle drawings Rev C: motor-direction LED resistors R15 / R16 are 10 kΩ (were 1 kΩ). **§6.5:** status LED table and test port. **§7.3, §7.5, §7.6:** USB-A ports and shell grounding. **§8.4:** designators updated. |
 | 2.12 | 2026-11-25 | **§5.4:** the panel joystick is the JH-DX400B-R4 (4-axis), as fitted on panels A2 and B2; three axes are wired to terminal U6 and the fourth is not used (was given as JH-D202X-R4, 3-axis). |
+| 2.13 | 2026-11-26 | **§13.2:** the identity response is 5 bytes, the firmware patch appended at byte 4, so every module reports X.Y.Z (I2C spec v2.22 §6); a controller accepts the old 4-byte form and shows that version as X.Y. |
 
 ---
 
@@ -1010,14 +1011,17 @@ The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address 
 All conformant modules must implement the following regardless of module type.
 
 **Identity Response**
-The module must respond to `CMD_GET_IDENTITY` (0x01) with a 4-byte identity packet:
+The module must respond to `CMD_GET_IDENTITY` (0x01) with a 5-byte identity packet (I2C spec §6, v2.22):
 
 ```
 Byte 0:  Module Type ID  — unique value from the KCMk1 module registry
 Byte 1:  Firmware version major
 Byte 2:  Firmware version minor
 Byte 3:  Capability flags  — KMC_CAP_* bitmask (0x00 if no optional capabilities)
+Byte 4:  Firmware version patch
 ```
+
+The version is the full X.Y.Z of the firmware that answers, from its version constants: the library's on a library-based module, the sketch's on a standalone one. Firmware before spec v2.22 sent bytes 0–3 only; a controller accepts that and treats the patch as unknown.
 
 **Universal Packet Header**
 Every response packet sent by the module must begin with the 3-byte universal header:
@@ -1045,7 +1049,7 @@ The module must handle all base commands:
 
 | Command | Value | Required Behavior |
 |---------|-------|------------------|
-| `CMD_GET_IDENTITY` | 0x01 | Return 4-byte identity packet |
+| `CMD_GET_IDENTITY` | 0x01 | Return 5-byte identity packet |
 | `CMD_SET_LED_STATE` | 0x02 | Apply nibble-packed LED state to outputs |
 | `CMD_SET_BRIGHTNESS` | 0x03 | Set ENABLED state backlight brightness |
 | `CMD_BULB_TEST` | 0x04 | 0x01: all outputs full white/on. 0x00: stop. Fires in any lifecycle state |
