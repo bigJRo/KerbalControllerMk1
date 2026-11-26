@@ -27,7 +27,7 @@ history. The released PDFs are in `Documents/Drawings`.
   - Both plug into the Annunciator's 7" TFT Display Driver: SPKR1 on the PAM8302A amplifier
     (alarm tones) and SPKR2 on the DFPlayer (GPWS voice).
 - **Fasteners:** each speaker is held by 4 × M3 × 14 screws (90116A160) and M3 nuts (94150A325)
-  through the Ø3.4 holes B1–B8, which form two 64 × 24 mm patterns.
+  through the Ø3.4 holes A1–A8, which form two 64 × 24 mm patterns.
 - **Plate:**
   - Same outline as the 2022 drawing: 862 × 78.27 × 6 mm, opaque black acrylic, TAP Plastics.
   - It is screwed down (owner, 2026-11-25), not glued: the 2022 note "all edges machined for
