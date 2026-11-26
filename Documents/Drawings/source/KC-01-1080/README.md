@@ -30,8 +30,8 @@ drawing `KC-01-1080_RevA_Panel Brace.pdf`, which is in git history. The released
   Dual Lock (3M) reclosable fastener pads, so the drawing has no parts list. The STEP's
   description still says "Installed M3 Brass Inserts"; that text is out of date.
 - **Material:** ABS, white, 3D printed, as the STEP gives it.
-- **Quantity and position:** not on the part drawing; the top-level assembly will show how
-  many are fitted and where, with the Dual Lock pads.
+- **Quantity and position:** two are fitted (owner, 2026-11-26). The part drawing does not
+  give the count; the top-level assembly will show where they go, with the Dual Lock pads.
 - **Revision:** the Fusion title block reads Rev A (2026-06-27), but the part changed, so the
   KC drawing is Rev B.
 
