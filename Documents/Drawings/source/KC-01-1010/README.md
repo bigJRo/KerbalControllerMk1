@@ -79,6 +79,8 @@ KC-01-1070 / 1071 (own package) and the panel brace KC-01-1080.
   2026-11-26).
 - **1080:** the parts list has only the 2 heat-set inserts. The brace's own material and the
   number fitted (and where) are not recorded; the top-level assembly should show them.
+  Rev B (2026-11-26) has a new profile, no inserts (it is held with Dual Lock) and gives the
+  material (ABS); see `source/KC-01-1080`.
 - **Names and suppliers:**
   - Remove the Fusion version suffixes from part names (v1, v2, v3, v18).
   - Use one spelling of the supplier, TAP Plastics.
