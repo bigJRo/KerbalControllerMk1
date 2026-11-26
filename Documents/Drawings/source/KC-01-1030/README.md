@@ -1,6 +1,6 @@
 # KC-01-1030 Panel A2: drawing sources
 
-Source files for the Rev B drawings of Panel A2, the left input panel: assembly KC-01-1030 and
+Source files for the drawings of Panel A2, the left input panel: assembly KC-01-1030 and
 base plate KC-01-1031 (part control drawing). Rev B supersedes the Rev A Fusion PDFs, which are
 in git history. The released PDFs are in `Documents/Drawings`.
 
@@ -52,6 +52,19 @@ in git history. The released PDFs are in `Documents/Drawings`.
   complete (owner).
 - Sheet 2 of the base drawing is drawn from the archived production file, not from the Fusion
   export (whose sheet 2 image was out of date).
+
+## Rev C (2026-11-26, draft)
+
+- **Toggle switches:** the Fusion parts list gives all nine toggles as item 10, 10000001
+  (SPST on/off). Three of them, MSTR, DISPL and LTG, are momentary (owner, 2026-11-26).
+  - Item 10 is now the six latching switches: SCE, UPTLM, A/P, ENGINE, THRTL and the abort
+    arming switch.
+  - New item 19 is the three momentary switches, part 10000003. Both kinds are Omval 12 mm
+    SPST with 2 solder pins, from one AliExpress listing.
+  - The Fusion file is not changed. The split is made in `KC-01-1030.json`.
+- **Balloon:** item 19 gets its own balloon on the rear view (sheet 3). It is drawn by the
+  generator's `balloons` option and points at MSTR.
+- **Base drawing:** the base, KC-01-1031, is unchanged and stays at Rev B (`doc_rev`).
 
 ## Regenerating the drawings
 

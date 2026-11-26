@@ -3,11 +3,11 @@
   "name": "Panel A2",
   "title": "Panel A2",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "A2",
   "version_label": "Panel",
   "date": "2026-11-26",
-  "status": "RELEASED",
+  "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "01",
@@ -31,7 +31,7 @@
     "1": "Panel A2 Base"
   },
   "doc_status": {
-    "0": "RELEASED",
+    "0": "DRAFT",
     "1": "RELEASED"
   },
   "revisions": [
@@ -44,6 +44,12 @@
     [
       "B",
       "KC frame; Switch Group 1 and titles re-engraved; module types; holes resized",
+      "2026-11-26",
+      "J. Kerman"
+    ],
+    [
+      "C",
+      "Momentary Switch Group 1 switches split out as item 19",
       "2026-11-26",
       "J. Kerman"
     ]
@@ -672,7 +678,20 @@
                   "size": 5.4
                 }
               ],
-              "label": "REAR"
+              "label": "REAR",
+              "balloons": [
+                {
+                  "at": [
+                    113.9,
+                    190.0
+                  ],
+                  "c": [
+                    113.4,
+                    174.8
+                  ],
+                  "text": "19"
+                }
+              ]
             }
           ]
         }
@@ -733,10 +752,10 @@
           "desc": "Omval toggle switch flip cover, 12 mm, red (abort arming switch)"
         },
         {
-          "qty": 9,
+          "qty": 6,
           "pn": "10000001",
           "name": "Switch - SPST On/Off Toggle",
-          "desc": "Omval 12 mm fixed toggle switch, 2 pin, SPST (Switch Group 1 and abort arming)"
+          "desc": "Omval 12 mm fixed toggle switch, 2 solder pins, SPST on/off, latching (SCE, UPTLM, A/P, ENGINE, THRTL and the abort arming switch)"
         },
         {
           "qty": 8,
@@ -785,6 +804,12 @@
           "pn": "91223QA412",
           "name": "Screw - M3 - 6mm ULP",
           "desc": "316 stainless steel ultra-low-profile socket head screw, M3 × 0.5 mm thread, 6 mm long"
+        },
+        {
+          "qty": 3,
+          "pn": "10000003",
+          "name": "Switch - SPST Momentary Toggle",
+          "desc": "Omval 12 mm fixed toggle switch, 2 solder pins, SPST momentary (MSTR, DISPL, LTG); same listing as item 10"
         }
       ],
       "notes": [
@@ -1676,5 +1701,24 @@
       ],
       "line_scale": 0.35
     }
+  },
+  "doc_rev": {
+    "1": "B"
+  },
+  "doc_revisions": {
+    "1": [
+      [
+        "A",
+        "Initial release (Fusion drawings)",
+        "2026-06-21",
+        "J. Kerman"
+      ],
+      [
+        "B",
+        "KC frame; Switch Group 1 and titles re-engraved; module types; holes resized",
+        "2026-11-26",
+        "J. Kerman"
+      ]
+    ]
   }
 }

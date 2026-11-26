@@ -934,6 +934,21 @@ def doc_assy(cfg, work, d="0", vd=None):
                 s.add(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{rl.get("r", 3.0) * vk:.3f}" fill="#ffffff" stroke="none"/>')
                 fs = rl.get("size", 3.6) * vk
                 s.text(cx, cy + fs * 0.36, rl["text"], size=fs, anchor="middle")
+            for bl in v.get("balloons", []):
+                # a new balloon, drawn like Fusion's: {"at": [x, y] leader target, "c": [x, y] balloon
+                # centre (both source mm), "text", "r": source mm (3.6), "size": text pt (5.4)}
+                tx, ty = to_sheet(*bl["at"])
+                cx, cy = to_sheet(*bl["c"])
+                r = bl.get("r", 3.6) * vk
+                d = math.hypot(tx - cx, ty - cy) or 1.0
+                ux, uy = (tx - cx) / d, (ty - cy) / d
+                s.line(cx + ux * r, cy + uy * r, tx, ty, 0.18)
+                ang = math.degrees(math.atan2(uy, ux))
+                s.add(f'<polygon points="0,0 -1.6,-0.45 -1.6,0.45" fill="{INK}" '
+                      f'transform="translate({tx:.3f} {ty:.3f}) rotate({ang:.2f})"/>')
+                s.circle(cx, cy, r, sw=0.18)
+                fs = bl.get("size", 5.4) * vk
+                s.text(cx, cy + fs * 0.36, bl["text"], size=fs, anchor="middle")
             for tg in v.get("tags", []):        # hole tags: {"at": [x, y] source mm, "r": hole radius mm, "text"}
                 cx, cy = to_sheet(*tg["at"])
                 o = tg.get("r", 1.5) * vk + 0.5
