@@ -31,10 +31,10 @@ in git history. The released PDFs are in `Documents/Drawings`.
 - The hole table (1031 sheet 3) is built from the cut layer of the production file by
   `tools/kc_holes.py`: round holes up to Ø8, tagged by size (A Ø3.0, B Ø3.2, C Ø3.8,
   D Ø7.6), positions from the lower-left corner of the outline.
-- Hole review (owner, 2026-11-26): the four 2" display holes go from Ø2.5 to Ø3.0 (M2.5
-  clearance; the 2" display moves to M2.5 hardware) and the two throttle holes from Ø3.6 to
-  Ø3.2. Production file `Panel_A2_Production_2026-11-26.ai` carries the change; nothing else in
-  it changed, and the Fusion exports are not regenerated for it.
+- Hole review (owner, 2026-11-26): the two throttle holes go from Ø3.6 to Ø3.2. The four 2"
+  display holes go from Ø2.5 to Ø3.2: the 2" display keeps its M3 standoffs, spacers and
+  screws (checked by the owner), so KC-01-1900 is unchanged. The Fusion exports are not
+  regenerated for these changes; the production file carries them.
 - Outline: the production file's 425 × 270 mm is correct (owner, 2026-11-25). The Fusion model
   body is about 429.7 × 274.7 mm, about 2.3 mm oversize all round, with the holes in the right
   places; the views are left as exported until the Fusion body is fixed.
