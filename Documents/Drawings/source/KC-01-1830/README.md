@@ -48,5 +48,5 @@ python Documents/Drawings/tools/kc_package.py \
 `--docs 0,1,2,3,4` limits the run to the assembly, schematic, PWB, BOM or PLACE drawing.
 Paths in the config are relative to the config file. The Gerber zip is unpacked
 for each run.
-- Rev D (2026-11-26, draft) corrects the stick in the notes again, to the SaiDian JH-D400X-R4
+- Rev D (2026-11-26, released) corrects the stick in the notes again, to the SaiDian JH-D400X-R4
   (owner, 2026-11-26). Rev C's JH-DX400B-R4 came from the Fusion part name. Sources unchanged.

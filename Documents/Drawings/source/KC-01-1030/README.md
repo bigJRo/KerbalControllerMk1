@@ -54,7 +54,7 @@ in git history. The released PDFs are in `Documents/Drawings`.
 - Sheet 2 of the base drawing is drawn from the archived production file, not from the Fusion
   export (whose sheet 2 image was out of date).
 
-## Rev C (2026-11-26, draft)
+## Rev C (2026-11-26, released)
 
 - **Toggle switches:** the Fusion parts list gives all nine toggles as item 10, 10000001
   (SPST on/off). Three of them, MSTR, DISPL and LTG, are momentary (owner, 2026-11-26).
