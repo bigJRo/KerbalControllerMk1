@@ -1,7 +1,7 @@
 /**
  * @file        ExtendedModule.ino
- * @version     2.0.0
- * @date        2026-04-07
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -34,7 +34,7 @@
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @note        Requires: KerbalButtonCore library
+ * @note        Requires: KerbalButtonCore library v2.5.0 or later
  *              Hardware: KC-01-1801/1802 and KC-01-1811/1812 (ATtiny816)
  *              IDE settings:
  *                Board: ATtiny816 (megaTinyCore)
@@ -51,6 +51,13 @@
 
 #define I2C_ADDRESS     0x24   // Vehicle Control module address
 #define MODULE_TYPE_ID  KBC_TYPE_VEHICLE_CONTROL
+
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH, reported at identity
+ *         bytes 5..7 next to the KerbalButtonCore version (I2C spec §6). Keep
+ *         @version in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
 
 // ============================================================
 //  Per-button active colors — Vehicle Control module
@@ -89,6 +96,9 @@ KerbalButtonCore kbc(MODULE_TYPE_ID, KBC_CAP_EXTENDED_STATES, activeColors);
 // ============================================================
 
 void setup() {
+    // Report this sketch's version in the identity, next to the library's.
+    kbc.setSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+
     Wire.begin(I2C_ADDRESS);
     kbc.begin();
 }

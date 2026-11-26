@@ -382,6 +382,10 @@ KerbalButtonCore/
     └── DiagnosticDump/         — serial debug output of button and LED state
 ```
 
+Each example reports its own sketch version in the identity, as a module
+sketch does: `SKETCH_VERSION_*` constants passed with `kbc.setSketchVersion()`
+at the start of `setup()`. Set them to your sketch's version when you copy one.
+
 The `.ipp` files hold the implementation. `KerbalButtonCore.h` includes them
 at its end, so the library is compiled inside the sketch together with the
 sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
@@ -393,7 +397,7 @@ sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
 
 | Version | Date | Notes |
 |---|---|---|
-| 2.5.0 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added), and the module sketch's own version follows at bytes 5–7. `KerbalButtonCore::setSketchVersion()` sets it (0xFF, unknown, until the sketch calls it). Needs KerbalModuleCommon 1.9.0. |
+| 2.5.0 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added), and the module sketch's own version follows at bytes 5–7. `KerbalButtonCore::setSketchVersion()` sets it (0xFF, unknown, until the sketch calls it). The examples (2.1.0) call it with their own `SKETCH_VERSION_*`. Needs KerbalModuleCommon 1.9.0. |
 | 2.4.0 | 2026-11-08 | Sources renamed `.cpp` → `.ipp` and included from `KerbalButtonCore.h`, so the sketch's `KBC_INPUT_COUNT` / `KBC_SHIFTREG_COUNT` reach the library. Before, Function and Vehicle Control (24 inputs) ran a 16-input library with a class layout that did not match the sketch. Identity firmware 2.4 (was 2.2). |
 
 ---

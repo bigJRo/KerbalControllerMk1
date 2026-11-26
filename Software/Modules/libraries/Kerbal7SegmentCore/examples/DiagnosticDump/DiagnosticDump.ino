@@ -1,7 +1,7 @@
 /**
  * @file        DiagnosticDump.ino
- * @version     2.0.0
- * @date        2026-04-27
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -16,7 +16,7 @@
  *              and open a serial monitor at 115200 baud.
  *
  * @note        Hardware:  KC-01-1841/1842 v2.0 (ATtiny816)
- *              Library:   Kerbal7SegmentCore v2.0.0
+ *              Library:   Kerbal7SegmentCore v2.1.0 or later
  *              IDE settings:
  *                Board:        ATtiny816 (megaTinyCore)
  *                Clock:        20 MHz internal
@@ -28,9 +28,22 @@
 
 #define I2C_ADDRESS  0x2A
 
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH, reported at identity
+ *         bytes 5..7 next to the Kerbal7SegmentCore version (I2C spec §6). Keep
+ *         @version in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
+
 void setup() {
     Serial.begin(115200);
-    Serial.println(F("K7SC DiagnosticDump v2.0.0"));
+    Serial.print(F("K7SC DiagnosticDump v"));
+    Serial.print(SKETCH_VERSION_MAJOR); Serial.print('.');
+    Serial.print(SKETCH_VERSION_MINOR); Serial.print('.');
+    Serial.println(SKETCH_VERSION_PATCH);
+    // Report this sketch's version in the identity, next to the library's.
+    k7scSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+
     k7scBegin(I2C_ADDRESS, KMC_TYPE_GPWS_INPUT, KMC_CAP_DISPLAY);
     buttonsClearAll();
     displaySetValue(8888);

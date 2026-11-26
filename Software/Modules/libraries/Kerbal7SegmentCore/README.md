@@ -311,7 +311,7 @@ All `#ifndef`-guarded in `K7SC_Config.h`:
 
 ### v2.1.0 (2026-11-26)
 - The identity packet is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, and the module sketch's own version follows at bytes 5–7
-- `k7scSetSketchVersion()` added: the sketch passes its version for bytes 5–7 (0xFF, unknown, until it is called)
+- `k7scSetSketchVersion()` added: the sketch passes its version for bytes 5–7 (0xFF, unknown, until it is called). The examples `BasicDisplayModule` and `DiagnosticDump` (2.1.0) call it with their own `SKETCH_VERSION_*` constants
 - The identity reports the library's real version, 2.1.0. Until now `K7SC_FIRMWARE_MAJOR` / `_MINOR` were still 1.0, so a 2.0.0 module reported 1.0
 - `K7SC_FIRMWARE_PATCH` added; `K7SC_IDENTITY_SIZE` is `KMC_IDENTITY_SIZE` (needs KerbalModuleCommon 1.9.0)
 
