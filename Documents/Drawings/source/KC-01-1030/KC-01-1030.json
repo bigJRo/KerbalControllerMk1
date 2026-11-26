@@ -49,7 +49,7 @@
     ],
     [
       "C",
-      "Momentary Switch Group 1 switches split out as item 19; item 18 part number corrected",
+      "Momentary toggles split out as item 19; AliExpress parts by item number; item 18 corrected",
       "2026-11-26",
       "J. Kerman"
     ]
@@ -735,9 +735,9 @@
         },
         {
           "qty": 1,
-          "pn": "90000002",
+          "pn": "AE 2251832816396454",
           "name": "Button Cover - 22mm",
-          "desc": "Push button transparent cover guard, 22 mm, no spring (over the ABORT button)"
+          "desc": "Push button transparent cover guard, 22 mm, no spring (over the ABORT button); AliExpress item, was 90000002"
         },
         {
           "qty": 1,
@@ -747,15 +747,15 @@
         },
         {
           "qty": 1,
-          "pn": "11000001",
+          "pn": "AE 2251832732685651",
           "name": "Toggle Switch Cover - Red",
-          "desc": "Omval toggle switch flip cover, 12 mm, red (abort arming switch)"
+          "desc": "Omval toggle switch flip cover, 12 mm, red (abort arming switch); AliExpress item, variant red; was 11000001"
         },
         {
           "qty": 6,
-          "pn": "10000001",
+          "pn": "AE 2251832731902430",
           "name": "Switch - SPST On/Off Toggle",
-          "desc": "Omval 12 mm fixed toggle switch, 2 solder pins, SPST on/off, latching (SCE, UPTLM, A/P, ENGINE, THRTL and the abort arming switch)"
+          "desc": "Omval 12 mm fixed toggle switch, SPST on/off, latching, 2 solder pins (SCE, UPTLM, A/P, ENGINE, THRTL and the abort arming switch); AliExpress item, latching variant; was 10000001"
         },
         {
           "qty": 8,
@@ -777,9 +777,9 @@
         },
         {
           "qty": 4,
-          "pn": "B079FKG8B1",
+          "pn": "AE 3256807837994773",
           "name": "Push Button - 16mm - Metal LED BLUE",
-          "desc": "Rugged metal momentary push button with white LED ring, 16 mm, blue (FULL, THRTL +, THRTL −, IDLE)"
+          "desc": "Rugged metal momentary push button with white LED ring, 16 mm, blue (FULL, THRTL +, THRTL −, IDLE); AliExpress item, 16 mm blue variant; Fusion gave B079FKG8B1"
         },
         {
           "qty": 1,
@@ -807,9 +807,9 @@
         },
         {
           "qty": 3,
-          "pn": "10000003",
+          "pn": "AE 2251832731902430",
           "name": "Switch - SPST Momentary Toggle",
-          "desc": "Omval 12 mm fixed toggle switch, 2 solder pins, SPST momentary (MSTR, DISPL, LTG); same listing as item 10"
+          "desc": "Omval 12 mm fixed toggle switch, SPST momentary, 2 solder pins (MSTR, DISPL, LTG); AliExpress item, momentary variant"
         }
       ],
       "notes": [

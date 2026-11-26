@@ -59,11 +59,25 @@ in git history. The released PDFs are in `Documents/Drawings`.
   (SPST on/off). Three of them, MSTR, DISPL and LTG, are momentary (owner, 2026-11-26).
   - Item 10 is now the six latching switches: SCE, UPTLM, A/P, ENGINE, THRTL and the abort
     arming switch.
-  - New item 19 is the three momentary switches, part 10000003. Both kinds are Omval 12 mm
-    SPST with 2 solder pins, from one AliExpress listing.
+  - New item 19 is the three momentary switches. Both kinds are Omval 12 mm SPST with 2 solder
+    pins, from one AliExpress listing.
   - The Fusion file is not changed. The split is made in `KC-01-1030.json`.
 - **Balloon:** item 19 gets its own balloon on the rear view (sheet 3). It is drawn by the
   generator's `balloons` option and points at MSTR.
+- **AliExpress part numbers:** the owner decided on 2026-11-26 that a part bought on AliExpress
+  with no manufacturer part number is numbered by its AliExpress item, as "AE <item>". The
+  variant is named in the description. This replaces the internal numbers and Fusion's
+  Amazon number:
+
+  | Item | Part | Was | Now |
+  |---|---|---|---|
+  | 7 | Button cover, 22 mm | 90000002 | AE 2251832816396454 |
+  | 9 | Toggle switch cover, red | 11000001 | AE 2251832732685651 |
+  | 10 | Toggle switch, latching | 10000001 | AE 2251832731902430 |
+  | 14 | 16 mm blue push button | B079FKG8B1 | AE 3256807837994773 |
+  | 19 | Toggle switch, momentary | none (new item) | AE 2251832731902430 |
+
+  Panels A1 and B2 take the same numbers at their next revision.
 - **Item 18:** its part number is corrected to 91223A412, McMaster's M3 × 6 mm ultra-low-profile
   socket head screw (owner, 2026-11-26). Fusion gave 91223QA412.
 - **Base drawing:** the base, KC-01-1031, is unchanged and stays at Rev B (`doc_rev`).
