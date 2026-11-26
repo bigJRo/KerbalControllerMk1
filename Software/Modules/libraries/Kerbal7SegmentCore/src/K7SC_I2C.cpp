@@ -25,6 +25,12 @@ K7SCInputState   inputState = {0, 0, 0, 0, false};
 static uint8_t _typeId   = 0xFF;
 static uint8_t _capFlags = 0;
 
+// The module sketch's own version (set by k7scSetSketchVersion), identity
+// bytes 5..7. KMC_SKETCH_VERSION_UNKNOWN until the sketch sets it.
+static uint8_t _sketchMajor = KMC_SKETCH_VERSION_UNKNOWN;
+static uint8_t _sketchMinor = KMC_SKETCH_VERSION_UNKNOWN;
+static uint8_t _sketchPatch = KMC_SKETCH_VERSION_UNKNOWN;
+
 // ── Packet state ──────────────────────────────────────────────
 static bool    _fault       = false;
 static uint8_t _txCounter   = 0;
@@ -63,6 +69,9 @@ static void _sendIdentity() {
     Wire.write(K7SC_FIRMWARE_MINOR);
     Wire.write(_capFlags);
     Wire.write(K7SC_FIRMWARE_PATCH);
+    Wire.write(_sketchMajor);
+    Wire.write(_sketchMinor);
+    Wire.write(_sketchPatch);
 }
 
 // ── Data packet ───────────────────────────────────────────────
@@ -173,6 +182,13 @@ static void _onRequest() {
         // Master should not be reading without a prior INT assertion.
         for (uint8_t i = 0; i < K7SC_HEADER_SIZE; i++) Wire.write((uint8_t)0);
     }
+}
+
+// ── k7scSetSketchVersion() ────────────────────────────────────
+void k7scSetSketchVersion(uint8_t major, uint8_t minor, uint8_t patch) {
+    _sketchMajor = major;
+    _sketchMinor = minor;
+    _sketchPatch = patch;
 }
 
 // ── k7scI2CBegin() ────────────────────────────────────────────

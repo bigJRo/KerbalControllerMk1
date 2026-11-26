@@ -82,20 +82,26 @@ uint8_t ktcScan(uint8_t* out, uint8_t maxAddrs) {
 }
 
 static KtcIdentity _identifyOnce(uint8_t addr) {
-    KtcIdentity id = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
+    KtcIdentity id = KTC_IDENTITY_NONE;
     Wire.beginTransmission(addr);
     Wire.write(KMC_CMD_GET_IDENTITY);
     if (Wire.endTransmission() != 0) return id;
     delayMicroseconds(200);
-    // 5 bytes since I2C spec v2.22 (patch at byte 4); the 4-byte form of
-    // older firmware is still read, with the patch unknown.
+    // 8 bytes (I2C spec v2.22): library version at 1/2/4, sketch version at
+    // 5..7. The 5-byte form (no sketch version) and the 4-byte form of older
+    // firmware (no patch either) are still read, with what is missing unknown.
     uint8_t got = Wire.requestFrom((int)addr, (int)KMC_IDENTITY_SIZE);
     if (got >= KMC_IDENTITY_SIZE_V1) {
         id.typeId  = Wire.read();
         id.fwMajor = Wire.read();
         id.fwMinor = Wire.read();
         id.caps    = Wire.read();
-        if (got >= KMC_IDENTITY_SIZE) id.fwPatch = Wire.read();   // 0xFF: also unknown
+        if (got >= KMC_IDENTITY_SIZE_V2) id.fwPatch = Wire.read();   // 0xFF: also unknown
+        if (got >= KMC_IDENTITY_SIZE) {                              // 0xFF: also unknown
+            id.skMajor = Wire.read();
+            id.skMinor = Wire.read();
+            id.skPatch = Wire.read();
+        }
         // A floating bus reads 0xFF, a silent target 0x00: neither is a module.
         id.valid   = (id.typeId != 0x00 && id.typeId != 0xFF);
     }
@@ -106,6 +112,19 @@ static KtcIdentity _identifyOnce(uint8_t addr) {
 void ktcFmtVersion(char* buf, uint8_t n, uint8_t major, uint8_t minor, uint8_t patch) {
     if (patch == KMC_FW_PATCH_UNKNOWN) snprintf(buf, n, "%u.%u", major, minor);
     else                               snprintf(buf, n, "%u.%u.%u", major, minor, patch);
+}
+
+void ktcFmtVersions(char* buf, uint8_t n, const KtcIdentity& id, bool compact) {
+    char lib[12], sk[12];
+    ktcFmtVersion(lib, sizeof(lib), id.fwMajor, id.fwMinor, id.fwPatch);
+    if (id.skMajor == KMC_SKETCH_VERSION_UNKNOWN) {
+        snprintf(buf, n, compact ? "-/%s" : "- / lib %s", lib);
+    } else if (id.skMajor == id.fwMajor && id.skMinor == id.fwMinor && id.skPatch == id.fwPatch) {
+        snprintf(buf, n, "%s", lib);
+    } else {
+        ktcFmtVersion(sk, sizeof(sk), id.skMajor, id.skMinor, id.skPatch);
+        snprintf(buf, n, compact ? "%s/%s" : "%s / lib %s", sk, lib);
+    }
 }
 
 KtcIdentity ktcIdentify(uint8_t addr) {

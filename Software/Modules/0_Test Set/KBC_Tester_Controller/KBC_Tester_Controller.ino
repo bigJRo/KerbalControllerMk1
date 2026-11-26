@@ -62,15 +62,18 @@
 
 #define TARGET_ADDR         0x20
 #define TARGET_TYPE_ID      0x01   // KMC_TYPE_UI_CONTROL
-// The identity reports the KerbalButtonCore library version (KBC_FIRMWARE_*
-// in KBC_Config.h), X.Y.Z since I2C spec v2.22.
+// The identity (I2C spec v2.22 §6, 8 bytes) reports the KerbalButtonCore
+// library version (KBC_FIRMWARE_* in KBC_Config.h) at bytes 1/2/4 and the
+// target sketch's own version at bytes 5..7 (set by the sketch with
+// kbc.setSketchVersion(); 0xFF = not set or not sent).
 #define TARGET_FW_MAJOR     2
 #define TARGET_FW_MINOR     5
 #define TARGET_FW_PATCH     0
 #define TARGET_CAP_FLAGS    0x01   // KMC_CAP_EXTENDED_STATES
 
 #define KBC_PACKET_SIZE     4
-#define KBC_IDENTITY_SIZE   5      // type, major, minor, caps, patch (I2C spec §6)
+#define KBC_IDENTITY_SIZE   8      // type, lib major, minor, caps, lib patch, sketch major, minor, patch
+#define KBC_IDENTITY_SIZE_V2 5     // no sketch version
 #define KBC_IDENTITY_SIZE_V1 4     // the form before spec v2.22: no patch
 #define KBC_LED_PAYLOAD     8
 
@@ -140,7 +143,8 @@ static bool _readIdentity(uint8_t* buf) {
     delay(2);
     uint8_t n = Wire.requestFrom((uint8_t)TARGET_ADDR, (uint8_t)KBC_IDENTITY_SIZE);
     if (n < KBC_IDENTITY_SIZE_V1) return false;
-    buf[4] = 0xFF;                               // patch unknown in the 4-byte form
+    for (uint8_t i = KBC_IDENTITY_SIZE_V1; i < KBC_IDENTITY_SIZE; i++)
+        buf[i] = 0xFF;                           // unknown in a 4- or 5-byte reply
     for (uint8_t i = 0; i < n && i < KBC_IDENTITY_SIZE; i++) buf[i] = Wire.read();
     while (Wire.available()) Wire.read();
     return true;
@@ -268,6 +272,9 @@ void testIdentity() {
     _infof("FW Minor:  ", buf[2]);
     _infof("Cap flags: ", buf[3]);
     _infof("FW Patch:  ", buf[4]);   // 0xFF: not reported (4-byte form)
+    _infof("Sketch maj:", buf[5]);   // 0xFF: not reported (5- or 4-byte form, or not set)
+    _infof("Sketch min:", buf[6]);
+    _infof("Sketch pat:", buf[7]);
 
     buf[0] == TARGET_TYPE_ID
         ? _pass("Type ID matches")
@@ -284,6 +291,11 @@ void testIdentity() {
     buf[4] == TARGET_FW_PATCH
         ? _pass("FW patch matches")
         : _fail("FW patch", "0xFF = no patch byte (firmware before I2C spec v2.22)");
+
+    // The target sketch's own version: any value, but it must be reported.
+    (buf[5] != 0xFF && buf[6] != 0xFF && buf[7] != 0xFF)
+        ? _pass("Sketch version reported")
+        : _fail("Sketch version", "0xFF = not sent (5- or 4-byte identity) or not set by the sketch");
 
     buf[3] == TARGET_CAP_FLAGS
         ? _pass("Capability flags match")

@@ -23,7 +23,7 @@ Terminology follows the 2021 NXP I2C specification:
 
 The controller owns all game state and situational logic. Target modules own only their local hardware — LED colours, button state, display values. All application logic belongs in the module sketch; libraries are hardware interface layers.
 
-> **Conformance note:** As of v2.6, **all module firmware is conformant** with this document. The **KerbalButtonCore (v2.0)**, **KerbalJoystickCore (v2.0)** libraries and the standalone **Throttle (v2.0)** and **Dual Encoder (v2.0)** firmware join the original **Kerbal7SegmentCore** reference implementation — closing issues KBC-001–006, KJC-001–005, and THR-001–004 and the standalone-firmware items. Every module emits the universal 3-byte header, increments the transaction counter on each INT assertion, and implements the full BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING lifecycle with `CMD_ENABLE`/`CMD_DISABLE`. From v2.22 every module reports its firmware version as X.Y.Z in the 5-byte identity packet (§6).
+> **Conformance note:** As of v2.6, **all module firmware is conformant** with this document. The **KerbalButtonCore (v2.0)**, **KerbalJoystickCore (v2.0)** libraries and the standalone **Throttle (v2.0)** and **Dual Encoder (v2.0)** firmware join the original **Kerbal7SegmentCore** reference implementation — closing issues KBC-001–006, KJC-001–005, and THR-001–004 and the standalone-firmware items. Every module emits the universal 3-byte header, increments the transaction counter on each INT assertion, and implements the full BOOT_READY → DISABLED → ACTIVE ↔ SLEEPING lifecycle with `CMD_ENABLE`/`CMD_DISABLE`. From v2.22 every module reports its versions as X.Y.Z in the 8-byte identity packet (§6): its library's and its own sketch's.
 
 > **Display carriers (0x10–0x14):** The display carriers (the Teensy 4.1 Annunciator 0x10, Resource Display 0x11, Info Display 1 0x12 and Info Display 2 0x13, and the XIAO RP2350 System Info Display 0x14, firmware `KCMk1_SysInfo` v1.1.0) sit outside the 0x20–0x2D module range and use **panel-specific** point-to-point protocols rather than the universal packet format defined for modules above. Their shared framing (bus, address block, sync bytes, and the requestType command scheme) is defined in **§15**; per-display packet layouts live in each display's `README.md`, and the Info Display's Ascent Autopilot command/status frames are specified in **`Ascent_Autopilot_Interface.md`**.
 
@@ -124,7 +124,7 @@ All commands are initiated by the controller as I2C write transactions. The comm
 
 | Command | Value | Payload | Description |
 |---------|-------|---------|-------------|
-| `CMD_GET_IDENTITY` | 0x01 | — | Query module identity. Module replies with the 5-byte identity packet (see §6; 4 bytes before v2.22) |
+| `CMD_GET_IDENTITY` | 0x01 | — | Query module identity. Module replies with the 8-byte identity packet (see §6; 4 bytes before v2.22) |
 | `CMD_SET_LED_STATE` | 0x02 | 8 bytes | Nibble-packed LED state for 16 positions. Module-specific variants noted in §9 |
 | `CMD_SET_BRIGHTNESS` | 0x03 | 1 byte | ENABLED state backlight brightness (0–255) |
 | `CMD_BULB_TEST` | 0x04 | 1 byte | 0x01 = start, 0x00 = stop. All LEDs full white. Fires regardless of lifecycle state |
@@ -155,22 +155,31 @@ All commands are initiated by the controller as I2C write transactions. The comm
 
 ## 6. Identity Packet
 
-Sent in response to `CMD_GET_IDENTITY`. Always 5 bytes, regardless of module type (`KMC_IDENTITY_SIZE`).
+Sent in response to `CMD_GET_IDENTITY`. Always 8 bytes, regardless of module type (`KMC_IDENTITY_SIZE`).
 
 ```
 Byte 0:  Module Type ID (see §8)
-Byte 1:  Firmware version major
-Byte 2:  Firmware version minor
+Byte 1:  Library version major
+Byte 2:  Library version minor
 Byte 3:  Capability flags (see §7)
-Byte 4:  Firmware version patch          (from v2.22)
+Byte 4:  Library version patch           (from v2.22)
+Byte 5:  Sketch version major            (from v2.22)
+Byte 6:  Sketch version minor            (from v2.22)
+Byte 7:  Sketch version patch            (from v2.22)
 ```
 
-**Which version.** Bytes 1, 2 and 4 are the full X.Y.Z version of the firmware that answers, taken from that firmware's version constants (the single source; a module never repeats them as literals):
+**Which versions.** A module reports two X.Y.Z versions, each taken from that firmware's version constants (the single source; a module never repeats them as literals):
 
-- a module built on a shared library reports **the library's** version: KerbalButtonCore (`KBC_FIRMWARE_*`) on the seven button modules, KerbalJoystickCore (`KJC_FIRMWARE_*`) on the two joysticks, Kerbal7SegmentCore (`K7SC_FIRMWARE_*`) on the GPWS Input Panel and Pre-Warp Time;
-- a standalone sketch reports **its own** version: Throttle (`THR_FIRMWARE_*`), Dual Encoder (`DEC_FIRMWARE_*`).
+- **Bytes 1, 2, 4: the library version.** A module built on a shared library reports the library's: KerbalButtonCore (`KBC_FIRMWARE_*`) on the seven button modules, KerbalJoystickCore (`KJC_FIRMWARE_*`) on the two joysticks, Kerbal7SegmentCore (`K7SC_FIRMWARE_*`) on the GPWS Input Panel and Pre-Warp Time.
+- **Bytes 5, 6, 7: the sketch version**, the module sketch's own (`SKETCH_VERSION_*` in the sketch, from its `@version`). The sketch passes it to its library in `setup()`: `kbc.setSketchVersion()`, `kjcSetSketchVersion()`, `k7scSetSketchVersion()`. A change to a sketch alone, such as a new button map, is then visible on the bus. A library sends 0xFF 0xFF 0xFF here until its sketch sets a version.
+- A **standalone sketch** has no library and reports its own version in both places: Throttle (`THR_FIRMWARE_*`), Dual Encoder (`DEC_FIRMWARE_*`). A reader that finds the two equal shows one version.
 
-**Older firmware (the 4-byte form).** Until v2.21 the packet was 4 bytes, without byte 4. The patch is appended after the capability flags so that a reader of the old form still finds the flags at byte 3. A controller or tester asks for 5 bytes and accepts 4 (`KMC_IDENTITY_SIZE_V1`). It treats the patch as **unknown** when byte 4 is missing (a short read) or reads **0xFF** (`KMC_FW_PATCH_UNKNOWN`: on the bus, a read past the end of a 4-byte reply sees the idle-high SDA), and shows that version as **X.Y**; a known patch is shown as **X.Y.Z**. A 4-byte reply is not a bus error. A module therefore never reports patch 255.
+**Shorter forms (older firmware).** Until v2.21 the packet was 4 bytes, bytes 0–3. A 5-byte form (bytes 0–4, no sketch version) was also built during v2.22's development. Each addition is appended, so a reader of a shorter form still finds its bytes where it expects them, and the capability flags stay at byte 3. A controller or tester asks for 8 bytes and accepts 8, 5 or 4 (`KMC_IDENTITY_SIZE`, `KMC_IDENTITY_SIZE_V2`, `KMC_IDENTITY_SIZE_V1`). A shorter reply is not a bus error. On the bus a read past the end of a reply sees the idle-high SDA, so a missing byte reads **0xFF**:
+
+- The library patch is **unknown** when byte 4 is missing or reads 0xFF (`KMC_FW_PATCH_UNKNOWN`); that version is shown as **X.Y**.
+- The sketch version is **unknown** when bytes 5–7 are missing or byte 5 reads 0xFF (`KMC_SKETCH_VERSION_UNKNOWN`); it is shown as **-**. A sketch patch of 0xFF is shown as X.Y.
+
+A module therefore never reports 255 in a version byte. The master and the testers show both versions as sketch then library, e.g. `2.1.0 / lib 2.5.0`, one `X.Y.Z` when they are equal, and `- / lib 2.5.0` when the sketch version is unknown.
 
 ---
 
@@ -210,7 +219,7 @@ Total packet size = 3-byte header + payload size. The controller must read the f
 | 0x0D | `KMC_TYPE_THROTTLE` | Throttle Module | 0x2C | 4 bytes | 7 bytes | 0x20 | ✓ Throttle fw v2.0 |
 | 0x0E | `KMC_TYPE_DUAL_ENCODER` | Dual Encoder | 0x2D | 4 bytes | 7 bytes | 0x04 | ✓ Dual Encoder fw v2.0 |
 
-> **Note:** The last column gives the first conformant version. Current versions, as reported in the identity packet (§6): KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0, Throttle 2.4.0, Dual Encoder 2.3.0.
+> **Note:** The last column gives the first conformant version. Current versions, as reported in the identity packet (§6), library then sketch: KerbalButtonCore 2.5.0 with UI Control 2.1.0, Function Control 2.2.0, Action Control 2.1.0, Stability Control 2.2.0, Vehicle Control 2.3.0, Time Control 2.1.0, Auxiliary Control 2.2.0; KerbalJoystickCore 2.4.0 with Joystick Rotation 2.1.0 and Joystick Translation 2.1.0; Kerbal7SegmentCore 2.1.0 with GPWS Input 2.2.0 and Pre-Warp Time 2.2.0. Standalone, the sketch version in both places: Throttle 2.5.0, Dual Encoder 2.4.0.
 >
 > **Note:** Type ID 0x0F / address 0x2E (formerly the Switch Panel) is retired — the single-module design was superseded by Switch Groups 1/2 on Function and Vehicle Control. Both the type ID and the address are now unused.
 >
@@ -474,8 +483,10 @@ For each address 0x20 – 0x2D:
   1. Controller sends CMD_RESET        [ADDR+W] [0x07]
   2. Controller sends CMD_GET_IDENTITY [ADDR+W] [0x01]
   3. Controller reads identity         [ADDR+R] → [TYPE] [MAJ] [MIN] [FLAGS] [PATCH]
-                                       (4 bytes from firmware before v2.22: patch unknown, §6)
-  4. Controller stores TYPE, FLAGS and the version for this address
+                                                  [SK MAJ] [SK MIN] [SK PATCH]
+                                       (5 bytes: sketch version unknown; 4 bytes from firmware
+                                        before v2.22: patch unknown too, §6)
+  4. Controller stores TYPE, FLAGS and both versions for this address
   5. Controller resolves total packet size from TYPE (see §8)
   6. Controller sends CMD_SET_LED_STATE with all positions = OFF
   7. Controller sends CMD_DISABLE      [ADDR+W] [0x0A]
@@ -736,7 +747,7 @@ The System Info Display is the 2" carrier on Panel A2 (KC-01-1901: XIAO RP2350, 
 | 2.7 | 2026-06-28 | Switch Panel module (type 0x0F / address 0x2E) removed from the codebase — design superseded by Switch Groups 1/2 on Function and Vehicle Control. §8 registry row and the §9.1 standard-module references dropped; 0x0F/0x2E retired. |
 | 2.8 | 2026-06-28 | EVA module (type 0x07 / address 0x26) replaced by the **Auxiliary Control** module: the standalone 6-button EVA firmware was retired in favour of a standard 12-button KerbalButtonCore module (KC-01-1802). Type ID 0x07 renamed `KMC_TYPE_EVA_MODULE` → `KMC_TYPE_AUX_CTRL` (value unchanged); §8 registry row updated (now KerbalButtonCore v2.1, standard 4-byte payload / 7-byte packet); Auxiliary Control added to the §9.1 standard-module list and removed from the device-specific list; the obsolete EVA-only packet note (bits 0–5, encoder bytes) dropped. |
 | 2.9 | 2026-06-28 | §9 LED state table updated: added `KMC_LED_CUT` (0x7, static red state-machine terminal — previously defined in firmware but missing from this table) and the new `KMC_LED_ACTIVE_ALT` (0x8, second per-button active colour). Clarified gating: 0x3–0x7 are extended states (require `KMC_CAP_EXTENDED_STATES`); 0x8 `ACTIVE_ALT` is a core rendering state available regardless of capability — used by AUX CTRL's CP Toggle (ROSE Primary / CORAL Alternate). Backed by KerbalModuleCommon v1.6 / KerbalButtonCore v2.2. |
-| 2.22 | 2026-11-26 | **Firmware versions three-place on the bus.** §6: the identity packet grows 4 → 5 bytes; byte 4 is the firmware patch, appended so the capability flags stay at byte 3. Which version a module reports (the library's on a library-based module, the sketch's on Throttle and Dual Encoder, from the version constants), and the rule for older firmware: a reader asks for 5 bytes, accepts 4, and treats a missing or 0xFF patch as unknown, shown as X.Y. §5.1, §12.1 and the §1 conformance note updated; §8 current versions are KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (reported 1.0 until now), Throttle 2.4.0, Dual Encoder 2.3.0 (KerbalModuleCommon 1.9.0: `KMC_IDENTITY_SIZE` 5). §15.4: STATUS grows 27 → 28 bytes, byte 27 the master version's patch (master v0.10.5; the 27-byte form still accepted, shown as X.Y), and the Sys Info Display's status read grows 4 → 5 bytes with its patch (`KCMk1_SysInfo` v1.1.0; the master accepts 4). No other packet formats changed. |
+| 2.22 | 2026-11-26 | **Firmware versions three-place on the bus, library and sketch.** §6: the identity packet grows 4 → 8 bytes; byte 4 is the library patch and bytes 5–7 the module sketch's own version, appended so the capability flags stay at byte 3. Which versions a module reports (the library's at 1/2/4 and the sketch's at 5–7 on a library-based module, each sketch passing its `SKETCH_VERSION_*` to its library; the sketch's in both places on Throttle and Dual Encoder), and the rule for shorter replies: a reader asks for 8 bytes, accepts 8, 5 or 4, treats a missing or 0xFF patch as unknown (shown X.Y) and a missing or 0xFF sketch version as unknown (shown -). §5.1, §12.1 and the §1 conformance note updated; §8 current versions are KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (reported 1.0 until now), Throttle 2.5.0, Dual Encoder 2.4.0, and each library module's sketch version (KerbalModuleCommon 1.9.0: `KMC_IDENTITY_SIZE` 8). §15.4: STATUS grows 27 → 28 bytes, byte 27 the master version's patch (master v0.10.5; the 27-byte form still accepted, shown as X.Y), and the Sys Info Display's status read grows 4 → 5 bytes with its patch (`KCMk1_SysInfo` v1.1.0; the master accepts 4). No other packet formats changed. |
 | 2.21 | 2026-11-01 | §15.4: the **Sys Info Display** firmware is built (`KCMk1_SysInfo` v1.0.0, master v0.10.0). CONTROL gains bit 2 (flight scene); BOOT_LINE gains attr bit 6 REPLAY and carries each line's short form; STATUS grows 13 → 27 bytes (fan duty, module count, present and FAULT masks, I2C errors, uptime, master version; the 13-byte form still accepted); the BACKLIGHT frame (0xB8) now goes to 0x14 too; the 5 s silence rule covers the status screen; read flag bit 1 = card mounted. Full STATUS byte table added. No module-side packet formats changed. |
 | 2.20 | 2026-10-31 | §15.3: **BACKLIGHT frame** `[0xB8, flight %, standby %, 0]` to all four 7" carriers (GitHub #47; KCMk1_SystemConfig 1.3.0, KCM_Display 1.1.0, master v0.9.0), and the Info Display 1 **input test frames** (sync 0xAB; page 0, 40 bytes every 100 ms: presence, FAULT, packet-seen masks and the button modules' raw state words; page 1, 24 bytes every 500 ms: INT lines, display-module values and 2-bit lifecycles; page 2, 24 bytes every 500 ms: the four 7" displays' status) sent while the display reports screen 18 in status byte 2 (InfoDisp v1.18.0). No module-side packet formats changed. |
 | 2.19 | 2026-10-31 | §9.4: `CMD_SET_LEVER_HOLD` (0x0E) for the Throttle Module, and the touch rules with and without it (500 ms stall limit). §5.2's start / stop bulb test is now what every module does (KerbalButtonCore 2.3, KerbalJoystickCore 2.1, Throttle 2.2). |

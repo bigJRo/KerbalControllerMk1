@@ -1,11 +1,11 @@
 # GPWS Module Controller Test Plan
 
-**Firmware:** KCMk1_GPWS_Input v2.0 / Kerbal7SegmentCore v2.1.0  
+**Firmware:** KCMk1_GPWS_Input v2.2.0 / Kerbal7SegmentCore v2.1.0  
 **Controller:** KCMk1_GPWS_Controller / Xiao RA4M1  
 **Date:** ___________  
 **Tester:** ___________
 
-> **Identity (2026-11-26):** from Kerbal7SegmentCore 2.1.0 the identity is 5 bytes and the FW reads `2.1.0` (the library's version; it read `1.0` before). The results recorded below were taken with Kerbal7SegmentCore 2.0.0, which printed `1.0`.
+> **Identity (2026-11-26):** from Kerbal7SegmentCore 2.1.0 the identity is 8 bytes (I2C spec v2.22 §6): the controller prints the Library version `2.1.0` (it read `1.0` before) and the module's own Sketch version `2.2.0` (KCMk1_GPWS_Input 2.2.0; `-` from older firmware, which does not report it). The results recorded below were taken with Kerbal7SegmentCore 2.0.0, which printed FW `1.0` and no sketch version.
 >
 > **How to use:** Work through each phase in order. Mark each item ✅ PASS, ❌ FAIL, or ⚠️ PARTIAL. Note any unexpected behaviour in the Notes field.
 
@@ -15,7 +15,7 @@
 
 **T1.1 — Power on both boards**
 
-- [ ] Controller prints identity: Type `0xB`, FW `2.1.0`, Caps `0b10000`
+- [ ] Controller prints identity: Type `0xB`, Library `2.1.0`, Sketch `2.2.0`, Caps `0b10000`
 - [ ] Controller prints `[BOOT] Module BOOT_READY — sending DISABLE` or `[INIT] No startup INT — sending DISABLE`
 - [ ] Module is completely dark — no LEDs, no display
 - [ ] Controller prints `[INIT] Module disabled — send E when in flight scene`
@@ -25,7 +25,7 @@ Notes: ___________
 **T1.2 — Query identity manually**
 
 - Send: `I`
-- [ ] Identity printed correctly (Type `0xB`, FW `2.1.0`, Caps `0b10000`)
+- [ ] Identity printed correctly (Type `0xB`, Library `2.1.0`, Sketch `2.2.0`, Caps `0b10000`)
 - [ ] Module visually unaffected
 
 Notes: ___________

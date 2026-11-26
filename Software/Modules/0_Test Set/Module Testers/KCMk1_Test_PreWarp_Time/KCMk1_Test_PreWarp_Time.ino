@@ -15,7 +15,7 @@
  *              encoder with push (sets 0), and three preset keycaps: 5 MIN,
  *              1 HR (60) and 1 DAY (360, one Kerbin day). A preset flashes its
  *              keycap GOLD for 150 ms. The module drives its own LEDs.
- *              Identity fw 2.1.0, caps 0x10.
+ *              Identity fw 2.2.0 / lib 2.1.0 (sketch / library), caps 0x10.
  *
  *              Packet (8 bytes): header, events (rising edges: bit 0 5 MIN,
  *              1 1 HR, 2 1 DAY, 3 knob push), change (= events), state
@@ -171,6 +171,7 @@ static const KtcModuleDef MODULE = {
     "Pre-Warp Time", "KC-01-1841/1842 7-segment board",
     KMC_TYPE_PRE_WARP_TIME, 0x2B, KMC_DISPLAY_PACKET_SIZE,
     2, 1, 0, KMC_CAP_DISPLAY,          // Kerbal7SegmentCore 2.1.0 (K7SC_FIRMWARE_* in K7SC_Config.h)
+    2, 2, 0,                           // Pre-Warp Time sketch 2.2.0 (SKETCH_VERSION_* in the module sketch)
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     cleanup, live,
 };

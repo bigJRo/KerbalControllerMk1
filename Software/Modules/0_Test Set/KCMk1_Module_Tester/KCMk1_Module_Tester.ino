@@ -54,7 +54,7 @@ static uint8_t            _foundCount = 0;
 static const ModuleInfo*  _sel     = nullptr;
 static uint8_t            _selAddr = 0;
 static uint8_t            _selPkt  = 0;   // expected packet size
-static ModuleIdentity     _selId   = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
+static ModuleIdentity     _selId   = MODULE_IDENTITY_NONE;
 static bool               _bootAcked = false;  // CMD_DISABLE sent for BOOT_READY
 static bool               _bulbOn    = false;  // dashboard bulb-test toggle state
 
@@ -299,8 +299,7 @@ void loop() {
                     _bootAcked = false;
                     _bulbOn    = false;
                     _state   = ST_DASHBOARD;
-                    uiDashboardBegin(_sel, _selAddr,
-                                     _selId.fwMajor, _selId.fwMinor, _selId.fwPatch, _selId.caps);
+                    uiDashboardBegin(_sel, _selAddr, &_selId);
                     _tInput = 0;
                 } else {
                     uiToast("Unknown module type");
@@ -346,8 +345,7 @@ void loop() {
             if (!ctActive()) {
                 // Test finished or aborted — return to the dashboard.
                 _state = ST_DASHBOARD;
-                uiDashboardBegin(_sel, _selAddr,
-                                 _selId.fwMajor, _selId.fwMinor, _selId.fwPatch, _selId.caps);
+                uiDashboardBegin(_sel, _selAddr, &_selId);
                 _tInput = 0;
                 _ledCycleState = 0;
             }

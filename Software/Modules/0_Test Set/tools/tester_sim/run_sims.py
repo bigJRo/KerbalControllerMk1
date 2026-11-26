@@ -110,50 +110,86 @@ MODULE_TABLE = {
 
 CXX = ["g++", "-std=gnu++17", "-O1", "-w"]
 
-# ---- Firmware versions (I2C spec v2.22 §6: the identity reports X.Y.Z) ----
-# The version constants are the single source of what a module reports: the
-# library's for a library-based module, the sketch's for Throttle / Dual Encoder.
+# ---- Firmware versions (I2C spec v2.22 §6: the identity reports two X.Y.Z) ----
+# The version constants are the single source of what a module reports: bytes
+# 1/2/4 carry the library's version (KBC_ / KJC_ / K7SC_FIRMWARE_*), bytes 5..7
+# the module sketch's own (SKETCH_VERSION_* in the sketch). Throttle and Dual
+# Encoder have no library: both carry the sketch's THR_ / DEC_FIRMWARE_*.
 LIB_VERSION = {KBC: ("KBC_Config.h", "KBC"), KJC: ("KJC_Config.h", "KJC"), K7SC: ("K7SC_Config.h", "K7SC")}
 SKETCH_VERSION = {"Throttle": "THR", "Dual Encoder": "DEC"}
 
 
-def fw_constants(path, prefix):
+def version_constants(path, pattern):
+    """MAJOR, MINOR, PATCH from #defines named by pattern % part."""
     text = open(path, encoding="utf-8").read()
     v = []
     for part in ("MAJOR", "MINOR", "PATCH"):
-        m = re.search(r"#define\s+%s_FIRMWARE_%s\s+(\d+)" % (prefix, part), text)
+        name = pattern % part
+        m = re.search(r"#define\s+%s\s+(\d+)" % name, text)
         if not m:
-            raise SystemExit("%s: no %s_FIRMWARE_%s" % (path, prefix, part))
+            raise SystemExit("%s: no %s" % (path, name))
         v.append(int(m.group(1)))
     return tuple(v)
 
 
+def fw_constants(path, prefix):
+    return version_constants(path, prefix + "_FIRMWARE_%s")
+
+
+def sketch_ino(modfolder):
+    inos = glob.glob(os.path.join(MODULES, modfolder, "*.ino"))
+    if len(inos) != 1:
+        raise SystemExit("%s: expected one .ino" % modfolder)
+    return inos[0]
+
+
 def module_fw(modfolder, modlib):
-    """The X.Y.Z a module reports, read from the firmware source."""
+    """(library X.Y.Z, sketch X.Y.Z) a module reports, read from the firmware source."""
     if modlib:
         fname, prefix = LIB_VERSION[modlib]
-        return fw_constants(os.path.join(LIBS, modlib, "src", fname), prefix)
-    return fw_constants(os.path.join(MODULES, modfolder, "Config.h"), SKETCH_VERSION[modfolder])
+        lib = fw_constants(os.path.join(LIBS, modlib, "src", fname), prefix)
+        return lib, version_constants(sketch_ino(modfolder), "SKETCH_VERSION_%s")
+    v = fw_constants(os.path.join(MODULES, modfolder, "Config.h"), SKETCH_VERSION[modfolder])
+    return v, v
+
+
+def fw_text(lib, sketch):
+    """The versions as the tester (and the master) shows them."""
+    l = "%d.%d.%d" % lib
+    return l if sketch == lib else "%d.%d.%d / lib %s" % (sketch + (l,))
+
+
+def _report(kind, name, v, problem):
+    print("%-10s %-22s %-12s %s" % (kind, name, v, "ok" if not problem else "UNEXPECTED (%s)" % problem))
+    return not problem
 
 
 def check_versions():
-    """Each library's library.properties and each sketch's @version header agree with
-    the constants the identity reports."""
+    """Each library's library.properties, and each module sketch's @version header and
+    README Version, agree with the constants the identity reports."""
     ok = True
     for lib, (fname, prefix) in LIB_VERSION.items():
         v = "%d.%d.%d" % fw_constants(os.path.join(LIBS, lib, "src", fname), prefix)
         props = open(os.path.join(LIBS, lib, "library.properties"), encoding="utf-8").read()
         m = re.search(r"^version=(\S+)", props, re.M)
-        good = bool(m) and m.group(1) == v
-        ok &= good
-        print("%-10s %-22s %-12s %s" % ("version", lib, v, "ok" if good else "UNEXPECTED (library.properties %s)" % (m and m.group(1))))
-    for folder, prefix in SKETCH_VERSION.items():
-        cfg = os.path.join(MODULES, folder, "Config.h")
-        v = "%d.%d.%d" % fw_constants(cfg, prefix)
-        m = re.search(r"@version\s+(\S+)", open(cfg, encoding="utf-8").read())
-        good = bool(m) and m.group(1) == v
-        ok &= good
-        print("%-10s %-22s %-12s %s" % ("version", folder, v, "ok" if good else "UNEXPECTED (Config.h @version %s)" % (m and m.group(1))))
+        ok &= _report("version", lib, v, None if m and m.group(1) == v else "library.properties %s" % (m and m.group(1)))
+    sketches = sorted({(t[1], t[2]) for t in MODULE_TABLE.values() if t[0]})
+    for folder, modlib in sketches:
+        v = "%d.%d.%d" % module_fw(folder, modlib)[1]
+        # The file holding the constants carries @version; a standalone sketch's main
+        # tab carries it too.
+        heads = [sketch_ino(folder)] if modlib else [os.path.join(MODULES, folder, "Config.h"), sketch_ino(folder)]
+        problems = []
+        for h in heads:
+            m = re.search(r"@version\s+(\S+)", open(h, encoding="utf-8").read())
+            if not m or m.group(1) != v:
+                problems.append("%s @version %s" % (os.path.basename(h), m and m.group(1)))
+        readme = open(os.path.join(MODULES, folder, "README.md"), encoding="utf-8").read()
+        m = re.search(r"\*\*Version:\*\*\s+(\S+)", readme)
+        rv = m and m.group(1)
+        if not rv or not (rv == v or (rv.count(".") == 1 and v == rv + ".0")):
+            problems.append("README Version %s" % rv)
+        ok &= _report("version", folder, v, ", ".join(problems))
     return ok
 
 
@@ -271,11 +307,12 @@ def run(name, shots, keep):
     work = tempfile.mkdtemp(prefix="ktcsim_")
     ok = True
     tester, modfolder, modlib = MODULE_TABLE[name][:3]
-    # A tester run must see the module's real X.Y.Z, and the tester must expect
-    # exactly that ("newer than tester" would mean its expectation is stale).
+    # A tester run must see the module's real versions, library and sketch, and the
+    # tester must expect exactly those ("newer than tester" would mean its
+    # expectation is stale).
     ident = []
     if tester:
-        ident = [r"\] Identity +PASS type 0x[0-9A-F]+ fw %d\.%d\.%d caps" % module_fw(modfolder, modlib)]
+        ident = [r"\] Identity +PASS type 0x[0-9A-F]+ fw %s caps" % re.escape(fw_text(*module_fw(modfolder, modlib)))]
     try:
         exe, so, intpin = build(name, work)
         for run_ in MODULE_TABLE[name][4]:

@@ -1,7 +1,7 @@
 /**
  * @file        Kerbal7SegmentCore.h
  * @version     2.1.0
- * @date        2026-04-27
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -28,6 +28,9 @@
  *                #include <Kerbal7SegmentCore.h>
  *
  *                void setup() {
+ *                    k7scSetSketchVersion(SKETCH_VERSION_MAJOR,
+ *                                         SKETCH_VERSION_MINOR,
+ *                                         SKETCH_VERSION_PATCH);
  *                    k7scBegin(0x2A, KMC_TYPE_GPWS_INPUT, KMC_CAP_DISPLAY);
  *                    // Initial LED state — all off
  *                    buttonsClearAll();

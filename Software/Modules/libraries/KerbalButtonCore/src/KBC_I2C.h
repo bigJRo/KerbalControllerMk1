@@ -1,7 +1,7 @@
 /**
  * @file        KBC_I2C.h
  * @version     2.5.0
- * @date        2026-06-28
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -116,6 +116,13 @@ public:
      */
     void begin();
 
+    /**
+     * @brief  Set the module sketch's own version, reported at identity
+     *         bytes 5..7 (I2C spec §6). Until it is set those bytes read
+     *         KMC_SKETCH_VERSION_UNKNOWN (0xFF).
+     */
+    void setSketchVersion(uint8_t major, uint8_t minor, uint8_t patch);
+
     // --------------------------------------------------------
     //  Main loop services
     // --------------------------------------------------------
@@ -182,6 +189,9 @@ private:
 
     uint8_t _moduleTypeId;
     uint8_t _capFlags;
+    uint8_t _sketchMajor;   ///< Sketch version (identity bytes 5..7)
+    uint8_t _sketchMinor;
+    uint8_t _sketchPatch;
 
     // --------------------------------------------------------
     //  INT pin state tracking

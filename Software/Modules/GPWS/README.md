@@ -1,12 +1,12 @@
 # KCMk1_GPWS_Input
 
 **Module:** GPWS Input Panel  
-**Version:** 2.1.0  
-**Date:** 2026-08-16  
+**Version:** 2.2.0  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1841 7-Segment Display Module v2.0  
-**Library:** Kerbal7SegmentCore v2.0.0  
+**Library:** Kerbal7SegmentCore v2.1.0 or later  
 
 ---
 
@@ -23,6 +23,7 @@ The GPWS Input Panel allows the pilot to configure ground proximity warning syst
 | I2C Address | `0x2A` |
 | Module Type ID | `KMC_TYPE_GPWS_INPUT` (0x0B) |
 | Capability Flags | `KMC_CAP_DISPLAY` (0x10) |
+| Identity | 8 bytes (I2C spec §6): the Kerbal7SegmentCore version, 2.1.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `k7scSetSketchVersion()`) |
 | Data Packet Size | 8 bytes (3-byte header + 5-byte payload) |
 | NeoPixel Buttons | 3 (SK6812MINI-EA, NEO_GRB 3-byte) |
 | GPIO Buttons | 1 (BTN_EN — encoder pushbutton, no LED) |
@@ -176,7 +177,7 @@ Flight scene exit / serial loss → DISABLE → all dark, defaults reset
 
 1. Arduino IDE with megaTinyCore installed
 2. KerbalModuleCommon v1.7.1+ (header-only; Sketch → Include Library → Add .ZIP)
-3. Kerbal7SegmentCore v2.0.0 (Sketch → Include Library → Add .ZIP)
+3. Kerbal7SegmentCore v2.1.0 (Sketch → Include Library → Add .ZIP)
 
 ### Arduino IDE Settings
 
@@ -199,6 +200,7 @@ Flight scene exit / serial loss → DISABLE → all dark, defaults reset
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.2.0 | 2026-11-26 | The identity reports this sketch's own version, 2.2.0, at bytes 5–7 next to the Kerbal7SegmentCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `k7scSetSketchVersion()` in `setup()`. Needs Kerbal7SegmentCore 2.1.0 and KerbalModuleCommon 1.9.0. |
 | 2.1.0 | 2026-08-16 | BTN02 (Proximity Alarm) and BTN03 (Rendezvous Radar) are now the two mutually-exclusive amber submodes: pressing either forces BTN01 to AMBER and clears the other. On the annunciator, Proximity Alarm selects altitude callouts + MINIMUMS and Rendezvous Radar selects target-distance callouts, both using the encoder threshold as a bug (tone on crossing). No packet-format change — same 8-byte packet and state-byte layout. |
 | 2.0.0 | 2026-04-28 | Complete rewrite for Kerbal7SegmentCore v2.0.0. All application logic moved to sketch. Library is now hardware interface only. Encoder acceleration sketch-implemented. INT suppression redesigned. Vessel switch is a no-op. |
 | 1.1.0 | 2026-04-27 | Updated for Kerbal7SegmentCore v1.1.0 |

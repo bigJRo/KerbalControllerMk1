@@ -1,7 +1,7 @@
 /**
  * @file        KCMk1_Action_Control.ino
- * @version     2.0.0
- * @date        2026-06-28
+ * @version     2.1.0
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -55,7 +55,7 @@
  *              https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @note        Hardware:  KC-01-1802 v1.1 (ATtiny816)
- *              Library:   KerbalButtonCore v2.0.0
+ *              Library:   KerbalButtonCore v2.5.0 or later (the identity carries this sketch's version)
  *              IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
  *                Clock:             10 MHz or higher
@@ -77,6 +77,14 @@
 
 /** @brief Module type identifier. */
 #define MODULE_TYPE_ID  KBC_TYPE_ACTION_CONTROL
+
+/** @brief This sketch's own version, MAJOR.MINOR.PATCH: the single source of
+ *         the sketch version reported at identity bytes 5..7 (I2C spec §6),
+ *         next to the KerbalButtonCore version at bytes 1/2/4. Keep @version
+ *         and the README in step with it. */
+#define SKETCH_VERSION_MAJOR  2
+#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_PATCH  0
 
 // ============================================================
 //  Per-button active colors
@@ -120,6 +128,9 @@ KerbalButtonCore kbc(MODULE_TYPE_ID, 0, activeColors);
 // ============================================================
 
 void setup() {
+    // Report this sketch's version in the identity, next to the library's.
+    kbc.setSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+
     // Wire.begin() must be called before kbc.begin()
     Wire.begin(I2C_ADDRESS);
 

@@ -45,7 +45,7 @@ The universal `KCMk1_Module_Tester` sketch is still the quick way to look at any
 
 What the shared steps check:
 
-- **Identity:** type ID, firmware version X.Y.Z from the 5-byte identity of I2C spec v2.22 (same major, minor.patch at least the one the tester was written for; a 4-byte reply with no patch is old firmware and fails), capability flags, and no fault flag.
+- **Identity:** type ID, both versions X.Y.Z from the 8-byte identity of I2C spec v2.22, the library's and the module sketch's (each with the same major and minor.patch at least the one the tester was written for; a 5-byte reply with no sketch version, or a 4-byte one with no patch, is old firmware and fails), capability flags, and no fault flag.
 - **Boot handshake:** the tester pulses RST, then expects INT within the start-up time, a boot packet (BOOT_READY, transaction counter 1), INT released by the read, and DISABLED after CMD_DISABLE. If RST does not restart the module, the tester asks you to unplug and reconnect it, and notes that RST had no effect.
 - **Enable and INT:** after CMD_ENABLE the module is ACTIVE and INT stays high with no input. One press and release then gives exactly the expected number of packets, and the counter goes up by one per INT.
 - **Button / switch walk:** each input is named in turn and must be the only one that changes. An input that is ON at the start, or a bit that is not connected and goes high, fails the step. Tap **FAIL** if an input does nothing.
@@ -68,9 +68,9 @@ Open the serial monitor at 115200 baud for a report:
 ```
 ==================================================
 KCMk1 tester: Action Control  (tester core 1.1.0)
-Address 0x22  type 0x3  fw 2.5.0  caps 0x0
+Address 0x22  type 0x3  fw 2.1.0 / lib 2.5.0  caps 0x0
 --------------------------------------------------
-[ 1] Identity               PASS type 0x03 fw 2.5.0 caps 0x00
+[ 1] Identity               PASS type 0x03 fw 2.1.0 / lib 2.5.0 caps 0x00
 [ 2] Boot handshake         PASS boot INT after 4 ms, tx 1
 [ 3] Enable and INT         PASS 2 packets, tx continuous
 [ 4] Buttons                PASS 12 inputs ok
@@ -90,17 +90,25 @@ Result: PASS   pass 10  fail 0  skip 0
 
 ## Firmware these testers expect
 
-The testers were written against the module firmware in this repository and check its identity version. A module running older firmware fails **Identity** ("fw 2.4, no patch byte (old firmware), tester expects 2.5.0") — reflash it first. Since I2C spec v2.22 the identity carries the full X.Y.Z, so the table gives three places; the fixes are listed against the version that brought them.
+The testers were written against the module firmware in this repository and check both versions in its identity (I2C spec v2.22 §6, 8 bytes): the library version (bytes 1, 2, 4) and the module sketch's own version (bytes 5–7). Each must have the same major and at least the minor.patch the tester expects; a newer one passes with "(newer than tester)". A module running older firmware fails **Identity**: "no sketch version (old firmware), tester expects 2.1.0 / lib 2.5.0" for a 5-byte identity, "lib 2.4, no patch byte (old firmware) ..." for a 4-byte one. Reflash it first. Versions are shown as the master shows them: sketch, then library (`2.1.0 / lib 2.5.0`), or one version when the two are the same (Throttle, Dual Encoder: no library). The fixes are listed against the version that brought them.
 
-| Module | Identity fw | Fixed in that version (found by these testers) |
-|---|---|---|
-| Button modules (KerbalButtonCore) | 2.5.0 | 2.4: library compiled inside the sketch. Before, the Arduino IDE built the library without the sketch's `KBC_INPUT_COUNT 24`, so Function and Vehicle Control ran a 16-input library (Buttons and Switches failed). |
-| Joysticks (KerbalJoystickCore) | 2.4.0 | 2.2: each button edge reported once (Enable and INT counted 4 packets); library compiled inside the sketch, so the Translation stick's `KJC_AXIS2_INVERT -1` takes effect (AXIS2 forward now gives the opposite sign to the Rotation stick). 2.3: full negative deflection raises INT (#114); the axes now run -32767 to +32767. |
-| Throttle | 2.4.0 | 2.3: a button press raises INT with the lever still (Enable and INT reported "no INT after the input"). |
-| GPWS, Pre-Warp Time (Kerbal7SegmentCore) | 2.1.0 | — (the library reported 1.0 before 2.1.0) |
-| Dual Encoder | 2.3.0 | — (the sketch reported 2.0 before 2.3.0) |
+| Module | Sketch | Library | Fixed in that version (found by these testers) |
+|---|---|---|---|
+| UI Control | 2.1.0 | KerbalButtonCore 2.5.0 | 2.4 (library): library compiled inside the sketch. Before, the Arduino IDE built the library without the sketch's `KBC_INPUT_COUNT 24`, so Function and Vehicle Control ran a 16-input library (Buttons and Switches failed). |
+| Function Control | 2.2.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| Action Control | 2.1.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| Stability Control | 2.2.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| Vehicle Control | 2.3.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| Time Control | 2.1.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| Auxiliary Control | 2.2.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| Joystick Rotation | 2.1.0 | KerbalJoystickCore 2.4.0 | 2.2 (library): each button edge reported once (Enable and INT counted 4 packets); library compiled inside the sketch, so the Translation stick's `KJC_AXIS2_INVERT -1` takes effect (AXIS2 forward now gives the opposite sign to the Rotation stick). 2.3: full negative deflection raises INT (#114); the axes now run -32767 to +32767. |
+| Joystick Translation | 2.1.0 | KerbalJoystickCore 2.4.0 | as Joystick Rotation |
+| GPWS | 2.2.0 | Kerbal7SegmentCore 2.1.0 | — (the library reported 1.0 before 2.1.0) |
+| Pre-Warp Time | 2.2.0 | Kerbal7SegmentCore 2.1.0 | — |
+| Throttle | 2.5.0 | — (sketch version reported twice) | 2.3: a button press raises INT with the lever still (Enable and INT reported "no INT after the input"). |
+| Dual Encoder | 2.4.0 | — (sketch version reported twice) | — (the sketch reported 2.0 before 2.3.0) |
 
-Testers 1.1.0 check these three-place versions; testers 1.0.0 checked two places (2.4, 2.3, 2.3, 1.0, 2.0).
+Testers 1.1.0 check both three-place versions; testers 1.0.0 checked the library version in two places (2.4, 2.3, 2.3, 1.0, 2.0).
 
 If a joystick axis step passes with the note "full negative seen only on a poll", the module did not raise INT at the negative end of travel: the KerbalJoystickCore defect fixed in 2.3 (#114). With 2.3 or later it should not appear.
 

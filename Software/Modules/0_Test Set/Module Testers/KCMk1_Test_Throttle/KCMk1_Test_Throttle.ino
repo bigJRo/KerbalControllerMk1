@@ -12,7 +12,7 @@
  *              Module (KC-01-1871/1872): motorised fader with a capacitive
  *              touch sensor (AT42QT1010), four throttle buttons (100%, UP,
  *              DOWN, 0%) and one shared backlight output for the five panel
- *              switches. Identity fw 2.4.0, caps 0x20 (MOTORIZED).
+ *              switches. Identity fw 2.5.0 (the sketch's, reported twice), caps 0x20 (MOTORIZED).
  *
  *              Packet (7 bytes): header, flags (bit 0 ENABLED, 1 PRECISION,
  *              2 TOUCH, 3 MOTOR_MOVING), button events (rising edges only:
@@ -29,8 +29,8 @@
  *              lever unless a step asks for it. A seek that does not arrive
  *              within 4 s is stopped by the tester.
  *
- * @note        Needs Throttle firmware 2.4.0 or later (identity fw 2.4.0,
- *              5 bytes). Versions before 2.3 raised no INT for a button press with the
+ * @note        Needs Throttle firmware 2.5.0 or later (identity fw 2.5.0,
+ *              8 bytes). Versions before 2.3 raised no INT for a button press with the
  *              lever still, which fails Enable and INT.
  *
  * @note        Board: Seeed XIAO RA4M1. Libraries: KCMk1TesterCore,
@@ -427,7 +427,8 @@ static const KtcStep STEPS[] = {
 static const KtcModuleDef MODULE = {
     "Throttle", "KC-01-1871/1872 throttle board",
     KMC_TYPE_THROTTLE, 0x2C, KMC_THROTTLE_PACKET_SIZE,
-    2, 4, 0, KMC_CAP_MOTORIZED,        // Throttle sketch 2.4.0 (THR_FIRMWARE_* in Config.h)
+    2, 5, 0, KMC_CAP_MOTORIZED,        // Throttle sketch 2.5.0 (THR_FIRMWARE_* in Config.h): no library,
+    2, 5, 0,                           //   so the sketch version is reported twice
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     cleanup, live,
 };

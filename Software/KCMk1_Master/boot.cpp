@@ -34,9 +34,12 @@ static bool     g_connectedAtBoot;
 
 bool bootHalted() { return g_halted; }
 
-// shortText: what the Sys Info Display shows (nullptr = the same as Serial).
+// shortText: what the Sys Info Display shows (nullptr = the same as Serial, cut to
+// SI_TEXT_MAX by siBootLine). The Serial form may be longer: a module's line carries
+// both its versions ("v2.1.0 / lib 2.5.0").
+static const uint8_t BOOT_SERIAL_MAX = 72;
 static void vline(BootSev sev, bool replace, const char *shortText, const char *fmt, va_list ap) {
-  char text[SI_TEXT_MAX + 1];
+  char text[BOOT_SERIAL_MAX + 1];
   vsnprintf(text, sizeof text, fmt, ap);
   static const char *const tag[] = { "    ", " OK ", "WARN", "ERR " };
   conPrintf("[%6lu.%03lu] BOOT   %s %s", (unsigned long)(millis() / 1000), (unsigned long)(millis() % 1000),

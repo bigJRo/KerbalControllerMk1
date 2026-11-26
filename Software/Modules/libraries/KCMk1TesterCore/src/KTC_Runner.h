@@ -51,10 +51,13 @@ struct KtcModuleDef {
     uint8_t        typeId;      // KMC_TYPE_*
     uint8_t        addr;        // I2C address
     uint8_t        pktSize;     // KMC_*_PACKET_SIZE
-    uint8_t        fwMajor;     // firmware the steps were written against (X.Y.Z)
-    uint8_t        fwMinor;
+    uint8_t        fwMajor;     // library version the steps were written against (X.Y.Z);
+    uint8_t        fwMinor;     //   the sketch version for a standalone sketch
     uint8_t        fwPatch;
     uint8_t        caps;        // expected KMC_CAP_* flags
+    uint8_t        skMajor;     // the module sketch's own version (identity bytes 5..7);
+    uint8_t        skMinor;     //   the same as fw* for a standalone sketch
+    uint8_t        skPatch;
     const KtcStep* steps;
     uint8_t        stepCount;   // at most KTC_MAX_STEPS
     /** Optional: put the module back in a known state after ABORT or a

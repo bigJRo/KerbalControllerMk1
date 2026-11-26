@@ -191,7 +191,7 @@ Software/KCMk1_Master/
 | 3 | Boot banner: firmware version X.Y.Z (`KCM_MASTER_VERSION`), reset cause (§12.3) | `KCMk1 MASTER vX.Y.Z  RESET: …` | — |
 | 4 | Board devices: INA228, EMC2101 | `POWER MON OK` / `FAN CTRL OK` or MISSING | 100 ms each |
 | 5 | Load the stored INT map (EEPROM) | `INT MAP: STORED / DEFAULT` | — |
-| 6 | Module discovery and INT learning (§6.2), then one read of the switch modules | one line per module: `0x24 VEHICLE  B_INT_4  OK` / MISSING / WRONG TYPE (Serial adds the module's firmware, `OK  v2.5.0`, from master v0.10.5); `SW GRP 1  ENGINE … A/P …`, `CTRL MODE …` | 50 ms per module |
+| 6 | Module discovery and INT learning (§6.2), then one read of the switch modules | one line per module: `0x24 VEHICLE  B_INT_4  OK` / MISSING / WRONG TYPE (Serial adds the module's versions, sketch then library, `OK  v2.3.0 / lib 2.5.0`, or one version for a standalone sketch, `OK  v2.5.0`, from master v0.10.5; the Sys Info short form stays `VEHICLE OK`); `SW GRP 1  ENGINE … A/P …`, `CTRL MODE …` | 50 ms per module |
 | 7 | Display carriers: PROCEED to each, wait for its status | one line per display: `ANNUNCIATOR  OK` / NO ANSWER | 500 ms each |
 | 8 | First Simpit handshake attempt | `KSP: CONNECTING …` | about 1 s (library) |
 | 9 | Start the watchdog (§12.3) | `WATCHDOG ON` | — |
@@ -256,7 +256,7 @@ Safe lines: INT_SAFE = ABORT, B_INT_SAFE = STAGE; INT_SAFE2 and B_INT_SAFE2 unus
 
 ### 6.3 Start-up per module
 
-1. **Identity:** check the type against the table, and keep the firmware version. The identity is 5 bytes (I2C spec §6, v2.22: type, major, minor, caps, patch); a module with older firmware sends 4, accepted with the patch unknown (missing, or 0xFF from the idle bus). Versions are shown X.Y.Z, or X.Y when the patch is unknown: on the boot line's Serial form, in `modules` and in the re-probe log line *(master v0.10.5)*.
+1. **Identity:** check the type against the table, and keep both versions. The identity is 8 bytes (I2C spec §6, v2.22: type, library major, minor, caps, library patch, sketch major, minor, patch); a module with older firmware sends 5 (no sketch version) or 4 (no patch either), accepted with what is missing unknown (missing, or 0xFF from the idle bus). Versions are shown sketch then library, `2.1.0 / lib 2.5.0`; one `X.Y.Z` when the two are equal (Throttle and Dual Encoder report their sketch version twice); `- / lib 2.5.0` when the sketch version is unknown; X.Y when a patch is unknown. They appear on the boot line's Serial form, in `modules` and in the re-probe log line *(master v0.10.5)*; the Sys Info Display's short boot lines carry no version.
 2. **Boot packet read:** the INT line that goes high is the module's (§6.2). No `CMD_RESET` first, because that would release the INT before it could be seen.
 3. **LEDs off.**
 4. **DISABLED.**
@@ -616,7 +616,7 @@ The availability rules are checked against Simpit on the bench.
 |---|---|
 | `help` | The command list |
 | `status` | Modes, interlocks, owners, link state |
-| `modules` | Each module: present, firmware (X.Y.Z, or X.Y from a module that sends the old 4-byte identity), line, lifecycle, counters |
+| `modules` | Each module: present, firmware (sketch and library X.Y.Z, `2.1.0 / lib 2.5.0`; one version when they are equal; `-` for a sketch version the module does not send), line, lifecycle, counters |
 | `intmap` | Learned / stored / default map |
 | `simpit` | Channels, rates, last message ages |
 | `switches` | Every switch position vs the vessel |

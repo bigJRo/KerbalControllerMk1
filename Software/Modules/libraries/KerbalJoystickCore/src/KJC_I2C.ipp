@@ -26,6 +26,12 @@
 static uint8_t _typeId   = 0xFF;
 static uint8_t _capFlags = 0;
 
+// The module sketch's own version (set by kjcSetSketchVersion), identity
+// bytes 5..7. KMC_SKETCH_VERSION_UNKNOWN until the sketch sets it.
+static uint8_t _sketchMajor = KMC_SKETCH_VERSION_UNKNOWN;
+static uint8_t _sketchMinor = KMC_SKETCH_VERSION_UNKNOWN;
+static uint8_t _sketchPatch = KMC_SKETCH_VERSION_UNKNOWN;
+
 // ============================================================
 //  Internal state
 // ============================================================
@@ -111,6 +117,9 @@ static void _sendIdentityPacket() {
     buf[2] = KJC_FIRMWARE_MINOR;
     buf[3] = _capFlags;
     buf[4] = KJC_FIRMWARE_PATCH;
+    buf[5] = _sketchMajor;
+    buf[6] = _sketchMinor;
+    buf[7] = _sketchPatch;
     Wire.write(buf, KJC_IDENTITY_SIZE);
 }
 
@@ -225,6 +234,16 @@ static void _onRequest() {
 
     _sendDataPacket();
     _pendingResponse = RESP_NONE;
+}
+
+// ============================================================
+//  kjcSetSketchVersion()
+// ============================================================
+
+void kjcSetSketchVersion(uint8_t major, uint8_t minor, uint8_t patch) {
+    _sketchMajor = major;
+    _sketchMinor = minor;
+    _sketchPatch = patch;
 }
 
 // ============================================================

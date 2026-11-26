@@ -1,12 +1,12 @@
 # KCMk1_Stability_Control
 
 **Module:** Stability Control  
-**Version:** 2.1  
-**Date:** 2026-10-27  
+**Version:** 2.2  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1802 Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.0.0  
+**Library:** KerbalButtonCore v2.5.0 or later  
 
 ---
 
@@ -27,6 +27,7 @@ B10 was RCS until v2.0. RCS is no longer on this module: it is the RCS switch in
 | I2C Address | `0x23` |
 | Module Type ID | `0x04` (KBC_TYPE_STABILITY_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Not Installed | KBC indices 12–15 (not wired; the master ignores them) |
@@ -174,3 +175,4 @@ LED nibble notes for `CMD_SET_LED_STATE`:
 | 1.0 | 2026-04-07 | Initial release |
 | 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): RCS added at B10 (GREEN); SAS_ENA/RCS_ENA inputs at B12/B13 removed (moved to Switch Group 2); B14/B15 documented as the discrete staging input and staging-enable input + interlock LED. Packet gains the universal 3-byte header; module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1802. |
 | 2.1 | 2026-10-27 | B10 is HOLD (MAGENTA), replacing RCS; RCS is the Switch Group 2 RCS switch on the Vehicle Control module. The B14 Stage and B15 Stage Enable inputs (and the staging-interlock LED) are removed; STAGE is a safe-line button (Module UI Reference v6.0 §7). B12–B15 are not wired and the master ignores them. |
+| 2.2 | 2026-11-26 | The identity reports this sketch's own version, 2.2.0, at bytes 5–7 next to the KerbalButtonCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kbc.setSketchVersion()` in `setup()`. Needs KerbalButtonCore 2.5.0 and KerbalModuleCommon 1.9.0. |

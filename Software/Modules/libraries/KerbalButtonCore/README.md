@@ -113,8 +113,14 @@ const RGBColor activeColors[KBC_BUTTON_COUNT] = {
 // Instantiate — Type ID and capability flags defined in KBC_Protocol.h
 KerbalButtonCore kbc(KBC_TYPE_UI_CONTROL, 0, activeColors);
 
+// This sketch's own version, reported in the identity next to the library's
+#define SKETCH_VERSION_MAJOR 1
+#define SKETCH_VERSION_MINOR 0
+#define SKETCH_VERSION_PATCH 0
+
 void setup() {
-    Wire.begin(0x20);   // Set this module's I2C address — must be first
+    kbc.setSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
+    Wire.begin(0x20);   // Set this module's I2C address
     kbc.begin();        // Initialise all subsystems
 }
 
@@ -184,17 +190,20 @@ Two buttons per byte, high nibble first. Nibble values:
 | `0x7` | CUT            | Static red (state-machine terminal) |
 | `0x8` | ACTIVE_ALT     | Second per-button active color (alt-color array) |
 
-### Identity Response (5 bytes)
+### Identity Response (8 bytes)
 
 ```
 Byte 0: Module Type ID
-Byte 1: Firmware major
-Byte 2: Firmware minor
+Byte 1: Library version major
+Byte 2: Library version minor
 Byte 3: Capability flags
-Byte 4: Firmware patch
+Byte 4: Library version patch
+Byte 5: Sketch version major
+Byte 6: Sketch version minor
+Byte 7: Sketch version patch
 ```
 
-The version is the library's own (`KBC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KBC_Config.h`), the same on every button module: 2.5.0 for this release.
+Bytes 1, 2 and 4 are the library's own version (`KBC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KBC_Config.h`), the same on every button module: 2.5.0 for this release. Bytes 5–7 are the module sketch's own version, which the sketch passes with `kbc.setSketchVersion(major, minor, patch)` in `setup()`, from its `SKETCH_VERSION_*` constants. A sketch that does not call it reports 0xFF 0xFF 0xFF there (`KMC_SKETCH_VERSION_UNKNOWN`), which a reader shows as unknown.
 
 ---
 
@@ -384,7 +393,7 @@ sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
 
 | Version | Date | Notes |
 |---|---|---|
-| 2.5.0 | 2026-11-26 | The identity response is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6), so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added). Needs KerbalModuleCommon 1.9.0. |
+| 2.5.0 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added), and the module sketch's own version follows at bytes 5–7. `KerbalButtonCore::setSketchVersion()` sets it (0xFF, unknown, until the sketch calls it). Needs KerbalModuleCommon 1.9.0. |
 | 2.4.0 | 2026-11-08 | Sources renamed `.cpp` → `.ipp` and included from `KerbalButtonCore.h`, so the sketch's `KBC_INPUT_COUNT` / `KBC_SHIFTREG_COUNT` reach the library. Before, Function and Vehicle Control (24 inputs) ran a 16-input library with a class layout that did not match the sketch. Identity firmware 2.4 (was 2.2). |
 
 ---

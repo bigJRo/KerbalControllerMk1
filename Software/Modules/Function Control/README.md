@@ -1,12 +1,12 @@
 # KCMk1_Function_Control
 
 **Module:** Function Control  
-**Version:** 2.1  
-**Date:** 2026-10-27  
+**Version:** 2.2  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1812 Wide Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.0.0 (24-input)  
+**Library:** KerbalButtonCore v2.5.0 or later (24-input)  
 
 ---
 
@@ -27,6 +27,7 @@ The button layout and colours follow the confirmed panel layout in Module UI Ref
 | I2C Address | `0x21` |
 | Module Type ID | `0x02` (KBC_TYPE_FUNCTION_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Switch Group 1 inputs | 8 (KBC indices 16–23, discrete, no LED) |
@@ -210,3 +211,4 @@ Only the 12 NeoPixel positions have LED hardware.
 | 1.0 | 2026-04-07 | Initial release |
 | 2.0 | 2026-06-28 | Relaid out to the v5.x panel (LES / Fairing Jettison / Air Intake / Lock Surfaces / Airbrake / RW Disable / Engine Alt / Science Collect / Engine Grp 1-2 / Science Grp 1-2) and added Switch Group 1 at KBC indices 16–23 via the 24-input / 3-byte shift-register variant (KerbalButtonCore v2.0, I2C protocol v2.6). Packet is now 9 bytes (3-byte header + 6-byte payload); module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1812. |
 | 2.1 | 2026-10-27 | Colour table follows the confirmed layout (Module UI Reference v6.0 §9.2): each left / right pair swapped, so B0 is Fairing Jettison (AMBER), B1 LES (RED), and so on, with each colour kept with its function. B4 is Flaps (SEAFOAM, base CAG 39), replacing Reaction Wheel Disable. Switch Group 1 order at KBC 16–23 is now MSTR, DISP, SCE, UPTLM, LTG, A/P (INHIB / ARM), ENGINE (SAFE / ARM), THRTL. Base CAGs added to the button table. |
+| 2.2 | 2026-11-26 | The identity reports this sketch's own version, 2.2.0, at bytes 5–7 next to the KerbalButtonCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kbc.setSketchVersion()` in `setup()`. Needs KerbalButtonCore 2.5.0 and KerbalModuleCommon 1.9.0. |

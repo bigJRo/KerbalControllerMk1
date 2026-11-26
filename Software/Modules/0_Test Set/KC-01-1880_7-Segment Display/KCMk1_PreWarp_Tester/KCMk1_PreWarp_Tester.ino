@@ -48,7 +48,7 @@
 // ── Module ────────────────────────────────────────────────────
 #define MODULE_ADDR     0x2B
 #define PACKET_SIZE     8
-#define IDENTITY_SIZE   KMC_IDENTITY_SIZE   // 5: type, major, minor, caps, patch (I2C spec §6)
+#define IDENTITY_SIZE   KMC_IDENTITY_SIZE   // 8: type, lib major, minor, caps, lib patch, sketch major, minor, patch (I2C spec §6)
 #define PIN_INT         6
 
 // ── Timing ───────────────────────────────────────────────────
@@ -186,9 +186,19 @@ static void queryIdentity() {
     Serial.println(F("\n─── Module Identity ──────────────────────────"));
     Serial.print(F("  Type ID    : 0x")); Serial.println(buf[0], HEX);
     // X.Y.Z; X.Y from a module that sends the 4-byte form (no patch, or 0xFF)
-    Serial.print(F("  FW version : ")); Serial.print(buf[1]); Serial.print('.'); Serial.print(buf[2]);
-    if (got >= KMC_IDENTITY_SIZE && buf[4] != KMC_FW_PATCH_UNKNOWN) { Serial.print('.'); Serial.print(buf[4]); }
+    Serial.print(F("  Library    : ")); Serial.print(buf[1]); Serial.print('.'); Serial.print(buf[2]);
+    if (got >= KMC_IDENTITY_SIZE_V2 && buf[4] != KMC_FW_PATCH_UNKNOWN) { Serial.print('.'); Serial.print(buf[4]); }
     Serial.println();
+    // The module sketch's own version; "-" from a module that sends the 5- or
+    // 4-byte form (no sketch version, or 0xFF)
+    Serial.print(F("  Sketch     : "));
+    if (got >= KMC_IDENTITY_SIZE && buf[5] != KMC_SKETCH_VERSION_UNKNOWN) {
+        Serial.print(buf[5]); Serial.print('.'); Serial.print(buf[6]);
+        if (buf[7] != KMC_FW_PATCH_UNKNOWN) { Serial.print('.'); Serial.print(buf[7]); }
+        Serial.println();
+    } else {
+        Serial.println(F("- (not reported: older firmware)"));
+    }
     Serial.print(F("  Cap flags  : 0b")); Serial.println(buf[3], BIN);
     Serial.println(F("──────────────────────────────────────────────"));
 }

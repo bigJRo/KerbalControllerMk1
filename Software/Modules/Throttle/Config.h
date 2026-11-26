@@ -1,6 +1,6 @@
 /**
  * @file        Config.h
- * @version     2.4.0
+ * @version     2.5.0
  * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Throttle Module
  * @author      J. Rostoker
@@ -22,15 +22,17 @@
 //  Module identity
 //
 //  THR_FIRMWARE_* is the sketch version, MAJOR.MINOR.PATCH: the single
-//  source of the version reported in the identity response (I2C spec §6;
-//  the patch is byte 4 from spec v2.22). Keep the @version headers and
+//  source of the version reported in the identity response (I2C spec §6).
+//  A standalone sketch has no library, so it reports this version in both
+//  places: bytes 1/2/4 (the library version of a library-based module)
+//  and bytes 5..7 (the sketch version). Keep the @version headers and
 //  README in step with it.
 // ============================================================
 
 #define THR_I2C_ADDRESS         0x2C
 #define THR_MODULE_TYPE_ID      KMC_TYPE_THROTTLE
 #define THR_FIRMWARE_MAJOR      2
-#define THR_FIRMWARE_MINOR      4
+#define THR_FIRMWARE_MINOR      5
 #define THR_FIRMWARE_PATCH      0
 
 /** @brief Capability flag — motorized position control. */
@@ -73,7 +75,7 @@
  *   Byte 5-6: Throttle value (uint16, big-endian, 0 to INT16_MAX)
  */
 #define THR_PACKET_SIZE         7
-#define THR_IDENTITY_SIZE       KMC_IDENTITY_SIZE   // 5: type, major, minor, caps, patch
+#define THR_IDENTITY_SIZE       KMC_IDENTITY_SIZE   // 8: type, major, minor, caps, patch, sketch major, minor, patch
 
 // ============================================================
 //  Status flag bits

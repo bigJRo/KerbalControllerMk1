@@ -1,7 +1,7 @@
 /**
  * @file        KJC_I2C.h
  * @version     2.4.0
- * @date        2026-06-28
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -46,6 +46,14 @@
  * @param capFlags  Capability flags reported in identity response.
  */
 void kjcI2CBegin(uint8_t typeId, uint8_t capFlags);
+
+/**
+ * @brief Set the module sketch's own version, reported at identity bytes
+ *        5..7 next to the library version (I2C spec §6). Call in setup()
+ *        before kjcBegin(), from the sketch's SKETCH_VERSION_* constants.
+ *        Until it is called those bytes read KMC_SKETCH_VERSION_UNKNOWN.
+ */
+void kjcSetSketchVersion(uint8_t major, uint8_t minor, uint8_t patch);
 
 /**
  * @brief Sync INT pin with pending button and axis state.

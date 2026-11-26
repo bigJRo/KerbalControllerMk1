@@ -1,6 +1,6 @@
 /**
  * @file        KCMk1_Dual_Encoder.ino
- * @version     2.3.0
+ * @version     2.4.0
  * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

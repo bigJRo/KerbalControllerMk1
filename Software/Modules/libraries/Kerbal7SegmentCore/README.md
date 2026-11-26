@@ -88,9 +88,14 @@ The SK6812MINI-EA on this board responds to **NEO_GRB 3-byte** framing only. The
 #define I2C_ADDRESS    0x2A
 #define DEFAULT_VALUE  200
 
+#define SKETCH_VERSION_MAJOR 1   // this sketch's own version (identity bytes 5-7)
+#define SKETCH_VERSION_MINOR 0
+#define SKETCH_VERSION_PATCH 0
+
 static int16_t _value = DEFAULT_VALUE;
 
 void setup() {
+    k7scSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
     k7scBegin(I2C_ADDRESS, KMC_TYPE_GPWS_INPUT, KMC_CAP_DISPLAY);
     buttonsClearAll();
     displayShutdown();
@@ -180,6 +185,7 @@ struct K7SCInputState {
 ### Top-level
 
 ```cpp
+void k7scSetSketchVersion(uint8_t major, uint8_t minor, uint8_t patch);   // before k7scBegin()
 void k7scBegin(uint8_t i2cAddress, uint8_t typeId, uint8_t capFlags);
 void k7scUpdate();   // call every loop — polls hardware, clears one-shot flags
 ```
@@ -250,17 +256,20 @@ The sketch detects transitions by comparing `cmdState.lifecycle` to its previous
 
 Content and length are module-specific. The library treats the payload as opaque bytes.
 
-### Identity packet (5 bytes, on GET_IDENTITY)
+### Identity packet (8 bytes, on GET_IDENTITY)
 
 | Byte | Content |
 |---|---|
 | 0 | Module Type ID |
-| 1 | Firmware major |
-| 2 | Firmware minor |
+| 1 | Library version major |
+| 2 | Library version minor |
 | 3 | Capability flags |
-| 4 | Firmware patch |
+| 4 | Library version patch |
+| 5 | Sketch version major |
+| 6 | Sketch version minor |
+| 7 | Sketch version patch |
 
-The version is the library's (`K7SC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `K7SC_Config.h`): 2.1.0 for this release, on both the GPWS Input Panel and Pre-Warp Time (I2C spec v2.22 §6).
+Bytes 1, 2 and 4 are the library's version (`K7SC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `K7SC_Config.h`): 2.1.0 for this release, on both the GPWS Input Panel and Pre-Warp Time (I2C spec v2.22 §6). Bytes 5–7 are the module sketch's own version, which the sketch passes with `k7scSetSketchVersion()` before `k7scBegin()`, from its `SKETCH_VERSION_*` constants; until then they read 0xFF (unknown).
 
 ---
 
@@ -301,7 +310,8 @@ All `#ifndef`-guarded in `K7SC_Config.h`:
 ## Changelog
 
 ### v2.1.0 (2026-11-26)
-- The identity packet is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6)
+- The identity packet is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, and the module sketch's own version follows at bytes 5–7
+- `k7scSetSketchVersion()` added: the sketch passes its version for bytes 5–7 (0xFF, unknown, until it is called)
 - The identity reports the library's real version, 2.1.0. Until now `K7SC_FIRMWARE_MAJOR` / `_MINOR` were still 1.0, so a 2.0.0 module reported 1.0
 - `K7SC_FIRMWARE_PATCH` added; `K7SC_IDENTITY_SIZE` is `KMC_IDENTITY_SIZE` (needs KerbalModuleCommon 1.9.0)
 

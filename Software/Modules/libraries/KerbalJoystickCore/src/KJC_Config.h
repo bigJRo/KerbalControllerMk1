@@ -42,7 +42,8 @@
 //  firmware version every joystick module reports in its identity
 //  response (CMD_GET_IDENTITY, I2C spec §6; the patch is byte 4 from
 //  spec v2.22). Keep the @version headers, library.properties and
-//  README in step with it.
+//  README in step with it. The module sketch's own version (identity
+//  bytes 5..7) is set by the sketch with kjcSetSketchVersion().
 // ============================================================
 
 #define KJC_FIRMWARE_MAJOR      2
@@ -256,7 +257,8 @@
  */
 #define KJC_PACKET_SIZE         12
 
-/** @brief Identity response packet size (5 bytes: type, major, minor, caps, patch). */
+/** @brief Identity response packet size (8 bytes: type, library major, minor,
+ *         caps, library patch, sketch major, minor, patch; I2C spec §6). */
 #define KJC_IDENTITY_SIZE       KMC_IDENTITY_SIZE
 
 /** @brief LED state payload size (nibble-packed). */

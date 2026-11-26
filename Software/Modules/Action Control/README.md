@@ -1,12 +1,12 @@
 # KCMk1_Action_Control
 
 **Module:** Action Control  
-**Version:** 2.0  
-**Date:** 2026-06-28  
+**Version:** 2.1  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1802 Button Module Base v1.1  
-**Library:** KerbalButtonCore v2.0.0  
+**Library:** KerbalButtonCore v2.5.0 or later  
 
 ---
 
@@ -25,6 +25,7 @@ This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC 
 | I2C Address | `0x22` |
 | Module Type ID | `0x03` (KBC_TYPE_ACTION_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Not Installed | KBC indices 12–15 (no-connect) |
@@ -181,3 +182,4 @@ Values for the B12–B15 nibbles are accepted but ignored (no LED hardware)
 |---|---|---|
 | 1.0 | 2026-04-07 | Initial release |
 | 2.0 | 2026-06-28 | Updated to KerbalButtonCore v2.0 (I2C protocol v2.6): B10/B11 are now AG1/AG7 action groups (GREEN), former CP PRI/ALT moved to AUX CTRL; CTRL_MODE discrete inputs removed (moved to direct-wired Ctrl Mode Toggle); B12–B15 now no-connect. Packet gains the universal 3-byte header; module powers on dark until CMD_ENABLE. PCB designator corrected to KC-01-1802. |
+| 2.1 | 2026-11-26 | The identity reports this sketch's own version, 2.1.0, at bytes 5–7 next to the KerbalButtonCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kbc.setSketchVersion()` in `setup()`. Needs KerbalButtonCore 2.5.0 and KerbalModuleCommon 1.9.0. |

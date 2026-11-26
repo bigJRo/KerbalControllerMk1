@@ -1,12 +1,12 @@
 # KCMk1_Joystick_Translation
 
 **Module:** Joystick Translation  
-**Version:** 1.0  
-**Date:** 2026-04-08  
+**Version:** 2.1  
+**Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1831/1832 Joystick Module v2.0  
-**Library:** KerbalJoystickCore v2.3.0 or later  
+**Library:** KerbalJoystickCore v2.4.0 or later  
 
 ---
 
@@ -25,6 +25,7 @@ This module is **not** a KerbalButtonCore (KBC) module. It uses the KerbalJoysti
 | I2C Address | `0x29` |
 | Module Type ID | `0x0A` |
 | Capability Flags | `0x08` (KJC_CAP_JOYSTICK) |
+| Identity | 8 bytes (I2C spec §6): the KerbalJoystickCore version, 2.4.0, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kjcSetSketchVersion()`) |
 | Data Packet Size | 12 bytes |
 | NeoPixel Buttons | 2 (BTN01, BTN02) |
 | GPIO Buttons | 1 (BTN_JOY — no LED) |
@@ -185,3 +186,4 @@ After flashing, BTN01 and BTN02 should illuminate dim white (ENABLED state). Mov
 | Version | Date | Notes |
 |---|---|---|
 | 1.0 | 2026-04-08 | Initial release |
+| 2.1 | 2026-11-26 | The identity reports this sketch's own version, 2.1.0, at bytes 5–7 next to the KerbalJoystickCore version (I2C spec v2.22 §6), so a change to the sketch alone can be seen from the bus: `SKETCH_VERSION_*` constants added, passed to the library with `kjcSetSketchVersion()` in `setup()`. The README had stayed at 1.0 while the sketch header read 2.0.0 (the v2 protocol update); 2.1.0 follows the header. Needs KerbalJoystickCore 2.4.0 and KerbalModuleCommon 1.9.0. |

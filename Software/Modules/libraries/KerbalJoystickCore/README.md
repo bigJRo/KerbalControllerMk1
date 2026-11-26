@@ -61,7 +61,7 @@ The 6-pin screw terminal exposes AXIS1, AXIS2, AXIS3, BUTTON_JOY, +5 V and GND f
 **Address:** Set per sketch (0x28 = Rotation, 0x29 = Translation)  
 **Speed:** 400 kHz recommended  
 **Packet format:** Device-specific, 12 bytes (see Section 9.2 of protocol spec)  
-**Identity:** 5 bytes (spec §6): type ID, firmware major, minor, capability flags, patch. The version is the library's (`KJC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KJC_Config.h`), 2.4.0 for this release, the same on both sticks.
+**Identity:** 8 bytes (spec §6): type ID, library major, minor, capability flags, library patch, sketch major, minor, patch. The library version (bytes 1, 2, 4) is `KJC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KJC_Config.h`, 2.4.0 for this release, the same on both sticks. Bytes 5–7 are the module sketch's own version, which the sketch passes with `kjcSetSketchVersion(major, minor, patch)` before `kjcBegin()`, from its `SKETCH_VERSION_*` constants; a sketch that does not call it reports 0xFF there (unknown).
 
 ### Data Packet (module → controller, 12 bytes)
 
@@ -134,7 +134,12 @@ const RGBColor activeColors[KJC_NEO_COUNT] = {
     KJC_AMBER,   // BTN02
 };
 
+#define SKETCH_VERSION_MAJOR 1   // this sketch's own version (identity bytes 5-7)
+#define SKETCH_VERSION_MINOR 0
+#define SKETCH_VERSION_PATCH 0
+
 void setup() {
+    kjcSetSketchVersion(SKETCH_VERSION_MAJOR, SKETCH_VERSION_MINOR, SKETCH_VERSION_PATCH);
     Wire.begin(0x28);
     kjcBegin(0x09, KJC_CAP_JOYSTICK, activeColors);
 }
@@ -197,7 +202,7 @@ Translation sketch). Include `KerbalJoystickCore.h` from the main `.ino` only.
 
 | Version | Date | Notes |
 |---|---|---|
-| 2.4.0 | 2026-11-26 | The identity response is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6), so a module reports the full library version, 2.4.0 (`KJC_FIRMWARE_PATCH` added). 2.3.1 had reported 2.3. Needs KerbalModuleCommon 1.9.0. |
+| 2.4.0 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, so a module reports the full library version, 2.4.0 (`KJC_FIRMWARE_PATCH` added; 2.3.1 had reported 2.3), and the module sketch's own version follows at bytes 5–7, set with the new `kjcSetSketchVersion()` (0xFF, unknown, until the sketch calls it). Needs KerbalModuleCommon 1.9.0. |
 | 2.3.1 | 2026-11-25 | BUTTON01 is on PC2 (pin 17), as wired on the Joystick Module board; the library read PC0 (pin 15), which is not connected, so BTN01 never registered. Pin tables corrected; the stick terminal is U6. Identity firmware stays 2.3. |
 | 2.3.0 | 2026-11-09 | Full negative deflection raises INT (GitHub #114). The low side of the split map ran to -32768, which is `INT16_MIN`, the `KJC_AXIS_SUPPRESS` sentinel, so a sample at the negative rail was treated as "no change": it raised no INT and reached the master only with the next packet something else triggered. The map now runs -32767 to +32767, symmetric, so the sentinel is never a real value. Identity firmware 2.3. |
 | 2.2.0 | 2026-11-08 | Each button edge is reported once (`buttonsGetChangeMask` no longer re-arms the mask from the state latched at the previous read, which reported every edge twice). Sources renamed `.cpp` → `.ipp` and included from `KerbalJoystickCore.h`, so a sketch's `KJC_AXISn_INVERT` reaches the library (the Translation stick's AXIS2 was not inverted). Identity firmware 2.2 (was 2.0). |

@@ -1,7 +1,7 @@
 # KCMk1_Dual_Encoder
 
 **Module:** Dual Rotary Encoder  
-**Version:** 2.3  
+**Version:** 2.4  
 **Date:** 2026-11-26  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
@@ -24,7 +24,7 @@ This is a standalone sketch with tab-based organisation.
 | I2C Address | `0x2D` |
 | Module Type ID | `0x0E` |
 | Capability Flags | `0x04` (DEC_CAP_ENCODERS, bit 2) |
-| Identity | 5 bytes (I2C spec §6): type `0x0E`, firmware major, minor, caps `0x04`, patch. Reports the sketch version, 2.3.0 (`DEC_FIRMWARE_*` in `Config.h`) |
+| Identity | 8 bytes (I2C spec §6): type `0x0E`, version major, minor, caps `0x04`, patch, then the sketch version major, minor, patch. A standalone sketch has no library, so both carry the sketch version, 2.4.0 (`DEC_FIRMWARE_*` in `Config.h`) |
 | Data Packet Size | 7 bytes (3-byte header + 4-byte payload) |
 | Encoders | 2 × PEC11R-4220F-S0024 |
 | Pushbuttons | 2 (one per encoder, active high) |
@@ -171,3 +171,4 @@ After flashing the module is immediately active — no enable command required (
 | 2.1 | 2026-07-05 | Pin map realigned to KC-01-1862 v2.0 schematic — ENC1 A/SW swapped (A→PC3, SW→PC1); ENC2 moved to PA7/PB5/PB4. Board designator updated from KC-01-1871/1872 to KC-01-1862. |
 | 2.2 | 2026-07-05 | Encoder decode reworked from 5 ms polling to rising-edge pin interrupts on channel A (samples B for direction). Fixes direction reversal seen when spinning quickly; now exactly ±1 per detent. |
 | 2.3 | 2026-11-26 | The identity response is 5 bytes: the firmware patch is appended at byte 4 (I2C spec v2.22 §6), so the module reports its full sketch version, 2.3.0. The identity had reported 2.0 through 2.1 and 2.2 (`DEC_FIRMWARE_MINOR` was never moved); it now follows the sketch version. Needs KerbalModuleCommon 1.9.0. |
+| 2.4 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the sketch version is appended at bytes 5–7. With no library the module reports its sketch version, 2.4.0, at both bytes 1/2/4 and 5–7 (`_sendIdentityPacket` in `I2C.cpp`). 2.3 was not released. Needs KerbalModuleCommon 1.9.0. |

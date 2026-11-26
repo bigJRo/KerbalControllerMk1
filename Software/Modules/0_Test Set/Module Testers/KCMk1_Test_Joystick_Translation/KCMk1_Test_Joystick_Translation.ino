@@ -15,7 +15,7 @@
  *              The module sketch asks for AXIS2 to be inverted, so pushing
  *              forward should give the opposite sign to the Rotation stick.
  *              Compare the signs this tester records for the two sticks.
- *              KerbalJoystickCore 2.4 firmware, identity fw 2.4.0, caps 0x08.
+ *              KerbalJoystickCore 2.4 firmware, identity fw 2.1.0 / lib 2.4.0 (sketch / library), caps 0x08.
  *
  *              Steps: identity, boot handshake (hands off: the module samples
  *              its centre at power-on), enable + INT, buttons, centre and
@@ -25,7 +25,7 @@
  *              and print to USB serial at 115200 baud.
  *
  * @note        Needs KerbalJoystickCore 2.4.0 or later on the module (identity
- *              fw 2.4.0, 5 bytes). Versions before 2.2 reported every button edge twice
+ *              8 bytes, with the sketch version). Versions before 2.2 reported every button edge twice
  *              ("4 packets" in Enable and INT) and, on the Translation stick,
  *              did not apply the AXIS2 inversion.
  *
@@ -74,6 +74,7 @@ static const KtcModuleDef MODULE = {
     "Joystick Translation", "KC-01-1831/1832 joystick board",
     KMC_TYPE_JOYSTICK_TRANS, 0x29, KMC_JOYSTICK_PACKET_SIZE,
     KTC_KJC_FW_MAJOR, KTC_KJC_FW_MINOR, KTC_KJC_FW_PATCH, KMC_CAP_JOYSTICK,
+    2, 1, 0,                           // Translation sketch 2.1.0 (SKETCH_VERSION_* in the module sketch)
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKjcCleanup, ktcKjcLive,
 };

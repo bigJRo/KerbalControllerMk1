@@ -319,7 +319,9 @@
 /** @brief Library firmware version — minor (2.5: the identity reports X.Y.Z). */
 #define KBC_FIRMWARE_MINOR          5
 
-/** @brief Library firmware version — patch, identity byte 4 (I2C spec v2.22). */
+/** @brief Library firmware version — patch, identity byte 4 (I2C spec v2.22).
+ *         The module sketch's own version (bytes 5..7) is set by the sketch
+ *         with KerbalButtonCore::setSketchVersion(). */
 #define KBC_FIRMWARE_PATCH          0
 
 // ============================================================

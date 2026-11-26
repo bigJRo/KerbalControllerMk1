@@ -1,7 +1,7 @@
 /**
  * @file        KerbalJoystickCore.h
  * @version     2.4.0
- * @date        2026-04-08
+ * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -32,6 +32,9 @@
  *                };
  *
  *                void setup() {
+ *                    kjcSetSketchVersion(SKETCH_VERSION_MAJOR,
+ *                                        SKETCH_VERSION_MINOR,
+ *                                        SKETCH_VERSION_PATCH);
  *                    Wire.begin(0x28);
  *                    kjcBegin(0x09, KJC_CAP_JOYSTICK, activeColors);
  *                }

@@ -36,7 +36,7 @@
 | 2.10 | 2026-11-25 | **§6.1:** no fuse on the 12V input, by decision: the supply's own overcurrent protection covers short circuits; every ATtiny module and display driver has its own reverse diode and 1.5 A polyfuse. **§6.5:** VIN (yellow) indicator added to the status LED table. **§6.6:** fan headers checked against the board artwork: a standard 4-pin PC fan plug mates correctly; only the pin numbering is reversed. **§15:** open item 1 closed. |
 | 2.11 | 2026-11-25 | **§5.1:** Ctrl Module is now V2.1 (drawings Rev C): vertical USB-A downstream ports, 1×5 test port TP1, a blue +5V status LED, all status LEDs dimmed to about 0.5 mA, USB connector shells on GND; resistors renumbered (RST series now R14, EXT_INT_1 pull-up R15 and series R16). **§5.4:** Throttle drawings Rev C: motor-direction LED resistors R15 / R16 are 10 kΩ (were 1 kΩ). **§6.5:** status LED table and test port. **§7.3, §7.5, §7.6:** USB-A ports and shell grounding. **§8.4:** designators updated. |
 | 2.12 | 2026-11-25 | **§5.4:** the panel joystick is the JH-DX400B-R4 (4-axis), as fitted on panels A2 and B2; three axes are wired to terminal U6 and the fourth is not used (was given as JH-D202X-R4, 3-axis). |
-| 2.13 | 2026-11-26 | **§13.2:** the identity response is 5 bytes, the firmware patch appended at byte 4, so every module reports X.Y.Z (I2C spec v2.22 §6); a controller accepts the old 4-byte form and shows that version as X.Y. |
+| 2.13 | 2026-11-26 | **§13.2:** the identity response is 8 bytes (I2C spec v2.22 §6): the library patch appended at byte 4, so every module reports X.Y.Z, and the module sketch's own X.Y.Z at bytes 5–7 (a standalone sketch reports its version in both places); a controller accepts the 5-byte form (sketch version unknown) and the old 4-byte form (patch unknown too, shown as X.Y). |
 | 2.14 | 2026-11-26 | **§2:** KSP 1.12.5 and the tested mod versions (Kerbal Simpit Revamped 2.4.0, AGX 2.4.1.4, Hullcam VDS Continued 0.2.2.6, ARP 2.11.0.0), replacing "Current". The 12 V input on the rear panel is a 5.5 × 2.1 mm barrel jack, Adafruit 5607 (the wiring and power figures said 2.5 mm). |
 
 ---
@@ -1014,17 +1014,20 @@ The module must operate as an I2C target at 400kHz (Fast Mode). The I2C address 
 All conformant modules must implement the following regardless of module type.
 
 **Identity Response**
-The module must respond to `CMD_GET_IDENTITY` (0x01) with a 5-byte identity packet (I2C spec §6, v2.22):
+The module must respond to `CMD_GET_IDENTITY` (0x01) with an 8-byte identity packet (I2C spec §6, v2.22):
 
 ```
 Byte 0:  Module Type ID  — unique value from the KCMk1 module registry
-Byte 1:  Firmware version major
-Byte 2:  Firmware version minor
+Byte 1:  Library version major
+Byte 2:  Library version minor
 Byte 3:  Capability flags  — KMC_CAP_* bitmask (0x00 if no optional capabilities)
-Byte 4:  Firmware version patch
+Byte 4:  Library version patch
+Byte 5:  Sketch version major
+Byte 6:  Sketch version minor
+Byte 7:  Sketch version patch
 ```
 
-The version is the full X.Y.Z of the firmware that answers, from its version constants: the library's on a library-based module, the sketch's on a standalone one. Firmware before spec v2.22 sent bytes 0–3 only; a controller accepts that and treats the patch as unknown.
+Each version is a full X.Y.Z from its firmware's version constants. A library-based module reports its library's version at bytes 1, 2 and 4 and the module sketch's own version (`SKETCH_VERSION_*`, passed to the library in `setup()`) at bytes 5–7, so a change to the sketch alone can be seen from the bus. A standalone sketch with no library reports its own version in both places. Firmware before spec v2.22 sent bytes 0–3 only, and a 5-byte form had no sketch version; a controller accepts both and treats what is missing (or reads 0xFF) as unknown.
 
 **Universal Packet Header**
 Every response packet sent by the module must begin with the 3-byte universal header:
@@ -1052,7 +1055,7 @@ The module must handle all base commands:
 
 | Command | Value | Required Behavior |
 |---------|-------|------------------|
-| `CMD_GET_IDENTITY` | 0x01 | Return 5-byte identity packet |
+| `CMD_GET_IDENTITY` | 0x01 | Return 8-byte identity packet |
 | `CMD_SET_LED_STATE` | 0x02 | Apply nibble-packed LED state to outputs |
 | `CMD_SET_BRIGHTNESS` | 0x03 | Set ENABLED state backlight brightness |
 | `CMD_BULB_TEST` | 0x04 | 0x01: all outputs full white/on. 0x00: stop. Fires in any lifecycle state |

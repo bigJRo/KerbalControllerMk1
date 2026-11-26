@@ -154,15 +154,17 @@ inline bool serialHas(const char *s) { return Serial.out.find(s) != std::string:
 /*------------------------------------------------------------------------------------
   Input module simulator (ATtiny816 modules, I2C spec §4–§11). Holds INT low from
   power-on (BOOT_READY) until its first data read; in ACTIVE asserts INT on a change;
-  answers CMD_GET_IDENTITY with the next read (5 bytes, I2C spec §6; identLen 4 for the
-  old form with no patch); logs every command it receives.
+  answers CMD_GET_IDENTITY with the next read (8 bytes, I2C spec §6: library version
+  fwMaj.fwMin.fwPatch, sketch version skMaj.skMin.skPatch; identLen 5 for the form with
+  no sketch version, 4 for the old form with no patch); logs every command it receives.
 ------------------------------------------------------------------------------------*/
 struct ModuleSim : SimDevice {
   uint8_t addr, type, len, line;
   ModKind kind;
   uint8_t life = KMC_STATUS_BOOT_READY, cnt = 0;
   bool identPending = false, fault = false, intLow = false;
-  uint8_t fwMaj = 1, fwMin = 2, fwPatch = 3, identLen = KMC_IDENTITY_SIZE;   // identity reply
+  uint8_t fwMaj = 1, fwMin = 2, fwPatch = 3, identLen = KMC_IDENTITY_SIZE;   // identity reply: library
+  uint8_t skMaj = 4, skMin = 5, skPatch = 6;                                // and sketch version
   uint32_t state = 0, change = 0;          // buttons / persistent joystick state
   uint8_t events = 0;                      // rising-edge kinds (display, throttle, encoder)
   int16_t axes[3] = { 0, 0, 0 };
@@ -208,7 +210,7 @@ struct ModuleSim : SimDevice {
   int onRead(uint8_t *b, int n) override {
     if (identPending) {
       identPending = false;
-      uint8_t id[KMC_IDENTITY_SIZE] = { type, fwMaj, fwMin, 0, fwPatch };
+      uint8_t id[KMC_IDENTITY_SIZE] = { type, fwMaj, fwMin, 0, fwPatch, skMaj, skMin, skPatch };
       int k = n < identLen ? n : identLen; memcpy(b, id, k); return k;
     }
     uint8_t p[16] = { 0 };

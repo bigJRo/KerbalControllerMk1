@@ -1,6 +1,6 @@
 /**
  * @file        Config.h
- * @version     2.3.0
+ * @version     2.4.0
  * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Dual Encoder Module
  * @author      J. Rostoker
@@ -21,8 +21,10 @@
 //  Module identity
 //
 //  DEC_FIRMWARE_* is the sketch version, MAJOR.MINOR.PATCH: the single
-//  source of the version reported in the identity response (I2C spec §6;
-//  the patch is byte 4 from spec v2.22). Keep the @version headers and
+//  source of the version reported in the identity response (I2C spec §6).
+//  A standalone sketch has no library, so it reports this version in both
+//  places: bytes 1/2/4 (the library version of a library-based module)
+//  and bytes 5..7 (the sketch version). Keep the @version headers and
 //  README in step with it. (2.1 and 2.2 in the README history did not
 //  move these from 2.0; 2.3 does.)
 // ============================================================
@@ -30,7 +32,7 @@
 #define DEC_I2C_ADDRESS         0x2D
 #define DEC_MODULE_TYPE_ID      KMC_TYPE_DUAL_ENCODER
 #define DEC_FIRMWARE_MAJOR      2
-#define DEC_FIRMWARE_MINOR      3
+#define DEC_FIRMWARE_MINOR      4
 #define DEC_FIRMWARE_PATCH      0
 
 /** @brief Capability flag — encoder delta data in packet (bit 2). */
@@ -68,7 +70,7 @@
 #define DEC_HEADER_SIZE         KMC_HEADER_SIZE
 
 #define DEC_PACKET_SIZE         7
-#define DEC_IDENTITY_SIZE       KMC_IDENTITY_SIZE   // 5: type, major, minor, caps, patch
+#define DEC_IDENTITY_SIZE       KMC_IDENTITY_SIZE   // 8: type, major, minor, caps, patch, sketch major, minor, patch
 
 // ============================================================
 //  Button bit assignments

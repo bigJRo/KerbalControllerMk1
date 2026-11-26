@@ -21,7 +21,7 @@ static KtcCtx   _c;
 static AppState _state = AS_SPLASH;
 static uint32_t _tState = 0, _tPower = 0, _tProbe = 0, _tRead = 0;
 static uint8_t  _probeMiss = 0;
-static KtcIdentity _id = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
+static KtcIdentity _id = KTC_IDENTITY_NONE;
 
 // Run bookkeeping
 static uint8_t    _cur = 0;            // current step index
@@ -58,9 +58,9 @@ static uint16_t _verdictColor(KtcVerdict v) {
 }
 
 static void _powerLeft(char* buf, uint8_t n) {
-    char v[12];
-    ktcFmtVersion(v, sizeof(v), _id.fwMajor, _id.fwMinor, _id.fwPatch);
-    if (_id.valid) snprintf(buf, n, "0x%02X fw%s", _mod->addr, v);
+    char v[24];
+    ktcFmtVersions(v, sizeof(v), _id, true);          // sketch/library, e.g. 2.1.0/2.5.0
+    if (_id.valid) snprintf(buf, n, "0x%02X v%s", _mod->addr, v);
     else           snprintf(buf, n, "0x%02X", _mod->addr);
 }
 
@@ -234,8 +234,8 @@ static void _reportHeader() {
     Serial.print(F("Address 0x")); Serial.print(_mod->addr, HEX);
     if (_id.valid) {
         Serial.print(F("  type 0x")); Serial.print(_id.typeId, HEX);
-        char v[12];
-        ktcFmtVersion(v, sizeof(v), _id.fwMajor, _id.fwMinor, _id.fwPatch);
+        char v[32];
+        ktcFmtVersions(v, sizeof(v), _id);
         Serial.print(F("  fw ")); Serial.print(v);
         Serial.print(F("  caps 0x")); Serial.print(_id.caps, HEX);
     }
@@ -451,8 +451,8 @@ void ktcLoop() {
             _id = ktcIdentify(_mod->addr);
             if (_id.valid && _id.typeId == _mod->typeId) {
                 Serial.print(F("Module found: ")); Serial.print(_mod->name);
-                char v[12];
-                ktcFmtVersion(v, sizeof(v), _id.fwMajor, _id.fwMinor, _id.fwPatch);
+                char v[32];
+                ktcFmtVersions(v, sizeof(v), _id);
                 Serial.print(F(" fw ")); Serial.println(v);
                 _enterMenu();
                 break;

@@ -123,19 +123,25 @@ uint8_t hwScanModules(uint8_t* outAddrs, uint8_t maxAddrs) {
 //  hwIdentify()
 // ============================================================
 ModuleIdentity hwIdentify(uint8_t addr) {
-    ModuleIdentity id = {0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, false};
+    ModuleIdentity id = MODULE_IDENTITY_NONE;
     Wire.beginTransmission(addr);
     Wire.write(KMC_CMD_GET_IDENTITY);
     if (Wire.endTransmission() != 0) return id;
     delayMicroseconds(200);
-    // 5 bytes (patch at byte 4); the 4-byte form of older firmware is still read.
+    // 8 bytes (library patch at byte 4, sketch version at 5..7); the 5- and
+    // 4-byte forms of older firmware are still read.
     uint8_t got = Wire.requestFrom((int)addr, (int)KMC_IDENTITY_SIZE);
     if (got >= KMC_IDENTITY_SIZE_V1) {
         id.typeId  = Wire.read();
         id.fwMajor = Wire.read();
         id.fwMinor = Wire.read();
         id.caps    = Wire.read();
-        if (got >= KMC_IDENTITY_SIZE) id.fwPatch = Wire.read();   // 0xFF: also unknown
+        if (got >= KMC_IDENTITY_SIZE_V2) id.fwPatch = Wire.read();   // 0xFF: also unknown
+        if (got >= KMC_IDENTITY_SIZE) {                              // 0xFF: also unknown
+            id.skMajor = Wire.read();
+            id.skMinor = Wire.read();
+            id.skPatch = Wire.read();
+        }
         id.valid   = true;
     }
     while (Wire.available()) Wire.read();

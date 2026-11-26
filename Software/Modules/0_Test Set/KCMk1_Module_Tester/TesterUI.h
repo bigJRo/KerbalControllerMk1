@@ -91,12 +91,13 @@ int uiScanTouch(uint8_t count);
 // ------------------------------------------------------------
 
 /** @brief Draw the static dashboard chrome for a selected module.
- *         fwMajor/fwMinor/fwPatch/caps (from the identity reply) are shown
- *         in the title bar as X.Y.Z (X.Y if the patch is KMC_FW_PATCH_UNKNOWN);
- *         pass zeros if unknown. */
+ *         The identity reply's versions and caps are shown in the title bar:
+ *         "v<sketch>/<library>" (e.g. v2.2.0/2.1.0), one X.Y.Z when the two
+ *         are equal (a standalone sketch), "v-/<library>" when the sketch
+ *         version is unknown; X.Y when a patch is unknown. Pass nullptr (or
+ *         an identity that is not valid) to show the address only. */
 void uiDashboardBegin(const ModuleInfo* info, uint8_t addr,
-                      uint8_t fwMajor = 0, uint8_t fwMinor = 0, uint8_t fwPatch = 0,
-                      uint8_t caps = 0);
+                      const ModuleIdentity* id = nullptr);
 
 /** @brief Refresh the dynamic header (lifecycle / fault / tx counter). */
 void uiDashboardHeader(const ModuleState& st);

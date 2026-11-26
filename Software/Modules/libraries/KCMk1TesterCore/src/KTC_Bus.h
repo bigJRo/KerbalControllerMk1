@@ -15,17 +15,28 @@
 #include <Arduino.h>
 #include <KerbalModuleCommon.h>
 
-/** @brief A CMD_GET_IDENTITY reply (I2C spec §6). fwPatch is
- *         KMC_FW_PATCH_UNKNOWN when the module sent the 4-byte form of
- *         spec v2.21 and earlier (no patch byte, or 0xFF from the idle bus). */
+/** @brief A CMD_GET_IDENTITY reply (I2C spec §6, 8 bytes): fw* is the
+ *         library version (the sketch version for a standalone sketch), sk*
+ *         the module sketch's own version. fwPatch is KMC_FW_PATCH_UNKNOWN
+ *         when the module sent the 4-byte form (no patch byte, or 0xFF from
+ *         the idle bus); skMajor is KMC_SKETCH_VERSION_UNKNOWN when it sent
+ *         no sketch version (the 5- or 4-byte form, or 0xFF). */
 struct KtcIdentity {
     uint8_t typeId;
     uint8_t fwMajor;
     uint8_t fwMinor;
     uint8_t caps;
     uint8_t fwPatch;
+    uint8_t skMajor;
+    uint8_t skMinor;
+    uint8_t skPatch;
     bool    valid;
 };
+
+/** @brief An identity with nothing read: versions unknown, not valid. */
+#define KTC_IDENTITY_NONE { 0, 0, 0, 0, KMC_FW_PATCH_UNKNOWN, \
+                            KMC_SKETCH_VERSION_UNKNOWN, KMC_SKETCH_VERSION_UNKNOWN, \
+                            KMC_SKETCH_VERSION_UNKNOWN, false }
 
 struct KtcPower {
     float volts;    // module supply voltage
@@ -49,11 +60,17 @@ bool ktcProbe(uint8_t addr);
 /** @brief Scan 0x20-0x2E (skipping the on-board 0x38/0x40). Returns count. */
 uint8_t ktcScan(uint8_t* out, uint8_t maxAddrs);
 
-/** @brief CMD_GET_IDENTITY, one retry. Asks for 5 bytes, accepts the 4-byte form. */
+/** @brief CMD_GET_IDENTITY, one retry. Asks for 8 bytes, accepts the 5- and 4-byte forms. */
 KtcIdentity ktcIdentify(uint8_t addr);
 
 /** @brief "X.Y.Z" into buf, or "X.Y" when patch is KMC_FW_PATCH_UNKNOWN. */
 void ktcFmtVersion(char* buf, uint8_t n, uint8_t major, uint8_t minor, uint8_t patch);
+
+/** @brief Both versions of an identity, as the master shows them:
+ *         "2.1.0 / lib 2.5.0" (sketch, then library); one "X.Y.Z" when the
+ *         two are equal (a standalone sketch); "- / lib 2.5.0" when the
+ *         sketch version is unknown. compact: "2.1.0/2.5.0", "-/2.5.0". */
+void ktcFmtVersions(char* buf, uint8_t n, const KtcIdentity& id, bool compact = false);
 
 /** @brief Send a command with an optional payload. Returns the Wire status (0 = ACK). */
 uint8_t ktcCommand(uint8_t addr, uint8_t cmd, const uint8_t* payload = nullptr, uint8_t len = 0);

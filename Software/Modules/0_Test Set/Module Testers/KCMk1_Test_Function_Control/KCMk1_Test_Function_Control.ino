@@ -12,7 +12,7 @@
  *              Module: 12 NeoPixel buttons (inputs 0-11) and Switch Group 1 (inputs 16-23,
  *              one bit per switch, 1 = ON position). Inputs 12-15 are not
  *              connected. 24-input build: 9-byte packet.
- *              KerbalButtonCore 2.5 firmware, identity fw 2.5.0, caps 0x00.
+ *              KerbalButtonCore 2.5 firmware, identity fw 2.2.0 / lib 2.5.0 (sketch / library), caps 0x00.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, switch walk,
  *              LED walk, LED states, brightness, bulb test, lifecycle, supply current. Results show on
@@ -96,6 +96,7 @@ static const KtcModuleDef MODULE = {
     "Function Control", "KC-01-1811/1812 wide button board",
     KMC_TYPE_FUNCTION_CONTROL, 0x21, KMC_BUTTON24_PACKET_SIZE,
     KTC_KBC_FW_MAJOR, KTC_KBC_FW_MINOR, KTC_KBC_FW_PATCH, 0x00,
+    2, 2, 0,                           // Function Control sketch 2.2.0 (SKETCH_VERSION_* in the module sketch)
     STEPS, sizeof(STEPS) / sizeof(STEPS[0]),
     ktcKbcCleanup, ktcKbcLive24,
 };
