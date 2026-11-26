@@ -31,6 +31,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
     production file is the master, as for A2.
 - **Line weight:** the drawings scale every Fusion stroke by `line_scale` 0.35, as on A2.
 - **Stray parts:** `tools/kc_strays.py` masks them in the views marked `auto_masks`.
+  A stray touching the panel's bottom edge, about 365 mm from the left, is masked by hand
+  (`extra_masks`) in the front, rear and front balloon views (owner: stray, 2026-11-26).
 - **Hole table:** `tools/kc_holes.py` builds it from the cut layer (base sheet 2).
 
 ## Regenerating the drawings
