@@ -120,15 +120,15 @@
               "pdf": "Fusion_KC-01-1070_Internal_Brace_Assembly_2025-05-26.pdf",
               "page": 1,
               "src": [
-                40,
-                126,
-                165,
-                280
+                41.8,
+                128.5,
+                161.1,
+                277.8
               ],
-              "k": 0.6,
+              "k": 0.95,
               "at": [
-                22,
-                118
+                24.2,
+                53.0
               ],
               "clip": [
                 [
@@ -319,15 +319,15 @@
               "pdf": "Fusion_KC-01-1071_Internal_Brace_2022-09-27.pdf",
               "page": 1,
               "src": [
-                38,
-                128,
-                158,
-                282
+                40.3,
+                130.8,
+                155.2,
+                280.1
               ],
-              "k": 0.45,
+              "k": 0.95,
               "at": [
-                24,
-                118
+                50.8,
+                47.8
               ],
               "clip": [
                 [
@@ -392,7 +392,7 @@
           ]
         },
         {
-          "scale": 0.4,
+          "scale": 0.6,
           "views": [
             {
               "pdf": "Fusion_KC-01-1071_Internal_Brace_2022-09-27.pdf",
@@ -401,20 +401,20 @@
                 38,
                 73,
                 266,
-                233
+                227
               ],
-              "k": 0.8,
+              "k": 1.2,
               "at": [
-                24,
-                46
+                39.7,
+                37.2
               ],
               "label": "HOLE LOCATIONS",
               "masks": [
                 [
-                  256,
-                  72,
+                  255,
+                  71,
                   267,
-                  79
+                  81
                 ]
               ]
             }
@@ -422,8 +422,8 @@
           "tables": [
             {
               "at": [
-                250,
-                60
+                321.8,
+                48.4
               ],
               "title": "HOLE TABLE",
               "cols": [
@@ -502,7 +502,7 @@
         "1. Material: cast acrylic (Chemcast), clear, 24.00 mm. Supplier: TAP Plastics.",
         "2. Outline 291.00 × 200.00 × 24.00 mm (sheet 1). Corners R4.76 as marked (sheet 2).",
         "3. Holes A1 to A7: Ø4.76 through the 24.00 mm thickness, for the bracket screws. Datum: lower-left corner, X right, Y up.",
-        "4. Views at 2:5 on A3; isometric view not to scale."
+        "4. Sheet 1 at 2:5, sheet 2 at 3:5, on A3; isometric view not to scale."
       ]
     }
   }

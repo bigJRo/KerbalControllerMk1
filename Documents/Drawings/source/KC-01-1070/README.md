@@ -22,8 +22,10 @@ themselves are the sources.
   projection layout and its Fusion dimensions are kept.
   - The isometric views are separate crops, clipped along their edges so the neighbouring views
     stay out.
-  - The brace's views are at 0.8 of their Fusion 1:2, so 2:5, to fit beside the KC title and
-    revision blocks. The assembly's sheet 1 stays at 1:2; its sheet 2 is not to scale.
+  - The brace's sheet 1 views are at 0.8 of their Fusion 1:2, so 2:5, to fit beside the KC
+    title and revision blocks. Its hole locations view (sheet 2) is at 1.2, so 3:5, to fill the
+    sheet (owner, 2026-11-26). The assembly's sheet 1 stays at 1:2; its sheet 2 is not to scale.
+  - The isometric views are not to scale and are drawn as large as the sheet allows.
   - Sheet 2 of the brace masks the corner of the Fusion hole table that sits above the hole
     locations view.
 - **Tables:** the parts list and the hole table are KC tables, re-set from the Fusion text.
