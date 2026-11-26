@@ -1,10 +1,37 @@
 # KC-01-1010 Enclosure: drawing sources
 
-Review notes for the enclosure drawings ahead of their migration to the KC frame: the acrylic box
-KC-01-1010 (front plate 1011, side panel 1012, bottom plate 1013, back panel 1014), the top cover
-plate KC-01-1060, the internal brace assembly KC-01-1070 (brace 1071) and the panel brace
-KC-01-1080. The released PDFs are the Fusion drawings in `Documents/Drawings` (2022–2026). The
-Fusion exports and the top-level assembly will be added here when the owner sends them.
+Source files for the Rev A drawings of the acrylic box: assembly KC-01-1010 and its plates, the
+front plate KC-01-1011, side panel 1012, bottom plate 1013 and back panel 1014 (part control
+drawings). Rev A puts the released 2022 Fusion drawings (revision "-", in git history) in the KC
+frame; the Fusion PDFs themselves are the sources. This file also keeps the review notes for the
+rest of the enclosure: the top panel (now KC-01-1060 / 1061, own package), the internal brace
+KC-01-1070 / 1071 (own package) and the panel brace KC-01-1080.
+
+| File | What it is | Feeds |
+|---|---|---|
+| `KC-01-1010.json` | Package config: document types, titles, revisions, release status, view crops, clips and masks, labels, line weight, parts list, hole tables and notes | all five drawings |
+| `Fusion_KC-01-1010_Acrylic_Box_2022-09-18.pdf` | The released Fusion assembly drawing (2 sheets) | 1010 ASSY |
+| `Fusion_KC-01-1011_Front_Plate_2022-09-17.pdf` | The released Fusion front plate drawing (1 sheet) | 1011 PART |
+| `Fusion_KC-01-1012_Side_Panel_2022-09-18.pdf` | The released Fusion side panel drawing (2 sheets) | 1012 PART |
+| `Fusion_KC-01-1013_Bottom_Plate_2022-09-18.pdf` | The released Fusion bottom plate drawing (2 sheets) | 1013 PART |
+| `Fusion_KC-01-1014_Back_Panel_2022-09-18.pdf` | The released Fusion back panel drawing (3 sheets) | 1014 PART |
+
+## Migration notes (2026-11-26)
+
+- **Views:** each group of orthographic views is one crop of its Fusion sheet, so its
+  projection layout and its Fusion dimensions are kept.
+  - The isometric views are separate crops, clipped along their edges (`clip`) so the
+    neighbouring views stay out.
+  - Fusion's large "Front View" titles are masked and replaced by KC labels (`texts`).
+- **Tables:** the parts list and the hole tables are KC tables, re-set from the Fusion text.
+  The hole tags are Fusion's, so they match the views. "Ø4.76 x 6.00" (depth = the plate
+  thickness) is written Ø4.76 THRU.
+- **Part names:** they drop Fusion's model versions (v2, v3). The back panel is v2, as the 1014
+  drawing has it; the old 1010 parts list said v3.
+- **Notes:** the Fusion notes ("Apply Acryllic Glue along all joints", "Finish exposed edges")
+  become note 1 of 1010. Material and outline are notes on each plate.
+- **Scales:** the 1010 sheet 2, 1012 sheet 1 and 1013 sheet 2 views are shown at 0.8 of
+  their Fusion scale (1:5, 2:5 and 1:5) to fit beside the KC title and revision blocks.
 
 ## Review notes (2026-11-25)
 

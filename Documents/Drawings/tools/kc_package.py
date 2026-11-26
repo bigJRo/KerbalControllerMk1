@@ -258,10 +258,11 @@ def dim_v(s, y1, y2, x, label, ext_from=None, size=2.6):
 
 
 def fields(cfg, d, sheet, sheets, scale):
-    return dict(dwg_no=cfg["base"] + d, rev=cfg.get("rev", "-"), title=cfg.get("doc_title", {}).get(d, cfg["title"]), subtitle=cfg["subtitle"],
+    # "doc_rev" / "doc_revisions" give one document of a package its own revision and history
+    return dict(dwg_no=cfg["base"] + d, rev=cfg.get("doc_rev", {}).get(d, cfg.get("rev", "-")), title=cfg.get("doc_title", {}).get(d, cfg["title"]), subtitle=cfg["subtitle"],
                 doc_type=doc_types(cfg)[d][1], status=cfg.get("doc_status", {}).get(d, cfg.get("status", "DRAFT")), created_by=cfg["created_by"],
                 approved_by=cfg["approved_by"], date=cfg["date"], board_version=cfg["board_version"],
-                scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("revisions"),
+                scale=scale, sheet=sheet, sheets=sheets, revisions=cfg.get("doc_revisions", {}).get(d, cfg.get("revisions")),
                 package_docs=cfg.get("package_docs"), doc_types=cfg.get("doc_types"),
                 version_label=cfg.get("version_label"))
 
@@ -978,6 +979,9 @@ def doc_assy(cfg, work, d="0", vd=None):
                 s.text(X + w / 2, ly, v["label"], size=2.8, anchor="middle", weight="bold")
                 if v.get("sublabel"):
                     s.text(X + w / 2, ly + 3.6, v["sublabel"], size=2.3, anchor="middle", c=GREY)
+        for tx in sc.get("texts", []):        # free text: {"at": [x, y] sheet mm, "text", "size", "weight", "anchor"}
+            s.text(tx["at"][0], tx["at"][1], tx["text"], size=tx.get("size", 2.8), anchor=tx.get("anchor", "middle"),
+                   weight=tx.get("weight", "bold"), c=GREY if tx.get("grey") else INK)
         if sc.get("notes"):
             notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, vd["notes"])
         sheets.append(s)
@@ -1018,7 +1022,7 @@ def main():
     for d in docs:
         work = tempfile.mkdtemp(prefix=f"kc_{d}_", dir=a.out)
         sheets = builders[d](cfg, work)
-        f = {"dwg_no": cfg["base"] + d, "rev": cfg.get("rev", "-"), "doc_types": cfg.get("doc_types")}
+        f = {"dwg_no": cfg["base"] + d, "rev": cfg.get("doc_rev", {}).get(d, cfg.get("rev", "-")), "doc_types": cfg.get("doc_types")}
         out = os.path.join(a.out, file_name(f, cfg.get("doc_name", {}).get(d, cfg["name"])))
         print_pdf(sheets, out, work)
         print("wrote", out, f"({len(sheets)} sheet{'s' if len(sheets) > 1 else ''})")
