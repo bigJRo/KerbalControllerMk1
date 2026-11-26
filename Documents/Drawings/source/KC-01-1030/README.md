@@ -59,8 +59,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
   (SPST on/off). Three of them, MSTR, DISPL and LTG, are momentary (owner, 2026-11-26).
   - Item 10 is now the six latching switches: SCE, UPTLM, A/P, ENGINE, THRTL and the abort
     arming switch.
-  - New item 19 is the three momentary switches. Both kinds are Omval 12 mm SPST with 2 solder
-    pins, from one AliExpress listing.
+  - New item 19 is the three momentary switches. Both kinds are 12 mm SPST with 2 solder pins,
+    from one AliExpress listing.
   - The Fusion file is not changed. The split is made in `KC-01-1030.json`.
 - **Balloon:** item 19 gets its own balloon on the rear view (sheet 3). It is drawn by the
   generator's `balloons` option and points at MSTR.
@@ -72,12 +72,17 @@ in git history. The released PDFs are in `Documents/Drawings`.
   | Item | Part | Was | Now |
   |---|---|---|---|
   | 7 | Button cover, 22 mm | 90000002 | AE 2251832816396454 |
-  | 9 | Toggle switch cover, red | 11000001 | AE 2251832732685651 |
-  | 10 | Toggle switch, latching | 10000001 | AE 2251832731902430 |
+  | 9 | Toggle switch cover, red | 11000001 | AE 3256805484145709 (HC Electrical Store) |
+  | 10 | Toggle switch, latching | 10000001 | FLP12-FJ-1021P-L |
   | 14 | 16 mm blue push button | B079FKG8B1 | AE 3256807837994773 |
-  | 19 | Toggle switch, momentary | none (new item) | AE 2251832731902430 |
+  | 19 | Toggle switch, momentary | none (new item) | FLP12-FJ-1021P-M |
 
   Panels A1 and B2 take the same numbers at their next revision.
+- **Toggle switches (owner, 2026-11-26):** the toggles are FILN FLP12-FJ, rated 15 A 250 V,
+  not Omval. The owner's part numbers are FLP12-FJ-1021P-L (latching) and FLP12-FJ-1021P-M
+  (momentary). The switch covers come from HC Electrical Store. The metal push buttons
+  (16 mm blue here; 22 mm green and power on B2 and A1) come from Hanhai Electric Appliances
+  and Accessories Store.
 - **Item 18:** its part number is corrected to 91223A412, McMaster's M3 × 6 mm ultra-low-profile
   socket head screw (owner, 2026-11-26). Fusion gave 91223QA412.
 - **Base drawing:** the base, KC-01-1031, is unchanged and stays at Rev B (`doc_rev`).

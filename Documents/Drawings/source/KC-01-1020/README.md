@@ -51,4 +51,5 @@ python Documents/Drawings/tools/kc_package.py \
   Module H1 (pin 2), so the fitted button is the 12 V LED variant. The parts list's "3–6 V LED"
   for 32000001 is wrong.
 - **Part number:** 32000001 becomes AE 3256807837994773, the power-symbol 12 V variant of that
-  AliExpress listing, under the AliExpress part-number rule.
+  AliExpress listing, under the AliExpress part-number rule. The
+  manufacturer is Hanhai Electric Appliances and Accessories Store.
