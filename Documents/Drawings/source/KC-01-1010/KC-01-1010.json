@@ -7,7 +7,7 @@
   "board_version": "Box",
   "version_label": "Unit",
   "date": "2026-11-26",
-  "status": "DRAFT",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "01234",
@@ -52,11 +52,11 @@
     "4": "Back Panel"
   },
   "doc_status": {
-    "0": "DRAFT",
-    "1": "DRAFT",
-    "2": "DRAFT",
-    "3": "DRAFT",
-    "4": "DRAFT"
+    "0": "RELEASED",
+    "1": "RELEASED",
+    "2": "RELEASED",
+    "3": "RELEASED",
+    "4": "RELEASED"
   },
   "revisions": [
     [

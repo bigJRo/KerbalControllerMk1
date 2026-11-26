@@ -7,7 +7,7 @@
   "board_version": "Brace",
   "version_label": "Unit",
   "date": "2026-11-26",
-  "status": "DRAFT",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "01",
@@ -31,8 +31,8 @@
     "1": "Internal Brace"
   },
   "doc_status": {
-    "0": "DRAFT",
-    "1": "DRAFT"
+    "0": "RELEASED",
+    "1": "RELEASED"
   },
   "revisions": [
     [

@@ -3,7 +3,7 @@
 Source files for the Rev A drawings of the acrylic box: assembly KC-01-1010 and its plates, the
 front plate KC-01-1011, side panel 1012, bottom plate 1013 and back panel 1014 (part control
 drawings). Rev A puts the released 2022 Fusion drawings (revision "-", in git history) in the KC
-frame; the Fusion PDFs themselves are the sources. This file also keeps the review notes for the
+frame; the Fusion PDFs themselves are the sources. The released PDFs are in `Documents/Drawings`. This file also keeps the review notes for the
 rest of the enclosure: the top panel (now KC-01-1060 / 1061, own package), the internal brace
 KC-01-1070 / 1071 (own package) and the panel brace KC-01-1080.
 

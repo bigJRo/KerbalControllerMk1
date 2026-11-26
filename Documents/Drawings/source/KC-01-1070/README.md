@@ -3,8 +3,8 @@
 Source files for the KC-frame drawings of the internal brace: assembly KC-01-1070 (Rev A) and
 the brace itself, KC-01-1071 (Rev D, part control drawing). They put the released Fusion
 drawings in the KC frame: `KC-01-1070_Rev-_Internal Brace Assembly.pdf` and
-`KC-01-1071_RevC_Internal Brace.pdf`, which are in git history once replaced. The Fusion PDFs
-themselves are the sources.
+`KC-01-1071_RevC_Internal Brace.pdf`, which are in git history. The Fusion PDFs themselves
+are the sources. The released PDFs are in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
