@@ -18,8 +18,8 @@
 <rect x="120.0" y="50.0" width="106.0" height="74.0" rx="5" fill="#fbe9e7" stroke="#8d6e63" stroke-width="1.4"/>
 <text x="173.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">12 V DC IN</text>
 <text x="173.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">rear panel · DC1</text>
-<text x="173.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">2.5 mm barrel</text>
-<text x="173.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">jack</text>
+<text x="173.0" y="92.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">5.5 × 2.1 mm</text>
+<text x="173.0" y="104.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">barrel jack</text>
 <rect x="242.0" y="50.0" width="178.0" height="74.0" rx="5" fill="#ffffff" stroke="#263238" stroke-width="1.4"/>
 <text x="331.0" y="66.0" font-size="11" font-weight="bold" text-anchor="middle" fill="#263238">SOFT-LATCH SWITCH</text>
 <text x="331.0" y="79.5" font-size="10" font-weight="normal" text-anchor="middle" fill="#455a64">Control Module</text>

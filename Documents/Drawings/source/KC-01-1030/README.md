@@ -64,6 +64,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
   - The Fusion file is not changed. The split is made in `KC-01-1030.json`.
 - **Balloon:** item 19 gets its own balloon on the rear view (sheet 3). It is drawn by the
   generator's `balloons` option and points at MSTR.
+- **Item 18:** its part number is corrected to 91223A412, McMaster's M3 × 6 mm ultra-low-profile
+  socket head screw (owner, 2026-11-26). Fusion gave 91223QA412.
 - **Base drawing:** the base, KC-01-1031, is unchanged and stays at Rev B (`doc_rev`).
 
 ## Regenerating the drawings

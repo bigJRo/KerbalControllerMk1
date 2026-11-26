@@ -2,7 +2,7 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.13  
+**Version:** 2.14  
 **Date:** 2026-11-26  
 **Document type:** Developer — Hardware
 
@@ -37,6 +37,7 @@
 | 2.11 | 2026-11-25 | **§5.1:** Ctrl Module is now V2.1 (drawings Rev C): vertical USB-A downstream ports, 1×5 test port TP1, a blue +5V status LED, all status LEDs dimmed to about 0.5 mA, USB connector shells on GND; resistors renumbered (RST series now R14, EXT_INT_1 pull-up R15 and series R16). **§5.4:** Throttle drawings Rev C: motor-direction LED resistors R15 / R16 are 10 kΩ (were 1 kΩ). **§6.5:** status LED table and test port. **§7.3, §7.5, §7.6:** USB-A ports and shell grounding. **§8.4:** designators updated. |
 | 2.12 | 2026-11-25 | **§5.4:** the panel joystick is the JH-DX400B-R4 (4-axis), as fitted on panels A2 and B2; three axes are wired to terminal U6 and the fourth is not used (was given as JH-D202X-R4, 3-axis). |
 | 2.13 | 2026-11-26 | **§13.2:** the identity response is 5 bytes, the firmware patch appended at byte 4, so every module reports X.Y.Z (I2C spec v2.22 §6); a controller accepts the old 4-byte form and shows that version as X.Y. |
+| 2.14 | 2026-11-26 | **§2:** KSP 1.12.5 and the tested mod versions (Kerbal Simpit Revamped 2.4.0, AGX 2.4.1.4, Hullcam VDS Continued 0.2.2.6, ARP 2.11.0.0), replacing "Current". The 12 V input on the rear panel is a 5.5 × 2.1 mm barrel jack, Adafruit 5607 (the wiring and power figures said 2.5 mm). |
 
 ---
 
@@ -74,12 +75,14 @@ Version 2.0 was rebuilt from `Documents/Developer/Hardware_Inventory.md`, the wo
 
 ## 2. Required KSP Mods
 
+The controller is built and tested with Kerbal Space Program 1.12.5 and these mod versions (owner, 2026-11-26):
+
 | Mod | Version | Purpose |
 |-----|---------|---------|
-| KerbalSimpit | v2.4.0 | Serial communication between KSP and the master controller |
-| AGX (Action Groups Extended) | Current | Expands custom action groups to 256 (required for full button mapping) |
-| Hullcam VDS Continued | Current | Camera cycling support for ENC2 encoder |
-| Alternate Resource Panel (ARP) | Current | Most Resource Display resources and the BUS VOLTAGE warning |
+| Kerbal Simpit Revamped | 2.4.0 | Serial communication between KSP and the master controller |
+| AGX (Action Groups Extended) | 2.4.1.4 | Expands custom action groups to 256 (required for full button mapping) |
+| Hullcam VDS Continued | 0.2.2.6 | Camera cycling support for ENC2 encoder |
+| Alternate Resource Panel (ARP) | 2.11.0.0 | Most Resource Display resources and the BUS VOLTAGE warning |
 
 ---
 

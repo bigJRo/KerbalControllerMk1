@@ -143,7 +143,7 @@ def power():
     Y0, Y1 = 50, 124
     block(10, Y0, 104, Y1, "12 V DC SUPPLY", ["external", "10 A rated", "(120 W)"], dash="5 3", fill="#fafafa",
           tsize=10.5)
-    block(120, Y0, 226, Y1, "12 V DC IN", ["rear panel · DC1", "2.5 mm barrel", "jack"], fill="#fbe9e7",
+    block(120, Y0, 226, Y1, "12 V DC IN", ["rear panel · DC1", "5.5 × 2.1 mm", "barrel jack"], fill="#fbe9e7",
           stroke="#8d6e63")
     block(242, Y0, 420, Y1, "SOFT-LATCH SWITCH", ["Control Module", "IRF9540N P-MOSFET load switch",
                                                   "analog RC hold-to-off timing",

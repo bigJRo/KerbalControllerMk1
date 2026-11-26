@@ -49,7 +49,7 @@
 <text x="1710.0" y="490.0" font-size="13" font-weight="bold" text-anchor="middle" fill="#5d4037">REAR PANEL</text>
 <rect x="30.0" y="440.0" width="144.0" height="40.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
 <text x="102.0" y="457.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">12 V DC IN</text>
-<text x="102.0" y="470.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">2.5 mm barrel, ≥10 A</text>
+<text x="102.0" y="470.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">5.5 × 2.1 mm barrel, ≥10 A</text>
 <rect x="30.0" y="492.0" width="144.0" height="40.0" rx="4" fill="#ffffff" stroke="#8d6e63" stroke-width="1.2"/>
 <text x="102.0" y="509.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#212121">USB-C · HOST PC</text>
 <text x="102.0" y="522.0" font-size="10.5" font-weight="normal" text-anchor="middle" fill="#6d4c41">panel mount</text>

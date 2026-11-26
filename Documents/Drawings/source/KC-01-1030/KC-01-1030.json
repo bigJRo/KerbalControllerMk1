@@ -49,7 +49,7 @@
     ],
     [
       "C",
-      "Momentary Switch Group 1 switches split out as item 19",
+      "Momentary Switch Group 1 switches split out as item 19; item 18 part number corrected",
       "2026-11-26",
       "J. Kerman"
     ]
@@ -801,7 +801,7 @@
         },
         {
           "qty": 2,
-          "pn": "91223QA412",
+          "pn": "91223A412",
           "name": "Screw - M3 - 6mm ULP",
           "desc": "316 stainless steel ultra-low-profile socket head screw, M3 × 0.5 mm thread, 6 mm long"
         },

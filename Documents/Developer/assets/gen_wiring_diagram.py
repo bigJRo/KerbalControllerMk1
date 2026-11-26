@@ -195,7 +195,7 @@ def build():
         rect(x0, y - 20, x1, y + 20, fill="#ffffff", stroke="#8d6e63", sw=1.2, r=4)
         lines((x0 + x1) / 2, y - 3, rows, size=10.5, gap=13)
 
-    rp(30, 174, 460, ["12 V DC IN", ("2.5 mm barrel, ≥10 A", {"fill": "#6d4c41"})])
+    rp(30, 174, 460, ["12 V DC IN", ("5.5 × 2.1 mm barrel, ≥10 A", {"fill": "#6d4c41"})])
     rp(30, 174, 512, ["USB-C · HOST PC", ("panel mount", {"fill": "#6d4c41"})])
     rp(30, 174, 564, ["USB-C · EXPANSION", ("panel mount, reserved", {"fill": "#6d4c41"})])
     rp(30, 174, 616, ["FAN 1", ("120 mm PWM, tach", {"fill": "#6d4c41"})])

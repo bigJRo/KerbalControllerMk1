@@ -167,7 +167,7 @@ def side_a():
     # Rear panel, left
     rect(10, 362, 146, 572, fill="#fbe9e7", stroke="#8d6e63", sw=1.4, r=8)
     t(78, 380, "REAR PANEL", size=12.5, weight="bold", fill="#5d4037")
-    for y, kind, name, tg, rows in ((408, "pwr", "DC1", ["2-pin 12 V", TBD], ["12 V DC IN", ("2.5 mm barrel jack", {"fill": "#6d4c41"})]),
+    for y, kind, name, tg, rows in ((408, "pwr", "DC1", ["2-pin 12 V", TBD], ["12 V DC IN", ("5.5 × 2.1 mm barrel jack", {"fill": "#6d4c41"})]),
                                     (456, "usb", "USBC1", ["24-pin USB-C", TBD], ["USB-C · HOST", ("panel mount", {"fill": "#6d4c41"})]),
                                     (504, "exp", "USBC2", ["24-pin USB-C", TBD], ["USB-C · EXP", ("reserved", {"fill": "#6d4c41"})]),
                                     (552, "fan", "CN1", ["4-pin fan", TBD], ["FAN 1", ("PWM + tach", {"fill": "#6d4c41"})])):
