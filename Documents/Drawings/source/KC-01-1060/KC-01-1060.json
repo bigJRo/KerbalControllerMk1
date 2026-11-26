@@ -240,7 +240,8 @@
                 66,
                 152
               ],
-              "label": "REAR"
+              "label": "REAR",
+              "label_y": 134.0
             }
           ]
         }

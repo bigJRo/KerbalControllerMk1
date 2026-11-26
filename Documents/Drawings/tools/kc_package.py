@@ -973,9 +973,11 @@ def doc_assy(cfg, work, d="0", vd=None):
                     s.text(px + dx + (0.8 if dx >= 0 else -0.8), py + dy + fs * 0.35 + i * fs * 1.3, ln,
                            size=fs, anchor="start" if dx >= 0 else "end")
             if v.get("label"):
-                s.text(X + w / 2, Y + h + 5, v["label"], size=2.8, anchor="middle", weight="bold")
+                # under the view, or under source y "label_y" when the crop runs on below the part
+                ly = (to_sheet(x0, v["label_y"])[1] if "label_y" in v else Y + h) + 5
+                s.text(X + w / 2, ly, v["label"], size=2.8, anchor="middle", weight="bold")
                 if v.get("sublabel"):
-                    s.text(X + w / 2, Y + h + 8.6, v["sublabel"], size=2.3, anchor="middle", c=GREY)
+                    s.text(X + w / 2, ly + 3.6, v["sublabel"], size=2.3, anchor="middle", c=GREY)
         if sc.get("notes"):
             notes_box(s, a["x0"] + 2, a["tb_y"], a["tb_x"] - a["x0"] - 6, a["y1"] - a["tb_y"] - 2, vd["notes"])
         sheets.append(s)
