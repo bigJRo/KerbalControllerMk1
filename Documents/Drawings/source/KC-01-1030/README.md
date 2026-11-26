@@ -31,6 +31,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
 - The hole table (1031 sheet 3) is built from the cut layer of the production file by
   `tools/kc_holes.py`: round holes up to Ø8, tagged by size (A Ø3.0, B Ø3.2, C Ø3.8,
   D Ø7.6), positions from the lower-left corner of the outline.
+  With the 2026-11-26 production file: A Ø3.0 × 4 (joystick), B Ø3.2 × 32, C Ø3.8 × 7,
+  D Ø7.6 × 1. That file also lines up the two lower display holes at Y 108.8.
 - Hole review (owner, 2026-11-26): the two throttle holes go from Ø3.6 to Ø3.2. The four 2"
   display holes go from Ø2.5 to Ø3.2: the 2" display keeps its M3 standoffs, spacers and
   screws (checked by the owner), so KC-01-1900 is unchanged. The Fusion exports are not
