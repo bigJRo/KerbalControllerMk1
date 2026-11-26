@@ -119,7 +119,7 @@
 <rect x="237.0" y="286.0" width="74.0" height="50.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
 <text x="274.0" y="302.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SPEAKER 1</text>
 <text x="274.0" y="315.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">alarm tones</text>
-<text x="274.0" y="327.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 Ω</text>
+<text x="274.0" y="327.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">4 Ω</text>
 <polyline points="354.0,208.0 354.0,286.0" fill="none" stroke="#00838f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="332.0" y="192.0" width="44.0" height="16.0" rx="3" fill="#eceff1" stroke="#455a64" stroke-width="1"/>
 <text x="354.0" y="204.0" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#263238">SPKR2</text>
@@ -129,7 +129,7 @@
 <rect x="317.0" y="286.0" width="74.0" height="50.0" rx="5" fill="#f1f8e9" stroke="#558b2f" stroke-width="1.3"/>
 <text x="354.0" y="302.6" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">SPEAKER 2</text>
 <text x="354.0" y="315.0" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">GPWS voice</text>
-<text x="354.0" y="327.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">8 Ω</text>
+<text x="354.0" y="327.4" font-size="10" font-weight="normal" text-anchor="middle" fill="#212121">4 Ω</text>
 <rect x="520.0" y="212.0" width="280.0" height="108.0" rx="6" fill="#e3f2fd" stroke="#263238" stroke-width="1.6"/>
 <text x="660.0" y="244.0" font-size="13.5" font-weight="bold" text-anchor="middle" fill="#212121">INFORMATION DISPLAY 1</text>
 <text x="660.0" y="260.0" font-size="11" font-weight="normal" text-anchor="middle" fill="#455a64">0x12 · 7" TFT Display Driver</text>

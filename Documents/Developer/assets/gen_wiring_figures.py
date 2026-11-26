@@ -117,8 +117,8 @@ def side_a():
     # Panel A1, in panel order: power button, Annunciator, Information Display 1
     item(24, 84, 170, 144, ["POWER button", "momentary", "(on / hold 3 s off)"], size=11)
     board(196, 72, 436, 172, "ANNUNCIATOR", ["0x10 · 7\" TFT Display Driver", "KC-01-1910 (Teensy 4.1)"], ty=22)
-    for x, n, rows in ((242, "SPKR1", ["SPEAKER 1", "alarm tones", "8 Ω"]),
-                       (322, "SPKR2", ["SPEAKER 2", "GPWS voice", "8 Ω"])):
+    for x, n, rows in ((242, "SPKR1", ["SPEAKER 1", "alarm tones", "4 Ω"]),
+                       (322, "SPKR2", ["SPEAKER 2", "GPWS voice", "4 Ω"])):
         wire([(x, 180), (x, 238)], "spk")
         tab(x, 172, n, "bottom")
         ctag(x, 208, ["2-pin", TBD], "spk")
