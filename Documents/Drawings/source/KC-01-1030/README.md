@@ -9,7 +9,7 @@ in git history. The released PDFs are in `Documents/Drawings`.
 | `KC-01-1030.json` | Package config: document types, titles, revisions, release status, view crops and placement, line weight, masks over stray parts, balloon relabels, parts list, hole table and notes | both drawings |
 | `Fusion_KC-01-1030_Panel_A2_Complete_2026-11-25.pdf` | Fusion assembly drawing export (4 sheets): views, balloons and the Fusion parts list | 1030 ASSY |
 | `Fusion_KC-01-1031_Panel_A2_Base_2026-11-25.pdf` | Fusion base plate drawing export (2 sheets): views and overall dimensions | 1031 PART sheet 1 |
-| `Panel_A2_Production_2026-11-25.ai` | Ponoko production (cut and engrave) file, Illustrator, artwork at 1:1 (red = cut, blue = engrave) | 1031 PART sheets 2 (preview) and 3 (hole table); fabrication |
+| `Panel_A2_Production_2026-11-26.ai` | Ponoko production (cut and engrave) file, Illustrator, artwork at 1:1 (red = cut, blue = engrave) | 1031 PART sheets 2 (preview) and 3 (hole table); fabrication |
 
 ## Review notes (2026-11-25)
 
@@ -29,13 +29,17 @@ in git history. The released PDFs are in `Documents/Drawings`.
 - Front, side and top views keep Fusion's projection alignment: each is moved by the same
   offset along its shared axis, with the gaps closed up.
 - The hole table (1031 sheet 3) is built from the cut layer of the production file by
-  `tools/kc_holes.py`: round holes up to Ø8, tagged by size (A Ø2.5, B Ø3, C Ø3.2, D Ø3.6,
-  E Ø3.8, F Ø7.6), positions from the lower-left corner of the outline.
+  `tools/kc_holes.py`: round holes up to Ø8, tagged by size (A Ø3.0, B Ø3.2, C Ø3.8,
+  D Ø7.6), positions from the lower-left corner of the outline.
+- Hole review (owner, 2026-11-26): the four 2" display holes go from Ø2.5 to Ø3.0 (M2.5
+  clearance; the 2" display moves to M2.5 hardware) and the two throttle holes from Ø3.6 to
+  Ø3.2. Production file `Panel_A2_Production_2026-11-26.ai` carries the change; nothing else in
+  it changed, and the Fusion exports are not regenerated for it.
 - Outline: the production file's 425 × 270 mm is correct (owner, 2026-11-25). The Fusion model
   body is about 429.7 × 274.7 mm, about 2.3 mm oversize all round, with the holes in the right
   places; the views are left as exported until the Fusion body is fixed.
 - The outline is drawn in dark grey in the production file and is cut as it stands (owner).
-- The Ø3.8 mounting holes (E) are offset on purpose: 10.5 mm from the left edge, 19.6 mm and
+- The Ø3.8 mounting holes (C) are offset on purpose: 10.5 mm from the left edge, 19.6 mm and
   22.5 mm from the right, to suit the enclosure (owner).
 - Switch Group 1 is engraved MSTR · DISPL · SCE · UPTLM / LTG · A/P · ENGINE · THRTL (B16–B23).
   DISPL and RST are the panel abbreviations of DISP and RESET (Module UI Reference §6.2).
