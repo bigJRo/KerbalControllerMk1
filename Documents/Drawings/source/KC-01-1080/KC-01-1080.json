@@ -7,7 +7,7 @@
   "board_version": "Brace",
   "version_label": "Unit",
   "date": "2026-11-26",
-  "status": "DRAFT",
+  "status": "RELEASED",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "package_docs": "0",
@@ -25,7 +25,7 @@
     "0": "Panel Brace"
   },
   "doc_status": {
-    "0": "DRAFT"
+    "0": "RELEASED"
   },
   "revisions": [
     [
