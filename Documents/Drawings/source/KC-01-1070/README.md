@@ -31,7 +31,8 @@ themselves are the sources.
 - **Part names:** they drop Fusion's model versions and give the supplier one spelling, TAP
   Plastics.
 - **Item 4 (screw):** Fusion named it 6-32 × 1-1/4" but described it as 8-32 thread. The
-  brackets (Keystone 617) and the nuts are 6-32, so the description is now 6-32.
+  brackets (Keystone 617) and the nuts are 6-32, so the description is now 6-32. The owner
+  confirmed 6-32 and PN 91772A201 (2026-11-26).
 - **Notes:** the assembly notes say how the brackets, screw, washer and nut stack at each hole.
   The brackets' own screws into the box are left to the top-level assembly.
 

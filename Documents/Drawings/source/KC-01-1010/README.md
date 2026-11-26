@@ -75,7 +75,8 @@ KC-01-1070 / 1071 (own package) and the panel brace KC-01-1080.
 **To fix on migration:**
 
 - **1070:** item 4 is named 6-32 × 1-1/4" but described as 8-32 thread. The brackets
-  (Keystone 617) and nuts are 6-32.
+  (Keystone 617) and nuts are 6-32. Fixed in the 1070 Rev A draft: 6-32 is right (owner,
+  2026-11-26).
 - **1080:** the parts list has only the 2 heat-set inserts. The brace's own material and the
   number fitted (and where) are not recorded; the top-level assembly should show them.
 - **Names and suppliers:**
