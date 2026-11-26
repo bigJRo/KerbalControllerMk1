@@ -59,6 +59,6 @@ These are the owner's part decisions of 2026-11-26. Panel A2 Rev C already appli
 | 11 | Toggle switch cover, green | 11000002 (Omval) | AE 3256805484145709, HC Electrical Store, green variant |
 | 12 | 9 toggle switches | 10000001 (Omval) | FLP12-FJ-1021P-L, FILN 12 mm SPST latching, 15 A 250 V |
 | 10 | STAGE push button, 22 mm green | 31000001 | AE 3256807837994773, Hanhai Electric Appliances and Accessories Store, 22 mm green 3–6 V variant (lit from +5 V) |
+| 7 | Joystick | JH-DX400B-R4 | JH-D400X-R4, SaiDian (Amazon B08CGYGMJL) |
 
-Check whether any of the nine B2 toggles is momentary before the revision. If so, it becomes
-FLP12-FJ-1021P-M.
+None of the nine B2 toggles is momentary (owner, 2026-11-26).

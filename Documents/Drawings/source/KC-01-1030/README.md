@@ -48,7 +48,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
 - The 22 mm cover over the ABORT button is part 90000002 (Fusion listed 90000001, which is the MBK keycap
   on the 7-Segment modules and the Expansion Keyboard).
 - The A/P switch is engraved INHIB / ENAB (renamed from ARM, 2026-11-25).
-- The stick is the JH-DX400B-R4 (4-axis, three axes used). The fasteners in the parts list are
+- The stick is the SaiDian JH-D400X-R4 (4-axis, three axes used; owner, 2026-11-26; Fusion and Rev B
+  gave JH-DX400B-R4). The fasteners in the parts list are
   complete (owner).
 - Sheet 2 of the base drawing is drawn from the archived production file, not from the Fusion
   export (whose sheet 2 image was out of date).
@@ -71,7 +72,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
 
   | Item | Part | Was | Now |
   |---|---|---|---|
-  | 7 | Button cover, 22 mm | 90000002 | AE 2251832816396454 |
+  | 7 | Button cover, 22 mm | 90000002 | B0H5BW95ZF (Antrader, Amazon) |
+  | 4 | Joystick | JH-DX400B-R4 | JH-D400X-R4 (SaiDian, Amazon B08CGYGMJL) |
   | 9 | Toggle switch cover, red | 11000001 | AE 3256805484145709 (HC Electrical Store) |
   | 10 | Toggle switch, latching | 10000001 | FLP12-FJ-1021P-L |
   | 14 | 16 mm blue push button | B079FKG8B1 | AE 3256807837994773 |

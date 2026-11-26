@@ -49,7 +49,7 @@
     ],
     [
       "C",
-      "Momentary toggles split out as item 19; AliExpress parts by item number; item 18 corrected",
+      "Momentary toggles split out as item 19; part numbers and sources corrected",
       "2026-11-26",
       "J. Kerman"
     ]
@@ -717,9 +717,9 @@
         },
         {
           "qty": 1,
-          "pn": "JH-DX400B-R4",
-          "name": "Joystick - D400B-M4",
-          "desc": "4-axis 10 kΩ panel-mount joystick potentiometer; three axes used"
+          "pn": "JH-D400X-R4",
+          "name": "Joystick - 4-Axis",
+          "desc": "SaiDian JH-D400X-R4 4-axis 10 kΩ joystick potentiometer, three axes used; Amazon B08CGYGMJL"
         },
         {
           "qty": 1,
@@ -735,9 +735,9 @@
         },
         {
           "qty": 1,
-          "pn": "AE 2251832816396454",
+          "pn": "B0H5BW95ZF",
           "name": "Button Cover - 22mm",
-          "desc": "Push button transparent cover guard, 22 mm, no spring (over the ABORT button); AliExpress item, was 90000002"
+          "desc": "Antrader push button transparent cover guard, 22 mm (over the ABORT button); Amazon; was 90000002"
         },
         {
           "qty": 1,
