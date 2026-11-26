@@ -19,7 +19,8 @@ in git history. The released PDFs are in `Documents/Drawings`.
   - Fusion lists the two drivers as labelled variants under auto-generated numbers. The parts
     list replaces them with the base driver, KC-01-1910, as one line: item 3, qty 2.
   - Balloon 6 on Fusion sheets 3 and 4 is relabelled 3.
-- **Speaker:** the speaker on the Rev A parts list is gone from the new export.
+- **Speaker:** the speaker (701715519671) on the Rev A parts list now mounts in the enclosure
+  and belongs to the top-level assembly (owner, 2026-11-26).
 - **Fasteners:** the 8 × M3 × 14 screws are 4 per driver, into the driver's standoffs. They
   match the 8 × Ø3.6 holes in the production file.
 - **Production file:**

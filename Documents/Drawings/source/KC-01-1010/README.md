@@ -42,6 +42,8 @@ Fusion exports and the top-level assembly will be added here when the owner send
 - **Top-level assembly:** the owner has started a Fusion assembly of the whole controller. It
   needs updating before export. It is the place for the panel and enclosure fasteners and the
   back-panel inserts, which no drawing lists today.
+- **Speaker:** the Annunciator's speaker (701715519671, driven by the DFPlayer on A1) mounts in
+  the enclosure and goes on the top-level assembly (owner, 2026-11-26).
 
 **To fix on migration:**
 
