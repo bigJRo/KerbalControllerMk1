@@ -44,3 +44,11 @@ python Documents/Drawings/tools/kc_holes.py  Documents/Drawings/source/KC-01-102
 python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1020/KC-01-1020.json --out <output folder>
 ```
+
+## To correct at the next revision
+
+- **POWER button lamp (owner, 2026-11-26):** the lamp is lit from the switched 12 V on Control
+  Module H1 (pin 2), so the fitted button is the 12 V LED variant. The parts list's "3–6 V LED"
+  for 32000001 is wrong.
+- **Part number:** 32000001 becomes AE 3256807837994773, the power-symbol 12 V variant of that
+  AliExpress listing, under the AliExpress part-number rule.
