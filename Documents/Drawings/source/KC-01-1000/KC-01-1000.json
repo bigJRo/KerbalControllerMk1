@@ -29,7 +29,7 @@
   "revisions": [
     [
       "A",
-      "Initial release: KC frame, combined from the Fusion exports (parts 1 to 7)",
+      "Initial release: KC frame, combined from the Fusion exports (parts 1 to 11)",
       "2026-11-27",
       "J. Kerman"
     ]
@@ -209,9 +209,9 @@
         }
       ],
       "notes": [
-        "1. Sheets 1 and 2: overall views. Sheet 3: parts list and notes. Sheets 4 to 9: assembly steps in order; each step lists the parts-list items it fits.",
+        "1. Sheets 1 and 2: overall views. Sheet 3: parts list and notes. Sheets 4 to 13: assembly steps 1 to 10 in order; each step lists the parts-list items it fits.",
         "2. Items 1, 3, 18, 21, 22, 23, 24, 26 and 27 are made to their own drawing packages.",
-        "3. Draft: Fusion exports parts 1 to 7 of the assembly; the remaining steps follow. Not to scale, on A3.",
+        "3. Not to scale, on A3.",
         "4. Each panel brace (item 21) is held to its panel with Dual Lock (item 28) cut to the brace's inside angle. The braces take no fasteners."
       ],
       "sheets": [
@@ -1094,6 +1094,385 @@
                   "AR",
                   "SJ3560",
                   "Dual Lock - Clear"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt8_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                29,
+                57,
+                360,
+                233
+              ],
+              "k": 1.0,
+              "at": [
+                44,
+                40
+              ],
+              "masks": [
+                [
+                  28.4,
+                  145,
+                  32,
+                  152
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 7 · PANEL A2",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "4",
+                  "7",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "7",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ],
+                [
+                  "22",
+                  "1",
+                  "KC-01-1030",
+                  "Panel A2 Complete"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt9_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                100,
+                39,
+                363,
+                218
+              ],
+              "k": 1.0,
+              "at": [
+                78,
+                39
+              ],
+              "masks": []
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 8 · PANEL BRACE AND PANEL B1",
+              "size": 3.6,
+              "anchor": "start"
+            },
+            {
+              "at": [
+                16,
+                27
+              ],
+              "text": "Note: fit the panel brace (item 21) with Dual Lock (item 28), note 4 on sheet 3.",
+              "size": 2.6,
+              "anchor": "start",
+              "weight": "normal"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "4",
+                  "4",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "4",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ],
+                [
+                  "21",
+                  "1",
+                  "KC-01-1080",
+                  "Panel Brace"
+                ],
+                [
+                  "27",
+                  "1",
+                  "KC-01-1040",
+                  "Panel B1 Complete"
+                ],
+                [
+                  "28",
+                  "AR",
+                  "SJ3560",
+                  "Dual Lock - Clear"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt10_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                69,
+                18,
+                391,
+                230
+              ],
+              "k": 0.92,
+              "at": [
+                48,
+                30
+              ],
+              "masks": [
+                [
+                  212,
+                  17.4,
+                  218,
+                  22
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 9 · PANEL B2",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "4",
+                  "7",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "7",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ],
+                [
+                  "23",
+                  "1",
+                  "KC-01-1050",
+                  "Panel B2 Complete"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt11_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                100,
+                15,
+                362,
+                216
+              ],
+              "k": 0.98,
+              "at": [
+                82,
+                30
+              ],
+              "masks": [
+                [
+                  212,
+                  14.4,
+                  218,
+                  22
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 10 · TOP PANEL",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "4",
+                  "6",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "6",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ],
+                [
+                  "24",
+                  "1",
+                  "KC-01-1060",
+                  "Top Panel Complete"
                 ]
               ],
               "size": 2.3
