@@ -15,7 +15,8 @@ them: parts 1 to 11 of the export, which fit every parts-list item. The released
 
 - **Sheets 1 and 2:** the four overall views of part 1, each placed separately at 1.04: the side
   view in line with the front (rear) view, the top view under it, and the isometric view under the
-  side view. The isometric crop is clipped clear of the top view.
+  side view. The side view is centred between the frame and the front (rear) view, about 61 mm
+  each side (owner, 2026-11-27). The isometric crop is clipped clear of the top view.
 - **Sheet 3:** the parts list as a KC table, from part 1's sheet 3, and the notes. The isometric view on that sheet is
   left out (it repeats sheet 1).
 - **Sheets 4 on:** one sheet per step, in assembly order, each with a step title and a table of the
