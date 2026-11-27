@@ -79,7 +79,7 @@ in git history. The released PDFs are in `Documents/Drawings`.
   | 14 | 16 mm blue push button | B079FKG8B1 | AE 3256807837994773 |
   | 19 | Toggle switch, momentary | none (new item) | FLP12-FJ-1021P-M |
 
-  Panels A1 and B2 take the same numbers at their next revision.
+  Panels A1 and B2 take the same numbers at their Rev C.
 - **Toggle switches (owner, 2026-11-26):** the toggles are FILN FLP12-FJ, rated 15 A 250 V,
   not Omval. The owner's part numbers are FLP12-FJ-1021P-L (latching) and FLP12-FJ-1021P-M
   (momentary). The switch covers come from HC Electrical Store. The metal push buttons

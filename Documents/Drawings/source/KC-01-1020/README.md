@@ -45,7 +45,7 @@ python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1020/KC-01-1020.json --out <output folder>
 ```
 
-## Rev C (2026-11-26, draft)
+## Rev C (2026-11-26, released)
 
 The base plate KC-01-1021 is not changed and stays at Rev B (`doc_rev`, `doc_revisions`).
 

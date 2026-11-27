@@ -2,8 +2,8 @@
 
 **Organization:** Jeb's Controller Works  
 **Author:** J. Rostoker  
-**Version:** 2.14  
-**Date:** 2026-11-26  
+**Version:** 2.15  
+**Date:** 2026-11-27  
 **Document type:** Developer — Hardware
 
 ---
@@ -38,6 +38,7 @@
 | 2.12 | 2026-11-25 | **§5.4:** the panel joystick is the JH-DX400B-R4 (4-axis), as fitted on panels A2 and B2; three axes are wired to terminal U6 and the fourth is not used (was given as JH-D202X-R4, 3-axis). |
 | 2.13 | 2026-11-26 | **§13.2:** the identity response is 8 bytes (I2C spec v2.22 §6): the library patch appended at byte 4, so every module reports X.Y.Z, and the module sketch's own X.Y.Z at bytes 5–7 (a standalone sketch reports its version in both places); a controller accepts the 5-byte form (sketch version unknown) and the old 4-byte form (patch unknown too, shown as X.Y). |
 | 2.14 | 2026-11-26 | **§2:** KSP 1.12.5 and the tested mod versions (Kerbal Simpit Revamped 2.4.0, AGX 2.4.1.4, Hullcam VDS Continued 0.2.2.6, ARP 2.11.0.0), replacing "Current". The 12 V input on the rear panel is a 5.5 × 2.1 mm barrel jack, Adafruit 5607 (the wiring and power figures said 2.5 mm). **§5.4:** the panel joystick is the SaiDian JH-D400X-R4 (owner; JH-DX400B-R4 in 2.12 came from the Fusion part name). |
+| 2.15 | 2026-11-27 | **§2:** the optional mods and their tested versions, TAC Life Support 0.18.0.0 and Community Resource Pack 112.01 (owner). |
 
 ---
 
@@ -83,6 +84,8 @@ The controller is built and tested with Kerbal Space Program 1.12.5 and these mo
 | AGX (Action Groups Extended) | 2.4.1.4 | Expands custom action groups to 256 (required for full button mapping) |
 | Hullcam VDS Continued | 0.2.2.6 | Camera cycling support for ENC2 encoder |
 | Alternate Resource Panel (ARP) | 2.11.0.0 | Most Resource Display resources and the BUS VOLTAGE warning |
+| TAC Life Support (optional) | 0.18.0.0 | Resource Display life-support meters and the Annunciator's LIFE SUPPORT tile |
+| Community Resource Pack (optional) | 112.01 | Resource Display CRP meters (also needs two `CustomResourceMessages` blocks in KerbalSimpit's `Settings.cfg`) |
 
 ---
 

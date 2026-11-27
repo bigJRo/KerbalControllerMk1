@@ -50,7 +50,7 @@ python Documents/Drawings/tools/kc_package.py \
     Documents/Drawings/source/KC-01-1050/KC-01-1050.json --out <output folder>
 ```
 
-## Rev C (2026-11-26, draft)
+## Rev C (2026-11-26, released)
 
 These are the owner's part decisions of 2026-11-26, as Panel A2 Rev C applies them. The base
 plate KC-01-1051 is not changed and stays at Rev B (`doc_rev`, `doc_revisions`).
