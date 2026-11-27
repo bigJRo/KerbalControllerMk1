@@ -14,6 +14,7 @@ PDFs are in `Documents/Drawings`.
 | `BOM_KC-01-1902_..._2026-11-23.csv` | EasyEDA BOM export (UTF-16, tab separated) | 1903 BOM, 1904 PLACE |
 | `PickAndPlace_KC-01-1902_..._2026-11-23.csv` | EasyEDA pick-and-place export (UTF-16, tab separated) | 1904 PLACE |
 | `ProPrj_KC-01-1900_..._2026-11-23.epro2` | EasyEDA Pro project | reference |
+| `Datasheet_ER-TFTM020-2.pdf` | EastRising datasheet of the 2in display (8-pin header: GND, VCC, SCL, SDA, RES, DC, CS, BLK; BLK is a backlight on/off control input, VCC 3.0-3.5 V); matches H3, checked 2026-11-27 | reference |
 
 The EasyEDA design rule check passes (reported by the owner; no report file in the export).
 The assembly parts list is written in the config (`assy_parts`): the Fusion list carries a

@@ -14,6 +14,7 @@ PDFs are in `Documents/Drawings`.
 | `BOM_KC-01-1912_..._2026-11-23.csv` | EasyEDA BOM export (UTF-16, tab separated) | 1913 BOM, 1914 PLACE |
 | `PickAndPlace_KC-01-1912_..._2026-11-23.csv` | EasyEDA pick-and-place export (UTF-16, tab separated) | 1914 PLACE |
 | `ProPrj_KC-01-1910_..._2026-11-23.epro2` | EasyEDA Pro project | reference |
+| `Datasheet_ER-TFT070A2-6-5633.pdf` | EastRising datasheet of the 7in display (pin header JP1 table, outline, electrical). H3 on the PWB meets JP1 face to face, so H3 pin N carries the signal of JP1 pin N±1 (odd/even swapped); all 40 pins checked 2026-11-27 | reference |
 
 The EasyEDA design rule check passes (reported by the owner; no report file in the export).
 The assembly parts list is written in the config (`assy_parts`): the Fusion list has the board
