@@ -1,6 +1,6 @@
 # KCMk1TesterCore
 
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Date:** 2026-11-26
 **Board:** KC-01-9001 v2.0 / KC-01-9002 Module Tester (Seeed XIAO RA4M1)
 
@@ -80,5 +80,6 @@ Versions are shown as the master shows them (`ktcFmtVersions()`): sketch then li
 
 | Version | Date | Notes |
 |---|---|---|
+| 1.1.1 | 2026-11-27 | Expected firmware: KerbalButtonCore 2.5.1 (`KTC_KBC_FW_PATCH` 1). |
 | 1.1.0 | 2026-11-26 | Identity is read as 8 bytes, both versions (library and module sketch) checked and shown as X.Y.Z (I2C spec v2.22); the 5- and 4-byte forms are read and fail the check. `KtcModuleDef` gains `fwPatch` after `fwMinor` and `skMajor` / `skMinor` / `skPatch` after `caps`; `KtcIdentity` gains `fwPatch` and `sk*`; `KTC_IDENTITY_NONE`, `ktcFmtVersion()` and `ktcFmtVersions()` added. Expected firmware: KerbalButtonCore 2.5.0 (`KTC_KBC_FW_*`), KerbalJoystickCore 2.4.0 (`KTC_KJC_FW_*`). Needs KerbalModuleCommon 1.9.0. |
 | 1.0.0 | 2026-11-08 | First release. |

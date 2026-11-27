@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Kbc.h
- * @version     1.1.0
+ * @version     1.1.1
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -25,9 +25,9 @@
 #pragma once
 #include "KTC_Steps.h"
 
-#define KTC_KBC_FW_MAJOR   2   // KerbalButtonCore 2.5.0 (KBC_FIRMWARE_* in KBC_Config.h)
+#define KTC_KBC_FW_MAJOR   2   // KerbalButtonCore 2.5.1 (KBC_FIRMWARE_* in KBC_Config.h)
 #define KTC_KBC_FW_MINOR   5
-#define KTC_KBC_FW_PATCH   0
+#define KTC_KBC_FW_PATCH   1
 #define KTC_KBC_BRIGHTNESS_DEFAULT  32
 
 extern const KtcBootCfg    ktcKbcBoot;

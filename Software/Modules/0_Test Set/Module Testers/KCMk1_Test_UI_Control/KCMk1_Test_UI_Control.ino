@@ -11,7 +11,7 @@
  *
  *              Module: 12 momentary NeoPixel buttons for the map, camera and UI functions. Inputs
  *              12-15 are not connected and must stay 0.
- *              KerbalButtonCore 2.5 firmware, identity fw 2.1.0 / lib 2.5.0 (sketch / library), caps 0x00.
+ *              KerbalButtonCore 2.5.1 firmware, identity fw 2.1.0 / lib 2.5.1 (sketch / library), caps 0x00.
  *
  *              Steps: identity, boot handshake, enable + INT, button walk, LED walk,
  *              LED states, brightness, bulb test, lifecycle, supply current. Results show on

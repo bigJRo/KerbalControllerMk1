@@ -27,7 +27,7 @@ This module uses 12 NeoPixel RGB button positions (KBC indices 0-11). Inputs B12
 | I2C Address | `0x25` |
 | Module Type ID | `0x06` (KBC_TYPE_TIME_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
-| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | Populated Buttons | 12 (KBC indices 0-11) |
 | Discrete LEDs | None |

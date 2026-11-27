@@ -27,7 +27,7 @@ This module declares `KBC_CAP_EXTENDED_STATES`. On the state-machine buttons (B8
 | I2C Address | `0x24` |
 | Module Type ID | `0x05` (KBC_TYPE_VEHICLE_CONTROL) |
 | Capability Flags | `0x01` (KBC_CAP_EXTENDED_STATES) |
-| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.3.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.3.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | Yes — state-machine buttons B8 / B10 / B11 |
 | NeoPixel Buttons | 12 (KBC indices 0-11) |
 | Switch Group 2 inputs | 8 (KBC indices 16–23, discrete, no LED) |

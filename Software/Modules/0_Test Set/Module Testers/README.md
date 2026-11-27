@@ -68,9 +68,9 @@ Open the serial monitor at 115200 baud for a report:
 ```
 ==================================================
 KCMk1 tester: Action Control  (tester core 1.1.0)
-Address 0x22  type 0x3  fw 2.1.0 / lib 2.5.0  caps 0x0
+Address 0x22  type 0x3  fw 2.1.0 / lib 2.5.1  caps 0x0
 --------------------------------------------------
-[ 1] Identity               PASS type 0x03 fw 2.1.0 / lib 2.5.0 caps 0x00
+[ 1] Identity               PASS type 0x03 fw 2.1.0 / lib 2.5.1 caps 0x00
 [ 2] Boot handshake         PASS boot INT after 4 ms, tx 1
 [ 3] Enable and INT         PASS 2 packets, tx continuous
 [ 4] Buttons                PASS 12 inputs ok
@@ -94,13 +94,13 @@ The testers were written against the module firmware in this repository and chec
 
 | Module | Sketch | Library | Fixed in that version (found by these testers) |
 |---|---|---|---|
-| UI Control | 2.1.0 | KerbalButtonCore 2.5.0 | 2.4 (library): library compiled inside the sketch. Before, the Arduino IDE built the library without the sketch's `KBC_INPUT_COUNT 24`, so Function and Vehicle Control ran a 16-input library (Buttons and Switches failed). |
-| Function Control | 2.2.0 | KerbalButtonCore 2.5.0 | as UI Control |
-| Action Control | 2.1.0 | KerbalButtonCore 2.5.0 | as UI Control |
-| Stability Control | 2.2.0 | KerbalButtonCore 2.5.0 | as UI Control |
-| Vehicle Control | 2.3.0 | KerbalButtonCore 2.5.0 | as UI Control |
-| Time Control | 2.1.0 | KerbalButtonCore 2.5.0 | as UI Control |
-| Auxiliary Control | 2.2.0 | KerbalButtonCore 2.5.0 | as UI Control |
+| UI Control | 2.1.0 | KerbalButtonCore 2.5.1 | 2.4 (library): library compiled inside the sketch. Before, the Arduino IDE built the library without the sketch's `KBC_INPUT_COUNT 24`, so Function and Vehicle Control ran a 16-input library (Buttons and Switches failed). |
+| Function Control | 2.2.0 | KerbalButtonCore 2.5.1 | as UI Control |
+| Action Control | 2.1.0 | KerbalButtonCore 2.5.1 | as UI Control |
+| Stability Control | 2.2.0 | KerbalButtonCore 2.5.1 | as UI Control |
+| Vehicle Control | 2.3.0 | KerbalButtonCore 2.5.1 | as UI Control |
+| Time Control | 2.1.0 | KerbalButtonCore 2.5.1 | as UI Control |
+| Auxiliary Control | 2.2.0 | KerbalButtonCore 2.5.1 | as UI Control |
 | Joystick Rotation | 2.1.0 | KerbalJoystickCore 2.4.0 | 2.2 (library): each button edge reported once (Enable and INT counted 4 packets); library compiled inside the sketch, so the Translation stick's `KJC_AXIS2_INVERT -1` takes effect (AXIS2 forward now gives the opposite sign to the Rotation stick). 2.3: full negative deflection raises INT (#114); the axes now run -32767 to +32767. |
 | Joystick Translation | 2.1.0 | KerbalJoystickCore 2.4.0 | as Joystick Rotation |
 | GPWS | 2.2.0 | Kerbal7SegmentCore 2.1.0 | — (the library reported 1.0 before 2.1.0) |

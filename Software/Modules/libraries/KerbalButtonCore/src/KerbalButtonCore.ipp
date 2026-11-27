@@ -1,6 +1,6 @@
 /**
  * @file        KerbalButtonCore.ipp
- * @version     2.5.0
+ * @version     2.5.1
  * @date        2026-11-26
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

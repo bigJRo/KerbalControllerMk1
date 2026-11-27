@@ -1,6 +1,6 @@
 # Kerbal Controller Mk1 — Module UI Reference
 
-**Jeb's Controller Works** | v6.6 | 2026-11-26
+**Jeb's Controller Works** | v6.7 | 2026-11-27
 
 | | |
 |---|---|
@@ -354,13 +354,13 @@ Each module's identity (I2C spec §6) reports two versions, each X.Y.Z: its libr
 
 | Module | Sketch | Library |
 |---|---|---|
-| UI Control | 2.1.0 | KerbalButtonCore 2.5.0 |
-| Function Control | 2.2.0 | KerbalButtonCore 2.5.0 |
-| Action Control | 2.1.0 | KerbalButtonCore 2.5.0 |
-| Stability Control | 2.2.0 | KerbalButtonCore 2.5.0 |
-| Vehicle Control | 2.3.0 | KerbalButtonCore 2.5.0 |
-| Time Control | 2.1.0 | KerbalButtonCore 2.5.0 |
-| AUX CTRL | 2.2.0 | KerbalButtonCore 2.5.0 |
+| UI Control | 2.1.0 | KerbalButtonCore 2.5.1 |
+| Function Control | 2.2.0 | KerbalButtonCore 2.5.1 |
+| Action Control | 2.1.0 | KerbalButtonCore 2.5.1 |
+| Stability Control | 2.2.0 | KerbalButtonCore 2.5.1 |
+| Vehicle Control | 2.3.0 | KerbalButtonCore 2.5.1 |
+| Time Control | 2.1.0 | KerbalButtonCore 2.5.1 |
+| AUX CTRL | 2.2.0 | KerbalButtonCore 2.5.1 |
 | Rotation joystick | 2.1.0 | KerbalJoystickCore 2.4.0 |
 | Translation joystick | 2.1.0 | KerbalJoystickCore 2.4.0 |
 | GPWS Input Panel | 2.2.0 | Kerbal7SegmentCore 2.1.0 |
@@ -1089,4 +1089,5 @@ Superseded by the confirmed panel review (Inventory §10) and the master design.
 | 6.3 | 2026-10-31 | **Displays follow the demo flag only (§14, §15 #11 fixed).** In demo every display keeps its Simpit link and takes only the lifecycle; leaving demo is a fresh start on the current scene. The Resource Display keeps the vessel's bar layout across demo. Annunciator v3.10.0 (and its DOCK tile toggles on a tap), Info Display v1.18.0, Resource Display v3.15.0. Master v0.9.0 |
 | 6.4 | 2026-11-25 | **Joystick part corrected (§10):** both sticks are the JH-DX400B-R4, 4-axis; three axes are wired to terminal U6. Master firmware reference v0.10.3. |
 | 6.5 | 2026-11-25 | **A/P switch renamed INHIB / ENAB (§6.2, §6.4)**, was INHIB / ARM, so it does not repeat ENGINE SAFE / ARM next to it on panel A2. Annunciator tile A/P ENAB (v3.10.1); master v0.10.4; Sys Info v1.0.1. |
-| **6.6** | **2026-11-26** | **Firmware versions three-place (§5.5):** each module's identity reports X.Y.Z (I2C spec v2.22), both its library's and its own sketch's: KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (reported 1.0 before); the sketch versions in a new table (each library module sketch bumped a minor); Throttle 2.5.0 and Dual Encoder 2.4.0, standalone, report their own version in both places. Master v0.10.5; Sys Info v1.1.0. **§10:** the sticks are the SaiDian JH-D400X-R4 (was given as JH-DX400B-R4). |
+| 6.6 | 2026-11-26 | **Firmware versions three-place (§5.5):** each module's identity reports X.Y.Z (I2C spec v2.22), both its library's and its own sketch's: KerbalButtonCore 2.5.0, KerbalJoystickCore 2.4.0, Kerbal7SegmentCore 2.1.0 (reported 1.0 before); the sketch versions in a new table (each library module sketch bumped a minor); Throttle 2.5.0 and Dual Encoder 2.4.0, standalone, report their own version in both places. Master v0.10.5; Sys Info v1.1.0. **§10:** the sticks are the SaiDian JH-D400X-R4 (was given as JH-DX400B-R4). |
+| **6.7** | **2026-11-27** | **§5.5:** the button modules report KerbalButtonCore 2.5.1 (the board pins became overridable per sketch; no change on the modules). |

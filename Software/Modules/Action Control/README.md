@@ -25,7 +25,7 @@ This module uses all 12 NeoPixel RGB button positions (KBC indices 0–11). KBC 
 | I2C Address | `0x22` |
 | Module Type ID | `0x03` (KBC_TYPE_ACTION_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
-| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.1.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Not Installed | KBC indices 12–15 (no-connect) |

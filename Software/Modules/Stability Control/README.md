@@ -27,7 +27,7 @@ B10 was RCS until v2.0. RCS is no longer on this module: it is the RCS switch in
 | I2C Address | `0x23` |
 | Module Type ID | `0x04` (KBC_TYPE_STABILITY_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
-| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Not Installed | KBC indices 12–15 (not wired; the master ignores them) |

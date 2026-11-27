@@ -1,7 +1,7 @@
 /**
  * @file        KBC_DevBoard_Target.ino
- * @version     1.1.0
- * @date        2026-11-26
+ * @version     1.2.0
+ * @date        2026-11-27
  * @project     Kerbal Controller Mk1 — KBC Library Test Suite
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -26,8 +26,8 @@
  *
  * @note        Hardware:  KC-01-9101 Module Development Board v1.0
  *              Tester:    KC-01-9001 Module Tester (XIAO SAMD21)
- *              Library:   KerbalButtonCore v2.5.0 or later (the identity
- *                         carries this sketch's version)
+ *              Library:   KerbalButtonCore v2.5.1 or later (the pin
+ *                         overrides need its #ifndef guards)
  *
  * @note        IDE settings:
  *                Board:             ATtiny816 (megaTinyCore)
@@ -57,6 +57,9 @@
  *  and change tinyNeoPixel Port back to Port A.
  *
  * @par Revision history
+ *   1.2.0  2026-11-27  The overrides are plain #defines before the include:
+ *                      KerbalButtonCore 2.5.1 guards the board pins and
+ *                      the colour order. Needs 2.5.1 or later.
  *   1.1.0  2026-11-26  Ported to the current KerbalButtonCore API (2.5.0):
  *                      the identity and capability flags go to the
  *                      constructor, begin() takes no arguments, and the
@@ -74,25 +77,19 @@
 // ============================================================
 //  Includes, with the KC-01-9101 Dev Board hardware overrides
 //
-//  KBC_Config.h defines the pins without #ifndef guards, so a
-//  #define placed before the include would be replaced by the
-//  production value. Include KBC_Config.h first, replace the
-//  values, then include KerbalButtonCore.h: its library code is
-//  compiled in this sketch (the .ipp files) and uses the dev
-//  board values; KBC_Config.h is not read a second time.
+//  KBC_Config.h guards the board pins and the colour order with
+//  #ifndef (KerbalButtonCore 2.5.1), so the dev board values are
+//  defined before the include and the library code, compiled in
+//  this sketch (the .ipp files), uses them.
 //  Remove the overrides when building for KC-01-1822 production
 //  hardware.
 // ============================================================
 
 #include <Wire.h>
-#include <KBC_Config.h>
 
-#undef  KBC_PIN_INT
 #define KBC_PIN_INT         PIN_PA4   // PA1 on production
-#undef  KBC_PIN_NEO
 #define KBC_PIN_NEO         PIN_PB4   // PA4 on production — also change
                                       // IDE: Tools → tinyNeoPixel Port → Port B
-#undef  KBC_NEO_COLOR_ORDER
 #define KBC_NEO_COLOR_ORDER NEO_GRB   // NEO_RGB on production (WS2811)
 
 #include <KerbalButtonCore.h>
@@ -113,7 +110,7 @@
  *         next to the KerbalButtonCore version at bytes 1/2/4. Keep @version
  *         and the README in step with it. */
 #define SKETCH_VERSION_MAJOR  1
-#define SKETCH_VERSION_MINOR  1
+#define SKETCH_VERSION_MINOR  2
 #define SKETCH_VERSION_PATCH  0
 
 // ============================================================

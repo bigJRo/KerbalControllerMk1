@@ -1,6 +1,6 @@
 /**
  * @file        KBC_ShiftReg.ipp
- * @version     2.5.0
+ * @version     2.5.1
  * @date        2026-04-07
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker

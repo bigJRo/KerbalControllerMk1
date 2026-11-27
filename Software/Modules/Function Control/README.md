@@ -27,7 +27,7 @@ The button layout and colours follow the confirmed panel layout in Module UI Ref
 | I2C Address | `0x21` |
 | Module Type ID | `0x02` (KBC_TYPE_FUNCTION_CONTROL) |
 | Capability Flags | `0x00` (core states only) |
-| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Switch Group 1 inputs | 8 (KBC indices 16–23, discrete, no LED) |

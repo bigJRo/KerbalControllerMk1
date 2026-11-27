@@ -1,6 +1,6 @@
 # KerbalButtonCore
 
-**Version:** 2.5.0  
+**Version:** 2.5.1  
 **Author:** J. Rostoker — Jeb's Controller Works  
 **License:** GNU General Public License v3.0 (GPL-3.0)  
 **Hardware:** KC-01-1801/1802 (Button) and KC-01-1811/1812 (Wide Button)  
@@ -203,7 +203,7 @@ Byte 6: Sketch version minor
 Byte 7: Sketch version patch
 ```
 
-Bytes 1, 2 and 4 are the library's own version (`KBC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KBC_Config.h`), the same on every button module: 2.5.0 for this release. Bytes 5–7 are the module sketch's own version, which the sketch passes with `kbc.setSketchVersion(major, minor, patch)` in `setup()`, from its `SKETCH_VERSION_*` constants. A sketch that does not call it reports 0xFF 0xFF 0xFF there (`KMC_SKETCH_VERSION_UNKNOWN`), which a reader shows as unknown.
+Bytes 1, 2 and 4 are the library's own version (`KBC_FIRMWARE_MAJOR` / `_MINOR` / `_PATCH` in `KBC_Config.h`), the same on every button module: 2.5.1 for this release. Bytes 5–7 are the module sketch's own version, which the sketch passes with `kbc.setSketchVersion(major, minor, patch)` in `setup()`, from its `SKETCH_VERSION_*` constants. A sketch that does not call it reports 0xFF 0xFF 0xFF there (`KMC_SKETCH_VERSION_UNKNOWN`), which a reader shows as unknown.
 
 ---
 
@@ -312,6 +312,21 @@ Any `KBC_Config.h` constant guarded by `#ifndef` can be overridden per sketch by
 #include <KerbalButtonCore.h>
 ```
 
+The board pins and the NeoPixel colour order are guarded too (2.5.1), so a sketch for other
+hardware, such as the KC-01-9101 dev board, sets them the same way:
+
+```cpp
+#define KBC_PIN_INT          PIN_PA4    // PA1 on the module boards
+#define KBC_PIN_NEO          PIN_PB4    // PA4
+#define KBC_NEO_COLOR_ORDER  NEO_GRB    // NEO_RGB (WS2811)
+#include <KerbalButtonCore.h>
+```
+
+Guarded: `KBC_PIN_INT`, `KBC_PIN_SR_LOAD`, `KBC_PIN_SR_CLK_EN`, `KBC_PIN_SR_CLK`,
+`KBC_PIN_SR_DATA`, `KBC_PIN_NEO`, `KBC_NEO_COLOR_ORDER`, `KBC_INPUT_COUNT`,
+`KBC_SHIFTREG_COUNT`, `KBC_ENABLED_BRIGHTNESS` and the four flash timings. The I2C pins (hardware),
+the NeoPixel count, the polling and debounce timing and the version are fixed.
+
 ---
 
 ## 24-input switch-group modules
@@ -397,6 +412,7 @@ sketch's configuration `#define`s. Include `KerbalButtonCore.h` from the main
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.5.1 | 2026-11-27 | The board pins (`KBC_PIN_INT`, the four `KBC_PIN_SR_*`, `KBC_PIN_NEO`) and `KBC_NEO_COLOR_ORDER` gain `#ifndef` guards, so a sketch overrides them by defining them before the include, as the header always said. Before, `KBC_Config.h` replaced a sketch's value with the module-board value; the dev-board target had to include `KBC_Config.h` first and `#undef` them. No change for the module sketches, which define none of them. Modules report library 2.5.1. |
 | 2.5.0 | 2026-11-26 | The identity response is 8 bytes (I2C spec v2.22 §6): the library patch is appended at byte 4, so a module reports the full library version, 2.5.0 (`KBC_FIRMWARE_PATCH` added), and the module sketch's own version follows at bytes 5–7. `KerbalButtonCore::setSketchVersion()` sets it (0xFF, unknown, until the sketch calls it). The examples (2.1.0) call it with their own `SKETCH_VERSION_*`. Needs KerbalModuleCommon 1.9.0. |
 | 2.4.0 | 2026-11-08 | Sources renamed `.cpp` → `.ipp` and included from `KerbalButtonCore.h`, so the sketch's `KBC_INPUT_COUNT` / `KBC_SHIFTREG_COUNT` reach the library. Before, Function and Vehicle Control (24 inputs) ran a 16-input library with a class layout that did not match the sketch. Identity firmware 2.4 (was 2.2). |
 

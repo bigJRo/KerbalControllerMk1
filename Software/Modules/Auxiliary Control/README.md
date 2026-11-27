@@ -29,7 +29,7 @@ As with Action Control and UI Control, all functions are resolved controller-sid
 | I2C Address | `0x26` |
 | Module Type ID | `0x07` (KMC_TYPE_AUX_CTRL) |
 | Capability Flags | `0x00` (core states only) |
-| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.0, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
+| Identity | 8 bytes (I2C spec §6): the KerbalButtonCore version, 2.5.1, at bytes 1/2/4 and this sketch's own version, 2.2.0, at bytes 5–7 (`SKETCH_VERSION_*` in the sketch, passed with `kbc.setSketchVersion()`) |
 | Extended States | No |
 | NeoPixel Buttons | 12 (KBC indices 0–11) |
 | Not Installed | KBC indices 12–15 (no-connect) |
@@ -230,7 +230,7 @@ Identity response (controller → module, `CMD_GET_IDENTITY`):
 ```
 Module Type ID 0x07 · library major/minor · capability flags 0x00 · library patch
 · sketch major/minor/patch
-(8 bytes, I2C spec §6; the library is KerbalButtonCore 2.5.0, the sketch 2.2.0)
+(8 bytes, I2C spec §6; the library is KerbalButtonCore 2.5.1, the sketch 2.2.0)
 ```
 
 ---

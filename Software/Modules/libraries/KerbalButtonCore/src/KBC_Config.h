@@ -1,7 +1,7 @@
 /**
  * @file        KBC_Config.h
- * @version     2.5.0
- * @date        2026-11-26
+ * @version     2.5.1
+ * @date        2026-11-27
  * @project     Kerbal Controller Mk1
  * @author      J. Rostoker
  * @organization Jeb's Controller Works
@@ -33,11 +33,18 @@
  *                PA2 (pin 1), EXTCLK/PA3 (pin 2), PB4 (pin 10),
  *                PB2/TOSC2 (pin 12), PC3 (pin 18)
  *
- *              To override any default value for a specific module, define
- *              the constant before including KerbalButtonCore.h in the sketch:
+ *              To override a default value for a specific module or board,
+ *              define the constant before including KerbalButtonCore.h in
+ *              the sketch:
  *
  *                #define KBC_ENABLED_BRIGHTNESS 64
  *                #include <KerbalButtonCore.h>
+ *
+ *              The board pins (INT, shift register, NeoPixel), the NeoPixel
+ *              colour order, the input width, the brightness and the flash
+ *              timings can be overridden this way (2.5.1: the pins and the
+ *              colour order gained their #ifndef guards). The I2C pins, the
+ *              NeoPixel count, the timing constants and the version are fixed.
  *
  * @license     Licensed under the GNU General Public License v3.0 (GPL-3.0)
  *              https://www.gnu.org/licenses/gpl-3.0.html
@@ -96,7 +103,9 @@
 // ============================================================
 
 /** @brief Interrupt output pin, active low (ATtiny816 pin 20). */
-#define KBC_PIN_INT             PIN_PA1
+#ifndef KBC_PIN_INT
+  #define KBC_PIN_INT             PIN_PA1
+#endif
 
 // ============================================================
 //  Shift register pins (two/three daisy-chained 74HC165)
@@ -128,16 +137,24 @@
 // ============================================================
 
 /** @brief Shift register parallel load pin, active low (ATtiny816 pin 8). */
-#define KBC_PIN_SR_LOAD         PIN_PA7
+#ifndef KBC_PIN_SR_LOAD
+  #define KBC_PIN_SR_LOAD         PIN_PA7
+#endif
 
 /** @brief Shift register clock enable pin, active low (ATtiny816 pin 7). */
-#define KBC_PIN_SR_CLK_EN       PIN_PA6
+#ifndef KBC_PIN_SR_CLK_EN
+  #define KBC_PIN_SR_CLK_EN       PIN_PA6
+#endif
 
 /** @brief Shift register clock input pin (ATtiny816 pin 9). */
-#define KBC_PIN_SR_CLK          PIN_PB5
+#ifndef KBC_PIN_SR_CLK
+  #define KBC_PIN_SR_CLK          PIN_PB5
+#endif
 
 /** @brief Shift register serial data output pin (ATtiny816 pin 6). */
-#define KBC_PIN_SR_DATA         PIN_PA5
+#ifndef KBC_PIN_SR_DATA
+  #define KBC_PIN_SR_DATA         PIN_PA5
+#endif
 
 // ============================================================
 //  Shift register input width (16-input default, 24-input switch groups)
@@ -187,7 +204,9 @@
 // ============================================================
 
 /** @brief NeoPixel data output pin, Port A required (ATtiny816 pin 5). */
-#define KBC_PIN_NEO             PIN_PA4
+#ifndef KBC_PIN_NEO
+  #define KBC_PIN_NEO             PIN_PA4
+#endif
 
 /** @brief Number of NeoPixels in the chain (RGB buttons KBC index 0-11). */
 #define KBC_NEO_COUNT           12
@@ -196,7 +215,9 @@
  * @brief NeoPixel color order.
  *        WS2811 ICs use RGB data order. Do not change to NEO_GRB.
  */
-#define KBC_NEO_COLOR_ORDER     NEO_RGB
+#ifndef KBC_NEO_COLOR_ORDER
+  #define KBC_NEO_COLOR_ORDER     NEO_RGB
+#endif
 
 // ============================================================
 //  Discrete LEDs — removed
@@ -322,7 +343,7 @@
 /** @brief Library firmware version — patch, identity byte 4 (I2C spec v2.22).
  *         The module sketch's own version (bytes 5..7) is set by the sketch
  *         with KerbalButtonCore::setSketchVersion(). */
-#define KBC_FIRMWARE_PATCH          0
+#define KBC_FIRMWARE_PATCH          1
 
 // ============================================================
 //  Compile-time validation

@@ -1,6 +1,6 @@
 /**
  * @file        KTC_Config.h
- * @version     1.1.0
+ * @version     1.1.1
  * @date        2026-11-26
  * @project     Kerbal Controller Mk1 — Module Tester per-module sketches
  * @author      J. Rostoker
@@ -16,7 +16,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define KTC_VERSION_STR       "1.1.0"
+#define KTC_VERSION_STR       "1.1.1"
 
 // ------------------------------------------------------------
 //  XIAO RA4M1 pin map (schematic KC-01-9001 V2.0)
