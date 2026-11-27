@@ -38,7 +38,7 @@ Corrected in the draft:
   Extension use 8 and the other 8 are left free for future boards. Step 4 says so.
 - **Items 21 and 28 (owner, 2026-11-27):** Fusion's brace description said "installed M3 brass
   inserts"; Rev B has none. Item 21 now says so, and new item 28 is the Dual Lock (3M SJ3560, as
-  required) that holds the brace, with a note on step 6.
+  required) that holds the brace. Note 4 (sheet 3) gives the fitting, and step 6 points to it.
 - **Item 7:** Fusion's part name is "Arctic F12 fan"; the description and part number are the Antec
   Storm fan, so the name is now "Fan - 120mm PWM".
 
