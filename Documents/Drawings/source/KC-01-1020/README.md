@@ -28,6 +28,9 @@ in git history. The released PDFs are in `Documents/Drawings`.
     8 × Ø3.6 screw holes and 4 × Ø3.8 mounting holes.
   - The mounting holes are offset as on A2: 10.5 mm from the left edge, 19.6 mm from the right,
     and the lower right one 27 mm up.
+- **Lower brace-side hole (owner, 2026-11-27):** the hole 27 mm up is intentional. It matches the
+  as-built internal brace, which was fabricated with its lower bracket hole in that position; the
+  owner verified the dimensions on the real part. Do not move it to the KC-01-1071 drawing position.
   - The Fusion body agrees with the production file to within about 0.7 mm per edge. The
     production file is the master, as for A2.
 - **Line weight:** the drawings scale every Fusion stroke by `line_scale` 0.35, as on A2.

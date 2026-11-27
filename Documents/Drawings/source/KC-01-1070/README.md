@@ -35,6 +35,9 @@ are the sources. The released PDFs are in `Documents/Drawings`.
 - **Item 4 (screw):** Fusion named it 6-32 × 1-1/4" but described it as 8-32 thread. The
   brackets (Keystone 617) and the nuts are 6-32, so the description is now 6-32. The owner
   confirmed 6-32 and PN 91772A201 (2026-11-26).
+- **As built (owner, 2026-11-27):** the fabricated brace differs from this drawing at the lower
+  bracket hole under Panels A1 and B1, which sits about 16.5 mm further down the slope (a fabrication
+  error). Panels A1 and B1 put their lower brace-side hole 27 mm up to match the real part.
 - **Notes:** the assembly notes say how the brackets, screw, washer and nut stack at each hole.
   The brackets' own screws into the box are left to the top-level assembly.
 

@@ -29,6 +29,9 @@ in git history. The released PDFs are in `Documents/Drawings`.
   - The outline, display windows and display screw holes are the same as Panel A1.
   - The 4 × Ø3.8 mounting holes are A1's mirror image: 19.6 mm from the left edge, 10.5 mm
     from the right, and the lower left one 27 mm up.
+- **Lower brace-side hole (owner, 2026-11-27):** the hole 27 mm up is intentional. It matches the
+  as-built internal brace, which was fabricated with its lower bracket hole in that position; the
+  owner verified the dimensions on the real part. Do not move it to the KC-01-1071 drawing position.
   - 2 × Ø7.6 encoder holes, engraved CTRL GRP and EXT CAM.
 - **Line weight:** the drawings scale every Fusion stroke by `line_scale` 0.35, as on A1 and A2.
 - **Stray parts:** none found. `tools/kc_strays.py` checks the views marked `auto_masks`.
