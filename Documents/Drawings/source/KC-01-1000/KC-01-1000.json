@@ -83,15 +83,15 @@
         },
         {
           "qty": 2,
-          "pn": "QM092",
-          "name": "120mm Fan Grill",
-          "desc": "Metal fan guard protective grill, 120 mm (4.7\")"
+          "pn": "B07NYDWPX6",
+          "name": "Fan Guard - 120mm",
+          "desc": "Bnafes metal fan guard, 120 mm (Amazon); Fusion gave QM092"
         },
         {
           "qty": 2,
-          "pn": "B07FYY6641",
-          "name": "120mm Fan Screen",
-          "desc": "120 mm computer fan filter grill, ultra fine aluminum mesh, black"
+          "pn": "B0G2WNNYL9",
+          "name": "Fan Filter Cover - 120mm",
+          "desc": "JAMHER magnetic fan filter cover, 120 mm (Amazon); Fusion gave B07FYY6641"
         },
         {
           "qty": 8,
@@ -619,14 +619,14 @@
                 [
                   "8",
                   "2",
-                  "QM092",
-                  "120mm Fan Grill"
+                  "B07NYDWPX6",
+                  "Fan Guard - 120mm"
                 ],
                 [
                   "9",
                   "2",
-                  "B07FYY6641",
-                  "120mm Fan Screen"
+                  "B0G2WNNYL9",
+                  "Fan Filter Cover - 120mm"
                 ],
                 [
                   "10",
