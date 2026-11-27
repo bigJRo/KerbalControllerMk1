@@ -2,8 +2,8 @@
 
 Source files for the top-level assembly drawing of the Kerbal Controller Mk1, KC-01-1000. Fusion
 cannot export the whole assembly drawing at once, so it comes in parts; the KC drawing combines
-them: parts 1 to 11 of the export, which fit every parts-list item. The released PDF will be in
-`Documents/Drawings`.
+them: parts 1 to 11 of the export, which fit every parts-list item. Rev A was released on
+2026-11-27 (owner); the released PDF is in `Documents/Drawings`.
 
 | File | What it is | Feeds |
 |---|---|---|
