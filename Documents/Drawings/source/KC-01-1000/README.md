@@ -13,9 +13,10 @@ them. Draft: parts 1 to 7 of the export; more parts follow. The released PDF wil
 
 ## Layout of the combined drawing
 
-- **Sheets 1 and 2:** the overall views of part 1, scaled to sit between the KC revision and title blocks.
-  Sheet 1 carries the notes.
-- **Sheet 3:** the parts list as a KC table, from part 1's sheet 3. The isometric view on that sheet is
+- **Sheets 1 and 2:** the four overall views of part 1, each placed separately at 1.04: the side
+  view in line with the front (rear) view, the top view under it, and the isometric view under the
+  side view. The isometric crop is clipped clear of the top view.
+- **Sheet 3:** the parts list as a KC table, from part 1's sheet 3, and the notes. The isometric view on that sheet is
   left out (it repeats sheet 1).
 - **Sheets 4 on:** one sheet per step, in assembly order, each with a step title and a table of the
   parts-list items it fits (from the Fusion step's own list). The Fusion tables, title blocks and
