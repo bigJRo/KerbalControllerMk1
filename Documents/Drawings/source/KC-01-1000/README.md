@@ -33,6 +33,8 @@ Corrected in the draft:
 - **Items 14 and 25 (owner, 2026-11-27):** Fusion listed the GX16 as one item under an auto
   number, with the hole plug's description. Item 14 is now the hole plug, qty 2 (one blank, one
   drilled Ø16 mm), and item 25 the GX16-10 connector fitted in it; step 3 notes the drilling.
+- **Standoffs (items 15 to 17, owner, 2026-11-27):** all 16 are fitted; the Control Module and
+  Extension use 8 and the other 8 are left free for future boards. Step 4 says so.
 - **Item 7:** Fusion's part name is "Arctic F12 fan"; the description and part number are the Antec
   Storm fan, so the name is now "Fan - 120mm PWM".
 
@@ -40,7 +42,6 @@ Open (for the owner):
 
 - **Item 21 (panel brace):** the description still says "installed M3 brass inserts"; Rev B has no
   inserts and is held with Dual Lock, which is not in the parts list.
-- **Standoffs (items 15 to 17):** 16 are fitted, but the Control Module and Extension use 8.
 - **Quantities so far:** parts 2 to 7 use 38 of the 62 washers (item 4) and 30 of the 54 1/2"
   screws (item 5); the rest should appear in the remaining parts.
 - **Manual Table 21-1:** the McMaster fasteners here (91772A148, 91772A160, 91841A007,

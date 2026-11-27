@@ -721,6 +721,16 @@
               "text": "STEP 4 · CIRCUIT CARD STANDOFFS",
               "size": 3.6,
               "anchor": "start"
+            },
+            {
+              "at": [
+                16,
+                27
+              ],
+              "text": "Note: fit all 16 standoffs. The Control Module and Extension use 8 (step 5); the other 8 are left free for future boards.",
+              "size": 2.6,
+              "anchor": "start",
+              "weight": "normal"
             }
           ],
           "tables": [
