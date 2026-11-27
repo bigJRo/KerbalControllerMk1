@@ -118,10 +118,10 @@
           "desc": "USB-C jack to USB-A jack round panel mount adapter; Adafruit"
         },
         {
-          "qty": 1,
+          "qty": 2,
           "pn": "B07DYWNZHY",
-          "name": "Panel Mount - Blank",
-          "desc": "22 mm black plastic push button switch hole panel plug"
+          "name": "Hole Plug - 22mm",
+          "desc": "22 mm black plastic push button switch hole panel plug; Uxcell (Amazon). One blank; one drilled Ø16 mm for item 25"
         },
         {
           "qty": 16,
@@ -185,9 +185,9 @@
         },
         {
           "qty": 1,
-          "pn": "2026-11-08-17-33-18-002",
-          "name": "Panel Mount - GX16",
-          "desc": "22 mm hole plug carrying the GX16 connector (Fusion number)"
+          "pn": "GX16-10",
+          "name": "Connector - GX16-10",
+          "desc": "GX16-10 circular connector, 10-pin, panel mount, 220 V; AliExpress item 3256807930461226. Fitted in the drilled hole plug (item 14); expansion port"
         },
         {
           "qty": 1,
@@ -572,6 +572,16 @@
               "text": "STEP 3 · REAR PANEL: FANS AND CONNECTORS",
               "size": 3.6,
               "anchor": "start"
+            },
+            {
+              "at": [
+                16,
+                27
+              ],
+              "text": "Note: drill one hole plug (item 14) Ø16 mm and fit the GX16-10 connector (item 25) in it; the other plug stays blank.",
+              "size": 2.6,
+              "anchor": "start",
+              "weight": "normal"
             }
           ],
           "tables": [
@@ -654,15 +664,15 @@
                 ],
                 [
                   "14",
-                  "1",
+                  "2",
                   "B07DYWNZHY",
-                  "Panel Mount - Blank"
+                  "Hole Plug - 22mm"
                 ],
                 [
                   "25",
                   "1",
-                  "2026-11-08-17-33-18-002",
-                  "Panel Mount - GX16"
+                  "GX16-10",
+                  "Connector - GX16-10"
                 ]
               ],
               "size": 2.1

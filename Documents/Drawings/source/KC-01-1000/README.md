@@ -30,13 +30,14 @@ Corrected in the draft:
 - **Item 2:** Fusion's part number starts with a hidden left-to-right mark; the KC table drops it.
 - **Items 8 and 9 (owner, 2026-11-27):** the fitted fan guard is the Bnafes B07NYDWPX6 and the
   filter cover the JAMHER B0G2WNNYL9 (magnetic). Fusion's QM092 and B07FYY6641 were stale.
+- **Items 14 and 25 (owner, 2026-11-27):** Fusion listed the GX16 as one item under an auto
+  number, with the hole plug's description. Item 14 is now the hole plug, qty 2 (one blank, one
+  drilled Ø16 mm), and item 25 the GX16-10 connector fitted in it; step 3 notes the drilling.
 - **Item 7:** Fusion's part name is "Arctic F12 fan"; the description and part number are the Antec
   Storm fan, so the name is now "Fan - 120mm PWM".
 
 Open (for the owner):
 
-- **Item 25 (GX16):** a Fusion auto number, with the hole plug's description. It is the 22 mm hole
-  plug drilled Ø16 mm carrying the GX16-10 connector.
 - **Item 21 (panel brace):** the description still says "installed M3 brass inserts"; Rev B has no
   inserts and is held with Dual Lock, which is not in the parts list.
 - **Standoffs (items 15 to 17):** 16 are fitted, but the Control Module and Extension use 8.
