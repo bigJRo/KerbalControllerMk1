@@ -163,7 +163,7 @@
           "qty": 2,
           "pn": "KC-01-1080",
           "name": "Panel Brace",
-          "desc": "3D printed panel brace; installed M3 brass inserts"
+          "desc": "3D printed panel brace, ABS, to KC-01-1080 Rev B; no inserts. Held to the panel with item 28"
         },
         {
           "qty": 1,
@@ -200,6 +200,12 @@
           "pn": "KC-01-1040",
           "name": "Panel B1 Complete",
           "desc": "Right display panel: two 7\" displays (Information Display 2, Resource Display) and the Dual Encoder"
+        },
+        {
+          "qty": "AR",
+          "pn": "SJ3560",
+          "name": "Dual Lock - Clear",
+          "desc": "3M Dual Lock reclosable fastener, clear (Amazon B0141MQRGI); cut to fit the inside angle of each panel brace (item 21). Qty as required (one roll)"
         }
       ],
       "notes": [
@@ -899,6 +905,16 @@
               "text": "STEP 6 · PANEL BRACE AND PANEL A1",
               "size": 3.6,
               "anchor": "start"
+            },
+            {
+              "at": [
+                16,
+                27
+              ],
+              "text": "Note: cut Dual Lock (item 28) to the inside angle of the panel brace (item 21) and press the brace to the panel.",
+              "size": 2.6,
+              "anchor": "start",
+              "weight": "normal"
             }
           ],
           "tables": [
@@ -954,6 +970,12 @@
                   "1",
                   "KC-01-1020",
                   "Panel A1 Complete"
+                ],
+                [
+                  "28",
+                  "AR",
+                  "SJ3560",
+                  "Dual Lock - Clear"
                 ]
               ],
               "size": 2.3
