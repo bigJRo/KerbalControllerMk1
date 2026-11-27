@@ -1,0 +1,946 @@
+{
+  "base": "KC-01-100",
+  "name": "Final Assembly",
+  "title": "Final Assembly",
+  "subtitle": "Kerbal Controller Mk1 · Top-level assembly",
+  "rev": "A",
+  "board_version": "Mk1",
+  "version_label": "Unit",
+  "date": "2026-11-27",
+  "status": "DRAFT",
+  "created_by": "J. Rostoker",
+  "approved_by": "J. Kerman",
+  "package_docs": "0",
+  "doc_types": {
+    "0": [
+      "ASSY",
+      "Assembly Drawing"
+    ]
+  },
+  "doc_title": {
+    "0": "Kerbal Controller Final Assembly"
+  },
+  "doc_name": {
+    "0": "Final Assembly"
+  },
+  "doc_status": {
+    "0": "DRAFT"
+  },
+  "revisions": [
+    [
+      "A",
+      "Initial release: KC frame, combined from the Fusion exports (parts 1 to 7)",
+      "2026-11-27",
+      "J. Kerman"
+    ]
+  ],
+  "view_docs": {
+    "0": {
+      "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt1_2026-11-26.pdf",
+      "line_scale": 0.35,
+      "parts": [
+        {
+          "qty": 1,
+          "pn": "KC-01-1010",
+          "name": "Acrylic Box",
+          "desc": "Enclosure assembly; Mfr: TAP Plastics"
+        },
+        {
+          "qty": 4,
+          "pn": "B00032Q30Q",
+          "name": "Rubber Feet",
+          "desc": "StarTech.com 1-1/4 in dia. self-adhesive rubber feet"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1070",
+          "name": "Internal Brace Assembly",
+          "desc": "Custom assembly"
+        },
+        {
+          "qty": 62,
+          "pn": "92141A008",
+          "name": "Washer - #6",
+          "desc": "18-8 stainless steel washer for number 6 screw, general purpose, 0.156\" ID, 0.312\" OD"
+        },
+        {
+          "qty": 54,
+          "pn": "91772A148",
+          "name": "Screw - 6-32 - 1/2in",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, 6-32 thread, 1/2\" long"
+        },
+        {
+          "qty": 20,
+          "pn": "36-4334-ND",
+          "name": "Keystone - 4334 Bracket",
+          "desc": "Mounting bracket, short L, #6-32 (2), steel, nickel plated"
+        },
+        {
+          "qty": 2,
+          "pn": "0-761345-57007-7",
+          "name": "Fan - 120mm PWM",
+          "desc": "Antec PWM PC fan, 120 mm, 4-pin PWM connector, 2000 RPM, Storm series"
+        },
+        {
+          "qty": 2,
+          "pn": "QM092",
+          "name": "120mm Fan Grill",
+          "desc": "Metal fan guard protective grill, 120 mm (4.7\")"
+        },
+        {
+          "qty": 2,
+          "pn": "B07FYY6641",
+          "name": "120mm Fan Screen",
+          "desc": "120 mm computer fan filter grill, ultra fine aluminum mesh, black"
+        },
+        {
+          "qty": 8,
+          "pn": "91772A160",
+          "name": "Screw - 6-32 - 2in",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, 6-32 thread, 2\" long"
+        },
+        {
+          "qty": 8,
+          "pn": "91841A007",
+          "name": "Nut - 6-32",
+          "desc": "18-8 stainless steel hex nut, 6-32 thread size"
+        },
+        {
+          "qty": 1,
+          "pn": "5607",
+          "name": "Panel Mount - Power Plug Connector",
+          "desc": "Round panel mount 5.5 mm / 2.1 mm DC barrel jack extension cable, 30 cm long; Adafruit"
+        },
+        {
+          "qty": 2,
+          "pn": "4259",
+          "name": "Panel Mount - USB-C Connector",
+          "desc": "USB-C jack to USB-A jack round panel mount adapter; Adafruit"
+        },
+        {
+          "qty": 1,
+          "pn": "B07DYWNZHY",
+          "name": "Panel Mount - Blank",
+          "desc": "22 mm black plastic push button switch hole panel plug"
+        },
+        {
+          "qty": 16,
+          "pn": "94868A164",
+          "name": "Standoff - M3 - 8mm x 4.5mm",
+          "desc": "Female threaded hex standoff, 18-8 stainless steel, 4.5 mm hex, 8 mm long, M3 × 0.5 mm thread"
+        },
+        {
+          "qty": 16,
+          "pn": "93475A210",
+          "name": "Washer - M3",
+          "desc": "18-8 stainless steel general purpose washer for M3 screw size, 3.2 mm ID, 7 mm OD"
+        },
+        {
+          "qty": 16,
+          "pn": "92000A120",
+          "name": "Screw - M3 - 10mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 10 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1700",
+          "name": "Control Module Complete",
+          "desc": "Assembled CCA, to its own drawing package"
+        },
+        {
+          "qty": 8,
+          "pn": "92000A114",
+          "name": "Screw - M3 - 5mm",
+          "desc": "Passivated 18-8 stainless steel pan head Phillips screw, M3 × 0.5 mm thread, 5 mm long"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1712",
+          "name": "Control Module Extension",
+          "desc": "Printed wiring board; Mfr: JLCPCB"
+        },
+        {
+          "qty": 2,
+          "pn": "KC-01-1080",
+          "name": "Panel Brace",
+          "desc": "3D printed panel brace; installed M3 brass inserts"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1030",
+          "name": "Panel A2 Complete",
+          "desc": "Left input panel: UI, Function, Action, Throttle and Translation controls; GPWS input panel; 2\" Sys Info Display; ABORT button; Switch Group 1"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1050",
+          "name": "Panel B2 Complete",
+          "desc": "Right input panel: Stability, Vehicle, Time, AUX CTRL, Rotation and Pre-Warp Time controls; STAGE button; mode selector; Switch Group 2"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1060",
+          "name": "Top Panel Complete",
+          "desc": "Top cover plate with the two speakers"
+        },
+        {
+          "qty": 1,
+          "pn": "2026-11-08-17-33-18-002",
+          "name": "Panel Mount - GX16",
+          "desc": "22 mm hole plug carrying the GX16 connector (Fusion number)"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1020",
+          "name": "Panel A1 Complete",
+          "desc": "Left display panel: POWER button and two 7\" displays (Annunciator, Information Display 1)"
+        },
+        {
+          "qty": 1,
+          "pn": "KC-01-1040",
+          "name": "Panel B1 Complete",
+          "desc": "Right display panel: two 7\" displays (Information Display 2, Resource Display) and the Dual Encoder"
+        }
+      ],
+      "notes": [
+        "1. Sheets 1 and 2: overall views. Sheet 3: parts list. Sheets 4 to 9: assembly steps in order; each step lists the parts-list items it fits.",
+        "2. Items 1, 3, 18, 21, 22, 23, 24, 26 and 27 are made to their own drawing packages.",
+        "3. Draft: Fusion exports parts 1 to 7 of the assembly; the remaining steps follow. Not to scale, on A3."
+      ],
+      "sheets": [
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt1_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                24,
+                38,
+                375,
+                286
+              ],
+              "k": 0.78,
+              "at": [
+                72,
+                31
+              ],
+              "masks": [
+                [
+                  226,
+                  236,
+                  375.6,
+                  286.6
+                ],
+                [
+                  212,
+                  275,
+                  218,
+                  286.6
+                ],
+                [
+                  23.4,
+                  145,
+                  32,
+                  152
+                ]
+              ]
+            }
+          ],
+          "notes": true
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt1_2026-11-26.pdf",
+              "page": 2,
+              "src": [
+                28,
+                37,
+                375,
+                277
+              ],
+              "k": 0.82,
+              "at": [
+                68,
+                30
+              ],
+              "masks": [
+                [
+                  226,
+                  236,
+                  375.6,
+                  277.6
+                ],
+                [
+                  212,
+                  275,
+                  218,
+                  277.6
+                ],
+                [
+                  27.4,
+                  145,
+                  32,
+                  152
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "parts_list": {
+            "at": [
+              16,
+              40
+            ],
+            "w": 388,
+            "cols": [
+              9,
+              8,
+              38,
+              48,
+              180
+            ],
+            "size": 2.4
+          },
+          "views": []
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt2_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                32,
+                21,
+                362,
+                224
+              ],
+              "k": 0.96,
+              "at": [
+                52,
+                31
+              ],
+              "masks": [
+                [
+                  212,
+                  20.4,
+                  218,
+                  22
+                ],
+                [
+                  31.4,
+                  208,
+                  150,
+                  224.6
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 1 · MOUNTING BRACKETS",
+              "size": 3.6,
+              "anchor": "start"
+            },
+            {
+              "at": [
+                16,
+                27
+              ],
+              "text": "Note: Every bracket position takes items 4, 5 and 6 as shown.",
+              "size": 2.6,
+              "anchor": "start",
+              "weight": "normal"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "1",
+                  "1",
+                  "KC-01-1010",
+                  "Acrylic Box"
+                ],
+                [
+                  "4",
+                  "20",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "20",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ],
+                [
+                  "6",
+                  "20",
+                  "36-4334-ND",
+                  "Keystone - 4334 Bracket"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt3_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                41,
+                20,
+                400,
+                219
+              ],
+              "k": 0.98,
+              "at": [
+                34,
+                30
+              ],
+              "masks": [
+                [
+                  212,
+                  19.4,
+                  218,
+                  22
+                ],
+                [
+                  398,
+                  145,
+                  400.6,
+                  152
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 2 · FEET AND INTERNAL BRACE",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "2",
+                  "4",
+                  "B00032Q30Q",
+                  "Rubber Feet"
+                ],
+                [
+                  "3",
+                  "1",
+                  "KC-01-1070",
+                  "Internal Brace Assembly"
+                ],
+                [
+                  "4",
+                  "6",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "6",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt4_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                39,
+                15,
+                405,
+                236
+              ],
+              "k": 0.88,
+              "at": [
+                48,
+                31
+              ],
+              "masks": [
+                [
+                  212,
+                  14.4,
+                  218,
+                  22
+                ],
+                [
+                  398,
+                  145,
+                  405.6,
+                  152
+                ],
+                [
+                  38.4,
+                  190,
+                  156,
+                  236.6
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 3 · REAR PANEL: FANS AND CONNECTORS",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                233
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "4",
+                  "8",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "7",
+                  "2",
+                  "0-761345-57007-7",
+                  "Fan - 120mm PWM"
+                ],
+                [
+                  "8",
+                  "2",
+                  "QM092",
+                  "120mm Fan Grill"
+                ],
+                [
+                  "9",
+                  "2",
+                  "B07FYY6641",
+                  "120mm Fan Screen"
+                ],
+                [
+                  "10",
+                  "8",
+                  "91772A160",
+                  "Screw - 6-32 - 2in"
+                ],
+                [
+                  "11",
+                  "8",
+                  "91841A007",
+                  "Nut - 6-32"
+                ],
+                [
+                  "12",
+                  "1",
+                  "5607",
+                  "Panel Mount - Power Plug Connector"
+                ],
+                [
+                  "13",
+                  "2",
+                  "4259",
+                  "Panel Mount - USB-C Connector"
+                ],
+                [
+                  "14",
+                  "1",
+                  "B07DYWNZHY",
+                  "Panel Mount - Blank"
+                ],
+                [
+                  "25",
+                  "1",
+                  "2026-11-08-17-33-18-002",
+                  "Panel Mount - GX16"
+                ]
+              ],
+              "size": 2.1
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt5_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                96,
+                22,
+                339,
+                250
+              ],
+              "k": 0.86,
+              "at": [
+                106,
+                30
+              ],
+              "masks": [
+                [
+                  226,
+                  236,
+                  339.6,
+                  250.6
+                ],
+                [
+                  95.4,
+                  245.0,
+                  156,
+                  250.6
+                ]
+              ]
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 4 · CIRCUIT CARD STANDOFFS",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "15",
+                  "16",
+                  "94868A164",
+                  "Standoff - M3 - 8mm x 4.5mm"
+                ],
+                [
+                  "16",
+                  "16",
+                  "93475A210",
+                  "Washer - M3"
+                ],
+                [
+                  "17",
+                  "16",
+                  "92000A120",
+                  "Screw - M3 - 10mm"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt6_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                69,
+                36,
+                360,
+                179
+              ],
+              "k": 1.0,
+              "at": [
+                64,
+                57
+              ],
+              "masks": []
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 5 · CONTROL MODULE AND EXTENSION",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "18",
+                  "1",
+                  "KC-01-1700",
+                  "Control Module Complete"
+                ],
+                [
+                  "19",
+                  "8",
+                  "92000A114",
+                  "Screw - M3 - 5mm"
+                ],
+                [
+                  "20",
+                  "1",
+                  "KC-01-1712",
+                  "Control Module Extension"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        },
+        {
+          "scale": null,
+          "views": [
+            {
+              "pdf": "Fusion_KC-01-1000_Final_Assembly_Pt7_2026-11-26.pdf",
+              "page": 1,
+              "src": [
+                76,
+                27,
+                323,
+                216
+              ],
+              "k": 1.0,
+              "at": [
+                86,
+                34
+              ],
+              "masks": []
+            }
+          ],
+          "texts": [
+            {
+              "at": [
+                16,
+                22
+              ],
+              "text": "STEP 6 · PANEL BRACE AND PANEL A1",
+              "size": 3.6,
+              "anchor": "start"
+            }
+          ],
+          "tables": [
+            {
+              "at": [
+                16,
+                236
+              ],
+              "title": "ITEMS IN THIS STEP (PARTS LIST, SHEET 3)",
+              "cols": [
+                [
+                  "ITEM",
+                  12,
+                  "middle"
+                ],
+                [
+                  "QTY",
+                  10,
+                  "middle"
+                ],
+                [
+                  "PART NUMBER",
+                  48,
+                  "start"
+                ],
+                [
+                  "PART NAME",
+                  80,
+                  "start"
+                ]
+              ],
+              "rows": [
+                [
+                  "4",
+                  "4",
+                  "92141A008",
+                  "Washer - #6"
+                ],
+                [
+                  "5",
+                  "4",
+                  "91772A148",
+                  "Screw - 6-32 - 1/2in"
+                ],
+                [
+                  "21",
+                  "1",
+                  "KC-01-1080",
+                  "Panel Brace"
+                ],
+                [
+                  "26",
+                  "1",
+                  "KC-01-1020",
+                  "Panel A1 Complete"
+                ]
+              ],
+              "size": 2.3
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
