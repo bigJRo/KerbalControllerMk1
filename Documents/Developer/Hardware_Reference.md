@@ -39,7 +39,7 @@
 | 2.13 | 2026-11-26 | **§13.2:** the identity response is 8 bytes (I2C spec v2.22 §6): the library patch appended at byte 4, so every module reports X.Y.Z, and the module sketch's own X.Y.Z at bytes 5–7 (a standalone sketch reports its version in both places); a controller accepts the 5-byte form (sketch version unknown) and the old 4-byte form (patch unknown too, shown as X.Y). |
 | 2.14 | 2026-11-26 | **§2:** KSP 1.12.5 and the tested mod versions (Kerbal Simpit Revamped 2.4.0, AGX 2.4.1.4, Hullcam VDS Continued 0.2.2.6, ARP 2.11.0.0), replacing "Current". The 12 V input on the rear panel is a 5.5 × 2.1 mm barrel jack, Adafruit 5607 (the wiring and power figures said 2.5 mm). **§5.4:** the panel joystick is the SaiDian JH-D400X-R4 (owner; JH-DX400B-R4 in 2.12 came from the Fusion part name). |
 | 2.15 | 2026-11-27 | **§2:** the optional mods and their tested versions, TAC Life Support 0.18.0.0 and Community Resource Pack 112.01 (owner). |
-| 2.16 | 2026-11-28 | Ctrl Module drawings Rev D (pre-order review, `Preorder_Review.md` 1.1–1.6): **§5.1, §6.1:** 12 V input on a 2-way 5.08 mm screw terminal DC1 (DORABO DB127S, C2997519), wired from the rear-panel jack; the DC-042Z 2.5 mm jack did not take the 5.5 × 2.1 mm plug. **§6.2:** load switch Q1 IRF4905S (was IRF9540NS), latch transistor Q2 2N7002 (was AO3400A), hold resistor R12 150 kΩ (was 300 kΩ): hold to turn off about 3.6 s. MPM3610 EN pulled up from 12 V through 100 kΩ R2 (was tied to 12 V), input capacitor 10 µF, output 22 µF. Resistors renumbered: the new R2 moves R2–R26 up by one. **§6.5, §8.4:** designators updated (LED resistors R8–R11; RST series R15; EXT_INT_1 pull-up R16, series R17). |
+| 2.16 | 2026-11-28 | Ctrl Module drawings Rev D (pre-order review, `Preorder_Review.md` 1.1–1.6 and 1.11): **§5.1, §6.1:** 12 V input on a 2-way 5.08 mm screw terminal DC1 (DORABO DB127S, C2997519), wired from the rear-panel jack; the DC-042Z 2.5 mm jack did not take the 5.5 × 2.1 mm plug. **§6.2:** load switch Q1 IRF4905S (was IRF9540NS), latch transistor Q2 2N7002 (was AO3400A), hold resistor R12 150 kΩ (was 300 kΩ): hold to turn off about 3.6 s. MPM3610 EN pulled up from 12 V through 100 kΩ R2 (was tied to 12 V), input capacitor 10 µF, output 22 µF. Power-button lamp feed fused: PTC F1 (C269108) between VCC and H1-2. Resistors renumbered: the new R2 moves R2–R26 up by one. **§6.5, §8.4:** designators updated (LED resistors R8–R11; RST series R15; EXT_INT_1 pull-up R16, series R17). |
 
 ---
 
@@ -281,7 +281,7 @@ Both switch groups are on Wide Button Modules. Each switch closes from a +5 V te
 | CN2 | 50-pin interboard, to the Extension | §9 |
 | CN3 | A2 panel connection (34-pin, 8 lines) | INT_1–INT_8, INT_SAFE (§11) |
 | CN4 | A1 panel connection (34-pin, 4 lines) | INT_9–INT_12, INT_SAFE2 (§11) |
-| H1 | Power switch header | Soft-latch power button (§6.2) |
+| H1 | Power switch header | Soft-latch power button (§6.2); lamp + on pin 2 through PTC F1 |
 | H4 | EMC2101 external temperature sensor | Nothing fitted (§6.6) |
 | USBC1 | Upstream USB-C | §7.4 |
 | USB1–USB6, USBC2 | Downstream USB | §7.6, §7.7 |
@@ -390,7 +390,7 @@ The 7" driver's Teensy uses Wire2 (SCL2 = 24, SDA2 = 25) for the module bus, pin
 
 ### 6.2 Power On/Off
 
-A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A single momentary pushbutton on Panel A1, wired to the Ctrl Module power switch header H1, turns power on with a short press and turns power off with a hold of about 3.6 s (2.7–5 s over part tolerances; bench-check). The circuit uses a P-channel MOSFET (Q1, IRF4905S, D2PAK, 20 mΩ) as the load switch and a 2N7002 (Q2) as the latch transistor, with an RC network (R12 150 kΩ, C9 10 µF) for hold-to-off timing. No microcontroller is required for power on/off — the circuit is fully analog. It has no Teensy pin: the master can neither see the button nor switch the controller off.
+A soft-latching power circuit on the Ctrl Module controls the 12V main bus. A single momentary pushbutton on Panel A1, wired to the Ctrl Module power switch header H1, turns power on with a short press and turns power off with a hold of about 3.6 s (2.7–5 s over part tolerances; bench-check). The circuit uses a P-channel MOSFET (Q1, IRF4905S, D2PAK, 20 mΩ) as the load switch and a 2N7002 (Q2) as the latch transistor, with an RC network (R12 150 kΩ, C9 10 µF) for hold-to-off timing. The button lamp's feed, H1-2, comes from the switched 12 V (VCC) through F1, a 1206 PTC (100 mA hold, 270 mA trip, 30 V, C269108), so a short in the button lead trips F1 instead of drawing on the full supply. No microcontroller is required for power on/off — the circuit is fully analog. It has no Teensy pin: the master can neither see the button nor switch the controller off.
 
 ### 6.3 Power Rails
 

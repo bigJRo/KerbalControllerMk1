@@ -37,7 +37,7 @@
     ],
     [
       "D",
-      "DC1 screw terminal, IRF4905S / 2N7002 latch, EN pull-up",
+      "DC1 terminal, IRF4905S / 2N7002 latch, EN pull-up, F1",
       "2026-11-28",
       "J. Kerman"
     ]
@@ -67,7 +67,7 @@
                 900.8,
                 248.8
               ],
-              "label": "Power input, soft-latch power switch (Q1, Q2), current and voltage monitor (U3), status LEDs and test port (TP1)"
+              "label": "Power input (DC1), soft-latch power switch (Q1, Q2) with power button header (H1, lamp fuse F1), current and voltage monitor (U3), status LEDs and test port (TP1)"
             }
           ]
         ],

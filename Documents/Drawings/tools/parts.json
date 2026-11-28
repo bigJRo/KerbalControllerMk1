@@ -105,5 +105,6 @@
   "C45783": {"desc": "Capacitor, ceramic, 22 µF ±20 %, 25 V, X5R", "pkg": "0805", "class": "Basic"},
   "C2997519": {"desc": "Terminal block, screw, 2-way, 5.08 mm pitch", "pkg": "THT", "class": "Extended"},
   "C2620": {"desc": "MOSFET, P-channel, -55 V, -74 A, 20 mΩ", "pkg": "D2PAK", "class": "Extended"},
-  "C8545": {"desc": "MOSFET, N-channel, 60 V, 115 mA", "pkg": "SOT-23", "class": "Basic"}
+  "C8545": {"desc": "MOSFET, N-channel, 60 V, 115 mA", "pkg": "SOT-23", "class": "Basic"},
+  "C269108": {"desc": "Resettable fuse, PTC, 100 mA hold, 270 mA trip, 30 V", "pkg": "1206", "class": "Extended"}
 }

@@ -22,9 +22,10 @@ The pre-order review changes (`Documents/Developer/Preorder_Review.md` 1.1–1.6
 - DC1 is a 2-way 5.08 mm screw terminal, DORABO DB127S-5.08-2P-GN-S (C2997519): pin 1 +12 V (VIN), pin 2 GND, wire entry towards the top edge, silkscreen "+12V" / "GND". The Rev C jack (DC-042Z, 2.5 mm pin) did not take the 5.5 × 2.1 mm plug of the rear-panel Adafruit 5607, whose leads now go to DC1 in ferrules. No reverse-polarity protection, by decision.
 - Soft latch: Q1 IRF4905STRLPBF (C2620, 20 mΩ; was IRF9540NS), Q2 2N7002 (C8545; was AO3400A, whose ±12 V gate rating the 12 V gate drive reached), hold resistor R12 150 kΩ (C22807; was 300 kΩ) with C9 10 µF: about 3.6 s to turn off (2.7–5 s).
 - MPM3610 (U1): EN pulled up from 12 V through R2, 100 kΩ (C25741), instead of being tied to 12 V (the EN pin's internal clamp needs ≥ 55 kΩ); input capacitor C1 10 µF (C3039694; was 4.7 µF), output C2 22 µF (C45783; was 10 µF).
+- Power-button lamp fuse F1 (pre-order review 1.11, owner: on the board): Yageo / Brightking SMD1206B010TF (C269108), 1206 PTC, 100 mA hold, 270 mA trip, 30 V, between VCC and H1-2. H1-2 (lamp +) was switched 12 V with no fuse; H1-1, H1-3 and H1-4 are unchanged. F1 sits just above H1.
 - Renumbering: the new R2 moves the Rev C R2–R26 to R3–R27. Capacitors, ICs, transistors, connectors and USB1–USB6 keep their numbers.
 - Placement: the power block (Q1, Q2, U3, H1, D1, LED4, C6–C11, R4–R14) moved about 6.6–8 mm right to make room for the terminal; USB1–USB6 moved 1.0 mm in from the top edge, so their bodies now reach about to the edge rather than 1 mm past it.
-- Checked against the Rev C board (IPC netlists, part by part on pads and nets): connectivity unchanged apart from the changes above; inner planes clear every plated hole of another net by at least 0.41 mm; every outer-layer pour carries one net. BOM matches the decisions.
+- Checked against the Rev C board (IPC netlists, part by part on pads and nets): connectivity unchanged apart from the changes above; EasyEDA DRC clean (owner, export with F1); inner planes clear every plated hole of another net by at least 0.41 mm; every outer-layer pour carries one net. BOM matches the decisions.
 
 ## Board V2.1 (review 2026-11-25)
 
