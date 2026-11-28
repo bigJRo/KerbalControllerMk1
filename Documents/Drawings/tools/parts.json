@@ -101,5 +101,9 @@
   "C4184": {"desc": "Resistor, 20 kΩ ±1 %, 1/10 W", "pkg": "0603"},
   "C13167": {"desc": "Resistor, 2.7 kΩ ±1 %, 1/10 W", "pkg": "0603"},
   "C23162": {"desc": "Resistor, 4.7 kΩ ±1 %, 1/10 W", "pkg": "0603"},
-  "C456015": {"desc": "Connector, USB 2.0 Type-A receptacle, vertical", "pkg": "THT", "mfr": "SHOU HAN", "mpn": "AF 180°ZJB13.7", "class": "Extended"}
+  "C456015": {"desc": "Connector, USB 2.0 Type-A receptacle, vertical", "pkg": "THT", "mfr": "SHOU HAN", "mpn": "AF 180°ZJB13.7", "class": "Extended"},
+  "C45783": {"desc": "Capacitor, ceramic, 22 µF ±20 %, 25 V, X5R", "pkg": "0805", "class": "Basic"},
+  "C2997519": {"desc": "Terminal block, screw, 2-way, 5.08 mm pitch", "pkg": "THT", "class": "Extended"},
+  "C2620": {"desc": "MOSFET, P-channel, -55 V, -74 A, 20 mΩ", "pkg": "D2PAK", "class": "Extended"},
+  "C8545": {"desc": "MOSFET, N-channel, 60 V, 115 mA", "pkg": "SOT-23", "class": "Basic"}
 }

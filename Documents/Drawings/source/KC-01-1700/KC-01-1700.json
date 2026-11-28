@@ -3,18 +3,18 @@
   "name": "Control Module",
   "title": "Control Module",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "C",
+  "rev": "D",
   "board_version": "V2.1",
-  "date": "2026-11-25",
-  "status": "RELEASED",
+  "date": "2026-11-28",
+  "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "RELEASED",
-    "1": "RELEASED",
-    "2": "RELEASED",
-    "3": "RELEASED",
-    "4": "RELEASED"
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
   },
   "revisions": [
     [
@@ -34,12 +34,18 @@
       "Board V2.1: USB-A ports, 5-pin TP1, +5V LED, dimmer LEDs",
       "2026-11-25",
       "J. Kerman"
+    ],
+    [
+      "D",
+      "DC1 screw terminal, IRF4905S / 2N7002 latch, EN pull-up",
+      "2026-11-28",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-25.pdf",
-  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-25.zip",
-  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-25.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-25.csv",
+  "sch_pdf": "SCH_KC-01-1701_Control_Module_2026-11-28.pdf",
+  "gerber_zip": "Gerber_KC-01-1702_Control_Module_PCB_2026-11-28.zip",
+  "bom_csv": "BOM_KC-01-1702_Control_Module_PCB_2026-11-28.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1702_Control_Module_PCB_2026-11-28.csv",
   "assy_pdf": "Fusion_KC-01-1700_Control_Module_2026-11-25.pdf",
   "doc_title": {
     "0": "Control Module Complete"
@@ -106,7 +112,7 @@
       ]
     },
     {
-      "scale": 0.48,
+      "scale": 0.465,
       "rows": [
         [
           [
@@ -381,7 +387,7 @@
     "4. Fabricate to IPC-6012 Class 2. Electrical test 100 %.",
     "5. Dimensions in mm. Tolerances unless noted: outline ±0.2, finished holes ±0.08.",
     "6. Fabricate from the Gerber and drill files of the same revision as this drawing.",
-    "7. Plated slots for the USB, USB-C and DC jack tabs are routed; sizes in the drill chart (sheet 2).",
+    "7. Plated slots for the USB and USB-C tabs are routed; sizes in the drill chart (sheet 2).",
     "8. No controlled impedance, castellations, edge plating or gold fingers."
   ],
   "bom_notes": [
@@ -422,7 +428,7 @@
           ],
           "at": [
             18.0,
-            38.6
+            45.6
           ],
           "k": 1.66667,
           "label": "LEFT VIEW"
@@ -437,7 +443,7 @@
           ],
           "at": [
             51.33,
-            38.6
+            45.6
           ],
           "k": 1.66667,
           "label": "TOP VIEW"
@@ -452,7 +458,7 @@
           ],
           "at": [
             51.33,
-            140.43
+            147.43
           ],
           "k": 1.66667,
           "label": "FRONT VIEW"
