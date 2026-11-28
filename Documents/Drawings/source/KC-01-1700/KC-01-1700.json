@@ -431,7 +431,8 @@
             45.6
           ],
           "k": 1.66667,
-          "label": "LEFT VIEW"
+          "label": "LEFT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -446,7 +447,8 @@
             45.6
           ],
           "k": 1.66667,
-          "label": "TOP VIEW"
+          "label": "TOP VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -461,7 +463,8 @@
             147.43
           ],
           "k": 1.66667,
-          "label": "FRONT VIEW"
+          "label": "FRONT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -477,7 +480,8 @@
           ],
           "k": 0.4306,
           "label": "ISOMETRIC VIEW",
-          "sublabel": "Not to scale"
+          "sublabel": "Not to scale",
+          "line_scale": 0.35
         }
       ]
     },
@@ -498,21 +502,7 @@
             78.0
           ],
           "k": 1.05,
-          "balloons": [
-            {
-              "at": [
-                139.7,
-                128.6
-              ],
-              "c": [
-                96.5,
-                138.3
-              ],
-              "text": "1",
-              "r": 5.5,
-              "size": 7.5
-            }
-          ]
+          "line_scale": 0.35
         }
       ]
     }
