@@ -35,6 +35,7 @@ This document is the change queue. Each item says what changes, where, and its s
 | 1.11 | Power-button lead: switched 12 V on H1-2 is unfused. Inline fuse (about 250 mA) in the harness, or a PTC on the board. | 1700 H1 | Harness / layout | Open |
 | 1.12 | MAX7219 bulk capacitor C10 10 µF 0402 6.3 V keeps about 2–3 µF at 5 V; use 0805 25 V. | 1840 | BOM | Open (recommended) |
 | 1.13 | Dual Encoder retention: the board has no mounting holes and hangs on the encoder bushings; no nuts are listed. Check a real PEC11R: with the body against the panel underside, at least about 2.5 mm of thread must stand above the 3 mm panel (the EasyEDA model shows 0.75 mm). If not, add mounting holes and standoffs. | 1860 | Check / layout | Open |
+| 1.14 | **Control Module designators.** The 2026-11-28 export renumbered 60 parts (old → new: C1→C23, C2→C22, C3→C19, C4→C21, C5→C20, C6–C23→C1–C18; R1→R25, R2→R26, R3–R26→R1–R24; U1→U9, U2↔U3, U5–U9→U4–U8; USB2→USB3, USB3→USB5, USB4→USB2, USB5→USB4). Connectivity is unchanged apart from the intended edits: DC1 replaced by the terminal (exported as U1, VIN/GND), EN pull-up added (R27, V_12 → MPM3610 EN), EN–IN link removed. The released KC-01-1700 drawings and the manual use the old numbers, and the new USB numbers no longer run left to right along the edge. Recommended: restore the released designators, terminal as DC1, pull-up as R27. Otherwise every Control Module reference in the drawings and manual changes. | 1700 | Layout / docs | Open |
 
 ## 2. Panel production files (Ponoko) and panel drawings
 
