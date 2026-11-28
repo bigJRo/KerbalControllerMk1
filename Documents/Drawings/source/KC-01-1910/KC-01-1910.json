@@ -3,18 +3,18 @@
   "name": "7in TFT Display Driver",
   "title": "7in TFT Display Driver",
   "subtitle": "Kerbal Controller Mk1 · Main enclosure",
-  "rev": "B",
+  "rev": "C",
   "board_version": "V2.1",
-  "date": "2026-11-25",
+  "date": "2026-11-28",
   "status": "DRAFT",
   "created_by": "J. Rostoker",
   "approved_by": "J. Kerman",
   "doc_status": {
-    "0": "RELEASED",
-    "1": "RELEASED",
-    "2": "RELEASED",
-    "3": "RELEASED",
-    "4": "RELEASED"
+    "0": "DRAFT",
+    "1": "DRAFT",
+    "2": "DRAFT",
+    "3": "DRAFT",
+    "4": "DRAFT"
   },
   "revisions": [
     [
@@ -28,12 +28,18 @@
       "Board V2.1 throughout; redrawn in the KC drawing frame",
       "2026-11-25",
       "J. Kerman"
+    ],
+    [
+      "C",
+      "MPM3610 EN pull-up R3; 10 µF in (C5), 22 µF out (C4)",
+      "2026-11-28",
+      "J. Kerman"
     ]
   ],
-  "sch_pdf": "SCH_KC-01-1911_7in_TFT_Display_Driver_2026-11-24.pdf",
-  "gerber_zip": "Gerber_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-24.zip",
-  "bom_csv": "BOM_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-24.csv",
-  "pnp_csv": "PickAndPlace_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-24.csv",
+  "sch_pdf": "SCH_KC-01-1911_7in_TFT_Display_Driver_2026-11-28.pdf",
+  "gerber_zip": "Gerber_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-28.zip",
+  "bom_csv": "BOM_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-28.csv",
+  "pnp_csv": "PickAndPlace_KC-01-1912_7in_TFT_Display_Driver_PCB_2026-11-28.csv",
   "assy_pdf": "Fusion_KC-01-1910_7in_TFT_Display_Driver_2026-11-24.pdf",
   "doc_title": {
     "0": "7in TFT Display Driver Complete"
@@ -222,7 +228,7 @@
         [
           [
             {
-              "page": 3,
+              "page": 4,
               "crop": [
                 83,
                 80,
@@ -234,7 +240,7 @@
           ],
           [
             {
-              "page": 4,
+              "page": 3,
               "crop": [
                 108,
                 112,
@@ -498,7 +504,8 @@
             42.0
           ],
           "k": 1.5,
-          "label": "LEFT VIEW"
+          "label": "LEFT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -513,7 +520,8 @@
             42.0
           ],
           "k": 1.5,
-          "label": "TOP VIEW"
+          "label": "TOP VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -528,7 +536,8 @@
             168.0
           ],
           "k": 1.5,
-          "label": "FRONT VIEW"
+          "label": "FRONT VIEW",
+          "line_scale": 0.35
         },
         {
           "page": 1,
@@ -544,7 +553,8 @@
           ],
           "k": 1.0,
           "label": "ISOMETRIC VIEW",
-          "sublabel": "Not to scale"
+          "sublabel": "Not to scale",
+          "line_scale": 0.35
         }
       ]
     },
@@ -590,7 +600,8 @@
               115,
               240
             ]
-          ]
+          ],
+          "line_scale": 0.35
         }
       ]
     }
