@@ -75,14 +75,14 @@ cables of each panel) and KC-01-1000 (50- and 34-pin cables, USB leads, power-bu
 
 | # | Change | Where | Status |
 |---|---|---|---|
-| 3.2.1 | Rear USB-C: Adafruit **4218** (USB-C round panel-mount extension, plug inside) ×2 replaces the 4259. Fits the Ø22.7 holes and panels up to 16 mm. Its wire list does not show the jack's second USB 2 pair: test both plug orientations on arrival. | KC-01-1000 item 13, Table 21-1, Table 23-1 | Decided |
+| 3.2.1 | Rear USB-C: Adafruit **4218** (USB-C round panel-mount extension, plug inside) ×2 replaces the 4259. Fits the Ø22.7 holes and panels up to 16 mm. Its wire list does not show the jack's second USB 2 pair: test both plug orientations on arrival. | KC-01-1000 item 13, Table 21-1, Table 23-1 | Decided; KC-01-1000 done (Rev B draft), manual pending |
 | 3.2.2 | Joystick screws M2 × 12, 8 (4 per stick), missing from the lists. | KC-01-1030, 1050, Table 21-1 | Decided |
-| 3.2.3 | Power input: the 5607's leads go to the new Control Module terminal (1.6); add the power lead to Table 23-1. | KC-01-1000, Table 23-1 | Decided |
+| 3.2.3 | Power input: the 5607's leads go to the new Control Module terminal (1.6); add the power lead to Table 23-1. | KC-01-1000, Table 23-1 | Done (manual r20, KC-01-1000 Rev B draft) |
 | 3.2.4 | Board part changes 1.3–1.6 in the BOM drawings (KC-01-xxx3) and Table 21-1 where listed. | drawings, manual | After 1.x |
 | 3.2.5 | Dual Encoder: the manual still shows KC-01-1850 encoder carriers on 5-pin H1/H2 (Tables 22-6, 23-1, Figure 23-3). In V2.1 both encoders are on the module and H1 is the UPDI header. Do not order 1850 boards for the controller. | manual | Decided |
 | 3.2.6 | Button Module CN1 pin numbering is swapped in Hardware_Inventory §5.2 and Table 22-6 (netlist: CN1-1 BUTTON14, CN1-2 BUTTON15). | docs | Decided |
 | 3.2.7 | PEC11R count: JLCPCB places 4 (2 on the Dual Encoder, 1 on each 7-Segment), not 2. | Table 21-1 | Decided |
-| 3.2.8 | KC-01-1000 item 20 (Control Module Extension) should read assembled, not bare PWB. | KC-01-1000 | Decided |
+| 3.2.8 | KC-01-1000 item 20 (Control Module Extension) should read assembled, not bare PWB. | KC-01-1000 | Done (KC-01-1000 Rev B draft) |
 | 3.2.9 | Fan screws 6-32 × 2" are about 14 mm longer than needed; 1-3/4" suffices. 7-Segment panel screws M3 × 5 engage 2 mm; M3 × 6 gives 3 mm. | KC-01-1000, 1030, 1050 | Open |
 
 ## 4. Owner checks on parts
