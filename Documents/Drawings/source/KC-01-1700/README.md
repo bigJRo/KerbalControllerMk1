@@ -7,7 +7,7 @@ version: no V2.1 board had been fabricated); earlier revisions and their sources
 | File | What it is | Feeds |
 |---|---|---|
 | `KC-01-1700.json` | Drawing package config: titles, revisions, release status, notes, schematic blocks and per-sheet scales, layer colours, placement split | all drawings |
-| `Fusion_KC-01-1700_Control_Module_2026-11-28.pdf` | Fusion 360 drawing of the board (owner, 2026-11-28): top, right, front and isometric views at 1:2 on page 1 (page 2, the bottom views, is not used). The Teensy is not in the model, so the views show the empty H2 / H3 sockets; the parts list comes from the config | 1700 ASSY |
+| `Fusion_KC-01-1700_Control_Module_2026-11-28.pdf` | Fusion 360 assembly drawing (owner, 2026-11-28; views at 3:5 with the Teensy fitted, parts list and balloons on page 2; its title block still shows Rev A and item 1 as KC-01-1700, the drawing uses KC-01-1702) | 1700 ASSY |
 | `SCH_KC-01-1701_Control_Module_2026-11-28.pdf` | EasyEDA Pro schematic export (4 pages) | 1701 SCH |
 | `Gerber_KC-01-1702_Control_Module_PCB_2026-11-28.zip` | Fabrication zip as sent to JLCPCB: 6-layer Gerbers, drill files (with routed slots), probe-test data | 1702 PWB, 1704 PLACE |
 | `IPC-D-356A_KC-01-1702_Control_Module_PCB_2026-11-28.356a` | IPC-D-356A netlist (units: 0.0001 in) | reference |
